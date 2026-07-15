@@ -415,5 +415,83 @@ Canonical local-state handoff for `D:\OneDrive\Hermes`.
   routes the DeepSeek-family worker lane through `opencode-go` with
   `deepseek-v4-flash`; direct DeepSeek and OpenRouter remain supported route
   options. Do not treat a specific provider as the architecture center.
-- Next action remains cleanup/audit of the current diff before expanding the
-  orchestration surface.
+- Cleanup and local consolidation are complete. The next task is recorded
+  below.
+
+## Current Handoff: Role-Based Routing And Worker Escalation Audit
+
+### Repository State
+
+- Use the single checkout at `D:\OneDrive\Hermes` on local `main`.
+- The temporary `D:\OneDrive\Hermes-kanban-pr` worktree has been removed.
+- Local `main` contains the latest fetched `origin/main` plus a local merge of
+  the three-commit Kanban orchestration PR stack. Do not push local `main`.
+- Public PR: `NousResearch/hermes-agent#63901`, sourced from
+  `fork/codex/kanban-orchestration-pr`.
+- Unrelated setup and desktop OmniRoute work is preserved on local branch
+  `codex/local-work-preservation-20260715`; do not mix it into this task.
+- Post-merge validation on current upstream passed:
+  - deterministic E2E: `4 passed, 1 deselected`
+  - targeted Kanban suite: `137 passed`
+  - MCP transport suite: `16 passed`
+  - `py_compile`: pass
+  - `git diff --check`: pass
+
+### Next Task
+
+Audit and plan **role-based model routing and bounded worker escalation** for
+the Kanban-first Hermes orchestration architecture. This phase is audit and
+planning only. Do not edit runtime code until the user explicitly approves the
+implementation plan.
+
+Read the full source request first:
+
+`C:\Users\Kibe\.codex\attachments\a2c3e613-24f3-43f1-ac21-d9f302021dff\pasted-text.txt`
+
+Required roles:
+
+- orchestrator/planner
+- classifier
+- worker
+- reviewer
+- auditor
+
+Required direction:
+
+- Route by configurable role and cost/capability policy; do not hard-code
+  provider/model names into workflow core.
+- Planner, reviewer, and auditor are read-only by default. Worker lanes receive
+  execution permissions according to policy.
+- Support bounded worker candidates/attempts, not blind fallback.
+- Persist attempt evidence in existing Kanban task/run/event/comment state:
+  role, provider/model, usage/cost, error signature, hypothesis, action summary,
+  changed files, test result, and artifact references.
+- Distinguish provider failure from task failure.
+- After bounded worker failure, create an expert-review task that produces a
+  repair plan; a cheap worker executes that plan.
+- Persist every role handoff with source role, destination role, reason,
+  evidence reference, and timestamp.
+- Extend the existing E2E workflow rather than creating a disconnected demo.
+
+Architecture constraints:
+
+- Keep Kanban-first V2.1 as the workflow engine and durable state layer.
+- Reuse profiles/provider resolution, budget controls, plan-audit actuation,
+  skills, and the existing gated Kanban/MCP surface.
+- Do not create a second orchestrator database, a new workflow engine, a new
+  core model tool, or provider-specific business lifecycle code.
+- Do not expose or log credentials and do not run live provider calls during
+  the audit phase.
+
+Required audit output before implementation:
+
+1. Existing capabilities with exact file/function/test evidence.
+2. Missing or incomplete capabilities.
+3. Reuse plan mapped onto existing Hermes mechanisms.
+4. Minimal data-model/config changes.
+5. Exact files expected to change.
+6. Unit/integration/E2E test plan.
+7. Definition of Done and implementation slices.
+
+Stop after presenting this audit and plan. Wait for explicit user approval
+before modifying runtime code.
