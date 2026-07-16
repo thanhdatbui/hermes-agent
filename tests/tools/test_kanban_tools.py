@@ -58,6 +58,7 @@ def test_kanban_tools_visible_with_env_var(monkeypatch, tmp_path):
         "kanban_show", "kanban_complete", "kanban_block", "kanban_heartbeat",
         "kanban_comment", "kanban_record_plan_audit_verdict",
         "kanban_apply_plan_audit_actuation",
+        "kanban_create_worker_escalation", "kanban_apply_expert_repair_plan",
         "kanban_create", "kanban_link",
     }
     assert kanban == expected, f"expected {expected}, got {kanban}"
@@ -88,6 +89,8 @@ def test_kanban_worker_env_overrides_profile_toolset_filter(monkeypatch, tmp_pat
     assert "kanban_block" in names
     assert "kanban_record_plan_audit_verdict" in names
     assert "kanban_apply_plan_audit_actuation" in names
+    assert "kanban_create_worker_escalation" in names
+    assert "kanban_apply_expert_repair_plan" in names
     assert "kanban_list" not in names
 
 
@@ -142,6 +145,7 @@ def test_kanban_tools_visible_with_toolset_config(monkeypatch, tmp_path):
         "kanban_show", "kanban_complete", "kanban_block", "kanban_heartbeat",
         "kanban_comment", "kanban_record_plan_audit_verdict",
         "kanban_apply_plan_audit_actuation",
+        "kanban_create_worker_escalation", "kanban_apply_expert_repair_plan",
         "kanban_create", "kanban_link",
         "kanban_unblock",
     }

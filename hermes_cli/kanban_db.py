@@ -1216,6 +1216,35 @@ class PlanAuditActuationResult:
     auditor_completed: bool = False
 
 
+@dataclass(frozen=True)
+class WorkflowStepPolicy:
+    """Configured execution lane for one durable Kanban workflow step."""
+
+    step_key: str
+    profile: str
+    model: Optional[str]
+    toolsets: Optional[list[str]]
+    candidate_index: int = 0
+    candidates: tuple[tuple[str, Optional[str]], ...] = ()
+
+
+@dataclass(frozen=True)
+class WorkerEscalationResult:
+    worker_task_id: str
+    expert_task_id: str
+    evidence_reference: str
+    escalation_round: int
+
+
+@dataclass(frozen=True)
+class RepairPlanActuationResult:
+    expert_task_id: str
+    repair_task_id: str
+    worker_task_id: str
+    evidence_reference: str
+    escalation_round: int
+
+
 # ---------------------------------------------------------------------------
 # Schema
 # ---------------------------------------------------------------------------
@@ -2636,6 +2665,8 @@ def create_task(
     session_id: Optional[str] = None,
     board: Optional[str] = None,
     project_id: Optional[str] = None,
+    workflow_template_id: Optional[str] = None,
+    current_step_key: Optional[str] = None,
 ) -> str:
     """Create a new task and optionally link it under parent tasks.
 
@@ -2676,6 +2707,10 @@ def create_task(
         branch_name = str(branch_name).strip() or None
     if branch_name and workspace_kind != "worktree":
         raise ValueError("branch_name is only valid for worktree workspaces")
+    if workflow_template_id is not None:
+        workflow_template_id = str(workflow_template_id).strip() or None
+    if current_step_key is not None:
+        current_step_key = str(current_step_key).strip() or None
     if plan_audit_max_rounds is not None and int(plan_audit_max_rounds) < 1:
         raise ValueError("plan_audit_max_rounds must be >= 1")
     if budget_usd is None and use_default_budget:
@@ -2877,8 +2912,8 @@ def create_task(
                         max_runtime_seconds,
                         skills, max_retries, goal_mode, goal_max_turns,
                         plan_audit_required, plan_audit_max_rounds,
-                        budget_usd, session_id
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        budget_usd, session_id, workflow_template_id, current_step_key
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         task_id,
@@ -2908,6 +2943,8 @@ def create_task(
                         ),
                         budget_usd,
                         session_id,
+                        workflow_template_id,
+                        current_step_key,
                     ),
                 )
                 for pid in parents:
@@ -2934,6 +2971,8 @@ def create_task(
                             else None
                         ),
                         "budget_usd": budget_usd,
+                        "workflow_template_id": workflow_template_id,
+                        "current_step_key": current_step_key,
                     },
                 )
             return task_id
@@ -3876,6 +3915,19 @@ def _resolve_task_budget_default_usd() -> Optional[float]:
     return parsed
 
 
+def _resolve_workflow_budget_enabled() -> bool:
+    """Return whether a budgeted root task caps its whole task subtree."""
+    try:
+        from hermes_cli.config import load_config
+
+        cfg = load_config()
+        task_budget = ((cfg.get("kanban") or {}).get("task_budget") or {})
+        workflow = task_budget.get("workflow_budget") or {}
+        return bool(workflow.get("enabled", False))
+    except Exception:
+        return False
+
+
 def _budget_remaining_usd(task: Task) -> Optional[float]:
     if task.budget_usd is None:
         return None
@@ -4048,6 +4100,8 @@ def _block_task_budget_exhausted(
     budget_spent_usd: float,
     budget_unknown_cost_runs: int,
     unknown_cost_policy: str,
+    scope: str = "task",
+    scope_root_task_id: Optional[str] = None,
 ) -> None:
     payload = {
         "reason": reason,
@@ -4055,6 +4109,8 @@ def _block_task_budget_exhausted(
         "budget_spent_usd": budget_spent_usd,
         "budget_unknown_cost_runs": budget_unknown_cost_runs,
         "unknown_cost_policy": unknown_cost_policy,
+        "scope": scope,
+        "scope_root_task_id": scope_root_task_id,
     }
     conn.execute(
         "UPDATE tasks SET status = 'blocked', claim_lock = NULL, "
@@ -4079,6 +4135,58 @@ def _block_task_budget_exhausted(
     )
 
 
+def _workflow_budget_scopes(
+    conn: sqlite3.Connection,
+    task_id: str,
+) -> list[tuple[str, float, float, int]]:
+    """Return ``(root_id, cap, spent, unknown_runs)`` for ancestor caps."""
+    ancestors: set[str] = {task_id}
+    frontier = [task_id]
+    while frontier:
+        rows = conn.execute(
+            "SELECT parent_id FROM task_links WHERE child_id = ?",
+            (frontier.pop(),),
+        ).fetchall()
+        for row in rows:
+            parent = str(row["parent_id"])
+            if parent not in ancestors:
+                ancestors.add(parent)
+                frontier.append(parent)
+    scopes: list[tuple[str, float, float, int]] = []
+    for root_id in sorted(ancestors):
+        root = conn.execute(
+            "SELECT budget_usd FROM tasks WHERE id = ?", (root_id,)
+        ).fetchone()
+        if root is None or root["budget_usd"] is None:
+            continue
+        subtree: set[str] = {root_id}
+        frontier = [root_id]
+        while frontier:
+            rows = conn.execute(
+                "SELECT child_id FROM task_links WHERE parent_id = ?",
+                (frontier.pop(),),
+            ).fetchall()
+            for row in rows:
+                child = str(row["child_id"])
+                if child not in subtree:
+                    subtree.add(child)
+                    frontier.append(child)
+        placeholders = ",".join("?" for _ in subtree)
+        aggregate = conn.execute(
+            f"SELECT COALESCE(SUM(budget_spent_usd), 0) AS spent, "
+            f"COALESCE(SUM(budget_unknown_cost_runs), 0) AS unknown_runs "
+            f"FROM tasks WHERE id IN ({placeholders})",
+            tuple(sorted(subtree)),
+        ).fetchone()
+        scopes.append((
+            root_id,
+            float(root["budget_usd"]),
+            float(aggregate["spent"] or 0.0),
+            int(aggregate["unknown_runs"] or 0),
+        ))
+    return scopes
+
+
 def _budget_gate_allows_claim(
     conn: sqlite3.Connection,
     task_id: str,
@@ -4086,6 +4194,38 @@ def _budget_gate_allows_claim(
     source_status: str = "ready",
     unknown_cost_policy: str,
 ) -> bool:
+    if _resolve_workflow_budget_enabled():
+        for root_id, budget, spent, unknown_runs in _workflow_budget_scopes(
+            conn, task_id,
+        ):
+            if spent >= budget:
+                _block_task_budget_exhausted(
+                    conn,
+                    task_id,
+                    source_status=source_status,
+                    reason="spent",
+                    budget_usd=budget,
+                    budget_spent_usd=spent,
+                    budget_unknown_cost_runs=unknown_runs,
+                    unknown_cost_policy=unknown_cost_policy,
+                    scope="workflow",
+                    scope_root_task_id=root_id,
+                )
+                return False
+            if unknown_runs > 0 and unknown_cost_policy == "block":
+                _block_task_budget_exhausted(
+                    conn,
+                    task_id,
+                    source_status=source_status,
+                    reason="unknown_cost",
+                    budget_usd=budget,
+                    budget_spent_usd=spent,
+                    budget_unknown_cost_runs=unknown_runs,
+                    unknown_cost_policy=unknown_cost_policy,
+                    scope="workflow",
+                    scope_root_task_id=root_id,
+                )
+                return False
     row = conn.execute(
         "SELECT budget_usd, budget_spent_usd, budget_unknown_cost_runs "
         "FROM tasks WHERE id = ? AND status = ?",
@@ -7892,6 +8032,24 @@ def detect_crashed_workers(conn: sqlite3.Connection) -> list[str]:
                         (row["id"], pid, row["claim_lock"],
                          protocol_violation, error_text)
                     )
+    # Rate-limit/quota exits already have a durable closed run. Classify that
+    # run as a provider failure so configured workflow roles can advance to
+    # their next bounded candidate. Ordinary non-workflow tasks keep the
+    # historical neutral cooldown behavior because they have no role policy.
+    for task_id in rate_limited:
+        try:
+            record_worker_failure_classification(
+                conn,
+                task_id,
+                failure_class="provider_failure",
+                error_signature="provider_rate_limited",
+            )
+        except (ValueError, sqlite3.Error):
+            _log.debug(
+                "kanban: could not classify rate-limited run for %s",
+                task_id,
+                exc_info=True,
+            )
     # Outside the main txn: account each crashed task and maybe trip the
     # breaker (the task transitions ready → blocked with a ``gave_up`` event
     # on top of the event we already emitted).
@@ -8279,7 +8437,7 @@ def check_respawn_guard(conn: sqlite3.Connection, task_id: str) -> Optional[str]
     genuinely dead (no live PID on this host).
     """
     row = conn.execute(
-        "SELECT last_failure_error FROM tasks WHERE id = ?",
+        "SELECT assignee, last_failure_error FROM tasks WHERE id = ?",
         (task_id,),
     ).fetchone()
     if row is None:
@@ -8299,7 +8457,7 @@ def check_respawn_guard(conn: sqlite3.Connection, task_id: str) -> Optional[str]
     #    no longer applies and the normal paths take over.
     rl_cooldown = _resolve_rate_limit_cooldown_seconds()
     latest_run = conn.execute(
-        "SELECT outcome, ended_at FROM task_runs "
+        "SELECT outcome, ended_at, profile FROM task_runs "
         "WHERE task_id = ? AND ended_at IS NOT NULL "
         "ORDER BY ended_at DESC LIMIT 1",
         (task_id,),
@@ -8308,6 +8466,15 @@ def check_respawn_guard(conn: sqlite3.Connection, task_id: str) -> Optional[str]
         latest_run is not None
         and latest_run["outcome"] == "rate_limited"
     ):
+        # A role policy may have moved the task to another candidate after
+        # this run ended. Cooldown is scoped to the failed profile, not the
+        # task globally; the replacement candidate may probe immediately.
+        if (
+            latest_run["profile"]
+            and row["assignee"]
+            and latest_run["profile"] != row["assignee"]
+        ):
+            return None
         if rl_cooldown <= 0:
             # Cooldown disabled — respawn immediately, and skip the
             # blocker_auth regex so the stamped rate-limit text doesn't
@@ -8635,6 +8802,28 @@ def _dispatch_once_locked(
         if max_spawn is not None and running_count + spawned >= max_spawn:
             break
         row_assignee = row["assignee"]
+        # A workflow step is a durable role identity, not an assignee naming
+        # convention. Resolve its configured primary lane before applying the
+        # historical default-assignee fallback or claiming the task.
+        try:
+            step_task = get_task(conn, row["id"])
+            step_policy = (
+                resolve_workflow_step_policy(step_task)
+                if step_task is not None else None
+            )
+        except ValueError as exc:
+            result.respawn_guarded.append((row["id"], "workflow_policy_invalid"))
+            if not dry_run:
+                with write_txn(conn):
+                    _append_event(
+                        conn, row["id"], "workflow_policy_invalid",
+                        {"reason": str(exc)},
+                    )
+            continue
+        if step_policy is not None:
+            row_assignee = step_policy.profile
+            if not dry_run:
+                _apply_workflow_step_policy(conn, row["id"], step_policy)
         if not row_assignee:
             # Honour kanban.default_assignee: when the dispatcher hits an
             # unassigned ready task and an operator-configured fallback
@@ -9155,6 +9344,568 @@ def _resolve_worker_cli_toolsets(hermes_home: Optional[str]) -> Optional[list[st
         return None
 
 
+def resolve_workflow_step_policy(
+    task: Task,
+    kanban_config: Optional[dict] = None,
+) -> Optional[WorkflowStepPolicy]:
+    """Resolve the configured lane for ``task.current_step_key``.
+
+    ``current_step_key`` is the durable workflow-role identity.  The policy
+    intentionally selects only the first candidate here; bounded candidate
+    switching is a later failure-classification concern.
+    """
+    step_key = (task.current_step_key or "").strip()
+    if not step_key:
+        return None
+    if kanban_config is None:
+        from hermes_cli.config import load_config
+
+        kanban_config = load_config().get("kanban") or {}
+    orchestration = (kanban_config or {}).get("orchestration") or {}
+    roles = orchestration.get("roles") if isinstance(orchestration, dict) else None
+    if not isinstance(roles, dict) or step_key not in roles:
+        return None
+    role_config = roles[step_key]
+    if not isinstance(role_config, dict):
+        raise ValueError(f"kanban.orchestration.roles.{step_key} must be a mapping")
+    raw_candidates = role_config.get("candidates")
+    if not isinstance(raw_candidates, list) or not raw_candidates:
+        raise ValueError(
+            f"kanban.orchestration.roles.{step_key}.candidates must be a non-empty list"
+        )
+    candidates: list[tuple[str, Optional[str]]] = []
+    seen_profiles: set[str] = set()
+    for index, candidate in enumerate(raw_candidates):
+        if isinstance(candidate, str):
+            profile = candidate.strip()
+            model = None
+        elif isinstance(candidate, dict):
+            profile = str(candidate.get("profile") or "").strip()
+            model = str(candidate.get("model") or "").strip() or None
+        else:
+            raise ValueError(
+                f"kanban.orchestration.roles.{step_key}.candidates[{index}] "
+                "must be a profile or mapping"
+            )
+        profile = _canonical_assignee(profile) or ""
+        if not profile:
+            raise ValueError(
+                f"kanban.orchestration.roles.{step_key}.candidates[{index}] needs profile"
+            )
+        if profile in seen_profiles:
+            raise ValueError(
+                f"kanban.orchestration.roles.{step_key}.candidates contains "
+                f"duplicate profile {profile!r}"
+            )
+        seen_profiles.add(profile)
+        candidates.append((profile, model))
+    raw_toolsets = role_config.get("toolsets")
+    if raw_toolsets is None:
+        toolsets = None
+    elif isinstance(raw_toolsets, list) and all(
+        isinstance(value, str) and value.strip() for value in raw_toolsets
+    ):
+        toolsets = sorted(set(raw_toolsets))
+    else:
+        raise ValueError(
+            f"kanban.orchestration.roles.{step_key}.toolsets must be a list of names"
+        )
+    current_profile = _canonical_assignee(task.assignee)
+    candidate_index = 0
+    if current_profile:
+        for index, (profile, _model) in enumerate(candidates):
+            if profile == current_profile:
+                candidate_index = index
+                break
+    profile, model = candidates[candidate_index]
+    return WorkflowStepPolicy(
+        step_key,
+        profile,
+        model,
+        toolsets,
+        candidate_index=candidate_index,
+        candidates=tuple(candidates),
+    )
+
+
+def _apply_workflow_step_policy(
+    conn: sqlite3.Connection,
+    task_id: str,
+    policy: WorkflowStepPolicy,
+) -> None:
+    """Persist the primary configured lane before the dispatcher claims it."""
+    task = get_task(conn, task_id)
+    if task is None:
+        return
+    changed = (
+        task.assignee != policy.profile
+        or task.model_override != policy.model
+    )
+    if not changed:
+        return
+    with write_txn(conn):
+        conn.execute(
+            "UPDATE tasks SET assignee = ?, model_override = ? WHERE id = ?",
+            (policy.profile, policy.model, task_id),
+        )
+        _append_event(
+            conn,
+            task_id,
+            "workflow_step_routed",
+            {
+                "step_key": policy.step_key,
+                "profile": policy.profile,
+                "model": policy.model,
+            },
+        )
+
+
+def _run_metadata_dict(raw_metadata: Optional[str]) -> dict:
+    if not raw_metadata:
+        return {}
+    try:
+        parsed = json.loads(raw_metadata)
+    except (TypeError, ValueError):
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _failure_evidence_key(metadata: dict) -> tuple[str, str, str, str]:
+    return (
+        str(metadata.get("failure_class") or ""),
+        str(metadata.get("error_signature") or ""),
+        str(metadata.get("hypothesis") or ""),
+        str(metadata.get("action_summary") or ""),
+    )
+
+
+def record_worker_failure_classification(
+    conn: sqlite3.Connection,
+    task_id: str,
+    *,
+    failure_class: str,
+    error_signature: str,
+    hypothesis: Optional[str] = None,
+    action_summary: Optional[str] = None,
+    changed_files: Optional[Iterable[str]] = None,
+    test_result: Optional[Any] = None,
+    artifact_refs: Optional[Iterable[str]] = None,
+    failure_limit: Optional[int] = None,
+) -> dict:
+    """Classify the latest closed run and apply bounded retry routing.
+
+    Role identity remains in ``task_runs.step_key``. This metadata is only
+    failure evidence. Provider failures may advance to the next configured
+    candidate reconstructed from ``task.assignee``; task failures never do.
+    """
+    allowed = {"provider_failure", "task_failure", "protocol_violation"}
+    if failure_class not in allowed:
+        raise ValueError(f"failure_class must be one of {sorted(allowed)}")
+    signature = str(error_signature or "").strip()
+    if not signature:
+        raise ValueError("error_signature is required")
+    task = get_task(conn, task_id)
+    if task is None:
+        raise ValueError(f"unknown task: {task_id}")
+    run_row = conn.execute(
+        "SELECT id, metadata FROM task_runs "
+        "WHERE task_id = ? AND ended_at IS NOT NULL ORDER BY id DESC LIMIT 1",
+        (task_id,),
+    ).fetchone()
+    if run_row is None:
+        raise ValueError(f"task {task_id} has no closed run to classify")
+
+    metadata = _run_metadata_dict(run_row["metadata"])
+    metadata.update({
+        "failure_class": failure_class,
+        "error_signature": signature,
+        "hypothesis": str(hypothesis or "").strip(),
+        "action_summary": str(action_summary or "").strip(),
+    })
+    if changed_files is not None:
+        metadata["changed_files"] = [str(path) for path in changed_files]
+    if test_result is not None:
+        metadata["test_result"] = test_result
+    if artifact_refs is not None:
+        metadata["artifact_refs"] = [str(ref) for ref in artifact_refs]
+
+    evidence_key = _failure_evidence_key(metadata)
+    duplicate = False
+    prior_rows = conn.execute(
+        "SELECT metadata FROM task_runs WHERE task_id = ? AND ended_at IS NOT NULL "
+        "AND id < ? ORDER BY id DESC",
+        (task_id, int(run_row["id"])),
+    ).fetchall()
+    for prior in prior_rows:
+        prior_metadata = _run_metadata_dict(prior["metadata"])
+        if _failure_evidence_key(prior_metadata) == evidence_key:
+            duplicate = True
+            break
+
+    switched = False
+    exhausted = False
+    next_profile: Optional[str] = None
+    blocked = False
+    with write_txn(conn):
+        conn.execute(
+            "UPDATE task_runs SET metadata = ? WHERE id = ?",
+            (json.dumps(metadata, ensure_ascii=False), int(run_row["id"])),
+        )
+        _append_event(
+            conn,
+            task_id,
+            "worker_failure_classified",
+            {
+                "run_id": int(run_row["id"]),
+                "failure_class": failure_class,
+                "error_signature": signature,
+                "meaningful": not duplicate,
+            },
+            run_id=int(run_row["id"]),
+        )
+
+    if failure_class == "provider_failure":
+        policy = resolve_workflow_step_policy(task)
+        if policy is not None and policy.candidate_index + 1 < len(policy.candidates):
+            next_index = policy.candidate_index + 1
+            next_profile, next_model = policy.candidates[next_index]
+            with write_txn(conn):
+                conn.execute(
+                    "UPDATE tasks SET assignee = ?, model_override = ?, "
+                    "consecutive_failures = 0, last_failure_error = NULL WHERE id = ?",
+                    (next_profile, next_model, task_id),
+                )
+                _append_event(
+                    conn,
+                    task_id,
+                    "worker_candidate_switched",
+                    {
+                        "from_profile": task.assignee,
+                        "to_profile": next_profile,
+                        "candidate_index": next_index,
+                        "reason": "provider_failure",
+                        "evidence_run_id": int(run_row["id"]),
+                    },
+                    run_id=int(run_row["id"]),
+                )
+            switched = True
+        elif policy is not None:
+            exhausted = True
+            blocked = _record_task_failure(
+                conn,
+                task_id,
+                error=signature,
+                outcome="provider_failure",
+                failure_limit=failure_limit,
+                release_claim=False,
+                end_run=False,
+                event_payload_extra={"candidate_exhausted": True},
+            )
+    elif failure_class == "task_failure" and not duplicate:
+        blocked = _record_task_failure(
+            conn,
+            task_id,
+            error=signature,
+            outcome="task_failure",
+            failure_limit=failure_limit,
+            release_claim=False,
+            end_run=False,
+        )
+
+    return {
+        "run_id": int(run_row["id"]),
+        "meaningful": not duplicate,
+        "switched": switched,
+        "next_profile": next_profile,
+        "candidate_exhausted": exhausted,
+        "blocked": blocked,
+    }
+
+
+def build_worker_failure_evidence_package(
+    conn: sqlite3.Connection,
+    task_id: str,
+    run_id: int,
+) -> dict:
+    """Build a bounded expert-review package from durable Kanban state."""
+    task = get_task(conn, task_id)
+    if task is None:
+        raise ValueError(f"unknown task: {task_id}")
+    run = get_run(conn, int(run_id))
+    if run is None or run.task_id != task_id or run.ended_at is None:
+        raise ValueError(
+            f"run {run_id} must be a closed run belonging to task {task_id}"
+        )
+    comments = list_comments(conn, task_id)[-10:]
+    return {
+        "task_id": task.id,
+        "goal": task.title,
+        "acceptance_context": (task.body or "")[:_CTX_MAX_BODY_BYTES],
+        "current_state": task.status,
+        "workflow_template_id": task.workflow_template_id,
+        "step_key": run.step_key or task.current_step_key,
+        "workspace": {
+            "kind": task.workspace_kind,
+            "path": task.workspace_path,
+            "branch": task.branch_name,
+        },
+        "attempt": {
+            "run_id": run.id,
+            "profile": run.profile,
+            "provider": run.provider,
+            "model": run.model,
+            "started_at": run.started_at,
+            "ended_at": run.ended_at,
+            "outcome": run.outcome,
+            "error": (run.error or "")[:_CTX_MAX_FIELD_BYTES],
+            "metadata": run.metadata or {},
+            "usage": {
+                "estimated_cost_usd": run.estimated_cost_usd,
+                "input_tokens": run.input_tokens,
+                "output_tokens": run.output_tokens,
+                "total_tokens": run.total_tokens,
+                "api_calls": run.api_calls,
+            },
+        },
+        "recent_comments": [
+            {"author": comment.author, "body": comment.body[:1000]}
+            for comment in comments
+        ],
+        "budget": {
+            "limit_usd": task.budget_usd,
+            "spent_usd": task.budget_spent_usd,
+            "unknown_cost_runs": task.budget_unknown_cost_runs,
+        },
+    }
+
+
+def _role_handoff_exists(
+    conn: sqlite3.Connection,
+    source_task_id: str,
+    destination_task_id: str,
+    evidence_reference: str,
+) -> bool:
+    rows = conn.execute(
+        "SELECT payload FROM task_events WHERE task_id = ? AND kind = 'role_handoff'",
+        (source_task_id,),
+    ).fetchall()
+    for row in rows:
+        payload = _run_metadata_dict(row["payload"])
+        if (
+            payload.get("source_task_id") == source_task_id
+            and payload.get("destination_task_id") == destination_task_id
+            and payload.get("evidence_reference") == evidence_reference
+        ):
+            return True
+    return False
+
+
+def record_role_handoff(
+    conn: sqlite3.Connection,
+    *,
+    source_task_id: str,
+    destination_task_id: str,
+    from_role: str,
+    to_role: str,
+    reason: str,
+    evidence_reference: str,
+) -> None:
+    """Persist one role transition on both source and destination tasks."""
+    if get_task(conn, source_task_id) is None:
+        raise ValueError(f"unknown source task: {source_task_id}")
+    if get_task(conn, destination_task_id) is None:
+        raise ValueError(f"unknown destination task: {destination_task_id}")
+    if not str(reason or "").strip():
+        raise ValueError("handoff reason is required")
+    if not str(evidence_reference or "").strip():
+        raise ValueError("evidence_reference is required")
+    if _role_handoff_exists(
+        conn, source_task_id, destination_task_id, evidence_reference,
+    ):
+        return
+    timestamp = int(time.time())
+    base_payload = {
+        "source_task_id": source_task_id,
+        "destination_task_id": destination_task_id,
+        "from_role": str(from_role or "unknown"),
+        "to_role": str(to_role or "unknown"),
+        "reason": str(reason).strip(),
+        "evidence_reference": str(evidence_reference).strip(),
+        "timestamp": timestamp,
+    }
+    with write_txn(conn):
+        _append_event(
+            conn,
+            source_task_id,
+            "role_handoff",
+            {**base_payload, "direction": "outbound"},
+        )
+        _append_event(
+            conn,
+            destination_task_id,
+            "role_handoff",
+            {**base_payload, "direction": "inbound"},
+        )
+
+
+def create_worker_escalation(
+    conn: sqlite3.Connection,
+    *,
+    root_task_id: str,
+    worker_task_id: str,
+    evidence_run_id: int,
+    reason: str,
+    escalation_round: int = 1,
+    expert_assignee: str = "expert-reviewer",
+) -> WorkerEscalationResult:
+    """Create an idempotent read-only expert review after worker exhaustion."""
+    root = get_task(conn, root_task_id)
+    worker = get_task(conn, worker_task_id)
+    if root is None:
+        raise ValueError(f"unknown root task: {root_task_id}")
+    if worker is None:
+        raise ValueError(f"unknown worker task: {worker_task_id}")
+    if worker.status == "running":
+        raise ValueError("worker task must finish or release its run before escalation")
+    if int(escalation_round) < 1:
+        raise ValueError("escalation_round must be >= 1")
+    evidence = build_worker_failure_evidence_package(
+        conn, worker_task_id, int(evidence_run_id),
+    )
+    evidence_reference = f"task_run:{int(evidence_run_id)}"
+    from agent.redact import redact_sensitive_text
+
+    safe_reason = redact_sensitive_text(str(reason).strip(), force=True)
+    key = (
+        f"koc:{root_task_id}:{worker_task_id}:"
+        f"worker-escalation:{int(escalation_round)}:expert"
+    )
+    evidence_text = redact_sensitive_text(
+        json.dumps(evidence, ensure_ascii=False, indent=2), force=True,
+    )
+    expert_task_id = create_task(
+        conn,
+        title=f"Expert repair review for {worker_task_id}",
+        body=(
+            f"Escalation reason: {safe_reason}\n"
+            f"Evidence reference: {evidence_reference}\n\n"
+            "Produce a repair plan only; do not edit production code.\n\n"
+            f"Evidence package:\n{evidence_text}"
+        ),
+        assignee=expert_assignee,
+        created_by=worker.assignee,
+        idempotency_key=key,
+        workflow_template_id=(
+            worker.workflow_template_id or root.workflow_template_id
+            or "kanban-orchestrated-coding"
+        ),
+        current_step_key="reviewer",
+        use_default_budget=False,
+    )
+    record_role_handoff(
+        conn,
+        source_task_id=worker_task_id,
+        destination_task_id=expert_task_id,
+        from_role=worker.current_step_key or "worker",
+        to_role="reviewer",
+        reason=safe_reason,
+        evidence_reference=evidence_reference,
+    )
+    return WorkerEscalationResult(
+        worker_task_id=worker_task_id,
+        expert_task_id=expert_task_id,
+        evidence_reference=evidence_reference,
+        escalation_round=int(escalation_round),
+    )
+
+
+def apply_expert_repair_plan(
+    conn: sqlite3.Connection,
+    *,
+    root_task_id: str,
+    worker_task_id: str,
+    expert_task_id: str,
+    repair_plan: str,
+    escalation_round: int = 1,
+    repair_assignee: str = "cheap-worker",
+) -> RepairPlanActuationResult:
+    """Complete expert analysis and create its idempotent repair worker task."""
+    root = get_task(conn, root_task_id)
+    worker = get_task(conn, worker_task_id)
+    expert = get_task(conn, expert_task_id)
+    if root is None or worker is None or expert is None:
+        raise ValueError("root, worker, and expert tasks must all exist")
+    plan = str(repair_plan or "").strip()
+    if not plan:
+        raise ValueError("repair_plan is required")
+    if int(escalation_round) < 1:
+        raise ValueError("escalation_round must be >= 1")
+    from agent.redact import redact_sensitive_text
+
+    plan = redact_sensitive_text(plan, force=True)
+
+    if expert.status != "done":
+        if not complete_task(
+            conn,
+            expert_task_id,
+            summary=plan,
+            metadata={
+                "repair_plan": plan,
+                "worker_task_id": worker_task_id,
+                "escalation_round": int(escalation_round),
+                "mode": "read_only",
+            },
+        ):
+            raise ValueError(f"could not complete expert task {expert_task_id}")
+    expert_run = latest_run(conn, expert_task_id)
+    if expert_run is None:
+        raise ValueError(f"expert task {expert_task_id} has no repair-plan run")
+    evidence_reference = f"task_run:{expert_run.id}"
+    key = (
+        f"koc:{root_task_id}:{worker_task_id}:"
+        f"worker-escalation:{int(escalation_round)}:repair"
+    )
+    repair_task_id = create_task(
+        conn,
+        title=f"Execute expert repair plan for {worker_task_id}",
+        body=(
+            f"Source worker task: {worker_task_id}\n"
+            f"Expert evidence: {evidence_reference}\n\n"
+            f"Repair plan:\n{plan}"
+        ),
+        assignee=repair_assignee,
+        created_by=expert.assignee,
+        parents=(expert_task_id,),
+        idempotency_key=key,
+        workspace_kind=worker.workspace_kind,
+        workspace_path=worker.workspace_path,
+        branch_name=worker.branch_name,
+        project_id=worker.project_id,
+        workflow_template_id=(
+            worker.workflow_template_id or root.workflow_template_id
+            or "kanban-orchestrated-coding"
+        ),
+        current_step_key="worker",
+        use_default_budget=False,
+    )
+    record_role_handoff(
+        conn,
+        source_task_id=expert_task_id,
+        destination_task_id=repair_task_id,
+        from_role=expert.current_step_key or "reviewer",
+        to_role="worker",
+        reason="execute expert repair plan",
+        evidence_reference=evidence_reference,
+    )
+    return RepairPlanActuationResult(
+        expert_task_id=expert_task_id,
+        repair_task_id=repair_task_id,
+        worker_task_id=worker_task_id,
+        evidence_reference=evidence_reference,
+        escalation_round=int(escalation_round),
+    )
+
+
 def _default_spawn(
     task: Task,
     workspace: str,
@@ -9174,12 +9925,15 @@ def _default_spawn(
     from. Workers cannot accidentally see other boards.
     """
     import subprocess
-    if not task.assignee:
+    policy = resolve_workflow_step_policy(task)
+    if not task.assignee and policy is None:
         raise ValueError(f"task {task.id} has no assignee")
 
     from hermes_cli.profiles import normalize_profile_name
 
-    profile_arg = normalize_profile_name(task.assignee)
+    profile_arg = normalize_profile_name(
+        policy.profile if policy is not None else task.assignee
+    )
 
     prompt = f"work kanban task {task.id}"
     env = dict(os.environ)
@@ -9298,9 +10052,13 @@ def _default_spawn(
         for sk in task.skills:
             if sk:
                 cmd.extend(["--skills", sk])
-    if task.model_override:
-        cmd.extend(["-m", task.model_override])
-    worker_toolsets = _resolve_worker_cli_toolsets(env.get("HERMES_HOME"))
+    selected_model = policy.model if policy is not None and policy.model else task.model_override
+    if selected_model:
+        cmd.extend(["-m", selected_model])
+    worker_toolsets = (
+        policy.toolsets if policy is not None and policy.toolsets is not None
+        else _resolve_worker_cli_toolsets(env.get("HERMES_HOME"))
+    )
     if worker_toolsets:
         cmd.extend(["--toolsets", ",".join(worker_toolsets)])
     cmd.extend([

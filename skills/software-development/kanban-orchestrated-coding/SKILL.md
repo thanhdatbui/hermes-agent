@@ -180,6 +180,10 @@ workflow ceiling = sum(step_cap * max_rounds)
 
 This is a visible planning bound, not an account-wide or provider-wide budget. Unknown-cost and exhausted-budget behavior is enforced by the Kanban task/run budget gates.
 
+When `kanban.task_budget.workflow_budget.enabled` is true, an ancestor task's
+`budget_usd` is also an enforced cap over aggregate spend and unknown-cost runs
+across its full descendant subtree at ready/review claim boundaries.
+
 ## Executor Contract
 
 Before editing, the executor must confirm:
@@ -196,6 +200,41 @@ After editing, the executor must complete with:
 - Any skipped validation and why.
 - Residual risk.
 - Created follow-up cards, if any, in `created_cards`.
+
+## Worker Failure Evidence
+
+Keep role identity in the task/run `step_key`; do not duplicate it in run
+metadata. Failure evidence is a separate dimension and uses:
+
+- `failure_class`: `provider_failure`, `task_failure`, or `protocol_violation`.
+- `error_signature`: a stable, credential-free fingerprint.
+- `hypothesis` and `action_summary`: what the worker believed and tried.
+- `changed_files`, `test_result`, and `artifact_refs` when available.
+
+`protocol_violation` is handled by the dispatcher's dedicated
+`_protocol_violation_streak` budget and circuit-breaker path. It is recorded as
+evidence for auditability, but it does not trigger candidate switching or the
+expert repair-plan actuator directly.
+
+Provider failures may move a workflow step to the next configured candidate.
+Task failures stay on the same candidate and consume the task retry budget.
+Repeating the same task-failure signature, hypothesis, and action is replay,
+not meaningful progress, so it must not consume another retry. Candidate lists
+are bounded; after the final candidate, the existing failure limit blocks the
+task instead of looping.
+
+After bounded worker failure, call
+`kanban_create_worker_escalation(root_task_id=..., reason=...,
+evidence_run_id=...)`. The generated reviewer task receives a durable evidence
+package and is read-only: it analyzes the attempts and produces a repair plan.
+From that reviewer task, call
+`kanban_apply_expert_repair_plan(root_task_id=..., worker_task_id=...,
+repair_plan=...)`. This completes the expert task and creates one idempotent
+cheap-worker repair task. Do not let the expert edit production code directly.
+
+Every transition records a `role_handoff` event on both tasks with `from_role`,
+`to_role`, `reason`, `evidence_reference`, and `timestamp`. Replaying either
+actuator must return the existing task and must not duplicate handoff events.
 
 ## Code-Auditor Contract
 

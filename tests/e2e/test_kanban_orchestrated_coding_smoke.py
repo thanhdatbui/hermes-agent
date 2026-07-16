@@ -349,6 +349,241 @@ def test_kanban_orchestrated_coding_git_process_harness(
     )
 
 
+def test_kanban_worker_escalation_repair_harness(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Exercise bounded worker failure → expert plan → cheap repair → audit."""
+    hermes_home = tmp_path / ".hermes"
+    hermes_home.mkdir()
+    monkeypatch.setenv("HERMES_HOME", str(hermes_home))
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+
+    repo = tmp_path / "repo"
+    _init_tiny_repo(repo)
+    board = "e2e-koc-escalation"
+    kb.create_board(board, name="E2E KOC Escalation", default_workdir=str(repo))
+    kb.init_db(board=board)
+    artifact_dir = tmp_path / "artifacts"
+    artifact_dir.mkdir()
+
+    first_verify = _run(VERIFY_COMMAND, repo, check=False, timeout=60)
+    assert first_verify.returncode != 0
+    failure_artifact = artifact_dir / "worker_failure.json"
+    failure_artifact.write_text(json.dumps({
+        "command": VERIFY_COMMAND_LABEL,
+        "exit_code": first_verify.returncode,
+        "stdout": first_verify.stdout,
+        "stderr": first_verify.stderr,
+    }, indent=2), encoding="utf-8")
+
+    with kb.connect(board=board) as conn:
+        root_id = kb.create_task(
+            conn,
+            title="Repair add() after bounded worker failure",
+            assignee="orchestrator",
+            workflow_template_id="kanban-orchestrated-coding",
+            use_default_budget=False,
+            board=board,
+        )
+        worker_id = kb.create_task(
+            conn,
+            title="Initial cheap worker attempt",
+            body="Make pytest pass.",
+            assignee="cheap-worker-a",
+            workspace_kind="dir",
+            workspace_path=str(repo),
+            workflow_template_id="kanban-orchestrated-coding",
+            current_step_key="worker",
+            max_retries=1,
+            use_default_budget=False,
+            board=board,
+        )
+        assert kb.claim_task(conn, worker_id, claimer="cheap-worker-a") is not None
+        assert kb.block_task(
+            conn,
+            worker_id,
+            kind="capability",
+            reason="retry budget exhausted with the same failing test",
+        )
+        classified = kb.record_worker_failure_classification(
+            conn,
+            worker_id,
+            failure_class="task_failure",
+            error_signature="pytest:test_add",
+            hypothesis="operator implementation is wrong",
+            action_summary="attempted local edit without progress",
+            test_result={"exit_code": first_verify.returncode},
+            artifact_refs=[str(failure_artifact)],
+        )
+        assert classified["blocked"] is True
+        failed_run = kb.latest_run(conn, worker_id)
+        assert failed_run is not None
+
+        escalation = kb.create_worker_escalation(
+            conn,
+            root_task_id=root_id,
+            worker_task_id=worker_id,
+            evidence_run_id=failed_run.id,
+            reason="same_error_signature",
+            expert_assignee="expert-reviewer",
+        )
+        repair = kb.apply_expert_repair_plan(
+            conn,
+            root_task_id=root_id,
+            worker_task_id=worker_id,
+            expert_task_id=escalation.expert_task_id,
+            repair_plan=(
+                "Replace subtraction with addition in math_bug.py, then run "
+                f"{VERIFY_COMMAND_LABEL}."
+            ),
+            repair_assignee="cheap-worker-b",
+        )
+        repair_task = kb.get_task(conn, repair.repair_task_id)
+        assert repair_task is not None and repair_task.status == "ready"
+        assert kb.claim_task(conn, repair.repair_task_id, claimer="cheap-worker-b") is not None
+        repair_context = kb.build_worker_context(conn, repair.repair_task_id)
+
+    assert "Replace subtraction with addition" in repair_context
+    (repo / "math_bug.py").write_text(
+        "def add(a, b):\n    return a + b\n",
+        encoding="utf-8",
+    )
+    repair_verify = _run(VERIFY_COMMAND, repo, check=False, timeout=60)
+    assert repair_verify.returncode == 0
+
+    with kb.connect(board=board) as conn:
+        assert kb.complete_task(
+            conn,
+            repair.repair_task_id,
+            summary="Cheap worker executed the expert plan and pytest passed.",
+            metadata={
+                "changed_files": ["math_bug.py"],
+                "test_result": {"exit_code": 0, "command": VERIFY_COMMAND_LABEL},
+            },
+        )
+        repair_run = kb.latest_run(conn, repair.repair_task_id)
+        assert repair_run is not None
+        auditor_id = kb.create_task(
+            conn,
+            title="Final read-only escalation audit",
+            assignee="final-auditor",
+            parents=(repair.repair_task_id,),
+            workflow_template_id="kanban-orchestrated-coding",
+            current_step_key="auditor",
+            use_default_budget=False,
+            board=board,
+        )
+        kb.record_role_handoff(
+            conn,
+            source_task_id=repair.repair_task_id,
+            destination_task_id=auditor_id,
+            from_role="worker",
+            to_role="auditor",
+            reason="verify repaired result",
+            evidence_reference=f"task_run:{repair_run.id}",
+        )
+        assert kb.claim_task(conn, auditor_id, claimer="final-auditor") is not None
+
+    final_verify = _run(VERIFY_COMMAND, repo, check=False, timeout=60)
+    assert final_verify.returncode == 0
+
+    with kb.connect(board=board) as conn:
+        assert kb.complete_task(
+            conn,
+            auditor_id,
+            summary="Read-only final audit passed.",
+            metadata={"mode": "read_only", "verdict": "COMPLETED"},
+        )
+        assert kb.complete_task(
+            conn,
+            root_id,
+            summary="Escalation repair workflow completed.",
+            metadata={"verdict": "COMPLETED"},
+        )
+        root = kb.get_task(conn, root_id)
+        expert = kb.get_task(conn, escalation.expert_task_id)
+        repaired = kb.get_task(conn, repair.repair_task_id)
+        auditor = kb.get_task(conn, auditor_id)
+        role_handoffs = (
+            _event_kinds(conn, worker_id)
+            + _event_kinds(conn, escalation.expert_task_id)
+            + _event_kinds(conn, repair.repair_task_id)
+        )
+
+    assert root is not None and root.status == "done"
+    assert expert is not None and expert.status == "done"
+    assert repaired is not None and repaired.status == "done"
+    assert auditor is not None and auditor.status == "done"
+    assert role_handoffs.count("role_handoff") >= 3
+
+
+def test_kanban_workflow_budget_ceiling_blocks_subtree_claim(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A root workflow cap must cover aggregate child spend before claim."""
+    hermes_home = tmp_path / ".hermes"
+    hermes_home.mkdir()
+    monkeypatch.setenv("HERMES_HOME", str(hermes_home))
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+    monkeypatch.setattr(kb, "_resolve_workflow_budget_enabled", lambda: True)
+
+    board = "e2e-koc-budget"
+    kb.create_board(board, name="E2E KOC Budget")
+    kb.init_db(board=board)
+    with kb.connect(board=board) as conn:
+        root_id = kb.create_task(
+            conn,
+            title="workflow budget root",
+            assignee="orchestrator",
+            budget_usd=0.5,
+            use_default_budget=False,
+            board=board,
+        )
+        plan_id = kb.create_task(
+            conn,
+            title="planner",
+            assignee="planner",
+            parents=(root_id,),
+            budget_usd=0.3,
+            use_default_budget=False,
+            board=board,
+        )
+        worker_id = kb.create_task(
+            conn,
+            title="worker",
+            assignee="worker",
+            parents=(plan_id,),
+            use_default_budget=False,
+            board=board,
+        )
+        assert kb.complete_task(conn, root_id, summary="root ready")
+        assert kb.complete_task(conn, plan_id, summary="planner spent its cap")
+        conn.execute(
+            "UPDATE tasks SET budget_spent_usd = 0.3 WHERE id = ?", (plan_id,)
+        )
+        conn.commit()
+        # The root cap is 0.5; add a second child spend so the worker's
+        # aggregate workflow exposure exceeds it before its first claim.
+        conn.execute(
+            "UPDATE tasks SET budget_spent_usd = 0.25 WHERE id = ?", (worker_id,)
+        )
+        conn.commit()
+
+        claimed = kb.claim_task(conn, worker_id, claimer="worker")
+        task = kb.get_task(conn, worker_id)
+        budget_events = [
+            event for event in kb.list_events(conn, worker_id)
+            if event.kind == "budget_exhausted"
+        ]
+
+    assert claimed is None
+    assert task is not None and task.status == "blocked"
+    assert budget_events[-1].payload["scope"] == "workflow"
+    assert budget_events[-1].payload["scope_root_task_id"] == root_id
+
+
 def _run_kanban_orchestrated_coding_smoke(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

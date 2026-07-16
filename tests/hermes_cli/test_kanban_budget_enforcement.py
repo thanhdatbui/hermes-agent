@@ -300,6 +300,86 @@ def test_budget_exhaustion_blocks_next_ready_claim(kanban_home):
     assert runs[-1].outcome == "blocked"
 
 
+def test_workflow_budget_cap_rolls_up_parent_and_child_spend(
+    kanban_home, monkeypatch,
+):
+    monkeypatch.setattr(kb, "_resolve_workflow_budget_enabled", lambda: True)
+    with kb.connect() as conn:
+        root = kb.create_task(
+            conn, title="workflow cap", assignee="orchestrator", budget_usd=0.5,
+        )
+        child = kb.create_task(
+            conn, title="child still has local budget", assignee="worker",
+            parents=(root,), budget_usd=1.0,
+        )
+        assert kb.complete_task(conn, root, summary="plan complete")
+        conn.execute(
+            "UPDATE tasks SET budget_spent_usd = 0.5 WHERE id = ?", (child,)
+        )
+        conn.commit()
+
+        claimed = kb.claim_task(conn, child, claimer="worker")
+        task = kb.get_task(conn, child)
+        event = [
+            e for e in kb.list_events(conn, child) if e.kind == "budget_exhausted"
+        ][-1]
+
+    assert claimed is None
+    assert task is not None and task.status == "blocked"
+    assert event.payload["scope"] == "workflow"
+    assert event.payload["scope_root_task_id"] == root
+    assert event.payload["budget_usd"] == pytest.approx(0.5)
+    assert event.payload["budget_spent_usd"] == pytest.approx(0.5)
+
+
+def test_workflow_budget_unknown_cost_policy_blocks_subtree_claim(
+    kanban_home, monkeypatch,
+):
+    monkeypatch.setattr(kb, "_resolve_workflow_budget_enabled", lambda: True)
+    monkeypatch.setattr(kb, "_resolve_task_budget_unknown_cost_policy", lambda: "block")
+    with kb.connect() as conn:
+        root = kb.create_task(
+            conn, title="workflow unknown cap", assignee="orchestrator", budget_usd=1.0,
+        )
+        child = kb.create_task(
+            conn, title="unknown child", assignee="worker", parents=(root,),
+        )
+        assert kb.complete_task(conn, root, summary="plan complete")
+        conn.execute(
+            "UPDATE tasks SET budget_unknown_cost_runs = 1 WHERE id = ?", (child,)
+        )
+        conn.commit()
+
+        claimed = kb.claim_task(conn, child, claimer="worker")
+        task = kb.get_task(conn, child)
+        event = [
+            e for e in kb.list_events(conn, child) if e.kind == "budget_exhausted"
+        ][-1]
+
+    assert claimed is None
+    assert task is not None and task.status == "blocked"
+    assert event.payload["reason"] == "unknown_cost"
+    assert event.payload["scope"] == "workflow"
+
+
+def test_workflow_budget_rollup_is_inert_when_disabled(kanban_home, monkeypatch):
+    monkeypatch.setattr(kb, "_resolve_workflow_budget_enabled", lambda: False)
+    with kb.connect() as conn:
+        root = kb.create_task(
+            conn, title="disabled workflow cap", assignee="orchestrator", budget_usd=0.1,
+        )
+        child = kb.create_task(conn, title="child", assignee="worker", parents=(root,))
+        assert kb.complete_task(conn, root, summary="plan complete")
+        conn.execute(
+            "UPDATE tasks SET budget_spent_usd = 0.1 WHERE id = ?", (root,)
+        )
+        conn.commit()
+
+        claimed = kb.claim_task(conn, child, claimer="worker")
+
+    assert claimed is not None
+
+
 def test_unknown_cost_policy_allow_counts_unknown_but_allows_claim(
     kanban_home, monkeypatch
 ):

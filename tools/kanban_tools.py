@@ -1069,6 +1069,96 @@ def _handle_apply_plan_audit_actuation(args: dict, **kw) -> str:
         return tool_error(f"kanban_apply_plan_audit_actuation: {e}")
 
 
+def _handle_create_worker_escalation(args: dict, **kw) -> str:
+    worker_tid = _default_task_id(args.get("worker_task_id") or args.get("task_id"))
+    if not worker_tid:
+        return tool_error("worker_task_id is required (or set HERMES_KANBAN_TASK)")
+    ownership_err = _enforce_worker_task_ownership(str(worker_tid))
+    if ownership_err:
+        return ownership_err
+    root_tid = args.get("root_task_id")
+    if not root_tid:
+        return tool_error("root_task_id is required")
+    reason = _clean_optional_text(args.get("reason"))
+    if not reason:
+        return tool_error("reason is required")
+    board = args.get("board")
+    try:
+        kb, conn = _connect(board=board)
+        try:
+            evidence_run_id = args.get("evidence_run_id")
+            if evidence_run_id is None:
+                latest = kb.latest_run(conn, str(worker_tid))
+                evidence_run_id = latest.id if latest else None
+            if evidence_run_id is None:
+                return tool_error("evidence_run_id is required when no closed run exists")
+            result = kb.create_worker_escalation(
+                conn,
+                root_task_id=str(root_tid),
+                worker_task_id=str(worker_tid),
+                evidence_run_id=int(evidence_run_id),
+                reason=reason,
+                escalation_round=int(args.get("escalation_round") or 1),
+                expert_assignee=str(args.get("expert_assignee") or "expert-reviewer"),
+            )
+            return _ok(
+                worker_task_id=result.worker_task_id,
+                expert_task_id=result.expert_task_id,
+                evidence_reference=result.evidence_reference,
+                escalation_round=result.escalation_round,
+            )
+        finally:
+            conn.close()
+    except (TypeError, ValueError) as e:
+        return tool_error(f"kanban_create_worker_escalation: {e}")
+    except Exception as e:
+        logger.exception("kanban_create_worker_escalation failed")
+        return tool_error(f"kanban_create_worker_escalation: {e}")
+
+
+def _handle_apply_expert_repair_plan(args: dict, **kw) -> str:
+    expert_tid = _default_task_id(args.get("expert_task_id") or args.get("task_id"))
+    if not expert_tid:
+        return tool_error("expert_task_id is required (or set HERMES_KANBAN_TASK)")
+    ownership_err = _enforce_worker_task_ownership(str(expert_tid))
+    if ownership_err:
+        return ownership_err
+    root_tid = args.get("root_task_id")
+    worker_tid = args.get("worker_task_id")
+    if not root_tid or not worker_tid:
+        return tool_error("root_task_id and worker_task_id are required")
+    repair_plan = _clean_optional_text(args.get("repair_plan"))
+    if not repair_plan:
+        return tool_error("repair_plan is required")
+    board = args.get("board")
+    try:
+        kb, conn = _connect(board=board)
+        try:
+            result = kb.apply_expert_repair_plan(
+                conn,
+                root_task_id=str(root_tid),
+                worker_task_id=str(worker_tid),
+                expert_task_id=str(expert_tid),
+                repair_plan=repair_plan,
+                escalation_round=int(args.get("escalation_round") or 1),
+                repair_assignee=str(args.get("repair_assignee") or "cheap-worker"),
+            )
+            return _ok(
+                expert_task_id=result.expert_task_id,
+                repair_task_id=result.repair_task_id,
+                worker_task_id=result.worker_task_id,
+                evidence_reference=result.evidence_reference,
+                escalation_round=result.escalation_round,
+            )
+        finally:
+            conn.close()
+    except (TypeError, ValueError) as e:
+        return tool_error(f"kanban_apply_expert_repair_plan: {e}")
+    except Exception as e:
+        logger.exception("kanban_apply_expert_repair_plan failed")
+        return tool_error(f"kanban_apply_expert_repair_plan: {e}")
+
+
 def _handle_create(args: dict, **kw) -> str:
     """Create a child task. Orchestrator workers use this to fan out.
 
@@ -1798,6 +1888,64 @@ KANBAN_APPLY_PLAN_AUDIT_ACTUATION_SCHEMA = {
     },
 }
 
+KANBAN_CREATE_WORKER_ESCALATION_SCHEMA = {
+    "name": "kanban_create_worker_escalation",
+    "description": (
+        "After bounded worker failure, create one idempotent read-only expert "
+        "review task from the failed run's durable evidence package. The expert "
+        "must produce a repair plan, not edit code."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "root_task_id": {"type": "string"},
+            "worker_task_id": {
+                "type": "string",
+                "description": "Failed worker task; defaults to HERMES_KANBAN_TASK.",
+            },
+            "evidence_run_id": {
+                "type": "integer",
+                "description": "Closed failed run; defaults to the latest run.",
+            },
+            "reason": {
+                "type": "string",
+                "description": "Stable escalation reason such as retry_budget_exhausted.",
+            },
+            "escalation_round": {"type": "integer", "minimum": 1},
+            "expert_assignee": {"type": "string"},
+            "board": _board_schema_prop(),
+        },
+        "required": ["root_task_id", "reason"],
+    },
+}
+
+KANBAN_APPLY_EXPERT_REPAIR_PLAN_SCHEMA = {
+    "name": "kanban_apply_expert_repair_plan",
+    "description": (
+        "Complete the current read-only expert-review task with a repair plan, "
+        "then create one idempotent cheap-worker task that executes that plan."
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "root_task_id": {"type": "string"},
+            "worker_task_id": {"type": "string"},
+            "expert_task_id": {
+                "type": "string",
+                "description": "Defaults to HERMES_KANBAN_TASK.",
+            },
+            "repair_plan": {
+                "type": "string",
+                "description": "Concrete repair steps, files, and verification commands.",
+            },
+            "escalation_round": {"type": "integer", "minimum": 1},
+            "repair_assignee": {"type": "string"},
+            "board": _board_schema_prop(),
+        },
+        "required": ["root_task_id", "worker_task_id", "repair_plan"],
+    },
+}
+
 KANBAN_CREATE_SCHEMA = {
     "name": "kanban_create",
     "description": (
@@ -2103,6 +2251,22 @@ registry.register(
     toolset="kanban",
     schema=KANBAN_APPLY_PLAN_AUDIT_ACTUATION_SCHEMA,
     handler=_handle_apply_plan_audit_actuation,
+    check_fn=_check_kanban_mode,
+)
+
+registry.register(
+    name="kanban_create_worker_escalation",
+    toolset="kanban",
+    schema=KANBAN_CREATE_WORKER_ESCALATION_SCHEMA,
+    handler=_handle_create_worker_escalation,
+    check_fn=_check_kanban_mode,
+)
+
+registry.register(
+    name="kanban_apply_expert_repair_plan",
+    toolset="kanban",
+    schema=KANBAN_APPLY_EXPERT_REPAIR_PLAN_SCHEMA,
+    handler=_handle_apply_expert_repair_plan,
     check_fn=_check_kanban_mode,
 )
 

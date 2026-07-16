@@ -195,6 +195,8 @@ class TestModuleSurface:
             "kanban_comment",
             "kanban_record_plan_audit_verdict",
             "kanban_apply_plan_audit_actuation",
+            "kanban_create_worker_escalation",
+            "kanban_apply_expert_repair_plan",
             "kanban_heartbeat",
         ):
             assert worker_tool in EXPOSED_TOOLS, (

@@ -495,3 +495,21 @@ Required audit output before implementation:
 
 Stop after presenting this audit and plan. Wait for explicit user approval
 before modifying runtime code.
+
+## Active Work Update: Role Routing, Escalation, And Workflow Budget
+
+- The role-routing/escalation audit is now implemented and validated across
+  slices 1-3. `current_step_key`/`task_runs.step_key` carry role identity;
+  bounded candidates, failure evidence, expert repair planning, and durable
+  `role_handoff` events all reuse the Kanban database and gated toolset.
+- Slice 3 also adds deterministic worker-failure -> expert-review -> repair-
+  worker -> final-auditor coverage in
+  `tests/e2e/test_kanban_orchestrated_coding_smoke.py`.
+- The next implementation slice adds an opt-in workflow-level budget ceiling.
+  `kanban.task_budget.workflow_budget.enabled` makes a budget on any ancestor
+  task cap aggregate `budget_spent_usd`/unknown-cost runs across its subtree at
+  ready/review claim boundaries. It adds no schema or second budget store.
+- Native validation for the workflow-budget slice:
+  `python -m pytest tests/hermes_cli/test_kanban_budget_enforcement.py -q`
+  and the KOC E2E smoke suite. The repository's WSL test wrapper remains
+  unavailable until `.venv`/`venv` exists under the mounted checkout.

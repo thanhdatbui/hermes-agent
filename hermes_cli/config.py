@@ -2785,6 +2785,11 @@ DEFAULT_CONFIG = {
             # themselves; block = a budgeted task with an unknown-cost run is
             # blocked before the next claim so a human can inspect pricing.
             "unknown_cost_policy": "allow",
+            # When enabled, a budget on any ancestor task is a visible cap
+            # over that task's entire descendant workflow subtree.
+            "workflow_budget": {
+                "enabled": False,
+            },
         },
         # Worker stdout/stderr logs rotate at spawn time. Defaults preserve
         # the historical 2 MiB + one-backup behavior; long-running workers can
@@ -2797,6 +2802,12 @@ DEFAULT_CONFIG = {
         # decomposer prompt, model, or skills; configure that LLM path under
         # auxiliary.kanban_decomposer.
         "orchestrator_profile": "",
+        # Workflow-step routing is opt-in. ``current_step_key`` names a role
+        # and selects its configured primary candidate; tasks without a role
+        # retain their existing assignee-driven behavior.
+        "orchestration": {
+            "roles": {},
+        },
         # Where a child task lands if the orchestrator can't match an
         # assignee to any installed profile. When unset, falls back to the
         # default profile. A task never ends up with assignee=None.

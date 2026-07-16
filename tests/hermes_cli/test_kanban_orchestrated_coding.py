@@ -34,6 +34,386 @@ def _count_tasks_with_key(conn: sqlite3.Connection, key: str) -> int:
     return int(row["n"]) if row else 0
 
 
+def test_workflow_step_policy_uses_primary_candidate_without_role_metadata(
+    kanban_home,
+):
+    with kb.connect() as conn:
+        task_id = kb.create_task(
+            conn,
+            title="plan a routed change",
+            workflow_template_id="kanban-orchestrated-coding",
+            current_step_key="planner",
+        )
+        task = kb.get_task(conn, task_id)
+
+    assert task is not None
+    policy = kb.resolve_workflow_step_policy(task, {
+        "orchestration": {
+            "roles": {
+                "planner": {
+                    "candidates": [
+                        {"profile": "expert-planner", "model": "reasoning-model"},
+                        {"profile": "backup-planner"},
+                    ],
+                    "toolsets": ["skills", "file", "file"],
+                },
+            },
+        },
+    })
+
+    assert policy is not None
+    assert policy.step_key == "planner"
+    assert policy.profile == "expert-planner"
+    assert policy.model == "reasoning-model"
+    assert policy.toolsets == ["file", "skills"]
+    assert task.current_step_key == "planner"
+
+
+def test_workflow_step_policy_is_inert_without_step_or_role(kanban_home):
+    with kb.connect() as conn:
+        task_id = kb.create_task(conn, title="ordinary existing task", assignee="legacy")
+        task = kb.get_task(conn, task_id)
+
+    assert task is not None
+    assert kb.resolve_workflow_step_policy(task, {"orchestration": {"roles": {}}}) is None
+
+
+def test_workflow_step_policy_rejects_malformed_candidate_config(kanban_home):
+    with kb.connect() as conn:
+        task_id = kb.create_task(
+            conn,
+            title="bad route config",
+            current_step_key="worker",
+        )
+        task = kb.get_task(conn, task_id)
+
+    assert task is not None
+    with pytest.raises(ValueError, match="candidates must be a non-empty list"):
+        kb.resolve_workflow_step_policy(task, {
+            "orchestration": {"roles": {"worker": {"candidates": []}}},
+        })
+    with pytest.raises(ValueError, match="duplicate profile"):
+        kb.resolve_workflow_step_policy(task, {
+            "orchestration": {
+                "roles": {
+                    "worker": {
+                        "candidates": ["same-worker", {"profile": "same-worker"}],
+                    },
+                },
+            },
+        })
+
+
+def test_default_spawn_pins_role_toolsets_and_primary_model(
+    kanban_home, monkeypatch, tmp_path,
+):
+    captured: dict[str, object] = {}
+
+    class FakeProcess:
+        pid = 4242
+
+    def fake_popen(cmd, **kwargs):
+        captured["cmd"] = cmd
+        captured["kwargs"] = kwargs
+        return FakeProcess()
+
+    monkeypatch.setattr("hermes_cli.config.load_config", lambda: {
+        "kanban": {
+            "orchestration": {
+                "roles": {
+                    "worker": {
+                        "candidates": [{"profile": "cheap-worker", "model": "cheap-model"}],
+                        "toolsets": ["terminal", "file"],
+                    },
+                },
+            },
+        },
+    })
+    monkeypatch.setattr(kb, "_resolve_hermes_argv", lambda: ["hermes"])
+    monkeypatch.setattr("subprocess.Popen", fake_popen)
+
+    with kb.connect() as conn:
+        task_id = kb.create_task(
+            conn,
+            title="execute routed change",
+            assignee="legacy-worker",
+            current_step_key="worker",
+        )
+        task = kb.get_task(conn, task_id)
+
+    assert task is not None
+    assert kb._default_spawn(task, str(tmp_path)) == 4242
+    cmd = captured["cmd"]
+    assert cmd[cmd.index("-p") + 1] == "cheap-worker"
+    assert cmd[cmd.index("-m") + 1] == "cheap-model"
+    assert cmd[cmd.index("--toolsets") + 1] == "file,terminal"
+
+
+def test_dispatcher_persists_step_primary_lane_before_claim(
+    kanban_home, monkeypatch,
+):
+    monkeypatch.setattr("hermes_cli.config.load_config", lambda: {
+        "kanban": {
+            "orchestration": {
+                "roles": {
+                    "worker": {
+                        "candidates": [{"profile": "cheap-worker", "model": "cheap-model"}],
+                        "toolsets": ["terminal", "file"],
+                    },
+                },
+            },
+        },
+    })
+    monkeypatch.setattr("hermes_cli.profiles.profile_exists", lambda _name: True)
+
+    with kb.connect() as conn:
+        task_id = kb.create_task(
+            conn,
+            title="dispatch with role route",
+            assignee="legacy-worker",
+            current_step_key="worker",
+        )
+        result = kb._dispatch_once_locked(
+            conn,
+            spawn_fn=lambda _task, _workspace: 4242,
+            max_spawn=1,
+        )
+        task = kb.get_task(conn, task_id)
+        runs = kb.list_runs(conn, task_id)
+        routed = _events(conn, task_id, "workflow_step_routed")
+
+    assert result.spawned and result.spawned[0][0] == task_id
+    assert task is not None
+    assert task.assignee == "cheap-worker"
+    assert task.model_override == "cheap-model"
+    assert runs[-1].profile == "cheap-worker"
+    assert runs[-1].step_key == "worker"
+    assert routed[-1].payload == {
+        "step_key": "worker",
+        "profile": "cheap-worker",
+        "model": "cheap-model",
+    }
+
+
+def _install_worker_candidates(monkeypatch, candidates):
+    monkeypatch.setattr("hermes_cli.config.load_config", lambda: {
+        "kanban": {
+            "orchestration": {
+                "roles": {
+                    "worker": {
+                        "candidates": candidates,
+                        "toolsets": ["terminal", "file"],
+                    },
+                },
+            },
+        },
+    })
+
+
+def test_provider_failure_switches_candidate_and_resets_failure_counter(
+    kanban_home, monkeypatch,
+):
+    _install_worker_candidates(monkeypatch, [
+        {"profile": "worker-a", "model": "model-a"},
+        {"profile": "worker-b", "model": "model-b"},
+    ])
+    with kb.connect() as conn:
+        task_id = kb.create_task(
+            conn,
+            title="switch provider lane",
+            assignee="worker-a",
+            current_step_key="worker",
+        )
+        with kb.write_txn(conn):
+            conn.execute(
+                "UPDATE tasks SET consecutive_failures = 2 WHERE id = ?",
+                (task_id,),
+            )
+            kb._synthesize_ended_run(
+                conn, task_id, outcome="rate_limited", error="429 quota wall",
+            )
+
+        result = kb.record_worker_failure_classification(
+            conn,
+            task_id,
+            failure_class="provider_failure",
+            error_signature="http_429_rate_limit",
+            artifact_refs=["logs/worker-a.log"],
+        )
+        task = kb.get_task(conn, task_id)
+        run = kb.list_runs(conn, task_id)[-1]
+        guard = kb.check_respawn_guard(conn, task_id)
+
+    assert result["switched"] is True
+    assert result["next_profile"] == "worker-b"
+    assert task is not None
+    assert task.assignee == "worker-b"
+    assert task.model_override == "model-b"
+    assert task.consecutive_failures == 0
+    assert guard is None
+    assert run.metadata["failure_class"] == "provider_failure"
+    assert run.metadata["error_signature"] == "http_429_rate_limit"
+    assert run.metadata["artifact_refs"] == ["logs/worker-a.log"]
+
+
+def test_rate_limit_exit_uses_provider_failure_candidate_policy(
+    kanban_home, monkeypatch,
+):
+    _install_worker_candidates(monkeypatch, ["worker-a", "worker-b"])
+    monkeypatch.setattr(kb, "_pid_alive", lambda _pid: False)
+    monkeypatch.setattr(kb, "_classify_worker_exit", lambda _pid: ("rate_limited", 75))
+    monkeypatch.setattr(kb, "_resolve_crash_grace_seconds", lambda: 0)
+
+    with kb.connect() as conn:
+        task_id = kb.create_task(
+            conn,
+            title="rate limit integration",
+            assignee="worker-a",
+            current_step_key="worker",
+        )
+        claimed = kb.claim_task(conn, task_id)
+        assert claimed is not None
+        with kb.write_txn(conn):
+            conn.execute(
+                "UPDATE tasks SET worker_pid = 4242, started_at = 1 WHERE id = ?",
+                (task_id,),
+            )
+        crashed = kb.detect_crashed_workers(conn)
+        task = kb.get_task(conn, task_id)
+        run = kb.list_runs(conn, task_id)[-1]
+
+    assert crashed == []
+    assert task is not None
+    assert task.status == "ready"
+    assert task.assignee == "worker-b"
+    assert task.consecutive_failures == 0
+    assert run.outcome == "rate_limited"
+    assert run.metadata["failure_class"] == "provider_failure"
+    assert run.metadata["error_signature"] == "provider_rate_limited"
+
+
+def test_task_failure_does_not_switch_candidate_and_consumes_retry(
+    kanban_home, monkeypatch,
+):
+    _install_worker_candidates(monkeypatch, ["worker-a", "worker-b"])
+    with kb.connect() as conn:
+        task_id = kb.create_task(
+            conn,
+            title="failed acceptance test",
+            assignee="worker-a",
+            current_step_key="worker",
+            max_retries=3,
+        )
+        with kb.write_txn(conn):
+            kb._synthesize_ended_run(
+                conn, task_id, outcome="failed", error="pytest failed",
+            )
+        result = kb.record_worker_failure_classification(
+            conn,
+            task_id,
+            failure_class="task_failure",
+            error_signature="pytest:test_add",
+            hypothesis="off-by-one",
+            action_summary="changed loop bound",
+            changed_files=["math_bug.py"],
+            test_result={"exit_code": 1},
+        )
+        task = kb.get_task(conn, task_id)
+        run = kb.list_runs(conn, task_id)[-1]
+
+    assert result["switched"] is False
+    assert result["meaningful"] is True
+    assert task is not None
+    assert task.assignee == "worker-a"
+    assert task.consecutive_failures == 1
+    assert run.step_key == "worker"
+    assert "step_key" not in run.metadata
+    assert "role" not in run.metadata
+
+
+def test_repeated_identical_task_failure_evidence_does_not_consume_retry(
+    kanban_home, monkeypatch,
+):
+    _install_worker_candidates(monkeypatch, ["worker-a", "worker-b"])
+    evidence = {
+        "failure_class": "task_failure",
+        "error_signature": "pytest:test_add",
+        "hypothesis": "off-by-one",
+        "action_summary": "changed loop bound",
+    }
+    with kb.connect() as conn:
+        task_id = kb.create_task(
+            conn,
+            title="dedupe failed attempt",
+            assignee="worker-a",
+            current_step_key="worker",
+            max_retries=3,
+        )
+        with kb.write_txn(conn):
+            kb._synthesize_ended_run(conn, task_id, outcome="failed")
+        first = kb.record_worker_failure_classification(conn, task_id, **evidence)
+        with kb.write_txn(conn):
+            kb._synthesize_ended_run(conn, task_id, outcome="failed")
+        replay = kb.record_worker_failure_classification(conn, task_id, **evidence)
+        task = kb.get_task(conn, task_id)
+
+    assert first["meaningful"] is True
+    assert replay["meaningful"] is False
+    assert task is not None
+    assert task.consecutive_failures == 1
+
+
+def test_provider_candidate_switching_is_bounded_then_uses_failure_limit(
+    kanban_home, monkeypatch,
+):
+    _install_worker_candidates(monkeypatch, ["worker-a", "worker-b"])
+    with kb.connect() as conn:
+        task_id = kb.create_task(
+            conn,
+            title="bounded provider candidates",
+            assignee="worker-a",
+            current_step_key="worker",
+        )
+        with kb.write_txn(conn):
+            kb._synthesize_ended_run(conn, task_id, outcome="rate_limited")
+        switched = kb.record_worker_failure_classification(
+            conn,
+            task_id,
+            failure_class="provider_failure",
+            error_signature="provider_unavailable",
+            failure_limit=2,
+        )
+        with kb.write_txn(conn):
+            kb._synthesize_ended_run(conn, task_id, outcome="rate_limited")
+        exhausted_once = kb.record_worker_failure_classification(
+            conn,
+            task_id,
+            failure_class="provider_failure",
+            error_signature="provider_unavailable",
+            failure_limit=2,
+        )
+        with kb.write_txn(conn):
+            kb._synthesize_ended_run(conn, task_id, outcome="rate_limited")
+        exhausted_twice = kb.record_worker_failure_classification(
+            conn,
+            task_id,
+            failure_class="provider_failure",
+            error_signature="provider_unavailable",
+            failure_limit=2,
+        )
+        task = kb.get_task(conn, task_id)
+        switched_events = _events(conn, task_id, "worker_candidate_switched")
+
+    assert switched["next_profile"] == "worker-b"
+    assert exhausted_once["candidate_exhausted"] is True
+    assert exhausted_once["blocked"] is False
+    assert exhausted_twice["blocked"] is True
+    assert task is not None
+    assert task.assignee == "worker-b"
+    assert task.status == "blocked"
+    assert len(switched_events) == 1
+
+
 def test_verdict_on_auditor_task_id_does_not_open_executor_gate(kanban_home):
     with kb.connect() as conn:
         executor = kb.create_task(
@@ -419,3 +799,156 @@ def test_plan_audit_block_preserves_block_recurrence_signal(kanban_home):
     assert task.block_kind == "needs_input"
     assert task.block_recurrences >= kb.BLOCK_RECURRENCE_LIMIT
     assert loop_events[-1].payload["source"] == "plan_audit"
+
+
+def _failed_worker_for_escalation(conn):
+    root = kb.create_task(
+        conn,
+        title="root escalation workflow",
+        assignee="orchestrator",
+        workflow_template_id="kanban-orchestrated-coding",
+    )
+    worker = kb.create_task(
+        conn,
+        title="worker exhausted repair attempts",
+        body="Fix the failing acceptance test.",
+        assignee="cheap-worker",
+        workspace_kind="dir",
+        workspace_path="C:/tmp/escalation-workspace",
+        workflow_template_id="kanban-orchestrated-coding",
+        current_step_key="worker",
+    )
+    with kb.write_txn(conn):
+        run_id = kb._synthesize_ended_run(
+            conn,
+            worker,
+            outcome="failed",
+            error="pytest:test_add still failing",
+            metadata={
+                "failure_class": "task_failure",
+                "error_signature": "pytest:test_add",
+                "hypothesis": "off-by-one",
+                "action_summary": "changed loop bound",
+                "artifact_refs": ["artifacts/pytest-2.json"],
+            },
+        )
+        conn.execute(
+            "UPDATE tasks SET status='blocked', block_kind='capability' WHERE id=?",
+            (worker,),
+        )
+    return root, worker, run_id
+
+
+def test_worker_escalation_creates_idempotent_read_only_expert_handoff(
+    kanban_home,
+):
+    with kb.connect() as conn:
+        root, worker, run_id = _failed_worker_for_escalation(conn)
+        first = kb.create_worker_escalation(
+            conn,
+            root_task_id=root,
+            worker_task_id=worker,
+            evidence_run_id=run_id,
+            reason="retry_budget_exhausted",
+            escalation_round=1,
+            expert_assignee="expert-reviewer",
+        )
+        replay = kb.create_worker_escalation(
+            conn,
+            root_task_id=root,
+            worker_task_id=worker,
+            evidence_run_id=run_id,
+            reason="retry_budget_exhausted",
+            escalation_round=1,
+            expert_assignee="expert-reviewer",
+        )
+        expert = kb.get_task(conn, first.expert_task_id)
+        outbound = _events(conn, worker, "role_handoff")
+        inbound = _events(conn, first.expert_task_id, "role_handoff")
+        key = f"koc:{root}:{worker}:worker-escalation:1:expert"
+        task_count = _count_tasks_with_key(conn, key)
+
+    assert replay.expert_task_id == first.expert_task_id
+    assert task_count == 1
+    assert expert is not None
+    assert expert.current_step_key == "reviewer"
+    assert "Produce a repair plan only; do not edit production code" in expert.body
+    assert "pytest:test_add" in expert.body
+    assert len(outbound) == 1
+    assert len(inbound) == 1
+    assert outbound[0].payload["from_role"] == "worker"
+    assert outbound[0].payload["to_role"] == "reviewer"
+    assert outbound[0].payload["reason"] == "retry_budget_exhausted"
+    assert outbound[0].payload["evidence_reference"] == f"task_run:{run_id}"
+    assert isinstance(outbound[0].payload["timestamp"], int)
+
+
+def test_expert_repair_plan_creates_one_cheap_worker_with_parent_handoff(
+    kanban_home,
+):
+    with kb.connect() as conn:
+        root, worker, run_id = _failed_worker_for_escalation(conn)
+        escalation = kb.create_worker_escalation(
+            conn,
+            root_task_id=root,
+            worker_task_id=worker,
+            evidence_run_id=run_id,
+            reason="same_error_signature",
+        )
+        first = kb.apply_expert_repair_plan(
+            conn,
+            root_task_id=root,
+            worker_task_id=worker,
+            expert_task_id=escalation.expert_task_id,
+            repair_plan="Restore add() semantics, then rerun pytest.",
+            repair_assignee="cheap-worker",
+        )
+        replay = kb.apply_expert_repair_plan(
+            conn,
+            root_task_id=root,
+            worker_task_id=worker,
+            expert_task_id=escalation.expert_task_id,
+            repair_plan="Restore add() semantics, then rerun pytest.",
+            repair_assignee="cheap-worker",
+        )
+        expert = kb.get_task(conn, escalation.expert_task_id)
+        repair = kb.get_task(conn, first.repair_task_id)
+        expert_run = kb.latest_run(conn, escalation.expert_task_id)
+        handoffs = _events(conn, escalation.expert_task_id, "role_handoff")
+        key = f"koc:{root}:{worker}:worker-escalation:1:repair"
+        task_count = _count_tasks_with_key(conn, key)
+
+        repair_parents = kb.parent_ids(conn, first.repair_task_id)
+
+    assert replay.repair_task_id == first.repair_task_id
+    assert task_count == 1
+    assert expert is not None and expert.status == "done"
+    assert expert_run is not None
+    assert expert_run.metadata["mode"] == "read_only"
+    assert repair is not None
+    assert repair.status == "ready"
+    assert repair.assignee == "cheap-worker"
+    assert repair.current_step_key == "worker"
+    assert repair.workspace_kind == "dir"
+    assert repair.workspace_path == "C:/tmp/escalation-workspace"
+    assert repair_parents == [escalation.expert_task_id]
+    outbound = [event for event in handoffs if event.payload["direction"] == "outbound"]
+    assert len(outbound) == 1
+    assert outbound[0].payload["from_role"] == "reviewer"
+    assert outbound[0].payload["to_role"] == "worker"
+    assert outbound[0].payload["evidence_reference"] == f"task_run:{expert_run.id}"
+
+
+def test_worker_escalation_rejects_foreign_or_open_evidence_run(kanban_home):
+    with kb.connect() as conn:
+        root, worker, _run_id = _failed_worker_for_escalation(conn)
+        other = kb.create_task(conn, title="other worker", assignee="worker")
+        foreign_run = kb._synthesize_ended_run(conn, other, outcome="failed")
+        with pytest.raises(ValueError, match="belonging to task"):
+            kb.create_worker_escalation(
+                conn,
+                root_task_id=root,
+                worker_task_id=worker,
+                evidence_run_id=foreign_run,
+                reason="retry_budget_exhausted",
+            )

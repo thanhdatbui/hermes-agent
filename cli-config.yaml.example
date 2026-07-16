@@ -560,6 +560,28 @@ prompt_caching:
 #     # next claim so a human can inspect pricing. This is a per-task/run
 #     # boundary guard, not a board/day/account/provider budget.
 #     unknown_cost_policy: "allow"
+#     workflow_budget:
+#       # Opt-in: an ancestor task's budget caps the aggregate spend of its
+#       # entire descendant workflow subtree at claim/review boundaries.
+#       enabled: false
+#   # Optional role policies keyed by durable task current_step_key. The first
+#   # candidate is the primary lane; later candidates are used only after a
+#   # classified provider failure. Candidate profiles must be unique because
+#   # the active index is reconstructed from task.assignee (no extra DB field).
+#   # Omit this block to preserve assignee routing for all existing tasks.
+#   orchestration:
+#     roles:
+#       planner:
+#         candidates:
+#           - profile: "expert-planner"
+#             model: ""
+#         # Explicit read-only allowlist for this role. The dispatcher pins it
+#         # with --toolsets, while task-scoped Kanban lifecycle tools remain.
+#         toolsets: ["file", "skills"]
+#       worker:
+#         candidates:
+#           - profile: "cheap-worker"
+#         toolsets: ["terminal", "file", "skills"]
 #
 # auxiliary:
 #   # Kanban plan auditor. Callers record approved/rejected verdicts on gated
