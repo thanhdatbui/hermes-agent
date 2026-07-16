@@ -115,6 +115,23 @@ def test_create_task_appears_on_board(client):
     assert "researcher" in data["assignees"]
 
 
+def test_create_role_task_round_trips_workflow_fields(client):
+    response = client.post(
+        "/api/plugins/kanban/tasks",
+        json={
+            "title": "Classify repository",
+            "workflow_template_id": "repository-research-v1",
+            "current_step_key": "classifier",
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    task = response.json()["task"]
+    assert task["assignee"] is None
+    assert task["workflow_template_id"] == "repository-research-v1"
+    assert task["current_step_key"] == "classifier"
+
+
 def test_board_list_recommends_persistent_workspace_for_configured_workdir(
     client, tmp_path
 ):

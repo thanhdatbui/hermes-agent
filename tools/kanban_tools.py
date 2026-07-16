@@ -1169,10 +1169,18 @@ def _handle_create(args: dict, **kw) -> str:
     if not title or not str(title).strip():
         return tool_error("title is required")
     assignee = args.get("assignee")
-    if not assignee:
+    if isinstance(assignee, str):
+        assignee = assignee.strip() or None
+    workflow_template_id = args.get("workflow_template_id")
+    if workflow_template_id is not None:
+        workflow_template_id = str(workflow_template_id).strip() or None
+    current_step_key = args.get("current_step_key")
+    if current_step_key is not None:
+        current_step_key = str(current_step_key).strip() or None
+    if not assignee and not current_step_key:
         return tool_error(
-            "assignee is required — name the profile that should execute this "
-            "task (the dispatcher will only spawn tasks with an assignee)"
+            "assignee or current_step_key is required — name the executing "
+            "profile or a workflow role step"
         )
     body = args.get("body")
     parents = args.get("parents") or []
@@ -1250,7 +1258,7 @@ def _handle_create(args: dict, **kw) -> str:
                 conn,
                 title=str(title).strip(),
                 body=body,
-                assignee=str(assignee),
+                assignee=str(assignee) if assignee else None,
                 parents=tuple(parents),
                 tenant=tenant,
                 priority=int(priority) if priority is not None else 0,
@@ -1281,6 +1289,8 @@ def _handle_create(args: dict, **kw) -> str:
                 initial_status=str(initial_status),
                 created_by=os.environ.get("HERMES_PROFILE") or "worker",
                 session_id=session_id,
+                workflow_template_id=workflow_template_id,
+                current_step_key=current_step_key,
             )
             new_task = kb.get_task(conn, new_tid)
             subscribed = _maybe_auto_subscribe(conn, new_tid)
@@ -1952,9 +1962,9 @@ KANBAN_CREATE_SCHEMA = {
         "Create a new kanban task, optionally as a child of the current "
         "one (pass the current task id in ``parents``). Used by "
         "orchestrator workers to fan out — decompose work into child "
-        "tasks with specific assignees, link them into a pipeline, "
-        "then complete your own task. The dispatcher picks up the new "
-        "tasks on its next tick and spawns the assigned profiles."
+        "tasks with specific assignees or workflow role steps, link them "
+        "into a pipeline, then complete your own task. The dispatcher "
+        "picks up the new tasks on its next tick and resolves a worker."
     ),
     "parameters": {
         "type": "object",
@@ -1968,8 +1978,18 @@ KANBAN_CREATE_SCHEMA = {
                 "description": (
                     "Profile name that should execute this task "
                     "(e.g. 'researcher-a', 'reviewer', 'writer'). "
-                    "Required — tasks without an assignee are never "
-                    "dispatched."
+                    "Optional when current_step_key supplies a workflow role."
+                ),
+            },
+            "workflow_template_id": {
+                "type": "string",
+                "description": "Optional workflow template identifier.",
+            },
+            "current_step_key": {
+                "type": "string",
+                "description": (
+                    "Optional workflow role/step key. When set, the dispatcher "
+                    "resolves the profile from role policy."
                 ),
             },
             "body": {
@@ -2136,7 +2156,7 @@ KANBAN_CREATE_SCHEMA = {
             },
             "board": _board_schema_prop(),
         },
-        "required": ["title", "assignee"],
+        "required": ["title"],
     },
 }
 

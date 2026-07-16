@@ -604,6 +604,23 @@ def get_task(
         conn.close()
 
 
+@router.get("/tasks/{task_id}/report")
+def get_task_report(
+    task_id: str,
+    board: Optional[str] = Query(None),
+):
+    """Return the normalized final-report projection for a workflow subtree."""
+    board = _resolve_board(board)
+    conn = _conn(board=board)
+    try:
+        try:
+            return {"report": kanban_db.build_workflow_report(conn, task_id)}
+        except ValueError:
+            raise HTTPException(status_code=404, detail=f"task {task_id} not found")
+    finally:
+        conn.close()
+
+
 # ---------------------------------------------------------------------------
 # POST /tasks
 # ---------------------------------------------------------------------------
@@ -612,6 +629,8 @@ class CreateTaskBody(BaseModel):
     title: str
     body: Optional[str] = None
     assignee: Optional[str] = None
+    workflow_template_id: Optional[str] = None
+    current_step_key: Optional[str] = None
     tenant: Optional[str] = None
     priority: int = 0
     workspace_kind: str = "scratch"
@@ -639,6 +658,8 @@ def create_task(payload: CreateTaskBody, board: Optional[str] = Query(None)):
             title=payload.title,
             body=payload.body,
             assignee=payload.assignee,
+            workflow_template_id=payload.workflow_template_id,
+            current_step_key=payload.current_step_key,
             created_by="dashboard",
             workspace_kind=payload.workspace_kind,
             workspace_path=payload.workspace_path,

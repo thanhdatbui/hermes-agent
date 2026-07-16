@@ -952,3 +952,74 @@ def test_worker_escalation_rejects_foreign_or_open_evidence_run(kanban_home):
                 evidence_run_id=foreign_run,
                 reason="retry_budget_exhausted",
             )
+
+
+def test_workflow_report_projects_attempts_handoffs_and_budget_without_raw_metadata(
+    kanban_home,
+):
+    with kb.connect() as conn:
+        root = kb.create_task(
+            conn,
+            title="report root",
+            assignee="orchestrator",
+            workflow_template_id="kanban-orchestrated-coding",
+            budget_usd=1.0,
+        )
+        child = kb.create_task(
+            conn,
+            title="report worker",
+            assignee="worker",
+            parents=(root,),
+            workflow_template_id="kanban-orchestrated-coding",
+            current_step_key="worker",
+            use_default_budget=False,
+        )
+        assert kb.complete_task(conn, root, summary="root planned")
+        claimed = kb.claim_task(conn, child, claimer="worker")
+        assert claimed is not None
+        assert kb.complete_task(
+            conn,
+            child,
+            summary="worker completed",
+            metadata={
+                "changed_files": ["src/main.py"],
+                "test_result": {"command": "pytest -q", "exit_code": 0},
+                "artifact_refs": ["artifacts/report.json"],
+                "secret_like_internal_note": "must not be projected",
+            },
+        )
+        run = kb.latest_run(conn, child)
+        assert run is not None
+        auditor = kb.create_task(
+            conn,
+            title="report auditor",
+            assignee="auditor",
+            parents=(child,),
+            workflow_template_id="kanban-orchestrated-coding",
+            current_step_key="auditor",
+            use_default_budget=False,
+        )
+        kb.record_role_handoff(
+            conn,
+            source_task_id=child,
+            destination_task_id=auditor,
+            from_role="worker",
+            to_role="auditor",
+            reason="final verification",
+            evidence_reference=f"task_run:{run.id}",
+        )
+        assert kb.claim_task(conn, auditor, claimer="auditor") is not None
+        assert kb.complete_task(
+            conn, auditor, summary="audit passed", metadata={"mode": "read_only"}
+        )
+
+        report = kb.build_workflow_report(conn, root)
+
+    assert report["verdict"] == "COMPLETED"
+    assert {task["id"] for task in report["tasks"]} == {root, child, auditor}
+    assert any(attempt["step_key"] == "worker" for attempt in report["attempts"])
+    assert report["changed_files"] == ["src/main.py"]
+    assert report["artifacts"] == ["artifacts/report.json"]
+    assert report["tests"][-1]["result"]["exit_code"] == 0
+    assert report["handoffs"][0]["evidence_reference"] == f"task_run:{run.id}"
+    assert all("secret_like_internal_note" not in item for item in report["attempts"])

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kanban Repository Research"
+  short_description: "Research a repository through durable Kanban roles"
+  default_prompt: "Use $kanban-repository-research to investigate this repository and produce an evidence-backed report."

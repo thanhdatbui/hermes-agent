@@ -513,3 +513,22 @@ before modifying runtime code.
   `python -m pytest tests/hermes_cli/test_kanban_budget_enforcement.py -q`
   and the KOC E2E smoke suite. The repository's WSL test wrapper remains
   unavailable until `.venv`/`venv` exists under the mounted checkout.
+- Phase 2 report affordance is now available through
+  `kanban_db.build_workflow_report()` and the dashboard endpoint
+  `GET /tasks/{task_id}/report`. The projection summarizes subtree tasks,
+  attempts, handoffs, changed files, tests, artifacts, errors, and aggregate
+  budget without exposing raw run metadata.
+
+## Active Work Update: Repository Research Skill
+
+- Added `skills/research/kanban-repository-research/SKILL.md`, a read-only,
+  Kanban-first repository research workflow with classifier, parallel evidence
+  workers, reviewer, and final auditor roles.
+- Extended `kanban_create` and the dashboard POST `/tasks` payload to carry
+  `workflow_template_id` and `current_step_key`; role-driven tasks may omit an
+  assignee so profile resolution can happen at dispatch time.
+- Behavioral coverage includes role-task creation, workflow field round-trip,
+  schema requirements, skill structure, native Kanban tools, and read-only
+  invariants.
+- Validation: skill quick validation passed; targeted tool + skill suite passed
+  (`111 passed`).

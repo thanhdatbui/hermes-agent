@@ -10964,6 +10964,134 @@ def latest_summary(conn: sqlite3.Connection, task_id: str) -> Optional[str]:
     return row["summary"] if row else None
 
 
+def build_workflow_report(
+    conn: sqlite3.Connection,
+    root_task_id: str,
+) -> dict[str, Any]:
+    """Project a durable, redaction-safe final report for a task subtree."""
+    root = get_task(conn, root_task_id)
+    if root is None:
+        raise ValueError(f"unknown task: {root_task_id}")
+    task_ids: set[str] = {root_task_id}
+    frontier = [root_task_id]
+    while frontier:
+        rows = conn.execute(
+            "SELECT child_id FROM task_links WHERE parent_id = ?",
+            (frontier.pop(),),
+        ).fetchall()
+        for row in rows:
+            child_id = str(row["child_id"])
+            if child_id not in task_ids:
+                task_ids.add(child_id)
+                frontier.append(child_id)
+
+    attempts: list[dict[str, Any]] = []
+    handoffs: list[dict[str, Any]] = []
+    changed_files: set[str] = set()
+    artifacts: set[str] = set()
+    tests: list[dict[str, Any]] = []
+    errors: list[dict[str, Any]] = []
+    task_rows: list[dict[str, Any]] = []
+    placeholders = ",".join("?" for _ in task_ids)
+    for task_id in sorted(task_ids):
+        task = get_task(conn, task_id)
+        if task is None:
+            continue
+        task_rows.append({
+            "id": task.id,
+            "title": task.title,
+            "status": task.status,
+            "assignee": task.assignee,
+            "step_key": task.current_step_key,
+            "workflow_template_id": task.workflow_template_id,
+        })
+        for run in list_runs(conn, task_id):
+            metadata = run.metadata if isinstance(run.metadata, dict) else {}
+            raw_files = metadata.get("changed_files")
+            if isinstance(raw_files, (list, tuple)):
+                changed_files.update(str(path) for path in raw_files if str(path).strip())
+            raw_artifacts = metadata.get("artifact_refs") or metadata.get("artifacts")
+            if isinstance(raw_artifacts, (list, tuple)):
+                artifacts.update(str(path) for path in raw_artifacts if str(path).strip())
+            test_result = metadata.get("test_result") or metadata.get("tests_run")
+            if test_result is not None:
+                tests.append({"task_id": task_id, "run_id": run.id, "result": test_result})
+            if run.error:
+                errors.append({
+                    "task_id": task_id,
+                    "run_id": run.id,
+                    "error": run.error[:_CTX_MAX_FIELD_BYTES],
+                    "outcome": run.outcome,
+                })
+            attempts.append({
+                "task_id": task_id,
+                "run_id": run.id,
+                "step_key": run.step_key,
+                "profile": run.profile,
+                "provider": run.provider,
+                "model": run.model,
+                "status": run.status,
+                "outcome": run.outcome,
+                "started_at": run.started_at,
+                "ended_at": run.ended_at,
+                "estimated_cost_usd": run.estimated_cost_usd,
+                "cost_status": run.cost_status,
+                "total_tokens": run.total_tokens,
+                "api_calls": run.api_calls,
+                "failure_class": metadata.get("failure_class"),
+                "error_signature": metadata.get("error_signature"),
+            })
+        for event in list_events(conn, task_id):
+            if event.kind != "role_handoff" or not isinstance(event.payload, dict):
+                continue
+            handoffs.append({
+                "task_id": task_id,
+                "source_task_id": event.payload.get("source_task_id"),
+                "destination_task_id": event.payload.get("destination_task_id"),
+                "from_role": event.payload.get("from_role"),
+                "to_role": event.payload.get("to_role"),
+                "reason": event.payload.get("reason"),
+                "evidence_reference": event.payload.get("evidence_reference"),
+                "timestamp": event.payload.get("timestamp", event.created_at),
+                "direction": event.payload.get("direction"),
+            })
+
+    workflow_spend = sum(
+        float(task.budget_spent_usd or 0.0)
+        for task_id in task_ids
+        if (task := get_task(conn, task_id)) is not None
+    )
+    workflow_unknown = sum(
+        int(task.budget_unknown_cost_runs or 0)
+        for task_id in task_ids
+        if (task := get_task(conn, task_id)) is not None
+    )
+    verdict = (
+        "COMPLETED" if root.status == "done"
+        else "BLOCKED" if root.status in {"blocked", "triage"}
+        else "IN_PROGRESS"
+    )
+    return {
+        "root_task_id": root_task_id,
+        "status": root.status,
+        "verdict": verdict,
+        "workflow_template_id": root.workflow_template_id,
+        "tasks": task_rows,
+        "attempts": attempts,
+        "handoffs": handoffs,
+        "changed_files": sorted(changed_files),
+        "tests": tests,
+        "artifacts": sorted(artifacts),
+        "errors": errors,
+        "budget": {
+            "cap_usd": root.budget_usd,
+            "spent_usd": workflow_spend,
+            "unknown_cost_runs": workflow_unknown,
+            "workflow_budget_enabled": _resolve_workflow_budget_enabled(),
+        },
+    }
+
+
 def latest_summaries(
     conn: sqlite3.Connection, task_ids: Iterable[str]
 ) -> dict[str, str]:

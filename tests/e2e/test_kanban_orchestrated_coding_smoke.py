@@ -546,7 +546,6 @@ def test_kanban_workflow_budget_ceiling_blocks_subtree_claim(
             title="planner",
             assignee="planner",
             parents=(root_id,),
-            budget_usd=0.3,
             use_default_budget=False,
             board=board,
         )

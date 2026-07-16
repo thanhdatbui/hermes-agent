@@ -1433,6 +1433,33 @@ def test_create_rejects_no_title(worker_env):
 def test_create_rejects_no_assignee(worker_env):
     from tools import kanban_tools as kt
     assert json.loads(kt._handle_create({"title": "t"})).get("error")
+    assert json.loads(
+        kt._handle_create({"title": "t", "current_step_key": "   "})
+    ).get("error")
+
+
+def test_create_role_task_can_omit_assignee(worker_env):
+    """Workflow steps carry role identity; profile assignment may resolve later."""
+    from tools import kanban_tools as kt
+    from hermes_cli import kanban_db as kb
+
+    out = kt._handle_create({
+        "title": "classify repository",
+        "workflow_template_id": "repository-research-v1",
+        "current_step_key": "classifier",
+    })
+    data = json.loads(out)
+    assert data["ok"] is True
+    with kb.connect() as conn:
+        task = kb.get_task(conn, data["task_id"])
+    assert task.assignee is None
+    assert task.workflow_template_id == "repository-research-v1"
+    assert task.current_step_key == "classifier"
+
+
+def test_create_schema_requires_only_title():
+    from tools import kanban_tools as kt
+    assert kt.KANBAN_CREATE_SCHEMA["parameters"]["required"] == ["title"]
 
 
 def test_create_rejects_non_list_parents(worker_env):
