@@ -646,5 +646,17 @@ before modifying runtime code.
   selection and provider-failure versus task-failure behavior. This completes
   the roadmap without live provider calls.
 - Final targeted validation: external lane contracts `18 passed`; workflow
-  template/router/computer-use/MCP coverage `49 passed`; coding E2E `6 passed,
+  template/router/computer-use/MCP coverage `50 passed`; coding E2E `6 passed,
   1 deselected`; `py_compile` and `git diff --check` passed.
+
+## External Lane Safety Restoration Complete
+
+- Reverted `192d8537c` in `f65381655` while preserving the later workflow
+  registry/computer-use/router work from `1904f667d`.
+- Both lanes are opt-in again. Codex uses `--sandbox workspace-write`; Claude
+  uses `--permission-mode default` plus a configured `--allowedTools` list.
+- Hermes again rejects forbidden paths and independently reruns requested tests;
+  the E2E assertions require `owner: "hermes"` evidence and rejected outcomes.
+- Skills and generated docs again prohibit `--yolo` and
+  `--dangerously-skip-permissions`. Searches confirm the inverted relaxed test
+  names/assertions and permissive instructions are absent.
