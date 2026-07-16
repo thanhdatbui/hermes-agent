@@ -52,15 +52,19 @@ tool creates a portable temporary worktree, starts Codex through
 4. Keep the Hermes source workspace at the starting `HEAD` and clean until the
    lane returns. If it changes while the lane is running, reject reconciliation
    and inspect the durable patch artifact instead of merging two timelines.
-5. Review `git diff`, reject forbidden paths and unrelated changes, then run
-   required tests independently as Hermes.
-6. An accepted patch is applied to the Hermes source workspace as an
+5. Review committed, tracked, untracked, deleted, and renamed paths against the
+   starting `HEAD`; for a rename, review both the old and new path. Reject
+   forbidden or unrelated changes before running code from the lane.
+6. Run required tests independently as Hermes against the lane's natural git
+   state. The harness stages a snapshot only after those tests finish, so its
+   own reconciliation machinery cannot change test semantics.
+7. An accepted patch is applied to the Hermes source workspace as an
    uncommitted diff. Review that source diff, then commit it only when the task
    authorizes commits; otherwise block or hand it off with artifact references.
-7. Never relaunch the lane while that workspace is dirty. Resolve the existing
+8. Never relaunch the lane while that workspace is dirty. Resolve the existing
    diff instead of retrying, so the same accepted output cannot consume the
    retry budget in a loop.
-8. Record `used`, mode, worktree, branch, command, result, commits, rejection
+9. Record `used`, mode, worktree, branch, command, result, commits, rejection
    reason, tests, and artifacts under `metadata.codex_lane`, then complete or
    block the Kanban task from Hermes. Codex output alone is never authoritative
    and does not constitute task completion.

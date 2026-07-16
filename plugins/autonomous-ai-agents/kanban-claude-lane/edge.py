@@ -72,6 +72,35 @@ def _source_changed(repo: Path, base_sha: str) -> bool:
     )
 
 
+def _changed_paths(repo: Path, base_sha: str) -> tuple[set[str], str]:
+    diff = _git(repo, "diff", "--name-status", "-z", base_sha)
+    untracked = _git(repo, "ls-files", "--others", "--exclude-standard", "-z")
+    if diff.returncode or untracked.returncode:
+        return set(), "Could not inspect Claude lane changes"
+
+    paths: set[str] = set(filter(None, untracked.stdout.split("\0")))
+    tokens = diff.stdout.split("\0")
+    index = 0
+    while index < len(tokens) and tokens[index]:
+        status = tokens[index]
+        index += 1
+        path_count = 2 if status.startswith(("R", "C")) else 1
+        for path in tokens[index:index + path_count]:
+            if path:
+                paths.add(path)
+        index += path_count
+    return paths, ""
+
+
+def _build_patch(repo: Path, base_sha: str) -> tuple[str, str]:
+    if _git(repo, "add", "-A").returncode:
+        return "", "Could not stage Claude lane changes"
+    patch = _git(repo, "diff", "--cached", "--binary", base_sha).stdout
+    if not patch.strip():
+        return "", "Claude lane produced no changes"
+    return patch, ""
+
+
 def _artifact_path(task_id: str, suffix: str) -> Path:
     root = get_hermes_home() / "artifacts" / "external-lanes" / _safe_task(task_id)
     root.mkdir(parents=True, exist_ok=True)
@@ -175,19 +204,18 @@ def run_claude_lane(args: dict[str, Any], task_id: str | None = None, **_: Any) 
             except ValueError as exc:
                 meta = _metadata(worktree=worktree, branch=branch, command=command, result="rejected", reason=str(exc), artifacts=artifacts)
             else:
-                staged = _git(worktree, "add", "-A")
-                if staged.returncode:
-                    meta = _metadata(worktree=worktree, branch=branch, command=command, result="rejected", reason="Could not stage Claude lane changes", parsed=parsed, artifacts=artifacts)
-                    return json.dumps({"success": True, "metadata": {"claude_lane": meta}})
-                changed = _git(worktree, "diff", "--cached", "--name-only", base_sha).stdout.splitlines()
+                changed, review_reason = _changed_paths(worktree, base_sha)
                 hit = next((path for path in changed if path in forbidden), None)
-                test_evidence, reason = _run_tests(worktree, tests) if not hit else ([], f"Forbidden path changed: {hit}")
+                if review_reason:
+                    test_evidence, reason = [], review_reason
+                else:
+                    test_evidence, reason = _run_tests(worktree, tests) if not hit else ([], f"Forbidden path changed: {hit}")
                 if reason:
                     meta = _metadata(worktree=worktree, branch=branch, command=command, result="rejected", reason=reason, tests=test_evidence, parsed=parsed, artifacts=artifacts)
                 else:
-                    patch = _git(worktree, "diff", "--cached", "--binary", base_sha).stdout
-                    if not patch.strip():
-                        meta = _metadata(worktree=worktree, branch=branch, command=command, result="rejected", reason="Claude lane produced no changes", tests=test_evidence, parsed=parsed, artifacts=artifacts)
+                    patch, patch_reason = _build_patch(worktree, base_sha)
+                    if patch_reason:
+                        meta = _metadata(worktree=worktree, branch=branch, command=command, result="rejected", reason=patch_reason, tests=test_evidence, parsed=parsed, artifacts=artifacts)
                     else:
                         patch_path = _artifact_path(task_id, ".patch")
                         patch_path.write_text(patch, encoding="utf-8")

@@ -111,6 +111,35 @@ def _source_changed(repo: Path, base_sha: str) -> bool:
     )
 
 
+def _changed_paths(repo: Path, base_sha: str) -> tuple[set[str], str]:
+    diff = _git(repo, "diff", "--name-status", "-z", base_sha)
+    untracked = _git(repo, "ls-files", "--others", "--exclude-standard", "-z")
+    if diff.returncode or untracked.returncode:
+        return set(), "Could not inspect Codex lane changes"
+
+    paths: set[str] = set(filter(None, untracked.stdout.split("\0")))
+    tokens = diff.stdout.split("\0")
+    index = 0
+    while index < len(tokens) and tokens[index]:
+        status = tokens[index]
+        index += 1
+        path_count = 2 if status.startswith(("R", "C")) else 1
+        for path in tokens[index:index + path_count]:
+            if path:
+                paths.add(path)
+        index += path_count
+    return paths, ""
+
+
+def _build_patch(repo: Path, base_sha: str) -> tuple[str, str]:
+    if _git(repo, "add", "-A").returncode:
+        return "", "Could not stage Codex lane changes"
+    patch = _git(repo, "diff", "--cached", "--binary", base_sha).stdout
+    if not patch.strip():
+        return "", "Codex lane produced no changes"
+    return patch, ""
+
+
 def _artifact_path(task_id: str, suffix: str) -> Path:
     root = get_hermes_home() / "artifacts" / "external-lanes" / _safe_task_id(task_id)
     root.mkdir(parents=True, exist_ok=True)
@@ -201,19 +230,14 @@ def run_codex_lane(args: dict[str, Any], task_id: str | None = None, **_: Any) -
             metadata = _metadata(mode=mode, worktree=worktree, branch=branch, command=command,
                                  result="rejected", reason="Codex CLI exited unsuccessfully", artifacts=artifacts)
         else:
-            # Stage only inside the disposable lane so one diff covers
-            # committed, modified, deleted, renamed, and untracked files.
-            staged = _git(worktree, "add", "-A")
-            if staged.returncode:
+            changed, review_reason = _changed_paths(worktree, base_sha)
+            forbidden_hit = next((path for path in changed if path in forbidden), None)
+            if review_reason:
                 metadata = _metadata(
                     mode=mode, worktree=worktree, branch=branch, command=command,
-                    result="rejected", reason="Could not stage Codex lane changes",
-                    artifacts=artifacts,
+                    result="rejected", reason=review_reason, artifacts=artifacts,
                 )
-                return json.dumps({"success": True, "metadata": {"codex_lane": metadata}})
-            changed = _git(worktree, "diff", "--cached", "--name-only", base_sha).stdout.splitlines()
-            forbidden_hit = next((path for path in changed if path in forbidden), None)
-            if forbidden_hit:
+            elif forbidden_hit:
                 metadata = _metadata(mode=mode, worktree=worktree, branch=branch, command=command,
                                      result="rejected", reason=f"Forbidden path changed: {forbidden_hit}", artifacts=artifacts)
             else:
@@ -222,11 +246,11 @@ def run_codex_lane(args: dict[str, Any], task_id: str | None = None, **_: Any) -
                     metadata = _metadata(mode=mode, worktree=worktree, branch=branch, command=command,
                                          result="rejected", reason=reason, tests=test_evidence, artifacts=artifacts)
                 else:
-                    patch = _git(worktree, "diff", "--cached", "--binary", base_sha).stdout
-                    if not patch.strip():
+                    patch, patch_reason = _build_patch(worktree, base_sha)
+                    if patch_reason:
                         metadata = _metadata(
                             mode=mode, worktree=worktree, branch=branch, command=command,
-                            result="rejected", reason="Codex lane produced no changes",
+                            result="rejected", reason=patch_reason,
                             tests=test_evidence, artifacts=artifacts,
                         )
                     else:

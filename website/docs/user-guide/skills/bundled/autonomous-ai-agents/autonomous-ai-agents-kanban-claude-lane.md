@@ -66,13 +66,18 @@ bounded turn count.
 4. Keep the Hermes source workspace at the starting `HEAD` and clean until the
    lane returns. If it changes while the lane is running, reject reconciliation
    and inspect the durable patch artifact instead of merging two timelines.
-5. Hermes parses the JSON result for usage and cost, then independently checks every changed path and test command.
-6. An accepted patch is applied to the Hermes source workspace as an
+5. Hermes parses the JSON result for usage and cost, then reviews committed,
+   tracked, untracked, deleted, and renamed paths against the starting `HEAD`.
+   For a rename, review both the old and new path before running lane code.
+6. Run every test independently as Hermes against the lane's natural git state.
+   The harness stages a snapshot only after tests finish, so reconciliation
+   cannot change test semantics.
+7. An accepted patch is applied to the Hermes source workspace as an
    uncommitted diff. Review it and commit only when the task authorizes commits;
    otherwise block or hand it off with artifact references.
-7. Never relaunch the lane while that workspace is dirty. Resolve the existing
+8. Never relaunch the lane while that workspace is dirty. Resolve the existing
    diff instead of retrying, so repeated claims cannot consume quota in a loop.
-8. Complete only an accepted lane with Hermes-owned test evidence. Record
+9. Complete only an accepted lane with Hermes-owned test evidence. Record
    rejected or timed-out lanes instead of retrying blindly.
 
 ## Pitfalls

@@ -725,3 +725,25 @@ before modifying runtime code.
   orchestration, MCP, template, router, computer-use, website generator, and
   skill extraction regression set `127 passed, 1 deselected`; `py_compile` and
   `git diff --check` passed.
+
+## External Lane Review-State Integrity Complete
+
+- Removed the harness-owned `git add -A` mutation from the review/test phase.
+  Changed paths are now collected without changing the lane index: a base-to-
+  worktree `--name-status -z` diff covers committed and tracked changes, while
+  `git ls-files --others --exclude-standard -z` adds untracked paths.
+- Rename/copy records contribute both their old and new path to forbidden-path
+  review, closing the case where a protected path could be renamed away before
+  review.
+- Hermes-owned tests now run against the lane's natural git state. Only after
+  review and tests pass does the disposable lane stage a complete snapshot for
+  binary patch generation and reconciliation.
+- E2E contracts require an uncommitted-diff-aware verification command to see
+  the unstaged change, and require a committed rename of a forbidden file to be
+  rejected for both Codex and Claude lanes.
+- Lane skills and generated docs now state both invariants: review both sides of
+  renames, and never let snapshot staging alter test semantics.
+- Validation: focused lane and skill contracts `30 passed`; full lane,
+  orchestration, MCP, template, router, computer-use, website generator, and
+  skill extraction regression set `129 passed, 1 deselected`; `py_compile` and
+  `git diff --check` passed.

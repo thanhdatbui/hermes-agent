@@ -20,6 +20,11 @@ assert _SPEC and _SPEC.loader
 edge = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(edge)
 
+UNSTAGED_DIFF_COMMAND = (
+    'python -c "import subprocess,sys; '
+    "sys.exit(0 if subprocess.run(['git','diff','--quiet','--','allowed.txt']).returncode == 1 else 1)\""
+)
+
 
 def _git(repo: Path, *args: str) -> None:
     subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True, text=True)
@@ -69,6 +74,9 @@ def _install_fakes(
             (lane / "forbidden.txt").write_text("nope\n", encoding="utf-8")
             _git(lane, "add", "forbidden.txt")
             _git(lane, "commit", "-qm", "forbidden codex change")
+        elif behavior == "renamed_forbidden":
+            _git(lane, "mv", "allowed.txt", "renamed.txt")
+            _git(lane, "commit", "-qm", "rename forbidden codex path")
         return SimpleNamespace(id="proc-test")
 
     monkeypatch.setattr(edge.process_registry, "spawn_local", spawn)
@@ -117,9 +125,10 @@ def test_success_accepts_committed_diff_and_hermes_tests(repo: Path, monkeypatch
 
 def test_uncommitted_diff_is_reconciled_without_commit_evidence(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _install_fakes(monkeypatch, behavior="uncommitted", artifact_home=repo.parent / "hermes-home")
-    metadata = _call(repo)
+    metadata = _call(repo, test_commands=[UNSTAGED_DIFF_COMMAND])
     assert metadata["result"] == "accepted"
     assert metadata["accepted_commits"] == []
+    assert metadata["tests_run"] == [{"command": UNSTAGED_DIFF_COMMAND, "exit_code": 0, "owner": "hermes"}]
     assert (repo / "allowed.txt").read_text(encoding="utf-8") == "uncommitted\n"
     assert not Path(metadata["worktree"]).exists()
     assert len(metadata["artifacts"]) == 2
@@ -174,6 +183,15 @@ def test_forbidden_diff_is_rejected_by_hermes_review(repo: Path, monkeypatch: py
     assert metadata["result"] == "rejected"
     assert "forbidden.txt" in metadata["rejected_reason"]
     assert not (repo / "forbidden.txt").exists()
+    assert not Path(metadata["worktree"]).exists()
+
+
+def test_renamed_forbidden_path_is_rejected(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _install_fakes(monkeypatch, behavior="renamed_forbidden", artifact_home=repo.parent / "hermes-home")
+    metadata = _call(repo, forbidden_paths=["allowed.txt"])
+    assert metadata["result"] == "rejected"
+    assert "allowed.txt" in metadata["rejected_reason"]
+    assert (repo / "allowed.txt").read_text(encoding="utf-8") == "base\n"
     assert not Path(metadata["worktree"]).exists()
 
 
