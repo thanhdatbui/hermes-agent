@@ -1,0 +1,41 @@
+from __future__ import annotations
+
+import re
+from pathlib import Path
+
+import yaml
+
+
+SKILL = Path(__file__).resolve().parents[2] / "skills" / "autonomous-ai-agents" / "kanban-claude-lane" / "SKILL.md"
+
+
+def _source() -> str:
+    return SKILL.read_text(encoding="utf-8")
+
+
+def test_frontmatter_and_description() -> None:
+    match = re.search(r"^---\n(.*?)\n---", _source(), re.DOTALL)
+    assert match
+    data = yaml.safe_load(match.group(1))
+    assert data["name"] == "kanban-claude-lane"
+    assert len(data["description"]) <= 60
+
+
+def test_sections_follow_skill_standard() -> None:
+    assert re.findall(r"^## (.+)$", _source(), re.MULTILINE) == [
+        "When to Use", "Prerequisites", "How to Run", "Quick Reference",
+        "Procedure", "Pitfalls", "Verification",
+    ]
+
+
+def test_skill_uses_kanban_and_structured_evidence() -> None:
+    src = _source()
+    for token in ("kanban_show", "kanban_claude_lane", "process_registry", "kanban_complete.metadata.claude_lane", "usage", "cost"):
+        assert token in src
+
+
+def test_skill_blocks_permission_bypass_and_partial_acceptance() -> None:
+    src = _source().lower()
+    assert "--dangerously-skip-permissions" in src
+    assert "permission-mode bypasspermissions" in src
+    assert "do not allow partial acceptance" in src

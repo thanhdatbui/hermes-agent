@@ -611,3 +611,17 @@ before modifying runtime code.
   branch names. Validation: `32 passed` across the new skill/lane tests and
   the targeted Kanban orchestration suite; `py_compile` and `git diff --check`
   passed.
+
+## Phase 4 Slice 3 Complete: Claude Code Input Lane
+
+- Added the opt-in `kanban.external_lanes.claude` edge plugin and bundled
+  skill. It mirrors the Codex lane's worktree, process-registry, environment,
+  review, and cleanup invariants without refactoring either lane into a shared
+  base prematurely.
+- The lane uses bounded `claude -p --output-format json` with
+  `--permission-mode default` and a narrow configurable `--allowedTools`
+  list. It never enables dangerous permission bypass, push, deployment, or
+  partial acceptance. The plugin parses usage, cost, session, and model data
+  into `metadata.claude_lane` without adding database schema.
+- Deterministic tests cover accepted JSON/cost evidence, timeout kill and
+  cleanup, forbidden paths, invalid JSON, and portable branch naming.

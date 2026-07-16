@@ -1,0 +1,5 @@
+name: kanban-claude-lane
+version: "0.1.0"
+description: "Optional isolated Claude Code input lane for Kanban workers."
+author: NousResearch
+kind: integration

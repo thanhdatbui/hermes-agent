@@ -2817,6 +2817,16 @@ DEFAULT_CONFIG = {
                 "mode": "exec",
                 "timeout_seconds": 300,
             },
+            "claude": {
+                "enabled": False,
+                "executable": "claude",
+                "timeout_seconds": 300,
+                "max_turns": 10,
+                "allowed_tools": [
+                    "Read", "Edit", "Write", "Glob", "Grep",
+                    "Bash(git diff:*)", "Bash(git status:*)", "Bash(pytest:*)",
+                ],
+            },
         },
         # Where a child task lands if the orchestrator can't match an
         # assignee to any installed profile. When unset, falls back to the
