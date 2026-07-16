@@ -35,9 +35,10 @@ def repo(tmp_path: Path) -> Path:
     return path
 
 
-def _setup(monkeypatch: pytest.MonkeyPatch, behavior: str) -> dict[str, bool]:
+def _setup(monkeypatch: pytest.MonkeyPatch, behavior: str, artifact_home: Path) -> dict[str, bool]:
     killed = {"value": False}
     monkeypatch.setenv("HERMES_KANBAN_TASK", "t_claude")
+    monkeypatch.setattr(edge, "get_hermes_home", lambda: artifact_home)
     monkeypatch.setattr(edge, "_config", lambda: {"enabled": True, "executable": "claude", "timeout_seconds": 5, "max_turns": 3, "allowed_tools": ["Read", "Edit"]})
     monkeypatch.setattr(edge.shutil, "which", lambda _: "claude")
     original = edge._run
@@ -49,8 +50,12 @@ def _setup(monkeypatch: pytest.MonkeyPatch, behavior: str) -> dict[str, bool]:
             (lane / "allowed.txt").write_text("changed\n", encoding="utf-8")
             _git(lane, "add", "allowed.txt")
             _git(lane, "commit", "-qm", "claude change")
+        elif behavior == "uncommitted":
+            (lane / "allowed.txt").write_text("uncommitted\n", encoding="utf-8")
         elif behavior == "forbidden":
             (lane / "forbidden.txt").write_text("blocked\n", encoding="utf-8")
+            _git(lane, "add", "forbidden.txt")
+            _git(lane, "commit", "-qm", "forbidden claude change")
         return SimpleNamespace(id="proc-claude")
 
     monkeypatch.setattr(edge.process_registry, "spawn_local", spawn)
@@ -71,29 +76,57 @@ def _call(repo: Path, **extra) -> dict:
 
 
 def test_success_parses_cost_and_runs_hermes_test(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    _setup(monkeypatch, "success")
+    _setup(monkeypatch, "success", repo.parent / "hermes-home")
     metadata = _call(repo, test_commands=["git diff --check"])
     assert metadata["result"] == "accepted" and metadata["accepted_commits"]
     assert metadata["cost_usd"] == 0.01 and metadata["usage"]["input_tokens"] == 2
     assert metadata["tests_run"][0]["owner"] == "hermes"
+    assert (repo / "allowed.txt").read_text(encoding="utf-8") == "changed\n"
     assert not Path(metadata["worktree"]).exists()
+    assert len(metadata["artifacts"]) == 2
+    assert all(Path(path).is_file() for path in metadata["artifacts"])
+
+
+def test_uncommitted_diff_is_reconciled_without_commit_evidence(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _setup(monkeypatch, "uncommitted", repo.parent / "hermes-home")
+    metadata = _call(repo)
+    assert metadata["result"] == "accepted"
+    assert metadata["accepted_commits"] == []
+    assert (repo / "allowed.txt").read_text(encoding="utf-8") == "uncommitted\n"
+    assert not Path(metadata["worktree"]).exists()
+    assert len(metadata["artifacts"]) == 2
+    assert all(Path(path).is_file() for path in metadata["artifacts"])
 
 
 def test_timeout_kills_and_cleans(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    killed = _setup(monkeypatch, "timeout")
+    killed = _setup(monkeypatch, "timeout", repo.parent / "hermes-home")
     metadata = _call(repo)
     assert metadata["result"] == "timed_out" and killed["value"]
     assert not Path(metadata["worktree"]).exists()
 
 
 def test_forbidden_diff_is_rejected(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    _setup(monkeypatch, "forbidden")
+    _setup(monkeypatch, "forbidden", repo.parent / "hermes-home")
     metadata = _call(repo, forbidden_paths=["forbidden.txt"])
     assert metadata["result"] == "rejected" and "forbidden.txt" in metadata["rejected_reason"]
+    assert not (repo / "forbidden.txt").exists()
+    assert not Path(metadata["worktree"]).exists()
+
+
+def test_dirty_source_is_rejected_before_spawn(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _setup(monkeypatch, "success", repo.parent / "hermes-home")
+    monkeypatch.setattr(
+        edge.process_registry,
+        "spawn_local",
+        lambda *_args, **_kwargs: pytest.fail("dirty workspace must not spawn Claude"),
+    )
+    (repo / "dirty.txt").write_text("local work\n", encoding="utf-8")
+    result = json.loads(edge.run_claude_lane({"prompt": "bounded", "workspace": str(repo)}))
+    assert "workspace must be clean" in result["error"]
 
 
 def test_invalid_json_is_rejected(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    _setup(monkeypatch, "json_fail")
+    _setup(monkeypatch, "json_fail", repo.parent / "hermes-home")
     metadata = _call(repo)
     assert metadata["result"] == "rejected" and "valid JSON" in metadata["rejected_reason"]
 

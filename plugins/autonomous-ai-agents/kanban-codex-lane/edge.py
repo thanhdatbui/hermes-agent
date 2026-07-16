@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from hermes_constants import get_hermes_home
 from hermes_cli.config import load_config
 from tools.environments.local import _sanitize_subprocess_env
 from tools.process_registry import process_registry
@@ -85,6 +86,26 @@ def _git(repo: Path, *args: str) -> subprocess.CompletedProcess[str]:
     return _run(["git", *args], cwd=repo)
 
 
+def _apply_patch(repo: Path, patch: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["git", "apply", "--whitespace=nowarn", "-"],
+        cwd=repo,
+        input=patch,
+        text=True,
+        capture_output=True,
+        check=False,
+        env=_sanitize_subprocess_env(os.environ),
+        encoding="utf-8",
+        errors="replace",
+    )
+
+
+def _artifact_path(task_id: str, suffix: str) -> Path:
+    root = get_hermes_home() / "artifacts" / "external-lanes" / _safe_task_id(task_id)
+    root.mkdir(parents=True, exist_ok=True)
+    return root / f"codex-{uuid.uuid4().hex[:12]}{suffix}"
+
+
 def _metadata(*, mode: str, worktree: Path | None, branch: str | None,
               command: str | None, result: str, reason: str = "",
               commits: list[str] | None = None, tests: list[dict[str, Any]] | None = None,
@@ -126,6 +147,9 @@ def run_codex_lane(args: dict[str, Any], task_id: str | None = None, **_: Any) -
     source = Path(str(args.get("workspace") or "")).expanduser().resolve()
     if not source.is_dir() or _git(source, "rev-parse", "--is-inside-work-tree").returncode:
         return tool_error("workspace must be an existing git worktree")
+    if _git(source, "status", "--porcelain").stdout.strip():
+        return tool_error("workspace must be clean before starting a Codex lane")
+    base_sha = _git(source, "rev-parse", "HEAD").stdout.strip()
     version = _run([resolved, "--version"], cwd=source)
     if version.returncode:
         return tool_error("Codex capability check failed", executable=executable)
@@ -152,7 +176,7 @@ def run_codex_lane(args: dict[str, Any], task_id: str | None = None, **_: Any) -
         created = True
         session = process_registry.spawn_local(command, cwd=str(worktree), task_id=task_id, use_pty=True)
         waited = process_registry.wait(session.id, timeout=timeout)
-        output_path = worktree / ".hermes-codex-output.txt"
+        output_path = _artifact_path(task_id, ".log")
         output_path.write_text(str(waited.get("output") or ""), encoding="utf-8")
         artifacts.append(str(output_path))
         if waited["status"] == "timeout":
@@ -163,12 +187,17 @@ def run_codex_lane(args: dict[str, Any], task_id: str | None = None, **_: Any) -
             metadata = _metadata(mode=mode, worktree=worktree, branch=branch, command=command,
                                  result="rejected", reason="Codex CLI exited unsuccessfully", artifacts=artifacts)
         else:
-            # ``git diff`` omits untracked files, precisely the class an
-            # untrusted lane could use to bypass a forbidden-path policy.
-            changed = [
-                line[3:] for line in _git(worktree, "status", "--porcelain").stdout.splitlines()
-                if len(line) > 3
-            ]
+            # Stage only inside the disposable lane so one diff covers
+            # committed, modified, deleted, renamed, and untracked files.
+            staged = _git(worktree, "add", "-A")
+            if staged.returncode:
+                metadata = _metadata(
+                    mode=mode, worktree=worktree, branch=branch, command=command,
+                    result="rejected", reason="Could not stage Codex lane changes",
+                    artifacts=artifacts,
+                )
+                return json.dumps({"success": True, "metadata": {"codex_lane": metadata}})
+            changed = _git(worktree, "diff", "--cached", "--name-only", base_sha).stdout.splitlines()
             forbidden_hit = next((path for path in changed if path in forbidden), None)
             if forbidden_hit:
                 metadata = _metadata(mode=mode, worktree=worktree, branch=branch, command=command,
@@ -179,11 +208,32 @@ def run_codex_lane(args: dict[str, Any], task_id: str | None = None, **_: Any) -
                     metadata = _metadata(mode=mode, worktree=worktree, branch=branch, command=command,
                                          result="rejected", reason=reason, tests=test_evidence, artifacts=artifacts)
                 else:
-                    commit = _git(worktree, "rev-parse", "HEAD").stdout.strip()
-                    metadata = _metadata(mode=mode, worktree=worktree, branch=branch, command=command,
-                                         result="accepted", commits=[commit] if commit else [], tests=test_evidence,
-                                         artifacts=artifacts)
-                    accepted = True
+                    patch = _git(worktree, "diff", "--cached", "--binary", base_sha).stdout
+                    if not patch.strip():
+                        metadata = _metadata(
+                            mode=mode, worktree=worktree, branch=branch, command=command,
+                            result="rejected", reason="Codex lane produced no changes",
+                            tests=test_evidence, artifacts=artifacts,
+                        )
+                    else:
+                        applied = _apply_patch(source, patch)
+                        if applied.returncode:
+                            metadata = _metadata(
+                                mode=mode, worktree=worktree, branch=branch, command=command,
+                                result="rejected", reason="Could not reconcile Codex lane diff",
+                                tests=test_evidence, artifacts=artifacts,
+                            )
+                        else:
+                            patch_path = _artifact_path(task_id, ".patch")
+                            patch_path.write_text(patch, encoding="utf-8")
+                            artifacts.append(str(patch_path))
+                            commits = _git(worktree, "rev-list", "--reverse", f"{base_sha}..HEAD").stdout.splitlines()
+                            metadata = _metadata(
+                                mode=mode, worktree=worktree, branch=branch, command=command,
+                                result="accepted", commits=commits, tests=test_evidence,
+                                artifacts=artifacts,
+                            )
+                            accepted = True
         return json.dumps({"success": True, "metadata": {"codex_lane": metadata}})
     finally:
         if created:

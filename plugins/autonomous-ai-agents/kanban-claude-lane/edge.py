@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from hermes_constants import get_hermes_home
 from hermes_cli.config import load_config
 from tools.environments.local import _sanitize_subprocess_env
 from tools.process_registry import process_registry
@@ -52,6 +53,20 @@ def _git(repo: Path, *args: str) -> subprocess.CompletedProcess[str]:
     return _run(["git", *args], cwd=repo)
 
 
+def _apply_patch(repo: Path, patch: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["git", "apply", "--whitespace=nowarn", "-"], cwd=repo, input=patch,
+        text=True, capture_output=True, check=False,
+        env=_sanitize_subprocess_env(os.environ), encoding="utf-8", errors="replace",
+    )
+
+
+def _artifact_path(task_id: str, suffix: str) -> Path:
+    root = get_hermes_home() / "artifacts" / "external-lanes" / _safe_task(task_id)
+    root.mkdir(parents=True, exist_ok=True)
+    return root / f"claude-{uuid.uuid4().hex[:12]}{suffix}"
+
+
 def _parse_result(output: str) -> dict[str, Any]:
     try:
         parsed = json.loads(output)
@@ -69,12 +84,13 @@ def _parse_result(output: str) -> dict[str, Any]:
 
 def _metadata(*, worktree: Path | None, branch: str | None, command: str | None,
               result: str, reason: str = "", tests: list[dict[str, Any]] | None = None,
-              commits: list[str] | None = None, parsed: dict[str, Any] | None = None) -> dict[str, Any]:
+              commits: list[str] | None = None, parsed: dict[str, Any] | None = None,
+              artifacts: list[str] | None = None) -> dict[str, Any]:
     data = {
         "used": worktree is not None, "worktree": str(worktree) if worktree else None,
         "branch": branch, "command": command, "result": result,
         "accepted_commits": commits or [], "rejected_reason": reason,
-        "tests_run": tests or [], "artifacts": [], "usage": {}, "cost_usd": None,
+        "tests_run": tests or [], "artifacts": artifacts or [], "usage": {}, "cost_usd": None,
         "session_id": None, "model_usage": {},
     }
     if parsed:
@@ -106,6 +122,9 @@ def run_claude_lane(args: dict[str, Any], task_id: str | None = None, **_: Any) 
     source = Path(str(args.get("workspace") or "")).expanduser().resolve()
     if not source.is_dir() or _git(source, "rev-parse", "--is-inside-work-tree").returncode:
         return tool_error("workspace must be an existing git worktree")
+    if _git(source, "status", "--porcelain").stdout.strip():
+        return tool_error("workspace must be clean before starting a Claude lane")
+    base_sha = _git(source, "rev-parse", "HEAD").stdout.strip()
     if _run([resolved, "--version"], cwd=source).returncode:
         return tool_error("Claude capability check failed", executable=executable)
     allowed = cfg.get("allowed_tools") or []
@@ -120,6 +139,7 @@ def run_claude_lane(args: dict[str, Any], task_id: str | None = None, **_: Any) 
     timeout = max(1, int(cfg.get("timeout_seconds") or 300))
     forbidden = {str(item) for item in args.get("forbidden_paths") or []}
     tests = [str(item) for item in args.get("test_commands") or []]
+    artifacts: list[str] = []
     created = accepted = False
     try:
         if _git(source, "worktree", "add", "-b", branch, str(worktree), "HEAD").returncode:
@@ -127,26 +147,44 @@ def run_claude_lane(args: dict[str, Any], task_id: str | None = None, **_: Any) 
         created = True
         session = process_registry.spawn_local(command, cwd=str(worktree), task_id=task_id, use_pty=False)
         waited = process_registry.wait(session.id, timeout=timeout)
+        output_path = _artifact_path(task_id, ".log")
+        output_path.write_text(str(waited.get("output") or ""), encoding="utf-8")
+        artifacts.append(str(output_path))
         if waited["status"] == "timeout":
             process_registry.kill_process(session.id, source="kanban_claude_lane.timeout")
-            meta = _metadata(worktree=worktree, branch=branch, command=command, result="timed_out", reason="Claude lane timeout")
+            meta = _metadata(worktree=worktree, branch=branch, command=command, result="timed_out", reason="Claude lane timeout", artifacts=artifacts)
         elif waited["status"] != "exited" or waited.get("exit_code") != 0:
-            meta = _metadata(worktree=worktree, branch=branch, command=command, result="rejected", reason="Claude CLI exited unsuccessfully")
+            meta = _metadata(worktree=worktree, branch=branch, command=command, result="rejected", reason="Claude CLI exited unsuccessfully", artifacts=artifacts)
         else:
             try:
                 parsed = _parse_result(str(waited.get("output") or ""))
             except ValueError as exc:
-                meta = _metadata(worktree=worktree, branch=branch, command=command, result="rejected", reason=str(exc))
+                meta = _metadata(worktree=worktree, branch=branch, command=command, result="rejected", reason=str(exc), artifacts=artifacts)
             else:
-                changed = [line[3:] for line in _git(worktree, "status", "--porcelain").stdout.splitlines() if len(line) > 3]
+                staged = _git(worktree, "add", "-A")
+                if staged.returncode:
+                    meta = _metadata(worktree=worktree, branch=branch, command=command, result="rejected", reason="Could not stage Claude lane changes", parsed=parsed, artifacts=artifacts)
+                    return json.dumps({"success": True, "metadata": {"claude_lane": meta}})
+                changed = _git(worktree, "diff", "--cached", "--name-only", base_sha).stdout.splitlines()
                 hit = next((path for path in changed if path in forbidden), None)
                 test_evidence, reason = _run_tests(worktree, tests) if not hit else ([], f"Forbidden path changed: {hit}")
                 if reason:
-                    meta = _metadata(worktree=worktree, branch=branch, command=command, result="rejected", reason=reason, tests=test_evidence, parsed=parsed)
+                    meta = _metadata(worktree=worktree, branch=branch, command=command, result="rejected", reason=reason, tests=test_evidence, parsed=parsed, artifacts=artifacts)
                 else:
-                    commit = _git(worktree, "rev-parse", "HEAD").stdout.strip()
-                    meta = _metadata(worktree=worktree, branch=branch, command=command, result="accepted", tests=test_evidence, commits=[commit] if commit else [], parsed=parsed)
-                    accepted = True
+                    patch = _git(worktree, "diff", "--cached", "--binary", base_sha).stdout
+                    if not patch.strip():
+                        meta = _metadata(worktree=worktree, branch=branch, command=command, result="rejected", reason="Claude lane produced no changes", tests=test_evidence, parsed=parsed, artifacts=artifacts)
+                    else:
+                        applied = _apply_patch(source, patch)
+                        if applied.returncode:
+                            meta = _metadata(worktree=worktree, branch=branch, command=command, result="rejected", reason="Could not reconcile Claude lane diff", tests=test_evidence, parsed=parsed, artifacts=artifacts)
+                        else:
+                            patch_path = _artifact_path(task_id, ".patch")
+                            patch_path.write_text(patch, encoding="utf-8")
+                            artifacts.append(str(patch_path))
+                            commits = _git(worktree, "rev-list", "--reverse", f"{base_sha}..HEAD").stdout.splitlines()
+                            meta = _metadata(worktree=worktree, branch=branch, command=command, result="accepted", tests=test_evidence, commits=commits, parsed=parsed, artifacts=artifacts)
+                            accepted = True
         return json.dumps({"success": True, "metadata": {"claude_lane": meta}})
     finally:
         if created:

@@ -660,3 +660,26 @@ before modifying runtime code.
 - Skills and generated docs again prohibit `--yolo` and
   `--dangerously-skip-permissions`. Searches confirm the inverted relaxed test
   names/assertions and permissive instructions are absent.
+
+## External Lane Result Reconciliation Complete
+
+- Fixed both external implementation lanes so an `accepted` result now leaves
+  the reviewed diff in the source workspace instead of deleting the only copy
+  with the temporary worktree. The source workspace must be clean before a
+  lane starts, and accepted output is applied back as an uncommitted working-
+  tree diff; Hermes still owns any later commit.
+- Codex and Claude lanes capture the source `HEAD`, stage the disposable
+  worktree result, review every path against the full base-to-result diff, run
+  Hermes-owned verification, and only mark the lane accepted after `git apply`
+  succeeds in the source workspace. Committed and uncommitted lane changes are
+  both reconciled; `accepted_commits` contains only commits actually created by
+  the external lane.
+- Lane logs and accepted binary patches are now durable under
+  `HERMES_HOME/artifacts/external-lanes/<task>/`, outside the worktree that is
+  removed during cleanup.
+- E2E contracts now prove committed and uncommitted reconciliation, durable
+  log/patch artifacts after cleanup, committed forbidden-path rejection, and
+  dirty-source rejection before process spawn for both providers.
+- Validation: targeted external-lane harnesses `14 passed`; full lane skill,
+  template, router, computer-use, MCP catalog, and coding regression set `101
+  passed, 1 deselected`; `py_compile` and `git diff --check` passed.

@@ -38,9 +38,12 @@ def repo(tmp_path: Path) -> Path:
     return repo
 
 
-def _install_fakes(monkeypatch: pytest.MonkeyPatch, *, behavior: str, timeout: int = 5) -> dict:
+def _install_fakes(
+    monkeypatch: pytest.MonkeyPatch, *, behavior: str, artifact_home: Path, timeout: int = 5,
+) -> dict:
     killed: dict[str, bool] = {"value": False}
     monkeypatch.setenv("HERMES_KANBAN_TASK", "t_lane")
+    monkeypatch.setattr(edge, "get_hermes_home", lambda: artifact_home)
     monkeypatch.setattr(edge, "_codex_config", lambda: {
         "enabled": True, "executable": "codex", "mode": "exec", "timeout_seconds": timeout,
     })
@@ -60,8 +63,12 @@ def _install_fakes(monkeypatch: pytest.MonkeyPatch, *, behavior: str, timeout: i
             (lane / "allowed.txt").write_text("changed\n", encoding="utf-8")
             _git(lane, "add", "allowed.txt")
             _git(lane, "commit", "-qm", "codex change")
+        elif behavior == "uncommitted":
+            (lane / "allowed.txt").write_text("uncommitted\n", encoding="utf-8")
         elif behavior == "rejected_diff":
             (lane / "forbidden.txt").write_text("nope\n", encoding="utf-8")
+            _git(lane, "add", "forbidden.txt")
+            _git(lane, "commit", "-qm", "forbidden codex change")
         return SimpleNamespace(id="proc-test")
 
     monkeypatch.setattr(edge.process_registry, "spawn_local", spawn)
@@ -86,16 +93,30 @@ def _call(repo: Path, **kwargs) -> dict:
 
 
 def test_success_accepts_committed_diff_and_hermes_tests(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    _install_fakes(monkeypatch, behavior="success")
+    _install_fakes(monkeypatch, behavior="success", artifact_home=repo.parent / "hermes-home")
     metadata = _call(repo, test_commands=["git diff --check"])
     assert metadata["result"] == "accepted"
     assert metadata["accepted_commits"]
     assert metadata["tests_run"] == [{"command": "git diff --check", "exit_code": 0, "owner": "hermes"}]
+    assert (repo / "allowed.txt").read_text(encoding="utf-8") == "changed\n"
     assert not Path(metadata["worktree"]).exists()
+    assert len(metadata["artifacts"]) == 2
+    assert all(Path(path).is_file() for path in metadata["artifacts"])
+
+
+def test_uncommitted_diff_is_reconciled_without_commit_evidence(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _install_fakes(monkeypatch, behavior="uncommitted", artifact_home=repo.parent / "hermes-home")
+    metadata = _call(repo)
+    assert metadata["result"] == "accepted"
+    assert metadata["accepted_commits"] == []
+    assert (repo / "allowed.txt").read_text(encoding="utf-8") == "uncommitted\n"
+    assert not Path(metadata["worktree"]).exists()
+    assert len(metadata["artifacts"]) == 2
+    assert all(Path(path).is_file() for path in metadata["artifacts"])
 
 
 def test_timeout_kills_process_and_cleans_worktree(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    killed = _install_fakes(monkeypatch, behavior="timeout")
+    killed = _install_fakes(monkeypatch, behavior="timeout", artifact_home=repo.parent / "hermes-home")
     metadata = _call(repo)
     assert metadata["result"] == "timed_out"
     assert "timeout" in metadata["rejected_reason"].lower()
@@ -104,7 +125,7 @@ def test_timeout_kills_process_and_cleans_worktree(repo: Path, monkeypatch: pyte
 
 
 def test_provider_error_is_rejected_without_commits(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    _install_fakes(monkeypatch, behavior="provider_error")
+    _install_fakes(monkeypatch, behavior="provider_error", artifact_home=repo.parent / "hermes-home")
     metadata = _call(repo)
     assert metadata["result"] == "rejected"
     assert metadata["rejected_reason"]
@@ -113,11 +134,24 @@ def test_provider_error_is_rejected_without_commits(repo: Path, monkeypatch: pyt
 
 
 def test_forbidden_diff_is_rejected_by_hermes_review(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    _install_fakes(monkeypatch, behavior="rejected_diff")
+    _install_fakes(monkeypatch, behavior="rejected_diff", artifact_home=repo.parent / "hermes-home")
     metadata = _call(repo, forbidden_paths=["forbidden.txt"])
     assert metadata["result"] == "rejected"
     assert "forbidden.txt" in metadata["rejected_reason"]
+    assert not (repo / "forbidden.txt").exists()
     assert not Path(metadata["worktree"]).exists()
+
+
+def test_dirty_source_is_rejected_before_spawn(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _install_fakes(monkeypatch, behavior="success", artifact_home=repo.parent / "hermes-home")
+    monkeypatch.setattr(
+        edge.process_registry,
+        "spawn_local",
+        lambda *_args, **_kwargs: pytest.fail("dirty workspace must not spawn Codex"),
+    )
+    (repo / "dirty.txt").write_text("local work\n", encoding="utf-8")
+    result = json.loads(edge.run_codex_lane({"prompt": "bounded task", "workspace": str(repo)}))
+    assert "workspace must be clean" in result["error"]
 
 
 def test_portable_names_are_filesystem_safe() -> None:
