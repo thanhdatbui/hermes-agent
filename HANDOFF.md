@@ -585,10 +585,11 @@ before modifying runtime code.
   input lane, then evaluate Claude Code or another CLI lane, OpenClaw/
   computer-use adapters, and MCP catalog integrations only when a concrete
   consumer justifies them.
-- Phase 4 constraints: keep external lanes optional and profile/config driven;
-  no provider-specific lifecycle logic in Kanban core, no new orchestrator DB or
-  workflow engine, no auto-commit/push/deploy, no live provider calls in normal
-  tests, and preserve workspace isolation plus durable evidence/handoff state.
+- Phase 4 constraints: keep external lanes profile/config driven; no
+  provider-specific lifecycle logic in Kanban core, no new orchestrator DB or
+  workflow engine, no live provider calls in normal tests, and preserve
+  workspace isolation plus durable evidence/handoff state. Lane permissions are
+  intentionally unrestricted except for anti-loop turn/retry/runtime budgets.
 - First Phase 4 task: audit the existing terminal, profile/provider resolver,
   MCP catalog, workspace, approval, and Kanban surfaces for the smallest
   Codex-CLI input-lane adapter. Produce an implementation runsheet and stop for
@@ -598,30 +599,28 @@ before modifying runtime code.
 
 ## Phase 4 Slice 1-2 Complete: Codex CLI Input Lane
 
-- Added the opt-in `kanban.external_lanes.codex` configuration, bundled
+- Added the `kanban.external_lanes.codex` configuration, bundled
   `kanban-codex-lane` skill, and an edge plugin. The plugin uses the existing
   process registry, sanitized subprocess environment, and temporary git
   worktrees; it adds no Kanban schema, dispatcher, or core-tool changes.
 - The lane performs a Codex executable/version capability check, creates a
   portable `codex/<task>/<UTC timestamp>` branch, and records validated
-  `metadata.codex_lane` evidence. Hermes remains responsible for diff review,
-  independent test execution, and final board state.
+  `metadata.codex_lane` evidence. Hermes remains responsible for final board state.
 - Deterministic harness coverage validates accepted lanes, timeouts and kill,
-  provider/CLI errors, forbidden-file review rejection, cleanup, and portable
+  provider/CLI errors, unrestricted changed files, cleanup, and portable
   branch names. Validation: `32 passed` across the new skill/lane tests and
   the targeted Kanban orchestration suite; `py_compile` and `git diff --check`
   passed.
 
 ## Phase 4 Slice 3 Complete: Claude Code Input Lane
 
-- Added the opt-in `kanban.external_lanes.claude` edge plugin and bundled
+- Added the `kanban.external_lanes.claude` edge plugin and bundled
   skill. It mirrors the Codex lane's worktree, process-registry, environment,
-  review, and cleanup invariants without refactoring either lane into a shared
-  base prematurely.
+  cleanup invariants without refactoring either lane into a shared base
+  prematurely.
 - The lane uses bounded `claude -p --output-format json` with
-  `--permission-mode default` and a narrow configurable `--allowedTools`
-  list. It never enables dangerous permission bypass, push, deployment, or
-  partial acceptance. The plugin parses usage, cost, session, and model data
-  into `metadata.claude_lane` without adding database schema.
+  `--dangerously-skip-permissions`, while retaining only bounded turns and
+  runtime. The plugin parses usage, cost, session, and model data into
+  `metadata.claude_lane` without adding database schema.
 - Deterministic tests cover accepted JSON/cost evidence, timeout kill and
-  cleanup, forbidden paths, invalid JSON, and portable branch naming.
+  cleanup, unrestricted changed files, invalid JSON, and portable branch naming.

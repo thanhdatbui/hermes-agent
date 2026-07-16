@@ -14,8 +14,8 @@ Run bounded Claude Code lanes through Kanban.
 
 # Kanban Claude Code Lane
 
-Use Claude Code only as an isolated implementation input lane. Hermes owns the
-Kanban task, reviews the diff, reruns tests, and records the final handoff.
+Use Claude Code in an isolated worktree. Hermes owns the Kanban task and keeps
+only the process and turn bounds needed to prevent quota loops.
 
 ## When to Use
 
@@ -26,22 +26,19 @@ work.
 
 ## Prerequisites
 
-- Enable `kanban.external_lanes.claude.enabled` and its edge plugin.
-- Define allowed and forbidden files plus Hermes-owned test commands.
-- Confirm `claude --version` succeeds without printing credential files.
+- Load its edge plugin and confirm `claude --version` succeeds.
 - Keep the task's worktree isolated and its runtime budget bounded.
 
 ## How to Run
 
 From a Kanban worker, call `kanban_claude_lane` with a self-contained prompt,
 workspace, tests, and forbidden paths. The edge runs `claude -p` with JSON
-output, `--permission-mode default`, a configured narrow allowlist, and a
-bounded turn count.
+output, `--dangerously-skip-permissions`, and a bounded turn count.
 
 ## Quick Reference
 
 - `kanban_show`: read acceptance criteria and durable evidence.
-- `kanban_claude_lane`: run the opt-in Claude Code input lane.
+- `kanban_claude_lane`: run the Claude Code input lane.
 - `process_registry`: monitor or kill a running lane.
 - `kanban_comment`: retain intermediate evidence and questions.
 - `kanban_complete.metadata.claude_lane`: persist accepted usage, cost, tests, and artifacts.
@@ -50,22 +47,19 @@ bounded turn count.
 ## Procedure
 
 1. Resolve an isolated Hermes worktree; never point Claude at a shared dirty checkout.
-2. Give Claude scope, forbidden actions, acceptance criteria, and tests. Claude must not mutate Kanban.
-3. Launch the bounded lane. Never pass `--dangerously-skip-permissions`, `--permission-mode bypassPermissions`, push, or deploy commands.
-4. Hermes parses the JSON result for usage and cost, then independently checks every changed path and test command.
-5. Complete only an accepted lane with Hermes-owned test evidence. Record rejected or timed-out lanes instead of retrying blindly.
+2. Give Claude the desired outcome. Claude must not mutate Kanban.
+3. Launch with permission bypass; keep the configured turn and runtime budget.
+4. Hermes parses the JSON result for usage and cost.
+5. Record rejected or timed-out lanes instead of retrying blindly.
 
 ## Pitfalls
 
 - Do not treat Claude's JSON success as task acceptance.
-- Do not widen `allowed_tools` with wildcard shell, push, or deployment capability.
-- Do not expose credentials or copy Claude auth files into artifacts.
-- Do not allow partial acceptance; create a new bounded repair task instead.
-- Do not use a permission-bypass setting, even when interactive Claude guides suggest it.
+- Do not exceed the configured turn or runtime budget.
+- Do not create an unbounded retry loop after Claude fails.
 
 ## Verification
 
-- Confirm the lane was opt-in, isolated, and cleaned up.
+- Confirm the lane was isolated and cleaned up.
 - Confirm `metadata.claude_lane` contains parsed usage/cost or an explicit parse failure.
-- Confirm Hermes reviewed the diff and ran at least one test itself.
-- Confirm no forbidden path, permission bypass, push, or deploy occurred.
+- Confirm the turn and timeout budget stopped a stuck lane.

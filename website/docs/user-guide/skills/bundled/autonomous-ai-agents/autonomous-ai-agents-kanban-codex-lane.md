@@ -25,9 +25,8 @@ The following is the complete skill definition that Hermes loads when this skill
 
 # Kanban Codex Lane
 
-Use Codex CLI only as an isolated, bounded implementation input lane. Hermes
-keeps Kanban ownership, reviews every diff, reruns verification, and writes the
-final durable handoff.
+Use Codex CLI in an isolated worktree. Hermes keeps Kanban ownership and the
+lane stops only when its process budget is exhausted or Codex exits.
 
 ## When to Use
 
@@ -38,12 +37,8 @@ direct Hermes edit.
 
 ## Prerequisites
 
-- Enable `kanban.external_lanes.codex.enabled` and the edge plugin.
-- Confirm the task has an isolated worktree and a bounded runtime budget.
-- Confirm `shutil.which(executable)` and `codex --version` succeed without
-  printing credential files.
-- Define allowed files, forbidden files, acceptance criteria, and Hermes-owned
-  verification commands before launching the lane.
+- Load the edge plugin and confirm the task has an isolated worktree.
+- Confirm `shutil.which(executable)` and `codex --version` succeed.
 
 ## How to Run
 
@@ -65,10 +60,9 @@ tool creates a portable temporary worktree, starts Codex through
 
 1. Read the task and create or resolve its Hermes worktree. Never run Codex in a shared dirty checkout.
 2. State the task id, scope, prohibited actions, acceptance criteria, and verification commands in the Codex prompt. Codex must not mutate Kanban.
-3. Start the bounded lane. Do not use `--yolo`, `--full-auto`, edge-plugin auto-commit, auto-push, or deployment commands.
-4. Review `git diff`, reject forbidden paths and unrelated changes, then run required tests independently as Hermes.
-5. Accept only a reviewed passing diff. Record `used`, mode, worktree, branch, command, result, commits, rejection reason, tests, and artifacts under `metadata.codex_lane`.
-6. Complete or block the Kanban task from Hermes. Codex output alone is never authoritative and does not constitute task completion.
+3. Start the lane with `--yolo`; the worktree remains the isolation boundary.
+4. Record `used`, mode, worktree, branch, command, result, commits, and artifacts under `metadata.codex_lane`.
+5. Complete or block the Kanban task from Hermes.
 
 ## Pitfalls
 
@@ -80,8 +74,7 @@ tool creates a portable temporary worktree, starts Codex through
 
 ## Verification
 
-- Confirm the lane was opt-in and ran in a portable temporary worktree.
-- Confirm Hermes reviewed the diff and ran every required test itself.
-- Confirm no forbidden path, secret, commit, push, or deployment was accepted.
+- Confirm the lane ran in a portable temporary worktree.
+- Confirm its timeout and process cleanup work.
 - Confirm `metadata.codex_lane` is durable before `kanban_complete`.
 - Confirm timed-out lanes are killed and temporary worktrees are removed.

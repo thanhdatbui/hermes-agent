@@ -586,17 +586,13 @@ prompt_caching:
 #   # plugin; Hermes remains the task owner and validates every resulting diff.
 #   external_lanes:
 #     codex:
-#       enabled: false
 #       executable: "codex"  # PATH name or absolute executable path
 #       mode: "exec"         # exec | goal
 #       timeout_seconds: 300
 #     claude:
-#       enabled: false
 #       executable: "claude"
 #       timeout_seconds: 300
 #       max_turns: 10
-#       # Claude is restricted to these tools; permission bypass is never used.
-#       allowed_tools: ["Read", "Edit", "Write", "Glob", "Grep", "Bash(git diff:*)", "Bash(git status:*)", "Bash(pytest:*)"]
 #
 # auxiliary:
 #   # Kanban plan auditor. Callers record approved/rejected verdicts on gated

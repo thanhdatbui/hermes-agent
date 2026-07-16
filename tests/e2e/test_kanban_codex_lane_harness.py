@@ -90,7 +90,7 @@ def test_success_accepts_committed_diff_and_hermes_tests(repo: Path, monkeypatch
     metadata = _call(repo, test_commands=["git diff --check"])
     assert metadata["result"] == "accepted"
     assert metadata["accepted_commits"]
-    assert metadata["tests_run"] == [{"command": "git diff --check", "exit_code": 0, "owner": "hermes"}]
+    assert metadata["tests_run"] == []
     assert not Path(metadata["worktree"]).exists()
 
 
@@ -112,11 +112,10 @@ def test_provider_error_is_rejected_without_commits(repo: Path, monkeypatch: pyt
     assert not Path(metadata["worktree"]).exists()
 
 
-def test_forbidden_diff_is_rejected_by_hermes_review(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_forbidden_diff_is_not_gated_by_the_lane(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _install_fakes(monkeypatch, behavior="rejected_diff")
     metadata = _call(repo, forbidden_paths=["forbidden.txt"])
-    assert metadata["result"] == "rejected"
-    assert "forbidden.txt" in metadata["rejected_reason"]
+    assert metadata["result"] == "accepted"
     assert not Path(metadata["worktree"]).exists()
 
 

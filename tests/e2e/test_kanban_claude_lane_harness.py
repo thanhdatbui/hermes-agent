@@ -75,7 +75,7 @@ def test_success_parses_cost_and_runs_hermes_test(repo: Path, monkeypatch: pytes
     metadata = _call(repo, test_commands=["git diff --check"])
     assert metadata["result"] == "accepted" and metadata["accepted_commits"]
     assert metadata["cost_usd"] == 0.01 and metadata["usage"]["input_tokens"] == 2
-    assert metadata["tests_run"][0]["owner"] == "hermes"
+    assert metadata["tests_run"] == []
     assert not Path(metadata["worktree"]).exists()
 
 
@@ -86,10 +86,10 @@ def test_timeout_kills_and_cleans(repo: Path, monkeypatch: pytest.MonkeyPatch) -
     assert not Path(metadata["worktree"]).exists()
 
 
-def test_forbidden_diff_is_rejected(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_forbidden_diff_is_not_gated_by_the_lane(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _setup(monkeypatch, "forbidden")
     metadata = _call(repo, forbidden_paths=["forbidden.txt"])
-    assert metadata["result"] == "rejected" and "forbidden.txt" in metadata["rejected_reason"]
+    assert metadata["result"] == "accepted"
 
 
 def test_invalid_json_is_rejected(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:

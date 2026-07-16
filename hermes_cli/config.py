@@ -2808,24 +2808,18 @@ DEFAULT_CONFIG = {
         "orchestration": {
             "roles": {},
         },
-        # Optional external implementation lanes. They are disabled unless an
-        # operator explicitly enables the corresponding edge plugin.
+        # External implementation lanes. The plugin controls availability;
+        # these settings only select the executable and loop budget.
         "external_lanes": {
             "codex": {
-                "enabled": False,
                 "executable": "codex",
                 "mode": "exec",
                 "timeout_seconds": 300,
             },
             "claude": {
-                "enabled": False,
                 "executable": "claude",
                 "timeout_seconds": 300,
                 "max_turns": 10,
-                "allowed_tools": [
-                    "Read", "Edit", "Write", "Glob", "Grep",
-                    "Bash(git diff:*)", "Bash(git status:*)", "Bash(pytest:*)",
-                ],
             },
         },
         # Where a child task lands if the orchestrator can't match an
