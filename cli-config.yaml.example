@@ -582,6 +582,14 @@ prompt_caching:
 #         candidates:
 #           - profile: "cheap-worker"
 #         toolsets: ["terminal", "file", "skills"]
+#   # Optional Codex CLI input lane. Requires the separately enabled edge
+#   # plugin; Hermes remains the task owner and validates every resulting diff.
+#   external_lanes:
+#     codex:
+#       enabled: false
+#       executable: "codex"  # PATH name or absolute executable path
+#       mode: "exec"         # exec | goal
+#       timeout_seconds: 300
 #
 # auxiliary:
 #   # Kanban plan auditor. Callers record approved/rejected verdicts on gated

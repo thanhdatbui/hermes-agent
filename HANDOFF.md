@@ -595,3 +595,19 @@ before modifying runtime code.
   approval before adding runtime code.
 - Resume validation from the last commit:
   `556f6dec9 feat(skills): add multi-worker research swarm`.
+
+## Phase 4 Slice 1-2 Complete: Codex CLI Input Lane
+
+- Added the opt-in `kanban.external_lanes.codex` configuration, bundled
+  `kanban-codex-lane` skill, and an edge plugin. The plugin uses the existing
+  process registry, sanitized subprocess environment, and temporary git
+  worktrees; it adds no Kanban schema, dispatcher, or core-tool changes.
+- The lane performs a Codex executable/version capability check, creates a
+  portable `codex/<task>/<UTC timestamp>` branch, and records validated
+  `metadata.codex_lane` evidence. Hermes remains responsible for diff review,
+  independent test execution, and final board state.
+- Deterministic harness coverage validates accepted lanes, timeouts and kill,
+  provider/CLI errors, forbidden-file review rejection, cleanup, and portable
+  branch names. Validation: `32 passed` across the new skill/lane tests and
+  the targeted Kanban orchestration suite; `py_compile` and `git diff --check`
+  passed.

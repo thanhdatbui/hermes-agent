@@ -1,0 +1,5 @@
+name: kanban-codex-lane
+version: "0.1.0"
+description: "Optional isolated Codex CLI input lane for Kanban workers."
+author: NousResearch
+kind: integration

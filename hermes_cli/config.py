@@ -2808,6 +2808,16 @@ DEFAULT_CONFIG = {
         "orchestration": {
             "roles": {},
         },
+        # Optional external implementation lanes. They are disabled unless an
+        # operator explicitly enables the corresponding edge plugin.
+        "external_lanes": {
+            "codex": {
+                "enabled": False,
+                "executable": "codex",
+                "mode": "exec",
+                "timeout_seconds": 300,
+            },
+        },
         # Where a child task lands if the orchestrator can't match an
         # assignee to any installed profile. When unset, falls back to the
         # default profile. A task never ends up with assignee=None.

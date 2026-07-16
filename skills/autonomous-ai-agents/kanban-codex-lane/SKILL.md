@@ -1,27 +1,7 @@
 ---
-title: "Kanban Codex Lane - Run bounded Codex implementation lanes through Kanban"
-sidebar_label: "Kanban Codex Lane"
-description: "Run bounded Codex implementation lanes through Kanban"
+name: kanban-codex-lane
+description: Run bounded Codex implementation lanes through Kanban.
 ---
-
-{/* This page is auto-generated from the skill's SKILL.md by website/scripts/generate-skill-docs.py. Edit the source SKILL.md, not this page. */}
-
-# Kanban Codex Lane
-
-Run bounded Codex implementation lanes through Kanban.
-
-## Skill metadata
-
-| | |
-|---|---|
-| Source | Bundled (installed by default) |
-| Path | `skills/autonomous-ai-agents/kanban-codex-lane` |
-
-## Reference: full SKILL.md
-
-:::info
-The following is the complete skill definition that Hermes loads when this skill is active.
-:::
 
 # Kanban Codex Lane
 
@@ -63,11 +43,17 @@ tool creates a portable temporary worktree, starts Codex through
 
 ## Procedure
 
-1. Read the task and create or resolve its Hermes worktree. Never run Codex in a shared dirty checkout.
-2. State the task id, scope, prohibited actions, acceptance criteria, and verification commands in the Codex prompt. Codex must not mutate Kanban.
-3. Start the bounded lane. Do not use `--yolo`, `--full-auto`, edge-plugin auto-commit, auto-push, or deployment commands.
-4. Review `git diff`, reject forbidden paths and unrelated changes, then run required tests independently as Hermes.
-5. Accept only a reviewed passing diff. Record `used`, mode, worktree, branch, command, result, commits, rejection reason, tests, and artifacts under `metadata.codex_lane`.
+1. Read the task and create or resolve its Hermes worktree. Never run Codex in
+   a shared dirty checkout.
+2. State the task id, scope, prohibited actions, acceptance criteria, and
+   verification commands in the Codex prompt. Codex must not mutate Kanban.
+3. Start the bounded lane. Do not use `--yolo`, `--full-auto`, edge-plugin
+   auto-commit, auto-push, or deployment commands.
+4. Review `git diff`, reject forbidden paths and unrelated changes, then run
+   required tests independently as Hermes.
+5. Accept only a reviewed passing diff. Record `used`, mode, worktree, branch,
+   command, result, commits, rejection reason, tests, and artifacts under
+   `metadata.codex_lane`.
 6. Complete or block the Kanban task from Hermes. Codex output alone is never authoritative and does not constitute task completion.
 
 ## Pitfalls
