@@ -99,9 +99,20 @@ def test_success_accepts_committed_diff_and_hermes_tests(repo: Path, monkeypatch
     assert metadata["accepted_commits"]
     assert metadata["tests_run"] == [{"command": "git diff --check", "exit_code": 0, "owner": "hermes"}]
     assert (repo / "allowed.txt").read_text(encoding="utf-8") == "changed\n"
+    assert subprocess.run(
+        ["git", "status", "--porcelain"], cwd=repo, check=True,
+        capture_output=True, text=True,
+    ).stdout.strip()
     assert not Path(metadata["worktree"]).exists()
     assert len(metadata["artifacts"]) == 2
     assert all(Path(path).is_file() for path in metadata["artifacts"])
+    monkeypatch.setattr(
+        edge.process_registry,
+        "spawn_local",
+        lambda *_args, **_kwargs: pytest.fail("accepted diff must block a blind retry"),
+    )
+    retry = json.loads(edge.run_codex_lane({"prompt": "retry", "workspace": str(repo)}))
+    assert "resolve the existing diff instead of retrying" in retry["error"]
 
 
 def test_uncommitted_diff_is_reconciled_without_commit_evidence(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:

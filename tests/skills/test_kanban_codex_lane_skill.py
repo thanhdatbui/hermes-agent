@@ -46,3 +46,11 @@ def test_skill_blocks_destructive_actions() -> None:
     assert "do not use `--yolo`" in src
     assert "edge-plugin\n   auto-commit" in src
     assert "codex output alone is never authoritative" in src
+
+
+def test_skill_resolves_accepted_diff_before_retry() -> None:
+    src = _source().lower()
+    assert "accepted patch is applied" in src
+    assert "uncommitted diff" in src
+    assert "never relaunch the lane while that workspace is dirty" in src
+    assert "resolve the existing\n   diff instead of retrying" in src

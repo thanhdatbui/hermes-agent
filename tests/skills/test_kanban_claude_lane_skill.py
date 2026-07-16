@@ -39,3 +39,11 @@ def test_skill_blocks_permission_bypass_and_partial_acceptance() -> None:
     assert "--dangerously-skip-permissions" in src
     assert "permission-mode bypasspermissions" in src
     assert "do not allow partial acceptance" in src
+
+
+def test_skill_resolves_accepted_diff_before_retry() -> None:
+    src = _source().lower()
+    assert "accepted patch is applied" in src
+    assert "uncommitted diff" in src
+    assert "never relaunch the lane while that workspace is dirty" in src
+    assert "resolve the existing\n   diff instead of retrying" in src

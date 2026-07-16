@@ -148,7 +148,10 @@ def run_codex_lane(args: dict[str, Any], task_id: str | None = None, **_: Any) -
     if not source.is_dir() or _git(source, "rev-parse", "--is-inside-work-tree").returncode:
         return tool_error("workspace must be an existing git worktree")
     if _git(source, "status", "--porcelain").stdout.strip():
-        return tool_error("workspace must be clean before starting a Codex lane")
+        return tool_error(
+            "workspace must be clean before starting a Codex lane; "
+            "resolve the existing diff instead of retrying"
+        )
     base_sha = _git(source, "rev-parse", "HEAD").stdout.strip()
     version = _run([resolved, "--version"], cwd=source)
     if version.returncode:

@@ -683,3 +683,23 @@ before modifying runtime code.
 - Validation: targeted external-lane harnesses `14 passed`; full lane skill,
   template, router, computer-use, MCP catalog, and coding regression set `101
   passed, 1 deselected`; `py_compile` and `git diff --check` passed.
+
+## External Lane Post-Accept Retry Contract Complete
+
+- Confirmed that applying an accepted lane patch as an uncommitted source diff
+  is intentional: the edge plugin never commits on Hermes' behalf. The worker
+  must review the source diff and commit it only when the task authorizes
+  commits, or block/hand it off with artifact references.
+- Codex and Claude now return an actionable dirty-workspace error requiring the
+  existing diff to be resolved instead of retrying. This keeps a forgotten
+  post-accept commit or handoff from consuming retry quota in a blind loop.
+- Both lane skills and generated website pages now document that `accepted`
+  does not mean the source workspace is committed and prohibit relaunch while
+  it remains dirty.
+- E2E success contracts prove that acceptance leaves a real dirty source diff,
+  then immediately retry the lane with process spawn replaced by a hard test
+  failure. The retry is rejected before spawn with the actionable error.
+- Validation: focused lane and skill contracts `24 passed`; full lane,
+  orchestration, MCP, template, router, computer-use, website generator, and
+  skill extraction regression set `123 passed, 1 deselected`; `py_compile` and
+  `git diff --check` passed.

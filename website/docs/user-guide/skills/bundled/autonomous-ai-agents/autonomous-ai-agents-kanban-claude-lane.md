@@ -1,16 +1,27 @@
 ---
-title: "Kanban Claude Code Lane - Run bounded Claude Code lanes through Kanban"
-sidebar_label: "Kanban Claude Code Lane"
+title: "Kanban Claude Lane — Run bounded Claude Code lanes through Kanban"
+sidebar_label: "Kanban Claude Lane"
 description: "Run bounded Claude Code lanes through Kanban"
 ---
 
 {/* This page is auto-generated from the skill's SKILL.md by website/scripts/generate-skill-docs.py. Edit the source SKILL.md, not this page. */}
 
-# Kanban Claude Code Lane
+# Kanban Claude Lane
 
 Run bounded Claude Code lanes through Kanban.
 
+## Skill metadata
+
+| | |
+|---|---|
+| Source | Bundled (installed by default) |
+| Path | `skills/autonomous-ai-agents\kanban-claude-lane` |
+
 ## Reference: full SKILL.md
+
+:::info
+The following is the complete skill definition that Hermes loads when this skill is triggered. This is what the agent sees as instructions when the skill is active.
+:::
 
 # Kanban Claude Code Lane
 
@@ -53,7 +64,13 @@ bounded turn count.
 2. Give Claude scope, forbidden actions, acceptance criteria, and tests. Claude must not mutate Kanban.
 3. Launch the bounded lane. Never pass `--dangerously-skip-permissions`, `--permission-mode bypassPermissions`, push, or deploy commands.
 4. Hermes parses the JSON result for usage and cost, then independently checks every changed path and test command.
-5. Complete only an accepted lane with Hermes-owned test evidence. Record rejected or timed-out lanes instead of retrying blindly.
+5. An accepted patch is applied to the Hermes source workspace as an
+   uncommitted diff. Review it and commit only when the task authorizes commits;
+   otherwise block or hand it off with artifact references.
+6. Never relaunch the lane while that workspace is dirty. Resolve the existing
+   diff instead of retrying, so repeated claims cannot consume quota in a loop.
+7. Complete only an accepted lane with Hermes-owned test evidence. Record
+   rejected or timed-out lanes instead of retrying blindly.
 
 ## Pitfalls
 
@@ -61,6 +78,7 @@ bounded turn count.
 - Do not widen `allowed_tools` with wildcard shell, push, or deployment capability.
 - Do not expose credentials or copy Claude auth files into artifacts.
 - Do not allow partial acceptance; create a new bounded repair task instead.
+- Do not mistake `accepted` for a committed source workspace.
 - Do not use a permission-bypass setting, even when interactive Claude guides suggest it.
 
 ## Verification
@@ -68,4 +86,6 @@ bounded turn count.
 - Confirm the lane was opt-in, isolated, and cleaned up.
 - Confirm `metadata.claude_lane` contains parsed usage/cost or an explicit parse failure.
 - Confirm Hermes reviewed the diff and ran at least one test itself.
+- Confirm the accepted source diff was committed or explicitly handed off
+  before another lane claim.
 - Confirm no forbidden path, permission bypass, push, or deploy occurred.
