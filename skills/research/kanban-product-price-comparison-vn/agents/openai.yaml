@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kanban Product Price Comparison"
+  short_description: "Compare products and landed costs across Vietnam and China"
+  default_prompt: "Use -product-price-comparison-vn to compare products and landed costs with durable evidence."

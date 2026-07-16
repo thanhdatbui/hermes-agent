@@ -532,3 +532,17 @@ before modifying runtime code.
   invariants.
 - Validation: skill quick validation passed; targeted tool + skill suite passed
   (`111 passed`).
+
+## Active Work Update: Vietnam-China Product Price Comparison
+
+- Added `skills/research/kanban-product-price-comparison-vn/SKILL.md`, a
+  Kanban-first workflow for comparing equivalent products and landed costs
+  across Vietnam and China.
+- The workflow captures variant identity, seller/source, timestamp, currency,
+  shipping, fees, duties/taxes, exchange-rate assumptions, confidence, and
+  uncertainty; it remains read-only and forbids unauthorized purchase/contact.
+- Added `tests/skills/test_kanban_product_price_comparison_skill.py` covering
+  frontmatter, section order, durable Kanban evidence fields, and safety
+  invariants.
+- Validation: `quick_validate.py` passed; skill contract tests passed (`4
+  passed`); description length is 59 characters; `git diff --check` passed.
