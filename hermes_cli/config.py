@@ -2822,6 +2822,9 @@ DEFAULT_CONFIG = {
                 "max_turns": 10,
             },
         },
+        # Optional operator-defined templates merged over templates discovered
+        # from shipped Kanban workflow skills.
+        "workflow_templates": {},
         # Where a child task lands if the orchestrator can't match an
         # assignee to any installed profile. When unset, falls back to the
         # default profile. A task never ends up with assignee=None.

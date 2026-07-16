@@ -593,6 +593,13 @@ prompt_caching:
 #       executable: "claude"
 #       timeout_seconds: 300
 #       max_turns: 10
+#   # Custom workflow templates override skill-discovered entries by id.
+#   workflow_templates:
+#     my-workflow-v1:
+#       name: "My Workflow"
+#       description: "Project-specific workflow"
+#       skill: "my-workflow-skill"
+#       roles: ["planner", "worker", "auditor"]
 #
 # auxiliary:
 #   # Kanban plan auditor. Callers record approved/rejected verdicts on gated

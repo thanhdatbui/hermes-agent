@@ -243,6 +243,11 @@ def build_parser(parent_subparsers: argparse._SubParsersAction) -> argparse.Argu
     # --- init ---
     sub.add_parser("init", help="Create kanban.db if missing (idempotent)")
 
+    p_templates = sub.add_parser(
+        "templates", help="List discovered and configured workflow templates"
+    )
+    p_templates.add_argument("--json", action="store_true")
+
     # --- boards (new in v2: multi-project support) ---
     p_boards = sub.add_parser(
         "boards",
@@ -974,6 +979,7 @@ def kanban_command(args: argparse.Namespace) -> int:
 
         handlers = {
             "init":     _cmd_init,
+            "templates": _cmd_templates,
             "create":   _cmd_create,
             "swarm":    _cmd_swarm,
             "list":     _cmd_list,
@@ -1038,6 +1044,22 @@ def _profile_author() -> str:
         return get_active_profile_name() or "user"
     except Exception:
         return "user"
+
+
+def _cmd_templates(args: argparse.Namespace) -> int:
+    from hermes_cli.kanban_templates import list_workflow_templates
+
+    templates = list_workflow_templates()
+    if getattr(args, "json", False):
+        print(json.dumps([item.as_dict() for item in templates], indent=2, ensure_ascii=False))
+        return 0
+    if not templates:
+        print("(no workflow templates discovered)")
+        return 0
+    print(f"{'ID':36s}  {'SOURCE':8s}  SKILL")
+    for item in templates:
+        print(f"{item.id:36s}  {item.source:8s}  {item.skill or '-'}")
+    return 0
 
 
 # ---------------------------------------------------------------------------

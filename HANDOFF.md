@@ -624,3 +624,26 @@ before modifying runtime code.
   `metadata.claude_lane` without adding database schema.
 - Deterministic tests cover accepted JSON/cost evidence, timeout kill and
   cleanup, unrestricted changed files, invalid JSON, and portable branch naming.
+
+## Phase 4-5 Complete: Computer Use, Templates, Governance, Evaluation
+
+- Closed the remaining Phase 4 computer-use item by adding a Kanban workflow
+  skill over the existing cross-platform `computer_use` tool. No duplicate
+  desktop adapter or model tool was added. The shipped MCP catalog already
+  provides the structured-tool integration rail, so no speculative MCP entry
+  was created without a concrete server consumer.
+- Added a config-backed workflow-template registry discovered from real shipped
+  workflow skills, plus `hermes kanban templates [--json]`. Custom
+  `kanban.workflow_templates` entries override discovered templates without a
+  database migration or second workflow engine.
+- Multi-project governance is already supplied by isolated Kanban boards,
+  projects, tenants, dashboard board CRUD, and per-board dispatchers. Stronger
+  account/day spend limits and restrictive policy UI were intentionally not
+  added: the active product policy retains only turn/retry/runtime controls
+  needed to stop quota loops.
+- Added a deterministic router evaluation matrix for planner/worker/auditor
+  selection and provider-failure versus task-failure behavior. This completes
+  the roadmap without live provider calls.
+- Final targeted validation: external lane contracts `18 passed`; workflow
+  template/router/computer-use/MCP coverage `49 passed`; coding E2E `6 passed,
+  1 deselected`; `py_compile` and `git diff --check` passed.

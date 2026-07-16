@@ -47,6 +47,10 @@ Do not use for:
 
 ## Task Graph
 
+Use `workflow_template_id="kanban-orchestrated-coding"`. Assign durable role
+identity with `current_step_key="planner"`, `current_step_key="auditor"`,
+`current_step_key="worker"`, and `current_step_key="reviewer"` as appropriate.
+
 Create the smallest graph that can prove the plan before execution:
 
 1. Root task: stores the user's coding goal, constraints, budget ceiling, and final acceptance criteria.
