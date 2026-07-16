@@ -34,8 +34,8 @@ def test_skill_uses_kanban_and_structured_evidence() -> None:
         assert token in src
 
 
-def test_skill_allows_permission_bypass_but_keeps_loop_bounds() -> None:
+def test_skill_blocks_permission_bypass_and_partial_acceptance() -> None:
     src = _source().lower()
     assert "--dangerously-skip-permissions" in src
-    assert "launch with permission bypass" in src
-    assert "unbounded retry loop" in src
+    assert "permission-mode bypasspermissions" in src
+    assert "do not allow partial acceptance" in src

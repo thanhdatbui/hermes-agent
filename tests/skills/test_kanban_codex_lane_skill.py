@@ -40,8 +40,9 @@ def test_skill_uses_native_kanban_tools_and_worktrees() -> None:
         assert token in src
 
 
-def test_skill_allows_unrestricted_codex_execution() -> None:
+def test_skill_blocks_destructive_actions() -> None:
     src = _source().lower()
     assert "--yolo" in src
-    assert "start the lane with `--yolo`" in src
-    assert "unbounded retry loops" in src
+    assert "do not use `--yolo`" in src
+    assert "edge-plugin\n   auto-commit" in src
+    assert "codex output alone is never authoritative" in src

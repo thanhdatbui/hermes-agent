@@ -2808,18 +2808,24 @@ DEFAULT_CONFIG = {
         "orchestration": {
             "roles": {},
         },
-        # External implementation lanes. The plugin controls availability;
-        # these settings only select the executable and loop budget.
+        # Optional external implementation lanes. They are disabled unless an
+        # operator explicitly enables the corresponding edge plugin.
         "external_lanes": {
             "codex": {
+                "enabled": False,
                 "executable": "codex",
                 "mode": "exec",
                 "timeout_seconds": 300,
             },
             "claude": {
+                "enabled": False,
                 "executable": "claude",
                 "timeout_seconds": 300,
                 "max_turns": 10,
+                "allowed_tools": [
+                    "Read", "Edit", "Write", "Glob", "Grep",
+                    "Bash(git diff:*)", "Bash(git status:*)", "Bash(pytest:*)",
+                ],
             },
         },
         # Optional operator-defined templates merged over templates discovered
