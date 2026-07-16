@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kanban Research Swarm"
+  short_description: "Coordinate parallel researchers into one audited synthesis"
+  default_prompt: "Use -multi-worker-research-swarm to investigate this question with parallel evidence workers and an audited synthesis."

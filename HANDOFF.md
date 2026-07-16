@@ -560,3 +560,17 @@ before modifying runtime code.
   invariants.
 - Validation: `quick_validate.py` passed; skill contract tests passed (`4
   passed`); description length is 48 characters; `git diff --check` passed.
+
+## Active Work Update: Multi-Worker Research Swarm
+
+- Added `skills/research/kanban-multi-worker-research-swarm/SKILL.md`, the
+  final Phase 3 non-coding workflow: bounded parallel evidence lanes followed
+  by challenger, reviewer, and synthesizer/final-auditor stages.
+- The workflow uses stable claim IDs, non-overlapping scopes, source-diversity,
+  counterevidence, duplicate-lineage detection, explicit stopping conditions,
+  worker limits, and workflow budget bounds.
+- Added `tests/skills/test_kanban_multi_worker_research_swarm_skill.py`
+  covering metadata, section order, bounded independent lanes, false-consensus
+  prevention, and no second swarm engine/database.
+- Validation: `quick_validate.py` passed; skill contract tests passed (`4
+  passed`); description length is 55 characters; `git diff --check` passed.
