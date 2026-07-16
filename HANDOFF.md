@@ -574,3 +574,24 @@ before modifying runtime code.
   prevention, and no second swarm engine/database.
 - Validation: `quick_validate.py` passed; skill contract tests passed (`4
   passed`); description length is 55 characters; `git diff --check` passed.
+
+## Phase 3 Complete / Phase 4 Ready
+
+- Phase 3 non-coding workflow coverage is complete and committed in four
+  workflow-skill commits. The repository now has durable Kanban patterns for
+  repository research, Vietnam-China product comparison, document analysis,
+  and bounded multi-worker research swarms.
+- Next phase: **Phase 4 - External Lanes**. Start with an optional Codex CLI
+  input lane, then evaluate Claude Code or another CLI lane, OpenClaw/
+  computer-use adapters, and MCP catalog integrations only when a concrete
+  consumer justifies them.
+- Phase 4 constraints: keep external lanes optional and profile/config driven;
+  no provider-specific lifecycle logic in Kanban core, no new orchestrator DB or
+  workflow engine, no auto-commit/push/deploy, no live provider calls in normal
+  tests, and preserve workspace isolation plus durable evidence/handoff state.
+- First Phase 4 task: audit the existing terminal, profile/provider resolver,
+  MCP catalog, workspace, approval, and Kanban surfaces for the smallest
+  Codex-CLI input-lane adapter. Produce an implementation runsheet and stop for
+  approval before adding runtime code.
+- Resume validation from the last commit:
+  `556f6dec9 feat(skills): add multi-worker research swarm`.
