@@ -109,6 +109,30 @@ def test_uncommitted_diff_is_reconciled_without_commit_evidence(repo: Path, monk
     assert all(Path(path).is_file() for path in metadata["artifacts"])
 
 
+@pytest.mark.parametrize("commit_source", [False, True], ids=["dirty", "head-changed"])
+def test_source_change_during_lane_preserves_patch_without_reconciling(
+    repo: Path, monkeypatch: pytest.MonkeyPatch, commit_source: bool,
+) -> None:
+    _setup(monkeypatch, "uncommitted", repo.parent / "hermes-home")
+    original_wait = edge.process_registry.wait
+
+    def wait(*args, **kwargs):
+        (repo / "concurrent.txt").write_text("user change\n", encoding="utf-8")
+        if commit_source:
+            _git(repo, "add", "concurrent.txt")
+            _git(repo, "commit", "-qm", "concurrent source change")
+        return original_wait(*args, **kwargs)
+
+    monkeypatch.setattr(edge.process_registry, "wait", wait)
+    metadata = _call(repo)
+    assert metadata["result"] == "rejected"
+    assert "source workspace changed while the claude lane was running" in metadata["rejected_reason"].lower()
+    assert (repo / "allowed.txt").read_text(encoding="utf-8") == "base\n"
+    assert len(metadata["artifacts"]) == 2
+    assert any(Path(path).suffix == ".patch" and Path(path).is_file() for path in metadata["artifacts"])
+    assert not Path(metadata["worktree"]).exists()
+
+
 def test_timeout_kills_and_cleans(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     killed = _setup(monkeypatch, "timeout", repo.parent / "hermes-home")
     metadata = _call(repo)

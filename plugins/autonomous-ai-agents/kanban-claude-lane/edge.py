@@ -61,6 +61,17 @@ def _apply_patch(repo: Path, patch: str) -> subprocess.CompletedProcess[str]:
     )
 
 
+def _source_changed(repo: Path, base_sha: str) -> bool:
+    head = _git(repo, "rev-parse", "HEAD")
+    status = _git(repo, "status", "--porcelain")
+    return (
+        head.returncode != 0
+        or head.stdout.strip() != base_sha
+        or status.returncode != 0
+        or bool(status.stdout.strip())
+    )
+
+
 def _artifact_path(task_id: str, suffix: str) -> Path:
     root = get_hermes_home() / "artifacts" / "external-lanes" / _safe_task(task_id)
     root.mkdir(parents=True, exist_ok=True)
@@ -178,16 +189,27 @@ def run_claude_lane(args: dict[str, Any], task_id: str | None = None, **_: Any) 
                     if not patch.strip():
                         meta = _metadata(worktree=worktree, branch=branch, command=command, result="rejected", reason="Claude lane produced no changes", tests=test_evidence, parsed=parsed, artifacts=artifacts)
                     else:
-                        applied = _apply_patch(source, patch)
-                        if applied.returncode:
-                            meta = _metadata(worktree=worktree, branch=branch, command=command, result="rejected", reason="Could not reconcile Claude lane diff", tests=test_evidence, parsed=parsed, artifacts=artifacts)
+                        patch_path = _artifact_path(task_id, ".patch")
+                        patch_path.write_text(patch, encoding="utf-8")
+                        artifacts.append(str(patch_path))
+                        if _source_changed(source, base_sha):
+                            meta = _metadata(
+                                worktree=worktree, branch=branch, command=command,
+                                result="rejected",
+                                reason=(
+                                    "Source workspace changed while the Claude lane was running; "
+                                    "inspect the patch artifact instead of reconciling"
+                                ),
+                                tests=test_evidence, parsed=parsed, artifacts=artifacts,
+                            )
                         else:
-                            patch_path = _artifact_path(task_id, ".patch")
-                            patch_path.write_text(patch, encoding="utf-8")
-                            artifacts.append(str(patch_path))
-                            commits = _git(worktree, "rev-list", "--reverse", f"{base_sha}..HEAD").stdout.splitlines()
-                            meta = _metadata(worktree=worktree, branch=branch, command=command, result="accepted", tests=test_evidence, commits=commits, parsed=parsed, artifacts=artifacts)
-                            accepted = True
+                            applied = _apply_patch(source, patch)
+                            if applied.returncode:
+                                meta = _metadata(worktree=worktree, branch=branch, command=command, result="rejected", reason="Could not reconcile Claude lane diff", tests=test_evidence, parsed=parsed, artifacts=artifacts)
+                            else:
+                                commits = _git(worktree, "rev-list", "--reverse", f"{base_sha}..HEAD").stdout.splitlines()
+                                meta = _metadata(worktree=worktree, branch=branch, command=command, result="accepted", tests=test_evidence, commits=commits, parsed=parsed, artifacts=artifacts)
+                                accepted = True
         return json.dumps({"success": True, "metadata": {"claude_lane": meta}})
     finally:
         if created:

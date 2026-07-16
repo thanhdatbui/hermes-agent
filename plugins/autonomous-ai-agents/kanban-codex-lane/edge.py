@@ -100,6 +100,17 @@ def _apply_patch(repo: Path, patch: str) -> subprocess.CompletedProcess[str]:
     )
 
 
+def _source_changed(repo: Path, base_sha: str) -> bool:
+    head = _git(repo, "rev-parse", "HEAD")
+    status = _git(repo, "status", "--porcelain")
+    return (
+        head.returncode != 0
+        or head.stdout.strip() != base_sha
+        or status.returncode != 0
+        or bool(status.stdout.strip())
+    )
+
+
 def _artifact_path(task_id: str, suffix: str) -> Path:
     root = get_hermes_home() / "artifacts" / "external-lanes" / _safe_task_id(task_id)
     root.mkdir(parents=True, exist_ok=True)
@@ -219,24 +230,35 @@ def run_codex_lane(args: dict[str, Any], task_id: str | None = None, **_: Any) -
                             tests=test_evidence, artifacts=artifacts,
                         )
                     else:
-                        applied = _apply_patch(source, patch)
-                        if applied.returncode:
+                        patch_path = _artifact_path(task_id, ".patch")
+                        patch_path.write_text(patch, encoding="utf-8")
+                        artifacts.append(str(patch_path))
+                        if _source_changed(source, base_sha):
                             metadata = _metadata(
                                 mode=mode, worktree=worktree, branch=branch, command=command,
-                                result="rejected", reason="Could not reconcile Codex lane diff",
+                                result="rejected",
+                                reason=(
+                                    "Source workspace changed while the Codex lane was running; "
+                                    "inspect the patch artifact instead of reconciling"
+                                ),
                                 tests=test_evidence, artifacts=artifacts,
                             )
                         else:
-                            patch_path = _artifact_path(task_id, ".patch")
-                            patch_path.write_text(patch, encoding="utf-8")
-                            artifacts.append(str(patch_path))
-                            commits = _git(worktree, "rev-list", "--reverse", f"{base_sha}..HEAD").stdout.splitlines()
-                            metadata = _metadata(
-                                mode=mode, worktree=worktree, branch=branch, command=command,
-                                result="accepted", commits=commits, tests=test_evidence,
-                                artifacts=artifacts,
-                            )
-                            accepted = True
+                            applied = _apply_patch(source, patch)
+                            if applied.returncode:
+                                metadata = _metadata(
+                                    mode=mode, worktree=worktree, branch=branch, command=command,
+                                    result="rejected", reason="Could not reconcile Codex lane diff",
+                                    tests=test_evidence, artifacts=artifacts,
+                                )
+                            else:
+                                commits = _git(worktree, "rev-list", "--reverse", f"{base_sha}..HEAD").stdout.splitlines()
+                                metadata = _metadata(
+                                    mode=mode, worktree=worktree, branch=branch, command=command,
+                                    result="accepted", commits=commits, tests=test_evidence,
+                                    artifacts=artifacts,
+                                )
+                                accepted = True
         return json.dumps({"success": True, "metadata": {"codex_lane": metadata}})
     finally:
         if created:

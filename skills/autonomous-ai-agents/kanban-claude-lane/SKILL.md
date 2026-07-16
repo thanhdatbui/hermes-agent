@@ -43,13 +43,16 @@ bounded turn count.
 1. Resolve an isolated Hermes worktree; never point Claude at a shared dirty checkout.
 2. Give Claude scope, forbidden actions, acceptance criteria, and tests. Claude must not mutate Kanban.
 3. Launch the bounded lane. Never pass `--dangerously-skip-permissions`, `--permission-mode bypassPermissions`, push, or deploy commands.
-4. Hermes parses the JSON result for usage and cost, then independently checks every changed path and test command.
-5. An accepted patch is applied to the Hermes source workspace as an
+4. Keep the Hermes source workspace at the starting `HEAD` and clean until the
+   lane returns. If it changes while the lane is running, reject reconciliation
+   and inspect the durable patch artifact instead of merging two timelines.
+5. Hermes parses the JSON result for usage and cost, then independently checks every changed path and test command.
+6. An accepted patch is applied to the Hermes source workspace as an
    uncommitted diff. Review it and commit only when the task authorizes commits;
    otherwise block or hand it off with artifact references.
-6. Never relaunch the lane while that workspace is dirty. Resolve the existing
+7. Never relaunch the lane while that workspace is dirty. Resolve the existing
    diff instead of retrying, so repeated claims cannot consume quota in a loop.
-7. Complete only an accepted lane with Hermes-owned test evidence. Record
+8. Complete only an accepted lane with Hermes-owned test evidence. Record
    rejected or timed-out lanes instead of retrying blindly.
 
 ## Pitfalls
@@ -58,6 +61,7 @@ bounded turn count.
 - Do not widen `allowed_tools` with wildcard shell, push, or deployment capability.
 - Do not expose credentials or copy Claude auth files into artifacts.
 - Do not allow partial acceptance; create a new bounded repair task instead.
+- Do not edit or advance the source workspace while the lane is running.
 - Do not mistake `accepted` for a committed source workspace.
 - Do not use a permission-bypass setting, even when interactive Claude guides suggest it.
 

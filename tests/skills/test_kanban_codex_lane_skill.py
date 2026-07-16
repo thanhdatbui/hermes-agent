@@ -54,3 +54,5 @@ def test_skill_resolves_accepted_diff_before_retry() -> None:
     assert "uncommitted diff" in src
     assert "never relaunch the lane while that workspace is dirty" in src
     assert "resolve the existing\n   diff instead of retrying" in src
+    assert "source workspace at the starting `head` and clean" in src
+    assert "inspect the durable patch artifact instead of merging two timelines" in src

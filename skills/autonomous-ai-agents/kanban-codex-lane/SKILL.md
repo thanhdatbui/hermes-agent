@@ -49,15 +49,18 @@ tool creates a portable temporary worktree, starts Codex through
    verification commands in the Codex prompt. Codex must not mutate Kanban.
 3. Start the bounded lane. Do not use `--yolo`, `--full-auto`, edge-plugin
    auto-commit, auto-push, or deployment commands.
-4. Review `git diff`, reject forbidden paths and unrelated changes, then run
+4. Keep the Hermes source workspace at the starting `HEAD` and clean until the
+   lane returns. If it changes while the lane is running, reject reconciliation
+   and inspect the durable patch artifact instead of merging two timelines.
+5. Review `git diff`, reject forbidden paths and unrelated changes, then run
    required tests independently as Hermes.
-5. An accepted patch is applied to the Hermes source workspace as an
+6. An accepted patch is applied to the Hermes source workspace as an
    uncommitted diff. Review that source diff, then commit it only when the task
    authorizes commits; otherwise block or hand it off with artifact references.
-6. Never relaunch the lane while that workspace is dirty. Resolve the existing
+7. Never relaunch the lane while that workspace is dirty. Resolve the existing
    diff instead of retrying, so the same accepted output cannot consume the
    retry budget in a loop.
-7. Record `used`, mode, worktree, branch, command, result, commits, rejection
+8. Record `used`, mode, worktree, branch, command, result, commits, rejection
    reason, tests, and artifacts under `metadata.codex_lane`, then complete or
    block the Kanban task from Hermes. Codex output alone is never authoritative
    and does not constitute task completion.
@@ -68,6 +71,7 @@ tool creates a portable temporary worktree, starts Codex through
 - Do not pass provider, gateway, GitHub, or dashboard credentials to the child.
 - Do not accept Codex-reported tests without rerunning the canonical command.
 - Do not retain a temporary worktree without recording it as an artifact.
+- Do not edit or advance the source workspace while the lane is running.
 - Do not mistake `accepted` for a committed source workspace.
 - Do not turn a provider/CLI failure into a blind model fallback.
 

@@ -703,3 +703,25 @@ before modifying runtime code.
   orchestration, MCP, template, router, computer-use, website generator, and
   skill extraction regression set `123 passed, 1 deselected`; `py_compile` and
   `git diff --check` passed.
+
+## External Lane Concurrent-Source Guard Complete
+
+- Closed the reconciliation race between the initial clean-workspace check and
+  the final source `git apply`. Both lanes now recheck that the source remains
+  clean and at the captured `base_sha` immediately before applying the lane
+  patch.
+- If another process dirties the source or advances its `HEAD` while Codex or
+  Claude is running, the lane returns `rejected` and does not merge the two
+  timelines. The binary patch is written to durable artifacts before this
+  check, so the worker can inspect or hand it off without losing lane output.
+- Parameterized E2E contracts cover both concurrent uncommitted edits and a
+  concurrent clean commit for each provider. They require the source's original
+  file to remain unchanged, the temporary worktree to be removed, and the patch
+  artifact to survive.
+- Lane skills and generated docs now reserve the source workspace at its
+  starting `HEAD` while a lane runs and direct workers to the patch artifact on
+  conflict.
+- Validation: focused lane and skill contracts `28 passed`; full lane,
+  orchestration, MCP, template, router, computer-use, website generator, and
+  skill extraction regression set `127 passed, 1 deselected`; `py_compile` and
+  `git diff --check` passed.
