@@ -546,3 +546,17 @@ before modifying runtime code.
   invariants.
 - Validation: `quick_validate.py` passed; skill contract tests passed (`4
   passed`); description length is 59 characters; `git diff --check` passed.
+
+## Active Work Update: Document Analysis And Reporting
+
+- Added `skills/research/kanban-document-analysis-report/SKILL.md`, a
+  Kanban-first workflow for text-native, scanned, tabular, and mixed document
+  analysis.
+- The workflow preserves document/version/page citations, OCR quality,
+  confidence, contradictions, derived values, confidentiality boundaries, and
+  unresolved questions through extraction, review, and final-auditor lanes.
+- Added `tests/skills/test_kanban_document_analysis_report_skill.py` covering
+  frontmatter, section order, traceable evidence, and confidentiality/read-only
+  invariants.
+- Validation: `quick_validate.py` passed; skill contract tests passed (`4
+  passed`); description length is 48 characters; `git diff --check` passed.

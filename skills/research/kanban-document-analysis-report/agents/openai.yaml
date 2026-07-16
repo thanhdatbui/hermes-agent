@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kanban Document Analysis Report"
+  short_description: "Analyze documents and produce auditable reports"
+  default_prompt: "Use -document-analysis-report to analyze documents and produce an evidence-backed report."
