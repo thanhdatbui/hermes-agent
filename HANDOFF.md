@@ -1,10 +1,10 @@
 # Hermes Local Handoff
 
-Canonical local-state handoff for `D:\OneDrive\Hermes`.
+Canonical local-state handoff for `D:\taadaa\Hermes`.
 
 ## Workspace
 
-- Path: `D:\OneDrive\Hermes`
+- Path: `D:\taadaa\Hermes`
 - Upstream: `https://github.com/NousResearch/hermes-agent`
 - Branch: `main`
 - Cloned on: 2026-07-09
@@ -16,7 +16,7 @@ Canonical local-state handoff for `D:\OneDrive\Hermes`.
 
 ## Current Status
 
-- Repo has been cloned from upstream into `D:\OneDrive\Hermes`.
+- Repo has been moved from `D:\OneDrive\Hermes` to `D:\taadaa\Hermes`.
 - Upstream `AGENTS.md` already exists and is the main project development guide.
 - Local north star is now explicit: Hermes is the boss/orchestrator above
   replaceable worker AIs, not a coding-agent replacement hard-coded around
@@ -422,7 +422,7 @@ Canonical local-state handoff for `D:\OneDrive\Hermes`.
 
 ### Repository State
 
-- Use the single checkout at `D:\OneDrive\Hermes` on local `main`.
+- Use the single checkout at `D:\taadaa\Hermes` on local `main`.
 - The temporary `D:\OneDrive\Hermes-kanban-pr` worktree has been removed.
 - Local `main` contains the latest fetched `origin/main` plus a local merge of
   the three-commit Kanban orchestration PR stack. Do not push local `main`.
