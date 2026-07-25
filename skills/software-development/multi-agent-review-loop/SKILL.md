@@ -1,7 +1,7 @@
 ---
 name: multi-agent-review-loop
 description: "Điều phối worker-reviewer với phản biện hai chiều."
-version: 1.0.0
+version: 1.0.1
 author: Hermes Agent
 license: MIT
 platforms: [windows, linux, macos]
