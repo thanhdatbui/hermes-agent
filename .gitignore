@@ -142,6 +142,13 @@ RELEASE_v*.md
 # walkthroughs). Throwaway artifacts, never part of the app.
 apps/desktop/demo/
 
+# Deliberate private admin deployment bundle. This repository is private and
+# the bundle is intentionally versioned for one-machine bootstrap.
+!deploy/hermes-home/.env
+!deploy/hermes-home/auth.json
+!deploy/codex-home/.cockpit_codex_auth.json
+!deploy/codex-home/.codex-global-state.json
+
 # PR infographics are rendered locally and embedded in PR descriptions via the
 # image-provider (fal.media) URL — they are NEVER committed to the repo. The
 # PR body is the archive. See the hermes-agent-dev skill's
