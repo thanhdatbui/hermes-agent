@@ -144,6 +144,8 @@ apps/desktop/demo/
 
 # Deliberate private admin deployment bundle. This repository is private and
 # the bundle is intentionally versioned for one-machine bootstrap.
+# Skills are synced from the repository root and must not be snapshotted here.
+deploy/hermes-home/skills/
 !deploy/hermes-home/.env
 !deploy/hermes-home/auth.json
 !deploy/codex-home/.cockpit_codex_auth.json
