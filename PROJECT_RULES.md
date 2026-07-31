@@ -40,9 +40,11 @@ or final reporting? If not, it is probably not on the main path.
 ## Required Read Order
 
 1. `AGENTS.md`
-2. `HANDOFF.md`
-3. `PROJECT_STRUCTURE.md` for large, cross-file, risky, or architecture-sensitive work
-4. The files directly involved in the task
+2. The files directly involved in the task
+3. `HANDOFF.md` only when current repository state, blockers, or explicit
+   continuation context matters
+4. `PROJECT_STRUCTURE.md` only for large, cross-file, risky, or
+   architecture-sensitive work
 
 ## Default Execution Loop
 
