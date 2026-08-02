@@ -1,8 +1,8 @@
 model:
   default: gpt-5.6-luna
-  provider: custom:9router
-  base_url: http://localhost:20128/v1
-  api_mode: chat_completions
+  provider: custom:cockpit
+  base_url: http://localhost:60818/v1
+  api_mode: codex_responses
 agent:
   max_turns: 60
   verbose: false
@@ -151,25 +151,25 @@ platform_toolsets:
   google_chat:
     - hermes-google_chat
 custom_providers:
-  - name: 9router
-    base_url: http://localhost:20128/v1
-    key_env: OMNIROUTE_API_KEY
+  - name: cockpit
+    base_url: http://localhost:60818/v1
+    key_env: COCKPIT_API_KEY
     model: gpt-5.6-luna
-    api_mode: chat_completions
+    api_mode: codex_responses
     discover_models: false
     models:
       gpt-5.6-luna:
-        context_length: 1048576
+        context_length: 256000
       gpt-5.6-sol:
-        context_length: 1048576
+        context_length: 256000
       gpt-5.6-terra:
-        context_length: 1048576
+        context_length: 256000
       gpt-5.5:
-        context_length: 1048576
+        context_length: 256000
       gpt-5.4:
-        context_length: 1048576
+        context_length: 256000
       gpt-5.2:
-        context_length: 1048576
+        context_length: 256000
       API-key:
         context_length: 1048576
       gemini-2.5-pro:

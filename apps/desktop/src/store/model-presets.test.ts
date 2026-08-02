@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { $modelPresets, applyModelPreset, getModelPreset, modelPresetKey, setModelPreset } from './model-presets'
+import { $currentFastMode, $currentReasoningEffort, setCurrentFastMode, setCurrentReasoningEffort } from './session'
 
 describe('model presets', () => {
   beforeEach(() => $modelPresets.set({}))
@@ -35,7 +36,7 @@ describe('model presets', () => {
     expect(calls).toEqual([{ method: 'config.set', params: { key: 'reasoning', session_id: 's1', value: 'high' } }])
   })
 
-  it('no-ops without a session so selecting a model cannot mutate global config', async () => {
+  it('updates the composer without a session but cannot mutate global config', async () => {
     const calls: { method: string; params?: Record<string, unknown> }[] = []
 
     const request = async <T>(method: string, params?: Record<string, unknown>) => {
@@ -44,8 +45,12 @@ describe('model presets', () => {
       return {} as T
     }
 
+    setCurrentReasoningEffort('medium')
+    setCurrentFastMode(false)
     await applyModelPreset({ effort: 'high', fast: true }, { failMessage: 'x', request, sessionId: null })
 
+    expect($currentReasoningEffort.get()).toBe('high')
+    expect($currentFastMode.get()).toBe(true)
     expect(calls).toEqual([])
   })
 })

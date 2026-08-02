@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 
@@ -63,3 +64,24 @@ def test_deployment_docs_and_ignore_define_one_skill_source():
     assert "repository root `skills/` directory is the sole canonical" in readme
     assert "sync-skills.ps1" in readme
     assert "deploy/hermes-home/skills/" in gitignore
+
+
+def test_deployment_uses_cockpit_route_and_gpt_256k_context_budget():
+    config = read_deploy_file("hermes-home/config.yaml")
+
+    assert "provider: custom:cockpit" in config
+    assert "name: cockpit" in config
+    assert "base_url: http://localhost:60818/v1" in config
+    assert "key_env: COCKPIT_API_KEY" in config
+    assert "api_mode: codex_responses" in config
+    assert "api_mode: chat_completions" not in config
+    assert "localhost:20128" not in config
+    assert "custom:9router" not in config
+    assert "name: 9router" not in config
+
+    for model in ("gpt-5.6-luna", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.5", "gpt-5.4", "gpt-5.2"):
+        assert re.search(
+            rf"^      {re.escape(model)}:\r?\n        context_length: 256000$",
+            config,
+            re.MULTILINE,
+        )

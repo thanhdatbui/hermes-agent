@@ -51,25 +51,29 @@ export function setModelPreset(provider: string, model: string, patch: ModelPres
   persistString(STORAGE_KEY, JSON.stringify(next))
 }
 
-/** Push a model's preset onto the active session (optimistic + gateway).
- *  `undefined` skips that dimension; values are capability-gated upstream.
- *  No-ops without a session — the gateway's `config.set` reasoning/fast fall
- *  back to persistent (global/profile) config when none matches, so selecting
- *  a model must not reach it (else it rewrites `agent.*`, defaults included). */
+/** Push a model's preset onto the composer and active session (optimistic +
+ *  gateway). `undefined` skips that dimension; values are capability-gated
+ *  upstream. Without a session, only the composer state is updated: the
+ *  gateway's `config.set` reasoning/fast would fall back to persistent
+ *  (global/profile) config and rewrite `agent.*`. */
 export async function applyModelPreset(
   { effort, fast }: ModelPreset,
   ctx: { failMessage: string; request: RequestGateway; sessionId: null | string }
 ): Promise<void> {
-  if (!ctx.sessionId) {
-    return
-  }
-
+  // A new-chat draft has no gateway session yet, but the composer still needs
+  // to reflect the selected model's preset. Keep this optimistic UI update
+  // independent from the session-scoped gateway writes below; otherwise the
+  // picker can show e.g. `Max` while the status pill remains at `Med`.
   if (effort !== undefined) {
     setCurrentReasoningEffort(effort)
   }
 
   if (fast !== undefined) {
     setCurrentFastMode(fast)
+  }
+
+  if (!ctx.sessionId) {
+    return
   }
 
   try {
