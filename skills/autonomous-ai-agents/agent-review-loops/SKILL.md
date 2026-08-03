@@ -195,3 +195,5 @@ Task `Enabled` không đủ chứng minh watcher đang chạy. Phải verify sch
 - **Soft reboot recovery**: 3× fail → `adb reboot` + 120s wait + 60s boot + wake + swipe.
 - **Worker conflict Codex**: dùng `write_file` hoặc dispatch single leaf + kill worker cũ.
 - **Lock takeover chỉ khi eligibility khớp chính xác central gate**.
+
+- Sync: skill files live in git repo via junction; commit+push via deploy/sync-orchestration-skills.ps1
