@@ -165,3 +165,5 @@ Skill phải đồng bộ vào `D:\Taadaa\hermes\skills\`.
 - Session 2026-08-03: Hermes dispatch Codex cho task SIMPLE (avatar verify, usb popup) thay vì tự sửa — lãng phí. Task SIMPLE → Hermes tự sửa, chỉ audit review gọi ra.
 - Claude/OpenCode KHÔNG BAO GIỜ implement — chỉ review/audit.
 - Vòng lặp fail 2+ vòng cùng findings → chuyển Codex, không tự cày tiếp.
+
+- Auto-sync: cron 'sync-hermes-skills-to-git' tự commit+push mỗi 30 phút (no_agent, silent khi không đổi)
