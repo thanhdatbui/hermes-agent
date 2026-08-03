@@ -147,11 +147,14 @@ Serial máy phải resolve từ workbook `D:\OneDrive\codex_gmail_debug\tiktok-l
 
 Thay đổi `D:\Taadaa\AGENTS.md`/custom-agent TOML/global Codex config/OneDrive bundle/2+ consumer AGENTS.md = policy change → cần independent read-only review (prefer subagent + `claude-final-audit` khi có Claude). Gate này không authorize live actions.
 
-## Sync rule
+## Sync rule (git auto-sync — thay OneDrive 2026-08-03)
 
-Skill phải đồng bộ vào `D:\Taadaa\hermes\skills\`.
-
-**Pitfall 2026-08-03:** `D:\Taadaa` KHÔNG phải git repo → cơ chế `hermes-skill-distribution` (export → git commit → push → máy khác pull) **không áp dụng** cho folder cha. Cây skill codex/agent dùng chung nằm ở `D:\OneDrive\Taadaa_brain\Resources\` (playbook `AI_CODING_WORKFLOW_PLAYBOOK.md`, `GithubRepos\agent-skills-main\` — repo skill OpenCode/agents). Muốn rule đi được máy khác: sync qua OneDrive (copy `D:\Taadaa\hermes\skills\` → OneDrive, hoặc chuyển hẳn sang git). Khi sửa skill: cập nhật CẢ profile-local (`C:\Users\Kibe\AppData\Local\hermes\skills\`) LẪN bản sync (`D:\Taadaa\hermes\skills\`) — 2 bản dễ lệch version (vd agent-review-loops local v1.2.0 vs sync v1.1.0).
+- 2 skill điều phối (`agent-review-loops`, `hermes-orchestration-dispatcher`) **junction tới `D:\Taadaa\Hermes\skills\`** (git repo `thanhdatbui/hermes-agent.git`) — sửa local = git thấy ngay, không copy tay.
+- **Cron `sync-hermes-skills-to-git`** (mỗi 30 phút, no_agent, silent khi không đổi) tự commit+push lên GitHub.
+- Sửa skill xong: đợi cron (≤30 phút) HOẶC chạy ngay `python C:\Users\Kibe\AppData\Local\hermes\scripts\sync-hermes-skills.py`.
+- Máy mới: đọc `D:\Taadaa\Hermes\deploy\SKILL_SYNC_WORKFLOW.md` (junction + cron setup) hoặc copy skill từ git repo vào `AppData\Local\hermes\skills\` + `/reset`.
+- KHÔNG dùng OneDrive cho skill nữa. Codex dùng `D:\OneDrive\CodexConfig\setup-codex.ps1`; `D:\Taadaa\AGENTS.md` sửa xong copy sang `workspace-AGENTS.md`.
+- Pitfall: `FETCH_HEAD` bị lỗi "Permission denied" nếu bị ghi đè tay (echo >) — xóa file `.git/FETCH_HEAD` là git tự tạo lại. Cron job có thể dừng sau 1 lần chạy dù repeat=forever — kiểm tra `cronjob list` state, re-enable nếu completed.
 
 ## Pipeline Fallback
 
@@ -165,5 +168,3 @@ Skill phải đồng bộ vào `D:\Taadaa\hermes\skills\`.
 - Session 2026-08-03: Hermes dispatch Codex cho task SIMPLE (avatar verify, usb popup) thay vì tự sửa — lãng phí. Task SIMPLE → Hermes tự sửa, chỉ audit review gọi ra.
 - Claude/OpenCode KHÔNG BAO GIỜ implement — chỉ review/audit.
 - Vòng lặp fail 2+ vòng cùng findings → chuyển Codex, không tự cày tiếp.
-
-- Auto-sync: cron 'sync-hermes-skills-to-git' tự commit+push mỗi 30 phút (no_agent, silent khi không đổi)
