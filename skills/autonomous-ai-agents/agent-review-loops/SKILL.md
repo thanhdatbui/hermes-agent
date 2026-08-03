@@ -199,3 +199,5 @@ Task `Enabled` không đủ chứng minh watcher đang chạy. Phải verify sch
 - **Lock takeover chỉ khi eligibility khớp chính xác central gate**.
 
 - Sync: skill files live in git repo via junction; commit+push via deploy/sync-orchestration-skills.ps1
+
+- verify: 20260803-182038
