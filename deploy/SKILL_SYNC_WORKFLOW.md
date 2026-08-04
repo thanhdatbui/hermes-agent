@@ -49,6 +49,14 @@ Hoặc trong Hermes chat, ra lệnh:
 
 `/reset` hoặc mở session mới để Hermes load skill qua junction.
 
+## Khởi động cùng Hermes (không cần gateway nền)
+
+Cron job của Hermes chạy **khi Hermes app mở** — không cần cài gateway/Scheduled Task.
+
+- **KHÔNG cài** `hermes gateway install` (nó tạo auto-start nền 24/7 + Startup folder — không cần thiết).
+- Chỉ cần: mở Hermes app là cron 30 phút tự chạy. Không mở app = không sync (tiết kiệm tài nguyên).
+- Nếu lỡ cài gateway rồi: `hermes gateway uninstall` để gỡ, trả Startup folder về sạch.
+
 ## Hoạt động
 
 - Sửa skill ở local (bất kỳ máy nào) → junction → git working tree thấy ngay
