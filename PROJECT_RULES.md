@@ -98,3 +98,11 @@ Make at most two meaningful attempts against the same error signature. If the sa
 ## Handoff Rule
 
 Update `HANDOFF.md` when local state changes in a way the next session needs to know: setup status, blocker, artifact path, validated command, chosen provider/backend, or an active work boundary.
+
+## Merge / Cleanup Rule (bắt buộc, 2026-08-08)
+
+Khi thực hiện merge nhánh về main hoặc dọn nhánh/tree quan trọng:
+1. Lên PLAN bằng subagent TRƯỚC khi merge (không merge mù).
+2. Worker thực thi merge/resolve.
+3. Chạy AUDIT lại sau khi worker xong — lặp tới khi audit APPROVED mới xoá nhánh/tree.
+4. Xoá nhánh chỉ sau bằng chứng absorbed/superseded (merge-tree/reflog/fsck).
