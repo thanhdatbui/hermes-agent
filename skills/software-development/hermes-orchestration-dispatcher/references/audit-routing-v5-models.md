@@ -1,3 +1,21 @@
+# Audit routing — model matrix đã test + CHỐT v6 (2026-08-09)
+
+**User chốt 2026-08-09 (sau Sol/high vs AG Claude/high cross-exam): policy v6 ĐÃ PHỦ toàn cây D:\Taadaa.** Chuỗi active:
+
+```text
+PLANNER:     cx/gpt-5.6-terra/HIGH (thường) | cx/gpt-5.6-sol/HIGH (khó)
+             → ag/claude-opus-4-6-thinking/HIGH → opencode-audit
+AUDIT:       ag/claude-opus-4-6-thinking/HIGH (1 AG route/task)
+             → cx/gpt-5.6-terra-review/HIGH | cx/gpt-5.6-sol-review/HIGH
+             → opencode-audit → AUDIT_ALL_ROUTES_FAILED
+```
+
+CẤM: `gpt-5.6-luna` planner/auditor (worker), `cmc/*` (không quota), `opencode-free`/`oc/deepseek-v4-flash-free` (DeepSeek Flash = worker), Gemini, Command Code.
+Combo `opencode-audit` (9Router, tạo 2026-08-09): `oc/nemotron-3-ultra-free → oc/big-pickle → oc/longcat-2.0-free → oc/ling-3.0-tiny-free`.
+Probe 2026-08-09: `cx/*-review` + `gpt-5.6-luna` ROUTE_OK; `oc/nemotron-3-ultra-free`/`big-pickle`/`longcat-2.0-free` 200; `oc/north-mini-code-free`/`hy3-free`/`glm-5.2`/`kimi-k3`/`qwen3.8-max` 401; `oc/ling-3.0-tiny-free` 503 transient.
+
+---
+
 # Audit routing v5 — model matrix đã test + CHỐT (2026-08-07 → 2026-08-08)
 
 User chốt hướng đổi policy audit (`D:\Taadaa\AGENTS.md` "Active Audit Routing Policy v4" → v5).

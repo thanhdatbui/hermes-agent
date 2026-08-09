@@ -67,17 +67,17 @@ Khi cần planner/auditor từ Hermes mà model không phải deepseek-cha: gọ
 
 ## OpenCode Free Audit Layer (2026-08-06 — đã set up, ĐỨNG TRƯỚC Gemini)
 
-User yêu cầu: **lớp audit OpenCode model free nằm TRƯỚC Gemini**. Audit chain đã chốt (đã đổi 2026-08-08 — policy v5, gemini removed):
-`AG Claude (invoke-ag-audit.ps1, chính) → OpenCode free → Command Code → fresh Codex (Sol/Terra)`.
+User yêu cầu: **lớp audit OpenCode nằm sau GPT review, trước fail-closed**. Audit chain ĐÃ CHỐT v6 (2026-08-09, user chốt sau Sol vs AG cross-exam):
+`AG Claude (invoke-ag-audit.ps1, chính) → GPT review (Terra/Sol) → opencode-audit combo → AUDIT_ALL_ROUTES_FAILED`. Gemini/Command Code/`cmc/*` loại hẳn.
 
 **Cách chạy (wrapper đã test OK):**
 ```
 powershell -NoProfile -ExecutionPolicy Bypass -File D:\Taadaa\tools\invoke-opencode-audit.ps1 \
   -RepoRoot "D:\Taadaa" -Prompt "<audit prompt>" -OutputDirectory "D:\Taadaa\reports\opencode-audit"
 ```
-- **Model cascade (2026-08-06, user chốt — mạnh → yếu, hết quota mới qua model kế):**
-  `opencode/nemotron-3-ultra-free` → `opencode/ling-3.0-flash-free` → `opencode/longcat-2.0-free` → `opencode/north-mini-code-free`.
-  **KHÔNG dùng `opencode/deepseek-v4-flash-free`** — user chạy DeepSeek ở mọi nơi, gọi thêm deepseek của OpenCode là trùng (user chỉnh thẳng: "kiểm tra opencode có những model nào chưa gì đã lấy deepseek ra chạy"). Có thể ép 1 model bằng `-Model <id>` (phải nằm trong cascade).
+- **Model cascade (2026-08-09, user chốt — combo `opencode-audit` trong 9Router):**
+  `oc/nemotron-3-ultra-free` → `oc/big-pickle` → `oc/longcat-2.0-free` → `oc/ling-3.0-tiny-free`.
+  **KHÔNG dùng `oc/deepseek-v4-flash-free`/`opencode-free`** — resolve thành DeepSeek Flash = worker Hermes (user chỉnh 2026-08-09). Có thể ép 1 model bằng `-Model <id>` (phải nằm trong combo).
 - **Hồ sơ model free đã test (2026-08-06):** `nemotron-3-ultra-free` = mạnh nhất (NVIDIA) nhưng **hay 502 `ResourceExhausted (32/32)`** khi chạy agent+json — cascade xuống model kế (thử lại lần sau thường OK vì limit reset); `ling-3.0-flash-free` = ổn định, verdict thật; `longcat-2.0-free`/`north-mini-code-free` = verdict thật; **loại:** `mimo-v2.5-free` (trả template verdict giả, chỉ echo format — không audit thật), `laguna-s-2.1-free` (không output), `freemodel/gpt-5.6-*` (401 Insufficient balance — cần key riêng). **Rule: model free hay đổi — trước khi thêm model mới vào cascade phải smoke-test thật** (`opencode run --dir <repo> --agent taadaa-review --format json --model <m> "Reply VERDICT: APPROVE"`), đừng tin tên model.
 - **Auto-update model free (user hỏi 2026-08-06):** wrapper đọc `opencode models` LIVE mỗi lần chạy (filter `opencode/.+-free`) nhưng cascade pin model cố định → model mới không tự vào. **Khuyến nghị: tự vào lấy** (`opencode models` + smoke-test) thay vì auto-đổi cascade — model free hay đổi, auto chọn nhầm model dở (như mimo template-giả). Không làm cron auto-sync trừ khi user yêu cầu.
 - Agent: `taadaa-review` (đã có ở `~/.config/opencode/agents/taadaa-review.md`).
@@ -145,7 +145,7 @@ Khi dispatch Codex **implementer** và model mặc định fail/treo/không ghi 
 
 Theo `D:\Taadaa\AGENTS.md` (audit order Claude → OpenCode → Codex fallback; wrapper `taadaa-review` + `invoke-opencode-audit.ps1`):
 
-- Khi Codex implementer + Claude review đều fail/treo/hết quota → dùng **model free của OpenCode** làm audit/review (read-only): cascade `nemotron-3-ultra-free → ling-3.0-flash-free → longcat-2.0-free → north-mini-code-free` (KHÔNG deepseek — tránh trùng, xem OpenCode Free Audit Layer).
+- Khi Codex implementer + Claude review đều fail/treo/hết quota → dùng combo **`opencode-audit`** của 9Router làm audit/review (read-only): `oc/nemotron-3-ultra-free → oc/big-pickle → oc/longcat-2.0-free → oc/ling-3.0-tiny-free` (KHÔNG deepseek — tránh trùng worker, xem OpenCode Free Audit Layer).
 - Chỉ thay vai trò **audit/review**, không thay implementer.
 - Invocation: `opencode run --agent plan --auto --model <free-model> '<prompt>'` (hoặc wrapper `D:\Taadaa\tools\...invoke-opencode-audit.ps1` khi có), read-only, verdict `APPROVED | MINOR_FIXES | REJECT` dòng đầu.
 - Smoke-test trước: `opencode run --model <free-model> 'Respond with exactly: OPENCODE_FALLBACK_READY'`.

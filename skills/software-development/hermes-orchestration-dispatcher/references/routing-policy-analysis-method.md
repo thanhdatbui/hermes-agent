@@ -33,3 +33,29 @@ Trigger: user yêu cầu "đọc config, policy và live catalog để đề xu�
 - Chống fallback loop: route đã fail trong task không bao giờ quay lại; mỗi task đúng 1 lần AG; 2 chu kỳ REJECT cùng invariant → design/impact audit, không patch chắp vá.
 - Claude Pro cá nhân: CHỈ khi AG + GPT/OpenCode fallback đều chết hoặc mâu thuẫn (APPROVED vs REJECT) — đúng 1 gate quyết định, không tự bật.
 - Command Code: bỏ khỏi active route; Gemini: cấm.
+
+## Chốt v6 2026-08-09 (user duyệt sau Sol vs AG cross-exam) — ĐÃ PHỦ toàn cây D:\Taadaa
+
+**Chuỗi chốt (đã ghi vào mọi AGENTS.md dưới D:\Taadaa):**
+
+```text
+PLANNER (read-only, 1 call):
+  case thường → cx/gpt-5.6-terra/HIGH
+  case khó    → cx/gpt-5.6-sol/HIGH
+  fallback    → ag/claude-opus-4-6-thinking/HIGH → opencode-audit combo
+
+AUDIT THƯỜNG:
+  ag/claude-opus-4-6-thinking/HIGH  (đúng 1 AG route/account mỗi task)
+  AG hết quota → cx/gpt-5.6-terra-review/HIGH (thường) | cx/gpt-5.6-sol-review/HIGH (khó)
+              → opencode-audit combo
+              → AUDIT_ALL_ROUTES_FAILED
+
+AUTO-RECOVERY (AG fail giữa chừng): terra-review/sol-review → opencode-audit → AUDIT_ALL_ROUTES_FAILED
+```
+
+- **CẤM làm planner/auditor**: `gpt-5.6-luna` (worker, thiếu trình — chỉ là worker), `cmc/*` (KHÔNG có quota — user xác nhận 2026-08-09), `opencode-free`/`oc/deepseek-v4-flash-free` (resolve thành DeepSeek Flash = worker Hermes), Gemini, Command Code.
+- **Combo `opencode-audit` đã tạo trong 9Router** (combos table, 2026-08-09): `oc/nemotron-3-ultra-free` → `oc/big-pickle` → `oc/longcat-2.0-free` → `oc/ling-3.0-tiny-free`. Smoke 200. Dùng model ID `opencode-audit` qua `/v1/chat/completions`.
+- **Probe 2026-08-09 (catalog 475 ID)**: `cx/gpt-5.6-luna-review`, `cx/gpt-5.6-terra-review`, `gpt-5.6-luna` → ROUTE_OK. `oc/nemotron-3-ultra-free`, `oc/big-pickle`, `oc/longcat-2.0-free` → 200. `oc/north-mini-code-free`, `oc/hy3-free`, `oc/glm-5.2`, `oc/kimi-k3`, `oc/qwen3.8-max` → **401** (opencode-go KHÔNG route qua prefix `oc/`). `oc/ling-3.0-tiny-free` → 503 (transient).
+- **Workers bất biến**: Hermes = `deepseek-v4-flash`/HIGH; Codex = `gpt-5.6-luna`/HIGH; worker KHÔNG gọi/spawn worker. Codex tuyệt đối không gọi DeepSeek.
+- **Khác biệt runtime**: Codex audit ưu tiên AG → opencode-audit sớm (cùng pool GPT với worker, không đốt quota worker); Hermes AG → GPT review → opencode-audit.
+- Config Hermes đã đổi (2026-08-09): fallback `ag/gemini-3.6-flash-high` → `opencode-audit` (Gemini bị cấm), reasoning_overrides `opencode-audit: high`.

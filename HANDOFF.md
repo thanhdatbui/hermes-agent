@@ -41,3 +41,9 @@ requires historical reasoning.
 - For runtime work, read the narrow implementation path and its tests first.
 - For context-loading work, keep root instructions short and move detailed
   guidance or historical state under `docs/ai/`.
+
+## 2026-08-09 — Active Audit Routing Policy v6 phủ AGENTS.md
+Chuỗi mới: AG Claude (ag/claude-opus-4-6-thinking/HIGH, 1 route/task) → GPT review (cx/gpt-5.6-terra-review|sol-review/HIGH) → combo opencode-audit (9Router: nemotron-3-ultra-free → big-pickle → longcat-2.0-free → ling-3.0-tiny-free) → AUDIT_ALL_ROUTES_FAILED.
+Planner: cx/gpt-5.6-terra (thường) | cx/gpt-5.6-sol (khó) → AG Claude → opencode-audit.
+CẤM: gpt-5.6-luna làm planner/auditor (worker), cmc/* (không quota), opencode-free/oc/deepseek-v4-flash-free (DeepSeek Flash = worker), Gemini, Command Code.
+Backup AGENTS.md bản cũ: %TEMP%\policy-routing-v6-* / policy-routing-v6b-* / v6e-* (sha trong manifest.json).
