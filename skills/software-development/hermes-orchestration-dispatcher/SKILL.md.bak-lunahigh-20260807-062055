@@ -1,0 +1,368 @@
+---
+name: hermes-orchestration-dispatcher
+description: "Điều phối: task đơn giản Hermes tự sửa → Claude/OpenCode audit review → lặp fail mới Codex implement."
+version: 1.5.0
+platforms: [linux, macos, windows]
+metadata:
+  hermes:
+    tags: [orchestration, dispatch, codex, claude, opencode, workflow, audit, review]
+---
+
+# Hermes Orchestration Dispatcher
+
+## Quy tắc cứng (theo D:\Taadaa\AGENTS.md)
+
+**KHI SKILL NÀY ĐƯỢC LOAD:** Hermes phân loại task rồi điều phối theo ladder dưới đây. Hermes KHÔNG bao giờ tự ý implement thẳng khi chưa qua audit review, trừ task đơn giản trong phạm vi dưới.
+
+### Phân loại task
+
+- **SIMPLE** (Hermes tự sửa được): task 1-2 file, mechanical edit, bug rõ ràng, có test hiện có, không đụng shared core (`automation-core`), không sensitive (account/OTP/lock/workbook policy), không multi-machine. → **Hermes tự sửa trực tiếp**.
+- **COMPLEX** (dispatch Codex implement): đụng `automation-core` hoặc shared recovery/lock/verifier/scheduler, cross-consumer, account/OTP/2FA safety, sensitive workbook policy, multi-machine/incident, architecture refactor. → **Codex implement** (Sol/high, ladder escalation).
+- **BOUNDED_RESEARCH/AUDIT** (delegate review): read-only exploration, log/artifact analysis, test chạy, independent review. → **Claude/OpenCode audit**.
+
+## Vòng lặp điều phối chuẩn
+
+```
+1. Phân loại task (SIMPLE / COMPLEX / AUDIT).
+2. SIMPLE  → Hermes tự sửa code + test + chạy verify.
+   COMPLEX → viết spec tasks/<date>-<slug>.md → dispatch Codex implement.
+3. Dispatch AUDIT REVIEW (Claude ưu tiên, fallback OpenCode free, cuối Codex reviewer độc lập).
+   Claude/OpenCode CHỈ review/audit — KHÔNG bao giờ implement.
+4. Reviewer trả APPROVED / MINOR_FIXES / REJECT.
+   - APPROVED → xong (verify cuối: test + diff).
+   - MINOR_FIXES/REJECT → Hermes tự sửa theo findings (SIMPLE scope) HOẶC Codex sửa (COMPLEX scope).
+5. Re-review (vòng 2+).
+6. Vẫn fail CÓ DẤU HIỆU LẶP (cùng findings, cùng chỗ treo/fail, 2+ vòng không tiến triển)
+   → Chuyển hẳn cho Codex implement: phiên MỚI, kèm what-was-tried/why-failed + materially different plan (theo AGENTS.md), không lặp y hệt prompt.
+7. Codex xong → review lại → APPROVED → verify cuối.
+```
+
+## Nguyên tắc vai trò (refresh 2026-08-06 — xem cả mục "Escalation ladder đã chốt" bên dưới)
+
+- **Hermes (deepseek-v4-flash)**: tự sửa task SIMPLE + triage + **debug vòng lặp nhanh** (user: debug để deepseek — nhanh; dựng script/bài mới → Codex). Viết spec; dispatch; verify cuối. KHÔNG implement task COMPLEX thẳng tay. **Reasoning = HIGH (từ 2026-08-06 tối — user sweep max→high TOÀN BỘ: config `agent.reasoning_effort: high` + mọi AGENTS.md/rule `flash/max`→`flash/high`; Luna/high, Sol/max giữ nguyên).**
+- **Codex gpt-5.6-luna/high**: worker implement/live cho task COMPLEX + sửa findings khi Hermes lặp fail. Spawn subagent cùng hệ sinh thái GPT (luna/terra/sol) cho mượt trong app.
+- **deepseek-v4-pro / gpt-5.6-terra**: audit/review CHÍNH (READ-ONLY — đưa root-cause/plan, KHÔNG patch; người thực thi lại là Luna/high hoặc Hermes cho fix nhỏ).
+- **gpt-5.6-sol**: plan tổng + case khó nhất.
+- **Claude**: audit hard-trigger / plan tổng, quota gate theo `D:\Taadaa\AGENTS.md` (preflight `claude-quota-preflight.ps1`, `<85%` mới dùng).
+- **OpenCode**: reviewer fallback (free model), CHỈ ĐỌC. Không bao giờ implement.
+- **Gemini 3.6 flash**: VISION cho deepseek + fallback audit CUỐI cùng. **KHÔNG làm auditor chính** — user: "bợ dái lắm, không có tư duy phản biện" (sycophant, no critical thinking).
+- **Codex**: implementer cho task COMPLEX + sửa findings khi Hermes lặp fail. Reviewer độc lập chỉ khi Claude+OpenCode đều unavailable.
+
+## Escalation ladder đã chốt (2026-08-06, user duyệt)
+
+```
+Hermes deepseek-v4-flash (task simple/vừa + debug nhanh)
+  └─ fail (đã hiểu vì sao) → Codex gpt-5.6-luna/high (worker, làm khác đi)
+      └─ vẫn fail → deepseek-v4-pro HOẶC gpt-5.6-terra (review READ-ONLY, đưa root-cause/plan mới)
+          └─ fresh Luna/high làm theo plan mới
+              └─ case khó nhất → gpt-5.6-sol (high→extra_high→ultra, session MỚI mỗi nấc)
+```
+
+- **Reviewer (terra/pro/sol) KHÔNG BAO GIỜ patch** — chỉ review + plan; executor là Luna/high (hoặc Hermes cho fix nhỏ).
+- Cùng 1 evidence chỉ review 1 lần (1 audit slot) — không review 2 lần.
+- Đổi model = phải **làm khác đi**, không lặp patch.
+- Chi tiết đầy đủ: `D:\Taadaa\HERMES_SUBAGENT_RULES.md` (file rule Hermes riêng, ngoài git, đọc theo memory).
+
+## Model Fallback Khi Claude Review Hết Quota
+
+Khi `claude -p` trả quota/session limit, rate limit, billing error:
+- **KHÔNG bỏ review gate, KHÔNG chờ reset.**
+- Fallback chỉ thay **audit/review**, không thay Codex implementer.
+- Thứ tự: `freemodel/claude-opus-4-8` → `opencode-go/grok-4.5` → `opencode-go/glm-5.2`, `--variant max`.
+- `opencode run --agent plan --auto --model <m> --variant max '<prompt>'` (read-only, quyền đọc external dir).
+- Prompt phải có verdict `APPROVED | MINOR_FIXES | REJECT` dòng đầu.
+- Smoke-test: `opencode run --model <m> 'Respond with exactly: OPENCODE_FALLBACK_READY'`.
+- Shell vỡ quote → viết `.txt`, `PROMPT=$(cat file); opencode run ... "${PROMPT}"`.
+- `APPROVED` từ fallback thay thế gate Claude cho run hiện tại.
+- Nếu toàn bộ Claude/OpenCode reviewer hết quota hoặc unavailable, dùng **Codex reviewer độc lập** làm fallback cuối: phiên mới, `--ephemeral`, `--sandbox read-only`, dùng model Codex mặc định đã route được tới Sol (hiện là `gpt-5.6-sol`) và override reasoning `high`; không ép `-m sol` nếu alias đó route sang provider thiếu credential; prompt verdict `APPROVED | MINOR_FIXES | REJECT`. Không reuse/resume session implementer và không để implementer tự spawn subagent để tự duyệt thay đổi của chính nó.
+- Nếu Codex reviewer trả finding, Hermes sửa (SIMPLE scope) hoặc dispatch Codex implementer mới (COMPLEX scope), rồi review lại.
+
+## Hermes App: Subagent Model Routing — `delegate_task` KHÔNG chọn model per-subagent
+
+Kiểm chứng 2026-08-05 (source `hermes-agent/tools/delegate_tool.py`, xem `references/hermes-subagent-model-routing.md`). **Đã re-verify ở bản 0.20.0 (update 2026-08-05): `delegate_task` vẫn KHÔNG có per-task model — `_MODEL_HIDDEN_TASK_FIELDS = {"acp_command", "acp_args"}` chỉ che transport, không phải model; giới hạn \"delegation 1 model\" còn nguyên ở bản mới nhất.**
+
+- `delegate_task(goal, context, tasks, max_iterations, role, background)` — **KHÔNG có tham số model**. Model subagent do config `delegation.*` quyết định; tool không nhận model từ prompt.
+- Config `delegation` chỉ có `max_iterations` → subagent **inherit model parent** (vd `cmc/deepseek/deepseek-v4-flash` từ 9router) → KHÔNG phải Luna/high → KHÔNG đạt rule AGENTS.md "fresh pinned Luna/high worker".
+- **KHÔNG mix được model theo vai qua subagent trong Hermes app**: mọi subagent chạy cùng 1 model (delegation.*). "Worker Luna/high + planner Sol + auditor Gemini qua subagent" là bất khả ở Hermes. Plan/audit model khác phải đi qua CLI wrapper. (Codex app cũng chỉ spawn subagent được trong catalog GPT — xem mục "Codex app: subagent chỉ trong catalog GPT" bên dưới.)
+
+Để Hermes app chạy đúng rule "worker Luna/high" (thêm vào `config.yaml`):
+```yaml
+delegation:
+  provider: cockpit
+  model: gpt-5.6-luna
+  reasoning_effort: max
+  max_iterations: 50
+```
+- Provider `cockpit` đã có sẵn trong config (`custom_providers`: `http://localhost:60818/v1`, `api_mode: codex_responses`, models gpt-5.6-luna/sol/terra) + `COCKPIT_API_KEY` trong `.env`. Kiểm chứng được: `resolve_runtime_provider('cockpit','gpt-5.6-luna')` trả đúng bundle (provider custom, codex_responses, base_url cockpit) và endpoint `/v1/models` còn sống.
+- `delegation.reasoning_effort: false` = tắt thinking cho subagent (boolean được giữ nguyên, không bị ép thành inherit).
+- Set `delegation.provider` → subagent **không kế thừa ACP transport của parent** (dùng API direct); `api_mode` cũng không inherit khi provider khác parent (tránh 404 sai endpoint).
+- **QUYẾT ĐỊNH 2026-08-06 (user): KHÔNG pin `delegation.model`.** Config trên đĩa chỉ có `delegation: {max_iterations: 50}` — model/provider/reasoning_effort TRỐNG → subagent inherit model cha (deepseek-v4-flash). User chọn: tạo file rule riêng `D:\Taadaa\HERMES_SUBAGENT_RULES.md` (ngoài mọi git repo, KHÔNG auto-load → không đụng AGENTS.md, không phát sinh policy audit) + pointer trong memory. Memory là cơ chế DUY NHẤT để model biết đọc file rule nào (inject mọi session). Trước khi delegate ở Taadaa → đọc file rule đó.
+
+### Đặt file rule Hermes ở đâu — cơ chế context file (source `agent/prompt_builder.py`)
+
+- Priority cứng, **first match wins — chỉ LOAD 1 file, KHÔNG merge**: `.hermes.md`/`HERMES.md` (walk cwd → git root) → `AGENTS.md` (cwd only) → `CLAUDE.md` (cwd only) → `.cursorrules` (cwd only). (`build_context_files_prompt` ~dòng 1987.)
+- `D:\Taadaa` KHÔNG phải git repo → `.hermes.md` ở root chỉ load khi cwd trực tiếp = `D:\Taadaa`; chạy trong repo con (automation-core, Tiktok_Reg...) walk dừng ở git root con → KHÔNG thấy. Và khi cwd=root, `.hermes.md` CHE hoàn toàn AGENTS.md (mất policy chung) → đặt `.hermes.md` root là phương án TỆ NHẤT.
+- Tên `hermes.md` (không dấu chấm) KHÔNG bao giờ auto-load — chỉ `.hermes.md`/`HERMES.md` (`_HERMES_MD_NAMES`, dòng 82).
+- Model/app KHÔNG tự chọn được cấu hình: app chọn file context theo priority cứng; model chỉ thấy nội dung được inject (thấy tên model trong system prompt nhưng không biết đường dẫn file rule). Cơ chế "trỏ tới file rule" bền vững = **memory**.
+- `hermes config get` KHÔNG tồn tại (chỉ `show/edit/set/path/env-path/check/migrate`); `hermes config show` không hiển thị section delegation → muốn xem delegation phải đọc thẳng config.yaml.
+
+Plan/audit bằng model khác (Sol/Terra/Gemini/OpenCode/Command Code/Claude) trong Hermes app: gọi **CLI wrapper trong terminal** — `tools/invoke-gemini-9router-audit.ps1`, `invoke-opencode-audit.ps1`, `invoke-command-code-9router-audit.ps1`, `claude-final-audit` (khi quota gate cho phép), hoặc `codex exec --model gpt-5.6-sol` (plan audit). KHÔNG qua subagent. Đây đúng thiết kế AGENTS.md (external CLI audit + External Codex CLI Worker Transport Fallback).
+
+### Codex app: subagent chỉ trong catalog GPT — audit model khác hệ cũng phải CLI
+
+Kiểm chứng 2026-08-05 (`~/.codex/cockpit-local-access-model-catalog.json` — file Codex desktop app tải về, nguồn sự thật cho model app hiển thị/spawn được):
+
+- Catalog app chứa ĐÚNG 10 model, toàn hệ GPT: `gpt-5.6-sol/terra/luna`, `gpt-5.5`, `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `GPT Image 2`, `codex-auto-review`. KHÔNG có Gemini/Claude/DeepSeek/Command Code.
+- 9router (`localhost:20128`) chỉ khai báo trong `config.toml` CLI (`[model_providers.9router]`, `wire_api="responses"`), KHÔNG trong catalog app → **Codex GUI không spawn được subagent model ngoài GPT**.
+- → Audit bằng Gemini/Claude/Command Code/OpenCode/DeepSeek: **cả 2 app đều phải qua CLI wrapper** (cùng endpoint 9router `:20128`). Chỉ Luna/Sol/Terra/GPT là native trong Codex app (qua `codex_local_access` cockpit `:60818`).
+
+### Subagent model khác DeepSeek Flash (cùng provider) — Hermes làm được — ĐÃ XÁC MINH LIVE
+
+`delegation.*` là 1 model cố định cho MỌI subagent, nhưng model đó KHÔNG bắt buộc trùng main session: vì cùng provider 9router, đặt `delegation.provider: 9router` + `delegation.model: cmc/deepseek/deepseek-v4-pro` → subagent chạy DeepSeek v4 Pro qua subagent (không cần CLI). Rule tổng quát: **model khác main nhưng CÙNG provider → subagent OK; model khác provider → CLI**. Lưu ý: đổi `delegation.*` = toàn bộ subagent đổi model, không mix theo vai.
+- **Xác minh live 2026-08-06**: curl `POST http://127.0.0.1:20128/v1/chat/completions` model `cmc/deepseek/deepseek-v4-pro` → 200, trả `model: deepseek/deepseek-v4-pro` + `reasoning_content` → deepseek-v4-pro gọi in-app được, KHÔNG cần CLI.
+- **UPDATE 2026-08-06 (user add GPT upstream vào 9router)**: `gpt-5.6-luna/terra/sol` (bare hoặc `cx/` prefix) giờ **cũng gọi được qua 9router HTTP** → Hermes gọi terra/sol in-app cho plan/audit KHÔNG còn bắt buộc `codex exec --model ...`. Claim cũ "Terra/Sol = Codex CLI-only" đã hết hiệu lực. Catalog app Codex (`cockpit-local-access-model-catalog.json`) vẫn GPT-only — điểm khác biệt giữa 2 app nằm ở SUBAGENT spawn (Codex app spawn được terra/sol native; Hermes phải HTTP/CLI), không phải ở khả năng gọi model.
+- Ladder theo vai cho Hermes: worker=flash (main) → plan=deepseek-v4-pro in-app (9router) → review/audit=terra/sol qua 9router HTTP (hoặc Codex CLI) → case khó=sol.
+- Recipe gọi 9router HTTP (tool_choice=none chống fake tool_calls của deepseek-pro; Claude upstream 403 payload lớn → đổi model; Kimi finish=length → chia vòng): xem `agent-model-routing` → `references/9router-http-calling.md`.
+
+### 2-mode symmetric orchestration (user chốt 2026-08-06 — file `D:\Taadaa\HERMES_SUBAGENT_RULES.md`)
+
+Model tự nhận diện app từ 2 tín hiệu trong system prompt: (1) dòng Model (`cmc/deepseek/deepseek-v4-flash`=Hermes; `gpt-5.6-luna`=Codex), (2) bộ tool (Hermes có `skill_view`/`memory`/`cronjob`/`session_search`; Codex có `apply_patch`/MCP).
+- **HERMES mode**: worker = deepseek-v4-flash (delegate_task inherit) → fail → deepseek-v4-pro (9router HTTP, read-only) → fail → gpt-5.6-terra → sol (9router HTTP, read-only). Audit = terra/sol.
+- **CODEX mode**: worker = luna/high native subagent → fail → terra/sol → fail → deepseek-v4-pro (read-only). Audit = deepseek-v4-pro.
+- Golden rule: worker = subagent spawn cùng app (THẰNG DUY NHẤT patch/live); rescuer/auditor (v4-pro/terra/sol) READ-ONLY — chỉ plan/verdict, KHÔNG patch. Crossover reviewer KHÁC LOÀI với worker (Hermes flash→terra/sol; Codex luna→v4-pro).
+- **Fallback worker khi spawn fail (chốt 2026-08-06 — session-as-worker, xem mục scope-split v4→v7)**: KHÔNG có model fallback trong policy; tool layer (Hermes `fallback_providers`, 9router) lo quota/outage. Worker subagent spawn CONFIRMED fail → `SUBAGENT_RUNTIME_UNAVAILABLE` → session tự làm worker bằng model session. Luna/high ≡ flash/max NGANG NHAU (không downgrade).
+
+### AGENTS.md split bị REJECT — bài học "1 file policy auto-load" (2026-08-06)
+
+Kế hoạch tách AGENTS.md 97KB → root index + 5 file chuyên đề (`AGENTS_DISPATCH/RECOVERY/AUDIT/MODEL/REPO.md`) do deepseek-v4-pro lên plan, **GPT-5.6-Sol audit REJECT với 6 findings**: (1) chưa chứng minh lossless byte-level, (2) root thật 6-8KB không phải 2.5KB, (3) stub quota khớp regex validator — PASS, (4) tự mâu thuẫn về việc đụng 25 file con, (5) marker test chắc chắn fail (root không chứa SUBAGENT_RUNTIME_UNAVAILABLE nhưng verify yêu cầu), (6) **chí mạng: file con AGENTS_*.md KHÔNG auto-load — chỉ AGENTS.md được load (first-match-wins 1 file) → tách 6 file = 5 file con không bao giờ được agent đọc trừ khi model tự mở theo pointer (không enforce được)**. Kết luận: **mô hình split policy KHÔNG khả thi với cơ chế context file hiện tại**; hướng đúng = giữ 1 file + thêm bảng Quick Navigation/TOC đầu file (additive, không vỡ enforcement). Policy change kiểu này vẫn cần 1 audit slot (Configuration Policy Audit Gate).
+
+### AGENTS.md scope-split (worker theo SCOPE) cũng bị REJECT — bài học policy-change plan (2026-08-06)
+
+User muốn: task consumer-normal (offline fix code/test/debug trong 1 consumer repo) → **Hermes deepseek-flash worker được patch**; task live/recovery/lock/core → **Luna/high bắt buộc**. Quy trình đã chạy đúng: backup `AGENTS.md.pre-scope-<ts>.bak` + sha256 + inventory `rg --files --hidden --no-ignore --follow --glob 'AGENTS.md'` (25 file) → **deepseek-v4-pro lên plan** (29KB, định nghĩa 2 loại task + 2 văn bản thay thế) → **GPT-5.6-Sol audit REJECT (8 findings)**:
+
+1. Lặp quy tắc worker 3 lần với mức ràng buộc khác nhau (`may dispatch` / `is pinned` / `is permitted`) → mâu thuẫn nội bộ. **1 nguồn sự thật canonical duy nhất**, các section khác tham chiếu, không chép lại.
+2. Classification chưa fail-closed: thiếu consumer-root allowlist (resolve real path), không xử lý symlink/submodule/shared path/global cache, test có network/ADB/account side effect, config chứa endpoint/credential, task đổi scope giữa chừng.
+3. **Direct Fallback xuyên core gate**: fallback cấm "scheduler/recovery/lock/live" nhưng KHÔNG cấm sửa core offline (watchdog/ledger/verifier/shared lib/multi-consumer state). Hard gate "no other model permitted" mâu thuẫn với fallback hiện có → phải khóa rõ fallback chỉ cho consumer-normal offline exact-scope.
+4. **Edit boundary trượt**: thay theo line number dễ trượt; payload thay thế nuốt luôn heading kế (`Coordinator Direct Fallback`, `External Codex CLI...`) + tạo heading trùng lặp. **Phải anchor bằng heading/marker duy nhất, xác nhận đúng 1 start/end, không đưa heading khác vào payload.**
+5. Lặp/trùng nặng → file nặng thêm, nhiều nguồn sự thật.
+6. Thiếu scope-drift gate: pre-dispatch classification record (model pin + repo/path + command class) bắt buộc; flash worker phải **tự stop + trả handoff** khi phát hiện ADB/live/credential/recovery/lock/core path, không tự phân loại lại.
+7. Validator: không được suy luận từ tên script — **chạy `check-claude-quota-policy.ps1` baseline TRƯỚC khi sửa + lại SAU khi sửa**, exit 0 là release gate; không tự sửa validator khi fail.
+8. Mâu thuẫn escalation: không vừa cấm "escalate consumer-normal lên Luna" vừa khuyến nghị "task lớn → Luna". Nếu task lớn thì nó không còn consumer-normal — thêm tiêu chí khách quan hoặc chia nhỏ scope.
+
+**Trạng thái hiện tại**: AGENTS.md CHƯA bị sửa (plan REJECTED = không implement). Artifacts: `AGENTS_SCOPE_PLAN_v4pro.md`, `AGENTS_SCOPE_AUDIT_sol.md`, backup `AGENTS.md.pre-scope-*.bak`. Hướng tiếp theo (chờ user): v4-pro sửa plan theo 8 findings → Sol audit lại → APPROVE mới cho flash worker thực thi. **Bài học class-level: plan policy-change của model yếu (v4-pro) gần như luôn bị model mạnh (Sol) REJECT vì thiếu fail-closed classification + edit-boundary drift + lặp quy tắc — đừng bao giờ đưa plan v4-pro thô cho flash worker implement; luôn audit trước, REJECT = sửa plan + re-audit, không implement.**
+
+### AGENTS.md scope-split v2 — Sol REJECT lần 2: fallback-equivalence tự mâu thuẫn (2026-08-06)
+
+Sau 3 quyết định user (policy phủ toàn repo / ranh giới task OK / **luna/high ↔ flash/max là worker NGANG HÀNG, fallback lẫn nhau**), plan v2 (`AGENTS_SCOPE_PLAN_v2.md`) vẫn bị **GPT-5.6-Sol REJECT lần 2** vì:
+
+1. **Mâu thuẫn cốt lõi**: văn bản vừa nói live/core `MUST` dùng Luna + "no other model may substitute", vừa cho phép Flash thay Luna khi unavailable; Direct Fallback lại bảo live `STOP if no valid Luna exists` — trái quyết định fallback tương đương. **Phải viết lại: Luna/high = primary worker cho live; Flash/max = authorized equivalent fallback duy nhất nếu Luna được chứng minh unavailable; live chỉ dừng khi CẢ 2 unavailable.**
+2. **`unavailable` chưa định nghĩa fail-closed**: transport failure ≠ model unavailable; worker crash/output kém/policy rejection/latency không phải unavailable; cấm ping-pong Luna→Flash→Luna; live attempt có thể đã chạy → `LIVE_ATTEMPT_UNKNOWN_AFTER_CRASH` + reconciliation, không blind-retry model còn lại.
+3. **Thiếu canonical-path scope gate**: symlink/junction/reparse/worktree/submodule/shared path thoát exact scope; "nằm dưới D:\Taadaa" chỉ xác định policy coverage, không tự cấp nhãn consumer-normal; mixed/unknown → classify strict.
+4. **Fallback vẫn lặp 3 lần** (canonical + 2 chỗ Model Routing) với mức khác nhau → 1 contract duy nhất ở Coordinator/Worker Boundary, Model Routing chỉ tham chiếu.
+5. **Nối fallback với `WORKER_PROFILE_MISMATCH`**: pre-dispatch record có `primary_model_pin` + `effective_model_pin`; verifier so worker với effective pin.
+6. **Phân biệt 3 lớp fallback**: model (luna↔flash) / transport (in-process→CLI) / direct (user-authorized consumer-normal offline) — "both worker routes failed" phải chỉ rõ lớp nào.
+7. **Validator release gate**: baseline phải exit 0 (không chấp nhận baseline=1); so semantic output, không chỉ exit code; assert 2 heading nguồn + 2 heading kết thúc unique; diff chứng minh ngoài 2 section không đổi byte; marker kiểm tra theo count/context.
+8. **Inventory toàn file trước khi sửa**: tìm mọi câu "sole Luna worker"/fallback/profile mismatch ngoài 2 section; conflict ngoài scope → dừng, xin mở rộng.
+
+**PASS 3/8 v2**: biên section (anchor bằng heading unique) ✅, scope-drift gate (pre-dispatch record + self-stop) ✅, production-recovery exception (giới hạn desktop/coordinator worker) ✅. Verdict: REJECT — nhưng là REJECT "chất lượng cao" bắt đúng mâu thuẫn do quyết định fallback của chính user tạo ra; sửa theo 8 findings là khớp ngay. Bài học: **khi user đưa quyết định mới (VD fallback ngang hàng) phải viết lại policy cho khớp 100%, không giữ dấu vết rule cũ ("Luna duy nhất") — nửa cũ nửa mới = REJECT.**
+
+### AGENTS.md scope-split v3 — Sol REJECT lần 3: fallback-equivalence là gốc rễ (2026-08-06)
+
+Plan v3 (`AGENTS_SCOPE_PLAN_v3.md`, 18KB — đã sửa 8 findings v2: 1 canonical fallback contract, `unavailable` fail-closed, canonical-path gate, 3 lớp fallback, WORKER_PROFILE_MISMATCH primary/effective pin, validator exit-0) vẫn bị **GPT-5.6-Sol REJECT lần 3** với 6 findings MỚI:
+
+1. **Live STOP mâu thuẫn theo lớp**: "chỉ dừng khi CẢ 2 model unavailable" chỉ là điều kiện kết thúc của model-fallback layer; transport exhaustion/policy rejection/safety gate/`LIVE_ATTEMPT_UNKNOWN_AFTER_CRASH` vẫn block task độc lập nhưng không được đổi model/mở direct fallback. Tài liệu vừa yêu cầu dừng vừa cấm dừng trong cùng tình huống nếu không tách lớp.
+2. **`unavailable` taxonomy tự mâu thuẫn**: `transport-unavailable` vừa được dùng làm ví dụ model-unavailable vừa bị tuyên bố không phải model-unavailable. `dispatch-429` xuất hiện ở cả model layer lẫn transport layer — phải tách: model fallback chỉ chấp nhận signal có source/provider/exact model pin khớp allowlist; generic 429/timeout/connectivity failure không đủ để đổi model.
+3. **effective pin không được chứng minh**: coordinator ghi `effective_model_pin` = fallback pin, verifier chỉ so profile → không kiểm chứng transition authorization. Fallback record phải có `dispatch_generation_id`, primary/effective pin, failed pin, transport, exact error code, error source/provider, timestamp, canonical scope, evidence reference. Crash/restart không được tự tạo generation mới trước khi reconciliation xong.
+4. **Model Routing vẫn restate contract** dù đã bảo "chỉ tham chiếu" — đoạn `Fallback routing (transport layer only)` nhắc lại transport/direct/production exception. Xóa hết, chỉ giữ mapping primary pin + 1 tham chiếu canonical.
+5. **dispatch generation không có lifecycle bất biến** → có thể tạo generation mới để né giới hạn 1 fallback/dispatch.
+6. **Validator release gate chưa kiểm chứng được**: inventory "trước sửa" lại nằm ở Bước 4 sau sửa; "đủ count dự kiến" không có công thức (phải = unchanged regions + approved replacement payloads, allowlist context từng occurrence); semantic comparison chưa định nghĩa normalized output/allowed delta.
+
+**PASS 2/8 v3**: canonical-path gate ✅, production-recovery exception ✅. Verdict: REJECT — "các lỗ hổng policy có thể làm fallback bị lạm dụng".
+
+**Bài học class-level (quan trọng)**: 3 vòng REJECT liên tiếp đều cùng 1 gốc — **quyết định "fallback luna↔flash ngang hàng cho CẢ live" của user là điều bất thường về policy** (2 model khác hãng/capability fallback lẫn nhau cho live rủi ro cao) → auditor Sol liên tục bắt lỗ hổng lạm dụng fallback. Khi user đưa quyết định policy mới mà auditor REJECT nhiều vòng, đừng tự động làm vòng 4: **hãy chỉ ra cho user rằng chính quyết định đó là gốc rễ và đề xuất đơn giản hoá**.
+
+### AGENTS.md scope-split v4→v7 — KẾT QUẢ: session-as-worker + APPROVE_WITH_FIXES (2026-08-06)
+
+**Vòng 4–6 tiếp tục REJECT** (v4: Direct Fallback section cũ mâu thuẫn + tool auto-route phá live gate; v5: identity verify sau side effect + vẫn duplicate; v6: section "Both Worker Routes Fail" nằm NGOÀI vùng sửa + spawn unknown chưa fail-closed). **Vòng 7 thoát vòng lặp** — user chốt 2 quyết định làm đơn giản hoá triệt để:
+
+1. **Luna/high ≡ v4-flash/max là worker NGANG NHAU** — pin lệch model KHÔNG phải lỗi, không có downgrade khi session deepseek làm live (chính sách user, không tranh cãi với auditor).
+2. **BỎ HẲN fallback model khỏi policy** — fallback khi hết quota/outage là cơ chế TOOL layer (Hermes `fallback_providers`, 9router auto-route), cài trong tool setting, KHÔNG ghi vào rule dự án.
+3. **Session-as-worker = fallback DUY NHẤT**: spawn worker subagent CONFIRMED fail (runtime-unavailable/capability-unavailable/dispatch-429 có source+provider+pin) → ghi `SUBAGENT_RUNTIME_UNAVAILABLE` trước side effect → session tự làm worker bằng model session (Hermes=ds, Codex=luna). KHÔNG model substitution, KHÔNG identity verification (session model biết chắc). Timeout/unknown/ambiguous → reconcile (prove không còn worker/session/process/lease/action) → không chứng minh được → `LIVE_ATTEMPT_UNKNOWN_AFTER_CRASH` → `FINAL_BLOCKED`.
+
+V7 (`AGENTS_SCOPE_PLAN_v7.md`) sửa 3 vùng (gồm cả section Coordinator Direct Fallback → reference thuần session-as-worker) + marker manifest + plan gate (session-as-worker làm LIVE phải có execution plan: actions/lock-lease/stop gates/verifier/rollback) + release gate (snapshot SHA-256 trước edit, byte-diff BOM/line-ending, sentinel unique, validator baseline exit 0, Sol APPROVE bind hash). **Verdict: APPROVE_WITH_FIXES** (bởi **ds-v4-pro** — Sol/Terra 429 rồi 401 token_invalidated khi GPT upstream chết; ds-pro cho verdict hợp lệ). Còn 5 FIX spec-gap (rename heading "Both Worker Routes Fail", định nghĩa reconciliation/command class, ai decide handoff, làm rõ 2 plan gate). Chi tiết v4→v7 + 5 FIX + 9router model availability: `references/policy-change-audit-loop.md`.
+
+**HOÀN TẤT 2026-08-06 (file THẬT đã sửa + verify)**: áp 5 FIX → v7.1 (`AGENTS_SCOPE_PLAN_v71.md`) → sửa AGENTS.md thật 3 vùng (anchor bằng **unique heading sentinel, KHÔNG line number** — line number trượt sau mỗi edit: `### Coordinator/Worker Boundary` → trước `### Coordinator Direct Fallback...`; cả section fallback → `### Session-as-Worker Reference`; `## Codex Model Routing` → trước `### Goal Escalation...`) → **ds-pro audit file THẬT: APPROVE_WITH_FIXES** (13/14 PASS, 1 WARN = heading vùng 2 chưa rename dứt khoát → đổi thành `### Session-as-Worker Reference` → APPROVE) → **ad-hoc verify 24/24 PASS** (script `hermes-verify-` dưới `Temp`: sentinel unique, byte-identical prefix/middle/suffix so snapshot, marker manifest, forbidden-pattern grep **chỉ trong 3 vùng sửa**, validator exit 0). Final hash `59ae6155b27fac7b37fe5228dda12314e6d2723eaf9bda8c2dc9b40f64bbcac9`. Policy mới sống: consumer-normal→flash / live→luna (2 model NGANG NHAU), session-as-worker = fallback duy nhất, spawn confirmed fail → `SUBAGENT_RUNTIME_UNAVAILABLE` → session làm worker; timeout/unknown → reconcile → `LIVE_ATTEMPT_UNKNOWN_AFTER_CRASH` → `FINAL_BLOCKED`. **Pitfall verify script**: check toàn-file `9router`/`fallback_providers` = false positive — các pattern này HỢP LỆ ở section audit wrapper (L1020+); grep cấm phải giới hạn trong vùng sửa.
+
+**Bài học v4–v7**: ~3 vòng REJECT cùng gốc = dừng, chỉ ra gốc là quyết định policy của user, đề xuất đơn giản hoá (bỏ fallback khỏi policy + session-as-worker) — đó mới là hướng thoát. "Fallback model" là khái niệm dễ bị lạm dụng nhất: auditor bắt (a) unavailable lỏng, (b) ping-pong né cap, (c) effective pin không chứng minh. Đưa fallback xuống tool layer + session-as-worker hết vòng lặp. Policy 97KB chồng chéo: sửa 2 section → đụng section kế → phải inventory toàn file + heading sentinel (không line number) trước edit. AGENTS.md đang được user chỉnh tay (hash đổi trong session) → snapshot SHA-256 ngay trước edit, đừng đè.
+
+### AGENTS.md v8 FINAL (2026-08-06) — worker theo APP, bỏ spec; APPROVE ngay vòng đầu
+
+**V7.1 đã được sửa vào file thật, NHƯNG user phản đối spec ngay sau đó**: "là sao tự nhiên ép worker theo spec... viết chả hiểu gì cả" + "h muốn set theo app được không? bỏ được [hard gate live-luna]". → **V8 là bản SỐNG cuối, thay thế toàn bộ câu chuyện scope-split v1–v7.1.** Bài học lớn nhất: **khi user nói 2 model NGANG NHAU thì đừng xây spec phân loại task — worker theo app đơn giản hơn nhiều và audit PASS ngay vòng đầu** (bản 9.9KB đạt APPROVE 7/7 không cần sửa, sau 7 vòng REJECT của bản spec 15-29KB).
+
+- **Plan v8** (`AGENTS_SIMPLIFY_PLAN_v8.md`): worker theo APP — Hermes (session=ds) → worker `deepseek-v4-flash/max` cho MỌI task; Codex (session=luna) → worker `gpt-5.6-luna/high` cho MỌI task. Luna/high ≡ flash/max (equivalent roles, **KHÔNG spec consumer/live, KHÔNG hard gate live-luna**). Session-as-worker = fallback duy nhất giữ nguyên (spawn confirmed fail → `SUBAGENT_RUNTIME_UNAVAILABLE` → session tự làm; timeout/unknown → reconcile → `FINAL_BLOCKED`). **Xoá hẳn section `Session-as-Worker Reference`** (chỉ còn 1 quy tắc ở Coordinator/Worker Boundary). Model Routing = Write/Live Workers gọn (session model + reference canonical).
+- **ds-pro audit plan v8: APPROVE ngay (7/7 PASS, không cần sửa)** — hết sạch thứ auditor bắt 6 vòng (spec/gate mâu thuẫn/duplicate contract đều bị xoá).
+- Sửa file thật 3 vùng (heading sentinel, snapshot `AGENTS.md.pre-app-20260806-150625.bak`): vùng 1 Coordinator/Worker Boundary bản worker-theo-app; vùng 2 Session-as-Worker Reference → comment; vùng 3 Model Routing gọn. **ds-pro file audit: APPROVE (5/5, chỉ 1 nit ngữ pháp "exists"→"exist" không cần sửa)**. **Ad-hoc verify 24/24 PASS** (script `hermes-verify-` Temp: sentinel unique, byte-identical ngoài 3 vùng, marker manifest — giảm marker trong vùng xoá = chủ ý đúng count, forbidden-pattern chỉ trong vùng sửa, validator exit 0). Final hash `915896533452738056ba4cf9243441ba9e3092eee15a84f163b23192c9074a3e`.
+- **Policy SỐNG hiện tại (AGENTS.md)**: worker = session model của app (Hermes→flash, Codex→luna), 2 model ngang nhau cho MỌI scope kể cả live; session-as-worker fallback duy nhất; recovery state machine + verifier + device-lock giữ nguyên ở section khác. `HERMES_SUBAGENT_RULES.md` + memory đã sync bản v8.
+- **Bài học class-level (quan trọng nhất)**: policy audit REJECT nhiều vòng không phải lúc nào cũng cần "sửa cho đúng findings" — khi user đưa ràng buộc đơn giản hoá (2 model ngang nhau → bỏ spec), hãy đề xuất **giảm phạm vi policy** thay vì tăng độ chặt; bản đơn giản audit PASS ngay vòng đầu. Spec classification (ALL/ANY/canonical-path/fail-closed...) chỉ cần khi có gate model khác nhau theo scope — không có gate thì không cần spec. User ưu tiên policy đọc hiểu được ("viết chả hiểu gì") hơn là độ chặt fail-closed tối đa.
+- **Release gate sửa file policy/large context** (snapshot SHA-256 → heading sentinel → byte-identical diff → marker manifest → validator baseline+post): chi tiết 7 bước + pitfalls trong `references/policy-file-edit-release-gate.md`.
+
+### Audit gate — khi nào audit BẮT BUỘC (user chốt 2026-08-06)
+
+| Loại task | Quy trình | Audit? |
+|---|---|---|
+| Thường (debug 1 bug, 1 file consumer) | flash worker sửa → fail → v4-pro cứu (read-only) → flash làm theo → test pass | ❌ KHÔNG — sửa được là DONE |
+| Khó vừa (multi-file, 1 repo) | v4-pro plan → flash làm → test pass | ⚠️ Chỉ audit nếu rủi ro → **terra** |
+| Khó thật (policy/core/live/lock/multi-repo) | backup → v4-pro plan → **Sol audit (gate)** → worker sửa → verify | ✅ BẮT BUỘC |
+
+- **Khó vừa gọi terra, khó quá mới gọi sol** — không đốt sol cho việc terra xử lý được.
+- Audit = gate cho case khó thật, KHÔNG tự chạy cho task thường.
+- Audit REJECT → sửa plan theo findings → re-audit (material change = mở slot mới); KHÔNG implement plan bị reject.
+
+### Kỹ thuật: audit model mạnh (Sol) mất >300s → chạy background
+
+`execute_code` timeout 300s giết Sol audit với plan 29KB (Sol reasoning dài). FIX: viết script `.py` gọi API ra file, chạy `terminal(background=true, notify_on_complete=true)`, poll/wait. Script ghi verdict vào file ngay khi xong — verification = artifact audit, không phải suite test.
+
+### Hermes vision fallback cho main model text-only (DeepSeek Flash không xem ảnh) — ĐÃ HOẠT ĐỘNG
+
+Hermes có sẵn auxiliary vision router (`agent/auxiliary_client.py`): khi main provider/model bị catalog `agent/image_routing.py::_lookup_supports_vision` đánh dấu text-only (DeepSeek nằm trong đó), `vision_analyze`/`browser_vision` tự fallback sang vision backend khác → trả text cho main model xử lý tiếp. **Đã cấu hình + verify E2E 2026-08-05**: model vision sống qua 9router là **`gemini/gemini-3.6-flash`** (chính là model rule audit `invoke-gemini-9router-audit.ps1` — 1 model dùng chung audit + vision). Cấu hình:
+
+```yaml
+auxiliary:
+  vision:
+    provider: custom
+    base_url: http://127.0.0.1:20128/v1
+    model: gemini/gemini-3.6-flash
+    # api key tự lấy từ env NINEROUTER_API_KEY — KHÔNG cần field api_key
+```
+
+Cách set + verify (đầy đủ trong `agent-model-routing` → `references/model-capability-matrix.md`):
+- **PHẢI set qua `hermes config set auxiliary.vision.<key> <value>`** — agent bị chặn ghi thẳng `config.yaml` (security guard: "Agent cannot modify security-sensitive configuration"). Set xong hiệu lực sau restart/session mới.
+- Verify E2E: `async_call_llm(task='vision', messages=[...image_url...])` — **bắt buộc `task='vision'`** để nó đọc config `auxiliary.vision`; bỏ task= → dùng main model → báo "không xem được ảnh" dù đường vision vẫn chạy. Hoặc test qua `vision_analyze_tool(image_url=<file>, user_prompt=...)`.
+- **Pitfall ảnh test**: ảnh PNG tí hon (2x2/8x8 px) bị 9router từ chối `400 "Unable to process input image"` — đây là lỗi KÍCH THƯỚC, không phải model thiếu vision. Dùng ảnh ≥ ~64x64 px hoặc screenshot thật khi probe.
+- **Pitfall suffix**: model trong dashboard hiển thị `gemini/gemini-3.6-flash(high)` — suffix `(high)` là hiển thị thinking level, KHÔNG được truyền vào model name (400).
+- `gemini/gemini-2.5-pro` qua 9router: text OK nhưng vision FAIL dù ảnh đủ lớn → dùng `gemini-3.6-flash` cho vision.
+- Test 2026-08-05 trước đó ("chưa có model vision sống") đã lỗi thời — nguyên nhân là ảnh test quá nhỏ + prefix `gc/` sai, không phải thiếu vision.
+
+## Codex Model Ladder (theo D:\Taadaa\AGENTS.md)
+
+Khi dispatch Codex implement, chọn model theo độ khó (không phải mặc định):
+
+- **Luna / medium**: task bounded rõ output (scan, log/XML extraction, structured summary, test fixture, mechanical edit có spec).
+- **Luna / high**: bounded work cần tracing/verification thêm.
+- **Terra / high**: scoped implementation/recovery patch, code-path tracing, non-mechanical patch, targeted retry, review Luna evidence. **Terra là recovery patch owner.**
+- **Sol / high**: trước khi đổi `automation-core`, shared recovery/lock/verifier/scheduler, account/OTP/2FA sensitive, multi-consumer. Không phải mặc định chỉ vì task liên quan automation.
+- **Sol / ultra**: chỉ khi ULTRA_GATE=YES (independent shards/deepest investigation).
+- Luna không được là final decision-maker cho live automation outcomes, SUCCESS/FINAL_BLOCKED, root-cause, recovery choices, account/device/workbook actions — Terra/Sol phải review evidence/diff/verifier trước.
+- Model choice không authorize live actions ngoài scope user; live/recovery luôn theo recovery state machine + verifier proof.
+
+## Codex Implementer Escalation (Sol high → extra high → ultra)
+
+Khi Codex implementer fail/treo ở model mặc định: nâng dần `-c model_reasoning_effort="high"` → `"extra_high"` → `"ultra"`. **Mỗi nấc là phiên Codex MỚI hoàn toàn (không resume session cũ)** và **phải làm khác đi nấc trước** (theo `D:\Taadaa\AGENTS.md`: kèm what-was-tried/why-failed + materially different plan, không lặp y hệt prompt). Sol/ultra chỉ khi có independent shards (Automatic Ultra Gate). Smoke-test trước mỗi nấc (`Respond with exactly: READY`). Codex hay treo ở cuối sau khi đã ghi xong file — kiểm tra file/test trước khi kill.
+
+## Fallback OpenCode Free Khi Codex + Claude Đều Fail
+
+Theo `D:\Taadaa\AGENTS.md`: audit order **Claude → OpenCode → Codex fallback**. Khi Claude hết quota/fail và Codex cũng fail/treo → dùng **model free của OpenCode** làm audit/review read-only: ưu tiên `opencode/deepseek-v4-flash-free`, fallback free model khác khi quota/rate-limit. Dùng wrapper `taadaa-review`/`invoke-opencode-audit.ps1` nếu có; smoke-test trước; verdict `APPROVED | MINOR_FIXES | REJECT`; label `OPENCODE_AUDIT` (không gọi là Claude approval). OpenCode unavailable → `OPENCODE_RUNTIME_UNAVAILABLE` → Codex reviewer độc lập (`CODEX_FALLBACK_AUDIT`).
+
+## Audit/Read-Only Dispatch
+
+1. Viết audit spec (hoặc dùng diff thực tế).
+2. Codex đọc file + phân tích (nếu COMPLEX) HOẶC bỏ qua (SIMPLE).
+3. Hermes cross-verify CRITICAL/HIGH findings (`read_file()` ok).
+4. Claude review → CONFIRMED/REJECTED.
+
+## Trigger
+
+"dùng rule điều phối", "dispatch codex claude", "gọi audit review", "gọi model ra review"
+
+## Enforcement từ D:\Taadaa\AGENTS.md (bắt buộc khi làm việc trong Taadaa)
+
+File cha `D:\Taadaa\AGENTS.md` là nguồn quyền lực. Skill này tóm tắt các điểm Hermes phải tuân thủ (không thay thế file cha — đọc file cha khi cần chi tiết):
+
+### Automatic Ultra Gate (bắt buộc in khi cần Sol/Ultra)
+
+Khi task có thể cần Sol/Ultra, trước khi chọn model phải phân loại ngầm:
+```
+ULTRA_GATE: YES | NO
+REASONS: <matching signals>
+SHARDS: <number and short names>
+```
+`ULTRA_GATE=YES` chỉ khi ≥1 tín hiệu: đụng `automation-core` + 2+ consumer; 2+ repo/máy/target/execution path song song; versioned contract migration/rollout (core + consumer + regression); multi-machine incident có cluster riêng; security/account-safety/scheduler/lock/production review cần tách implementation + audit. `NO` mặc định cho 1 path/1 module/1 consumer/1 target — dùng Sol/high, không in gate. "Task khó" mơ hồ KHÔNG phải Ultra signal.
+
+### Claude quota hard gate (5h + weekly)
+
+TRƯỚC MỖI lần gọi Claude (kể cả retry):
+- Chạy `D:\Taadaa\tools\claude-quota-preflight.ps1 <ledger-path>` — exit 0 = cho phép, 20 = 5h đạt 85% (block), **22 = weekly đạt 90% (block)**, 21 = quota unavailable (block). Chi tiết exit code + pitfall PS 5.1 `ToHexString`: `references/claude-quota-preflight.md`.
+- Điều kiện chạy: `used_5h_percent < 85%` **VÀ `used_weekly_percent < 90%`** (khi weekly có trong /usage). Đạt 90% weekly → **dừng hẳn, không dùng Claude nữa** (không chỉ chờ reset 5h).
+- Reading >60s cũ = stale → block.
+- Ghi decision vào `D:\CodexRuntime\<project-id>\audit\claude-quota-ledger.jsonl` (event, decision, used/remaining 5h + weekly, observed_at, source_id, reason).
+- Long-running audit (>60s) cần quota monitor poll ≤30s; đạt 85% 5h hoặc 90% weekly → cancel process tree, treat as no verdict, fallback OpenCode → Codex.
+- CLI/auth availability KHÔNG phải quota proof.
+
+### Scheduler Maintenance Authority
+
+User ủy quyền Codex stop/restart scheduler/watcher/batch runner khi runtime cần sửa: chỉ stop process tree đã xác định, verify đã exit, offline validation xong, restart cùng service, báo trạng thái verified. Không đụng live account/ADB/mailbox/workbook ngoài phạm vi scheduler.
+
+### Shared Parallel Runner Policy
+
+- Live runner mặc định dispatch TOÀN BỘ target đã chọn song song theo `max worker`; không ép `MaxParallel=1`/vòng lặp từng máy trừ khi user yêu cầu.
+- Mỗi target giữ lock riêng, handler riêng, retry bound riêng, verifier riêng; lỗi target này không làm target khác báo success.
+- Bắt buộc random thứ tự máy mỗi run + stagger random bounded (`automation_core.scheduler.machine_launch`); ghi seed/order/delay evidence redacted.
+- Worker exit không phải completion proof; chỉ VERIFIED_SUCCESS/FINAL_BLOCKED.
+
+### Recovery Contract (tóm tắt — consumer AGENTS.md + core contract là nguồn)
+
+- Mọi live action đổi UI/device state phải qua handler/primitive có contract; KHÔNG ADB/tọa độ thủ công ngoài script.
+- Chưa có handler → `NO_HANDLER_IMPLEMENTED`: dừng target, evidence, thêm handler + regression test + verifier trước retry.
+- Max 2 meaningful attempts/failure signature; attempt 2 phải materially different + evidence-backed; không attempt 3 cùng signature.
+- Trước `FINAL_BLOCKED` phải same-target Sol/high handoff + verify `sol_handoff_completed=true` trong `D:\CodexRuntime\<project-id>\recovery\handoff-ledger.jsonl`.
+- Chỉ `VERIFIED_SUCCESS` mới cho cleanup/workbook/release.
+
+### Target Serial Provenance
+
+Serial máy phải resolve từ workbook `D:\OneDrive\codex_gmail_debug\tiktok-luot nuoi acc\data\taikhoan_run_safe.xlsx` (May + Device ID). Không dùng adb devices thô/hardcode/artifact cũ/proxy workbook làm nguồn serial.
+
+### Live Run Scope & Device-Lock Policy
+
+- `FULL_SCOPE_TAKEOVER`: "chạy full/all máy" → mọi máy trong range vào scope accounting.
+- `EXCLUDE_LOCKED`: "all máy trừ máy lock" → inspect lock trước, exclude, giữ lock, kết quả `SKIPPED_LOCKED`/`EXCLUDED_LOCKED` (không success, không FINAL_BLOCKED).
+- Không takeover lease `owner_active=true`/unverifiable; không xóa lock file bằng tay; lock host khác không reclaim cục bộ.
+- Ghi scope mode + target list + lock decision + owner PID vào batch audit artifact redacted; lock skip exit 0 KHÔNG được map thành Verified=True.
+
+### Configuration Policy Audit Gate
+
+Thay đổi `D:\Taadaa\AGENTS.md`/custom-agent TOML/global Codex config/OneDrive bundle/2+ consumer AGENTS.md = policy change → cần independent read-only review (prefer subagent + `claude-final-audit` khi có Claude). Gate này không authorize live actions.
+
+## Sync rule (git auto-sync — thay OneDrive 2026-08-03)
+
+- **Update Hermes app (git install)**: quy trình stash→merge→resolve conflict (shallow-clone trap, EOL churn, `--theirs`/`--ours` ưu tiên) + kết quả re-verify 0.20.0 + **lỗi post-update làm vỡ gọi model 9router (phải cài lại deps + verify runtime thật; Codex đã fix `EmptyStreamError` thay `_CommandCodeEmbeddedError`)** + cách phân tích tác động thay đổi working tree của Codex: xem `references/hermes-app-git-update.md`. **Restore feature Codex xóa (vd `react_to_message` — Codex xóa theo lớp tool+storage+RPC+model-context; nguồn restore từ commit gốc + `runtime-sync-package-backups/`; 0.20.0 gộp `methods_session.py` vào `server.py`):** xem `references/react-to-message-restore.md`.
+
+- 2 skill điều phối (`agent-review-loops`, `hermes-orchestration-dispatcher`) **junction tới `D:\Taadaa\Hermes\skills\`** (git repo `thanhdatbui/hermes-agent.git`) — sửa local = git thấy ngay, không copy tay.
+- **Cron `sync-hermes-skills-to-git`** (mỗi 30 phút, no_agent, silent khi không đổi) tự commit+push lên GitHub.
+- Sửa skill xong: đợi cron (≤30 phút) HOẶC chạy ngay `python C:\Users\Kibe\AppData\Local\hermes\scripts\sync-hermes-skills.py`.
+- Máy mới: đọc `D:\Taadaa\Hermes\deploy\SKILL_SYNC_WORKFLOW.md` (junction + cron setup) hoặc copy skill từ git repo vào `AppData\Local\hermes\skills\` + `/reset`.
+- KHÔNG dùng OneDrive cho skill nữa. Codex dùng `D:\OneDrive\CodexConfig\setup-codex.ps1`; `D:\Taadaa\AGENTS.md` sửa xong copy sang `workspace-AGENTS.md`.
+- Pitfall: `FETCH_HEAD` bị lỗi "Permission denied" nếu bị ghi đè tay (echo >) — xóa file `.git/FETCH_HEAD` là git tự tạo lại. Cron job có thể dừng sau 1 lần chạy dù repeat=forever — kiểm tra `cronjob list` state, re-enable nếu completed.
+
+## Pipeline Fallback
+
+- **Codex sandbox not found** → `--sandbox danger-full-access`
+- **Codex BLOCKED hoàn toàn** → Claude implementer (`claude -p --dangerously-skip-permissions`) CHỈ khi task COMPLEX và không có lựa chọn khác.
+- **Claude permission mode** → luôn `--dangerously-skip-permissions` khi non-interactive.
+
+## Pitfall
+
+- **Bulk-edit nhiều AGENTS.md/rule file trên Windows**: python `open(f,'w')` có thể fail `PermissionError: [Errno 13]` dù file writable (`r+` OK, stat mode 0o666) — đặc biệt với đường dẫn có space/ký tự đặc biệt (VD `add mail khoi phuc/`, `open claw/`) hoặc khi chạy walk lặp. Bash `sed -i` / `cp` ghi được bình thường → **fallback sang bash sed khi python open fail**. Luôn `cp file file.bak-<ts>` TRƯỚC khi sed; verify bằng `grep` count pattern còn sót = 0 sau khi đổi (lọc `--include='*.md'` + `grep -v '.git/\|node_modules\|.worktrees\|-worktrees\|runtime-sync\|\.bak'`).
+- **Sweep reasoning level toàn bộ rule (bài học 2026-08-06 tối)**: khi user đổi reasoning effort cho 1 model, pattern cần sweep đồng bộ ở MỌI nơi: config Hermes (`agent.reasoning_effort`), 9router `providerThinking.<provider>.mode` (DB settings — mode `"thinking"` invalid → THINK:auto), và mọi AGENTS.md/HERMES_SUBAGENT_RULES.md (`flash/max`→`flash/high`, `reasoning_effort=max`→`=high`, `` `model`/`max` ``→`/high`). Giữ nguyên các model khác (luna/high, sol/max, terra/high). Chi tiết cơ chế THINK: `agent-model-routing` → `references/9router-reasoning-thinking-control.md`.
+- Session 2026-07-27: Hermes tự ý implement thẳng code khi user nói "dùng rule điều phối" — KHÔNG LẶP LẠI với task COMPLEX.
+- Session 2026-08-03: Hermes dispatch Codex cho task SIMPLE (avatar verify, usb popup) thay vì tự sửa — lãng phí. Task SIMPLE → Hermes tự sửa, chỉ audit review gọi ra.
+- Claude/OpenCode KHÔNG BAO GIỜ implement — chỉ review/audit.
+- **2026-08-06: terra/sol/deepseek-pro cũng KHÔNG patch — reviewer read-only; executor = Luna/high hoặc Hermes.** Gemini KHÔNG làm auditor chính (bợ dái) — chỉ vision + fallback cuối.
+- Vòng lặp fail 2+ vòng cùng findings → chuyển Codex, không tự cày tiếp.
+- **Task Scheduler state ≠ action args**: `schtasks /query /xml` cho thấy action (vd `-Dispatch -EnableLiveRecovery`) nhưng KHÔNG cho biết task có enabled không. Đọc trạng thái bằng `schtasks /query /tn '<task>' /fo LIST /v` → `Status:`/`Scheduled Task State:` (Disabled/Ready/Running). Đã nhầm "đang live" vì chỉ xem XML action (session 2026-08-04).
+- **Tiếp nối session Codex hết quota giữa chừng (Hermes làm tiếp — lặp lại thường xuyên)**: tái dựng hiện trạng từ screenshot + `git status`/`git diff` + `schtasks /query /fo CSV` + `wmic process`; chạy lại test Codex viết (xác nhận pass); làm nốt runtime confirmation Codex chưa làm được (trigger task, verify orphan dọn sạch, verify fail-closed lần trigger 2); **không sửa lại code Codex đã patch + verify offline** — chỉ verify độc lập + chạy thật. Commit file consumer nhưng LOẠI `AGENTS.md` + `*.bak` (artifact luna-sync policy sync — để riêng khỏi commit).
+- **Process check Windows qua git-bash**: `tasklist //FI "PID eq N"` có thể trả RỖNG dù process CÒN SỐNG (silent fail) — dùng `wmic process where "ProcessId=N" get ProcessId,CommandLine` mới đáng tin. `schtasks /run` exit 0 cả khi task đang chạy (INFO "currently running") = fail-closed đúng, không phải lỗi.
+- **Orphan recovery child (parent chết, child sống, lease state=running)**: patch `run-schedule-recovery-watch.ps1` (`Assert-ExistingLeaseCanBeReplaced` + `Stop-ExistingOrphanedChild`) dọn đúng orphan chỉ sau khi identity match CHÍNH XÁC (child start time, executable, binding, commandline, ppid); parent còn sống hoặc binding sai → từ chối fail-closed. Trước khi trigger task dọn orphan, verify read-only bằng `scripts/verify-orphan-identity.ps1` (mirror đúng các check của wrapper, không side effect).
+
+## Schedule Recovery Supervisor (TikTok consumer)
+
+Hệ thống tự recovery schedule TikTok (watcher + ladder Codex Luna + advisor Terra/Sol + audit OpenCode→Codex fallback + live verify target-scoped): bản đồ file, ledger/proof chain (`recovery_lock_handoff.json` do `flows/multi_machine_feed_session.py` viết), 3 blocker audit Codex chưa fix (crash window trước khi ghi LIVE_RETRY, PATCH_READY bypass, verifier bypass/thiếu bind account_row). Kiến trúc CHỐT (sau phản biện Codex vòng 2, Hermes rút lại đề xuất cron supervisor): **Task Scheduler = control plane DUY NHẤT**; Hermes chỉ review/report qua `reports/*.md` (KHÔNG cron supervisor, KHÔNG gọi live runner, KHÔNG Claude escalation mặc định khi FINAL_BLOCKED). Ladder 7 theo user: `Luna direct → Terra/high → Terra/xhigh → Terra/max → Sol/high → Sol/xhigh → Sol/max`; Luna/high luôn implement + live, Terra/Sol advisor read-only; distinct-evidence gate = evidence recapture + strategy fingerprint mới (KHÔNG yêu cầu audit label khác). Task `TikTokScheduleRecovery` từ 2026-08-06: **Enabled + Running** — orphan-cleanup patch (`Assert-ExistingLeaseCanBeReplaced` + `Stop-ExistingOrphanedChild` trong `scripts/run-schedule-recovery-watch.ps1`) đã runtime-confirm: dọn đúng orphan child khi parent chết (identity match chính xác: start time/executable/binding/commandline/ppid), fail-closed khi parent còn sống hoặc binding sai; trigger lần 2 bị từ chối (LastResult `-2147020576`), không double-run. C1-C3 blockers lịch sử vẫn chưa xác nhận fix. **Vận hành ổn định 2026-08-06**: watcher parent/child tự đổi thế hệ sau reboot (bình thường); sau reboot mọi task TikTok tự bật = ĐÚNG thiết kế (AtLogOn + StartWhenAvailable) — user chốt giữ nguyên, không tắt. Target `MANUAL_REQUIRED`/`FINAL_BLOCKED` KHÔNG còn lock trên đĩa (`C:\Users\Kibe\.codex\device-locks\`) → vòng feed tới tự nhặt lại. Tray `scheduler-tray.ps1` CHƯA quản lý recovery tasks (user đang cân nhắc tích hợp). Recipe verify runtime trước khi tin patch offline: `references/orphan-watcher-runtime-verify.md`; script identity-match dùng được ngay: `scripts/verify-orphan-identity.ps1`. Chi tiết vận hành + lock semantics: `references/schedule-recovery-supervisor.md`. Xem thêm `references/schedule-recovery-supervisor.md`. **Lock retention decision 2026-08-06 (user chốt, CHƯA implement — COMPLEX cần audit)**: giữ lock khi MANUAL_REQUIRED/FINAL_BLOCKED để chặn shift mới nhặt lại máy lỗi (lỗ hổng cross-shift re-pickup: `incident_key` gồm shift/artifact nên FINAL_BLOCKED chỉ terminal trong cùng shift → shift kế nhặt lại y hệt, tốn quota, không bao giờ tự sửa). Chi tiết classification 3 nhánh (DEFERRED_LOCKED/MANUAL_REQUIRED/AUTO_RECOVERY_PENDING), ai sở hữu lock (flow, không phải recovery), hướng implement blocked-status + fail-closed: `references/recovery-lock-retention.md`.

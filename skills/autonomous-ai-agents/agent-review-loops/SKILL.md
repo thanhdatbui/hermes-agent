@@ -46,6 +46,61 @@ MINOR:
 Sau khi sửa, chạy pytest verify."
 ```
 
+## Audit Loop qua 9router HTTP (không cần CLI wrapper)
+
+Khi cần planner/auditor từ Hermes mà model không phải deepseek-cha: gọi thẳng endpoint local 9router `http://127.0.0.1:20128/v1/chat/completions` (key `NINEROUTER_API_KEY`) — KHÔNG qua `codex exec`/CLI. Chi tiết model IDs, workaround, timeout: `references/9router-http-dispatch.md`.
+
+**Workflow đã chứng minh (2026-08-06, AGENTS.md scope-split):**
+1. **backup + sha256** file policy trước khi làm bất cứ gì (`cp file file.pre-scope-<ts>.bak`).
+2. **v4-pro lên plan** (read-only, `tools:[]`, `tool_choice:"none"` — v4-pro tự phát minh `<tool_calls>` giả khi không ép).
+3. **Sol/terra audit plan** (khác loài — Sol bắt lỗi v4-pro thật).
+4. REJECT → sửa plan theo findings → audit lại (material change = mở slot mới).
+5. Chỉ khi APPROVE mới cho worker (flash) thực thi sửa file thật.
+
+**Bẫy Sol audit:**
+- Sol chạy lâu (plan 15-30KB → 4-8 phút): chạy background script + `timeout=840`, KHÔNG foreground 300s.
+- Output hay bị cắt (`finish=length`) — đọc file artifact đã ghi, không tin tail process; nếu cắt giữa, gọi vòng tiếp "trả lời NGẮN phần còn thiếu".
+- Sol audit = gate thật: REJECT 5 vòng liên tiếp nghĩa là **vấn đề cấu trúc, không phải nội dung** (xem Pitfalls).
+- **GPT upstream (Sol/Terra) hay 401 `token_invalidated` / 429 khi hết quota trong 9router** — khi đó fallback audit bằng `cmc/deepseek/deepseek-v4-pro` (cùng vai trò, khác loài với planer nếu planer cũng là deepseek — vẫn hợp lệ; nếu planer là v4-pro thì đổi sang Kimi `cmc/moonshotai/Kimi-K2.6` cho khác loài).
+
+**Gemini audit — ĐÃ BỊ LOẠI KHỎI AUDIT ROUTE (2026-08-08, policy v5):** `gemini-3.6-flash` không còn trong audit route ("Removed models" trong AGENTS.md v5). Cả 3 wrapper gemini (`invoke-gemini-9router-audit.ps1`, `invoke-gemini-api-audit.ps1`, `invoke-gemini-audit.ps1`) đã bị ghi đè thành stub `GEMINI_AUDIT_DISABLED_POLICY_V5` + **exit 23** (backup `.bak-v5-<ts>` giữ bản gốc) — gọi chúng luôn exit 23, đừng đổ thời gian retry. Primary Auditor mới: `invoke-ag-audit.ps1` (AG Claude `ag/claude-sonnet-4-6` reasoning high qua 9router; escalation `ag/claude-opus-4-6-thinking`; exit-code taxonomy 0/20/21/22/1 + verify recipe: `9router-proxy-ops` skill §AG audit wrapper).
+
+## OpenCode Free Audit Layer (2026-08-06 — đã set up, ĐỨNG TRƯỚC Gemini)
+
+User yêu cầu: **lớp audit OpenCode model free nằm TRƯỚC Gemini**. Audit chain đã chốt (đã đổi 2026-08-08 — policy v5, gemini removed):
+`AG Claude (invoke-ag-audit.ps1, chính) → OpenCode free → Command Code → fresh Codex (Sol/Terra)`.
+
+**Cách chạy (wrapper đã test OK):**
+```
+powershell -NoProfile -ExecutionPolicy Bypass -File D:\Taadaa\tools\invoke-opencode-audit.ps1 \
+  -RepoRoot "D:\Taadaa" -Prompt "<audit prompt>" -OutputDirectory "D:\Taadaa\reports\opencode-audit"
+```
+- **Model cascade (2026-08-06, user chốt — mạnh → yếu, hết quota mới qua model kế):**
+  `opencode/nemotron-3-ultra-free` → `opencode/ling-3.0-flash-free` → `opencode/longcat-2.0-free` → `opencode/north-mini-code-free`.
+  **KHÔNG dùng `opencode/deepseek-v4-flash-free`** — user chạy DeepSeek ở mọi nơi, gọi thêm deepseek của OpenCode là trùng (user chỉnh thẳng: "kiểm tra opencode có những model nào chưa gì đã lấy deepseek ra chạy"). Có thể ép 1 model bằng `-Model <id>` (phải nằm trong cascade).
+- **Hồ sơ model free đã test (2026-08-06):** `nemotron-3-ultra-free` = mạnh nhất (NVIDIA) nhưng **hay 502 `ResourceExhausted (32/32)`** khi chạy agent+json — cascade xuống model kế (thử lại lần sau thường OK vì limit reset); `ling-3.0-flash-free` = ổn định, verdict thật; `longcat-2.0-free`/`north-mini-code-free` = verdict thật; **loại:** `mimo-v2.5-free` (trả template verdict giả, chỉ echo format — không audit thật), `laguna-s-2.1-free` (không output), `freemodel/gpt-5.6-*` (401 Insufficient balance — cần key riêng). **Rule: model free hay đổi — trước khi thêm model mới vào cascade phải smoke-test thật** (`opencode run --dir <repo> --agent taadaa-review --format json --model <m> "Reply VERDICT: APPROVE"`), đừng tin tên model.
+- **Auto-update model free (user hỏi 2026-08-06):** wrapper đọc `opencode models` LIVE mỗi lần chạy (filter `opencode/.+-free`) nhưng cascade pin model cố định → model mới không tự vào. **Khuyến nghị: tự vào lấy** (`opencode models` + smoke-test) thay vì auto-đổi cascade — model free hay đổi, auto chọn nhầm model dở (như mimo template-giả). Không làm cron auto-sync trừ khi user yêu cầu.
+- Agent: `taadaa-review` (đã có ở `~/.config/opencode/agents/taadaa-review.md`).
+- **Output JSONL là UTF-16** (`b'\xff\xfe'`) — đọc bằng `open(path, encoding='utf-16')`, parse từng dòng JSON, text nằm trong `part.type=='text'`; verdict + findings ở các text block cuối. Đừng decode utf-8 (UnicodeDecodeError).
+- Verdict có thể không đúng chữ `APPROVED` — suy luận từ findings: hết MAJOR/MINOR → APPROVED; P1/P2/P3 là phân loại mức độ (P1 = mâu thuẫn trực tiếp, P3 = cosmetic).
+
+**Giá trị riêng của OpenCode audit:** phát hiện **findings xuyên section** mà ds-pro/Gemini (chỉ xem vùng được trích) không thấy — vụ AGENTS.md v8: OpenCode đọc TOÀN file, bắt 6 findings Luna-only ở các section khác ngoài 2 vùng đã sửa (v4 header, canonical block, "DeepSeek never executor", "remains Luna/high", fallback ordering, watchdog/escalation headings). **Dùng OpenCode khi cần audit policy toàn file / tìm mâu thuẫn cross-section**; ds-pro/gemini khi chỉ cần xác nhận vùng sửa.
+
+**Bẫy:** wrapper Gemini (`invoke-gemini-9router-audit.ps1`) **đã bị stub exit 23** (policy v5, 2026-08-08) — không gọi nữa; dùng `invoke-ag-audit.ps1` (AG Claude) hoặc OpenCode trước. `freemodel/*` (gpt-5.6-luna free) → 401 Insufficient balance — không dùng được.
+
+## Khi nào cần plan + audit (gate, không mặc định)
+
+| Độ khó | Ví dụ | Rescuer/Auditor |
+|---|---|---|
+| Thường | debug 1 bug, sửa 1 file consumer | KHÔNG audit — flash → v4-pro cứu → xong |
+| Khó vừa | nhiều file, logic phức tạp 1 repo | **terra** (plan/audit) |
+| Khó thật | policy/core/live/recovery/lock/multi-repo | **sol** (plan/audit BẮT BUỘC) |
+
+- Audit = gate cho case khó thật, không tự chạy cho task thường (debug sửa xong là DONE).
+- Khó vừa gọi terra, khó quá mới sol — không đốt sol cho việc terra xử lý được.
+- Rescuer/auditor (v4-pro/terra/sol) READ-ONLY — chỉ plan/hướng fix/verdict, worker patch.
+- Fallback model (hết quota) = cơ chế **tool layer** (Hermes `fallback_providers`, 9router) — KHÔNG ghi vào policy AGENTS.md; policy chỉ: worker nào làm task nào, spawn fail → `SUBAGENT_RUNTIME_UNAVAILABLE`.
+
 ## Model Fallback Khi Claude Review Hết Quota
 
 Khi `claude -p` không review được do quota/session limit, rate limit, billing hoặc provider unavailable, **không chờ reset và không bỏ review gate**.
@@ -90,7 +145,7 @@ Khi dispatch Codex **implementer** và model mặc định fail/treo/không ghi 
 
 Theo `D:\Taadaa\AGENTS.md` (audit order Claude → OpenCode → Codex fallback; wrapper `taadaa-review` + `invoke-opencode-audit.ps1`):
 
-- Khi Codex implementer + Claude review đều fail/treo/hết quota → dùng **model free của OpenCode** làm audit/review (read-only): ưu tiên `opencode/deepseek-v4-flash-free`, fallback các free model khác khi bị quota/rate-limit/capacity.
+- Khi Codex implementer + Claude review đều fail/treo/hết quota → dùng **model free của OpenCode** làm audit/review (read-only): cascade `nemotron-3-ultra-free → ling-3.0-flash-free → longcat-2.0-free → north-mini-code-free` (KHÔNG deepseek — tránh trùng, xem OpenCode Free Audit Layer).
 - Chỉ thay vai trò **audit/review**, không thay implementer.
 - Invocation: `opencode run --agent plan --auto --model <free-model> '<prompt>'` (hoặc wrapper `D:\Taadaa\tools\...invoke-opencode-audit.ps1` khi có), read-only, verdict `APPROVED | MINOR_FIXES | REJECT` dòng đầu.
 - Smoke-test trước: `opencode run --model <free-model> 'Respond with exactly: OPENCODE_FALLBACK_READY'`.
@@ -147,7 +202,7 @@ hiện findings → tưởng "chưa có verdict" trong khi verdict đã có ở 
 
 - Khi output đứng yên: `process(action="log", limit=40, offset=0)` để đọc ĐẦU
   buffer — verdict nằm đó. Đọc xong mới kill.
-- OpenCode free (`deepseek-v4-flash-free`) có thể không in verdict dòng đầu
+- OpenCode free có thể không in verdict dòng đầu
   theo đúng format (viết "Không còn MAJOR/MINOR chặn. Chỉ còn NIT..." =
   APPROVED tương đương) — suy luận từ nội dung findings, không cần chữ
   APPROVED đúng nghĩa.
@@ -188,6 +243,12 @@ Task `Enabled` không đủ chứng minh watcher đang chạy. Phải verify sch
 
 ## Pitfalls đã học
 
+- **Audit policy file THẬT phải gồm cả các file con (2026-08-06):** sau khi sửa AGENTS.md v8 (parent), audit bằng nemotron-3-ultra-free đọc TOÀN cây → bắt thêm **3 file con** (automation-core, consumer repos) vẫn giữ "Luna-only worker" trái parent equivalence. Lesson: khi sửa policy parent, **các file con kế thừa có thể giữ policy cũ** — phải grep toàn bộ cây (`rg "Luna/high" --glob 'AGENTS.md'`) + audit bằng model đọc toàn file (OpenCode) trước khi coi là xong. ds-pro/Gemini chỉ xem vùng trích → không bắt được cross-file.
+- **Wrapper PowerShell tool có thể hỏng ngoài scope audit (2026-08-06):** `invoke-gemini-9router-audit.ps1` fail vì `[SHA256]::HashData` không tồn tại trên PowerShell cũ + 400 Invalid JSON với body 100KB. Không tự sửa wrapper tool (đã audit, đang dùng) — workaround: gọi API trực tiếp qua curl/urllib, model + reasoning_effort giữ nguyên.
+- **Model free của OpenCode thay đổi theo thời gian — smoke-test trước khi tin (2026-08-06):** mimo trả template verdict giả, laguna không output, nemotron 502 khi concurrent — chỉ ling/longcat/north cho verdict thật. Trước khi thêm model vào cascade: `opencode run --dir <repo> --agent taadaa-review --format json --model <m> "Reply VERDICT: APPROVE"` — đọc output thật, đừng tin tên model.
+
+- **Line-ending CRLF/LF của policy file phải GIỮ NGUYÊN khi sửa (2026-08-06):** patch tool / write_file trên Windows hay convert line-ending toàn file (LF→CRLF hoặc ngược) — 1 patch nhỏ có thể đổi 35+ dòng, làm byte-diff lệch backup (vi phạm release gate; Sol v6 từng cảnh báo "byte-diff có BOM/line-ending"). Đã gặp khi sửa 4 file AGENTS.md (parent + 3 con): patch tool LF-hoá/CRLF-hoá 3 file, phải khôi phục từ backup. **Quy trình đúng khi sửa policy file có line-ending hỗn hợp:** (1) backup từng file + sha256; (2) sửa bằng python đọc `open(path,'rb')` → decode → `text.replace(old, new)` — nếu file dùng CRLF, thử variant `old.replace("\n","\r\n")` trước; pattern bị ngắt giữa dòng (`pinned\n  Luna/high`) thì dùng `re.search(r'pinned\s*\n\s*Luna/high worker')`; (3) ghi lại bằng `open(path,'wb').write(text.encode('utf-8'))` — KHÔNG qua patch tool/write_file, KHÔNG dùng `open(...,'w',newline='')` (sẽ LF-hoá); (4) verify: đếm CRLF vs backup (`cur.count(b'\r\n') == bak.count(b'\r\n')`), đếm content-diff line vs backup (phải = số thay đổi chủ đích, không phải 35+), grep remnant sau khi loại cụm hợp lệ (`re.sub(r'\([^)]*Luna/high or flash/max[^)]*\)','',t)` rồi mới tìm term thật — đừng đếm cả cụm hợp lệ làm remnant). Bẫy `\r\r\n` (double CR) xuất hiện sau nhiều lần ghi lẫn lộn — grep `\r\r\n` và replace về `\r\n`. Chạy validator (`check-claude-quota-policy.ps1` exit 0) sau khi sync xong.
+- **Policy file 2 section cùng chủ đề → audit REJECT mãi (2026-08-06):** AGENTS.md Taadaa có 2 section cùng nói worker model (Delegation L70-215 + Model Routing L710-770). Mọi bản sửa 2 section đều vô tình DUPLICATE với section còn lại → Sol bắt "lặp contract" mỗi vòng → REJECT 5 vòng liên tiếp dù nội dung mỗi bản tốt hơn. Bài học: trước khi sửa policy file, **inventory toàn file** tìm mọi chỗ nói cùng chủ đề; nếu có ≥2 section cùng chủ đề thì phải sửa ĐỒNG THỜI hoặc thiết kế 1 canonical + các section khác chỉ tham chiếu. Nếu REJECT lặp vì cùng lý do cấu trúc 2 vòng → dừng, đổi cách tiếp cận (đừng sửa mãi trong cùng 2 section).
 - **Skill 2 nơi dễ lệch — sửa xong phải sync cả 2 (2026-08-03):** skill này tồn tại ở profile-local (`C:\Users\Kibe\AppData\Local\hermes\skills\`) VÀ git repo `D:\Taadaa\Hermes\skills\` (nguồn chính thức, push lên `thanhdatbui/hermes-agent.git`). Sửa skill ở local KHÔNG tự động vào git — phải chủ động copy + commit + push. Đã gặp: local có thêm pitfall nhưng git repo vẫn bản cũ/thiếu. Kiểm tra lệch: `diff <local SKILL.md> <git SKILL.md>` + `git status --short skills/`. Workflow chuẩn: sửa local → copy sang git → commit → push → `/reset`.
 - **ModuleNotFoundError dù module có trong src** (2026-08-03): env python cài `automation-core` bị **dist-info dở dang** (version 0.4.22 dist-info nhưng site-packages thiếu file `usb_popup.py` — wheel 0.4.22 chưa tồn tại). Import fail `No module named 'automation_core.usb_popup'`. Fix: kiểm tra `pip show automation-core` version vs `ls site-packages/automation_core/` (file thiếu), rồi `pip install --force-reinstall <đúng wheel>` theo pin consumer. Chạy test với `PYTHONPATH=<repo>/src` để dùng bản src thay vì site-packages cũ. Nghi ngờ env nhiễm/lệch: dùng `env -i PATH=... HOME=... USERPROFILE=...` để cô lập sys.path khỏi hermes venv.
 - **Đừng giả định format output CLI** (2026-08-03): viết regex parse output của `claude /usage`, `adb`, `dumpsys`... trước tiên PHẢI chạy lệnh thật lấy sample, đừng tự bịa format. Regex `Weekly usage:` sai vì output thật là `Current week (all models):` — mock test pass nhưng end-to-end ra null. Quy tắc: chạy lệnh thật → nhìn raw output → viết regex → test trên sample thật.

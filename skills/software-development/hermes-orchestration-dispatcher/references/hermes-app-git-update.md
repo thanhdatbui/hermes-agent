@@ -1,0 +1,60 @@
+# Hermes App Git Update (Windows, git install)
+
+Repo: `C:\Users\Kibe\AppData\Local\hermes\hermes-agent` — cài bằng **git** (không phải uv/pip). Version xem bằng `hermes --version` (vd `v0.18.2 ... Install method: git`).
+
+**Quan trọng:** session Hermes đang chạy giữ code cũ tới khi **restart app** — update source giữa chừng không ảnh hưởng session hiện tại (code đã nạp). Desktop `.tsx` đổi có thể cần rebuild `apps/desktop` sau restart.
+
+## Quy trình (chạy thành công 0.18.2 → 0.20.0, 2026-08-05)
+
+1. **Khảo sát trước:**
+   - `git -C <repo> status --short` — file local modified; `git log --oneline HEAD --not origin/main` — local carry commits; `git rev-list --left-right --count HEAD...origin/main` — ahead/behind.
+   - Xem commit upstream đụng file gì: `git show --stat <sha> | grep <file>`.
+2. **Đo thay đổi local THẬT (trước khi quyết giữ/bỏ):**
+   ```
+   git diff --ignore-cr-at-eol -- <file> | grep -cE '^[+-][^+-]'
+   ```
+   Nhiều file local "modified" chỉ là **EOL churn CRLF vs LF** (vd chat_completion_helpers.py: 6250 dòng đổi nhưng ~83 dòng logic thật). EOL churn không đáng giữ — lấy upstream.
+3. **Stash theo nhóm** (giữ lại được, stash entry không mất khi pop conflict):
+   ```
+   git stash push -m "local-custom-patches-<date>" -- <core files>
+   git stash push -m "local-website-docs-<date>"          # stash phần còn lại
+   ```
+   Không đụng untracked files (file local thêm) — `git status --short | grep '^??'` giữ nguyên.
+4. **Merge:** `git merge origin/main --no-edit`.
+   - **Lỗi "refusing to merge unrelated histories"** = repo là **shallow clone** (`.git/shallow` tồn tại; parent commit của HEAD missing → `git cat-file -t <parent>` báo bad object → không tìm được merge-base). Cách xử: `git fetch origin` đầy đủ rồi `git merge-base HEAD origin/main` — nếu ra HEAD nghĩa là local carry commit **đã nằm trong upstream history** (vd commit AUTHOR_MAP của PR đã merge upstream) → merge lại chạy sạch. **Đừng** vội `--allow-unrelated-histories`.
+   - `git fetch --unshallow` có thể báo "complete repository does not make sense" — không sao, fetch thường đủ.
+   - Bản 0.18.2 → 0.20.0 về qua 1 commit merge khổng lồ (5888 files, rename website docs) — đầu ra toàn rename là bình thường, không phải lỗi.
+5. **Pop stash → resolve conflict từng file theo ưu tiên (user chọn "giữ local patches"):**
+   - Core `.py` (chat_completion_helpers.py, models.py, package-lock.json...): local diff chỉ CRLF + logic cũ → `git checkout --theirs -- <file> && git add <file>` (lấy upstream mới).
+   - File có **local logic THẬT mới hơn upstream** (vd apps/desktop/src/store/model-presets.ts: composer optimistic update + primary scoping) → `git checkout --ours -- <file> && git add <file>`.
+   - Website docs (i18n zh-Hans auto-gen, model-catalog...) → `git checkout --theirs` hàng loạt:
+     ```
+     for f in $(git status --short | grep '^UU' | awk '{print $2}' | grep website); do git checkout --theirs -- "$f" && git add "$f"; done
+     ```
+   - `--theirs` = "Updated upstream" side; `--ours` = "Stashed changes" (local) side. Đếm markers `grep -c '^<<<<<<<' <file>` trước khi quyết; đọc từng vùng conflict nếu file nhỏ.
+   - Pop conflict **giữ stash** (an toàn); `git stash drop stash@{N}` sau khi resolve xong. Stash docs cũ không cần thì drop luôn.
+6. **Verify:**
+   - `git log --oneline -1` = upstream HEAD; `grep -m1 '^version' pyproject.toml` = version mới.
+   - Import thử bằng **venv python của repo** (không phải python hệ thống): `./venv/Scripts/python.exe -c "import agent.chat_completion_helpers; print('OK')"`.
+   - `git status --short | grep -c '^UU'` = 0 (hết conflict).
+   - pyproject/uv.lock đổi nhiều → **PHẢI cài lại deps và verify runtime chạy model thật** (xem mục lỗi post-update bên dưới — kết luận cũ "0.20.0 không cần cài deps" SAI, update đã làm vỡ gọi model 9router).
+
+## Lỗi post-update: Hermes không gọi được model qua 9router (0.18.2 → 0.20.0, 2026-08-05)
+
+Sau merge 0.20.0, Hermes báo lỗi "tè le", không gọi được deepseek-v4 qua 9router. Codex đã sửa trực tiếp trong working tree.
+
+**Nguyên nhân:** merge đổi `pyproject.toml`/`uv.lock` (thêm module mới `agent.errors` → `EmptyStreamError`, `agent.turn_context` → `substitute_api_content`, `agent.message_content` → `flatten_message_text`...) nhưng **venv chưa cài lại deps** → import lỗi → agent không chạy được model nào.
+
+**Bài học (KHÔNG lặp lại):** sau update git, ngoài `import agent.chat_completion_helpers` OK, phải **verify runtime gọi model thật** (mở session/chat test gọi 1 model qua 9router). Import đơn lẻ OK không đủ — các module mới yêu cầu deps/bytecode mới.
+
+**Codex đã sửa gì (tác động chức năng — phân tích 2026-08-05):**
+- `agent/chat_completion_helpers.py`: import `EmptyStreamError` từ `agent.errors` (module mới); **bỏ** `_CommandCodeEmbeddedError` + `_raise_for_embedded_commandcode_error` (cơ chế cũ dịch lỗi 9Router 503 thành text `[CommandCode error: ...]`). Không còn ai gọi cơ chế cũ — xóa an toàn. `EmptyStreamError` được dùng ở 2578, 2674, 2770, 2776, 2793, 2844 → **cải thiện** xử lý lỗi stream retry (đúng fix 9router).
+- `toolsets.py`: gỡ `open_preview`, `focus_pane`, `react_to_message`, `bfl_flux3_*` (video gen BFL FLUX3) khỏi toolset; thêm `kanban_record_plan_audit_verdict`. **Desktop GUI code vẫn còn xử lý** `pane.reveal`/`message.reaction` (`chat-messages.ts`, `pane-focus.ts`) → agent không còn tool gọi, nhưng code desktop chỉ thành dead code, **không crash**. Test cũ `tests/tools/test_open_preview_tool.py`, `test_focus_pane_tool.py` ref tới tool đã xóa → **sẽ fail** nếu chạy pytest (dead tests).
+- `agent/auxiliary_client.py`: 2486 dòng thay đổi (vision/aux model resolution — liên quan setup Gemini vision).
+- Mới (untracked): `plugins/autonomous-ai-agents/` (kanban-claude-lane, kanban-codex-lane), `hermes_cli/kanban_templates.py`, `memory_providers.py`, `subcommands/postinstall.py`.
+- **Cách phân tích tác động thay đổi của Codex/người khác trong working tree:** `git diff --ignore-cr-at-eol --stat -- <dir>/` để lọc CRLF churn khỏi logic thật; `grep -rln "<symbol>"` xem symbol còn ai gọi không (rỗng = xóa an toàn); phân biệt backend tool bị gỡ vs desktop code còn tham chiếu (dead code không crash, test cũ sẽ fail).
+
+## Kết quả sau update 0.20.0 (kiểm chứng 2026-08-05)
+
+- `delegate_task` **vẫn không có per-task model** — signature không đổi; `_MODEL_HIDDEN_TASK_FIELDS = {"acp_command", "acp_args"}` (chỉ che transport, không phải model). → Giới hạn "delegation 1 model" còn nguyên ở bản mới nhất.
+- Test live cockpit: `POST http://localhost:60818/v1/responses` model `gpt-5.6-luna` + `reasoning.effort=high` → `status: completed` (đường `delegation.provider: cockpit` cho Hermes subagent Luna/high là thật, không phải lý thuyết).
