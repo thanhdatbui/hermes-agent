@@ -99,3 +99,47 @@ To configure a secondary network device (the target device) to act as an Access 
     *   Double-check DHCP is disabled on the AP.
     *   Verify the static IP, subnet, gateway, and DNS settings on the AP are correct and match the primary network.
     *   Ensure the physical cable connection is LAN-to-LAN.
+
+## Safety Principles
+
+1. Preserve management access above all.
+2. Do not reset devices unless explicitly requested.
+3. Do not change the main router or existing AP/controller settings unless the task explicitly requires it.
+4. Verify after each state-changing step with real network/tool output.
+5. Stop and report if login fails, target IP is uncertain, or a change may strand the device.
+6. Prefer a built-in `AP`, `Bridge`, or equivalent work mode over manual DHCP-off configuration when the firmware provides it.
+7. If changing LAN IP or work mode may move the device, record current IP, MAC, intended new IP, gateway, and recovery path before applying.
+
+## Choosing the Mode Safely
+
+Preferred order:
+
+1. Built-in AP/Bridge mode for standalone AP use.
+2. If multiple bridge-like options exist, distinguish them before applying:
+   - `Controller(Bridge)` may mean the unit is a bridge-mode controller/AP — evaluate FIRST for a standalone AP behind a non-ZTE main router, but selecting it in the UI may not persist; always re-open Work Mode and track the unit by MAC after Apply.
+   - `Mesh Auto(Bridge)` may mean vendor mesh enrollment/auto-discovery, not generic AP.
+   - `Agent` may indicate mesh agent mode and can already bridge client traffic, depending on firmware.
+3. Manual AP mode only if no built-in mode is available:
+   - Disable DHCP server; disable NAT/router/WAN functions if exposed.
+   - Set a static management IP in the main LAN subnet that is known free (check ARP/ping/router client list first; avoid IPs that appear in ARP even if intermittent; prefer reserving in the main router if the UI supports it).
+   - Gateway and DNS point to the main router. After applying, test both old and new IPs; ARP MAC should match the target label/MAC.
+
+## ZTE H196A Notes
+
+ZTE H196A V9 Brazil-like firmware may expose:
+- `Management & Diagnosis → Work Mode`
+- `Local Network → LAN → IPv4` with `DHCP Server`, `LAN IP Address`, `Subnet Mask`, DNS fields
+
+H196A Pitfalls:
+- Do not trust `Apply` buttons in this specific ROM blindly. Always re-navigate to the setting page to verify persistence.
+- Avoid forcing changes by JS if the UI is unresponsive.
+- If in doubt regarding credentials or SSID parameters for synchronization, stop and request credentials rather than guessing encryption types or passphrases.
+- SSID names in this firmware may require specific handling of special characters.
+- Do not assume the old IP change saved just because fields were typed. Confirm with ping/web access and by re-reading the page.
+- Do not default to LAN-LAN cabling until the persisted bridge mode and uplink expectation are verified.
+
+Additional H196A Brazil/Ruijie/Aruba field notes: `references/zte-h196a-brazil-ruijie-aruba.md` (merged from the former `router-ap-conversion` skill).
+
+## User Expectation Pattern
+
+For users asking for senior network-engineer/autonomous execution, do not ask confirmation after every step. Narrate briefly, act, verify, and only stop for missing credentials, uncertain IP, or access-loss risk.

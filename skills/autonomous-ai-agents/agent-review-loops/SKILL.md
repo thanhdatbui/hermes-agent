@@ -262,3 +262,15 @@ Task `Enabled` không đủ chứng minh watcher đang chạy. Phải verify sch
 - **Soft reboot recovery**: 3× fail → `adb reboot` + 120s wait + 60s boot + wake + swipe.
 - **Worker conflict Codex**: dùng `write_file` hoặc dispatch single leaf + kill worker cũ.
 - **Lock takeover chỉ khi eligibility khớp chính xác central gate**.
+
+## Merge 2026-08-09 — từ `multi-agent-review-loop` + `role-based-agent-review-loop` (đã xoá sau khi gộp)
+
+- **Standalone runner + `/rl`**: `python <hermes-repo>/scripts/agent_loop/cli.py "<task>" --cwd <repo-path> --max-rounds 3`; state mặc định `<repo>/.hermes/agent-loop` (`--state-root` override, `--state` resume file cụ thể). Backend mặc định cũ: Codex Sol high (plan+code), Claude Opus low (review), OpenCode fallback. Trong Hermes chat: `/skill role-based-agent-review-loop` / `/rl` — skill đã merge vào đây, lệnh cũ chỉ để tương thích.
+- **Coordinator STRICT (Phase 3 final gate)**: trong lúc worker↔reviewer loop, Hermes KHÔNG đọc/review/arbitrate code — chỉ relay RAW output giữa 2 bên (không tổng hợp, không cắt nghĩa). Sau khi cả 2 APPROVED: Hermes ĐƯỢC đọc kết quả cuối, có thể đề xuất thay đổi → dispatch Claude thảo luận → đồng thuận → DONE. Max 3 vòng cùng 1 finding không đổi → escalate user.
+- **Phase 0: audit plan trước implement** (user đưa plan/spec): dispatch Codex (feasibility/architecture) + Claude (edge cases/safety) song song audit → tổng hợp trình user → user approve → mới dispatch implementation. KHÔNG bao giờ code trước audit + approval.
+- **Role separation**: user giao role (Codex coder, Claude auditor) → Hermes CHỈ orchestrator. KHÔNG tự patch code thay worker dù leaf báo không write được file (đó là vấn đề routing, không phải lý do làm thay).
+- **Drive-by edits**: sau Codex chạy `git diff --stat` TOÀN repo (không chỉ task-scope) — Codex hay sửa file ngoài scope; revert bằng `git checkout -- <path>` trước khi gọi reviewer.
+- **Claude print mode**: review prompt inline >10K chars → `Error: Reached max turns` (KHÔNG phải reject code) — fix: `--max-turns 8-10`, `--verbose`, hoặc split sub-prompts. Inline `-p` dính special chars bash (`()`, `` ` ``, `'`, `$()`) → viết prompt file rồi `claude -p "$(cat prompt.txt)" --max-turns 10`. Template: `references/claude-print-mode-review-prompt.md`.
+- **Model pins cũ (role-based, có thể đã đổi — xem `agent-model-routing`)**: Codex plan/code = `gpt-5.6-sol/high`; Codex debug D:/Taadaa = `gpt-5.6-luna/high`; Claude review = `claude-opus-5` low effort.
+- **Standing-goal review loop**: `/goal`/“làm đến khi xong” = loop kín — không intermediate summary, không `clarify`, chỉ báo user ở APPROVED/FINAL_BLOCKED/MAX_ROUNDS (chi tiết: `references/standing-goal-review-loop.md`).
+- References mới copied: `automation-scheduler-patterns.md`, `claude-print-mode-review-prompt.md`, `tiktok-core-debugging-patterns.md`, `production-consumer-preflight.md`, `session-routing.md`, `standing-goal-review-loop.md`, `workflow-workbook-preflight.md`.
