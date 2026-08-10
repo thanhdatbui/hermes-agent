@@ -37,6 +37,23 @@ Trước khi dispatch worker cho bất kỳ task scheduler/orchestration nào, p
 
 Chi tiết checklist reconcile scheduler nằm ở `references/scheduler-workstream-overlap.md`.
 
+### Large-job pipeline bắt buộc (user chốt 2026-08-10: "Job lớn thì chia plan ra — gọi agent lập plan, gọi agent KHÁC audit, đến khi ok hết bắt đầu build từng phase theo plan, phase nào xong gọi audit phase đó")
+
+Cho job lớn (scheduler/refactor multi-phase), user yêu cầu chuỗi CỨNG sau, không tự ý đổi:
+1. **Planner agent** (leaf, đọc repo với 0-context assumption) viết plan markdown đầy đủ — mỗi phase có file/red-test/green-code/verify/acceptance/commit message tiếng Việt; lưu `.hermes/plans/YYYY-MM-DD_<slug>.md`.
+2. **Audit agent RIÊNG** (fresh leaf, không phải planner) đọc plan + đối chiếu acceptance criteria nguồn (vd file handoff invariants) → verdict `APPROVED|MINOR_FIXES|REJECT` dòng đầu kèm locator.
+3. MINOR_FIXES/REJECT → planner sửa plan → audit lại (mỗi vòng material change = slot mới). Chỉ APPROVED mới build.
+4. Build TUẦN TỰ từng phase (worker TDD), mỗi phase xong → audit phase đó → mới sang phase kế; commit từng phase theo message trong plan.
+5. Coordinator không vượt gate: chưa APPROVED thì không dispatch worker build.
+
+**Auditor phải RE-VERIFY con số thật của plan, không chỉ cấu trúc (hit 2026-08-10, plan fleet scheduler):** planner viết 3 lỗi fact mà audit bắt được bằng cách tự chạy/re-compute:
+- **Baseline sai**: plan ghi "117 passed, 3 failed" nhưng chạy thật `121 passed` (worker R10 đã fix từ trước — plan copy số cũ). Auditor phải chạy lại suite, không tin số plan tự kê; Phase 0 "dọn 3 test đỏ" biến thành verification-only.
+- **Math formula sai**: `S2_start = S1_end + pair_gap` (gap nằm GIỮA 2 phiên), plan viết thành cộng gap sau S2 → block 3 kết thúc 01:00 thay vì 00:30, vi phạm window 02:00. Auditor tự tính lại bằng python và đối chiếu bảng feasibility/expected values của từng test trong plan.
+- **Hằng số lệch giữa phase**: đổi window 06:00–02:00 làm mốc cũ `01:30` (từng là ngoài-window) thành TRONG window — phải chọn mốc mới `02:30` thống nhất ĐÚNG MỘT chỗ, các phase khác chỉ tham chiếu. Auditor check cross-phase consistency của mọi constant/số magic.
+- **Test skeleton `...` trong plan** = worker sẽ tự bịa behavior — auditor phải bắt và yêu cầu điền body đầy đủ (arrange/act/assert), không bao giờ APPROVED plan còn placeholder.
+
+Khi dispatch audit plan: context phải kèm acceptance criteria nguồn (invariant file path hoặc nội dung) + yêu cầu "chạy baseline thật + tự tính toán lại mọi công thức trong plan trước khi verdict".
+
 ### Standing-goal / “tự chạy đến xong” contract (user correction)
 
 Khi user nói “tự chạy tự audit cho đến khi xong”, đó là **standing goal**, không phải yêu cầu cho một vòng thử. Coordinator phải giữ vòng kín `audit → worker → independent verify → re-audit` cho tới khi có terminal proof:
