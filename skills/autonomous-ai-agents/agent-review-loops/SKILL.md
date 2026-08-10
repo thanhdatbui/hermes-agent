@@ -284,6 +284,13 @@ Audit độc lập có thể ra `REJECT` với **P1 hoàn toàn MỚI mỗi vòn
 - **Phân loại finding MỚI vs LẶP**: auditor đào sâu hơn qua từng vòng (R3 fail-closed cơ bản → R4 identity/scope → R5 value/path/CLI level). Finding mới có locator + trigger + evidence mới → dispatch vòng fix tiếp bình thường. Chỉ khi **2 chu kỳ liên tiếp ra CONFIRMED P0/P1 mới ngoài invariant matrix** mới chuyển sang impact/design audit (theo rule 8 `D:\Taadaa\AGENTS.md`).
 - **Sau mỗi round, coordinator phải tự chạy lại probe từng finding trên máy thật** — audit Sol sandbox read-only không tạo được temp dir nên ghi "suite NEEDS_PROOF"; coordinator chạy suite + probe theo đúng locator/trigger của audit rồi mới dispatch vòng fix (R4 findings được xác nhận fix bằng 5 probe độc lập trước khi vòng R5 bắt đầu).
 - Prompt worker mỗi vòng phải nêu rõ "findings vòng trước đã được re-verify pass; chỉ sửa findings vòng này" — tránh worker phá regression đã đóng.
+- **Circuit breaker — đừng để churn vượt ngưỡng (hit thật 2026-08-10, R4→R7):** chuỗi REJECT R4 (5 P1 mới) → R5 (7 P1 mới) → R6 (3 P1 mới) → R7 (4 P1 mới), toàn bộ rơi vào cùng cụm file journal.py/watcher.py (recovery state machine). Theo rule 8 `D:\Taadaa\AGENTS.md`, ngưỡng là **2 chu kỳ liên tiếp ra CONFIRMED P0/P1 mới ngoài invariant matrix → dừng dispatch worker, chạy read-only design/impact audit để tái-baseline matrix rồi MỘT consolidated implementation phase**; không tiếp tục dispatch worker thứ N theo từng vòng. Dấu hiệu sớm: findings nhiều vòng liên tiếp cùng cụm file + auditor đào sâu dần (key-set → value → cross-event continuity) = matrix chưa đủ, vòng sau lại ra P1 mới.
+
+### Coordinator probe: import fixture của test suite, đừng hand-build manifest (hit thật 2026-08-10, R6 probes)
+
+Khi coordinator tự viết adversarial probe trên máy thật (vì audit sandbox read-only không chạy được pytest — cần temp dir), ĐỪNG tự dựng manifest/payload bằng tay. Đã fail 4 lần liên tiếp vì: (a) `build_manifest_payload` với `_entry` dùng manifest_id placeholder → `MANIFEST_IDENTITY_MISMATCH`; (b) `state_snapshot_digest='0'*64` bị normalize thành `None` khi recompute → assignment_id lệch; (c) `StatePaths` signature đổi (`StatePaths(root, offline_root)`); (d) state_revision không khớp source → 0 entries.
+
+Pattern đúng: `sys.path.insert(0, <repo-root>)` rồi import fixture có sẵn trong test files — `from python_runner.tests.test_hermes_cron_p1_r2 import SOURCE, FEED, POST, TARGET, make_snapshot` — dùng `make_snapshot(root)` / `Picker(...).pick(state_paths=StatePaths(root, root))` để sinh manifest hợp lệ, sau đó `copy.deepcopy` + tamper đúng field. Probe chạy được trong vài giây thay vì loay hoay fixture.
 
 ## Watcher Validation Checklist
 
