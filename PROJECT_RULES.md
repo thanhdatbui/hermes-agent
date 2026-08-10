@@ -106,3 +106,9 @@ Khi thực hiện merge nhánh về main hoặc dọn nhánh/tree quan trọng:
 2. Worker thực thi merge/resolve.
 3. Chạy AUDIT lại sau khi worker xong — lặp tới khi audit APPROVED mới xoá nhánh/tree.
 4. Xoá nhánh chỉ sau bằng chứng absorbed/superseded (merge-tree/reflog/fsck).
+
+## COMMIT GATE (2026-08-10, user chốt)
+
+- Commit + push KHI FULL TEST SUITE XANH (pytest tests/test_tiktok_workflow.py -q — 331 pass hiện tại), KHÔNG chờ live-run success.
+- Live-run là bước verify TIẾP THEO (lỗi mới lộ ra thì fix tiếp, commit tiếp); không chặn release code.
+- Fix sai trên máy thật → revert NGAY về bản git trước (git revert/checkout), nguyên trạng thái an toàn trong git.
