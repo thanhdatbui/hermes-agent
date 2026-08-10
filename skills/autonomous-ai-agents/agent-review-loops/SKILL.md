@@ -215,13 +215,36 @@ Chi tiết và checklist: `references/interrupted-session-takeover.md`.
 - Không báo `APPROVED`, không gọi task `DONE`, và không để user chờ reset quota.
 - Smoke-test fallback trước, sau đó review toàn bộ diff thực tế. Nếu fallback cũng lỗi, chuyển model kế tiếp thay vì lặp cùng command.
 
-### Heuristic: output đứng yên = process treo (không phải đang suy nghĩ)
+### Worker checkpoint và gate dừng process (BẮT BUỘC)
 
-`codex exec`/`claude -p` chạy background qua Hermes hay treo ở TAIL sau khi việc chính đã xong:
-- Dấu hiệu: cùng một đoạn output (diff/test snippet) lặp lại y hệt qua 2-3 lần poll (≥ 180s), `tokens used` đứng nguyên, không có python child đang chạy.
-- Hành động: **kill process, đừng đợi nữa**. Verify bằng artifact thật: `git status --short`, `git diff --stat`, file mtime, chạy test trực tiếp bằng tay. Codex exec thường đã GHI được file trước khi treo — output lặp ≠ chưa làm gì.
-- Ngoại lệ: `node_repl/js`/`mcp:` xuất hiện liên tục nghĩa là reviewer đang chạy công cụ — còn chạy thật, cho thêm 1-2 poll.
-- Kiểm tra `tasklist | grep -iE 'codex|claude'` để phân biệt process treo vs đã exit; `wmic process where "ProcessId=N" get CommandLine` xác định đó là exec task nào.
+Không được coi output đứng yên hoặc `exit code -15` là bằng chứng code lỗi. Worker có thể đã sửa/test xong nhưng treo ở bước ghi report cuối; kill là side effect và chỉ được phép sau khi reconcile đủ bằng chứng.
+
+**Khi khởi chạy worker:**
+- Dùng phiên mới, `pty=true`, `background=true`, `notify_on_complete=true`; ghi transcript và result/checkpoint vào artifact riêng ngoài worktree.
+- Prompt worker phải yêu cầu checkpoint tối thiểu sau mỗi mốc: đọc spec, RED, GREEN, full test, diff/status; report phải ghi incremental, không chỉ ghi một lần ở cuối.
+- Ghi rõ `worker_id`, repo/worktree, allowlist, model/effort, start time và PID/session handle trước khi chờ.
+
+**Mỗi lần poll:** kiểm tra cả bốn mặt, không chỉ stdout:
+1. process handle/status và process tree (worker, pytest/python/codex child);
+2. mtime + kích thước transcript, checkpoint/result và file trong allowlist;
+3. `git status --short --untracked-files=all`, diff stat/check (read-only);
+4. dấu hiệu lỗi fatal/quota/transport hoặc tool activity (`node_repl`/`mcp`/test child).
+
+**Cấm kill theo heuristic 2–3 poll.** Chỉ được kill khi một trong hai điều kiện rõ ràng:
+- có lỗi fatal/quota/transport machine-readable; hoặc
+- ít nhất **3 lần quan sát liên tiếp**, cách nhau tối thiểu **30 giây** (≥90 giây tổng), không có output/checkpoint/file-mtime/process-tree tiến triển, không còn child đang chạy và không có tool activity.
+
+Nếu output đứng yên nhưng còn child/test/tool activity, tiếp tục chờ bounded window; không kill. Nếu process đã tự exit nhưng thiếu report, phân loại `WORKER_EXITED_WITHOUT_REPORT`, không suy ra thất bại và không tự re-dispatch trước khi reconcile exact scope.
+
+**Trước khi kill:** capture đầu log (verdict nếu là reviewer) và cuối log, snapshot status/diff/mtime/process tree, rồi ghi lý do `WORKER_TERMINATED_EXTERNALLY` vào artifact. Không rollback mù; file đã sửa có thể vẫn còn.
+
+**Sau khi kill/exit bất thường:**
+- Reconcile exact worktree/allowlist, không để worker thay thế chạy chồng.
+- Chạy compile, targeted tests và adversarial probes độc lập nếu worktree đủ; kiểm tra `git diff --check`.
+- Chỉ gọi implementation là đạt khi verifier/reviewer độc lập xác nhận; self-report, exit code và test pass đơn lẻ không đủ.
+- Không tự động resume cùng session. Re-dispatch chỉ sau khi process/lease/tool-event/action cũ được xác nhận không còn; prompt mới phải nêu `what-was-tried`, `why-it-stopped`, và kế hoạch khác biệt.
+
+**Ngoại lệ reviewer:** nếu artifact đã có verdict đầy đủ nhưng process treo, đọc toàn artifact trước; vẫn phải kiểm tra findings/độ đầy đủ rồi mới kill. `node_repl`/`mcp`/test child đang hoạt động là bằng chứng chưa được kill.
 
 ### Verdict nằm ở ĐẦU buffer log, không phải tail
 
