@@ -14,15 +14,15 @@ Dùng khi user yêu cầu điều phối coding agent, review chéo, hoặc làm
 
 ## Quy trình bắt buộc
 
-0. **Phân loại task**: SIMPLE (1-2 file, mechanical, không đụng shared core/sensitive) hay COMPLEX (core/shared/sensitive/multi-machine).
-1. **SIMPLE → Hermes tự sửa code + test + verify.**
-   **COMPLEX → viết task spec rõ ràng** vào file `tasks/<date>-<slug>.md` với đầy đủ: Goal, Scope, Acceptance Criteria, Constraints → dispatch Codex implement/sửa (background, pty=true, notify_on_complete=true).
-2. **Claude/OpenCode CHỈ audit review** (KHÔNG BAO GIỜ implement). Dispatch Claude review **code thực tế** với prompt chuẩn (quota gate theo `D:\Taadaa\AGENTS.md`).
-3. Nếu Claude/OpenCode trả `REJECT` hoặc `MINOR_FIXES`: **Hermes tự sửa theo findings** (SIMPLE scope) hoặc **dispatch Codex sửa** (COMPLEX scope), sau đó re-review.
-4. Lặp đến khi reviewer trả `APPROVED`; không dừng ở suite xanh hoặc ad-hoc pass.
-5. **Vẫn fail 2+ vòng CÓ DẤU HIỆU LẶP** (cùng findings, cùng chỗ treo/fail, không tiến triển) → **chuyển hẳn Codex implement**: phiên MỚI, kèm what-was-tried/why-failed + materially different plan (theo AGENTS.md), không lặp y hệt prompt. Claude/OpenCode vẫn chỉ review.
-6. Verify cuối: chạy test, kiểm tra artifact.
-7. Không hỏi user giữa loop; chỉ báo kết quả APPROVED/DONE hoặc hard stop an toàn.
+0. **Phân loại task**: SIMPLE (1-2 file, mechanical, không đụng shared core/sensitive) hay COMPLEX (core/shared/sensitive/multi-machine/architecture).
+1. **Chọn owner đúng policy**: COMPLEX phải có task spec rõ ràng (`Goal`, `Scope`, `Acceptance Criteria`, `Constraints`) rồi dispatch worker implement (background, `pty=true`, `notify_on_complete=true`). Khi coordinator-write guard đang active, không tự write chỉ vì task được gọi là SIMPLE; tuân thủ skill dispatcher và chuyển mọi write cho một worker độc quyền.
+2. **Tách vai trò**: Claude/OpenCode/Sol/Terra chỉ audit/read-only; worker không tự duyệt thay đổi của chính mình. Reviewer phải xem code/spec thực tế, không chỉ tin self-report hoặc exit code.
+3. Nếu reviewer trả `REJECT` hoặc `MINOR_FIXES`, chạy **spec/implementation ratchet**: mỗi finding phải có locator, nhánh/input/state, hậu quả cụ thể và evidence; sửa đúng finding bằng một điều khoản/API/schema/state rõ ràng kèm acceptance test; sau đó tạo evidence mới và re-review. Không dispatch implementation khi gate của plan/spec còn `REJECT`/`MINOR_FIXES`.
+4. Lặp đến khi reviewer trả `APPROVED`; suite xanh, process exit `0`, `completed normally`, hoặc file output tồn tại **không phải verdict**. Đọc artifact review và kiểm tra verdict theo format yêu cầu (thường dòng đầu); nếu verdict chưa đọc được thì trạng thái vẫn là `BLOCKED/UNKNOWN`.
+5. Với audit prompt lớn, ghi prompt ra file và truyền qua stdin/file API; không nhét prompt dài vào argv. Lưu riêng prompt/result, model, effort, repo, iteration và verdict để tiếp quản được sau context compaction.
+6. Nếu 2+ vòng liên tiếp lặp cùng kiểu finding cấu trúc (thiếu canonical source, schema/API chưa self-contained, hoặc mâu thuẫn cross-section), không tiếp tục nối thêm prose vô hạn: đổi cách tiếp cận sang một nguồn chuẩn + reference, đơn giản hóa contract, hoặc bỏ phần không cần thiết; ghi rõ `what-was-tried/why-failed/materially-different-plan` rồi audit lại.
+7. Chỉ sau `APPROVED` mới dispatch worker implementation; sau worker phải review evidence mới, rồi verify độc lập bằng diff/test/artifact. Không coi audit plan `APPROVED` là bằng chứng code đã chạy.
+8. Không hỏi user giữa loop nếu finding có thể đóng bằng contract/evidence; chỉ báo kết quả `APPROVED/DONE` hoặc hard stop an toàn.
 
 ### Claude Review Prompt Format
 
