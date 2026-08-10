@@ -277,6 +277,14 @@ Khi dispatch independent audit/verifier cho repo A trong lúc workstream khác (
 - Trước khi dispatch auditor: chạy `git status --short` repo target; nếu có dirty chủ đích từ workstream khác thì (a) ghi rõ trong prompt auditor "thay đổi <path> là intentional từ workstream khác, bỏ qua khỏi scope-escape check", hoặc (b) sequence: để workstream kia hoàn tất (hoặc commit policy) trước khi audit.
 - Cron `sync-hermes-skills-to-git` (30') commit mọi staged file trong `D:\Taadaa\Hermes` — khi index bất ngờ sạch, kiểm tra `git log -1 --stat` trước khi kết luận feature chưa commit.
 
+### Finding churn giữa các vòng audit: auditor đào sâu hơn mỗi vòng (hit thật 2026-08-10, P1 harness R4→R5)
+
+Audit độc lập có thể ra `REJECT` với **P1 hoàn toàn MỚI mỗi vòng** dù vòng trước đã fix sạch và được re-probe xác nhận (R4: 5 P1 → worker fix, suite 54→61, probe độc lập pass; R5: 7 P1 MỚI — journal value-proof, picker custom-reader schema, dry-run terminal, logical-day 00:00, watcher CLI, runner containment → worker fix, suite 61→70). Đây KHÔNG phải "loop vô vọng", cũng không phải lặp invariant cũ:
+
+- **Phân loại finding MỚI vs LẶP**: auditor đào sâu hơn qua từng vòng (R3 fail-closed cơ bản → R4 identity/scope → R5 value/path/CLI level). Finding mới có locator + trigger + evidence mới → dispatch vòng fix tiếp bình thường. Chỉ khi **2 chu kỳ liên tiếp ra CONFIRMED P0/P1 mới ngoài invariant matrix** mới chuyển sang impact/design audit (theo rule 8 `D:\Taadaa\AGENTS.md`).
+- **Sau mỗi round, coordinator phải tự chạy lại probe từng finding trên máy thật** — audit Sol sandbox read-only không tạo được temp dir nên ghi "suite NEEDS_PROOF"; coordinator chạy suite + probe theo đúng locator/trigger của audit rồi mới dispatch vòng fix (R4 findings được xác nhận fix bằng 5 probe độc lập trước khi vòng R5 bắt đầu).
+- Prompt worker mỗi vòng phải nêu rõ "findings vòng trước đã được re-verify pass; chỉ sửa findings vòng này" — tránh worker phá regression đã đóng.
+
 ## Watcher Validation Checklist
 
 ### Lock proxy readiness chặn START_VPN
