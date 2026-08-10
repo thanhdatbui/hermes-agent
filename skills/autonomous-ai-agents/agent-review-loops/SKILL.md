@@ -24,6 +24,19 @@ Dùng khi user yêu cầu điều phối coding agent, review chéo, hoặc làm
 7. Chỉ sau `APPROVED` mới dispatch worker implementation; sau worker phải review evidence mới, rồi verify độc lập bằng diff/test/artifact. Không coi audit plan `APPROVED` là bằng chứng code đã chạy.
 8. Không hỏi user giữa loop nếu finding có thể đóng bằng contract/evidence; chỉ báo kết quả `APPROVED/DONE` hoặc hard stop an toàn.
 
+### Pre-dispatch overlap gate cho scheduler/orchestrator
+
+Trước khi dispatch worker cho bất kỳ task scheduler/orchestration nào, phải kiểm tra **active goal và các workstream/session song song**, không chỉ git status:
+
+1. Xác định deliverable thật: đang build schedule random farm, đang harden core state-machine, hay đang cấu hình Hermes cron live. Đây là các lớp khác nhau nhưng có thể sửa cùng `picker/runner/watcher/manifest`.
+2. Dùng `session_search` để tìm session gần đây theo các từ khóa `schedule`, `random`, `picker`, `runner`, `watcher`, `Hermes cron`, `feed_then_post`; đọc goal/acceptance của session đang hoạt động.
+3. Kiểm tra cron jobs hiện có và process/worker artifacts trước khi viết. Phân biệt **cron đang chạy live** với code harness mới chỉ offline; không suy ra hai hệ không trùng chỉ vì chưa có cron live.
+4. Nếu hai task cùng tạo scheduler hoặc cùng sở hữu một file/contract, chọn một owner duy nhất và lập bảng ownership. Hợp nhất core dùng chung vào owner đó; dừng/pause workstream trùng, không dispatch thêm P1/Rn song song.
+5. Chỉ tiếp tục audit/harden `hermes_cron` nếu nó là dependency dùng chung đã được owner schedule chấp nhận; nếu không, báo overlap và chuyển thành design/reconciliation, không tiếp tục build một scheduler thứ hai.
+6. Khi báo user, nói thẳng: `trùng mục đích`, `chưa trùng runtime`, hoặc `không trùng`; kèm action cụ thể. Không báo tiến độ implementation như thể task độc lập nếu ownership chưa được reconcile.
+
+Chi tiết checklist reconcile scheduler nằm ở `references/scheduler-workstream-overlap.md`.
+
 ### Standing-goal / “tự chạy đến xong” contract (user correction)
 
 Khi user nói “tự chạy tự audit cho đến khi xong”, đó là **standing goal**, không phải yêu cầu cho một vòng thử. Coordinator phải giữ vòng kín `audit → worker → independent verify → re-audit` cho tới khi có terminal proof:
