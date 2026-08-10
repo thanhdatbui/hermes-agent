@@ -24,6 +24,35 @@ Dùng khi user yêu cầu điều phối coding agent, review chéo, hoặc làm
 7. Chỉ sau `APPROVED` mới dispatch worker implementation; sau worker phải review evidence mới, rồi verify độc lập bằng diff/test/artifact. Không coi audit plan `APPROVED` là bằng chứng code đã chạy.
 8. Không hỏi user giữa loop nếu finding có thể đóng bằng contract/evidence; chỉ báo kết quả `APPROVED/DONE` hoặc hard stop an toàn.
 
+### Standing-goal / “tự chạy đến xong” contract (user correction)
+
+Khi user nói “tự chạy tự audit cho đến khi xong”, đó là **standing goal**, không phải yêu cầu cho một vòng thử. Coordinator phải giữ vòng kín `audit → worker → independent verify → re-audit` cho tới khi có terminal proof:
+
+- Chỉ hai kết quả được báo là hoàn tất: `APPROVED` kèm test/diff/proof độc lập, hoặc `FINAL_BLOCKED` kèm blocker thật, locator, số lần thử và hiện vật. `process exit 0`, worker tự báo xong, test pass, context compaction, hoặc hết một lượt tool **không phải terminal state**.
+- Không gửi recap tiến độ giữa vòng, không hỏi lại user về các finding có thể đóng bằng code/fixture/evidence. Nếu cần nói, chỉ báo milestone/blocker thật; tiếp tục gọi tool ngay trong cùng lượt.
+- Trước mỗi lượt coordinator, ưu tiên theo thứ tự: (1) đọc verdict/findings hiện có, (2) reconcile process/artifact/worktree, (3) dispatch đúng role, (4) verify độc lập. Không tiêu ngân sách tool bằng cách dump lặp lại log/diff khổng lồ hoặc poll mù.
+- Nếu context/tool limit cắt ngang, ghi/đọc checkpoint và artifact để **tiếp tục** ở lượt sau; tuyệt đối không biến “chưa kịp gọi tool” thành báo cáo `Chưa xong` cuối cùng khi worker/audit còn có thể tiếp tục.
+- Nếu có nhiều finding lặp cấu trúc, chuyển sang một patch root-cause + regression/adversarial probe; không kéo dài prompt bằng cách nối thêm prose qua R2…Rn.
+
+### Prompt-boundary and audit-artifact discipline
+
+- Không bao giờ nối nguyên một audit prompt (đặc biệt phần `Bạn là auditor read-only`, verdict schema, hoặc output cũ) vào prompt worker. Hãy tạo **worker brief riêng**, self-contained, chỉ gồm scope/acceptance/constraints/finding; role worker và role auditor phải tách tuyệt đối.
+- Mỗi reviewer/worker dùng artifact riêng: `prompt`, `result`, model, effort, repo, iteration. Với output lớn, dùng một extractor có điều kiện để lấy dòng verdict đầu tiên, headings và finding locators; không đọc lại toàn bộ file ở nhiều offset.
+- Đọc verdict từ **dòng đầu tiên không rỗng của phản hồi cuối**, không suy luận từ exit code, tail, hay dòng `tokens used`. Nếu process vẫn chạy nhưng artifact đã có verdict rõ ràng, kiểm tra tính đầy đủ của phần findings trước khi quyết định chờ/kill/fallback.
+- Self-report của worker/HANDOFF chỉ là hint. Coordinator bắt buộc chạy import/compile, targeted tests, `git diff --check`, allowlist/status và ít nhất một nhóm **adversarial probes** cho invariant fail-closed trước khi coi là đạt.
+
+### Adversarial verification for fail-closed harnesses
+
+Với scheduler/orchestrator/core harness, test pass không đủ. Reproduce trực tiếp các input bị sửa/tampered và crash windows:
+
+- Manifest: đổi slot vào reserved/sub-minute, ID traversal, idempotency/assignment/source revision lệch, timestamp sai zone/future, row ngoài range.
+- State/mapping: state revision không khớp payload, machine↔serial one-to-many, duplicate/missing account mapping, active pointer torn/ambiguous.
+- Runner: dry-run phải return trước lock/prepare/spawn; entry object bị sửa phải bị từ chối; mốc 00:00–05:59 phải giữ đúng manifest logical-day.
+- Journal/recovery: malformed JSONL phải fail-closed; reservation crash và terminal duplicate không được gọi bridge lần hai; cap 2..8 phải được bảo vệ dưới concurrency.
+- Verifier/watcher: artifact shape thật và identity ambiguity, sensitive/unknown classification, `UNKNOWN` recovery result, path/secret/workbook sanitizer, reordered notification target.
+
+Chi tiết reproduction/checklist của vòng P1 offline nằm ở `references/p1-offline-harness-audit-checklist.md`.
+
 ### Claude Review Prompt Format
 
 ```
