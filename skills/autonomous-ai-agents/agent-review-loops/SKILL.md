@@ -192,8 +192,8 @@ Nếu Claude và toàn bộ OpenCode reviewer đều hết quota, thiếu balanc
 
 Report wrapper/CLI `DONE` chỉ nghĩa report đã được ghi — không đồng nghĩa target `SUCCESS`. Phải đọc summary outcome per-target (JSON/XLSX) trước khi báo thành công. Ví dụ: wrapper in `DONE: result=...xlsx`, nhưng summary bên trong ghi máy `locked`.
 
-Khi user hỏi ngắn như `xong chưa`:
-- Trả lời ngay câu đầu `Xong` hoặc `Chưa`, không mở đầu bằng diễn giải.
+Khi user hỏi ngắn như `xong chưa`, `này là lỗi hả`, `có ảnh hưởng không`:
+- Trả lời ngay câu đầu theo cực (`Có`/`Không`/`Xong`/`Chưa`) + tối đa 1 dòng lý do, KHÔNG mở đầu bằng diễn giải/lịch sử. User từng phải nhắc lại khi câu trả lời vòng vo (2026-08-10), kể cả câu hỏi trạng thái process: `exit code -15` = process bị kill từ ngoài, không phải lỗi test/code — nói thẳng trước.
 - Nếu chưa, chỉ nêu gate còn thiếu và hành động đang chạy; không lặp lại toàn bộ lịch sử.
 - Chỉ gọi `Xong` khi test/proof và reviewer gate đều hoàn tất. Nếu code/test pass nhưng reviewer chưa `APPROVED`, trạng thái vẫn là `Chưa`.
 
@@ -269,6 +269,13 @@ Khi Codex implementer vừa COMMIT xong rồi mới dispatch reviewer độc l�
 - Nếu reviewer REJECT vì "diff không chứa implementation", kiểm tra `git log --oneline -3` trước — khả năng cao implementation đã commit, chỉ là baseline trap.
 - Finding từ review lần đầu vẫn có giá trị (MAJOR/MINOR/NIT thật) — tách riêng phần baseline hiểu lầm với phần finding thật, fix finding rồi review lại.
 - `codex exec --sandbox read-only` không chạy được pytest (không tạo được temp/cache) — reviewer báo "test không chạy được do môi trường" là hạn chế sandbox, không phải test fail; tự chạy test bằng tay với PYTHONPATH trỏ `src`.
+
+### Workstream-pollution trap: audit REJECT oan vì dirty file từ workstream khác
+
+Khi dispatch independent audit/verifier cho repo A trong lúc workstream khác (vd policy propagation AGENTS.md all-repos) đang sửa file trong chính repo A, `git status` của auditor sẽ thấy `M AGENTS.md` → auditor REJECT oan "scope escape" (hit thật 2026-08-10: Sol audit R4 REJECT vì `M AGENTS.md` trong repo `tiktok-luot nuoi acc` đúng lúc worker policy đang append 15 AGENTS.md).
+
+- Trước khi dispatch auditor: chạy `git status --short` repo target; nếu có dirty chủ đích từ workstream khác thì (a) ghi rõ trong prompt auditor "thay đổi <path> là intentional từ workstream khác, bỏ qua khỏi scope-escape check", hoặc (b) sequence: để workstream kia hoàn tất (hoặc commit policy) trước khi audit.
+- Cron `sync-hermes-skills-to-git` (30') commit mọi staged file trong `D:\Taadaa\Hermes` — khi index bất ngờ sạch, kiểm tra `git log -1 --stat` trước khi kết luận feature chưa commit.
 
 ## Watcher Validation Checklist
 
