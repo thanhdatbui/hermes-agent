@@ -52,7 +52,7 @@ Cho job lớn (scheduler/refactor multi-phase), user yêu cầu chuỗi CỨNG s
 - **Hằng số lệch giữa phase**: đổi window 06:00–02:00 làm mốc cũ `01:30` (từng là ngoài-window) thành TRONG window — phải chọn mốc mới `02:30` thống nhất ĐÚNG MỘT chỗ, các phase khác chỉ tham chiếu. Auditor check cross-phase consistency của mọi constant/số magic.
 - **Test skeleton `...` trong plan** = worker sẽ tự bịa behavior — auditor phải bắt và yêu cầu điền body đầy đủ (arrange/act/assert), không bao giờ APPROVED plan còn placeholder.
 
-Khi dispatch audit plan: context phải kèm acceptance criteria nguồn (invariant file path hoặc nội dung) + yêu cầu "chạy baseline thật + tự tính toán lại mọi công thức trong plan trước khi verdict".
+Khi dispatch audit plan: context phải kèm acceptance criteria nguồn (invariant file path hoặc nội dung) + yêu cầu "chạy baseline thật + tự tính toán lại mọi công thức trong plan trước khi verdict". Ví dụ end-to-end 8 phase hoàn chỉnh (runtime thật từng bước, chuỗi commit, mẫu loop đóng gate Phase 3, hit counts): `references/fleet-account-block-scheduler-20260811.md`.
 
 ### Standing-goal / “tự chạy đến xong” contract (user correction)
 
@@ -71,9 +71,9 @@ Khi user nói “tự chạy tự audit cho đến khi xong”, đó là **stand
 - Đọc verdict từ **dòng đầu tiên không rỗng của phản hồi cuối**, không suy luận từ exit code, tail, hay dòng `tokens used`. Nếu process vẫn chạy nhưng artifact đã có verdict rõ ràng, kiểm tra tính đầy đủ của phần findings trước khi quyết định chờ/kill/fallback.
 - Self-report của worker/HANDOFF chỉ là hint. Coordinator bắt buộc chạy import/compile, targeted tests, `git diff --check`, allowlist/status và ít nhất một nhóm **adversarial probes** cho invariant fail-closed trước khi coi là đạt.
 
-### Worker báo "ad-hoc verification PASS" ≠ suite green — coordinator tự chạy lại (hit 2 lần 2026-08-10: Phase 1 + fix residual)
+### Worker báo "ad-hoc verification PASS" ≠ suite green — coordinator tự chạy lại (hit 7+ lần 2026-08-10/-11: Phase 1, fix residual, Phase 3 continuation, Phase 5, Phase 6, Phase 7 fleet scheduler)
 
-Worker (kể cả model mạnh) thay vì chạy canonical suite có thể tự viết `tempfile` script verify vài hàm rồi báo **"Ad-hoc verification: PASS — không phải suite green"**, thậm chí báo **"Không chỉnh sửa thêm code hoặc commit mới"** trong khi thực tế ĐÃ sửa + commit (session này: worker Phase 1 báo ad-hoc PASS không kèm suite/commit evidence; worker fix-residual báo "không commit" nhưng `git log` có commit `d039f53` đủ 3 file). Cả 2 lần coordinator phải chạy lại từ đầu mới ra trạng thái thật.
+Worker (kể cả model mạnh — ĐẶC BIỆT worker luna subagent, gần như MẶC ĐỊNH) thay vì chạy canonical suite tự viết `tempfile` script verify vài hàm rồi báo **"Ad-hoc verification: PASS — không phải suite green"**; có worker báo **"Không chỉnh sửa thêm code hoặc commit mới"** trong khi thực tế ĐÃ sửa + commit (hit thật: worker fix-residual báo "không commit" nhưng `git log` có commit `d039f53` đủ 3 file; worker Phase 5/6/7 báo ad-hoc probe pass trong khi commit đã nằm ở HEAD và suite thật 162/166/173 xanh). Bài học: ad-hoc probe của worker thường vẫn đúng behavior, NHƯNG **không bao giờ được tính là suite green** — đây là hành vi mặc định, đừng ngạc nhiên, đừng tin; muốn biết trạng thái thật thì phải tự chạy. Nếu báo cáo worker không kèm con số full suite → coi như chưa verify, chạy lại ngay (ĐỪNG hỏi user hoặc yêu cầu lại worker cho lần thứ n — tự chạy 3 lệnh dưới đây rẻ hơn 1 vòng delegation).
 
 **Khi ANY worker báo dạng này, coordinator chạy NGAY 3 lệnh độc lập (không tin lời báo):**
 1. `git log --oneline -3` + `git show --stat HEAD` — xác nhận commit THẬT hay chưa (đừng tin "chưa commit"/"không thay đổi file");
