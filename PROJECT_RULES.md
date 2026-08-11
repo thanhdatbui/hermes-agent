@@ -112,3 +112,10 @@ Khi thực hiện merge nhánh về main hoặc dọn nhánh/tree quan trọng:
 - Commit + push KHI FULL TEST SUITE XANH (pytest tests/test_tiktok_workflow.py -q — 331 pass hiện tại), KHÔNG chờ live-run success.
 - Live-run là bước verify TIẾP THEO (lỗi mới lộ ra thì fix tiếp, commit tiếp); không chặn release code.
 - Fix sai trên máy thật → revert NGAY về bản git trước (git revert/checkout), nguyên trạng thái an toàn trong git.
+
+## HANDOFF.md Trim Rule (bắt buộc, 2026-08-11)
+
+- HANDOFF.md là tài liệu current-state: giữ MỤC ĐÍCH project, state đang dở, blocker thật, bước tiếp theo an toàn, safety rules quan trọng, pointer tới lịch sử (reports/ hoặc git history). KHÔNG tích lũy entry đã resolved.
+- Ngưỡng trim: HANDOFF > ~250 dòng → task/session kế phải TRIM: giữ top current-state + pointer, xoá phần resolved cũ khỏi file (git đã giữ bản cũ, không mất gì).
+- Khi append entry mới mà file sắp vượt ngưỡng: trim entry cũ đã resolved cùng lượt, không để HANDOFF phình vô hạn.
+- Giữ EOL khi sửa HANDOFF (append/trim bằng python, không patch LF).
