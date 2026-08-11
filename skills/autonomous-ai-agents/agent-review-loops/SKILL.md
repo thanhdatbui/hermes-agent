@@ -93,6 +93,36 @@ Với scheduler/orchestrator/core harness, test pass không đủ. Reproduce tr�
 
 Chi tiết reproduction/checklist của vòng P1 offline nằm ở `references/p1-offline-harness-audit-checklist.md`.
 
+**Gate-masking trong adversarial test (hit thật 2026-08-11, Phase 3 manifest — 3 vòng audit cùng kiểu finding):** test tamper mutate nhiều field cùng lúc rồi chỉ `pytest.raises(ValueError)` có thể PASS ở gate SỚM hơn branch đích mà không bao giờ chứng minh branch định test: (a) đổi cả `day` → fail ngay day/slot gate; (b) đổi `machine`/`account_row` mà không đồng bộ `feed.machines/row` → fail ở entry feed-mapping check; cả hai đều trả cùng reason `MAPPING_CONFLICT` nên suite vẫn xanh nhưng test vô nghĩa. Quy tắc viết adversarial test fail-closed: mutate ĐÚNG MỘT field, đồng bộ MỌI dependent field để payload đi qua các gate trước (feed.machines/row, lock.machine/serial, entry_id + idempotency rehash, block_id/block.entry_ids/block.seed rehash khi field đó tham gia hash), rồi reject ĐÚNG branch đích với exact reason (`excinfo.value.args[0] == "<REASON>"`), không chỉ ValueError. Auditor phải đọc line reject thực tế (branch reachability), không chỉ assert reason; test chứng minh được branch nào thì ghi đúng branch đó trong tên/comment, đừng để test pass "cho may" ở gate sớm.
+
+**Probe xác nhận BRANCH reject — recipe chuẩn (hit 2026-08-11, 3 mutation machine/account/account_row):** sau khi reshape test, coordinator tự chạy probe từng mutation rồi in dòng reject THẬT (không chỉ reason — reason giống nhau giữa 2 branch nên không phân biệt được):
+```python
+import sys, tempfile, traceback
+sys.path.insert(0, r"D:\Taadaa\tiktok-luot nuoi acc")
+from python_runner.tests.test_hermes_cron_fleet import _pick, fleet_source, fleet_feed, fleet_post, _tamper, _rehash_block_identity
+from python_runner.hermes_cron.manifest import validate_manifest
+# ... mutate đúng 1 field + sync dependent fields + _rehash_block_identity ...
+try:
+    validate_manifest(payload, fleet_source()); print("NO REJECT - FAIL")
+except ValueError as ex:
+    lines = [l.strip() for l in traceback.format_exc().splitlines() if "manifest.py" in l and "in " in l]
+    print(f"reason={ex.args[0]} reject_line={lines[-1] if lines else '?'}")
+```
+Dependent-field sync table (mutate field → các field phải đồng bộ để đi qua gate trước): `machine` → `feed.machines`, `lock.machine`, entry_id/idempotency rehash, block_id rehash + `block.seed` (= machine_day_seed(day, machine_moi, payload_seed)); `serial` → `lock.serial` (entry_id có serial); `account_row` → `feed.row` (block_id KHÔNG dùng account_row); `account` → block_id (có account), entry_ids; `day` → block_id, session_slots, seed. Trick tạo account khác có source-row khác nhưng không trùng account của block khác: `new_acct_idx = (orig_row % 6) + 1` — fixture rows 1..6 luôn ≠ orig_row; kèm `assert new_acct_idx != orig_row` phòng thủ. Chi tiết: `references/gate-masking-adversarial-tests.md`.
+
+### Claude CLI print-mode làm implementer phase khó (user yêu cầu 2026-08-11 — yêu cầu THEO PHIÊN, không phải policy, xem pitfall "session-scoped ≠ policy")
+
+Khi user yêu cầu "task khó gọi Claude CLI sửa code" cho phiên này, dùng (đã chứng minh: test reshape `904ae86`, assert fix `dd8db90`, Phase 4 manifest validation build — đúng scope/allowlist/commit message):
+
+```bash
+cd "<repo>" && claude -p "$(cat <prompt-file>.md)" --allowedTools "Read,Edit,Write,Bash" --max-turns N
+```
+- Viết task spec ra FILE trước (scope/acceptance/finding cần đóng + red/green/verify bắt buộc + commit message tiếng Việt, giống brief worker subagent) — tránh shell quote, giữ prompt gọn.
+- Chạy background + `notify_on_complete=true` (phase lớn 5–15 phút, max-turns 40–60).
+- Claude CLI print-mode thực hiện đúng TDD RED→GREEN + commit; KHÔNG đụng file ngoài allowlist (đã kiểm chứng nhiều lần).
+- Sau khi xong: coordinator vẫn verify độc lập (git log/stat, full suite, py_compile, diff --check) — self-report của Claude CLI cũng không phải proof.
+- Audit phase khó vẫn dùng AG Claude (`run-ag-audit.sh`) — implement Claude CLI, audit AG Claude, coordinator verify cả hai. Task vừa/nhỏ vẫn luna subagent.
+
 ### Claude Review Prompt Format
 
 ```
@@ -295,6 +325,8 @@ Nếu output đứng yên nhưng còn child/test/tool activity, tiếp tục ch�
 
 **Ngoại lệ reviewer:** nếu artifact đã có verdict đầy đủ nhưng process treo, đọc toàn artifact trước; vẫn phải kiểm tra findings/độ đầy đủ rồi mới kill. `node_repl`/`mcp`/test child đang hoạt động là bằng chứng chưa được kill.
 
+**Worker hết tool-call limit giữa phase (hit thật 2026-08-11, Phase 3 build — api_calls=100, delegation trả "not finished, not committed"):** delegation về giữa chừng KHÔNG phải fail và KHÔNG được reset worktree. Trình tự coordinator: (1) verify thật: `git log --oneline -3` (đã commit chưa), `git status --short` + `git diff --stat` (worker sửa file nào? header có đủ nhưng summary bị cắt), chạy suite thật lấy con số fail cụ thể (21 failed/80 passed) — KHÔNG tin worker tự kê; (2) nếu chưa commit: dispatch worker NỐI TIẾP từ worktree hiện tại, brief mô tả CHÍNH XÁC trạng thái thật (HEAD, file M/??, từng test fail kèm lý do từ traceback thật, allowlist đủ cả file bổ sung ngoài plan, cấm reset/revert, cấm làm yếu production để test cũ pass — test phải migrate theo design mới như "3 due account/lane" thay vì hạ constraint); (3) worker nối tiếp báo xong → vẫn verify độc lập 3 lệnh như mọi worker (git log/stat, full suite, diff-check) trước khi audit. Lưu ý worker nối tiếp thường cũng báo "ad-hoc verification PASS" (+1 lần hit — xem mục ad-hoc verification ở trên).
+
 ### Verdict nằm ở ĐẦU buffer log, không phải tail
 
 Reviewer (Claude/OpenCode/Codex) in verdict `APPROVED/MINOR_FIXES/REJECT` ở
@@ -319,6 +351,8 @@ Khi Codex implementer vừa COMMIT xong rồi mới dispatch reviewer độc l�
 - Finding từ review lần đầu vẫn có giá trị (MAJOR/MINOR/NIT thật) — tách riêng phần baseline hiểu lầm với phần finding thật, fix finding rồi review lại.
 - `codex exec --sandbox read-only` không chạy được pytest (không tạo được temp/cache) — reviewer báo "test không chạy được do môi trường" là hạn chế sandbox, không phải test fail; tự chạy test bằng tay với PYTHONPATH trỏ `src`.
 
+**Variant 2 — file chưa từng tracked: commit đầu tiên hiện full-file addition (hit thật 2026-08-11, Phase 1 fix residual + Phase 3):** khi commit đưa file UNTRACKED từ trước vào git lần đầu (vd P1 harness chưa từng commit runner.py/watcher.py), `git diff <parent> <commit>` hiện toàn bộ file là additions → auditor tưởng worker sửa 400 dòng lung tung → REJECT oan scope (Phase 1 phải re-audit 2 vòng mới qua). Chứng minh provenance trước khi dispatch/re-audit: (1) `git log --oneline -- <file>` — commit đầu tiên chạm file phải là chính commit đó; (2) `git status --short` trước dispatch — file nằm trong `??`; (3) ghi rõ trong prompt auditor: "<file> là file mới đưa vào git lần đầu tại commit này — diff full-file do provenance, chỉ N dòng thay đổi semantic thực tế tại <locator>". Khi dispatch re-audit sau baseline trap: cung cấp bằng chứng provenance kèm context (git log file + status trước dispatch), yêu cầu auditor kiểm tra nội dung guard hiện tại thay vì chỉ đếm dòng diff.
+
 ### Workstream-pollution trap: audit REJECT oan vì dirty file từ workstream khác
 
 Khi dispatch independent audit/verifier cho repo A trong lúc workstream khác (vd policy propagation AGENTS.md all-repos) đang sửa file trong chính repo A, `git status` của auditor sẽ thấy `M AGENTS.md` → auditor REJECT oan "scope escape" (hit thật 2026-08-10: Sol audit R4 REJECT vì `M AGENTS.md` trong repo `tiktok-luot nuoi acc` đúng lúc worker policy đang append 15 AGENTS.md).
@@ -334,6 +368,7 @@ Audit độc lập có thể ra `REJECT` với **P1 hoàn toàn MỚI mỗi vòn
 - **Sau mỗi round, coordinator phải tự chạy lại probe từng finding trên máy thật** — audit Sol sandbox read-only không tạo được temp dir nên ghi "suite NEEDS_PROOF"; coordinator chạy suite + probe theo đúng locator/trigger của audit rồi mới dispatch vòng fix (R4 findings được xác nhận fix bằng 5 probe độc lập trước khi vòng R5 bắt đầu).
 - Prompt worker mỗi vòng phải nêu rõ "findings vòng trước đã được re-verify pass; chỉ sửa findings vòng này" — tránh worker phá regression đã đóng.
 - **Circuit breaker — đừng để churn vượt ngưỡng (hit thật 2026-08-10, R4→R7):** chuỗi REJECT R4 (5 P1 mới) → R5 (7 P1 mới) → R6 (3 P1 mới) → R7 (4 P1 mới), toàn bộ rơi vào cùng cụm file journal.py/watcher.py (recovery state machine). Theo rule 8 `D:\Taadaa\AGENTS.md`, ngưỡng là **2 chu kỳ liên tiếp ra CONFIRMED P0/P1 mới ngoài invariant matrix → dừng dispatch worker, chạy read-only design/impact audit để tái-baseline matrix rồi MỘT consolidated implementation phase**; không tiếp tục dispatch worker thứ N theo từng vòng. Dấu hiệu sớm: findings nhiều vòng liên tiếp cùng cụm file + auditor đào sâu dần (key-set → value → cross-event continuity) = matrix chưa đủ, vòng sau lại ra P1 mới.
+- **Phân biệt với "churn TRONG invariant matrix" (hit thật 2026-08-11, Phase 3 manifest — 4 vòng REJECT/MINOR_FIXES cùng cụm validator):** findings mới mỗi vòng nhưng ĐỀU nằm trong matrix đã có (source binding bypass → seed source-less bypass → gate-masked test) với locator/trigger/evidence mới → KHÔNG phải tín hiệu matrix thiếu, vẫn dispatch vòng fix tiếp bình thường. Circuit breaker chỉ áp dụng khi finding CONFIRMED NẰM NGOÀI matrix (như R4→R7 journal/watcher: key-set → value → cross-event = chiều sâu mới). Tiêu chí phân biệt: finding có nằm trong danh sách invariant/acceptance criteria hiện có không + có locator/trigger mới thật không. Cả hai "có" → tiếp tục; tìm thấy chiều mới ngoài matrix → dừng, tái-baseline.
 
 ### Coordinator probe: import fixture của test suite, đừng hand-build manifest (hit thật 2026-08-10, R6 probes)
 
@@ -377,6 +412,7 @@ Task `Enabled` không đủ chứng minh watcher đang chạy. Phải verify sch
   (1) **Exclude dir bằng substring, không phải membership**: `any(s in parts for s in skip)` với `scan['/a/b'].split('/')` là exact-match từng element — `'_luna-max-to-high-backup' in ['_luna-max-to-high-backup-20260807']` = False → **sửa nhầm cả thư mục backup**. Đúng: `any(any(s in part for part in parts) for s in skip)`. Nếu lỡ sửa nhầm backup: khôi phục từ manifest sha_before (script lưu `manifest.json` với `sha_before`/`sha_after` mỗi file).
   (2) **Regex escape path Windows trong python source**: `r'D:\\\\Taadaa'` trong file .py = literal 2 backslash, text thật có 1 → không match. Dùng pattern path-agnostic: match từ đầu câu tới term ổn định (`Command Code is only[\s\S]{0,220}?cmc/deepseek/deepseek-v4-flash`) thay vì include path đầy đủ. Xử lý wrap-line: normalise CRLF→LF trước khi regex, ghi lại đúng EOL gốc.
   (3) **Git Windows case-insensitive**: repo track `handoff.md` (thường) nhưng append vào tên `HANDOFF.md` — NTFS coi là cùng file nên content vào đúng file tracked, nhưng `git add HANDOFF.md` (hoa) **silent no-op** (không tìm thấy pathspec). Trước khi append vào file có thể đã track với case khác: `git ls-files | grep -i <name>`; `.gitignore` pattern `handoff.md` cũng chặn cả `HANDOFF.md` (case-insensitive match). Commit theo đúng case file đang track.
+- **Yêu cầu session-scoped ≠ policy (user correction 2026-08-11, "cái này t yêu cầu thôi, k phải sửa policy"):** khi user nói "task khó gọi Claude CLI sửa code" — đó là yêu cầu cho phiên/lần này, KHÔNG phải lệnh sửa policy. Đừng tự ghi memory/AGENTS.md/skill thành policy bền vững; áp dụng cho session hiện tại và nêu rõ "áp dụng phiên này, policy giữ nguyên". Nếu user thật sự muốn đổi policy thì sẽ nói "sửa policy"/"từ giờ luôn". Kiểm chứng: agent vừa viết vào memory rồi phải revert ngay khi user đính chính.
 - **Policy file 2 section cùng chủ đề → audit REJECT mãi (2026-08-06):** AGENTS.md Taadaa có 2 section cùng nói worker model (Delegation L70-215 + Model Routing L710-770). Mọi bản sửa 2 section đều vô tình DUPLICATE với section còn lại → Sol bắt "lặp contract" mỗi vòng → REJECT 5 vòng liên tiếp dù nội dung mỗi bản tốt hơn. Bài học: trước khi sửa policy file, **inventory toàn file** tìm mọi chỗ nói cùng chủ đề; nếu có ≥2 section cùng chủ đề thì phải sửa ĐỒNG THỜI hoặc thiết kế 1 canonical + các section khác chỉ tham chiếu. Nếu REJECT lặp vì cùng lý do cấu trúc 2 vòng → dừng, đổi cách tiếp cận (đừng sửa mãi trong cùng 2 section).
 - **Junction vào git repo (cập nhật 2026-08-09 — THAY cho ghi chú "sync thủ công" 2026-08-03):** profile-local của skill này + `hermes-orchestration-dispatcher` là JUNCTION trỏ thẳng vào `D:\Taadaa\Hermes\skills\` — sửa local = sửa luôn file trong git repo, KHÔNG cần copy sync. Kiểm tra lệch: `git status --short skills/`. LƯU Ý cron `sync-hermes-skills-to-git` (30') commit+push **MỌI thứ đang STAGED** trong repo, không chỉ 2 skill của nó — đừng để staged dở lâu nếu chưa muốn cron commit (đã gặp: staged của mình "biến mất" vì cron commit + push hết).
 - **ModuleNotFoundError dù module có trong src** (2026-08-03): env python cài `automation-core` bị **dist-info dở dang** (version 0.4.22 dist-info nhưng site-packages thiếu file `usb_popup.py` — wheel 0.4.22 chưa tồn tại). Import fail `No module named 'automation_core.usb_popup'`. Fix: kiểm tra `pip show automation-core` version vs `ls site-packages/automation_core/` (file thiếu), rồi `pip install --force-reinstall <đúng wheel>` theo pin consumer. Chạy test với `PYTHONPATH=<repo>/src` để dùng bản src thay vì site-packages cũ. Nghi ngờ env nhiễm/lệch: dùng `env -i PATH=... HOME=... USERPROFILE=...` để cô lập sys.path khỏi hermes venv.
