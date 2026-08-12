@@ -1,18 +1,18 @@
 # 9router HTTP Dispatch (plan/audit từ Hermes, không qua CLI)
 
-Gọi thẳng endpoint local 9router để dùng model khác làm planner/auditor từ Hermes — thay vì `codex exec`/CLI wrapper. Đã chứng minh 2026-08-06 (AGENTS.md scope-split, 5 vòng plan→audit).
+Dùng endpoint OpenAI-compatible của 9Router để gọi planner/auditor khi direct HTTP là route đã được policy cho phép. **Không coi host/port/path hoặc model ID ghi trong một session cũ là cấu hình hiện hành.** Ưu tiên wrapper/reusable script của `9router-proxy-ops`; direct HTTP là fallback có artifact đầy đủ.
 
-## Endpoint & auth
+## Endpoint discovery, auth và transport gate
 
-```
-POST http://127.0.0.1:20128/v1/chat/completions
-Authorization: Bearer $NINEROUTER_API_KEY
-Content-Type: application/json
-```
+1. Resolve live 9Router base URL từ cấu hình/runtime hiện hành hoặc canonical wrapper; không hard-code port từ ghi chú lịch sử.
+2. Auth bằng `NINEROUTER_API_KEY`; không in key vào prompt/log/artifact.
+3. Probe authenticated `GET <base>/v1/models`, chọn model theo routing policy hiện hành, rồi smoke-test text ngắn trước prompt lớn.
+4. Chỉ POST vào chat-completions path mà live router/config hoặc canonical wrapper xác nhận. Historical installs thường dùng `<base>/v1/chat/completions`, nhưng đó là ví dụ, không phải invariant.
+5. Lưu riêng request metadata (base URL đã redacted, model, timeout, input hash), body/prompt, raw response và parse result.
 
-OpenAI-compatible `chat_completions`. Liệt kê model: `GET /v1/models` (cùng key).
+HTTP 404/401/429/5xx, timeout, body rỗng/truncated hoặc JSON không parse được là `AUDIT_TRANSPORT_FAILED` / `BLOCKED_UNKNOWN`, **không phải** verdict. Diagnostic một lần bằng live config/models/canonical wrapper rồi chuyển route fallback; đừng đoán hàng loạt endpoint và đừng ghi một lỗi tạm thời thành capability âm lâu dài.
 
-## Model IDs đã test (2026-08-06)
+## Model IDs lịch sử (chỉ để nhận dạng artifact cũ; luôn re-discover)
 
 | Model ID | Trạng thái | Ghi chú |
 |---|---|---|
@@ -54,8 +54,9 @@ payload = {
     "temperature": 0.2,
     # v4-pro: "tools": [], "tool_choice": "none"
 }
+# `base_url` phải được resolve từ live config/canonical wrapper ở preflight.
 req = urllib.request.Request(
-    "http://127.0.0.1:20128/v1/chat/completions",
+    base_url.rstrip("/") + "/v1/chat/completions",
     data=json.dumps(payload).encode(),
     headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"},
 )

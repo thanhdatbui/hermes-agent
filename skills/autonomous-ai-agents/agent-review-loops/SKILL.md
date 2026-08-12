@@ -1,7 +1,7 @@
 ---
 name: agent-review-loops
 description: "Điều phối implement/review đến APPROVED với fallback reviewer khi Claude hết quota."
-version: 1.2.1
+version: 1.2.2
 metadata:
   hermes:
     tags: [orchestration, codex, claude, opencode, review-loop, preflight, live-validation]
@@ -196,7 +196,11 @@ Sau khi sửa, chạy pytest verify."
 
 ## Audit Loop qua 9router HTTP (không cần CLI wrapper)
 
-Khi cần planner/auditor từ Hermes mà model không phải deepseek-cha: gọi thẳng endpoint local 9router `http://127.0.0.1:20128/v1/chat/completions` (key `NINEROUTER_API_KEY`) — KHÔNG qua `codex exec`/CLI. Chi tiết model IDs, workaround, timeout: `references/9router-http-dispatch.md`.
+Khi cần planner/auditor từ Hermes mà model không phải deepseek-cha: ưu tiên canonical 9Router dispatch recipe/wrapper trong `references/9router-http-dispatch.md`; không tự suy ra endpoint từ một session cũ. Mọi request phải lưu prompt/body/raw response, model/effort và exact input hash.
+
+**Transport outcome ≠ audit verdict.** HTTP 404/401/429/5xx, timeout, empty/truncated/unparseable response hoặc process exit chỉ là `AUDIT_TRANSPORT_FAILED` / `BLOCKED_UNKNOWN`. Không ánh xạ chúng thành `REJECT`, `MINOR_FIXES`, hay `APPROVED`; không đưa lỗi endpoint tạm thời thành rule "route này không dùng được". Diagnostic một lần (canonical route/config/model ID), rồi fallback theo audit chain đã định. Chỉ một response parse được với verdict hợp lệ mới tiêu thụ audit slot. Nếu candidate plan có local consistency lỗi do coordinator scan thấy nhưng chưa có reviewer verdict, báo riêng `coordinator blocking findings`; đừng gọi đó là AG rejection.
+
+Chi tiết model IDs, canonical endpoint discovery, body shape, timeout và fallback: `references/9router-http-dispatch.md`.
 
 **AG Claude qua HTTP — wrapper treo + ép `tools:[]` + nhúng diff inline (hit thật 2026-08-10):**
 - `invoke-ag-audit.ps1` có thể treo cứng ở `Invoke-RestMethod`: log 0 bytes, process sống lâu hơn cả `-TimeoutSeconds` (600s trôi qua không in gì, kể cả `AG_AUDIT_TIMEOUT`), trong khi curl/python cùng model + cùng endpoint xong 4-5s. Timeout wrapper KHÔNG trigger → đừng đợi: kill sau ~3 quan sát 30s không tiến triển, rồi gọi API trực tiếp bằng `scripts/ag-audit-direct.py` (body y hệt wrapper: model, reasoning_effort high, max_tokens 6000, stream false; in `AG_AUDIT_ELAPSED`, content, `AG_AUDIT_VERDICT` từ dòng đầu non-empty).
