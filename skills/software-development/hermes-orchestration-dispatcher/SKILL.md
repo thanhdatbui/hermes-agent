@@ -30,6 +30,10 @@ metadata:
 - **COMPLEX** (dispatch Codex implement): đụng `automation-core` hoặc shared recovery/lock/verifier/scheduler, cross-consumer, account/OTP/2FA safety, sensitive workbook policy, multi-machine/incident, architecture refactor. → **Codex implement** (Sol/high, ladder escalation).
 - **BOUNDED_RESEARCH/AUDIT** (delegate review): read-only exploration, log/artifact analysis, test chạy, independent review. → **Claude/OpenCode audit**.
 
+## Cross-consumer recovery migration gate
+
+Khi một shared recovery/control-plane đã ship nhưng user nói "triển khai" tiếp, không đồng nhất core shipped với fleet auto-recovery. Tách bốn trạng thái: core shipped; adapter migrated; runtime-connected; live-proven. Trước consumer edit phải đọc audit/report đã duyệt, lập plan thật có matrix từng consumer, rồi audit plan bằng AG Opus (fallback ladder chỉ khi route failure cụ thể). Pilot một consumer có strict registry + runtime caller thật; nếu registry chỉ ở scheduler/preflight thì phải có discovery phase, không đoán insertion point. Mỗi consumer dùng một worker/worktree độc quyền, tuần tự, contract tests RED→GREEN cho no-hook/missing handler/HARD_STOP/NON_RETRYABLE/exception/budget/verifier/lock-retention/restart/redaction, rồi AG audit và commit riêng. Core remains app-neutral; adapter owns taxonomy and business flow; no second retry loop; no live/secret/workbook/ADB validation. Cuối cùng báo riêng N/9 adapter đã runtime-connected và consumer còn PENDING/NEEDS_PROOF. Chi tiết matrix/evidence ở `references/cross-consumer-recovery-migration.md`.
+
 ## Vòng lặp điều phối chuẩn
 
 ```
@@ -232,6 +236,8 @@ Theo `D:\Taadaa\AGENTS.md`: audit order **AG `ag/claude-opus-4-6-thinking` → c
 > opencode CLI hỏng/unavailable → chuyển Command Code/Codex (không coi là quota).
 
 ## Audit/Read-Only Dispatch
+
+- `delegate_task(role=leaf)` không chọn model audit; child kế thừa model của session. Không dùng một Luna/Flash worker subagent để giả làm auditor. Audit plan/code phải đi đúng AG Opus primary hoặc fallback route theo rule workspace, thường qua wrapper/CLI. Giữ cùng model xuyên suốt re-audit của cùng evidence; chỉ worker mới được patch.
 
 1. Viết audit spec (hoặc dùng diff thực tế).
 2. Codex đọc file + phân tích (nếu COMPLEX) HOẶC bỏ qua (SIMPLE).
