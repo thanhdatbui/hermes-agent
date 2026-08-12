@@ -259,6 +259,10 @@ Nếu shell vỡ quote (dấu nháy đơn), viết prompt ra `.txt` rồi `PROMP
 
 `APPROVED` từ fallback reviewer thay thế gate Claude cho run hiện tại. Lần sau ưu tiên Claude nếu quota đã hồi phục.
 
+**Khi cần audit model cụ thể (vd second verdict Sol) qua `codex review` — quirks CLI thật (hit 2026-08-12, tiktok-follow final audit):**
+- `codex review --commit <sha>` KHÔNG nhận flag `-m/--model` → `error: unexpected argument '-m' found`. Chỉnh model qua config: `codex review --commit <sha> -c 'model="gpt-5.6-sol"' -c 'model_reasoning_effort="high"'`.
+- `--commit` KHÔNG kết hợp được với positional prompt (`cannot be used with '[PROMPT]'`) — không truyền custom audit prompt qua stdin khi dùng `--commit`. Prompt mặc định của Codex review đủ cho verdict; muốn nhúng context/bối cảnh riêng → dùng `codex exec --ephemeral --sandbox read-only` với prompt file thay vì `codex review --commit`.
+- Codex review sandbox read-only KHÔNG tạo được temp dir → pytest/verify bên trong fail `No usable temporary directory found`; đó là hạn chế sandbox, KHÔNG phải lỗi code. Chạy suite thật ngoài (PYTHONPATH đúng máy target) và so verdict với test thật.
 ### Codex Reviewer Fallback Cuối
 
 Chi tiết lệnh, schema, Windows sandbox và verification gate: `references/codex-independent-reviewer.md`.
