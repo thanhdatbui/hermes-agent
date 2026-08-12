@@ -15,21 +15,6 @@ short. Read the detailed development guide only when the task needs it.
 - If no task is assigned, stop after startup and wait.
 
 
-<!-- CODEX-DIRECT-WORKER-POLICY:START -->
-## Coordinator -> direct worker boundary (canonical)
-
-- The desktop/main session is coordinator/report surface only: it may perform read-only triage/research, route handoffs, inspect artifacts/diffs, run deterministic read-only verification, and report.
-- For every write, edit, build, package, deployment, or other side effect, the coordinator must dispatch exactly one fresh, non-resumed, non-forked in-process direct worker pinned to the session's own model (`deepseek-v4-flash` for Hermes, `gpt-5.6-luna` for Codex), `reasoning_effort=high`, and `role=worker`, with an exclusive exact file/component/worktree scope. `gpt-5.6-luna/high` and `deepseek-v4-flash/high` are equivalent worker roles.
-- The direct worker is already the sole executor: it patches, builds, and tests its assigned scope directly. It must not inherit, spawn, resume, fork, or delegate to another worker/agent/session, and must not invoke an external agent or CLI route. If the tool surface exposes any delegation capability, the worker must fail closed with `NESTED_DELEGATION_FORBIDDEN` and must not call it.
-- A created/bound direct worker treats its current session as the final executor; it must not probe for, request, or create another worker/runtime, and it must never self-report SUBAGENT_RUNTIME_UNAVAILABLE. Tool absence inside an existing worker is not pre-create transport failure; use WORKER_RUNTIME_NOT_VERIFIED or NESTED_DELEGATION_FORBIDDEN as applicable and stop.
-- Terra/high, Terra/xhigh, Sol/high, and Sol/max are read-only planners/advisors/auditors; they never patch, build, or run live/side-effecting work.
-- An external CLI transport is not the normal route. The coordinator may use it only as the separately gated fallback in the parent `D:\Taadaa\AGENTS.md`, after authenticated pre-create in-process `transport-unavailable`, machine-readable `capability-unavailable`, or in-process dispatch `429`, plus proof that no worker/session/process/lease/action exists for the exact scope. The same model/profile, reservation, binding, checkpoint, reconciliation, and post-verifier gates still apply.
-- Failure labels are lifecycle-hard: `SUBAGENT_RUNTIME_UNAVAILABLE` is reserved exclusively for a pre-create transport failure, and only with machine-readable evidence plus exact-scope reconciliation proving that no child/worker, session, process, lease, tool event, or action exists. A worker that exists or is bound must never self-report or assign this code.
-- Use `WORKER_PROFILE_MISMATCH` for a created worker with the wrong pin and `WORKER_RUNTIME_NOT_VERIFIED` when provider/profile binding cannot be verified. Use `WAIT_WINDOW_EXPIRED` when a bounded wait has no final while the worker remains active. A timeout never changes a label or becomes `SUBAGENT_RUNTIME_UNAVAILABLE`.
-- A replacement is permitted only after the current worker has shut down and exact-scope lease/process/tool-event/action reconciliation proves no overlap; replacements never run in parallel, and a worker must not self-replace or initiate replacement.
-- If no valid direct worker exists, stop all write/live/side-effecting work. Coordinator direct fallback is allowed only when the current user request explicitly authorizes it, both worker routes have failed and been reconciled, and the parent contract permits exact-scope offline repository files; it never authorizes live work.
-- Worker self-report, process status, scheduler status, or exit code is not completion proof; the coordinator must independently inspect the exact diff and run the deterministic verifier.
-<!-- CODEX-DIRECT-WORKER-POLICY:END -->
 
 ## Scope And Safety
 
@@ -87,3 +72,22 @@ Khi thực hiện merge nhánh về main hoặc dọn nhánh/tree quan trọng:
 2. Worker thực thi merge/resolve.
 3. Chạy AUDIT lại sau khi worker xong — lặp tới khi audit APPROVED mới xoá nhánh/tree.
 4. Xoá nhánh chỉ sau bằng chứng absorbed/superseded (merge-tree/reflog/fsck).
+
+<!-- WORKER-CHECKPOINT-TERMINATION-POLICY:START -->
+## Worker checkpoint và gate dừng process (bắt buộc)
+
+- Worker/background run phải ghi checkpoint và report riêng theo từng vòng: scope, thời điểm, phase, diff/test thật và điều kiện chờ kế tiếp; không chỉ ghi report ở cuối.
+- Không suy luận code lỗi từ stdout đứng yên hoặc `exit code -15`. Chỉ được terminate khi có lỗi fatal/quota/transport machine-readable, hoặc sau ít nhất 3 quan sát cách nhau tối thiểu 30 giây (tổng >=90 giây) cùng chứng minh output/checkpoint/file mtime/process tree không tiến triển, không còn child code/test/tool hoạt động.
+- Trước khi terminate phải lưu đầu/cuối log, process tree, mtime, `git status` và `git diff`; nếu worker có thể đã ghi code thì chạy hậu kiểm diff/test độc lập trước kết luận.
+- Kill/exit bất thường phải phân loại `WORKER_TERMINATED_EXTERNALLY` hoặc `WORKER_EXITED_WITHOUT_REPORT`; không rollback mù, không tin report cũ, không chạy worker thay thế chồng. Reconcile exact scope và verifier độc lập trước replacement/commit.
+- Quy tắc này bổ sung `agent-review-loops`; không cho phép bỏ qua gate riêng của repository hoặc mở rộng side effect/live scope.
+<!-- WORKER-CHECKPOINT-TERMINATION-POLICY:END -->
+
+## Canonical Script Reuse Rule (bắt buộc, 2026-08-12)
+
+- Khi cùng một workflow/operation chỉ thay input data (ví dụ Tik1/Tik2/TikN, account row 1/2/N, machine list hoặc config path), PHẢI dùng lại canonical script/entrypoint đã chạy chuẩn.
+- Chỉ thay tham số hoặc file dữ liệu qua CLI/config; KHÔNG tạo launcher/runner/script tạm mới và KHÔNG ghép shell loop/xargs để thay thế flow canonical.
+- Nếu canonical script chưa nhận data variant cần thiết hoặc còn hardcode path cũ: sửa/build chính script đó theo hướng parameterized, giữ nguyên safety gate hiện có; ghi baseline rollback trước edit, test/preflight variant cũ + mới, audit/verify rồi mới chạy live.
+- Chỉ tạo script mới khi workflow thực sự khác và user đã chốt rõ; phải ghi lý do vì sao entrypoint hiện tại không thể tái sử dụng.
+- Trước launch phải ghi evidence gồm canonical script path và data path/row đã chọn; việc đổi data không được bypass lock, account/target verifier, confirmation, recovery hoặc report contract.
+
