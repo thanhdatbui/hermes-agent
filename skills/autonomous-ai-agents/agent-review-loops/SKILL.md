@@ -69,6 +69,13 @@ Khi user nói “tự chạy tự audit cho đến khi xong”, đó là **stand
 - Nếu context/tool limit cắt ngang, ghi/đọc checkpoint và artifact để **tiếp tục** ở lượt sau; tuyệt đối không biến “chưa kịp gọi tool” thành báo cáo `Chưa xong` cuối cùng khi worker/audit còn có thể tiếp tục.
 - Nếu có nhiều finding lặp cấu trúc, chuyển sang một patch root-cause + regression/adversarial probe; không kéo dài prompt bằng cách nối thêm prose qua R2…Rn.
 
+### CLI-contract verification before accepting audit findings
+
+- Với plan có lệnh CLI/scheduler, auditor phải phân biệt finding fabricated thật với false positive bằng cách chạy `--help` hoặc probe trên máy thật trước khi yêu cầu sửa plan. Nếu audit nói flag/subcommand không tồn tại, xác minh đúng lệnh trước; chỉ giữ finding khi probe thật thất bại.
+- Ghi command/output làm evidence trong plan hoặc audit artifact. Không sửa valid CLI chỉ vì auditor suy đoán; ngược lại không chấp nhận plan tự ghi “đã verify” nếu chưa có capture thật.
+- Safety race phải audit riêng dù CLI hợp lệ: create→pause cần staging schedule không imminent, kill-switch mặc định OFF, capture ID, pause, status verification và rollback. `--help` đúng không chứng minh sequence an toàn.
+- Khi re-audit sau fix, truyền các probe facts đã xác minh và yêu cầu auditor không lặp false positive; vẫn kiểm tra cross-section, boundary và race độc lập.
+
 ### Prompt-boundary and audit-artifact discipline
 
 - Không bao giờ nối nguyên một audit prompt (đặc biệt phần `Bạn là auditor read-only`, verdict schema, hoặc output cũ) vào prompt worker. Hãy tạo **worker brief riêng**, self-contained, chỉ gồm scope/acceptance/constraints/finding; role worker và role auditor phải tách tuyệt đối.
