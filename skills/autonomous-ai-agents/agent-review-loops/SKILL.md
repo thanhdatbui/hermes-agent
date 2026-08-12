@@ -1,7 +1,7 @@
 ---
 name: agent-review-loops
 description: "Điều phối implement/review đến APPROVED với fallback reviewer khi Claude hết quota."
-version: 1.2.0
+version: 1.2.1
 metadata:
   hermes:
     tags: [orchestration, codex, claude, opencode, review-loop, preflight, live-validation]
@@ -96,6 +96,19 @@ Worker (kể cả model mạnh — ĐẶC BIỆT worker luna subagent, gần nh�
 2. Full suite chuẩn của repo (lệnh pytest liệt kê 4 file, KHÔNG phải script ad-hoc) — chỉ con số này mới là suite green;
 3. Grep residual theo đúng finding (vd `grep -rn "01:00" file`) — xác nhận đóng thật.
 Chỉ khi cả 3 xanh mới dispatch audit phase / chuyển phase kế. Nếu worker báo "ad-hoc verify PASS" mà không có 3 evidence trên → coi như chưa verify, yêu cầu lại hoặc tự chạy.
+
+### Strict TDD RED attribution trong review-fix loop
+
+Một test đỏ chỉ có giá trị khi nó chứng minh **đúng bug production**, không phải lỗi harness. Áp dụng cho mọi vòng reviewer finding → regression → patch:
+
+1. **Chụp checkpoint scoped trước khi giao test worker:** hash/size/EOL của production + test allowlist, `git diff` scoped, và danh sách top-level test function hiện có. Trong worktree dirty/shared, checkpoint là patch/blob riêng; không `reset/checkout/clean` để khôi phục.
+2. **RED hợp lệ:** chạy test mới trên production chưa sửa và phải thấy assertion fail tại invariant đích. `SyntaxError`, import lỗi, fixture queue rỗng, `UnboundLocalError`, test bị lồng `def`, mất test cũ, hoặc failure ở gate sớm hơn đều là **RED giả**.
+3. Nếu invariant đã biết còn thiếu nhưng suite vẫn xanh, kết luận test **chưa chạm branch**; không được coi đó là evidence production đúng. Sửa fixture/branch reachability trước, rồi ghi lại RED thật.
+4. Sau test-worker, parse AST và so test-name set/checkpoint: không nested test, không xóa/đổi tên test cũ ngoài chủ đích. Worker làm hỏng cấu trúc thì restore byte-for-byte từ scoped checkpoint trước khi replacement; không salvage file trộn lẫn rồi tự nhận TDD.
+5. Regression phải đi qua seam production thật, mutate tối thiểu một điều kiện và assert cả outcome lẫn side effect/cleanup (`status`, block state, navigation restore, action count). Không copy lại công thức production vào test để tự xác nhận chính nó.
+6. Gate hoàn tất theo thứ tự: RED thật → production patch tối thiểu → targeted GREEN → full GREEN → compile/static + `git diff --check` → coordinator re-read branch và chạy ít nhất một adversarial probe độc lập. Self-report/`AD_HOC_OK` không thay thế các gate này.
+
+Ví dụ UI fail-closed cụ thể (list marker, exact identity, scoped action, scroll/empty-list/status propagation) nằm ở `references/tiktok-consumer-review-findings.md` mục **Mode 2 structural proof and regression discipline**.
 
 ### Adversarial verification for fail-closed harnesses
 

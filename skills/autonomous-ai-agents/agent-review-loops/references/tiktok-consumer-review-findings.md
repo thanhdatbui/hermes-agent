@@ -27,6 +27,28 @@ Các lỗi chỉ lộ ra khi chạy preflight/live trên dữ liệu thật:
 - Sau live failure cần xác minh workbook không đổi, remote media không có, report MANUAL_REVIEW/FAILED và machine/serial lock release.
 - Stale lock PID chết mới được xoá.
 
+## Mode 2 structural proof and regression discipline (session 2026-08-13)
+
+### Evidence thật từ UI dump
+- Profile identity: node `com.ss.android.ugc.trill:id/sf5` chứa exact `@uid`; dùng helper canonical `automation_core.tiktok.profile.profile_identity_from_xml(xml)` rồi strip `@` và so sánh chính xác. Không suy identity từ display name/header.
+- Follower list: structural marker `com.ss.android.ugc.trill:id/u5r` + relation header semantic/selected. Header toàn màn hình như `Đã follow 26` là tab/stat, **không phải** relationship proof.
+- Follower row: username nằm ở `txt_desc`; action inline là clickable `tcj` (`Follow`/`Follow lại`). Classify action phải scoped vào đúng row/control; text cùng từ ở nơi khác không được tính.
+
+### Invariants fail-closed cần pin bằng regression
+- Sau tap inline, nếu row vẫn `Follow`/`Follow lại` qua bounded retry thì **escalate Path B ngay**, không block trước khi thử profile proof. Path B chỉ classify sau khi đồng thời thấy marker list `u5r` đã biến mất và exact profile identity khớp UID đích.
+- Path B phải luôn back/restore follower list trong cleanup, kể cả wrong/missing identity, unknown action, not-followed, hoặc exception. `not_followed` trên profile mới set global `FOLLOW_BLOCKED`; identity/action/restore unknown → `MANUAL_REVIEW`, không suy diễn success.
+- `_scroll_follower_list=False` là navigation failure, không phải end-of-list; cả nhánh list rỗng/no-pending và post-batch đều phải `MANUAL_REVIEW` với reason actionable.
+- List follower structurally rendered nhưng zero row là trạng thái hợp lệ; `_open_follower_tab` chấp nhận list proof độc lập với row count, sau đó loop bounded idle-scroll.
+- `run_mode2` phải return incoming `SessionResult` unchanged khi status đã khác `OK`; không load/shuffle seed, navigate hoặc mutate state sau Mode 1 `MANUAL_REVIEW`/`CONFIG_ERROR`.
+- `mode=both`: Mode 2 vẫn xử lý seed đã có Mode 1 state, nhưng `budget_per_session` dùng chung và trừ follow đã tiêu ở Mode 1. Follow đầu Mode 2 bắt buộc Path B; cadence sampling sau đó phải tính theo follow ordinal thật.
+- Unknown row action fail-closed; back-to-feed chỉ giữa các seed, không giữa follower trong cùng list.
+
+### Cách viết regression đúng branch
+- Với stale-inline→Path-B: queue XML theo thứ tự `list before → tất cả inline retries vẫn Follow → exact @uid profile + scoped action → restored list`; assert outcome, block state, back count và queue consumption. Trước patch phải fail vì production block sớm, không được fail do queue/harness.
+- Với leave-list/identity: tách test marker `u5r` còn tồn tại, identity thiếu, identity sai, action ngoài scoped control/header giả, restore-list fail. Mỗi test mutate một điều kiện và assert không tap/follow success.
+- Với orchestration: spy `_open_follower_tab`/navigation và state snapshot để chứng minh incoming non-OK không có side effect; monkeypatch scroll fail ở cả hai call site, không chỉ assert một nhánh.
+- Sau worker edit, AST-compare toàn bộ top-level `test_*` với checkpoint; từng có worker xóa test/lồng `def`, tạo RED `UnboundLocalError`. Đó là harness corruption: restore checkpoint byte-for-byte, không tính TDD evidence.
+
 ## Worker coordination
 - Dispatch multiple Codex workers can cause conflicts: one worker reverts another's changes. Use `write_file` (direct rewrite) instead of `patch` when file keeps getting reverted. Or kill active workers before dispatching new one.
 - After Codex returns, always dispatch Claude to review actual code before telling user anything. Do not ask user mid-loop.
