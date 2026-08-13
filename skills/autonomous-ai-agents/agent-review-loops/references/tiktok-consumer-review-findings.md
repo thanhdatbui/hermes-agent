@@ -31,7 +31,8 @@ Các lỗi chỉ lộ ra khi chạy preflight/live trên dữ liệu thật:
 
 ### Evidence thật từ UI dump
 - Profile identity: node `com.ss.android.ugc.trill:id/sf5` chứa exact `@uid`; dùng helper canonical `automation_core.tiktok.profile.profile_identity_from_xml(xml)` rồi strip `@` và so sánh chính xác. Không suy identity từ display name/header.
-- Follower list: structural marker `com.ss.android.ugc.trill:id/u5r` + relation header semantic/selected. Header toàn màn hình như `Đã follow 26` là tab/stat, **không phải** relationship proof.
+- Populated follower list: structural marker `com.ss.android.ugc.trill:id/u5r` + exactly one selected semantic relation header. Header toàn màn hình như `Đã follow 26` là tab/stat, **không phải** relationship proof.
+- Explicit-empty follower surface may omit `u5r`: require exactly one selected `android:id/text1` relation header total and it must be exact supported `Follower 0`, plus unique known ViewPager, empty-title, non-empty message and illustration markers. A second selected Following/Friends/Suggested header is ambiguity and must reject.
 - Follower row: username nằm ở `txt_desc`; action inline là clickable `tcj` (`Follow`/`Follow lại`). Classify action phải scoped vào đúng row/control; text cùng từ ở nơi khác không được tính.
 
 ### Invariants fail-closed cần pin bằng regression

@@ -110,7 +110,7 @@ Một test đỏ chỉ có giá trị khi nó chứng minh **đúng bug producti
 5. Regression phải đi qua seam production thật, mutate tối thiểu một điều kiện và assert cả outcome lẫn side effect/cleanup (`status`, block state, navigation restore, action count). Không copy lại công thức production vào test để tự xác nhận chính nó.
 6. Gate hoàn tất theo thứ tự: RED thật → production patch tối thiểu → targeted GREEN → full GREEN → compile/static + `git diff --check` → coordinator re-read branch và chạy ít nhất một adversarial probe độc lập. Self-report/`AD_HOC_OK` không thay thế các gate này.
 
-Ví dụ UI fail-closed cụ thể (list marker, exact identity, scoped action, scroll/empty-list/status propagation) nằm ở `references/tiktok-consumer-review-findings.md` mục **Mode 2 structural proof and regression discipline**.
+Ví dụ UI fail-closed cụ thể (list marker, exact identity, scoped action, scroll/empty-list/status propagation) nằm ở `references/tiktok-consumer-review-findings.md` mục **Mode 2 structural proof and regression discipline**. Với empty-state thật không render list container, dùng classifier `populated|empty|invalid`, ambiguity tests và one-shot retry discipline trong `references/tiktok-explicit-empty-ui-proof.md`.
 
 ### Adversarial verification for fail-closed harnesses
 
