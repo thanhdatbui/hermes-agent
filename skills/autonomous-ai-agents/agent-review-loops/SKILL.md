@@ -1,7 +1,7 @@
 ---
 name: agent-review-loops
 description: "Điều phối implement/review đến APPROVED với fallback reviewer khi Claude hết quota."
-version: 1.2.2
+version: 1.2.3
 metadata:
   hermes:
     tags: [orchestration, codex, claude, opencode, review-loop, preflight, live-validation]
@@ -205,6 +205,8 @@ Sau khi sửa, chạy pytest verify."
 Khi cần planner/auditor từ Hermes mà model không phải deepseek-cha: ưu tiên canonical 9Router dispatch recipe/wrapper trong `references/9router-http-dispatch.md`; không tự suy ra endpoint từ một session cũ. Mọi request phải lưu prompt/body/raw response, model/effort và exact input hash.
 
 **Transport outcome ≠ audit verdict.** HTTP 404/401/429/5xx, timeout, empty/truncated/unparseable response hoặc process exit chỉ là `AUDIT_TRANSPORT_FAILED` / `BLOCKED_UNKNOWN`. Không ánh xạ chúng thành `REJECT`, `MINOR_FIXES`, hay `APPROVED`; không đưa lỗi endpoint tạm thời thành rule "route này không dùng được". Diagnostic một lần (canonical route/config/model ID), rồi fallback theo audit chain đã định. Chỉ một response parse được với verdict hợp lệ mới tiêu thụ audit slot. Nếu candidate plan có local consistency lỗi do coordinator scan thấy nhưng chưa có reviewer verdict, báo riêng `coordinator blocking findings`; đừng gọi đó là AG rejection.
+
+**Premium CLI audit unavailable → honest independent fallback (2026-08-15):** thử premium CLI auditor đúng read-only flags trước. Nếu nó trả machine-readable auth/quota failure (ví dụ OAuth 401 revoked), dừng route đó ngay; không tự sửa auth, không gọi đó là verdict, và không tuyên bố premium lane đã được cấu hình/sẵn sàng. Chuyển sang reviewer fallback đã được policy cho phép (ví dụ Terra/Sol review qua live 9Router), giữ `tools:[]`/`tool_choice:"none"`, bắt first-line verdict parse được, và báo rõ label reviewer thật. Evidence fallback có thể đóng gate cho run hiện tại, nhưng không chứng minh premium CLI availability.
 
 Chi tiết model IDs, canonical endpoint discovery, body shape, timeout và fallback: `references/9router-http-dispatch.md`.
 
