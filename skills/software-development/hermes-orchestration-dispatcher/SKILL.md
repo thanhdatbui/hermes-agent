@@ -86,6 +86,7 @@ Hermes deepseek-v4-flash (task simple/vừa + debug nhanh)
 - **Audit route & execution**: giữ một model xuyên suốt cùng task (bắt đầu Sol → Sol đến verdict); reasoning HIGH, không max. Audit thường dùng history; blind audit dùng diff-only để kiểm chứng độc lập. Chỉ tiếp tục với P0/P1 concrete code path. **Xem `references/audit-loop-execution.md`** cho decision-before-side-effect, 50-call budgeting, handoff, communication, và exit quality gate.
 - **Question ≠ execution (user-corrected 2026-08-09)**: câu hỏi kiểu “có gây loop không?”, “phân tích đi”, “có cách nào không?” chỉ được phân tích và nêu trade-off; TUYỆT ĐỐI không patch skill/AGENTS/config, restart gateway, dispatch worker hay đổi workflow trong cùng turn. Chỉ hành động sau chỉ thị rõ như “chốt phương án X”, “update rule”, “chạy tiếp”, “restart ngay”. Khi user nói “chốt phương án nào”, nêu recommendation trước; chỉ cập nhật khi họ xác nhận/ra lệnh thực thi.
 - **50-call worker protocol (user-chốt 2026-08-09)**: hard cap 50 là guardrail. Scope cùng file/component chia theo phase **tuần tự**, không parallel: implementation/detection khoảng 25–30 calls, giữ 10–15 calls cho focused tests, full verification, docs và EOL/diff-check. Khác repo/file mới parallel. Handoff phải ghi code đã đổi, test pass/fail, EOL, temp artifacts và đúng một bước còn lại. Nếu 2 workers liên tiếp cùng component cạn quota trước verification, không tự spawn worker thứ ba scope mơ hồ; coordinator thu hẹp checklist/batch verification hoặc báo user.
+- **PITFALL "delegation hết budget API calls chứ không phải tool calls" (2026-08-16, follow-integration worker 1+2)**: banner báo `status=completed, api_calls=100, 719s` / `api_calls=100, 1054s` — worker dừng vì **hết budget API calls (~100 lần LLM gọi)** chứ KHÔNG phải `max_iterations` (tool calls, config `delegation.max_iterations: 50`). 2 workers liên tiếp: worker 1 hết budget khi phân tích (0 file sửa), worker 2 hết khi mới xong RED (tests sửa, code chưa). Task lớn (5 file code + 6 test files + TDD) **không fit 1 worker**: phân tích + RED ngốn ~80-100 calls. FIX: (a) cho worker chỉ implement, parent tự chạy baseline/verify; (b) chia phase: worker A sửa code core, worker B sửa tests; (c) khi 2 workers liên tiếp hết budget ở phase đầu → **session-as-worker làm tiếp phase còn lại trực tiếp** (worker đã làm xong phân tích/RED = "nửa task đã tiêu budget", session tiếp GREEN theo plan APPROVED, KHÔNG cần audit lại plan). User nhầm `calltool cài lên 100` với budget API calls — 2 thứ khác nhau, giải thích khi user thắc mắc.
 - Đổi model = phải **làm khác đi**, không lặp patch.
 - Chi tiết đầy đủ: `D:\Taadaa\HERMES_SUBAGENT_RULES.md` (file rule Hermes riêng, ngoài git, đọc theo memory).
 
@@ -273,6 +274,23 @@ Theo `D:\Taadaa\AGENTS.md`: audit order **AG `ag/claude-opus-4-6-thinking` → c
 "dùng rule điều phối", "dispatch codex claude", "gọi audit review", "gọi model ra review"
 
 **BẮT BUỘC (bước 0 — mọi task có write trong repo Taadaa):** bất kỳ task nào yêu cầu write/edit/patch/build/deploy file code trong `D:\Taadaa` (kể cả khi user nói "làm đi", "sửa đi", "fix đi", "chạy lại") → **LOAD SKILL NÀY TRƯỚC** rồi mới phân loại + dispatch worker. Không load skill trước khi write = vi phạm COORDINATOR-WRITE GUARD (bài học 2026-08-07 lần 2: session tự patch core ui.py/device_recovery.py + social_reg_v1.py nhiều lần vì bỏ qua bước 0).
+
+## Pitfall: đổi constants scheduling phải grep validator files NGOÀI allowlist (2026-08-16, follow-integration)
+
+Đổi constants dùng chung (sessions_per_block, block_anchors, pair_gap, inter_block_gap, slot_grid) → **grep toàn repo TRƯỚC khi chốt allowlist** — không chỉ file định nghĩa:
+- `manifest.py` hardcode validate: `session_index not in (1,2)` reject, `len(block_entries) != 2` reject, `pair_gap not in (60,75,90)` reject, `session_slots != build_block_sessions(...)` (so sánh tuple chính xác), inter-block `< 180` reject → **3 sessions CRASH ngay khi picker gọi validate_manifest** nếu manifest.py không sửa.
+- `models.py` có `SLOT_GRID_MINUTES = 15` (grid 15) — đổi grid 5 phải sửa cả đây (ngoài allowlist).
+- Test files hardcode giá trị cũ (6 sessions, 07:00 anchors, len(entries)==6, golden vector hash CONSTRAINTS, len(grid_slots)==77) → đỏ hàng loạt.
+- FIX: **worker phát hiện sớm blocker này (báo parent, không tự sửa ngoài allowlist)**; parent mở rộng allowlist + user duyệt ("Sửa luôn") → dispatch lại worker với allowlist đầy đủ. Lesson: khi plan đổi "shape" (số lượng/schedule structure), allowlist 4 file + tests là thiếu — phải quét dependency của constants.
+
+## Pitfall: test concurrency bằng CÔNG CỤ THẬT của farm (2026-08-16, max_workers test)
+
+User hỏi "max_worker bao nhiêu vừa đủ — test chính xác kiểu gì": **đừng test bằng công cụ cũ/mô phỏng sai**:
+- Sai lần 1: `adb shell uiautomator dump` — farm ĐÃ chuyển qua ATX service (port 7912) → user: "t chuyển qua dùng atx service hết r mà".
+- Đúng: gọi API thật của atx-agent — `POST http://127.0.0.1:7912/uiautomator` (trong code: `_atx_http_request`, capture_recovery.py:1114) — forward `adb -s <dev> forward tcp:7912 tcp:7912` trước.
+- Mô phỏng phiên thật: mở TikTok (`am start -n com.ss.android.ugc.aweme/.main.MainActivity`) + chờ load (S7 chậm → 8s) + 15 lần (đọc UI + swipe). Kết quả thật: parallel 30 = 0 lỗi (20/30 OK, 40 có 2 transient) → chốt max_workers 30.
+- **Bài học kép**: (a) test tải phải dùng công cụ production (không phải công cụ mà farm đã bỏ); (b) mô phỏng phải kèm bước mở app + chờ load (không chỉ gọi API 1 lần) — tải thật nặng hơn nhiều.
+- Pool worker semantics: "máy nào xong → máy khác vào ngay" = ThreadPoolExecutor đã có sẵn (multi_machine_feed_session.py:1048) — KHÔNG cần "tick 15' phức tạp" (user: "cứ max worker tại 1 thời điểm là bn thì máy nào chạy xong máy khác tham gia vào là đc mà"). Stagger per-machine cũng đã có sẵn (`_machine_start_stagger_ms = (2000, 8000)`, build_machine_launch_plan).
 
 ## Audit: session hiện tại đang ở lớp agent nào
 
