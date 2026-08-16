@@ -154,6 +154,13 @@ Khi gọi wrapper audit từ bash (git-bash) trên Windows, tránh các lỗi n�
    - Claude CLI trả `API Error: Internal server error` (500) sau ~4 phút → transient server, retry/đổi route, không phải lỗi prompt.
    - **Kết quả thực 2026-08-09**: Sol qua stdin chạy thành công nhất (exit 0, verdict REJECT 8 P1 + 2 P2 đầy đủ) — khi Claude CLI lỗi server + AG treo, nhảy thẳng `codex exec --sandbox read-only --model gpt-5.6-sol` với stdin là đáng tin nhất.
 
+6. **PITFALL `claude -p ... | tail -N` CẮT MẤT FINDINGS (2026-08-16, audit plan follow-integration 11 vòng)**: audit plan qua `claude -p --append-system-prompt-file <file> "..." | tail -20/35/40` — **2 lần bị cắt mất findings quan trọng** (vòng 7: "2 điểm cần bổ sung" mất; vòng 8: F1-F3 đầu mất vì tail 20). Verdict nằm cuối nên tưởng đủ, nhưng **phần đầu (F1/F2 blocker) hoặc phần cuối (action cần thêm) bị mất** → sửa plan thiếu findings, audit vòng lặp kéo dài. FIX: **redirect ra file thay vì pipe tail**:
+   ```bash
+   claude -p --settings '{"reasoning":{"effort":"high"}}' --append-system-prompt-file <prompt.txt> "..." > <out.txt> 2>&1
+   ```
+   rồi đọc file đầy đủ sau khi process xong (background + notify_on_complete). Nếu bắt buộc tail, dùng `tail -60+` và đọc cả 2 đầu (`head` + `tail`).
+   **PITFALL liên quan — audit vòng lặp dài là BÌNH THƯỜNG khi findings giảm dần**: plan follow-integration mất 11 vòng MINOR_FIXES trước APPROVED; mỗi vòng bắt thêm 1-3 test sót/timing ambiguity (pattern "mỗi vòng 1-3 findings mới" = auditor đang verify từng chi tiết thật, TỐT). Ngưỡng: findings giảm dần + core design không đổi → tiếp tục; findings mới toàn bộ + design đổi mỗi vòng → dừng, giải thích lại vấn đề gốc cho user (PITFALL "user không hiểu mình đang làm gì" 2026-08-08).
+
 ### Codex app: subagent chỉ trong catalog GPT — audit model khác hệ cũng phải CLI
 
 Kiểm chứng 2026-08-05 (`~/.codex/cockpit-local-access-model-catalog.json` — file Codex desktop app tải về, nguồn sự thật cho model app hiển thị/spawn được):
