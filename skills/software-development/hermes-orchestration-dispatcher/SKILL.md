@@ -283,6 +283,18 @@ Theo `D:\Taadaa\AGENTS.md`: audit order **AG `ag/claude-opus-4-6-thinking` → c
 - Test files hardcode giá trị cũ (6 sessions, 07:00 anchors, len(entries)==6, golden vector hash CONSTRAINTS, len(grid_slots)==77) → đỏ hàng loạt.
 - FIX: **worker phát hiện sớm blocker này (báo parent, không tự sửa ngoài allowlist)**; parent mở rộng allowlist + user duyệt ("Sửa luôn") → dispatch lại worker với allowlist đầy đủ. Lesson: khi plan đổi "shape" (số lượng/schedule structure), allowlist 4 file + tests là thiếu — phải quét dependency của constants.
 
+### Checklist sau khi code shape mới land — validator vẫn crash picker (2026-08-16, test-fix phase9-authority)
+
+Kế thừa mục trên: dù picker.py/manifest.py ĐÃ sửa theo plan, validator còn 5 gap khiến **picker CRASH trên chính output của nó** (44 test đỏ; premise "CHỈ SỬA TESTS — code đúng" là SAI, phải sửa production tối thiểu):
+1. `required_keys` block thiếu field mới (`jitter_minutes` — picker emit 13 keys, validator đòi đúng 12) → reject MỌI block. Thêm field vào block dict = phải thêm vào validator.
+2. `len(block["entry_ids"]) != 2` còn sót → reject 3-session.
+3. `session_slots` canonical check gọi `build_block_sessions(...)` KHÔNG truyền `jitter_minutes` → jittered slots reject.
+4. Inter-block gap `<90'` so trên slot THỰC (jittered) → gap thực 65-85' bị reject oan; fix = so **nominal (unjittered)** slots — anchors 06:00/12:30/19:00 + max pair gap 60 luôn để nominal ≥90' (design: "anchor cố định quyết định, KHÔNG enforce runtime").
+5. **Anchor block 1 = window start (06:00) + jitter âm → s1 05:45/05:40 trước window → RESERVED_BLOCK_CONFLICT** → picker clamp `if block_index == 1 and jitter < 0: jitter = 0` (block 2/3 giữ ±20, anchor sâu trong window).
+- Probe khi picker self-validation crash: monkeypatch `manifest_mod.validate_manifest = noop` (KHÔNG patch `picker_mod` — picker import validate_manifest BÊN TRONG `_pick_locked`).
+- Golden vector recompute bằng stdlib hash đúng công thức test; source_revision/block_id KHÔNG đổi khi đổi shape, assignment/entry đổi.
+- Checklist đầy đủ (dependency map, probe RNG, pattern sửa test hardcode): `references/scheduling-shape-change-validator-checklist.md`.
+
 ## Pitfall: test concurrency bằng CÔNG CỤ THẬT của farm (2026-08-16, max_workers test)
 
 User hỏi "max_worker bao nhiêu vừa đủ — test chính xác kiểu gì": **đừng test bằng công cụ cũ/mô phỏng sai**:
