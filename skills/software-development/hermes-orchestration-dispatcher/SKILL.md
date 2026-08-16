@@ -149,6 +149,13 @@ Khi gọi wrapper audit từ bash (git-bash) trên Windows, tránh các lỗi n�
 
 5. **PITFALL PROMPT LỚN >30KB qua CLI audit (2026-08-09, audit ladder 4 tầng Tiktok-video)**: prompt audit gộp diff ~47KB → 3 lỗi liên tiếp cùng nguyên nhân:
    - `claude -p "$(cat prompt.txt)"` → bash **"Argument list too long"** (Windows/MINGW argv giới hạn ~32KB) — KHÔNG phải lỗi Claude. FIX: `--append-system-prompt-file prompt.txt` + `-p "Audit theo appended system prompt. Trả verdict dòng đầu: APPROVED|MINOR_FIXES|REJECT"`.
+
+6. **PITFALL `claude -p ... | tail -N` CẮT MẤT FINDINGS (2026-08-16, audit plan follow-integration 11 vòng)**: audit plan qua `claude -p --append-system-prompt-file <file> "..." | tail -20/35/40` — **2 lần bị cắt mất findings quan trọng** (vòng 7: "2 điểm cần bổ sung" mất; vòng 8: F1-F3 đầu mất vì tail 20). Verdict nằm cuối nên tưởng đủ, nhưng **phần đầu (F1/F2 blocker) hoặc phần cuối (action cần thêm) bị mất** → sửa plan thiếu findings, audit vòng lặp kéo dài. FIX: **redirect ra file thay vì pipe tail**:
+   ```bash
+   claude -p --settings '{"reasoning":{"effort":"high"}}' --append-system-prompt-file <prompt.txt> "..." > <out.txt> 2>&1
+   ```
+   rồi đọc file đầy đủ sau khi process xong (background + notify_on_complete). Nếu bắt buộc tail, dùng `tail -60+` và đọc cả 2 đầu (`head` + `tail`).
+   **PITFALL liên quan — audit vòng lặp dài là BÌNH THƯỜNG khi findings giảm dần**: plan follow-integration mất 11 vòng MINOR_FIXES trước APPROVED; mỗi vòng bắt thêm 1-3 test sót/timing ambiguity (pattern "mỗi vòng 1-3 findings mới" = auditor đang verify từng chi tiết thật, TỐT). Ngưỡng: findings giảm dần + core design không đổi → tiếp tục; findings mới toàn bộ + design đổi mỗi vòng → dừng, giải thích lại vấn đề gốc cho user (PITFALL "user không hiểu mình đang làm gì" 2026-08-08).
    - `codex exec "$(cat prompt.txt)"` → **cùng lỗi argv**. FIX: pipe stdin `cat prompt.txt | codex exec --ephemeral --sandbox read-only --model gpt-5.6-sol -c model_reasoning_effort="high"` — codex tự đọc prompt từ stdin khi [PROMPT] trống.
    - `invoke-ag-audit.ps1` (AG) với prompt 47KB + reasoning high: **chạy >500s không ghi verdict file gì** (wrapper timeout 480s → kill, file 0 bytes) dù smoke-test `ag/claude-opus-4-6-thinking` 200/2.2s. Nguyên nhân: prompt dài + thinking high làm AG nghĩ rất lâu — KHÔNG phải model chết. Nguyên tắc: **smoke-test model trước bằng curl prototype; nếu prompt >30KB thì ưu tiên Claude CLI `--append-system-prompt-file` hoặc Codex stdin trước AG wrapper**; khi AG chạy, set `-TimeoutSeconds 600+`.
    - Claude CLI trả `API Error: Internal server error` (500) sau ~4 phút → transient server, retry/đổi route, không phải lỗi prompt.
@@ -241,14 +248,15 @@ Khi Codex implementer fail/treo ở model mặc định: nâng dần `-c model_r
 
 Theo `D:\Taadaa\AGENTS.md`: audit order **AG `ag/claude-opus-4-6-thinking` → cx luna/terra → Claude CLI `claude-opus-5` (trước cx sol) → OpenCode free → Command Code**. Khi Claude hết quota/fail và Codex cũng fail/treo → dùng **model free của OpenCode** làm audit/review read-only: ưu tiên `opencode/deepseek-v4-flash-free`, fallback free model khác khi quota/rate-limit. Dùng wrapper `taadaa-review`/`invoke-opencode-audit.ps1` nếu có; smoke-test trước; verdict `APPROVED | MINOR_FIXES | REJECT`; label `OPENCODE_AUDIT` (không gọi là Claude approval). OpenCode unavailable → `OPENCODE_RUNTIME_UNAVAILABLE` → cx route sol (`CODEX_FALLBACK_AUDIT`) hoặc `ag/claude-opus-4-6-thinking` (case khó).
 
-> **OpenCode catalog đổi (live 2026-08-07) — model free HOẠT ĐỘNG hiện tại = `opencode/longcat-2.0-free`**:
+> **OpenCode catalog đổi (live 2026-08-07, UPDATE 2026-08-16) — model free HOẠT ĐỘNG hiện tại = `opencode/nemotron-3-ultra-free`**:
 > `invoke-opencode-audit.ps1` mặc định cascade nemotron→ling. `opencode/deepseek-v4-flash-free`
 > KHÔNG còn trong allowlist (`MODEL_UNAVAILABLE`/`MODEL_NOT_ALLOWED`); `opencode/ling-3.0-flash-free`
 > cũng không (catalog hiện chỉ `ling-3.0-tiny-free`, `nemotron-3-ultra-free`, `longcat-2.0-free`,
-> `north-mini-free`). **Đã chạy thành công 2 lần 2026-08-07 với `longcat-2.0-free`: trả verdict
-> `MINOR_FIXES` + findings file:line đầy đủ** (audit plan + audit consumer). Thứ tự thử khi cần
-> OpenCode free: `longcat-2.0-free` → `ling-3.0-tiny-free` → `nemotron-3-ultra-free`; đừng mặc định
-> theo tên model cũ ghi trong rule. Nếu cascade trả `OPENCODE_AUDIT_FAILED_NON_QUOTA_EXIT_1` →
+> `north-mini-free`). **2026-08-07 chạy OK với `longcat-2.0-free` (verdict MINOR_FIXES đầy đủ),
+> NHƯNG 2026-08-16 `longcat-2.0-free` FAIL `err_ee0a749e` còn `nemotron-3-ultra-free` chạy OK**
+> (audit plan 3 quyết định mới → MINOR_FIXES 2 MUST FIX đầy đủ). Thứ tự thử khi cần
+> OpenCode free: `nemotron-3-ultra-free` → `ling-3.0-tiny-free` → `longcat-2.0-free`; đừng mặc định
+> theo tên model cũ ghi trong rule — **model free đổi availability thường xuyên, smoke-test từng cái trước khi dùng**. Nếu cascade trả `OPENCODE_AUDIT_FAILED_NON_QUOTA_EXIT_1` →
 > opencode CLI hỏng/unavailable → chuyển Command Code/Codex (không coi là quota).
 
 ## Audit/Read-Only Dispatch
