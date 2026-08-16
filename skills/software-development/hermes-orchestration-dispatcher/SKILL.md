@@ -275,6 +275,15 @@ Theo `D:\Taadaa\AGENTS.md`: audit order **AG `ag/claude-opus-4-6-thinking` → c
 
 **BẮT BUỘC (bước 0 — mọi task có write trong repo Taadaa):** bất kỳ task nào yêu cầu write/edit/patch/build/deploy file code trong `D:\Taadaa` (kể cả khi user nói "làm đi", "sửa đi", "fix đi", "chạy lại") → **LOAD SKILL NÀY TRƯỚC** rồi mới phân loại + dispatch worker. Không load skill trước khi write = vi phạm COORDINATOR-WRITE GUARD (bài học 2026-08-07 lần 2: session tự patch core ui.py/device_recovery.py + social_reg_v1.py nhiều lần vì bỏ qua bước 0).
 
+## Pitfall: AG audit hallucinate source + Claude "File access denied" → prompt audit phải SELF-CONTAINED (2026-08-16, release-always-lock)
+
+- **AG `ag/claude-opus-4-6-thinking` audit plan bịa TOÀN BỘ source ảo**: response chứa một `device_lock.py` khác hẳn repo thật (API `device_name`/`lock_file`/`_try_acquire`/`_StaleLockReaped`/single-file lease — KHÔNG tồn tại; line numbers + docstring khác hẳn). `AG_AUDIT_VERDICT=UNPARSEABLE`, stdout lẫn source. Auditor không đọc được file thật (D:\ path) nên tự bịa. **KHÔNG BAO GIỜ tin response audit có source dump lạ — đối chiếu API reference với repo thật trước khi dùng verdict; bỏ audit đó, chuyển route.**
+- **Claude CLI opus-5 "File access denied"** khi không đọc được D:\ path — vẫn cho verdict dùng được (MINOR_FIXES) vì prompt đã paste đủ verified facts. **Kết luận: prompt audit PHẢI self-contained** — paste REAL source (path + line numbers thật + hàm/signature/status sets) + đánh dấu rõ "đây là API THẬT (verified bởi coordinator); đừng bịa API khác; KHÔNG đọc file ngoài" + pitfalls repo + plan summary + open questions Q1..QN.
+- Recipe đầy đủ + skeleton prompt + bằng chứng 3 vòng: `references/self-contained-audit-prompt-recipe.md`.
+- cx route fail (`ERROR: stream disconnected` cockpit :60818) → đúng ladder chuyển Claude CLI opus-5, không retry cùng thứ (không phải lỗi prompt).
+- **Verify assumption của auditor bằng code thật TRƯỚC khi sửa plan**: auditor giả định "state.json gate failed-locked chặn re-run" → đọc `serve()` thấy KHÔNG có gate → resolution theo USER INTENT (retry daily intentional — lock = mutex thuần), KHÔNG thêm gate ngoài yêu cầu. Ghi "VERIFIED/SUPERSEDED by code" cho từng finding vào plan.
+- **Re-audit chỉ audit Δ** (vòng sau gửi "v2 findings → v3 resolutions + verified facts + checklist") — vòng 3 nhanh hơn hẳn. Findings giảm dần + design không đổi = đúng quỹ đạo.
+
 ## Pitfall: đổi constants scheduling phải grep validator files NGOÀI allowlist (2026-08-16, follow-integration)
 
 Đổi constants dùng chung (sessions_per_block, block_anchors, pair_gap, inter_block_gap, slot_grid) → **grep toàn repo TRƯỚC khi chốt allowlist** — không chỉ file định nghĩa:
