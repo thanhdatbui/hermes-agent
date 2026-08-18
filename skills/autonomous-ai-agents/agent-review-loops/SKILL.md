@@ -358,6 +358,13 @@ Chi tiết và checklist: `references/interrupted-session-takeover.md`.
 
 ## Reviewer Quota/Treo
 
+- **QUY TẮC BẮT BUỘC KHI GỌI AUDIT / REVIEW (User chốt 2026-08-18):**
+  - **TUYỆT ĐỐI CẤM dùng `delegate_task` để audit/review** (vì `delegate_task` bị gán cứng vào combo `worker`, sẽ gọi nhầm Flash/Worker đi audit).
+  - **MỌI lượt Audit / Plan / Code Review BẮT BUỘC gọi thẳng qua 9Router HTTP API (`http://127.0.0.1:20128/v1/chat/completions`)** với model combo:
+    - **`plan-review`** (thường: `gpt-5.6-terra → ag/claude-opus-4-6-thinking → cmc/deepseek/deepseek-v4-pro`)
+    - **`plan-review-hard`** (khó: `gpt-5.6-sol`)
+  - Request body bắt buộc: `"tools": []`, `"tool_choice": "none"`, `"stream": false`.
+
 - Reviewer process in thông báo quota/session limit nhưng không exit phải được coi là provider-unavailable, không phải review đang tiến triển.
 - Poll output sau khoảng chờ hợp lý; nếu thấy quota/rate-limit/billing/session-limit, kill process treo và fallback ngay theo chuỗi model đã định.
 - Không báo `APPROVED`, không gọi task `DONE`, và không để user chờ reset quota.
