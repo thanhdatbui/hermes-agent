@@ -365,11 +365,11 @@ Chi tiết và checklist: `references/interrupted-session-takeover.md`.
 - **QUY TẮC BẮT BUỘC KHI GỌI AUDIT / REVIEW / PLAN (User chốt 2026-08-18, ALL repo):**
   - **TUYỆT ĐỐI CẤM dùng `delegate_task` hoặc Flash/Worker để làm auditor/reviewer** (vì `delegate_task` bị gán cứng vào combo `worker`, sẽ gọi nhầm Flash/Worker đi audit).
   - **MỌI lượt Audit / Plan / Code Review BẮT BUỘC gọi qua các tầng chuẩn sau:**
-    1. **Thường / Vừa (Review tính năng 1 repo):** Gọi 9Router HTTP API (`http://127.0.0.1:20128/v1/chat/completions`) với combo **`plan-review`** (`gpt-5.6-terra → ag/claude-opus-4-6-thinking → cmc/deepseek/deepseek-v4-pro`).
-    2. **Khó / Core / Nhạy cảm (Architecture, Farm rule, Lock, Multi-repo):**
-       - **Ưu tiên 1:** 9Router HTTP combo **`plan-review-hard`** (`gpt-5.6-sol`).
-       - **Fallback (Khi Sol lỗi/hết quota/429):** Gọi **Claude CLI Print Mode** (`claude -p "<prompt>" --allowedTools "Read,Bash(git *)" --max-turns 10`).
-  - Request body HTTP bắt buộc: `"tools": []`, `"tool_choice": "none"`, `"stream": false`.
+    1. **Thường / Vừa (Review tính năng 1 repo, UI, video gate):** Gọi 9Router HTTP API (`http://127.0.0.1:20128/v1/chat/completions`) với combo **`plan-review`** (`gpt-5.6-terra → ag/claude-opus-4-6-thinking → cmc/deepseek/deepseek-v4-pro`) kèm `"reasoning_effort": "high"`.
+    2. **Khó / Core / Nhạy cảm (Architecture, Scheduler, Manifest validation, Hashing, State machine, Farm rule, Lock, Multi-repo):**
+       - **Ưu tiên 1:** 9Router HTTP combo **`plan-review-hard`** (`gpt-5.6-sol`) kèm `"reasoning_effort": "extra_high"` (hoặc `"ultra"` với Lock/Recovery/Fail-closed rủi ro cao).
+       - **Fallback (Khi Sol lỗi/hết quota/429/404):** Gọi **Claude CLI Print Mode** (`claude -p "<prompt>" --allowedTools "Read,Bash(git *)" --max-turns 15`) — model Claude CLI chạy mặc định **`opus-5`**.
+  - Request body HTTP bắt buộc: `"tools": []`, `"tool_choice": "none"`, `"stream": false`, `Authorization: Bearer $NINEROUTER_API_KEY`.
 
 - **QUY TẮC BẮT BUỘC KHI GỌI AUDIT / REVIEW (User chốt 2026-08-18):**
   - **TUYỆT ĐỐI CẤM dùng `delegate_task` để audit/review** (vì `delegate_task` bị gán cứng vào combo `worker`, sẽ gọi nhầm Flash/Worker đi audit).
