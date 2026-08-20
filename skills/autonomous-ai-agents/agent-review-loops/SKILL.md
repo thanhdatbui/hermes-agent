@@ -19,9 +19,17 @@ Dùng khi user yêu cầu điều phối coding agent, review chéo, hoặc làm
    - **Bước 1 (Lập Plan):** Viết plan chi tiết ra file `.hermes/plans/YYYY-MM-DD_<name>.md`.
    - **Bước 2 (Audit Plan):** Gọi 9Router combo `plan-review` (`gpt-5.6-terra` / `ag/claude-opus-4-6-thinking`) -> Bắt buộc nhận `VERDICT: APPROVED`.
    - **Bước 3 (Worker Implement TDD):** Viết test Red trước -> Code Green sau -> Giữ đúng scope allowlist.
-   - **Bước 4 (Review Code Diff):** Xuất toàn bộ git diff gọi 9Router audit độc lập -> Bắt buộc nhận `VERDICT: APPROVED`.
+   - **Bước 4 (Review Code Diff):** Xuất toàn bộ git diff gọi 9Router audit độc lập (`gpt-5.6-sol` / `claude-opus-4-6-thinking`) -> Bắt buộc nhận `VERDICT: APPROVED`.
    - **Bước 5 (Pytest Isolated):** Chạy test suite liên quan trên đúng môi trường venv của farm (loại bỏ PYTHONPATH hermes).
    - **Bước 6 (Pull Rebase & Commit/Push):** Rebase nhánh chính, commit message tiếng Việt chuẩn và push lên Git.
+
+0a. **Các tiêu chuẩn kiểm duyệt an toàn khắt khe cho Safety Budget / Tracker (GPT-5.6-Sol Audit Lessons - 20/08):**
+   - **Pre-flight invocation counting:** Bắt buộc tăng attempt và kiểm tra timeout/hard-stop NGAY TỪ ĐẦU trước khi chạy bất kỳ Vision API hay ADB Action nào; không được đặt guard phụ thuộc vào optional metadata (như `account`).
+   - **Single-pass load & Fail-closed khi corrupt:** Nếu file tracker tồn tại nhưng corrupt hoặc sai schema, dừng ngay (fail-closed), TUYỆT ĐỐI KHÔNG tự động xóa file corrupt vì sẽ làm mất forensic data và reset budget/attempts.
+   - **Strict Type & Schema Guards:** Kiểm tra kiểu dữ liệu nghiêm ngặt (`type() is int`, từ chối `bool`, `float`, `NaN`, `Infinity`, số âm; timestamp bắt buộc `math.isfinite() > 0`).
+   - **Atomic Persistence:** Ghi temp file theo `PID + time_ns` -> `flush()` -> `os.fsync()` -> `replace()` -> directory fsync. Nếu save fail -> Fail-closed dừng phiên.
+   - **Runtime Action Reset khi Audit Reject:** Nếu code patch bị auditor từ chối sau toàn bộ retry -> Bắt buộc reset `action_type = "none"`, cấm tap/swipe mù vào máy kẹt.
+   - **Độc lập Hard-Stop Execution:** Tách riêng `am force-stop` và `input keyevent 3` (HOME) trong 2 try-catch độc lập để nếu force-stop timeout thì HOME vẫn luôn được thực thi.
 
 0b. **Phân loại task**: SIMPLE (1-2 file, mechanical, không đụng shared core/sensitive) hay COMPLEX (core/shared/sensitive/multi-machine/architecture).
 1. **Chọn owner đúng policy**: COMPLEX phải có task spec rõ ràng (`Goal`, `Scope`, `Acceptance Criteria`, `Constraints`) rồi dispatch worker implement (background, `pty=true`, `notify_on_complete=true`). Khi coordinator-write guard đang active, không tự write chỉ vì task được gọi là SIMPLE; tuân thủ skill dispatcher và chuyển mọi write cho một worker độc quyền.
