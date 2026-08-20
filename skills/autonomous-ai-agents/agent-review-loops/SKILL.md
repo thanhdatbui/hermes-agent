@@ -284,7 +284,7 @@ Khi `claude -p` không review được do quota/session limit, rate limit, billi
 
 **Claude audit timeout ≥10 phút (600s):** Full Claude audit có thể chạy vài phút. Luôn set `timeout_ms=600000` (hoặc wait ≥600s) trước khi kết luận Claude fail. **Timeout ngắn của wrapper KHÔNG phải bằng chứng quota/auth/Claude fail** — phải phân loại lỗi thật trước khi fallback (theo `D:\Taadaa\AGENTS.md`).
 
-Quota gate (theo `D:\Taadaa\AGENTS.md`): trước mỗi call Claude chạy `D:\Taadaa\tools\claude-quota-preflight.ps1 <ledger>` — exit 0 = allow; 20 = 5h ≥85% block; **22 = weekly ≥90% block (dừng hẳn Claude, không dùng nữa)**; 21 = unavailable block. Weekly 90% là dừng cứng, không chờ reset 5h.
+Quota gate (theo `D:\Taadaa\AGENTS.md`): trước mỗi call Claude chạy `D:\Taadaa\tools\claude-quota-preflight.ps1 <ledger>` — exit 0 = allow; 20 = 5h ≥85% block; **22 = weekly ≥90% block (dừng hẳn Claude, không dùng nữa)**; 21 = unavailable block. Weekly 90% là dừng cứng, không chờ reset 5h. **`-LedgerPath` là mandatory param — chạy thiếu sẽ lỗi `MissingMandatoryParameter` (hit 2026-08-20). Ledger thật nằm tại `D:\CodexRuntime\<repo>\audit\claude-quota-ledger.jsonl` (vd `D:\CodexRuntime\automation-core\audit\claude-quota-ledger.jsonl`); có thể dùng ledger cũ của repo khác vì chỉ để ghi event + probe quota.**
 
 Fallback chỉ thay vai trò **reviewer/auditor**, không thay Codex implementer.
 
