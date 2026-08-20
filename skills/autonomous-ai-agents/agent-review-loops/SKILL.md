@@ -14,7 +14,16 @@ Dùng khi user yêu cầu điều phối coding agent, review chéo, hoặc làm
 
 ## Quy trình bắt buộc
 
-0. **Phân loại task**: SIMPLE (1-2 file, mechanical, không đụng shared core/sensitive) hay COMPLEX (core/shared/sensitive/multi-machine/architecture).
+0. **Quy trình triển khai code mới (Plan-Audit-Worker-Review - User chốt 20/08):**
+   Khi user đưa ra bất kỳ yêu cầu triển khai tính năng / code mới nào (khác với debug sự cố tức thời), dù chỉ nhắn vài chữ ngắn gọn (ví dụ: "làm đi", "triển khai X", "thêm tính năng Y"), Agent BẮT BUỘC tự hiểu và kích hoạt trọn vẹn chuỗi 6 bước khép kín:
+   - **Bước 1 (Lập Plan):** Viết plan chi tiết ra file `.hermes/plans/YYYY-MM-DD_<name>.md`.
+   - **Bước 2 (Audit Plan):** Gọi 9Router combo `plan-review` (`gpt-5.6-terra` / `ag/claude-opus-4-6-thinking`) -> Bắt buộc nhận `VERDICT: APPROVED`.
+   - **Bước 3 (Worker Implement TDD):** Viết test Red trước -> Code Green sau -> Giữ đúng scope allowlist.
+   - **Bước 4 (Review Code Diff):** Xuất toàn bộ git diff gọi 9Router audit độc lập -> Bắt buộc nhận `VERDICT: APPROVED`.
+   - **Bước 5 (Pytest Isolated):** Chạy test suite liên quan trên đúng môi trường venv của farm (loại bỏ PYTHONPATH hermes).
+   - **Bước 6 (Pull Rebase & Commit/Push):** Rebase nhánh chính, commit message tiếng Việt chuẩn và push lên Git.
+
+0b. **Phân loại task**: SIMPLE (1-2 file, mechanical, không đụng shared core/sensitive) hay COMPLEX (core/shared/sensitive/multi-machine/architecture).
 1. **Chọn owner đúng policy**: COMPLEX phải có task spec rõ ràng (`Goal`, `Scope`, `Acceptance Criteria`, `Constraints`) rồi dispatch worker implement (background, `pty=true`, `notify_on_complete=true`). Khi coordinator-write guard đang active, không tự write chỉ vì task được gọi là SIMPLE; tuân thủ skill dispatcher và chuyển mọi write cho một worker độc quyền.
 2. **Tách vai trò**: Claude/OpenCode/Sol/Terra chỉ audit/read-only; worker không tự duyệt thay đổi của chính mình. Reviewer phải xem code/spec thực tế, không chỉ tin self-report hoặc exit code.
 3. Nếu reviewer trả `REJECT` hoặc `MINOR_FIXES`, chạy **spec/implementation ratchet**: mỗi finding phải có locator, nhánh/input/state, hậu quả cụ thể và evidence; sửa đúng finding bằng một điều khoản/API/schema/state rõ ràng kèm acceptance test; sau đó tạo evidence mới và re-review. Không dispatch implementation khi gate của plan/spec còn `REJECT`/`MINOR_FIXES`.
