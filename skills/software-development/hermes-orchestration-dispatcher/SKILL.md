@@ -275,12 +275,20 @@ Theo `D:\Taadaa\AGENTS.md`: audit order **AG `ag/claude-opus-4-6-thinking` → c
 "dùng rule điều phối", "dispatch codex claude", "gọi audit review", "gọi model ra review"
 
 - **BẮT BUỘC (bước 0 — mọi task có write/plan/review trong repo Taadaa):** 
-  1. Khi user ra lệnh **"lên plan"** hoặc **"review"**: Dùng ĐỒNG NHẤT cấu hình chuẩn đã setup chung cho Plan & Review (không chế model riêng):
+  1. **Quy trình triển khai code mới chuẩn hóa (Plan-Audit-Worker-Review - User chốt 20/08):**
+     Khi user đưa ra bất kỳ yêu cầu triển khai tính năng / code mới nào (khác với debug sự cố tức thời), dù chỉ nhắn vài chữ ngắn gọn, Agent BẮT BUỘC tự hiểu và kích hoạt trọn vẹn chuỗi 6 bước khép kín:
+     - **Bước 1 (Lập Plan):** Viết plan chi tiết ra file `.hermes/plans/YYYY-MM-DD_<name>.md`.
+     - **Bước 2 (Audit Plan):** Gọi 9Router combo `plan-review` (`gpt-5.6-terra` / `ag/claude-opus-4-6-thinking`) -> Bắt buộc nhận `VERDICT: APPROVED`.
+     - **Bước 3 (Worker Implement TDD):** Viết test Red trước -> Code Green sau -> Giữ đúng scope allowlist.
+     - **Bước 4 (Review Code Diff):** Xuất toàn bộ git diff gọi 9Router audit độc lập -> Bắt buộc nhận `VERDICT: APPROVED`.
+     - **Bước 5 (Pytest Isolated):** Chạy test suite liên quan trên đúng môi trường venv của farm (loại bỏ PYTHONPATH hermes).
+     - **Bước 6 (Pull Rebase & Commit/Push):** Rebase nhánh chính, commit message tiếng Việt chuẩn và push lên Git.
+  2. Khi user ra lệnh **"lên plan"** hoặc **"review"**: Dùng ĐỒNG NHẤT cấu hình chuẩn đã setup chung cho Plan & Review (không chế model riêng):
      * **Mức thường**: combo model `plan-review` kịch trần (`--variant max`).
      * **Mức khó / Core / Shared**: `sol` (`--variant ultra`).
      * **Fallback**: Claude CLI `claude-opus-5` (`--effort max`).
      * TUYỆT ĐỐI CẤM dùng Flash/Worker làm plan hoặc audit.
-  2. Bất kỳ task nào yêu cầu write/edit/patch/build/deploy file code trong `D:\Taadaa` (kể cả khi user nói "làm đi", "sửa đi", "fix đi", "chạy lại") → **LOAD SKILL NÀY TRƯỚC** rồi mới phân loại + dispatch worker. Không load skill trước khi write = vi phạm COORDINATOR-WRITE GUARD.
+  3. Bất kỳ task nào yêu cầu write/edit/patch/build/deploy file code trong `D:\Taadaa` (kể cả khi user nói "làm đi", "sửa đi", "fix đi", "chạy lại") → **LOAD SKILL NÀY TRƯỚC** rồi mới phân loại + dispatch worker. Không load skill trước khi write = vi phạm COORDINATOR-WRITE GUARD.
 
 ## Pitfall: AG audit hallucinate source + Claude "File access denied" → prompt audit phải SELF-CONTAINED (2026-08-16, release-always-lock)
 
