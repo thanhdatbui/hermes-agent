@@ -3,6 +3,16 @@
 Script: `D:\Taadaa\tools\claude-quota-preflight.ps1` (chạy TRƯỚC mỗi lần gọi Claude).
 Ledger: `D:\CodexRuntime\<project-id>\audit\claude-quota-ledger.jsonl`.
 
+## BẮT BUỘC: tham số `-LedgerPath` (hit 2026-08-20)
+
+Chạy thiếu `-LedgerPath` → `MissingMandatoryParameter: LedgerPath` (exit 1) — KHÔNG phải quota block.
+Gọi đúng (ledger có sẵn từ các lần trước, vd automation-core):
+```bash
+powershell -NoProfile -ExecutionPolicy Bypass -File "D:\Taadaa\tools\claude-quota-preflight.ps1" -LedgerPath "D:\CodexRuntime\automation-core\audit\claude-quota-ledger.jsonl"
+```
+Không có ledger sẵn → tự tạo thư mục `<project-id>\audit\` trước khi chạy (script append, không tạo dir).
+Nếu repo chưa từng chạy Claude, dùng ledger mới `D:\CodexRuntime\<repo>\audit\claude-quota-ledger.jsonl` — script tự append entry.
+
 ## Exit codes
 
 | Exit | Nghĩa | Hành động |
