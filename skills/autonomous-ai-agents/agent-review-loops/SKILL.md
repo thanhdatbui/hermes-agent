@@ -401,6 +401,19 @@ Chi tiết và checklist: `references/interrupted-session-takeover.md`.
 - Không báo `APPROVED`, không gọi task `DONE`, và không để user chờ reset quota.
 - Smoke-test fallback trước, sau đó review toàn bộ diff thực tế. Nếu fallback cũng lỗi, chuyển model kế tiếp thay vì lặp cùng command.
 
+### Windows exact-worktree và tool-budget discipline sau Plan APPROVED (lesson 2026-08-22)
+
+Khi plan multi-repo đã có verdict `APPROVED`, **đừng chuyển thẳng sang worker**. Phải pin exact baseline, dựng worktree đúng target, rồi mới dispatch:
+
+1. **MSYS/native path gate:** trong terminal Windows, vào repo bằng `cd '/d/Taadaa/<repo>'`, nhưng truyền **native `D:/...`** cho `git worktree add`. Không dùng `git -C /d/...` để tham chiếu một path native khác; cách trộn này có thể tạo worktree nhầm dưới `D:\\d\\Taadaa\\...` mà lệnh vẫn báo thành công. Sau mỗi `worktree add`, kiểm tra từ chính target: `git -C 'D:/Taadaa/<target>' rev-parse --show-toplevel`, branch, HEAD và `git status --short --untracked-files=all`.
+2. **Partial-create recovery:** nếu một lệnh tạo nhiều worktree dừng giữa chừng, coi phần đã tạo là partial state. Không retry mù và không xóa hàng loạt: liệt kê `git worktree list --porcelain`, xác định đúng path/branch vừa tạo, remove đúng worktree nhầm bằng native path, xóa chỉ branch tạm vừa tạo, rồi tạo lại từng repo và verify độc lập.
+3. **Automation-idle classification:** process preflight phải phân biệt route recovery-specific với watcher không liên quan (ví dụ proxy-only tray). Không kill/restart process ngoài scope chỉ để làm gate “idle”; ghi rõ `recovery-specific=IDLE` và disposition của process unrelated.
+4. **Không đốt tool budget bằng polling lặp:** trong lúc worker còn chạy, không gửi chuỗi `git status`/`SILENT` lặp lại ở mỗi lượt. Dùng một bounded `process poll/wait`, kèm một snapshot read-only song song gồm process state + status/HEAD/allowlist. Nếu tool budget gần cạn trước completion, giữ checkpoint hiện tại và báo `IN_PROGRESS/BLOCKED`; tuyệt đối không gọi đó là GREEN, VERIFIED hoặc DONE.
+5. **Completion vẫn phải reconcile độc lập:** worker completion, exit code, self-reported hash/test count không đủ. Sau khi worker dừng, kiểm tra exact absolute target, branch/HEAD, allowlist (kể cả untracked), diff/hash, rồi chạy RED/GREEN/final suite từ đúng worktree. Không chạy coordinator verification trên tree worker đang còn ghi.
+6. **Route discovery invalidates approval:** route map là open-world. Nếu source inventory phát hiện route mới sau approval (như R11 health watcher), bổ sung route matrix/test/acceptance, rehash exact plan và chạy independent plan audit lại trước khi implementation. Không dùng verdict cũ cho plan bytes mới.
+
+Checklist chi tiết: `references/approved-plan-implementation-gate.md`.
+
 ### Worker checkpoint và gate dừng process (BẮT BUỘC)
 
 Không được coi output đứng yên hoặc `exit code -15` là bằng chứng code lỗi. Worker có thể đã sửa/test xong nhưng treo ở bước ghi report cuối; kill là side effect và chỉ được phép sau khi reconcile đủ bằng chứng.
