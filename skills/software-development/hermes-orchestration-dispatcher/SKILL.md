@@ -103,7 +103,7 @@ Khi `claude -p` trả quota/session limit, rate limit, billing error:
 - Smoke-test: `opencode run --model <m> 'Respond with exactly: OPENCODE_FALLBACK_READY'`.
 - Shell vỡ quote → viết `.txt`, `PROMPT=$(cat file); opencode run ... "${PROMPT}"`.
 - `APPROVED` từ fallback thay thế gate Claude cho run hiện tại.
-- Nếu toàn bộ Claude/OpenCode reviewer hết quota hoặc unavailable, dùng **cx route** làm fallback cuối: `cx/gpt-5.6-sol` reasoning high qua 9Router codex transport (v5: "fresh Codex reviewer độc lập" ĐÃ BỎ — trùng transport cx route; khi cần CLI: `codex exec --ephemeral --sandbox read-only`); prompt verdict `APPROVED | MINOR_FIXES | REJECT`. Không reuse/resume session implementer và không để implementer tự spawn subagent để tự duyệt thay đổi của chính nó.
+- Nếu toàn bộ Claude/OpenCode reviewer hết quota hoặc unavailable, dùng **cx route** làm fallback cuối: `cx/gpt-5.6-sol` reasoning high qua 9Router codex transport bằng `python D:/Taadaa/tools/invoke_sol_audit.py` (hỗ trợ streaming chống timeout, xem `references/sol-http-streaming-anti-timeout.md`); prompt verdict `APPROVED | MINOR_FIXES | REJECT`. Không reuse/resume session implementer và không để implementer tự spawn subagent để tự duyệt thay đổi của chính nó.
 - Nếu Codex reviewer trả finding, Hermes sửa (SIMPLE scope) hoặc dispatch Codex implementer mới (COMPLEX scope), rồi review lại.
 
 ## Hermes App: Subagent Model Routing — `delegate_task` KHÔNG chọn model per-subagent
@@ -222,7 +222,7 @@ User đổi route audit (chi tiết test + ladder đầy đủ: `references/audi
 - **Bỏ hẳn Gemini 3.6 Flash khỏi audit route** (vẫn giữ làm vision aux — `auxiliary.vision` riêng, không liên quan audit).
 - **PRIMARY = `ag/claude-opus-4-6-thinking`** (Antigravity qua 9router, reasoning high). Sonnet 4.6 qua CLI KHÔNG dùng — sonnet-4.6 CHỈ qua 9router (legacy backup khi opus-4-6-thinking 429/401).
 - **Claude CLI user**: `claude-opus-5`/high (task khó) — `sonnet-5` ĐÃ BỎ khỏi route (2026-08-08). Quota gate 85%/5h + 90%/tuần. **PITFALL: flag `--reasoning-effort` không tồn tại — dùng `--settings '{"reasoning":{"effort":"high"}}'`** (smoke-test OK cả 2 model).
-- **GPT route = `cx/*` qua 9router codex** (test OK): `cx/gpt-5.6-luna` (dễ) / `cx/gpt-5.6-terra` (khó vừa) / `cx/gpt-5.6-sol` reasoning high (khó thật). **CẤM `v98/gpt-5.6-*-max`** (429 new_api_error upstream, không phải quota — đừng retry mù).
+- **GPT route = `cx/*` qua 9router codex** (test OK): `cx/gpt-5.6-luna` (dễ) / `cx/gpt-5.6-terra` (khó vừa) / `cx/gpt-5.6-sol` reasoning high (khó thật, gọi qua endpoint `gpt-5.6-sol` trên 9Router). **CẤM `v98/gpt-5.6-*-max`** (429 new_api_error upstream, không phải quota — đừng retry mù). Khi audit diff/code case khó, bắt buộc dùng Sol Ultra/High hoặc Claude Opus 5 Max qua 9Router với prompt có `VERDICT: APPROVED | MINOR_FIXES | REJECT` dòng đầu.
 - Bỏ mục "fresh Codex reviewer độc lập" riêng — trùng cx route (cùng key 9router).
 - Escalation: `ag/claude-opus-4-6-thinking` (khi CLI hết quota mà case vẫn khó).
 - **One-slot làm rõ**: 1 evidence audit 1 lần; worker sửa xong = evidence MỚI → re-audit hợp lệ (material change = slot mới). KHÔNG cấm audit tiếp sau sửa — chỉ cấm review cùng evidence 2 lần.

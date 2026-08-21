@@ -27,6 +27,16 @@ Các lỗi chỉ lộ ra khi chạy preflight/live trên dữ liệu thật:
 - Sau live failure cần xác minh workbook không đổi, remote media không có, report MANUAL_REVIEW/FAILED và machine/serial lock release.
 - Stale lock PID chết mới được xoá.
 
+## AI Auto-Recovery & Popup / Overlay Handling (Session 2026-08-21)
+- **CẤM Hardcode Tọa độ trong AI Auto-Recovery Patch:**
+  - AI Vision (Gemini 3.7) thường có xu hướng sinh code dùng `ctx.tap(x, y)` theo pixel cứng thay vì bóc tách cây XML. Điều này gây trượt nút hoặc chạm nhầm nút lân cận (ví dụ quẹt trúng nút Camera `[+]` ở đáy màn hình `Y=1800+`).
+  - **Quy tắc bắt buộc:** Bắt buộc AI sinh code tìm Element UI qua `parse_xml`, `iter_elements`, `parse_bounds` và tìm đúng text/content-desc (`"Đóng"`, `"Hủy"`, `"X"`, `"Close"`...) để tính tâm `bounds` động `((b[0]+b[2])//2, (b[1]+b[3])//2)`. Chỉ dùng tọa độ tỷ lệ màn hình làm fallback tầng cuối cùng.
+- **Fail-Closed khi đối soát Profile (`_verify_profile_after_session`):**
+  - Không được quy kết các lỗi như màn hình kẹt Camera / Overlay / mạng lag chưa load xong trang Hồ sơ thành lỗi sai tài khoản (`profile account mismatch`).
+  - Phải có cơ chế tự động gửi `KEYCODE_BACK` thoát Camera/Overlay và điều hướng lại Profile chuẩn qua `tap_navigation_target`. Nếu recovery thất bại, trả về `profile_verify_status = "camera-recovery-failed"` và fail-closed, tuyệt đối không dùng XML camera cũ để đối soát username.
+- **Loại bỏ hoàn toàn Touch Gesture khi đóng Android Notification Shade:**
+  - Để đóng thanh thông báo che TikTok (`com.android.systemui`), chỉ dùng lệnh non-touch `cmd statusbar collapse`. Tuyệt đối không dùng `input swipe` từ đáy màn hình vì sẽ có nguy cơ chạm trúng nút `[+]` tạo video của TikTok. Polling kiểm tra focus nếu sang app lạ thì fail-closed ngay lập tức.
+
 ## Mode 2 structural proof and regression discipline (session 2026-08-13)
 
 ### Evidence thật từ UI dump
