@@ -1975,8 +1975,9 @@ def switch_model(agent, new_model, new_provider, api_key='', base_url='', api_mo
         )
         if _resolved_request_overrides is not None:
             agent.request_overrides = _resolved_request_overrides
-        else:
-            # Clear old overrides if the target model or provider doesn't define any
+        elif old_norm_provider != new_norm_provider or old_base_norm != new_base_norm or old_model != new_model:
+            # A provider, endpoint, or model change without resolvable target metadata
+            # must not carry route-specific fields from the old route.
             agent.request_overrides = {}
         # Invalidate transport cache — new api_mode may need a different transport
         if hasattr(agent, "_transport_cache"):
