@@ -110,10 +110,12 @@ def _canonicalize_gemini_fallback(
     ):
         return entry
 
-    normalized = dict(entry)
-    normalized["provider"] = configured_provider
-    normalized["base_url"] = configured_base_url
-    return normalized
+    # Only canonicalize if explicitly targeting 9router or an existing 9router URL
+    if entry_base_url and entry_base_url.lower() == configured_base_url.lower():
+        normalized = dict(entry)
+        normalized["provider"] = configured_provider
+        return normalized
+    return entry
 
 
 def _normalized_base_url(value: Any) -> str:
