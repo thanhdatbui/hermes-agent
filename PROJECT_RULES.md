@@ -119,3 +119,6 @@ Khi thực hiện merge nhánh về main hoặc dọn nhánh/tree quan trọng:
 - Ngưỡng trim: HANDOFF > ~250 dòng → task/session kế phải TRIM: giữ top current-state + pointer, xoá phần resolved cũ khỏi file (git đã giữ bản cũ, không mất gì).
 - Khi append entry mới mà file sắp vượt ngưỡng: trim entry cũ đã resolved cùng lượt, không để HANDOFF phình vô hạn.
 - Giữ EOL khi sửa HANDOFF (append/trim bằng python, không patch LF).
+
+## CLOSE-SESSION HARD TRIGGER
+Các câu “chốt phiên”, “chốt phiên đi”, “đóng phiên”, “kết thúc phiên”, “xong phiên chưa” là **lệnh thực thi closeout**, không phải yêu cầu gửi summary. Bắt buộc load `session-close-protocol` và chạy: review độc lập `APPROVED` → kiểm tra branch/worktree/conflict → dọn đúng file tạm do session tạo → commit đúng scope → fetch/pull --rebase → push + xác minh remote SHA. Thiếu bất kỳ gate nào chỉ được báo `BLOCKED_AT_<STEP>`; cấm nói “đã chốt/xong” bằng miệng.
