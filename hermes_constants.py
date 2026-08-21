@@ -810,7 +810,7 @@ def is_deepseek_v4_model(model: str) -> bool:
     # Routes such as ``cmc/deepseek/deepseek-v4-flash`` and
     # ``deepseek/deepseek-v4-pro`` keep the model id in the final segment.
     model_id = normalized.rsplit("/", 1)[-1].split(":", 1)[0]
-    return model_id.startswith("deepseek-v4-")
+    return model_id.startswith("deepseek-v4-") or model_id in {"worker", "deepseek-v4"}
 
 
 def reasoning_efforts_for_model(model: str = "") -> tuple[str, ...]:

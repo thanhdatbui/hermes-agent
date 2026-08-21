@@ -110,10 +110,8 @@ def _canonicalize_gemini_fallback(
     ):
         return entry
 
-    normalized = dict(entry)
-    normalized["provider"] = configured_provider
-    normalized["base_url"] = configured_base_url
-    return normalized
+    # Never rewrite explicitly configured providers without opt-in.
+    return entry
 
 
 def _normalized_base_url(value: Any) -> str:

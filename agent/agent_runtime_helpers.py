@@ -1953,8 +1953,9 @@ def switch_model(agent, new_model, new_provider, api_key='', base_url='', api_mo
         # provider genuinely has none. Re-selecting the SAME provider with
         # an empty base_url (e.g. a credential-only refresh) is still fine
         # to keep the current URL. See #47828.
-        old_norm_provider = (old_provider or "").strip().lower()
-        new_norm_provider = (runtime_provider or "").strip().lower()
+        old_norm_provider = str(getattr(agent, "_requested_provider", "") or old_provider or "").strip().lower()
+        new_norm_provider = str(new_provider or "").strip().lower()
+        agent._requested_provider = new_provider
         if base_url:
             agent.base_url = base_url
         elif old_norm_provider != new_norm_provider:
