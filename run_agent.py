@@ -5456,7 +5456,7 @@ class AIAgent:
             if is_local_9router:
                 from hermes_constants import is_deepseek_v4_model
 
-                if is_deepseek_v4_model(model):
+                if is_deepseek_v4_model(model) or model == "worker":
                     return True
 
         if "openrouter" not in self._base_url_lower:

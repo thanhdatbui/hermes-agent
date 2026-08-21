@@ -1925,6 +1925,7 @@ def switch_model(agent, new_model, new_provider, api_key='', base_url='', api_mo
     # Snapshot the credential pool reference so a failed client rebuild can
     # restore the original pool (issue #52727: pool reload is part of this
     # switch and must be reversible on rollback).
+    _snapshot["_requested_provider"] = getattr(agent, "_requested_provider", _MISSING)
     _snapshot["_credential_pool"] = getattr(agent, "_credential_pool", _MISSING)
 
     try:
