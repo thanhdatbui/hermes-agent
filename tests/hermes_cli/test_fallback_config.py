@@ -19,7 +19,7 @@ GEMINI_MODEL = "gemini/gemini-3.6-flash"
 def test_gemini_fallback_uses_named_9router(provider_config):
     config = {
         **provider_config,
-        "fallback_model": {"provider": "gemini", "model": GEMINI_MODEL},
+        "fallback_model": {"provider": "gemini", "model": GEMINI_MODEL, "base_url": NINEROUTER_URL},
     }
 
     assert get_fallback_chain(config) == [

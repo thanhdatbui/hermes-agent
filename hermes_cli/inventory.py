@@ -285,6 +285,9 @@ def _payload_provider_identity(ctx: ConfigContext) -> str:
     if not is_custom_runtime:
         return provider
 
+    if normalized.startswith("custom:"):
+        return provider
+
     # Use the already-loaded picker context first.  This keeps the payload
     # deterministic for session-scoped/profile-scoped config and avoids
     # re-reading the process-global config while a gateway request is being

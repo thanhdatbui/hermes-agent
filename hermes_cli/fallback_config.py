@@ -102,8 +102,7 @@ def _canonicalize_gemini_fallback(
     if entry_base_url and entry_base_url.lower() != configured_base_url.lower():
         return entry
 
-    # An explicit Gemini route without an endpoint/credentials is preserved
-    # as direct Gemini intent rather than silently rewritten to a local relay.
+    # Explicit Gemini without an explicit endpoint stays direct.
     if not entry_base_url:
         return entry
 
