@@ -1997,6 +1997,7 @@ def switch_model(agent, new_model, new_provider, api_key='', base_url='', api_mo
         new_norm = (runtime_provider or "").strip().lower()
         if (
             old_norm != new_norm
+            or old_norm_provider != new_norm_provider
             or old_base_norm != new_base_norm
             or getattr(agent, "_credential_pool", None) is None
         ):

@@ -110,13 +110,6 @@ Khi thực hiện merge nhánh về main hoặc dọn nhánh/tree quan trọng:
      - Ưu tiên 1: 9Router HTTP combo 'plan-review-hard' (gpt-5.6-sol) kèm reasoning kịch trần ("reasoning_effort": "ultra" / "max").
      - Fallback (khi Sol lỗi/hết quota/429/404): Gọi Claude CLI print mode với model `claude-opus-5`, reasoning kịch trần, và chỉ quyền `Read`; truyền prompt qua stdin hoặc file redirect (không nội suy prompt vào shell argument), ví dụ `claude -p --model claude-opus-5 --effort max --allowedTools Read --max-turns 15 < review-prompt.txt`. Reviewer không được có quyền `Bash`, `Edit`, `Write`, Git mutation, network mutation hoặc push.
 - Request body HTTP bắt buộc: tools: [], tool_choice: 'none', stream: false, Authorization: Bearer $NINEROUTER_API_KEY.
-## 13. PREFLIGHT SCHEDULE CHECK (Bắt buộc trước mọi batch chạy tay/live — user chốt 2026-08-18)
-Trước khi chạy bất kỳ batch tác vụ nào trên farm (Reg TikTok, Hotmail login, Add mail khôi phục, Register Gmail, Upload video, Reconcile...):
-1. **TỰ ĐỘNG KIỂM TRA LỊCH CRON NUÔI ACC:** Agent BẮT BUỘC tự động kiểm tra manifest nuôi acc (`D:\Taadaa\runtime\kibe\cron-state\manifests\<ngày>\active_manifest.json` qua skill `farm-schedule-preflight-check`) TRƯỚC KHI KHỞI CHẠY.
-2. **KHOẢNG ĐỆM AN TOÀN ≥ 1 TIẾNG:** Chỉ được chọn và chạy trên các máy hoàn toàn rảnh trong suốt thời gian chạy batch và **cách ca nuôi acc kế tiếp tối thiểu 60 phút**.
-3. **CẤM CHẠY TRÙNG MÁY:** Tuyệt đối không khởi chạy batch trên các máy đang trong ca nuôi hoặc sắp vào ca < 60 phút.
-4. **USER CHỈ CẦN BẢO "CHẠY SCRIPT XXX" → AGENT TỰ CHECK LỊCH RỒI CHẠY:** User không cần phải nhắc "kiểm tra lịch", agent tự động check máy rảnh -> lọc danh sách máy an toàn -> chạy. Khi gặp lỗi máy nào -> dừng máy đó, chụp ảnh gửi user, chỉ lock khi user yêu cầu để debug sau.
-
 ## 14. QUY TẮC CLOSEOUT TỰ ĐỘNG BẮT BUỘC
 
 Chỉ lệnh đóng phiên rõ ràng ("chốt phiên", "chốt phiên đi", "đóng phiên", "kết thúc phiên", "xong phiên") mới kích hoạt closeout. Câu hỏi tiến độ chung như "xong chưa" hoặc "đã xong chưa" chỉ được trả lời trạng thái, không tự kích hoạt rebase, push hoặc thay đổi remote.

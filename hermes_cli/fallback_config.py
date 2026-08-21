@@ -102,12 +102,9 @@ def _canonicalize_gemini_fallback(
     if entry_base_url and entry_base_url.lower() != configured_base_url.lower():
         return entry
 
-    # An explicit credential field without an endpoint is also an ad-hoc
-    # direct route; leave it for the normal Gemini resolver instead of
-    # inspecting or copying its value.
-    if not entry_base_url and any(
-        key in entry for key in ("api_key", "key_env", "api_key_env")
-    ):
+    # An explicit Gemini route without an endpoint/credentials is preserved
+    # as direct Gemini intent rather than silently rewritten to a local relay.
+    if not entry_base_url:
         return entry
 
     normalized = dict(entry)
