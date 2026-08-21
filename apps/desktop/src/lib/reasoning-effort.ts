@@ -12,7 +12,7 @@ export function isDeepSeekV4Model(model: string): boolean {
 
   const modelId = normalized.split('/').pop()?.split(':')[0] ?? ''
 
-  return modelId.startsWith('deepseek-v4-') || modelId === 'deepseek-v4'
+  return modelId.startsWith('deepseek-v4-') || modelId === 'deepseek-v4' || modelId === 'worker'
 }
 
 /** Includes `none`, which is the thinking-off toggle rather than an effort. */

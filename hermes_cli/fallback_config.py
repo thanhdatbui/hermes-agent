@@ -161,9 +161,9 @@ def get_fallback_chain(config: dict[str, Any] | None) -> list[dict[str, Any]]:
     ``fallback_providers`` remains the primary source of truth and keeps its
     order. Legacy ``fallback_model`` entries are appended afterwards unless
     they target the same provider/model/base_url route as an earlier entry.
-    The returned list always contains fresh dict copies. An implicit Gemini
-    fallback is upgraded to ``custom:9router`` only when the config defines a
-    named 9Router endpoint; explicit Gemini endpoints remain unchanged.
+    The returned list always contains fresh dict copies. An explicit 9Router
+    endpoint gets the canonical ``custom:9router`` slug; implicit Gemini
+    fallbacks remain direct.
     """
 
     config = config or {}

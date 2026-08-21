@@ -803,14 +803,12 @@ DEEPSEEK_V4_REASONING_EFFORTS = ("low", "high", "max")
 
 
 def is_deepseek_v4_model(model: str) -> bool:
-    """Return whether *model* is a DeepSeek V4 model id or provider route."""
+    """Return whether *model* is a DeepSeek V4 model id, alias, or provider route."""
     normalized = str(model or "").strip().lower()
     if not normalized:
         return False
-    # Routes such as ``cmc/deepseek/deepseek-v4-flash`` and
-    # ``deepseek/deepseek-v4-pro`` keep the model id in the final segment.
     model_id = normalized.rsplit("/", 1)[-1].split(":", 1)[0]
-    return model_id.startswith("deepseek-v4-") or model_id == "deepseek-v4"
+    return model_id.startswith("deepseek-v4-") or model_id in {"deepseek-v4", "worker"}
 
 
 def reasoning_efforts_for_model(model: str = "") -> tuple[str, ...]:
