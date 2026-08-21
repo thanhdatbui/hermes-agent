@@ -3372,7 +3372,7 @@ def _session_provider_identity(agent, session: dict | None = None) -> str:
         if isinstance(override, dict)
         else ""
     )
-    if override_provider.lower().startswith("custom:"):
+    if override_provider.lower().startswith("custom:") and normalized in {"custom", override_provider.lower()}:
         return override_provider
     if not (normalized == "custom" or normalized.startswith("custom:")):
         return provider

@@ -55,6 +55,10 @@ export function ReasoningPicker({
   const lastFetchKeyRef = useRef("");
 
   useEffect(() => {
+    setEffort(prev => normalizeEffort(prev, currentModel));
+  }, [currentModel]);
+
+  useEffect(() => {
     const fetchKey = `${profile ?? ""}:${currentModel}:${refreshKey}`;
     if (fetchKey === lastFetchKeyRef.current) return;
     lastFetchKeyRef.current = fetchKey;
