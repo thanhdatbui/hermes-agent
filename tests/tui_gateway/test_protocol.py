@@ -241,6 +241,114 @@ def test_emit_without_payload(capture):
 # ── Blocking prompt round-trip ───────────────────────────────────────
 
 
+def _prompt_submit_session(agent):
+    return {
+        "agent": agent,
+        "attached_images": [],
+        "cols": 80,
+        "history": [],
+        "history_lock": threading.Lock(),
+        "history_version": 0,
+        "inflight_turn": None,
+        "model_override": None,
+        "running": True,
+        "session_key": "turn-lifecycle",
+    }
+
+
+def _patch_prompt_submit_harness(server, monkeypatch, events, done):
+    monkeypatch.setattr(server, "_set_session_context", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(server, "_clear_session_context", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(server, "_wire_callbacks", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(server, "_sync_agent_model_with_config", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(server, "_session_cwd", lambda _session: "D:/Hermes")
+    monkeypatch.setattr(server, "_register_session_cwd", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(server, "make_stream_renderer", lambda _cols: None)
+    monkeypatch.setattr(server, "render_message", lambda _text, _cols: "")
+    monkeypatch.setattr(server, "_get_usage", lambda _agent: {})
+    monkeypatch.setattr(server, "_session_info", lambda *_args, **_kwargs: {})
+    monkeypatch.setattr(server, "_voice_tts_enabled", lambda: False)
+    monkeypatch.setattr(server, "_load_cfg", lambda: {})
+
+    def emit(event, _sid, payload=None):
+        events.append((event, payload))
+        if event in {"message.complete", "error"}:
+            done.set()
+
+    monkeypatch.setattr(server, "_emit", emit)
+
+
+def test_prompt_submit_emits_stream_terminal_complete(server, monkeypatch):
+    """A successful turn must produce a terminal event after the user send."""
+    class Agent:
+        model = "cmc/deepseek/deepseek-v4-flash"
+        provider = "custom"
+
+        def clear_interrupt(self):
+            pass
+
+        def run_conversation(self, _prompt, conversation_history=None, stream_callback=None):
+            stream_callback("DeepSeek reply")
+            return {
+                "messages": [
+                    {"role": "user", "content": "hello"},
+                    {"role": "assistant", "content": "DeepSeek reply"},
+                ],
+                "final_response": "DeepSeek reply",
+            }
+
+    done = threading.Event()
+    events = []
+    _patch_prompt_submit_harness(server, monkeypatch, events, done)
+    session = _prompt_submit_session(Agent())
+
+    server._run_prompt_submit("rid", "sid", session, "hello")
+
+    assert done.wait(timeout=3)
+    assert [event for event, _payload in events if event != "session.info"] == [
+        "message.start",
+        "message.delta",
+        "message.complete",
+    ]
+    for _ in range(100):
+        if not session["running"]:
+            break
+        time.sleep(0.01)
+    assert session["running"] is False
+
+
+def test_prompt_submit_emits_stream_terminal_error(server, monkeypatch):
+    """A provider/agent exception must settle through ``error`` even with no delta."""
+    class Agent:
+        model = "cmc/deepseek/deepseek-v4-flash"
+        provider = "custom"
+
+        def clear_interrupt(self):
+            pass
+
+        def run_conversation(self, _prompt, conversation_history=None, stream_callback=None):
+            raise RuntimeError("9Router unavailable")
+
+    done = threading.Event()
+    events = []
+    _patch_prompt_submit_harness(server, monkeypatch, events, done)
+    session = _prompt_submit_session(Agent())
+
+    server._run_prompt_submit("rid", "sid", session, "hello")
+
+    assert done.wait(timeout=3)
+    assert [event for event, _payload in events if event != "session.info"] == [
+        "message.start",
+        "error",
+    ]
+    assert events[1][1] == {"message": "9Router unavailable"}
+    for _ in range(100):
+        if not session["running"]:
+            break
+        time.sleep(0.01)
+    assert session["running"] is False
+
+
 def test_block_and_respond(capture):
     server, _ = capture
     result = [None]

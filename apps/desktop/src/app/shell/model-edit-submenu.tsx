@@ -12,13 +12,17 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Switch } from '@/components/ui/switch'
 import { useI18n } from '@/i18n'
-import { normalize } from '@/lib/text'
+import {
+  defaultReasoningEffortForModel,
+  normalizeReasoningEffort,
+  reasoningEffortValuesForModel
+} from '@/lib/reasoning-effort'
 import { setModelPreset } from '@/store/model-presets'
 import { notifyError } from '@/store/notifications'
 import { $activeSessionId, setCurrentFastMode, setCurrentReasoningEffort } from '@/store/session'
 
-// Hermes' real reasoning levels (see VALID_REASONING_EFFORTS); `none` is owned
-// by the Thinking toggle, not the radio.
+// Labels stay generic because the model-aware option list below decides which
+// values are actually shown (DeepSeek V4: low/high/max).
 const EFFORT_OPTIONS = [
   { value: 'minimal', labelKey: 'minimal' },
   { value: 'low', labelKey: 'low' },
@@ -107,8 +111,11 @@ export function ModelEditSubmenu({
   const copy = t.shell.modelOptions
   const activeSessionId = useStore($activeSessionId)
 
-  const effortValue = normalizeEffort(effort)
-  const thinkingOn = isThinkingEnabled(effort)
+  const normalizedEffort = normalizeReasoningEffort(effort, model)
+  // Thinking off is represented by the switch, not the effort radio group.
+  const effortValue = normalizedEffort === 'none' ? '' : normalizedEffort
+  const thinkingOn = normalizedEffort !== 'none'
+  const effortOptions = EFFORT_OPTIONS.filter(option => reasoningEffortValuesForModel(model).includes(option.value))
 
   // Editing always records the model's global preset; the active model also gets
   // it pushed onto the live session. Non-active edits stay preset-only — they do
@@ -199,7 +206,9 @@ export function ModelEditSubmenu({
               <Switch
                 checked={thinkingOn}
                 className="ml-auto"
-                onCheckedChange={checked => void patchReasoning(checked ? effortValue || 'medium' : 'none')}
+                onCheckedChange={checked =>
+                  void patchReasoning(checked ? effortValue || defaultReasoningEffortForModel(model) : 'none')
+                }
                 size="xs"
               />
             </DropdownMenuItem>
@@ -215,7 +224,7 @@ export function ModelEditSubmenu({
               <DropdownMenuSeparator className="mx-0" />
               <DropdownMenuLabel className={dropdownMenuSectionLabel}>{copy.effort}</DropdownMenuLabel>
               <DropdownMenuRadioGroup onValueChange={value => void patchReasoning(value)} value={effortValue}>
-                {EFFORT_OPTIONS.map(option => (
+                {effortOptions.map(option => (
                   <DropdownMenuRadioItem
                     className={dropdownMenuRow}
                     key={option.value}
@@ -232,20 +241,4 @@ export function ModelEditSubmenu({
       )}
     </DropdownMenuSubContent>
   )
-}
-
-function isThinkingEnabled(effort: string): boolean {
-  // Empty = Hermes default (medium) = on; only an explicit "none" is off.
-  return normalize(effort || 'medium') !== 'none'
-}
-
-function normalizeEffort(effort: string): string {
-  const value = normalize(effort || 'medium')
-
-  // Thinking off → no effort selected in the radio group.
-  if (value === 'none') {
-    return ''
-  }
-
-  return EFFORT_OPTIONS.some(option => option.value === value) ? value : 'medium'
 }

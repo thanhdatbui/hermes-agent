@@ -2666,7 +2666,8 @@ class GatewaySlashCommandsMixin:
             /reasoning show|on               Show model reasoning in responses
             /reasoning hide|off              Hide model reasoning from responses
         """
-        from gateway.run import _hermes_home, _platform_config_key
+        from gateway.run import _hermes_home, _platform_config_key, _resolve_gateway_model
+        from hermes_constants import reasoning_efforts_for_model
         import yaml
 
         raw_args = event.get_command_args().strip()
@@ -2683,6 +2684,8 @@ class GatewaySlashCommandsMixin:
         _session_model = str(
             ((getattr(self, "_session_model_overrides", {}) or {}).get(session_key) or {}).get("model") or ""
         )
+        effective_model = _session_model or _resolve_gateway_model()
+        valid_efforts = reasoning_efforts_for_model(effective_model)
         self._reasoning_config = self._resolve_session_reasoning_config(
             source=event.source,
             session_key=session_key,
@@ -2759,7 +2762,7 @@ class GatewaySlashCommandsMixin:
             return t("gateway.reasoning.reset_done")
         if effort == "none":
             parsed = {"enabled": False}
-        elif effort in {"minimal", "low", "medium", "high", "xhigh", "max", "ultra"}:
+        elif effort in valid_efforts:
             parsed = {"enabled": True, "effort": effort}
         else:
             return t(

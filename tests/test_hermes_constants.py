@@ -8,6 +8,7 @@ import pytest
 
 import hermes_constants
 from hermes_constants import (
+    DEEPSEEK_V4_REASONING_EFFORTS,
     VALID_REASONING_EFFORTS,
     agent_browser_runnable,
     find_hermes_node_executable,
@@ -20,8 +21,11 @@ from hermes_constants import (
     hermes_managed_node_tree_present,
     iter_hermes_node_dirs,
     is_container,
+    is_deepseek_v4_model,
     node_tool_runnable,
     parse_reasoning_effort,
+    reasoning_efforts_for_model,
+    resolve_reasoning_config,
     secure_parent_dir,
     with_hermes_node_path,
 )
@@ -488,6 +492,26 @@ class TestParseReasoningEffort:
         """
         documented = {"minimal", "low", "medium", "high", "xhigh", "max", "ultra"}
         assert documented.issubset(set(VALID_REASONING_EFFORTS))
+
+
+class TestModelReasoningEfforts:
+    def test_deepseek_v4_uses_native_levels_only(self):
+        assert is_deepseek_v4_model("cmc/deepseek/deepseek-v4-flash")
+        assert is_deepseek_v4_model("deepseek/deepseek-v4-pro")
+        assert not is_deepseek_v4_model("openrouter/anthropic/claude-sonnet")
+        assert reasoning_efforts_for_model("deepseek-v4-flash") == DEEPSEEK_V4_REASONING_EFFORTS
+
+    def test_global_levels_remain_for_other_models(self):
+        assert reasoning_efforts_for_model("anthropic/claude-sonnet-4") == VALID_REASONING_EFFORTS
+
+    @pytest.mark.parametrize("effort", ["minimal", "medium", "xhigh", "ultra"])
+    def test_deepseek_v4_rejects_non_native_global_effort(self, effort):
+        cfg = {"model": {"default": "deepseek/deepseek-v4-flash"}, "agent": {"reasoning_effort": effort}}
+        assert resolve_reasoning_config(cfg) is None
+
+    def test_deepseek_v4_keeps_native_effort(self):
+        cfg = {"model": {"default": "deepseek/deepseek-v4-flash"}, "agent": {"reasoning_effort": "max"}}
+        assert resolve_reasoning_config(cfg) == {"enabled": True, "effort": "max"}
 
 
 class TestResolvePerModelReasoningEffort:

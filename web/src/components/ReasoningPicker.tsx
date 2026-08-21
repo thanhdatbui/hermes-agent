@@ -25,9 +25,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { api } from "@/lib/api";
 import {
-  EFFORT_OPTIONS,
+  effortOptionsForModel,
   normalizeEffort,
-  VALID_EFFORTS,
+  validEffortsForModel,
 } from "@/lib/reasoning-effort";
 
 interface ReasoningPickerProps {
@@ -49,7 +49,7 @@ export function ReasoningPicker({
   refreshKey = 0,
   onChanged,
 }: ReasoningPickerProps) {
-  const [effort, setEffort] = useState("medium");
+  const [effort, setEffort] = useState(() => normalizeEffort("", currentModel));
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const lastFetchKeyRef = useRef("");
@@ -62,7 +62,7 @@ export function ReasoningPicker({
       .getConfig(profile)
       .then((cfg) => {
         const agent = (cfg?.agent as Record<string, unknown> | undefined) ?? {};
-        setEffort(normalizeEffort(agent.reasoning_effort));
+        setEffort(normalizeEffort(agent.reasoning_effort, currentModel));
         setLoaded(true);
       })
       .catch(() => {
@@ -73,7 +73,7 @@ export function ReasoningPicker({
 
   const onSelect = useCallback(
     (next: string) => {
-      if (!VALID_EFFORTS.has(next) || next === effort) return;
+      if (!validEffortsForModel(currentModel).has(next) || next === effort) return;
       const prev = effort;
       setEffort(next); // optimistic
       setSaving(true);
@@ -99,7 +99,7 @@ export function ReasoningPicker({
         })
         .finally(() => setSaving(false));
     },
-    [effort, onChanged, profile],
+    [currentModel, effort, onChanged, profile],
   );
 
   return (
@@ -114,7 +114,7 @@ export function ReasoningPicker({
         onValueChange={onSelect}
         value={effort}
       >
-        {EFFORT_OPTIONS.map((opt) => (
+        {effortOptionsForModel(currentModel).map((opt) => (
           <SelectOption key={opt.value} value={opt.value}>
             {opt.label}
           </SelectOption>

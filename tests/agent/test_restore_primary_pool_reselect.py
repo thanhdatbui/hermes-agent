@@ -80,6 +80,7 @@ class TestRestorePrimaryPoolReselect:
         agent._rate_limited_until = 0
         agent._use_prompt_caching = False
         agent._use_native_cache_layout = False
+        agent.request_overrides = {"extra_body": {"route": "fallback"}}
         agent.context_compressor = MagicMock()
         agent.context_compressor.update_model = MagicMock()
 
@@ -96,6 +97,7 @@ class TestRestorePrimaryPoolReselect:
             },
             "use_prompt_caching": False,
             "use_native_cache_layout": False,
+            "request_overrides": {"extra_body": {"route": "primary"}},
             "compressor_model": "gpt-5.5",
             "compressor_base_url": "https://chatgpt.com/backend-api/codex",
             "compressor_api_key": "original-key-entry-1",
@@ -132,6 +134,7 @@ class TestRestorePrimaryPoolReselect:
         # The agent should have the NEW key from entry-2, not the stale snapshot key
         assert agent.api_key == "rotated-key-entry-2"
         assert agent._client_kwargs["api_key"] == "rotated-key-entry-2"
+        assert agent.request_overrides == {"extra_body": {"route": "primary"}}
 
     def test_restore_uses_freshest_available_entry(self):
         """When multiple entries are available, restore should select the pool's best pick."""

@@ -795,6 +795,54 @@ VALID_REASONING_EFFORTS = (
     "minimal", "low", "medium", "high", "xhigh", "max", "ultra",
 )
 
+# DeepSeek V4 exposes a smaller, native effort vocabulary.  Keep the generic
+# Hermes list above for providers that support it, but use this tuple whenever
+# the active model is a DeepSeek V4 model so UI controls and request config do
+# not offer/send invented levels such as ``medium`` or ``ultra``.
+DEEPSEEK_V4_REASONING_EFFORTS = ("low", "high", "max")
+
+
+def is_deepseek_v4_model(model: str) -> bool:
+    """Return whether *model* is a DeepSeek V4 model id or provider route."""
+    normalized = str(model or "").strip().lower()
+    if not normalized:
+        return False
+    # Routes such as ``cmc/deepseek/deepseek-v4-flash`` and
+    # ``deepseek/deepseek-v4-pro`` keep the model id in the final segment.
+    model_id = normalized.rsplit("/", 1)[-1].split(":", 1)[0]
+    return model_id.startswith("deepseek-v4-")
+
+
+def reasoning_efforts_for_model(model: str = "") -> tuple[str, ...]:
+    """Return the native selectable effort levels for *model*.
+
+    The generic Hermes levels remain available for every other provider.  The
+    ``none``/off state is intentionally separate because it is a toggle, not
+    an effort level, and is handled by the callers.
+    """
+    if is_deepseek_v4_model(model):
+        return DEEPSEEK_V4_REASONING_EFFORTS
+    return VALID_REASONING_EFFORTS
+
+
+def default_reasoning_effort_for_model(model: str = "") -> str:
+    """Return the provider-native default shown when no effort is configured."""
+    # DeepSeek V4 documents ``high`` as its default effort; Hermes' generic
+    # fallback remains ``medium`` for providers whose default is abstracted.
+    return "high" if is_deepseek_v4_model(model) else "medium"
+
+
+def parse_reasoning_effort_for_model(effort, model: str = "") -> dict | None:
+    """Parse an effort and reject non-native levels for DeepSeek V4."""
+    result = parse_reasoning_effort(effort)
+    if (
+        result
+        and result.get("enabled") is not False
+        and result.get("effort") not in reasoning_efforts_for_model(model)
+    ):
+        return None
+    return result
+
 
 def parse_reasoning_effort(effort) -> dict | None:
     """Parse a reasoning effort level into a config dict.
@@ -941,7 +989,7 @@ def resolve_per_model_reasoning_effort(model: str, overrides: dict | None) -> di
 
     for variant in _canonical_model_variants(model):
         if variant in overrides:
-            result = parse_reasoning_effort(overrides[variant])
+            result = parse_reasoning_effort_for_model(overrides[variant], model)
             if result is not None:
                 return result
 
@@ -1000,11 +1048,13 @@ def resolve_reasoning_config(cfg: dict | None, model: str = "") -> dict | None:
     # YAML boolean False into "", silently re-enabling thinking for users
     # who explicitly disabled it.
     effort = agent_cfg.get("reasoning_effort", "")
-    result = parse_reasoning_effort(effort)
+    result = parse_reasoning_effort_for_model(effort, model)
     if effort and str(effort).strip() and result is None:
         import logging
         logging.getLogger(__name__).warning(
-            "Unknown reasoning_effort '%s', using default (medium)", effort
+            "Unsupported reasoning_effort '%s' for model '%s', using provider default",
+            effort,
+            model or "<unknown>",
         )
     return result
 

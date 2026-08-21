@@ -67,6 +67,37 @@ def test_plugin_engine_gets_context_length_on_init():
     assert engine.threshold_tokens == int(204_800 * engine.threshold_percent)
 
 
+def test_builtin_context_engine_deepcopies_request_overrides_on_init():
+    """The built-in context path must still snapshot nested request overrides."""
+    cfg = {"agent": {}}
+    request_overrides = {"extra_body": {"service_tier": "priority"}}
+
+    with (
+        patch("hermes_cli.config.load_config", return_value=cfg),
+        patch("run_agent.get_tool_definitions", return_value=[]),
+        patch("run_agent.check_toolset_requirements", return_value={}),
+        patch("run_agent.OpenAI"),
+    ):
+        from run_agent import AIAgent
+
+        agent = AIAgent(
+            api_key="test-key-1234567890",
+            base_url="https://openrouter.ai/api/v1",
+            request_overrides=request_overrides,
+            quiet_mode=True,
+            skip_context_files=True,
+            skip_memory=True,
+        )
+
+    assert agent.context_compressor.name == "compressor"
+    assert agent._primary_runtime["request_overrides"] == request_overrides
+    assert agent._primary_runtime["request_overrides"] is not request_overrides
+    assert (
+        agent._primary_runtime["request_overrides"]["extra_body"]
+        is not request_overrides["extra_body"]
+    )
+
+
 def test_active_context_engine_tools_survive_explicit_platform_toolsets():
     """LCM-style recovery tools must survive saved `hermes tools` lists."""
     engine = _ToolEngine()

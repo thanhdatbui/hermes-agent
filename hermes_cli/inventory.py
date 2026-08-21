@@ -255,8 +255,66 @@ def build_models_payload(
     return {
         "providers": rows,
         "model": ctx.current_model,
-        "provider": ctx.current_provider,
+        "provider": _payload_provider_identity(ctx),
     }
+
+
+def _payload_provider_identity(ctx: ConfigContext) -> str:
+    """Return the routable provider identity for the picker payload.
+
+    Runtime resolution uses the billing class ``custom`` for named custom
+    endpoints, while picker rows use their durable ``custom:<name>`` slug.
+    Recover that slug only for a custom-runtime provider; an endpoint URL must
+    match a configured named provider before the identity is changed.
+    """
+    provider = ctx.current_provider
+    normalized = str(provider or "").strip().lower()
+    if not normalized:
+        return provider
+
+    is_custom_runtime = normalized == "custom" or normalized.startswith("custom:")
+    if not is_custom_runtime:
+        # Keep this in step with runtime provider alias resolution (ollama,
+        # vllm, llamacpp, and plugin-declared aliases that resolve to custom).
+        try:
+            from hermes_cli.auth import resolve_provider
+
+            is_custom_runtime = resolve_provider(normalized) == "custom"
+        except Exception:
+            is_custom_runtime = False
+    if not is_custom_runtime:
+        return provider
+
+    # Use the already-loaded picker context first.  This keeps the payload
+    # deterministic for session-scoped/profile-scoped config and avoids
+    # re-reading the process-global config while a gateway request is being
+    # served (notably for ``providers.9router``).
+    target_url = str(ctx.current_base_url or "").strip().rstrip("/").lower()
+    if target_url:
+        for entry in ctx.custom_providers or []:
+            if not isinstance(entry, dict):
+                continue
+            entry_url = str(entry.get("base_url") or "").strip().rstrip("/").lower()
+            if entry_url != target_url:
+                continue
+            name = str(
+                entry.get("name") or entry.get("provider_key") or ""
+            ).strip().lower().replace(" ", "-")
+            if name:
+                return f"custom:{name}"
+
+    try:
+        from hermes_cli.runtime_provider import canonical_custom_identity
+
+        return (
+            canonical_custom_identity(
+                base_url=ctx.current_base_url or None,
+                config_provider=provider,
+            )
+            or provider
+        )
+    except Exception:
+        return provider
 
 
 def _apply_capabilities(rows: list[dict]) -> None:

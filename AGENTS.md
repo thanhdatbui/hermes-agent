@@ -68,10 +68,10 @@ evidence instead of retrying blindly.
 ## Merge / Cleanup Rule (bắt buộc, 2026-08-08)
 
 Khi thực hiện merge nhánh về main hoặc dọn nhánh/tree quan trọng:
-1. Lên PLAN bằng subagent TRƯỚC khi merge (không merge mù).
-2. Worker thực thi merge/resolve.
-3. Chạy AUDIT lại sau khi worker xong — lặp tới khi audit APPROVED mới xoá nhánh/tree.
-4. Xoá nhánh chỉ sau bằng chứng absorbed/superseded (merge-tree/reflog/fsck).
+1. Coordinator lập kế hoạch tích hợp trước khi merge (không merge mù); không dùng worker thiếu quyền phù hợp làm planner/auditor/reviewer.
+2. Worker chỉ thực thi merge/resolve sau khi chứng minh ownership của session hiện tại, exact allowlist, trạng thái clean/committed và independent review `APPROVED` cho candidate trước tích hợp.
+3. Sau tích hợp, chạy audit/review và test lại trên exact final candidate; nếu SHA thay đổi thì lặp lại gate trước push.
+4. Chỉ merge/remove khi có đủ evidence ownership của session hiện tại, exact allowlist, trạng thái clean/committed và independent review `APPROVED`; chỉ yêu cầu absorbed/superseded sau tích hợp trước khi remove. Unknown, dirty, hoặc concurrent-owned phải được giữ nguyên và báo `BLOCKED`.
 
 <!-- WORKER-CHECKPOINT-TERMINATION-POLICY:START -->
 ## Worker checkpoint và gate dừng process (bắt buộc)
@@ -91,5 +91,44 @@ Khi thực hiện merge nhánh về main hoặc dọn nhánh/tree quan trọng:
 - Chỉ tạo script mới khi workflow thực sự khác và user đã chốt rõ; phải ghi lý do vì sao entrypoint hiện tại không thể tái sử dụng.
 - Trước launch phải ghi evidence gồm canonical script path và data path/row đã chọn; việc đổi data không được bypass lock, account/target verifier, confirmation, recovery hoặc report contract.
 
+<!-- SESSION-START-CONTEXT:START -->
+## Session-start context (bắt buộc mỗi session mới — CHỐNG PHÌNH CONTEXT)
+- Khi session mới bắt đầu (vừa `/new`, resume, hoặc đổi máy): trước khi hỏi user hoặc tự làm gì, chạy đúng 4 bước có chọn lọc:
+  1. Đọc file `AGENTS.md` này. Nếu có `HANDOFF.md`, CHỈ đọc phần `Current State / Blockers / Next Task` (nếu file >20KB thì không nạp toàn bộ lịch sử).
+  2. Tìm trong `.hermes/plans/` (nếu có): CHỈ đọc **đúng 1 file `.md` mới nhất theo timestamp**. KHÔNG đọc toàn bộ thư mục plans.
+  3. Kiểm tra git: `git status --short` + `git log --oneline -5`.
+  4. Tổng hợp thành 1 báo cáo ngắn ("Task đang dở / bước kế tiếp / trạng thái git") rồi hỏi xác nhận TRƯỚC khi tiếp tục — CẤM tự đoán task và tự làm tiếp.
+- Mục đích: chống phình context (không nạp hàng trăm KB startup), giữ mạch làm việc qua các lần /new và đổi máy.
+<!-- SESSION-START-CONTEXT:END -->
+
+## AUDIT / PLAN / REVIEW ROUTING MANDATE (chốt 2026-08-18, ALL repo)
+- TUYỆT ĐỐI CẤM dùng delegate_task hoặc Flash/Worker để làm PLANNER / AUDITOR / REVIEWER.
+- CẢ 3 VIỆC (PLAN, CODE REVIEW, AUDIT) ÁP DỤNG CHUNG 1 KHUNG CHUẨN KỊCH TRẦN REASONING:
+  1. Cấp Thường / Vừa (UI, popup, video gate, feature 1 repo, helper):
+     - 9Router HTTP API (http://127.0.0.1:20128/v1/chat/completions) với combo 'plan-review' (gpt-5.6-terra -> ag/claude-opus-4-6-thinking -> cmc/deepseek/deepseek-v4-pro) kèm reasoning kịch trần ("reasoning_effort": "max" / "high").
+  2. Cấp Khó / Core / Nhạy cảm (Architecture, Scheduler, Manifest validation, Hashing, State machine, Lock, Recovery, Multi-repo):
+     - Ưu tiên 1: 9Router HTTP combo 'plan-review-hard' (gpt-5.6-sol) kèm reasoning kịch trần ("reasoning_effort": "ultra" / "max").
+     - Fallback (khi Sol lỗi/hết quota/429/404): Gọi Claude CLI print mode với model `claude-opus-5`, reasoning kịch trần, và chỉ quyền `Read`; truyền prompt qua stdin hoặc file redirect (không nội suy prompt vào shell argument), ví dụ `claude -p --model claude-opus-5 --effort max --allowedTools Read --max-turns 15 < review-prompt.txt`. Reviewer không được có quyền `Bash`, `Edit`, `Write`, Git mutation, network mutation hoặc push.
+- Request body HTTP bắt buộc: tools: [], tool_choice: 'none', stream: false, Authorization: Bearer $NINEROUTER_API_KEY.
+## 13. PREFLIGHT SCHEDULE CHECK (Bắt buộc trước mọi batch chạy tay/live — user chốt 2026-08-18)
+Trước khi chạy bất kỳ batch tác vụ nào trên farm (Reg TikTok, Hotmail login, Add mail khôi phục, Register Gmail, Upload video, Reconcile...):
+1. **TỰ ĐỘNG KIỂM TRA LỊCH CRON NUÔI ACC:** Agent BẮT BUỘC tự động kiểm tra manifest nuôi acc (`D:\Taadaa\runtime\kibe\cron-state\manifests\<ngày>\active_manifest.json` qua skill `farm-schedule-preflight-check`) TRƯỚC KHI KHỞI CHẠY.
+2. **KHOẢNG ĐỆM AN TOÀN ≥ 1 TIẾNG:** Chỉ được chọn và chạy trên các máy hoàn toàn rảnh trong suốt thời gian chạy batch và **cách ca nuôi acc kế tiếp tối thiểu 60 phút**.
+3. **CẤM CHẠY TRÙNG MÁY:** Tuyệt đối không khởi chạy batch trên các máy đang trong ca nuôi hoặc sắp vào ca < 60 phút.
+4. **USER CHỈ CẦN BẢO "CHẠY SCRIPT XXX" → AGENT TỰ CHECK LỊCH RỒI CHẠY:** User không cần phải nhắc "kiểm tra lịch", agent tự động check máy rảnh -> lọc danh sách máy an toàn -> chạy. Khi gặp lỗi máy nào -> dừng máy đó, chụp ảnh gửi user, chỉ lock khi user yêu cầu để debug sau.
+
+## 14. QUY TẮC CLOSEOUT TỰ ĐỘNG BẮT BUỘC
+
+Chỉ lệnh đóng phiên rõ ràng ("chốt phiên", "chốt phiên đi", "đóng phiên", "kết thúc phiên", "xong phiên") mới kích hoạt closeout. Câu hỏi tiến độ chung như "xong chưa" hoặc "đã xong chưa" chỉ được trả lời trạng thái, không tự kích hoạt rebase, push hoặc thay đổi remote.
+
+1. **ĐÓNG BĂNG VÀ TÍCH HỢP CÓ KIỂM SOÁT:** kiểm tra branch, upstream, merge-base, ownership, exact allowlist và conflict. Unknown, dirty hoặc concurrent-owned phải giữ nguyên và báo `BLOCKED_AT_WORKTREE_OWNERSHIP`.
+2. **REVIEW/TEST CANDIDATE CUỐI:** sau tích hợp, chốt exact final candidate; dùng đúng route trong mục routing (multi-repo/core dùng `plan-review-hard`). Review phải độc lập, dòng verdict phải parse được là `APPROVED`, và test/lint/compile phải chạy trên chính candidate. SHA đổi thì lặp lại gate này.
+3. **COMMIT ĐÚNG SCOPE:** stage exact allowlist, không dùng `git add -A`/`git add .`, không đưa backup, runtime, secret, workbook hoặc untracked artifact vào commit; xác minh `git show --name-status`.
+4. **PULL-BEFORE-PUSH:** sau commit, xác minh upstream thực tế, chạy `git fetch <remote>` rồi `git pull --rebase <remote> <remote-branch>`. Nếu rebase đổi SHA/tree thì lặp lại review và test.
+5. **PUSH VÀ XÁC MINH:** push explicit `HEAD:<remote-branch>` tới remote đã xác minh, không force-push; đọc `git ls-remote` và yêu cầu remote SHA == local HEAD.
+
+Chỉ báo hoàn tất khi có đủ verdict exact candidate, test evidence, branch/worktree/upstream state, commit SHA và remote SHA. Thiếu gate nào phải báo `BLOCKED_AT_<STEP>`.
+
 ## CLOSE-SESSION HARD TRIGGER
-Các câu “chốt phiên”, “chốt phiên đi”, “đóng phiên”, “kết thúc phiên”, “xong phiên chưa” là **lệnh thực thi closeout**, không phải yêu cầu gửi summary. Bắt buộc load `session-close-protocol` và chạy: review độc lập `APPROVED` → kiểm tra branch/worktree/conflict → dọn đúng file tạm do session tạo → commit đúng scope → fetch/pull --rebase → push + xác minh remote SHA. Thiếu bất kỳ gate nào chỉ được báo `BLOCKED_AT_<STEP>`; cấm nói “đã chốt/xong” bằng miệng.
+
+Các câu "chốt phiên", "chốt phiên đi", "đóng phiên", "kết thúc phiên", "xong phiên" là lệnh thực thi closeout theo quy trình trên. Các câu hỏi tiến độ chung "xong chưa" và "đã xong chưa" không phải lệnh closeout; chỉ báo trạng thái. Không được nói "đã chốt/xong" nếu thiếu bất kỳ gate review, test, commit, rebase, push hoặc remote-SHA nào.

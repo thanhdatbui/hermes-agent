@@ -64,6 +64,25 @@ def _custom_agent(base_url=MIMO_URL):
     )
 
 
+def test_session_info_reports_named_custom_identity(monkeypatch):
+    """The live billing class ``custom`` must not make the UI fall back to a
+    different provider row when the session is pinned to a named endpoint."""
+    monkeypatch.setattr(rp, "load_config", lambda: REQUEST_OVERRIDE_CONFIG)
+    from tui_gateway.server import _session_info
+
+    agent = _custom_agent(base_url="http://127.0.0.1:20128/v1")
+    agent.model = "cmc/deepseek/deepseek-v4-flash"
+    session = {
+        "model_override": {
+            "model": agent.model,
+            "provider": "custom:9router",
+            "base_url": agent.base_url,
+        }
+    }
+
+    assert _session_info(agent, session)["provider"] == "custom:9router"
+
+
 class TestRuntimeModelConfigPersistsEntryIdentity:
     def test_persists_menu_key_instead_of_resolved_custom(self, monkeypatch):
         monkeypatch.setattr(rp, "load_config", lambda: LEGACY_LIST_CONFIG)
@@ -221,6 +240,19 @@ NAMED_CONFIG = {
     ],
 }
 
+REQUEST_OVERRIDE_CONFIG = {
+    "model": {"default": "cmc/deepseek/deepseek-v4-flash", "provider": "custom:9router"},
+    "providers": {
+        "9router": {
+            "api": "http://127.0.0.1:20128/v1",
+            "api_key": "synthetic-9router-key",
+            "default_model": "cmc/deepseek/deepseek-v4-flash",
+            "transport": "chat_completions",
+            "extra_body": {"synthetic_route_flag": "preserve"},
+        }
+    },
+}
+
 
 class TestBareCustomNoBaseUrlHealsFromConfig:
     """A named custom provider must never escape as bare ``"custom"`` when the
@@ -350,5 +382,30 @@ class TestBareCustomNoBaseUrlHealsFromConfig:
 
         persisted = captured.get("model_config") or {}
         assert persisted.get("provider") == "custom:mimo-v2.5-pro"
+
+
+def test_make_agent_preserves_named_custom_request_overrides(monkeypatch):
+    """The desktop build must pass resolver request overrides to AIAgent."""
+    override = {
+        "model": "cmc/deepseek/deepseek-v4-flash",
+        "provider": "custom:9router",
+        "base_url": None,
+        "api_mode": None,
+    }
+
+    kwargs = _make_agent_with_override(
+        override,
+        monkeypatch,
+        REQUEST_OVERRIDE_CONFIG,
+        model_cfg=REQUEST_OVERRIDE_CONFIG["model"],
+    )
+
+    assert kwargs["provider"] == "custom"
+    assert kwargs["model"] == "cmc/deepseek/deepseek-v4-flash"
+    assert kwargs["base_url"] == "http://127.0.0.1:20128/v1"
+    assert kwargs["api_mode"] == "chat_completions"
+    assert kwargs["request_overrides"] == {
+        "extra_body": {"synthetic_route_flag": "preserve"}
+    }
 
 

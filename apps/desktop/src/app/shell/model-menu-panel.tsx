@@ -24,6 +24,7 @@ import {
   modelDisplayParts,
   reasoningEffortLabel
 } from '@/lib/model-status-label'
+import { defaultReasoningEffortForModel, normalizeReasoningEffort } from '@/lib/reasoning-effort'
 import { normalize } from '@/lib/text'
 import { cn } from '@/lib/utils'
 import { $modelPresets, applyModelPreset, modelPresetKey } from '@/store/model-presets'
@@ -172,7 +173,9 @@ export function ModelMenuPanel({ gateway, onSelectModel, requestGateway }: Model
 
     await applyModelPreset(
       {
-        effort: (caps?.reasoning ?? true) ? (preset.effort ?? 'medium') : undefined,
+        effort: (caps?.reasoning ?? true)
+          ? normalizeReasoningEffort(preset.effort ?? defaultReasoningEffortForModel(family.id), family.id)
+          : undefined,
         fast: (caps?.fast ?? false) ? (preset.fast ?? false) : undefined
       },
       { failMessage: t.shell.modelOptions.updateFailed, request: requestGateway, sessionId: activeSessionId }
@@ -254,6 +257,7 @@ export function ModelMenuPanel({ gateway, onSelectModel, requestGateway }: Model
                 // they never disagree.
                 const preset = modelPresets[modelPresetKey(group.provider.slug, family.id)] ?? {}
                 const effEffort = isCurrent ? currentReasoningEffort : (preset.effort ?? '')
+                const displayedEffort = normalizeReasoningEffort(effEffort, family.id)
                 const effFast = isCurrent ? currentFastMode : (preset.fast ?? false)
 
                 const fastControl = resolveFastControl(
@@ -265,7 +269,7 @@ export function ModelMenuPanel({ gateway, onSelectModel, requestGateway }: Model
 
                 const meta = [
                   fastControl.kind !== 'none' && fastControl.on ? copy.fast : null,
-                  (caps?.reasoning ?? true) ? reasoningEffortLabel(effEffort) || copy.medium : null
+                  (caps?.reasoning ?? true) ? reasoningEffortLabel(displayedEffort) : null
                 ]
                   .filter(Boolean)
                   .join(' ')

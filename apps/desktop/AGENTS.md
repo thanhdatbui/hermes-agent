@@ -8,6 +8,24 @@ apply) and [`DESIGN.md`](./DESIGN.md) for the visual and interaction contract.
 When a rule here and the code disagree, trust the code and fix whichever is
 wrong — but never break an invariant to make a change easier.
 
+## Delegation Policy
+
+<!-- CODEX-DIRECT-WORKER-POLICY:START -->
+## Coordinator -> direct worker boundary (canonical)
+
+- The desktop/main session is coordinator/report surface only: it may perform read-only triage/research, route handoffs, inspect artifacts/diffs, run deterministic read-only verification, and report.
+- For every write, edit, build, package, deployment, or other side effect, the coordinator must dispatch exactly one fresh, non-resumed, non-forked in-process direct worker pinned to the session's own model (`deepseek-v4-flash` for Hermes, `gpt-5.6-luna` for Codex), `reasoning_effort=high`, and `role=worker`, with an exclusive exact file/component/worktree scope. `gpt-5.6-luna/high` and `deepseek-v4-flash/high` are equivalent worker roles.
+- The direct worker is already the sole executor: it patches, builds, and tests its assigned scope directly. It must not inherit, spawn, resume, fork, or delegate to another worker/agent/session, and must not invoke an external agent or CLI route. If the tool surface exposes any delegation capability, the worker must fail closed with `NESTED_DELEGATION_FORBIDDEN` and must not call it.
+- A created/bound direct worker treats its current session as the final executor; it must not probe for, request, or create another worker/runtime, and it must never self-report SUBAGENT_RUNTIME_UNAVAILABLE. Tool absence inside an existing worker is not pre-create transport failure; use WORKER_RUNTIME_NOT_VERIFIED or NESTED_DELEGATION_FORBIDDEN as applicable and stop.
+- Terra/high, Terra/xhigh, Sol/high, and Sol/max are read-only planners/advisors/auditors; they never patch, build, or run live/side-effecting work.
+- An external CLI transport is not the normal route. The coordinator may use it only as the separately gated fallback in the parent `D:\Taadaa\AGENTS.md`, after authenticated pre-create in-process `transport-unavailable`, machine-readable `capability-unavailable`, or in-process dispatch `429`, plus proof that no worker/session/process/lease/action exists for the exact scope. The same model/profile, reservation, binding, checkpoint, reconciliation, and post-verifier gates still apply.
+- Failure labels are lifecycle-hard: `SUBAGENT_RUNTIME_UNAVAILABLE` is reserved exclusively for a pre-create transport failure, and only with machine-readable evidence plus exact-scope reconciliation proving that no child/worker, session, process, lease, tool event, or action exists. A worker that exists or is bound must never self-report or assign this code.
+- Use `WORKER_PROFILE_MISMATCH` for a created worker with the wrong pin and `WORKER_RUNTIME_NOT_VERIFIED` when provider/profile binding cannot be verified. Use `WAIT_WINDOW_EXPIRED` when a bounded wait has no final while the worker remains active. A timeout never changes a label or becomes `SUBAGENT_RUNTIME_UNAVAILABLE`.
+- A replacement is permitted only after the current worker has shut down and exact-scope lease/process/tool-event/action reconciliation proves no overlap; replacements never run in parallel, and a worker must not self-replace or initiate replacement.
+- If no valid direct worker exists, stop all write/live/side-effecting work. Coordinator direct fallback is allowed only when the current user request explicitly authorizes it, both worker routes have failed and been reconciled, and the parent contract permits exact-scope offline repository files; it never authorizes live work.
+- Worker self-report, process status, scheduler status, or exit code is not completion proof; the coordinator must independently inspect the exact diff and run the deterministic verifier.
+<!-- CODEX-DIRECT-WORKER-POLICY:END -->
+
 ## What this app is
 
 Desktop is its own native chat surface. It is not the browser dashboard and it
@@ -199,5 +217,22 @@ actually run rather than inventing a command; when in doubt, read the scripts.
 
 If any answer is "not sure," that's the part to go verify.
 
+<!-- SESSION-START-CONTEXT:START -->
+## Session-start context (bắt buộc mỗi session mới — CHỐNG PHÌNH CONTEXT)
+- Khi session mới bắt đầu (vừa `/new`, resume, hoặc đổi máy): trước khi hỏi user hoặc tự làm gì, chạy đúng 4 bước có chọn lọc:
+  1. Đọc file `AGENTS.md` này. Nếu có `HANDOFF.md`, CHỈ đọc phần `Current State / Blockers / Next Task` (nếu file >20KB thì không nạp toàn bộ lịch sử).
+  2. Tìm trong `.hermes/plans/` (nếu có): CHỈ đọc **đúng 1 file `.md` mới nhất theo timestamp**. KHÔNG đọc toàn bộ thư mục plans.
+  3. Kiểm tra git: `git status --short` + `git log --oneline -5`.
+  4. Tổng hợp thành 1 báo cáo ngắn ("Task đang dở / bước kế tiếp / trạng thái git") rồi hỏi xác nhận TRƯỚC khi tiếp tục — CẤM tự đoán task và tự làm tiếp.
+- Mục đích: chống phình context (không nạp hàng trăm KB startup), giữ mạch làm việc qua các lần /new và đổi máy.
+<!-- SESSION-START-CONTEXT:END -->
+
+## 13. PREFLIGHT SCHEDULE CHECK (Bắt buộc trước mọi batch chạy tay/live — user chốt 2026-08-18)
+Trước khi chạy bất kỳ batch tác vụ nào trên farm (Reg TikTok, Hotmail login, Add mail khôi phục, Register Gmail, Upload video, Reconcile...):
+1. **TỰ ĐỘNG KIỂM TRA LỊCH CRON NUÔI ACC:** Agent BẮT BUỘC tự động kiểm tra manifest nuôi acc (`D:\Taadaa\runtime\kibe\cron-state\manifests\<ngày>\active_manifest.json` qua skill `farm-schedule-preflight-check`) TRƯỚC KHI KHỞI CHẠY.
+2. **KHOẢNG ĐỆM AN TOÀN ≥ 1 TIẾNG:** Chỉ được chọn và chạy trên các máy hoàn toàn rảnh trong suốt thời gian chạy batch và **cách ca nuôi acc kế tiếp tối thiểu 60 phút**.
+3. **CẤM CHẠY TRÙNG MÁY:** Tuyệt đối không khởi chạy batch trên các máy đang trong ca nuôi hoặc sắp vào ca < 60 phút.
+4. **USER CHỈ CẦN BẢO "CHẠY SCRIPT XXX" → AGENT TỰ CHECK LỊCH RỒI CHẠY:** User không cần phải nhắc "kiểm tra lịch", agent tự động check máy rảnh -> lọc danh sách máy an toàn -> chạy. Khi gặp lỗi máy nào -> dừng máy đó, chụp ảnh gửi user, chỉ lock khi user yêu cầu để debug sau.
+
 ## CLOSE-SESSION HARD TRIGGER
-Các câu “chốt phiên”, “chốt phiên đi”, “đóng phiên”, “kết thúc phiên”, “xong phiên chưa” là **lệnh thực thi closeout**, không phải yêu cầu gửi summary. Bắt buộc load `session-close-protocol` và chạy: review độc lập `APPROVED` → kiểm tra branch/worktree/conflict → dọn đúng file tạm do session tạo → commit đúng scope → fetch/pull --rebase → push + xác minh remote SHA. Thiếu bất kỳ gate nào chỉ được báo `BLOCKED_AT_<STEP>`; cấm nói “đã chốt/xong” bằng miệng.
+Các câu “chốt phiên”, “chốt phiên đi”, “đóng phiên”, “kết thúc phiên”, “xong phiên chưa” là **lệnh thực thi closeout**, không phải yêu cầu gửi summary. Bắt buộc load `session-close-protocol` và chạy: review độc lập `APPROVED` → kiểm tra branch/worktree/conflict → dọn đúng file tạm do session tạo → commit đúng scope → fetch/pull --rebase → push + xác minh remote SHA. Closeout không được tự động merge hoặc xoá mọi branch/worktree chỉ vì phát hiện trong `git worktree list`; chỉ merge/remove khi có evidence ownership session hiện tại, exact allowlist, clean/committed state, independent review `APPROVED`, và absorbed/superseded. Unknown, dirty, hoặc concurrent-owned phải preserve và báo `BLOCKED`. Thiếu bất kỳ gate nào chỉ được báo `BLOCKED_AT_<STEP>`; cấm nói “đã chốt/xong” bằng miệng.

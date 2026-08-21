@@ -4916,9 +4916,22 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
             except Exception:
                 resolved_session_key = None
 
+        from hermes_constants import reasoning_efforts_for_model
+
         overrides = getattr(self, "_session_reasoning_overrides", {}) or {}
         if resolved_session_key and resolved_session_key in overrides:
-            return overrides[resolved_session_key]
+            override = overrides[resolved_session_key]
+            effective_model = model or _resolve_gateway_model()
+            if (
+                isinstance(override, dict)
+                and override.get("enabled") is not False
+                and override.get("effort") not in reasoning_efforts_for_model(effective_model)
+            ):
+                # A stale session override must not send a generic Hermes
+                # level (for example ``medium``) to a model with a native
+                # vocabulary such as DeepSeek V4.
+                return None
+            return override
         return self._load_reasoning_config(model)
 
     def _set_session_reasoning_override(

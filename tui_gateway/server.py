@@ -3355,6 +3355,40 @@ def _current_profile_name() -> str:
 DESKTOP_BACKEND_CONTRACT = 3
 
 
+def _session_provider_identity(agent, session: dict | None = None) -> str:
+    """Return the durable provider identity exposed to the desktop.
+
+    The running agent deliberately uses the billing class ``custom`` for all
+    named custom endpoints.  The desktop picker, however, keys rows by the
+    durable ``custom:<name>`` identity.  Prefer the session override (it is the
+    explicit user choice), then recover the name from the live endpoint so a
+    resumed 9Router session cannot be compared with the wrong provider row.
+    """
+    provider = str(getattr(agent, "provider", "") or "")
+    normalized = provider.strip().lower()
+    override = (session or {}).get("model_override")
+    override_provider = (
+        str(override.get("provider") or "").strip()
+        if isinstance(override, dict)
+        else ""
+    )
+    if override_provider.lower().startswith("custom:"):
+        return override_provider
+    if not (normalized == "custom" or normalized.startswith("custom:")):
+        return provider
+    try:
+        from hermes_cli.runtime_provider import canonical_custom_identity
+
+        recovered = canonical_custom_identity(
+            base_url=(getattr(agent, "base_url", "") or "")
+            or (override.get("base_url") if isinstance(override, dict) else None),
+            config_provider=override_provider or None,
+        )
+        return recovered or provider
+    except Exception:
+        return provider
+
+
 def _session_info(agent, session: dict | None = None) -> dict:
     if session is None:
         for candidate in _sessions.values():
@@ -3399,7 +3433,7 @@ def _session_info(agent, session: dict | None = None) -> dict:
         yolo = False
     info: dict = {
         "model": getattr(agent, "model", ""),
-        "provider": getattr(agent, "provider", ""),
+        "provider": _session_provider_identity(agent, session),
         "reasoning_effort": reasoning_effort,
         "service_tier": service_tier,
         "fast": service_tier == "priority",
@@ -4638,6 +4672,7 @@ def _make_agent(
         base_url=runtime.get("base_url"),
         api_key=runtime.get("api_key"),
         api_mode=runtime.get("api_mode"),
+        request_overrides=dict(runtime.get("request_overrides") or {}),
         acp_command=runtime.get("command"),
         acp_args=runtime.get("args"),
         credential_pool=runtime.get("credential_pool"),

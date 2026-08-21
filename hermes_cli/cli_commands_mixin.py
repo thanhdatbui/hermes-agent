@@ -2471,29 +2471,34 @@ class CLICommandsMixin:
 
         Usage:
             /reasoning              Show current effort level and display state
-            /reasoning <level>      Set effort (none, minimal, low, medium, high, xhigh, max, ultra)
+            /reasoning <level>      Set effort (levels depend on the active model)
             /reasoning show|on      Show model thinking/reasoning in output
             /reasoning hide|off     Hide model thinking/reasoning from output
             /reasoning full         Show complete thinking (no 10-line clamp)
             /reasoning clamp        Collapse long thinking to the first 10 lines
         """
         from cli import _ACCENT, _DIM, _RST, _cprint, _parse_reasoning_config, save_config_value
+        from hermes_constants import default_reasoning_effort_for_model, reasoning_efforts_for_model
         parts = cmd.strip().split(maxsplit=1)
+        model = str(getattr(self, "model", "") or "")
+        valid_efforts = reasoning_efforts_for_model(model)
+        valid_levels = ("none", *valid_efforts)
+        valid_levels_text = ", ".join(valid_levels)
 
         if len(parts) < 2:
             # Show current state
             rc = self.reasoning_config
             if rc is None:
-                level = "medium (default)"
+                level = f"{default_reasoning_effort_for_model(model)} (default)"
             elif rc.get("enabled") is False:
                 level = "none (disabled)"
             else:
-                level = rc.get("effort", "medium")
+                level = rc.get("effort", default_reasoning_effort_for_model(model))
             display_state = "on ✓" if self.show_reasoning else "off"
             full_state = "full" if getattr(self, "reasoning_full", False) else "clamped to 10 lines"
             _cprint(f"  {_ACCENT}Reasoning effort:  {level}{_RST}")
             _cprint(f"  {_ACCENT}Reasoning display: {display_state} ({full_state}){_RST}")
-            _cprint(f"  {_DIM}Usage: /reasoning <none|minimal|low|medium|high|xhigh|max|ultra|show|hide|full|clamp>{_RST}")
+            _cprint(f"  {_DIM}Usage: /reasoning <{'|'.join(valid_levels)}|show|hide|full|clamp>{_RST}")
             return
 
         arg = parts[1].strip().lower()
@@ -2532,9 +2537,13 @@ class CLICommandsMixin:
 
         # Effort level change
         parsed = _parse_reasoning_config(arg)
-        if parsed is None:
+        if (
+            parsed is None
+            or parsed.get("enabled") is not False
+            and parsed.get("effort") not in valid_efforts
+        ):
             _cprint(f"  {_DIM}(._.) Unknown argument: {arg}{_RST}")
-            _cprint(f"  {_DIM}Valid levels: none, minimal, low, medium, high, xhigh, max, ultra{_RST}")
+            _cprint(f"  {_DIM}Valid levels for {model or 'this model'}: {valid_levels_text}{_RST}")
             _cprint(f"  {_DIM}Display:      show, hide{_RST}")
             return
 

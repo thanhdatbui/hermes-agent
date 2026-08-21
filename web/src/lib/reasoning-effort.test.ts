@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
   EFFORT_OPTIONS,
+  effortOptionsForModel,
+  isDeepSeekV4Model,
   VALID_EFFORTS,
   normalizeEffort,
 } from "./reasoning-effort";
@@ -28,6 +30,13 @@ describe("normalizeEffort", () => {
     expect(normalizeEffort("turbo")).toBe("medium");
     expect(normalizeEffort(42)).toBe("medium");
   });
+
+  it("uses DeepSeek V4's native levels and default", () => {
+    expect(normalizeEffort("", "cmc/deepseek/deepseek-v4-flash")).toBe("high");
+    expect(normalizeEffort("medium", "deepseek/deepseek-v4-flash")).toBe("high");
+    expect(normalizeEffort("max", "deepseek-v4-flash")).toBe("max");
+    expect(normalizeEffort("none", "deepseek-v4-flash")).toBe("none");
+  });
 });
 
 describe("EFFORT_OPTIONS", () => {
@@ -43,5 +52,16 @@ describe("EFFORT_OPTIONS", () => {
     for (const level of ["none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"]) {
       expect(values.has(level)).toBe(true);
     }
+  });
+
+  it("only exposes native DeepSeek V4 levels", () => {
+    expect(isDeepSeekV4Model("cmc/deepseek/deepseek-v4-flash")).toBe(true);
+    expect(isDeepSeekV4Model("nous/hermes-4")).toBe(false);
+    expect(effortOptionsForModel("deepseek/deepseek-v4-flash").map((o) => o.value)).toEqual([
+      "none",
+      "low",
+      "high",
+      "max",
+    ]);
   });
 });

@@ -102,10 +102,10 @@ Update `HANDOFF.md` when local state changes in a way the next session needs to 
 ## Merge / Cleanup Rule (bắt buộc, 2026-08-08)
 
 Khi thực hiện merge nhánh về main hoặc dọn nhánh/tree quan trọng:
-1. Lên PLAN bằng subagent TRƯỚC khi merge (không merge mù).
-2. Worker thực thi merge/resolve.
-3. Chạy AUDIT lại sau khi worker xong — lặp tới khi audit APPROVED mới xoá nhánh/tree.
-4. Xoá nhánh chỉ sau bằng chứng absorbed/superseded (merge-tree/reflog/fsck).
+1. Coordinator lập kế hoạch tích hợp trước khi merge (không merge mù); không dùng worker thiếu quyền phù hợp làm planner/auditor/reviewer.
+2. Worker chỉ thực thi merge/resolve sau khi chứng minh ownership của session hiện tại, exact allowlist, trạng thái clean/committed và independent review `APPROVED` cho candidate trước tích hợp.
+3. Sau tích hợp, chạy audit/review và test lại trên exact final candidate; nếu SHA thay đổi thì lặp lại gate trước push.
+4. Chỉ merge/remove khi có đủ evidence ownership của session hiện tại, exact allowlist, trạng thái clean/committed và independent review `APPROVED`; chỉ yêu cầu absorbed/superseded sau tích hợp trước khi remove. Unknown, dirty, hoặc concurrent-owned phải được giữ nguyên và báo `BLOCKED`.
 
 ## COMMIT GATE (2026-08-10, user chốt)
 
@@ -120,5 +120,26 @@ Khi thực hiện merge nhánh về main hoặc dọn nhánh/tree quan trọng:
 - Khi append entry mới mà file sắp vượt ngưỡng: trim entry cũ đã resolved cùng lượt, không để HANDOFF phình vô hạn.
 - Giữ EOL khi sửa HANDOFF (append/trim bằng python, không patch LF).
 
+## Canonical Script Reuse Rule (bắt buộc, 2026-08-12)
+
+- Khi cùng một workflow/operation chỉ thay input data (ví dụ Tik1/Tik2/TikN, account row 1/2/N, machine list hoặc config path), PHẢI dùng lại canonical script/entrypoint đã chạy chuẩn.
+- Chỉ thay tham số hoặc file dữ liệu qua CLI/config; KHÔNG tạo launcher/runner/script tạm mới và KHÔNG ghép shell loop/xargs để thay thế flow canonical.
+- Nếu canonical script chưa nhận data variant cần thiết hoặc còn hardcode path cũ: sửa/build chính script đó theo hướng parameterized, giữ nguyên safety gate hiện có; ghi baseline rollback trước edit, test/preflight variant cũ + mới, audit/verify rồi mới chạy live.
+- Chỉ tạo script mới khi workflow thực sự khác và user đã chốt rõ; phải ghi lý do vì sao entrypoint hiện tại không thể tái sử dụng.
+- Trước launch phải ghi evidence gồm canonical script path và data path/row đã chọn; việc đổi data không được bypass lock, account/target verifier, confirmation, recovery hoặc report contract.
+
+## 14. QUY TẮC CLOSEOUT TỰ ĐỘNG BẮT BUỘC
+
+Chỉ lệnh đóng phiên rõ ràng ("chốt phiên", "chốt phiên đi", "đóng phiên", "kết thúc phiên", "xong phiên") mới kích hoạt closeout. Câu hỏi tiến độ chung như "xong chưa" hoặc "đã xong chưa" chỉ được trả lời trạng thái, không tự kích hoạt rebase, push hoặc thay đổi remote.
+
+1. **ĐÓNG BĂNG VÀ TÍCH HỢP CÓ KIỂM SOÁT:** kiểm tra branch, upstream, merge-base, ownership, exact allowlist và conflict. Unknown, dirty hoặc concurrent-owned phải giữ nguyên và báo `BLOCKED_AT_WORKTREE_OWNERSHIP`.
+2. **REVIEW/TEST CANDIDATE CUỐI:** sau tích hợp, chốt exact final candidate; dùng đúng route trong mục routing (multi-repo/core dùng `plan-review-hard`). Review phải độc lập, dòng verdict phải parse được là `APPROVED`, và test/lint/compile phải chạy trên chính candidate. SHA đổi thì lặp lại gate này.
+3. **COMMIT ĐÚNG SCOPE:** stage exact allowlist, không dùng `git add -A`/`git add .`, không đưa backup, runtime, secret, workbook hoặc untracked artifact vào commit; xác minh `git show --name-status`.
+4. **PULL-BEFORE-PUSH:** sau commit, xác minh upstream thực tế, chạy `git fetch <remote>` rồi `git pull --rebase <remote> <remote-branch>`. Nếu rebase đổi SHA/tree thì lặp lại review và test.
+5. **PUSH VÀ XÁC MINH:** push explicit `HEAD:<remote-branch>` tới remote đã xác minh, không force-push; đọc `git ls-remote` và yêu cầu remote SHA == local HEAD.
+
+Chỉ báo hoàn tất khi có đủ verdict exact candidate, test evidence, branch/worktree/upstream state, commit SHA và remote SHA. Thiếu gate nào phải báo `BLOCKED_AT_<STEP>`.
+
 ## CLOSE-SESSION HARD TRIGGER
-Các câu “chốt phiên”, “chốt phiên đi”, “đóng phiên”, “kết thúc phiên”, “xong phiên chưa” là **lệnh thực thi closeout**, không phải yêu cầu gửi summary. Bắt buộc load `session-close-protocol` và chạy: review độc lập `APPROVED` → kiểm tra branch/worktree/conflict → dọn đúng file tạm do session tạo → commit đúng scope → fetch/pull --rebase → push + xác minh remote SHA. Thiếu bất kỳ gate nào chỉ được báo `BLOCKED_AT_<STEP>`; cấm nói “đã chốt/xong” bằng miệng.
+
+Các câu "chốt phiên", "chốt phiên đi", "đóng phiên", "kết thúc phiên", "xong phiên" là lệnh thực thi closeout theo quy trình trên. Các câu hỏi tiến độ chung "xong chưa" và "đã xong chưa" không phải lệnh closeout; chỉ báo trạng thái. Không được nói "đã chốt/xong" nếu thiếu bất kỳ gate review, test, commit, rebase, push hoặc remote-SHA nào.

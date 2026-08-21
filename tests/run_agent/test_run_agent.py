@@ -8025,12 +8025,18 @@ class TestDeadRetryCode:
 
 
 class TestSupportsReasoningExtraBody:
-    def _make_agent(self):
+    def _make_agent(
+        self,
+        *,
+        provider="openrouter",
+        base_url="https://openrouter.ai/api/v1",
+        model="",
+    ):
         agent = object.__new__(AIAgent)
-        agent.provider = "openrouter"
-        agent.base_url = "https://openrouter.ai/api/v1"
+        agent.provider = provider
+        agent.base_url = base_url
         agent._base_url_lower = agent.base_url.lower()
-        agent.model = ""
+        agent.model = model
         return agent
 
     def test_xiaomi_models_are_treated_as_reasoning_capable(self):
@@ -8044,6 +8050,44 @@ class TestSupportsReasoningExtraBody:
         ):
             agent.model = model
             assert agent._supports_reasoning_extra_body() is True, model
+
+    def test_local_9router_deepseek_routes_are_reasoning_capable(self):
+        for model in (
+            "cmc/deepseek/deepseek-v4-flash",
+            "cmc/deepseek/deepseek-v4-pro",
+            "deepseek/deepseek-v4-pro",
+            "ds/deepseek-v4-flash",
+        ):
+            agent = self._make_agent(
+                provider="custom",
+                base_url="http://127.0.0.1:20128/v1",
+                model=model,
+            )
+            assert agent._supports_reasoning_extra_body() is True, model
+
+    def test_custom_non_9router_route_stays_gated(self):
+        agent = self._make_agent(
+            provider="custom",
+            base_url="https://example.test/v1",
+            model="cmc/deepseek/deepseek-v4-flash",
+        )
+        assert agent._supports_reasoning_extra_body() is False
+
+    def test_local_9router_non_deepseek_route_stays_gated(self):
+        agent = self._make_agent(
+            provider="custom",
+            base_url="http://127.0.0.1:20128/v1",
+            model="cmc/zai-org/GLM-5.1",
+        )
+        assert agent._supports_reasoning_extra_body() is False
+
+    def test_malformed_custom_url_stays_gated(self):
+        agent = self._make_agent(
+            provider="custom",
+            base_url="http://localhost:not-a-port/v1",
+            model="cmc/deepseek/deepseek-v4-flash",
+        )
+        assert agent._supports_reasoning_extra_body() is False
 
 
 class TestMemoryContextSanitization:

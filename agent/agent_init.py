@@ -19,6 +19,7 @@ preserved.
 
 from __future__ import annotations
 
+import copy
 import logging
 import os
 import re
@@ -1803,7 +1804,6 @@ def init_agent(
                 # connections, clients); in that case fall back to the built-in
                 # compressor with an ACCURATE message rather than silently
                 # mislabelling it "not found".
-                import copy
                 try:
                     _selected_engine = copy.deepcopy(_candidate)
                 except Exception as _copy_err:
@@ -2123,6 +2123,13 @@ def init_agent(
         "api_mode": agent.api_mode,
         "api_key": getattr(agent, "api_key", ""),
         "client_kwargs": dict(agent._client_kwargs),
+        # Custom-provider routing metadata (for example 9Router's
+        # ``extra_body``) is part of the primary runtime.  Fallback/restore
+        # must not leave the next turn carrying the fallback provider's
+        # request shape or lose the primary route entirely.
+        "request_overrides": copy.deepcopy(
+            getattr(agent, "request_overrides", {}) or {}
+        ),
         "use_prompt_caching": agent._use_prompt_caching,
         "use_native_cache_layout": agent._use_native_cache_layout,
         # Context engine state that _try_activate_fallback() overwrites.

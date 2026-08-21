@@ -1007,6 +1007,9 @@ def try_recover_primary_transport(
         if hasattr(agent, "_transport_cache"):
             agent._transport_cache.clear()
         agent.api_key = rt["api_key"]
+        agent.request_overrides = copy.deepcopy(
+            rt.get("request_overrides", {})
+        )
 
         if agent.api_mode == "anthropic_messages":
             from agent.anthropic_adapter import build_anthropic_client
@@ -1134,6 +1137,74 @@ def drop_thinking_only_and_merge_users(
     return merged
 
 
+def _request_overrides_for_runtime(
+    agent,
+    *,
+    requested_provider: str,
+    model: str,
+    base_url: str,
+) -> Optional[Dict[str, Any]]:
+    """Resolve config-backed request fields for a live model switch.
+
+    ``resolve_runtime_provider`` returns these fields during construction, but
+    ``AIAgent.switch_model`` historically rebuilt only the client and dropped
+    them.  Keep this lookup local to the already-loaded compatible provider
+    list so a switch does not need a second credential resolution pass.
+    """
+    custom_providers = getattr(agent, "_custom_providers", None)
+    if not isinstance(custom_providers, list):
+        # No provider catalog means that this helper cannot resolve a target
+        # route.  The caller must preserve the existing request overrides;
+        # an empty dict here would silently erase caller-supplied fields.
+        return None
+
+    provider = str(requested_provider or "").strip().lower()
+    provider_filter = provider
+    if provider and provider not in {"custom", "local"} and not provider.startswith("custom:"):
+        provider_filter = ""
+        for entry in custom_providers:
+            if not isinstance(entry, dict):
+                continue
+            aliases = {
+                str(entry.get("provider_key", "") or "").strip().lower(),
+                str(entry.get("name", "") or "").strip().lower(),
+            }
+            aliases.discard("")
+            if provider in aliases:
+                name = str(entry.get("name") or entry.get("provider_key") or "").strip()
+                provider_filter = f"custom:{name}" if name else "custom"
+                break
+        if not provider_filter:
+            return None
+
+    try:
+        from agent.agent_init import _custom_provider_extra_body_for_agent
+
+        extra_body = _custom_provider_extra_body_for_agent(
+            provider=provider_filter,
+            model=model,
+            base_url=base_url,
+            custom_providers=custom_providers,
+        )
+    except Exception:
+        logger.debug("request override resolution skipped on model switch", exc_info=True)
+        return None
+
+    # ``None`` means that the target route did not resolve metadata.  The
+    # switch caller preserves existing overrides for an unchanged route and
+    # clears route-specific fields only when the route actually changes.
+    return {"extra_body": dict(extra_body)} if extra_body else None
+
+
+def _runtime_provider_name(provider: str) -> str:
+    """Map a durable custom menu key to the runtime billing class."""
+
+    normalized = str(provider or "").strip()
+    if normalized.lower().startswith("custom:"):
+        return "custom"
+    return normalized
+
+
 
 def restore_primary_runtime(agent) -> bool:
     """Restore the primary runtime at the start of a new turn.
@@ -1170,6 +1241,9 @@ def restore_primary_runtime(agent) -> bool:
         if hasattr(agent, "_transport_cache"):
             agent._transport_cache.clear()
         agent.api_key = rt["api_key"]
+        agent.request_overrides = copy.deepcopy(
+            rt.get("request_overrides", {})
+        )
         agent._client_kwargs = dict(rt["client_kwargs"])
         agent._use_prompt_caching = rt["use_prompt_caching"]
         # Default to native layout when the restored snapshot predates the
@@ -1811,6 +1885,8 @@ def switch_model(agent, new_model, new_provider, api_key='', base_url='', api_mo
 
     old_model = agent.model
     old_provider = agent.provider
+    old_base_url = getattr(agent, "base_url", "") or ""
+    runtime_provider = _runtime_provider_name(new_provider)
 
     # ── Snapshot all fields the swap+rebuild can mutate ──
     # If the rebuild raises (bad API key, network error, build_anthropic_client
@@ -1843,6 +1919,9 @@ def switch_model(agent, new_model, new_provider, api_key='', base_url='', api_mo
     # _client_kwargs is a dict — snapshot a shallow copy so mutating the
     # live dict doesn't poison the rollback target.
     _snapshot["_client_kwargs"] = dict(getattr(agent, "_client_kwargs", {}) or {})
+    _snapshot["request_overrides"] = copy.deepcopy(
+        getattr(agent, "request_overrides", {}) or {}
+    )
     # Snapshot the credential pool reference so a failed client rebuild can
     # restore the original pool (issue #52727: pool reload is part of this
     # switch and must be reversible on rollback).
@@ -1856,7 +1935,10 @@ def switch_model(agent, new_model, new_provider, api_key='', base_url='', api_mo
 
         # ── Swap core runtime fields ──
         agent.model = new_model
-        agent.provider = new_provider
+        # ``custom:<name>`` is a durable picker/session identity, while the
+        # agent runtime and transport use the shared billing class ``custom``.
+        # Keep the durable key for request-override lookup below.
+        agent.provider = runtime_provider
         # Use the new base_url when provided. When it's empty AND the
         # provider is actually changing, do NOT fall back to the current
         # (old provider's) URL — that silently pairs the new provider label
@@ -1872,7 +1954,7 @@ def switch_model(agent, new_model, new_provider, api_key='', base_url='', api_mo
         # an empty base_url (e.g. a credential-only refresh) is still fine
         # to keep the current URL. See #47828.
         old_norm_provider = (old_provider or "").strip().lower()
-        new_norm_provider = (new_provider or "").strip().lower()
+        new_norm_provider = (runtime_provider or "").strip().lower()
         if base_url:
             agent.base_url = base_url
         elif old_norm_provider != new_norm_provider:
@@ -1882,6 +1964,20 @@ def switch_model(agent, new_model, new_provider, api_key='', base_url='', api_mo
                 "refusing to keep the previous provider's endpoint"
             )
         agent.api_mode = api_mode
+        old_base_norm = str(old_base_url or "").strip().rstrip("/").lower()
+        new_base_norm = str(getattr(agent, "base_url", "") or "").strip().rstrip("/").lower()
+        _resolved_request_overrides = _request_overrides_for_runtime(
+            agent,
+            requested_provider=new_provider,
+            model=new_model,
+            base_url=agent.base_url,
+        )
+        if _resolved_request_overrides is not None:
+            agent.request_overrides = _resolved_request_overrides
+        elif old_norm_provider != new_norm_provider or old_base_norm != new_base_norm:
+            # A provider/endpoint change without resolvable target metadata
+            # must not carry route-specific fields from the old provider.
+            agent.request_overrides = {}
         # Invalidate transport cache — new api_mode may need a different transport
         if hasattr(agent, "_transport_cache"):
             agent._transport_cache.clear()
@@ -1897,8 +1993,12 @@ def switch_model(agent, new_model, new_provider, api_key='', base_url='', api_mo
         # provider must not churn the pool reference. A reload failure is
         # logged + swallowed: the switch itself must still complete.
         old_norm = (old_provider or "").strip().lower()
-        new_norm = (new_provider or "").strip().lower()
-        if old_norm != new_norm or getattr(agent, "_credential_pool", None) is None:
+        new_norm = (runtime_provider or "").strip().lower()
+        if (
+            old_norm != new_norm
+            or old_base_norm != new_base_norm
+            or getattr(agent, "_credential_pool", None) is None
+        ):
             # A pool bound to the old provider is worse than no pool: the
             # recovery guard rejects it and every later 401/429 skips rotation.
             agent._credential_pool = None
@@ -2026,7 +2126,7 @@ def switch_model(agent, new_model, new_provider, api_key='', base_url='', api_mo
     # ── Re-evaluate prompt caching ──
     agent._use_prompt_caching, agent._use_native_cache_layout = (
         agent._anthropic_prompt_cache_policy(
-            provider=new_provider,
+            provider=runtime_provider,
             base_url=agent.base_url,
             api_mode=api_mode,
             model=new_model,
@@ -2110,6 +2210,9 @@ def switch_model(agent, new_model, new_provider, api_key='', base_url='', api_mo
         "api_mode": agent.api_mode,
         "api_key": getattr(agent, "api_key", ""),
         "client_kwargs": dict(agent._client_kwargs),
+        "request_overrides": copy.deepcopy(
+            getattr(agent, "request_overrides", {}) or {}
+        ),
         "use_prompt_caching": agent._use_prompt_caching,
         "use_native_cache_layout": agent._use_native_cache_layout,
         "reasoning_config": dict(agent.reasoning_config) if getattr(agent, "reasoning_config", None) else None,

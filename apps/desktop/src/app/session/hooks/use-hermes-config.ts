@@ -2,9 +2,10 @@ import { type MutableRefObject, useCallback, useState } from 'react'
 
 import { getHermesConfig, getHermesConfigDefaults } from '@/hermes'
 import { BUILTIN_PERSONALITIES, normalizePersonalityValue, personalityNamesFromConfig } from '@/lib/chat-runtime'
-import { normalize } from '@/lib/text'
+import { normalizeReasoningEffort } from '@/lib/reasoning-effort'
 import {
   $currentCwd,
+  $currentModel,
   setAvailablePersonalities,
   setCurrentCwd,
   setCurrentFastMode,
@@ -25,18 +26,8 @@ function recordingLimit(value: unknown) {
 /** config.yaml hands back whatever the user wrote — `reasoning_effort: false`
  *  (or `off`/`no`, which YAML also parses to boolean false) means thinking
  *  disabled, and a bare boolean must not throw on `.trim()`. */
-function normalizeConfigEffort(value: unknown): string {
-  if (value === false) {
-    return 'none'
-  }
-
-  if (typeof value !== 'string') {
-    return ''
-  }
-
-  const effort = normalize(value)
-
-  return effort === 'false' || effort === 'disabled' ? 'none' : effort
+function normalizeConfigEffort(value: unknown, model: string): string {
+  return normalizeReasoningEffort(value, model)
 }
 
 interface HermesConfigOptions {
@@ -78,7 +69,7 @@ export function useHermesConfig({ activeSessionIdRef, refreshProjectBranch }: He
         void refreshProjectBranch($currentCwd.get() || cwd)
       }
 
-      const reasoning = normalizeConfigEffort(config.agent?.reasoning_effort)
+      const reasoning = normalizeConfigEffort(config.agent?.reasoning_effort, $currentModel.get())
       const tier = (config.agent?.service_tier ?? '').trim()
 
       setCurrentReasoningEffort(prev => (activeSessionIdRef.current ? prev : reasoning))

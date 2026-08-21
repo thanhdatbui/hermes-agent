@@ -196,6 +196,68 @@ def test_build_models_payload_returns_expected_shape():
     assert payload["providers"][1:] == rows
 
 
+def test_build_models_payload_canonicalizes_named_custom_provider_identity():
+    endpoint = "http://127.0.0.1:20128/v1"
+    model = "deepseek/deepseek-v4-flash"
+    rows = [_user_provider_row("custom:9router", [model])]
+    ctx = _empty_ctx(provider="custom", model=model, base_url=endpoint)
+    cfg = _cfg(
+        model={"provider": "custom", "default": model, "base_url": endpoint},
+        providers={"9router": {"api": endpoint}},
+    )
+
+    with (
+        _list_auth_returning(rows),
+        patch("hermes_cli.config.load_config", return_value=cfg),
+    ):
+        payload = build_models_payload(ctx)
+
+    assert payload["provider"] == "custom:9router"
+    assert payload["model"] == model
+
+
+def test_build_models_payload_keeps_bare_custom_for_ad_hoc_endpoint():
+    named_endpoint = "http://127.0.0.1:20128/v1"
+    ad_hoc_endpoint = "http://127.0.0.1:29999/v1"
+    model = "deepseek/deepseek-v4-flash"
+    rows = [_user_provider_row("custom:9router", [model])]
+    ctx = _empty_ctx(provider="custom", model=model, base_url=ad_hoc_endpoint)
+    cfg = _cfg(
+        model={"provider": "custom", "default": model, "base_url": ad_hoc_endpoint},
+        providers={"9router": {"api": named_endpoint}},
+    )
+
+    with (
+        _list_auth_returning(rows),
+        patch("hermes_cli.config.load_config", return_value=cfg),
+    ):
+        payload = build_models_payload(ctx)
+
+    assert payload["provider"] == "custom"
+    assert payload["model"] == model
+
+
+def test_build_models_payload_does_not_relabel_other_provider():
+    endpoint = "http://127.0.0.1:20128/v1"
+    model = "deepseek/deepseek-v4-flash"
+    rows = [_aggregator_row("openrouter", [model])]
+    ctx = _empty_ctx(provider="openrouter", model=model, base_url=endpoint)
+    cfg = _cfg(
+        model={"provider": "openrouter", "default": model, "base_url": endpoint},
+        providers={"9router": {"api": endpoint}},
+    )
+
+    with (
+        _list_auth_returning(rows),
+        patch("hermes_cli.config.load_config", return_value=cfg),
+    ):
+        payload = build_models_payload(ctx)
+
+    assert payload["provider"] == "openrouter"
+    assert payload["model"] == model
+    assert payload["providers"][1:] == rows
+
+
 def test_build_models_payload_does_not_call_provider_model_ids():
     """``build_models_payload`` is a thin shape adapter — it delegates the
     actual curation to ``list_authenticated_providers`` (which DOES call

@@ -46,6 +46,7 @@ import time
 import threading
 import uuid
 from typing import List, Dict, Any, Optional, Callable
+from urllib.parse import urlparse
 # NOTE: `from openai import OpenAI` is deliberately NOT at module top — the
 # SDK pulls ~240 ms of imports. We expose `OpenAI` as a thin proxy object
 # that imports the SDK on first call/isinstance check. This preserves:
@@ -5430,6 +5431,34 @@ class AIAgent:
             opts = self._lmstudio_reasoning_options_cached()
             # "off-only" (or absent) means no real reasoning capability.
             return any(opt and opt != "off" for opt in opts)
+
+        # 9router is an OpenAI-compatible local relay.  Its DeepSeek routes
+        # explicitly consume ``reasoning.effort`` and translate it to the
+        # upstream ``reasoning_effort``/``thinking`` fields.  Keep this gate
+        # narrow so arbitrary custom endpoints do not receive an unknown
+        # ``reasoning`` field.
+        model = (self.model or "").lower()
+        provider = (self.provider or "").strip().lower()
+        if provider in {"custom", "custom:9router"}:
+            try:
+                raw_base_url = self.base_url or ""
+                parsed = urlparse(
+                    raw_base_url
+                    if "://" in raw_base_url
+                    else f"//{raw_base_url}"
+                )
+                is_local_9router = (
+                    parsed.hostname in {"localhost", "127.0.0.1", "::1"}
+                    and parsed.port == 20128
+                )
+            except ValueError:
+                is_local_9router = False
+            if is_local_9router:
+                from hermes_constants import is_deepseek_v4_model
+
+                if is_deepseek_v4_model(model):
+                    return True
+
         if "openrouter" not in self._base_url_lower:
             return False
         if "api.mistral.ai" in self._base_url_lower:
