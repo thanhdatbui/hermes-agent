@@ -292,9 +292,9 @@ Theo `D:\Taadaa\AGENTS.md`: audit order **AG `ag/claude-opus-4-6-thinking` → c
           - **Bước 5 (Pytest Isolated):** Chạy test suite liên quan trên đúng môi trường venv của farm (loại bỏ PYTHONPATH hermes).
           - **Bước 6 (Pull Rebase & Commit/Push):** Rebase nhánh chính, commit message tiếng Việt chuẩn và push lên Git.
        2. Khi user ra lệnh **"lên plan"** hoặc **"review"**: Dùng ĐỒNG NHẤT cấu hình chuẩn đã setup chung cho Plan & Review (không chế model riêng):
-          * **Mức thường**: combo model `plan-review` kịch trần (`--variant max`).
-          * **Mức khó / Core / Shared**: `sol` (`--variant ultra`).
-          * **Fallback**: Claude CLI `claude-opus-5` (`--effort max`).
+          * **Mức thường**: combo model `plan-review` kịch trần (`--variant max` hoặc `reasoning_effort: max`). Khi làm nốt task thường/vừa: dùng **Terra Max** (User 24/08).
+          * **Mức khó / Core / Shared**: `sol` (`--variant ultra` hoặc `reasoning_effort: ultra`). Nào audit gọi **Sol Max** ra làm (User 24/08).
+          * **Fallback**: Claude CLI `claude-opus-5` (`--effort max/high`). Lưu ý Claude CLI có quota 5h, chỉ gọi 1 lần khi chốt chặn cuối, tránh gọi lặp vòng làm cạn quota.
           * TUYỆT ĐỐI CẤM dùng Flash/Worker làm plan hoặc audit.
        3. Bất kỳ task nào yêu cầu write/edit/patch/build/deploy file code trong `D:\Taadaa` (kể cả khi user nói "làm đi", "sửa đi", "fix đi", "chạy lại") → **LOAD SKILL NÀY TRƯỚC** rồi mới phân loại + dispatch worker. Không load skill trước khi write = vi phạm COORDINATOR-WRITE GUARD.
 

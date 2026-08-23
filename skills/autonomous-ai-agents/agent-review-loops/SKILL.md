@@ -379,14 +379,26 @@ Chi tiết và checklist: `references/interrupted-session-takeover.md`.
 
 ## Reviewer Quota/Treo
 
-- **QUY TẮC BẮT BUỘC KHI GỌI AUDIT / REVIEW / PLAN (User chốt 2026-08-18, ALL repo):**
+- **Claude CLI Quota Burn & Model Distribution (Lesson 2026-08-24):**
+  - Chạy `claude -p` với `--model opus --effort max/high` trên context lớn (30-50KB) đốt 15-25% quota của cửa sổ 5 giờ ở mỗi lượt do sinh 15k-35k thinking tokens ngầm.
+  - **Phân phối model chuẩn tránh cạn quota CLI (User chốt 2026-08-24):**
+    - Task thường / vừa / lên plan / intermediate review loops: Gọi 9Router HTTP (`cx/gpt-5.6-terra-review` - "Terra Max làm nốt").
+    - Audit hard / final verification gate: Gọi 9Router HTTP (`gpt-5.6-sol` / `cx/gpt-5.6-sol-review` hoặc `ag/claude-opus-4-6-thinking` - "Nào audit gọi Sol max ra làm").
+    - Claude CLI Opus: Chỉ dùng 1 lần duy nhất cho initial plan hoặc final blind audit khi thật sự cần, tránh nhồi lặp nhiều vòng.
+
+- **In-Repo Contract & Bootstrap Standardization (`AGENTS.md` & `bootstrap.sh`):**
+  - Mọi repo con trong `D:\Taadaa` bắt buộc chuẩn hóa 2 khối đầu: `<!-- WORKER-ROLE-GATE:START -->` (khóa cứng vai trò EXECUTOR, YAGNI, Zero Refactor, Single-Repo Boundary, cấm spawn/delegate) và `<!-- SESSION-START-BOOTSTRAP:START -->` (chạy `D:\Taadaa\tools\bootstrap.sh . "<task_id>" "<allowlist>"`).
+  - Bootstrap script fail-closed: kiểm tra Git root, unborn HEAD, working tree clean, bắt buộc task_id không rỗng, từ chối path traversal (`..`) và absolute path trong allowlist.
+  - Kích hoạt nhanh 1 dòng cho mọi Agent (Hermes/Codex/Claude): `Resume repo as Executor | Task: [Task_ID] | Allowlist: [file1, file2]`.
+
+- **QUY TẮC BẮT BUỘC KHI GỌI AUDIT / REVIEW / PLAN (User chốt 2026-08-18, cập nhật 2026-08-24):**
   - **TUYỆT ĐỐI CẤM dùng `delegate_task` hoặc Flash/Worker để làm PLANNER / AUDITOR / REVIEWER** (vì `delegate_task` bị gán cứng vào combo `worker`, sẽ gọi nhầm Flash/Worker).
   - **CẢ 3 VIỆC (PLAN, CODE REVIEW, AUDIT) ÁP DỤNG CHUNG 1 KHUNG CHUẨN KỊCH TRẦN REASONING:**
-    1. **Cấp Thường / Vừa (Plan/Review/Audit tính năng 1 repo, UI, video gate, helper):**
-       - Gọi 9Router HTTP API (`http://127.0.0.1:20128/v1/chat/completions`) với combo **`plan-review`** (`gpt-5.6-terra → ag/claude-opus-4-6-thinking → cmc/deepseek/deepseek-v4-pro`) kèm `"reasoning_effort": "max"` (hoặc `"high"`).
-    2. **Cấp Khó / Core / Nhạy cảm (Plan/Review/Audit Architecture, Scheduler, Manifest validation, Hashing, State machine, Lock, Recovery):**
-       - **Ưu tiên 1:** 9Router HTTP combo **`plan-review-hard`** (`gpt-5.6-sol`) kèm `"reasoning_effort": "ultra"` (hoặc `"max"`).
-       - **Fallback (Khi Sol lỗi/hết quota/429/404):** Gọi **Claude CLI Print Mode** trực tiếp với model Opus 5 và reasoning kịch trần (`claude -p "<prompt>" --effort max --allowedTools "Read,Bash(git *)" --max-turns 15`).
+    1. **Cấp Thường / Vừa (Plan/Review/Audit tính năng 1 repo, UI, video gate, helper, hoàn thiện task):**
+       - Gọi 9Router HTTP API (`http://127.0.0.1:20128/v1/chat/completions`) với combo **`plan-review`** (`gpt-5.6-terra → ag/claude-opus-4-6-thinking → cmc/deepseek/deepseek-v4-pro`) kèm `"reasoning_effort": "max"` (hoặc `"high"`). (User 24/08: Terra Max làm nốt task thường/vừa).
+    2. **Cấp Khó / Core / Nhạy cảm / Audit Độc Lập:**
+       - **Ưu tiên 1:** 9Router HTTP combo **`plan-review-hard`** (`gpt-5.6-sol`) kèm `"reasoning_effort": "ultra"` / `"max"`. (User 24/08: "Nào audit gọi Sol max ra làm").
+       - **Fallback (Khi Sol lỗi/hết quota/429/404):** Gọi **Claude CLI Print Mode** trực tiếp với model Opus và reasoning kịch trần (`claude -p "<prompt>" --effort max/high --allowedTools "Read,Bash(git *)"`). Lưu ý: Claude CLI có cửa sổ quota 5h, chỉ gọi 1 lần khi chốt chặn cuối, tránh gọi lặp vòng làm cạn quota.
   - Request body HTTP bắt buộc: `"tools": []`, `"tool_choice": "none"`, `"stream": false`, `Authorization: Bearer $NINEROUTER_API_KEY`.
 
 - **QUY TẮC BẮT BUỘC KHI GỌI AUDIT / REVIEW (User chốt 2026-08-18):**
