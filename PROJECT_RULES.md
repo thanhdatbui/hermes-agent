@@ -143,3 +143,45 @@ Chỉ báo hoàn tất khi có đủ verdict exact candidate, test evidence, bra
 ## CLOSE-SESSION HARD TRIGGER
 
 Các câu "chốt phiên", "chốt phiên đi", "đóng phiên", "kết thúc phiên", "xong phiên" là lệnh thực thi closeout theo quy trình trên. Các câu hỏi tiến độ chung "xong chưa" và "đã xong chưa" không phải lệnh closeout; chỉ báo trạng thái. Không được nói "đã chốt/xong" nếu thiếu bất kỳ gate review, test, commit, rebase, push hoặc remote-SHA nào.
+
+
+## Task Contract and Scope Lock (MANDATORY)
+
+This gate applies to every task, repository, worktree, skill, worker, and tool
+sequence under `D:\Taadaa`.
+
+- **Latest request wins.** The latest explicit user request is the only active
+  task authority. A previous plan, summary, TODO, handoff, worker report,
+  session context, or stale acceptance list is background only; it must not
+  revive or widen the task without current user approval.
+- **Contract before action.** Before the first state-changing action, record a
+  compact task contract: `Goal`, exact `In-scope allowlist`, `Non-goals /
+  forbidden scope`, `Acceptance criteria`, and `Stop condition`. If the user
+  request is already clear, do not ask them to restate it; derive the contract
+  narrowly from that request.
+- **Scope checkpoint.** Before touching a new file, route, repository,
+  worktree, device, account, worker, delegate, broad test suite, or live
+  surface, ask: “Is this directly required by the current Goal and inside the
+  allowlist?” If not, classify it `OUT_OF_SCOPE`, do not inspect/edit/run/
+  delegate it, and report or ask for explicit expansion.
+- **No implicit permission from a plan.** A plan is an implementation aid, not
+  authorization to execute every phase. Adopt only the phases and files that
+  the latest request explicitly covers; ignore stale plan sections.
+- **Focused verification first.** Run only acceptance tests needed for the
+  current scope. Do not expand to full-suite, adjacent-route, regression, or
+  cleanup work unless the contract requires it or the user approves it.
+- **Worker binding.** Every delegated worker receives the same contract,
+  allowlist, non-goals, acceptance criteria, and stop condition. A worker that
+  discovers scope drift must stop and hand off; it must not widen the scope.
+- **Stop when done.** Once acceptance criteria pass, stop. Unrelated failures,
+  adjacent improvements, and newly discovered routes are not follow-up work by
+  default.
+
+## 🔄 QUY TRÌNH CHỐT PHIÊN CHUẨN (User update 2026-08-23)
+Khi user ra lệnh `chốt phiên`, `đóng phiên`, `kết thúc phiên`, hoặc `xong phiên`:
+1. **Test live canary thực tế (BẮT BUỘC nếu có fix code/farm):** Chạy kiểm chứng trên máy thật/trạng thái lỗi để lấy bằng chứng runtime (PASS). Không được bỏ qua bước này.
+2. **Model Review:** Đưa diff code + bằng chứng live test cho model review duyệt (APPROVED).
+3. **Commit local exact-scope:** `git add <files>` đúng allowlist và `git commit -m "..."` local trước để đóng băng an toàn.
+4. **Git pull --rebase:** `git pull --rebase <remote> <branch>` để kéo commit mới nhất từ PC khác về và xếp commit local lên đầu (chạy lại quick test nếu có commit mới).
+5. **Git push & Verify SHA:** `git push <remote> <branch>` và đối chiếu `git ls-remote` khớp SHA local.
+6. **Unlock & Báo cáo:** Giải phóng thiết bị/lock và báo cáo ngắn gọn (Mục đích -> Kết quả -> Blocker -> Remote SHA).
