@@ -219,6 +219,10 @@ Sau khi sửa, chạy pytest verify."
 
 ## Durable lessons: reviewer transport and external side-effect claims
 
+### Cross-session closeout reconciliation
+
+When a closeout or review spans multiple Hermes sessions, another session may land a different commit while the current session is waiting. Before reporting `BLOCKED`, `NOT DONE`, or `DONE`, reconcile the exact live target worktree again: absolute repo path, branch, `HEAD`, upstream SHA, status, and `git show --stat HEAD`. A clean tree with `HEAD == origin/<branch>` supersedes an older stale-candidate narrative. Reviews and test claims apply only to the exact bytes they inspected; if another session advances the target, discard the old candidate verdict, rebuild the prompt from the current commit/diff, and review that exact commit. Never patch or overwrite a landed commit merely to reconcile session state. Wrapper/path/auth/timeout/empty-output failures are `AUDIT_TRANSPORT_*`, not code verdicts. Checklist: `references/cross-session-closeout-reconciliation.md`.
+
 ### Reviewer transport is not the verdict
 
 Before classifying a review attempt, separate three states:
