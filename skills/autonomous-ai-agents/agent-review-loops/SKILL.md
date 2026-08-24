@@ -217,6 +217,33 @@ MINOR:
 Sau khi sửa, chạy pytest verify."
 ```
 
+## Durable lessons: reviewer transport and external side-effect claims
+
+### Reviewer transport is not the verdict
+
+Before classifying a review attempt, separate three states:
+
+1. **Transport/setup failure** — no parseable reviewer response (missing provider environment in a child process, auth/route/timeout/empty response). Report `AUDIT_TRANSPORT_*`; do not call it a code rejection or a broken Hermes config.
+2. **Reviewer response** — the reviewer returned a parseable `APPROVED`, `MINOR_FIXES`, or `REJECT`. This is the only point at which the review gate is consumed.
+3. **Candidate verification** — independently reproduce focused tests, diff/check, and live canary where required; a reviewer response alone is not runtime proof.
+
+For direct 9Router HTTP, use the canonical Hermes-loaded provider environment. An auxiliary Python child may not inherit the provider `.env`; diagnose that as transport setup only. Do not print or read secret values. Prefer a terminal/wrapper path with the provider environment loaded. When a call succeeds, preserve the exact first-line verdict and model/route label.
+
+### At-most-once patterns for external alerts/notifications
+
+For reviewer-approved changes that deduplicate an external side effect (Telegram/Farm Alert, webhook, upload receipt):
+
+- Define logical identity first (for example `day + shift + session + machine`), never raw retry/run ID.
+- Use a shared stable claim root across row runs and relaunches; ambiguous roots or missing identity fail closed.
+- Acquire an atomic pending marker before the external call; promote it only after explicit success (`is True` for a boolean producer).
+- Only explicit producer `False` is safely retryable. `None`, unknown values, exceptions, process death, and promotion/rename failure are delivery-uncertain: retain a forensic pending marker and do not auto-retry, because the external side effect may already have happened.
+- Test concurrent relaunches, `False`, `True`, `None`, exception, process death/promotion failure, uncertain markers, row/non-row roots, and session boundaries. A happy-path once-claim test is not proof of at-most-once behavior.
+- If the producer's real return contract is not verified, inspect its implementation and add an adapter test; truthiness is not a delivery contract.
+
+### Review-loop rework discipline
+
+When a reviewer finds a race or crash-window flaw, patch the state machine and add a regression test for that exact trigger before re-review. Keep unrelated pre-existing failures explicitly classified and do not broaden the patch to repair them. Final `APPROVED` must target the exact post-patch bytes/diff, followed by the focused suite and required live canary.
+
 ## Audit Loop qua 9router HTTP (không cần CLI wrapper)
 
 Khi cần planner/auditor từ Hermes mà model không phải deepseek-cha: ưu tiên canonical 9Router dispatch recipe/wrapper trong `references/9router-http-dispatch.md`; không tự suy ra endpoint từ một session cũ. Mọi request phải lưu prompt/body/raw response, model/effort và exact input hash.
