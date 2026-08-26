@@ -53,12 +53,26 @@ Write-Host "Syncing repository skills..." -ForegroundColor Yellow
 
 $BundleHermes = Join-Path $PSScriptRoot 'hermes-home'
 if (Test-Path -LiteralPath $BundleHermes -PathType Container) {
-    Write-Host "Copying Hermes configuration and persona..." -ForegroundColor Yellow
+    Write-Host "Copying Hermes configuration, persona, and cron bootstrap..." -ForegroundColor Yellow
     foreach ($FileName in @('config.yaml', 'SOUL.md')) {
         $Source = Join-Path $BundleHermes $FileName
         if (Test-Path -LiteralPath $Source -PathType Leaf) {
             Copy-Item -LiteralPath $Source -Destination $HermesHome -Force
         }
+    }
+
+    # Bootstrap Cron jobs if not present
+    $CronDstDir = Join-Path $HermesHome 'cron'
+    New-Item -ItemType Directory -Force -Path $CronDstDir | Out-Null
+    Copy-BootstrapFile (Join-Path $BundleHermes 'cron\jobs.json') (Join-Path $CronDstDir 'jobs.json')
+
+    # Sync Cron Scripts
+    $ScriptsSrcDir = Join-Path $BundleHermes 'scripts'
+    if (Test-Path -LiteralPath $ScriptsSrcDir -PathType Container) {
+        Write-Host "Syncing cron scripts..." -ForegroundColor Yellow
+        $ScriptsDstDir = Join-Path $HermesHome 'scripts'
+        New-Item -ItemType Directory -Force -Path $ScriptsDstDir | Out-Null
+        robocopy $ScriptsSrcDir $ScriptsDstDir *.py /xo /njh /njs /ndl /nc /ns | Out-Null
     }
 
     Write-Host "Copying missing Hermes bootstrap credentials..." -ForegroundColor Yellow
