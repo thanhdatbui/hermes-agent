@@ -64,7 +64,7 @@ The worker brief should include:
 - “before every command, enter the source repo, then explicitly enter the intended native target” when the environment has a path trap;
 - strict TDD RED → GREEN order;
 - no commit/push/deploy/live action unless separately authorized;
-- explicit allowlist and prohibition on touching coordinator dirty files;
+- explicit allowlist; preserve coordinator dirty hunks, and do not touch only hunks with proven overlap or active ownership;
 - requirement to return absolute paths, changed files, real RED/GREEN commands and results, and compatibility disposition.
 
 ## 5. Parent verification after completion
