@@ -34,9 +34,10 @@ Before `git add`/commit, inspect the diff for credentials, tokens, private promp
 
 ## Bundle contents
 
-- `hermes-home/`: bootstrap config, persona, `.env`, and Hermes auth. It does not contain a skill snapshot.
+- `hermes-home/`: bootstrap config, persona, `.env`, Hermes auth, Cron config (`cron/jobs.json`), and Cron scripts (`scripts/*.py`). It does not contain a skill snapshot.
 - `codex-home/`: bootstrap Codex CLI state/auth files available on the source workstation.
-- `setup-admin.ps1`: Windows bootstrap script.
+- `setup-admin.ps1`: Windows bootstrap script (tự động sync skills, config, cron, scripts).
+- `CRON_DEPLOYMENT_GUIDE.md`: hướng dẫn chi tiết về cơ chế cấu hình và đồng bộ Cron Jobs.
 - `sync-skills.ps1`: syncs the canonical repository skills to the managed Hermes home.
 - `sync-skills-to-repo.ps1`: exports local Hermes skills back into the repository, excluding runtime metadata.
 
