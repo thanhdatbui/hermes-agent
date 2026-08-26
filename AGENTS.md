@@ -41,3 +41,15 @@ Trước khi thực hiện bất kỳ thao tác write / code / test / live actio
 - **CẤM PAUSE CRON KHI CHẠY TAY / RECOVERY:** Mọi cron (nuôi acc, feed, reg đêm) đã có cơ chế tự lọc `device_lock` để skip các máy đang bận và chạy tiếp các máy rảnh còn lại. Tuyệt đối KHÔNG pause cron vì sẽ làm chết các watchdog giám sát an toàn và script tự động giải phóng lock quá hạn (TTL 2h).
 - **MỖI MÁY REG TỐI ĐA 1 LẦN/NGÀY:** Máy đã reg `SUCCESS` hôm nay tự động nhận cooldown tới ngày hôm sau, detector tự động skip không bao giờ lập batch lại. Lỗi/PENDING không cooldown.
 - **RECOVERY ĐÚNG DANH SÁCH LỖI:** Tuyệt đối không tự ý mở rộng phạm vi chạy lại toàn bộ batch pending khi được yêu cầu recovery.
+
+## Dirty-worktree scope policy (global)
+
+Existing dirty state is not a repository-wide veto. Preserve unrelated changes.
+A requested edit in the same file is allowed when its hunk is distinct from the
+existing dirty hunk and no active process owns that requested hunk. Before
+writing, compare the actual diff/hunk ranges and ownership. Block only on
+proven line/hunk overlap, unresolved active ownership, or inability to separate
+the edits safely. A matching filename, dirty path, or same repository alone is
+never evidence of conflict. Stage only the requested files/hunks; never revert or
+clobber the other change.
+

@@ -105,7 +105,7 @@ Khi thực hiện merge nhánh về main hoặc dọn nhánh/tree quan trọng:
 1. Coordinator lập kế hoạch tích hợp trước khi merge (không merge mù); không dùng worker thiếu quyền phù hợp làm planner/auditor/reviewer.
 2. Worker chỉ thực thi merge/resolve sau khi chứng minh ownership của session hiện tại, exact allowlist, trạng thái clean/committed và independent review `APPROVED` cho candidate trước tích hợp.
 3. Sau tích hợp, chạy audit/review và test lại trên exact final candidate; nếu SHA thay đổi thì lặp lại gate trước push.
-4. Chỉ merge/remove khi có đủ evidence ownership của session hiện tại, exact allowlist, trạng thái clean/committed và independent review `APPROVED`; chỉ yêu cầu absorbed/superseded sau tích hợp trước khi remove. Unknown, dirty, hoặc concurrent-owned phải được giữ nguyên và báo `BLOCKED`.
+4. Chỉ merge/remove khi có đủ evidence ownership của session hiện tại, exact allowlist, trạng thái clean/committed và independent review `APPROVED`; chỉ yêu cầu absorbed/superseded sau tích hợp trước khi remove. Unknown/dirty/concurrent-owned chỉ block khi không xác định được hunk ownership hoặc có overlap thực tế; dirty khác hunk vẫn được giữ nguyên và tiếp tục.
 
 ## COMMIT GATE (2026-08-10, user chốt)
 
@@ -132,7 +132,7 @@ Khi thực hiện merge nhánh về main hoặc dọn nhánh/tree quan trọng:
 
 Chỉ lệnh đóng phiên rõ ràng ("chốt phiên", "chốt phiên đi", "đóng phiên", "kết thúc phiên", "xong phiên") mới kích hoạt closeout. Câu hỏi tiến độ chung như "xong chưa" hoặc "đã xong chưa" chỉ được trả lời trạng thái, không tự kích hoạt rebase, push hoặc thay đổi remote.
 
-1. **ĐÓNG BĂNG VÀ TÍCH HỢP CÓ KIỂM SOÁT:** kiểm tra branch, upstream, merge-base, ownership, exact allowlist và conflict. Unknown, dirty hoặc concurrent-owned phải giữ nguyên và báo `BLOCKED_AT_WORKTREE_OWNERSHIP`.
+1. **ĐÓNG BĂNG VÀ TÍCH HỢP CÓ KIỂM SOÁT:** kiểm tra branch, upstream, merge-base, ownership, exact allowlist và conflict. Chỉ báo `BLOCKED_AT_WORKTREE_OWNERSHIP` khi ownership/hunk overlap thực tế chưa giải quyết được; dirty khác hunk không phải blocker.
 2. **REVIEW/TEST CANDIDATE CUỐI:** sau tích hợp, chốt exact final candidate; dùng đúng route trong mục routing (multi-repo/core dùng `plan-review-hard`). Review phải độc lập, dòng verdict phải parse được là `APPROVED`, và test/lint/compile phải chạy trên chính candidate. SHA đổi thì lặp lại gate này.
 3. **COMMIT ĐÚNG SCOPE:** stage exact allowlist, không dùng `git add -A`/`git add .`, không đưa backup, runtime, secret, workbook hoặc untracked artifact vào commit; xác minh `git show --name-status`.
 4. **PULL-BEFORE-PUSH:** sau commit, xác minh upstream thực tế, chạy `git fetch <remote>` rồi `git pull --rebase <remote> <remote-branch>`. Nếu rebase đổi SHA/tree thì lặp lại review và test.
@@ -190,3 +190,15 @@ Khi user ra lệnh `chốt phiên`, `đóng phiên`, `kết thúc phiên`, hoặ
 - **CẤM PAUSE CRON KHI CHẠY TAY / RECOVERY:** Mọi cron (nuôi acc, feed, reg đêm) đã có cơ chế tự lọc `device_lock` để skip các máy đang bận và chạy tiếp các máy rảnh còn lại. Tuyệt đối KHÔNG pause cron vì sẽ làm chết các watchdog giám sát an toàn và script tự động giải phóng lock quá hạn (TTL 2h).
 - **MỖI MÁY REG TỐI ĐA 1 LẦN/NGÀY:** Máy đã reg `SUCCESS` hôm nay tự động nhận cooldown tới ngày hôm sau, detector tự động skip không bao giờ lập batch lại. Lỗi/PENDING không cooldown.
 - **RECOVERY ĐÚNG DANH SÁCH LỖI:** Tuyệt đối không tự ý mở rộng phạm vi chạy lại toàn bộ batch pending khi được yêu cầu recovery.
+
+## Dirty-worktree scope policy (global)
+
+Existing dirty state is not a repository-wide veto. Preserve unrelated changes.
+A requested edit in the same file is allowed when its hunk is distinct from the
+existing dirty hunk and no active process owns that requested hunk. Before
+writing, compare the actual diff/hunk ranges and ownership. Block only on
+proven line/hunk overlap, unresolved active ownership, or inability to separate
+the edits safely. A matching filename, dirty path, or same repository alone is
+never evidence of conflict. Stage only the requested files/hunks; never revert or
+clobber the other change.
+
