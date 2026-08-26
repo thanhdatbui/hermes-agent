@@ -84,8 +84,8 @@ Khi dispatch audit plan: context phải kèm acceptance criteria nguồn (invari
 
 ### Standing-goal / “tự chạy đến xong” contract (user correction)
 
-Khi user nói “tự chạy tự audit cho đến khi xong”, đó là **standing goal**, không phải yêu cầu cho một vòng thử. Coordinator phải giữ vòng kín `audit → worker → independent verify → re-audit` cho tới khi có terminal proof:
-
+Khi user nói “tự chạy tự audit cho đến khi xong” hoặc khi đang thực hiện closeout/chốt phiên:
+- **Reviewer REJECT/MINOR_FIXES = PHẢI TỰ ĐỘNG SỬA TIẾP ĐẾN APPROVED (User nhắc nhở 2026-08-26: "Ủa reviewer trả reject mà m k chịu sửa đến khi reviewer đồng ý ac"):** Khi gặp `REJECT`, coordinator TUYỆT ĐỐI KHÔNG dừng lại báo cáo dở dang hoặc buông xuôi cho user. Phải lập tức phân tích finding, patch code/test tương ứng, verify độc lập và gửi re-review ngay trong cùng phiên cho đến khi đạt `APPROVED` thật sự.
 - Chỉ hai kết quả được báo là hoàn tất: `APPROVED` kèm test/diff/proof độc lập, hoặc `FINAL_BLOCKED` kèm blocker thật, locator, số lần thử và hiện vật. `process exit 0`, worker tự báo xong, test pass, context compaction, hoặc hết một lượt tool **không phải terminal state**.
 - Không gửi recap tiến độ giữa vòng, không hỏi lại user về các finding có thể đóng bằng code/fixture/evidence. Nếu cần nói, chỉ báo milestone/blocker thật; tiếp tục gọi tool ngay trong cùng lượt.
 - Trước mỗi lượt coordinator, ưu tiên theo thứ tự: (1) đọc verdict/findings hiện có, (2) reconcile process/artifact/worktree, (3) dispatch đúng role, (4) verify độc lập. Không tiêu ngân sách tool bằng cách dump lặp lại log/diff khổng lồ hoặc poll mù.
