@@ -229,3 +229,16 @@ If any answer is "not sure," that's the part to go verify.
 
 ## CLOSE-SESSION HARD TRIGGER
 Các câu “chốt phiên”, “chốt phiên đi”, “đóng phiên”, “kết thúc phiên”, “xong phiên” là **lệnh thực thi closeout**. Các câu hỏi tiến độ chung như “xong chưa” hoặc “đã xong chưa” chỉ được trả lời trạng thái, không tự kích hoạt closeout. Bắt buộc load `session-close-protocol` và chạy: review độc lập `APPROVED` → kiểm tra branch/worktree/conflict → dọn đúng file tạm do session tạo → commit đúng scope → fetch/pull --rebase → push + xác minh remote SHA. Closeout không được tự động merge hoặc xoá mọi branch/worktree chỉ vì phát hiện trong `git worktree list`; chỉ merge/remove khi có evidence ownership session hiện tại, exact allowlist, clean/committed state, independent review `APPROVED`, và absorbed/superseded. Unknown, dirty, hoặc concurrent-owned phải preserve và báo `BLOCKED`. Thiếu bất kỳ gate nào chỉ được báo `BLOCKED_AT_<STEP>`; cấm nói “đã chốt/xong” bằng miệng.
+## CANARY_CLASSIFICATION_RULE_2026_08_27
+
+This rule overrides older generic wording that makes live canary mandatory for every code or farm fix.
+
+1. Classify the session from the opening user request and evidence, not from the repository name alone.
+2. `LIVE_CANARY_REQUIRED` applies only when at least one condition is true:
+   - the task explicitly names a machine, row, serial, or device target;
+   - the user explicitly requests real-device validation; or
+   - the opening session includes user-provided incident evidence (screenshot, alert, or log) that identifies a machine/target and a concrete runtime failure, and the user is asking to fix or debug that incident. Example: `[MÁY 4] DỪNG PHIÊN` + account + `profile verification`/`camera-recovery-failed` identifies machine 4 as the incident target.
+3. When incident evidence qualifies, resolve machine → row → serial through the canonical mapping before running anything live. If mapping cannot be proven, report `TARGET_RESOLUTION_UNPROVEN`; never guess another machine, row, or serial.
+4. `CANARY_NOT_APPLICABLE` applies to code-only, refactor, general-flow, unit-test, mock-test, or static-analysis work when the current task has no explicit live target, no real-device request, and no qualifying opening-session incident evidence. Proceed with focused semantic verification instead of a device canary.
+5. A generic screenshot or log containing TikTok, farm, or device UI without an identified incident target and concrete runtime failure is not enough to trigger a canary.
+6. Never infer a live target from a repository name, config filename, workbook, historical artifact, nearby machine file, or an old canary result. If a canary is required, run only the exact resolved target; do not expand to a batch or another machine without explicit authorization.
