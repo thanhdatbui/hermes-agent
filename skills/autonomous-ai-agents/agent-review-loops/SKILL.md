@@ -112,9 +112,21 @@ Khi user nói “tự chạy tự audit cho đến khi xong” hoặc khi đang 
 - **Verdict tự mâu thuẫn cũng không phải approval:** nếu response thừa nhận code vi phạm một requirement blocking cụ thể (ví dụ chỉ ra chính xác adversarial state vẫn fail-open), nhưng sau đó tự hạ finding thành “không thực tế/pre-existing” trái với prompt rồi kết thúc `APPROVED`, phân loại `AUDIT_CONTRADICTORY/UNPARSEABLE` — không chọn token APPROVED cuối file. Coordinator phải reproduce finding trên bytes thật; finding xác nhận được thì viết RED đúng branch, patch, chạy full gate và audit lại **exact bytes mới**. Mọi byte change sau audit làm approval cũ stale. Prompt re-audit phải ngắn, bắt verdict ở dòng đầu và cấm qualified approval/preamble.
 - Self-report của worker/HANDOFF chỉ là hint. Coordinator bắt buộc chạy import/compile, targeted tests, `git diff --check`, allowlist/status và ít nhất một nhóm **adversarial probes** cho invariant fail-closed trước khi coi là đạt.
 
-### Worker báo "ad-hoc verification PASS" ≠ suite green — coordinator tự chạy lại (hit 7+ lần 2026-08-10/-11: Phase 1, fix residual, Phase 3 continuation, Phase 5, Phase 6, Phase 7 fleet scheduler)
+### Worker báo "ad-hoc verification PASS" ≠ suite green — coordinator tự chạy lại (hit 7+ lần 2026-08-10/-11, tái diễn 2026-08-28)
 
-Worker (kể cả model mạnh — ĐẶC BIỆT worker luna subagent, gần như MẶC ĐỊNH) thay vì chạy canonical suite tự viết `tempfile` script verify vài hàm rồi báo **"Ad-hoc verification: PASS — không phải suite green"**; có worker báo **"Không chỉnh sửa thêm code hoặc commit mới"** trong khi thực tế ĐÃ sửa + commit (hit thật: worker fix-residual báo "không commit" nhưng `git log` có commit `d039f53` đủ 3 file; worker Phase 5/6/7 báo ad-hoc probe pass trong khi commit đã nằm ở HEAD và suite thật 162/166/173 xanh). Bài học: ad-hoc probe của worker thường vẫn đúng behavior, NHƯNG **không bao giờ được tính là suite green** — đây là hành vi mặc định, đừng ngạc nhiên, đừng tin; muốn biết trạng thái thật thì phải tự chạy. Nếu báo cáo worker không kèm con số full suite → coi như chưa verify, chạy lại ngay (ĐỪNG hỏi user hoặc yêu cầu lại worker cho lần thứ n — tự chạy 3 lệnh dưới đây rẻ hơn 1 vòng delegation).
+Worker (đặc biệt worker Luna subagent) có xu hướng viết script ad-hoc trong `tempfile`, chạy pass vài assertion rồi tự kết luận "Ad-hoc verification: PASS" hoặc báo hoàn tất nhưng chưa giải quyết triệt để 100% blocker từ review gate, hoặc hiểu nhầm file dirty ngoài scope thành blocker.
+
+**Quy tắc khắt khe điều phối Subagents / Workers (User chốt 2026-08-28):**
+1. **Phân biệt Dirty File ngoài scope vs Same-file Conflict:**
+   - **Dirty file khác path, ngoài allowlist:** HOÀN TOÀN KHÔNG PHẢI BLOCKER. Giữ nguyên, không revert, stage theo đúng path được giao và tiếp tục thực hiện task. Cấm dừng task chỉ vì `git status` có file lạ ngoài scope.
+   - **Dirty hunk khác nhau trong cùng file:** Tách hunk rõ ràng nếu có thể; nếu đang bị worker khác ghi đè live hoặc index/HEAD thay đổi liên tục, BẮT BUỘC cô lập 2 file candidate sang worktree tạm độc lập (`tempfile.mkdtemp()`) để sửa và test, không để nhiều worker cùng sửa 1 file trong shared worktree.
+2. **Reviewer Gate là tối thượng (CẤM tin test pass hay ad-hoc green):**
+   - Chỉ verdict `APPROVED` từ 9Router combo `plan-review` / `plan-review-hard` trên exact staged bytes mới được tính là duyệt.
+   - Chạy test xanh chỉ là điều kiện cần; khi reviewer trả `REJECT`, coordinator phải tiếp tục bám sát từng finding (locator, race condition, atomic fence, lock contention) để sửa tiếp đến khi `APPROVED`.
+3. **Publication Fence & Watchdog Contention Invariants:**
+   - Khi thiết kế watchdog vs child worker: Tách biệt `state_lock` (trạng thái worker/lease) và `publication_lock` (quyền ghi terminal summary/manifest). Không để watchdog bị block bởi worker đang kẹt disk/logger I/O.
+   - Mọi thao tác ghi summary/manifest phải fail-closed và atomic qua `.tmp` + `os.replace` để đảm bảo single-winner fence.
+   - Strict Schema/Cohort Validation: Siết chặt kiểu dữ liệu (`type(x) is int`, `isinstance(s, str)`), từ chối ép kiểu lỏng lẻo (`str(val) == str(expected)` hoặc boolean coercion `[True] == [1]`).
 
 **Khi ANY worker báo dạng này, coordinator chạy NGAY 3 lệnh độc lập (không tin lời báo):**
 1. `git log --oneline -3` + `git show --stat HEAD` — xác nhận commit THẬT hay chưa (đừng tin "chưa commit"/"không thay đổi file");
