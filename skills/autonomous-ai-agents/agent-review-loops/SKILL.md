@@ -34,7 +34,9 @@ Dùng khi user yêu cầu điều phối coding agent, review chéo, hoặc làm
 0b. **Phân loại task**: SIMPLE (1-2 file, mechanical, không đụng shared core/sensitive) hay COMPLEX (core/shared/sensitive/multi-machine/architecture).
 1. **Chọn owner đúng policy**: COMPLEX phải có task spec rõ ràng (`Goal`, `Scope`, `Acceptance Criteria`, `Constraints`) rồi dispatch worker implement (background, `pty=true`, `notify_on_complete=true`). Khi coordinator-write guard đang active, không tự write chỉ vì task được gọi là SIMPLE; tuân thủ skill dispatcher và chuyển mọi write cho một worker độc quyền.
 2. **Tách vai trò**: Claude/OpenCode/Sol/Terra chỉ audit/read-only; worker không tự duyệt thay đổi của chính mình. Reviewer phải xem code/spec thực tế, không chỉ tin self-report hoặc exit code.
-3. Nếu reviewer trả `REJECT` hoặc `MINOR_FIXES`, chạy **spec/implementation ratchet**: mỗi finding phải có locator, nhánh/input/state, hậu quả cụ thể và evidence; sửa đúng finding bằng một điều khoản/API/schema/state rõ ràng kèm acceptance test; sau đó tạo evidence mới và re-review. Không dispatch implementation khi gate của plan/spec còn `REJECT`/`MINOR_FIXES`.
+3. Nếu reviewer trả `REJECT` hoặc `MINOR_FIXES`, chạy **spec/implementation ratchet** chỉ khi đây là candidate của task hiện tại và user vẫn yêu cầu sửa candidate đó: mỗi finding phải có locator, nhánh/input/state, hậu quả cụ thể và evidence; sửa đúng finding bằng một điều khoản/API/schema/state rõ ràng kèm acceptance test; sau đó tạo evidence mới và re-review. Không dispatch implementation khi gate của plan/spec còn `REJECT`/`MINOR_FIXES`.
+
+**Closeout scope fence:** `chốt phiên` is not a standing authorization to turn every visible rejection into a new engineering loop. Before dispatching remediation, verify the finding is inside the original deliverable and frozen allowlist. Historical handoffs, stale TODOs, unrelated dirty files, and candidates introduced by another workstream are report-only. If the original deliverable is already committed/remote-verified, stop after closeout evidence; if scope is ambiguous, use `BLOCKED_AT_SCOPE_RECONCILIATION` and do not patch or delegate.
    - Đối chiếu finding với code thật trước khi sửa: audit có thể hiểu sai representation nội bộ (ví dụ bounds đã được normalize thành `(x, y, width, height)`) hoặc đề xuất contract mới nhưng chưa kiểm tra caller. Finding false-positive/speculative phải đóng bằng evidence; finding thật phải có regression test ở đúng branch.
    - Với orchestration/lock: giữ invariant terminal-state độc lập với việc test xanh — chỉ release device khi có success proof; `MANUAL_REVIEW`, `CONFIG_ERROR`, `FOLLOW_BLOCKED`, release không verify phải giữ lease theo handoff/audit, không force-unlock. Khi audit đề xuất đổi outcome string, search toàn bộ caller trước và test cả caller escalation để tránh loop hoặc silent skip.
    - Sau mỗi vòng audit material, coordinator tự chạy canonical suite trên working tree/commit thật; worker/ad-hoc report, exit 0, hoặc số test tự kê không thay thế được full-suite evidence. Checklist cụ thể nằm ở `references/review-loop-verification.md`.
@@ -81,6 +83,8 @@ Cho job lớn (scheduler/refactor multi-phase), user yêu cầu chuỗi CỨNG s
 - **Test skeleton `...` trong plan** = worker sẽ tự bịa behavior — auditor phải bắt và yêu cầu điền body đầy đủ (arrange/act/assert), không bao giờ APPROVED plan còn placeholder.
 
 Khi dispatch audit plan: context phải kèm acceptance criteria nguồn (invariant file path hoặc nội dung) + yêu cầu "chạy baseline thật + tự tính toán lại mọi công thức trong plan trước khi verdict". Ví dụ end-to-end 8 phase hoàn chỉnh (runtime thật từng bước, chuỗi commit, mẫu loop đóng gate Phase 3, hit counts): `references/fleet-account-block-scheduler-20260811.md`.
+
+See `references/plan-review-routing.md` for the exact 9Router model, transport, byte-binding, and silent-downgrade checklist.
 
 ### Standing-goal / “tự chạy đến xong” contract (user correction)
 
