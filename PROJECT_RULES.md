@@ -242,5 +242,6 @@ Live Canary BẮT BUỘC phải kích hoạt bằng **Runner chính thức của
 3. Chỉ khi runner chạy hoàn tất từ A-Z đạt `status: success` mới được coi là Pass Gate 0 và chuyển sang Model Review / Chốt phiên.
 
 
-## Quy tắc UIAutomator, Popup Detection & Script Handling (MANDATORY)
-- **BẮT BUỘC ĐỌC VÀ TUÂN THỦ docs/uiautomator.md KHI HANDLE SCRIPT/UI:** Mọi thao tác viết, sửa, kiểm thử script tương tác UI, XML parsing, và Popup Detectors BẮT BUỘC phải đọc và đối chiếu các case fix sẵn và anti-pattern trong `docs/uiautomator.md` (chống False-Positive, bắt buộc Negative Exclusions loại trừ trang Profile/FYP, cấm substring thô, kiểm thử với XML thực tế của farm).
+## 📘 QUY TẮC BẮT BUỘC ĐỐI CHIẾU & CẬP NHẬT DOCS/UIAUTOMATOR.MD (ALL FARM AUTOMATION)
+1. **TRƯỚC KHI HANDLE SCRIPT / SỬA CODE FARM:** BẮT BUỘC đọc và đối chiếu toàn bộ các Case Fix thực tế & Anti-Pattern trong `docs/uiautomator.md` (bao gồm: UI/Popup, Cron/Reaper/Watchdog, Sync/Workbook/Data integrity, Device Lock/ADB). Tuyệt đối không tái phạm các lỗi đã được xử lý trong file này.
+2. **KHI CHỐT PHIÊN (NẾU TASK LIÊN QUAN TỚI FARM AUTOMATION):** Trước khi Model Review và Commit, BẮT BUỘC phải cập nhật Case Fix thực tế và Anti-Pattern tương ứng vừa xử lý vào file `docs/uiautomator.md` và đồng bộ sang các repo liên quan.
