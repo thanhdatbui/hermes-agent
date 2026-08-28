@@ -93,9 +93,9 @@ Live Canary BẮT BUỘC phải kích hoạt bằng **Runner chính thức của
 3. Chỉ khi runner chạy hoàn tất từ A-Z đạt `status: success` mới được coi là Pass Gate 0 và chuyển sang Model Review / Chốt phiên.
 
 
-## 📘 QUY TẮC BẮT BUỘC ĐỐI CHIẾU & CẬP NHẬT DOCS/UIAUTOMATOR.MD (ALL FARM AUTOMATION)
-1. **TRƯỚC KHI HANDLE SCRIPT / SỬA CODE FARM:** BẮT BUỘC đọc và đối chiếu toàn bộ các Case Fix thực tế & Anti-Pattern trong `docs/uiautomator.md` (bao gồm: UI/Popup, Cron/Reaper/Watchdog, Sync/Workbook/Data integrity, Device Lock/ADB). Tuyệt đối không tái phạm các lỗi đã được xử lý trong file này.
-2. **KHI CHỐT PHIÊN (NẾU TASK LIÊN QUAN TỚI FARM AUTOMATION):** Trước khi Model Review và Commit, BẮT BUỘC phải cập nhật Case Fix thực tế và Anti-Pattern tương ứng vừa xử lý vào file `docs/uiautomator.md` và đồng bộ sang các repo liên quan.
-## 📘 QUY TẮC BẮT BUỘC ĐỐI CHIẾU & CẬP NHẬT DOCS/UIAUTOMATOR.MD (ALL FARM AUTOMATION)
-1. **TRƯỚC KHI HANDLE SCRIPT / SỬA CODE FARM:** BẮT BUỘC đọc và đối chiếu toàn bộ các Case Fix thực tế & Anti-Pattern trong `docs/uiautomator.md` (bao gồm: UI/Popup, Cron/Reaper/Watchdog, Sync/Workbook/Data integrity, Device Lock/ADB). Tuyệt đối không tái phạm các lỗi đã được xử lý trong file này.
-2. **KHI CHỐT PHIÊN (NẾU TASK LIÊN QUAN TỚI FARM AUTOMATION):** Trước khi Model Review và Commit, BẮT BUỘC phải cập nhật Case Fix thực tế và Anti-Pattern tương ứng vừa xử lý vào file `docs/uiautomator.md` và đồng bộ sang các repo liên quan.
+## 📘 QUY TẮC BẮT BUỘC ĐỐI CHIẾU & CẬP NHẬT DOCS/FARM-AUTOMATION-CASES.MD (ALL FARM REPOS)
+1. **TRƯỚC KHI HANDLE SCRIPT / SỬA CODE FARM:** BẮT BUỘC đọc và đối chiếu toàn bộ các Case Fix thực tế & Anti-Pattern trong `docs/farm-automation-cases.md` (alias `docs/uiautomator.md`), bao gồm: UI/Popup, Cron/Reaper/Watchdog, Sync/Workbook/Data integrity, Device Lock/ADB. Tuyệt đối không tái phạm các lỗi đã được xử lý trong file này.
+2. **KHI CHỐT PHIÊN (NẾU TASK LIÊN QUAN TỚI FARM AUTOMATION):** Trước khi Model Review và Commit, BẮT BUỘC phải cập nhật Case Fix thực tế và Anti-Pattern tương ứng vừa xử lý vào file `docs/farm-automation-cases.md` (đồng thời đồng bộ `docs/uiautomator.md`) sang các repo liên quan.
+## 📘 QUY TẮC BẮT BUỘC ĐỐI CHIẾU & CẬP NHẬT DOCS/FARM-AUTOMATION-CASES.MD (ALL FARM REPOS)
+1. **TRƯỚC KHI HANDLE SCRIPT / SỬA CODE FARM:** BẮT BUỘC đọc và đối chiếu toàn bộ các Case Fix thực tế & Anti-Pattern trong `docs/farm-automation-cases.md` (alias `docs/uiautomator.md`), bao gồm: UI/Popup, Cron/Reaper/Watchdog, Sync/Workbook/Data integrity, Device Lock/ADB. Tuyệt đối không tái phạm các lỗi đã được xử lý trong file này.
+2. **KHI CHỐT PHIÊN (NẾU TASK LIÊN QUAN TỚI FARM AUTOMATION):** Trước khi Model Review và Commit, BẮT BUỘC phải cập nhật Case Fix thực tế và Anti-Pattern tương ứng vừa xử lý vào file `docs/farm-automation-cases.md` (đồng thời đồng bộ `docs/uiautomator.md`) sang các repo liên quan.
