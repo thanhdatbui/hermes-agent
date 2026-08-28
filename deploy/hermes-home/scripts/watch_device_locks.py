@@ -126,6 +126,18 @@ def scan_active_locks(lock_root: Path = DEFAULT_LOCK_ROOT) -> list[dict]:
 
 
 def run_watchdog():
+    # 0. Tự động dọn dẹp các lock đã hết hạn TTL hoặc dead-owner trước khi quét báo cáo
+    reap_script = Path("D:/Taadaa/tiktok-luot nuoi acc/scripts/reap-dead-owner-locks.py")
+    if reap_script.exists():
+        try:
+            py_bin = r"D:\Taadaa\python-envs\automation\Scripts\python.exe"
+            if not Path(py_bin).exists():
+                py_bin = sys.executable
+            import subprocess
+            subprocess.run([py_bin, "-B", str(reap_script)], timeout=60, capture_output=True, check=False)
+        except Exception as e:
+            print(f"[watchdog] Warning: failed to run reap script preflight: {e}")
+
     locks = scan_active_locks()
     if not locks:
         print("[watchdog] Healthy: No active device locks found.")
@@ -143,7 +155,7 @@ def run_watchdog():
 
     for l in locks:
         m_str = f"Máy {int(l['machine']):02d}" if isinstance(l['machine'], int) or str(l['machine']).isdigit() else f"Máy {l['machine']}"
-        warning = " ⚠️ (QUÁ HẠN > 30P)" if l["duration_minutes"] >= ALERT_THRESHOLD_MINUTES else ""
+        warning = " ⚠️ (QUÁ HẠN > 2H)" if l["duration_minutes"] >= ALERT_THRESHOLD_MINUTES else ""
         lines.append(f"• <b>[{m_str}]</b>: {l['project']} (PID {l['pid']})")
         lines.append(f"  └ Trạng thái: <code>{l['status']}</code> | Đã lock: <b>{l['duration_minutes']} phút</b> (từ {l['mtime']}){warning}")
 
