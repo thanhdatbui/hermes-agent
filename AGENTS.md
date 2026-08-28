@@ -63,6 +63,7 @@ Khi hỏi "phiên nào", "đã hoàn tất chưa", hoặc "phiên tiếp theo", 
 4. Phân biệt rõ cron tick, slot/khung giờ và phiên farm. Khi nói "phiên tiếp theo", báo session_index/ca và khung giờ farm thật; không trả nhầm giờ tick scheduler.
 5. Nếu tổng report lệch nhưng dòng hoàn tất và các nhóm success/fail cộng khớp, kết luận phiên đã hoàn tất và báo lỗi thống kê riêng; không hạ thành "chưa chạy".
 6. Nếu chưa có output cron/watchdog mới, phải nói "chưa xác minh" và nêu nguồn, timestamp cùng giới hạn bằng chứng; không kết luận từ manifest planned hoặc next_run_at.
+
 ## CANARY_CLASSIFICATION_RULE_2026_08_27
 
 This rule overrides older generic wording that makes live canary mandatory for every code or farm fix.
@@ -76,3 +77,25 @@ This rule overrides older generic wording that makes live canary mandatory for e
 4. `CANARY_NOT_APPLICABLE` applies to code-only, refactor, general-flow, unit-test, mock-test, or static-analysis work when the current task has no explicit live target, no real-device request, and no qualifying opening-session incident evidence. Proceed with focused semantic verification instead of a device canary.
 5. A generic screenshot or log containing TikTok, farm, or device UI without an identified incident target and concrete runtime failure is not enough to trigger a canary.
 6. Never infer a live target from a repository name, config filename, workbook, historical artifact, nearby machine file, or an old canary result. If a canary is required, run only the exact resolved target; do not expand to a batch or another machine without explicit authorization.
+
+
+## 🛑 STRICT INCIDENT EVIDENCE LIVE CANARY RULE (User chốt 28/08/2026 — All Repos)
+Khi user gửi ảnh/screenshot màn hình lỗi, báo máy/UI bị kẹt, hoặc gửi incident alert:
+1. BẮT BUỘC nhận diện máy/serial hiện trường (hoặc tra cứu từ workbook Tik1/Tik2/taikhoan_run_safe).
+2. Khi fix xong (dù fix ở consumer repo hay automation-core): BẮT BUỘC CHẠY LIVE CANARY trên đúng máy/hiện trường đó (hoặc verify trực tiếp qua ATX / screencap / dump UI).
+3. TUYỆT ĐỐI KHÔNG ĐƯỢC tự ý gán `CANARY_NOT_APPLICABLE` và chốt phiên khi đầu phiên có ảnh hiện trường lỗi thực tế mà chưa kiểm chứng đóng popup / clear lỗi trên máy thật.
+
+
+## 🎯 QUY CHUẨN LIVE CANARY THEO TỪNG REPO / SCRIPT (User chốt 28/08/2026)
+Live Canary BẮT BUỘC phải kích hoạt bằng **Runner chính thức của repo**, TUYỆT ĐỐI CẤM dùng ad-hoc script/tap tay thay thế:
+1. **Với `tiktok-luot nuoi acc` (Feed):** Chạy runner với `--max-swipes 2` (hoặc `--recovery-test-swipes 2`) + `--cleanup-on-stop` → Vượt qua popup → Thực hiện đủ 2 swipes → Tự động dọn dẹp về Home → Giải phóng lock.
+2. **Với các script nghiệp vụ khác (`Tiktok_Reg`, `tiktok-follow`, `Tiktok-video`, `Hotmail`, `tiktok-add-bao-mat-f2a`, `register gmail`...):** Chạy đúng runner của repo trên máy target → Vượt qua đúng điểm nghẽn/lỗi → Chạy nốt hoàn thành trọn vẹn luồng công việc của script (Task Completion) → Tự động cleanup và giải phóng lock.
+3. Chỉ khi runner chạy hoàn tất từ A-Z đạt `status: success` mới được coi là Pass Gate 0 và chuyển sang Model Review / Chốt phiên.
+
+
+## Quy tắc UIAutomator & Popup Detection (MANDATORY)
+- **BẮT BUỘC ĐỌC VÀ TUÂN THỦ  KHI HANDLE SCRIPT/UI:** Mọi thao tác viết, sửa, kiểm thử script tương tác UI, XML parsing, và Popup Detectors BẮT BUỘC phải đọc và đối chiếu các case fix sẵn và anti-pattern trong  (chống False-Positive, bắt buộc Negative Exclusions loại trừ trang Profile/FYP, cấm substring thô, kiểm thử với XML thực tế của farm).
+
+
+## Quy tắc UIAutomator, Popup Detection & Script Handling (MANDATORY)
+4. **BẮT BUỘC ĐỌC VÀ TUÂN THỦ docs/uiautomator.md KHI HANDLE SCRIPT/UI:** Mọi thao tác viết, sửa, kiểm thử script tương tác UI, XML parsing, và Popup Detectors BẮT BUỘC phải đọc và đối chiếu các case fix sẵn và anti-pattern trong `docs/uiautomator.md` (chống False-Positive, bắt buộc Negative Exclusions loại trừ trang Profile/FYP, cấm substring thô, kiểm thử với XML thực tế của farm).
