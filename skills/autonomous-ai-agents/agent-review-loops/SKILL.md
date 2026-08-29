@@ -14,6 +14,29 @@ Dùng khi user yêu cầu điều phối coding agent, review chéo, hoặc làm
 
 ## Quy trình bắt buộc
 
+### Review-gated closeout is a hard stop
+
+When the user asks to fix review findings, finish the implementation, or close a session, treat `REJECT` as an active work item—not as a reportable result. Continue the same loop without asking the user to restate the request:
+
+1. Record the exact reviewer finding and affected path/control-flow seam.
+2. Add or update a focused regression test first and run it RED when the behavior is not yet covered.
+3. Apply the smallest in-scope fix, then run focused tests, typecheck/lint, and `git diff --check`.
+4. Re-review the exact final candidate bytes through the independent reviewer.
+5. Repeat for every concrete `REJECT` finding.
+6. Only after `VERDICT: APPROVED` may the agent commit/push and report completion.
+
+Never report “done”, push, or hand control back to the user while the latest independent review is `REJECT`. A green local test run is not review approval. If a reviewer finding is contradicted by the exact live source, do not invent a code change: re-read and verify the bytes, document the contradiction, and request a fresh review.
+
+For lease/ownership bugs, the regression matrix must include: early return before downstream ownership, exception before ownership, claimed lease finalization, release-before-claim, repeated claim, retry with a fresh lease, and stream/non-stream completion. For priority routing, verify every retry uses atomic non-queue admission and non-priority strategies retain their prior rotation/fallback behavior.
+
+### User-facing closeout format
+
+Keep interim review-loop messages short and evidence-based: current verdict/finding, next concrete action, and whether push is blocked. Final reports should use `Mục đích → Kết quả → Blocker`, with real commands, verdicts, commit/remote identifiers, and test counts; omit speculative explanations and progress narration.
+
+### Scope and candidate binding
+
+Every review request must include exact base, HEAD/tree SHA, changed-path allowlist, and candidate diff. After any commit or formatter hook, re-run verification and rebind the review payload to the new SHA. Before push, verify local SHA equals the fetched remote SHA. Treat unrelated untracked artifacts as out of scope; never stage or delete them as cleanup.
+
 0. **Quy trình triển khai code mới (Plan-Audit-Worker-Review - User chốt 20/08):**
    Khi user đưa ra bất kỳ yêu cầu triển khai tính năng / code mới nào (khác với debug sự cố tức thời), dù chỉ nhắn vài chữ ngắn gọn (ví dụ: "làm đi", "triển khai X", "thêm tính năng Y"), Agent BẮT BUỘC tự hiểu và kích hoạt trọn vẹn chuỗi 6 bước khép kín:
    - **Bước 1 (Lập Plan):** Viết plan chi tiết ra file `.hermes/plans/YYYY-MM-DD_<name>.md`.
