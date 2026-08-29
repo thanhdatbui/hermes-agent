@@ -229,6 +229,7 @@ If any answer is "not sure," that's the part to go verify.
 
 ## CLOSE-SESSION HARD TRIGGER
 Các câu “chốt phiên”, “chốt phiên đi”, “đóng phiên”, “kết thúc phiên”, “xong phiên” là **lệnh thực thi closeout**. Các câu hỏi tiến độ chung như “xong chưa” hoặc “đã xong chưa” chỉ được trả lời trạng thái, không tự kích hoạt closeout. Bắt buộc load `session-close-protocol` và chạy: review độc lập `APPROVED` → kiểm tra branch/worktree/conflict → dọn đúng file tạm do session tạo → commit đúng scope → fetch/pull --rebase → push + xác minh remote SHA. Closeout không được tự động merge hoặc xoá mọi branch/worktree chỉ vì phát hiện trong `git worktree list`; chỉ merge/remove khi có evidence ownership session hiện tại, exact allowlist, clean/committed state, independent review `APPROVED`, và absorbed/superseded. Unknown, dirty, hoặc concurrent-owned phải preserve và báo `BLOCKED`. Thiếu bất kỳ gate nào chỉ được báo `BLOCKED_AT_<STEP>`; cấm nói “đã chốt/xong” bằng miệng.
+
 ## CANARY_CLASSIFICATION_RULE_2026_08_27
 
 This rule overrides older generic wording that makes live canary mandatory for every code or farm fix.

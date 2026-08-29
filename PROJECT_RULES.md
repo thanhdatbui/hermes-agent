@@ -245,3 +245,15 @@ Live Canary BẮT BUỘC phải kích hoạt bằng **Runner chính thức của
 ## 📘 QUY TẮC BẮT BUỘC ĐỐI CHIẾU & CẬP NHẬT DOCS/FARM-AUTOMATION-CASES.MD (ALL FARM REPOS)
 1. **TRƯỚC KHI HANDLE SCRIPT / SỬA CODE FARM:** BẮT BUỘC đọc và đối chiếu toàn bộ các Case Fix thực tế & Anti-Pattern trong `docs/farm-automation-cases.md` (alias `docs/uiautomator.md`), bao gồm: UI/Popup, Cron/Reaper/Watchdog, Sync/Workbook/Data integrity, Device Lock/ADB. Tuyệt đối không tái phạm các lỗi đã được xử lý trong file này.
 2. **KHI CHỐT PHIÊN (NẾU TASK LIÊN QUAN TỚI FARM AUTOMATION):** Trước khi Model Review và Commit, BẮT BUỘC phải cập nhật Case Fix thực tế và Anti-Pattern tương ứng vừa xử lý vào file `docs/farm-automation-cases.md` (đồng thời đồng bộ `docs/uiautomator.md`) sang các repo liên quan.
+
+---
+
+## QUY TẮC BẮT BUỘC: FIX BÁO LỖI MÁY = SỬA SCRIPT TOÀN CỤC (CẤM FIX TAY)
+1. **Hiện trường máy là Read-Only Evidence:** Khi user báo lỗi trên Máy N (kèm ảnh chụp màn hình, log Telegram, hoặc alert), trạng thái và XML trên thiết bị CHỈ ĐƯỢC DÙNG ĐỂ ĐIỀU TRA ROOT CAUSE.
+2. **Nhiệm vụ Fix BẮT BUỘC là Patch mã nguồn script:**
+   - Mục tiêu của 'Fix' là sửa mã nguồn (script Python / flow / core / matcher / parser) trong repo tương ứng để giải quyết triệt để lỗi cho toàn bộ 160 máy trên Farm.
+   - BẮT BUỘC chạy unit test / regression test xác nhận logic mới hoạt động chính xác.
+   - BẮT BUỘC cập nhật Case Fix và Anti-Pattern vào `docs/farm-automation-cases.md` (Gate 0.5) trước khi hoàn tất.
+3. **CẤM Fix Ad-hoc / Bấm tay:**
+   - Tuyệt đối CẤM coi việc gửi lệnh ADB bấm tay (tap qua màn hình, gửi phím Home, back thô để máy hết kẹt) là đã hoàn thành nhiệm vụ 'Fix'.
+   - Mọi can thiệp ADB trên máy bị lỗi phải tuân thủ giữ hiện trường lock máy (TTL 2h) cho đến khi script đã được vá và kiểm thử hoàn tất.
