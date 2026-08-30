@@ -127,15 +127,15 @@ SESSION_WINDOWS = [
     # Ca 1
     {"ca": 1, "phien": 1, "name": "Ca 1 - Phiên 1/3 (Sáng)", "start": "06:00", "end": "07:30"},
     {"ca": 1, "phien": 2, "name": "Ca 1 - Phiên 2/3 (Sáng)", "start": "07:30", "end": "09:30"},
-    {"ca": 1, "phien": 3, "name": "Ca 1 - Phiên 3/3 (Sáng)", "start": "09:30", "end": "11:50"},
+    {"ca": 1, "phien": 3, "name": "Ca 1 - Phiên 3/3 (Sáng - Đăng video)", "start": "09:30", "end": "12:00"},
     # Ca 2
     {"ca": 2, "phien": 1, "name": "Ca 2 - Phiên 1/3 (Chiều)", "start": "12:00", "end": "13:45"},
     {"ca": 2, "phien": 2, "name": "Ca 2 - Phiên 2/3 (Chiều)", "start": "13:45", "end": "15:30"},
-    {"ca": 2, "phien": 3, "name": "Ca 2 - Phiên 3/3 (Chiều)", "start": "15:30", "end": "18:20"},
+    {"ca": 2, "phien": 3, "name": "Ca 2 - Phiên 3/3 (Chiều - Đăng video)", "start": "15:30", "end": "18:30"},
     # Ca 3
     {"ca": 3, "phien": 1, "name": "Ca 3 - Phiên 1/3 (Tối)", "start": "18:30", "end": "20:15"},
     {"ca": 3, "phien": 2, "name": "Ca 3 - Phiên 2/3 (Tối)", "start": "20:15", "end": "22:00"},
-    {"ca": 3, "phien": 3, "name": "Ca 3 - Phiên 3/3 (Tối)", "start": "22:00", "end": "23:59"},
+    {"ca": 3, "phien": 3, "name": "Ca 3 - Phiên 3/3 (Tối - Đăng video)", "start": "22:00", "end": "23:59"},
 ]
 
 
@@ -408,7 +408,9 @@ def main():
                         else:
                             fl_error.append(m)
                     else:
-                        fl_error.append(m)
+                        # Chỉ tính lỗi follow nếu máy lướt Feed thành công nhưng follow hook không chạy được
+                        if all_machines[m].get("status") == "success":
+                            fl_error.append(m)
 
                 s_str = ", ".join(fl_success) if fl_success else "Không có"
                 r_str = ", ".join(fl_released) if fl_released else "Không có"
@@ -431,7 +433,8 @@ def main():
                 # Phân loại Upload (Phiên 3)
                 if win["phien"] == 3 or any(all_uploads.values()):
                     up_success = []
-                    up_fail = []
+                    up_timeout = []
+                    up_error = []
                     up_skipped = []
 
                     for m in sorted(all_machines.keys(), key=num_key):
@@ -439,28 +442,33 @@ def main():
                             ud = all_uploads[m]
                             u_status = str(ud.get("status") or "").lower()
                             u_code = int(ud.get("exit_code", 0) or 0)
+                            u_reason = str(ud.get("reason") or "").lower()
+
                             if u_status == "success" and u_code == 0:
                                 up_success.append(m)
-                            elif u_status == "skipped":
+                            elif u_status == "skipped" or any(k in u_reason for k in ("video_not_rendered", "missing_video_folder", "missing_account_id", "not-final-session", "sensitive-skip")):
                                 up_skipped.append(m)
+                            elif "timeout" in u_status or "timeout" in u_reason:
+                                up_timeout.append(m)
                             else:
-                                r = ud.get("reason", "")
-                                up_fail.append(f"M{m}({r})" if r else f"M{m}")
+                                up_error.append(m)
                         else:
-                            if win["phien"] == 3:
-                                up_fail.append(f"M{m}(chưa_chạy)")
+                            # Chỉ tính lỗi upload nếu máy lướt Feed thành công nhưng upload hook không chạy được ở Phiên 3
+                            if win["phien"] == 3 and all_machines[m].get("status") == "success":
+                                up_error.append(m)
 
                     up_s_str = ", ".join(up_success) if up_success else "Không có"
-                    up_f_str = ", ".join(up_fail) if up_fail else "Không có"
+                    up_t_str = ", ".join(up_timeout) if up_timeout else "Không có"
+                    up_e_str = ", ".join(up_error) if up_error else "Không có"
                     up_k_str = ", ".join(up_skipped) if up_skipped else "Không có"
 
                     msg_lines.extend([
-                        f"• Đăng Video (Phiên 3):",
+                        f"• Đăng Video (Phiên 3 - {len(up_success)} video đã đăng):",
                         f"  + Success ({len(up_success)}): {up_s_str}",
-                        f"  + Fail ({len(up_fail)}): {up_f_str}",
+                        f"  + Timeout/Quá giờ ({len(up_timeout)}): {up_t_str}",
+                        f"  + Lỗi script/xác minh ({len(up_error)}): {up_e_str}",
+                        f"  + Bỏ qua ({len(up_skipped)}): {up_k_str}"
                     ])
-                    if up_skipped:
-                        msg_lines.append(f"  + Bỏ qua ({len(up_skipped)}): {up_k_str}")
 
                 msg = "\n".join(msg_lines)
                 messages.append(msg)
