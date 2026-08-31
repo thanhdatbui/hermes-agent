@@ -357,6 +357,23 @@ User hỏi "max_worker bao nhiêu vừa đủ — test chính xác kiểu gì": 
 
 Khi user hỏi "session của Hermes qua các lớp agent nào" / audit cấu trúc agent: xác định lớp bằng env signals (`HERMES_KANBAN_TASK`, `HERMES_UI_SESSION_ID`, `HERMES_SESSION_ID`, `delegation` config) + code locations (`AIAgent`→`init_agent`→`run_conversation`, `delegate_tool.py`, `kanban_tools.py`, `gateway/session.py`) — recipe + template kết quả: `references/agent-layer-identification.md`. Không cần chạy app; đọc env + code là đủ.
 
+## Pitfall: "Dùng 6 bước triển khai code" là LỆNH THỰC THI TASK, không phải sửa doc/rule (2026-08-31)
+
+- Khi user nói "gọi 6 bước cho sửa code", "dùng 6 bước triển khai code", "làm theo 6 bước": đây là **yêu cầu kích hoạt chuỗi 6 bước thực thi** (Bước 1 Lập plan -> Bước 2 Audit plan -> Bước 3 Worker TDD -> Bước 4 Review diff -> Bước 5 Pytest isolated -> Bước 6 Rebase/Commit) cho bài toán kỹ thuật hiện tại.
+- **TUYỆT ĐỐI KHÔNG** patch file rule (`AGENTS.md`, `HERMES_SUBAGENT_RULES.md`) để chèn lại mô tả 6 bước. Phải bắt đầu ngay từ Bước 1: tạo file `.hermes/plans/YYYY-MM-DD_<name>.md`.
+
+## Cơ chế Anti-Hang & 3-Strike Loop Breaker (`D:\Taadaa\tools\anti_hang_guard.py` - 2026-08-31)
+
+Để triệt tiêu tình trạng task ngâm 45p-1h hoặc treo 2h khi chạy Flash/Worker:
+1. **Tiered Timeouts**:
+   - `HTTP_TIMEOUT_QUICK = 120.0s`: Cho status probe, audit nhanh, prompt ngắn.
+   - `HTTP_TIMEOUT_HEAVY = 500.0s`: Cho diff lớn, model thinking sâu (Sol Ultra, AG Opus).
+   - `PROCESS_TIMEOUT_DEFAULT = 180.0s`: Cho subprocess/pytest.
+2. **Process Non-interactive**: Mọi subprocess bắt buộc `stdin=subprocess.DEVNULL`, env `NONINTERACTIVE=1`, `CI=1`, `PYTHONUNBUFFERED=1` để chống deadlock chờ input ngầm.
+3. **3-Strike Loop Breaker**:
+   - Dùng `AuditStrikeTracker` và `WorkerStrikeTracker` (thread-safe với `threading.Lock()`, JSON tuple fingerprint SHA256 chống collision ký tự đặc biệt).
+   - Khi Auditor `REJECT` cùng 1 finding hoặc Worker fail cùng 1 test 3 lần liên tiếp: Tự động ném `StrikeLimitReachedException`, dừng toàn bộ vòng lặp, rollback thay đổi dở dang và báo cáo điểm nghẽn cho user. CẤM tự loop mò vòng 4.
+
 ## Các section chi tiết (trim 2026-08-09)
 
 > dispatch-history-and-ops-notes.md
