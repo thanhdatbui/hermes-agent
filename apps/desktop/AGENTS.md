@@ -243,3 +243,16 @@ This rule overrides older generic wording that makes live canary mandatory for e
 4. `CANARY_NOT_APPLICABLE` applies to code-only, refactor, general-flow, unit-test, mock-test, or static-analysis work when the current task has no explicit live target, no real-device request, and no qualifying opening-session incident evidence. Proceed with focused semantic verification instead of a device canary.
 5. A generic screenshot or log containing TikTok, farm, or device UI without an identified incident target and concrete runtime failure is not enough to trigger a canary.
 6. Never infer a live target from a repository name, config filename, workbook, historical artifact, nearby machine file, or an old canary result. If a canary is required, run only the exact resolved target; do not expand to a batch or another machine without explicit authorization.
+
+<!-- HERMES-DIRTY-SCOPE-RULE-20260831:START -->
+## Dirty-tree scope rule (mandatory)
+
+A dirty worktree is **not** a repository-wide blocker. The current task contract's exact allowlist is authoritative.
+
+- Before any action, split paths into `IN_SCOPE` and `OUT_OF_SCOPE` using the current allowlist. Unrelated staged/unstaged files, unrelated test/build processes, and unrelated failures are `OUT_OF_SCOPE`: ignore them, do not inspect, revert, reset, unstage, stage, wait on, or report them as blockers.
+- A staged or unstaged file inside the allowlist is not automatically a conflict. Staged state, an old mtime, or a non-empty `git status` does not prove another writer owns the requested hunk.
+- Continue when dirty hunks are distinct and the requested hunk is unowned. Declare `SCOPE_CONFLICT` only when the same allowlisted file/overlapping region changes during the current ownership window, an active writer owns the requested region, or ownership cannot be separated safely. Record path, region, before/after hash or content, and timing evidence.
+- `SCOPE_DRIFT` means this agent/worker changed outside its own allowlist; pre-existing unrelated dirty paths are not scope drift. Do not convert foreign dirt into a blocker.
+- Verification and reporting must remain path-scoped. Report `unrelated dirty preserved`, `overlapping dirty/conflict`, and `agent-caused scope drift` as separate states.
+
+<!-- HERMES-DIRTY-SCOPE-RULE-20260831:END -->

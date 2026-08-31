@@ -14,6 +14,8 @@ Dùng khi user yêu cầu điều phối coding agent, review chéo, hoặc làm
 
 ## Quy trình bắt buộc
 
+**Reference:** `references/terra-exact-byte-review-and-conflict-gate.md` defines the exact Terra route, staged-byte provenance checks, and shared-worktree conflict stop conditions for review-gated closeout.
+
 ### Review-gated closeout is a hard stop
 
 When the user asks to fix review findings, finish the implementation, or close a session, treat `REJECT` as an active work item—not as a reportable result. Continue the same loop without asking the user to restate the request:

@@ -111,3 +111,16 @@ Live Canary BẮT BUỘC phải kích hoạt bằng **Runner chính thức của
 3. **CẤM Fix Ad-hoc / Bấm tay:**
    - Tuyệt đối CẤM coi việc gửi lệnh ADB bấm tay (tap qua màn hình, gửi phím Home, back thô để máy hết kẹt) là đã hoàn thành nhiệm vụ 'Fix'.
    - Mọi can thiệp ADB trên máy bị lỗi phải tuân thủ giữ hiện trường lock máy (TTL 2h) cho đến khi script đã được vá và kiểm thử hoàn tất.
+
+<!-- HERMES-DIRTY-SCOPE-RULE-20260831:START -->
+## Dirty-tree scope rule (mandatory)
+
+A dirty worktree is **not** a repository-wide blocker. The current task contract's exact allowlist is authoritative.
+
+- Before any action, split paths into `IN_SCOPE` and `OUT_OF_SCOPE` using the current allowlist. Unrelated staged/unstaged files, unrelated test/build processes, and unrelated failures are `OUT_OF_SCOPE`: ignore them, do not inspect, revert, reset, unstage, stage, wait on, or report them as blockers.
+- A staged or unstaged file inside the allowlist is not automatically a conflict. Staged state, an old mtime, or a non-empty `git status` does not prove another writer owns the requested hunk.
+- Continue when dirty hunks are distinct and the requested hunk is unowned. Declare `SCOPE_CONFLICT` only when the same allowlisted file/overlapping region changes during the current ownership window, an active writer owns the requested region, or ownership cannot be separated safely. Record path, region, before/after hash or content, and timing evidence.
+- `SCOPE_DRIFT` means this agent/worker changed outside its own allowlist; pre-existing unrelated dirty paths are not scope drift. Do not convert foreign dirt into a blocker.
+- Verification and reporting must remain path-scoped. Report `unrelated dirty preserved`, `overlapping dirty/conflict`, and `agent-caused scope drift` as separate states.
+
+<!-- HERMES-DIRTY-SCOPE-RULE-20260831:END -->
