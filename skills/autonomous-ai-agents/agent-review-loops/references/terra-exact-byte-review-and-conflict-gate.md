@@ -4,10 +4,12 @@
 Use for multi-file code review, review-gated closeout, or “fix until approved” work in this user's Taadaa repositories.
 
 ## Correct reviewer route
-- Normal review/audit: direct 9Router HTTP `POST /v1/chat/completions` with model `gpt-5.6-terra`.
-- Read-only request: `tools: []`, `tool_choice: "none"`, `stream: false`.
-- Require the first response line to be exactly `VERDICT: APPROVED` or `VERDICT: REJECT`.
-- Do not substitute AG Claude, Flash, or the implementation worker because a stale wrapper or old note names them. Escalate to the configured Terra/Sol route only when risk requires it.
+- Normal review/audit (UI, popup, video gate, feature 1 repo, helper): Gọi combo `plan-review` (gpt-5.6-terra -> ag/claude-opus-4-6-thinking -> cmc/deepseek/deepseek-v4-pro) hoặc `gpt-5.6-terra` trực tiếp qua 9Router HTTP `POST /v1/chat/completions`.
+- Hard review/audit (Architecture, Scheduler, Lock, Recovery, Multi-repo): Gọi combo `plan-review-hard` hoặc `gpt-5.6-sol`.
+- Tool chuẩn hoá: `python D:/Taadaa/tools/invoke-plan-review.py` (hoặc PowerShell `D:\Taadaa\tools\invoke-ag-audit.ps1`).
+- Read-only request: `tools: []`, `tool_choice: "none"`, `stream: false`, `reasoning_effort: "high"` (hoặc `"max"`).
+- Require the first response line to be exactly `VERDICT: APPROVED` hoặc `VERDICT: REJECT`.
+- TUYỆT ĐỐI CẤM gọi trực tiếp AG Claude (`ag/claude-opus-4-6-thinking`), Flash, hoặc implementation worker. CẤM dùng `delegate_task` để review.
 - Review the exact staged payload, not a prose summary or a broader repository snapshot.
 
 ## Exact-byte procedure
