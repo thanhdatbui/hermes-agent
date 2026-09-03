@@ -7,7 +7,7 @@
   3. **Patch (15-20 calls):** Sửa code, check syntax, chuẩn bị test.
   4. **Validate / Canary Test (20-30 calls):** Chạy PowerShell canary test, đợi máy chạy, đọc summary log.
 - **Tổng thực tế:** 70–110 calls cho case cơ bản, 100–150 calls cho case phức tạp.
-- Nếu đặt `delegation.max_iterations: 100`, subagent sẽ cạn budget ngay sau bước patch và bị ngắt trước khi kịp chạy canary test.
+- Nếu đặt `delegation.max_iterations: 100`, subagent sẽ cạn budget ngay sau bước patch và bị ngắt trước khi kịp chạy canary test. Đã nâng cấu hình chuẩn lên `delegation.max_iterations: 150`.
 
 ## 2. Invariant cho Coordinator: CẤM BỎ DỞ & CẤM IN LỆNH BẮT USER CHẠY
 - **CẤM:** Khi subagent dừng do `max_iterations` hoặc trả về lệnh PowerShell, Coordinator tuyệt đối KHÔNG in câu lệnh ra ngoài bảo user tự chạy.
@@ -16,3 +16,11 @@
 ## 3. TikTok Modal Chặn Phím BACK & Dump UI Hierarchy Quirk
 - Dialog xin quyền danh bạ/bạn bè của TikTok chặn `KEYCODE_BACK` (bấm BACK modal không tắt).
 - `DeviceContext` không có method `.dump_hierarchy()`, cần trích xuất qua `automation_core.ui.dump_current_ui(ctx.adb)` để parse XML node "Không cho phép" / "Don't allow" và tap trực tiếp theo bounds node, hoặc fallback tap theo tỷ lệ `(w * 0.305, h * 0.639)`.
+
+## 4. Phân Biệt Claude CLI Local Binary vs OmniRoute / 9Router
+- **Claude Code CLI (`claude -p`):** Chạy trực tiếp bằng binary local (`Anthropic.ClaudeCode`) với cơ chế xác thực riêng của Anthropic (OAuth/Subscription). **Hoàn toàn KHÔNG đi qua OmniRoute hay 9Router**.
+- **Cấu hình gọi Claude CLI:** Khi user yêu cầu gọi Claude CLI, luôn thực thi với cờ model Opus cao nhất và effort kịch trần:
+  ```bash
+  claude -p "<prompt>" --model opus --effort max --output-format text
+  ```
+- **OmniRoute (`localhost:20129`) vs 9Router (`localhost:20128`):** Là các cổng LLM proxy nội bộ quản lý Antigravity pool, OpenRouter upstream và model fallback cho Hermes Agent.
