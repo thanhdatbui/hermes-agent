@@ -1,6 +1,6 @@
 ---
 name: plan
-description: "Plan mode: write an actionable markdown plan to .hermes/plans/, no execution. Bite-sized tasks, exact paths, complete code."
+description: Write a markdown plan to .hermes/plans/; no execution.
 version: 2.0.0
 author: Hermes Agent (writing-craft adapted from obra/superpowers)
 license: MIT
@@ -39,6 +39,19 @@ Include, when relevant:
 - Risks, tradeoffs, and open questions
 
 If the task is code-related, include exact file paths, likely test targets, and verification steps.
+
+## Domain Invariants & State Contract
+
+For every non-trivial plan, record the domain invariants that must remain true and their source of truth. For each mutating or I/O step, state: **Pre-condition**, **Post-condition**, and **Side-effects**. If a state is unknown or an invariant cannot be verified, stop and mark the plan blocked rather than guessing.
+
+## Anti-Minefield Checklist
+
+Before handing off a plan, verify:
+
+1. **Zero silent failures:** no swallowed exceptions; errors include context and are surfaced.
+2. **Bounded execution:** every I/O, subprocess, HTTP, socket, ADB, or OCR action has an explicit timeout and bounded retries.
+3. **Idempotency & safe resume:** reruns use a receipt, lock, checkpoint, or equivalent guard and cannot repeat a dangerous side effect.
+4. **Fail-closed:** an unrecognized state captures evidence, preserves the current state, and stops.
 
 ## Save location
 

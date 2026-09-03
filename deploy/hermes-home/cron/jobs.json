@@ -22,15 +22,15 @@
       "schedule_display": "*/5 * * * *",
       "repeat": {
         "times": null,
-        "completed": 4024
+        "completed": 6415
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-08-03T18:22:58.515796+07:00",
-      "next_run_at": "2026-08-26T07:55:00+07:00",
-      "last_run_at": "2026-08-26T07:50:24.464187+07:00",
+      "next_run_at": "2026-09-03T21:45:00+07:00",
+      "last_run_at": "2026-09-03T21:40:26.204676+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -44,7 +44,7 @@
     {
       "id": "95f8cd3f4e52",
       "name": "taikhoan-run-safe-sync",
-      "prompt": "Sync taikhoan_run_safe t\u1ef1 \u0111\u1ed9ng khi source taikhoan_dat_v2 thay \u0111\u1ed5i (watchdog im l\u1eb7ng khi kh\u00f4ng c\u00f3 thay \u0111\u1ed5i)",
+      "prompt": "Sync taikhoan_run_safe tự động khi source taikhoan_dat_v2 thay đổi (watchdog im lặng khi không có thay đổi)",
       "skills": [],
       "skill": null,
       "model": null,
@@ -63,17 +63,17 @@
       "schedule_display": "*/5 * * * *",
       "repeat": {
         "times": null,
-        "completed": 4404
+        "completed": 6799
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-08-10T12:26:27.092514+07:00",
-      "next_run_at": "2026-08-26T07:55:00+07:00",
-      "last_run_at": "2026-08-26T07:52:24.885152+07:00",
-      "last_status": "error",
-      "last_error": "Script exited with code 1\nstdout:\nTAIKHOAN_SYNC_ERROR: SYNC_TIK_FAIL rc=1: SYNC_TIK_ERROR: JOURNAL_RECOVERY_FAILED: Kh\u00f4ng th\u1ec3 t\u1ef1 ph\u1ee5c h\u1ed3i snapshot c\u0169: BLOCKED_TIMEOUT_WORKBOOK_LOCK",
+      "next_run_at": "2026-09-03T21:45:00+07:00",
+      "last_run_at": "2026-09-03T21:40:32.206516+07:00",
+      "last_status": "ok",
+      "last_error": null,
       "last_delivery_error": null,
       "deliver": "local",
       "origin": {
@@ -90,7 +90,7 @@
     {
       "id": "b63730cc5c85",
       "name": "reap-dead-owner-locks",
-      "prompt": "Ch\u1ea1y script d\u1ecdn dead-owner device lock: python D:\\Taadaa\\tiktok-luot nuoi acc\\scripts\\reap-dead-owner-locks.py (d\u00f9ng D:\\Taadaa\\python-envs\\automation\\Scripts\\python.exe)",
+      "prompt": "Chạy script dọn dead-owner device lock: python D:\\Taadaa\\tiktok-luot nuoi acc\\scripts\\reap-dead-owner-locks.py (dùng D:\\Taadaa\\python-envs\\automation\\Scripts\\python.exe)",
       "skills": [],
       "skill": null,
       "model": "deepseek-v4-flash",
@@ -109,15 +109,15 @@
       "schedule_display": "*/15 * * * *",
       "repeat": {
         "times": null,
-        "completed": 463
+        "completed": 1183
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-08-13T21:07:36.733313+07:00",
-      "next_run_at": "2026-08-26T08:00:00+07:00",
-      "last_run_at": "2026-08-26T07:44:02.269198+07:00",
+      "next_run_at": "2026-09-03T21:45:00+07:00",
+      "last_run_at": "2026-09-03T21:31:25.096207+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -158,15 +158,15 @@
       "schedule_display": "0 6 * * *",
       "repeat": {
         "times": null,
-        "completed": 10
+        "completed": 20
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-08-16T23:49:53.995460+07:00",
-      "next_run_at": "2026-08-27T06:00:00+07:00",
-      "last_run_at": "2026-08-26T07:29:49.383018+07:00",
+      "next_run_at": "2026-09-04T06:00:00+07:00",
+      "last_run_at": "2026-09-03T06:00:54.719652+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -185,7 +185,7 @@
     {
       "id": "26f05737495b",
       "name": "auto-trim-startup-files",
-      "prompt": "Auto-trim startup context files (HANDOFF.md, AGENTS.md, PROJECT_RULES.md) \u0111\u1ecbnh k\u1ef3 \u0111\u1ec3 ch\u1ed1ng ph\u00ecnh context Hermes",
+      "prompt": "Auto-trim startup context files (HANDOFF.md, AGENTS.md, PROJECT_RULES.md) định kỳ để chống phình context Hermes",
       "skills": [],
       "skill": null,
       "model": null,
@@ -204,15 +204,15 @@
       "schedule_display": "0 3 * * 0",
       "repeat": {
         "times": null,
-        "completed": 1
+        "completed": 2
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-08-17T20:37:23.880293+07:00",
-      "next_run_at": "2026-08-30T03:00:00+07:00",
-      "last_run_at": "2026-08-23T03:00:31.460259+07:00",
+      "next_run_at": "2026-09-06T03:00:00+07:00",
+      "last_run_at": "2026-08-30T03:00:53.958516+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -231,7 +231,7 @@
     {
       "id": "cdd43b124363",
       "name": "phase9-runner-tiktok-feed",
-      "prompt": "TikTok feed runner: m\u1ed7i 15 ph\u00fat g\u1ecdi tiktok_runner.py (\u0111\u00e3 deploy t\u1ea1i ~/AppData/Local/hermes/scripts/) \u2014 ch\u1ecdn entry due t\u1eeb manifest, spawn run-feed-session.ps1 cho m\u00e1y c\u00f3 acc row t\u1edbi gi\u1edd, skip m\u00e1y row tr\u1ed1ng. Im l\u1eb7ng khi kh\u00f4ng c\u00f3 vi\u1ec7c.",
+      "prompt": "TikTok feed runner: mỗi 15 phút gọi tiktok_runner.py (đã deploy tại ~/AppData/Local/hermes/scripts/) — chọn entry due từ manifest, spawn run-feed-session.ps1 cho máy có acc row tới giờ, skip máy row trống. Im lặng khi không có việc.",
       "skills": [],
       "skill": null,
       "model": null,
@@ -250,15 +250,15 @@
       "schedule_display": "*/15 * * * *",
       "repeat": {
         "times": null,
-        "completed": 367
+        "completed": 980
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-08-18T00:24:23.549708+07:00",
-      "next_run_at": "2026-08-26T08:00:00+07:00",
-      "last_run_at": "2026-08-26T01:00:34.142256+07:00",
+      "next_run_at": "2026-09-03T21:45:00+07:00",
+      "last_run_at": "2026-09-03T21:31:41.064165+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -272,15 +272,12 @@
       },
       "enabled_toolsets": null,
       "workdir": "D:\\Taadaa\\tiktok-luot nuoi acc",
-      "fire_claim": {
-        "at": "2026-08-26T07:30:08.051238+07:00",
-        "by": "DESKTOP-3PFPGQC:67116"
-      }
+      "fire_claim": null
     },
     {
       "id": "7890172324ca",
       "name": "phase9-watcher-tiktok-feed",
-      "prompt": "TikTok feed watcher: offsets 7,22,37,52 m\u1ed7i gi\u1edd g\u1ecdi tiktok_watcher.py (\u0111\u00e3 deploy t\u1ea1i ~/AppData/Local/hermes/scripts/) \u2014 canh m\u00e1y ch\u1ea1y treo, ch\u1ec9 b\u00e1o khi l\u1ed7i th\u1eadt. Im l\u1eb7ng khi \u1ed5n.",
+      "prompt": "TikTok feed watcher: offsets 7,22,37,52 mỗi giờ gọi tiktok_watcher.py (đã deploy tại ~/AppData/Local/hermes/scripts/) — canh máy chạy treo, chỉ báo khi lỗi thật. Im lặng khi ổn.",
       "skills": [],
       "skill": null,
       "model": null,
@@ -299,15 +296,15 @@
       "schedule_display": "7,22,37,52 * * * *",
       "repeat": {
         "times": null,
-        "completed": 456
+        "completed": 1094
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-08-18T00:24:33.355974+07:00",
-      "next_run_at": "2026-08-26T08:07:00+07:00",
-      "last_run_at": "2026-08-26T00:52:34.298849+07:00",
+      "next_run_at": "2026-09-03T21:52:00+07:00",
+      "last_run_at": "2026-09-03T21:37:25.628184+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -325,8 +322,8 @@
     },
     {
       "id": "38ea60c09825",
-      "name": "night-chain-reg-gmail-tiktok",
-      "prompt": "Chu\u1ed7i ban \u0111\u00eam t\u1ef1 \u0111\u1ed9ng: Reg Gmail -> Reg TikTok",
+      "name": "night-chain-reg-pipeline",
+      "prompt": "Chuỗi ban đêm tự động: Reg Gmail -> Reg TikTok",
       "skills": [],
       "skill": null,
       "model": null,
@@ -345,69 +342,23 @@
       "schedule_display": "0 1 * * *",
       "repeat": {
         "times": null,
-        "completed": 9
+        "completed": 20
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-08-18T23:33:44.911626+07:00",
-      "next_run_at": "2026-08-27T01:00:00+07:00",
-      "last_run_at": "2026-08-26T01:19:41.114916+07:00",
-      "last_status": "error",
-      "last_error": "Script exited with code 1\nstdout:\n=== B\u1eaeT \u0110\u1ea6U CHU\u1ed6I \u0110\u00caM (GMAIL -> TIKTOK) L\u00daC 01:00:34 26/08/2026 ===\n=== [PHASE 1] KH\u1edeI \u0110\u1ed8NG BATCH REG GMAIL ===\n[PHASE 1] K\u1ebft th\u00fac sau 278s v\u1edbi exit code 1\n\n=== [PHASE 2] KH\u1edeI \u0110\u1ed8NG BATCH REG TIKTOK ===\n[PHASE 2] K\u1ebft th\u00fac sau 857s v\u1edbi exit code 1\n\n==================================================\n\ud83d\udccb **B\u00c1O C\u00c1O CHU\u1ed6I \u0110\u00caM (GMAIL \u2794 TIKTOK)**\n\u23f1\ufe0f **Th\u1eddi gian ch\u1ea1y:** 01:00 \u2794 01:19 (19 ph\u00fat)\n\ud83d\udd39 **Reg Gmail (Phase 1):** Code 1 | KET QUA: OK=0 | SKIP_DEVICE_LOCKED=0 | FAILED=15\n\ud83d\udd39 **Reg TikTok (Phase 2):** Code 1 | SUCCESS: 2, FAILED: 31, TOTAL: 33\n==================================================",
+      "next_run_at": "2026-09-04T01:00:00+07:00",
+      "last_run_at": "2026-09-03T01:47:04.473084+07:00",
+      "last_status": "ok",
+      "last_error": null,
       "last_delivery_error": null,
       "deliver": "telegram:-5139245637",
       "origin": {
         "platform": "telegram",
         "chat_id": "-5377611430",
         "chat_name": "Tiktok Luot Nuoi Acc",
-        "thread_id": null,
-        "user_id": "1076231895"
-      },
-      "enabled_toolsets": null,
-      "workdir": null,
-      "fire_claim": null
-    },
-    {
-      "id": "54ad8a9f19db",
-      "name": "tik4-render-watchdog",
-      "prompt": "Watchdog b\u00e1o ti\u1ebfn \u0111\u1ed9 render tik4 m\u1ed7i khi xong th\u00eam 10 folder",
-      "skills": [],
-      "skill": null,
-      "model": null,
-      "provider": null,
-      "provider_snapshot": null,
-      "model_snapshot": null,
-      "base_url": null,
-      "script": "tik4_render_watchdog.py",
-      "no_agent": true,
-      "context_from": null,
-      "schedule": {
-        "kind": "cron",
-        "expr": "*/5 * * * *",
-        "display": "*/5 * * * *"
-      },
-      "schedule_display": "*/5 * * * *",
-      "repeat": {
-        "times": null,
-        "completed": 1954
-      },
-      "enabled": true,
-      "state": "scheduled",
-      "paused_at": null,
-      "paused_reason": null,
-      "created_at": "2026-08-19T12:57:06.900422+07:00",
-      "next_run_at": "2026-08-26T07:55:00+07:00",
-      "last_run_at": "2026-08-26T07:50:24.029184+07:00",
-      "last_status": "ok",
-      "last_error": null,
-      "last_delivery_error": null,
-      "deliver": "origin",
-      "origin": {
-        "platform": "telegram",
-        "chat_id": "-5435853713",
-        "chat_name": "Tiktok video",
         "thread_id": null,
         "user_id": "1076231895"
       },
@@ -437,15 +388,15 @@
       "schedule_display": "0 7 * * *",
       "repeat": {
         "times": null,
-        "completed": 7
+        "completed": 15
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-08-20T02:12:44.294776+07:00",
-      "next_run_at": "2026-08-27T07:00:00+07:00",
-      "last_run_at": "2026-08-26T07:04:01.515880+07:00",
+      "next_run_at": "2026-09-04T07:00:00+07:00",
+      "last_run_at": "2026-09-03T07:04:10.450419+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -479,22 +430,22 @@
       "no_agent": true,
       "context_from": null,
       "schedule": {
-        "kind": "interval",
-        "minutes": 15,
-        "display": "every 15m"
+        "kind": "cron",
+        "expr": "1,16,31,46 * * * *",
+        "display": "1,16,31,46 * * * *"
       },
-      "schedule_display": "every 15m",
+      "schedule_display": "1,16,31,46 * * * *",
       "repeat": {
         "times": null,
-        "completed": 437
+        "completed": 1231
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-08-21T00:21:34.553769+07:00",
-      "next_run_at": "2026-08-26T08:06:23.909182+07:00",
-      "last_run_at": "2026-08-26T07:51:23.909182+07:00",
+      "next_run_at": "2026-09-03T21:46:00+07:00",
+      "last_run_at": "2026-09-03T21:31:26.311725+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -511,55 +462,9 @@
       "fire_claim": null
     },
     {
-      "id": "4f266220442e",
-      "name": "download-by-niche-hourly-watchdog",
-      "prompt": "B\u00e1o c\u00e1o ti\u1ebfn \u0111\u1ed9 download video theo niche m\u1ed7i 1h",
-      "skills": [],
-      "skill": null,
-      "model": null,
-      "provider": null,
-      "provider_snapshot": null,
-      "model_snapshot": null,
-      "base_url": null,
-      "script": "download_progress_watchdog.py",
-      "no_agent": true,
-      "context_from": null,
-      "schedule": {
-        "kind": "interval",
-        "minutes": 60,
-        "display": "every 60m"
-      },
-      "schedule_display": "every 60m",
-      "repeat": {
-        "times": null,
-        "completed": 88
-      },
-      "enabled": true,
-      "state": "scheduled",
-      "paused_at": null,
-      "paused_reason": null,
-      "created_at": "2026-08-22T12:40:54.158495+07:00",
-      "next_run_at": "2026-08-26T08:01:59.534874+07:00",
-      "last_run_at": "2026-08-26T07:01:59.534874+07:00",
-      "last_status": "ok",
-      "last_error": null,
-      "last_delivery_error": null,
-      "deliver": "origin",
-      "origin": {
-        "platform": "telegram",
-        "chat_id": "-5435853713",
-        "chat_name": "Tiktok video",
-        "thread_id": null,
-        "user_id": "1076231895"
-      },
-      "enabled_toolsets": null,
-      "workdir": null,
-      "fire_claim": null
-    },
-    {
       "id": "79021fa79d8b",
       "name": "end-of-day-clear-tiktok-cache",
-      "prompt": "Ch\u1ea1y d\u1ecdn d\u1eb9p b\u1ed9 nh\u1edb \u0111\u1ec7m TikTok (40 workers song song) cu\u1ed1i ng\u00e0y (04:00 s\u00e1ng) cho to\u00e0n farm, tuy\u1ec7t \u0111\u1ed1i c\u1ea5m pm clear.",
+      "prompt": "Chạy dọn dẹp bộ nhớ đệm TikTok (40 workers song song) cuối ngày (04:00 sáng) cho toàn farm, tuyệt đối cấm pm clear.",
       "skills": [],
       "skill": null,
       "model": null,
@@ -578,15 +483,15 @@
       "schedule_display": "0 4 * * *",
       "repeat": {
         "times": null,
-        "completed": 4
+        "completed": 12
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-08-22T23:51:32.610490+07:00",
-      "next_run_at": "2026-08-27T04:00:00+07:00",
-      "last_run_at": "2026-08-26T04:02:24.921263+07:00",
+      "next_run_at": "2026-09-04T04:00:00+07:00",
+      "last_run_at": "2026-09-03T04:03:40.599533+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -605,7 +510,7 @@
     {
       "id": "1d62cb3562e0",
       "name": "tiktok-feed-session-watchdog",
-      "prompt": "B\u00e1o c\u00e1o t\u1ed5ng k\u1ebft nu\u00f4i acc theo t\u1eebng PHI\u00caN (1 ca 3 phi\u00ean, ng\u00e0y 3 ca). Ch\u1ec9 b\u00e1o \u0111\u00fang 1 l\u1ea7n khi phi\u00ean ho\u00e0n t\u1ea5t.",
+      "prompt": "Báo cáo tổng kết nuôi acc theo từng PHIÊN (1 ca 3 phiên, ngày 3 ca). Chỉ báo đúng 1 lần khi phiên hoàn tất.",
       "skills": [],
       "skill": null,
       "model": null,
@@ -624,15 +529,15 @@
       "schedule_display": "*/5 * * * *",
       "repeat": {
         "times": null,
-        "completed": 451
+        "completed": 2640
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-08-24T18:02:28.187417+07:00",
-      "next_run_at": "2026-08-26T07:55:00+07:00",
-      "last_run_at": "2026-08-26T07:50:23.873185+07:00",
+      "next_run_at": "2026-09-03T21:45:00+07:00",
+      "last_run_at": "2026-09-03T21:40:46.441377+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -647,7 +552,99 @@
       "enabled_toolsets": null,
       "workdir": null,
       "fire_claim": null
+    },
+    {
+      "id": "750aef64d022",
+      "name": "sync-gmail-clean-v2-to-tong",
+      "prompt": "Sync danh sach Gmail tu gmail_clean_v2.xlsx sang file gmail_live_tong.txt trong OneDrive TaadaaData/kibe",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "provider_snapshot": null,
+      "model_snapshot": null,
+      "base_url": null,
+      "script": "sync_gmail_clean_v2_to_tong.py",
+      "no_agent": true,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 8 * * *",
+        "display": "0 8 * * *"
+      },
+      "schedule_display": "0 8 * * *",
+      "repeat": {
+        "times": null,
+        "completed": 3
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-09-01T09:32:01.624938+07:00",
+      "next_run_at": "2026-09-04T08:00:00+07:00",
+      "last_run_at": "2026-09-03T08:00:17.617101+07:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "local",
+      "origin": {
+        "platform": "telegram",
+        "chat_id": "-5397868129",
+        "chat_name": "Site ban hang clone",
+        "thread_id": null,
+        "user_id": "1076231895"
+      },
+      "enabled_toolsets": null,
+      "workdir": null,
+      "fire_claim": null
+    },
+    {
+      "id": "54138da17865",
+      "name": "onedrive-multicloud-sync-watchdog",
+      "prompt": "Sync tự động OneDrive sang Google Drive 5TB và iCloudDrive",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "provider_snapshot": null,
+      "model_snapshot": null,
+      "base_url": null,
+      "script": "sync_onedrive_multicloud.py",
+      "no_agent": true,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 */6 * * *",
+        "display": "0 */6 * * *"
+      },
+      "schedule_display": "0 */6 * * *",
+      "repeat": {
+        "times": null,
+        "completed": 9
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-09-01T18:40:35.143173+07:00",
+      "next_run_at": "2026-09-04T00:00:00+07:00",
+      "last_run_at": "2026-09-03T18:25:57.668822+07:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": "configured thread_id 219920 for telegram:1076231895 was not found; delivered without thread_id",
+      "deliver": "origin",
+      "origin": {
+        "platform": "telegram",
+        "chat_id": "1076231895",
+        "chat_name": "Tad Shavershian",
+        "thread_id": "219920",
+        "user_id": "1076231895"
+      },
+      "enabled_toolsets": null,
+      "workdir": null,
+      "fire_claim": null
     }
   ],
-  "updated_at": "2026-08-26T07:52:24.887173+07:00"
+  "updated_at": "2026-09-03T21:40:46.443371+07:00"
 }

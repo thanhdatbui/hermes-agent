@@ -145,6 +145,9 @@ def is_feed_runner_active():
         import psutil
         for p in psutil.process_iter(['name', 'cmdline']):
             try:
+                name = (p.info.get('name') or '').lower()
+                if not name.startswith(('python', 'powershell', 'pwsh')):
+                    continue
                 cmd = " ".join(p.info.get('cmdline') or [])
                 if "multi_machine_feed_session" in cmd or "run-feed-session.ps1" in cmd or "run_follow" in cmd:
                     return True
@@ -184,16 +187,20 @@ def parse_run_machines(run_dir):
             m_idx = parts.index("machines") + 1
             if m_idx < len(parts):
                 m_str = parts[m_idx].replace("machine_", "")
-                c = open(s, encoding="utf-8", errors="ignore").read()
-                st = "success" if "final_status: success" in c else "fail"
-                reason = ""
-                for line in c.splitlines():
-                    if line.startswith("reason:") or line.startswith("final_status:"):
-                        val = line.split(":", 1)[1].strip()
-                        if val != "success":
-                            reason = val
-                            break
-                res[m_str] = {"status": st, "reason": reason}
+                try:
+                    with open(s, "r", encoding="utf-8", errors="ignore") as f:
+                        c = f.read()
+                    st = "success" if "final_status: success" in c else "fail"
+                    reason = ""
+                    for line in c.splitlines():
+                        if line.startswith("reason:") or line.startswith("final_status:"):
+                            val = line.split(":", 1)[1].strip()
+                            if val != "success":
+                                reason = val
+                                break
+                    res[m_str] = {"status": st, "reason": reason}
+                except Exception:
+                    pass
     return res
 
 
@@ -210,13 +217,23 @@ def parse_follow_results(run_dir):
                 m = str(d.get("machine", "")).strip()
                 if not m:
                     continue
-                flist = d.get("followed")
-                if not isinstance(flist, list):
+                flist_raw = d.get("followed")
+                if isinstance(flist_raw, list):
+                    flist = [str(x) for x in flist_raw if isinstance(x, (str, int, float))]
+                else:
                     flist = []
+
+                raw_status = str(d.get("status") or "").strip()
+                raw_ff = d.get("follow_failed")
+                raw_failed = d.get("failed")
+                is_strict_zero_failed = (raw_failed is False) or (type(raw_failed) is int and raw_failed == 0)
+                is_clean_ff = (raw_status == "FOLLOW_FAILED" and raw_ff is True and type(raw_ff) is bool and is_strict_zero_failed)
+
                 res[m] = {
-                    "status": str(d.get("status") or "").strip(),
+                    "status": raw_status,
                     "followed": flist,
-                    "follow_failed": bool(d.get("follow_failed", False)),
+                    "follow_failed": is_clean_ff,
+                    "failed": raw_failed,
                     "reason": str(d.get("reason") or ""),
                 }
         except Exception:
@@ -248,6 +265,80 @@ def parse_upload_results(run_dir):
         except Exception:
             pass
     return res
+
+
+def merge_machine_result(prev, new):
+    if not prev:
+        return new
+    if prev.get("status") == "success":
+        return prev
+    if new.get("status") == "success":
+        return new
+    return new
+
+
+def merge_follow_result(prev, new):
+    if not prev:
+        return new
+    prev_raw = prev.get("followed", []) if isinstance(prev.get("followed"), list) else []
+    new_raw = new.get("followed", []) if isinstance(new.get("followed"), list) else []
+    prev_flist = [str(x) for x in prev_raw if isinstance(x, (str, int, float))]
+    new_flist = [str(x) for x in new_raw if isinstance(x, (str, int, float))]
+    combined_flist = list(dict.fromkeys(prev_flist + new_flist))
+
+    prev_released = (str(prev.get("status") or "").upper() == "FOLLOW_FAILED" and prev.get("follow_failed") is True)
+    new_released = (str(new.get("status") or "").upper() == "FOLLOW_FAILED" and new.get("follow_failed") is True)
+
+    if prev_released or new_released:
+        res = dict(new if new_released else prev)
+        res["status"] = "FOLLOW_FAILED"
+        res["follow_failed"] = True
+        res["followed"] = combined_flist
+        return res
+
+    prev_ok = (str(prev.get("status") or "").upper() in {"OK", "SUCCESS"} and len(prev_flist) > 0)
+    new_ok = (str(new.get("status") or "").upper() in {"OK", "SUCCESS"} and len(new_flist) > 0)
+
+    if new_ok:
+        res = dict(new)
+        res["followed"] = combined_flist
+        return res
+    if prev_ok and str(new.get("status") or "").upper() in {"SKIPPED", "MANUAL_REVIEW"}:
+        res = dict(prev)
+        res["followed"] = combined_flist
+        return res
+
+    res = dict(new)
+    res["followed"] = combined_flist
+    return res
+
+
+def merge_upload_result(prev, new):
+    if not prev:
+        return new
+    prev_success = (str(prev.get("status") or "").lower() == "success" and int(prev.get("exit_code", 0) or 0) == 0)
+    new_success = (str(new.get("status") or "").lower() == "success" and int(new.get("exit_code", 0) or 0) == 0)
+    if prev_success and not new_success:
+        return prev
+    if new_success:
+        return new
+    return new
+
+
+def can_report_session(
+    is_today: bool,
+    completed_expected_count: int,
+    expected_count: int,
+    now_hm: str,
+    window_end_hm: str,
+    runner_busy: bool,
+) -> bool:
+    """Xác định điều kiện chốt báo cáo cho một phiên."""
+    if is_today:
+        if runner_busy:
+            return False
+        return (completed_expected_count >= expected_count) or (now_hm >= window_end_hm)
+    return not runner_busy
 
 
 def main():
@@ -341,11 +432,11 @@ def main():
                     f_res = parse_follow_results(r_path)
                     u_res = parse_upload_results(r_path)
                     for m, data in m_res.items():
-                        all_machines[m] = data
+                        all_machines[m] = merge_machine_result(all_machines.get(m), data)
                     for m, data in f_res.items():
-                        all_follows[m] = data
+                        all_follows[m] = merge_follow_result(all_follows.get(m), data)
                     for m, data in u_res.items():
-                        all_uploads[m] = data
+                        all_uploads[m] = merge_upload_result(all_uploads.get(m), data)
 
                 if not all_machines:
                     continue
@@ -355,18 +446,14 @@ def main():
                 completed_expected = set(all_machines.keys()).intersection(expected_machines)
 
                 # ĐIỀU KIỆN CHỐT BÁO CÁO:
-                # Với ngày hôm nay:
-                # 1. Toàn bộ máy dự kiến trong ca đã hoàn thành VÀ runner đã dừng hẳn
-                # HOẶC
-                # 2. Đã hết khung giờ phiên (chỉ áp dụng cho các phiên trong ngày trước 23:59) VÀ runner hiện tại đã chạy xong
-                # Với ngày hôm qua (rollover): runner đã dừng hẳn là chốt báo cáo
-                if is_today:
-                    if is_last_window:
-                        can_report = (len(completed_expected) >= expected_count and not runner_busy)
-                    else:
-                        can_report = (len(completed_expected) >= expected_count and not runner_busy) or (now_hm >= win["end"] and not runner_busy)
-                else:
-                    can_report = not runner_busy
+                can_report = can_report_session(
+                    is_today=is_today,
+                    completed_expected_count=len(completed_expected),
+                    expected_count=expected_count,
+                    now_hm=now_hm,
+                    window_end_hm=win["end"],
+                    runner_busy=runner_busy,
+                )
 
                 if not can_report:
                     continue
@@ -397,9 +484,9 @@ def main():
                         total_followed_count += len(flist)
                         status = str(fd.get("status") or "").upper()
 
-                        # Only explicit post-verify FOLLOW_FAILED or follow_failed flag means TikTok
-                        # released the follow. Script/manual/timeout errors stay errors.
-                        if status == "FOLLOW_FAILED" or fd.get("follow_failed") is True:
+                        # Only explicit post-verify FOLLOW_FAILED with follow_failed=True means TikTok
+                        # released the follow. Script/manual/timeout/unverified errors stay errors.
+                        if status == "FOLLOW_FAILED" and fd.get("follow_failed") is True:
                             fl_released.append(m)
                         elif status == "SKIPPED":
                             fl_skipped.append(m)
@@ -446,7 +533,7 @@ def main():
 
                             if u_status == "success" and u_code == 0:
                                 up_success.append(m)
-                            elif u_status == "skipped" or any(k in u_reason for k in ("video_not_rendered", "missing_video_folder", "missing_account_id", "not-final-session", "sensitive-skip")):
+                            elif u_status == "skipped" or any(k in u_reason for k in ("video_not_rendered", "missing_video_folder", "missing_account_id", "not-final-session", "sensitive-skip", "cooling_period", "account_cooling_period", "age_gate", "under_10_days")):
                                 up_skipped.append(m)
                             elif "timeout" in u_status or "timeout" in u_reason:
                                 up_timeout.append(m)

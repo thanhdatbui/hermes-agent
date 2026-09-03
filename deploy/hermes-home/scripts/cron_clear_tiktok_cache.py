@@ -108,33 +108,66 @@ def clear_device_cache(m_num: int, serial: str) -> tuple[int, str, bool, str]:
 def main() -> int:
     connected = get_connected_devices()
     if not connected:
-        print("[CRON] No connected ADB devices found.")
+        print("[BÁO CÁO DỌN DẸP CACHE TIKTOK]\n• Không có thiết bị ADB online.")
         return 0
 
     machines = load_machine_serials()
     if not machines:
-        print("[CRON] No machine configuration found in workbook.")
+        print("[BÁO CÁO DỌN DẸP CACHE TIKTOK]\n• Không tìm thấy cấu hình máy trong workbook.")
         return 0
 
     target_machines = [(m, s) for m, s in machines if s in connected]
     skipped_count = len(machines) - len(target_machines)
 
-    print(f"[CRON] Starting concurrent TikTok cache clear on {len(target_machines)} online machines (workers={MAX_WORKERS})...")
+    sys.stderr.write(f"[CRON] Starting concurrent TikTok cache clear on {len(target_machines)} online machines (workers={MAX_WORKERS})...\n")
     
-    success_count = 0
-    fail_count = 0
+    success_machines: list[int] = []
+    failed_machines: list[tuple[int, str]] = []
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         futures = {executor.submit(clear_device_cache, m, s): m for m, s in target_machines}
         for future in concurrent.futures.as_completed(futures):
             m_num, serial, ok, msg = future.result()
-            print(msg)
+            sys.stderr.write(f"{msg}\n")
             if ok:
-                success_count += 1
+                success_machines.append(m_num)
             else:
-                fail_count += 1
+                reason = "Error"
+                if "WIDGET_MISS" in msg:
+                    reason = "WIDGET_MISS"
+                elif "timed out" in msg.lower() or "timeout" in msg.lower():
+                    reason = "Timeout"
+                elif "[WARN]" in msg:
+                    parts = msg.split(":", 2)
+                    reason = parts[2].strip() if len(parts) >= 3 else parts[-1].strip()
+                elif "[ERROR]" in msg:
+                    parts = msg.split(":", 2)
+                    reason = parts[2].strip() if len(parts) >= 3 else parts[-1].strip()
+                failed_machines.append((m_num, reason))
 
-    print(f"[CRON SUMMARY] Done: {success_count} OK, {fail_count} Failed, {skipped_count} Offline/Skipped.")
+    s_count = len(success_machines)
+    f_count = len(failed_machines)
+    total_online = len(target_machines)
+    total_all = len(machines)
+
+    s_list = ", ".join(f"{m:02d}" for m in sorted(success_machines)) if success_machines else "None"
+
+    report = [
+        f"[BÁO CÁO DỌN DẸP CACHE TIKTOK]",
+        f"• Tổng máy: {total_online}/{total_all} online (Offline/Skip: {skipped_count})",
+        f"• Success ({s_count}): {s_list}",
+    ]
+
+    if f_count > 0:
+        f_list = ", ".join(f"{m:02d}" for m, _ in sorted(failed_machines))
+        report.append(f"• Fail ({f_count}): {f_list}")
+        for m, reason in sorted(failed_machines):
+            report.append(f"  - Máy {m:02d}: {reason}")
+    else:
+        report.append(f"• Fail (0)")
+
+    report_text = "\n".join(report)
+    print(report_text)
     return 0
 
 

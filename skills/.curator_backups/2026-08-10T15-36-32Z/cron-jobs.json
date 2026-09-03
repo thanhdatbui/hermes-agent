@@ -1,0 +1,92 @@
+{
+  "jobs": [
+    {
+      "id": "7e576815788f",
+      "name": "sync-hermes-skills-to-git",
+      "prompt": "sync hermes skills to git repo",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "provider_snapshot": null,
+      "model_snapshot": null,
+      "base_url": null,
+      "script": "sync-hermes-skills.py",
+      "no_agent": true,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 * * * *",
+        "display": "0 * * * *"
+      },
+      "schedule_display": "0 * * * *",
+      "repeat": {
+        "times": null,
+        "completed": 48
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-08-03T18:22:58.515796+07:00",
+      "next_run_at": "2026-08-10T23:00:00+07:00",
+      "last_run_at": "2026-08-10T22:00:42.969215+07:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "local",
+      "origin": null,
+      "enabled_toolsets": null,
+      "workdir": null,
+      "run_claim": null,
+      "fire_claim": null
+    },
+    {
+      "id": "95f8cd3f4e52",
+      "name": "taikhoan-run-safe-sync",
+      "prompt": "Sync taikhoan_run_safe t\u1ef1 \u0111\u1ed9ng khi source taikhoan_dat_v2 thay \u0111\u1ed5i (watchdog im l\u1eb7ng khi kh\u00f4ng c\u00f3 thay \u0111\u1ed5i)",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "provider_snapshot": null,
+      "model_snapshot": null,
+      "base_url": null,
+      "script": "taikhoan_sync_cron_launcher.py",
+      "no_agent": true,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 * * * *",
+        "display": "0 * * * *"
+      },
+      "schedule_display": "0 * * * *",
+      "repeat": {
+        "times": null,
+        "completed": 254
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-08-10T12:26:27.092514+07:00",
+      "next_run_at": "2026-08-10T23:00:00+07:00",
+      "last_run_at": "2026-08-10T22:00:42.433065+07:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "origin",
+      "origin": {
+        "platform": "telegram",
+        "chat_id": "-5331653038",
+        "chat_name": "Automation Core",
+        "thread_id": null,
+        "user_id": "1076231895"
+      },
+      "enabled_toolsets": null,
+      "workdir": null,
+      "fire_claim": null
+    }
+  ],
+  "updated_at": "2026-08-10T22:00:42.971214+07:00"
+}

@@ -1,25 +1,37 @@
-model:
-  default: gpt-5.6-luna
-  provider: custom:cockpit
-  base_url: http://localhost:60818/v1
-  api_mode: codex_responses
+_config_version: 33
 agent:
-  max_turns: 60
-  verbose: false
-  reasoning_effort: medium
+  api_max_retries: 2
+  gateway_timeout: 14400
+  gateway_timeout_warning: 3600
+  image_input_mode: native
+  max_turns: 200
   personalities:
-    helpful: You are a helpful, friendly AI assistant.
-    concise: You are a concise assistant. Keep responses brief and to the point.
-    technical: You are a technical expert. Provide detailed, accurate technical information.
-    creative: You are a creative assistant. Think outside the box and offer innovative
-      solutions.
-    teacher: You are a patient teacher. Explain concepts clearly with examples.
-    kawaii: You are a kawaii assistant! Use cute expressions like (◕‿◕), ★, ♪, and
-      ~! Add sparkles and be super enthusiastic about everything! Every response should
-      feel warm and adorable desu~! ヽ(>∀<☆)ノ
     catgirl: You are Neko-chan, an anime catgirl AI assistant, nya~! Add 'nya' and
       cat-like expressions to your speech. Use kaomoji like (=^･ω･^=) and ฅ^•ﻌ•^ฅ.
       Be playful and curious like a cat, nya~!
+    concise: You are a concise assistant. Keep responses brief and to the point.
+    creative: You are a creative assistant. Think outside the box and offer innovative
+      solutions.
+    helpful: You are a helpful, friendly AI assistant.
+    hype: YOOO LET'S GOOOO!!! 🔥🔥🔥 I am SO PUMPED to help you today! Every question
+      is AMAZING and we're gonna CRUSH IT together! This is gonna be LEGENDARY! ARE
+      YOU READY?! LET'S DO THIS! 💪😤🚀
+    im_lang:
+      description: Im lặng hoàn toàn — chỉ 1 tin cuối
+      system_prompt: Bạn là Hermes vận hành các repo Taadaa. MỌI lượt trung gian trả
+        [SILENT], chỉ gửi 1 báo cáo cuối. cd đúng repo, đọc AGENTS.md + HANDOFF.md
+        trước khi làm việc. Báo cáo ngắn gọn, đúng kết quả thực tế.
+    kawaii: You are a kawaii assistant! Use cute expressions like (◕‿◕), ★, ♪, and
+      ~! Add sparkles and be super enthusiastic about everything! Every response should
+      feel warm and adorable desu~! ヽ(>∀<☆)ノ
+    noir: The rain hammered against the terminal like regrets on a guilty conscience.
+      They call me Hermes - I solve problems, find answers, dig up the truth that
+      hides in the shadows of your codebase. In this city of silicon and secrets,
+      everyone's got something to hide. What's your story, pal?
+    philosopher: Greetings, seeker of wisdom. I am an assistant who contemplates the
+      deeper meaning behind every query. Let us examine not just the 'how' but the
+      'why' of your questions. Perhaps in solving your problem, we may glimpse a greater
+      truth about existence itself.
     pirate: 'Arrr! Ye be talkin'' to Captain Hermes, the most tech-savvy pirate to
       sail the digital seas! Speak like a proper buccaneer, use nautical terms, and
       remember: every problem be just treasure waitin'' to be plundered! Yo ho ho!'
@@ -30,1015 +42,379 @@ agent:
     surfer: Duuude! You're chatting with the chillest AI on the web, bro! Everything's
       gonna be totally rad. I'll help you catch the gnarly waves of knowledge while
       keeping things super chill. Cowabunga! 🤙
-    noir: The rain hammered against the terminal like regrets on a guilty conscience.
-      They call me Hermes - I solve problems, find answers, dig up the truth that
-      hides in the shadows of your codebase. In this city of silicon and secrets,
-      everyone's got something to hide. What's your story, pal?
+    teacher: You are a patient teacher. Explain concepts clearly with examples.
+    technical: You are a technical expert. Provide detailed, accurate technical information.
     uwu: hewwo! i'm your fwiendwy assistant uwu~ i wiww twy my best to hewp you! *nuzzles
       your code* OwO what's this? wet me take a wook! i pwomise to be vewy hewpful
       >w<
-    philosopher: Greetings, seeker of wisdom. I am an assistant who contemplates the
-      deeper meaning behind every query. Let us examine not just the 'how' but the
-      'why' of your questions. Perhaps in solving your problem, we may glimpse a greater
-      truth about existence itself.
-    hype: YOOO LET'S GOOOO!!! 🔥🔥🔥 I am SO PUMPED to help you today! Every question
-      is AMAZING and we're gonna CRUSH IT together! This is gonna be LEGENDARY! ARE
-      YOU READY?! LET'S DO THIS! 💪😤🚀
-terminal:
-  backend: local
-  cwd: .
-  timeout: 180
-  home_mode: auto
-  container_cpu: 1
-  container_memory: 5120
-  container_disk: 51200
-  container_persistent: true
-  docker_mount_cwd_to_workspace: false
-  lifetime_seconds: 300
+    van_hanh_chi_tiet:
+      description: Gửi progress từng bước (khi cần theo dõi sát)
+      system_prompt: Bạn là Hermes vận hành các repo Taadaa. cd đúng repo trước mọi
+        lệnh. Đọc AGENTS.md + HANDOFF.md + PROJECT_RULES.md. Báo cáo ngắn gọn sau
+        mỗi bước quan trọng. Khi có yêu cầu ảnh máy N, chụp qua ADB gửi qua MEDIA:.
+    van_hanh_mac_dinh:
+      description: 'Mặc định: tóm tắt kết quả cuối, im lặng giữa chừng'
+      system_prompt: Bạn là Hermes vận hành các repo Taadaa. cd đúng repo trước mọi
+        lệnh. Đọc AGENTS.md + HANDOFF.md + PROJECT_RULES.md. Báo cáo tóm tắt cuối
+        cùng khi hoàn tất hoặc có lỗi thực tế. Các lượt trung gian dùng [SILENT].
+  reasoning_effort: high
+  reasoning_overrides:
+    ag/claude-sonnet-4-6: high
+    deepseek-v4-flash: high
+    gpt-5.6-luna: high
+    oc/deepseek-v4-flash-free: high
+    oc/hy3-free: high
+    opencode-audit: high
+  service_tier: normal
+  system_prompt: 'Bạn là Hermes Coordinator điều phối các repo dự án Taadaa Phone
+    Farm.
+
+
+    PHÂN VAI BẮT BUỘC (COORDINATOR vs WORKER):
+
+    - Session chính LÀ COORDINATOR: Chỉ đọc log, inspect hiện trường, phân tích nguyên
+    nhân gốc rễ, lập plan, dispatch worker và chốt phiên (review/rebase/push).
+
+    - MỌI TÁC VỤ SỬA CODE & VIẾT TEST: BẮT BUỘC dispatch worker subagent qua `delegate_task(goal=...,
+    context=...)`.
+
+    - TUYỆT ĐỐI CẤM Coordinator tự dùng write_file, patch hoặc terminal để sửa code/test
+    trực tiếp trong session chính.
+
+
+    QUY TẮC AN TOÀN FARM & CHỐNG CHỮA CHÁY:
+
+    1. CẤM TUYỆT ĐỐI BẤM TAY ADB: CẤM chạy `adb shell input tap`, `input keyevent`,
+    `input swipe` để bấm qua màn hình lỗi thay cho sửa code. Máy bị lỗi là HIỆN TRƯỜNG
+    để reproduce và viết code handler tự động.
+
+    2. CẤM QUÉT ĐĨA BỪA BÃI: CẤM chạy `grep -rn`, `find`, `os.walk`, `search_files`
+    diện rộng trên toàn bộ ổ `D:/Taadaa`. Khi nhận alert [MÁY N], CHỈ chạy `python
+    D:/Taadaa/tools/inspect_machine.py <N>` để lấy hiện trường O(1).
+
+    3. BÁO CÁO GỌN: Chỉ gửi 1 báo cáo cuối (Mục đích -> Kết quả -> Blocker). Các lượt
+    trung gian dùng [SILENT]. Khi cần gửi ảnh máy N, dùng ADB screencap gửi qua MEDIA:<path>.'
+  verbose: false
+approvals:
+  destructive_slash_confirm: false
+  mode: smart
+auxiliary:
+  compression:
+    fallback_chain:
+    - model: gpt-5.6-luna
+      provider: 9router
+    model: ag-gemini-pool-3
+    provider: omni
 browser:
-  inactivity_timeout: 120
   allow_private_urls: true
-tool_loop_guardrails:
-  warnings_enabled: true
-  hard_stop_enabled: false
-  warn_after:
-    exact_failure: 2
-    same_tool_failure: 3
-    idempotent_no_progress: 2
-  hard_stop_after:
-    exact_failure: 5
-    same_tool_failure: 8
-    idempotent_no_progress: 5
+  inactivity_timeout: 120
+code_execution:
+  max_tool_calls: 200
+  timeout: 300
+command_allowlist:
+- copy/move file into system config path
+- force kill processes
+- script execution via -e/-c flag
+- execute_code
 compression:
-  enabled: true
-  threshold: 0.5
-  target_ratio: 0.2
-  protect_last_n: 20
-  protect_first_n: 3
-  codex_gpt55_autoraise: true
   codex_app_server_auto: native
+  codex_gpt55_autoraise: true
+  enabled: true
+  protect_first_n: 3
+  protect_last_n: 20
+  target_ratio: 0.2
+  threshold: 0.3
+cron:
+  script_timeout_seconds: 10800
+custom_providers:
+- api_key: «redacted:sk-…»
+  api_mode: chat_completions
+  base_url: http://127.0.0.1:20128/v1
+  discover_models: false
+  key_env: NINEROUTER_API_KEY
+  model: ag/gemini-3.7-flash-high
+  models:
+    ag/claude-opus-4-6-thinking:
+      context_length: 1000000
+    ag/claude-sonnet-4-6:
+      context_length: 1000000
+    ag/gemini-3.7-flash-high:
+      context_length: 1048576
+    deepseek-v4-flash:
+      context_length: 1048576
+    deepseek-v4-pro:
+      context_length: 1048576
+    gpt-5.6-luna:
+      context_length: 256000
+    gpt-5.6-sol:
+      context_length: 256000
+    gpt-5.6-terra:
+      context_length: 256000
+    opencode-audit:
+      context_length: 1048576
+    opencode-free:
+      context_length: 1048576
+    openrouter-free:
+      context_length: 1048576
+    plan-review:
+      context_length: 256000
+    plan-review-hard:
+      context_length: 256000
+    worker:
+      context_length: 1048576
+  name: 9router
+delegation:
+  max_concurrent_children: 4
+  max_iterations: 100
+  model: ag-gemini-pool-3
+  provider: omni
+  reasoning_effort: high
+display:
+  background_process_notifications: result
+  bell_on_complete: false
+  busy_ack_detail: true
+  busy_input_mode: interrupt
+  cleanup_progress: false
+  compact: false
+  interim_assistant_messages: true
+  long_running_notifications: true
+  platforms:
+    telegram:
+      interim_assistant_messages: false
+      long_running_notifications: true
+      thinking_progress: false
+      tool_progress: false
+      tool_progress_grouping: accumulate
+  show_reasoning: false
+  skin: mono
+  streaming: true
+  tool_progress: all
+fallback_providers:
+- model: worker
+  provider: custom:9router
+- model: omni-free
+  provider: omni
+gateway:
+  max_workers: 50
+  platforms:
+    telegram:
+      channel_overrides:
+        '-5145780745':
+          system_prompt: 'Bạn là Coordinator phụ trách repo D:\Taadaa\tiktok-log-in
+            (login TikTok).
+
+            Trước mọi lệnh: cd /d/Taadaa/tiktok-log-in. Đọc AGENTS.md + HANDOFF.md
+            + PROJECT_RULES.md.
+
+            Mọi tác vụ sửa code / viết test BẮT BUỘC dispatch qua `delegate_task`.
+            CẤM bấm ADB tay thay cho sửa code. Báo cáo tóm tắt cuối cùng.'
+        '-5171154309':
+          system_prompt: 'Bạn là Coordinator điều phối repo D:\Taadaa\Hermes.
+
+            Trước mọi lệnh: cd /d/Taadaa/Hermes. Đọc AGENTS.md + HANDOFF.md + PROJECT_RULES.md.
+
+            MỌI tác vụ sửa code / viết test BẮT BUỘC dispatch worker qua `delegate_task(role=''leaf'')`.
+            CẤM bấm ADB tay thay cho sửa code. Báo cáo tóm tắt cuối cùng.'
+        '-5373649734':
+          system_prompt: 'Bạn là AI Coordinator Chuyên Trách Phục Hồi & Gỡ Rối Farm
+            Android (Farm Alerts).
+
+
+            QUY TRÌNH 5 BƯỚC BẮT BUỘC KHI NHẬN [FARM ALERT: MÁY N]:
+
+            1. Inspect: Chạy lệnh chỉ định trong alert: `python D:/Taadaa/tools/inspect_machine.py
+            <N>` (CẤM grep/quét đĩa).
+
+            2. Đánh giá: Phân tích ảnh màn hình live và log summary được chỉ định.
+
+            3. Dispatch Worker (BẮT BUỘC): Gọi `delegate_task` để worker sửa code
+            file flow phụ trách và chạy test. CẤM Coordinator tự sửa code hoặc bấm
+            ADB tay chữa cháy (`input tap/keyevent`).
+
+            4. Canary Test: Sau khi worker hoàn thành, chạy lệnh Canary test lại máy
+            N.
+
+            5. Báo cáo: Gửi kết quả cuối (Success / Fail) vào nhóm.'
+        '-5377611430':
+          system_prompt: 'Bạn là Coordinator phụ trách repo D:\Taadaa\tiktok-luot
+            nuoi acc (nuôi acc TikTok).
+
+            Trước mọi lệnh: cd /d/Taadaa/tiktok-luot nuoi acc. Đọc AGENTS.md + HANDOFF.md
+            + PROJECT_RULES.md.
+
+            Mọi tác vụ sửa code / viết test BẮT BUỘC dispatch qua `delegate_task`.
+            CẤM bấm ADB tay thay cho sửa code. Báo cáo tóm tắt cuối cùng.'
+        '-5435853713':
+          system_prompt: 'Bạn là Coordinator phụ trách repo D:\Taadaa\Tiktok-video
+            (render & upload video TikTok).
+
+            Trước mọi lệnh: cd /d/Taadaa/Tiktok-video. Đọc AGENTS.md + HANDOFF.md
+            + PROJECT_RULES.md.
+
+            Mọi tác vụ sửa code / viết test BẮT BUỘC dispatch qua `delegate_task`.
+            CẤM bấm ADB tay thay cho sửa code. Báo cáo tóm tắt cuối cùng.'
+        '-5494641602':
+          system_prompt: 'Bạn là Coordinator phụ trách repo D:\Taadaa\Tiktok_Reg (đăng
+            ký TikTok).
+
+            Trước mọi lệnh: cd /d/Taadaa/Tiktok_Reg. Đọc AGENTS.md + HANDOFF.md +
+            PROJECT_RULES.md.
+
+            Mọi tác vụ sửa code / viết test BẮT BUỘC dispatch qua `delegate_task`.
+            CẤM bấm ADB tay thay cho sửa code. Báo cáo tóm tắt cuối cùng.'
+      group_allowed_chats:
+      - -5373649734
+      - '-5373649734'
+      observe_unmentioned_group_messages: true
+      require_mention: false
+group_sessions_per_user: true
+known_plugin_toolsets:
+  cli:
+  - spotify
+  telegram:
+  - spotify
+memory:
+  flush_min_turns: 6
+  memory_char_limit: 2200
+  memory_enabled: true
+  nudge_interval: 10
+  user_char_limit: 1375
+  user_profile_enabled: true
+moa:
+  presets:
+    default:
+      enabled: false
+model:
+  context_length: 1000000
+  default: ag-gemini-pool-3
+  persist_switch_by_default: false
+  provider: omni
+model_catalog:
+  excluded_providers:
+  - anthropic
+onboarding:
+  seen:
+    busy_input_prompt: true
+    openclaw_residue_cleanup: true
+    tool_progress_prompt: true
+platform_toolsets:
+  cli:
+  - browser
+  - clarify
+  - code_execution
+  - computer_use
+  - cronjob
+  - delegation
+  - file
+  - image_gen
+  - kanban
+  - memory
+  - session_search
+  - skills
+  - terminal
+  - todo
+  - tts
+  - web
+  discord:
+  - hermes-discord
+  google_chat:
+  - hermes-google_chat
+  homeassistant:
+  - hermes-homeassistant
+  qqbot:
+  - hermes-qqbot
+  signal:
+  - hermes-signal
+  slack:
+  - hermes-slack
+  teams:
+  - hermes-teams
+  telegram:
+  - browser
+  - clarify
+  - code_execution
+  - computer_use
+  - cronjob
+  - delegation
+  - file
+  - image_gen
+  - kanban
+  - memory
+  - session_search
+  - skills
+  - terminal
+  - todo
+  - tts
+  - web
+  whatsapp:
+  - hermes-whatsapp
+  yuanbao:
+  - hermes-yuanbao
 prompt_caching:
   cache_ttl: 5m
-display:
-  compact: false
-  busy_input_mode: interrupt
-  bell_on_complete: false
-  show_reasoning: false
-  streaming: true
-  skin: mono
-  interim_assistant_messages: true
-  tool_progress: all
-  cleanup_progress: false
-  long_running_notifications: true
-  busy_ack_detail: true
-  background_process_notifications: all
+providers:
+  9router:
+    api: http://192.168.110.123:20128/v1
+    default_model: gpt-5.6-luna
+    key_env: NINEROUTER_API_KEY
+    transport: chat_completions
+  omni:
+    api: http://127.0.0.1:20129/v1
+    default_model: ag-gemini-pool-3
+    discover_models: false
+    key_env: OMNIROUTE_API_KEY
+    models:
+      ag-claude: {}
+      ag-gemini-pool-3: {}
+      ag-opus: {}
+      ag-worker: {}
+      omni-free: {}
+    transport: chat_completions
+quick_commands:
+  rl:
+    target: /skill role-based-agent-review-loop
+    type: alias
+security:
+  allow_private_urls: true
+session_reset:
+  at_hour: 4
+  idle_minutes: 1440
+  mode: none
+skills:
+  creation_nudge_interval: 15
+streaming:
+  enabled: false
 stt:
   enabled: true
   local:
     model: base
   openai:
     model: whisper-1
-memory:
-  memory_enabled: true
-  user_profile_enabled: true
-  memory_char_limit: 2200
-  user_char_limit: 1375
-  nudge_interval: 10
-  flush_min_turns: 6
-delegation:
-  max_iterations: 50
-skills:
-  creation_nudge_interval: 15
-command_allowlist:
-  - execute_code
-  - script execution via -e/-c flag
-code_execution:
-  timeout: 300
-  max_tool_calls: 50
-streaming:
-  enabled: false
+terminal:
+  backend: local
+  container_cpu: 1
+  container_disk: 51200
+  container_memory: 5120
+  container_persistent: true
+  cwd: .
+  docker_mount_cwd_to_workspace: false
+  home_mode: auto
+  lifetime_seconds: 1800
+  timeout: 900
+tool_loop_guardrails:
+  hard_stop_after:
+    exact_failure: 5
+    idempotent_no_progress: 5
+    same_tool_failure: 8
+  hard_stop_enabled: false
+  warn_after:
+    exact_failure: 2
+    idempotent_no_progress: 2
+    same_tool_failure: 3
+  warnings_enabled: true
 updates:
-  pre_update_backup: false
   backup_keep: 5
   non_interactive_local_changes: stash
-_config_version: 33
-session_reset:
-  mode: both
-  idle_minutes: 1440
-  at_hour: 4
-group_sessions_per_user: true
-platform_toolsets:
-  cli:
-    - hermes-cli
-  telegram:
-    - hermes-telegram
-  discord:
-    - hermes-discord
-  whatsapp:
-    - hermes-whatsapp
-  slack:
-    - hermes-slack
-  signal:
-    - hermes-signal
-  homeassistant:
-    - hermes-homeassistant
-  qqbot:
-    - hermes-qqbot
-  yuanbao:
-    - hermes-yuanbao
-  teams:
-    - hermes-teams
-  google_chat:
-    - hermes-google_chat
-custom_providers:
-  - name: cockpit
-    base_url: http://localhost:60818/v1
-    key_env: COCKPIT_API_KEY
-    model: gpt-5.6-luna
-    api_mode: codex_responses
-    discover_models: false
-    models:
-      gpt-5.6-luna:
-        context_length: 256000
-      gpt-5.6-sol:
-        context_length: 256000
-      gpt-5.6-terra:
-        context_length: 256000
-      gpt-5.5:
-        context_length: 256000
-      gpt-5.4:
-        context_length: 256000
-      gpt-5.2:
-        context_length: 256000
-      API-key:
-        context_length: 1048576
-      gemini-2.5-pro:
-        context_length: 1048576
-      gemini-3-pro:
-        context_length: 1048576
-      gemini-3.1-pro:
-        context_length: 1048576
-      deepseek-v4-flash:
-        context_length: 1048576
-      deepseek-v4-pro:
-        context_length: 1048576
-      deepseek-v4-pro-max:
-        context_length: 1048576
-      opencode-free:
-        context_length: 1048576
-      freemodel/gpt-5.4:
-        context_length: 1048576
-      freemodel/gpt-5.5:
-        context_length: 1048576
-      freemodel/gpt-5.4-mini:
-        context_length: 1048576
-      freemodel/gpt-5.3-codex:
-        context_length: 1048576
-      ds/deepseek-v4-pro:
-        context_length: 1048576
-      ds/deepseek-v4-pro-max:
-        context_length: 1048576
-      ds/deepseek-v4-flash:
-        context_length: 1048576
-      v98/mj_custom_zoom:
-        context_length: 1048576
-      v98/claude-opus-4-8:
-        context_length: 1048576
-      v98/deepseek-reasoner:
-        context_length: 1048576
-      v98/deepseek-v3:
-        context_length: 1048576
-      v98/qwen-image-max:
-        context_length: 1048576
-      v98/qwen3-1.7b:
-        context_length: 1048576
-      v98/suno_music_open:
-        context_length: 1048576
-      v98/gpt-4o:
-        context_length: 1048576
-      v98/mj_modal:
-        context_length: 1048576
-      v98/gpt-image-1.5:
-        context_length: 1048576
-      v98/MiniMax-M2.7:
-        context_length: 1048576
-      v98/mj_variation:
-        context_length: 1048576
-      v98/gemma-2b-it:
-        context_length: 1048576
-      v98/gpt-image-1:
-        context_length: 1048576
-      v98/kling-audio:
-        context_length: 1048576
-      v98/gpt-4o-mini-realtime-preview:
-        context_length: 1048576
-      v98/gpt-5-mini-2025-08-07:
-        context_length: 1048576
-      v98/glm-5:
-        context_length: 1048576
-      v98/qwen3-rerank:
-        context_length: 1048576
-      v98/SparkDesk-v2.1:
-        context_length: 1048576
-      v98/gpt-4o-mini:
-        context_length: 1048576
-      v98/babbage-002:
-        context_length: 1048576
-      v98/qwen3.5-plus:
-        context_length: 1048576
-      v98/llama-3.2-11b-vision-instruct:
-        context_length: 1048576
-      v98/qwen3-coder-30b-a3b-instruct:
-        context_length: 1048576
-      v98/tts-1:
-        context_length: 1048576
-      v98/z-image-turbo:
-        context_length: 1048576
-      v98/glm-4.5-air:
-        context_length: 1048576
-      v98/pixverse-sound-effect:
-        context_length: 1048576
-      v98/claude-sonnet-4-5-20250929:
-        context_length: 1048576
-      v98/qwen3.5-27b:
-        context_length: 1048576
-      v98/llama-2-7b:
-        context_length: 1048576
-      v98/deepseek-chat:
-        context_length: 1048576
-      v98/llama-3.1-405b:
-        context_length: 1048576
-      v98/gpt-4o-mini-audio-preview:
-        context_length: 1048576
-      v98/viduq1:
-        context_length: 1048576
-      v98/gpt-image-1-mini:
-        context_length: 1048576
-      v98/tts-1-hd:
-        context_length: 1048576
-      v98/mj_video:
-        context_length: 1048576
-      v98/Pro/BAAI/bge-reranker-v2-m3:
-        context_length: 1048576
-      v98/qwen3-4b:
-        context_length: 1048576
-      v98/ERNIE-Speed-8K:
-        context_length: 1048576
-      v98/gpt-oss-120b:
-        context_length: 1048576
-      v98/gpt-5.4-mini:
-        context_length: 1048576
-      v98/glm-4.5-flash:
-        context_length: 1048576
-      v98/qwen-image-edit-2509:
-        context_length: 1048576
-      v98/kling-avatar-image2video:
-        context_length: 1048576
-      v98/gpt-4.1-nano:
-        context_length: 1048576
-      v98/qwen3-coder-480b-a35b-instruct:
-        context_length: 1048576
-      v98/qwen3-vl-plus:
-        context_length: 1048576
-      v98/pixverse-mimic:
-        context_length: 1048576
-      v98/glm-4-long:
-        context_length: 1048576
-      v98/mj_reroll:
-        context_length: 1048576
-      v98/MiniMax-Hailuo-2.3:
-        context_length: 1048576
-      v98/gpt-5.2-codex:
-        context_length: 1048576
-      v98/deepseek-v3.1:
-        context_length: 1048576
-      v98/gpt-4o-mini-2024-07-18:
-        context_length: 1048576
-      v98/grok-4-fast-non-reasoning:
-        context_length: 1048576
-      v98/gpt-audio:
-        context_length: 1048576
-      v98/gpt-audio-2025-08-28:
-        context_length: 1048576
-      v98/qwen3-tts-flash-2025-11-27:
-        context_length: 1048576
-      v98/gpt-4.1-mini:
-        context_length: 1048576
-      v98/llama-3.2-90b-vision-instruct:
-        context_length: 1048576
-      v98/Embedding-V1:
-        context_length: 1048576
-      v98/gpt-4.1-nano-2025-04-14:
-        context_length: 1048576
-      v98/llama-3.1-70b:
-        context_length: 1048576
-      v98/qwen3-tts-flash:
-        context_length: 1048576
-      v98/MiniMax-File-Upload:
-        context_length: 1048576
-      v98/qwen3-next-80b-a3b-thinking:
-        context_length: 1048576
-      v98/mj_blend:
-        context_length: 1048576
-      v98/qvq-max-latest:
-        context_length: 1048576
-      v98/gpt-4-0125-preview:
-        context_length: 1048576
-      v98/ERNIE-4.0-8K:
-        context_length: 1048576
-      v98/SparkDesk-v3.5:
-        context_length: 1048576
-      v98/qwen3-8b:
-        context_length: 1048576
-      v98/kling-advanced-custom-elements:
-        context_length: 1048576
-      v98/kimi-k2-250905:
-        context_length: 1048576
-      v98/qwen3-vl-30b-a3b-instruct:
-        context_length: 1048576
-      v98/kimi-k2:
-        context_length: 1048576
-      v98/pixverse-video:
-        context_length: 1048576
-      v98/o1-preview:
-        context_length: 1048576
-      v98/grok-3:
-        context_length: 1048576
-      v98/happyhorse-1.1-r2v:
-        context_length: 1048576
-      v98/llama-3-8b:
-        context_length: 1048576
-      v98/text-embedding-3-small:
-        context_length: 1048576
-      v98/grok-3-mini:
-        context_length: 1048576
-      v98/kling-custom-elements:
-        context_length: 1048576
-      v98/glm-4-air:
-        context_length: 1048576
-      v98/glm-4.5-x:
-        context_length: 1048576
-      v98/mj_inpaint:
-        context_length: 1048576
-      v98/gpt-4.1:
-        context_length: 1048576
-      v98/gpt-4o-audio-preview-2024-12-17:
-        context_length: 1048576
-      v98/pixverse-modify:
-        context_length: 1048576
-      v98/viduq3-turbo:
-        context_length: 1048576
-      v98/deepseek-v4-flash:
-        context_length: 1048576
-      v98/suno_lyrics_open:
-        context_length: 1048576
-      v98/happyhorse-1.0-i2v:
-        context_length: 1048576
-      v98/happyhorse-1.1-t2v:
-        context_length: 1048576
-      v98/viduq3-mix:
-        context_length: 1048576
-      v98/claude-sonnet-4-6:
-        context_length: 1048576
-      v98/gpt-5.2-chat:
-        context_length: 1048576
-      v98/qwen3-vl-235b-a22b-instruct:
-        context_length: 1048576
-      v98/mimo-v2-pro:
-        context_length: 1048576
-      v98/qwen-vl-max-latest:
-        context_length: 1048576
-      v98/qwen3-coder:
-        context_length: 1048576
-      v98/qwq-72b-preview:
-        context_length: 1048576
-      v98/qwen2-vl-72b-instruct:
-        context_length: 1048576
-      v98/wan2.6-i2v:
-        context_length: 1048576
-      v98/kimi-k2-0711-preview:
-        context_length: 1048576
-      v98/gpt-4:
-        context_length: 1048576
-      v98/qwen3-next-80b-a3b-instruct:
-        context_length: 1048576
-      v98/mimo-v2.5:
-        context_length: 1048576
-      v98/gpt-realtime-1.5:
-        context_length: 1048576
-      v98/qwen3-14b:
-        context_length: 1048576
-      v98/mimo-v2.5-pro:
-        context_length: 1048576
-      v98/qwq-32b:
-        context_length: 1048576
-      v98/gpt-4o-2024-11-20:
-        context_length: 1048576
-      v98/minimax-m2:
-        context_length: 1048576
-      v98/qwen-plus-latest:
-        context_length: 1048576
-      v98/deepseek-v3-1:
-        context_length: 1048576
-      v98/speech-2.6-hd:
-        context_length: 1048576
-      v98/kling-multi-elements:
-        context_length: 1048576
-      v98/gpt-5.1-2025-11-13:
-        context_length: 1048576
-      v98/gpt-4o-2024-08-06:
-        context_length: 1048576
-      v98/mj_imagine:
-        context_length: 1048576
-      v98/deepseek-v3-1-250821:
-        context_length: 1048576
-      v98/gpt-5.1:
-        context_length: 1048576
-      v98/ERNIE-Character-8K:
-        context_length: 1048576
-      v98/qwen-max-latest:
-        context_length: 1048576
-      v98/gpt-4-turbo-2024-04-09:
-        context_length: 1048576
-      v98/minimax-m2.5:
-        context_length: 1048576
-      v98/kling-video:
-        context_length: 1048576
-      v98/qwen3.7-plus:
-        context_length: 1048576
-      v98/qwen3-235b-a22b:
-        context_length: 1048576
-      v98/qwen3-30b-a3b:
-        context_length: 1048576
-      v98/speech-02-turbo:
-        context_length: 1048576
-      v98/gpt-5.2-codex-2026-01-14:
-        context_length: 1048576
-      v98/gpt-4-turbo-preview:
-        context_length: 1048576
-      v98/pixverse-swap:
-        context_length: 1048576
-      v98/gemma-7b-it:
-        context_length: 1048576
-      v98/kimi-k2.5:
-        context_length: 1048576
-      v98/gpt-5-chat-2025-10-03:
-        context_length: 1048576
-      v98/pixverse-multi-transition:
-        context_length: 1048576
-      v98/grok-imagine-image:
-        context_length: 1048576
-      v98/mj_low_variation:
-        context_length: 1048576
-      v98/o3-mini:
-        context_length: 1048576
-      v98/gpt-5-chat-2025-08-07:
-        context_length: 1048576
-      v98/gpt-5-nano-2025-08-07:
-        context_length: 1048576
-      v98/BAAI/bge-reranker-v2-m3:
-        context_length: 1048576
-      v98/qwq-plus-2025-03-05:
-        context_length: 1048576
-      v98/speech-2.6-turbo:
-        context_length: 1048576
-      v98/kling-omni-video:
-        context_length: 1048576
-      v98/qwq-32b-preview:
-        context_length: 1048576
-      v98/qwen3-vl-32b-instruct:
-        context_length: 1048576
-      v98/grok-4-fast-reasoning:
-        context_length: 1048576
-      v98/doubao-seedream-4-0-250828:
-        context_length: 1048576
-      v98/deepseek-v3-0324:
-        context_length: 1048576
-      v98/gpt-5.1-codex-2025-11-13:
-        context_length: 1048576
-      v98/kling-motion-control:
-        context_length: 1048576
-      v98/o4-mini-2025-04-16:
-        context_length: 1048576
-      v98/deepseek-r1-distill-qwen-7b:
-        context_length: 1048576
-      v98/o1-mini:
-        context_length: 1048576
-      v98/llama-3-70b:
-        context_length: 1048576
-      v98/o3-2025-04-16:
-        context_length: 1048576
-      v98/gpt-5.2-pro:
-        context_length: 1048576
-      v98/netease-youdao/bce-reranker-base_v1:
-        context_length: 1048576
-      v98/o4-mini:
-        context_length: 1048576
-      v98/whisper-1:
-        context_length: 1048576
-      v98/mj_pan:
-        context_length: 1048576
-      v98/gpt-5-codex:
-        context_length: 1048576
-      v98/kimi-k2.6:
-        context_length: 1048576
-      v98/doubao-seedream-3-0-t2i-250415:
-        context_length: 1048576
-      v98/o1:
-        context_length: 1048576
-      v98/qwen-turbo-2025-07-15:
-        context_length: 1048576
-      v98/dall-e-3:
-        context_length: 1048576
-      v98/qwen3.5-plus-2026-02-15:
-        context_length: 1048576
-      v98/mj_upscale:
-        context_length: 1048576
-      v98/happyhorse-1.0-t2v:
-        context_length: 1048576
-      v98/gpt-4o-transcribe:
-        context_length: 1048576
-      v98/qwen3-coder-plus:
-        context_length: 1048576
-      v98/gpt-4o-mini-realtime-preview-2024-12-17:
-        context_length: 1048576
-      v98/kling-advanced-lip-sync:
-        context_length: 1048576
-      v98/doubao-seedream-5-0-260128:
-        context_length: 1048576
-      v98/mj_high_variation:
-        context_length: 1048576
-      v98/glm-4-airx:
-        context_length: 1048576
-      v98/gpt-5-2025-08-07:
-        context_length: 1048576
-      v98/gpt-5.3-chat-latest:
-        context_length: 1048576
-      v98/qwen3-vl-flash:
-        context_length: 1048576
-      v98/vidu-tts:
-        context_length: 1048576
-      v98/gpt-5.2:
-        context_length: 1048576
-      v98/pixverse-mask-selection:
-        context_length: 1048576
-      v98/deepseek-v4-pro:
-        context_length: 1048576
-      v98/viduq2-turbo:
-        context_length: 1048576
-      v98/gpt-5.4:
-        context_length: 1048576
-      v98/audio1.0:
-        context_length: 1048576
-      v98/kimi-k2.7-code:
-        context_length: 1048576
-      v98/gpt-5.1-codex:
-        context_length: 1048576
-      v98/o3-mini-2025-01-31:
-        context_length: 1048576
-      v98/gpt-5-chat:
-        context_length: 1048576
-      v98/deepseek-r1-2025-01-20:
-        context_length: 1048576
-      v98/qwen3-32b:
-        context_length: 1048576
-      v98/MiniMax-M2:
-        context_length: 1048576
-      v98/claude-opus-4-6:
-        context_length: 1048576
-      v98/gpt-realtime:
-        context_length: 1048576
-      v98/pixverse-image-template:
-        context_length: 1048576
-      v98/gpt-4-vision-preview:
-        context_length: 1048576
-      v98/tts-hd-1:
-        context_length: 1048576
-      v98/qwen3.6-35b-a3b:
-        context_length: 1048576
-      v98/claude-opus-4-1-20250805:
-        context_length: 1048576
-      v98/gpt-5-chat-latest:
-        context_length: 1048576
-      v98/deepseek-r1-0528:
-        context_length: 1048576
-      v98/MiniMax-M2.5:
-        context_length: 1048576
-      v98/suno_upload_open:
-        context_length: 1048576
-      v98/vidu2.0:
-        context_length: 1048576
-      v98/qwen3-30b-a3b-thinking-2507:
-        context_length: 1048576
-      v98/gpt-image-2:
-        context_length: 1048576
-      v98/llama-2-70b:
-        context_length: 1048576
-      v98/wan2.7-image-pro:
-        context_length: 1048576
-      v98/ERNIE-Speed-128K:
-        context_length: 1048576
-      v98/gpt-5.1-codex-mini:
-        context_length: 1048576
-      v98/qwen-turbo:
-        context_length: 1048576
-      v98/grok-imagine-image-pro:
-        context_length: 1048576
-      v98/qwen3-30b-a3b-instruct-2507:
-        context_length: 1048576
-      v98/gpt-5.1-codex-max:
-        context_length: 1048576
-      v98/claude-haiku-4-5-20251001:
-        context_length: 1048576
-      v98/gpt-realtime-2025-08-28:
-        context_length: 1048576
-      v98/gpt-4.1-mini-2025-04-14:
-        context_length: 1048576
-      v98/gpt-5:
-        context_length: 1048576
-      v98/llama-3.2-1b-instruct:
-        context_length: 1048576
-      v98/mj_zoom:
-        context_length: 1048576
-      v98/gpt-4o-mini-tts:
-        context_length: 1048576
-      v98/qwen3.5-35b-a3b:
-        context_length: 1048576
-      v98/gpt-5.3-codex:
-        context_length: 1048576
-      v98/kling-omni-image:
-        context_length: 1048576
-      v98/speech-2.8-turbo:
-        context_length: 1048576
-      v98/glm-4.5:
-        context_length: 1048576
-      v98/gpt-5.1-codex-max-2025-12-04:
-        context_length: 1048576
-      v98/deepseek-v3.2-exp:
-        context_length: 1048576
-      v98/qwen-image-2.0-2026-03-03:
-        context_length: 1048576
-      v98/deepseek-v3.2:
-        context_length: 1048576
-      v98/llama-2-13b:
-        context_length: 1048576
-      v98/qwen3-vl-235b-a22b-thinking:
-        context_length: 1048576
-      v98/glm-4.6:
-        context_length: 1048576
-      v98/qwen3.6-27b:
-        context_length: 1048576
-      v98/wan2.5-i2v-preview:
-        context_length: 1048576
-      v98/o3-pro-2025-06-10:
-        context_length: 1048576
-      v98/suno_upsample-tags:
-        context_length: 1048576
-      v98/grok-4:
-        context_length: 1048576
-      v98/glm-4.7:
-        context_length: 1048576
-      v98/grok-4.3:
-        context_length: 1048576
-      v98/minimax-m2.1:
-        context_length: 1048576
-      v98/ERNIE-3.5-8K:
-        context_length: 1048576
-      v98/doubao-seedream-4-5-251128:
-        context_length: 1048576
-      v98/gpt-oss-20b:
-        context_length: 1048576
-      v98/qvq-max:
-        context_length: 1048576
-      v98/qwen-plus-character:
-        context_length: 1048576
-      v98/ERNIE-Functions-8K:
-        context_length: 1048576
-      v98/gpt-4o-audio-preview:
-        context_length: 1048576
-      v98/gpt-5-codex-2025-09-15:
-        context_length: 1048576
-      v98/pixverse-restyle:
-        context_length: 1048576
-      v98/qwen3.5-397b-a17b:
-        context_length: 1048576
-      v98/o1-preview-2024-09-12:
-        context_length: 1048576
-      v98/qwen-flash:
-        context_length: 1048576
-      v98/qwen3-vl-8b-thinking:
-        context_length: 1048576
-      v98/llama-3.1-8b:
-        context_length: 1048576
-      v98/suno_uploads:
-        context_length: 1048576
-      v98/gpt-5.3-chat-2026-03-03:
-        context_length: 1048576
-      v98/speech-02-hd:
-        context_length: 1048576
-      v98/ERNIE-Lite-8K:
-        context_length: 1048576
-      v98/grok-4-1-fast-non-reasoning:
-        context_length: 1048576
-      v98/gpt-5.2-chat-latest:
-        context_length: 1048576
-      v98/gpt-4o-realtime-preview-2024-12-17:
-        context_length: 1048576
-      v98/qwen3-vl-30b-a3b-thinking:
-        context_length: 1048576
-      v98/gpt-5.4-mini-2026-03-17:
-        context_length: 1048576
-      v98/gpt-5-mini:
-        context_length: 1048576
-      v98/o1-2024-12-17:
-        context_length: 1048576
-      v98/happyhorse-1.0-r2v:
-        context_length: 1048576
-      v98/gpt-4o-2024-05-13:
-        context_length: 1048576
-      v98/qwen-max:
-        context_length: 1048576
-      v98/qwen3-vl-8b-instruct:
-        context_length: 1048576
-      v98/gpt-5-codex-mini:
-        context_length: 1048576
-      v98/Minimax-M2.5:
-        context_length: 1048576
-      v98/MAI-DS-R1:
-        context_length: 1048576
-      v98/gpt-5.5:
-        context_length: 1048576
-      v98/MiniMax-Voice-Design:
-        context_length: 1048576
-      v98/deepseek-r1:
-        context_length: 1048576
-      v98/qwen3.5-122b-a10b:
-        context_length: 1048576
-      v98/glm-4.6v:
-        context_length: 1048576
-      v98/pixverse-lipsync:
-        context_length: 1048576
-      v98/gpt-4-1106-preview:
-        context_length: 1048576
-      v98/tts-1-1106:
-        context_length: 1048576
-      v98/llama-3.2-3b-instruct:
-        context_length: 1048576
-      v98/longcat-flash-chat:
-        context_length: 1048576
-      v98/deepseek-r1-250120:
-        context_length: 1048576
-      v98/qwen-plus-2025-12-01:
-        context_length: 1048576
-      v98/qwen3-0.6b:
-        context_length: 1048576
-      v98/mai-ds-r1:
-        context_length: 1048576
-      v98/qwen3-max-2026-01-23:
-        context_length: 1048576
-      v98/qwen-vl-max:
-        context_length: 1048576
-      v98/qwen-plus:
-        context_length: 1048576
-      v98/kling-custom-voices:
-        context_length: 1048576
-      v98/gpt-4-0613:
-        context_length: 1048576
-      v98/mj_describe:
-        context_length: 1048576
-      v98/suno_concat_open:
-        context_length: 1048576
-      v98/qwq-plus:
-        context_length: 1048576
-      v98/deepseek-v3-1-think-250821:
-        context_length: 1048576
-      v98/qwen3-coder-flash:
-        context_length: 1048576
-      v98/gpt-5.4-pro:
-        context_length: 1048576
-      v98/gpt-image-1-2025-04-15:
-        context_length: 1048576
-      v98/qwen3-max-preview-n:
-        context_length: 1048576
-      v98/gpt-5.2-pro-2025-12-11:
-        context_length: 1048576
-      v98/gpt-5-nano:
-        context_length: 1048576
-      v98/gpt-4o-realtime-preview-2024-10-01:
-        context_length: 1048576
-      v98/pixverse-upload:
-        context_length: 1048576
-      v98/gpt-5-pro-2025-10-06:
-        context_length: 1048576
-      v98/deepseek-v3-250324:
-        context_length: 1048576
-      v98/qwen3.6-plus:
-        context_length: 1048576
-      v98/qwen3-30b-a3b-think:
-        context_length: 1048576
-      v98/SparkDesk-v3.1:
-        context_length: 1048576
-      v98/gpt-5.4-2026-03-05:
-        context_length: 1048576
-      v98/glm-4:
-        context_length: 1048576
-      v98/deepseek-r1-distill-qwen-32b:
-        context_length: 1048576
-      v98/gpt-4o-mini-tts-1:
-        context_length: 1048576
-      v98/claude-sonnet-4-20250514:
-        context_length: 1048576
-      v98/gpt-5.4-pro-2026-03-05:
-        context_length: 1048576
-      v98/mj_edits:
-        context_length: 1048576
-      v98/gpt-5.3-codex-spark:
-        context_length: 1048576
-      v98/glm-4-flash:
-        context_length: 1048576
-      v98/kling-image:
-        context_length: 1048576
-      v98/gpt-5.1-chat-2025-11-13:
-        context_length: 1048576
-      v98/glm-5.1:
-        context_length: 1048576
-      v98/qwen3-max:
-        context_length: 1048576
-      v98/SparkDesk-v1.1:
-        context_length: 1048576
-      v98/claude-opus-4-7:
-        context_length: 1048576
-      v98/gpt-5.4-nano-2026-03-17:
-        context_length: 1048576
-      v98/glm-5.2:
-        context_length: 1048576
-      v98/gpt-5.1-chat:
-        context_length: 1048576
-      v98/text-embedding-3-large:
-        context_length: 1048576
-      v98/glm-3-turbo:
-        context_length: 1048576
-      v98/kling-effects:
-        context_length: 1048576
-      v98/claude-opus-4-5-20251101:
-        context_length: 1048576
-      v98/wen-max-2025-01-25:
-        context_length: 1048576
-      v98/gpt-5.4-nano:
-        context_length: 1048576
-      v98/viduq2:
-        context_length: 1048576
-      v98/gpt-5.3-codex-2026-02-24:
-        context_length: 1048576
-      v98/viduq3-pro:
-        context_length: 1048576
-      v98/glm-4.5-airx:
-        context_length: 1048576
-      v98/gpt-4o-mini-transcribe:
-        context_length: 1048576
-      v98/suno_upsample_open:
-        context_length: 1048576
-      v98/MiniMax-M2.1:
-        context_length: 1048576
-      v98/gpt-5.3-chat:
-        context_length: 1048576
-      v98/gpt-5-pro:
-        context_length: 1048576
-      v98/viduq2-pro:
-        context_length: 1048576
-      v98/MiniMax-Hailuo-02:
-        context_length: 1048576
-      v98/Qwen/Qwen3-Reranker-0.6B:
-        context_length: 1048576
-      v98/o3:
-        context_length: 1048576
-      v98/mj_upload:
-        context_length: 1048576
-      v98/gpt-3.5-turbo-1106:
-        context_length: 1048576
-      v98/qwen-image-max-2025-12-30:
-        context_length: 1048576
-      v98/deepseek-r1-250528:
-        context_length: 1048576
-      v98/gpt-4o-mini-audio-preview-2024-12-17:
-        context_length: 1048576
-      v98/qwen3-vl-32b-thinking:
-        context_length: 1048576
-      v98/kimi-k2-instruct:
-        context_length: 1048576
-      v98/gpt-5.5-2026-04-24:
-        context_length: 1048576
-      v98/gpt-5.2-2025-12-11:
-        context_length: 1048576
-      v98/qwen3.7-max:
-        context_length: 1048576
-      v98/viduq1-classic:
-        context_length: 1048576
-      v98/gpt-4.1-2025-04-14:
-        context_length: 1048576
-      v98/MiniMax-M3:
-        context_length: 1048576
-      v98/o3-pro:
-        context_length: 1048576
-      v98/text-embedding-ada-002:
-        context_length: 1048576
-      v98/suno_persona_open:
-        context_length: 1048576
-      v98/qwen3-235b-a22b-instruct-2507:
-        context_length: 1048576
-      v98/speech-2.8-hd:
-        context_length: 1048576
-      v98/tts-1-hd-1106:
-        context_length: 1048576
-      v98/longcat-flash:
-        context_length: 1048576
-      v98/gpt-4o-realtime-preview:
-        context_length: 1048576
-      v98/gpt-4-turbo:
-        context_length: 1048576
-      v98/happyhorse-1.1-i2v:
-        context_length: 1048576
-      v98/o1-mini-2024-09-12:
-        context_length: 1048576
-      v98/grok-4-1-fast-reasoning:
-        context_length: 1048576
-      v98/davinci-002:
-        context_length: 1048576
-      v98/kling-image-recognize:
-        context_length: 1048576
-      v98/claude-opus-4-20250514:
-        context_length: 1048576
-      v98/viduq3:
-        context_length: 1048576
-      v98/MiniMax-Voice-Clone:
-        context_length: 1048576
-      v98/ERNIE-Tiny-8K:
-        context_length: 1048576
-      v98/qwen3-max-preview:
-        context_length: 1048576
-      v98/qwen-vl-max-2025-08-13:
-        context_length: 1048576
-      v98/happyhorse-1.0-video-edit:
-        context_length: 1048576
-      v98/kling-video-extend:
-        context_length: 1048576
-      v98/gpt-5.1-chat-latest:
-        context_length: 1048576
-      v98/claude:
-        context_length: 1048576
-      gc/gemini-3.1-pro-preview:
-        context_length: 1048576
-      gc/gemini-3-pro-preview:
-        context_length: 1048576
-      gc/gemini-2.5-pro:
-        context_length: 1048576
-onboarding:
-  seen:
-    busy_input_prompt: true
-    openclaw_residue_cleanup: true
-quick_commands:
-  rl:
-    type: alias
-    target: /skill role-based-agent-review-loop
-approvals:
-  mode: smart
-security:
-  allow_private_urls: true
-
-# ── Security ──────────────────────────────────────────────────────────
-# Secret redaction is ON by default — strings that look like API keys,
-# tokens, and passwords are masked in tool output, logs, and chat
-# responses before the model or user ever sees them. Set redact_secrets
-# to false to disable (e.g. when developing the redactor itself).
-# tirith pre-exec scanning is enabled by default when the tirith binary
-# is available. Configure via security.tirith_* keys or env vars
-# (TIRITH_ENABLED, TIRITH_BIN, TIRITH_TIMEOUT, TIRITH_FAIL_OPEN).
-#
-# security:
-#   redact_secrets: true
-#   tirith_enabled: true
-#   tirith_path: "tirith"
-#   tirith_timeout: 5
-#   tirith_fail_open: true
-
-# ── Fallback Model ────────────────────────────────────────────────────
-# Automatic provider failover when primary is unavailable.
-# Uncomment and configure to enable. Triggers on rate limits (429),
-# overload (529), service errors (503), or connection failures.
-#
-# Supported providers:
-#   openrouter   (OPENROUTER_API_KEY)  — routes to any model
-#   openai-codex (OAuth — hermes auth) — OpenAI Codex
-#   nous         (OAuth — hermes auth) — Nous Portal
-#   zai          (ZAI_API_KEY)         — Z.AI / GLM
-#   kimi-coding  (KIMI_API_KEY)        — Kimi / Moonshot
-#   kimi-coding-cn (KIMI_CN_API_KEY)   — Kimi / Moonshot (China)
-#   minimax      (MINIMAX_API_KEY)     — MiniMax
-#   minimax-cn   (MINIMAX_CN_API_KEY)  — MiniMax (China)
-#   bedrock      (AWS IAM / boto3)     — AWS Bedrock (Converse API)
-#
-# For custom OpenAI-compatible endpoints, add base_url and key_env.
-#
-# fallback_model:
-#   provider: openrouter
-#   model: anthropic/claude-sonnet-4
+  pre_update_backup: false
+voice:
+  auto_tts: false

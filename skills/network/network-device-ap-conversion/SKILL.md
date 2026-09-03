@@ -139,6 +139,7 @@ H196A Pitfalls:
 - Do not default to LAN-LAN cabling until the persisted bridge mode and uplink expectation are verified.
 
 Additional H196A Brazil/Ruijie/Aruba field notes: `references/zte-h196a-brazil-ruijie-aruba.md` (merged from the former `router-ap-conversion` skill).
+Phone Farm network architecture, Aruba RF dense tuning & 1000-device hardware scaling guide: `references/phone-farm-network-hardware-scaling.md`.
 
 ## User Expectation Pattern
 

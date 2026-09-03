@@ -37,6 +37,9 @@ ALLOWED_FORWARD_ENV = frozenset(
         "HERMES_CRON_SOURCE_CONFIG",
         "HERMES_CRON_OFFLINE_ROOT",
         "HERMES_CRON_REPORT_JSONL",
+        "HERMES_CRON_COHORT_ARTIFACT",
+        "HERMES_CRON_LIVE_ROOT",
+        "HERMES_CRON_ASSIGNMENT_MANIFEST",
     }
 )
 
@@ -54,6 +57,9 @@ _ARG_MAP = {
     "HERMES_CRON_SOURCE_CONFIG": "--source-config",
     "HERMES_CRON_OFFLINE_ROOT": "--offline-root",
     "HERMES_CRON_REPORT_JSONL": "--report-jsonl",
+    "HERMES_CRON_COHORT_ARTIFACT": "--cohort-artifact",
+    "HERMES_CRON_LIVE_ROOT": "--live-root",
+    "HERMES_CRON_ASSIGNMENT_MANIFEST": "--assignment-manifest",
 }
 
 
@@ -257,10 +263,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     reference_time = now.isoformat()
     seed = deterministic_seed(day, _config_digest(env))
 
-    missing = [k for k in REQUIRED_FORWARD_ENV if not env.get(k)]
+    required = set(REQUIRED_FORWARD_ENV)
+    if env.get("HERMES_CRON_COHORT_ARTIFACT") and env.get("HERMES_CRON_LIVE_ROOT"):
+        required -= {"HERMES_CRON_SOURCE_CONFIG", "HERMES_CRON_REPORT_JSONL"}
+    missing = [k for k in sorted(required) if not env.get(k)]
     if missing:
         sys.stderr.write(
-            "tiktok_watcher: missing required config: " + ", ".join(sorted(missing)) + "\n"
+            "tiktok_watcher: missing required config: " + ", ".join(missing) + "\n"
         )
         return 3
 

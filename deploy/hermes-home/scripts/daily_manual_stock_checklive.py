@@ -307,10 +307,14 @@ def main():
         info = all_stock[sid]
         log(f"\n--- SP {sid}: {name} (stock={info['stock']}) ---")
         res = {"live": [], "die": [], "fail": [], "deleted": 0}
-        if ctype == "tiktok" and info["items"]:
-            res = check_tiktok(info["items"])
-        elif ctype == "ig" and info["items"]:
-            res = check_ig(info["items"])
+        try:
+            if ctype == "tiktok" and info["items"]:
+                res = check_tiktok(info["items"])
+            elif ctype == "ig" and info["items"]:
+                res = check_ig(info["items"])
+        except Exception as e:
+            log(f"❌ LỖI checklive SP {sid} ({name}): {e}")
+            res = {"live": [], "die": [], "fail": info.get("items", []), "deleted": 0}
         prev = state.get(str(sid), {})
         prev_stock = prev.get("stock", info["stock"])
         delta = info["stock"] - prev_stock

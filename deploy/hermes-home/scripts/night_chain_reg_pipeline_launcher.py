@@ -32,6 +32,9 @@ def main() -> int:
         sys.stdout.write(completed.stdout)
     if completed.stderr:
         sys.stderr.write(completed.stderr)
+    # Nếu có stdout report thì luôn return 0 để Hermes scheduler gửi trực tiếp về Telegram
+    if completed.stdout and completed.stdout.strip():
+        return 0
     return completed.returncode
 
 if __name__ == "__main__":

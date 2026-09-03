@@ -32,12 +32,12 @@ REPO = r"D:\Taadaa\tiktok-add-bao-mat-f2a"
 PYEXE = r"D:\Taadaa\python-envs\automation\Scripts\python.exe"
 RUNNER = r"python_runner\run_capture_phase_b.py"
 LOCK_DIR = Path(r"C:\Users\Kibe\.codex\device-locks")
-GAP_MIN = 60
-CUTOFF = None  # set lazily: today 17:00 HCM
-POLL_SLEEP = 300  # 5 phút giữa các vòng khi chưa có máy ready
+GAP_MIN = 30
+POLL_SLEEP = 120
 
-now_dt = datetime.now().astimezone(parse_hcm_timestamp("2026-08-18T00:00:00+07:00").tzinfo)
-CUTOFF = now_dt.replace(hour=17, minute=0, second=0, microsecond=0)
+def get_cutoff():
+    now_dt = datetime.now().astimezone(parse_hcm_timestamp("2026-08-18T00:00:00+07:00").tzinfo)
+    return now_dt.replace(hour=23, minute=59, second=0, microsecond=0)
 
 
 def hcm_now():
@@ -122,9 +122,11 @@ def gate_state(m, slots_by_m, now):
 def main():
     smap = serial_map()
     results = []
+    terminal_machines = set()
+    cutoff = get_cutoff()
     while True:
         now = hcm_now()
-        if now >= CUTOFF:
+        if now >= cutoff:
             print(json.dumps({"event": "cutoff_reached", "at": now.strftime("%H:%M")}, ensure_ascii=False), flush=True)
             break
         targets = read_targets()
@@ -150,10 +152,14 @@ def main():
             ready_now.append((m, serial))
 
         done_ids = {r["machine"] for r in results if r.get("status") == "success"}
-        ready_now = [(m, s) for m, s in ready_now if m not in done_ids]
+        ready_now = [(m, s) for m, s in ready_now if m not in done_ids and m not in terminal_machines]
 
         if not ready_now:
-            remaining = len([m for m in targets if m not in done_ids])
+            resolved = done_ids | terminal_machines
+            remaining = len([m for m in targets if m not in resolved])
+            if remaining == 0:
+                print(json.dumps({"event": "all_processed", "at": now.strftime("%H:%M"), "success": len(done_ids), "terminal": len(terminal_machines)}, ensure_ascii=False), flush=True)
+                break
             print(json.dumps({"event": "idle", "at": now.strftime("%H:%M"), "remaining": remaining}, ensure_ascii=False), flush=True)
             time.sleep(POLL_SLEEP)
             continue
@@ -173,16 +179,37 @@ def main():
         ]
         proc = subprocess.run(cmd, cwd=REPO, capture_output=True, text=True, timeout=1800, encoding="utf-8", errors="replace")
         out_tail = (proc.stdout or "").strip().splitlines()[-1:] or [""]
+        # Parse status from output
+        out_str = proc.stdout or ""
+        st = "fail"
+        try:
+            for line in out_str.splitlines():
+                if "{" in line and "status" in line:
+                    data = json.loads(line)
+                    if data.get("status") == "success":
+                        st = "success"
+        except Exception:
+            pass
+        if proc.returncode == 0 and st != "success":
+            if "status: success" in out_str.lower() or '"status": "success"' in out_str:
+                st = "success"
+
         entry = {
             "machine": m,
             "serial": serial,
             "row": t["row"],
             "id": t["id"],
+            "status": st,
             "exit": proc.returncode,
             "out": out_tail[0][:300],
             "finished_at": hcm_now().strftime("%H:%M"),
         }
         results.append(entry)
+        # A non-successful live attempt is terminal for this batch run.  Do
+        # not immediately select the same machine again: lock/preflight/UI
+        # blockers require evidence-based recovery, not blind retries.
+        if st != "success":
+            terminal_machines.add(m)
         print(json.dumps({"event": "result", **entry}, ensure_ascii=False), flush=True)
 
     print(json.dumps({"event": "summary", "results": results}, ensure_ascii=False), flush=True)
