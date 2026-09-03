@@ -18,6 +18,12 @@ metadata:
 
 ### COORDINATOR-WRITE GUARD (user duyệt 2026-08-07 — BẮT BUỘC)
 
+- **Strict Coordinator Rule (User chốt 2026-09-04 — CẤM TỰ TRACE/CHẠY TERMINAL/SUY LUẬN CHAY)**:
+  * Session chính = Coordinator CẤM TUYỆT ĐỐI tự chạy terminal debug, inspect hiện trường, trace log, suy luận chay hay sửa code trực tiếp.
+  * Mọi task phát triển, sửa bug, trace log lỗi farm, và canary test BẮT BUỘC dispatch `delegate_task(role=leaf)` tại Turn 1.
+  * Chỉ re-run các máy bị lỗi script/code; CẤM TUYỆT ĐỐI tự ý chạy lại các máy do Google chặn (bắt SĐT `PHONE_VERIFY` hoặc rate limit).
+  * Coordinator CHỈ đọc diff, kiểm tra test độc lập và tổng hợp báo cáo cho user.
+
 - **Alert [MÁY N] Zero-Scan & Mandatory Worker Dispatch (Quy tắc tối cao - cập nhật 2026-09-03)**:
   * **CẤM quét đệ quy (.ai-runs / runtime)**: Tuyệt đối CẤM dùng `search_files`, `find`, `glob.glob`, `os.walk`, `ls -R` quét tìm kiếm thư mục diện rộng trong `.ai-runs`, `runtime/` trên Coordinator. BẮT BUỘC trỏ thẳng vào đích danh thư mục `machine_N` hoặc map trực tiếp serial từ `taikhoan_run_safe.xlsx`.
   * **CẤM session chính tự chạy lệnh inspect / ADB / đọc log**: Session chính = Coordinator CẤM tự chạy `inspect_machine.py`, CẤM tự đọc log/summary hay chuỗi lệnh ADB trực tiếp làm phình context và nghẽn session (treo/interrupted).
