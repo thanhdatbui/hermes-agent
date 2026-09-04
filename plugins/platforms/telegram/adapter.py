@@ -2382,8 +2382,8 @@ class TelegramAdapter(BasePlatformAdapter):
         polling connection, so it catches a socket that wedges later during
         steady-state operation without any prior error event.
         """
-        HEARTBEAT_INTERVAL = 90   # seconds between probes
-        PROBE_TIMEOUT = 15        # seconds before declaring the path dead
+        HEARTBEAT_INTERVAL = int(os.environ.get("HERMES_TELEGRAM_HEARTBEAT_INTERVAL", "30"))   # seconds between probes
+        PROBE_TIMEOUT = float(os.environ.get("HERMES_TELEGRAM_HEARTBEAT_TIMEOUT", "15.0"))      # seconds before declaring the path dead
 
         while True:
             try:
