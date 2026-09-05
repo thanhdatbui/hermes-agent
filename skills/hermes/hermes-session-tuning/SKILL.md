@@ -162,7 +162,7 @@ now = datetime.datetime.now()  # UTC+7
 one_hour_ago = now - datetime.timedelta(hours=1)
 now_ts, ago_ts = now.timestamp(), one_hour_ago.timestamp()
 
-db_path = Path(os.environ.get("LOCALAPPDATA", r"C:\Users\Kibe\AppData\Local")) / "hermes" / "state.db"
+db_path = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local")) / "hermes" / "state.db"
 # Mở ở chế độ read-only (uri=True) với timeout 10s tránh lock contention với Gateway
 conn = sqlite3.connect(f"file:{db_path.as_posix()}?mode=ro", uri=True, timeout=10)
 cur = conn.cursor()

@@ -123,8 +123,7 @@ Sau khi kích hoạt watcher để restart Gateway khi idle, tiến hành nghi�
 Khi tuyến cáp ISP FPT bị bóp hoặc drop gói ngầm tới Telegram (silent TCP CLOSE-WAIT stall), chuyển riêng kết nối Telegram Bot sang proxy WAN Viettel qua biến môi trường:
 - File cấu hình: `%LOCALAPPDATA%\hermes\.env`
 - Biến: `TELEGRAM_PROXY=http://<PROXY_USER>:<PROXY_PASS>@<PROXY_HOST>:<PROXY_PORT>`
-- **Quy tắc URL Encode Credential:** Nếu username hoặc password có chứa ký tự `@`, bắt buộc phải encode thành `%40` (ví dụ `admin@1` $
-ightarrow$ `admin%401`). Thư viện `httpx` của Python tuân thủ RFC 3986 sẽ tự decode thành header `Proxy-Authorization: Basic ***` hợp lệ, tránh lỗi `407 Proxy Authentication Required`.
+- **Quy tắc URL Encode Credential:** Nếu username hoặc password có chứa ký tự `@`, bắt buộc phải encode thành `%40` (ví dụ `admin@1` -> `admin%401`). Thư viện `httpx` của Python tuân thủ RFC 3986 sẽ tự decode thành header `Proxy-Authorization: Basic ***` hợp lệ, tránh lỗi `407 Proxy Authentication Required`.
 
 ### Pre-flight Verification Probe
 Trước khi đưa proxy vào sử dụng, kiểm tra qua 2 bước:
