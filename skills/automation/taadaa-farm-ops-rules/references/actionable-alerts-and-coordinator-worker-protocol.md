@@ -17,15 +17,18 @@ Mọi script / pipeline khi gặp sự cố trên máy N (Feed, Follow, Upload V
 
 ```text
 🚨 [FARM ALERT: MÁY {machine}] DỪNG PHIÊN
+• Quy trình / Script: {process_name} ({repo_name})
 • Máy: {machine} | Serial: {serial} | Nick: {account}
 • Triệu chứng: {error_reason}
+• Hiện trường: ĐANG MỞ
 
-📋 BẮT BUỘC THỰC THI (KHÔNG GREP / KHÔNG TÌM KIẾM):
-1. Lệnh lấy hiện trường: python D:/Taadaa/tools/inspect_machine.py {machine}
-2. File flow phụ trách: {flow_file}
-3. File log run: {log_path}
-4. Lệnh canary test lại máy {machine}:
-{canary_cmd}
+📋 BẮT BUỘC THỰC THI (5 BƯỚC RECOVERY - CẤM ADB TAY / CẤM QUÉT ĐĨA):
+1. B1 (Inspect): python D:/Taadaa/tools/inspect_machine.py {machine}
+2. B2 (Root Cause): Đọc log run ({log_path}) & mở flow ({flow_path})
+3. B3 (Patch Code): SỬA CODEBASE trong repo để script tự xử lý lỗi (CẤM gõ lệnh ADB ngoài chữa ngọn)
+4. B4 (Canary Test): Chạy lệnh kiểm chứng thực tế:
+   {canary_cmd}
+5. B5 (Closeout): Báo cáo diff code + kết quả canary
 ```
 
 ### Danh mục tham số theo từng Script:

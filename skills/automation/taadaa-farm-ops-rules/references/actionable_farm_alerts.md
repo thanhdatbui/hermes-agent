@@ -5,15 +5,18 @@ Khi bất kỳ script nào trên Farm (Feed, Follow, Reg, 2FA...) phát sinh l�
 
 ```text
 🚨 [FARM ALERT: MÁY <N>] DỪNG PHIÊN
+• Quy trình / Script: <process_name> (<repo_name>)
 • Máy: <N> | Serial: <serial> | Nick: <account>
 • Triệu chứng: <error_reason>
+• Hiện trường: ĐANG MỞ
 
-📋 BẮT BUỘC THỰC THI (KHÔNG GREP / KHÔNG TÌM KIẾM):
-1. Lệnh lấy hiện trường: python D:/Taadaa/tools/inspect_machine.py <N>
-2. File flow phụ trách: <đường dẫn file flow cụ thể>
-3. File log run: <đường dẫn file log summary cụ thể>
-4. Lệnh canary test lại máy <N>:
-<lệnh powershell hoặc python canary test cụ thể>
+📋 BẮT BUỘC THỰC THI (5 BƯỚC RECOVERY - CẤM ADB TAY / CẤM QUÉT ĐĨA):
+1. B1 (Inspect): python D:/Taadaa/tools/inspect_machine.py <N>
+2. B2 (Root Cause): Đọc log run (<đường dẫn file log summary cụ thể>) & mở flow (<đường dẫn file flow cụ thể>)
+3. B3 (Patch Code): SỬA CODEBASE trong repo để script tự xử lý lỗi (CẤM gõ lệnh ADB ngoài chữa ngọn)
+4. B4 (Canary Test): Chạy lệnh kiểm chứng thực tế:
+   <lệnh powershell hoặc python canary test cụ thể>
+5. B5 (Closeout): Báo cáo diff code + kết quả canary
 ```
 
 ## 2. Quy tắc cho Agent khi nhận Alert

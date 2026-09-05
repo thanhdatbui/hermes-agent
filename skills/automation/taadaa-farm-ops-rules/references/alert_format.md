@@ -10,15 +10,19 @@ When a machine stops session, the watchdog/bot sends this exact payload:
 
 ```text
 🚨 [FARM ALERT: MÁY {machine}] DỪNG PHIÊN
+• Quy trình / Script: {process_name} ({repo_name})
 • Máy: {machine} | Serial: {serial or 'N/A'} | Nick: {account}
 • Triệu chứng: {error_reason}
+• Hiện trường: ĐANG MỞ
 
-📋 BẮT BUỘC THỰC THI (KHÔNG GREP / KHÔNG TÌM KIẾM):
-1. Lệnh lấy hiện trường: python D:/Taadaa/tools/inspect_machine.py {machine}
-2. File flow phụ trách: D:/Taadaa/tiktok-luot nuoi acc/python_runner/flows/feed_swipe_smoke.py
-3. File log run: D:/Taadaa/tiktok-luot nuoi acc/.ai-runs/latest/summary.txt
-4. Lệnh canary test lại máy {machine}:
-powershell.exe -ExecutionPolicy Bypass -File "D:\Taadaa\tiktok-luot nuoi acc\scripts\run-feed-session.ps1" -Machines {machine} -Row 1 -RecoveryTestSwipes 2 -SkipAccountWorkbookSync -Run
+📋 BẮT BUỘC THỰC THI (5 BƯỚC RECOVERY - CẤM ADB TAY / CẤM QUÉT ĐĨA):
+1. B1 (Inspect): python D:/Taadaa/tools/inspect_machine.py {machine}
+2. B2 (Root Cause): Đọc log run (D:/Taadaa/tiktok-luot nuoi acc/.ai-runs/latest/summary.txt) & mở flow (D:/Taadaa/tiktok-luot nuoi acc/python_runner/flows/feed_swipe_smoke.py)
+3. B3 (Patch Code): SỬA CODEBASE trong repo để script tự xử lý lỗi (CẤM gõ lệnh ADB ngoài chữa ngọn)
+4. B4 (Canary Test): Chạy lệnh kiểm chứng thực tế:
+   powershell.exe -ExecutionPolicy Bypass -File "D:\Taadaa\tiktok-luot nuoi acc\scripts
+un-feed-session.ps1" -Machines {machine} -Row 1 -RecoveryTestSwipes 2 -SkipAccountWorkbookSync -Run
+5. B5 (Closeout): Báo cáo diff code + kết quả canary
 ```
 
 ## Why This Works
