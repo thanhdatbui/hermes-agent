@@ -146,3 +146,16 @@ A dirty worktree is **not** a repository-wide blocker. The current task contract
 4. **RÀNG BUỘC KHI COORDINATOR DISPATCH WORKER:**
    - Coordinator khi gọi delegate_task BẮT BUỘC gắn nhãn Tier và budget tương ứng (Tier 1: max 15-20 calls; Tier 2: max 25-40 calls; Tier 3: chia phase).
 <!-- ANTI-OVERENGINEERING-BUDGET-GATE:END -->
+
+<!-- CHOT_PHIEN_6_GATE_START -->
+## 🏁 QUY TRÌNH CHỐT PHIÊN LÀM VIỆC (6 GATE BẮT BUỘC TOÀN FARM)
+Khi nhận lệnh `chốt phiên`, `đóng phiên`, `kết thúc phiên`, `xong phiên`:
+1. **Gate 0 (Live Canary):** Chạy canary thực tế bằng runner chính thức của repo (nếu có target live / incident evidence). Pass `status: success` mới mở gate tiếp theo.
+2. **Gate 0.5 (Tài liệu Docs):** Cập nhật Case Fix & Anti-Pattern tương ứng vào `docs/farm-automation-cases.md` (nếu là task farm automation).
+3. **Gate 1 (Model Review Độc Lập):**
+   - **Review thường (mặc định):** BẮT BUỘC gọi combo `review` trên **OmniRoute (:20129)** qua API endpoint (`http://localhost:20129/v1/chat/completions`) với priority pool (`Claude Opus 4.6 Thinking -> Claude Sonnet 4.6 -> GPT OSS 120B -> Nemotron 3 Ultra -> AG Gemini Flash Pool`). CẤM tự review thay thế. Tự sửa tối đa 3 vòng lặp đến khi APPROVED.
+   - **Review Hard hoặc Tad chỉ định:** CHỈ KHI làm tác vụ review hard (core, multi-repo, device-lock phức tạp) hoặc khi Tad trực tiếp chỉ định mới được gọi **Claude Code CLI (`claude -p`)**, tuân thủ chặn ở mức 85% limit.
+4. **Gate 2 (Commit Local):** Commit exact-scope code fix + test với conventional commit rõ ràng.
+5. **Gate 3 (Pull Rebase):** `git pull --rebase origin master` (hoặc main).
+6. **Gate 4 (Push & Verify):** `git push origin master` (hoặc main) và đối soát remote SHA khớp local HEAD.
+<!-- CHOT_PHIEN_6_GATE_END -->
