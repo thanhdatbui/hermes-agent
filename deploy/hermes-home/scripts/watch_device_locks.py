@@ -98,6 +98,14 @@ def scan_active_locks(lock_root: Path = DEFAULT_LOCK_ROOT) -> list[dict]:
                 if m_match:
                     machine = int(m_match.group(1))
 
+            if machine is not None:
+                try:
+                    m_val = int(machine)
+                    if m_val < 1 or (m_val > 80 and not (201 <= m_val <= 280)):
+                        continue
+                except (ValueError, TypeError):
+                    pass
+
             if machine in seen_machines:
                 continue
             if machine is not None:

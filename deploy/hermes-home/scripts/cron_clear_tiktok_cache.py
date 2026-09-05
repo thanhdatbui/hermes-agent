@@ -105,6 +105,20 @@ def clear_device_cache(m_num: int, serial: str) -> tuple[int, str, bool, str]:
     return m_num, serial, ok, msg
 
 
+def _send_clear_cache_alert(error_reason: str) -> None:
+    try:
+        from automation_core.alerts import send_farm_script_alert
+        send_farm_script_alert(
+            script_name="clear_cache",
+            error_reason=error_reason,
+            flow_file=str(Path(__file__).resolve()),
+            log_path=r"D:/Taadaa/runtime/kibe/reports",
+            canary_cmd="python C:/Users/Kibe/AppData/Local/hermes/scripts/cron_clear_tiktok_cache.py",
+        )
+    except Exception as exc:
+        sys.stderr.write(f"[ALERT FAILED] {exc}\n")
+
+
 def main() -> int:
     connected = get_connected_devices()
     if not connected:
@@ -166,10 +180,18 @@ def main() -> int:
     else:
         report.append(f"• Fail (0)")
 
+    if total_online > 0 and f_count > (total_online / 2):
+        f_summary_str = ", ".join(f"{m:02d} ({r})" for m, r in sorted(failed_machines))
+        _send_clear_cache_alert(f"Đa số máy dọn cache thất bại/timeout ({f_count}/{total_online} máy fail): {f_summary_str}")
+
     report_text = "\n".join(report)
     print(report_text)
     return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except Exception as exc:
+        _send_clear_cache_alert(f"Lỗi script nghiêm trọng: {exc}")
+        raise

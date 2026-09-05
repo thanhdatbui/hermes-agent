@@ -124,3 +124,25 @@ A dirty worktree is **not** a repository-wide blocker. The current task contract
 - Verification and reporting must remain path-scoped. Report `unrelated dirty preserved`, `overlapping dirty/conflict`, and `agent-caused scope drift` as separate states.
 
 <!-- HERMES-DIRTY-SCOPE-RULE-20260831:END -->
+
+<!-- ANTI-OVERENGINEERING-BUDGET-GATE:START -->
+## 🛑 QUY TẮC BẮT BUỘC: CHỐNG OVER-ENGINEERING & PHÂN TẦNG NGÂN SÁCH TASK (ALL WORKERS)
+Áp dụng cho toàn bộ sessions (Coordinator & Worker) trên các repo Taadaa Phone Farm:
+
+1. **PHÂN TẦNG NGÂN SÁCH THEO ĐỘ PHỨC TẠP TASK (DYNAMIC BUDGET):**
+   - **Tier 1 (Hotfix / Lỗi cục bộ - sửa 1 hàm, format text, regex, cú pháp, selector UI, timeout):** Tối đa **15–20 tool calls**, xong trong **10–15 phút**. CẤM viết test mới, chỉ py_compile hoặc 1 assert tối thiểu.
+   - **Tier 2 (Flow Bug - kẹt bước flow, popup mới, lệch luồng điều hướng, retry loop):** Tối đa **25–40 tool calls**, xong trong **20–30 phút**. Sửa đúng flow, chạy test runner của flow.
+   - **Tier 3 (Major / Refactor lớn - sửa kiến trúc core, đa repo, đổi DB/workbook/socket ATX):** BẮT BUỘC chia thành các **Phase Milestone độc lập** (mỗi phase < 30 tool calls). CẤM chạy 1 lèo 100+ turns trong bóng tối.
+
+2. **QUY TẮC CHECKPOINT (CHỐNG CHẠY MÙ TRONG BÓNG TỐI):**
+   - Khi chạm mốc **25-30 tool calls** mà chưa xong, Worker BẮT BUỘC tạm dừng xuất báo cáo Checkpoint: (a) Đã tìm thấy gì? (b) Đã sửa được gì? (c) Khúc mắc còn lại là gì? -> Chờ định hướng, CẤM tự ý chạy tiếp hàng trăm turns.
+
+3. **CẤM TEST INFLATION & SIMULATION THỪA MỨA (ÁP DỤNG CHO MỌI TIER):**
+   - **CẤM TỰ VIẾT TEST SUITE ĐỒ SỘ:** Không tự ý đẻ file test mới hay viết hàng loạt test cases khi chưa được yêu cầu.
+   - **CẤM CHẠY SIMULATION / MONTE CARLO:** CẤM viết script chạy lặp hàng ngàn lần (vd sinh 10.000 username đo entropy).
+   - **CẤM TẠO PROBE SCRIPT TẠM TRONG %TEMP%:** Kiểm chứng chỉ dùng python -c "..." hoặc test file hiện có.
+   - **CẤM CHẠY LẠI FULL TEST SUITE NHIỀU LẦN:** Sửa module nào chỉ test module đó hoặc py_compile.
+
+4. **RÀNG BUỘC KHI COORDINATOR DISPATCH WORKER:**
+   - Coordinator khi gọi delegate_task BẮT BUỘC gắn nhãn Tier và budget tương ứng (Tier 1: max 15-20 calls; Tier 2: max 25-40 calls; Tier 3: chia phase).
+<!-- ANTI-OVERENGINEERING-BUDGET-GATE:END -->

@@ -3,21 +3,21 @@
 Một ngày có 3 Ca, mỗi Ca có 3 Phiên:
 - Ca 1 (Sáng):
   + Phiên 1: Khung ~06:00 - 07:30
-  + Phiên 2: Khung ~07:35 - 09:30
-  + Phiên 3: Khung ~09:35 - 11:30
+  + Phiên 2: Khung ~07:30 - 09:00
+  + Phiên 3: Khung ~09:00 - 12:00
 - Ca 2 (Chiều):
-  + Phiên 1: Khung ~12:00 - 13:45
-  + Phiên 2: Khung ~13:45 - 15:30
-  + Phiên 3: Khung ~15:30 - 18:15
+  + Phiên 1: Khung ~12:00 - 13:40
+  + Phiên 2: Khung ~13:40 - 15:15
+  + Phiên 3: Khung ~15:15 - 18:30
 - Ca 3 (Tối):
   + Phiên 1: Khung ~18:30 - 20:15
-  + Phiên 2: Khung ~20:15 - 22:00
-  + Phiên 3: Khung ~22:00 - 23:55
+  + Phiên 2: Khung ~20:15 - 21:45
+  + Phiên 3: Khung ~21:45 - 23:59
 
 Cơ chế thông minh:
 - Đọc danh sách target machines theo Row từ config (hoặc số máy dự kiến).
 - Theo dõi tiến trình máy thật: Khi TẤT CẢ các máy trong ca/phiên đã hoàn tất (hoặc phiên hết giờ và runner đã dừng hẳn):
-  -> Gửi đúng 1 BÁO CÁO TỔNG KẾT PHIÊN đầy đủ: gộp cả phần LƯỚT FEED và phần FOLLOW HOOK.
+  -> Gửi đúng 1 BÁO CÁO TỔNG KẾT PHIÊN đầy đủ: gộp cả phần LƯỚT FEED, FOLLOW HOOK và UPLOAD HOOK.
 """
 import os
 import glob
@@ -25,17 +25,30 @@ import json
 import re
 import time
 import uuid
+import logging
+import threading
 from datetime import datetime, timedelta
+from typing import Optional, Dict, Set, Tuple, Any, List
 from zoneinfo import ZoneInfo
 
+logger = logging.getLogger("feed_session_watchdog")
 HCMC = ZoneInfo("Asia/Ho_Chi_Minh")
 LIVE_ROOT = r"D:\Taadaa\runtime\kibe\live"
 STATE_FILE = r"D:\Taadaa\runtime\kibe\cron-state\feed_session_reported.json"
 SOURCE_CONFIG = r"D:\Taadaa\runtime\kibe\cron-source\hermes_cron_source_config.json"
+SHIFT_UPLOAD_LEDGER_PATH = r"C:\ProgramData\Taadaa\tiktok-upload-concurrency-v1\shift_upload_history.json"
+
+DEFAULT_ROW1_MACHINES_COUNT = 74
+DEFAULT_ROW2_MACHINES_COUNT = 72
+
+_LEDGER_LOCK = threading.Lock()
+_LEDGER_CACHE: Optional[Dict[str, Any]] = None
+_LEDGER_SUCCESS_SET: frozenset = frozenset()
+_LEDGER_CACHE_MTIME_NS: int = 0
 
 
-def _load_reported_sessions(path: str) -> set[str]:
-    """Tải tập hợp các session đã report từ state file, chịu lỗi mọi schema biến dạng."""
+def _load_reported_sessions(path: str) -> set:
+    """Tải tập hợp các session đã report từ state file, chỉ lấy các session ID dạng string hợp lệ."""
     if not os.path.exists(path):
         return set()
     try:
@@ -44,7 +57,13 @@ def _load_reported_sessions(path: str) -> set[str]:
         if isinstance(data, dict):
             sessions = data.get("reported_sessions")
             if isinstance(sessions, list):
-                return set(str(s) for s in sessions if s)
+                res = set()
+                for s in sessions:
+                    if isinstance(s, str) and s.strip():
+                        res.add(s.strip())
+                    else:
+                        logger.warning("Bỏ qua session ID không hợp lệ trong state file: %r (type: %s)", s, type(s).__name__)
+                return res
     except Exception:
         pass
     return set()
@@ -122,24 +141,27 @@ class ProcessLock:
             self._file = None
             self.acquired = False
 
-# Định nghĩa các khung phiên chuẩn
+
+# Định nghĩa các khung phiên chuẩn bao phủ liên tục, không lọt khe giữa các phiên
+# NOTE: 00:00 - 06:00 là khoảng thời gian farm nghỉ/bảo trì/reg acc đêm, không có phiên nuôi feed chính
+# Sử dụng half-open interval [start, end) để đảm bảo không trùng boundary giữa các phiên
 SESSION_WINDOWS = [
     # Ca 1
     {"ca": 1, "phien": 1, "name": "Ca 1 - Phiên 1/3 (Sáng)", "start": "06:00", "end": "07:30"},
-    {"ca": 1, "phien": 2, "name": "Ca 1 - Phiên 2/3 (Sáng)", "start": "07:30", "end": "09:30"},
-    {"ca": 1, "phien": 3, "name": "Ca 1 - Phiên 3/3 (Sáng - Đăng video)", "start": "09:30", "end": "12:00"},
+    {"ca": 1, "phien": 2, "name": "Ca 1 - Phiên 2/3 (Sáng)", "start": "07:30", "end": "09:00"},
+    {"ca": 1, "phien": 3, "name": "Ca 1 - Phiên 3/3 (Sáng - Đăng video)", "start": "09:00", "end": "12:00"},
     # Ca 2
-    {"ca": 2, "phien": 1, "name": "Ca 2 - Phiên 1/3 (Chiều)", "start": "12:00", "end": "13:45"},
-    {"ca": 2, "phien": 2, "name": "Ca 2 - Phiên 2/3 (Chiều)", "start": "13:45", "end": "15:30"},
-    {"ca": 2, "phien": 3, "name": "Ca 2 - Phiên 3/3 (Chiều - Đăng video)", "start": "15:30", "end": "18:30"},
+    {"ca": 2, "phien": 1, "name": "Ca 2 - Phiên 1/3 (Chiều)", "start": "12:00", "end": "13:40"},
+    {"ca": 2, "phien": 2, "name": "Ca 2 - Phiên 2/3 (Chiều)", "start": "13:40", "end": "15:15"},
+    {"ca": 2, "phien": 3, "name": "Ca 2 - Phiên 3/3 (Chiều - Đăng video)", "start": "15:15", "end": "18:30"},
     # Ca 3
     {"ca": 3, "phien": 1, "name": "Ca 3 - Phiên 1/3 (Tối)", "start": "18:30", "end": "20:15"},
-    {"ca": 3, "phien": 2, "name": "Ca 3 - Phiên 2/3 (Tối)", "start": "20:15", "end": "22:00"},
-    {"ca": 3, "phien": 3, "name": "Ca 3 - Phiên 3/3 (Tối - Đăng video)", "start": "22:00", "end": "23:59"},
+    {"ca": 3, "phien": 2, "name": "Ca 3 - Phiên 2/3 (Tối)", "start": "20:15", "end": "21:45"},
+    {"ca": 3, "phien": 3, "name": "Ca 3 - Phiên 3/3 (Tối - Đăng video)", "start": "21:45", "end": "23:59"},
 ]
 
 
-def is_feed_runner_active():
+def is_feed_runner_active() -> bool:
     """Kiểm tra có process feed runner hay powershell feed nào đang chạy không."""
     try:
         import psutil
@@ -158,10 +180,11 @@ def is_feed_runner_active():
     return False
 
 
-def get_expected_machines_for_row(row_num):
+def get_expected_machines_for_row(row_num: Any) -> set:
     """Lấy danh sách set các máy dự kiến theo row từ hermes_cron_source_config.json."""
     if not os.path.exists(SOURCE_CONFIG):
-        return set(str(i) for i in range(1, 75 if row_num == 1 else 73))
+        default_count = DEFAULT_ROW1_MACHINES_COUNT if str(row_num) == "1" else DEFAULT_ROW2_MACHINES_COUNT
+        return set(str(i) for i in range(1, default_count + 1))
     try:
         with open(SOURCE_CONFIG, "r", encoding="utf-8") as f:
             data = json.load(f)
@@ -172,104 +195,81 @@ def get_expected_machines_for_row(row_num):
         ]
         if m_list:
             return set(m_list)
-        return set(str(i) for i in range(1, 75 if row_num == 1 else 73))
+        default_count = DEFAULT_ROW1_MACHINES_COUNT if str(row_num) == "1" else DEFAULT_ROW2_MACHINES_COUNT
+        return set(str(i) for i in range(1, default_count + 1))
     except Exception:
-        return set(str(i) for i in range(1, 75 if row_num == 1 else 73))
+        default_count = DEFAULT_ROW1_MACHINES_COUNT if str(row_num) == "1" else DEFAULT_ROW2_MACHINES_COUNT
+        return set(str(i) for i in range(1, default_count + 1))
 
 
-def parse_run_machines(run_dir):
-    """Lấy map machine -> final_status từ 1 run dir."""
-    summaries = glob.glob(os.path.join(run_dir, "**", "summary.txt"), recursive=True)
-    res = {}
-    for s in summaries:
-        parts = os.path.normpath(s).split(os.sep)
-        if "machines" in parts:
-            m_idx = parts.index("machines") + 1
-            if m_idx < len(parts):
-                m_str = parts[m_idx].replace("machine_", "")
-                try:
-                    with open(s, "r", encoding="utf-8", errors="ignore") as f:
-                        c = f.read()
-                    st = "success" if "final_status: success" in c else "fail"
-                    reason = ""
-                    for line in c.splitlines():
-                        if line.startswith("reason:") or line.startswith("final_status:"):
-                            val = line.split(":", 1)[1].strip()
-                            if val != "success":
-                                reason = val
-                                break
-                    res[m_str] = {"status": st, "reason": reason}
-                except Exception:
-                    pass
+def _build_ledger_success_index(data: dict) -> set:
+    """Tạo indexed lookup set (machine, row, date) từ ledger payload để đạt O(1) query."""
+    res = set()
+    if not isinstance(data, dict):
+        return res
+    for _, v in data.items():
+        if not isinstance(v, dict):
+            continue
+        if str(v.get("status", "")).strip().lower() != "success":
+            continue
+        m_str = str(v.get("machine", "")).strip()
+        r_str = str(v.get("row", "")).strip()
+        if not m_str or not r_str:
+            continue
+        day_str = str(v.get("logical_day", "")).strip()
+        if day_str and re.match(r"^\d{4}-\d{2}-\d{2}$", day_str):
+            res.add((m_str, r_str, day_str))
+        ts = str(v.get("timestamp", "")).strip()
+        if len(ts) >= 10 and re.match(r"^\d{4}-\d{2}-\d{2}$", ts[:10]) and ts[:10] != day_str:
+            res.add((m_str, r_str, ts[:10]))
     return res
 
 
-def parse_follow_results(run_dir):
-    """Lấy kết quả follow hook từ 1 run dir."""
-    follows = glob.glob(os.path.join(run_dir, "**", "follow_result.json"), recursive=True)
-    res = {}
-    for f in follows:
+def _get_shift_upload_ledger_cached() -> frozenset:
+    """Đọc ledger shift upload với in-memory cache, thread-safe, O(1) indexed set và mtime_ns invalidation."""
+    global _LEDGER_CACHE, _LEDGER_SUCCESS_SET, _LEDGER_CACHE_MTIME_NS
+    with _LEDGER_LOCK:
+        if not os.path.exists(SHIFT_UPLOAD_LEDGER_PATH):
+            return frozenset()
         try:
-            with open(f, "r", encoding="utf-8") as fp:
-                d = json.load(fp)
-                if not isinstance(d, dict):
-                    continue
-                m = str(d.get("machine", "")).strip()
-                if not m:
-                    continue
-                flist_raw = d.get("followed")
-                if isinstance(flist_raw, list):
-                    flist = [str(x) for x in flist_raw if isinstance(x, (str, int, float))]
-                else:
-                    flist = []
-
-                raw_status = str(d.get("status") or "").strip()
-                raw_ff = d.get("follow_failed")
-                raw_failed = d.get("failed")
-                is_strict_zero_failed = (raw_failed is False) or (type(raw_failed) is int and raw_failed == 0)
-                is_clean_ff = (raw_status == "FOLLOW_FAILED" and raw_ff is True and type(raw_ff) is bool and is_strict_zero_failed)
-
-                res[m] = {
-                    "status": raw_status,
-                    "followed": flist,
-                    "follow_failed": is_clean_ff,
-                    "failed": raw_failed,
-                    "reason": str(d.get("reason") or ""),
-                }
-        except Exception:
-            pass
-    return res
+            st = os.stat(SHIFT_UPLOAD_LEDGER_PATH)
+            if st.st_size > 50 * 1024 * 1024:  # 50MB safety cap
+                logger.warning("Shift upload ledger size exceeds 50MB safety cap: %d bytes", st.st_size)
+                return frozenset()
+            if _LEDGER_CACHE is not None and st.st_mtime_ns == _LEDGER_CACHE_MTIME_NS:
+                return _LEDGER_SUCCESS_SET
+            with open(SHIFT_UPLOAD_LEDGER_PATH, "r", encoding="utf-8") as f:
+                loaded = json.load(f)
+            new_cache = loaded if isinstance(loaded, dict) else {}
+            new_set = frozenset(_build_ledger_success_index(new_cache))
+            _LEDGER_SUCCESS_SET = new_set
+            _LEDGER_CACHE = new_cache
+            _LEDGER_CACHE_MTIME_NS = st.st_mtime_ns
+            return _LEDGER_SUCCESS_SET
+        except Exception as e:
+            logger.warning("Error loading shift upload ledger: %s", e)
+            return frozenset()
 
 
-def parse_upload_results(run_dir):
-    """Lấy kết quả upload hook từ 1 run dir."""
-    uploads = glob.glob(os.path.join(run_dir, "**", "upload_result.json"), recursive=True)
-    res = {}
-    for u in uploads:
-        try:
-            with open(u, "r", encoding="utf-8") as fp:
-                d = json.load(fp)
-                m = str(d.get("machine", ""))
-                if not m:
-                    continue
-                raw_code = d.get("exit_code", d.get("returncode", 0))
-                try:
-                    exit_code = int(raw_code)
-                except (ValueError, TypeError):
-                    exit_code = 1 if str(d.get("status", "")).lower() != "success" else 0
-                res[m] = {
-                    "status": str(d.get("status") or "").lower(),
-                    "exit_code": exit_code,
-                    "reason": str(d.get("reason") or ""),
-                }
-        except Exception:
-            pass
-    return res
+def is_machine_upload_successful_in_shift(target_date: str, machine: Any, row: Any) -> bool:
+    """Kiểm tra O(1) ledger shift_upload_history.json xem máy có ghi nhận success trong ca/shift ngày đó không."""
+    date_str = str(target_date).strip()
+    if not re.match(r"^\d{4}-\d{2}-\d{2}$", date_str):
+        logger.warning("Invalid target_date format: %s", date_str)
+        return False
+    success_set = _get_shift_upload_ledger_cached()
+    if not success_set:
+        return False
+    m_str = str(machine).strip()
+    r_str = str(row).strip()
+    return (m_str, r_str, date_str) in success_set
 
 
-def merge_machine_result(prev, new):
+def merge_machine_result(prev: Optional[Dict[str, Any]], new: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
     if not prev:
         return new
+    if not new:
+        return prev
     if prev.get("status") == "success":
         return prev
     if new.get("status") == "success":
@@ -277,9 +277,11 @@ def merge_machine_result(prev, new):
     return new
 
 
-def merge_follow_result(prev, new):
+def merge_follow_result(prev: Optional[Dict[str, Any]], new: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
     if not prev:
         return new
+    if not new:
+        return prev
     prev_raw = prev.get("followed", []) if isinstance(prev.get("followed"), list) else []
     new_raw = new.get("followed", []) if isinstance(new.get("followed"), list) else []
     prev_flist = [str(x) for x in prev_raw if isinstance(x, (str, int, float))]
@@ -313,16 +315,129 @@ def merge_follow_result(prev, new):
     return res
 
 
-def merge_upload_result(prev, new):
+def merge_upload_result(prev: Optional[Dict[str, Any]], new: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
     if not prev:
         return new
+    if not new:
+        return prev
     prev_success = (str(prev.get("status") or "").lower() == "success" and int(prev.get("exit_code", 0) or 0) == 0)
     new_success = (str(new.get("status") or "").lower() == "success" and int(new.get("exit_code", 0) or 0) == 0)
     if prev_success and not new_success:
         return prev
     if new_success:
         return new
+
+    # If prev had an active attempt with failure detail and new is just a generic skip, preserve failure detail
+    if str(prev.get("status") or "").lower() in {"failed", "error"} and str(new.get("status") or "").lower() == "skipped":
+        return prev
     return new
+
+
+def parse_run_all(run_dir: str) -> tuple:
+    """Parse toàn bộ summary, follow_result, upload_result trong 1 lần duyệt đệ quy duy nhất (tốc độ cao)."""
+    res_m: dict = {}
+    res_f: dict = {}
+    res_u: dict = {}
+
+    if not os.path.isdir(run_dir):
+        return res_m, res_f, res_u
+
+    try:
+        for root, _, files in os.walk(run_dir):
+            parts = os.path.normpath(root).split(os.sep)
+            m_str = ""
+            for p_idx, seg in enumerate(parts):
+                if seg == "machines" and p_idx + 1 < len(parts):
+                    raw_segment = parts[p_idx + 1]
+                    if raw_segment.startswith("machine_"):
+                        m_str = raw_segment[8:]
+                        break
+
+            if "summary.txt" in files and m_str:
+                s_path = os.path.join(root, "summary.txt")
+                try:
+                    with open(s_path, "r", encoding="utf-8", errors="ignore") as f:
+                        c = f.read()
+                    st = "success" if "final_status: success" in c else "fail"
+                    reason = ""
+                    for line in c.splitlines():
+                        if line.startswith("reason:") or line.startswith("final_status:"):
+                            val = line.split(":", 1)[1].strip()
+                            if val != "success":
+                                reason = val
+                                break
+                    res_m[m_str] = merge_machine_result(res_m.get(m_str), {"status": st, "reason": reason})
+                except Exception:
+                    pass
+
+            if "follow_result.json" in files:
+                f_path = os.path.join(root, "follow_result.json")
+                try:
+                    with open(f_path, "r", encoding="utf-8") as fp:
+                        d = json.load(fp)
+                    if isinstance(d, dict):
+                        payload_m = str(d.get("machine", "")).strip()
+                        target_m = payload_m if payload_m else m_str
+                        if target_m:
+                            flist_raw = d.get("followed")
+                            flist = [str(x) for x in flist_raw if isinstance(x, (str, int, float))] if isinstance(flist_raw, list) else []
+                            raw_status = str(d.get("status") or "").strip()
+                            raw_ff = d.get("follow_failed")
+                            raw_failed = d.get("failed")
+                            is_strict_zero_failed = (raw_failed is False) or (type(raw_failed) is int and raw_failed == 0)
+                            is_clean_ff = (raw_status == "FOLLOW_FAILED" and raw_ff is True and type(raw_ff) is bool and is_strict_zero_failed)
+                            f_item = {
+                                "status": raw_status,
+                                "followed": flist,
+                                "follow_failed": is_clean_ff,
+                                "failed": raw_failed,
+                                "reason": str(d.get("reason") or ""),
+                            }
+                            res_f[target_m] = merge_follow_result(res_f.get(target_m), f_item)
+                except Exception:
+                    pass
+
+            if "upload_result.json" in files:
+                u_path = os.path.join(root, "upload_result.json")
+                try:
+                    with open(u_path, "r", encoding="utf-8") as fp:
+                        d = json.load(fp)
+                    if isinstance(d, dict):
+                        payload_m = str(d.get("machine", "")).strip()
+                        target_m = payload_m if payload_m else m_str
+                        if target_m:
+                            raw_code = d.get("exit_code", d.get("returncode", 0))
+                            try:
+                                exit_code = int(raw_code)
+                            except (ValueError, TypeError):
+                                exit_code = 1 if str(d.get("status", "")).lower() != "success" else 0
+                            u_item = {
+                                "status": str(d.get("status") or "").lower(),
+                                "exit_code": exit_code,
+                                "reason": str(d.get("reason") or ""),
+                            }
+                            res_u[target_m] = merge_upload_result(res_u.get(target_m), u_item)
+                except Exception:
+                    pass
+    except Exception as e:
+        logger.warning("Error during single-pass walk of %s: %s", run_dir, e)
+
+    return res_m, res_f, res_u
+
+
+def parse_run_machines(run_dir: str) -> dict:
+    """Lấy map machine -> final_status từ 1 run dir (chỉ dùng cho tests / CLI riêng lẻ)."""
+    return parse_run_all(run_dir)[0]
+
+
+def parse_follow_results(run_dir: str) -> dict:
+    """Lấy kết quả follow hook từ 1 run dir (chỉ dùng cho tests / CLI riêng lẻ)."""
+    return parse_run_all(run_dir)[1]
+
+
+def parse_upload_results(run_dir: str) -> dict:
+    """Lấy kết quả upload hook từ 1 run dir (chỉ dùng cho tests / CLI riêng lẻ)."""
+    return parse_run_all(run_dir)[2]
 
 
 def can_report_session(
@@ -335,10 +450,8 @@ def can_report_session(
 ) -> bool:
     """Xác định điều kiện chốt báo cáo cho một phiên."""
     if is_today:
-        if runner_busy:
-            return False
-        return (completed_expected_count >= expected_count) or (now_hm >= window_end_hm)
-    return not runner_busy
+        return (completed_expected_count >= expected_count and not runner_busy) or (now_hm >= window_end_hm)
+    return True
 
 
 def main():
@@ -382,7 +495,7 @@ def main():
                     continue
 
                 # Tìm các run folder thuộc khung giờ phiên này và sort theo HHMMSS
-                # Dùng half-open interval để tránh đè boundary trừ window cuối ngày
+                # Dùng half-open interval [start, end) để tránh đè boundary trừ window cuối ngày [start, end]
                 is_last_window = (win == SESSION_WINDOWS[-1])
                 session_runs = []
                 for r in runs:
@@ -428,9 +541,7 @@ def main():
                         if r_row != active_row:
                             continue
                     r_path = os.path.join(date_live, r)
-                    m_res = parse_run_machines(r_path)
-                    f_res = parse_follow_results(r_path)
-                    u_res = parse_upload_results(r_path)
+                    m_res, f_res, u_res = parse_run_all(r_path)
                     for m, data in m_res.items():
                         all_machines[m] = merge_machine_result(all_machines.get(m), data)
                     for m, data in f_res.items():
@@ -533,15 +644,20 @@ def main():
 
                             if u_status == "success" and u_code == 0:
                                 up_success.append(m)
-                            elif u_status == "skipped" or any(k in u_reason for k in ("video_not_rendered", "missing_video_folder", "missing_account_id", "not-final-session", "sensitive-skip", "cooling_period", "account_cooling_period", "age_gate", "under_10_days")):
+                            elif win["phien"] == 3 and u_reason.startswith("already_uploaded") and is_machine_upload_successful_in_shift(target_date, m, active_row):
+                                up_success.append(m)
+                            elif u_status == "skipped" or any(k in u_reason for k in ("video_not_rendered", "missing_video_folder", "missing_account_id", "not-final-session", "sensitive-skip", "cooling_period", "account_cooling_period", "age_gate", "under_10_days", "already_uploaded")):
                                 up_skipped.append(m)
                             elif "timeout" in u_status or "timeout" in u_reason:
                                 up_timeout.append(m)
                             else:
                                 up_error.append(m)
                         else:
+                            # Kiểm tra nếu máy đã upload thành công trong ledger (chỉ xét ở Phiên 3)
+                            if win["phien"] == 3 and is_machine_upload_successful_in_shift(target_date, m, active_row):
+                                up_success.append(m)
                             # Chỉ tính lỗi upload nếu máy lướt Feed thành công nhưng upload hook không chạy được ở Phiên 3
-                            if win["phien"] == 3 and all_machines[m].get("status") == "success":
+                            elif win["phien"] == 3 and all_machines[m].get("status") == "success":
                                 up_error.append(m)
 
                     up_s_str = ", ".join(up_success) if up_success else "Không có"
@@ -581,6 +697,7 @@ def main():
 
     finally:
         lock.release()
+
 
 if __name__ == "__main__":
     main()

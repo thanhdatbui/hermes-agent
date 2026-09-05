@@ -13,12 +13,17 @@ description: "Taadaa farm safety, close-session, and multi-machine operations."
 2. **LỆNH TRÍCH XUẤT HIỆN TRƯỜNG DUY NHẤT (CẤM GREP / CẤM QUÉT ĐĨA):**
    - Khi nhận alert `[MÁY N]`, chạy: `python D:/Taadaa/tools/inspect_machine.py <N>`.
    - CẤM TUYỆT ĐỐI dùng `os.walk`, `glob(recursive=True)`, `find`, `grep -rn` quét diện rộng codebase hay ổ đĩa để tìm chuỗi lỗi / file log.
-3. **CHU TRÌNH 5 BƯỚC RECOVERY CHUẨN:**
-   - **B1 (Inspect):** `python D:/Taadaa/tools/inspect_machine.py <N>` để nắm màn hình kẹt, log lỗi, step dừng.
-   - **B2 (Root Cause):** Mở đúng file flow phụ trách (`feed_swipe_smoke.py`, `device_prepare.py`, `benign_popup.py`) để xem vì sao script chưa tự phục hồi được.
-   - **B3 (Patch Script):** Viết logic auto-recovery (tự phát hiện + tự vượt qua + relaunch/dismiss) vào script + viết focused test (<30s).
-   - **B4 (Canary Test):** Chạy canary thực tế kiểm chứng script mới tự giải cứu được máy kẹt.
-   - **B5 (Closeout):** Model Review (APPROVED) -> Commit -> Push master.
+3. **CHU TRÌNH 5 BƯỚC RECOVERY CHUẨN (PHÂN VAI COORDINATOR vs WORKER):**
+   - **B1 (Inspect - Coordinator):** Chạy `python D:/Taadaa/tools/inspect_machine.py <N>` hoặc lệnh ADB trực tiếp theo serial máy để lấy hiện trường O(1) (XML + screencap).
+   - **B2 (Root Cause & Dispatch - Coordinator):** Đọc log run & mở flow xác định phạm vi lỗi. BẮT BUỘC dispatch worker subagent qua `delegate_task(goal=..., context=...)` ngay lập tức. CẤM TUYỆT ĐỐI Coordinator tự viết script Python probe, test hàm hay reproduce thử nghiệm trong terminal session chính.
+   - **B3 (Patch Script & Focused Test - Worker Subagent):** Subagent reproduce trong context riêng, sửa codebase xử lý tự động + viết focused test (<30s).
+   - **B4 (Canary Test - Coordinator):** Chạy canary thực tế kiểm chứng script mới tự giải cứu được máy kẹt.
+   - **B5 (Closeout - Coordinator):** Model Review (APPROVED) -> Commit -> Push master.
+4. **QUY TẮC WORKER BUDGET & CHỐNG DÔNG DÀI (ANTI-OVERENGINEERING - BẮT BUỘC):**
+   - **Giới hạn thời gian & tool call:** Mọi worker dispatch qua `delegate_task` BẮT BUỘC phải hoàn tất dưới 15 phút và tối đa <= 20 tool calls.
+   - **Task Read-only / Inspect / OCR:** CẤM TUYỆT ĐỐI worker tự ý sửa code, CẤM chạy pytest test-suite, CẤM commit. Chỉ đọc log, inspect hiện trường, OCR và trả kết quả ngay trong <= 10 tool calls (< 10 phút).
+   - **Task Fix Code:** Chỉ sửa ĐÚNG file flow/module chỉ định (Scope Lock), viết focused test <30s, CẤM chạy pytest trần toàn bộ repo, CẤM over-engineer viết test đồ sộ hay refactor lan man.
+
 
 ## STOP GATE — BẮT BUỘC
 
@@ -668,54 +673,3 @@ Trước khi chạy bất kỳ batch tác vụ nào trên farm (Reg TikTok, Hotm
 - KHÔNG gọi lệnh xoay IP proxy (chỉ lọc duy nhất 1 máy / cặp proxy).
 - **Preflight `pm clear` trước khi reg**: `pm clear com.google.android.gm` để xóa sạch cache rác/session cũ, sau đó handle màn hình chào mừng ("ĐƯA TÔI TỚI GMAIL" / "Thêm địa chỉ email").
 - **Dọn mail die xong**: BẮT BUỘC close recent apps (`keyevent 187` -> tap Đóng tất cả -> `keyevent 3` về HOME) và gỡ device-lock ngay.
-- Chi tiết quy trình & flow TikTok reg chuẩn: `references/gmail-preflight-pm-clear-and-tiktok-reg-flow-20260818.md`.
-- Chẩn đoán lỗi tràn RAM ảo (0xc0000142) & xử lý OneDrive Zombie: `references/windows-virtual-memory-and-onedrive-zombie-recovery.md`.
-- Chi tiết tối ưu tỉ lệ tương tác & fix phòng Live / Recent apps rỗng: `references/live-room-and-recents-fix-20260819.md`.
-- Chi tiết AI Vision Auto-Recovery & Ma trận tương tác 3 Tab: `references/ai-vision-auto-recovery-and-feed-rates-20260819.md`.
-- Chi tiết AI Autonomous Recovery & Quy chuẩn Báo Cáo 2 Phần Farm Alerts: `references/ai-autonomous-recovery-and-alerts-protocol-20260819.md`.
-- Chi tiết AI Autonomous Recovery & Zero-Hardcode Alert Architecture: `references/ai-autonomous-recovery-and-zero-hardcode-alerts-20260819.md`.
-- Chi tiết Autonomous AI Recovery via Hermes Telegram Session Bot: `references/autonomous-ai-recovery-telegram-session-20260819.md`.
-- Chi tiết Autonomous AI Recovery Engine & Quy Trình 5 Bước Khép Kín: `references/autonomous-ai-recovery-and-alerts-engine-20260819.md`.
-- Chi tiết Autonomous AI Recovery Agent (Spawn ngầm & Code-First Order): `references/autonomous-ai-recovery-spawn-and-code-first-order-20260819.md`.
-- Chi tiết Kiến Trúc Autonomous AI Auto-Recovery (Producer - Agent - Vision/Review Workers & 5 Bước Chuẩn): `references/autonomous-ai-recovery-agent-architecture-20260819.md`.
-- Chi tiết Kiến Trúc Autonomous AI Recovery Toàn Diện, Code-First & Khởi Động An Toàn: `references/autonomous-ai-recovery-architecture-and-code-first-flow-20260819.md`.
-- Chi tiết Autonomous AI Recovery Vision & Lock Rotation Lessons: `references/autonomous-ai-recovery-vision-and-rotation-rules-20260819.md`.
-- Chi tiết Xử Lý Nhả Follow Tự Động Về Home & Khóa Xoay Màn Hình Content Provider: `references/follow-release-cleanup-and-content-provider-rotation-20260819.md`.
-- Chi tiết Bài Học Video Feed Động (Bỏ pHash) & Popup TikTok Shop ("Thêm vào giỏ hàng" + "Đóng"): `references/dynamic-video-feed-verification-and-popup-fixes-20260819.md`.
-- Chi tiết Quy Tắc Vuốt Retry 2 Lần Trên Vòng Lặp Feed Chính (Bất Kì Chỗ Nào Kẹt): `references/feed-swipe-stuck-recovery-loop-20260819.md`.
-- Chi tiết Xem LIVE Tự Nhiên 5-10s Trước Khi Thoát & Chống Patch Sai Khi Dính Khóa Botmail: `references/live-room-natural-watch-and-botmail-lock-revert-20260820.md`.
-- Chi tiết Quy Chuẩn Autonomous AI Recovery, Vuốt Retry Cứu Hộ & Vận Hành Farm (19/08): `references/autonomous-ai-recovery-and-feed-swipe-recovery-20260819.md`.
-- Chi tiết Xử Lý Kẹt Bàn Phím Account Switcher, Modal Live & Nguồn Key 9Router (19/08): `references/switcher-keyboard-overlay-and-9router-key-20260819.md`.
-- Chi tiết Xử Lý Kẹt Account Switcher, Nhả Follow Cleanup & Chuyển Đổi Vision Engine (19/08): `references/switcher-overlay-and-gemini-vision-20260819.md`.
-- Chi tiết Phân Tích Thực Tế Tỉ Lệ Nhả Follow Theo Số Lượng Video Đã Đăng (19/08): `references/follow-released-by-video-count-analysis-20260819.md`.
-- Chi tiết Bài Học Vận Hành & Khắc Phục Lỗi Feed / Follow / Auto-Recovery (19/08): `references/farm-recovery-and-feed-swipe-lessons-20260819.md`.
-- Chi tiết Cách Ly Cooldown Nhả Follow Theo Từng Nick & Fix Parser Gemini Vision Auto-Recovery (19/08): `references/follow-per-account-cooldown-and-gemini-vision-parser-20260819.md`.
-- Chi tiết Quy Chuẩn AI Auto-Recovery Gemini 3.7 Flash & Cooldown Nhả Follow Riêng Từng Nick (19/08): `references/ai-vision-gemini-parser-and-follow-cooldown-rules-20260819.md`.
-- Chi tiết Hermes Direct Recovery (Tắt Subprocess Agent) & Cooldown Nhả Follow Từng Nick (19/08): `references/hermes-direct-recovery-and-per-nick-follow-cooldown-20260819.md`.
-- Chi tiết Hermes Session Direct Recovery, Chặn Alert Pytest & Cooldown Follow Độc Lập Từng Nick (19/08): `references/hermes-session-direct-recovery-and-pytest-guard-20260819.md`.
-- Chi tiết Chiến Lược Lịch Ca Chẵn/Lẻ & Toán Học Follow Chéo Closed Graph Farm 160 Máy (19/08): `references/even-odd-schedule-and-closed-graph-math-20260819.md`.
-- Chi tiết Khóa Follow Nick 0 Video & Tự Động Phục Hồi Hạn Mức Theo Ngày Mới (19/08): `references/zero-video-follow-guard-and-daily-rolling-recovery-20260819.md`.
-- Chi tiết Hermes Session Direct Recovery, Chặn Alert Pytest & Modal Live Popups (19/08): `references/hermes-session-recovery-pytest-guard-and-modal-rules-20260819.md`.
-- Chi tiết AI Autonomous Recovery & Quy Chuẩn Code-First Bắt Buộc (19/08): `references/ai-autonomous-recovery-and-enforced-code-first-flow-20260819.md`.
-- Chi tiết AI Auto-Recovery Code-First & Cấp Quyền Hệ Thống PackageInstaller (19/08): `references/ai-recovery-code-first-and-benign-permission-fixes-20260819.md`.
-- Chi tiết Quy Chuẩn AI Auto-Recovery Code-First & Danh Mục Rules Popup Farm (19/08): `references/ai-auto-recovery-code-first-enforcement-and-popup-rules-20260819.md`.
-- Chi tiết Rà Soát Toàn Diện Auto-Recovery, Khắc Phục Lỗ Hổng 5 Bước & Audit Độc Lập (20/08): `references/ai-auto-recovery-code-first-audit-and-fix-20260820.md`.
-- Chi tiết Khắc Phục Triệt Để 2 Điểm Nghẽn Git Commit & Pytest Của AI Auto-Recovery (20/08): `references/ai-auto-recovery-git-path-and-env-fixes-20260820.md`.
-- Chi tiết AI Auto-Recovery Git/Env Fix, Chuẩn Hóa Popup Rules & Khóa Cứng Xoay Dọc Toàn Farm (20/08): `references/ai-recovery-git-env-and-rotation-enforcement-20260820.md`.
-- Chi tiết Chiến Lược Đổi Proxy Rửa IP, Tạm Dừng Follow/Upload & Khóa Cứng Git/Pytest (20/08): `references/proxy-rotation-feed-cooldown-and-git-path-fixes-20260820.md`.
-- Chi tiết Sửa Parser Cột Video Từ Safe Workbook & Tắt Toàn Diện Follow Toàn Farm (20/08): `references/fix-video-count-parsing-and-disable-follow-all-rows-20260820.md`.
-- Chi tiết Quy Trình Chốt Phiên Code Review Gate & Kinh Nghiệm Đổi Proxy Rửa IP (20/08): `references/close-session-code-review-gate-and-proxy-migration-20260820.md`.
-- Chi tiết Chế Độ Chỉ Lướt Nuôi (Tắt Upload), Fix Venv Auto-Recovery & Popup Vị Trí (20/08): `references/warm-only-mode-disable-upload-and-auto-recovery-fixes-20260820.md`.
-- Chi tiết Rà Soát & Gia Cố AI Auto-Recovery Pipeline, Plan-Review Audit & Popup Location Permission (20/08): `references/ai-auto-recovery-plan-review-and-execution-audit-20260820.md`.
-- Chi tiết Cơ Chế Plan-Review Audit Rejection, Cách Ly Venv Alerts & Tắt Upload Hook Toàn Farm (20/08): `references/ai-recovery-audit-rejection-and-upload-hook-toggle-20260820.md`.
-- Chi tiết AI Auto-Recovery Auto-Retry Loop, Audit Refinement & Quy Trình 6 Bước Triển Khai Code Mới (20/08): `references/ai-recovery-auto-retry-loop-and-implementation-protocol-20260820.md`.
-- Chi tiết Khắc Phục Lỗi Auto-Recovery Agent (Sót Import Argparse & Lệch Signature Refine Patch) (20/08): `references/ai-auto-recovery-argparse-and-refine-patch-signature-fix-20260820.md`.
-- Chi tiết AI Auto-Recovery Emergency Rollback & Chẩn Đoán ViChanger Broadcast Timeout (20/08): `references/ai-recovery-auto-rollback-and-vichanger-timeout-20260820.md`.
-- Tránh tranh chấp thiết bị giữa Hotmail/Reg vs Nuôi Acc & Chặn treo đệ quy Grep trên root (20/08): `references/device-lock-collision-and-recursive-grep-hang-20260820.md`.
-- Quy chuẩn Hard-Stop khi lỗi VPN/Proxy, vuốt lên bỏ qua quảng cáo & tuân thủ khóa thiết bị liên tiến trình (20/08): `references/vpn-proxy-hard-stop-ad-swipe-and-device-lock-guard-20260820.md`.
-- Chi tiết Fail-Closed VPN, Vuốt lên qua Quảng cáo & Bảo vệ Device Lock Botmail/Reg (20/08): `references/vpn-fail-closed-ad-swipe-up-and-cross-lock-guard-20260820.md`.
-- Chi tiết Xử Lý Tranh Chấp Device Lock, Watchdog Reaping & Foreign App Focus Guard (20/08): `references/device-lock-reaping-and-foreign-app-focus-guard-20260820.md`.
-- Chi tiết Retry ViChanger 3 lần, Quảng cáo vuốt lên qua & Khóa thiết bị liên tiến trình (21/08): `references/vpn-retry3-ad-swipe-and-cross-lock-20260821.md`.
-- Chi tiết Quảng Cáo Vuốt Lên & Quy Chuẩn Code Review Gate (21/08): `references/ad-swipe-up-and-code-review-gate-20260821.md`.
-- Chi tiết VPN Retry GET_IP, Xác minh IP chéo & Phân tích lỗi ca sáng Row 1 (21/08): `references/vpn-get-ip-retry-and-row1-morning-failure-20260821.md`.
-
