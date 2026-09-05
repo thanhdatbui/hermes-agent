@@ -332,17 +332,17 @@ agent:
 - **3 Cấp độ xử lý nghẽn Telegram triệt để:**
   1. **Tầng Router (MikroTik L3/L4 Mangle - Tối ưu nhất):** Định tuyến riêng dải IP Telegram (`149.154.160.0/20`, `91.108.4.0/22`) ưu tiên WAN Viettel, failover FPT. Chuyển tuyến tức thì (~2-3s), tầng Python không bị kẹt socket, không cần sửa code app.
   - **Tùy chọn tối ưu:**
-    1. **Proxy riêng:** Thêm `TELEGRAM_PROXY=http://admin%401:admin%401@192.168.110.2:10001` (hoặc SOCKS5/HTTP proxy khác) vào `$HERMES_HOME/.env`.
-       - *URL Encoding cho Auth:* Ký tự `@` trong username/password (vd `admin@1`) BẮT BUỘC phải URL-encode thành `%40` để `httpx`/`urllib3` không parse sai host dẫn đến lỗi HTTP 407.
+    1. **Proxy riêng:** Thêm `TELEGRAM_PROXY=http://<PROXY_USER>:<PROXY_PASS>@<PROXY_HOST>:<PROXY_PORT>` (hoặc SOCKS5/HTTP proxy khác) vào `$HERMES_HOME/.env`.
+       - *URL Encoding cho Auth:* Ký tự `@` trong username/password (vd `admin@1` thành `admin%401`) BẮT BUỘC phải URL-encode thành `%40` để `httpx`/`urllib3` không parse sai host dẫn đến lỗi HTTP 407.
        - *Dùng chung port proxy với Phone Farm:* Telegram bot chỉ gửi vài KB JSON long-poll, hoàn toàn không ảnh hưởng tải hay IP farm. Tuy nhiên, port proxy được chọn **BẮT BUỘC phải là port IP tĩnh/cố định, KHÔNG bị script farm reconnect đổi IP xoay vòng** (nếu đổi IP, persistent socket của Telegram sẽ bị đứt và phải reconnect lại).
        - *Pre-flight Probe Commands (chạy trước khi commit config):*
          ```bash
          # 1. Test HTTP CONNECT tunnel (trả về 200 Connection established)
-         curl -s -I -x "http://admin%401:admin%401@192.168.110.2:10001" https://api.telegram.org/
+         curl -s -I -x "http://<PROXY_USER>:<PROXY_PASS>@<PROXY_HOST>:<PROXY_PORT>" https://api.telegram.org/
          # 2. Test Egress IP WAN
-         curl -s -m 10 -x "http://admin%401:admin%401@192.168.110.2:10001" https://api.ipify.org
+         curl -s -m 10 -x "http://<PROXY_USER>:<PROXY_PASS>@<PROXY_HOST>:<PROXY_PORT>" https://api.ipify.org
          # 3. Test trực tiếp bằng httpx stack của Hermes (trả về status 302/404)
-         python -c "import httpx; r = httpx.get('https://api.telegram.org/', proxy='http://admin%401:admin%401@192.168.110.2:10001', timeout=15); print('httpx status:', r.status_code)"
+         python -c "import httpx; r = httpx.get('https://api.telegram.org/', proxy='http://<PROXY_USER>:<PROXY_PASS>@<PROXY_HOST>:<PROXY_PORT>', timeout=15); print('httpx status:', r.status_code)"
          ```
     2. **Đổi DNS host (Tách biệt DNS và Routing):** Lỗi `[Errno 11001] getaddrinfo failed` là lỗi ở tầng Resolver, không phải L3. Định tuyến MikroTik không sửa được lỗi này nếu DNS máy host vẫn trỏ về gateway FPT bị rớt gói. Đổi DNS Windows sang Google/Cloudflare (`8.8.8.8`, `1.1.1.1`) bằng PowerShell Admin:
        ```powershell
@@ -374,9 +374,9 @@ agent:
     - Repo git: `D:\Taadaa\Hermes` (remote `fork https://github.com/thanhdatbui/hermes-agent.git`, branch `main`).
     - Runtime paths: `%LOCALAPPDATA%\hermes\hermes-agent\plugins\platforms\telegram\adapter.py` và `venv\Lib\site-packages\plugins\platforms\telegram\adapter.py`.
   - **Lưu ý restart & Tác động lên Active Sessions:**
-    - Lệnh `hermes gateway restart` bị chặn nếu gọi từ trong session terminal tool (tránh tự kill parent); phải chạy từ cửa sổ shell / PowerShell ngoài:
+    - Lệnh `hermes gateway restart` bị chặn nếu gọi từ trong session terminal tool (tránh tự kill parent); khi cần chạy thủ công ngoài shell / PowerShell:
       ```powershell
-      powershell -Command "Stop-Process -Name pythonw -Force; Start-Process pythonw -ArgumentList '-m hermes_cli.main gateway run' -WindowStyle Hidden"
+      powershell -Command "$p = (Get-Content '$env:LOCALAPPDATA\hermes\gateway_state.json' | ConvertFrom-Json).pid; if ($p) { Stop-Process -Id $p -Force }; Start-Process pythonw -ArgumentList '-m hermes_cli.main gateway run' -WindowStyle Hidden"
       ```
     - **Tác động khi restart:** Lịch sử chat/transcript trong SQLite (`state.db`) được bảo toàn nguyên vẹn. Tuy nhiên, MỌI turn đang suy nghĩ dở, subagents đang chạy ngầm, script terminal hoặc batch tool-calling đang thực thi sẽ bị kill ngang (thành orphan process) và session sẽ dừng lại, không tự động chạy tiếp nếu user không gửi tin nhắn mới kích hoạt.
     - **Quy tắc an toàn & Tự động Restart khi Idle:** Tuyệt đối KHÔNG restart Gateway trực tiếp từ trong session (bị chặn bởi `_HERMES_GATEWAY=1`) hoặc khi có session AI đang chạy. Khi cần reload cấu hình (.env, proxy...) mà không gián đoạn bot, dùng **ONE-SHOT Idle Watcher** (`restart-when-idle.ps1` đọc `%LOCALAPPDATA%\hermes\gateway_state.json`). Watcher kiểm tra `active_agents == 0` liên tục trong 16 giây rồi mới tự động restart và thoát ngay, đảm bảo không có turn AI nào bị ngắt dở và 100% không đụng tới các batch farm chạy bằng `python.exe`. Chi tiết: `references/safe-idle-gateway-restart.md`.

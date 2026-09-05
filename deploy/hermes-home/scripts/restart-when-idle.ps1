@@ -2,9 +2,9 @@
 Remove-Item Env:\_HERMES_GATEWAY -ErrorAction SilentlyContinue
 $env:_HERMES_GATEWAY = $null
 
-$stateFile = "C:\Users\Kibe\AppData\Local\hermes\gateway_state.json"
-$logFile   = "C:\Users\Kibe\AppData\Local\hermes\logs\idle_restart.log"
-$defaultPythonw = "C:\Users\Kibe\AppData\Roaming\uv\python\cpython-3.11-windows-x86_64-none\pythonw.exe"
+$stateFile = "$env:LOCALAPPDATA\hermes\gateway_state.json"
+$logFile   = "$env:LOCALAPPDATA\hermes\logs\idle_restart.log"
+$defaultPythonw = "$env:APPDATA\uv\python\cpython-3.11-windows-x86_64-none\pythonw.exe"
 
 function Log-Msg($msg) {
     $timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
@@ -14,10 +14,17 @@ function Log-Msg($msg) {
 Log-Msg "Bắt đầu ONE-SHOT watcher tự động restart Gateway khi idle (PID watcher: $PID)..."
 
 $requiredIdleChecks = 8   # 8 lần kiểm tra liên tiếp x 2s = 16 giây
+$maxWaitSeconds = 600     # Timeout tối đa 10 phút nếu bot bận liên tục
+$startTime = [DateTime]::UtcNow
 $idleCount = 0
 $cachedPythonw = $null
 
 while ($true) {
+    if (([DateTime]::UtcNow - $startTime).TotalSeconds -gt $maxWaitSeconds) {
+        Log-Msg "HẾT THỜI GIAN CHỜ ($maxWaitSeconds giây) - Gateway không đạt trạng thái idle. Huỷ bỏ restart."
+        exit 1
+    }
+
     Start-Sleep -Seconds 2
     
     if (!(Test-Path $stateFile)) {
@@ -62,19 +69,25 @@ while ($true) {
                 $pythonwExe = $defaultPythonw
             }
 
-            # Stop tiến trình gateway hiện tại
+            # Stop tiến trình gateway hiện tại và đợi giải phóng tài nguyên
             try {
                 Stop-Process -Id $targetPid -Force -ErrorAction SilentlyContinue
+                Wait-Process -Id $targetPid -Timeout 10 -ErrorAction SilentlyContinue
             } catch {}
 
-            # Chờ 2 giây
+            # Chờ 2 giây đảm bảo file lock giải phóng hoàn toàn
             Start-Sleep -Seconds 2
 
-            # Khởi động lại Gateway bằng Start-Process
-            Start-Process $pythonwExe -ArgumentList "-m hermes_cli.main gateway run" -WindowStyle Hidden
-
-            Log-Msg "Gateway đã được khởi động lại thành công. Watcher kết thúc."
-            exit 0
+            # Khởi động lại Gateway bằng Start-Process và kiểm chứng
+            $newProc = Start-Process $pythonwExe -ArgumentList "-m hermes_cli.main gateway run" -WindowStyle Hidden -PassThru
+            Start-Sleep -Seconds 2
+            if ($newProc -and !$newProc.HasExited) {
+                Log-Msg "Gateway đã được khởi động lại thành công (PID mới: $($newProc.Id)). Watcher kết thúc."
+                exit 0
+            } else {
+                Log-Msg "CẢNH BÁO: Tiến trình Gateway khởi động thất bại hoặc đã thoát sớm."
+                exit 1
+            }
         }
     } else {
         if ($idleCount -gt 0) {

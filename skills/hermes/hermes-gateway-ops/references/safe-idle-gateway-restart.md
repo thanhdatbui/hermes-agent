@@ -43,9 +43,15 @@ function Log-Msg($msg) {
 }
 
 $requiredIdleChecks = 8  # 8 lần x 2s = 16s debounce liên tục
+$maxWaitSeconds = 600    # Timeout tối đa 10 phút
+$startTime = [DateTime]::UtcNow
 $idleCount = 0
 
 while ($true) {
+    if (([DateTime]::UtcNow - $startTime).TotalSeconds -gt $maxWaitSeconds) {
+        Log-Msg "HẾT THỜI GIAN CHỜ ($maxWaitSeconds s) - Gateway không idle. Huỷ bỏ restart."
+        exit 1
+    }
     Start-Sleep -Seconds 2
     if (!(Test-Path $stateFile)) { continue }
     try {
@@ -63,13 +69,20 @@ while ($true) {
         if ($idleCount -ge $requiredIdleChecks) {
             Log-Msg "Gateway idle liên tục 16s. Tiến hành restart PID $targetPid..."
             Stop-Process -Id $targetPid -Force -ErrorAction SilentlyContinue
+            Wait-Process -Id $targetPid -Timeout 10 -ErrorAction SilentlyContinue
             Start-Sleep -Seconds 2
             
             # Khởi động lại qua pythonw chính xác từ uv
             $pythonwExe = "$env:APPDATA\uv\python\cpython-3.11-windows-x86_64-none\pythonw.exe"
-            Start-Process $pythonwExe -ArgumentList "-m hermes_cli.main gateway run" -WindowStyle Hidden
-            Log-Msg "Gateway đã khởi động lại. Watcher kết thúc."
-            exit 0  # One-shot: tự thoát hoàn toàn
+            $newProc = Start-Process $pythonwExe -ArgumentList "-m hermes_cli.main gateway run" -WindowStyle Hidden -PassThru
+            Start-Sleep -Seconds 2
+            if ($newProc -and !$newProc.HasExited) {
+                Log-Msg "Gateway đã được khởi động lại thành công (PID: $($newProc.Id)). Watcher kết thúc."
+                exit 0  # One-shot: tự thoát hoàn toàn
+            } else {
+                Log-Msg "CẢNH BÁO: Khởi động Gateway thất bại."
+                exit 1
+            }
         }
     } else {
         $idleCount = 0
@@ -109,18 +122,19 @@ Sau khi kích hoạt watcher để restart Gateway khi idle, tiến hành nghi�
 
 Khi tuyến cáp ISP FPT bị bóp hoặc drop gói ngầm tới Telegram (silent TCP CLOSE-WAIT stall), chuyển riêng kết nối Telegram Bot sang proxy WAN Viettel qua biến môi trường:
 - File cấu hình: `%LOCALAPPDATA%\hermes\.env`
-- Biến: `TELEGRAM_PROXY=http://admin%401:admin%401@192.168.110.2:10001`
-- **Quy tắc URL Encode Credential:** Nếu username hoặc password có chứa ký tự `@`, bắt buộc phải encode thành `%40` (ví dụ `admin@1` $\rightarrow$ `admin%401`). Thư viện `httpx` của Python tuân thủ RFC 3986 sẽ tự decode thành header `Proxy-Authorization: Basic ***` hợp lệ, tránh lỗi `407 Proxy Authentication Required`.
+- Biến: `TELEGRAM_PROXY=http://<PROXY_USER>:<PROXY_PASS>@<PROXY_HOST>:<PROXY_PORT>`
+- **Quy tắc URL Encode Credential:** Nếu username hoặc password có chứa ký tự `@`, bắt buộc phải encode thành `%40` (ví dụ `admin@1` $
+ightarrow$ `admin%401`). Thư viện `httpx` của Python tuân thủ RFC 3986 sẽ tự decode thành header `Proxy-Authorization: Basic ***` hợp lệ, tránh lỗi `407 Proxy Authentication Required`.
 
 ### Pre-flight Verification Probe
 Trước khi đưa proxy vào sử dụng, kiểm tra qua 2 bước:
 1. **Kiểm tra HTTP CONNECT tunnel tới Telegram:**
    ```bash
-   curl -s -I -x "http://admin%401:admin%401@192.168.110.2:10001" https://api.telegram.org/
+   curl -s -I -x "http://<PROXY_USER>:<PROXY_PASS>@<PROXY_HOST>:<PROXY_PORT>" https://api.telegram.org/
    ```
    Tiêu chí: Trả về `HTTP/1.0 200 Connection established` (hoặc redirect 302 từ Telegram root).
 2. **Kiểm tra Python httpx:**
    ```bash
-   python -c "import httpx; r = httpx.get('https://api.telegram.org/', proxy='http://admin%401:admin%401@192.168.110.2:10001', timeout=15); print(r.status_code)"
+   python -c "import httpx; r = httpx.get('https://api.telegram.org/', proxy='http://<PROXY_USER>:<PROXY_PASS>@<PROXY_HOST>:<PROXY_PORT>', timeout=15); print(r.status_code)"
    ```
    Tiêu chí: Status code 302/404, không timeout hoặc 407.

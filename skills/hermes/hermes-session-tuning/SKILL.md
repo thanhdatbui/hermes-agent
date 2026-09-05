@@ -155,13 +155,16 @@ Khi cần thống kê nhanh số user requests, active sessions, delegation coun
 
 ### Quick template
 ```python
-import sqlite3, datetime
+import sqlite3, datetime, os
+from pathlib import Path
 
 now = datetime.datetime.now()  # UTC+7
 one_hour_ago = now - datetime.timedelta(hours=1)
 now_ts, ago_ts = now.timestamp(), one_hour_ago.timestamp()
 
-conn = sqlite3.connect('C:/Users/Kibe/AppData/Local/hermes/state.db')
+db_path = Path(os.environ.get("LOCALAPPDATA", r"C:\Users\Kibe\AppData\Local")) / "hermes" / "state.db"
+# Mở ở chế độ read-only (uri=True) với timeout 10s tránh lock contention với Gateway
+conn = sqlite3.connect(f"file:{db_path.as_posix()}?mode=ro", uri=True, timeout=10)
 cur = conn.cursor()
 
 # User messages in window

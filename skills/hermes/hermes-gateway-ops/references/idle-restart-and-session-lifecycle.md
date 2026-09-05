@@ -81,9 +81,9 @@ Nguồn dữ liệu authoritative duy nhất để biết Gateway rảnh hay b�
 Remove-Item Env:\_HERMES_GATEWAY -ErrorAction SilentlyContinue
 $env:_HERMES_GATEWAY = $null
 
-$stateFile = "C:\Users\Kibe\AppData\Local\hermes\gateway_state.json"
-$logFile   = "C:\Users\Kibe\AppData\Local\hermes\logs\idle_restart.log"
-$defaultPythonw = "C:\Users\Kibe\AppData\Roaming\uv\python\cpython-3.11-windows-x86_64-none\pythonw.exe"
+$stateFile = "$env:LOCALAPPDATA\hermes\gateway_state.json"
+$logFile   = "$env:LOCALAPPDATA\hermes\logs\idle_restart.log"
+$defaultPythonw = "$env:APPDATA\uv\python\cpython-3.11-windows-x86_64-none\pythonw.exe"
 
 function Log-Msg($msg) {
     $timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
@@ -131,17 +131,24 @@ while ($true) {
                 $pythonwExe = $defaultPythonw
             }
 
-            # 1. Dừng Gateway process
+            # 1. Dừng Gateway process và đợi giải phóng tài nguyên
             try {
                 Stop-Process -Id $targetPid -Force -ErrorAction SilentlyContinue
+                Wait-Process -Id $targetPid -Timeout 10 -ErrorAction SilentlyContinue
             } catch {}
 
             Start-Sleep -Seconds 2
 
             # 2. Khởi động lại Gateway bằng Start-Process trực tiếp
-            Start-Process $pythonwExe -ArgumentList "-m hermes_cli.main gateway run" -WindowStyle Hidden
-            Log-Msg "Gateway đã được khởi động lại thành công. Watcher kết thúc."
-            exit 0
+            $newProc = Start-Process $pythonwExe -ArgumentList "-m hermes_cli.main gateway run" -WindowStyle Hidden -PassThru
+            Start-Sleep -Seconds 2
+            if ($newProc -and !$newProc.HasExited) {
+                Log-Msg "Gateway đã được khởi động lại thành công (PID mới: $($newProc.Id)). Watcher kết thúc."
+                exit 0
+            } else {
+                Log-Msg "CẢNH BÁO: Khởi động Gateway thất bại."
+                exit 1
+            }
         }
     } else {
         if ($idleCount -gt 0) {
@@ -197,13 +204,10 @@ while ($true) {
         if ($idleCount -ge $requiredIdleChecks) {
             Log-Msg "Gateway đã IDLE hoàn toàn trong 10s. Tiến hành restart..."
             
-            # 1. Dừng Gateway process
+            # 1. Dừng đúng tiến trình Gateway target và đợi giải phóng tài nguyên
             Stop-Process -Id $targetPid -Force -ErrorAction SilentlyContinue
+            Wait-Process -Id $targetPid -Timeout 10 -ErrorAction SilentlyContinue
             Start-Sleep -Seconds 2
-
-            # Đảm bảo không còn pythonw gateway tồn tại
-            Get-Process pythonw -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-            Start-Sleep -Seconds 1
 
             # 2. Khởi động lại Gateway qua launcher VBS chuẩn
             if (Test-Path $vbsPath) {
