@@ -100,6 +100,8 @@ Source-verified on Hermes 0.18.2:
   - **Xử lý nhanh**: Đổi model nén sang model context 1M (vd: `ag-gemini-pool-3` trên `omni` hoặc `ag/gemini-3.7-flash-high` trên `9router`):
     `hermes config set auxiliary.compression.model ag-gemini-pool-3`
     `hermes config set auxiliary.compression.provider omni`
+- **Cấu hình `auxiliary.compression.fallback_chain` an toàn**:
+  Khi model nén chính lỗi hoặc hết quota, Hermes duyệt qua danh sách `fallback_chain`. Bắt buộc kiểm tra provider trong chain có credential hợp lệ. Nếu 9Router không còn active token cho model Antigravity (dẫn đến `401 No active credentials for provider: antigravity`), phải trỏ fallback sang combo free nội bộ trên OmniRoute (`model: omni-free`, `provider: omni`) để đảm bảo không bị loop treo nén `all fallbacks exhausted`.
 
 ### Quota burn = context bloat, not model price (diagnosis pattern)
 
@@ -146,6 +148,56 @@ Parse with Python regex:
 - `agent.conversation_compression: context compression started/done` — messages N->M, rough_tokens. A compression run blocks the session ~1-2 min (visible "lag spike").
 
 Rule of thumb from real data: avg_in > ~250-300K tokens/call ⇒ multi-second+ latency; 700+ messages ⇒ UI jank; a session at 500K+ tokens pre-compression is the laggy one.
+
+## Direct state.db Query for Session Activity Stats (2026-09-05)
+
+Khi cần thống kê nhanh số user requests, active sessions, delegation counts trong 1 khoảng thời gian — query trực tiếp `C:/Users/Kibe/AppData/Local/hermes/state.db` bằng Python sqlite3. Nhanh hơn và chính xác hơn grep log.
+
+### Quick template
+```python
+import sqlite3, datetime
+
+now = datetime.datetime.now()  # UTC+7
+one_hour_ago = now - datetime.timedelta(hours=1)
+now_ts, ago_ts = now.timestamp(), one_hour_ago.timestamp()
+
+conn = sqlite3.connect('C:/Users/Kibe/AppData/Local/hermes/state.db')
+cur = conn.cursor()
+
+# User messages in window
+cur.execute('SELECT COUNT(*) FROM messages WHERE role="user" AND timestamp>=? AND timestamp<?', (ago_ts, now_ts))
+print(f'User msgs: {cur.fetchone()[0]}')
+
+# Active sessions
+cur.execute('SELECT DISTINCT session_id FROM messages WHERE timestamp>=? AND timestamp<?', (ago_ts, now_ts))
+sessions = [r[0] for r in cur.fetchall()]
+print(f'Active sessions: {len(sessions)}')
+
+# Delegations dispatched
+cur.execute('SELECT COUNT(*) FROM async_delegations WHERE dispatched_at>=? AND dispatched_at<?', (ago_ts, now_ts))
+print(f'Delegations: {cur.fetchone()[0]}')
+
+# Per-session breakdown
+for sid in sessions:
+    cur.execute('SELECT role, COUNT(*) FROM messages WHERE session_id=? AND timestamp>=? AND timestamp<? GROUP BY role', (sid, ago_ts, now_ts))
+    rc = {r[0]: r[1] for r in cur.fetchall()}
+    cur.execute('SELECT title FROM sessions WHERE id=?', (sid,))
+    title = (cur.fetchone() or ['N/A'])[0] or 'N/A'
+    print(f'  {sid}: user={rc.get("user",0)} asst={rc.get("assistant",0)} tool={rc.get("tool",0)} | {title}')
+```
+
+### Key tables
+| Table | Key columns | Use |
+|---|---|---|
+| `messages` | role, timestamp, session_id | User/assistant/tool message counts per window |
+| `sessions` | id, title, started_at, api_call_count | Session metadata |
+| `async_delegations` | state, dispatched_at, completed_at | Worker dispatch/fail stats |
+
+### Notes
+- `timestamp` in messages is Unix epoch (REAL) — use `>=` and `<` for half-open interval
+- `role` values: `user`, `assistant`, `tool`, `system`
+- High assistant:user ratio (>10:1) = delegation loop / retry storm, not many real users
+- Per-session `api_call_count` from sessions table is cumulative (all time), not per-window
 
 ## Memory tool ≠ lag driver (user hỏi 2026-08-07 — trả lời kèm số liệu)
 
