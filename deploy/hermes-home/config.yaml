@@ -349,6 +349,13 @@ custom_providers:
         context_length: 1048576
     name: 9router
 group_sessions_per_user: true
+plugins:
+  enabled:
+    - farm-coordinator-guard
+  disabled: []
+  entries:
+    farm-coordinator-guard:
+      allow_tool_override: false
 known_plugin_toolsets:
   cli:
     - spotify

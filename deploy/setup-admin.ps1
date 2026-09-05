@@ -75,6 +75,15 @@ if (Test-Path -LiteralPath $BundleHermes -PathType Container) {
         robocopy $ScriptsSrcDir $ScriptsDstDir *.py /xo /njh /njs /ndl /nc /ns | Out-Null
     }
 
+    # Sync Plugins
+    $PluginsSrcDir = Join-Path $BundleHermes 'plugins'
+    if (Test-Path -LiteralPath $PluginsSrcDir -PathType Container) {
+        Write-Host "Syncing plugins..." -ForegroundColor Yellow
+        $PluginsDstDir = Join-Path $HermesHome 'plugins'
+        New-Item -ItemType Directory -Force -Path $PluginsDstDir | Out-Null
+        robocopy $PluginsSrcDir $PluginsDstDir /E /xo /njh /njs /ndl /nc /ns | Out-Null
+    }
+
     Write-Host "Copying missing Hermes bootstrap credentials..." -ForegroundColor Yellow
     Copy-BootstrapFile (Join-Path $BundleHermes '.env') (Join-Path $HermesHome '.env')
     Copy-BootstrapFile (Join-Path $BundleHermes 'auth.json') (Join-Path $HermesHome 'auth.json')

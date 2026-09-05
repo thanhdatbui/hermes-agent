@@ -1,0 +1,7 @@
+name: farm-coordinator-guard
+version: "2.0.0"
+description: "v2.0: Chặn Coordinator tự điều tra (khóa read_file, search_files, patch, write_file, execute_code và terminal), quản lý state độc lập per-session chống race condition, mở 6 Gate ở CLOSEOUT."
+author: "Taadaa Farm Architecture"
+hooks:
+  - pre_llm_call
+  - pre_tool_call
