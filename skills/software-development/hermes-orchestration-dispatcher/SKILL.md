@@ -20,6 +20,7 @@ metadata:
 
 - **Strict Coordinator Rule (User chốt 2026-09-04 — CẤM TỰ TRACE/CHẠY TERMINAL/SUY LUẬN CHAY)**:
   * Session chính = Coordinator CẤM TUYỆT ĐỐI tự chạy terminal debug, inspect hiện trường, trace log, suy luận chay hay sửa code trực tiếp.
+  * CẤM TUYỆT ĐỐI emit `[SILENT]` khi gọi `delegate_task`. BẮT BUỘC gửi 1 Dispatch Receipt ngắn gọn (Mục tiêu, Phạm vi, Ngân sách) trước khi spawn subagent để user biết tiến trình đang chạy, chống treo im lặng.
   * Mọi task phát triển, sửa bug, trace log lỗi farm, và canary test BẮT BUỘC dispatch `delegate_task(role=leaf)` tại Turn 1.
   * Chỉ re-run các máy bị lỗi script/code; CẤM TUYỆT ĐỐI tự ý chạy lại các máy do Google chặn (bắt SĐT `PHONE_VERIFY` hoặc rate limit).
   * Coordinator CHỈ đọc diff, kiểm tra test độc lập và tổng hợp báo cáo cho user.
@@ -313,6 +314,7 @@ Theo `D:\Taadaa\AGENTS.md`: audit order **AG `ag/claude-opus-4-6-thinking` → c
        2. Khi user ra lệnh **"lên plan"** hoặc **"review"**: Dùng ĐỒNG NHẤT cấu hình chuẩn đã setup chung cho Plan & Review (không chế model riêng, user chốt 06/09/2026):
           * **Mức thường (Review/Audit Plan bình thường)**: Dùng combo OmniRoute review (`:20129`) theo chuỗi đã setup (Opus -> Sonnet -> GPT OSS -> Nemotron -> AG; cấm tự review).
           * **Ca khó / Tranh chấp kiến trúc HOẶC khi user chủ động ra lệnh "gọi claude cli" / "kêu claude kiểm tra"**: LUÔN gọi Claude CLI **Opus Max** (`claude -p "..." --model opus --effort max`). CẤM tự ý hạ xuống Sonnet hay giảm reasoning effort. Tất cả đều để cấp độ cao nhất.
+          * **Fallback khi Claude CLI chạm Session Limit (`You've hit your session limit`)**: Tự động chuyển tiếp sang OmniRoute `:20129` model `review` hoặc `auto/claude-opus` (`antigravity/claude-opus-4-6-thinking-high`) để tiếp tục audit độc lập, báo rõ lý do và thời điểm reset cho user.
           * TUYỆT ĐỐI CẤM dùng Flash/Worker làm plan hoặc audit.
        3. Bất kỳ task nào yêu cầu write/edit/patch/build/deploy file code trong `D:\Taadaa` (kể cả khi user nói "làm đi", "sửa đi", "fix đi", "chạy lại") → **LOAD SKILL NÀY TRƯỚC** rồi mới phân loại + dispatch worker. Không load skill trước khi write = vi phạm COORDINATOR-WRITE GUARD.
 
