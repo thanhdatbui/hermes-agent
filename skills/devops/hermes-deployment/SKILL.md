@@ -328,6 +328,17 @@ When connecting a secondary machine (Admin) to the main machine's (Kibe) dual LL
    - New-host data workbooks = headers-only templates (never copy live rows); never copy `runtime/` between hosts.
    - Full provisioning guide: `D:\Taadaa\HUONG_DAN_CAI_DAT_MAY_ADMIN.md` (mirrored in OneDrive `Taadaa_Sync_Shared`).
  Complete per-host recipe (branch map, data templates, venv, pitfalls from the 2026-08-23 Admin setup): `references/taadaa-multi-host-provisioning.md`.
+6. **Continuous Config & Gateway Sync (When Secondary Host Already Has Hermes):**
+   - **Strict Rule:** Each host maintains its own distinct `TELEGRAM_BOT_TOKEN`. Never share or overwrite bot tokens between Kibe and Admin (causes Telegram `Conflict: terminated by other getUpdates request`).
+   - **Continuous update workflow:** Kibe commits runtime updates to `deploy/hermes-home/config.yaml`, scripts, and skills -> pushes to `fork main`. Admin pulls `fork main` -> copies `deploy/hermes-home/config.yaml` to `%LOCALAPPDATA%\hermes\config.yaml` -> syncs skills -> starts `restart-when-idle.ps1`.
+   - **1-Click sync script:** See `references/admin-bot-model-sync-prompt.md` for the self-contained script and prompt recipe.
+
+## Tự động đồng bộ Setup từ Kibe trên máy Admin
+
+Khi người dùng nhắn: 'pull repo hermes về nhận setup hermes mới', 'đồng bộ hermes từ kibe', 'update hermes từ kibe', 'kéo setup hermes':
+Chạy ngay lệnh:
+`git -C D:\Taadaa\Hermes pull --rebase fork main && powershell -NoProfile -ExecutionPolicy Bypass -File D:\Taadaa\Hermes\deploy\sync-from-kibe.ps1`
+và báo cáo kết quả kiểm tra `hermes config check`.
 
 ### Guiding a remote setup over chat (RDP/screenshots)
 
