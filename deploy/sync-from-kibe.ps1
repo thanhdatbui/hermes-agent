@@ -12,7 +12,7 @@ git -C $RepoDir pull --rebase fork main
 Write-Host "== 2. ĐỒNG BỘ SKILLS ==" -ForegroundColor Cyan
 $SyncSkills = Join-Path $RepoDir "deploy\sync-skills.ps1"
 if (Test-Path $SyncSkills) {
-    & $SyncSkills -RepoRoot $RepoDir
+    & $SyncSkills -RepoRoot $RepoDir -Force
 }
 
 Write-Host "== 3. ĐỒNG BỘ CONFIG VÀ SCRIPTS ==" -ForegroundColor Cyan
@@ -20,12 +20,24 @@ $CfgSrc = Join-Path $RepoDir "deploy\hermes-home\config.yaml"
 $CfgDst = Join-Path $HermesHome "config.yaml"
 if (Test-Path $CfgSrc) {
     Copy-Item $CfgSrc -Destination $CfgDst -Force
+    # Thay 127.0.0.1 thành IP Kibe để Admin kết nối qua mạng LAN
+    $cfgContent = Get-Content $CfgDst -Raw -Encoding utf8
+    $cfgContent = $cfgContent -replace "127\.0\.0\.1", $KibeIP
+    Set-Content -Path $CfgDst -Value $cfgContent -Encoding utf8
 }
 
-$RestartSrc = Join-Path $RepoDir "deploy\hermes-home\scripts\restart-when-idle.ps1"
-$RestartDst = Join-Path $HermesHome "scripts\restart-when-idle.ps1"
-if (Test-Path $RestartSrc) {
-    Copy-Item $RestartSrc -Destination $RestartDst -Force
+$ScriptsSrc = Join-Path $RepoDir "deploy\hermes-home\scripts"
+$ScriptsDst = Join-Path $HermesHome "scripts"
+if (Test-Path $ScriptsSrc) {
+    New-Item -ItemType Directory -Force -Path $ScriptsDst | Out-Null
+    Copy-Item "$ScriptsSrc\*" -Destination $ScriptsDst -Recurse -Force
+}
+
+$PluginsSrc = Join-Path $RepoDir "deploy\hermes-home\plugins"
+$PluginsDst = Join-Path $HermesHome "plugins"
+if (Test-Path $PluginsSrc) {
+    New-Item -ItemType Directory -Force -Path $PluginsDst | Out-Null
+    Copy-Item "$PluginsSrc\*" -Destination $PluginsDst -Recurse -Force
 }
 
 Write-Host "== 4. CẬP NHẬT .ENV (BẢO TỒN BOT TOKEN ADMIN) ==" -ForegroundColor Cyan
@@ -50,6 +62,8 @@ foreach ($line in $settings) {
     }
 }
 Set-Content -Path $envFile -Value $envContent.Trim() -Encoding utf8
+
+$RestartDst = Join-Path $HermesHome "scripts/restart-when-idle.ps1"
 
 Write-Host "== 5. KÍCH HOẠT WATCHER TỰ RESTART KHI IDLE ==" -ForegroundColor Cyan
 if (Test-Path $RestartDst) {

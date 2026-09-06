@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
     [string]$RepoRoot = (Split-Path -Parent $PSScriptRoot),
-    [string]$Destination = (Join-Path $env:LOCALAPPDATA 'hermes\skills')
+    [string]$Destination = (Join-Path $env:LOCALAPPDATA 'hermes\skills'),
+    [switch]$Force
 )
 
 $ErrorActionPreference = 'Stop'
@@ -188,7 +189,7 @@ foreach ($SkillFile in Get-ChildItem -LiteralPath $Source -Filter 'SKILL.md' -Fi
     }
     $SkillsToBaseline[$SkillName] = $SourceHash
 }
-if ($Conflicts.Count -gt 0) {
+if ($Conflicts.Count -gt 0 -and -not $Force) {
     $Shown = ($Conflicts | Select-Object -First 10) -join ', '
     $Suffix = if ($Conflicts.Count -gt 10) { " (and $($Conflicts.Count - 10) more)" } else { '' }
     throw "Refusing to overwrite locally modified skills: $Shown$Suffix. Review, back up, or reset the local copy before retrying."

@@ -2,9 +2,13 @@
 Remove-Item Env:\_HERMES_GATEWAY -ErrorAction SilentlyContinue
 $env:_HERMES_GATEWAY = $null
 
-$stateFile = "C:\Users\Kibe\AppData\Local\hermes\gateway_state.json"
-$logFile   = "C:\Users\Kibe\AppData\Local\hermes\logs\idle_restart.log"
-$defaultPythonw = "C:\Users\Kibe\AppData\Roaming\uv\python\cpython-3.11-windows-x86_64-none\pythonw.exe"
+$hermesHome = Join-Path $env:LOCALAPPDATA "hermes"
+$stateFile = Join-Path $hermesHome "gateway_state.json"
+$logFile   = Join-Path $hermesHome "logs\idle_restart.log"
+$defaultPythonw = (Get-Command pythonw.exe -ErrorAction SilentlyContinue).Source
+if (!$defaultPythonw) {
+    $defaultPythonw = Join-Path $hermesHome "hermes-agent\venv\Scripts\pythonw.exe"
+}
 
 function Log-Msg($msg) {
     $timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
