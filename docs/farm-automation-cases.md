@@ -353,3 +353,17 @@ Tài liệu này tổng hợp toàn bộ các case lỗi thực tế trên hệ 
 - [ ] Nếu có: Đã cập nhật chi tiết Case Fix thực tế và Anti-Pattern vào `docs/uiautomator.md` chưa?
 - [ ] Đã chạy Unit Test hồi quy cho các module bị ảnh hưởng?
 - [ ] Đã kiểm tra Gate 0 Live Canary (hoặc Gate 0.5 Document Gate) đầy đủ chưa?
+
+---
+
+### Case GW-02: Tối ưu Polling Heartbeat Telegram chống Silent TCP Stall & Định tuyến qua VPS Singapore
+- **Vị trí áp dụng:** `deploy/hermes-home/.env` và runtime `%LOCALAPPDATA%\hermes\.env` (logic tiêu thụ đã có sẵn tại `plugins/platforms/telegram/adapter.py:3416` qua `HERMES_TELEGRAM_HEARTBEAT_INTERVAL` & `HERMES_TELEGRAM_HEARTBEAT_TIMEOUT`).
+- **Nguyên nhân gây lỗi (Anti-Pattern - Sự cố 07/09/2026):**
+  1. Mặc định trên Windows, TCP Keepalive timeout là 2 tiếng. Khi đường truyền mạng VN sang máy chủ Telegram DC5 bị drop gói hoặc rớt ngầm kết nối TCP (half-open socket), thư viện PTB không nhận được cờ RST/FIN nên socket bị treo ngầm (Silent Stall).
+  2. Hermes Gateway thiếu biến cấu hình polling heartbeat trong file template `.env`, khiến tin nhắn gửi từ người dùng bị dồn ứ trên máy chủ Telegram suốt 8.5 phút mới timeout và giật dồn một lúc.
+- **Giải pháp chuẩn (Case Fix):**
+  1. Bổ sung 2 biến môi trường vào template `deploy/hermes-home/.env` và runtime `.env`:
+     `HERMES_TELEGRAM_HEARTBEAT_INTERVAL=15`
+     `HERMES_TELEGRAM_HEARTBEAT_TIMEOUT=10.0`
+     Cơ chế tiêu thụ: Hàm `_polling_heartbeat_loop()` trong `adapter.py` tự động đọc 2 biến này để probe `getWebhookInfo.pending_update_count` mỗi 15s và giật đứt socket chết trong 30-45s.
+  2. Triển khai Tinyproxy có BasicAuth trên VPS Doravo (`<VPS_IP_SGP>`, Singapore - chung DC với Telegram) và cấu hình `TELEGRAM_PROXY=http://...` trong runtime local `.env` (giữ sanitized placeholder trong template repo để chống rò rỉ secret) để chuyển socket Telegram sang Singapore, miễn nhiễm với đứt cáp biển quốc tế đêm của ISP VN.
