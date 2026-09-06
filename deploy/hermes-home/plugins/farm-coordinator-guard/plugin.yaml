@@ -1,6 +1,6 @@
 name: farm-coordinator-guard
-version: "2.1.0"
-description: "v2.1: Chặn Coordinator tự điều tra, quản lý state per-session, mở 6 Gate ở CLOSEOUT, ghi nhận heartbeat qua post_tool_call cho silent stale watchdog."
+version: "2.2.0"
+description: "v2.2: Hard cap 12 calls cho Worker, chặn đọc file monolith (*_smoke.py), bịt lỗ hổng terminal probe ở turn 4, chặn Coordinator dispatch goal mở vào monolith flow."
 author: "Taadaa Farm Architecture"
 hooks:
   - pre_llm_call

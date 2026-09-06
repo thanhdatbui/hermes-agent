@@ -30,6 +30,7 @@ import json
 import logging
 import os
 import re
+import shlex
 import sqlite3
 import threading
 import time
@@ -53,6 +54,86 @@ SESSION_EXPIRY_SECONDS = 7200  # 2 hours auto-cleanup for stale sessions
 # --- WORKER TOOL GATE CONSTANTS & STATE ---
 READ_BUDGET = int(os.environ.get("WORKER_READ_BUDGET", 3))
 WRITE_DEADLINE = int(os.environ.get("WORKER_WRITE_DEADLINE", 4))
+MAX_WORKER_CALLS = int(os.environ.get("WORKER_MAX_CALLS", 12))
+POPUP_SELECTOR_PATTERN = re.compile(r"\b(?:popup|allowlist|survey|ads?|selector|advert)\b", re.IGNORECASE)
+
+
+def is_monolith_smoke(path_str: str) -> bool:
+    """Check if a path or command points to a monolith flow (*_smoke.py) at any directory depth."""
+    if not path_str:
+        return False
+    norm = path_str.replace("\\", "/").lower()
+    if "feed_swipe_smoke" in norm:
+        return True
+    if "_smoke.py" in norm and ("flows" in norm or "flow" in norm):
+        return True
+    parts = re.split(r"[/ \t\'\"]+", norm)
+    if any(p.endswith("_smoke.py") for p in parts) and any("flow" in p for p in parts):
+        return True
+    return False
+
+
+def is_safe_terminal_verify(cmd: str) -> bool:
+    """Strictly validate safe verification commands for worker subagents.
+    
+    Rules:
+    1. Cấm tuyệt đối chứa file monolith flow.
+    2. Chặn đứng ký tự shell chaining, redirection, subshell, comment, background, env-expansion:
+       ; & | # ` $ > < % \n \r \t
+    3. Chỉ cho phép đúng 3 nhóm lệnh an toàn:
+       - py_compile: python[3] -m py_compile <file> (file không được là monolith)
+       - git status: git status [--short|-s] [<path>]
+       - git diff: git diff [<path>] (cấm flag --output, --ext-diff, path không được là monolith)
+    """
+    if not cmd or not cmd.strip():
+        return False
+    cmd_clean = cmd.strip()
+
+    if is_monolith_smoke(cmd_clean):
+        return False
+
+    FORBIDDEN_CHARS = [";", "&", "|", "#", "`", "$", ">", "<", "%", "\n", "\r", "\t"]
+    if any(ch in cmd_clean for ch in FORBIDDEN_CHARS):
+        return False
+
+    try:
+        tokens = shlex.split(cmd_clean, posix=False)
+        tokens = [t.strip("\"'") for t in tokens if t.strip("\"'")]
+    except Exception:
+        return False
+
+    if not tokens:
+        return False
+
+    t0 = Path(tokens[0]).stem.lower()
+
+    if t0 == "git":
+        if len(tokens) >= 2:
+            sub = tokens[1].lower()
+            if sub == "status":
+                return True
+            if sub == "diff":
+                for tok in tokens[2:]:
+                    t_low = tok.lower()
+                    if t_low.startswith("--output") or t_low.startswith("--ext-diff") or t_low.startswith("--no-index"):
+                        return False
+                    if is_monolith_smoke(t_low):
+                        return False
+                return True
+        return False
+
+    if t0 == "python" or t0.startswith("python3"):
+        if len(tokens) >= 3 and tokens[1] == "-m" and tokens[2] == "py_compile":
+            for tok in tokens[3:]:
+                if is_monolith_smoke(tok):
+                    return False
+            return True
+        return False
+
+    if t0 == "py_compile":
+        return True
+
+    return False
 
 # --- INVESTIGATIVE TOOLS (Cấm tuyệt đối ở session Coordinator trong Phase ALERT) ---
 INVESTIGATIVE_TOOLS = {
@@ -591,8 +672,15 @@ def _worker_gate_lock():
                 pass
 
 
-def check_worker_tool_gate(tool_name: str, session_id: str) -> Optional[Dict[str, Any]]:
-    """Enforce hard limits on Worker subagents to eliminate Analysis Paralysis."""
+def check_worker_tool_gate(tool_name: str, session_id: str, args: Any = None) -> Optional[Dict[str, Any]]:
+    """Enforce hard limits on Worker subagents to eliminate Analysis Paralysis.
+    
+    Rules:
+    1. MAX_WORKER_CALLS (12): Hard stop worker after 12 calls (including blocked attempts).
+    2. MONOLITH BLOCK: Cấm tuyệt đối read_file/search_files vào *_smoke.py (feed_swipe_smoke >22k lines).
+    3. READ_BUDGET (3): Tối đa 3 lần đọc file/search.
+    4. WRITE_DEADLINE (4): Nếu call_count >= 4 và write_count == 0, khóa công cụ đọc VÀ terminal probe, ép ghi code ngay.
+    """
     if not session_id:
         return None
     with _worker_gate_lock():
@@ -600,22 +688,53 @@ def check_worker_tool_gate(tool_name: str, session_id: str) -> Optional[Dict[str
         state = worker_states.setdefault(session_id, {"read_count": 0, "write_count": 0, "call_count": 0, "updated_at": time.time()})
         state["updated_at"] = time.time()
 
+        # Luôn tăng call_count cho mỗi lượt gọi (kể cả lượt bị block) để chống loop vô tận
+        state["call_count"] += 1
+
+        # 0. Check Hard Budget Cap: Tối đa MAX_WORKER_CALLS (12)
+        if state["call_count"] > MAX_WORKER_CALLS:
+            _save_worker_gate_state(worker_states)
+            return {
+                "action": "block",
+                "reason": (
+                    f"⛔ [WORKER TOOL GATE - BUDGET EXHAUSTED]: "
+                    f"Worker đã chạm trần ngân sách ({state['call_count'] - 1}/{MAX_WORKER_CALLS} tool calls)! "
+                    "Mọi tool calls tiếp theo đã bị KHÓA CỨNG. "
+                    "Bạn BẮT BUỘC phải dừng lại và xuất báo cáo kết quả / blocker ngay lập tức."
+                ),
+            }
+
+        # 1. Monolith File Guard: Cấm đọc hoặc tìm kiếm trong các file monolith *_smoke.py
+        fn_args = args if isinstance(args, dict) else {}
+        target_path = str(fn_args.get("path") or fn_args.get("file_path") or fn_args.get("pattern") or "")
+        if target_path and is_monolith_smoke(target_path):
+            _save_worker_gate_state(worker_states)
+            return {
+                "action": "block",
+                "reason": (
+                    f"⛔ [WORKER TOOL GATE - MONOLITH BLOCKED]: "
+                    f"Đường dẫn '{target_path}' là file flow monolith (>22.000 dòng)! "
+                    "CẤM TUYỆT ĐỐI mở file flow monolith để điều tra. "
+                    "Lỗi popup/selector BẮT BUỘC xử lý tại benign_popup_registry.py theo PATCH_CONTRACT."
+                ),
+            }
+
         READ_TOOLS = {"read_file", "search_files"}
         WRITE_TOOLS = {"write_file", "patch"}
 
         if tool_name in READ_TOOLS:
-            # 1. Check WRITE_DEADLINE: nếu đã qua WRITE_DEADLINE (4) tool calls mà chưa có write/patch nào thì khóa đọc
+            # Check WRITE_DEADLINE: nếu đã qua WRITE_DEADLINE (turn 4 trở đi) mà write_count == 0
             if state["call_count"] >= WRITE_DEADLINE and state["write_count"] == 0:
                 _save_worker_gate_state(worker_states)
                 return {
                     "action": "block",
                     "reason": (
                         f"⛔ [WORKER TOOL GATE - WRITE DEADLINE]: "
-                        f"Đã qua {state['call_count']} tool calls mà chưa có thao tác write_file/patch nào. "
+                        f"Đã qua {state['call_count'] - 1} tool calls mà chưa có thao tác write_file/patch nào. "
                         "Mọi công cụ đọc đã bị KHÓA CỨNG. Bạn BẮT BUỘC phải ghi bản vá (write_file/patch) ngay lập tức!"
                     ),
                 }
-            # 2. Check READ_BUDGET: tối đa 3 lần đọc file/search
+            # Check READ_BUDGET: tối đa 3 lần đọc file/search
             if state["read_count"] >= READ_BUDGET:
                 _save_worker_gate_state(worker_states)
                 return {
@@ -632,7 +751,34 @@ def check_worker_tool_gate(tool_name: str, session_id: str) -> Optional[Dict[str
         elif tool_name in WRITE_TOOLS:
             state["write_count"] += 1
 
-        state["call_count"] += 1
+        elif tool_name == "terminal":
+            cmd = str(fn_args.get("command") or "").strip()
+            # Bịt lỗ hổng Monolith qua terminal
+            if is_monolith_smoke(cmd):
+                _save_worker_gate_state(worker_states)
+                return {
+                    "action": "block",
+                    "reason": (
+                        f"⛔ [WORKER TOOL GATE - MONOLITH TERMINAL BLOCKED]: "
+                        f"Lệnh terminal chứa tham chiếu đến file flow monolith (>22.000 dòng)! "
+                        "CẤM TUYỆT ĐỐI đọc hoặc thao tác trên file flow monolith. "
+                        "Lỗi popup/selector BẮT BUỘC xử lý tại benign_popup_registry.py theo PATCH_CONTRACT."
+                    ),
+                }
+            # Cưỡng chế nghiêm ngặt: Mọi lệnh terminal của Worker PHẢI là lệnh kiểm tra an toàn (py_compile, git status, git diff)
+            if not is_safe_terminal_verify(cmd):
+                _save_worker_gate_state(worker_states)
+                return {
+                    "action": "block",
+                    "reason": (
+                        f"⛔ [WORKER TOOL GATE - TERMINAL PROBE BLOCKED]: "
+                        f"Lệnh '{cmd[:60]}' không nằm trong allowlist an toàn của Worker! "
+                        "Worker fix alert chỉ được phép chạy: 'python -m py_compile <file>', 'git status', 'git diff'. "
+                        "CẤM chạy script probe, inspect, print/cat/type file. "
+                        "Hành động BẮT BUỘC là dùng patch hoặc write_file để ghi bản vá theo PATCH_CONTRACT."
+                    ),
+                }
+
         _save_worker_gate_state(worker_states)
     return None
 
@@ -654,14 +800,27 @@ def _on_pre_tool_call(
 
     # TẦNG 2: ESCAPE TOKEN — Subagents (parent_session_id trong DB HOẶC TAADAA_WORKER=1)
     if _is_worker_session(sess_id):
-        gate_res = check_worker_tool_gate(fn_name, sess_id)
+        gate_res = check_worker_tool_gate(fn_name, sess_id, fn_args)
         if gate_res:
             _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
             return gate_res
         return None
 
-    # Khi Coordinator gọi delegate_task, chuyển trạng thái session sang WORKER_RUNNING
+    # Khi Coordinator gọi delegate_task, kiểm tra goal và chuyển trạng thái session sang WORKER_RUNNING
     if fn_name == "delegate_task":
+        dt_args = fn_args if isinstance(fn_args, dict) else {}
+        goal_text = str(dt_args.get("goal") or "") + " " + str(dt_args.get("context") or "")
+        if is_monolith_smoke(goal_text) and POPUP_SELECTOR_PATTERN.search(goal_text):
+            _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
+            return {
+                "action": "block",
+                "reason": (
+                    "⛔ [COORDINATOR GUARD - MONOLITH DISPATCH BLOCKED]: "
+                    "Goal hoặc context của delegate_task đang trỏ vào file flow monolith (*_smoke.py) cho lỗi popup/selector! "
+                    "Đây là nguyên nhân chính gây ra Worker analysis paralysis (37 phút cạn 35 tool calls). "
+                    "BẮT BUỘC soạn PATCH_CONTRACT chỉ định file đích nhẹ 'python_runner/flows/benign_popup_registry.py' trước khi dispatch."
+                ),
+            }
         _update_session_state(sess_id, {
             "phase": "WORKER_RUNNING",
             "dispatched_at": time.time(),

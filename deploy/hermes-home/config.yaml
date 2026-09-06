@@ -223,7 +223,7 @@ delegation:
   provider: omni
   max_iterations: 35
   reasoning_effort: high
-  max_concurrent_children: 4
+  max_concurrent_children: 8
 moa:
   presets:
     default:

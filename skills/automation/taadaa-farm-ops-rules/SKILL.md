@@ -5,6 +5,21 @@ description: "Taadaa farm safety, close-session, and multi-machine operations."
 
 # Taadaa Farm Ops Rules (ALL-repo automation)
 
+References:
+- `references/device-lock-ttl-vs-watchdog-alert-threshold.md` — Chuẩn hóa & đồng bộ ngưỡng cảnh báo Watchdog (60 phút / 1 giờ trong `watch_device_locks.py`) khớp với Device Lock TTL thực tế (3600s / 1h trong `reap-dead-owner-locks.py`), tránh hiểu lầm báo động sai dưới 1h.
+- `references/hermes-gateway-bare-path-leak-and-farm-media-isolation.md` — Sự cố Hermes Gateway tự động gửi video 4MB từ kho nuôi nick lên Telegram (do extract_local_files quét bare path), cơ chế khóa cứng 3 tầng (config auto_deliver_local_files: false, denylist farm roots trong base.py và kỷ luật bọc backtick) (06/09/2026).
+- `references/cron-regression-patterns-and-fast-log-audit.md` — 5 Anti-Patterns gây lỗi "sửa B làm tái phát A" (scope leak, incomplete caller wire-up, partial recovery injection, uninitialized branch vars) và quy chuẩn quét nhanh O(1) log cron qua `log.jsonl` tránh đệ quy freeze I/O.
+- `references/powershell-dot-source-guard-and-chained-pipeline-safety.md` — Guard chống dot-source chạy bừa bãi toàn batch trên farm máy khi test hàm PowerShell, và quy chuẩn truyền host env cho chained cron pipeline.
+- `references/midnight-rollover-and-fast-fail-lock-retention.md` — Xử lý phiên vắt qua nửa đêm (chống watchdog chốt non báo cáo) và cơ chế Fast Fail-Closed khi gặp lỗi thiết bị vật lý kết hợp giữ lock `blocked` (1h) cho operator inspect.
+- `references/farm-coordinator-guard.md` (trong `farm-anti-overengineering`) — Cơ chế 2 trục Two-Tier Guard v2.0 (state per-session, check DB parent_session_id, khóa cứng investigative tools ở ALERT) và nhận biết dấu hiệu session chính tự làm qua UI Telegram (`iteration N/200`).
+- `references/device-lock-cadence-and-reap-timeout.md` — Quy chuẩn TTL lock 1h (3600s), True Exclusion (O_EXCL) & Heartbeat refresh cho reaper singleton, Watchdog 90m reaper-awareness, preemption check qua is_still_held(), bẫy stderr cron no_agent và triệt tiêu orphaned grep I/O hang.
+- `references/claude-cli-bounded-review-loop.md` (trong `farm-anti-overengineering`) — Bắt buộc gọi Claude CLI thật (`claude -p`), cấm tự review giả mạo (User: *"Là mày gọi claude review hay mày review v"*), tối đa 3 vòng lặp đến APPROVED.
+- `references/granular-subprocess-error-extraction-and-html-escaping.md` — Quy chuẩn trích xuất lỗi subprocess đa tầng trung thực và escape HTML an toàn cho Telegram Alert (Case 85 & Case 106).
+- `references/telegram-single-photo-alert-and-runtime-shadowing.md` — Chuẩn Single-Message Photo Alert Telegram (<=1024 chars) và xử lý lỗi nạp đè module tĩnh trong site-packages.
+- `references/resilient-workbook-update-fallback.md` — Chuẩn Fallback 3 tầng robust cho atomic_workbook_update (Case 85) chống crash import và race condition khi ghi workbook.
+- `references/hotmail-oauth2-procurement-and-cdp-pitfalls.md` — Quy chuẩn mua tự động Hotmail OAuth2 (CloneFBIG vs BoxTaiKhoan) và cạm bẫy cổng Chrome CDP IPv6 trên host Farm.
+- `references/single-source-of-truth-tools-ops.md` — Quy chuẩn Single Source of Truth cho Tools dùng chung toàn Farm (Runtime tại `D:\Taadaa\tools\`, Git tại `AI-Tools`, phân quyền Master Kibe / Read-Only Admin).
+
 ## 🛑 BẮT BUỘC: QUY TRÌNH RECOVERY & XỬ LÝ ALERT [MÁY N] (User chốt 2026-09-02)
 
 1. **CẤM CHỮA CHÁY TẠM THỜI QUA ADB:**
@@ -12,17 +27,26 @@ description: "Taadaa farm safety, close-session, and multi-machine operations."
    - Mọi thao tác xử lý lỗi BẮT BUỘC phải dẫn đến **sửa code trong script (`python_runner` / `automation-core`)** để toàn bộ 80-160 máy tự động vượt qua khi chạy thật.
 2. **LỆNH TRÍCH XUẤT HIỆN TRƯỜNG DUY NHẤT (CẤM GREP / CẤM QUÉT ĐĨA):**
    - Khi nhận alert `[MÁY N]`, chạy: `python D:/Taadaa/tools/inspect_machine.py <N>`.
-   - CẤM TUYỆT ĐỐI dùng `os.walk`, `glob(recursive=True)`, `find`, `grep -rn` quét diện rộng codebase hay ổ đĩa để tìm chuỗi lỗi / file log.
-3. **CHU TRÌNH 5 BƯỚC RECOVERY CHUẨN (PHÂN VAI COORDINATOR vs WORKER):**
-   - **B1 (Inspect - Coordinator):** Chạy `python D:/Taadaa/tools/inspect_machine.py <N>` hoặc lệnh ADB trực tiếp theo serial máy để lấy hiện trường O(1) (XML + screencap).
-   - **B2 (Root Cause & Dispatch - Coordinator):** Đọc log run & mở flow xác định phạm vi lỗi. BẮT BUỘC dispatch worker subagent qua `delegate_task(goal=..., context=...)` ngay lập tức. CẤM TUYỆT ĐỐI Coordinator tự viết script Python probe, test hàm hay reproduce thử nghiệm trong terminal session chính.
-   - **B3 (Patch Script & Focused Test - Worker Subagent):** Subagent reproduce trong context riêng, sửa codebase xử lý tự động + viết focused test (<30s).
-   - **B4 (Canary Test - Coordinator):** Chạy canary thực tế kiểm chứng script mới tự giải cứu được máy kẹt.
-   - **B5 (Closeout - Coordinator):** Model Review (APPROVED) -> Commit -> Push master.
-4. **QUY TẮC WORKER BUDGET & CHỐNG DÔNG DÀI (ANTI-OVERENGINEERING - BẮT BUỘC):**
-   - **Giới hạn thời gian & tool call:** Mọi worker dispatch qua `delegate_task` BẮT BUỘC phải hoàn tất dưới 15 phút và tối đa <= 20 tool calls.
-   - **Task Read-only / Inspect / OCR:** CẤM TUYỆT ĐỐI worker tự ý sửa code, CẤM chạy pytest test-suite, CẤM commit. Chỉ đọc log, inspect hiện trường, OCR và trả kết quả ngay trong <= 10 tool calls (< 10 phút).
-   - **Task Fix Code:** Chỉ sửa ĐÚNG file flow/module chỉ định (Scope Lock), viết focused test <30s, CẤM chạy pytest trần toàn bộ repo, CẤM over-engineer viết test đồ sộ hay refactor lan man.
+   - CẤM TUYỆT ĐỐI dùng `os.walk`, `glob(recursive=True)`, `find`, `grep -rn` quét diện rộng codebase hay ổ đĩa để tìm chuỗi lỗi / file log (gây TIMEOUT 900s).
+   - Khi cần tìm kiếm chuỗi trong repo git, BẮT BUỘC dùng lệnh indexed: `git -C <repo_path> grep "<pattern>"`.
+   - **Định dạng Telegram Farm Alert:** Toàn bộ thông tin sự cố kèm 5 bước recovery BẮT BUỘC nằm trọn vẹn trong CÙNG 1 TIN NHẮN ẢNH DUY NHẤT (Single-message photo alert) để tránh phân mảnh thông tin; caption tổng tự động giới hạn và cắt an toàn trong 1024 ký tự (Case 84).
+   - **CẤM BÁO LỖI THÔ / GENERIC TRONG CẢNH BÁO FARM (ANTI-GENERIC ALERT ERROR):**
+     + Tuyệt đối CẤM gán chuỗi lỗi generic thô như `upload_subprocess_nonzero`, `subprocess_exit_code_N`, `task_failed`, `error` trong Farm Alert Telegram hoặc file log summary.
+     + BẮT BUỘC trích xuất chính xác thông tin lỗi thực tế từ `report.json` (`error`, `reason`, `last_state`), stderr hoặc dòng `[ERROR]` cụ thể của tiến trình con.
+     + BẮT BUỘC bọc `html.escape()` cho toàn bộ các biến động (`error_reason`, `account`, `serial`, `status_text`) khi gửi Telegram HTML để tránh vỡ thẻ khi gặp `<redacted>` hay `<module>` (Case 85 / Case 106).
+   - **Bắt buộc `html.escape` dữ liệu động trong Telegram Alert:** Mọi chuỗi động (`error_reason`, `account`, `serial`, `status_text`) chèn vào caption HTML BẮT BUỘC phải bọc `html.escape(str(...))` (trong `alerts.py`). Lý do: Lỗi runtime thường chứa `>>> state:` (dấu `>`), thẻ XML (`<node>`), hoặc `&` khiến Telegram API trả về HTTP 400 (can't parse entities) làm mất cảnh báo.
+   - **Pitfall Runtime Venv Stale Shadowing `automation-core`:** Môi trường chạy farm chính là `D:\Taadaa\python-envs\automation`. Khi sửa code trong `D:\Taadaa\automation-core`, BẮT BUỘC kiểm tra:
+     `D:\Taadaa\python-envs\automation\Scripts\python.exe -c "import automation_core; print(automation_core.__file__)"`
+     Nếu kết quả trả về `...\Lib\site-packages\automation_core\...` thay vì repo `src\automation_core`, có nghĩa thư mục tĩnh vật lý trong `site-packages` đang đè (shadow) link editable (`.pth`), khiến farm vẫn chạy code cũ (như việc alert vẫn gửi 2 tin). BẮT BUỘC xóa thư mục tĩnh `site-packages\automation_core` và chạy `pip install -e D:\Taadaa\automation-core --no-deps` để tiến trình farm nhận code mới.
+   - **Bóc tách lỗi chi tiết cho Upload Subprocess:** Khi upload subprocess thất bại (exit code != 0), CẤM dùng lỗi chung chung `upload_subprocess_nonzero`. Phải bóc tách theo waterfall ưu tiên: (1) `report.json` (`error`, `reason`, `last_state`), (2) dòng cuối `stderr`, (3) dòng `[error]`/`[critical]` hoặc `>>> state:` trong `stdout`, (4) fallback `upload_exit_code_{returncode}`. Giới hạn độ dài tối đa (ví dụ 250 ký tự) để không gây tràn payload.
+3. **CHU TRÌNH 5 BƯỚC RECOVERY CHUẨN (COORDINATOR & WORKER):**
+   - **B1 (Inspect - Coordinator):** `python D:/Taadaa/tools/inspect_machine.py <N>` lấy hiện trường O(1).
+   - **B2 (Root Cause & Dispatch - Coordinator):** Xác định phạm vi lỗi và dispatch worker qua `delegate_task(goal=..., context=...)`.
+   - **B3 (Patch & Focused Test - Worker Subagent):** Sửa codebase và chạy focused test (<30s) trong context riêng.
+   - **B4 (Canary Test - BẮT BUỘC CHẠY LIVE QUA WORKER SUBAGENT):** Coordinator BẮT BUỘC dispatch Worker Subagent chạy lệnh canary thực tế trên thiết bị để kiểm chứng tự động vượt qua (1-3 swipes) và file device lock được release. CẤM TUYỆT ĐỐI dừng lại sau B3 rồi chỉ in câu lệnh ra văn bản cho user tự chạy — làm vậy sẽ bỏ rơi hiện trường, ngâm lock cả đêm (12 tiếng) gây tê liệt toàn farm.
+   - **B5 (Closeout - Coordinator):** 6 Gate (G0 Canary Live Evidence -> G1 Docs -> G2 Commit -> G3 Rebase -> G4 Push). Chỉ chốt phiên khi B4 đã có kết quả thực thi live thành công.
+4. **QUY TẮC WORKER BUDGET:**
+   - Tuân thủ quy chuẩn skill `farm-anti-overengineering`: Budget <= 15 phút, <= 20 tool calls (task Read/Inspect <= 10 calls). Chặn cứng bằng config `max_iterations = 35` và hook `farm-coordinator-guard`.
 
 
 ## STOP GATE — BẮT BUỘC
@@ -40,13 +64,13 @@ Cleanup: [`references/account-cleanup-and-banned-handling.md`](references/accoun
 
 ## CHAINED NO_AGENT CRON — REPORT EXECUTION, NOT WRAPPER COMPLETION
 Treat wrapper completion as unverified until exact run artifacts prove success. Classify each phase from summary counts, manifests, batch directories, and worker logs; if no fresh worker artifacts exist, report launcher/preflight failure, not UI/OTP failure. Quote exact signatures, separate hypotheses, include evidence/workbook-change evidence, and redact credentials. Procedures: `references/chained-cron-failure-evidence.md`, `references/gmail-chain.md`, `references/tiktok-cron-inventory-preflight.md`, `references/lock-aware-target-selection.md`, `references/locked-device-triage-and-shift-diagnostics.md`, `references/device-locks-watchdog.md`, `references/transparent-router-proxy-preflight.md`, and `references/uiautomator-case-fix-catalog-and-anti-patterns.md`.
-1. Máy live + script chạy/lỗi → **KHÔNG tự sửa code, KHÔNG tự chạy lại, KHÔNG tự probe, KHÔNG tự thử tay**.
-2. Mọi lỗi → screencap → **TỰ ĐỌC ẢNH bằng vision_analyze TRƯỚC khi gửi** (agent có mắt, KHÔNG được \"gửi ảnh cho user xử lý thay\" — user phạt 17/08 tối: \"mày k thể tự đọc hình r hỏi t cách xử lý thay vì chỉ gửi t cái hình k à\") → gửi ảnh thật (`MEDIA:` dòng riêng) + mô tả màn + **đề xuất hướng xử lý dựa trên ảnh đã đọc** → **DỪNG chờ user hướng dẫn**. Báo lỗi PHẢI kèm ảnh đúng lúc kẹt (không gửi ảnh sau khi script đã dừng hẳn và máy đã chuyển màn khác — chụp ngay lúc log dừng).
-3. User hướng dẫn bước nào → **ENCODE bước đó vào script + test → mới chạy lại**. Bước chưa hướng dẫn = KHÔNG làm.
-4. Nghi ngờ → **HỎI**. Tự làm/sửa khi chưa được yêu cầu = VI PHẠM, dù "chỉ 1 dòng" hay "cho nhanh".
-5. **Ảnh màn hình PHẢI hiển thị được**: gửi file ảnh thật `MEDIA:<đường dẫn tuyệt đối>` ở **DÒNG RIÊNG**, KHÔNG bọc markdown (`**`/`` ` ``/`[..]`), kiểm tra file tồn tại trước khi gửi.
-6. **CẤM TUYỆT ĐỐI gửi đường dẫn text** (`C:\\Users\\...` hay MEDIA: giữa đoạn văn) thay cho ảnh hiển thị — user chửi lỗi này nhiều lần (session khác 16:02 17/08 vẫn gửi `MEDIA:...` bọc `**` → Telegram nuốt thành text).
-7. **CHẨN ĐOÁN ĐƯỢC ≠ ĐƯỢC PHÉP SỬA (vi phạm thật 17/08 tối — user: \"Tao cập nhật policy skill r nhé, kẹt lỗi chỗ nào phải gửi hình báo tao đéo đc tự ý tự sửa đâu\")**: tìm ra root cause (vd log chứng minh tap nick success nhưng notification shade VPN mở đè → verify fail; hoặc detect_add_phone_popup không match bottom-sheet close geometry) **KHÔNG cho phép tự patch code**. Thứ tự đúng: screencap + gửi ảnh + mô tả lỗi (kèm log/XML evidence) → DỪNG chờ user quyết hướng. User CHỈ giao quyền sửa khi hướng dẫn rõ ràng (\"chạy fix đi\" = ủy quyền fix theo HƯỚNG user chốt, vẫn phải test + chạy lại). Phân biệt: user nói \"sao k chọn đc profile?\" = câu HỎI chẩn đoán, không phải lệnh sửa — trả lời bằng evidence (ảnh + log), không tự patch 2 file rồi mới báo.
+1. **Phân định quyền sửa:** Coordinator chẩn đoán hiện trường; mọi can thiệp sửa code, viết test, probe thực nghiệm BẮT BUỘC dispatch Worker qua `delegate_task`.
+2. **Quy chuẩn đọc & gửi ảnh hiện trường:** Agent tự đọc ảnh bằng `vision_analyze` trước; khi gửi người dùng bắt buộc kèm banner đỏ `[MÁY N]` và trọn gói 5 bước recovery trong 1 tin nhắn duy nhất (caption <= 1024 ký tự).
+3. **Quy tắc gọi Claude Review:** Khi user yêu cầu gọi Claude review hoặc audit ("bảo claude kiểm tra", "kêu claude xem", "gọi claude review"), BẮT BUỘC chạy CLI thực tế (`claude -p "<prompt>"`), TUYỆT ĐỐI CẤM Coordinator tự sinh ý kiến rồi gán nhãn là Claude. Khi user yêu cầu loop ("làm đến khi claude đồng ý, tối đa 3 lần"), Coordinator tổ chức chu trình lặp: Worker patch -> Coordinator gọi `claude -p` -> Worker sửa tiếp các điểm chưa đạt -> Lặp lại tối đa 3 vòng đến khi APPROVED.
+   - Dùng `vision_analyze` tự động phân tích ảnh hiện trường trước khi báo cáo.
+   - Gửi ảnh Telegram bằng cú pháp `MEDIA:<đường dẫn tuyệt đối>` ở **DÒNG ĐẦU TIÊN CỦA MESSAGE**, không bọc markdown formatting (`**` hay `` ` ``).
+   - Kèm số máy rõ ràng: `[MÁY XX]` ngay dưới dòng `MEDIA:`.
+3. **Nguyên tắc xử lý lỗi UI:** Encode logic xử lý vào script, cấm thao tác bấm tay ADB tạm bợ. Khi sửa code xong, bắt buộc chạy canary thực tế để kiểm chứng.
 
 Quy tắc chung áp dụng cho MỌI repo automation (Tiktok_Reg, Hotmail, add mail khoi phuc, tiktok-video, automation-core, gan-proxy, feed/follow...), không riêng repo nào.
 
@@ -557,8 +581,8 @@ Trước khi chạy bất kỳ batch tác vụ nào trên farm (Reg TikTok, Hotm
 7. **Tự Động Tắt Popup "Follow bạn bè của bạn" Ở Cấp Độ Automation-Core (User chốt 19/08)**:
    - Popup *"Follow bạn bè của bạn"* (`id/yhd`, `id/thm`, `id/thb`) PHẢI được xử lý tập trung trong `automation_core/tiktok/benign_popup.py` (`detect_contact_follow_suggestion`).
    - Tự động nhận diện và tap nút đóng `X` (`id/e63`) hoặc nút *"Không quan tâm"* ngay khi xuất hiện, không để popup che khuất trang profile/feed.
-8. **Cấu Hình Claude Code CLI Reasoning Max**:
-   - Tham số reasoning kịch trần của Claude Code CLI là `--effort max` (hỗ trợ `low`, `medium`, `high`, `xhigh`, `max`), không dùng `high`.
+8. **Cấu Hình Claude Code CLI Reasoning High (Chuẩn hóa 06/09)**:
+   - Khi gọi Claude qua app CLI native (`claude -p`), chuẩn hóa dùng `--effort high` (hỗ trợ `low`, `medium`, `high`, `xhigh`, `max`) để bảo toàn quota Claude Pro, giảm thời gian ngâm lệnh và tránh Hard Guard chặn đứng. Cấm nhầm lẫn Claude CLI native với model Claude từ OmniRoute.
 
 ## 25. TỌA ĐỘ VUỐT AN TOÀN & XỬ LÝ CÁC MODAL/POPUP FEED ĐẶC BIỆT (19/08)
 1. **Tọa Độ Trục Vuốt An Toàn (Chống chạm nhầm Comment / Shop / Repost)**:
