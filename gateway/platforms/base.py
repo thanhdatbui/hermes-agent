@@ -1152,6 +1152,31 @@ def _media_delivery_strict_mode() -> bool:
     return raw in ("1", "true", "yes", "on")
 
 
+def _auto_deliver_local_files_enabled() -> bool:
+    """Return True if auto-detection of bare local file paths is enabled.
+
+    Disabled when HERMES_AUTO_DELIVER_LOCAL_FILES=0/false or when
+    gateway.media_delivery.auto_deliver_local_files is False in config.yaml.
+    """
+    env_val = os.environ.get("HERMES_AUTO_DELIVER_LOCAL_FILES", "").strip().lower()
+    if env_val in ("0", "false", "no", "off"):
+        return False
+    try:
+        try:
+            from config import load_config
+        except ImportError:
+            from hermes_cli.config import load_config
+        gw = load_config().get("gateway", {})
+        md = gw.get("media_delivery", {})
+        if "auto_deliver_local_files" in md:
+            return bool(md["auto_deliver_local_files"])
+        if "auto_deliver_local_files" in gw:
+            return bool(gw["auto_deliver_local_files"])
+    except Exception:
+        pass
+    return True
+
+
 def _media_delivery_denied_paths() -> List[Path]:
     """Return absolute denylist paths under which delivery is never allowed."""
     denied = [Path(p) for p in _MEDIA_DELIVERY_DENIED_PREFIXES]
@@ -1208,6 +1233,33 @@ def _media_delivery_denied_paths() -> List[Path]:
             denied.append(hermes_root / rel)
         for rel in _ROOT_CREDENTIAL_DIRS:
             denied.append(hermes_root / rel)
+
+    _FARM_DENIED_ROOTS = (
+        "D:/TIKTOK-videonuoinick",
+        r"D:\TIKTOK-videonuoinick",
+        "D:/video goc",
+        r"D:\video goc",
+        "D:/video_goc",
+        r"D:\video_goc",
+        "D:/OneDrive",
+        r"D:\OneDrive",
+    )
+    for farm_root in _FARM_DENIED_ROOTS:
+        denied.append(Path(farm_root))
+
+    try:
+        try:
+            from config import load_config
+        except ImportError:
+            from hermes_cli.config import load_config
+        gw_cfg = load_config().get("gateway", {})
+        md_cfg = gw_cfg.get("media_delivery", {})
+        for p in md_cfg.get("denied_paths", []):
+            if p:
+                denied.append(Path(p))
+    except Exception:
+        pass
+
     return denied
 
 
@@ -3803,6 +3855,11 @@ class BasePlatformAdapter(ABC):
             raw = match.group(0)
             expanded = os.path.expanduser(raw)
             if os.path.isfile(expanded):
+                try:
+                    if _path_under_denied_prefix(Path(expanded).resolve()):
+                        continue
+                except Exception:
+                    pass
                 found.append((raw, expanded))
             else:
                 # The reply mentions a deliverable-looking path that does not
@@ -4972,11 +5029,7 @@ class BasePlatformAdapter(ABC):
                     logger.info("[%s] extract_images found %d image(s) in response (%d chars)", self.name, len(images), len(response))
 
                 local_files = []
-                if not is_ephemeral_response:
-                    # Auto-detect bare local file paths for native media delivery
-                    # (helps small models that don't use MEDIA: syntax). Skip
-                    # system/command notices so config paths stay visible text
-                    # instead of becoming native uploads.
+                if not is_ephemeral_response and _auto_deliver_local_files_enabled():
                     local_files, text_content = self.extract_local_files(text_content)
                     local_files = self.filter_local_delivery_paths(local_files)
                     if local_files:

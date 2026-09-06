@@ -335,6 +335,19 @@ Tài liệu này tổng hợp toàn bộ các case lỗi thực tế trên hệ 
 
 ---
 
+### Case GW-01: Khóa cứng Hermes Gateway cấm tự ý upload file kho farm (TIKTOK-videonuoinick / video goc)
+- **Vị trí áp dụng:** `gateway/platforms/base.py` và `config.yaml` (`gateway.media_delivery`).
+- **Nguyên nhân gây lỗi (Anti-Pattern - Sự cố 06/09/2026):**
+  1. Trong `BasePlatformAdapter.extract_local_files`, hàm dùng regex quét toàn bộ bare path Windows (`D:\...`) trong text phản hồi.
+  2. Khi Coordinator báo cáo đường dẫn file video trong kho nuôi nick `D:\TIKTOK-videonuoinick\306\5.mp4` mà không bọc code backtick, Gateway phát hiện file có thật trên đĩa và tự động gọi `send_video()` upload thẳng file 4MB lên Telegram.
+- **Giải pháp chuẩn (Case Fix):**
+  1. Thêm cờ `gateway.media_delivery.auto_deliver_local_files: false` trong `config.yaml` và helper `_auto_deliver_local_files_enabled()` để tắt hoàn toàn cơ chế tự động bốc bare file.
+  2. Thêm `_FARM_DENIED_ROOTS` (`D:/TIKTOK-videonuoinick`, `D:/video goc`, `D:/OneDrive`) vào `_media_delivery_denied_paths()` để từ chối tuyệt đối tại `validate_media_delivery_path`.
+  3. Trong `extract_local_files`: Thêm kiểm tra `_path_under_denied_prefix`, bỏ qua ngay lập tức mọi path thuộc kho farm trước khi thêm vào danh sách gửi.
+  4. Kiểm thử: Xác nhận đường dẫn kho farm bị từ chối 100%, ảnh chụp màn hình máy (`C:/Users/Kibe/m39_final_proof.png`) vẫn được phép gửi khi có chỉ định tường minh.
+
+---
+
 ## CHECKLIST KIỂM TRA BẮT BUỘC TRƯỚC KHI CHỐT PHIÊN
 - [ ] Task có liên quan đến Farm Automation (UI, Cron, Sync, Lock, ADB, Workbook...)?
 - [ ] Nếu có: Đã cập nhật chi tiết Case Fix thực tế và Anti-Pattern vào `docs/uiautomator.md` chưa?
