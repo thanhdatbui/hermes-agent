@@ -165,13 +165,25 @@ def is_feed_runner_active() -> bool:
     """Kiểm tra có process feed runner hay powershell feed nào đang chạy không."""
     try:
         import psutil
+        my_pid = os.getpid()
+        runner_patterns = (
+            "multi_machine_feed_session",
+            "multi-machine-feed-session",
+            "run-feed-session.ps1",
+            "run_follow",
+            "run_tiktok.py",
+            "hermes_cron_runner.py",
+            "tiktok_runner.py",
+        )
         for p in psutil.process_iter(['name', 'cmdline']):
             try:
+                if p.pid == my_pid:
+                    continue
                 name = (p.info.get('name') or '').lower()
                 if not name.startswith(('python', 'powershell', 'pwsh')):
                     continue
-                cmd = " ".join(p.info.get('cmdline') or [])
-                if "multi_machine_feed_session" in cmd or "run-feed-session.ps1" in cmd or "run_follow" in cmd:
+                cmd = " ".join(p.info.get('cmdline') or []).lower()
+                if any(pat in cmd for pat in runner_patterns):
                     return True
             except Exception:
                 pass
@@ -265,6 +277,14 @@ def is_machine_upload_successful_in_shift(target_date: str, machine: Any, row: A
     return (m_str, r_str, date_str) in success_set
 
 
+def is_device_locked_skip(data: Optional[Dict[str, Any]]) -> bool:
+    if not data:
+        return False
+    status = str(data.get("status") or "").strip().lower()
+    reason = str(data.get("reason") or "").strip().lower()
+    return status == "skipped-device-locked" or "device-lock" in reason or "device lock active" in reason
+
+
 def merge_machine_result(prev: Optional[Dict[str, Any]], new: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
     if not prev:
         return new
@@ -274,6 +294,11 @@ def merge_machine_result(prev: Optional[Dict[str, Any]], new: Optional[Dict[str,
         return prev
     if new.get("status") == "success":
         return new
+    # Nếu prev là skipped-device-locked còn new là kết quả chạy thật (không phải lock), ưu tiên new
+    if is_device_locked_skip(prev) and not is_device_locked_skip(new):
+        return new
+    if is_device_locked_skip(new) and not is_device_locked_skip(prev):
+        return prev
     return new
 
 
@@ -447,11 +472,18 @@ def can_report_session(
     now_hm: str,
     window_end_hm: str,
     runner_busy: bool,
+    has_unattempted_locked: bool = False,
 ) -> bool:
     """Xác định điều kiện chốt báo cáo cho một phiên."""
+    if runner_busy:
+        return False
+    # Nếu trước giờ window_end_hm mà vẫn còn máy CHỈ bị skipped-device-locked (chưa chạy thật),
+    # thì KHÔNG được chốt sớm (chờ tick sau nhả lock chạy lại)
     if is_today:
-        return (completed_expected_count >= expected_count and not runner_busy) or (now_hm >= window_end_hm)
-    return True
+        if now_hm < window_end_hm and has_unattempted_locked:
+            return False
+        return (completed_expected_count >= expected_count) or (now_hm >= window_end_hm)
+    return (completed_expected_count >= expected_count) or (now_hm >= "02:00")
 
 
 def main():
@@ -554,8 +586,13 @@ def main():
 
                 expected_machines = get_expected_machines_for_row(active_row)
                 expected_count = len(expected_machines)
-                completed_expected = set(all_machines.keys()).intersection(expected_machines)
-
+                # Chỉ tính máy đã chạy thực sự (success hoặc fail thật, không phải skipped-device-locked)
+                real_completed = {
+                    m for m in all_machines.keys()
+                    if not is_device_locked_skip(all_machines.get(m))
+                }
+                completed_expected = real_completed.intersection(expected_machines)
+                has_unattempted_locked = any(is_device_locked_skip(all_machines.get(m)) for m in expected_machines if m in all_machines)
                 # ĐIỀU KIỆN CHỐT BÁO CÁO:
                 can_report = can_report_session(
                     is_today=is_today,
@@ -564,6 +601,7 @@ def main():
                     now_hm=now_hm,
                     window_end_hm=win["end"],
                     runner_busy=runner_busy,
+                    has_unattempted_locked=has_unattempted_locked,
                 )
 
                 if not can_report:
