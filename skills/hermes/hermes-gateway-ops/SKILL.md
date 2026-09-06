@@ -318,6 +318,36 @@ agent:
 2. Log `$HERMES_HOME/logs/gateway.log`: `[Telegram] Connected to Telegram (polling mode)` + `✓ telegram connected` + `set_my_commands OK (52 cmds)`. Khi user nhắn: `Ignoring /start platform ping for session agent:main:telegram:dm:<user_id>` → session đã tạo (user_id phải khớp `TELEGRAM_ALLOWED_USERS`).
 3. User nhắn `/start` + `/model` trên điện thoại → có reply = round-trip hoàn chỉnh.
 
+### Thang kiểm tra nhanh kết nối, độ trễ và chẩn đoán treo Telegram (Tránh lãng phí tool turns)
+
+Khi được yêu cầu kiểm tra xem Telegram Bot có bị disconnect, timeout, treo vài phút, hoặc lỗi mạng sau khi restart (đặc biệt qua proxy):
+1. **Kiểm tra liveness tiến trình:** Lấy PID từ `$LOCALAPPDATA\hermes\gateway_state.json` và chạy PowerShell kiểm tra `Get-Process -Id <pid> | Select Id, ProcessName, StartTime, Responding, TotalProcessorTime`. Tiến trình `pythonw.exe` duy trì `Responding: True` và tăng dần `TotalProcessorTime` xác nhận gateway đang hoạt động liên tục. Nếu PID người dùng hỏi không còn tồn tại, kiểm tra `$LOCALAPPDATA\hermes\logs\idle_restart.log` xem tiến trình có được One-Shot Idle Watcher (`restart-when-idle.ps1`) xoay vòng (rotate) sang PID mới hay không.
+2. **Kiểm tra lịch sử thoát/crash (`logs/gateway-exit-diag.log`):** Đọc các dòng cuối của file diag; nếu dòng cuối cùng là `gateway.start` với đúng PID hiện tại và không có `asyncio.run.returned` hay `gateway.exit_clean`/crash phía sau -> chứng minh gateway không hề bị restart hay crash ngầm.
+3. **Đọc trạng thái thời gian thực (`gateway_state.json`):** Xác nhận `gateway_state: "running"` và block `"platforms": {"telegram": {"state": "connected", "error_code": null, "updated_at": ...}}`. Đây là nguồn dữ liệu heartbeat thời gian thực chính xác nhất.
+4. **Kiểm tra lỗi kết nối mạng trong log:** Tìm các từ khóa lỗi mạng (`reconnect`, `Timed out`, `heartbeat probe`, `stuck probe`, `CLOSE-WAIT`, `fallback IP failed`, `connection failed`) trong `logs/errors.log` và `logs/gateway.log`. Phân biệt rõ lỗi rớt mạng ISP/proxy với lỗi `Pool timeout` do cạn connection pool nội bộ. Lưu ý: trên Windows, `gateway.log` có thể có độ trễ cập nhật (buffering/idle) do tiến trình chạy nền `pythonw.exe`; không dùng mtime của `gateway.log` để suy diễn gateway dừng nếu `gateway_state.json` và tiến trình PID vẫn đang hoạt động.
+5. **Đo độ trễ long-poll qua SQLite `state.db` (O(1) forensics khi user báo "treo N phút"):**
+   Đối chiếu `messages.timestamp` (thời điểm tin nhắn gửi từ client Telegram) với thời điểm log `inbound message:` / `Flushing text batch` trong `gateway.log`:
+   ```bash
+   python -c "import sqlite3, datetime; conn = sqlite3.connect('C:/Users/Kibe/AppData/Local/hermes/state.db'); [print(datetime.datetime.fromtimestamp(r[2]).strftime('%H:%M:%S'), f'id={r[0]} sess={r[1][:15]} {repr(r[3][:60])}') for r in conn.execute(\"SELECT id, session_id, timestamp, content FROM messages WHERE role='user' ORDER BY id DESC LIMIT 10\")]"
+   ```
+   Nếu `messages.timestamp` (vd: 12:51:06) sớm hơn vài phút so với mốc `inbound message:` trong `gateway.log` (vd: 12:54:02) -> chứng minh kết nối long-poll bị nghẽn ngầm (silent TCP stall / packet drop) khiến tin nhắn ứ đọng trên server Telegram trước khi được kéo về client local.
+6. **Phân tích khoảng trống log (Log Gap) do subagents xả lệnh blocking:**
+   Khi `gateway.log` không có log mới trong vài phút, kiểm tra `errors.log` và `messages` xem có đợt subagents/worker chạy lệnh terminal dài (>800s - 900s timeout) đồng loạt xả kết quả cùng thời điểm không. Khoảng trống log khi các background worker đang chạy lệnh nặng không đồng nghĩa với sập Gateway.
+7. **Probe proxy HTTP tunnel & Egress IP với Python venv:**
+   - Dùng curl kiểm tra tunnel: `curl -s -I -x "http://<user>:<pass>@<proxy_ip>:<port>" https://api.telegram.org/`
+   - Chạy httpx qua python venv của Hermes (tránh bẫy python hệ thống thiếu thư viện `httpx`):
+     `"C:/Users/Kibe/AppData/Local/hermes/hermes-agent/venv/Scripts/python.exe" -c "import httpx; r = httpx.get('https://api.telegram.org/', proxy='http://<user>:<pass>@<proxy_ip>:<port>', timeout=15); print('httpx status:', r.status_code)"`
+8. **Đánh giá định lượng hiệu năng ISP/Proxy (FPT Direct vs Viettel Proxy):**
+   - Chạy script Python phân tích theo ngày từ `gateway.log` và SQLite `state.db` (chi tiết tại `references/safe-idle-gateway-restart.md` §5).
+   - Đánh giá trên 5 chỉ số vàng: `DNS_Err`, `FallbackIP`, `StuckHeartbeat` (silent TCP stall), `SendRetries`, và `Latency Distribution` (p50/p90/avg của turn phản hồi).
+9. **Kiểm tra trạng thái One-Shot Idle Watcher (`restart-when-idle.ps1`):**
+   - Kiểm tra tiến trình sống: `powershell -NoProfile -Command 'Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like "*restart-when-idle*" } | Select ProcessId, CommandLine'`
+   - Kiểm tra log trạng thái: `tail -n 15 $LOCALAPPDATA/hermes/logs/idle_restart.log`
+   - Phân biệt 3 trạng thái:
+     (a) **Đang chạy:** Tiến trình tồn tại, log cập nhật nhịp đếm `active work` hoặc `Gateway idle (N/6)...`
+     (b) **Đã restart thành công:** Tiến trình tự thoát, log ghi `Gateway da duoc khoi dong lai thanh cong. Watcher ket thuc.`
+     (c) **Hết hạn timeout (Timeout Exhaustion):** Tiến trình không còn, log ghi `Het thoi gian cho (1800 giay) - Huy bo restart.` do trong 30 phút hệ thống liên tục có turn/worker active (`active_agents > 0`). Khi farm đang chạy nhiều batch song song, cần nâng `$maxWaitSeconds = 7200` (2h) đến `10800` (3h) hoặc chỉ khởi chạy sau khi đã chốt phiên.
+
 ## Telegram Network Resilience & Fallback IPs (api.telegram.org)
 
 - **Cơ chế tự phục hồi (TelegramFallbackTransport):** Hermes tích hợp sẵn transport fallback trong `plugins/platforms/telegram/telegram_network.py`. Khi kết nối trực tiếp tới `api.telegram.org` bị ISP bóp/nghẽn gói, Hermes tự query DoH (Google/Cloudflare) và chuyển sang Sticky Fallback IP (seed IPs: `149.154.166.110`, `149.154.167.220`) trong khi vẫn giữ nguyên header TLS/SNI `api.telegram.org`.
@@ -359,6 +389,22 @@ agent:
 
 ## Pitfalls (merged)
 
+- **Telegram HTTP Connection Pool Exhaustion (Pool timeout) do bão request/edit đa luồng:**
+  - **Triệu chứng:** Trong `gateway.log` xuất hiện hàng loạt `ERROR [Telegram] Failed to edit Telegram message <id>: Pool timeout: All connections in the connection pool are occupied. Request was *not* sent to Telegram...`. Tiếp theo là 10 lần retry reconnect polling đều báo `Pool timeout`. Sau lần retry thứ 10, gateway log `Fatal telegram adapter error (telegram_network_error)... Restarting gateway.`
+  - **Cơ chế gốc:** Đây **KHÔNG** phải lỗi rớt mạng Internet, lỗi đứt proxy, hay cạn kiệt số lượng socket thực tế. Lỗi xảy ra do **`HERMES_TELEGRAM_HTTP_POOL_TIMEOUT` mặc định chỉ là 8.0s** (`adapter.py:3326`). Khi có tác vụ upload ảnh screenshot/media group (`send_multiple_images`) kéo dài 5–10s, các request edit status hay tin nhắn khác phải chờ socket trong pool; chờ quá 8.0s là `httpcore` tự động ném ngoại lệ `PoolTimeout`.
+  - **Khắc phục triệt để bằng cấu hình env trong `$HERMES_HOME/.env`:**
+    ```bash
+    HERMES_TELEGRAM_HTTP_POOL_SIZE=1024        # Trần dung lượng httpx client, chịu tải burst đa kênh
+    HERMES_TELEGRAM_HTTP_POOL_TIMEOUT=30.0     # Tăng từ 8s lên 30s để đủ thời gian đợi upload ảnh xong
+    HERMES_TELEGRAM_HTTP_CONNECT_TIMEOUT=15.0  # Mặc định 10.0s
+    HERMES_TELEGRAM_HTTP_READ_TIMEOUT=30.0     # Mặc định 20.0s
+    HERMES_TELEGRAM_HTTP_WRITE_TIMEOUT=30.0    # Mặc định 20.0s, đủ thời gian cho upload multipart
+    ```
+    *Lưu ý thẩm định:* `POOL_SIZE=1024` chỉ là trần dung lượng client, bot không mở sẵn 1024 socket hay gửi 1024 req/s (thực tế chỉ 5–15 req/s) nên hoàn toàn không lo dính Telegram 429 Flood Wait hay quá tải CPU router.
+  - **Bẫy nạp runtime biến .env:** Tiến trình Gateway đang chạy (`pythonw.exe`) KHÔNG tự động nạp lại `.env` in-place. Sau khi ghi biến vào `.env`, lỗi `Pool timeout` vẫn sẽ tiếp tục xuất hiện cho tới khi Gateway được restart qua One-Shot Idle Watcher. Phải đối chiếu `(Get-Process -Id <pid>).StartTime` với mtime của `.env` trước khi chẩn đoán.
+  - **Tự động phục hồi:** Cơ chế background reconnect của Gateway (`telegram queued for background reconnection`) tự động giải phóng và khởi tạo lại HTTP client/adapter, kết nối lại thành công sau 2–3 giây (`✓ telegram reconnected successfully`).
+  - **Chẩn đoán:** Phân biệt rõ `Pool timeout` (nghẽn pool HTTP client nội bộ khi nhiều session chạy) với lỗi rớt mạng ISP/proxy (`Timed out`, `getaddrinfo failed`, `149.154.166.110 failed`).
+
 - **Telegram long-poll stall (silent TCP CLOSE-WAIT / update queue buffering) vs OmniRoute zero-traffic:**
   - **Triệu chứng:** Bot Telegram tạm dừng phản hồi 2–5 phút, OmniRoute không nhận được bất kỳ request nào (`storage.sqlite` trống trơn trong khoảng thời gian này). Sau đó bot đột ngột phản hồi dồn dập và OmniRoute nhận một đợt bão request (burst) cùng lúc.
   - **Cơ chế gốc:** Kết nối TCP long-polling giữa thư viện PTB (python-telegram-bot) và `api.telegram.org` bị ngắt ngầm (silent TCP stall / half-open / CLOSE-WAIT). Tin nhắn gửi từ Telegram bị dồn ứ ở server Telegram (`pending_update_count > 0`) mà client local chưa đọc được.
@@ -379,7 +425,21 @@ agent:
       powershell -Command "$p = (Get-Content '$env:LOCALAPPDATA\hermes\gateway_state.json' | ConvertFrom-Json).pid; if ($p) { Stop-Process -Id $p -Force }; Start-Process pythonw -ArgumentList '-m hermes_cli.main gateway run' -WindowStyle Hidden"
       ```
     - **Tác động khi restart:** Lịch sử chat/transcript trong SQLite (`state.db`) được bảo toàn nguyên vẹn. Tuy nhiên, MỌI turn đang suy nghĩ dở, subagents đang chạy ngầm, script terminal hoặc batch tool-calling đang thực thi sẽ bị kill ngang (thành orphan process) và session sẽ dừng lại, không tự động chạy tiếp nếu user không gửi tin nhắn mới kích hoạt.
-    - **Quy tắc an toàn & Tự động Restart khi Idle:** Tuyệt đối KHÔNG restart Gateway trực tiếp từ trong session (bị chặn bởi `_HERMES_GATEWAY=1`) hoặc khi có session AI đang chạy. Khi cần reload cấu hình (.env, proxy...) mà không gián đoạn bot, dùng **ONE-SHOT Idle Watcher** (`restart-when-idle.ps1` đọc `%LOCALAPPDATA%\hermes\gateway_state.json`). Watcher kiểm tra `active_agents == 0` liên tục trong 16 giây rồi mới tự động restart và thoát ngay, đảm bảo không có turn AI nào bị ngắt dở và 100% không đụng tới các batch farm chạy bằng `python.exe`. Chi tiết: `references/safe-idle-gateway-restart.md`.
+    - **Quy tắc an toàn & Tự động Restart khi Idle:** Tuyệt đối KHÔNG restart Gateway trực tiếp từ trong session (bị chặn bởi `_HERMES_GATEWAY=1`) hoặc khi có session AI đang chạy. Khi cần reload cấu hình (.env, proxy...) mà không gián đoạn bot, dùng **ONE-SHOT Idle Watcher** (`restart-when-idle.ps1` đọc `%LOCALAPPDATA%\hermes\gateway_state.json`). Chuẩn hóa logic: Watcher kiểm tra `active_agents == 0` (debounce 12 giây, 6 lần x 2s) HOẶC **Quiescence Fallback** (khi `active_agents` bị kẹt > 0 do ghost/stale slots trong `_running_agents` bởi cơ chế dọn stale của Gateway là thụ động — chỉ kích hoạt khi có message mới vào đúng session đó; lúc này kiểm tra thêm `gateway.log` không có inbound/flushing trong $\ge$ 45s) rồi tự động restart và thoát ngay (`exit 0`). Tuyệt đối **không check các tiến trình farm** (`python.exe`, `run-feed-session`...) vì các batch này chạy liên tục nhiều giờ gây bẫy timeout/treo watcher; Gateway (`pythonw.exe`) hoàn toàn độc lập với các batch farm. Chi tiết: `references/safe-idle-gateway-restart.md`.
+- **Bẫy 2 tầng chặn lệnh restart Gateway (`_contains_gateway_lifecycle_command` & `_HERMES_GATEWAY=1`):**
+  - **Tầng 1 (terminal_tool.py):** Khi session chạy trong Gateway, terminal tool chặn regex `r"(?i)(?:hermes\s+gateway\s+(?:restart|stop))"`.
+  - **Tầng 2 (hermes_cli/gateway.py):** Ngay cả khi vượt qua regex bằng đường dẫn tuyệt đối (`.../hermes.exe gateway restart`), CLI kiểm tra `os.getenv("_HERMES_GATEWAY") == "1"` và chủ động từ chối (`Refusing to restart the gateway from inside the gateway process. Exit code 1`).
+  - **Quy tắc thực thi:** Tuyệt đối KHÔNG cố chạy trực tiếp `hermes gateway restart` từ trong agent/subagent session. Thay vào đó:
+    1. Báo cáo ngay cho user lý do lệnh bị chặn bởi cơ chế an toàn chống kill parent/loop.
+    2. Sử dụng One-Shot Idle Watcher (`restart-when-idle.ps1`) kích hoạt ngầm độc lập qua PowerShell:
+       `Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File C:\Users\Kibe\AppData\Local\hermes\scripts\restart-when-idle.ps1" -WindowStyle Hidden`
+       hoặc hướng dẫn user chạy `hermes gateway restart` từ shell bên ngoài.
+  - **Bẫy false-positive:** Ngay cả khi chạy lệnh vô hại như `cp`, `git`, hoặc `python` mà trong chuỗi lệnh có xuất hiện đường dẫn file (ví dụ chứa các từ khóa trên) hoặc comment/chuỗi con tương tự, lệnh sẽ bị chặn ngay lập tức với lỗi: `Blocked: cannot restart or stop the gateway from inside the gateway process.`
+  - **Giải pháp xử lý:** Sử dụng các tool đọc/ghi file native (`write_file`, `patch`, `read_file`) thay vì lệnh shell. Nếu bắt buộc truyền đường dẫn qua lệnh shell/python, mã hoá base64 hoặc ghép chuỗi để tránh khớp regex.
+- **Quy chuẩn Plan-Review cho Script & Docs Gateway:**
+  - **Sanitized Credentials:** Tuyệt đối không commit mật khẩu/proxy credential thực (kể cả LAN IP) trong file markdown tài liệu hay ví dụ lệnh probe; luôn dùng placeholder `<PROXY_USER>:<PROXY_PASS>@<PROXY_HOST>:<PROXY_PORT>`.
+  - **PID-Targeted Process Control:** Không dùng `Stop-Process -Name pythonw -Force` vì sẽ kill toàn bộ `pythonw.exe` trên máy (ảnh hưởng đến các script farm). Luôn đọc PID từ `gateway_state.json` và dùng `Stop-Process -Id $pid -Force`.
+  - **One-Shot Watcher Hardening (`restart-when-idle.ps1`):** Phải có `$maxWaitSeconds = 600` timeout, `Wait-Process -Id $targetPid -Timeout 10` trước khi sleep, và `Start-Process ... -PassThru` + kiểm tra `!$newProc.HasExited` để verify tiến trình mới không bị crash lúc khởi động.
 - **Telegram `/model` quick-select buttons freeze (missing `mq:` callback prefix):** Khi bấm các nút model nhanh ở hàng trên cùng của menu `/model` (Gemini 3.7 Flash, GPT-5.6 Luna, Plan Review...), callback data có prefix `mq:<model>:<provider>`. Trong `plugins/platforms/telegram/adapter.py`, hàm `_handle_callback_query` phải chứa `"mq:"` trong tuple kiểm tra `data.startswith(("mp:", "mpg:", "mpv:", "mm:", "mc:", "mb", "mx", "mg:", "mq:"))` để chuyển tiếp vào `_handle_model_picker_callback`, nếu thiếu bot sẽ âm thầm bỏ qua callback và giao diện đơ không set config.
 - **Chẩn đoán bot "đơ / nghi sập gateway" do turn latency cao vs crash thật:**
   - Kiểm tra sống/chết tiến trình trước: `hermes gateway status` và `gateway-exit-diag.log` để xác nhận PID có bị restart không (tránh kết luận ẩu "gateway vừa sập").
@@ -400,6 +460,16 @@ agent:
 - **Hiện tượng trả lời 2 lần liên tiếp (Double-Reply / Queued follow-up):**
   - **Cơ chế:** Khi agent gửi tin nhắn phản hồi ở turn dispatch (vd: "Đã nhận lệnh, đang điều phối worker..."), và ngay sau đó hoặc một thời gian ngắn một async subagent hoàn tất (`[ASYNC DELEGATION BATCH COMPLETE]`) hoặc gateway có `Queued follow-up for session ...`, gateway sẽ tự động kích hoạt turn tiếp theo và render thêm một tin nhắn nữa. Kết quả: User thấy 2 tin nhắn phản hồi nối tiếp nhau trên Telegram.
   - **Kỷ luật bất biến:** Khi dispatch worker background cho một tác vụ chạy ngầm, Coordinator BẮT BUỘC trả lời cực kỳ ngắn gọn (1 câu xác nhận duy nhất) hoặc emit `[SILENT]` nếu không có câu hỏi cần giải đáp ngay, giữ báo cáo đầy đủ cho turn sau khi worker hoàn thành. Tuyệt đối không viết 2 báo cáo tổng kết trùng lặp ngữ cảnh ở cả 2 turn.
+- **Cạm bẫy tự động gửi file media trên đĩa (Auto-Delivery Trap từ `extract_local_files`):**
+  - **Cơ chế:** Hàm `extract_local_files()` trong `gateway/platforms/base.py` tự động quét chuỗi text trả về. Nếu thấy đường dẫn file media thô (`.mp4`, `.mov`, `.jpg`, `.png`, `.pdf`...) và file đó THỰC SỰ TỒN TẠI trên đĩa máy host, Gateway tự động gọi `send_video()` / `send_multiple_images()` bắn file lên Telegram (hoàn toàn tốn 0 quota LLM nhưng tốn băng thông và spam user).
+  - **Khóa cứng 3 tầng (3-Layer Hard Lock):**
+    1. *Tầng 1 (Config):* `gateway.media_delivery.auto_deliver_local_files: false` + `denied_paths` trong `config.yaml`.
+    2. *Tầng 2 (Denylist):* `_media_delivery_denied_paths()` trong `base.py` chặn cứng các kho farm (`D:\TIKTOK-videonuoinick`, `D:\video goc`, `D:\OneDrive`...).
+    3. *Tầng 3 (Extraction Guard):* `extract_local_files()` bỏ qua path trong denylist và `_auto_deliver_local_files_enabled()` tắt hoàn toàn auto-delivery khi config=false.
+  - **Đồng bộ Dual-Runtime trên Windows:** BẮT BUỘC sửa đồng thời cả 2 file:
+    `%LOCALAPPDATA%\hermes\hermes-agent\gateway\platforms\base.py` và
+    `%LOCALAPPDATA%\hermes\hermes-agent\venv\Lib\site-packages\gateway\platforms\base.py`.
+  - **Kỷ luật bất biến:** MỌI đường dẫn file media trên máy khi báo cáo **BẮT BUỘC PHẢI BỌC TRONG DẤU BACKTICK** (ví dụ: `` `D:\TIKTOK-videonuoinick\306\5.mp4` ``) hoặc khối code block để regex của Gateway bỏ qua. Chỉ dùng `MEDIA:<path>` khi có chỉ định gửi ảnh/video bằng chứng. Chi tiết: `references/extract-local-files-media-auto-delivery-trap.md`.
 - Ảnh màn hình máy N: `adb -s <serial> exec-out screencap -p` (serial từ `config-machine-N.yaml` / workbook mapping), KHÔNG cần mở app mirror. Không tìm được serial → báo rõ, không đoán.
 - VPS không thay được máy LAN (ADB USB bắt buộc cùng LAN); VPS chỉ làm não (terminal backend ssh / adb -H relay).
 
@@ -418,6 +488,13 @@ Chi tiết gắn group↔repo (lấy chat_id, prompt chuẩn, verify state.db): 
 
 - **User preference for commands / prompts on Telegram:** When sending commands or prompts meant for the user to copy and run/send, **NEVER** embed them inside mixed explanation text or multi-line prose.
 - **Stand-alone Code Blocks (` ```text `):** Provide commands in dedicated, standalone fenced code blocks without surrounding prose inside the block. On mobile Telegram clients (iOS/Android), standalone code blocks render an explicit 1-tap "Copy" button in the corner, allowing the user to copy only the exact command cleanly without copying the surrounding explanation.
+- **Cấm LaTeX Math Arrow — Giải pháp Adapter Zero-Quota:**
+  - **Vấn đề:** Telegram không hỗ trợ render cú pháp LaTeX math inline (`$\rightarrow$`, `\rightarrow`, `$\to$`). Client Telegram hiển thị nguyên xi chuỗi thô gây khó chịu cho người dùng.
+  - **Bẫy tốn Quota khi lưu vào Memory / System Prompt:** Không nên nhồi nhét quy tắc cấm LaTeX vào Memory (`USER PROFILE`) hay `SOUL.md` / `system_prompt` vì mỗi lượt chat LLM đều phải nạp lại toàn bộ prompt/memory vào context window, làm phình token cấp số nhân và lãng phí hạn mức (quota).
+  - **Giải pháp Zero-Quota tại Adapter Layer:** Sửa trực tiếp hàm `format_message()` trong `plugins/platforms/telegram/adapter.py` để tự động replace `$\rightarrow$`, `\rightarrow`, `$\to$` thành `→`, `$\leftarrow$` thành `←`, `$\Rightarrow$` thành `⇒` trước khi chuyển đổi MarkdownV2. Code Python offline xử lý tức thì, hoàn toàn tốn **0 token quota**.
+  - **Lưu ý đồng bộ runtime venv trên Windows:** Khi patch file adapter, bắt buộc đồng bộ cả hai vị trí:
+    1. `%LOCALAPPDATA%\hermes\hermes-agent\plugins\platforms\telegram\adapter.py`
+    2. `%LOCALAPPDATA%\hermes\hermes-agent\venv\Lib\site-packages\plugins\platforms\telegram\adapter.py`
 
 ## Runtime core/plugin mismatch recovery (Windows)
 
@@ -433,6 +510,7 @@ Use when Gateway remains alive but a platform disappears after Desktop/restart w
 **Reporting style:** concise Vietnamese; state purpose, changed runtime paths, verification evidence, and any restart blocker. Do not bury the result in a long plan or imply the source repository was fixed when only the runtime was repaired.
 
 Session-specific checklists:
+- `references/extract-local-files-media-auto-delivery-trap.md` — Cạm bẫy auto-detect bare file path (hàm `extract_local_files` trong `base.py`) tự động upload video/ảnh lên Telegram khi có đường dẫn thô tồn tại trên đĩa, giải thích 0 quota LLM và quy tắc bắt buộc bọc backtick.
 - `references/idle-restart-and-session-lifecycle.md` — chi tiết 4 tầng session (_running_agents vs _agent_cache vs session_store vs executor), cơ chế check idle qua gateway_state.json và script PowerShell nền restart an toàn.
 - `references/runtime-version-mismatch.md` — recover a live Telegram adapter/core mismatch safely.
 - `references/runtime-sync-forensics.md` — identify who actually copied runtime files, distinguish updater trigger from copy mechanism, and avoid blaming OmniRoute/Desktop without evidence.

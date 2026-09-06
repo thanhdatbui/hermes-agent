@@ -160,6 +160,12 @@ tool_loop_guardrails:
     exact_failure: 5
     same_tool_failure: 8
     idempotent_no_progress: 5
+  media_delivery:
+    auto_deliver_local_files: false
+    denied_paths:
+      - "D:/TIKTOK-videonuoinick"
+      - "D:/video goc"
+      - "D:/OneDrive"
 compression:
   enabled: true
   threshold: 0.3

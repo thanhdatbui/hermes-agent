@@ -2,31 +2,31 @@
 Remove-Item Env:\_HERMES_GATEWAY -ErrorAction SilentlyContinue
 $env:_HERMES_GATEWAY = $null
 
-$stateFile = "$env:LOCALAPPDATA\hermes\gateway_state.json"
-$logFile   = "$env:LOCALAPPDATA\hermes\logs\idle_restart.log"
-$defaultPythonw = "$env:APPDATA\uv\python\cpython-3.11-windows-x86_64-none\pythonw.exe"
+$stateFile = "C:\Users\Kibe\AppData\Local\hermes\gateway_state.json"
+$logFile   = "C:\Users\Kibe\AppData\Local\hermes\logs\idle_restart.log"
+$defaultPythonw = "C:\Users\Kibe\AppData\Roaming\uv\python\cpython-3.11-windows-x86_64-none\pythonw.exe"
 
 function Log-Msg($msg) {
     $timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
     "[$timestamp] $msg" | Out-File -FilePath $logFile -Append -Encoding utf8
 }
 
-Log-Msg "Bắt đầu ONE-SHOT watcher tự động restart Gateway khi idle (PID watcher: $PID)..."
+Log-Msg "=== Bat dau ONE-SHOT Watcher restart Hermes Gateway khi idle (PID: $PID) ==="
 
-$requiredIdleChecks = 8   # 8 lần kiểm tra liên tiếp x 2s = 16 giây
-$maxWaitSeconds = 600     # Timeout tối đa 10 phút nếu bot bận liên tục
-$startTime = [DateTime]::UtcNow
+$requiredIdleChecks = 6 # 6 lan x 2s = 12 giay khong co turn AI nao
 $idleCount = 0
 $cachedPythonw = $null
+$maxWaitSeconds = 10800 # 3 tieng timeout
+$startTime = [DateTime]::UtcNow
 
 while ($true) {
     if (([DateTime]::UtcNow - $startTime).TotalSeconds -gt $maxWaitSeconds) {
-        Log-Msg "HẾT THỜI GIAN CHỜ ($maxWaitSeconds giây) - Gateway không đạt trạng thái idle. Huỷ bỏ restart."
+        Log-Msg "Het thoi gian cho ($maxWaitSeconds giay) - Huy bo restart."
         exit 1
     }
 
     Start-Sleep -Seconds 2
-    
+
     if (!(Test-Path $stateFile)) {
         continue
     }
@@ -40,7 +40,6 @@ while ($true) {
         continue
     }
 
-    # Cache duong dan executable cua gateway neu chua co
     if (!$cachedPythonw -and $targetPid) {
         try {
             $procInfo = Get-CimInstance Win32_Process -Filter "ProcessId = $targetPid" -ErrorAction SilentlyContinue
@@ -52,46 +51,31 @@ while ($true) {
 
     if ($gwState -eq "running" -and $activeWork -eq 0) {
         $idleCount++
-        Log-Msg "Phát hiện idle ($idleCount/$requiredIdleChecks)..."
+        Log-Msg "Phat hien Gateway idle ($idleCount/$requiredIdleChecks)..."
         if ($idleCount -ge $requiredIdleChecks) {
-            Log-Msg "Gateway idle liên tục 16s. Thực hiện restart..."
+            Log-Msg "Gateway idle lien tuc 12s. Thuc hien restart..."
 
             $pythonwExe = $cachedPythonw
-            if (!$pythonwExe) {
-                try {
-                    $procInfo = Get-CimInstance Win32_Process -Filter "ProcessId = $targetPid" -ErrorAction SilentlyContinue
-                    if ($procInfo -and $procInfo.ExecutablePath) {
-                        $pythonwExe = $procInfo.ExecutablePath
-                    }
-                } catch {}
-            }
             if (!$pythonwExe) {
                 $pythonwExe = $defaultPythonw
             }
 
-            # Stop tiến trình gateway hiện tại và đợi giải phóng tài nguyên
+            # Dung gateway cu
             try {
                 Stop-Process -Id $targetPid -Force -ErrorAction SilentlyContinue
-                Wait-Process -Id $targetPid -Timeout 10 -ErrorAction SilentlyContinue
             } catch {}
 
-            # Chờ 2 giây đảm bảo file lock giải phóng hoàn toàn
             Start-Sleep -Seconds 2
 
-            # Khởi động lại Gateway bằng Start-Process và kiểm chứng
-            $newProc = Start-Process $pythonwExe -ArgumentList "-m hermes_cli.main gateway run" -WindowStyle Hidden -PassThru
-            Start-Sleep -Seconds 2
-            if ($newProc -and !$newProc.HasExited) {
-                Log-Msg "Gateway đã được khởi động lại thành công (PID mới: $($newProc.Id)). Watcher kết thúc."
-                exit 0
-            } else {
-                Log-Msg "CẢNH BÁO: Tiến trình Gateway khởi động thất bại hoặc đã thoát sớm."
-                exit 1
-            }
+            # Khoi dong lai Gateway
+            Start-Process $pythonwExe -ArgumentList "-m hermes_cli.main gateway run" -WindowStyle Hidden
+
+            Log-Msg "Gateway da duoc khoi dong lai thanh cong. Watcher ket thuc."
+            exit 0
         }
     } else {
         if ($idleCount -gt 0) {
-            Log-Msg "Phát hiện active agents ($activeWork) hoặc gateway_state ($gwState). Reset bộ đếm về 0."
+            Log-Msg "Phat hien active work ($activeWork agents). Reset bo dem..."
         }
         $idleCount = 0
     }
