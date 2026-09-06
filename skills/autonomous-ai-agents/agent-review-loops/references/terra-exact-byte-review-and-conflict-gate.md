@@ -4,13 +4,14 @@
 Use for multi-file code review, review-gated closeout, or “fix until approved” work in this user's Taadaa repositories.
 
 ## Correct reviewer route
-- Normal review/audit (UI, popup, video gate, feature 1 repo, helper): Gọi combo `plan-review` (gpt-5.6-terra -> ag/claude-opus-4-6-thinking -> cmc/deepseek/deepseek-v4-pro) hoặc `gpt-5.6-terra` trực tiếp qua 9Router HTTP `POST /v1/chat/completions`.
+- Normal review/audit (UI, popup, video gate, feature 1 repo, helper): Gọi combo `plan-review` (gpt-5.6-terra -> ag/claude-opus-4-6-thinking -> cmc/deepseek/deepseek-v4-pro) hoặc `gpt-5.6-terra` trực tiếp qua 9Router HTTP `POST /v1/chat/completions` (:20128).
+- OmniRoute review route (:20129): Gọi model `review` (route tới `claude-opus-4-6-thinking`) hoặc `ag-worker` (route tới `gemini-3.8-flash-tiered`) qua HTTP `POST http://localhost:20129/v1/chat/completions`. Chi tiết xem `references/omniroute-review-gateway.md`.
 - Hard review/audit (Architecture, Scheduler, Lock, Recovery, Multi-repo): Gọi combo `plan-review-hard` hoặc `gpt-5.6-sol`.
-- Tool chuẩn hoá: `python D:/Taadaa/tools/invoke-plan-review.py` (hoặc PowerShell `D:\Taadaa\tools\invoke-ag-audit.ps1`).
+- Tool chuẩn hoá: `python D:/Taadaa/tools/invoke-plan-review.py` (hoặc PowerShell `D:\Taadaa\tools\invoke-ag-audit.ps1` cho 9Router :20128).
 - Read-only request: `tools: []`, `tool_choice: "none"`, `stream: false`, `reasoning_effort: "high"` (hoặc `"max"`).
 - Require the first response line to be exactly `VERDICT: APPROVED` hoặc `VERDICT: REJECT`.
-- TUYỆT ĐỐI CẤM gọi trực tiếp AG Claude (`ag/claude-opus-4-6-thinking`), Flash, hoặc implementation worker. CẤM dùng `delegate_task` để review.
-- Review the exact staged payload, not a prose summary or a broader repository snapshot.
+- TUYỆT ĐỐI CẤM gọi trực tiếp AG Claude (`ag/claude-opus-4-6-thinking`), Flash, hoặc implementation worker từ runtime của tác vụ coding mà không qua proxy review route. CẤM dùng `delegate_task` để review.
+- Review the exact staged payload, không dùng prose summary hay tóm tắt làm lu mờ diff thực tế.
 
 ## Exact-byte procedure
 1. Record HEAD, allowlist, staged/working-tree path sets, staged blob hashes, and the staged diff hash.
