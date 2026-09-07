@@ -465,6 +465,39 @@ def parse_upload_results(run_dir: str) -> dict:
     return parse_run_all(run_dir)[2]
 
 
+def format_released_follows(fl_released: list, all_follows: dict) -> list:
+    """Phân nhóm và format danh sách các máy bị nhả follow theo số lượt hoàn thành."""
+    if not fl_released:
+        return ["  + Nhả follow (0): Không có"]
+
+    rel_0 = []
+    rel_1_4 = []
+    rel_5_9 = []
+    rel_10_plus = []
+
+    for m in fl_released:
+        cnt = len(all_follows.get(m, {}).get("followed", []))
+        if cnt == 0:
+            rel_0.append(m)
+        elif 1 <= cnt <= 4:
+            rel_1_4.append((m, cnt))
+        elif 5 <= cnt <= 9:
+            rel_5_9.append((m, cnt))
+        else:
+            rel_10_plus.append((m, cnt))
+
+    lines = [f"  + Nhả follow ({len(fl_released)}):"]
+    if rel_0:
+        lines.append(f"    - Nhả liền (0 lượt - {len(rel_0)}): {', '.join(rel_0)}")
+    if rel_1_4:
+        lines.append(f"    - 1 - 4 lượt ({len(rel_1_4)}): {', '.join(f'{m} ({cnt} lượt)' for m, cnt in rel_1_4)}")
+    if rel_5_9:
+        lines.append(f"    - 5 - 9 lượt ({len(rel_5_9)}): {', '.join(f'{m} ({cnt} lượt)' for m, cnt in rel_5_9)}")
+    if rel_10_plus:
+        lines.append(f"    - 10+ lượt ({len(rel_10_plus)}): {', '.join(f'{m} ({cnt} lượt)' for m, cnt in rel_10_plus)}")
+    return lines
+
+
 def can_report_session(
     is_today: bool,
     completed_expected_count: int,
@@ -661,10 +694,12 @@ def main():
                     f"  + Fail ({len(fail)}): {fail_str}",
                     f"• Follow chéo ({total_followed_count} lượt follow):",
                     f"  + Success ({len(fl_success)}): {s_str}",
-                    f"  + Nhả follow ({len(fl_released)}): {r_str}",
+                ]
+                msg_lines.extend(format_released_follows(fl_released, all_follows))
+                msg_lines.extend([
                     f"  + Lỗi script/xác minh ({len(fl_error)}): {e_str}",
                     f"  + Bỏ qua ({len(fl_skipped)}): {k_str}"
-                ]
+                ])
 
                 # Phân loại Upload (Phiên 3)
                 if win["phien"] == 3 or any(all_uploads.values()):

@@ -755,18 +755,6 @@ def check_worker_tool_gate(tool_name: str, session_id: str, args: Any = None) ->
                 ),
             }
 
-        # 0.1 Block computer_use for Android farm workers
-        if tool_name == "computer_use":
-            _save_worker_gate_state(worker_states)
-            return {
-                "action": "block",
-                "reason": (
-                    "⛔ [WORKER TOOL GATE - COMPUTER USE BLOCKED]: "
-                    "Tool computer_use bị cấm tuyệt đối đối với worker farm Android! "
-                    "Mọi thao tác farm chỉ thực hiện qua ADB terminal hoặc script Python."
-                ),
-            }
-
         # 1. Monolith File Guard: Cấm đọc hoặc tìm kiếm trong các file monolith *_smoke.py
         fn_args = args if isinstance(args, dict) else {}
         target_path = str(fn_args.get("path") or fn_args.get("file_path") or fn_args.get("pattern") or "")

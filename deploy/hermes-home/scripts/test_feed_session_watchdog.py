@@ -11,6 +11,7 @@ from feed_session_watchdog import (
     is_device_locked_skip,
     merge_machine_result,
     can_report_session,
+    format_released_follows,
 )
 
 
@@ -140,6 +141,27 @@ class TestFeedSessionWatchdogLockGuard(unittest.TestCase):
             window_end_hm="23:59",
             runner_busy=False,
         ))
+
+    def test_format_released_follows(self):
+        # Empty case
+        self.assertEqual(format_released_follows([], {}), ["  + Nhả follow (0): Không có"])
+
+        # Multiple buckets
+        fl_released = ["m1", "m2", "m3", "m4"]
+        all_follows = {
+            "m1": {"followed": []},
+            "m2": {"followed": ["u1", "u2", "u3"]},
+            "m3": {"followed": ["u1", "u2", "u3", "u4", "u5", "u6", "u7"]},
+            "m4": {"followed": [f"u{i}" for i in range(12)]},
+        }
+        expected = [
+            "  + Nhả follow (4):",
+            "    - Nhả liền (0 lượt - 1): m1",
+            "    - 1 - 4 lượt (1): m2 (3 lượt)",
+            "    - 5 - 9 lượt (1): m3 (7 lượt)",
+            "    - 10+ lượt (1): m4 (12 lượt)",
+        ]
+        self.assertEqual(format_released_follows(fl_released, all_follows), expected)
 
 
 if __name__ == "__main__":
