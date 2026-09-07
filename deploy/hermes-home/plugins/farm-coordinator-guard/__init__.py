@@ -55,6 +55,7 @@ SESSION_EXPIRY_SECONDS = 7200  # 2 hours auto-cleanup for stale sessions
 READ_BUDGET = int(os.environ.get("WORKER_READ_BUDGET", 3))
 WRITE_DEADLINE = int(os.environ.get("WORKER_WRITE_DEADLINE", 4))
 MAX_WORKER_CALLS = int(os.environ.get("WORKER_MAX_CALLS", 12))
+MAX_COORDINATOR_DISPATCHES = int(os.environ.get("COORDINATOR_MAX_DISPATCHES", 3))
 POPUP_SELECTOR_PATTERN = re.compile(r"\b(?:popup|allowlist|survey|ads?|selector|advert)\b", re.IGNORECASE)
 
 
@@ -123,14 +124,17 @@ def is_safe_terminal_verify(cmd: str) -> bool:
         return False
 
     if t0 == "python" or t0.startswith("python3"):
-        if len(tokens) >= 3 and tokens[1] == "-m" and tokens[2] == "py_compile":
+        if len(tokens) >= 3 and tokens[1] == "-m" and tokens[2] in ("py_compile", "pytest"):
             for tok in tokens[3:]:
                 if is_monolith_smoke(tok):
                     return False
             return True
         return False
 
-    if t0 == "py_compile":
+    if t0 in ("py_compile", "pytest"):
+        for tok in tokens[1:]:
+            if is_monolith_smoke(tok):
+                return False
         return True
 
     return False
@@ -551,21 +555,12 @@ def _on_pre_llm_call(
         _update_session_state(session_id, {
             "phase": "IDLE",
             "inspect_budget": 0,
+            "dispatch_count": 0,
         })
         logger.info("[FARM_GUARD] Guard manually reset to IDLE for session %s", session_id)
         return {"context": "[FARM GUARD]: Phase đã reset về IDLE."}
 
-    # Closeout / Chốt phiên
-    if re.search(r"chốt\s+phiên|đóng\s+phiên|chốt\s+session|/closeout|kết\s+thúc\s+phiên", msg, re.IGNORECASE):
-        _update_session_state(session_id, {
-            "phase": "CLOSEOUT",
-            "inspect_budget": 0,
-            "closeout_at": time.time(),
-        })
-        logger.info("[FARM_GUARD] Transition to CLOSEOUT phase for session %s", session_id)
-        return {"context": "[FARM GUARD]: Đã chuyển sang Phase CLOSEOUT (Chốt phiên 6 Gate). Terminal đã mở khóa cho các lệnh git, canary và review."}
-
-    # Farm Alert
+    # Farm Alert (Ưu tiên cao nhất — phải kiểm tra trước Closeout tránh template dính chữ 'closeout')
     is_alert = bool(
         re.search(r"\[MÁY\s+\d+\]|\[FARM\s+ALERT|Farm\s+Alert|sự\s+cố\s+máy\s+\d+", msg, re.IGNORECASE)
     )
@@ -573,9 +568,10 @@ def _on_pre_llm_call(
         _update_session_state(session_id, {
             "phase": "ALERT",
             "inspect_budget": 1,
+            "dispatch_count": 0,
             "alert_snippet": msg[:120],
         })
-        logger.info("[FARM_GUARD] Transition to ALERT phase for session %s (budget=1)", session_id)
+        logger.info("[FARM_GUARD] Transition to ALERT phase for session %s (budget=1, dispatch_count=0)", session_id)
         return {
             "context": (
                 "[FARM GUARD HARD CONSTRAINT]:\n"
@@ -586,6 +582,16 @@ def _on_pre_llm_call(
                 "Hành động hợp lệ tiếp theo là gọi tool delegate_task(...) để Worker Subagent xử lý trong context riêng."
             )
         }
+
+    # Closeout / Chốt phiên (Chỉ khi không phải Farm Alert)
+    if re.search(r"chốt\s+phiên|đóng\s+phiên|chốt\s+session|/closeout|kết\s+thúc\s+phiên", msg, re.IGNORECASE):
+        _update_session_state(session_id, {
+            "phase": "CLOSEOUT",
+            "inspect_budget": 0,
+            "closeout_at": time.time(),
+        })
+        logger.info("[FARM_GUARD] Transition to CLOSEOUT phase for session %s", session_id)
+        return {"context": "[FARM GUARD]: Đã chuyển sang Phase CLOSEOUT (Chốt phiên 6 Gate). Terminal đã mở khóa cho các lệnh git, canary và review."}
 
     # Nếu người dùng gửi tin nhắn hỏi đáp bình thường trong khi đang WORKER_RUNNING:
     # Cho phép chuyển về IDLE để tương tác nếu đã qua 5 phút
@@ -841,9 +847,26 @@ def _on_pre_tool_call(
                 ),
             }
 
+        # DISPATCH BUDGET HARD GUARD (Tối đa MAX_COORDINATOR_DISPATCHES = 3 worker / alert):
+        # Chặn đứng dứt điểm việc Coordinator đẻ liên tục 5-7 worker quay cuồng giả thuyết (Case 139).
+        sess_state = _get_session_state(sess_id)
+        dispatch_count = sess_state.get("dispatch_count", 0) + 1
+        if dispatch_count > MAX_COORDINATOR_DISPATCHES:
+            _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
+            return {
+                "action": "block",
+                "reason": (
+                    f"⛔ [COORDINATOR GUARD - DISPATCH BUDGET EXHAUSTED]: "
+                    f"Coordinator đã dispatch {dispatch_count - 1}/{MAX_COORDINATOR_DISPATCHES} worker subagents cho ca lỗi này! "
+                    "CẤM TUYỆT ĐỐI tiếp tục hypothesis roulette (đẻ worker liên tiếp để thử vận may). "
+                    "BẮT BUỘC dừng lại, chụp ảnh màn hình hiện trường (screencap) và báo cáo blocker cho Tad hoặc gọi Claude CLI thẩm định!"
+                ),
+            }
+
         _update_session_state(sess_id, {
             "phase": "WORKER_RUNNING",
             "dispatched_at": time.time(),
+            "dispatch_count": dispatch_count,
         })
         logger.info("[FARM_GUARD] delegate_task called -> Phase transitioned to WORKER_RUNNING for session %s", sess_id)
         return None
