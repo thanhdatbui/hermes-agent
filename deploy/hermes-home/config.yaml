@@ -222,8 +222,8 @@ memory:
 delegation:
   model: ag-gemini-pool-3
   provider: omni
-  max_iterations: 12
-  reasoning_effort: medium
+  max_iterations: 35
+  reasoning_effort: high
   max_concurrent_children: 8
 moa:
   presets:
