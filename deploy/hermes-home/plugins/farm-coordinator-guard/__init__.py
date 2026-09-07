@@ -821,6 +821,26 @@ def _on_pre_tool_call(
                     "BẮT BUỘC soạn PATCH_CONTRACT chỉ định file đích nhẹ 'python_runner/flows/benign_popup_registry.py' trước khi dispatch."
                 ),
             }
+
+        # GROUND TRUTH FIRST HARD GUARD:
+        # Cấm Coordinator dispatch task "Fix Code" / "Sửa code" / "Patch" nếu chưa có ít nhất 1 bằng chứng
+        # hiện trường thực tế (screencap / screenshot / inspect_machine / dump_ui_xml / .png / .xml).
+        # Chặn đứng dứt điểm bệnh "debug mù", roulette giả thuyết gây over-engineering (Case 139).
+        is_fix_code_task = bool(re.search(r'\b(sửa\s+code|fix\s+code|patch\s+contract|patch\s+code|áp\s+dụng\s+patch|thay\s+đổi\s+code)\b', goal_text, re.IGNORECASE))
+        has_ground_truth = bool(re.search(r'\b(screencap|screenshot|inspect_machine|\.png|\.xml|màn\s+hình\s+hiện\s+trường|ảnh\s+hiện\s+trường)\b', goal_text, re.IGNORECASE))
+        if is_fix_code_task and not has_ground_truth:
+            _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
+            return {
+                "action": "block",
+                "reason": (
+                    "⛔ [COORDINATOR GUARD - GROUND TRUTH FIRST BLOCKED]: "
+                    "Goal hoặc context của delegate_task yêu cầu sửa code/patch nhưng KHÔNG có bằng chứng hiện trường thực tế "
+                    "(screencap / inspect_machine / XML dump / .png / .xml)! "
+                    "CẤM TUYỆT ĐỐI sửa code dựa trên suy diễn/roulette giả thuyết khi chưa quan sát màn hình thật (Case 139). "
+                    "HÀNH ĐỘNG BẮT BUỘC: Hãy lấy ảnh chụp màn hình hiện trường (screencap) hoặc inspect_machine O(1) để xác định Ground Truth trước khi dispatch sửa code!"
+                ),
+            }
+
         _update_session_state(sess_id, {
             "phase": "WORKER_RUNNING",
             "dispatched_at": time.time(),
