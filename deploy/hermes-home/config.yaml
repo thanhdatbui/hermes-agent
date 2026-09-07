@@ -30,10 +30,10 @@ providers:
       omni-free: {}
     transport: chat_completions
 fallback_providers:
-  - model: omni-free
-    provider: omni
-  - model: 9r-free
-    provider: custom:9router
+- model: omni-free
+  provider: omni
+- model: 9r-free
+  provider: custom:9router
 agent:
   max_turns: 200
   gateway_timeout: 14400
@@ -116,10 +116,11 @@ agent:
     - TUYỆT ĐỐI CẤM Coordinator tự dùng write_file, patch hoặc terminal để sửa code/test
     trực tiếp trong session chính.
 
-    - QUY TẮC WORKER BUDGET & ANTI-OVERENGINEERING (BẮT BUỘC):
-      + Mọi worker BẮT BUỘC hoàn thành dưới 15 phút, tối đa <= 20 tool calls.
-      + Task Read/Inspect/OCR: CẤM tự ý sửa code / CẤM commit / CẤM chạy test suite. Chỉ đọc log/OCR và trả kết quả ngay <= 10 tool calls.
-      + Task Fix Code: Chỉ sửa ĐÚNG file/module chỉ định (Scope Lock), viết focused test <30s, CẤM over-engineer viết test đồ sộ.
+    - QUY TẮC WORKER BUDGET & ANTI-OVERENGINEERING (BẮT BUỘC): + Mọi worker BẮT BUỘC
+    hoàn thành dưới 15 phút, tối đa <= 20 tool calls. + Task Read/Inspect/OCR: CẤM
+    tự ý sửa code / CẤM commit / CẤM chạy test suite. Chỉ đọc log/OCR và trả kết quả
+    ngay <= 10 tool calls. + Task Fix Code: Chỉ sửa ĐÚNG file/module chỉ định (Scope
+    Lock), viết focused test <30s, CẤM over-engineer viết test đồ sộ.
 
 
     QUY TẮC AN TOÀN FARM & CHỐNG CHỮA CHÁY:
@@ -163,9 +164,9 @@ tool_loop_guardrails:
   media_delivery:
     auto_deliver_local_files: false
     denied_paths:
-      - "D:/TIKTOK-videonuoinick"
-      - "D:/video goc"
-      - "D:/OneDrive"
+    - D:/TIKTOK-videonuoinick
+    - D:/video goc
+    - D:/OneDrive
 compression:
   enabled: true
   threshold: 0.3
@@ -181,8 +182,8 @@ auxiliary:
     provider: omni
     model: ag-gemini-pool-3
     fallback_chain:
-      - model: omni-free
-        provider: omni
+    - model: omni-free
+      provider: omni
 display:
   compact: false
   busy_input_mode: interrupt
@@ -221,8 +222,8 @@ memory:
 delegation:
   model: ag-gemini-pool-3
   provider: omni
-  max_iterations: 35
-  reasoning_effort: high
+  max_iterations: 12
+  reasoning_effort: medium
   max_concurrent_children: 8
 moa:
   presets:
@@ -234,11 +235,11 @@ approvals:
   mode: smart
   destructive_slash_confirm: false
 command_allowlist:
-  - copy/move file into system config path
-  - execute_code
-  - script execution via -e/-c flag
-  - force kill processes
-  - script execution via heredoc
+- copy/move file into system config path
+- execute_code
+- script execution via -e/-c flag
+- force kill processes
+- script execution via heredoc
 quick_commands:
   rl:
     target: /skill role-based-agent-review-loop
@@ -252,63 +253,79 @@ code_execution:
   timeout: 300
 model_catalog:
   excluded_providers:
-    - anthropic
+  - anthropic
 gateway:
   max_workers: 50
   platforms:
     telegram:
       channel_overrides:
         '-5145780745':
-          system_prompt: 'Bạn là Coordinator phụ trách repo D:\Taadaa\tiktok-log-in (login TikTok).
+          system_prompt: 'Bạn là Coordinator phụ trách repo D:\Taadaa\tiktok-log-in
+            (login TikTok).
 
-            Trước mọi lệnh: cd /d/Taadaa/tiktok-log-in. Đọc AGENTS.md + HANDOFF.md + PROJECT_RULES.md.
+            Trước mọi lệnh: cd /d/Taadaa/tiktok-log-in. Đọc AGENTS.md + HANDOFF.md
+            + PROJECT_RULES.md.
 
-            Mọi tác vụ sửa code / viết test BẮT BUỘC dispatch qua `delegate_task` kèm Scope Lock, Test Lock và Budget <= 15 phút, <= 20 tool calls.
-            CẤM bấm ADB tay thay cho sửa code. Báo cáo tóm tắt cuối cùng.'
+            Mọi tác vụ sửa code / viết test BẮT BUỘC dispatch qua `delegate_task`
+            kèm Scope Lock, Test Lock và Budget <= 15 phút, <= 20 tool calls. CẤM
+            bấm ADB tay thay cho sửa code. Báo cáo tóm tắt cuối cùng.'
         '-5171154309':
           system_prompt: 'Bạn là Coordinator điều phối repo D:\Taadaa\Hermes.
 
             Trước mọi lệnh: cd /d/Taadaa/Hermes. Đọc AGENTS.md + HANDOFF.md + PROJECT_RULES.md.
 
-            Mọi tác vụ sửa code / viết test BẮT BUỘC dispatch qua `delegate_task` kèm Scope Lock, Test Lock và Budget <= 15 phút, <= 20 tool calls.
-            CẤM bấm ADB tay thay cho sửa code. Báo cáo tóm tắt cuối cùng.'
+            Mọi tác vụ sửa code / viết test BẮT BUỘC dispatch qua `delegate_task`
+            kèm Scope Lock, Test Lock và Budget <= 15 phút, <= 20 tool calls. CẤM
+            bấm ADB tay thay cho sửa code. Báo cáo tóm tắt cuối cùng.'
         '-5373649734':
-          system_prompt: 'Bạn là AI Coordinator Chuyên Trách Phục Hồi & Gỡ Rối Farm Android (Farm Alerts).
+          system_prompt: 'Bạn là AI Coordinator Chuyên Trách Phục Hồi & Gỡ Rối Farm
+            Android (Farm Alerts).
 
-            QUY TRÌNH 5 BƯỚC BẮT BUỘC KHI NHẬN [FARM ALERT: MÁY N]:
-            1. Inspect: Chạy lệnh chỉ định trong alert: `python D:/Taadaa/tools/inspect_machine.py <N>` (CẤM grep/quét đĩa).
-            2. Đánh giá: Phân tích ảnh màn hình live và log summary được chỉ định.
-            3. Dispatch Worker (BẮT BUỘC KHÓA SCOPE & BUDGET):
-               - Gọi `delegate_task` để worker sửa code file flow phụ trách và chạy test.
-               - BẮT BUỘC truyền vào context: Scope Lock (chỉ sửa file flow chỉ định), Test Lock (chỉ chạy focused test <30s, CẤM pytest toàn repo), Budget <= 15 phút và <= 20 tool calls.
-               - Task chỉ Read/Inspect/OCR: CẤM worker sửa code / CẤM commit, hoàn thành <= 10 tool calls (< 10 phút).
-               - CẤM Coordinator tự sửa code hoặc bấm ADB tay chữa cháy (`input tap/keyevent`).
-            4. Canary Test: Sau khi worker hoàn thành, chạy lệnh Canary test lại máy N.
-            5. Báo cáo: Gửi kết quả cuối (Success / Fail) vào nhóm.'
+            QUY TRÌNH 5 BƯỚC BẮT BUỘC KHI NHẬN [FARM ALERT: MÁY N]: 1. Inspect: Chạy
+            lệnh chỉ định trong alert: `python D:/Taadaa/tools/inspect_machine.py
+            <N>` (CẤM grep/quét đĩa). 2. Đánh giá: Phân tích ảnh màn hình live và
+            log summary được chỉ định. 3. Dispatch Worker (BẮT BUỘC KHÓA SCOPE & BUDGET):
+            - Gọi `delegate_task` để worker sửa code file flow phụ trách và chạy test.
+            - BẮT BUỘC truyền vào context: Scope Lock (chỉ sửa file flow chỉ định),
+            Test Lock (chỉ chạy focused test <30s, CẤM pytest toàn repo), Budget <=
+            15 phút và <= 20 tool calls. - Task chỉ Read/Inspect/OCR: CẤM worker sửa
+            code / CẤM commit, hoàn thành <= 10 tool calls (< 10 phút). - CẤM Coordinator
+            tự sửa code hoặc bấm ADB tay chữa cháy (`input tap/keyevent`). 4. Canary
+            Test: Sau khi worker hoàn thành, chạy lệnh Canary test lại máy N. 5. Báo
+            cáo: Gửi kết quả cuối (Success / Fail) vào nhóm.'
         '-5377611430':
-          system_prompt: 'Bạn là Coordinator phụ trách repo D:\Taadaa\tiktok-luot nuoi acc (nuôi acc TikTok).
+          system_prompt: 'Bạn là Coordinator phụ trách repo D:\Taadaa\tiktok-luot
+            nuoi acc (nuôi acc TikTok).
 
-            Trước mọi lệnh: cd /d/Taadaa/tiktok-luot nuoi acc. Đọc AGENTS.md + HANDOFF.md + PROJECT_RULES.md.
+            Trước mọi lệnh: cd /d/Taadaa/tiktok-luot nuoi acc. Đọc AGENTS.md + HANDOFF.md
+            + PROJECT_RULES.md.
 
-            Mọi tác vụ sửa code / viết test BẮT BUỘC dispatch qua `delegate_task` kèm Scope Lock, Test Lock và Budget <= 15 phút, <= 20 tool calls.
-            CẤM bấm ADB tay thay cho sửa code. Báo cáo tóm tắt cuối cùng.'
+            Mọi tác vụ sửa code / viết test BẮT BUỘC dispatch qua `delegate_task`
+            kèm Scope Lock, Test Lock và Budget <= 15 phút, <= 20 tool calls. CẤM
+            bấm ADB tay thay cho sửa code. Báo cáo tóm tắt cuối cùng.'
         '-5435853713':
-          system_prompt: 'Bạn là Coordinator phụ trách repo D:\Taadaa\Tiktok-video (render & upload video TikTok).
+          system_prompt: 'Bạn là Coordinator phụ trách repo D:\Taadaa\Tiktok-video
+            (render & upload video TikTok).
 
-            Trước mọi lệnh: cd /d/Taadaa/Tiktok-video. Đọc AGENTS.md + HANDOFF.md + PROJECT_RULES.md.
+            Trước mọi lệnh: cd /d/Taadaa/Tiktok-video. Đọc AGENTS.md + HANDOFF.md
+            + PROJECT_RULES.md.
 
-            Mọi tác vụ sửa code / viết test BẮT BUỘC dispatch qua `delegate_task` kèm Scope Lock, Test Lock và Budget <= 15 phút, <= 20 tool calls.
-            CẤM bấm ADB tay thay cho sửa code. Báo cáo tóm tắt cuối cùng.'
+            Mọi tác vụ sửa code / viết test BẮT BUỘC dispatch qua `delegate_task`
+            kèm Scope Lock, Test Lock và Budget <= 15 phút, <= 20 tool calls. CẤM
+            bấm ADB tay thay cho sửa code. Báo cáo tóm tắt cuối cùng.'
         '-5494641602':
-          system_prompt: 'Bạn là Coordinator phụ trách repo D:\Taadaa\Tiktok_Reg (đăng ký TikTok).
+          system_prompt: 'Bạn là Coordinator phụ trách repo D:\Taadaa\Tiktok_Reg (đăng
+            ký TikTok).
 
-            Trước mọi lệnh: cd /d/Taadaa/Tiktok_Reg. Đọc AGENTS.md + HANDOFF.md + PROJECT_RULES.md.
+            Trước mọi lệnh: cd /d/Taadaa/Tiktok_Reg. Đọc AGENTS.md + HANDOFF.md +
+            PROJECT_RULES.md.
 
-            Mọi tác vụ sửa code / viết test BẮT BUỘC dispatch qua `delegate_task` kèm Scope Lock, Test Lock và Budget <= 15 phút, <= 20 tool calls.
-            CẤM bấm ADB tay thay cho sửa code. Báo cáo tóm tắt cuối cùng.'
+            Mọi tác vụ sửa code / viết test BẮT BUỘC dispatch qua `delegate_task`
+            kèm Scope Lock, Test Lock và Budget <= 15 phút, <= 20 tool calls. CẤM
+            bấm ADB tay thay cho sửa code. Báo cáo tóm tắt cuối cùng.'
       group_allowed_chats:
-        - -5373649734
-        - '-5373649734'
+      - -5373649734
+      - '-5373649734'
       observe_unmentioned_group_messages: true
       require_mention: false
 streaming:
@@ -324,141 +341,103 @@ updates:
   non_interactive_local_changes: stash
 _config_version: 33
 custom_providers:
-  - api_key: «redacted:sk-…»
-    api_mode: chat_completions
-    base_url: http://127.0.0.1:20128/v1
-    discover_models: false
-    key_env: NINEROUTER_API_KEY
-    model: 9r-free
-    models:
-      ag/claude-opus-4-6-thinking:
-        context_length: 1000000
-      ag/claude-sonnet-4-6:
-        context_length: 1000000
-      ag/gemini-3.7-flash-high:
-        context_length: 1048576
-      claude-sonnet-4-6:
-        context_length: 1000000
-      gemini-3.7-flash-high:
-        context_length: 1048576
-      gpt-5.6-luna:
-        context_length: 256000
-      gpt-5.6-sol:
-        context_length: 256000
-      gpt-5.6-terra:
-        context_length: 256000
-      plan-review:
-        context_length: 256000
-      plan-review-hard:
-        context_length: 256000
-      9r-free:
-        context_length: 1048576
-    name: 9router
+- api_key: «redacted:sk-…»
+  api_mode: chat_completions
+  base_url: http://127.0.0.1:20128/v1
+  discover_models: false
+  key_env: NINEROUTER_API_KEY
+  model: 9r-free
+  models:
+    ag/claude-opus-4-6-thinking:
+      context_length: 1000000
+    ag/claude-sonnet-4-6:
+      context_length: 1000000
+    ag/gemini-3.7-flash-high:
+      context_length: 1048576
+    claude-sonnet-4-6:
+      context_length: 1000000
+    gemini-3.7-flash-high:
+      context_length: 1048576
+    gpt-5.6-luna:
+      context_length: 256000
+    gpt-5.6-sol:
+      context_length: 256000
+    gpt-5.6-terra:
+      context_length: 256000
+    plan-review:
+      context_length: 256000
+    plan-review-hard:
+      context_length: 256000
+    9r-free:
+      context_length: 1048576
+  name: 9router
 group_sessions_per_user: true
 plugins:
   enabled:
-    - farm-coordinator-guard
+  - farm-coordinator-guard
   disabled: []
   entries:
     farm-coordinator-guard:
       allow_tool_override: false
 known_plugin_toolsets:
   cli:
-    - spotify
+  - spotify
   telegram:
-    - spotify
+  - spotify
 platform_toolsets:
   cli:
-    - browser
-    - clarify
-    - code_execution
-    - computer_use
-    - cronjob
-    - delegation
-    - file
-    - image_gen
-    - kanban
-    - memory
-    - session_search
-    - skills
-    - terminal
-    - todo
-    - tts
-    - web
+  - browser
+  - clarify
+  - code_execution
+  - computer_use
+  - cronjob
+  - delegation
+  - file
+  - image_gen
+  - kanban
+  - memory
+  - session_search
+  - skills
+  - terminal
+  - todo
+  - tts
+  - web
   discord:
-    - hermes-discord
+  - hermes-discord
   google_chat:
-    - hermes-google_chat
+  - hermes-google_chat
   homeassistant:
-    - hermes-homeassistant
+  - hermes-homeassistant
   qqbot:
-    - hermes-qqbot
+  - hermes-qqbot
   signal:
-    - hermes-signal
+  - hermes-signal
   slack:
-    - hermes-slack
+  - hermes-slack
   teams:
-    - hermes-teams
+  - hermes-teams
   telegram:
-    - browser
-    - clarify
-    - code_execution
-    - computer_use
-    - cronjob
-    - delegation
-    - file
-    - image_gen
-    - kanban
-    - memory
-    - session_search
-    - skills
-    - terminal
-    - todo
-    - tts
-    - web
+  - browser
+  - clarify
+  - code_execution
+  - computer_use
+  - cronjob
+  - delegation
+  - file
+  - image_gen
+  - kanban
+  - memory
+  - session_search
+  - skills
+  - terminal
+  - todo
+  - tts
+  - web
   whatsapp:
-    - hermes-whatsapp
+  - hermes-whatsapp
   yuanbao:
-    - hermes-yuanbao
+  - hermes-yuanbao
 session_reset:
   at_hour: 4
   idle_minutes: 1440
   mode: none
-
-# ── Security ──────────────────────────────────────────────────────────
-# Secret redaction is ON by default — strings that look like API keys,
-# tokens, and passwords are masked in tool output, logs, and chat
-# responses before the model or user ever sees them. Set redact_secrets
-# to false to disable (e.g. when developing the redactor itself).
-# tirith pre-exec scanning is enabled by default when the tirith binary
-# is available. Configure via security.tirith_* keys or env vars
-# (TIRITH_ENABLED, TIRITH_BIN, TIRITH_TIMEOUT, TIRITH_FAIL_OPEN).
-#
-# security:
-#   redact_secrets: true
-#   tirith_enabled: true
-#   tirith_path: "tirith"
-#   tirith_timeout: 5
-#   tirith_fail_open: true
-
-# ── Fallback Model ────────────────────────────────────────────────────
-# Automatic provider failover when primary is unavailable.
-# Uncomment and configure to enable. Triggers on rate limits (429),
-# overload (529), service errors (503), or connection failures.
-#
-# Supported providers:
-#   openrouter   (OPENROUTER_API_KEY)  — routes to any model
-#   openai-codex (OAuth — hermes auth) — OpenAI Codex
-#   nous         (OAuth — hermes auth) — Nous Portal
-#   zai          (ZAI_API_KEY)         — Z.AI / GLM
-#   kimi-coding  (KIMI_API_KEY)        — Kimi / Moonshot
-#   kimi-coding-cn (KIMI_CN_API_KEY)   — Kimi / Moonshot (China)
-#   minimax      (MINIMAX_API_KEY)     — MiniMax
-#   minimax-cn   (MINIMAX_CN_API_KEY)  — MiniMax (China)
-#   bedrock      (AWS IAM / boto3)     — AWS Bedrock (Converse API)
-#
-# For custom OpenAI-compatible endpoints, add base_url and key_env.
-#
-# fallback_model:
-#   provider: openrouter
-#   model: anthropic/claude-sonnet-4
