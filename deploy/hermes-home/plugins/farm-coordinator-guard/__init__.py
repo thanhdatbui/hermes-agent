@@ -58,6 +58,28 @@ MAX_WORKER_CALLS = int(os.environ.get("WORKER_MAX_CALLS", 12))
 MAX_COORDINATOR_DISPATCHES = int(os.environ.get("COORDINATOR_MAX_DISPATCHES", 3))
 POPUP_SELECTOR_PATTERN = re.compile(r"\b(?:popup|allowlist|survey|ads?|selector|advert)\b", re.IGNORECASE)
 
+# --- ANTI-OVERENGINEERING CAPABILITY LOCK REGEXES (Claude Opus High Approved) ---
+_SCHEDULER_RE = re.compile(
+    r"\b(crontab|schtasks|Register-ScheduledTask|New-ScheduledTask|"
+    r"systemctl|launchctl|New-Service|sc\.exe\s+create|\bat\b)\b", re.IGNORECASE)
+
+_FILEWRITE_SHELL_RE = re.compile(
+    r"(>>?\s*[^\s|&]+)"
+    r"|(<<\s*['\"]?\w+)"
+    r"|\btee\b|\bSet-Content\b|\bOut-File\b|\bAdd-Content\b"
+    r"|\[IO\.File\]::Write"
+    r"|open\([^)]*['\"][wa]\b"
+    r"|fs\.writeFileSync|fs\.appendFileSync"
+    r"|writeAllText|WriteAllLines", re.IGNORECASE)
+
+_DAEMON_RE = re.compile(
+    r"\b(Popen|nohup|Start-Process|start\s+/b|pm2\s+start|forever\s+start|setsid)\b|&\s*$", re.IGNORECASE)
+
+_TOOLNAME_RE = re.compile(
+    r"[\w\-]*(heal|watchdog|daemon|monitor|auto[_\-]|recover|keepalive|"
+    r"guardian|supervisor|healer|repair)[\w\-]*\.(py|ps1|sh|js|cmd|bat)", re.IGNORECASE)
+
+
 
 def is_monolith_smoke(path_str: str) -> bool:
     """Check if a path or command points to a monolith flow (*_smoke.py) at any directory depth."""
@@ -549,6 +571,8 @@ def _on_pre_llm_call(
         return None
 
     msg = user_message.strip()
+    now_ts = time.time()
+    _update_session_state(session_id, {"last_user_msg_ts": now_ts})
 
     # Reset override
     if re.search(r"^/(reset_guard|guard_off|unblock)\b|reset\s+farm\s+guard", msg, re.IGNORECASE):
@@ -556,9 +580,18 @@ def _on_pre_llm_call(
             "phase": "IDLE",
             "inspect_budget": 0,
             "dispatch_count": 0,
+            "build_token": False,
+            "infra_budget_used": 0,
         })
         logger.info("[FARM_GUARD] Guard manually reset to IDLE for session %s", session_id)
-        return {"context": "[FARM GUARD]: Phase đã reset về IDLE."}
+        return {"context": "[FARM GUARD]: Phase đã reset về IDLE. Mọi cờ build_token và infra_budget đã xóa sạch."}
+
+    # Authorize tool build token (User-authorized escape hatch)
+    if re.search(r"^/(authorize[-_]build|allow[-_]build)\b|duyệt\s+tạo\s+tool|cho\s+phép\s+tạo\s+tool", msg, re.IGNORECASE):
+        _update_session_state(session_id, {"build_token": True})
+        logger.info("[FARM_GUARD] Build token authorized by user for session %s", session_id)
+        return {"context": "[FARM GUARD]: User đã cấp quyền /authorize-build. Đã mở khóa tạo tool/lịch mới cho nhiệm vụ này."}
+
 
     # Farm Alert (Ưu tiên cao nhất — phải kiểm tra trước Closeout tránh template dính chữ 'closeout')
     is_alert = bool(
@@ -878,7 +911,75 @@ def _on_pre_tool_call(
     sess_state = _get_session_state(sess_id)
     phase = sess_state.get("phase", "IDLE")
 
+    # =========================================================================
+    # ANTI-OVERENGINEERING HARD ENFORCEMENT (Claude Opus High Approved)
+    # Applied to Coordinator Sessions to prevent Secondary Sidetracking
+    # =========================================================================
+    build_authorized = bool(sess_state.get("build_token", False))
+    now = time.time()
+    last_msg_ts = sess_state.get("last_user_msg_ts", now)
+    user_idle = now - last_msg_ts if last_msg_ts else 0.0
+
+    # 1. LATENCY LOCK (Rule 4): Đóng băng khi vượt quá 12 phút kể từ tin nhắn user
+    if user_idle > 12 * 60 and phase not in ("CLOSEOUT", "WORKER_RUNNING"):
+        if fn_name not in ("delegate_task", "terminal", "skill_view", "todo"):
+            _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
+            return {
+                "action": "block",
+                "message": (
+                    f"⛔ [FARM GUARD - RULE 4: LATENCY FREEZE]:\n"
+                    f"Đã {int(user_idle/60)} phút trôi qua kể từ tin nhắn của user mà nhiệm vụ chính chưa xong!\n"
+                    "CẤM MỌI HÀNH VI RẼ NHÁNH. Chỉ được phép tập trung hoàn thành Primary Task hoặc báo cáo blocker cho user."
+                ),
+            }
+
+    # 2. CRONJOB LOCK (Rule 2): Cấm Coordinator tự tạo cronjob mới
+    if fn_name == "cronjob":
+        action = str(fn_args.get("action") or "").lower() if isinstance(fn_args, dict) else ""
+        if action in ("create", "add") and not build_authorized:
+            _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
+            return {
+                "action": "block",
+                "message": (
+                    "⛔ [FARM GUARD - RULE 2: ZERO SECONDARY TOOL-BUILDING]:\n"
+                    "Coordinator CẤM TUYỆT ĐỐI tự ý tạo cronjob khi đang thực hiện nhiệm vụ!\n"
+                    "Mọi hành vi lập lịch ngầm chỉ được phép khi có lệnh tường minh (/authorize-build) từ User."
+                ),
+            }
+
+    # 3. TOOL/SCRIPT WRITE LOCK (Rule 2): Cấm ghi/sửa tool script phụ ngoài scope
+    if fn_name in ("write_file", "patch"):
+        target_path = str(fn_args.get("path") or "").lower().replace("\\", "/") if isinstance(fn_args, dict) else ""
+        is_tool_script = bool(_TOOLNAME_RE.search(target_path)) or any(k in target_path for k in ["healer", "watchdog", "daemon", "auto_heal"])
+        is_new_script = ("tools/" in target_path or "scripts/" in target_path) and target_path.endswith((".py", ".ps1", ".sh", ".bat"))
+        if (is_tool_script or is_new_script) and not build_authorized and phase != "CLOSEOUT":
+            _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
+            return {
+                "action": "block",
+                "message": (
+                    "⛔ [FARM GUARD - RULE 2: ZERO SECONDARY TOOL-BUILDING]:\n"
+                    f"Thao tác ghi/tạo script phụ `{target_path}` BỊ CHẶN ĐỨNG VẬT LÝ!\n"
+                    "Coordinator CẤM tự ý viết tool, watchdog, daemon phụ ngoài nhiệm vụ chính khi chưa có /authorize-build."
+                ),
+            }
+
+    # 4. INFRA UNBLOCK QUOTA (Rule 3): Tối đa 3 hành động xử lý hạ tầng phụ (web/browser)
+    if fn_name in ("browser_navigate", "browser_click", "browser_type"):
+        infra_used = sess_state.get("infra_budget_used", 0) + 1
+        _update_session_state(sess_id, {"infra_budget_used": infra_used})
+        if infra_used > 3 and not build_authorized and phase != "CLOSEOUT":
+            _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
+            return {
+                "action": "block",
+                "message": (
+                    f"⛔ [FARM GUARD - RULE 3: O(1) UNBLOCK LIMIT]:\n"
+                    f"Đã thực hiện {infra_used} thao tác hạ tầng phụ (web/browser)! Vượt quá hạn mức O(1) (<60s).\n"
+                    "CẤM tiếp tục sa đà điều tra web. DỪNG LẠI và báo cáo 1 dòng cho User: '[BLOCKER] Hạ tầng lỗi — chờ chỉ đạo.'"
+                ),
+            }
+
     # 1. State Guard: Phase ALERT
+
     if phase == "ALERT":
         # Chặn toàn bộ Investigative Tools ở Phase ALERT
         if fn_name in INVESTIGATIVE_TOOLS:
@@ -955,7 +1056,45 @@ def _on_pre_tool_call(
             _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
             return claude_guard_res
 
+        # Check Shell Scheduler Evasion (schtasks, Register-ScheduledTask, crontab)
+        if _SCHEDULER_RE.search(cmd) and not build_authorized:
+            _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
+            return {
+                "action": "block",
+                "message": (
+                    "⛔ [FARM GUARD - RULE 2: SHELL SCHEDULER BLOCKED]:\n"
+                    f"Lệnh: `{cmd[:80]}`\n"
+                    "CẤM Coordinator tự ý tạo Scheduled Task (schtasks / Register-ScheduledTask / crontab) để né cron tool!"
+                ),
+            }
+
+        # Check Shell Daemon / Background Process Evasion (Popen, Start-Process, nohup)
+        if _DAEMON_RE.search(cmd) and not build_authorized and not any(k in cmd.lower() for k in ["git", "inspect_machine", "claude", "grep"]):
+            _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
+            return {
+                "action": "block",
+                "message": (
+                    "⛔ [FARM GUARD - RULE 2: BACKGROUND DAEMON BLOCKED]:\n"
+                    f"Lệnh: `{cmd[:80]}`\n"
+                    "CẤM Coordinator spawn tiến trình nền (Popen / Start-Process / nohup / &) né quản lý tiến trình!"
+                ),
+            }
+
+        # Check Shell File Write Evasion (redirect >, >>, heredoc <<, Set-Content, Out-File)
+        if _FILEWRITE_SHELL_RE.search(cmd) and not build_authorized and phase != "CLOSEOUT":
+            if _TOOLNAME_RE.search(cmd) or re.search(r"\b(tools|scripts)/.*\.(py|ps1|sh)\b", cmd.replace("\\", "/"), re.IGNORECASE):
+                _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
+                return {
+                    "action": "block",
+                    "message": (
+                        "⛔ [FARM GUARD - RULE 2: SHELL FILE WRITE BLOCKED]:\n"
+                        f"Lệnh: `{cmd[:80]}`\n"
+                        "CẤM dùng redirect shell (> / >>), heredoc (<< EOF) hoặc PowerShell để tự tạo file script phụ!"
+                    ),
+                }
+
         # Tầng 1: Allowlist O(1)
+
         if any(re.search(p, cmd, re.IGNORECASE) for p in ALLOWLIST_PATTERNS):
             return None
 
