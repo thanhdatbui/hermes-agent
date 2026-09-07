@@ -724,113 +724,34 @@ def _worker_gate_lock():
 
 
 def check_worker_tool_gate(tool_name: str, session_id: str, args: Any = None) -> Optional[Dict[str, Any]]:
-    """Enforce hard limits on Worker subagents to eliminate Analysis Paralysis.
+    """Lightweight safety-only invariant check for Worker subagents.
     
-    Rules:
-    1. MAX_WORKER_CALLS (12): Hard stop worker after 12 calls (including blocked attempts).
-    2. MONOLITH BLOCK: Cấm tuyệt đối read_file/search_files vào *_smoke.py (feed_swipe_smoke >22k lines).
-    3. READ_BUDGET (3): Tối đa 3 lần đọc file/search.
-    4. WRITE_DEADLINE (4): Nếu call_count >= 4 và write_count == 0, khóa công cụ đọc VÀ terminal probe, ép ghi code ngay.
+    Principles (Claude Opus High Approved):
+    - NO micro-managing counters (READ_BUDGET, WRITE_DEADLINE, MAX_WORKER_CALLS removed).
+    - Subagents have full capability (computer_use, terminal, read/write).
+    - Only guard against true catastrophic/destructive infrastructure damage.
     """
     if not session_id:
         return None
-    with _worker_gate_lock():
-        worker_states = _load_worker_gate_state()
-        state = worker_states.setdefault(session_id, {"read_count": 0, "write_count": 0, "call_count": 0, "updated_at": time.time()})
-        state["updated_at"] = time.time()
 
-        # Luôn tăng call_count cho mỗi lượt gọi (kể cả lượt bị block) để chống loop vô tận
-        state["call_count"] += 1
+    fn_args = args if isinstance(args, dict) else {}
 
-        # 0. Check Hard Budget Cap: Tối đa MAX_WORKER_CALLS (12)
-        if state["call_count"] > MAX_WORKER_CALLS:
-            _save_worker_gate_state(worker_states)
-            return {
-                "action": "block",
-                "reason": (
-                    f"⛔ [WORKER TOOL GATE - BUDGET EXHAUSTED]: "
-                    f"Worker đã chạm trần ngân sách ({state['call_count'] - 1}/{MAX_WORKER_CALLS} tool calls)! "
-                    "Mọi tool calls tiếp theo đã bị KHÓA CỨNG. "
-                    "Bạn BẮT BUỘC phải dừng lại và xuất báo cáo kết quả / blocker ngay lập tức."
-                ),
-            }
-
-        # 1. Monolith File Guard: Cấm đọc hoặc tìm kiếm trong các file monolith *_smoke.py
-        fn_args = args if isinstance(args, dict) else {}
-        target_path = str(fn_args.get("path") or fn_args.get("file_path") or fn_args.get("pattern") or "")
-        if target_path and is_monolith_smoke(target_path):
-            _save_worker_gate_state(worker_states)
-            return {
-                "action": "block",
-                "reason": (
-                    f"⛔ [WORKER TOOL GATE - MONOLITH BLOCKED]: "
-                    f"Đường dẫn '{target_path}' là file flow monolith (>22.000 dòng)! "
-                    "CẤM TUYỆT ĐỐI mở file flow monolith để điều tra. "
-                    "Lỗi popup/selector BẮT BUỘC xử lý tại benign_popup_registry.py theo PATCH_CONTRACT."
-                ),
-            }
-
-        READ_TOOLS = {"read_file", "search_files"}
-        WRITE_TOOLS = {"write_file", "patch"}
-
-        if tool_name in READ_TOOLS:
-            # Check WRITE_DEADLINE: nếu đã qua WRITE_DEADLINE (turn 4 trở đi) mà write_count == 0
-            if state["call_count"] >= WRITE_DEADLINE and state["write_count"] == 0:
-                _save_worker_gate_state(worker_states)
+    # Chỉ chặn các lệnh mang tính phá hoại hạ tầng thật / blast radius lớn
+    if tool_name == "terminal":
+        cmd = str(fn_args.get("command") or "").strip().lower()
+        destructive_patterns = [
+            r"\brm\s+-[rf]{1,2}\s+[/\\~]",
+            r"\bformat\s+[c-z]:",
+            r"\bfastboot\s+wipe",
+            r"\badb\s+.*--wipe\b",
+        ]
+        for pat in destructive_patterns:
+            if re.search(pat, cmd):
                 return {
                     "action": "block",
-                    "reason": (
-                        f"⛔ [WORKER TOOL GATE - WRITE DEADLINE]: "
-                        f"Đã qua {state['call_count'] - 1} tool calls mà chưa có thao tác write_file/patch nào. "
-                        "Mọi công cụ đọc đã bị KHÓA CỨNG. Bạn BẮT BUỘC phải ghi bản vá (write_file/patch) ngay lập tức!"
-                    ),
-                }
-            # Check READ_BUDGET: tối đa 3 lần đọc file/search
-            if state["read_count"] >= READ_BUDGET:
-                _save_worker_gate_state(worker_states)
-                return {
-                    "action": "block",
-                    "reason": (
-                        f"⛔ [WORKER TOOL GATE - READ BUDGET EXHAUSTED]: "
-                        f"Ngân sách đọc của Worker đã hết ({state['read_count']}/{READ_BUDGET}). "
-                        "Bạn BẮT BUỘC phải gọi write_file hoặc patch ngay bây giờ theo patch_intent! "
-                        "CẤM tiếp tục khảo sát lan man."
-                    ),
-                }
-            state["read_count"] += 1
-
-        elif tool_name in WRITE_TOOLS:
-            state["write_count"] += 1
-
-        elif tool_name == "terminal":
-            cmd = str(fn_args.get("command") or "").strip()
-            # Bịt lỗ hổng Monolith qua terminal
-            if is_monolith_smoke(cmd):
-                _save_worker_gate_state(worker_states)
-                return {
-                    "action": "block",
-                    "reason": (
-                        f"⛔ [WORKER TOOL GATE - MONOLITH TERMINAL BLOCKED]: "
-                        f"Lệnh terminal chứa tham chiếu đến file flow monolith (>22.000 dòng)! "
-                        "CẤM TUYỆT ĐỐI đọc hoặc thao tác trên file flow monolith. "
-                        "Lỗi popup/selector BẮT BUỘC xử lý tại benign_popup_registry.py theo PATCH_CONTRACT."
-                    ),
-                }
-            # Cưỡng chế nghiêm ngặt: Mọi lệnh terminal của Worker PHẢI là lệnh kiểm tra an toàn (py_compile, git status, git diff)
-            if not is_safe_terminal_verify(cmd):
-                _save_worker_gate_state(worker_states)
-                return {
-                    "action": "block",
-                    "reason": (
-                        f"⛔ [WORKER TOOL GATE - TERMINAL PROBE BLOCKED]: "
-                        f"Lệnh '{cmd[:60]}' không nằm trong allowlist an toàn của Worker! "
-                        "Worker fix alert chỉ được phép chạy: 'python -m py_compile <file>', 'git status', 'git diff'. "
-                        "CẤM chạy script probe, inspect, print/cat/type file. "
-                        "Hành động BẮT BUỘC là dùng patch hoặc write_file để ghi bản vá theo PATCH_CONTRACT."
-                    ),
+                    "reason": f"⛔ [SAFETY INVARIANT]: Lệnh terminal '{cmd[:50]}' có nguy cơ phá hoại hạ tầng bị chặn.",
                 }
 
-        _save_worker_gate_state(worker_states)
     return None
 
 
