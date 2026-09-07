@@ -36,7 +36,7 @@ fallback_providers:
   provider: custom:9router
 agent:
   max_turns: 200
-  gateway_timeout: 14400
+  gateway_timeout: 3600
   api_max_retries: 2
   service_tier: normal
   gateway_timeout_warning: 3600
@@ -220,11 +220,12 @@ memory:
   flush_min_turns: 6
   nudge_interval: 10
 delegation:
-  model: ag-gemini-pool-3
+  model: ag-claude
   provider: omni
-  max_iterations: 35
-  reasoning_effort: high
-  max_concurrent_children: 8
+  max_iterations: 15
+  reasoning_effort: medium
+  max_concurrent_children: 4
+  child_timeout_seconds: 600
 moa:
   presets:
     default:
