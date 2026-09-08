@@ -33,9 +33,24 @@ from zoneinfo import ZoneInfo
 
 logger = logging.getLogger("feed_session_watchdog")
 HCMC = ZoneInfo("Asia/Ho_Chi_Minh")
-LIVE_ROOT = r"D:\Taadaa\runtime\kibe\live"
-STATE_FILE = r"D:\Taadaa\runtime\kibe\cron-state\feed_session_reported.json"
-SOURCE_CONFIG = r"D:\Taadaa\runtime\kibe\cron-source\hermes_cron_source_config.json"
+def _get_runtime_root() -> str:
+    cfg_path = os.environ.get("TAADAA_HOST_CONFIG", r"D:\Taadaa\machine-config\kibe.yaml")
+    rt_root = r"D:\Taadaa\runtime\kibe"
+    if os.path.exists(cfg_path):
+        try:
+            import yaml
+            with open(cfg_path, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f) or {}
+                if "runtime_root" in data:
+                    rt_root = data["runtime_root"]
+        except Exception:
+            pass
+    return rt_root
+
+_RT_ROOT = _get_runtime_root()
+LIVE_ROOT = os.path.join(_RT_ROOT, "live")
+STATE_FILE = os.path.join(_RT_ROOT, "cron-state", "feed_session_reported.json")
+SOURCE_CONFIG = os.path.join(_RT_ROOT, "cron-source", "hermes_cron_source_config.json")
 SHIFT_UPLOAD_LEDGER_PATH = r"C:\ProgramData\Taadaa\tiktok-upload-concurrency-v1\shift_upload_history.json"
 
 DEFAULT_ROW1_MACHINES_COUNT = 74
@@ -465,6 +480,14 @@ def parse_upload_results(run_dir: str) -> dict:
     return parse_run_all(run_dir)[2]
 
 
+def _add_minutes_to_hm(hm_str: str, minutes: int) -> str:
+    h, m = map(int, hm_str.split(":"))
+    total = h * 60 + m + minutes
+    new_h = (total // 60) % 24
+    new_m = total % 60
+    return f"{new_h:02d}:{new_m:02d}"
+
+
 def format_released_follows(fl_released: list, all_follows: dict) -> list:
     """Phân nhóm và format danh sách các máy bị nhả follow theo số lượt hoàn thành."""
     if not fl_released:
@@ -514,14 +537,26 @@ def can_report_session(
     has_unattempted_locked: bool = False,
 ) -> bool:
     """Xác định điều kiện chốt báo cáo cho một phiên."""
-    if runner_busy:
-        return False
-    # Nếu trước giờ window_end_hm mà vẫn còn máy CHỈ bị skipped-device-locked (chưa chạy thật),
-    # thì KHÔNG được chốt sớm (chờ tick sau nhả lock chạy lại)
-    if is_today:
-        if now_hm < window_end_hm and has_unattempted_locked:
+    # Nếu tất cả máy dự kiến đã hoàn tất thật: chốt ngay lập tức
+    if completed_expected_count >= expected_count and not has_unattempted_locked:
+        return True
+
+    # Nếu đang trong giờ phiên (now_hm < window_end_hm):
+    if is_today and now_hm < window_end_hm:
+        if runner_busy:
             return False
-        return (completed_expected_count >= expected_count) or (now_hm >= window_end_hm)
+        if has_unattempted_locked:
+            return False
+        return completed_expected_count >= expected_count
+
+    # Khi đã qua window_end_hm: cho phép grace period tối đa 20 phút nếu runner đang chạy
+    if is_today:
+        grace_end_hm = _add_minutes_to_hm(window_end_hm, 20)
+        if runner_busy and now_hm < grace_end_hm:
+            return False
+        # Quá grace period 20 phút hoặc runner không bận -> BẮT BUỘC chốt báo cáo
+        return True
+
     return (completed_expected_count >= expected_count) or (now_hm >= "02:00")
 
 
