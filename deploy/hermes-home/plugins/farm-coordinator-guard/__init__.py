@@ -576,8 +576,13 @@ def _on_pre_tool_call(
         # Nếu patch có nội dung patch text (V4A format patch=...)
         patch_text = str(fn_args.get("patch") or "")
         if patch_text:
-            patch_pat = r'(?:\*\*\* Update File:|[+-]{3} [ab]/)([^\r\n]+)'
+            patch_pat = r'(?:\*\*\* (?:Update|Add|Delete) File:|\*\*\* Move to:|[+-]{3} [ab]/)([^\r\n]+)'
             embedded_paths = re.findall(patch_pat, patch_text)
+            if not embedded_paths:
+                return {
+                    "action": "block",
+                    "reason": "⛔ [COORDINATOR GUARD - UNPARSEABLE PATCH]: Nội dung patch không phân giải được đường dẫn đích hợp lệ!",
+                }
             for ep in embedded_paths:
                 ep_clean = ep.strip().strip("'\"<>`")
                 if ep_clean:
@@ -585,7 +590,7 @@ def _on_pre_tool_call(
                     if not _is_path_in_roots(real_ep, COORD_ALLOWED_ROOTS):
                         return {
                             "action": "block",
-                            "reason": f"⛔ [COORDINATOR GUARD - PATCH OUT OF WHITELIST]: File nhúng trong patch '{ep_clean}' nằm ngoài whitelist!",
+                            "reason": f"⛔ [COORDINATOR GUARD - PATCH OUT OF WHITELIST]: File nhúng trong patch '{ep_clean}' nằm ngoài whitelist: {COORD_ALLOWED_ROOTS}!",
                         }
 
         if not c_target and not patch_text:
