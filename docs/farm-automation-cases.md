@@ -367,3 +367,22 @@ Tài liệu này tổng hợp toàn bộ các case lỗi thực tế trên hệ 
      `HERMES_TELEGRAM_HEARTBEAT_TIMEOUT=10.0`
      Cơ chế tiêu thụ: Hàm `_polling_heartbeat_loop()` trong `adapter.py` tự động đọc 2 biến này để probe `getWebhookInfo.pending_update_count` mỗi 15s và giật đứt socket chết trong 30-45s.
   2. Triển khai Tinyproxy có BasicAuth trên VPS Doravo (`<VPS_IP_SGP>`, Singapore - chung DC với Telegram) và cấu hình `TELEGRAM_PROXY=http://...` trong runtime local `.env` (giữ sanitized placeholder trong template repo để chống rò rỉ secret) để chuyển socket Telegram sang Singapore, miễn nhiễm với đứt cáp biển quốc tế đêm của ISP VN.
+
+---
+
+### Case GW-03: Tách biệt tiến trình Gateway (pythonw.exe) với Farm Cron (python.exe) và Script Detached Delayed Restart
+- **Vị trí áp dụng:** `deploy/hermes-home/scripts/delayed-restart.ps1`, runtime `%LOCALAPPDATA%\hermes\scripts\delayed-restart.ps1`.
+- **Nguyên nhân gây lỗi (Anti-Pattern):**
+  1. *Nhầm lẫn Farm Cron với Gateway:* Nhầm tưởng rằng khi batch Farm Cron (PID 46152, 63868 chạy feed 80 máy tới tối) đang chạy thì không thể khởi động lại Gateway. Thực tế các batch farm chạy độc lập bằng `python.exe`, còn Gateway chạy bằng `pythonw.exe` (PID 9344). Việc dừng hoặc restart Gateway hoàn toàn không ảnh hưởng tới tiến trình farm.
+  2. *Rò rỉ socket CLOSE_WAIT qua VPS Tinyproxy:* Sau 28 giờ chạy liên tục, tiến trình Gateway kẹt tới 388 socket ở trạng thái `CLOSE_WAIT` trỏ về port 18888 trên VPS Doravo do Tinyproxy chủ động cắt idle connection nhưng client socket chưa thu hồi kịp, gây cạn connection pool nội bộ và phát sinh Silent TCP Stall ngậm tin nhắn người dùng 4.5 phút (09:03 → 09:07).
+  3. *Bẫy tự kill / Farm Guard chặn self-restart:* Lệnh `hermes gateway restart` từ bên trong phiên chat bị chặn đứng bởi `_contains_gateway_lifecycle_command` và `_HERMES_GATEWAY=1`. Nếu kill tiến trình Gateway ngay lập tức, turn chat hiện tại sẽ bị ngắt ngang trước khi kịp gửi tin nhắn phản hồi đến Telegram.
+- **Giải pháp chuẩn (Case Fix):**
+  1. Xây dựng kịch bản PowerShell Detached Delayed Restart chuẩn hóa (`delayed-restart.ps1`):
+     - Dùng biến môi trường chuẩn (`$env:LOCALAPPDATA`, `$env:APPDATA`) thay vì hardcode user path để bảo đảm tính portability trên toàn farm.
+     - Xóa biến cờ `_HERMES_GATEWAY`.
+     - Chờ `Start-Sleep -Seconds 6` để phiên chat hoàn tất gửi tin nhắn phản hồi Telegram.
+     - Tra cứu PID Gateway động từ `gateway_state.json` hoặc fallback qua CIM (`pythonw*` + `*gateway*run*`), tuyệt đối không fallback PID cố định.
+     - Xác thực process info trước khi dừng (`CommandLine -like "*gateway*run*"`) để chống kill nhầm tiến trình khác của hệ thống.
+     - Khởi động lại Gateway qua `Start-Process $defaultPythonw -ArgumentList "-m hermes_cli.main gateway run" -WindowStyle Hidden -PassThru` và verify `!$newProc.HasExited`.
+  2. Kích hoạt detached background qua worker subprocess, giúp Coordinator tuân thủ bất biến an toàn.
+  3. Kết quả: Toàn bộ 388 socket kẹt `CLOSE_WAIT` được giải phóng 100%, Gateway khởi động lại thành công sang PID mới (53676), khôi phục phản hồi tức thì (<1s) mà không làm gián đoạn batch farm.
