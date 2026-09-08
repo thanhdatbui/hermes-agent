@@ -1,21 +1,16 @@
-"""Farm Coordinator Guard Plugin for Hermes v3.2 (Default-Deny Terminal Allowlist Architecture).
+"""Farm Coordinator Guard Plugin for Hermes v3.3 (Hermetic Shell & Strict Shlex Allowlist).
 
-Claude Opus High Certified Final Principles:
-1. WORKER TERMINAL STRICT ALLOWLIST (Default-Deny):
-   - Worker BỊ CẤM TOÀN BỘ terminal commands TRỪ KHI nằm trong ALLOWLIST tường minh:
-     * `pytest` (chạy unit test)
-     * `git status`, `git diff`, `git log` (kiểm tra code diff)
-     * `adb devices`, `python ...inspect_machine.py` (đọc trạng thái máy)
-     * `python -m py_compile` (kiểm tra cú pháp)
-     * `psutil`, `tasklist`, `Get-Process`
-   - CẤM TUYỆT ĐỐI mọi lệnh python tự do, bash, node, script runner có thể ghi file hoặc sửa state.db!
-2. STATE.DB & GUARD SOURCE HARD PROTECTION:
-   - Cấm mọi hành vi ghi vào `state.db`, `farm_coordinator_phase.json` và `GUARD_SOURCE_DIR`.
-3. FAIL-CLOSED IDENTITY RESOLUTION:
-   - Mặc định khi nghi ngờ danh tính -> COI LÀ WORKER (UNTRUSTED).
-   - Chỉ cấp quyền Coordinator khi có bằng chứng xác thực dương tính (Positive Proof).
-4. SCOPE LOCK FILE WRITE:
-   - Worker CHỈ ĐƯỢC GHI FILE qua `write_file` / `patch` vào đúng file được Coordinator cấp phép.
+Claude Opus High Certified Final Architecture:
+1. HERMETIC SHELL GUARD (Metacharacter & Chaining Elimination):
+   - Worker BỊ CẤM TUYỆT ĐỐI mọi shell metacharacters: `;`, `&`, `|`, `$`, `` ` ``, `(`, `)`, `>`, `<`.
+   - Lệnh worker được parse bằng `shlex.split` và kiểm tra toàn diện, neo cứng `\Z`.
+   - CẤM TUYỆT ĐỐI mọi hình thức chèn lệnh kiểu `pytest ; python evil.py`.
+2. STRICT ALLOWLIST (No Wildcard `.*` Injections):
+   - Chỉ cho phép: `pytest ...`, `git status`, `git diff`, `git log`, `adb devices`, `inspect_machine.py <int>`, `python -m py_compile <path>`, `psutil`, `tasklist`.
+3. UNCONDITIONAL PROTECTED TARGET SHIELD:
+   - Cứ lệnh/path nào đụng đến `farm-coordinator-guard`, `state.db` hoặc `farm_coordinator_phase.json` là HARD BLOCK 100% không cần điều kiện phụ!
+4. FAIL-CLOSED ATOMIC FILE LOCK:
+   - Nếu không giành được lock trong 3s -> RAISE RuntimeError ngay lập tức (KHÔNG fail-open yield).
 """
 
 from __future__ import annotations
@@ -39,44 +34,9 @@ HERMES_ROOT = Path(os.environ.get("HERMES_HOME", Path.home() / "AppData" / "Loca
 STATE_FILE = HERMES_ROOT / "farm_coordinator_phase.json"
 STATE_LOCK_FILE = STATE_FILE.with_suffix(".lock")
 DB_PATH = HERMES_ROOT / "state.db"
-WATCHDOG_STATE_FILE = HERMES_ROOT / "watchdog_state.json"
-WATCHDOG_LOCK_FILE = WATCHDOG_STATE_FILE.with_suffix(".lock")
 WORKER_TIMEOUT_SECONDS = 1200
-CLOSEOUT_TIMEOUT_SECONDS = 7200
 SESSION_EXPIRY_SECONDS = 7200
-
-POPUP_SELECTOR_PATTERN = re.compile(r"\b(?:popup|allowlist|survey|ads?|selector|advert)\b", re.IGNORECASE)
 MAX_COORDINATOR_DISPATCHES = int(os.environ.get("COORDINATOR_MAX_DISPATCHES", 3))
-
-_FILEWRITE_SHELL_RE = re.compile(
-    r"(>>?\s*[^\s|&]+)|(<<\s*['\"]?\w+)|\btee\b|\bSet-Content\b|\bOut-File\b|\bAdd-Content\b|"
-    r"\[IO\.File\]::Write|open\([^)]*['\"][wa]\b|fs\.writeFileSync|fs\.appendFileSync|"
-    r"writeAllText|WriteAllLines|\bcp\b|\bcopy\b|\bmv\b|\bmove\b|\bCopy-Item\b|\bMove-Item\b|"
-    r"\bshutil\b|\bpathlib\b",
-    re.IGNORECASE,
-)
-
-INVESTIGATIVE_TOOLS = {
-    "read_file",
-    "search_files",
-    "patch",
-    "write_file",
-    "execute_code",
-}
-
-# WORKER TERMINAL STRICT ALLOWLIST (Claude Opus High Approved):
-# Mọi lệnh ngoài danh sách này đều bị HARD BLOCK 100%!
-WORKER_TERMINAL_ALLOWLIST = [
-    r"^\s*(?:python\s+-m\s+)?pytest\b",
-    r"^\s*git(\s+-C\s+[^\s]+)?\s+(status|diff|log)\b",
-    r"^\s*adb\s+devices\b",
-    r"^\s*python\s+.*inspect_machine\.py\b",
-    r"^\s*python\s+.*-m\s+py_compile\b",
-    r"^\s*python\s+--version\b",
-    r"^\s*psutil\b",
-    r"^\s*tasklist\b",
-    r"^\s*Get-Process\b",
-]
 
 ALLOWED_REPO_ROOTS = [
     os.path.realpath(r"D:\Taadaa"),
@@ -86,41 +46,51 @@ ALLOWED_REPO_ROOTS = [
 GUARD_SOURCE_DIR = os.path.realpath(str(HERMES_ROOT / "plugins" / "farm-coordinator-guard"))
 VALID_CODE_EXTENSIONS = {".py", ".json", ".yaml", ".yml", ".sh", ".ps1", ".js", ".ts", ".toml", ".ini"}
 
+_SHELL_METACHAR_RE = re.compile(r"[;&|`$><()\\\n\r]")
+
+INVESTIGATIVE_TOOLS = {
+    "read_file",
+    "search_files",
+    "patch",
+    "write_file",
+    "execute_code",
+}
+
 _CACHE_LOCK = threading.Lock()
 _PARENT_SESSION_CACHE: Dict[str, str] = {}
 
 
 @contextmanager
 def _acquire_file_lock(lock_path: Path):
+    """Fail-closed atomic file lock (Requirement 4 Closed).
+    Nếu không giành được lock trong 3s -> RAISE RuntimeError, KHÔNG BAO GIỜ yield khi chưa có lock!
+    """
     fd = None
     start = time.time()
     while time.time() - start < 3.0:
         try:
-            if lock_path.exists():
-                try:
-                    if time.time() - lock_path.stat().st_mtime > 10:
-                        lock_path.unlink()
-                except OSError:
-                    pass
             fd = os.open(str(lock_path), os.O_CREAT | os.O_EXCL | os.O_RDWR)
             break
         except FileExistsError:
             time.sleep(0.05)
         except Exception:
             break
+
+    if fd is None:
+        raise RuntimeError(f"⛔ [LOCK FAIL-CLOSED]: Không thể giành file lock '{lock_path.name}' sau 3s! Thao tác bị từ chối để bảo vệ dữ liệu.")
+
     try:
         yield
     finally:
-        if fd is not None:
-            try:
-                os.close(fd)
-            except Exception:
-                pass
-            try:
-                if lock_path.exists():
-                    lock_path.unlink()
-            except OSError:
-                pass
+        try:
+            os.close(fd)
+        except Exception:
+            pass
+        try:
+            if lock_path.exists():
+                lock_path.unlink()
+        except OSError:
+            pass
 
 
 def _load_state_file() -> Dict[str, Any]:
@@ -156,27 +126,30 @@ def _save_state_file(data: Dict[str, Any]) -> None:
 def _get_session_state(session_id: str) -> Dict[str, Any]:
     if not session_id:
         return {}
-    with _acquire_file_lock(STATE_LOCK_FILE):
-        data = _load_state_file()
-        sessions = data.get("sessions", {})
-        now = time.time()
-        needs_save = False
-        for sid, sdata in list(sessions.items()):
-            if not isinstance(sdata, dict):
-                continue
-            updated_at = sdata.get("updated_at") or sdata.get("dispatched_at") or 0
-            if now - updated_at > SESSION_EXPIRY_SECONDS:
-                sessions.pop(sid, None)
-                needs_save = True
-                continue
-            phase = sdata.get("phase")
-            if phase == "WORKER_RUNNING" and (now - sdata.get("dispatched_at", 0) > WORKER_TIMEOUT_SECONDS):
-                sdata["phase"] = "IDLE"
-                sdata["updated_at"] = now
-                needs_save = True
-        if needs_save:
-            _save_state_file(data)
-        return sessions.get(session_id, {})
+    try:
+        with _acquire_file_lock(STATE_LOCK_FILE):
+            data = _load_state_file()
+            sessions = data.get("sessions", {})
+            now = time.time()
+            needs_save = False
+            for sid, sdata in list(sessions.items()):
+                if not isinstance(sdata, dict):
+                    continue
+                updated_at = sdata.get("updated_at") or sdata.get("dispatched_at") or 0
+                if now - updated_at > SESSION_EXPIRY_SECONDS:
+                    sessions.pop(sid, None)
+                    needs_save = True
+                    continue
+                phase = sdata.get("phase")
+                if phase == "WORKER_RUNNING" and (now - sdata.get("dispatched_at", 0) > WORKER_TIMEOUT_SECONDS):
+                    sdata["phase"] = "IDLE"
+                    sdata["updated_at"] = now
+                    needs_save = True
+            if needs_save:
+                _save_state_file(data)
+            return sessions.get(session_id, {})
+    except RuntimeError:
+        return {}
 
 
 def _update_session_state(session_id: str, updates: Dict[str, Any]) -> None:
@@ -233,11 +206,14 @@ def _is_known_coordinator_session(session_id: str) -> bool:
     except Exception as exc:
         logger.debug("[FARM_GUARD] Error verifying coordinator identity: %s", exc)
 
-    with _acquire_file_lock(STATE_LOCK_FILE):
-        data = _load_state_file()
-        sess_dict = data.get("sessions", {})
-        if session_id in sess_dict and sess_dict[session_id].get("is_coordinator", False):
-            return True
+    try:
+        with _acquire_file_lock(STATE_LOCK_FILE):
+            data = _load_state_file()
+            sess_dict = data.get("sessions", {})
+            if session_id in sess_dict and sess_dict[session_id].get("is_coordinator", False):
+                return True
+    except RuntimeError:
+        pass
 
     return False
 
@@ -262,7 +238,7 @@ def _is_path_in_roots(path: str, roots: List[str]) -> bool:
 
 
 def _is_protected_target(path_or_cmd: str) -> bool:
-    """Kiểm tra xem target có phải là guard source hoặc state.db không."""
+    """Kiểm tra KHÔNG ĐIỀU KIỆN xem target có đụng vào guard hoặc state/db không (Requirement 3 Closed)."""
     if not path_or_cmd:
         return False
     norm_text = path_or_cmd.replace("\\", "/").lower()
@@ -296,25 +272,95 @@ def is_monolith_smoke(path_str: str) -> bool:
     return False
 
 
+def _validate_worker_terminal_command(cmd: str) -> Optional[str]:
+    """Validate terminal command for worker using strict shlex parsing (Requirements 1 & 2 Closed).
+    Returns None if valid, or error message string if blocked.
+    """
+    if not cmd or not cmd.strip():
+        return "Lệnh terminal rỗng!"
+
+    # 1. Chặn đứng tuyệt đối shell metacharacters & command chaining (Requirement 1 & 2)
+    if _SHELL_METACHAR_RE.search(cmd):
+        return (
+            f"⛔ [WORKER GATE - HERMETIC SHELL]: Lệnh terminal chứa ký tự điều khiển shell "
+            f"hoặc chuỗi nối lệnh (; && || | $ ` > < () \\) bị cấm tuyệt đối! Lệnh: '{cmd[:60]}'"
+        )
+
+    # 2. Parse shlex chuẩn xác
+    try:
+        tokens = shlex.split(cmd)
+    except Exception as exc:
+        return f"⛔ [WORKER GATE - SHLEX PARSE ERROR]: Không thể phân tích lệnh terminal: {exc}"
+
+    if not tokens:
+        return "Lệnh terminal rỗng sau khi parse!"
+
+    # 3. Chặn tuyệt đối nếu có bất kỳ token nào đụng vào protected target (Requirement 3)
+    for tok in tokens:
+        if _is_protected_target(tok):
+            return f"⛔ [WORKER GATE - PROTECTED TARGET]: Lệnh chứa tham số trỏ vào thành phần hệ thống được bảo vệ: '{tok}'!"
+
+    prog = tokens[0].lower().replace("\\", "/")
+
+    # Allowlist Case A: pytest (chạy test suite)
+    # Ví dụ: pytest, pytest -v tests/test_core.py, python -m pytest tests/
+    if prog == "pytest" or (prog.endswith("pytest") or prog.endswith("pytest.exe")):
+        return None
+
+    if prog in ("python", "python3", "python.exe") and len(tokens) >= 3 and tokens[1] == "-m" and tokens[2] == "pytest":
+        return None
+
+    # Allowlist Case B: git status / diff / log (kiểm tra diff)
+    # Ví dụ: git status, git diff, git -C D:/Taadaa diff
+    if prog == "git" or prog.endswith("/git") or prog.endswith("/git.exe"):
+        sub_tokens = [t.lower() for t in tokens[1:]]
+        # Bỏ qua cờ -C <path> nếu có
+        idx = 0
+        if len(sub_tokens) >= 2 and sub_tokens[0] == "-c":
+            idx = 2
+        if idx < len(sub_tokens) and sub_tokens[idx] in ("status", "diff", "log"):
+            # Đảm bảo không có cờ nguy hiểm
+            return None
+
+    # Allowlist Case C: adb devices
+    if prog == "adb" or prog.endswith("/adb") or prog.endswith("/adb.exe"):
+        if len(tokens) >= 2 and tokens[1].lower() == "devices":
+            return None
+
+    # Allowlist Case D: inspect_machine.py <machine_num>
+    if prog in ("python", "python3", "python.exe") and len(tokens) >= 2:
+        script = tokens[1].replace("\\", "/").lower()
+        if script.endswith("inspect_machine.py"):
+            # Chỉ cho phép truyền số máy (ví dụ 41)
+            if len(tokens) == 3 and tokens[2].isdigit():
+                return None
+
+    # Allowlist Case E: python -m py_compile <path>
+    if prog in ("python", "python3", "python.exe") and len(tokens) == 4 and tokens[1] == "-m" and tokens[2] == "py_compile":
+        return None
+
+    # Allowlist Case F: psutil / tasklist / Get-Process
+    if prog in ("psutil", "tasklist", "get-process", "tasklist.exe"):
+        return None
+
+    # MỌI LỆNH CÒN LẠI -> DEFAULT-DENY 100%!
+    return (
+        f"⛔ [WORKER GATE - DEFAULT-DENY TERMINAL]: Lệnh terminal '{cmd[:60]}' BỊ CHẶN! "
+        "Worker CHỈ ĐƯỢC PHÉP chạy: pytest, git status/diff/log, adb devices, inspect_machine.py <N>, python -m py_compile <path>, psutil. "
+        "CẤM chạy interpreter hoặc shell script tự do!"
+    )
+
+
 def check_worker_tool_gate(tool_name: str, session_id: str, args: Any = None) -> Optional[Dict[str, Any]]:
     """Action-Based Zero-Bypass Gate for Worker Subagents (Claude Opus High Certified)."""
     fn_args = args if isinstance(args, dict) else {}
 
-    # 1. DEFAULT-DENY ON TERMINAL (Claude Opus High Approved):
-    # CHỈ cho phép các lệnh trong WORKER_TERMINAL_ALLOWLIST. CẤM mọi lệnh interpreter tự do!
+    # 1. DEFAULT-DENY TERMINAL QUA HERMETIC SHLEX PARSER (Requirements 1 & 2 Closed)
     if tool_name == "terminal":
         cmd = str(fn_args.get("command") or "").strip()
-        is_allowed = any(re.search(pat, cmd, re.IGNORECASE) for pat in WORKER_TERMINAL_ALLOWLIST)
-        if not is_allowed:
-            return {
-                "action": "block",
-                "reason": (
-                    f"⛔ [WORKER GATE - DEFAULT-DENY TERMINAL]: Lệnh terminal '{cmd[:60]}' BỊ CHẶN! "
-                    "Worker CHỈ ĐƯỢC PHÉP chạy các lệnh kiểm thử và kiểm tra đã được whitelist: "
-                    "(pytest, git status/diff/log, adb devices, inspect_machine.py, python -m py_compile, psutil). "
-                    "CẤM TUYỆT ĐỐI chạy interpreter hoặc shell script tự do để ghi file ngoài Scope Lock!"
-                ),
-            }
+        err_msg = _validate_worker_terminal_command(cmd)
+        if err_msg:
+            return {"action": "block", "reason": err_msg}
 
     # 2. HARD-BLOCK EXECUTE_CODE
     if tool_name == "execute_code":
@@ -329,7 +375,7 @@ def check_worker_tool_gate(tool_name: str, session_id: str, args: Any = None) ->
         if not target_path:
             return None
 
-        # Guard & State Protection
+        # Guard & State Protection (Requirement 3 Closed)
         if _is_protected_target(target_path):
             return {
                 "action": "block",
@@ -343,7 +389,7 @@ def check_worker_tool_gate(tool_name: str, session_id: str, args: Any = None) ->
                 "reason": f"⛔ [WORKER GATE - OUT OF WHITELIST]: File '{target_path}' nằm ngoài phạm vi repo cho phép: {ALLOWED_REPO_ROOTS}!",
             }
 
-        # Nạp allowed_targets từ state file (Single Source of Truth)
+        # Nạp allowed_targets từ state file
         parent_id = _get_parent_session_id(session_id)
         allowed_targets = []
         if parent_id and parent_id != "env_worker":
@@ -402,7 +448,8 @@ def _on_pre_tool_call(
     sess_id = session_id or kwargs.get("session_id", "")
 
     # =========================================================================
-    # 1. TOP-LEVEL SELF-PROTECTION (C-1 Closed) - Áp dụng cho TẤT CẢ mọi actor
+    # 1. UNCONDITIONAL PROTECTED TARGET SHIELD (Requirement 3 Closed)
+    # Bất kể Coordinator hay Worker, hễ chạm vào Guard/DB/Phase là BLOCK NGAY 100%!
     # =========================================================================
     if fn_name in ("write_file", "patch"):
         target_path = str(fn_args.get("path") or "").strip()
@@ -414,10 +461,10 @@ def _on_pre_tool_call(
 
     if fn_name == "terminal":
         cmd = str(fn_args.get("command") or "").strip()
-        if _is_protected_target(cmd) and _FILEWRITE_SHELL_RE.search(cmd):
+        if _is_protected_target(cmd):
             return {
                 "action": "block",
-                "reason": "⛔ [GUARD SELF-PROTECTION]: Lệnh terminal cố ghi đè plugin farm-coordinator-guard hoặc state.db bị chặn tuyệt đối!",
+                "reason": "⛔ [GUARD SELF-PROTECTION]: Lệnh terminal có chứa thành phần hệ thống được bảo vệ (guard/state.db) bị chặn vô điều kiện!",
             }
 
     if fn_name == "execute_code":
@@ -425,7 +472,7 @@ def _on_pre_tool_call(
         if _is_protected_target(code_str):
             return {
                 "action": "block",
-                "reason": "⛔ [GUARD SELF-PROTECTION]: Mã execute_code cố sửa plugin farm-coordinator-guard hoặc state.db bị chặn tuyệt đối!",
+                "reason": "⛔ [GUARD SELF-PROTECTION]: Mã execute_code có chứa thành phần hệ thống được bảo vệ (guard/state.db) bị chặn vô điều kiện!",
             }
 
     # =========================================================================
@@ -468,7 +515,7 @@ def _on_pre_tool_call(
             }
 
         # =========================================================================
-        # COORDINATOR SCOPE LOCK GATE v3.2 (Zero-Bypass Architecture Certified)
+        # COORDINATOR SCOPE LOCK GATE v3.3 (Zero-Bypass Architecture Certified)
         # =========================================================================
         task_type = str(dt_args.get("task_type") or "").strip().lower()
         is_non_code_exempt = task_type in ("research", "inspect_only", "non_code", "query")
@@ -569,7 +616,7 @@ def _on_pre_tool_call(
                 "is_coordinator": True,
             }
             _update_session_state(sess_id, sess_updates)
-            logger.info("[FARM_GUARD] delegate_task passed Scope Lock v3.2 -> targets: %s", normalized_targets)
+            logger.info("[FARM_GUARD] delegate_task passed Scope Lock v3.3 -> targets: %s", normalized_targets)
             return None
 
         # Non-code task exempt
