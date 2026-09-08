@@ -385,7 +385,7 @@ providers:
       ag-claude: {}
       ag-gemini-pool-3: {}
       ag-opus: {}
-      ag-worker: {}
+      omni-worker: {}
       omni-free: {}
     transport: chat_completions
 quick_commands:
