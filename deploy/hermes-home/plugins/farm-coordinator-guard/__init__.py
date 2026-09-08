@@ -1,20 +1,21 @@
-"""Farm Coordinator Guard Plugin for Hermes v3.1 (Fail-Closed Zero-Bypass Architecture).
+"""Farm Coordinator Guard Plugin for Hermes v3.2 (Default-Deny Terminal Allowlist Architecture).
 
-Design Principles (Claude Opus High Certified):
-1. FAIL-CLOSED IDENTITY RESOLUTION (Critical-1 Closed):
-   - Mặc định khi nghi ngờ danh tính (chưa có trong DB, race condition, DB lỗi) -> COI LÀ WORKER (UNTRUSTED).
-   - Tuyệt đối KHÔNG cấp quyền Coordinator khi chưa có bằng chứng xác thực dương tính (Positive Proof).
-2. NO NONE CACHING (Critical-2 Closed):
-   - Chỉ cache khi parent_id LÀ CHUỖI HỢP LỆ. Tuyệt đối KHÔNG cache None để tránh sticky privilege.
-3. ACTION-BASED DEFAULT-DENY ON WORKERS (C-3, C-4 Closed):
-   - Worker bị HARD BLOCK `execute_code`.
-   - Worker bị ACTION LOCK trên `terminal` cho mọi lệnh ghi/chép file (`_FILEWRITE_SHELL_RE`).
-   - Worker CHỈ được ghi file qua `write_file` / `patch` vào đúng target_files được cấp phép.
-4. SINGLE SOURCE OF TRUTH FOR SCOPE (H-5 & M-6 Closed):
-   - Loại bỏ in-memory map ảo. Dùng state file có lock làm nguồn chân lý duy nhất cross-process.
-   - Hỗ trợ env_worker đọc scope lock từ file state hoặc env TAADAA_SCOPE_FILES.
-5. TOP-LEVEL SELF-PROTECTION (C-1 Closed):
-   - Mọi caller và mọi tool đụng đến GUARD_SOURCE_DIR đều bị chặn.
+Claude Opus High Certified Final Principles:
+1. WORKER TERMINAL STRICT ALLOWLIST (Default-Deny):
+   - Worker BỊ CẤM TOÀN BỘ terminal commands TRỪ KHI nằm trong ALLOWLIST tường minh:
+     * `pytest` (chạy unit test)
+     * `git status`, `git diff`, `git log` (kiểm tra code diff)
+     * `adb devices`, `python ...inspect_machine.py` (đọc trạng thái máy)
+     * `python -m py_compile` (kiểm tra cú pháp)
+     * `psutil`, `tasklist`, `Get-Process`
+   - CẤM TUYỆT ĐỐI mọi lệnh python tự do, bash, node, script runner có thể ghi file hoặc sửa state.db!
+2. STATE.DB & GUARD SOURCE HARD PROTECTION:
+   - Cấm mọi hành vi ghi vào `state.db`, `farm_coordinator_phase.json` và `GUARD_SOURCE_DIR`.
+3. FAIL-CLOSED IDENTITY RESOLUTION:
+   - Mặc định khi nghi ngờ danh tính -> COI LÀ WORKER (UNTRUSTED).
+   - Chỉ cấp quyền Coordinator khi có bằng chứng xác thực dương tính (Positive Proof).
+4. SCOPE LOCK FILE WRITE:
+   - Worker CHỈ ĐƯỢC GHI FILE qua `write_file` / `patch` vào đúng file được Coordinator cấp phép.
 """
 
 from __future__ import annotations
@@ -37,6 +38,7 @@ logger = logging.getLogger(__name__)
 HERMES_ROOT = Path(os.environ.get("HERMES_HOME", Path.home() / "AppData" / "Local" / "hermes"))
 STATE_FILE = HERMES_ROOT / "farm_coordinator_phase.json"
 STATE_LOCK_FILE = STATE_FILE.with_suffix(".lock")
+DB_PATH = HERMES_ROOT / "state.db"
 WATCHDOG_STATE_FILE = HERMES_ROOT / "watchdog_state.json"
 WATCHDOG_LOCK_FILE = WATCHDOG_STATE_FILE.with_suffix(".lock")
 WORKER_TIMEOUT_SECONDS = 1200
@@ -62,6 +64,20 @@ INVESTIGATIVE_TOOLS = {
     "execute_code",
 }
 
+# WORKER TERMINAL STRICT ALLOWLIST (Claude Opus High Approved):
+# Mọi lệnh ngoài danh sách này đều bị HARD BLOCK 100%!
+WORKER_TERMINAL_ALLOWLIST = [
+    r"^\s*(?:python\s+-m\s+)?pytest\b",
+    r"^\s*git(\s+-C\s+[^\s]+)?\s+(status|diff|log)\b",
+    r"^\s*adb\s+devices\b",
+    r"^\s*python\s+.*inspect_machine\.py\b",
+    r"^\s*python\s+.*-m\s+py_compile\b",
+    r"^\s*python\s+--version\b",
+    r"^\s*psutil\b",
+    r"^\s*tasklist\b",
+    r"^\s*Get-Process\b",
+]
+
 ALLOWED_REPO_ROOTS = [
     os.path.realpath(r"D:\Taadaa"),
     os.path.realpath(str(HERMES_ROOT)),
@@ -71,7 +87,7 @@ GUARD_SOURCE_DIR = os.path.realpath(str(HERMES_ROOT / "plugins" / "farm-coordina
 VALID_CODE_EXTENSIONS = {".py", ".json", ".yaml", ".yml", ".sh", ".ps1", ".js", ".ts", ".toml", ".ini"}
 
 _CACHE_LOCK = threading.Lock()
-_PARENT_SESSION_CACHE: Dict[str, str] = {}  # Chỉ cache POSITIVE strings, KHÔNG cache None!
+_PARENT_SESSION_CACHE: Dict[str, str] = {}
 
 
 @contextmanager
@@ -176,7 +192,7 @@ def _update_session_state(session_id: str, updates: Dict[str, Any]) -> None:
 
 
 def _get_parent_session_id(session_id: str) -> Optional[str]:
-    """Get parent_session_id with positive-only caching (Critical-2 Closed)."""
+    """Get parent_session_id with positive-only caching."""
     if not session_id:
         return None
     if os.environ.get("TAADAA_WORKER") == "1":
@@ -187,16 +203,14 @@ def _get_parent_session_id(session_id: str) -> Optional[str]:
 
     parent_id = None
     try:
-        db_path = HERMES_ROOT / "state.db"
-        if db_path.is_file():
-            with sqlite3.connect(str(db_path), timeout=2.0) as con:
+        if DB_PATH.is_file():
+            with sqlite3.connect(str(DB_PATH), timeout=2.0) as con:
                 row = con.execute("SELECT parent_session_id FROM sessions WHERE id = ?", (session_id,)).fetchone()
                 if row and row[0]:
                     parent_id = str(row[0])
     except Exception as exc:
         logger.debug("[FARM_GUARD] Error querying parent for session %s: %s", session_id, exc)
 
-    # CRITICAL-2 CLOSED: CHỈ cache khi parent_id là chuỗi có thật, TUYỆT ĐỐI KHÔNG cache None!
     if parent_id:
         with _CACHE_LOCK:
             _PARENT_SESSION_CACHE[session_id] = parent_id
@@ -204,31 +218,21 @@ def _get_parent_session_id(session_id: str) -> Optional[str]:
 
 
 def _is_known_coordinator_session(session_id: str) -> bool:
-    """Xác thực DƯƠNG TÍNH xem session có phải là Coordinator hợp lệ hay không.
-    
-    CRITICAL-1 CLOSED (FAIL-CLOSED IDENTITY):
-    Một session CHỈ được coi là Coordinator nếu:
-    1. parent_session_id trong DB là RỖNG/NULL (được ghi nhận rõ ràng trong DB là root session).
-    2. VÀ session_id có tồn tại trong `sessions` table của state.db HOẶC đã được đăng ký hợp lệ trong farm_coordinator_phase.json.
-    MỌI TRƯỜNG HỢP CÒN LẠI (session lạ, chưa kịp vào DB, race condition) -> ĐỀU BỊ COI LÀ UNTRUSTED WORKER!
-    """
+    """Xác thực DƯƠNG TÍNH xem session có phải là Coordinator hợp lệ hay không."""
     if not session_id:
         return False
     if os.environ.get("TAADAA_WORKER") == "1":
         return False
 
     try:
-        db_path = HERMES_ROOT / "state.db"
-        if db_path.is_file():
-            with sqlite3.connect(str(db_path), timeout=2.0) as con:
+        if DB_PATH.is_file():
+            with sqlite3.connect(str(DB_PATH), timeout=2.0) as con:
                 row = con.execute("SELECT parent_session_id FROM sessions WHERE id = ?", (session_id,)).fetchone()
                 if row is not None:
-                    # Tồn tại trong DB và parent_session_id là NULL/empty -> POSITIVE COORDINATOR PROOF
                     return row[0] is None or str(row[0]).strip() == ""
     except Exception as exc:
         logger.debug("[FARM_GUARD] Error verifying coordinator identity: %s", exc)
 
-    # Kiểm tra trong farm_coordinator_phase.json nếu DB chưa kịp nạp
     with _acquire_file_lock(STATE_LOCK_FILE):
         data = _load_state_file()
         sess_dict = data.get("sessions", {})
@@ -257,16 +261,23 @@ def _is_path_in_roots(path: str, roots: List[str]) -> bool:
     return False
 
 
-def _is_guard_source(path_or_cmd: str) -> bool:
+def _is_protected_target(path_or_cmd: str) -> bool:
+    """Kiểm tra xem target có phải là guard source hoặc state.db không."""
     if not path_or_cmd:
         return False
     norm_text = path_or_cmd.replace("\\", "/").lower()
-    if "farm-coordinator-guard" in norm_text:
+    if "farm-coordinator-guard" in norm_text or "state.db" in norm_text or "farm_coordinator_phase" in norm_text:
         return True
     try:
         real_p = os.path.normcase(os.path.realpath(path_or_cmd))
         real_guard = os.path.normcase(GUARD_SOURCE_DIR)
-        return real_p == real_guard or real_p.startswith(real_guard + os.sep)
+        real_db = os.path.normcase(os.path.realpath(str(DB_PATH)))
+        real_phase = os.path.normcase(os.path.realpath(str(STATE_FILE)))
+        return (
+            real_p == real_guard or real_p.startswith(real_guard + os.sep)
+            or real_p == real_db
+            or real_p == real_phase
+        )
     except Exception:
         return False
 
@@ -286,34 +297,26 @@ def is_monolith_smoke(path_str: str) -> bool:
 
 
 def check_worker_tool_gate(tool_name: str, session_id: str, args: Any = None) -> Optional[Dict[str, Any]]:
-    """Action-Based Zero-Bypass Gate for Worker Subagents (Fail-Closed)."""
+    """Action-Based Zero-Bypass Gate for Worker Subagents (Claude Opus High Certified)."""
     fn_args = args if isinstance(args, dict) else {}
 
-    # 1. Destructive catastrophic invariant
+    # 1. DEFAULT-DENY ON TERMINAL (Claude Opus High Approved):
+    # CHỈ cho phép các lệnh trong WORKER_TERMINAL_ALLOWLIST. CẤM mọi lệnh interpreter tự do!
     if tool_name == "terminal":
         cmd = str(fn_args.get("command") or "").strip()
-        cmd_lower = cmd.lower()
-        destructive_patterns = [
-            r"\brm\s+-[rf]{1,2}\s+[/\\~]",
-            r"\bformat\s+[c-z]:",
-            r"\bfastboot\s+wipe",
-            r"\badb\s+.*--wipe\b",
-        ]
-        for pat in destructive_patterns:
-            if re.search(pat, cmd_lower):
-                return {
-                    "action": "block",
-                    "reason": f"⛔ [SAFETY INVARIANT]: Lệnh terminal '{cmd[:50]}' có nguy cơ phá hoại hạ tầng bị chặn.",
-                }
-
-        # ACTION-BASED LOCK (C-4 Closed): Worker CẤM dùng terminal để ghi file / copy / move
-        if _FILEWRITE_SHELL_RE.search(cmd):
+        is_allowed = any(re.search(pat, cmd, re.IGNORECASE) for pat in WORKER_TERMINAL_ALLOWLIST)
+        if not is_allowed:
             return {
                 "action": "block",
-                "reason": "⛔ [WORKER GATE - ACTION LOCK]: Worker CẤM ghi/chép file qua terminal (redirection/cp/copy/mv/PowerShell)! Bắt buộc dùng tool patch hoặc write_file trong Scope Lock.",
+                "reason": (
+                    f"⛔ [WORKER GATE - DEFAULT-DENY TERMINAL]: Lệnh terminal '{cmd[:60]}' BỊ CHẶN! "
+                    "Worker CHỈ ĐƯỢC PHÉP chạy các lệnh kiểm thử và kiểm tra đã được whitelist: "
+                    "(pytest, git status/diff/log, adb devices, inspect_machine.py, python -m py_compile, psutil). "
+                    "CẤM TUYỆT ĐỐI chạy interpreter hoặc shell script tự do để ghi file ngoài Scope Lock!"
+                ),
             }
 
-    # 2. ACTION-BASED LOCK (C-3 Closed): Worker CẤM execute_code
+    # 2. HARD-BLOCK EXECUTE_CODE
     if tool_name == "execute_code":
         return {
             "action": "block",
@@ -326,14 +329,14 @@ def check_worker_tool_gate(tool_name: str, session_id: str, args: Any = None) ->
         if not target_path:
             return None
 
-        # Guard Self-Protection (C-1 Closed)
-        if _is_guard_source(target_path):
+        # Guard & State Protection
+        if _is_protected_target(target_path):
             return {
                 "action": "block",
-                "reason": "⛔ [WORKER GATE - SELF-MODIFICATION BLOCKED]: CẤM TUYỆT ĐỐI sửa mã nguồn plugin bảo vệ farm-coordinator-guard!",
+                "reason": "⛔ [WORKER GATE - SELF-MODIFICATION BLOCKED]: CẤM TUYỆT ĐỐI sửa mã nguồn plugin bảo vệ hoặc cơ sở dữ liệu hệ thống!",
             }
 
-        # Whitelist Containment (Bypass 5 Closed): Áp dụng bình đẳng cho MỌI worker
+        # Whitelist Containment
         if not _is_path_in_roots(target_path, ALLOWED_REPO_ROOTS):
             return {
                 "action": "block",
@@ -347,12 +350,11 @@ def check_worker_tool_gate(tool_name: str, session_id: str, args: Any = None) ->
             parent_state = _get_session_state(parent_id)
             allowed_targets = parent_state.get("target_files", [])
         elif parent_id == "env_worker":
-            # Hỗ trợ env_worker nhận target_files từ env TAADAA_SCOPE_FILES hoặc file state
             env_targets = os.environ.get("TAADAA_SCOPE_FILES", "")
             if env_targets:
                 allowed_targets = [p.strip() for p in env_targets.split(";") if p.strip()]
 
-        # READ-ONLY WORKER ENFORCEMENT: Nếu allowed_targets rỗng -> CẤM GHI 100%
+        # READ-ONLY WORKER ENFORCEMENT
         if not allowed_targets:
             return {
                 "action": "block",
@@ -362,7 +364,7 @@ def check_worker_tool_gate(tool_name: str, session_id: str, args: Any = None) ->
         real_target = os.path.normcase(os.path.realpath(os.path.normpath(target_path)))
         normalized_allowed = [os.path.normcase(os.path.realpath(os.path.normpath(p))) for p in allowed_targets]
 
-        # Targeted Test File Scope (Bypass 6 Closed): Chỉ cho phép file đích HOẶC test_<stem>.py tương ứng
+        # Targeted Test File Scope
         is_direct_target = real_target in normalized_allowed
         is_exact_test_file = False
         if not is_direct_target:
@@ -404,31 +406,30 @@ def _on_pre_tool_call(
     # =========================================================================
     if fn_name in ("write_file", "patch"):
         target_path = str(fn_args.get("path") or "").strip()
-        if target_path and _is_guard_source(target_path):
+        if target_path and _is_protected_target(target_path):
             return {
                 "action": "block",
-                "reason": "⛔ [GUARD SELF-PROTECTION]: CẤM TUYỆT ĐỐI sửa mã nguồn plugin farm-coordinator-guard!",
+                "reason": "⛔ [GUARD SELF-PROTECTION]: CẤM TUYỆT ĐỐI sửa mã nguồn plugin farm-coordinator-guard hoặc state.db!",
             }
 
     if fn_name == "terminal":
         cmd = str(fn_args.get("command") or "").strip()
-        if _is_guard_source(cmd) and _FILEWRITE_SHELL_RE.search(cmd):
+        if _is_protected_target(cmd) and _FILEWRITE_SHELL_RE.search(cmd):
             return {
                 "action": "block",
-                "reason": "⛔ [GUARD SELF-PROTECTION]: Lệnh terminal cố ghi đè plugin farm-coordinator-guard bị chặn tuyệt đối!",
+                "reason": "⛔ [GUARD SELF-PROTECTION]: Lệnh terminal cố ghi đè plugin farm-coordinator-guard hoặc state.db bị chặn tuyệt đối!",
             }
 
     if fn_name == "execute_code":
         code_str = str(fn_args.get("code") or "").strip()
-        if _is_guard_source(code_str):
+        if _is_protected_target(code_str):
             return {
                 "action": "block",
-                "reason": "⛔ [GUARD SELF-PROTECTION]: Mã execute_code cố sửa plugin farm-coordinator-guard bị chặn tuyệt đối!",
+                "reason": "⛔ [GUARD SELF-PROTECTION]: Mã execute_code cố sửa plugin farm-coordinator-guard hoặc state.db bị chặn tuyệt đối!",
             }
 
     # =========================================================================
-    # 2. FAIL-CLOSED DISPATCH GATE (Critical-1 Closed)
-    # Nếu KHÔNG PHẢI Coordinator đã xác thực -> BẮT BUỘC ĐI QUA WORKER GATE!
+    # 2. FAIL-CLOSED DISPATCH GATE
     # =========================================================================
     if _is_worker_session(sess_id):
         gate_res = check_worker_tool_gate(fn_name, sess_id, fn_args)
@@ -467,12 +468,11 @@ def _on_pre_tool_call(
             }
 
         # =========================================================================
-        # COORDINATOR SCOPE LOCK GATE v3.1 (Zero-Bypass Architecture Certified)
+        # COORDINATOR SCOPE LOCK GATE v3.2 (Zero-Bypass Architecture Certified)
         # =========================================================================
         task_type = str(dt_args.get("task_type") or "").strip().lower()
         is_non_code_exempt = task_type in ("research", "inspect_only", "non_code", "query")
 
-        # DEFAULT-DENY — Mọi task delegate đều yêu cầu target_files TRỪ KHI exempt rõ ràng
         if not is_non_code_exempt:
             raw_targets: List[str] = []
 
@@ -555,13 +555,12 @@ def _on_pre_tool_call(
                     }
 
                 # Blacklist guard source
-                if _is_guard_source(p):
+                if _is_protected_target(p):
                     return {
                         "action": "block",
-                        "reason": "⛔ [COORDINATOR GUARD - GUARD SOURCE BLACKLISTED]: CẤM Scope Lock vào chính file của plugin bảo vệ!",
+                        "reason": "⛔ [COORDINATOR GUARD - GUARD SOURCE BLACKLISTED]: CẤM Scope Lock vào chính file của plugin bảo vệ hoặc state.db!",
                     }
 
-            # Cập nhật state Coordinator vào file state (Single Source of Truth)
             sess_updates = {
                 "phase": "WORKER_RUNNING",
                 "dispatched_at": time.time(),
@@ -570,10 +569,10 @@ def _on_pre_tool_call(
                 "is_coordinator": True,
             }
             _update_session_state(sess_id, sess_updates)
-            logger.info("[FARM_GUARD] delegate_task passed Scope Lock v3.1 -> targets: %s", normalized_targets)
+            logger.info("[FARM_GUARD] delegate_task passed Scope Lock v3.2 -> targets: %s", normalized_targets)
             return None
 
-        # Non-code task exempt -> gán target_files=[] (worker sẽ thành read-only)
+        # Non-code task exempt
         _update_session_state(sess_id, {
             "phase": "WORKER_RUNNING",
             "dispatched_at": time.time(),
