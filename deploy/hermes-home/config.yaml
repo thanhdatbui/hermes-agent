@@ -164,6 +164,18 @@ custom_providers:
     plan-review-hard:
       context_length: 256000
   name: 9router
+- name: omni
+  provider_key: omni
+  api_mode: chat_completions
+  base_url: http://127.0.0.1:20129/v1
+  discover_models: false
+  key_env: OMNIROUTE_API_KEY
+  model: omni-worker
+  models:
+    omni-worker:
+      context_length: 200000
+    omni-free:
+      context_length: 200000
 delegation:
   child_timeout_seconds: 600
   max_concurrent_children: 8
