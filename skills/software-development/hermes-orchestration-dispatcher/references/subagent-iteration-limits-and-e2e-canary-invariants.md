@@ -17,6 +17,14 @@
     * `delegation.child_timeout_seconds: 600` (hard cap 10 phút, quá giờ runtime tự kill).
     * `delegation.reasoning_effort: medium` (giảm 50% độ trễ turn).
     * **Zero-Trust Verification**: Coordinator tuyệt đối không tin prose báo cáo; sau khi worker xong BẮT BUỘC chạy `git status --porcelain` và `git diff` kiểm tra độc lập.
+- **PITFALL TRÔI CẤU HÌNH WORKER SANG `ag-gemini-pool-3` (08/09/2026)**:
+  + Nếu `config.yaml` bị trôi hoặc vô tình set `delegation.model: ag-gemini-pool-3` (kèm `reasoning_effort: high`), mỗi lượt API call của Gemini tốn ~65-70 giây do sinh thinking stream quá dài.
+  + Hậu quả trực tiếp: Chỉ thực hiện được 9 calls đã cạn sạch 600 giây timeout (`status=timeout, api_calls=9, 600.08s`), worker bị runtime kill trước khi kịp ghi file. Trong khi đó cùng task đó trên `ag-claude` (effort medium) hoàn tất 5 calls và 9 tests chỉ mất 82 giây.
+  + **Quy chuẩn sửa ngay**: Khi thấy worker báo timeout >600s với số calls thấp (<10 calls), kiểm tra ngay `hermes config show` hoặc `config.yaml`. Chạy lệnh chuẩn hóa:
+    ```bash
+    hermes config set delegation.model ag-claude
+    hermes config set delegation.reasoning_effort medium
+    ```
 - Nếu đặt `delegation.max_iterations: 100`, subagent sẽ cạn budget ngay sau bước patch và bị ngắt trước khi kịp chạy canary test.
 
 ## 2. Invariant cho Coordinator: CẤM BỎ DỞ & CẤM IN LỆNH BẮT USER CHẠY
