@@ -67,7 +67,7 @@ if ($targetPid) {
             Log-Msg "Canh bao: PID $targetPid khong phai Gateway hop le, bo qua kill."
         }
     } catch {
-        Log-Msg "Loi khi dung process $targetPid: $_"
+        Log-Msg "Loi khi dung process ${targetPid}: $_"
     }
 } else {
     Log-Msg "Khong tim thay Gateway PID cu de dung, tiep tuc khoi dong moi."
