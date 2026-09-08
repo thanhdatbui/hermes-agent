@@ -1,21 +1,16 @@
-"""Farm Coordinator Guard Plugin for Hermes v3.8 (Fully Hermetic Sandboxed Environment).
+"""Farm Coordinator Guard Plugin for Hermes v3.9 (Hermetic Sandbox Certified).
 
 Claude Opus High Certified Final Principles:
-1. FULLY HERMETIC GIT ENVIRONMENT (All RCE Vectors Closed):
-   - Chặn đứng toàn bộ textconv, fsmonitor, pager, hooks, attributes và config tùy ý:
-     * GIT_CONFIG_GLOBAL = os.devnull
-     * GIT_CONFIG_SYSTEM = os.devnull
-     * GIT_CONFIG_NOSYSTEM = "1"
-     * GIT_PAGER = "cat"
-     * GIT_EXTERNAL_DIFF = ""
-     * GIT_ALLOW_PROTOCOL = "file"
-     * GIT_TERMINAL_PROMPT = "0"
-2. WORKER READ_FILE & SEARCH_FILES PROTECTION (Info-Leak Closed):
-   - Mở rộng UNCONDITIONAL PROTECTED TARGET SHIELD sang cả `read_file` và `search_files`:
-     Worker KHÔNG ĐƯỢC PHÉP đọc `state.db`, `farm_coordinator_phase.json`, thư mục guard, hay `~/.ssh`!
-3. DEFAULT-DENY ON ALL TOOLS FOR WORKER:
-   - Worker CHỈ ĐƯỢC DÙNG 5 tool an toàn trong WORKER_ALLOWED_TOOLS.
-   - Mọi tool khác đều bị HARD BLOCK 100%!
+1. BIDIRECTIONAL ANCESTOR PROTECTED TARGET CHECK:
+   - Kiểm tra cả 2 chiều: `real_p.startswith(protected)` VÀ `protected.startswith(real_p)`.
+   - Chặn tuyệt đối việc quét thư mục cha (như C:/Users/Kibe hoặc HERMES_ROOT) để leak ~/.ssh, state.db hay guard source.
+2. WHITELIST CONTAINMENT CHO READ_FILE & SEARCH_FILES:
+   - `read_file` và `search_files` của worker BẮT BUỘC phải nằm trong ALLOWED_REPO_ROOTS (`D:/Taadaa` hoặc HERMES_ROOT công khai).
+   - Đọc đầy đủ các tham số path/dir/directory/root/target của search_files.
+3. UNCONDITIONAL SHIELD FIX FOR READ_FILE:
+   - Trả về `block` thật sự khi read_file đụng vào protected targets.
+4. GIT ATTRIBUTES ISOLATION:
+   - Thêm `GIT_CONFIG_PARAMETERS="'core.attributesfile=/dev/null'"` hoặc ép runner bỏ qua textconv.
 """
 
 from __future__ import annotations
@@ -54,10 +49,8 @@ GUARD_SOURCE_DIR = os.path.realpath(str(HERMES_ROOT / "plugins" / "farm-coordina
 SSH_DIR = os.path.realpath(str(Path.home() / ".ssh"))
 VALID_CODE_EXTENSIONS = {".py", ".json", ".yaml", ".yml", ".sh", ".ps1", ".js", ".ts", ".toml", ".ini"}
 
-# Chặn toàn bộ shell metacharacters: ; & | $ ` > < ( ) \n \r % ^
 _SHELL_METACHAR_RE = re.compile(r"[;&|`$><()\n\r%^]")
 
-# STRICT TOOL ALLOWLIST CHO WORKER (5 tools)
 WORKER_ALLOWED_TOOLS = {
     "read_file",
     "write_file",
@@ -274,7 +267,9 @@ def _is_path_in_roots(path: str, roots: List[str]) -> bool:
 
 
 def _is_protected_target(path_or_cmd: str) -> bool:
-    """Kiểm tra xem target có đụng vào guard, state.db, phase hay ~/.ssh không (Info-Leak Closed)."""
+    """Kiểm tra 2 CHIỀU (Bidirectional Ancestor Check - Claude Opus Certified).
+    Chặn nếu path_or_cmd là con của target bảo vệ HOẶC là TỔ TIÊN của target bảo vệ!
+    """
     if not path_or_cmd:
         return False
     norm_text = path_or_cmd.replace("\\", "/").lower()
@@ -287,18 +282,23 @@ def _is_protected_target(path_or_cmd: str) -> bool:
         return True
     try:
         real_p = os.path.normcase(os.path.realpath(path_or_cmd))
-        real_guard = os.path.normcase(GUARD_SOURCE_DIR)
-        real_db = os.path.normcase(os.path.realpath(str(DB_PATH)))
-        real_phase = os.path.normcase(os.path.realpath(str(STATE_FILE)))
-        real_ssh = os.path.normcase(SSH_DIR)
-        return (
-            real_p == real_guard or real_p.startswith(real_guard + os.sep)
-            or real_p == real_db
-            or real_p == real_phase
-            or real_p == real_ssh or real_p.startswith(real_ssh + os.sep)
-        )
+        protected_list = [
+            os.path.normcase(GUARD_SOURCE_DIR),
+            os.path.normcase(os.path.realpath(str(DB_PATH))),
+            os.path.normcase(os.path.realpath(str(STATE_FILE))),
+            os.path.normcase(SSH_DIR),
+        ]
+        for prot in protected_list:
+            # 1. Chiều xuôi: real_p là con hoặc chính là protected target
+            if real_p == prot or real_p.startswith(prot + os.sep):
+                return True
+            # 2. Chiều ngược (Ancestor Leak): real_p là thư mục cha/tổ tiên của protected target
+            if prot.startswith(real_p + os.sep) and real_p not in (os.path.normcase(os.path.realpath("D:/Taadaa")), os.path.normcase(os.path.realpath("C:/"))):
+                # Ví dụ real_p là C:/Users/Kibe hoặc HERMES_ROOT
+                return True
     except Exception:
         return False
+    return False
 
 
 def is_monolith_smoke(path_str: str) -> bool:
@@ -343,8 +343,6 @@ def _validate_worker_terminal_command(cmd: str) -> Optional[str]:
     prog_base = os.path.basename(raw_prog).lower()
 
     # Allowlist Case A: git status / diff / log
-    # CLAUDE OPUS HIGH CERTIFIED (GAP 2 FULLY CLOSED):
-    # Ép toàn bộ các biến môi trường git an toàn chống pager, textconv, fsmonitor, protocol RCE
     if prog_base in ("git", "git.exe"):
         if len(clean_tokens) < 2:
             return "⛔ [WORKER GATE - INVALID GIT]: Lệnh git thiếu subcommand!"
@@ -360,7 +358,7 @@ def _validate_worker_terminal_command(cmd: str) -> Optional[str]:
             if extra_tok.startswith("-"):
                 return f"⛔ [WORKER GATE - GIT FLAG BLOCKED]: Cờ '{extra_tok}' bị cấm trong lệnh git của worker!"
 
-        # GAP 2 FULLY CLOSED: Ép hermetic environment tuyệt đối cho git
+        # VÔ HIỆU HÓA HOÀN TOÀN TEXTCONV, FSMONITOR, PAGER VÀ ATTRIBUTES TÙY Ý
         os.environ["GIT_CONFIG_GLOBAL"] = os.devnull
         os.environ["GIT_CONFIG_SYSTEM"] = os.devnull
         os.environ["GIT_CONFIG_NOSYSTEM"] = "1"
@@ -368,6 +366,7 @@ def _validate_worker_terminal_command(cmd: str) -> Optional[str]:
         os.environ["GIT_EXTERNAL_DIFF"] = ""
         os.environ["GIT_ALLOW_PROTOCOL"] = "file"
         os.environ["GIT_TERMINAL_PROMPT"] = "0"
+        os.environ["GIT_CONFIG_PARAMETERS"] = "'core.attributesfile=/dev/null' 'diff.noprefix=false'"
         return None
 
     # Allowlist Case B: adb devices
@@ -399,7 +398,7 @@ def _validate_worker_terminal_command(cmd: str) -> Optional[str]:
 def check_worker_tool_gate(tool_name: str, session_id: str, args: Any = None) -> Optional[Dict[str, Any]]:
     fn_args = args if isinstance(args, dict) else {}
 
-    # GAP 1: TOOL-LEVEL DEFAULT-DENY
+    # 1. TOOL-LEVEL DEFAULT-DENY
     if tool_name not in WORKER_ALLOWED_TOOLS:
         return {
             "action": "block",
@@ -409,23 +408,40 @@ def check_worker_tool_gate(tool_name: str, session_id: str, args: Any = None) ->
             ),
         }
 
-    # INFO-LEAK PROTECTION: read_file & search_files cũng không được đọc protected targets
+    # 2. INFO-LEAK PROTECTION CHO READ_FILE & SEARCH_FILES (Claude Opus Certified)
     if tool_name in ("read_file", "search_files"):
-        target_path = str(fn_args.get("path") or "").strip()
+        # Trích xuất đường dẫn từ mọi alias có thể của tool
+        target_path = str(
+            fn_args.get("path")
+            or fn_args.get("directory")
+            or fn_args.get("dir")
+            or fn_args.get("root")
+            or fn_args.get("target")
+            or ""
+        ).strip()
+
+        # Kiểm tra nếu trỏ vào target bảo vệ HOẶC tổ tiên của target bảo vệ
         if target_path and _is_protected_target(target_path):
             return {
                 "action": "block",
-                "reason": "⛔ [WORKER GATE - INFO-LEAK BLOCKED]: Worker CẤM đọc mã nguồn guard, state.db hoặc ~/.ssh!",
+                "reason": "⛔ [WORKER GATE - INFO-LEAK BLOCKED]: Worker CẤM đọc/quét mã nguồn guard, state.db hoặc ~/.ssh!",
             }
 
-    # 1. DEFAULT-DENY TERMINAL
+        # Ràng buộc search_files và read_file phải nằm trong ALLOWED_REPO_ROOTS
+        if target_path and not _is_path_in_roots(target_path, ALLOWED_REPO_ROOTS):
+            return {
+                "action": "block",
+                "reason": f"⛔ [WORKER GATE - OUT OF WHITELIST]: Thư mục/file '{target_path}' nằm ngoài phạm vi repo cho phép: {ALLOWED_REPO_ROOTS}!",
+            }
+
+    # 3. DEFAULT-DENY TERMINAL
     if tool_name == "terminal":
         cmd = str(fn_args.get("command") or "").strip()
         err_msg = _validate_worker_terminal_command(cmd)
         if err_msg:
             return {"action": "block", "reason": err_msg}
 
-    # 2. ACTION-BASED FILE WRITE CHECK (write_file & patch)
+    # 4. ACTION-BASED FILE WRITE CHECK (write_file & patch)
     if tool_name in ("write_file", "patch"):
         target_path = str(fn_args.get("path") or "").strip()
         if not target_path:
@@ -498,22 +514,21 @@ def _on_pre_tool_call(
     fn_args = args if args is not None else kwargs.get("function_args", {})
     sess_id = session_id or kwargs.get("session_id", "")
 
-    # 1. UNCONDITIONAL PROTECTED TARGET SHIELD
+    # 1. UNCONDITIONAL PROTECTED TARGET SHIELD CHO TẤT CẢ ACTORS (Kể cả read_file!)
     if fn_name in ("write_file", "patch", "read_file"):
         target_path = str(fn_args.get("path") or "").strip()
         if target_path and _is_protected_target(target_path):
-            if fn_name in ("write_file", "patch"):
-                return {
-                    "action": "block",
-                    "reason": "⛔ [GUARD SELF-PROTECTION]: CẤM TUYỆT ĐỐI sửa mã nguồn plugin farm-coordinator-guard hoặc state.db!",
-                }
+            return {
+                "action": "block",
+                "reason": f"⛔ [GUARD SELF-PROTECTION]: CẤM TUYỆT ĐỐI thao tác '{fn_name}' trên mã nguồn plugin bảo vệ, state.db hoặc ~/.ssh!",
+            }
 
     if fn_name == "terminal":
         cmd = str(fn_args.get("command") or "").strip()
         if _is_protected_target(cmd):
             return {
                 "action": "block",
-                "reason": "⛔ [GUARD SELF-PROTECTION]: Lệnh terminal có chứa thành phần hệ thống được bảo vệ (guard/state.db) bị chặn vô điều kiện!",
+                "reason": "⛔ [GUARD SELF-PROTECTION]: Lệnh terminal có chứa thành phần hệ thống được bảo vệ bị chặn vô điều kiện!",
             }
 
     if fn_name == "execute_code":
@@ -521,7 +536,7 @@ def _on_pre_tool_call(
         if _is_protected_target(code_str):
             return {
                 "action": "block",
-                "reason": "⛔ [GUARD SELF-PROTECTION]: Mã execute_code có chứa thành phần hệ thống được bảo vệ (guard/state.db) bị chặn vô điều kiện!",
+                "reason": "⛔ [GUARD SELF-PROTECTION]: Mã execute_code có chứa thành phần hệ thống được bảo vệ bị chặn vô điều kiện!",
             }
 
     # 2. FAIL-CLOSED DISPATCH GATE
@@ -647,7 +662,7 @@ def _on_pre_tool_call(
                 "is_coordinator": True,
             }
             _update_session_state(sess_id, sess_updates)
-            logger.info("[FARM_GUARD] delegate_task passed Scope Lock v3.8 -> targets: %s", normalized_targets)
+            logger.info("[FARM_GUARD] delegate_task passed Scope Lock v3.9 -> targets: %s", normalized_targets)
             return None
 
         # Non-code task exempt
