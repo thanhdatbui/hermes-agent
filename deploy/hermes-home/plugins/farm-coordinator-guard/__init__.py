@@ -1,20 +1,19 @@
-"""Farm Coordinator Guard Plugin for Hermes v2.4 (Action-Based Zero-Bypass Architecture).
+"""Farm Coordinator Guard Plugin for Hermes v3.0 (Zero-Bypass Architecture - Final Approved).
 
-Comprehensive Action-Based Enforcement (Approved by Claude Opus High):
-1. SELF-PROTECTION INVARIANT (Bypass 4 Closed):
-   - Chặn tuyệt đối mọi tool (write_file, patch, execute_code, terminal redirection) đụng vào GUARD_SOURCE_DIR.
-2. ACTION-BASED WORKER WRITE GATE (Bypass 1 & 5 Closed):
-   - Chặn mọi tool ghi file: write_file, patch, execute_code, và terminal redirection (_FILEWRITE_SHELL_RE).
-   - Mọi target ghi file PHẢI nằm trong ALLOWED_REPO_ROOTS.
-   - Mọi target ghi file PHẢI nằm trong scoped target_files được cấp phép.
-3. READ-ONLY NON-CODE WORKERS (Bypass 2 Closed):
-   - Worker có task_type=non_code hoặc target_files rỗng BỊ KHÓA GHI FILE 100% (Read-Only).
-4. TAADAA_WORKER STRICT BOUNDS (Bypass 3 Closed):
-   - env_worker vẫn bị ràng buộc Whitelist ALLOWED_REPO_ROOTS và Blacklist GUARD_SOURCE_DIR 100%.
-5. PER-WORKER SCOPE TRACKING (Bypass 7 Closed):
-   - Lưu scope theo (coordinator_id, timestamp) và ánh xạ đúng worker khi spawn.
-6. TARGETED TEST FILE SCOPE (Bypass 6 Closed):
-   - Chỉ cho phép test_<target_name>.py tương ứng, cấm ghi file test bừa bãi.
+Design Principles (Claude Opus High Certified):
+1. TOP-LEVEL SELF-PROTECTION (C-1, C-2 Closed):
+   - Mọi caller (Coordinator & Worker), mọi tool (write_file, patch, terminal, execute_code)
+     đụng đến GUARD_SOURCE_DIR đều bị HARD BLOCK 100%.
+2. ACTION-BASED WORKER WRITE LOCK (C-3, C-4 Closed):
+   - Worker CHỈ ĐƯỢC PHÉP sửa file qua tool `patch` và `write_file` (nơi target_path là structured argument).
+   - `execute_code` bị HARD BLOCK hoàn toàn trên Worker.
+   - `terminal` trên Worker bị HARD BLOCK nếu có bất kỳ lệnh ghi file/copy/move/redirection nào (Chỉ cho phép lệnh đọc/test thuần).
+3. SCOPE-LOCK ENFORCEMENT & READ-ONLY WORKERS (Bypass 2 & M-6 Closed):
+   - Mọi target ghi file của Worker phải nằm trong ALLOWED_REPO_ROOTS VÀ nằm trong `target_files` được Coordinator cấp phép.
+   - Nếu task là non_code hoặc target_files rỗng -> Worker biến thành READ-ONLY 100% (cấm mọi hành vi ghi file).
+   - Áp dụng bình đẳng cho cả DB worker lẫn `env_worker` (TAADAA_WORKER=1).
+4. STRICT TEST FILE SCOPE (Bypass 6 Closed):
+   - Chỉ cho phép file test tương ứng chính xác (`test_<stem>.py` hoặc `<stem>_test.py`).
 """
 
 from __future__ import annotations
@@ -53,7 +52,10 @@ _SCHEDULER_RE = re.compile(
     re.IGNORECASE,
 )
 _FILEWRITE_SHELL_RE = re.compile(
-    r"(>>?\s*[^\s|&]+)|(<<\s*['\"]?\w+)|\btee\b|\bSet-Content\b|\bOut-File\b|\bAdd-Content\b|\[IO\.File\]::Write|open\([^)]*['\"][wa]\b|fs\.writeFileSync|fs\.appendFileSync|writeAllText|WriteAllLines",
+    r"(>>?\s*[^\s|&]+)|(<<\s*['\"]?\w+)|\btee\b|\bSet-Content\b|\bOut-File\b|\bAdd-Content\b|"
+    r"\[IO\.File\]::Write|open\([^)]*['\"][wa]\b|fs\.writeFileSync|fs\.appendFileSync|"
+    r"writeAllText|WriteAllLines|\bcp\b|\bcopy\b|\bmv\b|\bmove\b|\bCopy-Item\b|\bMove-Item\b|"
+    r"\bshutil\b|\bpathlib\b",
     re.IGNORECASE,
 )
 _DAEMON_RE = re.compile(
@@ -93,7 +95,7 @@ VALID_CODE_EXTENSIONS = {".py", ".json", ".yaml", ".yml", ".sh", ".ps1", ".js", 
 
 _CACHE_LOCK = threading.Lock()
 _PARENT_SESSION_CACHE: Dict[str, Optional[str]] = {}
-_WORKER_SCOPES: Dict[str, List[str]] = {}
+_ACTIVE_SCOPE_MAP: Dict[str, List[str]] = {}
 
 
 @contextmanager
@@ -166,18 +168,22 @@ def _get_session_state(session_id: str) -> Dict[str, Any]:
         data = _load_state_file()
         sessions = data.get("sessions", {})
         now = time.time()
+        needs_save = False
         for sid, sdata in list(sessions.items()):
             if not isinstance(sdata, dict):
                 continue
             updated_at = sdata.get("updated_at") or sdata.get("dispatched_at") or 0
             if now - updated_at > SESSION_EXPIRY_SECONDS:
                 sessions.pop(sid, None)
+                needs_save = True
                 continue
             phase = sdata.get("phase")
             if phase == "WORKER_RUNNING" and (now - sdata.get("dispatched_at", 0) > WORKER_TIMEOUT_SECONDS):
                 sdata["phase"] = "IDLE"
                 sdata["updated_at"] = now
-                _save_state_file(data)
+                needs_save = True
+        if needs_save:
+            _save_state_file(data)
         return sessions.get(session_id, {})
 
 
@@ -234,17 +240,36 @@ def _is_path_in_roots(path: str, roots: List[str]) -> bool:
     return False
 
 
-def _is_guard_source(path: str) -> bool:
+def _is_guard_source(path_or_cmd: str) -> bool:
+    if not path_or_cmd:
+        return False
+    norm_text = path_or_cmd.replace("\\", "/").lower()
+    if "farm-coordinator-guard" in norm_text:
+        return True
     try:
-        real_p = os.path.normcase(os.path.realpath(path))
+        real_p = os.path.normcase(os.path.realpath(path_or_cmd))
         real_guard = os.path.normcase(GUARD_SOURCE_DIR)
         return real_p == real_guard or real_p.startswith(real_guard + os.sep)
     except Exception:
         return False
 
 
+def is_monolith_smoke(path_str: str) -> bool:
+    if not path_str:
+        return False
+    norm = path_str.replace("\\", "/").lower()
+    if "feed_swipe_smoke" in norm:
+        return True
+    if "_smoke.py" in norm and ("flows" in norm or "flow" in norm):
+        return True
+    parts = re.split(r"[/ \t\'\"]+", norm)
+    if any(p.endswith("_smoke.py") for p in parts) and any("flow" in p for p in parts):
+        return True
+    return False
+
+
 def check_worker_tool_gate(tool_name: str, session_id: str, args: Any = None) -> Optional[Dict[str, Any]]:
-    """Action-Based Zero-Bypass Gate for Worker Subagents (Holes A, B, C, D closed)."""
+    """Action-Based Zero-Bypass Gate for Worker Subagents (Claude Opus High Certified)."""
     if not session_id:
         return None
 
@@ -269,22 +294,19 @@ def check_worker_tool_gate(tool_name: str, session_id: str, args: Any = None) ->
                     "reason": f"⛔ [SAFETY INVARIANT]: Lệnh terminal '{cmd[:50]}' có nguy cơ phá hoại hạ tầng bị chặn.",
                 }
 
-        # BYPASS 1 CLOSED: Worker cấm ghi file qua shell redirection / PowerShell / tee
+        # ACTION-BASED LOCK (C-4 Closed): Worker CẤM dùng terminal để ghi file / copy / move
         if _FILEWRITE_SHELL_RE.search(cmd):
-            # Kiểm tra nếu lệnh shell cố ghi đè file ngoài scope
             return {
                 "action": "block",
-                "reason": "⛔ [WORKER GATE - SHELL FILE WRITE BLOCKED]: Worker CẤM ghi file qua shell redirection / PowerShell! Bắt buộc dùng tool patch hoặc write_file trong Scope Lock.",
+                "reason": "⛔ [WORKER GATE - ACTION LOCK]: Worker CẤM ghi/chép file qua terminal (redirection/cp/copy/mv/PowerShell)! Bắt buộc dùng tool patch hoặc write_file trong Scope Lock.",
             }
 
-    # 2. BYPASS 1 CLOSED: Worker cấm dùng execute_code để ghi file ngầm
+    # 2. ACTION-BASED LOCK (C-3 Closed): Worker CẤM execute_code để ghi file ngầm
     if tool_name == "execute_code":
-        code_text = str(fn_args.get("code") or "")
-        if re.search(r"\bopen\s*\([^)]*['\"][wa]\b|write_file|patch\b", code_text):
-            return {
-                "action": "block",
-                "reason": "⛔ [WORKER GATE - EXECUTE CODE FILE WRITE BLOCKED]: Worker CẤM dùng execute_code để ghi file ngầm! Bắt buộc dùng tool patch hoặc write_file trong Scope Lock.",
-            }
+        return {
+            "action": "block",
+            "reason": "⛔ [WORKER GATE - ACTION LOCK]: Worker CẤM dùng execute_code! Mọi thao tác sửa file bắt buộc dùng tool patch hoặc write_file.",
+        }
 
     # 3. ACTION-BASED FILE WRITE CHECK (write_file & patch)
     if tool_name in ("write_file", "patch"):
@@ -292,62 +314,59 @@ def check_worker_tool_gate(tool_name: str, session_id: str, args: Any = None) ->
         if not target_path:
             return None
 
-        # BYPASS 4 & SELF-PROTECTION INVARIANT: Cấm đụng vào guard source
+        # Guard Self-Protection (C-1 Closed)
         if _is_guard_source(target_path):
             return {
                 "action": "block",
                 "reason": "⛔ [WORKER GATE - SELF-MODIFICATION BLOCKED]: CẤM TUYỆT ĐỐI sửa mã nguồn plugin bảo vệ farm-coordinator-guard!",
             }
 
-        # BYPASS 5 CLOSED: Mọi target file PHẢI nằm trong Whitelist ALLOWED_REPO_ROOTS
+        # Whitelist Containment (Bypass 5 Closed): Áp dụng bình đẳng cho MỌI worker (kể cả env_worker)
         if not _is_path_in_roots(target_path, ALLOWED_REPO_ROOTS):
             return {
                 "action": "block",
                 "reason": f"⛔ [WORKER GATE - OUT OF WHITELIST]: File '{target_path}' nằm ngoài phạm vi repo cho phép: {ALLOWED_REPO_ROOTS}!",
             }
 
-        # BYPASS 2 & HOLE A CLOSED: Kiểm tra Target Files từ Coordinator
+        # Scope Lock Enforcement (Bypass 2, 7 & M-6 Closed)
         parent_id = _get_parent_session_id(session_id)
-        if parent_id and parent_id != "env_worker":
-            # Đọc scope lock được cấp cho worker này
-            allowed_targets = _WORKER_SCOPES.get(session_id)
-            if not allowed_targets:
-                parent_state = _get_session_state(parent_id)
-                allowed_targets = parent_state.get("target_files", [])
+        allowed_targets = _ACTIVE_SCOPE_MAP.get(session_id)
+        if not allowed_targets and parent_id and parent_id != "env_worker":
+            parent_state = _get_session_state(parent_id)
+            allowed_targets = parent_state.get("target_files", [])
 
-            # BYPASS 2 CLOSED: Nếu allowed_targets rỗng (như non_code task) -> READ-ONLY WORKER!
-            if not allowed_targets:
-                return {
-                    "action": "block",
-                    "reason": "⛔ [WORKER GATE - READ-ONLY WORKER]: Worker này được dispatch cho tác vụ Non-Code / Không có Scope Lock! BỊ CẤM GHI FILE 100%.",
-                }
+        # READ-ONLY WORKER ENFORCEMENT: Nếu allowed_targets rỗng -> CẤM GHI 100%
+        if not allowed_targets:
+            return {
+                "action": "block",
+                "reason": "⛔ [WORKER GATE - READ-ONLY WORKER]: Worker này được dispatch cho tác vụ Non-Code hoặc không có Scope Lock! BỊ CẤM GHI FILE 100%.",
+            }
 
-            real_target = os.path.normcase(os.path.realpath(os.path.normpath(target_path)))
-            normalized_allowed = [os.path.normcase(os.path.realpath(os.path.normpath(p))) for p in allowed_targets]
+        real_target = os.path.normcase(os.path.realpath(os.path.normpath(target_path)))
+        normalized_allowed = [os.path.normcase(os.path.realpath(os.path.normpath(p))) for p in allowed_targets]
 
-            # BYPASS 6 CLOSED: Thu hẹp kiểm tra file test
-            # Chỉ cho phép file đích HOẶC file test tương ứng (test_<stem>.py hoặc <stem>_test.py)
-            is_direct_target = real_target in normalized_allowed
-            is_exact_test_file = False
-            if not is_direct_target:
-                target_base = os.path.basename(real_target)
-                target_dir = os.path.dirname(real_target)
-                for p in normalized_allowed:
-                    p_stem = Path(p).stem
-                    p_dir = os.path.dirname(p)
-                    if target_dir == p_dir and (target_base == f"test_{p_stem}.py" or target_base == f"{p_stem}_test.py"):
-                        is_exact_test_file = True
-                        break
+        # Targeted Test File Scope (Bypass 6 Closed): Chỉ cho phép file đích HOẶC test_<stem>.py tương ứng
+        is_direct_target = real_target in normalized_allowed
+        is_exact_test_file = False
+        if not is_direct_target:
+            target_base = os.path.basename(real_target)
+            target_dir = os.path.dirname(real_target)
+            for p in normalized_allowed:
+                p_stem = Path(p).stem
+                p_dir = os.path.dirname(p)
+                if target_dir == p_dir and (target_base == f"test_{p_stem}.py" or target_base == f"{p_stem}_test.py"):
+                    is_exact_test_file = True
+                    break
 
-            if not (is_direct_target or is_exact_test_file):
-                return {
-                    "action": "block",
-                    "reason": (
-                        f"⛔ [WORKER GATE - SCOPE LOCK BREACH]: Worker đang cố sửa file '{target_path}' "
-                        f"nằm ngoài danh sách Scope Lock được cấp phép: {allowed_targets}! "
-                        "Worker chỉ được phép sửa đúng file đích hoặc file test tương ứng."
-                    ),
-                }
+        if not (is_direct_target or is_exact_test_file):
+            return {
+                "action": "block",
+                "reason": (
+                    f"⛔ [WORKER GATE - SCOPE LOCK BREACH]: Worker đang cố sửa file '{target_path}' "
+                    f"nằm ngoài danh sách Scope Lock được cấp phép: {allowed_targets}! "
+                    "Worker chỉ được phép sửa đúng file đích hoặc file test tương ứng."
+                ),
+            }
 
     return None
 
@@ -363,8 +382,10 @@ def _on_pre_tool_call(
     fn_args = args if args is not None else kwargs.get("function_args", {})
     sess_id = session_id or kwargs.get("session_id", "")
 
-    # BYPASS 4 CLOSED: SELF-PROTECTION INVARIANT CHO MỌI ACTOR (Kể cả Coordinator)
-    # Cấm bất kỳ ai (kể cả Coordinator ở IDLE) gọi write_file / patch vào GUARD_SOURCE_DIR
+    # =========================================================================
+    # 1. TOP-LEVEL SELF-PROTECTION INVARIANT (C-1, C-2 Closed)
+    # Áp dụng cho TẤT CẢ caller (Coordinator & Worker) trên TẤT CẢ các tool
+    # =========================================================================
     if fn_name in ("write_file", "patch"):
         target_path = str(fn_args.get("path") or "").strip()
         if target_path and _is_guard_source(target_path):
@@ -372,7 +393,27 @@ def _on_pre_tool_call(
             if not sess_state.get("build_token", False):
                 return {
                     "action": "block",
-                    "reason": "⛔ [GUARD SELF-PROTECTION]: CẤM TUYỆT ĐỐI sửa mã nguồn plugin bảo vệ farm-coordinator-guard khi chưa có /authorize-build!",
+                    "reason": "⛔ [GUARD SELF-PROTECTION]: CẤM TUYỆT ĐỐI sửa mã nguồn plugin farm-coordinator-guard khi chưa có /authorize-build!",
+                }
+
+    if fn_name == "terminal":
+        cmd = str(fn_args.get("command") or "").strip()
+        if _is_guard_source(cmd) and _FILEWRITE_SHELL_RE.search(cmd):
+            sess_state = _get_session_state(sess_id)
+            if not sess_state.get("build_token", False):
+                return {
+                    "action": "block",
+                    "reason": "⛔ [GUARD SELF-PROTECTION]: Lệnh terminal cố ghi đè plugin farm-coordinator-guard bị chặn tuyệt đối!",
+                }
+
+    if fn_name == "execute_code":
+        code_str = str(fn_args.get("code") or "").strip()
+        if _is_guard_source(code_str) and re.search(r"open\b|write\b|shutil|Path", code_str):
+            sess_state = _get_session_state(sess_id)
+            if not sess_state.get("build_token", False):
+                return {
+                    "action": "block",
+                    "reason": "⛔ [GUARD SELF-PROTECTION]: Mã execute_code cố sửa plugin farm-coordinator-guard bị chặn tuyệt đối!",
                 }
 
     # TẦNG 2: ESCAPE TOKEN — Subagents
@@ -413,9 +454,9 @@ def _on_pre_tool_call(
             }
 
         # =========================================================================
-        # COORDINATOR SCOPE LOCK GATE v3.0 (Zero-Bypass Architecture Approved)
+        # COORDINATOR SCOPE LOCK GATE v3.0 (Zero-Bypass Architecture Certified)
         # =========================================================================
-        # BYPASS 2 CLOSED: task_type CHỈ nhận từ tham số có cấu trúc, KHÔNG nhận từ văn xuôi!
+        # BYPASS 2 CLOSED: task_type CHỈ nhận từ tham số có cấu trúc
         task_type = str(dt_args.get("task_type") or "").strip().lower()
         is_non_code_exempt = task_type in ("research", "inspect_only", "non_code", "query")
 
@@ -438,7 +479,7 @@ def _on_pre_tool_call(
                     if p_clean:
                         raw_targets.append(p_clean)
 
-            # Normalize & Deduplicate (Hỗ trợ path có khoảng trắng)
+            # Normalize & Deduplicate
             normalized_targets: List[str] = []
             for p in raw_targets:
                 p_clean = p.strip().strip('\'"<>`').rstrip('.,;:)!?')
@@ -470,14 +511,14 @@ def _on_pre_tool_call(
                         "reason": f"⛔ [COORDINATOR GUARD - NOT ABSOLUTE PATH]: '{p}' không phải đường dẫn tuyệt đối!",
                     }
 
-                # HOLE 2 CLOSED: CẤM thư mục
+                # CẤM thư mục
                 if os.path.isdir(p):
                     return {
                         "action": "block",
                         "reason": f"⛔ [COORDINATOR GUARD - DIRECTORY NOT ALLOWED]: '{p}' là THƯ MỤC! Phải chỉ định file cụ thể.",
                     }
 
-                # HOLE D CLOSED: Phải là file tồn tại HOẶC file tạo mới có thư mục cha hợp lệ
+                # Phải là file tồn tại HOẶC file tạo mới có thư mục cha hợp lệ
                 parent_dir = os.path.dirname(p)
                 if not os.path.isfile(p):
                     if not (parent_dir and os.path.isdir(parent_dir)):
@@ -508,7 +549,7 @@ def _on_pre_tool_call(
                         "reason": "⛔ [COORDINATOR GUARD - GUARD SOURCE BLACKLISTED]: CẤM Scope Lock vào chính file của plugin bảo vệ!",
                     }
 
-            # BYPASS 7 CLOSED: Cập nhật state Coordinator & lưu vào cache scope
+            # Cập nhật state Coordinator & lưu vào scope map
             sess_updates = {
                 "phase": "WORKER_RUNNING",
                 "dispatched_at": time.time(),
@@ -516,16 +557,18 @@ def _on_pre_tool_call(
                 "target_files": normalized_targets,
             }
             _update_session_state(sess_id, sess_updates)
-            logger.info("[FARM_GUARD] delegate_task passed Scope Lock v2.4 -> targets: %s", normalized_targets)
+            _ACTIVE_SCOPE_MAP[sess_id] = normalized_targets
+            logger.info("[FARM_GUARD] delegate_task passed Scope Lock v3.0 -> targets: %s", normalized_targets)
             return None
 
-        # Non-code task exempt -> gán target_files=[] (worker sẽ bị khóa ghi file)
+        # Non-code task exempt -> gán target_files=[] (worker sẽ thành read-only)
         _update_session_state(sess_id, {
             "phase": "WORKER_RUNNING",
             "dispatched_at": time.time(),
             "dispatch_count": dispatch_count,
             "target_files": [],
         })
+        _ACTIVE_SCOPE_MAP[sess_id] = []
         return None
 
     if fn_name == "skill_view":
