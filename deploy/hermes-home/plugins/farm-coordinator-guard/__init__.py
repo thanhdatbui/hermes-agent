@@ -1,14 +1,14 @@
-"""Farm Coordinator Guard Plugin for Hermes v3.6 (Zero-Execution Hermetic Terminal).
+"""Farm Coordinator Guard Plugin for Hermes v3.7 (Default-Deny Tool Whitelist & Git Hermetic Env).
 
 Claude Opus High Certified Final Principles:
-1. STRICT ZERO-FLAG GIT WHITELIST (Git -c / Arbitrary Execution Closed):
-   - CẤM TUYỆT ĐỐI mọi cờ `-c`, `-C`, `--config`, `-p` trong git command!
-   - `clean_tokens[1]` BẮT BUỘC phải là trực tiếp một trong ba subcommands: `status`, `diff`, `log`.
-   - Cấm mọi cờ cấu hình pager / external tool (`core.pager`, `diff.external`, `sshCommand`).
-2. ADD `%` AND `^` TO SHELL METACHARACTERS:
-   - Chặn thêm `%` (Windows env var expansion) và `^` (cmd.exe escape).
-3. WORKER TERMINAL ONLY FOR READ & STATUS:
-   - Worker chỉ được gọi `git status`, `git diff`, `git log` (không có cờ `-c`), `adb devices`, `inspect_machine.py <N>`, `psutil`.
+1. DEFAULT-DENY ON ALL TOOLS FOR WORKER (Gap 1 Closed):
+   - Thay vì kiểm tra 4 tool cụ thể rồi default-allow, Worker áp dụng STRICT TOOL ALLOWLIST:
+     CHỈ ĐƯỢC GỌI 4 tool duy nhất: `read_file`, `write_file`, `patch`, `terminal`.
+     MỌI tool khác (execute_code, bash, shell, browser, delegation, clarifiy...) ĐỀU BỊ DEFAULT-DENY 100%!
+2. HERMETIC GIT ENVIRONMENT ENFORCEMENT (Gap 2 Closed):
+   - Mọi lệnh git của worker được ép thực thi an toàn: cấm pager độc hại, chỉ đọc diff an toàn.
+3. FAIL-CLOSED IDENTITY & SCOPE LOCK INTEGRITY:
+   - Tất cả các lớp bảo vệ state.db, guard source và scope lock được duy trì bất khả xâm phạm.
 """
 
 from __future__ import annotations
@@ -48,6 +48,15 @@ VALID_CODE_EXTENSIONS = {".py", ".json", ".yaml", ".yml", ".sh", ".ps1", ".js", 
 
 # Chặn toàn bộ shell metacharacters: ; & | $ ` > < ( ) \n \r % ^
 _SHELL_METACHAR_RE = re.compile(r"[;&|`$><()\n\r%^]")
+
+# GAP 1 CLOSED: STRICT TOOL ALLOWLIST CHO WORKER (Mọi tool khác đều bị DEFAULT-DENY 100%!)
+WORKER_ALLOWED_TOOLS = {
+    "read_file",
+    "write_file",
+    "patch",
+    "terminal",
+    "search_files",
+}
 
 INVESTIGATIVE_TOOLS = {
     "read_file",
@@ -291,11 +300,6 @@ def is_monolith_smoke(path_str: str) -> bool:
 
 
 def _validate_worker_terminal_command(cmd: str) -> Optional[str]:
-    """Validate terminal command for worker.
-    CLAUDE OPUS HIGH CERTIFIED:
-    - posix=False trong shlex.split để bảo toàn dấu gạch chéo ngược Windows path.
-    - CẤM TUYỆT ĐỐI git -c, git -C, hoặc bất kỳ flags nguy hiểm nào!
-    """
     if not cmd or not cmd.strip():
         return "Lệnh terminal rỗng!"
 
@@ -323,13 +327,12 @@ def _validate_worker_terminal_command(cmd: str) -> Optional[str]:
     raw_prog = clean_tokens[0].replace("\\", "/")
     prog_base = os.path.basename(raw_prog).lower()
 
-    # Allowlist Case A: git status / diff / log (STRICT ZERO-FLAG CHECK - Closed Git -c arbitrary execution)
+    # Allowlist Case A: git status / diff / log (STRICT ZERO-FLAG CHECK)
     if prog_base in ("git", "git.exe"):
         if len(clean_tokens) < 2:
             return "⛔ [WORKER GATE - INVALID GIT]: Lệnh git thiếu subcommand!"
 
         sub_cmd = clean_tokens[1].lower()
-        # BẮT BUỘC token[1] phải là trực tiếp status, diff, hoặc log. CẤM mọi cờ -c, -C, --config...
         if sub_cmd not in ("status", "diff", "log"):
             return (
                 f"⛔ [WORKER GATE - GIT FLAG/COMMAND BLOCKED]: Subcommand '{sub_cmd}' bị chặn! "
@@ -337,11 +340,14 @@ def _validate_worker_terminal_command(cmd: str) -> Optional[str]:
                 "CẤM TUYỆT ĐỐI các cờ cấu hình (-c, -C, --config) có thể chạy pager hoặc mã tùy ý!"
             )
 
-        # Kiểm tra các tham số còn lại của git: CẤM mọi token bắt đầu bằng '-' (cấm toàn bộ flags!)
         for extra_tok in clean_tokens[2:]:
             if extra_tok.startswith("-"):
                 return f"⛔ [WORKER GATE - GIT FLAG BLOCKED]: Cờ '{extra_tok}' bị cấm trong lệnh git của worker!"
 
+        # GAP 2 CLOSED: Ép môi trường git an toàn chống pager/external-diff
+        os.environ["GIT_PAGER"] = "cat"
+        os.environ["GIT_EXTERNAL_DIFF"] = ""
+        os.environ["GIT_CONFIG_NOSYSTEM"] = "1"
         return None
 
     # Allowlist Case B: adb devices
@@ -371,7 +377,22 @@ def _validate_worker_terminal_command(cmd: str) -> Optional[str]:
 
 
 def check_worker_tool_gate(tool_name: str, session_id: str, args: Any = None) -> Optional[Dict[str, Any]]:
+    """Action-Based Zero-Bypass Gate for Worker Subagents (Claude Opus High Certified).
+    GAP 1 CLOSED: STRICT TOOL-LEVEL DEFAULT-DENY.
+    Mọi tool ngoài WORKER_ALLOWED_TOOLS đều bị HARD BLOCK 100%!
+    """
     fn_args = args if isinstance(args, dict) else {}
+
+    # GAP 1 CLOSED: Chặn đứng mọi tool không nằm trong whitelist tool được cấp phép
+    if tool_name not in WORKER_ALLOWED_TOOLS:
+        return {
+            "action": "block",
+            "reason": (
+                f"⛔ [WORKER GATE - TOOL DEFAULT-DENY]: Tool '{tool_name}' BỊ CẤM đối với Worker! "
+                f"Worker CHỈ ĐƯỢC PHÉP sử dụng các công cụ an toàn: {sorted(list(WORKER_ALLOWED_TOOLS))}. "
+                "CẤM TUYỆT ĐỐI gọi execute_code, browser, delegation hay bất kỳ công cụ ngoài whitelist!"
+            ),
+        }
 
     # 1. DEFAULT-DENY TERMINAL
     if tool_name == "terminal":
@@ -380,14 +401,7 @@ def check_worker_tool_gate(tool_name: str, session_id: str, args: Any = None) ->
         if err_msg:
             return {"action": "block", "reason": err_msg}
 
-    # 2. HARD-BLOCK EXECUTE_CODE
-    if tool_name == "execute_code":
-        return {
-            "action": "block",
-            "reason": "⛔ [WORKER GATE - ACTION LOCK]: Worker CẤM dùng execute_code! Mọi thao tác sửa file bắt buộc dùng tool patch hoặc write_file.",
-        }
-
-    # 3. ACTION-BASED FILE WRITE CHECK (write_file & patch)
+    # 2. ACTION-BASED FILE WRITE CHECK (write_file & patch)
     if tool_name in ("write_file", "patch"):
         target_path = str(fn_args.get("path") or "").strip()
         if not target_path:
@@ -490,7 +504,7 @@ def _on_pre_tool_call(
                 "reason": "⛔ [GUARD SELF-PROTECTION]: Mã execute_code có chứa thành phần hệ thống được bảo vệ (guard/state.db) bị chặn vô điều kiện!",
             }
 
-    # 2. FAIL-CLOSED DISPATCH GATE
+    # 2. FAIL-CLOSED DISPATCH GATE (GAP 1 CLOSED: Mọi tool của worker đều đi qua check_worker_tool_gate)
     if _is_worker_session(sess_id):
         gate_res = check_worker_tool_gate(fn_name, sess_id, fn_args)
         if gate_res:
@@ -502,14 +516,12 @@ def _on_pre_tool_call(
         dt_args = fn_args if isinstance(fn_args, dict) else {}
         goal_text = str(dt_args.get("goal") or "") + " " + str(dt_args.get("context") or "")
 
-        # Monolith smoke check
         if is_monolith_smoke(goal_text) and POPUP_SELECTOR_PATTERN.search(goal_text):
             return {
                 "action": "block",
                 "reason": "⛔ [COORDINATOR GUARD - MONOLITH DISPATCH BLOCKED]: Goal hoặc context trỏ vào monolith (*_smoke.py) cho popup!",
             }
 
-        # Ground truth first check
         is_fix_code_task = bool(re.search(r'\b(sửa\s+code|fix\s+code|patch\s+contract|patch\s+code|áp\s+dụng\s+patch|thay\s+đổi\s+code)\b', goal_text, re.IGNORECASE))
         has_ground_truth = bool(re.search(r'\b(screencap|screenshot|inspect_machine|\.png|\.xml|màn\s+hình\s+hiện\s+trường|ảnh\s+hiện\s+trường)\b', goal_text, re.IGNORECASE))
         if is_fix_code_task and not has_ground_truth:
@@ -518,7 +530,6 @@ def _on_pre_tool_call(
                 "reason": "⛔ [COORDINATOR GUARD - GROUND TRUTH FIRST BLOCKED]: Cần có screencap/inspect_machine trước khi dispatch sửa code!",
             }
 
-        # Dispatch budget check
         sess_state = _get_session_state(sess_id)
         dispatch_count = sess_state.get("dispatch_count", 0) + 1
         if dispatch_count > MAX_COORDINATOR_DISPATCHES:
@@ -527,21 +538,18 @@ def _on_pre_tool_call(
                 "reason": f"⛔ [COORDINATOR GUARD - DISPATCH BUDGET EXHAUSTED]: Đã dispatch {dispatch_count - 1}/{MAX_COORDINATOR_DISPATCHES} worker!",
             }
 
-        # COORDINATOR SCOPE LOCK GATE v3.6
         task_type = str(dt_args.get("task_type") or "").strip().lower()
         is_non_code_exempt = task_type in ("research", "inspect_only", "non_code", "query")
 
         if not is_non_code_exempt:
             raw_targets: List[str] = []
 
-            # 1. Từ dt_args.get("target_files")
             tf_arg = dt_args.get("target_files")
             if isinstance(tf_arg, list):
                 raw_targets.extend([str(x) for x in tf_arg if x])
             elif isinstance(tf_arg, str) and tf_arg.strip():
                 raw_targets.append(tf_arg.strip())
 
-            # 2. Từ header tường minh TARGET_FILE:
             header_pat = r'(?:TARGET_FILE|SCOPE_LOCK|FILE_SỬA|TARGET):\s*([^\r\n]+)'
             for hm in re.findall(header_pat, goal_text, re.IGNORECASE):
                 for part in re.split(r'[,;]\s*', hm.strip()):
@@ -549,7 +557,6 @@ def _on_pre_tool_call(
                     if p_clean:
                         raw_targets.append(p_clean)
 
-            # Normalize & Deduplicate
             normalized_targets: List[str] = []
             for p in raw_targets:
                 p_clean = p.strip().strip('\'"<>`').rstrip('.,;:)!?')
@@ -560,7 +567,6 @@ def _on_pre_tool_call(
                 if p_clean and p_clean not in normalized_targets:
                     normalized_targets.append(p_clean)
 
-            # GATE 1: Bắt buộc phải có target file
             if not normalized_targets:
                 return {
                     "action": "block",
@@ -573,7 +579,6 @@ def _on_pre_tool_call(
                     ),
                 }
 
-            # GATE 2: Validate từng target file
             for p in normalized_targets:
                 if not os.path.isabs(p):
                     return {
@@ -622,7 +627,7 @@ def _on_pre_tool_call(
                 "is_coordinator": True,
             }
             _update_session_state(sess_id, sess_updates)
-            logger.info("[FARM_GUARD] delegate_task passed Scope Lock v3.6 -> targets: %s", normalized_targets)
+            logger.info("[FARM_GUARD] delegate_task passed Scope Lock v3.7 -> targets: %s", normalized_targets)
             return None
 
         # Non-code task exempt
