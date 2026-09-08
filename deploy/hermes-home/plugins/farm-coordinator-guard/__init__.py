@@ -1,18 +1,14 @@
-"""Farm Coordinator Guard Plugin for Hermes v3.5 (Hermetic Sandbox & Read-Only OS ACL).
+"""Farm Coordinator Guard Plugin for Hermes v3.6 (Zero-Execution Hermetic Terminal).
 
 Claude Opus High Certified Final Principles:
-1. COMPLETE ELIMINATION OF ARBITRARY PYTHON / PYTEST IN WORKER TERMINAL:
-   - Xóa bỏ HOÀN TOÀN `pytest` và `python -m pytest` khỏi terminal allowlist của Worker!
-   - Worker Terminal CHỈ LÀ READ-ONLY & VERIFICATION CLIENT:
-     * `git status`, `git diff`, `git log`
-     * `adb devices`
-     * `python D:/Taadaa/tools/inspect_machine.py <N>`
-     * `psutil`, `tasklist`
-   - Worker KHÔNG ĐƯỢC CHẠY BẤT KỲ MÃ PYTHON NÀO TRONG TERMINAL (Cắt đứt hoàn toàn nguy cơ arbitrary execution).
-2. SHLEX POSIX=FALSE FIX FOR WINDOWS BACKSLASHES:
-   - Dùng `shlex.split(cmd, posix=False)` để không bị băm mất dấu `\` trong đường dẫn Windows.
-3. OS-LEVEL READ-ONLY ACCESS CONTROL (REAL ACL):
-   - Đặt thuộc tính read-only OS hoặc bảo vệ ACL cho guard source & state.
+1. STRICT ZERO-FLAG GIT WHITELIST (Git -c / Arbitrary Execution Closed):
+   - CẤM TUYỆT ĐỐI mọi cờ `-c`, `-C`, `--config`, `-p` trong git command!
+   - `clean_tokens[1]` BẮT BUỘC phải là trực tiếp một trong ba subcommands: `status`, `diff`, `log`.
+   - Cấm mọi cờ cấu hình pager / external tool (`core.pager`, `diff.external`, `sshCommand`).
+2. ADD `%` AND `^` TO SHELL METACHARACTERS:
+   - Chặn thêm `%` (Windows env var expansion) và `^` (cmd.exe escape).
+3. WORKER TERMINAL ONLY FOR READ & STATUS:
+   - Worker chỉ được gọi `git status`, `git diff`, `git log` (không có cờ `-c`), `adb devices`, `inspect_machine.py <N>`, `psutil`.
 """
 
 from __future__ import annotations
@@ -50,8 +46,8 @@ ALLOWED_REPO_ROOTS = [
 GUARD_SOURCE_DIR = os.path.realpath(str(HERMES_ROOT / "plugins" / "farm-coordinator-guard"))
 VALID_CODE_EXTENSIONS = {".py", ".json", ".yaml", ".yml", ".sh", ".ps1", ".js", ".ts", ".toml", ".ini"}
 
-# Chặn shell metacharacters (cho phép dấu gạch chéo ngược \ trong Windows path)
-_SHELL_METACHAR_RE = re.compile(r"[;&|`$><()\n\r]")
+# Chặn toàn bộ shell metacharacters: ; & | $ ` > < ( ) \n \r % ^
+_SHELL_METACHAR_RE = re.compile(r"[;&|`$><()\n\r%^]")
 
 INVESTIGATIVE_TOOLS = {
     "read_file",
@@ -298,18 +294,18 @@ def _validate_worker_terminal_command(cmd: str) -> Optional[str]:
     """Validate terminal command for worker.
     CLAUDE OPUS HIGH CERTIFIED:
     - posix=False trong shlex.split để bảo toàn dấu gạch chéo ngược Windows path.
-    - CẤM HOÀN TOÀN pytest và python interpreter tùy ý!
+    - CẤM TUYỆT ĐỐI git -c, git -C, hoặc bất kỳ flags nguy hiểm nào!
     """
     if not cmd or not cmd.strip():
         return "Lệnh terminal rỗng!"
 
+    # 1. Chặn shell metacharacters: ; & | $ ` > < ( ) \n \r % ^
     if _SHELL_METACHAR_RE.search(cmd):
         return (
             f"⛔ [WORKER GATE - HERMETIC SHELL]: Lệnh terminal chứa ký tự điều khiển shell "
-            f"hoặc chuỗi nối lệnh (; && || | $ ` > < ()) bị cấm tuyệt đối! Lệnh: '{cmd[:60]}'"
+            f"hoặc chuỗi nối lệnh (; && || | $ ` > < () % ^) bị cấm tuyệt đối! Lệnh: '{cmd[:60]}'"
         )
 
-    # DÙNG posix=False để không ăn mất dấu backslash trong Windows path
     try:
         tokens = shlex.split(cmd, posix=False)
     except Exception as exc:
@@ -318,7 +314,6 @@ def _validate_worker_terminal_command(cmd: str) -> Optional[str]:
     if not tokens:
         return "Lệnh terminal rỗng sau khi parse!"
 
-    # Làm sạch token khỏi quotes ngoài cùng nếu có
     clean_tokens = [tok.strip("\"'") for tok in tokens]
 
     for tok in clean_tokens:
@@ -328,21 +323,33 @@ def _validate_worker_terminal_command(cmd: str) -> Optional[str]:
     raw_prog = clean_tokens[0].replace("\\", "/")
     prog_base = os.path.basename(raw_prog).lower()
 
-    # Allowlist Case A: git status / diff / log
+    # Allowlist Case A: git status / diff / log (STRICT ZERO-FLAG CHECK - Closed Git -c arbitrary execution)
     if prog_base in ("git", "git.exe"):
-        sub_tokens = [t.lower() for t in clean_tokens[1:]]
-        idx = 0
-        if len(sub_tokens) >= 2 and sub_tokens[0] == "-c":
-            idx = 2
-        if idx < len(sub_tokens) and sub_tokens[idx] in ("status", "diff", "log"):
-            return None
+        if len(clean_tokens) < 2:
+            return "⛔ [WORKER GATE - INVALID GIT]: Lệnh git thiếu subcommand!"
+
+        sub_cmd = clean_tokens[1].lower()
+        # BẮT BUỘC token[1] phải là trực tiếp status, diff, hoặc log. CẤM mọi cờ -c, -C, --config...
+        if sub_cmd not in ("status", "diff", "log"):
+            return (
+                f"⛔ [WORKER GATE - GIT FLAG/COMMAND BLOCKED]: Subcommand '{sub_cmd}' bị chặn! "
+                "Worker CHỈ ĐƯỢC PHÉP gọi dạng trực tiếp: `git status`, `git diff`, `git log`. "
+                "CẤM TUYỆT ĐỐI các cờ cấu hình (-c, -C, --config) có thể chạy pager hoặc mã tùy ý!"
+            )
+
+        # Kiểm tra các tham số còn lại của git: CẤM mọi token bắt đầu bằng '-' (cấm toàn bộ flags!)
+        for extra_tok in clean_tokens[2:]:
+            if extra_tok.startswith("-"):
+                return f"⛔ [WORKER GATE - GIT FLAG BLOCKED]: Cờ '{extra_tok}' bị cấm trong lệnh git của worker!"
+
+        return None
 
     # Allowlist Case B: adb devices
     if prog_base in ("adb", "adb.exe"):
-        if len(clean_tokens) >= 2 and clean_tokens[1].lower() == "devices":
+        if len(clean_tokens) == 2 and clean_tokens[1].lower() == "devices":
             return None
 
-    # Allowlist Case C: inspect_machine.py <N> (EXACT MATCH PATH VỚI posix=False)
+    # Allowlist Case C: inspect_machine.py <N>
     if prog_base in ("python", "python3", "python.exe") and len(clean_tokens) >= 2:
         script_arg = clean_tokens[1]
         script_base = os.path.basename(script_arg.replace("\\", "/")).lower()
@@ -357,17 +364,13 @@ def _validate_worker_terminal_command(cmd: str) -> Optional[str]:
     if prog_base in ("psutil", "tasklist", "get-process", "tasklist.exe"):
         return None
 
-    # MỌI LỆNH KHÁC (BAO GỒM CẢ PYTEST, PYTHON TÙY Ý, SCRIPT RUNNER) ĐỀU BỊ DEFAULT-DENY 100%!
     return (
         f"⛔ [WORKER GATE - DEFAULT-DENY TERMINAL]: Lệnh terminal '{cmd[:60]}' BỊ CHẶN! "
-        "Worker CHỈ ĐƯỢC PHÉP chạy các lệnh kiểm tra an toàn: "
-        "(git status/diff/log, adb devices, inspect_machine.py <N>, psutil). "
-        "CẤM TUYỆT ĐỐI chạy pytest hoặc bất kỳ lệnh Python/shell nào có thể thực thi mã tùy ý!"
+        "Worker CHỈ ĐƯỢC PHÉP chạy: git status/diff/log (không flags), adb devices, inspect_machine.py <N>, psutil."
     )
 
 
 def check_worker_tool_gate(tool_name: str, session_id: str, args: Any = None) -> Optional[Dict[str, Any]]:
-    """Action-Based Zero-Bypass Gate for Worker Subagents (Claude Opus High Certified)."""
     fn_args = args if isinstance(args, dict) else {}
 
     # 1. DEFAULT-DENY TERMINAL
@@ -524,9 +527,7 @@ def _on_pre_tool_call(
                 "reason": f"⛔ [COORDINATOR GUARD - DISPATCH BUDGET EXHAUSTED]: Đã dispatch {dispatch_count - 1}/{MAX_COORDINATOR_DISPATCHES} worker!",
             }
 
-        # =========================================================================
-        # COORDINATOR SCOPE LOCK GATE v3.5 (Zero-Bypass Architecture Certified)
-        # =========================================================================
+        # COORDINATOR SCOPE LOCK GATE v3.6
         task_type = str(dt_args.get("task_type") or "").strip().lower()
         is_non_code_exempt = task_type in ("research", "inspect_only", "non_code", "query")
 
@@ -540,7 +541,7 @@ def _on_pre_tool_call(
             elif isinstance(tf_arg, str) and tf_arg.strip():
                 raw_targets.append(tf_arg.strip())
 
-            # 2. Từ header tường minh TARGET_FILE:, cấm regex văn xuôi vu vơ
+            # 2. Từ header tường minh TARGET_FILE:
             header_pat = r'(?:TARGET_FILE|SCOPE_LOCK|FILE_SỬA|TARGET):\s*([^\r\n]+)'
             for hm in re.findall(header_pat, goal_text, re.IGNORECASE):
                 for part in re.split(r'[,;]\s*', hm.strip()):
@@ -580,14 +581,12 @@ def _on_pre_tool_call(
                         "reason": f"⛔ [COORDINATOR GUARD - NOT ABSOLUTE PATH]: '{p}' không phải đường dẫn tuyệt đối!",
                     }
 
-                # CẤM thư mục
                 if os.path.isdir(p):
                     return {
                         "action": "block",
                         "reason": f"⛔ [COORDINATOR GUARD - DIRECTORY NOT ALLOWED]: '{p}' là THƯ MỤC! Phải chỉ định file cụ thể.",
                     }
 
-                # Phải là file tồn tại HOẶC file tạo mới có thư mục cha hợp lệ
                 parent_dir = os.path.dirname(p)
                 if not os.path.isfile(p):
                     if not (parent_dir and os.path.isdir(parent_dir)):
@@ -596,7 +595,6 @@ def _on_pre_tool_call(
                             "reason": f"⛔ [COORDINATOR GUARD - FILE/PARENT NOT FOUND]: File '{p}' và cả thư mục cha đều không tồn tại!",
                         }
 
-                # Đuôi file code hợp lệ
                 _, ext = os.path.splitext(p)
                 if ext.lower() not in VALID_CODE_EXTENSIONS:
                     return {
@@ -604,14 +602,12 @@ def _on_pre_tool_call(
                         "reason": f"⛔ [COORDINATOR GUARD - INVALID EXTENSION]: File '{p}' có đuôi '{ext}' không hợp lệ!",
                     }
 
-                # Whitelist containment check
                 if not _is_path_in_roots(p, ALLOWED_REPO_ROOTS):
                     return {
                         "action": "block",
                         "reason": f"⛔ [COORDINATOR GUARD - OUT OF REPO WHITELIST]: File '{p}' nằm ngoài whitelist {ALLOWED_REPO_ROOTS}!",
                     }
 
-                # Blacklist guard source
                 if _is_protected_target(p):
                     return {
                         "action": "block",
@@ -626,7 +622,7 @@ def _on_pre_tool_call(
                 "is_coordinator": True,
             }
             _update_session_state(sess_id, sess_updates)
-            logger.info("[FARM_GUARD] delegate_task passed Scope Lock v3.5 -> targets: %s", normalized_targets)
+            logger.info("[FARM_GUARD] delegate_task passed Scope Lock v3.6 -> targets: %s", normalized_targets)
             return None
 
         # Non-code task exempt
@@ -645,7 +641,6 @@ def _on_pre_tool_call(
     sess_state = _get_session_state(sess_id)
     phase = sess_state.get("phase", "IDLE")
 
-    # ALERT phase blocking
     if phase == "ALERT":
         if fn_name in INVESTIGATIVE_TOOLS:
             return {
@@ -664,7 +659,6 @@ def _on_pre_tool_call(
                 "message": "⛔ [FARM GUARD - PHASE: ALERT] Hết ngân sách inspect O(1)! Dispatch worker ngay.",
             }
 
-    # WORKER_RUNNING phase blocking
     if phase == "WORKER_RUNNING":
         if fn_name == "terminal":
             cmd = (fn_args.get("command") or "").strip() if isinstance(fn_args, dict) else ""
