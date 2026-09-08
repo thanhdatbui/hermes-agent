@@ -33,6 +33,15 @@ if (Test-Path $ScriptsSrc) {
     Copy-Item "$ScriptsSrc\*" -Destination $ScriptsDst -Recurse -Force
 }
 
+$CronSrc = Join-Path $RepoDir "deploy\hermes-home\cron\jobs.json"
+$CronDst = Join-Path $HermesHome "cron\jobs.json"
+if (Test-Path $CronSrc) {
+    New-Item -ItemType Directory -Force -Path (Join-Path $HermesHome "cron") | Out-Null
+    if (-not (Test-Path $CronDst)) {
+        Copy-Item $CronSrc -Destination $CronDst -Force
+    }
+}
+
 $PluginsSrc = Join-Path $RepoDir "deploy\hermes-home\plugins"
 $PluginsDst = Join-Path $HermesHome "plugins"
 if (Test-Path $PluginsSrc) {

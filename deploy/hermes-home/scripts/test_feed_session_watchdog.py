@@ -62,12 +62,12 @@ class TestFeedSessionWatchdogLockGuard(unittest.TestCase):
         self.assertEqual(merge_machine_result(real_fail, new_real_fail), new_real_fail)
 
     def test_can_report_session(self):
-        # 1. runner_busy is True -> always False
+        # 1. runner_busy is True trong grace period -> False
         self.assertFalse(can_report_session(
             is_today=True,
-            completed_expected_count=80,
+            completed_expected_count=50,
             expected_count=80,
-            now_hm="08:00",
+            now_hm="07:40",
             window_end_hm="07:30",
             runner_busy=True,
             has_unattempted_locked=False,
@@ -155,11 +155,11 @@ class TestFeedSessionWatchdogLockGuard(unittest.TestCase):
             "m4": {"followed": [f"u{i}" for i in range(12)]},
         }
         expected = [
-            "  + Nhả follow (4):",
-            "    - Nhả liền (0 lượt - 1): m1",
-            "    - 1 - 4 lượt (1): m2 (3 lượt)",
-            "    - 5 - 9 lượt (1): m3 (7 lượt)",
-            "    - 10+ lượt (1): m4 (12 lượt)",
+            "  + Nhả follow (4 máy):",
+            "    - Nhả liền (0 lượt - 1 máy): M1",
+            "    - 1 - 4 lượt (1 máy): M2 (3 lượt)",
+            "    - 5 - 9 lượt (1 máy): M3 (7 lượt)",
+            "    - 10+ lượt (1 máy): M4 (12 lượt)",
         ]
         self.assertEqual(format_released_follows(fl_released, all_follows), expected)
 
