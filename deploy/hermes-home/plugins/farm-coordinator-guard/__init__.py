@@ -829,6 +829,141 @@ def _on_pre_tool_call(
                 ),
             }
 
+        # =========================================================================
+        # SCOPE LOCK ABSOLUTE PATH HARD GUARD v2.0 (Zero-Bypass Architecture)
+        # Claude Opus High Specification: Structured Target Files + isfile + Whitelist Containment
+        # =========================================================================
+        sess_state = _get_session_state(sess_id)
+        phase = sess_state.get("phase", "IDLE")
+
+        # Broad Trigger: Phase ALERT / WORKER_RUNNING hoặc có bất kỳ từ khóa code/bug/fix/test nào
+        is_code_or_alert_task = (
+            phase in ("ALERT", "WORKER_RUNNING")
+            or dt_args.get("task_type") in ("code_fix", "fix", "patch")
+            or bool(re.search(
+                r'\b(sửa|fix|patch|bug|refactor|canary|test|chỉnh|khắc phục|code|implement|update|lỗi|error|crash|timeout)\b',
+                goal_text,
+                re.IGNORECASE
+            ))
+        )
+
+        if is_code_or_alert_task:
+            raw_targets = []
+
+            # (a) Từ dt_args.get("target_files")
+            tf_arg = dt_args.get("target_files")
+            if isinstance(tf_arg, list):
+                raw_targets.extend(tf_arg)
+            elif isinstance(tf_arg, str) and tf_arg.strip():
+                raw_targets.append(tf_arg.strip())
+
+            # (b) Từ structured header trong context / goal
+            header_pat = r'(?:TARGET_FILE|SCOPE_LOCK|FILE_SỬA|TARGET):\s*([^\r\n]+)'
+            header_matches = re.findall(header_pat, goal_text, re.IGNORECASE)
+            for hm in header_matches:
+                for part in re.split(r'[,;]\s*', hm.strip()):
+                    p_clean = part.strip().strip('\'"<>`')
+                    if p_clean:
+                        raw_targets.append(p_clean)
+
+            # (c) Fallback: Trích xuất các absolute paths có đuôi file code hợp lệ từ text
+            code_ext_pat = r'\.(?:py|json|yaml|yml|sh|ps1|js|ts|toml|ini)'
+            quoted_paths = re.findall(r'["\']([A-Za-z]:[\\/][^"\']+' + code_ext_pat + r')["\']', goal_text, re.IGNORECASE)
+            raw_targets.extend(quoted_paths)
+            unquoted_paths = re.findall(r'\b([A-Za-z]:[\\/][^\s\'"<>]+' + code_ext_pat + r')\b', goal_text, re.IGNORECASE)
+            raw_targets.extend(unquoted_paths)
+
+            # (d) Normalize & Deduplicate
+            normalized_targets = []
+            for p in raw_targets:
+                if not isinstance(p, str):
+                    continue
+                p_clean = p.strip().strip('\'"<>`').rstrip('.,;:)!?')
+                if re.match(r'^/[cdCD]/', p_clean):
+                    drive_letter = p_clean[1].upper()
+                    p_clean = f"{drive_letter}:{p_clean[2:]}"
+                p_clean = os.path.normpath(p_clean)
+                if p_clean and p_clean not in normalized_targets:
+                    normalized_targets.append(p_clean)
+
+            # GATE 1: Bắt buộc phải có target file
+            if not normalized_targets:
+                _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
+                return {
+                    "action": "block",
+                    "reason": (
+                        "⛔ [COORDINATOR GUARD - SCOPE LOCK MISSING TARGET FILE]: "
+                        "delegate_task trong Farm/Code task BẮT BUỘC phải chỉ định file mục tiêu cụ thể! "
+                        "Cung cấp qua tham số `target_files=['D:/Taadaa/.../file.py']` "
+                        "hoặc header trong context: `TARGET_FILE: D:/Taadaa/.../file.py`. "
+                        "CẤM TUYỆT ĐỐI giao việc mở ('trong repo', 'tìm hàm...')."
+                    ),
+                }
+
+            # GATE 2: Whitelist Containment (Chống trỏ bừa C:/Windows/...)
+            ALLOWED_ROOTS = [
+                os.path.realpath(r"D:\Taadaa"),
+                os.path.realpath(str(Path.home() / "AppData" / "Local" / "hermes")),
+            ]
+            valid_code_extensions = {".py", ".json", ".yaml", ".yml", ".sh", ".ps1", ".js", ".ts", ".toml", ".ini"}
+
+            for p in normalized_targets:
+                # Gate 2.1: Phải là absolute path
+                if not os.path.isabs(p):
+                    _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
+                    return {
+                        "action": "block",
+                        "reason": f"⛔ [COORDINATOR GUARD - NOT ABSOLUTE PATH]: '{p}' không phải là đường dẫn tuyệt đối!"
+                    }
+
+                # Gate 2.2: Phải là FILE THẬT trên đĩa (CẤM thư mục như D:/Taadaa)
+                if not os.path.exists(p):
+                    _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
+                    return {
+                        "action": "block",
+                        "reason": (
+                            f"⛔ [COORDINATOR GUARD - FILE NOT FOUND]: File mục tiêu '{p}' KHÔNG TỒN TẠI trên đĩa! "
+                            "Coordinator phải inspect O(1) để xác định file thật trước khi dispatch."
+                        )
+                    }
+                if not os.path.isfile(p):
+                    _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
+                    return {
+                        "action": "block",
+                        "reason": (
+                            f"⛔ [COORDINATOR GUARD - DIRECTORY NOT ALLOWED]: '{p}' là THƯ MỤC, không phải file! "
+                            "CẤM Scope Lock vào cả thư mục khiến worker phải lượn tìm file. Phải chỉ định file cụ thể!"
+                        )
+                    }
+
+                # Gate 2.3: Đuôi file code hợp lệ
+                _, ext = os.path.splitext(p)
+                if ext.lower() not in valid_code_extensions:
+                    _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
+                    return {
+                        "action": "block",
+                        "reason": (
+                            f"⛔ [COORDINATOR GUARD - INVALID FILE TYPE]: File '{p}' có đuôi '{ext}' không phải file mã nguồn/cấu hình hợp lệ! "
+                            f"Chỉ chấp nhận các file: {', '.join(sorted(valid_code_extensions))}."
+                        )
+                    }
+
+                # Gate 2.4: Whitelist containment check
+                real_p = os.path.realpath(p)
+                is_contained = any(
+                    real_p == root or real_p.startswith(root + os.sep)
+                    for root in ALLOWED_ROOTS
+                )
+                if not is_contained:
+                    _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
+                    return {
+                        "action": "block",
+                        "reason": (
+                            f"⛔ [COORDINATOR GUARD - OUT OF REPO WHITELIST]: File '{p}' nằm ngoài phạm vi cho phép! "
+                            f"Chỉ được phép Scope Lock vào các file thuộc: {ALLOWED_ROOTS}."
+                        )
+                    }
+
         _update_session_state(sess_id, {
             "phase": "WORKER_RUNNING",
             "dispatched_at": time.time(),
@@ -960,7 +1095,7 @@ def _on_pre_tool_call(
             cmd = ""
             if isinstance(fn_args, dict):
                 cmd = (fn_args.get("command") or "").strip()
-            is_benign = bool(re.search(r"^git\s+(status|diff|log)|psutil|python.*canary", cmd))
+            is_benign = bool(re.search(r"^git(\s+-C\s+[^\s]+)?\s+(status|diff|log)|psutil|python.*canary|claude", cmd))
             if not is_benign:
                 logger.warning("[FARM_GUARD] Blocked terminal in WORKER_RUNNING phase for session %s: %s", sess_id, cmd[:80])
                 _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
