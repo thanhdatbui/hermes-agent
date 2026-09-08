@@ -287,6 +287,24 @@ def _extract_all_string_values(obj: Any) -> List[str]:
     return strings
 
 
+def _extract_all_patch_targets(fn_args: Any) -> List[str]:
+    """Trích xuất đệ quy tất cả các đường dẫn nhúng trong mọi string values của fn_args (Claude Opus Certified)."""
+    targets = []
+    all_strings = _extract_all_string_values(fn_args)
+    patch_pat = re.compile(
+        r"(?:\*\*\*\s+(?:Update|Add|Delete)\s+File:|\*\*\*\s+Move\s+to:|[+-]{3}\s+[ab]/)([^\r\n]+)",
+        re.IGNORECASE
+    )
+    for s in all_strings:
+        if "***" in s or "--- " in s or "+++ " in s:
+            matches = patch_pat.findall(s)
+            for m in matches:
+                p_clean = m.strip().strip("'\"<>`")
+                if p_clean and p_clean not in targets:
+                    targets.append(p_clean)
+    return targets
+
+
 def _is_protected_target(path_or_cmd: str) -> bool:
     if not path_or_cmd:
         return False
@@ -479,7 +497,7 @@ def check_worker_tool_gate(tool_name: str, session_id: str, args: Any = None) ->
         if err_msg:
             return {"action": "block", "reason": err_msg}
 
-    # 5. ACTION-BASED FILE WRITE CHECK (LÝ DO 1 CLOSED - FAIL-CLOSED WRITE TARGET RESOLUTION)
+    # 5. ACTION-BASED FILE WRITE CHECK (CLAUDE OPUS CERTIFIED - SYMMETRIC EMBEDDED PATCH PARSER)
     if tool_name in ("write_file", "patch"):
         target_path = ""
         for k in ("path", "file_path", "filename", "target"):
@@ -487,19 +505,35 @@ def check_worker_tool_gate(tool_name: str, session_id: str, args: Any = None) ->
                 target_path = fn_args[k].strip()
                 break
 
-        # LÝ DO 1 CLOSED: Nếu không có target_path rõ ràng -> BLOCK NGAY, KHÔNG RETURN NONE!
-        if not target_path:
+        embedded_patch_targets = []
+        if tool_name == "patch":
+            embedded_patch_targets = _extract_all_patch_targets(fn_args)
+            # Nếu là mode='patch' hoặc có dấu hiệu patch mà không trích xuất được file header nào -> FAIL-CLOSED!
+            if fn_args.get("mode") == "patch" and not embedded_patch_targets:
+                return {
+                    "action": "block",
+                    "reason": "⛔ [WORKER GATE - UNPARSEABLE PATCH]: Nội dung patch mode='patch' không phân giải được đường dẫn đích hợp lệ!",
+                }
+
+        if not target_path and not embedded_patch_targets:
             return {
                 "action": "block",
                 "reason": f"⛔ [WORKER GATE - MISSING WRITE TARGET]: Tool '{tool_name}' của Worker BẮT BUỘC phải chỉ định đường dẫn file mục tiêu rõ ràng! Cấm gọi không có path.",
             }
 
-        real_target_p = os.path.realpath(target_path)
-        if not _is_path_in_roots(real_target_p, ALLOWED_REPO_ROOTS):
-            return {
-                "action": "block",
-                "reason": f"⛔ [WORKER GATE - OUT OF WHITELIST]: File '{target_path}' (giải phân thành '{real_target_p}') nằm ngoài phạm vi repo cho phép: {ALLOWED_REPO_ROOTS}!",
-            }
+        # Gom tất cả các file đích cần kiểm tra
+        all_targets_to_verify = []
+        if target_path:
+            all_targets_to_verify.append(target_path)
+        all_targets_to_verify.extend(embedded_patch_targets)
+
+        for cur_tp in all_targets_to_verify:
+            real_target_p = os.path.realpath(cur_tp)
+            if not _is_path_in_roots(real_target_p, ALLOWED_REPO_ROOTS):
+                return {
+                    "action": "block",
+                    "reason": f"⛔ [WORKER GATE - OUT OF WHITELIST]: File '{cur_tp}' (giải phân thành '{real_target_p}') nằm ngoài phạm vi repo cho phép: {ALLOWED_REPO_ROOTS}!",
+                }
 
         parent_id = _get_parent_session_id(session_id)
         allowed_targets = []
@@ -517,30 +551,30 @@ def check_worker_tool_gate(tool_name: str, session_id: str, args: Any = None) ->
                 "reason": "⛔ [WORKER GATE - READ-ONLY WORKER]: Worker này không được cấp Scope Lock hợp lệ! BỊ CẤM GHI FILE 100%.",
             }
 
-        real_target = os.path.normcase(os.path.realpath(os.path.normpath(target_path)))
         normalized_allowed = [os.path.normcase(os.path.realpath(os.path.normpath(p))) for p in allowed_targets]
+        for cur_tp in all_targets_to_verify:
+            real_target = os.path.normcase(os.path.realpath(os.path.normpath(cur_tp)))
+            is_direct_target = real_target in normalized_allowed
+            is_exact_test_file = False
+            if not is_direct_target:
+                target_base = os.path.basename(real_target)
+                target_dir = os.path.dirname(real_target)
+                for p in normalized_allowed:
+                    p_stem = Path(p).stem
+                    p_dir = os.path.dirname(p)
+                    if target_dir == p_dir and (target_base == f"test_{p_stem}.py" or target_base == f"{p_stem}_test.py"):
+                        is_exact_test_file = True
+                        break
 
-        is_direct_target = real_target in normalized_allowed
-        is_exact_test_file = False
-        if not is_direct_target:
-            target_base = os.path.basename(real_target)
-            target_dir = os.path.dirname(real_target)
-            for p in normalized_allowed:
-                p_stem = Path(p).stem
-                p_dir = os.path.dirname(p)
-                if target_dir == p_dir and (target_base == f"test_{p_stem}.py" or target_base == f"{p_stem}_test.py"):
-                    is_exact_test_file = True
-                    break
-
-        if not (is_direct_target or is_exact_test_file):
-            return {
-                "action": "block",
-                "reason": (
-                    f"⛔ [WORKER GATE - SCOPE LOCK BREACH]: Worker đang cố sửa file '{target_path}' "
-                    f"nằm ngoài danh sách Scope Lock được cấp phép: {allowed_targets}! "
-                    "Worker chỉ được phép sửa đúng file đích hoặc file test tương ứng."
-                ),
-            }
+            if not (is_direct_target or is_exact_test_file):
+                return {
+                    "action": "block",
+                    "reason": (
+                        f"⛔ [WORKER GATE - SCOPE LOCK BREACH]: Worker đang cố sửa file '{cur_tp}' "
+                        f"nằm ngoài danh sách Scope Lock được cấp phép: {allowed_targets}! "
+                        "Worker chỉ được phép sửa đúng file đích hoặc file test tương ứng."
+                    ),
+                }
 
     return None
 
@@ -573,27 +607,24 @@ def _on_pre_tool_call(
                 c_target = fn_args[k].strip()
                 break
 
-        # Nếu patch có nội dung patch text (V4A format patch=...)
-        patch_text = str(fn_args.get("patch") or "")
-        if patch_text:
-            patch_pat = r'(?:\*\*\* (?:Update|Add|Delete) File:|\*\*\* Move to:|[+-]{3} [ab]/)([^\r\n]+)'
-            embedded_paths = re.findall(patch_pat, patch_text)
-            if not embedded_paths:
+        # Quét đệ quy tất cả các file nhúng trong patch/diff từ MỌI string values
+        coord_embedded_targets = []
+        if fn_name == "patch":
+            coord_embedded_targets = _extract_all_patch_targets(fn_args)
+            if fn_args.get("mode") == "patch" and not coord_embedded_targets:
                 return {
                     "action": "block",
-                    "reason": "⛔ [COORDINATOR GUARD - UNPARSEABLE PATCH]: Nội dung patch không phân giải được đường dẫn đích hợp lệ!",
+                    "reason": "⛔ [COORDINATOR GUARD - UNPARSEABLE PATCH]: Nội dung patch mode='patch' không phân giải được đường dẫn đích hợp lệ!",
                 }
-            for ep in embedded_paths:
-                ep_clean = ep.strip().strip("'\"<>`")
-                if ep_clean:
-                    real_ep = os.path.realpath(ep_clean)
-                    if not _is_path_in_roots(real_ep, COORD_ALLOWED_ROOTS):
-                        return {
-                            "action": "block",
-                            "reason": f"⛔ [COORDINATOR GUARD - PATCH OUT OF WHITELIST]: File nhúng trong patch '{ep_clean}' nằm ngoài whitelist: {COORD_ALLOWED_ROOTS}!",
-                        }
+            for ep in coord_embedded_targets:
+                real_ep = os.path.realpath(ep)
+                if not _is_path_in_roots(real_ep, COORD_ALLOWED_ROOTS):
+                    return {
+                        "action": "block",
+                        "reason": f"⛔ [COORDINATOR GUARD - PATCH OUT OF WHITELIST]: File nhúng trong patch '{ep}' nằm ngoài whitelist: {COORD_ALLOWED_ROOTS}!",
+                    }
 
-        if not c_target and not patch_text:
+        if not c_target and not coord_embedded_targets:
             return {
                 "action": "block",
                 "reason": f"⛔ [COORDINATOR GUARD - MISSING WRITE TARGET]: Thao tác '{fn_name}' thiếu đường dẫn file mục tiêu!",
