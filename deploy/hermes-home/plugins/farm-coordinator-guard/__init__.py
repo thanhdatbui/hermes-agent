@@ -565,13 +565,35 @@ def _on_pre_tool_call(
                 "reason": f"⛔ [GUARD SELF-PROTECTION]: Thao tác '{fn_name}' với tham số '{val}' đụng vào thành phần hệ thống được bảo vệ bị chặn vô điều kiện!",
             }
 
-    # LÝ DO 3 CLOSED: RÀNG BUỘC WHITELIST CHO CẢ COORDINATOR
+    # LÝ DO 3 CLOSED: RÀNG BUỘC WHITELIST CHO CẢ COORDINATOR (FAIL-CLOSED)
     if fn_name in ("write_file", "patch"):
         c_target = ""
         for k in ("path", "file_path", "filename", "target"):
             if k in fn_args and isinstance(fn_args[k], str) and fn_args[k].strip():
                 c_target = fn_args[k].strip()
                 break
+
+        # Nếu patch có nội dung patch text (V4A format patch=...)
+        patch_text = str(fn_args.get("patch") or "")
+        if patch_text:
+            patch_pat = r'(?:\*\*\* Update File:|[+-]{3} [ab]/)([^\r\n]+)'
+            embedded_paths = re.findall(patch_pat, patch_text)
+            for ep in embedded_paths:
+                ep_clean = ep.strip().strip("'\"<>`")
+                if ep_clean:
+                    real_ep = os.path.realpath(ep_clean)
+                    if not _is_path_in_roots(real_ep, COORD_ALLOWED_ROOTS):
+                        return {
+                            "action": "block",
+                            "reason": f"⛔ [COORDINATOR GUARD - PATCH OUT OF WHITELIST]: File nhúng trong patch '{ep_clean}' nằm ngoài whitelist!",
+                        }
+
+        if not c_target and not patch_text:
+            return {
+                "action": "block",
+                "reason": f"⛔ [COORDINATOR GUARD - MISSING WRITE TARGET]: Thao tác '{fn_name}' thiếu đường dẫn file mục tiêu!",
+            }
+
         if c_target:
             real_c = os.path.realpath(c_target)
             if not _is_path_in_roots(real_c, COORD_ALLOWED_ROOTS):
