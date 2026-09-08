@@ -1,17 +1,16 @@
-"""Farm Coordinator Guard Plugin for Hermes v4.0 (Zero-Leak & Value-Scanned Hermetic Sandbox).
+"""Farm Coordinator Guard Plugin for Hermes v4.1 (Hermetic Certified Production Sandbox).
 
 Claude Opus High Certified Final Principles:
-1. VALUE-SCANNED PROTECTION (No Parameter Name Guessing / Alias Gap Closed):
-   - Thay vì đoán tên key (path, directory...), quét ĐỆ QUY TOÀN BỘ GIÁ TRỊ STRING trong `fn_args`!
-   - Nếu BẤT KỲ string nào chứa hoặc trỏ vào target bảo vệ (kể cả 2 chiều ancestor/child) -> BLOCK NGAY 100%!
-   - Đảm bảo read_file(file_path=...), search_files(query=...), glob hay bất kỳ tham số nào đều không thể lọt.
-2. NARROWED ALLOWED_REPO_ROOTS (Hermes Home Leak Closed):
-   - Thu hẹp ALLOWED_REPO_ROOTS: Chỉ cho phép `D:\Taadaa`.
-   - CẮM TUYỆT ĐỐI HERMES_ROOT ra khỏi whitelist đọc của worker!
-3. GIT TEXTCONV ISOLATION:
-   - Thêm cờ `--no-textconv` và vô hiệu hóa diff driver khi worker gọi git diff.
-4. EXCEPTION FAIL-CLOSED:
-   - `_is_protected_target` khi gặp exception hoặc đường dẫn bất thường -> MẶC ĐỊNH COI LÀ PROTECTED (Fail-Closed).
+1. FAIL-CLOSED PATH MANDATE FOR READ_FILE & SEARCH_FILES (Lo 1 & 2 Closed):
+   - Mọi cuộc gọi `read_file` và `search_files` BẮT BUỘC PHẢI CÓ ÍT NHẤT 1 ĐƯỜNG DẪN RÕ RÀNG.
+   - Nếu không có tham số đường dẫn (ví dụ chỉ gọi search_files(pattern="...")) -> BLOCK MẶC ĐỊNH 100%!
+   - Mọi đường dẫn (kể cả tên trần không có / hay \, relative path) đều được phân giải qua `os.path.realpath`
+     và BẮT BUỘC phải nằm trong `ALLOWED_REPO_ROOTS` (`D:\Taadaa`).
+2. TERMINAL PATH TOKENS ENFORCE ALLOWED_REPO_ROOTS (Lo 3 Closed):
+   - Mọi token trong lệnh git / terminal nếu là đường dẫn (đặc biệt sau cờ `--`)
+     đều BẮT BUỘC phải nằm trong `ALLOWED_REPO_ROOTS`.
+3. UNCONDITIONAL SHIELD & VALUE-SCANNED INTEGRITY:
+   - Toàn bộ cơ chế quét giá trị đệ quy, protect target 2 chiều và fail-closed lock được giữ nguyên.
 """
 
 from __future__ import annotations
@@ -41,7 +40,6 @@ MAX_COORDINATOR_DISPATCHES = int(os.environ.get("COORDINATOR_MAX_DISPATCHES", 3)
 
 POPUP_SELECTOR_PATTERN = re.compile(r"\b(?:popup|allowlist|survey|ads?|selector|advert)\b", re.IGNORECASE)
 
-# REQ 2 CLOSED: Thu hẹp ALLOWED_REPO_ROOTS, loại bỏ hoàn toàn HERMES_ROOT để chống rò rỉ!
 ALLOWED_REPO_ROOTS = [
     os.path.realpath(r"D:\Taadaa"),
 ]
@@ -268,7 +266,6 @@ def _is_path_in_roots(path: str, roots: List[str]) -> bool:
 
 
 def _extract_all_string_values(obj: Any) -> List[str]:
-    """Trích xuất đệ quy TẤT CẢ các chuỗi string trong args để quét (Req 1 Closed)."""
     strings = []
     if isinstance(obj, str):
         strings.append(obj)
@@ -284,7 +281,6 @@ def _extract_all_string_values(obj: Any) -> List[str]:
 
 
 def _is_protected_target(path_or_cmd: str) -> bool:
-    """Kiểm tra 2 CHIỀU (Fail-Closed nếu có Exception)."""
     if not path_or_cmd:
         return False
     norm_text = path_or_cmd.replace("\\", "/").lower()
@@ -311,7 +307,6 @@ def _is_protected_target(path_or_cmd: str) -> bool:
             if prot.startswith(real_p + os.sep) and real_p not in (os.path.normcase(os.path.realpath("D:/Taadaa")), os.path.normcase(os.path.realpath("C:/"))):
                 return True
     except Exception:
-        # FAIL-CLOSED: Nếu lỗi realpath -> coi luôn là protected!
         return True
     return False
 
@@ -350,9 +345,14 @@ def _validate_worker_terminal_command(cmd: str) -> Optional[str]:
 
     clean_tokens = [tok.strip("\"'") for tok in tokens]
 
+    # REQ 2 CLOSED: Kiểm tra MỌI token: không được là protected target VÀ nếu là path thì phải nằm trong whitelist
     for tok in clean_tokens:
         if _is_protected_target(tok):
             return f"⛔ [WORKER GATE - PROTECTED TARGET]: Lệnh chứa tham số trỏ vào thành phần hệ thống được bảo vệ: '{tok}'!"
+        # Nếu token là đường dẫn file/dir (đặc biệt sau --)
+        if (":" in tok or "/" in tok or "\\" in tok) and not tok.startswith("-"):
+            if not _is_path_in_roots(tok, ALLOWED_REPO_ROOTS):
+                return f"⛔ [WORKER GATE - OUT OF WHITELIST]: Tham số đường dẫn '{tok}' nằm ngoài phạm vi repo cho phép: {ALLOWED_REPO_ROOTS}!"
 
     raw_prog = clean_tokens[0].replace("\\", "/")
     prog_base = os.path.basename(raw_prog).lower()
@@ -369,9 +369,8 @@ def _validate_worker_terminal_command(cmd: str) -> Optional[str]:
                 "Worker CHỈ ĐƯỢC PHÉP gọi dạng trực tiếp: `git status`, `git diff`, `git log`."
             )
 
-        # REQ 3 CLOSED: Cho phép cờ an toàn duy nhất là '--no-textconv'
         for extra_tok in clean_tokens[2:]:
-            if extra_tok == "--no-textconv":
+            if extra_tok in ("--no-textconv", "--"):
                 continue
             if extra_tok.startswith("-"):
                 return f"⛔ [WORKER GATE - GIT FLAG BLOCKED]: Cờ '{extra_tok}' bị cấm trong lệnh git của worker!"
@@ -426,28 +425,49 @@ def check_worker_tool_gate(tool_name: str, session_id: str, args: Any = None) ->
             ),
         }
 
-    # 2. VALUE-SCANNED PROTECTION CHO TẤT CẢ GIÁ TRỊ STRING (Req 1 Closed - Bịt kín mọi Alias Gap)
     all_arg_strings = _extract_all_string_values(fn_args)
+
+    # 2. VALUE-SCANNED PROTECTION CHO TẤT CẢ GIÁ TRỊ STRING
     for val in all_arg_strings:
         if not val or len(val.strip()) == 0:
             continue
-        # Nếu string trỏ tới target bảo vệ hoặc tổ tiên
         if _is_protected_target(val):
             return {
                 "action": "block",
                 "reason": f"⛔ [WORKER GATE - INFO-LEAK BLOCKED]: Tham số '{val}' trỏ vào thành phần hệ thống được bảo vệ (guard/state/ssh/hermes)!",
             }
 
-    # 3. RÀNG BUỘC WHITELIST ALLOWED_REPO_ROOTS CHO READ_FILE & SEARCH_FILES
+    # 3. FAIL-CLOSED PATH MANDATE CHO READ_FILE & SEARCH_FILES (Lỗ 1 & Lỗ 2 Closed)
     if tool_name in ("read_file", "search_files"):
-        for val in all_arg_strings:
-            # Kiểm tra các giá trị có dạng đường dẫn
-            if (":" in val or "/" in val or "\\" in val) and not val.startswith("-"):
-                if not _is_path_in_roots(val, ALLOWED_REPO_ROOTS):
-                    return {
-                        "action": "block",
-                        "reason": f"⛔ [WORKER GATE - OUT OF WHITELIST]: Đường dẫn '{val}' nằm ngoài phạm vi repo cho phép: {ALLOWED_REPO_ROOTS}!",
-                    }
+        # Bắt buộc phải xác định được đường dẫn mục tiêu rõ ràng
+        explicit_paths = []
+        for k in ("path", "directory", "dir", "root", "target", "file_path", "filename"):
+            if k in fn_args and isinstance(fn_args[k], str) and fn_args[k].strip():
+                explicit_paths.append(fn_args[k].strip())
+
+        # Nếu không có key tường minh, tìm trong all_arg_strings các chuỗi không phải pattern/cờ
+        if not explicit_paths:
+            for val in all_arg_strings:
+                if val in (fn_args.get("pattern", ""), fn_args.get("query", ""), fn_args.get("file_glob", "")):
+                    continue
+                if not val.startswith("-"):
+                    explicit_paths.append(val)
+
+        # LỖ 1 CLOSED: Nếu KHÔNG CÓ BẤT KỲ ĐƯỜNG DẪN NÀO -> FAIL-CLOSED BLOCK NGAY!
+        if not explicit_paths:
+            return {
+                "action": "block",
+                "reason": f"⛔ [WORKER GATE - MISSING EXPLICIT PATH]: Tool '{tool_name}' của Worker BẮT BUỘC phải chỉ định đường dẫn mục tiêu nằm trong whitelist D:\\Taadaa! Cấm gọi không có path.",
+            }
+
+        # LỖ 2 CLOSED: Chuẩn hóa mọi path (kể cả tên trần) về realpath và ép buộc kiểm tra whitelist
+        for p in explicit_paths:
+            real_p = os.path.realpath(p)
+            if not _is_path_in_roots(real_p, ALLOWED_REPO_ROOTS):
+                return {
+                    "action": "block",
+                    "reason": f"⛔ [WORKER GATE - OUT OF WHITELIST]: Đường dẫn '{p}' (giải phân thành '{real_p}') nằm ngoài phạm vi repo cho phép: {ALLOWED_REPO_ROOTS}!",
+                }
 
     # 4. DEFAULT-DENY TERMINAL
     if tool_name == "terminal":
@@ -523,8 +543,7 @@ def _on_pre_tool_call(
     fn_args = args if args is not None else kwargs.get("function_args", {})
     sess_id = session_id or kwargs.get("session_id", "")
 
-    # 1. UNCONDITIONAL PROTECTED TARGET SHIELD CHO TẤT CẢ ACTORS (REQ 1 & REQ 3 CLOSED)
-    # Quét toàn bộ string values của fn_args
+    # 1. UNCONDITIONAL PROTECTED TARGET SHIELD CHO TẤT CẢ ACTORS
     all_arg_strings = _extract_all_string_values(fn_args)
     for val in all_arg_strings:
         if val and _is_protected_target(val):
@@ -656,7 +675,7 @@ def _on_pre_tool_call(
                 "is_coordinator": True,
             }
             _update_session_state(sess_id, sess_updates)
-            logger.info("[FARM_GUARD] delegate_task passed Scope Lock v4.0 -> targets: %s", normalized_targets)
+            logger.info("[FARM_GUARD] delegate_task passed Scope Lock v4.1 -> targets: %s", normalized_targets)
             return None
 
         # Non-code task exempt
