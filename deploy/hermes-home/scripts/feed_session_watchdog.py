@@ -486,15 +486,21 @@ def format_released_follows(fl_released: list, all_follows: dict) -> list:
         else:
             rel_10_plus.append((m, cnt))
 
-    lines = [f"  + Nhả follow ({len(fl_released)}):"]
+    def _format_m(m: Any) -> str:
+        s = str(m).strip()
+        if s.upper().startswith("M"):
+            return f"M{s[1:]}"
+        return f"M{s}"
+
+    lines = [f"  + Nhả follow ({len(fl_released)} máy):"]
     if rel_0:
-        lines.append(f"    - Nhả liền (0 lượt - {len(rel_0)}): {', '.join(rel_0)}")
+        lines.append(f"    - Nhả liền (0 lượt - {len(rel_0)} máy): {', '.join(_format_m(m) for m in rel_0)}")
     if rel_1_4:
-        lines.append(f"    - 1 - 4 lượt ({len(rel_1_4)}): {', '.join(f'{m} ({cnt} lượt)' for m, cnt in rel_1_4)}")
+        lines.append(f"    - 1 - 4 lượt ({len(rel_1_4)} máy): {', '.join(f'{_format_m(m)} ({cnt} lượt)' for m, cnt in rel_1_4)}")
     if rel_5_9:
-        lines.append(f"    - 5 - 9 lượt ({len(rel_5_9)}): {', '.join(f'{m} ({cnt} lượt)' for m, cnt in rel_5_9)}")
+        lines.append(f"    - 5 - 9 lượt ({len(rel_5_9)} máy): {', '.join(f'{_format_m(m)} ({cnt} lượt)' for m, cnt in rel_5_9)}")
     if rel_10_plus:
-        lines.append(f"    - 10+ lượt ({len(rel_10_plus)}): {', '.join(f'{m} ({cnt} lượt)' for m, cnt in rel_10_plus)}")
+        lines.append(f"    - 10+ lượt ({len(rel_10_plus)} máy): {', '.join(f'{_format_m(m)} ({cnt} lượt)' for m, cnt in rel_10_plus)}")
     return lines
 
 

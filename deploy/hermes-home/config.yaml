@@ -1,53 +1,10 @@
-model:
-  context_length: 1000000
-  default: ag-gemini-pool-3
-  persist_switch_by_default: false
-  provider: omni
-providers:
-  9router:
-    api: http://127.0.0.1:20128/v1
-    default_model: gpt-5.6-luna
-    discover_models: false
-    key_env: NINEROUTER_API_KEY
-    models:
-      gpt-5.6-luna: {}
-      gpt-5.6-sol: {}
-      gpt-5.6-terra: {}
-      gemini-3.7-flash-high: {}
-      claude-sonnet-4-6: {}
-      9r-free: {}
-    transport: chat_completions
-  omni:
-    api: http://127.0.0.1:20129/v1
-    default_model: ag-gemini-pool-3
-    discover_models: false
-    key_env: OMNIROUTE_API_KEY
-    models:
-      ag-claude: {}
-      ag-gemini-pool-3: {}
-      ag-opus: {}
-      ag-worker: {}
-      omni-free: {}
-    transport: chat_completions
-fallback_providers:
-- model: omni-free
-  provider: omni
-- model: 9r-free
-  provider: custom:9router
+_config_version: 33
 agent:
-  max_turns: 200
-  gateway_timeout: 3600
   api_max_retries: 2
-  service_tier: normal
+  gateway_timeout: 3600
   gateway_timeout_warning: 3600
   image_input_mode: native
-  reasoning_overrides:
-    ag/claude-sonnet-4-6: high
-    deepseek-v4-flash: high
-    gpt-5.6-luna: high
-    oc/deepseek-v4-flash-free: high
-    oc/hy3-free: high
-    opencode-audit: high
+  max_turns: 200
   personalities:
     catgirl: You are Neko-chan, an anime catgirl AI assistant, nya~! Add 'nya' and
       cat-like expressions to your speech. Use kaomoji like (=^･ω･^=) and ฅ^•ﻌ•^ฅ.
@@ -101,6 +58,14 @@ agent:
         lệnh. Đọc AGENTS.md + HANDOFF.md + PROJECT_RULES.md. Báo cáo tóm tắt cuối
         cùng khi hoàn tất hoặc có lỗi thực tế. Các lượt trung gian dùng [SILENT].
   reasoning_effort: high
+  reasoning_overrides:
+    ag/claude-sonnet-4-6: high
+    deepseek-v4-flash: high
+    gpt-5.6-luna: high
+    oc/deepseek-v4-flash-free: high
+    oc/hy3-free: high
+    opencode-audit: high
+  service_tier: normal
   system_prompt: 'Bạn là Hermes Coordinator điều phối các repo dự án Taadaa Phone
     Farm.
 
@@ -136,62 +101,85 @@ agent:
     3. BÁO CÁO GỌN: Chỉ gửi 1 báo cáo cuối (Mục đích -> Kết quả -> Blocker). Các lượt
     trung gian dùng [SILENT]. Khi cần gửi ảnh máy N, dùng ADB screencap gửi qua MEDIA:<path>.'
   verbose: false
-terminal:
-  backend: local
-  cwd: .
-  timeout: 900
-  home_mode: auto
-  container_cpu: 1
-  container_memory: 5120
-  container_disk: 51200
-  container_persistent: true
-  docker_mount_cwd_to_workspace: false
-  lifetime_seconds: 1800
-browser:
-  inactivity_timeout: 120
-  allow_private_urls: true
-tool_loop_guardrails:
-  warnings_enabled: true
-  hard_stop_enabled: false
-  warn_after:
-    exact_failure: 2
-    same_tool_failure: 3
-    idempotent_no_progress: 2
-  hard_stop_after:
-    exact_failure: 5
-    same_tool_failure: 8
-    idempotent_no_progress: 5
-  media_delivery:
-    auto_deliver_local_files: false
-    denied_paths:
-    - D:/TIKTOK-videonuoinick
-    - D:/video goc
-    - D:/OneDrive
-compression:
-  enabled: true
-  threshold: 0.3
-  target_ratio: 0.2
-  protect_last_n: 20
-  protect_first_n: 3
-  codex_gpt55_autoraise: true
-  codex_app_server_auto: native
-prompt_caching:
-  cache_ttl: 5m
+approvals:
+  destructive_slash_confirm: false
+  mode: smart
 auxiliary:
   compression:
-    provider: omni
-    model: ag-gemini-pool-3
     fallback_chain:
     - model: omni-free
       provider: omni
+    model: ag-gemini-pool-3
+    provider: omni
+browser:
+  allow_private_urls: true
+  inactivity_timeout: 120
+code_execution:
+  max_tool_calls: 200
+  timeout: 300
+command_allowlist:
+- copy/move file into system config path
+- execute_code
+- script execution via -e/-c flag
+- force kill processes
+- script execution via heredoc
+compression:
+  codex_app_server_auto: native
+  codex_gpt55_autoraise: true
+  enabled: true
+  protect_first_n: 3
+  protect_last_n: 20
+  target_ratio: 0.2
+  threshold: 0.3
+cron:
+  script_timeout_seconds: 10800
+custom_providers:
+- api_key: «redacted:sk-…»
+  api_mode: chat_completions
+  base_url: http://127.0.0.1:20128/v1
+  discover_models: false
+  key_env: NINEROUTER_API_KEY
+  model: 9r-free
+  models:
+    9r-free:
+      context_length: 1048576
+    ag/claude-opus-4-6-thinking:
+      context_length: 1000000
+    ag/claude-sonnet-4-6:
+      context_length: 1000000
+    ag/gemini-3.7-flash-high:
+      context_length: 1048576
+    claude-sonnet-4-6:
+      context_length: 1000000
+    gemini-3.7-flash-high:
+      context_length: 1048576
+    gpt-5.6-luna:
+      context_length: 256000
+    gpt-5.6-sol:
+      context_length: 256000
+    gpt-5.6-terra:
+      context_length: 256000
+    plan-review:
+      context_length: 256000
+    plan-review-hard:
+      context_length: 256000
+  name: 9router
+delegation:
+  child_timeout_seconds: 600
+  max_concurrent_children: 8
+  max_iterations: 15
+  model: ag-gemini-pool-3
+  provider: omni
+  reasoning_effort: medium
 display:
-  compact: false
-  busy_input_mode: interrupt
+  background_process_notifications: result
   bell_on_complete: false
-  show_reasoning: false
-  streaming: true
-  skin: mono
+  busy_ack_detail: true
+  busy_input_mode: interrupt
+  cleanup_progress: false
+  compact: false
   interim_assistant_messages: true
+  long_running_notifications: true
   platforms:
     telegram:
       interim_assistant_messages: false
@@ -199,62 +187,15 @@ display:
       thinking_progress: false
       tool_progress: false
       tool_progress_grouping: accumulate
-  background_process_notifications: result
-  busy_ack_detail: true
-  cleanup_progress: false
-  long_running_notifications: true
+  show_reasoning: false
+  skin: mono
+  streaming: true
   tool_progress: all
-stt:
-  enabled: true
-  local:
-    model: base
-  openai:
-    model: whisper-1
-voice:
-  auto_tts: false
-memory:
-  memory_enabled: true
-  user_profile_enabled: true
-  memory_char_limit: 2200
-  user_char_limit: 1375
-  flush_min_turns: 6
-  nudge_interval: 10
-delegation:
-  model: ag-claude
+fallback_providers:
+- model: omni-free
   provider: omni
-  max_iterations: 15
-  reasoning_effort: medium
-  max_concurrent_children: 4
-  child_timeout_seconds: 600
-moa:
-  presets:
-    default:
-      enabled: false
-skills:
-  creation_nudge_interval: 15
-approvals:
-  mode: smart
-  destructive_slash_confirm: false
-command_allowlist:
-- copy/move file into system config path
-- execute_code
-- script execution via -e/-c flag
-- force kill processes
-- script execution via heredoc
-quick_commands:
-  rl:
-    target: /skill role-based-agent-review-loop
-    type: alias
-security:
-  allow_private_urls: true
-cron:
-  script_timeout_seconds: 10800
-code_execution:
-  max_tool_calls: 200
-  timeout: 300
-model_catalog:
-  excluded_providers:
-  - anthropic
+- model: 9r-free
+  provider: custom:9router
 gateway:
   max_workers: 50
   platforms:
@@ -329,62 +270,36 @@ gateway:
       - '-5373649734'
       observe_unmentioned_group_messages: true
       require_mention: false
-streaming:
-  enabled: false
-onboarding:
-  seen:
-    busy_input_prompt: true
-    openclaw_residue_cleanup: true
-    tool_progress_prompt: true
-updates:
-  pre_update_backup: false
-  backup_keep: 5
-  non_interactive_local_changes: stash
-_config_version: 33
-custom_providers:
-- api_key: «redacted:sk-…»
-  api_mode: chat_completions
-  base_url: http://127.0.0.1:20128/v1
-  discover_models: false
-  key_env: NINEROUTER_API_KEY
-  model: 9r-free
-  models:
-    ag/claude-opus-4-6-thinking:
-      context_length: 1000000
-    ag/claude-sonnet-4-6:
-      context_length: 1000000
-    ag/gemini-3.7-flash-high:
-      context_length: 1048576
-    claude-sonnet-4-6:
-      context_length: 1000000
-    gemini-3.7-flash-high:
-      context_length: 1048576
-    gpt-5.6-luna:
-      context_length: 256000
-    gpt-5.6-sol:
-      context_length: 256000
-    gpt-5.6-terra:
-      context_length: 256000
-    plan-review:
-      context_length: 256000
-    plan-review-hard:
-      context_length: 256000
-    9r-free:
-      context_length: 1048576
-  name: 9router
 group_sessions_per_user: true
-plugins:
-  enabled:
-  - farm-coordinator-guard
-  disabled: []
-  entries:
-    farm-coordinator-guard:
-      allow_tool_override: false
 known_plugin_toolsets:
   cli:
   - spotify
   telegram:
   - spotify
+memory:
+  flush_min_turns: 6
+  memory_char_limit: 2200
+  memory_enabled: true
+  nudge_interval: 10
+  user_char_limit: 1375
+  user_profile_enabled: true
+moa:
+  presets:
+    default:
+      enabled: false
+model:
+  context_length: 1000000
+  default: ag-gemini-pool-3
+  persist_switch_by_default: false
+  provider: omni
+model_catalog:
+  excluded_providers:
+  - anthropic
+onboarding:
+  seen:
+    busy_input_prompt: true
+    openclaw_residue_cleanup: true
+    tool_progress_prompt: true
 platform_toolsets:
   cli:
   - browser
@@ -438,7 +353,92 @@ platform_toolsets:
   - hermes-whatsapp
   yuanbao:
   - hermes-yuanbao
+plugins:
+  disabled: []
+  enabled:
+  - farm-coordinator-guard
+  entries:
+    farm-coordinator-guard:
+      allow_tool_override: false
+prompt_caching:
+  cache_ttl: 5m
+providers:
+  9router:
+    api: http://127.0.0.1:20128/v1
+    default_model: gpt-5.6-luna
+    discover_models: false
+    key_env: NINEROUTER_API_KEY
+    models:
+      9r-free: {}
+      claude-sonnet-4-6: {}
+      gemini-3.7-flash-high: {}
+      gpt-5.6-luna: {}
+      gpt-5.6-sol: {}
+      gpt-5.6-terra: {}
+    transport: chat_completions
+  omni:
+    api: http://127.0.0.1:20129/v1
+    default_model: ag-gemini-pool-3
+    discover_models: false
+    key_env: OMNIROUTE_API_KEY
+    models:
+      ag-claude: {}
+      ag-gemini-pool-3: {}
+      ag-opus: {}
+      ag-worker: {}
+      omni-free: {}
+    transport: chat_completions
+quick_commands:
+  rl:
+    target: /skill role-based-agent-review-loop
+    type: alias
+security:
+  allow_private_urls: true
 session_reset:
   at_hour: 4
   idle_minutes: 1440
   mode: none
+skills:
+  creation_nudge_interval: 15
+streaming:
+  enabled: false
+stt:
+  enabled: true
+  local:
+    model: base
+  openai:
+    model: whisper-1
+terminal:
+  backend: local
+  container_cpu: 1
+  container_disk: 51200
+  container_memory: 5120
+  container_persistent: true
+  cwd: .
+  docker_mount_cwd_to_workspace: false
+  home_mode: auto
+  lifetime_seconds: 1800
+  timeout: 900
+tool_loop_guardrails:
+  hard_stop_after:
+    exact_failure: 5
+    idempotent_no_progress: 5
+    same_tool_failure: 8
+  hard_stop_enabled: false
+  media_delivery:
+    auto_deliver_local_files: false
+    denied_paths:
+    - D:/TIKTOK-videonuoinick
+    - D:/video goc
+    - D:/OneDrive
+  warn_after:
+    exact_failure: 2
+    idempotent_no_progress: 2
+    same_tool_failure: 3
+  warnings_enabled: true
+updates:
+  backup_keep: 5
+  non_interactive_local_changes: stash
+  pre_update_backup: false
+voice:
+  auto_tts: false

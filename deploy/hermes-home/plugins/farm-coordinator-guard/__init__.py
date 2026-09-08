@@ -1,27 +1,17 @@
-"""Farm Coordinator Guard Plugin for Hermes v2.1.
+"""Farm Coordinator Guard Plugin for Hermes v2.3 (Zero-Bypass Architecture Approved).
 
 Two-Tier Enforcement (State Guard + Action Guard) + WorkerToolGate:
-1. STATE GUARD (Per-session scoped):
-   - Phase ALERT:
-     * Investigative tools (read_file, search_files, patch, write_file, execute_code) are hard-blocked.
-     * Only 1 inspect command (inspect_machine.py <N> or adb devices) allowed via terminal.
-     * Any subsequent terminal call in the coordinator session is hard-blocked until delegate_task.
-     * skill_view and delegate_task are always permitted.
-   - Phase WORKER_RUNNING: Auto-expires after 20 minutes to prevent deadlock.
-   - Phase CLOSEOUT: Terminal and tools open for 6 Gate (commit, rebase, push, docs, canary).
-   - Phase IDLE: Normal operation for O(1) commands.
-
-2. ACTION GUARD (Always active, even in IDLE):
-   - Allowlist: O(1) ops (git status/diff/commit/push, py_compile, psutil, adb devices, inspect_machine)
-   - Denylist: Long-running batch/automation scripts (.ps1, batch runners, playwright, reg, upload, checkmail)
-     and multi-line python probe scripts (python -c with loops/subprocess/automations).
-     MUST be dispatched via delegate_task; hard-blocked if attempted in coordinator session.
-
-3. WORKER TOOL GATE (Anti-Analysis Paralysis for Worker Subagents):
-   - Escape token recognized via parent_session_id in state.db or TAADAA_WORKER=1.
-   - READ_BUDGET = 3: read_file/search_files hard-blocked after 3 calls.
-   - WRITE_DEADLINE = 4: reading hard-blocked if call_count >= 4 and write_count == 0.
-   - write_file and patch are always permitted; test/compile tools permitted after patching.
+1. STATE GUARD:
+   - Phase ALERT / WORKER_RUNNING / IDLE / CLOSEOUT
+2. ACTION GUARD:
+   - Allowlist / Denylist
+3. WORKER TOOL GATE:
+   - Scope Lock Enforcement (Hole A closed): Enforce that worker can ONLY edit files declared in target_files.
+   - Blacklist self-modification of guard plugin.
+4. COORDINATOR SCOPE LOCK GATE v3.0:
+   - Default-Deny (Hole C closed)
+   - Structured Target Files only (Hole B closed - no free-text regex fallback)
+   - Whitelist Containment + isfile / valid parent dir (Hole D closed)
 """
 
 from __future__ import annotations
@@ -37,57 +27,86 @@ import time
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Set
 
 logger = logging.getLogger(__name__)
 
-STATE_FILE = Path(os.environ.get("HERMES_HOME", Path.home() / "AppData" / "Local" / "hermes")) / "farm_coordinator_phase.json"
+HERMES_ROOT = Path(os.environ.get("HERMES_HOME", Path.home() / "AppData" / "Local" / "hermes"))
+STATE_FILE = HERMES_ROOT / "farm_coordinator_phase.json"
 STATE_LOCK_FILE = STATE_FILE.with_suffix(".lock")
-WATCHDOG_STATE_FILE = Path(os.environ.get("HERMES_HOME", Path.home() / "AppData" / "Local" / "hermes")) / "watchdog_state.json"
+WATCHDOG_STATE_FILE = HERMES_ROOT / "watchdog_state.json"
 WATCHDOG_LOCK_FILE = WATCHDOG_STATE_FILE.with_suffix(".lock")
-CLAUDE_LOCKOUT_FILE = Path(os.environ.get("HERMES_HOME", Path.home() / "AppData" / "Local" / "hermes")) / "claude_lockout.json"
-CLAUDE_USAGE_FILE = Path(os.environ.get("HERMES_HOME", Path.home() / "AppData" / "Local" / "hermes")) / "claude_usage.json"
-WORKER_TIMEOUT_SECONDS = 1200  # 20 minutes auto-reset to avoid deadlock
-CLOSEOUT_TIMEOUT_SECONDS = 7200  # 2 hours auto-reset for CLOSEOUT phase
-SESSION_EXPIRY_SECONDS = 7200  # 2 hours auto-cleanup for stale sessions
+CLAUDE_LOCKOUT_FILE = HERMES_ROOT / "claude_lockout.json"
+CLAUDE_USAGE_FILE = HERMES_ROOT / "claude_usage.json"
+WORKER_TIMEOUT_SECONDS = 1200
+CLOSEOUT_TIMEOUT_SECONDS = 7200
+SESSION_EXPIRY_SECONDS = 7200
 
-# --- WORKER TOOL GATE CONSTANTS & STATE ---
-READ_BUDGET = int(os.environ.get("WORKER_READ_BUDGET", 3))
-WRITE_DEADLINE = int(os.environ.get("WORKER_WRITE_DEADLINE", 4))
-MAX_WORKER_CALLS = int(os.environ.get("WORKER_MAX_CALLS", 12))
-MAX_COORDINATOR_DISPATCHES = int(os.environ.get("COORDINATOR_MAX_DISPATCHES", 3))
 POPUP_SELECTOR_PATTERN = re.compile(r"\b(?:popup|allowlist|survey|ads?|selector|advert)\b", re.IGNORECASE)
+MAX_COORDINATOR_DISPATCHES = int(os.environ.get("COORDINATOR_MAX_DISPATCHES", 3))
 
-# --- ANTI-OVERENGINEERING CAPABILITY LOCK REGEXES (Claude Opus High Approved) ---
 _SCHEDULER_RE = re.compile(
-    r"\b(crontab|schtasks|Register-ScheduledTask|New-ScheduledTask|"
-    r"systemctl|launchctl|New-Service|sc\.exe\s+create)\b", re.IGNORECASE)
-
+    r"\b(crontab|schtasks|Register-ScheduledTask|New-ScheduledTask|systemctl|launchctl|New-Service|sc\.exe\s+create)\b",
+    re.IGNORECASE,
+)
 _FILEWRITE_SHELL_RE = re.compile(
-    r"(>>?\s*[^\s|&]+)"
-    r"|(<<\s*['\"]?\w+)"
-    r"|\btee\b|\bSet-Content\b|\bOut-File\b|\bAdd-Content\b"
-    r"|\[IO\.File\]::Write"
-    r"|open\([^)]*['\"][wa]\b"
-    r"|fs\.writeFileSync|fs\.appendFileSync"
-    r"|writeAllText|WriteAllLines", re.IGNORECASE)
-
+    r"(>>?\s*[^\s|&]+)|(<<\s*['\"]?\w+)|\btee\b|\bSet-Content\b|\bOut-File\b|\bAdd-Content\b|\[IO\.File\]::Write|open\([^)]*['\"][wa]\b|fs\.writeFileSync|fs\.appendFileSync|writeAllText|WriteAllLines",
+    re.IGNORECASE,
+)
 _DAEMON_RE = re.compile(
-    r"\b(Popen|nohup|Start-Process|start\s+/b|pm2\s+start|forever\s+start|setsid)\b|&\s*$", re.IGNORECASE)
-
+    r"\b(Popen|nohup|Start-Process|start\s+/b|pm2\s+start|forever\s+start|setsid)\b|&\s*$",
+    re.IGNORECASE,
+)
 _DAEMON_EXEMPT_RE = re.compile(r"\b(git|inspect_machine|claude|grep)\b", re.IGNORECASE)
-
 _TOOLNAME_RE = re.compile(
-    r"[\w\-]*(heal|watchdog|daemon|auto[_\-]|recover|keepalive|"
-    r"guardian|supervisor|healer|repair)[\w\-]*\.(py|ps1|sh|js|cmd|bat)", re.IGNORECASE)
-
+    r"[\w\-]*(heal|watchdog|daemon|auto[_\-]|recover|keepalive|guardian|supervisor|healer|repair)[\w\-]*\.(py|ps1|sh|js|cmd|bat)",
+    re.IGNORECASE,
+)
 _SCRIPT_FILE_RE = re.compile(r"\.(py|ps1|sh|bat|cmd)\b", re.IGNORECASE)
 
+INVESTIGATIVE_TOOLS = {
+    "read_file",
+    "search_files",
+    "patch",
+    "write_file",
+    "execute_code",
+}
 
+ALLOWLIST_PATTERNS = [
+    r"^\s*git\s+(status|log|diff|add|commit|push|pull|fetch|stash|branch|checkout)\b",
+    r"^\s*(ls|cat|head|tail|wc|grep|rg|pwd|echo|which|whoami)\b",
+    r"\bpsutil\b",
+    r"\btasklist\b",
+    r"\bGet-Process\b",
+    r"^\s*adb\s+devices\b",
+    r"^\s*python\s+.*inspect_machine\.py\b",
+    r"^\s*python\s+.*-m\s+py_compile\b",
+    r"^\s*python\s+--version\b",
+    r"^\s*claude\s+-p\b",
+]
+
+DENYLIST_PATTERNS = [
+    r"\brun_.*batch.*\.ps1\b",
+    r'(?:"[^"]*"|\x27[^\x27]*\x27|\S+)\.ps1\b',
+    r"\bupload[_-]?video\b",
+    r"\bupload_tik\b",
+    r"\bcheckmail\b",
+    r"\breg[_-]?(tiktok|gmail)\b",
+]
+
+ALLOWED_REPO_ROOTS = [
+    os.path.realpath(r"D:\Taadaa"),
+    os.path.realpath(str(HERMES_ROOT)),
+]
+
+GUARD_SOURCE_DIR = os.path.realpath(str(HERMES_ROOT / "plugins" / "farm-coordinator-guard"))
+VALID_CODE_EXTENSIONS = {".py", ".json", ".yaml", ".yml", ".sh", ".ps1", ".js", ".ts", ".toml", ".ini"}
+
+_CACHE_LOCK = threading.Lock()
+_PARENT_SESSION_CACHE: Dict[str, Optional[str]] = {}
 
 
 def is_monolith_smoke(path_str: str) -> bool:
-    """Check if a path or command points to a monolith flow (*_smoke.py) at any directory depth."""
     if not path_str:
         return False
     norm = path_str.replace("\\", "/").lower()
@@ -101,259 +120,19 @@ def is_monolith_smoke(path_str: str) -> bool:
     return False
 
 
-def is_safe_terminal_verify(cmd: str) -> bool:
-    """Strictly validate safe verification commands for worker subagents.
-    
-    Rules:
-    1. Cấm tuyệt đối chứa file monolith flow.
-    2. Chặn đứng ký tự shell chaining, redirection, subshell, comment, background, env-expansion:
-       ; & | # ` $ > < % \n \r \t
-    3. Chỉ cho phép đúng 3 nhóm lệnh an toàn:
-       - py_compile: python[3] -m py_compile <file> (file không được là monolith)
-       - git status: git status [--short|-s] [<path>]
-       - git diff: git diff [<path>] (cấm flag --output, --ext-diff, path không được là monolith)
-    """
-    if not cmd or not cmd.strip():
-        return False
-    cmd_clean = cmd.strip()
-
-    if is_monolith_smoke(cmd_clean):
-        return False
-
-    FORBIDDEN_CHARS = [";", "&", "|", "#", "`", "$", ">", "<", "%", "\n", "\r", "\t"]
-    if any(ch in cmd_clean for ch in FORBIDDEN_CHARS):
-        return False
-
-    try:
-        tokens = shlex.split(cmd_clean, posix=False)
-        tokens = [t.strip("\"'") for t in tokens if t.strip("\"'")]
-    except Exception:
-        return False
-
-    if not tokens:
-        return False
-
-    t0 = Path(tokens[0]).stem.lower()
-
-    if t0 == "git":
-        if len(tokens) >= 2:
-            sub = tokens[1].lower()
-            if sub == "status":
-                return True
-            if sub == "diff":
-                for tok in tokens[2:]:
-                    t_low = tok.lower()
-                    if t_low.startswith("--output") or t_low.startswith("--ext-diff") or t_low.startswith("--no-index"):
-                        return False
-                    if is_monolith_smoke(t_low):
-                        return False
-                return True
-        return False
-
-    if t0 == "python" or t0.startswith("python3"):
-        if len(tokens) >= 3 and tokens[1] == "-m" and tokens[2] in ("py_compile", "pytest"):
-            for tok in tokens[3:]:
-                if is_monolith_smoke(tok):
-                    return False
-            return True
-        return False
-
-    if t0 in ("py_compile", "pytest"):
-        for tok in tokens[1:]:
-            if is_monolith_smoke(tok):
-                return False
-        return True
-
-    return False
-
-# --- INVESTIGATIVE TOOLS (Cấm tuyệt đối ở session Coordinator trong Phase ALERT) ---
-INVESTIGATIVE_TOOLS = {
-    "read_file",
-    "search_files",
-    "patch",
-    "write_file",
-    "execute_code",
-}
-
-# --- TẦNG 1: ALLOWLIST (O(1) commands - luôn cho qua khi không ở ALERT) ---
-ALLOWLIST_PATTERNS = [
-    r"^\s*git\s+(status|log|diff|add|commit|push|pull|fetch|stash|branch|checkout)\b",
-    r"^\s*(ls|cat|head|tail|wc|grep|rg|pwd|echo|which|whoami)\b",
-    r"\bpsutil\b",
-    r"\btasklist\b",
-    r"\bGet-Process\b",
-    r"^\s*adb\s+devices\b",
-    r"^\s*python\s+.*inspect_machine\.py\b",
-    r"^\s*python\s+.*-m\s+py_compile\b",
-    r"^\s*python\s+--version\b",
-    r"^\s*claude\s+-p\b",  # Cho phép gọi Claude CLI tư vấn
-]
-
-# --- TẦNG 3: DENYLIST (Long-runners & Python probe cấm chạy ở session chính) ---
-DENYLIST_PATTERNS = [
-    r"\brun_.*batch.*\.ps1\b",
-    r'(?:"[^"]*"|\x27[^\x27]*\x27|\S+)\.ps1\b',
-    r"\bupload[_-]?video\b",
-    r"\bupload_tik\b",
-    r"\bcheckmail\b",
-    r"\breg[_-]?(tiktok|gmail)\b",
-    r"\bplaywright\b",
-    r"\bpython\b.*\b(run_batch|batch_|run_all|check_live|s7_helper|untouched_proxies)\b",
-    r"\bpython\s+-c\b.*(subprocess|playwright|while|for\s+.*in|openpyxl|adb|exec|importlib)\b",
-    r"\bfor\b.*\bin\b.*;\s*do\b",
-    r"\bwhile\s*\(\s*\$true\s*\)",
-    r"\bgpm\b.*\b(proxy|auto|script)\b",
-]
-
-
-CLAUDE_5H_MAX_CALLS = int(os.environ.get("CLAUDE_5H_MAX_CALLS", 45))
-CLAUDE_5H_THRESHOLD_PCT = float(os.environ.get("CLAUDE_5H_THRESHOLD_PCT", 0.85))
-CLAUDE_5H_THRESHOLD_CALLS = int(CLAUDE_5H_MAX_CALLS * CLAUDE_5H_THRESHOLD_PCT)
-
-WORKER_GATE_FILE = Path(os.environ.get("HERMES_HOME", Path.home() / "AppData" / "Local" / "hermes")) / "worker_gate_state.json"
-WORKER_GATE_LOCK_FILE = WORKER_GATE_FILE.with_suffix(".lock")
-_PARENT_SESSION_CACHE: Dict[str, Optional[str]] = {}
-_CACHE_LOCK = threading.Lock()
-
-
-def _get_parent_session_id(session_id: str) -> Optional[str]:
-    """Get parent_session_id with in-memory caching to avoid redundant SQLite queries."""
-    if not session_id:
-        return None
-    if os.environ.get("TAADAA_WORKER") == "1":
-        return "env_worker"
-    with _CACHE_LOCK:
-        if session_id in _PARENT_SESSION_CACHE:
-            return _PARENT_SESSION_CACHE[session_id]
-        if len(_PARENT_SESSION_CACHE) > 500:
-            _PARENT_SESSION_CACHE.clear()
-
-    parent_id = None
-    try:
-        db_path = Path(os.environ.get("HERMES_HOME", Path.home() / "AppData" / "Local" / "hermes")) / "state.db"
-        if db_path.is_file():
-            with sqlite3.connect(str(db_path), timeout=2.0) as con:
-                row = con.execute("SELECT parent_session_id FROM sessions WHERE id = ?", (session_id,)).fetchone()
-                if row and row[0]:
-                    parent_id = str(row[0])
-    except Exception as exc:
-        logger.debug("[FARM_GUARD] Error querying parent for session %s: %s", session_id, exc)
-
-    with _CACHE_LOCK:
-        _PARENT_SESSION_CACHE[session_id] = parent_id
-    return parent_id
-
-
-def _record_claude_usage(cmd: str, weight: int = 1) -> None:
-    """Record Claude CLI call to usage tracker file atomically."""
-    try:
-        CLAUDE_USAGE_FILE.parent.mkdir(parents=True, exist_ok=True)
-        data: Dict[str, Any] = {"calls": []}
-        if CLAUDE_USAGE_FILE.is_file():
-            try:
-                with open(CLAUDE_USAGE_FILE, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-            except Exception:
-                pass
-        calls = data.get("calls", [])
-        now = time.time()
-        calls.append({"ts": now, "cmd": cmd[:100], "weight": weight})
-        week_ago = now - 7 * 86400
-        data["calls"] = [c for c in calls if c.get("ts", 0) > week_ago]
-        tmp = CLAUDE_USAGE_FILE.parent / f"{CLAUDE_USAGE_FILE.name}.{os.getpid()}.tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
-        os.replace(tmp, CLAUDE_USAGE_FILE)
-    except Exception as exc:
-        logger.debug("[FARM_GUARD] Error recording claude usage: %s", exc)
-
-
-def _check_claude_cli_guard(cmd: str) -> Optional[Dict[str, Any]]:
-    """Hard Guard: Enforce 85% 5h limit & Lockout protection on Claude CLI calls."""
-    if not re.search(r"\bclaude\b", cmd, re.IGNORECASE):
-        return None
-
-    now = time.time()
-
-    # 1. Check active lockout
-    if CLAUDE_LOCKOUT_FILE.is_file():
-        try:
-            with open(CLAUDE_LOCKOUT_FILE, "r", encoding="utf-8") as f:
-                lockout = json.load(f)
-            locked_until = lockout.get("locked_until", 0)
-            if now < locked_until:
-                remain_min = max(1, int((locked_until - now) / 60))
-                reset_str = lockout.get("reset_time_str", f"{remain_min}m nữa")
-                return {
-                    "action": "block",
-                    "message": (
-                        f"⛔ [CLAUDE CLI HARD GUARD - LOCKOUT ACTIVE]:\n"
-                        f"Claude CLI đang bị Anthropic khóa session limit (resets {reset_str}, còn ~{remain_min} phút)!\n"
-                        f"Lệnh `{cmd[:80]}` BỊ CHẶN ĐỨNG VẬT LÝ BỞI FARM GUARD.\n\n"
-                        f"HÀNH ĐỘNG BẮT BUỘC: Fallback sang OmniRoute Review (:20129) qua model `review` hoặc `auto/claude-opus`."
-                    ),
-                }
-            else:
-                try:
-                    CLAUDE_LOCKOUT_FILE.unlink()
-                except OSError:
-                    pass
-        except Exception:
-            pass
-
-    # 2. Check usage tracker (5h window: max calls & threshold configurable)
-    weight = 1
-    if re.search(r"--model\s+opus", cmd, re.IGNORECASE):
-        weight *= 2
-    if re.search(r"--effort\s+max", cmd, re.IGNORECASE):
-        weight *= 2
-
-    if CLAUDE_USAGE_FILE.is_file():
-        try:
-            with open(CLAUDE_USAGE_FILE, "r", encoding="utf-8") as f:
-                usage = json.load(f)
-            calls = usage.get("calls", [])
-            window_5h = now - 5 * 3600
-            recent_calls = [c for c in calls if c.get("ts", 0) > window_5h]
-            total_weight = sum(c.get("weight", 1) for c in recent_calls)
-
-            if (total_weight + weight) >= CLAUDE_5H_THRESHOLD_CALLS:
-                pct = int(CLAUDE_5H_THRESHOLD_PCT * 100)
-                return {
-                    "action": "block",
-                    "message": (
-                        f"⛔ [CLAUDE CLI HARD GUARD - {pct}% QUOTA EXCEEDED]:\n"
-                        f"Claude CLI session usage đã đạt {total_weight}/{CLAUDE_5H_MAX_CALLS} calls "
-                        f"(~{(total_weight/CLAUDE_5H_MAX_CALLS)*100:.0f}% >= {pct}%).\n"
-                        f"Lệnh `{cmd[:80]}` (weight={weight}) BỊ CHẶN ĐỨNG VẬT LÝ để bảo vệ quota Claude Pro!\n\n"
-                        f"HÀNH ĐỘNG BẮT BUỘC: Fallback sang OmniRoute Review (:20129) qua model `review` hoặc `auto/claude-opus`."
-                    ),
-                }
-        except Exception:
-            pass
-
-    return None
-
-
-def _is_worker_session(session_id: str) -> bool:
-    """Check if session is an autonomous worker subagent (escape token). Cached for performance."""
-    return bool(_get_parent_session_id(session_id))
-
-
 @contextmanager
-def _state_lock():
-    STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+def _acquire_file_lock(lock_path: Path):
     fd = None
-    deadline = time.time() + 2.0
-    while time.time() < deadline:
+    start = time.time()
+    while time.time() - start < 3.0:
         try:
-            if STATE_LOCK_FILE.exists():
+            if lock_path.exists():
                 try:
-                    if time.time() - STATE_LOCK_FILE.stat().st_mtime > 10:
-                        STATE_LOCK_FILE.unlink()
+                    if time.time() - lock_path.stat().st_mtime > 10:
+                        lock_path.unlink()
                 except OSError:
                     pass
-            fd = os.open(str(STATE_LOCK_FILE), os.O_CREAT | os.O_EXCL | os.O_RDWR)
+            fd = os.open(str(lock_path), os.O_CREAT | os.O_EXCL | os.O_RDWR)
             break
         except FileExistsError:
             time.sleep(0.05)
@@ -368,42 +147,10 @@ def _state_lock():
             except Exception:
                 pass
             try:
-                if STATE_LOCK_FILE.exists():
-                    STATE_LOCK_FILE.unlink()
+                if lock_path.exists():
+                    lock_path.unlink()
             except OSError:
                 pass
-
-
-def _cleanup_sessions(sessions: Dict[str, Any], now: float) -> None:
-    stale_keys = []
-    for sid, sdata in sessions.items():
-        if not isinstance(sdata, dict):
-            stale_keys.append(sid)
-            continue
-        updated_at = sdata.get("updated_at") or sdata.get("dispatched_at") or sdata.get("closeout_at") or 0
-        if now - updated_at > SESSION_EXPIRY_SECONDS:
-            stale_keys.append(sid)
-            continue
-
-        # Per-session phase timeouts
-        phase = sdata.get("phase")
-        if phase == "WORKER_RUNNING":
-            dispatched_at = sdata.get("dispatched_at", 0)
-            if now - dispatched_at > WORKER_TIMEOUT_SECONDS:
-                logger.info("[FARM_GUARD] WORKER_RUNNING timed out after 20m for session %s -> Resetting to IDLE", sid)
-                sdata["phase"] = "IDLE"
-                sdata["inspect_budget"] = 0
-                sdata["updated_at"] = now
-        elif phase == "CLOSEOUT":
-            closeout_at = sdata.get("closeout_at", 0)
-            if now - closeout_at > CLOSEOUT_TIMEOUT_SECONDS:
-                logger.info("[FARM_GUARD] CLOSEOUT expired after 2h for session %s -> Resetting to IDLE", sid)
-                sdata["phase"] = "IDLE"
-                sdata["inspect_budget"] = 0
-                sdata["updated_at"] = now
-
-    for sid in stale_keys:
-        sessions.pop(sid, None)
 
 
 def _load_state_file() -> Dict[str, Any]:
@@ -421,322 +168,91 @@ def _load_state_file() -> Dict[str, Any]:
 
 
 def _save_state_file(data: Dict[str, Any]) -> None:
-    try:
-        STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-        temp_file = STATE_FILE.with_suffix(".tmp")
-        with open(temp_file, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-        temp_file.replace(STATE_FILE)
-    except Exception as exc:
-        logger.debug("[FARM_GUARD] Error writing state file: %s", exc)
-
-
-@contextmanager
-def _watchdog_lock():
-    WATCHDOG_STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    fd = None
-    deadline = time.time() + 2.0
-    while time.time() < deadline:
-        try:
-            if WATCHDOG_LOCK_FILE.exists():
-                try:
-                    if time.time() - WATCHDOG_LOCK_FILE.stat().st_mtime > 10:
-                        WATCHDOG_LOCK_FILE.unlink()
-                except OSError:
-                    pass
-            fd = os.open(str(WATCHDOG_LOCK_FILE), os.O_CREAT | os.O_EXCL | os.O_RDWR)
-            break
-        except FileExistsError:
-            time.sleep(0.05)
-        except Exception:
-            break
-    if fd is None:
-        logger.warning("[FARM_GUARD] Timeout acquiring watchdog lock (%s), proceeding without lock", WATCHDOG_LOCK_FILE)
-    try:
-        yield
-    finally:
-        if fd is not None:
-            try:
-                os.close(fd)
-            except Exception:
-                pass
-            try:
-                if WATCHDOG_LOCK_FILE.exists():
-                    WATCHDOG_LOCK_FILE.unlink()
-            except OSError:
-                pass
-
-
-def _load_watchdog_state() -> Dict[str, Any]:
-    try:
-        if WATCHDOG_STATE_FILE.is_file():
-            with open(WATCHDOG_STATE_FILE, "r", encoding="utf-8") as f:
-                content = f.read().strip()
-                if content:
-                    data = json.loads(content)
-                    if isinstance(data, dict):
-                        if "sessions" not in data or not isinstance(data["sessions"], dict):
-                            data["sessions"] = {}
-                        return data
-    except Exception as exc:
-        logger.debug("[FARM_GUARD] Error reading watchdog state: %s", exc)
-    return {"sessions": {}, "updated_at": time.time()}
-
-
-def _save_watchdog_state(data: Dict[str, Any]) -> None:
     tmp = None
     try:
-        WATCHDOG_STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-        now = time.time()
-        data["updated_at"] = now
-        sessions = data.get("sessions", {})
-        if isinstance(sessions, dict):
-            stale_sids = [
-                sid for sid, sdata in sessions.items()
-                if isinstance(sdata, dict) and (now - (sdata.get("last_beat") or sdata.get("current_tool_start") or 0) > SESSION_EXPIRY_SECONDS)
-            ]
-            for sid in stale_sids:
-                sessions.pop(sid, None)
-
-        tmp = WATCHDOG_STATE_FILE.parent / f"{WATCHDOG_STATE_FILE.name}.{os.getpid()}.tmp"
+        tmp = STATE_FILE.parent / f"{STATE_FILE.name}.{os.getpid()}.tmp"
         with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-        os.replace(tmp, WATCHDOG_STATE_FILE)
+            json.dump(data, f, indent=2)
+        os.replace(tmp, STATE_FILE)
     except Exception as exc:
-        if tmp and tmp.is_file():
+        logger.debug("[FARM_GUARD] Error saving state file: %s", exc)
+        if tmp and tmp.exists():
             try:
                 tmp.unlink()
             except OSError:
                 pass
-        logger.debug("[FARM_GUARD] Error writing watchdog state: %s", exc)
 
 
 def _get_session_state(session_id: str) -> Dict[str, Any]:
-    key = session_id or "__default__"
-    now = time.time()
-    with _state_lock():
-        data = _load_state_file()
-        sessions = data.setdefault("sessions", {})
-        _cleanup_sessions(sessions, now)
-        if key not in sessions:
-            sessions[key] = {
-                "phase": "IDLE",
-                "inspect_budget": 0,
-                "dispatched_at": 0.0,
-                "closeout_at": 0.0,
-                "updated_at": now,
-            }
-        _save_state_file(data)
-        return dict(sessions[key])
-
-
-def _update_session_state(session_id: str, updates: Dict[str, Any]) -> Dict[str, Any]:
-    key = session_id or "__default__"
-    now = time.time()
-    with _state_lock():
-        data = _load_state_file()
-        sessions = data.setdefault("sessions", {})
-        _cleanup_sessions(sessions, now)
-        current = sessions.setdefault(key, {
-            "phase": "IDLE",
-            "inspect_budget": 0,
-            "dispatched_at": 0.0,
-            "closeout_at": 0.0,
-        })
-        current.update(updates)
-        current["updated_at"] = now
-        _save_state_file(data)
-        return dict(current)
-
-
-# Backward-compatibility helpers
-def _read_state(session_id: str = "") -> Dict[str, Any]:
-    return _get_session_state(session_id)
-
-
-def _write_state(state: Dict[str, Any], session_id: str = "") -> None:
-    _update_session_state(session_id, state)
-
-
-def _on_pre_llm_call(
-    session_id: str = "",
-    user_message: str = "",
-    conversation_history: list = None,
-    is_first_turn: bool = False,
-    model: str = "",
-    platform: str = "",
-    **kwargs: Any,
-) -> Optional[Dict[str, str]]:
-    """Detect phase transitions from user message per session."""
-    if not user_message:
-        return None
-
-    # Worker subagents are completely unconstrained
-    if _is_worker_session(session_id):
-        return None
-
-    msg = user_message.strip()
-    now_ts = time.time()
-    _update_session_state(session_id, {"last_user_msg_ts": now_ts})
-
-    # Delegation Complete handler
-    if "ASYNC DELEGATION BATCH COMPLETE" in msg:
-        _update_session_state(session_id, {"phase": "IDLE"})
-        logger.info("[FARM_GUARD] Async delegation complete -> Phase reset to IDLE for session %s", session_id)
-        return {"context": "[FARM GUARD]: Worker subagent đã hoàn thành. Phase chuyển về IDLE."}
-
-    # Reset override
-
-    if re.search(r"^/(reset_guard|guard_off|unblock)\b|reset\s+farm\s+guard", msg, re.IGNORECASE):
-        _update_session_state(session_id, {
-            "phase": "IDLE",
-            "inspect_budget": 0,
-            "dispatch_count": 0,
-            "build_token": False,
-            "infra_budget_used": 0,
-        })
-        logger.info("[FARM_GUARD] Guard manually reset to IDLE for session %s", session_id)
-        return {"context": "[FARM GUARD]: Phase đã reset về IDLE. Mọi cờ build_token và infra_budget đã xóa sạch."}
-
-    # Authorize tool build token (User-authorized escape hatch)
-    if re.search(r"^/(authorize[-_]build|allow[-_]build)\b|duyệt\s+tạo\s+tool|cho\s+phép\s+tạo\s+tool", msg, re.IGNORECASE):
-        _update_session_state(session_id, {"build_token": True})
-        logger.info("[FARM_GUARD] Build token authorized by user for session %s", session_id)
-        return {"context": "[FARM GUARD]: User đã cấp quyền /authorize-build. Đã mở khóa tạo tool/lịch mới cho nhiệm vụ này."}
-
-
-    # Farm Alert (Ưu tiên cao nhất — phải kiểm tra trước Closeout tránh template dính chữ 'closeout')
-    is_alert = bool(
-        re.search(r"\[MÁY\s+\d+\]|\[FARM\s+ALERT|Farm\s+Alert|sự\s+cố\s+máy\s+\d+", msg, re.IGNORECASE)
-    )
-    if is_alert:
-        _update_session_state(session_id, {
-            "phase": "ALERT",
-            "inspect_budget": 1,
-            "dispatch_count": 0,
-            "alert_snippet": msg[:120],
-        })
-        logger.info("[FARM_GUARD] Transition to ALERT phase for session %s (budget=1, dispatch_count=0)", session_id)
-        return {
-            "context": (
-                "[FARM GUARD HARD CONSTRAINT]:\n"
-                "Hệ thống đang ở Phase ALERT. Ngân sách inspect O(1) = 1 lệnh duy nhất (inspect_machine.py <N> hoặc adb devices).\n"
-                "Toàn bộ tool đọc/tìm kiếm/sửa file (read_file, search_files, patch, write_file, execute_code) BỊ KHÓA.\n"
-                "Sau khi inspect xong (hoặc nếu không inspect), CẤM TUYỆT ĐỐI Coordinator chạy terminal điều tra sâu (grep/log/probe/test) ở session chính.\n"
-                "Mọi tool điều tra sẽ bị PRE-TOOL-USE HOOK CHẶN ĐỨNG.\n"
-                "Hành động hợp lệ tiếp theo là gọi tool delegate_task(...) để Worker Subagent xử lý trong context riêng."
-            )
-        }
-
-    # Closeout / Chốt phiên (Chỉ khi không phải Farm Alert)
-    if re.search(r"chốt\s+phiên|đóng\s+phiên|chốt\s+session|/closeout|kết\s+thúc\s+phiên", msg, re.IGNORECASE):
-        _update_session_state(session_id, {
-            "phase": "CLOSEOUT",
-            "inspect_budget": 0,
-            "closeout_at": time.time(),
-        })
-        logger.info("[FARM_GUARD] Transition to CLOSEOUT phase for session %s", session_id)
-        return {"context": "[FARM GUARD]: Đã chuyển sang Phase CLOSEOUT (Chốt phiên 6 Gate). Terminal đã mở khóa cho các lệnh git, canary và review."}
-
-    # Nếu người dùng gửi tin nhắn hỏi đáp bình thường trong khi đang WORKER_RUNNING:
-    # Cho phép chuyển về IDLE để tương tác nếu đã qua 5 phút
-    sess_state = _get_session_state(session_id)
-    if sess_state.get("phase") == "WORKER_RUNNING":
-        dispatched_time = sess_state.get("dispatched_at", 0)
-        if time.time() - dispatched_time > 300:
-            _update_session_state(session_id, {"phase": "IDLE"})
-
-    return None
-
-
-def _load_worker_gate_state() -> Dict[str, Dict[str, int]]:
-    """Load worker gate state from disk."""
-    if not WORKER_GATE_FILE.is_file():
+    if not session_id:
         return {}
-    try:
-        with open(WORKER_GATE_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return data if isinstance(data, dict) else {}
-    except Exception:
-        return {}
-
-
-def _save_worker_gate_state(state_dict: Dict[str, Dict[str, int]]) -> None:
-    """Save worker gate state to disk atomically with stale session cleanup."""
-    tmp = None
-    try:
+    with _acquire_file_lock(STATE_LOCK_FILE):
+        data = _load_state_file()
+        sessions = data.get("sessions", {})
         now = time.time()
-        stale_sids = [
-            sid for sid, sdata in state_dict.items()
-            if isinstance(sdata, dict) and (now - sdata.get("updated_at", now) > SESSION_EXPIRY_SECONDS)
-        ]
-        for sid in stale_sids:
-            state_dict.pop(sid, None)
-
-        WORKER_GATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-        tmp = WORKER_GATE_FILE.parent / f"{WORKER_GATE_FILE.name}.{os.getpid()}.tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(state_dict, f, ensure_ascii=False, indent=2)
-        os.replace(tmp, WORKER_GATE_FILE)
-    except Exception as exc:
-        if tmp and tmp.is_file():
-            try:
-                tmp.unlink()
-            except OSError:
-                pass
-        logger.debug("[FARM_GUARD] Error saving worker gate state: %s", exc)
+        for sid, sdata in list(sessions.items()):
+            if not isinstance(sdata, dict):
+                continue
+            updated_at = sdata.get("updated_at") or sdata.get("dispatched_at") or 0
+            if now - updated_at > SESSION_EXPIRY_SECONDS:
+                sessions.pop(sid, None)
+                continue
+            phase = sdata.get("phase")
+            if phase == "WORKER_RUNNING" and (now - sdata.get("dispatched_at", 0) > WORKER_TIMEOUT_SECONDS):
+                sdata["phase"] = "IDLE"
+                sdata["updated_at"] = now
+        return sessions.get(session_id, {})
 
 
-@contextmanager
-def _worker_gate_lock():
-    WORKER_GATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    fd = None
-    deadline = time.time() + 2.0
-    while time.time() < deadline:
-        try:
-            if WORKER_GATE_LOCK_FILE.exists():
-                try:
-                    if time.time() - WORKER_GATE_LOCK_FILE.stat().st_mtime > 10:
-                        WORKER_GATE_LOCK_FILE.unlink()
-                except OSError:
-                    pass
-            fd = os.open(str(WORKER_GATE_LOCK_FILE), os.O_CREAT | os.O_EXCL | os.O_RDWR)
-            break
-        except FileExistsError:
-            time.sleep(0.05)
-        except Exception:
-            break
-    if fd is None:
-        logger.warning("[FARM_GUARD] Timeout acquiring worker gate lock (%s), proceeding without lock", WORKER_GATE_LOCK_FILE)
+def _update_session_state(session_id: str, updates: Dict[str, Any]) -> None:
+    if not session_id:
+        return
+    with _acquire_file_lock(STATE_LOCK_FILE):
+        data = _load_state_file()
+        sessions = data.setdefault("sessions", {})
+        sess = sessions.setdefault(session_id, {})
+        sess.update(updates)
+        sess["updated_at"] = time.time()
+        _save_state_file(data)
+
+
+def _get_parent_session_id(session_id: str) -> Optional[str]:
+    if not session_id:
+        return None
+    if os.environ.get("TAADAA_WORKER") == "1":
+        return "env_worker"
+    with _CACHE_LOCK:
+        if session_id in _PARENT_SESSION_CACHE:
+            return _PARENT_SESSION_CACHE[session_id]
+
+    parent_id = None
     try:
-        yield
-    finally:
-        if fd is not None:
-            try:
-                os.close(fd)
-            except Exception:
-                pass
-            try:
-                if WORKER_GATE_LOCK_FILE.exists():
-                    WORKER_GATE_LOCK_FILE.unlink()
-            except OSError:
-                pass
+        db_path = HERMES_ROOT / "state.db"
+        if db_path.is_file():
+            with sqlite3.connect(str(db_path), timeout=2.0) as con:
+                row = con.execute("SELECT parent_session_id FROM sessions WHERE id = ?", (session_id,)).fetchone()
+                if row and row[0]:
+                    parent_id = str(row[0])
+    except Exception as exc:
+        logger.debug("[FARM_GUARD] Error querying parent for session %s: %s", session_id, exc)
+
+    with _CACHE_LOCK:
+        _PARENT_SESSION_CACHE[session_id] = parent_id
+    return parent_id
+
+
+def _is_worker_session(session_id: str) -> bool:
+    return bool(_get_parent_session_id(session_id))
 
 
 def check_worker_tool_gate(tool_name: str, session_id: str, args: Any = None) -> Optional[Dict[str, Any]]:
-    """Lightweight safety-only invariant check for Worker subagents.
-    
-    Principles (Claude Opus High Approved):
-    - NO micro-managing counters (READ_BUDGET, WRITE_DEADLINE, MAX_WORKER_CALLS removed).
-    - Subagents have full capability (computer_use, terminal, read/write).
-    - Only guard against true catastrophic/destructive infrastructure damage.
-    """
+    """Enforce that Worker subagent obeys the Scope Lock and does not self-modify guard (Hole A closed)."""
     if not session_id:
         return None
 
     fn_args = args if isinstance(args, dict) else {}
 
-    # Chỉ chặn các lệnh mang tính phá hoại hạ tầng thật / blast radius lớn
+    # Safety invariant: catastrophic terminal commands
     if tool_name == "terminal":
         cmd = str(fn_args.get("command") or "").strip().lower()
         destructive_patterns = [
@@ -752,6 +268,43 @@ def check_worker_tool_gate(tool_name: str, session_id: str, args: Any = None) ->
                     "reason": f"⛔ [SAFETY INVARIANT]: Lệnh terminal '{cmd[:50]}' có nguy cơ phá hoại hạ tầng bị chặn.",
                 }
 
+    # HOLE A ENFORCEMENT: Khi worker gọi write_file hoặc patch, KIỂM TRA ĐÚNG TARGET FILES CỦA CHA
+    if tool_name in ("write_file", "patch"):
+        target_path = str(fn_args.get("path") or "").strip()
+        if not target_path:
+            return None
+
+        real_target = os.path.realpath(os.path.normpath(target_path))
+
+        # Blacklist: Cấm worker tự sửa file của plugin farm-coordinator-guard
+        if real_target.startswith(GUARD_SOURCE_DIR + os.sep) or real_target == GUARD_SOURCE_DIR:
+            return {
+                "action": "block",
+                "reason": "⛔ [WORKER GATE - SELF-MODIFICATION BLOCKED]: Worker CẤM TUYỆT ĐỐI sửa mã nguồn của plugin bảo vệ farm-coordinator-guard!",
+            }
+
+        # Kiểm tra scope lock từ Coordinator cha
+        parent_id = _get_parent_session_id(session_id)
+        if parent_id and parent_id != "env_worker":
+            parent_state = _get_session_state(parent_id)
+            allowed_targets = parent_state.get("target_files", [])
+            if allowed_targets:
+                normalized_allowed = [os.path.realpath(os.path.normpath(p)) for p in allowed_targets]
+                # Cho phép nếu target nằm trong allowed_targets HOẶC là file test cùng thư mục
+                is_allowed = (real_target in normalized_allowed) or any(
+                    os.path.dirname(real_target) == os.path.dirname(p) and os.path.basename(real_target).startswith("test_")
+                    for p in normalized_allowed
+                )
+                if not is_allowed:
+                    return {
+                        "action": "block",
+                        "reason": (
+                            f"⛔ [WORKER GATE - SCOPE LOCK BREACH]: Worker đang cố sửa file '{target_path}' "
+                            f"nằm ngoài danh sách Scope Lock được Coordinator chỉ định: {allowed_targets}! "
+                            "Worker CHỈ ĐƯỢC PHÉP sửa đúng file được giao."
+                        ),
+                    }
+
     return None
 
 
@@ -762,122 +315,78 @@ def _on_pre_tool_call(
     session_id: str = "",
     **kwargs: Any,
 ) -> Optional[Dict[str, Any]]:
-    """Enforce State Guard (ALERT/WORKER) and Action Guard (Long-Runners) per session."""
     fn_name = tool_name or kwargs.get("function_name", "")
     fn_args = args if args is not None else kwargs.get("function_args", {})
     sess_id = session_id or kwargs.get("session_id", "")
 
-    # Bắt Canary tại PRE-HOOK: ghi nhận ngay thời điểm bắt đầu chạy tool
-    _record_watchdog_pre(session_id=sess_id, tool=fn_name, function_args=fn_args)
-
-    # TẦNG 2: ESCAPE TOKEN — Subagents (parent_session_id trong DB HOẶC TAADAA_WORKER=1)
+    # TẦNG 2: ESCAPE TOKEN — Subagents
     if _is_worker_session(sess_id):
         gate_res = check_worker_tool_gate(fn_name, sess_id, fn_args)
         if gate_res:
-            _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
             return gate_res
         return None
 
-    # Khi Coordinator gọi delegate_task, kiểm tra goal và chuyển trạng thái session sang WORKER_RUNNING
+    # COORDINATOR: Xử lý delegate_task
     if fn_name == "delegate_task":
         dt_args = fn_args if isinstance(fn_args, dict) else {}
         goal_text = str(dt_args.get("goal") or "") + " " + str(dt_args.get("context") or "")
+
+        # Monolith smoke check
         if is_monolith_smoke(goal_text) and POPUP_SELECTOR_PATTERN.search(goal_text):
-            _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
             return {
                 "action": "block",
-                "reason": (
-                    "⛔ [COORDINATOR GUARD - MONOLITH DISPATCH BLOCKED]: "
-                    "Goal hoặc context của delegate_task đang trỏ vào file flow monolith (*_smoke.py) cho lỗi popup/selector! "
-                    "Đây là nguyên nhân chính gây ra Worker analysis paralysis (37 phút cạn 35 tool calls). "
-                    "BẮT BUỘC soạn PATCH_CONTRACT chỉ định file đích nhẹ 'python_runner/flows/benign_popup_registry.py' trước khi dispatch."
-                ),
+                "reason": "⛔ [COORDINATOR GUARD - MONOLITH DISPATCH BLOCKED]: Goal hoặc context trỏ vào monolith (*_smoke.py) cho popup!",
             }
 
-        # GROUND TRUTH FIRST HARD GUARD:
-        # Cấm Coordinator dispatch task "Fix Code" / "Sửa code" / "Patch" nếu chưa có ít nhất 1 bằng chứng
-        # hiện trường thực tế (screencap / screenshot / inspect_machine / dump_ui_xml / .png / .xml).
-        # Chặn đứng dứt điểm bệnh "debug mù", roulette giả thuyết gây over-engineering (Case 139).
+        # Ground truth first check
         is_fix_code_task = bool(re.search(r'\b(sửa\s+code|fix\s+code|patch\s+contract|patch\s+code|áp\s+dụng\s+patch|thay\s+đổi\s+code)\b', goal_text, re.IGNORECASE))
         has_ground_truth = bool(re.search(r'\b(screencap|screenshot|inspect_machine|\.png|\.xml|màn\s+hình\s+hiện\s+trường|ảnh\s+hiện\s+trường)\b', goal_text, re.IGNORECASE))
         if is_fix_code_task and not has_ground_truth:
-            _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
             return {
                 "action": "block",
-                "reason": (
-                    "⛔ [COORDINATOR GUARD - GROUND TRUTH FIRST BLOCKED]: "
-                    "Goal hoặc context của delegate_task yêu cầu sửa code/patch nhưng KHÔNG có bằng chứng hiện trường thực tế "
-                    "(screencap / inspect_machine / XML dump / .png / .xml)! "
-                    "CẤM TUYỆT ĐỐI sửa code dựa trên suy diễn/roulette giả thuyết khi chưa quan sát màn hình thật (Case 139). "
-                    "HÀNH ĐỘNG BẮT BUỘC: Hãy lấy ảnh chụp màn hình hiện trường (screencap) hoặc inspect_machine O(1) để xác định Ground Truth trước khi dispatch sửa code!"
-                ),
+                "reason": "⛔ [COORDINATOR GUARD - GROUND TRUTH FIRST BLOCKED]: Cần có screencap/inspect_machine trước khi dispatch sửa code!",
             }
 
-        # DISPATCH BUDGET HARD GUARD (Tối đa MAX_COORDINATOR_DISPATCHES = 3 worker / alert):
-        # Chặn đứng dứt điểm việc Coordinator đẻ liên tục 5-7 worker quay cuồng giả thuyết (Case 139).
+        # Dispatch budget check
         sess_state = _get_session_state(sess_id)
         dispatch_count = sess_state.get("dispatch_count", 0) + 1
         if dispatch_count > MAX_COORDINATOR_DISPATCHES:
-            _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
             return {
                 "action": "block",
-                "reason": (
-                    f"⛔ [COORDINATOR GUARD - DISPATCH BUDGET EXHAUSTED]: "
-                    f"Coordinator đã dispatch {dispatch_count - 1}/{MAX_COORDINATOR_DISPATCHES} worker subagents cho ca lỗi này! "
-                    "CẤM TUYỆT ĐỐI tiếp tục hypothesis roulette (đẻ worker liên tiếp để thử vận may). "
-                    "BẮT BUỘC dừng lại, chụp ảnh màn hình hiện trường (screencap) và báo cáo blocker cho Tad hoặc gọi Claude CLI thẩm định!"
-                ),
+                "reason": f"⛔ [COORDINATOR GUARD - DISPATCH BUDGET EXHAUSTED]: Đã dispatch {dispatch_count - 1}/{MAX_COORDINATOR_DISPATCHES} worker!",
             }
 
         # =========================================================================
-        # SCOPE LOCK ABSOLUTE PATH HARD GUARD v2.0 (Zero-Bypass Architecture)
-        # Claude Opus High Specification: Structured Target Files + isfile + Whitelist Containment
+        # COORDINATOR SCOPE LOCK GATE v3.0 (Zero-Bypass Architecture Approved)
         # =========================================================================
-        sess_state = _get_session_state(sess_id)
-        phase = sess_state.get("phase", "IDLE")
-
-        # Broad Trigger: Phase ALERT / WORKER_RUNNING hoặc có bất kỳ từ khóa code/bug/fix/test nào
-        is_code_or_alert_task = (
-            phase in ("ALERT", "WORKER_RUNNING")
-            or dt_args.get("task_type") in ("code_fix", "fix", "patch")
-            or bool(re.search(
-                r'\b(sửa|fix|patch|bug|refactor|canary|test|chỉnh|khắc phục|code|implement|update|lỗi|error|crash|timeout)\b',
-                goal_text,
-                re.IGNORECASE
-            ))
+        task_type = str(dt_args.get("task_type") or "").strip().lower()
+        is_non_code_exempt = (
+            task_type in ("research", "inspect_only", "non_code", "query")
+            or bool(re.search(r'\bTASK_TYPE:\s*(?:RESEARCH|INSPECT_ONLY|NON_CODE|QUERY)\b', goal_text, re.IGNORECASE))
         )
 
-        if is_code_or_alert_task:
-            raw_targets = []
+        # DEFAULT-DENY (Hole C closed): Mọi task delegate đều yêu cầu target_files TRỪ KHI exempt
+        if not is_non_code_exempt:
+            raw_targets: List[str] = []
 
-            # (a) Từ dt_args.get("target_files")
+            # 1. Từ dt_args.get("target_files")
             tf_arg = dt_args.get("target_files")
             if isinstance(tf_arg, list):
-                raw_targets.extend(tf_arg)
+                raw_targets.extend([str(x) for x in tf_arg if x])
             elif isinstance(tf_arg, str) and tf_arg.strip():
                 raw_targets.append(tf_arg.strip())
 
-            # (b) Từ structured header trong context / goal
+            # 2. Từ structured header trong context/goal (Hole B closed: CHỈ nhận header, không fallback regex văn xuôi)
             header_pat = r'(?:TARGET_FILE|SCOPE_LOCK|FILE_SỬA|TARGET):\s*([^\r\n]+)'
-            header_matches = re.findall(header_pat, goal_text, re.IGNORECASE)
-            for hm in header_matches:
+            for hm in re.findall(header_pat, goal_text, re.IGNORECASE):
                 for part in re.split(r'[,;]\s*', hm.strip()):
                     p_clean = part.strip().strip('\'"<>`')
                     if p_clean:
                         raw_targets.append(p_clean)
 
-            # (c) Fallback: Trích xuất các absolute paths có đuôi file code hợp lệ từ text
-            code_ext_pat = r'\.(?:py|json|yaml|yml|sh|ps1|js|ts|toml|ini)'
-            quoted_paths = re.findall(r'["\']([A-Za-z]:[\\/][^"\']+' + code_ext_pat + r')["\']', goal_text, re.IGNORECASE)
-            raw_targets.extend(quoted_paths)
-            unquoted_paths = re.findall(r'\b([A-Za-z]:[\\/][^\s\'"<>]+' + code_ext_pat + r')\b', goal_text, re.IGNORECASE)
-            raw_targets.extend(unquoted_paths)
-
-            # (d) Normalize & Deduplicate
-            normalized_targets = []
+            # Normalize & Deduplicate (Hỗ trợ path có khoảng trắng)
+            normalized_targets: List[str] = []
             for p in raw_targets:
-                if not isinstance(p, str):
-                    continue
                 p_clean = p.strip().strip('\'"<>`').rstrip('.,;:)!?')
                 if re.match(r'^/[cdCD]/', p_clean):
                     drive_letter = p_clean[1].upper()
@@ -888,396 +397,123 @@ def _on_pre_tool_call(
 
             # GATE 1: Bắt buộc phải có target file
             if not normalized_targets:
-                _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
                 return {
                     "action": "block",
                     "reason": (
                         "⛔ [COORDINATOR GUARD - SCOPE LOCK MISSING TARGET FILE]: "
-                        "delegate_task trong Farm/Code task BẮT BUỘC phải chỉ định file mục tiêu cụ thể! "
-                        "Cung cấp qua tham số `target_files=['D:/Taadaa/.../file.py']` "
+                        "Mọi delegate_task trong Farm BẮT BUỘC phải khai báo file mục tiêu cụ thể! "
+                        "Khai báo qua `target_files=['D:/Taadaa/.../file.py']` "
                         "hoặc header trong context: `TARGET_FILE: D:/Taadaa/.../file.py`. "
-                        "CẤM TUYỆT ĐỐI giao việc mở ('trong repo', 'tìm hàm...')."
+                        "Nếu là task nghiên cứu phi-code, khai báo rõ `task_type='non_code'`."
                     ),
                 }
 
-            # GATE 2: Whitelist Containment (Chống trỏ bừa C:/Windows/...)
-            ALLOWED_ROOTS = [
-                os.path.realpath(r"D:\Taadaa"),
-                os.path.realpath(str(Path.home() / "AppData" / "Local" / "hermes")),
-            ]
-            valid_code_extensions = {".py", ".json", ".yaml", ".yml", ".sh", ".ps1", ".js", ".ts", ".toml", ".ini"}
-
+            # GATE 2: Validate từng target file
             for p in normalized_targets:
-                # Gate 2.1: Phải là absolute path
+                # 2.1: Phải là absolute path
                 if not os.path.isabs(p):
-                    _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
                     return {
                         "action": "block",
-                        "reason": f"⛔ [COORDINATOR GUARD - NOT ABSOLUTE PATH]: '{p}' không phải là đường dẫn tuyệt đối!"
+                        "reason": f"⛔ [COORDINATOR GUARD - NOT ABSOLUTE PATH]: '{p}' không phải đường dẫn tuyệt đối!",
                     }
 
-                # Gate 2.2: Phải là FILE THẬT trên đĩa (CẤM thư mục như D:/Taadaa)
-                if not os.path.exists(p):
-                    _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
+                # 2.2: CẤM thư mục (Hole 2 closed)
+                if os.path.isdir(p):
                     return {
                         "action": "block",
-                        "reason": (
-                            f"⛔ [COORDINATOR GUARD - FILE NOT FOUND]: File mục tiêu '{p}' KHÔNG TỒN TẠI trên đĩa! "
-                            "Coordinator phải inspect O(1) để xác định file thật trước khi dispatch."
-                        )
+                        "reason": f"⛔ [COORDINATOR GUARD - DIRECTORY NOT ALLOWED]: '{p}' là THƯ MỤC! Phải chỉ định file cụ thể.",
                     }
+
+                # 2.3: Phải là file tồn tại HOẶC file tạo mới có thư mục cha hợp lệ (Hole D closed)
+                parent_dir = os.path.dirname(p)
                 if not os.path.isfile(p):
-                    _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
-                    return {
-                        "action": "block",
-                        "reason": (
-                            f"⛔ [COORDINATOR GUARD - DIRECTORY NOT ALLOWED]: '{p}' là THƯ MỤC, không phải file! "
-                            "CẤM Scope Lock vào cả thư mục khiến worker phải lượn tìm file. Phải chỉ định file cụ thể!"
-                        )
-                    }
+                    if not (parent_dir and os.path.isdir(parent_dir)):
+                        return {
+                            "action": "block",
+                            "reason": f"⛔ [COORDINATOR GUARD - FILE/PARENT NOT FOUND]: File '{p}' và cả thư mục cha đều không tồn tại!",
+                        }
 
-                # Gate 2.3: Đuôi file code hợp lệ
+                # 2.4: Đuôi file code hợp lệ
                 _, ext = os.path.splitext(p)
-                if ext.lower() not in valid_code_extensions:
-                    _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
+                if ext.lower() not in VALID_CODE_EXTENSIONS:
                     return {
                         "action": "block",
-                        "reason": (
-                            f"⛔ [COORDINATOR GUARD - INVALID FILE TYPE]: File '{p}' có đuôi '{ext}' không phải file mã nguồn/cấu hình hợp lệ! "
-                            f"Chỉ chấp nhận các file: {', '.join(sorted(valid_code_extensions))}."
-                        )
+                        "reason": f"⛔ [COORDINATOR GUARD - INVALID EXTENSION]: File '{p}' có đuôi '{ext}' không hợp lệ!",
                     }
 
-                # Gate 2.4: Whitelist containment check
+                # 2.5: Whitelist containment check (Hole 1 closed)
                 real_p = os.path.realpath(p)
                 is_contained = any(
-                    real_p == root or real_p.startswith(root + os.sep)
-                    for root in ALLOWED_ROOTS
+                    os.path.normcase(real_p) == os.path.normcase(root) or os.path.normcase(real_p).startswith(os.path.normcase(root) + os.sep)
+                    for root in ALLOWED_REPO_ROOTS
                 )
                 if not is_contained:
-                    _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
                     return {
                         "action": "block",
-                        "reason": (
-                            f"⛔ [COORDINATOR GUARD - OUT OF REPO WHITELIST]: File '{p}' nằm ngoài phạm vi cho phép! "
-                            f"Chỉ được phép Scope Lock vào các file thuộc: {ALLOWED_ROOTS}."
-                        )
+                        "reason": f"⛔ [COORDINATOR GUARD - OUT OF REPO WHITELIST]: File '{p}' nằm ngoài whitelist {ALLOWED_REPO_ROOTS}!",
                     }
 
+                # 2.6: Blacklist guard source
+                if os.path.normcase(real_p).startswith(os.path.normcase(GUARD_SOURCE_DIR) + os.sep) or os.path.normcase(real_p) == os.path.normcase(GUARD_SOURCE_DIR):
+                    return {
+                        "action": "block",
+                        "reason": "⛔ [COORDINATOR GUARD - GUARD SOURCE BLACKLISTED]: CẤM Scope Lock vào chính file của plugin bảo vệ!",
+                    }
+
+            # Lưu danh sách target_files vào session state để Worker Tool Gate sử dụng
+            sess_updates = {
+                "phase": "WORKER_RUNNING",
+                "dispatched_at": time.time(),
+                "dispatch_count": dispatch_count,
+                "target_files": normalized_targets,
+            }
+            _update_session_state(sess_id, sess_updates)
+            logger.info("[FARM_GUARD] delegate_task passed Scope Lock v3.0 -> targets: %s", normalized_targets)
+            return None
+
+        # Non-code task exempt
         _update_session_state(sess_id, {
             "phase": "WORKER_RUNNING",
             "dispatched_at": time.time(),
             "dispatch_count": dispatch_count,
+            "target_files": [],
         })
-        logger.info("[FARM_GUARD] delegate_task called -> Phase transitioned to WORKER_RUNNING for session %s", sess_id)
         return None
 
-    # Tool skill_view: luôn cho phép đọc skill để Coordinator nắm quy tắc
     if fn_name == "skill_view":
         return None
 
     sess_state = _get_session_state(sess_id)
     phase = sess_state.get("phase", "IDLE")
 
-    # =========================================================================
-    # ANTI-OVERENGINEERING HARD ENFORCEMENT (Claude Opus High Approved)
-    # Applied to Coordinator Sessions to prevent Secondary Sidetracking
-    # =========================================================================
-    build_authorized = bool(sess_state.get("build_token", False))
-    now = time.time()
-    last_msg_ts = sess_state.get("last_user_msg_ts", now)
-    user_idle = now - last_msg_ts if last_msg_ts else 0.0
-
-    # 1. LATENCY LOCK (Rule 4): Đóng băng khi vượt quá 12 phút kể từ tin nhắn user
-    if user_idle > 12 * 60 and phase not in ("CLOSEOUT", "WORKER_RUNNING"):
-        if fn_name not in ("delegate_task", "terminal", "skill_view", "todo"):
-            _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
-            return {
-                "action": "block",
-                "message": (
-                    f"⛔ [FARM GUARD - RULE 4: LATENCY FREEZE]:\n"
-                    f"Đã {int(user_idle/60)} phút trôi qua kể từ tin nhắn của user mà nhiệm vụ chính chưa xong!\n"
-                    "CẤM MỌI HÀNH VI RẼ NHÁNH. Chỉ được phép tập trung hoàn thành Primary Task hoặc báo cáo blocker cho user."
-                ),
-            }
-
-    # 2. CRONJOB LOCK (Rule 2): Cấm Coordinator tự tạo hoặc sửa cronjob mới
-    if fn_name == "cronjob":
-        action = str(fn_args.get("action") or "").lower() if isinstance(fn_args, dict) else ""
-        if action in ("create", "add", "update", "modify", "enable") and not build_authorized:
-            _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
-            return {
-                "action": "block",
-                "message": (
-                    "⛔ [FARM GUARD - RULE 2: ZERO SECONDARY TOOL-BUILDING]:\n"
-                    "Coordinator CẤM TUYỆT ĐỐI tự ý tạo hoặc sửa cronjob khi đang thực hiện nhiệm vụ!\n"
-                    "Mọi hành vi lập lịch ngầm chỉ được phép khi có lệnh tường minh (/authorize-build) từ User."
-                ),
-            }
-
-    # 3. TOOL/SCRIPT WRITE LOCK (Rule 2): Cấm ghi/sửa tool script tự chế phụ ngoài scope
-    if fn_name in ("write_file", "patch"):
-        target_path = str(fn_args.get("path") or "").lower().replace("\\", "/") if isinstance(fn_args, dict) else ""
-        is_tool_script = bool(_TOOLNAME_RE.search(target_path)) or any(k in target_path for k in ["healer", "watchdog", "daemon", "auto_heal"])
-        if is_tool_script and not build_authorized and phase != "CLOSEOUT":
-            _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
-            return {
-                "action": "block",
-                "message": (
-                    "⛔ [FARM GUARD - RULE 2: ZERO SECONDARY TOOL-BUILDING]:\n"
-                    f"Thao tác ghi/tạo script phụ tự chế `{target_path}` BỊ CHẶN ĐỨNG VẬT LÝ!\n"
-                    "Coordinator CẤM tự ý viết tool, watchdog, daemon phụ ngoài nhiệm vụ chính khi chưa có /authorize-build."
-                ),
-            }
-
-    # 4. INFRA UNBLOCK QUOTA (Rule 3): Tối đa 3 hành động xử lý hạ tầng phụ (web/browser)
-    if fn_name in ("browser_navigate", "browser_click", "browser_type", "browser_scroll", "browser_press"):
-        infra_used = sess_state.get("infra_budget_used", 0) + 1
-        _update_session_state(sess_id, {"infra_budget_used": infra_used})
-        if infra_used > 3 and not build_authorized and phase != "CLOSEOUT":
-            _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
-            return {
-                "action": "block",
-                "message": (
-                    f"⛔ [FARM GUARD - RULE 3: O(1) UNBLOCK LIMIT]:\n"
-                    f"Đã thực hiện {infra_used} thao tác hạ tầng phụ (web/browser)! Vượt quá hạn mức O(1) (<60s).\n"
-                    "CẤM tiếp tục sa đà điều tra web. DỪNG LẠI và báo cáo 1 dòng cho User: '[BLOCKER] Hạ tầng lỗi — chờ chỉ đạo.'"
-                ),
-            }
-
-
-    # 1. State Guard: Phase ALERT
-
+    # ALERT phase blocking
     if phase == "ALERT":
-        # Chặn toàn bộ Investigative Tools ở Phase ALERT
         if fn_name in INVESTIGATIVE_TOOLS:
-            logger.warning("[FARM_GUARD] Blocked investigative tool '%s' in ALERT phase for session %s", fn_name, sess_id)
-            _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
             return {
                 "action": "block",
-                "message": (
-                    f"⛔ [FARM GUARD - PHASE: ALERT] TOOL `{fn_name}` BỊ CHẶN BỞI PRE-TOOL-USE HOOK:\n"
-                    "Coordinator CẤM TUYỆT ĐỐI tự ý đọc file, tìm kiếm code hoặc sửa file trong session chính khi có sự cố Farm!\n"
-                    "Việc tự điều tra sẽ làm tràn context và chậm trễ phản ứng các máy khác.\n\n"
-                    "HÀNH ĐỘNG BẮT BUỘC:\n"
-                    "Gọi tool `delegate_task(goal=..., context=...)` ngay lập tức để Worker Subagent xử lý trong context riêng!"
-                ),
+                "message": f"⛔ [FARM GUARD - PHASE: ALERT] TOOL `{fn_name}` BỊ CHẶN! Coordinator gọi delegate_task ngay.",
             }
-
-        # Kiểm tra tool terminal ở Phase ALERT: chỉ cho phép 1 lệnh O(1) thỏa inspect_machine.py hoặc adb devices
         if fn_name == "terminal":
-            cmd = ""
-            if isinstance(fn_args, dict):
-                cmd = (fn_args.get("command") or "").strip()
-
+            cmd = (fn_args.get("command") or "").strip() if isinstance(fn_args, dict) else ""
             is_inspect = bool(re.search(r"inspect_machine\.py\s+\d+|adb\s+devices", cmd))
             budget = sess_state.get("inspect_budget", 0)
             if is_inspect and budget > 0:
                 _update_session_state(sess_id, {"inspect_budget": budget - 1})
-                logger.info("[FARM_GUARD] Allowed 1 inspect command in ALERT phase, budget consumed for session %s", sess_id)
                 return None
-
-            logger.warning("[FARM_GUARD] Blocked terminal in ALERT phase for session %s: %s", sess_id, cmd[:80])
-            _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
             return {
                 "action": "block",
-                "message": (
-                    "⛔ [FARM GUARD - PHASE: ALERT] BỊ CHẶN BỞI PRE-TOOL-USE HOOK:\n"
-                    "Bạn đã dùng hết ngân sách 1 lệnh inspect O(1) (hoặc lệnh này không phải inspect_machine.py/adb devices).\n"
-                    "CẤM TUYỆT ĐỐI Coordinator chạy terminal điều tra sâu (grep/log/probe/test) ở session chính!\n\n"
-                    "HÀNH ĐỘNG HỢP LỆ DUY NHẤT BÂY GIỜ LÀ: Gọi tool `delegate_task(goal=..., context=...)` ngay lập tức để Worker Subagent xử lý trong context riêng."
-                ),
+                "message": "⛔ [FARM GUARD - PHASE: ALERT] Hết ngân sách inspect O(1)! Dispatch worker ngay.",
             }
 
-    # 2. State Guard: Phase WORKER_RUNNING
+    # WORKER_RUNNING phase blocking
     if phase == "WORKER_RUNNING":
         if fn_name == "terminal":
-            cmd = ""
-            if isinstance(fn_args, dict):
-                cmd = (fn_args.get("command") or "").strip()
+            cmd = (fn_args.get("command") or "").strip() if isinstance(fn_args, dict) else ""
             is_benign = bool(re.search(r"^git(\s+-C\s+[^\s]+)?\s+(status|diff|log)|psutil|python.*canary|claude", cmd))
             if not is_benign:
-                logger.warning("[FARM_GUARD] Blocked terminal in WORKER_RUNNING phase for session %s: %s", sess_id, cmd[:80])
-                _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
                 return {
                     "action": "block",
-                    "message": (
-                        "⛔ [FARM GUARD - PHASE: WORKER_RUNNING] Worker subagent đang chạy trong background.\n"
-                        "Coordinator KHÔNG ĐƯỢC tự ý chạy terminal điều tra tại session chính trong lúc worker đang làm việc."
-                    ),
+                    "message": "⛔ [FARM GUARD - PHASE: WORKER_RUNNING] Worker đang chạy background, Coordinator không chạy terminal điều tra.",
                 }
-
-    # 3. State Guard: Phase CLOSEOUT -> Cho phép toàn bộ 6 Gate
-    if phase == "CLOSEOUT":
-        return None
-
-    # 4. Action Guard (Áp dụng cho IDLE hoặc các phase còn lại đối với terminal):
-    if fn_name == "terminal":
-        cmd = ""
-        if isinstance(fn_args, dict):
-            cmd = (fn_args.get("command") or "").strip()
-
-        # Check Claude CLI Hard Guard (85% Limit & Lockout Protection)
-        claude_guard_res = _check_claude_cli_guard(cmd)
-        if claude_guard_res:
-            logger.warning("[FARM_GUARD] Blocked Claude CLI by quota/lockout guard: %s", cmd[:80])
-            _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
-            return claude_guard_res
-
-        # Check Shell Scheduler Evasion (schtasks, Register-ScheduledTask, crontab)
-        if _SCHEDULER_RE.search(cmd) and not build_authorized:
-            _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
-            return {
-                "action": "block",
-                "message": (
-                    "⛔ [FARM GUARD - RULE 2: SHELL SCHEDULER BLOCKED]:\n"
-                    f"Lệnh: `{cmd[:80]}`\n"
-                    "CẤM Coordinator tự ý tạo Scheduled Task (schtasks / Register-ScheduledTask / crontab) để né cron tool!"
-                ),
-            }
-
-        # Check Shell Daemon / Background Process Evasion (Popen, Start-Process, nohup)
-        if _DAEMON_RE.search(cmd) and not build_authorized and not _DAEMON_EXEMPT_RE.search(cmd):
-            _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
-            return {
-                "action": "block",
-                "message": (
-                    "⛔ [FARM GUARD - RULE 2: BACKGROUND DAEMON BLOCKED]:\n"
-                    f"Lệnh: `{cmd[:80]}`\n"
-                    "CẤM Coordinator spawn tiến trình nền (Popen / Start-Process / nohup / &) né quản lý tiến trình!"
-                ),
-            }
-
-        # Check Shell File Write Evasion (redirect >, >>, heredoc <<, Set-Content, Out-File tạo script tự chế)
-        if _FILEWRITE_SHELL_RE.search(cmd) and not build_authorized and phase != "CLOSEOUT":
-            if _TOOLNAME_RE.search(cmd) and _SCRIPT_FILE_RE.search(cmd):
-                _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
-                return {
-                    "action": "block",
-                    "message": (
-                        "⛔ [FARM GUARD - RULE 2: SHELL FILE WRITE BLOCKED]:\n"
-                        f"Lệnh: `{cmd[:80]}`\n"
-                        "CẤM dùng redirect shell (> / >>), heredoc (<< EOF) hoặc PowerShell để tự tạo file script tự chế!"
-                    ),
-                }
-
-
-        # Tầng 1: Allowlist O(1)
-
-        if any(re.search(p, cmd, re.IGNORECASE) for p in ALLOWLIST_PATTERNS):
-            return None
-
-        # Tầng 3: Denylist (Long-runners & Python probe)
-        if any(re.search(p, cmd, re.IGNORECASE) for p in DENYLIST_PATTERNS):
-            logger.warning("[FARM_GUARD] Blocked LONG-RUNNER in session %s: %s", sess_id, cmd[:80])
-            _record_watchdog_post(session_id=sess_id, tool=fn_name, status="blocked", function_args=fn_args)
-            return {
-                "action": "block",
-                "message": (
-                    "⛔ [FARM GUARD - LONG-RUNNER BLOCKED] BỊ CHẶN BỞI PRE-TOOL-USE HOOK:\n"
-                    f"Lệnh: `{cmd[:100]}`\n"
-                    "Đây là script batch / automation dài hơi (hoặc python probe nhiều dòng). "
-                    "CẤM TUYỆT ĐỐI chạy đồng bộ ở session chính vì sẽ làm treo phiên chat và tràn context (Context Bloat)!\n\n"
-                    "HÀNH ĐỘNG BẮT BUỘC:\n"
-                    "Gọi tool `delegate_task(goal=..., context=...)` để Worker Subagent xử lý trong background!"
-                ),
-            }
 
     return None
-
-
-def _record_watchdog_pre(
-    session_id: str,
-    tool: str,
-    function_args: Any,
-) -> None:
-    try:
-        sid = session_id or "__default__"
-        now = time.time()
-        is_canary = bool(re.search(r'\b(canary|recoverytestswipes|run-feed-session)\b', str(function_args), re.IGNORECASE))
-        parent_sid = _get_parent_session_id(sid)
-
-        with _watchdog_lock():
-            data = _load_watchdog_state()
-            sessions = data.setdefault("sessions", {})
-            sess = sessions.setdefault(sid, {})
-            sess["last_beat"] = now
-            sess["last_beat_iso"] = datetime.now().isoformat()
-            sess["current_tool"] = tool
-            sess["current_tool_start"] = now
-            sess["is_canary"] = is_canary
-            sess["status"] = "running"
-            if parent_sid:
-                sess["parent_session_id"] = parent_sid
-            _save_watchdog_state(data)
-    except Exception as exc:
-        logger.debug("[FARM_GUARD] Error recording watchdog pre beat: %s", exc)
-
-
-def _record_watchdog_post(
-    session_id: str,
-    tool: str,
-    status: Optional[str],
-    function_args: Any,
-) -> None:
-    try:
-        sid = session_id or "__default__"
-        now = time.time()
-        is_canary = bool(re.search(r'\b(canary|recoverytestswipes|run-feed-session)\b', str(function_args), re.IGNORECASE))
-
-        with _watchdog_lock():
-            data = _load_watchdog_state()
-            sessions = data.setdefault("sessions", {})
-            sess = sessions.setdefault(sid, {})
-            sess["last_beat"] = now
-            sess["last_beat_iso"] = datetime.now().isoformat()
-            sess["status"] = status or "success"
-            sess["current_tool"] = None
-            sess["current_tool_start"] = None
-            sess["tool"] = tool
-            if is_canary:
-                sess["is_canary"] = True
-            elif "is_canary" not in sess:
-                sess["is_canary"] = False
-            _save_watchdog_state(data)
-    except Exception as exc:
-        logger.debug("[FARM_GUARD] Error recording watchdog post beat: %s", exc)
-
-
-def _on_post_tool_call(
-    tool_name: str = "",
-    args: Any = None,
-    result: Any = None,
-    session_id: str = "",
-    status: Optional[str] = None,
-    **kwargs: Any,
-) -> None:
-    """Record heartbeat after every tool call for stale watchdog monitoring."""
-    fn_name = tool_name or kwargs.get("function_name", "")
-    fn_args = args if args is not None else kwargs.get("function_args", {})
-    sess_id = session_id or kwargs.get("session_id", "")
-    st = status if status is not None else kwargs.get("status", "success")
-
-    _record_watchdog_post(
-        session_id=sess_id,
-        tool=fn_name,
-        status=st,
-        function_args=fn_args,
-    )
-
-    if st != "blocked":
-        cmd_str = ""
-        if isinstance(fn_args, dict):
-            cmd_str = (fn_args.get("command") or fn_args.get("cmd") or "").strip()
-        else:
-            cmd_str = str(fn_args)
-        if re.search(r"\bclaude\b", cmd_str, re.IGNORECASE):
-            _record_claude_usage(cmd_str)
-
-
-def register(ctx: Any) -> None:
-    """Register lifecycle hooks with Hermes."""
-    ctx.register_hook("pre_llm_call", _on_pre_llm_call)
-    ctx.register_hook("pre_tool_call", _on_pre_tool_call)
-    ctx.register_hook("post_tool_call", _on_post_tool_call)
-    logger.info("[FARM_GUARD] farm-coordinator-guard (v2.1 Session-Scoped + Multi-Tool Lock + Stale Watchdog) registered successfully")
