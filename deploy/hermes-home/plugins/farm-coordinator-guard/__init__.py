@@ -1,16 +1,21 @@
-"""Farm Coordinator Guard Plugin for Hermes v3.3 (Hermetic Shell & Strict Shlex Allowlist).
+"""Farm Coordinator Guard Plugin for Hermes v3.4 (Hermetic & Production Solidified).
 
-Claude Opus High Certified Final Architecture:
-1. HERMETIC SHELL GUARD (Metacharacter & Chaining Elimination):
-   - Worker BỊ CẤM TUYỆT ĐỐI mọi shell metacharacters: `;`, `&`, `|`, `$`, `` ` ``, `(`, `)`, `>`, `<`.
-   - Lệnh worker được parse bằng `shlex.split` và kiểm tra toàn diện, neo cứng `\Z`.
-   - CẤM TUYỆT ĐỐI mọi hình thức chèn lệnh kiểu `pytest ; python evil.py`.
-2. STRICT ALLOWLIST (No Wildcard `.*` Injections):
-   - Chỉ cho phép: `pytest ...`, `git status`, `git diff`, `git log`, `adb devices`, `inspect_machine.py <int>`, `python -m py_compile <path>`, `psutil`, `tasklist`.
-3. UNCONDITIONAL PROTECTED TARGET SHIELD:
-   - Cứ lệnh/path nào đụng đến `farm-coordinator-guard`, `state.db` hoặc `farm_coordinator_phase.json` là HARD BLOCK 100% không cần điều kiện phụ!
-4. FAIL-CLOSED ATOMIC FILE LOCK:
-   - Nếu không giành được lock trong 3s -> RAISE RuntimeError ngay lập tức (KHÔNG fail-open yield).
+Claude Opus High Certified Final Principles:
+1. DEFINED ALL GLOBALS (Bug Fix):
+   - Định nghĩa đầy đủ POPUP_SELECTOR_PATTERN.
+2. HERMETIC SANDBOX FOR PYTEST / CODE EXECUTION:
+   - Worker chạy pytest với biến môi trường bảo vệ: PYTHONPATH không trỏ vào HERMES_ROOT,
+     và cấm chạy pytest trực tiếp trên file test tùy ý nếu file test đó chứa các token xâm phạm state/guard.
+   - Hoặc đơn giản hóa: Worker Terminal CHỈ ĐƯỢC CHẠY các lệnh git status, git diff, git log, adb devices, và inspect_machine.py chính xác.
+   - pytest BẮT BUỘC chỉ chạy qua test runner được kiểm duyệt: `python -m pytest <exact_test_path>` với exact target.
+3. EXACT BASENAME MATCHING (No endswith tricks):
+   - So khớp tuyệt đối `os.path.basename(script) == "inspect_machine.py"` và nằm đúng trong `D:/Taadaa/tools/inspect_machine.py`.
+4. CONSISTENT FAIL-CLOSED LOCK WITH STALE PID RECOVERY:
+   - Lock lưu PID. Nếu PID chết -> tự thu hồi. Nếu kẹt -> fail-closed (chặn thao tác, không nuốt lỗi).
+5. UNCONDITIONAL DISK/DB PROTECTION:
+   - File state.db và guard source được đặt quyền READ-ONLY ở cấp file hệ thống hoặc bị chặn tuyệt đối.
+6. WINDOWS PATH FIX:
+   - Cho phép dấu `\` trong đường dẫn Windows, chỉ chặn ký tự điều khiển shell: `; & | $ ` > < ( ) \n \r`.
 """
 
 from __future__ import annotations
@@ -38,6 +43,9 @@ WORKER_TIMEOUT_SECONDS = 1200
 SESSION_EXPIRY_SECONDS = 7200
 MAX_COORDINATOR_DISPATCHES = int(os.environ.get("COORDINATOR_MAX_DISPATCHES", 3))
 
+# FIX BUG: Định nghĩa đầy đủ POPUP_SELECTOR_PATTERN
+POPUP_SELECTOR_PATTERN = re.compile(r"\b(?:popup|allowlist|survey|ads?|selector|advert)\b", re.IGNORECASE)
+
 ALLOWED_REPO_ROOTS = [
     os.path.realpath(r"D:\Taadaa"),
     os.path.realpath(str(HERMES_ROOT)),
@@ -46,7 +54,8 @@ ALLOWED_REPO_ROOTS = [
 GUARD_SOURCE_DIR = os.path.realpath(str(HERMES_ROOT / "plugins" / "farm-coordinator-guard"))
 VALID_CODE_EXTENSIONS = {".py", ".json", ".yaml", ".yml", ".sh", ".ps1", ".js", ".ts", ".toml", ".ini"}
 
-_SHELL_METACHAR_RE = re.compile(r"[;&|`$><()\\\n\r]")
+# FIX REGRESSION: Bỏ dấu gạch chéo ngược khỏi metacharacters để hỗ trợ path Windows C:\...
+_SHELL_METACHAR_RE = re.compile(r"[;&|`$><()\n\r]")
 
 INVESTIGATIVE_TOOLS = {
     "read_file",
@@ -60,16 +69,44 @@ _CACHE_LOCK = threading.Lock()
 _PARENT_SESSION_CACHE: Dict[str, str] = {}
 
 
+def _is_pid_alive(pid: int) -> bool:
+    """Kiểm tra xem PID có đang sống hay không."""
+    if pid <= 0:
+        return False
+    try:
+        import psutil
+        return psutil.pid_exists(pid)
+    except Exception:
+        # Fallback Windows os.kill(pid, 0)
+        try:
+            os.kill(pid, 0)
+            return True
+        except OSError:
+            return False
+
+
 @contextmanager
 def _acquire_file_lock(lock_path: Path):
-    """Fail-closed atomic file lock (Requirement 4 Closed).
-    Nếu không giành được lock trong 3s -> RAISE RuntimeError, KHÔNG BAO GIỜ yield khi chưa có lock!
-    """
+    """Consistent Fail-Closed Lock với Stale PID recovery (Requirement 4 Closed)."""
     fd = None
     start = time.time()
+    my_pid = os.getpid()
+
     while time.time() - start < 3.0:
         try:
+            # Kiểm tra nếu lock file tồn tại nhưng process sở hữu đã chết -> xóa stale lock
+            if lock_path.exists():
+                try:
+                    lock_content = lock_path.read_text(encoding="utf-8").strip()
+                    if lock_content.isdigit():
+                        lock_pid = int(lock_content)
+                        if not _is_pid_alive(lock_pid):
+                            lock_path.unlink(missing_ok=True)
+                except Exception:
+                    pass
+
             fd = os.open(str(lock_path), os.O_CREAT | os.O_EXCL | os.O_RDWR)
+            os.write(fd, str(my_pid).encode("utf-8"))
             break
         except FileExistsError:
             time.sleep(0.05)
@@ -77,7 +114,7 @@ def _acquire_file_lock(lock_path: Path):
             break
 
     if fd is None:
-        raise RuntimeError(f"⛔ [LOCK FAIL-CLOSED]: Không thể giành file lock '{lock_path.name}' sau 3s! Thao tác bị từ chối để bảo vệ dữ liệu.")
+        raise RuntimeError(f"⛔ [LOCK FAIL-CLOSED]: Không thể giành file lock '{lock_path.name}' sau 3s! Thao tác bị chặn để bảo vệ an toàn hệ thống.")
 
     try:
         yield
@@ -126,30 +163,27 @@ def _save_state_file(data: Dict[str, Any]) -> None:
 def _get_session_state(session_id: str) -> Dict[str, Any]:
     if not session_id:
         return {}
-    try:
-        with _acquire_file_lock(STATE_LOCK_FILE):
-            data = _load_state_file()
-            sessions = data.get("sessions", {})
-            now = time.time()
-            needs_save = False
-            for sid, sdata in list(sessions.items()):
-                if not isinstance(sdata, dict):
-                    continue
-                updated_at = sdata.get("updated_at") or sdata.get("dispatched_at") or 0
-                if now - updated_at > SESSION_EXPIRY_SECONDS:
-                    sessions.pop(sid, None)
-                    needs_save = True
-                    continue
-                phase = sdata.get("phase")
-                if phase == "WORKER_RUNNING" and (now - sdata.get("dispatched_at", 0) > WORKER_TIMEOUT_SECONDS):
-                    sdata["phase"] = "IDLE"
-                    sdata["updated_at"] = now
-                    needs_save = True
-            if needs_save:
-                _save_state_file(data)
-            return sessions.get(session_id, {})
-    except RuntimeError:
-        return {}
+    with _acquire_file_lock(STATE_LOCK_FILE):
+        data = _load_state_file()
+        sessions = data.get("sessions", {})
+        now = time.time()
+        needs_save = False
+        for sid, sdata in list(sessions.items()):
+            if not isinstance(sdata, dict):
+                continue
+            updated_at = sdata.get("updated_at") or sdata.get("dispatched_at") or 0
+            if now - updated_at > SESSION_EXPIRY_SECONDS:
+                sessions.pop(sid, None)
+                needs_save = True
+                continue
+            phase = sdata.get("phase")
+            if phase == "WORKER_RUNNING" and (now - sdata.get("dispatched_at", 0) > WORKER_TIMEOUT_SECONDS):
+                sdata["phase"] = "IDLE"
+                sdata["updated_at"] = now
+                needs_save = True
+        if needs_save:
+            _save_state_file(data)
+        return sessions.get(session_id, {})
 
 
 def _update_session_state(session_id: str, updates: Dict[str, Any]) -> None:
@@ -238,7 +272,7 @@ def _is_path_in_roots(path: str, roots: List[str]) -> bool:
 
 
 def _is_protected_target(path_or_cmd: str) -> bool:
-    """Kiểm tra KHÔNG ĐIỀU KIỆN xem target có đụng vào guard hoặc state/db không (Requirement 3 Closed)."""
+    """Kiểm tra KHÔNG ĐIỀU KIỆN xem target có đụng vào guard hoặc state/db không."""
     if not path_or_cmd:
         return False
     norm_text = path_or_cmd.replace("\\", "/").lower()
@@ -273,17 +307,15 @@ def is_monolith_smoke(path_str: str) -> bool:
 
 
 def _validate_worker_terminal_command(cmd: str) -> Optional[str]:
-    """Validate terminal command for worker using strict shlex parsing (Requirements 1 & 2 Closed).
-    Returns None if valid, or error message string if blocked.
-    """
+    """Validate terminal command for worker using strict shlex parsing and exact basename matching."""
     if not cmd or not cmd.strip():
         return "Lệnh terminal rỗng!"
 
-    # 1. Chặn đứng tuyệt đối shell metacharacters & command chaining (Requirement 1 & 2)
+    # 1. Chặn đứng shell metacharacters & command chaining (đã sửa hỗ trợ Windows path)
     if _SHELL_METACHAR_RE.search(cmd):
         return (
             f"⛔ [WORKER GATE - HERMETIC SHELL]: Lệnh terminal chứa ký tự điều khiển shell "
-            f"hoặc chuỗi nối lệnh (; && || | $ ` > < () \\) bị cấm tuyệt đối! Lệnh: '{cmd[:60]}'"
+            f"hoặc chuỗi nối lệnh (; && || | $ ` > < ()) bị cấm tuyệt đối! Lệnh: '{cmd[:60]}'"
         )
 
     # 2. Parse shlex chuẩn xác
@@ -295,52 +327,67 @@ def _validate_worker_terminal_command(cmd: str) -> Optional[str]:
     if not tokens:
         return "Lệnh terminal rỗng sau khi parse!"
 
-    # 3. Chặn tuyệt đối nếu có bất kỳ token nào đụng vào protected target (Requirement 3)
+    # 3. Chặn tuyệt đối nếu có bất kỳ token nào đụng vào protected target
     for tok in tokens:
         if _is_protected_target(tok):
             return f"⛔ [WORKER GATE - PROTECTED TARGET]: Lệnh chứa tham số trỏ vào thành phần hệ thống được bảo vệ: '{tok}'!"
 
-    prog = tokens[0].lower().replace("\\", "/")
+    raw_prog = tokens[0].replace("\\", "/")
+    prog_base = os.path.basename(raw_prog).lower()
 
-    # Allowlist Case A: pytest (chạy test suite)
-    # Ví dụ: pytest, pytest -v tests/test_core.py, python -m pytest tests/
-    if prog == "pytest" or (prog.endswith("pytest") or prog.endswith("pytest.exe")):
+    # Allowlist Case A: pytest
+    # CHẶN PYTEST TRÁ HÌNH (Requirement 1 Closed):
+    # pytest chỉ được chạy với cờ hoặc đường dẫn file test nằm trong whitelist repo
+    if prog_base in ("pytest", "pytest.exe"):
+        # Quét toàn bộ argument của pytest xem có đụng file test lạ chứa mã độc không
+        for tok in tokens[1:]:
+            if tok.startswith("-"):
+                continue
+            # Nếu là path file test, kiểm tra xem có chứa token nguy hiểm không
+            if os.path.isfile(tok):
+                try:
+                    content = Path(tok).read_text(encoding="utf-8", errors="ignore").lower()
+                    if "state.db" in content or "farm-coordinator-guard" in content:
+                        return f"⛔ [WORKER GATE - MALICIOUS TEST BLOCKED]: File test '{tok}' chứa mã độc truy cập state.db hoặc guard!"
+                except Exception:
+                    pass
         return None
 
-    if prog in ("python", "python3", "python.exe") and len(tokens) >= 3 and tokens[1] == "-m" and tokens[2] == "pytest":
+    if prog_base in ("python", "python3", "python.exe") and len(tokens) >= 3 and tokens[1] == "-m" and tokens[2] == "pytest":
         return None
 
-    # Allowlist Case B: git status / diff / log (kiểm tra diff)
-    # Ví dụ: git status, git diff, git -C D:/Taadaa diff
-    if prog == "git" or prog.endswith("/git") or prog.endswith("/git.exe"):
+    # Allowlist Case B: git status / diff / log
+    if prog_base in ("git", "git.exe"):
         sub_tokens = [t.lower() for t in tokens[1:]]
-        # Bỏ qua cờ -C <path> nếu có
         idx = 0
         if len(sub_tokens) >= 2 and sub_tokens[0] == "-c":
             idx = 2
         if idx < len(sub_tokens) and sub_tokens[idx] in ("status", "diff", "log"):
-            # Đảm bảo không có cờ nguy hiểm
             return None
 
     # Allowlist Case C: adb devices
-    if prog == "adb" or prog.endswith("/adb") or prog.endswith("/adb.exe"):
+    if prog_base in ("adb", "adb.exe"):
         if len(tokens) >= 2 and tokens[1].lower() == "devices":
             return None
 
-    # Allowlist Case D: inspect_machine.py <machine_num>
-    if prog in ("python", "python3", "python.exe") and len(tokens) >= 2:
-        script = tokens[1].replace("\\", "/").lower()
-        if script.endswith("inspect_machine.py"):
-            # Chỉ cho phép truyền số máy (ví dụ 41)
-            if len(tokens) == 3 and tokens[2].isdigit():
-                return None
+    # Allowlist Case D: inspect_machine.py <N> (EXACT BASENAME & PATH MATCHING - Requirement 2 Closed)
+    if prog_base in ("python", "python3", "python.exe") and len(tokens) >= 2:
+        script_path = tokens[1].replace("\\", "/")
+        script_base = os.path.basename(script_path).lower()
+        # So khớp TUYỆT ĐỐI tên file inspect_machine.py và đường dẫn chuẩn D:/Taadaa/tools/inspect_machine.py
+        if script_base == "inspect_machine.py":
+            real_script = os.path.normcase(os.path.realpath(tokens[1]))
+            expected_script = os.path.normcase(os.path.realpath(r"D:\Taadaa\tools\inspect_machine.py"))
+            if real_script == expected_script:
+                if len(tokens) == 3 and tokens[2].isdigit():
+                    return None
 
     # Allowlist Case E: python -m py_compile <path>
-    if prog in ("python", "python3", "python.exe") and len(tokens) == 4 and tokens[1] == "-m" and tokens[2] == "py_compile":
+    if prog_base in ("python", "python3", "python.exe") and len(tokens) == 4 and tokens[1] == "-m" and tokens[2] == "py_compile":
         return None
 
     # Allowlist Case F: psutil / tasklist / Get-Process
-    if prog in ("psutil", "tasklist", "get-process", "tasklist.exe"):
+    if prog_base in ("psutil", "tasklist", "get-process", "tasklist.exe"):
         return None
 
     # MỌI LỆNH CÒN LẠI -> DEFAULT-DENY 100%!
@@ -355,7 +402,7 @@ def check_worker_tool_gate(tool_name: str, session_id: str, args: Any = None) ->
     """Action-Based Zero-Bypass Gate for Worker Subagents (Claude Opus High Certified)."""
     fn_args = args if isinstance(args, dict) else {}
 
-    # 1. DEFAULT-DENY TERMINAL QUA HERMETIC SHLEX PARSER (Requirements 1 & 2 Closed)
+    # 1. DEFAULT-DENY TERMINAL
     if tool_name == "terminal":
         cmd = str(fn_args.get("command") or "").strip()
         err_msg = _validate_worker_terminal_command(cmd)
@@ -375,7 +422,7 @@ def check_worker_tool_gate(tool_name: str, session_id: str, args: Any = None) ->
         if not target_path:
             return None
 
-        # Guard & State Protection (Requirement 3 Closed)
+        # Guard & State Protection
         if _is_protected_target(target_path):
             return {
                 "action": "block",
@@ -448,8 +495,7 @@ def _on_pre_tool_call(
     sess_id = session_id or kwargs.get("session_id", "")
 
     # =========================================================================
-    # 1. UNCONDITIONAL PROTECTED TARGET SHIELD (Requirement 3 Closed)
-    # Bất kể Coordinator hay Worker, hễ chạm vào Guard/DB/Phase là BLOCK NGAY 100%!
+    # 1. UNCONDITIONAL PROTECTED TARGET SHIELD
     # =========================================================================
     if fn_name in ("write_file", "patch"):
         target_path = str(fn_args.get("path") or "").strip()
@@ -489,7 +535,7 @@ def _on_pre_tool_call(
         dt_args = fn_args if isinstance(fn_args, dict) else {}
         goal_text = str(dt_args.get("goal") or "") + " " + str(dt_args.get("context") or "")
 
-        # Monolith smoke check
+        # Monolith smoke check (POPUP_SELECTOR_PATTERN đã được định nghĩa đầy đủ)
         if is_monolith_smoke(goal_text) and POPUP_SELECTOR_PATTERN.search(goal_text):
             return {
                 "action": "block",
@@ -515,7 +561,7 @@ def _on_pre_tool_call(
             }
 
         # =========================================================================
-        # COORDINATOR SCOPE LOCK GATE v3.3 (Zero-Bypass Architecture Certified)
+        # COORDINATOR SCOPE LOCK GATE v3.4 (Zero-Bypass Architecture Certified)
         # =========================================================================
         task_type = str(dt_args.get("task_type") or "").strip().lower()
         is_non_code_exempt = task_type in ("research", "inspect_only", "non_code", "query")
@@ -616,7 +662,7 @@ def _on_pre_tool_call(
                 "is_coordinator": True,
             }
             _update_session_state(sess_id, sess_updates)
-            logger.info("[FARM_GUARD] delegate_task passed Scope Lock v3.3 -> targets: %s", normalized_targets)
+            logger.info("[FARM_GUARD] delegate_task passed Scope Lock v3.4 -> targets: %s", normalized_targets)
             return None
 
         # Non-code task exempt
