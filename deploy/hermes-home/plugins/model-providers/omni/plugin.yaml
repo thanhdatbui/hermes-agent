@@ -1,0 +1,4 @@
+name: omni
+kind: model-provider
+version: "1.0.0"
+description: "OmniRoute local proxy with priority combo routing (ag-gemini-pool-3 -> ag-claude -> omni-free). Forwards reasoning_effort to control thinking budget."
