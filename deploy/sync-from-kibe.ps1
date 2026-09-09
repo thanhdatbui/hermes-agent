@@ -23,6 +23,10 @@ if (Test-Path $CfgSrc) {
     # Thay 127.0.0.1 thành IP Kibe để Admin kết nối qua mạng LAN
     $cfgContent = Get-Content $CfgDst -Raw -Encoding utf8
     $cfgContent = $cfgContent -replace "127\.0\.0\.1", $KibeIP
+    # Neu hooks tro den C:/Users/Kibe khong ton tai tren may nay, loai bo block hooks
+    if ($cfgContent -match "C:/Users/Kibe") {
+        $cfgContent = [regex]::Replace($cfgContent, "(?m)^hooks:\r?\n(?:^[ \t]+.*\r?\n)*", "")
+    }
     Set-Content -Path $CfgDst -Value $cfgContent -Encoding utf8
 }
 
@@ -58,6 +62,8 @@ $settings = @(
     "HERMES_TELEGRAM_HTTP_CONNECT_TIMEOUT=15.0",
     "HERMES_TELEGRAM_HTTP_READ_TIMEOUT=30.0",
     "HERMES_TELEGRAM_HTTP_WRITE_TIMEOUT=30.0",
+    "HERMES_TELEGRAM_HEARTBEAT_INTERVAL=15",
+    "HERMES_TELEGRAM_HEARTBEAT_TIMEOUT=10.0",
     "TELEGRAM_ALLOW_BOTS=all",
     "TELEGRAM_PROXY=http://admin%401:admin%401@192.168.110.2:10001",
     ("OMNIROUTE_BASE_URL=http://" + $KibeIP + ":20129/v1")
