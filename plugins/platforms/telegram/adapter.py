@@ -273,6 +273,7 @@ from plugins.platforms.telegram.telegram_ids import (
 )
 from plugins.platforms.telegram.telegram_network import (
     TelegramFallbackTransport,
+    TelegramMultiISPTransport,
     discover_fallback_ips,
     parse_fallback_ip_env,
 )
@@ -3418,12 +3419,39 @@ class TelegramAdapter(BasePlatformAdapter):
                 )
             elif proxy_url:
                 logger.info("[%s] Proxy detected; passing explicitly to HTTPXRequest: %s", self.name, proxy_url)
-                request = HTTPXRequest(
-                    **request_kwargs, proxy=proxy_url, httpx_kwargs=_with_limits()
-                )
-                get_updates_request = HTTPXRequest(
-                    **request_kwargs, proxy=proxy_url, httpx_kwargs=_with_limits()
-                )
+                # Multi-ISP Failover: Primary = Viettel proxy, Fallback = FPT Direct + DoH IPs
+                # When a proxy is set AND fallback_ips discovered → use TelegramMultiISPTransport
+                if fallback_ips and not disable_fallback:
+                    import os as _os
+                    stall_s = float(_os.environ.get("TELEGRAM_FAILOVER_STALL_THRESHOLD", "20"))
+                    probe_s = float(_os.environ.get("TELEGRAM_FAILOVER_PROBE_INTERVAL", "60"))
+                    _multi_kwargs: dict = {}
+                    if _pool_limits is not None:
+                        _multi_kwargs["limits"] = _pool_limits
+                    _multi_transport = TelegramMultiISPTransport(
+                        fallback_ips=fallback_ips,
+                        stall_threshold_s=stall_s,
+                        recovery_probe_interval_s=probe_s,
+                        **_multi_kwargs,
+                    )
+                    logger.info(
+                        "[%s] Multi-ISP Failover enabled: Primary=Viettel proxy, Fallback=FPT Direct (stall=%ds probe=%ds)",
+                        self.name, int(stall_s), int(probe_s),
+                    )
+                    request = HTTPXRequest(
+                        **request_kwargs, proxy=proxy_url, httpx_kwargs=_with_limits()
+                    )
+                    get_updates_request = HTTPXRequest(
+                        **request_kwargs,
+                        httpx_kwargs={"transport": _multi_transport},
+                    )
+                else:
+                    request = HTTPXRequest(
+                        **request_kwargs, proxy=proxy_url, httpx_kwargs=_with_limits()
+                    )
+                    get_updates_request = HTTPXRequest(
+                        **request_kwargs, proxy=proxy_url, httpx_kwargs=_with_limits()
+                    )
             else:
                 if disable_fallback:
                     logger.info("[%s] Telegram fallback-IP transport disabled via env", self.name)
@@ -6843,6 +6871,14 @@ class TelegramAdapter(BasePlatformAdapter):
         # 0) Rewrite GFM-style pipe tables into Telegram-friendly row groups
         #    before the normal MarkdownV2 conversions run.
         text = _wrap_markdown_tables(text)
+
+        # 0.1) Auto-convert LaTeX arrow math notations to clean Unicode characters
+        for latex_sym in ("rightarrow", "to"):
+            text = text.replace(f"$\\{latex_sym}$", "→").replace(f"\\{latex_sym}", "→")
+        for latex_sym in ("leftarrow", "gets"):
+            text = text.replace(f"$\\{latex_sym}$", "←").replace(f"\\{latex_sym}", "←")
+        text = text.replace("$\\Rightarrow$", "⇒").replace("\\Rightarrow", "⇒")
+        text = text.replace("$\\Leftarrow$", "⇐").replace("\\Leftarrow", "⇐")
 
         # 1) Protect fenced code blocks (``` ... ```)
         #    Per MarkdownV2 spec, \ and ` inside pre/code must be escaped.

@@ -10,9 +10,11 @@ IPv4 addresses.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import ipaddress
 import logging
 import socket
+import time
 from typing import Iterable, Optional
 
 import httpx
@@ -129,6 +131,189 @@ class TelegramFallbackTransport(httpx.AsyncBaseTransport):
             await transport.aclose()
 
 
+class TelegramMultiISPTransport(httpx.AsyncBaseTransport):
+    """Multi-ISP Failover transport: Viettel Proxy (primary) ↔ FPT Direct (fallback).
+
+    Khi primary bị lỗi kết nối (ConnectTimeout/ConnectError), tự động switch sang
+    FPT Direct + DoH fallback IPs. Background probe phục hồi về primary sau 60s.
+
+    Cấu hình qua .env:
+      TELEGRAM_PROXY          = primary proxy URL (Viettel: 192.168.110.2:10001)
+      TELEGRAM_FAILOVER_STALL_THRESHOLD   = giây trước khi coi là stall (default 20)
+      TELEGRAM_FAILOVER_PROBE_INTERVAL    = giây giữa các probe primary recovery (default 60)
+    """
+
+    def __init__(
+        self,
+        *,
+        fallback_ips: Iterable[str],
+        stall_threshold_s: float = 20.0,
+        recovery_probe_interval_s: float = 60.0,
+        **transport_kwargs,
+    ):
+        self._fallback_ips = list(dict.fromkeys(_normalize_fallback_ips(fallback_ips)))
+        self._stall_threshold_s = stall_threshold_s
+        self._recovery_probe_interval_s = recovery_probe_interval_s
+        self._transport_kwargs = dict(transport_kwargs)
+
+        self._mode_lock = asyncio.Lock()
+        self._current_mode: str = "primary"  # "primary" | "fallback"
+        self._recovery_task: Optional[asyncio.Task] = None
+        self._last_primary_success: Optional[float] = None
+
+        # Transports — built lazily to pick up env at init time
+        self._primary_transport: Optional[httpx.AsyncHTTPTransport] = None
+        self._fallback_transport: Optional["_TelegramDirectFallbackTransport"] = None
+
+    def _build_primary_transport(self) -> httpx.AsyncHTTPTransport:
+        """Primary: Viettel proxy (via TELEGRAM_PROXY env)."""
+        proxy_url = _resolve_proxy_url(target_hosts=[_TELEGRAM_API_HOST, *self._fallback_ips])
+        if proxy_url:
+            kwargs = dict(self._transport_kwargs)
+            kwargs["proxy"] = proxy_url
+            return httpx.AsyncHTTPTransport(**kwargs)
+        return httpx.AsyncHTTPTransport(**self._transport_kwargs)
+
+    def _build_fallback_transport(self) -> "_TelegramDirectFallbackTransport":
+        """Fallback: FPT Direct + DoH IPs (no proxy — uses TelegramFallbackTransport without proxy)."""
+        # Build without proxy by temporarily clearing TELEGRAM_PROXY via a wrapper
+        # that passes no proxy kwarg, relying on TelegramFallbackTransport's
+        # direct connection to _fallback_ips
+        kwargs = dict(self._transport_kwargs)
+        # Don't pass proxy — we want direct FPT connection
+        return _TelegramDirectFallbackTransport(self._fallback_ips, **kwargs)
+
+    def _get_primary(self) -> httpx.AsyncHTTPTransport:
+        if self._primary_transport is None:
+            self._primary_transport = self._build_primary_transport()
+        return self._primary_transport
+
+    def _get_fallback(self) -> "_TelegramDirectFallbackTransport":
+        if self._fallback_transport is None:
+            self._fallback_transport = self._build_fallback_transport()
+        return self._fallback_transport
+
+    async def _switch_to_fallback(self) -> None:
+        async with self._mode_lock:
+            if self._current_mode == "fallback":
+                return
+            self._current_mode = "fallback"
+        logger.warning(
+            "[Telegram] Multi-ISP Failover: PRIMARY (Viettel) bị lỗi → chuyển sang FALLBACK (FPT Direct)"
+        )
+
+    async def _switch_to_primary(self) -> None:
+        async with self._mode_lock:
+            if self._current_mode == "primary":
+                return
+            self._current_mode = "primary"
+        logger.warning(
+            "[Telegram] Multi-ISP Failover: PRIMARY (Viettel) hồi phục → chuyển về PRIMARY"
+        )
+
+    async def _probe_primary_recovery(self) -> None:
+        """Background task: probe primary mỗi recovery_probe_interval_s giây."""
+        first_success_at: Optional[float] = None
+        while True:
+            await asyncio.sleep(self._recovery_probe_interval_s)
+            if self._current_mode != "fallback":
+                return  # đã về primary, dừng probe
+
+            try:
+                req = httpx.Request("GET", f"https://{_TELEGRAM_API_HOST}/")
+                resp = await self._get_primary().handle_async_request(req)
+                if 200 <= resp.status_code < 500:
+                    now = time.monotonic()
+                    if first_success_at is None:
+                        first_success_at = now
+                        logger.info("[Telegram] Multi-ISP: Primary probe thành công lần 1, chờ thêm %ds", self._recovery_probe_interval_s)
+                    else:
+                        # 2 lần thành công → switch về primary
+                        await self._switch_to_primary()
+                        return
+                else:
+                    first_success_at = None
+            except Exception as exc:
+                logger.debug("[Telegram] Multi-ISP: Primary probe thất bại: %s", exc)
+                first_success_at = None
+
+    def _ensure_recovery_probe(self) -> None:
+        if self._recovery_task is None or self._recovery_task.done():
+            self._recovery_task = asyncio.create_task(self._probe_primary_recovery())
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        if self._current_mode == "fallback":
+            return await self._get_fallback().handle_async_request(request)
+
+        # Primary mode
+        try:
+            response = await self._get_primary().handle_async_request(request)
+            self._last_primary_success = time.monotonic()
+            return response
+        except Exception as exc:
+            if not _is_retryable_connect_error(exc):
+                raise
+            # Stall / ConnectError → failover
+            await self._switch_to_fallback()
+            self._ensure_recovery_probe()
+            return await self._get_fallback().handle_async_request(request)
+
+    async def aclose(self) -> None:
+        if self._primary_transport:
+            await self._primary_transport.aclose()
+        if self._fallback_transport:
+            await self._fallback_transport.aclose()
+        if self._recovery_task and not self._recovery_task.done():
+            self._recovery_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await self._recovery_task
+
+
+class _TelegramDirectFallbackTransport(httpx.AsyncBaseTransport):
+    """FPT Direct transport: không dùng proxy, fallback qua DoH IPs."""
+
+    def __init__(self, fallback_ips: Iterable[str], **transport_kwargs):
+        self._fallback_ips = list(dict.fromkeys(_normalize_fallback_ips(fallback_ips)))
+        # Explicitly remove proxy to go direct via FPT
+        kwargs = {k: v for k, v in transport_kwargs.items() if k != "proxy"}
+        self._primary = httpx.AsyncHTTPTransport(**kwargs)
+        self._fallbacks = {
+            ip: httpx.AsyncHTTPTransport(**kwargs) for ip in self._fallback_ips
+        }
+        self._sticky_ip: Optional[str] = None
+        self._sticky_lock = asyncio.Lock()
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        if request.url.host != _TELEGRAM_API_HOST or not self._fallback_ips:
+            return await self._primary.handle_async_request(request)
+
+        attempt_order: list[Optional[str]] = [None]
+        for ip in self._fallback_ips:
+            attempt_order.append(ip)
+
+        last_error: Exception | None = None
+        for ip in attempt_order:
+            candidate = request if ip is None else _rewrite_request_for_ip(request, ip)
+            transport = self._primary if ip is None else self._fallbacks[ip]
+            try:
+                return await transport.handle_async_request(candidate)
+            except Exception as exc:
+                last_error = exc
+                if not _is_retryable_connect_error(exc):
+                    raise
+                logger.warning("[Telegram] FPT Direct: %s failed: %s", ip or "direct", exc)
+                continue
+
+        if last_error is None:
+            raise RuntimeError("FPT Direct: all attempts exhausted")
+        raise last_error
+
+    async def aclose(self) -> None:
+        await self._primary.aclose()
+        for t in self._fallbacks.values():
+            await t.aclose()
+
+
 def _normalize_fallback_ips(values: Iterable[str]) -> list[str]:
     normalized: list[str] = []
     for value in values:
@@ -161,7 +346,7 @@ def _resolve_system_dns() -> set[str]:
     """Return the IPv4 addresses that the OS resolver gives for api.telegram.org."""
     try:
         results = socket.getaddrinfo(_TELEGRAM_API_HOST, 443, socket.AF_INET)
-        return {addr[4][0] for addr in results}
+        return {str(addr[4][0]) for addr in results}
     except Exception:
         return set()
 
@@ -208,11 +393,6 @@ async def discover_fallback_ips() -> list[str]:
         system_dns_task = asyncio.ensure_future(asyncio.to_thread(_resolve_system_dns))
         results = await asyncio.gather(*doh_tasks, return_exceptions=True)
 
-    # The system-resolver leg runs socket.getaddrinfo in a worker thread with
-    # no timeout of its own — a wedged OS resolver (broken VPN/DNS) can sit for
-    # minutes. Its result only feeds the no-usable-answers log line below, so
-    # it must never gate discovery: bound it and move on (#63309). The DoH legs
-    # are already bounded by the client timeout above.
     system_ips: set[str] = set()
     try:
         system_result = await asyncio.wait_for(system_dns_task, timeout=_DOH_TIMEOUT)
@@ -226,7 +406,6 @@ async def discover_fallback_ips() -> list[str]:
         if isinstance(r, list):
             doh_ips.extend(r)
 
-    # Deduplicate preserving order
     seen: set[str] = set()
     candidates: list[str] = []
     for ip in doh_ips:
@@ -234,7 +413,6 @@ async def discover_fallback_ips() -> list[str]:
             seen.add(ip)
             candidates.append(ip)
 
-    # Validate through existing normalization
     validated = _normalize_fallback_ips(candidates)
 
     if validated:
