@@ -66,7 +66,9 @@ $settings = @(
     "HERMES_TELEGRAM_HEARTBEAT_TIMEOUT=10.0",
     "TELEGRAM_ALLOW_BOTS=all",
     "TELEGRAM_PROXY=http://admin%401:admin%401@192.168.110.2:10001",
-    ("OMNIROUTE_BASE_URL=http://" + $KibeIP + ":20129/v1")
+    ("OMNIROUTE_BASE_URL=http://" + $KibeIP + ":20129/v1"),
+    "OMNIROUTE_API_KEY=sk-068d374abdfae2763f0343a416b24f5d688cf3b631d8c1c4f51e360f09a8237c",
+    "NINEROUTER_API_KEY=sk-2475baefdcf2634351da241fa057c708b"
 )
 foreach ($line in $settings) {
     $k = $line.Split("=")[0]
