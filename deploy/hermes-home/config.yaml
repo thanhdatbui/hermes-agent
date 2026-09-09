@@ -57,14 +57,16 @@ agent:
       system_prompt: Bạn là Hermes vận hành các repo Taadaa. cd đúng repo trước mọi
         lệnh. Đọc AGENTS.md + HANDOFF.md + PROJECT_RULES.md. Báo cáo tóm tắt cuối
         cùng khi hoàn tất hoặc có lỗi thực tế. Các lượt trung gian dùng [SILENT].
-  reasoning_effort: high
+  reasoning_effort: medium
   reasoning_overrides:
-    ag/claude-sonnet-4-6: high
-    deepseek-v4-flash: high
-    gpt-5.6-luna: high
-    oc/deepseek-v4-flash-free: high
-    oc/hy3-free: high
-    opencode-audit: high
+    ag/claude-sonnet-4-6: medium
+    deepseek-v4-flash: medium
+    gpt-5.6-luna: medium
+    oc/deepseek-v4-flash-free: medium
+    oc/hy3-free: medium
+    opencode-audit: medium
+    omni-worker: medium
+    ag-gemini-pool-3: medium
   service_tier: normal
   system_prompt: 'Bạn là Hermes Coordinator điều phối các repo dự án Taadaa Phone
     Farm.
@@ -180,7 +182,7 @@ delegation:
   child_timeout_seconds: 600
   max_concurrent_children: 8
   max_iterations: 15
-  model: ag-gemini-pool-3
+  model: omni-worker
   provider: omni
   reasoning_effort: medium
 display:
@@ -210,6 +212,12 @@ fallback_providers:
   provider: custom:9router
 gateway:
   max_workers: 50
+  media_delivery:
+    auto_deliver_local_files: false
+    denied_paths:
+    - D:/TIKTOK-videonuoinick
+    - D:/video goc
+    - D:/OneDrive
   platforms:
     telegram:
       channel_overrides:
@@ -301,7 +309,7 @@ moa:
       enabled: false
 model:
   context_length: 1000000
-  default: ag-gemini-pool-3
+  default: omni-worker
   persist_switch_by_default: false
   provider: omni
 model_catalog:
@@ -430,19 +438,24 @@ terminal:
   docker_mount_cwd_to_workspace: false
   home_mode: auto
   lifetime_seconds: 1800
-  timeout: 900
+  timeout: 180
+hooks:
+  pre_tool_call:
+  - matcher: read_file
+    command: python C:/Users/Kibe/AppData/Local/hermes/hooks/guard_read_file_size.py
+    timeout: 5
+  - matcher: terminal
+    command: python C:/Users/Kibe/AppData/Local/hermes/hooks/guard_pytest_scope.py
+    timeout: 5
+  - matcher: delegate_task
+    command: python C:/Users/Kibe/AppData/Local/hermes/hooks/guard_dispatch_contract.py
+    timeout: 5
 tool_loop_guardrails:
   hard_stop_after:
     exact_failure: 5
     idempotent_no_progress: 5
     same_tool_failure: 8
   hard_stop_enabled: false
-  media_delivery:
-    auto_deliver_local_files: false
-    denied_paths:
-    - D:/TIKTOK-videonuoinick
-    - D:/video goc
-    - D:/OneDrive
   warn_after:
     exact_failure: 2
     idempotent_no_progress: 2
