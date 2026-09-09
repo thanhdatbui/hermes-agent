@@ -193,19 +193,31 @@ def run_watchdog():
         return 0
 
     overdue_locks = [l for l in locks if l["duration_minutes"] >= get_lock_threshold(l.get("status", ""))[0]]
-    
+    if not overdue_locks:
+        print(f"[watchdog] Healthy: {len(locks)} máy đang giữ lock bình thường (< 60p). Không có máy quá hạn (Silent).")
+        return 0
+
+    # Ưu tiên đưa máy quá hạn lên đầu danh sách
+    sorted_locks = sorted(
+        locks,
+        key=lambda x: (
+            0 if x["duration_minutes"] >= get_lock_threshold(x.get("status", ""))[0] else 1,
+            int(x["machine"]) if str(x["machine"]).isdigit() else str(x["machine"]),
+        ),
+    )
+
     # Tạo nội dung báo cáo
     now_str = datetime.datetime.now().strftime("%H:%M %d/%m/%Y")
     lines = [
-        f"🔒 <b>[DANH SÁCH MÁY ĐANG LOCK]</b> - <i>{now_str}</i>",
-        f"Tổng số máy đang giữ lock: <b>{len(locks)}</b>",
-        ""
+        f"⚠️ <b>[CẢNH BÁO DEVICE LOCKS QUÁ HẠN]</b> - <i>{now_str}</i>",
+        f"Tổng số máy giữ lock: <b>{len(locks)}</b> | Quá hạn (>60p): <b>{len(overdue_locks)}</b>",
+        "",
     ]
 
-    if len(locks) >= 30:
-        lines.append("⚠️ <b>CẢNH BÁO NGHẼN LOCK DIỆN RỘNG (>= 30 MÁY)</b>\n")
+    if len(overdue_locks) >= 10:
+        lines.append(f"⚠️ <b>CẢNH BÁO NGHẼN LOCK DIỆN RỘNG: Có {len(overdue_locks)} máy vượt hạn mức 60p!</b>\n")
 
-    for l in locks:
+    for l in sorted_locks:
         m_str = f"Máy {int(l['machine']):02d}" if isinstance(l['machine'], int) or str(l['machine']).isdigit() else f"Máy {l['machine']}"
         threshold, is_blocked = get_lock_threshold(l.get("status", ""))
         warning = ""
@@ -220,8 +232,8 @@ def run_watchdog():
     report_text = "\n".join(lines)
     print(report_text)
 
-    # Gửi cập nhật báo cáo máy đang lock về Telegram bất kể quá hạn hay chưa
-    if locks:
+    # Chỉ gửi Telegram alert khi có máy quá hạn
+    if overdue_locks:
         send_telegram_alert(report_text)
 
     return 0
