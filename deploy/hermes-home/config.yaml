@@ -107,6 +107,10 @@ approvals:
   destructive_slash_confirm: false
   mode: smart
 auxiliary:
+  vision:
+    base_url: http://127.0.0.1:20129/v1
+    api_key: sk-068d374abdfae2763f0343a416b24f5d688cf3b631d8c1c4f51e360f09a8237c
+    model: omni-worker
   compression:
     fallback_chain:
     - model: omni-free
