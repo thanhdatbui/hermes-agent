@@ -488,6 +488,40 @@ def _add_minutes_to_hm(hm_str: str, minutes: int) -> str:
     return f"{new_h:02d}:{new_m:02d}"
 
 
+def format_success_follows(fl_success: list, all_follows: dict) -> list:
+    """Phân nhóm và format danh sách các máy follow thành công theo số lượt hoàn thành."""
+    if not fl_success:
+        return ["  + Success (0): Không có"]
+
+    succ_1_4 = []
+    succ_5_9 = []
+    succ_10_plus = []
+
+    for m in fl_success:
+        cnt = len(all_follows.get(m, {}).get("followed", []))
+        if 1 <= cnt <= 4:
+            succ_1_4.append((m, cnt))
+        elif 5 <= cnt <= 9:
+            succ_5_9.append((m, cnt))
+        else:
+            succ_10_plus.append((m, cnt))
+
+    def _format_m(m) -> str:
+        s = str(m).strip()
+        if s.upper().startswith("M"):
+            return f"M{s[1:]}"
+        return f"M{s}"
+
+    lines = [f"  + Success ({len(fl_success)} máy):"]
+    if succ_1_4:
+        lines.append(f"    - 1 - 4 lượt ({len(succ_1_4)} máy): {', '.join(f'{_format_m(m)} ({cnt} lượt)' for m, cnt in succ_1_4)}")
+    if succ_5_9:
+        lines.append(f"    - 5 - 9 lượt ({len(succ_5_9)} máy): {', '.join(f'{_format_m(m)} ({cnt} lượt)' for m, cnt in succ_5_9)}")
+    if succ_10_plus:
+        lines.append(f"    - 10+ lượt ({len(succ_10_plus)} máy): {', '.join(f'{_format_m(m)} ({cnt} lượt)' for m, cnt in succ_10_plus)}")
+    return lines
+
+
 def format_released_follows(fl_released: list, all_follows: dict) -> list:
     """Phân nhóm và format danh sách các máy bị nhả follow theo số lượt hoàn thành."""
     if not fl_released:
@@ -537,10 +571,6 @@ def can_report_session(
     has_unattempted_locked: bool = False,
 ) -> bool:
     """Xác định điều kiện chốt báo cáo cho một phiên."""
-    # Nếu tất cả máy dự kiến đã hoàn tất thật: chốt ngay lập tức
-    if completed_expected_count >= expected_count and not has_unattempted_locked:
-        return True
-
     # Nếu đang trong giờ phiên (now_hm < window_end_hm):
     if is_today and now_hm < window_end_hm:
         if runner_busy:
@@ -549,15 +579,8 @@ def can_report_session(
             return False
         return completed_expected_count >= expected_count
 
-    # Khi đã qua window_end_hm: cho phép grace period tối đa 20 phút nếu runner đang chạy
-    if is_today:
-        grace_end_hm = _add_minutes_to_hm(window_end_hm, 20)
-        if runner_busy and now_hm < grace_end_hm:
-            return False
-        # Quá grace period 20 phút hoặc runner không bận -> BẮT BUỘC chốt báo cáo
-        return True
-
-    return (completed_expected_count >= expected_count) or (now_hm >= "02:00")
+    # Khi đã qua window_end_hm hoặc là ngày cũ: BẮT BUỘC chốt báo cáo
+    return True
 
 
 def main():
@@ -715,6 +738,8 @@ def main():
                             fl_skipped.append(m)
                         elif status in {"OK", "SUCCESS"} and len(flist) > 0:
                             fl_success.append(m)
+                        elif status in {"OK", "SUCCESS"} and len(flist) == 0:
+                            fl_skipped.append(m)
                         else:
                             fl_error.append(m)
                     else:
@@ -734,8 +759,8 @@ def main():
                     f"  + Success ({len(succ)}): {succ_str}",
                     f"  + Fail ({len(fail)}): {fail_str}",
                     f"• Follow chéo ({total_followed_count} lượt follow):",
-                    f"  + Success ({len(fl_success)}): {s_str}",
                 ]
+                msg_lines.extend(format_success_follows(fl_success, all_follows))
                 msg_lines.extend(format_released_follows(fl_released, all_follows))
                 msg_lines.extend([
                     f"  + Lỗi script/xác minh ({len(fl_error)}): {e_str}",
