@@ -368,6 +368,24 @@ User hỏi "max_worker bao nhiêu vừa đủ — test chính xác kiểu gì": 
 - **Bài học kép**: (a) test tải phải dùng công cụ production (không phải công cụ mà farm đã bỏ); (b) mô phỏng phải kèm bước mở app + chờ load (không chỉ gọi API 1 lần) — tải thật nặng hơn nhiều.
 - Pool worker semantics: "máy nào xong → máy khác vào ngay" = ThreadPoolExecutor đã có sẵn (multi_machine_feed_session.py:1048) — KHÔNG cần "tick 15' phức tạp" (user: "cứ max worker tại 1 thời điểm là bn thì máy nào chạy xong máy khác tham gia vào là đc mà"). Stagger per-machine cũng đã có sẵn (`_machine_start_stagger_ms = (2000, 8000)`, build_machine_launch_plan).
 
+## Micro-tasking delegation pattern (2026-09-10, 4-ca scheduler migration)
+
+Khi task yêu cầu thay đổi 5+ files liên quan (vd: scheduler migration: blocks.py → picker.py → manifest.py → feed_session.py → watchdog → tests), **KHÔNG dispatch 1 worker lớn** — timeout 600s gần như chắc chắn vì worker dành 80% budget cho phân tích.
+
+**Pattern đúng — sequential micro-tasks:**
+1. Worker 1: `blocks.py + picker.py` (core scheduling logic) → verify compile
+2. Worker 2: `manifest.py` (validator + CONSTRAINTS) → verify compile  
+3. Worker 3: `feed_session.py` (runtime hooks) → verify compile
+4. Worker 4: `watchdog.py` (monitoring) → verify compile
+5. Worker 5: Tests (golden vectors, updated assertions) → verify pytest
+6. Parent: final full-suite pytest + git commit/push
+
+**Mỗi worker nhận Patch Contract cực cụ thể**: exact old_string → new_string cho TỪNG điểm sửa, kèm file path tuyệt đối. Worker chỉ việc apply patch + verify, không cần phân tích.
+
+**Khi nào dùng micro-tasking vs single dispatch:**
+- Single dispatch: task 1-2 files, bug rõ ràng, scope hẹp
+- Micro-tasking: 3+ files, architecture change, constraint validation chain, shape migration
+
 ## Audit: session hiện tại đang ở lớp agent nào
 
 Khi user hỏi "session của Hermes qua các lớp agent nào" / audit cấu trúc agent: xác định lớp bằng env signals (`HERMES_KANBAN_TASK`, `HERMES_UI_SESSION_ID`, `HERMES_SESSION_ID`, `delegation` config) + code locations (`AIAgent`→`init_agent`→`run_conversation`, `delegate_tool.py`, `kanban_tools.py`, `gateway/session.py`) — recipe + template kết quả: `references/agent-layer-identification.md`. Không cần chạy app; đọc env + code là đủ.

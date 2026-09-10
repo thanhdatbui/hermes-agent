@@ -63,10 +63,61 @@ Chạy 20 seed → xác định min gap thực, jitter từng block — dùng l�
 - **Midnight mapping**: block-3 s3 giờ kết thúc 23:45 (không còn qua nửa đêm với anchor 19:00 + jitter
   +15) → select_due_entries lúc 00:00 chỉ bắt entry s3 còn trong grace 90' (22:45→00:15).
 
+## Block 4 (00:00 anchor) — 4 pitfalls khi thêm block qua midnight (2026-09-10, 4-ca migration)
+
+Khi thêm block anchor = 00:00 (Block 4, Ca đêm) vào scheduler, 4 lỗi xảy ra tuần tự:
+
+### Pitfall 6: `logical_day_for(00:00)` trả ngày hôm trước
+- `logical_day_for()` maps任何 <06:00 time → `(local - timedelta(days=1)).date()`
+- Block 4 slot `2026-09-10T00:00` → `logical_day_for` trả `2026-09-09`
+- Manifest day = `2026-09-10` → validator reject `logical_day_for(slot) != manifest_day`
+- **FIX**: Mở check trong `_validate_entry`: chấp nhận slot前一天 nếu `slot.time() < 06:00`
+```python
+manifest_day = date.fromisoformat(manifest["day"])
+slot_logical = logical_day_for(slot)
+day_ok = (slot_logical == manifest_day) or (slot_logical == manifest_day - timedelta(days=1) and slot.time() < datetime.min.time().replace(hour=6))
+```
+
+### Pitfall 7: `WINDOW_END_HOUR` quá sớm → session 2 vượt window
+- Block 4: s1=00:00-01:00, pair_gap=60, s2=02:00-03:00
+- `window_end=02:00` → `is_schedulable_interval` reject s2 (end 03:00 > 02:00)
+- **FIX**: `WINDOW_END_HOUR = 3` trong `models.py` + `"window_end": "03:00"` trong CONSTRAINTS
+- Grid slots count tăng (229→241 với window 06:00-03:00)
+
+### Pitfall 8: Jitter clamp phải `= 0` (không phải `max(jitter, 0)`)
+- Block 1 existing clamp: `jitter = max(jitter, 0)` — chỉ chặn jitter âm
+- Block 4 jitter +10 → s2_end = 02:00+10+60 = 03:10 > window_end 03:00
+- **FIX**: `elif block_index == 4: jitter = 0` (zero absolute, không cho phép bất kỳ jitter nào)
+- Lý do: Block 4 pair_gap_max(60) + session_duration(60) + any_jitter > 120' → vượt window
+
+### Pitfall 9: Inter-block gap sort sai vì Block 4 wrap past midnight
+- `by_index = sorted(blocks, key=lambda b: b["block_index"])` → Block 4 (index=4) sort SAU Block 3 (index=3)
+- Block 3 end = 21:00, Block 4 start = 00:00 → gap = -21h (am!) → `(nxt_start - prev_end).total_seconds()/60 < 90` → reject
+- **FIX**: Sort by actual slot time, không phải block_index:
+```python
+by_index = sorted(_mblocks, key=lambda b: min(parse_hcm_timestamp(s[0]) for s in b["session_slots"]))
+```
+
+### Tổng kết checklist Block 4
+| Vấn đề | Triệu chứng | Vị trí fix |
+|--------|-------------|------------|
+| logical_day_for | RESERVED_BLOCK_CONFLICT | manifest.py `_validate_entry` |
+| window_end | is_schedulable_interval False | models.py + manifest.py CONSTRAINTS |
+| Jitter clamp | slot end > window_end | picker.py `if block_index == 4: jitter = 0` |
+| Inter-block sort | UNSCHEDULABLE_CAPACITY | manifest.py `_validate_block_structure` |
+
+---
+
 ## Golden vector recompute
 
 - source_revision/block_id KHÔNG đổi khi đổi shape (chúng hash config/source/block identity).
 - assignment/entry ĐỔI khi CONSTRAINTS đổi (sessions_per_block, block_anchors, pair_gap, slot_grid).
-- Recompute bằng stdlib hash ĐÚNG công thức test hiện có (`stdlib_reference_bytes` +
+- Recompute bằng stdlib hash ĐÚNG công thức test hiện có (`stdlib_reference_bytes` + `hashlib.sha256(...).hexdigest()[:32]`), không hardcode từ output picker — picker có resource_mapping làm manifest_id khác reference (reference dùng account_ids đơn giản).
+- **PITFALL `stdlib_reference_bytes` có trailing `\n` (2026-09-10)**: Function trong test file:
+  ```python
+  def stdlib_reference_bytes(value):
+      return (json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(',', ':'), allow_nan=False) + '\n').encode('utf-8')
+  ```
+  **`+ '\n'` TRƯỚC encode** — nếu compute hash standalone mà BỎ dòng này → hash khác hoàn toàn. Luôn copy chính xác function từ test file khi recomputing.
   `hashlib.sha256(...).hexdigest()[:32]`), không hardcode từ output picker — picker có resource_mapping
   làm manifest_id khác reference (reference dùng account_ids đơn giản).
