@@ -108,7 +108,7 @@ approvals:
   mode: smart
 auxiliary:
   vision:
-    base_url: http://127.0.0.1:20129/v1
+    base_url: http://192.168.110.123:20129/v1
     api_key: sk-068d374abdfae2763f0343a416b24f5d688cf3b631d8c1c4f51e360f09a8237c
     model: omni-free
   compression:
@@ -142,7 +142,7 @@ cron:
 custom_providers:
 - api_key: «redacted:sk-…»
   api_mode: chat_completions
-  base_url: http://127.0.0.1:20128/v1
+  base_url: http://192.168.110.123:20128/v1
   discover_models: false
   key_env: NINEROUTER_API_KEY
   model: 9r-free
@@ -173,7 +173,7 @@ custom_providers:
 - name: omni
   provider_key: omni
   api_mode: chat_completions
-  base_url: http://127.0.0.1:20129/v1
+  base_url: http://192.168.110.123:20129/v1
   discover_models: false
   key_env: OMNIROUTE_API_KEY
   model: omni-worker
@@ -388,7 +388,7 @@ prompt_caching:
   cache_ttl: 5m
 providers:
   9router:
-    api: http://127.0.0.1:20128/v1
+    api: http://192.168.110.123:20128/v1
     default_model: gpt-5.6-luna
     discover_models: false
     key_env: NINEROUTER_API_KEY
@@ -401,7 +401,7 @@ providers:
       gpt-5.6-terra: {}
     transport: chat_completions
   omni:
-    api: http://127.0.0.1:20129/v1
+    api: http://192.168.110.123:20129/v1
     default_model: ag-gemini-pool-3
     discover_models: false
     key_env: OMNIROUTE_API_KEY
