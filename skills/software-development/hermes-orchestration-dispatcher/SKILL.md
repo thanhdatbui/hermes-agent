@@ -287,7 +287,7 @@ Theo `D:\Taadaa\AGENTS.md`: audit order **AG `ag/claude-opus-4-6-thinking` → c
 
 ### 5 Hard Gates Orchestration Protocol (Anti-Insanity Loop & Monolith Protection — 2026-09-11)
 
-Khi điều phối worker trên file monolith (>1.500 dòng) hoặc nhận yêu cầu phức tạp từ user, BẮT BUỘC tuân thủ 5 gates (chi tiết tại `references/five-gates-anti-insanity-orchestration.md` và `references/5-hard-gates-orchestration-protocol.md`):
+Khi điều phối worker trên file monolith (>1.500 dòng) hoặc nhận yêu cầu phức tạp từ user, BẮT BUỘC tuân thủ 5 gates (chi tiết tại `references/claude-opus-5-gates-anti-insanity-2026-09-11.md` và `references/5-hard-gates-orchestration-protocol.md`):
 1. **Gate 1 (Decompose trước Dispatch)**: Yêu cầu có từ nối `+ / và / rồi / sau đó` hoặc đa bản chất $\rightarrow$ phân rã thành sub-tasks riêng. CẤM TUYỆT ĐỐI gộp Code-surgery (vài phút) và Batch-job (hàng giờ) vào cùng 1 batch dispatch.
 2. **Gate 2 (Feasibility & Mandatory Patch Contract)**: File target >1.500 dòng $\rightarrow$ cấm goal mở ("tự tìm", "tự phân tích"). BẮT BUỘC Coordinator tự inspect O(1) để chốt anchor duy nhất tuyệt đối `grep -o ... | wc -l == 1` và soạn Patch Contract đóng trước khi spawn worker.
 3. **Gate 3 (Circuit Breaker)**: Worker trả về `files_modified == 0` và cạn iterations $\rightarrow$ THẤT BẠI CẤU TRÚC. CẤM TUYỆT ĐỐI retry y hệt prompt cũ. Bắt buộc thu hẹp scope / bơm context / đổi contract; tối đa 2 lần dispatch.
