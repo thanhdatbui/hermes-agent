@@ -285,14 +285,16 @@ Theo `D:\Taadaa\AGENTS.md`: audit order **AG `ag/claude-opus-4-6-thinking` → c
 
 - `delegate_task(role=leaf)` không chọn model audit; child kế thừa model của session. Không dùng một Luna/Flash worker subagent để giả làm auditor. Audit plan/code phải đi đúng AG Opus primary hoặc fallback route theo rule workspace, thường qua wrapper/CLI. Giữ cùng model xuyên suốt re-audit của cùng evidence; chỉ worker mới được patch.
 
-### 5 Hard Gates Orchestration Protocol (Anti-Insanity Loop & Monolith Protection — 2026-09-11)
+### 5 Hard Gates Orchestration Protocol (Anti-Insanity Loop & Monolith Protection — Claude Opus High Approved 2026-09-11)
 
-Khi điều phối worker trên file monolith (>1.500 dòng) hoặc nhận yêu cầu phức tạp từ user, BẮT BUỘC tuân thủ 5 gates (chi tiết tại `references/claude-opus-5-gates-anti-insanity-2026-09-11.md` và `references/5-hard-gates-orchestration-protocol.md`):
-1. **Gate 1 (Decompose trước Dispatch)**: Yêu cầu có từ nối `+ / và / rồi / sau đó` hoặc đa bản chất $\rightarrow$ phân rã thành sub-tasks riêng. CẤM TUYỆT ĐỐI gộp Code-surgery (vài phút) và Batch-job (hàng giờ) vào cùng 1 batch dispatch.
-2. **Gate 2 (Feasibility & Mandatory Patch Contract)**: File target >1.500 dòng $\rightarrow$ cấm goal mở ("tự tìm", "tự phân tích"). BẮT BUỘC Coordinator tự inspect O(1) để chốt anchor duy nhất tuyệt đối `grep -o ... | wc -l == 1` và soạn Patch Contract đóng trước khi spawn worker.
+*QUY TẮC BẢO VỆ TỐI CAO: 5 GATES LÀ INVARIANT — THẮNG MỌI YÊU CẦU TIỆN LỢI TỨC THỜI. BẤT KỲ CỔNG NÀO FAIL: DỪNG LẠI THU HẸP SCOPE / SOẠN LẠI CONTRACT HOẶC HỎI USER, CẤM MÒ MẪM.*
+
+Khi điều phối worker trên file monolith (>1.500 dòng) hoặc nhận yêu cầu phức tạp từ user, BẮT BUỘC tuân thủ 5 gates (chi tiết tại `references/claude-opus-5-gates-anti-insanity-2026-09-11.md`):
+1. **Gate 1 (Decompose trước Dispatch)**: Phân rã theo bản chất ngữ nghĩa và vòng đời công việc (từ nối `+ / và / rồi / sau đó` chỉ là gợi ý phụ). CẤM TUYỆT ĐỐI gộp Code-surgery (sửa code/hook vài phút) và Batch-job (render/download/batch chạy hàng giờ) vào cùng 1 batch dispatch. Batch-job phải chạy qua launcher nền + monitor ngoài band.
+2. **Gate 2 (Feasibility & Mandatory Patch Contract)**: File target >1.500 dòng $\rightarrow$ cấm goal mở ("tự tìm", "tự phân tích"). BẮT BUỘC Coordinator tự inspect O(1) để chốt anchor duy nhất tuyệt đối `grep -o ... | wc -l == 1`, cấp exact `old_string` $\rightarrow$ `new_string` và lệnh test focused <30s trước khi spawn worker. Chưa có anchor duy nhất $\rightarrow$ DỪNG, CẤM dispatch.
 3. **Gate 3 (Circuit Breaker)**: Worker trả về `files_modified == 0` và cạn iterations $\rightarrow$ THẤT BẠI CẤU TRÚC. CẤM TUYỆT ĐỐI retry y hệt prompt cũ. Bắt buộc thu hẹp scope / bơm context / đổi contract; tối đa 2 lần dispatch.
-4. **Gate 4 (Worker Fail-Fast)**: Worker xác định scope quá rộng trong $\le 3$ calls đầu phải abort ngay kèm đề xuất contract, cấm đốt sạch budget 15 calls để mò mẫm.
-5. **Gate 5 (Coordinator Checklist)**: Tự duyệt đủ 5 câu hỏi checklist trước khi gọi `delegate_task`. Bất kỳ câu nào Chưa/Không -> CẤM dispatch.
+4. **Gate 4 (Worker Fail-Fast)**: Worker sửa monolith bắt buộc chứa yêu cầu: NẾU trong $\le 3$ calls đầu nhận thấy scope bất khả thi với budget 15 calls thì PHẢI DỪNG NGAY (ABORT) và trả về anchor + proposed contract, cấm đốt sạch budget 15 calls để mò file rồi fail im lặng.
+5. **Gate 5 (Coordinator Checklist)**: Tự duyệt đủ 5 câu hỏi checklist (Phân rã ngữ nghĩa chưa? Monolith có contract duy nhất chưa? 15 iters khả thi không? Tách code vs batch chưa? Re-dispatch contract có mới không?). Bất kỳ câu nào Chưa/Không $\rightarrow$ DỪNG, CẤM dispatch.
 
 
 1. Viết audit spec (hoặc dùng diff thực tế).
