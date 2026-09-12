@@ -254,6 +254,34 @@ def _already_ran(window_key: str) -> bool:
 # Preflight
 # ---------------------------------------------------------------------------
 
+def _preflight_ensure_accounts(row: int, window_key: str) -> None:
+    """Check và tự động reg bù tài khoản nếu Row bị trống.
+    Dùng marker file .preflight_<window_key> để chỉ chạy đúng 1 lần duy nhất mỗi window, chống spam loop 15 phút.
+    """
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    marker = STATE_DIR / f".preflight_{window_key}"
+    if marker.exists():
+        sys.stdout.write(f"tiktok_runner: preflight already executed for window {window_key}, skipping.\n")
+        return
+
+    ensure_script = Path(r"D:\Taadaa\tools\ensure_row_accounts.py")
+    if not ensure_script.is_file():
+        return
+
+    try:
+        # Tạo marker trước để chặn bất kỳ tick 15p nào sau đó
+        marker.write_text(datetime.now().isoformat(), encoding="utf-8")
+        sys.stdout.write(f"tiktok_runner: preflight checking accounts for Row {row} (window {window_key})...\n")
+        sys.stdout.flush()
+        subprocess.run(
+            [target_python(), str(ensure_script), str(row)],
+            check=False,
+            timeout=5400,
+        )
+    except Exception as exc:
+        sys.stderr.write(f"tiktok_runner: preflight ensure_row_accounts error: {exc}\n")
+
+
 def _count_valid_accounts_for_row(row: int) -> int:
     """Đếm số account hợp lệ cho row trong ACCOUNT_WORKBOOK."""
     safe_path = Path(ACCOUNT_WORKBOOK)
@@ -364,6 +392,8 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if _already_ran(window_key):
         return 0
+
+    _preflight_ensure_accounts(row, window_key)
 
     valid_count = _count_valid_accounts_for_row(row)
     if valid_count == 0:
