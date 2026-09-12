@@ -59,14 +59,14 @@ agent:
         cùng khi hoàn tất hoặc có lỗi thực tế. Các lượt trung gian dùng [SILENT].
   reasoning_effort: medium
   reasoning_overrides:
+    ag-gemini-pool-3: medium
     ag/claude-sonnet-4-6: medium
     deepseek-v4-flash: medium
     gpt-5.6-luna: medium
     oc/deepseek-v4-flash-free: medium
     oc/hy3-free: medium
-    opencode-audit: medium
     omni-worker: medium
-    ag-gemini-pool-3: medium
+    opencode-audit: medium
   service_tier: normal
   system_prompt: 'Bạn là Hermes Coordinator điều phối các repo dự án Taadaa Phone
     Farm.
@@ -107,16 +107,16 @@ approvals:
   destructive_slash_confirm: false
   mode: smart
 auxiliary:
-  vision:
-    base_url: http://192.168.110.123:20129/v1
-    api_key: sk-068...237c
-    model: omni-worker
   compression:
     fallback_chain:
     - model: omni-free
       provider: omni
     model: ag-gemini-pool-3
     provider: omni
+  vision:
+    api_key: sk-068d374abdfae2763f0343a416b24f5d688cf3b631d8c1c4f51e360f09a8237c
+    base_url: http://192.168.110.123:20129/v1
+    model: omni-worker
 browser:
   allow_private_urls: true
   inactivity_timeout: 120
@@ -140,7 +140,7 @@ compression:
 cron:
   script_timeout_seconds: 10800
 custom_providers:
-- api_key: «redacted:sk-…»
+- api_key: sk-2472cb532bed2c65-lq9f37-3f2c6f2a
   api_mode: chat_completions
   base_url: http://192.168.110.123:20128/v1
   discover_models: false
@@ -170,18 +170,18 @@ custom_providers:
     plan-review-hard:
       context_length: 256000
   name: 9router
-- name: omni
-  provider_key: omni
-  api_mode: chat_completions
+- api_mode: chat_completions
   base_url: http://192.168.110.123:20129/v1
   discover_models: false
   key_env: OMNIROUTE_API_KEY
   model: omni-worker
   models:
-    omni-worker:
-      context_length: 200000
     omni-free:
       context_length: 200000
+    omni-worker:
+      context_length: 200000
+  name: omni
+  provider_key: omni
 delegation:
   child_timeout_seconds: 600
   max_concurrent_children: 8
@@ -295,6 +295,29 @@ gateway:
       observe_unmentioned_group_messages: true
       require_mention: false
 group_sessions_per_user: true
+hooks:
+  post_tool_call:
+  - command: python C:/Users/Kibe/AppData/Local/hermes/hooks/record_device_failure.py
+    matcher: terminal
+    timeout: 5
+  pre_tool_call:
+  - command: python C:/Users/Kibe/AppData/Local/hermes/hooks/guard_progress_supervisor.py
+    timeout: 5
+  - command: python C:/Users/Kibe/AppData/Local/hermes/hooks/guard_read_file_size.py
+    matcher: read_file
+    timeout: 5
+  - command: python C:/Users/Kibe/AppData/Local/hermes/hooks/guard_pytest_scope.py
+    matcher: terminal
+    timeout: 5
+  - command: python C:/Users/Kibe/AppData/Local/hermes/hooks/guard_dispatch_contract.py
+    matcher: delegate_task
+    timeout: 5
+  - command: python C:/Users/Kibe/AppData/Local/hermes/hooks/guard_broad_grep.py
+    matcher: terminal|search_files
+    timeout: 5
+  - command: python C:/Users/Kibe/AppData/Local/hermes/hooks/guard_device_bulkhead.py
+    matcher: terminal
+    timeout: 5
 known_plugin_toolsets:
   cli:
   - spotify
@@ -409,8 +432,8 @@ providers:
       ag-claude: {}
       ag-gemini-pool-3: {}
       ag-opus: {}
-      omni-worker: {}
       omni-free: {}
+      omni-worker: {}
     transport: chat_completions
 quick_commands:
   rl:
@@ -442,18 +465,7 @@ terminal:
   docker_mount_cwd_to_workspace: false
   home_mode: auto
   lifetime_seconds: 1800
-  timeout: 180
-hooks:
-  pre_tool_call:
-  - matcher: read_file
-    command: python C:/Users/Kibe/AppData/Local/hermes/hooks/guard_read_file_size.py
-    timeout: 5
-  - matcher: terminal
-    command: python C:/Users/Kibe/AppData/Local/hermes/hooks/guard_pytest_scope.py
-    timeout: 5
-  - matcher: delegate_task
-    command: python C:/Users/Kibe/AppData/Local/hermes/hooks/guard_dispatch_contract.py
-    timeout: 5
+  timeout: 600
 tool_loop_guardrails:
   hard_stop_after:
     exact_failure: 5
