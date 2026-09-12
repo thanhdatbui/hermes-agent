@@ -5,9 +5,9 @@ OmniRoute chạy tại `http://localhost:20129` (song song với 9Router tại `
 
 ## Endpoints & Models
 - Endpoint: `POST http://localhost:20129/v1/chat/completions`
-- Headers: `{"Content-Type": "application/json"}` (không bắt buộc `NINEROUTER_API_KEY` khi gọi cục bộ).
+- Headers: `{"Content-Type": "application/json", "Authorization": "Bearer sk-antigravity"}`.
 - Review models:
-  - `review`: Mặc định route tới `claude-opus-4-6-thinking` (1M context, max_output 64k). Dùng cho review chi tiết logic, an toàn fail-closed, bảo toàn state và regression risk.
+  - `review`: Cấu hình combo luân phiên qua pool tài khoản Google Gemini (`ag-gemini-pool-3` gồm >70 accounts active, dồi dào quota, cơ chế failover tự động bỏ qua account lỗi/bận). Chuyên dùng cho audit logic, review an toàn fail-closed, phản hồi siêu nhanh 8-15s, loại bỏ triệt để nghẽn Semaphore Timeout 429.
   - `ag-worker`: Route tới `gemini-3.8-flash-tiered` (200k context, max_output 131k). Phù hợp cho quick check, second opinion hoặc review nhẹ.
 
 ## Invocation Protocol
