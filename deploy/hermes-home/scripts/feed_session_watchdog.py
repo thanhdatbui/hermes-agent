@@ -384,6 +384,19 @@ def parse_run_all(run_dir: str) -> tuple:
                         m_str = raw_segment[8:]
                         break
 
+            # Fallback parse batched summary.txt at run root
+            if "summary.txt" in files and not m_str:
+                s_path = os.path.join(root, "summary.txt")
+                try:
+                    with open(s_path, "r", encoding="utf-8", errors="ignore") as f:
+                        c = f.read()
+                    import re
+                    failed_m = re.findall(r"machine_(\d+)", c)
+                    for m_num in set(failed_m):
+                        if m_num not in res_m:
+                            res_m[m_num] = {"status": "fail", "reason": "batch-config-error"}
+                except Exception:
+                    pass
             if "summary.txt" in files and m_str:
                 s_path = os.path.join(root, "summary.txt")
                 try:
@@ -560,12 +573,16 @@ def can_report_session(
     window_end_hm: str,
     runner_busy: bool,
     has_unattempted_locked: bool = False,
+    latest_run_minutes_ago: float = None,
 ) -> bool:
     """Xác định điều kiện chốt báo cáo cho một phiên."""
     # Nếu đang trong giờ phiên (now_hm < window_end_hm):
     if is_today and now_hm < window_end_hm:
         if runner_busy:
             return False
+        # Nếu toàn bộ fail / chưa có máy pass (completed_expected_count == 0) và run mới nhất >= 15 phút
+        if completed_expected_count == 0 and latest_run_minutes_ago is not None and latest_run_minutes_ago >= 15:
+            return True
         if has_unattempted_locked:
             return False
         return completed_expected_count >= expected_count
@@ -683,6 +700,16 @@ def main():
                 }
                 completed_expected = real_completed.intersection(expected_machines)
                 has_unattempted_locked = any(is_device_locked_skip(all_machines.get(m)) for m in expected_machines if m in all_machines)
+
+                latest_run_minutes_ago = None
+                if is_today and session_runs:
+                    latest_hhmmss = session_runs[-1][0]
+                    try:
+                        latest_run_dt = datetime.strptime(f"{target_date} {latest_hhmmss}", "%Y-%m-%d %H%M%S").replace(tzinfo=HCMC)
+                        latest_run_minutes_ago = (now - latest_run_dt).total_seconds() / 60.0
+                    except Exception:
+                        pass
+
                 # ĐIỀU KIỆN CHỐT BÁO CÁO:
                 can_report = can_report_session(
                     is_today=is_today,
@@ -692,6 +719,7 @@ def main():
                     window_end_hm=win["end"],
                     runner_busy=runner_busy,
                     has_unattempted_locked=has_unattempted_locked,
+                    latest_run_minutes_ago=latest_run_minutes_ago,
                 )
 
                 if not can_report:
