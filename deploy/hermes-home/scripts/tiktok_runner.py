@@ -263,7 +263,7 @@ def _preflight_ensure_accounts(row: int) -> None:
         sys.stdout.write(f"tiktok_runner: preflight checking accounts for Row {row}...\n")
         sys.stdout.flush()
         subprocess.run(
-            [sys.executable, str(ensure_script), str(row)],
+            [target_python(), str(ensure_script), str(row)],
             check=False,
             timeout=5400,
         )
