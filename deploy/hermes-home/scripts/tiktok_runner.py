@@ -292,6 +292,7 @@ def _spawn_feed_session(row: int, session_index: int, now: datetime) -> int:
     argv = [
         "powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
         "-File", ps1_win,
+        "-Python", target_python(),
         "-Row", str(row),
         "-SessionIndex", str(session_index),
         "-AllowUploadHook",
@@ -349,8 +350,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if _already_ran(window_key):
         return 0
 
-    if session_index == 1:
-        _preflight_ensure_accounts(row)
+    _preflight_ensure_accounts(row)
 
     rc = _spawn_feed_session(row, session_index, now)
     if rc == 0:
