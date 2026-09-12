@@ -1,23 +1,16 @@
-"""Watchdog báo cáo kết quả nuôi TikTok theo từng CA / PHIÊN chuẩn xác theo tiến trình máy thật.
+"""Watchdog báo cáo kết quả nuôi TikTok theo từng CA (1 spawn per Ca).
 
-Một ngày có 3 Ca, mỗi Ca có 3 Phiên:
-- Ca 1 (Sáng):
-  + Phiên 1: Khung ~06:00 - 07:30
-  + Phiên 2: Khung ~07:30 - 09:00
-  + Phiên 3: Khung ~09:00 - 12:00
-- Ca 2 (Chiều):
-  + Phiên 1: Khung ~12:00 - 13:40
-  + Phiên 2: Khung ~13:40 - 15:15
-  + Phiên 3: Khung ~15:15 - 18:30
-- Ca 3 (Tối):
-  + Phiên 1: Khung ~18:30 - 20:15
-  + Phiên 2: Khung ~20:15 - 21:45
-  + Phiên 3: Khung ~21:45 - 23:59
+Một ngày có 4 Ca, runner spawn MỘT LẦN duy nhất tại giờ bắt đầu Ca:
+- Ca 1 (Sáng): 06:00 - 12:00 -> Row 1/2, artifact row-X-0600XX
+- Ca 2 (Trưa): 12:00 - 18:00 -> Row 3/4, artifact row-X-1200XX
+- Ca 3 (Tối): 18:00 - 00:00 -> Row 5/6, artifact row-X-1800XX
+- Ca 4 (Đêm): 00:00 - 06:00 -> Row 7/8, artifact row-X-0000XX
 
 Cơ chế thông minh:
 - Đọc danh sách target machines theo Row từ config (hoặc số máy dự kiến).
-- Theo dõi tiến trình máy thật: Khi TẤT CẢ các máy trong ca/phiên đã hoàn tất (hoặc phiên hết giờ và runner đã dừng hẳn):
-  -> Gửi đúng 1 BÁO CÁO TỔNG KẾT PHIÊN đầy đủ: gộp cả phần LƯỚT FEED, FOLLOW HOOK và UPLOAD HOOK.
+- Theo dõi tiến trình máy thật: Khi runner đã dừng và TẤT CẢ máy trong Ca đã hoàn tất (hoặc Ca hết giờ):
+  -> Gửi đúng 1 BÁO CÁO TỔNG KẾT CA đầy đủ: gộp LƯỚT FEED, FOLLOW HOOK, UPLOAD HOOK.
+  -> Nếu tỷ lệ lỗi > 30% (manual + blocked-proxy + failed / total) -> gửi RED ALERT.
 """
 import os
 import glob
@@ -157,22 +150,20 @@ class ProcessLock:
             self.acquired = False
 
 
-# Định nghĩa các khung phiên chuẩn bao phủ liên tục, không lọt khe giữa các phiên
-# NOTE: 00:00 - 06:00 là khoảng thời gian farm nghỉ/bảo trì/reg acc đêm, không có phiên nuôi feed chính
-# Sử dụng half-open interval [start, end) để đảm bảo không trùng boundary giữa các phiên
+# Định nghĩa các khung Ca chuẩn, mỗi Ca chia 2 Phiên, bao phủ liên tục 24h
 SESSION_WINDOWS = [
-    # Ca 1
-    {"ca": 1, "phien": 1, "name": "Ca 1 - Phiên 1/3 (Sáng)", "start": "06:00", "end": "07:30"},
-    {"ca": 1, "phien": 2, "name": "Ca 1 - Phiên 2/3 (Sáng)", "start": "07:30", "end": "09:00"},
-    {"ca": 1, "phien": 3, "name": "Ca 1 - Phiên 3/3 (Sáng - Đăng video)", "start": "09:00", "end": "12:00"},
-    # Ca 2
-    {"ca": 2, "phien": 1, "name": "Ca 2 - Phiên 1/3 (Chiều)", "start": "12:00", "end": "13:40"},
-    {"ca": 2, "phien": 2, "name": "Ca 2 - Phiên 2/3 (Chiều)", "start": "13:40", "end": "15:15"},
-    {"ca": 2, "phien": 3, "name": "Ca 2 - Phiên 3/3 (Chiều - Đăng video)", "start": "15:15", "end": "18:30"},
-    # Ca 3
-    {"ca": 3, "phien": 1, "name": "Ca 3 - Phiên 1/3 (Tối)", "start": "18:30", "end": "20:15"},
-    {"ca": 3, "phien": 2, "name": "Ca 3 - Phiên 2/3 (Tối)", "start": "20:15", "end": "21:45"},
-    {"ca": 3, "phien": 3, "name": "Ca 3 - Phiên 3/3 (Tối - Đăng video)", "start": "21:45", "end": "23:59"},
+    # Ca 1 (Sáng) - Row 1 ngày lẻ, Row 2 ngày chẵn
+    {"ca": 1, "phien": 1, "name": "Ca 1 - Phiên 1/2 (Sáng)", "start": "06:00", "end": "08:00"},
+    {"ca": 1, "phien": 2, "name": "Ca 1 - Phiên 2/2 (Sáng)", "start": "08:00", "end": "12:00"},
+
+    {"ca": 2, "phien": 1, "name": "Ca 2 - Phiên 1/2 (Chiều)", "start": "12:00", "end": "14:00"},
+    {"ca": 2, "phien": 2, "name": "Ca 2 - Phiên 2/2 (Chiều)", "start": "14:00", "end": "18:00"},
+
+    {"ca": 3, "phien": 1, "name": "Ca 3 - Phiên 1/2 (Tối)", "start": "18:00", "end": "20:00"},
+    {"ca": 3, "phien": 2, "name": "Ca 3 - Phiên 2/2 (Tối)", "start": "20:00", "end": "24:00"},
+
+    {"ca": 4, "phien": 1, "name": "Ca 4 - Phiên 1/2 (Đêm)", "start": "00:00", "end": "01:30"},
+    {"ca": 4, "phien": 2, "name": "Ca 4 - Phiên 2/2 (Đêm)", "start": "01:30", "end": "06:00"},
 ]
 
 
@@ -619,13 +610,12 @@ def main():
                 default_row = 1
 
             for win in SESSION_WINDOWS:
-                session_key = f"{target_date}_ca{win['ca']}_phien{win['phien']}"
+                session_key = f"{target_date}_ca{win['ca']}_phien{win.get('phien', 1)}"
                 if session_key in new_reported:
                     continue
 
                 # Tìm các run folder thuộc khung giờ phiên này và sort theo HHMMSS
                 # Dùng half-open interval [start, end) để tránh đè boundary trừ window cuối ngày [start, end]
-                is_last_window = (win == SESSION_WINDOWS[-1])
                 session_runs = []
                 for r in runs:
                     parts = r.split("-")
@@ -633,7 +623,10 @@ def main():
                         hhmmss = parts[2]
                         if len(hhmmss) >= 4:
                             r_hm = f"{hhmmss[:2]}:{hhmmss[2:4]}"
-                            in_window = (win["start"] <= r_hm <= win["end"]) if is_last_window else (win["start"] <= r_hm < win["end"])
+                            if win["end"] == "24:00" or win["end"] == "00:00":
+                                in_window = (r_hm >= win["start"])
+                            else:
+                                in_window = (win["start"] <= r_hm < win["end"])
                             if in_window:
                                 session_runs.append((hhmmss, r))
 
@@ -767,8 +760,8 @@ def main():
                     f"  + Bỏ qua ({len(fl_skipped)}): {k_str}"
                 ])
 
-                # Phân loại Upload (Phiên 3)
-                if win["phien"] == 3 or any(all_uploads.values()):
+                # Phân loại Upload
+                if any(all_uploads.values()):
                     up_success = []
                     up_timeout = []
                     up_error = []
@@ -783,7 +776,7 @@ def main():
 
                             if u_status == "success" and u_code == 0:
                                 up_success.append(m)
-                            elif win["phien"] == 3 and u_reason.startswith("already_uploaded") and is_machine_upload_successful_in_shift(target_date, m, active_row):
+                            elif u_reason.startswith("already_uploaded") and is_machine_upload_successful_in_shift(target_date, m, active_row):
                                 up_success.append(m)
                             elif u_status == "skipped" or any(k in u_reason for k in ("video_not_rendered", "missing_video_folder", "missing_account_id", "not-final-session", "sensitive-skip", "cooling_period", "account_cooling_period", "age_gate", "under_10_days", "already_uploaded")):
                                 up_skipped.append(m)
@@ -792,12 +785,12 @@ def main():
                             else:
                                 up_error.append(m)
                         else:
-                            # Kiểm tra nếu máy đã upload thành công trong ledger (chỉ xét ở Phiên 3)
-                            if win["phien"] == 3 and is_machine_upload_successful_in_shift(target_date, m, active_row):
-                                up_success.append(m)
-                            # Chỉ tính lỗi upload nếu máy lướt Feed thành công nhưng upload hook không chạy được ở Phiên 3
-                            elif win["phien"] == 3 and all_machines[m].get("status") == "success":
-                                up_error.append(m)
+                                                    # Kiểm tra nếu máy đã upload thành công trong ledger
+                                                    if is_machine_upload_successful_in_shift(target_date, m, active_row):
+                                                        up_success.append(m)
+                                                    # Chỉ tính lỗi upload nếu máy lướt Feed thành công nhưng upload hook không chạy được
+                                                    elif all_machines[m].get("status") == "success":
+                                                        up_error.append(m)
 
                     up_s_str = ", ".join(up_success) if up_success else "Không có"
                     up_t_str = ", ".join(up_timeout) if up_timeout else "Không có"
@@ -805,7 +798,7 @@ def main():
                     up_k_str = ", ".join(up_skipped) if up_skipped else "Không có"
 
                     msg_lines.extend([
-                        f"• Đăng Video (Phiên 3 - {len(up_success)} video đã đăng):",
+                        f"• Đăng Video ({win['phien']}/2 - {len(up_success)} video đã đăng):",
                         f"  + Success ({len(up_success)}): {up_s_str}",
                         f"  + Timeout/Quá giờ ({len(up_timeout)}): {up_t_str}",
                         f"  + Lỗi script/xác minh ({len(up_error)}): {up_e_str}",
