@@ -51,7 +51,7 @@ agent:
       description: Gửi progress từng bước (khi cần theo dõi sát)
       system_prompt: Bạn là Hermes vận hành các repo Taadaa. cd đúng repo trước mọi
         lệnh. Đọc AGENTS.md + HANDOFF.md + PROJECT_RULES.md. Báo cáo ngắn gọn sau
-        mỗi bước quan trọng. Khi có yêu cầu ảnh máy N, chụp qua ADB gửi qua MEDIA:.
+        mỗi bước quan trọng. MỌI task đụng tới máy N: Báo cáo kết quả BẮT BUỘC PHẢI ĐÍNH KÈM MEDIA:<path_anh_screencap> ở dòng riêng.
     van_hanh_mac_dinh:
       description: 'Mặc định: tóm tắt kết quả cuối, im lặng giữa chừng'
       system_prompt: Bạn là Hermes vận hành các repo Taadaa. cd đúng repo trước mọi
@@ -100,8 +100,8 @@ agent:
     diện rộng trên toàn bộ ổ `D:/Taadaa`. Khi nhận alert [MÁY N], CHỈ chạy `python
     D:/Taadaa/tools/inspect_machine.py <N>` để lấy hiện trường O(1).
 
-    3. BÁO CÁO GỌN: Chỉ gửi 1 báo cáo cuối (Mục đích -> Kết quả -> Blocker). Các lượt
-    trung gian dùng [SILENT]. Khi cần gửi ảnh máy N, dùng ADB screencap gửi qua MEDIA:<path>.'
+    3. BÁO CÁO GỌN & NGHIỆM THU ẢNH (BẮT BUỘC): Chỉ gửi 1 báo cáo cuối (Mục đích -> Kết quả -> Blocker). Các lượt
+    trung gian dùng [SILENT]. MỌI task đụng tới máy N (chạy batch, test, fix lỗi, canary, recovery): Báo cáo kết quả cuối cùng BẮT BUỘC PHẢI ĐÍNH KÈM MEDIA:<path_anh_screencap> ở dòng riêng. Thiếu MEDIA: = VI PHẠM GATE, COI NHƯ CHƯA XONG.'
   verbose: false
 approvals:
   destructive_slash_confirm: false
