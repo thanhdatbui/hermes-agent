@@ -240,7 +240,7 @@ def _save_state(row: int, window_key: str, now: datetime) -> None:
         "last_window": window_key,
         "last_run_at": now.isoformat(),
     }
-    tmp = STATE_FILE.with_suffix(".json.tmp")
+    tmp = STATE_FILE.parent / f".runner_simple_state.{os.getpid()}.tmp"
     tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     os.replace(str(tmp), str(STATE_FILE))
 
@@ -314,6 +314,8 @@ def _spawn_feed_session(row: int, session_index: int, now: datetime) -> int:
     }
     if sys.platform == "win32":
         kwargs["creationflags"] = 0x08000200  # CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW
+    else:
+        kwargs["start_new_session"] = True
 
     proc = subprocess.Popen(argv, **kwargs)
     sys.stdout.write(

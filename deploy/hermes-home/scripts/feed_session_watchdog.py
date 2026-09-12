@@ -785,12 +785,12 @@ def main():
                             else:
                                 up_error.append(m)
                         else:
-                                                    # Kiểm tra nếu máy đã upload thành công trong ledger
-                                                    if is_machine_upload_successful_in_shift(target_date, m, active_row):
-                                                        up_success.append(m)
-                                                    # Chỉ tính lỗi upload nếu máy lướt Feed thành công nhưng upload hook không chạy được
-                                                    elif all_machines[m].get("status") == "success":
-                                                        up_error.append(m)
+                            # Kiểm tra nếu máy đã upload thành công trong ledger
+                            if is_machine_upload_successful_in_shift(target_date, m, active_row):
+                                up_success.append(m)
+                            # Chỉ tính lỗi upload nếu máy lướt Feed thành công nhưng upload hook không chạy được
+                            elif all_machines[m].get("status") == "success":
+                                up_error.append(m)
 
                     up_s_str = ", ".join(up_success) if up_success else "Không có"
                     up_t_str = ", ".join(up_timeout) if up_timeout else "Không có"
