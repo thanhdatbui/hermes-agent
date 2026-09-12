@@ -192,6 +192,7 @@ delegation:
   provider: omni
   reasoning_effort: medium
 display:
+  busy_ack_enabled: false
   background_process_notifications: result
   bell_on_complete: false
   busy_ack_detail: true
