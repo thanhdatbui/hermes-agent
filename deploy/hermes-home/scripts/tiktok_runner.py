@@ -286,29 +286,6 @@ def _count_valid_accounts_for_row(row: int) -> int:
         return 0
 
 
-def _preflight_ensure_accounts(row: int) -> bool:
-    """Check va tu dong reg bu tai khoan neu Row do co may bi trong. Tra ve False neu Row van co 0 account hop le."""
-    ensure_script = Path(r"D:\Taadaa\tools\ensure_row_accounts.py")
-    if ensure_script.is_file():
-        try:
-            sys.stdout.write(f"tiktok_runner: preflight checking accounts for Row {row}...\n")
-            sys.stdout.flush()
-            subprocess.run(
-                [target_python(), str(ensure_script), str(row)],
-                check=False,
-                timeout=5400,
-            )
-        except Exception as exc:
-            sys.stderr.write(f"tiktok_runner: preflight ensure_row_accounts error: {exc}\n")
-
-    valid_count = _count_valid_accounts_for_row(row)
-    if valid_count == 0:
-        sys.stderr.write(f"tiktok_runner: WARNING - Row {row} co 0 account hop le trong safe workbook!\n")
-        return False
-    sys.stdout.write(f"tiktok_runner: Row {row} co {valid_count} accounts hop le.\n")
-    return True
-
-
 # ---------------------------------------------------------------------------
 # Spawn
 # ---------------------------------------------------------------------------
@@ -388,9 +365,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     if _already_ran(window_key):
         return 0
 
-    if not _preflight_ensure_accounts(row):
-        sys.stdout.write(f"tiktok_runner: Row {row} van 0 account hop le, khong spawn feed session.\n")
+    valid_count = _count_valid_accounts_for_row(row)
+    if valid_count == 0:
+        sys.stdout.write(f"tiktok_runner: Row {row} co 0 account hop le trong safe workbook, skipping window {window_key}.\n")
+        _save_state(row, window_key, now)
         return 0
+
+    sys.stdout.write(f"tiktok_runner: Row {row} co {valid_count} accounts hop le.\n")
 
     rc = _spawn_feed_session(row, session_index, now)
     if rc == 0:
