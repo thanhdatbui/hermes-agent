@@ -254,21 +254,59 @@ def _already_ran(window_key: str) -> bool:
 # Preflight
 # ---------------------------------------------------------------------------
 
-def _preflight_ensure_accounts(row: int) -> None:
-    """Check va tu dong reg bu tai khoan neu Row do co may bi trong."""
-    ensure_script = Path(r"D:\Taadaa\tools\ensure_row_accounts.py")
-    if not ensure_script.is_file():
-        return
+def _count_valid_accounts_for_row(row: int) -> int:
+    """Đếm số account hợp lệ cho row trong ACCOUNT_WORKBOOK."""
+    safe_path = Path(ACCOUNT_WORKBOOK)
+    if not safe_path.is_file():
+        sys.stderr.write(f"tiktok_runner: Safe workbook khong ton tai: {safe_path}\n")
+        return 0
     try:
-        sys.stdout.write(f"tiktok_runner: preflight checking accounts for Row {row}...\n")
-        sys.stdout.flush()
-        subprocess.run(
-            [target_python(), str(ensure_script), str(row)],
-            check=False,
-            timeout=5400,
-        )
+        import openpyxl
+        wb = openpyxl.load_workbook(safe_path, read_only=True)
+        ws = wb.active
+        machine_slots: dict[int, list[object]] = {}
+        for r in ws.iter_rows(min_row=2, values_only=True):
+            if not r or r[0] is None:
+                continue
+            try:
+                m_num = int(str(r[0]).strip())
+            except ValueError:
+                continue
+            machine_slots.setdefault(m_num, []).append(r[2] if len(r) > 2 else None)
+        slot_idx = row - 1
+        valid = 0
+        for m, slots in machine_slots.items():
+            if slot_idx < len(slots):
+                val = slots[slot_idx]
+                if val and str(val).strip() and str(val).strip().lower() != "none":
+                    valid += 1
+        return valid
     except Exception as exc:
-        sys.stderr.write(f"tiktok_runner: preflight ensure_row_accounts error: {exc}\n")
+        sys.stderr.write(f"tiktok_runner: error reading safe workbook: {exc}\n")
+        return 0
+
+
+def _preflight_ensure_accounts(row: int) -> bool:
+    """Check va tu dong reg bu tai khoan neu Row do co may bi trong. Tra ve False neu Row van co 0 account hop le."""
+    ensure_script = Path(r"D:\Taadaa\tools\ensure_row_accounts.py")
+    if ensure_script.is_file():
+        try:
+            sys.stdout.write(f"tiktok_runner: preflight checking accounts for Row {row}...\n")
+            sys.stdout.flush()
+            subprocess.run(
+                [target_python(), str(ensure_script), str(row)],
+                check=False,
+                timeout=5400,
+            )
+        except Exception as exc:
+            sys.stderr.write(f"tiktok_runner: preflight ensure_row_accounts error: {exc}\n")
+
+    valid_count = _count_valid_accounts_for_row(row)
+    if valid_count == 0:
+        sys.stderr.write(f"tiktok_runner: WARNING - Row {row} co 0 account hop le trong safe workbook!\n")
+        return False
+    sys.stdout.write(f"tiktok_runner: Row {row} co {valid_count} accounts hop le.\n")
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -350,7 +388,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     if _already_ran(window_key):
         return 0
 
-    _preflight_ensure_accounts(row)
+    if not _preflight_ensure_accounts(row):
+        sys.stdout.write(f"tiktok_runner: Row {row} van 0 account hop le, khong spawn feed session.\n")
+        return 0
 
     rc = _spawn_feed_session(row, session_index, now)
     if rc == 0:
