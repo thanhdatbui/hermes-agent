@@ -5,13 +5,11 @@ ngay sau ca tối (khung giờ 21:00 -> 23:45) và CHỈ BÁO CÁO KHI CHẠY XO
 Kênh Farm Alert: Telegram chat_id = -5373649734
 
 Nguyên tắc:
-- Quét các workbook Tik5, Tik6, Tik3, Tik4.
+- Quét các workbook Tik5, Tik6, Tik7, Tik8, Tik3, Tik4.
 - Lọc chính xác các máy mà cột Avatar != 'OK' (chưa bao giờ được up).
 - Sau khi kích hoạt batch -> Chạy ngầm im lặng, không spam lúc bắt đầu.
-- CHỈ KHI BATCH HOÀN TẤT:
-  + Đọc kết quả summary.csv & đối soát workbook thực tế.
-  + Gửi DUY NHẤT 1 tin nhắn báo cáo kết quả hoàn thành vào Farm Alert (-5373649734).
-  + Xóa trạng thái để nhịp sau quét Tik tiếp theo.
+- IM LẶNG hoàn toàn sau mỗi batch lẻ.
+- CHỈ BÁO CÁO 1 LẦN DUY NHẤT khi tất cả các Tik hoàn tất 100% HOẶC hết khung giờ ca tối (sau 23:30).
 """
 from __future__ import annotations
 
@@ -24,7 +22,7 @@ import sys
 import time
 import urllib.request
 import urllib.parse
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -44,6 +42,13 @@ TARGET_TIKS = [5, 6, 7, 8, 3, 4]
 
 def now_hcmc() -> datetime:
     return datetime.now(HCMC)
+
+
+def get_session_key(now_dt: datetime) -> str:
+    """Xác định session date (nếu chạy qua đêm 00:00 -> 05:00 vẫn tính là ca tối ngày hôm trước)."""
+    if now_dt.hour < 6:
+        return (now_dt - timedelta(days=1)).strftime("%Y-%m-%d")
+    return now_dt.strftime("%Y-%m-%d")
 
 
 def get_telegram_bot_token() -> str | None:
@@ -88,11 +93,21 @@ def send_farm_alert(text: str) -> bool:
 
 
 def is_post_evening_window(now_dt: datetime) -> bool:
-    """Khung giờ ngay sau ca tối: 21:00 đến 23:30."""
+    """Khung giờ chạy upload ca tối: 21:00 đến 23:30."""
     h, m = now_dt.hour, now_dt.minute
     if h in (21, 22):
         return True
     if h == 23 and m <= 30:
+        return True
+    return False
+
+
+def is_after_evening_window(now_dt: datetime) -> bool:
+    """Hết khung giờ ca tối (sau 23:30 đến 04:00 sáng hôm sau)."""
+    h, m = now_dt.hour, now_dt.minute
+    if h == 23 and m > 30:
+        return True
+    if 0 <= h < 4:
         return True
     return False
 
@@ -228,51 +243,64 @@ def save_state(st: dict):
     tmp.replace(STATE_FILE)
 
 
-def check_and_report_completed_batch(state: dict) -> bool:
-    """Nếu có batch đang chạy, kiểm tra xem đã kết thúc chưa để tổng kết và gửi Farm Alert."""
+def check_batch_status(state: dict) -> bool:
+    """Kiểm tra batch đang chạy. Trả về True nếu vẫn đang chạy ngầm."""
     running = state.get("running_batch")
     if not running:
         return False
 
-    tik = running.get("tik")
-    machines = running.get("machines", [])
     start_time = running.get("start_time", 0)
 
     # Nếu process vẫn còn sống và chưa quá 45 phút -> Vẫn đang chạy
     if is_powershell_batch_alive() and (time.time() - start_time) < 2700:
         return True
 
-    # Process đã xong -> Tìm folder batch mới nhất của Tik này
-    pattern = str(BATCH_RUNS_DIR / f"batch_tik{tik}_*")
-    dirs = sorted(glob.glob(pattern), key=os.path.getmtime, reverse=True)
+    # Process đã xong -> Im lặng xóa state running_batch, KHÔNG gửi alert lẻ
+    state["running_batch"] = None
+    save_state(state)
+    return False
 
-    # Xác định lại bằng cách đọc workbook thực tế
-    remaining = get_unuploaded_machines(tik)
-    completed = [m for m in machines if m not in remaining]
-    failed = [m for m in machines if m in remaining]
 
-    # Báo cáo kết quả duy nhất khi đã chạy xong
-    duration_min = max(1, int((time.time() - start_time) / 60))
+def report_final_summary(state: dict, all_done: bool) -> None:
+    """Gửi DUY NHẤT 1 báo cáo tổng kết khi tất cả Tik hoàn tất 100% hoặc hết khung giờ ca tối."""
+    now = now_hcmc()
+    sess_key = get_session_key(now)
+    if state.get("last_reported_session") == sess_key or state.get("last_reported_date") == sess_key:
+        return
+
+    tik_lines = []
+    total_unuploaded = 0
+    for tik in TARGET_TIKS:
+        unuploaded = get_unuploaded_machines(tik)
+        total_unuploaded += len(unuploaded)
+        if unuploaded:
+            preview = ",".join(map(str, unuploaded[:15]))
+            suffix = f"... (+{len(unuploaded)-15})" if len(unuploaded) > 15 else ""
+            tik_lines.append(f"• <b>Tik {tik}:</b> còn {len(unuploaded)} máy ({preview}{suffix})")
+        else:
+            tik_lines.append(f"• <b>Tik {tik}:</b> hoàn tất 100%")
+
+    if all_done or total_unuploaded == 0:
+        title = "🎉 <b>[FARM ALERT] BÁO CÁO TỔNG KẾT UP AVATAR: HOÀN TẤT 100%</b>"
+        status_line = "• <b>Trạng thái:</b> Tất cả các Tik đã hoàn tất 100% (0 máy tồn)"
+    else:
+        title = "⏰ <b>[FARM ALERT] BÁO CÁO TỔNG KẾT UP AVATAR: HẾT KHUNG GIỜ</b>"
+        status_line = f"• <b>Trạng thái:</b> Hết khung giờ ca tối (sau 23:30), còn {total_unuploaded} máy chưa up"
+
     lines = [
-        f"🔔 <b>[FARM ALERT] BÁO CÁO TIẾN ĐỘ UP AVATAR ROW {tik}</b>",
-        f"• <b>Thời gian hoàn thành:</b> {now_hcmc().strftime('%H:%M:%S %d/%m/%Y')} (thời lượng {duration_min}p)",
-        f"• <b>Tổng số acc cần up:</b> {len(machines)} máy",
-        f"• <b>Thành công:</b> {len(completed)} máy",
-    ]
-    if completed:
-        lines.append(f"  └ <i>Máy:</i> {','.join(map(str, sorted(completed)))}")
-    lines.append(f"• <b>Chưa hoàn tất:</b> {len(failed)} máy")
-    if failed:
-        lines.append(f"  └ <i>Máy:</i> {','.join(map(str, sorted(failed)))}")
+        title,
+        f"• <b>Thời gian:</b> {now.strftime('%H:%M:%S %d/%m/%Y')}",
+        status_line,
+        "• <b>Chi tiết từng Tik:</b>",
+    ] + tik_lines
 
     report_msg = "\n".join(lines)
     send_farm_alert(report_msg)
     print(report_msg)
 
-    # Xóa state running_batch để nhịp sau quét Tik tiếp theo
-    state["running_batch"] = None
+    state["last_reported_session"] = sess_key
+    state["last_reported_date"] = sess_key
     save_state(state)
-    return False
 
 
 def trigger_avatar_batch(tik: int, machines: list[int], state: dict) -> bool:
@@ -283,7 +311,7 @@ def trigger_avatar_batch(tik: int, machines: list[int], state: dict) -> bool:
         "-File", str(LAUNCHER),
         "-Tik", str(tik),
         "-ForceAvatarMachineList", machine_list_str,
-        "-MaxParallel", "20",
+        "-MaxParallel", "30",
         "-HostConfigPath", str(HOST_CONFIG),
     ]
 
@@ -317,29 +345,49 @@ def main() -> int:
     now = now_hcmc()
     state = get_state()
 
-    # 1. Kiểm tra nếu có batch trước đó vừa hoàn tất -> Báo cáo vào Farm Alert
-    if check_and_report_completed_batch(state):
+    # 1. Chỉ hoạt động trong khung giờ ca tối hoặc ngay sau ca tối (21:00 -> 04:00)
+    in_window = is_post_evening_window(now)
+    after_window = is_after_evening_window(now)
+    if not (in_window or after_window):
         return 0
 
-    # 2. Gate khung giờ: Chỉ chạy ngay sau ca tối (21:00 -> 23:30)
-    if not is_post_evening_window(now):
+    # 2. Kiểm tra tiến trình batch hiện tại (nếu có)
+    if check_batch_status(state):
+        # Vẫn đang có batch chạy ngầm
         return 0
 
-    # 3. Gate tiến trình feed
+    # 3. Thu thập danh sách máy chưa up avatar cho tất cả các Tik
+    all_unuploaded: dict[int, list[int]] = {}
+    total_missing = 0
+    for tik in TARGET_TIKS:
+        missing = get_unuploaded_machines(tik)
+        all_unuploaded[tik] = missing
+        total_missing += len(missing)
+
+    # 4. Nếu tất cả các Tik đã hoàn tất 100% -> Báo cáo duy nhất 1 lần
+    if total_missing == 0:
+        report_final_summary(state, all_done=True)
+        return 0
+
+    # 5. Nếu đã hết khung giờ ca tối (sau 23:30) -> Báo cáo duy nhất 1 lần tổng kết máy còn tồn
+    if after_window:
+        report_final_summary(state, all_done=False)
+        return 0
+
+    # 6. Trong khung giờ (21:00 -> 23:30) & còn máy chưa up:
+    # Kiểm tra an toàn trước khi kích hoạt batch
     if is_feed_active():
         return 0
 
-    # 4. Gate device-locks
     if count_active_locks() > 5:
         return 0
 
-    # 5. Gate batch concurrency
     if is_powershell_batch_alive():
         return 0
 
-    # 6. Duyệt tìm Tik đầu tiên còn acc chưa bao giờ được up
+    # Kích hoạt batch cho Tik đầu tiên còn acc chưa bao giờ được up
     for tik in TARGET_TIKS:
-        missing_machines = get_unuploaded_machines(tik)
+        missing_machines = all_unuploaded.get(tik, [])
         if missing_machines:
             trigger_avatar_batch(tik, missing_machines, state)
             return 0
