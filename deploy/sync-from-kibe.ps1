@@ -46,6 +46,15 @@ if (Test-Path $CronSrc) {
     }
 }
 
+$AdminCronTool = "D:\OneDrive\Taadaa_Sync_Shared\tools\setup_admin_cron.py"
+if (-not (Test-Path $AdminCronTool)) {
+    $AdminCronTool = Join-Path $RepoDir "deploy\hermes-home\scripts\setup_admin_cron.py"
+}
+if (Test-Path $AdminCronTool) {
+    Write-Host "== CẬP NHẬT TẤT CẢ CRON JOBS DÙNG CHUNG ==" -ForegroundColor Cyan
+    python $AdminCronTool
+}
+
 $PluginsSrc = Join-Path $RepoDir "deploy\hermes-home\plugins"
 $PluginsDst = Join-Path $HermesHome "plugins"
 if (Test-Path $PluginsSrc) {
