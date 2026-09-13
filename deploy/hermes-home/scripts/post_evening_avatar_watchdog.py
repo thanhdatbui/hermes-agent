@@ -5,7 +5,7 @@ ngay sau ca tối (khung giờ 21:00 -> 23:45) và CHỈ BÁO CÁO KHI CHẠY XO
 Kênh Farm Alert: Telegram chat_id = -5373649734
 
 Nguyên tắc:
-- Quét các workbook Tik5, Tik6, Tik7, Tik8, Tik3, Tik4.
+- Quét các workbook theo host_id (admin vs kibe).
 - Lọc chính xác các máy mà cột Avatar != 'OK' (chưa bao giờ được up).
 - Sau khi kích hoạt batch -> Chạy ngầm im lặng, không spam lúc bắt đầu.
 - IM LẶNG hoàn toàn sau mỗi batch lẻ.
@@ -29,15 +29,66 @@ from zoneinfo import ZoneInfo
 HCMC = ZoneInfo("Asia/Ho_Chi_Minh")
 
 FARM_ALERT_CHAT_ID = "-5373649734"
-STATE_FILE = Path(r"D:\Taadaa\runtime\kibe\cron-state\post_evening_avatar_state.json")
 LAUNCHER = Path(r"D:\Taadaa\Tiktok-video\run_tiktok_upload_avatar.ps1")
-HOST_CONFIG = Path(r"D:\Taadaa\machine-config\kibe.yaml")
 TIKTOK_VIDEO_DIR = Path(r"D:\Taadaa\Tiktok-video")
 BATCH_RUNS_DIR = Path(r"D:\CodexRuntime\tiktok-video\batch-runs")
 LOCK_DIR = Path(os.path.expanduser("~/.codex/device-locks"))
-WORKBOOK_DIR = Path(r"D:\OneDrive\TaadaaData\kibe")
 
-TARGET_TIKS = [5, 6, 7, 8, 3, 4]
+
+def get_host_context(config_path_override: str | Path | None = None) -> dict:
+    """Xác định host context (host_id, target_tiks, workbook_dir, state_file) từ config hoặc fallback kibe."""
+    if config_path_override:
+        cfg_path = Path(config_path_override)
+    else:
+        env_cfg = os.environ.get("TAADAA_HOST_CONFIG")
+        if env_cfg:
+            cfg_path = Path(env_cfg)
+        else:
+            cfg_path = Path(r"D:\Taadaa\machine-config\kibe.yaml")
+
+    host_id = "kibe"
+    if cfg_path.exists():
+        try:
+            try:
+                import yaml
+                data = yaml.safe_load(cfg_path.read_text(encoding="utf-8"))
+                if isinstance(data, dict) and data.get("host_id"):
+                    host_id = str(data["host_id"]).strip().lower()
+            except Exception:
+                for line in cfg_path.read_text(encoding="utf-8").splitlines():
+                    line = line.strip()
+                    if line.startswith("host_id:"):
+                        host_id = line.split(":", 1)[1].strip().strip('"').strip("'").lower()
+                        break
+        except Exception:
+            pass
+
+    if host_id == "admin":
+        target_tiks = [2, 1, 3, 4, 5, 6, 7, 8]
+        workbook_dir = Path(r"D:\OneDrive\TaadaaData\admin")
+        state_file = Path(r"D:\Taadaa\runtime\admin\cron-state\post_evening_avatar_state.json")
+    else:
+        host_id = "kibe"
+        target_tiks = [5, 6, 7, 8, 3, 4]
+        workbook_dir = Path(r"D:\OneDrive\TaadaaData\kibe")
+        state_file = Path(r"D:\Taadaa\runtime\kibe\cron-state\post_evening_avatar_state.json")
+
+    return {
+        "host_id": host_id,
+        "host_config_path": cfg_path,
+        "target_tiks": target_tiks,
+        "workbook_dir": workbook_dir,
+        "state_file": state_file,
+    }
+
+
+# Khởi tạo mặc định theo môi trường hiện tại
+HOST_CONTEXT = get_host_context()
+HOST_ID = HOST_CONTEXT["host_id"]
+TARGET_TIKS = HOST_CONTEXT["target_tiks"]
+WORKBOOK_DIR = HOST_CONTEXT["workbook_dir"]
+STATE_FILE = HOST_CONTEXT["state_file"]
+HOST_CONFIG = HOST_CONTEXT["host_config_path"]
 
 
 def now_hcmc() -> datetime:
@@ -157,10 +208,11 @@ def is_feed_active() -> bool:
     return False
 
 
-def get_unuploaded_machines(tik: int) -> list[int]:
+def get_unuploaded_machines(tik: int, workbook_dir: Path | None = None) -> list[int]:
     """Đọc workbook TikN.xlsx và lọc ra các máy CHƯA BAO GIỜ được up avatar (Avatar != 'OK')."""
+    wb_base = workbook_dir or WORKBOOK_DIR
     fn = f"Tik{tik}.xlsx" if tik != 3 else "tik3.xlsx"
-    wb_path = WORKBOOK_DIR / fn
+    wb_path = wb_base / fn
     if not wb_path.exists():
         return []
 
@@ -227,23 +279,25 @@ def is_powershell_batch_alive() -> bool:
         return False
 
 
-def get_state() -> dict:
-    if STATE_FILE.exists():
+def get_state(state_file: Path | None = None) -> dict:
+    target_file = state_file or STATE_FILE
+    if target_file.exists():
         try:
-            return json.loads(STATE_FILE.read_text(encoding="utf-8"))
+            return json.loads(target_file.read_text(encoding="utf-8"))
         except Exception:
             pass
     return {"running_batch": None}
 
 
-def save_state(st: dict):
-    STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    tmp = STATE_FILE.with_suffix(".tmp")
+def save_state(st: dict, state_file: Path | None = None):
+    target_file = state_file or STATE_FILE
+    target_file.parent.mkdir(parents=True, exist_ok=True)
+    tmp = target_file.with_suffix(".tmp")
     tmp.write_text(json.dumps(st, ensure_ascii=False, indent=2), encoding="utf-8")
-    tmp.replace(STATE_FILE)
+    tmp.replace(target_file)
 
 
-def check_batch_status(state: dict) -> bool:
+def check_batch_status(state: dict, state_file: Path | None = None) -> bool:
     """Kiểm tra batch đang chạy. Trả về True nếu vẫn đang chạy ngầm."""
     running = state.get("running_batch")
     if not running:
@@ -257,22 +311,28 @@ def check_batch_status(state: dict) -> bool:
 
     # Process đã xong -> Im lặng xóa state running_batch, KHÔNG gửi alert lẻ
     state["running_batch"] = None
-    save_state(state)
+    save_state(state, state_file=state_file)
     return False
 
 
-def report_final_summary(state: dict, all_done: bool) -> None:
-    """Gửi DUY NHẤT 1 báo cáo tổng kết khi tất cả Tik hoàn tất 100% hoặc hết khung giờ ca tối."""
-    now = now_hcmc()
-    sess_key = get_session_key(now)
-    if state.get("last_reported_session") == sess_key or state.get("last_reported_date") == sess_key:
-        return
+def format_report_html(
+    host_id: str,
+    all_done: bool,
+    unuploaded_by_tik: dict[int, list[int]],
+    target_tiks: list[int] | None = None,
+    now_dt: datetime | None = None,
+) -> str:
+    """Định dạng template HTML báo cáo Farm Alert chuẩn hóa."""
+    if now_dt is None:
+        now_dt = now_hcmc()
+    if target_tiks is None:
+        target_tiks = list(unuploaded_by_tik.keys())
+
+    total_unuploaded = sum(len(unuploaded_by_tik.get(tik, [])) for tik in target_tiks)
 
     tik_lines = []
-    total_unuploaded = 0
-    for tik in TARGET_TIKS:
-        unuploaded = get_unuploaded_machines(tik)
-        total_unuploaded += len(unuploaded)
+    for tik in target_tiks:
+        unuploaded = unuploaded_by_tik.get(tik, [])
         if unuploaded:
             preview = ",".join(map(str, unuploaded[:15]))
             suffix = f"... (+{len(unuploaded)-15})" if len(unuploaded) > 15 else ""
@@ -281,30 +341,56 @@ def report_final_summary(state: dict, all_done: bool) -> None:
             tik_lines.append(f"• <b>Tik {tik}:</b> hoàn tất 100%")
 
     if all_done or total_unuploaded == 0:
-        title = "🎉 <b>[FARM ALERT] BÁO CÁO TỔNG KẾT UP AVATAR: HOÀN TẤT 100%</b>"
+        title = f"🎉 <b>[FARM REPORT][{host_id.upper()}] HOÀN TẤT 100% UP AVATAR</b>"
         status_line = "• <b>Trạng thái:</b> Tất cả các Tik đã hoàn tất 100% (0 máy tồn)"
     else:
-        title = "⏰ <b>[FARM ALERT] BÁO CÁO TỔNG KẾT UP AVATAR: HẾT KHUNG GIỜ</b>"
+        title = f"⏰ <b>[FARM REPORT][{host_id.upper()}] BÁO CÁO UP AVATAR: HẾT KHUNG GIỜ</b>"
         status_line = f"• <b>Trạng thái:</b> Hết khung giờ ca tối (sau 23:30), còn {total_unuploaded} máy chưa up"
 
     lines = [
         title,
-        f"• <b>Thời gian:</b> {now.strftime('%H:%M:%S %d/%m/%Y')}",
+        f"• <b>Thời gian:</b> {now_dt.strftime('%H:%M:%S %d/%m/%Y')}",
         status_line,
         "• <b>Chi tiết từng Tik:</b>",
     ] + tik_lines
 
-    report_msg = "\n".join(lines)
+    return "\n".join(lines)
+
+
+def report_final_summary(state: dict, all_done: bool, host_context: dict | None = None) -> None:
+    """Gửi DUY NHẤT 1 báo cáo tổng kết khi tất cả Tik hoàn tất 100% hoặc hết khung giờ ca tối."""
+    now = now_hcmc()
+    sess_key = get_session_key(now)
+    if state.get("last_reported_session") == sess_key or state.get("last_reported_date") == sess_key:
+        return
+
+    ctx = host_context or get_host_context()
+    target_tiks = ctx["target_tiks"]
+    wb_dir = ctx["workbook_dir"]
+    host_id = ctx["host_id"]
+
+    all_unuploaded: dict[int, list[int]] = {}
+    for tik in target_tiks:
+        all_unuploaded[tik] = get_unuploaded_machines(tik, workbook_dir=wb_dir)
+
+    report_msg = format_report_html(
+        host_id=host_id,
+        all_done=all_done,
+        unuploaded_by_tik=all_unuploaded,
+        target_tiks=target_tiks,
+        now_dt=now,
+    )
     send_farm_alert(report_msg)
     print(report_msg)
 
     state["last_reported_session"] = sess_key
     state["last_reported_date"] = sess_key
-    save_state(state)
+    save_state(state, state_file=ctx["state_file"])
 
 
-def trigger_avatar_batch(tik: int, machines: list[int], state: dict) -> bool:
+def trigger_avatar_batch(tik: int, machines: list[int], state: dict, host_context: dict | None = None) -> bool:
     """Khởi chạy batch upload avatar qua PowerShell background (hoàn toàn im lặng)."""
+    ctx = host_context or get_host_context()
     machine_list_str = ",".join(str(m) for m in machines)
     cmd = [
         "powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass",
@@ -312,7 +398,7 @@ def trigger_avatar_batch(tik: int, machines: list[int], state: dict) -> bool:
         "-Tik", str(tik),
         "-ForceAvatarMachineList", machine_list_str,
         "-MaxParallel", "30",
-        "-HostConfigPath", str(HOST_CONFIG),
+        "-HostConfigPath", str(ctx["host_config_path"]),
     ]
 
     try:
@@ -334,7 +420,7 @@ def trigger_avatar_batch(tik: int, machines: list[int], state: dict) -> bool:
             "start_time": time.time(),
             "pid": proc.pid,
         }
-        save_state(state)
+        save_state(state, state_file=ctx["state_file"])
         return True
     except Exception as e:
         sys.stderr.write(f"post_evening_avatar: Failed to spawn Tik{tik}: {e}\n")
@@ -342,8 +428,9 @@ def trigger_avatar_batch(tik: int, machines: list[int], state: dict) -> bool:
 
 
 def main() -> int:
+    ctx = get_host_context()
     now = now_hcmc()
-    state = get_state()
+    state = get_state(state_file=ctx["state_file"])
 
     # 1. Chỉ hoạt động trong khung giờ ca tối hoặc ngay sau ca tối (21:00 -> 04:00)
     in_window = is_post_evening_window(now)
@@ -352,26 +439,26 @@ def main() -> int:
         return 0
 
     # 2. Kiểm tra tiến trình batch hiện tại (nếu có)
-    if check_batch_status(state):
+    if check_batch_status(state, state_file=ctx["state_file"]):
         # Vẫn đang có batch chạy ngầm
         return 0
 
     # 3. Thu thập danh sách máy chưa up avatar cho tất cả các Tik
     all_unuploaded: dict[int, list[int]] = {}
     total_missing = 0
-    for tik in TARGET_TIKS:
-        missing = get_unuploaded_machines(tik)
+    for tik in ctx["target_tiks"]:
+        missing = get_unuploaded_machines(tik, workbook_dir=ctx["workbook_dir"])
         all_unuploaded[tik] = missing
         total_missing += len(missing)
 
     # 4. Nếu tất cả các Tik đã hoàn tất 100% -> Báo cáo duy nhất 1 lần
     if total_missing == 0:
-        report_final_summary(state, all_done=True)
+        report_final_summary(state, all_done=True, host_context=ctx)
         return 0
 
     # 5. Nếu đã hết khung giờ ca tối (sau 23:30) -> Báo cáo duy nhất 1 lần tổng kết máy còn tồn
     if after_window:
-        report_final_summary(state, all_done=False)
+        report_final_summary(state, all_done=False, host_context=ctx)
         return 0
 
     # 6. Trong khung giờ (21:00 -> 23:30) & còn máy chưa up:
@@ -386,10 +473,10 @@ def main() -> int:
         return 0
 
     # Kích hoạt batch cho Tik đầu tiên còn acc chưa bao giờ được up
-    for tik in TARGET_TIKS:
+    for tik in ctx["target_tiks"]:
         missing_machines = all_unuploaded.get(tik, [])
         if missing_machines:
-            trigger_avatar_batch(tik, missing_machines, state)
+            trigger_avatar_batch(tik, missing_machines, state, host_context=ctx)
             return 0
 
     return 0
