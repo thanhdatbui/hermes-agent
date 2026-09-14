@@ -24,8 +24,54 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, Set, Tuple, Any, List
 from zoneinfo import ZoneInfo
 
+import urllib.request
+import urllib.parse
+from pathlib import Path
+
 logger = logging.getLogger("feed_session_watchdog")
 HCMC = ZoneInfo("Asia/Ho_Chi_Minh")
+FARM_ALERT_CHAT_ID = "-5373649734"
+
+
+def get_telegram_bot_token() -> str | None:
+    """Lấy Telegram Bot Token từ env hoặc file .env của Hermes."""
+    token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    if token:
+        return token
+    env_file = Path.home() / "AppData/Local/hermes/.env"
+    if env_file.exists():
+        try:
+            for line in env_file.read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if line.startswith("TELEGRAM_BOT_TOKEN="):
+                    return line.split("=", 1)[1].strip().strip('"').strip("'")
+        except Exception:
+            pass
+    return None
+
+
+def send_farm_alert(text: str) -> bool:
+    """Gửi tin nhắn thông báo vào nhóm Farm Alert."""
+    token = get_telegram_bot_token()
+    if not token:
+        return False
+    try:
+        url = f"https://api.telegram.org/bot{token}/sendMessage"
+        payload = {
+            "chat_id": FARM_ALERT_CHAT_ID,
+            "text": text,
+            "parse_mode": "HTML",
+            "disable_web_page_preview": True,
+        }
+        data = urllib.parse.urlencode(payload).encode("utf-8")
+        req = urllib.request.Request(url, data=data, method="POST")
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            return resp.status == 200
+    except Exception as e:
+        sys.stderr.write(f"send_farm_alert error: {e}\n")
+        return False
+
+
 def _get_runtime_root() -> str:
     cfg_path = os.environ.get("TAADAA_HOST_CONFIG", r"D:\Taadaa\machine-config\kibe.yaml")
     rt_root = r"D:\Taadaa\runtime\kibe"
@@ -296,16 +342,34 @@ def merge_machine_result(prev: Optional[Dict[str, Any]], new: Optional[Dict[str,
         return new
     if not new:
         return prev
+
+    res = dict(new)
+    # Merge likes and swipes accumulated across runs
+    p_likes = prev.get("likes") or {}
+    n_likes = new.get("likes") or {}
+    all_like_keys = set(p_likes.keys()) | set(n_likes.keys())
+    if all_like_keys:
+        merged_likes = {}
+        for k in all_like_keys:
+            merged_likes[k] = max(p_likes.get(k, 0), n_likes.get(k, 0))
+        res["likes"] = merged_likes
+    if "swipes" in prev or "swipes" in new:
+        res["swipes"] = max(prev.get("swipes", 0), new.get("swipes", 0))
+
     if prev.get("status") == "success":
-        return prev
+        res["status"] = prev.get("status")
+        res["reason"] = prev.get("reason", "")
+        return res
     if new.get("status") == "success":
-        return new
+        return res
     # Nếu prev là skipped-device-locked còn new là kết quả chạy thật (không phải lock), ưu tiên new
     if is_device_locked_skip(prev) and not is_device_locked_skip(new):
-        return new
+        return res
     if is_device_locked_skip(new) and not is_device_locked_skip(prev):
-        return prev
-    return new
+        res["status"] = prev.get("status")
+        res["reason"] = prev.get("reason", "")
+        return res
+    return res
 
 
 def merge_follow_result(prev: Optional[Dict[str, Any]], new: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
@@ -391,10 +455,37 @@ def parse_run_all(run_dir: str) -> tuple:
                     with open(s_path, "r", encoding="utf-8", errors="ignore") as f:
                         c = f.read()
                     import re
-                    failed_m = re.findall(r"machine_(\d+)", c)
-                    for m_num in set(failed_m):
-                        if m_num not in res_m:
-                            res_m[m_num] = {"status": "fail", "reason": "batch-config-error"}
+                    parsed_from_log = False
+                    log_jsonl_path = os.path.join(root, "log.jsonl")
+                    if os.path.isfile(log_jsonl_path):
+                        try:
+                            import json
+                            with open(log_jsonl_path, "r", encoding="utf-8", errors="ignore") as jf:
+                                for line in jf:
+                                    line = line.strip()
+                                    if not line:
+                                        continue
+                                    try:
+                                        row_obj = json.loads(line)
+                                        m_acc = str(row_obj.get("account") or "").strip()
+                                        if m_acc.isdigit():
+                                            m_res_status = row_obj.get("result") or "fail"
+                                            m_err = str(row_obj.get("error") or "")
+                                            if m_acc not in res_m:
+                                                res_m[m_acc] = {"status": m_res_status, "reason": m_err}
+                                                parsed_from_log = True
+                                    except Exception:
+                                        continue
+                        except Exception:
+                            pass
+                    if not parsed_from_log:
+                        failed_m = re.findall(r"machine_(\d+)", c)
+                        is_all_locked = "skipped-device-locked" in c
+                        default_st = "skipped-device-locked" if is_all_locked else "fail"
+                        default_reason = "device-lock-active" if is_all_locked else "batch-config-error"
+                        for m_num in set(failed_m):
+                            if m_num not in res_m:
+                                res_m[m_num] = {"status": default_st, "reason": default_reason}
                 except Exception:
                     pass
             if "summary.txt" in files and m_str:
@@ -410,7 +501,29 @@ def parse_run_all(run_dir: str) -> tuple:
                             if val != "success":
                                 reason = val
                                 break
-                    res_m[m_str] = merge_machine_result(res_m.get(m_str), {"status": st, "reason": reason})
+                    if any(k in reason.lower() for k in ("is empty (no username)", "does not have valid row")):
+                        st = "skipped-empty"
+
+                    # Extract likes and swipes from per-machine summary
+                    likes_map = {}
+                    swipes_cnt = 0
+                    try:
+                        import re
+                        m_sw = re.search(r'["\']?total_swipes_completed["\']?:\s*(\d+)', c)
+                        if m_sw:
+                            swipes_cnt = int(m_sw.group(1))
+                        idx_lc = c.find('"like_counts":')
+                        if idx_lc != -1:
+                            chunk_lc = c[idx_lc:idx_lc + 150]
+                            for ft in ("for-you", "following", "friends"):
+                                m_ft = re.search(rf'["\']?{ft}["\']?:\s*(\d+)', chunk_lc)
+                                if m_ft:
+                                    likes_map[ft] = int(m_ft.group(1))
+                    except Exception:
+                        pass
+
+                    m_payload = {"status": st, "reason": reason, "likes": likes_map, "swipes": swipes_cnt}
+                    res_m[m_str] = merge_machine_result(res_m.get(m_str), m_payload)
                 except Exception:
                     pass
 
@@ -435,6 +548,8 @@ def parse_run_all(run_dir: str) -> tuple:
                                 "followed": flist,
                                 "follow_failed": is_clean_ff,
                                 "failed": raw_failed,
+                                "mode1_count": int(((d.get("details") or {}).get("mode1_followed_count")) or 0),
+                                "mode2_count": int(((d.get("details") or {}).get("mode2_followed_count")) or 0),
                                 "reason": str(d.get("reason") or ""),
                             }
                             res_f[target_m] = merge_follow_result(res_f.get(target_m), f_item)
@@ -578,6 +693,9 @@ def can_report_session(
     """Xác định điều kiện chốt báo cáo cho một phiên."""
     # Nếu đang trong giờ phiên (now_hm < window_end_hm):
     if is_today and now_hm < window_end_hm:
+        # Nếu tất cả máy dự kiến đã hoàn tất thật (không còn lock dở dang): chốt ngay kể cả runner_busy
+        if completed_expected_count >= expected_count and not has_unattempted_locked:
+            return True
         if runner_busy:
             return False
         # Nếu toàn bộ fail / chưa có máy pass (completed_expected_count == 0) và run mới nhất >= 15 phút
@@ -587,7 +705,20 @@ def can_report_session(
             return False
         return completed_expected_count >= expected_count
 
-    # Khi đã qua window_end_hm hoặc là ngày cũ: BẮT BUỘC chốt báo cáo
+    # Khi đã qua window_end_hm: nếu là hôm nay và runner đang bận, cho phép grace period 20 phút
+    if is_today and now_hm >= window_end_hm:
+        if runner_busy:
+            grace_end_hm = _add_minutes_to_hm(window_end_hm, 20)
+            if now_hm < grace_end_hm:
+                return False
+
+    # Nếu là hôm qua (is_today=False): chỉ cho phép báo cáo sau 02:00 sáng hôm nay để tránh chốt vội phiên đêm đang chạy dở
+    if not is_today:
+        if now_hm < "02:00" and completed_expected_count < expected_count:
+            return False
+        return True
+
+    # Khi đã qua grace period hoặc runner không bận: BẮT BUỘC chốt báo cáo
     return True
 
 
@@ -730,12 +861,30 @@ def main():
                     return int(nums[0]) if nums else 0
 
                 # Phân loại Feed
-                succ = sorted([m for m, d in all_machines.items() if d["status"] == "success"], key=num_key)
-                fail = sorted([f"M{m}" for m, d in all_machines.items() if d["status"] != "success"], key=num_key)
+                succ = sorted([m for m, d in all_machines.items() if d.get("status") == "success"], key=num_key)
+                empty = sorted([
+                    m for m, d in all_machines.items()
+                    if d.get("status") == "skipped-empty"
+                    or any(k in str(d.get("reason", "")).lower() for k in ("is empty (no username)", "does not have valid row"))
+                    or (str(d.get("reason", "")) == "batch-config-error" and m not in expected_machines)
+                ], key=num_key)
+                fail = sorted([
+                    f"M{m}" for m, d in all_machines.items()
+                    if d.get("status") != "success" and m not in empty
+                ], key=num_key)
                 total_machines = len(all_machines)
 
                 succ_str = ", ".join(succ) if succ else "Không có"
                 fail_str = ", ".join(fail) if fail else "Không có"
+                empty_str = ", ".join(empty) if empty else "Không có"
+
+                # Thống kê thả tim theo tab
+                tot_swipes = sum(d.get("swipes", 0) for m, d in all_machines.items() if d.get("status") == "success")
+                tot_fy_likes = sum(d.get("likes", {}).get("for-you", 0) for m, d in all_machines.items() if d.get("status") == "success")
+                tot_fl_likes = sum(d.get("likes", {}).get("following", 0) for m, d in all_machines.items() if d.get("status") == "success")
+                tot_fr_likes = sum(d.get("likes", {}).get("friends", 0) for m, d in all_machines.items() if d.get("status") == "success")
+                tot_likes = tot_fy_likes + tot_fl_likes + tot_fr_likes
+                tot_rate = (tot_likes / tot_swipes * 100.0) if tot_swipes > 0 else 0.0
 
                 # Phân loại Follow
                 total_followed_count = 0
@@ -761,6 +910,8 @@ def main():
                             fl_success.append(m)
                         elif status in {"OK", "SUCCESS"} and len(flist) == 0:
                             fl_skipped.append(m)
+                        elif status == "MANUAL_REVIEW" and "không có video" in (fd.get("reason", "") or "").lower():
+                            fl_skipped.append(m)  # anchor thiếu video = safe-skip, KHÔNG phai loi
                         else:
                             fl_error.append(m)
                     else:
@@ -779,10 +930,15 @@ def main():
                     f"• Lướt Feed:",
                     f"  + Success ({len(succ)}): {succ_str}",
                     f"  + Fail ({len(fail)}): {fail_str}",
+                    f"  + Trống slot/chưa có nick ({len(empty)}): {empty_str}",
+                    f"  + Thả tim: {tot_likes} tim / {tot_swipes} video ({tot_rate:.1f}%) [Đề xuất: {tot_fy_likes} | Bạn bè: {tot_fr_likes} | Following: {tot_fl_likes}]",
                     f"• Follow chéo ({total_followed_count} lượt follow):",
                 ]
                 msg_lines.extend(format_success_follows(fl_success, all_follows))
                 msg_lines.extend(format_released_follows(fl_released, all_follows))
+                tot_m2 = sum(int((v or {}).get("mode2_count", 0) or 0) for v in all_follows.values())
+                tot_m1 = sum(int((v or {}).get("mode1_count", 0) or 0) for v in all_follows.values())
+                msg_lines.append(f"  + Module 2 (following-list nội bộ): {tot_m2} lượt | Module 1 (search bù): {tot_m1} lượt")
                 msg_lines.extend([
                     f"  + Lỗi script/xác minh ({len(fl_error)}): {e_str}",
                     f"  + Bỏ qua ({len(fl_skipped)}): {k_str}"
@@ -836,6 +992,28 @@ def main():
                 msg = "\n".join(msg_lines)
                 messages.append(msg)
                 new_reported.add(session_key)
+
+                # Farm Alert Gate: Báo động đỏ về nhóm Farm Alert khi > 10 máy bị lỗi ở bất kỳ khâu nào
+                feed_fail_cnt = len(fail)
+                follow_err_cnt = len(fl_error)
+                up_err_cnt = len(up_error) if 'up_error' in locals() else 0
+                if feed_fail_cnt > 10 or follow_err_cnt > 10 or up_err_cnt > 10:
+                    alert_lines = [
+                        "🚨 <b>[FARM ALERT] PHÁT HIỆN LỖI DIỆN RỘNG (>10 MÁY)</b>",
+                        f"• <b>Ca</b>: {win['name']} (Row {active_row})",
+                        f"• <b>Tổng máy xử lý</b>: {total_machines} máy",
+                    ]
+                    if feed_fail_cnt > 10:
+                        alert_lines.append(f"⚠️ <b>Lướt Feed Fail ({feed_fail_cnt} máy)</b>: {fail_str}")
+                    if follow_err_cnt > 10:
+                        alert_lines.append(f"⚠️ <b>Follow Hook Lỗi UI/Script ({follow_err_cnt} máy)</b>: {e_str}")
+                    if up_err_cnt > 10:
+                        alert_lines.append(f"⚠️ <b>Upload Hook Lỗi ({up_err_cnt} máy)</b>: {up_e_str}")
+                    alert_lines.append("\n<i>👉 Đang yêu cầu Coordinator kiểm tra hiện trường & xử lý ngay.</i>")
+                    try:
+                        send_farm_alert("\n".join(alert_lines))
+                    except Exception as _alert_exc:
+                        sys.stderr.write(f"farm alert delivery failed: {_alert_exc}\n")
 
         if messages:
             # Atomic claim và persist state
