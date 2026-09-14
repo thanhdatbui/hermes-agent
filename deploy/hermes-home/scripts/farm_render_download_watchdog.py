@@ -25,11 +25,16 @@ def detect_host():
             "base_machine": 201,
         }
     # Kibe host
+    # Fast SSD NVMe (C:) is primary for fast I/O; fallback to HDD (D:)
+    kibe_state_db = r"C:\CodexRuntime\tiktok-video\state.db"
+    if not os.path.exists(kibe_state_db) and os.path.exists(r"D:\CodexRuntime\tiktok-video\state.db"):
+        kibe_state_db = r"D:\CodexRuntime\tiktok-video\state.db"
+
     return {
         "name": "FARM KIBE",
         "video_goc": r"D:\video goc",
         "render_root": r"D:\TIKTOK-videonuoinick",
-        "state_db": r"D:\CodexRuntime\tiktok-video\state.db",
+        "state_db": kibe_state_db,
         "machine_range": range(1, 81),
         "base_machine": 1,
     }
