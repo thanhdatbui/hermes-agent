@@ -300,6 +300,11 @@ def get_unuploaded_machines(tik: int, workbook_dir: Path | None = None) -> list[
     return get_tik_avatar_stats(tik, workbook_dir=workbook_dir)["unuploaded"]
 
 
+def get_tik_avatar_status(tik: int, workbook_dir: Path | None = None) -> tuple[int, list[int]]:
+    st = get_tik_avatar_stats(tik, workbook_dir=workbook_dir)
+    return st["total_accounts"], st["unuploaded"]
+
+
 def is_powershell_batch_alive() -> bool:
     """Kiểm tra có process batch upload avatar đang thực thi không."""
     try:
@@ -380,7 +385,9 @@ def format_report_html(
         tot_cnt = st.get("total_accounts", 0)
         pct = (up_cnt / tot_cnt * 100) if tot_cnt > 0 else 0.0
 
-        if unuploaded:
+        if tot_cnt == 0:
+            tik_lines.append(f"• <b>Tik {tik}:</b> chưa gán nick (0/80 acc)")
+        elif unuploaded:
             preview = ",".join(map(str, unuploaded[:15]))
             suffix = f"... (+{len(unuploaded)-15})" if len(unuploaded) > 15 else ""
             tik_lines.append(
@@ -390,8 +397,8 @@ def format_report_html(
             tik_lines.append(f"• <b>Tik {tik}:</b> Đã có {up_cnt}/{tot_cnt} (hoàn tất 100%)")
 
     if all_done or total_unuploaded == 0:
-        title = f"🎉 <b>[FARM REPORT][{host_id.upper()}] HOÀN TẤT 100% UP AVATAR</b>"
-        status_line = f"• <b>Trạng thái:</b> Tất cả các Tik đã hoàn tất 100% ({total_uploaded}/{total_accounts} acc)"
+        title = f"🎉 <b>[FARM REPORT][{host_id.upper()}] HOÀN TẤT UP AVATAR CHO CÁC ACC ĐÃ CÓ NICK</b>"
+        status_line = f"• <b>Trạng thái:</b> Tất cả các acc hiện có nick đã được up avatar ({total_uploaded}/{total_accounts} acc)"
     else:
         title = f"⏰ <b>[FARM REPORT][{host_id.upper()}] BÁO CÁO UP AVATAR: HẾT KHUNG GIỜ</b>"
         status_line = f"• <b>Trạng thái:</b> Hết khung giờ ca tối (sau 23:30) — Đã có: {total_uploaded}/{total_accounts} acc ({total_pct:.1f}%), còn {total_unuploaded} máy chưa up"

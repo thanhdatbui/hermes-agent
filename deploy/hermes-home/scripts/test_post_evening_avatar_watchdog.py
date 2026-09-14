@@ -10,7 +10,7 @@ scripts_dir = Path(__file__).resolve().parent
 if str(scripts_dir) not in sys.path:
     sys.path.insert(0, str(scripts_dir))
 
-from post_evening_avatar_watchdog import format_report_html
+from post_evening_avatar_watchdog import format_report_html, get_tik_avatar_status
 
 
 def test_format_report_html_all_done():
@@ -22,10 +22,22 @@ def test_format_report_html_all_done():
     now_dt = datetime(2026, 9, 15, 22, 30, tzinfo=ZoneInfo("Asia/Ho_Chi_Minh"))
     report = format_report_html(host_id=host_id, all_done=True, stats_by_tik=stats, target_tiks=[5, 6], now_dt=now_dt)
 
-    assert "100%" in report
     assert "hoàn tất" in report.lower()
-    assert "HOÀN TẤT 100% UP AVATAR" in report
+    assert "HOÀN TẤT UP AVATAR CHO CÁC ACC ĐÃ CÓ NICK" in report
     assert "Đã có 20/20 (hoàn tất 100%)" in report
+
+
+def test_format_report_html_unassigned_tik():
+    host_id = "admin"
+    stats = {
+        1: {"uploaded_count": 20, "total_accounts": 20, "unuploaded": []},
+        2: {"uploaded_count": 0, "total_accounts": 0, "unuploaded": []},
+    }
+    now_dt = datetime(2026, 9, 15, 22, 30, tzinfo=ZoneInfo("Asia/Ho_Chi_Minh"))
+    report = format_report_html(host_id=host_id, all_done=True, stats_by_tik=stats, target_tiks=[1, 2], now_dt=now_dt)
+
+    assert "chưa gán nick (0/80 acc)" in report
+    assert "HOÀN TẤT UP AVATAR CHO CÁC ACC ĐÃ CÓ NICK" in report
 
 
 def test_format_report_html_not_all_done():
