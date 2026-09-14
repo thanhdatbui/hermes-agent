@@ -338,7 +338,8 @@ def _spawn_feed_session(row: int, session_index: int, now: datetime) -> int:
         "-Python", target_python(),
         "-Row", str(row),
         "-SessionIndex", str(session_index),
-        "-AllowUploadHook",
+        # Quy định farm: chỉ kích hoạt hook upload video ở Phiên 2 (session_index == 2); Phiên 1 chỉ lướt feed thuần
+        *( ["-AllowUploadHook"] if session_index == 2 else [] ),
         "-Preset", "full",
         "-AccountWorkbook", ACCOUNT_WORKBOOK.replace("/", "\\"),
         "-ArtifactRoot", artifact_root,
