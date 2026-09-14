@@ -213,8 +213,6 @@ display:
   streaming: true
   tool_progress: all
 fallback_providers:
-- model: omni-free
-  provider: omni
 - model: 9r-free
   provider: custom:9router
 gateway:
