@@ -7,7 +7,12 @@ OmniRoute chạy tại `http://localhost:20129` (song song với 9Router tại `
 - Endpoint: `POST http://localhost:20129/v1/chat/completions`
 - Headers: `{"Content-Type": "application/json", "Authorization": "Bearer sk-antigravity"}`.
 - Review models:
-  - `review`: Cấu hình combo luân phiên qua pool tài khoản Google Gemini (`ag-gemini-pool-3` gồm >70 accounts active, dồi dào quota, cơ chế failover tự động bỏ qua account lỗi/bận). Chuyên dùng cho audit logic, review an toàn fail-closed, phản hồi siêu nhanh 8-15s, loại bỏ triệt để nghẽn Semaphore Timeout 429.
+  - `review`: Combo đa tầng bảo vệ toàn diện (cập nhật 09/2026):
+    * **Tier 0 (Primary):** `chatgpt-web/gpt-5.6-sol-high` qua pool 5 accounts ChatGPT-Web sống khỏe — reasoning cao cấp nhất (Sol), zero token cost, bắt bẫy invariant và bẫy speculative architecture cực kỳ xuất sắc. Tự động xoay acc khi gặp rate limit 429.
+    * **Tier 1:** `gpt-5.6-terra-high` (Codex Farm pool).
+    * **Tier 2:** `ag-opus-pool` (Claude Opus 4.6 Thinking trên pool 78 Google accounts).
+    * **Tier 3-6:** `oc/nemotron-3.5-lightning-free` -> `openrouter/nvidia/nemotron-3-super-120b-a12b:free` -> `oc/muse-spark-1.3-contributor-free` -> `oc/muse-spark-1.2-contributor-free`.
+    * **Tier 7:** `ag-gemini-pool-3` (Lưới an toàn cuối cùng).
   - `ag-worker`: Route tới `gemini-3.8-flash-tiered` (200k context, max_output 131k). Phù hợp cho quick check, second opinion hoặc review nhẹ.
 
 ## Invocation Protocol
