@@ -66,7 +66,11 @@ def has_active_device_locks() -> bool:
             for f in ldir.glob("*.json"):
                 try:
                     data = json.loads(f.read_text(encoding="utf-8"))
-                    if data.get("status") in ("active", "running", "queued", "blocked"):
+                    # Coi la active neu status dang chay va owner van con song
+                    if data.get("status") in ("active", "running", "queued"):
+                        return True
+                    # Status blocked nhung owner_active false (dead/finished) thi khong coi la active block
+                    if data.get("status") == "blocked" and data.get("owner_active", True) is not False:
                         return True
                 except Exception:
                     pass
@@ -126,7 +130,7 @@ def run_gmail_batch(dry_run: bool = False) -> tuple[int, str]:
     env["PYTHONPATH"] = f"{GMAIL_REPO_DIR}{os.pathsep}{AUTOMATION_CORE_SRC}"
     env["GMAIL_REG_PYTHON_EXE"] = PYTHON_EXE
     try:
-        proc = subprocess.run(cmd, env=env, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5400)
+        proc = subprocess.run(cmd, cwd=str(GMAIL_REPO_DIR), env=env, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5400)
         return proc.returncode, proc.stdout + "\n" + proc.stderr
     except Exception as exc:
         return 1, f"Loi chay Reg Gmail: {exc}"
@@ -138,7 +142,7 @@ def run_tiktok_2fa_batch(dry_run: bool = False) -> tuple[int, str]:
     runner_script = TIKTOK_2FA_REPO_DIR / "python_runner" / "run_batch_live_2fa.py"
     if not runner_script.exists():
         return 1, f"Khong tim thay {runner_script}"
-    cmd = [PYTHON_EXE, str(runner_script), "--all-online", "--workers", "10"]
+    cmd = [PYTHON_EXE, str(runner_script), "--live", "--max-workers", "40"]
     env = dict(os.environ)
     env["PYTHONPATH"] = f"{TIKTOK_2FA_REPO_DIR / 'python_runner'}{os.pathsep}{AUTOMATION_CORE_SRC}"
     try:
@@ -148,14 +152,35 @@ def run_tiktok_2fa_batch(dry_run: bool = False) -> tuple[int, str]:
         return 1, f"Loi chay TikTok 2FA: {exc}"
 
 
-def parse_summary_counts(output: str) -> tuple[int, int, int]:
-    # Trích xuất tổng máy, success, fail
+def parse_summary_counts(output: str, log_dir_hint: Path | None = None) -> tuple[int, int, int]:
+    # 1. Trích xuất chuẩn TOTAL=... SUCCESS=... FAILED=...
     m = re.search(r"TOTAL=(\d+)\s+SUCCESS=(\d+)\s+FAILED=(\d+)", output)
     if m:
         return int(m.group(1)), int(m.group(2)), int(m.group(3))
-    # Fallback đếm từ pattern
-    succs = len(re.findall(r"Machine\s+\d+.*(?:SUCCESS|OK)", output))
-    fails = len(re.findall(r"Machine\s+\d+.*(?:FAIL|FAILED|ERROR)", output))
+
+    # 2. Bóc tách bảng kết quả TikTok 2FA (machine | source_row | username | status | reason)
+    table_rows = re.findall(r"^\s*(\d+)\s*\|\s*(\d+)\s*\|\s*[^|]+\|\s*(\w+)", output, re.M)
+    if table_rows:
+        succs = sum(1 for r in table_rows if r[2].lower() == "success")
+        fails = sum(1 for r in table_rows if r[2].lower() in ("failed", "fail", "error"))
+        skips = sum(1 for r in table_rows if r[2].lower() in ("skipped", "skip"))
+        tot = succs + fails + skips
+        if tot > 0:
+            return tot, succs, fails
+
+    # 3. Fallback đọc summary.json từ runtime logs (cho Reg Gmail - hỗ trợ UTF-8 BOM từ PowerShell)
+    if log_dir_hint and log_dir_hint.is_dir():
+        try:
+            candidates = sorted(log_dir_hint.glob("logs_parallel_*/summary.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+            if candidates:
+                data = json.loads(candidates[0].read_text(encoding="utf-8-sig"))
+                return int(data.get("total", 0)), int(data.get("success", 0)), int(data.get("failed", 0))
+        except Exception:
+            pass
+
+    # 4. Fallback pattern cũ
+    succs = len(re.findall(r"Machine\s+\d+.*(?:SUCCESS|OK)", output, re.I))
+    fails = len(re.findall(r"Machine\s+\d+.*(?:FAIL|FAILED|ERROR)", output, re.I))
     return succs + fails, succs, fails
 
 
@@ -168,8 +193,8 @@ def main() -> int:
     now = datetime.now(HCMC)
     today_str = now.strftime("%Y-%m-%d")
 
-    # 1. Kiểm tra khung giờ: 14:30 - 17:30
-    in_window = (now.hour == 14 and now.minute >= 30) or (15 <= now.hour <= 17)
+    # 1. Kiểm tra khung giờ: 14:30 - 18:30 (khoảng nghỉ trước Ca 3)
+    in_window = (now.hour == 14 and now.minute >= 30) or (15 <= now.hour <= 18 and (now.hour < 18 or now.minute <= 30))
     if not in_window and not args.force and not args.dry_run:
         return 0
 
@@ -204,7 +229,7 @@ def main() -> int:
     end_dt = datetime.now(HCMC)
     duration_min = max(1, int((end_dt - start_dt).total_seconds() // 60))
 
-    g_tot, g_suc, g_fail = parse_summary_counts(g_out)
+    g_tot, g_suc, g_fail = parse_summary_counts(g_out, log_dir_hint=Path("D:/CodexRuntime/codex_gmail_debug-register-gmail"))
     t_tot, t_suc, t_fail = parse_summary_counts(t2fa_out)
 
     report_lines = [
