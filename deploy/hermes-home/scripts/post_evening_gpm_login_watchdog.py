@@ -309,11 +309,27 @@ def main():
         log("Chờ Avatar cron kết thúc...")
         return 0
 
-    processed   = state.get("processed", []) if state.get("date") == today_str else []
+    is_same_day = (state.get("date") == today_str)
+    processed = state.get("processed", []) if is_same_day else []
+    total_success = state.get("total_success", 0) if is_same_day else 0
+    total_fail = state.get("total_fail", 0) if is_same_day else 0
+    reported = state.get("reported", False) if is_same_day else False
+
     candidates, proxy_count = get_candidates(today_str, processed)
 
     if not candidates:
-        state.update({"date": today_str, "processed": processed, "finished": True})
+        if not reported and (total_success > 0 or total_fail > 0):
+            print(f"[LOGIN GPM ĐÊM - TỔNG KẾT] ✓ {total_success} | ✗ {total_fail} | proxy_limit 2/port/ngày | Hoàn tất ca tối")
+            reported = True
+        state.update({
+            "date": today_str,
+            "processed": processed,
+            "proxy_count": dict(proxy_count),
+            "total_success": total_success,
+            "total_fail": total_fail,
+            "reported": reported,
+            "finished": True,
+        })
         STATE_FILE.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
         return 0
 
@@ -340,17 +356,29 @@ def main():
             else:
                 fail_n += 1
 
-    all_done = len(processed) >= len(candidates) + len(batch)
+    total_success += success_n
+    total_fail += fail_n
+
+    now_hcm = datetime.now(HCMC)
+    is_late = (now_hcm.hour == 23 and now_hcm.minute >= 30)
+    all_done = (len(processed) >= len(candidates) + len(batch)) or is_late
+
+    # IM LẶNG trong lúc chạy batch lẻ; CHỈ BÁO CÁO 1 LẦN DUY NHẤT khi hoàn tất toàn ca hoặc hết giờ ca tối
+    if all_done and not reported:
+        if total_success > 0 or total_fail > 0:
+            print(f"[LOGIN GPM ĐÊM - TỔNG KẾT] ✓ {total_success} | ✗ {total_fail} | proxy_limit 2/port/ngày | Hoàn tất ca tối")
+        reported = True
+
     state = {
         "date": today_str,
         "processed": processed,
         "proxy_count": dict(proxy_count),
+        "total_success": total_success,
+        "total_fail": total_fail,
+        "reported": reported,
         "finished": all_done,
     }
     STATE_FILE.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
-
-    if success_n or fail_n:
-        print(f"[LOGIN GPM ĐÊM] ✓ {success_n} | ✗ {fail_n} | proxy_limit 2/port/ngày áp dụng")
     return 0
 
 if __name__ == "__main__":
