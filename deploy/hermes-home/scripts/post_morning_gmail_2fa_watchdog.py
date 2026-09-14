@@ -22,6 +22,8 @@ STATE_FILE = os.path.join(STATE_DIR, "post_morning_gmail_2fa_state.json")
 FEED_REPORTED_FILE = os.path.join(STATE_DIR, "feed_session_reported.json")
 LOCK_DIR = r"D:\Taadaa\runtime\device_locks"
 EXCEL_CANDIDATE_PATHS = [
+    r"D:\OneDrive\TaadaaData\kibe\master_gmail_manager.xlsx",
+    r"D:\OneDrive\TaadaaData\kibe\gmail_clean_v2.xlsx",
     r"D:\Taadaa\tiktok-add-2fa\gmail_clean_v2.xlsx",
     r"D:\Taadaa\gmail_clean_v2.xlsx",
     r"D:\Taadaa\tools\gmail_clean_v2.xlsx",
@@ -84,6 +86,9 @@ def is_feed_ca1_finished() -> bool:
         today = datetime.now().strftime("%Y-%m-%d")
         keys = [f"{today}_ca1_phien2", f"{today}_ca1", f"{today}_ca1_phien3"]
         if isinstance(data, dict):
+            reported = set(data.get("reported_sessions", []))
+            if any(k in reported for k in keys):
+                return True
             for k in keys:
                 if k in data and data[k]:
                     return True
@@ -119,13 +124,29 @@ def is_feed_runner_active() -> bool:
 
 
 def has_active_device_locks() -> bool:
-    if not os.path.isdir(LOCK_DIR):
-        return False
-    try:
-        locks = glob.glob(os.path.join(LOCK_DIR, "*.lock"))
-        return len(locks) > 0
-    except Exception:
-        return False
+    lock_dirs = [
+        os.path.expanduser(r"~/.codex/device-locks"),
+        os.path.expanduser(r"~\AppData\Local\automation-core\device-locks"),
+    ]
+    for ld in lock_dirs:
+        if os.path.isdir(ld):
+            try:
+                for f in glob.glob(os.path.join(ld, "*.lock.json")):
+                    try:
+                        with open(f, "r", encoding="utf-8") as fp:
+                            data = json.load(fp)
+                            st = data.get("status")
+                            if st in ("active", "running", "queued", "queued_v2"):
+                                return True
+                            if st == "blocked" and data.get("owner_active", True) is not False:
+                                return True
+                    except Exception:
+                        pass
+                for f in glob.glob(os.path.join(ld, "*.lock")):
+                    return True
+            except Exception:
+                pass
+    return False
 
 
 def get_online_devices() -> list:

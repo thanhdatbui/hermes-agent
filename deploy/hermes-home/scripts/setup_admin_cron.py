@@ -63,14 +63,6 @@ ADMIN_CRON_JOBS = [
         "workdir": r"D:\Taadaa\tiktok-luot nuoi acc",
     },
     {
-        "name": "night-chain-reg-pipeline",
-        "expr": "0 1 * * *",
-        "no_agent": True,
-        "script": "night_chain_reg_pipeline_launcher.py",
-        "deliver": "telegram:-5188753741",
-        "workdir": None,
-    },
-    {
         "name": "device-locks-watchdog",
         "expr": "1,16,31,46 * * * *",
         "no_agent": True,
@@ -80,10 +72,10 @@ ADMIN_CRON_JOBS = [
     },
     {
         "name": "end-of-day-clear-tiktok-cache",
-        "expr": "0 4 * * *",
+        "expr": "*/10 1,2,3,4 * * *",
         "no_agent": True,
         "script": "cron_clear_tiktok_cache.py",
-        "deliver": "telegram:-5188753741",
+        "deliver": "telegram:-5373649734",
         "workdir": None,
     },
     {
@@ -91,7 +83,7 @@ ADMIN_CRON_JOBS = [
         "expr": "*/5 * * * *",
         "no_agent": True,
         "script": "feed_session_watchdog.py",
-        "deliver": "telegram:-5188753741",
+        "deliver": "telegram:-5373649734",
         "workdir": None,
     },
     {
@@ -115,7 +107,7 @@ ADMIN_CRON_JOBS = [
         "expr": "*/5 8,9,10,11 * * *",
         "no_agent": True,
         "script": "post_morning_gmail_2fa_watchdog.py",
-        "deliver": "telegram:-5188753741",
+        "deliver": "telegram:-5373649734",
         "workdir": None,
     },
     {
@@ -123,7 +115,7 @@ ADMIN_CRON_JOBS = [
         "expr": "*/5 14,15,16,17 * * *",
         "no_agent": True,
         "script": "post_noon_chain_watchdog.py",
-        "deliver": "telegram:-5188753741",
+        "deliver": "telegram:-5373649734",
         "workdir": None,
     },
     {
@@ -131,7 +123,7 @@ ADMIN_CRON_JOBS = [
         "expr": "*/10 21,22,23 * * *",
         "no_agent": True,
         "script": "post_evening_avatar_watchdog.py",
-        "deliver": "telegram:-5188753741",
+        "deliver": "telegram:-5373649734",
         "workdir": None,
     },
     {
@@ -139,7 +131,7 @@ ADMIN_CRON_JOBS = [
         "expr": "*/10 21,22,23 * * *",
         "no_agent": True,
         "script": "post_evening_gpm_login_watchdog.py",
-        "deliver": "telegram:-5188753741",
+        "deliver": "telegram:-5373649734",
         "workdir": None,
     },
     {

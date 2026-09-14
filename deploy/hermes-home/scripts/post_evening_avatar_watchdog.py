@@ -164,21 +164,41 @@ def is_after_evening_window(now_dt: datetime) -> bool:
 
 
 def count_active_locks() -> int:
-    """Đếm số device locks còn fresh (< 45 phút)."""
-    if not LOCK_DIR.exists():
-        return 0
-    cur_time = time.time()
+    """Đếm số device locks active/running/queued/queued_v2."""
+    lock_dirs = [
+        LOCK_DIR,
+        Path(os.path.expanduser(r"~\AppData\Local\automation-core\device-locks")),
+    ]
     count = 0
-    for f in LOCK_DIR.iterdir():
-        if f.is_file() and f.suffix == ".json" and (
-            f.name.startswith("machine_") or f.name.startswith("serial_")
-        ):
-            try:
-                if (cur_time - f.stat().st_mtime) < 2700:
-                    count += 1
-            except Exception:
-                pass
+    for ldir in lock_dirs:
+        if not ldir.exists():
+            continue
+        for f in ldir.iterdir():
+            if f.is_file() and f.suffix == ".json" and (f.name.startswith("machine_") or f.name.startswith("serial_")):
+                try:
+                    data = json.loads(f.read_text(encoding="utf-8"))
+                    st = data.get("status")
+                    if st in ("active", "running", "queued", "queued_v2"):
+                        count += 1
+                    elif st == "blocked" and data.get("owner_active", True) is not False:
+                        count += 1
+                except Exception:
+                    pass
+            elif f.is_file() and f.suffix == ".lock":
+                count += 1
     return count
+
+
+def is_ca3_finished(today_str: str) -> bool:
+    reported_file = Path(r"D:\Taadaa\runtime\kibe\cron-state\feed_session_reported.json")
+    if not reported_file.is_file():
+        return False
+    try:
+        data = json.loads(reported_file.read_text(encoding="utf-8"))
+        sessions = set(data.get("reported_sessions", []))
+        return f"{today_str}_ca3_phien2" in sessions or f"{today_str}_ca3" in sessions or f"{today_str}_ca3_phien3" in sessions
+    except Exception:
+        return False
 
 
 def is_feed_active() -> bool:
@@ -466,7 +486,11 @@ def main() -> int:
     if is_feed_active():
         return 0
 
-    if count_active_locks() > 5:
+    today_str = now.strftime("%Y-%m-%d")
+    if not is_ca3_finished(today_str):
+        return 0
+
+    if count_active_locks() > 0:
         return 0
 
     if is_powershell_batch_alive():

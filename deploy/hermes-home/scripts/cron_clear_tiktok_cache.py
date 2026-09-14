@@ -119,7 +119,85 @@ def _send_clear_cache_alert(error_reason: str) -> None:
         sys.stderr.write(f"[ALERT FAILED] {exc}\n")
 
 
+
+from datetime import datetime
+import json
+
+STATE_FILE = Path(r"D:\Taadaa\runtime\kibe\cron-state\post_night_clear_cache_state.json")
+REPORTED_FILE = Path(r"D:\Taadaa\runtime\kibe\cron-state\feed_session_reported.json")
+
+def is_ca4_finished(today_str: str) -> bool:
+    if not REPORTED_FILE.is_file():
+        return False
+    try:
+        data = json.loads(REPORTED_FILE.read_text(encoding="utf-8"))
+        sessions = set(data.get("reported_sessions", []))
+        return f"{today_str}_ca4_phien2" in sessions or f"{today_str}_ca4" in sessions
+    except Exception:
+        return False
+
+def has_active_device_locks() -> bool:
+    lock_dirs = [
+        Path(os.path.expanduser(r"~/.codex/device-locks")),
+        Path(os.path.expanduser(r"~\AppData\Local\automation-core\device-locks")),
+    ]
+    for ld in lock_dirs:
+        if ld.is_dir():
+            for f in ld.glob("*.lock.json"):
+                try:
+                    d = json.loads(f.read_text(encoding="utf-8"))
+                    if d.get("status") in ("active", "running", "queued", "queued_v2"):
+                        return True
+                    if d.get("status") == "blocked" and d.get("owner_active", True) is not False:
+                        return True
+                except Exception:
+                    pass
+            for f in ld.glob("*.lock"):
+                return True
+    return False
+
+def already_ran_today(today_str: str) -> bool:
+    if not STATE_FILE.is_file():
+        return False
+    try:
+        data = json.loads(STATE_FILE.read_text(encoding="utf-8"))
+        return data.get("last_success_date") == today_str
+    except Exception:
+        return False
+
+def save_cache_clear_state(today_str: str, s_count: int, f_count: int) -> None:
+    try:
+        STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        data = {
+            "last_success_date": today_str,
+            "last_run_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "success_count": s_count,
+            "fail_count": f_count
+        }
+        STATE_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    except Exception as e:
+        print(f"[WARN] Failed to save state file: {e}")
+
 def main() -> int:
+    import argparse
+    parser = argparse.ArgumentParser(description="Clear TikTok Cache Watchdog sau Ca 4")
+    parser.add_argument("--force", action="store_true", help="Bypass time window and session checks")
+    parser.add_argument("--dry-run", action="store_true", help="Dry run mode")
+    args, _ = parser.parse_known_args()
+
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    now_hour = datetime.now().hour
+
+    if not args.force:
+        if now_hour < 1 or now_hour > 5:
+            return 0
+        if already_ran_today(today_str):
+            return 0
+        if not is_ca4_finished(today_str):
+            return 0
+        if has_active_device_locks():
+            return 0
+
     connected = get_connected_devices()
     if not connected:
         print("[BÁO CÁO DỌN DẸP CACHE TIKTOK]\n• Không có thiết bị ADB online.")
@@ -186,6 +264,8 @@ def main() -> int:
 
     report_text = "\n".join(report)
     print(report_text)
+    if not args.dry_run and s_count > 0:
+        save_cache_clear_state(today_str, s_count, f_count)
     return 0
 
 
