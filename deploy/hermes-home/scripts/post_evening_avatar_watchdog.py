@@ -400,7 +400,7 @@ def report_final_summary(state: dict, all_done: bool, host_context: dict | None 
         target_tiks=target_tiks,
         now_dt=now,
     )
-    send_farm_alert(report_msg)
+    # Cronjob no_agent=True tu dong bat stdout (print) gui Telegram Farm Alert, tranh goi send_farm_alert gay gui dup
     print(report_msg)
 
     state["last_reported_session"] = sess_key
