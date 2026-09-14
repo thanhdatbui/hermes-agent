@@ -47,7 +47,7 @@ GPM_DB           = Path(r"C:\Users\Kibe\AppData\Local\Programs\GPMLogin\profile\
 GPM_SCRIPT       = Path(r"D:\Taadaa\GPM auto\scripts\run_oauth_s7_pipeline.py")
 PYTHON_EXE       = sys.executable
 
-MAX_WORKERS        = 10
+MAX_WORKERS        = 2     # tuân thủ quy tắc Farm: tối đa 2 workers cho GPM+OAuth
 MAX_LOGINS_PER_PROXY = 2   # tối đa 2 acc / proxy / ngày
 MIN_IDLE_BUFFER_MIN  = 45  # cách ca tiếp theo ít nhất 45 phút
 
@@ -73,30 +73,34 @@ def is_avatar_done(today_str: str) -> bool:
     now = datetime.now(HCMC)
     return now.hour >= 22 or (now.hour == 21 and now.minute >= 45)
 
-def get_gpm_live_emails() -> set[str]:
-    """Lấy set email đang nằm trong Group 10 (Google_Live_Ready) trên GPM."""
-    live = set()
+def get_all_gpm_emails() -> set[str]:
+    """Lấy set email đã có profile trong GPM DB (bất kể GroupId)."""
+    emails = set()
     try:
         conn = sqlite3.connect(GPM_DB)
         cur = conn.cursor()
-        cur.execute("SELECT Name FROM profiles WHERE GroupId = 10")
+        cur.execute("SELECT Name FROM profiles")
         for (name,) in cur.fetchall():
             m = re.search(r"([a-z0-9._%+\-]+@gmail\.com)", name.lower())
             if m:
-                live.add(m.group(1))
+                emails.add(m.group(1))
         conn.close()
     except Exception as e:
         log(f"Lỗi đọc GPM DB: {e}")
-    return live
+    return emails
 
 def get_candidates(today_str: str, processed: list[str]) -> list[dict]:
     """
     Trả về danh sách candidates cần login, đã lọc:
     - Chưa xử lý hôm nay (processed).
-    - Theo đúng constraint proxy 2 acc/ngày.
-    - Ưu tiên: cooldown_expired trước, new_gmail sau.
+    - Phải ĐÃ CÓ profile GPM trong DB (tránh lỗi PROFILE_NOT_FOUND).
+    - Chưa có trong omniroute_success (tránh ALREADY_SUCCESS).
+    - Không thuộc excluded_khoalee hoặc recovery email có khoale (Farm safety).
+    - Không thuộc wrong_password_or_checkpoint.
+    - Không thuộc ip_cooling_recaptcha hoặc cooldown_7days chưa hết hạn.
+    - Theo đúng constraint proxy 2 acc/ngày, máy 1 lần/ngày.
     """
-    live_gpm     = get_gpm_live_emails()
+    gpm_emails   = get_all_gpm_emails()
     seen_emails  = set(processed)
     proxy_count  = defaultdict(int)   # port -> số lần đã login trong ngày này
     candidates   = []
@@ -114,25 +118,46 @@ def get_candidates(today_str: str, processed: list[str]) -> list[dict]:
         for port, cnt in state.get("proxy_count", {}).items():
             proxy_count[port] = cnt
 
-    # --- Nhóm 1: Cooldown đã hết hạn ---
+    omniroute_success = set()
+    excluded_emails   = set()
+    cooldown_expired  = []
+
     if STATUS_JSON.exists():
         try:
             data = json.loads(STATUS_JSON.read_text(encoding="utf-8"))
+            omniroute_success = set(k.lower() for k in data.get("omniroute_success", {}).keys())
+            excluded_emails.update(k.lower() for k in data.get("excluded_khoalee", []))
+            excluded_emails.update(k.lower() for k in data.get("wrong_password_or_checkpoint", {}).keys())
+
+            # ip cooling recaptcha
+            for em, info in data.get("ip_cooling_recaptcha", {}).items():
+                r_after = (info.get("retry_after") or "")[:10]
+                if r_after > today_str:
+                    excluded_emails.add(em.lower())
+
+            # Cooldown 7 days
             for em, info in data.get("cooldown_7days", {}).items():
                 em_l = em.lower()
-                retry_after = (info.get("retry_after") or "")[:10]
-                if retry_after <= today_str and em_l not in seen_emails:
-                    port = _get_proxy_port_for_machine(info.get("machine"))
-                    candidates.append({
-                        "email": em_l,
-                        "mid": info.get("machine"),
-                        "port": port,
-                        "reason": "cooldown_expired",
-                    })
+                r_after = (info.get("retry_after") or "")[:10]
+                if r_after <= today_str:
+                    cooldown_expired.append((em_l, info.get("machine")))
+                else:
+                    excluded_emails.add(em_l)
         except Exception as e:
             log(f"Lỗi đọc oauth_pipeline_status: {e}")
 
-    # --- Nhóm 2: Gmail mới chưa có trong Group 10 ---
+    # --- Nhóm 1: Cooldown đã hết hạn ---
+    for em_l, mid in cooldown_expired:
+        if em_l not in seen_emails and em_l not in omniroute_success and em_l not in excluded_emails and em_l in gpm_emails:
+            port = _get_proxy_port_for_machine(mid)
+            candidates.append({
+                "email": em_l,
+                "mid": mid,
+                "port": port,
+                "reason": "cooldown_expired",
+            })
+
+    # --- Nhóm 2: Gmail mới đã có profile GPM nhưng chưa nạp OmniRoute ---
     if MASTER_XLSX.exists():
         try:
             import openpyxl
@@ -145,7 +170,12 @@ def get_candidates(today_str: str, processed: list[str]) -> list[dict]:
                 state_ = str(r[6] or "").strip().upper()
                 if state_ in ("DIE", "BAN", "SUSPENDED"):
                     continue
-                if em_l in seen_emails or em_l in live_gpm:
+                if em_l in seen_emails or em_l in omniroute_success or em_l in excluded_emails:
+                    continue
+                if em_l not in gpm_emails:
+                    continue
+                rec = str(r[3] or "").lower()
+                if "khoale" in rec or "khoale" in em_l:
                     continue
                 proxy_raw = str(r[10] or "")
                 m = re.search(r":(\d{4,5})", proxy_raw)
@@ -156,7 +186,7 @@ def get_candidates(today_str: str, processed: list[str]) -> list[dict]:
                     "email": em_l,
                     "mid": mid,
                     "port": port,
-                    "reason": "new_gmail_or_unlogged",
+                    "reason": "ready_gpm_oauth",
                 })
         except Exception as e:
             log(f"Lỗi đọc XLSX: {e}")
@@ -177,7 +207,6 @@ def get_candidates(today_str: str, processed: list[str]) -> list[dict]:
             proxy_count[port] += 1
 
     return filtered, proxy_count
-
 def _get_proxy_port_for_machine(mid: int | None) -> str | None:
     """Tra port proxy của máy từ MASTER_XLSX."""
     if not mid or not MASTER_XLSX.exists():
@@ -227,7 +256,11 @@ def run_login(c: dict) -> dict:
             [PYTHON_EXE, str(GPM_SCRIPT), email],
             capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=600,
         )
-        success = "SUCCESS" in proc.stdout
+        combined = (proc.stdout or "") + "\n" + (proc.stderr or "")
+        success = (
+            (("SUCCESS" in combined and "LAUNCH_FAILED" not in combined and "EXCHANGE_FAILED" not in combined)
+             or "ALREADY_SUCCESS" in combined)
+        )
         if success:
             log(f"[M{mid:02d}] ✓ {email}")
             try:
@@ -255,7 +288,6 @@ def run_login(c: dict) -> dict:
     except Exception as ex:
         log(f"[M{mid:02d}] ERR {email}: {ex}")
         return {**c, "status": "FAIL", "error": str(ex)}
-
 def main():
     if not is_within_time_window():
         return 0
@@ -299,7 +331,7 @@ def main():
         futures = []
         for c in batch:
             futures.append(ex.submit(run_login, c))
-            time.sleep(2)  # stagger 2s
+            time.sleep(5)  # stagger 5s
         for fut in as_completed(futures):
             res = fut.result()
             processed.append(res["email"])
