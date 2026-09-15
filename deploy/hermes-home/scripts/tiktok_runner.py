@@ -27,6 +27,8 @@ NOW_ENV = "HERMES_CRON_NOW"
 ACTIVATION_ENV = "HERMES_CRON_RUNNER_ENABLED"
 PERMIT_ENV = "HERMES_CRON_PERMIT_FILE"
 
+os.environ["ANDROID_ADB_SERVER_PORT"] = "5037"
+
 # -- Dynamic Host Config (Kibe vs Admin) ------------------------------------
 try:
     if "D:/Taadaa/Tiktok_Reg" not in sys.path:
@@ -274,7 +276,7 @@ def _preflight_ensure_accounts(row: int, window_key: str) -> None:
         sys.stdout.write(f"tiktok_runner: preflight checking accounts for Row {row} (window {window_key})...\n")
         sys.stdout.flush()
         subprocess.run(
-            [target_python(), str(ensure_script), str(row)],
+            [target_python(), str(ensure_script), str(row), "--max-workers", "30"],
             check=False,
             timeout=5400,
         )
