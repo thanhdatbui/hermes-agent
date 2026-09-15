@@ -4,39 +4,45 @@
 post_morning_gmail_2fa_watchdog.py
 Watchdog cuốn chiếu: Bật 2FA Gmail sau khi Ca 1 nuôi feed hoàn thành.
 Khung giờ: 08:30 - 11:30 (HCM).
+Silent Watchdog: Tuyệt đối không in ra stdout nếu không có kết quả hành động.
 """
 
 import os
 import sys
 import json
-import glob
 import time
-import shutil
 import argparse
 import subprocess
-from datetime import datetime
+from datetime import datetime, date, timedelta
+from pathlib import Path
 
 # Định nghĩa đường dẫn
+ADB_EXE = r"C:\Users\Kibe\.GemPhoneFarm\app\adb-tool\adb.exe"
 STATE_DIR = r"D:\Taadaa\runtime\kibe\cron-state"
 STATE_FILE = os.path.join(STATE_DIR, "post_morning_gmail_2fa_state.json")
 FEED_REPORTED_FILE = os.path.join(STATE_DIR, "feed_session_reported.json")
-LOCK_DIR = r"D:\Taadaa\runtime\device_locks"
-EXCEL_CANDIDATE_PATHS = [
-    r"D:\OneDrive\TaadaaData\kibe\master_gmail_manager.xlsx",
-    r"D:\OneDrive\TaadaaData\kibe\gmail_clean_v2.xlsx",
-    r"D:\Taadaa\tiktok-add-2fa\gmail_clean_v2.xlsx",
-    r"D:\Taadaa\gmail_clean_v2.xlsx",
-    r"D:\Taadaa\tools\gmail_clean_v2.xlsx",
-]
-ENABLE_SCRIPT_PATHS = [
-    r"D:\Taadaa\tiktok-add-2fa\enable_gmail_2fa_device.py",
-    r"D:\Taadaa\tools\enable_gmail_2fa_device.py",
-    r"C:\Users\Kibe\AppData\Local\hermes\scripts\enable_gmail_2fa_device.py",
-]
+CLEAN_XLSX = Path(r"D:\OneDrive\TaadaaData\kibe\gmail_clean_v2.xlsx")
+PROXY_XLSX = Path(r"D:\OneDrive\TaadaaData\kibe\PROXYgandienthoai.xlsx")
+LOCK_DIR = Path(r"C:\Users\Kibe\AppData\Local\automation-core\device-locks")
+
+# Import module cron nuôi acc để đọc lịch chạy
+sys.path.insert(0, r"D:\Taadaa\tiktok-luot nuoi acc")
+try:
+    from python_runner.hermes_cron.models import StatePaths, parse_hcm_timestamp
+    from python_runner.hermes_cron.manifest import load_active
+    from python_runner.hermes_cron.source_config import SourceConfig
+    CRON_MODULE_AVAILABLE = True
+except Exception:
+    CRON_MODULE_AVAILABLE = False
+
+sys.path.insert(0, r"D:\Taadaa\tools")
+try:
+    from enable_gmail_2fa_device import enable_2fa_device
+except ImportError:
+    enable_2fa_device = None
 
 
 def log(msg: str):
-    # Ghi ra stderr để debug nếu cần, không in ra stdout để tránh trigger Telegram delivery
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     sys.stderr.write(f"[{now_str}] {msg}\n")
 
@@ -108,136 +114,116 @@ def is_feed_ca1_finished() -> bool:
 
 def is_feed_runner_active() -> bool:
     try:
-        cmd = 'tasklist /FI "IMAGENAME eq python.exe" /FO CSV /NH'
-        out = subprocess.check_output(cmd, shell=True, text=True, errors="ignore")
-        # Kiểm tra chi tiết qua wmic/powershell nếu cần, hoặc kiểm tra commandline
         ps_cmd = 'powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \\"Name=\'python.exe\'\\" | Select-Object -ExpandProperty CommandLine"'
         ps_out = subprocess.check_output(ps_cmd, shell=True, text=True, errors="ignore")
-        keywords = ["feed_session_runner", "run_feed_session", "feed_consumer"]
+        keywords = ["feed_session_runner", "run_feed_session", "feed_consumer", "multi_machine_feed_session"]
         for line in ps_out.splitlines():
             if any(kw in line.lower() for kw in keywords):
                 return True
         return False
-    except Exception as e:
-        # Fallback an toàn
+    except Exception:
         return False
 
 
-def has_active_device_locks() -> bool:
-    lock_dirs = [
-        os.path.expanduser(r"~/.codex/device-locks"),
-        os.path.expanduser(r"~\AppData\Local\automation-core\device-locks"),
-    ]
-    for ld in lock_dirs:
-        if os.path.isdir(ld):
-            try:
-                for f in glob.glob(os.path.join(ld, "*.lock.json")):
-                    try:
-                        with open(f, "r", encoding="utf-8") as fp:
-                            data = json.load(fp)
-                            st = data.get("status")
-                            if st in ("active", "running", "queued", "queued_v2"):
-                                return True
-                            if st == "blocked" and data.get("owner_active", True) is not False:
-                                return True
-                    except Exception:
-                        pass
-                for f in glob.glob(os.path.join(ld, "*.lock")):
-                    return True
-            except Exception:
-                pass
-    return False
-
-
-def get_online_devices() -> list:
+def get_online_devices() -> set:
     try:
-        out = subprocess.check_output("adb devices", shell=True, text=True, errors="ignore")
-        devices = []
-        for line in out.strip().splitlines()[1:]:
+        res = subprocess.run([ADB_EXE, "devices"], capture_output=True, text=True, timeout=10)
+        online = set()
+        for line in res.stdout.splitlines()[1:]:
             parts = line.strip().split()
             if len(parts) >= 2 and parts[1] == "device":
-                devices.append(parts[0])
-        return devices
+                online.add(parts[0])
+        return online
     except Exception as e:
         log(f"Lỗi lấy adb devices: {e}")
-        return []
+        return set()
 
 
-def find_existing_file(path_list: list) -> str:
-    for p in path_list:
-        if os.path.isfile(p):
-            return p
-    return ""
+def get_active_locks() -> set:
+    active = set()
+    if LOCK_DIR.exists():
+        for f in LOCK_DIR.glob("*.json"):
+            try:
+                d = json.loads(f.read_text(encoding="utf-8"))
+                if d.get("status") in ["active", "running", "queued", "blocked"]:
+                    m = d.get("machine")
+                    if m is not None:
+                        active.add(int(m))
+            except Exception:
+                pass
+    return active
 
 
-def scan_candidates(excel_path: str) -> list:
-    if not excel_path or not os.path.isfile(excel_path):
-        log(f"Không tìm thấy file Excel candidate tại các đường dẫn quy định.")
-        return []
+def get_upcoming_feed_machines(buffer_minutes=60) -> set:
+    if not CRON_MODULE_AVAILABLE:
+        return set()
     try:
-        import pandas as pd
-        df = pd.read_excel(excel_path)
-        candidates = []
-        # Tìm cột tương ứng: days_ago / created_at / 2fa status
-        # Tiêu chí: days_ago >= 1 (ngâm 24-48h) và chưa có 2FA
-        col_2fa = None
-        for c in df.columns:
-            if "2fa" in str(c).lower():
-                col_2fa = c
-                break
-        
-        col_days = None
-        for c in df.columns:
-            if "days" in str(c).lower() or "ngam" in str(c).lower() or "age" in str(c).lower():
-                col_days = c
-                break
+        root = Path(r"D:\Taadaa\runtime\kibe\cron-state")
+        source_file = Path(r"D:\Taadaa\runtime\kibe\cron-source\hermes_cron_source_config.json")
+        if not root.exists() or not source_file.exists():
+            return set()
+        source = SourceConfig.from_json(source_file)
+        now_dt = datetime.now().astimezone(parse_hcm_timestamp("2026-08-18T00:00:00+07:00").tzinfo)
+        day_str = now_dt.strftime("%Y-%m-%d")
+        active = load_active(StatePaths(root, root), day_str, source)
+        busy_window_end = now_dt + timedelta(minutes=buffer_minutes)
+        busy_machines = set()
+        for entry in active.payload.get("entries", []):
+            m = entry.get("machine")
+            if m is None:
+                continue
+            s_start = parse_hcm_timestamp(entry["slot_time"])
+            s_end = parse_hcm_timestamp(entry["slot_end"])
+            if (s_start <= now_dt < s_end) or (now_dt <= s_start < busy_window_end):
+                busy_machines.add(int(m))
+        return busy_machines
+    except Exception as e:
+        log(f"Lỗi khi đọc manifest cron nuôi acc: {e}")
+        return set()
 
-        col_device = None
-        for c in df.columns:
-            if "device" in str(c).lower() or "serial" in str(c).lower() or "may" in str(c).lower():
-                col_device = c
-                break
 
-        for idx, row in df.iterrows():
-            has_2fa = False
-            if col_2fa:
-                val = str(row[col_2fa]).strip().lower()
-                if val in ["yes", "true", "1", "done", "x", "ok"]:
-                    has_2fa = True
+def scan_candidates() -> list:
+    if not CLEAN_XLSX.exists():
+        log(f"Không tìm thấy file: {CLEAN_XLSX}")
+        return []
+    import openpyxl
+    wb = openpyxl.load_workbook(CLEAN_XLSX, read_only=True)
+    ws = wb.active
+    rows = list(ws.iter_rows(values_only=True))[1:]
+    wb.close()
 
-            days = 1
-            if col_days:
-                try:
-                    days = float(row[col_days])
-                except Exception:
-                    days = 1
-
-            dev = str(row[col_device]).strip() if col_device else ""
-            if not has_2fa and days >= 1:
+    today = date.today()
+    candidates = []
+    for r in rows:
+        stt = r[0]
+        email = str(r[1] or "").strip().lower()
+        two_fa = r[3]
+        created = r[6]
+        if not email.endswith("@gmail.com"):
+            continue
+        if two_fa is not None and str(two_fa).strip() not in ("", "None", "null"):
+            continue
+        if not created or not stt:
+            continue
+        try:
+            m = int(stt)
+            if isinstance(created, datetime):
+                dt = created.date()
+            elif isinstance(created, date):
+                dt = created
+            else:
+                dt = datetime.strptime(str(created)[:10], "%Y-%m-%d").date()
+            days_ago = (today - dt).days
+            if days_ago >= 1:
                 candidates.append({
-                    "index": idx,
-                    "device": dev,
-                    "email": row.get("email") or row.get("Email") or f"row_{idx}",
-                    "row": row.to_dict()
+                    "machine": m,
+                    "email": email,
+                    "days_ago": days_ago,
+                    "created": str(dt)
                 })
-        return candidates
-    except Exception as e:
-        log(f"Lỗi đọc candidate từ Excel: {e}")
-        return []
-
-
-def run_enable_2fa(device_id: str, enable_script: str, dry_run: bool = False) -> bool:
-    if dry_run:
-        time.sleep(0.5)
-        return True
-    try:
-        cmd = [sys.executable, enable_script, "--device", device_id]
-        log(f"Đang chạy lệnh: {' '.join(cmd)}")
-        res = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-        return res.returncode == 0
-    except Exception as e:
-        log(f"Lỗi khi bật 2FA cho device {device_id}: {e}")
-        return False
+        except Exception:
+            pass
+    return candidates
 
 
 def main():
@@ -250,7 +236,7 @@ def main():
     if not args.force and is_already_run_today():
         return 0
 
-    # 2. Kiểm tra khung giờ
+    # 2. Kiểm tra khung giờ (08:30 - 11:30)
     if not args.force and not is_within_time_window((8, 30), (11, 30)):
         return 0
 
@@ -262,53 +248,89 @@ def main():
     if not args.force:
         if is_feed_runner_active():
             return 0
-        if has_active_device_locks():
-            return 0
 
-    log("Đủ điều kiện kích hoạt bật 2FA Gmail sau Ca 1!")
+    candidates = scan_candidates()
+    if not candidates:
+        return 0
 
-    excel_path = find_existing_file(EXCEL_CANDIDATE_PATHS)
-    enable_script = find_existing_file(ENABLE_SCRIPT_PATHS)
+    online = get_online_devices()
+    active_locks = get_active_locks()
+    busy_feed = get_upcoming_feed_machines(buffer_minutes=60)
+
+    import openpyxl
+    if not PROXY_XLSX.exists():
+        log(f"Không tìm thấy file: {PROXY_XLSX}")
+        return 0
+
+    wb_proxy = openpyxl.load_workbook(PROXY_XLSX, read_only=True)
+    ws_proxy = wb_proxy.active
+    serials = {}
+    for r in list(ws_proxy.iter_rows(values_only=True))[1:]:
+        if r[0] and r[1]:
+            try:
+                serials[int(r[0])] = str(r[1]).strip()
+            except Exception:
+                pass
+    wb_proxy.close()
+
+    eligible = []
+    for c in candidates:
+        m = c["machine"]
+        s = serials.get(m)
+        if not s or s not in online:
+            continue
+        if not args.force:
+            if m in active_locks:
+                continue
+            if m in busy_feed:
+                continue
+        eligible.append((m, s, c["email"]))
+
+    if not eligible:
+        return 0
 
     start_time = datetime.now()
-    online_devices = get_online_devices()
-    log(f"Online devices hiện tại: {online_devices}")
-
-    candidates = scan_candidates(excel_path)
-    log(f"Tìm thấy {len(candidates)} account/dòng thỏa mãn ngâm >= 1 ngày và chưa có 2FA.")
-
-    # Gom danh sách thiết bị cần chạy
-    eligible_devices = []
-    if online_devices:
-        eligible_devices = online_devices
-    else:
-        if args.dry_run:
-            eligible_devices = ["DEVICE_DRYRUN_01", "DEVICE_DRYRUN_02"]
-        else:
-            log("Không có thiết bị online để thao tác.")
-
     success_list = []
     fail_list = []
 
-    for dev in eligible_devices:
-        log(f"-> Xử lý bật 2FA trên thiết bị: {dev}")
-        ok = run_enable_2fa(dev, enable_script, dry_run=args.dry_run)
-        if ok:
-            success_list.append(dev)
+    for m, s, email in eligible:
+        log(f"-> Bắt đầu bật 2FA Máy {m} ({s}): {email}")
+        if args.dry_run:
+            success_list.append(f"M{m} ({email})")
+            continue
+
+        if enable_2fa_device:
+            try:
+                res = enable_2fa_device(s, email)
+                if isinstance(res, dict) and res.get("status") in ["SUCCESS", "OK"]:
+                    success_list.append(f"M{m} ({email})")
+                else:
+                    fail_list.append(f"M{m} ({email})")
+            except Exception as e:
+                log(f"Lỗi khi chạy enable_2fa_device cho M{m}: {e}")
+                fail_list.append(f"M{m} ({email})")
         else:
-            fail_list.append(dev)
+            cmd = [sys.executable, r"D:\Taadaa\tools\enable_gmail_2fa_device.py", s, email]
+            try:
+                p = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+                if p.returncode == 0 and "SUCCESS" in p.stdout:
+                    success_list.append(f"M{m} ({email})")
+                else:
+                    fail_list.append(f"M{m} ({email})")
+            except Exception as e:
+                log(f"Lỗi thực thi lệnh M{m}: {e}")
+                fail_list.append(f"M{m} ({email})")
 
     end_time = datetime.now()
     duration_min = round((end_time - start_time).total_seconds() / 60, 1)
 
-    report = f"""
-[BÁO CÁO 2FA GMAIL SAU CA SÁNG]
+    if success_list or fail_list:
+        report = f"""[BÁO CÁO 2FA GMAIL SAU CA SÁNG]
 - Thời gian: {start_time.strftime('%H:%M')} -> {end_time.strftime('%H:%M')} ({duration_min} phút)
-- Tổng máy đủ điều kiện: {len(eligible_devices)}
-- Success (S): {success_list}
-- Fail (F): {fail_list}
-"""
-    print(report)
+- Tổng máy xử lý: {len(eligible)}
+- Success ({len(success_list)}): {success_list}
+- Fail ({len(fail_list)}): {fail_list}"""
+        print(report)
 
     if not args.dry_run and len(success_list) > 0:
         save_state_success({
