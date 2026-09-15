@@ -2,7 +2,7 @@
 Watchdog cuốn chiếu: Tự động chạy upload Avatar cho các acc CHƯA BAO GIỜ ĐƯỢC UP
 ngay sau ca tối (khung giờ 21:00 -> 23:45) và CHỈ BÁO CÁO KHI CHẠY XONG vào Farm Alert.
 
-Kênh Farm Alert: Telegram chat_id = -5373649734
+Kênh Farm Alert: Telegram chat_id = -5188753741
 
 Nguyên tắc:
 - Quét các workbook theo host_id (admin vs kibe).
@@ -28,7 +28,7 @@ from zoneinfo import ZoneInfo
 
 HCMC = ZoneInfo("Asia/Ho_Chi_Minh")
 
-FARM_ALERT_CHAT_ID = "-5373649734"
+FARM_ALERT_CHAT_ID = "-5188753741"
 LAUNCHER = Path(r"D:\Taadaa\Tiktok-video\run_tiktok_upload_avatar.ps1")
 TIKTOK_VIDEO_DIR = Path(r"D:\Taadaa\Tiktok-video")
 BATCH_RUNS_DIR = Path(r"D:\CodexRuntime\tiktok-video\batch-runs")
@@ -228,16 +228,19 @@ def is_feed_active() -> bool:
     return False
 
 
-def get_tik_avatar_status(tik: int, workbook_dir: Path | None = None) -> tuple[int, list[int]]:
-    """Đọc workbook TikN.xlsx và trả về (total_accounts_with_id, unuploaded_machines).
-    - total_accounts_with_id: Số máy có ID nick TikTok hợp lệ.
-    - unuploaded_machines: Danh sách máy có ID nick nhưng Avatar != 'OK'.
+def get_tik_avatar_stats(tik: int, workbook_dir: Path | None = None) -> dict:
+    """Đọc workbook TikN.xlsx và trả về thống kê avatar:
+    {
+        'unuploaded': list[int],
+        'uploaded_count': int,
+        'total_accounts': int
+    }
     """
     wb_base = workbook_dir or WORKBOOK_DIR
     fn = f"Tik{tik}.xlsx" if tik != 3 else "tik3.xlsx"
     wb_path = wb_base / fn
     if not wb_path.exists():
-        return 0, []
+        return {"unuploaded": [], "uploaded_count": 0, "total_accounts": 0}
 
     try:
         import openpyxl
@@ -245,7 +248,7 @@ def get_tik_avatar_status(tik: int, workbook_dir: Path | None = None) -> tuple[i
         ws = wb["TaiKhoan"] if "TaiKhoan" in wb.sheetnames else wb.active
         rows = list(ws.iter_rows(values_only=True))
         if not rows:
-            return 0, []
+            return {"unuploaded": [], "uploaded_count": 0, "total_accounts": 0}
 
         header = [str(c or "").strip().lower() for c in rows[0]]
         id_col = -1
@@ -259,8 +262,9 @@ def get_tik_avatar_status(tik: int, workbook_dir: Path | None = None) -> tuple[i
         if id_col == -1:
             id_col = 2
 
-        total_with_id = 0
         unuploaded = []
+        uploaded_count = 0
+        total_accounts = 0
         for r in rows[1:]:
             m_val = r[0]
             if m_val is None:
@@ -274,22 +278,31 @@ def get_tik_avatar_status(tik: int, workbook_dir: Path | None = None) -> tuple[i
             if not nick or str(nick).strip().lower() in ("none", "null", "", "0", "missing_id"):
                 continue
 
-            total_with_id += 1
+            total_accounts += 1
             ava = r[ava_col] if (ava_col != -1 and ava_col < len(r)) else None
-            if not ava or str(ava).strip().lower() not in ("ok", "present", "true", "done", "yes"):
+            if ava and str(ava).strip().lower() in ("ok", "present", "true", "done", "yes"):
+                uploaded_count += 1
+            else:
                 unuploaded.append(m_int)
 
         wb.close()
-        return total_with_id, sorted(list(set(unuploaded)))
+        return {
+            "unuploaded": sorted(list(set(unuploaded))),
+            "uploaded_count": uploaded_count,
+            "total_accounts": total_accounts
+        }
     except Exception as e:
         sys.stderr.write(f"Error reading {fn}: {e}\n")
-        return 0, []
+        return {"unuploaded": [], "uploaded_count": 0, "total_accounts": 0}
 
 
 def get_unuploaded_machines(tik: int, workbook_dir: Path | None = None) -> list[int]:
-    """Helper giữ tương thích ngược: chỉ lấy unuploaded_machines."""
-    _, unuploaded = get_tik_avatar_status(tik, workbook_dir=workbook_dir)
-    return unuploaded
+    return get_tik_avatar_stats(tik, workbook_dir=workbook_dir)["unuploaded"]
+
+
+def get_tik_avatar_status(tik: int, workbook_dir: Path | None = None) -> tuple[int, list[int]]:
+    st = get_tik_avatar_stats(tik, workbook_dir=workbook_dir)
+    return st["total_accounts"], st["unuploaded"]
 
 
 def is_powershell_batch_alive() -> bool:
@@ -349,8 +362,7 @@ def check_batch_status(state: dict, state_file: Path | None = None) -> bool:
 def format_report_html(
     host_id: str,
     all_done: bool,
-    unuploaded_by_tik: dict[int, list[int]],
-    tik_status_by_tik: dict[int, tuple[int, list[int]]] | None = None,
+    stats_by_tik: dict[int, dict],
     target_tiks: list[int] | None = None,
     now_dt: datetime | None = None,
 ) -> str:
@@ -358,34 +370,38 @@ def format_report_html(
     if now_dt is None:
         now_dt = now_hcmc()
     if target_tiks is None:
-        target_tiks = list(unuploaded_by_tik.keys())
+        target_tiks = list(stats_by_tik.keys())
 
-    total_unuploaded = sum(len(unuploaded_by_tik.get(tik, [])) for tik in target_tiks)
+    total_unuploaded = sum(len(stats_by_tik.get(tik, {}).get("unuploaded", [])) for tik in target_tiks)
+    total_uploaded = sum(stats_by_tik.get(tik, {}).get("uploaded_count", 0) for tik in target_tiks)
+    total_accounts = sum(stats_by_tik.get(tik, {}).get("total_accounts", 0) for tik in target_tiks)
+    total_pct = (total_uploaded / total_accounts * 100) if total_accounts > 0 else 0.0
 
     tik_lines = []
     for tik in target_tiks:
-        unuploaded = unuploaded_by_tik.get(tik, [])
-        total_with_id = None
-        if tik_status_by_tik and tik in tik_status_by_tik:
-            total_with_id, _ = tik_status_by_tik[tik]
+        st = stats_by_tik.get(tik, {})
+        unuploaded = st.get("unuploaded", [])
+        up_cnt = st.get("uploaded_count", 0)
+        tot_cnt = st.get("total_accounts", 0)
+        pct = (up_cnt / tot_cnt * 100) if tot_cnt > 0 else 0.0
 
-        if total_with_id == 0:
+        if tot_cnt == 0:
             tik_lines.append(f"• <b>Tik {tik}:</b> chưa gán nick (0/80 acc)")
         elif unuploaded:
             preview = ",".join(map(str, unuploaded[:15]))
             suffix = f"... (+{len(unuploaded)-15})" if len(unuploaded) > 15 else ""
-            acc_info = f"/{total_with_id} acc có ID" if total_with_id is not None else ""
-            tik_lines.append(f"• <b>Tik {tik}:</b> còn {len(unuploaded)}{acc_info} chưa up ({preview}{suffix})")
+            tik_lines.append(
+                f"• <b>Tik {tik}:</b> Đã có {up_cnt}/{tot_cnt} ({pct:.1f}%) — còn {len(unuploaded)} máy ({preview}{suffix})"
+            )
         else:
-            acc_info = f" ({total_with_id}/80 acc)" if total_with_id is not None else ""
-            tik_lines.append(f"• <b>Tik {tik}:</b> hoàn tất 100%{acc_info}")
+            tik_lines.append(f"• <b>Tik {tik}:</b> Đã có {up_cnt}/{tot_cnt} (hoàn tất 100%)")
 
     if all_done or total_unuploaded == 0:
         title = f"🎉 <b>[FARM REPORT][{host_id.upper()}] HOÀN TẤT UP AVATAR CHO CÁC ACC ĐÃ CÓ NICK</b>"
-        status_line = "• <b>Trạng thái:</b> Tất cả các acc hiện có nick đã được up avatar (0 máy tồn)"
+        status_line = f"• <b>Trạng thái:</b> Tất cả các acc hiện có nick đã được up avatar ({total_uploaded}/{total_accounts} acc)"
     else:
         title = f"⏰ <b>[FARM REPORT][{host_id.upper()}] BÁO CÁO UP AVATAR: HẾT KHUNG GIỜ</b>"
-        status_line = f"• <b>Trạng thái:</b> Hết khung giờ ca tối (sau 23:30), còn {total_unuploaded} máy chưa up"
+        status_line = f"• <b>Trạng thái:</b> Hết khung giờ ca tối (sau 23:30) — Đã có: {total_uploaded}/{total_accounts} acc ({total_pct:.1f}%), còn {total_unuploaded} máy chưa up"
 
     lines = [
         title,
@@ -397,7 +413,12 @@ def format_report_html(
     return "\n".join(lines)
 
 
-def report_final_summary(state: dict, all_done: bool, host_context: dict | None = None) -> None:
+def report_final_summary(
+    state: dict,
+    all_done: bool,
+    host_context: dict | None = None,
+    stats_by_tik: dict[int, dict] | None = None,
+) -> None:
     """Gửi DUY NHẤT 1 báo cáo tổng kết khi tất cả Tik hoàn tất 100% hoặc hết khung giờ ca tối."""
     now = now_hcmc()
     sess_key = get_session_key(now)
@@ -409,22 +430,17 @@ def report_final_summary(state: dict, all_done: bool, host_context: dict | None 
     wb_dir = ctx["workbook_dir"]
     host_id = ctx["host_id"]
 
-    all_unuploaded: dict[int, list[int]] = {}
-    tik_status_by_tik: dict[int, tuple[int, list[int]]] = {}
-    for tik in target_tiks:
-        total_with_id, unuploaded = get_tik_avatar_status(tik, workbook_dir=wb_dir)
-        tik_status_by_tik[tik] = (total_with_id, unuploaded)
-        all_unuploaded[tik] = unuploaded
+    if stats_by_tik is None:
+        stats_by_tik = {tik: get_tik_avatar_stats(tik, workbook_dir=wb_dir) for tik in target_tiks}
 
     report_msg = format_report_html(
         host_id=host_id,
         all_done=all_done,
-        unuploaded_by_tik=all_unuploaded,
-        tik_status_by_tik=tik_status_by_tik,
+        stats_by_tik=stats_by_tik,
         target_tiks=target_tiks,
         now_dt=now,
     )
-    send_farm_alert(report_msg)
+    # Cronjob no_agent=True tu dong bat stdout (print) gui Telegram Farm Alert, tranh goi send_farm_alert gay gui dup
     print(report_msg)
 
     state["last_reported_session"] = sess_key

@@ -12,9 +12,8 @@ import urllib.parse
 from pathlib import Path
 
 DEFAULT_LOCK_ROOT = Path.home() / ".codex" / "device-locks"
-ALERT_THRESHOLD_MINUTES = 60  # Cảnh báo nếu lock thường (running/feed) giữ lâu hơn 60 phút (1 giờ)
-ALERT_THRESHOLD_BLOCKED_MINUTES = 60  # Máy bị blocked giữ lock tối đa 60 phút cho operator inspect
-
+ALERT_THRESHOLD_MINUTES = 60
+ALERT_THRESHOLD_BLOCKED_MINUTES = 60
 
 def get_lock_threshold(status: str) -> tuple[int, bool]:
     """Trả về (ngưỡng_phút, is_blocked) tùy theo trạng thái lock."""
@@ -24,7 +23,7 @@ def get_lock_threshold(status: str) -> tuple[int, bool]:
     return threshold, is_blocked
 
 # Nhóm Telegram nhận báo cáo riêng về Device Locks
-DEVICE_LOCK_CHAT_ID = os.environ.get("DEVICE_LOCK_ALERT_CHAT_ID") or "-5518578446"
+DEVICE_LOCK_CHAT_ID = os.environ.get("DEVICE_LOCK_ALERT_CHAT_ID") or "-5188753741"
 
 
 def get_telegram_bot_token() -> str | None:
@@ -59,49 +58,8 @@ def get_telegram_bot_token() -> str | None:
 
 
 def send_telegram_alert(text: str, chat_id: str = DEVICE_LOCK_CHAT_ID) -> bool:
-    token = get_telegram_bot_token()
-    if not token:
-        print("[watchdog] TELEGRAM_BOT_TOKEN not found, outputting to console only:")
-        print(text)
-        return False
-
-    # Chia nhỏ message thành các chunk <= 4000 ký tự để không bị lỗi HTTP 400 Bad Request: message is too long của Telegram API
-    chunks = []
-    current_chunk = []
-    current_len = 0
-    for line in text.split("\n"):
-        if current_len + len(line) + 1 > 4000:
-            if current_chunk:
-                chunks.append("\n".join(current_chunk))
-                current_chunk = []
-                current_len = 0
-        current_chunk.append(line)
-        current_len += len(line) + 1
-    if current_chunk:
-        chunks.append("\n".join(current_chunk))
-
-    success = True
-    for chunk in chunks:
-        try:
-            url = f"https://api.telegram.org/bot{token}/sendMessage"
-            payload = {
-                "chat_id": chat_id,
-                "text": chunk,
-                "parse_mode": "HTML",
-                "disable_web_page_preview": True,
-            }
-            req = urllib.request.Request(
-                url,
-                data=json.dumps(payload).encode("utf-8"),
-                headers={"Content-Type": "application/json"},
-            )
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                if resp.status != 200:
-                    success = False
-        except Exception as e:
-            print(f"[watchdog] Failed to send Telegram alert: {e}")
-            success = False
-    return success
+    # Rule 7: Hermes Cron no_agent=True tự deliver stdout print, tránh gửi đúp 2 lần
+    return True
 
 
 def scan_active_locks(lock_root: Path = DEFAULT_LOCK_ROOT) -> list[dict]:
@@ -189,12 +147,10 @@ def run_watchdog():
 
     locks = scan_active_locks()
     if not locks:
-        print("[watchdog] Healthy: No active device locks found.")
         return 0
 
     overdue_locks = [l for l in locks if l["duration_minutes"] >= get_lock_threshold(l.get("status", ""))[0]]
     if not overdue_locks:
-        print(f"[watchdog] Healthy: {len(locks)} máy đang giữ lock bình thường (< 60p). Không có máy quá hạn (Silent).")
         return 0
 
     # Ưu tiên đưa máy quá hạn lên đầu danh sách
@@ -210,19 +166,19 @@ def run_watchdog():
     now_str = datetime.datetime.now().strftime("%H:%M %d/%m/%Y")
     lines = [
         f"⚠️ <b>[CẢNH BÁO DEVICE LOCKS QUÁ HẠN]</b> - <i>{now_str}</i>",
-        f"Tổng số máy giữ lock: <b>{len(locks)}</b> | Quá hạn (>60p): <b>{len(overdue_locks)}</b>",
+        f"Tổng số máy giữ lock: <b>{len(locks)}</b> | Quá hạn (>90p): <b>{len(overdue_locks)}</b>",
         "",
     ]
 
     if len(overdue_locks) >= 10:
-        lines.append(f"⚠️ <b>CẢNH BÁO NGHẼN LOCK DIỆN RỘNG: Có {len(overdue_locks)} máy vượt hạn mức 60p!</b>\n")
+        lines.append(f"⚠️ <b>CẢNH BÁO NGHẼN LOCK DIỆN RỘNG: Có {len(overdue_locks)} máy vượt hạn mức 90p!</b>\n")
 
     for l in sorted_locks:
         m_str = f"Máy {int(l['machine']):02d}" if isinstance(l['machine'], int) or str(l['machine']).isdigit() else f"Máy {l['machine']}"
         threshold, is_blocked = get_lock_threshold(l.get("status", ""))
         warning = ""
         if l["duration_minutes"] >= threshold:
-            warning = f" ⚠️ (VƯỢT NGƯỠNG 60P: {l['duration_minutes']}p)"
+            warning = f" ⚠️ (VƯỢT NGƯỠNG {threshold}P: {l['duration_minutes']}p)"
         lines.append(f"• <b>[{m_str}]</b>: {l['project']} (PID {l['pid']})")
         lines.append(f"  └ Trạng thái: <code>{l['status']}</code> | Đã lock: <b>{l['duration_minutes']} phút</b> (từ {l['mtime']}){warning}")
 
