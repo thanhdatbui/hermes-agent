@@ -130,7 +130,7 @@ def _determine_row(now: datetime) -> tuple[int, int, str] | None:
     # Day 1, 3: Row chẵn (8, 2, 4, 6) - Cày Follow + Up
     # Day 2: Row lẻ (7, 1, 3, 5) - DƯỠNG SINH RỬA TRUST (CHỈ LƯỚT FEED, 0 FOLLOW, KHÔNG UP)
     # Day 5: Row chẵn (8, 2, 4, 6) - DƯỠNG SINH RỬA TRUST (CHỈ LƯỚT FEED, 0 FOLLOW, KHÔNG UP)
-    epoch = datetime(2026, 9, 1).date()
+    epoch = datetime(2026, 9, 3).date()
     day_cycle = (now.date() - epoch).days % 6
     parity = 1 if day_cycle in (0, 2, 4) else 0  # 1 = row lẻ, 0 = row chẵn
     row = slots[parity]
