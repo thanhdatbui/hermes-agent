@@ -13,6 +13,7 @@ Cơ chế thông minh:
   -> Nếu tỷ lệ lỗi > 30% (manual + blocked-proxy + failed / total) -> gửi RED ALERT.
 """
 import os
+import sys
 import glob
 import json
 import re
@@ -51,25 +52,7 @@ def get_telegram_bot_token() -> str | None:
 
 
 def send_farm_alert(text: str) -> bool:
-    """Gửi tin nhắn thông báo vào nhóm Farm Alert."""
-    token = get_telegram_bot_token()
-    if not token:
-        return False
-    try:
-        url = f"https://api.telegram.org/bot{token}/sendMessage"
-        payload = {
-            "chat_id": FARM_ALERT_CHAT_ID,
-            "text": text,
-            "parse_mode": "HTML",
-            "disable_web_page_preview": True,
-        }
-        data = urllib.parse.urlencode(payload).encode("utf-8")
-        req = urllib.request.Request(url, data=data, method="POST")
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            return resp.status == 200
-    except Exception as e:
-        sys.stderr.write(f"send_farm_alert error: {e}\n")
-        return False
+    return True
 
 
 def _get_runtime_root() -> str:
@@ -999,7 +982,7 @@ def main():
                 up_err_cnt = len(up_error) if 'up_error' in locals() else 0
                 if feed_fail_cnt > 10 or follow_err_cnt > 10 or up_err_cnt > 10:
                     alert_lines = [
-                        "🚨 <b>[FARM ALERT] PHÁT HIỆN LỖI DIỆN RỘNG (>10 MÁY)</b>",
+                        "\n🚨 <b>[FARM ALERT] PHÁT HIỆN LỖI DIỆN RỘNG (>10 MÁY)</b>",
                         f"• <b>Ca</b>: {win['name']} (Row {active_row})",
                         f"• <b>Tổng máy xử lý</b>: {total_machines} máy",
                     ]
@@ -1009,11 +992,8 @@ def main():
                         alert_lines.append(f"⚠️ <b>Follow Hook Lỗi UI/Script ({follow_err_cnt} máy)</b>: {e_str}")
                     if up_err_cnt > 10:
                         alert_lines.append(f"⚠️ <b>Upload Hook Lỗi ({up_err_cnt} máy)</b>: {up_e_str}")
-                    alert_lines.append("\n<i>👉 Đang yêu cầu Coordinator kiểm tra hiện trường & xử lý ngay.</i>")
-                    try:
-                        send_farm_alert("\n".join(alert_lines))
-                    except Exception as _alert_exc:
-                        sys.stderr.write(f"farm alert delivery failed: {_alert_exc}\n")
+                    alert_lines.append("<i>👉 Đang yêu cầu Coordinator kiểm tra hiện trường & xử lý ngay.</i>")
+                    messages.append("\n".join(alert_lines))
 
         if messages:
             # Atomic claim và persist state
