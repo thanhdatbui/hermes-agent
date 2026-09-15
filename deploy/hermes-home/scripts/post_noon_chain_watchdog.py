@@ -152,7 +152,7 @@ def run_tiktok_2fa_batch(dry_run: bool = False) -> tuple[int, str]:
         return 1, f"Loi chay TikTok 2FA: {exc}"
 
 
-def parse_summary_counts(output: str, log_dir_hint: Path | None = None) -> tuple[int, int, int]:
+def parse_summary_counts(output: str, log_dir_hint: Path | None = None, min_mtime: float | None = None) -> tuple[int, int, int]:
     # 1. Trích xuất chuẩn TOTAL=... SUCCESS=... FAILED=...
     m = re.search(r"TOTAL=(\d+)\s+SUCCESS=(\d+)\s+FAILED=(\d+)", output)
     if m:
@@ -171,8 +171,11 @@ def parse_summary_counts(output: str, log_dir_hint: Path | None = None) -> tuple
     # 3. Fallback đọc summary.json từ runtime logs (cho Reg Gmail - hỗ trợ UTF-8 BOM từ PowerShell)
     if log_dir_hint and log_dir_hint.is_dir():
         try:
-            candidates = sorted(log_dir_hint.glob("logs_parallel_*/summary.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+            candidates = list(log_dir_hint.glob("logs_parallel_*/summary.json"))
+            if min_mtime is not None:
+                candidates = [p for p in candidates if p.stat().st_mtime >= min_mtime]
             if candidates:
+                candidates.sort(key=lambda p: p.stat().st_mtime, reverse=True)
                 data = json.loads(candidates[0].read_text(encoding="utf-8-sig"))
                 return int(data.get("total", 0)), int(data.get("success", 0)), int(data.get("failed", 0))
         except Exception:
@@ -214,6 +217,7 @@ def main() -> int:
 
     # BẮT ĐẦU CHUỖI
     start_dt = datetime.now(HCMC)
+    start_epoch = start_dt.timestamp()
     sys.stderr.write(f"=== KÍCH HOẠT CHUỖI SAU CA TRƯA LÚC {start_dt.strftime('%H:%M:%S %d/%m/%Y')} ===\n")
 
     # Phase 1: Reg Gmail
@@ -229,19 +233,34 @@ def main() -> int:
     end_dt = datetime.now(HCMC)
     duration_min = max(1, int((end_dt - start_dt).total_seconds() // 60))
 
-    g_tot, g_suc, g_fail = parse_summary_counts(g_out, log_dir_hint=Path("D:/CodexRuntime/codex_gmail_debug-register-gmail"))
-    t_tot, t_suc, t_fail = parse_summary_counts(t2fa_out)
+    if g_code != 0:
+        g_tot, g_suc, g_fail = 0, 0, 0
+        phase1_header = f"- Phase 1 (Reg Gmail - Code {g_code}): LỖI KHỞI ĐỘNG RUNNER"
+    else:
+        g_tot, g_suc, g_fail = parse_summary_counts(
+            g_out,
+            log_dir_hint=Path("D:/CodexRuntime/codex_gmail_debug-register-gmail"),
+            min_mtime=start_epoch
+        )
+        phase1_header = f"- Phase 1 (Reg Gmail - Code {g_code}):"
+
+    if t2fa_code != 0:
+        t_tot, t_suc, t_fail = 0, 0, 0
+        phase2_header = f"- Phase 2 (Add 2FA TikTok - Code {t2fa_code}): LỖI KHỞI ĐỘNG RUNNER"
+    else:
+        t_tot, t_suc, t_fail = parse_summary_counts(t2fa_out)
+        phase2_header = f"- Phase 2 (Add 2FA TikTok - Code {t2fa_code}):"
 
     report_lines = [
         "[BÁO CÁO CHUỖI SAU CA TRƯA] Reg Gmail -> Add 2FA TikTok",
         f"- Thời gian: {start_dt.strftime('%H:%M')} -> {end_dt.strftime('%H:%M')} ({duration_min} phút)",
         "",
-        f"- Phase 1 (Reg Gmail - Code {g_code}):",
+        phase1_header,
         f"  + Tổng máy: {g_tot}",
         f"  + Success ({g_suc})",
         f"  + Fail ({g_fail})",
         "",
-        f"- Phase 2 (Add 2FA TikTok - Code {t2fa_code}):",
+        phase2_header,
         f"  + Tổng máy: {t_tot}",
         f"  + Success ({t_suc})",
         f"  + Fail ({t_fail})",
