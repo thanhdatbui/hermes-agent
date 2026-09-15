@@ -125,10 +125,18 @@ def _determine_row(now: datetime) -> tuple[int, int, str] | None:
         return None
 
     session_index = 2 if slot_key in ((1, 30), (8, 0), (14, 0), (20, 0)) else 1
-    parity = now.date().day % 2  # 0 = even, 1 = odd
+    # Chu kỳ xoay tua 6 ngày cân bằng farm (4 acc/ngày + ngày dưỡng sinh rửa trust):
+    # Day 0, 4: Row lẻ (7, 1, 3, 5) - Cày Follow + Up
+    # Day 1, 3: Row chẵn (8, 2, 4, 6) - Cày Follow + Up
+    # Day 2: Row lẻ (7, 1, 3, 5) - DƯỠNG SINH RỬA TRUST (CHỈ LƯỚT FEED, 0 FOLLOW, KHÔNG UP)
+    # Day 5: Row chẵn (8, 2, 4, 6) - DƯỠNG SINH RỬA TRUST (CHỈ LƯỚT FEED, 0 FOLLOW, KHÔNG UP)
+    epoch = datetime(2026, 9, 1).date()
+    day_cycle = (now.date() - epoch).days % 6
+    parity = 1 if day_cycle in (0, 2, 4) else 0  # 1 = row lẻ, 0 = row chẵn
     row = slots[parity]
+    is_rest_day = (day_cycle in (2, 5))
     window_key = f"{now.date().isoformat()}T{window_suffix}"
-    return row, session_index, window_key
+    return row, session_index, window_key, is_rest_day
 
 
 # ---------------------------------------------------------------------------
@@ -318,7 +326,7 @@ def _count_valid_accounts_for_row(row: int) -> int:
 # Spawn
 # ---------------------------------------------------------------------------
 
-def _spawn_feed_session(row: int, session_index: int, now: datetime) -> int:
+def _spawn_feed_session(row: int, session_index: int, now: datetime, is_rest_day: bool = False) -> int:
     """Spawn run-feed-session.ps1 for the given Row and SessionIndex."""
     repo = repo_root()
     ps1_path = repo / "scripts" / "run-feed-session.ps1"
@@ -338,8 +346,9 @@ def _spawn_feed_session(row: int, session_index: int, now: datetime) -> int:
         "-Python", target_python(),
         "-Row", str(row),
         "-SessionIndex", str(session_index),
-        # Quy định farm: chỉ kích hoạt hook upload video ở Phiên 2 (session_index == 2); Phiên 1 chỉ lướt feed thuần
-        *( ["-AllowUploadHook"] if session_index == 2 else [] ),
+        # Cơ chế cơ hội (Opportunistic Upload): Cho phép upload ở cả Phiên 1 & Phiên 2 khi KHÔNG phải ngày dưỡng sinh.
+        # Hệ thống có sổ cái shift_upload_history.json tự động chặn nếu phiên trước đã đăng thành công.
+        *( ["-AllowUploadHook"] if not is_rest_day else [] ),
         "-Preset", "full",
         "-AccountWorkbook", ACCOUNT_WORKBOOK.replace("/", "\\"),
         "-ArtifactRoot", artifact_root,
@@ -350,12 +359,16 @@ def _spawn_feed_session(row: int, session_index: int, now: datetime) -> int:
         "-Run",
     ]
 
+    child_env = dict(os.environ)
+    if is_rest_day:
+        child_env["TAADAA_REST_DAY_NO_FOLLOW"] = "1"
     kwargs: dict = {
         "cwd": str(repo),
         "stdin": subprocess.DEVNULL,
         "stdout": subprocess.DEVNULL,
         "stderr": subprocess.DEVNULL,
         "close_fds": True,
+        "env": child_env,
     }
     if sys.platform == "win32":
         kwargs["creationflags"] = 0x08000200  # CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW
@@ -389,7 +402,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if result is None:
         return 0
 
-    row, session_index, window_key = result
+    row, session_index, window_key, is_rest_day = result
 
     if _already_ran(window_key):
         return 0
@@ -402,9 +415,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         _save_state(row, window_key, now)
         return 0
 
-    sys.stdout.write(f"tiktok_runner: Row {row} co {valid_count} accounts hop le.\n")
+    rest_tag = " [REST DAY - PURE FEED]" if is_rest_day else ""
+    sys.stdout.write(f"tiktok_runner: Row {row} co {valid_count} accounts hop le{rest_tag}.\n")
 
-    rc = _spawn_feed_session(row, session_index, now)
+    rc = _spawn_feed_session(row, session_index, now, is_rest_day)
     if rc == 0:
         _save_state(row, window_key, now)
     return rc
