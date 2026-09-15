@@ -53,6 +53,19 @@ def is_download_running():
     return False
 
 
+def is_render_running():
+    if not psutil:
+        return False
+    for p in psutil.process_iter(["name", "cmdline"]):
+        try:
+            cmd = " ".join(p.info["cmdline"] or []).lower()
+            if "random_batch_render.py" in cmd or "ffmpeg" in cmd:
+                return True
+        except Exception:
+            pass
+    return False
+
+
 def get_source_video_stats(host_info):
     video_goc = host_info["video_goc"]
     state_db = host_info["state_db"]
@@ -163,6 +176,9 @@ def main():
     src_folders, src_ge30, src_ge45, src_mp4 = get_source_video_stats(host_info)
 
     # 2. Render Tik1..Tik8
+    is_render = is_render_running()
+    render_icon = "🟢" if is_render else "⚪"
+    render_text = "Đang chạy" if is_render else "Đang dừng"
     tik_stats, total_rendered = get_render_stats(host_info)
 
     tik_lines = []
@@ -191,6 +207,7 @@ def main():
 • Tổng video mp4 gốc: <b>{src_mp4:,}</b> video
 
 🎬 <b>2. Tiến độ Render Tik1..Tik8 (<code>{host_info['render_root']}</code>):</b>
+• Trạng thái render: {render_icon} <b>{render_text}</b>
 {tik_output}
 
 🔥 <b>Tổng clip render toàn farm:</b> <b>{total_rendered:,}</b> video"""
