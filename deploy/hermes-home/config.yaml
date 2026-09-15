@@ -215,6 +215,10 @@ display:
 fallback_providers:
 - model: 9r-free
   provider: custom:9router
+- model: opencode-free
+  provider: custom:9router
+- model: ag-gemini-pool-3
+  provider: omni
 gateway:
   max_workers: 50
   media_delivery:
