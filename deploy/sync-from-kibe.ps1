@@ -23,11 +23,17 @@ if (Test-Path $CfgSrc) {
     # Thay 127.0.0.1 thành IP Kibe để Admin kết nối qua mạng LAN
     $cfgContent = Get-Content $CfgDst -Raw -Encoding utf8
     $cfgContent = $cfgContent -replace "127\.0\.0\.1", $KibeIP
-    # Neu hooks tro den C:/Users/Kibe khong ton tai tren may nay, loai bo block hooks
-    if ($cfgContent -match "C:/Users/Kibe") {
-        $cfgContent = [regex]::Replace($cfgContent, "(?m)^hooks:\r?\n(?:^[ \t]+.*\r?\n)*", "")
-    }
+    # Chuyen doi duong dan hooks sang thu muc tren may Admin
+    $adminHooksPosix = ($HermesHome -replace "\\", "/") + "/hooks"
+    $cfgContent = $cfgContent -replace "C:/Users/Kibe/AppData/Local/hermes/hooks", $adminHooksPosix
     Set-Content -Path $CfgDst -Value $cfgContent -Encoding utf8
+}
+
+$HooksSrc = Join-Path $RepoDir "deploy\hermes-home\hooks"
+$HooksDst = Join-Path $HermesHome "hooks"
+if (Test-Path $HooksSrc) {
+    New-Item -ItemType Directory -Force -Path $HooksDst | Out-Null
+    Copy-Item "$HooksSrc\*" -Destination $HooksDst -Recurse -Force
 }
 
 $ScriptsSrc = Join-Path $RepoDir "deploy\hermes-home\scripts"
