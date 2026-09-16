@@ -57,21 +57,41 @@ def log(msg: str):
     sys.stderr.flush()
 
 def is_within_time_window() -> bool:
+    """Chỉ mở cuốn chiếu SAU PHIÊN 2 CA TỐI (từ 20:15 đến 23:45), khóa chặt khe P1-P2."""
     now = datetime.now(HCMC)
-    after_start  = (now.hour == 21 and now.minute >= 30) or now.hour in [22, 23]
-    before_end   = not (now.hour == 23 and now.minute > 45)
-    return after_start and before_end
+    current = now.hour * 60 + now.minute
+    return 20 * 60 + 15 <= current <= 23 * 60 + 45
+
+def is_machine_avatar_ready(mid: int | None) -> bool:
+    """Kiểm tra máy đã có avatar hoặc đã hoàn tất up avatar trên các file Tik."""
+    if not mid:
+        return True
+    try:
+        import openpyxl
+        wb_dir = Path(r"D:\OneDrive\TaadaaData\kibe")
+        for tik in [5, 6, 7, 8, 3, 4]:
+            fn = f"Tik{tik}.xlsx" if tik != 3 else "tik3.xlsx"
+            p = wb_dir / fn
+            if not p.exists():
+                continue
+            wb = openpyxl.load_workbook(p, data_only=True, read_only=True)
+            ws = wb["TaiKhoan"] if "TaiKhoan" in wb.sheetnames else wb.active
+            for r in ws.iter_rows(values_only=True):
+                if r and r[0] == mid:
+                    # Cột avatar thường ở cuối hoặc cột 12
+                    ava = r[12] if len(r) > 12 else None
+                    wb.close()
+                    if ava and str(ava).strip().lower() in ("ok", "present", "true", "done", "yes"):
+                        return True
+                    return False
+            wb.close()
+    except Exception:
+        pass
+    return True
 
 def is_avatar_done(today_str: str) -> bool:
-    if AVATAR_STATE.exists():
-        try:
-            d = json.loads(AVATAR_STATE.read_text(encoding="utf-8"))
-            if d.get("date") == today_str and d.get("finished"):
-                return True
-        except Exception:
-            pass
-    now = datetime.now(HCMC)
-    return now.hour >= 22 or (now.hour == 21 and now.minute >= 45)
+    """Cuốn chiếu: không chặn toàn farm, luôn cho phép kiểm tra theo máy."""
+    return True
 
 def get_all_gpm_emails() -> set[str]:
     """Lấy set email đã có profile trong GPM DB (bất kể GroupId)."""

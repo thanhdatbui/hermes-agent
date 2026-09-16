@@ -144,19 +144,21 @@ def send_farm_alert(text: str) -> bool:
 
 
 def is_post_evening_window(now_dt: datetime) -> bool:
-    """Khung giờ chạy upload ca tối: 21:00 đến 23:30."""
+    """Chỉ mở cuốn chiếu SAU PHIÊN 2 CA TỐI (từ 20:15 đến 23:45), khóa chặt khe P1-P2."""
     h, m = now_dt.hour, now_dt.minute
     if h in (21, 22):
         return True
-    if h == 23 and m <= 30:
+    if h == 20 and m >= 15:
+        return True
+    if h == 23 and m <= 45:
         return True
     return False
 
 
 def is_after_evening_window(now_dt: datetime) -> bool:
-    """Hết khung giờ ca tối (sau 23:30 đến 04:00 sáng hôm sau)."""
+    """Hết khung giờ ca tối (sau 23:45 đến 04:00 sáng hôm sau)."""
     h, m = now_dt.hour, now_dt.minute
-    if h == 23 and m > 30:
+    if h == 23 and m > 45:
         return True
     if 0 <= h < 4:
         return True
