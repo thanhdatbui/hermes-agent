@@ -130,11 +130,11 @@ def _determine_row(now: datetime) -> tuple[int, int, str] | None:
     # Day 1, 3: Row chẵn (8, 2, 4, 6) - Cày Follow + Up
     # Day 2: Row lẻ (7, 1, 3, 5) - DƯỠNG SINH RỬA TRUST (CHỈ LƯỚT FEED, 0 FOLLOW, KHÔNG UP)
     # Day 5: Row chẵn (8, 2, 4, 6) - DƯỠNG SINH RỬA TRUST (CHỈ LƯỚT FEED, 0 FOLLOW, KHÔNG UP)
-    epoch = datetime(2026, 9, 3).date()
-    day_cycle = (now.date() - epoch).days % 6
-    parity = 1 if day_cycle in (0, 2, 4) else 0  # 1 = row lẻ, 0 = row chẵn
+    # Phân định lịch Chẵn / Lẻ theo ngày dương lịch (1 = row lẻ, 0 = row chẵn)
+    # Từng nick sẽ tự xác định ngày dưỡng sinh độc lập (1/3 organic rest) tại worker
+    parity = 0 if (now.day % 2 == 0) else 1
     row = slots[parity]
-    is_rest_day = (day_cycle in (2, 5))
+    is_rest_day = False
     window_key = f"{now.date().isoformat()}T{window_suffix}"
     return row, session_index, window_key, is_rest_day
 
@@ -360,8 +360,7 @@ def _spawn_feed_session(row: int, session_index: int, now: datetime, is_rest_day
     ]
 
     child_env = dict(os.environ)
-    if is_rest_day:
-        child_env["TAADAA_REST_DAY_NO_FOLLOW"] = "1"
+    child_env.pop("TAADAA_REST_DAY_NO_FOLLOW", None)
     kwargs: dict = {
         "cwd": str(repo),
         "stdin": subprocess.DEVNULL,
