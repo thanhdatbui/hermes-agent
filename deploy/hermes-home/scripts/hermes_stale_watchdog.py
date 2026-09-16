@@ -28,7 +28,7 @@ PHASE_FILE = HERMES_HOME / "farm_coordinator_phase.json"
 ALERT_CACHE_FILE = HERMES_HOME / "stale_alert_sent.json"
 
 CANARY_THRESHOLD_SECONDS = 1500.0   # 25 minutes for real device canary
-DEFAULT_THRESHOLD_SECONDS = 600.0   # 10 minutes for normal code fix / inspect / tools
+DEFAULT_THRESHOLD_SECONDS = 900.0   # 15 minutes for normal code fix / inspect / tools
 WORKER_TIMEOUT_SECONDS = 1200.0     # 20 minutes for worker execution
 
 MAX_ACTIVE_AGE_SECONDS = 7200.0     # Ignore stale sessions older than 2 hours
@@ -137,7 +137,9 @@ def main() -> int:
                 # BẮT BUỘC ưu tiên tìm session con có parent_session_id == sid trước
                 child_candidates = [
                     (csid, cstate) for csid, cstate in watchdog_sessions.items()
-                    if isinstance(cstate, dict) and cstate.get("parent_session_id") == sid
+                    if isinstance(cstate, dict)
+                    and cstate.get("parent_session_id") == sid
+                    and float(cstate.get("current_tool_start") or cstate.get("last_beat") or 0) >= (d_at - 30.0)
                 ]
                 if child_candidates:
                     child_candidates.sort(

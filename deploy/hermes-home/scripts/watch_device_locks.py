@@ -12,8 +12,8 @@ import urllib.parse
 from pathlib import Path
 
 DEFAULT_LOCK_ROOT = Path.home() / ".codex" / "device-locks"
-ALERT_THRESHOLD_MINUTES = 60  # Cảnh báo nếu lock thường (running/feed) giữ lâu hơn 60 phút (1 giờ)
-ALERT_THRESHOLD_BLOCKED_MINUTES = 60  # Máy bị blocked giữ lock tối đa 60 phút cho operator inspect
+ALERT_THRESHOLD_MINUTES = 90  # Cảnh báo nếu lock thường (running/feed) giữ lâu hơn 90 phút (vượt xa TTL reaper tự dọn)
+ALERT_THRESHOLD_BLOCKED_MINUTES = 90  # Máy bị blocked giữ lock quá 90 phút (reaper đã qua nhiều chu kỳ mà chưa nhả)
 
 
 def get_lock_threshold(status: str) -> tuple[int, bool]:
@@ -194,7 +194,7 @@ def run_watchdog():
 
     overdue_locks = [l for l in locks if l["duration_minutes"] >= get_lock_threshold(l.get("status", ""))[0]]
     if not overdue_locks:
-        print(f"[watchdog] Healthy: {len(locks)} máy đang giữ lock bình thường (< 60p). Không có máy quá hạn (Silent).")
+        print(f"[watchdog] Healthy: {len(locks)} máy đang giữ lock bình thường (< 90p). Không có máy quá hạn (Silent).")
         return 0
 
     # Ưu tiên đưa máy quá hạn lên đầu danh sách
@@ -210,19 +210,19 @@ def run_watchdog():
     now_str = datetime.datetime.now().strftime("%H:%M %d/%m/%Y")
     lines = [
         f"⚠️ <b>[CẢNH BÁO DEVICE LOCKS QUÁ HẠN]</b> - <i>{now_str}</i>",
-        f"Tổng số máy giữ lock: <b>{len(locks)}</b> | Quá hạn (>60p): <b>{len(overdue_locks)}</b>",
+        f"Tổng số máy giữ lock: <b>{len(locks)}</b> | Quá hạn (>90p): <b>{len(overdue_locks)}</b>",
         "",
     ]
 
     if len(overdue_locks) >= 10:
-        lines.append(f"⚠️ <b>CẢNH BÁO NGHẼN LOCK DIỆN RỘNG: Có {len(overdue_locks)} máy vượt hạn mức 60p!</b>\n")
+        lines.append(f"⚠️ <b>CẢNH BÁO NGHẼN LOCK DIỆN RỘNG: Có {len(overdue_locks)} máy vượt hạn mức 90p!</b>\n")
 
     for l in sorted_locks:
         m_str = f"Máy {int(l['machine']):02d}" if isinstance(l['machine'], int) or str(l['machine']).isdigit() else f"Máy {l['machine']}"
         threshold, is_blocked = get_lock_threshold(l.get("status", ""))
         warning = ""
         if l["duration_minutes"] >= threshold:
-            warning = f" ⚠️ (VƯỢT NGƯỠNG 60P: {l['duration_minutes']}p)"
+            warning = f" ⚠️ (VƯỢT NGƯỠNG {threshold}P: {l['duration_minutes']}p)"
         lines.append(f"• <b>[{m_str}]</b>: {l['project']} (PID {l['pid']})")
         lines.append(f"  └ Trạng thái: <code>{l['status']}</code> | Đã lock: <b>{l['duration_minutes']} phút</b> (từ {l['mtime']}){warning}")
 

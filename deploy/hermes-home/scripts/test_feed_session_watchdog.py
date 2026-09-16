@@ -11,7 +11,7 @@ from feed_session_watchdog import (
     is_device_locked_skip,
     merge_machine_result,
     can_report_session,
-    format_released_follows,
+    _add_minutes_to_hm,
 )
 
 
@@ -61,19 +61,45 @@ class TestFeedSessionWatchdogLockGuard(unittest.TestCase):
         new_real_fail = {"status": "fail", "reason": "timeout"}
         self.assertEqual(merge_machine_result(real_fail, new_real_fail), new_real_fail)
 
+    def test_add_minutes_to_hm(self):
+        self.assertEqual(_add_minutes_to_hm("07:30", 20), "07:50")
+        self.assertEqual(_add_minutes_to_hm("23:50", 20), "00:10")
+        self.assertEqual(_add_minutes_to_hm("00:00", 60), "01:00")
+        self.assertEqual(_add_minutes_to_hm("15:45", 15), "16:00")
+
     def test_can_report_session(self):
-        # 1. runner_busy is True trong grace period -> False
-        self.assertFalse(can_report_session(
+        # 1. Tất cả máy dự kiến đã hoàn tất thật (không còn unattempted lock) -> chốt ngay lập tức kể cả khi runner_busy=True
+        self.assertTrue(can_report_session(
             is_today=True,
-            completed_expected_count=50,
+            completed_expected_count=80,
             expected_count=80,
-            now_hm="07:40",
+            now_hm="07:00",
+            window_end_hm="07:30",
+            runner_busy=True,
+            has_unattempted_locked=False,
+        ))
+        self.assertTrue(can_report_session(
+            is_today=True,
+            completed_expected_count=80,
+            expected_count=80,
+            now_hm="08:00",
             window_end_hm="07:30",
             runner_busy=True,
             has_unattempted_locked=False,
         ))
 
-        # 2. Tất cả 80 máy bị lock trước window_end_hm -> False
+        # 2. Đang trong giờ phiên (now_hm < window_end_hm)
+        # 2a. Nếu runner_busy=True và chưa hoàn tất -> False
+        self.assertFalse(can_report_session(
+            is_today=True,
+            completed_expected_count=40,
+            expected_count=80,
+            now_hm="07:00",
+            window_end_hm="07:30",
+            runner_busy=True,
+            has_unattempted_locked=False,
+        ))
+        # 2b. Tất cả máy bị lock trước window_end_hm -> False
         self.assertFalse(can_report_session(
             is_today=True,
             completed_expected_count=0,
@@ -83,7 +109,7 @@ class TestFeedSessionWatchdogLockGuard(unittest.TestCase):
             runner_busy=False,
             has_unattempted_locked=True,
         ))
-        # Kể cả nếu count được truyền vào >= expected_count, has_unattempted_locked trước end_hm phải chặn lại
+        # 2c. Kể cả nếu count được truyền vào >= expected_count, has_unattempted_locked trước end_hm phải chặn lại -> False
         self.assertFalse(can_report_session(
             is_today=True,
             completed_expected_count=80,
@@ -93,8 +119,39 @@ class TestFeedSessionWatchdogLockGuard(unittest.TestCase):
             runner_busy=False,
             has_unattempted_locked=True,
         ))
+        # 2d. Chưa hoàn tất máy nhưng runner rảnh và không có lock unattempted trước end_hm -> False
+        self.assertFalse(can_report_session(
+            is_today=True,
+            completed_expected_count=50,
+            expected_count=80,
+            now_hm="07:00",
+            window_end_hm="07:30",
+            runner_busy=False,
+            has_unattempted_locked=False,
+        ))
 
-        # 3. Tất cả 80 máy bị lock sau window_end_hm -> True (hết giờ chốt)
+        # 3. Đã qua window_end_hm: grace period 20 phút nếu runner đang chạy
+        # 3a. Runner đang chạy và trong grace period 20 phút (07:30 + 20 = 07:50, now=07:40) -> False
+        self.assertFalse(can_report_session(
+            is_today=True,
+            completed_expected_count=50,
+            expected_count=80,
+            now_hm="07:40",
+            window_end_hm="07:30",
+            runner_busy=True,
+            has_unattempted_locked=False,
+        ))
+        # 3b. Runner đang chạy nhưng đã hết grace period 20 phút (now=07:55 >= 07:50) -> True (BẮT BUỘC chốt báo cáo)
+        self.assertTrue(can_report_session(
+            is_today=True,
+            completed_expected_count=50,
+            expected_count=80,
+            now_hm="07:55",
+            window_end_hm="07:30",
+            runner_busy=True,
+            has_unattempted_locked=False,
+        ))
+        # 3c. Đã qua window_end_hm và runner không bận -> BẮT BUỘC chốt báo cáo (kể cả có máy bị lock)
         self.assertTrue(can_report_session(
             is_today=True,
             completed_expected_count=0,
@@ -141,27 +198,6 @@ class TestFeedSessionWatchdogLockGuard(unittest.TestCase):
             window_end_hm="23:59",
             runner_busy=False,
         ))
-
-    def test_format_released_follows(self):
-        # Empty case
-        self.assertEqual(format_released_follows([], {}), ["  + Nhả follow (0): Không có"])
-
-        # Multiple buckets
-        fl_released = ["m1", "m2", "m3", "m4"]
-        all_follows = {
-            "m1": {"followed": []},
-            "m2": {"followed": ["u1", "u2", "u3"]},
-            "m3": {"followed": ["u1", "u2", "u3", "u4", "u5", "u6", "u7"]},
-            "m4": {"followed": [f"u{i}" for i in range(12)]},
-        }
-        expected = [
-            "  + Nhả follow (4 máy):",
-            "    - Nhả liền (0 lượt - 1 máy): M1",
-            "    - 1 - 4 lượt (1 máy): M2 (3 lượt)",
-            "    - 5 - 9 lượt (1 máy): M3 (7 lượt)",
-            "    - 10+ lượt (1 máy): M4 (12 lượt)",
-        ]
-        self.assertEqual(format_released_follows(fl_released, all_follows), expected)
 
 
 if __name__ == "__main__":

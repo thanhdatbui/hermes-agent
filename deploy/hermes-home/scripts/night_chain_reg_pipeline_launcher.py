@@ -12,12 +12,14 @@ PYTHON_EXE = r"D:\Taadaa\python-envs\automation\Scripts\python.exe"
 if not Path(PYTHON_EXE).exists():
     PYTHON_EXE = sys.executable
 
+os.environ.setdefault("TAADAA_HOST_CONFIG", r"D:\Taadaa\machine-config\kibe.yaml")
+
 def main() -> int:
     if not REPO_SCRIPT.exists():
         sys.stderr.write(f"Error: Not found {REPO_SCRIPT}\n")
         return 1
         
-    cmd = [PYTHON_EXE, "-u", str(REPO_SCRIPT)]
+    cmd = [PYTHON_EXE, "-u", str(REPO_SCRIPT)] + sys.argv[1:]
     completed = subprocess.run(
         cmd,
         capture_output=True,

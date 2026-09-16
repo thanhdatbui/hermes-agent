@@ -114,15 +114,28 @@ def sync_directory(src_root: str, dst_root: str, max_workers: int = 16) -> Dict[
     }
 
 
+def get_gdrive_dest() -> str:
+    candidates = [
+        r"G:\My Drive\Backup_OneDrive_5TB",
+        r"G:\Drive của tôi\Backup_OneDrive_5TB",
+    ]
+    for c in candidates:
+        parent = os.path.dirname(c)
+        if os.path.exists(parent):
+            return c
+    return ""
+
+
 def main():
     t0 = time.time()
     results = {}
 
     # 1. Sync to Google Drive
-    if os.path.exists(r"G:\Drive của tôi") or os.path.exists(DST_GDRIVE):
-        results["Google Drive 5TB"] = sync_directory(SRC, DST_GDRIVE, max_workers=16)
+    dst_gdrive = get_gdrive_dest()
+    if dst_gdrive:
+        results["Google Drive 5TB"] = sync_directory(SRC, dst_gdrive, max_workers=16)
     else:
-        results["Google Drive 5TB"] = {"success": False, "error": r"Ổ G:\ (Google Drive) chưa được mount."}
+        results["Google Drive 5TB"] = {"success": False, "error": r"Ổ G:\ (Google Drive) chưa được mount hoặc không tìm thấy My Drive."}
 
     # 2. Sync to iCloud Drive
     if os.path.exists(r"C:\Users\Kibe\iCloudDrive"):
