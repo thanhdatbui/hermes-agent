@@ -301,6 +301,10 @@ Khi điều phối worker trên file monolith (>1.500 dòng) hoặc nhận yêu 
 2. Codex đọc file + phân tích (nếu COMPLEX) HOẶC bỏ qua (SIMPLE).
 3. Hermes cross-verify CRITICAL/HIGH findings (`read_file()` ok).
 4. Review v5 (AG `ag/claude-opus-4-6-thinking` → cx luna/terra/sol → Claude CLI `claude-opus-5` → OpenCode free → Command Code) → CONFIRMED/REJECTED.
+5. CHỐT PHIÊN CHẤM ĐIỂM BẰNG AI (User-Enforced 2026-09-16 — BẮT BUỘC):
+   - Khi user ra lệnh "Chốt phiên" / "Đóng phiên": BẮT BUỘC kích hoạt cơ chế AI Giám khảo Độc lập chấm điểm theo Rubric 100 điểm (`overall_score >= 85-90` mới được phép đóng phiên).
+   - Mặc định: Dùng `D:/Taadaa/tools/sol_auditor.py` (GPT-5.6 Sol Web qua OmniRoute :20129) — chi phí 0đ, không đốt quota Claude CLI, reasoning sâu, vạch lá tìm sâu và tự động verify test/git diff sống.
+   - Claude CLI Opus High: CHỈ dùng cho ca P0 đặc biệt hoặc tái cấu trúc hạ tầng hệ thống lớn khi có chỉ đạo rõ ràng.
 
 ## Trigger
 
