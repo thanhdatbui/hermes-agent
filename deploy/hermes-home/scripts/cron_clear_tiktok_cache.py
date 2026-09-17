@@ -74,7 +74,7 @@ def clear_device_cache(m_num: int, serial: str) -> tuple[int, str, bool, str]:
     msg = ""
     ok = False
     try:
-        p = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=120)
+        p = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=240)
         out = p.stdout.strip() or p.stderr.strip()
         if p.returncode == 0:
             msg = f"[OK] Machine {m_num}: {out}"

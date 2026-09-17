@@ -13,13 +13,74 @@ import json
 import time
 import argparse
 import subprocess
+import io
+import contextlib
 from datetime import datetime, date, timedelta
 from pathlib import Path
 
 # Định nghĩa đường dẫn
 ADB_EXE = r"C:\Users\Kibe\.GemPhoneFarm\app\adb-tool\adb.exe"
-STATE_DIR = r"D:\Taadaa\runtime\kibe\cron-state"
+STATE_DIR = "D:/Taadaa/runtime/kibe/cron-state"
 STATE_FILE = os.path.join(STATE_DIR, "post_morning_gmail_2fa_state.json")
+LOCK_FILE = Path(STATE_DIR) / "post_morning_gmail_2fa.lock"
+
+
+class ProcessLock:
+    """Inter-process lock using OS file locking (msvcrt on Windows, fcntl on POSIX)."""
+
+    def __init__(self, lock_path: str | Path):
+        self.lock_path = str(lock_path)
+        self._file = None
+        self.acquired = False
+
+    def acquire(self) -> bool:
+        if self.acquired:
+            return False
+        handle = None
+        try:
+            lock_dir = os.path.dirname(self.lock_path)
+            if lock_dir:
+                os.makedirs(lock_dir, exist_ok=True)
+            handle = open(self.lock_path, "a+b")
+            if os.name == "nt":
+                import msvcrt
+                handle.seek(0)
+                msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            self._file = handle
+            self.acquired = True
+            return True
+        except (OSError, IOError):
+            if handle:
+                try:
+                    handle.close()
+                except Exception:
+                    pass
+            return False
+
+    def release(self):
+        if not self.acquired or not self._file:
+            return
+        try:
+            if os.name == "nt":
+                import msvcrt
+                self._file.seek(0)
+                msvcrt.locking(self._file.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(self._file.fileno(), fcntl.LOCK_UN)
+        except Exception:
+            pass
+        finally:
+            try:
+                self._file.close()
+            except Exception:
+                pass
+            self._file = None
+            self.acquired = False
+
 FEED_REPORTED_FILE = os.path.join(STATE_DIR, "feed_session_reported.json")
 CLEAN_XLSX = Path(r"D:\OneDrive\TaadaaData\kibe\gmail_clean_v2.xlsx")
 PROXY_XLSX = Path(r"D:\OneDrive\TaadaaData\kibe\PROXYgandienthoai.xlsx")
@@ -289,55 +350,74 @@ def main():
     if not eligible:
         return 0
 
-    start_time = datetime.now()
-    success_list = []
-    fail_list = []
+    lock = ProcessLock(LOCK_FILE)
+    if not lock.acquire():
+        log("Tiến trình 2FA đang chạy ngầm, im lặng thoát.")
+        return 0
 
-    for m, s, email in eligible:
-        log(f"-> Bắt đầu bật 2FA Máy {m} ({s}): {email}")
-        if args.dry_run:
-            success_list.append(f"M{m} ({email})")
-            continue
+    try:
+        start_time = datetime.now()
+        success_list = []
+        fail_list = []
 
-        if enable_2fa_device:
-            try:
-                res = enable_2fa_device(s, email)
-                if isinstance(res, dict) and res.get("status") in ["SUCCESS", "OK"]:
-                    success_list.append(f"M{m} ({email})")
-                else:
+        for m, s, email in eligible:
+            log(f"-> Bắt đầu bật 2FA Máy {m} ({s}): {email}")
+            if args.dry_run:
+                success_list.append(f"M{m} ({email})")
+                continue
+
+            if enable_2fa_device:
+                dev_buf = io.StringIO()
+                try:
+                    with contextlib.redirect_stdout(dev_buf), contextlib.redirect_stderr(dev_buf):
+                        res = enable_2fa_device(s, email)
+                    if isinstance(res, dict) and res.get("status") in ["SUCCESS", "OK"]:
+                        success_list.append(f"M{m} ({email})")
+                    else:
+                        fail_list.append(f"M{m} ({email})")
+                        err_detail = dev_buf.getvalue().strip()
+                        if err_detail:
+                            log(f"Chi tiết lỗi M{m} ({email}): {err_detail[-300:]}")
+                except Exception as e:
+                    log(f"Lỗi khi chạy enable_2fa_device cho M{m}: {e}")
                     fail_list.append(f"M{m} ({email})")
-            except Exception as e:
-                log(f"Lỗi khi chạy enable_2fa_device cho M{m}: {e}")
-                fail_list.append(f"M{m} ({email})")
-        else:
-            cmd = [sys.executable, r"D:\Taadaa\tools\enable_gmail_2fa_device.py", s, email]
-            try:
-                p = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-                if p.returncode == 0 and "SUCCESS" in p.stdout:
-                    success_list.append(f"M{m} ({email})")
-                else:
+            else:
+                cmd = [sys.executable, r"D:\Taadaa\tools\enable_gmail_2fa_device.py", s, email]
+                try:
+                    p = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+                    if p.returncode == 0 and "SUCCESS" in p.stdout:
+                        success_list.append(f"M{m} ({email})")
+                    else:
+                        fail_list.append(f"M{m} ({email})")
+                except Exception as e:
+                    log(f"Lỗi thực thi lệnh M{m}: {e}")
                     fail_list.append(f"M{m} ({email})")
-            except Exception as e:
-                log(f"Lỗi thực thi lệnh M{m}: {e}")
-                fail_list.append(f"M{m} ({email})")
 
-    end_time = datetime.now()
-    duration_min = round((end_time - start_time).total_seconds() / 60, 1)
+        end_time = datetime.now()
+        duration_min = round((end_time - start_time).total_seconds() / 60, 1)
 
-    if success_list or fail_list:
-        report = f"""[BÁO CÁO 2FA GMAIL SAU CA SÁNG]
-- Thời gian: {start_time.strftime('%H:%M')} -> {end_time.strftime('%H:%M')} ({duration_min} phút)
-- Tổng máy xử lý: {len(eligible)}
-- Success ({len(success_list)}): {success_list}
-- Fail ({len(fail_list)}): {fail_list}"""
-        print(report)
+        if success_list or fail_list:
+            report_lines = [
+                "[BÁO CÁO 2FA GMAIL SAU CA SÁNG]",
+                f"- Thời gian: {start_time.strftime('%H:%M')} -> {end_time.strftime('%H:%M')} ({duration_min} phút)",
+                f"- Tổng máy xử lý: {len(eligible)}",
+                f"- Thành công: {len(success_list)}/{len(eligible)} máy",
+            ]
+            if fail_list:
+                fail_m = [f.split()[0] for f in fail_list]
+                report_lines.append(f"- Thất bại ({len(fail_list)} máy): {', '.join(fail_m)}")
+            else:
+                report_lines.append("- Thất bại: 0 máy")
+            print("\n".join(report_lines))
 
-    if not args.dry_run and len(success_list) > 0:
-        save_state_success({
-            "success_devices": success_list,
-            "fail_devices": fail_list,
-            "duration_min": duration_min
-        })
+        if not args.dry_run and len(success_list) > 0:
+            save_state_success({
+                "success_devices": success_list,
+                "fail_devices": fail_list,
+                "duration_min": duration_min
+            })
+    finally:
+        lock.release()
 
     return 0
 

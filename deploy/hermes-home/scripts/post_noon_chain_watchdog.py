@@ -233,22 +233,20 @@ def main() -> int:
     end_dt = datetime.now(HCMC)
     duration_min = max(1, int((end_dt - start_dt).total_seconds() // 60))
 
-    if g_code != 0:
-        g_tot, g_suc, g_fail = 0, 0, 0
+    g_tot, g_suc, g_fail = parse_summary_counts(
+        g_out,
+        log_dir_hint=Path("D:/CodexRuntime/codex_gmail_debug-register-gmail"),
+        min_mtime=start_epoch
+    )
+    if g_tot == 0 and g_code != 0:
         phase1_header = f"- Phase 1 (Reg Gmail - Code {g_code}): LỖI KHỞI ĐỘNG RUNNER"
     else:
-        g_tot, g_suc, g_fail = parse_summary_counts(
-            g_out,
-            log_dir_hint=Path("D:/CodexRuntime/codex_gmail_debug-register-gmail"),
-            min_mtime=start_epoch
-        )
         phase1_header = f"- Phase 1 (Reg Gmail - Code {g_code}):"
 
-    if t2fa_code != 0:
-        t_tot, t_suc, t_fail = 0, 0, 0
+    t_tot, t_suc, t_fail = parse_summary_counts(t2fa_out)
+    if t_tot == 0 and t2fa_code not in (0, 4):
         phase2_header = f"- Phase 2 (Add 2FA TikTok - Code {t2fa_code}): LỖI KHỞI ĐỘNG RUNNER"
     else:
-        t_tot, t_suc, t_fail = parse_summary_counts(t2fa_out)
         phase2_header = f"- Phase 2 (Add 2FA TikTok - Code {t2fa_code}):"
 
     report_lines = [
