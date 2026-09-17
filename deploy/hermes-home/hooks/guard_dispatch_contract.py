@@ -170,7 +170,7 @@ if not is_t0 and not emergency_match:
     sol_id = sol_match.group(1).strip()
     sol_paths = [
         os.path.join(r"D:\Taadaa\runtime\sol_plans", f"{sol_id}.json"),
-        os.path.join(r"C:\Users\Kibe\AppData\Local\hermes\runtime\sol_plans", f"{sol_id}.json")
+        os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser(r"~\AppData\Local")), r"hermes\runtime\sol_plans", f"{sol_id}.json")
     ]
     valid_sol_file = next((p for p in sol_paths if os.path.isfile(p)), None)
     if not valid_sol_file:

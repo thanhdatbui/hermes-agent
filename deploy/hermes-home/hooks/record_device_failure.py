@@ -10,9 +10,11 @@ Vá toàn diện theo Claude Opus Review:
 - BLOCKER-3: Tách danh sách máy hỗ trợ cả phẩy và khoảng trắng: `re.split(r'[,\s]+', raw_m)`.
 """
 import json, sys, os, time, re
+from pathlib import Path
 
-CIRCUIT_STATE_FILE = "C:/Users/Kibe/AppData/Local/hermes/cache/device_circuit_breaker.json"
-LOCK_FILE = "C:/Users/Kibe/AppData/Local/hermes/cache/device_circuit_breaker.lock"
+HERMES_DIR = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local")) / "hermes"
+CIRCUIT_STATE_FILE = str(HERMES_DIR / "cache" / "device_circuit_breaker.json")
+LOCK_FILE = str(HERMES_DIR / "cache" / "device_circuit_breaker.lock")
 STALE_LOCK_SECONDS = 10.0
 
 try:

@@ -7,8 +7,10 @@ Pre-tool hook:
    Bổ sung Cooldown tự động (15 phút) chuyển circuit breaker sang half-open thay vì khóa vĩnh viễn.
 """
 import json, sys, os, time, re
+from pathlib import Path
 
-CIRCUIT_STATE_FILE = "C:/Users/Kibe/AppData/Local/hermes/cache/device_circuit_breaker.json"
+HERMES_DIR = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local")) / "hermes"
+CIRCUIT_STATE_FILE = str(HERMES_DIR / "cache" / "device_circuit_breaker.json")
 MAX_CONSECUTIVE_FAILS = 3
 CIRCUIT_COOLDOWN_SECONDS = 15 * 60  # Sau 15 phút cho phép thử lại (Half-Open)
 

@@ -9,9 +9,11 @@ Vá toàn diện:
 - Ghi file ATOMIC (temp file + os.replace).
 """
 import json, sys, os, time
+from pathlib import Path
 
-SUPERVISOR_STATE_FILE = "C:/Users/Kibe/AppData/Local/hermes/cache/progress_supervisor_state.json"
-SUPERVISOR_LOCK_FILE = "C:/Users/Kibe/AppData/Local/hermes/cache/progress_supervisor.lock"
+HERMES_DIR = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local")) / "hermes"
+SUPERVISOR_STATE_FILE = str(HERMES_DIR / "cache" / "progress_supervisor_state.json")
+SUPERVISOR_LOCK_FILE = str(HERMES_DIR / "cache" / "progress_supervisor.lock")
 MAX_STALL_SECONDS = 15 * 60  # 15 phút không có state change = STALL
 MAX_ACTION_COUNT = 8
 STALE_LOCK_SECONDS = 10.0

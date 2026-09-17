@@ -19,14 +19,8 @@ Write-Host "== 3. ĐỒNG BỘ CONFIG VÀ SCRIPTS ==" -ForegroundColor Cyan
 $CfgSrc = Join-Path $RepoDir "deploy\hermes-home\config.yaml"
 $CfgDst = Join-Path $HermesHome "config.yaml"
 if (Test-Path $CfgSrc) {
+    # Config da la Universal (D:/Taadaa/tools/hooks va LAN IP 192.168.110.123 dung chung)
     Copy-Item $CfgSrc -Destination $CfgDst -Force
-    # Thay 127.0.0.1 thành IP Kibe để Admin kết nối qua mạng LAN
-    $cfgContent = Get-Content $CfgDst -Raw -Encoding utf8
-    $cfgContent = $cfgContent -replace "127\.0\.0\.1", $KibeIP
-    # Chuyen doi duong dan hooks sang thu muc tren may Admin
-    $adminHooksPosix = ($HermesHome -replace "\\", "/") + "/hooks"
-    $cfgContent = $cfgContent -replace "C:/Users/Kibe/AppData/Local/hermes/hooks", $adminHooksPosix
-    Set-Content -Path $CfgDst -Value $cfgContent -Encoding utf8
 }
 
 $HooksSrc = Join-Path $RepoDir "deploy\hermes-home\hooks"
