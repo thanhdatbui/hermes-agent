@@ -23,6 +23,13 @@ try:
 except ImportError:
     openpyxl = None
 
+try:
+    core_path = Path("D:/Taadaa/automation-core/src")
+    if core_path.exists() and str(core_path) not in sys.path:
+        sys.path.insert(0, str(core_path))
+    from automation_core.workbook import atomic_workbook_update
+except ImportError:
+    atomic_workbook_update = None
 STATE_DB = Path(r"D:\CodexRuntime\tiktok-video\state.db")
 NICHES_POOL_FILE = Path(r"D:\Taadaa\Tiktok-video\data\niches_pool.txt")
 TIK_DIR = Path(r"D:\OneDrive\TaadaaData\kibe")
@@ -142,87 +149,93 @@ def sync_tik_file(
     if not p.exists() or openpyxl is None:
         return 0
 
-    try:
-        wb = openpyxl.load_workbook(str(p))
-    except Exception as e:
-        sys.stderr.write(f"Cannot open {filename}: {e}\n")
-        return 0
-
-    updates = 0
-    ws_tai_khoan = wb["TaiKhoan"] if "TaiKhoan" in wb.sheetnames else wb.active
-    headers = [str(c or "").strip().lower() for c in next(ws_tai_khoan.iter_rows(max_row=1, values_only=True))]
-
-    vg_col = headers.index("video gốc") if "video gốc" in headers else 4
-    kw_col = headers.index("keyword video") if "keyword video" in headers else 5
-    ht_col = headers.index("hashtag pool") if "hashtag pool" in headers else 6
-
-    # 1. Update sheet TaiKhoan
-    for row in range(2, ws_tai_khoan.max_row + 1):
-        vg_val = ws_tai_khoan.cell(row, vg_col + 1).value
-        if vg_val is None:
-            continue
+    def _update_workbook(target_path: Path) -> int:
         try:
-            f_src = int(vg_val)
-        except (ValueError, TypeError):
-            continue
-
-        if f_src in db_niches:
-            niche_slug, _, _ = db_niches[f_src]
-            label = niche_labels.get(niche_slug, niche_slug.capitalize())
-            pool = generate_hashtag_pool(niche_slug, label, existing_pools)
-
-            curr_kw = ws_tai_khoan.cell(row, kw_col + 1).value
-            curr_ht = ws_tai_khoan.cell(row, ht_col + 1).value
-
-            if curr_kw != label or curr_ht != pool:
-                ws_tai_khoan.cell(row, kw_col + 1, label)
-                ws_tai_khoan.cell(row, ht_col + 1, pool)
-                updates += 1
-
-    # 2. Update sheet Hashtag theo Folder nếu có
-    if "Hashtag theo Folder" in wb.sheetnames:
-        ws_ht = wb["Hashtag theo Folder"]
-        for row in range(2, ws_ht.max_row + 1):
-            src_val = ws_ht.cell(row, 1).value
-            if src_val is None:
-                continue
-            try:
-                f_src = int(src_val)
-            except (ValueError, TypeError):
-                continue
-
-            if f_src in db_niches:
-                niche_slug, v_count, status = db_niches[f_src]
-                label = niche_labels.get(niche_slug, niche_slug.capitalize())
-                pool = generate_hashtag_pool(niche_slug, label, existing_pools)
-
-                c_label = ws_ht.cell(row, 3).value
-                c_pool = ws_ht.cell(row, 4).value
-                c_count = ws_ht.cell(row, 5).value
-                c_status = ws_ht.cell(row, 6).value
-
-                if (
-                    c_label != label
-                    or c_pool != pool
-                    or c_count != v_count
-                    or c_status != status
-                ):
-                    ws_ht.cell(row, 3, label)
-                    ws_ht.cell(row, 4, pool)
-                    ws_ht.cell(row, 5, v_count)
-                    ws_ht.cell(row, 6, status)
-                    ws_ht.cell(row, 7, "OK" if "complete" in status.lower() else status.upper())
-                    updates += 1
-
-    if updates > 0:
-        try:
-            wb.save(str(p))
+            wb = openpyxl.load_workbook(str(target_path))
         except Exception as e:
-            sys.stderr.write(f"Failed to save {filename}: {e}\n")
+            sys.stderr.write(f"Cannot open {filename}: {e}\n")
             return 0
-    wb.close()
-    return updates
 
+        updates = 0
+        try:
+            ws_tai_khoan = wb["TaiKhoan"] if "TaiKhoan" in wb.sheetnames else wb.active
+            headers = [str(c or "").strip().lower() for c in next(ws_tai_khoan.iter_rows(max_row=1, values_only=True))]
+
+            vg_col = headers.index("video gốc") if "video gốc" in headers else 4
+            kw_col = headers.index("keyword video") if "keyword video" in headers else 5
+            ht_col = headers.index("hashtag pool") if "hashtag pool" in headers else 6
+
+            # 1. Update sheet TaiKhoan
+            for row in range(2, ws_tai_khoan.max_row + 1):
+                vg_val = ws_tai_khoan.cell(row, vg_col + 1).value
+                if vg_val is None:
+                    continue
+                try:
+                    f_src = int(vg_val)
+                except (ValueError, TypeError):
+                    continue
+
+                if f_src in db_niches:
+                    niche_slug, _, _ = db_niches[f_src]
+                    label = niche_labels.get(niche_slug, niche_slug.capitalize())
+                    pool = generate_hashtag_pool(niche_slug, label, existing_pools)
+
+                    curr_kw = ws_tai_khoan.cell(row, kw_col + 1).value
+                    curr_ht = ws_tai_khoan.cell(row, ht_col + 1).value
+
+                    if curr_kw != label or curr_ht != pool:
+                        ws_tai_khoan.cell(row, kw_col + 1, label)
+                        ws_tai_khoan.cell(row, ht_col + 1, pool)
+                        updates += 1
+
+            # 2. Update sheet Hashtag theo Folder nếu có
+            if "Hashtag theo Folder" in wb.sheetnames:
+                ws_ht = wb["Hashtag theo Folder"]
+                for row in range(2, ws_ht.max_row + 1):
+                    src_val = ws_ht.cell(row, 1).value
+                    if src_val is None:
+                        continue
+                    try:
+                        f_src = int(src_val)
+                    except (ValueError, TypeError):
+                        continue
+
+                    if f_src in db_niches:
+                        niche_slug, v_count, status = db_niches[f_src]
+                        label = niche_labels.get(niche_slug, niche_slug.capitalize())
+                        pool = generate_hashtag_pool(niche_slug, label, existing_pools)
+
+                        c_label = ws_ht.cell(row, 3).value
+                        c_pool = ws_ht.cell(row, 4).value
+                        c_count = ws_ht.cell(row, 5).value
+                        c_status = ws_ht.cell(row, 6).value
+
+                        if (
+                            c_label != label
+                            or c_pool != pool
+                            or c_count != v_count
+                            or c_status != status
+                        ):
+                            ws_ht.cell(row, 3, label)
+                            ws_ht.cell(row, 4, pool)
+                            ws_ht.cell(row, 5, v_count)
+                            ws_ht.cell(row, 6, status)
+                            ws_ht.cell(row, 7, "OK" if "complete" in status.lower() else status.upper())
+                            updates += 1
+
+            if updates > 0:
+                wb.save(str(target_path))
+        finally:
+            wb.close()
+        return updates
+
+    try:
+        if atomic_workbook_update is not None:
+            return atomic_workbook_update(p, _update_workbook, backup=True)
+        return _update_workbook(p)
+    except Exception as e:
+        sys.stderr.write(f"Failed to update {filename}: {e}\n")
+        return 0
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Auto sync keywords & hashtags from state.db to all Tik workbooks.")
