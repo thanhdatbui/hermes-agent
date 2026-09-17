@@ -187,6 +187,29 @@ def parse_summary_counts(output: str, log_dir_hint: Path | None = None, min_mtim
     return succs + fails, succs, fails
 
 
+def parse_chatgpt_warmup_counts(log_dir_hint: Path | None = None, min_mtime: float | None = None) -> tuple[int, int]:
+    if not log_dir_hint or not log_dir_hint.is_dir():
+        return 0, 0
+    try:
+        candidates = list(log_dir_hint.glob("logs_parallel_*/machine_*.log"))
+        if min_mtime is not None:
+            candidates = [p for p in candidates if p.stat().st_mtime >= min_mtime]
+        ok_cnt = 0
+        fail_cnt = 0
+        for p in candidates:
+            try:
+                txt = p.read_text(encoding="utf-8", errors="ignore")
+                if "✓ [WARMUP_CHATGPT]" in txt:
+                    ok_cnt += 1
+                elif "⚠ [WARMUP_CHATGPT]" in txt:
+                    fail_cnt += 1
+            except Exception:
+                pass
+        return ok_cnt, fail_cnt
+    except Exception:
+        return 0, 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Post Noon Chain Watchdog (Reg Gmail -> Add 2FA TikTok)")
     parser.add_argument("--dry-run", action="store_true", help="Run in dry-run mode")
@@ -238,6 +261,10 @@ def main() -> int:
         log_dir_hint=Path("D:/CodexRuntime/codex_gmail_debug-register-gmail"),
         min_mtime=start_epoch
     )
+    cg_ok, cg_fail = parse_chatgpt_warmup_counts(
+        log_dir_hint=Path("D:/CodexRuntime/codex_gmail_debug-register-gmail"),
+        min_mtime=start_epoch
+    )
     if g_tot == 0 and g_code != 0:
         phase1_header = f"- Phase 1 (Reg Gmail - Code {g_code}): LỖI KHỞI ĐỘNG RUNNER"
     else:
@@ -256,6 +283,11 @@ def main() -> int:
         phase1_header,
         f"  + Tổng máy: {g_tot}",
         f"  + Success ({g_suc})",
+        *(
+            [f"    * ChatGPT linked: {cg_ok}/{g_suc}" + (f" ({cg_fail} fail)" if cg_fail > 0 else "")]
+            if (g_suc > 0 or cg_ok + cg_fail > 0)
+            else []
+        ),
         f"  + Fail ({g_fail})",
         "",
         phase2_header,
