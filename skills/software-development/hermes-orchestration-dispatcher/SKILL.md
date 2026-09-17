@@ -309,6 +309,8 @@ Khi điều phối worker trên file monolith (>1.500 dòng) hoặc nhận yêu 
 6. SOL PLANNER TẦNG A BẮT BUỘC TRƯỚC KHI DISPATCH (User Invariant 2026-09-17: "Ủa sao k gọi sol lên plan nhỉ mà m lên plan?"):
    - Khi nhận task phát triển code/tool mới hoặc can thiệp script hệ thống: Coordinator CẤM TUYỆT ĐỐI tự chế plan rồi dispatch worker ngay.
    - BẮT BUỘC kích hoạt Sol Web (:20129) qua `python D:/Taadaa/tools/sol_planner.py --goal "..." --file "..."` để Sol Brain (Tầng A offline) chẩn đoán và phân rã các sub-tasks chuẩn (T1..Tn) trước khi giao việc cho worker.
+   - **Pitfall OmniRoute (:20129) Auth Hang**: Mọi lệnh gọi tới `:20129/v1/chat/completions` (urllib/curl) BẮT BUỘC phải truyền header `Authorization: Bearer <OMNIROUTE_API_KEY>` (lấy từ `%LOCALAPPDATA%\hermes\.env`). Thiếu header này OmniRoute sẽ treo/timeout vô thời hạn thay vì trả 401 ngay.
+   - **Quy tắc Kiểm tra Cuốn chiếu Từng Phần ("Làm xong phần nào gọi Sol kiểm tra phần đó")**: Khi triển khai kế hoạch đa giai đoạn (multi-phase), Coordinator không được dồn cục đến cuối mới nghiệm thu. Sau mỗi Phase hoàn thành (code xong, test xanh), Coordinator BẮT BUỘC gửi diff/artifacts sang Sol để audit độc lập, đạt PASS/APPROVED mới được chuyển sang Phase kế tiếp.
    - Khi dispatch worker: BẮT BUỘC cô lập Unit Test 100% Mocked (dùng HTML/JSON fixture offline, cấm gọi network thật trong pytest để đảm bảo test <10s). Các lệnh gọi mạng live chỉ chạy sau khi pytest đã PASS bằng CLI test giới hạn (`--limit 2..3`).
    - TikTok Public Profile Fetching: Desktop web bị chặn bởi SlardarWAF; BẮT BUỘC dùng Mobile User-Agent (Safari iOS) để lấy hydration JSON từ thẻ `__UNIVERSAL_DATA_FOR_REHYDRATION__` (UID, follower, heart, video count, live status).
 
