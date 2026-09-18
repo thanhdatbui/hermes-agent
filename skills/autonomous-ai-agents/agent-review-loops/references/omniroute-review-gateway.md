@@ -51,15 +51,19 @@ payload = {
      * BẮT BUỘC giữ nguyên default `--model review` khi gọi `closeout_gate.py` (hoặc chỉ định đích danh `chatgpt-web/gpt-5.6-sol-high`).
      * Combo `review` đã cấu hình Tier 0 là `chatgpt-web-pool` xoay vòng đều 16 accounts qua Round-Robin chạy `gpt-5.6-sol-high`, tự động failover sang account kế tiếp khi gặp 429/502 mà bảo toàn 100% lane Sol High.
      * CẤM Coordinator và Worker dispatch các lệnh gọi review có cờ model can thiệp sang Pro/Instant.
+     * **Cơ chế Khóa cứng Đa tầng (Hard Gate Enforcements):**
+       - *Tầng 1 (Core Gate):* `closeout_gate.py` whitelist cứng `ALLOWED_REVIEW_MODELS = {"review", "chatgpt-web/gpt-5.6-sol-high"}` và blacklist `FORBIDDEN_MODEL_PATTERNS = ["sol-pro", "sol-instant", "gpt-5.6-sol-pro", "gpt-5.6-sol-instant"]`. Chặn ngay tại `main()` với exit code `2` kèm structured JSON log vào stderr (`{"event": "MODEL_DRIFT_BLOCKED", ...}`) và raise `ValueError` tại `run_gate_pipeline()`.
+       - *Tầng 2 (Pre-tool Hook Hermes):* Hook `guard_model_drift.py` chặn lệnh terminal gọi `--model` chứa các pattern cấm (`sol-pro`, `sol-instant`) trước khi tool kịp thực thi.
+       - *Tầng 3 (Unit Tests Regression):* Khóa test suite `test_closeout_gate_scorecard.py` kiểm thử fail-closed mọi flag vi phạm, test pre-tool hook stdin/stdout block & allow, test argument parsing chấp nhận các flag hợp lệ, và không hardcode absolute paths (dùng `Path(__file__)`).
 
 2. **Lazy URL Resolution (Tránh import side-effect):**
    - Không gọi `resolve_omni_url()` tại cấp module (`OMNI_ROUTE_URL = resolve_omni_url()` -> ANTI-PATTERN).
    - Đặt hằng số tĩnh mặc định `OMNI_ROUTE_URL = "http://localhost:20129/v1/chat/completions"`.
    - Chỉ resolve URL động (probe network) lười (lazy) bên trong `OmniRouteClient.__init__` hoặc khi runner thực sự chạy review để tránh làm chậm unit test và các tác vụ import module.
-2. **Scorecard Validation & Telemetry:**
+3. **Scorecard Validation & Telemetry:**
    - Khi parse scorecard JSON từ Sol/Reviewer, kiểm tra tính nhất quán giữa `overall_score` và tổng `score_breakdown`:
      `calc_total = sum(scorecard["score_breakdown"].values())`.
    - Nếu có chênh lệch (`calc_total != total`), ghi nhận vào telemetry của scorecard: `scorecard["calculated_total"] = calc_total`.
-   - Kết quả pipeline trả về trường telemetry:
-     `result["telemetry"] = {"resolved_url": client.base_url, "duration_s": elapsed, "has_scorecard": bool(scorecard)}`.
+   - Kết quả pipeline trả về trường telemetry giàu dữ liệu:
+     `result["telemetry"] = {"resolved_url": client.base_url, "duration_s": elapsed, "has_scorecard": bool(scorecard), "model_locked": True, "enforced_model": model}`.
 
