@@ -47,7 +47,7 @@ GPM_DB           = Path(r"C:\Users\Kibe\AppData\Local\Programs\GPMLogin\profile\
 GPM_SCRIPT       = Path(r"D:\Taadaa\GPM auto\scripts\run_oauth_s7_pipeline.py")
 PYTHON_EXE       = sys.executable
 
-MAX_WORKERS        = 2     # tuân thủ quy tắc Farm: tối đa 2 workers cho GPM+OAuth
+MAX_WORKERS        = 5     # cấu hình 5 workers theo yêu cầu user
 MAX_LOGINS_PER_PROXY = 2   # tối đa 2 acc / proxy / ngày
 MIN_IDLE_BUFFER_MIN  = 45  # cách ca tiếp theo ít nhất 45 phút
 
@@ -108,6 +108,132 @@ def get_all_gpm_emails() -> set[str]:
     except Exception as e:
         log(f"Lỗi đọc GPM DB: {e}")
     return emails
+
+def sync_gpm_profiles_lifecycle():
+    """
+    Tự động đồng bộ vòng đời profile GPM trước khi lấy candidates:
+    1. Quét Master Excel (sheet Kibe_Farm_S7).
+    2. DỌN DẸP: Xóa profile GPM của các Gmail DIE / BAN / SUSPENDED.
+    3. TẠO MỚI: Tự động sinh profile GPM cho các Gmail LIVE mới chưa có trong GPM DB.
+       - Lấy proxy từ cột Proxy trong Excel hoặc PROXYgandienthoai.xlsx.
+       - CẤM TUYỆT ĐỐI đòi máy S7 online ADB (tạo profile độc lập trên PC).
+    """
+    try:
+        sys.path.insert(0, r"D:\Taadaa\GPM auto\src")
+        from gpm_client import GPMClient
+        client = GPMClient()
+    except Exception as e:
+        log(f"Không thể import GPMClient: {e}")
+        return
+
+    # Kiểm tra GPM API có hoạt động không
+    if not client.check_health():
+        log("GPM API không online, đang khởi động GPMLogin...")
+        gpm_exe = Path(r"C:\Users\Kibe\AppData\Local\Programs\GPMLogin\GPMLogin.exe")
+        if gpm_exe.exists():
+            try:
+                subprocess.Popen([str(gpm_exe)])
+                time.sleep(5)
+            except Exception as e:
+                log(f"Không thể khởi động GPMLogin: {e}")
+
+    if not client.check_health():
+        log("GPM API vẫn offline sau khi thử bật, bỏ qua sync lifecycle vòng này.")
+        return
+
+    if not MASTER_XLSX.exists() or not GPM_DB.exists():
+        return
+
+    try:
+        import openpyxl
+        wb = openpyxl.load_workbook(MASTER_XLSX, data_only=True, read_only=True)
+        ws = wb["Kibe_Farm_S7"]
+        die_emails = set()
+        live_candidates = {}  # email -> {mid, raw_proxy, port}
+
+        for r in list(ws.iter_rows(values_only=True))[1:]:
+            if not (r and r[1] and "@" in str(r[1])):
+                continue
+            email = str(r[1]).strip().lower()
+            status = str(r[6] or "").strip().upper()
+            recovery = str(r[3] or "").strip().lower()
+            if "khoale" in email or "khoale" in recovery:
+                continue
+
+            mid_str = str(r[7] or "")
+            m_mid = re.search(r"(\d+)", mid_str)
+            mid = int(m_mid.group(1)) if m_mid else None
+
+            if status in ("DIE", "BAN", "SUSPENDED"):
+                die_emails.add(email)
+            elif status == "LIVE" and mid:
+                raw_proxy = str(r[10] or "").strip()
+                m_port = re.search(r":(\d{4,5})", raw_proxy)
+                port = m_port.group(1) if m_port else ""
+                live_candidates[email] = {
+                    "mid": mid,
+                    "raw_proxy": raw_proxy,
+                    "port": port
+                }
+        wb.close()
+
+        # Đọc GPM DB
+        conn = sqlite3.connect(str(GPM_DB))
+        cur = conn.cursor()
+        cur.execute("SELECT Id, Name FROM profiles;")
+        gpm_profiles = cur.fetchall()
+        conn.close()
+
+        existing_gpm_emails = set()
+        to_delete = []
+
+        for pid, name in gpm_profiles:
+            if not name:
+                continue
+            for em in re.findall(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+", name.lower()):
+                existing_gpm_emails.add(em)
+                if em in die_emails:
+                    to_delete.append((pid, name, em))
+
+        # 1. Dọn profile DIE
+        deleted_cnt = 0
+        for pid, name, em in to_delete:
+            try:
+                res = client.delete_profile(pid, mode=2)
+                if res.get("success"):
+                    deleted_cnt += 1
+                    log(f"Đã xóa profile DIE: {name} (ID: {pid})")
+            except Exception as ex_del:
+                log(f"Lỗi xóa profile {name}: {ex_del}")
+
+        # 2. Sinh profile LIVE chưa có (BỎ QUA HOÀN TOÀN KIỂM TRA ADB CỦA S7)
+        created_cnt = 0
+        for email, info in live_candidates.items():
+            if email in existing_gpm_emails:
+                continue
+            mid = info["mid"]
+            port = info["port"]
+            raw_proxy = info["raw_proxy"]
+            prof_name = f"{mid:02d} - {email} - {port}" if port else f"{mid:02d} - {email}"
+
+            try:
+                res = client.create_profile(
+                    name=prof_name,
+                    raw_proxy=raw_proxy,
+                    group_id=1
+                )
+                if res.get("success"):
+                    created_cnt += 1
+                    existing_gpm_emails.add(email)
+                    log(f"Đã sinh profile GPM mới: {prof_name}")
+            except Exception as ex_cr:
+                log(f"Lỗi tạo profile {prof_name}: {ex_cr}")
+
+        if deleted_cnt > 0 or created_cnt > 0:
+            log(f"[SYNC GPM] Dọn dẹp {deleted_cnt} profile DIE | Sinh mới {created_cnt} profile LIVE.")
+
+    except Exception as e:
+        log(f"Lỗi trong sync_gpm_profiles_lifecycle: {e}")
 
 def get_candidates(today_str: str, processed: list[str]) -> list[dict]:
     """
@@ -214,19 +340,69 @@ def get_candidates(today_str: str, processed: list[str]) -> list[dict]:
     # --- Áp dụng constraint: proxy <= 2, machine <= 1 ---
     seen_mids = set()
     filtered  = []
+    current_run_proxy_count = dict(proxy_count)
     for c in candidates:
         port = c.get("port")
         mid  = c.get("mid")
         if mid in seen_mids:
             continue
-        if port and proxy_count[port] >= MAX_LOGINS_PER_PROXY:
+        if port and current_run_proxy_count.get(port, 0) >= MAX_LOGINS_PER_PROXY:
             continue
         filtered.append(c)
         seen_mids.add(mid)
         if port:
-            proxy_count[port] += 1
+            current_run_proxy_count[port] = current_run_proxy_count.get(port, 0) + 1
 
     return filtered, proxy_count
+ADB_PATH     = r"C:\Program Files (x86)\xiaowei\tools\adb.exe"
+
+def get_online_adb_serials() -> set[str]:
+    """Lấy danh sách các serial thiết bị ADB đang online."""
+    online = set()
+    try:
+        res = subprocess.run([ADB_PATH, "devices"], capture_output=True, text=True, timeout=5)
+        for line in res.stdout.splitlines():
+            parts = line.strip().split()
+            if len(parts) >= 2 and parts[1] == "device":
+                online.add(parts[0])
+    except Exception as e:
+        log(f"Lỗi kiểm tra adb devices: {e}")
+    return online
+
+def get_machine_serial_map() -> dict[int, str]:
+    """Lấy map mid -> serial từ Master Excel hoặc PROXYgandienthoai.xlsx."""
+    serial_map = {}
+    proxy_file = Path(r"D:\OneDrive\TaadaaData\kibe\PROXYgandienthoai.xlsx")
+    if proxy_file.exists():
+        try:
+            import openpyxl
+            wb = openpyxl.load_workbook(proxy_file, data_only=True, read_only=True)
+            ws = wb["Proxy"]
+            for r in list(ws.iter_rows(values_only=True))[1:]:
+                if r and r[0] is not None and r[1]:
+                    try:
+                        serial_map[int(r[0])] = str(r[1]).strip()
+                    except Exception:
+                        pass
+            wb.close()
+        except Exception:
+            pass
+
+    if not serial_map and MASTER_XLSX.exists():
+        try:
+            import openpyxl
+            wb = openpyxl.load_workbook(MASTER_XLSX, data_only=True, read_only=True)
+            ws = wb["Kibe_Farm_S7"]
+            for r in list(ws.iter_rows(values_only=True))[1:]:
+                if r and r[7] and r[9]:
+                    m = re.search(r"(\d+)", str(r[7]))
+                    if m:
+                        serial_map[int(m.group(1))] = str(r[9]).strip()
+            wb.close()
+        except Exception:
+            pass
+    return serial_map
+
 def _get_proxy_port_for_machine(mid: int | None) -> str | None:
     """Tra port proxy của máy từ MASTER_XLSX."""
     if not mid or not MASTER_XLSX.exists():
@@ -329,6 +505,9 @@ def main():
         log("Chờ Avatar cron kết thúc...")
         return 0
 
+    # Đồng bộ vòng đời GPM: dọn DIE & sinh LIVE trước khi lấy candidates
+    sync_gpm_profiles_lifecycle()
+
     is_same_day = (state.get("date") == today_str)
     processed = state.get("processed", []) if is_same_day else []
     total_success = state.get("total_success", 0) if is_same_day else 0
@@ -353,10 +532,23 @@ def main():
         STATE_FILE.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
         return 0
 
-    # Lọc máy rảnh
-    ready = [c for c in candidates if is_machine_idle(c["mid"] or 0)]
+    # Lọc máy rảnh VÀ PHẢI ONLINE ADB để phối hợp làm việc (OTP/Prompt/Settings)
+    online_serials = get_online_adb_serials()
+    serial_map = get_machine_serial_map()
+
+    ready = []
+    for c in candidates:
+        mid = c.get("mid") or 0
+        if not is_machine_idle(mid):
+            continue
+        serial = serial_map.get(mid)
+        if not serial or serial not in online_serials:
+            log(f"Bỏ qua candidate {c['email']} vì máy M{mid:02d} (serial={serial}) không online ADB.")
+            continue
+        ready.append(c)
+
     if not ready:
-        log("Không có máy nào rảnh lúc này, chờ tick sau.")
+        log(f"Không có máy nào thỏa mãn (rảnh + online ADB) lúc này ({len(candidates)} candidates đang chờ), chờ tick sau.")
         return 0
 
     batch = ready[:MAX_WORKERS]
@@ -371,6 +563,9 @@ def main():
         for fut in as_completed(futures):
             res = fut.result()
             processed.append(res["email"])
+            port = res.get("port")
+            if port:
+                proxy_count[port] = proxy_count.get(port, 0) + 1
             if res["status"] == "SUCCESS":
                 success_n += 1
             else:
