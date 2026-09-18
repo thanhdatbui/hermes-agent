@@ -306,13 +306,26 @@ Khi điều phối worker trên file monolith (>1.500 dòng) hoặc nhận yêu 
    - Mặc định: Dùng `D:/Taadaa/tools/sol_auditor.py` (GPT-5.6 Sol Web qua OmniRoute :20129) — chi phí 0đ, không đốt quota Claude CLI, reasoning sâu, vạch lá tìm sâu và tự động verify test/git diff sống.
    - Claude CLI Opus High: CHỈ dùng cho ca P0 đặc biệt hoặc tái cấu trúc hạ tầng hệ thống lớn khi có chỉ đạo rõ ràng.
 
-6. SOL PLANNER TẦNG A BẮT BUỘC TRƯỚC KHI DISPATCH (User Invariant 2026-09-17: "Ủa sao k gọi sol lên plan nhỉ mà m lên plan?"):
+6. SOL PLANNER TẦNG A BẮT BUỘC TRƯỚC KHI DISPATCH & CHỦ ĐỘNG TẠI LƯỢT CHẨN ĐOÁN (User Invariant 2026-09-17 & 2026-09-19):
+   - **Chủ động gọi Sol ngay lượt tìm ra bug (Proactive Sol Calling - CẤM ĐỢI NHẮC / CẤM ĐỢI DISPATCH MỚI GỌI)**:
+     * Hook `guard_dispatch_contract.py` chỉ chặn ở giây phút gọi `delegate_task`. Vì vậy, Coordinator THƯỜNG DÍNH LỖI THỤ ĐỘNG: tìm ra bug xong thì chat giải thích suông với user rồi hỏi "Duyệt để em làm", để user phải nhắc "Sao không gọi Sol lên plan?".
+     * **QUY TẮC CỨNG (2026-09-19)**: Ngay khi chẩn đoán xong một lỗi logic code (Non-T0) hoặc nhận task can thiệp code farm, Coordinator **BẮT BUỘC gọi `python D:/Taadaa/tools/sol_planner.py --goal "..." --file "..."` NGAY TRONG LƯỢT ĐÓ** trước khi trả lời user.
+     * Câu trả lời đề xuất giải pháp BẮT BUỘC đính kèm luôn `SOL_PLAN_ID`, bản chẩn đoán của Sol và phân rã Task T1..Tn. CẤM TUYỆT ĐỐI đề xuất suông mà không có Sol Plan.
    - Khi nhận task phát triển code/tool mới hoặc can thiệp script hệ thống: Coordinator CẤM TUYỆT ĐỐI tự chế plan rồi dispatch worker ngay.
    - BẮT BUỘC kích hoạt Sol Web (:20129) qua `python D:/Taadaa/tools/sol_planner.py --goal "..." --file "..."` để Sol Brain (Tầng A offline) chẩn đoán và phân rã các sub-tasks chuẩn (T1..Tn) trước khi giao việc cho worker.
    - **Pitfall OmniRoute (:20129) Auth Hang**: Mọi lệnh gọi tới `:20129/v1/chat/completions` (urllib/curl) BẮT BUỘC phải truyền header `Authorization: Bearer <OMNIROUTE_API_KEY>` (lấy từ `%LOCALAPPDATA%\hermes\.env`). Thiếu header này OmniRoute sẽ treo/timeout vô thời hạn thay vì trả 401 ngay.
    - **Quy tắc Kiểm tra Cuốn chiếu Từng Phần ("Làm xong phần nào gọi Sol kiểm tra phần đó")**: Khi triển khai kế hoạch đa giai đoạn (multi-phase), Coordinator không được dồn cục đến cuối mới nghiệm thu. Sau mỗi Phase hoàn thành (code xong, test xanh), Coordinator BẮT BUỘC gửi diff/artifacts sang Sol để audit độc lập, đạt PASS/APPROVED mới được chuyển sang Phase kế tiếp.
    - Khi dispatch worker: BẮT BUỘC cô lập Unit Test 100% Mocked (dùng HTML/JSON fixture offline, cấm gọi network thật trong pytest để đảm bảo test <10s). Các lệnh gọi mạng live chỉ chạy sau khi pytest đã PASS bằng CLI test giới hạn (`--limit 2..3`).
    - TikTok Public Profile Fetching: Desktop web bị chặn bởi SlardarWAF; BẮT BUỘC dùng Mobile User-Agent (Safari iOS) để lấy hydration JSON từ thẻ `__UNIVERSAL_DATA_FOR_REHYDRATION__` (UID, follower, heart, video count, live status).
+
+7. TIÊU CHUẨN BÁO CÁO WATCHDOG FARM (ACTION-FIRST SESSION DELTA - CHỐNG BÁO CÁO MÙ MỜ 2026-09-19):
+   - Mọi script watchdog / cron monitoring trên Farm (như `post_evening_avatar_watchdog.py`, `feed_session_watchdog.py`) **CẤM TUYỆT ĐỐI** chỉ in snapshot số liệu tĩnh của Workbook/Database hoặc gom cụm mù mờ dạng `Khác (N)` khiến người đọc không biết ca chạy đã làm được gì.
+   - **BẮT BUỘC bóc tách theo Session Delta (Kết quả thực thi của ca vừa chạy)**:
+     * Số batch đã kích hoạt trong ca và trạng thái thực thi.
+     * Số tài khoản / máy thành công mới trong ca (`+X acc thành công: M...`).
+     * Danh sách máy lỗi cụ thể kèm mã lỗi (thay vì chỉ báo số lượng hoặc ID cộc lốc).
+     * Bóc tách rõ ràng nhóm Bỏ qua: bao nhiêu máy Dưỡng sinh, bao nhiêu máy Nick ngâm <10 ngày, bao nhiêu máy Thiếu video render. Tuyệt đối không gom cục chung.
+     * Tiến độ luỹ kế còn tồn toàn Farm.
 
 ## Trigger
 
