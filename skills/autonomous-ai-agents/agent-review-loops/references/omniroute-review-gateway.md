@@ -43,7 +43,13 @@ payload = {
 | Tool chuẩn | `invoke-plan-review.py` | Python HTTP script tới port 20129 |
 
 ## Closeout Gate Tooling Best Practices (`closeout_gate.py`)
-1. **Lazy URL Resolution (Tránh import side-effect):**
+1. **Model Specification Discipline (Bắt buộc dùng `review` hoặc `chatgpt-web/gpt-5.6-sol-high`):**
+   - TUYỆT ĐỐI CẤM caller / script tự ý gửi trực tiếp `chatgpt-web/gpt-5.6-sol-pro` hoặc fallback hạ cấp sang `chatgpt-web/gpt-5.6-sol-instant`.
+   - `sol-pro` trên ChatGPT Web backend có quota cực kỳ ngặt nghèo (vài requests / 3-5h), gọi trực tiếp sẽ gây `502 You've hit your limit` lập tức cho account.
+   - `sol-instant` là chế độ 0 thinking / không suy luận, vi phạm tiêu chuẩn Reviewer Sol High của Farm.
+   - BẮT BUỘC luôn truyền `model: "review"`. Combo `review` đã gán Tier 0 là `chatgpt-web-pool` xoay vòng đều 15 accounts qua Round-Robin chạy `gpt-5.6-sol-high`, tự động failover sang acc kế tiếp khi gặp 429/502 mà không bị văng sang lane Pro hay Instant.
+
+2. **Lazy URL Resolution (Tránh import side-effect):**
    - Không gọi `resolve_omni_url()` tại cấp module (`OMNI_ROUTE_URL = resolve_omni_url()` -> ANTI-PATTERN).
    - Đặt hằng số tĩnh mặc định `OMNI_ROUTE_URL = "http://localhost:20129/v1/chat/completions"`.
    - Chỉ resolve URL động (probe network) lười (lazy) bên trong `OmniRouteClient.__init__` hoặc khi runner thực sự chạy review để tránh làm chậm unit test và các tác vụ import module.

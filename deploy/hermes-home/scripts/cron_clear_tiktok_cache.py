@@ -8,33 +8,76 @@ Runs concurrently in batches to finish within minutes across the farm.
 from __future__ import annotations
 
 import concurrent.futures
+import json
 import os
 import subprocess
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
+
+# Add automation-core src to sys.path for DeviceLock and alerts
+sys.path.insert(0, r"D:\Taadaa\automation-core\src")
+try:
+    from automation_core.device_lock import DeviceLock, DeviceLockUnavailable, DeviceLockNeedsUserDecision
+except ImportError:
+    DeviceLock = None
+    DeviceLockUnavailable = Exception
+    DeviceLockNeedsUserDecision = Exception
 
 ADB = r"C:\Program Files (x86)\xiaowei\tools\adb.exe"
 DEFAULT_WIDGET_POS = (810, 260)
 TIK1_WORKBOOK = r"D:\OneDrive\TaadaaData\kibe\Tik1.xlsx"
 SCRIPT_PATH = r"D:\Taadaa\automation-core\scripts\clear-tiktok-cache.py"
-MAX_WORKERS = 40
+MAX_WORKERS = 10
+
+STATE_FILE = Path(r"D:\Taadaa\runtime\kibe\cron-state\post_night_clear_cache_state.json")
+REPORTED_FILE = Path(r"D:\Taadaa\runtime\kibe\cron-state\feed_session_reported.json")
+
+
+def is_feed_runner_active() -> bool:
+    """Check if feed runner or runner processes are currently active."""
+    target_procs = {
+        "multi_machine_feed_session",
+        "run_tiktok.py",
+        "tiktok_runner.py",
+        "hermes_cron_runner.py",
+    }
+    try:
+        import psutil
+        for p in psutil.process_iter(attrs=["pid", "name", "cmdline"]):
+            try:
+                cmdline = p.info.get("cmdline") or []
+                cmd_str = " ".join(cmdline).lower()
+                for target in target_procs:
+                    if target.lower() in cmd_str:
+                        return True
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                continue
+    except Exception as exc:
+        sys.stderr.write(f"[WARN] Failed to check running processes via psutil: {exc}\n")
+    return False
 
 
 def get_connected_devices() -> dict[str, str]:
     """Map serial -> device state."""
-    try:
-        proc = subprocess.run([ADB, "devices"], capture_output=True, text=True, timeout=15)
-        lines = proc.stdout.strip().splitlines()[1:]
-        devices = {}
-        for line in lines:
-            parts = line.strip().split()
-            if len(parts) >= 2 and parts[1] == "device":
-                devices[parts[0]] = parts[1]
-        return devices
-    except Exception as exc:
-        print(f"[ERROR] Failed to get adb devices: {exc}")
-        return {}
+    for attempt in range(2):
+        try:
+            proc = subprocess.run([ADB, "devices"], capture_output=True, text=True, timeout=15)
+            lines = proc.stdout.strip().splitlines()[1:]
+            devices = {}
+            for line in lines:
+                parts = line.strip().split()
+                if len(parts) >= 2 and parts[1] == "device":
+                    devices[parts[0]] = parts[1]
+            return devices
+        except Exception as exc:
+            if attempt == 0:
+                time.sleep(2)
+                continue
+            sys.stderr.write(f"[WARN] Failed to get adb devices: {exc}\n")
+            return {}
+    return {}
 
 
 def load_machine_serials() -> list[tuple[int, str]]:
@@ -60,7 +103,23 @@ def load_machine_serials() -> list[tuple[int, str]]:
 
 
 def clear_device_cache(m_num: int, serial: str) -> tuple[int, str, bool, str]:
-    """Process a single device: clear cache -> force stop -> home -> lock portrait."""
+    """Process a single device: acquire DeviceLock -> clear cache -> force stop -> home."""
+    if DeviceLock is None:
+        return m_num, serial, False, f"[ERROR] DeviceLock not available for machine {m_num}"
+
+    try:
+        lock = DeviceLock(
+            serial=serial,
+            machine=str(m_num),
+            project="clear-cache",
+            bypass_proxy_readiness=True,
+            user_authorized=False,
+        )
+    except (DeviceLockUnavailable, DeviceLockNeedsUserDecision):
+        return m_num, serial, False, f"[LOCKED] Machine {m_num} is busy"
+    except Exception as exc:
+        return m_num, serial, False, f"[ERROR] Machine {m_num} lock init failed: {exc}"
+
     cmd = [
         sys.executable,
         SCRIPT_PATH,
@@ -70,37 +129,44 @@ def clear_device_cache(m_num: int, serial: str) -> tuple[int, str, bool, str]:
     ]
     env = os.environ.copy()
     env["PYTHONPATH"] = r"D:\Taadaa\automation-core\src;D:\Taadaa\tiktok-luot nuoi acc"
-    
+
     msg = ""
     ok = False
+
     try:
-        p = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=240)
-        out = p.stdout.strip() or p.stderr.strip()
-        if p.returncode == 0:
-            msg = f"[OK] Machine {m_num}: {out}"
-            ok = True
-        else:
-            msg = f"[WARN] Machine {m_num} (code {p.returncode}): {out}"
-    except subprocess.TimeoutExpired:
-        msg = f"[TIMEOUT] Machine {m_num} [{serial}] cache clear timed out after 120s"
+        with lock:
+            try:
+                p = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=240)
+                out = p.stdout.strip() or p.stderr.strip()
+                if p.returncode == 0:
+                    msg = f"[OK] Machine {m_num}: {out}"
+                    ok = True
+                else:
+                    msg = f"[WARN] Machine {m_num} (code {p.returncode}): {out}"
+            except subprocess.TimeoutExpired:
+                msg = f"[TIMEOUT] Machine {m_num} [{serial}] cache clear timed out after 240s"
+            except Exception as exc:
+                msg = f"[ERROR] Machine {m_num} [{serial}] error: {exc}"
+            finally:
+                # Guarantee: Force stop TikTok, press Home, and ensure portrait lock
+                try:
+                    subprocess.run(
+                        [
+                            ADB, "-s", serial, "shell",
+                            "am force-stop com.ss.android.ugc.trill; "
+                            "input keyevent KEYCODE_HOME; "
+                            "settings put system accelerometer_rotation 0; "
+                            "settings put system user_rotation 0"
+                        ],
+                        capture_output=True,
+                        timeout=10,
+                    )
+                except Exception:
+                    pass
+    except (DeviceLockUnavailable, DeviceLockNeedsUserDecision):
+        return m_num, serial, False, f"[LOCKED] Machine {m_num} is busy"
     except Exception as exc:
-        msg = f"[ERROR] Machine {m_num} [{serial}] error: {exc}"
-    finally:
-        # Guarantee: Force stop TikTok, press Home, and ensure portrait lock
-        try:
-            subprocess.run(
-                [
-                    ADB, "-s", serial, "shell",
-                    "am force-stop com.ss.android.ugc.trill; "
-                    "input keyevent KEYCODE_HOME; "
-                    "settings put system accelerometer_rotation 0; "
-                    "settings put system user_rotation 0"
-                ],
-                capture_output=True,
-                timeout=10,
-            )
-        except Exception:
-            pass
+        return m_num, serial, False, f"[ERROR] Machine {m_num} lock acquisition failed: {exc}"
 
     return m_num, serial, ok, msg
 
@@ -119,13 +185,6 @@ def _send_clear_cache_alert(error_reason: str) -> None:
         sys.stderr.write(f"[ALERT FAILED] {exc}\n")
 
 
-
-from datetime import datetime
-import json
-
-STATE_FILE = Path(r"D:\Taadaa\runtime\kibe\cron-state\post_night_clear_cache_state.json")
-REPORTED_FILE = Path(r"D:\Taadaa\runtime\kibe\cron-state\feed_session_reported.json")
-
 def is_ca4_finished(today_str: str) -> bool:
     if not REPORTED_FILE.is_file():
         return False
@@ -136,47 +195,33 @@ def is_ca4_finished(today_str: str) -> bool:
     except Exception:
         return False
 
-def has_active_device_locks() -> bool:
-    lock_dirs = [
-        Path(os.path.expanduser(r"~/.codex/device-locks")),
-        Path(os.path.expanduser(r"~\AppData\Local\automation-core\device-locks")),
-    ]
-    for ld in lock_dirs:
-        if ld.is_dir():
-            for f in ld.glob("*.lock.json"):
-                try:
-                    d = json.loads(f.read_text(encoding="utf-8"))
-                    if d.get("status") in ("active", "running", "queued", "queued_v2"):
-                        return True
-                    if d.get("status") == "blocked" and d.get("owner_active", True) is not False:
-                        return True
-                except Exception:
-                    pass
-            for f in ld.glob("*.lock"):
-                return True
-    return False
 
-def already_ran_today(today_str: str) -> bool:
+def load_cleared_machines(today_str: str) -> set[int]:
+    """Load machines cleared today from state file, resetting if date changed."""
     if not STATE_FILE.is_file():
-        return False
+        return set()
     try:
         data = json.loads(STATE_FILE.read_text(encoding="utf-8"))
-        return data.get("last_success_date") == today_str
-    except Exception:
-        return False
+        if data.get("last_date") == today_str:
+            return set(data.get("cleared_machines", []))
+    except Exception as exc:
+        sys.stderr.write(f"[WARN] Failed to read state file: {exc}\n")
+    return set()
 
-def save_cache_clear_state(today_str: str, s_count: int, f_count: int) -> None:
+
+def save_cleared_machines(today_str: str, cleared: set[int]) -> None:
+    """Save cleared machines for today into state file."""
     try:
         STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
         data = {
-            "last_success_date": today_str,
+            "last_date": today_str,
+            "cleared_machines": sorted(list(cleared)),
             "last_run_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "success_count": s_count,
-            "fail_count": f_count
         }
         STATE_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
-    except Exception as e:
-        print(f"[WARN] Failed to save state file: {e}")
+    except Exception as exc:
+        sys.stderr.write(f"[WARN] Failed to save state file: {exc}\n")
+
 
 def main() -> int:
     import argparse
@@ -189,30 +234,30 @@ def main() -> int:
     now_hour = datetime.now().hour
 
     if not args.force:
-        if now_hour < 1 or now_hour > 5:
+        if not (3 <= now_hour <= 5):
             return 0
-        if already_ran_today(today_str):
+        if is_feed_runner_active():
             return 0
         if not is_ca4_finished(today_str):
             return 0
-        if has_active_device_locks():
-            return 0
+
+    cleared_today = load_cleared_machines(today_str)
 
     connected = get_connected_devices()
     if not connected:
-        print("[BÁO CÁO DỌN DẸP CACHE TIKTOK]\n• Không có thiết bị ADB online.")
         return 0
 
     machines = load_machine_serials()
     if not machines:
-        print("[BÁO CÁO DỌN DẸP CACHE TIKTOK]\n• Không tìm thấy cấu hình máy trong workbook.")
         return 0
 
-    target_machines = [(m, s) for m, s in machines if s in connected]
-    skipped_count = len(machines) - len(target_machines)
+    target_machines = [(m, s) for m, s in machines if s in connected and m not in cleared_today]
+    if not target_machines:
+        # All connected machines have been cleared today
+        return 0
 
-    sys.stderr.write(f"[CRON] Starting concurrent TikTok cache clear on {len(target_machines)} online machines (workers={MAX_WORKERS})...\n")
-    
+    sys.stderr.write(f"[CRON] Starting concurrent TikTok cache clear on {len(target_machines)} machines (workers={MAX_WORKERS})...\n")
+
     success_machines: list[int] = []
     failed_machines: list[tuple[int, str]] = []
 
@@ -223,31 +268,36 @@ def main() -> int:
             sys.stderr.write(f"{msg}\n")
             if ok:
                 success_machines.append(m_num)
+                if not args.dry_run:
+                    cleared_today.add(m_num)
+                    save_cleared_machines(today_str, cleared_today)
             else:
+                if "[LOCKED]" in msg:
+                    # Ignore locked machines to avoid spamming reports
+                    continue
+
                 reason = "Error"
                 if "WIDGET_MISS" in msg:
                     reason = "WIDGET_MISS"
                 elif "timed out" in msg.lower() or "timeout" in msg.lower():
                     reason = "Timeout"
-                elif "[WARN]" in msg:
-                    parts = msg.split(":", 2)
-                    reason = parts[2].strip() if len(parts) >= 3 else parts[-1].strip()
-                elif "[ERROR]" in msg:
+                elif "[WARN]" in msg or "[ERROR]" in msg:
                     parts = msg.split(":", 2)
                     reason = parts[2].strip() if len(parts) >= 3 else parts[-1].strip()
                 failed_machines.append((m_num, reason))
 
     s_count = len(success_machines)
     f_count = len(failed_machines)
-    total_online = len(target_machines)
-    total_all = len(machines)
+
+    if s_count == 0 and f_count == 0:
+        return 0
 
     s_list = ", ".join(f"{m:02d}" for m in sorted(success_machines)) if success_machines else "None"
 
     report = [
         f"[BÁO CÁO DỌN DẸP CACHE TIKTOK]",
-        f"• Tổng máy: {total_online}/{total_all} online (Offline/Skip: {skipped_count})",
-        f"• Success ({s_count}): {s_list}",
+        f"• Đã dọn đợt này: {s_count} máy ({s_list})",
+        f"• Lũy kế hôm nay: {len(cleared_today)} máy",
     ]
 
     if f_count > 0:
@@ -258,14 +308,13 @@ def main() -> int:
     else:
         report.append(f"• Fail (0)")
 
-    if total_online > 0 and f_count > (total_online / 2):
+    total_attempted = len(target_machines)
+    if total_attempted > 0 and f_count > (total_attempted / 2):
         f_summary_str = ", ".join(f"{m:02d} ({r})" for m, r in sorted(failed_machines))
-        _send_clear_cache_alert(f"Đa số máy dọn cache thất bại/timeout ({f_count}/{total_online} máy fail): {f_summary_str}")
+        _send_clear_cache_alert(f"Đa số máy dọn cache thất bại/timeout ({f_count}/{total_attempted} máy fail): {f_summary_str}")
 
     report_text = "\n".join(report)
     print(report_text)
-    if not args.dry_run and s_count > 0:
-        save_cache_clear_state(today_str, s_count, f_count)
     return 0
 
 
