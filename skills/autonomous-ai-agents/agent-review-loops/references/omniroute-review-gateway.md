@@ -43,11 +43,14 @@ payload = {
 | Tool chuẩn | `invoke-plan-review.py` | Python HTTP script tới port 20129 |
 
 ## Closeout Gate Tooling Best Practices (`closeout_gate.py`)
-1. **Model Specification Discipline (Bắt buộc dùng `review` hoặc `chatgpt-web/gpt-5.6-sol-high`):**
-   - TUYỆT ĐỐI CẤM caller / script tự ý gửi trực tiếp `chatgpt-web/gpt-5.6-sol-pro` hoặc fallback hạ cấp sang `chatgpt-web/gpt-5.6-sol-instant`.
-   - `sol-pro` trên ChatGPT Web backend có quota cực kỳ ngặt nghèo (vài requests / 3-5h), gọi trực tiếp sẽ gây `502 You've hit your limit` lập tức cho account.
-   - `sol-instant` là chế độ 0 thinking / không suy luận, vi phạm tiêu chuẩn Reviewer Sol High của Farm.
-   - BẮT BUỘC luôn truyền `model: "review"`. Combo `review` đã gán Tier 0 là `chatgpt-web-pool` xoay vòng đều 15 accounts qua Round-Robin chạy `gpt-5.6-sol-high`, tự động failover sang acc kế tiếp khi gặp 429/502 mà không bị văng sang lane Pro hay Instant.
+1. **Model Specification Discipline & Root Cause Anti-Insanity (Bắt buộc dùng `review` hoặc `chatgpt-web/gpt-5.6-sol-high`):**
+   - TUYỆT ĐỐI CẤM caller / script / subagent tự ý gửi trực tiếp `chatgpt-web/gpt-5.6-sol-pro` hoặc fallback hạ cấp sang `chatgpt-web/gpt-5.6-sol-instant`.
+   - **Bẫy Agent Over-engineering / CLI Speculation (Root Cause 18/09/2026):** Subagent sau khi inspect `/v1/models` thấy danh sách model alias trả về có `sol-pro`, tự suy diễn "phải gọi bản Pro cho xịn nhất" rồi tự gõ `--model "chatgpt-web/gpt-5.6-sol-pro"` vào CLI `closeout_gate.py`.
+   - Hậu quả: `sol-pro` trên ChatGPT Web backend có quota cực kỳ ngặt nghèo (vài requests / 3-5h). Bắn vào acc sẽ ăn ngay `[502]: You've hit your limit. Please try again later.`. Khi dính 502, agent lại tự chữa cháy nhảy sang `sol-instant` (0 thinking / không suy luận), phá hỏng toàn bộ chuẩn review khắt khe của Farm.
+   - **Quy tắc điều phối & thực thi:**
+     * BẮT BUỘC giữ nguyên default `--model review` khi gọi `closeout_gate.py` (hoặc chỉ định đích danh `chatgpt-web/gpt-5.6-sol-high`).
+     * Combo `review` đã cấu hình Tier 0 là `chatgpt-web-pool` xoay vòng đều 16 accounts qua Round-Robin chạy `gpt-5.6-sol-high`, tự động failover sang account kế tiếp khi gặp 429/502 mà bảo toàn 100% lane Sol High.
+     * CẤM Coordinator và Worker dispatch các lệnh gọi review có cờ model can thiệp sang Pro/Instant.
 
 2. **Lazy URL Resolution (Tránh import side-effect):**
    - Không gọi `resolve_omni_url()` tại cấp module (`OMNI_ROUTE_URL = resolve_omni_url()` -> ANTI-PATTERN).
