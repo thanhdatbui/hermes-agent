@@ -258,8 +258,6 @@ hooks:
       matcher: terminal
       timeout: 5
   pre_tool_call:
-    - command: python D:/Taadaa/tools/hooks/guard_progress_supervisor.py
-      timeout: 5
     - command: python D:/Taadaa/tools/hooks/guard_read_file_size.py
       matcher: read_file
       timeout: 5
