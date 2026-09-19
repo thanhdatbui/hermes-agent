@@ -17,6 +17,7 @@ import csv
 import glob
 import json
 import os
+import sqlite3
 import subprocess
 import sys
 import time
@@ -230,18 +231,73 @@ def is_feed_active() -> bool:
     return False
 
 
-def get_tik_avatar_stats(tik: int, workbook_dir: Path | None = None) -> dict:
-    """Lấy danh sách máy chưa có avatar trực tiếp từ TikTok Tracker Database (Web Dashboard).
-    Khớp chính xác với thực tế trên TikTok, không phụ thuộc vào cột Excel.
-    Fallback đọc Excel nếu database không khả dụng.
+def rescan_completed_machines(machines: list[int] | None = None, timeout_seconds: int = 180) -> bool:
+    """Gọi tiktok_account_tracker.py cập nhật snapshot DB cho các máy vừa chạy xong."""
+    tracker_script = Path(r"D:\Taadaa\tools\tiktok_account_tracker.py")
+    if not tracker_script.exists():
+        sys.stderr.write(f"Tracker script not found: {tracker_script}\n")
+        return False
+
+    py_exe = Path(r"D:\Taadaa\python-envs\automation\Scripts\python.exe")
+    python_bin = str(py_exe) if py_exe.exists() else sys.executable
+
+    cmd = [python_bin, str(tracker_script)]
+    machine_count = 0
+    if machines:
+        unique_machines = sorted(list(set(machines)))
+        cmd.extend(["--machines", ",".join(str(m) for m in unique_machines), "--workers", "10"])
+        machine_count = len(unique_machines)
+
+    start_time = time.time()
+    try:
+        res = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=timeout_seconds,
+        )
+        elapsed = time.time() - start_time
+        stdout_clean = (res.stdout or "").strip()
+        stderr_clean = (res.stderr or "").strip()
+
+        if res.returncode == 0:
+            target_desc = f"{machine_count} máy" if machine_count > 0 else "toàn bộ"
+            print(f"[TRACKER RESCAN] Hoàn tất cập nhật DB cho {target_desc} (exit: 0, duration: {elapsed:.2f}s).")
+            if stdout_clean:
+                print(f"[TRACKER RESCAN stdout]:\n{stdout_clean}")
+            if stderr_clean:
+                print(f"[TRACKER RESCAN stderr]:\n{stderr_clean}")
+            return True
+        else:
+            err_msg = (
+                f"[TRACKER RESCAN] Error (exit {res.returncode}, duration: {elapsed:.2f}s)\n"
+                f"[TRACKER RESCAN stdout]:\n{stdout_clean or '<empty>'}\n"
+                f"[TRACKER RESCAN stderr]:\n{stderr_clean or '<empty>'}\n"
+            )
+            sys.stderr.write(err_msg)
+            return False
+    except Exception as e:
+        elapsed = time.time() - start_time
+        sys.stderr.write(f"[TRACKER RESCAN] Failed to run rescan after {elapsed:.2f}s: {e}\n")
+        return False
+
+
+def get_tik_avatar_stats(
+    tik: int,
+    workbook_dir: Path | None = None,
+    host_context: dict | None = None,
+) -> dict:
+    """Lấy danh sách máy chưa có avatar từ SQLite database tiktok_tracker.db có lọc theo host_id.
+    Fallback đọc Excel workbook nếu SQLite database lỗi hoặc không mở được.
     """
-    db_path = Path(r"D:\Taadaa\data\tiktok_tracker.db")
+    ctx = host_context or get_host_context()
+    host_id = ctx.get("host_id", "kibe").lower()
+    db_path = Path(ctx.get("db_path", r"D:\Taadaa\data\tiktok_tracker.db"))
+
     if db_path.exists():
         try:
-            import sqlite3
-            conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
-            c = conn.cursor()
-            c.execute("""
+            if host_id == "admin":
+                query = """
                 WITH Ranked AS (
                     SELECT s.username, s.status, s.has_avatar,
                            ROW_NUMBER() OVER (PARTITION BY s.username ORDER BY s.id DESC) as rn
@@ -250,17 +306,34 @@ def get_tik_avatar_stats(tik: int, workbook_dir: Path | None = None) -> dict:
                 SELECT m.may, r.has_avatar, r.status
                 FROM farm_account_info m
                 LEFT JOIN Ranked r ON m.username = r.username AND r.rn = 1
-                WHERE m.tik = ?
+                WHERE m.tik = ? AND (m.host_id = ? OR m.may >= ?)
                 ORDER BY m.may
-            """, (tik,))
-            rows = c.fetchall()
-            conn.close()
+                """
+                params = (tik, "admin", 200)
+            else:
+                query = """
+                WITH Ranked AS (
+                    SELECT s.username, s.status, s.has_avatar,
+                           ROW_NUMBER() OVER (PARTITION BY s.username ORDER BY s.id DESC) as rn
+                    FROM snapshots s
+                )
+                SELECT m.may, r.has_avatar, r.status
+                FROM farm_account_info m
+                LEFT JOIN Ranked r ON m.username = r.username AND r.rn = 1
+                WHERE m.tik = ? AND (m.host_id = ? OR m.host_id IS NULL OR m.host_id = ?) AND m.may < ?
+                ORDER BY m.may
+                """
+                params = (tik, "kibe", "", 200)
+
+            with sqlite3.connect(str(db_path), timeout=10) as conn:
+                cursor = conn.cursor()
+                cursor.execute(query, params)
+                rows = cursor.fetchall()
 
             if rows:
                 unuploaded = []
                 uploaded_count = 0
-                total_accounts = len(rows)
-                for may, has_avatar, status in rows:
+                for may, has_avatar, _st in rows:
                     if has_avatar == 1:
                         uploaded_count += 1
                     else:
@@ -268,12 +341,12 @@ def get_tik_avatar_stats(tik: int, workbook_dir: Path | None = None) -> dict:
                 return {
                     "unuploaded": sorted(list(set(unuploaded))),
                     "uploaded_count": uploaded_count,
-                    "total_accounts": total_accounts
+                    "total_accounts": len(rows),
                 }
         except Exception as e:
-            sys.stderr.write(f"Warning: read from tiktok_tracker.db failed, fallback Excel: {e}\n")
+            sys.stderr.write(f"Error querying tiktok_tracker.db for Tik {tik}: {e}\n")
 
-    wb_base = workbook_dir or WORKBOOK_DIR
+    wb_base = workbook_dir or ctx.get("workbook_dir") or WORKBOOK_DIR
     fn = f"Tik{tik}.xlsx" if tik != 3 else "tik3.xlsx"
     wb_path = wb_base / fn
     if not wb_path.exists():
@@ -333,12 +406,20 @@ def get_tik_avatar_stats(tik: int, workbook_dir: Path | None = None) -> dict:
         return {"unuploaded": [], "uploaded_count": 0, "total_accounts": 0}
 
 
-def get_unuploaded_machines(tik: int, workbook_dir: Path | None = None) -> list[int]:
-    return get_tik_avatar_stats(tik, workbook_dir=workbook_dir)["unuploaded"]
+def get_unuploaded_machines(
+    tik: int,
+    workbook_dir: Path | None = None,
+    host_context: dict | None = None,
+) -> list[int]:
+    return get_tik_avatar_stats(tik, workbook_dir=workbook_dir, host_context=host_context)["unuploaded"]
 
 
-def get_tik_avatar_status(tik: int, workbook_dir: Path | None = None) -> tuple[int, list[int]]:
-    st = get_tik_avatar_stats(tik, workbook_dir=workbook_dir)
+def get_tik_avatar_status(
+    tik: int,
+    workbook_dir: Path | None = None,
+    host_context: dict | None = None,
+) -> tuple[int, list[int]]:
+    st = get_tik_avatar_stats(tik, workbook_dir=workbook_dir, host_context=host_context)
     return st["total_accounts"], st["unuploaded"]
 
 
