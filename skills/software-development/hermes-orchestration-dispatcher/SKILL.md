@@ -306,11 +306,13 @@ Khi điều phối worker trên file monolith (>1.500 dòng) hoặc nhận yêu 
    - Mặc định: Dùng `D:/Taadaa/tools/sol_auditor.py` (GPT-5.6 Sol Web qua OmniRoute :20129) — chi phí 0đ, không đốt quota Claude CLI, reasoning sâu, vạch lá tìm sâu và tự động verify test/git diff sống.
    - Claude CLI Opus High: CHỈ dùng cho ca P0 đặc biệt hoặc tái cấu trúc hạ tầng hệ thống lớn khi có chỉ đạo rõ ràng.
 
-6. SOL PLANNER TẦNG A BẮT BUỘC TRƯỚC KHI DISPATCH & CHỦ ĐỘNG TẠI LƯỢT CHẨN ĐOÁN (User Invariant 2026-09-17 & 2026-09-19):
-   - **Chủ động gọi Sol ngay lượt tìm ra bug (Proactive Sol Calling - CẤM ĐỢI NHẮC / CẤM ĐỢI DISPATCH MỚI GỌI)**:
-     * Hook `guard_dispatch_contract.py` chỉ chặn ở giây phút gọi `delegate_task`. Vì vậy, Coordinator THƯỜNG DÍNH LỖI THỤ ĐỘNG: tìm ra bug xong thì chat giải thích suông với user rồi hỏi "Duyệt để em làm", để user phải nhắc "Sao không gọi Sol lên plan?".
-     * **QUY TẮC CỨNG (2026-09-19)**: Ngay khi chẩn đoán xong một lỗi logic code (Non-T0) hoặc nhận task can thiệp code farm, Coordinator **BẮT BUỘC gọi `python D:/Taadaa/tools/sol_planner.py --goal "..." --file "..."` NGAY TRONG LƯỢT ĐÓ** trước khi trả lời user.
-     * Câu trả lời đề xuất giải pháp BẮT BUỘC đính kèm luôn `SOL_PLAN_ID`, bản chẩn đoán của Sol và phân rã Task T1..Tn. CẤM TUYỆT ĐỐI đề xuất suông mà không có Sol Plan.
+6. SOL PLANNER TẦNG A BẮT BUỘC TRƯỚC KHI DISPATCH & KIẾN TRÚC AUTO-RESOLVE VISIBLE (User chốt 2026-09-19):
+   - **Bản đồng thuận tối thượng giữa Claude CLI & GPT-5.6 Sol**: Xem chi tiết tại `references/sol-authority-hook-architecture-and-visible-blocking.md`.
+   - **Triết lý Compiler Phase**: Sol Planner là Compiler Phase bắt buộc trước mọi mutation. Không ép Coordinator "nhớ" gọi Sol qua Memory/Prompt (soft-constraint vô hiệu). Quyền can thiệp code bị khóa cứng ở tầng Hook vật lý (`guard_dispatch_contract.py`).
+   - **Phân cấp quyền lực**: Sếp = Intent Authority (ý tưởng, mục tiêu); Coordinator = Context Authority (gom hiện trường O(1)); Sol = Engineering Authority (chuyển ngữ ý tưởng của Sếp thành bản vẽ kỹ thuật chi tiết: Decompose, C Invariant anchor duy nhất, focused test <30s, worker budget); Worker = Execution Authority.
+   - **Visible Blocking Resolution**: Khi thiếu `SOL_PLAN_ID`, Hook tự động gọi Sol Planner (:20129) sinh plan, rồi BLOCK tool call và thông báo công khai để Coordinator re-dispatch với `SOL_PLAN_ID` vừa tạo (triệt tiêu 100% việc user phải nhắc).
+   - **Van xả áp toàn diện (Fallback Valve)**: Khi Sol sập mạng, timeout >25s HOẶC Sol từ chối do bộ lọc an toàn/đạo đức (Content Policy Refusal) -> Hook tự động kích hoạt `SOL_FALLBACK`, trao quyền chỉ đạo trực tiếp cho Coordinator và Sếp, tuyệt đối không gây deadlock.
+   - **Recursion Breaker trên Hook**: Sử dụng cờ `SOL_AUTOCALL_ATTEMPTED` để ngăn ngừa tình trạng Hook lặp vô tận khi gọi Sol Planner bị lỗi hoặc từ chối liên tiếp.
    - Khi nhận task phát triển code/tool mới hoặc can thiệp script hệ thống: Coordinator CẤM TUYỆT ĐỐI tự chế plan rồi dispatch worker ngay.
    - BẮT BUỘC kích hoạt Sol Web (:20129) qua `python D:/Taadaa/tools/sol_planner.py --goal "..." --file "..."` để Sol Brain (Tầng A offline) chẩn đoán và phân rã các sub-tasks chuẩn (T1..Tn) trước khi giao việc cho worker.
    - **Pitfall OmniRoute (:20129) Auth Hang**: Mọi lệnh gọi tới `:20129/v1/chat/completions` (urllib/curl) BẮT BUỘC phải truyền header `Authorization: Bearer <OMNIROUTE_API_KEY>` (lấy từ `%LOCALAPPDATA%\hermes\.env`). Thiếu header này OmniRoute sẽ treo/timeout vô thời hạn thay vì trả 401 ngay.
