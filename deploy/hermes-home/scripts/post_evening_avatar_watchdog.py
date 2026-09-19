@@ -231,13 +231,48 @@ def is_feed_active() -> bool:
 
 
 def get_tik_avatar_stats(tik: int, workbook_dir: Path | None = None) -> dict:
-    """Đọc workbook TikN.xlsx và trả về thống kê avatar:
-    {
-        'unuploaded': list[int],
-        'uploaded_count': int,
-        'total_accounts': int
-    }
+    """Lấy danh sách máy chưa có avatar trực tiếp từ TikTok Tracker Database (Web Dashboard).
+    Khớp chính xác với thực tế trên TikTok, không phụ thuộc vào cột Excel.
+    Fallback đọc Excel nếu database không khả dụng.
     """
+    db_path = Path(r"D:\Taadaa\data\tiktok_tracker.db")
+    if db_path.exists():
+        try:
+            import sqlite3
+            conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+            c = conn.cursor()
+            c.execute("""
+                WITH Ranked AS (
+                    SELECT s.username, s.status, s.has_avatar,
+                           ROW_NUMBER() OVER (PARTITION BY s.username ORDER BY s.id DESC) as rn
+                    FROM snapshots s
+                )
+                SELECT m.may, r.has_avatar, r.status
+                FROM farm_account_info m
+                LEFT JOIN Ranked r ON m.username = r.username AND r.rn = 1
+                WHERE m.tik = ?
+                ORDER BY m.may
+            """, (tik,))
+            rows = c.fetchall()
+            conn.close()
+
+            if rows:
+                unuploaded = []
+                uploaded_count = 0
+                total_accounts = len(rows)
+                for may, has_avatar, status in rows:
+                    if has_avatar == 1:
+                        uploaded_count += 1
+                    else:
+                        unuploaded.append(may)
+                return {
+                    "unuploaded": sorted(list(set(unuploaded))),
+                    "uploaded_count": uploaded_count,
+                    "total_accounts": total_accounts
+                }
+        except Exception as e:
+            sys.stderr.write(f"Warning: read from tiktok_tracker.db failed, fallback Excel: {e}\n")
+
     wb_base = workbook_dir or WORKBOOK_DIR
     fn = f"Tik{tik}.xlsx" if tik != 3 else "tik3.xlsx"
     wb_path = wb_base / fn
@@ -538,11 +573,22 @@ def main() -> int:
     if is_powershell_batch_alive():
         return 0
 
-    # Kích hoạt batch cho Tik đầu tiên còn acc chưa bao giờ được up
-    for tik in ctx["target_tiks"]:
+    # Kích hoạt batch cho Tik tiếp theo theo cơ chế Round-Robin + Cooldown chống spam
+    target_tiks = ctx["target_tiks"]
+    cursor = int(state.get("avatar_rr_cursor", 0)) % len(target_tiks)
+    ordered_tiks = target_tiks[cursor:] + target_tiks[:cursor]
+    recent_launches = state.get("avatar_launch_history", [])
+
+    for offset, tik in enumerate(ordered_tiks):
         missing_machines = all_unuploaded.get(tik, [])
         if missing_machines:
+            # Cooldown 15 phút giữa các batch của cùng 1 Tik để tránh spam
+            last_for_tik = next((l for l in reversed(recent_launches) if l.get("tik") == tik), None)
+            if last_for_tik and (time.time() - last_for_tik.get("timestamp", 0) < 900):
+                continue
             trigger_avatar_batch(tik, missing_machines, state, host_context=ctx)
+            state["avatar_rr_cursor"] = (cursor + offset + 1) % len(target_tiks)
+            save_state(state, state_file=ctx["state_file"])
             return 0
 
     return 0
