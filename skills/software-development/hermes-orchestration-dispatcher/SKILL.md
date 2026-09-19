@@ -308,6 +308,7 @@ Khi điều phối worker trên file monolith (>1.500 dòng) hoặc nhận yêu 
 
 6. SOL PLANNER TẦNG A BẮT BUỘC TRƯỚC KHI DISPATCH & KIẾN TRÚC AUTO-RESOLVE VISIBLE (User chốt 2026-09-19):
    - **Bản đồng thuận tối thượng giữa Claude CLI & GPT-5.6 Sol**: Xem chi tiết tại `references/sol-authority-hook-architecture-and-visible-blocking.md`.
+   - **Quy trình dẹp bỏ hoàn toàn Deadman Switch**: Xem chi tiết tại `references/deadman-switch-clean-removal-playbook.md` (gỡ bỏ khai báo trong config.yaml, trung hòa sys.exit(0) các vị trí, xóa sạch state cache và verify).
    - **Triết lý Compiler Phase**: Sol Planner là Compiler Phase bắt buộc trước mọi mutation. Không ép Coordinator "nhớ" gọi Sol qua Memory/Prompt (soft-constraint vô hiệu). Quyền can thiệp code bị khóa cứng ở tầng Hook vật lý (`guard_dispatch_contract.py`).
    - **Phân cấp quyền lực**: Sếp = Intent Authority (ý tưởng, mục tiêu); Coordinator = Context Authority (gom hiện trường O(1)); Sol = Engineering Authority (chuyển ngữ ý tưởng của Sếp thành bản vẽ kỹ thuật chi tiết: Decompose, C Invariant anchor duy nhất, focused test <30s, worker budget); Worker = Execution Authority.
    - **Visible Blocking Resolution**: Khi thiếu `SOL_PLAN_ID`, Hook tự động gọi Sol Planner (:20129) sinh plan, rồi BLOCK tool call và thông báo công khai để Coordinator re-dispatch với `SOL_PLAN_ID` vừa tạo (triệt tiêu 100% việc user phải nhắc).
