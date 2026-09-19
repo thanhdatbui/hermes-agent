@@ -338,8 +338,12 @@ def get_candidates(today_str: str, processed: list[str]) -> list[dict]:
                             d_today = date.fromisoformat(today_str[:10])
                             if (d_today - d_created).days < 7:
                                 continue  # Chưa đủ 7 ngày ngâm an toàn, bỏ qua
+                        else:
+                            continue  # Sai định dạng ngày -> Bỏ qua để an toàn (Fail-closed)
                     except Exception:
-                        pass
+                        continue  # Lỗi parse -> Bỏ qua để an toàn (Fail-closed)
+                else:
+                    continue  # Không có ngày tạo/cập nhật -> Bỏ qua để an toàn (Fail-closed)
                 if em_l in seen_emails or em_l in omniroute_success or em_l in excluded_emails:
                     continue
                 if em_l not in gpm_emails:
