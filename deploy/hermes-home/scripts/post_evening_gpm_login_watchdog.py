@@ -303,6 +303,16 @@ def get_candidates(today_str: str, processed: list[str]) -> list[dict]:
                 "reason": "cooldown_expired",
             })
 
+    # Đọc thêm danh sách completed_chatgpt từ backlog state nếu có
+    completed_chatgpt = set()
+    cg_state_file = Path("D:/Taadaa/runtime/kibe/cron-state/chatgpt_link_backlog_state.json")
+    if cg_state_file.exists():
+        try:
+            cg_data = json.loads(cg_state_file.read_text(encoding="utf-8"))
+            completed_chatgpt = set(k.lower() for k in cg_data.get("completed_chatgpt", {}).keys())
+        except Exception:
+            pass
+
     # --- Nhóm 2: Gmail mới đã có profile GPM nhưng chưa nạp OmniRoute ---
     if MASTER_XLSX.exists():
         try:
@@ -328,14 +338,25 @@ def get_candidates(today_str: str, processed: list[str]) -> list[dict]:
                 port = m.group(1) if m else None
                 m2 = re.search(r"(\d+)", str(r[7] or ""))
                 mid = int(m2.group(1)) if m2 else None
+
+                # Đọc cột Ghi Chú (cột 14 / index 13) để kiểm tra cờ CHATGPT_READY
+                note_val = str(r[13] or "").lower() if len(r) > 13 else ""
+                is_chatgpt_ready = "chatgpt_ready" in note_val or "chatgpt" in note_val or em_l in completed_chatgpt
+                priority = 1 if is_chatgpt_ready else 2
+                reason = "chatgpt_ready_priority" if is_chatgpt_ready else "ready_gpm_oauth"
+
                 candidates.append({
                     "email": em_l,
                     "mid": mid,
                     "port": port,
-                    "reason": "ready_gpm_oauth",
+                    "priority": priority,
+                    "reason": reason,
                 })
         except Exception as e:
             log(f"Lỗi đọc XLSX: {e}")
+
+    # Sắp xếp ưu tiên: priority=1 (CHATGPT_READY) lên trước, priority=2 sau
+    candidates.sort(key=lambda x: x.get("priority", 2))
 
     # --- Áp dụng constraint: proxy <= 2, machine <= 1 ---
     seen_mids = set()
