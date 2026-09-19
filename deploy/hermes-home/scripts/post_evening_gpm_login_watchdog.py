@@ -47,7 +47,7 @@ GPM_DB           = Path(r"C:\Users\Kibe\AppData\Local\Programs\GPMLogin\profile\
 GPM_SCRIPT       = Path(r"D:\Taadaa\GPM auto\scripts\run_oauth_s7_pipeline.py")
 PYTHON_EXE       = sys.executable
 
-MAX_WORKERS        = 5     # cấu hình 5 workers theo yêu cầu user
+MAX_WORKERS        = 2     # hạ 2 workers theo chỉ thị user để chống checkpoint và nghẽn proxy
 MAX_LOGINS_PER_PROXY = 2   # tối đa 2 acc / proxy / ngày
 MIN_IDLE_BUFFER_MIN  = 45  # cách ca tiếp theo ít nhất 45 phút
 
@@ -326,6 +326,20 @@ def get_candidates(today_str: str, processed: list[str]) -> list[dict]:
                 state_ = str(r[6] or "").strip().upper()
                 if state_ in ("DIE", "BAN", "SUSPENDED"):
                     continue
+
+                # Kiểm tra điều kiện ngâm đủ 7 ngày kể từ ngày cập nhật / tạo (Cột 15 / index 14)
+                updated_raw = str(r[14] or "").strip() if len(r) > 14 else ""
+                if updated_raw:
+                    try:
+                        date_part = updated_raw[:10]
+                        if len(date_part) == 10 and date_part[4] == "-" and date_part[7] == "-":
+                            from datetime import date
+                            d_created = date.fromisoformat(date_part)
+                            d_today = date.fromisoformat(today_str[:10])
+                            if (d_today - d_created).days < 7:
+                                continue  # Chưa đủ 7 ngày ngâm an toàn, bỏ qua
+                    except Exception:
+                        pass
                 if em_l in seen_emails or em_l in omniroute_success or em_l in excluded_emails:
                     continue
                 if em_l not in gpm_emails:
