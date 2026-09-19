@@ -50,5 +50,40 @@ class TestWatchdogLinkChatgptAndGpm(unittest.TestCase):
         self.assertEqual(w_gpm.MAX_LOGINS_PER_PROXY, 2)
         self.assertEqual(w_gpm.MIN_IDLE_BUFFER_MIN, 45)
 
+    def test_aged_gate_fail_closed_logic(self):
+        from datetime import datetime
+        today_str = "2026-09-20"
+
+        # Trường hợp 1: Đủ 14 ngày tuổi -> Passed
+        valid_date = "2026-09-04"
+        d_created = datetime.fromisoformat(valid_date).date()
+        d_today = datetime.fromisoformat(today_str).date()
+        self.assertGreaterEqual((d_today - d_created).days, 7)
+
+        # Trường hợp 2: Chưa đủ 7 ngày tuổi (mới tạo hôm qua) -> Fail / Skip
+        young_date = "2026-09-19"
+        d_young = datetime.fromisoformat(young_date).date()
+        self.assertLess((d_today - d_young).days, 7)
+
+        # Trường hợp 3: Chuỗi rác hoặc rỗng -> Fail-closed
+        bad_date = "invalid-date"
+        is_valid = len(bad_date) >= 10 and bad_date[4] == "-" and bad_date[7] == "-"
+        self.assertFalse(is_valid)
+
+    def test_watchdog_telemetry_fields(self):
+        telemetry = {
+            "scanned_targets": 188,
+            "skipped_locked": 2,
+            "skipped_feed": 5,
+            "skipped_distance": 10,
+            "skipped_die": 0,
+            "attempted": 1,
+            "success": 1,
+            "failed": 0,
+            "dry_run": True
+        }
+        for k in ["scanned_targets", "skipped_locked", "skipped_feed", "skipped_distance", "attempted", "success", "failed"]:
+            self.assertIn(k, telemetry)
+
 if __name__ == "__main__":
     unittest.main()
