@@ -1,0 +1,54 @@
+import sys
+import os
+import unittest
+from unittest.mock import patch, MagicMock
+from pathlib import Path
+
+REPO_SCRIPTS = Path(__file__).resolve().parent
+if str(REPO_SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(REPO_SCRIPTS))
+
+import watchdog_link_chatgpt_idle as w_cg
+import post_evening_gpm_login_watchdog as w_gpm
+
+class TestWatchdogLinkChatgptAndGpm(unittest.TestCase):
+    def test_get_live_targets_from_mock_excel(self):
+        with patch("watchdog_link_chatgpt_idle.MASTER_XLSX") as mock_p:
+            mock_p.exists.return_value = True
+            with patch("openpyxl.load_workbook") as mock_wb_func:
+                mock_wb = MagicMock()
+                mock_wb.sheetnames = ["Kibe_Farm_S7"]
+                mock_ws = MagicMock()
+                mock_ws.iter_rows.return_value = [
+                    ["STT", "Email", "Password", "Recovery", "2FA", "SDT", "Trạng Thái", "Số Máy", "Model", "Serial", "Proxy", "Profile", "Nguồn", "Ghi Chú", "Cập Nhật"],
+                    [1, "live_ok@gmail.com", "P1", "", "", "", "LIVE", "Máy 10", "S7", "serial_10", "", "", "", "", "2026-09-04"],
+                    [2, "live_chatgpt@gmail.com", "P2", "", "", "", "LIVE", "Máy 11", "S7", "serial_11", "", "", "", "CHATGPT_READY", "2026-09-04"],
+                    [3, "die_acc@gmail.com", "P3", "", "", "", "DIE", "Máy 12", "S7", "serial_12", "", "", "", "", "2026-09-04"],
+                ]
+                mock_wb.__getitem__.return_value = mock_ws
+                mock_wb_func.return_value = mock_wb
+
+                targets = w_cg.get_live_targets()
+                self.assertEqual(len(targets), 1)
+                self.assertEqual(targets[0]["email"], "live_ok@gmail.com")
+                self.assertEqual(targets[0]["stt"], 10)
+                self.assertEqual(targets[0]["serial"], "serial_10")
+
+    def test_dry_run_mode_telemetry(self):
+        with patch.object(w_cg, "get_live_targets", return_value=[
+            {"stt": 1, "serial": "s1", "email": "a@gmail.com", "pwd": "p", "dob": "2000-01-01"}
+        ]):
+            with patch.object(w_cg, "is_machine_locked", return_value=False):
+                with patch.object(w_cg, "get_next_feed_slot_distance_minutes", return_value=999.0):
+                    with patch.object(w_cg, "is_machine_in_feed", return_value=False):
+                        res = w_cg.check_and_run_one(dry_run=True)
+                        self.assertTrue(res.get("dry_run"))
+                        self.assertIn("scanned_targets", res)
+
+    def test_post_evening_gpm_login_constants(self):
+        self.assertEqual(w_gpm.MAX_WORKERS, 2)
+        self.assertEqual(w_gpm.MAX_LOGINS_PER_PROXY, 2)
+        self.assertEqual(w_gpm.MIN_IDLE_BUFFER_MIN, 45)
+
+if __name__ == "__main__":
+    unittest.main()

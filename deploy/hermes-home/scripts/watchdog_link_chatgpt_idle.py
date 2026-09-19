@@ -11,10 +11,14 @@ import os
 import sys
 import json
 import time
+import logging
 import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s", datefmt="%H:%M:%S")
+logger = logging.getLogger("watchdog_link_chatgpt_idle")
 
 HCMC = ZoneInfo("Asia/Ho_Chi_Minh")
 ADB_EXE = r"C:\Program Files (x86)\xiaowei\tools\adb.exe"
@@ -179,45 +183,68 @@ def get_next_feed_slot_distance_minutes(machine_id: int, now_dt: datetime) -> fl
         return 999.0
 
 
-def check_and_run_one():
+def check_and_run_one(dry_run: bool = False) -> dict:
     now = datetime.now(HCMC)
     state = load_state()
     completed_cg = state.get("completed_chatgpt", {})
     cleaned_die = state.get("cleaned_die", {})
+
+    telemetry = {
+        "scanned_targets": 0,
+        "skipped_locked": 0,
+        "skipped_feed": 0,
+        "skipped_distance": 0,
+        "skipped_die": 0,
+        "attempted": 0,
+        "success": 0,
+        "failed": 0,
+        "dry_run": dry_run
+    }
 
     live_targets = get_live_targets()
     pending_cg = [t for t in live_targets if t["email"] not in completed_cg]
     pending_die = [t for t in DIE_TARGETS if t["email"] not in cleaned_die]
 
     if not pending_cg and not pending_die:
-        sys.exit(0)
+        return telemetry
 
     # Ưu tiên 1: Chạy liên kết ChatGPT cho máy LIVE rảnh
     for t in pending_cg:
         stt = t["stt"]
         serial = t["serial"]
         email = t["email"]
+        telemetry["scanned_targets"] += 1
 
         if is_machine_locked(stt, serial):
+            telemetry["skipped_locked"] += 1
             continue
         dist = get_next_feed_slot_distance_minutes(stt, now)
         if dist < 25.0:
+            telemetry["skipped_distance"] += 1
             continue
         if is_machine_in_feed(serial):
+            telemetry["skipped_feed"] += 1
             continue
+
+        if dry_run:
+            telemetry["attempted"] += 1
+            logger.info(f"[DRY-RUN] Máy {stt:02d} ({serial}) sẵn sàng liên kết ChatGPT: {email}")
+            return telemetry
 
         # Kiểm tra Live Gmail trước khi chiếm máy
         sys.path.insert(0, r"D:\Taadaa\tools")
         try:
             from check_gmail_live_fast import check_gmail_is_live
             if not check_gmail_is_live(email):
-                sys.stderr.write(f"[{now.strftime('%H:%M:%S')}] Máy {stt:02d}: Gmail {email} đã DIE trên checkmail.live -> Bỏ qua ChatGPT\n")
+                telemetry["skipped_die"] += 1
+                logger.warning(f"Máy {stt:02d}: Gmail {email} đã DIE trên checkmail.live -> Bỏ qua ChatGPT")
                 continue
         except Exception:
             pass
 
         # Tiến hành liên kết ChatGPT
-        sys.stderr.write(f"[{now.strftime('%H:%M:%S')}] Máy {stt:02d} ({serial}) RẢNH an toàn -> Liên kết ChatGPT: {email}...\n")
+        telemetry["attempted"] += 1
+        logger.info(f"Máy {stt:02d} ({serial}) RẢNH an toàn -> Liên kết ChatGPT: {email}...")
         sys.path.insert(0, r"D:\Taadaa\register gmail\scripts")
         try:
             from hook_chatgpt_register import register_chatgpt_on_device
@@ -229,6 +256,7 @@ def check_and_run_one():
                 timeout=180
             )
             if isinstance(res, dict) and res.get("success"):
+                telemetry["success"] += 1
                 completed_cg[email] = {
                     "machine": stt,
                     "serial": serial,
@@ -238,33 +266,49 @@ def check_and_run_one():
                 state["completed_chatgpt"] = completed_cg
                 save_state(state)
                 mark_chatgpt_ready_excel(email)
-                print(f"[CHATGPT-LINKED] Máy {stt:02d} ({email}): {res.get('message')}")
+                logger.info(f"[CHATGPT-LINKED] Máy {stt:02d} ({email}): {res.get('message')}")
             else:
+                telemetry["failed"] += 1
                 err_msg = res.get("message") if isinstance(res, dict) else str(res)
-                sys.stderr.write(f"[CHATGPT-FAIL] Máy {stt:02d} ({email}): {err_msg}\n")
+                logger.error(f"[CHATGPT-FAIL] Máy {stt:02d} ({email}): {err_msg}")
         except Exception as exc:
-            sys.stderr.write(f"[CHATGPT-EXC] Máy {stt:02d} ({email}): {exc}\n")
-        return
+            telemetry["failed"] += 1
+            logger.error(f"[CHATGPT-EXC] Máy {stt:02d} ({email}): {exc}")
+        return telemetry
 
     # Ưu tiên 2: Dọn dẹp tài khoản DIE trên máy S7 rảnh
     for t in pending_die:
         stt = t["stt"]
         serial = t["serial"]
         email = t["email"]
+        telemetry["scanned_targets"] += 1
 
         if is_machine_locked(stt, serial):
+            telemetry["skipped_locked"] += 1
             continue
         dist = get_next_feed_slot_distance_minutes(stt, now)
         if dist < 15.0:  # Gỡ account chỉ mất ~10-15s, cần đệm 15 phút
+            telemetry["skipped_distance"] += 1
             continue
         if is_machine_in_feed(serial):
+            telemetry["skipped_feed"] += 1
             continue
 
-        sys.stderr.write(f"[{now.strftime('%H:%M:%S')}] Máy {stt:02d} ({serial}) RẢNH an toàn -> Gỡ Gmail DIE: {email}...\n")
+        if dry_run:
+            telemetry["attempted"] += 1
+            logger.info(f"[DRY-RUN] Máy {stt:02d} ({serial}) sẵn sàng gỡ Gmail DIE: {email}")
+            return telemetry
+
+        telemetry["attempted"] += 1
+        logger.info(f"Máy {stt:02d} ({serial}) RẢNH an toàn -> Gỡ Gmail DIE: {email}...")
         sys.path.insert(0, r"D:\Taadaa\tools")
         try:
             from remove_device_google_account import remove_device_account_fast
             ok = remove_device_account_fast(serial, email)
+            if ok:
+                telemetry["success"] += 1
+            else:
+                telemetry["failed"] += 1
             cleaned_die[email] = {
                 "machine": stt,
                 "serial": serial,
@@ -273,11 +317,17 @@ def check_and_run_one():
             }
             state["cleaned_die"] = cleaned_die
             save_state(state)
-            print(f"[DIE-CLEANED] Máy {stt:02d}: Đã gỡ tài khoản DIE {email} khỏi thiết bị S7")
+            logger.info(f"[DIE-CLEANED] Máy {stt:02d}: Đã gỡ tài khoản DIE {email} khỏi thiết bị S7")
         except Exception as exc:
-            sys.stderr.write(f"[DIE-CLEAN-EXC] Máy {stt:02d} ({email}): {exc}\n")
-        return
+            telemetry["failed"] += 1
+            logger.error(f"[DIE-CLEAN-EXC] Máy {stt:02d} ({email}): {exc}")
+        return telemetry
+
+    return telemetry
 
 
 if __name__ == "__main__":
-    check_and_run_one()
+    is_dry = "--dry-run" in sys.argv
+    res = check_and_run_one(dry_run=is_dry)
+    if is_dry:
+        print(json.dumps(res, indent=2))
