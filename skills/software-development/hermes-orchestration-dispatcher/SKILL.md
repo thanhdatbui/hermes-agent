@@ -283,6 +283,7 @@ Theo `D:\Taadaa\AGENTS.md`: audit order **AG `ag/claude-opus-4-6-thinking` → c
 
 ## Audit/Read-Only Dispatch
 
+- **Audit/Read-Only Dispatch**: `references/document-translation-and-independent-audit-workflow.md` — Quy trình dịch tài liệu scan đa trang (Gemini Vision batching) + Claude CLI độc lập thẩm định kỹ thuật + ReportLab xuất PDF hoàn chỉnh.
 - `delegate_task(role=leaf)` không chọn model audit; child kế thừa model của session. Không dùng một Luna/Flash worker subagent để giả làm auditor. Audit plan/code phải đi đúng AG Opus primary hoặc fallback route theo rule workspace, thường qua wrapper/CLI. Giữ cùng model xuyên suốt re-audit của cùng evidence; chỉ worker mới được patch.
 
 ### 5 Hard Gates Orchestration Protocol (Anti-Insanity Loop & Monolith Protection — Claude Opus High Approved 2026-09-11)
