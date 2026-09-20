@@ -46,6 +46,59 @@ STATE_FILE = os.path.join(_RT_ROOT, "cron-state", "feed_session_reported.json")
 SOURCE_CONFIG = os.path.join(_RT_ROOT, "cron-source", "hermes_cron_source_config.json")
 SHIFT_UPLOAD_LEDGER_PATH = r"C:\ProgramData\Taadaa\tiktok-upload-concurrency-v1\shift_upload_history.json"
 
+CLUSTERS: list[dict[str, Any]] = [
+    {
+        "name": "kibe",
+        "label": "FARM KIBE - MÁY 1-80",
+        "runtime_root": r"D:/Taadaa/runtime\kibe",
+        "live_root": r"D:/Taadaa/runtime\kibe\live",
+        "account_workbook": r"D:\OneDrive\TaadaaData\kibe\taikhoan_run_safe.xlsx",
+        "fleet_min": 1,
+        "fleet_max": 80,
+    },
+    {
+        "name": "admin",
+        "label": "FARM ADMIN - MÁY 201-280",
+        "runtime_root": r"D:/Taadaa/runtime\admin",
+        "live_root": r"D:/Taadaa/runtime\admin\live",
+        "account_workbook": r"D:\OneDrive\TaadaaData\admin\taikhoan_run_safe.xlsx",
+        "fleet_min": 201,
+        "fleet_max": 280,
+    },
+]
+
+
+def get_expected_machines_for_cluster(cluster: dict[str, Any], row_num: Any) -> set[str]:
+    wb_path = cluster.get("account_workbook")
+    fleet = {str(i) for i in range(cluster["fleet_min"], cluster["fleet_max"] + 1)}
+    if not wb_path or not os.path.exists(wb_path):
+        return fleet
+    try:
+        import openpyxl
+        wb = openpyxl.load_workbook(wb_path, read_only=True)
+        ws = wb.active
+        machine_slots: dict[str, list[Any]] = {}
+        for r in ws.iter_rows(min_row=2, values_only=True):
+            if not r or r[0] is None:
+                continue
+            try:
+                m_str = str(int(str(r[0]).strip()))
+            except (ValueError, TypeError):
+                continue
+            machine_slots.setdefault(m_str, []).append(r[2] if len(r) > 2 else None)
+        slot_idx = int(row_num) - 1
+        expected = set()
+        for m_str in fleet:
+            slots = machine_slots.get(m_str, [])
+            if slot_idx < len(slots):
+                val = slots[slot_idx]
+                if val and str(val).strip() and str(val).strip().lower() != "none":
+                    expected.add(m_str)
+        return expected if expected else fleet
+    except Exception as exc:
+        logger.warning("Error reading safe workbook for %s: %s", cluster["name"], exc)
+        return fleet
+
 DEFAULT_ROW1_MACHINES_COUNT = 74
 DEFAULT_ROW2_MACHINES_COUNT = 72
 
@@ -180,6 +233,9 @@ def is_feed_runner_active() -> bool:
             "run_tiktok.py",
             "hermes_cron_runner.py",
             "tiktok_runner.py",
+            "run_post.py",
+            "tiktok_workflow",
+            "tiktok_upload",
         )
         for p in psutil.process_iter(['name', 'cmdline']):
             try:
@@ -218,6 +274,23 @@ def get_expected_machines_for_row(row_num: Any) -> set:
     except Exception:
         default_count = DEFAULT_ROW1_MACHINES_COUNT if str(row_num) == "1" else DEFAULT_ROW2_MACHINES_COUNT
         return set(str(i) for i in range(1, default_count + 1))
+
+
+def get_all_fleet_machines() -> set:
+    """Lấy toàn bộ danh sách 80 máy của Farm."""
+    if os.path.exists(SOURCE_CONFIG):
+        try:
+            with open(SOURCE_CONFIG, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            accounts = data.get("feed_source", {}).get("accounts", [])
+            m_set = {str(a["machine"]) for a in accounts if "machine" in a}
+            if m_set:
+                max_m = max(int(x) for x in m_set if x.isdigit())
+                target_cnt = max(max_m, 80)
+                return set(str(i) for i in range(1, target_cnt + 1))
+        except Exception:
+            pass
+    return set(str(i) for i in range(1, 81))
 
 
 def _build_ledger_success_index(data: dict) -> set:
@@ -307,6 +380,14 @@ def merge_machine_result(prev: Optional[Dict[str, Any]], new: Optional[Dict[str,
         for k in all_like_keys:
             merged_likes[k] = max(p_likes.get(k, 0), n_likes.get(k, 0))
         res["likes"] = merged_likes
+    p_fc = prev.get("feed_counts") or {}
+    n_fc = new.get("feed_counts") or {}
+    all_fc_keys = set(p_fc.keys()) | set(n_fc.keys())
+    if all_fc_keys:
+        merged_fc = {}
+        for k in all_fc_keys:
+            merged_fc[k] = max(p_fc.get(k, 0), n_fc.get(k, 0))
+        res["feed_counts"] = merged_fc
     if "swipes" in prev or "swipes" in new:
         res["swipes"] = max(prev.get("swipes", 0), new.get("swipes", 0))
 
@@ -413,6 +494,39 @@ def parse_run_all(run_dir: str) -> tuple:
                         m_str = raw_segment[8:]
                         break
 
+            # Parse run_manifest.json at run root to capture all machines (including skipped-empty)
+            if "run_manifest.json" in files and not m_str:
+                m_path = os.path.join(root, "run_manifest.json")
+                try:
+                    with open(m_path, "r", encoding="utf-8", errors="ignore") as f:
+                        m_data = json.load(f)
+                    mms = m_data.get("multi_machine_summary") if isinstance(m_data, dict) else None
+                    if isinstance(mms, list):
+                        for item in mms:
+                            if not isinstance(item, dict) or "machine" not in item:
+                                continue
+                            m_num = str(item["machine"])
+                            exp_u = str(item.get("expected_username", "")).strip()
+                            s_reason = str(item.get("stop_reason", "")).strip()
+                            f_status = str(item.get("final_status", "")).strip().lower()
+                            if exp_u == "account:empty" or "is empty (no username)" in s_reason.lower() or "does not have valid row" in s_reason.lower():
+                                m_st = "skipped-empty"
+                            elif f_status == "success":
+                                m_st = "success"
+                            else:
+                                m_st = "fail"
+                            payload = {
+                                "status": m_st,
+                                "reason": s_reason,
+                                "likes": {},
+                                "feed_counts": {},
+                                "swipes": int(item.get("swipes_completed", 0) or 0),
+                                "comment_peeks": 0,
+                            }
+                            res_m[m_num] = merge_machine_result(res_m.get(m_num), payload)
+                except Exception:
+                    pass
+
             # Fallback parse batched summary.txt at run root
             if "summary.txt" in files and not m_str:
                 s_path = os.path.join(root, "summary.txt")
@@ -444,6 +558,7 @@ def parse_run_all(run_dir: str) -> tuple:
 
                     # Extract likes and swipes from per-machine summary
                     likes_map = {}
+                    feed_counts_map = {}
                     swipes_cnt = 0
                     try:
                         import re
@@ -457,6 +572,13 @@ def parse_run_all(run_dir: str) -> tuple:
                                 m_ft = re.search(rf'["\']?{ft}["\']?:\s*(\d+)', chunk_lc)
                                 if m_ft:
                                     likes_map[ft] = int(m_ft.group(1))
+                        idx_fc = c.find('"feed_counts":')
+                        if idx_fc != -1:
+                            chunk_fc = c[idx_fc:idx_fc + 150]
+                            for ft in ("for-you", "following", "friends"):
+                                m_ft = re.search(rf'["\']?{ft}["\']?:\s*(\d+)', chunk_fc)
+                                if m_ft:
+                                    feed_counts_map[ft] = int(m_ft.group(1))
                     except Exception:
                         pass
 
@@ -467,7 +589,7 @@ def parse_run_all(run_dir: str) -> tuple:
                             comment_peeks_cnt = int(m_cp.group(1))
                     except Exception:
                         pass
-                    m_payload = {"status": st, "reason": reason, "likes": likes_map, "swipes": swipes_cnt, "comment_peeks": comment_peeks_cnt}
+                    m_payload = {"status": st, "reason": reason, "likes": likes_map, "feed_counts": feed_counts_map, "swipes": swipes_cnt, "comment_peeks": comment_peeks_cnt}
                     res_m[m_str] = merge_machine_result(res_m.get(m_str), m_payload)
                 except Exception:
                     pass
@@ -647,11 +769,12 @@ def can_report_session(
     latest_run_minutes_ago: float = None,
 ) -> bool:
     """Xác định điều kiện chốt báo cáo cho một phiên."""
+    # Nếu tất cả máy dự kiến đã hoàn tất thật (không còn lock dở dang): chốt ngay kể cả runner_busy
+    if completed_expected_count >= expected_count and not has_unattempted_locked:
+        return True
+
     # Nếu đang trong giờ phiên (now_hm < window_end_hm):
     if is_today and now_hm < window_end_hm:
-        # Nếu tất cả máy dự kiến đã hoàn tất thật (không còn lock dở dang): chốt ngay kể cả runner_busy
-        if completed_expected_count >= expected_count and not has_unattempted_locked:
-            return True
         if runner_busy:
             return False
         # Nếu toàn bộ fail / chưa có máy pass (completed_expected_count == 0) và run mới nhất >= 15 phút
@@ -661,12 +784,10 @@ def can_report_session(
             return False
         return completed_expected_count >= expected_count
 
-    # Khi đã qua window_end_hm: nếu là hôm nay và runner đang bận, cho phép grace period 20 phút
+    # Khi đã qua window_end_hm: nếu là hôm nay, TUYỆT ĐỐI KHÔNG chốt khi runner vẫn đang bận (phải đợi xong hẳn)
     if is_today and now_hm >= window_end_hm:
         if runner_busy:
-            grace_end_hm = _add_minutes_to_hm(window_end_hm, 20)
-            if now_hm < grace_end_hm:
-                return False
+            return False
 
     # Nếu là hôm qua (is_today=False): chỉ cho phép báo cáo sau 02:00 sáng hôm nay để tránh chốt vội phiên đêm đang chạy dở
     if not is_today:
@@ -674,7 +795,7 @@ def can_report_session(
             return False
         return True
 
-    # Khi đã qua grace period hoặc runner không bận: BẮT BUỘC chốt báo cáo
+    # Khi runner không bận (đã xong hoàn toàn batch): BẮT BUỘC chốt báo cáo
     return True
 
 
@@ -705,8 +826,6 @@ def main():
         dates_to_check = [(d, d == today) for d in all_date_dirs]
 
         for target_date, is_today in dates_to_check:
-            date_live = os.path.join(LIVE_ROOT, target_date)
-            runs = sorted(os.listdir(date_live))
             try:
                 d_obj = datetime.fromisoformat(target_date)
                 default_row = 1 if (d_obj.day % 2 != 0) else 2
@@ -718,279 +837,297 @@ def main():
                 if session_key in new_reported:
                     continue
 
-                # Tìm các run folder thuộc khung giờ phiên này và sort theo HHMMSS
-                # Dùng half-open interval [start, end) để tránh đè boundary trừ window cuối ngày [start, end]
-                session_runs = []
-                for r in runs:
-                    parts = r.split("-")
-                    if len(parts) >= 3 and parts[0] == "row":
-                        hhmmss = parts[2]
-                        if len(hhmmss) >= 4:
-                            r_hm = f"{hhmmss[:2]}:{hhmmss[2:4]}"
-                            if win["end"] == "24:00" or win["end"] == "00:00":
-                                in_window = (r_hm >= win["start"])
-                            else:
-                                in_window = (win["start"] <= r_hm < win["end"])
-                            if in_window:
-                                session_runs.append((hhmmss, r))
-
-                if not session_runs:
-                    continue
-
-                # Sắp xếp các run theo thứ tự thời gian tăng dần
-                session_runs.sort(key=lambda x: x[0])
-                sorted_run_names = [x[1] for x in session_runs]
-
-                # Lấy row của run mới nhất trong session (chỉ chọn từ run name parse được row hợp lệ)
+                cluster_blocks = []
                 active_row = default_row
-                for r_name in reversed(sorted_run_names):
-                    r_parts = r_name.split("-")
-                    if len(r_parts) >= 3 and r_parts[0] == "row":
+                can_report_all = True
+
+                for cluster in CLUSTERS:
+                    c_live = cluster.get("live_root")
+                    if not c_live or not os.path.exists(c_live):
+                        continue
+                    date_live = os.path.join(c_live, target_date)
+                    if not os.path.exists(date_live):
+                        continue
+
+                    runs = sorted(os.listdir(date_live))
+                    session_runs = []
+                    for r in runs:
+                        parts = r.split("-")
+                        if len(parts) >= 3 and parts[0] == "row":
+                            hhmmss = parts[2]
+                            if len(hhmmss) >= 4:
+                                r_hm = f"{hhmmss[:2]}:{hhmmss[2:4]}"
+                                if win["end"] == "24:00" or win["end"] == "00:00":
+                                    in_window = (r_hm >= win["start"])
+                                else:
+                                    in_window = (win["start"] <= r_hm < win["end"])
+                                if in_window:
+                                    session_runs.append((hhmmss, r))
+
+                    if not session_runs:
+                        continue
+
+                    session_runs.sort(key=lambda x: x[0])
+                    sorted_run_names = [x[1] for x in session_runs]
+
+                    c_active_row = default_row
+                    for r_name in reversed(sorted_run_names):
+                        r_parts = r_name.split("-")
+                        if len(r_parts) >= 3 and r_parts[0] == "row":
+                            try:
+                                c_active_row = int(r_parts[1])
+                                break
+                            except (ValueError, TypeError):
+                                continue
+
+                    active_row = c_active_row
+
+                    all_machines = {}
+                    all_follows = {}
+                    all_uploads = {}
+                    for r in sorted_run_names:
+                        parts = r.split("-")
+                        if len(parts) >= 3 and parts[0] == "row":
+                            try:
+                                r_row = int(parts[1])
+                            except (ValueError, TypeError):
+                                continue
+                            if r_row != active_row:
+                                continue
+                        r_path = os.path.join(date_live, r)
+                        m_res, f_res, u_res = parse_run_all(r_path)
+                        for m, data in m_res.items():
+                            all_machines[m] = merge_machine_result(all_machines.get(m), data)
+                        for m, data in f_res.items():
+                            all_follows[m] = merge_follow_result(all_follows.get(m), data)
+                        for m, data in u_res.items():
+                            all_uploads[m] = merge_upload_result(all_uploads.get(m), data)
+
+                    if not all_machines:
+                        continue
+
+                    expected_machines = get_expected_machines_for_cluster(cluster, active_row)
+                    expected_count = len(expected_machines)
+                    real_completed = {
+                        m for m in all_machines.keys()
+                        if not is_device_locked_skip(all_machines.get(m))
+                    }
+                    completed_expected = real_completed.intersection(expected_machines)
+                    has_unattempted_locked = any(is_device_locked_skip(all_machines.get(m)) for m in expected_machines if m in all_machines)
+
+                    latest_run_minutes_ago = None
+                    if is_today and session_runs:
+                        latest_hhmmss = session_runs[-1][0]
                         try:
-                            active_row = int(r_parts[1])
-                            break
-                        except (ValueError, TypeError):
-                            continue
+                            latest_run_dt = datetime.strptime(f"{target_date} {latest_hhmmss}", "%Y-%m-%d %H%M%S").replace(tzinfo=HCMC)
+                            latest_run_minutes_ago = (now - latest_run_dt).total_seconds() / 60.0
+                        except Exception:
+                            pass
 
-                # Gom kết quả toàn bộ máy chạy trong phiên (Feed + Follow + Upload)
-                # Chỉ lấy các run thuộc active_row để tránh merge lộn các row khác nhau
-                all_machines = {}
-                all_follows = {}
-                all_uploads = {}
-                for r in sorted_run_names:
-                    parts = r.split("-")
-                    if len(parts) >= 3 and parts[0] == "row":
-                        try:
-                            r_row = int(parts[1])
-                        except (ValueError, TypeError):
-                            continue
-                        if r_row != active_row:
-                            continue
-                    r_path = os.path.join(date_live, r)
-                    m_res, f_res, u_res = parse_run_all(r_path)
-                    for m, data in m_res.items():
-                        all_machines[m] = merge_machine_result(all_machines.get(m), data)
-                    for m, data in f_res.items():
-                        all_follows[m] = merge_follow_result(all_follows.get(m), data)
-                    for m, data in u_res.items():
-                        all_uploads[m] = merge_upload_result(all_uploads.get(m), data)
+                    can_rep = can_report_session(
+                        is_today=is_today,
+                        completed_expected_count=len(completed_expected),
+                        expected_count=expected_count,
+                        now_hm=now_hm,
+                        window_end_hm=win["end"],
+                        runner_busy=runner_busy,
+                        has_unattempted_locked=has_unattempted_locked,
+                        latest_run_minutes_ago=latest_run_minutes_ago,
+                    )
 
-                if not all_machines:
-                    continue
+                    if not can_rep:
+                        can_report_all = False
+                        break
 
-                expected_machines = get_expected_machines_for_row(active_row)
-                expected_count = len(expected_machines)
-                # Chỉ tính máy đã chạy thực sự (success hoặc fail thật, không phải skipped-device-locked)
-                real_completed = {
-                    m for m in all_machines.keys()
-                    if not is_device_locked_skip(all_machines.get(m))
-                }
-                completed_expected = real_completed.intersection(expected_machines)
-                has_unattempted_locked = any(is_device_locked_skip(all_machines.get(m)) for m in expected_machines if m in all_machines)
+                    def num_key(s):
+                        nums = re.findall(r"\d+", str(s))
+                        return int(nums[0]) if nums else 0
 
-                latest_run_minutes_ago = None
-                if is_today and session_runs:
-                    latest_hhmmss = session_runs[-1][0]
-                    try:
-                        latest_run_dt = datetime.strptime(f"{target_date} {latest_hhmmss}", "%Y-%m-%d %H%M%S").replace(tzinfo=HCMC)
-                        latest_run_minutes_ago = (now - latest_run_dt).total_seconds() / 60.0
-                    except Exception:
-                        pass
-
-                # ĐIỀU KIỆN CHỐT BÁO CÁO:
-                can_report = can_report_session(
-                    is_today=is_today,
-                    completed_expected_count=len(completed_expected),
-                    expected_count=expected_count,
-                    now_hm=now_hm,
-                    window_end_hm=win["end"],
-                    runner_busy=runner_busy,
-                    has_unattempted_locked=has_unattempted_locked,
-                    latest_run_minutes_ago=latest_run_minutes_ago,
-                )
-
-                if not can_report:
-                    continue
-
-                def num_key(s):
-                    nums = re.findall(r"\d+", str(s))
-                    return int(nums[0]) if nums else 0
-
-                # Phân loại Feed
-                succ = sorted([m for m, d in all_machines.items() if d.get("status") == "success"], key=num_key)
-                empty = sorted([
-                    m for m, d in all_machines.items()
-                    if d.get("status") == "skipped-empty"
-                    or any(k in str(d.get("reason", "")).lower() for k in ("is empty (no username)", "does not have valid row"))
-                    or (str(d.get("reason", "")) == "batch-config-error" and m not in expected_machines)
-                ], key=num_key)
-                fail = sorted([
-                    f"M{m}" for m, d in all_machines.items()
-                    if d.get("status") != "success" and m not in empty
-                ], key=num_key)
-                total_machines = len(all_machines)
-
-                succ_str = ", ".join(succ) if succ else "Không có"
-                fail_str = ", ".join(fail) if fail else "Không có"
-                empty_str = ", ".join(empty) if empty else "Không có"
-
-                # Thống kê thả tim theo tab
-                tot_swipes = sum(d.get("swipes", 0) for m, d in all_machines.items() if d.get("status") == "success")
-                tot_fy_likes = sum(d.get("likes", {}).get("for-you", 0) for m, d in all_machines.items() if d.get("status") == "success")
-                tot_fl_likes = sum(d.get("likes", {}).get("following", 0) for m, d in all_machines.items() if d.get("status") == "success")
-                tot_fr_likes = sum(d.get("likes", {}).get("friends", 0) for m, d in all_machines.items() if d.get("status") == "success")
-                tot_likes = tot_fy_likes + tot_fl_likes + tot_fr_likes
-                tot_rate = (tot_likes / tot_swipes * 100.0) if tot_swipes > 0 else 0.0
-                tot_comment_peeks = sum(d.get("comment_peeks", 0) for m, d in all_machines.items() if d.get("status") == "success")
-                tot_comment_rate = (tot_comment_peeks / tot_swipes * 100.0) if tot_swipes > 0 else 0.0
-
-                # Phân loại Follow
-                total_followed_count = 0
-                total_m1_count = 0
-                total_m2_count = 0
-                fl_success = []
-                fl_released = []
-                fl_error = []
-                fl_rest = []
-                fl_under10 = []
-                fl_other_skipped = []
-
-                for m in sorted(all_machines.keys(), key=num_key):
-                    if m in all_follows:
-                        fd = all_follows[m]
-                        flist = fd.get("followed", [])
-                        total_followed_count += len(flist)
-                        total_m1_count += int(fd.get("mode1_followed_count", 0) or 0)
-                        total_m2_count += int(fd.get("mode2_followed_count", 0) or 0)
-                        status = str(fd.get("status") or "").upper()
-                        f_reason = str(fd.get("reason") or "").lower()
-
-                        # Only explicit post-verify FOLLOW_FAILED with follow_failed=True means TikTok
-                        # released the follow. Script/manual/timeout/unverified errors stay errors.
-                        if status == "FOLLOW_FAILED" and fd.get("follow_failed") is True:
-                            fl_released.append(m)
-                        elif status == "SKIPPED" or (status in {"OK", "SUCCESS"} and len(flist) == 0):
-                            if "organic-rest-day" in f_reason or "rest-day" in f_reason:
-                                fl_rest.append(m)
-                            elif "under-10-videos" in f_reason or "under_10_videos" in f_reason:
-                                fl_under10.append(m)
+                    fleet_machines = {str(i) for i in range(cluster["fleet_min"], cluster["fleet_max"] + 1)}
+                    for fm in fleet_machines:
+                        if fm not in all_machines:
+                            if fm not in expected_machines:
+                                all_machines[fm] = {"status": "skipped-empty", "reason": f"account row {active_row} is empty (no username)"}
                             else:
-                                fl_other_skipped.append(m)
-                        elif status in {"OK", "SUCCESS"} and len(flist) > 0:
-                            fl_success.append(m)
-                        else:
-                            fl_error.append(m)
-                    else:
-                        # Chỉ tính lỗi follow nếu máy lướt Feed thành công nhưng follow hook không chạy được
-                        if all_machines[m].get("status") == "success":
-                            fl_error.append(m)
+                                all_machines[fm] = {"status": "fail", "reason": "no-run-recorded"}
 
-                e_str = ", ".join(fl_error) if fl_error else "Không có"
+                    succ = sorted([m for m, d in all_machines.items() if d.get("status") == "success"], key=num_key)
+                    empty = sorted([
+                        m for m, d in all_machines.items()
+                        if d.get("status") == "skipped-empty"
+                        or any(k in str(d.get("reason", "")).lower() for k in ("is empty (no username)", "does not have valid row"))
+                        or (str(d.get("reason", "")) == "batch-config-error" and m not in expected_machines)
+                        or (m not in expected_machines and d.get("status") != "success")
+                    ], key=num_key)
+                    fail = sorted([
+                        f"M{m}" for m, d in all_machines.items()
+                        if d.get("status") != "success" and m not in empty
+                    ], key=num_key)
+                    total_machines = len(all_machines)
 
-                fl_skip_parts = []
-                if fl_rest:
-                    fl_skip_parts.append(f"Đang dưỡng sinh ({len(fl_rest)})")
-                if fl_under10:
-                    fl_skip_parts.append(f"Chưa đủ 10 video ({len(fl_under10)})")
-                if fl_other_skipped:
-                    fl_skip_parts.append(f"Khác ({len(fl_other_skipped)})")
-                fl_skip_summary = "; ".join(fl_skip_parts) if fl_skip_parts else "Không có"
-                total_fl_skipped = len(fl_rest) + len(fl_under10) + len(fl_other_skipped)
+                    succ_str = ", ".join(succ) if succ else "Không có"
+                    fail_str = ", ".join(fail) if fail else "Không có"
+                    empty_str = ", ".join(empty) if empty else "Không có"
 
-                msg_lines = [
-                    f"📊 [TIKTOK NUÔI ACC] {win['name']} hoàn tất (Row {active_row})",
-                    f"• Tổng máy xử lý: {total_machines} máy",
-                    f"• Lướt Feed:",
-                    f"  + Success ({len(succ)}): {succ_str}",
-                    f"  + Fail ({len(fail)}): {fail_str}",
-                    f"  + Trống slot/chưa có nick ({len(empty)}): {empty_str}",
-                    f"  + Thả tim: {tot_likes} tim / {tot_swipes} video ({tot_rate:.1f}%) [Đề xuất: {tot_fy_likes} | Bạn bè: {tot_fr_likes} | Following: {tot_fl_likes}]",
-                    f"  + Đọc comment: {tot_comment_peeks} lượt / {tot_swipes} video ({tot_comment_rate:.1f}%)",
-                ]
+                    tot_swipes = sum(d.get("swipes", 0) for m, d in all_machines.items() if d.get("status") == "success")
+                    tot_fy_likes = sum(d.get("likes", {}).get("for-you", 0) for m, d in all_machines.items() if d.get("status") == "success")
+                    tot_fl_likes = sum(d.get("likes", {}).get("following", 0) for m, d in all_machines.items() if d.get("status") == "success")
+                    tot_fr_likes = sum(d.get("likes", {}).get("friends", 0) for m, d in all_machines.items() if d.get("status") == "success")
+                    tot_likes = tot_fy_likes + tot_fl_likes + tot_fr_likes
+                    tot_rate = (tot_likes / tot_swipes * 100.0) if tot_swipes > 0 else 0.0
 
-                # Block Dưỡng Sinh
-                if fl_rest:
-                    rest_m_str = ", ".join(fl_rest)
-                    msg_lines.extend([
-                        f"• Chế độ Dưỡng Sinh (Organic Rest ~33%):",
-                        f"  🌿 Nghỉ dưỡng sinh ({len(fl_rest)} máy): {rest_m_str} (Chỉ lướt feed, 0 follow, 0 up)"
-                    ])
+                    tot_fy_swipes = sum(d.get("feed_counts", {}).get("for-you", 0) for m, d in all_machines.items() if d.get("status") == "success")
+                    tot_fl_swipes = sum(d.get("feed_counts", {}).get("following", 0) for m, d in all_machines.items() if d.get("status") == "success")
+                    tot_fr_swipes = sum(d.get("feed_counts", {}).get("friends", 0) for m, d in all_machines.items() if d.get("status") == "success")
 
-                msg_lines.append(f"• Follow chéo ({total_followed_count} lượt follow) [Module 2 (Anchor): {total_m2_count} | Module 1 (Bù): {total_m1_count}]:")
-                msg_lines.extend(format_success_follows(fl_success, all_follows))
-                msg_lines.extend(format_released_follows(fl_released, all_follows))
-                msg_lines.extend([
-                    f"  + Lỗi script/xác minh ({len(fl_error)}): {e_str}",
-                    f"  + Bỏ qua ({total_fl_skipped}): {fl_skip_summary}"
-                ])
+                    fy_rate_str = f"{(tot_fy_likes / tot_fy_swipes * 100.0):.1f}%" if tot_fy_swipes > 0 else "0.0%"
+                    fr_rate_str = f"{(tot_fr_likes / tot_fr_swipes * 100.0):.1f}%" if tot_fr_swipes > 0 else "0.0%"
+                    fl_rate_str = f"{(tot_fl_likes / tot_fl_swipes * 100.0):.1f}%" if tot_fl_swipes > 0 else "0.0%"
 
-                # Phân loại Upload
-                if any(all_uploads.values()):
-                    up_success = []
-                    up_timeout = []
-                    up_error = []
-                    up_rest = []
-                    up_novideo = []
-                    up_other_skipped = []
+                    tot_comment_peeks = sum(d.get("comment_peeks", 0) for m, d in all_machines.items() if d.get("status") == "success")
+                    tot_comment_rate = (tot_comment_peeks / tot_swipes * 100.0) if tot_swipes > 0 else 0.0
+
+                    total_followed_count = 0
+                    total_m1_count = 0
+                    total_m2_count = 0
+                    fl_success = []
+                    fl_released = []
+                    fl_error = []
+                    fl_rest = []
+                    fl_under10 = []
+                    fl_other_skipped = []
 
                     for m in sorted(all_machines.keys(), key=num_key):
-                        if m in all_uploads:
-                            ud = all_uploads[m]
-                            u_status = str(ud.get("status") or "").lower()
-                            u_code = int(ud.get("exit_code", 0) or 0)
-                            u_reason = str(ud.get("reason") or "").lower()
+                        if m in all_follows:
+                            fd = all_follows[m]
+                            flist = fd.get("followed", [])
+                            total_followed_count += len(flist)
+                            total_m1_count += int(fd.get("mode1_followed_count", 0) or 0)
+                            total_m2_count += int(fd.get("mode2_followed_count", 0) or 0)
+                            status = str(fd.get("status") or "").upper()
+                            f_reason = str(fd.get("reason") or "").lower()
 
-                            if u_status == "success" and u_code == 0:
-                                up_success.append(m)
-                            elif u_reason.startswith("already_uploaded") and is_machine_upload_successful_in_shift(target_date, m, active_row):
-                                up_success.append(m)
-                            elif "organic-rest-day" in u_reason or "rest-day" in u_reason:
-                                up_rest.append(m)
-                            elif any(k in u_reason for k in ("video_not_rendered", "missing_video_folder")):
-                                up_novideo.append(m)
-                            elif u_status == "skipped" or any(k in u_reason for k in ("missing_account_id", "not-final-session", "sensitive-skip", "cooling_period", "account_cooling_period", "age_gate", "under_10_days", "already_uploaded")):
-                                up_other_skipped.append(m)
-                            elif "timeout" in u_status or "timeout" in u_reason:
-                                up_timeout.append(m)
+                            if status == "FOLLOW_FAILED" and fd.get("follow_failed") is True:
+                                fl_released.append(m)
+                            elif status == "SKIPPED" or (status in {"OK", "SUCCESS"} and len(flist) == 0):
+                                if "organic-rest-day" in f_reason or "rest-day" in f_reason:
+                                    fl_rest.append(m)
+                                elif "under-10-videos" in f_reason or "under_10_videos" in f_reason:
+                                    fl_under10.append(m)
+                                else:
+                                    fl_other_skipped.append(m)
+                            elif status in {"OK", "SUCCESS"} and len(flist) > 0:
+                                fl_success.append(m)
                             else:
-                                up_error.append(m)
+                                fl_error.append(m)
                         else:
-                            # Kiểm tra nếu máy đã upload thành công trong ledger
-                            if is_machine_upload_successful_in_shift(target_date, m, active_row):
-                                up_success.append(m)
-                            # Nếu máy nằm trong danh sách dưỡng sinh của ca
-                            elif m in fl_rest:
-                                up_rest.append(m)
-                            # Chỉ tính lỗi upload nếu máy lướt Feed thành công nhưng upload hook không chạy được
-                            elif all_machines[m].get("status") == "success":
-                                up_error.append(m)
+                            if all_machines[m].get("status") == "success":
+                                fl_error.append(m)
 
-                    up_s_str = ", ".join(up_success) if up_success else "Không có"
-                    up_t_str = ", ".join(up_timeout) if up_timeout else "Không có"
-                    up_e_str = ", ".join(up_error) if up_error else "Không có"
+                    e_str = ", ".join(fl_error) if fl_error else "Không có"
 
-                    up_skip_parts = []
-                    if up_rest:
-                        up_skip_parts.append(f"Đang dưỡng sinh ({len(up_rest)})")
-                    if up_novideo:
-                        up_skip_parts.append(f"Chưa render/thiếu video ({len(up_novideo)})")
-                    if up_other_skipped:
-                        up_skip_parts.append(f"Khác ({len(up_other_skipped)})")
-                    up_skip_summary = "; ".join(up_skip_parts) if up_skip_parts else "Không có"
-                    total_up_skipped = len(up_rest) + len(up_novideo) + len(up_other_skipped)
+                    fl_skip_parts = []
+                    if fl_rest:
+                        fl_skip_parts.append(f"Đang dưỡng sinh ({len(fl_rest)})")
+                    if fl_under10:
+                        fl_skip_parts.append(f"Chưa đủ 10 video ({len(fl_under10)})")
+                    if fl_other_skipped:
+                        fl_skip_parts.append(f"Khác ({len(fl_other_skipped)})")
+                    fl_skip_summary = "; ".join(fl_skip_parts) if fl_skip_parts else "Không có"
+                    total_fl_skipped = len(fl_rest) + len(fl_under10) + len(fl_other_skipped)
 
-                    msg_lines.extend([
-                        f"• Đăng Video ({win['phien']}/2 - {len(up_success)} video đã đăng):",
-                        f"  + Success ({len(up_success)}): {up_s_str}",
-                        f"  + Timeout/Quá giờ ({len(up_timeout)}): {up_t_str}",
-                        f"  + Lỗi script/xác minh ({len(up_error)}): {up_e_str}",
-                        f"  + Bỏ qua ({total_up_skipped}): {up_skip_summary}"
+                    block_lines = [
+                        f"🏢 【{cluster['label']}】",
+                        f"• Tổng máy xử lý: {total_machines} máy",
+                        f"• Lướt Feed:",
+                        f"  + Success ({len(succ)}): {succ_str}",
+                        f"  + Fail ({len(fail)}): {fail_str}",
+                        f"  + Trống slot/chưa có nick ({len(empty)}): {empty_str}",
+                        f"  + Thả tim: {tot_likes} tim / {tot_swipes} video ({tot_rate:.1f}%) [Đề xuất: {tot_fy_likes} ({fy_rate_str}) | Bạn bè: {tot_fr_likes} ({fr_rate_str}) | Following: {tot_fl_likes} ({fl_rate_str})]",
+                        f"  + Đọc comment: {tot_comment_peeks} lượt / {tot_swipes} video ({tot_comment_rate:.1f}%)",
+                    ]
+
+                    if fl_rest:
+                        rest_m_str = ", ".join(fl_rest)
+                        block_lines.extend([
+                            f"• Chế độ Dưỡng Sinh (Organic Rest ~33%):",
+                            f"  🌿 Nghỉ dưỡng sinh ({len(fl_rest)} máy): {rest_m_str} (Chỉ lướt feed, 0 follow, 0 up)"
+                        ])
+
+                    block_lines.append(f"• Follow chéo ({total_followed_count} lượt follow) [Module 2 (Anchor): {total_m2_count} | Module 1 (Bù): {total_m1_count}]:")
+                    block_lines.extend(format_success_follows(fl_success, all_follows))
+                    block_lines.extend(format_released_follows(fl_released, all_follows))
+                    block_lines.extend([
+                        f"  + Lỗi script/xác minh ({len(fl_error)}): {e_str}",
+                        f"  + Bỏ qua ({total_fl_skipped}): {fl_skip_summary}"
                     ])
 
-                msg = "\n".join(msg_lines)
-                messages.append(msg)
-                new_reported.add(session_key)
+                    if any(all_uploads.values()):
+                        up_success = []
+                        up_timeout = []
+                        up_error = []
+                        up_rest = []
+                        up_novideo = []
+                        up_other_skipped = []
 
+                        for m in sorted(all_machines.keys(), key=num_key):
+                            if m in all_uploads:
+                                ud = all_uploads[m]
+                                u_status = str(ud.get("status") or "").lower()
+                                u_code = int(ud.get("exit_code", 0) or 0)
+                                u_reason = str(ud.get("reason") or "").lower()
+
+                                if u_status == "success" and u_code == 0:
+                                    up_success.append(m)
+                                elif u_reason.startswith("already_uploaded") and is_machine_upload_successful_in_shift(target_date, m, active_row):
+                                    up_success.append(m)
+                                elif "organic-rest-day" in u_reason or "rest-day" in u_reason:
+                                    up_rest.append(m)
+                                elif any(k in u_reason for k in ("video_not_rendered", "missing_video_folder")):
+                                    up_novideo.append(m)
+                                elif u_status == "skipped" or any(k in u_reason for k in ("missing_account_id", "not-final-session", "sensitive-skip", "cooling_period", "account_cooling_period", "age_gate", "under_10_days", "already_uploaded")):
+                                    up_other_skipped.append(m)
+                                elif "timeout" in u_status or "timeout" in u_reason:
+                                    up_timeout.append(m)
+                                else:
+                                    up_error.append(m)
+                            else:
+                                if is_machine_upload_successful_in_shift(target_date, m, active_row):
+                                    up_success.append(m)
+                                elif m in fl_rest:
+                                    up_rest.append(m)
+                                elif all_machines[m].get("status") == "success":
+                                    up_error.append(m)
+
+                        up_s_str = ", ".join(up_success) if up_success else "Không có"
+                        up_t_str = ", ".join(up_timeout) if up_timeout else "Không có"
+                        up_e_str = ", ".join(up_error) if up_error else "Không có"
+
+                        up_skip_parts = []
+                        if up_rest:
+                            up_skip_parts.append(f"Đang dưỡng sinh ({len(up_rest)})")
+                        if up_novideo:
+                            up_skip_parts.append(f"Chưa render/thiếu video ({len(up_novideo)})")
+                        if up_other_skipped:
+                            up_skip_parts.append(f"Khác ({len(up_other_skipped)})")
+                        up_skip_summary = "; ".join(up_skip_parts) if up_skip_parts else "Không có"
+                        total_up_skipped = len(up_rest) + len(up_novideo) + len(up_other_skipped)
+
+                        block_lines.extend([
+                            f"• Đăng Video ({win['phien']}/2 - {len(up_success)} video đã đăng):",
+                            f"  + Success ({len(up_success)}): {up_s_str}",
+                            f"  + Timeout/Quá giờ ({len(up_timeout)}): {up_t_str}",
+                            f"  + Lỗi script/xác minh ({len(up_error)}): {up_e_str}",
+                            f"  + Bỏ qua ({total_up_skipped}): {up_skip_summary}"
+                        ])
+
+                    cluster_blocks.append("\n".join(block_lines))
+
+                if cluster_blocks and can_report_all:
+                    header = f"📊 [TIKTOK NUÔI ACC] {win['name']} hoàn tất (Row {active_row})"
+                    msg = header + "\n\n" + "\n\n".join(cluster_blocks)
+                    messages.append(msg)
+                    new_reported.add(session_key)
         if messages:
             # Atomic claim và persist state
             state_written = False
