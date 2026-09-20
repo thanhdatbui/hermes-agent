@@ -15,7 +15,7 @@ import subprocess
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Mapping, Sequence
+from typing import Any, Mapping, Sequence
 from zoneinfo import ZoneInfo
 
 HCMC = ZoneInfo("Asia/Ho_Chi_Minh")
@@ -27,22 +27,37 @@ NOW_ENV = "HERMES_CRON_NOW"
 ACTIVATION_ENV = "HERMES_CRON_RUNNER_ENABLED"
 PERMIT_ENV = "HERMES_CRON_PERMIT_FILE"
 
-# -- Dynamic Host Config (Kibe vs Admin) ------------------------------------
-try:
-    if "D:/Taadaa/Tiktok_Reg" not in sys.path:
-        sys.path.insert(0, "D:/Taadaa/Tiktok_Reg")
-    import taadaa_host as _taadaa_host_mod
-    _host_cfg = _taadaa_host_mod.load_host_config()
-    _workbook_root = Path(_host_cfg["workbook_root"])
-    _runtime_root = Path(_host_cfg["runtime_root"])
-except Exception:
-    _workbook_root = Path("D:/OneDrive/TaadaaData/kibe")
-    _runtime_root = Path("D:/Taadaa/runtime/kibe")
+# -- Dual-Cluster Workbooks & Roots (Kibe + Admin) ---------------------------
+KIBE_WORKBOOK_ROOT = Path("D:/OneDrive/TaadaaData/kibe")
+ADMIN_WORKBOOK_ROOT = Path("D:/OneDrive/TaadaaData/admin")
 
-ACCOUNT_WORKBOOK = str(_workbook_root / "taikhoan_run_safe.xlsx")
-STATE_DIR = _runtime_root / "cron-state"
+KIBE_RUNTIME_ROOT = Path("D:/Taadaa/runtime/kibe")
+ADMIN_RUNTIME_ROOT = Path("D:/Taadaa/runtime/admin")
+
+CLUSTERS: list[dict[str, Any]] = [
+    {
+        "name": "kibe",
+        "workbook_root": KIBE_WORKBOOK_ROOT,
+        "runtime_root": KIBE_RUNTIME_ROOT,
+        "account_workbook": str(KIBE_WORKBOOK_ROOT / "taikhoan_run_safe.xlsx"),
+        "state_file": KIBE_RUNTIME_ROOT / "cron-state" / "runner_simple_state.json",
+        "artifact_base": KIBE_RUNTIME_ROOT / "live",
+    },
+    {
+        "name": "admin",
+        "workbook_root": ADMIN_WORKBOOK_ROOT,
+        "runtime_root": ADMIN_RUNTIME_ROOT,
+        "account_workbook": str(ADMIN_WORKBOOK_ROOT / "taikhoan_run_safe.xlsx"),
+        "state_file": ADMIN_RUNTIME_ROOT / "cron-state" / "runner_simple_state.json",
+        "artifact_base": ADMIN_RUNTIME_ROOT / "live",
+    },
+]
+
+# Legacy backward-compatibility aliases
+ACCOUNT_WORKBOOK = str(KIBE_WORKBOOK_ROOT / "taikhoan_run_safe.xlsx")
+STATE_DIR = KIBE_RUNTIME_ROOT / "cron-state"
 STATE_FILE = STATE_DIR / "runner_simple_state.json"
-ARTIFACT_BASE = _runtime_root / "live"
+ARTIFACT_BASE = KIBE_RUNTIME_ROOT / "live"
 
 
 # ---------------------------------------------------------------------------
@@ -230,10 +245,10 @@ def merged_env(env: Mapping[str, str]) -> dict[str, str]:
 # State de-dup
 # ---------------------------------------------------------------------------
 
-def _load_state() -> dict:
+def _load_state(state_file: Path = STATE_FILE) -> dict:
     try:
-        if STATE_FILE.is_file() and not STATE_FILE.is_symlink():
-            data = json.loads(STATE_FILE.read_text(encoding="utf-8"))
+        if state_file.is_file() and not state_file.is_symlink():
+            data = json.loads(state_file.read_text(encoding="utf-8"))
             if isinstance(data, dict):
                 return data
     except (OSError, ValueError, json.JSONDecodeError):
@@ -241,20 +256,20 @@ def _load_state() -> dict:
     return {}
 
 
-def _save_state(row: int, window_key: str, now: datetime) -> None:
-    STATE_DIR.mkdir(parents=True, exist_ok=True)
+def _save_state(row: int, window_key: str, now: datetime, state_file: Path = STATE_FILE) -> None:
+    state_file.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "last_row": row,
         "last_window": window_key,
         "last_run_at": now.isoformat(),
     }
-    tmp = STATE_FILE.parent / f".runner_simple_state.{os.getpid()}.tmp"
+    tmp = state_file.parent / f".runner_simple_state.{os.getpid()}.tmp"
     tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    os.replace(str(tmp), str(STATE_FILE))
+    os.replace(str(tmp), str(state_file))
 
 
-def _already_ran(window_key: str) -> bool:
-    state = _load_state()
+def _already_ran(window_key: str, state_file: Path = STATE_FILE) -> bool:
+    state = _load_state(state_file)
     return state.get("last_window") == window_key
 
 
@@ -290,9 +305,9 @@ def _preflight_ensure_accounts(row: int, window_key: str) -> None:
         sys.stderr.write(f"tiktok_runner: preflight ensure_row_accounts error: {exc}\n")
 
 
-def _count_valid_accounts_for_row(row: int) -> int:
-    """Đếm số account hợp lệ cho row trong ACCOUNT_WORKBOOK."""
-    safe_path = Path(ACCOUNT_WORKBOOK)
+def _count_valid_accounts_for_row(row: int, workbook_path: str = ACCOUNT_WORKBOOK) -> int:
+    """Đếm số account hợp lệ cho row trong workbook chỉ định."""
+    safe_path = Path(workbook_path)
     if not safe_path.is_file():
         sys.stderr.write(f"tiktok_runner: Safe workbook khong ton tai: {safe_path}\n")
         return 0
@@ -326,7 +341,14 @@ def _count_valid_accounts_for_row(row: int) -> int:
 # Spawn
 # ---------------------------------------------------------------------------
 
-def _spawn_feed_session(row: int, session_index: int, now: datetime, is_rest_day: bool = False) -> int:
+def _spawn_feed_session(
+    row: int,
+    session_index: int,
+    now: datetime,
+    is_rest_day: bool = False,
+    account_workbook: str = ACCOUNT_WORKBOOK,
+    artifact_base: Path = ARTIFACT_BASE,
+) -> int:
     """Spawn run-feed-session.ps1 for the given Row and SessionIndex."""
     repo = repo_root()
     ps1_path = repo / "scripts" / "run-feed-session.ps1"
@@ -338,7 +360,7 @@ def _spawn_feed_session(row: int, session_index: int, now: datetime, is_rest_day
 
     date_str = now.strftime("%Y-%m-%d")
     time_str = now.strftime("%H%M%S")
-    artifact_root = str(ARTIFACT_BASE / date_str / f"row-{row}-{time_str}").replace("/", "\\")
+    artifact_root = str(artifact_base / date_str / f"row-{row}-{time_str}").replace("/", "\\")
 
     argv = [
         "powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
@@ -350,7 +372,7 @@ def _spawn_feed_session(row: int, session_index: int, now: datetime, is_rest_day
         # Hệ thống có sổ cái shift_upload_history.json tự động chặn nếu phiên trước đã đăng thành công.
         *( ["-AllowUploadHook"] if not is_rest_day else [] ),
         "-Preset", "full",
-        "-AccountWorkbook", ACCOUNT_WORKBOOK.replace("/", "\\"),
+        "-AccountWorkbook", account_workbook.replace("/", "\\"),
         "-ArtifactRoot", artifact_root,
         "-SkipAccountWorkbookSync",
         "-LocalRun",
@@ -403,24 +425,48 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     row, session_index, window_key, is_rest_day = result
 
-    if _already_ran(window_key):
-        return 0
-
-    _preflight_ensure_accounts(row, window_key)
-
-    valid_count = _count_valid_accounts_for_row(row)
-    if valid_count == 0:
-        sys.stdout.write(f"tiktok_runner: Row {row} co 0 account hop le trong safe workbook, skipping window {window_key}.\n")
-        _save_state(row, window_key, now)
-        return 0
-
+    # Chạy tuần tự qua các cụm Farm (Kibe Local + Admin Remote)
+    overall_rc = 0
     rest_tag = " [REST DAY - PURE FEED]" if is_rest_day else ""
-    sys.stdout.write(f"tiktok_runner: Row {row} co {valid_count} accounts hop le{rest_tag}.\n")
 
-    rc = _spawn_feed_session(row, session_index, now, is_rest_day)
-    if rc == 0:
-        _save_state(row, window_key, now)
-    return rc
+    for cluster in CLUSTERS:
+        cluster_name = cluster["name"]
+        cluster_wb = cluster["account_workbook"]
+        cluster_state = cluster["state_file"]
+        cluster_artifact = cluster["artifact_base"]
+
+        if _already_ran(window_key, state_file=cluster_state):
+            continue
+
+        if cluster_name == "kibe":
+            _preflight_ensure_accounts(row, window_key)
+
+        valid_count = _count_valid_accounts_for_row(row, workbook_path=cluster_wb)
+        if valid_count == 0:
+            sys.stdout.write(
+                f"tiktok_runner [{cluster_name}]: Row {row} co 0 account hop le trong {cluster_wb}, skipping window {window_key}.\n"
+            )
+            _save_state(row, window_key, now, state_file=cluster_state)
+            continue
+
+        sys.stdout.write(
+            f"tiktok_runner [{cluster_name}]: Row {row} co {valid_count} accounts hop le{rest_tag}.\n"
+        )
+
+        rc = _spawn_feed_session(
+            row,
+            session_index,
+            now,
+            is_rest_day=is_rest_day,
+            account_workbook=cluster_wb,
+            artifact_base=cluster_artifact,
+        )
+        if rc == 0:
+            _save_state(row, window_key, now, state_file=cluster_state)
+        else:
+            overall_rc = rc
+
+    return overall_rc
 
 
 if __name__ == "__main__":
