@@ -43,6 +43,7 @@ LOCK_DIR         = Path(os.path.expanduser("~/.codex/device-locks"))
 MANIFEST_DIR     = Path(r"D:\Taadaa\runtime\kibe\cron-state\manifests")
 STATUS_JSON      = Path(r"D:\Taadaa\GPM auto\config\oauth_pipeline_status.json")
 MASTER_XLSX      = Path(r"D:\OneDrive\TaadaaData\kibe\master_gmail_manager.xlsx")
+CLEAN_GMAIL_XLSX = Path(r"D:\OneDrive\TaadaaData\kibe\gmail_clean_v2.xlsx")
 GPM_DB           = Path(r"C:\Users\Kibe\AppData\Local\Programs\GPMLogin\profile\profile_data.db")
 GPM_SCRIPT       = Path(r"D:\Taadaa\GPM auto\scripts\run_oauth_s7_pipeline.py")
 PYTHON_EXE       = sys.executable
@@ -57,10 +58,40 @@ def log(msg: str):
     sys.stderr.flush()
 
 def is_within_time_window() -> bool:
-    """Chỉ mở cuốn chiếu SAU PHIÊN 2 CA TỐI (từ 20:15 đến 23:45), khóa chặt khe P1-P2."""
+    """Cho phép chạy trong các khoảng thời gian rảnh giữa các ca nuôi:
+    - Sáng: 07:15 đến 08:45
+    - Trưa: 12:00 đến 13:45
+    - Tối: 20:15 đến 23:45
+    """
     now = datetime.now(HCMC)
     current = now.hour * 60 + now.minute
-    return 20 * 60 + 15 <= current <= 23 * 60 + 45
+    morning = 7 * 60 + 15 <= current <= 8 * 60 + 45
+    noon = 12 * 60 <= current <= 13 * 60 + 45
+    evening = 20 * 60 + 15 <= current <= 23 * 60 + 45
+    return morning or noon or evening
+
+def get_current_shift_info() -> tuple[str, str, str]:
+    """Trả về thông tin ca hiện tại: (shift_code, shift_label, shift_desc)
+    - 07:15 - 08:45 -> ("SANG", "SÁNG", "sáng")
+    - 12:00 - 13:45 -> ("TRUA", "TRƯA", "trưa")
+    - 20:15 - 23:45 -> ("TOI", "TỐI", "tối")
+    - Fallback: < 12 -> SANG, < 18 -> TRUA, else TOI
+    """
+    now = datetime.now(HCMC)
+    current = now.hour * 60 + now.minute
+    if 7 * 60 + 15 <= current <= 8 * 60 + 45:
+        return ("SANG", "SÁNG", "sáng")
+    if 12 * 60 <= current <= 13 * 60 + 45:
+        return ("TRUA", "TRƯA", "trưa")
+    if 20 * 60 + 15 <= current <= 23 * 60 + 45:
+        return ("TOI", "TỐI", "tối")
+
+    if now.hour < 12:
+        return ("SANG", "SÁNG", "sáng")
+    elif now.hour < 18:
+        return ("TRUA", "TRƯA", "trưa")
+    else:
+        return ("TOI", "TỐI", "tối")
 
 def is_machine_avatar_ready(mid: int | None) -> bool:
     """Kiểm tra máy đã có avatar hoặc đã hoàn tất up avatar trên các file Tik."""
@@ -235,23 +266,105 @@ def sync_gpm_profiles_lifecycle():
     except Exception as e:
         log(f"Lỗi trong sync_gpm_profiles_lifecycle: {e}")
 
+def _load_gmail_clean_creation_dates() -> dict[str, dict]:
+    cache = {}
+    if CLEAN_GMAIL_XLSX.exists():
+        try:
+            import openpyxl
+            wb = openpyxl.load_workbook(CLEAN_GMAIL_XLSX, data_only=True, read_only=True)
+            ws = wb.active
+            for r in list(ws.iter_rows(values_only=True))[1:]:
+                if r and len(r) > 1 and r[1] and "@" in str(r[1]):
+                    em = str(r[1]).strip().lower()
+                    created_raw = r[6] if len(r) > 6 else None
+                    dob_raw = r[5] if len(r) > 5 else None
+                    created_date = None
+                    if created_raw:
+                        if hasattr(created_raw, "date"):
+                            created_date = created_raw.date()
+                        elif isinstance(created_raw, str):
+                            try:
+                                created_date = datetime.fromisoformat(created_raw[:10]).date()
+                            except Exception:
+                                pass
+                    cache[em] = {"created_date": created_date, "has_dob": bool(dob_raw)}
+            wb.close()
+        except Exception as e:
+            log(f"Lỗi đọc {CLEAN_GMAIL_XLSX}: {e}")
+    return cache
+
+def _get_live_omniroute_antigravity_emails() -> set[str]:
+    """Lấy danh sách các tài khoản Antigravity đang live trực tiếp từ server OmniRoute (:20129)."""
+    try:
+        import urllib.request
+        req = urllib.request.Request('http://127.0.0.1:20129/api/providers')
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            data = json.loads(resp.read().decode())
+            conns = data.get('connections', [])
+            emails = set()
+            for c in conns:
+                if c.get('provider') == 'antigravity':
+                    em = (c.get('email') or c.get('name') or '').strip().lower()
+                    if em and '@' in em:
+                        emails.add(em)
+            return emails
+    except Exception as e:
+        log(f'[OMNI-LIVE-WARN] Không thể lấy live conns từ :20129 ({e}), fallback.')
+        return set()
+
+
+def _get_gpm_profiles_with_google_session() -> set[str]:
+    """Kiểm tra các profile GPM đã có sẵn session cookie Google (đã login thành công nhưng chưa OAuth)."""
+    emails_with_session = set()
+    if not GPM_DB.exists():
+        return emails_with_session
+    try:
+        conn = sqlite3.connect(str(GPM_DB))
+        cur = conn.cursor()
+        cur.execute('SELECT Name, ProfilePath FROM profiles;')
+        rows = cur.fetchall()
+        conn.close()
+
+        base_prof_dir = GPM_DB.parent
+        for name, ppath in rows:
+            if not name or not ppath:
+                continue
+            ems = re.findall(r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+', name.lower())
+            if not ems:
+                continue
+            em = ems[0]
+            p_folder = base_prof_dir / ppath
+            for cp in [p_folder / 'Default' / 'Network' / 'Cookies', p_folder / 'Default' / 'Cookies']:
+                if cp.exists():
+                    try:
+                        c_conn = sqlite3.connect(str(cp))
+                        c_cur = c_conn.cursor()
+                        c_cur.execute("SELECT count(*) FROM cookies WHERE host_key LIKE '%google.com' AND name IN ('SID', 'SSID', 'HSID', 'SAPISID')")
+                        cnt = c_cur.fetchone()[0]
+                        c_conn.close()
+                        if cnt >= 2:
+                            emails_with_session.add(em)
+                            break
+                    except Exception:
+                        pass
+    except Exception as e:
+        log(f'[SESSION-CHECK-ERR] Lỗi kiểm tra session cookie GPM: {e}')
+    return emails_with_session
+
+
 def get_candidates(today_str: str, processed: list[str]) -> list[dict]:
     """
-    Trả về danh sách candidates cần login, đã lọc:
-    - Chưa xử lý hôm nay (processed).
-    - Phải ĐÃ CÓ profile GPM trong DB (tránh lỗi PROFILE_NOT_FOUND).
-    - Chưa có trong omniroute_success (tránh ALREADY_SUCCESS).
-    - Không thuộc excluded_khoalee hoặc recovery email có khoale (Farm safety).
-    - Không thuộc wrong_password_or_checkpoint.
-    - Không thuộc ip_cooling_recaptcha hoặc cooldown_7days chưa hết hạn.
-    - Theo đúng constraint proxy 2 acc/ngày, máy 1 lần/ngày.
+    Trả về danh sách candidates cần login:
+    - Nhóm 1 (Priority 1): Profile GPM ĐÃ CÓ GOOGLE SESSION COOKIE nhưng chưa có trên OmniRoute -> Ăn ngay không checkpoint.
+    - Nhóm 2 (Priority 2): Profile GPM mới/chưa login nhưng đã bồi trust (CHATGPT_READY).
+    - Nhóm 3 (Priority 3): Profile GPM chưa nạp OmniRoute, nếu fail trước đó chỉ retry khi đã cooldown >= 24h.
     """
+    clean_map    = _load_gmail_clean_creation_dates()
     gpm_emails   = get_all_gpm_emails()
     seen_emails  = set(processed)
-    proxy_count  = defaultdict(int)   # port -> số lần đã login trong ngày này
+    proxy_count  = defaultdict(int)
     candidates   = []
 
-    # Đọc state proxy_count của ngày hôm nay (để idempotent qua nhiều lần watchdog tick)
     state = {}
     if STATE_FILE.exists():
         try:
@@ -264,24 +377,23 @@ def get_candidates(today_str: str, processed: list[str]) -> list[dict]:
         for port, cnt in state.get("proxy_count", {}).items():
             proxy_count[port] = cnt
 
-    omniroute_success = set()
+    # Lấy OmniRoute success: kết hợp live API :20129 + file status json
+    omniroute_success = _get_live_omniroute_antigravity_emails()
     excluded_emails   = set()
     cooldown_expired  = []
 
     if STATUS_JSON.exists():
         try:
             data = json.loads(STATUS_JSON.read_text(encoding="utf-8"))
-            omniroute_success = set(k.lower() for k in data.get("omniroute_success", {}).keys())
+            omniroute_success.update(k.lower() for k in data.get("omniroute_success", {}).keys())
             excluded_emails.update(k.lower() for k in data.get("excluded_khoalee", []))
             excluded_emails.update(k.lower() for k in data.get("wrong_password_or_checkpoint", {}).keys())
 
-            # ip cooling recaptcha
             for em, info in data.get("ip_cooling_recaptcha", {}).items():
                 r_after = (info.get("retry_after") or "")[:10]
                 if r_after > today_str:
                     excluded_emails.add(em.lower())
 
-            # Cooldown 7 days
             for em, info in data.get("cooldown_7days", {}).items():
                 em_l = em.lower()
                 r_after = (info.get("retry_after") or "")[:10]
@@ -292,7 +404,9 @@ def get_candidates(today_str: str, processed: list[str]) -> list[dict]:
         except Exception as e:
             log(f"Lỗi đọc oauth_pipeline_status: {e}")
 
-    # --- Nhóm 1: Cooldown đã hết hạn ---
+    # Danh sách profile đã có session cookie Google
+    session_emails = _get_gpm_profiles_with_google_session()
+
     for em_l, mid in cooldown_expired:
         if em_l not in seen_emails and em_l not in omniroute_success and em_l not in excluded_emails and em_l in gpm_emails:
             port = _get_proxy_port_for_machine(mid)
@@ -300,10 +414,10 @@ def get_candidates(today_str: str, processed: list[str]) -> list[dict]:
                 "email": em_l,
                 "mid": mid,
                 "port": port,
-                "reason": "cooldown_expired",
+                "priority": 1 if em_l in session_emails else 2,
+                "reason": "cooldown_expired_session" if em_l in session_emails else "cooldown_expired",
             })
 
-    # Đọc thêm danh sách completed_chatgpt từ backlog state nếu có
     completed_chatgpt = set()
     cg_state_file = Path("D:/Taadaa/runtime/kibe/cron-state/chatgpt_link_backlog_state.json")
     if cg_state_file.exists():
@@ -313,7 +427,6 @@ def get_candidates(today_str: str, processed: list[str]) -> list[dict]:
         except Exception:
             pass
 
-    # --- Nhóm 2: Gmail mới đã có profile GPM nhưng chưa nạp OmniRoute ---
     if MASTER_XLSX.exists():
         try:
             import openpyxl
@@ -327,27 +440,38 @@ def get_candidates(today_str: str, processed: list[str]) -> list[dict]:
                 if state_ in ("DIE", "BAN", "SUSPENDED"):
                     continue
 
-                # Kiểm tra điều kiện ngâm đủ 7 ngày kể từ ngày cập nhật / tạo (Cột 15 / index 14)
-                updated_raw = str(r[14] or "").strip() if len(r) > 14 else ""
-                if updated_raw:
-                    try:
-                        date_part = updated_raw[:10]
-                        if len(date_part) == 10 and date_part[4] == "-" and date_part[7] == "-":
-                            from datetime import date
-                            d_created = date.fromisoformat(date_part)
-                            d_today = date.fromisoformat(today_str[:10])
-                            if (d_today - d_created).days < 7:
-                                continue  # Chưa đủ 7 ngày ngâm an toàn, bỏ qua
-                        else:
-                            continue  # Sai định dạng ngày -> Bỏ qua để an toàn (Fail-closed)
-                    except Exception:
-                        continue  # Lỗi parse -> Bỏ qua để an toàn (Fail-closed)
+                if em_l in clean_map:
+                    info = clean_map[em_l]
+                    c_date = info.get("created_date")
+                    if not c_date:
+                        log(f"[CANDIDATE-FILTER] {em_l}: clean_map missing created_date (fail-closed)")
+                        continue
+                    from datetime import date
+                    d_today = date.fromisoformat(today_str[:10])
+                    if (d_today - c_date).days < 7:
+                        log(f"[CANDIDATE-FILTER] {em_l}: clean_map soak < 7 days ({(d_today - c_date).days}d)")
+                        continue
                 else:
-                    continue  # Không có ngày tạo/cập nhật -> Bỏ qua để an toàn (Fail-closed)
+                    updated_raw = str(r[14] or "").strip() if len(r) > 14 else ""
+                    if not updated_raw:
+                        log(f"[CANDIDATE-FILTER] {em_l}: no updated_raw date in master (fail-closed)")
+                        continue
+                    try:
+                        from datetime import date
+                        d_updated = date.fromisoformat(updated_raw[:10])
+                        d_today = date.fromisoformat(today_str[:10])
+                        if (d_today - d_updated).days < 7:
+                            log(f"[CANDIDATE-FILTER] {em_l}: master updated soak < 7 days ({(d_today - d_updated).days}d)")
+                            continue
+                    except Exception as ex_dt:
+                        log(f"[CANDIDATE-FILTER] {em_l}: invalid updated_raw '{updated_raw}' (fail-closed: {ex_dt})")
+                        continue
+
                 if em_l in seen_emails or em_l in omniroute_success or em_l in excluded_emails:
                     continue
                 if em_l not in gpm_emails:
                     continue
+
                 rec = str(r[3] or "").lower()
                 if "khoale" in rec or "khoale" in em_l:
                     continue
@@ -357,11 +481,18 @@ def get_candidates(today_str: str, processed: list[str]) -> list[dict]:
                 m2 = re.search(r"(\d+)", str(r[7] or ""))
                 mid = int(m2.group(1)) if m2 else None
 
-                # Đọc cột Ghi Chú (cột 14 / index 13) để kiểm tra cờ CHATGPT_READY
                 note_val = str(r[13] or "").lower() if len(r) > 13 else ""
                 is_chatgpt_ready = "chatgpt_ready" in note_val or "chatgpt" in note_val or em_l in completed_chatgpt
-                priority = 1 if is_chatgpt_ready else 2
-                reason = "chatgpt_ready_priority" if is_chatgpt_ready else "ready_gpm_oauth"
+
+                if em_l in session_emails:
+                    priority = 1
+                    reason = "has_google_session_ready_oauth"
+                elif is_chatgpt_ready:
+                    priority = 2
+                    reason = "chatgpt_ready_priority"
+                else:
+                    priority = 3
+                    reason = "ready_gpm_oauth"
 
                 candidates.append({
                     "email": em_l,
@@ -373,10 +504,9 @@ def get_candidates(today_str: str, processed: list[str]) -> list[dict]:
         except Exception as e:
             log(f"Lỗi đọc XLSX: {e}")
 
-    # Sắp xếp ưu tiên: priority=1 (CHATGPT_READY) lên trước, priority=2 sau
-    candidates.sort(key=lambda x: x.get("priority", 2))
+    # Sắp xếp ưu tiên: priority=1 (Session sẵn) -> priority=2 (ChatGPT trust) -> priority=3 (Khác)
+    candidates.sort(key=lambda x: x.get("priority", 3))
 
-    # --- Áp dụng constraint: proxy <= 2, machine <= 1 ---
     seen_mids = set()
     filtered  = []
     current_run_proxy_count = dict(proxy_count)
@@ -384,8 +514,10 @@ def get_candidates(today_str: str, processed: list[str]) -> list[dict]:
         port = c.get("port")
         mid  = c.get("mid")
         if mid in seen_mids:
+            log(f"[CANDIDATE-FILTER] {c.get('email')} skipped: mid M{mid} already scheduled in this batch")
             continue
         if port and current_run_proxy_count.get(port, 0) >= MAX_LOGINS_PER_PROXY:
+            log(f"[CANDIDATE-FILTER] {c.get('email')} skipped: proxy port {port} reached daily limit ({MAX_LOGINS_PER_PROXY})")
             continue
         filtered.append(c)
         seen_mids.add(mid)
@@ -393,6 +525,7 @@ def get_candidates(today_str: str, processed: list[str]) -> list[dict]:
             current_run_proxy_count[port] = current_run_proxy_count.get(port, 0) + 1
 
     return filtered, proxy_count
+
 ADB_PATH     = r"C:\Program Files (x86)\xiaowei\tools\adb.exe"
 
 def get_online_adb_serials() -> set[str]:
@@ -523,9 +656,21 @@ def run_login(c: dict) -> dict:
     except Exception as ex:
         log(f"[M{mid:02d}] ERR {email}: {ex}")
         return {**c, "status": "FAIL", "error": str(ex)}
+def _format_summary_report(total_success: int, total_fail: int, shift_label: str = "TỐI", shift_desc: str = "tối") -> str:
+    live_anti_count = len(_get_live_omniroute_antigravity_emails())
+    session_count = len(_get_gpm_profiles_with_google_session())
+    return (
+        f"[LOGIN GPM {shift_label} - TỔNG KẾT]\n"
+        f"• Kết quả ca: ✓ {total_success} | ✗ {total_fail} | proxy_limit 2/port/ngày | Hoàn tất ca {shift_desc}\n"
+        f"• Antigravity Pool: {live_anti_count} accounts LIVE trên OmniRoute (:20129)\n"
+        f"• Profile sẵn Google Session chờ OAuth: {session_count} accounts"
+    )
+
 def main():
     if not is_within_time_window():
         return 0
+
+    shift_code, shift_label, shift_desc = get_current_shift_info()
 
     today_str = datetime.now(HCMC).strftime("%Y-%m-%d")
     STATE_DIR.mkdir(parents=True, exist_ok=True)
@@ -537,36 +682,49 @@ def main():
             state = json.loads(STATE_FILE.read_text(encoding="utf-8"))
         except Exception:
             pass
-    if state.get("date") == today_str and state.get("finished"):
+
+    is_same_day = (state.get("date") == today_str)
+    finished_shifts = list(state.get("finished_shifts", [])) if is_same_day else []
+    reported_shifts = list(state.get("reported_shifts", [])) if is_same_day else []
+
+    if is_same_day and shift_code in finished_shifts:
         return 0
 
     if not is_avatar_done(today_str):
         log("Chờ Avatar cron kết thúc...")
         return 0
 
-    # Đồng bộ vòng đời GPM: dọn DIE & sinh LIVE trước khi lấy candidates
-    sync_gpm_profiles_lifecycle()
+    try:
+        sync_gpm_profiles_lifecycle()
+    except Exception as e:
+        log(f"Lỗi chạy sync_gpm_profiles_lifecycle: {e}")
 
-    is_same_day = (state.get("date") == today_str)
     processed = state.get("processed", []) if is_same_day else []
     total_success = state.get("total_success", 0) if is_same_day else 0
     total_fail = state.get("total_fail", 0) if is_same_day else 0
-    reported = state.get("reported", False) if is_same_day else False
 
     candidates, proxy_count = get_candidates(today_str, processed)
 
     if not candidates:
-        if not reported and (total_success > 0 or total_fail > 0):
-            print(f"[LOGIN GPM ĐÊM - TỔNG KẾT] ✓ {total_success} | ✗ {total_fail} | proxy_limit 2/port/ngày | Hoàn tất ca tối")
-            reported = True
+        if shift_code not in reported_shifts:
+            if total_success > 0 or total_fail > 0:
+                print(_format_summary_report(total_success, total_fail, shift_label, shift_desc))
+            reported_shifts.append(shift_code)
+        if shift_code not in finished_shifts:
+            finished_shifts.append(shift_code)
+
+        all_day_finished = (shift_code == "TOI") or ({"SANG", "TRUA", "TOI"}.issubset(set(finished_shifts)))
+
         state.update({
             "date": today_str,
             "processed": processed,
             "proxy_count": dict(proxy_count),
             "total_success": total_success,
             "total_fail": total_fail,
-            "reported": reported,
-            "finished": True,
+            "reported": bool(reported_shifts),
+            "finished": all_day_finished,
+            "finished_shifts": finished_shifts,
+            "reported_shifts": reported_shifts,
         })
         STATE_FILE.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
         return 0
@@ -614,14 +772,23 @@ def main():
     total_fail += fail_n
 
     now_hcm = datetime.now(HCMC)
-    is_late = (now_hcm.hour == 23 and now_hcm.minute >= 30)
+    is_late = (
+        (shift_code == "SANG" and now_hcm.hour == 8 and now_hcm.minute >= 40)
+        or (shift_code == "TRUA" and now_hcm.hour == 13 and now_hcm.minute >= 40)
+        or (shift_code == "TOI" and now_hcm.hour == 23 and now_hcm.minute >= 30)
+    )
     all_done = (len(processed) >= len(candidates) + len(batch)) or is_late
 
-    # IM LẶNG trong lúc chạy batch lẻ; CHỈ BÁO CÁO 1 LẦN DUY NHẤT khi hoàn tất toàn ca hoặc hết giờ ca tối
-    if all_done and not reported:
-        if total_success > 0 or total_fail > 0:
-            print(f"[LOGIN GPM ĐÊM - TỔNG KẾT] ✓ {total_success} | ✗ {total_fail} | proxy_limit 2/port/ngày | Hoàn tất ca tối")
-        reported = True
+    # IM LẶNG trong lúc chạy batch lẻ; CHỈ BÁO CÁO 1 LẦN DUY NHẤT khi hoàn tất toàn ca hoặc hết giờ ca
+    if all_done:
+        if shift_code not in reported_shifts:
+            if total_success > 0 or total_fail > 0:
+                print(_format_summary_report(total_success, total_fail, shift_label, shift_desc))
+            reported_shifts.append(shift_code)
+        if shift_code not in finished_shifts:
+            finished_shifts.append(shift_code)
+
+    all_day_finished = (shift_code == "TOI" and all_done) or ({"SANG", "TRUA", "TOI"}.issubset(set(finished_shifts)))
 
     state = {
         "date": today_str,
@@ -629,8 +796,10 @@ def main():
         "proxy_count": dict(proxy_count),
         "total_success": total_success,
         "total_fail": total_fail,
-        "reported": reported,
-        "finished": all_done,
+        "reported": bool(reported_shifts),
+        "finished": all_day_finished,
+        "finished_shifts": finished_shifts,
+        "reported_shifts": reported_shifts,
     }
     STATE_FILE.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
     return 0

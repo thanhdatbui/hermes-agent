@@ -12,6 +12,7 @@ import sys
 import json
 import time
 import logging
+import re
 import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -32,11 +33,46 @@ MANIFEST_DIR = Path(r"D:\Taadaa\runtime\kibe\cron-state\manifests")
 DIE_TONG_FILE = Path(r"D:\OneDrive\TaadaaData\kibe\gmail_die_tong.txt")
 MASTER_XLSX = Path(r"D:\OneDrive\TaadaaData\kibe\master_gmail_manager.xlsx")
 
+def get_gpm_pending_emails() -> set[str]:
+    """Lấy danh sách email đã có profile GPM nhưng chưa đăng nhập / chưa nạp OmniRoute."""
+    gpm_db = Path(r"C:\Users\Kibe\AppData\Local\Programs\GPMLogin\profile\profile_data.db")
+    status_json = Path(r"D:\Taadaa\GPM auto\config\oauth_pipeline_status.json")
+    gpm_emails = set()
+    if gpm_db.exists():
+        try:
+            import sqlite3
+            conn = sqlite3.connect(gpm_db)
+            cur = conn.cursor()
+            cur.execute("SELECT Name FROM profiles")
+            for (name,) in cur.fetchall():
+                m = re.search(r"([a-z0-9._%+\-]+@gmail\.com)", name.lower())
+                if m:
+                    gpm_emails.add(m.group(1))
+            conn.close()
+        except Exception:
+            pass
+
+    omni_success = set()
+    if status_json.exists():
+        try:
+            omni_data = json.loads(status_json.read_text(encoding="utf-8"))
+            omni_success = set(k.lower() for k in omni_data.get("omniroute_success", {}).keys())
+        except Exception:
+            pass
+
+    return gpm_emails - omni_success
+
+
 def get_live_targets() -> list[dict]:
-    """Quét danh sách các tài khoản Gmail LIVE chưa có ChatGPT từ Master Excel."""
+    """CHỈ quét các tài khoản Gmail đang trong diện chờ Login GPM (đã có profile GPM, chưa nạp OmniRoute)."""
     targets = []
     if not MASTER_XLSX.exists():
         return targets
+
+    pending_gpm = get_gpm_pending_emails()
+    if not pending_gpm:
+        return targets
+
     try:
         import openpyxl, re
         wb = openpyxl.load_workbook(MASTER_XLSX, data_only=True)
@@ -48,6 +84,8 @@ def get_live_targets() -> list[dict]:
                 continue
             email = str(r[1] or "").strip().lower()
             if not email or "@" not in email:
+                continue
+            if email not in pending_gpm:
                 continue
             status = str(r[6] or "").strip().upper()
             if status != "LIVE":
