@@ -308,8 +308,11 @@ Khi điều phối worker trên file monolith (>1.500 dòng) hoặc nhận yêu 
    - Claude CLI Opus High: CHỈ dùng cho ca P0 đặc biệt hoặc tái cấu trúc hạ tầng hệ thống lớn khi có chỉ đạo rõ ràng.
 
 6. SOL PLANNER TẦNG A BẮT BUỘC TRƯỚC KHI DISPATCH & KIẾN TRÚC AUTO-RESOLVE VISIBLE (User chốt 2026-09-19):
-   6. SOL PLANNER TẦNG A BẮT BUỘC TRƯỚC KHI DISPATCH & KIẾN TRÚC AUTO-RESOLVE VISIBLE (User chốt 2026-09-19):
       - **Bản đồng thuận tối thượng giữa Claude CLI & GPT-5.6 Sol**: Xem chi tiết tại `references/sol-authority-hook-architecture-and-visible-blocking.md`.
+      - **Ad-hoc Sol Consultation Protocol ("Gọi Sol hỏi" - CẤM NÓI "KHÔNG CÓ KÊNH GỌI SOL")**:
+        * Khi user yêu cầu "Gọi Sol hỏi", "Hỏi Sol xem", "Tham vấn Sol": CẤM TUYỆT ĐỐI Coordinator trả lời "không có kênh gọi Sol" hay từ chối.
+        * Sol luôn thường trực tại OmniRoute `:20129` (`http://127.0.0.1:20129/v1/chat/completions`) với model `chatgpt-web/gpt-5.6-sol-instant` (nhanh) hoặc `chatgpt-web/gpt-5.6-sol-high` (sâu).
+        * Coordinator gửi request trực tiếp qua Python `requests.post` lấy câu trả lời chuyên sâu từ Sol và báo cáo lại ngay cho user. Xem chi tiết tại `references/adhoc-sol-consultation-and-tiktok-anomaly-rules.md`.
       - **Triết lý Compiler Phase**: Sol Planner là Compiler Phase bắt buộc trước mọi mutation. Không ép Coordinator "nhớ" gọi Sol qua Memory/Prompt (soft-constraint vô hiệu, sếp đã chấn chỉnh cấm khóa vào memory). Quyền can thiệp code bị khóa cứng ở tầng Hook vật lý (`guard_dispatch_contract.py`).
       - **Phân cấp quyền lực**: Sếp = Intent Authority (ý tưởng, mục tiêu); Coordinator = Context Authority (gom hiện trường O(1)); Sol = Engineering Authority (chuyển ngữ ý tưởng của Sếp thành bản vẽ kỹ thuật chi tiết: Decompose, C Invariant anchor duy nhất, focused test <30s, worker budget); Worker = Execution Authority.
       - **Visible Blocking Resolution**: Khi thiếu `SOL_PLAN_ID`, Hook tự động gọi Sol Planner (:20129) sinh plan, rồi BLOCK tool call và thông báo công khai để Coordinator re-dispatch với `SOL_PLAN_ID` vừa tạo (triệt tiêu 100% việc user phải nhắc).
@@ -451,4 +454,5 @@ Khi user hỏi "session của Hermes qua các lớp agent nào" / audit cấu tr
 ## Các section chi tiết (trim 2026-08-09)
 
 > dispatch-history-and-ops-notes.md
+> references/adhoc-sol-consultation-and-tiktok-anomaly-rules.md — Ad-hoc Sol Consultation Protocol & TikTok Shadowban Standard (Sol 2026-09-20).
 
