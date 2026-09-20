@@ -483,10 +483,87 @@ def format_report_html(
     stats_by_tik: dict[int, dict],
     target_tiks: list[int] | None = None,
     now_dt: datetime | None = None,
+    stats_by_cluster: dict[str, dict] | None = None,
 ) -> str:
-    """Định dạng template HTML báo cáo Farm Alert chuẩn hóa."""
+    """Định dạng template báo cáo Farm Alert. Hỗ trợ gộp toàn farm 2 cụm Kibe & Admin gọn gàng, sạch sẽ."""
     if now_dt is None:
         now_dt = now_hcmc()
+
+    # Nếu có stats_by_cluster -> Báo cáo gộp TOÀN FARM (định dạng sạch, không lộ tag HTML)
+    if stats_by_cluster:
+        tot_up = 0
+        tot_acc = 0
+        tot_miss = 0
+        cluster_blocks = []
+
+        # Thứ tự hiển thị: kibe trước, admin sau
+        cluster_order = [
+            ("kibe", "FARM KIBE - MÁY 1-80", [5, 6, 7, 8, 3, 4]),
+            ("admin", "FARM ADMIN - MÁY 201-280", [1, 2, 3, 4, 5, 6, 7, 8]),
+        ]
+
+        for c_id, c_label, c_tiks in cluster_order:
+            if c_id not in stats_by_cluster:
+                continue
+            c_stats = stats_by_cluster[c_id]
+            c_up = sum(c_stats.get(t, {}).get("uploaded_count", 0) for t in c_tiks)
+            c_acc = sum(c_stats.get(t, {}).get("total_accounts", 0) for t in c_tiks)
+            c_un = sum(len(c_stats.get(t, {}).get("unuploaded", [])) for t in c_tiks)
+            c_pct = (c_up / c_acc * 100) if c_acc > 0 else 0.0
+
+            tot_up += c_up
+            tot_acc += c_acc
+            tot_miss += c_un
+
+            c_lines = [
+                f"🏢 【{c_label}】: Đã có {c_up}/{c_acc} ({c_pct:.1f}%), còn {c_un} máy"
+            ]
+
+            done_tiks = []
+            pending_lines = []
+
+            for t in c_tiks:
+                st = c_stats.get(t, {})
+                un = st.get("unuploaded", [])
+                up = st.get("uploaded_count", 0)
+                tot = st.get("total_accounts", 0)
+                pct = (up / tot * 100) if tot > 0 else 0.0
+
+                if tot == 0:
+                    continue
+                elif un:
+                    preview = ", ".join(map(str, un[:10]))
+                    suffix = f"... (+{len(un)-10})" if len(un) > 10 else ""
+                    pending_lines.append(
+                        f"  • Tik {t}: Đã có {up}/{tot} ({pct:.1f}%) — còn {len(un)} máy ({preview}{suffix})"
+                    )
+                else:
+                    done_tiks.append(f"Tik {t}")
+
+            if pending_lines:
+                c_lines.extend(pending_lines)
+            if done_tiks:
+                c_lines.append(f"  • Hoàn tất 100%: {', '.join(done_tiks)}")
+
+            cluster_blocks.append("\n".join(c_lines))
+
+        tot_pct = (tot_up / tot_acc * 100) if tot_acc > 0 else 0.0
+        if all_done or tot_miss == 0:
+            title = "🎉 [FARM REPORT][TOÀN FARM] HOÀN TẤT UP AVATAR CHO CÁC ACC ĐÃ CÓ NICK"
+            status_line = f"• Trạng thái: Tất cả các acc hiện có nick đã được up avatar ({tot_up}/{tot_acc} acc)"
+        else:
+            title = "⏰ [FARM REPORT][TOÀN FARM] BÁO CÁO UP AVATAR: HẾT KHUNG GIỜ"
+            status_line = f"• Trạng thái: Hết khung giờ ca tối (sau 23:30) — Đã có: {tot_up}/{tot_acc} acc ({tot_pct:.1f}%), còn {tot_miss} máy chưa up"
+
+        lines = [
+            title,
+            f"• Thời gian: {now_dt.strftime('%H:%M:%S %d/%m/%Y')}",
+            status_line,
+            "",
+        ] + ["\n\n".join(cluster_blocks)]
+        return "\n".join(lines)
+
+    # Chế độ báo cáo đơn cụm (backward-compatible cho unit test)
     if target_tiks is None:
         target_tiks = list(stats_by_tik.keys())
 
@@ -496,6 +573,7 @@ def format_report_html(
     total_pct = (total_uploaded / total_accounts * 100) if total_accounts > 0 else 0.0
 
     tik_lines = []
+    unassigned_tiks = []
     for tik in target_tiks:
         st = stats_by_tik.get(tik, {})
         unuploaded = st.get("unuploaded", [])
@@ -504,7 +582,7 @@ def format_report_html(
         pct = (up_cnt / tot_cnt * 100) if tot_cnt > 0 else 0.0
 
         if tot_cnt == 0:
-            tik_lines.append(f"• <b>Tik {tik}:</b> chưa gán nick (0/80 acc)")
+            unassigned_tiks.append(tik)
         elif unuploaded:
             preview = ",".join(map(str, unuploaded[:15]))
             suffix = f"... (+{len(unuploaded)-15})" if len(unuploaded) > 15 else ""
@@ -514,9 +592,15 @@ def format_report_html(
         else:
             tik_lines.append(f"• <b>Tik {tik}:</b> Đã có {up_cnt}/{tot_cnt} (hoàn tất 100%)")
 
-    if all_done or total_unuploaded == 0:
+    if unassigned_tiks:
+        tik_lines.append(f"• <b>Chưa gán nick:</b> {', '.join(f'Tik {t}' for t in unassigned_tiks)}")
+
+    if (all_done and total_accounts > 0) or (total_unuploaded == 0 and total_accounts > 0):
         title = f"🎉 <b>[FARM REPORT][{host_id.upper()}] HOÀN TẤT UP AVATAR CHO CÁC ACC ĐÃ CÓ NICK</b>"
         status_line = f"• <b>Trạng thái:</b> Tất cả các acc hiện có nick đã được up avatar ({total_uploaded}/{total_accounts} acc)"
+    elif total_accounts == 0:
+        title = f"⏰ <b>[FARM REPORT][{host_id.upper()}] BÁO CÁO UP AVATAR: CHƯA CÓ NICK</b>"
+        status_line = "• <b>Trạng thái:</b> Chưa có tài khoản nào được gán trên các Tik đã cấu hình"
     else:
         title = f"⏰ <b>[FARM REPORT][{host_id.upper()}] BÁO CÁO UP AVATAR: HẾT KHUNG GIỜ</b>"
         status_line = f"• <b>Trạng thái:</b> Hết khung giờ ca tối (sau 23:30) — Đã có: {total_uploaded}/{total_accounts} acc ({total_pct:.1f}%), còn {total_unuploaded} máy chưa up"
@@ -537,7 +621,9 @@ def report_final_summary(
     host_context: dict | None = None,
     stats_by_tik: dict[int, dict] | None = None,
 ) -> None:
-    """Gửi DUY NHẤT 1 báo cáo tổng kết khi tất cả Tik hoàn tất 100% hoặc hết khung giờ ca tối."""
+    """Gửi DUY NHẤT 1 báo cáo tổng kết khi tất cả Tik hoàn tất 100% hoặc hết khung giờ ca tối.
+    Khi host_id == 'kibe', tự động thu thập thêm thống kê từ cụm Admin để xuất báo cáo [TOÀN FARM].
+    """
     now = now_hcmc()
     sess_key = get_session_key(now)
     if state.get("last_reported_session") == sess_key or state.get("last_reported_date") == sess_key:
@@ -551,12 +637,27 @@ def report_final_summary(
     if stats_by_tik is None:
         stats_by_tik = {tik: get_tik_avatar_stats(tik, workbook_dir=wb_dir) for tik in target_tiks}
 
+    # Nếu là Kibe Master -> Tự động tổng hợp cả 2 cụm Kibe và Admin để làm báo cáo [TOÀN FARM]
+    stats_by_cluster = None
+    if host_id == "kibe":
+        admin_tiks = [1, 2, 3, 4, 5, 6, 7, 8]
+        admin_wb = Path(r"D:\OneDrive\TaadaaData\admin")
+        admin_stats = {
+            tik: get_tik_avatar_stats(tik, workbook_dir=admin_wb, host_context={"host_id": "admin", "workbook_dir": admin_wb})
+            for tik in admin_tiks
+        }
+        stats_by_cluster = {
+            "kibe": stats_by_tik,
+            "admin": admin_stats,
+        }
+
     report_msg = format_report_html(
         host_id=host_id,
         all_done=all_done,
         stats_by_tik=stats_by_tik,
         target_tiks=target_tiks,
         now_dt=now,
+        stats_by_cluster=stats_by_cluster,
     )
     # Cronjob no_agent=True tu dong bat stdout (print) gui Telegram Farm Alert, tranh goi send_farm_alert gay gui dup
     print(report_msg)
