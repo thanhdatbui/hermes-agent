@@ -42,6 +42,8 @@ CLUSTERS: list[dict[str, Any]] = [
         "account_workbook": str(KIBE_WORKBOOK_ROOT / "taikhoan_run_safe.xlsx"),
         "state_file": KIBE_RUNTIME_ROOT / "cron-state" / "runner_simple_state.json",
         "artifact_base": KIBE_RUNTIME_ROOT / "live",
+        "host_config": r"D:\Taadaa\machine-config\kibe.yaml",
+        "adb_server_socket": None,
     },
     {
         "name": "admin",
@@ -50,6 +52,8 @@ CLUSTERS: list[dict[str, Any]] = [
         "account_workbook": str(ADMIN_WORKBOOK_ROOT / "taikhoan_run_safe.xlsx"),
         "state_file": ADMIN_RUNTIME_ROOT / "cron-state" / "runner_simple_state.json",
         "artifact_base": ADMIN_RUNTIME_ROOT / "live",
+        "host_config": r"D:\Taadaa\machine-config\admin.yaml",
+        "adb_server_socket": "tcp:192.168.110.119:5037",
     },
 ]
 
@@ -348,6 +352,8 @@ def _spawn_feed_session(
     is_rest_day: bool = False,
     account_workbook: str = ACCOUNT_WORKBOOK,
     artifact_base: Path = ARTIFACT_BASE,
+    host_config: str | None = None,
+    adb_server_socket: str | None = None,
 ) -> int:
     """Spawn run-feed-session.ps1 for the given Row and SessionIndex."""
     repo = repo_root()
@@ -383,6 +389,12 @@ def _spawn_feed_session(
 
     child_env = dict(os.environ)
     child_env.pop("TAADAA_REST_DAY_NO_FOLLOW", None)
+    if host_config:
+        child_env["TAADAA_HOST_CONFIG"] = host_config
+    if adb_server_socket:
+        child_env["ADB_SERVER_SOCKET"] = adb_server_socket
+    else:
+        child_env.pop("ADB_SERVER_SOCKET", None)
     kwargs: dict = {
         "cwd": str(repo),
         "stdin": subprocess.DEVNULL,
@@ -398,7 +410,7 @@ def _spawn_feed_session(
 
     proc = subprocess.Popen(argv, **kwargs)
     sys.stdout.write(
-        f"tiktok_runner: spawned Row{row} pid={proc.pid}\n"
+        f"tiktok_runner: spawned Row{row} pid={proc.pid} [host={host_config} socket={adb_server_socket}]\n"
     )
     return 0
 
@@ -453,6 +465,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             f"tiktok_runner [{cluster_name}]: Row {row} co {valid_count} accounts hop le{rest_tag}.\n"
         )
 
+        cluster_host_cfg = cluster.get("host_config")
+        cluster_adb_socket = cluster.get("adb_server_socket")
         rc = _spawn_feed_session(
             row,
             session_index,
@@ -460,6 +474,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             is_rest_day=is_rest_day,
             account_workbook=cluster_wb,
             artifact_base=cluster_artifact,
+            host_config=cluster_host_cfg,
+            adb_server_socket=cluster_adb_socket,
         )
         if rc == 0:
             _save_state(row, window_key, now, state_file=cluster_state)
