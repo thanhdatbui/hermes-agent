@@ -75,8 +75,12 @@ def load_state() -> dict:
 
 def save_state(state: dict):
     try:
-        with open(STATE_FILE, "w", encoding="utf-8") as f:
+        tmp_file = f"{STATE_FILE}.tmp"
+        with open(tmp_file, "w", encoding="utf-8") as f:
             json.dump(state, f, indent=2, ensure_ascii=False)
+        os.replace(tmp_file, STATE_FILE)
+    except (OSError, PermissionError) as e:
+        logger.error(f"[TELEMETRY] Lỗi ghi state atomic: {e}")
     except Exception as e:
         logger.error(f"Lỗi lưu state file: {e}")
 
@@ -445,6 +449,7 @@ def nurture_profile(p: dict) -> bool:
             live_cookies = context.cookies(["https://accounts.google.com", "https://www.youtube.com", "https://google.com"])
             found_session = {c.get("name") for c in live_cookies if c.get("name") in ('SID', 'SSID', 'HSID', 'SAPISID')}
             if len(found_session) < 2:
+                logger.warning(f"[AUDIT] event=nurture_aborted reason=missing_live_session email={email} status=NEEDS_LOGIN")
                 logger.warning(f"[{email}] CẢNH BÁO: Profile chưa login Google hoặc mất session (chỉ thấy {len(found_session)} token). Dừng nuôi để tránh lãng phí!")
                 state_cur = load_state()
                 entry = state_cur.get(email, {})
@@ -520,9 +525,11 @@ def main():
         if not email:
             continue
         if email not in emails_with_session:
+            logger.info(f"[AUDIT] event=profile_skipped reason=no_google_session email={email}")
             continue
         p_copy = dict(p)
         p_copy["email"] = email
+        logger.info(f"[AUDIT] event=candidate_selected email={p_copy['email']} profile_id={p_copy['id']}")
         candidates.append(p_copy)
 
     logger.info(f"Tổng số profile Gmail sẵn sàng nuôi (đã login): {len(candidates)}")
