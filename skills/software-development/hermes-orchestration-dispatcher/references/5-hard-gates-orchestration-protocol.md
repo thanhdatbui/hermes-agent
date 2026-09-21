@@ -31,6 +31,7 @@ Tài liệu này chuẩn hoá và khắc phục triệt để lỗi điều ph�
   * Anchor string độc nhất (`grep -c == 1`).
   * Đoạn code thay thế chính xác (old_string → new_string).
   * Scope lock: Cấm sửa ngoài anchor, cấm refactor.
+  * **Cấm Worker đọc lại Monolith**: Với file monolith cực lớn (>10.000 dòng, vd `feed_swipe_smoke.py` 23k dòng), prompt BẮT BUỘC cấm worker dùng `read_file` / `search_files` (tránh tràn context và timeout mạng 600s). Yêu cầu worker gọi trực tiếp tool `patch` với exact contract được cấp.
   * Test contract rõ ràng (<30s).
 
 ### GATE 3 — CIRCUIT BREAKER (Chống Insanity Loop)
