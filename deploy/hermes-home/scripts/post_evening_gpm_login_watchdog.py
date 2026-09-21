@@ -36,9 +36,10 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 HCMC = ZoneInfo("Asia/Ho_Chi_Minh")
 
-STATE_DIR        = Path(r"D:\Taadaa\runtime\kibe\cron-state")
+STATE_DIR        = Path("D:/Taadaa/runtime/kibe/cron-state")
 STATE_FILE       = STATE_DIR / "post_evening_gpm_login_state.json"
 AVATAR_STATE     = STATE_DIR / "post_evening_avatar_state.json"
+NURTURE_STATE    = STATE_DIR / "gpm_gmail_nurture_state.json"
 LOCK_DIR         = Path(os.path.expanduser("~/.codex/device-locks"))
 MANIFEST_DIR     = Path(r"D:\Taadaa\runtime\kibe\cron-state\manifests")
 STATUS_JSON      = Path(r"D:\Taadaa\GPM auto\config\oauth_pipeline_status.json")
@@ -407,6 +408,17 @@ def get_candidates(today_str: str, processed: list[str]) -> list[dict]:
     # Danh sách profile đã có session cookie Google
     session_emails = _get_gpm_profiles_with_google_session()
 
+    # Danh sách profile báo mất session từ cron nuôi GPM
+    nurture_needs_login = set()
+    if NURTURE_STATE.exists():
+        try:
+            nurture_data = json.loads(NURTURE_STATE.read_text(encoding="utf-8"))
+            for em, info in nurture_data.items():
+                if isinstance(info, dict) and info.get("status") == "NEEDS_LOGIN":
+                    nurture_needs_login.add(em.lower())
+        except Exception as e:
+            log(f"Lỗi đọc gpm_gmail_nurture_state: {e}")
+
     for em_l, mid in cooldown_expired:
         if em_l not in seen_emails and em_l not in omniroute_success and em_l not in excluded_emails and em_l in gpm_emails:
             port = _get_proxy_port_for_machine(mid)
@@ -443,31 +455,33 @@ def get_candidates(today_str: str, processed: list[str]) -> list[dict]:
                 if em_l in clean_map:
                     info = clean_map[em_l]
                     c_date = info.get("created_date")
-                    if not c_date:
-                        log(f"[CANDIDATE-FILTER] {em_l}: clean_map missing created_date (fail-closed)")
-                        continue
-                    from datetime import date
-                    d_today = date.fromisoformat(today_str[:10])
-                    if (d_today - c_date).days < 7:
-                        log(f"[CANDIDATE-FILTER] {em_l}: clean_map soak < 7 days ({(d_today - c_date).days}d)")
-                        continue
-                else:
-                    updated_raw = str(r[14] or "").strip() if len(r) > 14 else ""
-                    if not updated_raw:
-                        log(f"[CANDIDATE-FILTER] {em_l}: no updated_raw date in master (fail-closed)")
-                        continue
-                    try:
+                    if c_date:
                         from datetime import date
-                        d_updated = date.fromisoformat(updated_raw[:10])
                         d_today = date.fromisoformat(today_str[:10])
-                        if (d_today - d_updated).days < 7:
-                            log(f"[CANDIDATE-FILTER] {em_l}: master updated soak < 7 days ({(d_today - d_updated).days}d)")
+                        if (d_today - c_date).days < 7:
+                            log(f"[CANDIDATE-FILTER] {em_l}: clean_map soak < 7 days ({(d_today - c_date).days}d)")
                             continue
-                    except Exception as ex_dt:
-                        log(f"[CANDIDATE-FILTER] {em_l}: invalid updated_raw '{updated_raw}' (fail-closed: {ex_dt})")
-                        continue
+                    else:
+                        # Acc trong clean_map thiếu ngày tạo là acc đợt cũ -> đã ngâm đủ lâu
+                        pass
+                else:
+                    # Acc ngoài clean_map kiểm tra master r[14], nếu thiếu ngày coi như acc cũ đã ngâm đủ
+                    updated_raw = str(r[14] or "").strip() if len(r) > 14 else ""
+                    if updated_raw:
+                        try:
+                            from datetime import date
+                            d_updated = date.fromisoformat(updated_raw[:10])
+                            d_today = date.fromisoformat(today_str[:10])
+                            if (d_today - d_updated).days < 7:
+                                log(f"[CANDIDATE-FILTER] {em_l}: master updated soak < 7 days ({(d_today - d_updated).days}d)")
+                                continue
+                        except Exception:
+                            pass
 
-                if em_l in seen_emails or em_l in omniroute_success or em_l in excluded_emails:
+                is_lost_session = (em_l in nurture_needs_login)
+                if em_l in seen_emails or em_l in excluded_emails:
+                    continue
+                if em_l in omniroute_success and not is_lost_session:
                     continue
                 if em_l not in gpm_emails:
                     continue
@@ -484,14 +498,17 @@ def get_candidates(today_str: str, processed: list[str]) -> list[dict]:
                 note_val = str(r[13] or "").lower() if len(r) > 13 else ""
                 is_chatgpt_ready = "chatgpt_ready" in note_val or "chatgpt" in note_val or em_l in completed_chatgpt
 
-                if em_l in session_emails:
+                if is_lost_session:
                     priority = 1
+                    reason = "nurture_reported_needs_login"
+                elif em_l in session_emails:
+                    priority = 2
                     reason = "has_google_session_ready_oauth"
                 elif is_chatgpt_ready:
-                    priority = 2
+                    priority = 3
                     reason = "chatgpt_ready_priority"
                 else:
-                    priority = 3
+                    priority = 4
                     reason = "ready_gpm_oauth"
 
                 candidates.append({
@@ -638,6 +655,16 @@ def run_login(c: dict) -> dict:
                 conn.close()
             except Exception:
                 pass
+
+            if NURTURE_STATE.exists():
+                try:
+                    nurture_data = json.loads(NURTURE_STATE.read_text(encoding="utf-8"))
+                    if email in nurture_data and nurture_data[email].get("status") == "NEEDS_LOGIN":
+                        nurture_data[email]["status"] = "LOGIN_RECOVERED"
+                        nurture_data[email]["recovered_at"] = datetime.now().isoformat()
+                        NURTURE_STATE.write_text(json.dumps(nurture_data, ensure_ascii=False, indent=2), encoding="utf-8")
+                except Exception as ex_nur:
+                    log(f"[M{mid:02d}] Cập nhật nurture state thất bại (bỏ qua): {ex_nur}")
 
             dual_script = r"D:\Taadaa\GPM auto\scripts\batch_dual_oauth_5workers.py"
             if os.path.exists(dual_script):
