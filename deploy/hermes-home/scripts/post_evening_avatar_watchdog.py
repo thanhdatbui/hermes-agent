@@ -16,7 +16,9 @@ from __future__ import annotations
 import csv
 import glob
 import json
+import logging
 import os
+import re
 import sqlite3
 import subprocess
 import sys
@@ -26,6 +28,13 @@ import urllib.parse
 from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
+
+logger = logging.getLogger("post_evening_avatar_watchdog")
+if not logger.handlers:
+    _handler = logging.StreamHandler(sys.stderr)
+    _handler.setFormatter(logging.Formatter("[%(asctime)s][%(levelname)s] %(message)s"))
+    logger.addHandler(_handler)
+    logger.setLevel(logging.INFO)
 
 HCMC = ZoneInfo("Asia/Ho_Chi_Minh")
 
@@ -65,7 +74,7 @@ def get_host_context(config_path_override: str | Path | None = None) -> dict:
             pass
 
     if host_id == "admin":
-        target_tiks = [2, 1, 3, 4, 5, 6, 7, 8]
+        target_tiks = [1, 2, 3, 4, 5, 6, 7, 8]
         workbook_dir = Path(r"D:\OneDrive\TaadaaData\admin")
         state_file = Path(r"D:\Taadaa\runtime\admin\cron-state\post_evening_avatar_state.json")
     else:
@@ -167,31 +176,39 @@ def is_after_evening_window(now_dt: datetime) -> bool:
 
 
 def count_active_locks() -> int:
-    """Đếm số device locks active/running/queued/queued_v2."""
+    """Đếm số device locks còn fresh (< 45 phút / 2700s) và active/running/queued/queued_v2."""
     lock_dirs = [
         LOCK_DIR,
         Path(os.path.expanduser(r"~\AppData\Local\automation-core\device-locks")),
     ]
+    cur_time = time.time()
     count = 0
+    seen_files: set[str] = set()
     for ldir in lock_dirs:
         if not ldir.exists():
             continue
-        for f in ldir.iterdir():
-            if f.is_file() and f.suffix == ".json" and (f.name.startswith("machine_") or f.name.startswith("serial_")):
-                try:
-                    data = json.loads(f.read_text(encoding="utf-8"))
-                    st = data.get("status")
-                    if st in ("active", "running", "queued", "queued_v2"):
-                        count += 1
-                    elif st == "blocked" and data.get("owner_active", True) is not False:
-                        count += 1
-                except Exception:
-                    pass
-            elif f.is_file() and f.suffix == ".lock":
-                count += 1
+        try:
+            for f in ldir.iterdir():
+                if f.name in seen_files:
+                    continue
+                if f.is_file() and f.suffix == ".json" and (
+                    f.name.startswith("machine_") or f.name.startswith("serial_")
+                ):
+                    try:
+                        if (cur_time - f.stat().st_mtime) < 2700:
+                            data = json.loads(f.read_text(encoding="utf-8"))
+                            st = data.get("status")
+                            if st in ("active", "running", "queued", "queued_v2") or (st == "blocked" and data.get("owner_active", True) is not False):
+                                seen_files.add(f.name)
+                                count += 1
+                    except Exception:
+                        pass
+                elif f.is_file() and f.suffix == ".lock":
+                    seen_files.add(f.name)
+                    count += 1
+        except Exception:
+            pass
     return count
-
-
 def is_ca3_finished(today_str: str) -> bool:
     reported_file = Path(r"D:\Taadaa\runtime\kibe\cron-state\feed_session_reported.json")
     if not reported_file.is_file():
@@ -262,23 +279,19 @@ def rescan_completed_machines(machines: list[int] | None = None, timeout_seconds
 
         if res.returncode == 0:
             target_desc = f"{machine_count} máy" if machine_count > 0 else "toàn bộ"
-            print(f"[TRACKER RESCAN] Hoàn tất cập nhật DB cho {target_desc} (exit: 0, duration: {elapsed:.2f}s).")
-            if stdout_clean:
-                print(f"[TRACKER RESCAN stdout]:\n{stdout_clean}")
-            if stderr_clean:
-                print(f"[TRACKER RESCAN stderr]:\n{stderr_clean}")
+            logger.info(f"[TRACKER RESCAN] Hoàn tất cập nhật DB cho {target_desc} (exit: 0, duration: {elapsed:.2f}s).")
+            # Rescan thành công: IM LẶNG hoàn toàn trên stdout theo đúng nguyên tắc watchdog (tránh cron spam Telegram)
             return True
         else:
             err_msg = (
                 f"[TRACKER RESCAN] Error (exit {res.returncode}, duration: {elapsed:.2f}s)\n"
-                f"[TRACKER RESCAN stdout]:\n{stdout_clean or '<empty>'}\n"
-                f"[TRACKER RESCAN stderr]:\n{stderr_clean or '<empty>'}\n"
+                f"[TRACKER RESCAN stderr]:\n{stderr_clean or '<empty>'}"
             )
-            sys.stderr.write(err_msg)
+            logger.error(err_msg)
             return False
     except Exception as e:
         elapsed = time.time() - start_time
-        sys.stderr.write(f"[TRACKER RESCAN] Failed to run rescan after {elapsed:.2f}s: {e}\n")
+        logger.error(f"[TRACKER RESCAN] Failed to run rescan after {elapsed:.2f}s: {e}")
         return False
 
 
@@ -459,6 +472,77 @@ def save_state(st: dict, state_file: Path | None = None):
     tmp.replace(target_file)
 
 
+def collect_recent_batch_results(
+    tik: int,
+    machines: list[int] | None = None,
+    batch_runs_dir: Path | None = None,
+) -> tuple[list[int], dict[str, list[int]]]:
+    base_dir = batch_runs_dir or Path(r"D:\CodexRuntime\tiktok-video\batch-runs")
+    if not base_dir.exists():
+        return [], {}
+    pattern = f"batch_tik{tik}_*"
+    try:
+        matching_dirs = sorted(base_dir.glob(pattern), key=lambda p: p.stat().st_mtime, reverse=True)
+    except Exception:
+        return [], {}
+    if not matching_dirs:
+        return [], {}
+    summary_file = matching_dirs[0] / "summary.csv"
+    if not summary_file.exists():
+        return [], {}
+    succeeded = []
+    failed_by_reason = {}
+    target_set = set(machines) if machines else None
+    try:
+        with open(summary_file, mode="r", encoding="utf-8-sig") as f:
+            for row in csv.DictReader(f):
+                m_val = row.get("Machine") or row.get("machine_id") or row.get("may")
+                if not m_val: continue
+                try: m = int(m_val)
+                except Exception: continue
+                if target_set is not None and m not in target_set: continue
+                status = (row.get("Status") or "").strip()
+                verified = (row.get("Verified") or "").strip().lower() == "true"
+                reason_raw = (row.get("Reason") or "").strip()
+                report_path = (row.get("Report") or "").strip()
+                if verified or status in ("AVATAR_SMOKE_SUCCESS", "SUCCESS"):
+                    succeeded.append(m)
+                    continue
+                err_code = ""
+                if report_path and Path(report_path).exists():
+                    try:
+                        with open(report_path, mode="r", encoding="utf-8") as rf:
+                            rd = json.load(rf)
+                            err_msg = rd.get("error") or rd.get("avatar_error") or ""
+                            mm = re.search(r"\[([A-Z0-9_]+)\]", str(err_msg))
+                            if mm: err_code = mm.group(1)
+                    except (json.JSONDecodeError, OSError) as e:
+                        logger.debug("Cannot parse report json %s: %s", report_path, e)
+                if not err_code:
+                    mm = re.search(r"\[([A-Z0-9_]+)\]", reason_raw)
+                    if mm:
+                        err_code = mm.group(1)
+                    elif reason_raw:
+                        err_code = reason_raw
+                    elif status:
+                        err_code = status
+                    else:
+                        err_code = "UNKNOWN_ERROR"
+                failed_by_reason.setdefault(err_code, []).append(m)
+    except Exception as e:
+        logger.warning(f"[WATCHDOG] Error reading batch summary: {e}")
+    for k in failed_by_reason:
+        failed_by_reason[k] = sorted(list(set(failed_by_reason[k])))
+    succeeded_sorted = sorted(list(set(succeeded)))
+    logger.info(
+        "[WATCHDOG] Batch Tik %s telemetry: succeeded=%d, failed=%d, reasons=%s",
+        tik,
+        len(succeeded_sorted),
+        sum(len(m) for m in failed_by_reason.values()),
+        failed_by_reason,
+    )
+    return succeeded_sorted, failed_by_reason
+
 def check_batch_status(state: dict, state_file: Path | None = None) -> bool:
     """Kiểm tra batch đang chạy. Trả về True nếu vẫn đang chạy ngầm."""
     running = state.get("running_batch")
@@ -471,7 +555,37 @@ def check_batch_status(state: dict, state_file: Path | None = None) -> bool:
     if is_powershell_batch_alive() and (time.time() - start_time) < 2700:
         return True
 
-    # Process đã xong -> Im lặng xóa state running_batch, KHÔNG gửi alert lẻ
+    # Process đã xong -> Kích hoạt rescan DB và thu thập kết quả ca
+    completed_machines = running.get("machines", [])
+    tik = running.get("tik")
+    if completed_machines:
+        try:
+            rescan_completed_machines(completed_machines)
+        except Exception as e:
+            logger.error(f"[WATCHDOG] Rescan completed machines failed: {e}")
+    if tik and completed_machines:
+        try:
+            succeeded, failed_by_reason = collect_recent_batch_results(tik, completed_machines)
+            sess_key = get_session_key(now_hcmc())
+            if state.get("active_session_key") != sess_key:
+                state["active_session_key"] = sess_key
+                state["session_uploaded_machines"] = []
+                state["session_failed_by_reason"] = {}
+            cur_up = set(state.get("session_uploaded_machines", []))
+            cur_up.update(succeeded)
+            state["session_uploaded_machines"] = sorted(list(cur_up))
+            cur_failed = state.get("session_failed_by_reason", {})
+            for r_code, m_list in failed_by_reason.items():
+                m_set = set(cur_failed.get(r_code, []))
+                m_set.update(m_list)
+                m_set.difference_update(cur_up)
+                if m_set:
+                    cur_failed[r_code] = sorted(list(m_set))
+                elif r_code in cur_failed:
+                    del cur_failed[r_code]
+            state["session_failed_by_reason"] = cur_failed
+        except Exception as e:
+            logger.error(f"[WATCHDOG] Collect recent batch results failed: {e}")
     state["running_batch"] = None
     save_state(state, state_file=state_file)
     return False
@@ -484,11 +598,41 @@ def format_report_html(
     target_tiks: list[int] | None = None,
     now_dt: datetime | None = None,
     stats_by_cluster: dict[str, dict] | None = None,
+    session_stats: dict | None = None,
 ) -> str:
     """Định dạng template báo cáo Farm Alert. Hỗ trợ gộp toàn farm 2 cụm Kibe & Admin gọn gàng, sạch sẽ."""
     if now_dt is None:
         now_dt = now_hcmc()
 
+    # Backward compatibility cho callers truyền unuploaded dạng dict[int, list[int]]
+    if stats_by_tik:
+        first_val = next(iter(stats_by_tik.values()))
+        if isinstance(first_val, list):
+            stats_by_tik = {
+                tik: {
+                    "unuploaded": stats_by_tik.get(tik, []),
+                    "uploaded_count": 80 - len(stats_by_tik.get(tik, [])),
+                    "total_accounts": 80,
+                }
+                for tik in (target_tiks or list(stats_by_tik.keys()))
+            }
+
+
+    session_lines = []
+    if session_stats:
+        sess_up = session_stats.get("session_uploaded_machines", [])
+        sess_fail = session_stats.get("session_failed_by_reason", {})
+        total_fail = sum(len(m_list) for m_list in sess_fail.values())
+        if sess_up or sess_fail:
+            session_lines.append(f"• Kết quả ca tối nay: Thành công +{len(sess_up)} acc mới | Lỗi {total_fail} máy")
+        elif all_done or (stats_by_cluster and tot_miss == 0):
+            session_lines.append("• Kết quả ca tối nay: Hoàn tất 100%, không ghi nhận lỗi.")
+        if sess_fail:
+            session_lines.append("📋 CHI TIẾT CỤM LỖI CA TỐI NAY:")
+            for r_code, m_list in sorted(sess_fail.items()):
+                m_str = ", ".join(map(str, m_list[:10]))
+                if len(m_list) > 10: m_str += f"... (+{len(m_list)-10})"
+                session_lines.append(f"  ❌ [{r_code}] ({len(m_list)} máy): {m_str}")
     # Nếu có stats_by_cluster -> Báo cáo gộp TOÀN FARM (định dạng sạch, không lộ tag HTML)
     if stats_by_cluster:
         tot_up = 0
@@ -559,8 +703,7 @@ def format_report_html(
             title,
             f"• Thời gian: {now_dt.strftime('%H:%M:%S %d/%m/%Y')}",
             status_line,
-            "",
-        ] + ["\n\n".join(cluster_blocks)]
+        ] + session_lines + ["", "\n\n".join(cluster_blocks)]
         return "\n".join(lines)
 
     # Chế độ báo cáo đơn cụm (backward-compatible cho unit test)
@@ -609,8 +752,7 @@ def format_report_html(
         title,
         f"• <b>Thời gian:</b> {now_dt.strftime('%H:%M:%S %d/%m/%Y')}",
         status_line,
-        "• <b>Chi tiết từng Tik:</b>",
-    ] + tik_lines
+    ] + session_lines + ["• <b>Chi tiết từng Tik:</b>"] + tik_lines
 
     return "\n".join(lines)
 
@@ -651,6 +793,10 @@ def report_final_summary(
             "admin": admin_stats,
         }
 
+    session_stats = {
+        "session_uploaded_machines": state.get("session_uploaded_machines", []),
+        "session_failed_by_reason": state.get("session_failed_by_reason", {}),
+    }
     report_msg = format_report_html(
         host_id=host_id,
         all_done=all_done,
@@ -658,9 +804,13 @@ def report_final_summary(
         target_tiks=target_tiks,
         now_dt=now,
         stats_by_cluster=stats_by_cluster,
+        session_stats=session_stats,
     )
-    # Cronjob no_agent=True tu dong bat stdout (print) gui Telegram Farm Alert, tranh goi send_farm_alert gay gui dup
-    print(report_msg)
+    # Gửi báo cáo trực tiếp qua Telegram Bot API (không in STDOUT để tránh rò rỉ cron)
+    try:
+        send_farm_alert(report_msg)
+    except Exception as e:
+        sys.stderr.write(f"[WATCHDOG] send_farm_alert failed: {e}\n")
 
     state["last_reported_session"] = sess_key
     state["last_reported_date"] = sess_key
