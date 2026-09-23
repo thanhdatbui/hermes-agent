@@ -281,14 +281,19 @@ def _already_ran(window_key: str, state_file: Path = STATE_FILE) -> bool:
 # Preflight
 # ---------------------------------------------------------------------------
 
-def _preflight_ensure_accounts(row: int, window_key: str) -> None:
-    """Check và tự động reg bù tài khoản nếu Row bị trống.
-    Dùng marker file .preflight_<window_key> để chỉ chạy đúng 1 lần duy nhất mỗi window, chống spam loop 15 phút.
+def _preflight_ensure_accounts(row: int, window_key: str, cluster: dict[str, Any] | None = None) -> None:
+    """Check và tự động reg bù tài khoản nếu Row bị trống (hỗ trợ cả Kibe và Admin).
+    Dùng marker file .preflight_<cluster>_<window_key> để chỉ chạy đúng 1 lần duy nhất mỗi window, chống spam loop 15 phút.
     """
-    STATE_DIR.mkdir(parents=True, exist_ok=True)
-    marker = STATE_DIR / f".preflight_{window_key}"
+    cluster = cluster or CLUSTERS[0]
+    cluster_name = cluster.get("name", "kibe")
+    state_file = cluster.get("state_file")
+    cluster_state_dir = Path(state_file).parent if state_file else STATE_DIR
+    cluster_state_dir.mkdir(parents=True, exist_ok=True)
+
+    marker = cluster_state_dir / f".preflight_{cluster_name}_{window_key}"
     if marker.exists():
-        sys.stdout.write(f"tiktok_runner: preflight already executed for window {window_key}, skipping.\n")
+        sys.stdout.write(f"tiktok_runner [{cluster_name}]: preflight already executed for window {window_key}, skipping.\n")
         return
 
     ensure_script = Path(r"D:\Taadaa\tools\ensure_row_accounts.py")
@@ -296,17 +301,24 @@ def _preflight_ensure_accounts(row: int, window_key: str) -> None:
         return
 
     try:
-        # Tạo marker trước để chặn bất kỳ tick 15p nào sau đó
         marker.write_text(datetime.now().isoformat(), encoding="utf-8")
-        sys.stdout.write(f"tiktok_runner: preflight checking accounts for Row {row} (window {window_key})...\n")
+        sys.stdout.write(f"tiktok_runner [{cluster_name}]: preflight checking accounts for Row {row} (window {window_key})...\n")
         sys.stdout.flush()
+
+        child_env = dict(os.environ)
+        if cluster.get("host_config"):
+            child_env["TAADAA_HOST_CONFIG"] = cluster["host_config"]
+        if cluster.get("adb_server_socket"):
+            child_env["ADB_SERVER_SOCKET"] = cluster["adb_server_socket"]
+
         subprocess.run(
             [target_python(), str(ensure_script), str(row)],
             check=False,
             timeout=5400,
+            env=child_env,
         )
     except Exception as exc:
-        sys.stderr.write(f"tiktok_runner: preflight ensure_row_accounts error: {exc}\n")
+        sys.stderr.write(f"tiktok_runner [{cluster_name}]: preflight ensure_row_accounts error: {exc}\n")
 
 
 def _count_valid_accounts_for_row(row: int, workbook_path: str = ACCOUNT_WORKBOOK) -> int:
@@ -450,8 +462,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         if _already_ran(window_key, state_file=cluster_state):
             continue
 
-        if cluster_name == "kibe":
-            _preflight_ensure_accounts(row, window_key)
+        _preflight_ensure_accounts(row, window_key, cluster=cluster)
 
         valid_count = _count_valid_accounts_for_row(row, workbook_path=cluster_wb)
         if valid_count == 0:
