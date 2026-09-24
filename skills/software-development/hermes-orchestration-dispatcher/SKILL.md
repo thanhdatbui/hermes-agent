@@ -473,6 +473,7 @@ Khi user hỏi "session của Hermes qua các lớp agent nào" / audit cấu tr
 ## Các section chi tiết (trim 2026-08-09)
 
 > dispatch-history-and-ops-notes.md
+> references/three-tier-deterministic-patch-and-hook-telemetry.md — Kỷ luật Phân lớp 3 tầng D/S/E, công cụ apply_patch.py và vá 2 lỗ hổng Hook guard_dispatch_contract (Claude Opus & User Correction 2026-09-25).
 > references/adhoc-sol-consultation-and-tiktok-anomaly-rules.md — Ad-hoc Sol Consultation Protocol & TikTok Shadowban Standard (Sol 2026-09-20).
 > references/claude-opus-3-tier-patch-and-hook-discipline.md — Kỷ luật Phân lớp 3 tầng D/S/E, công cụ apply_patch.py và vá 2 lỗ hổng Hook guard_dispatch_contract (Claude Opus 2026-09-25).
 > references/anti-polling-event-driven-harness-and-claude-guidance.md — Kỹ thuật Anti-Polling Event-Driven Harness (Can Bölük OMP) & Claude CLI Guidance phòng chống 3 cạm bẫy tiến trình ngầm (2026-09-24).
