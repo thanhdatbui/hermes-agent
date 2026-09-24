@@ -463,5 +463,6 @@ Khi user hỏi "session của Hermes qua các lớp agent nào" / audit cấu tr
 
 > dispatch-history-and-ops-notes.md
 > references/adhoc-sol-consultation-and-tiktok-anomaly-rules.md — Ad-hoc Sol Consultation Protocol & TikTok Shadowban Standard (Sol 2026-09-20).
+> references/subagent-overhead-deathloop-and-hook-bypass-pitfalls.md — Tử huyệt Subagent Overhead Death Loop trên Monolith, phân loại việc 3 lớp D/S/E và 2 lỗ hổng khiến Hook guard_dispatch_contract bị bypass ngầm (2026-09-25).
 > references/anti-polling-event-driven-harness-and-claude-guidance.md — Kỹ thuật Anti-Polling Event-Driven Harness (Can Bölük OMP) & Claude CLI Guidance phòng chống 3 cạm bẫy tiến trình ngầm (2026-09-24).
 
