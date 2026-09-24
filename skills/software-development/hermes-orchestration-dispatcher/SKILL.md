@@ -53,11 +53,22 @@ metadata:
 - **Reviewer KHÔNG dùng Flash** (user 2026-08-15: "Reviewer sao dùng flash dỏm quá k?"): review/audit dùng plan/review chain (`gpt-5.6-terra → ag/claude-opus-4-6-thinking → cmc/deepseek/deepseek-v4-pro`; khó: `gpt-5.6-sol → v98/claude-opus-5 → cmc/deepseek/deepseek-v4-pro`).
 - **Ưu tiên HTTP model chain hơn profile/Kanban roles** cho plan/review (user 2026-08-15: "sao phải thêm profile nghe phức tạp v gọi sub agent ra làm k đc à" → sau đó "Http pro. ... pro chỉ là fallback thôi"): `delegate_task` không chọn model per-call nên không có "subagent Pro"; gọi 9Router HTTP trực tiếp với chain theo độ khó. Profile/Kanban roles chỉ khi cần durable board (task sống qua crash).
 
-### Phân loại task
+### Phân loại task (3-Tier Task Classification — Claude Opus 2026-09-25)
 
-- **SIMPLE** (Hermes tự sửa được): task 1-2 file, mechanical edit, bug rõ ràng, có test hiện có, không đụng shared core (`automation-core`), không sensitive (account/OTP/lock/workbook policy), không multi-machine. → **Hermes tự sửa trực tiếp** *(⚠️ 2026-08-07: theo AGENTS.md v8 canonical, session = coordinator read-only — MỌI write kể cả SIMPLE/mechanical/bulk phải dispatch worker subagent. Mục này còn giữ nguyên tắc cũ "Hermes tự sửa" cho phân loại NHANH nhưng KHÔNG được phép tự write thẳng — xem `references/coordinator-write-enforcement.md`)*.
-- **COMPLEX** (dispatch Codex implement): đụng `automation-core` hoặc shared recovery/lock/verifier/scheduler, cross-consumer, account/OTP/2FA safety, sensitive workbook policy, multi-machine/incident, architecture refactor. → **Codex implement** (Sol/high, ladder escalation).
-- **BOUNDED_RESEARCH/AUDIT** (delegate review): read-only exploration, log/artifact analysis, test chạy, independent review. → **Claude/OpenCode audit**.
+Xem chi tiết tại `references/claude-opus-3-tier-patch-and-hook-discipline.md`:
+- **LỚP D (Deterministic Patch — Coordinator tự apply ngay, CẤM dispatch subagent)**:
+  * Biết chính xác file và anchor duy nhất (`grep -o ... | wc -l == 1`).
+  * Diff <= 80 dòng mỗi patch, <= 3 files.
+  * Có lệnh verify tất định (`pytest`, `py_compile`, `node --check`).
+  * Không can thiệp ADB, máy thật hay thiết bị farm.
+  * Thi hành qua `python tools/apply_patch.py patch.json` (tự động backup `.bak` và tự rollback khi test fail).
+  * *Quy tắc:* Đẩy việc Lớp D sang worker subagent là VI PHẠM (gây ra Subagent Overhead Death Loop, đốt quota 600s vô ích).
+- **LỚP S (Scoped Build — Worker Subagent với Anchor Map)**:
+  * Biết file, cần viết logic mới > 80 dòng hoặc có thử-sai nhỏ. Có acceptance test rõ ràng.
+  * Dispatch worker subagent với Anchor Map cấp sẵn, budget cứng <= 240s (cấm để 600s).
+- **LỚP E (Exploratory — Worker Subagent bắt buộc)**:
+  * Thao tác thiết bị thật, ADB, OCR, debug sự cố 160 máy farm chưa rõ nguyên nhân gốc rễ.
+  * Bắt buộc worker subagent chạy cô lập trong context riêng, kết quả nén thành báo cáo ngắn.
 
 ## Cross-consumer recovery migration gate
 
@@ -463,6 +474,6 @@ Khi user hỏi "session của Hermes qua các lớp agent nào" / audit cấu tr
 
 > dispatch-history-and-ops-notes.md
 > references/adhoc-sol-consultation-and-tiktok-anomaly-rules.md — Ad-hoc Sol Consultation Protocol & TikTok Shadowban Standard (Sol 2026-09-20).
-> references/subagent-overhead-deathloop-and-hook-bypass-pitfalls.md — Tử huyệt Subagent Overhead Death Loop trên Monolith, phân loại việc 3 lớp D/S/E và 2 lỗ hổng khiến Hook guard_dispatch_contract bị bypass ngầm (2026-09-25).
+> references/claude-opus-3-tier-patch-and-hook-discipline.md — Kỷ luật Phân lớp 3 tầng D/S/E, công cụ apply_patch.py và vá 2 lỗ hổng Hook guard_dispatch_contract (Claude Opus 2026-09-25).
 > references/anti-polling-event-driven-harness-and-claude-guidance.md — Kỹ thuật Anti-Polling Event-Driven Harness (Can Bölük OMP) & Claude CLI Guidance phòng chống 3 cạm bẫy tiến trình ngầm (2026-09-24).
 
