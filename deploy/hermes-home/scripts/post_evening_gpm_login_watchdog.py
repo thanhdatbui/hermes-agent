@@ -49,13 +49,22 @@ GPM_DB           = Path(r"C:\Users\Kibe\AppData\Local\Programs\GPMLogin\profile\
 GPM_SCRIPT       = Path(r"D:\Taadaa\GPM auto\scripts\run_oauth_s7_pipeline.py")
 PYTHON_EXE       = sys.executable
 
-MAX_WORKERS        = 2     # hạ 2 workers theo chỉ thị user để chống checkpoint và nghẽn proxy
+MAX_WORKERS        = 5     # 5 workers cuốn chiếu theo chỉ thị user
 MAX_LOGINS_PER_PROXY = 2   # tối đa 2 acc / proxy / ngày
 MIN_IDLE_BUFFER_MIN  = 45  # cách ca tiếp theo ít nhất 45 phút
 
 def log(msg: str):
     now_str = datetime.now(HCMC).strftime("%H:%M:%S")
     sys.stderr.write(f"[{now_str}] [GPM-LOGIN] {msg}\n")
+    sys.stderr.flush()
+
+def log_telemetry_metric(event_type: str, data: dict):
+    metric = {
+        "timestamp": datetime.now(HCMC).isoformat(),
+        "event": event_type,
+        "data": data,
+    }
+    sys.stderr.write(f"[TELEMETRY_METRIC] {json.dumps(metric, ensure_ascii=False)}\n")
     sys.stderr.flush()
 
 def is_within_time_window() -> bool:
@@ -663,6 +672,7 @@ def run_login(c: dict) -> dict:
                         nurture_data[email]["status"] = "LOGIN_RECOVERED"
                         nurture_data[email]["recovered_at"] = datetime.now().isoformat()
                         NURTURE_STATE.write_text(json.dumps(nurture_data, ensure_ascii=False, indent=2), encoding="utf-8")
+                        log_telemetry_metric("login_recovered", {"email": email, "mid": mid})
                 except Exception as ex_nur:
                     log(f"[M{mid:02d}] Cập nhật nurture state thất bại (bỏ qua): {ex_nur}")
 

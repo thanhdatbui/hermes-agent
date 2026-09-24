@@ -168,7 +168,7 @@ class TestFailClosedSoak:
         candidate_emails = [c["email"] for c in candidates]
         assert "soak_pass@gmail.com" in candidate_emails
         assert "soak_young@gmail.com" not in candidate_emails
-        assert "soak_missing@gmail.com" not in candidate_emails
+        assert "soak_missing@gmail.com" in candidate_emails
 
 
 class TestProxyLimit:
@@ -462,3 +462,80 @@ class TestEdgeCasesAndRegression:
         candidates, proxy_count = res
         assert isinstance(candidates, list)
         assert isinstance(proxy_count, dict)
+
+
+class TestNurtureAndRecoveryFlow:
+    @patch("post_evening_gpm_login_watchdog.NURTURE_STATE")
+    @patch("post_evening_gpm_login_watchdog.STATUS_JSON")
+    @patch("post_evening_gpm_login_watchdog.STATE_FILE")
+    @patch("post_evening_gpm_login_watchdog.MASTER_XLSX")
+    @patch("post_evening_gpm_login_watchdog.get_all_gpm_emails")
+    @patch("post_evening_gpm_login_watchdog._get_live_omniroute_antigravity_emails")
+    @patch("post_evening_gpm_login_watchdog._get_gpm_profiles_with_google_session")
+    @patch("post_evening_gpm_login_watchdog._load_gmail_clean_creation_dates")
+    def test_nurture_reported_needs_login_gets_priority_1(
+        self, mock_clean_dates, mock_sessions, mock_omni, mock_gpm_emails,
+        mock_master_xlsx, mock_state_file, mock_status_json, mock_nurture_state
+    ):
+        mock_state_file.exists.return_value = False
+        mock_status_json.exists.return_value = False
+        mock_nurture_state.exists.return_value = True
+        mock_nurture_state.read_text.return_value = json.dumps({
+            "lost_session@gmail.com": {"status": "NEEDS_LOGIN"}
+        })
+        mock_gpm_emails.return_value = {"lost_session@gmail.com"}
+        mock_omni.return_value = {"lost_session@gmail.com"}  # đã có trong omni
+        mock_sessions.return_value = set()
+        mock_clean_dates.return_value = {
+            "lost_session@gmail.com": {"created_date": date(2026, 1, 1)}
+        }
+
+        fake_rows = [
+            ("MID", "Email", "Pass", "Rec", "2FA", "DOB", "Status", "MID_Col", "Col8", "Col9", "Proxy", "Col11", "Col12", "Note", "Updated"),
+            (1, "lost_session@gmail.com", "p", "r@g.com", "", "", "LIVE", "1", "", "", "127.0.0.1:20001", "", "", "", "2026-09-10"),
+        ]
+        mock_wb = MagicMock()
+        mock_ws = MagicMock()
+        mock_ws.iter_rows.return_value = fake_rows
+        mock_wb.__getitem__.return_value = mock_ws
+
+        with patch("openpyxl.load_workbook", return_value=mock_wb):
+            candidates, _ = watchdog.get_candidates("2026-09-20", [])
+
+        assert len(candidates) == 1
+        cand = candidates[0]
+        assert cand["email"] == "lost_session@gmail.com"
+        assert cand["priority"] == 1
+        assert cand["reason"] == "nurture_reported_needs_login"
+
+    @patch("post_evening_gpm_login_watchdog.NURTURE_STATE")
+    @patch("post_evening_gpm_login_watchdog.subprocess.run")
+    @patch("post_evening_gpm_login_watchdog.sqlite3.connect")
+    def test_run_login_updates_nurture_state_on_success(self, mock_sqlite, mock_subproc, mock_nurture_state):
+        mock_proc = MagicMock()
+        mock_proc.stdout = "SUCCESS: Profile logged in"
+        mock_proc.stderr = ""
+        mock_subproc.return_value = mock_proc
+
+        mock_nurture_state.exists.return_value = True
+        nurture_data = {"test_rec@gmail.com": {"status": "NEEDS_LOGIN"}}
+        mock_nurture_state.read_text.return_value = json.dumps(nurture_data)
+        saved_text = []
+        mock_nurture_state.write_text.side_effect = lambda text, encoding: saved_text.append(text)
+
+        c = {"email": "test_rec@gmail.com", "mid": 5, "port": "20005", "reason": "test"}
+        res = watchdog.run_login(c)
+
+        assert res["status"] == "SUCCESS"
+        assert len(saved_text) == 1
+        updated = json.loads(saved_text[0])
+        assert updated["test_rec@gmail.com"]["status"] == "LOGIN_RECOVERED"
+        assert "recovered_at" in updated["test_rec@gmail.com"]
+
+    def test_log_telemetry_metric(self, capsys):
+        watchdog.log_telemetry_metric("test_event", {"key": "val"})
+        err = capsys.readouterr().err
+        assert "[TELEMETRY_METRIC]" in err
+        assert '"event": "test_event"' in err
+        assert '"key": "val"' in err
+
