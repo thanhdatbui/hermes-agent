@@ -7,6 +7,7 @@ import urllib.request
 import json
 import time
 import sys
+import os
 from concurrent.futures import ThreadPoolExecutor
 
 if hasattr(sys.stdout, "reconfigure"):
@@ -20,9 +21,9 @@ if hasattr(sys.stderr, "reconfigure"):
     except Exception:
         pass
 
-COMBO_ID = "5a72c9bc-94d8-4e35-a9c6-51545cb73d7a"
-OMNI_BASE = "http://127.0.0.1:20129"
-OR_CONN_ID = "d8e441bf-6659-49ec-a573-621535648a21"
+COMBO_ID = os.environ.get("OMNI_FREE_COMBO_ID", "5a72c9bc-94d8-4e35-a9c6-51545cb73d7a")
+OMNI_BASE = os.environ.get("OMNI_BASE_URL", "http://127.0.0.1:20129")
+OR_CONN_ID = os.environ.get("OPENROUTER_CONN_ID", "d8e441bf-6659-49ec-a573-621535648a21")
 
 KNOWN_PRIORITY_MODELS = [
     'openrouter/nex-agi/nex-n2.5-pro:free',
@@ -60,10 +61,33 @@ def clean_model_name(mid: str) -> str:
             break
     return clean
 
+def filter_catalog_models(catalog: list) -> list:
+    """Filters free OpenRouter models excluding gemini-3.8, content-safety, and moderation."""
+    valid_models = []
+    for m in catalog:
+        pricing = m.get("pricing", {})
+        mid = m.get("id", "")
+        if not mid:
+            continue
+        try:
+            prompt_cost = float(pricing.get("prompt", 1))
+            comp_cost = float(pricing.get("completion", 1))
+        except (ValueError, TypeError):
+            continue
+        if prompt_cost == 0 and comp_cost == 0:
+            mid_lower = mid.lower()
+            if "gemini-3.8" in mid_lower or "3.8-flash" in mid_lower:
+                continue
+            if "content-safety" in mid_lower or "moderation" in mid_lower:
+                continue
+            valid_models.append(f"openrouter/{mid}")
+    return valid_models
+
 def test_model_liveness(mid):
+    omni_base = os.environ.get("OMNI_BASE_URL", OMNI_BASE)
     t0 = time.time()
     req = urllib.request.Request(
-        f"{OMNI_BASE}/v1/chat/completions",
+        f"{omni_base}/v1/chat/completions",
         headers={"Content-Type": "application/json", "Authorization": "Bearer any"},
         data=json.dumps({
             "model": mid,
@@ -82,6 +106,10 @@ def test_model_liveness(mid):
 
 def run_updater():
     try:
+        combo_id = os.environ.get("OMNI_FREE_COMBO_ID", COMBO_ID)
+        omni_base = os.environ.get("OMNI_BASE_URL", OMNI_BASE)
+        or_conn_id = os.environ.get("OPENROUTER_CONN_ID", OR_CONN_ID)
+
         log_debug("[OMNI-FREE-UPDATER] 1. Fetching OpenRouter catalog...")
         candidate_models = list(KNOWN_PRIORITY_MODELS)
         seen = set(candidate_models)
@@ -93,19 +121,10 @@ def run_updater():
         try:
             with urllib.request.urlopen(req, timeout=10) as r:
                 catalog = json.loads(r.read().decode("utf-8")).get("data", [])
-            for m in catalog:
-                pricing = m.get("pricing", {})
-                mid = m.get("id", "")
-                if float(pricing.get("prompt", 1)) == 0 and float(pricing.get("completion", 1)) == 0:
-                    mid_lower = mid.lower()
-                    if "gemini-3.8" in mid_lower or "3.8-flash" in mid_lower:
-                        continue
-                    if "content-safety" in mid_lower or "moderation" in mid_lower:
-                        continue
-                    full_id = f"openrouter/{mid}"
-                    if full_id not in seen:
-                        candidate_models.append(full_id)
-                        seen.add(full_id)
+            for full_id in filter_catalog_models(catalog):
+                if full_id not in seen:
+                    candidate_models.append(full_id)
+                    seen.add(full_id)
         except Exception as e:
             log_debug(f"[OMNI-FREE-UPDATER] Catalog fetch warning: {e}. Using known priority models.")
 
@@ -156,7 +175,7 @@ def run_updater():
                 "kind": "model",
                 "model": mid,
                 "providerId": "openrouter",
-                "connectionId": OR_CONN_ID,
+                "connectionId": or_conn_id,
                 "weight": 0,
                 "label": f"Tier {idx}: {short_name} ({lat:.1f}s)"
             })
@@ -200,7 +219,7 @@ def run_updater():
 
         log_debug(f"[OMNI-FREE-UPDATER] Updating combo omni-free with {len(combo_models)} tiers...")
         req_patch = urllib.request.Request(
-            f"{OMNI_BASE}/api/combos/{COMBO_ID}",
+            f"{omni_base}/api/combos/{combo_id}",
             headers={"Content-Type": "application/json"},
             data=json.dumps(payload).encode("utf-8"),
             method="PATCH"
@@ -217,7 +236,7 @@ def run_updater():
         # Verification ping with max_tokens=5 (non-blocking)
         log_debug("[OMNI-FREE-UPDATER] Running verification ping...")
         req_verify = urllib.request.Request(
-            f"{OMNI_BASE}/v1/chat/completions",
+            f"{omni_base}/v1/chat/completions",
             headers={"Content-Type": "application/json", "Authorization": "Bearer any"},
             data=json.dumps({
                 "model": "omni-free",
@@ -241,6 +260,17 @@ def run_updater():
         else:
             top_model_short = clean_model_name(combo_models[0]["model"])
             top_lat_info = "Web Fallback"
+
+        telemetry_payload = {
+            "event": "omni_free_pool_updated",
+            "timestamp": time.time(),
+            "total_tiers": total_tiers,
+            "openrouter_live_count": len(top_models),
+            "top_model": top_model_short,
+            "top_latency_sec": top_models[0][1] if top_models else None,
+            "models": [m["model"] for m in combo_models]
+        }
+        log_debug(f"[TELEMETRY_METRIC] {json.dumps(telemetry_payload)}")
 
         route_lines = []
         for r_idx, (mid, lat) in enumerate(top_models, 1):
