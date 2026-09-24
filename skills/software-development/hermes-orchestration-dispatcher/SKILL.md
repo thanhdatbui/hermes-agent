@@ -301,6 +301,10 @@ Khi điều phối worker trên file monolith (>1.500 dòng) hoặc nhận yêu 
 4. **Gate 4 (Worker Fail-Fast)**: Worker sửa monolith bắt buộc chứa yêu cầu: NẾU trong $\le 3$ calls đầu nhận thấy scope bất khả thi với budget 15 calls thì PHẢI DỪNG NGAY (ABORT) và trả về anchor + proposed contract, cấm đốt sạch budget 15 calls để mò file rồi fail im lặng.
 5. **Gate 5 (Coordinator Checklist)**: Tự duyệt đủ 5 câu hỏi checklist (Phân rã ngữ nghĩa chưa? Monolith có contract duy nhất tuyệt đối chưa? 15 iters khả thi không? Tách code vs batch chưa? Re-dispatch contract có mới không?). Bất kỳ câu nào Chưa/Không $\rightarrow$ DỪNG, CẤM dispatch.
 
+### Worker completion is a claim, not evidence (2026-09-25)
+
+A worker/delegation can report `completed` while leaving `0 files modified`, writing into an isolated/lost workspace, timing out during finalize, or returning a summary that describes intended rather than verified changes. Treat every handoff as untrusted until the coordinator independently checks the shared workspace. The minimum closeout is: (1) `git status --short` and exact allowlisted paths, (2) `git diff --stat` plus anchor/presence checks for every requested artifact, (3) compile/syntax check, (4) focused test and its real exit code, and (5) live endpoint/UI verification when the feature is served by a local app. If any required artifact is absent, classify the handoff as structural failure and do not repeat the same broad prompt. Re-dispatch only with a materially narrower exact patch contract, unique anchors, and a fail-fast abort clause. Preserve the distinction between worker self-report and parent-verified evidence in the final report. Session-specific detail and a reusable checklist are in `references/worker-handoff-verification-and-live-ui.md`.
+
 
 1. Viết audit spec (hoặc dùng diff thực tế).
 2. Codex đọc file + phân tích (nếu COMPLEX) HOẶC bỏ qua (SIMPLE).

@@ -1,3 +1,11 @@
+import os
+# Prevent OpenBLAS/MKL memory allocation failure on high-core hosts (56 cores)
+os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
+os.environ.setdefault("MKL_NUM_THREADS", "1")
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+os.environ.setdefault("NUMEXPR_NUM_THREADS", "1")
+
+import subprocess
 """Watchdog báo cáo kết quả nuôi TikTok theo từng CA (1 spawn per Ca).
 
 Một ngày có 4 Ca, runner spawn MỘT LẦN duy nhất tại giờ bắt đầu Ca:
@@ -237,7 +245,8 @@ def is_feed_runner_active() -> bool:
             "tiktok_workflow",
             "tiktok_upload",
         )
-        for p in psutil.process_iter(['name', 'cmdline']):
+        now_ts = time.time()
+        for p in psutil.process_iter(['name', 'cmdline', 'create_time']):
             try:
                 if p.pid == my_pid:
                     continue
@@ -246,6 +255,13 @@ def is_feed_runner_active() -> bool:
                     continue
                 cmd = " ".join(p.info.get('cmdline') or []).lower()
                 if any(pat in cmd for pat in runner_patterns):
+                    try:
+                        ctime = p.info.get('create_time') or p.create_time()
+                        if ctime and (now_ts - ctime) > 9000:
+                            logger.warning("Bỏ qua runner zombie PID %s chạy quá 2.5h (%.1fh)", p.pid, (now_ts - ctime)/3600)
+                            continue
+                    except Exception:
+                        pass
                     return True
             except Exception:
                 pass
@@ -380,6 +396,14 @@ def merge_machine_result(prev: Optional[Dict[str, Any]], new: Optional[Dict[str,
         for k in all_like_keys:
             merged_likes[k] = max(p_likes.get(k, 0), n_likes.get(k, 0))
         res["likes"] = merged_likes
+    p_nf = prev.get("natural_follows") or {}
+    n_nf = new.get("natural_follows") or {}
+    all_nf_keys = set(p_nf.keys()) | set(n_nf.keys())
+    if all_nf_keys:
+        merged_nf = {}
+        for k in all_nf_keys:
+            merged_nf[k] = max(p_nf.get(k, 0), n_nf.get(k, 0))
+        res["natural_follows"] = merged_nf
     p_fc = prev.get("feed_counts") or {}
     n_fc = new.get("feed_counts") or {}
     all_fc_keys = set(p_fc.keys()) | set(n_fc.keys())
@@ -572,6 +596,14 @@ def parse_run_all(run_dir: str) -> tuple:
                                 m_ft = re.search(rf'["\']?{ft}["\']?:\s*(\d+)', chunk_lc)
                                 if m_ft:
                                     likes_map[ft] = int(m_ft.group(1))
+                        follow_counts_map = {}
+                        idx_foc = c.find('"follow_counts":')
+                        if idx_foc != -1:
+                            chunk_foc = c[idx_foc:idx_foc + 150]
+                            for ft in ("for-you", "following", "friends"):
+                                m_ft = re.search(rf'["\']?{ft}["\']?:\s*(\d+)', chunk_foc)
+                                if m_ft:
+                                    follow_counts_map[ft] = int(m_ft.group(1))
                         idx_fc = c.find('"feed_counts":')
                         if idx_fc != -1:
                             chunk_fc = c[idx_fc:idx_fc + 150]
@@ -589,7 +621,7 @@ def parse_run_all(run_dir: str) -> tuple:
                             comment_peeks_cnt = int(m_cp.group(1))
                     except Exception:
                         pass
-                    m_payload = {"status": st, "reason": reason, "likes": likes_map, "feed_counts": feed_counts_map, "swipes": swipes_cnt, "comment_peeks": comment_peeks_cnt}
+                    m_payload = {"status": st, "reason": reason, "likes": likes_map, "feed_counts": feed_counts_map, "swipes": swipes_cnt, "comment_peeks": comment_peeks_cnt, "natural_follows": follow_counts_map}
                     res_m[m_str] = merge_machine_result(res_m.get(m_str), m_payload)
                 except Exception:
                     pass
@@ -685,6 +717,240 @@ def _add_minutes_to_hm(hm_str: str, minutes: int) -> str:
     return f"{new_h:02d}:{new_m:02d}"
 
 
+def save_session_action_stats(
+    db_path: str,
+    session_key: str,
+    cluster_name: str,
+    target_date: str,
+    internal_fl: int,
+    natural_fl: int,
+    likes: int,
+    swipes: int,
+) -> None:
+    """Lưu thống kê action (follow nội bộ vs follow tự nhiên) của phiên vào SQLite tiktok_tracker.db."""
+    if not os.path.exists(db_path):
+        return
+    try:
+        import sqlite3
+        conn = sqlite3.connect(db_path, timeout=10.0)
+        cur = conn.cursor()
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS session_action_stats (
+                session_key TEXT,
+                cluster TEXT,
+                target_date TEXT,
+                internal_follows INTEGER DEFAULT 0,
+                natural_follows INTEGER DEFAULT 0,
+                likes INTEGER DEFAULT 0,
+                swipes INTEGER DEFAULT 0,
+                created_at TEXT,
+                PRIMARY KEY (session_key, cluster)
+            )
+        """)
+        now_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cur.execute("""
+            INSERT INTO session_action_stats (
+                session_key, cluster, target_date, internal_follows, natural_follows, likes, swipes, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(session_key, cluster) DO UPDATE SET
+                internal_follows = excluded.internal_follows,
+                natural_follows = excluded.natural_follows,
+                likes = excluded.likes,
+                swipes = excluded.swipes,
+                created_at = excluded.created_at
+        """, (session_key, cluster_name, target_date, internal_fl, natural_fl, likes, swipes, now_ts))
+        conn.commit()
+        conn.close()
+    except Exception as exc:
+        logger.warning("save_session_action_stats error: %s", exc)
+
+
+def reconcile_cluster_following(
+    cluster: dict[str, Any],
+    fl_success: list,
+    all_follows: dict,
+    active_row: int,
+    session_start_iso: Optional[str] = None,
+    db_path: str = r"D:/Taadaa/data/tiktok_tracker.db",
+    python_exe: str = r"D:/Taadaa/python-envs/automation/Scripts/python.exe",
+    tracker_script: str = r"D:/Taadaa/tools/tiktok_account_tracker.py",
+) -> list[str]:
+    """Cào và đối soát số lượng following tăng thật trên TikTok Web so với script báo cáo."""
+    if not fl_success:
+        return []
+
+    wb_path = cluster.get("account_workbook")
+    if not wb_path or not os.path.exists(wb_path):
+        return []
+
+    try:
+        import openpyxl
+        wb = openpyxl.load_workbook(wb_path, read_only=True)
+        ws = wb.active
+        machine_slots: dict[str, list[Any]] = {}
+        for r in ws.iter_rows(min_row=2, values_only=True):
+            if not r or r[0] is None:
+                continue
+            try:
+                m_str = str(int(str(r[0]).strip()))
+            except (ValueError, TypeError):
+                continue
+            machine_slots.setdefault(m_str, []).append(r[2] if len(r) > 2 else None)
+    except Exception as exc:
+        logger.warning("reconcile_cluster_following: không đọc được workbook: %s", exc)
+        return []
+
+    slot_idx = int(active_row) - 1
+    m_to_user: dict[str, str] = {}
+    m_to_reported: dict[str, int] = {}
+
+    for m in fl_success:
+        cnt = len(all_follows.get(m, {}).get("followed", []))
+        if cnt <= 0:
+            continue
+        slots = machine_slots.get(str(m), [])
+        if slot_idx < len(slots):
+            val = slots[slot_idx]
+            if val and str(val).strip() and str(val).strip().lower() != "none":
+                u = str(val).strip().lstrip('@')
+                m_to_user[str(m)] = u
+                m_to_reported[str(m)] = cnt
+
+    if not m_to_user:
+        return []
+
+    target_users = list(m_to_user.values())
+    try:
+        py_cmd = python_exe if os.path.exists(python_exe) else sys.executable
+        if os.path.exists(tracker_script):
+            cmd = [
+                py_cmd,
+                tracker_script,
+                "--usernames", *target_users,
+                "--workers", str(min(10, max(1, len(target_users)))),
+            ]
+            subprocess.run(cmd, capture_output=True, timeout=90, text=True)
+    except Exception as exc:
+        logger.warning("reconcile_cluster_following: lỗi chạy tracker: %s", exc)
+
+    if not os.path.exists(db_path):
+        return ["  + Đối soát TikTok Web: Không tìm thấy DB tiktok_tracker.db"]
+
+    try:
+        import sqlite3
+        try:
+            conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+        except Exception:
+            conn = sqlite3.connect(db_path)
+        cur = conn.cursor()
+        details = []
+        total_reported = sum(m_to_reported.values())
+        total_scraped_delta = 0
+        has_valid_delta_count = 0
+
+        def _num_m(x):
+            nums = re.findall(r"\d+", str(x))
+            return int(nums[0]) if nums else 0
+
+        for m in sorted(m_to_user.keys(), key=_num_m):
+            u = m_to_user[m]
+            rep_cnt = m_to_reported[m]
+            try:
+                cur.execute("""
+                    SELECT following, timestamp
+                    FROM snapshots
+                    WHERE LOWER(username) = LOWER(?)
+                    ORDER BY timestamp DESC, id DESC
+                    LIMIT 2
+                """, (u,))
+                pair = cur.fetchall()
+                latest_row = pair[0] if len(pair) >= 1 else None
+
+                baseline_row = None
+                if latest_row and session_start_iso:
+                    cur.execute("""
+                        SELECT following, timestamp
+                        FROM snapshots
+                        WHERE LOWER(username) = LOWER(?) AND timestamp <= ?
+                        ORDER BY timestamp DESC, id DESC
+                        LIMIT 1
+                    """, (u, session_start_iso))
+                    b_rows = cur.fetchall()
+                    if b_rows:
+                        baseline_row = b_rows[0]
+
+                if latest_row and not baseline_row and len(pair) >= 2:
+                    baseline_row = pair[1]
+
+                if latest_row and baseline_row:
+                    latest_fl = latest_row[0] or 0
+                    prev_fl = baseline_row[0] or 0
+                    delta = latest_fl - prev_fl
+                    total_scraped_delta += delta
+                    has_valid_delta_count += 1
+                    diff = delta - rep_cnt
+                    if diff == 0:
+                        status_str = f"web tăng +{delta} (Khớp 100%)"
+                    else:
+                        diff_sign = f"+{diff}" if diff > 0 else f"{diff}"
+                        status_str = f"web tăng {delta:+d} (Lệch {diff_sign})"
+                    details.append(f"    - M{m} (@{u}): script báo {rep_cnt} | {status_str}")
+                elif latest_row:
+                    cur_fl = latest_row[0] or 0
+                    details.append(f"    - M{m} (@{u}): script báo {rep_cnt} | web ghi nhận {cur_fl} (mốc đầu tiên)")
+                else:
+                    details.append(f"    - M{m} (@{u}): script báo {rep_cnt} | chưa cào được profile web")
+            except Exception as err:
+                details.append(f"    - M{m} (@{u}): script báo {rep_cnt} | lỗi đọc snapshot: {err}")
+
+        try:
+            conn_w = sqlite3.connect(db_path, timeout=10.0)
+            cur_w = conn_w.cursor()
+            cur_w.execute("""
+                CREATE TABLE IF NOT EXISTS daily_account_actions (
+                    target_date TEXT,
+                    username TEXT,
+                    may INTEGER,
+                    internal_follows INTEGER DEFAULT 0,
+                    updated_at TEXT,
+                    PRIMARY KEY (target_date, username)
+                )
+            """)
+            now_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            act_date = session_start_iso[:10] if session_start_iso else now_ts[:10]
+            for m_num, u_name in m_to_user.items():
+                r_cnt = m_to_reported.get(m_num, 0)
+                if r_cnt > 0 and u_name:
+                    cur_w.execute("""
+                        INSERT INTO daily_account_actions (target_date, username, may, internal_follows, updated_at)
+                        VALUES (?, ?, ?, ?, ?)
+                        ON CONFLICT(target_date, username) DO UPDATE SET
+                            internal_follows = daily_account_actions.internal_follows + excluded.internal_follows,
+                            updated_at = excluded.updated_at
+                    """, (act_date, u_name.lower(), int(m_num) if str(m_num).isdigit() else None, r_cnt, now_ts))
+            conn_w.commit()
+            conn_w.close()
+        except Exception as err:
+            logger.warning("reconcile_cluster_following: không ghi được daily_account_actions: %s", err)
+
+        conn.close()
+
+        if has_valid_delta_count > 0:
+            total_diff = total_scraped_delta - total_reported
+            if total_diff == 0:
+                header_reconcile = f"  + Đối soát TikTok Web (+{total_scraped_delta} Following thật - Khớp 100% so với script báo):"
+            else:
+                diff_sign = f"+{total_diff}" if total_diff > 0 else f"{total_diff}"
+                header_reconcile = f"  + Đối soát TikTok Web ({total_scraped_delta:+d} Following thật | Lệch {diff_sign} so với script báo {total_reported}):"
+            return [header_reconcile] + details
+        elif details:
+            return [f"  + Đối soát TikTok Web (Script báo {total_reported} lượt follow):"] + details
+        return []
+    except Exception as exc:
+        logger.warning("reconcile_cluster_following: lỗi kết nối/đọc db: %s", exc)
+        return [f"  + Đối soát TikTok Web: Lỗi truy vấn snapshot: {exc}"]
+
+
 def format_success_follows(fl_success: list, all_follows: dict) -> list:
     """Phân nhóm và format danh sách các máy follow thành công theo số lượt hoàn thành."""
     if not fl_success:
@@ -769,6 +1035,10 @@ def can_report_session(
     latest_run_minutes_ago: float = None,
 ) -> bool:
     """Xác định điều kiện chốt báo cáo cho một phiên."""
+    # Nếu đang trong ngày hôm nay và runner/uploader vẫn đang bận: TUYỆT ĐỐI KHÔNG chốt sớm
+    if is_today and runner_busy:
+        return False
+
     # Nếu tất cả máy dự kiến đã hoàn tất thật (không còn lock dở dang): chốt ngay kể cả runner_busy
     if completed_expected_count >= expected_count and not has_unattempted_locked:
         return True
@@ -986,6 +1256,11 @@ def main():
 
                     tot_comment_peeks = sum(d.get("comment_peeks", 0) for m, d in all_machines.items() if d.get("status") == "success")
                     tot_comment_rate = (tot_comment_peeks / tot_swipes * 100.0) if tot_swipes > 0 else 0.0
+                    tot_fy_nat_follows = sum(d.get("natural_follows", {}).get("for-you", 0) for m, d in all_machines.items() if d.get("status") == "success")
+                    tot_fl_nat_follows = sum(d.get("natural_follows", {}).get("following", 0) for m, d in all_machines.items() if d.get("status") == "success")
+                    tot_fr_nat_follows = sum(d.get("natural_follows", {}).get("friends", 0) for m, d in all_machines.items() if d.get("status") == "success")
+                    tot_nat_follows = tot_fy_nat_follows + tot_fl_nat_follows + tot_fr_nat_follows
+                    tot_nat_follow_rate = (tot_nat_follows / tot_swipes * 100.0) if tot_swipes > 0 else 0.0
 
                     total_followed_count = 0
                     total_m1_count = 0
@@ -1044,6 +1319,7 @@ def main():
                         f"  + Fail ({len(fail)}): {fail_str}",
                         f"  + Trống slot/chưa có nick ({len(empty)}): {empty_str}",
                         f"  + Thả tim: {tot_likes} tim / {tot_swipes} video ({tot_rate:.1f}%) [Đề xuất: {tot_fy_likes} ({fy_rate_str}) | Bạn bè: {tot_fr_likes} ({fr_rate_str}) | Following: {tot_fl_likes} ({fl_rate_str})]",
+                        f"  + Follow tự nhiên: {tot_nat_follows} lượt / {tot_swipes} video ({tot_nat_follow_rate:.1f}%) [Đề xuất: {tot_fy_nat_follows} | Bạn bè: {tot_fr_nat_follows}]",
                         f"  + Đọc comment: {tot_comment_peeks} lượt / {tot_swipes} video ({tot_comment_rate:.1f}%)",
                     ]
 
@@ -1056,6 +1332,22 @@ def main():
 
                     block_lines.append(f"• Follow chéo ({total_followed_count} lượt follow) [Module 2 (Anchor): {total_m2_count} | Module 1 (Bù): {total_m1_count}]:")
                     block_lines.extend(format_success_follows(fl_success, all_follows))
+                    save_session_action_stats(
+                        db_path=r"D:/Taadaa/data/tiktok_tracker.db",
+                        session_key=session_key,
+                        cluster_name=cluster.get("name", "unknown"),
+                        target_date=target_date,
+                        internal_fl=total_followed_count,
+                        natural_fl=tot_nat_follows,
+                        likes=tot_likes,
+                        swipes=tot_swipes,
+                    )
+                    reconcile_lines = reconcile_cluster_following(
+                        cluster, fl_success, all_follows, active_row,
+                        session_start_iso=f"{target_date} {win['start']}:00"
+                    )
+                    if reconcile_lines:
+                        block_lines.extend(reconcile_lines)
                     block_lines.extend(format_released_follows(fl_released, all_follows))
                     block_lines.extend([
                         f"  + Lỗi script/xác minh ({len(fl_error)}): {e_str}",
