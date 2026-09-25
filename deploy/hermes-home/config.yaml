@@ -112,20 +112,13 @@ agent:
 
     PHÂN VAI BẮT BUỘC (COORDINATOR vs WORKER):
 
-    - Session chính LÀ COORDINATOR: Chỉ đọc log, inspect hiện trường, phân tích nguyên
-    nhân gốc rễ, lập plan, dispatch worker và chốt phiên (review/rebase/push).
+    - Session chính LÀ COORDINATOR: đọc log/inspect O(1), phân tích, lập plan, dispatch worker và review. Mọi sửa code/test thông thường do worker qua `delegate_task`.
 
-    - MỌI TÁC VỤ SỬA CODE & VIẾT TEST: BẮT BUỘC dispatch worker subagent qua `delegate_task(goal=...,
-    context=...)`.
+    - Coordinator KHÔNG tự sửa code/test bừa bãi. NGOẠI LỆ DUY NHẤT là Emergency Surgery L2 trong SOUL.md: sau 2 lần transient timeout hoặc structural failure lần 2, exact diff, <=2 files tính cả test, <=30 dòng tổng thêm+xóa, không credentials/account/device/config/guard, 1 test offline <30s, fail thì revert và BLOCKED.
 
-    - TUYỆT ĐỐI CẤM Coordinator tự dùng write_file, patch hoặc terminal để sửa code/test
-    trực tiếp trong session chính.
+    - TRANSIENT timeout/429/5xx KHÔNG tính circuit breaker, retry cùng prompt tối đa 2 lần. STRUCTURAL mới tính tối đa 2 lần; không retry prompt cũ. `clarify` chỉ cho quyết định nghiệp vụ, quyền truy cập hoặc hành động không đảo ngược/tốn phí tiền thật; không dùng để xin phép L0-L2 hoặc trốn timeout.
 
-    - QUY TẮC WORKER BUDGET & ANTI-OVERENGINEERING (BẮT BUỘC): + Mọi worker BẮT BUỘC
-    hoàn thành dưới 15 phút, tối đa <= 20 tool calls. + Task Read/Inspect/OCR: CẤM
-    tự ý sửa code / CẤM commit / CẤM chạy test suite. Chỉ đọc log/OCR và trả kết quả
-    ngay <= 10 tool calls. + Task Fix Code: Chỉ sửa ĐÚNG file/module chỉ định (Scope
-    Lock), viết focused test <30s, CẤM over-engineer viết test đồ sộ.
+    - QUY TẮC WORKER BUDGET: Worker hoàn thành dưới 15 phút, <=15 iterations/calls theo contract. Task Read/Inspect/OCR không sửa code/commit/test suite. Task Fix Code chỉ sửa đúng Scope Lock và chạy focused test <30s.
 
 
     QUY TẮC AN TOÀN FARM & CHỐNG CHỮA CHÁY:
@@ -227,10 +220,10 @@ memory:
   flush_min_turns: 6
   nudge_interval: 10
 delegation:
-  model: omni-worker
+  model: ag-gemini-pool-3
   provider: omni
   max_iterations: 15
-  child_timeout_seconds: 600
+  child_timeout_seconds: 900
   reasoning_effort: medium
   max_concurrent_children: 8
 moa:
@@ -273,6 +266,9 @@ hooks:
     - command: python D:/Taadaa/tools/hooks/guard_device_bulkhead.py
       matcher: terminal
       timeout: 5
+    - command: python D:/Taadaa/tools/hooks/guard_model_drift.py
+      matcher: terminal
+      timeout: 5
 security:
   allow_private_urls: true
 cron:
@@ -302,16 +298,16 @@ gateway:
             + PROJECT_RULES.md.
 
             Mọi tác vụ sửa code / viết test BẮT BUỘC dispatch qua `delegate_task`
-            kèm Scope Lock, Test Lock và Budget <= 15 phút, <= 20 tool calls. CẤM
-            bấm ADB tay thay cho sửa code. Báo cáo tóm tắt cuối cùng.'
+            kèm Scope Lock, Test Lock và Budget <= 15 phút, <= 15 tool calls. CẤM
+            bấm ADB tay thay cho sửa code. Ngoại lệ duy nhất: Emergency Surgery L2 đúng SOUL.md. Báo cáo tóm tắt cuối cùng.'
         '-5171154309':
           system_prompt: 'Bạn là Coordinator điều phối repo D:\Taadaa\Hermes.
 
             Trước mọi lệnh: cd /d/Taadaa/Hermes. Đọc AGENTS.md + HANDOFF.md + PROJECT_RULES.md.
 
             Mọi tác vụ sửa code / viết test BẮT BUỘC dispatch qua `delegate_task`
-            kèm Scope Lock, Test Lock và Budget <= 15 phút, <= 20 tool calls. CẤM
-            bấm ADB tay thay cho sửa code. Báo cáo tóm tắt cuối cùng.'
+            kèm Scope Lock, Test Lock và Budget <= 15 phút, <= 15 tool calls. CẤM
+            bấm ADB tay thay cho sửa code. Ngoại lệ duy nhất: Emergency Surgery L2 đúng SOUL.md. Báo cáo tóm tắt cuối cùng.'
         '-5373649734':
           system_prompt: 'Bạn là AI Coordinator Chuyên Trách Phục Hồi & Gỡ Rối Farm
             Android (Farm Alerts).
@@ -323,9 +319,9 @@ gateway:
             - Gọi `delegate_task` để worker sửa code file flow phụ trách và chạy test.
             - BẮT BUỘC truyền vào context: Scope Lock (chỉ sửa file flow chỉ định),
             Test Lock (chỉ chạy focused test <30s, CẤM pytest toàn repo), Budget <=
-            15 phút và <= 20 tool calls. - Task chỉ Read/Inspect/OCR: CẤM worker sửa
+            15 phút và <= 15 tool calls. - Task chỉ Read/Inspect/OCR: CẤM worker sửa
             code / CẤM commit, hoàn thành <= 10 tool calls (< 10 phút). - CẤM Coordinator
-            tự sửa code hoặc bấm ADB tay chữa cháy (`input tap/keyevent`). 4. Canary
+            tự sửa code (ngoại lệ duy nhất là Emergency Surgery L2 đúng SOUL.md) hoặc bấm ADB tay chữa cháy (`input tap/keyevent`). 4. Canary
             Test: Sau khi worker hoàn thành, chạy lệnh Canary test lại máy N. 5. Báo
             cáo: Gửi kết quả cuối (Success / Fail) vào nhóm.'
         '-5377611430':
@@ -336,8 +332,8 @@ gateway:
             + PROJECT_RULES.md.
 
             Mọi tác vụ sửa code / viết test BẮT BUỘC dispatch qua `delegate_task`
-            kèm Scope Lock, Test Lock và Budget <= 15 phút, <= 20 tool calls. CẤM
-            bấm ADB tay thay cho sửa code. Báo cáo tóm tắt cuối cùng.'
+            kèm Scope Lock, Test Lock và Budget <= 15 phút, <= 15 tool calls. CẤM
+            bấm ADB tay thay cho sửa code. Ngoại lệ duy nhất: Emergency Surgery L2 đúng SOUL.md. Báo cáo tóm tắt cuối cùng.'
         '-5435853713':
           system_prompt: 'Bạn là Coordinator phụ trách repo D:\Taadaa\Tiktok-video
             (render & upload video TikTok).
@@ -346,8 +342,8 @@ gateway:
             + PROJECT_RULES.md.
 
             Mọi tác vụ sửa code / viết test BẮT BUỘC dispatch qua `delegate_task`
-            kèm Scope Lock, Test Lock và Budget <= 15 phút, <= 20 tool calls. CẤM
-            bấm ADB tay thay cho sửa code. Báo cáo tóm tắt cuối cùng.'
+            kèm Scope Lock, Test Lock và Budget <= 15 phút, <= 15 tool calls. CẤM
+            bấm ADB tay thay cho sửa code. Ngoại lệ duy nhất: Emergency Surgery L2 đúng SOUL.md. Báo cáo tóm tắt cuối cùng.'
         '-5494641602':
           system_prompt: 'Bạn là Coordinator phụ trách repo D:\Taadaa\Tiktok_Reg (đăng
             ký TikTok).
@@ -356,8 +352,8 @@ gateway:
             PROJECT_RULES.md.
 
             Mọi tác vụ sửa code / viết test BẮT BUỘC dispatch qua `delegate_task`
-            kèm Scope Lock, Test Lock và Budget <= 15 phút, <= 20 tool calls. CẤM
-            bấm ADB tay thay cho sửa code. Báo cáo tóm tắt cuối cùng.'
+            kèm Scope Lock, Test Lock và Budget <= 15 phút, <= 15 tool calls. CẤM
+            bấm ADB tay thay cho sửa code. Ngoại lệ duy nhất: Emergency Surgery L2 đúng SOUL.md. Báo cáo tóm tắt cuối cùng.'
       group_allowed_chats:
         - -5373649734
         - '-5373649734'
