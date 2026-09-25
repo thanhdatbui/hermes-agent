@@ -331,6 +331,18 @@ Khi điều phối worker trên file monolith (>1.500 dòng) hoặc nhận yêu 
 
 A worker/delegation can report `completed` while leaving `0 files modified`, writing into an isolated/lost workspace, timing out during finalize, or returning a summary that describes intended rather than verified changes. Treat every handoff as untrusted until the coordinator independently checks the shared workspace. The minimum closeout is: (1) `git status --short` and exact allowlisted paths, (2) `git diff --stat` plus anchor/presence checks for every requested artifact, (3) compile/syntax check, (4) focused test and its real exit code, and (5) live endpoint/UI verification when the feature is served by a local app. If any required artifact is absent, classify the handoff as structural failure and do not repeat the same broad prompt. Re-dispatch only with a materially narrower exact patch contract, unique anchors, and a fail-fast abort clause. Preserve the distinction between worker self-report and parent-verified evidence in the final report. Session-specific detail and a reusable checklist are in `references/worker-handoff-verification-and-live-ui.md`.
 
+### Policy/config change closeout discipline (2026-09-25)
+
+For edits to SOUL/policy/config/routing rules, textual consistency is not sufficient for closeout. Treat the change as a policy implementation with a behavioral evidence contract:
+
+- Stage only the exact allowlist before `closeout_gate.py`; never let pre-existing dirty files or unrelated untracked artifacts enter the candidate diff.
+- Add focused tests that exercise behavior, not only string presence: parse YAML, verify every channel override, test the relevant hook/guard with mocked stdin/subprocess, and assert fail/allow branches. Keep them offline, deterministic, and under 30 seconds.
+- Run the focused test command independently before closeout, then let `closeout_gate.py` rerun it. A full-suite timeout is not evidence that the focused policy change is bad; narrow the test mapping rather than skipping evidence.
+- A rejected score is a hard stop: do not push or claim the session is closed. Address the concrete findings, restage the exact allowlist, rerun the focused tests, and rerun the gate with a materially improved evidence set. Do not retry the same rejected gate unchanged.
+- If the primary reviewer reaches a quota/transport limit, use the configured independent fallback reviewer and record the limitation. A fallback approval based only on pasted excerpts is weaker than direct filesystem audit; label it as such and still run local behavioral tests.
+- Preserve the distinction between policy text, runtime enforcement, and operational evidence. Passing YAML/string tests proves only policy text; it does not prove a guard or escalation path executes.
+- Reusable procedure and the session's rejected→improved closeout loop are documented in `references/policy-change-closeout-review-loop.md`.
+
 ### Hard enforcement: micro-tasking and timeout lanes (2026-09-25)
 
 - `delegate_task` has no reliable per-worker call/timeout control; phrases like “<=15 calls” and “fail-fast” in a prompt are **soft instructions only**. Never dispatch a worker and assume those limits are enforced.
