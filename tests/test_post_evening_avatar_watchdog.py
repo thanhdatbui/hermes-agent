@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import sqlite3
 import subprocess
@@ -29,6 +30,10 @@ from post_evening_avatar_watchdog import (
     collect_recent_batch_results,
     check_batch_status,
     report_final_summary,
+    get_session_key,
+    is_post_evening_window,
+    is_after_evening_window,
+    is_feed_session_finished_for_window,
 )
 
 
@@ -284,6 +289,179 @@ def test_report_final_summary_fallback_on_api_failure(capsys):
             report_final_summary(state, all_done=True, host_context=ctx, stats_by_tik=stats)
             captured = capsys.readouterr()
             assert "send_farm_alert failed" in captured.err
+
+
+def test_format_report_html_morning_window():
+    host_id = "kibe"
+    stats = {
+        5: {"uploaded_count": 15, "total_accounts": 20, "unuploaded": [1, 2, 3, 4, 5]},
+    }
+    session_stats = {
+        "session_uploaded_machines": [1],
+        "session_failed_by_reason": {"ACCOUNT_SWITCHER_FAILED": [2]},
+    }
+    now_dt = datetime(2026, 9, 25, 11, 26, 56, tzinfo=ZoneInfo("Asia/Ho_Chi_Minh"))
+    report = format_report_html(
+        host_id=host_id,
+        all_done=False,
+        stats_by_tik=stats,
+        target_tiks=[5],
+        now_dt=now_dt,
+        session_stats=session_stats,
+    )
+    assert "Hết khung giờ ca sáng (sau 11:15)" in report
+    assert "Kết quả ca sáng nay" in report
+    assert "CHI TIẾT CỤM LỖI CA SÁNG NAY" in report
+    assert "ca tối" not in report.lower()
+    assert "23:30" not in report
+
+
+def test_format_report_html_cluster_morning_window():
+    cluster_stats = {
+        "kibe": {
+            5: {"uploaded_count": 15, "total_accounts": 20, "unuploaded": [1]},
+            6: {"uploaded_count": 20, "total_accounts": 20, "unuploaded": []},
+            7: {"uploaded_count": 20, "total_accounts": 20, "unuploaded": []},
+            8: {"uploaded_count": 20, "total_accounts": 20, "unuploaded": []},
+            3: {"uploaded_count": 20, "total_accounts": 20, "unuploaded": []},
+            4: {"uploaded_count": 20, "total_accounts": 20, "unuploaded": []},
+        },
+        "admin": {
+            1: {"uploaded_count": 10, "total_accounts": 20, "unuploaded": [201]},
+            2: {"uploaded_count": 0, "total_accounts": 0, "unuploaded": []},
+            3: {"uploaded_count": 0, "total_accounts": 0, "unuploaded": []},
+            4: {"uploaded_count": 0, "total_accounts": 0, "unuploaded": []},
+            5: {"uploaded_count": 0, "total_accounts": 0, "unuploaded": []},
+            6: {"uploaded_count": 0, "total_accounts": 0, "unuploaded": []},
+            7: {"uploaded_count": 0, "total_accounts": 0, "unuploaded": []},
+            8: {"uploaded_count": 0, "total_accounts": 0, "unuploaded": []},
+        },
+    }
+    session_stats = {
+        "session_uploaded_machines": [1],
+        "session_failed_by_reason": {"ACCOUNT_SWITCHER_FAILED": [2]},
+    }
+    now_dt = datetime(2026, 9, 25, 11, 26, 56, tzinfo=ZoneInfo("Asia/Ho_Chi_Minh"))
+    report = format_report_html(
+        host_id="kibe",
+        all_done=False,
+        stats_by_tik={},
+        now_dt=now_dt,
+        stats_by_cluster=cluster_stats,
+        session_stats=session_stats,
+    )
+    assert "[FARM REPORT][TOÀN FARM]" in report
+    assert "Hết khung giờ ca sáng (sau 11:15)" in report
+    assert "Kết quả ca sáng nay: Thành công +1 acc mới | Lỗi 1 máy" in report
+    assert "ca tối" not in report.lower()
+    assert "23:30" not in report
+
+
+def test_get_session_key_boundaries():
+    # Late night (< 06:00) rolls back date and marks evening
+    dt_night = datetime(2026, 9, 25, 2, 15, tzinfo=ZoneInfo("Asia/Ho_Chi_Minh"))
+    assert get_session_key(dt_night) == "2026-09-24_evening"
+
+    # Morning boundary (06:00 to 13:59)
+    dt_morn_start = datetime(2026, 9, 25, 6, 0, tzinfo=ZoneInfo("Asia/Ho_Chi_Minh"))
+    assert get_session_key(dt_morn_start) == "2026-09-25_morning"
+
+    dt_morn_mid = datetime(2026, 9, 25, 11, 26, 56, tzinfo=ZoneInfo("Asia/Ho_Chi_Minh"))
+    assert get_session_key(dt_morn_mid) == "2026-09-25_morning"
+
+    dt_morn_end = datetime(2026, 9, 25, 13, 59, tzinfo=ZoneInfo("Asia/Ho_Chi_Minh"))
+    assert get_session_key(dt_morn_end) == "2026-09-25_morning"
+
+    # Evening shift (14:00 onwards)
+    dt_eve = datetime(2026, 9, 25, 14, 0, tzinfo=ZoneInfo("Asia/Ho_Chi_Minh"))
+    assert get_session_key(dt_eve) == "2026-09-25_evening"
+
+    dt_late_eve = datetime(2026, 9, 25, 23, 45, tzinfo=ZoneInfo("Asia/Ho_Chi_Minh"))
+    assert get_session_key(dt_late_eve) == "2026-09-25_evening"
+
+
+def test_window_predicates_morning_and_evening():
+    # Morning window (08:30 -> 11:15)
+    assert not is_post_evening_window(datetime(2026, 9, 25, 8, 20))
+    assert is_post_evening_window(datetime(2026, 9, 25, 8, 30))
+    assert is_post_evening_window(datetime(2026, 9, 25, 10, 0))
+    assert is_post_evening_window(datetime(2026, 9, 25, 11, 15))
+    assert not is_post_evening_window(datetime(2026, 9, 25, 11, 20))
+
+    # Morning after_window (11:16 -> 11:35)
+    assert not is_after_evening_window(datetime(2026, 9, 25, 11, 15))
+    assert is_after_evening_window(datetime(2026, 9, 25, 11, 20))
+    assert is_after_evening_window(datetime(2026, 9, 25, 11, 26))
+    assert is_after_evening_window(datetime(2026, 9, 25, 11, 35))
+    assert not is_after_evening_window(datetime(2026, 9, 25, 11, 40))
+
+    # Evening window (20:15 -> 23:45)
+    assert not is_post_evening_window(datetime(2026, 9, 25, 20, 10))
+    assert is_post_evening_window(datetime(2026, 9, 25, 20, 15))
+    assert is_post_evening_window(datetime(2026, 9, 25, 22, 0))
+    assert is_post_evening_window(datetime(2026, 9, 25, 23, 45))
+    assert not is_post_evening_window(datetime(2026, 9, 25, 23, 50))
+
+    # Evening after_window (23:46 -> 03:59)
+    assert is_after_evening_window(datetime(2026, 9, 25, 23, 46))
+    assert is_after_evening_window(datetime(2026, 9, 25, 2, 0))
+    assert not is_after_evening_window(datetime(2026, 9, 25, 4, 0))
+
+
+def test_feed_session_finished_for_window(tmp_path):
+    rep_file = tmp_path / "feed_session_reported.json"
+    rep_file.write_text(json.dumps({"reported_sessions": ["2026-09-25_ca1_phien2"]}), encoding="utf-8")
+
+    with patch("post_evening_avatar_watchdog.Path") as mock_path:
+        def path_side_effect(*args):
+            p = Path(*args)
+            if "feed_session_reported.json" in str(p):
+                return rep_file
+            return p
+        mock_path.side_effect = path_side_effect
+
+        # Morning check at 10:00: ca1_phien2 finished
+        dt_morn = datetime(2026, 9, 25, 10, 0)
+        assert is_feed_session_finished_for_window(dt_morn)
+
+        # Evening check at 21:00: ca3 not yet finished
+        dt_eve = datetime(2026, 9, 25, 21, 0)
+        assert not is_feed_session_finished_for_window(dt_eve)
+
+
+def test_count_active_locks_including_lock_files(tmp_path):
+    lock_dir = tmp_path / "locks"
+    lock_dir.mkdir()
+
+    # Create an active JSON lock
+    json_lock = lock_dir / "machine_1.json"
+    json_lock.write_text(json.dumps({"status": "active"}), encoding="utf-8")
+
+    # Create an explicit .lock file
+    dot_lock = lock_dir / "device_2.lock"
+    dot_lock.write_text("locked", encoding="utf-8")
+
+    with patch("post_evening_avatar_watchdog.LOCK_DIR", lock_dir):
+        with patch("post_evening_avatar_watchdog.Path") as mock_p:
+            def side_effect(*args):
+                p = Path(*args)
+                if "device-locks" in str(p):
+                    return tmp_path / "nonexistent"
+                return p
+            mock_p.side_effect = side_effect
+            assert count_active_locks() == 2
+
+
+def test_report_final_summary_idempotency_anti_duplicate():
+    state = {
+        "last_reported_session": "2026-09-25_morning",
+    }
+    now_dt = datetime(2026, 9, 25, 11, 26, tzinfo=ZoneInfo("Asia/Ho_Chi_Minh"))
+    with patch("post_evening_avatar_watchdog.now_hcmc", return_value=now_dt), \
+         patch("post_evening_avatar_watchdog.send_farm_alert") as mock_alert:
+        report_final_summary(state, all_done=False)
+        # Must NOT send duplicate alert because session key is already recorded
+        assert not mock_alert.called
 
 
 

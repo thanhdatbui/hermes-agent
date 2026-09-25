@@ -107,9 +107,9 @@ def now_hcmc() -> datetime:
 
 def get_session_key(now_dt: datetime) -> str:
     """Xác định session date (nếu chạy qua đêm 00:00 -> 05:00 vẫn tính là ca tối ngày hôm trước)."""
-    if now_dt.hour < 6:
-        return (now_dt - timedelta(days=1)).strftime("%Y-%m-%d")
-    return now_dt.strftime("%Y-%m-%d")
+    prefix = "morning" if 6 <= now_dt.hour < 14 else "evening"
+    date_str = (now_dt - timedelta(days=1)).strftime("%Y-%m-%d") if now_dt.hour < 6 else now_dt.strftime("%Y-%m-%d")
+    return f"{date_str}_{prefix}"
 
 
 def get_telegram_bot_token() -> str | None:
@@ -154,7 +154,10 @@ def send_farm_alert(text: str) -> bool:
 
 
 def is_post_evening_window(now_dt: datetime) -> bool:
-    """Chỉ mở cuốn chiếu SAU PHIÊN 2 CA TỐI (từ 20:15 đến 23:45), khóa chặt khe P1-P2."""
+    """Mở cuốn chiếu an toàn sau ca nuôi acc:
+    - Ca tối: sau P2 (20:15 -> 23:45)
+    - Ca sáng: sau Ca 1 P2 (08:30 -> 11:15)
+    """
     h, m = now_dt.hour, now_dt.minute
     if h in (21, 22):
         return True
@@ -162,15 +165,19 @@ def is_post_evening_window(now_dt: datetime) -> bool:
         return True
     if h == 23 and m <= 45:
         return True
+    if (h == 8 and m >= 30) or h in (9, 10) or (h == 11 and m <= 15):
+        return True
     return False
 
 
 def is_after_evening_window(now_dt: datetime) -> bool:
-    """Hết khung giờ ca tối (sau 23:45 đến 04:00 sáng hôm sau)."""
+    """Hết khung giờ ca tối (sau 23:45 đến 04:00 sáng) hoặc sau khung sáng (11:15 đến 11:35)."""
     h, m = now_dt.hour, now_dt.minute
     if h == 23 and m > 45:
         return True
     if 0 <= h < 4:
+        return True
+    if h == 11 and 15 < m <= 35:
         return True
     return False
 
@@ -204,18 +211,25 @@ def count_active_locks() -> int:
                     except Exception:
                         pass
                 elif f.is_file() and f.suffix == ".lock":
-                    seen_files.add(f.name)
-                    count += 1
+                    try:
+                        if (cur_time - f.stat().st_mtime) < 2700:
+                            seen_files.add(f.name)
+                            count += 1
+                    except Exception:
+                        pass
         except Exception:
             pass
     return count
-def is_ca3_finished(today_str: str) -> bool:
+def is_feed_session_finished_for_window(now_dt: datetime) -> bool:
+    today_str = now_dt.strftime("%Y-%m-%d")
     reported_file = Path(r"D:\Taadaa\runtime\kibe\cron-state\feed_session_reported.json")
     if not reported_file.is_file():
         return False
     try:
         data = json.loads(reported_file.read_text(encoding="utf-8"))
         sessions = set(data.get("reported_sessions", []))
+        if 6 <= now_dt.hour < 14:
+            return f"{today_str}_ca1_phien2" in sessions or f"{today_str}_ca1" in sessions
         return f"{today_str}_ca3_phien2" in sessions or f"{today_str}_ca3" in sessions or f"{today_str}_ca3_phien3" in sessions
     except Exception:
         return False
@@ -619,16 +633,21 @@ def format_report_html(
 
 
     session_lines = []
+    is_morning = 6 <= now_dt.hour < 14
+    ca_name = "ca sáng nay" if is_morning else "ca tối nay"
+    cutoff_desc = "sau 11:15" if is_morning else "sau 23:30"
+    shift_label = "ca sáng" if is_morning else "ca tối"
+
     if session_stats:
         sess_up = session_stats.get("session_uploaded_machines", [])
         sess_fail = session_stats.get("session_failed_by_reason", {})
         total_fail = sum(len(m_list) for m_list in sess_fail.values())
         if sess_up or sess_fail:
-            session_lines.append(f"• Kết quả ca tối nay: Thành công +{len(sess_up)} acc mới | Lỗi {total_fail} máy")
+            session_lines.append(f"• Kết quả {ca_name}: Thành công +{len(sess_up)} acc mới | Lỗi {total_fail} máy")
         elif all_done or (stats_by_cluster and tot_miss == 0):
-            session_lines.append("• Kết quả ca tối nay: Hoàn tất 100%, không ghi nhận lỗi.")
+            session_lines.append(f"• Kết quả {ca_name}: Hoàn tất 100%, không ghi nhận lỗi.")
         if sess_fail:
-            session_lines.append("📋 CHI TIẾT CỤM LỖI CA TỐI NAY:")
+            session_lines.append(f"📋 CHI TIẾT CỤM LỖI {shift_label.upper()} NAY:")
             for r_code, m_list in sorted(sess_fail.items()):
                 m_str = ", ".join(map(str, m_list[:10]))
                 if len(m_list) > 10: m_str += f"... (+{len(m_list)-10})"
@@ -697,7 +716,7 @@ def format_report_html(
             status_line = f"• Trạng thái: Tất cả các acc hiện có nick đã được up avatar ({tot_up}/{tot_acc} acc)"
         else:
             title = "⏰ [FARM REPORT][TOÀN FARM] BÁO CÁO UP AVATAR: HẾT KHUNG GIỜ"
-            status_line = f"• Trạng thái: Hết khung giờ ca tối (sau 23:30) — Đã có: {tot_up}/{tot_acc} acc ({tot_pct:.1f}%), còn {tot_miss} máy chưa up"
+            status_line = f"• Trạng thái: Hết khung giờ {shift_label} ({cutoff_desc}) — Đã có: {tot_up}/{tot_acc} acc ({tot_pct:.1f}%), còn {tot_miss} máy chưa up"
 
         lines = [
             title,
@@ -746,7 +765,7 @@ def format_report_html(
         status_line = "• <b>Trạng thái:</b> Chưa có tài khoản nào được gán trên các Tik đã cấu hình"
     else:
         title = f"⏰ <b>[FARM REPORT][{host_id.upper()}] BÁO CÁO UP AVATAR: HẾT KHUNG GIỜ</b>"
-        status_line = f"• <b>Trạng thái:</b> Hết khung giờ ca tối (sau 23:30) — Đã có: {total_uploaded}/{total_accounts} acc ({total_pct:.1f}%), còn {total_unuploaded} máy chưa up"
+        status_line = f"• <b>Trạng thái:</b> Hết khung giờ {shift_label} ({cutoff_desc}) — Đã có: {total_uploaded}/{total_accounts} acc ({total_pct:.1f}%), còn {total_unuploaded} máy chưa up"
 
     lines = [
         title,
@@ -768,7 +787,8 @@ def report_final_summary(
     """
     now = now_hcmc()
     sess_key = get_session_key(now)
-    if state.get("last_reported_session") == sess_key or state.get("last_reported_date") == sess_key:
+    day_str = (now - timedelta(days=1)).strftime("%Y-%m-%d") if now.hour < 6 else now.strftime("%Y-%m-%d")
+    if state.get("last_reported_session") in (sess_key, day_str) or state.get("last_reported_date") in (sess_key, day_str):
         return
 
     ctx = host_context or get_host_context()
@@ -783,7 +803,7 @@ def report_final_summary(
     stats_by_cluster = None
     if host_id == "kibe":
         admin_tiks = [1, 2, 3, 4, 5, 6, 7, 8]
-        admin_wb = Path(r"D:\OneDrive\TaadaaData\admin")
+        admin_wb = Path(os.environ.get("TAADAA_ADMIN_WORKBOOK_ROOT", r"D:\OneDrive\TaadaaData\admin"))
         admin_stats = {
             tik: get_tik_avatar_stats(tik, workbook_dir=admin_wb, host_context={"host_id": "admin", "workbook_dir": admin_wb})
             for tik in admin_tiks
@@ -809,8 +829,15 @@ def report_final_summary(
     # Gửi báo cáo trực tiếp qua Telegram Bot API (không in STDOUT để tránh rò rỉ cron)
     try:
         send_farm_alert(report_msg)
+        logger.info(
+            "[WATCHDOG] Đã gửi báo cáo tổng kết %s qua Telegram (all_done=%s, host=%s)",
+            sess_key,
+            all_done,
+            host_id,
+        )
     except Exception as e:
         sys.stderr.write(f"[WATCHDOG] send_farm_alert failed: {e}\n")
+        logger.error("[WATCHDOG] Thất bại khi gửi báo cáo tổng kết %s: %s", sess_key, e)
 
     state["last_reported_session"] = sess_key
     state["last_reported_date"] = sess_key
@@ -873,21 +900,26 @@ def main() -> int:
         return 0
 
     # 3. Thu thập danh sách máy chưa up avatar cho tất cả các Tik
+    stats_by_tik: dict[int, dict] = {}
     all_unuploaded: dict[int, list[int]] = {}
     total_missing = 0
+    total_accounts = 0
     for tik in ctx["target_tiks"]:
-        missing = get_unuploaded_machines(tik, workbook_dir=ctx["workbook_dir"])
+        st = get_tik_avatar_stats(tik, workbook_dir=ctx["workbook_dir"], host_context=ctx)
+        stats_by_tik[tik] = st
+        missing = st.get("unuploaded", [])
         all_unuploaded[tik] = missing
         total_missing += len(missing)
+        total_accounts += st.get("total_accounts", 0)
 
     # 4. Nếu tất cả các Tik đã hoàn tất 100% -> Báo cáo duy nhất 1 lần
-    if total_missing == 0:
-        report_final_summary(state, all_done=True, host_context=ctx)
+    if total_missing == 0 and total_accounts > 0:
+        report_final_summary(state, all_done=True, host_context=ctx, stats_by_tik=stats_by_tik)
         return 0
 
     # 5. Nếu đã hết khung giờ ca tối (sau 23:30) -> Báo cáo duy nhất 1 lần tổng kết máy còn tồn
     if after_window:
-        report_final_summary(state, all_done=False, host_context=ctx)
+        report_final_summary(state, all_done=False, host_context=ctx, stats_by_tik=stats_by_tik)
         return 0
 
     # 6. Trong khung giờ (21:00 -> 23:30) & còn máy chưa up:
@@ -895,8 +927,7 @@ def main() -> int:
     if is_feed_active():
         return 0
 
-    today_str = now.strftime("%Y-%m-%d")
-    if not is_ca3_finished(today_str):
+    if not is_feed_session_finished_for_window(now):
         return 0
 
     if count_active_locks() > 0:
