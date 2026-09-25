@@ -126,7 +126,7 @@ def test_all_channel_prompts_parse_as_ordered_dispatch_contracts():
         prompt = channel["system_prompt"]
         assert "<= 20 tool calls" not in prompt, channel_id
         assert "delegate_task" in prompt, channel_id
-        assert re.search(r"Budget <= 15 phút(?: và)? <= 15 tool calls", prompt), channel_id
+        assert re.search(r"Budget <= 15 phút(?:,| và) <= 15 tool calls", prompt), channel_id
         assert prompt.count("Emergency Surgery L2") == 1, channel_id
         positions = [
             prompt.index("delegate_task"),
