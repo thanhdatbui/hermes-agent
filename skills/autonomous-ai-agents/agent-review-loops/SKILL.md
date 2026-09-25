@@ -14,7 +14,7 @@ Dùng khi user yêu cầu điều phối coding agent, review chéo, hoặc làm
 
 ## Quy trình bắt buộc
 
-**Reference:** `references/terra-exact-byte-review-and-conflict-gate.md` defines the exact Terra route, staged-byte provenance checks, and shared-worktree conflict stop conditions for review-gated closeout. `references/omniroute-review-gateway.md` defines the OmniRoute (:20129) review routes (`review`, `ag-worker`) and the strict model specification discipline (`review` -> `chatgpt-web/gpt-5.6-sol-high`, strictly banning bare `sol-pro`/`sol-instant`).
+**Reference:** See the linked review-gate references for Terra provenance and OmniRoute reviewer routing. Nested-tier spillover guidance is in `references/omniroute-nested-tier-spillover.md`.
 
 ### Review-gated closeout is a hard stop
 
