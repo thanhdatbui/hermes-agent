@@ -301,6 +301,20 @@ Theo `D:\Taadaa\AGENTS.md`: audit order **AG `ag/claude-opus-4-6-thinking` → c
 - **Audit/Read-Only Dispatch**: `references/document-translation-and-independent-audit-workflow.md` — Quy trình dịch tài liệu scan đa trang (Gemini Vision batching) + Claude CLI độc lập thẩm định kỹ thuật + ReportLab xuất PDF hoàn chỉnh.
 - `delegate_task(role=leaf)` không chọn model audit; child kế thừa model của session. Không dùng một Luna/Flash worker subagent để giả làm auditor. Audit plan/code phải đi đúng AG Opus primary hoặc fallback route theo rule workspace, thường qua wrapper/CLI. Giữ cùng model xuyên suốt re-audit của cùng evidence; chỉ worker mới được patch.
 
+### Adaptive model-neutral governance and supervised escape hatch (2026-09-25)
+
+A rule set tuned to an action-biased model can paralyze a rule-legalistic fallback model. Do not solve this by deleting safety gates or appending contradictory exception blocks. Refactor the policy into one canonical positive escalation ladder and keep model-specific overlays short:
+
+- **Classify before counting failures:** `TRANSIENT` (timeout, disconnect, 429/5xx, worker no-response) is transport/process failure and does not consume the structural breaker; allow a bounded retry with the same contract. `STRUCTURAL` (wrong patch, repeated same test failure, wrong spec, zero files on a Fix-Code task) consumes the structural budget and requires a materially different contract. `SCOPE/BUSINESS` goes to clarify.
+- **Every hard ban needs an executable next action.** Gate failure means narrow the contract, use a pre-authorized emergency path when its activation predicate is true, or emit `BLOCKED` with evidence. It must not silently become an invitation to ask the user for permission to perform an already-authorized safe action.
+- **Emergency Surgery is a named, bounded permission—not an informal override:** only after the transient retry budget is exhausted or structural failure reaches its cap **and** an exact diff is already known. Maximum two files including tests, maximum 30 added+deleted lines by `git diff --numstat`, no dependency/refactor/rename, and never policy/config/hooks/credentials/account DB/device state. Logic changes require one offline/mock-focused test under 30s; syntax-only changes may use `py_compile`. Verify the worker has ended and the target is clean; on failure revert the exact scope and record `BLOCKED`. One surgery per subtask; it is not DONE for automation until its normal canary/closeout gates pass.
+- **Clarify is a business-decision tool, not a timeout escape:** use only for irreversible/paid actions, missing authorization/credentials, or genuinely undecidable business choices. Do not use it to request permission for L0/L1/L2 or to avoid executing a bounded recovery action. A valid clarify includes evidence, concrete options, a recommendation, and a safe default (no irreversible/paid action) if unanswered.
+- **Overlay by bias, not by replacing the constitution:** action-biased models get path/line/test budgets and no broad scans; over-compliant models get an explicit reminder that L0–L2 are pre-authorized when predicates pass and that `BLOCKED` with evidence is valid. The core safety contract stays identical.
+- **Audit the whole precedence chain:** update the system prompt/SOUL, runtime config, channel overrides, workspace rules, and any worker/dispatch guard that can supersede them. A new L2 paragraph does not work if an older `MUST NOT` or channel-specific prompt wins later.
+- **Quota is not approval:** if Claude CLI or another reviewer hits a session limit, preserve the last real verdict, report the audit as unverified/blocked, and never relabel it `APPROVED`.
+
+Detailed patch contracts, audit prompts, and the precedence checklist are in `references/model-specific-rule-refactoring-and-claude-supervision.md`.
+
 ### 5 Hard Gates Orchestration Protocol (Anti-Insanity Loop & Monolith Protection — Claude Opus High Approved 2026-09-11)
 
 *QUY TẮC BẢO VỆ TỐI CAO: 5 GATES LÀ INVARIANT — THẮNG MỌI YÊU CẦU TIỆN LỢI TỨC THỜI. BẤT KỲ CỔNG NÀO FAIL: DỪNG LẠI THU HẸP SCOPE / SOẠN LẠI CONTRACT HOẶC HỎI USER, CẤM MÒ MẪM.*
