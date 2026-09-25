@@ -32,6 +32,19 @@ DEFAULT_THRESHOLD_SECONDS = 900.0   # 15 minutes for normal code fix / inspect /
 WORKER_TIMEOUT_SECONDS = 1200.0     # 20 minutes for worker execution
 
 MAX_ACTIVE_AGE_SECONDS = 7200.0     # Ignore stale sessions older than 2 hours
+WAL_TRUNCATE_THRESHOLD_BYTES = 50 * 1024 * 1024  # 50 MB
+WAL_TELEMETRY_LOG = HERMES_HOME / "logs" / "wal_maintenance.jsonl"
+
+
+def record_wal_telemetry(telemetry: dict) -> None:
+    try:
+        WAL_TELEMETRY_LOG.parent.mkdir(parents=True, exist_ok=True)
+        telemetry["timestamp"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        with open(WAL_TELEMETRY_LOG, "a", encoding="utf-8") as f:
+            f.write(json.dumps(telemetry, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+
 
 
 def _load_json(path: Path) -> dict:
@@ -71,7 +84,52 @@ def _save_json(path: Path, data: dict) -> None:
                 pass
 
 
+def check_and_truncate_wal() -> dict | None:
+    """Kiểm tra và truncate WAL file nếu vượt ngưỡng để chống lock I/O.
+
+    Giữ stdout im lặng tuyệt đối (watchdog requirement).
+    Log telemetry/cảnh báo ra stderr.
+    Trả về telemetry dict nếu có thực hiện checkpoint, hoặc None.
+    """
+    wal_path = HERMES_HOME / "state.db-wal"
+    db_path = HERMES_HOME / "state.db"
+    if not wal_path.is_file() or not db_path.is_file():
+        return None
+
+    try:
+        size_bytes = wal_path.stat().st_size
+        if size_bytes <= WAL_TRUNCATE_THRESHOLD_BYTES:
+            return None
+
+        import sqlite3
+        conn = sqlite3.connect(db_path, timeout=10.0)
+        cursor = conn.cursor()
+        res = cursor.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchone()
+        conn.close()
+
+        size_after = wal_path.stat().st_size if wal_path.is_file() else 0
+        telemetry = {
+            "event": "wal_truncate",
+            "bytes_before": size_bytes,
+            "bytes_after": size_after,
+            "checkpoint_result": list(res) if res else [],
+            "status": "success",
+        }
+        sys.stderr.write(f"[WAL_WATCHDOG] Truncated WAL: {size_bytes} -> {size_after} bytes | result={res}\n")
+        return telemetry
+    except Exception as exc:
+        sys.stderr.write(f"[WAL_WATCHDOG] Failed to truncate WAL: {type(exc).__name__}: {exc}\n")
+        return {
+            "event": "wal_truncate",
+            "status": "error",
+            "error": str(exc),
+        }
+
+
 def main() -> int:
+    wal_telemetry = check_and_truncate_wal()
+    if wal_telemetry:
+        record_wal_telemetry(wal_telemetry)
     try:
         watchdog_data = _load_json(WATCHDOG_STATE_FILE)
         watchdog_sessions = watchdog_data.get("sessions", {}) if isinstance(watchdog_data, dict) else {}
