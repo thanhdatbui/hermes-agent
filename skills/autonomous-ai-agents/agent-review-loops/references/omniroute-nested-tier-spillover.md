@@ -1,30 +1,27 @@
 # OmniRoute nested-tier spillover
 
-## Trigger
-Use when a parent combo contains child combo references (e.g. Pro pool -> Free pool) and requests fall to the next tier while eligible targets remain in the preferred child.
+Use this reference when a parent combo must exhaust a Pro child pool before falling to Free.
 
-## Critical distinction
-- `queueDepth` is pre-cascade combo admission; it is not the account semaphore queue.
-- `tryAcquire` is non-queueing admission for a selected target; it does not by itself guarantee that a nested child exhausts all targets before the parent advances.
-- `accountSemaphore.acquire()` can still wait up to its configured timeout when a path bypasses or follows the wrong admission seam.
-- Parent fallback and child target iteration are separate control flows.
+## Three independent controls
 
-## Evidence checklist
-Before changing config or code, read live parent/child combo JSON and record:
-`strategy`, `nestedComboMode`, `maxGlobalAttempts`, target count, `queueDepth`, `queueTimeoutMs`, `failoverBeforeRetry`, `maxRetries`, session stickiness, and prompt-cache affinity.
+1. `queueDepth`: combo pre-cascade queue; controls waiting before trying a target/tier.
+2. `maxGlobalAttempts`: child traversal budget; if lower than target count, the child can return early and parent may fall to the next tier.
+3. `accountSemaphore.acquire`: per-connection queue; omitted `timeoutMs` can invoke the 30s default even when combo/API config reports 1s.
 
-Trace only the relevant windows in `open-sse/services/combo.ts` and `open-sse/services/combo/dispatchPrelude.ts` around:
-- `nestedComboMode` / `resolveComboRuntimeUnits`
-- `maxGlobalAttempts`
-- `handleRoundRobinCombo`
-- `tryAcquireAccountSemaphore`
-- `accountSemaphore.acquire`
-- parent handling of combo-ref `null`/failure
+Required path:
 
-A child attempt budget smaller than its eligible target count is a strong candidate for premature parent fallback. Do not infer intra-tier exhaustion from `queueDepth=0` alone; require attempt-order/decision telemetry or a focused test.
+```text
+full Pro target -> bounded semaphore wait -> next eligible Pro target -> Pro child exhausted -> Free child
+```
 
-## User-specific invariant
-Preserve Pro `session stickiness` and `prompt-cache affinity`. Do not replace Pro cache-aware routing with P2C merely to mask a spillover bug. Free pools may use P2C. The intended flow is: exhaust/skip unavailable Pro targets within the Pro child, then fall back to Free only after the child is actually exhausted.
+## Debug checklist
 
-## Patch contract
-If runtime config cannot express the intended boundary, stop and dispatch a worker with an exact source anchor and focused regression test. Do not mutate `storage.sqlite` speculatively. Keep parent-tier and child-target budgets distinct, and verify that retries cannot reset the child budget or re-enter the first Pro target indefinitely.
+- Read back SQLite and live API config.
+- Confirm child attempt budget is greater than target count but bounded.
+- Inspect `nestedComboMode="execute"` and timeout context reaching chat core.
+- If logs still say `Semaphore timeout after 30000ms`, inspect the actual `accountSemaphore.acquire` call; config-only changes are insufficient.
+- Preserve Pro cache/session affinity. Do not switch Pro to P2C with affinity disabled just to solve saturation; P2C is suitable for large Free pools.
+- Verify recent logs distinguish semaphore timeout from upstream 429/403 and proxy failures.
+- Add a focused test proving the timeout argument reaches acquisition.
+
+Coordinator must not directly probe Google/OpenAI; use local runtime evidence or a worker contract.
