@@ -316,6 +316,16 @@ Khi điều phối worker trên file monolith (>1.500 dòng) hoặc nhận yêu 
 
 A worker/delegation can report `completed` while leaving `0 files modified`, writing into an isolated/lost workspace, timing out during finalize, or returning a summary that describes intended rather than verified changes. Treat every handoff as untrusted until the coordinator independently checks the shared workspace. The minimum closeout is: (1) `git status --short` and exact allowlisted paths, (2) `git diff --stat` plus anchor/presence checks for every requested artifact, (3) compile/syntax check, (4) focused test and its real exit code, and (5) live endpoint/UI verification when the feature is served by a local app. If any required artifact is absent, classify the handoff as structural failure and do not repeat the same broad prompt. Re-dispatch only with a materially narrower exact patch contract, unique anchors, and a fail-fast abort clause. Preserve the distinction between worker self-report and parent-verified evidence in the final report. Session-specific detail and a reusable checklist are in `references/worker-handoff-verification-and-live-ui.md`.
 
+### Hard enforcement: micro-tasking and timeout lanes (2026-09-25)
+
+- `delegate_task` has no reliable per-worker call/timeout control; phrases like “<=15 calls” and “fail-fast” in a prompt are **soft instructions only**. Never dispatch a worker and assume those limits are enforced.
+- **Exact patch lane:** if the coordinator has one unique anchor and exact `old_string -> new_string`, dispatch at most one worker with only that patch, no discovery, no test authoring, no build, and a hard external timeout of 120 seconds. If the patch is absent after verification, classify structural failure; do not retry the same prompt.
+- **Scoped code-surgery lane:** one file/module, one focused test, at most 240 seconds. Do not combine source tracing, multi-file propagation, tests, build, restart, or canary in one worker.
+- **Build lane:** `build`, `npm run build:backend`, packaging, download, rendering, and batch jobs are **never delegated as code workers**. Start them through a background launcher with `notify_on_complete=true`, then verify the artifact in a separate step.
+- **Runtime lane:** restart/deploy/canary/live verification is a separate operation after the build artifact is verified; never include it in the code worker contract.
+- **Circuit breaker:** after one timeout or `0 files modified`, stop and rewrite the contract. After two structurally failed dispatches on the same component, stop dispatching and report the blocker; do not spend more quota on a third near-identical worker.
+- **Coordinator dispatch receipt must state:** lane (`exact-patch|code-surgery|build|runtime`), allowlisted files, exact anchor, max wall-clock, and the one acceptance command. Any missing field means do not dispatch.
+
 
 1. Viết audit spec (hoặc dùng diff thực tế).
 2. Codex đọc file + phân tích (nếu COMPLEX) HOẶC bỏ qua (SIMPLE).
