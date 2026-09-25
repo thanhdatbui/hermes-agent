@@ -315,16 +315,17 @@ A rule set tuned to an action-biased model can paralyze a rule-legalistic fallba
 
 Detailed patch contracts, audit prompts, and the precedence checklist are in `references/model-specific-rule-refactoring-and-claude-supervision.md`.
 
-### 5 Hard Gates Orchestration Protocol (Anti-Insanity Loop & Monolith Protection — Claude Opus High Approved 2026-09-11)
+### 5 Hard Gates Orchestration Protocol (Anti-Insanity Loop & Monolith Protection — Cập nhật Claude CLI & Sol High 2026-09-25)
 
-*QUY TẮC BẢO VỆ TỐI CAO: 5 GATES LÀ INVARIANT — THẮNG MỌI YÊU CẦU TIỆN LỢI TỨC THỜI. BẤT KỲ CỔNG NÀO FAIL: DỪNG LẠI THU HẸP SCOPE / SOẠN LẠI CONTRACT HOẶC HỎI USER, CẤM MÒ MẪM.*
+*QUY TẮC BẢO VỆ TỐI CAO: 5 GATES LÀ INVARIANT — THẮNG MỌI YÊU CẦU TIỆN LỢI TỨC THỜI. BẤT KỲ CỔNG NÀO FAIL: DỪNG LẠI THU HẸP SCOPE / SOẠN LẠI CONTRACT, HOẶC THỰC HIỆN L2 NẾU ĐÃ ĐỦ ĐIỀU KIỆN KÍCH HOẠT Ở MỤC 3; KHÔNG ĐỦ ĐIỀU KIỆN THÌ L3 BLOCKED KÈM EVIDENCE. KHÔNG ĐƯỢC ĐÓNG BĂNG TASK.*
+(Chi tiết phân tích kiến trúc Cowboy vs Bureaucrat & Thang leo thang L0-L4: `references/gemini-cowboy-vs-luna-bureaucrat-escalation-and-emergency-surgery.md`).
 
-Khi điều phối worker trên file monolith (>1.500 dòng) hoặc nhận yêu cầu phức tạp từ user, BẮT BUỘC tuân thủ 5 gates (chi tiết tại `references/claude-opus-5-gates-anti-insanity-2026-09-11.md`):
+Khi điều phối worker trên file monolith (>1.500 dòng) hoặc nhận yêu cầu phức tạp từ user, BẮT BUỘC tuân thủ 5 gates:
 1. **Gate 1 (Decompose trước Dispatch)**: Phân rã theo bản chất ngữ nghĩa và vòng đời công việc. CẤM TUYỆT ĐỐI dispatch chung batch giữa Code-surgery (sửa code/hook vài phút) và Batch-job (render/download/batch chạy hàng giờ). Batch-job phải chạy qua launcher nền + monitor ngoài band.
 2. **Gate 2 (Feasibility & Mandatory Patch Contract)**: File target >1.500 dòng $\rightarrow$ cấm goal mở ("tự tìm", "tự phân tích"). BẮT BUỘC Coordinator tự inspect O(1) để chốt anchor duy nhất tuyệt đối bằng lệnh `grep -o ... | wc -l == 1` (đếm số lần xuất hiện thật, không dùng `grep -c` dễ hở dòng lặp), cấp exact `old_string` $\rightarrow$ `new_string` và lệnh test focused <30s trước khi spawn worker. Chưa có anchor duy nhất $\rightarrow$ DỪNG, CẤM dispatch.
-3. **Gate 3 (Circuit Breaker)**: Worker trả về `files_modified == 0` hoặc timeout cạn iterations $\rightarrow$ THẤT BẠI CẤU TRÚC. CẤM TUYỆT ĐỐI retry y hệt prompt cũ. Bắt buộc thu hẹp scope / bơm context / đổi sang **EXACT PATCH CONTRACT** (Coordinator tự grep O(1) cấp sẵn khối `old_string` $\rightarrow$ `new_string` chính xác tuyệt đối cho từng file, worker chỉ việc apply patch và chạy focused test <30s); tối đa 2 lần dispatch.
+3. **Gate 3 (Circuit Breaker & Transient Exclusion)**: Lỗi timeout/mạng/429 là TRANSIENT (cho phép retry L0 tối đa 2 lần cùng prompt). Chỉ khi Worker sửa sai logic hoặc hoàn thành với `files_modified == 0` (ở task Fix Code) mới tính là THẤT BẠI CẤU TRÚC (STRUCTURAL, tối đa 2 dispatch). Dispatch lần 2 bắt buộc contract khác / scope hẹp hơn; CẤM retry prompt cũ vô nghĩa. Lần 2 thất bại $\rightarrow$ kích hoạt Emergency Surgery O(1) (L2) nếu có `exact_diff_ready` và đủ ngân sách, không thì chuyển L3 BLOCKED kèm evidence; CẤM dispatch lần 3.
 4. **Gate 4 (Worker Fail-Fast)**: Worker sửa monolith bắt buộc chứa yêu cầu: NẾU trong $\le 3$ calls đầu nhận thấy scope bất khả thi với budget 15 calls thì PHẢI DỪNG NGAY (ABORT) và trả về anchor + proposed contract, cấm đốt sạch budget 15 calls để mò file rồi fail im lặng.
-5. **Gate 5 (Coordinator Checklist)**: Tự duyệt đủ 5 câu hỏi checklist (Phân rã ngữ nghĩa chưa? Monolith có contract duy nhất tuyệt đối chưa? 15 iters khả thi không? Tách code vs batch chưa? Re-dispatch contract có mới không?). Bất kỳ câu nào Chưa/Không $\rightarrow$ DỪNG, CẤM dispatch.
+5. **Gate 5 (Coordinator Checklist)**: Tự duyệt đủ 5 câu hỏi checklist (Phân rã ngữ nghĩa chưa? Monolith có contract duy nhất tuyệt đối chưa? 15 iters khả thi không? Tách code vs batch chưa? Nếu là re-dispatch sau STRUCTURAL fail: contract có khác lần trước không? Retry TRANSIENT cùng prompt được miễn). Bất kỳ câu nào Chưa/Không $\rightarrow$ Dừng để chuẩn hóa contract, hoặc L2 nếu đủ điều kiện kích hoạt; không đủ điều kiện thì L3 BLOCKED kèm evidence; KHÔNG đóng băng task, KHÔNG clarify trốn việc.
 
 ### Worker completion is a claim, not evidence (2026-09-25)
 
