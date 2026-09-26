@@ -286,7 +286,11 @@ def main() -> int:
             phase1_header,
             f"  + Tổng máy: {g_tot}",
             f"  + Success ({g_suc})",
-            *(["    * ChatGPT linked: telemetry riêng, không suy ra từ Gmail"] if (g_suc > 0 or cg_ok + cg_fail > 0) else []),
+            *(
+                [f"    * ChatGPT linked: {cg_ok}/{g_suc}" + (f" ({cg_fail} fail)" if cg_fail > 0 else "")]
+                if (g_suc > 0 or cg_ok + cg_fail > 0)
+                else []
+            ),
             f"  + Fail ({g_fail})",
             "",
         ])

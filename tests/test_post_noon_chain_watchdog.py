@@ -91,6 +91,41 @@ def test_lane_gmail_only(capsys):
     assert "Phase 2" not in output
 
 
+def test_default_lane_preserves_legacy_gmail_only_behavior(capsys):
+    with (
+        patch.object(watchdog, "already_ran_today", return_value=False),
+        patch.object(watchdog, "is_feed_runner_active", return_value=False),
+        patch.object(watchdog, "has_active_device_locks", return_value=False),
+        patch.object(watchdog, "run_gmail_batch", return_value=(0, "TOTAL=1 SUCCESS=1 FAILED=0")) as gmail_batch,
+        patch.object(watchdog, "run_tiktok_2fa_batch") as tiktok_batch,
+        patch.object(watchdog, "parse_chatgpt_warmup_counts", return_value=(0, 0)),
+        patch.object(sys, "argv", ["post_noon_chain_watchdog.py", "--dry-run"]),
+    ):
+        assert watchdog.main() == 0
+
+    gmail_batch.assert_called_once_with(dry_run=True)
+    tiktok_batch.assert_not_called()
+    output = capsys.readouterr().out
+    assert "[LANE GMAIL]" in output
+    assert "Phase 1 (Reg Gmail - Code 0)" in output
+    assert "Phase 2" not in output
+
+
+def test_gmail_report_preserves_chatgpt_warmup_detail(capsys):
+    with (
+        patch.object(watchdog, "already_ran_today", return_value=False),
+        patch.object(watchdog, "is_feed_runner_active", return_value=False),
+        patch.object(watchdog, "has_active_device_locks", return_value=False),
+        patch.object(watchdog, "run_gmail_batch", return_value=(0, "TOTAL=3 SUCCESS=2 FAILED=1")),
+        patch.object(watchdog, "parse_chatgpt_warmup_counts", return_value=(2, 1)),
+        patch.object(sys, "argv", ["post_noon_chain_watchdog.py", "--lane", "gmail", "--dry-run"]),
+    ):
+        assert watchdog.main() == 0
+
+    output = capsys.readouterr().out
+    assert "ChatGPT linked: 2/2 (1 fail)" in output
+
+
 def test_lane_tiktok_only(capsys):
     calls: list[str] = []
 
