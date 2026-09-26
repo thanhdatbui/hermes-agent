@@ -443,6 +443,23 @@ For edits to SOUL/policy/config/routing rules, textual consistency is not suffic
      * Bóc tách rõ ràng nhóm Bỏ qua: bao nhiêu máy Dưỡng sinh, bao nhiêu máy Nick ngâm <10 ngày, bao nhiêu máy Thiếu video render. Tuyệt đối không gom cục chung.
      * Tiến độ luỹ kế còn tồn toàn Farm.
 
+## Closeout rejection recovery — mandatory continue-until-approval loop
+
+When the user says `chốt phiên` / `đóng phiên`, a reviewer `REJECTED` or score below threshold is **not a valid stopping point** when the user has already ordered the work to continue. Treat the reviewer findings as the next implementation contract:
+
+1. Capture the exact reviewer evidence (score, verdict, findings, tested command, candidate diff scope).
+2. Classify each finding: transient transport, structural code defect, stale-test/fixture mismatch, missing behavioral evidence, or scope/business decision.
+3. For structural findings, dispatch a worker with an exact allowlist and acceptance test. Do not merely report `BLOCKED` or ask the user to continue when the requested repair is reversible and authorized.
+4. Re-read the modified files and independently run the focused tests; worker self-report is not evidence.
+5. Re-run `closeout_gate.py` against the intended candidate diff. Ensure the base ref includes only the task being closed; never accidentally review the entire dirty worktree or an unrelated commit range.
+6. Repeat review → fix → focused test until `APPROVED` and score >=85, or until a real exhausted escalation / irreversible business decision requires clarification. A transient worker timeout gets L0 retry with a materially narrower contract; it is not a final blocker.
+
+**Dirty-worktree and base-ref discipline:** Before closeout, stage only the explicit task allowlist; preserve unrelated modifications/untracked files. Verify `git diff --cached --name-only`, `git diff --cached --stat`, and the chosen base/ref range. If the graph changed, do not blindly use `HEAD~1`; select a base that isolates the current task and record why.
+
+**Evidence ladder for policy/config and watchdog changes:** Text-only assertions are insufficient for a large orchestration diff. Add deterministic offline behavioral tests for actual hooks/config paths and watchdog negative paths: missing session, lock held, active/busy machine, dry-run state immutability, retry-budget semantics, and lock acquire/action/release ordering. Keep tests offline, mocked, deterministic, and under 30 seconds.
+
+**User steering:** When the user says “sửa đến khi review approve”, execute the loop proactively. Do not reply with a plan or a premature BLOCKED report after the first rejection. Keep updates concise: current verdict, exact blocker, action already dispatched, and next evidence gate.
+
 ## Trigger
 
 "dùng rule điều phối", "dispatch codex claude", "gọi audit review", "gọi model ra review"
