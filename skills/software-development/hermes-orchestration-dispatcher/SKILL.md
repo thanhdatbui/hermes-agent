@@ -70,6 +70,10 @@ Xem chi tiết tại `references/claude-opus-3-tier-patch-and-hook-discipline.md
   * Thao tác thiết bị thật, ADB, OCR, debug sự cố 160 máy farm chưa rõ nguyên nhân gốc rễ.
   * Bắt buộc worker subagent chạy cô lập trong context riêng, kết quả nén thành báo cáo ngắn.
 
+### Reference pointer: closeout review isolation
+
+See `references/closeout-review-scope-isolation.md` for the exact candidate-selection, timeout classification, focused-test, and reviewer-loop checklist.
+
 ## Cross-consumer recovery migration gate
 
 Khi một shared recovery/control-plane đã ship nhưng user nói "triển khai" tiếp, không đồng nhất core shipped với fleet auto-recovery. Tách bốn trạng thái: core shipped; adapter migrated; runtime-connected; live-proven. Trước consumer edit phải đọc audit/report đã duyệt, lập plan thật có matrix từng consumer, rồi audit plan bằng AG Opus (fallback ladder chỉ khi route failure cụ thể). Pilot một consumer có strict registry + runtime caller thật; nếu registry chỉ ở scheduler/preflight thì phải có discovery phase, không đoán insertion point. Mỗi consumer dùng một worker/worktree độc quyền, tuần tự, contract tests RED→GREEN cho no-hook/missing handler/HARD_STOP/NON_RETRYABLE/exception/budget/verifier/lock-retention/restart/redaction, rồi AG audit và commit riêng. Core remains app-neutral; adapter owns taxonomy and business flow; no second retry loop; no live/secret/workbook/ADB validation. Cuối cùng báo riêng N/9 adapter đã runtime-connected và consumer còn PENDING/NEEDS_PROOF. Chi tiết matrix/evidence ở `references/cross-consumer-recovery-migration.md`.
@@ -391,6 +395,14 @@ Khi điều phối worker trên file monolith (>1.500 dòng) hoặc nhận yêu 
 3. **Gate 3 (Circuit Breaker & Transient Exclusion)**: Lỗi timeout/mạng/429 là TRANSIENT (cho phép retry L0 tối đa 2 lần cùng prompt). Chỉ khi Worker sửa sai logic hoặc hoàn thành với `files_modified == 0` (ở task Fix Code) mới tính là THẤT BẠI CẤU TRÚC (STRUCTURAL, tối đa 2 dispatch). Dispatch lần 2 bắt buộc contract khác / scope hẹp hơn; CẤM retry prompt cũ vô nghĩa. Lần 2 thất bại $\rightarrow$ kích hoạt Emergency Surgery O(1) (L2) nếu có `exact_diff_ready` và đủ ngân sách, không thì chuyển L3 BLOCKED kèm evidence; CẤM dispatch lần 3.
 4. **Gate 4 (Worker Fail-Fast)**: Worker sửa monolith bắt buộc chứa yêu cầu: NẾU trong $\le 3$ calls đầu nhận thấy scope bất khả thi với budget 15 calls thì PHẢI DỪNG NGAY (ABORT) và trả về anchor + proposed contract, cấm đốt sạch budget 15 calls để mò file rồi fail im lặng.
 5. **Gate 5 (Coordinator Checklist)**: Tự duyệt đủ 5 câu hỏi checklist (Phân rã ngữ nghĩa chưa? Monolith có contract duy nhất tuyệt đối chưa? 15 iters khả thi không? Tách code vs batch chưa? Nếu là re-dispatch sau STRUCTURAL fail: contract có khác lần trước không? Retry TRANSIENT cùng prompt được miễn). Bất kỳ câu nào Chưa/Không $\rightarrow$ Dừng để chuẩn hóa contract, hoặc L2 nếu đủ điều kiện kích hoạt; không đủ điều kiện thì L3 BLOCKED kèm evidence; KHÔNG đóng băng task, KHÔNG clarify trốn việc.
+
+### Closeout review scope isolation and REJECT loop (2026-09-26)
+
+When the user says close/chốt and the repository contains unrelated dirty files, sync commits, or a diverged remote, do not feed the whole `HEAD~1` or working tree to `closeout_gate.py` and then treat a low score as proof that the just-finished patch is bad. First establish the exact closeout candidate: allowlist the intended files, stage only those files, and inspect `git diff --cached --name-only`/`--stat`. If the candidate is already committed, use a base that isolates that commit or create a narrowly scoped review input; never let unrelated skill sync/runtime/config churn contaminate the review. Preserve unrelated dirty paths and never reset/revert them.
+
+A reviewer `REJECTED` is an execution state, not a final answer. Extract concrete findings, classify each as code defect, missing test evidence, or unrelated-scope contamination, then continue `patch -> focused offline test -> isolated closeout review`. Do not stop at BLOCKED merely because the first review failed when the findings are actionable. If a worker times out, classify it as TRANSIENT unless there is verified structural evidence; retry once with a materially narrower exact contract and fail-fast abort clause. Verify worker claims from disk, then stage only the allowlist before re-running the gate.
+
+For policy/config changes, a string-presence test alone is insufficient. Add small offline behavioral tests for the actual guard/hook or config-driven branch (mock subprocess/stdin; no ADB/network), and include the exact test command/output in the closeout evidence. For lane/flag changes, test default compatibility plus every explicit lane, ordering, state-save semantics, and the previously failing branch. A passing focused gate at `>=85` is required before commit/push; pre-push hook evidence must be fresh and correspond to the exact candidate.
 
 ### Worker completion is a claim, not evidence (2026-09-25)
 
