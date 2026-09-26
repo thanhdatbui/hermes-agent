@@ -319,6 +319,18 @@ For code/workflow changes, the Sol planning gate must happen **before** dispatch
 
 Progress messages must be concise and evidence-oriented. Worker self-reports are untrusted; independently verify the effective file, exact markers/diff, focused checks, and preservation of unrelated changes before claiming completion.
 
+### Closeout rejection recovery — mandatory continue-until-approval loop
+
+When the user says `chốt phiên` / `đóng phiên`, a reviewer rejection, score below threshold, or focused-test failure is **not a stopping point** when the user has already ordered the work to continue. Treat the finding as the next bounded implementation contract:
+
+1. Capture the exact verdict, failing command, traceback, and candidate scope.
+2. Classify the failure as transient, structural, stale-test/fixture mismatch, missing evidence, or business/scope.
+3. For reversible, authorized structural or fixture findings, dispatch a narrow worker with exact files, anchors, and one acceptance command; do not merely report `BLOCKED` or ask the user to continue.
+4. Independently re-read live bytes, verify the allowlist, run the focused tests, and rerun `closeout_gate.py`.
+5. Continue until `APPROVED` and the required score, or until a real exhausted escalation/irreversible decision blocks progress. A worker timeout is not a terminal result by itself.
+
+Preserve unrelated dirty files and stage only the explicit task allowlist before closeout. Do not use a broad dirty-worktree diff as the candidate when the task can be isolated; verify the chosen base/ref and staged names first. Keep user updates concise: current verdict, exact blocker, action already taken.
+
 ### Farm Alert A→Z autonomy and policy propagation (2026-09-26)
 
 When a user sends a Taadaa Farm Alert, treat it as an execution request, not a diagnosis-only request. Drive the incident through `ALERT → EVIDENCE → CLASSIFY → WORKER → VERIFY → CANARY → DONE/BLOCKED`; routine evidence capture, exact log/XML/screenshot triage, canonical host/mapping resolution, scoped worker dispatch, focused offline verification, and a bounded canonical canary are pre-authorized. Ask only for credentials, business/ownership decisions, irreversible/paid/live-durable actions, or genuinely exhausted escalation.
