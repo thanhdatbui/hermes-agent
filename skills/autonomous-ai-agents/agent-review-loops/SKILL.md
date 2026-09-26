@@ -18,7 +18,7 @@ Dùng khi user yêu cầu điều phối coding agent, review chéo, hoặc làm
 
 ### Review-gated closeout is a hard stop
 
-When the user asks to fix review findings, finish the implementation, or close a session, treat `REJECT` as an active work item—not as a reportable result. Continue the same loop without asking the user to restate the request:
+When the user asks to fix review findings, finish the implementation, or close a session, treat `REJECT` as an active work item—not as a reportable result. This user expects A–Z execution and becomes frustrated when the coordinator stops at the first `BLOCKED`, diagnosis, or worker timeout while scoped remediation remains possible. Continue the same loop without asking the user to restate the request:
 
 1. Record the exact reviewer finding and affected path/control-flow seam.
 2. Add or update a focused regression test first and run it RED when the behavior is not yet covered.
