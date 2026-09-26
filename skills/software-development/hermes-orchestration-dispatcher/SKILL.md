@@ -311,6 +311,14 @@ For code fixes in Taadaa, invoke the required Sol planner/auditor before dispatc
 
 Keep user-facing progress concise: acknowledge corrections, state the active phase in one line only when necessary, and do not substitute long explanations for execution.
 
+### Coordinator A→Z completion and intent binding (2026-09-26)
+
+When the user says “làm đi”, “sửa đi”, “làm từ A–Z”, or gives a direct execution request, treat that as sufficient authorization and acceptance criteria. `/goal` is optional syntax, never a prerequisite. Continue through `PLAN/SOL GATE → WORKER → VERIFY → REVIEW/CANARY when applicable → DONE or BLOCKED with concrete evidence`; never stop at `IN PROGRESS` or make the user ask for the next step.
+
+For code/workflow changes, the Sol planning gate must happen **before** dispatching an implementation worker. Bind every dispatch to the current user intent and target class: a pending watchdog/session worker cannot substitute for a Coordinator/orchestration fix, and vice versa. Keep overlapping requests separate and finish the root task, not merely the first completed subtask.
+
+Progress messages must be concise and evidence-oriented. Worker self-reports are untrusted; independently verify the effective file, exact markers/diff, focused checks, and preservation of unrelated changes before claiming completion.
+
 ### Farm Alert A→Z autonomy and policy propagation (2026-09-26)
 
 When a user sends a Taadaa Farm Alert, treat it as an execution request, not a diagnosis-only request. Drive the incident through `ALERT → EVIDENCE → CLASSIFY → WORKER → VERIFY → CANARY → DONE/BLOCKED`; routine evidence capture, exact log/XML/screenshot triage, canonical host/mapping resolution, scoped worker dispatch, focused offline verification, and a bounded canonical canary are pre-authorized. Ask only for credentials, business/ownership decisions, irreversible/paid/live-durable actions, or genuinely exhausted escalation.
