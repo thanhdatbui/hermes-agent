@@ -301,6 +301,16 @@ Theo `D:\Taadaa\AGENTS.md`: audit order **AG `ag/claude-opus-4-6-thinking` → c
 - **Audit/Read-Only Dispatch**: `references/document-translation-and-independent-audit-workflow.md` — Quy trình dịch tài liệu scan đa trang (Gemini Vision batching) + Claude CLI độc lập thẩm định kỹ thuật + ReportLab xuất PDF hoàn chỉnh.
 - `delegate_task(role=leaf)` không chọn model audit; child kế thừa model của session. Không dùng một Luna/Flash worker subagent để giả làm auditor. Audit plan/code phải đi đúng AG Opus primary hoặc fallback route theo rule workspace, thường qua wrapper/CLI. Giữ cùng model xuyên suốt re-audit của cùng evidence; chỉ worker mới được patch.
 
+### Farm Alert A→Z autonomy and policy propagation (2026-09-26)
+
+When a user sends a Taadaa Farm Alert, treat it as an execution request, not a diagnosis-only request. Drive the incident through `ALERT → EVIDENCE → CLASSIFY → WORKER → VERIFY → CANARY → DONE/BLOCKED`; routine evidence capture, exact log/XML/screenshot triage, canonical host/mapping resolution, scoped worker dispatch, focused offline verification, and a bounded canonical canary are pre-authorized. Ask only for credentials, business/ownership decisions, irreversible/paid/live-durable actions, or genuinely exhausted escalation.
+
+Use the canonical `docs/ai/workflows/farm-alert-coordinator-loop.md` when present. Its recovery ladder is R1 bounded transient retry, R2 materially different narrower redispatch with recorded `contract_delta`, R3 one bounded exact-diff surgery only when allowlist/budget predicates pass, and R4 canonical host/mapping/runner pivot. A diagnosis is never terminal; every BLOCKED claim requires the pre-stop checklist, preserved lock/asset state, exact evidence paths, and the machine-readable report.
+
+For policy work, keep unrelated dirty code/tests untouched but do not turn that into a no-commit default. Stage, commit, and push only the exact policy allowlist owned by the task; verify `git diff --cached --name-only` before commit and verify the remote SHA afterward. Independent review must inspect the current staged diff, not a previous version or a worker self-report. Re-review after each material policy change until Claude CLI returns `APPROVED`; only then commit/push the exact allowlist.
+
+After canonical approval, propagation is a separate authorized phase: resolve the authoritative Taadaa repo registry first, inventory exact targets read-only, and do not guess or broad-scan. Update only the workflow/pointer allowlist per eligible repo, preserve repo-local EOL and unrelated bytes, skip/report ownership conflicts, and verify per-repo marker counts, `git diff --check`, and changed paths. Commit/push only the policy diff requested for each repo; never stage unrelated code/tests/config.
+
 ### Adaptive model-neutral governance and supervised escape hatch (2026-09-25)
 
 A rule set tuned to an action-biased model can paralyze a rule-legalistic fallback model. Do not solve this by deleting safety gates or appending contradictory exception blocks. Refactor the policy into one canonical positive escalation ladder and keep model-specific overlays short:
