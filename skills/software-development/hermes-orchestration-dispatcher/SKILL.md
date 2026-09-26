@@ -78,6 +78,7 @@ Khi một shared recovery/control-plane đã ship nhưng user nói "triển khai
 
 ```
 1. Phân loại task (SIMPLE / COMPLEX / AUDIT).
+1.5. Mọi code task BẮT BUỘC gọi và hoàn tất Sol planning gate trước khi dispatch bất kỳ worker/implementer nào; KHÔNG dispatch implement trước Sol gate.
 2. SIMPLE  → Hermes tự sửa code + test + chạy verify.
    COMPLEX → viết spec tasks/<date>-<slug>.md → dispatch Codex implement.
 3. Dispatch AUDIT REVIEW (v5: AG `ag/claude-opus-4-6-thinking` primary; cx `gpt-5.6-luna`/`terra`/`sol` workhorse; Claude CLI `claude-opus-5` high hard-case; fallback OpenCode free → Command Code).
@@ -89,6 +90,7 @@ Khi một shared recovery/control-plane đã ship nhưng user nói "triển khai
 6. Vẫn fail CÓ DẤU HIỆU LẶP (cùng findings, cùng chỗ treo/fail, 2+ vòng không tiến triển)
    → Chuyển hẳn cho Codex implement: phiên MỚI, kèm what-was-tried/why-failed + materially different plan (theo AGENTS.md), không lặp y hệt prompt.
 7. Codex xong → review lại → APPROVED → verify cuối.
+8. Coordinator BẮT BUỘC theo lifecycle đến `DONE` hoặc `BLOCKED` kèm evidence. `IN PROGRESS` chỉ là trạng thái trung gian, KHÔNG phải terminal; KHÔNG trả user khi còn worker/audit/verify chưa hoàn tất.
 ```
 
 ## Nguyên tắc vai trò (refresh 2026-08-06 — xem cả mục "Escalation ladder đã chốt" bên dưới)
