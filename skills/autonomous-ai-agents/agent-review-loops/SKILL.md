@@ -14,7 +14,7 @@ Dùng khi user yêu cầu điều phối coding agent, review chéo, hoặc làm
 
 ## Quy trình bắt buộc
 
-**Reference:** See the linked review-gate references for Terra provenance and OmniRoute reviewer routing. Nested-tier spillover guidance is in `references/omniroute-nested-tier-spillover.md`.
+**Reference:** See the linked review-gate references for Terra provenance and OmniRoute reviewer routing. Nested-tier spillover guidance is in `references/omniroute-nested-tier-spillover.md`. Sol closeout gate and dispatch lifecycle semantics are in `references/sol-closeout-gate-lifecycle.md`.
 
 ### Review-gated closeout is a hard stop
 
