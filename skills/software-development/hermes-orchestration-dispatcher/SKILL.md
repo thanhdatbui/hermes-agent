@@ -337,7 +337,7 @@ Preserve unrelated dirty files and stage only the explicit task allowlist before
 
 ### Farm Alert A→Z autonomy and policy propagation (2026-09-26)
 
-When a user sends a Taadaa Farm Alert, treat it as an execution request, not a diagnosis-only request. Drive the incident through `ALERT → EVIDENCE → CLASSIFY → WORKER → VERIFY → CANARY → DONE/BLOCKED`; routine evidence capture, exact log/XML/screenshot triage, canonical host/mapping resolution, scoped worker dispatch, focused offline verification, and a bounded canonical canary are pre-authorized. Ask only for credentials, business/ownership decisions, irreversible/paid/live-durable actions, or genuinely exhausted escalation.
+Treat Farm Alerts as execution requests: drive `ALERT → EVIDENCE → CLASSIFY → WORKER → VERIFY → CANARY → DONE/BLOCKED`. Routine evidence, bounded worker dispatch, focused verification, and canonical canary are pre-authorized. For closeout, `REJECTED`/`MINOR_FIXES`/`<85` means remediation and re-review—not terminal `BLOCKED`; only `APPROVED >=85` or proven `HARD_STOP` ends the loop. Resolve complete artifact lineage by serial/machine/account; a small recent-run subset never proves “no artifact”. See `references/closeout-remediation-and-artifact-lineage.md`.
 
 #### Incident continuation and artifact verification lessons (2026-09-26)
 
