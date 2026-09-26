@@ -10,6 +10,8 @@ if str(REPO_SCRIPTS) not in sys.path:
 
 import watchdog_link_chatgpt_idle as w_cg
 import post_evening_gpm_login_watchdog as w_gpm
+import post_morning_gmail_2fa_watchdog as w_morning
+import cron_clear_tiktok_cache as w_cache
 
 class TestWatchdogLinkChatgptAndGpm(unittest.TestCase):
     def test_get_live_targets_from_mock_excel(self):
@@ -47,9 +49,85 @@ class TestWatchdogLinkChatgptAndGpm(unittest.TestCase):
                         self.assertIn("scanned_targets", res)
 
     def test_post_evening_gpm_login_constants(self):
-        self.assertEqual(w_gpm.MAX_WORKERS, 2)
+        self.assertEqual(w_gpm.MAX_WORKERS, 5)
         self.assertEqual(w_gpm.MAX_LOGINS_PER_PROXY, 2)
-        self.assertEqual(w_gpm.MIN_IDLE_BUFFER_MIN, 45)
+        self.assertEqual(w_gpm.MIN_IDLE_BUFFER_MIN, 10)
+
+    def test_morning_2fa_uses_session_verified_candidates(self):
+        candidates = [
+            {"email": "ready@gmail.com", "name": "1 ready@gmail.com", "machine": 1,
+             "google_session_verified": True},
+            {"email": "pending@gmail.com", "name": "2 pending@gmail.com", "machine": 2,
+             "google_session_verified": False},
+        ]
+        events = []
+
+        def acquire():
+            events.append("acquire")
+            return True
+
+        def setup(candidate):
+            events.append("action")
+            return {"status": "ALREADY_ACTIVE"}
+
+        def release():
+            events.append("release")
+
+        with patch.object(w_morning, "get_gpm_candidates", return_value=candidates), \
+             patch.object(w_morning, "setup_authenticator_for_profile", side_effect=setup) as setup_mock, \
+             patch.object(w_morning, "save_state_results"), \
+             patch.object(w_morning, "ProcessLock") as lock_cls, \
+             patch.object(w_morning.sys, "argv", ["watchdog", "--force"]):
+            lock_cls.return_value.acquire.side_effect = acquire
+            lock_cls.return_value.release.side_effect = release
+            self.assertEqual(w_morning.main(), 0)
+        setup_mock.assert_called_once_with(candidates[0])
+        self.assertEqual(events, ["acquire", "action", "release"])
+
+    def test_morning_session_helper_is_fail_closed(self):
+        self.assertTrue(w_morning._profile_has_google_session({"session_verified": True}))
+        self.assertFalse(w_morning._profile_has_google_session({"session_verified": False}))
+        self.assertFalse(w_morning._profile_has_google_session({"email": "missing@gmail.com"}))
+
+    def test_cache_dry_run_does_not_consume_retry_budget(self):
+        state = {"last_date": "2026-09-26", "cleared_machines": [], "machine_retries": {"1": 0}}
+        with patch.object(w_cache, "load_state", return_value=state), \
+             patch.object(w_cache, "get_connected_devices", return_value={"serial-1": "device"}), \
+             patch.object(w_cache, "load_machine_serials", return_value=[(1, "serial-1")]), \
+             patch.object(w_cache, "save_state") as save_state, \
+             patch.object(w_cache, "clear_device_cache") as clear_device, \
+             patch.object(w_cache.sys, "argv", ["cache", "--force", "--dry-run"]):
+            self.assertEqual(w_cache.main(), 0)
+        clear_device.assert_not_called()
+        save_state.assert_not_called()
+        self.assertEqual(state["machine_retries"]["1"], 0)
+
+    def test_cache_retry_policy_increments_only_on_unlocked_failure(self):
+        state = {"last_date": "2026-09-26", "cleared_machines": [], "machine_retries": {}}
+
+        def mock_clear(m_num, serial):
+            if m_num == 1:
+                return m_num, serial, True, f"[OK] Machine {m_num}: cache cleared"
+            if m_num == 2:
+                return m_num, serial, False, f"[LOCKED] Machine {m_num} is busy"
+            return m_num, serial, False, f"[WARN] Machine {m_num} (code 1): error"
+
+        with patch.object(w_cache, "load_state", return_value=state), \
+             patch.object(w_cache, "get_connected_devices", return_value={"s-1": "device", "s-2": "device", "s-3": "device"}), \
+             patch.object(w_cache, "load_machine_serials", return_value=[(1, "s-1"), (2, "s-2"), (3, "s-3")]), \
+             patch.object(w_cache, "save_state"), \
+             patch.object(w_cache, "clear_device_cache", side_effect=mock_clear), \
+             patch.object(w_cache.sys, "argv", ["cache", "--force"]):
+            self.assertEqual(w_cache.main(), 0)
+
+        # Successful machine 1: cleared, NO retry increment
+        self.assertIn(1, state["cleared_machines"])
+        self.assertEqual(state["machine_retries"].get("1", 0), 0)
+        # Locked machine 2: ignored, NO retry increment
+        self.assertEqual(state["machine_retries"].get("2", 0), 0)
+        # Failed error machine 3: retry count incremented by 1
+        self.assertEqual(state["machine_retries"].get("3", 0), 1)
+
 
     def test_aged_gate_fail_closed_logic(self):
         from datetime import datetime

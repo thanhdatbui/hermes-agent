@@ -323,6 +323,16 @@ Progress messages must be concise and evidence-oriented. Worker self-reports are
 
 When a user sends a Taadaa Farm Alert, treat it as an execution request, not a diagnosis-only request. Drive the incident through `ALERT → EVIDENCE → CLASSIFY → WORKER → VERIFY → CANARY → DONE/BLOCKED`; routine evidence capture, exact log/XML/screenshot triage, canonical host/mapping resolution, scoped worker dispatch, focused offline verification, and a bounded canonical canary are pre-authorized. Ask only for credentials, business/ownership decisions, irreversible/paid/live-durable actions, or genuinely exhausted escalation.
 
+#### Incident continuation and artifact verification lessons (2026-09-26)
+
+- **Do not stop after a narrow artifact sample.** Feed sessions normally emit an artifact lineage (`summary.txt`, `run_manifest.json`, `log.jsonl`, and attempt-level `screen.png`/`ui.xml`). Resolve machine→serial→account→time, then trace exact identity across bounded recent and historical roots before declaring artifacts absent. “Not in these three runs” is not evidence that the machine has no artifact.
+- **Separate identity from failure signature.** A historical artifact for the correct serial proves prior evidence, not current-alert association; a matching phrase on another serial cannot be transferred. Label candidates `CONFIRMED`, `EXCLUDED`, or `UNPROVEN`.
+- **Treat `UNPROVEN` as intermediate, not terminal.** Continue with bounded artifact resolution, reusable-code assessment, scoped worker dispatch, focused verification, and exact-target canary where resolvable. Stop only at `DONE`, concrete `BLOCKED_<stage>` after exhausted escalation, `HARD_STOP`, or `TARGET_RESOLUTION_UNPROVEN` specifically blocking canary.
+- **Verify workers independently.** `completed` and self-reported “no files changed” are claims. Re-check exact paths, diff/numstat, EOL state, focused output, and untracked files. If a worker creates files outside its allowlist, recoverably quarantine them; never broad-delete or use `git clean`.
+- **Preserve repository-native EOL before judging a patch.** On Windows repos with `core.autocrlf=true`, inspect `git ls-files --eol`; restore the index-native state (`i/crlf w/crlf` when applicable) before evaluating `git diff --numstat`. Use `git -c core.whitespace=cr-at-eol diff --check` for native CRLF files. EOL churn is a verification failure, not an acceptable semantic diff.
+- **Keep reports direct and evidence-first.** Lead with outcome, exact paths, and `CONFIRMED / EXCLUDED / UNPROVEN`; do not bury the conclusion in a long plan or ask repeatedly for routine permission.
+
+
 #### Artifact-lineage and continuation gate (mandatory)
 
 - Never scope evidence to the first few run directories named in an alert or handoff. Feed sessions normally emit `summary.txt`, `run_manifest.json`, `log.jsonl`, and attempt artifacts; resolve machine→serial→account→time, then trace exact identity across bounded recent and historical run roots before declaring artifacts absent.

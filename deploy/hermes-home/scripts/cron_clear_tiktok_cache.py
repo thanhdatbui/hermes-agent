@@ -15,6 +15,7 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 # Add automation-core src to sys.path for DeviceLock and alerts
 sys.path.insert(0, r"D:\Taadaa\automation-core\src")
@@ -29,10 +30,11 @@ ADB = r"C:\Program Files (x86)\xiaowei\tools\adb.exe"
 DEFAULT_WIDGET_POS = (810, 260)
 TIK1_WORKBOOK = r"D:\OneDrive\TaadaaData\kibe\Tik1.xlsx"
 SCRIPT_PATH = r"D:\Taadaa\automation-core\scripts\clear-tiktok-cache.py"
-MAX_WORKERS = 10
+MAX_WORKERS = 20
+WIN_KWARGS = {"creationflags": subprocess.CREATE_NO_WINDOW} if os.name == "nt" else {}
 
-STATE_FILE = Path(r"D:\Taadaa\runtime\kibe\cron-state\post_night_clear_cache_state.json")
-REPORTED_FILE = Path(r"D:\Taadaa\runtime\kibe\cron-state\feed_session_reported.json")
+STATE_FILE = Path("D:/Taadaa/runtime/kibe/cron-state/post_night_clear_cache_state.json")
+REPORTED_FILE = Path("D:/Taadaa/runtime/kibe/cron-state/feed_session_reported.json")
 
 
 def is_feed_runner_active() -> bool:
@@ -63,7 +65,7 @@ def get_connected_devices() -> dict[str, str]:
     """Map serial -> device state."""
     for attempt in range(2):
         try:
-            proc = subprocess.run([ADB, "devices"], capture_output=True, text=True, timeout=15)
+            proc = subprocess.run([ADB, "devices"], capture_output=True, text=True, timeout=15, **WIN_KWARGS)
             lines = proc.stdout.strip().splitlines()[1:]
             devices = {}
             for line in lines:
@@ -136,7 +138,7 @@ def clear_device_cache(m_num: int, serial: str) -> tuple[int, str, bool, str]:
     try:
         with lock:
             try:
-                p = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=240)
+                p = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=240, **WIN_KWARGS)
                 out = p.stdout.strip() or p.stderr.strip()
                 if p.returncode == 0:
                     msg = f"[OK] Machine {m_num}: {out}"
@@ -160,6 +162,7 @@ def clear_device_cache(m_num: int, serial: str) -> tuple[int, str, bool, str]:
                         ],
                         capture_output=True,
                         timeout=10,
+                        **WIN_KWARGS,
                     )
                 except Exception:
                     pass
@@ -196,29 +199,26 @@ def is_ca4_finished(today_str: str) -> bool:
         return False
 
 
-def load_cleared_machines(today_str: str) -> set[int]:
-    """Load machines cleared today from state file, resetting if date changed."""
+def load_state(today_str: str) -> dict:
     if not STATE_FILE.is_file():
-        return set()
+        return {"last_date": today_str, "cleared_machines": [], "machine_retries": {}, "reported_date": None}
     try:
         data = json.loads(STATE_FILE.read_text(encoding="utf-8"))
-        if data.get("last_date") == today_str:
-            return set(data.get("cleared_machines", []))
+        if data.get("last_date") != today_str:
+            return {"last_date": today_str, "cleared_machines": [], "machine_retries": {}, "reported_date": None}
+        if "machine_retries" not in data:
+            data["machine_retries"] = {}
+        return data
     except Exception as exc:
         sys.stderr.write(f"[WARN] Failed to read state file: {exc}\n")
-    return set()
+        return {"last_date": today_str, "cleared_machines": [], "machine_retries": {}, "reported_date": None}
 
 
-def save_cleared_machines(today_str: str, cleared: set[int]) -> None:
-    """Save cleared machines for today into state file."""
+def save_state(state: dict) -> None:
     try:
         STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-        data = {
-            "last_date": today_str,
-            "cleared_machines": sorted(list(cleared)),
-            "last_run_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        }
-        STATE_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+        state["last_run_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        STATE_FILE.write_text(json.dumps(state, indent=2, ensure_ascii=False), encoding="utf-8")
     except Exception as exc:
         sys.stderr.write(f"[WARN] Failed to save state file: {exc}\n")
 
@@ -241,7 +241,9 @@ def main() -> int:
         if not is_ca4_finished(today_str):
             return 0
 
-    cleared_today = load_cleared_machines(today_str)
+    state_data = load_state(today_str)
+    cleared_today = set(state_data.get("cleared_machines", []))
+    machine_retries = state_data.get("machine_retries", {})
 
     connected = get_connected_devices()
     if not connected:
@@ -251,9 +253,16 @@ def main() -> int:
     if not machines:
         return 0
 
-    target_machines = [(m, s) for m, s in machines if s in connected and m not in cleared_today]
+    target_machines = [
+        (m, s) for m, s in machines
+        if s in connected and m not in cleared_today and machine_retries.get(str(m), 0) < 2
+    ]
     if not target_machines:
-        # All connected machines have been cleared today
+        # All connected machines have been cleared today or reached retry limit
+        return 0
+
+    if args.dry_run:
+        sys.stderr.write(f"[CRON][DRY-RUN] Would clear {len(target_machines)} machines; state unchanged.\n")
         return 0
 
     sys.stderr.write(f"[CRON] Starting concurrent TikTok cache clear on {len(target_machines)} machines (workers={MAX_WORKERS})...\n")
@@ -268,13 +277,17 @@ def main() -> int:
             sys.stderr.write(f"{msg}\n")
             if ok:
                 success_machines.append(m_num)
-                if not args.dry_run:
-                    cleared_today.add(m_num)
-                    save_cleared_machines(today_str, cleared_today)
+                cleared_today.add(m_num)
+                state_data["cleared_machines"] = sorted(list(cleared_today))
+                save_state(state_data)
             else:
                 if "[LOCKED]" in msg:
                     # Ignore locked machines to avoid spamming reports
                     continue
+
+                machine_retries[str(m_num)] = machine_retries.get(str(m_num), 0) + 1
+                state_data["machine_retries"] = machine_retries
+                save_state(state_data)
 
                 reason = "Error"
                 if "WIDGET_MISS" in msg:
@@ -288,12 +301,34 @@ def main() -> int:
 
     s_count = len(success_machines)
     f_count = len(failed_machines)
+    total_attempted = len(target_machines)
 
-    if s_count == 0 and f_count == 0:
+    # Anti-spam alert:
+    # 1. Chỉ cảnh báo nếu tỷ lệ fail thực sự lớn trên quy mô farm (ít nhất 5 máy fail và > 30% số máy quét)
+    # 2. Debounce: Chỉ báo duy nhất 1 lần trong ngày đối với cùng danh sách/nội dung lỗi (alert-once)
+    if total_attempted > 0 and f_count >= 5 and f_count > (total_attempted * 0.3):
+        f_summary_str = ", ".join(f"{m:02d} ({r})" for m, r in sorted(failed_machines))
+        alert_msg = f"Đa số máy dọn cache thất bại/timeout ({f_count}/{total_attempted} máy fail): {f_summary_str}"
+        if state_data.get("last_alert_date") != today_str or state_data.get("last_alert_msg") != alert_msg:
+            _send_clear_cache_alert(alert_msg)
+            state_data["last_alert_date"] = today_str
+            state_data["last_alert_msg"] = alert_msg
+            save_state(state_data)
+
+    if s_count == 0:
+        sys.stderr.write(f"[CRON] s_count == 0 ({f_count} failed), im lặng không xuất stdout.\n")
         return 0
 
-    s_list = ", ".join(f"{m:02d}" for m in sorted(success_machines)) if success_machines else "None"
+    s_list = ", ".join(f"{m:02d}" for m in sorted(success_machines))
 
+    if state_data.get("reported_date") == today_str:
+        if len(cleared_today) >= len(connected):
+            print(f"[DỌN CACHE TIKTOK] Đã dọn bù thành công: {s_list}. Toàn farm hoàn tất {len(cleared_today)}/{len(connected)} máy.")
+        else:
+            sys.stderr.write(f"[CRON] Đã dọn bù {s_count} máy ({s_list}). Đã báo cáo hôm nay rồi, im lặng.\n")
+        return 0
+
+    # Đợt báo cáo đầu tiên trong ngày (reported_date != today_str)
     report = [
         f"[BÁO CÁO DỌN DẸP CACHE TIKTOK]",
         f"• Đã dọn đợt này: {s_count} máy ({s_list})",
@@ -308,13 +343,9 @@ def main() -> int:
     else:
         report.append(f"• Fail (0)")
 
-    total_attempted = len(target_machines)
-    if total_attempted > 0 and f_count > (total_attempted / 2):
-        f_summary_str = ", ".join(f"{m:02d} ({r})" for m, r in sorted(failed_machines))
-        _send_clear_cache_alert(f"Đa số máy dọn cache thất bại/timeout ({f_count}/{total_attempted} máy fail): {f_summary_str}")
-
-    report_text = "\n".join(report)
-    print(report_text)
+    print("\n".join(report))
+    state_data["reported_date"] = today_str
+    save_state(state_data)
     return 0
 
 
