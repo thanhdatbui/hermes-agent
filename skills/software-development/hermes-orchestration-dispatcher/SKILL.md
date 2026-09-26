@@ -311,6 +311,18 @@ For policy work, keep unrelated dirty code/tests untouched but do not turn that 
 
 After canonical approval, propagation is a separate authorized phase: resolve the authoritative Taadaa repo registry first, inventory exact targets read-only, and do not guess or broad-scan. Update only the workflow/pointer allowlist per eligible repo, preserve repo-local EOL and unrelated bytes, skip/report ownership conflicts, and verify per-repo marker counts, `git diff --check`, and changed paths. Commit/push only the policy diff requested for each repo; never stage unrelated code/tests/config.
 
+### Farm Alert continuation and artifact discovery (2026-09-26)
+
+When a Farm Alert names a machine, batch, or script, treat `BLOCKED/UNPROVEN` as an intermediate state unless the bounded canonical artifact-discovery and continuation checklist has been completed. Do not infer artifact absence from a hand-picked set of recent runs. Resolve the exact repo, inspect the mandatory live machine state, identify the runner's canonical artifact roots, then search newest relevant roots followed by bounded historical lookup by exact serial/machine/account/timestamp. Verify the identity tuple (`run_id`, serial, machine, account, time, artifact root) before using a log, manifest, XML, or screenshot.
+
+Classify every candidate `CONFIRMED`, `EXCLUDED`, or `UNPROVEN`. Preserve exact runner reasons: `feed not confirmed` is not `login/account screen detected`; a login result for one serial cannot be assigned to another. A current Launcher/Sleep state and a historical artifact answer different questions and must both be retained.
+
+Diagnosis is never the end of an alert: continue to reusable-code assessment, scoped worker dispatch, independent diff/test verification, and exact-target canary where authorized. A terminal BLOCKED report must include bounded discovery scope, exact paths checked, identity/missing-artifact reason, attempted next action, and a machine-readable stop predicate. “Need more evidence” alone is not a valid stop.
+
+Before proposing new architecture, inspect active rules for an existing `ALERT → EVIDENCE → CLASSIFY → WORKER → VERIFY → CANARY → DONE/BLOCKED` design. If present, report `DESIGN_PRESENT` and focus on the runtime enforcement gap; do not rewrite the policy. Treat referenced workflow files as implemented only after verifying their paths. Claude CLI timeout means audit unverified, never approval or proof that the design is absent.
+
+See `references/farm-alert-continuation-and-artifact-discovery.md`.
+
 ### Adaptive model-neutral governance and supervised escape hatch (2026-09-25)
 
 A rule set tuned to an action-biased model can paralyze a rule-legalistic fallback model. Do not solve this by deleting safety gates or appending contradictory exception blocks. Refactor the policy into one canonical positive escalation ladder and keep model-specific overlays short:
