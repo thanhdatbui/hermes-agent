@@ -335,6 +335,18 @@ When the user says `chốt phiên` / `đóng phiên`, a reviewer rejection, scor
 
 Preserve unrelated dirty files and stage only the explicit task allowlist before closeout. Do not use a broad dirty-worktree diff as the candidate when the task can be isolated; verify the chosen base/ref and staged names first. Keep user updates concise: current verdict, exact blocker, action already taken.
 
+### User-facing closeout discipline (2026-09-26)
+
+When the user explicitly says “làm từ A–Z”, “sửa cho xong”, or “chốt phiên”, treat that as an execution contract, not a request for a progress update. Continue the lifecycle without asking the user to restate the task:
+
+1. Bind the root task and owned scope before dispatch. Do not let unrelated dirty files inflate the candidate diff; preserve them, but isolate them from staging/review.
+2. For code/workflow changes, run the required Sol planning gate before the implementation worker. If a worker times out, classify it as TRANSIENT, retry with backoff or a materially narrower contract; do not stop at `IN PROGRESS`.
+3. Verify the live workspace independently after every worker: exact status, allowlisted diff, focused test output, and current bytes—not the worker summary.
+4. On closeout, run `closeout_gate.py` exactly as required. A timeout is not approval: diagnose the exact failing node/hang, fix only the owned scope, and rerun. A rejected score is an active remediation item; do not report closeout or push until `APPROVED` and score >=85.
+5. If the repo contains multiple unrelated dirty concerns, evaluate only the explicit allowlist. Never reset, stash, delete, or silently absorb foreign work.
+
+This user prefers concise Vietnamese updates containing the exact evidence and current terminal state. Do not repeatedly say “đang chạy” when a pre-authorized next action remains; take the action and return only after DONE or BLOCKED with concrete evidence.
+
 ### Farm Alert A→Z autonomy and policy propagation (2026-09-26)
 
 Treat Farm Alerts as execution requests: drive `ALERT → EVIDENCE → CLASSIFY → WORKER → VERIFY → CANARY → DONE/BLOCKED`. Routine evidence, bounded worker dispatch, focused verification, and canonical canary are pre-authorized. For closeout, `REJECTED`/`MINOR_FIXES`/`<85` means remediation and re-review—not terminal `BLOCKED`; only `APPROVED >=85` or proven `HARD_STOP` ends the loop. Resolve complete artifact lineage by serial/machine/account; a small recent-run subset never proves “no artifact”. See `references/closeout-remediation-and-artifact-lineage.md`.
