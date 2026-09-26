@@ -287,8 +287,8 @@ def main() -> int:
             f"  + Tổng máy: {g_tot}",
             f"  + Success ({g_suc})",
             *(
-                [f"    * ChatGPT linked: {cg_ok}/{g_suc}" + (f" ({cg_fail} fail)" if cg_fail > 0 else "")]
-                if (g_suc > 0 or cg_ok + cg_fail > 0)
+                [f"    * ChatGPT linked: {cg_ok}/{cg_ok + cg_fail}" + (f" ({cg_fail} fail)" if cg_fail > 0 else "")]
+                if (cg_ok + cg_fail > 0)
                 else []
             ),
             f"  + Fail ({g_fail})",

@@ -123,7 +123,40 @@ def test_gmail_report_preserves_chatgpt_warmup_detail(capsys):
         assert watchdog.main() == 0
 
     output = capsys.readouterr().out
-    assert "ChatGPT linked: 2/2 (1 fail)" in output
+    assert "ChatGPT linked: 2/3 (1 fail)" in output
+
+
+def test_chatgpt_warmup_failure_is_reported_when_gmail_success_is_zero(capsys):
+    with (
+        patch.object(watchdog, "already_ran_today", return_value=False),
+        patch.object(watchdog, "is_feed_runner_active", return_value=False),
+        patch.object(watchdog, "has_active_device_locks", return_value=False),
+        patch.object(watchdog, "run_gmail_batch", return_value=(1, "TOTAL=2 SUCCESS=0 FAILED=2")),
+        patch.object(watchdog, "parse_chatgpt_warmup_counts", return_value=(0, 2)),
+        patch.object(sys, "argv", ["post_noon_chain_watchdog.py", "--lane", "gmail", "--dry-run"]),
+    ):
+        assert watchdog.main() == 0
+
+    output = capsys.readouterr().out
+    assert "Success (0)" in output
+    assert "ChatGPT linked: 0/2 (2 fail)" in output
+
+
+def test_chatgpt_warmup_denominator_uses_warmup_counts_when_mismatched(capsys):
+    with (
+        patch.object(watchdog, "already_ran_today", return_value=False),
+        patch.object(watchdog, "is_feed_runner_active", return_value=False),
+        patch.object(watchdog, "has_active_device_locks", return_value=False),
+        patch.object(watchdog, "run_gmail_batch", return_value=(0, "TOTAL=4 SUCCESS=1 FAILED=3")),
+        patch.object(watchdog, "parse_chatgpt_warmup_counts", return_value=(2, 1)),
+        patch.object(sys, "argv", ["post_noon_chain_watchdog.py", "--lane", "gmail", "--dry-run"]),
+    ):
+        assert watchdog.main() == 0
+
+    output = capsys.readouterr().out
+    assert "Success (1)" in output
+    assert "ChatGPT linked: 2/3 (1 fail)" in output
+    assert "ChatGPT linked: 2/1" not in output
 
 
 def test_lane_tiktok_only(capsys):
