@@ -214,6 +214,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Post Noon Chain Watchdog (Reg Gmail -> Add 2FA TikTok)")
     parser.add_argument("--dry-run", action="store_true", help="Run in dry-run mode")
     parser.add_argument("--force", action="store_true", help="Bypass time window and session checks")
+    parser.add_argument("--lane", choices=("gmail", "tiktok", "all"), default="gmail", help="Run only the selected lane (default: gmail)")
     args = parser.parse_args()
 
     now = datetime.now(HCMC)
@@ -243,63 +244,81 @@ def main() -> int:
     start_epoch = start_dt.timestamp()
     sys.stderr.write(f"=== KÍCH HOẠT CHUỖI SAU CA TRƯA LÚC {start_dt.strftime('%H:%M:%S %d/%m/%Y')} ===\n")
 
-    # Phase 1: Reg Gmail
-    g_code, g_out = run_gmail_batch(dry_run=args.dry_run)
+    g_code, g_out = 0, ""
+    t2fa_code, t2fa_out = 0, ""
+    if args.lane in ("gmail", "all"):
+        # Phase 1: Reg Gmail
+        g_code, g_out = run_gmail_batch(dry_run=args.dry_run)
 
-    # Nghỉ 15s nhả kết nối
-    if not args.dry_run:
-        time.sleep(15)
-
-    # Phase 2: Add 2FA TikTok
-    t2fa_code, t2fa_out = run_tiktok_2fa_batch(dry_run=args.dry_run)
+    if args.lane in ("tiktok", "all"):
+        # Preserve the existing chain order for --lane all: Gmail first, then TikTok.
+        if args.lane == "all" and not args.dry_run:
+            time.sleep(15)
+        t2fa_code, t2fa_out = run_tiktok_2fa_batch(dry_run=args.dry_run)
 
     end_dt = datetime.now(HCMC)
     duration_min = max(1, int((end_dt - start_dt).total_seconds() // 60))
 
-    g_tot, g_suc, g_fail = parse_summary_counts(
-        g_out,
-        log_dir_hint=Path("D:/CodexRuntime/codex_gmail_debug-register-gmail"),
-        min_mtime=start_epoch
-    )
-    cg_ok, cg_fail = parse_chatgpt_warmup_counts(
-        log_dir_hint=Path("D:/CodexRuntime/codex_gmail_debug-register-gmail"),
-        min_mtime=start_epoch
-    )
-    if g_tot == 0 and g_code != 0:
-        phase1_header = f"- Phase 1 (Reg Gmail - Code {g_code}): LỖI KHỞI ĐỘNG RUNNER"
-    else:
-        phase1_header = f"- Phase 1 (Reg Gmail - Code {g_code}):"
-
-    t_tot, t_suc, t_fail = parse_summary_counts(t2fa_out)
-    if t_tot == 0 and t2fa_code not in (0, 4):
-        phase2_header = f"- Phase 2 (Add 2FA TikTok - Code {t2fa_code}): LỖI KHỞI ĐỘNG RUNNER"
-    else:
-        phase2_header = f"- Phase 2 (Add 2FA TikTok - Code {t2fa_code}):"
-
+    lane_is_gmail = args.lane in ("gmail", "all")
+    lane_is_tiktok = args.lane in ("tiktok", "all")
+    lane_label = args.lane.upper()
     report_lines = [
-        "[BÁO CÁO CHUỖI SAU CA TRƯA] Reg Gmail -> Add 2FA TikTok",
+        f"[BÁO CÁO CHUỖI SAU CA TRƯA] [LANE {lane_label}]",
         f"- Thời gian: {start_dt.strftime('%H:%M')} -> {end_dt.strftime('%H:%M')} ({duration_min} phút)",
         "",
-        phase1_header,
-        f"  + Tổng máy: {g_tot}",
-        f"  + Success ({g_suc})",
-        *(
-            [f"    * ChatGPT linked: {cg_ok}/{g_suc}" + (f" ({cg_fail} fail)" if cg_fail > 0 else "")]
-            if (g_suc > 0 or cg_ok + cg_fail > 0)
-            else []
-        ),
-        f"  + Fail ({g_fail})",
-        "",
-        phase2_header,
-        f"  + Tổng máy: {t_tot}",
-        f"  + Success ({t_suc})",
-        f"  + Fail ({t_fail})",
     ]
+
+    if lane_is_gmail:
+        g_tot, g_suc, g_fail = parse_summary_counts(
+            g_out,
+            log_dir_hint=Path("D:/CodexRuntime/codex_gmail_debug-register-gmail"),
+            min_mtime=start_epoch
+        )
+        cg_ok, cg_fail = parse_chatgpt_warmup_counts(
+            log_dir_hint=Path("D:/CodexRuntime/codex_gmail_debug-register-gmail"),
+            min_mtime=start_epoch
+        )
+        if g_tot == 0 and g_code != 0:
+            phase1_header = f"- Phase 1 (Reg Gmail - Code {g_code}): LỖI KHỞI ĐỘNG RUNNER"
+        else:
+            phase1_header = f"- Phase 1 (Reg Gmail - Code {g_code}):"
+        report_lines.extend([
+            phase1_header,
+            f"  + Tổng máy: {g_tot}",
+            f"  + Success ({g_suc})",
+            *(["    * ChatGPT linked: telemetry riêng, không suy ra từ Gmail"] if (g_suc > 0 or cg_ok + cg_fail > 0) else []),
+            f"  + Fail ({g_fail})",
+            "",
+        ])
+
+    if lane_is_tiktok:
+        t_tot, t_suc, t_fail = parse_summary_counts(t2fa_out)
+        if t_tot == 0 and t2fa_code not in (0, 4):
+            phase2_header = f"- Phase 2 (Add 2FA TikTok - Code {t2fa_code}): LỖI KHỞI ĐỘNG RUNNER"
+        else:
+            phase2_header = f"- Phase 2 (Add 2FA TikTok - Code {t2fa_code}):"
+        report_lines.extend([
+            phase2_header,
+            f"  + Tổng máy: {t_tot}",
+            f"  + Success ({t_suc})",
+            f"  + Fail ({t_fail})",
+        ])
 
     print("\n".join(report_lines))
 
     if not args.dry_run:
-        save_state(today_str, {"gmail_code": g_code, "2fa_code": t2fa_code})
+        if args.lane == "all":
+            lane_status = "success" if (g_code == 0 and t2fa_code == 0) else "failed"
+        elif args.lane == "gmail":
+            lane_status = "success" if g_code == 0 else "failed"
+        else:
+            lane_status = "success" if t2fa_code == 0 else "failed"
+        save_state(today_str, {
+            "gmail_code": g_code,
+            "2fa_code": t2fa_code,
+            "lane": args.lane,
+            "lane_status": lane_status,
+        })
 
     return 0
 
