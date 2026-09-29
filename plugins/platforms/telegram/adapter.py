@@ -2164,6 +2164,20 @@ class TelegramAdapter(BasePlatformAdapter):
             "[%s] Telegram polling degraded (%s); gateway stays alive and will retry. Error: %s",
             self.name, reason, error,
         )
+        try:
+            import os as _os, json as _json, datetime as _dt
+            from pathlib import Path as _Path
+            _audit_dir = _Path(_os.environ.get("TELEGRAM_AUDIT_LOG_DIR", "D:/Taadaa/runtime/audit_logs"))
+            _audit_dir.mkdir(parents=True, exist_ok=True)
+            with open(_audit_dir / "telegram_gateway_audit.jsonl", "a", encoding="utf-8") as _f:
+                _f.write(_json.dumps({
+                    "event": "POLLING_RECOVERY_SCHEDULED",
+                    "reason": reason,
+                    "error": str(error),
+                    "timestamp": _dt.datetime.now(_dt.timezone.utc).isoformat(),
+                }, ensure_ascii=False) + "\n")
+        except Exception as _audit_exc:
+            logger.debug("[%s] Failed to write telegram gateway audit log: %s", self.name, _audit_exc)
         loop = asyncio.get_running_loop()
         self._polling_error_task = loop.create_task(self._handle_polling_network_error(error))
         self._background_tasks.add(self._polling_error_task)
@@ -2388,7 +2402,8 @@ class TelegramAdapter(BasePlatformAdapter):
 
         while True:
             try:
-                await asyncio.sleep(HEARTBEAT_INTERVAL)
+                sleep_s = 15 if getattr(self, "_polling_heartbeat_fail_count", 0) > 0 else HEARTBEAT_INTERVAL
+                await asyncio.sleep(sleep_s)
                 if getattr(self, "_polling_teardown_started", False):
                     return
                 if self.has_fatal_error:
@@ -2402,6 +2417,7 @@ class TelegramAdapter(BasePlatformAdapter):
                 if not callable(getattr(bot, "get_me", None)):
                     return
                 await asyncio.wait_for(bot.get_me(), PROBE_TIMEOUT)
+                self._polling_heartbeat_fail_count = 0
                 # get_me() succeeded — the general/send request path is healthy.
                 # That does NOT prove the getUpdates consumer is alive: PTB can
                 # report updater.running=True while the long-poll task is wedged,
@@ -2415,10 +2431,26 @@ class TelegramAdapter(BasePlatformAdapter):
             except asyncio.CancelledError:
                 return
             except (asyncio.TimeoutError, OSError) as probe_err:
-                self._schedule_polling_recovery(probe_err, reason="heartbeat probe")
+                self._polling_heartbeat_fail_count = getattr(self, "_polling_heartbeat_fail_count", 0) + 1
+                if self._polling_heartbeat_fail_count >= 3:
+                    self._polling_heartbeat_fail_count = 0
+                    self._schedule_polling_recovery(probe_err, reason="heartbeat probe (3 consecutive failures)")
+                else:
+                    logger.warning(
+                        "[%s] Telegram heartbeat probe transient failure (%d/3): %s",
+                        self.name, self._polling_heartbeat_fail_count, probe_err,
+                    )
             except Exception as probe_err:
                 if self._looks_like_network_error(probe_err):
-                    self._schedule_polling_recovery(probe_err, reason="heartbeat probe")
+                    self._polling_heartbeat_fail_count = getattr(self, "_polling_heartbeat_fail_count", 0) + 1
+                    if self._polling_heartbeat_fail_count >= 3:
+                        self._polling_heartbeat_fail_count = 0
+                        self._schedule_polling_recovery(probe_err, reason="heartbeat probe (3 consecutive failures)")
+                    else:
+                        logger.warning(
+                            "[%s] Telegram heartbeat probe transient failure (%d/3): %s",
+                            self.name, self._polling_heartbeat_fail_count, probe_err,
+                        )
                     continue
                 # Non-connectivity errors (e.g. TelegramError 401) are not
                 # CLOSE-WAIT symptoms — let PTB's own handlers surface them.
