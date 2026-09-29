@@ -56,6 +56,18 @@ def log(msg: str):
     sys.stderr.write(f"[{now_str}] {msg}\n")
 
 
+def log_telemetry_metric(event_type: str, data: dict) -> dict:
+    metric = {
+        "timestamp": datetime.now().isoformat(),
+        "event": event_type,
+        "pid": os.getpid(),
+        "data": data,
+    }
+    sys.stderr.write(f"[TELEMETRY_METRIC] {json.dumps(metric, ensure_ascii=False)}\n")
+    sys.stderr.flush()
+    return metric
+
+
 def _profile_has_google_session(profile) -> bool:
     """Return whether the GPM profile has Google session cookies.
 
@@ -417,22 +429,34 @@ def main():
                 if not _profile_has_google_session(c):
                     log(f"[GPM-2FA-SKIP] {c['email']}: PENDING_GPM_LOGIN_NO_SESSION")
                     pending_list.append(f"{c['email']}: PENDING_GPM_LOGIN_NO_SESSION")
+                    log_telemetry_metric("2fa_setup_pending", {"email": c["email"], "machine": c.get("machine", 0), "reason": "PENDING_GPM_LOGIN_NO_SESSION"})
                     continue
                 res = setup_authenticator_for_profile(c)
                 if res.get("status") == "SUCCESS" and res.get("secret_key"):
                     success_list.append(f"{c['email']} ({res['secret_key']})")
+                    log_telemetry_metric("2fa_setup_success", {"email": c["email"], "machine": c.get("machine", 0), "status": "SUCCESS"})
                 elif res.get("status") == "ALREADY_ACTIVE":
                     success_list.append(f"{c['email']} (ALREADY_ACTIVE)")
+                    log_telemetry_metric("2fa_setup_success", {"email": c["email"], "machine": c.get("machine", 0), "status": "ALREADY_ACTIVE"})
                 else:
-                    fail_list.append(f"{c['email']}: {res.get('status')} - {res.get('details')}")
+                    fail_msg = f"{c['email']}: {res.get('status')} - {res.get('details')}"
+                    fail_list.append(fail_msg)
+                    log_telemetry_metric("2fa_setup_failed", {"email": c["email"], "machine": c.get("machine", 0), "status": res.get("status"), "details": str(res.get("details"))})
             except Exception as e:
                 log(f"Exception khi xử lý {c['email']}: {e}")
                 fail_list.append(f"{c['email']}: {str(e)}")
+                log_telemetry_metric("2fa_setup_error", {"email": c["email"], "machine": c.get("machine", 0), "error": str(e)})
     finally:
         lock.release()
 
-    if success_list or fail_list or pending_list:
-        save_state_results(success_list, fail_list, pending_list)
+    save_state_results(success_list, fail_list, pending_list)
+    log_telemetry_metric("watchdog_execution_summary", {
+        "success_count": len(success_list),
+        "fail_count": len(fail_list),
+        "pending_count": len(pending_list),
+        "total_processed": len(eligible_candidates),
+    })
+    if success_list or fail_list:
         report = [
             "### [BÁO CÁO 2FA GMAIL QUA GPM PROFILE]",
             f"- Đã xử lý: {len(eligible_candidates)} profile",
