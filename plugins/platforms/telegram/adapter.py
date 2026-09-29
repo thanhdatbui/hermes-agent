@@ -19,6 +19,7 @@ import re
 import threading
 from contextvars import ContextVar
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Dict, List, Optional, Set, Any
 
 logger = logging.getLogger(__name__)
@@ -2141,6 +2142,21 @@ class TelegramAdapter(BasePlatformAdapter):
                     self.name, exc_info=True,
                 )
 
+    def _record_telegram_audit_event(self, event_type: str, data: dict) -> None:
+        """Record structured gateway telemetry audit event to JSONL file."""
+        try:
+            audit_dir = Path(os.environ.get("TELEGRAM_AUDIT_LOG_DIR", "D:/Taadaa/runtime/audit_logs"))
+            audit_dir.mkdir(parents=True, exist_ok=True)
+            log_payload = {
+                "event": event_type,
+                **data,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+            with open(audit_dir / "telegram_gateway_audit.jsonl", "a", encoding="utf-8") as f:
+                f.write(json.dumps(log_payload, ensure_ascii=False) + "\n")
+        except Exception as exc:
+            logger.debug("[%s] Failed to record telegram audit event %s: %s", self.name, event_type, exc)
+
     def _schedule_polling_recovery(self, error: Exception, *, reason: str) -> None:
         """Schedule polling recovery without failing gateway startup.
 
@@ -2164,20 +2180,10 @@ class TelegramAdapter(BasePlatformAdapter):
             "[%s] Telegram polling degraded (%s); gateway stays alive and will retry. Error: %s",
             self.name, reason, error,
         )
-        try:
-            import os as _os, json as _json, datetime as _dt
-            from pathlib import Path as _Path
-            _audit_dir = _Path(_os.environ.get("TELEGRAM_AUDIT_LOG_DIR", "D:/Taadaa/runtime/audit_logs"))
-            _audit_dir.mkdir(parents=True, exist_ok=True)
-            with open(_audit_dir / "telegram_gateway_audit.jsonl", "a", encoding="utf-8") as _f:
-                _f.write(_json.dumps({
-                    "event": "POLLING_RECOVERY_SCHEDULED",
-                    "reason": reason,
-                    "error": str(error),
-                    "timestamp": _dt.datetime.now(_dt.timezone.utc).isoformat(),
-                }, ensure_ascii=False) + "\n")
-        except Exception as _audit_exc:
-            logger.debug("[%s] Failed to write telegram gateway audit log: %s", self.name, _audit_exc)
+        self._record_telegram_audit_event(
+            "POLLING_RECOVERY_SCHEDULED",
+            {"reason": reason, "error": str(error)},
+        )
         loop = asyncio.get_running_loop()
         self._polling_error_task = loop.create_task(self._handle_polling_network_error(error))
         self._background_tasks.add(self._polling_error_task)
@@ -7684,6 +7690,15 @@ class TelegramAdapter(BasePlatformAdapter):
         structured-event refactor is out of scope per #23045).
         """
         named = f" ({display_name})" if display_name else ""
+        self._record_telegram_audit_event(
+            "MEDIA_CACHE_FAILURE",
+            {
+                "kind": kind,
+                "error": str(exc),
+                "error_type": exc.__class__.__name__,
+                "display_name": display_name,
+            },
+        )
         try:
             await msg.reply_text(
                 f"\u26a0\ufe0f Couldn't download your {kind}{named} "
@@ -8133,6 +8148,27 @@ class TelegramAdapter(BasePlatformAdapter):
 
         self._pending_photo_batch_tasks[batch_key] = asyncio.create_task(self._flush_photo_batch(batch_key))
 
+    async def _download_telegram_file_with_retry(
+        self,
+        media_item: Any,
+        kind: str,
+        timeout: float = 30.0,
+    ) -> tuple[bytearray, Any]:
+        """Download file from Telegram CDN with 3-attempt retry loop for network resiliency."""
+        for attempt in range(3):
+            try:
+                file_obj = await asyncio.wait_for(media_item.get_file(), timeout=20.0)
+                image_bytes = await asyncio.wait_for(file_obj.download_as_bytearray(), timeout=timeout)
+                return image_bytes, file_obj
+            except Exception as dl_err:
+                if attempt < 2:
+                    logger.info("[%s] Retrying %s download (attempt %d/3): %s", self.name, kind, attempt + 1, dl_err)
+                    await asyncio.sleep(1.0)
+                    continue
+                logger.warning("[%s] %s download failed after 3 attempts: %s", self.name, kind, dl_err)
+                raise dl_err
+        raise RuntimeError(f"Failed to download {kind} after 3 attempts")
+
     async def _handle_media_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle incoming media messages, downloading images to local cache."""
         if not update.message:
@@ -8184,12 +8220,10 @@ class TelegramAdapter(BasePlatformAdapter):
             try:
                 # msg.photo is a list of PhotoSize sorted by size; take the largest
                 photo = msg.photo[-1]
-                file_obj = await photo.get_file()
-                # Download the image bytes directly into memory
-                image_bytes = await file_obj.download_as_bytearray()
+                image_bytes, file_obj = await self._download_telegram_file_with_retry(photo, "photo")
                 # Determine extension from the file path if available
                 ext = ".jpg"
-                if file_obj.file_path:
+                if file_obj and getattr(file_obj, "file_path", None):
                     for candidate in [".png", ".webp", ".gif", ".jpeg", ".jpg"]:
                         if file_obj.file_path.lower().endswith(candidate):
                             ext = candidate
@@ -8309,8 +8343,7 @@ class TelegramAdapter(BasePlatformAdapter):
                 # payload is actually an image, route it through the image cache
                 # and batching path instead of rejecting it as a document.
                 if ext in _TELEGRAM_IMAGE_EXTENSIONS or doc_mime.startswith("image/"):
-                    file_obj = await doc.get_file()
-                    image_bytes = await file_obj.download_as_bytearray()
+                    image_bytes, file_obj = await self._download_telegram_file_with_retry(doc, "image document")
                     image_ext = ext if ext in _TELEGRAM_IMAGE_EXTENSIONS else _TELEGRAM_IMAGE_MIME_TO_EXT.get(doc_mime, ".jpg")
                     try:
                         cached_path = cache_image_from_bytes(bytes(image_bytes), ext=image_ext)

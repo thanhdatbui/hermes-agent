@@ -42,7 +42,71 @@ def test_adapter_debounce_code_contract():
     # 4. Assert telemetry audit log environment config and non-silent error handling
     assert "TELEGRAM_AUDIT_LOG_DIR" in content
     assert "telegram_gateway_audit.jsonl" in content
-    assert "Failed to write telegram gateway audit log" in content
+    assert "_record_telegram_audit_event" in content
+
+    # 5. Assert modular helper for downloading files with retry
+    assert "def _download_telegram_file_with_retry" in content
+    assert "Retrying %s download (attempt %d/3)" in content
+    assert "%s download failed after 3 attempts" in content
+
+
+@pytest.mark.asyncio
+async def test_telegram_download_file_with_retry_direct_method():
+    """Kiểm chứng trực tiếp method _download_telegram_file_with_retry trên TelegramAdapter."""
+    adapter_obj = adapter.TelegramAdapter.__new__(adapter.TelegramAdapter)
+    adapter_obj.platform = type("MockP", (), {"value": "telegram"})()
+
+    mock_photo = MagicMock()
+    mock_file = MagicMock()
+    mock_file.download_as_bytearray = AsyncMock(return_value=bytearray(b"test_image_bytes"))
+
+    # 1. Thử kịch bản thành công sau 1 lần gặp lỗi transient (micro-lag)
+    mock_photo.get_file = AsyncMock(side_effect=[
+        httpx.ConnectError("Transient WARP lag"),
+        mock_file,
+    ])
+
+    with patch.object(adapter.asyncio, "sleep", new_callable=AsyncMock) as mock_sleep:
+        data, f_obj = await adapter_obj._download_telegram_file_with_retry(mock_photo, "photo")
+        assert data == bytearray(b"test_image_bytes")
+        assert f_obj is mock_file
+        assert mock_sleep.call_count == 1
+
+    # 2. Thử kịch bản thất bại cả 3 lần liên tiếp -> ném exception sau khi đã retry đủ 2 lần
+    mock_photo.get_file = AsyncMock(side_effect=httpx.ConnectError("Persistent network failure"))
+    with patch.object(adapter.asyncio, "sleep", new_callable=AsyncMock) as mock_sleep:
+        with pytest.raises(httpx.ConnectError):
+            await adapter_obj._download_telegram_file_with_retry(mock_photo, "photo")
+        assert mock_sleep.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_telegram_surface_media_cache_failure_telemetry(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """Kiểm chứng _surface_media_cache_failure ghi telemetry event chuẩn vào JSONL thông qua _record_telegram_audit_event."""
+    monkeypatch.setenv("TELEGRAM_AUDIT_LOG_DIR", str(tmp_path))
+
+    adapter_obj = adapter.TelegramAdapter.__new__(adapter.TelegramAdapter)
+    adapter_obj.platform = type("MockP", (), {"value": "telegram"})()
+
+    mock_msg = MagicMock()
+    mock_msg.reply_text = AsyncMock()
+    mock_event = MagicMock()
+    mock_event.text = "caption"
+    adapter_obj._append_observed_note = lambda text, note: f"{text}\n{note}"
+
+    await adapter_obj._surface_media_cache_failure(
+        mock_msg, mock_event, "photo", httpx.ConnectError("Connection failed")
+    )
+
+    audit_file = tmp_path / "telegram_gateway_audit.jsonl"
+    assert audit_file.exists()
+    lines = audit_file.read_text(encoding="utf-8").splitlines()
+    assert len(lines) == 1
+    event = json.loads(lines[0])
+    assert event["event"] == "MEDIA_CACHE_FAILURE"
+    assert event["kind"] == "photo"
+    assert "Connection failed" in event["error"]
+    assert event["error_type"] == "ConnectError"
 
 
 @pytest.mark.asyncio
@@ -154,7 +218,7 @@ async def test_telegram_adapter_telemetry_audit_logging_contract(tmp_path: Path,
 
     audit_file = tmp_path / "telegram_gateway_audit.jsonl"
     assert audit_file.exists()
-    lines = audit_file.read_text(encoding="utf-8", errors="ignore").splitlines()
+    lines = audit_file.read_text(encoding="utf-8").splitlines()
     assert len(lines) == 1
     last_log = json.loads(lines[0].strip())
     assert last_log["event"] == "POLLING_RECOVERY_SCHEDULED"
