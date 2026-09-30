@@ -49,6 +49,21 @@ When sending diffs, logs, or prompt contexts to ChatGPT Web upstream (`gpt-web-s
   - When diff or logs are truncated (`truncated=True`), `format_manifest()` is injected with the original SHA-256 hash.
   - If a reviewer model returns `APPROVED` on truncated content, the gate must automatically downgrade the verdict to `APPROVED_PARTIAL` and set `ready_to_close: False`.
 
+## 5. Large Diff Closeout Review: Auto-Fallback to Claude AG Sonnet (`ag-sonnet`)
+
+When a session introduces large changes (>38 KB diff, e.g. monolithic script creation, large test suites, or multi-module updates):
+- **Problem with Default Sol Reviewer (`review` / `gpt-5.6-sol-high`)**:
+  - Upstream ChatGPT-web has a physical HTTP 413 ceiling at 66,724 Bytes, enforced by `sol_payload_guard` at 37,952 Bytes (`CALCULATED_MAX_ALLOWED`).
+  - Diffs >38 KB are automatically truncated by `digest_diff()`, causing Sol Auditor to see truncated files and deduct points (scoring 78–83/100, citing "diff bị lược bớt một phần").
+- **Solution — Claude AG (`ag-sonnet` / `ag-opus-pool`) on OmniRoute (:20129)**:
+  - Claude Sonnet 4.6 (backed by 114-account pool on OmniRoute) has a 200,000-token context window and does not route through ChatGPT-web web-scraping interfaces.
+  - In `closeout_gate.py`, `is_claude_ag` (`"claude" in model or "sonnet" in model or "opus" in model`) bypasses `sol_payload_guard` (`skip_payload_guard=True`), sending the full 60 KB–100 KB+ diff and test evidence intact.
+- **Auto-Fallback Mechanism**:
+  - In `run_gate_pipeline()`, if the default `review` model fails (verdict != APPROVED or score < 85) and diff was truncated, `closeout_gate.py` automatically falls back to `ag-sonnet` to perform a full-context evaluation without truncation.
+- **Direct CLI Execution**:
+  - For known large diffs (>500 lines or >38 KB), invoke directly:
+    `python D:/Taadaa/tools/closeout_gate.py --repo <path> --base HEAD~1 --model ag-sonnet --json-output`
+
 ## 4. Closeout Gate Anti-Freeze, Hostname Security & Rubric Validation Invariants
 
 To avoid subagent 600s freezes and ensure tamper-resistant reviews in `closeout_gate.py`:
