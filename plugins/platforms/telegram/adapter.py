@@ -3476,8 +3476,21 @@ class TelegramAdapter(BasePlatformAdapter):
                         "[%s] Multi-ISP Failover enabled: Primary=Viettel proxy, Fallback=FPT Direct (stall=%ds probe=%ds)",
                         self.name, int(stall_s), int(probe_s),
                     )
+                    # Send/edit path must fail over too, otherwise a dead proxy
+                    # leaves polling alive but every reply undeliverable.
+                    _multi_transport_send = TelegramMultiISPTransport(
+                        fallback_ips=fallback_ips,
+                        stall_threshold_s=stall_s,
+                        recovery_probe_interval_s=probe_s,
+                        **_multi_kwargs,
+                    )
+                    logger.info(
+                        "[%s] Multi-ISP Send Failover transport active: fallback_ips=%d (stall=%ds probe=%ds)",
+                        self.name, len(fallback_ips), int(stall_s), int(probe_s),
+                    )
                     request = HTTPXRequest(
-                        **request_kwargs, proxy=proxy_url, httpx_kwargs=_with_limits()
+                        **request_kwargs,
+                        httpx_kwargs={"transport": _multi_transport_send},
                     )
                     get_updates_request = HTTPXRequest(
                         **request_kwargs,
