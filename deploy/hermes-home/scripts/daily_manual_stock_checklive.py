@@ -324,47 +324,63 @@ def main():
         deleted = res.get("deleted", 0)
         lines = [f"SP {sid} {name}:"]
         
-        # Nếu tồn kho = 0 và hôm qua cũng = 0 (hết hàng sẵn) -> chỉ báo tồn 0 & doanh số nếu có, không báo check live
-        if info['stock'] == 0 and prev_stock == 0:
-            lines.append(f"  Tồn kho: 0 (hết hàng)")
-            if info.get('sold_yesterday', 0) > 0 or info.get('sold_month', 0) > 0 or info.get('sold_total', 0) > 0:
-                lines.append(f"  Đã bán: hôm qua {info.get('sold_yesterday', 0)} | tháng này {info.get('sold_month', 0)} | tổng {info.get('sold_total', 0)}")
-            lines.append(f"  Tổng die tích lũy: {info['die_total']}")
+        # Quy tắc: Sau ngày đầu tiên báo về 0 và không có đơn bán hôm qua thì KHÔNG báo những sản phẩm đó nữa
+        if info['stock'] == 0 and prev_stock == 0 and info.get('sold_yesterday', 0) == 0:
+            # Đã về 0 từ trước và không có phát sinh đơn bán hôm qua -> bỏ qua không báo lặp lại
+            pass
         else:
-            lines.append(f"  Tồn kho: {info['stock']} (hôm qua {prev_stock} → {'+' if delta>=0 else ''}{delta})")
-            # Nếu có giảm tồn hoặc có đơn bán
-            if delta < 0 or info.get('sold_yesterday', 0) > 0 or info.get('sold_month', 0) > 0 or info.get('sold_total', 0) > 0:
-                lines.append(f"  Đã bán: hôm qua {info.get('sold_yesterday', 0)} | tháng này {info.get('sold_month', 0)} | tổng {info.get('sold_total', 0)}")
+            if info['stock'] == 0 and prev_stock > 0:
+                # Ngày đầu tiên báo về 0 (vừa hết hàng hôm nay)
+                lines.append(f"  Tồn kho: 0 (VỪA HẾT HÀNG hôm nay, hôm qua {prev_stock} → -{prev_stock})")
+                if info.get('sold_yesterday', 0) > 0 or info.get('sold_month', 0) > 0 or info.get('sold_total', 0) > 0:
+                    lines.append(f"  Đã bán: hôm qua {info.get('sold_yesterday', 0)} | tháng này {info.get('sold_month', 0)} | tổng {info.get('sold_total', 0)}")
+                lines.append(f"  Tổng die tích lũy: {info['die_total']}")
+            else:
+                lines.append(f"  Tồn kho: {info['stock']} (hôm qua {prev_stock} → {'+' if delta>=0 else ''}{delta})")
+                # Nếu có giảm tồn hoặc có đơn bán
+                if delta < 0 or info.get('sold_yesterday', 0) > 0 or info.get('sold_month', 0) > 0 or info.get('sold_total', 0) > 0:
+                    lines.append(f"  Đã bán: hôm qua {info.get('sold_yesterday', 0)} | tháng này {info.get('sold_month', 0)} | tổng {info.get('sold_total', 0)}")
+                
+                # Chỉ check live khi có hàng tồn trong kho
+                if info['stock'] > 0:
+                    lines.append(f"  Check live: live={live_n} die={die_n} (đã dọn {deleted}) fail={fail_n}")
+                lines.append(f"  Tổng die tích lũy: {info['die_total']}")
             
-            # Chỉ check live khi có hàng tồn trong kho
-            if info['stock'] > 0:
-                lines.append(f"  Check live: live={live_n} die={die_n} (đã dọn {deleted}) fail={fail_n}")
-            lines.append(f"  Tổng die tích lũy: {info['die_total']}")
+            report_lines.append("\n".join(lines))
         
-        report_lines.append("\n".join(lines))
         state[str(sid)] = {"stock": info["stock"], "time": now_str(),
                            "live": live_n, "die": die_n, "fail": fail_n, "deleted": deleted}
 
     save_state(state)
     elapsed = int(time.time() - start)
 
-    # Gộp báo cáo thành 1 tin gửi qua bot doravo
+    # Gộp báo cáo thành 1 tin gửi qua bot doravo (CHỈ gửi khi có biến động)
+    if not report_lines:
+        log("ℹ️ Các sản phẩm up tay hiện đều đang hết hàng từ các ngày trước (không có biến động mới, im lặng không gửi bot).")
+        log(f"[TELEMETRY_METRIC] silent_skip=1 active_products=0 skipped_products={len(SP_MAP)} elapsed_s={elapsed}")
+        return 0
+
     msg = ["📊 BÁO CÁO CHECK LIVE KHO UP TAY", f"⏰ {now_str()} | Thời gian chạy: {elapsed}s", ""]
     for lines in report_lines:
         msg.append(lines)
         msg.append("")
-    changed = []
+
+    active_changed = []
     for sid in SP_MAP:
         skey = str(sid)
         if skey in state:
             s = state[skey]
-            changed.append(f"SP{sid}: {s.get('stock', 0)} (die hôm nay {s.get('die', 0)})")
-    msg.append("Tổng quan: " + ", ".join(changed))
+            # Chỉ liệt kê các SP có hàng hoặc có die mới
+            if s.get('stock', 0) > 0 or s.get('die', 0) > 0:
+                active_changed.append(f"SP{sid}: {s.get('stock', 0)} (die {s.get('die', 0)})")
+    if active_changed:
+        msg.append("Tổng quan SP còn hàng: " + ", ".join(active_changed))
     full = "\n".join(msg)
 
     log("\n" + "=" * 45)
     log(full)
     log("=" * 45)
+    log(f"[TELEMETRY_METRIC] silent_skip=0 active_products={len(report_lines)} elapsed_s={elapsed}")
     send_telegram_bot(full)
     return 0
 
