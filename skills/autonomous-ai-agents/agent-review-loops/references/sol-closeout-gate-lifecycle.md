@@ -49,20 +49,27 @@ When sending diffs, logs, or prompt contexts to ChatGPT Web upstream (`gpt-web-s
   - When diff or logs are truncated (`truncated=True`), `format_manifest()` is injected with the original SHA-256 hash.
   - If a reviewer model returns `APPROVED` on truncated content, the gate must automatically downgrade the verdict to `APPROVED_PARTIAL` and set `ready_to_close: False`.
 
-## 5. Large Diff Closeout Review: Auto-Fallback to Claude AG Sonnet (`ag-sonnet`)
+## 5. Large Diff Closeout Review: Dual-Tier Routing & Auto-Fallback to Claude Opus 4.6 High (`ag-opus`)
 
-When a session introduces large changes (>38 KB diff, e.g. monolithic script creation, large test suites, or multi-module updates):
+When a session introduces large changes (>30 KB diff, e.g. monolithic script creation, large test suites, or multi-module updates):
 - **Problem with Default Sol Reviewer (`review` / `gpt-5.6-sol-high`)**:
   - Upstream ChatGPT-web has a physical HTTP 413 ceiling at 66,724 Bytes, enforced by `sol_payload_guard` at 37,952 Bytes (`CALCULATED_MAX_ALLOWED`).
-  - Diffs >38 KB are automatically truncated by `digest_diff()`, causing Sol Auditor to see truncated files and deduct points (scoring 78–83/100, citing "diff bị lược bớt một phần").
-- **Solution — Claude AG (`ag-sonnet` / `ag-opus-pool`) on OmniRoute (:20129)**:
-  - Claude Sonnet 4.6 (backed by 114-account pool on OmniRoute) has a 200,000-token context window and does not route through ChatGPT-web web-scraping interfaces.
-  - In `closeout_gate.py`, `is_claude_ag` (`"claude" in model or "sonnet" in model or "opus" in model`) bypasses `sol_payload_guard` (`skip_payload_guard=True`), sending the full 60 KB–100 KB+ diff and test evidence intact.
-- **Auto-Fallback Mechanism**:
-  - In `run_gate_pipeline()`, if the default `review` model fails (verdict != APPROVED or score < 85) and diff was truncated, `closeout_gate.py` automatically falls back to `ag-sonnet` to perform a full-context evaluation without truncation.
-- **Direct CLI Execution**:
-  - For known large diffs (>500 lines or >38 KB), invoke directly:
-    `python D:/Taadaa/tools/closeout_gate.py --repo <path> --base HEAD~1 --model ag-sonnet --json-output`
+  - Diffs >30 KB are automatically truncated by `digest_diff()`, causing Sol Auditor to see truncated files and deduct points (scoring 78–83/100, citing "diff bị lược bớt một phần").
+- **Solution — Dual-Tier Smart Routing in `closeout_gate.py`**:
+  - **Normal diffs (≤ 30 KB)**: Default to Sol High (`review` / `chatgpt-web-pool`) on OmniRoute `:20129` for fast, lightweight gate checks.
+  - **Large context (> 30 KB)**: Automatically detect byte size at ingress and route directly to **Claude Opus 4.6 Thinking High (`ag-opus`)** on the 85-account Antigravity pool.
+  - **Payload Guard Bypass**: When `is_claude_ag` (`"claude"`, `"opus"`, `"sonnet"`), `closeout_gate.py` sets `skip_payload_guard=True`, allowing the full 60 KB–100 KB+ diff and test evidence to reach the model un-truncated.
+  - **Multi-tier Auto-Fallback**: If Sol High fails or gets truncated, auto-fallback sequentially to `ag-opus` → `ag-sonnet`.
+- **Direct CLI Execution for Large Diffs**:
+  - For known large diffs (>500 lines or >30 KB), invoke directly:
+    `python D:/Taadaa/tools/closeout_gate.py --repo <path> --base HEAD~1 --model ag-opus --json-output`
+
+## 6. Hard Invariant: Closeout Completion & Anti-Premature "Done" Gate
+
+- **Never declare "xong xuôi trọn vẹn" without Gate Exit Code 0**:
+  - The coordinator is strictly forbidden from claiming the task or session is finished, done, or wrapped up when `closeout_gate.py` returned exit code != 0 or overall score < 85.
+  - Doing so violates the highest-precedence HARD INVARIANT.
+  - If a user sends a single period (`.`) or asks about progress after a gate failure, it is a stern signal that the coordinator hallucinated completion or lost context. Check git diff and re-run gate immediately until `APPROVED` (≥ 85/100) and `ready_to_close: true` are achieved.
 
 ## 4. Closeout Gate Anti-Freeze, Hostname Security & Rubric Validation Invariants
 
