@@ -30,3 +30,43 @@ In `closeout_gate.py` (`run_sol_closeout_state_machine`):
     - Attempt < max_attempts: emits `REMEDIATION_REQUIRED`
     - Attempt >= max_attempts: emits `REVIEW_REMEDIATION_EXHAUSTED` (recoverable=True, terminal=False)
 - Arbitrary nonrecoverable flags without safety, integrity, or unauthorized fallback failures remain recoverable and bounded.
+
+## 3. Sol Web HTTP 413 Payload Ceiling & Truncation Invariants (`sol_payload_guard.py`)
+
+When sending diffs, logs, or prompt contexts to ChatGPT Web upstream (`gpt-web-sol` on OmniRoute `:20129`):
+- **Physical Fracture Threshold**: Upstream Nginx/Cloudflare crashes with HTTP 413 at **66,724 Bytes (~65 KiB)**.
+- **Payload Guard Thresholds**:
+  - `SOL_TARGET_BYTES = 32_768` (32 KiB) target budget.
+  - `SOL_HARD_MAX_BYTES = 37_952` Bytes fail-closed ceiling (under absolute 40,000 Bytes cap).
+- **Serialization & Encoding Discipline**:
+  - Always measure UTF-8 byte length after JSON serialization (`json.dumps(..., ensure_ascii=False).encode('utf-8')`). Never use Python string character length `len(str)`.
+  - Always transmit `data=raw_bytes` with `Content-Type: application/json; charset=utf-8` to prevent HTTP clients from escaping UTF-8 characters into `\uXXXX` sequences that cause byte explosion.
+- **Smart Truncation Priorities**:
+  - **P0 (Never Truncate)**: Rubric, Patch Contract O(1), file stats, git candidate scope.
+  - **P1 (Last to Truncate)**: Error logs, Tracebacks, Assertions with $\pm 4$ lines of context. Line-anchoring regex must bound search to the first 4,096 characters per line to eliminate ReDoS.
+  - **P2 / P3 (First to Truncate)**: Middle hunks of large diffs and non-error log outputs.
+- **Truncation Manifest & Verdict Qualifier**:
+  - When diff or logs are truncated (`truncated=True`), `format_manifest()` is injected with the original SHA-256 hash.
+  - If a reviewer model returns `APPROVED` on truncated content, the gate must automatically downgrade the verdict to `APPROVED_PARTIAL` and set `ready_to_close: False`.
+
+## 4. Closeout Gate Anti-Freeze, Hostname Security & Rubric Validation Invariants
+
+To avoid subagent 600s freezes and ensure tamper-resistant reviews in `closeout_gate.py`:
+- **Global Pipeline Deadline**:
+  - Establish a strict `global_deadline = time.monotonic() + 540.0` at pipeline kickoff (`main()`).
+  - Pass the remaining deadline down to test runners and HTTP client retries (`timeout=(5.0, min(timeout, remaining))`).
+  - Subprocess git commands must enforce `timeout=30s` to prevent OS/lock freezes.
+- **Fail-Closed HTTP & Retry Semantics**:
+  - Do NOT retry on `requests.exceptions.ReadTimeout` or HTTP client error `4xx` (e.g. 400, 413).
+  - Do NOT retry when server returns HTTP 200 with non-JSON body (`ValueError` thrown immediately).
+  - If `global_deadline - time.monotonic() < 60s` before git steps or review, abort immediately with exit code 1.
+- **Strict Hostname & Scheme Validation**:
+  - Hostname must be parsed via `urllib.parse.urlsplit(url).hostname` and match strictly against trusted hosts (`localhost`, `127.0.0.1`, `192.168.110.123`).
+  - Scheme must be `http` or `https`. Reject userinfo (`username`/`password`) to prevent URL spoofing tricks (e.g., `localhost.attacker.com`, `127.0.0.1@evil.com`).
+  - Apply the check to CLI arguments (`--base-url`) and environment variables (`OMNI_ROUTE_URL`, `OMNI_URL`).
+- **Scorecard Rubric Schema Enforcement**:
+  - `ready_to_close` must be strict boolean `True` (reject truthy strings like `"false"` or integers).
+  - Scorecard must contain all required rubric criteria (`set(bd) == set(RUBRIC_MAX_LIMITS)`), with no extraneous keys, negative scores, or scores exceeding category ceilings.
+  - Calculated total from breakdown must match `overall_score` within 1 point (`abs(total - calc_total) <= 1`); otherwise emit `REJECTED`.
+  - In `--repo` mode, passing `--skip-test` triggers an immediate fail-closed exit code 1 (`TEST_SKIPPED`) without invoking costly AI review.
+
