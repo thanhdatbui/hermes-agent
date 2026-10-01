@@ -71,6 +71,14 @@ When a session introduces large changes (>30 KB diff, e.g. monolithic script cre
   - Doing so violates the highest-precedence HARD INVARIANT.
   - If a user sends a single period (`.`) or asks about progress after a gate failure, it is a stern signal that the coordinator hallucinated completion or lost context. Check git diff and re-run gate immediately until `APPROVED` (≥ 85/100) and `ready_to_close: true` are achieved.
 
+## 7. Worker Fix-Up Remediation Patterns for Sol Auditor Scorecard (>= 85 Threshold)
+
+When a worker agent receives a remediation contract after Sol Reviewer scores in the 80–84 range:
+- **Avoid Pure String-Search Tests**: Sol Auditor penalizes tests that only check static file contents (`read_text().find(...)` / ordering). Pair static regression checks with a behavioral runtime unit test using mocks (`MagicMock` for `page.locator`, `page.evaluate`, etc.) to demonstrate functional mechanics.
+- **Explicit State Confirmation over Fire-and-Forget**: When enforcing UI state (e.g. radio buttons, checkboxes, dropdowns), query back the actual DOM state (e.g. `smsRadio.checked`) and feed `confirmed: bool` into telemetry payloads. Sol Auditor routinely docks `Logic Correctness` and `Code Architecture` when operations execute without verifying the post-action DOM state.
+- **Enriched Observability Context**: Ensure telemetry events capture outcome flags (e.g. `{"confirmed": True, "attempt": ...}`) to satisfy Sol's `Telemetry & Obs` rubric.
+
+
 ## 4. Closeout Gate Anti-Freeze, Hostname Security & Rubric Validation Invariants
 
 To avoid subagent 600s freezes and ensure tamper-resistant reviews in `closeout_gate.py`:
