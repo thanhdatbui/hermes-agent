@@ -369,8 +369,7 @@ def main() -> int:
 
     report = [
         f"[BÁO CÁO DỌN DẸP CACHE TIKTOK]",
-        f"• Đã dọn đợt này: {s_count} máy",
-        f"• Lũy kế hôm nay: {len(cleared_today)} máy",
+        f"• Đã hoàn tất: {len(cleared_today)} máy",
     ]
     for cluster in CLUSTERS:
         c_label = cluster["label"]
@@ -379,14 +378,14 @@ def main() -> int:
         c_fail = [(m, r) for m, r in failed_machines if min_m <= m <= max_m]
         s_list = ", ".join(f"{m:02d}" for m in sorted(c_succ)) if c_succ else "None"
         report.append(f"\n🏢 【{c_label}】")
-        report.append(f"• Đã dọn: {len(c_succ)} máy ({s_list})")
+        report.append(f"• Đã hoàn tất: {len(c_succ)} máy ({s_list})")
         if c_fail:
             f_list = ", ".join(f"{m:02d}" for m, _ in sorted(c_fail))
-            report.append(f"• Fail ({len(c_fail)}): {f_list}")
+            report.append(f"• Lỗi ({len(c_fail)}): {f_list}")
             for m, reason in sorted(c_fail):
                 report.append(f"  - Máy {m:02d}: {reason}")
         else:
-            report.append(f"• Fail (0)")
+            report.append(f"• Lỗi (0)")
 
     print("\n".join(report))
     state_data["reported_date"] = today_str

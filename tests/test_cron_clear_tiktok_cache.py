@@ -289,6 +289,24 @@ class TestCronClearTiktokCacheDualCluster(unittest.TestCase):
             printed_text = call[0][0]
             self.assertNotIn("đã hoàn tất", printed_text)
 
+    @patch("cron_clear_tiktok_cache.print")
+    @patch("cron_clear_tiktok_cache.save_state")
+    @patch("cron_clear_tiktok_cache.clear_device_cache")
+    @patch("cron_clear_tiktok_cache.get_connected_devices")
+    @patch("cron_clear_tiktok_cache.load_machine_serials")
+    @patch("cron_clear_tiktok_cache.load_state")
+    @patch("sys.argv", ["cron_clear_tiktok_cache.py", "--force"])
+    def test_report_format_simplified(self, mock_ls, mock_lms, mock_cd, mock_cdc, mock_ss, mock_p):
+        import cron_clear_tiktok_cache as ctc
+        mock_ls.return_value = {"last_date": "2026-10-02", "cleared_machines": [], "machine_retries": {}, "reported_date": None}
+        mock_cd.side_effect = lambda cl: {"ce01": "device"} if cl["name"] == "kibe" else {}
+        mock_lms.side_effect = lambda cl: [(1, "ce01")] if cl["name"] == "kibe" else []
+        mock_cdc.side_effect = lambda m, s, cl: (m, s, True, "OK", cl["name"])
+        ctc.main()
+        out = "\n".join(call[0][0] for call in mock_p.call_args_list)
+        self.assertIn("• Đã hoàn tất: 1 máy", out)
+        self.assertIn("• Lỗi (0)", out)
+
 
 if __name__ == "__main__":
     unittest.main()
