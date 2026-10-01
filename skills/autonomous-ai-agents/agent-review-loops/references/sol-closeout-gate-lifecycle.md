@@ -75,8 +75,10 @@ When a session introduces large changes (>30 KB diff, e.g. monolithic script cre
 
 When a worker agent receives a remediation contract after Sol Reviewer scores in the 80–84 range:
 - **Avoid Pure String-Search Tests**: Sol Auditor penalizes tests that only check static file contents (`read_text().find(...)` / ordering). Pair static regression checks with a behavioral runtime unit test using mocks (`MagicMock` for `page.locator`, `page.evaluate`, etc.) to demonstrate functional mechanics.
+- **Anchor String-Ordering Invariants to Callsites, Not Definitions**: When using `assertLess(idx_first, idx_second)` to verify operational order (e.g. `tel_input.fill` before `enforce_sms_channel`), never search for tokens like `sms_label = ...` that exist inside helper function definitions earlier in the file. Always search for the exact callsite invocation in the execution flow.
 - **Explicit State Confirmation over Fire-and-Forget**: When enforcing UI state (e.g. radio buttons, checkboxes, dropdowns), query back the actual DOM state (e.g. `smsRadio.checked`) and feed `confirmed: bool` into telemetry payloads. Sol Auditor routinely docks `Logic Correctness` and `Code Architecture` when operations execute without verifying the post-action DOM state.
 - **Enriched Observability Context**: Ensure telemetry events capture outcome flags (e.g. `{"confirmed": True, "attempt": ...}`) to satisfy Sol's `Telemetry & Obs` rubric.
+- **Base Ref Selection & Untracked/Monolithic File Contamination**: When invoking `closeout_gate.py`, `--base` must refer strictly to the commit immediately before the targeted fix. If `--base` spans a commit that added a new monolithic script (>800 lines), the extracted diff explodes (>50KB), triggering `sol_payload_guard` truncation and leading Sol Auditor to reject with `NEED_CONTEXT: <file>(partial)` and low scores (~76/100).
 
 
 ## 4. Closeout Gate Anti-Freeze, Hostname Security & Rubric Validation Invariants
