@@ -86,6 +86,14 @@ When a worker agent receives a remediation contract after Sol Reviewer scores in
 - **Structured Telemetry Invariants (`log_telemetry_event`)**: Implement structured dictionary logs with ISO UTC timestamp, explicit event names (e.g. `stage_execution_result`, `scheduler_cooldown_skip`), and subsystem identifiers (`subsystem: gpm_supervisor`) to reliably score $\ge 13/15$ on Telemetry & Observability.
 - **Reviewer Model Timeout Guard**: When using `--model ag-opus-pool`, high server load can cause 300s read timeouts. Prefer default `review` or `chatgpt-web/gpt-5.6-sol-high` for standard diffs $\le 30$ KB, where execution completes reliably in 30-60s.
 - **Base Ref Selection & Untracked/Monolithic File Contamination**: When invoking `closeout_gate.py`, `--base` must refer strictly to the commit immediately before the targeted fix. If `--base` spans a commit that added a new monolithic script (>800 lines), the extracted diff explodes (>50KB), triggering `sol_payload_guard` truncation and leading Sol Auditor to reject with `NEED_CONTEXT: <file>(partial)` and low scores (~76/100).
+- **Staged Repo Mode vs Raw `--input` File Mode**:
+  - Tuyệt đối TRÁNH xuất diff thô nhiều file rồi gọi `--input <patch_file>`. Ở chế độ `--input`, `closeout_gate.py` coi toàn bộ file là plain text và đưa qua `focus_log` cắt xén payload, dẫn đến việc mất test evidence và reviewer trừ điểm/reject (68-83đ) với nhận xét: *"Phần review bị giới hạn vì input là diff/log đã bị cắt... không có đầy đủ test run output"*.
+  - **Golden Path**: Stage đúng các file source + test đã sửa bằng `git add <file1> <file2>`, sau đó gọi:
+    `python D:/Taadaa/tools/closeout_gate.py --repo <path> --json-output`
+    Ở chế độ `--repo` có staged changes, `closeout_gate` tự động bind SHA256 audit binding, trích xuất focused tests tương ứng từ staged files, chạy pytest thực tế đưa test log vào payload, và phân bổ ngân sách byte chuẩn giữa diff và test evidence mà không bị cắt cụt.
+- **Coordinator Anti-Pattern — Cấm Hỏi Lại Khi Đã Nhận Lệnh Thực Thi ("Sửa đi" -> Cấm xin phép lần 2)**:
+  - Khi user đã phát lệnh rõ ràng `"Sửa đi gọi sol tư vấn"`, coordinator tham vấn Sol xong BẮT BUỘC bắt tay vào thực thi ngay lập tức.
+  - Tuyệt đối CẤM dừng lại hỏi: *"Sếp duyệt bản vẽ này thì em bắt đầu làm..."*. Việc hỏi lại sau khi đã có lệnh thực thi bị coi là trốn việc/đóng băng, kích hoạt phản ứng tiêu cực (`"????"`) từ user.
 
 
 ## 4. Closeout Gate Anti-Freeze, Hostname Security & Rubric Validation Invariants
