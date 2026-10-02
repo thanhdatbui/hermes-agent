@@ -152,23 +152,18 @@ def run_tiktok_2fa_batch(dry_run: bool = False) -> tuple[int, str]:
         return 1, f"Loi chay TikTok 2FA: {exc}"
 
 
-def parse_summary_counts(output: str, log_dir_hint: Path | None = None, min_mtime: float | None = None) -> tuple[int, int, int]:
-    # 1. Trích xuất chuẩn TOTAL=... SUCCESS=... FAILED=...
-    m = re.search(r"TOTAL=(\d+)\s+SUCCESS=(\d+)\s+FAILED=(\d+)", output)
-    if m:
-        return int(m.group(1)), int(m.group(2)), int(m.group(3))
+class SummaryResult(dict):
+    def __iter__(self):
+        return iter((self.get("total", 0), self.get("success", 0), self.get("failed", 0)))
 
-    # 2. Bóc tách bảng kết quả TikTok 2FA (machine | source_row | username | status | reason)
-    table_rows = re.findall(r"^\s*(\d+)\s*\|\s*(\d+)\s*\|\s*[^|]+\|\s*(\w+)", output, re.M)
-    if table_rows:
-        succs = sum(1 for r in table_rows if r[2].lower() == "success")
-        fails = sum(1 for r in table_rows if r[2].lower() in ("failed", "fail", "error"))
-        skips = sum(1 for r in table_rows if r[2].lower() in ("skipped", "skip"))
-        tot = succs + fails + skips
-        if tot > 0:
-            return tot, succs, fails
 
-    # 3. Fallback đọc summary.json từ runtime logs (cho Reg Gmail - hỗ trợ UTF-8 BOM từ PowerShell)
+def parse_chatgpt_warmup_counts(log_dir_hint: Path | None = None, min_mtime: float | None = None) -> tuple[int, int]:
+    """Deprecated: ChatGPT registration on S7 has been disabled."""
+    return 0, 0
+
+
+def parse_summary_counts(output: str, log_dir_hint: Path | None = None, min_mtime: float | None = None) -> SummaryResult:
+    # 1. Fallback đọc summary.json từ runtime logs (cho Reg Gmail - hỗ trợ UTF-8 BOM từ PowerShell)
     if log_dir_hint and log_dir_hint.is_dir():
         try:
             candidates = list(log_dir_hint.glob("logs_parallel_*/summary.json"))
@@ -177,37 +172,34 @@ def parse_summary_counts(output: str, log_dir_hint: Path | None = None, min_mtim
             if candidates:
                 candidates.sort(key=lambda p: p.stat().st_mtime, reverse=True)
                 data = json.loads(candidates[0].read_text(encoding="utf-8-sig"))
-                return int(data.get("total", 0)), int(data.get("success", 0)), int(data.get("failed", 0))
+                return SummaryResult({
+                    "total": int(data.get("total", 0)),
+                    "success": int(data.get("success", 0)),
+                    "failed": int(data.get("failed", 0)),
+                    "skip_safe": int(data.get("skip_safe", 0) or 0),
+                    "failure_breakdown": data.get("failure_breakdown") or {},
+                })
         except Exception:
             pass
 
-    # 4. Fallback pattern cũ
+    # 2. Trích xuất chuẩn TOTAL=... SUCCESS=... FAILED=...
+    m = re.search(r"TOTAL=(\d+)\s+SUCCESS=(\d+)\s+FAILED=(\d+)", output)
+    if m:
+        return SummaryResult({"total": int(m.group(1)), "success": int(m.group(2)), "failed": int(m.group(3)), "skip_safe": 0, "failure_breakdown": {}})
+
+    # 3. Bóc tách bảng kết quả TikTok 2FA (machine | source_row | username | status | reason)
+    table_rows = re.findall(r"^\s*(\d+)\s*\|\s*(\d+)\s*\|\s*[^|]+\|\s*(\w+)", output, re.M)
+    if table_rows:
+        succs = sum(1 for r in table_rows if r[2].lower() == "success")
+        fails = sum(1 for r in table_rows if r[2].lower() in ("failed", "fail", "error"))
+        skips = sum(1 for r in table_rows if r[2].lower() in ("skipped", "skip"))
+        tot = succs + fails + skips
+        if tot > 0:
+            return SummaryResult({"total": tot, "success": succs, "failed": fails, "skip_safe": skips, "failure_breakdown": {}})
+
     succs = len(re.findall(r"Machine\s+\d+.*(?:SUCCESS|OK)", output, re.I))
     fails = len(re.findall(r"Machine\s+\d+.*(?:FAIL|FAILED|ERROR)", output, re.I))
-    return succs + fails, succs, fails
-
-
-def parse_chatgpt_warmup_counts(log_dir_hint: Path | None = None, min_mtime: float | None = None) -> tuple[int, int]:
-    if not log_dir_hint or not log_dir_hint.is_dir():
-        return 0, 0
-    try:
-        candidates = list(log_dir_hint.glob("logs_parallel_*/machine_*.log"))
-        if min_mtime is not None:
-            candidates = [p for p in candidates if p.stat().st_mtime >= min_mtime]
-        ok_cnt = 0
-        fail_cnt = 0
-        for p in candidates:
-            try:
-                txt = p.read_text(encoding="utf-8", errors="ignore")
-                if "✓ [WARMUP_CHATGPT]" in txt:
-                    ok_cnt += 1
-                elif "⚠ [WARMUP_CHATGPT]" in txt:
-                    fail_cnt += 1
-            except Exception:
-                pass
-        return ok_cnt, fail_cnt
-    except Exception:
-        return 0, 0
+    return SummaryResult({"total": succs + fails, "success": succs, "failed": fails, "skip_safe": 0, "failure_breakdown": {}})
 
 
 def main() -> int:
@@ -249,19 +241,17 @@ def main() -> int:
     if args.lane in ("gmail", "all"):
         # Phase 1: Reg Gmail
         g_code, g_out = run_gmail_batch(dry_run=args.dry_run)
-
-    if args.lane in ("tiktok", "all"):
-        # Preserve the existing chain order for --lane all: Gmail first, then TikTok.
-        if args.lane == "all" and not args.dry_run:
-            time.sleep(15)
+        if args.lane == "all":
+            sys.stderr.write("NOTE: --lane all backward-compatible chỉ chạy lane Gmail; TikTok cần trigger riêng (--lane tiktok).\n")
+    elif args.lane == "tiktok":
+        # Phase 2: Add 2FA TikTok (trigger riêng, không chain sau Gmail)
         t2fa_code, t2fa_out = run_tiktok_2fa_batch(dry_run=args.dry_run)
 
     end_dt = datetime.now(HCMC)
     duration_min = max(1, int((end_dt - start_dt).total_seconds() // 60))
 
     lane_is_gmail = args.lane in ("gmail", "all")
-    lane_is_tiktok = args.lane in ("tiktok", "all")
-    lane_label = args.lane.upper()
+    lane_label = "GMAIL" if lane_is_gmail else "TIKTOK"
     report_lines = [
         f"[BÁO CÁO CHUỖI SAU CA TRƯA] [LANE {lane_label}]",
         f"- Thời gian: {start_dt.strftime('%H:%M')} -> {end_dt.strftime('%H:%M')} ({duration_min} phút)",
@@ -269,59 +259,60 @@ def main() -> int:
     ]
 
     if lane_is_gmail:
-        g_tot, g_suc, g_fail = parse_summary_counts(
+        g_res = parse_summary_counts(
             g_out,
             log_dir_hint=Path("D:/CodexRuntime/codex_gmail_debug-register-gmail"),
             min_mtime=start_epoch
         )
-        cg_ok, cg_fail = parse_chatgpt_warmup_counts(
-            log_dir_hint=Path("D:/CodexRuntime/codex_gmail_debug-register-gmail"),
-            min_mtime=start_epoch
-        )
+        g_tot, g_suc = g_res["total"], g_res["success"]
+        g_skip = g_res.get("skip_safe", 0)
+        bk = g_res.get("failure_breakdown") or {}
+        if "platform_errors" in bk or "script_errors" in bk:
+            p_err = {k: v for k, v in bk.get("platform_errors", {}).items() if v > 0}
+            s_err = {k: v for k, v in bk.get("script_errors", {}).items() if v > 0}
+        else:
+            p_err = {k: bk.get(k, 0) for k in ("phone_verify", "account_creation_error") if bk.get(k, 0) > 0}
+            s_err = {k: bk.get(k, 0) for k in ("failed_cleanup", "failed_other") if bk.get(k, 0) > 0}
+        p_cnt = sum(p_err.values())
+        s_cnt = sum(s_err.values())
+        p_str = f" ({p_cnt}): " + ", ".join(f"{k}: {v}" for k, v in p_err.items()) if p_cnt > 0 else ": 0"
+        s_str = f" ({s_cnt}): " + ", ".join(f"{k}: {v}" for k, v in s_err.items()) if s_cnt > 0 else ": 0"
+
         if g_tot == 0 and g_code != 0:
             phase1_header = f"- Phase 1 (Reg Gmail - Code {g_code}): LỖI KHỞI ĐỘNG RUNNER"
         else:
             phase1_header = f"- Phase 1 (Reg Gmail - Code {g_code}):"
         report_lines.extend([
             phase1_header,
-            f"  + Tổng máy: {g_tot}",
-            f"  + Success ({g_suc})",
-            *(
-                [f"    * ChatGPT linked: {cg_ok}/{cg_ok + cg_fail}" + (f" ({cg_fail} fail)" if cg_fail > 0 else "")]
-                if (cg_ok + cg_fail > 0)
-                else []
-            ),
-            f"  + Fail ({g_fail})",
-            "",
+            f"  • Đã hoàn tất: {g_suc} máy",
         ])
+        if g_skip > 0:
+            report_lines.append(f"  • Bỏ qua an toàn: {g_skip} máy (đầy slot)")
+        report_lines.append(f"  • Lỗi nền tảng{p_str}")
+        report_lines.append(f"  • Lỗi script{s_str}")
 
-    if lane_is_tiktok:
-        t_tot, t_suc, t_fail = parse_summary_counts(t2fa_out)
+    if args.lane == "tiktok":
+        t_res = parse_summary_counts(t2fa_out)
+        t_tot, t_suc, t_fail = t_res["total"], t_res["success"], t_res["failed"]
         if t_tot == 0 and t2fa_code not in (0, 4):
             phase2_header = f"- Phase 2 (Add 2FA TikTok - Code {t2fa_code}): LỖI KHỞI ĐỘNG RUNNER"
         else:
             phase2_header = f"- Phase 2 (Add 2FA TikTok - Code {t2fa_code}):"
         report_lines.extend([
             phase2_header,
-            f"  + Tổng máy: {t_tot}",
-            f"  + Success ({t_suc})",
-            f"  + Fail ({t_fail})",
+            f"  • Đã hoàn tất: {t_suc} máy",
+            f"  • Lỗi ({t_fail})" if t_fail > 0 else "  • Lỗi: 0",
         ])
 
     print("\n".join(report_lines))
 
     if not args.dry_run:
-        if args.lane == "all":
-            lane_status = "success" if (g_code == 0 and t2fa_code == 0) else "failed"
-        elif args.lane == "gmail":
-            lane_status = "success" if g_code == 0 else "failed"
-        else:
-            lane_status = "success" if t2fa_code == 0 else "failed"
+        lane_code = g_code if lane_is_gmail else t2fa_code
         save_state(today_str, {
             "gmail_code": g_code,
             "2fa_code": t2fa_code,
             "lane": args.lane,
-            "lane_status": lane_status,
+            "lane_status": "success" if lane_code == 0 else "failed",
         })
 
     return 0
