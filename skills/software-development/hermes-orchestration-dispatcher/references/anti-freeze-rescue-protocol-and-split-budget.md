@@ -39,14 +39,27 @@
 2. **Ngân sách Test riêng biệt:** Các file Unit Test (`tests/**`, `test_*.py`) được cấp ngân sách riêng tối đa **<= 100 dòng diff** phục vụ cập nhật assert/mock tương ứng với logic mới.
 3. **CẤM TUYỆT ĐỐI** đếm gộp số dòng của file test vào trần logic để viện cớ "vượt ngân sách O(1)" nhằm từ chối sửa bài.
 
-### 📌 ĐIỀU KHOẢN 2: QUY TRÌNH TIẾP QUẢN CỨU HỘ KHI WORKER TIMEOUT (WORKER RESCUE PROTOCOL)
-1. Khi Worker bị TRANSIENT Timeout hoặc hết lượt nhưng **ĐÃ KỊP GHI SỬA ĐÚNG PHẦN CODE LOGIC** (trạng thái `git status` có `M` ở file logic và cú pháp hoàn toàn hợp lệ):
-   - Coordinator **BẮT BUỘC PHẢI TIẾP QUẢN HIỆN TRƯỜNG**, không được coi đây là "target bẩn bị cấm".
+### 📌 ĐIỀU KHOẢN 2: QUY TRÌNH TIẾP QUẢN CỨU HỘ KHI WORKER TIMEOUT (WORKER RESCUE & CONTROLLED RECOVERY)
+1. **Phân loại Workspace Dirty (Trusted vs Foreign):**
+   - **Trusted Dirty:** Thay đổi do chính Worker trong cùng task tạo ra, code logic trong scope đã xong và hợp lệ -> Coordinator BẮT BUỘC TIẾP QUẢN (Controlled Recovery), không được coi là "target bẩn bị cấm".
+   - **Foreign Dirty:** File rác ngoài scope hoặc không rõ nguồn -> Mới cần cách ly hoặc escalate.
+2. Khi Worker bị TRANSIENT Timeout hoặc hết lượt nhưng **ĐÃ KỊP GHI SỬA ĐÚNG PHẦN CODE LOGIC** (trạng thái `git status` có `M` ở file logic và cú pháp hoàn toàn hợp lệ):
+   - Đây là **Giao dịch bị ngắt quãng (Interrupted Transaction Checkpoint)**, không phải thất bại.
+   - Coordinator **BẮT BUỘC PHẢI TIẾP QUẢN HIỆN TRƯỜNG** từ checkpoint hợp lệ cuối cùng.
    - Coordinator có toàn quyền tự tay patch nốt các dòng assert trong file test và chạy lệnh test verify focused < 30s để đưa task về **DONE**.
-2. **Định nghĩa chính xác "Target bẩn bị cấm":** CHỈ ĐƯỢC COI LÀ "TARGET BẨN" khi:
+3. **Định nghĩa chính xác "Target bẩn bị cấm":** CHỈ ĐƯỢC COI LÀ "TARGET BẨN" khi:
    - Worker sửa sinh lỗi cú pháp nghiêm trọng (`SyntaxError`).
-   - Hoặc Worker sửa phá hoại lan man sang các file ngoài Scope Lock.
+   - Hoặc Worker sửa phá hoại lan man sang các file ngoài Scope Lock (Foreign Dirty).
    - Nếu file logic sửa đúng scope và hợp lệ -> Đó là "Tài sản hoàn thành dở dang", Coordinator có trách nhiệm giải cứu và hoàn thiện nốt.
+
+---
+
+## 4. Bổ Sung Từ Sol Web Postmortem (Safety Theater vs Mission-First Safety)
+1. **Mission-First Safety Principle:** Quy tắc an toàn sinh ra để phục vụ và bảo vệ sứ mệnh hoàn thành công việc, không phải để thay thế mục tiêu. Coordinator tuyệt đối không được từ chối hành động cứu hộ chỉ vì vượt qua một chỉ số hình thức (formal threshold) khi scope đã rõ ràng và rủi ro được kiểm soát.
+2. **Semantic Risk thay cho Line Count Proxy:** Rủi ro phải đo lường bằng:
+   `Risk = Blast Radius x Semantic Complexity x Reversibility x Unknown Dependency`.
+   Không được dùng số dòng đếm gộp cơ học để suy diễn độ nguy hiểm.
+3. **Đổi tên nhận thức L2:** Coi L2 là **Controlled Recovery Mode** (chế độ phục hồi có kiểm soát để đóng transaction dở dang), xóa bỏ tâm lý sợ hãi "mổ xẻ khẩn cấp" dẫn đến phản xạ né tránh trách nhiệm.
 
 ### 📌 ĐIỀU KHOẢN 3: TƯỚC BỎ "KIM BÀI MIỄN TỬ" CỦA CỜ BLOCKED (ANTI-MALICIOUS COMPLIANCE)
 1. Đóng băng task khi **Exact Diff đã rõ mười mươi trong tay** (exact_diff_ready = TRUE) bị coi là **VI PHẠM KỶ LUẬT NGHIÊM TRỌNG (HÀNH VI LUNA / BẠI LIỆT TRỐN VIỆC)**.
