@@ -49,9 +49,9 @@ GPM_DB           = Path(r"C:\Users\Kibe\AppData\Local\Programs\GPMLogin\profile\
 GPM_SCRIPT       = Path(r"D:\Taadaa\GPM auto\scripts\run_oauth_s7_pipeline.py")
 PYTHON_EXE       = sys.executable
 
-MAX_WORKERS        = 5     # 5 workers cuốn chiếu theo chỉ thị user
+MAX_WORKERS        = 5     # 5 workers song song khác proxy khác máy theo chỉ thị user
 MAX_LOGINS_PER_PROXY = 2   # tối đa 2 acc / proxy / ngày
-MIN_IDLE_BUFFER_MIN  = 45  # cách ca tiếp theo ít nhất 45 phút
+MIN_IDLE_BUFFER_MIN  = 10  # cách ca tiếp theo ít nhất 10 phút
 
 def log(msg: str):
     now_str = datetime.now(HCMC).strftime("%H:%M:%S")
@@ -397,6 +397,7 @@ def get_candidates(today_str: str, processed: list[str]) -> list[dict]:
             data = json.loads(STATUS_JSON.read_text(encoding="utf-8"))
             omniroute_success.update(k.lower() for k in data.get("omniroute_success", {}).keys())
             excluded_emails.update(k.lower() for k in data.get("excluded_khoalee", []))
+            excluded_emails.update(k.lower() for k in data.get("antigravity_blacklist", []))
             excluded_emails.update(k.lower() for k in data.get("wrong_password_or_checkpoint", {}).keys())
 
             for em, info in data.get("ip_cooling_recaptcha", {}).items():
@@ -488,7 +489,8 @@ def get_candidates(today_str: str, processed: list[str]) -> list[dict]:
                             pass
 
                 is_lost_session = (em_l in nurture_needs_login)
-                if em_l in seen_emails or em_l in excluded_emails:
+                # Cho phép tài khoản mất session (is_lost_session=True) bypass qua seen_emails để được cứu phiên trong cùng ngày
+                if (em_l in seen_emails and not is_lost_session) or em_l in excluded_emails:
                     continue
                 if em_l in omniroute_success and not is_lost_session:
                     continue
@@ -676,23 +678,37 @@ def run_login(c: dict) -> dict:
                 except Exception as ex_nur:
                     log(f"[M{mid:02d}] Cập nhật nurture state thất bại (bỏ qua): {ex_nur}")
 
-            dual_script = r"D:\Taadaa\GPM auto\scripts\batch_dual_oauth_5workers.py"
-            if os.path.exists(dual_script):
-                log(f"[M{mid:02d}] Chạy tiếp Dual OAuth (ChatGPT-Web & Codex) cho {email}...")
-                try:
-                    proc_dual = subprocess.run(
-                        [PYTHON_EXE, dual_script, "--email", email],
-                        capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=300
-                    )
-                    log(f"[M{mid:02d}] Dual OAuth output: {proc_dual.stdout[:200]}")
-                except Exception as ex_dual:
-                    log(f"[M{mid:02d}] Dual OAuth error (bỏ qua): {ex_dual}")
+            # HARD GUARD STATE-MACHINE: CẤM gọi Dual OAuth Google SSO ngay sau login để chống reCAPTCHA/SMS checkpoint
+            # Tài khoản chuyển sang trạng thái GPM_SOAKING để cron nuôi lướt web trước.
+            log(f"[M{mid:02d}] Chuyển {email} sang trạng thái GPM_SOAKING chờ cron nuôi tự nhiên.")
         else:
             log(f"[M{mid:02d}] ✗ {email}")
-        return {**c, "status": "SUCCESS" if success else "FAIL"}
+            if "BLOCKED_WRONG_PASSWORD" in combined:
+                log(f"[M{mid:02d}] 🛑 PHÁT HIỆN SAI MẬT KHẨU HOẶC RATE LIMIT CHO {email}! Ghi vào blacklist wrong_password_or_checkpoint!")
+                try:
+                    if STATUS_JSON.exists():
+                        st_data = json.loads(STATUS_JSON.read_text(encoding="utf-8"))
+                        st_data.setdefault("wrong_password_or_checkpoint", {})[email] = {
+                            "mid": mid,
+                            "at": datetime.now().isoformat(),
+                            "reason": "BLOCKED_WRONG_PASSWORD"
+                        }
+                        STATUS_JSON.write_text(json.dumps(st_data, ensure_ascii=False, indent=2), encoding="utf-8")
+                except Exception as e_st:
+                    log(f"[M{mid:02d}] Lỗi ghi wrong_password vào status json: {e_st}")
+                return {**c, "status": "BLOCKED_WRONG_PASSWORD", "fail_type": "PLATFORM"}
+
+            # Phân loại lỗi: Nền tảng (khóa IP) vs Script (được thử lại IP)
+            is_platform_error = any(kw in combined for kw in [
+                "PHONE_CHECKPOINT", "SMS_TIMEOUT", "challenge/iap", "challenge/pwd",
+                "challenge/recaptcha", "Google Hard Phone", "reCAPTCHA", "rejected"
+            ])
+            fail_type = "PLATFORM" if is_platform_error else "SCRIPT"
+            return {**c, "status": "FAIL", "fail_type": fail_type}
+        return {**c, "status": "SUCCESS"}
     except Exception as ex:
         log(f"[M{mid:02d}] ERR {email}: {ex}")
-        return {**c, "status": "FAIL", "error": str(ex)}
+        return {**c, "status": "FAIL", "fail_type": "SCRIPT", "error": str(ex)}
 def _format_summary_report(total_success: int, total_fail: int, shift_label: str = "TỐI", shift_desc: str = "tối") -> str:
     live_anti_count = len(_get_live_omniroute_antigravity_emails())
     session_count = len(_get_gpm_profiles_with_google_session())
@@ -782,6 +798,41 @@ def main():
         ready.append(c)
 
     if not ready:
+        now_hcm = datetime.now(HCMC)
+        is_late = (
+            (shift_code == "SANG" and (now_hcm.hour > 8 or (now_hcm.hour == 8 and now_hcm.minute >= 40)))
+            or (shift_code == "TRUA" and (now_hcm.hour > 13 or (now_hcm.hour == 13 and now_hcm.minute >= 40)))
+            or (shift_code == "TOI" and (now_hcm.hour == 23 and now_hcm.minute >= 30))
+        )
+        if is_late:
+            log(f"Hết giờ ca {shift_desc} ({now_hcm.strftime('%H:%M')}) nhưng còn máy bận. Chốt ca và gửi báo cáo.")
+            log_telemetry_metric("shift_forced_close", {
+                "shift": shift_code,
+                "busy_candidates_count": len(candidates),
+                "total_success": total_success,
+                "total_fail": total_fail,
+            })
+            if shift_code not in reported_shifts:
+                if total_success > 0 or total_fail > 0:
+                    print(_format_summary_report(total_success, total_fail, shift_label, shift_desc))
+                reported_shifts.append(shift_code)
+            if shift_code not in finished_shifts:
+                finished_shifts.append(shift_code)
+            all_day_finished = {"SANG", "TRUA", "TOI"}.issubset(set(finished_shifts))
+            state.update({
+                "date": today_str,
+                "processed": processed,
+                "proxy_count": dict(proxy_count),
+                "total_success": total_success,
+                "total_fail": total_fail,
+                "reported": bool(reported_shifts),
+                "finished": all_day_finished,
+                "finished_shifts": finished_shifts,
+                "reported_shifts": reported_shifts,
+            })
+            STATE_FILE.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+            return 0
+
         log(f"Không có máy nào thỏa mãn (rảnh + online ADB) lúc này ({len(candidates)} candidates đang chờ), chờ tick sau.")
         return 0
 
@@ -798,9 +849,13 @@ def main():
             res = fut.result()
             processed.append(res["email"])
             port = res.get("port")
-            if port:
+            fail_type = res.get("fail_type", "PLATFORM")
+            # QUY TẮC AN TOÀN FARM:
+            # - Thành công HOẶC lỗi do nền tảng (Google challenge/block) -> tính vào quota proxy để bảo vệ IP
+            # - Lỗi do script / local (GPM launch fail, Excel thiếu pass...) -> KHÔNG tính, cho phép IP thử lại acc khác
+            if port and (res.get("status") == "SUCCESS" or fail_type == "PLATFORM"):
                 proxy_count[port] = proxy_count.get(port, 0) + 1
-            if res["status"] == "SUCCESS":
+            if res.get("status") == "SUCCESS":
                 success_n += 1
             else:
                 fail_n += 1

@@ -539,3 +539,43 @@ class TestNurtureAndRecoveryFlow:
         assert '"event": "test_event"' in err
         assert '"key": "val"' in err
 
+    @patch("post_evening_gpm_login_watchdog.is_within_time_window", return_value=True)
+    @patch("post_evening_gpm_login_watchdog.is_avatar_done", return_value=True)
+    @patch("post_evening_gpm_login_watchdog.sync_gpm_profiles_lifecycle")
+    @patch("post_evening_gpm_login_watchdog.get_candidates")
+    @patch("post_evening_gpm_login_watchdog.get_online_adb_serials", return_value=[])
+    @patch("post_evening_gpm_login_watchdog.get_machine_serial_map", return_value={})
+    @patch("post_evening_gpm_login_watchdog.STATE_FILE")
+    def test_main_not_ready_but_is_late_finalizes_shift(
+        self, mock_state_file, mock_smap, mock_adb, mock_cand, mock_sync, mock_avatar, mock_window, capsys
+    ):
+        mock_cand.return_value = ([{"email": "c1@gmail.com", "mid": 1}], {})
+        mock_state_file.exists.return_value = True
+        init_state = {
+            "date": "2026-10-02",
+            "processed": ["p1@gmail.com"],
+            "total_success": 1,
+            "total_fail": 0,
+            "finished_shifts": [],
+            "reported_shifts": [],
+            "proxy_count": {},
+        }
+        mock_state_file.read_text.return_value = json.dumps(init_state)
+        written_data = []
+        mock_state_file.write_text.side_effect = lambda txt, encoding: written_data.append(txt)
+
+        noon_late = datetime(2026, 10, 2, 13, 45, tzinfo=HCMC)
+        with patch.object(watchdog, "datetime") as mock_dt:
+            mock_dt.now.return_value = noon_late
+            mock_dt.fromisoformat = datetime.fromisoformat
+            mock_dt.strftime = datetime.strftime
+            res = watchdog.main()
+
+        assert res == 0
+        out = capsys.readouterr().out
+        assert "[LOGIN GPM TRƯA - TỔNG KẾT]" in out
+        assert len(written_data) == 1
+        saved = json.loads(written_data[0])
+        assert "TRUA" in saved["reported_shifts"]
+        assert "TRUA" in saved["finished_shifts"]
+
