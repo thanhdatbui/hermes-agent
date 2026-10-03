@@ -373,18 +373,15 @@ powershell -NoProfile -ExecutionPolicy Bypass -File D:\Taadaa\tools\invoke-openc
 
 Khi `claude -p` không review được do quota/session limit, rate limit, billing hoặc provider unavailable, **không chờ reset và không bỏ review gate**.
 
-**Claude audit timeout ≥10 phút (600s):** Full Claude audit có thể chạy vài phút. Luôn set `timeout_ms=600000` (hoặc wait ≥600s) trước khi kết luận Claude fail. **Timeout ngắn của wrapper KHÔNG phải bằng chứng quota/auth/Claude fail** — phải phân loại lỗi thật trước khi fallback (theo `D:\Taadaa\AGENTS.md`).
+**Claude audit timeout ≥10 phút (600s):** Full Claude audit có thể chạy vài phút. Luôn set `timeout_ms=600000` (wait ≥600s) trước khi kết luận Claude fail. **Timeout ngắn của wrapper KHÔNG phải bằng chứng Claude fail**.
 
-Quota gate (theo `D:\Taadaa\AGENTS.md`): trước mỗi call Claude chạy `D:\Taadaa\tools\claude-quota-preflight.ps1 <ledger>` — exit 0 = allow; 20 = 5h ≥85% block; **22 = weekly ≥90% block (dừng hẳn Claude, không dùng nữa)**; 21 = unavailable block. Weekly 90% là dừng cứng, không chờ reset 5h. **`-LedgerPath` là mandatory param — chạy thiếu sẽ lỗi `MissingMandatoryParameter` (hit 2026-08-20). Ledger thật nằm tại `D:\CodexRuntime\<repo>\audit\claude-quota-ledger.jsonl` (vd `D:\CodexRuntime\automation-core\audit\claude-quota-ledger.jsonl`); có thể dùng ledger cũ của repo khác vì chỉ để ghi event + probe quota.**
+**Quota gate & Autonomous Loop Invariants:**
+- Chạy `D:\Taadaa\tools\claude-quota-preflight.ps1 -LedgerPath <path>` trước mỗi call (exit 0=allow, 20=5h block, 22=weekly block).
+- **Cấm dừng lại xin phép giữa chừng**: Khi nhận lệnh "Làm đến khi duyệt thì thôi", coordinator TUYỆT ĐỐI CẤM dừng lại hỏi ý kiến user giữa các vòng lặp. Tự động fix findings, chạy test, re-dispatch đến khi APPROVED.
+- **Tool execution vs Print-mode**: Cấm dùng `--tools ""` khi Claude làm auditor độc lập; bắt buộc `--allowedTools "Bash,Read,Glob" --max-turns 10` để Claude tự chạy pytest/git (chi tiết: `references/claude-print-mode-review-prompt.md`).
+- **UI Selector Hard Guard Pattern**: Chi tiết kiến trúc Layout Registry + Golden XML Corpus + MANIFEST.lock + Guard R0..R5 xem tại `references/ui-selector-layout-registry-and-hard-guard.md`.
 
-Fallback chỉ thay vai trò **reviewer/auditor**, không thay Codex implementer.
-
-Thứ tự model fallback:
-1. `freemodel/claude-opus-4-8` (`opencode run --agent plan --auto --variant max`)
-2. `opencode-go/grok-4.5` (FreeModel thường hết nhanh)
-3. `opencode-go/glm-5.2`
-
-Smoke-test trước lần dùng đầu: `opencode run --model <m> 'Respond with exactly: OPENCODE_FALLBACK_READY'`.
+Fallback reviewer: `freemodel/claude-opus-4-8` → `opencode-go/grok-4.5` → `opencode-go/glm-5.2` (smoke-test trước: `opencode run --model <m> 'Respond with exactly: OPENCODE_FALLBACK_READY'`).
 
 Prompt phải giữ scope read-only, verdict `APPROVED | MINOR_FIXES | REJECT` ở dòng đầu.
 
