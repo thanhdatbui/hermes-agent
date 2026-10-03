@@ -94,6 +94,11 @@ When a worker agent receives a remediation contract after Sol Reviewer scores in
 - **Coordinator Anti-Pattern — Cấm Hỏi Lại Khi Đã Nhận Lệnh Thực Thi ("Sửa đi" -> Cấm xin phép lần 2)**:
   - Khi user đã phát lệnh rõ ràng `"Sửa đi gọi sol tư vấn"`, coordinator tham vấn Sol xong BẮT BUỘC bắt tay vào thực thi ngay lập tức.
   - Tuyệt đối CẤM dừng lại hỏi: *"Sếp duyệt bản vẽ này thì em bắt đầu làm..."*. Việc hỏi lại sau khi đã có lệnh thực thi bị coi là trốn việc/đóng băng, kích hoạt phản ứng tiêu cực (`"????"`) từ user.
+- **Coordinator Anti-Pattern — Lệnh "Làm đến khi Claude duyệt thì thôi": CẤM Dừng Lại Giữa Chừng Khi Chưa APPROVED**:
+  - Khi user phát lệnh `"Làm đi cho claude duyệt thì thôi"`, `"làm đến khi duyệt"`, `"chấm đến khi đạt"`:
+  - Vòng lặp thẩm định là BẮT BUỘC KHÉP KÍN (Autonomous Remediation Loop).
+  - Khi Claude Code CLI hoặc reviewer trả về `REJECT` / `CHANGES REQUESTED` kèm findings: Tuyệt đối CẤM dừng lại báo cáo findings rồi hỏi xin phép user (*"Anh có đồng ý để em sửa theo Claude không?"*). Đây là vi phạm nghiêm trọng khiến user bực mình: *"Ủa t yêu cầu rõ ràng làm đến khi claude duyệt mà"*.
+  - Hành động chuẩn: Tự động phân tích từng điểm lỗi của reviewer, patch code & tests, chạy lại test suite focused, và re-invoke reviewer lặp lại cho đến khi đạt verdict `APPROVED` chính thức.
 
 
 ## 4. Closeout Gate Anti-Freeze, Hostname Security & Rubric Validation Invariants
