@@ -256,9 +256,9 @@ def sync_lifecycle_gpm():
         m_mid = re.search(r"(\d+)", mid_str)
         mid = int(m_mid.group(1)) if m_mid else None
 
-        if status in ("DIE", "BAN", "SUSPENDED"):
+        if status in ("DIE", "BAN", "BANNED", "SUSPENDED", "CP", "CHECKPOINT", "DISABLED"):
             die_emails.add(email)
-        elif status == "LIVE":
+        elif status in ("LIVE", "ACTIVE", "OK"):
             if "khoale" in email or "khoale" in recovery:
                 master_excluded.add(email)
                 continue

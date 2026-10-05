@@ -56,7 +56,8 @@ def _same_content(src: Path, dst: Path) -> bool:
 
 
 def _atomic_copy(src: Path, dst: Path) -> None:
-    tmp = dst.with_name(f".{dst.name}.sync.{os.getpid()}.tmp")
+    import uuid
+    tmp = dst.with_name(f".{dst.name}.sync.{os.getpid()}.{uuid.uuid4().hex[:8]}.tmp")
     try:
         shutil.copy2(src, tmp)
         os.replace(tmp, dst)

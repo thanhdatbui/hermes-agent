@@ -1468,35 +1468,7 @@ def main():
     codex_active_cnt = sum(1 for c in codex_after if c.get('isActive') and c.get('testStatus') == 'active')
     
     all_failed = failed_chatgpt + failed_ag + failed_codex
-    if not recovered_chatgpt and not recovered_ag and not all_failed and not disabled_codex:
-        return
-    report_lines = [
-        f"🤖 [POOL HEALER] BÁO CÁO SỨC KHỎE",
-        f"• ChatGPT-Web: {chatgpt_active_cnt}/{len(chatgpt_after)} ACTIVE",
-        f"• Antigravity: {ag_active_cnt}/{len(ag_after)} ACTIVE",
-        f"• Codex: {codex_active_cnt}/{len(codex_after)} ACTIVE"
-    ]
-    
-    if recovered_chatgpt:
-        report_lines.append(f"• Đã hồi sinh ChatGPT ({len(recovered_chatgpt)} acc): {', '.join([a.split('@')[0] for a in recovered_chatgpt])}")
-    if recovered_ag:
-        report_lines.append(f"• Đã hồi sinh Antigravity ({len(recovered_ag)} acc): {', '.join([a.split('@')[0] for a in recovered_ag])}")
-    if recovered_codex:
-        report_lines.append(f"• Đã hồi sinh Codex ({len(recovered_codex)} acc): {', '.join([a.split('@')[0] for a in recovered_codex])}")
-    if disabled_codex:
-        report_lines.append(f"• Đã disable Codex OAuth invalid ({len(disabled_codex)} acc):")
-        for account, reason in disabled_codex[:5]:
-            report_lines.append(f"  - `{account}`: {reason}")
-        if len(disabled_codex) > 5:
-            report_lines.append(f"  - *...và {len(disabled_codex) - 5} tài khoản khác*")
-        
-    if all_failed:
-        report_lines.append(f"• Cần chú ý ({len(all_failed)} acc):")
-        for a, err in all_failed[:5]:
-            report_lines.append(f"  - `{a}`: {err[:60]}")
-        if len(all_failed) > 5:
-            report_lines.append(f"  - *...và {len(all_failed) - 5} tài khoản khác*")
-            
+
     from datetime import datetime, timezone
     
     # Phân loại failure categories để phục vụ triage & alerting
@@ -1523,7 +1495,40 @@ def main():
         "failures": categorized_failures,
         "failure_categories": failure_categories
     }
-    save_telemetry_metrics(telemetry_data)
+    try:
+        save_telemetry_metrics(telemetry_data)
+    except Exception as e_tel:
+        log(f"[WATCHDOG-TELEMETRY-WARN] Lỗi ghi telemetry: {e_tel}")
+
+    if not recovered_chatgpt and not recovered_ag and not all_failed and not disabled_codex:
+        return
+
+    report_lines = [
+        f"🤖 [POOL HEALER] BÁO CÁO SỨC KHỎE",
+        f"• ChatGPT-Web: {chatgpt_active_cnt}/{len(chatgpt_after)} ACTIVE",
+        f"• Antigravity: {ag_active_cnt}/{len(ag_after)} ACTIVE",
+        f"• Codex: {codex_active_cnt}/{len(codex_after)} ACTIVE"
+    ]
+    
+    if recovered_chatgpt:
+        report_lines.append(f"• Đã hồi sinh ChatGPT ({len(recovered_chatgpt)} acc): {', '.join([a.split('@')[0] for a in recovered_chatgpt])}")
+    if recovered_ag:
+        report_lines.append(f"• Đã hồi sinh Antigravity ({len(recovered_ag)} acc): {', '.join([a.split('@')[0] for a in recovered_ag])}")
+    if recovered_codex:
+        report_lines.append(f"• Đã hồi sinh Codex ({len(recovered_codex)} acc): {', '.join([a.split('@')[0] for a in recovered_codex])}")
+    if disabled_codex:
+        report_lines.append(f"• Đã disable Codex OAuth invalid ({len(disabled_codex)} acc):")
+        for account, reason in disabled_codex[:5]:
+            report_lines.append(f"  - `{account}`: {reason}")
+        if len(disabled_codex) > 5:
+            report_lines.append(f"  - *...và {len(disabled_codex) - 5} tài khoản khác*")
+        
+    if all_failed:
+        report_lines.append(f"• Cần chú ý ({len(all_failed)} acc):")
+        for a, err in all_failed[:5]:
+            report_lines.append(f"  - `{a}`: {err[:60]}")
+        if len(all_failed) > 5:
+            report_lines.append(f"  - *...và {len(all_failed) - 5} tài khoản khác*")
 
     report_msg = "\n".join(report_lines)
     print(report_msg)
