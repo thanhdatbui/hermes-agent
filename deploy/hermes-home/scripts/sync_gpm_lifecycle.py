@@ -55,6 +55,9 @@ except Exception:
 GPM_API_BASE = "http://127.0.0.1:19995/api/v3"
 PROXY_FILE   = r"D:\OneDrive\TaadaaData\kibe\PROXYgandienthoai.xlsx"
 MASTER_FILE  = r"D:\OneDrive\TaadaaData\kibe\master_gmail_manager.xlsx"
+TAIKHOAN_DAT_FILE = r"D:\OneDrive\TaadaaData\kibe\taikhoan_dat_v2_updated .xlsx"
+if not os.path.exists(TAIKHOAN_DAT_FILE):
+    TAIKHOAN_DAT_FILE = r"D:\OneDrive\TaadaaData\kibe\taikhoan_dat_v2_updated.xlsx"
 STATUS_FILE  = r"D:\Taadaa\GPM auto\config\oauth_pipeline_status.json"
 GPM_DB       = Path.home() / "AppData" / "Local" / "Programs" / "GPMLogin" / "profile" / "profile_data.db"
 ADB_PATH     = r"C:\Program Files (x86)\xiaowei\tools\adb.exe"
@@ -62,14 +65,20 @@ MANIFEST_DIR = Path(r"D:\Taadaa\runtime\kibe\cron-state\manifests")
 LOG_DIR      = Path(r"D:\Taadaa\GPM auto\logs")
 LOG_FILE     = LOG_DIR / "sync_gpm_lifecycle.log"
 
-# Logging setup
+# Logging setup - SILENT WATCHDOG HARD GUARD
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 logger = logging.getLogger("sync_gpm_lifecycle")
 logger.setLevel(logging.INFO)
+logger.propagate = False
 if not logger.handlers:
     fh = logging.FileHandler(str(LOG_FILE), encoding="utf-8")
     fh.setFormatter(logging.Formatter("[%(asctime)s] [%(levelname)s] %(message)s"))
     logger.addHandler(fh)
+
+# HARD GUARD: Lọc gỡ mọi StreamHandler sys.stdout khỏi root logger
+for _h in list(logging.getLogger().handlers):
+    if isinstance(_h, logging.StreamHandler) and getattr(_h, "stream", None) in (sys.stdout, sys.__stdout__):
+        logging.getLogger().removeHandler(_h)
 
 
 def log_telemetry_metric(event_type: str, data: dict):
@@ -135,6 +144,85 @@ def is_machine_in_feed_slot(mid: int) -> bool:
     return False
 
 
+def _parse_machine_id(value) -> int | None:
+    """Cột máy trong Excel có thể là int, float (1.0) hoặc chuỗi ('01'). Trả None nếu không phải số nguyên hợp lệ."""
+    if value is None:
+        return None
+    try:
+        val_str = str(value).strip()
+        f_val = float(val_str)
+        if not f_val.is_integer():
+            return None
+        mid = int(f_val)
+    except (TypeError, ValueError):
+        return None
+    return mid if mid > 0 else None
+
+
+def _iter_taikhoan_dat_rows(path: str):
+    """Đọc các dòng dữ liệu (bỏ header) của sheet 'Tài Khoản' (fallback sheet đầu tiên)."""
+    wb_tk = openpyxl.load_workbook(path, data_only=True, read_only=True)
+    try:
+        sname = "Tài Khoản" if "Tài Khoản" in wb_tk.sheetnames else wb_tk.sheetnames[0]
+        return list(wb_tk[sname].iter_rows(values_only=True))[1:]
+    finally:
+        wb_tk.close()
+
+
+def merge_taikhoan_dat_candidates(path: str, live_candidates: dict, excluded_emails: set) -> int:
+    """Bổ sung Gmail LIVE từ taikhoan_dat (cột A = máy, cột F = email) vào live_candidates.
+
+    Loại trừ: email rỗng/không hợp lệ, khoale, excluded_emails (DIE/BAN/SUSPENDED hoặc khoale-recovery trong Master),
+    máy không hợp lệ. Master Excel luôn được ưu tiên (không ghi đè mapping đã có).
+    Trả về số email được thêm mới.
+    """
+    if not os.path.exists(path):
+        return 0
+    added = 0
+    try:
+        for r in _iter_taikhoan_dat_rows(path):
+            if not r or len(r) < 6:
+                continue
+            em_val = str(r[5] or "").strip().lower()
+            if not em_val or "@" not in em_val or "khoale" in em_val:
+                continue
+            if em_val in excluded_emails or em_val in live_candidates:
+                continue
+            mid_val = _parse_machine_id(r[0])
+            if mid_val:
+                live_candidates[em_val] = mid_val
+                added += 1
+    except Exception as e_tk:
+        logger.warning(f"Lỗi đọc {path}: {e_tk}")
+    return added
+
+
+def merge_taikhoan_dat_proxies(path: str, serials: dict, proxy_map: dict) -> None:
+    """Bổ sung serial (cột J) và proxy (cột K) từ taikhoan_dat cho máy chưa có trong PROXY_FILE.
+
+    Proxy rỗng/không đúng định dạng host:port -> fallback proxy chuẩn farm theo số máy.
+    """
+    if not os.path.exists(path):
+        return
+    try:
+        for r in _iter_taikhoan_dat_rows(path):
+            if not r or len(r) < 11:
+                continue
+            m_idx = _parse_machine_id(r[0])
+            if not m_idx:
+                continue
+            if m_idx not in serials and r[9]:
+                serials[m_idx] = str(r[9]).strip()
+            if m_idx not in proxy_map:
+                px_str = str(r[10] or "").strip()
+                if px_str and ":" in px_str:
+                    proxy_map[m_idx] = px_str
+                else:
+                    proxy_map[m_idx] = f"test.taadaa.click:{20000 + m_idx}:mobi{m_idx}:TaadaaMobi#2026!"
+    except Exception as e_tk2:
+        logger.warning(f"Lỗi bổ sung proxy từ {path}: {e_tk2}")
+
+
 def sync_lifecycle_gpm():
     logger.info("Bắt đầu đồng bộ lifecycle GPM...")
     if GPMClient is None:
@@ -155,6 +243,7 @@ def sync_lifecycle_gpm():
     wb = openpyxl.load_workbook(MASTER_FILE, data_only=True, read_only=True)
     ws = wb["Kibe_Farm_S7"]
     die_emails = set()
+    master_excluded = set()
     live_candidates = {}
 
     for r in list(ws.iter_rows(values_only=True))[1:]:
@@ -171,10 +260,13 @@ def sync_lifecycle_gpm():
             die_emails.add(email)
         elif status == "LIVE":
             if "khoale" in email or "khoale" in recovery:
+                master_excluded.add(email)
                 continue
             if mid:
                 live_candidates[email] = mid
     wb.close()
+
+    merge_taikhoan_dat_candidates(TAIKHOAN_DAT_FILE, live_candidates, die_emails | master_excluded)
 
     # 2. Đọc GPM SQLite DB
     if not GPM_DB.exists():
@@ -207,7 +299,7 @@ def sync_lifecycle_gpm():
         try:
             with open(STATUS_FILE, "r", encoding="utf-8") as f:
                 sdata = json.load(f)
-            for k in ["omniroute_success", "excluded_khoalee", "wrong_password_or_checkpoint"]:
+            for k in ["excluded_khoalee", "antigravity_blacklist", "wrong_password_or_checkpoint"]:
                 val = sdata.get(k, {})
                 if isinstance(val, dict):
                     status_exclusions.update(x.lower() for x in val.keys())
@@ -232,6 +324,8 @@ def sync_lifecycle_gpm():
                 except Exception:
                     pass
         wb_p.close()
+
+    merge_taikhoan_dat_proxies(TAIKHOAN_DAT_FILE, serials, proxy_map)
 
     # Kiểm tra thiết bị ADB online trước khi tạo profile LIVE
     online_devs = get_online_adb_devices()
@@ -366,6 +460,9 @@ def cleanup_s7_die_accounts(dry_run: bool = False, force: bool = False):
                     sys.path.insert(0, r"D:\Taadaa\GPM auto\scripts")
                     try:
                         from preflight_s7_rolling_cleanup import remove_account_adb
+                        for _h in list(logging.getLogger().handlers):
+                            if isinstance(_h, logging.StreamHandler) and getattr(_h, "stream", None) in (sys.stdout, sys.__stdout__):
+                                logging.getLogger().removeHandler(_h)
                         ok = remove_account_adb(serial, mid, target_email, dry_run=False, skip_lock=True)
                         if ok:
                             cleaned_count += 1

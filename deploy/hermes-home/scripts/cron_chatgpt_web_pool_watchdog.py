@@ -17,9 +17,12 @@ import os
 import sys
 import json
 import time
+import socket
 import sqlite3
+import msvcrt
 import urllib.request
 import urllib.parse
+from pathlib import Path
 from datetime import datetime
 import requests
 import pyotp
@@ -27,6 +30,58 @@ import openpyxl
 import pydub
 import speech_recognition as sr
 from playwright.sync_api import sync_playwright
+
+def log(msg: str):
+    sys.stderr.write(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}\n")
+    sys.stderr.flush()
+
+sys.path.insert(0, r"D:\Taadaa\GPM auto\scripts")
+try:
+    from run_oauth_s7_pipeline import get_s7_security_code, approve_s7_google_prompt, get_account_for_email
+except (ImportError, ModuleNotFoundError) as e:
+    log(f"[OPTIONAL] GPM S7 pipeline unavailable: {type(e).__name__}")
+    get_s7_security_code, approve_s7_google_prompt, get_account_for_email = None, None, None
+
+
+class CodexOAuth1455Lock:
+    def __init__(self, lock_file="D:/Taadaa/runtime/kibe/cron-state/codex_oauth_1455.lock", timeout=900):
+        self.lock_file = Path(lock_file)
+        self.timeout = timeout
+        self.handle = None
+
+    def __enter__(self):
+        self.lock_file.parent.mkdir(parents=True, exist_ok=True)
+        start_t = time.time()
+        self.handle = open(self.lock_file, "a+b")
+        waited = False
+        while True:
+            try:
+                self.handle.seek(0)
+                msvcrt.locking(self.handle.fileno(), msvcrt.LK_NBLCK, 1)
+                if waited:
+                    log(f"[CODEX-1455-LOCK] Đã lấy khóa sau {time.time()-start_t:.1f}s")
+                return self
+            except (OSError, IOError):
+                if not waited:
+                    log("[CODEX-1455-LOCK] Đang chờ nhả khóa độc quyền cổng 1455...")
+                    waited = True
+                if time.time() - start_t > self.timeout:
+                    raise TimeoutError(f"Timeout {self.timeout}s waiting for Codex OAuth 1455 lock")
+                time.sleep(2)
+
+    def __exit__(self, *_):
+        if self.handle:
+            try:
+                self.handle.seek(0)
+                msvcrt.locking(self.handle.fileno(), msvcrt.LK_UNLCK, 1)
+            except (OSError, IOError):
+                pass
+            try:
+                self.handle.close()
+            except (OSError, IOError):
+                pass
+            self.handle = None
+
 
 FFMPEG_DIR = r"C:\Users\Kibe\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-8.1.2-full_build\bin"
 if os.path.exists(FFMPEG_DIR):
@@ -41,11 +96,32 @@ OMNI_API = "http://127.0.0.1:20129"
 GPM_API = "http://127.0.0.1:19995/api/v3"
 DB_PATH = os.environ.get("OMNI_DB_PATH", os.path.expanduser(r"~/.omniroute/storage.sqlite"))
 EXCEL_PATH = r"D:\OneDrive\TaadaaData\kibe\gmail_clean_v2.xlsx"
+UPDATED_XLSX_PATH = r"D:\OneDrive\TaadaaData\kibe\taikhoan_dat_v2_updated .xlsx"
+if not os.path.exists(UPDATED_XLSX_PATH):
+    UPDATED_XLSX_PATH = r"D:\OneDrive\TaadaaData\kibe\taikhoan_dat_v2_updated.xlsx"
 DIRECT_OAUTH_URL = "https://chatgpt.com/auth/login_with?callback_path=%2F&connection=google-oauth2&screen_hint=login_or_signup&ext-web-mobile-direct-social-login=true"
 
-def log(msg: str):
-    sys.stderr.write(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}\n")
-    sys.stderr.flush()
+def get_chatgpt_password_from_workbook(email: str) -> str:
+    """Đọc mật khẩu ChatGPT chính chủ từ cột L (PASS CHATGPT) trong workbook taikhoan_dat_v2_updated."""
+    if not os.path.exists(UPDATED_XLSX_PATH):
+        return ""
+    try:
+        wb = openpyxl.load_workbook(UPDATED_XLSX_PATH, read_only=True, data_only=True)
+        ws = wb["Tài Khoản"] if "Tài Khoản" in wb.sheetnames else wb.active
+        em_lower = email.strip().lower()
+        for row in ws.iter_rows(values_only=True):
+            if not row or len(row) < 6:
+                continue
+            row_gmail = str(row[5] or "").strip().lower()
+            if row_gmail == em_lower:
+                p_chatgpt = str(row[11] or "").strip() if len(row) > 11 and row[11] else ""
+                wb.close()
+                if p_chatgpt:
+                    return p_chatgpt
+        wb.close()
+    except (IOError, openpyxl.utils.exceptions.InvalidFileException, KeyError) as e:
+        log(f"Lỗi đọc PASS CHATGPT cho {email}: {type(e).__name__}")
+    return ""
 
 def load_accounts_credentials():
     creds = {}
@@ -70,8 +146,8 @@ def load_accounts_credentials():
                         "recovery_email": recovery_email,
                         "dob": dob
                     }
-    except Exception as e:
-        log(f"Lỗi đọc credentials từ Excel: {e}")
+    except (IOError, openpyxl.utils.exceptions.InvalidFileException, KeyError) as e:
+        log(f"Lỗi đọc credentials từ Excel: {type(e).__name__}")
     return creds
 
 def get_connections_by_provider(provider_name: str):
@@ -85,22 +161,112 @@ def get_connections_by_provider(provider_name: str):
         log(f"Lỗi lấy connections {provider_name}: {e}")
         return []
 
+def codex_oauth_invalid_reason(connection: dict):
+    """Classify only recorded, unambiguous OAuth invalidation evidence."""
+    if not isinstance(connection, dict):
+        return None
+    for field in ("httpStatus", "statusCode", "http_code", "errorCode", "error_code"):
+        value = connection.get(field)
+        if isinstance(value, bool):
+            continue
+        try:
+            if int(value) == 401:
+                return f"{field}=401"
+        except (TypeError, ValueError):
+            pass
+    for field in ("errorType", "error_type", "type"):
+        value = connection.get(field)
+        if isinstance(value, str) and value.strip().lower() == "upstream_auth_error":
+            return f"{field}=upstream_auth_error"
+    last_error = connection.get("lastError")
+    if isinstance(last_error, str) and any(
+        marker in last_error.lower() for marker in ("token invalid", "token revoked")
+    ):
+        return "lastError contains Token invalid/revoked"
+    return None
+
+
+def disable_codex_connection(connection: dict, reason: str) -> bool:
+    """Disable one verified Codex connection via the existing DB pattern."""
+    cid = connection.get("id") if isinstance(connection, dict) else None
+    if not cid or connection.get("isActive") is not True:
+        return False
+    conn = None
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cur = conn.cursor()
+        row = cur.execute(
+            "SELECT provider FROM provider_connections WHERE id=?", (cid,)
+        ).fetchone()
+        if not row or row[0] != "codex":
+            log(f"[CODEX-DISABLE-SKIP] provider guard rejected {cid}")
+            return False
+        cur.execute(
+            "UPDATE provider_connections SET is_active=0, updated_at=CURRENT_TIMESTAMP WHERE id=?",
+            (cid,),
+        )
+        if cur.rowcount != 1:
+            return False
+        conn.commit()
+        log(f"[CODEX-DISABLED] {connection.get('name') or cid}: {reason}")
+        return True
+    except sqlite3.DatabaseError as e:
+        if conn:
+            try:
+                conn.rollback()
+            except sqlite3.Error:
+                pass
+        log(f"[CODEX-DISABLE-ERROR] {connection.get('name') or cid}: DB error")
+        return False
+    except Exception as e:
+        if conn:
+            try:
+                conn.rollback()
+            except sqlite3.Error:
+                pass
+        log(f"[CODEX-DISABLE-ERROR] {connection.get('name') or cid}: {type(e).__name__}")
+        return False
+    finally:
+        if conn:
+            try:
+                conn.close()
+            except sqlite3.Error:
+                pass
+
 def get_gpm_profiles():
     try:
         profiles = []
         page = 1
+        total_pages = None
+        expected_total = None
         while True:
             res = requests.get(f"{GPM_API}/profiles?page={page}&per_page=50", timeout=10).json()
-            data = res.get('data', [])
-            if not data:
-                break
+            pagination = res.get('pagination') or {}
+            page_total = pagination.get('total_page')
+            if not isinstance(page_total, int) or page_total < 1:
+                raise ValueError(f"invalid GPM pagination total_page={page_total!r}")
+            if total_pages is None:
+                total_pages = page_total
+                expected_total = pagination.get('total', pagination.get('total_count'))
+                if expected_total is not None and (not isinstance(expected_total, int) or expected_total < 0):
+                    raise ValueError(f"invalid GPM pagination total={expected_total!r}")
+            elif page_total != total_pages:
+                raise ValueError(f"GPM pagination total_page changed: {total_pages} -> {page_total}")
+
+            data = res.get('data')
+            if not isinstance(data, list) or not data:
+                raise ValueError(f"GPM page {page}/{total_pages} returned no data")
             profiles.extend(data)
-            if page >= res.get('pagination', {}).get('total_page', 1):
+            if page == total_pages:
                 break
             page += 1
+
+        if expected_total is not None and len(profiles) != expected_total:
+            raise ValueError(f"GPM profile count mismatch: fetched {len(profiles)}, expected {expected_total}")
+        log(f"[GPM-PROFILES] fetched {len(profiles)} profiles across {total_pages} pages")
         return profiles
     except Exception as e:
-        log(f"Lỗi lấy GPM profiles: {e}")
+        log(f"Lỗi lấy GPM profiles (fail-closed): {e}")
         return []
 
 def get_gpm_profiles_map():
@@ -113,13 +279,35 @@ def get_gpm_profiles_map():
             m = re.search(r'([a-zA-Z0-9_.+-]+@gmail\.com)', pname)
             if m:
                 email = m.group(1).lower()
-                email_map[email] = p
+                email_map.setdefault(email, []).append(p)
+        duplicates = {email: candidates for email, candidates in email_map.items() if len(candidates) > 1}
+        if duplicates:
+            for email, candidates in duplicates.items():
+                log(f"[GPM-DUPLICATE] {email}: " + ", ".join(
+                    f"id={p.get('id')}, profile_path={p.get('profile_path')}, created_at={p.get('created_at') or p.get('created_time')}"
+                    for p in candidates
+                ))
+        log(f"[GPM-PROFILES] total fetched={len(profiles)}, duplicate accounts={len(duplicates)}")
         return email_map
     except Exception as e:
         log(f"Lỗi lấy GPM profiles map: {e}")
         return {}
 
+def get_unambiguous_gpm_profile(gpm_map, email):
+    candidates = gpm_map.get(email, [])
+    if len(candidates) == 1:
+        return candidates[0]
+    if len(candidates) > 1:
+        details = "; ".join(
+            f"id={p.get('id')}, profile_path={p.get('profile_path')}, created_at={p.get('created_at') or p.get('created_time')}"
+            for p in candidates
+        )
+        log(f"[AMBIGUOUS_GPM_PROFILE] {email}: {details}")
+    return None
+
 def test_connection_valid(cookie_str: str):
+    if not cookie_str or not isinstance(cookie_str, str):
+        return False, "EMPTY_SESSION_TOKEN"
     try:
         req = urllib.request.Request(
             f"{OMNI_API}/api/providers/validate",
@@ -136,96 +324,158 @@ def test_connection_valid(cookie_str: str):
 # ==================== ARCHITECTURE LAYER 2: CHATGPT-WEB RECOVERY MODULE ====================
 def perform_auto_login_and_extract_cookies(cdp_addr: str, email: str, creds: dict):
     acc_info = creds.get(email, {})
-    password = acc_info.get('password')
+    # Ưu tiên lấy pass ChatGPT từ workbook, nếu không có mới fallback về pass mail
+    password = get_chatgpt_password_from_workbook(email) or acc_info.get('password')
     totp_key = acc_info.get('totp')
     
     with sync_playwright() as p:
-        browser = p.chromium.connect_over_cdp(f"http://{cdp_addr}")
+        browser = None
+        for attempt in range(1, 4):
+            try:
+                browser = p.chromium.connect_over_cdp(f"http://{cdp_addr}")
+                break
+            except Exception as e:
+                log(f"[{email}] CDP retry {attempt}/3 fail: {e}")
+                time.sleep(attempt * 1.5)
+        if not browser:
+            log(f"[{email}] Kết nối CDP thất bại sau 3 lần thử")
+            return None
         context = browser.contexts[0]
         page = context.pages[0] if context.pages else context.new_page()
         
-        page.goto("https://chatgpt.com", timeout=60000, wait_until="domcontentloaded")
-        page.wait_for_timeout(4000)
+        try:
+            page.goto("https://chatgpt.com/auth/login", timeout=35000, wait_until="domcontentloaded")
+            os.makedirs(r"D:\Taadaa\GPM auto\debug_screenshots", exist_ok=True)
+            page.screenshot(path=f"D:/Taadaa/GPM auto/debug_screenshots/canary_{email.split('@')[0]}_before.png")
+        except Exception:
+            pass
+        page.wait_for_timeout(3000)
         
-        cookies = context.cookies(["https://chatgpt.com"])
-        cookie_str = "; ".join([f"{c['name']}={c['value']}" for c in cookies])
-        is_valid, _ = test_connection_valid(cookie_str)
-        if is_valid:
-            return cookie_str
-            
-        log(f"[{email}] Cookie session hết hạn -> Đang mở Direct Google OAuth...")
-        page.goto(DIRECT_OAUTH_URL, timeout=60000, wait_until="domcontentloaded")
+        # 1. Dismiss Cookie Banner triệt để
+        try:
+            cb = page.locator('button:has-text("Chấp nhận tất cả"), button:has-text("Accept all"), button:has-text("Allow all"), button:has-text("Accept")').first
+            if cb.count() > 0 and cb.is_visible():
+                cb.click(force=True)
+                page.wait_for_timeout(1000)
+        except Exception:
+            pass
+
+        # 2. Kiểm tra nếu có sẵn session sống trong trình duyệt
+        def _get_clean_session_token():
+            cookies = context.cookies(["https://chatgpt.com"])
+            s_tok = None
+            chunks = {}
+            for c in cookies:
+                cn, cv = c.get("name", ""), c.get("value", "")
+                if cn == "__Secure-next-auth.session-token":
+                    s_tok = cv
+                    break
+                elif cn.startswith("__Secure-next-auth.session-token."):
+                    chunks[cn.split(".")[-1]] = cv
+            if not s_tok and chunks:
+                s_tok = "".join(chunks[k] for k in sorted(chunks.keys(), key=lambda x: int(x) if x.isdigit() else x))
+            return s_tok
+
+        # Kiểm tra nếu trang đã ở màn hình chính và không có chữ Log in
+        b_text = ""
+        try: b_text = page.locator("body").inner_text()
+        except Exception: pass
+        token = _get_clean_session_token()
+        if token and token.startswith("eyJhbG") and "chatgpt.com" in page.url and "/auth/" not in page.url and "session has expired" not in b_text.lower():
+            is_valid, _ = test_connection_valid(token)
+            if is_valid:
+                return token
+
+        log(f"[{email}] Phiên hết hạn/văng session -> Bắt đầu tự động đăng nhập bằng Email + Password...")
         
-        for step in range(25):
-            page.wait_for_timeout(3000)
+        try:
+            context.clear_cookies()
+            page.goto("https://chatgpt.com/auth/login", timeout=35000, wait_until="domcontentloaded")
+            page.wait_for_timeout(2000)
+        except Exception:
+            pass
+        try:
+            for l_sel in ['button[data-testid="login-button"]', 'button:has-text("Log in")', 'button:has-text("Đăng nhập")', 'a:has-text("Log in")', 'a:has-text("Đăng nhập")']:
+                l_btn = page.locator(l_sel).first
+                if l_btn.count() > 0 and l_btn.is_visible():
+                    l_btn.click(force=True)
+                    page.wait_for_timeout(2500)
+                    break
+        except Exception:
+            pass
+
+        # 3. ĐIỀN EMAIL VÀO FORM ĐĂNG NHẬP
+        email_inp = page.locator('input#email-input, input[name="email"], input[type="email"], input[name="username"]').first
+        if email_inp.count() > 0 and email_inp.is_visible():
+            email_inp.fill(email)
+            page.wait_for_timeout(500)
+            submit_btn = page.locator('button[type="submit"], button:has-text("Tiếp tục"), button:has-text("Continue")').first
+            if submit_btn.count() > 0:
+                submit_btn.click(force=True)
+                page.wait_for_timeout(3000)
+
+        # 4. ĐIỀN PASSWORD NẾU OPENAI HỎI
+        pwd_inp = page.locator('input#password, input[name="password"], input[type="password"]').first
+        if pwd_inp.count() > 0 and pwd_inp.is_visible() and password:
+            log(f"[{email}] Điền mật khẩu ChatGPT chính chủ...")
+            pwd_inp.fill(password)
+            page.wait_for_timeout(500)
+            pwd_btn = page.locator('button[type="submit"], button:has-text("Tiếp tục"), button:has-text("Continue")').first
+            if pwd_btn.count() > 0:
+                pwd_btn.click(force=True)
+                page.wait_for_timeout(5000)
+        else:
+            # Nếu OpenAI tự chuyển sang Google SSO
+            g_btn = page.locator('button[data-provider="google"], button:has-text("Continue with Google"), button:has-text("Tiếp tục với Google")').first
+            if g_btn.count() > 0 and g_btn.is_visible():
+                g_btn.click(force=True)
+                page.wait_for_timeout(3000)
+
+        # 5. XỬ LÝ CHUYỂN HƯỚNG GOOGLE HOẶC ONBOARDING (NẾU CÓ)
+        for step in range(20):
+            page.wait_for_timeout(2000)
             u = page.url.lower()
             
-            if "chatgpt.com" in u and "auth" not in u and page.locator('button:has-text("Đăng nhập"), a:has-text("Đăng nhập")').count() == 0:
+            # Kiểm tra tài khoản bị vô hiệu hóa
+            if "payload=" in u and ("account_deactivated" in u or "accountdeactivated" in u):
+                log(f"[{email}] CẢNH BÁO: Tài khoản OpenAI đã bị vô hiệu hóa (AccountDeactivated)!")
+                return None
+                
+            if "chatgpt.com" in u and "/auth/" not in u:
                 break
                 
-            if "about-you" in u:
-                short_name = email.split('@')[0].capitalize()
-                page.evaluate(f'''() => {{
-                    const nameInp = document.querySelector('input[name="name"], input[placeholder*="name" i]');
-                    if (nameInp && !nameInp.value) {{
-                        nameInp.value = "{short_name}";
-                        nameInp.dispatchEvent(new Event('input', {{bubbles: true}}));
-                        nameInp.dispatchEvent(new Event('change', {{bubbles: true}}));
-                    }}
-                    const bdayInp = document.querySelector('input[name="birthday"], input[type="text"][placeholder*="YYYY"], input[placeholder*="birth" i], input[name="age"]');
-                    if (bdayInp && !bdayInp.value) {{
-                        bdayInp.value = bdayInp.getAttribute('placeholder')?.includes('YYYY') ? '2000-01-15' : '15/01/2000';
-                        bdayInp.dispatchEvent(new Event('input', {{bubbles: true}}));
-                        bdayInp.dispatchEvent(new Event('change', {{bubbles: true}}));
-                    }}
-                }}''')
-                page.wait_for_timeout(1000)
-                btn = page.locator('button[type="submit"], button:has-text("Tiếp tục"), button:has-text("Continue")').first
-                if btn.count() > 0 and btn.is_visible():
-                    btn.click()
-                    page.wait_for_timeout(6000)
-                continue
-                
-            id_inp = page.locator('#identifierId, input[name="identifier"]').first
-            if id_inp.count() > 0 and id_inp.is_visible():
-                id_inp.fill(email)
-                page.locator('#identifierNext, button:has-text("Tiếp theo"), button:has-text("Next")').first.click()
-                page.wait_for_timeout(5000)
-                continue
-                
-            if "accountchooser" in u or "chooseaccount" in u:
-                acc_elem = page.get_by_text(email).first
+            if "accounts.google.com" in u and ("accountchooser" in u or "identifier" in u):
+                acc_elem = page.locator(f'[data-identifier*="{email}"]').first
+                if acc_elem.count() == 0:
+                    acc_elem = page.locator('div[data-identifier*="@gmail.com"]').first
                 if acc_elem.count() > 0:
-                    acc_elem.click()
-                else:
-                    page.locator(f'[data-identifier="{email}"]').first.click()
-                page.wait_for_timeout(5000)
+                    acc_elem.click(force=True)
+                    page.wait_for_timeout(3000)
+                    continue
+                    
+            if ("consent" in u or "/oauth/id" in u) and "google.com" in u:
+                c_btn = page.locator('button:has-text("Tiếp tục"), button:has-text("Continue")').first
+                if c_btn.count() > 0:
+                    c_btn.click(force=True)
+                    page.wait_for_timeout(3000)
+                    continue
+                    
+            if "about-you" in u:
+                age_inp = page.locator('input[name="age"]').first
+                if age_inp.count() > 0 and age_inp.is_visible():
+                    age_inp.fill("24")
+                sub_btn = page.locator('button[type="submit"], button:has-text("Tiếp tục"), button:has-text("Continue")').first
+                if sub_btn.count() > 0:
+                    sub_btn.click(force=True)
+                    page.wait_for_timeout(3000)
+
                 continue
-                
-            pwd_inp = page.locator('input[name="Passwd"], input[type="password"]:visible').first
-            if pwd_inp.count() > 0 and pwd_inp.is_visible() and password and "google.com" in u:
-                pwd_inp.fill(password)
-                page.locator('#passwordNext, button:has-text("Tiếp theo"), button:has-text("Next")').first.click()
-                page.wait_for_timeout(6000)
-                continue
-                
-            if ("challenge/totp" in u or page.locator('#totpPin:visible').count() > 0) and totp_key:
-                code = pyotp.TOTP(totp_key).now()
-                totp_inp = page.locator('#totpPin, input[type="tel"]').first
-                if totp_inp.count() > 0:
-                    totp_inp.fill(code)
-                    page.locator('#totpNext, button:has-text("Tiếp theo"), button:has-text("Next")').first.click()
-                    page.wait_for_timeout(6000)
-                continue
-                
-            if ("consent" in u or page.locator('button:has-text("Tiếp tục"):visible').count() > 0) and "google.com" in u:
-                page.locator('button:has-text("Tiếp tục"), button:has-text("Continue")').first.click()
-                page.wait_for_timeout(5000)
-                continue
-                
-        page.wait_for_timeout(4000)
-        fresh_cookies = context.cookies(["https://chatgpt.com"])
-        return "; ".join([f"{c['name']}={c['value']}" for c in fresh_cookies])
+        page.wait_for_timeout(3000)
+        try:
+            page.screenshot(path=f"D:/Taadaa/GPM auto/debug_screenshots/canary_{email.split('@')[0]}_after.png")
+        except Exception:
+            pass
+        return _get_clean_session_token()
 
 def refresh_chatgpt_account_via_gpm(pid: str, cid: str, email: str, creds: dict):
     # log(f"Đang mở GPM profile PID {pid} để kiểm tra/hồi sinh ChatGPT cho {email}...")
@@ -276,15 +526,15 @@ def refresh_chatgpt_account_via_gpm(pid: str, cid: str, email: str, creds: dict)
                     cdata['models'] = models
                     cur.execute("UPDATE combos SET data=? WHERE name='chatgpt-web-pool'", (json.dumps(cdata),))
             conn.commit()
-        except Exception:
+        except sqlite3.DatabaseError:
             if conn:
                 try: conn.rollback()
-                except Exception: pass
+                except sqlite3.Error: pass
             raise
         finally:
             if conn:
                 try: conn.close()
-                except Exception: pass
+                except sqlite3.Error: pass
         return True, "Hồi sinh ChatGPT-Web thành công"
     except Exception as e:
         return False, f"Exception: {e}"
@@ -430,8 +680,10 @@ def fetch_google_recovery_otp(target_email: str = None, lookback_seconds: int = 
                             log(f"[IMAP-OTP] Đã trích xuất mã OTP thành công: {code}")
                             return code
             imap.logout()
+        except (socket.error, TimeoutError, OSError) as e:
+            log(f"[IMAP-OTP-WARN] Network/IO error ({type(e).__name__})")
         except Exception as e:
-            log(f"[IMAP-OTP-WARN] {e}")
+            log(f"[IMAP-OTP-WARN] {type(e).__name__}")
         time.sleep(2.5)
     return None
 
@@ -633,6 +885,38 @@ def perform_antigravity_oauth(cdp_addr: str, email: str, creds: dict = None):
             except Exception as e:
                 log(f"Lỗi xử lý OTP input: {e}")
 
+            # 2.2b. Tự động lấy mã 10 số S7 và duyệt Google Prompt
+            try:
+                if "challenge/selection" in cur_url or "selection" in cur_url:
+                    sec_opt = page.locator('div[data-challengetype="8"], li:has-text("mã bảo mật"), li:has-text("security code"), div[role="link"]:has-text("mã bảo mật")').first
+                    if sec_opt.count() > 0 and sec_opt.is_visible():
+                        log(f"[{email}] Chọn phương thức 'Mã bảo mật trên điện thoại'...")
+                        sec_opt.click()
+                        time.sleep(3)
+                        continue
+                is_ootp = "challenge/ootp" in cur_url or any(k in page.content().lower() for k in ["mã bảo mật", "security code", "galaxy s7"])
+                pin_inp = page.locator('input[name="Pin"], input#security-code-input, input[name="pin"]').first
+                if is_ootp and pin_inp.count() > 0 and pin_inp.is_visible() and get_s7_security_code and get_account_for_email:
+                    acc_s7 = get_account_for_email(email)
+                    if acc_s7 and acc_s7.get("mid") and acc_s7.get("serial"):
+                        log(f"[{email}] Lấy mã 10 số S7 (M{acc_s7['mid']:02d})...")
+                        s7_code = get_s7_security_code(acc_s7["mid"], acc_s7["serial"], email)
+                        if s7_code:
+                            pin_inp.fill(s7_code)
+                            time.sleep(1)
+                            page.keyboard.press("Enter")
+                            time.sleep(4)
+                            continue
+                if ("challenge/dp" in cur_url or "nhấn vào có" in page.content().lower()) and approve_s7_google_prompt and get_account_for_email:
+                    acc_s7 = get_account_for_email(email)
+                    if acc_s7 and acc_s7.get("mid") and acc_s7.get("serial"):
+                        log(f"[{email}] Duyệt Google Prompt trên S7 (M{acc_s7['mid']:02d})...")
+                        approve_s7_google_prompt(acc_s7["mid"], acc_s7["serial"], None, target_email=email)
+                        time.sleep(4)
+                        continue
+            except Exception as e:
+                log(f"Lỗi phối hợp S7: {e}")
+
             # 2.3. Xử lý click chọn "Get a verification code at recovery mail" (nếu đang ở màn hình chọn phương thức)
             try:
                 clicked_code_opt = False
@@ -784,9 +1068,223 @@ def refresh_antigravity_account_via_gpm(pid: str, email: str, profile_data: dict
         except Exception: pass
         time.sleep(2)
 
+# ==================== ARCHITECTURE LAYER 3B: CODEX OAUTH RECOVERY MODULE ====================
+def _perform_codex_oauth_unlocked(cdp_addr: str, email: str, creds: dict = None):
+    try:
+        cb = requests.get(f"{OMNI_API}/api/oauth/codex/start-callback-server", timeout=15).json()
+        auth_url = cb.get("authUrl") or (cb.get("data") or {}).get("authUrl")
+        if not auth_url:
+            return False, f"Không có authUrl từ OmniRoute: {cb}"
+    except Exception as e:
+        return False, f"Lỗi gọi start-callback-server: {e}"
+
+    acc_info = (creds or {}).get(email.lower(), {})
+    password = acc_info.get('password')
+    totp_key = acc_info.get('totp')
+
+    with sync_playwright() as p:
+        try:
+            browser = p.chromium.connect_over_cdp(f"http://{cdp_addr}", timeout=15000)
+        except Exception as e:
+            return False, f"Lỗi CDP: {e}"
+
+        context = browser.contexts[0] if browser.contexts else browser.new_context()
+        pages = [pg for pg in context.pages if not pg.url.startswith("chrome-extension://")]
+        page = pages[0] if pages else context.new_page()
+
+        def on_req(req):
+            url = req.url
+            if "1455" in url and ("callback" in url or "code=" in url):
+                try:
+                    local_url = url.replace("localhost", "127.0.0.1")
+                    requests.get(local_url, timeout=5)
+                except Exception:
+                    pass
+        page.on("request", on_req)
+
+        try:
+            page.goto(auth_url, timeout=45000, wait_until="domcontentloaded")
+        except Exception as e:
+            log(f"[{email}] page.goto notice: {e}")
+        time.sleep(3)
+
+        start_t = time.time()
+        timeout_sec = 90
+        conn_id = None
+
+        while time.time() - start_t < timeout_sec:
+            for sso_btn in page.locator("button:has-text('Continue with Google'), button:has-text('Tiếp tục với Google'), [data-provider='google']").all():
+                try:
+                    sso_btn.evaluate("el => el.style.display = 'none'")
+                except Exception:
+                    pass
+
+            try:
+                cur_title = page.title().lower()
+                if "kết thúc" in cur_title or "expired" in cur_title:
+                    relogin_btn = page.locator("button:has-text('Đăng nhập'), button:has-text('Log in'), a:has-text('Đăng nhập'), a:has-text('Log in')")
+                    if relogin_btn.count() > 0 and relogin_btn.first.is_visible():
+                        relogin_btn.first.click(force=True)
+                        time.sleep(2)
+            except Exception:
+                pass
+
+            try:
+                email_loc = page.locator('input[type="email"], input[name="email"]')
+                if email_loc.count() > 0 and email_loc.first.is_visible():
+                    cur = email_loc.first.input_value()
+                    if cur.lower() != email.lower():
+                        email_loc.first.fill(email)
+                        time.sleep(0.5)
+                    sb = page.locator('button[type="submit"], button:has-text("Tiếp tục"), button:has-text("Continue")')
+                    if sb.count() > 0 and sb.first.is_visible():
+                        sb.first.click()
+                        time.sleep(2)
+                        continue
+            except Exception:
+                pass
+
+            try:
+                pwd_loc = page.locator('input[type="password"], input[name="password"]')
+                if pwd_loc.count() > 0 and pwd_loc.first.is_visible():
+                    time.sleep(1.5)
+                    pwd_val = pwd_loc.first.input_value()
+                    if not pwd_val and password:
+                        pwd_loc.first.fill(password)
+                        pwd_val = password
+                    if pwd_val:
+                        sb = page.locator('button[type="submit"], button:has-text("Tiếp tục"), button:has-text("Continue"), button:has-text("Đăng nhập"), button:has-text("Log in")')
+                        if sb.count() > 0 and sb.first.is_visible():
+                            sb.first.click()
+                            time.sleep(2)
+                            continue
+            except Exception:
+                pass
+
+            try:
+                cur_url = page.url.lower()
+                if "choose-an-account" in cur_url or "welcome back" in cur_url or "chọn tài khoản" in cur_url:
+                    acct_btn = page.locator(f"button:has-text('{email}'), [role='button']:has-text('{email}'), a:has-text('{email}')")
+                    if acct_btn.count() > 0 and acct_btn.first.is_visible():
+                        acct_btn.first.click(force=True)
+                        time.sleep(2)
+                        continue
+            except Exception:
+                pass
+
+            try:
+                if ("challenge/totp" in page.url.lower() or page.locator('#totpPin:visible').count() > 0) and totp_key:
+                    code = pyotp.TOTP(totp_key).now()
+                    totp_inp = page.locator('#totpPin, input[type="tel"]').first
+                    if totp_inp.count() > 0:
+                        totp_inp.fill(code)
+                        page.locator('#totpNext, button:has-text("Tiếp theo"), button:has-text("Next")').first.click()
+                        time.sleep(4)
+                        continue
+            except Exception:
+                pass
+
+            try:
+                for sel in ['button:has-text("Authorize")', 'button:has-text("Cho phép")', 'button:has-text("Allow")', 'button:has-text("Accept")', 'button:has-text("Continue")', 'button:has-text("Tiếp tục")']:
+                    btn = page.locator(sel)
+                    if btn.count() > 0 and btn.first.is_visible():
+                        btn.first.click()
+                        time.sleep(2)
+                        break
+            except Exception:
+                pass
+
+            try:
+                cur_url = page.url
+                if "1455" in cur_url and ("callback" in cur_url or "code=" in cur_url):
+                    local_url = cur_url.replace("localhost", "127.0.0.1")
+                    requests.get(local_url, timeout=5)
+            except Exception:
+                pass
+
+            try:
+                poll = requests.post(f"{OMNI_API}/api/oauth/codex/poll-callback", json={}, timeout=10).json()
+                is_ok = (poll.get("success") is True or poll.get("status") in ("success", "completed") or "connection" in poll or "connectionId" in poll)
+                conn_obj = poll.get("connection") or (poll.get("data") or {}).get("connection") or {}
+                found = conn_obj.get("id") or poll.get("connectionId") or poll.get("id")
+                if is_ok and found:
+                    conn_id = found
+                    break
+            except Exception:
+                pass
+
+            time.sleep(2.5)
+
+        if not conn_id:
+            return False, f"Timeout OAuth sau {timeout_sec}s. URL: {page.url[:80]}"
+
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            cur = conn.cursor()
+            cur.execute('''
+                UPDATE provider_connections
+                SET is_active=1, test_status='active', last_error=NULL, error_code=NULL, last_error_at=NULL, backoff_level=0, rate_limited_until=NULL, updated_at=CURRENT_TIMESTAMP
+                WHERE id=? AND provider='codex'
+            ''', (conn_id,))
+            rows_aff = cur.rowcount
+            conn.commit()
+            conn.close()
+            if rows_aff <= 0:
+                return False, f"Connection ID {conn_id} không khớp provider codex"
+        except sqlite3.DatabaseError as e:
+            log(f"[{email}] DB error updating OAuth: {type(e).__name__}")
+            return False, f"Lỗi DB cập nhật OAuth: {type(e).__name__}"
+        except Exception as e:
+            log(f"[{email}] Error updating DB after OAuth: {type(e).__name__}")
+            return False, f"Lỗi cập nhật DB: {type(e).__name__}"
+
+        return True, "Hồi sinh Codex OAuth thành công"
+
+
+def perform_codex_oauth(cdp_addr: str, email: str, creds: dict = None):
+    with CodexOAuth1455Lock():
+        return _perform_codex_oauth_unlocked(cdp_addr, email, creds)
+
+
+def refresh_codex_account_via_gpm(pid: str, email: str, creds: dict = None):
+    log(f"Đang mở GPM profile PID {pid} để tự động OAuth Codex cho {email}...")
+    try:
+        res_start = requests.get(f"{GPM_API}/profiles/start/{pid}?win_scale=0.8", timeout=20).json()
+        if not res_start.get('success'):
+            return False, f"Start profile fail: {res_start.get('message')}"
+        cdp_addr = res_start['data']['remote_debugging_address']
+        time.sleep(2)
+
+        ok, msg = perform_codex_oauth(cdp_addr, email, creds)
+        return ok, msg
+    except Exception as e:
+        return False, f"Exception: {e}"
+    finally:
+        try:
+            requests.get(f"{GPM_API}/profiles/close/{pid}", timeout=10)
+        except Exception: pass
+        try:
+            requests.get(f"{GPM_API}/profiles/stop/{pid}", timeout=10)
+        except Exception: pass
+        time.sleep(2)
+
 SELECTOR_VERSION = "2026.09.25-v1"
 TELEMETRY_CACHE_PATH = os.path.expanduser(r"~\AppData\Local\hermes\cache\chatgpt_web_pool_telemetry.json")
 TELEMETRY_HISTORY_PATH = os.path.expanduser(r"~\AppData\Local\hermes\cache\chatgpt_web_pool_telemetry_history.jsonl")
+TELEMETRY_PUBLIC_PATH = r"D:\Taadaa\chatgpt_web_pool_telemetry.json"
+
+def categorize_failure(err) -> str:
+    """Phân loại lỗi hồi sinh để phục vụ triage & alerting (thứ tự ưu tiên cố định)."""
+    err_l = str(err).lower()
+    if "phone" in err_l or "số điện thoại" in err_l:
+        return "PHONE_CHECKPOINT"
+    if "timeout" in err_l:
+        return "TIMEOUT"
+    if "proxy" in err_l:
+        return "PROXY_ERROR"
+    if "recaptcha" in err_l:
+        return "CAPTCHA_CHALLENGE"
+    return "UNKNOWN"
 
 def save_telemetry_metrics(metrics: dict) -> bool:
     """Ghi structured telemetry metrics vào cache JSON an toàn (atomic write qua temp file) và append history audit trail."""
@@ -803,6 +1301,17 @@ def save_telemetry_metrics(metrics: dict) -> bool:
 
         with open(TELEMETRY_HISTORY_PATH, "a", encoding="utf-8") as f_hist:
             f_hist.write(json.dumps(metrics, ensure_ascii=False) + "\n")
+        try:
+            os.makedirs(os.path.dirname(TELEMETRY_PUBLIC_PATH), exist_ok=True)
+            tmp_pub = TELEMETRY_PUBLIC_PATH + f".tmp.{os.getpid()}"
+            with open(tmp_pub, "w", encoding="utf-8") as f_pub:
+                json.dump(metrics, f_pub, ensure_ascii=False, indent=2)
+            if os.path.exists(TELEMETRY_PUBLIC_PATH):
+                os.replace(tmp_pub, TELEMETRY_PUBLIC_PATH)
+            else:
+                os.rename(tmp_pub, TELEMETRY_PUBLIC_PATH)
+        except Exception as e_pub:
+            log(f"[TELEMETRY-PUBLIC-WARN] Lỗi ghi public telemetry: {e_pub}")
         return True
     except Exception as e:
         log(f"[TELEMETRY-CRITICAL-ALERT] Không thể lưu telemetry metrics và history audit trail: {e}")
@@ -816,30 +1325,62 @@ def main():
     
     # 1. Quét ChatGPT-Web
     chatgpt_conns = get_connections_by_provider('chatgpt-web')
-    chatgpt_inactive = [c for c in chatgpt_conns if not (c.get('isActive') and c.get('testStatus') == 'active')]
+    chatgpt_inactive = []
+    for c in chatgpt_conns:
+        if c.get('isActive') and c.get('testStatus') == 'active':
+            continue
+        cur_key = c.get('apiKey')
+        if cur_key and isinstance(cur_key, str) and cur_key.startswith(('eyJhbG', '__Secure')):
+            is_live_ok, _ = test_connection_valid(cur_key)
+            if is_live_ok:
+                cid = c.get('id')
+                try:
+                    conn_t = sqlite3.connect(DB_PATH)
+                    conn_t.cursor().execute("UPDATE provider_connections SET is_active=1, test_status='active', last_error=NULL, last_error_at=NULL, backoff_level=0 WHERE id=?", (cid,))
+                    conn_t.commit()
+                    conn_t.close()
+                    log(f"  [✓ LIVE TEST VALID] Phục hồi tài khoản {c.get('name')}: Token vẫn còn sống, không cần login lại.")
+                    continue
+                except Exception:
+                    pass
+        chatgpt_inactive.append(c)
     
     recovered_chatgpt = []
     failed_chatgpt = []
     
     if chatgpt_inactive:
-        log(f"Phát hiện {len(chatgpt_inactive)} tài khoản ChatGPT-Web cần hồi sinh...")
-        for c in chatgpt_inactive:
-            cname = c.get('name', '')
-            cid = c.get('id')
+        log(f"Phát hiện {len(chatgpt_inactive)} tài khoản ChatGPT-Web cần hồi sinh (chạy song song 5 workers)...")
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        
+        def _worker_task(c_info):
+            cname = c_info.get('name', '')
+            cid = c_info.get('id')
             import re
             m = re.search(r'([a-zA-Z0-9_.+-]+@gmail\.com)', cname)
             if not m:
-                continue
+                return None, False, "No email match"
             email = m.group(1).lower()
-            if email in gpm_map:
-                pid = gpm_map[email]['id']
-                ok, msg = refresh_chatgpt_account_via_gpm(pid, cid, email, creds)
-                if ok:
-                    recovered_chatgpt.append(email)
-                else:
-                    failed_chatgpt.append((email, msg))
-            else:
-                failed_chatgpt.append((email, "Không thấy profile GPM"))
+            prof = get_unambiguous_gpm_profile(gpm_map, email)
+            if not prof:
+                return email, False, "AMBIGUOUS_GPM_PROFILE" if len(gpm_map.get(email, [])) > 1 else "Không thấy profile GPM"
+            pid = prof['id']
+            ok, msg = refresh_chatgpt_account_via_gpm(pid, cid, email, creds)
+            return email, ok, msg
+
+        with ThreadPoolExecutor(max_workers=5, thread_name_prefix="ChatGPTHealer") as executor:
+            future_map = {executor.submit(_worker_task, c): c for c in chatgpt_inactive}
+            for fut in as_completed(future_map):
+                try:
+                    em, ok, msg = fut.result()
+                    if em:
+                        if ok:
+                            recovered_chatgpt.append(em)
+                            log(f"  [✓ RECOVERED] {em}")
+                        else:
+                            failed_chatgpt.append((em, msg))
+                            log(f"  [✗ FAILED] {em}: {msg}")
+                except Exception as ex:
+                    log(f"Worker exception: {ex}")
                 
     # 2. Quét Antigravity OAuth
     ag_conns = get_connections_by_provider('antigravity')
@@ -854,8 +1395,8 @@ def main():
             email = c.get('name', '').lower()
             if "@gmail.com" not in email:
                 continue
-            if email in gpm_map:
-                prof = gpm_map[email]
+            prof = get_unambiguous_gpm_profile(gpm_map, email)
+            if prof:
                 pid = prof['id']
                 ok, msg = refresh_antigravity_account_via_gpm(pid, email, prof, creds)
                 if ok:
@@ -863,21 +1404,60 @@ def main():
                 else:
                     failed_ag.append((email, msg))
             else:
-                failed_ag.append((email, "Không thấy profile GPM"))
+                failed_ag.append((email, "AMBIGUOUS_GPM_PROFILE" if len(gpm_map.get(email, [])) > 1 else "Không thấy profile GPM"))
 
-    # 3. Quét Codex OAuth
+    # 3. Quét Codex OAuth: Tự động hồi sinh các tài khoản Codex bị lỗi / token invalid
     codex_conns = get_connections_by_provider('codex')
-    # Tôn trọng trạng thái người dùng/router chủ động tắt (Standby) - CẤM tự ý bật lại is_active=1!
-    codex_broken = [c for c in codex_conns if c.get('testStatus') != 'active']
-    failed_codex = []
-    if codex_broken:
-        log(f"Phát hiện {len(codex_broken)} tài khoản Codex có trạng thái không active...")
-        for c in codex_broken:
-            cname = c.get('name') or c.get('id', 'unknown')
-            cerr = c.get('lastError') or f"testStatus={c.get('testStatus')}"
-            failed_codex.append((cname, cerr))
+    codex_broken = []
+    for c in codex_conns:
+        cname = (c.get('name') or c.get('id', '')).lower()
+        if 'auth.json' in cname or '@hotmail.com' in cname:
+            continue
+        # Kiểm tra nếu connection không active hoặc testStatus != 'active'
+        if not (c.get('isActive') and c.get('testStatus') == 'active'):
+            cid = c.get('id')
+            reason = codex_oauth_invalid_reason(c)
+            if not reason:
+                try:
+                    r_test = requests.post(f"{OMNI_API}/api/providers/{cid}/test", json={}, timeout=5).json()
+                    if r_test.get('valid') is False and r_test.get('statusCode') == 401:
+                        reason = "401_token_revoked"
+                except Exception:
+                    pass
+            if reason:
+                codex_broken.append((c, reason))
 
-    # Tổng kết
+    recovered_codex = []
+    failed_codex = []
+    disabled_codex = []
+    if codex_broken:
+        log(f"Phát hiện {len(codex_broken)} tài khoản Codex cần OAuth hồi sinh...")
+        for c, reason in codex_broken:
+            cname = c.get('name') or c.get('id', 'unknown')
+            import re
+            m = re.search(r'([a-zA-Z0-9_.+-]+@gmail\.com)', cname.lower())
+            if not m:
+                failed_codex.append((cname, f"NO_GMAIL_EXTRACTED: {reason}"))
+                if disable_codex_connection(c, reason):
+                    disabled_codex.append((cname, reason))
+                continue
+            email = m.group(1).lower()
+            prof = get_unambiguous_gpm_profile(gpm_map, email)
+            if prof:
+                pid = prof['id']
+                ok, msg = refresh_codex_account_via_gpm(pid, email, creds)
+                if ok:
+                    recovered_codex.append(email)
+                else:
+                    failed_codex.append((email, msg))
+                    if disable_codex_connection(c, reason):
+                        disabled_codex.append((email, reason))
+            else:
+                failed_codex.append((email, "AMBIGUOUS_GPM_PROFILE" if len(gpm_map.get(email, [])) > 1 else "Không thấy profile GPM"))
+                if disable_codex_connection(c, reason):
+                    disabled_codex.append((email, reason))
+
+
     chatgpt_after = get_connections_by_provider('chatgpt-web')
     chatgpt_active_cnt = sum(1 for c in chatgpt_after if c.get('isActive') and c.get('testStatus') == 'active')
     
@@ -888,9 +1468,8 @@ def main():
     codex_active_cnt = sum(1 for c in codex_after if c.get('isActive') and c.get('testStatus') == 'active')
     
     all_failed = failed_chatgpt + failed_ag + failed_codex
-    if not recovered_chatgpt and not recovered_ag and not all_failed:
+    if not recovered_chatgpt and not recovered_ag and not all_failed and not disabled_codex:
         return
-
     report_lines = [
         f"🤖 [POOL HEALER] BÁO CÁO SỨC KHỎE",
         f"• ChatGPT-Web: {chatgpt_active_cnt}/{len(chatgpt_after)} ACTIVE",
@@ -902,6 +1481,14 @@ def main():
         report_lines.append(f"• Đã hồi sinh ChatGPT ({len(recovered_chatgpt)} acc): {', '.join([a.split('@')[0] for a in recovered_chatgpt])}")
     if recovered_ag:
         report_lines.append(f"• Đã hồi sinh Antigravity ({len(recovered_ag)} acc): {', '.join([a.split('@')[0] for a in recovered_ag])}")
+    if recovered_codex:
+        report_lines.append(f"• Đã hồi sinh Codex ({len(recovered_codex)} acc): {', '.join([a.split('@')[0] for a in recovered_codex])}")
+    if disabled_codex:
+        report_lines.append(f"• Đã disable Codex OAuth invalid ({len(disabled_codex)} acc):")
+        for account, reason in disabled_codex[:5]:
+            report_lines.append(f"  - `{account}`: {reason}")
+        if len(disabled_codex) > 5:
+            report_lines.append(f"  - *...và {len(disabled_codex) - 5} tài khoản khác*")
         
     if all_failed:
         report_lines.append(f"• Cần chú ý ({len(all_failed)} acc):")
@@ -916,26 +1503,25 @@ def main():
     categorized_failures = []
     for a, err in all_failed:
         err_str = str(err)
-        cat = "UNKNOWN"
-        if "phone" in err_str.lower() or "số điện thoại" in err_str.lower():
-            cat = "PHONE_CHECKPOINT"
-        elif "timeout" in err_str.lower():
-            cat = "TIMEOUT"
-        elif "proxy" in err_str.lower():
-            cat = "PROXY_ERROR"
-        elif "recaptcha" in err_str.lower():
-            cat = "CAPTCHA_CHALLENGE"
-        categorized_failures.append({"account": a, "category": cat, "error": err_str[:100]})
+        categorized_failures.append({"account": a, "category": categorize_failure(err_str), "error": err_str[:100]})
+    failure_categories = {}
+    for f_item in categorized_failures:
+        failure_categories[f_item["category"]] = failure_categories.get(f_item["category"], 0) + 1
 
+    scan_ts = datetime.now(timezone.utc).isoformat()
     telemetry_data = {
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": scan_ts,
+        "last_scan": scan_ts,
         "chatgpt_web": {"active": chatgpt_active_cnt, "total": len(chatgpt_after)},
         "antigravity": {"active": ag_active_cnt, "total": len(ag_after)},
         "codex": {"active": codex_active_cnt, "total": len(codex_after)},
         "recovered_chatgpt": recovered_chatgpt,
         "recovered_ag": recovered_ag,
+        "recovered_codex": recovered_codex,
+        "disabled_codex": [d[0] if isinstance(d, (tuple, list)) else str(d) for d in disabled_codex],
         "total_failures": len(all_failed),
-        "failures": categorized_failures
+        "failures": categorized_failures,
+        "failure_categories": failure_categories
     }
     save_telemetry_metrics(telemetry_data)
 
