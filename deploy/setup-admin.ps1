@@ -75,14 +75,43 @@ if (Test-Path -LiteralPath $BundleHermes -PathType Container) {
         robocopy $ScriptsSrcDir $ScriptsDstDir *.py /xo /njh /njs /ndl /nc /ns | Out-Null
     }
 
-    # Sync Plugins
+    # Sync Plugins (Directory Junction for single-machine Git source-of-truth)
     $PluginsSrcDir = Join-Path $BundleHermes 'plugins'
-    if (Test-Path -LiteralPath $PluginsSrcDir -PathType Container) {
-        Write-Host "Syncing plugins..." -ForegroundColor Yellow
-        $PluginsDstDir = Join-Path $HermesHome 'plugins'
-        New-Item -ItemType Directory -Force -Path $PluginsDstDir | Out-Null
-        robocopy $PluginsSrcDir $PluginsDstDir /E /xo /njh /njs /ndl /nc /ns | Out-Null
+    if (-not (Test-Path -LiteralPath $PluginsSrcDir -PathType Container)) {
+        throw "Plugin source directory not found: $PluginsSrcDir"
     }
+
+    Write-Host "Syncing plugins via directory junctions..." -ForegroundColor Yellow
+    $PluginsDstDir = Join-Path $HermesHome 'plugins'
+    New-Item -ItemType Directory -Force -Path $PluginsDstDir | Out-Null
+    $SyncStats = @{ total = 0; created = 0; unchanged = 0 }
+    Get-ChildItem -LiteralPath $PluginsSrcDir -Directory | ForEach-Object {
+        $SyncStats.total++
+        $TargetJunc = Join-Path $PluginsDstDir $_.Name
+        $ResolvedSrc = (Resolve-Path -LiteralPath $_.FullName -ErrorAction Stop).Path
+        if (Test-Path -LiteralPath $TargetJunc) {
+            $Existing = Get-Item -LiteralPath $TargetJunc -Force
+            $IsReparsePoint = [bool]($Existing.Attributes -band [System.IO.FileAttributes]::ReparsePoint)
+            $IsJunction = $Existing.LinkType -eq 'Junction'
+            if (-not $IsReparsePoint -or -not $IsJunction) {
+                throw "Plugin destination is not a directory junction: $TargetJunc"
+            }
+
+            $ResolvedTarget = (Resolve-Path -LiteralPath $Existing.FullName -ErrorAction Stop).Path
+            if ($ResolvedTarget -ne $ResolvedSrc) {
+                throw "Plugin destination junction points to the wrong source: $TargetJunc -> $ResolvedTarget; expected $ResolvedSrc"
+            }
+
+            $SyncStats.unchanged++
+        } else {
+            & cmd.exe /d /c "mklink /J `"$TargetJunc`" `"$ResolvedSrc`"" | Out-Null
+            if ($LASTEXITCODE -ne 0) {
+                throw "Failed to create directory junction: $TargetJunc -> $ResolvedSrc"
+            }
+            $SyncStats.created++
+        }
+    }
+    Write-Host "Plugin sync telemetry: $($SyncStats | ConvertTo-Json -Compress)" -ForegroundColor Green
 
     Write-Host "Copying missing Hermes bootstrap credentials..." -ForegroundColor Yellow
     Copy-BootstrapFile (Join-Path $BundleHermes '.env') (Join-Path $HermesHome '.env')
