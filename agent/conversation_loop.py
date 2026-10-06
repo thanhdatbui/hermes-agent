@@ -17,6 +17,7 @@ resolved through :func:`_ra` so those patches keep working.
 from __future__ import annotations
 
 import json
+import importlib
 import logging
 import os
 import random
@@ -24,6 +25,7 @@ import re
 import ssl
 import threading
 import time
+import unicodedata
 import uuid
 from typing import Any, Dict, List, Optional
 
@@ -33,6 +35,7 @@ from agent.display import KawaiiSpinner
 from agent.error_classifier import FailoverReason, classify_api_error
 from agent.iteration_budget import IterationBudget
 from agent.turn_context import build_turn_context
+from agent.turn_finalizer import finalize_turn
 from agent.turn_retry_state import TurnRetryState
 from agent.memory_manager import build_memory_context_block
 from agent.message_sanitization import (
@@ -72,6 +75,28 @@ from tools.skill_provenance import set_current_write_origin
 from utils import base_url_host_matches, env_var_enabled
 
 logger = logging.getLogger(__name__)
+
+ADVISOR_METRICS = {"triggered": 0, "ok": 0, "unavailable": 0, "skipped": 0}
+_ADVISOR_METRICS_LOCK = threading.Lock()
+ADVISOR_MAX_OUTPUT = 4000
+_ADVISOR_ALLOWED_KEYS = {"recommendation", "reasoning", "confidence", "next_steps", "plan"}
+_ADVISOR_DANGEROUS_RE = re.compile(r"(?i)(?:\b(?:adb|curl|powershell|pwsh|rm|del|rmdir|shell|command|delete|execute|tap|swipe)\b|\bclear\s+(?:app\s+)?data\b)")
+
+
+def advisor_metrics_snapshot() -> Dict[str, int]:
+    with _ADVISOR_METRICS_LOCK: return dict(ADVISOR_METRICS)
+
+
+def _advisor_metric_inc(name: str) -> None:
+    with _ADVISOR_METRICS_LOCK: ADVISOR_METRICS[name] += 1
+
+
+def _ensure_advisor_registered() -> bool:
+    from tools.registry import registry
+    if registry.get_entry("advisor_consult") is None:
+        try: importlib.import_module("tools.advisor_tool")
+        except Exception: logger.exception("Unable to load advisor tool; continuing fail-open")
+    return registry.get_entry("advisor_consult") is not None
 
 # Stable prefix of the local interrupt status string emitted when a turn is
 # cancelled while waiting on the provider. Surfaces (ACP, TUI) match on this
@@ -150,6 +175,94 @@ def _ollama_context_limit_error(agent: Any, request_tokens: int) -> Optional[str
         "model context). If you manage the model through an Ollama Modelfile, "
         "set `PARAMETER num_ctx 65536` there instead."
     )
+
+
+def _is_advice_request(message: Any) -> bool:
+    if not isinstance(message, str): return False
+    text = " ".join(message.split()).strip()
+    if not text: return False
+    lowered = text.casefold()
+    def has_phrase(phrase: str) -> bool:
+        return re.search(rf"(?<!\w){re.escape(phrase)}(?!\w)", lowered) is not None
+    explicit = ("tư vấn", "lời khuyên", "có nên", "theo mày", "đánh giá", "phân tích giúp", "what should", "should i", "advise me")
+    if any(has_phrase(m) for m in explicit): return True
+    if has_phrase("nên"):
+        return "?" in text or "？" in text or re.search(r"(?<!\w)(?:làm gì|làm sao|thế nào|ra sao|chọn|dùng|đi|không|hay|nào)(?!\w)", lowered) is not None
+    return False
+
+
+def _normalize_advisor_advice(advisor_result: Any):
+    res = advisor_result
+    if isinstance(res, str):
+        try: res = json.loads(res)
+        except (TypeError, ValueError, json.JSONDecodeError): return None, "malformed"
+    if not isinstance(res, dict): return None, "malformed"
+    if res.get("status") != "ok": return None, "status_error" if res.get("status") == "error" else "unavailable"
+    adv = res.get("advice")
+    if not isinstance(adv, dict) or not adv or len(adv) > 6: return None, "malformed"
+    if any(not isinstance(k, str) or k not in _ADVISOR_ALLOWED_KEYS for k in adv): return None, "malformed"
+
+    def safe_val(v: Any) -> bool:
+        if v is None or isinstance(v, (bool, int, float)): return True
+        if isinstance(v, str): return len(v) <= 1000
+        if isinstance(v, list):
+            return len(v) <= 20 and all(isinstance(x, (str, int, float, bool)) and not isinstance(x, (dict, list)) and (not isinstance(x, str) or len(x) <= 500) for x in v)
+        return False
+
+    if not all(safe_val(v) for v in adv.values()): return None, "malformed"
+    try: rendered = json.dumps(adv, ensure_ascii=False, separators=(",", ":"))
+    except (TypeError, ValueError): return None, "malformed"
+    if not rendered: return None, "malformed"
+    norm = "".join(c for c in unicodedata.normalize("NFKC", rendered).casefold() if unicodedata.category(c) != "Cf")
+    compact = re.sub(r"[^a-z0-9]+", "", norm)
+    if _ADVISOR_DANGEROUS_RE.search(norm) or re.search(r"(?:adb|curl|powershell|pwsh|rm|del|rmdir|shell|command|delete|execute|tap|swipe)", compact):
+        return None, "policy_blocked"
+    if len(rendered.encode("utf-8")) > ADVISOR_MAX_OUTPUT: return None, "malformed"
+    return rendered, "ok"
+
+
+def _advisor_log_status(res: Any) -> str:
+    _, rsn = _normalize_advisor_advice(res)
+    return "ok" if rsn == "ok" else "unavailable"
+
+
+def _compose_advisor_response(primary_answer: str, advisor_result: Any) -> str:
+    primary = primary_answer if isinstance(primary_answer, str) else str(primary_answer or "")
+    rendered, _ = _normalize_advisor_advice(advisor_result)
+    if rendered is None: return primary + "\n\nAdvisor: unavailable (primary answer shown)"
+    return primary + "\n\n--- Advisor (Sol / review) ---\n" + rendered
+
+
+def _consult_advisor_once(handler, *, original_user_message: str, primary_answer: str, session_id: Optional[str], turn_id: Optional[str], consulted: bool):
+    if consulted:
+        ADVISOR_METRICS["skipped"] += 1
+        logger.info("advisor_telemetry elapsed_ms=0 reason=already_consulted request_id=none")
+        return primary_answer, consulted
+    if not _is_advice_request(original_user_message):
+        ADVISOR_METRICS["skipped"] += 1
+        logger.info("advisor_skipped decision_class=USER_ADVICE_REQUEST reason=not_advice")
+        logger.info("advisor_telemetry elapsed_ms=0 reason=not_advice request_id=none")
+        return primary_answer, consulted
+
+    _ensure_advisor_registered()
+    ADVISOR_METRICS["triggered"] += 1
+    rid = f"{session_id or 'session'}:{turn_id or 'turn'}:advisor"
+    f_args = {"decision_class": "USER_ADVICE_REQUEST", "question": original_user_message, "current_state": (primary_answer or "")[:4000], "evidence": (original_user_message or "")[:4000], "candidate_actions": [], "constraints": ["read-only advice", "do not approve or execute actions"], "request_id": rid}
+    t0 = time.monotonic()
+    try:
+        res = handler("advisor_consult", f_args, session_id=session_id, turn_id=turn_id, request_id=rid, user_task=original_user_message)
+    except Exception:
+        res = {"status": "unavailable"}
+    _, rsn = _normalize_advisor_advice(res)
+    st = "ok" if rsn == "ok" else "unavailable"
+    ADVISOR_METRICS[st] += 1
+    logger.info("advisor_triggered decision_class=USER_ADVICE_REQUEST status=%s request_id=%s", st, rid)
+    logger.info("advisor_telemetry elapsed_ms=%d reason=%s request_id=%s", int((time.monotonic() - t0) * 1000), rsn, rid)
+    return _compose_advisor_response(primary_answer, res), True
+
+
+def _maybe_append_advisor_for_final_response(handler, *, original_user_message: str, primary_answer: str, session_id: Optional[str], turn_id: Optional[str], consulted: bool):
+    return _consult_advisor_once(handler, original_user_message=original_user_message, primary_answer=primary_answer, session_id=session_id, turn_id=turn_id, consulted=consulted)
 
 
 def _ra():
@@ -632,6 +745,7 @@ def run_conversation(
     # user-facing result available; it must not be confused with error or
     # recovery text produced by unrelated exit paths.
     _pending_verification_response = None
+    advisor_consulted = False
 
     # Per-turn tally of consecutive successful credential-pool token refreshes,
     # keyed by (provider, pool-entry-id). A persistent upstream 401 lets
@@ -5268,6 +5382,14 @@ def run_conversation(
                     length_continue_retries = 0
                 
                 final_response = agent._strip_think_blocks(final_response).strip()
+                final_response, advisor_consulted = _maybe_append_advisor_for_final_response(
+                    _ra().handle_function_call,
+                    original_user_message=original_user_message,
+                    primary_answer=final_response,
+                    session_id=getattr(agent, "session_id", None),
+                    turn_id=effective_task_id or str(api_call_count),
+                    consulted=advisor_consulted,
+                )
                 
                 final_msg = agent._build_assistant_message(assistant_message, finish_reason)
 
@@ -5505,9 +5627,7 @@ def run_conversation(
                 break
     
     # Post-loop turn finalization extracted to agent/turn_finalizer.finalize_turn
-    # (god-file decomposition Phase 1 step 4). Behavior-neutral: the assembled
-    # result dict is returned exactly as before.
-    from agent.turn_finalizer import finalize_turn
+
     return finalize_turn(
         agent,
         final_response=final_response,
