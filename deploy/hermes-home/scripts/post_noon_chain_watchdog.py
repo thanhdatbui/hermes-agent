@@ -45,12 +45,12 @@ POWERSHELL_EXE = r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
 def is_feed_runner_active() -> bool:
     try:
         import psutil
-        for p in psutil.process_iter(["name", "cmdline"]):
+        for p in psutil.process_iter(["name"]):
             try:
                 name = (p.info.get("name") or "").lower()
                 if not name.startswith(("python", "powershell", "pwsh")):
                     continue
-                cmd = " ".join(p.info.get("cmdline") or [])
+                cmd = " ".join(p.cmdline() or [])
                 if "multi_machine_feed_session" in cmd or "run-feed-session.ps1" in cmd or "run_follow" in cmd:
                     return True
             except Exception:
@@ -96,15 +96,26 @@ def already_ran_today(today_str: str) -> bool:
         return False
     try:
         data = json.loads(STATE_FILE.read_text(encoding="utf-8"))
-        return data.get("last_success_date") == today_str
+        # Chỉ coi là đã hoàn tất trọn vẹn hôm nay nếu toàn bộ lane được yêu cầu thành công
+        return data.get("last_success_date") == today_str and data.get("details", {}).get("lane_status") == "success"
     except Exception:
         return False
 
 
 def save_state(today_str: str, details: dict) -> None:
     STATE_DIR.mkdir(parents=True, exist_ok=True)
+    existing_success = None
+    if STATE_FILE.is_file():
+        try:
+            old_data = json.loads(STATE_FILE.read_text(encoding="utf-8"))
+            existing_success = old_data.get("last_success_date")
+        except Exception:
+            pass
+    # Chỉ ghi nhận last_success_date khi toàn bộ lane được yêu cầu thành công triệt để
+    is_success = details.get("lane_status") == "success"
+    new_success = today_str if is_success else existing_success
     payload = {
-        "last_success_date": today_str,
+        "last_success_date": new_success,
         "last_run_at": datetime.now(HCMC).isoformat(),
         "details": details,
     }
@@ -138,18 +149,77 @@ def run_gmail_batch(dry_run: bool = False) -> tuple[int, str]:
 
 def run_tiktok_2fa_batch(dry_run: bool = False) -> tuple[int, str]:
     if dry_run:
-        return 0, "TOTAL=20 SUCCESS=20 FAILED=0 (dry-run)"
+        return 0, "TOTAL=40 SUCCESS=40 FAILED=0 (dry-run Kibe + Admin)"
     runner_script = TIKTOK_2FA_REPO_DIR / "python_runner" / "run_batch_live_2fa.py"
     if not runner_script.exists():
         return 1, f"Khong tim thay {runner_script}"
-    cmd = [PYTHON_EXE, str(runner_script), "--live", "--max-workers", "40"]
-    env = dict(os.environ)
-    env["PYTHONPATH"] = f"{TIKTOK_2FA_REPO_DIR / 'python_runner'}{os.pathsep}{AUTOMATION_CORE_SRC}"
+
+    outputs = []
+    kibe_code = 0
+    admin_code = 0
+
+    # 1. Cluster Kibe (Máy 1 - 80)
+    cmd_kibe = [
+        PYTHON_EXE,
+        str(runner_script),
+        "--workbook-path", r"D:\OneDrive\TaadaaData\kibe\taikhoan_dat_v2_updated .xlsx",
+        "--workbook-sheet", "Tài Khoản",
+        "--adb-path", r"C:\Program Files (x86)\xiaowei\tools\adb.exe",
+        "--live",
+        "--max-workers", "40",
+    ]
+    env_kibe = dict(os.environ)
+    env_kibe["PYTHONPATH"] = f"{TIKTOK_2FA_REPO_DIR / 'python_runner'}{os.pathsep}{AUTOMATION_CORE_SRC}"
+    env_kibe["TAADAA_HOST_CONFIG"] = r"D:\Taadaa\machine-config\kibe.yaml"
     try:
-        proc = subprocess.run(cmd, cwd=str(TIKTOK_2FA_REPO_DIR), env=env, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5400)
-        return proc.returncode, proc.stdout + "\n" + proc.stderr
+        proc_kibe = subprocess.run(
+            cmd_kibe,
+            cwd=str(TIKTOK_2FA_REPO_DIR),
+            env=env_kibe,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=5400,
+        )
+        outputs.append(f"=== CLUSTER KIBE (MÁY 1-80) ===\n{proc_kibe.stdout}\n{proc_kibe.stderr}")
+        kibe_code = proc_kibe.returncode
     except Exception as exc:
-        return 1, f"Loi chay TikTok 2FA: {exc}"
+        outputs.append(f"Lỗi chạy Kibe 2FA: {exc}")
+        kibe_code = 1
+
+    # 2. Cluster Admin (Máy 201 - 280) via SSH admin-farm with EncodedCommand
+    import base64
+    ps_admin_script = (
+        "$env:PYTHONIOENCODING = 'utf-8'\n"
+        "$env:PYTHONUTF8 = '1'\n"
+        "Set-Location 'D:/Taadaa/tiktok-add-bao-mat-f2a'\n"
+        "$wb = 'D:\\OneDrive\\TaadaaData\\admin\\taikhoan_dat_v2_updated .xlsx'\n"
+        "& 'D:\\Taadaa\\python-envs\\automation\\Scripts\\python.exe' python_runner/run_batch_live_2fa.py "
+        "--workbook-path $wb --workbook-sheet 'Tài Khoản' --max-workers 40 --live\n"
+    )
+    b64_ps = base64.b64encode(ps_admin_script.encode("utf-16le")).decode("ascii")
+    cmd_admin = [
+        "ssh", "-o", "ConnectTimeout=10", "admin-farm",
+        f"powershell -NoProfile -EncodedCommand {b64_ps}"
+    ]
+    try:
+        proc_admin = subprocess.run(
+            cmd_admin,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=5400,
+        )
+        outputs.append(f"=== CLUSTER ADMIN (MÁY 201-280) ===\n{proc_admin.stdout}\n{proc_admin.stderr}")
+        admin_code = proc_admin.returncode
+    except Exception as exc:
+        outputs.append(f"Lỗi chạy Admin 2FA: {exc}")
+        admin_code = 1
+
+    combined_code = 0 if (kibe_code in (0, 4) and admin_code in (0, 4)) else max(kibe_code, admin_code)
+    return combined_code, "\n".join(outputs)
 
 
 class SummaryResult(dict):
@@ -206,7 +276,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Post Noon Chain Watchdog (Reg Gmail -> Add 2FA TikTok)")
     parser.add_argument("--dry-run", action="store_true", help="Run in dry-run mode")
     parser.add_argument("--force", action="store_true", help="Bypass time window and session checks")
-    parser.add_argument("--lane", choices=("gmail", "tiktok", "all"), default="gmail", help="Run only the selected lane (default: gmail)")
+    parser.add_argument("--lane", choices=("gmail", "tiktok", "all"), default="all", help="Run only the selected lane (default: all)")
     args = parser.parse_args()
 
     now = datetime.now(HCMC)
@@ -238,27 +308,39 @@ def main() -> int:
 
     g_code, g_out = 0, ""
     t2fa_code, t2fa_out = 0, ""
+
+    # THIẾT KẾ ĐỘC LẬP (DECOUPLED):
+    # Dù lane là all hay gmail/tiktok, Phase 2 (TikTok 2FA) KHÔNG BAO GIỜ bị chặn nếu Phase 1 (Reg Gmail) thất bại.
+    g_duration_min = 0
+    t2fa_duration_min = 0
+
     if args.lane in ("gmail", "all"):
-        # Phase 1: Reg Gmail
+        g_start = time.time()
         g_code, g_out = run_gmail_batch(dry_run=args.dry_run)
-        if args.lane == "all":
-            sys.stderr.write("NOTE: --lane all backward-compatible chỉ chạy lane Gmail; TikTok cần trigger riêng (--lane tiktok).\n")
-    elif args.lane == "tiktok":
-        # Phase 2: Add 2FA TikTok (trigger riêng, không chain sau Gmail)
+        g_duration_min = max(1, int((time.time() - g_start) // 60))
+
+    if args.lane in ("tiktok", "all"):
+        t_start = time.time()
         t2fa_code, t2fa_out = run_tiktok_2fa_batch(dry_run=args.dry_run)
+        t2fa_duration_min = max(1, int((time.time() - t_start) // 60))
 
     end_dt = datetime.now(HCMC)
     duration_min = max(1, int((end_dt - start_dt).total_seconds() // 60))
 
-    lane_is_gmail = args.lane in ("gmail", "all")
-    lane_label = "GMAIL" if lane_is_gmail else "TIKTOK"
+    if args.lane == "all":
+        lane_label = "ALL (GMAIL + TIKTOK 2FA)"
+    elif args.lane == "gmail":
+        lane_label = "GMAIL"
+    else:
+        lane_label = "TIKTOK 2FA"
+
     report_lines = [
         f"[BÁO CÁO CHUỖI SAU CA TRƯA] [LANE {lane_label}]",
         f"- Thời gian: {start_dt.strftime('%H:%M')} -> {end_dt.strftime('%H:%M')} ({duration_min} phút)",
         "",
     ]
 
-    if lane_is_gmail:
+    if args.lane in ("gmail", "all"):
         g_res = parse_summary_counts(
             g_out,
             log_dir_hint=Path("D:/CodexRuntime/codex_gmail_debug-register-gmail"),
@@ -287,32 +369,60 @@ def main() -> int:
             f"  • Đã hoàn tất: {g_suc} máy",
         ])
         if g_skip > 0:
-            report_lines.append(f"  • Bỏ qua an toàn: {g_skip} máy (đầy slot)")
+            report_lines.append(f"  • Bỏ qua an toàn: {g_skip} máy (đầy slot / nhường cron khác)")
         report_lines.append(f"  • Lỗi nền tảng{p_str}")
         report_lines.append(f"  • Lỗi script{s_str}")
 
-    if args.lane == "tiktok":
-        t_res = parse_summary_counts(t2fa_out)
-        t_tot, t_suc, t_fail = t_res["total"], t_res["success"], t_res["failed"]
-        if t_tot == 0 and t2fa_code not in (0, 4):
-            phase2_header = f"- Phase 2 (Add 2FA TikTok - Code {t2fa_code}): LỖI KHỞI ĐỘNG RUNNER"
-        else:
+    if args.lane in ("tiktok", "all"):
+        if args.lane == "all":
+            report_lines.append("")
+        
+        # Phân tách báo cáo chi tiết theo từng cụm Farm (Kibe vs Admin)
+        if "=== CLUSTER ADMIN" in t2fa_out:
+            parts = t2fa_out.split("=== CLUSTER ADMIN")
+            kibe_text = parts[0]
+            admin_text = "=== CLUSTER ADMIN" + parts[1]
+            k_res = parse_summary_counts(kibe_text)
+            a_res = parse_summary_counts(admin_text)
+
             phase2_header = f"- Phase 2 (Add 2FA TikTok - Code {t2fa_code}):"
-        report_lines.extend([
-            phase2_header,
-            f"  • Đã hoàn tất: {t_suc} máy",
-            f"  • Lỗi ({t_fail})" if t_fail > 0 else "  • Lỗi: 0",
-        ])
+            report_lines.extend([
+                phase2_header,
+                f"  • Farm Kibe (Máy 1-80): Hoàn tất {k_res['success']} máy | Bỏ qua {k_res.get('skip_safe', 0)} | Lỗi {k_res['failed']}",
+                f"  • Farm Admin (Máy 201-280): Hoàn tất {a_res['success']} máy | Bỏ qua {a_res.get('skip_safe', 0)} | Lỗi {a_res['failed']}",
+            ])
+        else:
+            t_res = parse_summary_counts(t2fa_out)
+            t_tot, t_suc, t_fail = t_res["total"], t_res["success"], t_res["failed"]
+            t_skip = t_res.get("skip_safe", 0)
+            if t_tot == 0 and t2fa_code not in (0, 4):
+                phase2_header = f"- Phase 2 (Add 2FA TikTok - Code {t2fa_code}): LỖI KHỞI ĐỘNG RUNNER"
+            else:
+                phase2_header = f"- Phase 2 (Add 2FA TikTok - Code {t2fa_code}):"
+            report_lines.extend([
+                phase2_header,
+                f"  • Đã hoàn tất: {t_suc} máy",
+            ])
+            if t_skip > 0:
+                report_lines.append(f"  • Bỏ qua an toàn: {t_skip} máy (nhường cron khác / đã có 2FA)")
+            report_lines.append(f"  • Lỗi ({t_fail})" if t_fail > 0 else "  • Lỗi: 0")
 
     print("\n".join(report_lines))
 
     if not args.dry_run:
-        lane_code = g_code if lane_is_gmail else t2fa_code
         save_state(today_str, {
             "gmail_code": g_code,
+            "gmail_duration_min": g_duration_min,
             "2fa_code": t2fa_code,
+            "2fa_duration_min": t2fa_duration_min,
             "lane": args.lane,
-            "lane_status": "success" if lane_code == 0 else "failed",
+            "total_duration_min": duration_min,
+            "gmail_status": "success" if g_code == 0 else "failed",
+            "2fa_status": "success" if t2fa_code in (0, 4) else "failed",
+            "lane_status": "success" if (
+                (g_code == 0 if args.lane in ("gmail", "all") else True) and
+                (t2fa_code in (0, 4) if args.lane in ("tiktok", "all") else True)
+            ) else "failed",
         })
 
     return 0
