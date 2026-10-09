@@ -15,7 +15,8 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
   3. Reset PC cứu được là do gửi tín hiệu System Bus Reset giải phóng thanh ghi controller, không phải do cài đặt nguồn.
 
 ## 2. Công Cụ Cứu Nhanh Tại Chỗ (3 Giây, Không Cần Reset PC)
-- **Vị trí script:** `C:\Taadaa_Service\reset_usb_bus.bat` (Desktop shortcut: `RESET_USB_ADMIN.lnk`).
+- **Nguồn repo quản lý (SSOT):** `D:\Taadaa\tools\services\Taadaa_Service\reset_usb_bus.bat`
+- **Vị trí triển khai trên Host:** `C:\Taadaa_Service\reset_usb_bus.bat` (Desktop shortcut: `RESET_USB_ADMIN.lnk`).
 - **Cơ chế:**
   ```cmd
   @echo off
@@ -26,7 +27,8 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
 - **Tác dụng:** Reset xung nhịp 2 chip EHCI, 80 máy bắt tay lại ngay lập tức mà không làm sập các tiến trình khác trên PC.
 
 ## 3. Quy Tắc Safe Preflight Reset (Bảo Vệ Device Locks & Backoff Logic)
-- **Vị trí script:** `C:\Taadaa_Service\safe_usb_guard.py` (Script nguồn mẫu lưu tại `scripts/safe_usb_guard.py`).
+- **Nguồn repo quản lý (SSOT):** `D:\Taadaa\tools\services\Taadaa_Service\safe_usb_guard.py`
+- **Vị trí triển khai trên Host:** `C:\Taadaa_Service\safe_usb_guard.py` (Script nguồn mẫu lưu tại `scripts/safe_usb_guard.py`).
 - **Nguyên tắc an toàn tối thượng:**
   1. **Kiểm tra Device Locks trước:** Quét `~/.codex/device-locks/*.lock.json`. Nếu CÓ BẤT KỲ máy nào đang bận (`running/active/locked` và PID còn sống) $\rightarrow$ **CẤM TUYỆT ĐỐI RESET USB**.
   2. **Chỉ reset khi thỏa mãn CẢ 2 điều kiện:**
@@ -92,7 +94,7 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
 - **GIẢI PHÁP PHẦN CỨNG NẾU MUỐN NÂNG CẤP LÊN USB 3.0 (CÂN 80–200 MÁY):**
   * Tuyệt đối không trông chờ vào xHCI onboard của main X99.
   * Bắt buộc cắm thêm **Card PCIe to USB 3.0 rời** (dùng chip độc lập như Renesas/NEC uPD720201 hoặc VIA VL805, có nguồn phụ SATA). Mỗi card gánh 1 nhánh 40–50 máy, bộ đệm endpoint độc lập hoàn toàn.
-  * Tài liệu đặc tả kỹ thuật chi tiết lưu tại: `D:\Taadaa\docs\HARDWARE_USB_FARM_PCIE_GUIDE.md`.
+  * Tài liệu đặc tả kỹ thuật chi tiết lưu tại repo: `D:\Taadaa\tools\docs\HARDWARE_USB_FARM_PCIE_GUIDE.md` (bản sao lưu: `D:\Taadaa\docs\HARDWARE_USB_FARM_PCIE_GUIDE.md`).
 
 ## 6. Quy Hoạch Phần Cứng Mở Rộng Farm (80 - 200 Máy)
 - **Giới hạn 1 card USB:** 1 chip Host Controller chỉ chịu được 64 - 96 USB Endpoint contexts (mỗi S7 tốn 3-5 endpoints). 1 card chỉ cân tối đa 40 - 50 máy.
