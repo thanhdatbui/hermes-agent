@@ -72,7 +72,12 @@ class TestAdvisorIntentClassification(unittest.TestCase):
             "adb shell input keyevent 82",
             # Mệnh lệnh có chứa từ review/plan (False-positive prevention)
             "chạy review combo",
+            "chạy lại review combo",
             "tạo plan cho phase 2",
+            "lên plan cho phase 2",
+            # Câu có từ chứa 'liệu' (dữ liệu, tài liệu) nhưng là mệnh lệnh
+            "sửa dữ liệu avatar máy 62",
+            "upload tài liệu lên drive",
             # Câu hỏi tiến độ / trạng thái (không phải xin ý kiến kiến trúc)
             "kiểm tra xem avatar máy 62 sao rồi",
             "tiến trình chạy ra sao rồi",
@@ -158,9 +163,14 @@ class TestSecretRedaction(unittest.TestCase):
             "https://admin:super_secret@farm.net, "
             "password: my_password123, "
             "mật khẩu = secret_vn, "
+            "mật khẩu là secret_vn2, "
+            '{"password": "json_secret_pass"}, '
+            '{"api_key": "json_secret_key"}, '
             "token=xyz789, "
             "api_key=key_999, "
-            "sessionid=sess_456"
+            "access_token=tok_access_123, "
+            "sessionid=sess_456, "
+            "session_id=sess_789"
         )
         cleaned = redact_secrets(raw)
         self.assertNotIn("sk-1234567890", cleaned)
@@ -168,9 +178,14 @@ class TestSecretRedaction(unittest.TestCase):
         self.assertNotIn("super_secret", cleaned)
         self.assertNotIn("my_password123", cleaned)
         self.assertNotIn("secret_vn", cleaned)
+        self.assertNotIn("secret_vn2", cleaned)
+        self.assertNotIn("json_secret_pass", cleaned)
+        self.assertNotIn("json_secret_key", cleaned)
         self.assertNotIn("xyz789", cleaned)
         self.assertNotIn("key_999", cleaned)
+        self.assertNotIn("tok_access_123", cleaned)
         self.assertNotIn("sess_456", cleaned)
+        self.assertNotIn("sess_789", cleaned)
         self.assertIn("[REDACTED_API_KEY]", cleaned)
         self.assertIn("[REDACTED_TOKEN]", cleaned)
         self.assertIn("[REDACTED_USER_PASS]", cleaned)

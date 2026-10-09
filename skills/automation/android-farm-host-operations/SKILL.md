@@ -209,6 +209,8 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
     `ERROR [xiaowei::android::client] conn_and_check_dummy_byte: <serial>: No connection could be made because the target machine actively refused it. (os error 10061)`
     `ERROR [xiaowei::android::command] install_input: DeviceError(UnknownDevice("<serial>"))`
   * Ngay khi Tiểu Vi mở kết nối stream hình hoặc cài input helper, tải I/O tăng lên làm sụt áp chân data chập chờn $\rightarrow$ máy văng ngay lập tức.
+  * Khi 78/80 máy online mà chỉ có 1-2 máy bị ô cam "Điện thoại đã ngắt kết nối" (như máy 10, 30): Tuyệt đối không reset bus USB hay reset PC. Lỗi khu trú tại đầu cáp Micro-USB (chân D+/D- dão hoặc bẩn) hoặc chân socket sạc trên S7. Vệ sinh cồn hoặc thay cáp đồng ngắn <= 30cm (AWG 24/28).
+  * Giảm tải bus USB: Khóa XiaoWei stream ở 720p/480p, 15 FPS và bitrate <= 1.5 Mbps/máy để giảm 50% tải I/O microframe trên 2 chip EHCI.
   * Ngoài ra, nếu máy mới boot vào màn hình khóa hoặc chưa ấn "Always allow" trên popup "Allow USB debugging?", Android cũng sẽ từ chối kết nối (`os error 10061`).
 - **Kỷ Luật Báo Cáo Số Lượng Máy Online (Chống Khai Láo / "Mõm"):**
   * **CẤM TUYỆT ĐỐI** lấy snapshot tức thời 1 lần của lệnh `adb devices` ngay sau khi reboot máy để vội vàng tuyên bố "ĐÃ NHẬN ĐỦ 79/80". Máy đang trong giai đoạn boot có thể nhấp nháy online 1 giây rồi rớt ngay (flapping).

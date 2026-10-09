@@ -60,6 +60,11 @@ ADVICE_PATTERNS = [
     r"\bsao k\b",
     r"\bsao chưa\b",
     r"\bsao nhìn\b",
+    r"\bsao\b.*(?:\bv\b|\bvậy\b|\bthế\b|\bấy\b|\bhả\b)",
+    r"\bsao\b.*\b(cứ|lại|bị|được|mất|rớt|lỗi)\b",
+    r"\bk ổn định\b",
+    r"\bkhông ổn định\b",
+    r"\bchập chờn\b",
 ]
 
 # Các cụm từ trạng thái / phó từ cần LOẠI TRỪ (tránh False-Positive)
