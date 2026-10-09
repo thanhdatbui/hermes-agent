@@ -45,21 +45,33 @@ def resolve_avatar_path(media_source_root: Optional[Path], folder_video: Any) ->
 * **Bảo vệ `media_source_root is None`:** Dùng `root_display` tránh crash `TypeError`.
 * **Loại trừ tuyệt đối `video goc`:** Bất kỳ path nào chứa `video goc` đều bị loại bỏ khỏi `search_roots`.
 
-### Chốt chặn 2: Quét Trùng lặp Kép & Ghi Nguyên tử trong `regenerate_unique_avatars.py`
-1. **Quét trùng lặp cả 2 kho:**
-   Quét MD5 hash trên cả `ROOT_NUOI` và `ROOT_VG` để không bỏ sót bất kỳ nhóm trùng nào giữa hai kho.
-2. **Ghi nguyên tử (Atomic Write):**
+### Chốt chặn 2: Quét Trùng lặp Kép, Ghi Nguyên tử & Trích xuất 100% từ NUOI trong `regenerate_unique_avatars.py`
+1. **Khử blocking lúc import module:**
+   Chuyển `find_all_duplicate_folders()` vào bên trong hàm `main()`, biến `ALL_TARGETS: list[int] = []` để khi import script vào test hoặc tool khác không bị treo terminal do quét I/O nặng nề.
+2. **Loại bỏ hoàn toàn nguồn thô trong `process_folder`:**
+   Avatar BẮT BUỘC trích xuất 100% từ `ROOT_NUOI / str(folder)`. Nếu thư mục nuôi chưa có video, trả về `(folder, False, "NO_VIDEOS_IN_NUOI", dur)` thay vì nhảy sang cào thô từ `ROOT_VG`.
+3. **Ghi nguyên tử giữ đuôi ảnh chuẩn (.tmp.jpg):**
    ```python
-   tmp_target = src_root / str(folder) / "avatar.jpg.tmp"
-   final_target = src_root / str(folder) / "avatar.jpg"
-   tmp_target.parent.mkdir(parents=True, exist_ok=True)
+   tmp_target = nuoi_folder / "avatar.tmp.jpg" # Giữ đuôi .jpg cho PIL/OpenCV/FFmpeg
+   final_target = nuoi_folder / "avatar.jpg"
    ...
-   # Sau khi sinh ảnh thành công:
    os.replace(tmp_target, final_target)
    ```
    Nếu tiến trình timeout hoặc lỗi giữa chừng, xóa `tmp_target`, không bao giờ để lại file ảnh dở dang.
-3. **Đồng bộ có `mkdir` an toàn:**
-   Trước khi `shutil.copy2` sang `nuoi_path` và `vg_path`, bắt buộc gọi `parent.mkdir(parents=True, exist_ok=True)`.
+4. **Đồng bộ nguyên tử sang VG & Dọn rác trong finally:**
+   ```python
+   vg_folder = ROOT_VG / str(folder)
+   if vg_folder.is_dir():
+       vg_tmp = vg_folder / "avatar.tmp.jpg"
+       vg_target = vg_folder / "avatar.jpg"
+       try:
+           shutil.copy2(final_target, vg_tmp)
+           os.replace(vg_tmp, vg_target)
+       finally:
+           if vg_tmp.exists():
+               vg_tmp.unlink(missing_ok=True)
+   ```
+   Chỉ đồng bộ sang `ROOT_VG` nếu thư mục đó đã tồn tại từ trước (không tự tạo thư mục rác). Nếu copy/replace lỗi, khối `finally` dọn sạch `vg_tmp`.
 
 ### Chốt chặn 3: Kiểm chứng Hermetic Unit Test
 Trong `tests/test_tiktok_workflow.py`:

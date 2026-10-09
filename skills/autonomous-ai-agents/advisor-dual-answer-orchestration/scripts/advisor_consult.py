@@ -244,11 +244,11 @@ def consult_advisor(prompt: str, context: str = "") -> dict[str, Any]:
         {"role": "user", "content": full_prompt},
     ]
 
-    # --- Tầng 1: OmniRoute Sol Primary (18s) ---
+    # --- Tầng 1: OmniRoute Sol Primary (Fail-fast 5s) ---
     omni_url = "http://127.0.0.1:20129/v1/chat/completions"
     omni_headers = {"Content-Type": "application/json", "Authorization": "Bearer dummy"}
     payload_t1 = {"model": "review", "messages": messages}
-    ok, text = _call_stream_chat(omni_url, omni_headers, payload_t1, timeout_sec=18.0)
+    ok, text = _call_stream_chat(omni_url, omni_headers, payload_t1, timeout_sec=5.0)
     if ok and len(text) > 20:
         return {
             "status": "success",

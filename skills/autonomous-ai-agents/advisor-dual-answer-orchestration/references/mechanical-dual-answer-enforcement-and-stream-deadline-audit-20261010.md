@@ -20,6 +20,8 @@ Coordinator LLM thường mắc phải 3 thiên kiến nghiêm trọng dẫn đ�
 
 ### Loại trừ Nghiêm ngặt (Negative - Imperative & Status)
 - **Mệnh lệnh thuần túy:** `chạy batch máy 2`, `sửa file path_resolver.py`, `fix đi đm đừng có lệch nữa`, `làm đi`, `triển khai đi`, `restart gateway`, `upload avatar máy 62`.
+- **Mệnh lệnh có chứa review/plan:** `chạy review combo`, `chạy lại review combo`, `tạo plan cho phase 2`, `lên plan cho phase 2` (loại trừ các cụm `chạy/run/tạo/lập/lên review/plan` để không bị nhận diện nhầm là hỏi ý kiến $\rightarrow$ **FALSE**).
+- **Danh từ chứa 'liệu' (tránh bẫy r'\bliệu\b'):** `sửa dữ liệu avatar máy 62`, `upload tài liệu lên drive` (tự động strip `dữ liệu`, `tài liệu`, `vật liệu` trước khi quét regex `\bliệu\b` $\rightarrow$ **FALSE**).
 - **Hỏi tiến độ / trạng thái hiện trường:** `kiểm tra xem avatar máy 62 sao rồi`, `tiến trình chạy ra sao rồi` (từ khóa `sao rồi`, `sao r` hỏi trạng thái, KHÔNG phải hỏi ý kiến kiến trúc $\rightarrow$ **FALSE**).
 - **Phó từ phương thức:** `sửa cái này sao cho nhanh` (`sao cho` là phó từ, không phải hỏi nguyên nhân $\rightarrow$ **FALSE**).
 - **Xin phép thực thi mệnh lệnh:** `Đăng ký bù, được không?` (xác nhận lệnh, không phải hỏi lời khuyên $\rightarrow$ **FALSE**).
@@ -35,12 +37,19 @@ Coordinator LLM thường mắc phải 3 thiên kiến nghiêm trọng dẫn đ�
 - **Fail-Safe:** Khi cả 3 tầng timeout/lỗi, trả về `Advisor: unavailable (upstream timeout / pool limits; primary answer shown)`.
 
 ### Xử lý Stream & An toàn Dữ liệu
-1. **Wall-clock Deadline Abort:**
-   Vòng đọc SSE `for line in resp:` bắt buộc kiểm tra `time.time() - t_start > timeout_sec`. Khi vượt hạn, BẮT BUỘC trả về `False, "Wall-clock deadline exceeded"` để kích hoạt fallback sang tầng kế tiếp. **TUYỆT ĐỐI KHÔNG** trả text cụt dở dang coi như thành công.
+1. **Wall-clock Deadline Abort & Marker [DONE] Bắt buộc:**
+   - Vòng đọc SSE `for line in resp:` bắt buộc kiểm tra `time.time() - t_start > timeout_sec`. Khi vượt hạn, BẮT BUỘC trả về `False, "Wall-clock deadline exceeded"` để kích hoạt fallback sang tầng kế tiếp. **TUYỆT ĐỐI KHÔNG** trả text cụt dở dang coi như thành công.
+   - BẮT BUỘC có marker kết thúc sạch `data: [DONE]`. Nếu stream bị ngắt kết nối hoặc đóng sớm (premature close) khi chưa thấy `[DONE]`, coi là lỗi vận chuyển và trả `False` để fallback ngay.
 2. **Lọc Pseudo-200 Usage Limits:**
    Đồng bộ kiểm tra `full_text.startswith("[Error:")` hoặc `"You've hit your limit"` trên **CẢ 3 TẦNG**. Không để thông báo lỗi quota của web pool bị nuốt thành lời khuyên hợp lệ.
-3. **Che giấu Dữ liệu Nhạy cảm (Secret Redaction):**
-   Trước khi gửi context ra external LLM, tự động lọc sạch API key (`sk-...`), Bearer token, password và credentials bằng hàm `redact_secrets()`.
+3. **Che giấu Dữ liệu Nhạy cảm Toàn diện (Secret Redaction):**
+   Trước khi gửi context ra external LLM, tự động lọc sạch:
+   - API keys: `sk-[a-zA-Z0-9_-]{20,}` $\rightarrow$ `[REDACTED_API_KEY]`.
+   - Bearer tokens: `Bearer ...` $\rightarrow$ `Bearer [REDACTED_TOKEN]`.
+   - HTTP Basic Auth URLs: `://user:pass@host` $\rightarrow$ `://[REDACTED_USER_PASS]@host`.
+   - JSON key-value có nháy: `{"password": "...", "api_key": "...", "access_token": "...", "session_id": "..."}` $\rightarrow$ `"[REDACTED]"`.
+   - Cụm từ tiếng Việt không dấu phân cách: `mật khẩu là abc` $\rightarrow$ `mật khẩu là [REDACTED]`.
+   - Field key-value: `password=...`, `token=...`, `sessionid=...`, `api_key=...`.
 4. **Giới hạn Độ dài:** Khóa cứng text advice $\le 2500$ ký tự, `tools: []`, `tool_choice: "none"`.
 
 ---
