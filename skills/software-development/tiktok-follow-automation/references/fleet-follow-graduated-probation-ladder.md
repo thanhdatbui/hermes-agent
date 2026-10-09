@@ -2,6 +2,9 @@
 
 ## 1. Bản Chất Kỹ Thuật: Cơ Chế Bậc Thang Thử Thách (Graduated Probation)
 
+### Đơn vị vòng đời cốt lõi: (Máy, Row) là Account độc lập
+- **CẤM TUYỆT ĐỐI GỘP QUOTA THEO MÁY:** Mỗi máy chạy nhiều ca (ví dụ ca sáng Row 1, ca chiều Row 2...). Mỗi `(máy, row)` là một nick độc lập có state, lịch sử và trust score riêng. Không bao giờ cộng dồn quota theo máy hoặc đặt trần ngày theo máy.
+
 ### Tại sao nick ra tù hay bị dính nhả lại?
 1. **Lỗi spike quota ngay sau khi ra tù:**
    - Khi hết hạn cooldown, tài khoản ra tù vẫn đang nằm trong danh sách giám sát (probation) của TikTok server.
@@ -40,10 +43,15 @@
   - Sau tổng cộng 6 ngày chạy sạch (~14 - 15 ngày, tức nửa tháng dưỡng acc liên tục).
   - Hệ thống chính thức tốt nghiệp (`graduated = True`, `fail_streak = 0`, xóa `probation_clean_days`), thăng hạng lên Nhóm Nick Khỏe (Full Budget 10 - 20 lượt).
 
-* **CHỐT AN TOÀN FAIL-CLOSED:**
-  - Nếu ở bất kỳ nấc nào (`Hồi phục 1` hay `Hồi phục 2`) mà bị TikTok nhả follow (`set_follow_failed()`):
-  - Lập tức xóa `probation_clean_days = 0`, tăng `fail_streak`, đưa vào cooldown theo progressive backoff.
-  - Khi ra tù, bắt buộc quay lại từ vạch xuất phát `Hồi phục 1`.
+* **CHỐT AN TOÀN FAIL-CLOSED & PROGRESSIVE BACKOFF STREAK:**
+  - Nếu ở bất kỳ nấc nào (`Hồi phục 1` hay `Hồi phục 2`) mà bị TikTok nhả follow (`set_follow_failed()`) hoặc không follow được:
+  - Lập tức xóa `probation_clean_days = 0`, tăng `fail_streak` (Streak 1 -> Streak 2 -> Streak 3+).
+  - Đưa vào Cooldown theo Progressive Backoff:
+    * `fail_streak = 1`: Giam 3 ngày (quota = 0).
+    * `fail_streak = 2`: Giam 7 ngày (quota = 0).
+    * `fail_streak >= 3`: Giam 15 ngày (quota = 0).
+  - Khi mãn hạn Cooldown: Bắt buộc quay lại từ vạch xuất phát `Hồi phục 1` (3 - 5 lượt/ca). Nếu chạy sạch 3 ngày -> lên `Hồi phục 2` (7 - 9 lượt/ca) -> chạy sạch thêm 3 ngày -> tốt nghiệp lên `Khỏe` (10 - 15 lượt/ca). Nếu tại bất kỳ nấc nào bị nhả tiếp thì tiếp tục tăng `fail_streak` và quay lại Cooldown dài hơn.
+  - **Chống bẫy thống kê Simpson:** Thống kê tỷ lệ giữ follow phải phân tầng độc lập (tỷ lệ của riêng Hồi phục 1, Hồi phục 2, Khỏe), CẤM gộp phẳng toàn farm khiến mức 15+ của nick Khỏe bị hiểu nhầm là an toàn nhất trong khi mức 1-4 của nick sau phạt bị kéo tụt tỷ lệ.
 
 ---
 

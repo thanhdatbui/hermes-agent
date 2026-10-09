@@ -22,4 +22,4 @@ Admin Farm: 3proxy S7 192.168.110.2:100xx. Aruba: M1-40 'kibe 1' (23102025); M41
 §
 Audit follow (tháng 10): Co-run 2 máy/IP nhả 70.6% vs Solo 36.4% (31/8-1/9 sai do verify cũ); 8 ca ăn nhả dắt dây <25ph -> IP Circuit Breaker (tiktok_tracker.db) tự ngắt khi Máy A fail để safe-skip Máy B cùng IP đến 23:59:59.
 §
-adbjoinwifi: nháy 'admin 1'; xóa lạ: service call wifi 14 i32 <id>. ADB: cấm lệnh trần ko lock; bọc with_device_lock.py/operator_device_lock.
+adbjoinwifi: nháy 'admin 1'; xóa lạ: service call wifi 14 i32 <id>. ADB: cấm lệnh trần ko lock; guard_device_bulkhead chặn; bọc with_device_lock.py/operator_device_lock; verify kernel CreationDate chống giả lock.

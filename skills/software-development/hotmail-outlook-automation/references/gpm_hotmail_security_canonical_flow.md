@@ -114,11 +114,34 @@ GPM CDP Connect
   * Chụp ảnh `gpm_relogin_totp_<email>.png` làm bằng chứng.
   * Tiếp tục bắt màn hình KMSI ("Duy trì đăng nhập?"), chụp ảnh `gpm_kmsi_<email>.png` rồi click `#idSIButton9` (nút [Có]) để lưu cookie lâu dài vào GPM Profile.
 - **Kỷ luật báo cáo bằng chứng**: User luôn yêu cầu bằng chứng thị giác đầy đủ 4 chặng:
-  1. *Add 2FA*: Form cấp key + điền mã 6 số kích hoạt.
+  1. *Add 2FA*: Form cấp key + điền mã 6 số kích hoạt. Nếu tài khoản đã có 2FA từ trước (`has_totp=True`), BẮT BUỘC chụp lại trang Proofs hiển thị Authenticator đang Bật hoặc gửi lại ảnh chứng minh cũ; CẤM im lặng bỏ qua khiến user tưởng chưa làm!
   2. *Đổi Pass*: Form đổi pass + nút Lưu.
   3. *Sign out everywhere*: Modal dialog xác nhận đăng xuất.
   4. *Relogin*: Form giải 2FA khi đăng nhập lại + Màn hình KMSI bấm Có.
   Tuyệt đối không được báo cáo kết quả chung chung mà thiếu ảnh của chặng nào.
+
+---
+
+## 8. Bẫy Playwright CDP Sau Khi Submit Form Đổi Mật Khẩu (Navigation Race Condition)
+- **Hiện tượng**: Bấm submit nút `#save` hoặc `#UpdatePasswordAction` xong, gọi ngay `page.content()` để kiểm tra thông báo lỗi thì Playwright văng exception:
+  `[-] Lỗi trong quá trình thao tác CDP/Playwright: Page.content: Unable to retrieve content because the page is navigating and changing the content.`
+- **Nguyên nhân**: Ngay khi click Lưu, Microsoft lập tức điều hướng trang (active navigation). Playwright không cho phép đọc DOM qua `page.content()` khi trang đang trong quá trình chuyển hướng.
+- **Cách xử lý chuẩn**:
+  ```python
+  try:
+      page.wait_for_load_state("domcontentloaded", timeout=5000)
+      page_content = page.content()
+      if any(err_msg in page_content for err_msg in err_patterns):
+          raise RuntimeError("Microsoft từ chối đổi mật khẩu: mật khẩu không hợp lệ.")
+  except Exception as e_cnt:
+      log(f"Kiểm tra nội dung trang sau đổi pass (an toàn trước navigation): {e_cnt}")
+  ```
+- **Selector linh hoạt cho form đổi mật khẩu**:
+  * Ô mật khẩu hiện tại (có thể không xuất hiện nếu vừa re-auth): `#currentPassword, input[name='CurrentPassword']`.
+  * Ô mật khẩu mới: `#iPassword, #newPassword, #newPasswordInput, input[name='Password']`.
+  * Ô xác nhận mật khẩu: `#iRetypePassword, #confirmPassword, #confirmPasswordInput, input[name='RetypePassword']`.
+  * Ô nhập mã 2FA TOTP: `#iVerifyText` (thường là type `number`, placeholder `Nhập mã`) hoặc `#idTxtBx_SAOTCC_OTC`.
+
 
 ---
 
