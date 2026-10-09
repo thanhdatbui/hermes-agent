@@ -31,6 +31,10 @@ Create one root task with `workflow_template_id="repository-research-v1"` and `c
 - `kanban_block`: stop a role when access, scope, or evidence quality prevents a trustworthy result.
 - `GET /tasks/{task_id}/report`: use the normalized workflow report for final synthesis when the dashboard API is available.
 
+## Directness and source-fit gate
+
+For concrete repository/provider questions, answer the exact operational question before giving background. Classify every candidate as **direct match**, **related architecture**, or **not a match**. Record whether it uses an official API, browser/UI automation, a reverse-engineered transport, or an unrelated wrapper. Never infer that a model label such as `gemini-veo` is specifically Veo 3/3.1 without documentation or source evidence; mark the mapping unverified when the repository does not establish it. If the user corrects an interpretation, discard the prior speculative path and restate only verified facts from the inspected sources. Keep the final answer concise and lead with the shortlist and recommendation.
+
 ## Procedure
 
 1. Create the root task with the research question, acceptance criteria, repository path, and a read-only constraint.

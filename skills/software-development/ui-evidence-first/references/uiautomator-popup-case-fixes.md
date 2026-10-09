@@ -64,3 +64,53 @@
   1. **Strict Detector Pair:** `detect_account_logged_out_popup` requires both title markers (`"trạng thái tài khoản"` / `"account status"`) AND body markers (`"đã bị đăng xuất"` / `"logged out"`).
   2. **Fail-Closed Classification:** Maps to `manual-needed:login` (confidence 0.99, `manual_needed=True`), terminating the flow without blind taps.
   3. **Farm Alert & Scene Hold:** Triggers `send_farm_machine_alert` with red banner screencap to Telegram (`-5373649734`) and retains device lock as `blocked` (TTL 90m) to preserve the incident scene for operator triage.
+
+### Case 10: Facebook Friends & Email Access Permission Dialog (Máy 50 Incident - 03/09/2026)
+- **Faulty Pattern:**
+  1. Rigid substring matching in `automation-core/benign_popup.py` requiring an exact single phrase and strictly requiring an `"OK"` label, failing on text variations or different button casing.
+  2. Popup handler was missing from `BENIGN_POPUP_REGISTRY` in `benign_popup_registry.py`, preventing `find_matching_handler` from detecting and auto-dismissing it during swipe recovery, profile preflight, and account switcher guard.
+  3. Missing rule in `automation_core.tiktok_popup.TIKTOK_POPUP_RULES`.
+- **Failure Mechanism:** Dialog (*"Cho phép TikTok có quyền truy cập vào email và danh sách bạn bè trên Facebook của bạn?..."* with *"Không cho phép"* / *"OK"*) failed detection, classified as `manual-needed:popup` (`unexpected popup/dialog marker detected`), halting the session with a farm alert.
+- **Fix Pattern:**
+  1. **Multi-lingual & Variant Detection:** Support Vietnamese (*"truy cập vào email và danh sách bạn bè trên facebook"*, *"quyền truy cập vào email"*, *"danh sách bạn bè trên facebook"*) and English (*"access your email and facebook friends"*, *"facebook friends list"*), without strictly requiring the OK button.
+  2. **Safe Deny-First Dismissal:** Detect and tap the deny node (*"Không cho phép"*, *"Từ chối"*, *"Don't allow"*, *"Deny"*, *"Hủy"*), with standard coordinate fallback `(deny_x, deny_y)` and `send_device_back_key`.
+  3. **Centralized Registry Registration:** Register `facebook_contacts_email_permission` (Priority 92) in `BENIGN_POPUP_REGISTRY` and include in `allowlisted_drift_handlers` / profile preflight.
+  4. **Core Rules Integration:** Add `facebook_contacts_email_permission_vi` & `facebook_contacts_email_permission_en` to `TIKTOK_POPUP_RULES`.
+
+### Case 11: Video Editor & CapCut Template Creation Overlay Auto-Recovery (Máy 36 Incident - 04/09/2026)
+- **Faulty Pattern:** Missing detector and dismisser in `classifier.py` and `benign_popup_registry.py` for Video Editor / CapCut template creation screens ("Sửa", "Âm thanh", "Văn bản", "Hiệu ứng", "Phép thuật", "Chú thích", "CapCut", "Mẫu CapCut").
+- **Failure Mechanism:** When feed sessions or recovery flows encountered the video editor interface leftover from creation/draft flows, `classifier.py` classified the screen as `manual-needed:popup` with `unexpected popup/dialog marker detected`, aborting feed swipes and emitting farm alerts.
+- **Fix Pattern:**
+  1. **Dual Package & Multi-Tool Matcher:** Detect editor keywords ("âm thanh", "văn bản", "hiệu ứng", "phép thuật", "chú thích", "bộ lọc", "mẫu capcut", "timeline", "capcut", "video editor") or CapCut package (`com.lemon.lvoverseas`) with threshold (>=3 tools or >=2 tools + action keyword).
+  2. **Negative Exclusions:** Strictly reject normal feed screens with bottom navigation dock (`Trang chủ` + `Hồ sơ`/`Hộp thư`), top feed tabs (`Dành cho bạn`/`Đang follow`), profile screens, and credential/verification inputs.
+  3. **Safe Dismissal with Draft Modal Chaining:** Tap top-left Back/Close node or send `send_device_back_key`; if a draft continuation confirmation modal (*"Tiếp tục chỉnh sửa bài đăng này?"* / *"Lưu bản nháp"*) appears following Back, immediately invoke `_dismiss_draft_post_continuation` to clear the prompt cleanly.
+  4. **Registry Registration:** Register `video_editor_overlay` with Priority 90 in `BENIGN_POPUP_REGISTRY` and map to `GENERIC_POPUP_SCREEN` in `classifier.py`.
+
+### Case 12: Gmail Onboarding "Please add at least one email address" on Zero-Account Devices (Máy 76 Incident - 06/09/2026)
+- **Faulty Pattern:** Unconditionally tapping `com.google.android.gm:id/action_done` ("ĐƯA TÔI TỚI GMAIL" / "TAKE ME TO GMAIL") in `dismiss_gmail_setup_addresses` on a freshly cleared Gmail app to reach the Inbox Home screen.
+- **Failure Mechanism:** On clean/reset devices or newly provisioned phones where Google accounts count = 0 (e.g. after `pm clear`), Gmail cannot enter the Inbox without an existing account. Tapping "Đưa tôi tới Gmail" triggers an alert dialog: `android:id/message` = *"Vui lòng thêm ít nhất một địa chỉ email."* with `android:id/button1` = *"OK"*. Preflight fails to reach Gmail Home and aborts with `[BLOCKED][PRE_GMAIL][NOT_GMAIL_HOME]`.
+- **Fix Pattern:**
+  1. **Zero-Account Branching:** In account registration flows or when Google accounts count = 0, do NOT tap `action_done` ("Đưa tôi tới Gmail").
+  2. **Direct Add Account Navigation:** Tap `com.google.android.gm:id/setup_addresses_add_address` ("Thêm địa chỉ email") -> select provider "Google" (`com.google.android.gm:id/account_setup_label`) to enter the Google account creation/login flow directly.
+  3. **Alert Auto-Dismissal Fallback:** If dialog *"Vui lòng thêm ít nhất một địa chỉ email."* / *"Please add at least one email address"* appears, tap "OK" (`android:id/button1`), then fall back to tapping "Thêm địa chỉ email".
+
+### Case 13: TikTok Account Switcher Row Tap Target & Settle Timing (Máy 79 Incident - 07/09/2026)
+- **Faulty Pattern:**
+  1. Trong `_find_account_switch_option`, khi row container full-width (`node.bounds[2] - node.bounds[0] >= 600`), script cố tìm inner `TextView` chứa username và ghi đè `best_bounds = inner.bounds` với giả định "tap trực tiếp lên username TextView thay vì khoảng trống bên phải".
+  2. Trong `verify_and_switch_profile`, ngay sau khi tap switch row, script lập tức gọi `_navigate_profile_for_preflight(...)` dẫn đến tap Profile bottom tab `[972, 1857]`.
+- **Failure Mechanism:**
+  1. Trong UI XML của TikTok, row container là `android.widget.Button` (`id/l9b`, `clickable="true"`, toàn bộ chiều ngang `[0, y1][1080, y2]`, center x=540). Inner `TextView` (`id/mtx`, `text="<username>"`) có `clickable="false"`, bounds `[252, y1_inner][543, y2_inner]`, center x=397. Việc tap trúng `(397, y)` vào TextView không clickable khiến TikTok không nhận click listener trên container `Button id/l9b`.
+  2. Việc tap Profile bottom tab `[972, 1857]` ngay sau khi tap switcher row khi sheet chưa kịp settle / animate đóng làm ngắt quãng luồng switch của TikTok (hoặc tap trúng nút "Thêm tài khoản" ở đáy nếu sheet còn mở), khiến tài khoản không chuyển đổi thành công.
+- **Fix Pattern:**
+  1. **Target Clickable Container:** Giữ nguyên `best_bounds` là bounds của container có `clickable="true"` (`node.bounds` từ `find_exact_account`, center x=540 hoặc avatar x~120). Tuyệt đối KHÔNG override vào inner non-clickable `TextView`.
+  2. **Wait for Sheet Settle / Dismiss:** Sau khi tap account option trên Switcher, chờ và poll cho đến khi `is_switcher_open == False` (timeout 4-6s) để TikTok tự động reload profile và đóng bottom sheet.
+  3. **No Redundant Profile Re-Navigation:** Vì switcher được mở từ Profile screen, sau khi sheet đóng thiết bị đã ở Profile tab, không tap lại `[972, 1857]`.
+
+### Case 14: Cấm Tuyệt Đối `pm clear` Khi Sửa Lag / Cứu Kẹt Splash App TikTok (Sự Cố Admin Farm - 13/09/2026)
+- **Faulty Pattern:** Dùng lệnh `pm clear com.ss.android.ugc.trill` để xử lý hiện tượng app TikTok bị kẹt màn hình đen `SplashActivity`, lag hoặc lỗi crash sau khi nâng cấp split APK.
+- **Failure Mechanism:** Lệnh `pm clear` xóa toàn bộ thư mục `/data/data/com.ss.android.ugc.trill`, làm mất toàn bộ auth cookies, database token và session đăng nhập, đưa ứng dụng về màn onboarding `NewUserJourneyActivity` và văng toàn bộ tài khoản TikTok đang nuôi trên thiết bị.
+- **Fix Pattern & Invariant:**
+  1. **TUYỆT ĐỐI CẤM `pm clear`:** Cấm hoàn toàn việc chạy `pm clear` trên thiết bị farm trong mọi trường hợp (kể cả app lag, kẹt splash hay crash).
+  2. **Nâng cấp an toàn (Keep Data):** Bổ sung Split APKs bắt buộc dùng:
+     `adb install-multiple -r -d base.apk [splits...]` (cờ `-r` reinstall giữ nguyên toàn bộ data tài khoản).
+  3. **Giải phóng treo Splash:** Kết thúc nâng cấp chỉ dùng `am force-stop` kết hợp `input keyevent 3` (HOME) để đưa máy về trạng thái an toàn. Nếu cần xóa cache, chỉ xóa thư mục cache an toàn hoặc reboot máy, tuyệt đối không đụng vào data.

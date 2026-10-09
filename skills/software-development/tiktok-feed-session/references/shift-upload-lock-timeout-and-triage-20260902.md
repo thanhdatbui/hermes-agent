@@ -38,6 +38,8 @@ with _InterProcessFileLock(lock_file, timeout=lock_timeout, deadline=lock_deadli
 
 **Test Result:** 101 tests pass (`test_multi_machine_feed_session.py`).
 
+**Update 2026-09-05 (Case 104):** Xem chi tiết tại `references/shift-upload-lock-inprocess-coordination-20260905.md` về giải pháp triệt để bão tranh chấp lock qua khóa kép `_LOCAL_LEDGER_LOCK = threading.RLock()`, pre-scan ground truth qua `os.scandir` (loại bỏ glob 48k thư mục khi đang giữ exclusive lock), nâng timeout 300s và chuẩn hóa truyền `deadline_config`.
+
 ## 4. Triage Pattern for Upload Failures & Machine Offline Check
 Khi người dùng hỏi "Sao nhiều máy không đăng video", quy trình điều tra chuẩn gồm 3 bước:
 

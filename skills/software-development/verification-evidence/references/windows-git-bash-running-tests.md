@@ -24,12 +24,19 @@ cd /d/Taadaa/tiktok-luot nuoi acc && git status   # -> cd: too many arguments
    own. Set workdir so each call starts in the right place even if a prior
    `cd` failed.
 
-3. **`search_files` with `target='content'` fails on a path with spaces** with
-   `IO error ... The system cannot find the path specified`. Workarounds that
-   worked: use the `terminal` tool with `grep -R "<pattern>" -n <path>` (git-bash
-   handles the unquoted/quoted path there), or read files directly with
-   `read_file`. Don't rely on `search_files` for content search inside a
-   space-containing repo path — fall back to grep-in-terminal or read_file.
+3. **`search_files` with `target='content'` fails on non-C: drives or paths with spaces** with
+   `IO error ... The system cannot find the path specified. (os error 3)`.
+   The tool harness normalizes Windows `D:\...` to MSYS `/d/...`, which native Windows ripgrep (`rg`)
+   fails to resolve as a valid OS path. Workarounds that worked:
+   - Use `read_file` directly with the Windows path (`D:\...`).
+   - Use `terminal` with `grep -n "<pattern>" <path>` or `rg` directly in git-bash.
+   - Do not rely on `search_files` targeting single files or non-C: drives on this Windows host.
+
+4. **Giant log and artifact files in farm repos (`social_reg_log.txt`, `.runtime`, `.ai-runs`): avoid unconstrained recursive `grep -rn`**
+   In farm repos such as `D:\Taadaa\Tiktok_Reg`, running `grep -rn <pattern> /d/Taadaa/Tiktok_Reg/` can hang and time out (180s+) because live log files like `social_reg_log.txt` reach 200MB+ and artifact folders accumulate massive history.
+   - Always constrain grep targets to specific files (e.g. `grep -n "<pattern>" path/to/file.py`).
+   - If searching across the repo, explicitly filter file types and exclude log/history directories:
+     `grep -rn --include="*.py" --exclude="*.txt" --exclude-dir=".ai-runs" --exclude-dir=".runtime" --exclude-dir=".git" "<pattern>" .`
 
 ## PYTHONPATH pollution from the Hermes session (false ImportError)
 

@@ -330,6 +330,48 @@ Khi phiên feed (`multi-machine-feed-session`) đang chạy, runner đã nạp v
 Nếu script đồng bộ (như `hermes_taikhoan_sync_cron.py`) chạy giữa chừng, thực hiện `shutil.rmtree` dọn thư mục `manifests/<day>` và gọi `tiktok_picker.py` tái tạo manifest mới (`assignment-v1-<hash_moi>.json`), các tiến trình con khi đối soát manifest trên đĩa sẽ phát hiện digest SHA-256 bị lệch, ném ngoại lệ `ValueError: cohort artifact assignment digest mismatch` và kích hoạt dừng phiên giữ hiện trường toàn bộ máy.
 **Quy tắc:** Tuyệt đối KHÔNG xoá hoặc tái tạo đè manifest/cohort trong ngày khi đang có tiến trình feed active. Chi tiết phân tích & phòng ngừa: [`references/cohort-manifest-midrun-regeneration-pitfall.md`](references/cohort-manifest-midrun-regeneration-pitfall.md).
 
+### P17: Zombie / Stale summary parsing trong pipeline orchestrator (`run_night_chain_pipeline.py`)
+
+Khi pipeline runner gom kết quả từ các batch (như `logs_parallel_* / summary.json` hoặc `social-batch-all / 20* / all_results.json`) bằng cách tìm file mới nhất trong thư mục:
+- Nếu một step bị crash sớm, timeout hoặc fail trước khi ghi summary mới, logic nhặt file mới nhất sẽ đọc nhầm summary file từ mẻ chạy cũ (vài giờ hoặc ngày trước), dẫn đến báo cáo sai kết quả (false success hoặc thông số cũ).
+- **Phòng thủ:** Luôn kiểm tra `summary_path.stat().st_mtime` so với thời điểm hiện tại:
+  ```python
+  if summary_path and summary_path.is_file():
+      # Chống lấy summary zombie cũ: chỉ chấp nhận file tạo trong vòng 3 giờ gần nhất
+      if time.time() - summary_path.stat().st_mtime > 10800:
+          return {}
+  ```
+
+### P18: Thứ tự khởi tạo module scope & log an toàn trong top-level imports
+
+- Khởi tạo đường dẫn gốc (`PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))`) phải được đặt ngay trên đầu, trước bất kỳ biểu thức nào tính đường dẫn phụ trợ dựa vào nó (như `GPM_SCRIPTS_DIR = os.path.join(os.path.dirname(PROJECT_ROOT), ...)`). Khai báo muộn sẽ gây `NameError: name 'PROJECT_ROOT' is not defined` hoặc fallback đường dẫn sai.
+- Trong các khối `try/except` bao bọc optional import ở top-level (trước khi hàm `log(...)` hoặc logger cấu hình hoàn tất), tuyệt đối không gọi `log(...)` vì sẽ gây crash thứ cấp (`NameError`). Sử dụng trực tiếp `sys.stderr.write(...)`.
+
+### P19: Chaining watchdogs & post-noon multi-phase pipeline safety
+
+Khi thiết kế hoặc vận hành các watchdog chạy chuỗi cuốn chiếu sau ca trưa / ca đêm (như `post_noon_chain_watchdog.py` hoặc `run_night_chain_pipeline.py`):
+1. **Kiểm tra trạng thái ca trước:** Đọc trạng thái từ file báo cáo ca (e.g. `feed_session_reported.json`), chỉ kích hoạt khi ca trưa (`<today>_ca2` hoặc `<today>_ca2_phien2`) đã hoàn thành, nằm trong khung giờ quy định (14:30 - 17:30) và máy không bị giữ lock (`device-locks`).
+2. **Idempotency per logical day:** Dùng state JSON riêng (ví dụ `post_noon_chain_state.json`) lưu key `<date>` để tránh kích hoạt lại nhiều lần trong cùng một ngày khi cron tick định kỳ.
+3. **Dry-run isolation:** Tham số `--dry-run` bắt buộc phải giả lập đầy đủ cả chuỗi (Phase 1 mock summary + Phase 2 mock 2FA table/output) và KHÔNG được kích hoạt subprocess chạy thật hay ghi đè state thực tế.
+4. **Không xuất emoji trên console / Telegram:** Định dạng báo cáo phải qua bộ lọc sanitization regex loại bỏ toàn bộ emoji unicode để tránh crash lỗi mã hóa console hoặc vi phạm quy chuẩn báo cáo hệ thống.
+
+### P21: Scheduled telemetry must separate event history from aggregate state
+
+When a cron worker records per-attempt events and also updates daily counters from concurrent worker results, do not let the aggregate-update path rebuild or overwrite the event list. Keep `record_event(...)` append-only and protected by the state lock; use a separate idempotent `update_daily_summary(...)` helper for `used_proxies`, success lists, and retry/block lists. Every reportable result should carry a bounded `reason`. In report rendering, `dict.get("reason", fallback)` does not fall back when the key exists but is empty; use `(reason or "").strip() or status or "Unknown"` so legacy state cannot produce a blank reason. See `references/scheduled-telemetry-and-socket-polling.md` for the regression matrix and socket-polling recipe.
+
+### P20: Watchdog round-robin & cooldown ledger chống kẹt vòng lặp đơn Tik / tài nguyên
+
+Khi một cron watchdog duyệt danh sách tài nguyên/cohort/Tik (như `post_evening_avatar_watchdog.py` duyệt `target_tiks = [5, 6, 7, 8, 3, 4]`):
+1. **Lỗi kẹt Tik đầu (Starvation loop):** Nếu duyệt theo thứ tự tĩnh (`for tik in target_tiks:`) và kích hoạt Tik đầu tiên còn thiếu, khi Tik đầu tiên gặp lỗi dai dẳng, mọi nhịp cron tiếp theo đều luôn chọn lại Tik đó, khiến toàn bộ các Tik phía sau bị bỏ đói (starvation).
+2. **Cơ chế Round-Robin Cursor:** Lưu `avatar_rr_cursor` trong `state.json` và xoay vòng danh sách duyệt:
+   ```python
+   target_tiks = ctx["target_tiks"]
+   cursor = int(state.get("avatar_rr_cursor", 0)) % len(target_tiks)
+   ordered = target_tiks[cursor:] + target_tiks[:cursor]
+   ```
+3. **Cơ chế Cooldown Ledger:** Ghi nhận `avatar_launch_history` kèm timestamp trong `state.json`. Khi lặp qua `ordered`, kiểm tra cooldown (ví dụ: 1800s / 30 phút cho mỗi Tik). Nếu Tik vừa chạy trong vòng 1800s, tự động bỏ qua để nhường lượt cho Tik tiếp theo.
+4. **Action-First Session Delta:** Báo cáo cuối phiên (`format_report_html` / `report_final_summary`) không chỉ in snapshot tĩnh mà phải thống kê Session Delta: tổng số batch đã kích hoạt trong ca, các Tik đã phục vụ luân phiên, và số lượng thành công mới.
+
 ## Operations: stop/start the whole scheduler fleet
 
 The 5+ schedulers are owned by Windows Scheduled Tasks plus the unified tray — not standalone processes. Full inventory + exact task actions (env vars, python paths) live in `references/scheduler-fleet-operations.md`. Cheat sheet:
@@ -513,4 +555,6 @@ Ví dụ đầy đủ (watchdog sync workbook, code launcher + wrapper + params 
 - Example consumer: `D:\\Taadaa\\Tiktok_Reg\\scheduler.py`
 - Lock policy source: `D:\\\\Taadaa\\\\automation-core\\\\src\\\\automation_core\\\\device_lock.py`
 - Stale device-lock diagnosis + `--full-scope-takeover` re-run recipe + lock scanner (verified 2026-08-13): `references/device-lock-stale-takeover.md`
+- PowerShell Subprocess Switch Splatting Pitfall (`ParameterArgumentTransformationError`): `references/powershell-subprocess-switch-parameters.md`
+- Zombie summary prevention & module scope ordering: `references/pipeline-zombie-summary-and-module-scope-safety.md`
 - Hermes cron migration thực tế (user-chốt constraints, workbook source-of-truth, mapping priority, gotchas verified 2026-08-10): `references/hermes-cron-orchestration-migration.md`

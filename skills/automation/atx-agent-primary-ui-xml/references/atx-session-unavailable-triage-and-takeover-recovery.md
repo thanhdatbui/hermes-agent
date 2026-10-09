@@ -61,3 +61,8 @@ If invoking `feed-session-smoke` directly, note the exact flag names:
   - `--account-row-index <row>` (NOT `--account-row`)
   - `--max-swipes <N>` (NOT `--recovery-test-swipes`)
   - Do NOT pass `--prepare-tiktok` or `--full-scope-takeover` (only valid in multi-machine mode).
+
+### 4. Pitfall: PowerShell `run-feed-session.ps1` vs Direct `run_tiktok.py` Canary
+- Khi chạy canary bằng `run-feed-session.ps1 -Machines <N> ...`, script tự động nhặt `$env:TIKTOK_FEED_ASSIGNMENT_MANIFEST` và `$env:TIKTOK_FEED_WORKER_ID` để truyền vào `run_tiktok.py`.
+- Nếu `$env:TIKTOK_FEED_COHORT_ARTIFACT` đang trống, `multi_machine_feed_session.py` (`_apply_cohort_identity`) sẽ fail-closed ngay lập tức: `RuntimeError: cohort artifact and assignment manifest are both required for a live cohort child` (mã lỗi `cohort-target-mismatch`), không kết nối được máy.
+- **Khắc phục:** Khi chạy canary cô lập 1 máy, luôn ưu tiên gọi trực tiếp `run_tiktok.py` qua Python runtime (Option A ở trên) hoặc xóa/bỏ qua các biến cohort env để tránh kích hoạt cohort validation thiếu artifact.

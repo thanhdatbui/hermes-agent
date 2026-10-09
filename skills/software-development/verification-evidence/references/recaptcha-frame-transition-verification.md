@@ -1,0 +1,5 @@
+# reCAPTCHA iframe transition verification
+
+For narrowly scoped Playwright reCAPTCHA recovery patches, a forced click returning without exception is not proof that the checkbox transitioned. After the click, re-read the anchor's `aria-checked` in its owning frame. If it remains unchecked, attempt a same-frame DOM click fallback (`dispatch_event("click")`, or `evaluate("el => el.click()")`) inside a local exception boundary. Then poll a fresh `page.frames` collection for a longer bounded window; prefer matching the bframe URL and use matching iframe `src` only as a fallback. Do not return before the bframe/audio path has had its polling opportunity. Preserve existing audio download/transcription logic and keep the patch limited to the target function.
+
+For a strict maintenance contract, run the exact user-mandated syntax command after the final edit and report its actual exit code/output. Count the changed lines and confirm only the allowlisted file was modified; do not add dependencies or perform a live CAPTCHA run unless explicitly requested.

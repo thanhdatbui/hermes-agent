@@ -297,6 +297,11 @@ User chuẩn hoá quy trình cho merge/cleanup QUAN TRỌNG (lưu cả vào memo
 
 ## 20. Windows git commit/push quirks khi commit batch nhiều repo (proven 2026-08-08)
 
+**`git status` hoặc lệnh git bị HANG / TIMEOUT (180s+) do `.git/next-index-*.lock` (proven 2026-09-20):** Trên Windows/NTFS khi có tiến trình git ngầm (hoặc session trước) bị kill/gián đoạn trong lúc cập nhật index, git để lại các file `.git/next-index-<pid>.lock` (vd: `next-index-2628.lock`, `next-index-57028.lock`, `next-index-63952.lock`) hoặc `index.lock`. Mọi lệnh `git status`, `git diff` sau đó sẽ treo hoàn toàn chờ lock.
+- **Cách nhận biết:** `ls -la .git/*.lock` hoặc `ls -la .git/next-index-*.lock`.
+- **Cách xử lý:** Xoá sạch các file lock mồ côi: `rm -f .git/next-index-*.lock .git/index.lock`.
+- **Mẹo an toàn khi repo lớn:** Dùng cờ `git --no-optional-locks status --short` để ngăn git tự động trigger background maintenance/file indexer gây tranh chấp lock.
+
 **`git commit` fail `fatal: could not open '.git/COMMIT_EDITMSG': Permission denied`** dù file thuộc user hiện tại + `touch` OK (quirk file-lock/readonly Windows, thường lây sang nhiều repo cùng lúc — gặp 3 repo trong 1 batch: open claw, AI-Tools, site ban hang clone). Fix: `rm -f "<repo>/.git/COMMIT_EDITMSG"` rồi commit lại — git tạo file mới, thành công ngay. KHÔNG chẩn đoán quyền (ls/touch đều OK), KHÔNG dùng `sudo`/đổi owner.
 
 **Push batch nhiều repo — repo upstream org không có quyền**: `git push` fail `remote: Permission to <org>/<repo>.git denied to <user>` khi remote trỏ repo tổ chức không phải của user (vd Hermes → `NousResearch/hermes-agent`, remote `origin` = upstream, có `fork` riêng). Xử lý: bỏ qua push repo đó (commit local là đủ — đúng chuẩn fork workflow), push tiếp các repo khác, báo user kèm lệnh nếu muốn push lên fork (`git push fork main`). Kiểm tra trước khi push loạt: `git -C <repo> remote -v` để phân loại origin upstream vs fork cá nhân.
@@ -453,6 +458,27 @@ Khi push batch commit rule vào 10 repo và 1 repo (`tiktok-luot nuoi acc`) bị
 3. **PITFALL TIẾNG VIỆT LỆCH DẤU — string replace match fail (bài học lớn)**: khi dùng python `str.replace` tìm block tiếng Việt trong file, ký tự "ĐỐI" có thể viết `\u0110\u1ed0I` (Ố = Ô + sắc) trong file thật nhưng script của mình viết `\u0110\u1ed1I` (Ố = O + sắc) → match fail "OLD-NOT-FOUND". **Giải pháp chuẩn: slice bytes TRỰC TIẾP từ file thật làm pattern** (`data[start:end]` sau khi `find` marker đầu/cuối), KHÔNG gõ lại chữ tiếng Việt có dấu trong script. Verify bằng đếm byte diff (`[j for j,(a,b) in enumerate(zip(seg,old)) if a!=b]`) trước khi kết luận.
 4. **PITFALL chèn block vào file CRLF bằng python `eol.join`**: `split(b"\n")` + `join` phá `\r\n` gốc (dòng bị nhân đôi `\r\r\n`, LF lẫn CRLF) → file vỡ. Chuẩn: đọc bytes → `replace(b"\r\n", b"\n")` normalize → xử lý dòng → `replace(b"\n", b"\r\n")` phục hồi CRLF. Verify `py_compile` + `grep -c "^<<<<<<<"` = 0 sau mỗi file.
 5. **PITFALL patch tool lệch indent trên file CRLF trong lúc rebase**: patch fuzzy-match thêm 4-8 spaces (nhân đôi `def`, `raise` 8-space thay 12) → phải dọn bằng python `lines[i] = b"..."` từng dòng theo index đã đọc. Đừng `git checkout --ours/theirs` bừa cho file đã resolve tay.
+
+## 31. Tối ưu turn/budget khi resolve conflict giữa 2 branch diverged (tight budget)
+
+Khi nhận task giải quyết conflict giữa local main và origin/main với ràng buộc budget/turns ngặt nghèo (vd: <= 15 tool calls):
+- **Tránh over-inspection trước khi merge**: Không nên tốn 5-7 tool calls riêng lẻ để diff từng commit, grep tìm hàm hay xem file test trước khi bắt đầu merge.
+- **Thực thi merge ngay từ turn đầu**: Chạy thẳng `git merge origin/main` (hoặc `git rebase origin/main`). Git sẽ tự động auto-merge các file không tranh chấp và cô lập chính xác các file CONFLICT vào `git status`.
+- **Batching kiểm tra**: Gộp `git merge origin/main || git status` trong 1 call terminal duy nhất.
+- **Tập trung xử lý conflict file**: Chỉ đọc và splice các file có conflict marker, sau đó chạy ngay test suite được yêu cầu và commit. Điều này đảm bảo hoàn tất deliverable trong vòng < 6-8 tool calls.
+
+## 32. Programmatic Worktree Integration & Atomic Ref Updates (`update-ref` vs `merge --ff-only`)
+
+Khi lập trình cơ chế tích hợp / merge tự động từ isolated worktree về target branch (vd `session_worktree.py`):
+1. **Thứ tự ghim SHA và kiểm tra ancestor**:
+   - Luôn resolve và ghim SHA cụ thể trước: `old_sha = git rev-parse refs/heads/<target>` tại root repo, và `session_sha = git rev-parse refs/heads/<session_branch>` tại `wt_path` (worktree path).
+   - Chạy `git merge-base --is-ancestor <old_sha> <session_sha>` dùng SHA cố định thay vì branch name symbolic để tránh race conditions.
+2. **Khi target branch ĐANG checkout tại root**:
+   - Thực thi fast-forward an toàn qua `git merge --ff-only <session_branch>`.
+3. **Khi target branch KHÔNG checkout tại root**:
+   - Kiểm tra `git worktree list --porcelain`: nếu `branch refs/heads/<target_branch>` xuất hiện ở worktree khác, BẮT BUỘC từ chối (`TARGET_BRANCH_CHECKED_OUT_ELSEWHERE`) để không làm hỏng đồng bộ worktree đang mở.
+   - Dùng atomic update-ref: `git update-ref refs/heads/<target_branch> <session_sha> <old_sha>`.
+   - Bắt buộc catch `CalledProcessError` (exit 128 khi ref đã bị thay đổi đồng thời do `old_sha` không khớp) để trả về mã lỗi chuẩn `TARGET_MOVED` thay vì lỗi generic crash.
 
 ## Tham khảo
 

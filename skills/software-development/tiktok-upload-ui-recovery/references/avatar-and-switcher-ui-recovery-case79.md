@@ -32,3 +32,19 @@
     1. Dump UI XML hiện tại.
     2. Tự động gọi `_dismiss_simple_close_popup` để đóng các banner Story và popup `save_login`.
     3. Thử `verify_selected_account`. Nếu chưa match, gọi `adapter.tap_profile()` để kéo giao diện về Profile root và thử lại.
+
+## 5. ENSURE_AVATAR: Tránh Bẫy `bring_to_foreground` Đẩy Lùi Về Feed & Nhận Diện Profile Root Scrolled
+- **Hiện tượng:** Chạy Avatar-Only (`run_tiktok_upload_avatar.ps1`) hoàn tất xác minh tài khoản ở `ACCOUNT_READY`, nhưng sang `ENSURE_AVATAR` thì bị lỗi `[AVATAR_WORKFLOW_FAILED] ENSURE_AVATAR: Avatar workflow failed: PROFILE_ROOT_NOT_CONFIRMED: Profile root was not confirmed`.
+- **Nguyên nhân cốt lõi:**
+  1. Khi qua `ACCOUNT_READY`, bước quét grid video (`scan_profile_grid`) cuộn màn hình xuống dưới làm nút *"Sửa hồ sơ"* trôi khỏi màn hình hiện tại.
+  2. Tại `ENSURE_AVATAR`, `_looks_like_profile_root` chỉ kiểm tra hẹp 4 từ khóa: `"sửa hồ sơ"`, `"edit profile"`, `"thêm tiểu sử"`, `"add bio"`. Do nút đã bị cuộn trôi, hàm trả về `False`.
+  3. Khi thấy `False`, code cũ gọi mù `adapter.bring_to_foreground(package)`. Lệnh này chạy `am start -n .../.MainActivity`. Do TikTok đang chạy foreground sẵn, intent này kích hoạt lại `SplashActivity` và đẩy app văng ngược về video Feed (Tab Trang chủ `selected="true"`).
+  4. Từ Feed, `open_profile_root` cố gắng tap tab Hồ sơ nhưng dễ bị overlay video hoặc misread bottom-nav cản trở, dẫn đến fail toàn bộ flow avatar sau 3 attempts.
+- **Giải pháp chuẩn:**
+  1. **Chặn `bring_to_foreground` khi đã ở foreground:**
+     Chỉ gọi `bring_to_foreground` khi app thực sự chưa ở foreground:
+     `if not adapter._package_is_foreground(package) and adapter.bring_to_foreground(package):`
+     Tuyệt đối không gửi intent `MainActivity` khi app đã ở foreground vì sẽ làm reset ngữ cảnh Profile về Home Feed.
+  2. **Mở rộng nhận diện `_looks_like_profile_root`:**
+     - Bổ sung các marker Profile: `"chia sẻ hồ sơ"`, `"menu hồ sơ"`.
+     - Kiểm tra trạng thái tab Bottom Navigation: nếu node có `'selected="true"'` đi kèm `'content-desc="hồ sơ"'` hoặc `'text="hồ sơ"'`, khẳng định ngay thiết bị đang ở Profile root (dù đang bị scrolled), không được coi là màn hình lạ.

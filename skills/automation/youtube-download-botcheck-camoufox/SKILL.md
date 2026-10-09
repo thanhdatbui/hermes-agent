@@ -67,8 +67,91 @@ Mỗi worker = 1 subpool proxy riêng (không trùng IP worker khác) + 1 cookie
   - `busy_timeout` chỉ giảm lỗi tranh chấp giữa process; nó không thay thế lock giữa các thread của cùng process. Với transaction `BEGIN IMMEDIATE`, serialize trước rồi retry backoff ngắn khi vẫn gặp `locked`.
   - Regression tối thiểu: chạy 20 worker reserve đồng thời trên DB tạm, xác nhận 40 folder được reserve và `errors=[]`; sau đó `py_compile` + `git diff --check`.
   - **Runtime isolation:** `state.db`/output/report của downloader là component riêng; không gán lỗi SQLite cho farm TikTok/ADB nếu chưa có bằng chứng process hoặc file dùng chung. Chỉ nhắc component liên quan trực tiếp trong báo cáo.
-- ⚠️ **Lọc Proxy Pool**: File `PROXYgandienthoai.xlsx` có lẫn proxy `mirotik1.taadaa.click` và `khoalee.duckdns.org` bị timeout/auth fail. Phải filter chỉ lấy `test.taadaa.click` (cổng 51xx mobi) để có 64 proxy sống ổn định.
-- **Script tiện ích chạy nhanh**: `run_download.bat <MachineId>` (e.g. `run_download.bat Admin` hoặc `run_download.bat Kibe`) đóng gói sẵn toàn bộ flags chuẩn để không cần nhớ lệnh.
+- ⚠️ **Hợp Nhất Master 69 Proxy Pool (MobiProxy + MikroTik LAN + Dedicated - User Invariant)**:
+  - **Đủ 69 Proxies**: Gồm (1) 35 cổng MikroTik PPPoE (`mirotik1.taadaa.click:10001..10035` - user/pass: `admin@1:admin@1`), (2) 32 cổng MobiProxy (`test.taadaa.click` dải 5101..5108, 5111..5118, 5121..5128, 5131..5138), (3) 2 cổng Dedicated KhoaLee (`khoalee.duckdns.org:16002:5ns08q:AmLmaMJ0` & `khoalee.duckdns.org:16001:Gyx4k1:RzI0fc3o`).
+  - **Lưu ý 2 Cổng KhoaLee**:
+    - Port `16002`: `http://5ns08q:AmLmaMJ0@khoalee.duckdns.org:16002` (Sống 100%, 0.48s, IP: `116.111.194.124`).
+    - Port `16001`: `http://Gyx4k1:RzI0fc3o@khoalee.duckdns.org:16001` (Trích xuất từ 9router DB; TCP open, dongle upstream có thể tạm timeout).
+  - Cụm MikroTik PPPoE nằm tại IP LAN `192.168.110.2`. BẮT BUỘC truy cập trực tiếp `http://admin%401:admin%401@192.168.110.2:<port>` để đạt tốc độ nội bộ siêu tốc (~0.01 - 0.5s) và bypass rate-limit.
+  - File pool chuẩn: `D:/Taadaa/Tiktok-video/proxy_pool_69.txt` (đồng bộ `proxy_pool_67.txt` và `D:/OneDrive/TaadaaData/proxy_combined_pool.txt`). Script generator: `python D:/Taadaa/Tiktok-video/scripts/generate_67_proxy_pool.py`.
+
+### Giải pháp triệt tiêu Rate-Limit & Bot-Check YouTube Shorts (2026.08.19+):
+1. **Deno JS Runtime**: Cài `pip install deno` để yt-dlp giải JavaScript challenge mà không văng cảnh báo `No supported JavaScript runtime`.
+2. **Android Player Client API**: Tránh client mặc định `visionos` (hay bị YouTube báo `Video unavailable`). Thêm vào `ydl_opts`:
+   `"extractor_args": {"youtube": {"player_client": ["android"]}}`
+   Kéo video Shorts mượt mà ở tốc độ 15–30 MB/s.
+3. **Xoay Proxy MikroTik LAN trực tiếp trong Downloader**: Mỗi request bắt socket qua cổng ngẫu nhiên `10001..10035` trên `192.168.110.2`, triệt tiêu hoàn toàn rủi ro dính rate-limit 1h của YouTube.
+4. **Cách ly & Chống đụng hàng giữa Farm Admin và Farm Kibe**:
+   - Máy Kibe xuất toàn bộ video ID đã tải (`state.db` + đĩa) sang `D:/OneDrive/SharedData/tiktok-video/kibe_downloaded_ids.json`.
+   - Downloader trên Admin bắt buộc load file này và bỏ qua (`[CROSS-EXCLUDE]`) bất kỳ video ID nào Kibe đã sở hữu.
+5. **Bộ Nguồn Xoay Tua Đa Ngách Triệu View (`source_manifest_viral_rotation.jsonl`)**:
+   - Xoay tua đều giữa 6 niche có retention & loop rate cao nhất: (1) Thú cưng (Cute Pets), (2) Gái xinh / Dance visual, (3) Ẩm thực đường phố ASMR, (4) Oddly Satisfying / Phục chế thủ công, (5) Mẹo vặt đời sống / Ảo thuật, (6) Hài hước / Family / Cute Baby.
+- ⚠️ **Cơ Chế Fail-Over Proxy Tức Thì (User: "Lỗi 1m proxy đó thì đổi proxy khác mà download")**:
+  - Khi một cổng proxy trong pool bị lỗi (`Unable to connect to proxy`, `WinError 10061`, timeout, bot-check), `download_candidate()` và `discover_source()` bọc vòng lặp `max_dl_attempts = 3`, mỗi lần thử bốc ngay `next_proxy(args)` khác trong pool thay vì retry trên chính cổng chết.
+- ⚠️ **Nghẽn Cổ Chai I/O Đĩa Cứng Trên `state.db` (Drive D: HDD vs Drive C: SSD)**:
+  - Khi chạy đồng thời batch render FFmpeg và 20 worker download trên cùng ổ đĩa cơ 4TB `D:`, bảng `videos` trong `state.db` (hơn 46.000 dòng) nếu thiếu index sẽ khiến các câu query `SELECT COUNT(*)` mất tới 156 giây (2.5 phút!), làm kẹt `BEGIN IMMEDIATE` và đứng hình downloader hàng giờ (đứng yên 23/40 folder).
+  - BẮT BUỘC tạo index: `idx_videos_folder_status`, `idx_videos_status`, `idx_videos_channel_status`, `idx_folders_status`. Khi cần, copy `state.db` sang ổ SSD `C:` (query giảm từ 156s xuống 0.013s). Chi tiết xem: `references/sqlite-io-bottleneck-and-proxy-failover-downloader.md`.
+- **Script tiện ích chạy nhanh**: `run_download.bat <MachineId>` (e.g. `run_download.bat Admin` hoặc `run_download.bat Kibe`) đóng gói sẵn toàn bộ flags chuẩn để không cần nhớ lệnh. Khuyến nghị chạy bằng Python launcher `run_download_kibe.py` (cấu hình SSD `C:\CodexRuntime\tiktok-video\state.db`, `proxy_pool_67_direct.txt`, `--all-languages` bypass treo Whisper torch import), tránh dùng file `.bat` nếu có escape character `\t` (`\tiktok-video`) hoặc `\v` (`\venv-core024`).
+
+### Quy trình lấp đầy 100% kho video khi nghẽn Insufficient Pool & Chống Trộn Kênh (2026-09-17..19)
+- **Kỷ luật Bất biến: Tự động Auto-Discovery Inline, CẤM Dừng Hỏi (User Invariant 2026-09-18/19)**:
+  1. **Không dừng hỏi khi hết nguồn**: Khi pool nguồn duyệt hết mà vẫn còn folder thiếu video, downloader BẮT BUỘC tự động kích hoạt inline `auto_discover_niche_source` để tìm kiếm kênh YouTube Shorts tiếng Việt mới theo niche, probe đạt $\ge 30$ video và tải ngay. CẤM tự ý dừng batch rồi quay ra hỏi user!
+  2. **Cào Sâu (Deep Search) & Niche Fallback khi cạn ngách hẹp (User: "Cào sâu cho t, k thì đổi ngách khác")**:
+     - *Cào sâu (Deep Search)*: Nâng query lên `ytsearch40` và `ytsearch30` kết hợp 4 biến thể từ khóa (`{label} shorts việt nam`, `{label} shorts`, `kênh {label} shorts việt`, `review {label} shorts việt nam`).
+     - *Tự động đổi ngách (Niche Fallback)*: Khi cào sâu ngách gốc vẫn không ra kênh đạt $\ge 30$ Shorts, script BẮT BUỘC tự động duyệt sang các ngách dồi dào nguồn nhất farm (`cuoi`, `khampha`, `amthuc`, `meovat`, `review`, `phim`, `tintuc`, `congnghe`). Khi tìm được kênh mới, cập nhật lại `niche` của folder trong `state.db` và tải ngay mà KHÔNG ĐƯỢC return False kết thúc sớm!
+  3. **Multi-Source Retry & Lặp đến khi đủ video (User: "k đủ 30 video/folder thì phải download lại, tìm kênh mới đến khi nào down đủ thì thôi")**:
+     - Khi một kênh không đủ `min_videos` (dù tải được một phần), downloader xóa sạch media dở dang của kênh đó (`clean_incomplete_folder_and_db`), reset record trong DB để bảo đảm 1 folder = 1 kênh duy nhất.
+     - Tiếp tục xoay vòng sang source tiếp theo trong pool (`max_source_attempts`). Nếu pool có sẵn cạn kênh, lập tức gọi inline `auto_discover_niche_source` để cào Shorts tiếng Việt mới trên YouTube và kéo tiếp.
+     - Chỉ dừng khi folder đã đạt $\ge min\_videos$ (hoặc chạm ngưỡng giới hạn an toàn attempt).
+  4. **Kỷ luật Nghiệm thu Chốt phiên Bắt buộc qua AI Reviewer (Sol Scorecard 100đ)**:
+     - Khi chốt phiên sửa code Downloader/Render, CẤM bỏ qua bước gọi AI Reviewer.
+     - BẮT BUỘC chạy `python D:/Taadaa/tools/closeout_gate.py` (hoặc gửi packet kèm test execution log + runtime watchdog evidence sang OmniRoute `:20129` model `review` / `sol-high`).
+     - Chỉ chốt phiên khi đạt điểm $\ge 85/100$ và `VERDICT: APPROVED`.
+  5. **Khôi phục Render & Download sau khi máy Host Reboot / Reset**:
+     - Máy farm sau khi khởi động lại, các tiến trình ngầm (background jobs) sẽ bị mất.
+     - Phục hồi Render Slot 7 & 8: Chạy `powershell -NoProfile -ExecutionPolicy Bypass -File D:\Taadaa\Tiktok-video\run_kibe_slot7_slot8_render.ps1 -StartMachine 1 -EndMachine 80 -Parallel 1` ở chế độ ngầm (`Start-Process ... -WindowStyle Hidden`).
+     - Phục hồi Downloader: Khởi động `python D:\Taadaa\Tiktok-video\run_download_kibe.py` (20 workers, SSD NVMe `state.db`, proxy pool 57 ports trực tiếp, cookies Netscape).
+     - Đối soát kiểm tra: Chạy watchdog `farm_render_download_watchdog.py` để verify cả 2 luồng đều chuyển sang 🟢 **Đang chạy** và clip render/download tăng đều thực tế.
+  6. **Bảo đảm An toàn Tuyệt đối 1 Folder = 1 Kênh (Clean-on-Insufficient)**: Khi folder tải xong nhưng số lượng video không đạt chuẩn tối thiểu ($\text{count} < args.min\_videos$):
+     - BẮT BUỘC gọi `clean_incomplete_folder_and_db(folder_num, output_dir, args)` xóa sạch 100% file media dở dang (`*.mp4`, `*.part*`, `*.jpg`, `*.json`) trong thư mục folder trên đĩa (`D:\video goc\<folder_num>`).
+     - Xóa sạch toàn bộ bản ghi của folder đó trong bảng `videos` của `state.db`: `DELETE FROM videos WHERE folder = ?`.
+     - Reset trạng thái folder: `folders.status = 'insufficient_pool'`, `folders.source_channel = NULL`, `folders.video_count = 0`.
+     - Tuyệt đối không để lại file dở dang của kênh cũ trên đĩa, tránh rủi ro khi gán kênh mới vào sẽ biến thành 1 folder chứa video của 2 kênh khác nhau.
+
+Khi batch download chạy hết dải 640 folder và dừng lại nhưng kho chưa đủ 100% $\ge 30$ video (còn lại các folder `insufficient_pool` do cạn nguồn ngách hoặc đứt gãy mạng):
+1. **Kiểm tra phân bổ thiếu & đối soát video dở (BẮT BUỘC để chống trộn kênh)**:
+   - Đọc trực tiếp từ SSD NVMe `state.db` (`C:\CodexRuntime\tiktok-video\state.db`):
+     ```sql
+     SELECT folder_num, niche, video_count, status FROM folders WHERE status = 'insufficient_pool';
+     -- Kiểm tra video đã tải thật trong DB cho các folder này:
+     SELECT folder, status, count(*) FROM videos WHERE folder IN (...) GROUP BY folder, status;
+     ```
+   - ⚠️ **Nguyên tắc bất biến: 1 folder = 1 kênh duy nhất (User: "K lẽ thành 1 folder chứa nguồn 2 kênh cùng niche à")**:
+     - **Báo cáo User**: Luôn giải thích rõ ràng tách bạch giữa 2 nhóm, khẳng định trước: "Folder dở dang giữ 100% kênh cũ, chỉ folder trống 0 video mới gán kênh mới" để tránh user hiểu lầm là gộp 2 kênh vào 1 folder.
+     - **Nhóm dở dang ($\ge 1$ video trên đĩa / DB)**: Do proxy rớt hoặc bot-check giữa chừng (`download_no_media`) chứ kênh gốc không hề thiếu video. **CẤM reset `source_channel = NULL`** hay cấp kênh mới (sẽ gây trộn 2 kênh vào 1 folder). Phục hồi candidate failed về `discovered`:
+       ```sql
+       UPDATE videos SET status = 'discovered', rejection_reason = NULL 
+       WHERE folder IN (<danh_sach_folder_do_dang>) AND status = 'failed' AND rejection_reason = 'download_no_media';
+       UPDATE folders SET status = 'pending' WHERE folder_num IN (<danh_sach_folder_do_dang>);
+       ```
+     - **Nhóm trống hoàn toàn (0 video)**: Reset về pending và giải phóng `source_channel = NULL` để đón nguồn mới:
+       ```sql
+       UPDATE folders SET status = 'pending', source_channel = NULL, video_count = 0 
+       WHERE status = 'insufficient_pool' AND folder_num NOT IN (<danh_sach_folder_do_dang>);
+       ```
+     - **Trường hợp kênh cũ thực sự cạn video (<30 video)**: Bắt buộc di chuyển toàn bộ video cũ sang thư mục cách ly `D:\video goc\_trash_incomplete_named\<folder_num>` và xóa record trong DB trước khi gán kênh mới để bảo đảm folder 100% video cùng 1 kênh.
+2. **Cơ chế Auto-Discovery tích hợp trong Downloader (`download_by_niche.py`)**:
+   - Khi folder duyệt hết pool nguồn sẵn có mà không còn kênh đủ $\ge 30$ video, downloader tự động kích hoạt `auto_discover_niche_source(niche, args, ...)` ngay trước khi ghi nhận `insufficient_pool`.
+   - Tìm kiếm YouTube Shorts theo nhãn niche (`ytsearch15:<niche.label> shorts việt nam`), probe tab `/shorts`, kiểm tra exclusion & language gate.
+   - Khi tìm được kênh đạt chuẩn $\ge 30$ Shorts: tự động claim ledger, append vào `sources.qualified30.json`, insert candidates vào `state.db` và kéo video ngay mà không dừng batch.
+   - ⚠️ **Kỷ luật giao tiếp chốt phiên & giải trình chống trộn kênh (2026-09-17)**:
+     - Khi user hỏi *"sao lại tìm theo niche, không lẽ 1 folder chứa 2 kênh?"*: Phải trả lời khẳng định ngay lập tức là **KHÔNG BAO GIỜ TRỘN KÊNH**, giải thích rành mạch: folder dở dang chỉ kéo nốt kênh cũ; folder trống 0 video mới kéo kênh mới theo niche.
+     - Khi user giục *"chốt phiên"* hoặc hỏi *"xong chưa"* trong lúc AI Reviewer reject: Không dây dưa giải thích chi tiết kỹ thuật quá sâu làm chậm phiên; thông báo rõ lý do ngắn gọn (Sol review bảo mật/atomic write), hoàn thiện nhanh các điểm chặn và đưa phiên về trạng thái an toàn.
+3. **Cào thủ công bổ sung nguồn mục tiêu (nếu chạy độc lập)**:
+   - Dùng `scripts/fast_targeted_qualify_stream.py` hoặc `feed_qualified_sources_and_resume.py`.
+4. **Khởi động lại downloader ngầm**:
+   - Chạy `python run_download_kibe.py` (cấu hình `--parallel 20`, `--start-folder 481`, `--total-folders 640`, `--continue-on-insufficient`, `--all-languages`, `--proxy-pool proxy_pool_67_direct.txt`).
+   - Kiểm tra PID và đuôi log `download_run.log` để xác nhận video bắt đầu kéo về.
 
 ### Phân tách và dọn rác khi bị lẫn 2 kênh / trùng số folder (Mixed Named & Numbered Files)
 - **BẮT BUỘC ĐÁNH SỐ THỨ TỰ `1.mp4..N.mp4` (Cả Video Gốc và Video Render `D:\TIKTOK-videonuoinick`)**:
@@ -151,6 +234,19 @@ Khi một folder bị thiếu video do nguồn cũ cạn Shorts hoặc bị ngh�
   - Cập nhật đúng slug niche cho từng folder theo formula `(folder_num - 1) % len(niches_pool)`.
   - Giúp `eligible_sources` giải phóng các source_channel bị kẹt từ run cũ để cấp phát kênh hợp lệ mới cho các folder thiếu.
 
+### Xử lý nghẽn Insufficient Pool và Quy trình Stream Discovery bổ sung nguồn (2026-09-16)
+- **Hiện tượng**: Downloader quét hết dải folders (ví dụ 481..640) và dừng lại tự nhiên, để lại các folder ngách (anime, anh, dochai, thien, mevabe, vantay...) ở trạng thái `insufficient_pool` (video_count = 0 hoặc < 30) do cạn nguồn kênh Shorts trong `sources.qualified30.json`.
+- **Phân biệt tiến trình dừng vs Lỗi/Treo**:
+  - Không nhầm lẫn giữa downloader bị crash với downloader hoàn tất lượt quét. Kiểm tra `psutil` xem tiến trình có còn sống hay không.
+  - Kiểm tra số folder `insufficient_pool` và số folder `complete` trong `C:\CodexRuntime\tiktok-video\state.db` (NVMe SSD).
+- **Quy trình cào vét và phục hồi nguồn mới (`fast_targeted_qualify_stream.py`)**:
+  1. Lấy danh sách các niche ngách bị thiếu từ các folder `status IN ('pending', 'insufficient_pool') AND (video_count < 30 OR video_count IS NULL)` trong `C:\CodexRuntime\tiktok-video\state.db`.
+  2. Dùng yt-dlp với cookies Netscape probe các query search Shorts (`ytsearch10:<niche> shorts việt nam`) lọc các kênh chưa bị claim trong `D:\OneDrive\SharedData\tiktok-video\global-ledger`.
+  3. Thẩm định số lượng Shorts (`playlist_items: "1-65"`), chọn các kênh có $\ge 30$ Shorts và stream nối tiếp vào `D:\OneDrive\SharedData\tiktok-video\sources.qualified30.json`.
+  4. Reset trạng thái DB: `UPDATE folders SET status = 'pending', source_channel = NULL WHERE status = 'insufficient_pool';`.
+  5. Kích hoạt lại `download_by_niche.py` với launcher `run_download_kibe.py` (sử dụng `proxy_pool_67_direct.txt` và cờ `--all-languages` để bypass nghẽn CPU Whisper).
+  6. Sau khi khởi chạy, xác minh PID tiến trình và kiểm tra `videos` table trong `state.db` để thấy các video candidate mới liên tục chuyển sang `discovered` và tiến hành tải về đĩa.
+
 ### Ngưỡng min-videos & Xử lý nghẽn Insufficient Pool (BẮT BUỘC giữ chuẩn $\ge 30$)
 - **Quy tắc nuôi nick farm**: 1 máy 3 nick (mỗi ca 1 nick, 2 ngày nick mới chạy lại phiên 3 và upload 1 video). 1 folder cần tối thiểu $\ge 30$ video để nick đủ video đăng liên tục trong ít nhất 2 tháng (60 ngày) mà không bị lỗi `PathResolverError: Video file not found` khi cột `Video Đã Đăng` tăng dần.
 - **CẤM tự ý hạ `--min-videos < 30`** khi gặp `insufficient_pool`: Việc hạ xuống 20–25 video sẽ sớm làm cạn kho video khi nick đăng qua ngày thứ 20, gây dừng luồng đăng của máy farm.
@@ -168,6 +264,7 @@ Khi một folder bị thiếu video do nguồn cũ cạn Shorts hoặc bị ngh�
 
 ### Nguồn TikTok song song với YouTube (yt-dlp headers + Direct TikWM Fallback + Search Discovery)
 - Đã mở lại platform TikTok song song với YouTube (50/50 target pool trong `download_by_niche.py` & `source_pool_builder.py`).
+- **Profile Scraping O(1) qua yt-dlp**: Dùng `yt-dlp --flat-playlist --dump-json "https://www.tiktok.com/@<handle>"` trích xuất trọn vẹn 100% video list và metadata chi tiết (views, likes, comments, saves, duration, upload date, secUid) mà không bị kẹt bởi WAF hay web slider captcha.
 - ⚠️ **Bẫy cào profile TikTok bằng yt-dlp (`Unexpected response from webpage request` / `Unable to extract secondary user ID`)**:
   - Profile extractor của `yt-dlp` bị chặn anti-bot hoàn toàn trên các trang cá nhân TikTok.
   - **Khắc phục Discovery 2 tầng**:
@@ -193,6 +290,16 @@ Khi một folder bị thiếu video do nguồn cũ cạn Shorts hoặc bị ngh�
 - So sánh tách ba lớp: (1) route discovery cũ/mới, (2) manifest hiện tại (`video_urls`), (3) rows/report thực tế (`source_url LIKE '%/video/%'`, status downloaded/failed). Không kết luận “manifest cũ có sẵn URL” chỉ vì DB lịch sử có URL video.
 - Trả lời ngắn theo facts: trước đây profile extractor còn hoạt động; hiện profile bị anti-bot/CAPTCHA; direct resolver từng URL vẫn có thể hoạt động. Không hạ ngưỡng folder hoặc ghép kênh trước khi chứng minh discovery là bottleneck. Chi tiết: `references/tiktok-historical-discovery.md`.
 
+### Bẫy cào nguồn tự động lọt kênh ngoại quốc / tiếng Anh (User: "Toàn kênh nc ngoài à")
+- **Hiện tượng**: Khi cào bổ sung nguồn bằng search query YouTube (ví dụ query có từ mượn như `marketing shorts`, `anime shorts`, `review shorts`), YouTube trả về các kênh tiếng Anh/quốc tế đình đám (như `ThinkMediaTV`, `BethanyAtazadeh`). Nếu nạp thẳng vào `sources.qualified30.json` và bật `--all-languages`, toàn bộ máy farm sẽ tải video tiếng Anh/nước ngoài về kho nuôi nick.
+- **Quy chuẩn lọc kênh tiếng Việt chuẩn 100% (Strict Vietnamese Gate)**:
+  1. **Query bắt buộc ngữ cảnh Việt**: Phải có đuôi `shorts việt nam`, `tiếng việt shorts`, `kênh <label> shorts việt`.
+  2. **Kiểm tra dấu tiếng Việt (Regex Diacritics Gate)**:
+     - Regex bắt dấu: `[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ]`.
+     - Nếu tên kênh có dấu tiếng Việt: bắt buộc $\ge 30\%$ tiêu đề Shorts phải có dấu tiếng Việt.
+     - Nếu tên kênh KHÔNG dấu: bắt buộc $\ge 55\%$ tiêu đề Shorts phải có dấu tiếng Việt chuẩn. Kênh nào dưới ngưỡng này bị loại thẳng tay (`REJECTED_FOREIGN`).
+  3. **Streaming Save**: Khi cào hàng trăm kênh, bắt buộc ghi lưu file `sources.qualified30.json` cuốn chiếu (mỗi 25 kênh hoàn tất lưu một lần) để tránh bị timeout terminal làm mất kết quả probe.
+
 ### Quy tắc duyệt âm thanh cho kênh tiếng Việt & Bẫy Language Score Throttling
 - ⚠️ **Bẫy `candidate_passes_language_source_gate` lọc bỏ video không dấu**:
   - Ban đầu logic yêu cầu tiêu đề/mô tả phải có dấu tiếng Việt (`metadata_score >= 0.15`) hoặc `verified_vn = True`.
@@ -207,16 +314,26 @@ Khi một folder bị thiếu video do nguồn cũ cạn Shorts hoặc bị ngh�
     Nếu thấy `review` chiếm đa số với lý do `language_score_below_threshold`, nguyên nhân là do kẹt ngưỡng điểm.
   - **Kiểm tra thông lượng thực tế**: Đo số file hoàn tất trong 5 phút gần nhất:
     `[f for f in glob.glob('D:/video goc/**/*.mp4', recursive=True) if os.path.getmtime(f) > (time.time() - 300) and not f.endswith('.part.mp4')]`.
-- **Chẩn đoán nhanh Downloader bị chững / không có video mới**:
-  ### Chẩn đoán nhanh Downloader bị chững / không có video mới:
-    0. **Phân biệt Batch hoàn tất vs Lỗi/Đang chạy**: Đếm số folder đạt $\ge 30$ video trên đĩa `D:\video goc` (e.g. 477/480 folders). Nếu 99%+ folder đã đủ video và process dừng tự nhiên, batch đã hoàn tất gần như toàn bộ kho; các folder còn lại dừng do cạn nguồn ngách (`insufficient_pool`), không phải crash hay bot-check.
-    1. Kiểm tra throughput đĩa 1h gần nhất:
-       `python -c "import os, time; now=time.time(); print(len([f for r,_,fs in os.walk('D:/video goc') for f in fs if f.endswith('.mp4') and not f.endswith('.part.mp4') and os.path.getmtime(os.path.join(r,f)) > now-3600]))"`
-    2. Đọc tóm tắt report mới nhất `D:\CodexRuntime\tiktok-video\report-*.jsonl`:
-       Đếm `Counter(e.get('status'))` và `Counter(e.get('rejection_reason'))`. Nếu `insufficient_pool` chiếm đa số, tiến trình đang quay vòng quét metadata mà không tải do nghẽn ngưỡng `min_videos`.
-    3. Kiểm tra phân bổ trạng thái folders trong `state.db`:
-       `SELECT status, count(*) FROM folders GROUP BY status;`
-       Nếu hầu hết folders còn lại là `insufficient_pool` và `reserved` 0 video trong khi 390+ folders đã `complete`, batch đã chạm đáy các niche ngách thiếu nguồn $\rightarrow$ cần hạ `--min-videos 20` hoặc bổ sung nguồn.
+- **Chẩn đoán nhanh Downloader bị chững / User hỏi "Sao lại đang dừng download"**:
+  0. **Phân biệt Batch hoàn tất tự nhiên vs Lỗi/Crash**:
+     - Khi watchdog định kỳ `farm-render-download-watchdog` (1h/lần) báo `Trạng thái download: ⚪ Đang dừng`, user thường hỏi vì sao dừng.
+     - Kiểm tra nhanh O(1) qua database trên ổ SSD NVMe `C:\CodexRuntime\tiktok-video\state.db` (tuyệt đối KHÔNG quét `os.walk` đĩa cơ 4TB `D:\video goc` vì sẽ timeout >180s):
+       `python -c "import sqlite3; conn = sqlite3.connect('C:/CodexRuntime/tiktok-video/state.db'); print(conn.execute('SELECT status, count(*) FROM folders GROUP BY status').fetchall())"`
+     - Quy mô hiện tại của farm Kibe là **640 folders** (80 máy × 8 slot). Nếu tổng số dòng `folders` đã đạt 640 (vd: 585 `complete`, 27 `complete_partial`, 28 `insufficient_pool`) và process không còn trong tasklist, **tiến trình đã hoàn thành quét trọn vẹn 100% dải folder từ start đến 640**, không phải do crash hay đơ treo.
+     - ⚠️ **Định nghĩa chuẩn của `complete_partial`**: Trong `download_by_niche.py`, `complete_partial` là folder có `video_count >= min_videos (30)` nhưng `< target_videos (45)`. Các folder này (vd: 31–44 video) **HOÀN TOÀN ĐẠT CHUẨN nuôi nick**, không phải lỗi hay dở dang! Tổng số folder đạt chuẩn thực tế là `complete` + `complete_partial` (612/640 = 95.6%). Khi đối soát kho, tránh nhầm tưởng chỉ có nhóm `complete` mới dùng được.
+     - Các folder còn lại dừng do cạn nguồn Shorts tiếng Việt đạt chuẩn $\ge 30$ video trong `sources.qualified30.json` cho các niche ngách (`anime`, `anh`, `vantay`, `thien`, `mevabe`, `dochai`...).
+  0.1. **Cơ chế Multi-source Retry & Replacement (`--max-source-attempts 3` - Case 102) & Inline Auto-Discovery Loop**:
+     - Trên remote `origin/main` mới nhất (fb579eb / 42b5aa9), `run_folder` đã bổ sung vòng lặp retry tối đa `--max-source-attempts 3`.
+     - Khi một source trong pool bị cạn video (< 30 video), downloader sẽ tự động unlink dọn sạch các file `.mp4`, `.jpg`, `.json` dở dang trong folder, cập nhật các candidate cũ thành `rejection_reason='source_incomplete'`, và thử tiếp source kế tiếp trong pool của cùng niche mà không dừng cả batch.
+     - **Bắt buộc Git Pull trước khi phán đoán lỗi**: Khi gặp tình trạng folder thiếu video mà downloader kết thúc sớm, luôn kiểm tra xem máy local đã `git pull` các commit mới nhất (`fb579eb`, `42b5aa9`, `6a3ccd8`) hay chưa.
+     - **Vòng lặp tải đến khi đủ $\ge 30$ video**: Nếu danh sách nguồn trong file pool cạn sạch (do các folder trước đã claim hết các niche hẹp), downloader BẮT BUỘC gọi `auto_discover_niche_source()` để search YouTube Shorts mới theo niche, lặp lại việc tìm và probe kênh mới cho đến khi folder đạt $\ge 30$ video mới được dừng.
+     - **Kỷ luật Dọn dẹp Tiến trình Trùng (Duplicate Process Killer) khi Relaunch**: Khi user giục "chốt phiên" và "chạy download lại", trước khi gọi launcher `run_download_kibe.py` BẮT BUỘC rà soát `psutil.process_iter` và kill sạch các process download cũ/song song (tránh trường hợp 2 process `download_by_niche.py` cùng chạy gây tranh chấp DB lock, đè candidate và kẹt state `reserved`). Đồng thời reset các folder đang `reserved` dở về `pending` trước khi spawn process mới.
+     - Kết hợp với cờ mặc định `--continue-on-insufficient True` (6a3ccd8), batch sẽ lướt qua toàn bộ 640 folder mà không bao giờ bị dừng đột ngột.
+  1. **Kiểm tra top niche bị nghẽn `insufficient_pool` (O(1))**:
+     `python -c "import sqlite3; conn = sqlite3.connect('C:/CodexRuntime/tiktok-video/state.db'); print(conn.execute('SELECT niche, count(*) FROM folders WHERE status=\"insufficient_pool\" GROUP BY niche ORDER BY count(*) DESC').fetchall())"`
+  2. **Bẫy escape ký tự trong Windows batch (`.bat`)**:
+     - Khi viết script sinh file `.bat` (như `run_download_kibe_full.bat`), các đường dẫn Windows dạng `D:\CodexRuntime\tiktok-video` hoặc `\venv` dễ bị parse nhầm `\t` thành Tab, `\v` thành Vertical Tab nếu không escape `\\` hoặc dùng forward slash `/`.
+     - Hậu quả: CMD văng lỗi `'D:\Taadaa\Tiktok-videoun_download_kibe_full.bat' is not recognized`. Luôn dùng forward slash `/` trong Python/Batch flags (vd: `D:/CodexRuntime/tiktok-video/...`).
 
   ### Quy trình thay thế nguồn & Reset folder khi nguồn cũ cạn video (Clean-Replace Source)
   Khi một folder bị thiếu video do nguồn cũ cạn Shorts hoặc bị nghẽn `insufficient_pool`, quy trình chuẩn để thay nguồn sạch 100%:
@@ -320,6 +437,13 @@ Evidence tối thiểu và mẫu truy vấn/checklist: `references/source-pool-s
 - Nếu dirty-tree/bootstrap gate chặn thì báo blocker ngắn gọn, không reset/stash/commit tự ý; nhưng vẫn phải phân biệt rõ blocker code với kết quả runtime.
 
 Chi tiết inventory, collision detection và move an toàn: `references/folder-isolation-and-reconciliation.md`.
+Chi tiết cross-folder channel deduplication & persistent claims cho gai xinh pipelines (`smart_gaixinh_distributor.py`, `download_gaixinh_pipeline.py`): `references/cross-folder-channel-dedup-and-claims.md`.
+
+### Deduplication kênh chéo folder & Persistent Claims (GaiXinh Pipelines)
+- **Central claims registry**: `data/gaixinh_channel_claims.json` lưu ánh xạ kênh -> folder đã gán, ngăn tình trạng phân bổ trùng lặp kênh giữa các folder khác nhau.
+- **Folder descriptors**: Mỗi output folder lưu `D:\video goc\<folder_num>\channel_info.json` để xác minh tại chỗ và hỗ trợ auto-reconciliation khi khởi động.
+- **Clean-old release**: Khi chạy với `--clean-old`, phải giải phóng claim của folder đó trong central registry và xóa file `channel_info.json`.
+- **Kỷ luật tool calls khi can thiệp downloader**: Tránh đọc tuần tự toàn bộ file lớn bằng `read_file` (dễ cạn kiệt budget 15-20 iterations); tập trung vào các điểm gán kênh và viết unit test độc lập.
 
 ## Pitfalls
 
@@ -333,6 +457,12 @@ Chi tiết inventory, collision detection và move an toàn: `references/folder-
 
 - MobiProxy panel giới hạn kết nối đồng thời: test SONG SONG toàn pool (8 worker × nhiều proxy cùng lúc) thấy 407 auth fail dù proxy sống (uptime 92h) — thử lại proxy ĐƠN LẺ OK, download thật (mỗi worker 1 proxy riêng) không bị 407 → đừng kết luận "proxy chết" khi thấy 407 từ test song song
 
+- ⚠️ **Lỗi yt-dlp `Video unavailable` (visionos player API) & Rate-limit 1 giờ**:
+  - `yt-dlp` bản mới (2026.08+) mặc định dùng `visionos player API` dẫn đến văng lỗi `Video unavailable` giả.
+  - **Khắc phục**: Thêm `"extractor_args": {"youtube": {"player_client": ["android"]}}` vào `ydl_opts` để ép dùng Android player API.
+  - Khi IP bị YouTube rate-limit ("rate-limited by YouTube for up to an hour"), xoay qua cổng **MikroTik LAN PPPoE proxy pool (`192.168.110.2:10001..10035` với auth `admin@1:admin@1`)** để lấy IP dân cư nội bộ độ trễ 0.01s, tốc độ tải 10–26 MB/s.
+  - Cài đặt `deno` (`pip install deno`) để cung cấp JS runtime tự động cho yt-dlp.
+  - Chi tiết xem: `references/youtube-android-client-and-mikrotik-pool-fix.md`.
 - ⚠️ **Lỗi C++ `brotli` vs `brotlicffi` trên Windows**: Gói `brotli 1.2.0` gốc C++ bị lỗi memory allocation (`ERROR: brotli: unable to allocate memory` dẫn tới exit code 127/139) khi xử lý giải nén HTTP stream trên nhiều worker song song. Khắc phục: `pip install brotlicffi` và `pip uninstall -y brotli`.
 - ⚠️ **Lỗi Windows File Lock khi ghi Cache (`[WinError 5] Access is denied`)**: Khi đa luồng cùng ghi file cache (như `audio_lang_cache.json`), không dùng cơ chế ghi file `.part.json` rồi `replace()` vì Windows sẽ lock file gây `Access is denied`. Phải dùng `threading.Lock()` ghi trực tiếp vào file đích.
 - ⚠️ **CTranslate2 / Faster-Whisper multi-thread Segfault (C++ crash exit code 127/139)**: 

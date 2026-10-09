@@ -64,3 +64,18 @@ C:\Program Files\Google\Drive File Stream\130.0.2.0\GoogleDriveFS.exe
 1. **Private Server Addon** (~2M VNĐ) - GPM managed cloud
 2. **Self-hosted S3/R2/MinIO** - Configure Access Key + Secret Key in GPM Settings
 3. **Current**: No cloud sync, relying on OneDrive + Google Drive backup
+
+---
+
+## Targeted Active Profiles Backup Workflow (Updated 2026-09-05)
+
+### 1. Mục Đích
+Thay vì nén thô toàn bộ thư mục profile (>3.5 GB gây nghẽn I/O và tốn băng thông cloud sync), áp dụng kỹ thuật nén chọn lọc (Selective Exclusion) cho các profile vừa login/active:
+- Loại bỏ các thư mục rác / cache tạm: `Cache`, `Code Cache`, `Crashpad`, `Service Worker/CacheStorage`.
+- Giữ nguyên 100% dữ liệu danh tính và session: `Default/Network/Cookies`, `Default/Preferences`, `Default/Login Data`, `Default/GPMSoft`, `Local State`.
+- Kết quả thực tế (05/09/2026): **28 profiles active** chỉ chiếm **141 MB** (thay vì >3.5 GB), kiểm tra `zipfile.testzip()` đạt 100% PASSED.
+
+### 2. Cấu Trúc Backup Ngày 2026-09-05
+Location: `D:\OneDrive\backup\GPM\`
+- `profile_data_backup_20260905.db` (1.75 MB) — SQLite DB metadata toàn bộ 256 profiles.
+- `gpm_active_profiles_20260905.zip` (141.04 MB) — 28 profiles Farm S7 đợt chạy 04-05/09/2026.

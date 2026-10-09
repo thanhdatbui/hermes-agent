@@ -30,6 +30,16 @@
 - Log upstream thật: `~/.local/share/opencode/log/opencode.log` — `stream error ... AI_APICallError: Monthly usage limit reached` / `[503] The request queue is full` / `[502] Nvidia ResourceExhausted` = quota upstream; `UnknownError` = gateway.
 - opencode CLI không có process nền mặc định (chỉ 9router `cli.js --tray` + `custom-server.js`); `opencode serve` mới là headless server (port mặc định 0, cần `--port`).
 
+## OpenCode Bridge & Farm Fallback (:20130) — 2026-09-28
+- **Upstream Zen 403 FreeTierError:** OpenCode free tier bị chặn khi gọi HTTP direct từ ngoài; bắt buộc qua CLI $\ge 1.18.0$.
+- **Cầu nối HTTP:** `D:/Taadaa/tools/opencode_bridge.py` mở port `:20130` chuyển tiếp sang `D:/Taadaa/tools/oc_farm.py` (xoay 69 proxy farm).
+- **Quy tắc Multi-threaded & Immediate SSE:**
+  - Bridge bắt buộc dùng `ThreadingHTTPServer` để không bị nghẽn (block) khi nhiều agent/cronjob gọi song song.
+  - Phải gửi HTTP 200 + initial chunk (`delta: {"role": "assistant"}`) ngay lập tức (<50ms) trong SSE stream để giữ connection với Hermes, tránh dính `connect_timeout = 15s`.
+- **Chỉ lấy 8 model 100% Free (`opencode/*`):** `muse-spark-1.3`, `nemotron-3-ultra`, `nemotron-3.5-lightning`, `mimo-v2.6-flash`, `big-pickle`, `space-bunny`, `ling-3.0-flash-fin`, `longcat-2.5-preview`.
+- **Bảo toàn Static Proxy Binding:** Khi dải proxy farm (như `test.taadaa.click`) mất điện/sập, 9router/omniroute đóng băng (cooldown) các acc gán dải đó, TUYỆT ĐỐI không tự ý đổi proxy chéo sang MikroTik làm bẩn fingerprint của Google account.
+
+
 ## Hermes fallback chain code anchors (reasoning KHÔNG kế thừa)
 - `agent/agent_init.py` ~1166: `_fallback_chain` build từ `fallback_providers` (list) / `fallback_model` (legacy dict) — session init, đổi config cần `/new`.
 - `agent/chat_completion_helpers.py` `try_activate_fallback` (~1372): skip logic (dedup provider/model/base_url, `_unavailable_fallback_keys` session-suppression, `_fallback_entry_unavailable_without_network`), swap client in-place, **re-resolve reasoning** ~1690: `agent.reasoning_config = resolve_reasoning_config(load_config(), agent.model)`.

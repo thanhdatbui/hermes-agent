@@ -16,6 +16,9 @@ lease = acquire_device_lock(
     command="test canary",
     force_preempt=True  # Override "blocked" status
 )
+# To release programmatically: lease.release()
+# Note: There is NO standalone `release_device_lock()` function in automation_core.device_lock.
+# Calling `from automation_core.device_lock import release_device_lock` raises ImportError.
 ```
 
 ## When to Use
@@ -25,7 +28,7 @@ lease = acquire_device_lock(
 
 ## Post-Canary Protocol
 1. Canary pass → operator types `"Mở khóa máy 74"` or `"Unlock all"`
-2. Gateway calls reap/release API to clear lock
+2. Gateway calls reap/release API (`scripts/reap-dead-owner-locks.py`) to clear dead locks, or `lease.release()` if acquired via Python
 3. Next cron batch acquires fresh lock normally
 
 ## Machine 74 Case (2026-09-03)

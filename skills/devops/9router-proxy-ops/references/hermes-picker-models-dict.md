@@ -107,3 +107,67 @@ also emits rows auto-discovered from credentials on disk:
   `from hermes_cli.model_switch import list_picker_providers` +
   `hermes_cli.inventory.load_picker_context()` → confirm new model appears under the
   right provider row before telling the user it's done.
+
+## 2026-09 Standard: 1-Model Canonical 9Router Setup (`9r-free`)
+
+### Root cause of picker clutter in `/model`:
+When `discover_models` is omitted or `true` under `providers.9router`, Hermes queries 9router's `/v1/models` endpoint directly (~29 internal/stale routes). Furthermore, having multiple models or CommandCode paid accounts in 9router causes rate-limit / token expiration issues during fallback.
+
+### Canonical configuration (Consolidated 1 Model: `9r-free`):
+In both `~/.hermes/config.yaml` (`C:\Users\Kibe\AppData\Local\hermes\config.yaml`) and repo template `D:\Taadaa\AI-Tools\config\hermes\hermes_config_template.yaml`:
+```yaml
+providers:
+  9router:
+    api: http://127.0.0.1:20128/v1
+    default_model: 9r-free
+    discover_models: false
+    key_env: NINEROUTER_API_KEY
+    models:
+      9r-free: {}
+    transport: chat_completions
+
+fallback_providers:
+  - model: omni-free
+    provider: omni
+  - model: 9r-free
+    provider: custom:9router
+
+custom_providers:
+  - api_key: ...
+    api_mode: chat_completions
+    base_url: http://127.0.0.1:20128/v1
+    discover_models: false
+    key_env: NINEROUTER_API_KEY
+    model: 9r-free
+    models:
+      9r-free:
+        context_length: 1048576
+    name: 9router
+```
+
+### Verification via Python & CLI:
+1. `list_picker_providers` verifies 9router only presents `['9r-free']`:
+```python
+from hermes_cli.model_switch import list_picker_providers
+from hermes_cli.inventory import load_picker_context
+
+ctx = load_picker_context()
+providers = list_picker_providers(
+    current_provider=ctx.current_provider,
+    current_base_url=ctx.current_base_url,
+    user_providers=ctx.user_providers,
+    custom_providers=ctx.custom_providers,
+    include_moa=False,
+)
+prov_9r = next(p for p in providers if str(p.get("name", "")).lower() == "9router")
+assert prov_9r["models"] == ["9r-free"]
+```
+2. `hermes fallback list` CLI command confirms:
+```text
+Primary:   <primary-model>  (via omni)
+
+  Fallback chain (2 entries):
+    1. omni-free  (via omni)
+    2. 9r-free  (via custom:9router)
+```
+

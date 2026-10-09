@@ -39,8 +39,10 @@ section as `null` instead of omitting it or writing `{}`.
 
 - You see `'NoneType' object has no attribute 'get'` (or `.items`, `.keys`)
   on a value that came from config / parsed YAML / JSON.
-- You are hardening config parsers against hand-edited YAML.
-- You are writing a TDD regression test for a previously-crashing config.
+- Chained `.get("field", {}).get(...)` in telemetry / log line parsers or JSONL events
+  where `field` is deserialized as `None` or non-dict (e.g. `event = {"extra": None}`).
+- You are hardening config or event parsers against hand-edited YAML or sparse JSON lines.
+- You are writing a TDD regression test for a previously-crashing config or event log parser.
 - Code review of config access — flag every `x.get(k, {}).get(...)` chain
   where `x` is a value loaded from external config (not a freshly-built dict).
 - You see the same exception in a flow that consumes a result object, handler
@@ -102,6 +104,22 @@ Why fail-closed (`{}`) and not fail-open? For safety/permission gates
 safe default. For timeout/threshold lookups (`timeouts.adb_seconds`), the
 empty dict makes the *inner* `.get("adb_seconds", 15)` fall back to its
 own hard default. Either way the prior default value still applies.
+
+### Event / Telemetry Log Line Normalization
+
+The same trap applies to event stream and JSONL parsers (e.g., `event.get("extra", {}).get(...)`).
+In JSONL, a logger may emit `{"extra": null}` or non-dict payloads. Normalizing locally
+before access prevents silent drops or parser crashes:
+
+```python
+extra = event.get("extra") if isinstance(event.get("extra"), dict) else {}
+already_liked = bool(event.get("already_liked") or extra.get("already_liked"))
+ft = str(extra.get("feed_type") or event.get("feed_type") or "")
+```
+
+When writing regression tests for event parsers, include a line with `{"extra": None}`
+followed immediately by a valid event to assert that parsing does not crash and valid
+events continue to be processed.
 
 ## TDD RED-Phase Trap (critical)
 

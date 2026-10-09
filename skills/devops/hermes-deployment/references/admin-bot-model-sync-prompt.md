@@ -1,167 +1,169 @@
-# Secondary Machine Hermes Model & Proxy Sync Recipe
+# Secondary Machine Hermes Model, Gateway & Proxy Sync Recipe
 
-When configuring a secondary Hermes instance (e.g. Admin PC) to route LLM queries through the primary host's (Kibe PC) OmniRoute & 9Router proxies:
+When configuring a secondary Hermes instance (e.g. Admin PC) where Hermes is **already installed and operating with its own Telegram Bot Token**, to match the primary host's (Kibe PC) LLM routing, Telegram pool settings, Viettel proxy, and skills 100%:
 
-## Target Machine Self-Configuration Prompt
+---
 
-Send this prompt directly to the secondary machine's Hermes / Telegram bot:
+## Invariant Rules for Multi-Host Hermes Sync
 
-```text
-Bạn là Hermes Agent trên máy Admin. Hãy đồng bộ cấu hình Model, Providers, Context Compression và Fallback Chain 3 tầng của Worker cho khớp 100% với máy Kibe (IP: 192.168.110.123).
+1. **Bot Token Isolation (Strict Rule):**
+   - Each host MUST maintain its own unique `TELEGRAM_BOT_TOKEN` in `%LOCALAPPDATA%\hermes\.env`.
+   - NEVER copy or overwrite `TELEGRAM_BOT_TOKEN` from Kibe to Admin. Two running instances using the same bot token cause immediate polling conflicts: `Conflict: terminated by other getUpdates request`.
+2. **Shared LLM Routing (100% Match):**
+   - Model default: `ag-gemini-pool-3` (provider `omni`).
+   - OmniRoute endpoint: `http://192.168.110.123:20129/v1`.
+   - 9Router endpoint: `http://192.168.110.123:20128/v1` (for `gpt-5.6-luna`, compression fallback, and code review).
+   - Fallback chain: `9r-free` (via `custom:9router`) — loại bỏ `omni-free` để tránh dead-end fallback khi OmniRoute sập.
+   - Multi-tier subagent delegation: `ag-gemini-pool-3` (OmniRoute) with `max_concurrent_children: 4`, `max_iterations: 100`.
+3. **Telegram Network & Pool Resilience (Anti-Stall):**
+   - Egress Proxy: `TELEGRAM_PROXY=http://admin%401:admin%401@192.168.110.2:10001` (Viettel line via MikroTik; bypasses FPT DNS failures & packet drops).
+   - Pool limits: `HERMES_TELEGRAM_HTTP_POOL_SIZE=1024` and `HERMES_TELEGRAM_HTTP_POOL_TIMEOUT=30.0` (prevents `Pool timeout` during multi-agent concurrent turns/image bursts).
+   - Heartbeat & Timeouts: Connect 15.0s, Read 30.0s, Write 30.0s.
+4. **Git Repository vs. Runtime State Separation:**
+   - Git repository `D:\Taadaa\Hermes` holds the canonical source, skills, and deploy templates (`deploy/hermes-home/`).
+   - Runtime `%LOCALAPPDATA%\hermes` holds active machine state (`state.db`, active `.env`, `gateway_state.json`).
+   - Sync workflow: Kibe pushes to `fork main` -> Admin pulls `fork main` -> copies template `config.yaml` to runtime -> runs `sync-skills.ps1` -> restarts Gateway when idle via `restart-when-idle.ps1`.
 
-Hãy chạy script Python sau để cập nhật trực tiếp:
+---
 
-```python
-import os, re, yaml
-from pathlib import Path
+## 1-Click Self-Configuration Prompt (Send to Admin Telegram Bot or Paste in Admin PowerShell)
 
-hermes_dir = Path(os.path.expandvars(r"%LOCALAPPDATA%\hermes"))
-env_path = hermes_dir / ".env"
-config_path = hermes_dir / "config.yaml"
+Copy and run this self-contained script on the Admin machine (via Admin bot prompt or Admin PowerShell window):
 
-# 1. Nạp API Key vào .env
-env_content = env_path.read_text(encoding="utf-8") if env_path.exists() else ""
-keys_to_add = {
-    "OMNIROUTE_API_KEY": "***",
-    "NINEROUTER_API_KEY": "***",
-    "OMNIROUTE_BASE_URL": "http://192.168.110.123:20129/v1"
-}
-for k, v in keys_to_add.items():
-    if f"{k}=" in env_content:
-        env_content = re.sub(rf"^{k}=.*$", f"{k}={v}", env_content, flags=re.M)
-    else:
-        env_content += f"\n{k}={v}"
-env_path.write_text(env_content.strip() + "\n", encoding="utf-8")
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "
+$HermesHome = Join-Path $env:LOCALAPPDATA 'hermes'
+$RepoRoot = 'D:\Taadaa\Hermes'
+$KibeIP = '192.168.110.123'
 
-# 2. Cập nhật config.yaml
-cfg = {}
-if config_path.exists():
-    with open(config_path, "r", encoding="utf-8") as f:
-        cfg = yaml.safe_load(f) or {}
+Write-Host '== DANG DONG BO HERMES ADMIN THEO CHUAN KIBE ==' -ForegroundColor Cyan
 
-cfg["model"] = {
-    "default": "ag-gemini-pool-3",
-    "provider": "omni",
-    "persist_switch_by_default": False,
-    "context_length": 1000000
-}
-
-cfg["providers"] = {
-    "omni": {
-        "api": "http://192.168.110.123:20129/v1",
-        "default_model": "ag-gemini-pool-3",
-        "discover_models": False,
-        "key_env": "OMNIROUTE_API_KEY",
-        "models": {
-            "ag-gemini-pool-3": {},
-            "ag-claude": {},
-            "ag-opus": {},
-            "omni-free": {}
-        },
-        "transport": "chat_completions"
-    },
-    "9router": {
-        "api": "http://192.168.110.123:20128/v1",
-        "default_model": "gpt-5.6-luna",
-        "key_env": "NINEROUTER_API_KEY",
-        "transport": "chat_completions"
-    }
+# 1. Keo ban moi nhat tu Git Repo
+if (Test-Path $RepoRoot) {
+    Write-Host 'Kéo Git pull từ repo D:\Taadaa\Hermes...' -ForegroundColor Yellow
+    git -C $RepoRoot fetch fork main
+    git -C $RepoRoot pull --rebase fork main
 }
 
-cfg["custom_providers"] = [
-    {
-        "name": "9router",
-        "base_url": "http://192.168.110.123:20128/v1",
-        "key_env": "NINEROUTER_API_KEY",
-        "api_key": "***",
-        "api_mode": "chat_completions",
-        "discover_models": False,
-        "model": "ag/gemini-3.7-flash-high",
-        "models": {
-            "ag/gemini-3.7-flash-high": {"context_length": 1048576},
-            "ag/claude-sonnet-4-6": {"context_length": 1000000},
-            "ag/claude-opus-4-6-thinking": {"context_length": 1000000},
-            "deepseek-v4-flash": {"context_length": 1048576},
-            "deepseek-v4-pro": {"context_length": 1048576},
-            "gpt-5.6-luna": {"context_length": 256000},
-            "gpt-5.6-sol": {"context_length": 256000},
-            "gpt-5.6-terra": {"context_length": 256000},
-            "opencode-audit": {"context_length": 1048576},
-            "opencode-free": {"context_length": 1048576},
-            "openrouter-free": {"context_length": 1048576},
-            "plan-review": {"context_length": 256000},
-            "plan-review-hard": {"context_length": 256000},
-            "worker": {"context_length": 1048576}
+# 2. Dong bo config.yaml tu deploy bundle
+$srcConfig = Join-Path $RepoRoot 'deploy\hermes-home\config.yaml'
+$dstConfig = Join-Path $HermesHome 'config.yaml'
+if (Test-Path $srcConfig) {
+    Write-Host 'Dong bo config.yaml...' -ForegroundColor Yellow
+    Copy-Item -LiteralPath $srcConfig -Destination $dstConfig -Force
+    # Thay 127.0.0.1 thanh IP Kibe cho OmniRoute va 9Router
+    $cfgContent = Get-Content $dstConfig -Raw -Encoding utf8
+    $cfgContent = $cfgContent -replace '127\.0\.0\.1:20129', ($KibeIP + ':20129')
+    $cfgContent = $cfgContent -replace '127\.0\.0\.1:20128', ($KibeIP + ':20128')
+    Set-Content -Path $dstConfig -Value $cfgContent -Encoding utf8
+}
+
+# 2.1 Cau hinh vision va compression ro rang tranh loi provider=auto
+& hermes config set auxiliary.vision.provider omni
+& hermes config set auxiliary.vision.model omni-worker
+& hermes config set auxiliary.compression.provider omni
+& hermes config set auxiliary.compression.model ag-gemini-pool-3
+
+# 3. Dong bo script restart-when-idle.ps1
+$srcRestart = Join-Path $RepoRoot 'deploy\hermes-home\scripts\restart-when-idle.ps1'
+$dstRestart = Join-Path $HermesHome 'scripts\restart-when-idle.ps1'
+if (Test-Path $srcRestart) {
+    Write-Host 'Dong bo restart-when-idle.ps1...' -ForegroundColor Yellow
+    New-Item -ItemType Directory -Force -Path (Split-Path $dstRestart) | Out-Null
+    Copy-Item -LiteralPath $srcRestart -Destination $dstRestart -Force
+}
+
+# 4. Dong bo skills
+$syncSkillsScript = Join-Path $RepoRoot 'deploy\sync-skills.ps1'
+if (Test-Path $syncSkillsScript) {
+    Write-Host 'Dong bo Skills tu repo vao runtime...' -ForegroundColor Yellow
+    & $syncSkillsScript -RepoRoot $RepoRoot
+}
+
+# 5. Cap nhat .env (Giu nguyen TELEGRAM_BOT_TOKEN rieng cua Admin, chi them/sua pool & proxy & endpoint LAN)
+$envFile = Join-Path $HermesHome '.env'
+if (Test-Path $envFile) {
+    Write-Host 'Cap nhat .env an toan (bao ton bot token)...' -ForegroundColor Yellow
+    $envContent = Get-Content $envFile -Raw -Encoding utf8
+    $updates = @(
+        'HERMES_TELEGRAM_HTTP_POOL_SIZE=1024',
+        'HERMES_TELEGRAM_HTTP_POOL_TIMEOUT=30.0',
+        'HERMES_TELEGRAM_HTTP_CONNECT_TIMEOUT=15.0',
+        'HERMES_TELEGRAM_HTTP_READ_TIMEOUT=30.0',
+        'HERMES_TELEGRAM_HTTP_WRITE_TIMEOUT=30.0',
+        'TELEGRAM_ALLOW_BOTS=all',
+        'TELEGRAM_PROXY=http://admin%401:admin%401@192.168.110.2:10001',
+        ('OMNIROUTE_BASE_URL=http://' + $KibeIP + ':20129/v1'),
+        'OMNIROUTE_API_KEY=sk-068...237c',
+        'NINEROUTER_API_KEY=sk-247...708b'
+    )
+    foreach ($line in $updates) {
+        $k = $line.Split('=')[0]
+        if ($envContent -match ('(?m)^' + [regex]::Escape($k) + '=')) {
+            $envContent = [regex]::Replace($envContent, ('(?m)^' + [regex]::Escape($k) + '=.*$'), $line)
+        } else {
+            $envContent += [Environment]::NewLine + $line
         }
     }
-]
-
-cfg["model_catalog"] = {
-    "excluded_providers": ["anthropic"]
+    Set-Content -Path $envFile -Value $envContent.Trim() -Encoding utf8
 }
 
-if "agent" not in cfg or not isinstance(cfg["agent"], dict):
-    cfg["agent"] = {}
-cfg["agent"]["image_input_mode"] = "native"
-cfg["agent"]["reasoning_effort"] = "high"
-cfg["agent"]["reasoning_overrides"] = {
-    "ag/claude-sonnet-4-6": "high",
-    "deepseek-v4-flash": "high",
-    "gpt-5.6-luna": "high",
-    "oc/deepseek-v4-flash-free": "high",
-    "oc/hy3-free": "high",
-    "opencode-audit": "high"
-}
+# 6. Khoi chay One-Shot Watcher de restart Gateway an toan khi idle (nap bien .env moi)
+Write-Host 'Kich hoat One-Shot Idle Watcher...' -ForegroundColor Yellow
+Start-Process powershell.exe -ArgumentList \"-NoProfile -ExecutionPolicy Bypass -File $dstRestart\" -WindowStyle Hidden
 
-cfg["auxiliary"] = {
-    "compression": {
-        "provider": "omni",
-        "model": "ag-gemini-pool-3",
-        "fallback_chain": [
-            {"model": "gpt-5.6-luna", "provider": "9router"}
-        ]
-    }
-}
-
-# Subagent Worker 3 tầng: T1 (omni: ag-gemini-pool-3) -> T2 (9router: worker) -> T3 (omni: omni-free)
-cfg["delegation"] = {
-    "provider": "omni",
-    "model": "ag-gemini-pool-3",
-    "reasoning_effort": "high",
-    "max_concurrent_children": 4,
-    "max_iterations": 100
-}
-
-cfg["fallback_providers"] = [
-    {
-        "provider": "custom:9router",
-        "model": "worker"
-    },
-    {
-        "provider": "omni",
-        "model": "omni-free"
-    }
-]
-
-with open(config_path, "w", encoding="utf-8") as f:
-    yaml.safe_dump(cfg, f, allow_unicode=True, sort_keys=False)
-
-print("SUCCESS: Synced config and .env with Kibe!")
+Write-Host '== DONG BO HOAN TAT 100%! ==' -ForegroundColor Green
+"
 ```
 
-Sau khi chạy xong, hãy chạy `hermes doctor` kiểm tra và báo cáo kết quả.
+---
+
+## Continuous Sync Workflow (Mỗi lần Kibe sửa config thì làm gì?)
+
+Khi máy Kibe sửa cấu hình (`config.yaml`), script hoặc skills:
+
+1. **Phía Kibe:**
+   - Cập nhật file mẫu trong repo:
+     - `copy C:\Users\Kibe\AppData\Local\hermes\config.yaml D:\Taadaa\Hermes\deploy\hermes-home\config.yaml`
+   - Commit và push lên GitHub:
+     ```bash
+     git -C "D:\Taadaa\Hermes" add deploy/hermes-home/config.yaml skills/
+     git -C "D:\Taadaa\Hermes" commit -m "chore(deploy): sync updated config and skills"
+     git -C "D:\Taadaa\Hermes" push fork main
+     ```
+
+2. **Phía Admin:**
+   - **Tự động theo Cron (không cần thao tác):** Cron job `sync-hermes-skills-to-git` trên Admin chạy mỗi 30 phút tự động kéo `fork main` về.
+   - **Hoặc yêu cầu tức thì qua chat Telegram Bot Admin:**
+     Gửi tin nhắn cho Bot Admin:
+     `Hãy kéo git pull D:\Taadaa\Hermes fork main, copy deploy/hermes-home/config.yaml vào AppData/Local/hermes/config.yaml và chạy restart-when-idle.ps1.`
+
+---
+
+## Critical Pitfall: Omni Provider Plugin Hardcoded to 127.0.0.1 (2026-09-11)
+
+**Problem:** The Omni provider plugin (`deploy/hermes-home/plugins/model-providers/omni/__init__.py`) originally committed in `186e2dc5d` hardcoded:
+```python
+base_url="http://127.0.0.1:20129/v1"
+env_vars=("OMNIROUTE_API_KEY",)  # Missing OMNIROUTE_BASE_URL!
 ```
+When `sync-from-kibe.ps1` copied this plugin to Admin, it overrode Admin's provider config to point to **Admin's own localhost (127.0.0.1)** instead of Kibe's LAN IP. Result: All model calls on Admin failed with "Provider unreachable" → fallback also failed → bot completely broken.
 
-## Key Configuration Invariants
+**Root Cause:** 
+1. `env_vars` omitted `"OMNIROUTE_BASE_URL"` → Hermes runtime provider resolution couldn't map the environment variable.
+2. `base_url` was hardcoded to `127.0.0.1:20129` → remote hosts without local OmniRoute instance got connection refused.
 
-- **OmniRoute (:20129):** Primary gateway for pool combos (`ag-gemini-pool-3` with 13 Antigravity accounts).
-- **Subagent Worker Fallback Chain (3 Levels):** 
-  - Primary: `delegation.provider: omni`, `delegation.model: ag-gemini-pool-3`.
-  - Fallback Level 1: `fallback_providers[0]`: `custom:9router` with combo `worker`.
-  - Fallback Level 2: `fallback_providers[1]`: `omni` with combo `omni-free`.
-- **Context Bloat vs. Telegram Silent UI:** Telegram suppression of intermediate turns (`[SILENT]` / `tool_progress: false`) is only UI filtering; executing multi-step tools (>3 steps) directly in the parent loop bloats parent context and degrades model reasoning. Long/heavy tasks must be delegated via `delegate_task` to `delegation.model` so intermediate tool turns stay within isolated subagent contexts.
-- **Auxiliary Compression:** `auxiliary.compression` routes to `ag-gemini-pool-3` (1M context, threshold 0.3 = 300k tokens) with fallback to `gpt-5.6-luna` via `9router`.
-- **9Router (:20128):** Dedicated fallback provider for code review combos (`plan-review`, `plan-review-hard`), auxiliary compression fallback (`gpt-5.6-luna`), and the exact `worker` combo.
-- **`custom_providers` for Telegram `/model` Picker:** Defining the `custom_providers` block with discrete model lists and explicit `context_length` values ensures the `/model` inline menu matches across all farm nodes.
-- **Excluded Providers:** `model_catalog.excluded_providers: ["anthropic"]` prevents unauthenticated provider entries from surfacing in the model picker.
-- **Multimodal / Vision:** Set `agent.image_input_mode: native` so screenshots and UI verification payloads stream directly without legacy vision tool crashes.
+**Fix applied (commits f06449819, 0a773410f, 8924a8cb0):**
+- Updated both `deploy/hermes-home/plugins/model-providers/omni/__init__.py` AND local runtime plugin `%LOCALAPPDATA%/hermes/plugins/model-providers/omni/__init__.py`:
+  ```python
+  import os
+  ...
+  env_vars=("OMNIROUTE_API_KEY", "OMNIROUTE_BASE_URL"),
+  base_url=os.getenv("OMNIROUTE_BASE_URL", "http://192.168.110.123:20129/v1").rstrip("/"),
+  fallback_models=FARM_MODELS,
+  ```
+- Updated deploy template `config.yaml` and Kibe's runtime `config.yaml` to use `192.168.110.123` (Kibe static LAN IP) instead of `127.0.0.1` for all endpoints.
+- Updated `.env` on Kibe: `OMNIROUTE_BASE_URL=http://192.168.110.123:20129/v1`
+- Sync script already generates correct `OMNIROUTE_BASE_URL` from `$KibeIP`.
+
+**Lesson:** NEVER hardcode `127.0.0.1` in deploy templates that get synced to other machines. Always use `os.getenv()` with LAN IP fallback, and include the corresponding `_BASE_URL` in `env_vars`.

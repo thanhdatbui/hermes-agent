@@ -1,6 +1,11 @@
 ---
 name: tiktok-farm-hermes-cron-migration
-description: Migrate TikTok farm scheduling từ Windows Task Scheduler sang Hermes cron orchestration — picker/runner/watcher, manifest schema v1, user-chốt constraints, audit findings, phases P1-P6.
+description: >-
+  **DEPRECATED (2026-09-10):** Picker/cohort/manifest system da bi user yeu cau bo.
+  Runner don gian: tiktok_runner.py doc gio → goi run-feed-session.ps1 tu taikhoan_run_safe.xlsx.
+  Xem tiktok-feed-session skill hoac references/cron-schedule-simplified-2026-09-10.md.
+  Skill nay giu lam lich su tham khao, KHONG dung cho cong viec moi.
+  Migrate TikTok farm scheduling tu Windows Task Scheduler sang Hermes cron orchestration.
 ---
 
 # TikTok Farm → Hermes Cron Migration
@@ -293,6 +298,35 @@ Check trước khi dispatch:
   (`stat -c '%n %y' <file>`) — file mtime mới = worker khác đang sửa live → CẤM đưa vào scope worker mới
   (session này: benign_popup.py/feed_swipe_smoke.py mtime 12:36-12:44, worker add-phone đang chạy).
 
+## tiktok_runner.py SIMPLIFIED — time-of-day → Row direct (10/09/2026)
+
+- **Detailed Timing & Shift Gap Reference**: `references/2026-09-11-single-session-shift-timing-model.md` (giải thích chi tiết mô hình 1 run/ca, phân bổ parity chẵn/lẻ, khoảng nghỉ 5h10p giữa các ca vs logic 2 phiên cũ).
+
+**Architectural pivot**: `tiktok_runner.py` was rewritten to REMOVE picker/cohort/manifest dependency. The previous version (1121 lines) depended on `python_runner.hermes_cron.cohort`, `_load_active_manifest`, `build_cohort_plan`, `_write_cohort_plan`, PID management, lease management, and a multi-layer dispatch pipeline. The new version (~280 lines) does:
+
+1. `now_hcmc()` → `_determine_row(now)` → de-dup check → `subprocess.Popen` to `run-feed-session.ps1`
+2. No `python_runner` imports, no `sys.path.insert` hacks, no manifest loading, no PID/lease management.
+3. PS1 is called directly: `powershell -ExecutionPolicy Bypass -File scripts/run-feed-session.ps1 -Row <N> -Preset full -AccountWorkbook taikhoan_run_safe.xlsx -SkipAccountWorkbookSync -LocalRun -MachineStartStaggerMs "2000,8000" -RandomizeMachineOrder -Run`
+
+**Schedule (SCHEDULE dict in code)**:
+| Hour | Even Day (date%2==0) | Odd Day (date%2==1) |
+|------|---------------------|---------------------|
+| 00h  | Row 8               | Row 7               |
+| 06h  | Row 2               | Row 1               |
+| 12h  | Row 4               | Row 3               |
+| 18h  | Row 6               | Row 5               |
+| 02-05h | Dead zone (exit 0) | Dead zone           |
+
+**De-dup state file**: `D:/Taadaa/runtime/kibe/cron-state/runner_simple_state.json` — stores `{"last_row", "last_window", "last_run_at"}`. Window key = `<date>T<hour>` — each schedule slot spawns at most once per day.
+
+**Preserved from old**: `repo_root()`, `target_python()`, `now_hcmc()`, `is_activated()` + permit file check, `repo_env_overrides()` for backwards compat.
+
+**Key lesson**: The complex picker→manifest→cohort→runner pipeline (which took months to build and audit) was the right design for the account-block model with jitter/pair-gaps. But when the user wanted simpler time-based row assignment (4 slots/day, no jitter, no reactive sessions), the entire middle layer became unnecessary overhead. The PS1 launcher already handles everything — the Python wrapper just needs to determine WHICH row and WHEN.
+
+**Pitfall**: When testing with `HERMES_CRON_NOW` override, remember the state file persists — clean it after simulation tests so real cron runs aren't affected.
+
+**File location**: `C:\Users\Kibe\AppData\Local\hermes\scripts\tiktok_runner.py` (deployed wrapper in hermes scripts dir).
+
 ## Trạng thái LIVE thực tế (2026-08-16) — HALF-MIGRATED, CHƯA cutover
 
 BẪY PHÂN TÍCH: skill này mô tả PLAN migration rất chi tiết nhưng **KHÔNG ghi trạng thái live** → session phải tốn ~6 tool call mới phát hiện "Hermes cron chưa deploy, Windows Task Scheduler vẫn chạy và đang break". **Luôn verify trạng thái thật bằng lệnh trước khi báo cáo** (recipe: `references/2026-08-16-live-wiring-status-audit.md`):
@@ -403,6 +437,37 @@ Job cron `no_agent: false` (LLM-driven, có `enabled_toolsets`) trên máy này 
 4. **✅ ĐÃ FIX 17/08 tối (sau khi user hỏi "cron sao phải cần key AI, tưởng tự vận hành ngầm như window schedule")**: chuyển `reap-dead-owner-locks` sang **no_agent script-only** — `cronjob action=update job_id=b63730cc5c85 no_agent=true script=reap-dead-owner-locks-wrapper.py workdir=<repo>` + tạo launcher mỏng trong `~/AppData/Local/hermes/scripts/` (subprocess gọi automation python chạy script thật trong repo) → `cronjob action=run` → **`last_status: ok, execution_success: true`**, output `Mode: no_agent (script)`. **Bài học user chốt**: cron farm = phải tự vận hành script thuần như Windows Task Scheduler (0 key, 0 token); KHÔNG thêm key vào `Hermes_Gateway.vbs` cho LLM-job (gateway VBS chỉ set HERMES_HOME/PYTHONPATH/... nên process gateway THIẾU `NINEROUTER_API_KEY` → mọi LLM cron job qua custom:9router 401; dù thêm key vào VBS cũng cần restart gateway — không đáng khi no_agent sạch hơn).
 5. Các job cron farm MỚI tạo: **mặc định `no_agent=true` + script wrapper mỏng** (0 token/key), đừng tạo LLM-driven có `enabled_toolsets`. Verify sau create bằng `cronjob action=run` → `last_status: ok`.
 
+## 🛑 THIẾT KẾ CHÍNH THỨC: 4 CA × 2 PHIÊN (8 ACC/MÁY: ROW 1-8, CHỐT 09/2026)
+
+User chốt chuyển đổi toàn bộ farm và cron orchestration từ mô hình cũ sang:
+- **Quy mô**: 8 acc/máy (Row 1 đến Row 8).
+- **4 Ca / Ngày** (`BLOCK_ANCHORS` trong `blocks.py`):
+  + `BLOCK_ANCHORS = ("06:00", "12:00", "18:00", "00:00")` (mỗi ca cách nhau 6 tiếng).
+  + Ca 1: `06:00` (Sáng, jitter clamp ≥ 0)
+  + Ca 2: `12:00` (Trưa)
+  + Ca 3: `18:00` (Chiều/Tối)
+  + Ca 4: `00:00` (Đêm)
+- **2 Lane theo ngày chẵn/lẻ (Parity Rows)**:
+  + Ngày Lẻ (Lane B): `Row 1, 3, 5, 7` tương ứng Ca 1, Ca 2, Ca 3, Ca 4: `LANES = (("A", (2, 4, 6, 8)), ("B", (1, 3, 5, 7)))`.
+  + Ngày Chẵn (Lane A): `Row 2, 4, 6, 8` tương ứng Ca 1, Ca 2, Ca 3, Ca 4.
+  + Mỗi account chỉ chạy đúng 1 block/ngày (`len(_bids) == 1`).
+- **Mỗi ca 2 Phiên** (`sessions_per_block: 2`, `session_slots` dài 2):
+  + **Phiên 1** (60'): `s1_start = anchor + jitter`, `s1_end = s1_start + 60'`.
+  + **Phiên 2** (60'): `s2_start = s1_end + pair_gap` (35..60' grid 5), `s2_end = s2_start + 60'`.
+  + Cap số phiên trong ngày: `_feed_decision` cap `successes_today >= 2` trả `NOT_DUE`.
+- **Implementation trong `blocks.py` & `picker.py`**:
+  + `blocks.py`: `BLOCK_ANCHORS = ("06:00", "12:00", "18:00", "00:00")`, `LANES = (("A", (2, 4, 6, 8)), ("B", (1, 3, 5, 7)))`, `_anchor_for` nhận `block_index in (1, 2, 3, 4)`, `build_block_sessions` trả tuple 2 phần tử `((s1_start, s1_end), (s2_start, s2_end))`, `AccountBlock.session_slots` annotation tuple 2 phần tử.
+  + `picker.py`: `_feed_decision` đổi cap thành `if successes_today >= 2:`, `_entries` lặp qua 4 ca `for block_index in (1, 2, 3, 4): row = rows[block_index - 1]`.
+- **CONSTRAINTS trong `manifest.py`**:
+  + `"feed_row_max": 8`, `"blocks_per_machine_day": 4`, `"sessions_per_block": 2`, `"max_accounts_per_machine_day": 4`.
+  + `"block_anchors": ["06:00", "12:00", "18:00", "00:00"]`.
+  + `"lanes": [{"lane": "A", "rows": [2, 4, 6, 8]}, {"lane": "B", "rows": [1, 3, 5, 7]}]`.
+- **Khung Watchdog (`feed_session_watchdog.py`) — đồng bộ cả 3 vị trí file**:
+  + Ca 1: Phiên 1 (06:00 - 07:30), Phiên 2 (07:30 - 10:00)
+  + Ca 2: Phiên 1 (12:00 - 13:30), Phiên 2 (13:30 - 16:00)
+  + Ca 3: Phiên 1 (18:00 - 19:30), Phiên 2 (19:30 - 22:00)
+  + Ca 4: Phiên 1 (00:00 - 01:15), Phiên 2 (01:15 - 03:00)
+
 ## ⚠️⚠️ THIẾT KẾ ĐÚNG = 3 CA × 3 PHIÊN/NGÀY (user đính chính 18/08 — ROW-SLOT 6-row/ngày LÀ SAI)
 
 > **User 18/08 sáng: "Làm đéo có chuyện 1 ngày chạy 6 row thiết kế bị ngu à? Đọc lại thiết kế" — phủ định row-slot 17/08 (1 entry/acc theo 6 row cố định = 1 máy chạy tới 6 lần/ngày).** Thiết kế CHÍNH THỐNG = plan 16/08 APPROVED:
@@ -486,6 +551,31 @@ User 2 lần yêu cầu giải thích đơn giản khi mình báo cáo kỹ thu�
 Task COMPLEX → plan bằng subagent (read-only) → audit 1 model xuyên suốt (Sol qua `codex exec --ephemeral --sandbox read-only --model gpt-5.6-sol`, stdin pipe, prompt >30KB không qua argv) → worker build (leaf) → coordinator verify diff + tests. Coordinator read-only; mọi write qua worker.
 
 **Bậc thang effort (user rule, xác nhận nhiều lần 17/08 — KHÔNG tự động plan/audit mọi thứ)**: user hỏi "có phức tạp để gọi plan vs audit k, k thì tự làm" → rule là: việc đơn giản/đã hiểu rõ → **tự làm trực tiếp** (patch + test + commit, không plan, không audit); việc phức tạp/rủi ro/mới → plan + audit. Đừng mặc định kéo theo ceremony nặng cho fix nhỏ; cũng đừng tự ý bỏ qua khi scope lớn (như patch all-repo VPN). Khi user hỏi "có cần plan không" — đánh giá nhanh rồi trả lời thẳng, không hỏi lại.
+
+## Watchdog Báo cáo Ca/Phiên — Format Nhả Follow & 3 Vị trí Triển khai (Cập nhật 09/2026)
+
+Khi sửa đổi `feed_session_watchdog.py`, bắt buộc đồng bộ **3 vị trí triển khai song song** và chạy verification:
+1. **3 Vị trí file bắt buộc đồng bộ:**
+   - Active runtime: `C:/Users/Kibe/AppData/Local/hermes/scripts/feed_session_watchdog.py`
+   - Deploy staging: `D:/Taadaa/Hermes/deploy/hermes-home/scripts/feed_session_watchdog.py`
+   - Repo source: `D:/Taadaa/tiktok-luot nuoi acc/scripts/hermes_cron/feed_session_watchdog.py`
+2. **Quy chuẩn format phân nhóm máy Nhả follow (`format_released_follows`):**
+   - Đọc số lượt follow hoàn thành từ `all_follows[machine]["followed"]`.
+   - Phân nhóm 4 dải rõ ràng trong Telegram report:
+     - `Nhả liền (0 lượt - N): m1, m2...` (bị nhả ngay khi vào follow)
+     - `1 - 4 lượt (N): m (cnt lượt)...`
+     - `5 - 9 lượt (N): m (cnt lượt)...`
+     - `10+ lượt (N): m (cnt lượt)...`
+   - Nếu `fl_released` rỗng: hiển thị `  + Nhả follow (0): Không có`.
+3. **Unit Tests & Verification:**
+   - Luôn thêm/cập nhật test case `test_format_released_follows` ở cả 2 test suite:
+     - `D:/Taadaa/tiktok-luot nuoi acc/python_runner/tests/test_feed_session_watchdog.py`
+     - `D:/Taadaa/Hermes/deploy/hermes-home/scripts/test_feed_session_watchdog.py`
+   - Lệnh verify bắt buộc:
+     ```powershell
+     python -m py_compile <cả 3 file script>
+     python -m pytest python_runner/tests/test_feed_session_watchdog.py -v
+     ```
 
 ## Nguồn đọc tham chiếu
 - D:\Taadaa\automation-core\src\automation_core\scheduler\{base.py, time_windows.py, tray.py} + device_lock.py

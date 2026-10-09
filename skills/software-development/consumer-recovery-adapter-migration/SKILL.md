@@ -46,6 +46,7 @@ Program state (2026-08-12): P1 feed discovery → READY_FOR_P1_IMPLEMENTATION; P
 - **Pre-existing baseline failures are part of the baseline**: classify them (e.g. sibling `D:\Taadaa\Tiktok_Reg` missing `scripts.target_inventory` → ModuleNotFoundError in an isolated-provider import test) and state that GREEN comparisons must use this baseline, not "fully green".
 - **Evidence outside repo**: baseline output, status snapshots, and tracked manifests go to `C:\Users\Kibe\p<n>-…-evidence-<date>\` — the worktree must only ever gain the report file.
 - **Two runtime paths can be distinct processes**: e.g. `scheduler.py` spawns a reconcile subprocess while `cli.py --live` runs the executor in-process — verify which entrypoint the plan targets before choosing the seam.
+- **Consumer-local error normalization vs. canonical core recovery**: Canonical handlers in `automation-core` (e.g. `recover_navigation_failure`) enforce a strict whitelist of handled error codes (`{"UI_DUMP_FAILED", "UI_DUMP_UNAVAILABLE", "uiautomator_idle_state_error", "uiautomator_null_root_node"}`). Consumer-specific transient exceptions like `ATX_SESSION_UNAVAILABLE` fall through to `NO_HANDLER_IMPLEMENTED` unless mapped or intercepted at the consumer wrapper boundary. When cross-repo writes to `automation-core` are blocked, error normalization must live in the consumer repo adapter layer.
 
 ## Implementation Phase (RED → GREEN → AG Audit loop)
 

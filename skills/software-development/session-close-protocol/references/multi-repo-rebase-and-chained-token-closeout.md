@@ -6,6 +6,9 @@ Khi làm việc trên nhiều máy hoặc nhiều repository cùng một lúc:
 2. **Xử lý Dirty Files Ngoài Allowlist:** Nếu working tree còn uncommitted changes hoặc untracked files ngoài allowlist mà `git pull --rebase` từ chối thực hiện, dùng `git stash -k -u` để tạm cất các file ngoài scope, sau đó `git pull --rebase <remote> <branch>`, rồi `git stash pop` để khôi phục nguyên vẹn.
 3. **Pull Rebase Sau:** Kéo commit mới nhất từ remote về và rebase commit local lên đầu (`git pull --rebase origin master`).
 4. **Kiểm Thử Sau Rebase & Remote Verification:** Sau khi rebase thành công, chạy lại quick test suite / syntax check, sau đó push và dùng `git ls-remote origin <branch>` để đối chiếu exact SHA với `HEAD`.
+5. **Xử lý lỗi `fatal: unable to read tree (...)` khi Rebase trên Windows:**
+   - Khi chạy `git pull --rebase` hoặc `git rebase origin/<branch>` gặp lỗi `fatal: unable to read tree (...)` hoặc `fatal: bad tree object ... error: remote did not send all necessary objects` do git local bị thiếu tree object từ lần fetch trước, CẤM TUYỆT ĐỐI dùng `git reset --hard` hay xóa repo.
+   - BẮT BUỘC chạy lệnh: `git fetch --refetch origin <branch>`. Flag `--refetch` ép Git tải lại đầy đủ toàn bộ tree/blob objects từ máy chủ GitHub, giải quyết triệt để lỗi missing tree và cho phép rebase hoàn tất trơn tru.
 
 ## 2. Ghost IME & Chained Allowlist Token Pattern
 - **Positive-Only XML Keyboard Detection:** UI XML chỉ dùng làm bằng chứng khẳng định bàn phím hiển thị (`visible=True`). Không suy đoán âm tính từ XML để tránh lỗi `adjustPan` / edge-to-edge; luôn fallback xuống `dumpsys input_method` với bitmask `mImeWindowVis` bit 1 (`0x2 = IME_VISIBLE`) làm nguồn sự thật cao nhất.

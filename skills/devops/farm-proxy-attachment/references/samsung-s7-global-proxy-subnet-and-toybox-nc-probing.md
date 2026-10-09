@@ -46,3 +46,29 @@ adb -s <serial> shell 'printf "CONNECT www.google.com:443 HTTP/1.1\r\nHost: www.
 - **`200 OK` + `<IP>`:** Proxy hoạt động bình thường, Public IP chuẩn.
 - **`502 Bad Gateway`:** Gateway `192.168.110.2` đang nhận kết nối nhưng Upstream Box/Dcom/MobiProxy của cổng đó đang mất mạng hoặc xoay IP.
 - **`nc: Timeout` / rỗng:** Mất kết nối tới Gateway Proxy (lệch subnet, rớt Wi-Fi hoặc tắt radio Wi-Fi).
+
+---
+
+## 4. Test Liveness Cổng Proxy Nhanh (Port Check)
+Khi chỉ cần kiểm tra nhanh cổng proxy trên Gateway có đang lắng nghe và nhận kết nối hay không:
+```bash
+adb -s <serial> shell "echo | toybox nc -w 3 192.168.110.2 <port>"
+# Exit code = 0: Cổng proxy đang mở và chấp nhận kết nối.
+# Exit code = 1 (hoặc Timeout): Cổng đóng, rớt mạng hoặc lệch route.
+```
+*Lưu ý:* Binary `toybox nc` trên Samsung S7 không hỗ trợ flag `-v` (báo lỗi `nc: Unknown option v`).
+
+---
+
+## 5. Điều Tra Chi Tiết DHCP Lease, Gateway & DNS Khi Máy Nhận Sai Dải IP
+Khi máy reboot hoặc kết nối lại Wi-Fi nhưng nghi ngờ nhận sai dải IP (ví dụ vẫn ở dải `192.168.10.x` thay vì `192.168.110.x`):
+```bash
+# Đọc thông điệp DHCP DISCOVER / REQUEST / ACK từ logcat
+adb -s <serial> shell "logcat -d -s DhcpClient:V"
+```
+Kết quả hiển thị chính xác:
+- **DHCP Server IP:** Địa chỉ router thực tế cấp lease (ví dụ `serverid=192.168.110.2`).
+- **IP Address & Subnet:** IP được cấp cho thiết bị (ví dụ `192.168.10.70/24`).
+- **Gateway & DNS:** Gateway và DNS được router gán qua DHCP option.
+- **Lease Time:** Thời hạn lease (ví dụ `86400` giây).
+Giúp phân biệt ngay lập tức giữa lỗi router cấp sai dải/AP gán sai VLAN với lỗi máy chưa renew DHCP lease.

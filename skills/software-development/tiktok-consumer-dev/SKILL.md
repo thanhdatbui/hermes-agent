@@ -18,6 +18,9 @@ User hướng dẫn bước nào → encode bước đó vào script + test → 
 
 Shared conventions, pitfalls, and workflows for all TikTok login consumer projects under `D:\\CodexRuntime\\consumer-worktrees\\` and `D:\\Taadaa\\`.
 
+> **Reference**: Xem `references/ui-parsing-decoupling-and-slot-elimination.md` về nguyên tắc phân tách UI parsing (pure function) và I/O config resolution (caller flow) cho slot elimination.
+> **Reference**: Xem `references/screen-classification-and-switcher-pitfalls.md` về bẫy `is_switcher_open()` (yêu cầu node account-like) và package allowlisting cho UI text.
+
 
 
 ## Task title vs. actual repo names (MINOR_FIXES / audit prompts)
@@ -320,6 +323,7 @@ skill contains a legacy recipe.
 
 
 2. **Device lock (when required by the consumer)**: use `acquire_device_lock` with `project="tiktok-log-in"`. The lock now includes `wait_for_proxy_ready`. Pass `live_vpn_verifier=lambda s: _check_tun0(adb_path, s)` to bypass proxy-readiness marker wait when the watcher hasn't written it yet.
+   - **Parent Device Lock Inheritance (Case LOCK-05)**: When child reconciliation / login processes (`account_reconcile.py`) are invoked from a parent runner (`feed_swipe_smoke.py` in `tiktok-luot nuoi acc`), the parent already holds an active device lock. Passing `--allow-parent-lock` allows the child to catch `(DeviceLockNeedsUserDecision, DeviceLockUnavailable)`, inspect `exc.owner.get("project")`, and if matching `PARENT_LOCK_PROJECTS` (`"tiktok-luot nuoi acc"`, `"tiktok-feed"`, `"multi-machine-feed-session"`), inherit the lock via an `InheritedDeviceLock` dummy no-op lease rather than failing closed with `SKIPPED_LOCKED`. The invoking parent runner must pass `--allow-parent-lock`.
 
 
 
@@ -594,6 +598,44 @@ lists mocks like "mock `_cdp_evaluate`, `get_ui_xml`, `tap`, `shell`, `keyevent`
 (`_outlook_magic_link_cdp_websocket_url` → fake `ws://...`) or every test that
 
 reaches the CDP path performs real adb.
+
+
+
+- **XML Fixture `package` attribute trap in `_tiktok_flat_xml`**:
+
+  `_tiktok_flat_xml(xml)` calls `_package_flat_text(xml, APP_PACKAGE)`. When writing
+
+  test XML fixtures for screens in `social_reg_v1.py` or consumer UI tests, any `<node>`
+
+  element MUST specify `package="com.ss.android.ugc.trill"` (or the appropriate `APP_PACKAGE`).
+
+  If `package` is omitted in mock XML nodes, `_tiktok_flat_xml` drops the node's text
+
+  entirely (`flat == ""`), causing text detectors (`otp_hints`, `validation_error_hints`,
+
+  `new_hints`) to miss matching cues and fail tests or return wrong states.
+
+
+
+- **Form validation error hints vs screen header collisions (`detect_after_continue`)**:
+
+  Never use broad text hints like `"nhap dia chi email"` to detect email validation errors;
+
+  that string matches the normal title header (`"Nhập địa chỉ email"`), causing valid forms
+
+  to be prematurely classified as `form_still_visible`. Always use specific validation error
+
+  strings (`"nhap dia chi email hop le"`, `"dia chi email khong hop le"`, `"email khong hop le"`,
+
+  `"enter a valid email"`, `"invalid email"`) and verify visible EditText nodes do not contain
+
+  a password field.
+
+
+
+- **Autouse fixture collisions with subroutine unit tests**:
+
+  When a test module uses `@pytest.fixture(autouse=True)` (e.g. `mock_common`) that monkeypatches a subroutine (e.g. `monkeypatch.setattr(social, "detect_after_continue", lambda *a, **k: "new")`) to isolate high-level caller flows (like `fill_email_and_next`), any direct unit test for `detect_after_continue` in the same module will invoke the mock instead of real logic, failing with confusing assertion mismatches (`assert 'new' == 'form_still_visible'`). Subroutine unit tests must either reside in a dedicated test file/class without the autouse fixture, require callers to mock locally instead of via autouse, or explicitly restore the unmocked implementation during the test.
 
 
 
@@ -947,6 +989,22 @@ retry-budget rule, test names + CRLF splice recipe:
 
   `is_ui_unavailable`. Live: m5 SUCCESS nhờ nhánh này.
 
+- **CONNECT_DEVICE B3 soft reboot & ADB timeout classification**:
+
+  `_soft_reboot_recovery_allowed` chỉ yêu cầu `adb_client` tại CONNECT_DEVICE
+
+  (không bắt buộc `adapter` vì adapter chưa được gán lúc startup); lazy khởi
+
+  tạo adapter trong `_maybe_soft_reboot_recovery` cho post-reboot verifiers.
+
+  Đồng thời `timed out` trong `startup.stop_reason` phải map sang
+
+  `DEVICE_STARTUP_FAILED` (transient) thay vì `DEVICE_STARTUP_MANUAL` (permanent)
+
+  để ladder B1/B2/B3 được giải phóng máy tự động. Chi tiết:
+
+  `references/connect-device-b3-soft-reboot-and-adb-timeout.md`.
+
 - **Popup quyền media Android 13+ phải allow TRƯỚC foreground gate** (commit
 
   e83a786, 2026-08-10, m34): popup "Cho phép TikTok truy cập ảnh, phương
@@ -1191,6 +1249,14 @@ Alerts "🛠️ [AI AUTO-RECOVERY - MÁY XX] ... Patch áp dụng nhưng commit 
 - **Durable fix (STOP GATE — ask user first)**: pin the repo interpreter in `_PYTEST_CMDS` — `env -u PYTHONPATH "D:\Taadaa\python-envs\automation\Scripts\python.exe" -B -m pytest ...` (see PYTHONPATH-poison section) — so the pipeline never inherits the gateway venv; optionally also `pip install --force-reinstall pillow` in the hermes venv. Until fixed, every AI-recovery patch silently rolls back: the machine gets ADB un-stuck (green result) but the codebase never learns the popup → the same alert keeps repeating ("commit thất bại hoài").
 - Full walkthrough: `references/ai-recovery-commit-failure-diagnosis.md`.
 
+### Pitfall: Avatar Edit Layout Detection & Traps (`AVATAR_EDIT_OPEN_FAILED`)
+- **Vấn đề & Cạm bẫy UI**:
+  1. Nút "Sửa hồ sơ" dạng text/desc truyền thống biến mất trên layout mới của TikTok; thay vào đó là icon cây bút chỉnh sửa (`right_pencil_button` hoặc icon bút cạnh username).
+  2. Tuyệt đối không nhận nhầm nút chia sẻ hồ sơ (share profile icon bên phải "Thêm tiểu sử" `[880..1040, 630..740]`) thành nút sửa hồ sơ.
+  3. Avatar circle ở góc trên/phải (`[818, 289, 980, 373]`) có thể bị overlay bởi nút Story "+". Tap mở avatar cần lệch tâm trái (né góc dưới phải) để tránh kích hoạt tính năng Nhật ký/Story.
+  4. Màn popup "Hoạt động không có sẵn trên profile phụ" cần safe-skip hoặc đóng đúng cách để không văng `AVATAR_EDIT_OPEN_FAILED`.
+  5. Khi cập nhật bộ detector hoặc chỉnh sửa toạ độ bounds trong `state_machine.py`, bắt buộc đồng bộ unit test (`test_avatar_edit_and_milestone.py`) kiểm tra cả biên nhận diện và biên loại trừ các icon giả.
+
 ## Image navigation quirks
 
 
@@ -1198,6 +1264,15 @@ Alerts "🛠️ [AI AUTO-RECOVERY - MÁY XX] ... Patch áp dụng nhưng commit 
 - `detect_feed_controls` and `detect_profile_screen` may return `None` on SM-G930W8 even when feed is visible.
 
 - `bottom_navigation_point(screenshot, "profile")` is more reliable — use as fallback before declaring navigation surface unavailable.
+
+- **Bottom-nav Profile Tab Filtering (`tap_profile` in `adapter.py`)**:
+  - Node Profile tab ở bottom navigation thường gặp phải các impostor node (ví dụ thông báo, video item hoặc header chứa text "Hồ sơ <user>", "Hồ sơ BEN EAGLE").
+  - Phải áp dụng lọc tọa độ chặt chẽ trên toàn bộ cây XML: `center_x >= 0.75 * screen_width` (fallback 1080) và `center_y >= 0.8 * screen_height` (tính từ max bounds y2 trong XML, fallback 1920), đồng thời `visible-to-user != "false"` và `enabled != "false"`.
+  - Thứ tự thử độ ưu tiên:
+    1. Resource-id: chứa `com.ss.android.ugc.trill:id/oly` trước, `profile_tab` sau.
+    2. Text: duyệt tất cả node chứa `hồ sơ` hoặc `profile` (không dừng ở node đầu nếu node đầu không thỏa điều kiện tọa độ/visibility).
+    3. Content-desc: so khớp EXACT `hồ sơ` hoặc `profile` (sau strip + lower); cấm match partial/substring để không tap nhầm các node như "Hồ sơ BEN EAGLE".
+  - **Try-Except nesting trap khi prune fallback**: Toàn bộ `Strategy 1` nằm trong khối `try:` mở đầu bằng `xml_text = self.dump_ui()` và đóng bởi `except Exception as exc: logger.warning(f"[TAP_PROFILE] UI dump approach failed: {exc}")`. Khi xóa/thay thế khối fallback cũ (`# Thử content-desc ...`), tuyệt đối KHÔNG xóa dòng `except Exception as exc:` ngoại vi, nếu không sẽ gây lỗi `SyntaxError: expected 'except' or 'finally' block` khi chạy `python -m py_compile`.
 
 - `tap_profile` uses `bottom_navigation_point` internally; if it fails, coordinate tap to the "Hồ sơ" bottom nav center works for 1080x1920. **Do NOT hardcode a single y — the dump node y can be OFF from the real tappable tab.** Live 2026-08-07 (SM-G930K, TikTok 46.x): `_profile_tab_node` reported cy≈1857 (dump offset) but the real tab `bounds=[864,1864][1080,1903]` → center **`(972, 1883)`**, and tapping 1857 MISSED (tap above the nav → stayed on feed, machine stuck in `SWITCHER_ANCHOR_AMBIGUOUS` loop). Durable fix was a **clamp in `_profile_tab_node`**: `if cy < 1870: cy = 1883` — use a clamp to the known bottom-nav center rather than trusting the dump node y, and verify with a real screenshot (screencap → vision) that the tab actually opens before trusting either coordinate.
 
@@ -1575,6 +1650,33 @@ reusable fail-closed skeleton + ad-hoc verify harness:
 - **Scope discipline**: `git diff --stat` must list only `benign_popup.py`;
   pre-existing dirt (e.g. `multi_machine_feed_session.py`) stays untouched.
   `test_classifier.py` is unrelated — don't touch it to prove a benign_popup fix.
+- **Registry handlers in `flows/benign_popup_registry.py` (`tiktok_go_card` pattern)**:
+  For cards/overlays like "TikTok GO" / "Khám phá hòn ngọc địa phương" / "Khám phá những xu hướng mới nhất":
+  Detector must verify BOTH the card identity (text/desc/OCR) AND button presence ("Không quan tâm" or standalone "Khám phá" / "Explore"). Never match "Khám phá" as a bare substring of the title.
+  Dismisser prefers finding & tapping semantic "Không quan tâm" / "Not interested"; if absent, dismiss via upward swipe (`["input", "swipe", "540", "1400", "540", "600", "300"]`) matching the card's dismiss chevron (`︽`).
+
+## Post-session profile verify: swipe-down vs nav retry (`feed_swipe_smoke.py`)
+
+In `_verify_profile_after_session`, if `not matched`:
+- **Gate swipe-down on `profile_screen_confirmed`**: Cuộn ngược (swipe down `540 600 540 1500 350`) CHỈ hợp lệ khi thiết bị ĐÃ ở tab Hồ sơ (`profile_screen_confirmed == True`) nhưng header chứa username bị cuộn khuất bởi danh sách video.
+- **Never swipe down on Home Feed**: Nếu `not profile_screen_confirmed` (vẫn ở Home Feed hoặc tab khác), chạy swipe-down sẽ kích hoạt pull-to-refresh của feed thay vì kéo header profile. Thay vào đó, PHẢI retry điều hướng lại tab Hồ sơ bằng `tap_navigation_target(ctx, CalibrationTarget("profile", ("Hồ sơ", "Profile"), "bottom", required=True), ...)` và capture lại XML trước.
+
+## Nurture repo grep timeout avoidance (`python_runner`)
+
+`D:\Taadaa\tiktok-luot nuoi acc\python_runner` chứa các file rất lớn (e.g. `feed_swipe_smoke.py` > 22,000 dòng, `benign_popup_registry.py` > 4,000 dòng) cùng cache/test artifacts.
+- **CẤM `grep -rn` không giới hạn** trên toàn thư mục `python_runner` hoặc dùng recursive `os.walk` / `Get-ChildItem -Recurse` từ ổ đĩa gốc `D:\` (gây timeout 900s).
+- **Luôn chỉ định file đích cụ thể**: `grep -n "pattern" python_runner/flows/file.py` hoặc dùng `--include=*.py` với path thư mục con cụ thể.
+- **Public Profile vs Suggestion Card / Feed Caption (`_is_public_profile_screen` trong `core/classifier.py`)**:
+  - Khi phân loại màn hình public profile viếng thăm (không qua tab Hồ sơ): không dùng điều kiện lỏng `len(actions) >= 1` vì suggestion account / card trong feed chỉ có 1 nút "Follow" sẽ bị nhận diện nhầm thành màn hình `profile`.
+  - Xác thực semantic stat counts: mỗi stat (follower, following, likes) bắt buộc phải có chữ số trong label HOẶC có node số `:id/suv` paired thẳng hàng bên trên (`abs(dx) <= 50`, `0 < dy <= 80`).
+  - Kiểm tra `action_controls` (các nút tương tác `clickable == "true"` trong dải y `stat_bottom <= y <= stat_bottom + 180`) kết hợp với tập text actions chuẩn `{"follow", "nhắn tin", "message", "đang follow", "đã follow"}`.
+  - Điều kiện nhận diện chuẩn: `len(actions) >= 2 or (len(actions) >= 1 and len(action_controls) >= 2)`.
+  - Test tương ứng: `python -m pytest "D:/Taadaa/tiktok-luot nuoi acc/python_runner/tests/test_classifier.py" -q`.
+- **Vị trí chuẩn cho Benign Popup & Offline Video**:
+  - Consumer detector & allowlist adapter: `D:\Taadaa\tiktok-luot nuoi acc\python_runner\core\benign_popup.py` (chứa `detect_offline_video_prompt`, `detect_allowed_generic_popup`, `detect_tiktok_popup_action`, `_dismiss_action`).
+  - Runner flow dismisser: `D:\Taadaa\tiktok-luot nuoi acc\python_runner\flows\benign_popup.py` (chứa `_handle_offline_video_prompt`, `dismiss_any_popup`).
+  - Shared core upstream: `D:\Taadaa\automation-core\src\automation_core\tiktok\benign_popup.py`.
+  - Khi thêm biến thể offline video popup (ví dụ text 'tự động tải video về qua wi-fi để xem ngoại tuyến' + nút 'OK'): mở rộng marker list và button terms `("đóng", "close", "ok", "OK")` trong `detect_offline_video_prompt`, đảm bảo trả về action tap nút và được allowlist chấp nhận.
 
 ## Launch activity resolution (consumer apps)
 
@@ -1644,6 +1746,8 @@ and terminal evidence gate: `references/guarded-navigation-smoke.md`.
 
   (tiktok-follow `9c3465f`→`e9eaef0`, AG APPROVED): row-scoped verify cho list
 
+- `references/profile-bio-policy.md` — Chính sách Bio acc nuôi (Sol & Hermes 18/09/2026): Giữ "No bio yet", cấm nhồi/auto-gen bio hàng loạt gây footprint thuật toán.
+
   UI, selectors tab Follower, launch-activity resolution, core `back()`
 
   contract, queue-consume test pattern, fail-closed gate test khi module đã
@@ -1679,6 +1783,8 @@ and terminal evidence gate: `references/guarded-navigation-smoke.md`.
 - `references/taadaa-audit-route-invocation.md` — lệnh + quirks thật của ladder audit Taadaa trước commit: OpenCode (`-RepoRoot`) → Command Code (`-RepoPath`, **bắt buộc pwsh 7 ở `WindowsApps\pwsh.exe`**, không có `-OutputDirectory`) → fallback Codex `gpt-5.6-luna` read-only; MINOR_FIXES phải re-audit cùng model tới APPROVED; ghi `CODEX_FALLBACK_AUDIT` (verified 09-08).
 
 - `references/vpn-pattern.md` — complete VPN preflight integration pattern with code snippets (reconcile `--proxy-mapping` gate + worker-side fail-closed RESOLVE_DEVICE gate, `ConsumerPreflightError` import rule).
+- `references/profile-switcher-network-error-retry.md` — retry pattern for profile switcher when TikTok shows network error overlay "Đã xảy ra lỗi / Thử lại" with button `com.ss.android.ugc.trill:id/dcj`. Uses actual XML parsing (`find_element` with resource_id/text) to tap element center, fallback to hardcoded coordinates, then re-reads identity before final verification.
+- `references/profile-tab-bottom-nav-filter-and-fallback-pruning.md` — Lọc bottom-nav Profile tab (bounds x>=0.75w, y>=0.80h), tránh click nhầm avatar creator 'Hồ sơ <Kênh>' & pitfall try/except nesting khi prune fallback trong adapter.py.
 
 - `references/vpn-gate-resolve-device-20260815.md` — Phương án A VPN gate in `_handle_resolve_device` (Tiktok-video 2026-08-15): exact code, why RESOLVE_DEVICE not ACQUIRE_LOCKS (lockless repo), 3 regression tests, verification output, pitfalls (ConsumerPreflightError import, CRLF splice, search_files D: failure).
 
@@ -1688,6 +1794,7 @@ and terminal evidence gate: `references/guarded-navigation-smoke.md`.
 
 - `references/ad-hoc-verify-script-pattern.md` — the `hermes-verify-*` tempfile verification pattern: clean Python312 (NOT hermes venv), isolated monkeypatch restore before in-process pytest, behavior asserts vs marker asserts.
 - `references/camera-thumbnail-visual-gate-recovery.md` — Camera-first thumbnail visual gate (`non_dark >= 0.20`, retry tap x3) tránh lỗi `VIDEO_PICK_CREATE_ENTRY_UNCONFIRMED` khi upload video.
+- `references/camera-mode-tab-switching.md` — Quy tắc chuyển tab camera sang CAMERA / Máy ảnh thay vì TẠO / Template Hub để tránh kẹt CapCut template preview.
 - `references/camera-surface-upload-thumbnail-gate.md` (trong `tiktok-upload-ui-recovery`) — Phân tích lỗi `VIDEO_PICK_CREATE_ENTRY_UNCONFIRMED` do camera thumbnail visual gate reject khi thiếu sáng / non_dark < 0.45.
 - `references/avatar-upload-cdn-settle-wait.md` — Avatar upload CDN network request settle & crop-close wait (bỏ adapter.back() thừa, chờ crop đóng + sleep 8-10s CDN upload trước force-stop).
 - `references/benign-popup-handler-contracts.md` — `flows/benign_popup.py` dismiss-handler contracts: `capture_required_ui` returns a STRING (not dict) + is a runtime-injected seam; `parse_bounds` wants `[x1,y1][x2,y2]` (else `None`); `ctx.last_xml_tree` never set; fail-closed dismiss skeleton; narrow verify path + reusable ad-hoc harness.
@@ -1703,6 +1810,12 @@ and terminal evidence gate: `references/guarded-navigation-smoke.md`.
 - `references/coordinate-fallback-after-ladder.md` — full recipe: coordinate-fallback tầng cuối in `_handle_open_tiktok` (rule `ui-coordinate-fallback-after-recovery-ladder-20260808`), helper-method structure, regression-test code, COMPAT entry wording, EOL counts.
 
 - `references/targeted-live-recovery-gates.md` — per-machine evidence gates for report/post-state checks, exact signature/attempt caps, dual-lock/PID proof, missing-config blockers, no-manual-ADB policy, and verified-success counting.
+
+- `references/connect-device-b3-soft-reboot-and-adb-timeout.md` —
+
+  B3 Soft Reboot tại CONNECT_DEVICE (chỉ require `adb_client`, lazy `adapter`) và
+
+  phân loại transient ADB timeout (`timed out` -> `DEVICE_STARTUP_FAILED`).
 
 - `references/recovery-ladder-splash-code-map.md` — code map ladder 3 bước (`_run_ui_failure_ladder`) + splash-stuck (`_recover_splash_stuck`) trong state_machine.py 6ad3cfd: call sites, retry-budget rule, test names, CRLF splice recipe, heredoc pitfall.
 

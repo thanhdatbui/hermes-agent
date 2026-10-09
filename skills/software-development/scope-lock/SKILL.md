@@ -49,6 +49,10 @@ derive the contract narrowly instead of asking the user to repeat it.
    scope. Record it as `OUT_OF_SCOPE` or `NEEDS_USER_DECISION`.
 4. Do not treat “make it robust,” “full suite,” or “audit everything” as
    permission unless the user actually requested that breadth.
+5. **Cross-Session Context Bleed Guard (KỶ LUẬT CHỐNG RÒ RỈ NGỮ CẢNH):**
+   - Khi phiên chat có khối tóm tắt `[CONTEXT COMPACTION — REFERENCE ONLY]` hoặc kết quả subagent/tiến trình ngầm trả về, CẤM TUYỆT ĐỐI tự ý lôi các sự cố, câu hỏi, hoặc chủ đề của các phiên cũ (ví dụ: nick bị ban, lỗi 413, audit trước đó) vào trả lời nếu người dùng KHÔNG HỀ hỏi tới trong lượt hiện tại.
+   - Việc trả lời vượt ngoài prompt đang hoạt động bị người dùng coi là "trả lời nhầm session" hoặc nói nhảm.
+   - BẮT BUỘC neo câu trả lời 100% vào đúng câu hỏi ở tin nhắn mới nhất của người dùng. Mọi context thừa từ khối tóm tắt chỉ dùng để tra cứu ngầm (read-only), không được chủ động phát tán ra câu trả lời.
 
 ## Closeout versus remediation
 
@@ -65,6 +69,99 @@ Even then, review only the exact requested candidate and keep the remediation
 inside its original allowlist. A finding that proposes a new subsystem, a
 broader audit, or a different historical candidate is `OUT_OF_SCOPE` until the
 user explicitly expands the contract.
+
+### Exact-review-payload gate
+
+When the user asks to apply named patches from a review (for example, “exact
+P1–P4”), treat the review payload itself as an input artifact that must be
+located and bound before editing:
+
+1. Identify the exact two policy-file paths and the exact latest review artifact
+   from the current workspace or the user-provided source. Do not infer patch
+   text from filenames, stale session-search snippets, unrelated reviews, or a
+   1. Identify the exact repository, exact policy-file paths, and exact latest review artifact from the current workspace or the user-provided source. Do not assume the current working directory is the candidate repository. First inspect its staged path set; if it has no matching staged policy files, stop editing there and perform only bounded discovery of known repository candidates or explicitly named paths. Do not infer the candidate from unrelated dirty code, a similarly named file, a stale session-search snippet, or a worker summary.
+   2. Bind the candidate to its observed `HEAD`, branch, staged path set, and worktree path before reading or changing it. A staged policy candidate in a different checkout is authoritative for this task only after its exact staged paths are confirmed; unrelated unstaged paths in that checkout remain preserved and out of scope.
+   3. Extract each requested patch as an explicit old/new block or an
+      unambiguous section-level contract. If any named patch is missing or
+      ambiguous, stop as `BLOCKED/MISSING-REVIEW-PAYLOAD`; ask for the review text or exact artifact path rather than guessing.
+   4. Snapshot bytes, hashes, EOL/BOM facts, and status for the two allowlisted files before editing. Preserve bytes outside the intended blocks; do not normalize line endings or rewrite whole files.
+   5. Apply only the named patches, preferably with unique surrounding context.
+      Reject any patch that touches a third file, broadens a safety exception, or
+      weakens an existing fail-closed invariant without an explicit reviewed
+      replacement.
+   6. Verify required markers/sections and exact occurrence counts, run scoped
+      `git diff --check -- <file>`, and inspect the complete diff. Report the
+      exact diff and confirm that no other path changed; do not commit unless the
+      user explicitly asks.
+
+   **Repository-discovery pitfall:** if the first checkout inspected has only
+   unstaged implementation/test changes and no staged policy files, that is a
+   scope-location failure, not permission to edit those files. Preserve them,
+   record the mismatch, and locate the staged candidate using bounded, known paths.
+   Once the correct checkout is found, re-run the full staged/worktree snapshot
+   there before the first write. Never broaden discovery into an unbounded
+   recursive search or use a guessed policy filename as evidence of scope.
+
+A failed search for the review artifact is not permission to search the entire
+workspace recursively or to reconstruct the patches from historical context.
+Use bounded, known candidate paths first; if the payload remains unavailable,
+stop and report the blocker truthfully.
+
+## Repository and target binding before broad discovery
+
+When a request refers to a schema, workflow, example, or state machine without
+an explicit path, bind the repository and target before searching:
+
+1. Inspect only the current working directory and its immediate repository
+   metadata (`git rev-parse --show-toplevel`, status, and a bounded file list).
+2. Search tracked files and obvious project documentation for the distinctive
+   markers named by the request; exclude generated/vendor/binary trees and set
+   a bounded output/time budget.
+3. If the markers are absent or the directory is not a repository, do not scan
+   the user's home directory, backups, unrelated repositories, or historical
+   artifacts to guess the target. Report `BLOCKED/MISSING-TARGET` and ask for
+   the exact repository/path (or an explicit search boundary).
+4. Preserve the discovered repository's dirty state as evidence. Never infer
+   that a similarly named backup or neighboring repository is authoritative.
+
+### Windows multi-repository path-resolution gate
+
+On Windows, do not treat a plausible directory name, a failed shell `workdir`, or a workspace-level folder as the repository. A drive root may contain several independent repositories and similarly named worktrees. Before reading anchors or editing:
+
+1. Establish the candidate with native Windows filesystem checks and `git -C <native-path> rev-parse --show-toplevel`; verify the exact root and that the requested files exist there.
+2. If Git-Bash/MSYS spelling (`/d/...`, `/c/...`) disagrees with native resolution, stop retrying equivalent path variants. Use one verified native path consistently for Git and file reads, and record the discrepancy as harness/path setup evidence—not as a source finding.
+3. Inspect only immediate candidate directories and bounded tracked-file metadata. Do not recursively search a whole home/drive to guess among unrelated repositories.
+4. If the candidate contains multiple projects or the exact consumer/canonical file pair is absent, report `BLOCKED/MISSING-TARGET` and ask for the exact repository/path. Do not edit a similarly named sibling checkout.
+
+This gate precedes anchor reads, dirty-hunk classification, and any patch. It prevents path-resolution failure from being mistaken for a clean repository, an empty worktree, or permission to broaden discovery.
+
+A plausible nearby file is not a valid target merely because it contains one
+shared keyword. The target must contain the requested schema/example/state
+machine relationship, and the final edit/verification scope must remain bound
+ to that exact path.
+
+### Bounded Windows repository discovery
+
+If the initial working directory is not a Git repository, do not repeatedly
+retry equivalent shell path spellings and do not recursively scan the user's
+home/drive. Treat this as a repository-binding checkpoint:
+
+1. Resolve the native Windows path and inspect only its immediate children for
+   Git repositories or explicitly named candidate roots.
+2. For each bounded candidate, run `git -C <native-path> rev-parse
+   --show-toplevel`, then check the exact requested files before reading review
+   artifacts or editing.
+3. Prefer the candidate that contains the complete requested file set and the
+   relevant staged/dirty state. If multiple candidates match, stop and report
+   `BLOCKED/AMBIGUOUS-TARGET` rather than choosing by filename or recency.
+4. Once bound, use one native path consistently for Git, reads, writes, tests,
+   and diff inspection. Record unrelated dirty paths and preserve them.
+5. Do not spend the iteration budget on broad discovery after the exact target
+   is found; immediately snapshot status and read only the allowlisted files
+   and bounded review artifacts.
+
+This prevents a non-repository cwd, an MSYS/native path mismatch, or a similarly
+named sibling checkout from being mistaken for the authoritative worktree.
 
 For the closeout decision tree, exact-scope review payload, and shared-worktree
 failure pattern, see `references/closeout-scope-and-review.md`.
@@ -151,8 +248,38 @@ must not silently add files, tests, routes, cleanup, or broad verification.
 The coordinator must independently verify the exact changed paths and run only
 the contract's acceptance checks.
 
+### Hard Gate: Absolute Path Scope Lock & Hermetic Sandbox Architecture (v4.4)
+When delegating fix/code/patch/test tasks, the contract MUST contain at least
+one concrete **Absolute Path** (e.g., `D:/Taadaa/.../target.py` or `C:/Users/...`),
+and the referenced file MUST exist on disk before dispatching. Gated at runtime
+by `farm-coordinator-guard` (Scope Lock Absolute Path Hard Guard):
+- Tasks without an absolute path fail immediately with `SCOPE LOCK MISSING TARGET FILE`.
+- Tasks with speculative/nonexistent paths fail immediately with `FILE/PARENT NOT FOUND`.
+- Specifying whole directories (e.g., `D:/Taadaa`) is rejected with `DIRECTORY NOT ALLOWED` to prevent unconstrained scanning.
+Never delegate open-ended exploration ("find where X is defined in repo"); inspect
+O(1) first to locate the exact file path before dispatch.
+
+#### Zero-Bypass Principles (Claude Opus CLI Certified):
+1. **Physical Pre-Tool Guard vs Soft Constraints:**
+   - Memory entries and system prompts are *soft constraints* (stochastic and prone to lost-in-the-middle context drift).
+   - Real, immutable enforcement requires *hard constraints* at the runtime pre-tool hook layer (`pre_tool_call` plugin hook) that reject invalid operations before execution.
+2. **Symmetric Enforcement (Declaration != Enforcement):**
+   - Validating `target_files` during `delegate_task` is incomplete unless the child worker's own write operations (`write_file`, `patch`) are symmetrically intercepted and gated against that exact scope list.
+3. **Recursive Value Scanning (Alias & Embedded Diff Protection):**
+   - Security checks must not rely on guessing argument parameter names (`path`, `target`, `file_path`, `filename`).
+   - Every string value across all argument keys and nested structures must be recursively extracted, resolved via `os.path.realpath`, and validated against the whitelist.
+   - For `patch` operations (especially V4A unified diffs), embedded target headers (`*** Update File:`, `*** Add File:`, `*** Delete File:`, `*** Move to:`, `+++ b/`) must be parsed and verified to prevent decoy-parameter write escapes.
+4. **Hermetic Worker Sandbox (Default-Deny):**
+   - **Tool Default-Deny:** Worker subagents are restricted to a minimal whitelist (`read_file`, `write_file`, `patch`, `terminal`, `search_files`). Calling `execute_code`, `browser`, or recursive `delegate_task` is hard-blocked.
+   - **Terminal Default-Deny:** Worker terminal access forbids arbitrary script execution (`python foo.py`, `pytest`) and shell chaining (`;&|` metacharacters blocked via `shlex.split(posix=False)`). Terminal is strictly confined to read-only inspections (`git status/diff/log` with zero flags, `adb devices`, `inspect_machine.py <N>`, `psutil`).
+   - **Git Isolation:** Subprocess Git commands enforce `GIT_CONFIG_GLOBAL=/dev/null`, `GIT_CONFIG_SYSTEM=/dev/null`, `GIT_ATTR_NOSYSTEM=1`, `GIT_PAGER=cat`, and `--no-textconv` to eliminate config-based pager, textconv, and fsmonitor RCE vectors.
+   - **Fail-Closed Identity:** Sessions whose parentage cannot be positively verified from SQLite DB default to untrusted worker (least privilege), never coordinator. `None` results must never be cached to avoid sticky privilege escalation.
+
 ### Concurrent index and exact-commit gate
 A dirty index may contain another session's already-staged files even when the working-tree diff appears unrelated. Before committing, inspect both `git diff` and `git diff --cached`, record pre-existing staged paths, and treat them as owned work. Never use `git add -A`, `git reset`, or whole-file staging as a cleanup shortcut. For same-file concurrent edits, construct staged content from `HEAD` plus only the approved hunks, then verify staged added lines and exact file paths. Inspect `git show <commit>` after committing; a removed unrelated block is not evidence it was safely excluded unless added lines are checked. If separation is not provable, stop with `DIRTY-ALLOWLIST-CONFLICT`.
+
+#### Git index-lock closeout safety
+A scoped staging operation is not a commit result. Before committing, verify the exact staged path set and retain the pre-commit status snapshot. If Git reports `.git/index.lock`, do not immediately delete it or kill processes: inspect whether a Git process is active and whether the lock is fresh. Treat an active Git process or a lock that is recreated as `COMMIT_BLOCKED/CONCURRENT_GIT`; preserve the staged state and unrelated dirt, report the exact blocker, and stop rather than retrying blindly. Only remove a demonstrably stale lock when no Git process is active and the repository owner explicitly permits cleanup; then re-check the staged path set before retrying. Never use `--no-verify` as a workaround for an index lock, and never claim a commit SHA until `git commit` exits successfully and `git rev-parse HEAD` plus `git show --stat HEAD` confirm it.
 
 ### Conflict stop versus verification-only follow-up
 
@@ -184,6 +311,19 @@ surrounding context for each edit and immediately inspect the diff for deleted
 checklist/policy lines. A successful patch operation is not sufficient evidence
 that the intended block was preserved.
 
+### Final-write and staged-policy closeout gate
+For staged policy/documentation fixes, the last source edit invalidates every
+earlier staged snapshot and structural check. After the final edit: re-stage only
+the exact allowlisted files, rerun all marker/heading/anchor/occurrence checks
+against live bytes, rerun `git diff --cached --check -- <allowlist>`, and compare
+`git diff --cached --name-only` to the exact expected path set. Then inspect
+`git status --short --untracked-files=all` for accidental artifacts. Do not report
+completion from checks run before the last patch. Keep shell operands containing
+comparison operators quoted (for example, quote `'>=85'` or use Python
+assertions) so Bash does not create an accidental file such as `=85`. If final
+verification is interrupted, report the tree as not finally verified rather than
+relying on the pre-edit pass.
+
 Use explicit status labels:
 
 - `SCOPE_CONFLICT`: source work stopped because ownership/overlap was unsafe.
@@ -194,6 +334,52 @@ Use explicit status labels:
 
 Never convert a green test run, compile check, or diff check into
 `FIX_COMPLETE` when the conflict gate stopped the implementation path.
+
+## Policy-only documentation change gate
+
+When a task is limited to policy/workflow documentation, especially when it names
+required reads, excluded files, or a no-commit/no-push boundary, treat the policy
+files as an exact allowlist rather than as permission to audit the repository:
+
+1. Read the user-named source documents before editing. Bind the requested change
+   to the exact canonical section, pointer, and workflow wording, and record
+   explicitly excluded files (for example, `PROJECT_RULES.md`) as forbidden.
+2. Snapshot `git status --short --untracked-files=all` and inspect staged and
+   unstaged diffs before writing. Pre-existing staged policy files are not proof
+   that this task owns all their hunks; preserve them and distinguish the task's
+   new diff from prior staged content.
+3. Patch each allowlisted document with unique surrounding context. Do not rewrite
+   whole policy files, normalize line endings, or touch code/tests to make
+   documentation verification convenient.
+4. Verify exact markers/section counts, canonical pointers, prohibited-operation
+   wording, and the complete scoped diff. Run `git diff --check -- <allowlisted
+   files>` and prove excluded/unrelated paths are unchanged. If the contract says
+   no commit/push, do not stage, commit, or push as part of verification.
+5. Report exact policy paths changed, excluded paths untouched, pre-existing
+   unrelated dirt preserved, and real verification output. A dirty worktree is
+   not a blocker when the task contract permits scoped documentation edits.
+
+For the reusable policy-only checklist and a representative scoped-commit-policy
+verification pattern, see `references/policy-only-documentation.md`.
+
+## Three-iteration contract feasibility gate
+
+For safety-sensitive automation changes, bind the contract before editing and
+track the first three investigation iterations explicitly:
+
+1. **Iteration 1 — anchor discovery:** locate the exact existing read/update
+   pattern and authoritative state fields. Do not infer an API contract from
+   field names or a nearby script alone.
+2. **Iteration 2 — behavior contract:** demonstrate that the requested action
+   can be decided from already-recorded evidence without adding a probe,
+   broad `/test` sweep, live network, device, or scheduler side effect.
+3. **Iteration 3 — offline proof:** define a minimal mockable seam and a
+   negative-case matrix for every protected state named by the user.
+
+If the contract is not demonstrable after iteration 3, **ABORT before source
+edits** and report the exact unresolved anchor plus the proposed contract.
+Do not spend the budget on speculative endpoint discovery or invent field names.
+A plausible field name is not evidence of an existing contract.
 
 ## Verification and stop rule
 

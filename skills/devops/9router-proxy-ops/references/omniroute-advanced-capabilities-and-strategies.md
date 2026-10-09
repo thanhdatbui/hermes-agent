@@ -32,3 +32,26 @@ Beyond basic `priority` (waterfall spillover) and `round-robin`, OmniRoute suppo
 - **Audio/TTS/STT:** `/v1/audio/speech`, `/v1/audio/transcriptions`, `/v1/audio/voices` (ElevenLabs, Deepgram, MiniMax, Inworld).
 - **Video & Image Gen:** `/v1/videos/generations`, `/v1/videos/edits`, `/v1/images/generations` (xAI Video, Luma, Kling, Flux).
 - **Web Fetch & Search:** `/v1/search`, `/v1/web/fetch` exposed directly as unified API endpoints.
+
+## 7. ChatGPT-Web Emulated Tool Calling & Agent Capabilities
+- **Architecture vs Codex Desktop Harness (`codex-chatgpt-web`):**
+  - Tool ngoài (`codex-chatgpt-web`) dùng app Electron gắn trình duyệt ảo + MCP Tunnel vào web UI (chậm, 1 acc, dễ nghẽn DOM).
+  - OmniRoute (`chatgpt-web` provider) là **Headless Reverse-Proxy**: bắn HTTP/SSE trực tiếp vào backend OpenAI với Auth Token + gắn cố định MobiProxy 4G 1-1 qua pool 17+ tài khoản.
+- **Function / Tool Calling Support (`#5240` / `#7679`):**
+  - `chatgpt-web` hỗ trợ đầy đủ OpenAI tool-calling contract qua cơ chế prompt-emulation shim (injected `<tool>` contract + parse thẻ `<tool>{...}</tool>` thành `tool_calls`).
+  - Đã verify thực tế 2-turn conversation: Model trả về `tool_calls` hợp lệ (ví dụ `[{"id": "cgpt-...", "function": {"name": ...}}]`) và xử lý tiếp kết quả từ role `tool`.
+  - **Khả năng làm Fallback Worker:** Hoàn toàn có "tay chân" đầy đủ để làm fallback khi các provider chính (Gemini Pool / Claude) bị nghẽn quota, cả ở tầng Hermes (`fallback_providers` trong `config.yaml`) lẫn tầng router combo (`omni-worker` trong OmniRoute).
+
+## 8. ChatGPT Web Multi-Account Pool & Round-Robin Operational Rules
+- **Pool Architecture (`chatgpt-web-pool`):**
+  - Quản lý pool 12+ tài khoản LIVE chạy chiến lược `round-robin`, `stickyRoundRobinLimit: 1`, `failoverBeforeRetry: true`.
+  - Thay vì để combo gọi model đơn lẻ `chatgpt-web/gpt-5.6-sol-high` (bị dồn tải vào 1 acc theo Priority đến khi nghẽn), gói toàn bộ tài khoản thành combo `chatgpt-web-pool` với từng `connectionId` cụ thể (`kind: "model"`).
+  - Tích hợp vào Combo `review` (Tier 0: `combo-ref: chatgpt-web-pool`) và Combo `omni-worker` (Tier 2: Fallback sau `ag-gemini-pool-3`).
+- **Phân biệt Lỗi Quota (502) vs Sentinel / Cloudflare (403) vs Ban:**
+  - **429 / 502 `You've hit your limit`:** Tài khoản chỉ chạm trần quota 5h của OpenAI Web, KHÔNG PHẢI BỊ BAN. Khi hết chu kỳ rolling 3–5h, quota tự động hồi phục 100%.
+  - **403 Sentinel Turnstile:** Khi bị spam dồn dập sau khi dính limit 502, Cloudflare / Sentinel yêu cầu captcha. OmniRoute gắn cờ `test_status: 'banned'` nội bộ để bảo vệ IP, và cookie session có thể chuyển sang `expired`.
+  - **Cách xử lý acc bị báo 'banned' do expired session:** Mở profile GPM tương ứng, đăng nhập lại chatgpt.com và cập nhật session cookie mới vào `provider_connections`, không vội kết luận tài khoản bị khóa vĩnh viễn.
+- **SQLite Hot-Patch Invariant:**
+  - Khi cập nhật `data` JSON trong bảng `combos` trực tiếp trên SQLite (`~/.omniroute/storage.sqlite`), nhớ xuất bản snapshot dự phòng ra `combos_backup.json` để tránh mất dữ liệu khi restart hoặc migration.
+
+

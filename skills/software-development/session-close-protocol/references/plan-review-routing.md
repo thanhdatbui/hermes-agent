@@ -45,7 +45,7 @@ Use a non-streaming, read-only request:
 
 Never put credentials in the prompt or persist them in review artifacts. Review prompts should state the exact acceptance criteria, staged file hashes/tree, test scope, and the forced verdict format.
 
-### 9Router Authentication Key Discovery
+### 9Router Authentication Key Discovery & OmniRoute Fallback
 
 When dispatching plan-review over Python script to `http://localhost:20128/v1/chat/completions`:
 ```python
@@ -54,6 +54,25 @@ with open('C:/Users/Kibe/AppData/Local/hermes/auth.json') as f:
 key = data.get('providers', {}).get('9router', {}).get('api_key', '') or data.get('providers', {}).get('custom:9router', {}).get('api_key', '')
 ```
 Pass `Authorization: Bearer <key>` in headers.
+
+**OmniRoute (:20129) Immediate Fallback on 401 Token Revocation or Timeout:**
+If 9Router returns HTTP 401 with `"Encountered invalidated oauth token for user"` or times out, immediately fall back to OmniRoute (:20129):
+```python
+# Read OMNIROUTE_API_KEY from C:/Users/Kibe/AppData/Local/hermes/.env
+payload = {
+    "model": "antigravity/claude-sonnet-4-6-low",
+    "messages": [{"role": "user", "content": prompt}],
+    "stream": False,
+    "tools": [],
+    "tool_choice": "none"
+}
+req = urllib.request.Request(
+    "http://127.0.0.1:20129/v1/chat/completions",
+    data=json.dumps(payload).encode("utf-8"),
+    headers={"Content-Type": "application/json", "Authorization": f"Bearer {omniroute_key}"}
+)
+```
+This route provides reliable, independent Claude-based review without prompt injection or tools issues.
 
 ### Review Payload Sizing & Socket Timeout Safety (Anti-Hang Invariants)
 

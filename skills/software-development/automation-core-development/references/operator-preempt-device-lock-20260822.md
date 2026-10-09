@@ -54,3 +54,13 @@ with DeviceLock(
 ## 4. Đặc điểm cách ly đa luồng
 - Cơ chế `force_preempt` kết hợp với `adb -s <serial> ...` đảm bảo **chỉ dừng luồng chạy trên duy nhất máy mục tiêu**.
 - Toàn bộ các worker threads khác trong batch cron nuôi acc (các máy khác trong farm) vẫn tiếp tục chạy độc lập và về đích bình thường, không bị gián đoạn.
+
+## 5. Cạm bẫy kiểm thử & Kiểm chứng Cleanup (`inspect_device_lock`)
+- Khi `with DeviceLock(...) as lock:` kết thúc bình thường, phương thức `__exit__` gọi `release()` để dọn dẹp và xóa hoàn toàn file lock (`machine_XX.lock.json`).
+- Lệnh `inspect_device_lock(machine=N, lock_root=tmp_path)` trên lock đã release sẽ ném ngoại lệ `DeviceLockTransactionError: DEVICE_LOCK_INSPECT_PATH_MISSING` (đây là hành vi chuẩn để đảm bảo tính nguyên tử, không trả về dict rác hoặc trạng thái snapshot cũ).
+- Trong unit test, khi kiểm tra trạng thái sau khi thoát `DeviceLock`, bắt buộc dùng:
+  ```python
+  with pytest.raises(DeviceLockTransactionError, match="DEVICE_LOCK_INSPECT_PATH_MISSING"):
+      inspect_device_lock(machine=11, lock_root=tmp_path)
+  ```
+  Tránh viết `assert info_after["status"] in (...)` vì file lock đã bị xóa, sẽ làm test fail ở bước chạy toàn diện (Closeout Gate).

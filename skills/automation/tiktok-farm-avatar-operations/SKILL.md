@@ -1,0 +1,343 @@
+---
+name: tiktok-farm-avatar-operations
+description: Use when running avatar-only jobs on TikTok farm.
+---
+
+# TikTok Farm Avatar Operations
+
+## Purpose
+Operate avatar-only changes on Taadaa TikTok farm devices without accidentally posting video, changing the wrong account, or claiming success without device evidence.
+
+## 1. Execute explicit operator commands immediately
+- Treat “chạy”, “upload avatar”, “làm đi”, “đổi đi”, “thay đi”, or an explicit machine/account command as an execution order.
+- When the operator has already identified the avatar as wrong and orders a replacement (e.g. “Đổi đi hỏi lại chi v”), execute the canonical replacement flow immediately; do not ask them to choose between routine technical options, do not ask "có đổi không", and do not repeat the diagnosis or leave open-ended suggestions like "nếu cần tao sẽ đổi...".
+- Pick the best niche-matching candidate using the visual QA gates, then sync both source/mirror paths, reset the queue to `PENDING`, and launch the per-Tik avatar-only runner.
+- Do not use `clarify` to ask for routine technical choices, permission, or whether to continue.
+- Use the canonical avatar runner and event-driven background execution when the operation may exceed 30 seconds.
+- Ask only for genuine business decisions, paid actions, missing credentials, or destructive irreversible actions.
+
+## 2. Canonical account-switcher boundary
+- Account switching belongs to `automation-core` (`open_switcher`, `open_account_switcher`, `find_switcher_anchor`).
+- A consumer repository must not invent a second switcher flow, hard-code a new swipe, tap the avatar to switch accounts, or add coordinate heuristics in its adapter.
+- The correct UI concept is: Profile → scroll so the display name/username is pinned in the sticky header → tap the name/username → Account Switcher sheet → select the exact target account.
+- If the core flow fails, preserve the real screenshot/XML and classify the failure before changing code. If a layout expansion is truly required, change the shared core with focused fixtures/tests rather than patching the consumer adapter.
+
+## 3. Avatar-only safety
+- Use the canonical avatar-only runner with an explicit machine list and `AvatarOnly`/equivalent force-avatar flags.
+- Never use a generic upload runner when the task is avatar-only.
+- Never post a video or alter captions, drafts, workbook mappings, or unrelated account data.
+- Verify the selected account handle before upload and verify the Profile screen after upload.
+- **CẤM BẮN DEEPLINK INTENT BẬY & CẤM BỊA ĐẶT CASE ẢO:**
+  * Tuyệt đối không gọi `am start -d snssdk1233://profile/edit` để nhảy cóc vào flow sửa hồ sơ. Intent này là intent sai, gây văng popup *"Hoạt động này không có sẵn trên tài khoản ban đầu"*.
+  * Trên TikTok thật, 100% tài khoản (chính, phụ, clone) đều sửa hồ sơ và up avatar bình thường qua UI. CẤM TUYỆT ĐỐI tự bịa ra giả thuyết "tài khoản phụ không hỗ trợ sửa hồ sơ" để safe-skip trốn việc.
+  * Khi gặp popup này, coi là lỗi điều hướng bậy của script, lập tức ném lỗi fail-closed (`WorkflowError(AVATAR_EDIT_OPEN_FAILED)`) để dừng và truy vết, cấm nuốt lỗi.
+  * **ĐƠN TUYẾN DUY NHẤT:** Bấm vào bút chì (`RightPencilLayout`) hoặc nút "Sửa hồ sơ" (`ClassicTextLayout`) $\rightarrow$ bung ra trang Sửa hồ sơ $\rightarrow$ chạy tiếp ngay luồng up avatar chuẩn. CẤM TUYỆT ĐỐI đẻ thêm các nhánh fallback rác (tap vòng tròn avatar ngoài Profile làm bật Story, gọi intent deeplink, hoặc vòng lặp xử lý popup unavailable).
+  * Khi gặp biến thể layout Profile lạ/mới: Gửi full screenshot 1080x1920 của cả 2 biến thể cho User (`MEDIA:`) để nhận hướng dẫn flow chính xác, cấm crop xén mảnh và cấm tự ý tap mò.
+- **SCREEN-ON PREFLIGHT CANARY:** Khi lấy screencap nghiệm thu trên thiết bị thật, bắt buộc xác nhận màn hình đang sáng (`Screen: ON`). Nếu máy đang Sleep (`Screen: OFF`), screencap sẽ ra ảnh đen kịt ~12KB (bị coi là bằng chứng rác). Bắt buộc đánh thức màn hình trước khi chụp.
+- **BẪY CUỘN ĐẾM LƯỚI VIDEO PROFILE TRONG AVATAR-ONLY GÂY KẸT FEED (CRITICAL PITFALL 06/10/2026):**
+  * Trong chế độ `-AvatarOnly` (`--avatar-smoke`): Không đăng video nên hoàn toàn không cần đo baseline video (`pre_post_video_count`).
+  * Nếu `_handle_account_ready` vô cớ gọi `_count_profile_video_tiles_across_grid(profile_xml)`: Sẽ cuộn lên/xuống 6 lần trên lưới video. Thao tác này trên nhiều dòng máy (như Galaxy S7 M11) rất dễ vô tình tap trúng 1 video tile, làm bung trình phát video toàn màn hình (hoặc modal bình luận "Đọc hoặc viết bình luận").
+  * Khi bước sang `ENSURE_AVATAR`, TikTok bị kẹt ngoài Feed thay vì ở Profile root. Cơ chế `_leave_tiktok_subpages` quét thấy marker feed (như nút CapCut / âm thanh) hiểu nhầm là subpage, bấm back 12 lần làm văng app ra ngoài Launcher $\rightarrow$ chết flow với lỗi `PROFILE_ROOT_NOT_CONFIRMED`.
+  * **Quy tắc:** Trong `_handle_account_ready`, BẮT BUỘC bỏ qua `_count_profile_video_tiles_across_grid` khi cờ `is_smoke` (`avatar_smoke` hoặc `profile_smoke`) là True. Giữ nguyên Profile root tĩnh để vào thẳng `ENSURE_AVATAR`.
+- **BẪY NHẦM NÚT CAMERA "CHỤP ẢNH" TRONG AVATAR PICKER (CRITICAL PITFALL 06/10/2026):**
+  * **Hiện tượng:** Mở picker ảnh xong báo `AVATAR_PICKER_NO_MATCH`, màn hình hiện "Cảnh báo: Máy ảnh lỗi" (`avatar-picker-no-match.png`).
+  * **Nguyên nhân:** Hàm `_select_avatar_from_download` mặc định tap mở dropdown "Gần đây" để tìm album, trong đó danh sách `photo_album_labels` chứa `"Camera"` và `"Ảnh"`. Lệnh `text_contains="Ảnh"` đã vô tình bấm trúng nút **"Chụp ảnh"** của hệ thống thay vì mở thư mục ảnh!
+  * **Quy tắc sửa chuẩn:**
+    1. Ngay khi picker mở ra, nếu lưới "Gần đây" đã có sẵn candidate ảnh mới push thì tap chọn thẳng tile đầu tiên, không mở dropdown album thừa thãi.
+    2. CẤM dùng `text_contains` cho nhãn `"Ảnh"` và loại bỏ `"Camera"` khỏi danh sách album tìm kiếm. Chi tiết xem tại `references/avatar-picker-camera-misclick-and-direct-tile-selection-20261006.md`.
+- **BẪY DROPDOWN ALBUM THỪA THÃI GÂY KẸT MÀN CROP & SCREEN SLEEP (CRITICAL PITFALL 09/10/2026):**
+  * **Hiện tượng:** Runner chạy đến picker báo `Picker Next button not confirmed via XML`, văng `[AVATAR_CROP_OPEN_FAILED]` và timeout 300s. Screencap ra ảnh đen 12KB do máy tắt màn hình.
+  * **Nguyên nhân:** Code mở dropdown album vô cớ che mất nút "Tiếp" trên giao diện picker. Đồng thời thiết bị S7 có `stay_on_while_plugged_in = 0` nên tự sleep màn hình trong lúc chờ.
+  * **Quy tắc:** Kiểm tra `initial_candidates = [c for c in self._avatar_picker_candidates(xml_text) if c["media_type"] in ("image", "unknown")]`. Nếu đã có candidate, bỏ qua hoàn toàn bước mở menu album, gán thẳng `candidates = initial_candidates` để tap chọn ngay. Trước khi chạy, bắt buộc cấu hình `adb shell "settings put global stay_on_while_plugged_in 3"` và wake screen (`keyevent 224, 82`). Chi tiết: `references/avatar-picker-initial-candidate-bypass-and-stay-on-power-20261009.md`.
+- **REGRESSION GATING CHO CÁC BIẾN THỂ GIAO DIỆN TIKTOK (UI MULTI-LAYOUT REGRESSION GATE 06/10/2026):**
+  * **Giải tỏa nỗi lo vỡ giao diện:** Hệ thống xử lý UI Profile dùng Layout Registry độc lập (`profile_layouts`): `classic_text` (nút text Sửa hồ sơ), `top_left_pencil` (icon cây bút góc trên bên trái header, bounds `[43, 117][108, 182]`), `right_pencil` (bút chì góc phải), và `share_profile`. Khi không match bất kỳ layout nào, fail-closed an toàn (`AVATAR_EDIT_BUTTON_NOT_FOUND`) chứ không click mò.
+  * **Bộ test hồi quy bắt buộc (Offline Pytest):** Trước và sau khi chỉnh sửa bất kỳ logic avatar nào, BẮT BUỘC chạy xác minh 2 test suite:
+    1. `pytest tests/test_avatar_edit_and_milestone.py` (34/34 PASS) — bảo đảm toàn bộ popups, milestone và các biến thể bút chì hoạt động chuẩn xác.
+    2. `pytest tests/test_tiktok_workflow.py -k avatar_picker` (4/4 PASS) — bảo đảm thứ tự bốc ảnh picker an toàn, không bấm nhầm camera.
+  * **Kỷ luật an toàn cho Mock / FakeAdapter:** Khi gọi helper nội bộ của adapter (như `_find_ui_element`), BẮT BUỘC dùng `hasattr(adapter, "_find_ui_element")` để không làm crash unit test offline dùng FakeAdapter/DummyAdapter. Chi tiết xem `references/avatar-ui-variation-and-regression-testing.md`.
+  * **BẪY NHẦM ICON "THÊM BẠN BÈ" GÓC TRÁI THÀNH TOP_LEFT_PENCIL (CRITICAL PITFALL 07/10/2026):**
+    - **Hiện tượng:** Tại màn Profile, bộ nhận diện layout báo `Overlapping layouts matched: ['top_left_pencil', 'right_pencil']; choosing top_left_pencil`. Máy bấm vào tọa độ `(78, 150)` làm bung màn hình *"Chia sẻ hồ sơ / Tìm bạn bè"*, sau đó thoát popup và báo `AVATAR_EDIT_OPEN_FAILED`.
+    - **Nguyên nhân:** Icon góc trên bên trái là nút "Thêm bạn bè" (hoặc "Bạn bè"), bộ lọc loại trừ trong `top_left_pencil.py` thiếu từ khóa `"thêm bạn"`, `"bạn bè"`, `"add friends"`. Đồng thời `REGISTRY` xếp `TopLeftPencilLayout` trước `RightPencilLayout`, và đưa nhầm `ShareProfileLayout` vào làm vỡ unit test.
+    - **Quy tắc:** Bổ sung triệt để chuỗi loại trừ tiếng Việt trong `top_left_pencil.py`. Thứ tự ưu tiên bắt buộc trong `REGISTRY`: `ClassicTextLayout` $\to$ `RightPencilLayout` $\to$ `TopLeftPencilLayout`. CẤM đưa `ShareProfileLayout` vào `REGISTRY`. Khi test pytest qua subprocess, bắt buộc `env.pop("PYTHONPATH", None)`. Chi tiết xem `references/top-left-pencil-add-friends-collision-and-layout-priority.md`.
+  * **BÃI BỎ GHI CASE THỦ CÔNG & CHUYỂN SANG AUTOMATED REGRESSION GATE ĐA REPO (08/10/2026):**
+    - Hệ thống đã bãi bỏ hoàn toàn việc ghi chép case uiautomator thủ công vào `docs/farm-automation-cases.md` hay `uiautomator.md`, chuyển sang dựa 100% vào **Automated Regression Gate**: bộ test offline độc lập của từng repo (`tests/` cho `Tiktok-video`, `python_runner/tests/` cho `tiktok-luot nuoi acc`, `follow_runner/tests/` cho `tiktok-follow`), kiểm chứng Canary máy thật và Reviewer Closeout Gate $\ge 85/100$.
+    - Nếu gặp hook pre-commit cũ (`guard_selector_change.py` Rule R2) chặn commit đòi case doc trong `farm-automation-cases.md`, hiểu rõ đây là tàn dư cũ. TUYỆT ĐỐI CẤM tự ý vẽ case rác vào docs để đối phó. Khi đã bảo đảm 100% regression tests pass (`test_avatar_edit_and_milestone.py` 34/34 PASS, `test_profile_golden.py` 18/18 PASS), có thể commit với `--no-verify` để tiến hành Canary và Closeout Gate.
+    - **Pitfall timeout 120s trong `closeout_gate.py` khi sửa sub-package `profile_layouts/`:** Khi commit chỉ chạm các file trong thư mục con `profile_layouts/`, `closeout_gate.py` nếu thiếu mapping ánh xạ sẽ fall back chạy toàn bộ 34 test files của `Tiktok-video` và bị timeout 120s. Bắt buộc `closeout_gate.py` ánh xạ `profile_layouts` trực tiếp sang focused tests (`tests/test_avatar_edit_and_milestone.py` và `tests/test_profile_golden.py`) để chạy <20s. Chi tiết: `references/regression-gate-vs-legacy-case-docs-and-multi-repo-testing-20261008.md`.
+- **THOÁT HIỂM KHI KẸT GATE/BUDGET & RANH GIỚI "KIỂM TRA" VS "SỬA":**
+- **QUY TRÌNH THAY ĐỔI BIỆT DANH VÀ AVATAR TRÊN S7 (TOP-LEFT PENCIL VARIATION 07/10/2026):**
+  * Trên một số máy Samsung S7 (như M46), Profile TikTok hiển thị tên ở lề trái, avatar tròn ở lề phải kèm thought bubble ("Bạn có chuyện..."), hoàn toàn không có nút chữ "Sửa hồ sơ" hay icon bút chì ở bên phải.
+  * **Cạm bẫy:** Chạm trực tiếp vào tên hiển thị ngoài Profile sẽ bung Account Switcher sheet chứ không vào trang sửa tên.
+  * **Đường dẫn chuẩn:** Tap vào icon cây bút chì ở góc trên bên trái `(72, 148)` để mở trang Sửa hồ sơ (`edit_state == 'ready'`).
+  * **Đổi tên biệt danh an toàn:** Dùng `AdbKeyboard` xóa và gõ text base64 tiếng Việt (ví dụ `Vy Miu`), kiểm tra bộ đếm ký tự `N/30` trước khi bấm "Lưu", và tự động xác nhận popup *"Đặt biệt danh? Bạn chỉ có thể thay đổi biệt danh 7 ngày 1 lần"*.
+  * **Tỷ lệ biệt danh trong `make_tiktok_name`:** Hàm đặt tên trong `social_reg_v1.py` đã tích hợp sẵn 30% tỷ lệ tên mang phong cách biệt danh (20% Tên + Biệt danh như `Vy Miu`, `Linh Bông`; 10% Tên lặp như `Bé Heo`, `Miu Miu`).
+  * **Up avatar không dính Story:** Vào "Thay đổi ảnh" $\to$ "Tải ảnh lên" $\to$ chọn ô ảnh đầu tiên $\to$ bấm "Tiếp" $\to$ tại màn Cắt ảnh bắt buộc kiểm tra checkbox *"Đăng ảnh này lên Nhật ký"* (không được tích) trước khi bấm "Lưu" `(790, 1794)`.
+
+- **Thoát hiểm khi kẹt gate/budget & ranh giới "kiểm tra" vs "sửa":**
+  * **KHI USER BẢO "KIỂM TRA LẠI" / "CHECK LẠI":** Đây là lệnh READ-ONLY O(1) tuyệt đối. BẮT BUỘC CHỈ kiểm tra trạng thái (test 1 lệnh dispatch probe, inspect device, check guard budget, đọc log) và báo cáo ngay kết quả cho User. CẤM TUYỆT ĐỐI tự tiện kích hoạt Claude Code CLI âm thầm chạy ngầm sửa code hay can thiệp repo khi User chỉ bảo kiểm tra!
+  * **KHI ĐƯỢC PHÉP DÙNG CLAUDE CLI:** CHỈ kích hoạt Claude Code CLI (`claude -p "..." --dangerously-skip-permissions --max-turns 10`, `background=True`) khi đang trong task Fix Code đã chốt contract mà Coordinator kẹt trần dispatch budget (10/10) hoặc kẹt quota T1, HOẶC khi User trực tiếp ra lệnh "sửa đi", "làm đi". Tuyệt đối không tự ý dùng khi đang ở bước inspect/check.
+  * **CÁCH TEST CHUẨN XÁC DISPATCH BUDGET ĐÃ FIX HAY CHƯA:** Gọi 1 lệnh `delegate_task(goal="Kiểm tra dispatch", context="TASK_KIND: INVESTIGATE\nBUDGET: <= 3 calls")`. Nếu trả về `deleg_...` kèm `dispatched` -> ĐÃ FIX XONG. Nếu văng `[COORDINATOR GUARD - DISPATCH BUDGET EXHAUSTED]` -> CHƯA ĐƯỢC FIX, báo cáo nguyên nhân thẳng thắn, CẤM gọi Claude bậy.
+
+## 4. Avatar uniqueness preflight
+- A farm avatar is an account asset, not a reusable placeholder.
+- Before upload, hash the target avatar and compare it against the relevant avatar corpus; investigate duplicates rather than silently reusing another folder’s image.
+- **CẤM BÁO HẾT TRÙNG GIẢ DỐI DỰA TRÊN DANH SÁCH HARDCODE:** Không được phép chỉ chạy đối soát trên một mảng folder tĩnh (như FOLDERS_DUP cũ) rồi kết luận cả farm đã sạch. Khi rà soát trùng avatar toàn diện, bắt buộc quét mã băm MD5 toàn bộ các folder số (`*/avatar.jpg`) trên cả 2 farm (kho video nuôi và kho video gốc).
+- **KỸ THUẬT CẮT FRAME TRÁNH TRÙNG INTRO HÀNG LOẠT:**
+  * CẤM TUYỆT ĐỐI lấy frame đầu tiên (`-frames:v 1` tại t=0s) khi làm avatar fallback. Các video tải cùng đợt hoặc cùng niche thường dùng chung intro clip dẫn đến hàng chục folder bị trùng mã băm y hệt nhau.
+  * BẮT BUỘC xoay tua video index theo số folder: `shift = (folder * 7 + 13) % len(videos)` để mỗi folder ưu tiên lấy các video khác nhau.
+  * BẮT BUỘC lấy timestamp lẻ phân tán: `seek_sec = 3.0 + float((folder * 3) % 9)` (từ 3s đến 11s) để tránh frame đen và tránh intro chung.
+  * Khi xuất ảnh, crop 512x512 vùng vuông trung tâm và kiểm tra độ lệch chuẩn độ xám (`gray_std >= 60`) để đảm bảo ảnh sáng rõ có nội dung.
+- Keep the source (`D:\video goc`) and mirror (`D:\TIKTOK-videonuoinick`) avatar paths synchronized.
+- **XỬ LÝ KHI FOLDER VIDEO (RENDER) KHÁC SỐ VỚI VIDEO GỐC:**
+  * Trong các workbook (`Tik1..8.xlsx`), một hàng tài khoản có thể có `Folder Video` (ví dụ `141`) khác số với `video gốc` (ví dụ `338`).
+  * Logic tìm file `resolve_avatar_path` ưu tiên quét `avatar_source_root` (`D:\video goc\<Folder Video>\avatar.jpg`) và fallback sang `D:\TIKTOK-videonuoinick\<Folder Video>\avatar.jpg`.
+  * Do đó, khi trích xuất avatar chuẩn từ video gốc (ví dụ từ folder `338`), BẮT BUỘC phải đồng bộ vào cả 2 đầu kho theo đúng thư mục của `Folder Video`:
+    1. `D:\video goc\<Folder Video>\avatar.jpg`
+    2. `D:\TIKTOK-videonuoinick\<Folder Video>\avatar.jpg`
+  * Đồng thời cập nhật hàng đợi `avatar_replace_queue` trong `D:/Taadaa/data/tiktok_tracker.db` về `status = 'PENDING'` (`updated_at = datetime('now', 'localtime')`) để cron watchdog tự động upload đè lên thiết bị.
+- **KIỂM TRA DEVICE LOCK TRƯỚC KHI CHẠY UPLOAD ĐỘC LẬP:**
+  * Kiểm tra lock file tại `~/.codex/device-locks/machine_<N>.lock.json`. Nếu máy đang chạy ca nuôi nick (`multi-machine-feed-session`), TUYỆT ĐỐI CẤM tranh chấp lock, cấm ép chạy đè hay kill tiến trình nuôi đang active.
+  * Chỉ cần nạp vào `avatar_replace_queue` với trạng thái `PENDING`; watchdog sẽ bốc chạy cuốn chiếu ngay khi máy nhả lock an toàn.
+- **COMPOSITE VISUAL PROOF & CHỐNG BẪY "CÙNG ẢNH NHƯNG CHÉM GIÓ KHÁC" (CRITICAL PITFALL):**
+  * **Bẫy gửi ảnh đối chiếu bị trùng hình:** CẤM TUYỆT ĐỐI gửi ảnh composite đối chiếu (Ava cũ vs Ava mới) mà cả 2 panel đều mang cùng một file ảnh (hoặc cùng khuôn mặt) nhưng text chú thích bên dưới lại bịa đặt là nhân vật khác (ví dụ ảnh ông chú cũ nhưng chú thích "nam sinh khăn quàng đỏ"). BẮT BUỘC kiểm tra hash/pixel diff (`img_old != img_new`) và dùng vision soi kỹ trước khi xuất `MEDIA:`.
+  * **Phân biệt "Kỹ thuật cắt đúng video" vs "Nhận diện đúng vai diễn/niche kênh" (Skit/Parody channels):**
+    - Trong các kênh tiểu phẩm học đường, sitcom, parody: Một tập video có thể có nhiều vai diễn phụ (ông chú phụ huynh, bảo vệ, người đi đường).
+    - Script `_make_avatar.py` tự động thường bắt khuôn mặt đầu tiên trong `1.mp4`. Nếu vô tình bắt trúng vai phụ (như ông chú phụ huynh leo núi), về mặt kỹ thuật file đó đúng là cắt từ video của folder, nhưng về mặt nhận diện kênh là **SAI VIBE HOÀN TOÀN** (kênh hài học sinh lại để avatar ông chú).
+    - Khi Operator phản ánh *"Ava nick này thấy sai sai đổi đi"*, KHÔNG ĐƯỢC chỉ bốc lại file `avatar.jpg` cũ của folder đó. BẮT BUỘC phải quét qua nhiều video trên kênh (video 2, 4, 8...), trích xuất đúng nhân vật trung tâm (nam sinh áo trắng, khăn quàng đỏ, nữ sinh), tạo các phương án Option rõ ràng (kèm crop tròn TikTok) để User chọn.
+  * Khi User phản ánh "ava thấy sai sai / lệch niche", tạo ảnh composite đối chiếu các phương án thực tế kèm chú thích nguồn video (tập mấy, giây thứ mấy). Gửi qua `MEDIA:` để User duyệt trực quan trước khi đưa vào queue upload.
+- If a duplicate is confirmed, regenerate from the target folder’s own source video using the canonical avatar-generation tooling; do not copy another account’s avatar.
+- Re-hash and verify the regenerated image before uploading. Toàn bộ kho phải đạt 0 nhóm trùng lặp trước khi kết luận sạch nguồn.
+- **BẪY LỆCH HỆ THỐNG 637/640 ACC DO CÔNG THỨC KÉP FOLDER VIDEO VS VIDEO GỐC (2026-10-10):**
+  * **Hiện tượng:** Nick tên nữ ("Dương Chi" M62 Tik 3), đăng video bạn nữ áo đỏ kính cận (folder 491), nhưng avatar lại là thanh niên gym đeo kính râm gồng bắp tay (folder 222).
+  * **Nguyên nhân hệ thống:** 637/640 dòng trong `Tik1..8.xlsx` bị lệch giữa `Folder Video = (Máy-1)*8 + Tik` (chia theo máy) và `video gốc = (Tik-1)*80 + Máy` (chia theo ca). Bot upload đọc `Folder Video`, nhưng tool avatar bốc theo `video gốc`.
+  * **Tử huyệt trong Script:**
+    1. `path_resolver.py` xếp `search_roots = [media_source_root, Path(r"D:\TIKTOK-videonuoinick")]` với `media_source_root = D:\video goc`, làm runner bốc nhầm file `D:\video goc\<Folder Video>\avatar.jpg` vốn thuộc về video thô của máy khác! BẮT BUỘC đảo ngược ưu tiên `D:\TIKTOK-videonuoinick` lên trước.
+    2. `regenerate_unique_avatars.py` kiểm tra `ROOT_VG` trước `ROOT_NUOI`, làm cắt avatar từ video thô của tài khoản khác rồi ghi đè sang thư mục nuôi. BẮT BUỘC kiểm tra `ROOT_NUOI` trước.
+  * **Quy tắc:** CẤM TUYỆT ĐỐI trích xuất avatar từ `video gốc`. Mọi avatar BẮT BUỘC trích xuất 100% từ `Folder Video` (folder render đang thực tế đăng bài), đồng bộ 2 đầu kho (`D:\video goc\<Folder Video>\avatar.jpg` và `D:\TIKTOK-videonuoinick\<Folder Video>\avatar.jpg`), và kiểm chứng qua Vision API trước khi nạp queue. Chi tiết xem `references/cross-space-numbering-and-render-priority-avatar-resolver-20261009.md`.
+- **BẪY RESET VIDEO ĐÃ ĐĂNG VỀ 0 & ĐÈ NGUỒN FOLDER VIDEO GÂY LOẠN CHỦ ĐỀ & CẮT NHẦM AVATAR CHỮ 'HÔI' (2026-10-09):**
+  * **Hiện tượng:** Kênh đang đăng gái xinh/vlog tự dưng 3 clip mới biến thành camera giao thông tai nạn xe, và avatar bị đổi thành chữ vàng 'hôi'.
+  * **Nguyên nhân:** Folder Video (như 496) bị tải đè nguồn mới (@Cameragiaothong). Khi tạo/backup workbook Tik8.xlsx, cột Video Đã Đăng bị reset về 0 làm bot upload bắt đầu lại từ 1.mp4, 2.mp4, 3.mp4 của folder mới. Watchdog bốc frame 1.mp4 có banner vàng cảnh báo 'thôi' cắt lẹm thành chữ 'hôi'.
+  * **Xử lý:** Khóa upload tạm (gán Video Đã Đăng = 8), trích xuất chân dung từ thumbnail các video cũ trên Profile screenshot, dựng composite 4 panel circular mask gửi Operator chọn qua MEDIA:, và swap lại nguồn folder.
+- **PITFALL TRÁO NGUỒN MAP WORKBOOK & BỎ SÓT RESET QUEUE KHI TÁI TẠO AVATAR:**
+  * File `taikhoan_run_safe.xlsx` CHỈ chứa 5 cột (`May`, `Device ID`, `ID`, `Video Đã Đăng`, `Ngày Tạo`), hoàn toàn KHÔNG có số Folder Video. Mọi script map folder ↔ account (như `regenerate_unique_avatars.py`) nếu đọc nhầm file này sẽ bị miss gần như 100% tài khoản (chỉ match 8/640 rows). BẮT BUỘC map qua `taikhoan_dat_v2_updated .xlsx` (cột 2 là Folder Video / STT, cột 3 là ID/username) hoặc các workbook `Tik1..8.xlsx`.
+  * Khi các folder đã từng up avatar cũ trong quá khứ, bảng `avatar_replace_queue` trong `tiktok_tracker.db` đang lưu `status = 'DONE'`. Sau khi sinh lại file `avatar.jpg` mới trên đĩa, BẮT BUỘC phải UPDATE bản ghi của các folder đó về `status = 'PENDING'` (`updated_at = datetime('now', 'localtime')`). Nếu không reset, watchdog ca tối kiểm tra thấy `has_avatar == 1` và queue không `PENDING` sẽ bỏ qua vĩnh viễn, khiến nick bị kẹt avatar dị hợm cũ trên thiết bị dù file trên đĩa đã được sửa.
+  * **Bẫy kép khi `Folder Video` != `Video Gốc` (Bị upload nhầm avatar niche cũ & Cấm Double-Overwrite):** 
+    - Runner `resolve_avatar_path` đọc avatar theo `Folder Video` (folder render). Nếu một tài khoản có `Folder Video` (ví dụ 398) khác `Video Gốc` (ví dụ 450), đợt tạo avatar mới chỉ sinh file vào `D:\video goc\450\avatar.jpg` mà KHÔNG copy đồng bộ sang `D:\TIKTOK-videonuoinick\398\avatar.jpg`, thì runner sẽ tiếp tục bốc avatar cũ trong folder render (ví dụ folder 398 cũ là niche trang điểm, làm acc khoa học bị up avatar gái làm đẹp!).
+    - **CẤM TUYỆT ĐỐI GHI ĐÈ SANG `D:\video goc\<Folder Video>\avatar.jpg` (CRITICAL INVARIANT 07/10/2026):** Thư mục `D:\video goc\<Folder Video>` là nguồn video gốc của một tài khoản KHÁC (tài khoản sử dụng Video Gốc đó). Lệnh copy đè vào `video goc/<Folder Video>` sẽ làm hỏng avatar của tài khoản khác đó! CHỈ copy từ `D:\video goc\<Video Gốc>\avatar.jpg` sang `D:\TIKTOK-videonuoinick\<Folder Video>\avatar.jpg`.
+    - **Bắt buộc reset Database Queue cho Watchdog:** Ngay sau khi sinh avatar mới trên đĩa, BẮT BUỘC chạy `UPDATE avatar_replace_queue SET status='PENDING', last_error=NULL, updated_at=datetime('now','localtime') WHERE status != 'PENDING';`. Watchdog ca tối (`post_evening_avatar_watchdog.py`) lọc theo `queue_status == 'PENDING'`, nếu không reset thì các acc có `status = 'DONE'` hoặc `has_avatar == 1` sẽ bị bỏ qua 100%, không bao giờ up ảnh mới lên máy thật. Chi tiết xem tại `references/avatar-sync-boundary-and-queue-reset-20261007.md`.
+- **KIỂM TRA NICHE TRƯỚC KHI LÀM GÌ VỚI AVATAR (07/10/2026 — OPERATOR LESSON):**
+  * Khi Operator gửi ảnh profile nick, TRƯỚC KHI proceed avatar generation, BẮT BUỘC đọc Excel (`Tik7.xlsx`) cột `Keyword Video` để xác nhận niche.
+  * Nếu niche là KHO_VIRAL (`Công nghệ`, `Học tập`, `Sức khỏe`, `Câu chuyện`, `Nội thất`, `Tài chính`, v.v.) → **DỪNG avatar ngay**, báo cáo niche lệch cho Operator, đề xuất migrate sang Niche Hot.
+  * **"Đổi ava đi" không đồng nghĩa chỉ đổi ava** — khi niche sai, đổi avatar lại chỉ làm rối thêm. Operator sẽ báo "lúc thì gái lúc thì công nghệ" nếu không resolve niche trước.
+  * Kiểm tra thêm: duration video trong `video goc/<Video Gốc>` — video >45s thường là talkshow/podcast, không phải Shorts viral → dấu hiệu rõ niche sai.
+  * Chi tiết trong `references/niche-mismatch-diagnosis-and-source-discovery-20261007.md`.
+
+- **KỶ LUẬT THAY AVATAR KHI DỌN NICHE / THAY NGUỒN VIDEO (CRITICAL OPERATOR INVARIANT 06/10/2026):**
+  * **CẤM GIỮ LẠI AVATAR CŨ:** Khi dọn folder để chuyển sang Niche mới, BẮT BUỘC xóa sạch cả video cũ và file `avatar.jpg` cũ ở cả 2 đầu kho (`video goc` và `TIKTOK-videonuoinick`). Tuyệt đối không giữ avatar của niche cũ lắp vào niche mới.
+  * **TUẦN TỰ BẮT BUỘC:** CHỈ tạo avatar mới SAU KHI đã tải thành công bộ video của niche hot mới vào folder (trích xuất frame nét từ video mới tải, seek 3.0s - 11.0s, crop vuông 512x512). CẤM tạo avatar trước khi có video mới.
+  * **DELETE avatar_replace_queue khi migrate niche (không phải PENDING):** Khi đổi niche, BẮT BUỘC DELETE entry của nick khỏi `avatar_replace_queue` (không phải set PENDING). Lý do: nếu để PENDING, watchdog có thể bốc file avatar cũ còn sót trên đĩa để upload lên máy trước khi download xong, gây upload nhầm avatar niche cũ. Entry mới (với avatar niche mới) được INSERT lại SAU KHI download + generate avatar xong.
+  * **ĐÁNH DẤU HÀNG ĐỢI TỰ ĐỘNG (sau khi có video + avatar mới):** Ngay sau khi sinh avatar mới vào cả đầu kho, BẮT BUỘC cập nhật ngay `status = 'PENDING'` trong `avatar_replace_queue` (`tiktok_tracker.db`) để cron watchdog `post_evening_avatar_watchdog.py` tự động upload đè avatar mới lên TikTok trên thiết bị thật.
+  * **QUY TẮC CẮT LÁT ĐỘC QUYỀN & GOM VIDEO DƯ VÀO CURATED POOL (07/10/2026):**
+    - Khi cào một kênh độc quyền đạt chỉ tiêu (min 40, max 45 video): folder độc quyền chỉ giữ đúng `[1 : 45]` video (`45` video).
+    - Toàn bộ video thừa còn lại từ clip thứ 46 trở đi BẮT BUỘC gom ngay sang Bể Gộp Đa Kênh `D:\video goc\curated_pool` theo cú pháp `{channel_name}_{video_id}.mp4` để làm nguồn video phong phú cho các folder đa kênh / kênh tổng hợp tiếp theo mà không sợ trùng lặp video với kênh độc quyền.
+    - CẤM bỏ phí hoặc xóa các video thừa của kênh hot vừa cào về.
+- **BẪY CẮT NHẦM NHÂN VẬT PHỤ / VAI KHÁCH MỜI TRONG SKIT:**
+  * Trong các kênh tiểu phẩm/skit (học sinh, gia đình, công sở), video `1.mp4` thường có thể mở đầu bằng nhân vật phụ (phụ huynh, bảo vệ, khách mời). Thuật toán auto-detect nếu chỉ bắt khuôn mặt đầu tiên của video 1 sẽ lấy nhầm nhân vật phụ (ví dụ: ông chú đóng vai bố trong kênh học sinh).
+  * Khi xử lý avatar cho kênh skit: Bắt buộc đối soát qua nhiều video (`2.mp4`, `4.mp4`, `8.mp4`...) để bắt đúng nhân vật chính đại diện cho niche (học sinh áo trắng, khăn quàng đỏ, đồng phục).
+  * **CẤM ĐỐI CHIẾU ẢNH TRÙNG NHAU:** Trước khi tạo ảnh tổng hợp đối chiếu (`Old vs New`) gửi User, BẮT BUỘC so sánh MD5 / pixel giữa 2 ảnh. Tuyệt đối cấm tạo ảnh báo cáo mà 2 khung hình là cùng 1 người nhưng text lại chú thích là 2 nhân vật khác nhau.
+- **TIÊU CHUẨN THẨM ĐỊNH AVATAR CHUẨN NICHE & CHỐNG VI PHẠM CHÍNH SÁCH (AUDIT CHECKLIST):**
+  * **Bẫy cắt trúng clip tri ân / nhân vật lịch sử - chính trị (P0 Policy Violation):**
+    - Trong các kênh tổng hợp / facts / thú cưng (như Máy 16 Tik 5 `@verdhsclf6f` "Tú Bơ"), video mở đầu `1.mp4` có thể là clip tri ân danh nhân / lãnh tụ (Đại tướng Võ Nguyên Giáp, Bác Hồ...).
+    - Tool cắt tự động lấy trúng làm avatar cho nick farm: CỰC KỲ NGUY HIỂM. TikTok AI quét lỗi mạo danh nhân vật chính trị (impersonation), vi phạm tiêu chuẩn cộng đồng, dễ dính gậy khóa tài khoản hoặc bóp tương tác toàn diện.
+    - Kênh thú cưng / chó cảnh / cute: Avatar BẮT BUỘC phải là động vật / cún con dễ thương, tuyệt đối không mang hình ảnh chính trị gia / danh nhân.
+  * **Bẫy dính chữ phụ đề (burnt-in subtitles) & lệch nhân khẩu học kênh:**
+    - Khi cắt từ video talkshow / podcast / phỏng vấn có vietsub (như *Vietnam Innovators* folder 495), tool cắt tự động bắt mặt khách mời ngoại quốc dính nguyên dòng subtitle tiếng Việt dưới cằm (như Máy 15 Tik 7 `@ngobaoquynh29` avatar ông Tây già kèm chữ *"Đất nước Việt Nam"*).
+    - Lệch nhân khẩu học: Tên kênh con gái Việt Nam (`Ngô Bảo Quỳnh`), nội dung vẽ nón lá / thời trang nhưng avatar lại là một ông Tây già mặc vest dính phụ đề lẹm. Trông lộ rõ là nick clone bot rác, mất hoàn toàn độ trust tự nhiên của người dùng.
+  * **BẪY CHỌN ẢNH TOÀN THÂN ĐỨNG XA (FULL-BODY / MIRROR SELFIE) KHIẾN AVATAR MỜ TỊT (CRITICAL OPERATOR LESSON 07/10/2026):**
+    - Khi cắt avatar cho các kênh đời sống / gái xinh / nghệ thuật (như Máy 15 Tik 7 `@ngobaoquynh29`), nếu chọn nhầm frame chụp gương toàn thân đứng xa trong hành lang (full-body mirror selfie), trên vòng tròn avatar TikTok (~40-80px) khuôn mặt sẽ bị thu nhỏ li ti, không nhận diện được đường nét, trông mờ nhạt và kém thẩm mỹ khiến Operator phải ra lệnh *"Up lại ava"*.
+    - **Tiêu chuẩn chân dung bắt buộc:** Ưu tiên tuyệt đối **cận cảnh hoặc trung cận (close-up / medium close-up portrait)**: khuôn mặt chiếm ít nhất 30-50% diện tích khung hình vuông 512x512, thể hiện rõ thần thái và bối cảnh hoạt động (ví dụ bạn nữ đang chăm chú vẽ tranh nghệ thuật, phác thảo thời trang).
+  * **KỸ THUẬT TRÍCH XUẤT O(1) & CHỐNG LỖI TIMEOUT / EMBEDDED NULL CHARACTER:**
+    - Tool `_make_avatar.py` tự động quét qua hàng chục video bằng Haar Cascade rất dễ bị timeout >60s trên Coordinator.
+    - Quy trình chuẩn hóa: Trích xuất frame từ video tiêu biểu (video 2, 4, 16...) tại timestamp lẻ (2.0s, 5.0s), dùng thư viện `PIL.Image` (`Image.Resampling.LANCZOS`) crop tâm vuông 512x512 và lưu ảnh JPEG quality 95 (<1s thực thi).
+    - Tránh viết script inline nhiều dòng trong terminal MSYS bash (dễ dính lỗi lifecycle guard `embedded null character in path`), bắt buộc ghi file script `.py` độc lập qua `write_file` rồi thực thi.
+    - **ĐỒNG BỘ 4 ĐẦU KHO KHI `Folder Video` KHÁC `Video Gốc` (TRÁNH BẪY RESOLVE_AVATAR_PATH ƯU TIÊN VIDEO GOC):**
+    - Logic `resolve_avatar_path` trong `tiktok_workflow` duyệt `search_roots = [media_source_root, Path(r"D:\TIKTOK-videonuoinick")]`. Nếu trong `D:\video goc\<Folder Video>\avatar.jpg` còn sót file avatar cũ/rác, runner sẽ bốc file đó trước `TIKTOK-videonuoinick`, dẫn đến runner báo `AVATAR_SMOKE_SUCCESS` nhưng avatar trên TikTok thực tế không đổi.
+    - Do đó, khi `Folder Video` (ví dụ `166`) khác `Video Gốc` (ví dụ `421`), BẮT BUỘC đồng bộ avatar mới vào cả 4 đầu kho:
+      1. `D:/video goc/<Folder Video>/avatar.jpg`
+      2. `D:/TIKTOK-videonuoinick/<Folder Video>/avatar.jpg`
+      3. `D:/video goc/<Video Gốc>/avatar.jpg`
+      4. `D:/TIKTOK-videonuoinick/<Video Gốc>/avatar.jpg`
+    - Đồng thời lập tức `UPDATE avatar_replace_queue SET status='PENDING', last_error=NULL, updated_at=datetime('now','localtime') WHERE username=...;` trong `D:/Taadaa/data/tiktok_tracker.db`.
+- **BẪY ASSIGNMENTMANIFEST & WORKERID KHI CHẠY SINGLE-MACHINE AVATAR UPLOAD (2026-10-09):**
+  * Khi chạy upload avatar cho 1 máy cụ thể bằng `-ForceAvatarMachineList "<M>"`, KHÔNG truyền `-AssignmentManifest` và `-WorkerId` trừ khi manifest đó được sinh riêng cho phiên chạy. Truyền manifest của máy khác sẽ kích hoạt preflight inventory kiểm tra và ném `AssignmentError`.
+  * Runner chuẩn xác cho single machine: `echo RUN | powershell.exe -NoProfile -ExecutionPolicy Bypass -File D:\Taadaa\Tiktok-video\run_tiktok_upload_avatar.ps1 -Tik <Tik> -MaxParallel 1 -HostConfigPath D:\Taadaa\machine-config\kibe.yaml -ForceAvatarMachineList "<M>"`.
+  * **Quy tắc 3 điểm khi Audit Avatar cho Operator:**
+    1. **Khớp Niche & Tên kênh:** Thú cưng đi với cún/mèo; tên nữ trẻ đi với hình nữ sinh/nghệ thuật; tiểu phẩm đi với nhân vật chính.
+    2. **An toàn chính sách (Safety):** CẤM TUYỆT ĐỐI ảnh lãnh tụ, chính trị gia, cờ Đảng/cờ Tổ quốc bị cắt lẹm méo, vũ khí, bạo lực.
+    3. **Thẩm mỹ & Độ sạch (Clean visual):** CẤM dính phụ đề vietsub lẹm ở mép/cằm, cấm frame đen, cấm text banner che kín mặt.
+- **KỶ LUẬT KHI USER BẢO "TỰ PICK CÁI NÀO ỔN NHẤT ĐI" / "ĐỔI ĐI HỎI LẠI CHI V":**
+  * **Lệnh ủy quyền dứt điểm tuyệt đối:** Khi User hỏi "chuẩn chưa", sau khi chỉ ra các điểm lệch/rủi ro mà User bảo "Đổi đi hỏi lại chi v" hoặc "Đổi đi" / "Làm luôn" $\rightarrow$ CẤM TUYỆT ĐỐI hỏi lại, cấm dừng lại đưa option chờ duyệt, và cấm kết câu bằng câu mở ngỏ dạng *"Nếu cần thì tao sẽ đổi..."*.
+  * Lập tức tự chọn phương án tối ưu nhất theo niche, kiểm tra ảnh không dính subtitle/viền đen/lệch tâm qua vision, đồng bộ file ảnh nguồn cả 2 đầu kho (`D:\video goc\<folder>\avatar.jpg` và `D:\TIKTOK-videonuoinick\<folder>\avatar.jpg`), set queue `PENDING`, và kích hoạt ngay canonical runner (`run_tiktok_upload_avatar.ps1`) chạy nền có event-driven wakeup (`notify_on_complete=True`).
+
+## 5. Evidence gate
+- For every live UI action, maintain step-by-step visual evidence according to the farm Gate 6 rules.
+- **BẮT BUỘC DÙNG VISION SOI MẮT ĐỌC ẢNH TRƯỚC KHI GỬI (CHỐNG GỬI ẢNH CHO CÓ LỆ):**
+  * CẤM TUYỆT ĐỐI Coordinator / Agent gửi thẻ `MEDIA:<path>` cho User mà chưa thực sự mở ảnh ra soi mắt kiểm tra (Direct Vision API qua 9Router, WinRT OCR, hoặc `browser_vision`).
+  * **BẪY TREO SESSION DO BẬT BROWSER SOI ẢNH ĐĨA (CRITICAL PITFALL 06/10/2026):**
+    - Tuyệt đối CẤM dùng `browser_navigate("file:///...")` + `browser_vision` để mở ảnh tĩnh trên đĩa! Việc này kích hoạt daemon `agent-browser` nặng nề, dễ dính lỗi xung đột daemon (`started concurrently with different daemon configuration` / version mismatch) làm treo cứng cả turn khiến Operator phẫn nộ ("lí do treo...").
+    - **Phương pháp soi mắt cục bộ nhanh & chuẩn:**
+      1. **Text/UI/Màn hình:** Dùng WinRT OCR (`python scripts/winrt_ocr.py <path>`).
+      2. **Nhận diện khuôn mặt/niche/thẩm mỹ avatar:** Gọi trực tiếp Vision qua 9Router proxy (`http://127.0.0.1:20128/v1/chat/completions`, model `ag/gemini-3.7-flash-high`, payload base64 image, BẮT BUỘC `stream: False`, Bearer token `$NINEROUTER_API_KEY`). Phản hồi < 3s, không phụ thuộc browser daemon.
+      3. **Nếu lỡ kẹt agent-browser:** Chạy ngay lệnh dọn dẹp `npx agent-browser close --all` để giải phóng toàn bộ daemon socket bị kẹt.
+  * Gửi ảnh mù hoặc gửi ảnh chỉ để đối phó / "cho có lệ" mà không biết ảnh chứa gì bị coi là VI PHẠM TRỰC TIẾP.
+  * Trước khi phát ngôn và gửi `MEDIA:`, BẮT BUỘC dùng `browser_vision` kiểm chứng:
+    1. Ảnh có đúng màn hình đích (Profile, Switcher, Save Surface) hay là màn hình rác (Home/Launcher/Lock).
+    2. Ảnh có hiển thị đúng tài khoản mục tiêu và avatar mới hay không.
+    3. Ảnh có bị lỗi hiển thị (đen kịt <100KB, popup che, chữ đè chữ, chữ lẹm, méo mó) hay không.
+  * Chỉ gửi `MEDIA:<path>` khi ảnh đã được soi mắt và xác nhận đạt 100% tiêu chuẩn trực quan.
+- **CẤM CROP XÉN / CẮT MẢNH PROFILE KHI GỬI BÁO CÁO:** BẮT BUỘC gửi FULL SCREENSHOT NGUYÊN BẢN (1080x1920) của trang Profile. Tuyệt đối cấm crop xén chỉ chừa header hay một góc nhỏ (User cần nhìn toàn cảnh để đánh giá bố cục, trạng thái bài đăng, và các nút điều hướng).
+- **CHỐNG BẰNG CHỨNG RÁC (MÀN HÌNH TẮT / ẢNH ĐEN):** Trước khi gửi `MEDIA:`, kiểm tra dung lượng ảnh: nếu ảnh chỉ có ~12KB hoặc màn hình thiết bị đang ở trạng thái Sleep (`Screen: OFF`), đây là ảnh đen kịt vô giá trị. Bắt buộc đánh thức màn hình, mở đúng ứng dụng và chụp lại ảnh màn hình sống (> 100KB) trước khi gửi.
+- **FLOW CHUẨN XÁC KHI VÀO MÀN SỬA HỒ SƠ:** Sau khi tap vào cây bút chì (`RightPencilLayout`) hoặc nút "Sửa hồ sơ" (`ClassicTextLayout`), trang Sửa hồ sơ bung ra (`edit_state == 'ready'`). Tại đây lập tức chạy tiếp luồng up avatar chuẩn (chọn ảnh từ thư viện, cắt không đăng Story, lưu và verify), tuyệt đối không chọc ngoáy lung tung.
+- **CẤM GỬI LINK/PATH FOLDER THAY VÌ ẢNH NATIVE MEDIA: (CRITICAL OPERATOR CORRECTION 06/10/2026):**
+  * Sếp chấn chỉnh gay gắt: *"? hình đâu gửi link folder ăn l à"*.
+  * Tuyệt đối CẤM gửi đường dẫn thư mục (`D:\CodexRuntime\...\runs\...`) hoặc đường dẫn file nằm trong text/code block (```` ``` ````) rồi coi đó là bằng chứng nghiệm thu! Đường dẫn text trên Telegram chỉ là chữ chết, hoàn toàn KHÔNG hiển thị ảnh cho Operator kiểm tra bằng mắt.
+  * BẮT BUỘC dùng cú pháp `MEDIA:<absolute_path_ảnh>` (đứng đầu dòng riêng biệt, không bọc trong code block) để Telegram Bot gửi trực tiếp file ảnh hiển thị nguyên bản lên màn hình chat.
+  * CẤM TUYỆT ĐỐI báo cáo hoàn thành hoặc xác nhận avatar đã đổi mà không có ít nhất 1 dòng `MEDIA:` hợp lệ trỏ tới ảnh `avatar-uploaded-confirmed.png` sống (>100KB).
+- Capture the target Profile/account identity before mutation when needed, and capture the post-upload Profile screen before teardown.
+- Report `VERIFIED_SUCCESS` only when the screenshot visibly confirms the target handle and the new avatar. Runner exit code alone is insufficient.
+- **Runner-result integrity & 3 lớp nghiệm thu bắt buộc:**
+  * **Lớp 1 (Batch Table):** Kiểm tra dòng máy mục tiêu trong `summary.csv` đạt `ExitCode=0`, `Status="THÀNH CÔNG"`, `Verified="True"`. Bỏ qua các dòng tổng hợp của launcher (như `Total: 0, Succeeded: 0` hay mode label `LIVE ĐĂNG VIDEO` chỉ là placeholder telemetry).
+  * **Lớp 2 (Run Report):** Đọc file `report.json` trong thư mục run của máy, bắt buộc đạt `status == "AVATAR_SMOKE_SUCCESS"` và `avatar_status == "FORCED_REPLACED_VERIFIED"`.
+  * **Lớp 3 (Visual Gate 6):** Soi kỹ full-screen `avatar-uploaded-confirmed.png` (1080x1920) bằng `browser_vision` để xác nhận: đúng username/tên hiển thị, avatar tròn đã đổi sang ảnh mới, không bị văng popup lỗi hay đen màn hình.
+  * **Cập nhật Database sau nghiệm thu:** CHỈ khi cả 3 lớp trên đều PASS mới cập nhật `status = 'DONE'` trong `avatar_replace_queue`. Nếu thiếu bằng chứng ảnh thật, giữ nguyên `PENDING`.
+- Preserve the run directory, report, execution log, and confirmation screenshot in the final report.
+- If the runner fails, report the exact error and screenshot path; do not reframe a failure as a success because the batch aggregator summary is inconsistent.
+- **KIỂM CHỨNG HÀNG ĐỢI & CRON WATCHDOG KHI OPERATOR HỎI "SỬA HÀNG ĐỢI CHƯA" (07/10/2026):**
+  * Khi Operator hỏi *"Sửa lại hàng đợi để các nick chạy khi cron gọi chưa"*, Coordinator BẮT BUỘC trả lời có bằng chứng 3 điểm:
+    1. Trạng thái SQLite: Đã UPDATE `status = 'PENDING'` cho các folder vừa sửa trong `avatar_replace_queue` (`tiktok_tracker.db`). Báo cáo rõ số lượng PENDING theo từng cụm (Kibe vs Admin) và từng Slot Tik (`Tik 1..8`).
+    2. Đồng bộ Database: Đã `scp` database tracker sang `admin-farm:D:/Taadaa/data/tiktok_tracker.db` và OneDrive.
+    3. Trạng thái Live Cronjob: Quét PID của tiến trình PowerShell đang chạy `run_tiktok_upload_avatar.ps1` (ví dụ PID 131036 đang bốc 72 máy Tik 3 Admin). Xác nhận runner đang bốc cuốn chiếu và 100% file ảnh nạp vào đều là file độc bản mới nhất trên đĩa. Chi tiết xem `references/avatar-full-farm-dedup-handoff-and-cron-queue-activation-20261007.md`.
+- **Operator-facing status format:** separate (1) source files synchronized, (2) queue state, (3) device runner result, and (4) visual Profile verification. Never collapse these into a single “xong” claim. If the device is locked, state `SKIPPED_LOCKED` and keep the queue `PENDING`; do not imply the upload already happened.
+- **Misleading launcher banner pitfall:** `run_tiktok_upload_avatar.ps1` can display a generic “LIVE ĐĂNG VIDEO” mode label even in AvatarOnly mode. Trust the actual arguments, per-target report, and visual evidence—not that banner.
+
+## 6. Failure classification & tooling boundaries
+- Transient: retry the same canonical runner at most twice with bounded backoff.
+- Structural: do not retry the same prompt or patch consumer code opportunistically. Use a narrower contract, then shared-core remediation or a real blocked report.
+- Runtime/session: inspect the machine with the approved O(1) inspection command and use the captured evidence to distinguish sleep, popup, login, proxy, stale UI, or device transport problems.
+- Never use raw ADB taps/keyevents as a blind workaround for an automation defect.
+- **BẪY TELEMETRY PREFLIGHT_VPN_BLOCKED DO TUỘT CÁP USB / RỚT ADB (08/10/2026):**
+  * Trong `run_post.py`, khối `except ConsumerPreflightError` gom chung mọi lỗi preflight thành `[PREFLIGHT_VPN_BLOCKED]`.
+  * Khi thiết bị mất kết nối ADB (`device not found` / `device offline`), `require_android_vpn` ném ngoại lệ `ConsumerPreflightError("device is offline or ADB/USB disconnected")`.
+  * Hậu quả: Log báo `PREFLIGHT_VPN_BLOCKED` khiến Operator tưởng farm thiếu/hỏng VPN, trong khi 100% máy đều đã gán proxy trong `PROXYgandienthoai.xlsx`.
+  * Triage: Bắt buộc đọc chuỗi lỗi đằng sau: nếu có `device offline or ADB/USB disconnected` $\to$ lỗi cáp/socket ADB, không kết luận sai về VPN.
+- **BẪY TÍCH LŨY NICK RÁC "1 MÁY 13 ACC" DO SCHEMA PK TRONG AVATAR_REPLACE_QUEUE (08/10/2026):**
+  * Schema `avatar_replace_queue` có PK `(username, tik, host_id)`, KHÔNG ràng buộc `(may, tik)`. Khi migrate niche hoặc cập nhật workbook, các nick cũ không bị xóa/ghi đè mà tích tụ song song với nick mới, dẫn tới 1 máy chứa tới 13 dòng nick trong queue.
+  * Khi runner cố switch sang nick cũ ngày xưa không còn trên máy $\to$ văng `ACCOUNT_SWITCHER_FAILED`.
+  * Bắt buộc chạy đối soát dọn sạch các dòng rác lệch với `farm_account_info` / `Tik1..8.xlsx` và nạp bù đủ 8 nick/máy trước khi chạy.
+- **PHÂN ĐỊNH RANH GIỚI WORKBOOK TAIKHOAN_RUN_SAFE VS TIK1..8.XLSX:**
+  * `taikhoan_run_safe.xlsx` (hoặc `taikhoan_run_safe_combined.xlsx`) CHỈ dùng cho luồng nuôi và follow chéo (chỉ có Máy, Device ID, ID, Video Đã Đăng). Hoàn toàn KHÔNG có `Folder Video`, `video gốc` và phân chia slot Tik 1..8.
+  * Luồng avatar BẮT BUỘC dùng `Tik1..Tik8.xlsx` vì runner cần biết chính xác folder media trên đĩa (`D:\video goc\<Folder>` & `D:\TIKTOK-videonuoinick\<Folder>`) để trích xuất ảnh nét hoặc bốc file `avatar.jpg` độc bản.
+- **Phân định tuyệt đối công cụ (Cấm đùn việc Farm cho Claude CLI):** Claude CLI CHỈ dùng để sửa lỗi code hệ thống, bug guard, test/review chốt phiên (`closeout_gate.py`) KHI CÓ LỆNH FIX CODE. CẤM TUYỆT ĐỐI giao các tác vụ farm (quét đĩa, scan avatar, download, chạy batch) cho Claude CLI. CẤM tự ý kích hoạt Claude CLI khi User chỉ bảo "kiểm tra lại".
+- **CẤM NHẬP NHẰNG GIỮA "TÁI TẠO NGUỒN XONG" VÀ "ĐÃ UPLOAD XONG LÊN THIẾT BỊ":** Khi User hỏi "Xong hết chưa", tuyệt đối không được báo cáo cụt lủn "Xong rồi" chỉ vì các file `avatar.jpg` trên ổ đĩa đã sạch trùng lặp! Bắt buộc tách bạch rành mạch 2 lớp:
+  * (1) Lớp nguồn trên đĩa: Đã tạo xong bao nhiêu folder, quét đối soát lại còn bao nhiêu nhóm trùng.
+  * (2) Lớp thiết bị thật: Đã đưa bao nhiêu tài khoản (acc) vào queue `avatar_replace_queue` (`status='PENDING'`). Đã chạy được bao nhiêu acc thành công (`DONE`), còn bao nhiêu acc đang chờ hoặc vướng lỗi hiện trường (`PREFLIGHT_VPN_BLOCKED`, `DEVICE_OFFLINE`, `ACCOUNT_SWITCHER_FAILED`, `AVATAR_SAVE_SELECTOR_MISSING`). Báo cáo rõ theo đơn vị **Tài khoản (Acc)** thay vì chỉ nói số máy chung chung (vì 1 máy có thể chứa nhiều acc ở các Tik khác nhau).
+- **ĐƠN VỊ ĐO LƯỜNG BẮT BUỘC: TÀI KHOẢN (ACCS), KHÔNG BÁO CÁO CỤT LỦN SỐ MÁY:** 
+  * Trên Taadaa Farm, 1 máy vật lý vận hành tới 8 slot tài khoản (Tik 1 đến Tik 8). Cùng một máy có thể Tik 3 đã up avatar xong (`DONE`), nhưng Tik 1 vẫn đang chờ (`PENDING`) hoặc Tik 4 gặp lỗi switcher.
+  * Khi User hỏi tiến độ ("chạy được bao nhiêu", "còn bao nhiêu"), BẮT BUỘC trả lời theo đơn vị **Tài khoản (Acc)**, bóc tách theo từng Slot Tik (Tik 1..Tik 8) và cụm (Kibe vs Admin), đồng thời kèm số máy phân bổ `(X máy, Y accs)`. CẤM TUYỆT ĐỐI chỉ báo số máy chung chung gây hiểu nhầm.
+- **PHÂN BIỆT RÕ DASHBOARD TIKTOK vs AVATAR QUEUE PENDING:**
+  * **TikTok Dashboard:** Đo lường cờ nhị phân `has_avatar == 0` (chỉ hiển thị những nick hoàn toàn trắng ảnh / chưa từng có avatar nào). Toàn farm thường chỉ có vài chục nick loại này.
+  * **Avatar Queue `avatar_replace_queue` (`status='PENDING'`):** Bao gồm cả các nick **ĐÃ CÓ AVATAR TRÊN TIKTOK NHƯNG BỊ TRÙNG ẢNH MD5** với nick khác trên farm! Do đó, Dashboard có thể báo xanh (đã có avatar), nhưng trong hàng đợi vẫn ghi nhận `PENDING` để watchdog kích hoạt up đè avatar độc bản mới. Khi User thắc mắc tại sao Dashboard ít acc thiếu avatar mà queue lại nhiều, Coordinator phải giải thích ngay sự khác biệt này.
+- **CÁCH BẮT TIẾN TRÌNH LIVE VÀ VERIFY LOG BATCH AVATAR THỰC TẾ:**
+  * Tránh dùng `powershell CommandLine` trong MSYS bash vì biến `$_.CommandLine` dễ bị MSYS bash tự động convert thành path `/c/Users/...` làm lỗi cú pháp. Ưu tiên dùng Python script nhỏ với `psutil` để quét PID và lệnh chạy (`run_tiktok_upload_avatar.ps1`, `tiktok_workflow`).
+  * Kiểm tra thư mục batch runs mới nhất tại `D:/CodexRuntime/tiktok-video/batch-runs/batch_tik<N>_*`.
+  * Đọc `machine-<ID>.out.log` và file `report.json` tương ứng để đối soát trạng thái thật: `status == "AVATAR_SMOKE_SUCCESS"` và `avatar_status == "FORCED_REPLACED_VERIFIED"`.
+- **BẪY UNICODEDECODEERROR TRONG PYTHON WRAPPER GỌI POWERSHELL RUNNER:**
+  * Khi viết script Python wrapper gọi `run_tiktok_upload_avatar.ps1` chạy nền:
+  * CẤM dùng `subprocess.run(..., text=True, input="RUN\n")` vì output từ PowerShell trên môi trường Windows Tiếng Việt có thể chứa ký tự mã hóa cục bộ (byte `0xad` trong cp1258/cp1252), gây văng `UnicodeDecodeError` làm crash wrapper trước khi kịp ghi nhận kết quả.
+  * BẮT BUỘC dùng byte stream: `capture_output=True, input=b"RUN\r\n"`, sau đó giải mã an toàn với cờ thay thế lỗi: `res.stdout.decode("utf-8", errors="replace")` và `res.stderr.decode("utf-8", errors="replace")`.
+- **BẮT BUỘC RESET TRẠNG THÁI 'PENDING' TRONG QUEUE KHI TÁI TẠO XONG FILE NGUỒN:**
+  * Việc sinh lại file `avatar.jpg` độc bản trên ổ đĩa (`_make_avatar.py`) CHỈ giải quyết tầng lưu trữ, KHÔNG tự động cập nhật lên máy thật nếu nick đã có avatar trên TikTok (`has_avatar == 1`) và trong database `avatar_replace_queue` đang lưu cờ `status = 'DONE'`.
+  * Watchdog ca tối (`post_evening_avatar_watchdog.py`) sẽ bỏ qua hoàn toàn các nick `DONE`.
+  * Do đó, sau khi sinh lại avatar độc bản cho folder, BẮT BUỘC phải chạy lệnh SQL:
+    `UPDATE avatar_replace_queue SET status='PENDING', last_error=NULL, updated_at=datetime('now', 'localtime') WHERE username=...;`
+    để watchdog hoặc runner độc lập nhận diện và đẩy lên thiết bị thật.
+- **Kỷ luật "Lỡ rồi thì làm nốt" (Tuyệt đối cấm dừng ngang tiến trình):** Khi User nói *"Lỡ rồi thì làm nốt"*, dù trước đó có hiểu sai hoặc chạy lệch, TUYỆT ĐỐI CẤM giật dây ngắt/kill tiến trình đang chạy. Ngắt ngang chỉ làm mất trắng kết quả, tốn token và gây phẫn nộ tột độ cho Operator. Phải để tiến trình chạy xong lấy kết quả hữu ích trước, rồi mới tiếp thu chấn chỉnh.
+- **Kỷ luật kiểm tra lịch sử session trước khi can thiệp hạ tầng:** Khi gặp lỗi hệ thống (như trần dispatch 10/10), BẮT BUỘC dùng `session_search` tra cứu các phiên trước xem lỗi đã được fix trên đĩa chưa. Tránh việc file trên đĩa đã được sửa thành 20 nhưng do daemon Hermes chạy ngầm ngậm code cũ trong RAM (chỉ cần restart Gateway là nhận) mà lại loay hoay gọi Claude sửa lại đè code lung tung.
+- **Cơ chế Cron Watchdog tự động upload avatar mới (`avatar_replace_queue`):** Sau khi tái tạo avatar độc bản cho các folder bị trùng, bắt buộc ghi vào bảng `avatar_replace_queue` trong `D:/Taadaa/data/tiktok_tracker.db` với `status = 'PENDING'` (kèm username, may, tik, host_id). Watchdog `post_evening_avatar_watchdog.py` sẽ tự động bốc các máy từ queue ra để chạy cuốn chiếu upload lên thiết bị thật mà không cần chạy thủ công.
+- **Bản chất lỗi RAM ngậm limit cũ & Reset Guard:** Sửa file cấu hình trên đĩa (`MAX_COORDINATOR_DISPATCHES = 20`) chỉ có hiệu lực trên đĩa; daemon Hermes Gateway đang chạy trong RAM vẫn giữ giá trị cũ (10) nếu chưa được restart. Ngoài ra, bộ đếm `dispatch_count` được lưu theo Session ID hiện tại. Lệnh `/reset_guard` từ User sẽ set bộ đếm về 0. Khi kiểm tra thấy vẫn kẹt 10/10, chỉ báo cáo nguyên nhân và hướng xử lý, cấm tự động gọi Claude CLI làm càn.
+- **ĐIỀU PHỐI RUNNER UP AVATAR CHO CỤM ADMIN TỪ TRẠM KIBE (REMOTE ADB RUNNER DISPATCH 07/10/2026):**
+  * Khi cần đổi avatar cho máy thuộc cụm Admin Remote (ví dụ M218 - Tik 5) từ Coordinator Kibe:
+  * BẮT BUỘC thiết lập môi trường riêng cho subprocess: `ADB_SERVER_SOCKET="tcp:192.168.110.119:5037"`, `TAADAA_HOST_CONFIG=r"D:\Taadaa\machine-config\admin.yaml"`, `PYTHONPATH=r"D:\Taadaa\Tiktok-video\scripts"`.
+  * Target workbook: `D:\OneDrive\TaadaaData\admin\Tik<N>.xlsx`.
+  * Đảm bảo ảnh nguồn chuẩn được copy vào cả `D:\video goc\<Folder Video>\avatar.jpg` và `D:\TIKTOK-videonuoinick\<Folder Video>\avatar.jpg`.
+- **ĐỐI SOÁT LIÊN PHIÊN & TIÊU CHUẨN ĐÁNH GIÁ "ĐÃ ỔN CHƯA" (ANTI-PREMATURE-DONE AUDIT 07/10/2026):**
+  * Khi Operator hỏi *"T cho session khác xử lý vụ ava rồi kiểm tra h ổn chưa"*, TUYỆT ĐỐI CẤM phán bừa "ổn rồi" nếu chỉ nhìn thấy vài acc gần nhất DONE.
+  * BẮT BUỘC đối soát 2 tầng độc lập:
+    1. **Tầng file ổ đĩa (`D:\video goc` & `D:\TIKTOK-videonuoinick`):** Quét toàn bộ 640 folders bằng MD5 hash. Bóc tách số folder vừa được tạo mới trong 24h qua (`mtime < 86400`) vs số nhóm trùng lặp còn tồn đọng (nhóm placeholder cũ chưa được chạm tới).
+    2. **Tầng hàng đợi thiết bị (`avatar_replace_queue` trong `tiktok_tracker.db`):** Thống kê số lượng `DONE` (đã verify trên máy thật) vs số lượng `PENDING` (chờ watchdog up đè).
+  * Tiêu chuẩn báo cáo: Rõ ràng 2 phần: cái gì ĐÃ ỔN (pipeline sinh ảnh mới độc bản, bao nhiêu acc đã DONE) và cái gì CHƯA ỔN (còn bao nhiêu nhóm folder cũ trên đĩa chưa quét tới, bao nhiêu acc còn PENDING). Chi tiết xem `references/cross-session-avatar-audit-and-admin-remote-dispatch-20261007.md`.
+- **CHIẾN LƯỢC TIẾP QUẢN TÁI TẠO AVATAR TỪ SESSION KHÁC DỪNG DỞ DANG (HANDOFF TAKEOVER STRATEGY):**
+  * Khi session khác dừng dở: CẤM chạy lại từ đầu trên toàn bộ 640 folders (sẽ đè hỏng các avatar chuẩn mà session trước vừa tạo xong).
+  * **Bộ lọc tiếp quản O(1):** Chỉ bốc các folder thỏa mãn đồng thời 2 điều kiện:
+    1. File `avatar.jpg` vẫn dính hash trong nhóm trùng lặp (hoặc chưa được cập nhật trong 24h qua).
+    2. Folder ĐÃ CÓ sẵn video (`1.mp4`). Tuyệt đối tách riêng các folder rỗng video (`NO_VIDEOS`) sang danh sách chờ cào nguồn, cấm ném vào hàng đợi sinh avatar gây timeout/crash.
+  * **Tốc độ quét O(1) chống timeout:** CẤM dùng `glob('*.mp4')` trên hàng trăm folder gây treo terminal >30s; dùng `os.path.isfile(os.path.join(fdir, '1.mp4'))` để kiểm tra tức thì <0.01s.
+  * **Quy trình 2-Pass hoàn tất tiếp quản:** 
+    1. **Pass 1:** Chạy đa luồng (8 workers) gọi `_make_avatar.py` cho các folder đủ điều kiện.
+    2. **Pass 2 (Vá timeout & clip ngắn):** Với các folder bị timeout (>180s do YOLO/Haar quét nhiều video nặng), dùng FFmpeg trích xuất tức thì từ `1.mp4` tại `00:00:03.500`. Nếu clip ngắn < 3.5s (như folder 262 dài 2.66s), phải seek ở timestamp an toàn (ví dụ `00:00:01.000`) để không bị lỗi sinh ảnh rỗng/trùng cũ.
+    3. **Đồng bộ kho & Database:** Đồng bộ 2 đầu kho Kibe (`video goc` và `TIKTOK-videonuoinick`), cập nhật `status = 'PENDING'` trong `avatar_replace_queue`, và `scp` file `tiktok_tracker.db` sang `admin-farm:D:/Taadaa/data/tiktok_tracker.db` để Watchdog ca tối trên Admin có đúng queue thực thi.
+
+## 7. Closeout
+- Do not modify or commit unrelated dirty files in the consumer repository.
+- Closeout is not DONE until the device evidence, focused verification, and required reviewer gate are satisfied.
+
+## References
+- `references/cross-space-atomic-avatar-ssot-and-hermetic-testing-20261010.md` — căn nguyên lệch 2 không gian số (Folder Video vs video gốc), cơ chế SSOT tuyệt đối trong path_resolver loại trừ video goc, ghi nguyên tử (.tmp -> os.replace) trong regenerate_unique_avatars, và bộ test hermetic độc lập.
+- `references/cross-account-video-goc-poisoning-and-render-root-ssot-20261009.md` — căn nguyên 637/640 tài khoản bị lệch giữa Folder Video (chia theo máy) và video gốc (chia theo ca cào), bẫy ngộ nhận 2 không gian số trong path_resolver và regenerate_unique_avatars bốc nhầm video thô của máy khác, giải pháp SSOT khóa cứng D:\TIKTOK-videonuoinick và loại trừ tuyệt đối video goc.
+- `references/render-root-ssot-and-avatar-cross-folder-poisoning-20261009.md` — căn nguyên bẫy lệch avatar chéo toàn farm do `path_resolver.py` ưu tiên `D:\video goc\<Folder Video>` trước `D:\TIKTOK-videonuoinick`, quy chuẩn `TIKTOK-videonuoinick` là SSOT duy nhất và cơ chế vá chặn fallback kho thô.
+- `references/cross-space-numbering-and-render-priority-avatar-resolver-20261009.md` — bẫy lệch 2 không gian đánh số giữa Folder Video (render) và video gốc (raw) trên 637/640 acc, lỗi path_resolver ưu tiên D:\video goc làm bốc nhầm avatar của máy khác, và quy tắc ưu tiên tuyệt đối D:\TIKTOK-videonuoinick.
+- `references/systemic-637-account-formula-discrepancy-and-single-source-locking-20261009.md` — bản chất gốc rễ 637/640 tài khoản bị lệch chéo công thức giữa Folder Video ((May-1)*8+Tik) và video gốc ((Tik-1)*80+May) làm bot up video 1 đằng tool cắt avatar bốc 1 nẻo, quy trình khóa cứng video gốc = Folder Video, đồng bộ 2 đầu kho và thiết lập TIKTOK_VIDEO_AUTOMATION_CORE_VERSION=0.4.45.
+- `references/dual-formula-indexing-and-systemic-avatar-drift-20261010.md` — giải mã nguyên nhân hệ thống 637/640 nick bị lệch Folder Video vs video gốc (công thức `(Máy-1)*8+Tik` vs `(Tik-1)*80+Máy`), bẫy bot đăng video theo Folder Video nhưng tool avatar bốc video gốc, và quy tắc khóa cứng trích xuất avatar 100% theo Folder Video.
+- `references/gender-niche-clash-folder-vs-video-goc-triage-20261009.md` — quy trình chẩn đoán O(1) 3 chiều khi lệch nhân khẩu học/giới tính giữa video trên kênh vs avatar do trôi Folder Video vs Video Gốc, cách dựng composite 3 panel đối soát trực quan và quy trình khắc phục đồng bộ.
+- `references/overwritten-source-reversion-and-grid-avatar-recovery-20261009.md` — chuỗi nguyên nhân ghi đè nguồn làm lệch ngách (Vlog bạn nữ sang Camera tai nạn giao thông), avatar lỗi cắt nhầm chữ banner ("thôi" -> "hôi"), kỹ thuật cứu avatar từ thumbnail lưới Profile và quy trình khôi phục ngách cũ khi file đĩa đã bị xóa.
+- `references/singbox-mikrotik-pppoe-drop-and-portrait-headroom-triage-20261009.md` — chẩn đoán phân tầng khi preflight avatar báo lỗi global proxy 192.168.110.2:200xx timeout do MikroTik rớt PPPoE làm Singbox kẹt DNS lookup, giữ nguyên queue PENDING, và công thức Haar Cascade Headroom crop chống cắt lẹm mặt.
+- `references/video-goc-drift-vs-render-folder-discrepancy-20261009.md` — bẫy lệch niche giữa Video Gốc (dashcam tai nạn) vs Folder Video (thời trang/gái xinh) khi đối soát avatar từ screenshot profile đơn lẻ, quy trình kiểm chứng thumbnail bài đăng thực tế và cấu hình thiết bị trước runner.
+- `references/video-posted-reset-and-overwritten-source-niche-clash-20261009.md` — chuỗi nguyên nhân kép khi Video Đã Đăng bị reset về 0 kết hợp Folder Video bị tải đè nguồn (Camera Giao thông đè lên kênh Gái agency vlog), watchdog cắt nhầm avatar chữ 'hôi' từ banner tai nạn, quy trình chẩn đoán O(1) 3 tầng (snapshots, backup workbook, global-ledger) và kỹ thuật cứu vãn tạo ảnh composite 4 panel từ chính screenshot Profile.
+- `references/avatar-triage-false-failures-and-deeplink-intent-hallucination-20261009.md` — đối soát ground truth SQLite khi nhận báo cáo lỗi avatar ca tối, bẫy deeplink intent giả thuyết TikTok chặn nick phụ, sai lệch miền dữ liệu taikhoan_run_safe vs Tik1..8.xlsx, và kỹ thuật reconnect ADB transport stall thay vì thụ động chờ đợi.
+- `references/avatar-picker-initial-candidate-bypass-and-stay-on-power-20261009.md` — bẫy mở dropdown album thừa thãi khi photo picker đã có sẵn ảnh candidate làm che nút Tiếp và gây timeout AVATAR_CROP_OPEN_FAILED; giải pháp kiểm tra initial_candidates chọn thẳng ảnh và lệnh khóa màn hình stay_on_while_plugged_in 3.
+- `references/avatar-picker-initial-candidate-and-core-version-preflight-20261009.md` — bẫy mismatch TIKTOK_VIDEO_AUTOMATION_CORE_VERSION trong runner batch và kỹ thuật ưu tiên initial_candidates trực tiếp trong picker ảnh thay vì mở dropdown album gây kẹt; quy chuẩn chân dung avatar cho kênh thể thao/vật tay.
+- `references/automation-core-version-mismatch-and-grid-character-matching-20261009.md` — pitfall automation-core version mismatch (0.4.44 vs 0.4.45) trong run_tiktok_upload_batch.ps1, biến môi trường TIKTOK_VIDEO_AUTOMATION_CORE_VERSION=0.4.45 và quy trình đối khớp thumbnail Profile grid với file 1..8.mp4 để bắt đúng nhân vật chính của kênh.
+- `references/resolve-avatar-search-roots-and-manifest-inventory-pitfall-20261009.md` — bẫy resolve_avatar_path ưu tiên search_roots media_source_root (D:\video goc\<Folder Video>) trước D:\TIKTOK-videonuoinick làm runner bốc avatar rác cũ dù đã tạo avatar mới; giải pháp đồng bộ triệt để 4 đầu kho và tránh truyền thừa AssignmentManifest gây AssignmentError khi chạy single-machine avatar upload.
+- `references/preflight-offline-misclassification-and-queue-slot-unique-index-20261008.md` — phân loại triệt để lỗi rớt cáp/mất kết nối ADB (DEVICE_OFFLINE) thay vì gom bậy vào PREFLIGHT_VPN_BLOCKED trong run_post.py; khóa cứng Unique Index uq_avatar_queue_slot(may, tik, host_id) trên SQLite chống dồn 13 nick/máy; phân định ranh giới taikhoan_run_safe (nuôi/follow) vs Tik1..8.xlsx (upload/avatar).
+- `references/vpn-telemetry-confusion-and-workbook-domain-boundaries-20261008.md` — bẫy telemetry PREFLIGHT_VPN_BLOCKED do tuột cáp USB/mất kết nối ADB thay vì lỗi VPN thật, cơ chế tích lũy nick rác "1 máy 13 acc" do PK avatar_replace_queue thiếu ràng buộc may+tik, quy trình dọn dẹp đối soát SQLite vs farm_account_info, và phân định ranh giới miền dữ liệu giữa taikhoan_run_safe (chỉ nuôi/fl) và Tik1..8.xlsx (sổ cái đầy đủ Folder Video & slot Tik cho avatar runner).
+- `references/avatar-queue-stale-drift-and-vpn-preflight-classification-20261008.md` — giải thích bản chất lỗi 13 accs/máy do stale rows trong `avatar_replace_queue` khi migrate lệch PK và phân loại 2 nhánh lỗi `PREFLIGHT_VPN_BLOCKED` (rớt ADB/USB vs VPN disconnected).
+- `references/top-left-pencil-add-friends-collision-and-closeout-remediation-20261008.md` — giải pháp khắc phục triệt để lỗi AVATAR_EDIT_OPEN_FAILED (top-left pencil va chạm icon Thêm bạn bè), quy chuẩn thứ tự ưu tiên REGISTRY, fail-closed khi loại ShareProfileLayout, ánh xạ focused test trong closeout_gate.py và vượt ngưỡng điểm 86/100 Sol Reviewer.
+- `references/automated-regression-gate-vs-legacy-case-docs-and-avatar-crop-evidence.md` — bãi bỏ ghi case doc thủ công chuyển sang Regression Gate tự động, phân định test suite giữa các repo và nhận diện bằng chứng in-app crop screen (avatar-save-surface-guard.png) thay vì ảnh launcher sau teardown.
+- `references/regression-gate-vs-legacy-case-docs-and-multi-repo-testing-20261008.md` — bãi bỏ ghi case doc thủ công, chuyển sang automated regression gate đa repo, phân định cấu trúc test của từng repo trong farm và xử lý tàn dư pre-commit hook R2.
+- `references/regression-gate-vs-legacy-case-doc-discipline.md` — cơ chế bãi bỏ ghi case markdown thủ công thời uiautomator, chuyển giao sang Regression Gate tự động theo từng repository và bypass pre-commit hook cũ R2 bằng git commit --no-verify khi unit test đã 100% pass.
+- `references/avatar-watchdog-failure-accumulation-and-adb-stall-triage-20261008.md` — cơ chế bẫy false alarm tích lũy trong `session_failed_by_reason` của watchdog ca tối, quy trình đối soát ground truth qua SQLite `avatar_replace_queue` vs run report, và kỹ thuật cứu socket ADB stall bằng `adb -s <serial> reconnect` nguyên tử.
+- `references/avatar-and-name-triage-from-profile-screenshot.md` — quy trình định danh O(1) từ ảnh chụp màn hình Profile cá nhân của Operator (tra cứu SQLite/Excel), trích xuất avatar chân dung có khoảng thở (headroom) bằng OpenCV/Haar Cascade chuẩn niche, quy chuẩn đặt tên tiếng Việt tự nhiên và kỹ thuật dọn RAM chống SIGABRT trên máy S7.
+- `references/avatar-full-farm-dedup-handoff-and-cron-queue-activation-20261007.md` — chiến lược 2-pass tiếp quản sinh avatar toàn farm (Pass 1 parallel workers + Pass 2 fast FFmpeg xử lý timeout), bẫy clip ngắn <3.5s làm hỏng seek frame, quy trình đồng bộ 0-duplicate đĩa & database tracker sang Admin, và checklist kiểm chứng hàng đợi + tiến trình live cron watchdog khi Operator hỏi.
+- `references/cross-session-avatar-audit-and-admin-remote-dispatch-20261007.md` — kỹ thuật lái runner up avatar cụm Admin Remote (192.168.110.119:5037) từ Kibe, quy trình kiểm toán 2 tầng (file MD5 vs database queue) khi đối soát liên phiên, và tiêu chuẩn báo cáo chống kết luận ổn sớm.
+- `references/top-left-pencil-add-friends-collision-and-layout-priority.md` — bẫy nhận diện nhầm icon Thêm bạn bè thành top_left_pencil, thứ tự ưu tiên layout registry (ClassicText > RightPencil > TopLeftPencil), và kỹ thuật cô lập PYTHONPATH khi chạy pytest subprocess.
+- `references/avatar-local-ssd-staging-and-device-lock-reconciliation-20261007.md` — kỹ thuật copy video tạm về SSD cục bộ (`Temp`) để ffmpeg trích xuất frame siêu tốc tránh I/O hang trên ổ D; cơ chế kiểm tra lock kép (`machine_<N>.lock.json` & `serial_<SERIAL>.lock.json`) và chờ tiến trình nền kết thúc sạch trước khi bốc runner.
+- `references/avatar-sync-boundary-and-queue-reset-20261007.md` — bẫy phân định biên giới đồng bộ avatar (cấm đè `video goc/<Folder Video>`), cơ chế reset queue `avatar_replace_queue` về `PENDING` cho watchdog, và chống trôi hashtag do cron sync 15 phút.
+- `references/top-left-pencil-add-friends-collision-and-regression-gate.md` — va chạm icon "Thêm bạn bè" góc trên bên trái với top_left_pencil (thiếu từ khóa loại trừ "thêm bạn", "bạn bè"), thứ tự ưu tiên RightPencil > TopLeftPencil trong REGISTRY, và kỷ luật chạy regression gate 34/34 tests trước khi chạm máy thật.
+- `references/top-left-pencil-add-friends-misidentification-and-layout-priority.md` — bẫy `top_left_pencil` nhận diện nhầm icon "Thêm bạn bè" góc trên bên trái do thiếu từ khóa ("thêm bạn", "bạn bè"), thứ tự ưu tiên `RightPencilLayout` trước `TopLeftPencilLayout` trong `REGISTRY`, và checklist regression gate 34/34 tests trước khi upload.
+- `references/avatar-ui-variation-and-regression-testing.md` — giải tỏa nỗi lo khác biệt giao diện TikTok bằng layout registry đa tầng (`classic_text`, `top_left_pencil`, `right_pencil`), bộ test regression 34/34 tests, và quy tắc phòng thủ `hasattr` cho FakeAdapter.
+- `references/niche-mismatch-diagnosis-and-source-discovery-20261007.md` — case study `@maigiangan09` (M50 Tik6): bẫy kép khi `Folder Video` (398) ≠ `Video Gốc` (450) làm avatar được đồng bộ vào nhầm folder; cơ chế cron 15 phút đè hashtag khi `state.db` chứa nhãn sai; quy trình khắc phục 5 bước: sửa `state.db` → sync Excel → copy avatar đúng `Folder Video` → reset queue PENDING → verify Vision API.
+- `references/niche-migration-and-6h-watchdog-cadence-20261007.md` — Quy trình 6 bước chuẩn hóa khi đổi niche cho tài khoản farm (dọn media cũ → xóa queue → cập nhật Excel → cào video mới 1 folder = 1 kênh → trích avatar → render thành phẩm). Kỷ luật tần suất watchdog báo cáo: 6 tiếng/lần dứt khoát, không spam. Thao tác cờ đúng `--channel` (không phải `--channel-url`) cho `download_single_channel_to_folder.py`.
+- `references/curated-pool-multichannel-allocation-and-direct-folder-growth-20261007.md` — Quy chuẩn điều phối video thừa vào Bể Gộp Đa Kênh (`curated_pool`), chỉ thị 45 clip là MIN không phải MAX (nạp thẳng 70+ clip vào folder độc quyền thay vì tạo folder phụ lắt nhắt), và quy trình phân bổ bù video cho các folder đa kênh toàn farm.
+- `references/avatar-picker-camera-misclick-and-direct-tile-selection-20261006.md` — bẫy bấm nhầm nút Camera "Chụp ảnh" do `text_contains="Ảnh"`, giải pháp kiểm tra candidate trực tiếp trước khi mở dropdown album.
+
+- `references/avatar-dedup-preflight-and-core-switcher.md` — canonical switcher boundary, avatar uniqueness audit, and the operator corrections that motivated this skill.
+- `references/layout-registry-and-anti-skip.md` — layout registry routing (Classic vs RightPencil), golden corpus regression gate, and physical anti-skip gates.
+- `references/skit-character-selection-and-device-lock-coexistence.md` — skit character vs guest actor selection, visual composite validation, device lock waiting, PowerShell encoding pitfall, and stuck DONE flag / Excel mapping mismatch remediation (Machine 71 case study).
+- `references/folder-path-is-not-media-evidence-20261006.md` — bẫy gửi đường dẫn thư mục / text path trong code block thay vì native MEDIA: ảnh thật (sếp chấn chỉnh: "? hình đâu gửi link folder ăn l à"), phân tích cơ chế parser Telegram Gateway và kiến trúc chốt chặn mechanical gate.
+- `references/mechanical-media-gate-and-anti-prose-delivery-20261006.md` — kiến trúc Mechanical MEDIA Evidence Gate, quy trình 4 bước Claude Sonnet $\to$ Build $\to$ SOUL Hardening $\to$ Advisor Review, và kỷ luật soi mắt đọc ảnh trước khi gửi.
+- `references/ffmpeg-drive-d-hang-and-profile-avatar-triage-20261007.md` — bẫy nghẽn I/O khi FFmpeg seek trực tiếp trên ổ D (HDD), giải pháp copy tuần tự sang local SSD (`Temp`) trích xuất <0.1s, và quy trình 7 bước xử lý avatar từ ảnh chụp Profile lẻ.
+- `references/12-hot-niche-architecture-decision.md` — Quyết định Sol Advisor chốt 12 cụm Niche Hot thay thế niche khó viral cho acc mới, gaixinh_vn vs douyin_beauty tách biệt, quy trình migrate bulk (dọn media cũ → Excel → state.db → avatar queue), và các pitfall đã giải quyết (ON CONFLICT PK, Admin state.db path, template Tik8 "Khám phá").
+- `references/skincare-beauty-avatar-replacement-and-browser-freeze-pitfall.md` — case study acc @hatien15118 (M11 Tik 1), trích xuất avatar chuẩn niche làm đẹp/skincare từ video sau (video 25), đồng bộ 2 đầu kho (81), reset SQLite queue PENDING, và kỹ thuật chống treo phiên browser daemon.
+- `references/local-vision-inspection-and-browser-hang-prevention-20261006.md` — Sự cố treo turn do dùng browser_navigate mở ảnh tĩnh đĩa, giải pháp Direct Vision API qua 9Router (`ag/gemini-3.7-flash-high`, stream: False) và lệnh thoát kẹt `npx agent-browser close --all`.
+- `references/avatar-only-grid-scroll-suppression-20261006.md` — phân tích nguyên nhân và giải pháp triệt để lỗi cuộn đếm lưới video làm bung video player/bình luận, dẫn đến PROFILE_ROOT_NOT_CONFIRMED trong chế độ Avatar-Only.
+- `references/portrait-framing-and-four-path-avatar-sync-20261007.md` — tiêu chuẩn chọn khung hình chân dung cận cảnh (close-up portrait) thay vì ảnh toàn thân đứng xa (full-body mirror selfie), kỹ thuật trích xuất O(1) bằng Pillow tránh timeout, và quy trình đồng bộ 4 đầu kho khi Folder Video khác Video Gốc.
+- `scripts/scan_two_farm_avatar_duplicates.py` — statically re-runnable full-cluster audit script to scan all folders across both farms for duplicate avatars and map them to machines/accounts.

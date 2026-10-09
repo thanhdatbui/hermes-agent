@@ -98,6 +98,17 @@ Profiles are isolated. A successful update in the default profile does not updat
 - Do not copy `.env`, auth files, session databases, bundled manifests, usage/curator state, caches, or lock files into the shared skill tree.
 - Do not forget `/reset` or a fresh session; prompt caching can preserve old skill instructions.
 - Do not claim a hash match without actually comparing both files.
+- **Windows MSYS Bash `git -C` path pitfall**: Running `git -C "/d/Taadaa/..."` fails with `fatal: cannot change to ...: No such file or directory` on Windows git.exe. Always use `(cd "$dir" && git ...)` or Windows path syntax `git -C "D:/Taadaa/..."`.
+- **Multi-remote Fork vs Upstream pitfall**: In repos with both `origin` (upstream) and `fork` (farm remote, e.g. `D:/Taadaa/Hermes`), never run bare `git pull` (refuses to merge unrelated histories). Always explicitly target `git pull fork main`.
+- **Hardcoded Username Path in Shell Hooks**: Mọi file hook Python/Shell dùng chung giữa các máy (Kibe ↔ Admin) TUYỆT ĐỐI KHÔNG hardcode username (ví dụ: `C:\Users\Kibe\...`). Bắt buộc phải dùng `Path.home()` hoặc `Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local"))` để tương thích khi chạy trên máy Admin (`C:\Users\Admin`).
+- **Shell Hooks Consent Allowlist (`shell-hooks-allowlist.json`)**: Khi khai báo hook mới trong `config.yaml`, Hermes kiểm tra phê duyệt tại `shell-hooks-allowlist.json` (trong `%LOCALAPPDATA%\hermes\` hoặc `~/.hermes\`). Khi đồng bộ sang máy khác, BẮT BUỘC phải đồng bộ cả file `shell-hooks-allowlist.json` vào cả 2 vị trí runtime để máy đích không bị chặn xác thực hook khi chạy non-interactive/gateway.
+- **Dual-Target Hooks Deployment trên Machine Đích**: `config.yaml` thường trỏ đường dẫn hook tới `python D:/Taadaa/tools/hooks/<hook>.py`. Do đó script đồng bộ trên máy đích (`apply_sync_admin.py`) phải sao chép hook vào CẢ HAI nơi: `%LOCALAPPDATA%\hermes\hooks\` VÀ `D:\Taadaa\tools\hooks\`.
+- **CRITICAL ANTI-PATTERN — CẤM SCRIPT COPY TỰ ĐỘNG 1 CHIỀU LÊN ONEDRIVE CHUNG:** Tuyệt đối CẤM viết script Python ngầm (`cron`, watchdog) dùng `shutil.copy` hay `shutil.copy2` tự động đẩy mã nguồn từ máy local (`D:/Taadaa/tools`) đè lên thư mục chia sẻ OneDrive (`Taadaa_Sync_Shared`). Hành vi này sẽ GHI ĐÈ NÁT TOÀN BỘ code mới mà máy Admin sửa trên OneDrive bằng code cũ của Kibe. Thư mục code dùng chung phải dùng NTFS Junction trực tiếp (`mklink /J`) hoặc quản lý qua Git repo chung.
+- **CRITICAL PITFALL — SỬA CONFIG/HOOK CỤC BỘ BỎ QUÊN 2 KÊNH PHÂN PHỐI SANG ADMIN:** Khi tắt/sửa hook Hermes hoặc cập nhật `config.yaml` trên Kibe (`$LOCALAPPDATA\hermes`), BẮT BUỘC phải cập nhật đồng thời cả 2 kênh phân phối dùng chung:
+  1. Git Deploy template: `D:\Taadaa\Hermes\deploy\hermes-home\` (cho `sync-from-kibe.ps1` kéo qua `fork main`).
+  2. OneDrive Shared Sync: `D:\OneDrive\Taadaa_Sync_Shared\hermes-sync\` (cho `apply_sync_admin.py` đồng bộ trực tiếp).
+  Nếu chỉ fix cục bộ trên runtime Kibe, máy Admin khi chạy sync sẽ bị ghi đè lại config/hook cũ (ví dụ: Deadman switch `guard_progress_supervisor.py` không có matcher chặn đứng toàn bộ tool call của Coordinator khi đang inspect O(1)).
+- **INVARIANT HOOK SAFETY — CẤM PRE-TOOL HOOK KHÔNG MATCHER CHẶN ĐỨNG COORDINATOR:** Mọi hook an toàn / supervisor đặt tại `pre_tool_call` BẮT BUỘC phải có `matcher` cụ thể hoặc cơ chế bypass cho Coordinator. Tuyệt đối CẤM cài đặt deadman switch đếm tool call mà không tính tới các phiên Coordinator chỉ đọc log / inspect không sửa file, tránh làm tê liệt toàn bộ hệ thống (`delegate_task`, `terminal`, `clarify`).
 
 ## Verification
 
@@ -116,3 +127,6 @@ A synchronization is complete only when:
 ## Support Files
 
 - `references/cross-machine-skill-sync.md` — concise evidence checklist and Windows/Linux/macOS command patterns.
+- `references/cross-machine-hook-config-distribution-and-deadman-prevention-20260919.md` — Quy chuẩn đồng bộ 4 vị trí (Quad-Location Parity) cho Hook/Config giữa Kibe và Admin, phân tích sự cố Deadman Lockout và quy tắc thiết kế hook an toàn chống tự sát session.
+- `references/two-machine-tool-sync-architecture-git-vs-onedrive-20260917.md` — Kiến trúc đồng bộ code hai chiều Kibe ↔ Admin: Phân tích bẫy mất mã nguồn âm thầm khi dùng script copy 1 chiều từ máy con lên OneDrive chung; bẫy file lock .pyc của OneDrive và giải pháp chuyển đổi toàn diện sang Git repository độc lập (GitHub Private).
+- `references/onedrive-tools-sync-safety-and-anti-overwrite-20260917.md` — Quy chuẩn An toàn Đồng bộ Hai Chiều & Cấm Copy Tự Động Ghi Đè (OneDrive vs Local Tools): Phân tích bẫy mất mã nguồn âm thầm khi dùng script copy 1 chiều từ máy con lên OneDrive chung; nguyên tắc SSOT OneDrive Junction.

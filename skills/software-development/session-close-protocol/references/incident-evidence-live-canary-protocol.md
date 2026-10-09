@@ -10,6 +10,7 @@ Một lần Live Canary hợp lệ khi fix popup/lỗi runtime KHÔNG ĐƯỢC d
 1. **Pre-dismiss check:** Dump XML / screencap để đối soát detector nhận diện đúng popup và đúng nút hành động (ví dụ `dismiss_deny_button` trỏ vào `"Không cho phép"`).
 2. **Runner Execution:** Chạy runner chế độ test có giới hạn:
    - Với feed session: Chạy `feed-swipe-smoke` (hoặc `feed-session-smoke`) với `--max-swipes 2` (hoặc `--recovery-test-swipes 2`), `--allow-feed-swipe`, `--allow-navigation-only`, `--allow-benign-popup-dismiss`, `--cleanup-on-stop`.
+     * *Lưu ý (Case 131):* Dải `-RecoveryTestSwipes` hỗ trợ `1..4`. Khi truyền `-RecoveryTestSwipes 2`, launcher `run-feed-session.ps1` tự động ngẫu nhiên hóa 2 hoặc 3 swipes (`Get-Random -Minimum 2 -Maximum 4`) để tăng entropy và chống fingerprint bot. Không ép cố định 2 swipes trên toàn bộ các lần canary.
    - Đảm bảo runner tự động xử lý popup, lướt đủ số lượt swipe thử nghiệm, và tự động gọi cleanup đưa màn hình về Home.
 3. **Post-dismiss & Unlock Verification:**
    - Hậu kiểm screencap xác nhận popup đã biến mất, app đã về Home / feed sạch.

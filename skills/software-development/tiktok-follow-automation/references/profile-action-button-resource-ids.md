@@ -5,6 +5,8 @@ When classifying profile relationship status (`classify_button` in `verify_follo
 - `id/fds` (Legacy / Machine 1 variant)
 - `id/ff8` (Machine 2 variant)
 - `id/fij` (Machine 6 / TikTok 46.x multi-machine variant)
+- `id/fi6` (Machine 16 variant)
+- `id/flo` (Machine 50 / TikTok 46.x variant)
 
 These buttons represent the actionable state on a target profile:
 - **Unfollowed**: `Follow` / `Follow lại` / `Theo dõi`
@@ -19,6 +21,9 @@ Known stat counter IDs:
 - `id/svs`
 - `id/suu`
 - `id/sut`
+- `id/svu` (Machine 59 variant)
+- `id/t1i` (Machine 50 count variant)
+- `id/t1h` (Machine 50 stat label variant)
 - `id/text1` (Header tab bar in relation view)
 
 ## 3. Profile Header Handle Resource IDs (`@uid` Variations)

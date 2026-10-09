@@ -2,7 +2,7 @@
 
 name: automation-core-development
 
-description: "Develop the shared automation-core control plane (D:\\Taadaa\\automation-core) itself — plan-phase builds touching recovery.py / device_lock.py / cli.py / results.py / global_recovery.py / recovery_runner.py / scheduler. Covers dedicated worktree+branch rules, PYTHONPATH=src testing against the WORKTREE (static venv copy shadows src), full-suite collection blocker, CRLF-safe editing (patch-tool fuzzy matcher mangling), recovery-contract invariants incl. FAILED_LOCKED, the Phase 3 user-explicit lock open (cli.py lock list/inspect/open), and RED/GREEN verification evidence."
+description: "Develop the shared automation-core control plane (D:\\Taadaa\\automation-core) itself — plan-phase builds touching recovery/device_lock/batch_aggregator/scheduler. Covers worktree rules, PYTHONPATH=src testing (see references/batch-aggregator-session-lost-vs-challenge.md & references/stale-site-packages-shadowing-reconciliation.md; references/device-lock-lease-is-still-held-and-reaper-mutex.md, references/wait-for-device-lock-and-operator-lock.md, references/pinned-user-lock-and-device-context.md, references/adb-remote-host-routing-and-port-invariants.md, references/adb-remote-host-persistent-ui-invariants.md, references/account-switcher-swipe-tuning-and-mock-tests.md), full-suite collection blocker, CRLF-safe editing (patch-tool fuzzy matcher mangling), recovery-contract invariants incl. FAILED_LOCKED, the Phase 3 user-explicit lock open (cli.py lock list/inspect/open), and RED/GREEN verification evidence."
 
 version: 1.0.0
 
@@ -23,6 +23,14 @@ metadata:
 
 
 # automation-core-development
+
+> References quan trọng:
+> - `references/startup-monkey-launch-resilience.md`: Cơ chế launch app monkey an toàn (pre-check foreground, timeout/exception recovery, retry guard) & cạm bẫy mock `focus_reader` trong unit test.
+> - `references/device-lock-finish-ambient-exception-capture.md` — Bẫy `sys.exc_info()[1] is None` dead code trong khối `except` của `finish()`, nuốt lỗi release; giải pháp chụp `ambient_exc` trước `try` block (Claude Opus High approved 07/09/2026).
+> - `references/stale-site-packages-shadowing-reconciliation.md` — Thư mục tĩnh site-packages đè src khi dùng pip editable.
+- `references/device-lock-lease-is-still-held-and-reaper-mutex.md` — `is_still_held()` & `.reaper.lock` mutex.
+- `references/device-lock-release-on-terminal-default.md` — `release_on_terminal` default & `AUTOMATION_CORE_RELEASE_ON_FAIL`.
+- `references/adb-monkey-launch-timeout-and-foreground-recovery.md` — ADB monkey launch timeout resilience, unhandled ADBError crash avoidance, and foreground recovery without breaking downstream test mocks.
 
 
 ## 🛑 STOP GATE (bắt buộc — chi tiết: skill taadaa-farm-ops-rules)
@@ -336,6 +344,11 @@ Case study: `references/adb-timeout-recovery-red-green-2026-08-23.md`
   CRLF over patch-tool appends on CRLF test files (see Editing section below).
 - **`pytest -k 'image.*differ'` is an INVALID regex** (`.` between terms) — never
   use it; use explicit `-k` terms joined by `or`.
+- **Preflight test runtime and `FakeAdb` ping command matching (2026-09-06):**
+  - Running all 53 items in `tests/test_preflight.py` takes ~7+ minutes (>430s) due to mock timeouts. Always run focused tests with `-k "<test_filter>" -p no:cacheprovider` (<30s).
+  - When changing ping arguments in `preflight.py` (e.g. from `-c 1` to `-c 2`), test stubs (`FakeAdb`, `OfflinePingAdb`, `OfflineSettingsAdb` in `tests/test_preflight.py`) hardcode `if args[:4] == ["ping", "-c", "1", "-W"]:`. Changing the invocation without making stubs match `args[:2] == ["ping", "-c"]` raises `AssertionError: unexpected adb call: ['ping', '-c', '2', ...]`. Mocks must match `args[:2] == ["ping", "-c"]` to be resilient to count/timeout adjustments.
+- **`AdbClient` positional argument constructor pitfall:**
+  `AdbClient(serial)` positional call assigns `serial` to `adb_path` (`(self, adb_path='adb', serial=None, ...)`), raising `FileNotFoundError: adb executable not found: <serial>`. Always pass keyword `AdbClient(serial=...)` or pass explicit two positionals `AdbClient("adb", serial)`.
 
 ## Editing core files (CRLF + patch-tool hazards)
 
@@ -643,11 +656,14 @@ per-finding map: `references/phase2-minor-fixes-fail-closed-2026-08-11.md`.
 
 Full design record + test maps:
 
+`references/safe-adb-and-adb-guard.md`,
 `references/failed-locked-phase1-2026-08-11.md`,
 
 `references/ai-escalation-phase2-2026-08-11.md`,
 
-`references/phase2-minor-fixes-fail-closed-2026-08-11.md` and
+`references/phase2-minor-fixes-fail-closed-2026-08-11.md`,
+
+`references/pinned-user-locks-and-hard-done-gate.md`, and
 
 `references/lock-open-phase3-2026-08-11.md`.
 
@@ -1183,7 +1199,14 @@ User rule chốt 16/08 + implement 17/08 (merge a6dd30d, plan audit 4 vòng Clau
 - **Verification contract:** After the tap, recapture XML and require the popup to be absent. Tests must cover the popup after account switcher and between later feed actions, plus negative cases where the safe button/body is missing. Keep tests offline with XML/mock adapters.
 - **Diagnosis pitfall:** Before changing core, inspect both `automation_core.tiktok.benign_popup` and `automation_core.tiktok.startup`. The detector may already exist in core while a consumer fails because it imports/calls the symbol incorrectly. Distinguish “core detector missing” from “consumer integration/call-site missing.”
 - **Worktree/provenance gate:** Validate from a dedicated core worktree and prove the imported module path points into that worktree; editable installs can otherwise make focused tests execute the coordinator checkout instead of the edited source.
-- Detailed replay/test notes: `references/shared-tiktok-popup-dispatch.md` and `references/startup-focus-permission-popup-gate-20260902.md`.
+- Detailed replay/test notes: `references/shared-tiktok-popup-dispatch.md`, `references/startup-focus-permission-popup-gate-20260902.md`, and `references/tiktok-location-nearby-popup-contract-20260903.md`.
+
+- **TikTok Location Nearby / Precise Location Permission Contract (2026-09-03, Máy 43):**
+  - **Triệu chứng:** Máy kẹt tại modal popup vị trí: Tiêu đề `"Chưa có gì thu hút sự chú ý của bạn sao?"` (`[com.ss.android.ugc.trill:id/ax_]`), nội dung `"Hãy cho phép truy cập vị trí để xem thêm các bài đăng liên quan lân cận."` (`[android:id/message]`), nút `"Hủy"` (`[android:id/button3]`) và `"Mở cài đặt"` (`[android:id/button1]`).
+  - **Quy tắc xử lý:**
+    1. Trong `automation_core.tiktok.benign_popup`: `detect_location_permission_dialog` bắt buộc chứa đầy đủ các markers tiếng Việt & tiếng Anh (`"Chưa có gì thu hút sự chú ý của bạn sao?"`, `"Hãy cho phép truy cập vị trí..."`, `"Nothing catching your attention?"`, `"Allow access to location..."`), khớp nút phủ định `"Hủy"` / `"Cancel"` và trả về `action="dismiss_deny_button"`. Tuyệt đối CẤM tap `"Mở cài đặt"`.
+    2. Trong `automation_core.tiktok_popup`: `TIKTOK_POPUP_RULES` bổ sung `location_nearby_permission_vi` / `location_nearby_permission_en` với candidate button `_text("Hủy")`, `_text("Cancel")`.
+    3. **Avatar Upload Flow Pitfall (`Tiktok-video` --avatar-smoke):** Khi chạy upload avatar riêng lẻ (`run_tiktok_upload_avatar.ps1`), state machine nhảy thẳng từ `RESOLVE_DEVICE` sang `ENSURE_AVATAR` (bỏ qua `DISMISS_POPUPS`). `_handle_ensure_avatar_impl` và `_leave_tiktok_subpages` BẮT BUỘC chủ động gọi `_dismiss_core_benign_popup` / `_dismiss_location_prompt` trước khi mở Profile root để tránh crash `PROFILE_ROOT_NOT_CONFIRMED`.
 
 ## Release completeness gate for shared-core fixes
 
@@ -1198,6 +1221,7 @@ pinned artifact. For any shared-core change used by a consumer:
 
 A source-only completion that omits the wheel bump/pin is a partial delivery. Use
 `references/shared-core-release-gate.md` for the artifact/provenance checklist.
+See also `references/batch-error-aggregator-dual-threshold.md` for batch error aggregation & dual-threshold systemic failure detection.
 
 ## Worktree is implementation-only; main/master is the delivery target
 
@@ -1247,6 +1271,59 @@ Consumer-side work (building/fixing consumers of this core): load
   2. Kiểm tra `pytest` / `unittest` trong `sys.modules`.
   3. Quét call stack frames (`inspect.stack()`) tìm dấu vết `pytest`, `unittest`, `test_`, `_test.py`.
   4. Cung cấp override flag `FORCE_TEST_ALERT_DISPATCH=1` cho riêng test suite kiểm thử chính alert module (`tests/test_alerts.py`).
+
+## Pitfall: `send_farm_machine_alert` Unconditional `return True` & False Delivery Claims Lockout (2026-09-05)
+
+- **Triệu chứng:** Máy farm gặp lỗi (wifi/proxy blocked, ADB timeout, UI kẹt), `_send_farm_machine_alert_once` được gọi và file `.claimed` ghi nhận `status=delivered`, nhưng nhóm Telegram **Farm Alerts** (`-5373649734`) hoàn toàn không nhận được tin nhắn hay ảnh chụp màn hình nào. Sau đó máy không bao giờ được alert lại nữa trong cùng phiên.
+- **Nguyên nhân gốc:**
+  1. Trong `automation_core.alerts.send_farm_machine_alert()`, code gọi `_send_telegram_photo` hoặc `_send_telegram_text`, nhưng bỏ qua giá trị trả về (`bool`) và luôn `return True` vô điều kiện.
+  2. Khi Telegram gặp lỗi mạng/DNS (`[Errno 11001] getaddrinfo failed` hoặc `Timed out`), HTTP request fail và trả về `False`. Tuy nhiên vì `send_farm_machine_alert` luôn `return True`, caller idempotency (`_claim_machine_alert_once` trong `multi_machine_feed_session.py`) tin rằng alert đã được gửi thành công, ghi đè `status=delivered` vào file `.claimed` vĩnh viễn.
+  3. Tất cả các lần retry sau đó kiểm tra `if claimed.exists(): return False` $\rightarrow$ bị khóa vĩnh viễn (idempotency lockout), nuốt trọn cảnh báo lỗi.
+- **Quy tắc sửa & Invariants (2026-09-05):**
+  1. **Producer Boolean Delivery & Photo Fallback:**
+     - `send_farm_machine_alert` BẮT BUỘC trả về kết quả boolean thực tế `sent`.
+     - Nếu gửi ảnh (`_send_telegram_photo`) thất bại do lỗi mạng/timeout/bad request, tự động fallback gửi text message (`_send_telegram_text`). Nếu cả 2 đều thất bại, trả về `False`.
+  2. **Consumer Idempotency Retry:**
+     - Trong `_claim_machine_alert_once` (`multi_machine_feed_session.py`), khi `delivered is not True` hoặc exception văng ra trong lúc gửi alert, BẮT BUỘC gọi `claimed.unlink(missing_ok=True)` để giải phóng claim file, cho phép chu kỳ retry kế tiếp thử lại khi mạng Telegram phục hồi. Chỉ ghi `status=delivered` khi `delivered is True`.
+  3. **Script/Pipeline Level Farm Alerts (`send_farm_script_alert`):**
+     - Bổ sung hàm `send_farm_script_alert` trong `automation_core.alerts` cho các lỗi script/orchestrator (`night-chain-reg-pipeline`, `clear_cache`, `checklive`...).
+     - Chuẩn hóa `_SCRIPT_METADATA` đủ 10 nhóm quy trình (`feed`, `avatar`, `upload`, `follow`, `2fa`, `reg_tiktok`, `reg_gmail`, `clear_cache`, `night_chain`, `checklive`) chứa sẵn file flow, file log và canary command.
+     - Tích hợp vào `run_night_chain_pipeline.py` (khi Phase 1, Phase 2, hoặc Phase 3 exit code != 0) và `cron_clear_tiktok_cache.py` (khi >50% máy fail/timeout hoặc lỗi script nghiêm trọng).
+
+## Pitfall: Telegram `MEDIA_CAPTION_TOO_LONG` (> 1,024 chars) khiến Farm Alert bị rớt ảnh (2026-09-05)
+
+- **Triệu chứng:** Nhóm Telegram Farm Alerts nhận được tin nhắn cảnh báo dừng phiên nhưng **hoàn toàn không có ảnh chụp hiện trường** (chỉ có text), dù thiết bị vẫn online và ảnh đã được chụp lưu trên đĩa (`alert_machine_<N>.png`).
+- **Nguyên nhân gốc:**
+  1. Giới hạn cứng của Telegram API: `sendMessage` (text) cho phép 4,096 ký tự, nhưng `sendPhoto` (ảnh kèm caption) **chỉ cho phép tối đa 1,024 ký tự**.
+  2. Khi mô tả lỗi (symptom) dài (ví dụ lỗi proxy/egress probe) kết hợp với template 5 bước recovery, tổng độ dài caption vượt quá 1,024 ký tự $\rightarrow$ Telegram API trả về HTTP `400 Bad Request: MEDIA_CAPTION_TOO_LONG` và từ chối gửi ảnh.
+  3. Fallback logic chuyển sang gửi text thuần khiến người vận hành không nhận được ảnh hiện trường.
+- **Quy tắc sửa & Invariant (User Rule):**
+  1. **BẮT BUỘC giữ nguyên 100% thiết kế banner đỏ có số máy trên ảnh:**
+     - `draw.rectangle([(0, 0), (w, banner_h)], fill=(220, 20, 60))`
+     - `text_str = f"[MAY {machine}] - {now_str}"` (font Arial, căn giữa banner).
+  2. **Safe Caption Clamping cho `sendPhoto` (`_safe_truncate_html`):**
+     - Dùng parser HTML regex phân tách token tag/text để clamp caption $\le 1024$ ký tự, tự động đóng toàn bộ các thẻ HTML đang mở (`</b>`, `</code>`, `</pre>`), bảo toàn HTML entities (`&...;`), ngăn ngừa lỗi cú pháp HTML từ chối bởi Telegram parse_mode.
+  3. **Gộp trọn vẹn tóm tắt và 5 bước Recovery trong 1 tin nhắn ảnh duy nhất (User Rule 2026-09-05):**
+     - Tuyệt đối **KHÔNG tách thành 2 tin nhắn** (ảnh tóm tắt + text 5 bước) gây rời rạc trên Telegram. Cả tóm tắt lỗi và toàn bộ 5 bước recovery BẮT BUỘC nằm trọn trong caption của tin nhắn ảnh đầu tiên (`_send_telegram_photo`).
+     - Rút ngắn text `summary_caption` và `instructions` (5 bước recovery) thật súc tích để tổng caption thông thường luôn nằm an toàn dưới 1,024 ký tự:
+       + B1 (Inspect): `python D:/Taadaa/tools/inspect_machine.py {machine}`
+       + B2 (Root Cause): `Log {log_display} | Flow {flow_display}`
+       + B3 (Patch Code): Sửa codebase tự xử lý lỗi (Scope lock: sửa đúng file gây lỗi)
+       + B4 (Canary Test): `{canary_display}`
+       + B5 (Closeout): Báo cáo file/hàm đã sửa + kết quả canary
+     - Nếu caption dài vượt 1,024 ký tự, tự động cắt ngắn an toàn bằng `_safe_truncate_html(photo_caption, 1024)`, gửi duy nhất 1 tin nhắn ảnh, tuyệt đối không tách tin thứ 2.
+     - Fallback gửi 1 tin nhắn text duy nhất chứa toàn bộ caption (`_send_telegram_text(token, chat_id, caption)`) chỉ dùng khi thiết bị không chụp được ảnh hoặc upload ảnh thất bại do lỗi mạng.
+
+## Phân biệt ranh giới cảnh báo: Hermes Cron System Delivery vs Farm Alert (`send_farm_machine_alert`) (2026-09-05)
+
+- **Hermes Cron Delivery (`jobs.json`):**
+  - Quản lý stdout/stderr của script cron. Khi script bị crash (PowerShell `PathNotFound`, Python `Traceback`), việc báo cáo phụ thuộc hoàn toàn vào thuộc tính `"deliver"` của job:
+    + `"deliver": "local"`: Chỉ ghi file vào `AppData\Local\hermes\cron\output\<job_id>\`, không bao giờ gửi Telegram.
+    + `"deliver": "telegram:<chat_id>"`: Gửi về đúng `<chat_id>` đã cấu hình (ví dụ: `night-chain-reg-pipeline` gửi về nhóm "Gmai reg" `-5139245637`, KHÔNG gửi về Farm Alert).
+  - Hermes Cron Scheduler hoàn toàn không có cơ chế tự động forward lỗi script sang Farm Alert (`-5373649734`).
+- **Farm Alert (`automation_core.alerts.send_farm_machine_alert`):**
+  - Chuyên biệt cho **từng thiết bị Android cụ thể** khi chạy flow UI (kẹt màn hình, mất proxy, lỗi flow feed/upload/follow).
+  - Các script orchestrator / launcher cấp cao (`run_night_chain_pipeline.py`, `run_all.ps1`, `cron_clear_tiktok_cache.py`) không gọi hàm này khi gặp lỗi script. Khi điều tra "sao lỗi script mà Farm Alert không báo", cần xác định rõ script lỗi là cấp orchestrator hay cấp device UI flow.
 
 
 ## Pitfall: Relative path resolution từ `__file__` trong core module khi cài vào venv site-packages (2026-08-20)
@@ -1394,9 +1471,12 @@ Module mới `automation_core/tiktok/fast_login.py` — dùng chung cho mọi co
       1. Tìm public IPv4 từ `stdout` trước (nếu atx-agent in body kết quả ra stdout).
       2. Nếu không có trong `stdout`, tìm pattern phản hồi Go curl trong stderr: `re.search(r"curl\.go:\d+:\s*(\d{1,3}(?:\.\d{1,3}){3})", stderr)` và kiểm tra `_is_public_ipv4()`.
       3. Nếu không có pattern `curl.go`, lọc bỏ toàn bộ các dòng chứa `dns resolve` / `msg="dns"` trong `stderr` trước khi quét candidate còn lại qua `_is_public_ipv4(cand)`.
-      4. Trả về IP hợp lệ hoặc `""` (fail-closed).
-  - Nếu không có global proxy hoặc probe qua proxy fail, tự động fallback về direct `atx-agent curl` probe; đảm bảo fail-fast nếu gặp lỗi mất kết nối ADB transport.
-- **Pitfall: Permission denied khi sync site-packages do file có thuộc tính Hidden (`+H`) trên Windows**:
+      - Trả về IP hợp lệ hoặc `""` (fail-closed).
+      - Nếu không có global proxy hoặc probe qua proxy fail, tự động fallback về direct `atx-agent curl` probe; đảm bảo fail-fast nếu gặp lỗi mất kết nối ADB transport.
+      - **Egress IP Precedence over ICMP & Proxy Host Ping Target in Preflight (2026-09-06):**
+      - Trên mạng có MikroTik VLAN 10 (`192.168.10.x`), gateway `192.168.10.254` drop ICMP và WAN không route ICMP tới `8.8.8.8`, nhưng proxy host nội bộ `192.168.110.2` (từ `global_proxy`) ping 0% loss. Preflight bắt buộc trích xuất `proxy_host` từ `global_proxy` đưa vào targets ping: `(proxy_host, gw_ip, "8.8.8.8")`.
+      - HTTP proxy chỉ forward TCP, không forward ICMP. Khi `egress_ip_ok` đã trích xuất thành công public IPv4 hợp lệ qua proxy (`atx-agent curl`), thiết bị đã thực sự thông mạng internet. Điều kiện nghiệm thu phải chấp nhận `if egress_ip_ok or (ping_ok and wifi_validated): ip_verified = True` và không ghi nhận lỗi ping probe khi `egress_ip_ok` thành công để tránh fail-closed oan.
+      - **Pitfall: Permission denied khi sync site-packages do file có thuộc tính Hidden (`+H`) trên Windows**:
   - Khi dùng `shutil.copytree` / `copyfile` ghi đè sang `site-packages/automation_core`, nếu file cũ có cờ Hidden (`attrib +H`), Python sẽ báo `PermissionError: [Errno 13] Permission denied`.
   - Khắc phục: Chạy `attrib -H -R -S /S /D "D:\Taadaa\python-envs\automation\Lib\site-packages\automation_core\*"` trước khi sync.
 
@@ -1406,3 +1486,17 @@ Module mới `automation_core/tiktok/fast_login.py` — dùng chung cho mọi co
   1. `automation_core.adb.is_connection_lost(stderr)` dùng regex `_ADB_DEVICE_NOT_FOUND_RE` và bộ marker chính xác để nhận diện đúng lỗi transport ADB.
   2. `check_android_vpn` kiểm tra `is_connection_lost` trên toàn bộ các probe (`tun0`, `wlan0`, `dumpsys`, `route`, `ping`, `atx curl`, `GET_IP`) và fail-fast trả về `AndroidVpnPreflight(transport_lost=True, error="device offline or ADB/USB disconnected: ...")`.
   3. `require_android_vpn` và `require_vichanger_connected` kiểm tra cờ `transport_lost`, báo lỗi `device is offline or ADB/USB disconnected for <serial>` và không kích hoạt các luồng Wi-Fi recovery vô ích (`svc wifi enable`).
+
+## Cơ chế ADB Auto-Retry & Reconnect khi thiết bị mất kết nối tạm thời (2026-09-03)
+- **Vấn đề vận hành:** Trong quá trình chạy farm, cáp USB hoặc transport ADB có thể bị chập chờn trong thời gian ngắn (transient disconnect), gây lỗi `device not found`, `device offline`, `device is offline or ADB/USB disconnected`, `error: closed`, `protocol fault`. Nếu runner fail ngay lập tức sẽ làm đứt gãy phiên nuôi nick không đáng có.
+- **Cơ chế chuẩn trong `automation_core.adb.AdbClient`:**
+  1. **Bộ lọc lỗi kết nối toàn diện (`is_connection_lost` & `CONNECTION_LOST_MARKERS`):** Nhận diện chính xác các lỗi transport ADB (`device not found`, `device offline`, `device is offline`, `device is offline or adb/usb disconnected`, `error: closed`, `protocol fault`, `cannot connect to daemon`, `transport_lost`, `connection reset`...) và phân biệt tuyệt đối khỏi lỗi logic ứng dụng (app crash, non-zero return code, UI missing).
+  2. **Vòng lặp Retry an toàn với Backoff:** Mặc định `connection_retry_attempts=3` và `connection_retry_delay=2.0` (backoff 2-3s).
+  3. **Tự động Kick Reconnect trước mỗi lần Retry (`_reconnect_device`):**
+     - Khi phát hiện connection lost hoặc command timeout trên non-final attempt:
+     - Thực hiện `adb -s <serial> reconnect device` (device-side kick). Nếu không hỗ trợ hoặc trả về non-zero, fallback sang `adb -s <serial> reconnect` (host-side kick). Nếu không có serial, gọi `adb reconnect`.
+     - Gọi `adb -s <serial> wait-for-device` với timeout bounded `connection_wait_timeout`.
+     - Tạm dừng theo backoff `connection_retry_delay` trước khi thực thi lại command ban đầu.
+  4. **Fail-closed sau khi hết lượt thử:** Nếu sau 3 lần retry vẫn không khôi phục được kết nối, `AdbClient` fail-closed (raise `ADBError` nếu `check=True` hoặc trả về `AdbResult(ok=False)`).
+  5. **Public Helpers:** `client.reconnect()` và `client.reconnect_device()` cho các caller cần chủ động kick kết nối.
+  6. **Đồng bộ đa môi trường:** Khi cập nhật `src/automation_core/adb.py`, đồng bộ sang `D:\Taadaa\python-envs\automation\Lib\site-packages\automation_core\adb.py` và re-export qua consumer `python_runner/core/adb.py`.

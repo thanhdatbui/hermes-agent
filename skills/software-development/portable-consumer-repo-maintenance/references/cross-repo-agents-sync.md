@@ -1,5 +1,15 @@
 # Cross-Repo AGENTS.md Policy Sync — bulk propagation with CRLF safety
 
+## Registry-first propagation gate
+
+Resolve the authoritative bounded repo registry before inspecting or editing. For Taadaa, use the explicit manifest (`D:/Taadaa/tools/project_manifest.py` → `MANIFEST["repos"]`) rather than scanning `D:/Taadaa` or inferring repos from neighboring directories. Record the exact entries checked, canonical source, exclusions, non-git/scratch entries, and paths inspected. If resolution fails, stop with the exact blocker and checked paths.
+
+Bind exact per-repo targets before writing. Exclude the canonical source repo, skip non-git/scratch entries unless explicitly authorized, and skip a repo when an allowlisted target is already dirty with ambiguous ownership. Preserve unrelated dirt.
+
+For every eligible repo, save raw preimages and backups outside the repo, preserve each target's EOL, replace or append one uniquely marked pointer block, and verify normalized payload equality, marker counts before/after, EOL/bare-LF facts, `git diff --check`, final scoped status, and canonical-source hash stability. Do not commit or push.
+
+A 2026-09-26 Taadaa run applied this pattern: registry entries were `feed`, `login`, `follow`, `reg`, `upload`, and `core`; `reg` was canonical, `upload` non-git, `feed`/`login` skipped for dirty `AGENTS.md`, and `core`/`follow` propagated with CRLF preserved. The report/backups were outside the repos. Treat this as an evidence-shape example, not a fixed repo list.
+
 Session: 2026-08-06, Taadaa. Propagated a policy change (worker pin:
 `gpt-5.6-luna` → `session-model worker (Hermes=flash ≡ Codex=luna)`) from the
 parent AGENTS.md to 15+ consumer repos. The durable techniques below apply to

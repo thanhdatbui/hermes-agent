@@ -137,6 +137,7 @@ Khi user nhờ tìm kiếm/nghiên cứu sản phẩm trên Shopee / TikTok Shop
 
 ## References
 
+- `references/tiktok-account-reverse-engineering-and-growth-playbook.md` — Playbook bóc tách dữ liệu ngược (Snowflake ID decoding, bypass WAF/Captcha qua yt-dlp) và công thức nuôi kênh TikTok từ thực chiến (Aging 74 ngày, chiến lược bậc thang 20-26s khung 21h, Hook 3s đầu).
 - `references/tiktok-market-accounts-pricing-2026.md` — bảng giá thị trường thực tế các loại acc TikTok (Giỏ hàng 0 follow vs 1k Follow vs Full Combo Live + Giỏ hàng) kèm link khảo sát thực tế (MuaCash, ShopGiangMedia, Taikhoanre) & kỹ thuật fallback tìm kiếm Cốc Cốc qua browser.
 - `references/tuitehao-cc.md` — dữ liệu chi tiết tuitehao.cc (danh mục, giá, chính sách) đã thu thập 2026-08.
 - `references/tuitehao-vs-trustvia-accsmtp-audit-2026-08.md` — báo cáo đối chiếu tuitehao vs (trustvia.net, accsmtp.com) & vs 2 nguồn user (clonefbig, taikhoan295) ngày 2026-08-16: bằng chứng loại trừ trustvia/accsmtp + bằng chứng trùng 100% clonefbig + loại trừ taikhoan295.

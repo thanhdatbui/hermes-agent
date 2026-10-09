@@ -131,6 +131,19 @@ ZTE H196A V9 Brazil-like firmware may expose:
 - `Local Network → LAN → IPv4` with `DHCP Server`, `LAN IP Address`, `Subnet Mask`, DNS fields
 
 H196A Pitfalls:
+- **Work Mode `Agent` Locks Local SSID:** In `Agent` mode, modifying SSID/passphrase under `wlanBasic` appears to work in the UI but is silently discarded on reload because the node expects credentials from a ZTE Mesh Master. Standalone operation behind Ruijie/Aruba requires switching Work Mode to `Controller(Bridge)`.
+- **Brazil Mod ROM Behavior (ZTE H196A V9 Brazil Mod):**
+  - **Hard Reset Retention:** Physical button factory reset (10–15s hold) does NOT restore stock Viettel firmware. The Brazil mod burns default config directly into flash (`VIETTEL_YhKetxP5` SSID, language toggle including Português, login `multipro / multipro`, and default Work Mode reset to `Agent`).
+  - **Session Token / Remote Uplink Post Guard:** Web GUI requests require SHA256-hashed tokens bound to the authenticated client IP. Cross-LAN / uplink automation (e.g. from host PC through main router onto `192.168.110.17`) frequently hits silent `SessionTimeout` / `400 Bad Request` on deep menu mutations (`multiap_work_mode_lua.lua` or `wlan_basic_lua.lua`).
+  - **Sequential Unlock Requirement:** You CANNOT change SSID/WPA2 while `Work Mode` is `Agent`. The transition MUST occur in two phases:
+    1. First mutate `Management & Diagnosis → Work Mode` from `Agent` to `Controller(Bridge)` (or `Repeater`/`Router`) and wait for the service restart (~30s).
+    2. Only after Work Mode is no longer `Agent`, navigate to `Local Network → WLAN → WLAN SSID Configuration` to set custom SSID (`Dat`) and passphrase (`19051995`) on SSID1 (2.4G) and SSID5 (5G).
+  - **Direct Wi-Fi / Local Client Execution:** When automation over upstream LAN is rejected by carrier/mod session security, direct Wi-Fi client connection (phone or laptop associated directly to `VIETTEL_YhKetxP5` on `192.168.2.254` or `192.168.110.x`) bypasses the uplink filter and allows instant single-turn saving.
+  - **Multi-NIC Host Direct-LAN Bypass Pattern:** If the PC has secondary Ethernet ports (e.g., `Ethernet 5`), connecting H196A LAN directly to the PC puts the host inside the downstream LAN segment (`192.168.1.x`), unlocking full Web UI management privileges for automated Work Mode and SSID reconfiguration without Wi-Fi dongles.
+  - **Identical SSID Verification & iOS "My Networks" Distinction:** When synchronizing an AP to match an existing master (e.g. Aruba SSID `Dat`), client OS Wi-Fi menus retain historical cache under "My Networks" (showing old SSIDs like `VIETTEL_...`). Verify true RF propagation either by temporarily cutting power to the master AP or by inspecting BSSID MAC addresses (`94:28:6F:...`) via AirPort Utility / Wi-Fi Analyzer.
+- **Carrier ROM Mode Switch Lock (Web GUI vs Hard Reset):** On Viettel/carrier H196A units, applying `Controller(Bridge)` via the upstream web interface often fails to persist across reboots. When carrier Mesh locks resist web GUI changes, the fast recovery pattern is a physical factory reset (10–15s hold), direct connection to default Wi-Fi/IP (`192.168.2.254`), setting SSID/WPA2, disabling DHCP, and cabling LAN-to-LAN.
+- **Button Ordering (`Cancel` before `Apply`):** On H196A forms, the `Cancel` button precedes the `Apply` button in DOM order. Verify that automation targets `Apply`, not `Cancel`.
+- **Short Web Session Idle Timeout:** Web UI sessions time out in ~1–2 minutes, causing subsequent requests/snapshots to return empty pages. Re-authenticate promptly.
 - Do not trust `Apply` buttons in this specific ROM blindly. Always re-navigate to the setting page to verify persistence.
 - Avoid forcing changes by JS if the UI is unresponsive.
 - If in doubt regarding credentials or SSID parameters for synchronization, stop and request credentials rather than guessing encryption types or passphrases.
@@ -140,6 +153,20 @@ H196A Pitfalls:
 
 Additional H196A Brazil/Ruijie/Aruba field notes: `references/zte-h196a-brazil-ruijie-aruba.md` (merged from the former `router-ap-conversion` skill).
 Phone Farm network architecture, Aruba RF dense tuning & 1000-device hardware scaling guide: `references/phone-farm-network-hardware-scaling.md`.
+MikroTik & Ruijie dual DHCP conflict audit & safe resolution: `references/mikrotik-ruijie-dhcp-conflict-audit-and-resolution.md`.
+MikroTik REST API endpoints, auth, PPPoE reconnect workflow, status semantics: `references/mikrotik-rest-api-pppoe-management.md`.
+Standalone device web dashboard pattern (ThreadingHTTPServer, embedded HTML, defensive proxy): `references/standalone-device-web-dashboard-patterns.md`.
+OpenWrt Multi-WAN, PPPoE provisioning, physical port remapping (LAN2->WAN2), and remote satellite farm deployment: `references/openwrt-multiwan-pppoe-and-satellite-farm-deployment.md`.
+
+## Multi-Router DHCP Conflict Detection & Safe Resolution
+
+When multiple routers/APs operate on the same Layer 2 physical segment (e.g. MikroTik Core Router + Ruijie Reyee LAN Switch/Gateway + Aruba Virtual Controller):
+1. **Detection:** Do not guess from lease tables. Use a raw Python DHCP Discover socket broadcast (`255.255.255.255:67`) on UDP port 68 to capture all competing DHCP Offers in <3s (identifying Server IDs, Offered IPs, and Gateways).
+2. **Management Interface Asymmetry:** Prefer disabling DHCP on the device with a programmable/resilient management interface (e.g. MikroTik RouterOS REST API `:9090/rest` with instant PATCH rollback) over devices with browser-only, client-encrypted, or brute-force-locking UIs (e.g. Ruijie Reyee EHR LuCI).
+3. **Phone Farm Service Preservation:** Devices using ADB Global Proxy (`192.168.110.2:200xx`) connect directly at Layer 2 ARP when unified on the `192.168.110.x` subnet, eliminating gateway routing dependency.
+4. **Host PC Safety:** Lock Windows network adapters to static IP before disabling DHCP reservations on the router to avoid accidental lease reassignments.
+5. **Rolling Reconnection:** Use ADB soft-toggling (`svc wifi disable && sleep 2 && svc wifi enable`) per serial to migrate devices sequentially without dropping the farm.
+6. **Persistent Lease Pitfall (Aruba VC):** If specific devices persist on `192.168.10.x` after Wi-Fi cycling, verify with `adb logcat -d -s DhcpClient:V`. An active Aruba Virtual Controller DHCP server holding an 86400s lease will renew faster than the primary router; devices retain Singbox proxy reachability via inter-subnet gateway routing. See `references/mikrotik-ruijie-dhcp-conflict-audit-and-resolution.md § 5`.
 
 ## User Expectation Pattern
 

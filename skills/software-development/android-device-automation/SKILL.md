@@ -10,6 +10,21 @@ description: Patterns for automating Android devices — VPN preflight, TikTok l
 
 # Android Device Automation
 
+References:
+- `references/box-lan-p30-custom-rom-battery-thermal-triage.md` — Box LAN P30, ROM Stock vs LineageOS, popup nhiệt độ pin âm, triage nhả follow.
+- `references/xiaowei-con-gau-and-adb-disconnect-triage.md` — Xiaowei triage: tràn socket/endpoint, nghẽn USB 2.0, watchdog idle.
+- `references/usb-power-management-selective-suspend-and-offline-recovery.md` — Triage văng ADB/Farm: Selective Suspend vs nghẽn EHCI, deadlock thanh ghi, reboot PC.
+- `references/usb-bus-capacity-and-fast-recovery.md` — Fast USB controller bounce (<5s không reboot PC), Phase Drift làm sập USB 2.0 dù có max_workers 40/stagger, giới hạn Endpoint khi scale 200 máy, Telegram drop_pending_updates khi reboot PC.
+- `references/usb-debugging-prompt-persistence-and-rom-invariants.md` — UsbDebuggingActivity popup persistence & dập popup.
+- `references/account-switcher-fast-inspection.md` — Account Switcher đối chiếu nick; popup "Follow bạn bè".
+- `references/device-offline-serial-drift-and-stale-backfill.md` — Xử lý thiết bị offline và lệch serial.
+- `references/samsung-pay-disable-and-automation-telemetry.md` — Samsung Pay HintService che tap đáy (y > 1650).
+- `references/webview-chrome-form-automation-pitfalls.md` — Form Chrome Webview (Focus, IME, ENTER submit).
+- `references/tiktok-parasite-account-logout-flow.md` — **[MỚI 19/09/2026]** Quy trình đăng xuất dứt điểm nick ký sinh (parasite account) trên TikTok Android (Samsung S7) qua UI Settings & Privacy, tọa độ chuẩn, nghiệm thu OCR WinRT và cạm bẫy đường dẫn Windows.
+- `references/samsung-s7-adb-rsa-fingerprint-loop-fix.md` — **[MỚI 16/09/2026]** Khắc phục lỗi lặp popup RSA "Cho phép gỡ lỗi USB" trên Samsung S7 dù đã tick "Luôn cho phép" (do USB renegotiation khi sleep/wake, file adb_keys phình to >5KB gây silent fail, cách revoke auth và bypass qua ro.adb.secure=0).
+- `references/samsung-s7-wifi-onboarding-and-korean-ui.md` — Quy trình kết nối Wi-Fi qua UI Settings Samsung S7 (Korean ROM), từ điển resource ID & trạng thái tiếng Hàn, xác thực qua dumpsys và kỷ luật fail-fast khi gặp lỗi xác thực `인증 오류 발생`.
+- `references/on-device-oauth-warmup-and-anti-false-positive-discipline.md` — **[MỚI 15/09/2026]** Kỷ luật chống báo láo (Anti-False-Positive), bóc tách bẫy Cloudflare newsletter ảo, quy trình hook Google OAuth on-device S7 (ChatGPT warmup), xử lý ADB escape ký tự đặc biệt (`!`), xử lý Chrome sign-in dialog & bắt nhầm title header.
+- `references/ui-loop-mock-stopiteration-discipline.md` — Kỷ luật mock `get_ui_xml` / UI transition loops trong unit test: tránh StopIteration do `side_effect=[list]` hữu hạn khi hàm test có retry/checking loop; dùng callable fallback `fake_get_ui_xml`.
 
 ## 🛑 STOP GATE (bắt buộc — chi tiết: skill taadaa-farm-ops-rules)
 Máy live + script chạy/lỗi → KHÔNG tự sửa code, KHÔNG tự chạy lại, KHÔNG tự probe/tay khi chưa được user yêu cầu.
@@ -204,7 +219,7 @@ Shell pitfalls observed on Windows/Git Bash: strip CRLF from serials before pass
 
 
 
-Detailed procedure: `references/farm-apk-rollout-and-completeness.md`.
+Detailed procedure & canonical tool (`D:/Taadaa/tools/install_farm_apks.py`): `references/farm-apk-rollout-and-completeness.md`.
 
 
 
@@ -363,6 +378,11 @@ After successful login, dismiss these popups in order:
 
 
 
+## Safe App Launch & Chrome Automation on S7
+
+See `references/gmail-warmup-chatgpt-oauth-s7.md` for on-device ChatGPT registration via Google OAuth right after Gmail registration (replaces obsolete newsletter warmup, deals with S7 password escaping for `!` chars, and avoids `client_id_not_found_in_session`).
+
+
 ## Reconcile Script Patterns
 
 
@@ -437,13 +457,32 @@ When using `acquire_device_lock(..., live_vpn_verifier=fn)`, ensure the core ver
 
 
 
+## Pitfalls & Windows ADB Quirks
+
+- **POSIX path in `adb pull` on Windows**: `adb.exe` is a native Windows binary running under Git Bash/MSYS. Never pass MSYS POSIX destination paths like `/d/Taadaa/...` to `adb pull`, as `adb` treats `/d/...` as a relative path from the current drive root and fails with `cannot create file/directory`. Always pass native paths like `D:/...` or `D:\...`.
+- **Launching Apps Reliably on Samsung Devices**: Direct `am start -n <pkg>/<activity>` can sometimes silently fail to raise if backgrounded or blocked by launcher state. When opening an app like Gmail or Chrome for inspection, use `monkey -p <pkg> -c android.intent.category.LAUNCHER 1` or check `mCurrentFocus` via `dumpsys window` after launching.
+
 ## Reference Files
 
+- `references/emergency-power-off-safety.md` — Quy chuẩn tắt nguồn an toàn (Soft Shutdown) khi mất điện/UPS gánh: khác biệt vật lý giữa công tắc box vs rút phích cắm, script đa luồng 1-click dùng chung Kibe/Admin qua OneDrive.
+- `references/box-farm-screenless-thermal-and-screen-state-discipline.md` — Quy chuẩn nhiệt độ & trạng thái màn hình máy box không màn vật lý (PC stream vs sleep khi idle, tự động wake-up qua automation-core, bẫy stay_on_while_plugged_in, aod_mode, keyevent 223/224, timeout 10m).
+- `references/adb-monkey-launch-timeout-guard.md` — ADB monkey launch timeout guard, `<redacted>` sensitive masking, pre-checking foreground focus & preventing false-positive crashes.
+- `references/pil-screencap-validation-and-retry.md` — Quy chuẩn 3 lớp validation (magic bytes, try-except eager load, retry) khi load ảnh screencap bằng PIL để tránh lỗi 'cannot identify image file' (UnidentifiedImageError).
+- `references/profile-nav-retry-and-tiktok-go-card.md` — Profile verification navigation retry trước swipe down & TikTok GO card popup handler pattern.
+- `references/startup-recents-failsafe-and-recovery-ladder-guard.md` — Fail-safe wrapper cho fallback Recent check & bảo toàn Recovery Ladder 3 bước B1->B2->B3 khi ADB transport timeout.
+- `references/atx-stub-foreground-and-webview-input-discipline.md` — Quy chuẩn ngăn chặn ATX-Agent stub chiếm foreground (`com.github.uiautomator` đè landscape làm crash `open_app`) và giải pháp chống lỗi xóa text / stale error race trong Android WebView đăng ký.
+- `references/google-oauth-chatgpt-flow-patterns.md` — Google OAuth and ChatGPT web registration patterns & pitfalls on Android Chrome (soft keyboard obscuration, next button bounds, re-typing guards).
+- `references/five-layer-screencap-and-hard-lock-2h.md` — Quy chuẩn khóa cứng 2h (TTL 7200s) giữ hiện trường máy lỗi và kiến trúc 5 tầng fallback chụp ảnh Farm Alert kèm Banner Đỏ (ATX auto-wake, ADB reconnect, artifact fallback).
 
+- `references/rerun-safety-and-platform-block-discipline.md` — Quy tắc phân biệt tuyệt đối giữa Lỗi Script (sửa code + canary xong mới chạy lại) vs Lỗi Nền Tảng Chặn (Google PHONE_VERIFY, ACCOUNT_CREATION_ERROR — TUYỆT ĐỐI CẤM chạy lại để tránh nát IP/fingerprint).
 
 - `references/anti-bot-profile-generation-patterns.md` — Anti-bot profile generation standards for farm registration: natural Vietnamese name combinations (2-word, 3-word, 4-word with middle names), 10+ humanized username styles with dot-separators/suffixes, and distributed password entropy without static suffixes (@Ks).
 - `references/anti-detect-jitter-standards.md` — Anti-detect jitter standards: UI pixel tap/swipe variance (±1..6px with boundary clamp [0, 2400]), timing sleep jitter, and continuous scheduling jitter to prevent cluster burst on 80-200 machine farm.
 - `references/tiktok-coordinates.md` — exact coordinates, resource-ids, workbook paths, and popup dismissal patterns (verified 2026-07-29)
+
+- `references/tiktok-split-apk-bundle-recovery.md` — Quy chuẩn kiểm tra O(1) & khắc phục lỗi TikTok kẹt splash đen / crash do thiếu Split APKs (App Bundle: thiếu split_config.xxhdpi, split_df_player...).
+
+- `references/clear-tiktok-cache-in-app-settings-hierarchy.md` — 3-tier hierarchy for clearing TikTok cache via Deep Link, In-App Settings navigation, and Home Widget fallback without data loss.
 
 - `references/gmail-otp-magic-link.md` — Gmail OTP/magic-link reading for TikTok reg: TikTok sends a link not a code, search-loop bugs + fixes, auto-sync OFF root cause, Gmail live-check on OTP timeout (incl. identity-verify classifier gap), CAPTCHA-dead mailbox delete flow via add-mail repo, existing-account login, MACHINE_DEVICES int/str key pitfall
 
@@ -453,6 +492,8 @@ When using `acquire_device_lock(..., live_vpn_verifier=fn)`, ensure the core ver
 - `references/apk-harvest.md` — clean APK harvest: pull installed apps to a bank for reimaging (adb pull directory-preexists bug, Windows-path bug, split-APK recipe, farm package map)
 
 - `references/gan-proxy-watcher-ops.md` — gan-proxy watcher ops: tray→watcher respawn stack, `schtasks /End`+`/Run` restart, XML `-ProxyMapping` update, protocol-v2 lock/takeover semantics, mapping-workbook Excel-lock diagnosis, watcher-generation-bound readiness proof, structured post-reboot owner ACK, and soft-reboot auto-assign testing
+
+- `references/google-authenticator-2fa-device-flow.md` — Quy trình bật 2FA Google Authenticator trực tiếp trên Android S7: UI navigation, lấy secret key khi không quét được QR, xác nhận OTP tức thì bằng pyotp, và đồng bộ Excel.
 
 - `references/navigation-only-one-shot-smoke.md` — audited one-shot Android navigation smoke: canonical persistent UI capture, run-global restart budget, exact 8-byte verdict binding, pre-mint live lock gate, launch-ledger binding, zero-business-action proof, and verified `FAILED_LOCKED` retention.
 
@@ -489,6 +530,12 @@ Nhiều máy kẹt ở Recent apps (App Switcher) sau B3 reboot: `close_all_rece
 - **B2 relaunch / B3 reboot: TỐI ĐA 1 lần / signature** (per-signature, không phải 1 lần/tổng turn). Cùng chỗ fail lần 2 → KHÔNG reboot nữa; chỗ KHÁC (signature khác) → vẫn được reboot. Bỏ giới hạn tổng `soft_reboot_recovery_max_total`.
 
 - CONNECT_DEVICE startup fail (`DEVICE_STARTUP_FAILED: non_xml_ui_dump`) phải chạy đủ B1→B2→B3 trước MANUAL_REVIEW (trước đây chỉ B1 rồi return False).
+
+- **Fail-Safe Fallback Recents & Guarded Ladder (2026-09-05)**:
+  Khi `prepare_android_for_automation` fail (empty recents Samsung chưa nhận diện), các hàm fallback consumer như `_verify_localized_empty_recents(adb)` BẮT BUỘC:
+  1. Bọc toàn bộ trong `try ... except Exception: return False` để chặn `ADBError` từ `adb.shell(["input", "keyevent", "187"])` khi timeout transport.
+  2. Bọc `keyevent 3` trong `finally` bằng `try ... except Exception: pass`.
+  3. Bọc caller site trong `_handle_connect_device()` bằng `try...except` riêng. Nếu check fallback lỗi hoặc ra False, tuyệt đối không để unhandled exception làm crash handler, mà BẮT BUỘC rơi vào nhánh `else` để chạy đủ Recovery Ladder 3 bước (B1 ATX-kill → B2 relaunch → B3 soft reboot). Chi tiết: `references/startup-recents-failsafe-and-recovery-ladder-guard.md`.
 
 - Reboot máy lỗi VPN: watcher tự reconnect sau boot; `adb reboot` rồi đợi boot (`get-state` = device), chờ ~60s cho VPN, rồi chạy lại batch. Chỉ làm khi user yêu cầu (VPN vốn do watcher quản lý, CẤM probe/chỉnh tay).
 
@@ -818,6 +865,75 @@ nguyên tắc không đụng máy nhiều lần và có thể đổi trạng th�
 
 ## Pitfalls
 
+- **Box Farm Screenless Mainboard: Tắt Màn Hình Khi Nghỉ & Tự Động Wake-Up Trong `automation-core` (2026-09-09 / updated 2026-09-13)**:
+  - Máy box farm chỉ gồm mainboard (không có màn hình vật lý), hình ảnh trên PC chỉ là stream ảo (scrcpy/mirroring). Việc bật PC view liên tục làm VPU/SoC tăng 3°C–7°C, gây nguy cơ hở chân chip BGA (CPU/RAM) và chai IC nguồn (PMIC) trong môi trường box kín.
+  - Khi máy nghỉ (idle), để màn hình tắt (Display Sleep) là an toàn và rất tốt cho phần cứng (GPU nghỉ, SoC hạ xung).
+  - Chuẩn thiết lập màn hình trong `automation-core` (`automation_core.device.configure_stay_on`, 2026-09-13):
+    - `["svc", "power", "stayon", "false"]` (bỏ ép sáng liên tục).
+    - `["settings", "put", "global", "stay_on_while_plugged_in", "0"]` (không giữ sáng khi cắm nguồn/sạc USB box).
+    - `["settings", "put", "system", "screen_off_timeout", "600000"]` (đặt timeout tắt màn sau 10 phút / 600000ms).
+    - `["settings", "put", "secure", "lockscreen.disabled", "1"]` + `["locksettings", "set-disabled", "true"]` (vẫn vô hiệu hóa màn hình khóa để khi wake không kẹt keyguard).
+  - Không lo bot bị kẹt: Khi bot/cron chạy, `automation-core` (`_wake_and_unlock` và `configure_stay_on`) tự động kiểm tra `dumpsys power`, gửi `keyevent 224` (WAKEUP) + `keyevent 82` (MENU), vuốt mở khóa keyguard. Chi tiết: `references/box-farm-screenless-thermal-and-screen-state-discipline.md`.
+  - Hạ độ sáng về 0 để mát máy/chống ám AMOLED mà remote viewer vẫn sáng rõ (2026-09-13): `settings put system screen_brightness_mode 0` + `settings put system screen_brightness 0`. Chỉ giảm đèn nền phần cứng, framebuffer vẫn render 100% nên AnLink/scrcpy xem bình thường. CẤM `keyevent 223` sleep giữa ca chạy vì ngắt render làm viewer đen màn. Chi tiết: farm `references/s7-screen-brightness-zero-and-idle-off-rules-20260913.md` (skill taadaa-farm-ops-rules).
+
+- **ADB Launch App / Monkey Timeout & Masked Argument Pitfall (2026-09-07)**:
+  Khi launch app qua `monkey` (`monkey -p <pkg> -c android.intent.category.LAUNCHER 1`):
+  1. **Mặt nạ nhạy cảm `<redacted>`**: Trong `automation_core/adb.py`, `SENSITIVE_WORDS = ("TOKEN", "SECRET", "PASSWORD", "PASS", "COOKIE", "KEY")`. Chuỗi `"monkey"` chứa `"key"` nên bị `_redact_arg("monkey")` che thành `<redacted>`, hiển thị trong log là: `shell, '<redacted>', -p, ...`.
+  2. **Timeout & Exception**: Lệnh `adb.shell` có default timeout 15s. Nếu thiết bị đang tải nặng hoặc app đã ở foreground, daemon `monkey` có thể bị nghẽn I/O quá 15s. Khi timeout, `AdbClient._execute` ném thẳng ngoại lệ `ADBError("adb command timed out: ...")`. Cờ `check=False` **chỉ áp dụng cho returncode != 0, không chặn exception do timeout**.
+  3. **Hậu quả**: Nếu `prepare_app_for_automation` hoặc `Actions.start_app` gọi trực tiếp `adb.shell(["monkey", ...])` không có try-except và không kiểm tra foreground trước, runner sẽ crash fail-closed ngay cả khi app mục tiêu đã hiển thị và hoạt động bình thường trên màn hình.
+  4. **Quy chuẩn bắt buộc**:
+     - *Pre-check*: Kiểm tra `focus_reader()` / `get_focused_activity()`. Nếu app đã ở foreground -> bỏ qua lệnh monkey, đánh dấu `already_foreground` thành công.
+     - *Try-except*: Bọc `try...except Exception` quanh lệnh gọi monkey; nếu timeout ném ngoại lệ -> kiểm tra lại focus reader, nếu app đã ở foreground thì coi là thành công.
+     - *Timeout*: Nâng timeout cho lệnh launch monkey lên tối thiểu 30s.
+     - *Kỷ luật quét đĩa*: Thư mục `.ai-runs` chứa hàng trăm nghìn file lịch sử, tuyệt đối CẤM dùng `os.walk` không giới hạn độ sâu hoặc `grep -rn` quét diện rộng vì sẽ dính timeout 900s. Chi tiết: `references/adb-monkey-launch-timeout-guard.md`.
+
+- **USB Hub Bandwidth Bottleneck & Split APK Install Timeout (2026-09-07)**:
+  Trên farm 80 máy cắm hub USB, băng thông truyền ADB mỗi máy có thể tụt xuống ~0.1 MB/s (~100 KB/s) khi hub có tải:
+  - Cài đặt bộ split APK dung lượng lớn (như TikTok ~200MB gồm `base.apk` 140MB + `split_config.arm64_v8a.apk` 57MB) qua `adb install-multiple -r` sẽ mất **25–35 phút**.
+  - Timeout lệnh tiêu chuẩn (180s - 600s) chắc chắn bị timeout giữa chừng (`timed out after 600s`). BẮT BUỘC đặt timeout ít nhất **2000s–2400s (35–40 phút)** hoặc đẩy nền.
+  - Tuyệt đối CẤM ngắt ngang hoặc chạy `pm clear`/hard reboot khi lệnh đang push dở dang.
+  - Trước khi cài đặt, luôn đối soát version thật trong `apk-bank` (dùng zero-dependency Python AXML parser nếu thiếu `aapt`) để tránh push nhầm bản. Chi tiết: `references/farm-apk-rollout-and-completeness.md`.
+
+- **Fresh Device Onboarding Popup & Gmail 0-Account Alert (Case GMAIL-FRESH-DEVICE-PREFLIGHT-03) (2026-09-06)**:
+  Khi chạy đăng ký hoặc preflight trên máy sạch 0 account (máy mới hoặc vừa xóa hết Google account):
+  1. Mở app Gmail (`com.google.android.gm`), bấm `"ĐƯA TÔI TỚI GMAIL"` / `"TAKE ME TO GMAIL"` sẽ bị chặn lại bởi popup cảnh báo hệ thống: `android:id/message` = *"Vui lòng thêm ít nhất một địa chỉ email."* / *"Please add at least one email address."* và nút `android:id/button1` = `"OK"`.
+  2. BẪY: Nếu preflight chỉ đợi Inbox Home (`is_gmail_home_xml`), script sẽ bị đứng ở màn hình này và báo lỗi `[BLOCKED][PRE_GMAIL][NOT_GMAIL_HOME]`.
+  3. XỬ LÝ CHUẨN:
+     - Trong helper dismiss startup popup (`dismiss_gmail_startup_popup`), nhận diện text *"Vui lòng thêm ít nhất một địa chỉ email"* -> tap ngay `OK` (`android:id/button1` hoặc tâm `873, 1084` trên S7 1080x1920) để giải phóng popup.
+     - Classifier preflight chấp nhận fragment onboarding `id/setup_addresses_fragment` là màn hình hợp lệ cho fresh device.
+     - Giữ nguyên màn hình onboarding và tap thẳng vào `"Thêm địa chỉ email"` (`com.google.android.gm:id/setup_addresses_add_address`) -> chọn `Google` để vào wizard đăng ký tài khoản.
+
+- **Gender Selection Stability & Anti-Overengineering Rule (2026-09-06)**:
+  - Khi đăng ký tài khoản Google/Gmail trên farm điện thoại, NÊN GIỮ NGUYÊN 100% GIỚI TÍNH NỮ, không cần random Nam/Nữ.
+  - Lý do: (1) Google AI chỉ đánh giá IP/proxy, device fingerprint (S7/Play Services), nhịp cooldown (10 ngày/máy) và hành vi gõ/delay — hoàn toàn KHÔNG đánh checkpoint theo tỷ lệ giới tính; (2) Kho tên tiếng Việt trong bot reg đa phần là tên nữ, nếu random nam sẽ bị lệch profile; (3) Option "Nữ" luôn ở vị trí đầu tiên trong dropdown WebView, tránh xung đột text với chữ "Năm" (trong ngày/tháng/năm sinh) trên UI XML Android.
+
+- **Lỗi 'cannot identify image file' (UnidentifiedImageError) khi load ảnh screencap bằng PIL (2026-09-06)**:
+  Khi ADB screencap (`exec-out screencap -p`) bị nghẽn bus USB, ngắt transport hoặc trả về buffer dở dang/rỗng:
+  1. `Image.open(io.BytesIO(raw))` ném ra ngoại lệ `PIL.UnidentifiedImageError: cannot identify image file` (hoặc `OSError`, `ValueError`), làm crash worker session nếu không bọc try-except.
+  2. BẮT BUỘC thực hiện 3 lớp bảo vệ:
+     - Lớp 1: Validate magic bytes `raw.startswith(b"\x89PNG\r\n\x1a\n")` và `len(raw) >= 67`.
+     - Lớp 2: Bọc `Image.open()` bằng try-except `(UnidentifiedImageError, OSError, ValueError)` và gọi `.load()` để ép parse pixel ngay lập tức.
+     - Lớp 3: Bọc retry 1–2 lần (sleep 0.3–0.5s) trước khi chuyển sang degraded / failure mode.
+  3. Kỷ luật điều tra log: Tuyệt đối CẤM dùng `grep -rn` hay `find` quét sâu không giới hạn vào thư mục `.ai-runs` (>500 folders lịch sử) gây timeout 900s. Dùng `python D:/Taadaa/tools/inspect_machine.py <N>` hoặc chỉ inspect top 1–3 thư mục mới nhất theo timestamp. Chi tiết: `references/pil-screencap-validation-and-retry.md`.
+
+- **Cấm Swipe Down Trang Chủ Khi Chưa Xác Nhận Profile Screen (2026-09-06)**:
+  Khi đối soát username profile (`feed_swipe_smoke.py`), nếu chưa tìm thấy username mong muốn, tuyệt đối KHÔNG swipe down mù quáng nếu chưa xác nhận đang ở màn hình Profile (`profile_screen_confirmed`). Nếu máy vẫn ở Trang chủ (For You), swipe down sẽ gây refresh feed. Phải retry điều hướng lại tab Profile (`tap_navigation_target`), chờ re-dump XML và xác nhận profile screen trước khi cho phép swipe down. Chi tiết: `references/profile-nav-retry-and-tiktok-go-card.md`.
+
+- **Scope Import Trong Popup Dismiss Handler (`benign_popup_registry.py`) (2026-09-06)**:
+  Khi viết handler popup mới (ví dụ `tiktok_go_card`), các hàm dismiss phải import cục bộ `PopupDismissResult` từ `.benign_popup` và `iter_elements`, `parse_bounds` từ `automation_core.ui`. Tránh phụ thuộc vào global namespace của file vì có thể gây `NameError` khi chạy trong test runner hoặc harness cô lập.
+
+- **ATX-Agent UIAutomator Stub Chiếm Foreground Làm Sập `open_app` Hàng Loạt (2026-09-05)**:
+  Khi `reset_atx_agent()` dùng `monkey -p com.github.uiautomator 1` để kích hoạt stub uiautomator, lệnh này mở thẳng `com.github.uiautomator.MainActivity` lên màn hình ở chế độ Landscape (1920x1080). Khi đó, các luồng consumer (như `open_app()` trong TikTok Reg) cố mở app mục tiêu qua monkey sẽ bị app stub chặn không cho lấy foreground -> crash 100% các máy với lỗi `RuntimeError: [01_open] TikTok not foreground after clean launch`.
+  - **Quy tắc bắt buộc**:
+    1. Mọi lệnh gọi `monkey` kích hoạt stub hoặc restart atx-agent daemon phải lập tức theo sau bằng `adb shell input keyevent 3` (HOME) để trả máy về launcher.
+    2. Trước khi launch app chính trong `open_app()`, bắt buộc kiểm tra `dumpsys window windows | grep mCurrentFocus`: nếu phát hiện `com.github.uiautomator`, chạy ngay `am force-stop com.github.uiautomator` và gửi `keyevent 3` trước khi mở app mục tiêu.
+
+- **Bẫy Xóa Text Trong Android WebView & Race Condition Quét Báo Lỗi Trùng Username Cũ (2026-09-05)**:
+  Trong các form WebView (đăng ký Google/Gmail, Facebook, Hotmail):
+  1. `clear_field()` dùng `input keyevent 123` (MOVE_END) + nhiều lần `keyevent 67` (DEL) KHÔNG hoạt động tin cậy vì WebView không nhận diện lệnh di chuyển con trỏ về cuối. Text mới gõ vào sẽ bị append vào đuôi text cũ, làm chuỗi ngày càng dài quá giới hạn cho phép (30 ký tự của Google) và vướng lỗi định dạng.
+  2. Khi attempt trước bị lỗi (ví dụ *"Tên người dùng này đã được sử dụng. Hãy thử tên khác"*), thông báo lỗi này nằm cố định trên DOM. Ở attempt tiếp theo, sau khi gõ username mới và bấm Tiếp theo (Next), Google cần 1–2 giây gọi API server để xác thực. Nếu script quét UI dump quá sớm hoặc khi request đang in-flight, script sẽ đọc lại đúng chuỗi báo lỗi của attempt cũ và phán đoán sai rằng username mới sinh ra cũng bị trùng (ngay cả với chuỗi ngẫu nhiên siêu dài).
+  - **Quy tắc bắt buộc**: Dùng phím tắt chọn tất cả (Ctrl+A / double-tap) trước khi xóa text trong WebView; bắt buộc chờ màn hình có tín hiệu chuyển trang (loading spinner hoặc biến mất thông báo lỗi cũ) trước khi kết luận trạng thái validation.
+
 - **Wi-Fi Toggle, Provisioning & Public IP Inspection on Non-Rooted S7 Devices (2026-08-29 / 2026-08-30)**:
   - **Wi-Fi Provisioning & Connecting via UI / atx-agent**:
     - Stock S7 (Android 8.0/7.0) KHÔNG có `wpa_cli` (`wpa_cli: not found`) và `cmd wifi` (`No shell command implementation`). Lệnh `am start -a android.settings.WIFI_SETTINGS` chỉ mở màn hình quét chứ không tự nhập pass / kết nối SSID mới.
@@ -844,29 +960,49 @@ nguyên tắc không đụng máy nhiều lần và có thể đổi trạng th�
       - Tắt loop quét driver để giảm tải CPU & nhiệt: `adb shell svc wifi disable`.
       - **Tương thích Box LAN**: Trong hệ thống Box LAN (cấp mạng qua cáp `eth0` và điều khiển qua ADB over IP/LAN), máy hỏng Wi-Fi vẫn hoạt động bình thường 100%, không cần thay hay sửa chip Wi-Fi. Với Box USB hiện tại, ưu tiên dùng máy làm node render video offline hoặc cất dự phòng chờ chuyển Box LAN.
   - **Routing / Gateway Limit**: Dàn Samsung S7 chạy ROM gốc không có `su` (`/system/bin/sh: su: not found`, `adbd cannot run as root in production builds`). Lệnh `ip route change/add` từ shell bị chặn `Permission denied`. Mọi can thiệp Gateway/DNS bắt buộc cấu hình từ DHCP Server (MikroTik/Router/AP) hoặc gán Static IP trong Android Settings, không thể can thiệp bằng `su -c 'ip route ...'`.
+  - **Android Wi-Fi Network Validation & Captive Portal via Proxy (2026-09-12)**:
+    - Khi thiết bị Android kết nối Wi-Fi qua proxy nội bộ (ví dụ `192.168.110.2:20033`), kiểm tra `dumpsys connectivity` có thể hiển thị `everValidated{false}` và `lastValidated{false}`.
+    - Đây là đặc tính bình thường của cơ chế kiểm tra Captive Portal / Network Validation của Android khi egress đi qua proxy HTTP/SOCKS hoặc khi `captive_portal_mode` không thể probe thẳng tới máy chủ kiểm tra của Google. Thiết bị vẫn có kết nối mạng Internet đầy đủ nếu curl / egress test qua proxy port thành công.
   - **Kiểm tra Public IP khi không có `curl` trong shell (CDP / Abstract Socket)**: Thiết bị Android không có sẵn binary `curl`. Cách đọc IP ngoại mạng tin cậy 100%:
     1. Mở trang IP bằng Samsung Internet hoặc Chrome: `adb shell am start -n com.sec.android.app.sbrowser/.SBrowserMainActivity -d https://api.ipify.org`
     2. Forward socket DevTools: `adb forward tcp:<port> localabstract:Terrace_devtools_remote` (hoặc `chrome_devtools_remote`).
     3. Kết nối WebSocket tới DevTools page endpoint và gửi `{"method": "Runtime.evaluate", "params": {"expression": "document.body.innerText"}}` để đọc chính xác địa chỉ IP public của thiết bị.
-    4. Xóa forward port và bấm HOME (`keyevent 3`) để trả máy về trạng thái sạch.
+    4. Xóa forward port (`adb forward --remove tcp:<port>`) và bấm HOME (`keyevent 3`) để trả máy về trạng thái sạch.
 
-- **Gmail App Onboarding / Setup Wizard Blocker (2026-08-29)**:
-  Khi mở App Gmail (`com.google.android.gm`) sau khi thêm tài khoản hoặc trong các phiên mới, app thường bị chặn bởi 3 màn hình Onboarding:
+- **ADB Forward tcp:9222 Xung Đột Chiếm Cổng CDP Của Chrome PC (2026-09-05)**:
+  Khi sử dụng lệnh forward socket `adb forward tcp:9222 localabstract:chrome_devtools_remote` để inspect webview/chrome trên thiết bị Android:
+  - `adb.exe` sẽ bind và chiếm giữ `127.0.0.1:9222`.
+  - Khi Chrome PC khởi chạy với `--remote-debugging-port=9222`, nó không thể bind IPv4 `127.0.0.1:9222` nên tự động fallback lắng nghe trên IPv6 `[::1]:9222`.
+  - Hậu quả: Mọi request gọi `curl http://127.0.0.1:9222/json/version` hoặc Playwright connect CDP `127.0.0.1:9222` sẽ nhận `curl: (52) Empty reply from server` hoặc trỏ nhầm vào điện thoại Android thay vì Chrome PC.
+  - **Khắc phục chuẩn**:
+    1. Kiểm tra tiến trình chiếm cổng: `netstat -ano | grep 9222` và `adb forward --list`.
+    2. Gỡ bỏ port forward stale: `adb -s <serial> forward --remove tcp:9222` hoặc `adb forward --remove tcp:9222`.
+    3. Nếu cần kết nối song song với Chrome PC mà không gỡ forward: Sử dụng IPv6 `http://[::1]:9222` (`curl -s -g -6 "http://[::1]:9222/json/version"` hoặc `p.chromium.connect_over_cdp("http://[::1]:9222")`).
+
+- **Gmail App Onboarding / Setup Wizard Blocker & 0-Account Alert (2026-08-29, updated 2026-09-06)**:
+  Khi mở App Gmail (`com.google.android.gm`) sau khi thêm tài khoản hoặc trong các phiên mới, app thường bị chặn bởi các màn hình Onboarding:
   1. *"Mới có trong Gmail"* (`welcome_tour_got_it`) -> tap nút `"OK"` (tâm `540, 1836`).
   2. *"Bạn có thể sử dụng ứng dụng này với tất cả địa chỉ email..."* (`action_done`) -> tap nút `"ĐƯA TÔI TỚI GMAIL"` / `"TAKE ME TO GMAIL"` (tâm `540, 1836`).
+     - **BẪY FRESH DEVICE (0 TÀI KHOẢN)**: Nếu máy chưa có tài khoản nào, bấm *"ĐƯA TÔI TỚI GMAIL"* sẽ làm Gmail bật popup cảnh báo: `android:id/message` = *"Vui lòng thêm ít nhất một địa chỉ email."* / *"Please add at least one email address."* với nút `android:id/button1` = `"OK"` (`bounds=[777,1012][969,1156]`, tâm `873, 1084` trên S7 1080x1920). Popup này che toàn bộ giao diện khiến preflight kiểm tra inbox fail với `[PRE_GMAIL][NOT_GMAIL_HOME]`.
+     - **Xử lý chuẩn (live verified 2026-09-06 máy 76)**:
+       1. Sau khi tap `action_done` hoặc trong vòng lặp dismiss popup startup, nếu phát hiện thông báo này, lập tức tap `OK`/`Đồng ý` (`android:id/button1` hoặc tọa độ `873, 1084`) để đóng popup.
+       2. Classifier `is_gmail_home_xml` BẮT BUỘC chấp nhận `id/setup_addresses_fragment` là màn hình hợp lệ cho fresh device (ghi nhận `avatar node not visible yet`), không được crash fail-closed tại preflight.
+       3. Giữ nguyên trạng thái màn `setup_addresses_fragment` và chuyển ngay sang luồng fresh device: tap *"Thêm địa chỉ email"* / *"Add an email address"* (step 1c) để mở danh sách provider (Google) bắt đầu đăng ký/đăng nhập.
   3. *"Google Meet hiện đã có trong Gmail"* (`next_button`) -> tap nút `"Đã hiểu"` / `"Got it"` (tâm `848, 1614`).
-  Nếu không vượt qua onboarding này, luồng kiểm tra `_gmail_mailbox_state` sẽ không thấy danh sách hòm thư và tưởng nhầm là tài khoản chưa được đăng nhập (`target_account_not_verified`). Bắt buộc bọc helper `_dismiss_gmail_onboarding` tự động bấm qua các màn hình này ngay sau khi mở Gmail.
+  Nếu không vượt qua onboarding này, luồng kiểm tra `_gmail_mailbox_state` sẽ không thấy danh sách hòm thư và tưởng nhầm là tài khoản chưa được đăng nhập (`target_account_not_verified`). Bắt buộc bọc helper `_dismiss_gmail_onboarding` / `dismiss_gmail_startup_popup` tự động xử lý các màn hình này ngay sau khi mở Gmail.
 
-- **Samsung Keyguard Screen-Lock, Post-Reboot Revert & Permanent Disable (2026-08-29 / 2026-09-03)**:
+- **Samsung Keyguard Screen-Lock, Post-Reboot Revert & Permanent Disable (2026-08-29 / 2026-09-03 / 2026-09-04)**:
   Khi thiết bị Android (Samsung S7 / SM-G930 series) khởi động lại (reboot rạng sáng, watcher restart, crash loop, sụt nguồn), hệ thống Android tự động nạp lại giá trị mặc định từ ROM: `screen_off_timeout = 600000` (10 phút) và bật lại màn hình khóa (`lockscreen.disabled = 0`).
   Nếu chỉ set tạm `screen_off_timeout` trước đó mà không khóa cấp hệ thống, sau khi reboot thiết bị nằm trong queue chờ (ví dụ `queued_v2`) quá 10 phút sẽ tự tắt màn hình -> rơi vào màn hình khóa Samsung Keyguard (`com.android.systemui`, *"Vuốt màn hình để mở khóa"* / `showing=true`, focus về `StatusBar`), làm worker nhấc máy bị mất focus và kẹt phiên.
+  - **Tích hợp tự động trong codebase**: Đã tích hợp sẵn vào `automation_core.device.prepare_device(adb)` / `automation_core.startup.prepare_android_for_automation(adb)` (`configure_stay_on(adb)`) và `flows.device_prepare.configure_device_screen_stay_on(ctx)`.
   - **Mở khóa khẩn cấp ngay lập tức qua ADB**: `adb shell "wm dismiss-keyguard; input keyevent 82"` (`keyevent 82` = MENU/Unlock, lập tức giải phóng Keyguard về Home/App).
   - **Quy trình khóa vĩnh viễn màn hình khóa & chống tắt màn hình sau reboot (MANDATORY)**:
-    1. `adb shell "locksettings set-disabled true"` (Khóa cấp hệ thống Android).
-    2. `adb shell "settings put secure lockscreen.disabled 1"` (Vô hiệu hóa secure keyguard).
-    3. `adb shell "settings put system screen_off_timeout 2147483647"` (Max Int - không bao giờ tắt màn hình).
-    4. `adb shell "settings put global stay_on_while_plugged_in 7"` (Luôn sáng màn hình khi cắm cáp USB/AC/Wireless).
-    5. `adb shell "settings put secure lock_screen_lock_after_timeout 2147483647"`.
+    1. `adb shell "svc power stayon true"` (Giữ nguồn/màn hình luôn sáng).
+    2. `adb shell "locksettings set-disabled true"` (Khóa cấp hệ thống Android).
+    3. `adb shell "settings put secure lockscreen.disabled 1"` (Vô hiệu hóa secure keyguard).
+    4. `adb shell "settings put system screen_off_timeout 1800000"` (hoặc 2147483647).
+    5. `adb shell "settings put global stay_on_while_plugged_in 7"` (Luôn sáng màn hình khi cắm cáp USB/AC/Wireless).
+    6. `adb shell "settings put secure lock_screen_lock_after_timeout 2147483647"`.
 
 - **ShopClone7 / CloneFBIG Supplier API Truncation vs Web UI (2026-08-29)**:
   Khi mua tài khoản Hotmail Graph API qua endpoint API của ShopClone7 / CloneFBIG (`/api/buy_product`), dữ liệu JSON trả về có thể bị cắt cụt trường `refresh_token` (chỉ còn ~101 ký tự thay vì ~457 ký tự chuẩn MSA Artifacts do serializer của shop giới hạn độ dài chuỗi). Để lấy token chuẩn đầy đủ 100%, hãy trích xuất dữ liệu trực tiếp từ Web UI (bảng đơn hàng / thuộc tính `data-checkbox` qua Chrome CDP).
@@ -885,13 +1021,18 @@ nguyên tắc không đụng máy nhiều lần và có thể đổi trạng th�
   2. **Device**: Xóa tài khoản TikTok trong TikTok app (hoặc bỏ qua khi app không còn lưu). BẮT BUỘC GIỮ NGUYÊN hoặc đăng nhập lại Google Account (Gmail) trên thiết bị Android để phục vụ nhận OTP/mail khi cần.
   3. **Script Reg Eligibility**: Kiểm tra `gmail_clean_v2.xlsx` để chắc chắn mail đó không nằm trong danh sách cấp reg mới (`_detect_clean.py`), tránh việc bot tự động lấy lại mail đã từng reg để đăng ký tiếp.
 
-- **ADB Command Timeout — Bounded Retry & Single Soft Reboot (2026-08-23, automation-core >=0.4.47)**:
-  Khi gặp lỗi `adb command timed out` (như lệnh `input swipe`, `GET_IP` bị treo transport):
-  1. KHÔNG chỉ tăng `wait timeout` mù quáng (khiến worker ngâm treo lâu hơn nếu transport đã chết).
-  2. `AdbClient` trong `automation-core` tự động retry có chặn (`connection_retry_attempts=3`) kèm `wait-for-device`.
-  3. Nếu vẫn timeout và `allow_device_reboot_recovery=True`, `AdbClient` kích hoạt tối đa **1 lần soft reboot** cho đúng serial, chờ `wait-for-device` + `sys.boot_completed=1` (timeout 120s), rồi retry lại đúng command 1 lần duy nhất.
-  4. Lệnh không có serial hoặc cờ reboot tắt sẽ fail-closed ngay sau vòng retry để bảo vệ toàn farm. Các lỗi app thông thường (exit code != 0) tuyệt đối không bị reboot.
-  5. CẤM restart ADB server hoặc `pm clear` khi gặp timeout.
+- **ADB Command Timeout & Transient Transport Disconnects — Auto-Retry & Reconnect (2026-08-23, updated 2026-09-03 / 2026-09-04, automation-core >=0.4.48)**:
+  Khi gặp lỗi `adb command timed out` hoặc mất kết nối tạm thời do sụt áp Hub USB / reset daemon (`device offline`, `device not found`, `device is offline or adb/usb disconnected`, `transport_lost`):
+  1. KHÔNG chỉ tăng `wait timeout` mù quáng và KHÔNG dừng phiên/báo alert ngay khi chỉ mất kết nối micro-second.
+  2. **Xử lý thiết bị kẹt `adb shell` (get-state là `device` nhưng lệnh shell timeout)**: Chạy ngay `adb -s <serial> reconnect` (hoặc `adb reconnect`) để reset transport socket cục bộ. Lệnh này lập tức giải phóng kênh truyền mà KHÔNG cần restart ADB server (tránh làm đứt kết nối 79 máy còn lại) và KHÔNG cần reboot điện thoại.
+  3. Sau khi reconnect: Bắt buộc chạy `python D:\Taadaa\AI-Tools\scripts\set_proxy_farm_adb.py --machines <ID>` để xác thực lại `http_proxy=192.168.110.2:2000N` và `captive_portal_mode=0`, test egress IP qua proxy `curl -s -m 10 -x http://192.168.110.2:2000N http://api.ipify.org`.
+  4. `AdbClient` trong `automation-core` tự động nhận diện `CONNECTION_LOST_MARKERS` qua `is_connection_lost(stderr)`.
+  5. Trước mỗi lượt retry (mặc định 3 attempts, backoff delay 2.0s), `AdbClient` tự động gọi `_reconnect_device()`: thực thi `adb -s <serial> reconnect device` (với fallback `adb -s <serial> reconnect` hoặc `adb reconnect`), sau đó gọi `wait-for-device` và sleep theo delay.
+  6. Cơ chế chỉ kích hoạt cho lỗi transport/connection, phân biệt tuyệt đối khỏi lỗi logic app (sai màn hình, crash app, UI missing) để fail-closed đúng lúc.
+  7. Nếu vẫn timeout sau retry và `allow_device_reboot_recovery=True`, `AdbClient` kích hoạt tối đa **1 lần soft reboot** cho đúng serial, chờ `wait-for-device` + `sys.boot_completed=1` (timeout 120s), rồi retry lại đúng command 1 lần duy nhất.
+  8. Lệnh không có serial hoặc cờ reboot tắt sẽ fail-closed ngay sau vòng retry để bảo vệ toàn farm. Các lỗi app thông thường (exit code != 0) tuyệt đối không bị reboot.
+  9. CẤM restart ADB server hoặc `pm clear` khi gặp timeout.
+  10. **Canary test xác minh**: Chạy `run-feed-session.ps1 -Machines <ID> -Row 1 -RecoveryTestSwipes 2 -SkipAccountWorkbookSync -Run` để nghiệm thu máy trước khi đưa trở lại fleet.
 
 - **UI XML dump contains mixed packages (System UI / Notification leak) → MUST filter by `APP_PACKAGE` (2026-08-22)**:
   `uiautomator dump` extracts the full display tree, including system notification popups / status bar items from `com.android.systemui` (e.g. "Thông báo của Dịch vụ Google Play: Yêu cầu đăng nhập", "Không có điện thoại nào."). A naive `strip_accents(xml).lower()` or `root.iter("node")` matches words like "đăng nhập" or "điện thoại" in system notifications, falsely classifying the screen as a TikTok login modal or phone-login tab and breaking the flow.
@@ -910,9 +1051,13 @@ nguyên tắc không đụng máy nhiều lần và có thể đổi trạng th�
 
 - **Protocol-v2 device locks (`lock_protocol_version: 2`) are reclaimed atomically by core takeover — do NOT hand-delete dead-PID locks.** Observed live 2026-08-12: a control script crashed after `adb reboot` and leaked both machine+serial locks with its own dead PID; the watcher's per-event `_acquire_watch_lock` (FULL_SCOPE takeover) reclaimed them via `_takeover_payload` (owner_active=False + PID dead), processed the reconnect event, and released. The `_takeover_payload` rules (core 0.4.44): takeover needs `allow_takeover=True` + `takeover_authorized=True` + scope (`FULL_SCOPE_TAKEOVER`/`SAME_PROJECT_RECOVERY`) + non-empty reason; `POST_REBOOT_PROXY_RECOVERY` mode additionally requires a non-empty `takeover_proof` dict; `temporarily_skipped` owners are NEVER reclaimable; SAME_PROJECT requires the owner's `project` field to match. The older "remove BOTH lock kinds before re-running" advice below applies to pre-protocol-v2 locks only.
 
-- **NEVER `pm clear` OR `pm clear --cache-only` for TikTok `com.ss.android.ugc.trill` without an explicit user command.** User fury incidents 2026-08-07 AND 2026-08-16 (rule viết rõ "CẤM xóa Dữ liệu TikTok" trong memory từ lâu — vi phạm dù ở dạng `--cache-only` vẫn chửi thẳng): full `pm clear` wiped every account/session on the device (machine 34 lost someone else's accounts; máy 4 2026-08-16 data rỗng hẳn → app reset về onboarding). `pm clear --cache-only` cũng destructive: cache mất → TikTok kẹt SplashActivity với logcat `memoryError: cannot find cached buffer` (app mất resource/cache assets, không render được feed) → dễ bị cám dỗ leo thang sang full `pm clear` = xoá data. **Kẹt splash sau clear-cache KHÔNG fix bằng pm clear nữa** — force-stop + relaunch (monkey launch) thử; data đã mất thì phải login lại nick theo lệnh user. To switch/remove a TikTok account: use in-app logout, or ask the user. This rule is also written into `Tiktok_Reg/AGENTS.md` and `add mail khoi phuc/AGENTS.md` (Safety And Ownership).
+- **NEVER `pm clear` OR `pm clear --cache-only` for TikTok `com.ss.android.ugc.trill` without an explicit user command.** User fury incidents 2026-08-07, 2026-08-16, and 2026-09-13 (rule viết rõ trong memory — vi phạm dù để cứu app kẹt splash vẫn bị xử lý nghiêm khắc): full `pm clear` wiped every account/session on the device (xóa sạch `/data/data`, văng toàn bộ tài khoản đăng nhập). Kể cả sau khi nâng cấp split APK hoặc gặp splash-stuck, TUYỆT ĐỐI CẤM dùng `pm clear`. BẮT BUỘC dùng `install-multiple -r -d` để giữ data/login, sau đó chỉ dùng `am force-stop` và phím HOME (`keyevent 3`). Chi tiết: `references/tiktok-split-apk-bundle-recovery.md`.
 
-- **uiautomator dump hanging (E=137 / "Killed" / "Bad file descriptor") = atx-agent wedged.** Force-stopping `com.github.uiautomator*` packages alone does NOT release the UiAutomationService handle — the helper process holds it. **Use `pkill -9` (SIGKILL), NOT plain `pkill` (SIGTERM)** — a wedged atx-agent parks in `futex_wait_queue_me` (S-state) and silently IGNORES SIGTERM (pkill exits 0 but the process survives, dump stays E=137 forever, runner stuck in a transport-recovery loop). `pkill -9 -f atx-agent` kills it hard and dump returns to exit 0 immediately (live-proven SM-G930F/W8; machine 34 2026-08-07: SIGTERM E=137 persisted, SIGKILL → E=0 instantly). A wedged `uiautomator dump` child additionally needs `pkill -9 -f uiautomator` ("could not get idle state" persists after atx kill alone; may return "Operation not permitted" for the u0_a196 app — harmless, atx kill + `uiautomator quit` suffice). This is NOT a reason to reboot. Core logic: `_recover_uiautomator` in automation-core ≥0.4.43 uses SIGKILL (markers `ATX_AGENT_PROCESS_MARKER`, `UIAUTOMATOR_PROCESS_MARKER`). Manual one-shot: `adb shell pkill -9 -f atx-agent; adb shell am force-stop com.github.uiautomator; adb shell uiautomator quit; uiautomator dump` → E=0.
+- **uiautomator dump hanging (E=137 / "Killed" / "Bad file descriptor") = atx-agent or app_process instrumentation stub wedged.** Force-stopping `com.github.uiautomator*` packages alone does NOT release the UiAutomationService handle — the helper process or instrumentation runner holds it.
+  1. **atx-agent wedged**: **Use `pkill -9` (SIGKILL), NOT plain `pkill` (SIGTERM)** — a wedged atx-agent parks in `futex_wait_queue_me` (S-state) and silently IGNORES SIGTERM (pkill exits 0 but the process survives, dump stays E=137 forever, runner stuck in a transport-recovery loop). `pkill -9 -f atx-agent` kills it hard and dump returns to exit 0 immediately (live-proven SM-G930F/W8; machine 34 2026-08-07: SIGTERM E=137 persisted, SIGKILL → E=0 instantly). A wedged `uiautomator dump` child additionally needs `pkill -9 -f uiautomator` ("could not get idle state" persists after atx kill alone; may return "Operation not permitted" for the u0_a196 app — harmless, atx kill + `uiautomator quit` suffice). This is NOT a reason to reboot.
+  2. **app_process instrumentation stub wedged (live 2026-09-08, máy 03)**: Process `app_process /system/bin com.android.commands.am.Am instrument ... com.github.uiautomator.stub.Stub` holds the UiAutomation connection exclusively. Shell `uiautomator dump` will fail immediately with exit code 137. Because cmdline starts with `app_process`, `pkill -9 -f atx-agent` does NOT touch it! Fix: `pkill -9 -f com.github.uiautomator.stub.Stub` (or `pkill -9 -f app_process`), followed by `am force-stop com.github.uiautomator; uiautomator quit`.
+  3. One-shot command giải phóng toàn diện:
+     `adb shell "pkill -9 -f atx-agent; pkill -9 -f com.github.uiautomator.stub.Stub; am force-stop com.github.uiautomator; uiautomator quit; uiautomator dump /sdcard/window_dump.xml"` → E=0 ngay lập tức. Core logic: `_recover_uiautomator` in automation-core ≥0.4.43 uses SIGKILL (markers `ATX_AGENT_PROCESS_MARKER`, `UIAUTOMATOR_PROCESS_MARKER`). Manual one-shot: `adb shell pkill -9 -f atx-agent; adb shell am force-stop com.github.uiautomator; adb shell uiautomator quit; uiautomator dump` → E=0.
 
   - **atx-agent "respawns" with cmdline `atx-agent server -d --stop` — a stuck STOP-process, not a live agent** (live 2026-08-15, máy 38, tool 数控安卓投屏 mirroring): after a successful `pkill -9 -f atx-agent` + dump E=0, a NEW atx-agent process appears minutes later with `server -d --stop` (the stop command itself hanging in `futex_wait_queue_me`/`do_wait`), and uiautomator dies again. The farm mirror tool (数控安卓投屏 / xiaowei) on the PC keeps issuing `atx-agent server --stop` over ADB while it mirrors the machine — killing it by hand is a treadmill while the tool is up. Check `cat /proc/<pid>/cmdline | tr '\0' ' '` to tell `--stop` (zombie, respawn) from a real `server` (live). Fix: user closes the mirror tool → kill once more → stays dead (verified). Do NOT conclude "atx kill doesn't work" — it's the external tool respawning it.
 
@@ -929,6 +1074,14 @@ nguyên tắc không đụng máy nhiều lần và có thể đổi trạng th�
 - **Farm accessibility is OFF (`settings get secure accessibility_enabled` = 0, `enabled_accessibility_services` = null).** Chrome/WebView then exposes ONLY `url_bar` in the hierarchy — form fields (`loginfmt`, `i0116`, `i0118`, `passwordEntry`) and page text are invisible to `ui_xml`/`uiautomator dump` (returns 0 nodes). A login flow that "found the email field then can't find the password field" on this farm is usually this, not a selector bug. Screen is actually fine (screenshot shows the Microsoft login page); the tree just has no content. Workarounds: reset the tab and re-run (fresh render sometimes re-exposes), pick a machine whose Chrome session is clean, or use coordinate/screenshot-based fallbacks. Do NOT change shared selectors for this.
 
   - **Chrome 138 makes this worse and semantic fallbacks fail too**: `uiautomator dump` returns 0 nodes and `tap_text`-style semantic taps can't see buttons ("Could not select Keep me signed in: Yes"). **Coordinate fallback is the reliable escape**: pixel-scan the screenshot for the Microsoft blue button (b>140, 0<r<120, 60<g<140), tap the centroid. Verified on 1080x1920: keep-signed-in "Có/Yes" blue region x=[80,1000] y=[1000,1680], centroid `(540,1593)` → after tap, URL proof `outlook.live.com/mail/0/inbox` and login SUCCEEDS. TalkBack service is absent on the farm (`pm list services` empty) so enabling accessibility isn't an option.
+
+  - **Chrome Web Form Automation via CDP when Accessibility is OFF (2026-09-13)**:
+    Khi cần tự động hóa tương tác form web trên Chrome Android (nhập input, click nút, đăng ký newsletter, vượt cloudflare tự động) mà không thể dump bằng UIAutomator do `accessibility_enabled = 0`:
+    1. Trình duyệt Chrome trên Android luôn tự mở socket DevTools trừu tượng: `@chrome_devtools_remote`.
+    2. Forward cổng sang host: `adb -s <serial> forward tcp:9223 localabstract:chrome_devtools_remote`.
+    3. Đọc danh sách tab: `GET http://127.0.0.1:9223/json/list` lấy `webSocketDebuggerUrl`.
+    4. Dùng Python `websockets` gửi lệnh `Runtime.evaluate` để điền input (`email.value = ...; email.dispatchEvent(new Event('input', {bubbles:true}));`), click submit (`submit.click()`), hoặc kiểm tra `document.body.innerText`.
+    5. Luồng Cooper Press / Node Weekly / JS Weekly: Form trang chủ `nodeweekly.com` chuyển tiếp sang `https://subscribe.cooperpress.email/start?pub=node...`. Chờ 5s Cloudflare pass trên browser thật, sau đó BẮT BUỘC bấm tiếp nút xác nhận phụ *"Click here to subscribe"* (`button[type="submit"]`) trên màn hình `subscribe.cooperpress.email` thì email mới thực sự được gửi về hộp thư.
 
 - **Samsung OneUI task-switcher (RecentsActivity) can get stuck on top of Chrome.** Detection: `dumpsys activity top` shows `DecorView@...[RecentsActivity]` + `button_cancel`/`button_done` while `mResumedActivity` says Chrome; Back (`keyevent 4`) and HOME (`keyevent 3`) don't dismiss it. Fix: `am force-stop com.sec.android.app.launcher`, then `input keyevent 3`, then `am start -a android.intent.action.VIEW -p com.android.chrome -d <url>` to re-open Chrome cleanly. Run the automation again from the clean state.
 
@@ -970,9 +1123,40 @@ nguyên tắc không đụng máy nhiều lần và có thể đổi trạng th�
 
 - **Clean APK harvest (clone installed apps to a bank for reimaging phones)**: pull the device's own installed APK (bit-exact, never download from the web). Recipe: `appdir=$(adb shell pm path <pkg> | sed 's/^package://; s:/base\.apk$::')` → `rmdir "$BANK/<pkg_>"` (must not pre-exist) → `adb pull "$appdir" "D:\Taadaa\apk-bank\<pkg_>"`. Reinstall with `adb install-multiple <dir>\*` (split apps) or `adb install <dir>\base.apk` (single-APK like ViChanger). Farm map: TikTok=`com.ss.android.ugc.trill`, ViChanger=`vn.vichanger.app`, WhatsApp=`com.whatsapp`, Gmail=`com.google.android.gm` (NOT `com.google.android.gms` = Play Services). GemPhone is NOT a phone app on the connected farm (scan found no `gem`/`farm` package; likely Windows PC software). Full steps + bank layout + provenance check: `references/apk-harvest.md`.
 
+- **Google Login Webview / Browser Challenge Substring Trap vs Android Google Prompt (`challenge/dp`) (2026-09-06, updated 2026-09-11)**:
+  - Khi tự động hóa đăng nhập Google trên trình duyệt (Playwright/CDP/GPM) kết hợp xác minh Google Prompt trên thiết bị Android: sau khi submit password, URL chuyển sang `.../challenge/pwd` (màn hình xác thực mật khẩu).
+  - BẪY SUBSTRING: Nếu kiểm tra URL bằng `if "challenge/dp" in cur_url or "challenge" in cur_url:`, điều kiện sẽ bị kích hoạt NGAY LẬP TỨC tại `challenge/pwd` khi Google chưa hề gửi Google Prompt tới điện thoại Android.
+  - Hậu quả: Script gửi lệnh ADB tap quá sớm vào màn hình khi `OctarineActivity` chưa mở, làm trượt cú tap; sau đó Google prompt hiển thị nhưng không được xác nhận và rơi vào trạng thái hết hạn (*"Lời nhắc này đã hết hạn"*).
+  - **Quy tắc bắt buộc**:
+    1. BẮT BUỘC match chính xác `if "challenge/dp" in cur_url:` (hoặc check focused activity là `com.google.android.gms/.octarine.ui.OctarineActivity`).
+    2. Sau khi URL chuyển sang `challenge/dp`, sleep 2.0–2.5s để thiết bị Android nhận push và render xong dialog.
+    3. Tọa độ nút *"Vâng, đúng là tôi"* / *"Yes, it's me"* trên Samsung S7 (1080x1920): `input tap 540 1362`.
+    4. **ADB Path & Device Liveness Preflight trong Git Bash (2026-09-11)**:
+       - `adb` KHÔNG nằm trong PATH mặc định của MSYS/Git Bash trên host Windows. Canonical path cố định là `C:\Program Files (x86)\xiaowei\tools\adb.exe` (hoặc `C:\Users\Kibe\.GemPhoneFarm\app\adb-tool\adb.exe`). Tuyệt đối không gọi lệnh `adb` trần trong shell bash.
+       - Trước khi vào loop chờ duyệt Prompt / Notification (thường timeout 60s–120s), BẮT BUỘC kiểm tra liveness thiết bị qua `adb -s <serial> get-state`. Nếu máy bị rớt USB (`device not found` / `offline`), ngắt ngay luồng và báo blocker `DEVICE_DISCONNECTED` thay vì để runner treo chờ hết timeout (240s) của phiên.
+
 - **Mất kết nối hàng loạt USB/ADB sau khi PC sập nguồn đột ngột (Kernel-Power 41 / X99 Huananzhi host)**: Sau khi PC sập nguồn bất ngờ, các bộ điều khiển USB 3.0 chính (`Intel USB 3.0 eXtensible Host Controller`) rơi vào trạng thái `CM_PROB_PHANTOM` trong Device Manager (chỉ còn 1 chip USB phụ nhận ~7 máy, 73 máy còn lại mất kết nối). Rút cắm lại dây USB vào PC không có tác dụng do Host Controller đã chết trong Windows.
   - **Xử lý chuẩn**: Bắt buộc **Restart Windows** (khởi động lại sạch). Fast Startup đã tắt (`HiberbootEnabled=0`) để mọi lần boot đều nạp lại toàn bộ PCIe Host Controller.
   - **Quy tắc an toàn box nguồn (user chốt 21/08)**: Khi cần reset kết nối thiết bị, **chỉ rút cắm lại dây USB data** kết nối từ Box vào PC — **CẤM tắt công tắc nguồn nuôi Box** (tránh làm sập nguồn 80 điện thoại đang chạy).
   - **Dàn S7 ROM gốc không tự bật máy khi sập nguồn (21/08)**: Nếu cả phòng/ổ cắm bị sập điện, Samsung S7 chạy ROM gốc sẽ tắt ngúm (hoặc rơi vào màn hình sạc LPM), không tự khởi động lại vào Android $\rightarrow$ sau khi PC bật lại chỉ thấy vài máy online. Phải bật nguồn thủ công từng máy nếu chưa mod LPM.
   - **Quy hoạch nguồn điện Farm chống sập PC (21/08)**: PC Dual Xeon + 4 Box S7 ăn tải 800W - 1500W $\rightarrow$ CẤM cắm chung 1 ổ chia thông thường (gây sụt áp/move chớp tắt sập PC). Dây nguồn PC phải cắm trực tiếp vào ổ tường riêng, 4 Box dùng ổ chia chịu tải riêng.
+
+- **Bẫy Trích Xuất Mã Bảo Mật 10 Số Khi S7 Đăng Nhập Nhiều Tài Khoản Google (2026-09-06)**:
+  - Trên thiết bị Samsung S7 đăng nhập nhiều tài khoản (`dumpsys account` có >= 2 accounts com.google), khi mở Cài đặt Google (`android.settings.SETTINGS` -> Google), giao diện Google Play Services luôn mặc định hiển thị tài khoản chính đầu tiên trên header.
+  - Hậu quả: Nếu script không kiểm tra và tap thẳng vào "Quản lý tài khoản Google" -> "Bảo mật" -> "Mã bảo mật", cặp mã 10 số lấy được sẽ là của tài khoản khác! Khi nạp vào trình duyệt (GPM/Playwright), Google web sẽ từ chối ngay lập tức với lỗi *"Mã sai"* / *"Không hợp lệ"*.
+  - **Quy trình chuẩn**:
+    1. Quét XML hierarchy kiểm tra node header `Đã đăng nhập bằng tài khoản ...`. Nếu email hiển thị khác `target_email`:
+    2. Tap vào phần chọn tài khoản / avatar / email dropdown (`(500, 850)` hoặc bounds chip tài khoản).
+    3. Trong modal danh sách tài khoản, tìm node chứa chính xác `target_email` và tap chọn.
+    4. Chờ 2s cho UI cập nhật sang đúng tài khoản mục tiêu, sau đó mới vào `Quản lý Tài khoản Google` -> `Bảo mật và đăng nhập` -> `Mã bảo mật`.
+    5. Mã bảo mật offline 10 số của Google chỉ có hiệu lực trong vòng **15 phút** kể từ lúc tạo trên thiết bị. BẮT BUỘC trích xuất real-time ngay trước khi nạp vào trình duyệt, cấm lưu cache hay dùng lại mã cũ.
+
+- **Samsung Pay (`com.samsung.android.spay`) Che Màn Hình S7 Gây Kẹt UI Hierarchy (2026-09-06)**:
+  - Trên các máy Samsung S7 (SM-G930), app Samsung Pay thường xuyên trượt lên che toàn bộ màn hình khi vừa mở khóa hoặc mở Settings, làm ATX-agent chỉ dump được cây XML của `com.samsung.android.spay` và khóa mọi thao tác điều hướng.
+  - **Khắc phục chuẩn**: Trước khi mở Cài đặt hoặc thao tác với Google, bắt buộc chạy:
+    ```bash
+    adb -s <serial> shell am force-stop com.samsung.android.spay
+    adb -s <serial> shell input keyevent 3  # HOME
+    adb -s <serial> shell input keyevent 4  # BACK
+    ```
 

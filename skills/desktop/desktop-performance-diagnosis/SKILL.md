@@ -22,6 +22,8 @@ Use this skill for sudden stutter, freezes, frame-time spikes, audio/input pause
 ## Scope and safety
 
 - Start read-only: collect event logs, process state, update history, driver/device state, storage/network counters, and application logs.
+- Remote Host First: When diagnosing performance on a remote/secondary host (e.g. `admin-farm` / other LAN machines), check configured remote access (`~/.ssh/config`) and query the target machine directly via SSH first. Never speculate from local machine telemetry or local cron schedules when direct remote inspection is accessible.
+- Windows OpenSSH Shell Wrapping: Remote Windows OpenSSH servers often default to `cmd.exe`. Always wrap diagnostic one-liners explicitly: `ssh <host> "powershell.exe -NoProfile -ExecutionPolicy Bypass -Command \"<cmd>\""` to prevent cmd parsing errors (such as `'Sort-Object' is not recognized`).
 - Do not kill processes, disable security, pause sync, change drivers, edit registry, change power plans, or reboot while investigating unless the user explicitly authorizes the intervention.
 - Do not inspect credentials, mailboxes, workbooks, or unrelated farm data merely because automation processes exist on the host.
 - Report unproven correlations as hypotheses, not conclusions.
@@ -118,6 +120,72 @@ Get-CimInstance Win32_VideoController
 
 When using PowerShell from Git Bash, quote the entire `-Command` payload carefully and avoid nested shell interpolation. If a diagnostic script fails to parse, classify it as a harness failure and rerun with simpler quoting; never treat missing telemetry as evidence of a clean system.
 
+## Remote diagnosis via SSH
+
+When the affected machine is a LAN host with SSH access (e.g. `admin-farm` from `~/.ssh/config`), run all telemetry **directly on the target** — do not speculate from the local machine. Preferred pattern:
+
+```bash
+# Quick read-only snapshot — PowerShell via SSH (cmd.exe default, must wrap explicitly)
+ssh admin-farm "powershell.exe -NoProfile -ExecutionPolicy Bypass -Command \"Get-Process | Sort-Object CPU -Descending | Select-Object -First 15 Name, Id, CPU, WorkingSet64 | Format-Table -AutoSize\""
+
+# GPU state
+ssh admin-farm "powershell.exe -NoProfile -ExecutionPolicy Bypass -Command \"nvidia-smi\""
+
+# Disk queue
+ssh admin-farm "powershell.exe -NoProfile -ExecutionPolicy Bypass -Command \"(Get-Counter '\\PhysicalDisk(*)\\Avg. Disk Queue Length').CounterSamples | Format-Table -AutoSize\""
+
+# VRAM + GPU memory
+ssh admin-farm "powershell.exe -NoProfile -ExecutionPolicy Bypass -Command \"Get-CimInstance Win32_OperatingSystem | Select-Object TotalVisibleMemorySize, FreePhysicalMemory\""
+```
+
+### Applying fixes via SSH — use scp + `-File`, never inline complex scripts
+
+Inline PowerShell with backticks (`` ` ``) **breaks bash** due to substitution conflicts. For any multi-line or complex fix script:
+
+```bash
+# 1. Write the script locally
+cat > /tmp/fix.ps1 << 'PSEOF'
+# ... PowerShell content with backticks, $vars, etc. ...
+PSEOF
+
+# 2. Copy to target
+scp /tmp/fix.ps1 admin-farm:"C:/Taadaa_Service/fix.ps1"
+
+# 3. Execute
+ssh admin-farm "powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\\Taadaa_Service\\fix.ps1"
+```
+
+### Game config file lock pitfall
+
+Unreal Engine / Riot game client config files (`GameUserSettings.ini`) are **locked by overlay processes** (Overwolf, TFTAcademy, OverwolfBrowser) even when the game itself is closed. The file appears writable but writes silently fail (the `Set-Content` call returns OK but the file is unchanged).
+
+**Fix sequence:**
+```powershell
+# 1. Kill overlay processes holding the lock
+Stop-Process -Name TFTAcademy, Overwolf, OverwolfBrowser, OverwolfHelper, OverwolfHelper64 -Force -ErrorAction SilentlyContinue
+Start-Sleep -Seconds 2
+
+# 2. Write using raw bytes (not Set-Content or WriteAllText encoding pitfalls)
+$f = "C:\Users\Admin\AppData\Local\TFT\Saved\Config\WindowsClient\GameUserSettings.ini"
+$d = [System.IO.File]::ReadAllBytes($f)
+$txt = [System.Text.Encoding]::UTF8.GetString($d)
+$txt = $txt.Replace("bUseVSync=True","bUseVSync=False")
+# ... etc
+[System.IO.File]::WriteAllText($f, $txt, [System.Text.Encoding]::UTF8)
+
+# 3. Verify with type not powershell (bypasses PS read cache)
+# ssh admin-farm "type `"C:\path\GameUserSettings.ini`" | findstr /i `"vsync`""
+```
+
+### User communication style during remote diagnostics
+
+**`??` or `???` in response = user wants the fix applied NOW, not more explanation.** When the diagnosis is clear:
+- Skip the analysis writeup
+- Execute the fix directly via SSH
+- Show one-line confirmation when done
+
+Do NOT: write multi-paragraph explanations of why something is broken after the root cause is established. Do NOT: list what you're about to do before doing it.
+
 ## Reporting standard
 
 Keep the user-facing report concise and factual:
@@ -133,14 +201,33 @@ Do not say "root cause found" when only an idle snapshot or a list of heavy proc
 ## References
 
 - `references/desktop-performance-onset.md` — reusable onset timeline, evidence matrix, and interpretation notes from a Windows game-stutter investigation.
+- `references/console-window-storm-and-headless-subprocess-disruption.md` — diagnose rapid screen flashing / window storms caused by background automation (e.g. ADB, FFmpeg) missing Windows `CREATE_NO_WINDOW` flags.
 - `references/windows-nic-disconnect-repair.md` — diagnostic patterns and repair procedures for NDIS 10400 hardware resets, outdated NIC drivers, and power-saving disconnects under game/VPN load.
+- `references/game-input-latency-and-io-stutter.md` — secondary mechanical disk queue thrashing (DPC latency), V-Sync/windowed input lag, Vanguard-protected process inspection, Unreal/Overwolf overlay stalls, Dual Xeon single-thread IPC limits under batch load, GPU VRAM thrashing from multi-overlay CEF apps, and remote SSH host diagnosis.
+- `references/game-network-latency-diagnosis.md` — diagnose game network delay vs local freeze, extract server IP from logs, inspect NIC packet buffer discards, and check TCP socket churn.
+- `references/ssh-remote-game-config-fix.md` — proven scp+`-File` pattern for applying game config fixes (V-Sync, FullscreenMode, FrameRateLimit) via SSH; overlay file-lock pitfall; Dual Xeon + GTX 1660S VRAM saturation context; nvidia-smi SSH one-liners.
+- `references/legacy-32bit-game-memory-crash.md` — diagnose legacy 32-bit game crashes ("Not enough memory resources", Handle2AgentReg, cmemblock), pure PowerShell PE header LAA (0x0020) checks, and 4GB Patch application.
+- `references/mystery-startup-console-window-diagnosis.md` — diagnose blank/flashing PowerShell or CMD windows appearing on boot; trace caller via PowerShell Event ID 400 HostApplication, ParentProcessId, Startup registry keys, and Electron app.asar child_process calls lacking windowsHide.
 
 ## Pitfalls
 
 - Blaming a familiar app because it consumes RAM/CPU now, despite the user reporting it worked normally before.
+- Overlooking Default Gateway Misrouting in dual-router setups: In environments with two routers on the same subnet (e.g. Ruijie FPT for Host PC + MikroTik Viettel for phone farm proxies), a DHCP race or reservation can silently hijack the host's 0.0.0.0/0 route to the farm router. The host's games then exit via the congested farm ISP instead of direct FPT, while app-specific proxies (like TELEGRAM_PROXY on 192.168.110.2:10001) never needed host-level default routing in the first place.
+- Confusing colloquial 'delay' (network latency / packet loss) with local input lag / VSync / display stutter, and dismissing network based solely on an ICMP ping to 8.8.8.8.
+- Assuming clean ICMP ping to 8.8.8.8 means game networking is healthy: game traffic uses UDP to distinct game servers (Riot VN2/SGP), vulnerable to ISP transit peering drops or NIC buffer overflow.
+- Overlooking local automation workloads (ADB streams, multi-worker uploads) flooding host NIC buffers (`Packets Received Discarded`) or exhausting router NAT tables with thousands of `TimeWait` sockets.
+- Ignoring secondary drives: assuming a game installed on NVMe SSD cannot lag from disk I/O, missing severe queue thrashing on a secondary SATA HDD (e.g. background orphaned `grep -rn` or batch workers) causing system-wide DPC/interrupt latency and mouse hitching.
+- Confusing input lag with network latency: V-Sync + Windowed Fullscreen at 60Hz creates 30–60ms+ mouse delay that users describe as "network delay" despite normal ping.
+- Assuming `Get-Process.Path` works for all games: anti-cheat systems (Riot Vanguard `vgk.sys`) strip process query handles, returning null paths unless inspected via registry or known install paths.
 - Treating an update from days ago as the cause of a symptom that started this morning without checking the onset window.
 - Using WHEA or DCOM events as proof without timestamp correlation.
 - Calling a network timeout the cause of a full local freeze without checking whether rendering/audio/input continued.
 - Collecting telemetry while the game is closed, then claiming the game-specific cause is proven.
 - Fixing before investigation: killing processes, disabling Defender, changing registry/driver/power settings, or rebooting without authorization.
 - Bundling multiple A/B changes so no causal conclusion is possible.
+- Assuming high core-count workstation/server CPUs (e.g. Dual Xeon 56-thread) can never bottleneck esports/gaming titles: high core count does not compensate for low single-core frequency (e.g. 2.4 GHz) or IPC limits when heavy background workloads (FFmpeg x264 filter-chains, 20-worker batch jobs) contend for L3 cache, memory buses, and CPU time.
+- Overlooking GPU VRAM saturation from concurrent Chromium/CEF overlays and Remote Desktop sessions: multiple Electron/CEF apps (Overwolf + TFTAcademy) and active `mstsc.exe` sessions can saturate GPU VRAM (e.g. GTX 1660S reaching >80% VRAM allocation), forcing DirectX swap-chains to spill into PCIe shared system memory and causing severe frame-time spikes/hitching.
+- Blaming network routing or farm automation blindly without checking SSH/remote access already available to inspect the target host's live GPU (`nvidia-smi`), background render processes (`ffmpeg`), and overlay memory consumption directly.
+- Blaming physical RAM when a 32-bit legacy game crashes with "Not enough memory resources to process this command": 32-bit executables without Large Address Aware (LAA) are hard-capped at 2 GB Virtual Address Space (VAS) on 64-bit Windows regardless of host RAM (e.g. 64 GB physical with 46 GB free). Check `<GameDir>\Errors\*.txt` and inspect the PE Characteristics offset for bit `0x0020` before assuming system RAM or hardware fault.
+- Overlooking missing `creationflags=subprocess.CREATE_NO_WINDOW` in background scripts (`pythonw.exe` / cronjobs) when users complain of desktop "nháy nháy liên tục" (flashing/flickering): `pythonw.exe` only hides Python itself; any console binary (`adb.exe`, `ffmpeg.exe`, `curl.exe`) spawned via bare `subprocess.run()` without `CREATE_NO_WINDOW` will allocate and close hundreds of console windows per minute during concurrent batch runs.
+- Assuming a mystery blank PowerShell console window popping up on boot is malware, Windows corruption, or farm automation: check PowerShell Event Log ID 400 (`HostApplication`) to trace the exact command and caller. Electron companion/overlay apps (like TFTAcademy) registered in Windows Startup often poll for target processes (e.g. `LeagueClientUx*`) via `powershell -c ...` without `{ windowsHide: true }`, creating empty console windows on desktop boot when the game is not running.

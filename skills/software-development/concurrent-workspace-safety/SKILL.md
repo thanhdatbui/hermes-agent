@@ -13,11 +13,32 @@ metadata:
 
 # Concurrent Workspace Safety
 
-## Overview
+## Runtime path vs Git path drift
 
-In coordinator→worker / multi-worker environments (e.g. this user's AGENTS.md + HERMES_SUBAGENT_RULES orchestration), a parallel worker can write to YOUR exact scope while you work. The task brief may even flag it ("đang bị worker khác sửa live"). Blindly implementing anyway clobbers the other worker's in-flight work; blindly reverting destroys their checkpoint. The safe path: detect early, never clobber, pivot to independent verification, report the collision.
+When a task edits a live runtime file but the user expects a Git-tracked change, treat the paths as separate evidence domains. Record and verify all three independently: `implemented_path` (bytes actually changed), `tracked_path` (Git file/commit that should carry the change), and `runtime_loading_path` (the path Hermes imports/loads). A green compile/test on `implemented_path` does not prove `tracked_path` changed, and a clean Git diff does not prove the runtime is using the tracked copy.
+
+For a single-controller Windows host, prefer one canonical Git-managed runtime path over a Git template plus an AppData copy. But a junction/symlink or copy migration is a state-changing architecture change, not a harmless cleanup: before implementing, capture exact preimages and hashes, prove the current loader path, verify junction target/loop safety and Windows permissions, define rollback, and test both Git tracking and runtime loading. Do not delete or overwrite an existing live plugin merely because a template directory looks incomplete. If the runtime and template diverge, report `SOURCE_OF_TRUTH_DRIFT` and reconcile with an explicit allowlist.
+
+The reusable evidence checklist is in `references/runtime-git-path-drift.md`.
+
+ (e.g. this user's AGENTS.md + HERMES_SUBAGENT_RULES orchestration), a parallel worker can write to YOUR exact scope while you work. The task brief may even flag it ("đang bị worker khác sửa live"). Blindly implementing anyway clobbers the other worker's in-flight work; blindly reverting destroys their checkpoint. The safe path: detect early, never clobber, pivot to independent verification, report the collision.
 
 **Core principle: before writing, compare the requested hunk with existing dirty hunks and active ownership. A same-file dirty state is not itself a blocker; proceed when the hunks are distinct and no active owner holds the requested hunk.**
+
+## Delegated Worker Budget and Honest Handoff
+
+When a parent task gives a hard inspection/iteration/tool-call budget, budget the phase explicitly before touching the worktree:
+
+- Count every tool call against the budget, including mandatory skill loading, status checks, and failed commands. Reserve the first calls for the user's required baseline command/anchors and reserve the final calls for the smallest write plus fresh verification. If the required inspection cannot fit inside the stated budget, abort with the exact evidence instead of continuing speculatively.
+- Treat coordinator-provided failure counts and line numbers as hypotheses until the exact current command reproduces them. If the live run reports a different count, reconcile the discrepancy before editing; do not manufacture a third failure or change a passing test merely because it was listed in stale context.
+- A failed patch/write is not an edit. Re-check the scoped bytes and status before claiming any changed path, and do not report verification unless the final requested command and compile checks actually ran after the last successful write.
+
+1. Use the first calls only for the exact production anchor, focused tests/current diff, and the narrow execution helper or seam. Avoid broad scans and speculative architecture work.
+2. **Reserve the closeout calls before exploring.** For a bounded edit task, explicitly reserve enough calls for (a) the smallest implementation write, (b) the focused test run, and (c) compile/diff-check/status evidence. Treat the remaining calls as the discovery budget; do not spend them on adjacent-file archaeology once the registry/import seam and exact patch anchor are known.
+3. Prefer one batched, read-only discovery call (or a small set of parallel reads) over serially inspecting several analogous modules. For a new self-registering tool, the registry contract plus one nearby registered tool is normally sufficient; implement the requested seam rather than searching for every provider/network precedent.
+4. Treat the budget as a hard stop. If the implementation and fresh verification cannot both fit, do not start a partial speculative patch; hand back the exact root-cause evidence, anchor, and old/new contract.
+5. Never report a code change, test result, or verification status unless a tool result proves it. Distinguish `inspected`, `edited`, and `verified`; a blocked worker must say which states were not reached.
+6. When the task requires code, an incomplete handoff is preferable to an untested or fabricated patch. Preserve the dirty worktree and leave the coordinator a concise re-entry point.
 
 ## When to Use
 
@@ -117,6 +138,75 @@ Collision timeline (baseline → foreign mtimes → detection time), what YOU to
 ## Explicitly authorized repository cleanup
 
 When the user explicitly authorizes cleanup of a named repository and says to ask only about important items, treat this as permission to clean disposable repository state—not to touch live devices, unrelated repos, secrets, or remote history without separate authorization. Inspect status, upstream divergence, local-only commits, and dirty diffs first. Classify generated commits by aggregate diff, symbol registration/import/call/test evidence, and duplicate-definition signals; never trust an auto-generated commit message alone. Before destructive cleanup, save status, diffs, commit list, and hashes outside the repo. Restore reviewed tracked noise, remove only reviewed stale plans/backups, and reset to upstream only after local-only commits are proven disposable. Do not push merely because cleanup succeeded. Final acceptance is empty porcelain, no staged diff, diff-check pass, one intended worktree, and 0/0 ahead/behind. See `references/scoped-repository-cleanup.md`.
+
+## Enforce Session Isolation, Not Prompt Scope
+
+Prompt-level allowlists are advisory and do not prevent a later worker from rewriting the same physical file from an older snapshot. If two sessions can reach one working tree, scope must be enforced at write/integration time:
+
+- Prefer an isolated git worktree per session/worker; workers return a commit/diff receipt, and only the Coordinator integrates into the shared tree.
+- Maintain a per-path ownership lease with `session_id`, `lease_id`, `base_blob_sha`, and expiry/heartbeat. A second owner receives `LEASE_HELD`; a stale base receives `STALE_BASE` before any write.
+- Add a pre-write guard for every mutation seam (`write_file`, patch/apply-patch, and terminal-backed writes where possible). A dispatch-only hook is insufficient.
+- Treat OS file locks as an atomic lease-file aid only; they do not prevent sequential overwrite and are not the ownership model.
+- Never use broad restore/reset/stash/whole-file rewrite to recover a collision. Preserve the current bytes and reconcile from a saved artifact in an isolated worktree.
+- At closeout, test/review only the session-owned scope; report foreign dirty separately and leave it untouched. “Chốt phiên” closes the owned session, not the entire repository.
+- Do not infer external sync causes (for example OneDrive) without path/provenance evidence; distinguish confirmed collision from hypotheses.
+
+Minimal acceptance matrix: same-file second acquire is rejected; stale `BASE_SHA` leaves bytes unchanged; workers in separate worktrees merge non-overlapping hunks and surface overlapping conflicts; foreign dirty is preserved; a worker cannot write without a valid lease.
+
+## Session Ownership, Worktrees, and Closeout (Critical)
+
+A prompt-level allowlist is not ownership enforcement. When multiple sessions/workers can touch the same repository, never let a worker write directly to the shared main worktree based only on text such as "only edit these files". The durable design is layered:
+
+1. **Primary isolation:** one temporary git worktree per session/worker, created outside any sync-managed directory when applicable.
+2. **Ownership lease:** a shared per-path lease record containing `session_id`, canonical path, `lease_id`, `base_blob_sha`, and expiry/heartbeat metadata.
+3. **Pre-write CAS guard:** before every write, require the active lease and verify the current file/blob hash still equals `base_blob_sha`; otherwise return `LEASE_HELD`, `STALE_BASE`, or `REMEDIATION_REQUIRED` without touching disk.
+4. **Coordinator-only integration:** workers return commit/hash, changed paths, and verification evidence; only the Coordinator integrates into the shared tree. Same-hunk conflicts remain conflicts; never last-writer-wins.
+5. **OS file locks are auxiliary only:** they serialize a short critical section but do not prevent a later worker from overwriting an earlier worker's completed write.
+
+Lease implementation must be fail-closed: canonicalize path identity (`abspath`/`normpath`/`resolve` plus Windows case normalization), preserve a display path separately, use atomic publish for records, guard renew/release/takeover with a token/lease-id CAS, validate takeover inputs before unlinking anything, and never interpret corrupt or missing registry data as "no leases". A corrupt record for one path must not silently grant access to another path, but the affected path must remain blocked and observable.
+
+**Closeout semantics:** closeout is session-scoped, not "make the whole repository clean". Evaluate `dirty_files ∩ owned_paths(session)`; report foreign dirty paths without editing, reverting, stashing, or running unrelated monolithic tests. If no session identity/manifest exists, report `FOREIGN_SCOPE_UNCHECKED` and do not claim ownership-safe approval. A foreign dirty file is not a reason to stop the current owned task, and a current task must not repair foreign work merely to make the tree clean.
+
+**Required collision acceptance tests:** same-path acquire loses for the second owner; different paths proceed; stale takeover requires matching expected lease id; wrong-owner renew/release cannot mutate; path case/relative/absolute aliases map to one identity; corrupt records fail closed; a worker writing from an old base is rejected; two isolated worktrees merge distinct hunks and surface same-hunk conflicts; integration never modifies paths outside the session manifest.
+
+## Shared-Session Ownership Is Runtime, Not Prompt Text
+
+Prompt scope is advisory, not an ownership mechanism. If two sessions can write one physical checkout, a later worker can read an older snapshot and overwrite a newer whole-file change. Enforce scope at write/integration time: prefer an isolated git worktree per session, use a per-path lease with `session_id`, `lease_id`, `base_blob_sha`, and expiry, and add a pre-write CAS guard across write/patch/apply-patch seams. OS file locks only serialize a short critical section; they do not prevent sequential overwrite.
+
+### Mobile and messaging delivery discipline
+
+When providing review findings, audit packages, or emergency recovery instructions to the user over Telegram or mobile messaging:
+- Never paste giant monolith blocks (100+ lines of text, YAML, or multi-step shell scripts) into a single message bubble. Mobile clients cannot reliably copy or view large code blocks.
+- Prefer a single self-contained invocation command, or write the full script/package to a deterministic local path and provide only that invocation.
+- If direct chat text is unavoidable, chunk it into explicit bounded sections (`Part 1/N`, `Part 2/N`) with clear copy boundaries.
+
+### Recovery proof after disabling a guard
+
+A successful `echo`, `python -c`, or `write_file` proves only that one tool path is currently reachable. It does not prove the runtime config is valid, Hermes has reloaded it, or the intended procedural guard is disabled. After an emergency unlock, verify separately: (1) backup branch/path exists, (2) exact config hook/plugin delta, (3) runtime restart/reload, (4) one positive coordinator probe, and (5) each retained Tier-1 negative probe (for example recursive scan and manual ADB input remain blocked). Report these as distinct evidence items; never claim full system recovery from a single green probe.
+
+Minimum lifecycle: acquire lease and base SHA; validate lease, canonical path, expiry margin, and current SHA before every write; reject `LEASE_HELD`, `STALE_BASE`, or `REMEDIATION_REQUIRED` without mutation; return commit/diff/test evidence; let only the Coordinator integrate and surface conflicts. Never recover a collision with reset/restore/checkout/stash or a whole-file rewrite. Preserve foreign dirty and reconcile from an isolated artifact.
+
+Closeout is session-scoped: review/test `dirty_files ∩ owned_paths`, report foreign dirty separately, and if no ownership binding exists use `FOREIGN_SCOPE_UNCHECKED` rather than claiming safe approval. A closeout command is an execution loop, not a one-shot report: `chốt/chốt phiên/done/xong` requires focused verification, the mandatory gate, and reviewer remediation until `APPROVED >=85` or a true `HARD_STOP`; recoverable timeout, rejection, or block is not terminal.
+
+## Coordinator-First Closeout and Collision Enforcement
+
+When the user says `chốt`, `chốt phiên`, `done`, or `xong`, this is an execution command, not a status-report request. Continue the closeout loop until the authoritative reviewer and closeout gate both pass, or until a true non-recoverable `HARD_STOP` is evidenced. Never terminate the loop with an intermediate `BLOCKED`, `REJECTED`, or score below threshold. A review rejection means: capture finding → bounded remediation → focused verification → reviewer again.
+
+Prompt-only scope is not ownership. Before any worker writes, enforce ownership at runtime: isolated worktree or per-path lease plus base-hash/CAS pre-write validation. A shared working tree can lose a prior worker's uncommitted implementation even when prompts list different scopes. Do not let a later worker whole-file rewrite a shared target from a stale snapshot.
+
+Recommended layered design for multi-session coding:
+
+1. **Per-session worktree** outside shared/sync roots when applicable; workers return a commit/diff receipt.
+2. **Per-path lease** with `session_id`, canonical path, `lease_id`, `base_blob_sha`, and expiry/heartbeat.
+3. **Pre-write guard** across every mutation seam; validate live lease, canonical path, expiry margin, and current SHA before atomic temp/fsync/replace. Any error is fail-closed and reports ownership loss.
+4. **Coordinator-only integration**: inspect exact paths, merge sequentially, and surface conflicts without reverting unknown dirty work.
+5. OS file locks are only a registry critical-section aid; they do not replace lease ownership or worktree isolation.
+
+For closeout selection, review/test only session-owned candidate paths. Foreign dirty paths are reported and preserved, not auto-tested as a monolithic suite or cleaned. If no ownership manifest/session ID exists, label the result `FOREIGN_SCOPE_UNCHECKED` rather than claiming an ownership-safe closeout.
+
+When a worker times out after partial work, classify it before retrying. Re-read the exact target and status first; never blindly replay a whole-file patch. Preserve current bytes, isolate recovery, and verify the focused contract before accepting the worker report.
+
+See `references/closeout-ownership-and-claude-review.md` for the incident pattern, Claude/Sol review loop, and acceptance matrix.
 
 ## Dirty-Worktree Scope Semantics (Model-Agnostic)
 
@@ -346,11 +436,30 @@ See `references/concurrency-admission-and-binding.md` for the reusable matrix an
 - **A long canonical-suite run can STRADDLE a foreign write: green-then ≠ green-now** (verified 2026-08-23, tiktok-luot nuoi acc review). pytest imports at collection time, so a combined run started 15:15:35 executed PRE-drift bytes while the concurrent writer edited scoped prod+test files at 15:16:29 and 15:20:10 — INSIDE the run window; the printed "321 passed" described a superseded tree while the deliverable claimed the current one. For any suite longer than a couple of minutes in a shared worktree: record run start/end timestamps, RE-STAT every scoped file AFTER the run, and compare mtimes against the window; any hit ⇒ label the green result as evidence about pre-drift bytes, diff the drift, and re-run at least the modules owning the changed files on current bytes before finalizing. Mirror hazard: a writer who TIGHTENS production (e.g. lenient 8-byte PNG-signature `startswith` check → strict `_is_valid_png` chunk/CRC gate placed EARLIER in the early-return chain) while leaving an OLDER test's fixture built to the lenient contract yields a red that mimics a product regression — read the drifted hunks and check gate ORDER (a new earlier return fires before the branch the old test asserted) to attribute the red to the writer's incomplete fixture reconciliation, not to the reviewed candidate.
 - **The review "candidate" may already be a COMMIT when you look** (observed 2026-08-23): all five allowlisted files showed clean vs HEAD although the brief described uncommitted intended fixes — the writer had committed them as `6dfd722` at 14:42:34. When scoped paths come back clean, immediately run `git log -3 --format='%h %ad %s' --date=format:'%m-%d %H:%M:%S' -- <file>` per allowlist file; if one fresh commit covers exactly the allowlist, review `git show <sha>` (verify --name-status ⊆ allowlist, scan removed lines, reconcile numstat vs --stat) instead of `git diff`, and keep treating subsequent dirt as NEW drift to assess separately. **A later commit can absorb a staged remediation while the reviewer is still evaluating an older SHA** (observed in the same session: an external writer committed `bf88db6` and then `cdb9bd1`/`1ce7e88` while PNG/identity remediation was staged, then continued editing the same files). Before every review/commit gate, re-read `HEAD`, `origin/<branch>`, `git reflog`, staged paths, and `git diff HEAD`; if HEAD moved or a scoped file was rewritten, discard the stale verdict, reconstruct the intended patch from the new HEAD in an isolated/index-only operation, and obtain a fresh review for the exact new commit. When concurrent commits already include part of the fix, stage ONLY the remaining incremental delta (e.g. 14 lines) on top of the latest HEAD rather than re-committing the entire module. Never stage or commit while a concurrent writer owns any path in the candidate; stop at `BLOCKED_AT_CONCURRENT_WRITER_REVIEW` and preserve all dirty paths. Reviewers must receive `git show <exact-sha>` or the exact staged diff—not a possibly different working-tree diff—and their verdict binds only to those exact bytes. Related: a preserved rules file may cite a canonical suite command from a DIFFERENT repo (observed PROJECT_RULES.md:909 pointing at `tests/test_tiktok_workflow.py`, absent locally) — verify the cited command resolves in THIS repo before calling it canonical; otherwise run the coordinator-attested module set, report its actual counts, and label it as the attested command.
 
+## Session ownership, worktrees, and closeout (critical)
+
+Prompt-level allowlists are advisory, not write protection. If multiple sessions can reach one checkout, a later whole-file rewrite can erase an earlier worker's uncommitted implementation. Enforce scope at runtime:
+
+1. Prefer an isolated git worktree per session/worker; workers return a commit/diff receipt and only the Coordinator integrates into shared main.
+2. Maintain a per-path lease with `session_id`, canonical path, `lease_id`, `base_blob_sha`, and expiry/heartbeat. A second owner gets `LEASE_HELD`; stale base gets `STALE_BASE` before disk mutation.
+3. Add pre-write CAS guards across every mutation seam (`write_file`, patch/apply-patch, CREATE/FILE_CONTENT, and terminal-backed writes where possible). Validate the live lease, canonical path, expiry margin, and current SHA before atomic temp/fsync/replace. Any error fails closed and reports ownership loss.
+4. OS file locks are only registry critical-section aids; they do not prevent sequential overwrite.
+5. Closeout is session-scoped: test/review `dirty_files ∩ owned_paths(session)`; report foreign dirty separately and preserve it. Without session identity/manifest, label `FOREIGN_SCOPE_UNCHECKED`.
+6. `chốt/chốt phiên/done/xong` is an execution loop: focused verify → closeout gate → reviewer remediation until `APPROVED >=85` or true `HARD_STOP`; intermediate `BLOCKED`, `REJECTED`, or timeout is not terminal.
+7. Verify worker reports against the exact requested path, mtime/hash, tests, and diff. If a worker reports a different tree (for example a backup/sync path), reject the artifact and re-dispatch against the canonical target.
+
+See `references/closeout-ownership-and-claude-review.md` for the collision timeline, lease/worktree design, and acceptance matrix.
+
 ## References
 
+- `references/canonical-workspace-preflight.md` — prove the coordinator-supplied absolute path is the intended Git checkout before source reads, tests, or writes; fail closed on missing/non-Git paths or cwd/repository drift.
+- `references/two-tier-gate-architecture-and-anti-paralysis.md` — Two-Tier Gate Separation (PA3): Tier 1 hardware/asset hard fail-closed vs Tier 2 advisory audit logging; telegram chunking invariant; git push subshell protocol handling.
+- `references/session-worktree-p3-contract.md` — Claude P3 isolated-worktree manager contract: pinned base worktree creation (`.worktrees/<session_id>`), per-worktree scoped registry with shared untracked `.leases`, 6-boundary containment matrix (`TARGET_IS_GIT_METADATA`, main checkout, sibling worktrees, symlink escape), raw/empty `base_blob_sha`, safe cleanup without `--force` refusing live leases, atomic CAS `update-ref` integration (`TARGET_MOVED`, `TARGET_BRANCH_CHECKED_OUT_ELSEWHERE`), and conflict-aborting coordinator integration (`rebase`/`fast-forward`).
+- `references/coordinator-paralysis-anti-deadlock-and-two-tier-guards.md` — Two-tier guard architecture (Tier 1 physical/asset hard blocks vs Tier 2 warn-only process), anti-deadlock escape hatch (host PowerShell 1-liner to unhook config.yaml), regex false-positive prevention, and mobile-friendly prompt delivery.
 - `references/android-deep-link-regression.md` — evidence-backed coordinate tap followed by exact CDP-verified Android VIEW intent, strict postcondition verification, no generic `here` fallback, CRLF-safe fixture testing, and honest ad-hoc verification when canonical detection is unavailable.
 - `references/r7-collision-case-study.md` — full timeline and evidence from a real scope collision during an audit-remediation round (detection signals, probe table, RED sourcing).
 - `references/windows-probe-execution.md` — running verification probes on Windows git-bash (path mangling, sys.path, heredoc failure, fresh-root rule, search_files os-error-3 fallback on non-ASCII dirs).
 - `references/fresh-verification-windows.md` — fresh ad-hoc verification when a harness reports unverified, including tempfile probes, explicit source imports, fake-only assertions, cleanup, and honest reporting.
 - `references/probe-fidelity.md` — forge/re-hash probes must mirror production derivation exactly (fixture exact-key-set traps, coverage sets incl. skipped accounts, canonical suite as probe-vs-product tie-breaker) plus: branch-deaf suite tests (bare raises() passing via an earlier gate), the observable-difference principle when the literal attack shape can't reach its branch (fail-closed canonical-slot binding, per-machine block counts), and the full manifest identity re-hash chain (assignment_id first, then entry/block ids against the new manifest_id).
 - `references/stale-read-collision-dump-selectors.md` — full timeline of a scope collision where the scoped TEST file was rewritten (133→147 lines, assertion flipped) between my read and my verification: replication-fails-while-suite-passes trap, ghost-version reads, resolution order (re-read before tie-breaking), and Windows `$TEMP`→`/tmp` pytest runner fault.
+- `references/operator-device-lock-for-single-machine-actions.md` — operator device lock invariant for single-device ad-hoc investigation, test probes, and recovery (`operator_device_lock` from `automation_core.device_lock`).

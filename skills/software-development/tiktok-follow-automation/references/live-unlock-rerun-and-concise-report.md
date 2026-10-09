@@ -21,7 +21,13 @@ export ADB_SERVER_SOCKET=tcp:localhost:5037 ADB_MDNS=0
 cd /d/Taadaa/tiktok-follow
 /d/Taadaa/python-envs/automation/Scripts/python.exe -m follow_runner.run_follow \
   --machine <N> --config config/<config>.yaml \
-  --account-row-index <row> --mode <mode>
+  --account-row-index <row> --mode <mode> --force-preempt
+```
+
+- Hoặc chạy nhanh qua PowerShell script (`scripts/run-follow.ps1`):
+```powershell
+.\scripts\run-follow.ps1 [-Machine <N>] [-AccountRowIndex <row>] [-Config <cfg>] [-Mode <mode>] [-ForcePreempt] [-DryRun]
+# Mặc định: Machine 50, config/machine50.yaml, Row 1, Mode 2
 ```
 
 - A real rerun is successful only when the runner emits `FOLLOW_RESULT` with `status: "OK"`; include the actual followed/skipped values. Dry-run and unit tests are not live proof.

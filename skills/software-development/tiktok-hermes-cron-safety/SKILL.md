@@ -5,7 +5,17 @@ description: Phase 9A.x → 9C.x production-safety work in the Taadaa Hermes-cro
 
 # TikTok Hermes-Cron Production-Safety Remediation (Phase 9A.x → 9B.x)
 
+- **Troubleshooting Reference**: [references/manifest-identity-mismatch-troubleshooting.md](references/manifest-identity-mismatch-troubleshooting.md)
+- **Cohort Validation & Block Index Troubleshooting**: [references/cohort-validation-and-block-index-troubleshooting.md](references/cohort-validation-and-block-index-troubleshooting.md)
+- **4 Ca x 2 Phiên Invariants**: [references/manifest-4-block-2-session-invariants.md](references/manifest-4-block-2-session-invariants.md)
+- **Cadence 4 Ca x 2 Phiên Spec**: [references/cadence-4ca-2phien-manifest-spec.md](references/cadence-4ca-2phien-manifest-spec.md) — xử lý lỗi `MANIFEST_IDENTITY_MISMATCH` khi source config drift mid-day.
+
 ## Cohort-wide dispatch and reconciliation
+
+### Direct Safe-Workbook Ingestion (`SourceConfig.from_workbook`)
+* **Loại bỏ file trung gian `hermes_cron_source_config.json`**: Hệ thống picker và cron entrypoint đọc TRỰC TIẾP từ `taikhoan_run_safe.xlsx` (`HERMES_CRON_FEED_WORKBOOK`) qua `SourceConfig.from_workbook()`.
+* **Khắc phục triệt để Account Drift**: File JSON trung gian dễ bị lệch số lượng nick / hàng khi workbook thay đổi. Việc nạp trực tiếp đảm bảo 100% tài khoản khớp với farm.
+* **Auto-backfill missing states**: Khi tài khoản mới xuất hiện trong workbook nhưng chưa có trong `feed_state.json` / `post_state.json`, picker tự động khởi tạo `default_feed_state` / `default_post_state` với `state_revision` xác định mà không làm gián đoạn kế hoạch dispatch.
 
 For whole-ca machine freezing, late-manifest selection, bounded stagger, and fail-closed `partial`/`timeout` reconciliation, see [`references/cohort-dispatch-reconcile-20260826.md`](references/cohort-dispatch-reconcile-20260826.md). For shift isolation, cron pipe detachment (`DEVNULL` + `DETACHED_PROCESS`), non-destructive ctypes Windows liveness checks, PID reuse prevention with handle hold, and PowerShell parameter path normalization (`.as_posix()`), see [`references/shift-isolation-and-pipe-detachment-20260827.md`](references/shift-isolation-and-pipe-detachment-20260827.md). For proxy cluster downtime triage (`test.taadaa.click`), fail-closed VPN preflight behavior, queue starvation, and the single-source-of-truth `taikhoan_run_safe.xlsx` Device ID date-string normalization, see [`references/proxy-cluster-outage-and-source-of-truth-triage.md`](references/proxy-cluster-outage-and-source-of-truth-triage.md). For cohort target identity validation traps (optional `"tik"` field in feed-only manifests) and clearing stale failed-reservation `status: blocked` device locks that cause fleet starvation, see `tiktok-feed-session/references/cohort-target-validation-optional-tik-field.md`. The reference captures the production `entries[]` + `blocks[]` schema distinction and the direct-script import-path pitfall.
 
@@ -64,6 +74,12 @@ For whole-ca machine freezing, late-manifest selection, bounded stagger, and fai
   one-entry JSON missing required schema is rejected.
 
 ## Fail-closed invariants (do not violate)
+
+- **Preflight Marker & Fail-Open Lifecycle (`_preflight_ensure_accounts` in `tiktok_runner.py`)**:
+  - **Marker Format**: JSON payload containing `timestamp`, `cluster`, `row`, and `status: "running"`.
+  - **Completion**: On exit code 0 (`subprocess.run`), marker is updated to `status: "success"` with `completed_at` timestamp.
+  - **Fail-Open Cleanup**: If `ensure_row_accounts` returns non-zero or raises an exception, the preflight marker MUST be unlinked (`marker.unlink(missing_ok=True)`). Never leave a failed/stuck marker blocking subsequent windows.
+  - **Triple Mirror**: Keep `tiktok_runner.py` synchronized across repo (`deploy/hermes-home/scripts`), local runtime (`AppData/Local/hermes/scripts`), and shared sync (`OneDrive/Taadaa_Sync_Shared/hermes-cron/scripts`).
 
 - Every failure path returns `FAILED` (or `DISABLED` for "already consumed / no permit") after the
   2026-08-15 auto-lock removal — **no more `FAILED_LOCKED` from the live entrypath**; it never

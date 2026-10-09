@@ -72,3 +72,15 @@ if ('ToHexString' -in [System.Convert].GetMethods().Name) {
     $accountContextId = [BitConverter]::ToString($hexBytes).Replace('-', '').ToLowerInvariant()
 }
 ```
+
+## 5. Proxy readiness timeout do stale `proxy_pending` marker & `bypass_proxy_readiness` (2026-09-09)
+
+- **Triệu chứng:** Worker subprocess khi gọi `acquire_device_lock(..., user_authorized=True)` bị crash sau 180s với:
+  `TimeoutError: proxy readiness timed out for <serial>`.
+- **Root cause:**
+  - `acquire_device_lock` mặc định có `bypass_proxy_readiness=False`, tự động gọi `wait_for_proxy_ready(serial, timeout=180)`.
+  - Nếu trong `~/.codex/device-readiness/<serial_hash>.json` tồn tại bản ghi cũ với state `"proxy_pending"` (tàn dư từ recovery/watcher bị kill trước đó), và không có `live_vpn_verifier`, hàm loop poll 180s rồi timeout.
+- **Khắc phục chuẩn 2 phía:**
+  1. **Consumer level:** Nếu consumer đã có cổng kiểm tra fail-closed VPN độc lập ngay sau lock (`require_android_vpn(adb, required=True)`), BẮT BUỘC truyền `bypass_proxy_readiness=True` vào `acquire_device_lock(...)` để tránh phụ thuộc chéo vào file readiness.
+  2. **Control plane level (`automation_core/readiness.py`):** `wait_for_proxy_ready(...)` bổ sung `max_stale_seconds: float = 600`. Nếu marker `proxy_pending` có `updated_at` cũ hơn `max_stale_seconds` và `live_vpn_verifier is None`, coi marker là stale và break sớm / trả về `None`.
+  3. **Vệ sinh đĩa:** Xóa các file `.json` trong `~/.codex/device-readiness/` có state `proxy_pending` cũ hơn 24 giờ.

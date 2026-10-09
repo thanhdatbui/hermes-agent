@@ -27,6 +27,11 @@ print(cur.fetchall())
   → DataGrid icon/proxy bindings throw per row, exactly on page 2 (rows 11–20).
 - The 124-key rows (`02/06/07/AMZ_Main/16-empty`) lack `raw_proxy/proxy_*` → API `raw_proxy=""`.
 
+## ⚠️ CRITICAL: Stop All Chrome TRƯỚC KHI Sửa JsonData Schema (2026-09-04 lesson)
+**TUYỆT ĐỐI KHÔNG** update JsonData hàng loạt trong DB khi Chrome/GPMLogin đang chạy bất kỳ profile nào.
+- Nếu Chrome đang mở profile X với fingerprint cũ, sau đó DB bị update JsonData cho X → Chrome đang chạy có fingerprint không khớp cookie jar → Google phát hiện device mismatch → invalidate session ngay lập tức → Chrome ghi đè cookie jar rỗng.
+- Thứ tự bắt buộc: `taskkill /f /im chrome.exe /im gpmdriver.exe /im GPMLogin.exe` → verify `tasklist | findstr chrome` rỗng → mới update DB → relaunch.
+
 ## Fix (DB-only, binary untouched, no fingerprint field removed)
 1. Backup + row-count guard:
 ```python
@@ -64,7 +69,11 @@ CREATE INDEX IF NOT EXISTS idx_profiles_groupid_createdat ON Profiles(GroupId, C
 ## Rules for next time
 - Page 2 lags but page 1 is smooth → suspect mixed schema at the page boundary, not size.
 - Never `UPDATE JsonData` from a single donor for >1 profile (fingerprint clone → mass logout).
+- STOP all Chrome/GPMLogin before ANY bulk JsonData update (session loss otherwise).
 - `WebGL_MAX_*/STENCIL/ALIALED_*` constants are NOT safe to strip — they vary per GPU
   (Intel vs NVIDIA vs AMD renderers observed) and are part of anti-detect surface.
 - sqlite3 CLI is absent on this host — use python3 + sqlite3 module.
 - tasklist is empty under git-bash — verify via Local API port 19995, not process list.
+- Session cookie verification: copy Cookies DB to temp before Chrome running (PermissionError if locked).
+  Critical cookies = SID, HSID, SAPISID, SSID, APISID, __Secure-1PSID, __Secure-3PSID, SIDCC.
+  Tracking-only cookies (NID, OTZ, __Host-GAPS, _ga) ≠ logged-in session.

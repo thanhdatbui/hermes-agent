@@ -9,7 +9,7 @@ metadata:
 
 # 9Router Proxy Ops
 
-9Router `:20128`; OmniRoute `:20129`. Keep accounts active; never auto-disable/modelLock or mutate OAuth from a screenshot/403 alone. For pool incidents, read live API + SQLite evidence, normalize UTC timestamps, distinguish 403/429/499/409/semaphore errors, and treat `priority` as ordered spillover—not balancing. Keep fixes minimal: semaphore-only changes stay scoped to four semaphore files; run `npm run typecheck:core`, `npm run build`, restart, then verify. References: `priority-pool-identity-invariant.md`, `priority-pool-safety-and-affinity.md`, `failfast-semaphore-and-custom-patch.md`, `review-routing-and-iso-log-discipline.md`, `opencode-free-tier-diagnostics.md`, `omniroute-advanced-capabilities-and-strategies.md`, `omniroute-session-affinity-and-fusion-combos.md`, `watchdog-supervisor-and-process-leak-prevention.md`. Sync all tool configs to `D:\OneDrive\AI-Tools\tools\<tool>\`.
+9Router `:20128`; OmniRoute `:20129`. Keep accounts active; no auto-disable/modelLock or mutate OAuth from screenshot/403. Live API + SQLite for pool incidents (UTC, 403/429/499/409/semaphore; priority is ordered spillover). Semaphore fixes scope to 4 files. References in `references/`: topology `references/omniroute-process-topology-restart.md`; Cockpit `references/cockpit-gpm-oauth-preflight.md`; arch `references/cockpit-cliproxy-9router-architecture.md`; DB cleanup `references/omniroute-sqlite-database-bloat-cleanup.md`; logs `references/omniroute-dashboard-logs-inspection.md`; reasoning `references/omniroute-gemini-reasoning-dynamic-architecture.md`; combo 503 `references/omniroute-combo-503-all-targets-skipped.md`; combos `references/omniroute-combo-strategies-and-cache-discipline.md`; 9Router Codex OAuth `references/9router-codex-oauth-gpm-graph-pipeline.md`; pool ops `references/9router-codex-pool-round-robin-proxy-ops.md`; salvage `references/phone-verified-account-salvage-and-tainted-proxy-rotation.md`. Sync `D:\Taadaa\AI-Tools\tools\<tool>\`.
 
 ## Cost / pricing (CommandCode)
 
@@ -254,9 +254,7 @@ Session-specific commands and evidence: `references/omni-3layer-runtime-verifica
 - OmniRoute model catalog update pattern (Muse Spark 1.3 example): `references/omniroute-model-catalog-update.md`.
 
 ## OmniRoute — sibling gateway at :20129 (verified 2026-08-13)
-OmniRoute v3.8.39 is a SEPARATE product from 9Router (Next.js, bigger feature set) also on
-this machine. The user frequently asks to check both together. Full inventory + pitfalls:
-`references/omni-route-free-providers.md`.
+`references/omni-route-free-providers.md`. Fast failover and retry delays: `references/fast-failover-and-fallback-retry-delays-20261008.md`.
 - **Login:** `http://localhost:20129/login`, password **`CHANGEME`** (app default — user's
   verbal "CHANGME" was wrong).
 - **PITFALL — first load is blank/about:blank.** Re-navigate to `/login` to force render.

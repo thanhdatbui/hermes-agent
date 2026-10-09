@@ -13,6 +13,16 @@
    - *Pitfall*: Nếu `TRANSITION_MAP[WorkflowState.UPDATE_WORKBOOK]` trỏ thẳng sang `DELETE_REMOTE_MEDIA`, toàn bộ nhánh `ENSURE_AVATAR` sẽ bị bỏ qua và avatar cho nick mới không bao giờ được up.
 
 ## Xử lý các màn hình chuyển tiếp (UI Fallback)
+0. **Mở Bottom Sheet Tải ảnh lên & Tránh lỗi AVATAR_UPLOAD_MENU_MISSING**:
+   - Khi tap vào avatar circle trong Sửa hồ sơ, TikTok có thể mở bottom sheet chọn ảnh hoặc trên một số máy/bản ROM nhảy thẳng vào Android Photo Picker / DocumentsUI.
+   - **Mở rộng selector bottom sheet**: Không chỉ tìm "Tải ảnh lên" / "Upload photo", cần hỗ trợ đầy đủ các biến thể:
+     - Tiếng Việt: `"bộ sưu tập"`, `"Bộ sưu tập"`, `"Chọn từ"`, `"Thư viện"`, `"Tải ảnh"`.
+     - Tiếng Anh / Quốc tế: `"Album"`, `"Gallery"`, `"Recent"`, `"Recents"`, `"Photos"`, `"Pictures"`, `"Foto"`.
+     - Resource ID: `g9u`, `toy`.
+   - **Photo Picker Bypass (Tránh tap mù & AVATAR_UPLOAD_MENU_MISSING)**:
+     - Nếu UI đã vào thẳng photo picker (phát hiện `com.android.documentsui`, resource id `o_9`, hoặc keyword `Gần đây` / `Recent` / `Pictures` / `Albums`), **không tap mù `(540, 580)`** và bypass bước tìm menu upload sang thẳng bước chọn file.
+   - **Diagnostic**: Khi không tìm thấy menu upload và chưa vào picker, dump trích đoạn UI XML (`logger.warning("[ENSURE_AVATAR] Menu dump: %s")`) để có bằng chứng chẩn đoán chính xác thay vì đoán mò.
+
 1. **Màn chọn ảnh từ Album**:
    - Sau khi chọn tile ảnh đại diện, UI TikTok hiển thị nút đỏ **"Tiếp (1)"** ở góc dưới bên phải.
    - Nếu ATX XML dump bị trễ/stale, script cần dùng visual fallback để xác định tọa độ nút Tiếp và tap chuyển tiếp.

@@ -13,8 +13,8 @@ Python ở `C:\Users\Kibe\AppData\Local\hermes\scripts\daily_manual_stock_checkl
 2. **SP 57 IG (1108 acc):** `check_ig()` — viết items ra `clonefbig_items.json` → chạy `ig_check_cdp.py`
    (Playwright `connect_over_cdp("http://127.0.0.1:9222")` Chrome Hermes đang chạy, chia **batch 400**,
    `#inputArea` + `startCheck()`, đọc `#liveOutput`/`#dieOutput`) → đọc `clonefbig_result.json` → dọn die.
-3. **Báo cáo:** load `checklive_state.json` (prev stock) → in tổng stock + `(hôm qua N → ±delta)` + live/die/fail
-   hôm nay + die tích lũy (`product_die` count) — **kể cả SP = 0** (38/39/60/61). State key = STRING `"40"`/`"57"`.
+3. **Báo cáo (cập nhật chống báo trùng 2026-09-29):** load `checklive_state.json` (prev stock) → in tổng stock + `(hôm qua N → ±delta)` + live/die/fail
+   hôm nay + die tích lũy (`product_die` count). **Quy tắc lọc trùng:** Chỉ báo ngày đầu tiên SP về 0 (`stock == 0` và `prev_stock > 0`); sau ngày đầu tiên về 0 nếu vẫn = 0 (`stock == 0` và `prev_stock == 0`) thì **loại bỏ hoàn toàn khỏi tin nhắn Telegram** để tránh spam/báo lặp lại; chỉ báo lại khi có nhập hàng mới (`stock > 0`). State key = STRING `"40"`/`"57"`.
 
 ## Phụ thuộc vận hành (quan trọng)
 

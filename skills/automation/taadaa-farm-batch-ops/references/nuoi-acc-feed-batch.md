@@ -64,3 +64,22 @@ If the user also said "bật lại schedule": re-REGISTER the Windows task, don'
 See `consumer-scheduler-orchestration` P11 — `Enable-ScheduledTask` turns a possibly-stale
 (bad workbook paths) task back on. Use `scripts/register-scheduler-task.ps1 -DryRun` first,
 then re-register, then `Start-ScheduledTask -TaskName TikTokScheduler`.
+
+## Targeted Re-run / Resume Cho Máy Fail Sau Ca Nuôi Acc (Lệnh "Fix Đi")
+
+Khi user phát lệnh `Fix đi` sau một phiên/ca nuôi acc có nhiều máy fail:
+1. **Tuyệt đối không dừng lại ở sửa code:** Sửa code xong phải đối chiếu danh sách máy fail.
+2. **Targeted run các máy fail:** Chạy lại bằng cách truyền danh sách máy cụ thể (`-Machines <list_fail>`), bỏ cờ `-LocalRun` (vì `-LocalRun` ghi đè danh sách máy bằng toàn bộ fleet theo row).
+   Ví dụ chạy bù cho các máy script vừa fix:
+   ```powershell
+   $env:PYTHONPATH=""
+   powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/run-feed-session.ps1 `
+     -Machines 1,2,14,17,20,21,22,25,29,33,34,38,39,41,42,47,50,52,53,56,62,63,64,66,67,68 `
+     -Row 1 -Preset full `
+     -AccountWorkbook "D:\OneDrive\TaadaaData\kibe\taikhoan_run_safe.xlsx" `
+     -SkipAccountWorkbookSync `
+     -MachineStartStaggerMs "2000,8000" -RandomizeMachineOrder `
+     -Python "D:\Taadaa\python-envs\automation\Scripts\python.exe" -Run
+   ```
+3. Luôn xác nhận với user hoặc kiểm tra thời gian ca hiện tại trước khi kích hoạt mẻ bù diện rộng.
+

@@ -14,7 +14,14 @@ metadata:
 
 Use when the skill library needs consolidation: duplicate/overlapping skills, SKILL.md files near the 100,000-char cap, merges of same-domain skills, or restoring a damaged skill file. Verified end-to-end 2026-08-09 (115 skills → 104, 9 merges, 1 trim, audit APPROVED).
 
-## Hard constraints
+References:
+- `references/evaluating-third-party-skills-and-plugins.md` — Quy tắc thẩm định framework ngoài (như `obra/superpowers`): cấm cài plugin hook `pre_llm_call` cưỡng chế gây phá vỡ Coordinator O(1), ưu tiên cherry-pick & adapt skill đơn lẻ.
+- `references/surgery-patterns.md` — Pattern one-shot khôi phục và cắt tỉa file an toàn.
+- `references/runtime-guard-allowlist-edits.md` — Quy trình điều phối sửa guard/allowlist qua Claude CLI: định vị đúng file runtime plugin thay vì hook workspace, hợp đồng 1 file, kiểm chứng độc lập hai chiều (positive/negative), và cảnh báo reload cache.
+
+## Session-derived improvement: runtime guard edits
+
+When a session changes a guard/allowlist through an external coding agent, preserve the class-level workflow and record the session-specific path/verification details in a reference file rather than expanding the main skill with one-off filenames. The minimum evidence bundle is: exact live symbol/anchor, one-file diff, focused positive and negative gate tests, compile result, and a separate reload/cache assessment. Never treat a successful target script invocation or worker self-report as proof that the gate is active.
 
 - **SKILL.md ≤ 100,000 chars** (`MAX_SKILL_CONTENT_CHARS`). `skill_manage` rejects ANY patch above it — an oversized skill is UNEDITABLE until trimmed. Real incident: `tiktok-upload-ui-recovery` hit ~100.6K and every edit failed.
 - Skill edits are durable: the user's rule is **finish work → independent audit → fix findings → re-audit until `APPROVED`** (same model every round; see Audit gate below).
@@ -49,6 +56,12 @@ Some local skill dirs are JUNCTIONS into a sync repo (e.g. `autonomous-ai-agents
 - Check with `os.path.realpath(local) == os.path.realpath(repo)` before copying.
 - When syncing to git: `git add`/`git rm` ONLY the changed skill paths — the repo carries unrelated modified files from other workstreams (never `git add skills/` blindly); commit with a Vietnamese message per user convention; push to the fork remote.
 - **Cron auto-commit trap:** the sync cron (`sync-hermes-skills-to-git`, every 30m) runs `git add <2 synced skills>` + `git commit` + push — and `git commit` takes EVERYTHING already staged. Real: 13 half-staged files were committed+pushed as "chore: sync orchestration skills" (1ab0af66) mid-work; the index looked mysteriously empty right before my own commit. Don't leave staged-but-uncommitted work in `D:\Taadaa\Hermes`; if the index is unexpectedly clean, check `git log -1 --stat` — the cron likely already committed your files (content correct, message is the cron's).
+
+## Evaluating third-party skill frameworks & plugin suites
+
+- **Cấm cài đặt plugin toàn diện tiêm hook cưỡng chế (`pre_llm_call`)**: Các framework bên ngoài như `obra/superpowers` dùng hook để tiêm bootstrap bắt buộc agent hỏi vặn, phỏng vấn brainstorming trước mọi hành động. Điều này phá vỡ kỷ luật Coordinator O(1), làm tê liệt ứng cứu Farm và gây context bloat lớn.
+- **Quy tắc Cherry-pick & Adapt**: Không cài toàn bộ plugin. Chỉ trích xuất các kỹ thuật/quy trình có giá trị cao (như `systematic-debugging`, `plan`, `test-driven-development`) thành các skill độc lập, nạp on-demand khi cần mà không tiêm hook toàn cục.
+- **Chi tiết & phân tích đối chiếu**: Xem `references/evaluating-third-party-skills-and-plugins.md`.
 
 ## Audit gate (user protocol)
 

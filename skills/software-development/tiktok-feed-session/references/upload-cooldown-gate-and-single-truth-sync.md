@@ -10,9 +10,11 @@
 - **Quy tắc:**
   1. Rows 1..4 (Tik 1..4): Đã trưởng thành, đủ điều kiện upload ngay lập tức (`is_eligible = True`).
   2. Rows >= 5 (Tik 5, Tik 6 và các ca mới sau này):
-     - Không được upload video khi nick chưa đủ 10 ngày tuổi.
-     - Với nick hiện tại: lấy mốc tối thiểu `2026-09-11` (10 ngày kể từ 01/09/2026).
-     - Với nick tạo mới: `min_allowed_date = max(created_date + 10 days, 2026-09-11)`.
+     - **Ngâm nick mới:** Chốt chặn ngâm cooldown trong code (`upload_preflight.py`) là **3 ngày tuổi** (`CREATION_COOLDOWN_DAYS = 3`), KHÔNG PHẢI 10 ngày.
+     - Với nick hiện tại: lấy mốc `BENCHMARK_MIN_UPLOAD_DATE = date(2026, 9, 11)` (đã qua).
+     - Với nick tạo mới: `min_allowed_date = max(created_date + 3 days, 2026-09-11)`.
      - **Fail-closed:** Nếu không đọc được ngày tạo (DAT thiếu/lỗi hoặc không có ngày), trả về `is_eligible = False`, `reason = "account_creation_date_unverifiable"`.
+- **Lưu ý kiểm tra Code vs Docstring:**
+  - Không dựa vào comment/docstring lịch sử ghi "10 ngày". Luôn đối soát giá trị gán thực tế `CREATION_COOLDOWN_DAYS` trong `upload_preflight.py`.
 - **Watchdog Classification:**
   - Watchdog (`feed_session_watchdog.py`) nhận diện các lý do skip liên quan đến cooldown (`cooling_period`, `account_cooling_period`, `age_gate`, `under_10_days`) để phân loại vào nhóm `up_skipped`, không báo lỗi giả (`up_failed`).

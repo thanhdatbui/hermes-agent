@@ -12,6 +12,15 @@ description: Đăng ký TikTok bằng hotmail qua Outlook app — 4 máy 38/54/5
 
 
 ## 🛑 STOP GATE (bắt buộc — chi tiết: skill taadaa-farm-ops-rules)
+- **CẤM TẠO NICK KÝ SINH & CẤM BIẾN TOOL REG THÀNH LOGIN LÉN (Invariant 2026-09-24)**:
+  - Khi tool reg (`social_reg_v1.py`) gặp thông báo *"Bạn đã đăng ký"* (`registered` hoặc `registered_otp`): **BẮT BUỘC DỪNG NGAY (Abort)**, chụp ảnh lưu artifact, bấm BACK đưa máy về an toàn. **CẤM TUYỆT ĐỐI** bấm Tiếp tục hay bóc OTP từ Graph API để login đè vào máy khác, tạo thành nick ký sinh (parasite account) trên 2 thiết bị.
+  - **Hard Machine Binding (`parasite_guard.py`)**: Trước khi login hay reg, bắt buộc kiểm tra `assert_account_machine_binding(stt, account)`. Nếu nick đã thuộc sở hữu của máy khác trong tracking, code tự động chặn cứng và ném `ParasiteAccountViolation`.
+  - **Phân định rõ ràng không cản trở nghiệp vụ**:
+    + *Reg mới*: Chỉ nhận mail chưa từng có tài khoản.
+    + *Re-login nick bị văng*: Dùng tool chuyên dụng `tiktok_login_v1.py` trên đúng máy của nó (luôn ALLOW 100%).
+    + *Di chuyển máy có chủ đích (Migration)*: Sử dụng cờ `--override-machine`.
+    + *Canary explicit (`--email`)*: Lệnh chỉ định của Operator chỉ warn & audit log, tuyệt đối không chặn nhầm canary của User.
+  - **Check Source of Truth trước khi test**: BẮT BUỘC tra cứu `taikhoan_dat_v2_updated .xlsx` / DB / log trước khi đem mail đi test. CẤM tự suy diễn mail cũ khi chưa đối soát lịch sử reg của Farm.
 - Phân tầng trước khi dừng: lỗi cơ học/UI đã có handler (OTP hết hạn, nút gửi lại mã, popup bàn phím, DOB/picker chậm, timeout login-success do nghẽn, dropdown/add-account) phải tự xử lý theo handler, recapture và retry có giới hạn.
 - Chỉ dừng gọi user khi gặp màn hình lạ/chưa có handler, captcha/block bất thường, proxy/ADB không thể phục hồi, hoặc nghi ngờ dữ liệu/mapping sai. Khi dừng: giữ lock + giữ nguyên màn hình + chụp ảnh thật + báo blocker.
 - **Actionable Farm Alert khi Fail/Pending:** Nhánh `not ok` trong `_do_register` (`social_reg_v1.py`) tự động gọi `send_farm_machine_alert` bắn ảnh có gắn banner đỏ `[MAY <N>]` và đầy đủ 4 bước thực thi (lệnh inspect, flow file, log file, canary cmd) về kênh Farm Alerts.
@@ -29,6 +38,11 @@ description: Đăng ký TikTok bằng hotmail qua Outlook app — 4 máy 38/54/5
 
 
 ## Flow chuẩn
+
+0. **Môi trường thực thi chuẩn trên host (BẮT BUỘC)**:
+   - Python executable: `D:/Taadaa/python-envs/automation/Scripts/python.exe` (CẤM dùng python mặc định của bash/Hermes venv vì thiếu dependencies).
+   - ADB binary: `C:\Program Files (x86)\xiaowei\tools\adb.exe` (nếu cần adb trực tiếp từ shell: `export PATH="/c/Program Files (x86)/xiaowei/tools:$PATH"`).
+   - **CẤM quét đệ quy tìm adb/python**: Tuyệt đối không dùng `find /` hay search đĩa C/D tìm binary gây timeout và cạn kiệt ngân sách tool calls.
 
 1. **Login hotmail vào Outlook app TRƯỚC** (repo `D:\Taadaa\Hotmail`, runner `flows/login_outlook_one_machine.py`):
    - Tuần tự TỪNG MÁY (OTP recovery dùng chung `thanhdatbui1995@gmail.com`)
@@ -129,11 +143,32 @@ Account email/OTP vẫn login OK trên máy (verify qua switcher) nhưng cột P
     - Cột 11: `info_changed` (đánh dấu `1` khi đã đổi pass / thông tin bảo mật Hotmail).
     - Cột 12: `app_logged_in` (đánh dấu `1` khi đã đăng nhập vào app Outlook trên điện thoại).
   - **Quy tắc chèn hàng (User rule 2026-08-26)**: **TUYỆT ĐỐI CẤM** nhét/nạp dồn cục các tài khoản mới mua xuống đáy bảng `gmail_clean_v2.xlsx`. Nạp cho máy nào phải chèn đúng nhóm hàng của máy đó (sắp xếp tăng dần theo `Số Máy` cột 1 từ Máy 1 -> Máy 80).
+  - **Điều phối / Chuyển gán mail giữa các máy & Reg bù Row (2026-09-19)**:
+    - Khi điều phối mail chưa dùng (Zin) từ máy thừa sang máy thiếu: sửa cột 1 (`số máy`) trong `D:\OneDrive\TaadaaData\kibe\gmail_clean_v2.xlsx`.
+    - Luôn backup workbook trước khi sửa (`.bak_<timestamp>`), lưu ra file tạm `.tmp.xlsx` rồi `os.replace` để tránh lỗi lock file do OneDrive/Excel.
+    - Công cụ điều phối và reg bù tự động: `D:\Taadaa\tools\ensure_row_accounts.py <row>`.
+      + Kiểm tra preflight / dry-run: `python D:/Taadaa/tools/ensure_row_accounts.py <row> --dry-run`
+      + Reg bù cho máy chỉ định: `python D:/Taadaa/tools/ensure_row_accounts.py <row> --machines <stt>`
+      + Quét tự động các máy thiếu acc ở Row đó, kiểm tra `get_available_mails_by_machine()`, tự động mua bù mail nếu thiếu và chạy batch reg.
+  - **Khử trùng lặp bắt buộc khi nạp kho mail (User rule 2026-09-08)**: BẤT KỲ script nào nạp mail vào `gmail_clean_v2.xlsx` (từ API, file text hay web crawl đơn cũ) BẮT BUỘC phải kiểm tra `if email.lower() not in existing_clean_emails`. TUYỆT ĐỐI CẤM lấy danh sách đơn hàng cũ crawl trên web rồi `zip()` gán cào bằng cho các máy thiếu mail, vì sẽ gây trượt slot và gán cùng 1 mail cho 2 máy khác nhau (sự cố Máy 03 và Máy 05 cùng ôm `karistinelso@hotmail.com`).
+  - **Preflight đọc đúng sheet tường minh (User rule 2026-09-08)**: Khi đọc master tracking `taikhoan_dat_v2_updated .xlsx`, BẮT BUỘC chỉ định rõ sheet `'Tài Khoản'`. CẤM dùng `workbook.active` / `_active_worksheet(workbook)` vì nếu workbook được lưu ở sheet khác, hàm đọc trả về rỗng khiến detector tưởng toàn farm 0 acc và mail chưa từng reg.
+  - **Phòng vệ 2 lớp trần 8 tài khoản (User rule 2026-09-08)**:
+    + *Lớp 1 (Preflight - Excel)*: Lọc bỏ ngay các máy đã có >= 8 nick TikTok trên sheet `'Tài Khoản'`, không cấp target.
+    + *Lớp 2 (Runtime - Device)*: Tại bước mở Account Switcher dropdown trong `social_reg_v1.py`, hạ ngưỡng lọc width của bounding box nickname từ >= 220px xuống >= 120px để nhận diện đủ nick ngắn (như "Hà" 168px). Quét danh sách obfuscated resource-id (`n72`, `lkp`, `l9b`, `lpw`, `l_z`, `lrq`, `lli`, `ndk`). Nếu đếm thấy app đã đủ 8 nick thật, bắt chốt chặn `MACHINE_FULL_8_ACCOUNTS`, tự động đóng dropdown và về Home sạch sẽ, không cố tìm nút "Thêm tài khoản" (bị TikTok giấu khi đủ 8 nick) gây crash `RuntimeError`.
+  - **Tự động giải phóng popup 'Cho phép gỡ lỗi USB' (2026-09-21)**:
+    + Hộp thoại USB Debugging xuất hiện khi cắm máy/reconnect làm TikTok mất foreground.
+    + `dismiss_usb_debugging_dialog()` bắt marker "cho phep go loi usb" / "allow usb debugging", tick "Luôn cho phép từ máy tính này" và bấm "OK". Tích hợp vào `_dismiss_system_popups` và vòng lặp `wait_login_success`.
   - Hotmail mới mua về nạp thẳng vào `gmail_clean_v2.xlsx` (để trống 2 cột trạng thái). Script reg TikTok tự quét mail chưa có trong `taikhoan_dat_v2_updated .xlsx` để đăng ký.
   - **Quarantine Mail Lỗi**: Nếu Hotmail/Gmail bị lỗi token, die hoặc không lấy được OTP, bắt buộc XÓA khỏi `gmail_clean_v2.xlsx` và lưu vào `D:\Taadaa\Hotmail\hotmail_failed_quarantine.txt` kèm lý do lỗi để gửi khiếu nại shop.
-  - **Mua Hotmail BoxTaiKhoan & Lấy lại token gốc qua Chrome Debug (2026-08-26)**:
+  - **Mua Hotmail BoxTaiKhoan & Fallback CloneFBIG (Cập nhật 2026-09-20)**:
+    - **Cơ chế Provider**: Công cụ `buy_hotmail.py` ưu tiên BoxTaiKhoan (gói ID 129 - Hotmail Zin Graph API 166đ, ID 21128 - Hotmail Live đã qua DV 382đ). Nếu BoxTaiKhoan lỗi catalog/hết hàng (`Product 129 not found in catalog`), tự động chuyển sang CloneFBIG (`--provider clonefbig`, product ID `3470` - Hotmail Trusted Graph API, giá ~270đ).
+    - **Pitfall API Auto-Refund trên BoxTaiKhoan**: Khi gọi `buyProduct` qua API kèm `api_key` cho gói Hotmail (129, 21128), backend của BoxTaiKhoan có thể trừ tiền rồi trả lỗi: *"Không thể xử lý đơn hàng lúc này, vui lòng thử lại sau ít phút. Tiền đã được hoàn về tài khoản."* Khi đó **CẤM spam API lặp lại**; giải pháp là đăng nhập tài khoản trên Web browser (hoặc CDP port 9222) và bấm thanh toán trực tiếp qua session cookie web, sau đó copy text từ chi tiết đơn hàng `/product-order/<trans_id>`.
+    - **Pitfall Web Availability Check**: Đừng chỉ dựa vào 1 endpoint API để vội kết luận sản phẩm bị đóng/ẩn (tránh false negative). Phải kiểm tra slug web thật `https://boxtaikhoan.com/product/<slug>` và modal `ajaxs/client/modal/view-product.php?id=<id>` để xác định đúng trạng thái mở bán thực tế.
     - Mua từng acc `amount=1` qua API để nhận trực tiếp mảng `data` JSON token 457 ký tự chuẩn; test `exchange_refresh_token` hợp lệ 100% trước khi nạp vào sheet.
     - Nếu token bị lỗi hoặc bị cắt ngắn, khởi động Chrome người dùng (Profile Kal) với cờ `--remote-debugging-port=9222`, truy cập `https://boxtaikhoan.com/product-orders/` để trích xuất nguyên vẹn dữ liệu từ `textarea.account-field` hoặc `input[data-checkbox]` của từng đơn hàng.
+    - **Quy tắc tính số lượng mail bổ sung cho Slot 7 & 8 (Farm Kibe 80 máy)**:
+      + Với mỗi máy $m \in [1, 80]$: `cần_mua = max(0, 8 - (đã_có_id_tiktok + mail_sạch_chưa_dùng))`.
+      + Khi nạp vào `gmail_clean_v2.xlsx`: BẮT BUỘC chèn theo nhóm máy bằng `D:/Taadaa/Hotmail/tools/append_mail_account.py` (sử dụng `insert_rows` ngay dưới hàng cuối của máy đó), CẤM dùng cờ `--append-admin` vì cờ này tự động gán máy 201+ xuống đáy sheet.
   - **CẤM MỞ APP OUTLOOK**: 100% tài khoản có token Graph API phải đọc mã OTP và Magic Link trên PC, tuyệt đối không mở app Outlook trên thiết bị. Kể cả khi timeout hay TikTok chuyển sang magic link, script chỉ mở deeplink qua intent Android, không bao giờ bật app Outlook trên máy.
 - **LỌC PACKAGE XML TIKTOK BẮT BUỘC (2026-08-23)**:
   - UI XML dump từ uiautomator luôn chứa các node của `com.android.systemui` (thông báo "Google Play: Yêu cầu đăng nhập", "Không có điện thoại nào", pin, giờ...).
@@ -225,6 +260,17 @@ Khi TikTok gửi OTP thất bại nhiều lần, hệ thống **tự chuyển sa
   - Trên màn nhập Email / Login, văn bản điều khoản *"Bằng việc tiếp tục với tài khoản có vị trí tại Việt Nam, bạn đồng ý với Điều khoản Dịch vụ..."* có thể bị `find_text_tap` khớp nhầm thành "Tiếp tục" do chứa cụm "tiếp tục".
   - **Fix:** Phải lọc bỏ triệt để các node chứa "dieu khoan" / "quyen rieng tu" khi tìm nút bấm submit email, chỉ tap đúng nút `Button` ("Tiếp tục" / "Tiếp theo" / "Đăng nhập") thực tế.
 
+- **Cascading Submit Button Loop & Lỗi đỏ "Please try again or log in with a different method" (2026-09-07 máy 34)**:
+  - **Hiện tượng**: Màn hình nhập email xuất hiện text lỗi màu đỏ `Please try again or log in with a different method.` (rid `com.ss.android.ugc.trill:id/i14`) nằm dưới ô nhập email, toàn bộ flow sau đó bị kẹt timeout.
+  - **Nguyên nhân cốt lõi**: Khi bước [7] (`fill_email_and_next`) bấm "Tiếp tục" nhưng mạng/proxy bị nghẽn khiến TikTok không phản hồi và không chuyển màn, script bị trôi qua các bước sau và bấm lặp nút Tiếp tục liên tiếp (3 lần trong ~2 phút):
+    * Lần 1: Bước [7] gõ email + bấm `Tiếp tục` (540, 1806).
+    * Lần 2: Bước [7c] quét thấy màn "Nhập địa chỉ email" vẫn còn, tưởng là confirm email lần 2 nên gõ lại + bấm `Tiếp tục` (540, 1681).
+    * Lần 3: Bước [8b-0] post-auth handler quét thấy text "dia chi email" tiếp tục gõ + bấm `Tiếp tục` lần 3.
+    * Việc spam nút "Tiếp tục" dồn dập khi request trước chưa xử lý xong kích hoạt cơ chế chống spam/rate-limit của TikTok, khiến hệ thống khóa tạm phương thức email này và trả lỗi đỏ.
+  - **Biện pháp xử lý & Phòng ngừa**:
+    1. Khi bước [7] không chuyển màn, tuyệt đối không để các bước 7c và 8b tự động tap lại nút submit nếu chưa có sự thay đổi rõ rệt của UI (state transition).
+    2. Bổ sung classifier nhận diện chuỗi `please try again or log in with a different method` để lập tức fail-closed hoặc dừng chuỗi submit, tránh tiếp tục spam tap làm nặng thêm rate-limit.
+
 - **Nhận diện Profile cá nhân vs Home Feed (2026-08-18)**:
   - Màn hình cá nhân có bottom nav chứa tab "Trang chủ" dễ bị `_is_home_feed_xml` nhận nhầm thành Home Feed.
   - **Fix:** Phải guard nếu có các markers màn hình cá nhân ("them tieu su", "sua ho so", "anh ho so"...) thì `_is_home_feed_xml` trả về `False` để đi đúng nhánh mở Switcher -> Thêm tài khoản.
@@ -292,8 +338,20 @@ Khi TikTok gửi OTP thất bại nhiều lần, hệ thống **tự chuyển sa
       4. Tên + Biệt danh đời thường (VD: *Linh Bông, Đạt Còi, Vy Miu, An Kem, Nam Sóc, Phong Dâu*).
       5. Tên lặp / Duo dễ thương (VD: *An An, Gạo Gạo, Miu Miu, Nhím Nhím, Bơ Bơ*).
     - Biệt danh (@username/handle): Chế theo tên không dấu + số đuôi tự nhiên (`@nguyen9490`, `@an_kem24`, `@linh.bong123`...).
-  19. **Cleanup sau khi Reg thành công (User rule 2026-08-18):**
+  - **Cleanup sau khi Reg thành công & Fail-safe đóng app về Home (User rule 2026-08-18 & 2026-09-06):**
      - Ngay sau khi reg hoàn tất thành công và lưu dữ liệu (hoặc ghi deferred tracking JSON), script bắt buộc gọi helper `_post_reg_cleanup(device_id)`: thực hiện `am force-stop com.ss.android.ugc.trill` và gửi `KEYCODE_HOME` (`input keyevent 3`) để đưa máy về Home Screen sạch sẽ, giải phóng RAM và tránh treo UI.
+     - **FAIL-SAFE BẮT BUỘC (User correction 2026-09-06):** Bất kể script fail ở bước nào (timeout OTP, kẹt DOB, lỗi mạng, crash app, pending alert, lỗi lướt feed), khối `finally` BẮT BUỘC phải gọi `_post_reg_cleanup(device_id)` để đóng app và đưa máy về Home screen ngay lập tức. TUYỆT ĐỐI CẤM để màn hình app treo lơ lửng trên thiết bị.
+  - **Lướt Feed Nuôi Nick Sau Reg — Tái sử dụng Runner (User correction 2026-09-06):**
+     - Để chống TikTok gắn cờ bot do out app ngay lập tức (dwell time = 0s), tích hợp `run_warmup_feed(device_id, stt=stt, account_handle=handle, num_videos=None)`.
+     - **CẤM TỰ VIẾT VÒNG LẶP VUỐT / JITTER TAY:** Toàn bộ logic lướt feed chuẩn (anti-detect jitter, dwell time, video play, xử lý benign popup) đã được hoàn thiện trong repo `D:\Taadaa\tiktok-luot nuoi acc`. Tuyệt đối không tự viết code vuốt tay, tự tính tọa độ hay tự random jitter trong `social_reg_v1.py`.
+     - **CÁCH GỌI ĐÚNG:** Gọi runner chính thức `D:/Taadaa/tiktok-luot nuoi acc/python_runner/run_tiktok.py` qua subprocess với `--mode feed-session-smoke`, `--allow-feed-swipe`, `--allow-navigation-only`, `--allow-benign-popup-dismiss`, `--no-verify-profile`, `--cleanup-on-stop`.
+     - **Random số lần vuốt:** Cài số video lướt ngẫu nhiên `random.randint(4, 8)` cho mỗi máy để tránh pattern bot cố định.
+     - **Cách ly Lock:** Truyền `env["CODEX_DEVICE_LOCK_DIR"] = tempfile` khi gọi subprocess để không bị xung đột với lock của tiến trình reg cha.
+     - **Thứ tự thực thi:** BẮT BUỘC lưu tracking (deferred JSON / workbook) xong xuôi mới chạy lướt feed. Sau khi lướt feed xong (hoặc nếu lướt feed fail), khối `finally` gọi `_post_reg_cleanup` để về Home.
+     - **Điều khiển CLI:** Mặc định random 4–8 video; ghi đè số video qua `--feed-swipes <N>`; tắt warmup qua cờ `--no-feed-after-reg` hoặc env `TIKTOK_REG_FEED_AFTER_REG=0`.
+  - **Pitfall Target Selection (`_detect_clean.py`) - Mail cũ vs Mail thực tế trên máy (2026-09-06):**
+     - Khi một máy có nhiều dòng Gmail trong `gmail_clean_v2.xlsx`, nếu chỉ duyệt từ trên xuống dưới lấy mail đầu tiên chưa có trong tracking, script sẽ bốc trúng mail cũ (từ nhiều tháng trước) đã bị xoá/không còn đăng nhập trên máy, trong khi mail mới reg thành công gần đây (đang nằm thực tế trong `dumpsys account` của máy) lại nằm ở dòng dưới và bị bỏ qua.
+     - Khi gặp lỗi `OTP_NOT_FOUND` / `account list chua thay <email> trong Gmail`: BẮT BUỘC kiểm tra `adb -s <serial> shell "dumpsys account" | grep "com.google"` để đối chiếu tài khoản thực tế đang có trên thiết bị thay vì kết luận vội là mất dữ liệu.
   20. **Cooldown 2 ngày khi dính Rate Limit "Truy cập dịch vụ quá thường xuyên" (User rule 2026-08-26):**
      - Khi TikTok chặn với thông báo *"Bạn truy cập dịch vụ của chúng tôi quá thường xuyên"* / *"Too many attempts"* / *"Too many requests"*:
      - **TUYỆT ĐỐI CẤM** cố reg lại máy đó ngay lập tức (sẽ làm TikTok kéo dài thời gian phạt hoặc block vĩnh viễn thiết bị/IP).
@@ -318,5 +376,20 @@ Khi TikTok gửi OTP thất bại nhiều lần, hệ thống **tự chuyển sa
 
 - **References**:
   - `references/magic-link-flow-20260817.md` — session máy 75: diễn tiến OTP→magic-link, Graph URL false-positive, Resolver "Mở bằng", hết hạn 20 phút, reader raise/hang, tap nút đỏ.
+  - `references/dongvanfb-sourcing-and-hard-lock-enforcement-20260923.md` — Đánh giá thực tế DongVanFB (ID 5 lỏ scope vs ID 57 full Graph API; hiện tượng mail đã reg TikTok trước khi bán); vá cứng Hard Lock 2 chiều trong `social_reg_v1.py` chống can thiệp đè khi farm đang chạy 2FA/nuôi acc; quy tắc cuốn chiếu máy rảnh liên cụm (Kibe ↔ Admin 201+).
+  - `references/boxtaikhoan-api-purchasing-and-availability-pitfalls.md` — Trạng thái Hotmail Zin 129 vs 21128 trên BoxTaiKhoan, lỗi auto-refund khi mua qua API và hướng mua qua Web/CDP.
+  - `references/duplicate-mail-and-8-account-preflight-defense-20260908.md` — Khử trùng lặp kho mail, preflight đọc đúng sheet 'Tài Khoản', phòng vệ 2 lớp trần 8 acc (Preflight Excel + Runtime UI `MACHINE_FULL_8_ACCOUNTS`), hạ ngưỡng width lọc nickname switcher >=120px.
+  - `references/tiktok-fast-login-2fa-recovery-and-magic-link-prevention.md` (trong `taadaa-farm-ops-rules`) — TikTok Fast Login, 2FA Recovery (TOTP/Outlook OTP), và nguyên tắc chống kẹt chuyển sang Magic Link / 900s rate limit (17/09/2026).
+  - **`tiktok-registration-ops/references/token-otp-graph-reader-20260817.md`** — DongVanFB API source, scope OAuth2 comparison (ID 5 vs 57), stale lock cooldown recovery, buy+reg+đổi pass workflow.
+  - **`hotmail-outlook-automation/references/dongvanfb-mail-sourcing-2026-09-21.md`** — Full DongVanFB API reference, Python CDP snippet lấy api_key, scope verify script.
+  - **STALE LOCK RECOVERY (2026-09-21)**: Khi `social_reg_v1.py <N>` báo "Cooldown 1 ngày" nhưng PID đã chết (verify: `wmic process where "ProcessId=<PID>" get CommandLine` → No Instance):
+    ```python
+    import json, sys; sys.path.insert(0, "D:/Taadaa/Tiktok_Reg")
+    from device_lock import _daily_reg_cooldown_path, _read_json, release_machine_reg_reservation
+    data = _read_json(_daily_reg_cooldown_path(create=False))
+    rec = data["machines"]["<N>"]          # lấy token
+    release_machine_reg_reservation(<N>, token=rec["token"])
+    # Verify: is_machine_reg_cooldown_active(<N>) → False
+    ```
   - **`tiktok-registration-ops/references/manual-reg-tay-20260820.md`** (sibling skill) — reg TAY khi script kẹt (máy 78): "Tài khoản không tồn tại"→"Tạo tài khoản mới" (300,738); DOB year-picker **swipe chậm 300ms = −3 năm/lần, nhanh 100ms = loạn**; popup "Xem lại ngày sinh"→OK (540,1184)→Tiếp tục (540,1788) lần 2; pass chứa `$` bị bash nuốt→dùng `# ? ! @` và verify số dấu •; Inapp UnifiedConsent landscape OK (960,865) không ăn→force-stop Outlook + đọc OTP qua Graph; OTP cũ loop trong Gmail→dừng sau 2 lần "Gửi lại mã"; ViChanger `enabled=0`/"No LSPosed access!!!"→block máy; safe workbook ngày lẫn vào cột serial→audit trước `_detect_clean.py`.
 

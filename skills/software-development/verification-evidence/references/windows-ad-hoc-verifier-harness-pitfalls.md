@@ -15,6 +15,8 @@ Use this reference when a verification reminder requires a temporary `hermes-ver
 
 - `KeyError` from launcher formatting: harness-generation failure; repair interpolation.
 - `SyntaxError` / `unicodeescape` in the generated probe: harness path-escaping failure; use POSIX paths or raw literals.
+- `PermissionError: [WinError 32]` on unlink: Windows file lock failure; `tempfile.NamedTemporaryFile` leaves an open handle by default. Always explicitly close the handle before launching subprocesses or attempting cleanup.
+- `ModuleNotFoundError: No module named '_path_setup'`: test import setup failure; test files under subfolders (e.g. `python_runner/tests/`) often import a sibling `_path_setup.py`. The probe must include that test folder in `sys.path`.
 - Assertion/test failure after the probe starts: product or test evidence; investigate normally.
 - Successful focused pytest output plus AST/seam assertion: report as **ad-hoc verification**, not full-suite green.
 

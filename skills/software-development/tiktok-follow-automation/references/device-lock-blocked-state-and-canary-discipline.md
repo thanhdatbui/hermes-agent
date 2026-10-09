@@ -21,12 +21,17 @@ This is **by design** - `"blocked"` means "hold the scene for operator triage". 
 
 ## Correct Discipline
 
-**After fixing the code:**
+**Sau khi fix code xong:**
 
-1. **Do NOT delete lock files manually** (breaks audit trail)
-2. **Run canary only after operator clears the lock**: Operator types `"Mở khóa máy 74"` or `"Unlock all"` in Telegram → gateway calls reap/release
-3. **Or wait for TTL expiry** (90 min) - watchdog will auto-reap
-4. **Then run canary** with `python D:/Taadaa/tools/inspect_machine.py 74` + `python follow_runner/run_follow.py --machine 74 ...`
+1. **KHÔNG xóa file lock thủ công bằng `rm`/`del`** (phá hỏng audit trail).
+2. **Kiểm tra liveness của PID:**
+   - Nếu PID đã chết (`pid_alive=False`, alert `GIỮ HIỆN TRƯỜNG` thường đi kèm PID đã dừng): Chạy canary ngay với cờ `--force-preempt`:
+     ```bash
+     python -m follow_runner.run_follow --machine <N> --config config/machine<N>.yaml --account-row-index <slot> --force-preempt
+     ```
+   - `run_follow.py` sẽ tự động takeover lock cũ qua `acquire_device_lock(force_preempt=True)` và **tự động release lease trong `finally:`** khi canary hoàn tất.
+   - **TUYỆT ĐỐI KHÔNG bắt user phải gõ "Mở khóa máy N"** hay từ chối canary khi PID cũ đã chết.
+3. **Nếu PID đang sống thật (`pid_alive=True`):** Tiến trình farm đang thực sự chạy trên thiết bị (ví dụ cron ca mới đã takeover), lúc này mới báo BLOCKED và đợi ca kết thúc.
 
 ## Key Files
 

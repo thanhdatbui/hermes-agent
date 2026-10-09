@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,900&family=Montserrat:wght@600;700;800;900&family=Playfair+Display:wght@900&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    width: 1080px; height: 1920px; background: #0f0a0c; font-family: 'Montserrat', sans-serif;
+    position: relative; overflow: hidden; color: #ffffff;
+  }
+  .bg-photo-layer { position: absolute; top: 180px; left: 0; width: 1080px; height: 1200px; z-index: 1; }
+  .bg-photo-layer img { width: 100%; height: 100%; object-fit: cover; object-position: center 20%; }
+  .gradient-overlay {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: linear-gradient(180deg, #0f0a0c 0%, rgba(15,10,12,0.2) 20%, rgba(15,10,12,0) 50%, rgba(15,10,12,0.8) 80%, #0f0a0c 100%);
+    z-index: 2;
+  }
+  .magazine-header { position: absolute; top: 50px; left: 0; width: 100%; text-align: center; z-index: 10; padding: 0 40px; }
+  .issue-tag {
+    display: flex; justify-content: space-between; font-size: 20px; font-weight: 700; letter-spacing: 5px;
+    color: #e5b887; border-bottom: 2px solid rgba(229,184,135,0.4); padding-bottom: 12px; text-transform: uppercase;
+  }
+  .masthead-title {
+    font-family: 'Bodoni Moda', serif; font-size: 145px; font-weight: 900; letter-spacing: 12px;
+    color: #ffffff; text-transform: uppercase; line-height: 0.95; margin-top: 15px; text-shadow: 0 10px 30px rgba(0,0,0,0.8);
+  }
+  .headline-floating { position: absolute; top: 480px; left: 55px; z-index: 10; max-width: 480px; }
+  .badge-editorial { background: #c9184a; color: #ffffff; font-size: 20px; font-weight: 900; padding: 6px 18px; border-radius: 4px; display: inline-block; letter-spacing: 2px; }
+  .headline-main { font-family: 'Playfair Display', serif; font-size: 42px; font-weight: 900; color: #ffffff; line-height: 1.15; margin-top: 12px; }
+  .headline-sub { font-size: 22px; color: #ffccd5; font-weight: 600; margin-top: 8px; }
+  .bottom-feature-card {
+    position: absolute; bottom: 55px; left: 45px; right: 45px; background: rgba(26,17,21,0.88);
+    border: 2px solid #e5b887; border-radius: 30px; padding: 35px 45px; z-index: 10; backdrop-filter: blur(25px);
+  }
+  .feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; padding: 25px 0; border-top: 1px solid rgba(229,184,135,0.3); border-bottom: 1px solid rgba(229,184,135,0.3); }
+  .f-label { font-size: 19px; font-weight: 800; color: #ff758f; letter-spacing: 2px; text-transform: uppercase; }
+  .f-value-huge { font-size: 38px; font-weight: 900; color: #ffffff; margin-top: 4px; line-height: 1.15; }
+  .f-value-sub { font-size: 21px; color: #e5b887; font-weight: 700; margin-top: 4px; }
+</style>
+</head>
+<body>
+  <div class="bg-photo-layer"><img src="{{PHOTO_BASE64_OR_PATH}}" alt="Subject"></div>
+  <div class="gradient-overlay"></div>
+  <div class="magazine-header">
+    <div class="issue-tag"><span>SPECIAL EDITION</span><span>{{EVENT_DATE}}</span><span>VOL. 01</span></div>
+    <div class="masthead-title">{{MAGAZINE_TITLE}}</div>
+  </div>
+  <div class="headline-floating">
+    <div class="badge-editorial">{{EVENT_TYPE}}</div>
+    <div class="headline-main">{{SUBJECT_NAME}}</div>
+    <div class="headline-sub">{{EVENT_SUBTITLE}}</div>
+  </div>
+  <div class="bottom-feature-card">
+    <div class="feature-grid">
+      <div><div class="f-label">⏰ THỜI GIAN</div><div class="f-value-huge">{{TIME_AND_DATE}}</div><div class="f-value-sub">{{LUNAR_OR_NOTE}}</div></div>
+      <div><div class="f-label">📍 ĐỊA ĐIỂM</div><div class="f-value-huge">{{VENUE_NAME}}</div><div class="f-value-sub">{{INVITATION_CLOSING}}</div></div>
+    </div>
+  </div>
+</body>
+</html>

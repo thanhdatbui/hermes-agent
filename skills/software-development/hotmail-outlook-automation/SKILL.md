@@ -2,7 +2,7 @@
 
 name: hotmail-outlook-automation
 
-description: Hotmail/Outlook account automation on the Android farm — mailbox-alive live checks, change-info pipeline (password change + logout devices), eligibility gates from gmail_clean_v2, and security/recovery entry points.
+description: Hotmail automation.
 
 ---
 
@@ -11,18 +11,20 @@ description: Hotmail/Outlook account automation on the Android farm — mailbox-
 # Hotmail/Outlook Automation
 
 - **BoxTaiKhoan API**: Endpoint mua tự động `POST /ajaxs/client/product.php` (id 60 - OAuth2 393đ). Format: `mail|pass|refresh_token|client_id`. Lưu ý: Khi mua số lượng lớn, gọi API mua lẻ từng acc (`amount=1`) qua vòng lặp giúp nhận trực tiếp mảng `data` đầy đủ, tránh phụ thuộc vào trang chi tiết đơn hàng `/product-order/` trên web.
-- **Kiến trúc kho Gmail Clean V2 & 2 Cột Trạng Thái (User update 2026-08-25)**:
-  - `gmail_clean_v2.xlsx` là **Single Source of Truth** chứa cả Gmail và Hotmail của farm.
-  - Cột 11: `info_changed` (đánh dấu `1` khi đã đổi pass/thông tin bảo mật).
-  - Cột 12: `app_logged_in` (đánh dấu `1` khi đã đăng nhập vào app Outlook trên điện thoại).
-  - **Quarantine Mail Lỗi**: Tài khoản bị lỗi token, die, hoặc không đọc được mail/OTP phải xóa ngay khỏi `gmail_clean_v2.xlsx` và lưu vào `D:\Taadaa\Hotmail\hotmail_failed_quarantine.txt` để không bị script chọn lại gây kẹt máy.
-  - **Cấm mở App Outlook khi có Token**: Mailbox có token Graph API (Hotmail loại 2) bắt buộc đọc OTP/Magic link trên PC; chỉ mở app khi user yêu cầu rõ ràng và phải giữ device lock/canonical runner. Chi tiết provenance và báo cáo: `references/purchase-provenance-and-reporting.md`.
+- **Điều Kiện Đủ Để Change Pass Hotmail (Dual-OAuth Eligibility Gate - 2026-10-08)**:
+  - Tài khoản Hotmail **CHỈ ĐỦ ĐIỀU KIỆN CHANGE PASS** khi đã thỏa mãn đồng thời:
+    1. Đã đăng ký thành công Codex qua 5SIM/ChatGPT.
+    2. Đã nạp và kích hoạt OAuth Codex lên **OmniRoute (:20129)** (`provider_connections` có `provider='codex'`).
+    3. Đã nạp và kích hoạt OAuth Codex lên **9Router (:20128)** (`providerConnections` có `provider='codex'`).
+  - Thiếu 1 trong 2 server -> CẤM chuyển sang stage `CHANGE_INFO` hoặc đổi pass, nhằm bảo vệ toàn vẹn nguồn quota LLM trước khi đổi mật khẩu làm đứt token/session.
+  - *Chi tiết quy trình chuẩn 4 bước (2FA ON -> Đổi Pass -> Sign Out -> Relogin KMSI, giữ mail KP gốc bán kèm TikTok)*: `references/gpm_hotmail_security_canonical_flow.md`.
 - **Kiến trúc kho Gmail Clean V2 & 2 Cột Trạng Thái (2026-08-25)**:
   - `gmail_clean_v2.xlsx` là **Single Source of Truth** chứa cả Gmail và Hotmail của farm.
   - Cột 11: `info_changed` (đánh dấu `1` khi đã đổi info/pass bảo mật Hotmail).
   - Cột 12: `app_logged_in` (đánh dấu `1` khi đã login vào Outlook app trên thiết bị).
   - Hotmail mới mua về nạp thẳng vào `gmail_clean_v2.xlsx` (để trống 2 cột này). Script reg TikTok (`_detect_clean.py`) tự quét các mail chưa có ID TikTok trong `taikhoan_dat_v2_updated .xlsx` để chạy.
   - **Quarantine Mail Lỗi**: Tài khoản bị lỗi token, die, hoặc không lấy được OTP bắt buộc XÓA khỏi `gmail_clean_v2.xlsx` và lưu vào `D:\Taadaa\Hotmail\hotmail_failed_quarantine.txt` để chống script chọn lại gây kẹt vòng lặp.
+  - **Mail Khôi Phục Domain Riêng & Change-Info Pipeline**: CẤM coi mail domain (`fviainboxes.com`, `smvmail.com`) là mail ảo. Đọc OTP qua API và quy trình Sign out everywhere + re-login kiểm chứng: xem chi tiết tại `references/mail-domain-recovery-otp.md`.
 - **Chống xoay ngang màn hình (Rotation Lock)**: Phải chạy đầy đủ `settings put` + `content insert` vào `system:accelerometer_rotation=0` và `user_rotation=0` trước khi mở Outlook.
 - **Batch Login ATX XML-First & Tự động khôi phục ATX**: Dùng `run_batch_login_xml.py` (port 7912) điều hướng từ onboarding, selector Outlook, form email/pass đến xác nhận drawer. Tích hợp `reset_atx_agent` từ `automation_core.persistent_ui` để tự động hard-reset ATX daemon + UiAutomator stub khi gặp lỗi kết nối/502 Bad Gateway. Chi tiết: `references/batch-hotmail-login-atx-autorecovery-20260822.md` và `references/boxtaikhoan-api-and-xml-batch-login-20260822.md`.
 - **Hotmail Change-Info Selection & Quản lý Mail Tạm**: Quy tắc lọc Hotmail ngâm >= 7 ngày, bỏ qua tài khoản đã change pass/secured, thực trạng flow hiện tại (đổi pass + logout everywhere để revoke OAuth2 token + quét và gỡ mail khôi phục tạm của shop getnada/fviainboxes), và quy tắc cập nhật workbook/backup: `references/hotmail-change-info-pipeline-and-untrusted-removal-20260823.md`.

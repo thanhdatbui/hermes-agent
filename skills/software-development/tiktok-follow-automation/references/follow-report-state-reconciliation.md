@@ -7,6 +7,10 @@ Use this whenever a watchdog message contains both Feed and Follow sections, or 
 - `Lướt Feed -> Fail` is a feed/session failure. It is **not** evidence that the machine was follow-released.
 - `Follow chéo -> Nhả follow` is the authoritative report list for follow-release events.
 - `Follow chéo -> Lỗi` is a follow-run failure and must remain distinct from `Nhả follow`.
+- `Follow chéo -> Success (1 - 4 lượt)`: KHÔNG đồng nghĩa với bị nhả follow. Phân loại kỹ nguyên nhân:
+  1. `reason` chứa `"đã follow sẵn (skip)"` liên tiếp: Đạt trần danh sách Anchor/Follower còn mới (các nick còn lại trong list đã follow từ phiên trước) -> Runner hoàn thành an toàn (`status: OK`, `follow_failed: false`).
+  2. Hết hạn mức ngày còn lại (`budget_remaining` chỉ còn 1-4 lượt trước khi chạm trần 35-40 lượt/ngày).
+  3. Chỉ coi là Nhả khi mục báo cáo ghi rõ ở nhóm `Nhả follow` hoặc `status: FOLLOW_FAILED` (`follow_failed: true`).
 - Confirm the row from each `follow_result.json` (`row` / `account_row_index`); do not infer row from the feed-failure list.
 
 ## Evidence-first reconciliation

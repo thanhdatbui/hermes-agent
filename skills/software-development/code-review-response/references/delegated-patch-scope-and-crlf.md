@@ -4,6 +4,7 @@ Use this recipe when a delegated worker edits a dirty Windows repository and the
 
 ## 1. Establish the boundary
 
+- Verify exact canonical target provenance: ensure paths are on the canonical target drive/repo (e.g. `D:/...`), not a cloud-sync or backup mirror (OneDrive, iCloudDrive, `Taadaa_Sync_Shared`).
 - Capture `git status --short` and the target-file diff before accepting the worker report.
 - Treat unrelated dirty files as pre-existing. Do not reset, revert, or clean them.
 - Compare each changed helper against `git show HEAD:<file>` to identify collateral behavior changes.

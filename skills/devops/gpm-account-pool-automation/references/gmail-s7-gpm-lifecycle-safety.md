@@ -1,0 +1,45 @@
+# Gmail S7 → GPM lifecycle safety
+
+## Intent
+The farm creates Gmail on S7, then moves it to GPM for OAuth Antigravity/Codex. S7 is the origin/temporary anchor, not a permanent home.
+
+## State machine
+`LOGIN_SUCCESS → GPM_SOAKING → 2FA_ELIGIBLE → TWOFA_ACTIVE → OAUTH_READY → DETACH_REVIEW_REQUIRED`
+
+Persist at least: `email`, `profile_id`, `machine`, `proxy`, `login_success_at`, `soak_until`, `twofa_active_at`, `oauth_ready_at`, `detach_eligible_at`, `checkpoint_status`, `last_error`, and `manual_review_required`.
+
+## Gates
+1. **Login:** preserve the 1:1 S7/proxy mapping; use sequential or tightly bounded execution. A successful subprocess is not enough—verify the GPM session and record the timestamp.
+2. **GPM soak:** do not add TOTP immediately after first login. Use a configurable soak gate (default conservative value should be reviewed against live results, not described as a Google guarantee).
+3. **2FA:** run only after the soak gate; write the secret with an Excel lock and verify readback. If reCAPTCHA, phone checkpoint, or repeated challenge appears, pause the account and proxy—do not loop.
+4. **Nurture:** keep login, 2FA, nurture, and OAuth as separate observable phases. Do not launch secondary Dual OAuth/ChatGPT work immediately after login.
+5. **Detach:** never automatically sign out the S7, never use web `device-activity` to remove it, and never claim that GPM is trusted merely because a timer expired. Emit `DETACH_REVIEW_REQUIRED`; require explicit manual approval and fresh evidence before any device-side removal.
+6. **Asset protection:** Gmail marked DIE must not trigger GPM profile deletion; profiles may contain valuable OAuth/Codex sessions.
+7. **SSO vs Direct Reg Separation:** Google SSO is ONLY for Google Cloud / Antigravity OAuth. NEVER use Google SSO ("Continue with Google") for ChatGPT registration—it triggers cross-site risk engine, reCAPTCHA audio loops, and hard SMS checkpoints on unverified phone-bypass accounts. ChatGPT registration must ALWAYS use Direct Email + Password + OTP from Gmail inbox.
+8. **Dual-Path ChatGPT Registration Topology:**
+   - *Path A (Fresh Gmail on S7):* Hooked immediately post-registration on S7 via Android WebView/App (`watchdog_link_chatgpt_idle.py` / `hook_chatgpt_register.py`).
+   - *Path B (Legacy/Mature Gmail on GPM):* Handled by dedicated GPM Playwright runner (`chatgpt_gpm_direct_reg.py`) on PC using 1:1 mobile proxy. Reads OTP from background `mail.google.com` tab, bypassing S7 device dependency and freeing S7 for TikTok operations.
+9. **Silent Watchdog Logging Hygiene:** In `no_agent: true` cronjobs, any stdout output is delivered as an alert to Telegram. Helper modules (e.g. cleanup, ADB probes) must NEVER attach `StreamHandler(sys.stdout)` at module level. Use FileHandler or `sys.stderr` with `logger.propagate = False`, and caller watchdogs must sanitize root logger handlers on import.
+10. **GPM Login Concurrency Discipline (User Rule):** Up to 5 parallel workers (`MAX_WORKERS = 5`) are permitted for GPM login batching PROVIDED that isolation constraints are strictly enforced: each candidate must run on a distinct mobile proxy port (`MAX_LOGINS_PER_PROXY <= 2/port/day`), a distinct machine number (`mid` unique per batch), and workers must start with a staggered delay (`stagger >= 5s`) to prevent burst traffic spikes.
+11. **OpenAI Desktop Web Form Submission & Turnstile Trap:** On `auth.openai.com` / `chatgpt.com/auth/signup`, pressing `Enter` on email/password fields often fails to trigger backend form dispatch due to client-side event binding and invisible Cloudflare Turnstile verification. Automation must explicitly resolve/wait for Turnstile and perform genuine mouse clicks (`locator('button[type="submit"], button:has-text("Continue"), button:has-text("Tiếp tục")').click()`). Without an explicit click, no verification OTP is dispatched to the Gmail inbox (`FAIL_OTP_TIMEOUT`).
+12. **Gmail Web Inbox OTP Extraction & Brand Selector Quirk:** In desktop Gmail (`mail.google.com`), reading `inner_text()` of the main inbox message list only exposes truncated subject and snippet lines (`tr.zA`), which frequently cuts off the 6-digit OpenAI verification code. Crucially, the sender display name and subject line are often branded as **`ChatGPT`** (e.g. *"ChatGPT — mã xác minh tạm thời của bạn cho chatgpt"* / *"Mã của bạn cho ChatGPT"*), NOT `"OpenAI"`. Locators and text guards MUST match both `'tr:has-text("ChatGPT"), tr:has-text("OpenAI")'`. Automation MUST explicitly click on the email row to open the conversation view.
+13. **Gmail Thread / Conversation OTP Trap (Newest Code at Bottom):** When multiple OTP emails arrive over successive canary runs or retries, Gmail clusters them into a single conversation thread. A naive `re.findall(r"\b(\d{6})\b", text)[0]` extracts the **first (oldest, stale)** code from the initial attempt, causing OpenAI to reject it with *"Mã không chính xác"* / *"Incorrect code"*. Automation MUST always select `nums[-1]` (the latest code rendered at the bottom of the thread) and scroll to the bottom of the message container (`window.scrollTo(0, document.body.scrollHeight)`) to ensure the latest conversation card is rendered.
+14. **Hard Verification Gate Against False-Positive Reg:** Never assume ChatGPT registration succeeded simply because the OTP form was submitted. Automation must actively inspect the post-submit DOM:
+    - If error text like *"Mã không chính xác"*, *"Incorrect code"*, *"Invalid code"*, or *"Too many attempts"* appears, immediately return `FAIL_WRONG_OTP` and NEVER mark `CHATGPT_READY` in Master Excel.
+    - Only declare `SUCCESS` when the URL transitions away from `/auth/` to `https://chatgpt.com/` AND the prompt input (`#prompt-textarea`, `textarea`, or `new chat`) is actively visible.
+    - Validate screenshots with WinRT OCR readback if false-positives are suspected.
+15. **Anonymous Visitor & Cookie Consent False-Positive Trap:** ChatGPT desktop web allows anonymous unauthenticated users to view the chat layout, navigation drawer, and `#prompt-textarea` to submit guest prompts. Naive automation checking only `#prompt-textarea` will falsely report unauthenticated profiles as `ALREADY_LOGGED_IN`. Negative Auth Gate rule: If any `[Đăng nhập]` / `[Log in]` or `[Đăng ký]` / `[Sign up]` buttons are visible on the page, the user is **100% NOT logged in**. Dismiss cookie consent banners (*"Chấp nhận tất cả"*) first, and only confirm login state when auth buttons are completely absent AND a valid user profile element (`[data-testid="profile-button"]` / profile badge) is interactable.
+16. **Session-Warm Candidate Selection for GPM Registration (Zero-Captcha Rule):** Blind sequential scanning of the GPM SQLite DB (`ORDER BY Id ASC`) hits stale profiles where Google demands *"Xác minh danh tính của bạn"* and reCAPTCHA when accessing `mail.google.com`. Candidate selection MUST cross-reference `gpm_gmail_nurture_state.json` and assign Priority 1 to accounts with `status == "success"` (recently nurtured on YouTube/Google) and valid Google session cookies (`SID, SSID, HSID, SAPISID >= 2`). These open Gmail directly to the inbox with zero Google challenges.
+17. **Distinguishing "Direct OTP Registration" vs "Pre-existing Google SSO Session" (User Invariant):** When the user specifies "reg bằng mã" (Direct Email + OTP signup), testing against profiles that already have a lingering Google SSO ChatGPT session and returning `ALREADY_LOGGED_IN` violates test intent (*"Ủa t bảo reg = mã chứ k log qua sso mà"*). Validating direct OTP registration requires candidate profiles that have NO prior ChatGPT session cookies (blank auth form), paired with warm Gmail inboxes to receive and exercise the OTP verification loop.
+18. **Gmail Async Render & Header/Tag-Targeted OTP Extraction (`h1, h2, strong, b`):** Gmail renders message bodies asynchronously into `div[role="main"]`. Reading `body.inner_text()` immediately after clicking an email row risks reading cached list snippets or partial loads (`FAIL_OTP_TIMEOUT`). Wait for `div[role="main"]` to settle (2-3s) and query targeted bold/header tags (`h1, h2, strong, b, span`) where OpenAI places the 6-digit verification code.
+
+## Review and reporting
+Fixed soak windows are risk controls, not proof of Google Trust Score or a guarantee against phone verification. Reports must distinguish `LOGIN_SUCCESS`, `2FA_PENDING_SOAK`, `TWOFA_ACTIVE`, `OAUTH_READY`, `CHECKPOINT_PAUSED`, and `DETACH_REVIEW_REQUIRED`. If an external reviewer/model is unavailable, report that fact and never fabricate its verdict.
+
+## Focused verification
+- Compile every local and shared copy.
+- Assert login success records lifecycle state and does not launch secondary OAuth.
+- Assert the 2FA watchdog skips profiles before `soak_until`.
+- Assert nurture preserves lifecycle fields.
+- Assert no code path calls `device-activity`, `removeAccount`, or profile deletion for a Gmail-DIE lifecycle event.
+- Verify local/shared files are byte-identical where synchronization is required.

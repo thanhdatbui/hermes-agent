@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Montserrat:wght@600;700;800;900&family=Playfair+Display:wght@800;900&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    width: 1080px;
+    height: 1920px;
+    background: #ffffff;
+    font-family: 'Montserrat', sans-serif;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Top 52% Full Bleed Hero Photo */
+  .hero-photo-container {
+    width: 1080px;
+    height: 1040px;
+    position: relative;
+    overflow: hidden;
+    background: #ffe6ee;
+  }
+
+  .hero-photo-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 20%;
+  }
+
+  .photo-gradient-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 180px;
+    background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,0.85) 60%, #ffffff 100%);
+  }
+
+  .corner-badge {
+    position: absolute;
+    top: 40px;
+    right: 40px;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(10px);
+    border: 3px solid #ff4d6d;
+    padding: 12px 30px;
+    border-radius: 50px;
+    font-size: 26px;
+    font-weight: 800;
+    color: #c9184a;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+  }
+
+  /* Bottom Content Area */
+  .content-container {
+    width: 1080px;
+    height: 880px;
+    background: #ffffff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 50px 45px 50px;
+    text-align: center;
+    position: relative;
+    z-index: 3;
+  }
+
+  .main-script-title {
+    font-family: 'Dancing Script', cursive;
+    font-size: 95px;
+    font-weight: 700;
+    color: #800f2f;
+    line-height: 0.9;
+  }
+
+  .baby-highlight-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 52px;
+    font-weight: 900;
+    color: #590d22;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+
+  .theme-pill {
+    display: inline-block;
+    background: linear-gradient(135deg, #ff1a53 0%, #c9184a 100%);
+    color: #ffffff;
+    font-size: 36px;
+    font-weight: 900;
+    letter-spacing: 4px;
+    padding: 6px 36px;
+    border-radius: 40px;
+    margin-top: 6px;
+    box-shadow: 0 8px 20px rgba(201, 24, 74, 0.3);
+  }
+
+  /* Giant High-Contrast Details Card */
+  .event-card {
+    width: 100%;
+    background: linear-gradient(145deg, #fff0f5 0%, #ffe3ec 100%);
+    border: 3px solid #d4af37;
+    border-radius: 36px;
+    padding: 26px 35px;
+    box-shadow: 0 15px 35px rgba(201, 24, 74, 0.12);
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .event-row {
+    display: flex;
+    align-items: center;
+    gap: 25px;
+    text-align: left;
+  }
+
+  .event-icon-circle {
+    width: 82px;
+    height: 82px;
+    border-radius: 24px;
+    background: #ffffff;
+    border: 2px solid #ff4d6d;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 42px;
+    flex-shrink: 0;
+  }
+
+  .event-lbl {
+    font-size: 20px;
+    font-weight: 800;
+    color: #c9184a;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+
+  .event-primary-val {
+    font-size: 42px;
+    font-weight: 900;
+    color: #1a0208;
+    line-height: 1.15;
+    margin-top: 2px;
+  }
+
+  .event-sub-val {
+    font-size: 25px;
+    font-weight: 700;
+    color: #800f2f;
+    margin-top: 2px;
+  }
+
+  .event-venue-val {
+    font-size: 48px;
+    font-weight: 900;
+    color: #800f2f;
+    letter-spacing: 2px;
+    margin-top: 2px;
+  }
+
+  .footer-invite-text {
+    font-size: 26px;
+    font-weight: 700;
+    color: #590d22;
+    line-height: 1.4;
+  }
+
+  .footer-welcome {
+    font-family: 'Dancing Script', cursive;
+    font-size: 52px;
+    font-weight: 700;
+    color: #c9184a;
+    margin-top: 2px;
+  }
+</style>
+</head>
+<body>
+  <div class="hero-photo-container">
+    <img src="data:image/jpeg;base64,__BASE64_PHOTO__" alt="Hero Subject">
+    <div class="photo-gradient-overlay"></div>
+    <div class="corner-badge"><span>1st Birthday 🍒</span></div>
+  </div>
+
+  <div class="content-container">
+    <div>
+      <div class="main-script-title">Tiệc Mừng Thôi Nôi</div>
+      <div class="baby-highlight-name">BÙI NGUYỄN KHÁNH UYÊN</div>
+      <div class="theme-pill">🍒 BÉ CHERRY 🍒</div>
+    </div>
+
+    <div class="event-card">
+      <div class="event-row">
+        <div class="event-icon-circle">⏰</div>
+        <div>
+          <div class="event-lbl">THỜI GIAN</div>
+          <div class="event-primary-val">17:00 | 11.10.2026</div>
+          <div class="event-sub-val">(Nhằm Ngày 02.09 Âm Lịch)</div>
+        </div>
+      </div>
+      <div style="height: 1.5px; background: rgba(212, 175, 55, 0.45); width: 100%;"></div>
+      <div class="event-row">
+        <div class="event-icon-circle">📍</div>
+        <div>
+          <div class="event-lbl">ĐỊA ĐIỂM TỔ CHỨC</div>
+          <div class="event-venue-val">168 XUÂN HỒNG</div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="footer-invite-text">Trân trọng kính mời Quý khách đến chung vui cùng gia đình!</div>
+      <div class="footer-welcome">Rất Hân Hạnh Được Đón Tiếp!</div>
+    </div>
+  </div>
+</body>
+</html>

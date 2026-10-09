@@ -35,3 +35,23 @@ Changing config resolution should be a shared, config-driven consumer change, no
 7. Push only after the post-commit gate is still `APPROVED`. Rejected push → rebase and repeat; never force-push.
 
 A project `AGENTS.md` or `.hermes.md` should state this gate explicitly. Memory helps recall it but does not enforce Git behavior; enforcement needs the project rule plus a wrapper/dispatcher or pre-push hook that checks the audit artifact.
+
+## 3-Tier Farm Sync Architecture (Kibe vs Admin)
+
+1. **Git Layer (`D:\Taadaa\...` on each host)**: Independent checkouts per host. Code lives on physical drive, NOT in OneDrive. Git's non-fast-forward / fetch-first protection prevents secondary hosts from accidentally overwriting commits pushed by the primary host.
+2. **OneDrive Shared Tools Layer (`D:\OneDrive\Taadaa_Sync_Shared\tools\`)**: File-sync across hosts for cross-machine orchestration scripts (e.g. `ensure_row_accounts.py`). Must use dynamic `Path.home()` or host-config discovery to bind tokens/profiles dynamically per host instead of hardcoding Admin or Kibe paths.
+3. **Hermes Sync Layer (`apply_sync_admin.py`)**: One-way sync (Kibe ➔ Admin) copying config and skills from OneDrive into Admin, preserving Kibe as the master authoring environment.
+
+## Safe Git Pull Reconciliation for Consumer Hosts with Dirty Overrides
+
+Consumer hosts frequently carry machine-specific runtime state (e.g. swapped device serial mappings in `calibrate.py`/`social_reg_v1.py` or local target selection JSONs). A raw `git pull` will abort with `error: Your local changes to the following files would be overwritten by merge`.
+
+Safe sequence:
+```bash
+git stash
+git pull
+git stash pop
+# Run focused pytest immediately to verify syntax and regression safety:
+pytest tests/<focused_test>.py -v
+```
+If `git stash pop` auto-merges, verify with `git diff <file>` that local machine serial overrides and upstream logic fixes coexist cleanly without conflict.

@@ -4,7 +4,7 @@
 9Router (`:20128`) and OmniRoute (`:20129`) run as long-lived Node.js services supervised by Windows PowerShell watchdogs:
 - 9Router watchdog: `C:\Users\Kibe\AppData\Roaming\9router\9router_watchdog.ps1`
 - OmniRoute watchdog: `C:\Users\Kibe\AppData\Roaming\omniroute\omniroute_watchdog.ps1`
-- Canonical tool configs & supervisor scripts repository: `D:\OneDrive\AI-Tools\tools\omniroute\` and `D:\OneDrive\AI-Tools\tools\9router\`
+- Canonical tool configs & supervisor scripts repository: `D:\Taadaa\AI-Tools\tools\omniroute\` and `D:\Taadaa\AI-Tools\tools\9router\`
 
 ## Root Cause of Process Accumulation Storms
 When a service takes time to start (e.g. Next.js building/loading chunks) or temporarily slows down under heavy load, health checks (`/api/health`) may timeout or fail for several seconds.
@@ -21,10 +21,19 @@ Every supervisor script MUST enforce:
 4. **Clean Termination Before Restart:** If a service is deemed unresponsive, all old/hung child processes and port-holding PIDs must be terminated cleanly (with grace period before SIGKILL) BEFORE launching a new instance.
 5. **Consecutive Failure Threshold:** Require at least 3 consecutive failed health probes (e.g. 3 x 10s = 30s) before declaring the service dead.
 6. **Adequate Startup Grace Period:** After launching a new process, poll `/api/health` with a realistic timeout (e.g. 30 seconds, polling every 3s) rather than immediately failing in 8 seconds.
+7. **Stale Lock Cleanup Before Launch:** Always remove `.build\next\dev\lock` if present before starting, preventing dead-PID lock rejections.
+
+## Pitfall: Next.js Production Build Missing vs Dev Lock-File Crash-Loop (OmniRoute :20129)
+1. **Symptom 1: UI returns 500 Internal Server Error on /dashboard/logs/*, providers, settings**
+   - **Root Cause:** OmniRoute was started with `run-next.mjs start` (production mode), but `.build/next` was incomplete or never compiled via `npm run build`. Next.js serves static routes/APIs but throws 500 on all uncompiled dynamic/client routes.
+   - **Remedy:** Execute `npm run build` (`node scripts/build/build-next-isolated.mjs`) in `C:\Users\Kibe\OmniRoute`.
+2. **Symptom 2: OmniRoute dev mode exits after 3s with exit code 1 (Crash-Loop)**
+   - **Root Cause:** A stale lock file at `C:\Users\Kibe\OmniRoute\.build\next\dev\lock` holds a dead PID from a prior hard-kill/crash. Next dev refuses to start with `"Another next dev server is already running"`.
+   - **Remedy:** Remove `.build\next\dev\lock`. Ensure watchdog cleans this file prior to restart.
 
 ## Canonical Launcher References
 - **9Router launcher:** `tools/9router/9router.vbs` (invokes `%APPDATA%\9router\9router_watchdog.ps1`). Startup shortcut should point to `9router.vbs`.
 - **OmniRoute launcher:** `tools/omniroute/omniroute_watchdog.vbs` (invokes `%APPDATA%\omniroute\omniroute_watchdog.ps1`). Startup shortcut points to `omniroute_watchdog.vbs`.
 
 ## Tool Config Sync Invariant
-Whenever modifying supervisor scripts, proxy configs, or startup launchers in `AppData\Roaming\...`, ALWAYS mirror/sync changes into `D:\OneDrive\AI-Tools\tools\<tool-name>\` so configurations are tracked in the AI-Tools repository.
+Whenever modifying supervisor scripts, proxy configs, or startup launchers in `AppData\Roaming\...`, ALWAYS mirror/sync changes into `D:\Taadaa\AI-Tools\tools\<tool-name>\` so configurations are tracked in the AI-Tools repository.

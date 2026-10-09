@@ -2,77 +2,56 @@
 
 ## Incident pattern
 
-A `multi-machine-feed-session` alert shows TikTok still healthy on the feed while the worker stops during startup preparation. The meaningful signature is:
+A `multi-machine-feed-session` alert shows TikTok still healthy on the feed while the worker stops during startup preparation. The signature can be:
 
 ```text
-adb command timed out: ('C:\Program Files (x86)\xiaowei\tools\adb.exe', '-s', '<serial>', 'shell', 'content', 'insert', '--uri', 'content://settings/system', '--bind', 'name:s:accelerometer_rotation', '--bind', 'value:i:0')
+adb command timed out: ('C:\Program Files (x86)\xiaowei\tools\adb.exe', '-s', '<serial>', 'shell', 'settings', 'put', 'system', 'accelerometer_rotation', '0')
+```
+or historically (2026-08-23):
+```text
+adb command timed out: ... 'shell', 'content', 'insert', '--uri', 'content://settings/system', '--bind', 'name:s:accelerometer_rotation', '--bind', 'value:i:0'
 ```
 
 This is a **preparation/control-path failure**, not a feed blocker, account failure, CAPTCHA, or TikTok foreground loss.
 
-## Root cause (confirmed 2026-08-23)
+## Root causes
 
-Commit `594ba5a` (2026-08-19) added a secondary Samsung/OneUI workaround after the canonical `settings put` writes:
+### 1. Legacy `content insert` hang (2026-08-23)
+Commit `594ba5a` added a secondary Samsung/OneUI workaround after `settings put` writes using `content insert`. On S7 (OneUI), this hung until ADB timeout.
 
-```python
-ctx.adb.shell([
-    "content", "insert", "--uri", "content://settings/system",
-    "--bind", f"name:s:{setting}", "--bind", "value:i:0"
-], timeout=timeout)
-```
+### 2. ADB `settings put/get` Timeout & Uncaught Exception (2026-09-05 - Máy 21, Nick lieumiyy3oa)
+Under farm load or sluggish ADB daemon, even canonical `settings put` / `settings get` can take > 8-15s or raise `ADBError("adb command timed out: ...")`.
+Without an Exception Guard and Timeout Guard inside `ensure_portrait_rotation` and `lock_portrait_rotation`, `AdbClient.shell()` raised an uncaught exception, which propagated out of startup preparation and terminated the feed session erroneously.
 
-On Samsung Galaxy S7 (OneUI), this command hangs until ADB timeout (15 s default). `AdbClient.shell()` raises `ADBError("adb command timed out: ...")` which propagates uncaught out of `ensure_portrait_rotation`. The outer `except Exception` in `_run_child` records the child as `failed` — even though TikTok is on a healthy feed.
+## Confirmed fix & Safe implementation contract
 
-The same pattern existed in `automation-core/src/automation_core/startup.py::lock_portrait_rotation`.
-
-## Confirmed fix
-
-Removed `content insert` from both files:
-
-| File | Function | Commit |
-|------|----------|--------|
-| `python_runner/flows/device_prepare.py` | `ensure_portrait_rotation` | `6bf8f52` (consumer repo) |
-| `automation-core/src/automation_core/startup.py` | `lock_portrait_rotation` | `48ed1ee` (automation-core) |
-
-`settings put system accelerometer_rotation 0` + `settings put system user_rotation 0` are sufficient. Standard Android since API 17, never hang.
-
-## Safe implementation contract
-
-1. Use only `settings put system accelerometer_rotation 0` and `settings put system user_rotation 0`.
-2. **Do NOT add `content insert --uri content://settings/system`** — hangs on S7/OneUI.
-3. If a vendor workaround is ever required: bounded try/except, catch `ADBError`, record distinct evidence field, never let it propagate as session-killing exception.
-4. Verify with `settings get` reads after `sleep(0.3)`. Viewport (`wm size`) for deeper confirmation.
-5. **Always patch both files together** — consumer `device_prepare.py` AND `automation-core/startup.py`.
+1. **Timeout Clamping (Timeout Guard):**
+   - In `ensure_portrait_rotation` (`device_prepare.py`):
+     `timeout = min(ctx.timeout("adb_seconds", 15), 8.0)`
+   - In `lock_portrait_rotation` (`automation_core/startup.py`):
+     `effective_timeout = min(timeout, 8.0)`
+2. **Exception Isolation (Exception Guard):**
+   - Wrap each `settings put` and `settings get` loop in `try...except Exception as exc:`.
+   - On error: record `observed[f"{setting}_put"] = "failed"` (or `observed[setting] = "failed"`), append `f"{setting} ... timeout/error: {exc}"` to `errors`.
+   - **Never let ADB timeout or ADBError propagate out as an uncaught exception** to abort the feed session.
+3. **Symmetrical updates:**
+   - Always patch both files together:
+     * `python_runner/flows/device_prepare.py` (`ensure_portrait_rotation`)
+     * `automation-core/src/automation_core/startup.py` (`lock_portrait_rotation`)
+4. **Focused Unit Testing (<5s):**
+   - Do NOT run full `test_device_prepare.py` (runs 25 tests with sleep delays, taking ~113s).
+   - Use `-k` filter:
+     ```bash
+     python -m pytest "D:/Taadaa/tiktok-luot nuoi acc/python_runner/tests/test_device_prepare.py" -k "ensure_portrait_rotation"
+     # Runs in ~3s
+     python -m pytest "D:/Taadaa/automation-core/tests/test_startup.py"
+     # Runs in ~2s
+     ```
 
 ## Diagnosis checklist
 
-1. Alert text: `adb command timed out` on `shell content insert ... accelerometer_rotation`.
-2. Machine screenshot: TikTok feed tab (Đề xuất), healthy — NOT CAPTCHA/popup/launcher.
-3. `git blame` rotation helper → confirm `content insert` was added after original code.
-4. Check `automation-core/startup.py::lock_portrait_rotation` — same pattern likely present.
-5. Patch both, run regression tests, compile+diff-check, commit+push both repos.
-6. Do NOT rerun the live machine to validate — fix is offline-verifiable.
-
-## Regression tests (post-fix baseline)
-
-```bash
-# Consumer repo
-cd 'D:/Taadaa/tiktok-luot nuoi acc'
-PYTHONPATH=python_runner python -B -m pytest -q -p no:cacheprovider python_runner/tests/test_device_prepare.py
-# Expected: 23 passed
-
-# automation-core
-cd 'D:/Taadaa/automation-core'
-python -B -m pytest -q -p no:cacheprovider tests/test_startup.py tests/test_device_readiness.py
-# Expected: 15 passed
-```
-
-Pre-existing failures to exclude (fail on clean HEAD, unrelated to rotation):
-- `test_feed_swipe_smoke.py::test_flow_stops_manual_needed_before_navigation`
-- `test_feed_swipe_smoke.py::test_flow_stops_on_focus_loss_before_navigation`
-
-Both fail due to `Mock.stdout` type mismatch in `parse_focused_activity`, not rotation logic.
-
-## Operational boundary
-
-Preserve target screen and lock per farm policy. Do not probe, rerun, force-stop TikTok, return Home, or apply live rotation repair without explicit user authorization. A healthy TikTok feed in the alert screenshot must not be used to dismiss the earlier preparation failure.
+1. Alert text: `adb command timed out` on `settings put/get` or `content insert` for `accelerometer_rotation` or `user_rotation`.
+2. Machine screenshot: TikTok feed tab healthy — NOT CAPTCHA/popup/launcher.
+3. Check both `device_prepare.py` and `automation-core/startup.py`.
+4. Ensure both have the `min(timeout, 8.0)` cap and `try...except Exception` guard.
+5. Verify offline with focused unit tests (`-k ensure_portrait_rotation`). Do not run live retry unless authorized.

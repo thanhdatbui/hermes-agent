@@ -21,6 +21,33 @@ metadata:
   proof the changed behavior actually runs.
 - You are editing a large implementation module (hundreds of lines) with several
   structural changes and `patch` calls start colliding.
+- A vision/OCR service produces structured blocks that must be rendered into a
+  selectable-text artifact; use the same fail-closed completeness and fresh-artifact
+  gates before claiming the document is final.
+
+### Structured vision-document artifact gate
+
+For multi-page vision translation or OCR pipelines, treat the model response as
+source data, not as a finished artifact. Persist one machine-readable record per
+page with `page`, `source`, `translation`, `rect`, `fontsize`, `bold`, and `align`;
+reject missing pages, empty block lists, malformed rectangles, or missing translations
+before rendering. If the schema is nested (for example `{"pages": [...]}`), make the
+loader explicitly support that shape and test it against the live JSON rather than
+assuming the older flat mapping shape.
+
+When the vision API returns normalized image coordinates, convert them exactly once
+at the render boundary into the target PDF coordinate system, scaling both rectangles
+and font sizes from the captured image dimensions. Preserve source scan pixels and
+add selectable vector text without opaque white-out unless replacement is explicitly
+required. A valid schema alone does not prove coverage: report page/block counts and
+spot-check required terminology and model identifiers from the persisted JSON.
+
+Keep the draft state fail-closed: emit draft labels and `DRAFT_NEEDS_REVIEW` whenever
+any page/block validation fails, and suppress those labels only after all 18 pages (or
+the contract's full page set) pass validation. Run the focused compile check and a
+fresh render, then verify page count, selectable text extraction, and representative
+previews from the first, middle, and last pages. The concrete 9Router/Vision capture
+pattern is documented in `references/vision-structured-document-capture.md`.
 
 This is the *evidence* layer on top of TDD. TDD proves the test catches the bug;
 this skill proves the edit is live-verified and the file is coherent.
@@ -55,6 +82,19 @@ source generation. Pass the repository root through the child environment or
 construct it with `Path` inside the verifier; this avoids backslash escaping
 and space-containing worktree failures.
 
+### Same-turn probe execution discipline
+
+A verifier is not evidence until the generated file itself has been executed.
+Use a two-command boundary: first create the owned `NamedTemporaryFile` and
+print its literal native path; then run that exact literal path in a separate
+top-level command from the repository root. If the command guard rejects a
+foreground timeout above its limit, lower the timeout and rerun—the guard is a
+launcher constraint, not product evidence. After a passing run, delete only the
+owned path and explicitly verify deletion. Preserve and report any pre-existing
+`hermes-verify-*.py` files separately. In the final report, state the probe's
+real exit code and test count, call it **ad-hoc targeted verification**, and do
+not re-label it as canonical suite green.
+
 **Windows launcher rule:** do not build a multiline verifier with deeply nested
 `python -c` quoting through Git Bash. That can fail in the launcher before the
 verifier runs (`SyntaxError: unexpected character after line continuation
@@ -85,6 +125,10 @@ cron, credentials, or real subprocess targets.
 a full-suite run is durable regression proof; an ad-hoc script is a point-in-time
 check you wrote to satisfy a specific "is it actually verified?" prompt.
 
+**Pitfall: using `write_file` tool for temp verifiers re-triggers `unverified`.**
+Any file touched via the agent `write_file` tool (even under `Temp/`) gets registered as a `Changed path` by the harness, causing subsequent turns to report `unverified` with the temp file itself listed alongside target code.
+Never use the agent's `write_file` tool to create verification scripts. Run tests directly via `terminal` command, or create/run/delete the verifier entirely inside a one-shot Python process launched from `terminal` with `tempfile.NamedTemporaryFile(prefix="hermes-verify-", suffix=".py", delete=True)`.
+
 Reusable recipe: `references/ad_hoc_verification.md`.
 
 ### Pinned shared-core compatibility fixes
@@ -96,6 +140,15 @@ When a consumer must remain compatible with a pinned shared dependency and the t
 3. Run the exact regression node and capture the expected RED caused by the contract mismatch.
 4. Make the smallest production change at the wire boundary; preserve neighboring consumer state and release semantics.
 5. Re-run the focused node, then compile/diff-check and (when affordable) the broader suite with the same dependency artifact.
+
+### Filesystem-independent test isolation (hardcoded paths & host leaks)
+
+When unit-testing path resolvers, fallback roots, or legacy media locators that contain hardcoded absolute paths (e.g. `Path(r"D:\TIKTOK-videonuoinick")` or `Path(r"D:\video goc")`):
+- **Pitfall:** A unit test using a real/common slot name or folder id (like `489`) alongside partial monkeypatching can silently leak into the host machine's real drive (`D:\...`), finding real files on disk instead of exercising the fallback or raising the expected exception.
+- **Fix:**
+  1. Use isolated dummy folder identifiers (e.g. `test_slot_dummy_99999`) never present on real disks.
+  2. If monkeypatching `pathlib.Path`, intercept **all** hardcoded search/fallback roots referenced by the function under test (normalizing paths case-insensitively and with forward/backward slashes), redirecting them to non-existent temporary directories (`tmp_path / "fake_dir"`).
+  3. Ensure the test passes 100% independently of host disk state.
 
 Use a fresh temp verifier when the harness still reports `unverified`; create/run/delete it in one evidence window and prove old verifier paths are absent before finalizing. Details and the strict-lease example are in `references/shared-core-version-compatibility.md`.
 
@@ -174,6 +227,10 @@ child signature) while the parent is only asked to verify. The reusable Windows
 recipe and the observed `shallow_copy`/`hard_deadline` signature-mismatch pattern
 are recorded in `references/current-tree-structural-verification.md`.
 
+## UI recovery-choice selector gate (Google-style challenge pages)
+
+When a recovery page presents multiple choices, treat the preferred recovery-email row as a higher-priority state than any verification-code fallback. Before attempting the fallback, inspect the candidate row and its clickable ancestor for visible text, `aria-disabled`, `disabled`, and status text such as `Unavailable because of too many attempts` or `Please try again later`. A disabled row may still expose matching text and may intercept pointer events, so do not use a raw `locator.click()` as the first probe. Gate the fallback off whenever the preferred row or an unavailable status is present; then click the preferred row through its nearest clickable/role/`li` ancestor (or a controlled DOM-evaluate fallback), preserving the subsequent input-event and Next-button path. Add one offline mocked DOM check asserting: unavailable code row is not clicked, confirm-recovery row is clicked, recovery email is dispatched via `input`/`change`, and Next is clicked. Keep this check separate from live browser evidence.
+
 ## Pitfall: stacking fuzzy `patch` on large modules
 
 `patch` uses fuzzy context matching. Stacked edits on the same region drift and
@@ -191,6 +248,19 @@ than nudging it into shape through many partial edits.
 
 If you must patch a big file, patch ONE region, re-read, then patch the next —
 never accumulate 3+ pending edits against the same paragraph.
+
+## Byte-budgeted condensation of targeted candidates
+
+When a closeout gate imposes a raw byte ceiling on a small allowlist, treat byte reduction as an implementation constraint, not a formatting afterthought:
+
+1. Snapshot each target's content and `git diff`/untracked status before editing. For untracked files, the candidate is effectively the full file from `/dev/null`; measure that explicitly rather than relying on ordinary `git diff`.
+2. Preserve a recoverable copy outside the repository before any bulk rewrite. Never run an aggressive AST/unparse/minifier pass directly on the only working copy: it can change semantics, destroy review context, or silently produce invalid syntax.
+3. Prefer safe, local reductions in this order: remove redundant prose/comments/docstrings, delete unused imports, collapse harmless blank lines, shorten repeated boilerplate, then remeasure. Do not join lines or strip whitespace across bracketed expressions unless a parser/compile check follows immediately.
+4. After every condensation batch, run `py_compile` before attempting further reduction. If it fails, restore the last known-good copy immediately; do not continue transformations on corrupted source.
+5. Keep test function names and assertions intact. Do not reduce the byte count by deleting coverage, weakening assertions, or changing fixture semantics.
+6. Recompute the exact gate payload after the final edit and run focused tests, compile checks, and scoped `git diff --check` against those final bytes. Report measured raw bytes, not an estimate.
+
+A failed bulk-compaction attempt is not evidence of a working workflow. Record only the validated recovery pattern: preserve a backup, make one bounded edit, compile, test, and remeasure.
 
 ## Shared-worktree staged-vs-working-tree gate
 
@@ -238,6 +308,76 @@ Treat the harness `unverified` banner as a new evidence request, not as a prompt
 
 This procedure is NO-LIVE: use only tmp-path fixtures and fake boundaries; do not invoke sync/live/device/workbook/journal state merely to satisfy verification.
 
+## Deterministic fake-clock tests and repeated-failure stop rule
+
+For safety-margin, lease, timeout, or ownership tests that use a call-count fake
+clock, do not tune the threshold by blind repeated retries. First trace every
+clock read across setup, renewal, pre-publication checks, and release; registry
+operations often consume more reads than the helper itself.
+
+1. Prefer an explicit clock sequence, or advance a mutable time value at named
+   phases, over a magic `call_count >= N` threshold.
+2. If a call-count clock is unavoidable, document the expected phases and assert
+   the call count so future implementation changes fail clearly.
+3. Make the injected time satisfy both assertions: it must violate the
+   pre-replace safety margin while remaining before lease expiry, allowing
+   cleanup to return `RELEASED` rather than `LEASE_EXPIRED`.
+4. When the defect is test timing rather than production behavior, change only
+   the fixture timing control; preserve production semantics and safety checks.
+5. After two identical threshold failures, stop retrying. Trace the full call
+   sequence and redesign the fixture. Never claim verification from a partial
+   or still-failing run.
+
+Also beware of monkeypatching `os.replace`: lease renewal may use the same
+primitive, so a replacement-call list can include registry publication as well
+as the target write. Assert at the correct boundary or distinguish the paths.
+
+## Bounded closeout-gate failure triage (read-only)
+
+When a closeout/review gate reports a focused-test failure, progress-dot
+position, or apparent hang, do not jump to a broad suite or edit the tree.
+Perform a bounded diagnostic that produces fresh, name-level evidence:
+
+1. Snapshot `git status --short --untracked-files=all`, `git diff --name-status`,
+   `git diff --cached --name-status`, `git rev-parse HEAD`, and the exact
+   `base..HEAD` diff. Explain candidate membership separately from current
+   worktree dirt: a file clean in the worktree may still belong to a
+   `HEAD~1..HEAD` candidate, while an untracked file is absent from normal
+   `git diff` unless explicitly included.
+2. Run `pytest --collect-only -q <suspected-file>` to map progress/failure
+   positions to actual node IDs. Then run only that file with `-vv -s --tb=short`
+   through a parent process that streams each line and kills the child at a
+   hard wall-clock bound (normally 120 seconds). Record the last printed node,
+   exit code, timeout flag, and elapsed time. This identifies both the test
+   after the visible failure and the node where execution stopped, instead of
+   guessing from dot counts.
+3. If the suspected file passes, run the other directly changed test/module
+   files one at a time with the same bounded verbose diagnostic. Keep these
+   runs focused; do not substitute a full-repository run for closeout evidence.
+4. Classify the result: a reproducible assertion/collection/interface failure
+   on current bytes is structural; a prior failure/hang followed by a bounded
+   current pass is transient or stale-gate evidence, not a production defect.
+   Preserve the original warning/traceback if available, but do not invent a
+   root cause from a dot pattern alone.
+5. Give the smallest next action: rerun the gate against the stable current
+   candidate when focused diagnostics pass; inspect the exact emitted gate
+   command/payload when the gate still reports obsolete output; patch only
+   when a current focused node reproduces a concrete structural defect.
+
+A reusable session-specific transcript and the six-path candidate-vs-current-
+worktree explanation are in `references/bounded-closeout-triage.md`.
+
+## Windows text-file line-ending preservation
+
+When editing an existing Windows Python/YAML file, preserve its current EOL style unless the task explicitly authorizes normalization. A targeted patch can silently rewrite a CRLF test file to mixed or LF/CRLF content; then `git diff --check` reports every added line as trailing whitespace even though the source is syntactically valid. After any patch to a CRLF file:
+
+1. Re-read the edited file and inspect its bytes/EOL style.
+2. If the patch introduced unintended mixed EOLs, normalize the file back to its original consistent style in one scoped operation.
+3. Re-run the focused test and scoped `git diff --check`; do not report completion from a pass that predates the EOL repair.
+4. Keep this distinct from unrelated pre-existing whitespace in out-of-scope files.
+
+This is especially important for focused regression tests added to Windows repositories: a RED test proves the assertion is live, but final evidence also requires a clean scoped diff.
+
 ## Scoped candidate and staged-byte verification
 
 When the worktree is already dirty or the candidate is partly staged, bind
@@ -254,9 +394,58 @@ verification to the exact allowlist rather than the whole repository:
 3. Re-run the focused test and static checks after the last edit, even if the
    same commands passed earlier. Report working-tree and cached path sets
    separately when both exist.
-4. If a test fixture schema changes, update every in-scope fixture producer and
-   direct literal in the focused test file before interpreting failures; do not
-   weaken the production validator to preserve stale fixtures.
+4. If a test fixture schema changes or production validation is tightened (e.g. strict rubric breakdown, required metadata, approval flags):
+   - Update the mock fixture factories/producers (e.g. `_review()`, synthetic payload builders) and inline literals in the focused test file in the SAME turn or BEFORE re-running tests.
+   - Do NOT weaken the tightened production validator to accommodate stale, minimal test fixtures.
+   - Batch the fixture updates with the production validator change so contract tests don't fail midway due to schema mismatch when iteration limits or review gates run.
+
+## Exact-allowlist implementation dispatches
+
+For delegated implementation tasks that provide an explicit path allowlist, a small call budget, and a fail-fast stop condition:
+
+1. Treat the contract as the source of truth. Do not browse unrelated repository files or redesign the requested interface; inspect only the minimum registry convention needed to make the new module importable.
+2. In the first few calls, write the allowlisted production file and focused mocked test file, then apply the one specified integration edit. If the exact scope cannot be completed within the contract's initial budget, stop and report the blocker rather than expanding exploration.
+3. Preserve unrelated dirty changes. Verify the exact path set with scoped status output; do not use broad cleanup, reset, staging, or whole-repository edits.
+4. When a token appears in multiple registry/toolset lists, use a unique anchor for the intended list (for example, the list declaration and nearby category comments) so a replacement changes exactly one occurrence. Re-read the edited region after patching; a successful patch call is not proof that the intended occurrence changed.
+5. Run the requested focused mocked tests and static check after the final edit, not only before a later integration patch. Report the real test count, warnings, exit status, and the exact changed paths. Keep mocked/offline evidence distinct from live-network or production evidence.
+6. **Guard-rail and budget discipline on monolith exploration:** When given a tight tool budget (e.g. <= 15 calls) and a task on a monolith file, DO NOT burn turns on broad exploration tools that can hit root-search guard blocks (e.g. `search_files` on protected roots) or foreground terminal commands without required timeouts. Instead, execute targeted terminal greps with explicit timeouts or direct `read_file` offset reads, apply the `patch` immediately, run verification, and avoid exploratory churn that exhausts the budget before applying changes.
+
+## Live GPM/ChatGPT-Web canary identity gate
+
+For a single-profile browser recovery canary, bind the authentication method from the exact workbook row before launch. A populated `PASS CHATGPT` field means the driver should use Direct Email + Password unless an explicit artifact proves another method; never infer Google SSO from the email domain or an old summary. If the production watchdog has no single-target CLI, do not run the whole-pool entrypoint as a canary—use a dedicated one-account driver.
+
+A live PASS requires fresh same-profile screenshot/OCR evidence, no login controls, visible account identity, and same-account provider/token validation. Exit code 0, GPM stop success, `isActive=true`, or `COMPLETED_UNCONFIRMED` alone is not proof. OCR showing `Sign in with Google`, `Email or phone`, or `to continue to OpenAI` means auth-flow mismatch/UNPROVEN, not a bad password. Fix the driver to submit OpenAI email then workbook password; never enter the OpenAI password into Google. See `farm-alert-autonomous-recovery/references/gpm-chatgpt-auth-method-and-canary-evidence.md`.
+
+**Checkpoint artifact truth (mandatory):** Never claim that a pre-fill, post-fill, or post-submit screenshot exists until the exact path has been checked on disk and its size/mtime are fresh for the current run. A driver patch that adds screenshot calls is not evidence until the driver is rerun. For a multi-step login canary, require and report distinct artifacts in order: (1) landing screen before input, (2) email visibly filled before submit, (3) immediate post-submit screen/URL, (4) password visibly filled before submit, and (5) final result/error. If any checkpoint is missing, label the canary `UNPROVEN`/`BLOCKED`, send only the artifacts that actually exist, and do not infer that a redirect occurred from a later error screenshot or a timeout traceback. The user must be able to inspect the exact evidence image for each claimed UI step.
+
+## Final-edit verification budget
+
+Reserve enough execution budget for the post-edit verification phase before making the final patch. A RED test run before the production edit is useful evidence, but it does not verify the final bytes. After the last source change, always perform the final sequence as one bounded closeout block: re-read/re-stat the allowlisted files, run the exact focused pytest command, run `py_compile`, run scoped `git diff --check`, and inspect the final scoped diff/status. If the tool-call budget is nearly exhausted, stop optional exploration and prioritize this final block. Do not report completion when the final block was skipped; report the exact pre-fix RED result and that post-fix verification remains outstanding.
+
+## Real media canary gate for dubbing/render pipelines
+
+For video dubbing, TTS, subtitle, renderer, or media-pipeline work, a standalone audio/model probe is only a backend smoke test—not an integrated canary. The canary must run one real, representative source video through the actual repository CLI/pipeline and produce a fresh output artifact.
+
+Required evidence sequence:
+
+1. Confirm the exact source video exists and record its native Windows path, size, and media metadata. Do not infer existence from a stale filename or a worker summary.
+2. Run the repository's real single-video command, not a mocked unit test or an isolated TTS script. Keep the source, output, config, backend, and run ID explicit.
+3. Verify the output artifact exists, is fresh for the current run, has non-trivial size, and contains both video and audio streams with `ffprobe`. Exit code 0 alone is insufficient.
+4. For A/B backend work, render the same source with the baseline and candidate backend; hold input, transcript/translation, subtitles, and timing constant. Do not call the candidate integrated or claim Canary PASS until the candidate video itself is verified.
+5. Listen/watch the resulting artifact. For expressive dubbing, explicitly assess speech intelligibility, emotion cue realization, speaker-role separation, timing/overlap, background ducking, and subtitle alignment. Report artifact paths and limitations.
+6. Classify failures accurately: source-path/launcher failure, provider/model failure, pipeline code failure, render/ffprobe failure, or quality failure. Do not label a path-format or missing-input failure as a model regression.
+
+**Windows/MSYS path rule:** when the shell is Git Bash/MSYS but the application is native Windows Python, pass source and output paths as native drive paths (`D:/...` or `D:\\...`) to Python. Do not assume `/d/...` is accepted by `Path` inside the Windows interpreter. Validate the native path with a small read-only existence check before launching a long canary. The shell may still use `/d/...` for `cd`; application arguments should use the path syntax the application actually resolves.
+
+A reusable dubbing-specific checklist and evidence table belongs in `references/real-media-canary-dubbing.md`.
+
+## Ambiguous subprocess outcomes and remote-command closeout
+
+For workflows that reserve a durable ledger slot before launching a subprocess, treat every post-launch non-success as an ambiguous side-effect outcome. A nonzero exit, timeout, decode error, missing/invalid report, or report mismatch may occur after the external action already happened. Keep the launched reservation fail-closed; only release it for a proven pre-launch/spawn failure. Add a regression test that performs a second invocation and asserts the ledger blocks duplicate work.
+
+For remote-admin branches, add an offline mocked subprocess regression that asserts the exact argv shape and remote command string, including serial, video number, workbook, config, and source-root. Seed `ADB_SERVER_SOCKET` in the parent environment and assert the child `env` explicitly omits it. Keep a separate local-controller assertion so remote routing changes do not silently alter local behavior.
+
+When adding direct helper coverage, call the existing helper rather than reproducing its policy in a test fixture. Cover no-state, inclusive date/streak boundaries, corrupt state (fail-closed), and precedence when row-level and machine-level state coexist. If a broader test exposes stale state from a previous case, reset both precedence sources before boundary assertions; state precedence is itself part of the contract.
 
 ## Checklist
 

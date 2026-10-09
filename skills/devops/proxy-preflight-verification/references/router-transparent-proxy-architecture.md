@@ -16,8 +16,9 @@ The shared `automation_core.preflight` module handles both legacy App VPN and ne
 
 2. **Router Mode (`wlan0`) Verification Rules**:
    - `wlan0` interface UP with valid IP (`192.168.x.x`).
-   - Dynamic default gateway discovery via `ip route show dev wlan0` (handles diverse router topologies).
-   - Fast ping probe to gateway IP and fallback `8.8.8.8` (bounded timeout <= 3.0s). Note: Sing-box/MikroTik transparent proxies often drop ICMP to public IPs; gateway ping confirms physical Wi-Fi connection.
+   - Dynamic default gateway discovery via 3-step fallback: (1) `ip route show dev wlan0`, (2) `dumpsys connectivity` route table (`0.0.0.0/0 -> <gw> wlan0`), (3) infer `.1` gateway from assigned `wlan0` subnet IP. *Pitfall: Android 7+ policy routing hides default route in table 1014 / 0; never fall back to a hardcoded foreign subnet IP like `192.168.10.254`.*
+   - Fast ping probe to resolved gateway IP and fallback `8.8.8.8` with `-W 2` (bounded timeout <= 3.0s, tolerating high latency jitter on weak RSSI). Note: Sing-box/MikroTik transparent proxies often drop ICMP to public IPs; gateway ping confirms physical Wi-Fi connection.
+   - **Egress IP Verification via atx-agent curl**: Minimum 5s timeout (`--timeout=5s`, shell timeout >= 7s) with retry loop (`attempts=2`, delay 0.8s) to prevent false-positive fail-closed in weak Wi-Fi conditions (-80 dBm RSSI, ping > 500ms). Standard proxy URLs must be exported cleanly without broken shell quoting.
    - **Ping Substring Safety**: Match `" 0% packet loss"` or `"1 received"`, NEVER unpadded `"0% packet loss"` (which substring-matches `"100% packet loss"`).
    - **Dumpsys NetworkAgent Isolation**: Use bounded balanced-brace block parser (`_iter_network_agent_blocks`) with hard boundary at next `NetworkAgentInfo` marker.
    - **Capability Token Boundary**: Cut off trailing properties inside block (`re.split(r"\s+[A-Za-z0-9_]+:", raw_caps)[0]`) so fields like `foo: VALIDATED` never leak into the capability token set.

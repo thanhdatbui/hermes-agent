@@ -35,7 +35,7 @@ Hermes interacts with Claude Code in two fundamentally different ways. Choose ba
 Print mode runs a one-shot task, returns the result, and exits. No PTY needed. No interactive prompts. This is the cleanest integration path.
 
 ```
-terminal(command="claude -p 'Add error handling to all API calls in src/' --allowedTools 'Read,Edit' --max-turns 10", workdir="/path/to/project", timeout=120)
+terminal(command="claude -p 'Add error handling to all API calls in src/' --allowedTools 'Read,Edit' --max-turns 15", workdir="/path/to/project", timeout=120)
 ```
 
 **When to use print mode:**
@@ -144,7 +144,7 @@ terminal(command="sleep 15 && tmux capture-pane -t claude-work -p -S -60")
 
 ### Structured JSON Output
 ```
-terminal(command="claude -p 'Analyze auth.py for security issues' --output-format json --max-turns 5", workdir="/project", timeout=120)
+terminal(command="claude -p 'Analyze auth.py for security issues' --output-format json --max-turns 10", workdir="/project", timeout=120)
 ```
 
 Returns a JSON object with:
@@ -190,18 +190,18 @@ claude -p "task" --input-format stream-json --output-format stream-json --replay
 ### Piped Input
 ```
 # Pipe a file for analysis
-terminal(command="cat src/auth.py | claude -p 'Review this code for bugs' --max-turns 1", timeout=60)
+terminal(command="cat src/auth.py | claude -p 'Review this code for bugs'", timeout=60)
 
 # Pipe multiple files
-terminal(command="cat src/*.py | claude -p 'Find all TODO comments' --max-turns 1", timeout=60)
+terminal(command="cat src/*.py | claude -p 'Find all TODO comments'", timeout=60)
 
 # Pipe command output
-terminal(command="git diff HEAD~3 | claude -p 'Summarize these changes' --max-turns 1", timeout=60)
+terminal(command="git diff HEAD~3 | claude -p 'Summarize these changes'", timeout=60)
 ```
 
 ### JSON Schema for Structured Extraction
 ```
-terminal(command="claude -p 'List all functions in src/' --output-format json --json-schema '{\"type\":\"object\",\"properties\":{\"functions\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"functions\"]}' --max-turns 5", workdir="/project", timeout=90)
+terminal(command="claude -p 'List all functions in src/' --output-format json --json-schema '{\"type\":\"object\",\"properties\":{\"functions\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"functions\"]}' --max-turns 10", workdir="/project", timeout=90)
 ```
 
 Parse `structured_output` from the JSON result. Claude validates output against the schema before returning.
@@ -209,16 +209,16 @@ Parse `structured_output` from the JSON result. Claude validates output against 
 ### Session Continuation
 ```
 # Start a task
-terminal(command="claude -p 'Start refactoring the database layer' --output-format json --max-turns 10 > /tmp/session.json", workdir="/project", timeout=180)
+terminal(command="claude -p 'Start refactoring the database layer' --output-format json --max-turns 15 > /tmp/session.json", workdir="/project", timeout=180)
 
 # Resume with session ID
-terminal(command="claude -p 'Continue and add connection pooling' --resume $(cat /tmp/session.json | python3 -c 'import json,sys; print(json.load(sys.stdin)[\"session_id\"])') --max-turns 5", workdir="/project", timeout=120)
+terminal(command="claude -p 'Continue and add connection pooling' --resume $(cat /tmp/session.json | python3 -c 'import json,sys; print(json.load(sys.stdin)[\"session_id\"])') --max-turns 15", workdir="/project", timeout=120)
 
 # Or resume the most recent session in the same directory
-terminal(command="claude -p 'What did you do last time?' --continue --max-turns 1", workdir="/project", timeout=30)
+terminal(command="claude -p 'What did you do last time?' --continue", workdir="/project", timeout=30)
 
 # Fork a session (new ID, keeps history)
-terminal(command="claude -p 'Try a different approach' --resume <id> --fork-session --max-turns 10", workdir="/project", timeout=120)
+terminal(command="claude -p 'Try a different approach' --resume <id> --fork-session --max-turns 15", workdir="/project", timeout=120)
 ```
 
 ### Bare Mode for CI/Scripting
@@ -238,7 +238,7 @@ To selectively load context in bare mode:
 
 ### Fallback Model for Overload
 ```
-terminal(command="claude -p 'task' --fallback-model haiku --max-turns 5", timeout=90)
+terminal(command="claude -p 'task' --fallback-model haiku", timeout=90)
 ```
 Automatically falls back to the specified model when the default is overloaded (print mode only).
 
@@ -470,7 +470,7 @@ Use the keyword "ultrathink" in your prompt for maximum reasoning effort on a sp
 
 ### Quick Review (Print Mode)
 ```
-terminal(command="cd /path/to/repo && git diff main...feature-branch | claude -p 'Review this diff for bugs, security issues, and style problems. Be thorough.' --max-turns 1", timeout=60)
+terminal(command="cd /path/to/repo && git diff main...feature-branch | claude -p 'Review this diff for bugs, security issues, and style problems. Be thorough.'", timeout=60)
 ```
 
 ### Deep Review (Interactive + Worktree)
@@ -484,7 +484,7 @@ terminal(command="sleep 30 && tmux capture-pane -t review -p -S -60")
 
 ### PR Review from Number
 ```
-terminal(command="claude -p 'Review this PR thoroughly' --from-pr 42 --max-turns 10", workdir="/path/to/repo", timeout=120)
+terminal(command="claude -p 'Review this PR thoroughly' --from-pr 42 --max-turns 15", workdir="/path/to/repo", timeout=120)
 ```
 
 ### Claude Worktree with tmux
@@ -499,13 +499,13 @@ Run multiple independent Claude tasks simultaneously:
 
 ```
 # Task 1: Fix backend
-terminal(command="tmux new-session -d -s task1 -x 140 -y 40 && tmux send-keys -t task1 'cd ~/project && claude -p \"Fix the auth bug in src/auth.py\" --allowedTools \"Read,Edit\" --max-turns 10' Enter")
+terminal(command="tmux new-session -d -s task1 -x 140 -y 40 && tmux send-keys -t task1 'cd ~/project && claude -p \"Fix the auth bug in src/auth.py\" --allowedTools \"Read,Edit\" --max-turns 15' Enter")
 
 # Task 2: Write tests
 terminal(command="tmux new-session -d -s task2 -x 140 -y 40 && tmux send-keys -t task2 'cd ~/project && claude -p \"Write integration tests for the API endpoints\" --allowedTools \"Read,Write,Bash\" --max-turns 15' Enter")
 
 # Task 3: Update docs
-terminal(command="tmux new-session -d -s task3 -x 140 -y 40 && tmux send-keys -t task3 'cd ~/project && claude -p \"Update README.md with the new API endpoints\" --allowedTools \"Read,Edit\" --max-turns 5' Enter")
+terminal(command="tmux new-session -d -s task3 -x 140 -y 40 && tmux send-keys -t task3 'cd ~/project && claude -p \"Update README.md with the new API endpoints\" --allowedTools \"Read,Edit\" --max-turns 15' Enter")
 
 # Monitor all
 terminal(command="sleep 30 && for s in task1 task2 task3; do echo '=== '$s' ==='; tmux capture-pane -t $s -p -S -5 2>/dev/null; done")
@@ -704,7 +704,7 @@ Use `/context` in interactive mode to see a colored grid of context usage. Key t
 
 ## Cost & Performance Tips
 
-1. **Use `--max-turns`** in print mode to prevent runaway loops. Start with 5-10 for most tasks.
+1. **Size `--max-turns` from the task, never a tiny cap** — a cap below what the task needs stops it mid-run (`error_max_turns`) and costs a full rerun. Omit it for a bounded task when the terminal `timeout` is the safety bound; otherwise use the tiers in Rules for Hermes Agents #4.
 2. **Use `--max-budget-usd`** for cost caps. Note: minimum ~$0.05 for system prompt cache creation.
 3. **Use `--effort low`** for simple tasks (faster, cheaper). `high` or `max` for complex reasoning.
 4. **Use `--bare`** for CI/scripting to skip plugin/hook discovery overhead.
@@ -736,7 +736,7 @@ Use `/context` in interactive mode to see a colored grid of context usage. Key t
 1. **Prefer print mode (`-p`) for single tasks** — cleaner, no dialog handling, structured output
 2. **Use tmux for multi-turn interactive work** — the only reliable way to orchestrate the TUI
 3. **Always set `workdir`** — keep Claude focused on the right project directory
-4. **Set `--max-turns` in print mode** — prevents infinite loops and runaway costs
+4. **Omit `--max-turns` or derive it from the task contract — never a tiny convenience cap (`1`, `5`)** — omit it when the task is bounded and the terminal `timeout` is the safety bound; otherwise simple read-only inspection `10`, standard implementation/review `15`, complex multi-file work `20+` only when justified. A run that stops on the cap (`Reached max turns` / `error_max_turns`) is an insufficient caller budget, never a product/repo failure — rerun only with a narrowed scope or a sufficient budget.
 5. **Monitor tmux sessions** — use `tmux capture-pane -t <session> -p -S -50` to check progress
 6. **Look for the `❯` prompt** — indicates Claude is waiting for input (done or asking a question)
 7. **Clean up tmux sessions** — kill them when done to avoid resource leaks

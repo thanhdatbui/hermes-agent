@@ -12,9 +12,30 @@ description: TikTok login automation via ADB — inventory, login, 2FA, UI handl
 
 
 ## 🛑 STOP GATE (bắt buộc — chi tiết: skill taadaa-farm-ops-rules)
+- **CANONICAL APK-BANK & CLEANUP (2026-10-09)**: Dùng `install_farm_apks.py` từ `apk-bank`; xóa sổ ngay lập tức các thư mục APK lỗi/phân mảnh (chống giữ lại rác); quy trình xử lý VERSION_DOWNGRADE. Ref: `references/canonical-apk-bank-and-install-discipline-20261009.md`.
+- **PRE-LOGIN GMAIL LIVE GATE (2026-09-25)**: Check live Gmail (`check_gmail_is_live`) trước khi login; cờ `--allow-parent-lock` cho watchdog. Ref: `references/pre-login-gmail-live-gate-and-parent-lock-handling-20260925.md`.
+- **SAFE TAP SWITCHER**: Bounds [0,1788][1080,1920] tap safe_y=1832. Ref: `references/account-switcher-safe-tap-and-tracking-sheet-filtering.md`.
+- **ĐỐI SOÁT ACC KÝ SINH & ACTIVE LOGOUT (2026-10-01)**: Bẫy ngộ nhận acc ký sinh đã out khi nó đang là Active Profile (không hiện trong Switcher list); quy trình audit 2 bước (Active Profile + Switcher) và logout từ Settings. Ref: `references/parasite-active-profile-logout-and-switcher-audit-20261001.md`.
+- **TRIAGE GMAIL OTP (2026-09-21)**: Ref: `references/tiktok-login-gmail-account-missing-and-checkmail-triage-20260921.md`.
+- **CẤM BỎ DỞ 2FA EMAIL OTP (2026-09-17)**: Ref: `references/tiktok-login-recovery-and-email-otp-workflow-20260917.md`.
+- **ĐỐI SOÁT TRẦN 8 & NICK MỒ CÔI (2026-09-17)**: Đối soát Switcher với Excel tìm nick mồ côi, logout nhả slot. Chi tiết: `references/tiktok-switcher-ceiling-8-and-orphan-account-recovery-20260917.md`.
+- **CẤM TUYỆT ĐỐI VIẾT SCRIPT AD-HOC LOGIN:** Mọi thao tác login bắt buộc dùng `tiktok_login_v1.py`.
+- **Cẩn trọng cờ `--resume` khi máy còn ở ô nhập email:** Trong `tiktok_login_v1.py`, `resume_one_account` nhảy thẳng vào `drive_login_screens` (chờ password/OTP) mà không tự điền email nếu màn hình đang ở form 'Email hoặc TikTok ID', dẫn đến timeout sau 6 round. Chi tiết: Cạm bẫy 9 trong `references/canonical-login-runner-vs-ad-hoc-script-pitfall.md`.
+- **Ưu tiên Hotmail OAuth Token thay vì đăng nhập App Outlook thủ công:** Các tài khoản Hotmail loại 2 mua từ boxtaikhoan có cấu trúc `mail|pass|refresh_token|client_id` lưu trong các file txt (`HOTMAIL_TOKEN_LIST` như `hotmail_all_60_bought.txt`). Runner `hotmail_provider.py` tự động đổi `refresh_token` lấy `access_token` và đọc OTP thẳng qua Microsoft Graph API. Khi máy mới chưa cài/chưa add account vào app Outlook, kiểm tra ngay kho token TXT/gmail_clean_v2 để đọc OTP qua Graph API thay vì cố gắng login vào app Outlook trên máy (thường vướng challenge web/SMS).
+- **Cạm bẫy màn hình trắng WebView `SparkActivity` trên máy mới:** Máy farm mới có Android System WebView cũ (v70 trở xuống) sẽ bị crash JS (`Uncaught SyntaxError: Unexpected token ?`) khi TikTok mở `SparkActivity` xác minh `suspicious_login`, dẫn đến trắng màn hình treo vĩnh viễn. Cần nâng cấp WebView lên v85+. Chi tiết xem `references/tiktok-sparkactivity-webview-blank-screen-pitfall.md`.
+- **Bằng chứng báo cáo lỗi (Media Gate):** Báo cáo lỗi cho User BẮT BUỘC chụp và gửi ảnh đúng hiện trường lỗi thực tế, cấm chụp màn hình HOME sau teardown rồi báo lỗi.
+- **Nhận diện Auth Landing v46.6.3:** Trên TikTok v46.6.3+, nút chọn đăng nhập bằng email là "Sử dụng số điện thoại/email/tên người dùng" (thay vì "Dùng số điện thoại/email" hay "Tiếp tục với email"). Hàm `is_auth_landing_screen` và `choose_email_login` bắt buộc phải khớp chuỗi này để tránh bị kẹt hoặc rơi vào flow mở dropdown tài khoản cũ.
+- **Ngôn ngữ chat bắt buộc 100% Tiếng Việt:** Tuyệt đối không bao giờ trả lời bằng tiếng Anh dù subagent có log/summary bằng tiếng Anh. Luôn tổng hợp và phản hồi user bằng tiếng Việt ngắn gọn, đúng trọng tâm.
+- **Lỗi bỏ qua mã OTP Gmail do timestamp rỗng trên layout node gộp:** Khi Gmail gộp cả hàng thư vào 1 node duy nhất, timestamp nằm ở cuối chuỗi text (`... lúc 14:33`). Nếu thiếu regex fallback trong `extract_recent_tiktok_otp_from_gmail_list`, runner sẽ coi timestamp là rỗng và bỏ qua OTP tươi dẫn đến timeout. Chi tiết: `references/gmail-otp-merged-node-timestamp-extraction.md`.
+- **Bỏ qua mở account switcher nếu Gmail đã active đúng target:** Khi lấy OTP Gmail trong `_try_get_otp_gmail_app`, nếu `_gmail_mailbox_state(xml, email).get("target_selected")` đã là `True`, bỏ qua tap avatar mở account switcher để tránh mất 10-30s và tránh lỗi tap nhầm mở Google Account settings hoặc kẹt panel. Chi tiết: `references/gmail-otp-skip-switcher-when-target-selected.md`.
+- **Lỗi match nhầm thư cảnh báo bảo mật khi switch account Gmail:** Trong quy trình switch Gmail account lấy OTP, nếu matcher quét toàn màn hình mà không giới hạn trong dialog chọn tài khoản, nó có thể match trúng thư `"Google đã chặn nỗ lực đăng nhập <email>"` trong inbox và tap nhầm vào chi tiết thư thay vì chuyển account, gây kẹt vòng lặp `no_inbox_marker`. Chi tiết: `references/gmail-account-switcher-false-match-inbox-email.md`.
+- Xử lý xung đột Device Lock (feed-session đa máy) khi chạy `tiktok_login_v1.py`: Xem `references/tiktok-login-v1-device-lock-conflict-and-active-feed-gate.md`.
+- Fix lỗi thiếu `ADB_PATH` trong `tiktok_login_v1.py` khiến VPN gate rơi về `"adb"`: Xem `references/tiktok-login-v1-adb-path-vpn-gate-import.md`.
 Máy live + script chạy/lỗi → KHÔNG tự sửa code, KHÔNG tự chạy lại, KHÔNG tự probe/tay khi chưa được user yêu cầu.
 Lỗi → screencap → gửi ẢNH THẬT (MEDIA:<path> dòng riêng, KHÔNG bọc markdown, KHÔNG gửi đường dẫn text) → DỪng chờ user hướng dẫn.
 User hướng dẫn bước nào → encode bước đó vào script + test → mới chạy lại. Nghi ngờ → HỎI.
+**Quy chuẩn nghiệm thu tài khoản:** Ảnh nghiệm thu trạng thái tài khoản BẮT BUỘC chụp tại Account Switcher (Bottom sheet Chuyển đổi tài khoản) thể hiện rõ danh sách nick active. CẤM chụp ảnh màn hình Cài đặt & quyền riêng tư, popup xác nhận, Home hay màn hình Hồ sơ trắng.
+**CẤM ĐĂNG XUẤT TỪ CÀI ĐẶT:** Tuyệt đối KHÔNG bấm "Cài đặt & quyền riêng tư -> Đăng xuất" trên máy có nhiều nick vì sẽ log out toàn bộ multi-account session của app. Muốn gỡ nick rác phải dùng module fast_login hoặc Account Switcher.
 
 ## Overview
 
@@ -25,6 +46,10 @@ Automate TikTok login on Samsung Galaxy S7 (SM-G930F/S, 1080x1920) devices. Supp
 1. **Reconcile script** (`scripts/reconcile_tiktok_accounts.py`) — inventory + login missing accounts
 
 2. **Manual ADB flow** — fallback when reconcile script fails (UI mismatch, navigation issues)
+
+3. **Saved Account Tile & 2FA**: See `references/saved-account-tile-removal-and-2fa.md` when encountering modal "Chào mừng bạn trở lại" / quick login tile removal.
+
+4. **Logged-out Device Recovery**: See `references/logged-out-recovery-and-clean-login-flow.md` when app is completely logged out (reconcile startup not ready or dropdown open failure on blank profile).
 
 
 
@@ -167,16 +192,11 @@ On TikTok 44.2.3, after successful login the app shows a mandatory privacy polic
    - Nếu `@username` trùng khớp với nick cần login -> tap trực tiếp vào nút này để đăng nhập ngay (1-tap fast-path).
    - Nếu hiện popup "Hãy cùng kiểm tra bảo mật nhanh nhé" -> tap nút **Đóng** `(996, 923)` góc trên phải sheet, không bấm Tiếp tục.
    - Chi tiết: `references/tiktok46-continue-as-cached-account-suggestion-20260823.md`.
-3. **Chống tap nhầm Text Điều khoản pháp lý ở chân trang:**
-   - Dưới chân màn login có text điều khoản dài chứa chữ *"tiếp tục"* -> match substring sẽ tap nhầm `(540, 1794)`.
-   - `find_node_in_xml` phải ưu tiên **Exact match** trước partial match; nút **ĐĂNG NHẬP** đen ở tọa độ `(540, 878)`.
-3. **Nút tròn Icon Email `(233, 1693)` khi thêm tài khoản 2, 3...:**
-   - Form thêm nick mở mặc định ở tab Số điện thoại; không có tab text Email ở trên.
-   - Tap nút tròn icon phong bì ở góc dưới bên trái bounds `[161, 1621][305, 1765]` -> tâm **`(233, 1693)`** để mở ô nhập Email `[138, 566][942, 626]`.
-4. **Fallback OTP sang Password & 2FA TOTP:**
-   - Nếu màn OTP có nút *"Đăng nhập bằng mật khẩu"* `[96, 1119][703, 1236]` -> tap `(400, 1177)` để nhập mật khẩu TikTok.
-   - Nếu đòi 2FA -> sinh TOTP từ cột `2FA` workbook và submit.
+3. **Chống tap nhầm Text Điều khoản chân trang:** `find_node_in_xml` ưu tiên Exact match; nút ĐĂNG NHẬP ở `(540, 878)`.
+4. **Icon Email `(233, 1693)` khi thêm nick:** Form mở tab SĐT, tap icon phong bì `[161, 1621][305, 1765]` -> tâm `(233, 1693)` để mở ô nhập Email.
+5. **Fallback OTP sang Password & 2FA:** Màn OTP có *"Đăng nhập bằng mật khẩu"* -> tap `(400, 1177)`. Đòi 2FA -> sinh TOTP từ cột `2FA`.
    - Chi tiết: `references/tiktok46-login-modal-and-email-button-20260819.md`.
+   - `references/tiktok-v46-login-selector-and-apk-push-pitfall.md` — Bẫy selector "Sử dụng số điện thoại/email/tên người dùng" trên v46.6.3 và pitfall cài APK lớn từ OneDrive (15/09/2026).
 
 
 
@@ -785,7 +805,9 @@ Runner crash trước để lại **CẢ 2 lock** `machine_<N>.lock.json` VÀ `s
 
 
 
-## CẤM TUYỆT ĐỐI `pm clear` TikTok (policy — user rất tức)
+- **Quy trình Đăng xuất một tài khoản TikTok 46.x & Bẫy Popup "Thêm số điện thoại" (2026-09-08)**: CẤM `pm clear` khi cần đăng xuất một tài khoản. Quy trình UI chuẩn: Switch sang nick cần logout -> tap Menu hồ sơ `(1002, 150)` -> chọn Cài đặt và quyền riêng tư `(621, 1248)` -> cuộn xuống đáy (3-4 swipes) -> tap Đăng xuất `(540, 1910)` -> xác nhận popup Đăng xuất `(540, 1662)`. Nếu dính popup "Thêm số điện thoại" kèm bàn phím ảo che màn hình, tap nút Đóng góc trên phải `[936,84][1056,216]` (tâm `996, 150`). Chi tiết: `references/tiktok46-single-account-logout-flow-and-phone-popup-20260908.md`.
+- **Google Sign-in Overlay & Fast-Login Cache ("Chào mừng bạn trở lại") khi Nghiệm Thu Profile Logged-out (2026-09-08)**: Khi mở Profile thấy "Đăng nhập vào tài khoản hiện có", tap "Đăng nhập" `(540, 1094)` mở màn "Chào mừng bạn trở lại" (`id/ym3`, `id/ym7` username). Nếu nick vừa logout vẫn hiện ở đây nghĩa là credential/session fast-login vẫn còn lưu trong cache app. Khi gặp overlay `com.google.android.gms` đè màn hình lúc khởi chạy, tap Thoát `(987, 462)` (`com.google.android.gms:id/cancel`). Chi tiết: `references/tiktok-logged-out-fast-login-cache-and-google-overlay-20260908.md`.
+- **CẤM TUYỆT ĐỐI `pm clear` TikTok (policy — user rất tức)**:
 
 
 
@@ -1009,8 +1031,9 @@ Session detail and artifact checklist: `references/live-otp-focus-and-mail-ident
 - **Bẫy `PROFILE_SUBPAGE_STUCK` do icon 'Số lượt xem hồ sơ' trên Profile Root (TikTok 46.x)**:
   - `_is_profile_subpage` trong `automation_core.tiktok.account_switcher` có thể nhận nhầm Profile root là subpage vì icon mắt trên header có `desc="Số lượt xem hồ sơ"` (`[744,114][816,186]`).
   - Fix chuẩn: Nếu `menu hồ sơ` tồn tại hoặc `_selected_bottom_tab(node_list) is True` (không có prompt lưu tiểu sử), đó là Profile root chính, không phải subpage.
-- **Tọa độ mở Account Switcher trên TikTok 46.x Profile Root**:
-  - Tên `@username` dưới avatar `(540, 594)` là nút copy, tap `(540, 150)` là bubble status/story ("Trà hay cà phê?"). Để mở bảng trượt Account Switcher ("Chuyển đổi tài khoản"), tap vào display name `(540, 552)` (`id/sv6`).
+- **Tọa độ mở Account Switcher trên TikTok 46.x Profile Root & Bẫy Chặn Trần Body Username (2026-09-07)**:
+  - Tên `@username` dưới avatar `(540, 594)` là nút copy (chỉ copy TikTok ID, không mở sheet), tap `(540, 150)` là bubble status/story ("Trà hay cà phê?"). Để mở bảng trượt Account Switcher ("Chuyển đổi tài khoản"), tap vào display name `(540, 552)` (`id/sv6`) hoặc kéo sticky header trên đỉnh.
+  - **Bẫy `find_switcher_anchor` nhận nhầm `@username` ở thân profile**: Khi node `@username` ở thân profile (`bounds=[400,594][679,639]`, `center_y=616`) có `clickable="true"` và có `menu hồ sơ`, `find_switcher_anchor` trong `automation-core` từng nhận nhầm làm anchor mở switcher do thiếu chặn trần `y <= generic_header_y`. Dẫn đến tap vào thân không mở được sheet và bỏ qua `prepare_switcher_anchor()` (swipe 400px sticky header). Bản vá: Mọi candidate mở switcher ở header bắt buộc phải thỏa mãn `center_y <= generic_header_y` (320px). Chi tiết: `references/account-switcher-profile-body-username-ceiling-20260907.md`.
 - **TikTok 46.x Account Switcher Sheet Rendering Latency**: Tên tài khoản trên Profile TikTok 46.x khi tap `(540, 522)` (hoặc sticky header sau scroll) sẽ mở bảng trượt "Chuyển đổi tài khoản" (Bottom Sheet). Cần sleep tối thiểu 1.5s - 2.0s để UI trượt lên hoàn tất trước khi dump XML; tránh gửi keyevent 4 (Back) quá sớm gây lỗi giả `manual-needed:account-switcher-not-open`. Chi tiết: `references/account-switcher-bottom-sheet-latency-20260822.md`.
 - **Lock sống từ process khác ĐANG tạo artifact → KHÔNG kill/takeover**: gặp `DEVICE_LOCKED: machine_<N>.lock.json owner_active=True` — kiểm tra PID qua `Get-CimInstance Win32_Process -Filter 'ProcessId=N'`. Nếu process còn sống + `Responding=True` + vừa ghi artifact mới (`ls -t artifacts/ui_dumps/` có file timestamp mới) → process đang chạy flow thật → chờ xong, không kill, không takeover. `owner_active` KHÔNG phải tín hiệu stale (luôn True khi process chết).
 

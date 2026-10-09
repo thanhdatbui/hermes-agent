@@ -73,6 +73,22 @@ def aruba_ap_action(vc_ip, target_ap_ip, sid, cli_commands):
     return res.read().decode("utf-8")
 ```
 
+### C. Inspection / Query Commands (`opcode=show`)
+Used for reading live state, client lists, AP lists, and cluster topology:
+```python
+def aruba_show(ip, sid, cli_commands):
+    payload = {
+        "opcode": "show",
+        "sid": sid,
+        "cmd": cli_commands,
+        "nocache": str(random.random())
+    }
+    data = urllib.parse.urlencode(payload).encode()
+    req = urllib.request.Request(f"https://{ip}:4343/swarm.cgi", data=data, headers=headers)
+    res = urllib.request.urlopen(req, context=ctx, timeout=5)
+    return res.read().decode("utf-8")
+```
+
 ## 4. AP Zone Isolation & Band Locking Recipes
 
 ### A. Lock SSID to Zone
@@ -108,11 +124,37 @@ zonename "zone1"
 zonename "zone2"
 ```
 
-## 5. Verification Commands
-```python
-# Show all APs and their current zone, clients, channels
-show_aps_xml = aruba_config(ip, sid, "show aps")
+## 5. Verification & Inspection Patterns
 
-# Show all SSID profiles and active status
-show_network_xml = aruba_config(ip, sid, "show network")
+### A. Swarm API Inspection (`opcode=show`)
+* **Master vs. Slave Query Behavior:** Running `show aps` against a Slave AP returns `<t tn="0 Access Point">`. To view all cluster APs and their client allocations, either:
+  1. Read `show summary` on any AP to extract `Master IP Address` (marked with `*`), then send `show aps` directly to the Master IP.
+  2. Or read `show ap bss-table` or `show clients` which are populated on all nodes.
+
+```python
+# 1. Show all APs and their current zone, clients, channels (Execute against Master IP)
+show_aps_xml = aruba_show(master_ip, sid, "show aps")
+
+# 2. Show all SSID profiles and active status
+show_network_xml = aruba_show(ip, sid, "show network")
+
+# 3. Show cluster summary and Master AP IP
+show_summary_xml = aruba_show(ip, sid, "show summary")
+```
+
+### B. SSH Automation via Interactive PTY (Paramiko)
+* **Quirk:** Older Aruba InstantOS drops non-interactive `exec_command()` calls with `Channel closed`, and native `ssh` CLI hangs on password prompts.
+* **Working Pattern:** Use `paramiko.SSHClient` with `invoke_shell()`:
+```python
+import paramiko, time
+
+ssh = paramiko.SSHClient()
+ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+ssh.connect(ip, username="admin", password="n0spam@@", timeout=3, allow_agent=False, look_for_keys=False)
+chan = ssh.invoke_shell()
+time.sleep(1)
+chan.send("show aps\n")
+time.sleep(2)
+output = chan.recv(65535).decode("utf-8", errors="ignore")
+ssh.close()
 ```

@@ -74,5 +74,9 @@ Poll run: `GET /repos/{o}/{r}/actions/runs?per_page=10` lấy run mới nhất (
   - Hiện tại các trường API này đang để TRỐNG (chưa tích hợp dịch vụ web bên ngoài).
   - Trang admin `check-live-gmail.php` từng deploy ngày 2026-07-11 nhưng đã được rollback do chưa có endpoint check live web ổn định. Các SP Gmail (SP 48, 49, 50, 61) trên DB đều đang để `check_live = 'None'`.
 - **Farm Android (`D:\Taadaa`):**
-  - Không check qua web mà check trực tiếp trên máy thật qua `automation_core.google_health` (`run_google_live_check`).
-  - Phân loại trực tiếp trên app Gmail / Settings Google: `LIVE`, `CAPTCHA / IDENTITY_BLOCKER` (die), `RELOGIN` (văng phiên), `PHONE_VERIFY` (manual).
+  - **CẢNH BÁO QUAN TRỌNG (User update 2026-09-12):** TUYỆT ĐỐI KHÔNG dựa vào `automation_core.google_health` trên thiết bị để kết luận Gmail live hay die. On-device health check chỉ bắt được lỗi khi Google bật popup CAPTCHA/re-login trên UI; khi tài khoản bị Google khóa ngầm từ backend, app Gmail vẫn mở bình thường nhưng không nhận OTP/thư mới, dẫn đến script ngộ nhận Gmail live và đổ lỗi sai sang TikTok/mạng.
+  - **Quy chuẩn bắt buộc:** Mọi tác vụ xác thực trạng thái Gmail (đặc biệt khi OTP TikTok không về trong `social_reg_v1.py`) **BẮT BUỘC dùng web `checkmail.live`** (Playwright qua proxy mobile farm `mobi1` tại `D:/Taadaa/tools/check_gmail_live_fast.py`).
+  - **Quy trình xử lý Gmail DIE:** Khi `checkmail.live` xác nhận DIE:
+    1. Xóa ngay dòng email khỏi file nguồn `gmail_clean_v2.xlsx` (có backup).
+    2. Ghi nhận vào sheet `Audit Pending` trong `taikhoan_dat_v2_updated .xlsx`.
+    3. Đánh dấu danh sách mail die theo từng máy (`D:/Taadaa/runtime/kibe/gmail_die_by_machine.json`) để trước ca reg mới, thiết bị tự động chạy script xóa tài khoản Google DIE khỏi máy Android (`remove_device_google_account.py`).

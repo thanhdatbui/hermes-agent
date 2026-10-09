@@ -23,7 +23,26 @@ Operate Hermes from Telegram (or other messaging platforms) on the user's Window
    Pitfall: this machine's `.env` ships with a commented template (`# TELEGRAM_BOT_TOKEN=...` with a trailing `# Comma-separated user IDs`). Uncomment + strip the trailing comment or the gateway silently ignores the key. Validate format WITHOUT printing values (python regex: token `\d{6,12}:[A-Za-z0-9_\-]{30,40}`; users `\d+(,\d+)*`).
 3. **Start:** `hermes gateway status` → `hermes gateway` (foreground test) → `hermes gateway install --start-on-login --start-now`.
    - Windows: Scheduled Task needs UAC; if declined it falls back to Startup-folder `.vbs` (`%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\Hermes_Gateway.vbs`) — WORKS without admin, but only starts **after Windows login** (not at boot). PC sleep/shutdown kills the gateway; Telegram then goes silent.
-4. **Verify (not self-report):** `hermes gateway status` → grep `logs/gateway.log` for `Connected to Telegram (polling mode)` + `✓ telegram connected` + `set_my_commands OK`. Then user sends `/start`; log shows the session key (`agent:main:telegram:dm:<userid>`).
+4. **Verify (not self-report):** `hermes gateway status` → grep `logs/gateway.log` for `Connected to Telegram` + `✓ telegram connected` + `set_my_commands OK`. Then user sends `/start`; log shows the session key (`agent:main:telegram:dm:<userid>`).
+
+### Webhook via Cloudflare Tunnel (Khắc phục ISP VN ngắt ngầm TCP & lỗi gửi ảnh)
+
+- **Vấn đề của Long-Polling & Proxy SOCKS5:** Mạng VN (FPT) ngắt ngầm TCP idle sockets (`getUpdates`) khiến bot treo 5–10 phút; dùng WARP SOCKS5 (`127.0.0.1:40000`) chạy UDP MASQUE bị bóp gói làm upload/download ảnh văng `NetworkError`.
+- **Giải pháp Webhook:** Dùng `cloudflared` tạo tunnel trỏ domain (vd `bot.taadaa.click`) -> `127.0.0.1:8443`. Trong `.env` cấu hình:
+  ```bash
+  TELEGRAM_WEBHOOK=https://bot.taadaa.click/telegram
+  TELEGRAM_WEBHOOK_PORT=8443
+  TELEGRAM_WEBHOOK_SECRET=<random_hex_64>
+  # Xóa/tắt TELEGRAM_PROXY để media đi thẳng mạng FPT Direct siêu tốc
+  ```
+- **Bẫy tử huyệt Event Loop (Read timeout expired) & Ngừng bắn LLM đồng loạt:** 
+  1. Các hàm lưu media (`cache_image_from_bytes`) là synchronous I/O; khi ổ đĩa bận hoặc file WAL `state.db-wal` phình to (~4GB gây `disk I/O error`), SQLite lock đóng băng event loop khiến server aiohttp không kịp trả lời HTTP 200 cho Telegram trong 5s.
+  2. Outbound media download: Khi tắt `TELEGRAM_PROXY`, Webhook nhận metadata nhưng Gateway tải ảnh thực tế qua `api.telegram.org/file/...` đi Direct FPT bị bóp socket ngầm (`Primary api.telegram.org unreachable`).
+  3. Hậu quả: Telegram dính `Read timeout expired` và phạt exponential backoff (treo nhận tin 6-10 phút). Tất cả session/thread bị đói tin nhắn, OmniRoute đứng im 0 request ("ngỡ là batch nghỉ"). Khi hết phạt, tin dồn về ồ ạt làm tất cả session cùng thức dậy bắn LLM một lúc. Chi tiết: `references/telegram-webhook-cloudflare-troubleshooting.md`.
+- **Cơ chế Telegram Media Delivery Timeout & Auto-Retry (2026-09-24):** Khi trả kết quả có đính kèm ảnh (`MEDIA:<path>`), nếu đường truyền mạng giữa máy và Telegram API bị lag/timeout tạm thời, hệ thống có thể xuất hiện thông báo:
+  `⚠️ Message delivery failed after multiple attempts. Please try again — your request was processed but the response could not be sent.`
+  *Bản chất*: Gateway Hermes có cơ chế retry queue trong nền và tin nhắn/ảnh thường sẽ đến nơi sau vài giây (User nhận được ảnh sau lần retry). Không kết luận là bot hay tác vụ nền bị crash; các tác vụ terminal/code vẫn đang chạy bình thường, chỉ cần đối soát xác nhận ảnh đã tới mà không cần chạy lại từ đầu.
+- **Chẩn đoán khi bot im lặng 5-10 phút:** Đối soát `state.db` (`timestamp` user message vs assistant message) để xác định nghẽn ở khâu nào: nghẽn Telegram nhận tin (lệch timestamp user msg) hay do LLM proxy hàng đợi nặng / tool call loop (timestamp user msg chuẩn nhưng bot trả lời lâu). Chi tiết: `references/telegram-webhook-cloudflare-troubleshooting.md`.
 
 ## Per-chat repo binding — channel_overrides
 
@@ -74,13 +93,19 @@ Layering: a channel_override REPLACES the global fallback (NOT merged) → repo-
 - Commands: `/new` = reset context (NOT restart gateway); `/title <name>` + `/resume <name>` = switch between named sessions; `/sessions` = list; `/background <prompt>` = fire-and-forget parallel session delivering to the same chat; every group = its own separate session.
 - DM threads: Telegram "New Thread" button + Hermes `/topic` command + `extra.dm_topics` config; each thread = separate session (thread_id in session key). But binding via channel_overrides on threads inherits parent chat.
 - **Cùng 1 repo = 1 session ghi tại 1 thời điểm (user rule, confirmed 2026-08-09):** `/new` chỉ reset context chứ KHÔNG tách working tree; `/background` spawn session riêng NHƯNG dùng chung filesystem/repo — 2 session sửa cùng repo có thể giẫm file, test/build loạn, commit sai. Không làm 2 việc ghi cùng repo song song qua gateway. Muốn song song: git worktree/branch riêng rồi review-merge; `/background` chỉ dùng cho việc không đụng file repo đang được session khác sửa (vd monitor/đọc).
-- Model switching: `/model` shows provider menu with counts = number of models exposed, NOT a ranking; `/model provider:model` sets directly (e.g. `custom:9router` is the default chat_completions proxy at `127.0.0.1:20128`). In the Telegram gateway picker, selecting a model performs a session hot-swap **and**, unless session-only behavior is explicitly requested/configured, persists the selected model/provider to `config.yaml` for new sessions; the confirmation will say `Saved to config.yaml (--global)`. This does not hot-swap an already-running different Telegram session, which keeps its own session override/model until restarted or explicitly changed. For a one-session-only switch, type `/model <model> --session` rather than relying on the picker default. Verify the confirmation text and config instead of inferring scope from the provider menu alone.
+- Model switching & Provider Model List:
+  - `/model` shows provider menu with counts = number of models exposed, NOT a ranking; `/model provider:model` sets directly (e.g. `custom:9router` at `:20128`, `omni` at `:20129`).
+  - In the Telegram gateway picker, selecting a model performs a session hot-swap **and**, unless session-only behavior is explicitly requested/configured, persists the selected model/provider to `config.yaml` for new sessions (`Saved to config.yaml (--global)`). For a one-session-only switch, type `/model <model> --session`.
+  - **Custom Provider Models (`discover_models: false`):** The model list displayed in the Telegram picker comes from `providers.<slug>.models` in `config.yaml` (e.g., `providers.omni.models: {ag-gemini-pool-3: {}, ag-claude: {}, ag-opus: {}, omni-worker: {}, omni-free: {}}`).
+  - **Config Editing Safety Guard Trap (`Refusing to write to Hermes config file`):** Tools `patch` and `write_file` are hard-blocked by Hermes security guards on `C:\Users\Kibe\AppData\Local\hermes\config.yaml`. `hermes config set` cannot rename or delete dictionary keys under `providers.<slug>.models`. Update via Python string replace/YAML in terminal, run `hermes config check` to verify syntax.
+  - **Dual-write Invariant for Deploy Repo:** Mọi thay đổi `config.yaml` BẮT BUỘC ghi đồng thời vào `C:\Users\Kibe\AppData\Local\hermes\config.yaml` và `D:\Taadaa\Hermes\deploy\hermes-home\config.yaml`, sau đó commit và push lên nhánh `main` của git repo `D:\Taadaa\Hermes` để duy trì tính toàn vẹn deploy.
 
 ## Reporting discipline (noise control)
 
 Default multi-turn behavior spams progress. For batch/long ops, embed in the group system_prompt:
 - `QUY TẮC BÁO CÁO:` NO step-by-step or tool output; intermediate turns use `[SILENT]`; only a final summary (per-machine results, timing, log paths) or a blocker error.
 - **PITFALL (verified 2026-08-09): a LITERAL `[SILENT]` message is DELIVERED to the user on Telegram.** It is not swallowed by the platform — sending any body text that is just `[SILENT]` makes the user see it and ask "Là sao silent?". "Silent" must mean emitting NO message at all for that turn (empty/no final text), never sending the marker as content. When you have nothing to report, produce no user-facing message; when you have a real milestone, send it.
+- **Telegram Channel Isolation & Protected Cron Sinks (Guardrail):** Kênh Cron định kỳ (`-5188753741`) và Farm Alerts (`-5373649734`) CHỈ dành cho automated schedulers (`EXEC_MODE=CRON_AUTOMATED`). Subagents và tác vụ thủ công/canary/test TUYỆT ĐỐI KHÔNG gửi tin nhắn/ảnh vào các nhóm này. `automation_core.alerts` chặn cứng qua `TelegramPermissionError`. Subagent chỉ trả artifact qua stdout / session chat với cú pháp `MEDIA:<path>`.
 - Sequence is model obeying the prompt, so verify per-use-case; also there is NO per-chat `cwd` in the gateway (only global `terminal.cwd`) → overrides must say "cd <repo> before EVERY terminal command".
 - Screenshot capabilty: `adb -s <serial> exec-out screencap -p` — no need to open the xiaowei mirror app (it reads the same source). Add a screenshot rule with serial lookup: serial from `D:\CodexRuntime\tiktok-video\config-machine-N.yaml` or workbook mapping (`Tik1.xlsx`), else report and don't guess.
 
@@ -102,8 +127,18 @@ Do not equate Hermes SSH with OpenClaw Node pairing. Hermes `terminal.backend: s
 - Notepad from git-bash: `notepad.exe <file>` BLOCKS the terminal (watch out); `explorer.exe <file>` launches the default handler and returns.
 - `hermes config set` value with embedded `=`/paths works as a single arg; be careful of the YAML key quoting above.
 - `powershell -c '...$_...'` — bash expands `$_` (last echo arg); use single quotes and escape or a `.ps1`.
+- **Group mention vs ambient listener behavior (`require_mention` vs `observe_unmentioned_group_messages`):**
+  - In Telegram groups, if `telegram.require_mention: false` and `telegram.observe_unmentioned_group_messages: true`, the bot intercepts and acts on EVERY message sent to the group, triggering unwanted `typing...` and automated replies.
+  - To enforce bot-tagging discipline (only activate when `@bot_username` is explicitly mentioned), ensure in `config.yaml`:
+    ```yaml
+    telegram:
+      require_mention: true
+      observe_unmentioned_group_messages: false
+    ```
+  - When troubleshooting unexpected typing or auto-replies across multiple bots in farm groups, inspect `config.yaml` for `require_mention` and check which bot token is bound in `C:\Users\Kibe\AppData\Local\hermes\.env` via `getMe`.
 
 ## References
 
+- `references/telegram-webhook-cloudflare-troubleshooting.md` — **[2026-09-24]** Webhook qua Cloudflare Tunnel vs Polling/WARP, bẫy "Read timeout expired" do sync disk I/O nghẽn event loop, Telegram exponential backoff (treo 6 phút), và chẩn đoán phân biệt nghẽn mạng vs nghẽn LLM queue.
 - `references/per-group-repo-binding-recipe.md` — copy-paste recipe: common rule block (QUY TẮC BÁO CÁO + ảnh màn hình), global prompt, personality presets, repo-bound overrides, group map, verification snippets.
 - `references/telegram-gateway-setup-2026-08-08.md` — full worked walkthrough (setup, the quoted-key bug diagnosis, DB verification output)

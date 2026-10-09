@@ -1,30 +1,32 @@
 ---
-
 name: tiktok-workbook-slot-mapping
-
 description: "Quy tắc mapping Tik1/Tik2/tik3 workbook ↔ taikhoan_dat_v2 (REG) + hashtag theo folder nguồn + render random. Dùng khi đồng bộ, sửa, tạo file Tik, điền hashtag, render."
-
 version: 1.0.0
-
 metadata:
-
   hermes:
-
     tags: [tiktok, workbook, mapping, xlsx, render, hashtag]
-
     category: software-development
-
 ---
-
-
 
 # TikTok Workbook Slot Mapping (Tik1/Tik2/tik3 ↔ REG)
 
+## 🛑 STOP GATE
+Tuân thủ skill `taadaa-farm-ops-rules`: screencap nghiệm thu `MEDIA:<path>` trước teardown.
 
-## 🛑 STOP GATE (bắt buộc — chi tiết: skill taadaa-farm-ops-rules)
-Máy live + script chạy/lỗi → KHÔNG tự sửa code, KHÔNG tự chạy lại, KHÔNG tự probe/tay khi chưa được user yêu cầu.
-Lỗi → screencap → gửi ẢNH THẬT (MEDIA:<path> dòng riêng, KHÔNG bọc markdown, KHÔNG gửi đường dẫn text) → DỪng chờ user hướng dẫn.
-User hướng dẫn bước nào → encode bước đó vào script + test → mới chạy lại. Nghi ngờ → HỎI.
+## Tài liệu tham khảo bổ trợ:
+- `references/tiktok-id-validation-and-sync-drift.md`: Kỷ luật validate ID TikTok regex, cấm blacklist substring ("in") drop nhầm nick có dấu chấm (`vo.my.hanh94`), audit 1:1 Master DAT ↔ Tik1-Tik8.
+- `references/niche-hashtag-sync-and-drift-reconciliation.md`: Đối soát & sync 3 tầng khi lệch niche/hashtag.
+- `references/backfill-excel-drift-investigation.md`: Đối soát & backfill khi alert báo Máy đủ 8 acc, dọn tàn dư ký sinh. Cảnh báo bẫy ngộ nhận "đã hết ký sinh" khi chỉ nhìn Excel PASS, và bẫy substring blacklist trong `sync-tik-workbooks.py` vô tình xóa nhầm nick thật khiến nick dừng đăng video dài ngày. kèm danh mục chuẩn 14 cặp nick bốc trùng mail lịch sử toàn farm và kỹ thuật cuộn đáy Switcher.
+- `references/farm-admin-video-download-and-deduplication.md`: Cào video Admin, xử lý 0MB đĩa, niche Douyin/ASMR, Parallel=2, swap dọn 2 đầu, SSH detached.
+- `references/account-video-investigation-and-folder-swap.md`: Điều tra & đổi nguồn video, dọn 2 đầu, pipeline swap_single_folder_pipeline.py.
+- `references/safe-workbook-schema-ngay-tao-projection.md`: Mở rộng Safe Workbook cột "Ngày Tạo", date parsing `_parse_date_iso`, dynamic header verify.
+- `references/excel-process-lock-and-onedrive-reversion-triage.md`: Xử lý Excel lock (`PermissionError`), kiểm tra ID trực tiếp, atomic write và OneDrive sync.
+- `references/excel-sync-performance-and-serial-invariants.md`: Chống treo openpyxl read_only (`iter_rows`), invariant serial phần cứng 8 slot và gỡ lỗi duplicate accounts.
+- `references/ensure-row-accounts-stale-isolation-and-telemetry.md`: Chống nuốt stale artifact (`batch_start_time`), guard Telegram test env.
+- `references/tiktok-dashboard-machine-mapping-and-sync.md`: Xử lý nick thiếu số máy trên Dashboard (port 1905) và đồng bộ SQLite `farm_account_info`.
+- `references/safe-workbook-slot-mapping-modulo8.md`: Quy tắc mapping 8 slot theo Folder Video modulo 8, tránh dồn ép slot trên Admin Remote cluster.
+- `references/resolving-duplicate-accounts-preflight.md`: Xử lý lỗi duplicate account giữa Tik*.xlsx và taikhoan_dat_v2, PASS preflight validator.
+- `references/excel-preflight-validator-conflict-resolution.md`: Tự động xử lý xung đột preflight validator, Coordinator chủ động truy vết DB và patch.
 
 ## Bối cảnh & nguồn chuẩn (2026-08-11, đã xác nhận với user)
 
@@ -81,11 +83,32 @@ User hướng dẫn bước nào → encode bước đó vào script + test → 
      - Với hàng trùng bị loại bỏ: **Xóa sạch toàn bộ thông tin tài khoản (Cột 3..9: ID, PASS, 2FA, GMAIL, PASS MAIL, DOB, CREATED)**. BẮT BUỘC giữ nguyên Cột 1 (`Máy`), Cột 2 (`Folder Video`), Cột 10 (`device ID`) để bảo toàn cấu trúc chuẩn 8 slot/máy. Sau khi xóa, đồng bộ ngay sang `taikhoan_run_safe.xlsx` và `TikN.xlsx` (chuyển sang `MISSING_ID` chờ cấp nick mới). Info mail gốc vẫn có trong `gmail_clean_v2.xlsx` để phục vụ reg lại.
 
 - REG hiện có **80 máy × 8 dòng** (640 dòng). Mỗi máy 8 slot account; slot 7-8 trống (2 dòng đã bị xóa hồi 14/07, đã thêm lại 2026-08-11 với folder +7,+8, device ID copy từ máy).
+- **LƯU Ý LỆCH CẤU TRÚC 6 HÀNG VS 8 HÀNG Ở DẢI MÁY MỚI (M76..M79, 2026-09-13)**:
+  - Do lịch sử nhập liệu / mở rộng, cụm máy 76..79 từng chỉ có 6 hàng vật lý trong `taikhoan_dat_v2_updated .xlsx` (khiến toàn bộ sheet chỉ có 633 hàng thay vì 640 hàng, Máy 80 bị kéo lên từ hàng 626).
+  - Quy chuẩn bắt buộc khi nới rộng về 8 hàng/máy:
+    1. Mỗi máy M76..M79 phải đủ 8 dòng vật lý. Folder video cho Slot 7 là `(m-1)*8 + 7`, Slot 8 là `(m-1)*8 + 8`.
+    2. Đẩy Máy 80 về đúng vị trí vật lý chuẩn (hàng 634..641, Slot 1..8 tương ứng Folder 633..640).
+    3. Serial phần cứng copy đồng nhất từ các slot trước của chính máy đó (`9885b64d56305a3731` cho M76, `ce05160595e7953b04` cho M77, `ce0916090a9d320a01` cho M78, `ce0516059d279f3e03` cho M79).
+    4. Sau khi nới rộng và nạp nick mới (VD: Row 7 của M77 và M78), chạy ngay `sync-safe-workbook.py` (với token `TAADAA_ALLOW_OVERWRITE_TOKEN`) để `taikhoan_run_safe.xlsx` cập nhật đúng 640 dòng (80 máy x 8 hàng).
+
+- **BẪY TRA CỨU FARM THIẾU TIK7 & TIK8 (User Invariant 2026-09-13: "mở rộng farm ra tik 7 tik8 r mà kiểm tra chỗ nào thiếu dữ liệu mà k biết")**:
+  - **Triệu chứng & Sai lầm**: Khi kiểm tra thiếu dữ liệu hoặc quét acc/avatar, chỉ duyệt các file `Tik*.xlsx` hiện có trên đĩa (`Tik1..Tik6.xlsx`), từ đó ngộ nhận rằng farm chỉ có 6 Tik và bỏ sót toàn bộ dữ liệu của Slot 7 & Slot 8.
+  - **Bản chất thực tế**: Master `taikhoan_dat_v2_updated .xlsx` và `taikhoan_run_safe.xlsx` đã kích hoạt đủ 8 slot (Slot 7 đã có 36 nick, Slot 8 đã có 4 nick). Kho render `run_kibe_slot7_slot8_render.ps1` và video gốc `481..640` đã hoạt động.
+  - **Quy tắc bắt buộc**:
+    1. Kiểm tra tồn tại/trạng thái farm BẮT BUỘC đọc từ Master `taikhoan_dat_v2_updated .xlsx` (sheet `Tài Khoản`) và `taikhoan_run_safe.xlsx` qua công thức `(idx % 8) + 1` cho đủ cả 8 Slot.
+    2. Không được lấy danh sách file `Tik1..Tik6.xlsx` làm chặn trên của farm. Khi farm mở rộng Slot 7 & 8, phải đồng bộ khởi tạo `Tik7.xlsx` và `Tik8.xlsx` và cập nhật `TIK_SLOT_MAP` trong `sync-tik-workbooks.py` / `sync-safe-workbook.py`.
+
 
 - **QUY CHUẨN 480 SLOT TOÀN FARM & BỎ QUA DÒNG DƯ TRONG DAT (User Rule 2026-09-03)**:
   1. Farm Kibe chuẩn đúng **80 máy x 6 slot = 480 slot** (tương ứng `taikhoan_run_safe.xlsx` và 6 file `Tik1..Tik6.xlsx`).
   2. Mọi dòng slot dư (slot 7-8 hoặc ngoài 480 dòng) trong `taikhoan_dat_v2_updated .xlsx` **hoàn toàn bỏ qua, không tính vào số lượng thiếu**.
   3. Quy tắc đếm nick thiếu: Chỉ đếm các ô ID trống trong phạm vi 480 slot của `taikhoan_run_safe.xlsx` (hoặc slot 1..6 của 80 máy). Máy nào đủ 6/6 nick xem như hoàn thành 100%, tự động dừng reg cho máy đó và chỉ tập trung reg bù cho các máy chưa đủ 6 nick.
+
+- **QUY CHUẨN MỞ RỘNG TRẦN 8 NICK & DÀNH SLOT 7/8 LÀM PHÔI TRẮNG CHUYỂN GIAO (User Rule 2026-09-06)**:
+  1. **Nâng trần reg lên 8 nick**: `MAX_ACCOUNTS_PER_MACHINE = 8` (trong `_detect_clean.py` và `tiktok_target_eligibility.py` repo `Tiktok_Reg`) để tận dụng dải proxy Kibe dồi dào reg bù nick cho farm Admin (3 máy/1 IP khó reg).
+  2. **Slot 7 & 8 là Phôi Trắng (Incubator - FEED ONLY, CẤM UPLOAD)**: Tuyệt đối không tạo folder video, không map vào pipeline upload tại Kibe để tránh lệch kho video khi chuyển giao sang Admin.
+  3. **Không chuyển nóng (Anti-Hot-Transfer)**: Reg xong BẮT BUỘC nuôi đệm tại Kibe tối thiểu 2-3 ngày để tích lũy session/cookie và trust score. Trước khi login vào máy Admin (IP Đà Nẵng), cho nick nghỉ cooldown 6-12h.
+  4. **Chuỗi ca đêm linh hoạt (Night-Chain Pivot, cập nhật 2026-09-07)**: Ca đêm 01:00 (`run_night_chain_pipeline.py`) ưu tiên Reg. Nếu không còn target reg (máy đã full 8 nick / `Total targets: 0`), tự động chuyển đổi thành ca lướt feed nuôi nick Slot 7 hoặc 8 theo ngày chẵn/lẻ (`ZoneInfo("Asia/Ho_Chi_Minh")`: ngày lẻ Slot 7, ngày chẵn Slot 8). **QUAN TRỌNG**: Phase 3 (Add 2FA) VẪN TIẾP TỤC CHẠY BÌNH THƯỜNG SAU ĐÓ để quét bù 2FA cho các nick tồn/deferred, không được bỏ qua. Chi tiết kiến trúc: `references/eight-slot-incubator-and-night-chain-feed-fallback.md`.
 
 
 
@@ -108,13 +131,53 @@ User hướng dẫn bước nào → encode bước đó vào script + test → 
   - Nếu `taikhoan_dat_v2` và `taikhoan_run_safe` ĐÃ CÓ ID (vd máy 73 đã có `yeisiearet4` ở Row 2) nhưng `Tik2.xlsx` còn trống/`MISSING_ID` hoặc `hermes_cron_source_config.json` chưa reload $\rightarrow$ máy sẽ bị cron bỏ qua do config chưa sync, nhưng thực tế máy ĐÃ ĐƯỢC REG nick. TUYỆT ĐỐI KHÔNG kết luận máy chưa có ID nếu chưa kiểm tra bảng master `taikhoan_dat_v2`.
   - Cột `device ID` ở dòng mới reg có thể bị ghi nhầm chuỗi ngày tháng (vd `23/08/2026`) thay vì serial phần cứng — cần kiểm tra và chuẩn hóa serial từ `PROXYgandienthoai.xlsx`.
 
+- **PITFALL BẪY ALERT WATCHDOG HARDCODE `-Row 1` & BÁO SAI NICK CA NUÔI (user correction 2026-09-07: "ủa sao cái này là row 1 đc nhỉ, mà cái farm alert thông báo cũng ngu nữa làm gì phải row 1. Làm luôn. Báo đúng nick"):**
+  - **Triệu chứng & Sai lầm**: Watchdog/alert khi bắt lỗi farm sinh mẫu lệnh B4 bị hardcode cứng `-Row 1` (`run-feed-session.ps1 -Machines <M> -Row 1 ...`) và in nick default của Row 1.
+  - **Bẫy**: Chạy canary theo lệnh hardcode `-Row 1` sẽ switch nhầm sang account của Slot 1, test sai nick của ca gặp lỗi thực tế (ví dụ ca 2 lúc 14:39 ngày lẻ là Row 3), và báo cáo kết quả sai lệch.
+  - **Quy tắc giải quyết**:
+    1. Coordinator/Worker BẮT BUỘC suy luận ca chạy từ timestamp của alert và bảng Parity Schedule:
+       + Ngày lẻ: Ca 1 (06:00) $\rightarrow$ Row 1; Ca 2 (12:30) $\rightarrow$ Row 3; Ca 3 (19:00) $\rightarrow$ Row 5.
+       + Ngày chẵn: Ca 1 (06:00) $\rightarrow$ Row 2; Ca 2 (12:30) $\rightarrow$ Row 4; Ca 3 (19:00) $\rightarrow$ Row 6.
+    2. Lệnh Canary Test B4 BẮT BUỘC thay `-Row <K>` bằng đúng row của ca đó (ví dụ `-Row 3`).
+    3. Tra cứu và đối soát đúng username từ `taikhoan_run_safe.xlsx` cho `(Máy, Row)` trước khi báo cáo kết quả nghiệm thu cho user. Chi tiết: `references/canary-parity-row-resolution-and-event-space-overlay.md`.
+
 - Mỗi file Tik đều có cột: `Máy`, `device ID`, `ID`, `Folder Video`, `video gốc`, `Keyword Video`, `Hashtag Pool`, `Video Đã Đăng`, `Kiểm Tra Dữ Liệu`, `Render Status`, `Render MP4`, `Render Updated`. Muốn biết trạng thái nick → đọc các cột này trực tiếp, không suy diễn.
 
 - **PITFALL PHÂN BIỆT NICK KHI ĐẾM (user bác 2026-08-15: "mày biết phân biệt tik 1 và tik2 k?")**: report.json mỗi run có field `account`. Run `status=SUCCESS` của nick Tik1 KHÔNG tính cho nick Tik2 — cùng device nhưng khác nick. Khi đếm "máy nào đã đăng video" / "máy nào chưa", phải so khớp `report.account` == ID workbook của nick đang xét (vd account == Tik2 ID thì mới tính cho Tik2). Đếm mù theo status SUCCESS sẽ báo sai (10 máy từng bị báo đã đăng nhưng thực ra chỉ mới đăng Tik1).
 
-- **Avatar source**: `D:\video goc\<Folder Video>\avatar.jpg`. Nếu folder/avatar thiếu ở đó → copy từ `D:\TIKTOK-videonuoinick\<Folder Video>\avatar.jpg` (đã generate sẵn cho mọi folder). Lỗi `AVATAR_SOURCE_MISSING: ...\video goc\<folder>` = thiếu bản copy, không phải thiếu ảnh gốc.
+- **Avatar source chuẩn**: `D:\TIKTOK-videonuoinick\<Folder Video>\avatar.jpg` (đã generate sẵn khi render video cho từng folder output). CẤM lấy avatar theo `D:\video goc\<Folder Video>\avatar.jpg` vì `Folder Video` (1..640) không cùng namespace với `video gốc` (1..480). Lỗi `AVATAR_SOURCE_MISSING: ...\TIKTOK-videonuoinick\<folder>` = folder render chưa được tạo hoặc thiếu avatar.jpg.
+- **PITFALL: TRÙNG AVATAR DO XUNG ĐỘT NAMESPACE FOLDER VIDEO VỚI VIDEO GỐC & CACHE THIẾT BỊ (2026-09-11)**:
+  - **Triệu chứng**: Các nick Row 5/6 mới bị dính avatar của các nick Row 1 cũ (ví dụ: nick Row 5 Máy 1 `buithudung2011` có `Folder Video = 5` bị dính avatar "bà mập" của Row 1 Máy 5 có `video gốc = 5`; hoặc dính avatar của Row 1 trên cùng máy `lipsellczaw`).
+  - **Nguyên nhân cốt lõi**:
+    1. `resolve_avatar_path()` trong `path_resolver.py` duyệt cả `D:\TIKTOK-videonuoinick` lẫn `D:\video goc` theo `folder_value`. Số `Folder Video` của Tik5 (`5, 13, 21...`) lại trùng đúng dải số `video gốc` của Tik1 (`1..80` bằng số máy), dẫn tới việc bốc nhầm avatar nguồn của nick Row 1 máy khác.
+    2. Trên cùng 1 thiết bị, file avatar cũ của nick Row 1 còn tồn trong `/sdcard/DCIM/Camera/` hoặc `/sdcard/Download/` khiến Media Picker hiển thị tile cũ, tap mù gây gán nhầm.
+  - **Quy tắc chuẩn hóa**:
+    1. BẮT BUỘC resolve avatar từ output render: `D:\TIKTOK-videonuoinick\<Folder Video>\avatar.jpg`, CẤM fallback sang `D:\video goc\<Folder Video>`.
+    2. Trước khi push avatar mới: dọn sạch file ảnh cũ trên thiết bị (`rm -f /sdcard/DCIM/Camera/avatar* /sdcard/Download/avatar* /sdcard/_ss*.png`) và kích hoạt `MEDIA_SCANNER_SCAN_FILE`.
+    Chi tiết xem: `references/avatar-namespace-collision-and-cache-drift.md`.
 
-- **PITFALL `Missing required fields: ID TikTok`**: máy có cột `ID` trống (None) trong workbook thì KHÔNG chạy được (không có target account) — exit 1 sớm. Trước batch, rà cột ID: máy None → báo user điền ID hoặc xác nhận bỏ qua; đừng chạy mù rồi đếm fail.
+- **PITFALL: POWERSHELL CLI SWITCH PARAMETER TRAP (2026-09-11)**:
+  - **Triệu chứng**: Khi gọi script con từ PowerShell CLI (`powershell.exe -File script.ps1`), các tham số kiểu `[switch]$AvatarOnly` bị truyền dưới dạng string `-AvatarOnly True` (từ hashtable `@splat`), gây lỗi `ParameterArgumentTransformationError: Cannot convert value "System.String" to type "System.Management.Automation.SwitchParameter"`.
+  - **Nguyên nhân**: `[switch]` parameter trong PowerShell chỉ nhận bare switch (`-AvatarOnly`) hoặc boolean native (`$true`/`$false`/`1`/`0`), KHÔNG nhận string `"True"`. Hashtable splatting qua subprocess tự động chuyển `$true` thành string `"True"`.
+  - **Quy tắc chuẩn hóa**:
+    1. Khi gọi subprocess `powershell.exe`, **BẮT BUỘC** build mảng argument `$batchArgs` với bare switch `-AvatarOnly` (không kèm value string) thay vì truyền hashtable `@splat`.
+    2. Mẫu chuẩn:
+       ```powershell
+       $batchArgs = @(
+           "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $batchLauncher,
+           "-Tik", $Tik, "-MaxParallel", $MaxParallel, "-HostConfigPath", $HostConfigPath,
+           "-AvatarOnly",  # bare switch, KHÔNG có "True" sau nó
+           "-ForceAvatarMachineList", $ForceAvatarMachineList,
+           "-MachineStartStaggerMs", $MachineStartStaggerMs
+       )
+       if ($AssignmentManifest -and $WorkerId) {
+           $batchArgs += @("-AssignmentManifest", $AssignmentManifest, "-WorkerId", $WorkerId)
+       }
+       & powershell.exe @batchArgs
+       ```
+    Chi tiết xem: `references/powershell-switch-argument-trap.md`.
+
+    - **PITFALL: Avatar Media Picker bị dính ảnh chụp màn hình OTP/UI cũ (`_ss.png`) (hit 2026-08-20)**:
 
 - Sau khi chạy avatar theo `-Tik <N>`, tổng hợp trạng thái phải đọc report.json từng run (status `AVATAR_SMOKE_SUCCESS` = thành công); launcher summary có thể báo sai khi verifier cũ.
 
@@ -127,11 +190,20 @@ User hướng dẫn bước nào → encode bước đó vào script + test → 
   2. `AssignmentManifest` chuẩn (automation-core v1) bắt buộc gồm các trường:
      `{"schema_version": 1, "assignment_id": "...", "owner_id": "...", "resources": ["machine:XX"], "reviewed_at": "<ISO-UTC-timestamp>"}`.
   3. **Quy tắc đóng app & về Home sau Up Avatar**: Sau khi cập nhật avatar thành công và chụp màn hình xác nhận, code trong `state_machine.py` (`_handle_ensure_avatar_impl`) BẮT BUỘC thực hiện `am force-stop com.zhiliaoapp.musically; am force-stop com.ss.android.ugc.trill; input keyevent 3` để đóng app và đưa máy về màn hình chính, tránh treo app hoặc xung đột ca nuôi tiếp theo.
+  4. **Cơ chế Đánh Dấu Video vs Avatar (Cập nhật 2026-09-06)**:
+     - **Đăng Video**: CÓ cột đánh dấu rõ ràng trong Excel (`Video Đã Đăng` trong `TikN.xlsx` cột 8 và `taikhoan_run_safe.xlsx` cột 4) làm monotonic cursor (`next_video = Video Đã Đăng + 1`), kết hợp Idempotency ledger SHA-256 (`D:/CodexRuntime/tiktok-video/idempotency/media-fingerprints/`).
+     - **Up Avatar (Cột Avatar & Auto-Pending Launcher)**:
+       + Đã bổ sung cột **`Avatar`** trên `Tik1..Tik6.xlsx` và durable ledger `D:/CodexRuntime/tiktok-video/idempotency/avatar-ledger.jsonl`.
+       + Nick đã up avatar thành công được đánh dấu `Avatar = "OK"`.
+       + **Bẫy sót avatar ở Video 2+**: Workflow upload tự động CHỈ kích hoạt `ENSURE_AVATAR` ở Video #1 (`video_number == 1`). Với nick Video 2+ hoặc dàn nick mới Row 5/6 đang nuôi lướt feed 0 video, dùng launcher độc lập `run_tiktok_upload_avatar.ps1 -Tik <N>`.
+       + **Auto-Resolve Máy Chưa Có Avatar**: Khi chạy `run_tiktok_upload_avatar.ps1 -Tik <N>` mà không truyền `-ForceAvatarMachineList`, launcher gọi helper script Python riêng `scripts/resolve_avatar_pending_machines.py` (tránh bẫy PowerShell CLI inline parsing lỗi f-string/dấu ngoặc), tự động mở đúng workbook (`tik3.xlsx` chữ thường cho Tik 3, `TikN.xlsx` cho các Tik khác), lọc các máy có ID hợp lệ mà cột `Avatar` chưa `OK` (bao gồm đầy đủ các máy có nick hợp lệ, KHÔNG tự ý loại trừ Máy 38), và kích hoạt batch cho các máy còn thiếu (hỗ trợ `-WhatIf` preflight). Khi up xong tự động cập nhật `Avatar = "OK"` vào Excel và ledger.
+       - **CẤM SUY LUẬN `Video Đã Đăng >= 1` $\rightarrow$ `Avatar = OK` (Hit 2026-09-08)**: Tuyệt đối không dùng logic đếm video để gán khống trạng thái Avatar trong workbook. Dàn nick có thể đã đăng 4 video nhưng chưa từng chạy flow avatar (như toàn bộ Row 4 Tik4). Chỉ gán `Avatar = "OK"` khi có log/ledger xác nhận (`avatar-ledger.jsonl`) hoặc verify trực tiếp qua CDN (`avatarLarger` không chứa mã placeholder `1594805258216454`). Xem chi tiết: `references/avatar-status-tracking-and-pending-batch-resolver.md`.
+       Chi tiết xem: `references/avatar-namespace-collision-and-cache-drift.md`.
 
-- **Tiến trình Render Tik4 (`run_tik4_random_render.ps1`) & Cơ chế Continue on Lacking Source (2026-08-21)**:
-  Khi chạy render hàng loạt máy (1..80), các folder nguồn chưa đủ 30 video (ví dụ đang chờ downloader cào về) sẽ ném exception trong selector. Launcher `run_tik4_random_render.ps1` bắt buộc bọc `$ErrorActionPreference = "Continue"` quanh selector để in cảnh báo và `continue` chạy tiếp các máy có nguồn đầy đủ, không làm crash toàn batch render.
+       - **Tiến trình Render Tik4 (`run_tik4_random_render.ps1`) & Cơ chế Continue on Lacking Source (2026-08-21)**:
+  Chi tiết xem: `references/avatar-namespace-collision-and-cache-drift.md`.
 
-- **PITFALL: Avatar Media Picker bị dính ảnh chụp màn hình OTP/UI cũ (`_ss.png`) (hit 2026-08-20)**:
+  - **PITFALL: Avatar Media Picker bị dính ảnh chụp màn hình OTP/UI cũ (`_ss.png`) (hit 2026-08-20)**:
   Khi push avatar mới và mở picker TikTok, nếu trên máy còn sót file ảnh chụp màn hình OTP/social cũ (`/sdcard/_ss.png`, `/sdcard/_ss_social.png` hoặc cache screenshots), MediaStore có thể index các ảnh này lên đầu album "Gần đây". Việc chọn mù tile đầu tiên `(180, 320)` sẽ làm set nhầm ảnh tin nhắn OTP/màn hình lỗi làm avatar thay vì ảnh chân dung người thật.
   **Quy tắc phòng ngừa & khắc phục:**
   1. Trước khi upload avatar: dọn sạch các file ảnh chụp màn hình tạm (`rm -f /sdcard/_ss.png /sdcard/_ss_social.png`).
@@ -146,6 +218,11 @@ User hướng dẫn bước nào → encode bước đó vào script + test → 
   - **Cơ chế Random khi Render (`random_batch_render.py`)**: Trong cùng 1 folder, MỖI video (`1.mp4`, `2.mp4`...) đều có `seed` ngẫu nhiên độc lập (`compute_seed` tính từ `seq` + `source_relative`), áp dụng bộ filter hình ảnh, âm thanh, GOP khác nhau để phá mã băm (MD5 / Perceptual Hash).
   - Nếu file render mang tên dài/prefix (vd: `tik_tik3-stt347...mp4` hay `Tiêu đề [id].mp4`), upload sẽ lập tức văng `PathResolverError: Video file not found: ...\1.mp4` $\rightarrow$ **dừng ca nuôi, không upload được**.
   - Toàn bộ video trong mỗi folder render `D:\TIKTOK-videonuoinick\<Folder Video>` PHẢI được đánh số tuần tự `1.mp4`, `2.mp4`... `N.mp4`.
+  - **Quy chuẩn triển khai Code trong `scripts/random_batch_render.py`**:
+    1. `RenderTask` dataclass: Bổ sung trường `relative_output: Path` (giữa `relative_source` và `output`) để lưu giữ tên tệp output dạng số tuần tự.
+    2. `make_tasks()`: Gán `relative_output = relative_source.parent / f"{seq}.mp4"` (bảo toàn cấu trúc thư mục cha `relative_source.parent`, chỉ đổi stem thành `{seq}.mp4`), truyền `relative_output=relative_output` vào `RenderTask`.
+    3. `render_one()`: Dùng trực tiếp `relative_output = task.relative_output` thay vì phái sinh từ `relative_source.with_suffix(".mp4")`, đảm bảo skip-check và log message khớp đúng tên output tuần tự.
+    4. Unit test: `test_output_mirrors_source_structure` trong `scripts/test_random_pipeline.py` đối soát `tasks[0].output == output_root / "group_a" / "nested" / "1.mp4"`.
 
 ```text
 
@@ -165,7 +242,27 @@ Tik5 (slot 5): 5, 13, 21, 29, ... 637   (đã render xong 80/80 folder 2026-08-2
 
 Tik6 (slot 6): 6, 14, 22, 30, ... 638   (tạo workbook + đang render 2026-08-30)
 
-slot 7-8: +7..+8 (REG đã có dòng, chưa render)
+Tik7 (slot 7): 7, 15, 23, 31, ... 639   (80 folder output; nguồn 481..560, workbook Tik7.xlsx)
+
+Tik8 (slot 8): 8, 16, 24, 32, ... 640   (80 folder output; nguồn 561..640, workbook Tik8.xlsx)
+
+- Chi tiết mở rộng kho render Tik7/Tik8 xem `references/tik7-tik8-mapping-and-render-pipeline.md`.
+- Bản phân tích kiến trúc gốc rễ, cạm bẫy Excel control plane và 4 quy tắc bất biến (System Invariants) từ Claude Code: `references/phone-farm-architecture-invariants-and-reliability.md`.
+- Bản đồng thuận kiến trúc Claude CLI & Sol Planner: chống bệnh write-without-read làm văng nick, 4 System Invariants, JIT Reconciliation qua WinRT OCR/ATX, và Excel Preflight Validator chặn trùng video gốc (17/09/2026): `references/architecture-consensus-write-without-read-and-excel-preflight.md`.
+- Hướng dẫn vận hành bộ kiểm tra 5 Invariant Rules cho toàn bộ file Excel của Farm (`excel_preflight_validator.py`): xem `references/excel-preflight-validator-and-5-invariant-rules.md`.
+- Hướng dẫn tích hợp Preflight Validator chốt chặn vào Cron Sync (`hermes_taikhoan_sync_cron.py`): xem `references/excel-preflight-validator-cron-sync-integration.md`.
+- **CƠ CHẾ FAIL-CLOSED PREFLIGHT VALIDATOR TRONG CRON SYNC (`hermes_taikhoan_sync_cron.py`, 2026-09-17)**:
+  + Chốt chặn tại Bước 2.5: Trước khi chuyển sang Bước 3 (`generate_config_from_safe_workbook`), cron sync BẮT BUỘC gọi `excel_preflight_validator.py` kiểm tra 5 Invariant Rules trên toàn bộ file Excel.
+  + Nếu có bất kỳ lỗi FAIL nào (như trùng lặp tài khoản giữa các slot/file Tik, sai mapping Folder Video/Video Gốc), validator trả về exit code khác 0 $\rightarrow$ cron sync lập tức đánh dấu `failed = True`, ghi log cảnh báo và HỦY BỎ hoàn toàn việc cập nhật `hermes_cron_source_config.json`, giữ an toàn cho Farm không bị nạp cấu hình lỗi.
+- Quy tắc scrape TikTok public (bẫy SlardarWAF vs DIE/NOT_FOUND, nạp proxy_pool_67.txt) & Windows Firewall chặn Inbound Python 3.12 (bắt buộc dùng Python 3.11 khi host web mobile) xem `references/tiktok-tracker-public-scrape-and-windows-firewall-python-rules.md`.
+- Chi tiết cơ chế theo dõi số liệu và tăng trưởng tài khoản TikTok (Follower, Like, UID, Cắn đề xuất) từ workbook xem `references/tiktok-farm-tracking-and-workbook-delta.md`.
+- Hệ thống theo dõi thống kê TikTok Farm (Follower, Like, Video, Cắn đề xuất), bẫy SlardarWAF và Web Dashboard mobile: `references/tiktok-farm-account-tracking-and-dashboard.md`.
+- Kỷ luật quét public profile TikTok chống SlardarWAF, nguồn chuẩn proxy pool 67, tích hợp web kibe:2310 và Sol Plan trước dispatch: `references/tiktok-public-profile-tracking-and-proxy-pool-rules.md`.
+- **PITFALL: SLARDARWAF VS NOT_FOUND FALSE POSITIVE KHI TRACKING PUBLIC PROFILE (2026-09-17)**:
+  + Khi quét dồn dập nhiều tài khoản TikTok từ 1 IP, TikTok kích hoạt SlardarWAF challenge (~1400 bytes HTML không có hydration JSON).
+  + Không coi thiếu JSON là `NOT_FOUND`/`DIE`, phân loại `RATE_LIMITED` và xoay 67+ Proxy 4G. Dashboard: port 20130 (`tiktok_dashboard.py`).
+- Auto-sync Keyword/Hashtag toàn farm xem `references/tik7-tik8-all-tik-keyword-sync-and-avatar-watchdog-20260913.md` & `references/hashtag-safety-shield-and-all-tik-niche-audit-20260927.md`.
+- Kiến trúc khởi tạo khung workbook Tik7/Tik8 trước và dùng cron auto-sync keyword/hashtag từ state.db xem `references/tik7-tik8-creation-and-keyword-sync.md`.
 
 ```
 
@@ -181,9 +278,9 @@ slot 7-8: +7..+8 (REG đã có dòng, chưa render)
 
 - **QUY TẮC RENDER KHI THIẾU ID (User Rule 2026-08-27)**: Máy thiếu ID (`MISSING_ID`) VẪN RENDER BÌNH THƯỜNG vào đúng `Folder Video` theo mapping. Không được skip hay chặn render máy thiếu ID; ID tài khoản được nạp và sync sau vào workbook. Chi tiết xem `references/tik5-creation-and-sequencing.md`.
 
+Chi tiết xem: `references/avatar-namespace-collision-and-cache-drift.md`.
 
-
-## CỘT VIDEO GỐC (nguồn render) — quy luật
+- **Tiến trình Render Tik4 (`run_tik4_random_render.ps1`) & Cơ chế Continue on Lacking Source (2026-08-21)**:
 
 
 
@@ -255,7 +352,7 @@ video gốc Tik6 = 400 + máy      (401..480) -> D:\video goc\<400+máy>
   - **Auto-Aspect Detection cho Video Ngang 16:9 (`fit_pad`)**: Tự động phát hiện $DAR > 1.0$ (kết hợp SAR và rotation trực giao), chuyển từ `fill_crop` sang `fit_pad` viền đen trên dưới (`scale=trunc(iw*sar/2)*2:ih,setsar=1,scale={width}:{height}:force_original_aspect_ratio=decrease:force_divisible_by=2,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1`), giữ 100% hình ảnh không bị cắt xén hai bên.
   - **Đồng bộ A/V Trim & Limiter**: Tích hợp A/V sync temporal trim trước speed warp ($audio\_tempo = speed\_factor / pitch\_factor$), In-line audio noise floor (`aeval`), Adaptive Nyquist lowpass ($\le 0.45 \times target\_sample\_rate$) và `alimiter` latency compensation kèm `apad` + `atrim=0:D_out` khóa chính xác endpoint thời lượng.
 - Launcher: `run_tik2_random_render.ps1`, `run_tik3_random_render.ps1`, `run_tik4_random_render.ps1`, `run_tik5_random_render.ps1`, `run_tik6_random_render.ps1` (có `-AutoRun` để skip confirm).
-- Slot 0-based trong runner: Tik1=0, Tik2=1, tik3=2, Tik4=3, Tik5=4, Tik6=5.
+- Slot 0-based trong runner: Tik1=0, Tik2=1, tik3=2, Tik4=3, Tik5=4, Tik6=5, Tik7=6, Tik8=7. (Lưu ý quan trọng: `random_batch_render.py` và `randomize_profile.py` quy ước slot 0-indexed từ 0..7: Nick 7 / Slot 7 truyền `--slot 6`, Nick 8 / Slot 8 truyền `--slot 7`; tham số này điều khiển Voice Profile `VOICE_PROFILES[slot % 3]` gồm treble/normal/bass và sinh seed ngẫu nhiên độc lập chống trùng lặp giữa các nick trên cùng máy).
 - **Cơ chế Randomize trong cùng 1 Folder**:
   - Không phải 1 preset cố định cho cả loạt video. Từng video trong cùng folder đều nhận một `seed` độc lập được tính từ `SHA256(run_id|machine_id|slot|seq|source_relative|seed_offset)`.
   - Tham số `--slot` đóng vai trò phân phối Voice Profile (`VOICE_PROFILES[slot % 3]`) và dải vân tay âm thanh/màu sắc giữa các nick khác nhau trên cùng một máy.
@@ -336,6 +433,42 @@ Kèm switch `-ResumeVerifyExisting` → truyền `--resume-verify-existing` cho 
 
 ## PITFALLS
 
+- **PITFALL: BẢNG TĨNH `farm_account_info` & HIỆN TƯỢNG NICK LIVE MẤT BADGE SỐ MÁY TRÊN DASHBOARD (Hit 2026-09-22)**:
+  - **Hiện tượng**: Dashboard (`tiktok_dashboard.py`) hiển thị danh sách nick LIVE (như `@anan36014`, `@cout13110`, `@haibich156`, `@huynhat1035`) nhưng cột số máy trống trơn (không có badge `M{may}`).
+  - **Nguyên nhân cốt lõi**: Dashboard lấy số máy từ câu query `LEFT JOIN farm_account_info f ON r1.username = f.username`. Bảng `farm_account_info` trong SQLite `tiktok_tracker.db` chỉ được import tĩnh từ ngày 18-20/09 và KHÔNG có cơ chế tự động đồng bộ (auto-sync) từ danh bạ hợp nhất `taikhoan_run_safe_combined.xlsx`. Mọi nick mới reg hoặc nick được dời/khôi phục slot đều bị `may IS NULL`.
+  - **Sự cố "Nick Lạc" sau khi Restore**: Nick `@anan36014` là nick thật của Máy 218 (reg ngày 16/09 với mail `schappachude360@hotmail.com`). Do từng bị ghi nhầm đè vào Folder 2 & 8, khi restore 69 nick Folder 2 từ backup cũ `bak_final.xlsx`, 2 dòng đó được trả về nick cũ khiến `@anan36014` bị tách khỏi danh bạ Excel Admin và không được map vào DB.
+  - **Quy tắc chuẩn hóa**:
+    1. Khi restore hàng loạt nick từ backup, BẮT BUỘC đối soát các nick mới sinh để dời sang slot còn trống (ví dụ Tik 4, Tik 5 của Máy 218) thay vì để nick bị rơi rụng khỏi danh bạ.
+    2. Bổ sung bước tự động đồng bộ từ `taikhoan_run_safe_combined.xlsx` vào bảng `farm_account_info` của SQLite `tiktok_tracker.db` trước mỗi phiên Daily Tracker hoặc sau khi sync safe workbook.
+
+- **PITFALL: ONEDRIVE DEHYDRATION (ERRNO 22) LÀM BỎ SÓT NẠP TOÀN BỘ CỤM ADMIN TRONG DAILY TRACKER (Hit 2026-09-22)**:
+  - **Triệu chứng**: Daily Tracker buổi sáng chỉ nạp 627 tài khoản của Kibe (1..80), bỏ rơi hoàn toàn 80 máy của Admin (201..280).
+  - **Nguyên nhân**: File `D:\OneDrive\TaadaaData\admin\taikhoan_run_safe.xlsx` bị tính năng Files On-Demand của OneDrive chuyển sang trạng thái Offline / Dehydrated (`attrib A O`, attribute `0x401620`). Khi `openpyxl.load_workbook()` mở file, Windows ném `OSError: [Errno 22] Invalid argument`. Vòng lặp `load_farm_accounts()` bắt `except Exception: continue` mù quáng nên âm thầm bỏ qua file của Admin mà không có bất kỳ log lỗi nào.
+  - **Quy tắc phòng ngừa**:
+    1. Khóa pin file vĩnh viễn trên máy địa phương: `attrib -u +p "D:\OneDrive\TaadaaData\admin\taikhoan_run_safe.xlsx"`.
+    2. Trong code đọc workbook, TUYỆT ĐỐI CẤM nuốt chửng `except Exception: continue`. Bắt buộc log warning/error và kiểm tra mã lỗi `Errno 22` để kích hoạt recall/pin file.
+
+- **QUY TẮC NẠP DEFERRED KHI THIẾU `tracking_row` / `tik` (2026-09-17)**:
+  - **Vấn đề**: File JSON deferred tracking (từ runner reg/login) có thể thiếu `tracking_row` và `tik` (chỉ có `stt`, `email`, `tiktok_id`). Trước đây hàm `_check_expected_row` trong `scripts/deferred_tracking_writer.py` lập tức chặn với `RESULT_MISSING_ROW_OR_TIK`.
+  - **Cơ chế tự động resolve slot trống**:
+    + Khi `tracking_row` hoặc `tik` bị thiếu/None, `_check_expected_row` gọi `resolve_tracking_slot(ws, stt, email_l)` để tìm slot phù hợp trên sheet:
+      1. Ưu tiên hàng đã có email khớp (`row_email == email_l`) mà chưa có ID/Pass.
+      2. Nếu không có hàng trùng email, bốc hàng trống đầu tiên của máy (`stt`) chưa có ID/Pass/Gmail.
+    + Nếu resolve thành công: tự động gán lại `result["tracking_row"] = slot_row` và `result["tik"] = slot_tik` rồi tiếp tục flow kiểm tra điều kiện ghi (`READY`).
+    + Nếu không tìm thấy slot: trả về `BLOCKED_DATA_CONFLICT` kèm blocker rõ ràng (`NO_EMPTY_TRACKING_SLOT` hoặc `slot_blocker`).
+
+- **PITFALL: ĐỤNG ĐỘ NẠP DEFERRED KẾT QUẢ REG GÂY LỆCH NICK TRÊN 2 MÁY & CRASH TRẦN 8 ACC (2026-09-08)**:
+  - **Triệu chứng**: Máy báo lỗi `[04_add_account] Không tìm thấy: ('Thêm tài khoản', ...)` hoặc crash batch reg ban đêm, dù file Excel hiển thị máy mới chỉ có 7 nick (vẫn còn slot trống).
+  - **Nguyên nhân gốc rễ**: Khi 1 email được chạy trên 2 máy khác nhau (do bốc trùng target hoặc retry đè), script nạp deferred (`apply_deferred_tracking_results.py`) lọc dedup theo `written_at` mới nhất $\rightarrow$ nạp kết quả của máy sinh sau (ghi vào hàng của máy sau trong Excel) và bỏ rơi kết quả của máy sinh trước. Khiến máy sinh trước thực tế trên app TikTok đã lưu nick đó (đủ 8 nick), nhưng Excel vẫn để trống slot 8 $\rightarrow$ Preflight đọc Excel thấy trống lại tiếp tục cử máy đi reg $\rightarrow$ TikTok chạm trần 8 nick nên ẩn hoàn toàn nút "Thêm tài khoản".
+  - **Quy tắc điều tra & xử lý khi lệch nick giữa 2 máy (User Invariant 2026-09-08)**:
+    1. Khi phát hiện nghi vấn 1 nick bị map lệch giữa các máy: BẮT BUỘC kiểm tra thực tế trong app TikTok trên cả 2 máy liên quan (O(1) ATX dump XML / switcher screenshot).
+    2. Nếu nick CHỈ có trên 1 máy: cập nhật lại Excel ghi đúng máy thực tế đang chứa nick đó.
+    3. Nếu CẢ 2 MÁY CÙNG CHỨA NICK: **TUYỆT ĐỐI CẤM tự ý xóa nick trên máy hoặc tự sửa Excel, BẮT BUỘC báo cáo user để xin chỉ đạo xử lý**.
+  - **Chốt chặn kỹ thuật đã bổ sung**:
+    1. **Runtime Device Gate (`social_reg_v1.py`)**: Trong `tap_add_account`, trước khi tìm nút "Thêm tài khoản", kiểm tra số lượng node account trong dropdown (`_acc_count >= 8`). Nếu đủ 8 acc $\rightarrow$ ghi nhận `MACHINE_FULL_8_ACCOUNTS`, tự động dismiss dropdown về Home an toàn thay vì crash `RuntimeError`.
+    2. **Hạ ngưỡng lọc tên ngắn**: Trong `_try_open_account_dropdown_once`, hạ ngưỡng width từ `>= 220px` xuống `>= 120px` để không bỏ sót các tên ngắn (như "Hà" 168px).
+    3. **Preflight Sheet Pinning**: Trong `tiktok_target_eligibility.py`, cố định đọc sheet `'Tài Khoản'` khi đếm số nick hiện có, không dùng `_active_worksheet` để tránh đếm sai khi con trỏ Excel lưu ở sheet khác.
+
 - **PITFALL: `DUPLICATE_MEDIA_BLOCKED` DO LỆCH CỘT 'VIDEO ĐÃ ĐĂNG' VỚI PROFILE/LEDGER THẬT (2026-09-02)**:
   - Triệu chứng: Script `tiktok-video` hoặc ca nuôi có upload hook dừng phiên với lỗi `upload_subprocess_nonzero` / `[DUPLICATE_MEDIA_BLOCKED] Exact media SHA-256 already verified for machine=M, account=X`, trạng thái `MANUAL_REVIEW` / giữ hiện trường.
   - Nguyên nhân: Tài khoản trên thiết bị thực tế đã đăng đủ K video và media-fingerprint ledger (`D:/CodexRuntime/tiktok-video/idempotency/media-fingerprints/<key>.json`) đã lưu `status=verified_success` cho video K, nhưng cột `Video Đã Đăng` trong file `TikN.xlsx` (và `taikhoan_run_safe.xlsx`) vẫn lưu giá trị cũ `< K` (vd: 1 thay vì 2). Runner tính `video_number = Video Đã Đăng + 1 = K`, bốc đúng video K (`K.mp4`) đã đăng và bị chặn bởi cơ chế chống upload trùng SHA-256.
@@ -348,12 +481,13 @@ Kèm switch `-ResumeVerifyExisting` → truyền `--resume-verify-existing` cho 
 
 - **Path repo có space/chữ hoa khác thường** (`tiktok-luot nuoi acc` chứa space; `D:\Taadaa\Tiktok-video` chữ hoa T): `search_files`/rg IO error → **verify path thật bằng bash trước** (`cd /d/Taadaa && ls -d "tiktok-luot nuoi acc"`), rồi dùng `terminal` grep với quote: `grep -rn --include='*.py' -e 'pattern' "tiktok-luot nuoi acc"` (thêm `grep -v __pycache__ -e worktree -e .ai-runs` để tránh nhiễu build lib). Đừng giả định tên/path.
 
-- **Sync an toàn = 1 writer duy nhất (chốt 2026-08-16, nâng cấp toàn diện 80 máy 2026-09-01)**: 
+- **Sync an toàn = 1 writer duy nhất (chốt 2026-08-16, nâng cấp toàn diện 80 máy 2026-09-01, hoàn thiện auto-sync source config 2026-09-03)**: 
   - `taikhoan_run_safe.xlsx` là **Single Source of Truth duy nhất** cho toàn bộ 80 máy (1..80, 480 rows).
-  - Wrapper `hermes_taikhoan_sync_cron.py` (chạy mỗi 5 phút) CHỈ LÀM ĐÚNG NHIỆM VỤ ĐỒNG BỘ:
-    1. Đồng bộ 1-chiều ID từ `taikhoan_dat_v2_updated .xlsx` sang `Tik1..Tik6.xlsx`.
-    2. Build lại `taikhoan_run_safe.xlsx` (kèm số video từ `Tik1..Tik6`).
-  - **CẤM TỰ Ý XÓA/TÁI TẠO MANIFEST/COHORT NGẦM TRONG CRON SYNC (User Rule 2026-09-01)**: Tuyệt đối không được thêm các bước tự chế `shutil.rmtree` xoá thư mục `manifests/` hay `cohorts/`, không reset `feed_state.json` trong cron sync vì sẽ làm lệch hash SHA-256 đối soát digest của các phiên nuôi đang chạy dở và làm ngắt dừng hàng loạt máy.
+  - Wrapper `hermes_taikhoan_sync_cron.py` (chạy mỗi 5 phút) tự động đồng bộ theo 3 bước tuần tự:
+    1. Đồng bộ 1-chiều ID từ `taikhoan_dat_v2_updated .xlsx` sang `Tik1..Tik6.xlsx` (`scripts/sync-tik-workbooks.py`).
+    2. Build lại `taikhoan_run_safe.xlsx` (`scripts/sync-safe-workbook.py` kèm số video từ `Tik1..Tik6`).
+    3. Tự động gọi `generate_config_from_safe_workbook()` (trong `scripts/generate_cron_source_config.py`) để đồng bộ trực tiếp cấu hình nguồn `D:\Taadaa\runtime\kibe\cron-source\hermes_cron_source_config.json` cùng state files `feed_state.json`, `post_state.json` từ `taikhoan_run_safe.xlsx`.
+  - **CẤM TỰ Ý XÓA/TÁI TẠO MANIFEST/COHORT NGẦM TRONG CRON SYNC (User Rule 2026-09-01)**: Tuyệt đối không được thêm các bước tự chế `shutil.rmtree` xoá thư mục `manifests/` hay `cohorts/`, không reset `feed_state.json` trong cron sync vì sẽ làm lệch hash SHA-256 đối soát digest của các phiên nuôi đang chạy dở và làm ngắt dừng hàng loạt máy. Việc re-pick manifest khi đổi ca/ngày do `tiktok_picker.py` đảm nhiệm.
   - **Cơ chế chạy ca/phiên của Runner**: Mọi runner chạy nuôi feed (`multi-machine-feed-session`), follow (`tiktok-follow`), upload (`Tiktok-video`) **CHỈ ĐỌC TRỰC TIẾP `taikhoan_run_safe.xlsx`** theo số máy và Row (1..6) tương ứng để thực thi trên máy thật. CẤM tự chế thêm tầng trung gian phức tạp làm cản trở quá trình chạy.
 
 - **CẤU HÌNH LỊCH CRON PARITY LANES & LỘ TRÌNH WARMUP NICK MỚI (Row 5 & 6) (2026-09-01)**:
@@ -430,7 +564,127 @@ Kèm switch `-ResumeVerifyExisting` → truyền `--resume-verify-existing` cho 
 
   row2→Tik2, row3→tik3). Khi user đề xuất gom: giải thích 2 lý do trên, giữ 3 file.
 
+- **MÔ HÌNH VẬN HÀNH 6 ACC/MÁY (User quy chuẩn 2026-09-08)**:
+  - Farm 80 máy × 6 acc = 480 acc/đợt. Mỗi máy chạy 3 ca/ngày (1 acc/ca), luân phiên ngày chẵn (Slot 1, 2, 3) và ngày lẻ (Slot 4, 5, 6) để mỗi acc hoạt động cách ngày (2 ngày/lần).
+  - Nuôi 60–80 ngày (đăng 30–40 video) + follow chéo nội bộ để cán mốc 1,000 follow an toàn trước khi xuất bán và reset máy về mặc định.
+  - Khi máy đã đủ 6 ID TikTok, detector `_detect_clean.py` BẮT BUỘC loại bỏ máy, không cấp thêm mail reg.
+
+- **PITFALL TRÙNG MAIL NGUỒN & DEFERRED DEDUP GHI ĐÈ EXCEL (Root cause 2026-09-08, ref: `references/cross-machine-duplicate-email-and-deferred-tracking-dedup.md`)**:
+  - Khi 1 email bị gán trùng cho 2 máy trong kho nguồn (`gmail_clean_v2.xlsx`), nếu máy B chạy sau đăng nhập/reg trúng email máy A đã reg (chưa kịp merge deferred JSON), cả 2 máy sẽ cùng giữ 1 nick.
+  - Tool merge `apply_deferred_tracking_results.py` dedup theo `written_at` mới nhất sẽ ghi đè row máy B lên Excel và bỏ rơi máy A, gây lệch pha dữ liệu và kịch trần 8 acc trên app.
+  - Khi phát hiện 2 máy cùng chứa 1 acc: BẮT BUỘC dừng lại báo cáo User chỉ đạo, không tự ý sửa.
+
+- **BẪY LỆCH CHỈ SỐ HÀNG VẬT LÝ EXCEL VS FOLDER VIDEO (PHYSICAL ROW = FOLDER VIDEO + 1, Hit 2026-09-21)**:
+  - **Triệu chứng & Cạm bẫy**: Khi điều tra log/báo cáo hoặc ghi nhận "Row 211 bị đè, Row 215 còn trống", người vận hành thường nhắc đến **số `Folder Video` (Cột B)** chứ KHÔNG PHẢI chỉ số hàng vật lý 1-based của Excel.
+  - **Công thức bất biến**:
+    $$\text{Folder Video} = (m - 1) \times 8 + k$$
+    $$\text{Excel Physical Row} = 1 + \text{Folder Video} = 1 + (m - 1) \times 8 + k$$
+    (với $m$ là số Máy 1..80, $k$ là Slot 1..8).
+  - **Hậu quả nếu nhầm lẫn**: Truy cập nhầm `ws.cell(211, ...)` thay vì `ws.cell(212, ...)` sẽ thao tác lệch 1 hàng lên slot phía trước (Slot 2 thay vì Slot 3), dẫn đến ghi đè nhầm tài khoản đang sống và làm hỏng toàn bộ cấu trúc dữ liệu của farm.
+  - **Quy tắc bắt buộc**: Trước khi đọc/ghi theo số "Row" được báo cáo, luôn kiểm tra giá trị Cột A (`Máy`) và Cột B (`Folder Video`). Nếu `ws.cell(r, 2).value != folder_target`, phải dừng lại và quy đổi lại theo công thức chuẩn `r = folder_target + 1`.
+
+- **HARD GUARD CHỐNG GHI ĐÈ TÀI KHOẢN TRONG RUNNER & DEFERRED WRITER (Hit 2026-09-21, hoàn thiện chặn cả khi mail cũ trống)**:
+  - **Bối cảnh**: Khi nạp nick reg mới từ file kết quả deferred tracking (`scripts/deferred_tracking_writer.py`) hoặc chạy trực tiếp (`social_reg_v1.py` hàm `upsert_tracking_account`), nếu logic resolve nhầm sang hàng đã có nick hoặc bị lệch hàng, code có thể vô tình ghi đè nick mới lên nick cũ đang sống (làm mất ID/Pass TikTok của acc cũ).
+  - **LỖ HỔNG CẦN TRÁNH**: Điều kiện cũ `if (existing_id or existing_pass) and (existing_mail and existing_mail != new_mail):` sẽ bị `False` khi hàng cũ đã có ID/Pass nhưng ô email cũ đang trống (`existing_mail` là `""` hoặc `None`), dẫn đến việc vẫn ghi đè làm mất ID/Pass cũ!
+  - **Cơ chế Hard Guard bắt buộc (Đúng chuẩn)**:
+    1. Trước khi gán mảng `values` vào hàng mục tiêu (`check.row` hoặc `target_row`), BẮT BUỘC đọc trước giá trị hiện có: `existing_id`, `existing_pass`, `existing_mail`.
+    2. Điều kiện chuẩn: `if (existing_id or existing_pass) and (not existing_mail or existing_mail != incoming_mail):` (đã có ID hoặc Pass, mà email cũ TRỐNG HOẶC email cũ KHÁC email mới $\rightarrow$ CHẶN NGAY LẬP TỨC):
+       + Trong `deferred_tracking_writer.py`: Lập tức chặn ghi và trả về `TrackingWriteResult("BLOCKED_DATA_CONFLICT", blocker=f"OVERWRITE_REJECTED_EXISTING_ACCOUNT_{existing_id}_{existing_mail}")`.
+       + Trong `social_reg_v1.py`: Raise ngay `RuntimeError(f"CRITICAL_OVERWRITE_PREVENTED: Cannot overwrite existing account @{ex_row_id} ({ex_row_mail}) at row {target_row} with new email {incoming_mail}")`.
+    3. Quy tắc này đảm bảo fail-closed tuyệt đối: chỉ cho phép ghi vào hàng hoàn toàn trống hoặc hàng đã có đúng email đó đăng ký trước đó (trường hợp cập nhật thông tin bổ sung cho cùng 1 email).
+    4. Unit test bắt buộc: Phải luôn có 2 unit test kiểm tra chặn ghi đè khi email cũ trống cho cả deferred writer và upsert tracking trong `tests/test_machine_full_8_acc.py`.
+  - **CẢNH BÁO MÁY ĐÃ ĐỦ 8 NICK NHƯNG EXCEL THIẾU (USER INVARIANT 2026-09-21)**:
+    - Khi script chạy reg bù mà phát hiện máy đã đủ 8 nick trên app TikTok (`_acc_count >= 8` / `MACHINE_FULL_8_ACCOUNTS`), nhưng Excel vẫn còn slot trống (do nick cũ chưa backfill hoặc lệch mapping):
+    - TUYỆT ĐỐI CẤM im lặng bỏ qua hoặc tự ý xóa nick cũ để reg đè.
+    - BẮT BUỘC báo ngay về Telegram: `"Máy đã đủ 8 acc (Lệch Excel - Cần kiểm tra backfill)"` để user kiểm tra, truy vết info nick trên máy và backfill vào Excel.
+
+- **CỐ ĐỊNH ĐỌC SHEET `'Tài Khoản'` (CÓ DẤU)**: Khi đếm acc/slot trong `taikhoan_dat_v2_updated .xlsx`, CẤM dùng `_active_worksheet` (dễ đọc nhầm sheet user lưu gần nhất); BẮT BUỘC đọc đích danh sheet `'Tài Khoản'`.
+
+- **QUY CHUẨN CỘT 'NGÀY TẠO' VÀ UPLOAD COOLDOWN GATE (2026-09-21)**:
+  - **Cấu trúc 10 cột Master DAT (`taikhoan_dat_v2_updated .xlsx`)**:
+    `0: Máy`, `1: Folder Video`, `2: ID`, `3: PASS`, `4: 2FA`, `5: GMAIL`, `6: PASS MAIL`, `7: NGÀY THÁNG NĂM SINH`, `8: NGÀY TẠO` (Cột I trong Excel), `9: device ID`.
+  - **Cơ chế Upload Cooldown (`upload_preflight.py`)**:
+    + Slot 1..4 (Row 1..4): Mặc định là nick cũ trưởng thành -> luôn Pass cooldown.
+    + Slot >= 5 (Tik5, Tik6...): Bắt buộc kiểm tra `NGÀY TẠO`. Nếu ô trống (`None`/rỗng) hoặc unparseable $\rightarrow$ hệ thống kích hoạt fail-closed `account_creation_date_unverifiable` và CHẶN UPLOAD toàn bộ các máy này.
+  - **Quy trình chuẩn khi backfill `NGÀY TẠO`**:
+    1. **Backup bắt buộc trước khi sửa**: Tạo bản sao an toàn (vd `.bak_<timestamp>_filldate`).
+    2. **Điều kiện lọc chuẩn**: Chỉ điền ngày tạo (vd `"2026-08-25"` để nick đủ tuổi và vượt qua chốt chặn benchmark) cho các dòng có Máy (1..80), Folder Video hợp lệ, và ID hợp lệ (khác `None`, rỗng, hoặc placeholder `ghjfghj`). Không điền vào các slot trống chưa có ID (`ID = None`).
+    3. **Bảo tồn tuyệt đối cấu trúc**: Tuyệt đối CẤM làm thay đổi bất kỳ ô nào ở 9 cột còn lại; tổng số dòng sheet `Tài Khoản` phải giữ nguyên 641 dòng (1 header + 640 dòng dữ liệu).
+    4. **Nghiệm thu & Đồng bộ**:
+       + Kiểm tra lại bằng `check_upload_cooldown_eligibility(machine, slot)`.
+       + Chạy ngay script đồng bộ: `python "D:/Taadaa/tiktok-luot nuoi acc/scripts/sync-safe-workbook.py"`.
+
+- **PITFALL: ĐIỀN DỒN SLOT TRỐNG KHI REG BÙ THEO CA (User Invariant 2026-09-12: "yêu cầu điền đsung row của nó")**:
+  - **Triệu chứng**: Ca nuôi chạy Row 6 thiếu tài khoản, kích hoạt reg bù (`ensure_row_accounts.py 6`). Trên các máy mà slot trước đó cũng trống (như Máy 80 trống cả Row 5 và Row 6), thuật toán lấp đầy tuần tự (first-empty slot) đã điền nick mới vào Row 5 thay vì Row 6. Hậu quả là Row 6 vẫn `None`, ca nuôi Row 6 tiếp tục báo lỗi `account row 6 is empty, skipping`.
+  - **Quy tắc bất biến**:
+    1. Reg bù phục vụ ca nào (Row K / Slot K) thì BẮT BUỘC điền chính xác vào Row K của máy đó trong `taikhoan_dat_v2_updated .xlsx` (dòng `(m-1)*8 + K`) và `taikhoan_run_safe.xlsx`.
+    2. TUYỆT ĐỐI CẤM điền dồn lấp các slot trống phía trước nếu chưa đến ca của slot đó.
+    3. Đối soát 2 chiều giữa `taikhoan_dat_v2_updated .xlsx` và `taikhoan_run_safe.xlsx` phải đảm bảo đúng index dòng `K` của máy đó nhận username vừa reg.
+
+- **PITFALL: MASTER WORKBOOK THIẾU HÀNG VẬT LÝ LÀM THẤT THOÁT NẠP NICK REG BÙ (Hit 2026-09-13: "Nới rộng ra mỗi máy có 8 hàng r ghi lại info acc vào")**:
+  - **Triệu chứng**: Khi reg bù thành công (sinh file tracking json `status: SUCCESS`), script `apply_results(row=7)` lại không thể merge thông tin nick vào `taikhoan_dat_v2_updated .xlsx` và `taikhoan_run_safe.xlsx`.
+  - **Nguyên nhân gốc rễ**: Toàn bộ farm có 80 máy, đa số (76 máy) đã có đủ 8 hàng vật lý. Tuy nhiên, một số máy (cụ thể M76, M77, M78, M79) trong quá khứ chỉ được khởi tạo 6 hàng (Row 1..6). Khi reg bù chạy cho Row 7 (Ca 4 ngày lẻ), logic `len(machine_slots[stt]) >= row` không thỏa mãn (`6 < 7`), dẫn đến việc script bỏ qua và không ghi nhận username vào file Excel.
+  - **Quy tắc bắt buộc khi nới rộng số hàng trên máy**:
+    1. **Bảo toàn chuẩn 8 hàng vật lý cho toàn bộ 80 máy**: Mọi máy trong `taikhoan_dat_v2_updated .xlsx` BẮT BUỘC có đúng 8 hàng liên tục (từ Row 1 đến Row 8).
+    2. **Gán Folder Video cho hàng mới**: Cần xác định Folder Video chưa sử dụng (`(m-1)*8 + slot`), không trùng lặp với các folder đã gán ở các slot trước.
+    3. **Ghi nhận ngay thông tin nạp bù**: Sau khi chèn hàng vật lý mới, lập tức nạp đầy đủ thông tin tài khoản từ file tracking deferred (ID, PASS, GMAIL, PASS MAIL, CREATED, device ID) vào đúng Row chỉ định.
+    4. **Đồng bộ Safe Sheet 1-writer**: Luôn chạy `sync-safe-workbook.py` với token `TAADAA_ALLOW_OVERWRITE_TOKEN` để build lại `taikhoan_run_safe.xlsx` đồng bộ 8 hàng cho 80 máy.
+    - Chi tiết playbook nới rộng M76..M79 và cập nhật tracking JSON: xem `references/m76-m79-eight-row-expansion-and-deferred-tracking.md`.
+
+- **PITFALL: TỔNG KẾT BATCH REG BÙ BỊ ĐẾM THIẾU DO TRỄ ĐỢT RUN & LỖI MAIL ĐÃ REG TIKTOK (Hit 2026-09-13)**:
+  - **Triệu chứng**: User thắc mắc "sao reg thành công có 2 máy", trong khi thực tế farm có nhiều máy được reg thành công hơn.
+  - **Nguyên nhân cốt lõi**:
+    1. **Tách nhiều sub-batch ngầm**: Preflight reg bù tách tối đa 20 máy/đợt. Đợt 1 (00:05) chỉ có 2 máy pass (M77, M78) do nhiều máy bị vướng mail cũ đã có TikTok hoặc timeout. Đợt 2 (01:22) được cron đêm tiếp tục chạy và đã reg **thành công thêm 11 máy** (`M1, M2, M8, M10, M12, M14, M15, M16, M17, M26, M29`). Nếu coordinator chỉ soi run đầu tiên sẽ báo thiếu 11 máy.
+    2. **Kho mail chưa lọc sạch**: 9/20 máy đợt 1 fail do mail trong kho `gmail_clean_v2.xlsx` đã từng được dùng đăng ký TikTok (`Tat ca 1 email da co TK TikTok`), khiến runner phải skip và cần mua bổ sung mail mới sạch hơn.
+  - **Quy tắc điều tra**: Khi user hỏi về số lượng reg thành công, BẮT BUỘC quét toàn bộ các run trong ngày (`artifacts/runs/social-batch-all/YYYYMMDD*`) để tổng hợp đầy đủ số lượng tích lũy, không dừng ở run đầu tiên.
+
+- **QUY TẮC CÁCH LY TỪNG ACC KHI MERGE KẾT QUẢ REG BÙ VÀO MASTER VÀ KÍCH HOẠT SYNC (User Rule 2026-09-14)**:
+  - **Bẫy thư mục run rỗng**: Khi scan `runtime/artifacts/runs/social-batch-all`, nếu chỉ bốc `dirs[0]` thì rất dễ dính phải các run retry hoặc crash dở dang (chứa 0 file json). BẮT BUỘC duyệt qua danh sách `dirs` và lấy thư mục gần nhất **thực sự chứa các file `tracking_result_*.json`**.
+  - **BẪY CO CỤM TUẦN TỰ (SPARSE PACKING) TRONG `sync-safe-workbook.py` LÀM RỖNG ROW 7/8 (Hit 2026-09-22)**:
+  - **Triệu chứng**: Chạy sync safe workbook cho Admin (`admin/taikhoan_run_safe.xlsx`) ra đủ 640 hàng, nhưng Row 7 và Row 8 có 0 valid accounts, trong khi Master DAT Admin (`taikhoan_dat_v2_updated .xlsx`) có 133 nick ở Slot 7/8 (56 nick Slot 7, 77 nick Slot 8).
+  - **Nguyên nhân cốt lõi**: `sync-safe-workbook.py` dùng vòng lặp `machine_entries[machine].append((serial, account_id))` rồi `entries[:8]`. Với file DAT thưa dòng như Admin (364 dòng thay vì 640 dòng cố định), máy chỉ có nick ở Slot 1, 7, 8 sẽ bị co cụm vào index 0, 1, 2 (Slot 1, 2, 3), đẩy các slot sau thành chuỗi rỗng (`""`), làm xóa trắng toàn bộ nick ở Row 7/8 và gây lệch ca chạy.
+  - **Công thức Slot bất biến (Invariant cho cả Kibe và Admin)**:
+    $$\text{slot} = ((\text{Folder Video} - 1) \pmod 8) + 1$$
+    *(Vì cả Kibe: `(m-1)*8+slot` và Admin: `(m-201)*8+slot` đều là bội số của 8)*.
+  - **Quy tắc bắt buộc khi sync Safe Workbook**:
+    1. CẤM gom tuần tự `list.append()`. BẮT BUỘC khởi tạo cố định mảng 8 phần tử cho mỗi máy: `machine_slots[m] = [{"serial": "", "account_id": ""} for _ in range(8)]`.
+    2. Đọc `Folder Video` (Cột B), tính `slot = ((folder - 1) % 8) + 1` và gán chính xác vào vị trí `machine_slots[m][slot - 1]`.
+    3. Đảm bảo đúng 8 dòng cố định đại diện cho 8 slot (1..8) theo đúng thứ tự vật lý trong `taikhoan_run_safe.xlsx`.
+
+- **BẪY SO SÁNH CỘT 2 VỚI SLOT (C2 == SLOT TRAP, Hit 2026-09-17)**:
+    + **Triệu chứng**: Reg bù thành công 28 nick cho Row 7 (sinh file `tracking_result_*.json` SUCCESS), nhưng `taikhoan_run_safe.xlsx` vẫn giữ nguyên 0 nick ở Row 7 cho 28 máy đó.
+    + **Nguyên nhân cốt lõi**: Trong `taikhoan_dat_v2_updated .xlsx`, Cột A (`c1`) là số Máy (1..80), nhưng Cột B (`c2`) là `STT_Tik` / `Folder Video` toàn cục (1..640), KHÔNG PHẢI số thứ tự slot 1..8! Đoạn code kiểm tra `c2 == slot` (vd `c2 == 7`) chỉ đúng duy nhất cho Máy 1 (Tik 1..8) và sai 100% cho Máy 2..80 (vd Máy 13 có Tik 97..104). Khi không khớp, script lầm tưởng chưa có dòng và tự động append acc mới xuống tận đáy sheet (dòng 642..669). Script `sync-safe-workbook.py` chỉ lấy 8 dòng đầu của máy (`entries[:8]`) nên 28 acc bị đẩy ở đáy bị bỏ sót hoàn toàn.
+    + **Quy tắc bắt buộc**: Tuyệt đối CẤM kiểm tra `c2 == slot`. Dòng vật lý trong sheet master của Máy `m`, Slot `k` (1..8) BẮT BUỘC tính bằng công thức toán học hoặc đếm vị trí dòng thứ `k` của máy đó:
+      $$\text{target\_row} = 1 + (m - 1) \times 8 + k$$
+      Đồng thời, **Cột 2 (STT Tik / Folder Video) BẮT BUỘC bảo toàn giá trị cũ** `ws_trk.cell(target_row, 2).value` hoặc fallback `(m - 1) * 8 + slot`, **TUYỆT ĐỐI KHÔNG ghi đè thành giá trị `slot` (như 7)**.
+  - **Cách ly từng account (Fault Isolation)**: Khi nạp danh sách tracking result vào `taikhoan_dat_v2_updated .xlsx`, BẮT BUỘC bọc quá trình parse JSON và ghi cell của từng máy trong một khối `try...except` riêng rẽ. Một file JSON bị lỗi format, data rác hay mailto CẤM làm crash toàn bộ loop nạp của các máy khác.
+  - **Khóa cứng vị trí dòng vật lý**: Dòng cần cập nhật trong Master Workbook luôn được tính chuẩn xác theo công thức:
+    $$\text{target\_row} = 1 + (m - 1) \times 8 + \text{slot}$$
+    (với $m$ là số máy / STT, và $\text{slot}$ là Row ca chạy $1..8$). Tuyệt đối không append thêm dòng ở cuối sheet làm lệch cấu trúc 640 dòng của 80 máy.
+  - **Kích hoạt đồng bộ Safe Sheet ngay sau khi lưu**: Sau khi `wb.save(TRACKING_WORKBOOK)`, tự động kiểm tra và chạy `taikhoan_sync_cron_launcher.py` (ưu tiên `AppData/Local/hermes/scripts` hoặc fallback OneDrive shared) để đồng bộ dữ liệu vừa nạp sang `taikhoan_run_safe.xlsx`.
+
+- **QUY TẮC ĐỒNG BỘ 3 NƠI CHO HERMES CRON SCRIPTS (2026-09-12)**:
+  - Khi bảo trì hoặc sửa lỗi các script chạy cron nuôi acc (`tiktok_runner.py`, `feed_session_watchdog.py`...):
+    1. Thư mục mã nguồn git: `D:\Taadaa\Hermes\deploy\hermes-home\scripts\`
+    2. Thư mục runtime thực thi trên máy Kibe: `C:\Users\Kibe\AppData\Local\hermes\scripts\`
+    3. Thư mục chia sẻ chung cho toàn farm trên OneDrive: `D:\OneDrive\Taadaa_Sync_Shared\hermes-cron\scripts\`
+    BẮT BUỘC đồng bộ đồng nhất cả 3 nơi. Nếu chỉ commit git mà không copy sang `AppData\Local\hermes\scripts`, scheduler sẽ tiếp tục chạy code cũ (stale runtime).
+  - Trong cron runner, mọi lệnh gọi subprocess python bổ trợ BẮT BUỘC dùng `target_python()` (`D:\Taadaa\python-envs\automation\Scripts\python.exe`), cấm gọi `sys.executable` vì venv của Hermes không cài `openpyxl`.
+
+- **QUY TRẮC TRÍCH XUẤT SERIAL TRONG `sync-safe-workbook.py` (Chống Bốc Nhầm Cột Pass/Mail làm Serial Máy, Hit 2026-09-13)**:
+  - **Hiện tượng**: Khi cột `device ID` (cột 10) trong `taikhoan_dat_v2_updated .xlsx` bị điền nhầm chuỗi ngày tháng (vd: `23/08/2026`), nếu loop quét tự do qua mọi cell của row sẽ bốc trúng cột `PASS MAIL` (`Emma2004wOjd`, `d93310aa`...) thỏa mãn regex `SERIAL_PATTERN`, làm `taikhoan_run_safe.xlsx` ghi nhận 2 serial cho 1 máy và khiến `gmail_reg_v10.py` văng ngay: `RuntimeError: Device map has conflicting valid serials for machine(s): 1, 2, ... 80`.
+  - **Quy tắc chuẩn hóa**: CẤM quét mù qua các cột tài khoản (pass, 2fa, mail). Chỉ kiểm tra cột serial danh định (`serial_col`) hoặc cột liền kề phía sau (`serial_col + 1` / cột 11) khi bị lệch do cột ngày chèn vào, kết hợp fallback `EXTRA_MACHINES` và `series.txt`.
+
+- **QUY TẮC CÚ PHÁP CLI RUNNER TIKTOK 2FA (`run_batch_live_2fa.py`) TRONG WATCHDOG (Hit 2026-09-13)**:
+  - Lệnh gọi batch live 2FA từ script watchdog sau ca trưa/tối bắt buộc dùng cờ `--live` và `--max-workers <N>`:
+    `python run_batch_live_2fa.py --live --max-workers 10`
+  - TUYỆT ĐỐI CẤM truyền cờ bịa `--all-online` hoặc `--workers` (sẽ bị `argparse` quăng lỗi cú pháp Exit Code 2 làm dừng toàn bộ chuỗi).
+
 - `taikhoan_dat_v2_updated .xlsx` — DẤU CÁCH trước .xlsx; dùng sai path fail ngay.
+
+- **ADB & CỤM PHONE FARM TRÊN MÁY KIBE (2026-09-13)**:
+  - Binary `adb.exe` chuẩn nằm tại `C:\Users\Kibe\.GemPhoneFarm\app\adb-tool\adb.exe` (không có trong PATH hệ thống). Khi thực thi ADB lệnh đơn qua Python/Terminal, luôn resolve binary từ đường dẫn này nếu `which adb` trả về `None`.
+  - Thiết bị và row trong `taikhoan_dat_v2_updated .xlsx`: Cột J (`device ID`) chứa hardware serial chuẩn của thiết bị. Ví dụ Máy 46 có serial `ce0916092531413504`, tương ứng Row 362 (Slot 2 của M46).
 
 - Sheet REG: `Tài Khoản` (có dấu). Sheet file Tik: `TaiKhoan` (không dấu).
 
@@ -483,10 +737,53 @@ Kèm switch `-ResumeVerifyExisting` → truyền `--resume-verify-existing` cho 
   3. **Ảnh độc lập**: chụp profile thật trước/sau, so danh sách tile bằng vision — phải thấy tile MỚI xuất hiện (user từng yêu cầu "Gửi hình ảnh xem"). Lưu ý mở profile: tab Hồ sơ = (972,1883); tap (540,1840) là nút + → mở composer, KHÔNG phải profile.
 
 - Chi tiết đầy đủ sự cố + cách dọn state để retry: `references/m74-verify-false-positive-20260812.md`.
+- Quy trình thay thế / reseed nội dung nick bị dính gậy, toxic comment, nhạy cảm: `references/quick-reseed-playbook.md` và `references/reseed-nick-content.md`.
+- Sự cố trùng avatar giữa các Row do xung đột namespace folder video vs video gốc trong `path_resolver.py` & quy tắc resolve avatar chuẩn: `references/avatar-namespace-conflict-and-resolver-rules-20260911.md`.
+- Sự cố lệch dòng c2==slot trong apply_results nạp acc xuống đáy sheet master và quy trình reconcile 28 acc Row 7: `references/c2-slot-trap-and-deferred-merge-reconcile-20260917.md`.
+- Sự cố Nick mồ côi do bị ghi đè slot trong Master DAT khi nạp reg bù (`ahmetsguthe17` Máy 1) & quy trình điều tra backup khôi phục: `references/orphan-account-dat-overwrite-and-recovery.md`.
+- Sự cố trùng kênh nguồn giữa các folder do lọt gate trong `download_by_niche.py` (chỉ check bảng `folders` bỏ sót bảng `videos`) & quy tắc khóa chặt UNION check: `references/source-channel-collision-and-downloader-gate.md`.
+- Playbook điều tra và xử lý sự cố Preflight Reg Bù ném lỗi `[04_add_account] MACHINE_FULL_8_ACCOUNTS` (máy trên app đã đủ 8 nick nhưng Excel bị sót dòng None): `references/preflight-reg-bu-machine-full-8-accounts-triage.md`.
+- Quy chuẩn phát hiện máy đủ 8 acc (resource-id `ndk`), Hard Guard chống ghi đè tài sản và cảnh báo Telegram Lệch Excel Backfill: xem `references/machine-full-8-accounts-mismatch-and-alert-protocol.md`.
+- Quy tắc cảnh báo máy đủ 8 nick lệch Excel về Telegram & Hard Guard chống ghi đè tài sản (kể cả khi mail trống): `references/machine-full-8-acc-mismatch-and-hard-overwrite-guard.md`.
+- Quy chuẩn audit và sửa lệch ánh xạ Video Gốc giữa các workbook Tik1..Tik8 tránh trùng nguồn video: `references/cross-workbook-video-goc-audit-and-parity.md`.
+- Quy chuẩn 1 Folder = 1 Kênh duy nhất, giải mã hiện tượng đa kênh trong folder từ dữ liệu lịch sử tháng 8 & kỹ thuật kiểm tra 0 duplicate video: `references/single-channel-per-folder-and-source-collision-triage.md`.
+- Quy chuẩn mở rộng Tik 7 & Tik 8, auto-sync keyword/hashtag toàn diện (All Tik 1..8) từ state.db và nguyên tắc báo cáo Farm Alert sau ca tối: `references/tik7-tik8-all-tik-keyword-sync-and-avatar-alert.md`.
+- Gắn up-avatar ngay sau reg thành công trong Tiktok_Reg & xử lý phôi trắng Slot 7/8: `references/reg-success-avatar-attachment-rules.md` (Module chuẩn `avatar_after_reg.py` + tests `test_avatar_after_reg.py`).
 - Thiết kế hook đăng video phiên cuối mỗi ca (Preflight Gate, verify nick, video integrity, Parity snapshot): `references/feed-shift-upload-hook-pattern.md`.
 - Xử lý lỗi lệch nick switcher (`account-switcher-missing-expected`), swap nick Excel và sửa lệch cột DAT (Case Máy 10): `references/account-switcher-missing-expected-and-serial-shift-recovery.md`.
+- Xử lý TikTok Account Switcher Placeholder Alias (`user<digits>`), lệch cột Cột 10/11 DAT và xử lý Stale Post Receipt dở dang (`POST_SUBMISSION_UNKNOWN`): `references/account-switcher-placeholder-alias-and-stale-receipt-triage.md`.
+- Xử lý placeholder alias TikTok (`user<digits>`), chuẩn hóa lệch Cột 10/11 Master DAT và dọn stale post attempt receipt (Case Máy 3): `references/account-switcher-placeholder-and-stale-receipt-recovery.md`.
+- Chuẩn hóa fallback 3-tier cho `atomic_workbook_update` (import, dynamic path, atomic lock, backup, retry Windows PermissionError, BytesIO in-memory read & fallback `.bak`): `references/atomic-workbook-update-fallback-pattern.md`.
+- Kỹ thuật atomic write & backup `.bak` cho `sync_all_tik_keywords.py` và quy tắc deploy 3 vị trí (local, git deploy, OneDrive cron): `references/atomic-workbook-update-fallback-pattern.md`.
+- Quản lý Avatar hợp nhất chéo host Kibe (1..80) & Admin (201..280), Single Source of Truth từ TikTok Tracker Dashboard và cơ chế tự động đối chiếu số máy (Auto-Resolve Machine ID): xem `references/unified-cross-host-avatar-management-and-machine-mapping.md`.
+- Phương pháp kiểm toán tài khoản toàn Farm Kibe & Admin và tính toán nhu cầu mua Hotmail Graph API bù theo chuẩn 8 acc/máy: xem `references/farm-wide-account-audit-and-hotmail-procurement-20260919.md`.
+- Hướng dẫn điều tra & quét cảnh báo sớm đứt gãy chuỗi video tuần tự (`video_not_rendered` / `Video Đã Đăng + 1`): xem `references/video-render-sequence-gaps-triage.md`.
+- Chi tiết kiến trúc phân lập Sổ cái Vận hành vs Danh bạ Follow gộp toàn Farm Kibe & Admin (`taikhoan_run_safe_combined.xlsx`), phán quyết của Sol và Hard Gate Anchor Mode 2: xem `references/unified-safe-workbook-vs-separated-operational-workbooks.md`.
+- Sự cố ghi đè xóa nick cũ khi nạp deferred apply, cơn thịnh nộ tài sản user, kết quả đối soát 27 nick bị mất và quy trình khôi phục: xem `references/deferred-apply-overwrite-incident-and-account-restoration-20260921.md`.
+- Công thức chuẩn Folder Video cụm Admin (1..640 theo `(STT-201)*8+Slot`), giải mã dị biệt folder 2106/2108 và cơ chế Hard Guard chống ghi đè: xem `references/admin-folder-video-formula-and-anti-overwrite-guards-20260921.md`.
+- Quy trình chuẩn hóa Folder Video Admin Master từ Tik1..Tik8 và đồng bộ sang taikhoan_run_safe_combined.xlsx: xem `references/admin-master-folder-video-reconciliation-and-safe-sync.md`.
+- Sự cố co cụm tuần tự (Sparse Packing) trong `sync-safe-workbook.py` làm trôi dạt Slot & rỗng hoàn toàn Row 7/8 (133 nick Admin bị trôi): xem `references/sync-safe-workbook-slot-sparse-packing-pitfall.md`.
+- Sự cố bảng tĩnh `farm_account_info` làm mất badge số máy trên Dashboard & OneDrive Dehydration (Errno 22) làm sót cụm Admin: xem `references/dashboard-farm-account-info-sync-and-onedrive-dehydration-triage.md`.
+- **QUY TRÌNH CHUẨN DỌN DẸP SLOT DUPLICATE TRÊN MASTER DAT & ĐỒNG BỘ COMBINED SAFE (2026-09-23)**:
+  1. **Tạo backup an toàn**: Trước khi can thiệp, sao lưu `taikhoan_dat_v2_updated .xlsx` thành `.bak_clean_duplicates_<timestamp>.xlsx` và kiểm tra dung lượng/tồn tại.
+  2. **Quy tắc reset cột tài khoản (Columns C..I)**:
+     - Khi phát hiện slot duplicate (trùng nick giữa 2 slot/folder): chỉ reset trắng các cột thông tin tài khoản: Cột C (`ID`), D (`PASS`), E (`2FA`), F (`GMAIL`), G (`PASS MAIL`), H (`NGÀY THÁNG NĂM SINH`), I (`NGÀY TẠO`) về `None`.
+     - **BẢO TOÀN TUYỆT ĐỐI**: Cột A (`Máy`), Cột B (`Folder Video`), và Cột J (`device ID`). CẤM xóa dòng vật lý hay làm xô lệch cấu trúc 640 hàng của 80 máy.
+     - Bảo toàn nick gốc tại slot trước đó nguyên vẹn.
+  3. **Chuỗi đồng bộ 2 bước bắt buộc**:
+     - Bước 1: Chạy `python "D:\Taadaa\tiktok-luot nuoi acc\scripts\sync-safe-workbook.py"` để rebuild `D:\OneDrive\TaadaaData\kibe\taikhoan_run_safe.xlsx` từ Master DAT.
+     - Bước 2: Chạy `python D:/Taadaa/tools/sync_combined_safe_workbook.py` để đồng bộ cả Kibe (1..80) và Admin (201..280) sang `D:\OneDrive\TaadaaData\taikhoan_run_safe_combined.xlsx`.
+  4. **Post-verify**: Đọc lại workbook kiểm tra các ô C..I của slot duplicate đã `None`, nick ở slot gốc vẫn nguyên vẹn, và số lượng active UIDs trên file combined khớp kỳ vọng.
 
 - **Đường dẫn workbook là acceptance data**: live m74 dùng `D:\OneDrive\TaadaaData\kibe\Tik1.xlsx`; không dùng file legacy `D:\OneDrive\Tiktok\Tik1.xlsx` để kết luận. Nếu report nói đã update nhưng workbook đọc khác path còn cũ, phải reconcile path trước khi báo.
+
+- **KỶ LUẬT TUYỆT ĐỐI KHI PREFLIGHT VALIDATOR / SYNC CRON BÁO LỖI DUPLICATE/CONFLICT**:
+  - **CẤM BẢO USER TỰ SỬA**: Tuyệt đối không bao giờ thông báo cho user "chờ anh xử lý file Excel", "sửa lại 1 trong 2 file Excel để sync chạy tiếp". Hành vi này gây bức xúc nghiêm trọng ("Đkm", "Sửa cho tao").
+  - **BẮT BUỘC CHỦ ĐỘNG TRACE & FIX**:
+    1. Trích xuất exact `(machine, slot, file)` từ validator.
+    2. Tra cứu `tiktok_tracker.db` (`snapshots`, `account_mapping`, `farm_account_info`) + `session_search` để tìm nick chính chủ của email đó.
+    3. `curl` TikTok profile để phân loại: Nick LIVE có video/follower -> khôi phục ID chính chủ; Nick NOT FOUND (10221) -> email copy trùng, reset về `None`.
+    4. Sao lưu timestamp, patch cả DAT và `tikN.xlsx`, chạy `excel_preflight_validator.py --exit-on-error` đạt PASS rồi kích hoạt sync cron bù. Xem chi tiết: `references/excel-preflight-validator-conflict-resolution.md`.
 
 - Nếu post tap timeout hoặc verify lạc surface (LIVE/profile khác), trạng thái là `UNKNOWN`/`MANUAL_REVIEW`; không repost mù, không tăng workbook thủ công.
 
@@ -544,7 +841,8 @@ Session detail and the reusable scoped-runner pattern are documented in `referen
 
   `export CODEX_DEVICE_LOCK_DIR='/c/Users/Kibe/.codex/device-locks'` (default dir tồn tại) + `-AssignmentManifest` + `-WorkerId` = `owner_id` của manifest.
 
-- Máy 38: CẤM đụng tuyệt đối — luôn chừa ra khỏi mọi manifest/batch (kể cả khi nó "chưa làm").
+- **CẢNH BÁO BẪY LOẠI TRỪ MÁY 38 TOÀN CỤC (User Correction 2026-09-06: "Tự nhiên bỏ qua 38. 38 nãy up cho tik4 chứ lq gì tik 5 6")**:
+  Việc chừa Máy 38 trước đây chỉ áp dụng cho một batch riêng lẻ của Tik4 (khi máy đang giữ hiện trường/chờ xử lý). CẤM TUYỆT ĐỐI tự suy diễn thành quy tắc cấm toàn cục trên farm cho mọi slot/ca khác. Khi chạy Tik1..Tik3, Tik5, Tik6 hay các lượt avatar/feed chung, Máy 38 vẫn là thiết bị hợp lệ trong hệ thống và phải được chạy bình thường.
 
 - **PITFALL "chạy với lock xong không thấy lock file" — ĐÓ LÀ BÌNH THƯỜNG**: với core policy
 

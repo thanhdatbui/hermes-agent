@@ -14,6 +14,7 @@
 import time
 import urllib.request
 import email.utils
+import calendar
 import pyotp
 
 def get_google_server_utc_time() -> float:
@@ -22,11 +23,10 @@ def get_google_server_utc_time() -> float:
         req = urllib.request.urlopen("https://www.google.com", timeout=3)
         date_header = req.headers.get("Date")
         if date_header:
-            return time.mktime(email.utils.parsedate(date_header))
+            return calendar.timegm(email.utils.parsedate(date_header))
     except Exception:
         pass
-    # Fallback: nếu hệ thống lệch +7h (25200s)
-    return time.time() - 25200
+    return time.time()
 
 def generate_google_totp(secret_key: str) -> str:
     """Sinh mã 2FA Google Authenticator chuẩn xác tuyệt đối theo giờ Google."""

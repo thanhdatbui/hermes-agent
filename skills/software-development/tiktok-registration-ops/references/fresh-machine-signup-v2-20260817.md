@@ -146,13 +146,19 @@ liên hoặc linh gì đó". `make_tiktok_name(email)`:
 3. Không có map → giữ prefix (hoa chữ đầu); quá ngắn → fallback random `_VI_NAME_FALLBACK`.
 Test: 8 email thật → tên gọn tiếng Việt. Rule: KHÔNG dùng cả username dài.
 
-## ACCOUNTS hardcode — bắt buộc thêm STT mới
+## ACCOUNTS hardcode & Fallback resolve device cho STT mới / STT 201+ (Admin farm)
 
-`social_reg_v1.py` tra `ACCOUNTS` (list dict stt→device) chứ KHÔNG đọc workbook
-cho việc resolve device. Detector `_detect_clean.py` ra target (kể cả STT 75-80)
-nhưng script `Không có STT 75` exit 1 nếu thiếu entry. Thêm máy → thêm
-`{"stt": N, "device": "<serial>", "email": "", "pass": ""}` vào list.
-Grep check: `grep -n '"stt": *75' social_reg_v1.py`.
+Trước đây `social_reg_v1.py` chỉ tra `ACCOUNTS` (hardcode STT 1..80 của máy Kibe)
+khiến máy Admin (STT 201..280+) bị văng `Không có STT 201` exit 1.
+Từ fix commit `3fd3f51`, hàm `resolve_account_for_stt` hỗ trợ fallback động:
+1. Tra cứu `ACCOUNTS` (dải STT legacy 1..80).
+2. Nếu không thấy, dùng `target_device` nếu được truyền qua CLI (`social_reg_v1.py <serial> <stt>`).
+3. Nếu không có CLI serial, tự động fallback resolve device từ `TARGET_INVENTORY_WORKBOOK`
+   qua `scripts.target_inventory.resolve_machine_device(stt, TARGET_INVENTORY_WORKBOOK)`.
+4. Tạo `acc = {"stt": stt, "device": resolved_device, "email": preferred_email or "", "pass": ""}`.
+   Chỉ exit 1 khi cả 2 nguồn đều không tìm thấy device.
+5. Tiến trình `_process_mentions_known_target` cũng tự nạp `load_machine_devices(TARGET_INVENTORY_WORKBOOK)`
+   để nhận diện process dải STT 201+ trong preflight concurrency gate.
 
 ## ⚠️ OTP field `enabled="false"` — root cause kẹt OTP mãi (live máy 75, chiều 2026-08-17)
 

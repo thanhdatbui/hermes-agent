@@ -1,14 +1,14 @@
 # 9Router Plan-Review Routing — Session Evidence
 
-**Session:** 2026-09-03 (Farm Alert Machine 10 tiktok-follow fix)
+**Session:** 2026-09-03 (Farm Alert Machine 10 tiktok-follow fix) & 2026-09-04 (Machine 45 Case UI-46 follow fix)
 
 **Route Used:** `plan-review` via 9Router (port 20128)
 
-**Model Identifier:** `plan-review` (served by 9Router, not session model)
+**Model Identifier:** `plan-review` (served by 9Router, resolved to `claude-opus-4-6-thinking`)
 
 **Transport:** HTTP POST to `http://127.0.0.1:20128/v1/chat/completions` with `Authorization: Bearer <9router_api_key>`
 
-**Payload:** `model: "plan-review"`, `stream: false`, `tools: []`, `tool_choice: "none"`, `temperature: 0.1`, diff-scoped payload (git diff of follow_runner/flows/ and follow_runner/tests/ only)
+**Payload:** `model: "plan-review"`, `stream: false`, `tools: []`, `tool_choice: "none"`, `temperature: 0.1`, diff-scoped payload (git diff of follow_runner/flows/, follow_runner/tests/, docs/ only)
 
 **Response:** Parseable format:
 ```
@@ -22,6 +22,7 @@ FINDINGS:
 1. Requested model `plan-review` → 9Router returned parseable verdict → ✓
 2. 9Router served the requested route (no silent downgrade to Luna/Flash) → ✓
 3. Verdict bound to exact staged candidate bytes (git diff) → ✓
+4. Handled round 1 findings (redundant bounds condition, defense-in-depth bounds on header action matching) -> refined candidate -> round 2 returned `VERDICT: APPROVED`.
 
 **Anti-Pattern Avoided:** Did NOT use `cx/gpt-5.6-luna` or `ag/gemini-3.7-flash-high` (session/implementation models) as auditor. Worker/subagent audit is diagnostic only, never satisfies plan-review gate.
 

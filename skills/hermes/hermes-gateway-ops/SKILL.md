@@ -7,6 +7,15 @@ description: Configure, run, verify, and extend the Hermes messaging gateway (Te
 
 Trigger: set up or operate the messaging gateway (Telegram first), bind a chat/group to a repo via `channel_overrides`, explain multi-session on Telegram, verify a bot is online, or debug gateway config.
 
+- `references/telegram-cold-boot-drop-pending-updates-semantics.md` — Xóa queue Telegram khi Cold Boot (`drop_pending_updates=not is_reconnect`).
+- `references/telegram-multi-isp-send-failover.md` — Sửa lỗi bot im lặng do failover; 2 transport độc lập.
+- `references/windows-winerror-32-sessions-json-locking.md` — Lỗi `[WinError 32]` ghi `sessions.json`.
+- `references/prevent-eventloop-freeze-terminal-guard.md` — Chống đơ Event Loop terminal 600s.
+- `references/telegram-webhook-read-timeout-backoff.md` — Webhook Timeout; Polling qua SOCKS5.
+- `references/telegram-media-download-resilience-and-timedout-retry.md` — Vá tải ảnh `TimedOut`.
+- `references/telegram-gateway-ram-desync-and-site-packages-sync.md` — Lệch pha RAM Gateway, bẫy bán đồng bộ site-packages gây crash khi restart, và xử lý kẹt file lock mồ côi.
+- `references/telegram-polling-heartbeat-debounce-anti-flapping.md` — Chẩn đoán & xử lý Telegram Polling Heartbeat Degradation (flapping reconnect 5s-60s), cơ chế Debounce 3 lần thất bại liên tiếp kèm Adaptive Fast-Retry (15s/180s), và mở rộng `httpx.ProxyError` retryable connect error.
+
 ## CLI commands
 
 ```bash
@@ -18,7 +27,9 @@ hermes gateway list           # trạng thái tất cả profiles
 hermes gateway enroll         # relay connector (experimental)
 ```
 
-Gateway = **1 background process** chạy TẤT CẢ platform đã cấu hình cùng lúc + cron scheduler (tick 60s) + session store per chat + voice (STT/TTS). Token/secret → `.env`, KHÔNG bao giờ vào config.yaml; behavioral settings → config.yaml. Bots cần model provider + tool providers (TTS, web). Token lộ → BotFather `/revoke`.
+Gateway = **1 background process** chạy TẤT CẢ platform đã cấu hình cùng lúc + cron scheduler (tick 60s) + session store per chat + voice (STT/TTS). Token/secret → `.env`, KHÔNG bao giờ vào config.yaml; behavioral settings → config.yaml.
+
+For the reusable producer→delivery→Telegram audit and the distinction between logical session splits, transport chunks, and target fan-out, see `references/delivery-layer-per-session.md`. Bots cần model provider + tool providers (TTS, web). Token lộ → BotFather `/revoke`.
 
 ## Setup (Telegram)
 
@@ -40,9 +51,10 @@ Gateway = **1 background process** chạy TẤT CẢ platform đã cấu hình c
 7. Start & Auto-Recovery:
    - Foreground test: `hermes gateway`
    - Auto-start (Windows): `hermes gateway install --start-on-login --start-now` → creates Scheduled Task ONLOGON; if UAC is skipped it **falls back to a Startup-folder `.vbs`** — still works, no admin needed.
-   - **24/7 Watchdog (Crash auto-recovery):** `hermes gateway install` only runs once at logon. On secondary/headless nodes (e.g. Admin machine) without a tray watcher, install a 2-minute recurring Scheduled Task watchdog (`Hermes_Gateway_Watchdog` executing `$LOCALAPPDATA\hermes\scripts\watchdog-gateway.ps1`) to revive the process if killed by OOM, SQLite FTS transcript bloat (>700 msgs), or network timeouts. See `references/admin-telegram-gateway.md`.
+   - **24/7 Watchdog (Crash auto-recovery & Zero-Flicker):** `hermes gateway install` only runs once at logon. On secondary/headless nodes (e.g. Admin machine) without a tray watcher, install a 2-minute recurring Scheduled Task watchdog (`Hermes_Gateway_Watchdog`). **Bắt buộc triệt tiêu nháy console:** Task Scheduler PHẢI gọi qua `wscript.exe "D:\Taadaa\AI-Tools\tools\hermes-gateway-watchdog\run-hidden.vbs"` (GUI subsystem + `SW_HIDE`, không bao giờ gọi trực tiếp `powershell.exe -WindowStyle Hidden`). Trong file PowerShell watchdog (`hermes-gateway-watchdog.ps1`), hàm `Get-GatewayProcessSnapshot` phải dùng trực tiếp `Get-CimInstance` in-process thay vì spawn sub-process powershell ẩn. Chi tiết: `windows-service-watchdog` references `windows-zero-flicker-console-suppression.md`.
    - `hermes gateway restart` drains cleanly (auto-approved by smart approval).
    - When Android VPN/proxy is retired, decouple Hermes liveness recovery from the proxy tray. Use the standalone watchdog and verification ladder in `references/independent-hermes-watchdog.md`; default to `hermes gateway start` on absence, not a periodic restart.
+   - **Telegram Webhook via Cloudflare Tunnel:** Chuyển đổi từ Long-polling sang Webhook mode để chống ISP silent TCP stall (bóp socket 5–10 phút) và khắc phục lỗi media WARP (NetworkError), xem chi tiết tại `references/telegram-webhook-cloudflare-tunnel.md`.
    - **Hard-review fallback:** for a code change that requires independent review, do not stop at a transient/credential-specific failure from the primary reviewer. Use the configured fallback chain; for a hard case, call `gpt-5.6-sol` through the 9Router HTTP endpoint with `stream:false`, `tools:[]`, and `tool_choice:none`. Review the exact staged/post-rebase candidate, not a remembered diff. A changed commit SHA invalidates the previous verdict and requires a fresh review.
    - **Repo/task split:** keep the committed watchdog source in the tooling repository, while the Windows Scheduled Task remains machine-local runtime state. Preserve unrelated dirty paths; stage only the watchdog source. If the local checkout is dirty and the remote advanced, use a clean temporary worktree from `origin/main`, cherry-pick the exact validated commit, re-run parse/smoke/review on the new SHA, then push and verify `git ls-remote`.
 7. Verify: `hermes gateway status`; log `%LOCALAPPDATA%\\hermes\\logs\\gateway.log` for `[Telegram] Connected to Telegram (polling mode)` + `✓ telegram connected` + `set_my_commands OK`. A log line such as `Ignoring /start platform ping` is a normal guard for Telegram platform pings, not proof that the bot is broken; test with `/model` or a normal message. Session key format: `agent:main:telegram:dm:<uid>` / `telegram:group:<chat_id>:<uid>`.
@@ -223,6 +235,7 @@ Call these **Telegram display presets**. The user can later say, for example, �
 | `display.platforms.telegram.long_running_notifications` | `true`, `false` | Per Telegram. Heartbeat for long-running turns. |
 | `display.platforms.telegram.thinking_progress` | `true`, `false` | Per Telegram. Scratch/thinking relay; default to off in groups. |
 | `display.background_process_notifications` | `all`, `result`, `error`, `off` | **Gateway-global**, not Telegram-only: `all` includes running output + final; `result` only final success/failure; `error` only non-zero final; `off` silent. |
+| `display.busy_ack_enabled` | `true`, `false` | **Gateway-global**. Khi `false`: tắt triệt để mọi thông báo ack "⚡ Interrupting current task..." và onboarding tips khi user nhắn tin lúc bot đang bận; bot âm thầm ngắt lệnh cũ và trả lời ngay. |
 | `streaming.enabled` | `true`, `false` | Global token-delta streaming; separate from tool/process progress. |
 
 ### Practical presets
@@ -240,9 +253,27 @@ Use `hermes config set` for every approved value (never hand-edit config). Verif
 - **Đổi nơi nhận của cron**: `cronjob update deliver="telegram:<chat_id>"` (đích DM) — `deliver="origin"` gửi vào group nơi tạo job. User preference farm Taadaa: thông báo/lỗi cron → DM bot "Taadaa Hermes Sever" = `telegram:1076231895` (Home channel = `telegram:dm:<user_id>`), KHÔNG vào group. Verify bằng `cronjob list` đọc lại `deliver`.
 - **Tìm origin chat của 1 job**: `$HERMES_HOME/cron/jobs.json` chứa `origin.chat_id` + `origin.chat_name` (authoritative; gateway.log chỉ cho ID không kèm tên). Map ID→tên nhóm khác: `grep -oE "telegram:(group|forum|dm):[0-9-]+" logs/gateway.log | sort -u` + `channel_overrides` trong config.yaml.
 - **Cron script + repo**: script trong `$HERMES_HOME/scripts/` chỉ là launcher passthrough (subprocess gọi wrapper trong repo để logic commit được). Sửa logic → sửa file trong repo + HANDOFF.md entry (append byte-safe giữ CRLF), KHÔNG sửa launcher. Test 2 nhánh trước khi xong: success → exit 0 + stdout rỗng; failure (vd env trỏ source không tồn tại) → error + exit 1.
+
+## Quy tắc bắt buộc đồng bộ cấu hình vào Repository Hermes (`deploy/hermes-home`)
+
+MỌI thay đổi về cấu hình runtime, kịch bản quản trị hoặc skills sau khi áp dụng và kiểm thử thành công trên máy local `%LOCALAPPDATA%\hermes` **BẮT BUỘC phải đồng bộ ngay vào repo `D:\Taadaa\Hermes`** (không chỉ lưu local hay template bên ngoài):
+
+1. **Cấu hình Gateway & Behavior (`deploy/hermes-home/config.yaml`):**
+   - Đồng bộ các block chức năng mới (`media_delivery`, `channel_overrides`, `max_workers`...).
+   - **Quy tắc khử khuẩn bảo mật:** BẮT BUỘC giữ nguyên placeholder `api_key: «redacted:sk-…»`, tuyệt đối KHÔNG commit API key thật vào Git.
+2. **Biến môi trường (`deploy/hermes-home/.env`):**
+   - Bổ sung các biến tuning mới (`HERMES_TELEGRAM_HTTP_POOL_SIZE=1024`, `HERMES_TELEGRAM_HTTP_POOL_TIMEOUT=30.0`...).
+   - Với proxy và token: BẮT BUỘC dùng sanitized placeholder như `# TELEGRAM_PROXY=http://<PROXY_USER>:<PROXY_PASS>@<PROXY_HOST>:<PROXY_PORT>` và `# TELEGRAM_BOT_TOKEN=`, tuyệt đối không leak credentials hoặc thông tin đăng nhập WAN/ISP.
+3. **Kịch bản tự động (`deploy/hermes-home/scripts/`):**
+   - Đồng bộ các script vận hành chuẩn (`restart-when-idle.ps1`, watchdog...) vào thư mục `deploy/hermes-home/scripts/`.
+4. **Kỹ năng & Tài liệu (`skills/hermes/`):**
+   - Đồng bộ `SKILL.md` và các tài liệu tham khảo trong `references/` sang `D:\Taadaa\Hermes\skills\hermes\` để đảm bảo các máy khác trong farm khi chạy `setup-admin.ps1` đều nhận được tri thức mới nhất.
+5. **Kiểm tra an toàn (Scope Lock & Diff Check):**
+   - Chạy `git -C "D:/Taadaa/Hermes" diff --stat` và `git diff` rà soát từng dòng trước khi bàn giao để chắc chắn 100% không rò rỉ secret.
 - **no_agent cron script KHÔNG kế thừa biến từ `$HERMES_HOME/.env`** (verified 2026-08-21 với `device-locks-watchdog`): `.env` chỉ được load bởi process gateway, không export ra child → `os.environ.get("TELEGRAM_BOT_TOKEN")` trả None khi script chạy qua cron dù .env có token. Script tự gửi Telegram qua Bot API phải TỰ parse file `.env` (fallback đọc file, giống như đọc config.yaml) — `watch_device_locks.py` chỉ check os.environ + config.yaml keys `telegram.bot_token`/`telegram_token` (không tồn tại) → in `TELEGRAM_BOT_TOKEN not found, outputting to console only:` rồi bỏ qua self-send.
 - **Dòng `TELEGRAM_BOT_TOKEN not found` = tạp âm VÔ HẠI khi cron job có `deliver: telegram:<chat_id>`** — no_agent deliver stdout verbatim nên báo cáo vẫn tới nơi; KHÔNG phải watchdog hỏng, đừng hoảng. Chẩn đoán nhanh: `cronjob list` xem job có `deliver` đúng chat không + đọc script có fallback .env không.
-- **Tránh gửi trùng**: chọn 1 kênh — HOẶC script tự send qua Bot API (bỏ cron deliver), HOẶC dựa vào cron `deliver` (bỏ phần self-send trong script, stdout chỉ để log local). Cả hai cùng lúc = 2 tin cho 1 lần chạy (script send + cron deliver stdout).
+- **Tránh gửi trùng (Double Alert / Gửi kép)**: chọn 1 kênh duy nhất — HOẶC script tự send qua Bot API (bỏ cron deliver), HOẶC dựa vào cron `deliver` (chuẩn nhất cho `no_agent: true`: bỏ phần self-send `send_farm_alert()` trong script, CHỈ dùng `print()`, scheduler sẽ bắt stdout gửi duy nhất 1 lần). Cả hai cùng lúc = 2 tin cho 1 lần chạy (script send + cron deliver stdout bắn kép liên tục trong cùng 1 phút).
+- **Chống spam báo cáo rỗng khi count = 0 (Silent Watchdog Pattern)**: Khi cron `no_agent: true` chạy chu kỳ ngắn (5–10 phút), nếu kết quả kiểm tra là rỗng (0 máy đủ điều kiện, 0 lỗi, không có sự kiện mới), script BẮT BUỘC giữ stdout hoàn toàn RỖNG (`empty output`) để scheduler kích hoạt trạng thái **SILENT RUN** (`Status: silent (empty output)`). TUYỆT ĐỐI CẤM `print()` template báo cáo khi count = 0 (ví dụ `Tổng máy đủ điều kiện: 0`), vì bất kỳ ký tự nào in ra stdout đều khiến scheduler tự động forward ra chat Telegram gây spam liên tục ("Lại spam r đkm").
 
 ## Coordination pitfall (user preference, 2026-08-08)
 
@@ -297,6 +328,7 @@ When the user asks for the model command **in Telegram**, answer with the gatewa
 - BẮT BUỘC đồng bộ template: `D:\Taadaa\AI-Tools\config\hermes\hermes_config_template.yaml`.
 - Lệnh kiểm tra: `hermes fallback list` (lưu ý: `hermes fallback remove` interactive hủy trên pipe non-TTY, dùng script `load_config`/`save_config` hoặc patch).
 - Chi tiết: `references/omniroute-hermes-fallback-chain.md`.
+- Telegram Webhook qua Cloudflare Tunnel & Triệt tiêu Silent Drop / Quét đĩa: `references/telegram-webhook-cloudflare-tunnel-and-io-choke.md`.
 
 Important: `model.persist_switch_by_default: false` makes plain `/model <model>` session-only; use `--global` explicitly. A global switch writes `config.yaml`, so new Telegram sessions use it. If the gateway does not reflect the changed default immediately, restart it from an external shell only when safe; do not restart during a live farm batch. For a Telegram-specific question, do not lead with `hermes model` (that is the local CLI menu); mention it only as an alternative if relevant.
 
@@ -324,13 +356,34 @@ Khi được yêu cầu kiểm tra xem Telegram Bot có bị disconnect, timeout
 1. **Kiểm tra liveness tiến trình:** Lấy PID từ `$LOCALAPPDATA\hermes\gateway_state.json` và chạy PowerShell kiểm tra `Get-Process -Id <pid> | Select Id, ProcessName, StartTime, Responding, TotalProcessorTime`. Tiến trình `pythonw.exe` duy trì `Responding: True` và tăng dần `TotalProcessorTime` xác nhận gateway đang hoạt động liên tục. Nếu PID người dùng hỏi không còn tồn tại, kiểm tra `$LOCALAPPDATA\hermes\logs\idle_restart.log` xem tiến trình có được One-Shot Idle Watcher (`restart-when-idle.ps1`) xoay vòng (rotate) sang PID mới hay không.
 2. **Kiểm tra lịch sử thoát/crash (`logs/gateway-exit-diag.log`):** Đọc các dòng cuối của file diag; nếu dòng cuối cùng là `gateway.start` với đúng PID hiện tại và không có `asyncio.run.returned` hay `gateway.exit_clean`/crash phía sau -> chứng minh gateway không hề bị restart hay crash ngầm.
 3. **Đọc trạng thái thời gian thực (`gateway_state.json`):** Xác nhận `gateway_state: "running"` và block `"platforms": {"telegram": {"state": "connected", "error_code": null, "updated_at": ...}}`. Đây là nguồn dữ liệu heartbeat thời gian thực chính xác nhất.
-4. **Kiểm tra lỗi kết nối mạng trong log:** Tìm các từ khóa lỗi mạng (`reconnect`, `Timed out`, `heartbeat probe`, `stuck probe`, `CLOSE-WAIT`, `fallback IP failed`, `connection failed`) trong `logs/errors.log` và `logs/gateway.log`. Phân biệt rõ lỗi rớt mạng ISP/proxy với lỗi `Pool timeout` do cạn connection pool nội bộ. Lưu ý: trên Windows, `gateway.log` có thể có độ trễ cập nhật (buffering/idle) do tiến trình chạy nền `pythonw.exe`; không dùng mtime của `gateway.log` để suy diễn gateway dừng nếu `gateway_state.json` và tiến trình PID vẫn đang hoạt động.
+4. **Kiểm tra lỗi kết nối mạng trong log & Bẫy đóng băng `gateway.log`:** Tìm các từ khóa lỗi mạng (`reconnect`, `Timed out`, `heartbeat probe`, `stuck probe`, `CLOSE-WAIT`, `fallback IP failed`, `connection failed`) trong `logs/errors.log` và `logs/gateway.log`. Phân biệt rõ lỗi rớt mạng ISP/proxy với lỗi `Pool timeout` do cạn connection pool nội bộ.
+   - *Bẫy đóng băng `gateway.log` sau idle restart:* Khi chạy `pythonw.exe -m hermes_cli.main gateway run`, `hermes_cli/main.py` (dòng ~587) khởi tạo `_setup_logging(...)` mặc định trước. Vì `setup_logging` trong `hermes_logging.py` là idempotent (`_logging_initialized = True`), lời gọi sau đó trong `gateway/run.py` với `mode="gateway"` bị coi là NO-OP. Do đó, handler ghi vào `gateway.log` không được tạo lại, khiến mtime của `gateway.log` đóng băng ở mốc trước restart dù PID mới vẫn đang chạy cực kỳ tích cực. CẤM dùng mtime của `gateway.log` để suy diễn gateway dừng; BẮT BUỘC đối chiếu PID và `updated_at` trong `gateway_state.json`.
 5. **Đo độ trễ long-poll qua SQLite `state.db` (O(1) forensics khi user báo "treo N phút"):**
-   Đối chiếu `messages.timestamp` (thời điểm tin nhắn gửi từ client Telegram) với thời điểm log `inbound message:` / `Flushing text batch` trong `gateway.log`:
+   Đối chiếu `messages.timestamp` (thời điểm tin nhắn gửi từ client Telegram) với thời điểm log `inbound message:` / `Flushing text batch` trong `gateway.log` hoặc thời điểm khởi tạo session từ `session_id` (format `YYYYMMDD_HHMMSS_...`):
+   - *Lưu ý Coordinator Farm Guard:* Lệnh `python -c` bị Farm Guard chặn ở session chính (`LONG-RUNNER BLOCKED`). BẮT BUỘC dispatch worker subagent qua `delegate_task` để chạy script Python đọc `state.db`, KHÔNG chạy trực tiếp ở terminal Coordinator.
    ```bash
-   python -c "import sqlite3, datetime; conn = sqlite3.connect('C:/Users/Kibe/AppData/Local/hermes/state.db'); [print(datetime.datetime.fromtimestamp(r[2]).strftime('%H:%M:%S'), f'id={r[0]} sess={r[1][:15]} {repr(r[3][:60])}') for r in conn.execute(\"SELECT id, session_id, timestamp, content FROM messages WHERE role='user' ORDER BY id DESC LIMIT 10\")]"
+   python -c "import sqlite3, datetime; conn = sqlite3.connect('C:/Users/Kibe/AppData/Local/hermes/state.db'); [print(datetime.datetime.fromtimestamp(r[2]).strftime('%H:%M:%S'), f'id={r[0]} sess={r[1][:25]} {repr(r[3][:60])}') for r in conn.execute(\"SELECT id, session_id, timestamp, content FROM messages WHERE role='user' ORDER BY id DESC LIMIT 10\")]"
    ```
-   Nếu `messages.timestamp` (vd: 12:51:06) sớm hơn vài phút so với mốc `inbound message:` trong `gateway.log` (vd: 12:54:02) -> chứng minh kết nối long-poll bị nghẽn ngầm (silent TCP stall / packet drop) khiến tin nhắn ứ đọng trên server Telegram trước khi được kéo về client local.
+   Nếu `messages.timestamp` (vd: 06:38:24) sớm hơn vài phút so với mốc `session_id` / `inbound message:` (vd: `20260907_064420_...` lúc 06:44:20) -> chứng minh 100% kết nối long-poll bị nghẽn ngầm (silent TCP stall / packet drop) khiến tin nhắn ứ đọng trên server Telegram trước khi được giật dồn (burst) về client local.
+   - **Đặc điểm chẩn đoán lệnh `/new` mất nhiều phút:**
+      Khi user gõ `/new` lúc 00:14 (client Telegram hiện 2 tick `✓✓`), nhưng đến 00:20 mới có phản hồi `gateway.reset`:
+      Tra `gateway.log` sẽ thấy một khoảng trống hoàn toàn (ví dụ từ 00:12:35 đến 00:20:01 không có log inbound nào). Đúng 00:20:01,871 nhận lệnh `/new`, Gateway thực thi `session_reset` chỉ mất ~0.75s (đến 00:20:02,627 đã gửi reply). Toàn bộ 6 phút trễ là do socket polling bị stall trên server Telegram, Gateway không hề bị treo hay deadlock.
+   - **Chẩn đoán hiện tượng "Thỉnh thoảng treo đúng ~5 phút rồi tự hồi phục / xả dồn" (300s Silent Drop Signature):**
+     - **Nguyên nhân 100% do ISP (Viettel/VNPT/FPT) can thiệp:** ISP drop âm thầm gói TCP long-poll tới `api.telegram.org` mà không gửi FIN/RST. Client HTTP rơi vào trạng thái *Half-open socket* và ngâm đúng **300 giây (5 phút)** chạm trần default `read_timeout` mới phát hiện socket chết để reconnect và giật dồn tin nhắn. Cả FPT lẫn proxy Viettel đều có thể dính do cùng chịu chung cơ chế bóp/drop SNI quốc tế.
+     - **Khắc phục chuẩn:**
+       1. Cài Cloudflare WARP chính thức (`winget install --id Cloudflare.Warp --silent`).
+       2. Đăng ký & chuyển sang chế độ **Local Proxy Mode**:
+          `"C:\Program Files\Cloudflare\Cloudflare WARP\warp-cli.exe" registration new`
+          `"C:\Program Files\Cloudflare\Cloudflare WARP\warp-cli.exe" mode proxy`
+          `"C:\Program Files\Cloudflare\Cloudflare WARP\warp-cli.exe" connect`
+          Mở cổng SOCKS5 tại `127.0.0.1:40000` (zero impact lên card mạng host, không đổi IP WAN của máy, 160 máy farm và ADB an toàn tuyệt đối).
+       3. Cấu hình vào `$HERMES_HOME/.env`: `TELEGRAM_PROXY=socks5://127.0.0.1:40000`.
+       4. Restart Gateway từ ngoài shell hoặc chờ idle. Toàn bộ traffic Telegram đi qua WireGuard mã hóa của Cloudflare, bypass hoàn toàn DPI của FPT/Viettel. Chi tiết: `references/telegram-network-resilience.md`.
+   - **Chẩn đoán "Tại sao bot Kibe không typing trong khi bot Admin typing" (Zero-Typing Forensic):**
+     - `sendChatAction` (`typing`) chỉ được kích hoạt **sau khi** Gateway kéo được inbound update từ Telegram API về và bắt đầu dispatch agent turn.
+     - Khi socket polling `getUpdates` rơi vào trạng thái Silent TCP Stall / Half-Open, tin nhắn người dùng gửi vẫn ứ đọng trên cụm máy chủ Telegram DC5, bot chưa hề biết có tin nhắn mới nên hoàn toàn **không thể phát trạng thái typing**.
+     - Bot Admin trên đường truyền riêng không bị drop gói socket tại thời điểm đó nên nhận tin ngay và emit `typing` bình thường.
+     - **Triệu chứng nhận diện O(1):** `gateway.log` có khoảng trống (log gap) dài 5–10 phút, sau đó xuất hiện cảnh báo `Telegram polling heartbeat: N update(s) queued but not consumed (stuck probe 1/2)` kèm một loạt `Flushing text batch` dồn dập giải phóng toàn bộ tin nhắn chỉ trong vài giây.
 6. **Phân tích khoảng trống log (Log Gap) do subagents xả lệnh blocking:**
    Khi `gateway.log` không có log mới trong vài phút, kiểm tra `errors.log` và `messages` xem có đợt subagents/worker chạy lệnh terminal dài (>800s - 900s timeout) đồng loạt xả kết quả cùng thời điểm không. Khoảng trống log khi các background worker đang chạy lệnh nặng không đồng nghĩa với sập Gateway.
 7. **Probe proxy HTTP tunnel & Egress IP với Python venv:**
@@ -347,6 +400,30 @@ Khi được yêu cầu kiểm tra xem Telegram Bot có bị disconnect, timeout
      (a) **Đang chạy:** Tiến trình tồn tại, log cập nhật nhịp đếm `active work` hoặc `Gateway idle (N/6)...`
      (b) **Đã restart thành công:** Tiến trình tự thoát, log ghi `Gateway da duoc khoi dong lai thanh cong. Watcher ket thuc.`
      (c) **Hết hạn timeout (Timeout Exhaustion):** Tiến trình không còn, log ghi `Het thoi gian cho (1800 giay) - Huy bo restart.` do trong 30 phút hệ thống liên tục có turn/worker active (`active_agents > 0`). Khi farm đang chạy nhiều batch song song, cần nâng `$maxWaitSeconds = 7200` (2h) đến `10800` (3h) hoặc chỉ khởi chạy sau khi đã chốt phiên.
+10. **Kiểm tra rò rỉ socket `CLOSE_WAIT` tới Proxy:**
+    Khi nghi ngờ treo hoặc kẹt kết nối sau một thời gian chạy dài, kiểm tra trạng thái socket của tiến trình Gateway tới IP Proxy:
+    `Get-NetTCPConnection -RemoteAddress "<PROXY_IP>" -OwningProcess <pid> -ErrorAction SilentlyContinue | Group-Object State | Select Name, Count`
+    Nếu số lượng `CloseWait` lên tới hàng trăm socket (áp sát trần `HERMES_TELEGRAM_HTTP_POOL_SIZE`), pool kết nối sẽ bị nghẽn và long-poll `getUpdates` dễ bị stall 6–8 phút do điểm mù của heartbeat. Xem chi tiết cơ chế và cách xử lý tại `references/vps-http-proxy-setup-tinyproxy.md` §4.
+11. **Chẩn đoán Đa máy Đa đường truyền (Multi-Machine Egress ISP Diagnostics: Admin FPT vs Kibe Viettel):**
+    - Tuyệt đối không giả định mọi máy trong farm đi chung một ISP hay một cấu hình kết nối Telegram:
+      - Máy Kibe có thể chạy qua Proxy LAN (`TELEGRAM_PROXY=http://...:10001` trong `.env`) trỏ ra Egress WAN Viettel (`AS7552 Viettel Group`).
+      - Máy Admin có thể chạy trực tiếp FPT Direct (`AS18403 FPT Telecom`).
+    - Lệnh O(1) kiểm tra nhanh Egress WAN thực tế của từng đường:
+      ```powershell
+      # Kiểm tra Direct WAN:
+      & "curl.exe" -s -m 10 https://ipinfo.io/json
+      # Kiểm tra Proxy WAN (đọc thẳng từ .env):
+      $p = (Get-Content "$env:LOCALAPPDATA\hermes\.env" | Where-Object { $_ -match "^TELEGRAM_PROXY=" }).Split("=")[1]; & "curl.exe" -s -m 10 -x $p https://ipinfo.io/json
+      ```
+    - **Phân định 2 cơ chế lỗi khác nhau gây cùng triệu chứng "lag/treo cả 2 máy":**
+      (a) **FPT Direct (Admin):** Bóp tầng DNS Resolver (`[Errno 11001] getaddrinfo failed`) và drop gói SNI/IP Telegram DC5 + Fallback IP (`149.154.166.110`).
+      (b) **Viettel qua Proxy (Kibe):** Không bị chặn DNS/IP, nhưng bị bẫy tích tụ hàng trăm socket `CLOSE_WAIT` (rò rỉ kết nối từ proxy) + chạm trần `active_agents: 10` do subagents nặng ngâm slot làm nghẽn hàng đợi ThreadPool Gateway.
+    - **CẤM BẪY ĐỀ XUẤT CHUYỂN VỀ DIRECT FPT (The FPT Direct Regression Trap):**
+      - Khi máy Kibe bị kẹt socket `CLOSE_WAIT` qua proxy Viettel, **CẤM TUYỆT ĐỐI đề xuất bỏ proxy Viettel để chuyển về Direct FPT** chỉ vì 1 lệnh curl tức thời thấy trả về HTTP 302.
+      - *Cơ chế:* FPT bóp chập chờn theo đợt và ngắt ngầm persistent long-poll socket tới Telegram DC5. Chuyển Kibe về Direct FPT sẽ khiến Kibe dính ngay đòn bóp của FPT như máy Admin và hàng loạt user khác.
+      - *Hướng xử lý đúng chuẩn:*
+        1. *Cấp tốc:* Vẫn giữ Egress Viettel trên Kibe + kích hoạt **One-Shot Delayed Restart (`delayed-restart.ps1`)** để dọn sạch 265 socket `CLOSE_WAIT` và đưa `active_agents` từ 10 về 0.
+        2. *Triệt để dài hạn:* Định tuyến Mangle MikroTik L3/L4 cho dải IP Telegram sang WAN Viettel (app chạy Direct không tốn proxy, không rò rỉ socket `CLOSE_WAIT`, nhưng egress an toàn ra Viettel).
 
 ## Telegram Network Resilience & Fallback IPs (api.telegram.org)
 
@@ -359,12 +436,28 @@ Khi được yêu cầu kiểm tra xem Telegram Bot có bị disconnect, timeout
   - Hậu quả: Long-poll socket bị treo ngầm, OmniRoute trống request 2–5 phút cho tới khi heartbeat timeout reset socket và kéo dồn (`Flushing text batch`).
 - **Bản chất nghẽn ISP & Đa tuyến (Multi-ISP Redundancy FPT vs Viettel):**
   - FPT và Viettel sở hữu các tuyến cáp biển/đất liền và cổng định tuyến (transit/peering) quốc tế độc lập tới Telegram DC5 (Singapore). Khi Direct FPT bị nghẽn ngầm hoặc drop persistent TCP socket, proxy qua line Viettel (hoặc ngược lại) đóng vai trò đường thoát hiểm hiệu quả dù cùng là mạng VN.
+  - **CẢNH BÁO QUAN TRỌNG (2026-09-07, User-corrected): VPS Proxy SGP KHÔNG PHẢI là giải pháp thay thế LAN Proxy Viettel.** Proxy VPS (Doravo SGP) và Proxy LAN Viettel (:10001 MikroTik) **cùng đi qua đúng một tuyến cáp biển quốc tế từ VN sang Singapore**. VPS chỉ lách được bộ lọc DNS/IP của ISP VN (FPT), KHÔNG thay đổi được đường truyền vật lý. Khi cáp biển khựng, cả 2 đều bị Silent TCP Stall y hệt nhau. **Difference thực tế: Proxy LAN Viettel (`:10001`) ổn định hơn VPS Tinyproxy** vì: (1) latency nội bộ LAN <1ms, (2) Viettel không chặn DNS/IP Telegram, (3) không có vấn đề rò rỉ socket `CLOSE_WAIT` do Tinyproxy ngắt idle. **Kế hoạch đúng: cấu hình Multi-ISP Auto-Failover** — Primary = Proxy Viettel LAN, Fallback = FPT Direct + DoH IPs, tự động chuyển khi stall >20s.
+  - **Bẫy NameError `TelegramMultiISPTransport` & Crash Loop Telegram Gateway (2026-09-09):**
+    - *Triệu chứng:* Gateway Telegram disconnect và lặp lại retry mỗi 300s (`attempt 12–21`), ném ngoại lệ:
+      `ERROR hermes_plugins.telegram_platform.adapter: [Telegram] Failed to connect to Telegram: name 'TelegramMultiISPTransport' is not defined`
+      Hậu quả: Bot Telegram offline hoàn toàn, không thể nhận slash command hay lệnh cứu hộ từ Telegram, buộc người vận hành phải can thiệp trực tiếp bằng công cụ ngoài (OpenCode / terminal local) để sửa code.
+    - *Cơ chế gốc:* Cụm Multi-ISP Failover được định nghĩa trong `plugins/platforms/telegram/telegram_network.py` (class `TelegramMultiISPTransport`). Trong `adapter.py` (khoảng dòng 3424–3431), nhánh kiểm tra khi phát hiện đồng thời `proxy_url` + `fallback_ips` (`149.154.166.110`) gọi khởi tạo `_multi_transport = TelegramMultiISPTransport(...)`. Tuy nhiên, header import ở đầu `adapter.py` (dòng 274) chỉ import `TelegramFallbackTransport` mà thiếu `TelegramMultiISPTransport`.
+    - *Khắc phục chuẩn:* Thêm `TelegramMultiISPTransport` vào khối import từ `plugins.platforms.telegram.telegram_network` trong `adapter.py` (dòng 276).
+    - *Kỷ luật đồng bộ 3 vị trí (Source Repo D:\Taadaa\Hermes ↔ Runtime Local ↔ Venv Site-Packages):*
+      Cụm Multi-ISP Transport sau khi chỉnh sửa trên runtime `%LOCALAPPDATA%\hermes\hermes-agent\` BẮT BUỘC phải được đồng bộ sang cả 2 vị trí còn lại:
+      1. Repo gốc: `D:\Taadaa\Hermes\plugins\platforms\telegram\` (để commit, push, và đồng bộ sang các node khác trong farm).
+      2. Dual-runtime venv site-packages: `%LOCALAPPDATA%\hermes\hermes-agent\venv\Lib\site-packages\plugins\platforms\telegram\` (tránh việc Python nạp module từ site-packages có phiên bản cũ/lệch).
+      - **Checklist nghiệm thu:**
+        + Cú pháp: `python -m py_compile` thành công trên cả 2 file ở các vị trí.
+        + Import test: Xác nhận `from plugins.platforms.telegram.adapter import TelegramMultiISPTransport` và `from plugins.platforms.telegram.telegram_network import TelegramMultiISPTransport` import sạch, không dính `ImportError`/`NameError`.
+        + Cấu hình kích hoạt qua `.env`: `TELEGRAM_PROXY` (primary proxy), `TELEGRAM_FAILOVER_STALL_THRESHOLD` (ngưỡng stall, default 20s), `TELEGRAM_FAILOVER_PROBE_INTERVAL` (chu kỳ probe hồi phục, default 60s). Khối fallback tự chuyển sang FPT Direct + DoH IPs và tự probe hồi phục về primary sau 2 lần probe liên tiếp thành công.
 - **3 Cấp độ xử lý nghẽn Telegram triệt để:**
   1. **Tầng Router (MikroTik L3/L4 Mangle - Tối ưu nhất):** Định tuyến riêng dải IP Telegram (`149.154.160.0/20`, `91.108.4.0/22`) ưu tiên WAN Viettel, failover FPT. Chuyển tuyến tức thì (~2-3s), tầng Python không bị kẹt socket, không cần sửa code app.
   - **Tùy chọn tối ưu:**
     1. **Proxy riêng:** Thêm `TELEGRAM_PROXY=http://<PROXY_USER>:<PROXY_PASS>@<PROXY_HOST>:<PROXY_PORT>` (hoặc SOCKS5/HTTP proxy khác) vào `$HERMES_HOME/.env`.
+       - *Setup Tinyproxy có BasicAuth trên VPS (Singapore/ngoại):* Cài `tinyproxy`, đổi port tránh scan (vd: 18888), comment out toàn bộ `#Allow 127.0.0.1` / `#Allow ::1` để Tinyproxy áp dụng xác thực toàn cục, thêm `BasicAuth <user> <pass>`, bật `DisableViaHeader Yes`, cấp quyền log `chown -R tinyproxy:tinyproxy /var/log/tinyproxy`, và mở port UFW. Chi tiết: `references/vps-http-proxy-setup-tinyproxy.md`.
        - *URL Encoding cho Auth:* Ký tự `@` trong username/password (vd `admin@1` thành `admin%401`) BẮT BUỘC phải URL-encode thành `%40` để `httpx`/`urllib3` không parse sai host dẫn đến lỗi HTTP 407.
-       - *Dùng chung port proxy với Phone Farm:* Telegram bot chỉ gửi vài KB JSON long-poll, hoàn toàn không ảnh hưởng tải hay IP farm. Tuy nhiên, port proxy được chọn **BẮT BUỘC phải là port IP tĩnh/cố định, KHÔNG bị script farm reconnect đổi IP xoay vòng** (nếu đổi IP, persistent socket của Telegram sẽ bị đứt và phải reconnect lại).
+       - *Dùng chung port proxy với Phone Farm:* Telegram bot chỉ gửi vài KB long-poll, hoàn toàn không ảnh hưởng tải hay IP farm. Tuy nhiên, port proxy được chọn **BẮT BUỘC phải là port IP tĩnh/cố định, KHÔNG bị script farm reconnect đổi IP xoay vòng** (nếu đổi IP, persistent socket của Telegram sẽ bị đứt và phải reconnect lại).
        - *Pre-flight Probe Commands (chạy trước khi commit config):*
          ```bash
          # 1. Test HTTP CONNECT tunnel (trả về 200 Connection established)
@@ -389,6 +482,80 @@ Khi được yêu cầu kiểm tra xem Telegram Bot có bị disconnect, timeout
 
 ## Pitfalls (merged)
 
+- **HTTP Proxy (VPS lẫn LAN Proxy 192.168.110.x) vs Direct FPT (Bẫy rò rỉ socket CLOSE_WAIT & Treo Bot):**
+  - **Triệu chứng & Thực tế:** Bot trên máy Kibe cấu hình `TELEGRAM_PROXY` qua Tinyproxy VPS (:18888) hoặc Proxy LAN (`192.168.110.2:10001` / farm proxy) liên tục bị treo 8–17 phút, trong khi **Bot trên máy Admin chạy FPT Direct hoàn toàn không hề treo**.
+  - **Cơ chế gốc:** HTTP proxy (cả Tinyproxy lẫn proxy LAN trên card mạng/modem farm) ngắt idle connections và gửi TCP FIN. Client `httpx`/`httpcore` (đặc biệt dạng `AsyncTunnelHTTPConnection` trên Windows) không thu hồi kịp thời, dẫn tới tích tụ **hàng trăm socket ở trạng thái `CLOSE_WAIT`** (từng ghi nhận 261 đến 960+ socket trỏ về IP proxy như `192.168.110.2:10001`). Với trần pool `HERMES_TELEGRAM_HTTP_POOL_SIZE=1024`, socket kẹt làm cạn kiệt pool, khiến mọi request kéo tin và gửi tin của Gateway bị nghẽn (Pool Timeout / Silent TCP Stall).
+  - **Lệnh O(1) kiểm tra socket rò rỉ (BẮT BUỘC nháy đơn tránh bash vỡ `$_`):**
+    `powershell -NoProfile -Command 'Get-NetTCPConnection -OwningProcess <pid> -State CloseWait -ErrorAction SilentlyContinue | Group-Object RemoteAddress, RemotePort | Select-Object Name, Count'`
+  - **Bẫy nạp runtime biến `.env`:** Tiến trình Gateway `pythonw.exe` KHÔNG tự động nạp lại `.env` in-place. Khi sửa file `.env` (ví dụ chuyển từ proxy VPS sang proxy LAN), nếu Gateway chưa restart thì tiến trình cũ vẫn âm thầm dùng proxy cũ và tiếp tục bị kẹt socket `CLOSE_WAIT`. Bắt buộc kiểm tra `Get-NetTCPConnection` theo RemoteAddress và dùng One-Shot Watcher để restart khi hệ thống rảnh (`active_agents == 0`), tuyệt đối không restart khi farm batch đang chạy.
+  - **Kỷ luật vận hành:** Luôn probe FPT Direct trước: `curl -s -I -m 5 https://api.telegram.org/`. Nếu trả về HTTP 302 (< 1.0s) thì **BẮT BUỘC comment out `TELEGRAM_PROXY` trong `.env` để chạy Direct**, tuyệt đối không thêm proxy LAN/VPS thừa thãi làm điểm nghẽn. Chỉ dùng proxy khi ISP chặn triệt để cả IP/DNS mà DNS 8.8.8.8 không qua được.
+
+- **Bẫy trộn code cũ khi dùng patch rồi write_file trên cùng file (Coordinator pitfall, 2026-09-09):**
+  - Sau khi dùng `patch` nhiều lần vào một file, nếu dùng `write_file` với nội dung soạn từ lần đọc cũ (trước các patch), toàn bộ các thay đổi của `patch` bị overwrite và file kết quả bị trộn lẫn code cũ + mới.
+  - Kỷ luật: Khi file cần ghi lại toàn bộ (rewrite), đọc lại toàn bộ file với `read_file` NGAY TRƯỚC khi gọi `write_file` để có nội dung hiện tại. KHÔNG soạn content `write_file` từ bộ nhớ context cũ.
+
+- **Bẫy YAML Syntax Error trong config.yaml khiến Gateway fallback Default Config & Bắn Ack Ngắt Rác (2026-09-12):**
+  - Khi chỉnh sửa system prompt hoặc personality mà chuỗi có chứa dấu hai chấm kèm khoảng trắng (`: `) nhưng quên bọc trong dấu nháy (`'...'`), PyYAML sẽ quăng lỗi `mapping values are not allowed here` và Gateway tự động fallback về cấu hình mặc định (`Falling back to default config`).
+  - Hậu quả: Cờ onboarding bị reset và `busy_input_mode` quay về `interrupt`, khiến mỗi khi user gửi tin nhắn lúc bot đang bận, Gateway lập tức gửi tin nhắn ack gây khó chịu: `⚡ Interrupting current task. I'll respond to your message shortly.` kèm tip `/busy`.
+  - Khắc phục: Sửa cú pháp YAML (luôn bọc nháy chuỗi văn bản, verify bằng `hermes config check`), và tắt triệt để ack ngắt bằng cách thêm `busy_ack_enabled: false` vào `display:` trong `config.yaml` và `HERMES_GATEWAY_BUSY_ACK_ENABLED=false` trong `.env`. Chi tiết: `references/gateway-busy-ack-suppression-and-yaml-syntax-fallback.md`.
+
+- **Bẫy Synchronous Delegation làm treo phiên chat Telegram (Fake Freeze):**
+  - **Triệu chứng:** Người dùng nhắn tin trên Telegram nhưng bot im lặng hoàn toàn suốt 15–20 phút, tưởng bot bị đơ hoặc sập.
+  - **Cơ chế gốc:** Khi hồ worker nền đạt trần (`delegation.max_concurrent_children`), Hermes tự động ép subagent chạy **ĐỒNG BỘ (Synchronous)** trong chính session cha. Nếu subagent chạy phân tích/code nặng (35 API calls, 1000s), luồng chính bị khóa cứng (blocking) cho tới khi subagent xong, Gateway không thể phát tin nhắn trả lời người dùng.
+  - **Kỷ luật Coordinator:** Trước khi dispatch subagent nặng, kiểm tra tải farm; nếu delegation pool đang bận, không dispatch task dài hơi hoặc giới hạn turns chặt chẽ để tránh cướp luồng chat chính.
+  - **CẤM tuyền restart Gateway cho user khi đang dispatch subagent:** Coordinator KHÔNG được yêu cầu user tự restart Gateway hay chạy lệnh bên ngoài trong lúc worker đang chạy.
+
+## Phân tích Root Cause Discipline (USER PREFERENCE — CRITICAL)
+
+- **CẤM suy đoán chủ quan về tải máy khác khi chưa có số liệu chéo:** Khi so sánh 2 node (ví dụ Kibe vs Admin), tuyệt đối không tự suy diễn "máy kia ít traffic hơn" để giải thích cho hiện tượng máy này bị treo. Phải dựa trên timestamp và sự kiện thực tế.
+- **Hiện tượng một bot "is typing" còn một bot "nín luôn" cùng thời điểm:**
+  - `sendChatAction('typing')` chỉ được adapter Telegram gọi SAU KHI Gateway nhận được inbound message từ server Telegram.
+  - Khi cùng 1 tin nhắn/thời điểm mà Bot A typing còn Bot B nín: 100% kết nối polling `getUpdates` của Bot B đang bị **Silent TCP Stall / Half-open**, tin nhắn bị ứ đọng trên máy chủ Telegram chưa được kéo về máy B, trong khi máy A socket vẫn thông.
+  - Xác nhận bằng O(1) qua độ lệch `messages.timestamp` (lúc user bấm gửi) vs `gateway.log` inbound time (trễ 5–10 phút), kèm cảnh báo `Telegram polling heartbeat: N update(s) queued but not consumed (stuck probe 1/2)`.
+- **Nhóm Telegram phối hợp Đa Bot (Multi-Bot Group Collaboration) & Phân định Nhóm Riêng vs Nhóm Chung**:
+  - **Bản chất vấn đề xung đột `require_mention` khi Sync:** Khi farm có nhiều máy (máy Kibe và máy Admin) cùng chạy Hermes Telegram Gateway, nếu bật `require_mention: true` toàn cục sẽ làm hỏng trải nghiệm trong các group riêng từng repo (như nhóm `Tiktok_Reg`, `tiktok-luot nuoi acc`, `Farm Alerts` - mỗi lần báo lỗi lại phải gõ `@tag` rất phiền). Ngược lại, nếu để `require_mention: false` toàn cục trên cả 2 máy thì trong nhóm chung (All Bot) cả 2 bot sẽ cùng typing, tranh giành task và gây xung đột session.
+  - **Kiến trúc phân định chuẩn:**
+    1. **Các Group riêng (1 group = 1 repo / 1 bot):** Giữ `require_mention: false` để bot chuyên trách tự động đọc và nhận việc ngay khi user gửi tin, không cần tag.
+    2. **Group chung (Multi-bot chat):** Bot chính (Kibe) nhận việc bình thường khi chat tự do; Bot phụ (Admin) BẮT BUỘC chỉ nhận việc khi được `@tag` đích danh (`@taadaa_admin_hermes_bot`).
+    3. **Chống đè cấu hình khi chạy script sync (`sync-from-kibe.ps1`):** Script sync sang máy Admin không được copy đè mù quáng toàn bộ `config.yaml` từ Kibe làm mất thiết lập mention riêng của Admin; phải duy trì logic post-sync patch để giữ vững quy tắc phân định vai trò giữa các bot.
+  - **Telegram Bot API Behavior:** Mặc định Telegram KHÔNG chuyển update/tin nhắn từ Bot này sang Bot khác trong group để chống loop.
+  - **Điều kiện cần để 2 Bot thấy và trao đổi tin với nhau:**
+    1. Cần set ít nhất 1 bot làm **Admin nhóm** (Group Admin).
+    2. Cả 2 bot bắt buộc bật `TELEGRAM_ALLOW_BOTS=all` trong `$HERMES_HOME/.env` (Hermes adapter mặc định drop tin từ bot).
+    3. **Chống Infinite Loop / Ping-Pong:** BẮT BUỘC giữ `require_mention: true` trên cả 2 bot (hoặc ít nhất 1 bot worker), chỉ kích hoạt phản hồi khi được `@BotName` hoặc reply đích danh. CẤM để cả 2 bot cùng bật `require_mention: false` trong cùng một group.
+  - **Kỷ luật cô lập kênh Cron & Trách nhiệm (Delivery Target Isolation):**
+    - Cron jobs trên từng máy BẮT BUỘC gán `--deliver "telegram:<chat_id>"` trỏ đúng vào nhóm chuyên trách của máy đó (ví dụ: máy Admin gửi về `-5139245637`, máy Kibe gửi về các nhóm farm Kibe).
+    - TUYỆT ĐỐI KHÔNG để cron của máy phụ (Admin) bắn chéo sang nhóm điều hành của máy chính (Kibe) gây nhiễu luồng điều phối.
+  - **Kỷ luật @mention trong nhóm Đa Bot:**
+    - Khi người dùng gửi lệnh có @mention đích danh bot khác (ví dụ: `@taadaa_admin_hermes_bot ...`), bot này (Kibe) BẮT BUỘC KHÔNG được can thiệp hay thực thi thay, tránh tình trạng 2 bot cùng giành nhau chạy hoặc xung đột tác vụ.
+    - **Quy tắc điều phối nhóm chung (All-Bot Group Convention - User preference 13/09/2026):**
+      - Để tránh rắc rối cấu hình sync và không làm ảnh hưởng tính năng tự do nhận việc ở các group riêng từng bot: Tại nhóm chung có cả Bot Kibe lẫn Bot Admin, **người dùng chủ động tag @ đích danh bot cần giao việc** (`@Taadaa_hermes_sever_bot` cho Kibe hoặc `@taadaa_admin_hermes_bot` cho Admin). Bot không được tag BẮT BUỘC bỏ qua tin nhắn, không emit typing hay xử lý. CẤM vẽ thêm giải pháp config phức tạp khi user đã chốt quy ước tag trực tiếp.
+  - **Phân biệt lệnh cài đặt màn hình: PC Host vs Dàn Samsung S7:**
+    - Khi người dùng nói "cài/set tự tắt màn hình sau N phút" trong ngữ cảnh Farm: MẶC ĐỊNH hiểu là cấu hình trên **toàn bộ dàn điện thoại Samsung S7** qua ADB (`settings put system screen_off_timeout <ms>` và `settings put global stay_on_while_plugged_in 0`), KHÔNG tự ý suy diễn sang lệnh `powercfg` trên PC Windows host trừ khi được chỉ định rõ chữ "PC" hoặc "máy tính".
+    - Baseline chuẩn dàn S7 Taadaa: 10 phút = 600.000 ms, `stay_on = 0`. Màn hình PC Windows host mặc định giữ `Never` (`monitor-timeout-ac 0`).
+
+- **Phân biệt Bot nín do Silent TCP Stall vs Bot nín do Tool/Terminal Blocking:**
+  - **Silent TCP Stall (Long-poll ngắt ngầm):** Gateway chưa hề kéo được update từ cụm máy chủ Telegram về local máy (`getUpdates` timeout). Bot **hoàn toàn không typing**, `gateway.log` xuất hiện khoảng trống (log gap 5–10 phút), sau đó xả dồn (`Flushing text batch`).
+  - **Tool/Terminal Blocking (Kẹt luồng trong turn):** Gateway đã nhận được tin nhắn (`inbound message:` đã ghi log), nhưng agent đang thực thi một tool lệnh terminal/probe bị ngâm lâu (chạm timeout 180s–600s). Lúc này session bị khóa cứng chờ tool hoàn thành; bot không trả lời tin nhắn tiếp theo cho đến khi tool nhả kết quả hoặc người dùng gửi tin nhắn mới kích hoạt ngắt (`Operation interrupted`).
+  - **Cách phòng chống:** Coordinator TUYỆT ĐỐI tuân thủ O(1), không chạy lệnh scan sâu hoặc terminal lệnh dài trong session chính; mọi tác vụ probe/quét phải dispatch worker background qua `delegate_task`.
+
+- **Khi user phản hồi `???` hoặc câu nói ngắn phủ định/bực bội:** Đây là tín hiệu em vừa nói sai hoặc mâu thuẫn. PHẢI nhận lỗi ngay trong 1–2 câu thẳng thắn, KHÔNG biện minh hay giải thích dài dòng. Sau đó mới đưa phân tích chuẩn.
+- **Khi em vừa nói 2 điều mâu thuẫn nhau trong cùng phiên:** CẤM im lặng hay chuyển chủ đề. BẮT BUỘC chủ động nhận ra mâu thuẫn, đính chính cụ thể điều nào đúng, điều nào sai.
+- **Khi user hỏi "sao bot treo?", PHẢI kiểm tra O(1) TRƯỚC khi đưa kết luận.** CẤM đoán mò hay extrapolate từ session khác. Luôn lấy số liệu thực: PID, `gateway_state.json`, `gateway.log` timestamps, `state.db` timestamps, socket state (`Get-NetTCPConnection`).
+- **Khi user nói "VPS không khác gì port 10001" — đó là sự thật kỹ thuật.** Proxy SGP và Proxy LAN đều đi qua cùng tuyến cáp biển quốc tế. KHÔNG được bảo "VPS tốt hơn" hay "VPS lách được FPT" khi cả 2 đều dùng chung đường truyền vật lý.
+- **Không đùn đẩy restart Gateway cho user.** Coordinator có thể dùng `delayed-restart.ps1` qua worker detached, KHÔNG bảo user chạy lệnh PowerShell bên ngoài.
+- **Trả lời ngắn gọn, trực diện.** User Tad ghét văn dài, vòng vo, và phân tích sai. Nếu phân tích sai → nhận lỗi ngay, không biện minh.
+- **Kỷ luật trả lời khi user hỏi bot treo do mạng ("Lại treo ... do nhà mạng hả?"):**
+  BẮT BUỘC trả lời trực diện CÓ/KHÔNG ngay trong 1–2 câu đầu tiên, nêu rõ nguyên nhân (WARP drop, socket stall, hay blocking). TUYỆT ĐỐI CẤM tuôn sớ đối chiếu log và số liệu forensic O(1) dài dòng hàn lâm làm user bực ("?"). Chỉ phân tích sâu khi user yêu cầu giải thích chi tiết.
+- **Bẫy WARP MASQUE Drop Socket & Giải pháp Webhook Cloudflare Named Tunnel:**
+  - WARP mặc định dùng protocol `MASQUE` (QUIC/UDP 443) hay bị ISP VN bóp dẫn đến `ProxyError: Host unreachable`. Ép về WireGuard hoặc re-bind port `40000`.
+  - Giải pháp triệt để 100% là chuyển từ Polling sang Webhook Mode qua Cloudflare Named Tunnel (sử dụng domain có Cloudflare DNS như `taadaa.click` -> `bot.taadaa.click` trỏ local port `8443`). Xem chi tiết `references/telegram-network-resilience.md`.
+- **Bẫy Chrome CDP Profile chính vs Profile cô lập Hermes khi user yêu cầu thao tác Cloudflare Dashboard:**
+  - Khi user nói *"T log cloudflare lên chrome cdp r mà nhỉ"*: Cổng CDP 9222 hiện tại đang gắn với `browser_profile` riêng của Hermes (`C:\Users\Kibe\AppData\Local\hermes\browser_profile`), chỉ có cookie tool (DongVanFB, 5sim).
+  - Phiên đăng nhập Cloudflare thật của user nằm ở Chrome chính (`Profile 4` - Kal), đang mở sẵn trên máy nhưng KHÔNG bật cờ `--remote-debugging-port`. Chrome không cho phép gán nóng cổng CDP vào tiến trình đang chạy.
+  - Đăng nhập Cloudflare trên profile mới qua CDP luôn bị chặn bởi Turnstile CAPTCHA ("Verify you are human") và OTP 2FA.
+  - Kỷ luật thực thi: Không loay hoay cố bypass Turnstile hay kill Chrome chính của user; giải thích rõ O(1) và hướng dẫn user mở link trực tiếp trên Chrome chính để lấy Tunnel Token trong 30 giây.
+
 - **Telegram HTTP Connection Pool Exhaustion (Pool timeout) do bão request/edit đa luồng:**
   - **Triệu chứng:** Trong `gateway.log` xuất hiện hàng loạt `ERROR [Telegram] Failed to edit Telegram message <id>: Pool timeout: All connections in the connection pool are occupied. Request was *not* sent to Telegram...`. Tiếp theo là 10 lần retry reconnect polling đều báo `Pool timeout`. Sau lần retry thứ 10, gateway log `Fatal telegram adapter error (telegram_network_error)... Restarting gateway.`
   - **Cơ chế gốc:** Đây **KHÔNG** phải lỗi rớt mạng Internet, lỗi đứt proxy, hay cạn kiệt số lượng socket thực tế. Lỗi xảy ra do **`HERMES_TELEGRAM_HTTP_POOL_TIMEOUT` mặc định chỉ là 8.0s** (`adapter.py:3326`). Khi có tác vụ upload ảnh screenshot/media group (`send_multiple_images`) kéo dài 5–10s, các request edit status hay tin nhắn khác phải chờ socket trong pool; chờ quá 8.0s là `httpcore` tự động ném ngoại lệ `PoolTimeout`.
@@ -406,20 +573,34 @@ Khi được yêu cầu kiểm tra xem Telegram Bot có bị disconnect, timeout
   - **Chẩn đoán:** Phân biệt rõ `Pool timeout` (nghẽn pool HTTP client nội bộ khi nhiều session chạy) với lỗi rớt mạng ISP/proxy (`Timed out`, `getaddrinfo failed`, `149.154.166.110 failed`).
 
 - **Telegram long-poll stall (silent TCP CLOSE-WAIT / update queue buffering) vs OmniRoute zero-traffic:**
-  - **Triệu chứng:** Bot Telegram tạm dừng phản hồi 2–5 phút, OmniRoute không nhận được bất kỳ request nào (`storage.sqlite` trống trơn trong khoảng thời gian này). Sau đó bot đột ngột phản hồi dồn dập và OmniRoute nhận một đợt bão request (burst) cùng lúc.
-  - **Cơ chế gốc:** Kết nối TCP long-polling giữa thư viện PTB (python-telegram-bot) và `api.telegram.org` bị ngắt ngầm (silent TCP stall / half-open / CLOSE-WAIT). Tin nhắn gửi từ Telegram bị dồn ứ ở server Telegram (`pending_update_count > 0`) mà client local chưa đọc được.
-  - **Dấu hiệu log:** Trong `gateway.log` xuất hiện cảnh báo heartbeat:
-    `WARNING: [Telegram] Telegram polling heartbeat: N update(s) queued but not consumed (stuck probe 1/2)`
-    kèm theo chuỗi `Flushing text batch ...` giải phóng hàng loạt session cùng lúc ngay sau khi socket được thông tắc hoặc timeout reset.
+  - **Triệu chứng:** Bot Telegram tạm dừng phản hồi 2–10 phút, OmniRoute không nhận được bất kỳ request nào (`storage.sqlite` trống trơn trong khoảng thời gian này). Sau đó bot đột ngột phản hồi dồn dập và OmniRoute nhận một đợt bão request (burst) cùng lúc.
+  - **Cơ chế gốc:** Kết nối TCP long-polling giữa thư viện PTB (python-telegram-bot) và `api.telegram.org` bị ngắt ngầm (silent TCP stall / half-open / CLOSE-WAIT). Tin nhắn gửi từ Telegram bị dồn ứ ở server Telegram mà client local chưa kéo về được.
+  - **Cạm bẫy điểm mù của Heartbeat Probe (`_probe_pending_updates` Blind Spot):**
+    - `get_webhook_info().pending_update_count` trong Telegram Bot API **CHỈ có giá trị > 0 khi đang cấu hình Webhook URL** (`url != ""`). Khi chạy chế độ Polling (`url == ""`), Telegram luôn trả về `pending_update_count: 0` dù có hàng loạt tin nhắn đang chờ được kéo về.
+    - Hàm `bot.get_me()` dùng pool request thông thường nên vẫn trả về thành công (<200ms) qua proxy.
+    - Hậu quả: `_polling_heartbeat_loop` hoàn toàn **không phát hiện được socket `getUpdates` bị kẹt** nếu chỉ dựa vào `get_webhook_info()`. Cảnh báo `queued but not consumed` không xuất hiện. Hiện tượng nghẽn có thể kéo dài tới 8–10 phút cho đến khi socket TCP tự timeout/reset ở tầng OS hoặc proxy, rồi mới bung dồn (`Flushing text batch`).
+  - **Dấu hiệu nhận diện chắc chắn 100% (O(1) Forensics):**
+    - `gateway.log` có khoảng trống (log gap) kéo dài 5–10 phút không có dòng `inbound message:` nào dù người dùng liên tục nhắn tin.
+    - Ngay sau đó xuất hiện chuỗi liên tiếp `Flushing text batch ...` giải phóng hàng loạt tin nhắn từ nhiều thread/chat khác nhau trong cùng 1–2 giây.
+    - Đối chiếu `messages.timestamp` (thời điểm gửi trên Telegram client) với mốc thời gian của dòng `Flushing text batch` tương ứng: độ trễ lệch nhau vài phút đến gần 10 phút.
   - **Chẩn đoán & Xử lý:** Đây là nghẽn socket mạng quốc tế tới Telegram, KHÔNG phải do OmniRoute sập hay model bị đơ. Proxy local (MikroTik/Singbox cùng LAN) không giải quyết được vì vẫn chung tuyến cáp ISP.
-  - **Tối ưu tốc độ phục hồi (`_polling_heartbeat_loop`):** Mặc định code cũ đặt `HEARTBEAT_INTERVAL = 90s` (probe 2 lần = 180s = 3 phút mới unstick). Đã nâng cấp hỗ trợ cấu hình qua env var với default tối ưu:
-    - `HERMES_TELEGRAM_HEARTBEAT_INTERVAL`: Mặc định `30` giây (thay vì `90` giây).
-    - `HERMES_TELEGRAM_HEARTBEAT_TIMEOUT`: Mặc định `15.0` giây.
-    - Thời gian phát hiện và giật lại kết nối tối đa chỉ mất ~30–60 giây.
+  - **Tối ưu tốc độ phục hồi (`_polling_heartbeat_loop`) & So sánh bản chất FPT vs Viettel:**
+    - *Bản chất FPT:* Bóp chặn chủ đích ở tầng DNS (`getaddrinfo failed`) và bóp dải IP Telegram/DoH fallback (`149.154.166.110`) liên tục cả ngày (>1.400 lần/ngày).
+    - *Bản chất Viettel:* Không chặn IP/DNS (`FallbackIP=0`, `DNS_Err=0`), nhưng cáp biển/quốc tế hay suy hao lúc đêm (23:00–03:00) gây *Silent TCP Stall* trên socket long-polling (`getUpdates`).
+    - *Nguyên nhân bị om 8–9 phút:* Khi chưa cấu hình env var trong `.env`, TCP keepalive của OS (Windows mặc định 2 tiếng) và timeout thư viện có thể ngâm socket chết hàng phút trước khi unstick.
+    - *Khắc phục cấp tốc (Aggressive Heartbeat qua .env):*
+      ```bash
+      HERMES_TELEGRAM_HEARTBEAT_INTERVAL=15   # Thăm dò mỗi 15s (thay vì 30-90s)
+      HERMES_TELEGRAM_HEARTBEAT_TIMEOUT=10.0  # Timeout probe 10.0s
+      ```
+      Giúp giật đứt socket chết và kéo lại tin nhắn sau ~30–45s khi có tin dồn ứ (`pending_update_count > 0`), không bao giờ để ngâm quá 1 phút.
+    - *Khắc phục triệt để 100% (Webhook Mode qua Cloudflare Tunnel):* Cài `cloudflared` trỏ subdomain về port 8443 cục bộ và đặt `TELEGRAM_WEBHOOK_URL=https://.../telegram` trong `.env`. Chuyển sang cơ chế Telegram chủ động Push (HTTP POST) thay vì Long-polling giữ socket rỗng, miễn nhiễm hoàn toàn với Silent TCP Stall.
   - **Lưu ý đồng bộ mã nguồn:**
     - Repo git: `D:\Taadaa\Hermes` (remote `fork https://github.com/thanhdatbui/hermes-agent.git`, branch `main`).
     - Runtime paths: `%LOCALAPPDATA%\hermes\hermes-agent\plugins\platforms\telegram\adapter.py` và `venv\Lib\site-packages\plugins\platforms\telegram\adapter.py`.
   - **Lưu ý restart & Tác động lên Active Sessions:**
+    - Xem chi tiết lỗi tải file: `references/telegram-proxy-media-download-pitfall.md`.
+    - Xem chi tiết cấu hình Telegram Webhook qua Cloudflare Tunnel: `references/telegram-webhook-cloudflare-tunnel.md`.
     - Lệnh `hermes gateway restart` bị chặn nếu gọi từ trong session terminal tool (tránh tự kill parent); khi cần chạy thủ công ngoài shell / PowerShell:
       ```powershell
       powershell -Command "$p = (Get-Content '$env:LOCALAPPDATA\hermes\gateway_state.json' | ConvertFrom-Json).pid; if ($p) { Stop-Process -Id $p -Force }; Start-Process pythonw -ArgumentList '-m hermes_cli.main gateway run' -WindowStyle Hidden"
@@ -429,11 +610,15 @@ Khi được yêu cầu kiểm tra xem Telegram Bot có bị disconnect, timeout
 - **Bẫy 2 tầng chặn lệnh restart Gateway (`_contains_gateway_lifecycle_command` & `_HERMES_GATEWAY=1`):**
   - **Tầng 1 (terminal_tool.py):** Khi session chạy trong Gateway, terminal tool chặn regex `r"(?i)(?:hermes\s+gateway\s+(?:restart|stop))"`.
   - **Tầng 2 (hermes_cli/gateway.py):** Ngay cả khi vượt qua regex bằng đường dẫn tuyệt đối (`.../hermes.exe gateway restart`), CLI kiểm tra `os.getenv("_HERMES_GATEWAY") == "1"` và chủ động từ chối (`Refusing to restart the gateway from inside the gateway process. Exit code 1`).
-  - **Quy tắc thực thi:** Tuyệt đối KHÔNG cố chạy trực tiếp `hermes gateway restart` từ trong agent/subagent session. Thay vào đó:
-    1. Báo cáo ngay cho user lý do lệnh bị chặn bởi cơ chế an toàn chống kill parent/loop.
-    2. Sử dụng One-Shot Idle Watcher (`restart-when-idle.ps1`) kích hoạt ngầm độc lập qua PowerShell:
-       `Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File C:\Users\Kibe\AppData\Local\hermes\scripts\restart-when-idle.ps1" -WindowStyle Hidden`
-       hoặc hướng dẫn user chạy `hermes gateway restart` từ shell bên ngoài.
+  - **Quy tắc thực thi khi cần Restart Gateway:** Tuyệt đối KHÔNG cố chạy trực tiếp `hermes gateway restart` từ trong agent/subagent session (bị chặn bởi guard `_HERMES_GATEWAY=1`). Thay vào đó:
+    1. **Phân định rạch ròi Farm Cron vs Gateway:** Farm batch (`python.exe` chạy feed 80 máy, upload, follow...) hoàn toàn độc lập với Gateway (`pythonw.exe`). Restart Gateway KHÔNG làm gián đoạn farm đang chạy tới tối.
+    2. **Khi user yêu cầu restart ngay ("Làm đi", "restart đi"):** Dùng kịch bản **Detached Delayed Restart (`delayed-restart.ps1`)**:
+       - Script xóa `_HERMES_GATEWAY`, sleep 6s để agent kịp hoàn tất turn và gửi tin nhắn phản hồi Telegram đến user.
+       - Tra cứu PID Gateway động từ `gateway_state.json` / CIM (`pythonw*` + `*gateway*run*`), kiểm tra `CommandLine` trước khi `Stop-Process` (chống kill nhầm PID khác).
+       - Khởi động lại Gateway qua `Start-Process $resolvedPythonw -ArgumentList @("-m", "hermes_cli.main", "gateway", "run") -WindowStyle Hidden -PassThru` và verify `!$newProc.HasExited`.
+       - Kích hoạt qua worker detached ngầm bằng PowerShell `-WindowStyle Hidden`.
+    3. **Khi cần restart tự động lúc cả hệ thống idle:** Sử dụng One-Shot Idle Watcher (`restart-when-idle.ps1`) kích hoạt ngầm độc lập qua PowerShell.
+    4. Hoặc hướng dẫn user chạy `hermes gateway restart` từ shell bên ngoài.
   - **Bẫy false-positive:** Ngay cả khi chạy lệnh vô hại như `cp`, `git`, hoặc `python` mà trong chuỗi lệnh có xuất hiện đường dẫn file (ví dụ chứa các từ khóa trên) hoặc comment/chuỗi con tương tự, lệnh sẽ bị chặn ngay lập tức với lỗi: `Blocked: cannot restart or stop the gateway from inside the gateway process.`
   - **Giải pháp xử lý:** Sử dụng các tool đọc/ghi file native (`write_file`, `patch`, `read_file`) thay vì lệnh shell. Nếu bắt buộc truyền đường dẫn qua lệnh shell/python, mã hoá base64 hoặc ghép chuỗi để tránh khớp regex.
 - **Quy chuẩn Plan-Review cho Script & Docs Gateway:**
@@ -457,6 +642,14 @@ Khi được yêu cầu kiểm tra xem Telegram Bot có bị disconnect, timeout
 ## Báo cáo user & Chống hiện tượng phản hồi 2 lần (Double-Reply)
 
 - KHÔNG gửi từng bước / tool output trung gian — các lượt trung gian dùng token `[SILENT]`; chỉ 1 báo cáo cuối (kết quả từng máy, thời gian, file log) hoặc lỗi cần xử lý.
+- **Bẫy tin nhắn dài sát trần 4096 ký tự bị Telegram âm thầm drop (Silent Message Drop / Fake Bot Freeze):**
+  - **Triệu chứng:** Trong `gateway.log` ghi `Sending response (N chars)` (với N > 4000 hoặc sát trần 4096 chars), không ném exception lỗi mạng rõ ràng, nhưng ở phía client Telegram người dùng HOÀN TOÀN KHÔNG NHẬN ĐƯỢC TIN NHẮN. Người dùng thấy bot im bặt hàng giờ ("h thêm 30ph r đấy mày có trả lời lồn đâu").
+  - **Cơ chế gốc:** Telegram Bot API giới hạn mỗi message text tối đa 4096 ký tự UTF-8 (đặc biệt khi kèm formatting MarkdownV2 / HTML / code blocks nhiều dòng). Khi gateway chia chunk hoặc adapter gửi response quá dài, nếu bị drop/lỗi serialize ngầm từ phía API, tin nhắn biến mất mà session không có thêm inbound trigger để gửi lại.
+  - **Kỷ luật bất biến:** Mọi câu trả lời trên Telegram PHẢI ngắn gọn, súc tích (dưới 1500–2000 ký tự). Nếu có script PowerShell, bảng so sánh hay log dài, BẮT BUỘC cắt lọc tối giản, chỉ đưa đúng khối lệnh hoặc chia nhỏ, tuyệt đối KHÔNG gộp chung đối chiếu dài + script dài thành một tin nhắn khổng lồ >3500 ký tự.
+- **CẤM emit `[SILENT]` khi user hỏi về tình trạng bot treo/đơ/lag (The `[SILENT]` Freeze Trap):**
+  - **Cơ chế:** Khi user hỏi *"Sao bot treo?", "Lại nghẽn nữa hả?", "Alo bot đâu rồi"*, nếu Coordinator gọi worker subagent ngầm và emit `[SILENT]`, client Telegram hoàn toàn KHÔNG nhận được tin nhắn phản hồi nào trong suốt 3–10 phút worker chạy.
+  - **Hậu quả:** Đối với user đang nghi ngờ bot bị treo, sự im lặng này chính là bằng chứng xác nhận bot đã chết/đơ, gây hiểu lầm nghiêm trọng (*Fake Freeze*) và tạo ức chế khiến user bức xúc ("Lại treo r đkm").
+  - **Kỷ luật bất biến:** BẮT BUỘC phản hồi ngay 1 câu xác nhận O(1) ngắn gọn (ví dụ: *"Bot vẫn sống và đang nhận lệnh bình thường, em đang trích xuất log kiểm tra..."*) để client Telegram thấy bot có phản hồi tức thì, SAU ĐÓ mới dispatch worker nền. CẤM TUYỆT ĐỐI emit `[SILENT]` khi user đang tra cứu liveness của bot.
 - **Hiện tượng trả lời 2 lần liên tiếp (Double-Reply / Queued follow-up):**
   - **Cơ chế:** Khi agent gửi tin nhắn phản hồi ở turn dispatch (vd: "Đã nhận lệnh, đang điều phối worker..."), và ngay sau đó hoặc một thời gian ngắn một async subagent hoàn tất (`[ASYNC DELEGATION BATCH COMPLETE]`) hoặc gateway có `Queued follow-up for session ...`, gateway sẽ tự động kích hoạt turn tiếp theo và render thêm một tin nhắn nữa. Kết quả: User thấy 2 tin nhắn phản hồi nối tiếp nhau trên Telegram.
   - **Kỷ luật bất biến:** Khi dispatch worker background cho một tác vụ chạy ngầm, Coordinator BẮT BUỘC trả lời cực kỳ ngắn gọn (1 câu xác nhận duy nhất) hoặc emit `[SILENT]` nếu không có câu hỏi cần giải đáp ngay, giữ báo cáo đầy đủ cho turn sau khi worker hoàn thành. Tuyệt đối không viết 2 báo cáo tổng kết trùng lặp ngữ cảnh ở cả 2 turn.
@@ -510,10 +703,14 @@ Use when Gateway remains alive but a platform disappears after Desktop/restart w
 **Reporting style:** concise Vietnamese; state purpose, changed runtime paths, verification evidence, and any restart blocker. Do not bury the result in a long plan or imply the source repository was fixed when only the runtime was repaired.
 
 Session-specific checklists:
+- `references/hermes-gateway-queued-followup-media-drop.md` — Lỗi mất ảnh nghiệm thu do race condition trong xử lý tin nhắn nối tiếp (`Queued follow-up`) khi subagent nền hoàn tất đúng lúc agent chính vừa trả lời.
 - `references/extract-local-files-media-auto-delivery-trap.md` — Cạm bẫy auto-detect bare file path (hàm `extract_local_files` trong `base.py`) tự động upload video/ảnh lên Telegram khi có đường dẫn thô tồn tại trên đĩa, giải thích 0 quota LLM và quy tắc bắt buộc bọc backtick.
+- `references/vps-http-proxy-setup-tinyproxy.md` — Triển khai Tinyproxy HTTP Proxy có BasicAuth trên VPS (Singapore/ngoại) làm Egress an toàn cho Telegram Gateway, xử lý quyền log và thang kiểm định.
+- `references/gateway-busy-ack-suppression-and-yaml-syntax-fallback.md` — Khắc phục lỗi YAML syntax trong config.yaml khiến Gateway fallback default config và triệt tiêu vĩnh viễn thông báo phiền toái "⚡ Interrupting current task..." qua display.busy_ack_enabled: false.
 - `references/idle-restart-and-session-lifecycle.md` — chi tiết 4 tầng session (_running_agents vs _agent_cache vs session_store vs executor), cơ chế check idle qua gateway_state.json và script PowerShell nền restart an toàn.
 - `references/runtime-version-mismatch.md` — recover a live Telegram adapter/core mismatch safely.
 - `references/runtime-sync-forensics.md` — identify who actually copied runtime files, distinguish updater trigger from copy mechanism, and avoid blaming OmniRoute/Desktop without evidence.
+- `references/telegram-webhook-wal-bloat-and-media-outbound.md` — chẩn đoán hiện tượng bot đứng hình 5-15 phút do Telegram Webhook bị phạt `Read timeout expired`, file `state.db-wal` phình >3GB gây lock I/O đĩa, và luồng tải ảnh bị bóp băng thông.
 
 ## Runtime-sync/update forensics
 

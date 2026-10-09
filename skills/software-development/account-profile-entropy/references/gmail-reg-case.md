@@ -85,9 +85,13 @@ When integrating multi-word names (having spaces in `ten`) and symbols into ADB 
 - `input_text(device_id, text)`: Must encode spaces as `%s` (e.g. `part.replace(' ', '%s')`). Otherwise `/system/bin/input text` splits args on space and aborts, leaving fields empty.
 - `human_type(device_id, text)`: Must type spaces with `keyevent 62` (KEYCODE_SPACE), `@` with `keyevent 77` (KEYCODE_AT), `#` with `keyevent 18` (KEYCODE_POUND).
 
-## Username Collision Handling (GMAIL-REG-USERNAME-TAKEN-RETRY-01)
+## Username Collision Handling & Retry Escalation (GMAIL-REG-USERNAME-TAKEN-RETRY-01)
 When Google indicates username taken ("đã được sử dụng", "That username is taken", "Try another", "Hãy thử tên khác"):
 - `handle_username_entry(device_id, acc, user_node, max_username_attempts=5, stt=0, shot_fn=None)`
-- Retries up to 5 times generating fresh candidates via `build_username(acc)`.
+- Retries up to 5 times generating fresh candidates via `build_username(acc, attempt=attempt)`.
+- Retry Escalation:
+  - Attempt 2: Adds 3 digits, salt2+2d, or suffix+2d.
+  - Attempt 3: Adds 4 digits, salt3+2d, or suffix+3d.
+  - Attempt >= 4: Adds salt3/4+3d or suffix+4d.
 - Updates `acc["id"] = new_username` and local `username` so all downstream verify and success logging record the final registered username.
 - Clears field (`clear=True`) before typing the next candidate.

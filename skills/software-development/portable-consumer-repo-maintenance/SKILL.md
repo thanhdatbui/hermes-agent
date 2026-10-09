@@ -28,6 +28,19 @@ When the requested change is a compatibility-regression record limited to reposi
 
 For the reusable command/report checklist, see `references/docs-only-regression-record.md`.
 
+## Authoritative-Registry Bulk Policy Propagation
+
+Use this class-level procedure when propagating an approved canonical workflow or policy artifact across multiple Taadaa repositories.
+
+1. Resolve the authoritative bounded registry/list first (for Taadaa, prefer `D:/Taadaa/tools/project_manifest.py` and `MANIFEST["repos"]`). Do not replace the registry with a broad disk scan or infer extra repos from adjacent directories.
+2. Record exact registry entries, exclusions, the canonical source repo, non-git/scratch entries, and paths checked. If the registry cannot be resolved within bounded inspection, stop with the exact blocker and checked paths; do not guess.
+3. Bind exact target paths per repo. Treat the canonical source repo as read-only and explicitly exclude it. Skip non-git/scratch entries unless explicitly included.
+4. Before each write, snapshot HEAD/status, scoped diff, raw bytes, EOL facts, marker counts, and backup preimages outside the repo. Preserve unrelated dirty paths; skip dirty or ambiguous same-file targets rather than overwrite them.
+5. Copy canonical payloads by bytes, adapting only the target's existing EOL convention. Replace an existing marked pointer block in place or append exactly one marked block; reject half-markers and duplicates. Do not touch code/config/workbook/credentials/device state, and do not commit or push unless separately authorized.
+6. Verify per repo: target paths, action, before/after marker counts, normalized-content equality, EOL/bare-LF checks, `git diff --check`, dirty/conflict status, and skipped reason. Keep backups and reports outside repos.
+
+The reusable registry-first evidence recipe is in `references/cross-repo-agents-sync.md`.
+
 ## Workflow
 
 1. **Prove identity and isolate first.** Resolve the actual repository root with `git rev-parse --show-toplevel`; do not assume the session cwd or a user-provided Windows path is the checkout. If the named files are absent, compare candidate local worktrees by exact path, repository metadata, and entrypoint presence before selecting one; never patch an installed package, cache, backup, or similarly named copy. Read `AGENTS.md`/project rules/runbooks, inspect `git status --short --branch` plus the scoped diff, and preserve every pre-existing dirty change. Create a dedicated worktree and branch from the clean current consumer `main` when the repository policy requires it; if direct edits are explicitly authorized, keep the scope exact and do not reset, format, stage, or overwrite unrelated dirty files. Do not edit a shared/core repository for a consumer-only issue.
@@ -53,6 +66,13 @@ For the reusable command/report checklist, see `references/docs-only-regression-
 14. **State-machine safety gate (rotation only).** For consumer workflows that touch devices, keep only the `rotation_locked` readiness check in the consumer state machine. The `locked_or_secure` gate, `is_device_locked` flag, `_allows_no_credential_swipe`/`_no_credential_swipe_retries` methods, and `allow_no_credential_swipe` config have been **removed** — do not reintroduce them. On `prepare_device()`, log both `rotation_locked` and `unlock_state` for diagnostics but only guard on `rotation_locked is not True` (→ `is_ui_unavailable` + `MANUAL_REVIEW`). Wrap execution in an outer `finally` that releases all acquired leases; retain stale/foreign lock artifacts unless cleanup was explicitly requested. Do not test this path with live devices, uploads, passwords, or credential bypasses; use deterministic fakes.
 10. **Report precisely.** Include exact worktree path, branch, changed files, commands and real outputs, focused/full-suite status, blockers, and confirmation that no commit or push occurred. Preserve unrelated changes.
 
+## Consumer-Only Recovery Adapters: Preserve Canonical Failure Semantics
+
+When a consumer must add one bounded recovery retry around a shared canonical flow (such as account switcher or navigation routines), inspect the canonical exception flow and the adapter's actual exception shape before wrapping public navigation functions:
+1. **Timing & translation boundary**: An outer try/except around high-level canonical entrypoints (`open_profile_root`, `open_account_switcher`) only catches errors that escape. If canonical internals catch, retry, translate, or mask low-level driver failures (e.g. converting `ATX_SESSION_UNAVAILABLE` into `NO_HANDLER_IMPLEMENTED` or `PROFILE_ROOT_NOT_CONFIRMED`), an outer catch of the driver code will never fire.
+2. **Narrowest adapter-side seam**: Rather than guessing or blindly treating all high-level errors as driver failures, proxy the adapter's low-level operation (e.g. `dump_ui`). Intercept only the exact driver exception shape (`code == "ATX_SESSION_UNAVAILABLE"`), invoke `recover_ui_dump()` exactly once, and retry before the error reaches canonical code.
+3. **Fail-closed non-misclassification**: Never map ordinary semantic failures (`PROFILE_ROOT_NOT_CONFIRMED`, `ACCOUNT_MISSING`, login screens, or missing anchors) to driver failure recovery. If recovery cannot be safely bounded or observed within the consumer layer, abort and specify the cross-repo core contract rather than guessing.
+
 ## Offline Queue-Backed Adapter Debugging
 
 For offline consumer flows whose fake adapter returns UI XML from a queue, treat snapshot consumption as part of the state contract:
@@ -73,7 +93,7 @@ For two Windows phone-farm hosts running the same TikTok consumers, use one Git 
 
 Treat Excel as an operator-managed source/ledger, not a concurrent database. A single `.xlsx` concurrently written by two hosts is unsafe even when machine ranges do not overlap: openpyxl rewrites the workbook, OneDrive does not perform semantic row merges, and stale reads can lose state. Prefer one workbook per host with disjoint account/machine ownership, or a read-only master exported into host workbooks. If a shared authoritative pool is required, migrate runtime ownership/leases/status to SQLite/MariaDB with transactions and leave Excel as import/export.
 
-- Make consumers host-config-driven rather than forked. A tracked `config.example.yaml` defines the schema; each host supplies an ignored local config containing `host_id`, machine range, workbook path, runtime root, and ADB path. The worker must print and validate the effective host/range/workbook before live execution and fail closed on ownership mismatch. See `references/multi-machine-state-and-git-gate.md` for the data partition and commit-gate checklist.
+- Make consumers host-config-driven rather than forked. A tracked `config.example.yaml` defines the schema; each host supplies an ignored local config containing `host_id`, machine range, workbook path, runtime root, and ADB path. The worker must print and validate the effective host/range/workbook before live execution and fail closed on ownership mismatch. See `references/multi-machine-state-and-git-gate.md` for the data partition, 3-tier sync architecture (Git local, OneDrive shared tools via `Path.home()`, 1-way Hermes sync Kibe ➔ Admin), and the stash-pull-pop reconciliation recipe for consumer hosts with dirty device mappings.
 
 ### Stale device-lock reconciliation (Tiktok-video upload batch)
 
@@ -110,6 +130,12 @@ Contract that survived plan + diff audit:
 - `apply_env()`: exports `TIKTOK_REG_*` from host config; **host config WINS over stale env overrides** (leftover machine-A canonical paths would let farm-b write machine-A workbooks = corruption) — warn on replace, never `setdefault` them into place.
 - OneDrive detection: env roots (`OneDrive`/`OneDriveConsumer`/`OneDriveCommercial`) first, path-part fallback (mount/symlink safe).
 - `resolve_workbook()`: workbook must resolve under the host `workbook_root`.
+
+Cross-host script adaptation & tooling patterns (Kibe vs Admin):
+- **Dynamic machine discovery over hardcoded ranges**: Do not hardcode `range(1, 81)` in row/account scanning scripts. Inspect unique machine IDs present in column A of the host's `taikhoan_run_safe.xlsx` (Kibe has 1..80, Admin has 201..280).
+- **Trailing whitespace in tracking workbook names**: Both hosts may have `taikhoan_dat_v2_updated .xlsx` (with a space before `.xlsx`) or `taikhoan_dat_v2_updated.xlsx`. Always probe candidate `cand1 = root / "taikhoan_dat_v2_updated .xlsx"` then fallback to `cand2 = root / "taikhoan_dat_v2_updated.xlsx"`.
+- **Subprocess host flag propagation**: When invoking sub-tools (e.g. `buy_hotmail.py`), pass host-targeted flags (`--append-admin` vs `--append-kibe`) matching `host_cfg["host_id"]`, and forward `TAADAA_HOST_CONFIG` in `os.environ` to child processes so downstream runners resolve the right host context.
+- **Unbounded tree scan timeout**: Never run recursive `os.walk('D:/Taadaa')` or unbounded searches; `D:/Taadaa` holds massive runtime/artifact/log directories (`runs/`, `batch-runs/`, `artifacts/`, `.runtime/`, `venv*/`) that trigger 180s tool timeouts. Always prune large directories or target specific subdirectories (`Tiktok_Reg`, `tools`).
 
 Injection points that worked: Tiktok-video `run_post.py` (guard `--machine` right after `Config()`), tiktok-luot `run_tiktok.py` (guard each `--machines` after arg parse), Tiktok_Reg `project_paths.py` (apply_env at module import, BEFORE workbook path constants resolve). `test_taadaa_host.py` (7 fail-closed cases) passes in all 3 repos.
 
@@ -219,6 +245,7 @@ Do not claim full verification merely because focused checks pass. Record broad-
 
 ## Pitfalls
 
+- **Tool argument JSON decoding and Windows backslash escape mangling (e.g. `\r`)**: When calling `patch` or executing inline shell scripts that write Windows raw string paths (e.g. `r"D:\Taadaa\runtime\..."`), backslashes like `\r` can get converted into ASCII carriage returns (`\r\n`) by the JSON decoding layer or shell parser before reaching the file. This creates truncated lines like `STATE_DIR = r"D:\Taadaa\r\nuntime..."` and causes immediate `SyntaxError: unterminated string literal`. When editing Windows file paths in Python code, use forward slashes (e.g. `Path("D:/Taadaa/runtime/kibe/cron-state")`), explicit double backslashes in non-raw strings, or read/write with a dedicated standalone script file via `write_file` rather than passing raw backslashes through nested escape layers.
 - A Windows absolute path can appear even when it is computed from a portable worktree on Windows; tests should reject known machine-specific fragments (`OneDrive`, `CodexRuntime`, cache roots, user profiles), not reject every drive-letter path.
 - A temporary verification script launched from `%TEMP%` may fail to import repository modules. Set `PYTHONPATH` or use an explicit repository import path; this is a harness issue, not evidence that the implementation failed.
 - Do not call a full suite green when unrelated baseline tests fail. Record exact failure counts and reasons.
@@ -271,8 +298,19 @@ Rules proven by running sessions:
 Repos with a space in the path (e.g. `D:\Taadaa\tiktok-luot nuoi acc`) break several default tool paths; use these instead:
 
 - **git from MSYS bash**: `git -C '/d/Taadaa/...'` fails with `cannot change to ... No such file or directory`, but `git -C 'D:/Taadaa/...'` (Windows form, forward slashes) works. `stat`/`ls` on the `/d/...` form succeed — only `git -C` is picky.
-- **search_files/ripgrep**: fails on these paths with `IO error for operation on /d/...: The system cannot find the path specified` — and it is NOT limited to space paths (verified 2026-08-11 on `D:\Taadaa\Tiktok_Reg`, no spaces): the tool cannot reach the D: drive at all on this host, so for any `D:\...` repo just use `terminal` grep/ls directly instead of retrying search_files. Reliable grep fallback: run the repo venv python with a heredoc that does `Path(p).read_text(encoding="utf-8").splitlines()` and scans `enumerate`d lines for the pattern, printing `lineno|line` — the exact line numbers double as `patch` anchors.
+- **search_files/ripgrep**: fails on these paths with `IO error for operation on /d/...: The system cannot find the path specified` — and it is NOT limited to space paths (verified 2026-08-11 on `D:\Taadaa\Tiktok_Reg`, no spaces; also `D:\Taadaa\register gmail` 2026-09-19): the tool cannot reach the D: drive at all on this host, so for any `D:\...` repo just use `terminal` grep/ls directly or `read_file` with explicit offset/limit instead of retrying search_files. Reliable grep fallback: run the repo venv python with a heredoc that does `Path(p).read_text(encoding="utf-8").splitlines()` and scans `enumerate`d lines for the pattern, printing `lineno|line` — the exact line numbers double as `patch` anchors.
+- **grep timeout on consumer repos**: Never run unconstrained `grep -rn` on the repo root or `python_runner/` without exclusions; `python_runner/runs/` (and `.ai-runs/`) holds gigabytes of historical execution runs, dumps, and screenshots that trigger a 180s command timeout. Always target specific subdirectories (e.g. `python_runner/flows`, `python_runner/tests`) or pass `--exclude-dir=runs --exclude-dir=.ai-runs`.
 - **pytest node ID**: this repo's suites are `unittest.TestCase` classes, so `pytest file.py::test_name` reports `ERROR: not found`; use `pytest file.py::ClassName::test_name`. Find the class name by scanning for `class ` lines above the method.
+- **`import _path_setup` in new `python_runner/tests/` files**: Running `pytest python_runner/tests/...` from repository root fails with `ModuleNotFoundError: No module named 'core'` because `python_runner` is not on `sys.path` by default. Existing tests use `import _path_setup  # noqa: F401` (defined in `python_runner/tests/_path_setup.py`) to inject `PYTHON_RUNNER_DIR` into `sys.path`. Any newly created test file in `python_runner/tests/` must include `import _path_setup  # noqa: F401` (or run pytest with `-o pythonpath=python_runner`).
+- **`DeviceContext` location in `tiktok-luot nuoi acc`**: `DeviceContext` is exported from `core.device` (`from core.device import DeviceContext`), NOT `core.device_context` (there is no `device_context.py` in this repository). Prompts or plan stubs specifying `core.device_context` will raise `ModuleNotFoundError`.
+- **Strict call-budget patch execution (e.g. `<= 4 calls`)**: When the user specifies concrete patch targets and a tight tool budget, do NOT spend calls on exploratory reconnaissance (`search_files`, `ls`, multi-round `read_file` reads). `search_files` fails on `D:/...` paths on this host anyway. Apply `patch(mode='replace', ...)` directly to the known files using unique surrounding context, then immediately run the target verification test. Exploratory drift wastes 100% of the budget before editing begins.
+
+## Pure UI Selector Contract vs Orchestrator Seam
+
+When implementing or refining UI element selectors (such as `_find_user_placeholder_switch_options` in `feed_swipe_smoke.py`):
+- **Pure selector invariant:** Selector functions MUST be pure UI parsers accepting `(xml_text: str, ...)` and explicit in-memory data (e.g. `known_other_accounts: list[str] | None = None`). They must NEVER perform filesystem I/O, config file discovery (`search_roots`), or environment lookups.
+- **Orchestration seam:** Resolving machine ID, loading runtime configs (e.g. `hermes_cron_source_config.json`), or querying `ctx.config` belongs exclusively to the caller/orchestrator layer (e.g. `verify_and_switch_profile`). The caller prepares the filtered parameters and passes them into the pure selector.
+- **Auditor compliance:** Blending config file loading into low-level UI selectors violates separation of concerns, breaks unit test isolation, and triggers audit score deductions (e.g. Sol Auditor).
 
 hermes-verify bootstrap pitfalls (bootstrap heredoc → tempfile script → subprocess):
 

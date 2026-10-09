@@ -38,10 +38,49 @@ Quy luật `video gốc` (cột source): Tik1 = m, Tik2 = 80+m, Tik3 = 160+m —
 hay copy 81..160 của Tik2, phải sửa. Chi tiết kèm launcher render + watchdog:
 `references/tikn-hashtag-source-and-render.md`.
 
+## Completeness gate for source-folder niche audits
+
+Before any niche/hashtag resync, distinguish **coverage** from **correctness**:
+
+- `state.db` is an operational source, not proof that every folder is correctly classified. A row can exist in `folders` while having a stale niche, no `source_channel`, or no matching `videos`/uploader evidence.
+- Report audit coverage explicitly: expected folder range, folders present, folders with source/uploader/video evidence, and folders missing evidence. Never call a partial metadata scan “all folders fixed.”
+- A folder with missing `source_channel` or no video/uploader evidence is `REVIEW`, not an automatic sync candidate. Recover evidence from the historical downloader DB, manifests/source metadata, and the actual source-folder provenance before writing a niche or hashtag.
+- The sync script is a copier, not a classifier: it will faithfully propagate a wrong DB niche into `TaiKhoan` and `Hashtag theo Folder`. Validate the DB row before running it.
+- For mixed-content folders, use source-channel identity plus majority/quality evidence; do not treat an old workbook row or a single stale DB label as authoritative.
+- After editing, verify both layers independently: the DB `(folder_num, niche, source_channel)` and the exact derived workbook row keyed by `video gốc`, including both `TaiKhoan` and `Hashtag theo Folder`.
+
+See `references/folder-niche-audit-completeness.md` for the reusable checklist and evidence table.
+
+## Regression prevention for partial folder metadata
+
+A successful workbook sync is not evidence that the classification was correct. The sync layer copies whatever niche is present in `state.db`; it must never be treated as the classifier. Before calling a 1..640 audit complete, report all four counts separately: expected folder range, folders present in the operational DB, folders with current source/uploader evidence, and folders requiring historical recovery or review. A folder with a missing `source_channel` or no matching `videos` rows is a coverage gap, not a verified match.
+
+When a channel that was previously correct regresses after a bulk resync, inspect timestamped workbook and DB backups before assigning blame. Compare the exact `(account, video gốc, Keyword Video, Hashtag Pool)` row and the DB `(folder_num, niche, source_channel)` row across snapshots. If historical downloader data shows mixed niches, use the dominant source/uploader evidence and disclose the mixed-content caveat. Never claim “all folders fixed” from a partial metadata scan.
+
+For the reusable checklist and evidence table, see `references/folder-niche-audit-completeness.md`.
+
 ## Historical render/artifact provenance
 
 - Before claiming that rendered media is missing or “leaked” to another folder, compare the derived workbook mapping **at render time** with its current mapping. Inspect run metadata/manifest arguments (`input_dir`, `output_dir`, source/output folder, preset, randomization) and the historical workbook backup if available.
 - A post-render master resync can legitimately move a row's `Folder Video` while old MP4s remain in the previous output folder. Classify this as `mapping_changed_after_render`, not as a renderer mapping failure. Never silently delete or rerender those artifacts; report the old→current mapping and counts first.
+
+## Video folder numbering standardization & render count reconciliation (TikN / D:\TIKTOK-videonuoinick)
+
+Khi chuẩn hóa số thứ tự video MP4 trong các folder `D:\TIKTOK-videonuoinick\<Folder Video>` và cập nhật workbook `TikN.xlsx`:
+1. **Bảo vệ tuyệt đối file đã đăng**:
+   - Đọc cột `Video Đã Đăng` (`posted`).
+   - Các file từ `1.mp4` đến `posted.mp4` ĐÃ ĐĂNG LÊN TIKTOK: **TUYỆT ĐỐI KHÔNG ĐỔI TÊN HAY DI CHUYỂN**.
+2. **Quy trình đổi tên 2 pha (Two-phase rename) chống xung đột/ghi đè chéo**:
+   - Với các file MP4 chưa đăng (`> posted`), sắp xếp theo thứ tự số tăng dần.
+   - Mục tiêu đánh số liên tục: `posted + 1`, `posted + 2`, ..., `N`.
+   - **Pha 1**: Đổi tên các file cần đổi sang tên tạm `.tmp_ren_{folder}_{target}.mp4`.
+   - **Pha 2**: Đổi tên từ file tạm sang `{target}.mp4`.
+   - Cơ chế 2 pha này đảm bảo không bao giờ bị ghi đè chéo (collision/clobber) khi folder có gap hoặc dải số dịch lùi/tiến.
+3. **Cập nhật workbook TikN.xlsx chuẩn Atomic**:
+   - Tạo backup `.bak` trước khi ghi.
+   - Cập nhật cột `Render Status = 'OK'` và `Render MP4 = <số lượng MP4 thực tế N>`.
+   - Lưu ra file tạm cùng thư mục (`.xlsx.tmp`) rồi dùng `os.replace` để tránh corrupt file khi có tiến trình khác đang đọc hoặc ngắt giữa chừng.
+   - Chạy script kiểm tra độc lập lại toàn bộ 80 folder (khẳng định liên tục `1..N`) và 80 dòng workbook trước khi chốt.
 
 ## Safe workflow
 
@@ -75,13 +114,34 @@ hay copy 81..160 của Tik2, phải sửa. Chi tiết kèm launcher render + wat
 
 ## Common pitfalls
 
+- **Off-Grid Folder Video Drift & Slot Collisions on Cluster Admin (Máy 201–280)**:
+  * Công thức Folder Video chuẩn cho cụm Admin: $\text{Folder Base} = (STT - 201) \times 8 + 1 \dots (STT - 201) \times 8 + 8$ (dải 1..640).
+  * Khi tool reg ghi nhận Folder vượt ra ngoài dải (ví dụ $\text{base} + 8 + \text{slot}$ do gán nhầm hoặc cộng dồn, M264 có base 505..512 nhưng gán 513, 514), công thức tính slot trong `sync-safe-workbook.py` (`(folder - 1) % 8`) sẽ quay vòng và va chạm với Slot 1 hoặc Slot 2 đã có sẵn nick.
+  * Hậu quả: Script đồng bộ loại bỏ nick mới vì trùng slot, để lại slot trống (`None`) trên `taikhoan_run_safe.xlsx`. Tool preflight reg bù (`ensure_row_accounts.py`) quét thấy `None` lại tưởng máy thiếu nick và tiếp tục điều máy đi reg bù, gây lỗi `MACHINE_FULL_8_ACCOUNTS` hoặc `[07] Tim email chua dang ky`.
+  * Khắc phục: Quét tìm các dòng có $\text{Folder} < \text{base}$ hoặc $\text{Folder} > \text{base} + 7$ trong `admin/taikhoan_dat_v2_updated .xlsx`, chuẩn hóa về đúng dải $1 \dots 640$, rồi rebuild lại `taikhoan_run_safe.xlsx` bằng `TAADAA_HOST_CONFIG=".../admin.yaml"`.
 - A global `Tik`/asset number is not the ordinal of the account within a machine.
+- **`farm_account_info` SQLite vs Excel `Folder Video` confusion**: Trong database `D:/Taadaa/data/tiktok_tracker.db` (`farm_account_info`), cột `tik` biểu thị số thứ tự slot/ca nuôi (1..8) của máy (tương ứng Tik1..Tik8), TUYỆT ĐỐI KHÔNG lưu số `Folder Video` (ví dụ 1960). Việc nhầm lẫn điền Folder Video vào `tik` sẽ làm sai lệch phân bổ slot và các truy vấn tracking.
+- **Dashboard Machine Badge Missing (`f.may IS NULL`) & `farm_account_info` Sync Gap**:
+  - *Hiện tượng*: Trên Web Dashboard `TikTok Farm Dashboard` (`kibe:1905`), tài khoản LIVE hiển thị đầy đủ stats (tim, follow, ranking) nhưng không hiện nhãn số máy (`Mxx` như M39, M247) và bị đẩy ra khỏi filter Cụm Kibe / Admin (`cluster = 'other'`).
+  - *Nguyên nhân cốt lõi*: `tiktok_dashboard.py` join dữ liệu qua `LEFT JOIN farm_account_info f ON r1.username = f.username`. Bảng `snapshots` nhận dữ liệu crawl realtime theo username từ TikTok, trong khi `farm_account_info` lưu mapping kho tài sản `(username, may, host_id, tik)`. Khi nick mới được tạo hoặc mới add vào Excel nuôi nhưng chưa được đồng bộ/backfill vào `farm_account_info`, trường `f.may` bị `NULL` -> hàm `mayTagHtml()` trên frontend trả về chuỗi rỗng.
+  - *Quy trình đối soát O(1)*:
+    1. Kiểm tra SQLite: `SELECT * FROM snapshots WHERE username = ? ORDER BY id DESC LIMIT 1;` và `SELECT * FROM farm_account_info WHERE username = ?;`.
+    2. Đối soát tìm máy thực tế trong các file Excel phân bổ (`D:/OneDrive/TaadaaData/kibe/taikhoan_run_safe.xlsx`, `D:/OneDrive/TaadaaData/admin/taikhoan_run_safe.xlsx`, `taikhoan_dat_v2_updated .xlsx`) để xác định cặp `(may, tik, host_id)`.
+    3. Cập nhật bổ sung mapping: `INSERT OR REPLACE INTO farm_account_info(username, may, host_id, tik) VALUES (?, ?, ?, ?)`. Sau khi ghi DB, Dashboard tại port 1905 sẽ tự động nhận diện đúng nhãn máy `Mxx` và cụm tương ứng trong chu kỳ refresh kế tiếp.
+- **Master Excel (`taikhoan_dat_v2_updated .xlsx`) là Source of Truth tối cao cho `farm_account_info` SQLite**:
+  - *Lỗi lệch ca/slot (Desync)*: Tuyệt đối CẤM map `tik` (ca nuôi 1..8) theo thứ tự crawl lịch sử hay thời điểm nick được tạo. Bảng `farm_account_info` BẮT BUỘC map 1:1 từ Master Excel (`taikhoan_dat_v2_updated .xlsx` của Kibe và Admin) theo công thức toán học:
+    $$\text{Tik (Slot)} = ((\text{Folder Video} - 1) \pmod 8) + 1$$
+    $$\text{Máy} = \text{Cột Máy trong file Master}$$
+  - *Công cụ chuẩn hóa*: Đã tạo script chuẩn tại `D:/Taadaa/tools/sync_farm_account_info.py`. Mỗi khi cập nhật Master Excel, chạy lệnh `python D:/Taadaa/tools/sync_farm_account_info.py` để tự động tạo backup DB và đồng bộ nguyên tử toàn bộ dải máy Kibe (1–80) và Admin (201–280), đảm bảo 0 lệch ca và 0 thiếu máy trên Dashboard.
 - A derived Tik1/Tik2/Tik3 workbook may already use a historical folder allocation that differs from the current registration workbook; do not silently overwrite it.
 - Empty IDs and URL-like placeholders are not valid account IDs and must be reported distinctly.
 - A folder existing on disk does not prove it is the folder assigned to that account; verify the authoritative `(machine, key)` mapping.
 - If Tik3 is a copy of Tik2, that is a data-integrity finding to report—not a reason to blindly shift rows.
 - Always state whether the user asked for an audit only or an actual synchronization. “Check mapping” means read-only unless the user explicitly requests repair.
 - **openpyxl cannot open backup files whose name lacks the `.xlsx` extension** (e.g. `Tik2.xlsx.bak-sync-id-20260811_145651`) — it raises `InvalidFileException`. Copy the backup to a temp path ending in `.xlsx` before loading, and keep the original backup untouched.
+- **Excel Serial Date Parsing vs ISO Dates (`ngày tạo` / date columns)**: Date values in workbook columns may be raw Excel serial numbers (e.g. `46236` = 2026-08-02, day offset from `1899-12-30`), string representations (`'2026-08-18'`, `'18/08/2026'`), or native Python `datetime.datetime` objects. Any inventory audit or recency filter must safely normalize all three representations (`datetime(1899, 12, 30) + timedelta(days=float(val))` for numeric values > 30000) to avoid silently dropping newly created records.
+- **Excel Column Shift & Fallback Probe Pattern (Date/Metadata Columns)**: In multi-machine workbooks (e.g. `taikhoan_dat_v2`), manual copy-pasting or batch append scripts often cause data to drift into adjacent columns (e.g. date entered into column 9 `device ID` instead of column 8 `NGÀY TẠO`, leaving column 8 `None`). Never rely exclusively on header-detected column index when parsed value is empty or invalid. Always define an ordered fallback probe list (e.g. `[header_col] + [8, 9, 7]` deduplicated) and validate candidate values against domain constraints (`candidate and candidate.year >= 2025`) before declaring a row unparseable/unverifiable.
+- **Recovering transient/quarantined account records from backup workbooks & audit sheets**: When auditing recent account registrations across the farm, accounts that died or triggered CAPTCHA shortly after creation may have been deleted or quarantined from the active workbook sheet into `Audit Pending` (e.g. `MAIL_DIE_GOOGLE_RELOGIN_REQUIRED`) or preserved only in timestamped backup workbooks (`gmail_clean_v2_backup_*.xlsx`). Always include backup snapshots and audit sheets to get a 100% accurate count of newly created inventory before comparing with checklive master results.
 - **Excel Tab/Sheet Name Length Limit**: Tên sheet/tab trong Excel BẮT BUỘC <= 31 ký tự. Nếu vượt quá (vd `2. Tuitehao Ban Nhieu (Khac Nguon)` = 34 chars), Excel sẽ ném cảnh báo/popup *"We found a problem with some content in '...xlsx'. Do you want us to try to recover..."*. Luôn kiểm tra và rút ngắn tên sheet dưới 30 ký tự khi tạo workbook bằng openpyxl.
 - **Tên cột và cấu trúc so sánh trực diện (3 bên)**:
   - Khi so sánh 3 bên (Shop A vs Shop B vs Kho nguồn), tên cột phải cụ thể (`Stock Shop A`, `Stock Shop B`, `Stock Kho Nguồn`), tránh dùng từ chung chung gây hiểu nhầm.
@@ -103,6 +163,12 @@ hay copy 81..160 của Tik2, phải sửa. Chi tiết kèm launcher render + wat
   - Khi quét duplicate ID TikTok trên file master: phân loại các hàng trùng thành (1) hàng rác/trống info (`PassTT=None` và `2FA=None`) vs (2) hàng có info riêng (có Pass riêng, 2FA riêng, hoặc Mail riêng).
   - Chỉ xóa trắng ô `ID` ở các dòng trống info để giải phóng slot rảnh cho batch reg mới; TUYỆT ĐỐI KHÔNG tự ý xóa dòng có Pass/2FA mà phải liệt kê bảng đối soát (Row, Máy, PassTT, 2FA, Gmail, PassMail) báo cáo user kiểm tra.
   - Sau khi sửa master, bắt buộc trigger sync sang `taikhoan_run_safe.xlsx` (`hermes_taikhoan_sync_cron.py` hoặc `sync-safe-workbook.py`) để tránh picker nuôi acc đọc ID rác.
+- **Auditing Cross-Workbook UID Invariants vs Preflight Gate (`excel_preflight_validator.py`)**:
+  - *Hiện tượng*: Cron sync `taikhoan-run-safe-sync` bị lỗi `[PREFLIGHT_VALIDATOR_FAIL]` do phát hiện trùng lặp tài khoản xuyên file (Rule 2: No Duplicate Accounts Cross-Files, ví dụ nick `laquyen2601` xuất hiện tại cả `tik3.xlsx` slot 3 M10 và `Tik2.xlsx` slot 2 M10).
+  - *Nguyên nhân cốt lõi*: Trong quá trình reg bù hoặc dọn dẹp duplicate, nếu chỉ reset các slot bị trùng trong file Master (`taikhoan_dat_v2_updated .xlsx`) mà chưa kiểm tra file con (`Tik1.xlsx..Tik8.xlsx`), validator của cron sẽ chặn đứng toàn bộ tiến trình publish sang runtime để bảo vệ farm.
+  - *Quy chuẩn đối soát định lượng trước khi Closeout*:
+    1. Kiểm tra 100% Unique UIDs trên `taikhoan_run_safe_combined.xlsx` bằng `collections.Counter`: `len(counts) == len(uids)` (Duplicates = 0).
+    2. Chạy độc lập `python D:/Taadaa/tools/excel_preflight_validator.py --excel-dir D:/OneDrive/TaadaaData/kibe --exit-on-error` để phát hiện sớm các case trùng lặp xuyên file `TikN` trước khi sync cron tự động phát hiện và ném alert.
 - **Target Inventory Conflict & Extra Machines Normalization (`taikhoan_run_safe.xlsx`)**:
   - Khi `_detect_clean.py` hoặc `target_inventory.py` báo `TARGET_INVENTORY_CONFLICT: machine X` hoặc `TARGET_INVENTORY_SERIAL_CONFLICT`:
     - Nguyên nhân: `taikhoan_run_safe.xlsx` có các slot cùng một máy nhưng mang serial khác nhau, hoặc serial bị gán trùng giữa các máy (thường do `EXTRA_MACHINES` trong `sync-safe-workbook.py` bị lệch/swapped ở dải máy 75-80).
@@ -136,6 +202,18 @@ For each row in a derived workbook:
 
 A prior audit initially treated `Tik1`/`Tik2`/`Tik3` as a global `(machine, Tik)` join and later treated them as rows without synchronizing `Folder Video`. The resolved contract is slot-by-source-row for selecting accounts, followed by copying both `ID` and the source `Tik` folder value. The safe recovery pattern is timestamped backups, a same-directory `.xlsx` temporary file, full row-level verification, and only then atomic replacement.
 
+## 5 Invariant Rules & Preflight Validator Gate (`excel_preflight_validator.py`)
+
+Khi kiểm tra hoặc đồng bộ hệ thống workbook phân bổ farm (`Tik1.xlsx..Tik8.xlsx`, `taikhoan_run_safe.xlsx`, `taikhoan_dat_v2_updated .xlsx`), BẮT BUỘC tuân thủ và kiểm tra 5 Invariant Rules sau (đã đóng gói thành gate tại `D:/Taadaa/tools/excel_preflight_validator.py`):
+1. **Rule 1 (Slot Limit Per Machine)**: Mỗi máy có tối đa 8 dòng/slot. Không xuất hiện trùng lặp máy trong cùng 1 file Tik.
+2. **Rule 2 (No Duplicate Accounts Cross-Files)**: Tài khoản không bị trùng lặp trên 2 slot khác nhau trong cùng 1 file hoặc xuyên suốt các file `Tik1..Tik8.xlsx` (trừ `None`/trống).
+3. **Rule 3 (Folder Video Formula & Uniqueness)**: Cột `Folder Video` (cột 4) phải độc bản trên toàn farm và khớp tuyệt đối công thức: `Folder Video(m, slot) = (m - 1) * 8 + slot`. Tuyệt đối không để chuỗi ký tự lạ, mật khẩu hay số lệch vào cột này.
+4. **Rule 4 (Video Gốc Formula & Uniqueness)**: Cột `Video Gốc` (cột 5) phải độc bản trong cùng 1 file `Tik{slot}.xlsx` (không 2 máy nào trong cùng 1 ca dùng chung video gốc), và khớp công thức: `Video Gốc(m, slot) = (slot - 1) * 80 + m`.
+5. **Rule 5 (taikhoan_run_safe.xlsx Invariants)**: Mỗi máy tối đa 8 dòng, 100% có serial phần cứng không rỗng, tài khoản không trùng lặp giữa các máy khác nhau.
+
+### Tích hợp Preflight Gate vào Sync Cron:
+Tại `hermes_taikhoan_sync_cron.py`, trước khi đồng bộ sang runtime (`hermes_cron_source_config.json`), bắt buộc chạy `excel_preflight_validator.py --excel-dir <path> --exit-on-error`. Nếu validator trả về lỗi (exit code != 0), HỦY NGAY luồng đồng bộ sang runtime để bảo vệ Farm khỏi dữ liệu rác.
+
 ## Multi-workbook transaction and lock-order invariant
 
 When synchronizing more than one derived workbook as a group transaction:
@@ -161,5 +239,7 @@ Keep this transaction logic in the consumer synchronizer; do not widen scope int
 ## References
 
 For the REG/Tik workbook and `D:\\TIKTOK-videonuoinick\\{Tik}` mapping pattern, see `references/reg-tik-folder-reconciliation.md`.
+For off-grid folder video drift and modulo-8 slot collisions on the Admin cluster (machines 201–280), see `references/admin-cluster-offgrid-folder-slot-collision.md`.
 For hashtag-by-source-folder niche, `video gốc` allocation rules, 8-row/machine restore, random render launcher, and the silent progress watchdog, see `references/tikn-hashtag-source-and-render.md`.
 For fingerprint ledger vs workbook video count drift audit, see `references/fingerprint-vs-workbook-video-count-audit-20260902.md`.
+For single-account hashtag drift between `Folder Video` and `video gốc` (e.g. pet videos with automotive hashtags), see `references/hashtag-drift-render-source-reconciliation.md`.

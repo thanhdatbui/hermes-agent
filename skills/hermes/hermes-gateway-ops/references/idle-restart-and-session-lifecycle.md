@@ -10,7 +10,7 @@ Khi khảo sát mã nguồn Gateway (`gateway/run.py`, `gateway/status.py`, `gat
 
 | Tầng | Cấu trúc dữ liệu / Vị trí | Chức năng & Trạng thái | Lưu ý phân biệt |
 |---|---|---|---|
-| **In-flight Turns** | `self._running_agents` (`Dict[str, Any]` trong `gateway/run.py`) | Theo dõi các session **đang trực tiếp thực thi turn** (đang gọi LLM API, chạy tool, hoặc chờ subagent). | **Nguồn sự thật duy nhất về active turns.** Khi bắt đầu turn: gắn `_AGENT_PENDING_SENTINEL` -> `AIAgent`. Khi turn kết thúc: gọi `_clear_running_agent()`. |
+| **In-flight Turns** | `self._running_agents` (`Dict[str, Any]` trong `gateway/run.py`) | Theo dõi các session **đang trực tiếp thực thi turn** (đang gọi LLM API, chạy tool, hoặc chờ subagent). | **Nguồn sự thật duy nhất về active turns.** Khi bắt đầu turn: gắn `_AGENT_PENDING_SENTINEL` -> `AIAgent`. Khi turn kết thúc: gọi `_clear_running_agent()`. **Bẫy Ghost/Stale Slots:** Cơ chế dọn stale `_running_agents` (`Evicting stale...` tại `run.py:9308-9353`) chỉ kích hoạt THỤ ĐỘNG khi có inbound message mới gửi tới đúng session đó (`if _quick_key in self._running_agents:`). Nếu thread/topic gặp lỗi ngắt quãng, socket stall hoặc user dừng chat ở thread đó, slot bị kẹt vĩnh viễn trong RAM, khiến `active_agents` luôn > 0 (vd = 7). |
 | **Agent LRU Cache** | `self._agent_cache` (`OrderedDict` trong `gateway/run.py`) | Cache in-memory các instance `AIAgent` đã từng chạy để giữ nguyên prompt caching (Anthropic, Gemini prefix cache) qua các turn. | **Agent trong cache hoàn toàn có thể đang IDLE.** Cache chỉ dọn dẹp khi vượt `_AGENT_CACHE_MAX_SIZE` (100) hoặc quá hạn idle TTL (`_AGENT_CACHE_IDLE_TTL_SECS = 3600s`). Không dùng cache để đo tải in-flight. |
 | **Session Store** | `SessionStore` / `AsyncSessionStore` (`gateway/session.py`) | Lưu trữ dữ liệu tĩnh và metadata lâu dài của toàn bộ session vào SQLite `state.db` (và mirror ra `sessions/sessions.json`). | Quản lý transcript, session ID, routing, `resume_pending`, reset policy... Là tầng lưu trữ tĩnh bền vững. |
 | **Worker Executor** | `self._executor` (`ThreadPoolExecutor` trong `gateway/run.py`) | Pool luồng thực thi các tác vụ đồng bộ của agent (cấu hình qua `gateway.max_workers`). | Chịu trách nhiệm concurrency, không lưu danh sách session. |
@@ -61,8 +61,10 @@ Nguồn dữ liệu authoritative duy nhất để biết Gateway rảnh hay b�
 * **Điều kiện Gateway IDLE tuyệt đối:**
   1. Tiến trình `pid` còn sống (`Get-Process -Id $pid`).
   2. `gateway_state == "running"`.
-  3. `active_agents == 0`.
-* **Debounce bắt buộc:** Để tránh khoảng trống 0.5s–1s giữa các turn kế tiếp hoặc subagent vừa bàn giao kết quả, script phải kiểm tra `active_agents == 0` liên tục trong **10 đến 15 giây** (ví dụ 5 lần liên tiếp x 2s = 10s) trước khi thực hiện hành động.
+  3. `active_agents == 0` (Fast Path) HOẶC **Quiescence Fallback**: Khi `active_agents` kẹt cố định > 0 (do ghost slots) trong > 3 phút VÀ file `gateway.log` không có inbound/flushing trong $\ge$ 45 giây.
+* **Debounce bắt buộc:** Để tránh khoảng trống 0.5s–1s giữa các turn kế tiếp hoặc subagent vừa bàn giao kết quả, script phải kiểm tra `active_agents == 0` liên tục trong **10 đến 15 giây** (ví dụ 5–6 lần liên tiếp x 2s = 10–12s) trước khi thực hiện hành động.
+* **Bẫy Timeout 1800s của Watcher khi check `active_agents == 0` tuyệt đối:**
+  Khi Gateway chạy thời gian dài với nhiều DM topic/group Telegram, `self._running_agents` tích tụ các slot mồ côi (ghost entries) do cơ chế dọn stale mang tính thụ động. Nếu watcher chỉ chờ cứng `active_agents == 0`, bộ đếm sẽ bị reset liên tục và timeout 1800s hủy restart. Do đó watcher thông minh cần kết hợp kiểm tra độ yên lặng của log (`gateway.log` không thay đổi kích thước/không có inbound message mới trong 45s-60s) để trigger restart an toàn.
 
 ---
 
@@ -235,3 +237,20 @@ powershell.exe -NoProfile -Command 'Start-Process powershell.exe -ArgumentList "
 # Verify tiến trình watcher đang chạy (tránh pitfall lồng nháy đơn trong git-bash khi query WMI):
 powershell.exe -NoProfile -Command 'Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like "*restart-when-idle.ps1*" } | Select-Object ProcessId, ExecutablePath, CommandLine'
 ```
+
+---
+
+## 5. Dấu hiệu Nhận Biết In-flight Tool Calls trên Telegram Live Heartbeat
+
+Khi Hermes Gateway đang xử lý turn, dòng trạng thái live cập nhật dạng:
+`⚙️ Working — <N> min — iteration <X>/<Y>, <current_tool>`
+(Ví dụ: `⚙️ Working — 3 min — iteration 16/200, terminal` hoặc `..., read_file`).
+
+### Ý nghĩa chẩn đoán thực chiến:
+1. **Đây là counter của session chính (primary session) trong chat hiện tại:**
+   - `<X>/<Y>`: Số thứ tự vòng lặp tool calling hiện tại của session chính so với `max_turns` / `max_iterations`.
+   - `<current_tool>`: Tool đang được thực thi đồng bộ tại session chính.
+2. **Phân biệt Coordinator tự làm vs Đã Dispatch Worker Subagent:**
+   - **Đang tự làm (Vi phạm vai trò Coordinator):** Nếu counter tiếp tục tăng (`iteration 9/200`, `16/200`...) và hiển thị `<current_tool>` là `terminal`, `read_file`, hay `search_files`, chứng minh Coordinator đang trực tiếp tự điều tra, probe hoặc sửa code tại session chính.
+   - **Đã Dispatch đúng chuẩn:** Khi Coordinator gọi `delegate_task(goal=..., context=...)`, Coordinator sẽ kết thúc turn với `[SILENT]`. Toàn bộ tool calls tiếp theo do Worker Subagent thực thi ngầm trong session con độc lập — hoàn toàn KHÔNG bao giờ xuất hiện trên heartbeat iteration counter của session chính.
+

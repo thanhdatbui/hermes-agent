@@ -32,6 +32,16 @@ Hệ thống đã chuyển đổi sang cơ chế **Kiểm tra động 2 lớp (D
    - `video_file.stat().st_size > 0` (file hợp lệ, không phải file rỗng).
 4. **Kết quả nếu thiếu:** Tự động ghi `upload_result.json` trạng thái `status: skipped` với lý do `video_not_rendered` (kèm đường dẫn `expected_video`).
 
+### Lớp 3 (Gate 4c): Kiểm tra Tuổi Tài Khoản & Ngâm Cooldown (`check_upload_cooldown_eligibility`)
+1. **Tik 1..4 (Rows 1..4):** Nick cũ đã trưởng thành -> luôn eligible (`is_eligible = True`).
+2. **Tik 5..N (Rows >= 5):**
+   - **Cooldown thực tế:** `CREATION_COOLDOWN_DAYS = 3` (3 ngày ngâm tuổi nick kể từ ngày tạo).
+   - **LƯU Ý TRÁNH NHẦM LẪN:** Tuyệt đối không đọc docstring/comment cũ ("10 ngày"), phải đối soát trực tiếp hằng số runtime `CREATION_COOLDOWN_DAYS = 3` trong `upload_preflight.py`.
+   - `min_allowed_date = max(created_date + timedelta(days=3), BENCHMARK_MIN_UPLOAD_DATE)`.
+   - Mốc benchmark `BENCHMARK_MIN_UPLOAD_DATE = date(2026, 9, 11)` đã qua. Nick tạo sau ngày này chỉ cần đủ 3 ngày tuổi là mở khóa đăng video.
+   - Nếu không đọc được ngày tạo (unverifiable) -> Fail-closed chặn an toàn.
+
+
 ---
 
 ## Kích hoạt Subprocess Đăng Video
