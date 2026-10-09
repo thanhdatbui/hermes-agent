@@ -39,9 +39,9 @@ Do not infer a target from the currently connected SSID. Do not move a phone bet
    adb shell service call wifi 14 i32 <CURRENT_ROGUE_NET_ID>
    ```
    Treat `Result: Parcel(... 00000001 ...)` as the service returning success, but still verify state afterward.
-4. **Rejoin the fixed farm SSID.** Use `adb-join-wifi` with explicit string extras (`--es ssid "<SSID>"`, not a shell-fragile `-e` form) and the machine's mapped credentials. Never send the rogue SSID.
+4. **Rejoin the fixed farm SSID.** Clean-kill any existing loop (`am force-stop com.steinwurf.adbjoinwifi && pkill -f steinwurf`). Use `adb-join-wifi` with explicit quotes around SSIDs with spaces (e.g. `am start ... -e ssid 'admin 1'` or `--es ssid "admin 1"`). Never send unquoted spaces (which truncates `admin 1` to `admin` in the Android shell) and never send the rogue SSID.
 5. **Read back immediately.** Confirm `Supplicant state: COMPLETED`, the current SSID is the mapped farm SSID, and the address is in `192.168.110.x`. Read configured networks through Wi-Fi service output and confirm the rogue profile is absent where the platform exposes it.
-6. **Only after canary verification, batch.** Run a background launcher with completion notification, one locked operation per machine, bounded concurrency, and a separate JSON result per machine. Do not poll the background process with `ps`, `pgrep`, or sleep loops; wait for the completion event, then inspect the result artifacts.
+6. **Only after canary verification, batch.** Run a background launcher with completion notification, one locked operation per machine, bounded concurrency (`max_workers=20` for 80–160 machines to finish in ~1–2 minutes, avoiding slow 30–60 min serial runs), and a separate JSON result per machine. Do not poll the background process with `ps`, `pgrep`, or sleep loops; wait for the completion event, then inspect the result artifacts.
 
 ## Batch result contract
 
