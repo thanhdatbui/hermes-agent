@@ -1,6 +1,6 @@
 Cào/Render: giữ niche, mới 12 niche hot; dọn video+ava; Watchdog 6h; min 45 clip; Render 1 wkr.
 §
-Hỏi nick: nói thẳng. Dọn đĩa/xóa file: liệt kê DS+dung lượng duyệt trước, CẤM xóa ngầm.
+Dọn đĩa: duyệt trước (thư mục corrupt/lỗi xóa ngay), CẤM xóa ngầm.
 §
 Farm: nick cấm xóa/đè; SoT tiktok_tracker.db. GPM 7d; Hotmail bật 2FA TOTP. LLM: Codex 9Router pool Omni ver số, cấm pool web; nick ban xóa DB giữ GPM.
 §

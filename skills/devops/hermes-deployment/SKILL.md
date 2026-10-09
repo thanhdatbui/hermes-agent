@@ -205,7 +205,9 @@ Git auto-merges if files are different; conflicts only if same file was edited.
 - `skills/<category>/<skill-name>/scripts/`
 - `skills/<category>/<skill-name>/templates/`
 - `deploy/setup-admin.ps1`, `deploy/sync-skills.ps1`, `deploy/sync-from-kibe.ps1`
-- `deploy/hermes-home/config.yaml`, `SOUL.md` (if shared)
+- `deploy/hermes-home/config.yaml`, `SOUL.md` (hiến pháp tối cao shared)
+- `deploy/hermes-home/memories/` (`MEMORY.md`, `USER.md` — bộ não trợ lý & ký ức tích lũy)
+- `HERMES_SUBAGENT_RULES.md`, `AGENTS.md`, `PROJECT_RULES.md` (quy chuẩn điều phối farm)
 - `deploy/hermes-home/.env`, `auth.json` (bootstrap only)
 - `deploy/hermes-home/cron/jobs.json` (canonical cron job definitions across farm machines)
 - `deploy/hermes-home/scripts/*.py` (cron runner scripts deployed to `%LOCALAPPDATA%\hermes\scripts\`)
@@ -716,3 +718,4 @@ Full loop details: `references/two-agent-review-loop.md` (merged from the former
 - `references/upgrade-git-install.md` — Upgrading a git-installed Hermes source tree (shallow-clone unshallow, stash/merge/pop, CRLF-vs-logic conflict resolution, venv reinstall after big upstream merges)
 - `references/restore-codex-removed-feature.md` — Restoring a feature Codex removed from the Hermes source tree (runtime-sync-package-backups as pre-deletion snapshot; 4-layer DB/RPC/tool/model-context restore; porting 0.18.2 RPC files into 0.20.0 server.py; temp-DB schema pitfall)
 - `references/taadaa-multi-host-provisioning.md` — Complete per-host recipe (branch map, data templates, venv, pitfalls from the 2026-08-23 Admin setup)
+- `references/assistant-brain-backup-and-governance-sync-20261009.md` — Assistant Brain Backup & Multi-Host Governance Sync: backing up SOUL.md, memories, AGENTS, SUBAGENT_RULES to repo, pre-push hook governance exemption for DIFF_TOO_LARGE, and 1-click sync-from-kibe.ps1 restoration.

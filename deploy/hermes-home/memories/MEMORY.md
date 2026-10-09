@@ -12,7 +12,7 @@ evidence_gate_verifier.py (WinRT OCR, PID reserve, fail-closed, >30s/3att L3 BLO
 §
 Canary: WoL ether3 (kibe 0C:EF:15:37:4C:20, admin 22:33:4D:06:4C:26; WG 13231); CẤM PASS khi followed=0/FOLLOW_FAILED; ảnh/log trước teardown. Admin: upload SSH admin-farm.
 §
-Claude CLI: khi user bảo/3-strike reject; quota guard. Advisor: :20129 route review (gpt-5.6-sol) timeout 45s, cấm fallback Gemini/9Router; fail thì unavailable, lấy info Coordinator. Avatar SSOT: D:\TIKTOK-videonuoinick, cấm video goc.
+Claude CLI: khi user bảo/3-strike reject (kể cả mid-session); hand-off bàn phím; 85% 5h quota fallback L2/Sol High. Avatar SSOT: D:\TIKTOK-videonuoinick.
 §
 TikTok Shadow: Path B 'Đã fl' ko commit; FOLLOW_FAILED trừ fl tự nhiên; slot `(folder-1)%8+1` cứng; reg bù độc lập. Dọn C duyệt trước.
 §
@@ -20,6 +20,6 @@ Hotmail GPM: Giữ mail KP gốc bán kèm TT; 2FA TOTP (Col 4)->Đổi pass->Si
 §
 Admin Farm: 3proxy S7 192.168.110.2:100xx. Aruba: M1-40 'kibe 1' (23102025); M41-80 'kibe 2', Admin 'admin 1/2' (19051995); cấm SSID Dat. X99: cấm xHCI; 4 Box tản; adb Semaphore 8; safe_usb_guard.
 §
-Audit 301 ca follow (31/8-9/10): 2 máy/IP nhả 20.0%, 1 máy/IP nhả 21.5% -> trùng IP không gây nhả; cấm cắt 50% máy; tra số liệu trước khi chốt plan.
+Audit follow (tháng 10): Co-run 2 máy/IP nhả 70.6% vs Solo 36.4% (31/8-1/9 sai do verify cũ); 8 ca ăn nhả dắt dây <25ph -> IP Circuit Breaker (tiktok_tracker.db) tự ngắt khi Máy A fail để safe-skip Máy B cùng IP đến 23:59:59.
 §
-adbjoinwifi: bọc nháy SSID 'admin 1' tránh shell cắt trắng nhảy Dat; xóa SSID lạ: service call wifi 14 i32 <netId>.
+adbjoinwifi: nháy 'admin 1'; xóa lạ: service call wifi 14 i32 <id>. ADB: cấm lệnh trần ko lock; bọc with_device_lock.py/operator_device_lock.
