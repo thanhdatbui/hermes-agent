@@ -142,6 +142,30 @@ GPM CDP Connect
   * Ô xác nhận mật khẩu: `#iRetypePassword, #confirmPassword, #confirmPasswordInput, input[name='RetypePassword']`.
   * Ô nhập mã 2FA TOTP: `#iVerifyText` (thường là type `number`, placeholder `Nhập mã`) hoặc `#idTxtBx_SAOTCC_OTC`.
 
+---
+
+## 9. Cảnh Báo "Tạm Thời Có Lỗi Với Dịch Vụ" & Selector Đa Ngôn Ngữ Add 2FA (2026-10-10)
+- **Bắt lỗi "Tạm thời có lỗi với dịch vụ"**:
+  * Khi bấm Lưu đổi mật khẩu, nếu Microsoft trả về thông báo:
+    `Tạm thời có lỗi với dịch vụ. Xin vui lòng thử lại...`
+    thì **MẬT KHẨU CHƯA ĐƯỢC ĐỔI**! Tuyệt đối không được ghi đè mật khẩu mới vào Excel và không được đánh dấu thành công trong tracker. Phải bắt chuỗi này trong `page.content()` và raise exception để script dừng lại kiểm tra hoặc retry.
+- **Selector chọn "Sử dụng ứng dụng" trong menu Thêm cách đăng nhập mới**:
+  * Khi click `#AddProofLink` ("Thêm một cách đăng nhập khác cho tài khoản"), giao diện tiếng Việt của Microsoft hiển thị các lựa chọn dạng thẻ:
+    1. *Khuôn mặt, dấu vân tay, mã PIN hoặc khóa bảo mật*
+    2. *Sử dụng ứng dụng* (Text tiếng Việt: `text='Sử dụng ứng dụng'`)
+    3. *Gửi mã qua email*
+  * Không chỉ tìm `#Add_msAuthApp`, bắt buộc bổ sung selector theo text:
+    `locator("#Add_msAuthApp, text='Sử dụng ứng dụng', text='Use an app', div:has-text('Sử dụng ứng dụng')")`
+    để không bị bỏ qua bước thêm 2FA trên các tài khoản dùng ngôn ngữ tiếng Việt.
+- **Kỷ luật báo cáo Canary tài khoản mới**:
+  * Khi user yêu cầu "canary acc khác t coi", user kỳ vọng **nghiệm thu thực tế toàn diện**.
+  * BẮT BUỘC gửi ngay 4 chặng ảnh chứng minh trong cùng 1 báo cáo:
+    1. Ảnh nhập mã kích hoạt 2FA Authenticator (`gpm_totp_pre` / Proofs).
+    2. Ảnh điền mật khẩu mới và nút [Lưu] (`gpm_pre_change`).
+    3. Ảnh modal dialog xác nhận `Sign out everywhere` (`gpm_signout_confirm_dialog`).
+    4. Ảnh đăng nhập lại thành công (giải 2FA TOTP + màn hình KMSI bấm [Có] hoặc Account Dashboard).
+  * Không bao giờ gửi kết quả sơ sài thiếu ảnh của bất kỳ chặng nào.
+
 
 ---
 

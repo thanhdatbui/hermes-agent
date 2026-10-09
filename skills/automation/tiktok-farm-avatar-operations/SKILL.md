@@ -292,6 +292,7 @@ Operate avatar-only changes on Taadaa TikTok farm devices without accidentally p
 - Closeout is not DONE until the device evidence, focused verification, and required reviewer gate are satisfied.
 
 ## References
+- `references/grid-assisted-circular-avatar-framing-and-niche-sync-20261010.md` — quy trình 4 bước bóc tách avatar chân dung nam thần/idol chuẩn hình tròn TikTok bằng WinRT OCR lọc vietsub, lưới tọa độ qua Vision API định vị giải phẫu khuôn mặt, công thức headroom/chin cho circular mask, và đồng bộ kép hashtag/niche workbook.
 - `references/avatar-ssot-root-and-telemetry-remediation-20261010.md` — giải pháp tách dedicated focused test file tránh timeout 120s của test monolith, nhận diện root chuẩn hóa bằng path parts, telemetry logging runtime đưa Closeout Gate lên 90/100, và khôi phục chuỗi gate_audit.jsonl.
 - `references/cross-space-atomic-avatar-ssot-and-hermetic-testing-20261010.md` — căn nguyên lệch 2 không gian số (Folder Video vs video gốc), cơ chế SSOT tuyệt đối trong path_resolver loại trừ video goc, ghi nguyên tử (.tmp -> os.replace) trong regenerate_unique_avatars, và bộ test hermetic độc lập.
 - `references/cross-account-video-goc-poisoning-and-render-root-ssot-20261009.md` — căn nguyên 637/640 tài khoản bị lệch giữa Folder Video (chia theo máy) và video gốc (chia theo ca cào), bẫy ngộ nhận 2 không gian số trong path_resolver và regenerate_unique_avatars bốc nhầm video thô của máy khác, giải pháp SSOT khóa cứng D:\TIKTOK-videonuoinick và loại trừ tuyệt đối video goc.
