@@ -148,13 +148,15 @@ GPM CDP Connect
 
 ---
 
-## 9. Cảnh Báo "Tạm Thời Có Lỗi Với Dịch Vụ" & Lọc Tiền Điều Kiện Mail Khôi Phục (2026-10-10)
+## 9. Cảnh Báo "Tạm Thời Có Lỗi Với Dịch Vụ", Kỷ Luật Fail-Fast & Báo Cáo Minh Bạch (2026-10-10)
 - **Bắt lỗi "Tạm thời có lỗi với dịch vụ" & Bẫy Silent Try/Except**:
   * Khi bấm Lưu đổi mật khẩu, nếu Microsoft trả về thông báo:
     `Tạm thời có lỗi với dịch vụ. Xin vui lòng thử lại...` (hoặc `There's a temporary problem with the service. Please try again...`)
-    thì **MẬT KHẨU CHƯA ĐƯỢC ĐỔI THẬT**!
+    thì **MẬT KHẨU CHƯA ĐƯỢC ĐỔI THẬT TRÊN MÁY CHỦ MICROSOFT**!
   * **CẤM TUYỆT ĐỐI bọc kiểm tra này trong khối `try...except` bắt lỗi im lặng**: Nếu chỉ log warning mà không raise exception ngắt flow, script sẽ chạy tiếp các bước sau và ghi đè pass mới vào Excel $\rightarrow$ gây mất đồng bộ dữ liệu nghiêm trọng, tài khoản trên Microsoft vẫn pass cũ nhưng Excel ghi pass mới!
-  * **Cơ chế Fail-Fast Bắt Buộc**:
+  * **KỶ LUẬT BÁO CÁO MINH BẠCH VỚI USER**:
+    * Khi gặp lỗi đổi pass, Coordinator BẮT BUỘC phải thông báo ngay lập tức cho User biết tài khoản chưa đổi được mật khẩu kèm lý do thực tế. CẤM TUYỆT ĐỐI ỉm lỗi, báo cáo chung chung hoặc báo cáo "thành công" khi thực tế mật khẩu chưa đổi được.
+  * **Cơ chế Fail-Fast Bắt Buộc Trong Code**:
     ```python
     page_content = page.content()
     err_patterns = [
@@ -173,7 +175,7 @@ GPM CDP Connect
     ```
 - **Lọc Tiền Điều Kiện Kho Tài Khoản (Prerequisite Gate: RecMail != None)**:
   * Trong `gmail_clean_v2.xlsx`, các tài khoản được chia làm 2 nhóm:
-    1. *Nhóm có mail khôi phục (324 acc)*: Đã có phương thức bảo mật chứng minh danh tính $\rightarrow$ Microsoft cho phép đổi pass và thêm 2FA mượt mà 100% (ví dụ: `vistemeggett3761`).
+    1. *Nhóm có mail khôi phục (324 acc, có 137 acc khớp profile GPM)*: Đã có phương thức bảo mật chứng minh danh tính $\rightarrow$ Microsoft cho phép đổi pass và thêm 2FA mượt mà 100% (ví dụ: `vistemeggett3761`).
     2. *Nhóm chưa có mail khôi phục (220 acc, Cột 5 = None)*: Microsoft nghi ngờ phiên truy cập bất thường và chặn cứng với câu `"There's a temporary problem with the service"` khi vào form đổi pass trực tiếp.
   * **Quy tắc chọn mục tiêu**: Khi chạy batch hoặc chọn acc Canary, BẮT BUỘC chỉ lọc các tài khoản đã có sẵn mail khôi phục hợp lệ (`Col 5 is not None`) để tránh tỷ lệ fail 100% do thiếu bằng chứng bảo mật.
 - **Quy Trình Rollback Dữ Liệu Khi Gặp Sự Cố**:
@@ -181,6 +183,10 @@ GPM CDP Connect
     - `taikhoan_dat_v2_updated .xlsx` (Cột G - PASS MAIL).
     - `gmail_clean_v2.xlsx` (Cột 3 - PASS).
   * Đồng thời dọn sạch bản ghi lỗi trong runtime state (`hotmail_changed_tracker.json`). Không để rác mật khẩu ảo.
+- **Thực Tế Dual OAuth Gating Trên Hotmail**:
+  * Trong kho Hotmail, chỉ có 5 tài khoản đã sync đồng thời lên cả OmniRoute (`:20129`) VÀ 9Router (`:20128`).
+  * Các tài khoản còn lại (như 23 acc ở rows 317-529) chỉ có OAuth trên OmniRoute (`:20129`).
+  * Khi vận hành batch, cần đối chiếu rõ cổng gating để tránh bị chặn toàn bộ tài khoản hợp lệ.
 - **Selector chọn "Sử dụng ứng dụng" trong menu Thêm cách đăng nhập mới & Đa Ngôn Ngữ EN/VI**:
   * Khi click `#AddProofLink` ("Thêm một cách đăng nhập khác cho tài khoản" / "Add another way to sign in"), giao diện có thể là tiếng Việt hoặc tiếng Anh:
     - Tiếng Việt: `text='Sử dụng ứng dụng'`, nút `Tiếp theo`, `Hoàn tất`, `Lưu`, `Đăng xuất`, `Có`.
