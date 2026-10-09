@@ -30,5 +30,7 @@ Acceptance is `Everything is Ok`. `Unexpected end of archive`, `Data Error`, or 
 ## Evidence interpretation
 
 - `profiles/start` success proves the currently selected core can launch now; it does not prove the `default\update.zip` repair source is valid.
-- A missing `data-variations.gpm`, invalid `version`, missing `chrome_elf.dll`, or an incomplete archive can all produce the same generic GPM message. Record which prerequisite actually failed instead of treating the message as a unique cause.
+- A missing `data-variations.gpm`, invalid `version` (e.g. `1.0` instead of `1.1`), missing `chrome_elf.dll`, or an incomplete archive can all produce the same generic GPM message `Yêu cầu cập trình duyệt [Chromium] [N]`.
+  * *Quick live-core fix*: If all binaries (`chrome.exe`, `chrome.dll`, `142.0.x`) are intact but GPMLogin still blocks start, check `data-variations.gpm` and `version`. Copy `data-variations.gpm` from `default/` and ensure `version` contains `1.1`. This instantly unblocks `/api/v3/profiles/start`.
+- Record which prerequisite actually failed instead of treating the message as a unique cause.
 - Keep user-facing reports concise: state the observed bad source, the current live-core result, and whether reboot durability is verified.

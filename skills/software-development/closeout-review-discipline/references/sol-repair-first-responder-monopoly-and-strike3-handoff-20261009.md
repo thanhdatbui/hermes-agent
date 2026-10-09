@@ -79,3 +79,12 @@ Khi audit chain ghi nhận `count_consecutive_rejections >= 3` trên cùng một
 - CẢ Coordinator, Worker VÀ Sol Repair ĐỀU BỊ KHÓA CỨNG (phải dừng mọi hành động tạo patch/proposal).
 - Nghiêm cấm chạy tiếp `sol_repair.py` ở Strike 3+.
 - Hand-off quyền bàn phím trực tiếp cho **Claude Code CLI** (`claude -p` kèm allowlist hẹp và `--dangerously-skip-permissions`).
+
+---
+
+## 4. Backlog Kiến Trúc: Cơ Chế Chém Cứng Trong Code (`guard_sol_repair_monopoly.py`)
+- **Phát hiện từ thẩm định độc lập của Claude Sonnet:** Hiện tại quy tắc "Sol High độc quyền Strike 1-2" được quy định trong 4 file (`SOUL.md`, `HERMES_SUBAGENT_RULES.md`, `TIERED_WORKFLOW.md`, `closeout_gate.py`), nhưng ở tầng can thiệp công cụ (`delegate_task`) vẫn chưa có hook vật lý chặn Coordinator gọi Worker khi đang ở trạng thái REMEDIATION.
+- **Thiết kế Hard Gate:** Xây dựng hook `D:/Taadaa/tools/hooks/guard_sol_repair_monopoly.py` gắn vào `delegate_task`:
+  * Nếu phát hiện phiên đang ở trạng thái `REMEDIATION` (sau khi `closeout_gate.py` trả về REJECTED cho candidate hiện tại), hook sẽ kiểm tra xem đã có log chạy thành công của `sol_repair.py` cho `scope_hash` này chưa.
+  * Nếu chưa có log chạy `sol_repair.py` mà Coordinator đã vội dispatch Worker $\rightarrow$ Hook tự động chặn đứng lệnh `delegate_task` với lỗi `[GUARD_DISPATCH_BLOCKED: Sol Repair First-Responder Monopoly required before Worker fallback]`.
+  * Cơ chế này nâng tầm quy tắc từ "ý thức tự giác của Coordinator" thành "chốt chặn vật lý không thể lách trong code".
