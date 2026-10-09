@@ -8,6 +8,12 @@ author: Hermes Agent
 ---
 
 ## Watchdog Upload Status Taxonomy & Triage
+
+### Evidence-first cluster triage
+For a completed watchdog report with mixed failures, do not treat the aggregate fail count as a single root cause. First separate each cluster into `proxy/config`, `app/script`, `ADB/device`, and `empty-slot/inventory`. Use `python D:/Taadaa/tools/inspect_machine.py <N>` on at least one representative machine from each material category before proposing a fix. A device reported as `device not found`, `offline`, or `UNKNOWN` must remain an ADB/physical-connectivity lead until inspected; do not label it as proxy failure from the report alone. A device that is online but sitting at Launcher after a failed feed run is evidence for app/script or teardown/flow investigation, not proof of a proxy defect.
+
+Report both the percentage and the evidence-backed interpretation. If one cluster (for example Admin) has a materially higher proxy-failure share than another cluster (for example Kibe), prioritize proxy/egress triage there before editing feed logic. Record representative probe outputs and distinguish confirmed causes from hypotheses; if no code change was performed, say so explicitly and avoid claiming remediation.
+
 When interpreting upload metrics in `feed_session_watchdog` reports (e.g. `Đang dưỡng sinh`, `Khác`, `Hết video/Cần cào`):
 - `Đang dưỡng sinh`: Normal organic rest policy (~33% farm), no upload/follow attempted.
 - `Khác`: Safe-skips; most commonly `missing_account_id` because column C (`ID`) in `Tik<row>.xlsx` is empty (`None`), or cooling/age gates. Inspect the target `Tik<row>.xlsx` directly.

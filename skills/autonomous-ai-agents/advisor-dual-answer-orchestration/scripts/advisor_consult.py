@@ -95,9 +95,21 @@ def redact_secrets(text: str) -> str:
     text = re.sub(r"Bearer\s+[a-zA-Z0-9_\-\.]{15,}", "Bearer [REDACTED_TOKEN]", text)
     # Redact URL basic auth user:pass@
     text = re.sub(r"://[^:\s/]+:[^@\s/]+@", "://[REDACTED_USER_PASS]@", text)
-    # Redact query/field tokens, passwords, sessions
+    # Redact JSON key-value pairs (e.g. {"password": "abc"}, {"api_key": "k"}, {"access_token": "xyz"}, {"session_id": "123"})
     text = re.sub(
-        r"(?i)\b(password|passwd|pass|mật khẩu|token|api_key|sessionid)\s*[:=]\s*[^\s,;]+",
+        r"""(?i)(["']?(?:password|passwd|pass|api_key|token|access_token|session_id|sessionid)["']?\s*:\s*)["'][^"']+["']""",
+        r'\1"[REDACTED]"',
+        text,
+    )
+    # Redact unquoted Vietnamese 'mật khẩu là ...'
+    text = re.sub(
+        r"(?i)\bmật khẩu\s+là\s+[^\s,;]+",
+        "mật khẩu là [REDACTED]",
+        text,
+    )
+    # Redact query/field tokens, passwords, sessions (e.g. password=abc, access_token: xyz)
+    text = re.sub(
+        r"(?i)\b(password|passwd|pass|mật khẩu|token|api_key|access_token|session_id|sessionid)\s*[:=]\s*[^\s,;]+",
         r"\1=[REDACTED]",
         text,
     )
@@ -119,10 +131,14 @@ def classify_advice_intent(message: str) -> bool:
         if re.search(p, msg_lower):
             return True
 
-    # 2. Loại trừ false-positive khi "review" hoặc "plan" là đối tượng của động từ mệnh lệnh ("chạy review combo", "lập plan")
-    msg_cleaned = re.sub(r"\b(chạy|run|tạo|lập|thực thi|viết)\s+(review|plan)\b", " ", msg_lower)
+    # 2. Loại trừ false-positive khi "review" hoặc "plan" là đối tượng của động từ mệnh lệnh/thao tác
+    # ("chạy review combo", "chạy lại review combo", "lập plan", "lên plan cho phase 2", "tạo plan")
+    msg_cleaned = re.sub(r"\b(chạy|chạy lại|run|tạo|lập|lên|thực thi|viết)\s+(?:lại\s+)?(review(\s+combo)?|plan(\s+cho\s+\S+)?)\b", " ", msg_lower)
 
     # 3. Loại trừ các cụm từ phó từ hoặc hỏi trạng thái tiến độ ("sao rồi", "sao cho")
+    # Đảm bảo không đè các từ hỏi tư vấn như "vì sao", "thấy sao"
+    # Đồng thời loại trừ false-positive từ các danh từ chứa "liệu": "dữ liệu", "tài liệu" (tránh dính r"\bliệu\b")
+    msg_cleaned = re.sub(r"\b(dữ liệu|tài liệu|vật liệu|nguyên liệu)\b", " ", msg_cleaned)
     for exc in EXCLUDE_ADVICE_PHRASES:
         msg_cleaned = re.sub(exc, " ", msg_cleaned)
 

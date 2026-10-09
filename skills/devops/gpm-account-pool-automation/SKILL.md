@@ -8,17 +8,7 @@ version: 1.2.0
 
 ## 1. Khi nào sử dụng
 
-> Triage: `references/chatgpt-codex-existing-session-triage.md`.
-- Hotmail: `references/hotmail-gpm-lifecycle-and-reporting.md`.
-- GPM v3 (`19995`).
-- Proxy: `references/batch-account-selection-and-proxy-mapping.md`, `references/gpm-profile-proxy-desync-and-sqlite-patching.md`.
-- CRX/CDP: `references/gpm-crx-extension-injection-and-cdp-control.md`.
-- Cache/Core: `references/selective-site-cache-clearing-and-concurrency.md`, `references/gpm-v4-ui-and-browser-core-pitfalls.md`.
-- Watchdog: `references/stale-gpm-profile-watchdog-and-cascade-freeze-prevention.md`.
-- GPM Proxy Format & Webshare Pool: `references/gpm-proxy-raw-format-and-webshare-pool.md`.
-- 5sim & Cron: `references/codex-5sim-rental-strategy-and-cron-routing.md`.
-- Pagination: `references/gpm-api-pagination-and-soaking-gate.md`.
-- WebRTC Leak & Geo-Safety: `references/gpm-webrtc-data-json-leak-and-oauth-geo-safety.md`.
+Use for GPM v3 (19995), Gmail/Hotmail lifecycle, proxy-safe account selection, CRX/CDP, cache/core issues, OAuth, ChatGPT/Codex pool operations, watchdogs, pagination, and geo-safety. Existing topic detail remains in `references/`; cron summary handling is in `references/cron-watchdog-report-triage.md`.
 - No-Agent Cron Silent Watchdog: `references/no-agent-cron-silent-watchdog-and-telegram-chunking.md`.
 - Preflight Liveness & Auto-Launch: `references/gpm-local-api-liveness-and-autolaunch-pattern.md`.
 - Hook ChatGPT Web/Codex: `references/codex-oauth-phone-verification-5sim-and-sumistore.md`.
