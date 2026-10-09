@@ -10,6 +10,7 @@ version: 1.2.0
 
 Use for GPM v3 (19995), Gmail/Hotmail lifecycle, proxy-safe account selection, CRX/CDP, cache/core issues, OAuth, ChatGPT/Codex pool operations, watchdogs, pagination, and geo-safety. Existing topic detail remains in `references/`; cron summary handling is in `references/cron-watchdog-report-triage.md`.
 - No-Agent Cron Silent Watchdog: `references/no-agent-cron-silent-watchdog-and-telegram-chunking.md`.
+- Browser-core repair source integrity and reboot-safe validation: `references/gpm-browser-core-repair-source-integrity.md`.
 - Preflight Liveness & Auto-Launch: `references/gpm-local-api-liveness-and-autolaunch-pattern.md`.
 - Hook ChatGPT Web/Codex: `references/codex-oauth-phone-verification-5sim-and-sumistore.md`.
 - Bounded Codex OAuth: `references/codex-oauth-bounded-live-run-evidence.md`.
