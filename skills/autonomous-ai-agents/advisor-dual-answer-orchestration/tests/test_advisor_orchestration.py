@@ -191,57 +191,22 @@ class TestSecretRedaction(unittest.TestCase):
         self.assertIn("[REDACTED_USER_PASS]", cleaned)
 
 
-class TestAdvisorFallbackChain(unittest.TestCase):
-    """Kiểm chứng fallback chain 3 tầng khi gặp timeout hoặc lỗi upstream."""
+class TestAdvisorSolCalling(unittest.TestCase):
+    """Kiểm chứng luồng gọi Advisor Sol thuần túy (:20129 review) và fail-safe cleanly."""
 
     @patch("advisor_consult._call_stream_chat")
-    def test_tier1_success(self, mock_stream):
-        mock_stream.side_effect = [(True, "Sol Tier 1 architectural advice.")]
+    def test_sol_review_success(self, mock_stream):
+        mock_stream.return_value = (True, "Sol architectural advice.")
         res = consult_advisor("Đánh giá phương án?")
         self.assertEqual(res["status"], "success")
-        self.assertEqual(res["tier"], 1)
         self.assertIn("Sol / review", res["formatted"])
-        self.assertIn("Sol Tier 1 architectural advice.", res["advice"])
+        self.assertEqual(res["advice"], "Sol architectural advice.")
 
     @patch("advisor_consult._call_stream_chat")
-    def test_tier1_fail_fallback_tier2(self, mock_stream):
-        mock_stream.side_effect = [
-            (False, "timed out"),  # Tier 1 fails
-            (True, "Gemini Fast Fallback advice.")  # Tier 2 succeeds
-        ]
-        res = consult_advisor("Đánh giá phương án?")
-        self.assertEqual(res["status"], "success")
-        self.assertEqual(res["tier"], 2)
-        self.assertIn("gemini-3.7-flash-high fallback", res["formatted"])
-        self.assertIn("Gemini Fast Fallback advice.", res["advice"])
-
-    @patch("advisor_consult.os.environ.get")
-    @patch("advisor_consult._call_stream_chat")
-    def test_tier1_tier2_fail_fallback_tier3(self, mock_stream, mock_env):
-        mock_env.return_value = "dummy_nine_key"
-        mock_stream.side_effect = [
-            (False, "timed out"),  # Tier 1 fails
-            (False, "timed out"),  # Tier 2 fails
-            (True, "9Router Tier 3 advice.")  # Tier 3 succeeds
-        ]
-        res = consult_advisor("Đánh giá phương án?")
-        self.assertEqual(res["status"], "success")
-        self.assertEqual(res["tier"], 3)
-        self.assertIn("9Router :20128 backup", res["formatted"])
-        self.assertIn("9Router Tier 3 advice.", res["advice"])
-
-    @patch("advisor_consult.os.environ.get")
-    @patch("advisor_consult._call_stream_chat")
-    def test_all_tiers_fail_returns_unavailable(self, mock_stream, mock_env):
-        mock_env.return_value = "dummy_key"
-        mock_stream.side_effect = [
-            (False, "timed out"),  # Tier 1 fails
-            (False, "timed out"),  # Tier 2 fails
-            (False, "HTTP 500 error"),  # Tier 3 fails
-        ]
+    def test_sol_review_fail_returns_unavailable_cleanly(self, mock_stream):
+        mock_stream.return_value = (False, "timed out")
         res = consult_advisor("Đánh giá phương án?")
         self.assertEqual(res["status"], "unavailable")
-        self.assertEqual(res["tier"], 0)
         self.assertIn("Advisor: unavailable", res["formatted"])
 
 

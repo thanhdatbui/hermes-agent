@@ -218,13 +218,13 @@ def _call_stream_chat(url: str, headers: dict[str, str], payload: dict[str, Any]
         return False, str(exc)
 
 
-def consult_advisor(prompt: str, context: str = "") -> dict[str, Any]:
+def consult_advisor(prompt: str, context: str = "", timeout_sec: float = 45.0) -> dict[str, Any]:
     """
-    Truy vấn Advisor qua fallback chain 3 tầng có bảo vệ thời gian:
-    Tổng ngân sách thời gian: tối đa ~35s
-    Tầng 1: OmniRoute :20129 review / gpt-5.6-sol (Sol chính, 18s)
-    Tầng 2: OmniRoute :20129 antigravity/gemini-3.7-flash-high (Sol fast fallback, 10s)
-    Tầng 3: 9Router :20128 ag/gemini-2.5-flash (Cổng phụ độc lập, 7s)
+    Truy vấn Advisor Sol độc lập qua đúng 1 endpoint chuẩn duy nhất:
+    OmniRoute :20129 route 'review' (Sol Web High / gpt-5.6-sol).
+    Thời gian timeout tăng lên 45s để reasoning model sinh token trọn vẹn.
+    Nếu thất bại/timeout -> Báo fail ngay (unavailable), lấy info Coordinator đủ rồi,
+    tuyệt đối không fallback sang Gemini hay 9Router lộn xộn.
     """
     clean_prompt = redact_secrets(prompt)
     clean_context = redact_secrets(context)
@@ -244,50 +244,21 @@ def consult_advisor(prompt: str, context: str = "") -> dict[str, Any]:
         {"role": "user", "content": full_prompt},
     ]
 
-    # --- Tầng 1: OmniRoute Sol Primary (Fail-fast 5s) ---
     omni_url = "http://127.0.0.1:20129/v1/chat/completions"
     omni_headers = {"Content-Type": "application/json", "Authorization": "Bearer dummy"}
-    payload_t1 = {"model": "review", "messages": messages}
-    ok, text = _call_stream_chat(omni_url, omni_headers, payload_t1, timeout_sec=5.0)
+    payload = {"model": "review", "messages": messages}
+
+    ok, text = _call_stream_chat(omni_url, omni_headers, payload, timeout_sec=timeout_sec)
     if ok and len(text) > 20:
         return {
             "status": "success",
-            "model": "Sol Web High (review)",
+            "model": "Sol / review",
             "tier": 1,
             "advice": text,
             "formatted": f"--- Advisor (Sol / review) ---\n{text}",
         }
 
-    # --- Tầng 2: OmniRoute Fast Fallback (Gemini High, 18s) ---
-    payload_t2 = {"model": "antigravity/gemini-3.7-flash-high", "messages": messages}
-    ok, text = _call_stream_chat(omni_url, omni_headers, payload_t2, timeout_sec=18.0)
-    if ok and len(text) > 20:
-        return {
-            "status": "success",
-            "model": "Sol High (gemini-3.7-flash-high fallback)",
-            "tier": 2,
-            "advice": text,
-            "formatted": f"--- Advisor (gemini-3.7-flash-high fallback) ---\n{text}",
-        }
-
-    # --- Tầng 3: 9Router Port 20128 Backup (15s) ---
-    nine_key = os.environ.get("NINEROUTER_API_KEY", "")
-    if nine_key:
-        nine_url = "http://127.0.0.1:20128/v1/chat/completions"
-        nine_headers = {"Content-Type": "application/json", "Authorization": f"Bearer {nine_key}"}
-        payload_t3 = {"model": "ag/gemini-3.7-flash-high", "messages": messages}
-        ok, text = _call_stream_chat(nine_url, nine_headers, payload_t3, timeout_sec=15.0)
-        if ok and len(text) > 20:
-            return {
-                "status": "success",
-                "model": "Sol Backup (9Router :20128 ag/gemini-3.7-flash-high)",
-                "tier": 3,
-                "advice": text,
-                "formatted": f"--- Advisor (9Router :20128 backup) ---\n{text}",
-            }
-
-    # --- Toàn bộ Tầng Thất Bại (Fail-Safe) ---
-    err_msg = "Advisor: unavailable (upstream timeout / pool limits; primary answer shown)"
+    err_msg = "Advisor: unavailable (Sol / review timeout hoặc pool limit; chỉ hiển thị câu trả lời Coordinator)"
     return {
         "status": "unavailable",
         "model": "none",

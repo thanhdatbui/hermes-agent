@@ -32,11 +32,10 @@ For an advice-intent turn:
 1. **Mandatory Execution & Mechanical Enforcement:** 
    - The Coordinator must never emit a solo answer on advice intent.
    - Use `ensure_dual_answer(message, primary_response, context)` or CLI `python C:/Users/Kibe/AppData/Local/hermes/skills/autonomous-ai-agents/advisor-dual-answer-orchestration/scripts/advisor_consult.py --query "<user_question>" --context "<summary_of_findings>"` to obtain the Advisor section.
-2. The script provides an automatic 3-tier fallback with total budget cap (~35s):
-   - Tier 1: OmniRoute :20129 `review` (Sol Web High, timeout 18s).
-   - Tier 2: OmniRoute :20129 `antigravity/gemini-3.7-flash-high` (Sol fast fallback, timeout 10s).
-   - Tier 3: 9Router :20128 `ag/gemini-2.5-flash` (port 20128 backup, timeout 7s).
-   - Fail-safe: If all tiers fail or timeout, cleanly returns `Advisor: unavailable (<reason>)`.
+2. Direct Sol Route with Increased Wait Time:
+   - Call directly to OmniRoute :20129 `review` (Sol Web High / gpt-5.6-sol).
+   - Timeout raised to 45s to allow reasoning models sufficient TTFT and token completion.
+   - Fail-safe: If Sol times out or hits pool limits, FAIL CLEANLY and output `Advisor: unavailable` immediately. DO NOT fallback to Gemini or 9Router. Primary coordinator answer is sufficient.
 3. Strict Safety & Comprehensive Redaction:
    - Payload includes `tools: []` and `tool_choice: "none"`.
    - All credentials, API keys (`sk-...`), Bearer tokens, HTTP Basic Auth `://user:pass@`, JSON fields (`{"password": "...", "api_key": "..."}`), unquoted Vietnamese `mật khẩu là abc`, and field tokens (`token=...`, `sessionid=...`, `session_id=...`) are automatically redacted before transmission.
@@ -50,11 +49,11 @@ For an advice-intent turn:
 5. Append the script's exact output block at the end of the response:
 
    ```text
-   --- Advisor (<model_name>) ---
+   --- Advisor (Sol / review) ---
    <structured advice or bounded raw advice>
    ```
 
-5. Never emit a solo answer on advice intent without this block. If Advisor is unavailable, state `Advisor: unavailable (primary answer shown)` rather than inventing advice or omitting the block.
+   If Advisor is unavailable, state `Advisor: unavailable (Sol / review timeout hoặc pool limit; chỉ hiển thị câu trả lời Coordinator)`.
 6. Advice is not approval, execution, or a closeout verdict. The Coordinator still owns the decision and must obey farm safety, worker, and closeout gates.
 
 ### Advice-to-Action Transition Flow ("R làm đi" vs "Gọi sol plan")

@@ -64,3 +64,27 @@ Khi phát hiện máy mất kết nối Wi-Fi / wlan0 không có IP:
    ```
 3. **Nếu cả 2 cấp thất bại**:
    **DỪNG LẠI NGAY LẬP TỨC**. Giữ nguyên hiện trường, ghi log cảnh báo ra watchdog. **CẤM TUYỆT ĐỐI GÁN BỪA MẠNG KHÁC HOẶC DỒN SANG AP KHÁC ĐỂ CHỮA CHÁY**.
+
+---
+
+## 5. BẪY PROFILE WI-FI TỒN LƯU TRONG WIFICONFIGSTORE & ANDROID AUTO-ROAM
+- **Nguyên nhân máy tự ý nhảy sang SSID lạ**: Khi máy từng kết nối vào SSID khác (dù chỉ thử nghiệm 1 lần), Android framework ghi profile đó vào `WifiConfigStore.xml` với `priority = 100`.
+- Mỗi khi AP chính bị drop hoặc watchdog chạy radio toggle (`svc wifi disable` -> `enable`), OS Android tự động quét và roam sang bất kỳ mạng nào có sẵn trong danh sách đã lưu nếu tín hiệu tốt hơn.
+- **Hậu quả**: Chỉ gỡ code fallback trong Python là KHÔNG ĐỦ; trên điện thoại vẫn còn profile nên máy vẫn tự nhảy ngầm.
+- **Cách triệt tiêu**: Phải chạy batch re-join đúng SSID quy hoạch qua `adb-join-wifi` (bật cờ `disableOthers=true` trong `enableNetwork`) để vô hiệu hóa profile lạ trên toàn bộ dàn máy.
+
+---
+
+## 6. BẪY BINDER TRÊN SAMSUNG KOREAN ROM (SM-G930S) & QUY TRÌNH ADB-JOIN-WIFI
+- Lệnh binder `service call wifi 14 i32 <netId>` (removeNetwork) bị từ chối trên ROM Samsung SKT do thiếu quyền: `Neither user 2000 nor current process has android.permission.CHANGE_WIFI_STATE`.
+- **Cơ chế gọi adb-join-wifi chuẩn xác**:
+  1. `adb shell am force-stop com.steinwurf.adbjoinwifi && adb shell pkill -f steinwurf` (bắt buộc vì `MainActivity` không có `onNewIntent`).
+  2. Bọc nháy đơn hoặc dùng `--es` quanh SSID chứa khoảng trắng: `am start -n com.steinwurf.adbjoinwifi/.MainActivity --es ssid '<SSID>' --es password_type WPA --es password '<PASS>'`.
+
+---
+
+## 7. KỶ LUẬT THỰC THI BATCH 20 WORKERS & CADENCE BÁO CÁO
+- Với quy mô 80–160 máy, chạy tuần tự hoặc ít worker (<=8) sẽ làm tắc nghẽn farm kéo dài hơn 1 tiếng.
+- BẮT BUỘC dùng `ThreadPoolExecutor(max_workers=20)` cùng `with_device_lock`: 154 máy hoàn tất trong < 60 giây.
+- Kỷ luật phản hồi: Báo cáo số liệu thực tế ngay lập tức kèm tỷ lệ máy đạt chuẩn / lỗi để người vận hành nắm bắt hiện trường.
+

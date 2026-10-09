@@ -219,7 +219,15 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
 ## 14. Bẫy Lệch Subnet Wi-Fi & Quy Trình Khôi Phục Wi-Fi 2 Cấp (09/10/2026)
 - **Tai nạn fallback SSID bậy:** Khi máy mất Wi-Fi, CẤM TUYỆT ĐỐI cho nhảy sang SSID ngoài farm (`Dat`, `Dat-1`, `BOX 2`...). Nhảy SSID lạ sẽ bị cấp dải IP `192.168.10.x` thay vì dải chuẩn Farm `192.168.110.x`, gây đứt socket tới Singbox/3proxy trên MikroTik và nguy cơ lộ IP Direct FPT.
 - **Cố định quy hoạch 40 máy/AP:** M01–M40 (`kibe 1` - pass `23102025` - AP .253), M41–M80 (`kibe 2` - pass `19051995` - AP .252), M201–M240 (`admin 1` - pass `19051995` - AP .251), M241–M280 (`admin 2` - pass `19051995` - AP .250). CẤM dồn máy sang AP khác.
-- **Bẫy chuỗi ADB-Join-Wifi:** Lệnh `am start` trên Android shell BẮT BUỘC dùng `--es ssid "<SSID>"` (ví dụ: `--es ssid "kibe 1"`). Nếu dùng `-e ssid 'kibe 1'`, shell sẽ cắt mất số 1 khiến máy nhảy vào SSID rác `kibe` gây mất mạng cả cụm.
+- **Bẫy chuỗi ADB-Join-Wifi & Lifecycle Activity:**
+  * Lệnh `am start` trên Android shell BẮT BUỘC dùng `--es ssid "<SSID>"` hoặc nháy đơn bọc chuỗi (ví dụ: `am start ... -e ssid 'admin 1'`). Nếu không bọc nháy, Android shell sẽ cắt mất số sau dấu cách khiến máy nhảy vào SSID rác `admin` / `kibe` gây mất mạng cả cụm.
+  * `MainActivity` của `adb-join-wifi` chỉ nhận extras khi `onCreate()` (không có `onNewIntent`). Khi đã có tiến trình chạy ngầm, BẮT BUỘC chạy `am force-stop com.steinwurf.adbjoinwifi` và `pkill -f steinwurf` trước khi gọi lệnh join mới.
+  * Samsung Korean ROM (`SM-G930S`): Lệnh `service call wifi 14` (removeNetwork) bị chặn bởi Samsung security check (`Neither user 2000 nor current process has android.permission.CHANGE_WIFI_STATE`). Phải dùng `adb-join-wifi` (gọi `enableNetwork(id, true)` với cờ `disableOthers=true`) để vô hiệu hóa các mạng rác.
+- **Kỷ luật điều phối Batch & Tốc độ xử lý (User Invariant):**
+  * Khi quét/chữa lành Wi-Fi toàn farm (80–160 máy), BẮT BUỘC dùng `ThreadPoolExecutor(max_workers=20)` cùng `with_device_lock`.
+  * CẤM chạy tuần tự hoặc worker thấp (<=8) làm kéo dài hàng chục phút/1 tiếng. 20 workers hoàn tất 154 máy trong < 60 giây.
+  * Phải liên tục tổng hợp và báo cáo tiến độ/kết quả cho người dùng, không được để im lặng kéo dài.
+
 - **Bẫy Rogue DHCP trên AP Master:** Master AP `.251` có thể còn tồn tại pool DHCP cũ (`192.168.10.0/24`). Bắt buộc xóa bằng SSH: `no ip dhcp kibe_dhcp` để MikroTik là DHCP Server duy nhất.
 - Quy trình phục hồi 2 cấp: Cấp 1 (Radio toggle) ➔ Cấp 2 (`adb-join-wifi` kèm `--es`). Thất bại thì giữ hiện trường báo watchdog, CẤM gán bừa mạng khác.
 - Chi tiết: `references/aruba-wifi-recovery-and-anti-drift-incident-20261009.md`.
