@@ -402,12 +402,12 @@ See `references/adb-disconnect-vs-missing-proxy-preflight-20261009.md` for disti
 
 33. **Dual-Cluster Batch Alert Triage: [DEVICE_OFFLINE] ADB Timeout & PPPoE Port Closed (2026-10-10)**:
     - **Hiện tượng**: Farm Alert diện rộng trên cụm Admin (M201–M280) xuất hiện đồng thời 2 cụm lỗi vượt ngưỡng kép: (1) `[DEVICE_OFFLINE] adb command timed out` (10 máy) và (2) `proxy server port is closed/refused` (17 máy).
-    - **Bản chất kép**:
-      1. **ADB Transport Daemon Saturation**: Host Admin (`192.168.110.119`) cắm 80 máy qua hub USB. Khi batch chạy đồng loạt 80 tiến trình shell (`ip addr`, `dumpsys`), daemon ADB (`C:\Program Files (x86)\xiaowei\tools\adb.exe`) bị bão hòa buffer socket transport, gây timeout lệnh và bị hook bắt thành `[DEVICE_OFFLINE]`. Thiết bị vật lý vẫn cắm, sạc pin bình thường, không rớt USB. Khi tải batch giảm, socket ADB tự giải phóng và 100% máy online trở lại.
-      2. **PPPoE Renegotiation Fast Fail-Closed**: Các cổng MikroTik PPPoE xoay IP định kỳ lúc rạng sáng (1–2 phút), hàm `_proxy_server_live` fast probe TCP `connect_ex` thấy port từ chối lập tức fail-closed <=1.5s để bảo vệ nick không bị lướt bằng Direct IP FPT. Sau khi line PPPoE tái lập, 100% cổng mở lại bình thường.
-    - **Quy trình xử lý chuẩn**:
-      * Khóa batch, không can thiệp đồng loạt toàn bộ thiết bị.
-      * Chạy Canary Test O(1) trên 1 máy đại diện: `python D:/Taadaa/tools/inspect_machine.py <N>` (hỗ trợ cả định dạng `M204` lẫn `204`).
-      * Probe TCP socket trực tiếp tới các cổng proxy nghi vấn từ LAN (`192.168.110.2:<port>`). Nếu port đã OPEN và máy online ở `LauncherActivity` -> đủ điều kiện mở lại batch.
-      * Tuyệt đối không gửi ảnh màn hình Home/Launcher làm bằng chứng sau teardown (Gate 6 & Evidence Invariant).
-    - Chi tiết xem `references/dual-cluster-batch-alert-adb-timeout-and-pppoe-renegotiation-20261010.md`.
+    - **Bản chất kép & Xung đột cửa sổ bảo trì**:
+      1. **Scheduled PC Reboot Window (04:45)**: Cronjob `farm-scheduled-pc-reboot` khởi động lại PC lúc 04:45 sáng (Thứ 2, 4, 7). Batch chạy đúng lúc USB host và router vừa lên lại.
+      2. **ADB Transport Daemon Saturation**: Host Admin (`192.168.110.119`) cắm 80 máy qua hub USB. Khi batch chạy đồng loạt 80 tiến trình shell (`ip addr`, `dumpsys`), daemon ADB (`C:\Program Files (x86)\xiaowei\tools\adb.exe`) bị bão hòa buffer socket transport. Tham số timeout probe trong `vpn_preflight.py` bị thắt ở 6s gây timeout lệnh và bị hook bắt thành `[DEVICE_OFFLINE]`. Thiết bị vật lý vẫn cắm, sạc pin bình thường, không rớt USB.
+      3. **PPPoE Renegotiation Fast Fail-Closed**: Các cổng MikroTik PPPoE xoay IP định kỳ lúc rạng sáng (1–2 phút), hàm `_proxy_server_live` fast probe TCP `connect_ex` thấy port từ chối lập tức fail-closed <=1.5s để bảo vệ nick không bị lướt bằng Direct IP FPT.
+    - **Vá mã nguồn & Kỷ luật điều phối ("K fix đc lỗi à")**:
+      * Nâng timeout probe retry trong `vpn_preflight.py` lên `12.0s` và đồng bộ sang Admin PC để chống false-positive timeout khi 80 máy tải dồn.
+      * Chuẩn hóa parser `inspect_machine.py` hỗ trợ tiền tố `M<N>` (`M204` -> `204`).
+      * Không chỉ giải thích hiện trường mà BẮT BUỘC rà soát lỗ hổng timeout/retry của runner để vá triệt để trước khi báo resume.
+    - Chi tiết xem `references/dual-cluster-batch-alert-adb-timeout-and-pppoe-renegotiation-20261010.md` và `references/scheduled-reboot-window-collision-and-adb-probe-timeout-20261010.md`.

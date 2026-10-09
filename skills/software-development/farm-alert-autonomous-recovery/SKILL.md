@@ -7,9 +7,9 @@ description: >-
 
 # Farm Alert Autonomous Recovery
 
-> 📎 Ref: `references/feed-suggestion-xoa-and-scrolled-profile-triage-20261009.md` (**[09/10/2026]** Triage CM_PROB_PHANTOM, thẻ "Xóa" id/udr, tìm kiếm suggestions tvl_unified_sug, profile cuộn).
-> 📎 Ref: `references/preflight-reg-bu-row-otp-mailbox-proof-and-dropdown-layout-20261009.md`, `references/preflight-reg-bu-machine-full-reconcile-pipeline-20261008.md`.
-> 📎 Ref: `references/regression-gate-replaces-manual-case-docs-and-closeout-remediation-20261008.md`.
+> 📎 Ref: `references/scheduled-pc-reboot-preflight-abort-triage-20261010.md` (**[10/10/2026]** Reboot abort triage).
+> 📎 Ref: `references/feed-suggestion-xoa-and-scrolled-profile-triage-20261009.md`, `references/preflight-reg-bu-row-otp-mailbox-proof-and-dropdown-layout-20261009.md`.
+> 📎 Ref: `references/preflight-reg-bu-machine-full-reconcile-pipeline-20261008.md`, `references/regression-gate-replaces-manual-case-docs-and-closeout-remediation-20261008.md`.
 > 📎 Ref: `references/anti-skip-physical-hook-gate-discipline-20261004.md`, `references/avatar-edit-layout-detector-and-closeout-contract.md`.
 > 📎 Ref: `references/feed-failure-taxonomy-and-guard-boundary.md`.
 
