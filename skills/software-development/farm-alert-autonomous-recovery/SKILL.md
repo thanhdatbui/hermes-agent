@@ -7,11 +7,11 @@ description: >-
 
 # Farm Alert Autonomous Recovery
 
-> 📎 Ref: `references/preflight-reg-bu-row-otp-mailbox-proof-and-dropdown-layout-20261009.md` — OTP/Admin one-tap reference.
-> 📎 Ref: `references/preflight-reg-bu-machine-full-reconcile-pipeline-20261008.md` (**[08/10/2026]** Preflight Reg bù `MACHINE_FULL_8_ACCOUNTS`, kẹt `FAILED_SYNC_OSError`, Reconcile Pipeline O(1)).
-> 📎 Ref: `references/regression-gate-replaces-manual-case-docs-and-closeout-remediation-20261008.md` (**[08/10/2026]** Regression Gate, remediation >=85).
+> 📎 Ref: `references/feed-suggestion-xoa-and-scrolled-profile-triage-20261009.md` (**[09/10/2026]** Triage CM_PROB_PHANTOM, thẻ "Xóa" id/udr, tìm kiếm suggestions tvl_unified_sug, profile cuộn).
+> 📎 Ref: `references/preflight-reg-bu-row-otp-mailbox-proof-and-dropdown-layout-20261009.md`, `references/preflight-reg-bu-machine-full-reconcile-pipeline-20261008.md`.
+> 📎 Ref: `references/regression-gate-replaces-manual-case-docs-and-closeout-remediation-20261008.md`.
 > 📎 Ref: `references/anti-skip-physical-hook-gate-discipline-20261004.md`, `references/avatar-edit-layout-detector-and-closeout-contract.md`.
-> 📎 Ref: `references/feed-failure-taxonomy-and-guard-boundary.md` — phân loại lỗi Feed và phân biệt execution guard với quyền sửa source.
+> 📎 Ref: `references/feed-failure-taxonomy-and-guard-boundary.md`.
 
 ## 🛑 QUY TẮC BẰNG CHỨNG HÌNH ẢNH: CẤM GỬI ẢNH MÀN HÌNH HOME/LAUNCHER
 - User duyệt hiện trường qua `MEDIA:<path>`. **CẤM TUYỆT ĐỐI** gửi ảnh màn hình Home/Launcher Android làm bằng chứng sau teardown/khi lỗi.
