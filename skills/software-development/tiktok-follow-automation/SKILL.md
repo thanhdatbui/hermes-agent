@@ -13,7 +13,7 @@ Canonical TikTok follow runner. Chi tiết xem `references/`.
     - `references/account-replacement-and-backfill-state-reset.md`: Kỷ luật reset state & bộ đếm video/follow khi thay nick die / reg bù — tránh bẫy kế thừa state cũ khiến nick mới bị cấp full budget đi follow sớm gây ban nick.
     - `references/fleet-follow-graduated-probation-ladder.md`: Bậc thang 3 nấc & Health-Tiered Reporting.
     - `references/daily-follow-matrix-and-trust-ceiling-analytics.md`: Daily Matrix Heatmap, Trust Ceiling, FOLLOW_CONCURRENCY van (15-20), Sweet Spot Quota.
-    - `references/shared-ip-proxy-collision-and-canary-ceiling-testing.md`: Hiện trường trùng IP (1 IP : 2 Máy), Session Mutex ("1 Thức - 1 Dưỡng"), chiến lược Canary Cohort 5-10% dò trần an toàn, chống over-engineering lịch chạy.
+    - `references/shared-ip-proxy-collision-and-canary-ceiling-testing.md`: Hiện trường trùng IP (1 IP : 2 Máy), bẫy dữ liệu cũ verify sai (31/08-01/09), số liệu chuẩn tháng 10 (70.6% vs 36.4%), hiện tượng ăn nhả dắt dây (cascading failure), giải pháp IP Circuit Breaker tự ngắt cứu nick, và chiến lược Canary Cohort 5-10% dò trần.
     - Case references: `references/case-ui-*.md`, `references/workflow-parity-*.md`, `references/fleet-follow-*.md`.
     - `references/case-ui-89-idempotent-session-actions-and-partial-follow-accounting.md`: Staging.
     - `references/case-ui-96-released-follow-invalidation-regardless-of-count.md`: Khấu trừ nhả follow.
