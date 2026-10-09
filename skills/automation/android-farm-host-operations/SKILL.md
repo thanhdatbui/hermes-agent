@@ -36,7 +36,9 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
      - Lưu trạng thái tại `C:\Taadaa_Service\usb_guard_state.json`.
      - Tối đa 2 lần reset liên tiếp. Nếu sau 2 lần mà ADB vẫn lỗi, hệ thống kích hoạt cooldown 30 phút, từ chối reset để bảo vệ phần cứng controller và ghi log vào `C:\Taadaa_Service\safe_usb_guard.log`.
      - Khi ADB khỏe mạnh trở lại $\rightarrow$ tự động xóa bộ đếm về 0.
-  4. **Lập lịch tự động:** Đã cài đặt Scheduled Task `Taadaa_Safe_USB_Guard_15m` trên Admin PC chạy ngầm định kỳ mỗi 15 phút dưới quyền SYSTEM.
+  4. **Lập lịch tự động (Dual-Host: Đã triển khai trên cả Admin PC & Kibe PC):**
+     - Đã cài đặt Scheduled Task `Taadaa_Safe_USB_Guard_15m` trên **Admin PC** (User SYSTEM) và **Kibe PC** (User Kibe) chạy ngầm định kỳ mỗi 15 phút.
+     - *Lưu ý quyền Windows khi đăng ký Task Scheduler:* Trên môi trường không elevated Administrator, cờ `-User "SYSTEM"` sẽ bị từ chối với lỗi `Access is denied (HRESULT 0x80070005)`. Đăng ký trực tiếp dưới user phiên làm việc hiện tại (bỏ tham số `-User "SYSTEM"`) để task kích hoạt ở trạng thái `Ready` thành công 100%.
 
 ## 4. Bệnh Bàn Phím Mất Tín Hiệu & Cách Vào BIOS (Main X99)
 - **Triệu chứng 1 (Trước khi vào BIOS):** Khi khởi động, tại logo main xoay tròn thì bàn phím tắt đèn, chỉ sáng khi vào màn hình gõ pass Windows. Bấm Delete / F2 không vào được BIOS.
@@ -239,7 +241,8 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
   * Khi phát hiện thiết bị bị `offline` hoặc kẹt lệnh shell quá 2.5s $\rightarrow$ tự động gọi `adb reconnect` và wake up màn hình (`keyevent 224`) để cứu sống socket ngay lập tức mà không cần reset máy tính.
 - **Tầng 2: Giám sát Reset Bus EHCI Phần Cứng (`safe_usb_guard.py`):**
   * Kiểm tra 0 device lock $\rightarrow$ reset 2 chip EHCI Windows qua PowerShell trong 3 giây.
-  * Hiện trạng triển khai: ĐÃ CÀI trên Admin PC (Task Scheduler `Taadaa_Safe_USB_Guard_15m`), CHƯA CÀI trên Kibe PC. Khi máy Kibe bị rớt hàng loạt, cần lưu ý điểm khác biệt này.
+  * Hiện trạng triển khai: **ĐÃ CÀI ĐẶT TRÊN CẢ 2 MÁY** (Task Scheduler `Taadaa_Safe_USB_Guard_15m` trên Admin PC và Kibe PC, chu kỳ 15 phút).
+  * Quy tắc chẩn đoán Tiểu Vi vs ADB: Khi Tiểu Vi chập chờn ô cam ("Điện thoại đã ngắt kết nối"), thiết bị THỰC SỰ BỊ RỚT KHỎI ADB (`device not found`). Nguyên nhân là do Tiểu Vi kéo đồng thời 80 luồng stream video ($100\text{--}150\text{ Mbps}$) dồn vào 2 chip USB 2.0 EHCI (`1C2D`/`1C26` trên Kibe; `8D26`/`8D2D` trên Admin), làm nghẽn microframe dẫn đến drop packet trên các máy có cáp Micro-USB hơi dão. Bình thường không mở Tiểu Vi thì farm chạy auto rất êm; chỉ mở khi cần soi và watchdog Tầng 3 sẽ tự tắt sau 20 phút.
 - **Tầng 3: Giải phóng Bus USB từ Tiểu Vi (`xiaowei-idle-auto-close-kibe`):**
   * Chạy trên Kibe PC qua cronjob `0a4a81f4f164` mỗi 5 phút.
   * Theo dõi API Windows `GetLastInputInfo`: nếu không có thao tác chuột/phím quá 20 phút $\rightarrow$ tự động `taskkill /F /IM xiaowei.exe` để ngắt toàn bộ 80 luồng stream màn hình, giải phóng hoàn toàn bus USB 2.0.
