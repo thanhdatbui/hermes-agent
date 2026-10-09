@@ -6,6 +6,7 @@ description: "Chạy batch bật 2FA TikTok bằng repo D:\\Taadaa\\tiktok-add-b
 # TikTok Add 2FA Batch Ops (repo tiktok-add-bao-mat-f2a)
 
 References:
+- `references/dual-cluster-watchdog-metrics-and-dry-run-contract-20261010.md` — **[MỚI 10/10/2026]** Quy chuẩn điều phối Dual-Cluster Watchdog (Kibe & Admin), phòng tránh bẫy UnboundLocalError trong tổng hợp metrics và khế ước `--dry-run` phản ánh đúng cụm thực tế.
 - `references/ssh-powershell-encoded-command-and-2fa-audit-backfill-protocol-20261007.md` — **[MỚI 07/10/2026]** Chuẩn hóa SSH PowerShell EncodedCommand chống lỗi Unicode/khoảng trắng đường dẫn cụm Admin và quy trình cứu hộ 2FA Secret từ Audit Log vào Master Workbook.
 - `references/ssh-powershell-encoded-command-and-audit-rescue-20261007.md` — **[MỚI 07/10/2026]** Khắc phục lỗi mã hóa Unicode & khoảng trắng qua SSH Windows PowerShell bằng `EncodedCommand` Base64 UTF-16LE và quy trình cứu hộ 2FA secret từ `2fa_audit.log` vào Master Excel.
 - `references/multi-cluster-2fa-watchdog-decoupling-architecture-20261006.md` — **[MỚI 06/10/2026]** Quy chuẩn kiến trúc Multi-Cluster 2FA TikTok & Watchdog Decoupling: mở rộng dải máy 1-999, boundary tests, phân lập workbook Kibe vs Admin, và báo cáo Telegram 2 cấp độ.
