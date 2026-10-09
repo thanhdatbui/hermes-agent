@@ -1,10 +1,10 @@
-Follow: age>=30d, vid>=10, rest 1/3; cd 15d. 3 nấc (N1: 3-5, N2: 7-9, N3: full sau 6 ca sạch; nòng cốt >=15 fl). GMT+7. Report: nhóm (lượt|%) (M...). DB: nhóm.
+Follow: Sáng/chiều=row khác(acc riêng cấm gộp quota). Phục hồi theo streak(S1: 1 ca 5-7fl về Khỏe; S2: 2 ca 5-8fl; S3+: 3-5fl). SweetSpot tính riêng nhóm; Canary bốc 5-10% chạy +10% dò trần. GMT+7.
 §
 Sót data: CẤM tin Excel/DB; Switcher cuộn đáy. Chuẩn 8 nick/máy. Watchdog ca tối: kibe [5-8,3,4] loại trừ Tik1&2; 140 acc MISMATCH_GOC (Tik1:73, Tik2:67) cần sync video_goc=folder_video và chạy runner riêng.
 §
 GPM 5ph/nick. gmail_clean_v2 chỉ lưu LIVE; xóa DIE, ghi gmail_die_tong; slot TT die dọn safe + track backfill.
 §
-Kho video: min 45, cấm folder phụ; Render 1 worker (--parallel 1); Cào 10 worker; Global Ledger chống trùng; niches 80; SQLite retry 5; 12 Niche Hot.
+Kho video: min 45; Render 1 wkr (--parallel 1); Cào 10 wkr; Global Ledger; niches 80; SQLite retry 5; 12 Niche Hot.
 §
 evidence_gate_verifier.py (WinRT OCR, PID reserve, fail-closed, >30s/3att L3 BLOCKED).
 §

@@ -153,14 +153,16 @@ GPM CDP Connect
   * Khi bấm Lưu đổi mật khẩu, nếu Microsoft trả về thông báo:
     `Tạm thời có lỗi với dịch vụ. Xin vui lòng thử lại...`
     thì **MẬT KHẨU CHƯA ĐƯỢC ĐỔI**! Tuyệt đối không được ghi đè mật khẩu mới vào Excel và không được đánh dấu thành công trong tracker. Phải bắt chuỗi này trong `page.content()` và raise exception để script dừng lại kiểm tra hoặc retry.
-- **Selector chọn "Sử dụng ứng dụng" trong menu Thêm cách đăng nhập mới**:
-  * Khi click `#AddProofLink` ("Thêm một cách đăng nhập khác cho tài khoản"), giao diện tiếng Việt của Microsoft hiển thị các lựa chọn dạng thẻ:
-    1. *Khuôn mặt, dấu vân tay, mã PIN hoặc khóa bảo mật*
-    2. *Sử dụng ứng dụng* (Text tiếng Việt: `text='Sử dụng ứng dụng'`)
-    3. *Gửi mã qua email*
-  * Không chỉ tìm `#Add_msAuthApp`, bắt buộc bổ sung selector theo text:
-    `locator("#Add_msAuthApp, text='Sử dụng ứng dụng', text='Use an app', div:has-text('Sử dụng ứng dụng')")`
-    để không bị bỏ qua bước thêm 2FA trên các tài khoản dùng ngôn ngữ tiếng Việt.
+- **Selector chọn "Sử dụng ứng dụng" trong menu Thêm cách đăng nhập mới & Đa Ngôn Ngữ EN/VI**:
+  * Khi click `#AddProofLink` ("Thêm một cách đăng nhập khác cho tài khoản" / "Add another way to sign in"), giao diện có thể là tiếng Việt hoặc tiếng Anh:
+    - Tiếng Việt: `text='Sử dụng ứng dụng'`, nút `Tiếp theo`, `Hoàn tất`, `Lưu`, `Đăng xuất`, `Có`.
+    - Tiếng Anh: `text='Use an app'`, nút `Next`, `Finish`, `Save`, `Sign out`, `Yes`.
+  * Bộ selector chuẩn hoá hỗ trợ song ngữ:
+    - Add link: `locator("#AddProofLink, a:has-text('Thêm một cách đăng nhập khác'), a:has-text('Add a new way to sign in'), a:has-text('Add another way to sign in'), a:has-text('Add another way')")`
+    - App button: `locator("#Add_msAuthApp, a:has-text('Sử dụng ứng dụng'), div:has-text('Sử dụng ứng dụng'), a:has-text('Use an app'), div:has-text('Use an app')")`
+    - EnableTfa: `locator("#iNext, input[value='Tiếp theo'], button:has-text('Tiếp theo'), input[value='Hoàn tất'], button:has-text('Hoàn tất'), input[value='Next'], button:has-text('Next'), input[value='Finish'], button:has-text('Finish')")`
+    - Save pass: `locator("#UpdatePasswordAction, input[value='Lưu'], button:has-text('Lưu'), input[value='Save'], button:has-text('Save'), #save, #idSubmit_SAV_btnSubmit")`
+  * Ô đổi mật khẩu `#iPassword`, `#iRetypePassword` bắt buộc `.click()` để nhận focus trước khi `.fill()` nhằm kích hoạt input event của Microsoft.
 - **Kỷ luật báo cáo Canary tài khoản mới**:
   * Khi user yêu cầu "canary acc khác t coi", user kỳ vọng **nghiệm thu thực tế toàn diện**.
   * BẮT BUỘC gửi ngay 4 chặng ảnh chứng minh trong cùng 1 báo cáo:

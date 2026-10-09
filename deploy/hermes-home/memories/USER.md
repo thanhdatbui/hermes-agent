@@ -12,7 +12,7 @@ Kibe controller; 1 SoT. Cấm ngắt pipeline sau. Batch/2FA Kibe (1-80) & Admin
 §
 Dubbing: đúng tiếng, 100% thoại, tắt tiếng gốc.
 §
-Evidence: MEDIA:/stdout; form rõ chữ; OTP chụp ĐÃ ĐIỀN; Logout chụp modal; canary chứng minh; cấm artifact acc khác.
+Evidence: MEDIA: path '/'; form rõ chữ; OTP ĐÃ ĐIỀN; Logout modal; Canary=FULL FLOW live (đổi pass+2FA+signout+relogin KMSI đủ 5 ảnh); cấm acc khác.
 §
 Farm: BẮT BUỘC lock trước khi can thiệp thiết bị (cấm adb trần, dùng with_device_lock); cấm reset khi lock; slot 255 trống; lỗi HW/BIOS ưu tiên; cấm báo online ảo; OTP thiếu gửi ảnh mail.
 §
