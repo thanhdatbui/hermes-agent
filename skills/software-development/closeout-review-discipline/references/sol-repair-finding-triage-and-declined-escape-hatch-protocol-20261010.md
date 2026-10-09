@@ -61,3 +61,7 @@ Nâng cấp prompt và schema đầu ra cho Sol High:
 - `exit 0`: Có patch code hợp lệ (đã kiểm tra syntax và anchor duy nhất).
 - `exit 3`: Tất cả findings bị DECLINED (out-of-scope / environment / waiver) ➔ Coordinator ghi nhận waiver, **không nhầm là Sol bị lỗi** và không fallback sai mục đích sang Worker.
 - `exit 1`: Lỗi cú pháp hoặc crash thực sự (điều kiện fallback sang Worker hợp lệ).
+
+### d. Kỷ luật ngân sách Diff Closeout Gate (≤ 30.000 bytes)
+- Candidate diff (`git diff --cached`) tối đa 30.000 bytes.
+- Khi viết thêm test cases cho nhiều finding, phải viết súc tích, tránh lạm dụng docstrings hay setup rườm rà làm phình to diff khiến Gate từ chối sớm (DIFF_TOO_LARGE exit code 3).

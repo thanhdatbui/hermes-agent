@@ -16,4 +16,4 @@ Evidence: MEDIA: path '/'; form rõ chữ; OTP ĐÃ ĐIỀN; Logout modal; Canar
 §
 Farm: BẮT BUỘC lock trước khi can thiệp thiết bị (cấm adb trần, dùng with_device_lock); cấm reset khi lock; slot 255 trống; lỗi HW/BIOS ưu tiên; cấm báo online ảo; OTP thiếu gửi ảnh mail.
 §
-Advisor Sol: gọi duy nhất consult_advisor.py (:20129 gpt-web-sol); CẤM fallback Gemini/mạo danh; lỗi báo UNAVAILABLE. Gate reject Sol vá; Strike 3 Claude CLI.
+Advisor Sol: qua consult_advisor.py (:20129); cấm mạo danh. Gate reject: Sol vá O(1); Strike 3 Claude CLI; gọi Claude CLI audit bế tắc điều phối.
