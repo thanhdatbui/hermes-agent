@@ -56,3 +56,31 @@ Truy vết chi tiết timestamp 8 ca chết đôi trên cùng IP tháng 10/2026 
 
 * **User Invariant:** Khi hệ thống đã có sẵn nhịp cơ sở tự nhiên (chu kỳ cách 2 ngày mới chạy 1 ca + dưỡng sinh random), CẤM tự ý đẻ thêm các luật phân bổ gượng ép như "chia chẵn/lẻ" hay "cụm ngày 1/ngày 2".
 * Càng can thiệp nhiều rule cứng gượng ép, profile hành vi của farm càng mất tính ngẫu nhiên và dễ bị AI Anti-Fraud của TikTok phát hiện mẫu lặp.
+
+---
+
+## 4. Kiến Trúc Wave Scheduler (Turn 1 / Turn 2) & Bản Chất "IP Càng Ổn Định Nick Càng Khỏe"
+
+### A. Tại sao "IP càng ổn định nick càng khỏe" (Nhận định từ thực tế vận hành)?
+* **Bản chất người dùng thật (Home Wi-Fi Baseline):** Người thật dùng mạng Wi-Fi gia đình (Viettel/FPT) có IP ổn định nhiều tuần hoặc nhiều tháng.
+* **Liên kết Fingerprint 3 yếu tố:** TikTok gắn chặt `[Hardware ID + Dải Subnet/ASN + Geolocation]`. Khi nick xuất hiện liên tục trên cùng 1 dải IP quen thuộc trong 30–60 ngày, điểm tín nhiệm (**Aging Trust Score**) sẽ tăng lũy tiến.
+* **Tử huyệt của Rotating IP (Proxy xoay liên tục):** Đổi IP sau mỗi 5–15 phút gây lỗi **"Impossible Travel"** (vừa ở Hà Nội 10 phút sau nhảy sang TP.HCM) -> Thuật toán kích hoạt cờ đỏ, shadowban hoặc bắt giải checkpoint SMS/Captcha.
+* **Mâu thuẫn kỹ thuật:** IP ổn định là RẤT TỐT, nhưng nó kỵ **Concurrency Spikes (Spam đồng thời)**: Hai máy cùng 1 IP cùng bắn request follow lên server TikTok trong cùng 1 phút -> TikTok phát hiện mẫu bot Sybil Attack ngay lập tức.
+
+### B. Giải pháp: Wave Scheduler (Canary Partitioning & Temporal Anti-Collision)
+Toàn bộ 80 máy Kibe dùng 40 proxy (mỗi proxy 2 máy: `[M1, M39]`, `[M2, M40]`...):
+1. **Wave 1 (Turn 1 — Tối đa 40 máy):**
+   * Từ mỗi cặp proxy, hệ thống bốc đúng **1 máy duy nhất** (ví dụ bốc M1, M2, M3... M38).
+   * Shuffle ngẫu nhiên thứ tự chạy.
+   * **Bảo đảm:** 100% các máy chạy ở Wave 1 có IP **hoàn toàn độc lập** với nhau. Tần suất gửi request qua từng IP tại thời điểm $T_0$ chính xác bằng 1.
+2. **Chốt chặn Cầu Dao (Canary Circuit Breaker):**
+   * Nếu máy ở Wave 1 dính nhả (`FOLLOW_FAILED`) -> Cầu dao lập tức ngắt cổng proxy đó cho đến hết ngày.
+3. **Wave 2 (Turn 2 — 40 máy còn lại):**
+   * Chỉ những cổng proxy hoàn toàn sạch ở Wave 1 mới được cấp phép cho máy thứ hai (M39, M40, M41...) chạy tiếp.
+   * Máy có anh em dính lỗi ở Wave 1 tự động bị khóa skip an toàn (`CIRCUIT_BREAKER_SKIPPED`), **cứu sống 100% nick còn lại**, không bị trảm dắt dây!
+
+### C. Khung Tham Chiếu Ngưỡng An Toàn Cho 1 Residential IP (24 Giờ):
+* **Mật độ thiết bị:** Cố định **1 – 2 thiết bị / 1 Residential IP** (Chuẩn farm Kibe hiện tại: 2 máy/IP là tối ưu nhất).
+* **Số nick active/ngày:** Tối đa **2 – 4 nick / IP**.
+* **Khoảng cách thời gian (Time Gap):** Tối thiểu **30 – 45 phút** giữa các máy chạy trên cùng IP.
+* **Trần tổng Follow / IP / 24h:** **Không quá 40 – 50 lượt** cho cả 2 máy cộng lại. Vượt quá ngưỡng này, tỷ lệ dính shadow-follow (F5 mất số) lên tới hơn 80%.

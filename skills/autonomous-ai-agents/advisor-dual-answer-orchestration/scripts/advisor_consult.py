@@ -220,11 +220,10 @@ def _call_stream_chat(url: str, headers: dict[str, str], payload: dict[str, Any]
 
 def consult_advisor(prompt: str, context: str = "", timeout_sec: float = 45.0) -> dict[str, Any]:
     """
-    Truy vấn Advisor Sol độc lập qua đúng 1 endpoint chuẩn duy nhất:
-    OmniRoute :20129 route 'review' (Sol Web High / gpt-5.6-sol).
-    Thời gian timeout tăng lên 45s để reasoning model sinh token trọn vẹn.
-    Nếu thất bại/timeout -> Báo fail ngay (unavailable), lấy info Coordinator đủ rồi,
-    tuyệt đối không fallback sang Gemini hay 9Router lộn xộn.
+    Truy vấn Advisor Sol độc lập qua đúng endpoint chuẩn:
+    OmniRoute :20129 route 'gpt-web-sol' hoặc combo 'review' (Sol Web High / 115 accounts ChatGPT-Web).
+    Thời gian timeout tối thiểu 45s để reasoning model sinh token trọn vẹn.
+    Nếu thất bại/timeout -> Báo fail ngay (unavailable), tuyệt đối không fallback sang Gemini hay 9Router.
     """
     clean_prompt = redact_secrets(prompt)
     clean_context = redact_secrets(context)
@@ -246,19 +245,21 @@ def consult_advisor(prompt: str, context: str = "", timeout_sec: float = 45.0) -
 
     omni_url = "http://127.0.0.1:20129/v1/chat/completions"
     omni_headers = {"Content-Type": "application/json", "Authorization": "Bearer dummy"}
-    payload = {"model": "review", "messages": messages}
+    
+    # 1. Ưu tiên gọi trực tiếp model gpt-web-sol (Pool 115 accounts ChatGPT-Web)
+    for target_model in ["gpt-web-sol", "review"]:
+        payload = {"model": target_model, "messages": messages}
+        ok, text = _call_stream_chat(omni_url, omni_headers, payload, timeout_sec=timeout_sec)
+        if ok and len(text) > 20:
+            return {
+                "status": "success",
+                "model": f"Sol / {target_model}",
+                "tier": 1,
+                "advice": text,
+                "formatted": f"--- Advisor (Sol / {target_model}) ---\n{text}",
+            }
 
-    ok, text = _call_stream_chat(omni_url, omni_headers, payload, timeout_sec=timeout_sec)
-    if ok and len(text) > 20:
-        return {
-            "status": "success",
-            "model": "Sol / review",
-            "tier": 1,
-            "advice": text,
-            "formatted": f"--- Advisor (Sol / review) ---\n{text}",
-        }
-
-    err_msg = "Advisor: unavailable (Sol / review timeout hoặc pool limit; chỉ hiển thị câu trả lời Coordinator)"
+    err_msg = "Advisor: unavailable (Sol / gpt-web-sol timeout hoặc pool limit; chỉ hiển thị câu trả lời Coordinator)"
     return {
         "status": "unavailable",
         "model": "none",

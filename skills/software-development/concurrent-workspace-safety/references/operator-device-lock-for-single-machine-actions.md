@@ -32,5 +32,24 @@ with operator_device_lock(machine=machine_num, serial=serial, project="operator_
 
 ---
 
-## 3. Pre-Flight Inspection Before Running Ad-hoc Scripts
-Before launching single-target batch scripts (such as `run_tiktok_upload_avatar.ps1 -ForceAvatarMachineList 16`), verify device availability via `python D:/Taadaa/tools/inspect_machine.py <N>` to ensure no stale or active runner lock is held by another process.
+## 3. Physical Hard Enforcement: `guard_device_bulkhead.py` & `with_device_lock.py`
+From 2026-10-10, lock discipline is physically enforced at the Hermes Pre-tool Hook (`guard_device_bulkhead.py`):
+1. **Default-Deny for ADB Device Operations**: Any `adb` command mutating device state (`shell`, `push`, `pull`, `install`, `reboot`, `exec-out`, `logcat`, `tcpip`) without an active lease in `~/.codex/device-locks/` is blocked with `GUARD_DEVICE_LOCK_REQUIRED`.
+2. **Compound Command Splitting**: Statements split by `&&`, `||`, `;`, `|`, `&`, `$(...)`, and backticks are evaluated individually. Chaining a benign command (`adb devices && adb -s SERIAL shell ...`) cannot bypass the lock check.
+3. **Kernel Anti-Forgery**: Lock validation requires schema protocol v2 AND checks kernel process creation timestamp via `owner_process_alive()` (WinAPI `GetProcessTimes` / `WMIC`). Self-asserted JSON files with fake timestamps are rejected.
+4. **CLI Wrapper**: For single commands, use:
+   ```bash
+   python D:/Taadaa/tools/with_device_lock.py --machine <N> -- <command...>
+   ```
+
+---
+
+## 4. Critical Pitfall: Do NOT Wrap Batch Launchers in `operator_device_lock`
+Batch runners (`run_tiktok_upload_batch.ps1`, `run_tiktok_upload_avatar.ps1`, `run-feed-session.ps1`) **already implement their own device lock lifecycle** (`machine_inventory` admission check -> `acquire_device_lock`).
+
+- **Trap**: If an operator or coordinator wraps a batch script call inside an external `with operator_device_lock(machine=N, ...)` context:
+  `machine_inventory` checks `~/.codex/device-locks/machine_<N>.lock.json`, sees the external lock, and marks the machine as `SKIPPED_LOCKED: device lock active` (exit=3, verified=False).
+- **Correct Pattern**:
+  - For ad-hoc single Python/ADB probe commands: Bọc qua `operator_device_lock` hoặc `with_device_lock.py`.
+  - For full batch scripts: Chạy trực tiếp batch launcher (chạy background với `timeout > 60s`), để launcher tự acquire lock.
+  - If a machine is currently locked by a running batch (e.g. `multi-machine-feed-session`), do not disrupt or force execution; wait for the existing batch to release the lock cleanly before launching.

@@ -37,5 +37,7 @@ Khi chia vai cứng **Worker/Coordinator = Thợ code** và **Claude = Giám sá
 
 ## 5. Bất biến Điều phối & Van An toàn Quota (Orchestration & Quota Invariants)
 - **Áp dụng toàn diện (Closeout & Mid-Session):** Quy tắc 3-Strike áp dụng cho CẢ closeout reviews lẫn mọi vòng review code giữa phiên (mid-session review). Bất kỳ khi nào Reviewer từ chối 3 lần liên tiếp (kể cả UNRESOLVED do thiếu evidence), Coordinator BẮT BUỘC dừng tự sửa và chuyển giao quyền cho Reviewer.
+- **Chống Bẫy Quán Tính Sửa (Action-Bias / Ping-Pong Momentum Trap):**
+  Khi đang ở giữa vòng lặp sửa lỗi, Coordinator rất dễ bị cuốn vào tâm lý "sửa nốt phát này là pass" (prompt dilution khiến quên rule 3-strike trong prompt). Coordinator phải tự nhận biết: Strike 3 là HARD STOP cho việc tự sửa — BẮT BUỘC trao bàn phím cho Reviewer (`claude -p ... --dangerously-skip-permissions`).
 - **Strike 3 KHÔNG làm dừng tiến trình Remediation:** Bất biến "REJECT = REMEDIATION, CẤM DỪNG" vẫn giữ nguyên 100%. Strike 3 chỉ thay đổi **NGƯỜI CẦM BÀN PHÍM (HOLDER OF THE KEYBOARD)** từ Worker/Coordinator sang chính Reviewer, tuyệt đối không phải là cớ để buông xuôi hay dừng closeout!
 - **Van an toàn Quota Fallback:** Nếu Claude CLI chạm ngưỡng bảo vệ hạn mức 85% của 5h session (theo `claude-limit-protection`) hoặc dính rate-limit/lockout: BẮT BUỘC tự động fallback về cho Coordinator (thực hiện Emergency Surgery L2 O(1) nếu thỏa mãn ngân sách) HOẶC điều phối sang Sol High (:20129) vá thẳng theo Invariant chống đóng băng task. Tuyệt đối không để farm bị kẹt khi Claude hết quota!

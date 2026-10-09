@@ -304,6 +304,7 @@ Operate avatar-only changes on Taadaa TikTok farm devices without accidentally p
 - Closeout is not DONE until the device evidence, focused verification, and required reviewer gate are satisfied.
 
 ## References
+- `references/mismatch-goc-stale-drift-and-day-tik-watchdog-gap-20261010.md` — bẫy 140 nick Tik 1 và Tik 2 Kibe bị kẹt cờ MISMATCH_GOC từ 02/10 do lệch không gian đánh số Folder Video vs video gốc, khoảng trống của Watchdog ca tối bỏ quên Tik 1 & 2 ca ngày, quy trình 3 bước đồng bộ dứt điểm (Excel + SQLite + đĩa) và kỷ luật MaxParallel 8 cho Kibe.
 - `references/mismatch-goc-drift-and-watchdog-tik-exclusion-20261010.md` — đối soát ground truth 140 acc dính MISMATCH_GOC từ 02/10 do lệch công thức kép bị watchdog ca tối bỏ quên vì exclude Tik 1 & Tik 2 Kibe; quy trình đồng bộ SQLite/Workbook và kích hoạt runner độc lập.
 - `references/grid-assisted-circular-avatar-framing-and-niche-sync-20261010.md` — quy trình 4 bước bóc tách avatar chân dung nam thần/idol chuẩn hình tròn TikTok bằng WinRT OCR lọc vietsub, lưới tọa độ qua Vision API định vị giải phẫu khuôn mặt, công thức headroom/chin cho circular mask, và đồng bộ kép hashtag/niche workbook.
 - `references/avatar-ssot-root-and-telemetry-remediation-20261010.md` — giải pháp tách dedicated focused test file tránh timeout 120s của test monolith, nhận diện root chuẩn hóa bằng path parts, telemetry logging runtime đưa Closeout Gate lên 90/100, và khôi phục chuỗi gate_audit.jsonl.
