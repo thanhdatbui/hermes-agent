@@ -16,4 +16,4 @@ Evidence: MEDIA:/stdout; form rõ chữ; OTP chụp ĐÃ ĐIỀN; Logout chụp 
 §
 Farm: BẮT BUỘC lock trước khi can thiệp thiết bị (cấm adb trần, dùng with_device_lock); cấm reset khi lock; slot 255 trống; lỗi HW/BIOS ưu tiên; cấm báo online ảo; OTP thiếu gửi ảnh mail.
 §
-Gate reject/Plan: Sol High vá; hỏi nguyên nhân gọi Advisor; Strike 3 giao bàn phím Claude CLI (--dangerously-skip-permissions); Quota 85% fallback Sol/L2.
+Advisor Sol: gọi duy nhất consult_advisor.py (:20129 gpt-web-sol); CẤM fallback Gemini/mạo danh; lỗi báo UNAVAILABLE. Gate reject Sol vá; Strike 3 Claude CLI.

@@ -1,6 +1,6 @@
 # Quy Chuẩn Điều Phối Dual-Cluster Watchdog & Khế Ước Dry-Run (2026-10-10)
 
-Đúc kết từ phiên xử lý sự cố `night-tiktok-2fa-watchdog` (job_id: `2029d4224662`).
+Đúc kết từ phiên xử lý sự cố `night-tiktok-2fa-watchdog` (job_id: `2029d4224662`) và quy trình khắc phục Closeout Gate.
 
 ---
 
@@ -60,3 +60,23 @@
   cmd_admin = ["ssh", "-o", "ConnectTimeout=10", "admin-farm", f"powershell -NoProfile -EncodedCommand {b64_ps}"]
   ```
 - Tuyệt đối không dùng chuỗi lệnh thô `-Command "..."` để tránh bị shell quote stripping làm vỡ đường dẫn có khoảng trắng và lỗi Unicode tên sheet tiếng Việt.
+
+---
+
+## 4. Chuẩn hóa Hằng Số Mã Thoát (Return Code Contract) & Observability
+- **Bẫy Reviewer Closeout Gate**: Reviewer sẽ trừ điểm nghiêm trọng nếu watchdog so khớp mã thoát dạng số ma thuật (magic numbers như `code in (0, 4)`) mà không có giải trình hoặc định nghĩa rõ ràng.
+- **Chuẩn hóa Hằng số**:
+  ```python
+  EXIT_SUCCESS = 0
+  EXIT_SAFE_SKIP = 4  # Tất cả target được bỏ qua an toàn (đã có 2FA hoặc bận lock hợp lệ)
+  ACCEPTABLE_RETURN_CODES = (EXIT_SUCCESS, EXIT_SAFE_SKIP)
+  ```
+- **Telemetry & State Persistence**:
+  - Thay thế in trần stderr bằng module `logging` chuẩn.
+  - Khi lưu state JSON tại `save_state`, bắt buộc bổ sung trường `failure_reason` khi mã lỗi khác acceptable, và phân lập chi tiết trạng thái từng cụm (`farms: {kibe: ..., admin: ...}`).
+
+---
+
+## 5. Kinh Nghiệm Vận Hành Sol Repair Trong Closeout Gate
+- Khi Closeout Gate bị `REJECTED` (Strike 1 hoặc 2), chạy `sol_repair.py` bắt buộc chỉ định `--model review` (hoặc `chatgpt-web/gpt-5.6-sol-high`) để tránh timeout streaming của model mặc định `gpt-web-sol`.
+- Nếu đề xuất của Sol Repair vượt quá ngân sách O(1) (`numstat > 30 dòng` hoặc refactor lan man), bắt buộc kích hoạt nhánh **Fallback Worker** (`delegate_task`) theo đúng `HERMES_SUBAGENT_RULES.md` với contract thu hẹp, tuyệt đối không tự áp dụng patch quá lớn trong session chính.

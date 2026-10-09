@@ -31,9 +31,9 @@ For an advice-intent turn:
 
 1. **Mandatory Execution & Mechanical Enforcement:** 
    - The Coordinator must never emit a solo answer on advice intent.
-   - Use `ensure_dual_answer(message, primary_response, context)` or CLI `python C:/Users/Kibe/AppData/Local/hermes/skills/autonomous-ai-agents/advisor-dual-answer-orchestration/scripts/advisor_consult.py --query "<user_question>" --context "<summary_of_findings>"` to obtain the Advisor section.
+   - Use `python D:/Taadaa/tools/consult_advisor.py "<prompt>"` (hoặc `ensure_dual_answer`) để gọi trực tiếp Advisor Sol-WebPool, cấm tự viết code gọi HTTP trần.
 2. Direct Sol Route with Increased Wait Time:
-   - Call directly to OmniRoute :20129 `gpt-web-sol` hoặc combo `review` (ChatGPT-Web Pool 115 accounts). CẤM gọi `gpt-5.6-sol` (trỏ nhầm OpenAI API lỗi 402).
+   - Call directly to OmniRoute :20129 `gpt-web-sol` (ChatGPT-Web Pool 115 accounts). CẤM gọi `gpt-5.6-sol` (trỏ nhầm OpenAI API lỗi 402).
    - Timeout raised to 45s to allow reasoning models sufficient TTFT and token completion.
    - Fail-safe: If Sol times out or hits pool limits, FAIL CLEANLY and output `Advisor: unavailable` immediately. DO NOT fallback to Gemini or 9Router. Primary coordinator answer is sufficient.
 3. Strict Safety & Comprehensive Redaction:

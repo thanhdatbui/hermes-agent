@@ -65,6 +65,11 @@ When the current built-in/direct session was created with `agent_type=worker`, i
      - Structural Fix: <File, hook, script đã tạo để ngăn tái phát>
      - Verification: <Lệnh chạy kiểm chứng thực tế>
      ```
+9. **INVARIANT: CHATGPT-WEB-POOL ADVISOR ("Sol-Web") IS NOT gpt-5.6-sol**
+   - "Sol" trong context plan-review (combo `plan-review-hard`, 9Router port 20128, model `gpt-5.6-sol`) và "Advisor Sol" trong context ChatGPT-Web pool (OmniRoute port 20129, model `gpt-web-sol` 115 accounts) là HAI BACKEND KHÁC NHAU HOÀN TOÀN.
+   - Mọi lời gọi tới Advisor Sol ChatGPT-Web Pool BẮT BUỘC đi qua script duy nhất: `python D:/Taadaa/tools/consult_advisor.py <prompt>`. CẤM gọi HTTP trần hoặc tự đoán model ID.
+   - KHI `consult_advisor.py` trả lỗi / `ADVISOR_UNAVAILABLE`: Coordinator CHỈ ĐƯỢC báo trạng thái `ADVISOR_UNAVAILABLE` nguyên văn kèm reason/detail. CẤM TUYỆT ĐỐI fallback sang bất kỳ model/provider khác (bao gồm Gemini, Luna, Terra...) để thay thế ý kiến của Sol.
+   - CẤM TUYỆT ĐỐI mạo danh output của bất kỳ model nào khác là "Sol" / "Advisor Sol" dưới mọi hình thức.
 ## 📘 QUY TẮC BẮT BUỘC ĐỐI CHIẾU & CẬP NHẬT DOCS/FARM-AUTOMATION-CASES.MD (ALL FARM REPOS)
 1. **TRƯỚC KHI HANDLE SCRIPT / SỬA CODE FARM:** BẮT BUỘC đọc và đối chiếu toàn bộ các Case Fix thực tế & Anti-Pattern trong `docs/farm-automation-cases.md`, bao gồm: UI/Popup, Cron/Reaper/Watchdog, Sync/Workbook/Data integrity, Device Lock/ADB. Tuyệt đối không tái phạm các lỗi đã được xử lý trong file này.
 2. **KHI CHỐT PHIÊN (NẾU TASK LIÊN QUAN TỚI FARM AUTOMATION):** Trước khi Model Review và Commit, BẮT BUỘC phải cập nhật Case Fix thực tế và Anti-Pattern tương ứng vừa xử lý vào file `docs/farm-automation-cases.md` sang các repo liên quan. Khóa chặt chống hồi quy bằng Focused Regression Test trong test suite.
