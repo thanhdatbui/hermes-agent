@@ -28,7 +28,12 @@ Truy vết chi tiết timestamp 8 ca chết đôi trên cùng IP tháng 10/2026 
 * **Cơ chế Soft Guard tối ưu (Đã triển khai):**
   1. **Tự động ngắt khi có sự cố:** Khi Máy A dính `FOLLOW_FAILED` (`set_follow_failed` trong `follow_state.py`), hàm `trip_ip_breaker(machine)` tự động kích hoạt giật cầu dao, ghi nhận proxy bị `TRIPPED` vào bảng `ip_circuit_breaker` trong SQLite `tiktok_tracker.db` đến hết ngày (`23:59:59`).
   2. **Safe-skip máy anh em:** Khi Máy B chuẩn bị chạy (`run_follow.py`), preflight gọi `check_ip_breaker(machine)`. Nếu IP đang bị ngắt, Máy B tự động skip ca với trạng thái `CIRCUIT_BREAKER_SKIPPED` (`failed=False`, `follow_failed=False`), không phạt nick, đồng thời ghi nhận `saved_machines` vào DB.
-  3. **Giám sát trực quan:** Dashboard port 1905 hiển thị widget `⚡ Cầu Dao Tự Ngắt IP` và gắn nhãn Proxy Port + Partner Machine (`M28 :5134 (🔗M66)`) trên ma trận.
+  3. **Giám sát trực quan trên Dashboard (:1905):** Hiển thị widget `⚡ Cầu Dao Tự Ngắt IP` và gắn nhãn Proxy Port + Partner Machine (`M28 :5134 (🔗M66)`) trên ma trận.
+  4. **Báo cáo trong Report Ca Follow Telegram (feed_session_watchdog.py — User Invariant):**
+     * Trong mục Follow chéo, BẮT BUỘC liệt kê rõ ràng các IP bị ngắt và nick anh em được bảo vệ:
+       `⚡ Cầu dao tự ngắt IP (X proxy đã khóa do dính nhả):`
+       `- Cổng <PORT>: M<A> dính nhả lúc <HH:MM:SS> -> Đã ngắt IP không follow | Đã khóa cứu nick: M<B>`
+     * Trong mục `Bỏ qua`, bóc tách riêng: `Khóa IP do máy cùng IP nhả (X: M...)` thay vì gộp mù vào lỗi script hay dưỡng sinh thông thường. Không báo lỗi ảo khi nick được an toàn skip bởi Circuit Breaker.
 
 ---
 

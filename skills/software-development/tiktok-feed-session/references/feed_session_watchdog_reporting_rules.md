@@ -33,3 +33,17 @@ Lịch chạy runner thực tế phân bổ các slot/block với jitter thời 
 ## 3. Tối Ưu Quét Đĩa Hiệu Năng Cao (Tránh Timeout I/O)
 * **Tuyệt đối không dùng `glob.glob(recursive=True)` quét lặp lại nhiều lần** trên cây thư mục `live/<date>/<run>/machines/`.
 * **Sử dụng `parse_run_all(run_dir)` với `os.scandir` trong 1 lượt duy nhất**: Đọc đồng thời `summary.txt`, `follow_result.json`, `upload_result.json` giúp giảm thời gian xử lý từ >900s xuống ~1-2s.
+
+---
+
+## 4. Báo Cáo Cầu Dao Tự Ngắt IP (IP Circuit Breaker Reporting — 2026-10-10)
+Khi máy A trong cặp chia sẻ IP bị TikTok nhả (`FOLLOW_FAILED`), IP Circuit Breaker tự động giật ngắt cổng proxy đó đến hết ngày để cứu máy B cùng IP:
+* **Hiển thị trực quan trong mục Follow chéo:**
+  - Watchdog gọi hàm `format_ip_circuit_breaker_report(db_path, target_date)` đọc bảng `ip_circuit_breaker` trong SQLite `tiktok_tracker.db`.
+  - Nếu có proxy bị ngắt, xuất thêm khối báo cáo ngay dưới danh sách nhả follow:
+    `⚡ Cầu dao tự ngắt IP (X proxy đã khóa do dính nhả):`
+    `- Cổng <PORT>: M<A> dính nhả lúc <HH:MM:SS> -> Đã ngắt IP không follow | Đã khóa cứu nick: M<B>`
+* **Bóc tách danh mục Bỏ qua (Skipped Classification):**
+  - Trong `classify_machine_follow_result()`, nếu `status == "CIRCUIT_BREAKER_SKIPPED"` hoặc lý do chứa `circuit_breaker` -> phân loại vào nhóm `breaker_skipped`.
+  - Trong dòng `Bỏ qua`, bóc tách riêng: `Khóa IP do máy cùng IP nhả (X: M...)` thay vì gộp mù vào lỗi script hay dưỡng sinh thông thường. Không báo lỗi ảo khi nick được bảo vệ an toàn bởi Circuit Breaker.
+

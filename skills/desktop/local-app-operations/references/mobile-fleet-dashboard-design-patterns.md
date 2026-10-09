@@ -87,3 +87,13 @@ Wrap high-height analytical cards in `<details>` or toggleable accordions:
 </details>
 ```
 On desktop, keep `<details open>`; on mobile, default closed to allow direct access to operational accounts.
+
+### 5. Implementation Invariants & Pitfalls
+1. **Reverse Chronological Mini-Timeline**:
+   - Date arrays from database aggregation are typically sorted ascending (`['2026-09-27', ..., '2026-10-09']`).
+   - When rendering inline pill chips on cards, always slice and reverse (`dates.slice(-6).reverse()`) so the most recent run date appears on the far left. Operators can verify today's or yesterday's run status (`10-09: 🛑15` vs `10-09: +14`) instantly.
+2. **Backward-Compatible ID Preservation in Unified Panels**:
+   - Automated test suites frequently check legacy DOM IDs (e.g. `fhCardsGrid`, `fhSectionList`, `fhListTitle`, `fhMatrixHead`).
+   - When consolidating multiple disjoint panels into a unified toggle panel, preserve all existing IDs as container wrappers or hidden elements (`<div id="fhSectionList" style="display:none;"></div>`) to prevent breaking existing test assertions.
+3. **Template Nesting & Orphaned Tag Guard**:
+   - When patching inline HTML string templates inside multi-line Python f-strings, verify opening/closing `<div>` tag counts across patch boundaries. Stray `</div>` tags can prematurely close parent flex containers and distort layout. Always run `pytest` and inspect rendered DOM output before restarting the service.
