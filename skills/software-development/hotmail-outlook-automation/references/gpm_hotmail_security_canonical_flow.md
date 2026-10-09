@@ -113,12 +113,16 @@ GPM CDP Connect
   * Dùng `pyotp.TOTP(sec_key).now()` sinh mã và điền tự động.
   * Chụp ảnh `gpm_relogin_totp_<email>.png` làm bằng chứng.
   * Tiếp tục bắt màn hình KMSI ("Duy trì đăng nhập?"), chụp ảnh `gpm_kmsi_<email>.png` rồi click `#idSIButton9` (nút [Có]) để lưu cookie lâu dài vào GPM Profile.
-- **Kỷ luật báo cáo bằng chứng**: User luôn yêu cầu bằng chứng thị giác đầy đủ 4 chặng:
-  1. *Add 2FA*: Form cấp key + điền mã 6 số kích hoạt. Nếu tài khoản đã có 2FA từ trước (`has_totp=True`), BẮT BUỘC chụp lại trang Proofs hiển thị Authenticator đang Bật hoặc gửi lại ảnh chứng minh cũ; CẤM im lặng bỏ qua khiến user tưởng chưa làm!
-  2. *Đổi Pass*: Form đổi pass + nút Lưu.
-  3. *Sign out everywhere*: Modal dialog xác nhận đăng xuất.
-  4. *Relogin*: Form giải 2FA khi đăng nhập lại + Màn hình KMSI bấm Có.
-  Tuyệt đối không được báo cáo kết quả chung chung mà thiếu ảnh của chặng nào.
+- **Kỷ luật báo cáo bằng chứng (Bắt buộc đủ 5 Chặng Visual Evidence, Cấm Làm Nửa Vời)**:
+  * User cực kỳ dị ứng với việc báo cáo thiếu bước hoặc làm nửa chừng ("bước sign out sign in lại đâu sao cứ làm đéo đủ v"). Khi kiểm chứng Canary / đổi info Hotmail, BẮT BUỘC cung cấp đủ 5 chặng ảnh:
+    1. *Add 2FA*: Form cấp key + điền mã 6 số kích hoạt (`evidence_1_add_2fa.png`).
+    2. *Đổi Pass*: Form đổi pass + nút Lưu (`evidence_2_change_pass.png`).
+    3. *Sign out everywhere*: Modal dialog xác nhận đăng xuất (`evidence_3_signout_dialog.png`).
+    4. *Relogin 2FA*: Form giải mã TOTP khi đăng nhập lại (`evidence_4_relogin_totp.png`).
+    5. *KMSI*: Màn hình "Duy trì đăng nhập?" bấm [Có] để lưu phiên sống (`evidence_5_kmsi_yes.png`).
+  * **Chọn acc Canary**: Khi user bảo "canary acc khác", BẮT BUỘC chọn acc **chưa từng có 2FA** (`Col 4 is None`) để thể hiện đủ cả 5 bước. Nếu acc đã có 2FA mà script skip bước tạo key sẽ khiến user hiểu nhầm là tool chạy thiếu/lỗi.
+  * **Kích hoạt form Relogin**: Sau khi Sign out everywhere, điều hướng qua `https://login.live.com/logout.srf` rồi mới vào `account.microsoft.com/profile` để xóa cookie cục bộ, buộc Microsoft hiện form đăng nhập lại để chụp ảnh relogin + 2FA + KMSI.
+  Tuyệt đối không được báo cáo kết quả chung chung mà thiếu ảnh của bất kỳ chặng nào.
 
 ---
 

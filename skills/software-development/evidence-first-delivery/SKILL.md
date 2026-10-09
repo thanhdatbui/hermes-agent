@@ -138,6 +138,12 @@ For code changes implementing evidence delivery, run focused offline tests and t
 
 The user prefers direct Vietnamese, concise status, and actual native images rather than folder links or path dumps. Lead with the result, then list only the evidence and blocker that change the decision. Never make the user ask “hình đâu?” after a UI operation.
 
+- **Chống Bẫy Báo Cáo Thiếu Chặng Trong Quy Trình Đa Bước (Anti-Omitted-Step Report Trap - 2026-10-10):**
+  Khi thực hiện các quy trình tự động hóa đa bước (ví dụ: chuỗi bảo mật Hotmail/TikTok: *1. Add 2FA -> 2. Đổi mật khẩu -> 3. Sign out everywhere -> 4. Relogin 2FA -> 5. KMSI / Dashboard*):
+  * Người dùng cực kỳ dị ứng và coi là thất bại nghiêm trọng nếu báo cáo thiếu ảnh của bất kỳ chặng nào ("bước đăng nhập lại hình ảnh chứng minh đâu, bước add 2fa đâu?", "sao cứ làm đéo đủ v").
+  * **BẮT BUỘC:** Khi quy trình gồm N chặng logic, báo cáo nghiệm thu phải cung cấp đầy đủ N ảnh chụp bằng chứng cho đủ N chặng trong **CÙNG MỘT TIN NHẮN TỔNG HỢP**.
+  * CẤM TUYỆT ĐỐI viện cớ "tài khoản đã có 2FA từ trước nên bỏ qua", "đã vào profile là coi như relogin xong", hoặc chỉ gửi 1-2 ảnh đại diện rồi dừng lại. Thiếu bất kỳ chặng nào là CHƯA HOÀN THÀNH. Nếu tài khoản đã có sẵn tính năng (ví dụ đã bật 2FA), bắt buộc phải chọn tài khoản mới chưa từng cài để chứng minh trọn vẹn toàn bộ các chặng từ đầu đến cuối.
+
 ## References
 
 - `references/closeup-crop-and-legible-evidence-delivery-20261008.md` — **[MỚI 08/10/2026]** Kỷ luật Crop Cận Cảnh Bằng Chứng UI (Zoomed Focus Crop) & Chống Ảo Giác Ảnh Mù Toàn Màn Hình: CẤM chỉ gửi ảnh dọc 1080x1920 bị co nhỏ trên Telegram làm mờ chữ; bắt buộc crop vùng trọng tâm (input + nút + dòng lỗi) để mắt nhìn thấy ngay, và cơ chế ẩn bàn phím ảo trước khi chụp.

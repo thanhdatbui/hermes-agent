@@ -80,3 +80,28 @@
 ## 5. Kinh Nghiệm Vận Hành Sol Repair Trong Closeout Gate
 - Khi Closeout Gate bị `REJECTED` (Strike 1 hoặc 2), chạy `sol_repair.py` bắt buộc chỉ định `--model review` (hoặc `chatgpt-web/gpt-5.6-sol-high`) để tránh timeout streaming của model mặc định `gpt-web-sol`.
 - Nếu đề xuất của Sol Repair vượt quá ngân sách O(1) (`numstat > 30 dòng` hoặc refactor lan man), bắt buộc kích hoạt nhánh **Fallback Worker** (`delegate_task`) theo đúng `HERMES_SUBAGENT_RULES.md` với contract thu hẹp, tuyệt đối không tự áp dụng patch quá lớn trong session chính.
+
+---
+
+## 6. Kỷ Luật Exit Code Semantics Trong Watchdog Cron (Chống Thành Công Ảo)
+- **Cạm bẫy "Luôn return 0"**: Nhiều script watchdog chỉ in log hoặc lưu `save_state` với `status="failed"` nhưng ở cuối `main()` lại luôn `return 0`.
+- **Hậu quả**:
+  - Hệ thống lập lịch cron (Hermes Cron Scheduler / Task Scheduler) coi process kết thúc thành công (`last_status: ok`), nuốt chửng lỗi và không kích hoạt cảnh báo failure của cron runner.
+  - Reviewer Sol Auditor trong `closeout_gate.py` coi đây là lỗi nghiêm trọng về độ tin cậy orchestration và trừ 5–10 điểm Farm Safety / Logic Correctness.
+- **Quy chuẩn bắt buộc cho `main()`**:
+  ```python
+  if not args.dry_run:
+      save_state(today_str, {...})
+
+  if code not in ACCEPTABLE_RETURN_CODES:
+      logger.error("Watchdog thất bại với mã lỗi runner: %s", code)
+      return code if code != 0 else 1
+
+  if fail > 0:
+      logger.warning("Watchdog hoàn tất nhưng có %d máy gặp sự cố", fail)
+      return 1
+
+  return 0
+  ```
+  - Khi runner trả về mã lỗi không nằm trong `ACCEPTABLE_RETURN_CODES`, hoặc khi có máy trong cụm bị lỗi (`fail > 0`), `main()` BẮT BUỘC phải trả về exit code non-zero (`!= 0`).
+  - Chỉ trả về `0` khi toàn bộ cụm thành công hoặc safe skip hợp lệ. Unit test bắt buộc phải có test case kiểm thử exit code non-zero khi runner lỗi hoặc partial failure.
