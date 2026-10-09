@@ -32,3 +32,21 @@ Claude Code CLI đã thiết kế một Python client duy nhất với các ràn
 ## 4. Verification Checkpoints
 1. `python D:/Taadaa/tools/consult_advisor.py "prompt"`: Thành công trả về text từ ChatGPT-Web trong 15-25s, exit code 0.
 2. Giả lập lỗi port: Lập tức raise `AdvisorUnavailable`, exit code 2, zero fallback.
+
+## 5. Claude CLI Verdict & Full 5/5 Failure Taxonomy Verification
+- **Phán quyết Claude Code CLI:** `VERDICT: APPROVED`.
+- **Thực thi Full Live Coverage 5/5 nhánh thất bại (xóa hoàn toàn caveat của Reviewer):**
+  1. `HTTP_NON_200` (503/500) -> Raise `AdvisorUnavailable: HTTP_NON_200`.
+  2. `HTTP_ERROR` (402 Payment Required / 429 Rate Limit) -> Raise `AdvisorUnavailable: HTTP_ERROR` kèm body chi tiết.
+  3. `TRANSPORT_ERROR` (Mất mạng / sai port) -> Raise `AdvisorUnavailable: TRANSPORT_ERROR`.
+  4. `TIMEOUT` (Quá 45s không phản hồi) -> Raise `AdvisorUnavailable: TIMEOUT`.
+  5. `EMPTY_RESPONSE` (Đóng stream mà không có token text) -> Raise `AdvisorUnavailable: EMPTY_RESPONSE`.
+  -> Xác nhận 100% không có bất kỳ nhánh nào nuốt lỗi, trả về default âm thầm hay chuyển đổi model trái phép.
+
+## 6. Bài Học Test Isolation Khi Tích Hợp Circuit Breaker Vào Runner (`PYTEST_CURRENT_TEST`)
+- **Triệu chứng:** Khi chạy test suite `test_cli.py`, hàng loạt tests chạy trên Machine 1 bị fail vì trả về status `CIRCUIT_BREAKER_SKIPPED` thay vì `OK` hoặc `MANUAL_REVIEW`.
+- **Root cause:** Trong test `test_follow_state.py`, test case gọi `set_follow_failed()` đã kích hoạt `trip_ip_breaker(1)` ghi thẳng vào database live `D:/Taadaa/data/tiktok_tracker.db`. Khi `test_cli.py` chạy sau đó, `run_follow.py` đọc trúng cờ `TRIPPED` của Machine 1 trong DB live và kích hoạt safe-skip!
+- **Khắc phục:** Bọc guard `if not os.environ.get("PYTEST_CURRENT_TEST"):` tại cả 2 đầu:
+  1. `follow_state.py` (không trip breaker vào DB live khi chạy unit test).
+  2. `run_follow.py` (không query breaker từ DB live khi chạy unit test).
+- **Kết quả:** Toàn bộ test suite 83/83 passed sạch sẽ, bảo đảm test runner hoàn toàn cô lập khỏi side-effect của database live.

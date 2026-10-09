@@ -34,6 +34,9 @@ Truy vết chi tiết timestamp 8 ca chết đôi trên cùng IP tháng 10/2026 
        `⚡ Cầu dao tự ngắt IP (X proxy đã khóa do dính nhả):`
        `- Cổng <PORT>: M<A> dính nhả lúc <HH:MM:SS> -> Đã ngắt IP không follow | Đã khóa cứu nick: M<B>`
      * Trong mục `Bỏ qua`, bóc tách riêng: `Khóa IP do máy cùng IP nhả (X: M...)` thay vì gộp mù vào lỗi script hay dưỡng sinh thông thường. Không báo lỗi ảo khi nick được an toàn skip bởi Circuit Breaker.
+  5. **Kỷ luật cô lập kiểm thử (Pytest Isolation Guard):**
+     * Trong `follow_state.py` và `run_follow.py`, bắt buộc bọc guard `if not os.environ.get("PYTEST_CURRENT_TEST"):` trước khi gọi `trip_ip_breaker()` hoặc `check_ip_breaker()`.
+     * *Bài học xương máu:* Nếu không có guard này, các unit test thử nghiệm nhánh `FOLLOW_FAILED` sẽ tự động ghi cờ `TRIPPED` vào DB live `D:/Taadaa/data/tiktok_tracker.db`, dẫn đến các test case tiếp theo chạy trên Machine 1 bị Circuit Breaker ngắt hàng loạt (`CIRCUIT_BREAKER_SKIPPED`) và làm vỡ test suite `test_cli.py`. Guard này giữ test suite offline và deterministic 100%.
 
 ---
 

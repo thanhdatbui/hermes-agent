@@ -244,3 +244,26 @@ GPM CDP Connect
   MEDIA:D:/Taadaa/runtime/artifacts/ten_anh.png
   ```
 - **Soi mắt OCR**: Trước khi gửi bất kỳ thẻ `MEDIA:` nào, phải dùng WinRT OCR đọc xác nhận text trên ảnh để đảm bảo không bị đen hình hay mất viền.
+
+---
+
+## 11. Kỷ Luật 1 IP Chỉ Được Chạy Mỗi 24H (IP Rate-Limiting) & Interstitial Handlers (2026-10-10)
+- **Yêu Cầu Cốt Lõi**:
+  * Khi chạy script hoặc cron batch đổi thông tin bảo mật Hotmail (`change info hotmail`), **MỖI 1 IP / PROXY CHỈ ĐƯỢC PHÉP CHẠY TỐI ĐA 1 LẦN MỖI 24 GIỜ**.
+  * Chạy nhiều tài khoản trên cùng 1 IP trong ngày sẽ kích hoạt hệ thống Fraud Detection của Microsoft, dẫn đến lỗi hàng loạt: *"There's a temporary problem with the service"* hoặc khóa tính năng đổi pass.
+- **Cơ Chế Kiểm Tra IP 2 Lớp (Dual-Layer IP Gate)**:
+  1. *Lớp 1 (Pre-flight by Proxy Endpoint)*: Trước khi khởi động profile, đọc `raw_proxy` từ thông tin GPM profile, tách ra `proxy_endpoint` dạng `host:port` (ví dụ `test.taadaa.click:5112`). Nếu endpoint này đã chạy trong 24h qua -> Bỏ qua ngay (`[COOLDOWN_BLOCKED]`), không tốn tài nguyên start browser.
+  2. *Lớp 2 (Post-start by Live Egress IP)*: Ngay khi kết nối CDP, mở tab phụ truy cập `https://api.ipify.org?format=json` để lấy IP công cộng thực tế đang ra ngoài của proxy. Nếu IP thực tế này đã chạy trong 24h qua -> Ngắt profile ngay lập tức (`[IP_COOLDOWN_BLOCKED]`) và bỏ qua để bảo vệ nick.
+- **Kích Hoạt Cooldown 24h Cho Cả Nick Lẫn IP Khi Gặp Lỗi**:
+  * Khi Microsoft trả về lỗi dịch vụ (*"There's a temporary problem with the service"*, *"There was a problem"*, *"Tạm thời có lỗi với dịch vụ"*):
+    - Đặt cooldown 24h cho tài khoản: `set_cooldown(email, hours=24, reason=err_msg)`.
+    - Đặt cooldown 24h cho cả IP lẫn Proxy: `set_ip_cooldown(ip, proxy, email, hours=24, reason=err_msg)`.
+    - Dừng tiến trình ngay lập tức (Fail-Fast), **TUYỆT ĐỐI CẤM** ghi đè mật khẩu vào Excel.
+- **Khắc Phục Interstitial "Ghi chú nhanh về tài khoản Microsoft"**:
+  * Microsoft thường chèn màn hình thông báo *"Ghi chú nhanh về tài khoản Microsoft"* (hoặc *"A quick note about your Microsoft account"*) chắn trước trang proofs / change password.
+  * Nếu không xử lý, trang sẽ bị kẹt lại, script không tìm thấy `#AddProofLink` và bỏ qua bước Add 2FA.
+  * Bắt buộc có selector click `[OK]`: `button:has-text('OK')`, `input[value='OK']`, `#iShowG`, `button[id*='ok']`.
+  * Đồng thời click `Bỏ qua / Skip` cho các gợi ý Passkey / FIDO / Windows Hello (`button:has-text('Bỏ qua')`, `button:has-text('Skip')`, `button:has-text('Không, cảm ơn')`).
+- **Khóa Logic: BẮT BUỘC 2FA KÍCH HOẠT XONG MỚI ĐƯỢC SANG BƯỚC ĐỔI PASS**:
+  * Kiểm tra `has_totp_final = bool(totp_secret_key or get_2fa_secret(email) or page.locator("#TOTPAuthenticator").is_visible())`.
+  * Nếu `has_totp_final == False`: Ném `RuntimeError` dừng ngay lập tức, cấm tuyệt đối nhảy sang trang `password/change` khi chưa có 2FA!

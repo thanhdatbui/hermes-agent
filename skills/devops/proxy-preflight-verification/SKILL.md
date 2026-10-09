@@ -410,4 +410,4 @@ See `references/adb-disconnect-vs-missing-proxy-preflight-20261009.md` for disti
       * Nâng timeout probe retry trong `vpn_preflight.py` lên `12.0s` và đồng bộ sang Admin PC để chống false-positive timeout khi 80 máy tải dồn.
       * Chuẩn hóa parser `inspect_machine.py` hỗ trợ tiền tố `M<N>` (`M204` -> `204`).
       * Không chỉ giải thích hiện trường mà BẮT BUỘC rà soát lỗ hổng timeout/retry của runner để vá triệt để trước khi báo resume.
-    - Chi tiết xem `references/dual-cluster-batch-alert-adb-timeout-and-pppoe-renegotiation-20261010.md` và `references/scheduled-reboot-window-collision-and-adb-probe-timeout-20261010.md`.
+    - Chi tiết xem `references/dual-cluster-batch-alert-adb-timeout-and-pppoe-renegotiation-20261010.md`, `references/scheduled-reboot-window-collision-and-adb-probe-timeout-20261010.md`, và `references/batch-alert-code-hardening-anti-complacency-20261010.md`.

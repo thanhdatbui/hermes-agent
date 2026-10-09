@@ -32,15 +32,17 @@ Trước khi tạo `scorecard.json` nạp vào `sol_repair.py`, Coordinator bắ
 
 ## 3. Cải tiến Kỹ thuật trong `sol_repair.py`
 
-### a. Bộ tiền lọc xác định (Deterministic Pre-filter)
+### a. Bộ tiền lọc xác định (Deterministic Pre-filter) có VETO chống False-Positive
 Tự động lọc bỏ các finding vi phạm nguyên tắc offline của Closeout ngay tại `extract_findings_from_scorecard(scorecard, filter_non_actionable=True)`:
 ```python
 NON_ACTIONABLE_PATTERNS = [
-    re.compile(r"(?:chưa\s+(?:chứng\s+minh|thử|chạy).*(?:farm\s+thật|thiết\s+bị\s+thật|máy\s+thật|trên\s+farm|e2e|end-to-end))", re.IGNORECASE),
-    re.compile(r"(?:cần\s+(?:kiểm\s+thử|chạy).*(?:farm\s+thật|thiết\s+bị\s+thật|máy\s+thật))", re.IGNORECASE),
-    re.compile(r"(?:chưa\s+thấy\s+cơ\s+chế\s+alerting|thiếu\s+cơ\s+chế\s+alerting)", re.IGNORECASE),
+    re.compile(r"(?:chưa\s+(?:chứng\s+minh|kiểm\s+thử|chạy\s+thử)[^.;\n]{0,40}?(?:farm\s+thật|thiết\s+bị\s+thật|máy\s+thật))", re.I),
+    re.compile(r"(?:cần\s+(?:kiểm\s+thử|chạy\s+thử)[^.;\n]{0,40}?(?:farm\s+thật|thiết\s+bị\s+thật|máy\s+thật))", re.I),
+    re.compile(r"(?:chưa\s+thấy\s+cơ\s+chế\s+alerting|thiếu\s+cơ\s+chế\s+alerting)", re.I),
 ]
 ```
+**Chốt chặn VETO bảo vệ lỗi code thật:**
+Nếu finding chứa vị trí file/dòng (`foo.py:123`), chữ ký hàm/class (`def / class`), hoặc từ khóa lỗi runtime/logic (`crash`, `exception`, `lỗi logic`, `return code`), **tuyệt đối KHÔNG BAO GIỜ bị lọc**, kể cả khi câu có chứa từ "farm thật" hay "thiết bị thật".
 
 ### b. Schema lối thoát `declined_findings`
 Nâng cấp prompt và schema đầu ra cho Sol High:
@@ -55,10 +57,7 @@ Nâng cấp prompt và schema đầu ra cho Sol High:
   }
   ```
 
-### c. Validation hợp lệ
-Trong `generate_repair_proposal`:
-```python
-covered_ids = set(addressed) | {d.get("id") for d in declined_findings}
-is_valid = overall_valid and all(f_id in covered_ids for f_id in valid_finding_ids)
-```
-Giúp Sol Repair không bị crash `valid=False` khi từ chối finding out-of-scope một cách hợp lệ.
+### c. Phân biệt Exit Code rõ ràng
+- `exit 0`: Có patch code hợp lệ (đã kiểm tra syntax và anchor duy nhất).
+- `exit 3`: Tất cả findings bị DECLINED (out-of-scope / environment / waiver) ➔ Coordinator ghi nhận waiver, **không nhầm là Sol bị lỗi** và không fallback sai mục đích sang Worker.
+- `exit 1`: Lỗi cú pháp hoặc crash thực sự (điều kiện fallback sang Worker hợp lệ).
