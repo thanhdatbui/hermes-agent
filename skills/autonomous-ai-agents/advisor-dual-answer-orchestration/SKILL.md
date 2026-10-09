@@ -37,12 +37,17 @@ For an advice-intent turn:
    - Tier 2: OmniRoute :20129 `antigravity/gemini-3.7-flash-high` (Sol fast fallback, timeout 10s).
    - Tier 3: 9Router :20128 `ag/gemini-2.5-flash` (port 20128 backup, timeout 7s).
    - Fail-safe: If all tiers fail or timeout, cleanly returns `Advisor: unavailable (<reason>)`.
-3. Strict Safety & Redaction:
+3. Strict Safety & Comprehensive Redaction:
    - Payload includes `tools: []` and `tool_choice: "none"`.
-   - All credentials, API keys (`sk-...`), Bearer tokens, and passwords are automatically redacted before transmission.
+   - All credentials, API keys (`sk-...`), Bearer tokens, HTTP Basic Auth `://user:pass@`, JSON fields (`{"password": "...", "api_key": "..."}`), unquoted Vietnamese `mật khẩu là abc`, and field tokens (`token=...`, `sessionid=...`, `session_id=...`) are automatically redacted before transmission.
    - Advice length is bounded to 2,500 characters.
    - Pseudo-200 usage limits (`[Error: You've hit your limit]`) are filtered on all tiers.
-4. Append the script's exact output block at the end of the response:
+   - Requires explicit `data: [DONE]` marker on stream; premature socket closure triggers clean fallback instead of accepting truncated advice.
+4. Robust Intent Classification:
+   - Captures compound intents (commands followed by advice queries like `chạy batch rồi cho tao biết nên làm gì`, `git log xem có gì lạ không`).
+   - Captures evaluative cause queries (`vì sao`, `thấy sao`).
+   - Excludes false-positives from `review`/`plan` commands (`chạy lại review combo`, `lên plan cho phase 2`) and nouns containing 'liệu' (`dữ liệu`, `tài liệu`, `vật liệu`) from tripping `\bliệu\b`.
+5. Append the script's exact output block at the end of the response:
 
    ```text
    --- Advisor (<model_name>) ---

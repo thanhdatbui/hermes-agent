@@ -258,9 +258,9 @@ def consult_advisor(prompt: str, context: str = "") -> dict[str, Any]:
             "formatted": f"--- Advisor (Sol / review) ---\n{text}",
         }
 
-    # --- Tầng 2: OmniRoute Fast Fallback (Gemini High, 10s) ---
+    # --- Tầng 2: OmniRoute Fast Fallback (Gemini High, 18s) ---
     payload_t2 = {"model": "antigravity/gemini-3.7-flash-high", "messages": messages}
-    ok, text = _call_stream_chat(omni_url, omni_headers, payload_t2, timeout_sec=10.0)
+    ok, text = _call_stream_chat(omni_url, omni_headers, payload_t2, timeout_sec=18.0)
     if ok and len(text) > 20:
         return {
             "status": "success",
