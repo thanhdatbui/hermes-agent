@@ -13,6 +13,9 @@ metadata:
 
 > **Canonical policy precedence:** For orchestration and closeout precedence, follow `D:\Taadaa\HERMES_SUBAGENT_RULES.md` marker `CANONICAL-POLICY-PRECEDENCE-2026-10-05`; this skill points to it and does not redefine it.
 
+References:
+- `references/sol-repair-finding-triage-and-declined-escape-hatch-protocol-20261010.md` — **[MỚI 10/10/2026]** Quy chuẩn Triage Findings 4 lớp (Lớp A Actionable O(1) vs Lớp B/C/D) cho Coordinator trước khi nạp vào `sol_repair.py`, bộ tiền lọc xác định `is_non_actionable_finding`, schema lối thoát `declined_findings` và validation an toàn chống vỡ trần numstat > 30 hoặc lỗi validation no-op patch.
+
 > **Sol High Auto-Repair & Anti-Gemini-Spinning Invariant (User Invariant 09/10/2026):**
 > 1. **CẤM TUYỆT ĐỐI Gemini Coordinator/Worker mò mẫm sửa code sau khi Gate Reject ("Gate reject: Sol High (:20129) vá thẳng, cấm Gemini mò 3 vòng, cấm BLOCKED bỏ dở"):**
 >    - Khi Closeout Gate trả về `Verdict: REJECTED` hoặc `Score < 85`, **CẤM Coordinator tự ý đoán mò, CẤM dispatch subagent Gemini để sửa code**. Việc để Gemini mò mẫm sau gate reject gây timeout 600s lãng phí, cạn budget 15 calls và vi phạm nghiêm trọng thiết kế.
