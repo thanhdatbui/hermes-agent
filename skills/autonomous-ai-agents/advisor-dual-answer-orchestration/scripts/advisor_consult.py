@@ -270,17 +270,17 @@ def consult_advisor(prompt: str, context: str = "") -> dict[str, Any]:
             "formatted": f"--- Advisor (gemini-3.7-flash-high fallback) ---\n{text}",
         }
 
-    # --- Tầng 3: 9Router Port 20128 Backup (7s) ---
+    # --- Tầng 3: 9Router Port 20128 Backup (15s) ---
     nine_key = os.environ.get("NINEROUTER_API_KEY", "")
     if nine_key:
         nine_url = "http://127.0.0.1:20128/v1/chat/completions"
         nine_headers = {"Content-Type": "application/json", "Authorization": f"Bearer {nine_key}"}
-        payload_t3 = {"model": "ag/gemini-2.5-flash", "messages": messages}
-        ok, text = _call_stream_chat(nine_url, nine_headers, payload_t3, timeout_sec=7.0)
+        payload_t3 = {"model": "ag/gemini-3.7-flash-high", "messages": messages}
+        ok, text = _call_stream_chat(nine_url, nine_headers, payload_t3, timeout_sec=15.0)
         if ok and len(text) > 20:
             return {
                 "status": "success",
-                "model": "Sol Backup (9Router :20128)",
+                "model": "Sol Backup (9Router :20128 ag/gemini-3.7-flash-high)",
                 "tier": 3,
                 "advice": text,
                 "formatted": f"--- Advisor (9Router :20128 backup) ---\n{text}",

@@ -221,8 +221,23 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
 - **Cố định quy hoạch 40 máy/AP:** M01–M40 (`kibe 1` - pass `23102025` - AP .253), M41–M80 (`kibe 2` - pass `19051995` - AP .252), M201–M240 (`admin 1` - pass `19051995` - AP .251), M241–M280 (`admin 2` - pass `19051995` - AP .250). CẤM dồn máy sang AP khác.
 - **Bẫy chuỗi ADB-Join-Wifi:** Lệnh `am start` trên Android shell BẮT BUỘC dùng `--es ssid "<SSID>"` (ví dụ: `--es ssid "kibe 1"`). Nếu dùng `-e ssid 'kibe 1'`, shell sẽ cắt mất số 1 khiến máy nhảy vào SSID rác `kibe` gây mất mạng cả cụm.
 - **Bẫy Rogue DHCP trên AP Master:** Master AP `.251` có thể còn tồn tại pool DHCP cũ (`192.168.10.0/24`). Bắt buộc xóa bằng SSH: `no ip dhcp kibe_dhcp` để MikroTik là DHCP Server duy nhất.
-- **Quy trình phục hồi 2 cấp:** Cấp 1 (Radio toggle) ➔ Cấp 2 (`adb-join-wifi` kèm `--es`). Thất bại thì giữ hiện trường báo watchdog, CẤM gán bừa mạng khác.
+- Quy trình phục hồi 2 cấp: Cấp 1 (Radio toggle) ➔ Cấp 2 (`adb-join-wifi` kèm `--es`). Thất bại thì giữ hiện trường báo watchdog, CẤM gán bừa mạng khác.
 - Chi tiết: `references/aruba-wifi-recovery-and-anti-drift-incident-20261009.md`.
+
+## 15. Kiến Trúc Giám Sát Đa Tầng Farm (Kibe PC vs Admin PC Watchdogs)
+- **Tầng 1: Khôi phục Socket/Transport ADB (`farm-adb-transport-healer`):**
+  * Chạy trên Kibe PC qua cronjob `121a95f18996` mỗi 3 phút (`*/3 * * * *`).
+  * Quét song song cả 2 cụm: Kibe Local và Admin Remote (`192.168.110.119:5037`).
+  * Khi phát hiện thiết bị bị `offline` hoặc kẹt lệnh shell quá 2.5s $\rightarrow$ tự động gọi `adb reconnect` và wake up màn hình (`keyevent 224`) để cứu sống socket ngay lập tức mà không cần reset máy tính.
+- **Tầng 2: Giám sát Reset Bus EHCI Phần Cứng (`safe_usb_guard.py`):**
+  * Kiểm tra 0 device lock $\rightarrow$ reset 2 chip EHCI Windows qua PowerShell trong 3 giây.
+  * Hiện trạng triển khai: ĐÃ CÀI trên Admin PC (Task Scheduler `Taadaa_Safe_USB_Guard_15m`), CHƯA CÀI trên Kibe PC. Khi máy Kibe bị rớt hàng loạt, cần lưu ý điểm khác biệt này.
+- **Tầng 3: Giải phóng Bus USB từ Tiểu Vi (`xiaowei-idle-auto-close-kibe`):**
+  * Chạy trên Kibe PC qua cronjob `0a4a81f4f164` mỗi 5 phút.
+  * Theo dõi API Windows `GetLastInputInfo`: nếu không có thao tác chuột/phím quá 20 phút $\rightarrow$ tự động `taskkill /F /IM xiaowei.exe` để ngắt toàn bộ 80 luồng stream màn hình, giải phóng hoàn toàn bus USB 2.0.
+- **Tầng 4: Khống chế I/O Script Automation (`_HeavyIoGate`):**
+  * Bounded Semaphore 8 tokens trong `automation_core.adb` bảo vệ bus USB 2.0 khi các script chạy auto chụp màn hình / kéo file.
+  * Lưu ý: Semaphore này chỉ quản lý code Python nội bộ, KHÔNG khống chế được luồng stream của app bên thứ ba như Tiểu Vi (cần giảm trực tiếp trên UI XiaoWei: 720p/480p, 15 FPS).
 
 
 
