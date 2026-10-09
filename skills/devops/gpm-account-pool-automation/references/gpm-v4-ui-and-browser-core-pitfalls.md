@@ -44,11 +44,22 @@
      - Ngay sau 2 thao tác này, API `/api/v3/profiles/start/{id}` lập tức trả về `{"success": true, "message": "OK"}` và spawn browser thành công mà không cần mở GUI bấm tay!
 
 6. **Tái phát lỗi Core 142 sau mỗi lần reset/khởi động lại máy (Reboot Loop do `default\update.zip` bị tải dở):**
-   - **Hiện tượng:** User hoặc script đã sửa xong core 142, API mở profile chạy bình thường. Nhưng cứ mỗi khi khởi động lại máy tính (reboot PC) hoặc mở lại GPM, core 142 lại lập tức bị lỗi: `{"success": false, "data": null, "message": "Yêu cầu cập trình duyệt [Chromium] [142]"}`.
-   - **Nguyên nhân gốc rễ:**
+   - **Kiến trúc Profile Data vs Shared Core Binary (Giải tỏa quan niệm sai lầm):**
+     - Dữ liệu Profile (`profile/<id>`) chứa cookie, cache, IndexedDB, local storage riêng biệt cho từng nick. Profile KHÔNG chứa file chạy trình duyệt.
+     - Toàn bộ profile cùng phiên bản (hơn 700 profile chạy bản 142) đều **chạy chung duy nhất 1 bộ binary** tại:
+       `C:\Users\<user>\AppData\Local\Programs\GPMLogin\gpm_browser\gpm_browser_chromium_core_142\chrome.exe`
+     - Do đó, khi Core 142 bị đánh dấu hỏng, **toàn bộ profile chạy bản 142 đều bị chặn đồng loạt**, không phải lỗi riêng của từng profile.
+   - **Bẫy File Lock khi bấm "Fix Resource" (Tại sao chạy ngay vẫn lỗi, phải tắt GPM mở lại):**
+     - Khi bấm *Auto fix resource* / *Cập nhật* trong khi GPM app đang chạy: GPM cố gắng tải và ghi đè các file DLL/EXE.
+     - Tuy nhiên, Windows kích hoạt **File Handle Lock** trên các thư viện đang được nạp (`chrome.dll`, `chrome_elf.dll`, `gpmdriver.exe`). Quá trình ghi đè bị từ chối hoặc DLL mới chưa được nạp lại vào không gian địa chỉ tiến trình.
+     - Hệ quả: Mở profile ngay lúc đó vẫn báo lỗi. Phải tắt hẳn tiến trình `GPMLogin.exe` để giải phóng handle, sau đó khởi động lại thì GPM mới nạp được binary mới vào RAM.
+   - **Hiện tượng Reboot Loop:**
+     - Sau khi user sửa tạm và restart GPM thì mở được. Nhưng cứ mỗi khi khởi động lại máy tính (Cold Boot), GPM lại lập tức văng lỗi cũ: `{"success": false, "data": null, "message": "Yêu cầu cập trình duyệt [Chromium] [142]"}`.
+   - **Nguyên nhân gốc rễ vòng lặp:**
      - Trong thư mục template fallback `C:\Users\<user>\AppData\Local\Programs\GPMLogin\gpm_browser\default\update.zip`, tồn tại file nén tải dở từ trước (ví dụ chỉ có 105 MB thay vì ~117-119 MB).
      - Kiểm tra bằng 7-Zip (`7za t update.zip`) phát hiện: `Unexpected end of archive` và `Data Error: 142.0.7444.163\chrome.dll`.
-     - Khi máy tính reboot hoặc khi GPM app khởi động / kích hoạt tính năng kiểm tra tài nguyên (Auto-fix Resource), GPM lấy gói `default\update.zip` bị lỗi này để bung/đè vào core Chromium, làm `chrome.dll` trong `142.0.7444.163` bị cụt dở và reset file `version` về `1.0`.
+     - Mỗi khi máy tính reboot, GPM khởi động lại từ đầu và cơ chế đồng bộ tài nguyên tự động bung gói `default\update.zip` này ra. Vì gói nén cụt đuôi, nó giải nén ra file `chrome.dll` què quặt (thiếu ~14MB) đè ngược vào Core 142 và hạ file `version` về `1.0`.
+     - Tạo ra vòng lặp: *Sửa tạm -> Reset máy -> GPM tự bung zip lỗi ở default -> Hỏng lại*.
    - **Quy trình xử lý dứt điểm 100%:**
      1. **Kiểm tra tính toàn vẹn của archive:**
         ```cmd

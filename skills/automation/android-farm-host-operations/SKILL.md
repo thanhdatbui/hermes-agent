@@ -85,9 +85,11 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
        - Lỗi USB/Screencap được phân loại chi tiết trong `summary.json` của từng máy (`usb-timeout`, `screencap-failed`, `capture-invalid`).
        - `feed_session_watchdog.py` tổng hợp kết quả từng Ca: nếu tỷ lệ lỗi > 30% sẽ tự động bắn Telegram `RED ALERT`.
        - `safe_usb_guard.py` được lập lịch chạy định kỳ 15 phút (Task `Taadaa_Safe_USB_Guard_15m`), tự kiểm tra 0 active locks trước khi giải phóng chip EHCI.
-- **BẪY ĐIỀU PHỐI CLOSEOUT TẠI FARM REPOS (SOL HIGH AUTO-REPAIR INVARIANT):**
-  * **User Invariant ("Thiết kế Closeout Sol High tự làm"):** Khi Closeout Gate của repo core/farm bị reject (<85 điểm), Coordinator BẮT BUỘC để Sol High (:20129) tự sửa qua flag `--auto-repair` của `closeout_gate.py` hoặc CLI `sol_repair.py`.
-  * **CẤM TUYỆT ĐỐI:** Cấm Coordinator tự tiện nhảy vào sửa code bừa bãi hoặc dispatch Worker Gemini mò mẫm làm cháy budget 10 phút. Nếu Sol High nhả proposal, dùng `apply_patch.py <proposal_json>` để apply và verify tự động.
+- **BẪY ĐIỀU PHỐI CLOSEOUT TẠI FARM REPOS (SOL HIGH AUTO-REPAIR & 3-STRIKE INVARIANT):**
+  * **User Invariant ("Thiết kế Closeout Sol High tự làm"):** Khi Closeout Gate của repo core/farm bị reject (<85 điểm), Coordinator BẮT BUỘC để Sol High (:20129) tự tạo bản vá độc quyền trước qua `sol_repair.py` (First-Responder Monopoly).
+  * **CẤM TUYỆT ĐỐI:** Cấm Coordinator tự tiện nhảy vào sửa code bừa bãi hoặc dispatch Worker Gemini mò mẫm làm cháy budget 10 phút khi Sol Repair chưa hỏng.
+  * **Điều Kiện Fallback Sang Worker:** CHỈ fallback khi có 1 trong 4 bằng chứng cứng: (1) `sol_repair.py` exit != 0, crash hoặc timeout; (2) trả về `valid: false`; (3) hậu kiểm `git diff --numstat > 30` dòng; (4) patch của Sol làm fail focused test.
+  * **Strike 3 Hand-off:** Nếu trượt 3 lần liên tiếp trên cùng scope_hash, CẢ Coordinator, Worker VÀ Sol Repair ĐỀU PHẢI STOP, chuyển quyền bàn phím cho Claude CLI.
   * **Khắc phục 2 điểm nghẽn Closeout Gate thường gặp với ADB Heavy I/O:**
     1. *Shell Command Heuristic:* Tránh dùng substring thô sơ (`in shell_command`). Phải dùng `shlex.split` duyệt canonical command names (`screencap`, `screenrecord`, `uiautomator`, `logcat`, `tar`, `dd`, `cp`) và kiểm tra binary redirect streams (`/dev/graphics`, `cat /dev/`, `>`, `>>`).
     2. *Test tải đồng thời (Concurrency Stress Test):* Bộ test BẮT BUỘC có test đa luồng (`ThreadPoolExecutor` 20 workers) chứng minh `max_observed <= _limit` (kẹp cứng $\le 8$), không gây starvation, và release token an toàn về 0.
