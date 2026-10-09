@@ -24,7 +24,7 @@ Alert phải chứa sẵn **4 thông tin điều hướng** để Agent thực t
 3. B3 (Patch Code): SỬA CODEBASE trong repo để script tự xử lý lỗi (CẤM gõ lệnh ADB ngoài chữa ngọn)
 4. B4 (Canary Test): Chạy lệnh kiểm chứng thực tế:
    {canary_cmd}
-5. B5 (Closeout): Báo cáo diff code + kết quả canary
+5. B5 (Closeout): Báo cáo file/hàm đã sửa + kết quả canary (CẤM dán code diff lớn làm tốn context/quota; chỉ xuất diff khi user yêu cầu "cho xem diff")
 ```
 
 ## Code Mapping per Repo

@@ -46,6 +46,10 @@ Use this reference when operating, inspecting, or debugging the device locks wat
 - **Dọn Dẹp App & Thiết Bị Khi Thu Hồi Lock**:
   - Khi bất kỳ lock nào bị thu hồi (expired, timeout, hoặc dead owner), reaper gọi `_cleanup_device_screen(serial)`: chạy `am force-stop` cho cả `com.ss.android.ugc.trill` và `com.zhiliaoapp.musically`, sau đó bấm `input keyevent 3` đưa máy về Home.
   - Mỗi lệnh ADB phải nằm trong một khối `try-except` riêng biệt để lỗi timeout ở lệnh trước không làm nghẽn các lệnh cleanup phía sau.
+- **Xử lý Ghost Locks & Out-of-Range Machine Locks (Fix bug Máy 99 / Test Locks)**:
+  - **Lỗi gốc (Root Cause)**: `reap-dead-owner-locks.py` từng bỏ qua mọi lock ngoài dải `1..80` (`not_mine.append(p.name); continue`). Khi các script test hoặc recovery tạo mock lock (ví dụ `machine_99.lock.json` từ `gpm-recovery`), reaper bỏ qua vĩnh viễn, trong khi `watch_device_locks.py` quét toàn bộ và liên tục spam Telegram báo "quá hạn > 2h".
+  - **Quy tắc Reaper chuẩn**: Nếu `machine not in MACHINE_RANGE` mà `owner_alive is False` hoặc `age_seconds >= LOCK_TTL_SECONDS`: BẮT BUỘC thu hồi ngay vào quarantine (`reason: out_of_range_dead_or_expired`), tuyệt đối không để lock ma kẹt trên đĩa.
+  - **Quy tắc Watchdog chuẩn**: `watch_device_locks.py` chỉ quét và báo cáo các máy thuộc dải farm hợp lệ (`1..80` trên Kibe, `201..280` trên Admin). Mọi mã máy ảo/test ngoài dải đều bị lọc bỏ khỏi báo cáo Telegram.
 - **Lưu Trữ Quarantine**: File thu hồi được chuyển vào quarantine `~/.codex/device-locks-reaped/<timestamp>/`, tuyệt đối không xóa cứng.
 - **Cron Scheduling Discipline & Phase Alignment**:
   - Job `reap-dead-owner-locks` phải ghim cron 5 trường cố định (`*/15 * * * *`) thay vì `every 30m` interval để tránh tình trạng trôi tick (scheduler drift) qua đêm dẫn đến lock tích tụ.

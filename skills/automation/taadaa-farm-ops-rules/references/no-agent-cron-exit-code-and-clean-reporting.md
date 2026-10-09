@@ -7,6 +7,9 @@ Khi cronjob chạy ở chế độ `no_agent: true`, Hermes scheduler sẽ thự
 1. **Exit code != 0 làm Hermes nuốt stdout:** Nếu script con/máy con trong batch bị lỗi và script tổng hợp trả về `exit code 1` (hoặc non-zero), Hermes coi job bị sập (crashed). Hermes sẽ không gửi `stdout` mà kích hoạt hàm `_summarize_cron_failure_for_delivery`, parse các từ khóa như `"timed out"` trong log và gửi cảnh báo sai lệch `⚠️ Cron failed: provider timeout...`.
 2. **Spam log per-machine:** In log từng dòng `[OK] Machine XX...` hoặc `[WARN] Machine YY...` làm ngập màn hình Telegram.
 3. **Emoji & Special Unicode Symbols:** Báo cáo dính emoji hoặc các ký tự symbol/pictograph vi phạm chuẩn ngắn gọn của farm.
+4. **Submodule `logging.StreamHandler(sys.stdout)` rò rỉ log:** Thư viện hoặc helper script import con (ví dụ GPM, Playwright, network client) dùng `logging.StreamHandler(sys.stdout)` khiến toàn bộ log DEBUG/INFO/WARNING/ERROR bị tuồn thẳng ra `stdout`, biến thành tin nhắn Telegram khổng lồ (30k-50k ký tự) mỗi lần cron chạy.
+5. **Watchdog spam khi `s_count == 0`:** Watchdog chu kỳ ngắn (ví dụ `*/5`) in báo cáo tổng kết ra `stdout` ngay cả khi không có thiết bị nào xử lý thành công (`len(success_list) == 0`), biến watchdog thành nguồn spam định kỳ.
+6. **Thiếu chặn retry theo ngày (`machine_retries < 2/ngày`):** Không lưu lượt thử theo ngày dẫn đến watchdog lặp lại vô tận trên các máy lỗi, gây nghẽn tài nguyên và lặp lại chuỗi báo cáo thất bại.
 
 ---
 
@@ -47,3 +50,9 @@ Khi cronjob chạy ở chế độ `no_agent: true`, Hermes scheduler sẽ thự
   - Loại bỏ triệt để emoji, math/currency/modifier symbols (`=`, `$`, `^`, `∑`, `−`, `√`, `∞`), ký tự Latin mở rộng ngoài tiếng Việt (`ß`, `Æ`, `Ł`, `ĳ`).
 - **Bóc prefix lặp trong fallback text:** Dùng regex bóc sạch các cụm `TOTAL=\d+`, `SUCCESS=\d+`, `FAILED_OTHER=\d+` trước khi format reason để không bị lặp chữ số trong dòng `+ Fail (N): ...`.
 - **Phòng vệ Exception:** Bọc `safe_int_count`, `safe_format_stt` bắt cả `ValueError`, `TypeError`, `OverflowError` và float non-finite (`inf`, `nan`) để đảm bảo format không bao giờ crash trước khi return 0.
+
+### 5. Silent Watchdog & Rate Limiting (`s_count == 0` & `machine_retries < 2/ngày`)
+- **Khóa cứng `s_count == 0 → silent (return 0)`:** Watchdog định kỳ cao (mỗi 5-15 phút) tuyệt đối KHÔNG in ra `stdout` nếu không có hành động thành công (`len(success_list) == 0`). Chỉ log ra `sys.stderr` và âm thầm kết thúc `return 0`. Hermes `no_agent: true` thấy stdout rỗng sẽ không gửi tin nhắn về Telegram.
+- **Bắt buộc chuyển toàn bộ Handler sang `sys.stderr`:** Trong các script helper/consumer/submodule, mọi `logging.StreamHandler` bắt buộc phải truyền `sys.stderr` (CẤM `sys.stdout`).
+- **Giới hạn số lần thử theo ngày (`machine_retries < 2/ngày`):** Lưu dictionary `machine_retries: {machine_id: count}` và `retries_date: YYYY-MM-DD` vào state JSON. Bỏ qua các máy đã thử $\ge 2$ lần trong ngày để chống lặp vòng lặp chết.
+- **Kỷ luật xử lý khi cron spam/lỗi:** CẤM tự ý `pause` cron. Bắt buộc fix tận gốc code rò rỉ log / logic s_count, kill process kẹt nếu có, và giữ cron tiếp tục vận hành.

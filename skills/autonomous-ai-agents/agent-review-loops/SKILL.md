@@ -1,6 +1,6 @@
 ---
 name: agent-review-loops
-description: "Điều phối implement/review đến APPROVED với fallback reviewer khi Claude hết quota."
+description: "Điều phối coding review đến APPROVED."
 version: 1.2.3
 metadata:
   hermes:
@@ -14,11 +14,14 @@ Dùng khi user yêu cầu điều phối coding agent, review chéo, hoặc làm
 
 ## Quy trình bắt buộc
 
-**Reference:** See the linked review-gate references for Terra provenance and OmniRoute reviewer routing. Nested-tier spillover guidance is in `references/omniroute-nested-tier-spillover.md`. Sol closeout gate and dispatch lifecycle semantics are in `references/sol-closeout-gate-lifecycle.md`.
+**References:** `references/omniroute-nested-tier-spillover.md`, `references/sol-closeout-gate-lifecycle.md`, `references/anti-premature-block-in-closeout.md`, `references/targeted-closeout-and-junction-migration.md`, `references/closeout-remediation-drift-and-executable-verification.md`, `references/session-close-remediation-discipline.md`, `references/closeout-remediation-discipline.md`.
+### 3-Strike Reviewer Hand-off escape valve
+
+Ordinary "iterate until APPROVED" below still applies — but when the SAME `scope_hash` bounces off the SAME reviewer standard 3 consecutive times (REJECTED/UNKNOWN, no passed run in between for that exact scope), stop dispatching a 4th blind Worker guess at that scope. This is not a license to report BLOCKED early; it is a hand-off, not an exit. Follow `D:\Taadaa\HERMES_SUBAGENT_RULES.md` marker `3-STRIKE-REVIEWER-HANDOFF-2026-10-08` (canonical; this skill does not redefine it): `closeout_gate.py`'s `count_consecutive_rejections` detects the streak from its own tamper-evident audit chain and prints `[REVIEWER_HANDOFF_TRIGGERED: ...]`; on that signal, the Coordinator invokes Claude CLI directly as Reviewer-with-write-access (`--allowedTools "Read,Edit,Write,Bash" --dangerously-skip-permissions`, scoped strictly to the bound allowlist) to read the finding history, patch to its own standard, run the focused test, and self-issue `APPROVED` or `L3 BLOCKED` with a concrete report. A genuinely new candidate (different `scope_hash`) resets the strike counter — this exit valve targets same-scope ping-pong, not ordinary multi-round remediation.
 
 ### Review-gated closeout is a hard stop
 
-When the user asks to fix review findings, finish the implementation, or close a session, treat `REJECT` as an active work item—not as a reportable result. This user expects A–Z execution and becomes frustrated when the coordinator stops at the first `BLOCKED`, diagnosis, or worker timeout while scoped remediation remains possible. Continue the same loop without asking the user to restate the request:
+When the user asks to fix review findings, finish the implementation, or close a session, treat `REJECT` as an active work item—not as a reportable result. Do not stop at intermediate findings to ask permission; iterate until `APPROVED`. the first `BLOCKED`, diagnosis, or worker timeout while scoped remediation remains possible. Continue the same loop without asking the user to restate the request:
 
 1. Record the exact reviewer finding and affected path/control-flow seam.
 2. Add or update a focused regression test first and run it RED when the behavior is not yet covered.
@@ -451,7 +454,7 @@ Chi tiết và checklist: `references/interrupted-session-takeover.md`.
 ## Reviewer Quota/Treo
 
 - **Claude CLI Quota Burn & Model Distribution (Lesson 2026-08-24):**
-  - Chạy `claude -p` với `--model opus --effort max/high` trên context lớn (30-50KB) đốt 15-25% quota của cửa sổ 5 giờ ở mỗi lượt do sinh 15k-35k thinking tokens ngầm.
+  - Chạy `claude -p` với `--model opus --effort medium` trên context lớn (30-50KB); nếu task cần hơn 15 turns thì phải thu hẹp scope hoặc chia task, CẤM nâng effort lên max.
   - **Phân phối model chuẩn tránh cạn quota CLI (User chốt 2026-08-24):**
     - Task thường / vừa / lên plan / intermediate review loops: Gọi 9Router HTTP (`cx/gpt-5.6-terra-review` - "Terra Max làm nốt").
     - Audit hard / final verification gate: Gọi 9Router HTTP (`gpt-5.6-sol` / `cx/gpt-5.6-sol-review` hoặc `ag/claude-opus-4-6-thinking` - "Nào audit gọi Sol max ra làm").
@@ -469,7 +472,7 @@ Chi tiết và checklist: `references/interrupted-session-takeover.md`.
        - Gọi 9Router HTTP API (`http://127.0.0.1:20128/v1/chat/completions`) với combo **`plan-review`** (`gpt-5.6-terra → ag/claude-opus-4-6-thinking → cmc/deepseek/deepseek-v4-pro`) kèm `"reasoning_effort": "max"` (hoặc `"high"`). (User 24/08: Terra Max làm nốt task thường/vừa).
     2. **Cấp Khó / Core / Nhạy cảm / Audit Độc Lập:**
        - **Ưu tiên 1:** 9Router HTTP combo **`plan-review-hard`** (`gpt-5.6-sol`) kèm `"reasoning_effort": "ultra"` / `"max"`. (User 24/08: "Nào audit gọi Sol max ra làm").
-       - **Fallback (Khi Sol lỗi/hết quota/429/404):** Gọi **Claude CLI Print Mode** trực tiếp với model Opus và reasoning kịch trần (`claude -p "<prompt>" --effort max/high --allowedTools "Read,Bash(git *)"`). Lưu ý: Claude CLI có cửa sổ quota 5h, chỉ gọi 1 lần khi chốt chặn cuối, tránh gọi lặp vòng làm cạn quota.
+       - **Fallback (Khi Sol lỗi/hết quota/429/404):** Gọi **Claude CLI Print Mode** trực tiếp với model Opus và reasoning medium (`claude -p "<prompt>" --model opus --effort medium --allowedTools "Read,Bash(git *)"`). CẤM dùng `--effort max` vì đốt sạch quota session limit 5h. Lưu ý: Claude CLI có cửa sổ quota 5h, chỉ gọi 1 lần khi chốt chặn cuối, tránh gọi lặp vòng làm cạn quota.
   - Request body HTTP bắt buộc: `"tools": []`, `"tool_choice": "none"`, `"stream": false`, `Authorization: Bearer $NINEROUTER_API_KEY`.
 
 - **QUY TẮC BẮT BUỘC KHI GỌI AUDIT / REVIEW (User chốt 2026-08-18):**

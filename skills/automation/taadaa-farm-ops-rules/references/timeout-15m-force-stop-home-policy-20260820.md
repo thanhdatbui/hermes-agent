@@ -21,3 +21,10 @@
     1. `am force-stop com.ss.android.ugc.trill`
     2. `input keyevent 3` (KEYCODE_HOME)
     3. Đưa máy về Home an toàn, tránh ngâm sáng màn hình.
+
+### C. Kết Thúc Toàn Diện Sau Các Hook (Teardown Invariant - Chốt 12/09/2026 Case 153)
+- **Bối cảnh lỗi thực tế**: `feed_session_smoke` dọn về HOME nhưng các hook sau đó (`_run_follow_hook`, `_run_upload_hook`) mở lại TikTok/Gallery qua subprocess và khi kết thúc không đóng app, khiến màn hình bị ngâm ở feed/profile/gallery như bot.
+- **Quy tắc bất biến**:
+  1. Trong `_run_child` của `multi_machine_feed_session.py`, khối `finally:` TRƯỚC KHI nhả lease thiết bị bắt buộc phải gọi `_force_stop_tiktok_and_home(child_ctx, serial=account.serial)`.
+  2. Bất kể phiên hoàn tất thành công, bị skip do đã upload, hay gặp lỗi ở bất kỳ hook nào: 100% thiết bị phải được `am force-stop` và gửi `input keyevent 3` về HOME launcher.
+  3. Tuyệt đối không để máy treo ở video feed hay gallery sau khi ca chạy đã kết thúc.

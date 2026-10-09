@@ -21,3 +21,9 @@
    - Phiên chính hoàn toàn rảnh rỗi để giải đáp thắc mắc, nhận lệnh mới hoặc chuẩn bị các khâu tiếp theo.
 3. **Tiếp nhận kết quả tự động:**
    - Khi có tin nhắn `[ASYNC DELEGATION BATCH COMPLETE]`, Coordinator đọc tóm tắt kết quả, kiểm tra lại artifact/code diff và chạy các bước verification / closeout tiếp theo.
+
+## 4. Tránh Khoảng Lặng Quá Lâu Khi Worker Đang Chạy (> 5-10 Phút)
+- **Anti-Pattern:** Giao phó câu hỏi tra cứu farm cho subagent rồi im lặng hoàn toàn suốt 30-60 phút. Khi worker gặp trục trặc mạng/timeout hoặc phân tích quá sâu, user không nhận được thông tin và cho rằng hệ thống đang bị treo hoặc quét đĩa diện rộng.
+- **Quy tắc khắc phục:**
+  1. **Triage O(1) Nhanh Tại Phiên Chính:** Với các thắc mắc về số liệu run ("tại sao máy fail", "tại sao follow skip"), Coordinator đọc nhanh file tổng kết `summary.txt` của batch gần nhất tại `D:/Taadaa/runtime/kibe/live/<today>/<run_dir>/summary.txt` (đọc 1 file trong 2 giây, không quét đĩa). Trả lời ngay số liệu tổng quan (ví dụ: 26 máy dính `skipped-device-locked`, 34 máy skip do `under-5-videos`).
+  2. **Cập nhật tiến độ chủ động:** Nếu task phân tích mã nguồn/sửa code cần worker chạy lâu, báo sơ bộ hiện trạng cho user trước, không để khoảng lặng quá 5-10 phút.

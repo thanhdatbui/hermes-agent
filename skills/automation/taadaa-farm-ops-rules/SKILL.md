@@ -5,12 +5,35 @@ description: "Taadaa farm safety, close-session, and multi-machine operations."
 
 # Taadaa Farm Ops Rules (ALL-repo automation)
 
+## QUY TẮC BẢO VỆ TỐI CAO: CHỤP ẢNH NGHIỆM THU TRƯỚC TEARDOWN (CAPTURE-BEFORE-CLEANUP)
+Thứ tự kết thúc task can thiệp thiết bị là BẤT BIẾN, TUYỆT ĐỐI CẤM ĐẢO:
+1. SCREENCAP: Chụp ảnh hiện trường nghiệm thu kết quả ngay trên màn hình đích (Artifact / Success screen, ví dụ: màn hình Giải phóng dung lượng "Bộ nhớ đệm: 0,0MB").
+2. OCR / VERIFY READBACK: Kiểm tra ảnh chứa đúng từ khóa mục tiêu (ví dụ: "0,0MB", trạng thái thành công, avatar...).
+3. GỬI BÁO CÁO: Đính kèm `MEDIA:<path_anh>` dòng riêng.
+4. TEARDOWN: Chỉ thực hiện `am force-stop` và `input keyevent KEYCODE_HOME` SAU KHI đã chụp xong ảnh nghiệm thu.
+*Cấm tuyệt đối teardown (force-stop, HOME) rồi mới chụp ảnh launcher HOME làm ảnh nghiệm thu.*
+
+## QUY TẮC WORKER TURN BUDGET & FAIL-FAST (ANTI-0-FILES-MODIFIED)
+Mọi worker dispatch sửa code bắt buộc chia budget cứng:
+- Phase PLAN (≤ 20% budget / ≤ 3 calls): Chỉ đọc file cần thiết, xác định anchor. Nếu thấy bất khả thi -> ABORT NGAY.
+- Phase EXECUTE (≥ 70% budget): Tập trung ghi file / patch / chạy test ngay, CẤM tiếp tục đọc lan man.
+- Phase VERIFY: Chạy pytest focused < 30s.
+*Cấm tuyệt đối để hết iterations mà 0 files modified.*
+
 References:
-- `references/device-lock-ttl-vs-watchdog-alert-threshold.md` — Chuẩn hóa & đồng bộ ngưỡng cảnh báo Watchdog (60 phút / 1 giờ trong `watch_device_locks.py`) khớp với Device Lock TTL thực tế (3600s / 1h trong `reap-dead-owner-locks.py`), tránh hiểu lầm báo động sai dưới 1h.
-- `references/hermes-gateway-bare-path-leak-and-farm-media-isolation.md` — Sự cố Hermes Gateway tự động gửi video 4MB từ kho nuôi nick lên Telegram (do extract_local_files quét bare path), cơ chế khóa cứng 3 tầng (config auto_deliver_local_files: false, denylist farm roots trong base.py và kỷ luật bọc backtick) (06/09/2026).
-- `references/cron-regression-patterns-and-fast-log-audit.md` — 5 Anti-Patterns gây lỗi "sửa B làm tái phát A" (scope leak, incomplete caller wire-up, partial recovery injection, uninitialized branch vars) và quy chuẩn quét nhanh O(1) log cron qua `log.jsonl` tránh đệ quy freeze I/O.
-- `references/powershell-dot-source-guard-and-chained-pipeline-safety.md` — Guard chống dot-source chạy bừa bãi toàn batch trên farm máy khi test hàm PowerShell, và quy chuẩn truyền host env cho chained cron pipeline.
-- `references/midnight-rollover-and-fast-fail-lock-retention.md` — Xử lý phiên vắt qua nửa đêm (chống watchdog chốt non báo cáo) và cơ chế Fast Fail-Closed khi gặp lỗi thiết bị vật lý kết hợp giữ lock `blocked` (1h) cho operator inspect.
+- `references/farm-power-outage-and-brownout-diagnosis.md` — Quy trình xác minh sụp nguồn, brownout vs blackout, Huananzhi AC auto boot, S7 box power.
+- `references/tiktok-8-account-cap-and-worker-traceback-masking.md` — Trần cứng 8 acc TikTok & traceback.
+- `references/cross-device-duplicate-login-and-cron-timing-discipline.md` — Login chéo nhiều máy & kỷ luật cron.
+- `references/parent-subprocess-device-lock-inheritance.md` — Kế thừa Device Lock.
+- `references/universal-teardown-and-device-lock-reaper-safeguards.md` — Teardown về HOME, nested finally & Reaper 5p / Watchdog 90p.
+- `references/hermes-gateway-bare-path-leak-and-farm-media-isolation.md` — Leak media.
+- `references/cross-machine-account-duplication-and-dead-window-ops.md` — Nick log trùng chéo máy & kiểm tra giờ thực dead-window.
+- `references/s7-rolling-cleanup-and-chatgpt-oauth-patterns.md` — Gỡ tài khoản Google DIE trên S7 Settings, lưu gmail_die_tong.txt, và hook ChatGPT OAuth chống báo láo (15/09/2026).
+- `references/machine-replacement-and-provisioning-guide.md` — Quy trình cấu hình máy mới thay thế máy die: mật khẩu Wi-Fi Aruba (kibe 1: 23102025, kibe 2: 19051995), đồng bộ giờ chống lỗi 2016 SSL, tắt AOD/độ sáng 0, copy local APK chống timeout, cập nhật mapping serial và kỷ luật 100% tiếng Việt (15/09/2026).
+
+- `references/cron-regression-patterns-and-fast-log-audit.md`
+- `references/powershell-subprocess-exitcode-propagation-in-batch-chain.md` — Exitcode propagation.
+- `references/powershell-nativecommanderror-and-batch-summary-parsing.md` — Phân định Script Crash vs Batch Execution, lọc rác PowerShell NativeCommandError, trích xuất summary O(1) (09/09/2026).
 - `references/farm-coordinator-guard.md` (trong `farm-anti-overengineering`) — Cơ chế 2 trục Two-Tier Guard v2.0 (state per-session, check DB parent_session_id, khóa cứng investigative tools ở ALERT) và nhận biết dấu hiệu session chính tự làm qua UI Telegram (`iteration N/200`).
 - `references/device-lock-cadence-and-reap-timeout.md` — Quy chuẩn TTL lock 1h (3600s), True Exclusion (O_EXCL) & Heartbeat refresh cho reaper singleton, Watchdog 90m reaper-awareness, preemption check qua is_still_held(), bẫy stderr cron no_agent và triệt tiêu orphaned grep I/O hang.
 - `references/claude-cli-bounded-review-loop.md` (trong `farm-anti-overengineering`) — Bắt buộc gọi Claude CLI thật (`claude -p`), cấm tự review giả mạo (User: *"Là mày gọi claude review hay mày review v"*), tối đa 3 vòng lặp đến APPROVED.
@@ -124,7 +147,14 @@ Vi phạm pattern: "tap tay cho nhanh rồi code sau" = vi phạm rule dù sau �
 
 **GỬI ẢNH = GỬI FILE ẢNH HIỂN THỊ (user phạt nhiều lần 2026-08-17, lần cuối yêu cầu "cập nhật skill rule để ép tuân thủ"):** mọi ảnh màn hình gửi user qua Telegram PHẢI là file ảnh thật dạng `MEDIA:<đường dẫn tuyệt đối>` — quy tắc TUYỆT ĐỐI:
 1. **MEDIA: phải là DÒNG ĐẦU TIÊN CỦA MESSAGE — KHÔNG CÓ TEXT TRƯỚC** (không "Xin lỗi...", không mô tả, không tiêu đề trước MEDIA:).
-2. **LUÔN KÈM TÊN / SỐ MÁY RÕ RÀNG (User rule 18/08)**: Trong phần mô tả ngay dưới dòng MEDIA:, PHẢI ghi rõ **[MÁY XX]** (STT thiết bị) đang gửi ảnh để user nhận diện chính xác máy nào gặp lỗi. Cấu trúc chuẩn của một message gửi ảnh lỗi:
+1.1. **FAILURE EVIDENCE FIRST & OCR READBACK GATE (CẤM KẾT LUẬN MÙ)**:
+   - Khi phát hiện lỗi hoặc kẹt (timeout, OTP sai, lỗi UI, captcha, crash, webview trắng), BẮT BUỘC chụp ảnh screencap NGAY TẠI THỜI ĐIỂM XẢY RA LỖI (trước khi chạy bất kỳ lệnh cleanup, force-stop, hay input keyevent 3 về HOME nào).
+   - **ĐÃ CHỤP ẢNH HIỆN TRƯỜNG => BẮT BUỘC CHẠY WinRT OCR ĐỌC LẠI CHÍNH ẢNH ĐÓ TRƯỚC KHI KẾT LUẬN HOẶC GỬI CHO USER**:
+     `SCREENSHOT -> WinRT OCR (winrt_ocr.py) -> KEYWORD SCAN (sai, giới hạn, thử lại sau, lỗi, limit, lock) -> SO KHỚP KẾT LUẬN -> GỬI MEDIA`
+   - TUYỆT ĐỐI CẤM chỉ nhìn accessibility XML rồi suy diễn mò ("mất callback JS", "kẹt nút") trong khi trên ảnh có chữ đỏ/thông báo người dùng.
+   - CẤM TUYỆT ĐỐI chụp ảnh sau khi đã đưa máy về launcher/HOME rồi gửi kèm báo cáo lỗi (ảnh HOME không có giá trị bằng chứng).
+   - Ảnh gửi qua `MEDIA:<path>` trong báo cáo lỗi BẮT BUỘC phải là ảnh đóng băng hiện trường (Freeze Screenshot) có `foreground_package` là app xảy ra lỗi (TikTok, Outlook, v.v.). Nếu app tự văng chết hoàn toàn về HOME thì phải ghi rõ: `NO_FOREGROUND_APP_AVAILABLE_AFTER_CRASH`.
+2. **LUÔN KÈM TÊN / SỐ MÁY RÕ RÀNG (User rule 18/08)**:
    - Dòng 1: `MEDIA:<đường dẫn tuyệt đối dùng backslash>`
    - Dòng 2: `### [MÁY XX] - <Tên màn hình / Nhóm lỗi>`
    - Dòng 3+: Mô tả chi tiết từ kết quả đọc ảnh (vision_analyze), trạng thái thiết bị và đề xuất hướng xử lý.

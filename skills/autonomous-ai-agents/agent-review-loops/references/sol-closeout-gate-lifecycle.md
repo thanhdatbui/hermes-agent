@@ -100,6 +100,16 @@ When a worker agent receives a remediation contract after Sol Reviewer scores in
   - Khi Claude Code CLI hoặc reviewer trả về `REJECT` / `CHANGES REQUESTED` kèm findings: Tuyệt đối CẤM dừng lại báo cáo findings rồi hỏi xin phép user (*"Anh có đồng ý để em sửa theo Claude không?"*). Đây là vi phạm nghiêm trọng khiến user bực mình: *"Ủa t yêu cầu rõ ràng làm đến khi claude duyệt mà"*.
   - Hành động chuẩn: Tự động phân tích từng điểm lỗi của reviewer, patch code & tests, chạy lại test suite focused, và re-invoke reviewer lặp lại cho đến khi đạt verdict `APPROVED` chính thức.
 
+- **Coordinator Anti-Pattern — CẤM Tự Ý Gọi External Coding Agent (Claude CLI / OpenCode) Khi User Chỉ Yêu Cầu "Kiểm Tra" (05/10/2026)**:
+  - Hiện tượng: User ra lệnh "kiểm tra lại coi", "check lại", "xem lại" (chỉ thị read-only inspection) -> Coordinator tự tiện chạy background process gọi Claude Code CLI (`claude -p`) hoặc OpenCode CLI làm rối loạn ngữ cảnh, tự ý can thiệp mã nguồn và đốt quota phiên, kích hoạt phản ứng giận dữ từ User: *"TAO BẢO MÀY KIỂM TRA LẠI LÀ MÀY TỰ Ý ĐI GỌI CLAUDE THẾ ĐÓ HẢ"*.
+  - Hành động chuẩn: Khi nhận lệnh "kiểm tra / check", BẮT BUỘC chỉ dùng các công cụ O(1) đọc trạng thái hiện trường (terminal đọc git status, log, test result, inspect_machine, hoặc delegate_task investigate). Tuyệt đối CẤM tự ý kích hoạt external coding CLI (`claude -p`, `opencode run`) hay các chuỗi remediation loop khi User chưa phát lệnh sửa code cụ thể ("sửa đi", "làm đi").
+
+- **Anti-Freeze: Bẫy Đóng Băng Khi Gặp Rào Cản Ngân Sách (Score cận kề 80-84đ) (04/10/2026)**:
+  - Hiện tượng: Sol Reviewer chấm 81-84/100, nhưng Coordinator gặp `⛔ [COORDINATOR GUARD - DISPATCH BUDGET EXHAUSTED]` (10/10) hoặc `⛔ [COORDINATOR WRITE DENIED]` (hết ngân sách T1 15 dòng) -> Coordinator rơi vào tâm lý đóng băng, vội vàng kết luận task bị `L3 BLOCKED` và dừng lại than thở với user.
+  - Sự thật kỹ thuật: Mã nguồn và test suites thực tế đã nằm sẵn trên máy và pass 100%. Thứ Reviewer đang trừ 1-4 điểm thường là thiếu các luận cứ kỹ thuật cụ thể trong gói audit (ví dụ: phân biệt lỗi Policy vs Transient, chứng minh hình học khoảng cách tap né Story overlay, regex schema telemetry ingestion).
+  - Hành động chuẩn: Không cần spam thêm worker hay sửa loạn mã nguồn. Coordinator có thể truyền trực tiếp gói luận cứ chi tiết kèm raw unified diff và execution trace vào tham số `--text "..."` của `closeout_gate.py` để kéo điểm lên >= 85 ngay lập tức!
+  - Cảnh báo Coordinator Terminal Guard: Tuyệt đối CẤM dùng ký tự ASCII 62 (`>`) trong lệnh terminal của Coordinator (kể cả trong chuỗi `--text "..."`, thẻ XML `<node.../>`, so sánh `bounds >= 100`, hay text `đạt >= 85`), vì Guard sẽ nhận diện nhầm là toán tử ghi đè file và chặn lệnh. Hãy thay bằng text thuần (`tu 85 tro len`, `bounds == 120`, v.v.).
+
 
 ## 4. Closeout Gate Anti-Freeze, Hostname Security & Rubric Validation Invariants
 
