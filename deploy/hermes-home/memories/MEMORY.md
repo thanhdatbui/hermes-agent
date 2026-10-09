@@ -1,6 +1,6 @@
 Follow: age>=30d, vid>=10, rest 1/3; cd 15d. 3 nấc (N1: 3-5, N2: 7-9, N3: full sau 6 ca sạch; nòng cốt >=15 fl). GMT+7. Report: nhóm (lượt|%) (M...). DB: nhóm.
 §
-Sót data: CẤM tin Excel/DB; Switcher cuộn đáy. Chuẩn 8 nick/máy; mail S7 OTP. Upload xoay %, xong mất xoay về 0 view.
+Sót data: CẤM tin Excel/DB; Switcher cuộn đáy. Chuẩn 8 nick/máy. Watchdog ca tối: kibe [5-8,3,4] loại trừ Tik1&2; 140 acc MISMATCH_GOC (Tik1:73, Tik2:67) cần sync video_goc=folder_video và chạy runner riêng.
 §
 GPM 5ph/nick. gmail_clean_v2 chỉ lưu LIVE; xóa DIE, ghi gmail_die_tong; slot TT die dọn safe + track backfill.
 §
@@ -20,6 +20,6 @@ Hotmail GPM: Giữ mail KP gốc bán kèm TT; 2FA TOTP (Col 4)->Đổi pass->Si
 §
 Admin Farm: 3proxy S7 192.168.110.2:100xx. Aruba: M1-40 'kibe 1' (23102025); M41-80 'kibe 2', Admin 'admin 1/2' (19051995); cấm SSID Dat. X99: cấm xHCI; 4 Box tản; adb Semaphore 8; safe_usb_guard.
 §
-Audit follow (tháng 10): Co-run 2 máy/IP nhả 70.6% vs Solo 36.4% (31/8-1/9 sai do verify cũ); 8 ca ăn nhả dắt dây <25ph -> IP Circuit Breaker (tiktok_tracker.db) tự ngắt khi Máy A fail để safe-skip Máy B cùng IP đến 23:59:59.
+IP Farm: 2 máy/IP; Wave 1 bốc 40 máy khác IP, Wave 2 máy còn lại. FOLLOW_FAILED -> giật cầu dao ngắt IP ngày đó; report ca follow ghi rõ proxy ngắt & nick cứu.
 §
-adbjoinwifi: nháy 'admin 1'; xóa lạ: service call wifi 14 i32 <id>. ADB: cấm lệnh trần ko lock; guard_device_bulkhead chặn; bọc with_device_lock.py/operator_device_lock; verify kernel CreationDate chống giả lock.
+adbjoinwifi: nháy 'admin 1'; xóa lạ: service call wifi 14 i32 <id>. ADB: cấm lệnh trần ko lock, bọc with_device_lock.py; verify kernel CreationDate chống giả lock.

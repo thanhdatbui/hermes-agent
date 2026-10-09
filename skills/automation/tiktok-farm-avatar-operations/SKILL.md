@@ -10,7 +10,7 @@ Operate avatar-only changes on Taadaa TikTok farm devices without accidentally p
 
 ## 1. Execute explicit operator commands immediately
 - Treat “chạy”, “upload avatar”, “làm đi”, “đổi đi”, “thay đi”, or an explicit machine/account command as an execution order.
-- When the operator has already identified the avatar as wrong and orders a replacement (e.g. “Đổi đi hỏi lại chi v”), execute the canonical replacement flow immediately; do not ask them to choose between routine technical options, do not ask "có đổi không", and do not repeat the diagnosis or leave open-ended suggestions like "nếu cần tao sẽ đổi...".
+- When the operator has already identified the avatar as wrong and orders a replacement (e.g. “Đổi đi hỏi lại chi v”, “Đổi ava và hashtag kênh này về đúng cho t”), execute the canonical replacement flow immediately; do not ask them to choose between routine technical options, do not ask "có đổi không", and CẤM TUYỆT ĐỐI "mõm kế hoạch" — dừng lại ở bước phân tích rồi xuất proposal dài dòng mà không thực hiện. Phải trích xuất avatar đạt chuẩn qua Vision $\to$ đồng bộ kho $\to$ sửa workbook $\to$ chạy runner $\to$ gửi ảnh nghiệm thu `MEDIA:` trong cùng lượt.
 - Pick the best niche-matching candidate using the visual QA gates, then sync both source/mirror paths, reset the queue to `PENDING`, and launch the per-Tik avatar-only runner.
 - Do not use `clarify` to ask for routine technical choices, permission, or whether to continue.
 - Use the canonical avatar runner and event-driven background execution when the operation may exceed 30 seconds.
@@ -179,6 +179,18 @@ Operate avatar-only changes on Taadaa TikTok farm devices without accidentally p
   * **Lệnh ủy quyền dứt điểm tuyệt đối:** Khi User hỏi "chuẩn chưa", sau khi chỉ ra các điểm lệch/rủi ro mà User bảo "Đổi đi hỏi lại chi v" hoặc "Đổi đi" / "Làm luôn" $\rightarrow$ CẤM TUYỆT ĐỐI hỏi lại, cấm dừng lại đưa option chờ duyệt, và cấm kết câu bằng câu mở ngỏ dạng *"Nếu cần thì tao sẽ đổi..."*.
   * Lập tức tự chọn phương án tối ưu nhất theo niche, kiểm tra ảnh không dính subtitle/viền đen/lệch tâm qua vision, đồng bộ file ảnh nguồn cả 2 đầu kho (`D:\video goc\<folder>\avatar.jpg` và `D:\TIKTOK-videonuoinick\<folder>\avatar.jpg`), set queue `PENDING`, và kích hoạt ngay canonical runner (`run_tiktok_upload_avatar.ps1`) chạy nền có event-driven wakeup (`notify_on_complete=True`).
 
+- **BẪY 140 ACC MISMATCH_GOC BỊ BỎ QUÊN DO WATCHDOG CA TỐI LOẠI TRỪ TIK 1 & TIK 2 KIBE (CRITICAL OPERATOR LESSON 10/10/2026):**
+  * **Hiện tượng:** Operator chất vấn *"hàng loạt folder lỗi bữa mày nói tạo lại ava r đánh dấu lại hết r mà sao chưa chạy"*. Kiểm tra thực tế thấy 140 nick vẫn kẹt `status = 'PENDING', last_error = 'MISMATCH_GOC'` từ ngày 02/10/2026!
+  * **Căn nguyên kép:**
+    1. 140 nick này (Tik 1: 73 nick, Tik 2: 67 nick cụm Kibe) bị gán cờ `MISMATCH_GOC` do lệch công thức kép `Folder Video` vs `video gốc`.
+    2. Watchdog ca tối (`post_evening_avatar_watchdog.py`) cấu hình `cluster_order` cho Kibe là `target_tiks = [5, 6, 7, 8, 3, 4]`, **hoàn toàn loại trừ Tik 1 và Tik 2**. Do đó, watchdog ca tối không bao giờ bốc chạy 140 nick này.
+  * **Quy tắc xử lý dứt điểm:** Khi tái tạo avatar và reset queue, bắt buộc kiểm tra `last_error LIKE 'MISMATCH_GOC%'`. Chạy SQL đồng bộ `video_goc = folder_video`, xóa sạch `last_error`, đồng bộ file `Tik1.xlsx` và `Tik2.xlsx`, và kích hoạt runner độc lập cho Tik 1 & Tik 2 Kibe theo lô máy rảnh thay vì chờ watchdog ca tối. Chi tiết xem `references/mismatch-goc-drift-and-watchdog-tik-exclusion-20261010.md`.
+- **KỸ THUẬT GRID-ASSISTED CIRCULAR AVATAR FRAMING & THẨM ĐỊNH VISION (2026-10-10):**
+  * Khi trích xuất avatar chân dung từ video TikTok dọc (1080x1920), crop tự động bằng Haar cascade dễ bị lệch: cắt sát đỉnh tóc (headroom âm), dồn mắt xuống đáy hình tròn, hoặc dính người/vật thể nền ở hai bên.
+  * Dùng script vẽ lưới tọa độ xanh (`draw_grid.py`) và gọi Vision API đọc chính xác tọa độ giải phẫu: Đỉnh tóc, Mắt trái/phải, Cằm, và Biên trái/phải của khuôn mặt.
+  * Tính tâm crop `(cx, cy)` và `side` sao cho: đường mắt nằm ở 1/3 trên của hình tròn, cằm có khoảng thở, headroom đạt 5-10%, và mặt chiếm 50-60% diện tích khung tròn.
+  * BẮT BUỘC mô phỏng circular mask (`cv2.circle(mask)` + nền trắng) và gọi Vision API chấm điểm đạt $\ge 8.0/10$ trước khi đồng bộ kho và nạp thiết bị.
+
 ## 5. Evidence gate
 - For every live UI action, maintain step-by-step visual evidence according to the farm Gate 6 rules.
 - **BẮT BUỘC DÙNG VISION SOI MẮT ĐỌC ẢNH TRƯỚC KHI GỬI (CHỐNG GỬI ẢNH CHO CÓ LỆ):**
@@ -292,6 +304,7 @@ Operate avatar-only changes on Taadaa TikTok farm devices without accidentally p
 - Closeout is not DONE until the device evidence, focused verification, and required reviewer gate are satisfied.
 
 ## References
+- `references/mismatch-goc-drift-and-watchdog-tik-exclusion-20261010.md` — đối soát ground truth 140 acc dính MISMATCH_GOC từ 02/10 do lệch công thức kép bị watchdog ca tối bỏ quên vì exclude Tik 1 & Tik 2 Kibe; quy trình đồng bộ SQLite/Workbook và kích hoạt runner độc lập.
 - `references/grid-assisted-circular-avatar-framing-and-niche-sync-20261010.md` — quy trình 4 bước bóc tách avatar chân dung nam thần/idol chuẩn hình tròn TikTok bằng WinRT OCR lọc vietsub, lưới tọa độ qua Vision API định vị giải phẫu khuôn mặt, công thức headroom/chin cho circular mask, và đồng bộ kép hashtag/niche workbook.
 - `references/avatar-ssot-root-and-telemetry-remediation-20261010.md` — giải pháp tách dedicated focused test file tránh timeout 120s của test monolith, nhận diện root chuẩn hóa bằng path parts, telemetry logging runtime đưa Closeout Gate lên 90/100, và khôi phục chuỗi gate_audit.jsonl.
 - `references/cross-space-atomic-avatar-ssot-and-hermetic-testing-20261010.md` — căn nguyên lệch 2 không gian số (Folder Video vs video gốc), cơ chế SSOT tuyệt đối trong path_resolver loại trừ video goc, ghi nguyên tử (.tmp -> os.replace) trong regenerate_unique_avatars, và bộ test hermetic độc lập.
