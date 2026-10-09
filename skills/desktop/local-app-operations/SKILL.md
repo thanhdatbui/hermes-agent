@@ -202,7 +202,7 @@ When an operator requests a local dashboard or utility script to auto-start sile
 
 ## Mobile and remote access to local web dashboards
 
-When operators access local tools/dashboards (e.g. MikroTik Web Manager, OmniRoute, proxy tools) from mobile devices (especially iOS / Safari):
+When operators access local tools/dashboards (e.g. MikroTik Web Manager, OmniRoute, proxy tools, farm fleet dashboards) from mobile devices (especially iOS / Safari):
 
 1. **iOS Safari single-label hostname failure:**
    - Typing bare `hostname:port` (e.g. `kibe:2310`) in Safari often fails because Safari interprets it as a search query or attempts an automatic HTTPS upgrade on an HTTP-only local server.
@@ -212,6 +212,15 @@ When operators access local tools/dashboards (e.g. MikroTik Web Manager, OmniRou
    - LAN Wi-Fi: prefer explicit HTTP with local LAN IP: `http://<lan_ip>:<port>` (e.g. `http://192.168.110.123:2310`).
    - Tailscale VPN: prefer explicit HTTP with Tailscale IP: `http://<tailscale_ip>:<port>` (e.g. `http://100.88.164.111:2310`) or MagicDNS FQDN: `http://<host>.<tailnet>.ts.net:<port>`.
    - Never omit the `http://` scheme on mobile browsers.
+3. **Mobile Responsive Fleet UI & Notch/Dynamic Island Safe-Area Invariant:**
+   - **Hardware Notch & Dynamic Island Clipping:** Default viewport meta without `viewport-fit=cover` and bare CSS padding causes top status headers, banners, or guideline cards to be cut off or obscured by device hardware cutouts. Always use:
+     `<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">`
+     and defensive safe-area CSS:
+     `padding-top: max(16px, env(safe-area-inset-top)); padding-bottom: max(16px, env(safe-area-inset-bottom));`.
+   - **Wide Matrix Table vs Dual-Axis Mobile Scroll Trap:** Dense historical tables (e.g. 15-20 columns with daily runs, machines, proxies, accounts) requiring `min-width: 760px+` break on ~390px mobile screens. Users only see machine IDs, lose context when scrolling horizontally, and encounter vertical scroll gesture traps.
+   - **Card-First Mobile Adaptation with Mini Timeline Chips:** Provide a View Toggle (`[📱 Thẻ Di Động]` vs `[📊 Bảng Ma Trận]`) or automatically default to card view on viewports `< 768px`. Each card encapsulates Machine, Proxy/Partner, Tier badge, username, total/average metrics, and a horizontal strip of mini pill chips representing recent run dates (`+N` green for safe runs, `🛑 N` red for drops, `-` gray for rest). Operators can triage fleet health via natural vertical scrolling without horizontal table dragging.
+   - **Table Sticky Multi-Column Context:** In wide table mode, freeze both the Machine column (`position: sticky; left: 0;`) and the Nick column (`position: sticky; left: <width>px;`) with matching background to preserve identity context when panning across date columns.
+   - **Collapsible Analytics Headers:** Wrap large analytical cards (sweet spot distribution, quota guidelines) in collapsible accordions or `<details>` on mobile so they do not consume 500-600px of vertical viewport before the account list.
 
 ## Embedded single-file dashboard coupling (frontend / backend)
 
@@ -502,6 +511,7 @@ When using a screenshot, verify the address bar port against the live listener; 
 
 ## Supporting detail
 
+- `references/mobile-fleet-dashboard-design-patterns.md` — Responsive mobile layout patterns for local fleet dashboards (safe-area insets, card view toggle, mini timeline pills, sticky multi-column headers).
 - `references/runtime-app-update-and-import.md` — Reusable OmniRoute-style workflow, UI paths, and credential-safe proxy import handling.
 - `references/omniroute-watchdog-resilience-and-fail-closed-runbook.md` — OmniRoute Fail-Closed Proxy & Watchdog Resilient Supervision Runbook: two-tier liveness/health checks, preventing false-positive restarts on pool 401/403 errors, and RAM/repo synchronization.
 See `references/google-drive-desktop-lost-found.md` for diagnosing and resolving Google Drive for Desktop "Lost and Found" (`Bị thất lạc và đã tìm thấy`) sync conflicts and notifications.

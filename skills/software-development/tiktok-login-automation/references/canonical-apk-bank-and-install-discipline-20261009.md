@@ -23,8 +23,19 @@ User bức xúc và chấn chỉnh nghiêm khắc khi agent tự ý mò vào th�
   **BẮT BUỘC TIÊU HỦY XÓA BỎ NGAY LẬP TỨC** (`rm -rf` / `shutil.rmtree`).
 - **TUYỆT ĐỐI CẤM**: Giữ lại thư mục rác để thử cài đi cài lại hay chắp vá file. Việc giữ thư mục hỏng làm ô nhiễm kho `apk-bank` và khiến các lượt chạy sau/watchdog tiếp tục vấp ngã.
 - Phản hồi từ User: *"vkl mày, thư mục lỗi thì mày xoá con mẹ nó đi"*.
+- **Quy tắc dọn dẹp chủ động**: Khi phát hiện thư mục APK hỏng/phân mảnh hoặc artifact lỗi, lập tức xóa bỏ tận gốc (`shutil.rmtree` / `rm -rf`), tuyệt đối không để sót lại rác làm bẫy các lần chạy tiếp theo.
 
-### 1.3. XỬ LÝ SỰ CỐ VERSION DOWNGRADE TRÊN THIẾT BỊ
+### 1.3. SỰ CỐ MIKROTIK WAN1 RỚT PPPOE & CƠ CHẾ VPN GATE FAIL-CLOSED
+- Khi toàn bộ các interface PPPoE trên MikroTik WAN1 bị rớt (`Total PPPoE: 60, Running: 0` do modem FPT mất tín hiệu quang):
+  - Cổng proxy nội bộ (`192.168.110.2:100xx`) vẫn phản hồi kết nối TCP (`TcpTestSucceeded: True`), nhưng mọi gói tin ra ngoài Internet đều bị timeout.
+  - Cơ chế **VPN Gate (Fail-Closed)** trong `tiktok_login_v1.py` sẽ chặn đứng quy trình: `global proxy egress IP verification failed: context deadline exceeded`.
+  - **Hành động đúng**: Bắt buộc dừng quy trình login/reg ngay lập tức để bảo vệ tài khoản khỏi bị lộ IP gốc, kiểm tra đường truyền WAN1 MikroTik và khôi phục PPPoE trước khi tiếp tục.
+
+### 1.4. LƯU Ý VỀ CẢNH BÁO `TRACKING_ROW_CHANGED` KHI LOGIN HOÀN TẤT
+- Khi `tiktok_login_v1.py` đăng nhập thành công và tiến hành ghi nhận vào workbook, nếu dòng tracking đã có dữ liệu hoặc slot thay đổi, hàm `upsert_tracking_account` sẽ raise `STOPPED: TRACKING_ROW_CHANGED`.
+- Đây là chốt an toàn chống ghi đè nhầm của workbook. Trên thực tế tài khoản đã được đăng nhập và lưu thành công vào phiên multi-session của app TikTok trên máy thật.
+
+### 1.5. XỬ LÝ SỰ CỐ VERSION DOWNGRADE TRÊN THIẾT BỊ
 - Khi thiết bị lỡ bị cài phiên bản cao hơn (như v47.0.3) và cần quay về bản chuẩn farm (v46.6.3), lệnh `install -r` sẽ bị chặn bởi `Failure [INSTALL_FAILED_VERSION_DOWNGRADE]`.
 - **BẪY `pm uninstall -k` (GIỮ DATA):** Tuyệt đối KHÔNG dùng `pm uninstall -k` hoặc `cmd package uninstall -k`. Lệnh này giữ lại thư mục `/data/data` và bản ghi package trong `/data/system/packages.xml`, do đó hệ điều hành Android vẫn lưu mốc version code cao hơn và TIẾP TỤC chặn hạ cấp bằng `INSTALL_FAILED_VERSION_DOWNGRADE`.
 - **Quy trình chuẩn gỡ sạch & cài lại 55 Split APKs:**

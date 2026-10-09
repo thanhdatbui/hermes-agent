@@ -91,7 +91,38 @@ GPM CDP Connect
 
 ---
 
-## 5. Kỷ Luật Đường Dẫn Media Telegram (Chống Nuốt Ảnh)
+## 5. Bẫy Tên Sheet Giữa 2 File Excel Kho Dữ Liệu
+- **`taikhoan_dat_v2_updated .xlsx`**: Tên sheet là `'Tài Khoản'`.
+  * Cột A (1): Máy
+  * Cột F (6): Email Hotmail
+  * Cột G (7): PASS MAIL
+- **`gmail_clean_v2.xlsx`**: Tên sheet là `'Gmail Accounts'` (KHÔNG PHẢI `'Tài Khoản'`).
+  * Gọi `wb['Tài Khoản']` trên file này sẽ văng crash: `KeyError: 'Worksheet Tài Khoản does not exist.'`.
+  * Cột B (2): Email
+  * Cột C (3): PASS
+  * Cột D (4): 2FA Secret Key Base32
+  * Cột E (5): Recovery Email gốc
+- **Kỷ luật code**: Luôn dùng logic an toàn `ws = wb['Gmail Accounts'] if 'Gmail Accounts' in wb.sheetnames else (wb['Tài Khoản'] if 'Tài Khoản' in wb.sheetnames else wb.active)`.
+
+---
+
+## 6. Xử Lý Challenge 2FA & KMSI Khi Đăng Nhập Lại (Relogin Handler)
+- **Hiện tượng**: Sau khi bấm `Sign out everywhere`, phiên cũ bị revoke hoàn toàn. Khi script truy cập `account.microsoft.com/profile` để relogin bằng mật khẩu mới, Microsoft lập tức dựng form challenge 2FA đòi mã từ Authenticator App (`#idTxtBx_SAOTCC_OTC`).
+- **Xử lý tự động**:
+  * Bắt selector `#idTxtBx_SAOTCC_OTC` hoặc input OTC, lấy Secret Key vừa tạo (hoặc tra cứu từ Cột 4 Excel).
+  * Dùng `pyotp.TOTP(sec_key).now()` sinh mã và điền tự động.
+  * Chụp ảnh `gpm_relogin_totp_<email>.png` làm bằng chứng.
+  * Tiếp tục bắt màn hình KMSI ("Duy trì đăng nhập?"), chụp ảnh `gpm_kmsi_<email>.png` rồi click `#idSIButton9` (nút [Có]) để lưu cookie lâu dài vào GPM Profile.
+- **Kỷ luật báo cáo bằng chứng**: User luôn yêu cầu bằng chứng thị giác đầy đủ 4 chặng:
+  1. *Add 2FA*: Form cấp key + điền mã 6 số kích hoạt.
+  2. *Đổi Pass*: Form đổi pass + nút Lưu.
+  3. *Sign out everywhere*: Modal dialog xác nhận đăng xuất.
+  4. *Relogin*: Form giải 2FA khi đăng nhập lại + Màn hình KMSI bấm Có.
+  Tuyệt đối không được báo cáo kết quả chung chung mà thiếu ảnh của chặng nào.
+
+---
+
+## 7. Kỷ Luật Đường Dẫn Media Telegram (Chống Nuốt Ảnh)
 - **Pitfall**: Sử dụng dấu gạch ngược Windows trong tag `MEDIA:D:\Taadaa\runtime\artifacts\...` làm xuất hiện escape character `\a` (ASCII Bell), khiến bộ chuyển đổi gateway Telegram (`extract_media`) nuốt chửng thẻ ảnh và không gửi ảnh tới user.
 - **Quy tắc bất biến**: Mọi đường dẫn trong thẻ `MEDIA:` **BẮT BUỘC** phải chuẩn hóa dùng dấu gạch chéo `/`:
   ```text

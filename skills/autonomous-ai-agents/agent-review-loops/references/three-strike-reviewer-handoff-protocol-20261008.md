@@ -35,5 +35,7 @@ Khi chia vai cứng **Worker/Coordinator = Thợ code** và **Claude = Giám sá
   - Gặp một lượt `passed=True` hoặc một `scope_hash` khác -> Streak reset về 0 ngay lập tức.
   - Chỉ khi cùng một candidate scope bị từ chối 3 lần liên tiếp thì hand-off mới kích hoạt.
 
-## 5. Bất biến Điều phối (Orchestration Invariant)
+## 5. Bất biến Điều phối & Van An toàn Quota (Orchestration & Quota Invariants)
+- **Áp dụng toàn diện (Closeout & Mid-Session):** Quy tắc 3-Strike áp dụng cho CẢ closeout reviews lẫn mọi vòng review code giữa phiên (mid-session review). Bất kỳ khi nào Reviewer từ chối 3 lần liên tiếp (kể cả UNRESOLVED do thiếu evidence), Coordinator BẮT BUỘC dừng tự sửa và chuyển giao quyền cho Reviewer.
 - **Strike 3 KHÔNG làm dừng tiến trình Remediation:** Bất biến "REJECT = REMEDIATION, CẤM DỪNG" vẫn giữ nguyên 100%. Strike 3 chỉ thay đổi **NGƯỜI CẦM BÀN PHÍM (HOLDER OF THE KEYBOARD)** từ Worker/Coordinator sang chính Reviewer, tuyệt đối không phải là cớ để buông xuôi hay dừng closeout!
+- **Van an toàn Quota Fallback:** Nếu Claude CLI chạm ngưỡng bảo vệ hạn mức 85% của 5h session (theo `claude-limit-protection`) hoặc dính rate-limit/lockout: BẮT BUỘC tự động fallback về cho Coordinator (thực hiện Emergency Surgery L2 O(1) nếu thỏa mãn ngân sách) HOẶC điều phối sang Sol High (:20129) vá thẳng theo Invariant chống đóng băng task. Tuyệt đối không để farm bị kẹt khi Claude hết quota!
