@@ -13,6 +13,7 @@ Use this class-level workflow when Android farm phones auto-connect to a non-far
 ## Safety contract
 
 - Never use a rogue SSID as a fallback or recovery network.
+- **Saved Network Roam Trap**: Removing fallback logic from host Python scripts is NOT enough. If phones previously joined a rogue SSID, Android OS stores the profile in `WifiConfigStore.xml` (priority 100) and will auto-roam to it during radio toggles or AP load spikes. Cleanup MUST actively verify and re-bind all devices.
 - Never remove a network by guessing an ID, by iterating through all IDs, or by trusting stale `dumpsys wifi` event history.
 - Every device mutation runs under `D:/Taadaa/tools/with_device_lock.py --machine <N> -- ...` with the correct cluster/serial.
 - Do not use `adb shell input tap`, `input keyevent`, or `input swipe` as a substitute for fixing network state.

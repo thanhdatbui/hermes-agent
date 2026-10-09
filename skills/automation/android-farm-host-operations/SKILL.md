@@ -250,5 +250,13 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
   * Bounded Semaphore 8 tokens trong `automation_core.adb` bảo vệ bus USB 2.0 khi các script chạy auto chụp màn hình / kéo file.
   * Lưu ý: Semaphore này chỉ quản lý code Python nội bộ, KHÔNG khống chế được luồng stream của app bên thứ ba như Tiểu Vi (cần giảm trực tiếp trên UI XiaoWei: 720p/480p, 15 FPS).
 
+## 16. Quy Chuẩn Quản Lý & Lưu Trữ Cấu Hình Farm Lên Git (`taadaa-farm-tools`)
+- **Nguyên tắc Invariant (User Directed: "Từ h đẩy hết vào repo quản lí đi"):** CẤM để các file cấu hình host và script dịch vụ phần cứng trôi nổi ngoài git (như ở thư mục mẹ `D:\Taadaa\` hay `C:\Taadaa_Service\`). BẮT BUỘC phiên bản hóa và đẩy tập trung vào repo quản lý trung tâm `taadaa-farm-tools` (`D:\Taadaa\tools`):
+  * `machine-config/`: `kibe.yaml` (M1–80), `admin.yaml` (M201–280), `hermes-admin-config.yaml`.
+  * `services/Taadaa_Service/`: `safe_usb_guard.py`, `reset_usb_bus.bat`, `start_adb_hidden.vbs`, `setup_usb_guard_task.ps1`.
+  * `docs/`: `HARDWARE_USB_FARM_PCIE_GUIDE.md` (đặc tả kỹ thuật Card PCIe USB 3.0 rời Renesas/VIA cho farm 80–200 máy).
+- **Lợi ích vận hành:** Toàn bộ hạ tầng farm được quản lý tập trung trên GitHub (`https://github.com/thanhdatbui/taadaa-farm-tools.git`). Khi cài đặt PC controller mới (Kibe hoặc Admin) hoặc cần khôi phục Windows sau sự cố, chỉ cần `git pull` repo `tools` là có đầy đủ toàn bộ cấu hình, script cứu hộ USB và tài liệu vận hành mà không lo thất lạc.
+
+
 
 

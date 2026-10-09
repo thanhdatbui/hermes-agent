@@ -42,6 +42,32 @@
      - Copy file `data-variations.gpm` từ `gpm_browser\default\data-variations.gpm` sang `gpm_browser\gpm_browser_chromium_core_142\data-variations.gpm`.
      - Ghi chuỗi `1.1` vào file `gpm_browser\gpm_browser_chromium_core_142\version`.
      - Ngay sau 2 thao tác này, API `/api/v3/profiles/start/{id}` lập tức trả về `{"success": true, "message": "OK"}` và spawn browser thành công mà không cần mở GUI bấm tay!
+
+6. **Tái phát lỗi Core 142 sau mỗi lần reset/khởi động lại máy (Reboot Loop do `default\update.zip` bị tải dở):**
+   - **Hiện tượng:** User hoặc script đã sửa xong core 142, API mở profile chạy bình thường. Nhưng cứ mỗi khi khởi động lại máy tính (reboot PC) hoặc mở lại GPM, core 142 lại lập tức bị lỗi: `{"success": false, "data": null, "message": "Yêu cầu cập trình duyệt [Chromium] [142]"}`.
+   - **Nguyên nhân gốc rễ:**
+     - Trong thư mục template fallback `C:\Users\<user>\AppData\Local\Programs\GPMLogin\gpm_browser\default\update.zip`, tồn tại file nén tải dở từ trước (ví dụ chỉ có 105 MB thay vì ~117-119 MB).
+     - Kiểm tra bằng 7-Zip (`7za t update.zip`) phát hiện: `Unexpected end of archive` và `Data Error: 142.0.7444.163\chrome.dll`.
+     - Khi máy tính reboot hoặc khi GPM app khởi động / kích hoạt tính năng kiểm tra tài nguyên (Auto-fix Resource), GPM lấy gói `default\update.zip` bị lỗi này để bung/đè vào core Chromium, làm `chrome.dll` trong `142.0.7444.163` bị cụt dở và reset file `version` về `1.0`.
+   - **Quy trình xử lý dứt điểm 100%:**
+     1. **Kiểm tra tính toàn vẹn của archive:**
+        ```cmd
+        "C:\Users\Kibe\AppData\Local\Programs\GPMLogin\7za.exe" t "C:\Users\Kibe\AppData\Local\Programs\GPMLogin\gpm_browser\default\update.zip"
+        ```
+        Nếu xuất hiện lỗi `Unexpected end of archive` hoặc `Data Error` -> chính là nguồn gây tái phát lỗi.
+     2. **Cô lập file zip hỏng:** Di chuyển thành `update.zip.corrupted_bak`.
+     3. **Đóng gói lại `update.zip` chuẩn từ core đang chạy tốt:**
+        Đứng tại `gpm_browser_chromium_core_142`, dùng `7za.exe` nén các file manifest và chrome.dll chuẩn (264.7 MB):
+        ```cmd
+        "C:\Users\Kibe\AppData\Local\Programs\GPMLogin\7za.exe" a -tzip "C:\Users\Kibe\AppData\Local\Programs\GPMLogin\gpm_browser\default\update.zip" "142.0.7444.163\142.0.7444.163.manifest" "142.0.7444.163\chrome.dll"
+        ```
+     4. **Xác nhận `Everything is Ok`:** Chạy lại `7za t`, archive mới đạt ~112 MiB và 0 error.
+     5. **Khóa version `1.1`:** Đảm bảo file `version` tại cả `gpm_browser\default\version` và `gpm_browser\gpm_browser_chromium_core_142\version` đều chứa `1.1`.
+     6. **Nghiệm thu Cold Start:** Tắt và bật lại GPMLogin.exe, kiểm tra `POST /api/v3/profiles/start/{id}` trả về `success: true`. Giờ đây khi reset máy, GPM sẽ không còn bị file zip dở làm hỏng core nữa.
+
+7. **Bảo toàn tài sản tài khoản cũ đã thuê SIM verify (SIM-Verified Asset Preservation Invariant):**
+   - Các tài khoản (Hotmail, Gmail, ChatGPT, OpenAI Codex) đã từng thuê SIM verify tốn tiền thật của user là tài sản giá trị cao, tuyệt đối **CẤM** suy diễn là nick vứt đi, cấm tự ý xóa khỏi database hay đánh dấu die vĩnh viễn khi chưa có bằng chứng xác thực tuyệt đối từ server.
+   - Khi token hết hạn hoặc dính lỗi OAuth/GPM core, BẮT BUỘC ưu tiên kiểm tra hạ tầng (GPM core, proxy liveness, hòm thư qua Microsoft Graph API) để phục hồi phiên đăng nhập, thay vì vội vàng bỏ nick.
    - *Bẫy thao tác tự động trên Disconnected Desktop (Headless Pitfall):* Khi phiên Windows ở trạng thái disconnected/locked (độ phân giải ảo 800x600/800x1555 không có màn hình vật lý), giao diện WPF của GPMLogin không render bề mặt DirectX (`PrintWindow` ra ảnh đen, `BitBlt` trả về 0, `mouse_event`/`SendMessage` không kích hoạt được click UI). Agent TUYỆT ĐỐI CẤM loop click mù Win32 để cố đóng popup/bấm nút cập nhật. Bắt buộc test O(1) qua curl API `profiles/start/{id}` lấy JSON lỗi thực tế báo cáo rõ cho User mở màn hình bấm 1 click "Cập nhật lại GPM".
    - *Bẫy Cache Cờ Runtime sau khi Resource Fixer Tool báo "Phiên bản mới nhất":* Khi cửa sổ `Resource fixer tool` của GPM đã kiểm tra và hiển thị dòng chữ xanh `gpmbrowser_chromium_core_142: Phiên bản mới nhất`, API `/api/v3/profiles/start` vẫn có thể tiếp tục quăng lỗi `Yêu cầu cập trình duyệt [Chromium] [142]`. Lý do: GPM app giữ cờ chặn runtime cho đến khi người dùng bấm nút **"Mở"** trực tiếp bằng tay trên 1 profile bất kỳ từ giao diện Profiles. Việc bấm "Mở" thủ công lần đầu kích hoạt tiến trình nạp binary Chromium 142 và giải phóng hoàn toàn cờ chặn API cho toàn bộ các profile còn lại.
 

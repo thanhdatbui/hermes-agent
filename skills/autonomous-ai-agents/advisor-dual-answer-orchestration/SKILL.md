@@ -102,6 +102,7 @@ A valid acceptance sequence is:
 5. Do not report `DONE` from adapter status alone. If only the adapter canary passes, report `adapter PASS; orchestration canary pending`.
 
 See `references/dual-answer-canary.md` for the concrete evidence matrix and failure classifications.
+See `references/pure-sol-discipline-and-clean-fail-20261010.md` for the Operator policy: pure Sol route only (:20129 review), timeout >= 45s, clean fail to unavailable without messy Gemini/9Router fallbacks.
 See `references/claude-cli-review-loop-and-mechanical-advisor-enforcement.md` for the 4-round Claude CLI review progression (62 -> 72 -> 86 -> 91 APPROVED), 3-tier fallback architecture, leak-proof redaction engine, and classifier edge cases.
 See `references/mechanical-dual-answer-enforcement-and-stream-deadline-audit-20261010.md` for intent classification matrix, stream wall-clock deadline handling, and mechanical enforcement gate.
 
