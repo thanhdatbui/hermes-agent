@@ -148,11 +148,39 @@ GPM CDP Connect
 
 ---
 
-## 9. Cảnh Báo "Tạm Thời Có Lỗi Với Dịch Vụ" & Selector Đa Ngôn Ngữ Add 2FA (2026-10-10)
-- **Bắt lỗi "Tạm thời có lỗi với dịch vụ"**:
+## 9. Cảnh Báo "Tạm Thời Có Lỗi Với Dịch Vụ" & Lọc Tiền Điều Kiện Mail Khôi Phục (2026-10-10)
+- **Bắt lỗi "Tạm thời có lỗi với dịch vụ" & Bẫy Silent Try/Except**:
   * Khi bấm Lưu đổi mật khẩu, nếu Microsoft trả về thông báo:
-    `Tạm thời có lỗi với dịch vụ. Xin vui lòng thử lại...`
-    thì **MẬT KHẨU CHƯA ĐƯỢC ĐỔI**! Tuyệt đối không được ghi đè mật khẩu mới vào Excel và không được đánh dấu thành công trong tracker. Phải bắt chuỗi này trong `page.content()` và raise exception để script dừng lại kiểm tra hoặc retry.
+    `Tạm thời có lỗi với dịch vụ. Xin vui lòng thử lại...` (hoặc `There's a temporary problem with the service. Please try again...`)
+    thì **MẬT KHẨU CHƯA ĐƯỢC ĐỔI THẬT**!
+  * **CẤM TUYỆT ĐỐI bọc kiểm tra này trong khối `try...except` bắt lỗi im lặng**: Nếu chỉ log warning mà không raise exception ngắt flow, script sẽ chạy tiếp các bước sau và ghi đè pass mới vào Excel $\rightarrow$ gây mất đồng bộ dữ liệu nghiêm trọng, tài khoản trên Microsoft vẫn pass cũ nhưng Excel ghi pass mới!
+  * **Cơ chế Fail-Fast Bắt Buộc**:
+    ```python
+    page_content = page.content()
+    err_patterns = [
+        "Mật khẩu của bạn không được chứa",
+        "Your password cannot contain",
+        "Mật khẩu quá ngắn",
+        "Mật khẩu không khớp",
+        "Tạm thời có lỗi với dịch vụ",
+        "There's a temporary problem with the service",
+        "Xin vui lòng thử lại",
+        "Please try again",
+    ]
+    for err_msg in err_patterns:
+        if err_msg.lower() in page_content.lower():
+            raise RuntimeError(f"Microsoft từ chối đổi mật khẩu: phát hiện '{err_msg}'. DỪNG NGAY KHÔNG GHI EXCEL!")
+    ```
+- **Lọc Tiền Điều Kiện Kho Tài Khoản (Prerequisite Gate: RecMail != None)**:
+  * Trong `gmail_clean_v2.xlsx`, các tài khoản được chia làm 2 nhóm:
+    1. *Nhóm có mail khôi phục (324 acc)*: Đã có phương thức bảo mật chứng minh danh tính $\rightarrow$ Microsoft cho phép đổi pass và thêm 2FA mượt mà 100% (ví dụ: `vistemeggett3761`).
+    2. *Nhóm chưa có mail khôi phục (220 acc, Cột 5 = None)*: Microsoft nghi ngờ phiên truy cập bất thường và chặn cứng với câu `"There's a temporary problem with the service"` khi vào form đổi pass trực tiếp.
+  * **Quy tắc chọn mục tiêu**: Khi chạy batch hoặc chọn acc Canary, BẮT BUỘC chỉ lọc các tài khoản đã có sẵn mail khôi phục hợp lệ (`Col 5 is not None`) để tránh tỷ lệ fail 100% do thiếu bằng chứng bảo mật.
+- **Quy Trình Rollback Dữ Liệu Khi Gặp Sự Cố**:
+  * Nếu phát hiện lỗi đổi pass không thành công trên Microsoft, Coordinator BẮT BUỘC kiểm tra và khôi phục (rollback) ngay lập tức giá trị mật khẩu gốc trong cả 2 file:
+    - `taikhoan_dat_v2_updated .xlsx` (Cột G - PASS MAIL).
+    - `gmail_clean_v2.xlsx` (Cột 3 - PASS).
+  * Đồng thời dọn sạch bản ghi lỗi trong runtime state (`hotmail_changed_tracker.json`). Không để rác mật khẩu ảo.
 - **Selector chọn "Sử dụng ứng dụng" trong menu Thêm cách đăng nhập mới & Đa Ngôn Ngữ EN/VI**:
   * Khi click `#AddProofLink` ("Thêm một cách đăng nhập khác cho tài khoản" / "Add another way to sign in"), giao diện có thể là tiếng Việt hoặc tiếng Anh:
     - Tiếng Việt: `text='Sử dụng ứng dụng'`, nút `Tiếp theo`, `Hoàn tất`, `Lưu`, `Đăng xuất`, `Có`.
