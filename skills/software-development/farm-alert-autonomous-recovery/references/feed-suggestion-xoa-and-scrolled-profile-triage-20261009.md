@@ -1,4 +1,4 @@
-# Triage & Pattern Reference: Thẻ đề xuất Bạn bè "Xóa", Gợi ý tìm kiếm, và Profile cuộn (2026-10-09)
+# Triage & Pattern Reference: Thẻ đề xuất Bạn bè "Xóa", Gợi ý tìm kiếm, Profile cuộn & Regression Gate (2026-10-09)
 
 ## 1. Phân biệt Lỗi Cáp USB (CM_PROB_PHANTOM) vs Lỗi Proxy ảo
 - **Hiện tượng**: Báo cáo Watchdog phân loại máy vào nhóm `Lỗi cấu hình Proxy` (như M10) hoặc `config-error` (như M30) với stop_reason `device offline or ADB/USB disconnected: adb.exe: device '<serial>' not found`.
@@ -21,6 +21,7 @@
     //node[@text="Không quan tâm" or @content-desc="Không quan tâm" or @text="Xóa" or @content-desc="Xóa" or @resource-id="com.ss.android.ugc.trill:id/cv6" or @resource-id="com.ss.android.ugc.trill:id/udr"]
     ```
   - Tuyệt đối cấm tap `"Follow lại"` để bảo vệ Trust Score của tài khoản.
+  - Regression Test: `test_follow_back_suggestion_taps_xoa_dismiss`.
 
 ## 3. Trang Gợi ý tìm kiếm (Search Suggestions Landing)
 - **Vị trí**: TikTok vô tình mở vào giao diện tìm kiếm đang gõ dở hoặc hiển thị danh sách từ khóa gợi ý.
@@ -33,6 +34,7 @@
   `detect_search_landing_page` phải bao gồm nhánh:
   `has_search_input and any("sug" in (r or "").lower() for r in rids)`
   để phân loại thành `tiktok_search_landing_page` (generic popup) và tự động bấm nút Back thoát về Feed.
+  - Regression Test: `test_search_landing_with_suggestions_detected`.
 
 ## 4. Trang Public Profile bị cuộn xuống lưới Video
 - **Hiện tượng**: Khi bị nhảy vào profile creator/người khác, màn hình bị vuốt cuộn qua khỏi header (mất `@username`, stats). Màn hình chỉ còn nút `"Follow"` và lưới video với các thẻ `com.ss.android.ugc.trill:id/tv_play_count`.
@@ -40,3 +42,12 @@
 - **Nhận diện**:
   Nếu không thấy header nhưng có $\ge 3$ node `tv_play_count` kết hợp nút `"Follow"`/`"Đang follow"` và không có thanh điều hướng Home đáy (`has_home_nav == False`):
   Xác nhận là `profile` để runner kích hoạt `KEYEVENT 4` (Back) quay trở lại Feed video.
+  - Regression Test: `test_scrolled_public_profile_grid_classified_as_profile`.
+
+## 5. Quy Chuẩn Regression Gate & Xử Lý TRANSIENT Timeout Subagent
+- **Regression Gate bắt buộc**: Bỏ ghi chép case docs thủ công; mọi sửa đổi logic UI/popup BẮT BUỘC phải đi kèm unit test regression trong pytest suite.
+- **Xử lý Worker TRANSIENT Timeout (L0)**:
+  - Khi worker bị treo 600s do nghẽn API/mạng:
+    1. Kiểm tra `git status` và `git checkout -- <file>` để đưa working tree về trạng thái sạch sẽ.
+    2. Tinh chỉnh prompt: Cấp exact Patch Contract trực tiếp để worker gọi `patch` ngay, không đọc lan man monolith files lớn.
+    3. Re-dispatch worker (Retry 1 L0) theo đúng thang điều phối.
