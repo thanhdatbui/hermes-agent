@@ -197,14 +197,42 @@ GPM CDP Connect
     - EnableTfa: `locator("#iNext, input[value='Tiếp theo'], button:has-text('Tiếp theo'), input[value='Hoàn tất'], button:has-text('Hoàn tất'), input[value='Next'], button:has-text('Next'), input[value='Finish'], button:has-text('Finish')")`
     - Save pass: `locator("#UpdatePasswordAction, input[value='Lưu'], button:has-text('Lưu'), input[value='Save'], button:has-text('Save'), #save, #idSubmit_SAV_btnSubmit")`
   * Ô đổi mật khẩu `#iPassword`, `#iRetypePassword` bắt buộc `.click()` để nhận focus trước khi `.fill()` nhằm kích hoạt input event của Microsoft.
-- **Kỷ luật báo cáo Canary tài khoản mới**:
-  * Khi user yêu cầu "canary acc khác t coi", user kỳ vọng **nghiệm thu thực tế toàn diện**.
-  * BẮT BUỘC gửi ngay 4 chặng ảnh chứng minh trong cùng 1 báo cáo:
-    1. Ảnh nhập mã kích hoạt 2FA Authenticator (`gpm_totp_pre` / Proofs).
-    2. Ảnh điền mật khẩu mới và nút [Lưu] (`gpm_pre_change`).
-    3. Ảnh modal dialog xác nhận `Sign out everywhere` (`gpm_signout_confirm_dialog`).
-    4. Ảnh đăng nhập lại thành công (giải 2FA TOTP + màn hình KMSI bấm [Có] hoặc Account Dashboard).
-  * Không bao giờ gửi kết quả sơ sài thiếu ảnh của bất kỳ chặng nào.
+* Kỷ luật báo cáo Canary tài khoản mới:
+* Khi user yêu cầu "canary acc khác t coi", user kỳ vọng **nghiệm thu thực tế toàn diện**.
+* BẮT BUỘC gửi ngay 4 chặng ảnh chứng minh trong cùng 1 báo cáo:
+  1. Ảnh nhập mã kích hoạt 2FA Authenticator (`gpm_totp_pre` / Proofs).
+  2. Ảnh điền mật khẩu mới và nút [Lưu] (`gpm_pre_change`).
+  3. Ảnh modal dialog xác nhận `Sign out everywhere` (`gpm_signout_confirm_dialog`).
+  4. Ảnh đăng nhập lại thành công (giải 2FA TOTP + màn hình KMSI bấm [Có] hoặc Account Dashboard).
+* Không bao giờ gửi kết quả sơ sài thiếu ảnh của bất kỳ chặng nào.
+
+---
+
+## 10. Kỷ Luật Cooldown 24H Khi Gặp Lỗi Dịch Vụ & Thứ Tự Bắt Buộc (2026-10-10)
+- **Quy tắc thứ tự bất biến: Add 2FA TRƯỚC, Đổi Pass SAU**:
+* Luồng bảo mật Hotmail bắt buộc thực thi theo trình tự:
+  1. **BƯỚC 1**: Thêm 2FA Authenticator (TOTP) trước -> Lưu Secret Key Cột 4 Excel -> Bật công tắc tổng Two-step verification (`EnableTfa = ON`).
+  2. **BƯỚC 2**: Đổi Mật khẩu mới sau (dùng chính 2FA vừa tạo để giải challenge bảo mật nếu Microsoft yêu cầu).
+  3. **BƯỚC 3**: Sign out everywhere -> Xác nhận dialog thu hồi token toàn cầu.
+  4. **BƯỚC 4**: Relogin Live trên GPM Profile -> Điền pass mới + TOTP -> Bấm "Có" màn hình KMSI để lưu phiên sống.
+* Tuyệt đối không được đảo ngược hoặc bỏ qua bước 2FA.
+- **Cơ chế Cooldown 24H Ngay Lập Tức Khi Gặp Lỗi Dịch Vụ Microsoft**:
+* Khi bấm Lưu đổi mật khẩu mà Microsoft trả về thông báo lỗi dạng:
+  `There's a temporary problem with the service...` / `There was a problem...` / `Tạm thời có lỗi với dịch vụ. Xin vui lòng thử lại...`
+* **Hành động bắt buộc ngay lập tức**:
+  1. Gọi `set_cooldown(email, hours=24, reason=err_msg)` để ghi nhận thời điểm hết hạn cooldown (`cooldown_until = now + 24h`) vào state file (`hotmail_changed_tracker.json`).
+  2. **Dừng luồng ngay lập tức (Fail-Fast)**, ném exception ngắt tiến trình.
+  3. **TUYỆT ĐỐI CẤM GHI ĐÈ MẬT KHẨU VÀO EXCEL**: Giữ nguyên mật khẩu gốc trong cả `taikhoan_dat_v2_updated .xlsx` và `gmail_clean_v2.xlsx`.
+  4. Báo cáo trung thực, rõ ràng ngay cho User về hiện tượng bị chặn và trạng thái cooldown của nick. Cấm ỉm lỗi hoặc báo hoàn thành ảo.
+* **Bỏ qua tự động ở các lượt chạy sau**:
+  * Trong hàm `find_target_accounts()`, bắt buộc kiểm tra `is_in_cooldown(email)`. Nếu tài khoản còn trong thời gian 24h cooldown thì tự động bỏ qua (`[COOLDOWN_SKIP]`), không cố chấp retry làm tăng rủi ro spam/flag tài khoản.
+- **Kỷ luật Visual Evidence - Đủ 5 Chặng Bằng Chứng**:
+* Mọi lượt chạy Canary nghiệm thu BẮT BUỘC phải gửi đủ 5 chặng ảnh hiện trường đã qua WinRT OCR soi chữ:
+  1. Ảnh nhập mã OTP liên kết 2FA Authenticator.
+  2. Ảnh form điền mật khẩu mới kèm nút Lưu.
+  3. Ảnh modal dialog xác nhận Đăng xuất khỏi mọi nơi.
+  4. Ảnh nhập mã 2FA TOTP khi đăng nhập lại.
+  5. Ảnh màn hình Duy trì đăng nhập (KMSI) bấm nút "Có".
 
 
 ---
