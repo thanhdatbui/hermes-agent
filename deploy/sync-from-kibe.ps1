@@ -23,6 +23,19 @@ if (Test-Path $CfgSrc) {
     Copy-Item $CfgSrc -Destination $CfgDst -Force
 }
 
+$SoulSrc = Join-Path $RepoDir "deploy\hermes-home\SOUL.md"
+$SoulDst = Join-Path $HermesHome "SOUL.md"
+if (Test-Path $SoulSrc) {
+    Copy-Item $SoulSrc -Destination $SoulDst -Force
+}
+
+$MemSrc = Join-Path $RepoDir "deploy\hermes-home\memories"
+$MemDst = Join-Path $HermesHome "memories"
+if (Test-Path $MemSrc) {
+    New-Item -ItemType Directory -Force -Path $MemDst | Out-Null
+    Copy-Item "$MemSrc\*" -Destination $MemDst -Recurse -Force
+}
+
 $HooksSrc = Join-Path $RepoDir "deploy\hermes-home\hooks"
 $HooksDst = Join-Path $HermesHome "hooks"
 if (Test-Path $HooksSrc) {
