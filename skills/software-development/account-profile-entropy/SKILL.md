@@ -134,14 +134,18 @@ When registering or renaming accounts created from foreign/shop emails (e.g. `fr
 - **Anti-Pattern: Raw Email Local-Part**: TikTok display name allows max 30 chars. Using raw username (`LilyanLederhos64090` or `francesuhunt5`) looks unnatural, exposes the raw handle, and flags the account as an automated bot.
 - **Prefix Shortening & Near-Sound Adaptation (User Directives)**:
   * Cut at the 2nd uppercase letter, first digit, or 6–8 chars max.
-  * Map phonetic prefixes to natural Vietnamese names:
-    - `frances-` / `florence-` → **Phương Thảo**, **Thu Phương**, **Phương**
-    - `sadou-` → **Hải Sa**, **Sa**
-    - `lilyan-` → **Linh**, **Liên**
+  * Map phonetic prefixes to natural Vietnamese name stems:
+    - `frances-` / `florence-` → **Phương Thảo**, **Thu Phương** (stem: *Phương*)
+    - `sadou-` → **Hải Sa** (stem: *Sa*)
+    - `lilyan-` → **Linh Bông**, **Ngọc Linh** (stem: *Linh*)
     - `kylar-` → **Kỳ La**
-    - `debi-` / `debora-` → **Diệp**
-    - `ancil-` → **An**
-    - `brolly-` → **Bảo**
+    - `debi-` / `debora-` → **Diệp Anh**, **Hồng Diệp** (stem: *Diệp*)
+    - `ancil-` → **Hoài An**, **An Bơ** (stem: *An*)
+    - `brolly-` → **Quốc Bảo**, **Gia Bảo** (stem: *Bảo*)
+  * **CẤM TUYỆT ĐỐI TÊN CỤT LỦN 1 TỪ**: Hàm đặt tên `make_tiktok_name` và quy chuẩn farm KHÔNG BAO GIỜ cho phép tên 1 từ trơ trọi (như mỗi chữ *Linh*, *Phương*, *Sa*, *An*). Display name luôn luôn phải tối thiểu 2 từ. Khi bốc phonetic stem (VD: `lilyan` -> *Linh*):
+    - Ưu tiên phong cách **Tên + Biệt danh đời thường**: BẮT BUỘC ghép `stem + _NICK_SUFFIX` (VD: *Linh Bông*, *Linh Miu*, *Linh Bơ*, *Linh Gạo*, *Linh Nhím*, *Linh Heo*, *Linh Cún*, *Linh Nấm*...).
+    - Hoặc phong cách **Đệm + Tên** (*Ngọc Linh*, *Thanh Linh*, *Khánh Linh*), **Tên lặp / Duo** (*Linh Linh*).
+    - CẤM để tên cụt 1 từ dưới mọi hình thức!
 - **Natural Real-User Distribution (`social_reg_v1.py` - make_tiktok_name)**:
   * Họ + Đệm + Tên (25%): *Trần Minh Đạt, Nguyễn Hoài An*
   * Họ + Tên (25%): *Lê Linh, Vũ Nam*

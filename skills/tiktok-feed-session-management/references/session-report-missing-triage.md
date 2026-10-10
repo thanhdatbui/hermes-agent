@@ -22,6 +22,14 @@ Use when a scheduled feed-session watchdog exits 0 but Telegram has no report.
 2. **Session Key Anomaly:**
    If the current date has `ca4_phien*` claimed while the expected morning `ca1_phien1` key is absent, treat it as a session-window/parser/state mapping anomaly. Report the exact keys and missing key; do not claim the morning session completed.
 
+3. **Telegram 4096-Character Limit Silent Rejection (`HTTP 400: message is too long`):**
+   - When a session has many events (e.g., 20+ IP Circuit Breaker proxy locks + detailed released machine lists across 2 clusters Kibe & Admin), the formatted message easily exceeds 4,096 characters.
+   - If `dispatch_split_reports` catches HTTP errors silently without chunking, the Feed report is saved to cron output while the Follow report to `-5127276494` silently drops!
+   - Triage step: Inspect length of `full_msg = hdr + "\n\n" + "\n\n".join(parts)`. If > 4,000 characters, Telegram API returns `HTTP 400 Bad Request: message is too long`.
+   - Mandatory Fix:
+     * Line-aware auto-chunking: Divide `full_msg` by line boundaries into chunks of $\le 3,900$ characters and dispatch each chunk sequentially.
+     * Deduplicate cluster-level blocks: Ensure reports like `format_ip_circuit_breaker_report` only attach to the owning cluster (Kibe), preventing payload duplication.
+
 ## Reporting standard
 
 Tell the operator: cron health, manual-run exit/stdout, exact state keys found, artifact discovery result, and the most likely blocker. Keep the answer short and evidence-led. Distinguish `no reportable artifact`, `wrong session key claimed`, `runner busy`, and `Telegram delivery failure` as separate causes.
