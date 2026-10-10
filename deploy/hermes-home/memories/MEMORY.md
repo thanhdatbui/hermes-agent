@@ -12,7 +12,7 @@ evidence_gate_verifier.py (WinRT OCR, PID reserve, fail-closed, >30s/3att L3 BLO
 §
 Canary: WoL ether3 (kibe 0C:EF:15:37:4C:20, admin 22:33:4D:06:4C:26; WG 13231); CẤM PASS khi followed=0/FOLLOW_FAILED; ảnh/log trước teardown. Admin: upload SSH admin-farm.
 §
-Claude CLI: user bảo/3-strike reject; 85% quota fallback L2/Sol High. Avatar SSOT: D:\TIKTOK-videonuoinick; nick đổi tay khóa .manual_avatar_locked, cấm đè.
+nick đổi tay tự khóa .manual_avatar_locked (chỉ user cho phép mới mở), cấm đè.
 §
 TikTok Shadow: Path B 'Đã fl' ko commit; FOLLOW_FAILED trừ fl tự nhiên; slot `(folder-1)%8+1` cứng; reg bù độc lập. Dọn C duyệt trước.
 §
