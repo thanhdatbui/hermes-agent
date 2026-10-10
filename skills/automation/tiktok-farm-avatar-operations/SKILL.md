@@ -352,6 +352,7 @@ Operate avatar-only changes on Taadaa TikTok farm devices without accidentally p
 - Closeout is not DONE until the device evidence, focused verification, and required reviewer gate are satisfied.
 
 ## References
+- `references/manual-avatar-protection-and-mass-regeneration-guard-20261010.md` — cơ chế 3 lớp (in-folder marker .manual_avatar_locked, registry tập trung manual_avatar_protected_folders.json, guard preflight manual_avatar_guard.py) bảo vệ tuyệt đối các kênh operator đổi bằng tay qua chat chống script quét hàng loạt ghi đè.
 - `references/missing-account-switcher-and-in-device-hotmail-otp-login-20261010.md` — bẫy tài khoản mục tiêu chưa login trên máy vật lý khiến avatar runner văng ACCOUNT_VERIFY_MISMATCH, chỉ thị của Operator "Thì chạy tiktok login acc đó vào", bẫy mật khẩu sai và quy trình cứu nguy login qua --otp-only đọc mã trực tiếp từ Outlook app trên thiết bị.
 - `references/account-verify-mismatch-and-device-missing-account-triage-20261010.md` — bẫy ACCOUNT_VERIFY_MISMATCH khi tài khoản mục tiêu chưa login trong ứng dụng TikTok (danh sách Switcher chỉ có 7 nick), phân định giữa số liệu Web API snapshots vs trạng thái app thật, quy trình dump Switcher audit O(1) và báo cáo BLOCKED kèm credentials.
 - `references/cat-niche-realignment-and-feed-lock-waiter-20261010.md` — case study @annapmfdh0a (M44 Tik 6), chuẩn hoá 4 tầng cho ngách mèo/thú cưng cute, bẫy mismatch version contract 0.4.44 trên Kibe local, và kỹ thuật event-driven lock waiter chờ nhả ca nuôi nick an toàn.
