@@ -12,9 +12,10 @@ description: Patterns for automating Android devices — VPN preflight, TikTok l
 
 References:
 - `references/box-lan-p30-custom-rom-battery-thermal-triage.md` — Box LAN P30, ROM Stock vs LineageOS, popup nhiệt độ pin âm, triage nhả follow.
+- `references/box-phone-dummy-battery-virtual-level-and-preflight-healing.md` — Box phone mod pin ảo: trôi pin (<15% gây rớt Wi-Fi/Doze), cấm random pin (anti-fraud TikTok), tự bù pin 85% preflight và ưu tiên stop_reason trong watchdog.
 - `references/xiaowei-con-gau-and-adb-disconnect-triage.md` — Xiaowei triage: tràn socket/endpoint, nghẽn USB 2.0, watchdog idle.
-- `references/usb-power-management-selective-suspend-and-offline-recovery.md` — Triage văng ADB/Farm: Selective Suspend vs nghẽn EHCI, deadlock thanh ghi, reboot PC.
-- `references/usb-bus-capacity-and-fast-recovery.md` — Fast USB controller bounce (<5s không reboot PC), Phase Drift làm sập USB 2.0 dù có max_workers 40/stagger, giới hạn Endpoint khi scale 200 máy, Telegram drop_pending_updates khi reboot PC.
+- `references/usb-power-management-selective-suspend-and-offline-recovery.md` — Triage văng ADB/Farm: Selective Suspend vs nghẽn EHCI, deadlock, reboot PC.
+- `references/usb-bus-capacity-and-fast-recovery.md` — Fast USB bounce (<5s), Phase Drift USB 2.0, Endpoint 200 máy, Telegram drop_pending_updates.
 - `references/usb-debugging-prompt-persistence-and-rom-invariants.md` — UsbDebuggingActivity popup persistence & dập popup.
 - `references/account-switcher-fast-inspection.md` — Account Switcher đối chiếu nick; popup "Follow bạn bè".
 - `references/device-offline-serial-drift-and-stale-backfill.md` — Xử lý thiết bị offline và lệch serial.

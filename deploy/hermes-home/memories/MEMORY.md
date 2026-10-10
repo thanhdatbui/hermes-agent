@@ -20,6 +20,6 @@ Giao tiếp: gọi 'tên nick TikTok', cấm dùng 'TikTok ID handle'. Hotmail l
 §
 Farm Proxy/WiFi: MikroTik 40 PPPoE 10001-10040 (M241-280 cấm >10040). Watchdog 'Lỗi proxy' check Wi-Fi & inspect máy, cấm lạc sang OmniRoute :20128/9. Aruba: M1-40 'kibe 1' (23102025); M41-80 'kibe 2', Admin 'admin 1/2' (19051995); cấm SSID Dat. X99: cấm xHCI, 4 Box, adb Semaphore 8.
 §
-IP Farm: 2 máy/IP; Wave 1 bốc 40 máy khác IP, Wave 2 còn lại. FOLLOW_FAILED -> giật cầu dao ngắt IP rolling 48h (now+48h, chỉ cấm follow, feed bth); report ghi proxy ngắt & nick cứu.
+IP Farm: 2 máy/IP; Cầu dao thông minh 48h (Cấp 2/Khỏe nhả mới giật, Cấp 1 dò 1 lượt nhả chỉ phạt nick cấm giật IP); Wave 1 độc lập IP -> Wave 2; report ghi proxy ngắt & nick cứu.
 §
 adbjoinwifi tự cứu 2 cấp preflight khi rớt Wi-Fi; xóa lạ: service call wifi 14 i32 <id>. ADB: cấm lệnh trần, bọc with_device_lock.py; verify kernel CreationDate.

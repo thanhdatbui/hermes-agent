@@ -179,4 +179,9 @@ Toàn bộ 80 máy Kibe dùng 40 proxy (mỗi proxy 2 máy: `[M1, M39]`, `[M2, M
 - **Kỷ Luật Bảo Vệ IP Sạch Cho Dàn Cựu Binh (Core Fleet IP Priority):**
   1. **Ưu tiên tuyệt đối Ca 1 (06:00 & 08:00 sáng) cho Row 1/2:** Row 1 (ngày lẻ) và Row 2 (ngày chẵn) là dàn tài sản trụ cột, bắt buộc phải là đối tượng đầu tiên được sử dụng dải IP sạch nhất trong chu kỳ để cày follow.
   2. **Cấm tuyệt đối Follow Hook ở Ca 4 (00:00 & 01:30 đêm):** Ban đêm thuật toán quét gắt gao và nick chạy ca đêm là Row 7/8 (nick mầm). 100% ca đêm chỉ chạy **Dưỡng Sinh Thuần Túy (Pure Feed + Upload)**, cấm mọi hành vi follow.
-  3. **Row 3 đến Row 8 — Chế độ Dưỡng Sinh:** Các row non nớt chỉ được lướt feed và upload video để tích lũy video ($\ge 15-25$ video) và xây dựng Aging Trust. Tuyệt đối không cấp quota follow bừa bãi làm cháy lan IP của dàn cựu binh Row 1/2.
+  3. **Cầu Dao Thông Minh Theo Cấp Độ Động (Tier-Aware Circuit Breaker - User Correction):**
+     * **Sai lầm nếu cấm cứng theo Row:** Cấm mù toàn bộ Row 3 đến 8 sẽ làm tê liệt các tài nguyên nick khỏe thực thụ (ví dụ M21_r3 cày 52 fl, M16_r3 cày 43 fl vẫn đang nằm ở Row 3).
+     * **Cơ chế kích hoạt Cầu dao theo tầng:**
+       - **Tân binh / Đi dò (Cấp 1 - quota 1 lượt):** Cho phép dò để sớm phát hiện nick khỏe; nếu bị nhả CHỈ PHẠT NICK (cooldown 3-14 ngày dưỡng sinh), **CẤM TUYỆT ĐỐI GIẬT CẦU DAO IP** để không làm giam oan Row 1/2 hay máy partner.
+       - **Cấp 2 (5-9 lượt) & Cấp Khỏe (10+ lượt):** Khi bị nhả, BẮT BUỘC giật cầu dao 48h rolling (`trip_ip_breaker()`) vì 100% gateway IP đã bị TikTok cắm cờ.
+     * Chi tiết kiến trúc xem tại `references/tier-aware-circuit-breaker-and-dynamic-probing.md`.
