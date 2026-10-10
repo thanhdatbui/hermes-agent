@@ -55,3 +55,11 @@ Khi phát hiện tài khoản báo sai mật khẩu ngay từ bước `HOTMAIL_L
    - Tra cứu vị trí Row, số Máy, Folder video, ID TikTok và mật khẩu gốc cột `PASS MAIL`.
    - Đối chiếu ngày nhập/ngày tạo: Các tài khoản Hotmail thường mua tự động từ shop `boxtaikhoan.com` (Loại 1 GraphAPI 262đ hoặc Loại 2 OAuth2 393đ qua API key `a0ed850f635d5c7042e89f68b41476bb`).
    - Đánh giá hạn bảo hành của Shop: Chính sách bảo hành sai pass của shop là **24 giờ** kể từ lúc mua (đơn hàng tự xóa sau 3 ngày). Nếu tài khoản mua từ 1–2 tháng trước phục vụ reg TikTok qua điện thoại thì đã hết hạn bảo hành; không thể khiếu nại shop. Cần đánh dấu cách ly hoặc thay thế mail mới khi cần nuôi web/Codex.
+
+## 6. Cạm bẫy ảnh trắng chuyển hướng Microsoft Silent OAuth (White-Screen Transition Trap)
+- **Hiện tượng**: Playwright / CDP báo login thành công, URL đạt `https://account.microsoft.com/auth/complete-client-signin-oauth-silent?state=...`, nhưng ảnh chụp màn hình nghiệm thu `post_login_*.png` chỉ có kích thước ~2KB, 1 màu trắng duy nhất (RGB single color), WinRT OCR không đọc được bất kỳ chữ nào.
+- **Nguyên nhân**: Điểm kết thúc của luồng OAuth login Microsoft là URL redirect ngầm `complete-client-signin-oauth-silent`. Trong 1-2 giây chuyển tiếp này, DOM của trình duyệt hoàn toàn rỗng/trắng trước khi nhảy sang trang chủ `account.microsoft.com/account`. Nếu script chụp ảnh ngay khi URL vừa đổi sẽ chụp trúng khung hình trắng, vi phạm Gate 6 (ảnh mù/lỗi hiển thị).
+- **Giải pháp xử lý (Mandatory Settling Guard)**:
+  * Khi phát hiện URL chứa `complete-client-signin` hoặc `oauth-silent`: Bắt buộc gọi `page.wait_for_url(lambda u: "complete-client-signin" not in u, timeout=10000)` hoặc chủ động điều hướng sang `https://account.microsoft.com` với `wait_until="domcontentloaded"`.
+  * Chờ tối thiểu 2-3 giây để giao diện Dashboard tải xong (hiện avatar/header/chữ "Tài khoản Microsoft").
+  * Chỉ chụp ảnh sau khi màn hình đích thực sự hiển thị nội dung để đảm bảo OCR đọc được bằng chứng đăng nhập thành công.
