@@ -49,7 +49,7 @@
     * `fail_streak = 1`: Giam 3 ngày (quota = 0).
     * `fail_streak = 2`: Giam 7 ngày (quota = 0).
     * `fail_streak >= 3`: Giam 15 ngày (quota = 0).
-  - Khi mãn hạn Cooldown: Bắt buộc quay lại từ vạch xuất phát `Hồi phục 1` (3 - 5 lượt/ca). Nếu chạy sạch 3 ngày -> lên `Hồi phục 2` (7 - 9 lượt/ca) -> chạy sạch thêm 3 ngày -> tốt nghiệp lên `Khỏe` (10 - 15 lượt/ca). Nếu tại bất kỳ nấc nào bị nhả tiếp thì tiếp tục tăng `fail_streak` và quay lại Cooldown dài hơn.
+  - Khi mãn hạn Cooldown: Bắt buộc quay lại từ vạch xuất phát `Hồi phục 1` (1 - 2 lượt/ca). Nếu chạy sạch 2 ngày -> lên `Hồi phục 2` (5 - 8 lượt/ca) -> chạy sạch thêm 2 ngày -> tốt nghiệp lên `Khỏe` (10 - 20 lượt/ca). Nếu tại bất kỳ nấc nào bị nhả tiếp thì tiếp tục tăng `fail_streak` và quay lại Cooldown dài hơn.
   - **Chống bẫy thống kê Simpson:** Thống kê tỷ lệ giữ follow phải phân tầng độc lập (tỷ lệ của riêng Hồi phục 1, Hồi phục 2, Khỏe), CẤM gộp phẳng toàn farm khiến mức 15+ của nick Khỏe bị hiểu nhầm là an toàn nhất trong khi mức 1-4 của nick sau phạt bị kéo tụt tỷ lệ.
 
 ---

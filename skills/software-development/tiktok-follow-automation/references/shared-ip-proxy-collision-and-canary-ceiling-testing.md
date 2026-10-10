@@ -170,18 +170,16 @@ Toàn bộ 80 máy Kibe dùng 40 proxy (mỗi proxy 2 máy: `[M1, M39]`, `[M2, M
    - **Chuyển đổi công năng sang Dưỡng Sinh (Feed / Read-only):** Cấm đi follow (hành vi write nhạy cảm), nhưng ĐƯỢC PHÉP chạy phiên lướt nuôi dưỡng sinh (xem video, tương tác nhẹ). Hành vi này vừa an toàn vừa giúp "rửa IP" bằng lưu lượng người dùng tự nhiên.
    - **Báo cáo Telegram (User Invariant):** Liệt kê rõ trong shift report: `⚡ Cầu dao tự ngắt IP: Đã khóa cứu nick M<B> (do M<A> cùng IP dính nhả từ ca sáng)`.
 
-### C. Tử Huyệt Điều Phối Ca 0h & Nghịch Lý Nick Yếu Giật Cầu Dao Giam Oan Nick Khỏe (User Invariant 10/10/2026):
+### C. Tử Huyệt Điều Phối Ca 0h & Cơ Chế Cầu Dao IP Thông Minh Theo Cấp Độ (User Invariant 10/10/2026):
 - **Cạm bẫy lịch đồng hồ 0h00:**
   - Khi lịch farm chạy theo ngày dương lịch bắt đầu từ 00:00 (Ca 4 - Đêm) với **Row 7/8** (dàn nick mầm non nớt nhất, mới reg bù, ít video, chưa có trust follow).
-  - Nếu để Row 7/8 được phép chạy follow hook lúc 0h: do nội tại nick yếu, TikTok phát hiện bất thường và nhả follow ngay (`FOLLOW_FAILED`) ➔ `trip_ip_breaker` kích hoạt khóa proxy đó trong **48 giờ rolling** (`now + 48h`).
-  - Đến **06:00 sáng** (Ca 1 - Sáng), **Row 1/2** (Dàn cựu binh trụ cột, 20–108 follow sạch, tài sản lớn nhất của farm) bước vào ca cày follow ➔ `check_ip_breaker` thấy proxy bị khóa từ lúc 00:30 do Row 7/8 làm cúp ➔ **Row 1/2 bị `CIRCUIT_BREAKER_SKIPPED` giam oan 48 tiếng!**
-  - Tương tự với **Row 3/4** ở Ca 2 (12:00 trưa): nếu Row 3/4 còn yếu chạy follow dính nhả ➔ Lại giật cầu dao 48h ➔ Sáng hôm sau (và hôm sau nữa) Row 1/2 tiếp tục bị giam!
-- **Kỷ Luật Bảo Vệ IP Sạch Cho Dàn Cựu Binh (Core Fleet IP Priority):**
-  1. **Ưu tiên tuyệt đối Ca 1 (06:00 & 08:00 sáng) cho Row 1/2:** Row 1 (ngày lẻ) và Row 2 (ngày chẵn) là dàn tài sản trụ cột, bắt buộc phải là đối tượng đầu tiên được sử dụng dải IP sạch nhất trong chu kỳ để cày follow.
-  2. **Cấm tuyệt đối Follow Hook ở Ca 4 (00:00 & 01:30 đêm):** Ban đêm thuật toán quét gắt gao và nick chạy ca đêm là Row 7/8 (nick mầm). 100% ca đêm chỉ chạy **Dưỡng Sinh Thuần Túy (Pure Feed + Upload)**, cấm mọi hành vi follow.
-  3. **Cầu Dao Thông Minh Theo Cấp Độ Động (Tier-Aware Circuit Breaker - User Correction):**
-     * **Sai lầm nếu cấm cứng theo Row:** Cấm mù toàn bộ Row 3 đến 8 sẽ làm tê liệt các tài nguyên nick khỏe thực thụ (ví dụ M21_r3 cày 52 fl, M16_r3 cày 43 fl vẫn đang nằm ở Row 3).
-     * **Cơ chế kích hoạt Cầu dao theo tầng:**
-       - **Tân binh / Đi dò (Cấp 1 - quota 1 lượt):** Cho phép dò để sớm phát hiện nick khỏe; nếu bị nhả CHỈ PHẠT NICK (cooldown 3-14 ngày dưỡng sinh), **CẤM TUYỆT ĐỐI GIẬT CẦU DAO IP** để không làm giam oan Row 1/2 hay máy partner.
-       - **Cấp 2 (5-9 lượt) & Cấp Khỏe (10+ lượt):** Khi bị nhả, BẮT BUỘC giật cầu dao 48h rolling (`trip_ip_breaker()`) vì 100% gateway IP đã bị TikTok cắm cờ.
-     * Chi tiết kiến trúc xem tại `references/tier-aware-circuit-breaker-and-dynamic-probing.md`.
+  - Nếu để Row 7/8 chạy follow rồi dính nhả lúc 0h ➔ giật cầu dao IP 48h ➔ Đến 06:00 sáng hôm sau, **Row 1/2** (dàn cựu binh trụ cột, 20–108 follow sạch) bước vào ca cày follow thì bị giam oan 48h (`CIRCUIT_BREAKER_SKIPPED`).
+- **Thực Nghiệm 257 Phiên (02/10 - 10/10/2026) Bóc Tách Bản Chất Lỗi:**
+  - Dữ liệu đối soát trên 40 cổng proxy chứng minh: Khi nick mầm non / tân binh bấm xịt 1–2 cái bị nhả (ví dụ 07/10 Port 5102 M2_r7 fail lúc 00:37 ➔ sáng M2_r1 & M40_r1 vào cày vẫn ăn 28 follow sạch; Port 5116 M14_r7 fail lúc 01:52 ➔ sáng M52_r1 vẫn ăn 14 follow sạch).
+  - **Kết luận:** TikTok chỉ từ chối ở tầng account non nớt, **HOÀN TOÀN CHƯA CẮM CỜ IP**. Việc trước đây giật cầu dao IP 48h vì nick non bấm xịt là sai lầm, tự tay bóp chết công suất của nick Khỏe.
+- **Quy Tắc Vận Hành Chuẩn Cầu Dao Thông Minh (Tier-Aware Circuit Breaker):**
+  1. **CHỈ NICK CẤP KHỎE (ĐÃ TỐT NGHIỆP / `was_graduated == True`) BỊ NHẢ MỚI GIẬT CẦU DAO IP 48H:** Vì chỉ khi nick cựu binh có bề dày follow an toàn bị từ chối mới chứng minh được Gateway IP thật sự dính cờ/bão quét.
+  2. **NICK CHƯA TỐT NGHIỆP (Tân binh đi dò, Hồi phục 1 & 2):** Khi bị nhả CHỈ PHẠT TẦNG ACCOUNT (tăng `fail_streak`, vào cooldown 3-14 ngày dưỡng sinh), **CẤM TUYỆT ĐỐI GIẬT CẦU DAO IP**. Dải IP giữ nguyên thông suốt cho các nick khác chạy.
+  3. **Quota Dò Đồng Nhất 1 – 2 Lượt:** Cả tân binh đi dò lẫn nick mãn hạn tù đều cấp quota khởi động 1 – 2 lượt/ca (`clean_days < 2`).
+  4. **Rút Ngắn Nấc Thang (2 ngày sạch / nấc):** Do chạy cách nhật (chẵn/lẻ), nấc thang rút ngắn còn 2 ngày sạch/nấc (`clean_days < 2`: 1-2 lượt; `2 <= clean_days < 4`: 5-8 lượt; `clean_days >= 4`: tốt nghiệp lên Khỏe), đưa thời gian phục hồi về 8-9 ngày ngoài đời thực thay vì nửa tháng.
+  5. **Tự Cân Bằng Dưỡng Sinh Bằng Upload Phiên 2:** Bỏ ép ngày dưỡng sinh toàn farm và bỏ ép upload cả 2 phiên trong `tiktok_runner.py`. Chỉ mở `-AllowUploadHook` ở Phiên 2 (`session_index == 2`), Phiên 1 thuần feed/follow. Tần suất đăng tự động rơi vào 2 ngày/video; nếu lỗi thì thành 4 ngày/video, tự cân bằng dưỡng sinh hoàn toàn tự nhiên.
