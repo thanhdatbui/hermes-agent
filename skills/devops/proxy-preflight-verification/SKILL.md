@@ -438,3 +438,22 @@ See `references/adb-disconnect-vs-missing-proxy-preflight-20261009.md` for disti
         - M241–280: SSID `admin 2` (Pass `19051995`)
       * Sau khi join, ấn `input keyevent 3` (HOME) để đưa màn hình về trạng thái sạch và re-check preflight.
     - Chi tiết xem `references/feed-watchdog-proxy-label-and-wifi-self-heal-20261010.md`.
+
+36. **Bẫy Parse `summary.txt` Nuốt `stop_reason` Gây Báo Sai Hàng Loạt 'Lỗi cấu hình Proxy' (2026-10-10)**:
+    - **Nguyên nhân kỹ thuật (Parsing Bug)**:
+      * Trong `summary.txt` của các máy bị fail-closed tại preflight, dòng `final_status: blocked-proxy-vpn` xuất hiện trước dòng `stop_reason:`.
+      * Parser `parse_run_all` trong `feed_session_watchdog.py` duyệt từng dòng và break ngay tại dòng đầu tiên bắt đầu bằng `final_status:` hoặc `reason:`, dẫn đến việc gán `reason = "blocked-proxy-vpn"`.
+      * Khi chuyển sang `classify_feed_failure(reason)`, vì `reason` chứa chuỗi `"proxy"` / `"vpn"`, hàm lập tức gom máy vào nhãn **"Lỗi cấu hình Proxy"**, trong khi nguyên nhân thực sự được ghi chi tiết ở `stop_reason:` bên dưới (`device is offline or ADB/USB disconnected...` hoặc `dumpsys connectivity: Wi-Fi not connected`).
+    - **Hậu quả vận hành**:
+      * Người vận hành nhận báo cáo tưởng nhầm hệ thống proxy bị sập hoặc sai cấu hình hàng loạt (ví dụ 36 máy Admin hoặc M10, M35, M47 Kibe).
+      * Thực chất 100% các máy đó là do **mất kết nối ADB/USB** (lỏng cáp) hoặc **mất kết nối Wi-Fi** (AP Aruba từ chối cấp IP), hoàn toàn không có lỗi cấu hình proxy.
+    - **Quy tắc trích xuất bắt buộc (Stop-Reason Priority)**:
+      * Khi parse `summary.txt`, BẮT BUỘC ưu tiên trích xuất trường `stop_reason:` trước:
+        ```python
+        r_map = {l.split(":", 1)[0].strip(): l.split(":", 1)[1].strip() for l in c.splitlines() if ":" in l}
+        stop_r = r_map.get("stop_reason", "")
+        reason = stop_r if (stop_r and stop_r != "None") else (r_map.get("reason") or r_map.get("final_status", ""))
+        ```
+      * Chỉ fallback về `reason:` hoặc `final_status:` khi `stop_reason:` rỗng hoặc bằng `"None"`.
+      * Cơ chế này giúp `classify_feed_failure` bắt đúng từ khóa `adb/usb`, `device offline` đưa về nhãn **"Mất kết nối ADB/USB"** và `wi-fi not connected` đưa về nhãn **"Mất kết nối Wi-Fi (AP)"**.
+    - Chi tiết xem `references/summary-stop-reason-priority-and-watchdog-false-proxy-label-20261010.md`.
