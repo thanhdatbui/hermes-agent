@@ -31,8 +31,9 @@
   * **CẤM TUYỆT ĐỐI** phát ngôn "đang thi công tiếp / sẽ chấm lại Strike 4", hoặc tự ý tổng kết "đã xong" khi verdict thực tế vẫn là REJECTED (< 85).
   * **BẮT BUỘC DỪNG TOÀN BỘ VIỆC TỰ SỬA CODE** và kích hoạt ngay **STRIKE 3 HAND-OFF**: bàn giao toàn quyền cho Claude CLI trực tiếp mở file sửa mã nguồn (`--dangerously-skip-permissions`).
 
-### A1. Bẫy Tử Huyệt: "Passive Reviewer Trap" (Bài Học Xương Máu Từ User)
-- **Triệu chứng vi phạm:** Khi chạm Strike 3, Coordinator không dispatch Worker nữa nhưng lại *tự mình dùng script sửa file* rồi chạy `claude -p "Review code này"` để xin điểm. Kết quả: kéo dài thành Round 4, Round 5, code bị IndentationError/SyntaxError nát bét và User nổi giận vì Coordinator coi thường kỷ luật!
+### A1. Bẫy Tử Huyệt: "Passive Reviewer Trap" (Bài Học Xương Máu Ngày 11/10/2026)
+- **Triệu chứng vi phạm:** Khi chạm Strike 3, Coordinator không dispatch Worker nữa nhưng lại *tự mình dùng script sửa file* rồi chạy `claude -p "Review code này"` để xin điểm. Kết quả: kéo dài thành Round 4, Round 5, code bị IndentationError/SyntaxError nát bét và Operator nổi giận:
+  > *"Mày giõn mặt vs tao đúng k. Đkm t vừa sửa hook 3 lần fail đưa claude cli sửa r mà"*
 - **Kỷ luật bất biến:** Strike 3 Hand-off là **BÀN GIAO QUYỀN SỬA CODE (IMPLEMENTATION HAND-OFF)**, hoàn toàn KHÔNG PHẢI review passive.
   * Coordinator BẮT BUỘC bỏ tay khỏi bàn phím, KHÔNG được chạm vào file nguồn nữa.
   * Soạn prompt bàn giao liệt kê rõ: (1) Các điểm Reviewer đang bắt lỗi, (2) File đích, (3) Lệnh chạy test xác thực.

@@ -93,3 +93,22 @@ Khi mock workbook cho `load_accounts_credentials`:
   * Một email sở hữu tối đa 3 connection độc lập trong `provider_connections` (`chatgpt-web`, `codex`, `antigravity`).
   * *Hiện tượng thực tế*: Một tài khoản (ví dụ `luunhu290719@gmail.com`) có thể xuất hiện đồng thời ở mục "Đã hồi sinh ChatGPT" (nhánh Web & Codex sống 100%) và mục "Cần chú ý" (nhánh Antigravity bị timeout bắt OAuth code).
   * *Kỷ luật bất biến*: CẤM ngộ nhận một tài khoản bị lỗi ở 1 provider là hỏng toàn bộ. Không bao giờ tắt chùm hoặc xóa connection khi chưa đối soát chính xác `provider` cụ thể bị lỗi.
+
+## 8. Bẫy Báo Lặp Watchdog & Cơ Chế Fingerprint Chống Spam ("Sao cứ báo như v hoài thế")
+- **Triệu chứng & Phản ánh của User**: Watchdog chạy định kỳ (ví dụ mỗi 6 giờ với `no_agent: true`), liên tục bắn thông báo Telegram chứa đúng danh sách N tài khoản không đổi (ví dụ: `AMBIGUOUS_GPM_PROFILE`, `Validate fail: EMPTY_SESSION_TOKEN`, `Timeout bắt OAuth code` do Google Bot-check). User bức xúc phản ánh: *"Sao cứ báo như v hoài thế"*.
+- **Nguyên nhân cốt lõi**:
+  1. Các tài khoản rơi vào nhóm lỗi cần can thiệp thủ công (profile GPM bị trùng nhiều bản ghi, Google chặn reCAPTCHA / xác minh "Confirm you're not a robot", profile chưa từng đăng nhập Google).
+  2. Watchdog không thể tự hồi sinh trong lượt chạy, nên đưa toàn bộ vào danh sách `all_failed`.
+  3. Đoạn kết thúc script kiểm tra `if all_failed:` thì in toàn bộ báo cáo ra `sys.stdout`. Trong chế độ `no_agent: true`, stdout không rỗng đồng nghĩa với việc Hermes tự động chuyển phát tin nhắn đến Telegram mỗi chu kỳ chạy, tạo vòng lặp spam thông báo tĩnh không mang lại giá trị mới.
+- **Kỷ luật & Mẫu Xử Lý Chuẩn (Fingerprinted Silent Watchdog)**:
+  1. *Lưu State Fingerprint*: Lưu hash hoặc danh sách key-error của `all_failed` vào state/cache file (ví dụ `chatgpt_web_pool_state.json` hoặc telemetry metrics).
+  2. *Chỉ Báo Khi Có Delta*:
+     - In báo cáo ra stdout KHI VÀ CHỈ KHI:
+       - Có ít nhất 1 tài khoản được hồi sinh thành công (`recovered_chatgpt` hoặc `recovered_ag` hoặc `recovered_codex`).
+       - Hoặc xuất hiện tài khoản lỗi MỚI chưa từng có trong fingerprint của lần chạy trước.
+       - Hoặc có tài khoản bị disable vĩnh viễn (`disabled_codex`).
+     - Nếu toàn bộ danh sách `all_failed` giống hệt 100% so với lần chạy trước và không có tài khoản nào được hồi sinh: Giữ `sys.stdout` hoàn toàn RỖNG (`stdout = ""` $\rightarrow$ Hermes Silent Watchdog), chỉ ghi log vào `sys.stderr` và file log/telemetry.
+  3. *Tách bạch xử lý 3 nhóm lỗi kinh niên*:
+     - `AMBIGUOUS_GPM_PROFILE`: User/Admin cần dọn profile clone trong GPM hoặc script ưu tiên profile có proxy đúng subnet / ngày tạo mới nhất.
+     - `Google Bot-check (Confirm you're not a robot)`: Chuyển tài khoản sang trạng thái `Standby` (inactive chủ động) trên OmniRoute để watchdog không quét mò mẫm qua CDP làm cháy proxy.
+     - `EMPTY_SESSION_TOKEN`: Đăng nhập thủ công 1 lần trên GPM để lưu session cookie trước khi đưa vào pool.
