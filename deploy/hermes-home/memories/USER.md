@@ -8,7 +8,7 @@ Chốt phiên: tự remediation >=85; bind repo/task; Regression Gate. Claude CL
 §
 Report follow: % & tầng (Khỏe/Nấc 1/2/Cooldown/Nhả); khóa IP 1 dòng kèm máy cứu; máy nhả in kèm lượt. GMT+7. Watchdog SILENT khi ko lỗi.
 §
-Kibe controller; 1 SoT. Cấm ngắt pipeline sau. Batch/2FA Kibe (1-80) & Admin (201-280). TT v47.0.3; Switcher vuốt dock header mở, cấm logout. AP 40m/AP cố định, CẤM nhảy SSID. Config/service: tập trung repo tools, cấm ngoài git.
+Kibe (1-80) & Admin (201-280) kho media độc lập (Admin D:\video goc may 2 & TIKTOK-videonuoinick-admin, cấm copy chéo; bảo 'làm admin' là kiểm tra trích xuất tại chỗ). TT v47.0.3; Switcher vuốt dock header; AP 40m/AP cố định; Config tập trung repo tools.
 §
 Dubbing: đúng tiếng, 100% thoại, tắt tiếng gốc.
 §
