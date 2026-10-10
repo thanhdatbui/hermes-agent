@@ -16,6 +16,25 @@
   1. Nhìn rõ lịch sử từng nick: trước khi bị nhả, nick đã chạy bao nhiêu follow/ngày?
   2. Xác định con số quota tối ưu ("Sweet Spot" - con số vàng) để tối đa hóa số follow giữ được mà không chạm trần rủi ro.
 
+### Tác dụng cốt lõi của Ma trận 2D [Nick x Ngày] so với Số tổng cộng dồn (Scalar Sum)
+* **Số tổng không chứa chiều thời gian:**
+  - Nick A chạy đều đặn 20 + 20 + 20 = 60 follow/3 ngày (Ổn định, variance thấp, rủi ro = 0).
+  - Nick B chạy giật cục 0 + 0 + 60 = 60 follow/3 ngày (Spike đột biến, kích hoạt Anti-Fraud TikTok cắm cờ bot trảm ngay).
+  - Nếu chỉ nhìn vào số tổng 60, hệ thống sẽ đánh đồng 2 nick có sức khỏe như nhau -> Sai lầm chết người.
+* **4 Giá trị vận hành & toán học của ma trận 2D:**
+  1. *Nuôi não cho Sweet Spot Quota Engine:* Quét pattern dọc theo các ngày để tìm vùng quota có sản lượng cao nhất mà tỷ lệ drop thấp nhất và duy trì ổn định lâu nhất.
+  2. *Phát hiện đợt càn theo cụm (Cluster Drop Detection):* Quét theo chiều dọc của 1 cột ngày: Nếu cả cụm 15–20 nick cùng đỏ rực trong cùng 1 ngày, nhận diện ngay TikTok đang mở đợt quét diện rộng (Wave Scan) hoặc dải Proxy đó bị lỗi hàng loạt -> Hệ thống lập tức hạ tải toàn farm.
+  3. *Đo lường nhịp độ & độ ổn định (Variance & Cadence):* Chứng minh nick có được nghỉ dưỡng sinh đúng nhịp (cách 1 ngày nghỉ 1 ngày) hay không, nick đang tăng tốc an toàn hay đang bị bóp nghẹt.
+  4. *Phân tầng sức khỏe thực chất (Tier Classification):* Phân loại Healthy / Probation / Cooldown dựa trên phương sai (variance), xu hướng (trend) và khả năng sống sót qua trục thời gian thay vì sản lượng đơn thuần.
+
+### Lưu trữ Dài Hạn (Backend) vs Hiển thị Tối Giản (Frontend)
+* **Backend lưu trữ dài hạn:** Lưu trữ toàn bộ lịch sử (46+ ngày trong state files từ 26/08, 90+ ngày trong DB `daily_account_actions`) làm kho dữ liệu (Data Warehouse) cho engine phân tích pattern.
+* **Frontend giới hạn 12 ngày gần nhất:** Ma trận không sinh ra để con người đọc từng ô, mà để máy tính tính toán pattern. Hiển thị 12 ngày gần nhất trên Dashboard là góc nhìn vận hành (Operational View) tối ưu nhất: đủ 1 chu kỳ 2 tuần, thấy rõ chu kỳ hồi phục và đợt nhả gần đây mà không biến Dashboard thành "bảng Excel khổng lồ" gây khó đọc và lag giao diện mobile.
+* **Phạm vi cụm Dual-Farm (Kibe M1-80 vs Admin M201-280):**
+  - Cụm Kibe (M1-80): Đọc từ `tiktok-follow/runs/state` và `kibe/PROXYgandienthoai.xlsx`.
+  - Cụm Admin (M201-280): Đọc từ `runtime/admin/live` và `admin/PROXYgandienthoai.xlsx`.
+  - Dashboard cần hỗ trợ bộ lọc phân cụm: `[ Tất cả (160 máy) ]` | `[ Farm Kibe (M1-80) ]` | `[ Farm Admin (M201-280) ]` để người vận hành kiểm soát độc lập từng cụm.
+
 ---
 
 ## 2. Kiến Trúc Dữ Liệu & Tối Ưu Hóa Truy Vấn O(1)

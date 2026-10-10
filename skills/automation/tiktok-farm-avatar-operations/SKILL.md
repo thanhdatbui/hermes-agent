@@ -106,6 +106,10 @@ Operate avatar-only changes on Taadaa TikTok farm devices without accidentally p
   * Khi User phản ánh "ava thấy sai sai / lệch niche", tạo ảnh composite đối chiếu các phương án thực tế kèm chú thích nguồn video (tập mấy, giây thứ mấy). Gửi qua `MEDIA:` để User duyệt trực quan trước khi đưa vào queue upload.
 - If a duplicate is confirmed, regenerate from the target folder’s own source video using the canonical avatar-generation tooling; do not copy another account’s avatar.
 - Re-hash and verify the regenerated image before uploading. Toàn bộ kho phải đạt 0 nhóm trùng lặp trước khi kết luận sạch nguồn.
+- **BẪY LỆCH ĐƯỜNG DẪN KHO MEDIA CỤM ADMIN (D:\TIKTOK-videonuoinick-admin 2026-10-10):**
+  * Trên trạm Kibe, kho video nuôi là `D:\TIKTOK-videonuoinick`. Nhưng trên máy chủ Admin (`admin-farm`), cấu hình `config-admin.yaml` chỉ định `avatar_source_root` và `media_source_root` là **`D:\TIKTOK-videonuoinick-admin`**.
+  * Khi xử lý đổi avatar/hashtag cho các máy cụm Admin (M201-280), việc chỉ tạo avatar trên đĩa Kibe sẽ KHÔNG có tác dụng trên Admin nếu chưa đồng bộ sang `admin-farm:D:/TIKTOK-videonuoinick-admin/<folder>/avatar.jpg`. Thư mục trên Admin nếu chứa avatar cũ (như ảnh chùa/cảnh quan) sẽ làm thiết bị tiếp tục bốc ảnh cũ.
+  * Quy trình chuẩn: Đồng bộ cả avatar và video sang `admin-farm:D:/TIKTOK-videonuoinick-admin/<folder>`, cập nhật `Tik<N>.xlsx` của Admin, và nạp `status = 'PENDING'` vào `avatar_replace_queue` kèm SCP `tiktok_tracker.db` sang Admin.
 - **BẪY LỆCH HỆ THỐNG 637/640 ACC DO CÔNG THỨC KÉP FOLDER VIDEO VS VIDEO GỐC (2026-10-10):**
   * **Hiện tượng:** Nick tên nữ ("Dương Chi" M62 Tik 3), đăng video bạn nữ áo đỏ kính cận (folder 491), nhưng avatar lại là thanh niên gym đeo kính râm gồng bắp tay (folder 222).
   * **Nguyên nhân hệ thống:** 637/640 dòng trong `Tik1..8.xlsx` bị lệch giữa `Folder Video = (Máy-1)*8 + Tik` (chia theo máy) và `video gốc = (Tik-1)*80 + Máy` (chia theo ca). Bot upload đọc `Folder Video`, nhưng tool avatar bốc theo `video gốc`.
@@ -304,6 +308,7 @@ Operate avatar-only changes on Taadaa TikTok farm devices without accidentally p
 - Closeout is not DONE until the device evidence, focused verification, and required reviewer gate are satisfied.
 
 ## References
+- `references/admin-cluster-media-root-drift-and-niche-reconciliation-20261010.md` — bẫy trôi đường dẫn kho media trên cụm Admin (`D:\TIKTOK-videonuoinick-admin` thay vì `TIKTOK-videonuoinick`), quy trình 4 bước chuẩn hoá khi nhận screenshot profile lẻ (định danh máy/slot, sửa workbook niche/hashtag, scp media sang Admin, và dựng composite 3 panel kiểm chứng Vision).
 - `references/mismatch-goc-stale-drift-and-day-tik-watchdog-gap-20261010.md` — bẫy 140 nick Tik 1 và Tik 2 Kibe bị kẹt cờ MISMATCH_GOC từ 02/10 do lệch không gian đánh số Folder Video vs video gốc, khoảng trống của Watchdog ca tối bỏ quên Tik 1 & 2 ca ngày, quy trình 3 bước đồng bộ dứt điểm (Excel + SQLite + đĩa) và kỷ luật MaxParallel 8 cho Kibe.
 - `references/mismatch-goc-drift-and-watchdog-tik-exclusion-20261010.md` — đối soát ground truth 140 acc dính MISMATCH_GOC từ 02/10 do lệch công thức kép bị watchdog ca tối bỏ quên vì exclude Tik 1 & Tik 2 Kibe; quy trình đồng bộ SQLite/Workbook và kích hoạt runner độc lập.
 - `references/grid-assisted-circular-avatar-framing-and-niche-sync-20261010.md` — quy trình 4 bước bóc tách avatar chân dung nam thần/idol chuẩn hình tròn TikTok bằng WinRT OCR lọc vietsub, lưới tọa độ qua Vision API định vị giải phẫu khuôn mặt, công thức headroom/chin cho circular mask, và đồng bộ kép hashtag/niche workbook.

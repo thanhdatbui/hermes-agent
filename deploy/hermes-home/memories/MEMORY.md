@@ -1,4 +1,4 @@
-Follow: Sáng/chiều=row khác(acc riêng cấm gộp quota). Phục hồi theo streak(S1: 1 ca 5-7fl về Khỏe; S2: 2 ca 5-8fl; S3+: 3-5fl). SweetSpot tính riêng nhóm; Canary bốc 5-10% chạy +10% dò trần. GMT+7.
+Follow: Sáng/chiều=row khác(acc riêng). 15+ Simpson ảo. S1 Score>=70 Fast-track 1 ca về Khỏe; Cautious 3 ca (farm qua upload/micro-fl); S2: 2 ca; S3+: 3-5fl. Canary +10% ĐỘC QUYỀN Khỏe (cấm Canary Hồi phục).
 §
 Sót data: CẤM tin Excel/DB; Switcher cuộn đáy. Chuẩn 8 nick/máy. Watchdog ca tối: kibe [5-8,3,4] loại trừ Tik1&2; 140 acc MISMATCH_GOC (Tik1:73, Tik2:67) cần sync video_goc=folder_video và chạy runner riêng.
 §
