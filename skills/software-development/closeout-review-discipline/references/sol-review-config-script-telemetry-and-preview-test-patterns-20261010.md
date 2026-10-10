@@ -27,10 +27,18 @@ Write-Host "[TELEMETRY_METRIC] {`"event`": `"feed_session_launch`", `"max_worker
 ```
 *Lưu ý escape ký tự trong PowerShell:* Dùng dấu backtick ``` `" ``` để escape nháy kép trong chuỗi song song.
 
-### 2.3. Viết Unit Test Kiểm Chuẩn Hành Vi Runtime & Failure Mode (Dưới 25 Dòng):
-Thay vì regex đọc text file, viết unit test:
-1. **Mock Data Độc Lập Môi Trường:** Tạo file Excel mock tối giản với openpyxl trong `tmp_path`, không phụ thuộc đường dẫn dữ liệu thật (như OneDrive hay file máy Kibe).
-2. **Chạy Thực Thi CLI Preview (`subprocess.run`):** Thực thi script PowerShell với cờ `-Preset full -SkipAccountWorkbookSync -LocalRun` (chỉ chạy preview lệnh, không kích hoạt thiết bị thật).
-3. **Assert Structured Telemetry:** Deserialize trực tiếp chuỗi JSON qua `json.loads` từ stdout để xác nhận trường `event`, `max_workers`, `target_machines`.
-4. **Assert Negative / Failure Mode:** Kiểm tra script trả về exit code khác 0 khi truyền workbook không tồn tại.
-5. **Kỷ luật ngân sách O(1):** Đảm bảo test gọn gàng, tổng numstat của toàn bộ commit (code + test + pytest.ini) **không vượt quá 30 dòng**.
+### 2.4. Khắc Phục Bẫy Điểm "Logic/Validation Chặt Chẽ" (PowerShell Parameter Binding):
+- Khi Sol trừ điểm Logic vì cho rằng "chưa có validation kỹ thuật chứng minh giá trị cấu hình được chặn an toàn", giải pháp O(1) mạnh nhất là dùng thuộc tính validation của PowerShell:
+  ```powershell
+  [ValidateRange(1, 30)]
+  [int]$MaxWorkers = 25,
+  ```
+  Thuộc tính này ép Windows PowerShell engine chặn đứng vật lý ngay từ CLI parameter binding nếu người dùng truyền vượt quá 30 workers, mang lại bằng chứng an toàn cấp cú pháp/engine.
+
+### 2.5. Quyền Tự Quyết Của User: "Không cần Sol High chấm nữa, để Claude CLI tự chấm rồi hoàn thành":
+- Khi Sol Auditor liên tục kẹt điểm ở 78–82 vì đòi hỏi các bằng chứng ngoài tầm với của một thay đổi nhỏ (đòi test tải farm thực tế, benchmark telemetry dài hạn trong khi commit chỉ hạ worker):
+- **User Directive:** User có quyền phát lệnh dừng vòng lặp Sol High (`K cần sol high chấm nx. Để claude cli tự chấm r hoàn thành`).
+- **Thực thi chuẩn:**
+  1. Dừng ngay lập tức các lệnh gọi `closeout_gate.py` tới `:20129`.
+  2. Giao cho Claude CLI (`claude -p`) chạy độc lập đánh giá code diff, test suite pass và an toàn hệ thống để nghiệm thu hoàn tất.
+  3. Không cố chấp bám lấy Sol khi User đã chỉ đạo chuyển giao thẩm định.

@@ -13,12 +13,13 @@ tags: [tiktok, farm, batch, render, upload, resume, kibe]
 > - `references/workbook-sync-lock-and-mass-missing-id-diagnosis.md`: Sync lock.
 > - `references/tiktok-farm-tracker-rescan-and-nonlive-diagnosis.md`: Rescan LIVE.
 > - `references/cron-reports-and-tracker-triage.md`: Cron triage.
-> - `references/avatar-batch-watchdog-reporting-and-rescan.md`: Watchdog Avatar.
-> - `references/video-sourcing-gaixinh-two-tier-allocation.md`: Gái Xinh 2 tầng.
+> - `references/avatar-batch-watchdog-reporting-and-rescan.md`: Avatar watchdog.
+> - `references/video-sourcing-gaixinh-two-tier-allocation.md`: Gái Xinh.
 > - `references/gaixinh-pipeline-cookies-and-admin-remote-ops.md`: Admin batch.
-> - `references/video-farm-standard-45-clips-and-supplementary-pipeline.md`: Chuẩn 45 clip.
-> - `references/dual-cluster-post-reboot-recovery-and-single-worker-render.md`: Phục hồi reboot.
-> - `references/admin-render-cross-mapping-realignment.md`: Bẫy render 1-1, mapping chéo Excel 8 Tik & staging.
+> - `references/video-farm-standard-45-clips-and-supplementary-pipeline.md`: Chuẩn 45.
+> - `references/dual-cluster-post-reboot-recovery-and-single-worker-render.md`: Reboot.
+> - `references/dual-cluster-downloader-concurrency-and-proxy-hygiene.md`: Downloader & proxy.
+> - `references/admin-render-cross-mapping-realignment.md`: Mapping 8 Tik.
 > - `references/cross-machine-dedup-and-pet-sourcing.md`: Chống đụng hàng Kibe vs Admin.
 > - `scripts/verify_gaixinh_sourcing.py`: Probe kiểm tra claims dedup & ViT/leftover.
 > - `references/tiktok-dashboard-prev-day-delta-baseline.md`: Delta dashboard.
