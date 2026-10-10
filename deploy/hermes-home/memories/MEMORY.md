@@ -8,7 +8,7 @@ Kho video: min 45; Render 1 wkr (--parallel 1); Cào 10 wkr; Global Ledger; nich
 §
 evidence_gate_verifier.py (WinRT OCR, PID reserve, fail-closed, >30s/3att L3 BLOCKED).
 §
-[TIKTOK LOGIN]: APK lỗi xóa. Admin: 55 split v46.6.3; Kibe: 65 split v47.0.3. Vuốt dock (540,150) mở Switcher. Admin (201-280): TARGET_INVENTORY, socket 192.168.110.119:5037, TAADAA_HOST_CONFIG=machine-config/admin.yaml.
+[TIKTOK LOGIN]: APK lỗi xóa. Admin 55 split v46.6.3; Kibe 65 split v47.0.3. Dock (540,150) Switcher. One-tap/Guest Profile: tự tap nick/Đăng nhập. Pass sai: --otp-only. Admin: TARGET_INVENTORY, 192.168.110.119:5037, admin.yaml.
 §
 Canary: WoL ether3 (kibe 0C:EF:15:37:4C:20, admin 22:33:4D:06:4C:26; WG 13231); CẤM PASS khi followed=0/FOLLOW_FAILED; ảnh/log trước teardown. Admin: upload SSH admin-farm.
 §

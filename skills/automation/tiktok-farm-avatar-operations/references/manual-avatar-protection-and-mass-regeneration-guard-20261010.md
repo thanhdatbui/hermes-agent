@@ -32,7 +32,20 @@
         return 0
     ```
 
-## 4. Operational Invariant
+## 4. Telemetry Observability & Registry Integrity Validation
+- **Structured Telemetry Invariant:**
+  * When `is_folder_avatar_protected(folder, caller=...)` matches, it emits structured log:
+    `logger.info("[GUARD][METRIC] event=avatar_manual_protection_skip folder=%d caller=%s", f_num, caller or "unknown")`
+  * This provides auditable metrics on how many times mass scripts were prevented from destructive overwrites.
+- **Registry Integrity Check:**
+  * `validate_registry_integrity() -> tuple[bool, str]` confirms registry JSON exists, parseable, and `protected_folders` contains positive integers.
+- **Focused Regression Tests (`tests/test_manual_avatar_guard.py`):**
+  * `test_protected_folders_include_manual_channels()`: asserts manual accounts like 141 and 338 are locked.
+  * `test_validate_registry_integrity()`: asserts registry schema is valid.
+  * `test_telemetry_skip_logging(caplog)`: verifies `[GUARD][METRIC]` log format.
+  * `test_regenerate_skips_manual_protected_folder()`: verifies `process_folder(141)` returns `SKIPPED_MANUAL_PROTECTED`.
+
+## 5. Operational Invariant
 - Whenever the operator asks in chat to change an avatar manually for a channel:
   1. Extract and sync the approved avatar to both `D:\TIKTOK-videonuoinick\<folder>\avatar.jpg` and `D:\video goc\<folder>\avatar.jpg`.
   2. Register the folder in `manual_avatar_protected_folders.json`.

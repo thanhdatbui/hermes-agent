@@ -68,6 +68,7 @@ Use status values such as `NO_DAT_EVIDENCE`, `CLEAN_AND_ONLINE`, `CLEAN_BUT_VERI
 - If a device lock cannot be acquired, leave the device untouched and report the lock owner/timeout.
 - If a batch is interrupted, distinguish completed per-device artifacts from unprocessed machines; never infer success from the launcher exit code alone.
 - **Static IP Configuration Trap**: If a device's saved profile has `IP assignment: STATIC`, toggling Wi-Fi retains the stale static IP (e.g. `192.168.10.x`). The profile MUST be deleted via `service call wifi 14 i32 <ID>` and re-joined via `adbjoinwifi` so Android re-initiates DHCP lease negotiation on `192.168.110.x`.
+- **Korean Firmware Binder Permission Trap (G930S/L/K vs G930F)**: On Korean variants (`herolteskt-user`, security patch late-2020), `service call wifi 14` from shell UID 2000 is rejected with `SecurityException: Neither user 2000 nor current process has android.permission.CHANGE_WIFI_STATE`. On these devices, do NOT attempt `pm grant` (it fails); instead rely on `adbjoinwifi` to force-bind the target Aruba SSID as active with DHCP, preventing auto-roam.
 - **Preflight Prerequisite Integration**: Feed runners (`run-feed-session.ps1`, `tiktok_runner.py`) MUST export `FARM_WIFI_PROFILES_FILE=D:\Taadaa\machine-config\farm_wifi_profiles.json` so runner Stage 2 auto-recovery does not fail closed due to missing credentials.
 
 ## Production Automation Scripts
@@ -75,6 +76,7 @@ Use status values such as `NO_DAT_EVIDENCE`, `CLEAN_AND_ONLINE`, `CLEAN_BUT_VERI
 
 ## Reference
 
+- See `references/korean-firmware-binder-permission-and-static-ip-trap.md` for firmware variant differences (G930F vs G930S), SecurityException mechanics, and Static IP remediation.
 - See `references/validated-rogue-ssid-canary.md` for the Android 8 binder transaction and read-back evidence pattern from the validated canary. This reference deliberately omits credentials and machine-specific secrets.
 - See `references/runner-preflight-wifi-fallback-and-roam-triage.md` for the feed runner preflight credentials fallback failure (`FARM_WIFI_PROFILES_FILE`) and rogue SSID roam proxy outage root causes.
 - See `references/operational-closeout-gate-rubric.md` for the mandatory 4-pillar artifact requirements (raw logcat proof, 100% farm device accounting, automated pytest suite, timeline isolation) to pass `closeout_gate.py --input` with Sol Auditor (>= 85 pts APPROVED).

@@ -73,3 +73,37 @@
     1. **Màn hình Hồ sơ (Profile)**: Hiển thị rõ username đích `@<username>`, tên hiển thị, các chỉ số Following/Follower.
     2. **Màn hình Account Switcher (Chuyển đổi tài khoản)**: Hiển thị danh sách nick trong máy kèm dấu tích xanh chọn trúng tài khoản đích.
   - Coordinator BẮT BUỘC dùng Vision/WinRT OCR soi mắt kiểm tra đúng username đích trên 1 trong 2 màn hình này trước khi đính kèm `MEDIA:` và tuyên bố thành công.
+
+---
+
+## 5. Xử Lý Mật Khẩu TikTok Bị Sai Trong Excel Bằng `--otp-only` Qua Graph API
+- **Triệu chứng**:
+  - Script `tiktok_login_v1.py` chạy tự động, nhập mật khẩu từ Excel nhưng TikTok báo lỗi đỏ `"Mật khẩu sai"` (`com.ss.android.ugc.trill:id/i7f`).
+  - Hệ thống dừng an toàn với log: `[AUTH_BLOCKED] 🛑 Mật khẩu đã được điền nhưng TikTok vẫn ở màn hình password! CẤM ĐIỀN LẠI LẦN 2! DỪNG NGAY!`.
+- **Giải pháp chuẩn hóa**:
+  - Với các hòm mail Hotmail/Outlook đã có sẵn token Microsoft Graph API trên PC: Chạy lại lệnh với cờ `--otp-only`:
+    ```bash
+    TAADAA_HOST_CONFIG="D:/Taadaa/machine-config/admin.yaml" ADB_SERVER_SOCKET="tcp:192.168.110.119:5037" python D:/Taadaa/Tiktok_Reg/tiktok_login_v1.py <STT> --email <acc_id> --ss --no-track --otp-only
+    ```
+  - Cờ `--otp-only` ép script bỏ qua bước nhập mật khẩu TikTok, chọn gửi mã OTP về email, tự động bóc mã 6 số từ Graph API và nhập vào TikTok trong < 30s mà không bao giờ mở app Outlook trên điện thoại.
+
+---
+
+## 6. Xử Lý Màn Hình Cài Đặt Hệ Thống (`com.android.settings`) Chắn Trong `go_to_profile`
+- **Triệu chứng**:
+  - Khi điều hướng vào tab Hồ sơ, màn hình vô tình bị mở sang ứng dụng Cài đặt của Android (`com.android.settings`, trang "THÔNG BÁO ỨNG DỤNG" của TikTok).
+  - Script cố tap tọa độ tab Hồ sơ (dưới cùng bên phải) nhưng thực chất đang chạm vào các công tắc bật/tắt thông báo trong Cài đặt, dẫn đến lỗi:
+    `STOPPED: [02_profile] Khong vao duoc tab Ho so/Profile`.
+- **Khắc phục trong `social_reg_v1.py` (`go_to_profile`)**:
+  ```python
+  xml = get_ui_xml(device_id)
+  if "com.android.settings" in xml:
+      log("   [go_to_profile] Settings screen detected -> sending BACK keyevent and relaunching TikTok")
+      keyevent(device_id, 4, wait=D_SHORT)
+      time.sleep(1.0)
+      open_app(device_id)
+      time.sleep(2.0)
+      if is_profile_tab_selected(device_id, timeout=5):
+          return
+  ```
+  Tự động gửi phím BACK để thoát khỏi ứng dụng Settings và đưa TikTok trở lại foreground trước khi thử lại.
