@@ -29,3 +29,14 @@ Theo đúng chỉ đạo của User: **Kiểm tra mail có token Graph API thì 
 - Khi user chỉ đạo "Canh máy rảnh thì chạy":
   - Kiểm tra `~/.codex/device-locks/machine_<N>.lock.json`. Nếu tiến trình khác (như `tiktok-add-bao-mat-f2a`, ca nuôi feed) đang giữ lock, **CẤM** cướp lock hay force-stop process.
   - Chạy qua wrapper chuẩn `python D:/Taadaa/tools/with_device_lock.py --machine <N> --timeout 600 -- <cmd>` hoặc chạy nền chờ lock giải phóng sạch sẽ.
+
+## 5. Cạm bẫy màn hình Live Stream (`LivePlayActivity`) sau khi nhập OTP thành công
+- **Hiện tượng**: Sau khi điền OTP thành công (`✓ OTP đã nhập xong`), script chạy tiếp 6 vòng `auth round 1/6 ... 6/6` báo `Unknown screen`, sau đó `[9] Wait for login success` timeout 30s và trả về exit code 2 (`PENDING LOGIN`). Tuy nhiên, trên thiết bị nick đã đăng nhập thành công 100%!
+- **Nguyên nhân**:
+  - Khi TikTok xác thực OTP thành công, thay vì về tab Profile hoặc Home feed có bottom navigation bar, ứng dụng đôi khi tự động mở thẳng một phiên phát trực tiếp (Live Stream: `com.ss.android.ugc.aweme.live.LivePlayActivity`).
+  - Giao diện Live Stream chỉ chứa các element như `Chia sẻ`, `Nhập...`, `Mua`, `Follow`, tên nhãn hàng livestream (vd: `Cocoon Vietnam`), hoàn toàn không có `Hồ sơ`, `Profile`, `Dành cho bạn`.
+  - Bộ kiểm tra `HOME_HINTS` và `wait_login_success` không nhận diện được màn hình Live nên tưởng lầm đăng nhập thất bại.
+- **Cách nhận diện và nghiệm thu**:
+  - Kiểm tra focus: `dumpsys window windows | grep mCurrentFocus` thấy `com.ss.android.ugc.aweme.live.LivePlayActivity` $\rightarrow$ Xác nhận TikTok đã đăng nhập thành công.
+  - Xử lý thoát Live: Gửi `keyevent 4` (Back) để thoát phòng Live, sau đó gọi `open_profile_root` để điều hướng về tab Hồ sơ và chụp ảnh nghiệm thu.
+  - Khi đối soát thành công, tiếp tục kích hoạt ngay runner nạp avatar (`run_tiktok_upload_avatar.ps1`) theo kế hoạch.
