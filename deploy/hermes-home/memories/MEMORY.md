@@ -16,7 +16,7 @@ Claude CLI: khi user bảo/3-strike reject (kể cả mid-session); hand-off bà
 §
 TikTok Shadow: Path B 'Đã fl' ko commit; FOLLOW_FAILED trừ fl tự nhiên; slot `(folder-1)%8+1` cứng; reg bù độc lập. Dọn C duyệt trước.
 §
-Hotmail: lọc reg TT+ChatGPT, BỎ Dual-OAuth; 1 IP/24h; 2FA TOTP->Đổi pass (xóa Col 9)->Sign out->Relogin KMSI. Canary 5 ảnh MEDIA '/'. Sync tracker DONE; cấm fallback pass TT->mail; refresh Excel; chờ redirect tránh ảnh trắng.
+tắt cookie banner tránh ảnh che.
 §
 Farm Proxy/WiFi: MikroTik 40 PPPoE 10001-10040 (M241-280 cấm >10040). Watchdog 'Lỗi proxy' check Wi-Fi & inspect máy, cấm lạc sang OmniRoute :20128/9. Aruba: M1-40 'kibe 1' (23102025); M41-80 'kibe 2', Admin 'admin 1/2' (19051995); cấm SSID Dat. X99: cấm xHCI, 4 Box, adb Semaphore 8.
 §
