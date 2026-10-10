@@ -1,4 +1,4 @@
-Follow: Cầu dao 48h MikroTik thay cutoff 40%. Nhả 1 phát là drop sạch session (Anchor canary bắt buộc, cấm ảo tưởng dung sai). Lịch 3 ca (bỏ 0h đêm), chu kỳ 3d: N1 (R1,3,5), N2 (R2,4,6), N3 (R7,8 + tối dưỡng sinh pure feed R3/4). CẤM auto-follow popup.
+Follow: CHỈ nick Khỏe (graduated) nhả mới giật cầu dao 48h; nick non phạt cooldown account. Nấc hồi phục 2d/nấc (1-2fl -> 5-8fl -> Khỏe). Up chỉ Phiên 2 để tự cân bằng 2d/vid. Advisor fallback Terra Codex. CẤM auto-follow popup.
 §
 Dual-Farm: Mọi cron/supervisor BẮT BUỘC chạy cả Kibe (1-80) & Admin (201-280). Excel Admin 10-11 cột (đọc cell idx<len(row)). Supervisor so le 2p; Báo cáo 6H gộp. CẤM copy ava Kibe->Admin; Admin dùng video gốc m2, venv-core024.
 §

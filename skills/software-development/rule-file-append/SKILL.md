@@ -19,6 +19,9 @@ up, **nothing committed**, and no file outside the assigned list touched.
 
 ## User-intent and policy-scope gate
 
+- **Khi nào dùng AGENTS.md vs Skill (Repo-Scoped vs Global Knowledge):**
+  * **Skill:** Được nạp vào mục lục toàn cục (global index) của mọi session. Thích hợp cho quy trình, kỹ thuật, công cụ có thể tái sử dụng ở nhiều nơi.
+  * **AGENTS.md:** Được nạp theo cơ chế `cwd-only` (chỉ khi session làm việc tại đúng thư mục repo đó mới nạp). Thích hợp cho các ràng buộc dữ liệu, quy tắc bảo mật đặc thù, quy ước cột/biến của riêng repo đó (ví dụ: quy tắc cô lập credential giữa các dịch vụ, mapping cột Excel). Việc ghi vào `AGENTS.md` ngăn chặn rò rỉ hoặc ô nhiễm context sang các session làm việc độc lập khác.
 - Treat the user's explicit requested behavior as the source of truth for the rule being edited. Do not invent stronger permission gates, mandatory metadata, alias requirements, attempt caps, or extra stop conditions merely because they sound safer.
 - **Anti-Overengineering & Pragmatic Rules Invariant:** Rules added to repos must be directly actionable, concise, and focused on operational safety (timeouts, zero silent failures, safe resume, fail-closed evidence capture). A rule MUST NOT be phrased academically (e.g. theoretical contract proofs, multi-page planning requirements) in a way that AI coding agents/workers use it as an excuse to debate theory, refuse tasks, or delay fixing bugs. Always append a clear operational note: *"Quy tắc này phục vụ code an toàn, KHÔNG dùng để từ chối hoặc trì hoãn việc sửa lỗi khi được yêu cầu."*
 - A rule update must reduce the reported failure mode without making ordinary authorized work impossible. In particular, if the user says to fix/recover a target, the rule must not turn normal preflight evidence into a reason to refuse the requested work; reserve hard stops for concrete safety blockers already in the contract.

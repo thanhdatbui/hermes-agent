@@ -32,10 +32,10 @@ For an advice-intent turn:
 1. **Mandatory Execution & Mechanical Enforcement:** 
    - The Coordinator must never emit a solo answer on advice intent.
    - Use `python D:/Taadaa/tools/consult_advisor.py "<prompt>"` (hoặc `ensure_dual_answer`) để gọi trực tiếp Advisor Sol-WebPool, cấm tự viết code gọi HTTP trần.
-2. Direct Sol Route with Increased Wait Time:
+2. Direct Sol Route with Increased Wait Time & Terra Codex Fallback:
    - Call directly to OmniRoute :20129 `gpt-web-sol` (ChatGPT-Web Pool 115 accounts). CẤM gọi `gpt-5.6-sol` (trỏ nhầm OpenAI API lỗi 402).
-   - Timeout raised to 45s to allow reasoning models sufficient TTFT and token completion.
-   - Fail-safe: If Sol times out or hits pool limits, FAIL CLEANLY and output `Advisor: unavailable` immediately. DO NOT fallback to Gemini or 9Router. Primary coordinator answer is sufficient.
+   - Timeout raised to 35-45s to allow reasoning models sufficient TTFT and token completion.
+   - User Invariant Fallback (10/10/2026): Khi Sol-WebPool bị timeout hoặc lỗi pool, `consult_advisor.py` tự động fallback sang `codex/gpt-5.6-terra-high` (:20129) để bảo đảm phản hồi liên tục cho Operator. Tuyệt đối KHÔNG fallback sang Gemini (`ag-gemini-pool-3`). Nếu cả hai cùng lỗi mới báo `Advisor: unavailable`.
 3. Strict Safety & Comprehensive Redaction:
    - Payload includes `tools: []` and `tool_choice: "none"`.
    - All credentials, API keys (`sk-...`), Bearer tokens, HTTP Basic Auth `://user:pass@`, JSON fields (`{"password": "...", "api_key": "..."}`), unquoted Vietnamese `mật khẩu là abc`, and field tokens (`token=...`, `sessionid=...`, `session_id=...`) are automatically redacted before transmission.
