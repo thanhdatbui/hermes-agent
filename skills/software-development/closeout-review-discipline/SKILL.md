@@ -14,6 +14,7 @@ metadata:
 > **Canonical policy precedence:** For orchestration and closeout precedence, follow `D:\Taadaa\HERMES_SUBAGENT_RULES.md` marker `CANONICAL-POLICY-PRECEDENCE-2026-10-05`; this skill points to it and does not redefine it.
 
 References:
+- `references/strike-3-handoff-hard-guard-and-anti-strike-4-discipline-20261010.md` — **[MỚI 10/10/2026]** Kỷ luật Strike 3 Hand-off dứt khoát: cấm tuyệt đối ảo giác "Strike 4", cơ chế Hard Guard tự động ngắt cầu dao dispatch khi chạm trần 3 lần reject.
 - `references/closeout-gate-diff-too-large-and-partial-scope-triage-20261010.md` — **[MỚI 10/10/2026]** Triage sự cố `refusing partial committed scope` do cron background tạo commit chen ngang và quy trình rút gọn docstrings O(1) để vượt qua ngưỡng cứng `DIFF_TOO_LARGE` (30.000 bytes) trong Closeout Gate.
 - `references/closeout-gate-diff-too-large-remediation-and-docstring-budget.md` — **[MỚI 10/10/2026]** Cơ chế chặn cứng `DIFF_TOO_LARGE` (30.000 bytes) trong `closeout_gate.py`, bài học xử lý phình diff do docstrings/comments trong test suite/module header, và quy trình rút gọn an toàn bảo toàn 100% assertions trước khi review.
 - `references/sol-repair-finding-triage-and-declined-escape-hatch-protocol-20261010.md` — **[MỚI 10/10/2026]** Quy chuẩn Triage Findings 4 lớp (Lớp A Actionable O(1) vs Lớp B/C/D) cho Coordinator trước khi nạp vào `sol_repair.py`, bộ tiền lọc xác định `is_non_actionable_finding`, schema lối thoát `declined_findings` và validation an toàn chống vỡ trần numstat > 30 hoặc lỗi validation no-op patch.
