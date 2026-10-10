@@ -27,8 +27,22 @@
 - **TỐI ĐA 3 STRIKE DUY NHẤT:** Không bao giờ tồn tại khái niệm "Strike 4", "Strike 5" hay "vòng thử thêm".
 - Khi Reviewer trả về `REJECTED` lần thứ 3 (Strike 3) trên cùng `scope_hash`:
   * **CẤM TUYỆT ĐỐI** tiếp tục dispatch Worker hoặc Sol Repair.
-  * **CẤM TUYỆT ĐỐI** phát ngôn "đang thi công tiếp / sẽ chấm lại Strike 4".
-  * **BẮT BUỘC DỪNG TOÀN BỘ** và kích hoạt ngay **STRIKE 3 HAND-OFF**: bàn giao toàn quyền sửa code cho Claude CLI.
+  * **CẤM TUYỆT ĐỐI** Coordinator tự sửa code mò mẫm rồi biến Claude CLI thành "Reviewer thụ động" (Passive Reviewer Trap - Round 4, Round 5...).
+  * **CẤM TUYỆT ĐỐI** phát ngôn "đang thi công tiếp / sẽ chấm lại Strike 4", hoặc tự ý tổng kết "đã xong" khi verdict thực tế vẫn là REJECTED (< 85).
+  * **BẮT BUỘC DỪNG TOÀN BỘ VIỆC TỰ SỬA CODE** và kích hoạt ngay **STRIKE 3 HAND-OFF**: bàn giao toàn quyền cho Claude CLI trực tiếp mở file sửa mã nguồn (`--dangerously-skip-permissions`).
+
+### A1. Bẫy Tử Huyệt: "Passive Reviewer Trap" (Bài Học Xương Máu Từ User)
+- **Triệu chứng vi phạm:** Khi chạm Strike 3, Coordinator không dispatch Worker nữa nhưng lại *tự mình dùng script sửa file* rồi chạy `claude -p "Review code này"` để xin điểm. Kết quả: kéo dài thành Round 4, Round 5, code bị IndentationError/SyntaxError nát bét và User nổi giận vì Coordinator coi thường kỷ luật!
+- **Kỷ luật bất biến:** Strike 3 Hand-off là **BÀN GIAO QUYỀN SỬA CODE (IMPLEMENTATION HAND-OFF)**, hoàn toàn KHÔNG PHẢI review passive.
+  * Coordinator BẮT BUỘC bỏ tay khỏi bàn phím, KHÔNG được chạm vào file nguồn nữa.
+  * Soạn prompt bàn giao liệt kê rõ: (1) Các điểm Reviewer đang bắt lỗi, (2) File đích, (3) Lệnh chạy test xác thực.
+  * Khởi chạy Claude CLI với cờ `--dangerously-skip-permissions --max-turns 20` để Claude tự vào đọc code, tự sửa code, tự chạy test và tự sửa đến khi test pass.
+  * Khi Claude CLI sửa xong và test pass, Coordinator CHỈ nộp diff vào Closeout Gate để lấy scorecard chính thức, TUYỆT ĐỐI CẤM tự ý sửa đè lên code của Claude.
+
+### A2. Cấm Ảo Giác "Tự Coi Là Xong" (No Premature Done When REJECTED)
+- CẤM TUYỆT ĐỐI báo cáo "Đã hoàn thành / Hệ thống đã được chốt chặn" khi điểm Closeout Gate vẫn là `Verdict: REJECTED` hoặc `< 85`.
+- Một điểm số 80 hay 82 vẫn là **FAIL**. Báo cáo "xong" khi chưa qua cổng là hành vi lừa dối người vận hành.
+- Nếu điểm chưa đạt $\ge 85$: Phải nói thẳng "Chưa đạt, hiện tại là REJECTED (X/100), cần tiếp tục xử lý các điểm A, B, C".
 
 ### B. Mẫu Lệnh Bàn Giao Strike 3 Cho Claude CLI (Windows MSYS)
 Bắt buộc chạy nền qua file prompt bằng cú pháp:
