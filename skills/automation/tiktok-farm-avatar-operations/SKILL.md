@@ -275,6 +275,10 @@ Operate avatar-only changes on Taadaa TikTok farm devices without accidentally p
 - Structural: do not retry the same prompt or patch consumer code opportunistically. Use a narrower contract, then shared-core remediation or a real blocked report.
 - Runtime/session: inspect the machine with the approved O(1) inspection command and use the captured evidence to distinguish sleep, popup, login, proxy, stale UI, or device transport problems.
 - Never use raw ADB taps/keyevents as a blind workaround for an automation defect.
+- **BẪY `ACCOUNT_VERIFY_MISMATCH` DO NICK CHƯA LOGIN TRÊN THIẾT BỊ (ACCOUNT MISSING ON DEVICE 2026-10-10):**
+  * **Hiện tượng:** Runner văng `[ACCOUNT_SWITCHER_FAILED] ACCOUNT_READY verify failed: ACCOUNT_VERIFY_MISMATCH: Profile did not show the expected account`.
+  * **Nguyên nhân:** Nick đích (ví dụ Tik 6 `@annapmfdh0a`) hoàn toàn vắng mặt trong Switcher sheet (chỉ có 7 nick khác trên máy). Đừng ngộ nhận bảng `snapshots` có số liệu hôm nay là nick đang sống trên máy — snapshots cào qua Web API, không liên quan đến phiên login app.
+  * **Xử lý:** Dump Switcher XML xác nhận số lượng nick thực tế. Nếu thiếu nick mục tiêu, báo cáo chuẩn xác `BLOCKED (ACCOUNT_MISSING_ON_DEVICE)` kèm bằng chứng `account-switcher-profile.png`, giữ nguyên queue `PENDING`, chuyển sang luồng login (`reconcile_tiktok_accounts.py`), tuyệt đối cấm báo DONE mò. Chi tiết: `references/account-verify-mismatch-and-device-missing-account-triage-20261010.md`.
 - **BẪY TELEMETRY PREFLIGHT_VPN_BLOCKED DO TUỘT CÁP USB / RỚT ADB (08/10/2026):**
   * Trong `run_post.py`, khối `except ConsumerPreflightError` gom chung mọi lỗi preflight thành `[PREFLIGHT_VPN_BLOCKED]`.
   * Khi thiết bị mất kết nối ADB (`device not found` / `device offline`), `require_android_vpn` ném ngoại lệ `ConsumerPreflightError("device is offline or ADB/USB disconnected")`.
@@ -342,6 +346,7 @@ Operate avatar-only changes on Taadaa TikTok farm devices without accidentally p
 - Closeout is not DONE until the device evidence, focused verification, and required reviewer gate are satisfied.
 
 ## References
+- `references/account-verify-mismatch-and-device-missing-account-triage-20261010.md` — bẫy ACCOUNT_VERIFY_MISMATCH khi tài khoản mục tiêu chưa login trong ứng dụng TikTok (danh sách Switcher chỉ có 7 nick), phân định giữa số liệu Web API snapshots vs trạng thái app thật, quy trình dump Switcher audit O(1) và báo cáo BLOCKED kèm credentials.
 - `references/cat-niche-realignment-and-feed-lock-waiter-20261010.md` — case study @annapmfdh0a (M44 Tik 6), chuẩn hoá 4 tầng cho ngách mèo/thú cưng cute, bẫy mismatch version contract 0.4.44 trên Kibe local, và kỹ thuật event-driven lock waiter chờ nhả ca nuôi nick an toàn.
 - `references/cross-cluster-avatar-isolation-and-admin-pipeline-audit-20261010.md` — bẫy ô nhiễm chéo ngách khi tự ý nén copy avatar Kibe sang Admin (sếp chấn chỉnh gay gắt: "Là sao? Tự nhiên lấy của kibe ném qua admin!!?"), nguyên tắc cách ly 2 kho video độc lập (D:\video goc vs D:\video goc may 2), 4 bước kiểm toán hạ tầng Admin và quy trình cứu nguy revert khôi phục nguồn gốc.
 - `references/admin-kibe-cluster-isolation-and-local-extraction-20261010.md` — bẫy ô nhiễm chéo ngách khi copy tarball avatar Kibe sang Admin (sếp chấn chỉnh: "Là sao? Tự nhiên lấy của kibe ném qua admin!!? Ý tao là kiểm tra bên admin trích xuất chuẩn đường dẫn chưa"), nguyên tắc cách ly kho media độc lập giữa Kibe (D:\TIKTOK-videonuoinick) vs Admin (D:\video goc may 2 & D:\TIKTOK-videonuoinick-admin), cấu hình config-admin.yaml, runtime venv-core024 bắt buộc cho cv2, và quy trình trích xuất tại chỗ.
