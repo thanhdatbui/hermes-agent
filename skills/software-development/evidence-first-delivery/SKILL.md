@@ -165,6 +165,15 @@ Use `references/avatar-only-scope-and-false-policy-refusal.md` for the incident-
     2. **Màn hình Account Switcher (Chuyển đổi tài khoản)**: Phải hiển thị danh sách tài khoản kèm dấu tích xanh chọn trúng tài khoản đích.
   * Chỉ khi có 1 trong 2 màn hình này (được kiểm chứng qua OCR/Vision thấy đúng username đích) thì mới được phép công nhận và tuyên bố login thành công.
 
+- **Chống Bẫy Nhầm Lẫn Bằng Chứng 2FA Với Màn Hình Switcher/Profile (2FA Screen vs Switcher/Profile Trap - 2026-10-10):**
+  * **CẤM TUYỆT ĐỐI** gửi ảnh Account Switcher (danh sách tài khoản) hoặc trang Hồ sơ (Profile) rồi tuyên bố đã bật 2FA thành công! Người dùng sẽ phản ứng gay gắt ngay: *"Cái t cần là chứng minh có 2fa r chứ gửi linh tinh gì v"*.
+  * **Bản chất**: Ảnh Switcher hoặc Profile chỉ chứng minh tài khoản đã được nạp và lưu phiên trên thiết bị, **HOÀN TOÀN KHÔNG CHỨNG MINH ĐƯỢC TRẠNG THÁI BẢO MẬT 2FA CỦA TÀI KHOẢN ĐÓ**.
+  * **BẮT BUỘC ĐIỀU HƯỚNG VÀO MÀN HÌNH BẢO MẬT ĐÍCH**: Sau khi hoàn thành thao tác bật 2FA hoặc xác nhận tài khoản đã có 2FA, BẮT BUỘC phải chụp thực tế màn hình **"Xác minh 2 bước" (Two-step verification)** trong *Cài đặt và quyền riêng tư > Bảo mật*:
+    1. Tiêu đề hiển thị rõ: **"Xác minh 2 bước đang bật"**.
+    2. Phương thức **"Trình xác thực" (Authenticator): Bật** (kèm checkbox/dòng trạng thái active).
+    3. Phương thức **"Email": Bật** (kèm email hiển thị dạng mask).
+  * Chỉ khi có ảnh chụp màn hình cài đặt 2FA này (được kiểm chứng qua OCR/Vision thấy rõ dòng *"Xác minh 2 bước đang bật"* và *"Trình xác thực: Bật"*), mới được phép công nhận kết quả và gửi kèm thẻ `MEDIA:<path>`.
+
 - **Chống Bẫy Báo Cáo Thiếu Chặng Trong Quy Trình Đa Bước (Anti-Omitted-Step Report Trap - 2026-10-10):**
   Khi thực hiện các quy trình tự động hóa đa bước (ví dụ: chuỗi bảo mật Hotmail/TikTok: *1. Add 2FA -> 2. Đổi mật khẩu -> 3. Sign out everywhere -> 4. Relogin 2FA -> 5. KMSI / Dashboard*):
   * Người dùng cực kỳ dị ứng và coi là thất bại nghiêm trọng nếu báo cáo thiếu ảnh của bất kỳ chặng nào ("bước đăng nhập lại hình ảnh chứng minh đâu, bước add 2fa đâu?", "sao cứ làm đéo đủ v").

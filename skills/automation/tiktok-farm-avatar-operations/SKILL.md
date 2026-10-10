@@ -372,6 +372,7 @@ Operate avatar-only changes on Taadaa TikTok farm devices without accidentally p
 - Closeout is not DONE until the device evidence, focused verification, and required reviewer gate are satisfied.
 
 ## References
+- `references/manual-avatar-protection-hardening-and-clarify-gate.md` — Quy trình đóng đinh bảo vệ avatar thủ công: 5 nguyên tắc bất biến (fail-closed, One-Time Override Grant, guarded_replace), bộ chốt chặn G1-G7 & R1-R5, và giao thức Clarify Gate bắt buộc khi quét hàng loạt gặp folder khóa.
 - `references/manual-avatar-protection-g1-g7-and-r1-r5-hardening-20261010.md` — kiến trúc và đặc tả tích hợp bộ chốt chặn G1-G7 & R1-R5: Fail-closed GuardIntegrityError, LockedFolderError, One-Time Override Grant (15 phút), get_lock_info, guarded_replace kèm backup tự động và mã thoát exit code 3 LOCK_CONFLICT.
 - `references/manual-avatar-locking-and-raw-video-source-priority-20261010.md` — cơ chế khóa avatar 4 lớp chống batch upload đè hoặc tool tái tạo hàng loạt ghi đè (Tik.xlsx OK, avatar_replace_queue DONE, manual_avatar_protected_folders.json, marker .manual_avatar_locked, và sync Admin), cùng quy tắc ưu tiên trích xuất từ video gốc chưa qua render.
 - `references/manual-avatar-protection-and-mass-regeneration-guard-20261010.md` — cơ chế 3 lớp (in-folder marker .manual_avatar_locked, registry tập trung manual_avatar_protected_folders.json, guard preflight manual_avatar_guard.py) bảo vệ tuyệt đối các kênh operator đổi bằng tay qua chat chống script quét hàng loạt ghi đè.
