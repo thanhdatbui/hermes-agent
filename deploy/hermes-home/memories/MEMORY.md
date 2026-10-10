@@ -1,6 +1,6 @@
-Follow: Sáng/chiều=row khác(acc riêng). 15+ Simpson ảo. S1 Score>=70 Fast-track 1 ca về Khỏe; Cautious 3 ca (farm qua upload/micro-fl); S2: 2 ca; S3+: 3-5fl. Canary +10% ĐỘC QUYỀN Khỏe (cấm Canary Hồi phục).
+Follow: Sáng/chiều=row khác. 15+ Simpson ảo. S1 Score>=70 Fast-track 1 ca về Khỏe; Cautious 3 ca; S2: 2 ca; S3+: 3-5fl. Canary +10% ĐỘC QUYỀN Khỏe.
 §
-Sót data: CẤM tin Excel/DB; Switcher cuộn đáy. Chuẩn 8 nick/máy. Watchdog ca tối: kibe [5-8,3,4] loại trừ Tik1&2; 140 acc MISMATCH_GOC (Tik1:73, Tik2:67) cần sync video_goc=folder_video và chạy runner riêng.
+Sót data: CẤM tin Excel/DB; Switcher cuộn đáy. Chuẩn 8 nick/máy. Watchdog tối: kibe [5-8,3,4] trừ Tik1&2; 140 acc MISMATCH_GOC sync video_goc=folder_video runner riêng.
 §
 GPM 5ph/nick. gmail_clean_v2 chỉ lưu LIVE; xóa DIE, ghi gmail_die_tong; slot TT die dọn safe + track backfill.
 §
@@ -16,7 +16,7 @@ Claude CLI: khi user bảo/3-strike reject (kể cả mid-session); hand-off bà
 §
 TikTok Shadow: Path B 'Đã fl' ko commit; FOLLOW_FAILED trừ fl tự nhiên; slot `(folder-1)%8+1` cứng; reg bù độc lập. Dọn C duyệt trước.
 §
-Hotmail GPM: 1 IP/24h; 2FA TOTP (Col 4)->Đổi pass (xóa token Col 9; lỗi service cooldown 24h nick+IP)->Sign out everywhere->Relogin KMSI (CP5). Canary=full flow --live; đủ 5 ảnh; MEDIA: slash '/'.
+Hotmail GPM: 1 IP/24h; 2FA TOTP (Col 4)->Đổi pass (xóa Col 9; lỗi cooldown 24h nick+IP)->Sign out->Relogin KMSI (CP5). Canary=full flow đủ 5 ảnh; MEDIA: slash '/'. Supervisor tự sync hotmail_changed_tracker.json sang DONE; thiếu Dual-OAuth giữ WAIT_7D; fail pass cooldown 48h.
 §
 Admin Farm: 3proxy S7 192.168.110.2:100xx. Aruba: M1-40 'kibe 1' (23102025); M41-80 'kibe 2', Admin 'admin 1/2' (19051995); cấm SSID Dat. X99: cấm xHCI; 4 Box tản; adb Semaphore 8; safe_usb_guard.
 §

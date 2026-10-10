@@ -7,10 +7,12 @@
 * Trong 6 nick nòng cốt bị TikTok nhả follow sáng 09/10/2026, có 4 nick nằm trong 2 cặp chung chính xác 1 IP:
   * **Cặp Cổng 5116:** Lúc 06:21, M52 (`@vy.nguyen8730`) vào ca follow, ăn 1 follow rồi bị TikTok ngắt (`FOLLOW_FAILED`). Đúng 18 phút sau (06:39), M14 (`@hong.bo.anh83`) nhảy vào app cày follow trên chính IP 5116 đó -> TikTok đã gắn cờ nghi vấn IP từ 18 phút trước, M14 vừa bấm follow lượt đầu tiên là bị nhả ngay lập tức (0 lượt) và dính án phạt Cooldown 3 ngày.
 * Đối soát lịch sử: Từng có 79 ca chạy trong đó 2 máy chung 1 IP cùng cày follow trong ngày, với hơn 7.200 lượt follow cách nhau dưới 10 phút (thậm chí 5–38 giây).
-* **BẪY DỮ LIỆU LỖI 31/08 & 01/09 (User Correction):** Dữ liệu ngày 31/08 và 01/09 đo được tỷ lệ nhả 0% thực chất là do HÀM VERIFY CŨ BỊ LỖI (nhận diện sai trạng thái follow), sau đó mới được vá lại. Khi lọc riêng dữ liệu chuẩn xác của tháng 10/2026:
-  - Co-run (2 máy/IP cùng chạy trong ngày): 24 / 34 ca bị nhả (**70.6%**) 🔴
-  - Solo (1 máy/IP chạy lẻ): 39 / 107 ca bị nhả (**36.4%**)
-  -> Rủi ro dính nhả khi chạy đôi cùng IP cao gần gấp đôi so với chạy đơn!
+* **BẪY DỮ LIỆU LỖI TRƯỚC 02/10/2026 (User Correction):**
+  - Dữ liệu trước ngày 02/10/2026 (bao gồm các ngày 31/08, 01/09 và cả ngày 01/10) bị sai lệch do **HÀM VERIFY CŨ BỊ LỖI FALSE-POSITIVE** (nhận diện nhầm stat labels và chưa xử lý nút `id/fo4`). Lỗi này chỉ được vá dứt điểm vào rạng sáng 02/10/2026 (commit `c12242d`).
+  - Mọi phân tích, đo lường tỷ lệ nhả và follow an toàn **BẮT BUỘC chỉ trích xuất từ 02/10/2026 trở đi** để đảm bảo độ chuẩn xác 100%. Khi đo chuẩn từ 02/10:
+    - Co-run (2 máy/IP cùng chạy trong ngày): 24 / 34 ca bị nhả (**70.6%**) 🔴
+    - Solo (1 máy/IP chạy lẻ): 39 / 107 ca bị nhả (**36.4%**)
+    -> Rủi ro dính nhả khi chạy đôi cùng IP cao gần gấp đôi so với chạy đơn!
 
 ### Hiện tượng "Ăn nhả dắt dây" (Cascading Domino Failure):
 Truy vết chi tiết timestamp 8 ca chết đôi trên cùng IP tháng 10/2026 chứng minh: Khi Máy A dính `FOLLOW_FAILED`, TikTok cắm cờ IP nghi vấn. Máy B vào sau trong vòng 2 – 25 phút bị dính nhả ngay từ lượt đầu (0 lượt):

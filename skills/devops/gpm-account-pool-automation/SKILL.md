@@ -9,6 +9,7 @@ version: 1.2.0
 ## 1. Khi nào sử dụng
 
 Use for GPM v3 (19995), Gmail/Hotmail lifecycle, proxy-safe account selection, CRX/CDP, cache/core issues, OAuth, ChatGPT/Codex pool operations, watchdogs, pagination, and geo-safety. Existing topic detail remains in `references/`; cron summary handling is in `references/cron-watchdog-report-triage.md`.
+- Hotmail State Reconciliation & Dual-OAuth Guard: `references/hotmail-lifecycle-state-reconciliation.md`.
 - No-Agent Cron Silent Watchdog: `references/no-agent-cron-silent-watchdog-and-telegram-chunking.md`.
 - Browser-core repair source integrity and reboot-safe validation: `references/gpm-browser-core-repair-source-integrity.md`.
 - Preflight Liveness & Auto-Launch: `references/gpm-local-api-liveness-and-autolaunch-pattern.md`.
