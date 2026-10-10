@@ -9,6 +9,10 @@ References:
 - `references/x99-ehci-pnp-limit-and-daily-reset-architecture-20261010.md` — Phân tích giới hạn phần cứng Live-Disable PnP trên Intel X99 EHCI (HRESULT 0x8004100c), bằng chứng transport ID liên tiếp, hạ MaxWorkers 25 và kiến trúc Preflight Auto-Reboot định kỳ (10/10/2026).
 - `references/aruba-wifi-recovery-and-anti-drift-incident-20261009.md`
 
+Scripts:
+- `scripts/safe_usb_guard.py` — Script nguồn mẫu giám sát và reset EHCI bus theo ngưỡng.
+- `scripts/wait_admin_reboot.py` — Theo dõi tự động chu kỳ reboot Admin PC qua SSH, chờ khởi động ADB daemon và đối soát danh sách máy online.
+
 Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEFI/BIOS fails, or setting up host-level hardware recovery on phone farm controller PCs.
 
 ## 1. Bản Chất Lỗi Văng Hàng Loạt Máy ADB / Tool Quản Lý (XiaoWei/Jiwei)

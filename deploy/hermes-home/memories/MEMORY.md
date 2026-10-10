@@ -4,7 +4,7 @@ Dual-Farm: Cron/supervisor chạy cả Kibe (1-80) & Admin (201-280). Excel Admi
 §
 GPM 5ph. gmail_clean_v2 lưu LIVE, xóa DIE. CẤM coi Gmail die=TT die; nick có 2FA TOTP vẫn LIVE.
 §
-Kho video: min 45; Render 1 wkr (--parallel 1); Cào 10 wkr; Global Ledger; niches 80; SQLite retry 5; 12 Niche Hot.
+Kho video: min 45; Render 1 wkr (--parallel 1); Cào 20 wkr (max-folder 1); Global Ledger; niches 80; SQLite retry 5; 12 Niche Hot.
 §
 evidence_gate_verifier.py (WinRT OCR, PID reserve, fail-closed, >30s/3att L3 BLOCKED).
 §
