@@ -346,6 +346,7 @@ Operate avatar-only changes on Taadaa TikTok farm devices without accidentally p
 - Closeout is not DONE until the device evidence, focused verification, and required reviewer gate are satisfied.
 
 ## References
+- `references/missing-account-switcher-and-in-device-hotmail-otp-login-20261010.md` — bẫy tài khoản mục tiêu chưa login trên máy vật lý khiến avatar runner văng ACCOUNT_VERIFY_MISMATCH, chỉ thị của Operator "Thì chạy tiktok login acc đó vào", bẫy mật khẩu sai và quy trình cứu nguy login qua --otp-only đọc mã trực tiếp từ Outlook app trên thiết bị.
 - `references/account-verify-mismatch-and-device-missing-account-triage-20261010.md` — bẫy ACCOUNT_VERIFY_MISMATCH khi tài khoản mục tiêu chưa login trong ứng dụng TikTok (danh sách Switcher chỉ có 7 nick), phân định giữa số liệu Web API snapshots vs trạng thái app thật, quy trình dump Switcher audit O(1) và báo cáo BLOCKED kèm credentials.
 - `references/cat-niche-realignment-and-feed-lock-waiter-20261010.md` — case study @annapmfdh0a (M44 Tik 6), chuẩn hoá 4 tầng cho ngách mèo/thú cưng cute, bẫy mismatch version contract 0.4.44 trên Kibe local, và kỹ thuật event-driven lock waiter chờ nhả ca nuôi nick an toàn.
 - `references/cross-cluster-avatar-isolation-and-admin-pipeline-audit-20261010.md` — bẫy ô nhiễm chéo ngách khi tự ý nén copy avatar Kibe sang Admin (sếp chấn chỉnh gay gắt: "Là sao? Tự nhiên lấy của kibe ném qua admin!!?"), nguyên tắc cách ly 2 kho video độc lập (D:\video goc vs D:\video goc may 2), 4 bước kiểm toán hạ tầng Admin và quy trình cứu nguy revert khôi phục nguồn gốc.
