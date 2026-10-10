@@ -5,6 +5,8 @@ description: Use when running avatar-only jobs on TikTok farm.
 
 # TikTok Farm Avatar Operations
 
+- Support reference: see [references/avatar_guard_hardened_patterns.md](references/avatar_guard_hardened_patterns.md) for hardened path resolve, pre-write atomic grant claims with rollback, and regenerator exit code discipline.
+
 ## Purpose
 Operate avatar-only changes on Taadaa TikTok farm devices without accidentally posting video, changing the wrong account, or claiming success without device evidence.
 

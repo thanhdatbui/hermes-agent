@@ -243,9 +243,12 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
   * Chạy trên Kibe PC qua cronjob `121a95f18996` mỗi 3 phút (`*/3 * * * *`).
   * Quét song song cả 2 cụm: Kibe Local và Admin Remote (`192.168.110.119:5037`).
   * Khi phát hiện thiết bị bị `offline` hoặc kẹt lệnh shell quá 2.5s $\rightarrow$ tự động gọi `adb reconnect` và wake up màn hình (`keyevent 224`) để cứu sống socket ngay lập tức mà không cần reset máy tính.
+  * **Giới hạn kỹ thuật của Tầng 1 (Soft Reconnect):** Lệnh `adb reconnect offline` chỉ gửi gói điều khiển `A_SYNC`. Nếu nhân Linux (`/dev/android_adb`) trên điện thoại bị nghẽn socket pipe, hoặc khi Tiểu Vi/Phóng Phi đang stream dồn dập 70+ màn hình làm nghẽn microframe USB 2.0, gói handshake bị drop khiến thiết bị lập tức văng ngược lại `offline` hoặc mất hẳn khỏi ADB.
 - **Tầng 2: Giám sát Reset Bus EHCI Phần Cứng (`safe_usb_guard.py`):**
   * Kiểm tra 0 device lock $\rightarrow$ reset 2 chip EHCI Windows qua PowerShell trong 3 giây.
   * Hiện trạng triển khai: **ĐÃ CÀI ĐẶT TRÊN CẢ 2 MÁY** (Task Scheduler `Taadaa_Safe_USB_Guard_15m` trên Admin PC và Kibe PC, chu kỳ 15 phút).
+  * **Ngưỡng an toàn (Threshold Safety):** Script chỉ kích hoạt khi `số máy online < 50 máy` (sập diện rộng). Nếu chỉ rụng lẻ một nhánh 7–9 máy (ví dụ còn 71–72 máy online), Tầng 2 chủ động **SKIP** để bảo vệ các ca nuôi đang chạy của các máy còn lại.
+  * **Dấu hiệu nhận diện sụt data cả cụm Hub (Consecutive Transport IDs):** Kiểm tra `adb devices -l`: nếu các máy offline mang `transport_id` liên tiếp (ví dụ `14745..14752`), đây là bằng chứng phần cứng cả nhánh Box bị sụt data tại cùng một mili-giây.
   * Quy tắc chẩn đoán Tiểu Vi vs ADB: Khi Tiểu Vi chập chờn ô cam ("Điện thoại đã ngắt kết nối"), thiết bị THỰC SỰ BỊ RỚT KHỎI ADB (`device not found`). Nguyên nhân là do Tiểu Vi kéo đồng thời 80 luồng stream video ($100\text{--}150\text{ Mbps}$) dồn vào 2 chip USB 2.0 EHCI (`1C2D`/`1C26` trên Kibe; `8D26`/`8D2D` trên Admin), làm nghẽn microframe dẫn đến drop packet trên các máy có cáp Micro-USB hơi dão. Bình thường không mở Tiểu Vi thì farm chạy auto rất êm; chỉ mở khi cần soi và watchdog Tầng 3 sẽ tự tắt sau 20 phút.
 - **Tầng 3: Giải phóng Bus USB từ Tiểu Vi (`xiaowei-idle-auto-close-kibe`):**
   * Chạy trên Kibe PC qua cronjob `0a4a81f4f164` mỗi 5 phút.

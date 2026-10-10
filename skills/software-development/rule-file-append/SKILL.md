@@ -331,3 +331,7 @@ append case: proves marker==1, prefix unchanged vs backup, appended suffix ==
 target-only `os.walk` finds 0 non-target markers. Handles idempotent root-repair
 scope proof. Pair with `references/scope-lock-propagation-recipe.md` (end-to-end
 33-file skeleton: backup outside fleet, boundary-extracted block, per-EOL suffix).
+
+`references/repo-scoped-rules-vs-global-skills.md` — Quy chuẩn ghi luật nghiệp vụ
+đặc thù vào AGENTS.md thay vì tạo global skill (cơ chế cwd-only discovery, phân
+định phạm vi repo vs global).
