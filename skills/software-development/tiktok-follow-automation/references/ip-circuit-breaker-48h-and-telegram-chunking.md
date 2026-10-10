@@ -18,6 +18,18 @@
   - Gửi tuần tự các chunk về Telegram group ID (`-5127276494` cho Follow, `-5435853713` cho Video).
   - Tuyệt đối không để exception nuốt mất báo cáo Follow khi gặp lỗi message too long.
 - **Khử trùng lặp:** Khối báo cáo Cầu dao IP chỉ xuất ở cụm liên quan (Kibe/Admin), tránh lặp lại làm phình độ dài tin nhắn gấp đôi.
+- **Chống Mù Thông Tin Kênh Feed (Channel Blindness & 1-Line Summary Preservation):**
+  - Khi tách báo cáo 3 kênh, báo cáo Nuôi Acc (Feed) gửi về stdout cronjob tuyệt đối không được xóa trắng mục Follow và Upload.
+  - Luôn giữ lại 1 dòng tóm tắt trạng thái:
+    `if fl_s: f_s.append(fl_s[0])`
+    `if up_s: f_s.append(up_s[0])`
+    giúp người theo dõi kênh Nuôi Acc thấy ngay dòng:
+    `• Follow chéo (0 lượt follow) [Module 2 (Anchor): 0 | Module 1 (Bù): 0]:`
+    tránh hiểu nhầm farm bỏ quên hoặc không chạy follow.
+- **Vòng Lặp Gửi Tin Cậy & Cô Lập Ngoại Lệ (Isolated Retry Dispatch):**
+  - Bọc `try...except` độc lập cho từng kênh (`cid`) để lỗi ở kênh Follow không nuốt mất kênh Video.
+  - Thiết lập vòng lặp retry 3 lần, tăng `timeout=15s` kèm backoff `time.sleep(2)`.
+  - In cảnh báo ra `sys.stderr.write()` khi gửi thất bại để cron bắt được lỗi, cấm `except Exception: logger.warning()` nuốt mất dấu vết.
 
 ## 3. Thẩm Định Độc Lập Sol High & Khóa Cứng Fail-Closed
 - Advisor Sol ChatGPT-Web Pool (port 20129, 115 tài khoản):

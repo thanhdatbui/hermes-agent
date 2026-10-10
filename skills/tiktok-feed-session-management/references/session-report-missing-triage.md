@@ -36,10 +36,20 @@ Use when a scheduled feed-session watchdog exits 0 but Telegram has no report.
      * Follow ➔ `Tiktok Follow` (`-5127276494`) via direct Telegram API `sendMessage`.
      * Video Upload ➔ `Tiktok video` (`-5435853713`) via direct Telegram API `sendMessage`.
    - **Channel Blindness Trap:** The Feed report strips `• Follow chéo` and `• Đăng Video`. An operator monitoring only `Tiktok Luot Nuoi Acc` will see zero mention of follow execution, misinterpreting it as "follow was never run or watchdog forgot to report".
-   - **Forum Topic Blackhole:** Groups with Forum Topics enabled (`has_topics_enabled: true`, such as `Tiktok Follow` `-5127276494`):
-     * Calling `sendMessage` with only `chat_id` and omitting `message_thread_id` sends messages to the **General Topic** instead of the active operational thread.
-     * The API returns HTTP 200 (`WATCHDOG_TELEGRAM_DISPATCH_SUCCESS`), but operators inside dedicated topic threads never see notification alerts.
-     * Fix: When configuring Telegram targets for forum supergroups, `message_thread_id` must be provided, or maintain a high-level 1-line cross-reference block in the main feed report.
+   - **Mandatory Solution (Preserve 1-Line Summary in Feed Report):**
+     * In `dispatch_split_reports()`, when stripping `fl_s` and `up_s`, append `fl_s[0]` and `up_s[0]` to `feed_lines`:
+       ```python
+       summary_fl = fl_s[0] if fl_s else ""
+       summary_up = up_s[0] if up_s else ""
+       feed_lines = [l for l in lines if l not in fl_s and l not in up_s]
+       if summary_fl: feed_lines.append(summary_fl)
+       if summary_up: feed_lines.append(summary_up)
+       ```
+     * Result: The Feed report retains `• Follow chéo (0 lượt follow) [Module 2 (Anchor): 0 | Module 1 (Bù): 0]:` without duplicating the 20-line machine breakdown.
+   - **Forum Topic Blackhole & Isolated Retry Dispatch:**
+     * Groups with Forum Topics enabled (`has_topics_enabled: true`, such as `Tiktok Follow` `-5127276494`): Calling `sendMessage` without `message_thread_id` lands in the General Topic.
+     * In `dispatch_split_reports()`, direct `urllib.request.urlopen` with a 10s timeout was previously vulnerable to transient ISP network routing stalls/failovers and threw unhandled exceptions across destinations.
+     * Fix: Wrap each destination in its own try/except block, retry 3 times with a 15-second timeout and backoff (`time.sleep(2)`), and write errors to `sys.stderr` so failures are visible in cron output.
 
 5. **Follow-Fail vs Follow-Skip Semantics in Rookies (Row 4) Under Rolling 48h IP Breaker:**
    - In sessions where follow count = 0 across the entire fleet despite active runs:
