@@ -286,7 +286,13 @@ Khi người dùng yêu cầu soạn nội dung báo cáo lỗi gửi admin bên
     3. Khi gửi ra, người nhận chỉ cần cắm điện và cắm dây từ modem nhà vào cổng WAN. Router tự nhận DHCP có internet $\rightarrow$ Đường hầm tự kích hoạt đâm về Farm.
     4. Kỹ thuật viên ở nhà SSH/Web vào qua IP đường hầm để cấu hình đầy đủ (MACVLAN, mwan3, gán 16 IP, nạp sẵn user/pass PPPoE).
     5. Sau khi thợ chuyển modem sang Bridge mode, kỹ thuật viên từ xa mới chuyển cổng WAN sang PPPoE, tuyệt đối không bao giờ lo mất liên lạc.
-  * *Kiến trúc Multi-WAN trên Xiaomi R3G (16 IP Thái Bình) & Cổng Cứu Hộ:* Bẻ cổng `lan2` (trắng ngoài cùng) thành `wan2` (`uci del_list network.@device[0].ports='lan2'`, gán vào interface `wan2` trong firewall zone `wan`). WAN xanh cắm Line 1 (8 session PPPoE), WAN2 trắng cắm Line 2 (8 session PPPoE / cổng cứu hộ DHCP fallback), LAN1 trắng ở giữa cắm Switch Farm chia cho 80 máy S7. Khi cần 3+ line, dùng Smart Switch chia VLAN 802.1Q cắm Trunk vào WAN xanh.
+  * *Kiến trúc Cổng Thực Dụng (2 Cổng Trắng PPPoE + 1 Cổng Xanh Cứu Hộ — User Mandate):*
+    - Khi router làm Edge Egress Proxy ở xa (S7 ở nhà connect về lấy proxy), không cần cổng LAN phát DHCP nội bộ tại chỗ.
+    - **2 Cổng Trắng (`lan1` giữa, `lan2` ngoài):** Chuyên cắm 2 line mạng mới kéo để quay PPPoE (`wan` metric 10, `wan2` metric 20).
+    - **Cổng Xanh (`wan` trong `br-lan`):** CỔNG CỨU HỘ & TAILSCALE (DHCP client metric 200, IP tĩnh `192.168.5.1`, tắt DHCP server `dhcp.lan.ignore='1'`). Bình thường ĐỂ TRỐNG; chỉ cắm dây mạng nhà vào đây khi 2 đường PPPoE gặp sự cố để nổ Tailscale vào cứu hộ.
+    - *Quy trình đổi cổng Zero-Lockout:* Gộp cổng xanh vào `br-lan` trước -> User cắm dây máy tính sang cổng xanh -> Gỡ 2 cổng trắng sang PPPoE.
+    - *Bẫy mwan3 & Watchcat:* BẮT BUỘC tắt mwan3 (tránh mwan3 blackhole traffic khi line 1 rớt) để kernel routing theo metric tự nhiên; tắt watchcat (tránh tự reboot 6h khi mất mạng); xóa rule alist (5244) & openvpn (1194); thêm NTP quốc tế/VN chống lệch giờ TLS Tailscale.
+    - *Bẫy Tailscale Key Expiry:* BẮT BUỘC vào Tailscale Admin Console tắt Key Expiry (mặc định 180 ngày) cho node headless ở xa.
   * *Tailscale trên Flash 32MB OpenWrt & Headless Auth:* Tuyệt đối KHÔNG cài bản binary Go chính thức (`tailscale_mipsle.tgz` 35MB nén >70MB giải nén gây tràn flash); dùng bản OpenWrt IPK (`tailscale` + `tailscaled` ~9MB cài đặt). Chạy `tailscale up` ngầm và trích xuất URL duyệt web qua `tailscale status` / `logread` để tránh treo SSH. Chi tiết xem `references/xiaomi-r3g-multi-wan-and-offsite-staging-discipline.md`.
 
 - **🚨 BẪY RÚT DÂY WAN1 MIKROTIK & SẬP TOÀN BỘ 60 POOL PPPOE (2026-10-06):** Cổng vật lý WAN1 trên MikroTik Soft Router (`192.168.110.2`) đang gánh đồng thời 60 interface macvlan (`macvlan1..macvlan60`) cho 60 client PPPoE (`pppoe-out1..pppoe-out60`). Tuyệt đối KHÔNG rút dây mạng ở cổng WAN1 để test router/box khác trừ khi có kế hoạch downtime toàn farm.
