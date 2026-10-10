@@ -78,7 +78,7 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
      - Đã cài đặt Scheduled Task `Taadaa_Safe_USB_Guard_15m` trên **Admin PC** (User SYSTEM) và **Kibe PC** (User Kibe) chạy ngầm định kỳ mỗi 15 phút.
      - *Lưu ý quyền Windows khi đăng ký Task Scheduler:* Trên môi trường không elevated Administrator, cờ `-User "SYSTEM"` sẽ bị từ chối với lỗi `Access is denied (HRESULT 0x80070005)`. Đăng ký trực tiếp dưới user phiên làm việc hiện tại (bỏ tham số `-User "SYSTEM"`) để task kích hoạt ở trạng thái `Ready` thành công 100%.
 
-## 4. Bệnh Bàn Phím Mất Tín Hiệu & Cách Vào BIOS (Main X99)
+## 6. Bệnh Bàn Phím Mất Tín Hiệu & Cách Vào BIOS (Main X99)
 - **Triệu chứng 1 (Trước khi vào BIOS):** Khi khởi động, tại logo main xoay tròn thì bàn phím tắt đèn, chỉ sáng khi vào màn hình gõ pass Windows. Bấm Delete / F2 không vào được BIOS.
   * **Nguyên nhân:** Mainboard bật Fast Boot / Ultra Fast Boot, bỏ qua khởi tạo USB keyboard ở giai đoạn POST (POST rút ngắn < 0.5s) hoặc bàn phím cắm vào cổng USB phụ/hub nối tầng.
   * **Hiện tượng có pass nhưng restart không bắt gõ:** Trong Registry `HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon` có `AutoAdminLogon = 1` (set qua `netplwiz`), Windows tự nạp credentials từ LSA Secrets và vào thẳng Desktop.
