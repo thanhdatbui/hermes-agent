@@ -16,8 +16,8 @@ description: TikTok login automation via ADB — inventory, login, 2FA, UI handl
 - **GMAIL LIVE & PHỤC HỒI 2FA (2026-10-10)**: Check live Gmail; `--allow-parent-lock`. CẤM ĐÁNH ĐỒNG "Gmail die = TT die": nick có 2FA TOTP bypass OTP mail, ưu tiên khôi phục. Ref: `references/gmail-die-vs-2fa-totp-recovery-and-slot-replacement-20261010.md`.
 - **SAFE TAP SWITCHER**: Bounds [0,1788][1080,1920] safe_y=1832. Ref: `references/account-switcher-safe-tap-and-tracking-sheet-filtering.md`.
 - **ĐỐI SOÁT KÝ SINH & ACTIVE LOGOUT (2026-10-01)**: Audit 2 bước; logout Settings. Ref: `references/parasite-active-profile-logout-and-switcher-audit-20261001.md`.
-- **GIẢI PHÓNG SLOT TRẦN 8 NICK (2026-10-10)**: Gỡ nick mới giải phóng slot nạp nick già 2FA; giữ nguyên Video Đã Đăng & follow_state backup. Ref: `references/gmail-die-vs-2fa-totp-recovery-and-slot-replacement-20261010.md`.
-- **GIẢI PHÓNG SLOT TRẦN 8 NICK (2026-10-10)**: Gỡ nick mới/ký sinh giải phóng slot cho nick 2FA; điều hướng Settings ➔ Đăng xuất; nghiệm thu 7 nick và nút '+ Thêm tài khoản'. Ref: `references/eight-account-ceiling-slot-reclamation-and-2fa-recovery-20261010.md`.
+- **GIẢI PHÓNG SLOT TRẦN 8 NICK (2026-10-10)**: Ref: `references/gmail-die-vs-2fa-totp-recovery-and-slot-replacement-20261010.md`.
+- **HOTMAIL GRAPH TOKEN OTP & FAKE PASS (2026-10-10)**: Đối soát sai pass nick OTP (pass rác tracking); ưu tiên token Graph API PC, cấm mở Outlook app; fix Samsung keyboard BACK văng app. Ref: `references/hotmail-token-graph-otp-and-fake-password-triage-20261010.md`.
 - **TRIAGE GMAIL OTP (2026-09-21)**: Ref: `references/tiktok-login-gmail-account-missing-and-checkmail-triage-20260921.md`.
 - **CẤM BỎ DỞ 2FA EMAIL OTP (2026-09-17)**: Ref: `references/tiktok-login-recovery-and-email-otp-workflow-20260917.md`.
 - **ĐỐI SOÁT TRẦN 8 & NICK MỒ CÔI (2026-09-17)**: Đối soát Switcher với Excel tìm nick mồ côi, logout nhả slot. Chi tiết: `references/tiktok-switcher-ceiling-8-and-orphan-account-recovery-20260917.md`.
