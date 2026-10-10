@@ -316,3 +316,22 @@ GPM CDP Connect
   * **CẤM TUYỆT ĐỐI** gọi `/logout.srf` sau Sign out everywhere. Sign out everywhere đã tự động revoke phiên đăng nhập.
   * Điều hướng thẳng tới `https://login.live.com` với vòng lặp retry 2-3 lần có `time.sleep(3)` để chờ mọi redirect ngầm lắng xuống.
   * **Kỷ luật Fail-Fast**: Relogin là chặng BẮT BUỘC. Nếu không relogin thành công và chưa thấy màn hình KMSI / Dashboard Microsoft (`account.microsoft.com`), CẤM ghi pass mới vào Excel hay đánh dấu hoàn thành!
+
+---
+
+## 17. Kỷ Luật Báo Cáo Minh Bạch Lỗi BLOCKED & Khắc Phục Bẫy Selector `#iPlainTextData` (TOTP Step 1) (2026-10-10)
+- **Tâm lý & Phản hồi gay gắt của User**:
+  * *"K lỗi gì hả? Lỗi báo về báo cáo chứ, chạy change info là full đủ các bước chứ"*
+  * Khi có tài khoản bị kẹt/lỗi trong quá trình đổi info, BẮT BUỘC báo cáo định kỳ 6H (`cron_hotmail_gpm_lifecycle_6h_report.py`) phải hiển thị tách biệt rõ ràng dòng:
+    `⚠️ Lỗi / Kẹt cần cứu (BLOCKED): N (Kibe: X | Admin: Y)`
+    CẤM TUYỆT ĐỐI gom chung số nick bị lỗi vào hàng đợi `CHANGE_INFO` làm sai lệch số liệu thực tế!
+- **Bẫy Timeout `#iPlainTextData` khi thiết lập TOTP Bước 1**:
+  * **Hiện tượng**: Script vào trang proofs `https://account.live.com/proofs/manage/additional`, bấm "Thêm một cách đăng nhập khác" nhưng bị treo timeout 35000ms:
+    `Locator.inner_text: Timeout 35000ms exceeded. Call log: waiting for locator("#iPlainTextData")`
+  * **Nguyên nhân**: Microsoft thay đổi DOM/selector giữa các bước chuyển modal ("Sử dụng ứng dụng" -> "Ứng dụng xác thực khác" -> "Tiếp theo" -> "Quét mã / Hiện khóa bí mật"). Nếu bất kỳ click nào không trúng hoặc modal phụ không bung ra, ô `#iPlainTextData` sẽ không xuất hiện.
+  * **Kỷ luật an toàn (Fail-Closed)**:
+    * BẮT BUỘC dừng ngay lập tức khi không đọc được Secret Key Base32 ở Bước 1. TUYỆT ĐỐI CẤM nhảy cóc sang đổi mật khẩu khi chưa bật xong 2FA!
+    * Chụp ảnh checkpoint lỗi thực tế để OCR phân tích giao diện và cập nhật selector dự phòng trước khi thử lại.
+- **Cơ chế Triage & Unblock cho nick BLOCKED sau khi vá code**:
+  * Supervisor `batch_gpm_5profiles_supervisor.py` sẽ bỏ qua vĩnh viễn các nick có `status in {"BLOCKED", "FAILED", "ERROR"}`.
+  * Khi nguyên nhân lỗi là do bug code cũ/race condition (không phải do sai mật khẩu hay tài khoản die), Coordinator phải chủ động triage, kiểm tra cooldown IP/proxy, và reset trạng thái về `PENDING` để supervisor tái nạp vào hàng đợi cuốn chiếu.
