@@ -18,7 +18,7 @@ TikTok Shadow: Path B 'Đã fl' ko commit; FOLLOW_FAILED trừ fl tự nhiên; s
 §
 Giao tiếp: gọi 'tên nick TikTok', cấm handle. Hotmail: reset OTP thanhdatbui1995@gmail.com sync Master C7, clean_v2, State.
 §
-X99: cấm xHCI (trần 96 endpoint); Task Taadaa_Farm_Daily_Reboot_0530 tự reboot 05:30 (Kibe+Admin); feed wkr 25.
+X99: cấm xHCI (trần 96 endpoint); wkr 25. CẤM bắt user rút dây; Task Taadaa_Farm_Daily_Reboot_0530 tự reboot 05:30 (Kibe+Admin).
 §
 Credential: Cột 7 PASS MAIL độc lập Cột 12 PASS CHATGPT; cấm tự ý đè chéo khi đổi/tìm pass.
 §

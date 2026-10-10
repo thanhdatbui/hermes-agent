@@ -187,12 +187,14 @@ Use `references/avatar-only-scope-and-false-policy-refusal.md` for the incident-
   * **BẮT BUỘC:** Khi quy trình gồm N chặng logic, báo cáo nghiệm thu phải cung cấp đầy đủ N ảnh chụp bằng chứng cho đủ N chặng trong **CÙNG MỘT TIN NHẮN TỔNG HỢP**.
   * CẤM TUYỆT ĐỐI viện cớ "tài khoản đã có 2FA từ trước nên bỏ qua", "đã vào profile là coi như relogin xong", hoặc chỉ gửi 1-2 ảnh đại diện rồi dừng lại. Thiếu bất kỳ chặng nào là CHƯA HOÀN THÀNH. Nếu tài khoản đã có sẵn tính năng (ví dụ đã bật 2FA), bắt buộc phải chọn tài khoản mới chưa từng cài để chứng minh trọn vẹn toàn bộ các chặng từ đầu đến cuối.
 
-- **Chống Bẫy Ghép Ảnh (Collage Bypass) & Strict Per-Image Action-Entity Binding (2026-10-11):**
-  * **Cạm bẫy:** Coordinator đính kèm nhiều ảnh (Ảnh A chứa username `@user_a` trong Switcher nhưng không có 2FA; Ảnh B là màn hình 2FA đang bật của `@user_other` nhưng không có tên `@user_a`). Nếu gate quét text gộp chung (combine), kẻ gian lận hoặc bot sẽ qua mặt gate dễ dàng.
-  * **BẮT BUỘC:** Mỗi tài khoản được tuyên bố hoàn tất bắt buộc phải có **ÍT NHẤT 1 ẢNH THỎA MÃN ĐỒNG THỜI** cả tên username lẫn nội dung hành động hợp lệ (2FA ON / Switcher / Mật khẩu mới). Không có ảnh đơn lẻ nào chứa đủ cả hai -> FAIL-CLOSED chặn đứng ngay lập tức!
+- **Chống Bẫy Ghép Ảnh (Collage Bypass) & Strict Per-Claim Per-User Binding (2026-10-11):**
+  * **Cạm bẫy:** Coordinator đính kèm nhiều ảnh (Ảnh A chứa username `@user_a` trong Switcher nhưng không có 2FA; Ảnh B là màn hình 2FA đang bật của `@user_other` nhưng không có tên `@user_a`). Hoặc trong tuyên bố đa claim (*"Nick @user_a đã đăng nhập và bật 2fa"*), nếu gate chỉ kiểm tra username khớp bất kỳ claim nào thì ảnh Switcher của `@user_a` và ảnh 2FA của `@user_other` vẫn qua mặt được gate!
+  * **BẮT BUỘC:** Với **MỖI username** và **MỖI claim_type** xuất hiện trong tuyên bố, bắt buộc phải có **ÍT NHẤT 1 ẢNH THỎA MÃN ĐỒNG THỜI** cả tên username lẫn nội dung hành động hợp lệ (2FA ON / Switcher / Mật khẩu mới). Không có ảnh đơn lẻ nào chứa đủ cả hai -> FAIL-CLOSED chặn đứng ngay lập tức!
   * **Chống Bẫy Vừa Bật Vừa Tắt (Dual-Condition Veto):** Nếu ảnh chứa bất kỳ biến thể tắt nào (`2fa: off`, `xác minh 2 bước: tắt`, `trình xác thực: tắt`, `vô hiệu hóa`), ảnh đó bị phủ quyết (VETO) 100%, không được tính là bằng chứng 2FA hợp lệ kể cả khi có dòng chữ "đang bật" ở tiêu đề.
-  * **Chặn Đứng HTML Spoofing:** Cấm dùng `browser_vision` trên file cục bộ `.html` / `.htm` do agent tự render để làm giả bằng chứng thị giác.
-  * **Bảng Excel Không Phải Bằng Chứng Đổi Mật Khẩu Thiết Bị:** Bảng đối soát Excel chỉ chứng minh cập nhật cơ sở dữ liệu/sheet. Bằng chứng đổi mật khẩu hoàn tất bắt buộc là ảnh màn hình thiết bị TikTok thật (`mật khẩu mới`, `tạo mật khẩu mới`, `đã đổi mật khẩu`).
+  * **Chặn Đứng HTML Spoofing & Localhost/Data URL:** Cấm dùng `browser_vision` trên file cục bộ `.html` / `.htm`, `http://127.0.0.1`, `http://localhost`, `data:` do agent tự render để làm giả bằng chứng thị giác. Cờ HTML phải được chuẩn hóa bỏ query/fragment và reset khi chuyển sang web thật.
+  * **Bẫy Form Trống & Excel Không Phải Bằng Chứng Đổi Mật Khẩu:** Form nhập mật khẩu trống chưa submit (`đặt lại mật khẩu`, `mật khẩu mới`) và Bảng đối soát Excel chỉ chứng minh giao diện/sheet, KHÔNG chứng minh đổi pass thành công. Bằng chứng đổi mật khẩu hoàn tất bắt buộc là ảnh màn hình thiết bị TikTok thật chứa chỉ báo thành công sau submit (`đã đổi mật khẩu`, `mật khẩu đã được đổi`, `đổi mật khẩu thành công`, `đã cập nhật mật khẩu`).
+  * **Bỏ Ngoại Lệ Dấu Hỏi Lỏng Lẻo:** Mọi câu hỏi có chứa tuyên bố hoàn thành đều bắt buộc phải kèm ảnh bằng chứng thị giác, không để lọt qua ngoại lệ `?`. Phủ định chỉ được tính khi đứng ngay sát trước động từ claim.
+  * **Fail-Closed Tuyệt Đối Khi Thiếu SHA-256:** Thiếu hash lúc OCR hoặc hash tính lại từ đĩa rỗng/lệch ➔ Lập tức đánh dấu `unverified`/`tampered` và chặn xuất bản.
 
 ## References
 
