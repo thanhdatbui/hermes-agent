@@ -258,3 +258,21 @@ def test_mixed_lane_state_combinations(tmp_path):
         })
         assert watchdog.already_ran_today("2026-10-07") is True
 
+
+def test_gmail_batch_code_1_with_total_greater_than_zero_marks_success():
+    with (
+        patch.object(watchdog, "already_ran_today", return_value=False),
+        patch.object(watchdog, "is_feed_runner_active", return_value=False),
+        patch.object(watchdog, "has_active_device_locks", return_value=False),
+        patch.object(watchdog, "run_gmail_batch", return_value=(1, "TOTAL=5 SUCCESS=2 FAILED=3")),
+        patch.object(watchdog, "run_tiktok_2fa_batch", return_value=(0, "TOTAL=1 SUCCESS=1 FAILED=0")),
+        patch.object(watchdog, "save_state") as save_state,
+        patch.object(sys, "argv", ["post_noon_chain_watchdog.py", "--lane", "all", "--force"]),
+    ):
+        assert watchdog.main() == 0
+        save_state.assert_called_once()
+        details = save_state.call_args[0][1]
+        assert details["gmail_status"] == "success"
+        assert details["lane_status"] == "success"
+
+

@@ -91,6 +91,22 @@ def is_ca2_finished(today_str: str) -> bool:
         return False
 
 
+def is_in_cooldown(threshold_minutes: int = 45) -> bool:
+    if not STATE_FILE.is_file():
+        return False
+    try:
+        data = json.loads(STATE_FILE.read_text(encoding="utf-8"))
+        last_run_str = data.get("last_run_at")
+        if not last_run_str:
+            return False
+        last_run_dt = datetime.fromisoformat(last_run_str)
+        now_dt = datetime.now(HCMC)
+        elapsed_seconds = (now_dt - last_run_dt).total_seconds()
+        return 0 <= elapsed_seconds < (threshold_minutes * 60)
+    except Exception:
+        return False
+
+
 def already_ran_today(today_str: str) -> bool:
     if not STATE_FILE.is_file():
         return False
@@ -196,7 +212,7 @@ def run_tiktok_2fa_batch(dry_run: bool = False) -> tuple[int, str]:
         "Set-Location 'D:/Taadaa/tiktok-add-bao-mat-f2a'\n"
         "$wb = 'D:\\OneDrive\\TaadaaData\\admin\\taikhoan_dat_v2_updated .xlsx'\n"
         "& 'D:\\Taadaa\\python-envs\\automation\\Scripts\\python.exe' python_runner/run_batch_live_2fa.py "
-        "--workbook-path $wb --workbook-sheet 'Tài Khoản' --max-workers 40 --live\n"
+        "--workbook-path $wb --max-workers 40 --live\n"
     )
     b64_ps = base64.b64encode(ps_admin_script.encode("utf-16le")).decode("ascii")
     cmd_admin = [
@@ -258,7 +274,11 @@ def parse_summary_counts(output: str, log_dir_hint: Path | None = None, min_mtim
         return SummaryResult({"total": int(m.group(1)), "success": int(m.group(2)), "failed": int(m.group(3)), "skip_safe": 0, "failure_breakdown": {}})
 
     # 3. Bóc tách bảng kết quả TikTok 2FA (machine | source_row | username | status | reason)
-    table_rows = re.findall(r"^\s*(\d+)\s*\|\s*(\d+)\s*\|\s*[^|]+\|\s*(\w+)", output, re.M)
+    # Loại trừ bảng 'Skip do device lock' in lặp ở cuối để tránh đếm trùng x2 các mục skipped
+    table_section = output
+    if "Skip do device lock" in output:
+        table_section = output.split("Skip do device lock")[0]
+    table_rows = re.findall(r"^\s*(\d+)\s*\|\s*(\d+)\s*\|\s*[^|]+\|\s*(\w+)", table_section, re.M)
     if table_rows:
         succs = sum(1 for r in table_rows if r[2].lower() == "success")
         fails = sum(1 for r in table_rows if r[2].lower() in ("failed", "fail", "error"))
@@ -291,6 +311,10 @@ def main() -> int:
     if already_ran_today(today_str) and not args.force:
         return 0
 
+    # 2b. Kiểm tra cooldown 45 phút chống cron kích hoạt liên tiếp khi run vừa xong
+    if is_in_cooldown(threshold_minutes=45) and not args.force and not args.dry_run:
+        return 0
+
     # 3. Kiểm tra Ca 2 đã kết thúc
     if not is_ca2_finished(today_str) and not args.force and not args.dry_run:
         return 0
@@ -307,6 +331,7 @@ def main() -> int:
     sys.stderr.write(f"=== KÍCH HOẠT CHUỖI SAU CA TRƯA LÚC {start_dt.strftime('%H:%M:%S %d/%m/%Y')} ===\n")
 
     g_code, g_out = 0, ""
+    g_tot = 0
     t2fa_code, t2fa_out = 0, ""
 
     # THIẾT KẾ ĐỘC LẬP (DECOUPLED):
@@ -410,6 +435,8 @@ def main() -> int:
     print("\n".join(report_lines))
 
     if not args.dry_run:
+        gmail_ok = (g_code == 0) or (g_code == 1 and g_tot > 0)
+        t2fa_ok = t2fa_code in (0, 4)
         save_state(today_str, {
             "gmail_code": g_code,
             "gmail_duration_min": g_duration_min,
@@ -417,11 +444,11 @@ def main() -> int:
             "2fa_duration_min": t2fa_duration_min,
             "lane": args.lane,
             "total_duration_min": duration_min,
-            "gmail_status": "success" if g_code == 0 else "failed",
-            "2fa_status": "success" if t2fa_code in (0, 4) else "failed",
+            "gmail_status": "success" if gmail_ok else "failed",
+            "2fa_status": "success" if t2fa_ok else "failed",
             "lane_status": "success" if (
-                (g_code == 0 if args.lane in ("gmail", "all") else True) and
-                (t2fa_code in (0, 4) if args.lane in ("tiktok", "all") else True)
+                (gmail_ok if args.lane in ("gmail", "all") else True) and
+                (t2fa_ok if args.lane in ("tiktok", "all") else True)
             ) else "failed",
         })
 
