@@ -88,6 +88,14 @@ Operate avatar-only changes on Taadaa TikTok farm devices without accidentally p
 
 ## 4. Avatar uniqueness preflight
 - A farm avatar is an account asset, not a reusable placeholder.
+- **BẢO VỆ TUYỆT ĐỐI AVATAR ĐỔI THỦ CÔNG THEO YÊU CẦU OPERATOR (ANTI-MASS OVERWRITE GUARD 10/10/2026):**
+  * **Chỉ thị dứt khoát của Sếp:** *"Từ h bất kì kênh nào t yêu cầu đổi ava = tay thì k đc script can thiệp nữa (hiện có code kiểu quét folder tạo ava lại hàng loạt, nó dùng fix mấy nick lúc trc, nhưng vô tình phá luôn nick t yêu cầu đổi = tay t chat vs m)"*.
+  * **Quy tắc bất biến:** Bất kỳ folder/kênh nào được Operator yêu cầu đổi avatar thủ công qua chat BẮT BUỘC phải được bảo vệ bất khả xâm phạm.
+  * **Cơ chế 3 lớp bắt buộc:**
+    1. Đăng ký folder vào `data/manual_avatar_protected_folders.json` (cả ở `Tiktok-video/data/` và `D:/Taadaa/data/`).
+    2. Cắm file cờ rỗng `.manual_avatar_locked` bên trong các thư mục `D:\TIKTOK-videonuoinick\<folder>` và `D:\video goc\<folder>`.
+    3. Mọi script quét đĩa tạo lại avatar hàng loạt (`regenerate_unique_avatars.py`, `_make_avatar.py`...) BẮT BUỘC gọi `is_folder_avatar_protected(folder)` qua `scripts/manual_avatar_guard.py` để bỏ qua (`SKIPPED_MANUAL_PROTECTED`), tuyệt đối cấm ghi đè frame fallback lên avatar thủ công.
+  * Chi tiết xem: `references/manual-avatar-protection-and-mass-script-lock-20261010.md`.
 - Before upload, hash the target avatar and compare it against the relevant avatar corpus; investigate duplicates rather than silently reusing another folder’s image.
 - **CẤM BÁO HẾT TRÙNG GIẢ DỐI DỰA TRÊN DANH SÁCH HARDCODE:** Không được phép chỉ chạy đối soát trên một mảng folder tĩnh (như FOLDERS_DUP cũ) rồi kết luận cả farm đã sạch. Khi rà soát trùng avatar toàn diện, bắt buộc quét mã băm MD5 toàn bộ các folder số (`*/avatar.jpg`) trên cả 2 farm (kho video nuôi và kho video gốc).
 - **KỸ THUẬT CẮT FRAME TRÁNH TRÙNG INTRO HÀNG LOẠT:**

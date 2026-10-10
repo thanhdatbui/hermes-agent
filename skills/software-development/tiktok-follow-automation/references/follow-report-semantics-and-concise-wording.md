@@ -45,5 +45,18 @@ Nhả liền: X máy, 0 lượt thành công
 Khóa IP: Y IP
 ```
 
+## Operator Triage: "Sao report không báo cáo phiên follow?" (Tri-Channel & Forum Topic Pitfall)
+Khi operator phản ánh "sao report không báo cáo phiên follow" hoặc "ca trưa không chạy follow à":
+1. **Kiểm tra kênh tiếp nhận (Tri-Channel Split):**
+   - Báo cáo chính stdout của cron watchdog gửi về `Tiktok Luot Nuoi Acc` (`-5377611430`) **đã bị cắt bỏ hoàn toàn mục Follow chéo** để gửi riêng về nhóm `Tiktok Follow` (`-5127276494`).
+   - Nếu operator chỉ xem nhóm Luot Nuoi Acc, họ sẽ thấy hoàn toàn không có dòng nào về follow.
+2. **Kiểm tra Forum Topics (General Topic Blackhole):**
+   - Nhóm `Tiktok Follow` (`-5127276494`) bật chế độ diễn đàn/topic (`has_topics_enabled: true`).
+   - Nếu lệnh dispatch `sendMessage` gửi thiếu `message_thread_id`, tin nhắn báo cáo follow rơi vào topic `General` thay vì topic làm việc của phiên, khiến operator không thấy thông báo.
+3. **Phân biệt "Không chạy" với "Dừng an toàn / Nhả liền tại lượt 0":**
+   - Ca trưa (Row 4) phần lớn là nick non (Rookie).
+   - ~33% nghỉ Dưỡng sinh, proxy bẩn bị Cầu dao IP 48h chặn trước cửa app (`CIRCUIT_BREAKER_SKIPPED`), các nick được vào cày bấm anchor thì bị TikTok nhả ngay tức thì (`FOLLOW_FAILED` sau swipe).
+   - Cơ chế Fail-Closed lập tức ngắt phiên tại lượt 0 để bảo vệ nick khỏi bị cấm tính năng vĩnh viễn ➔ Thống kê ghi nhận 0 lượt thành công nhưng toàn bộ hệ thống đã kích hoạt bảo vệ 100%.
+
 ## Answer style
 Answer the operator's direct question first, in Vietnamese, with no speculative theory. Explain only the distinction needed to prevent the common misread that `Success (0)` equals “no machine ran.”

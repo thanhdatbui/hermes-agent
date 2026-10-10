@@ -30,6 +30,25 @@ Use when a scheduled feed-session watchdog exits 0 but Telegram has no report.
      * Line-aware auto-chunking: Divide `full_msg` by line boundaries into chunks of $\le 3,900$ characters and dispatch each chunk sequentially.
      * Deduplicate cluster-level blocks: Ensure reports like `format_ip_circuit_breaker_report` only attach to the owning cluster (Kibe), preventing payload duplication.
 
+4. **Split-Report Channel Blindness & Forum Topic Blackhole (`message_thread_id` Omission):**
+   - **Tri-Channel Split Architecture:** `dispatch_split_reports()` distributes session sections into 3 dedicated Telegram chats:
+     * Feed ➔ `Tiktok Luot Nuoi Acc` (`-5377611430`) via cronjob stdout.
+     * Follow ➔ `Tiktok Follow` (`-5127276494`) via direct Telegram API `sendMessage`.
+     * Video Upload ➔ `Tiktok video` (`-5435853713`) via direct Telegram API `sendMessage`.
+   - **Channel Blindness Trap:** The Feed report strips `• Follow chéo` and `• Đăng Video`. An operator monitoring only `Tiktok Luot Nuoi Acc` will see zero mention of follow execution, misinterpreting it as "follow was never run or watchdog forgot to report".
+   - **Forum Topic Blackhole:** Groups with Forum Topics enabled (`has_topics_enabled: true`, such as `Tiktok Follow` `-5127276494`):
+     * Calling `sendMessage` with only `chat_id` and omitting `message_thread_id` sends messages to the **General Topic** instead of the active operational thread.
+     * The API returns HTTP 200 (`WATCHDOG_TELEGRAM_DISPATCH_SUCCESS`), but operators inside dedicated topic threads never see notification alerts.
+     * Fix: When configuring Telegram targets for forum supergroups, `message_thread_id` must be provided, or maintain a high-level 1-line cross-reference block in the main feed report.
+
+5. **Follow-Fail vs Follow-Skip Semantics in Rookies (Row 4) Under Rolling 48h IP Breaker:**
+   - In sessions where follow count = 0 across the entire fleet despite active runs:
+     * **Organic Rest (1/3):** ~33% fleet skips follow/upload by daily hash for organic rest.
+     * **Rolling 48h IP Breaker:** Proxies tripped in earlier shifts (e.g. Ca 1) automatically skip subsequent rows (`CIRCUIT_BREAKER_SKIPPED`) to protect rookie accounts from shared IP taint.
+     * **Fail-Closed Immediate Release (Lượt 0):** Non-rested rookie accounts encountering TikTok server action drop get reverted instantly (`FOLLOW_FAILED` after swipe) ➔ Script aborts at 0 count to prevent ban, tripping breaker for the proxy.
+     * **Zero-following Anchor:** Anchor target has 0 following ➔ cleanly skipped (`zero-following-skip-v2`).
+   - Triage rule: Do not declare follow broken or unrun when follow count = 0; verify the breakdown across rest, breaker skips, and fail-closed terminations.
+
 ## Reporting standard
 
 Tell the operator: cron health, manual-run exit/stdout, exact state keys found, artifact discovery result, and the most likely blocker. Keep the answer short and evidence-led. Distinguish `no reportable artifact`, `wrong session key claimed`, `runner busy`, and `Telegram delivery failure` as separate causes.

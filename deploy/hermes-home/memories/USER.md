@@ -2,7 +2,7 @@ Cào/Render: 12 niche hot; dọn video+ava; min 45; 1 wkr. Tên nick: cấm cụ
 §
 Dọn đĩa: duyệt trước (thư mục corrupt/lỗi xóa ngay), CẤM xóa ngầm.
 §
-Farm: nick cấm xóa/đè; SoT tiktok_tracker.db. GPM 7d. Hotmail: reg TT+ChatGPT; xóa token Col 9. LLM: Codex pool Omni; ban xóa DB giữ GPM.
+Farm: nick cấm xóa/đè; SoT tiktok_tracker.db; cấm script đè ava đổi tay (.manual_avatar_locked). GPM 7d. Hotmail: reg TT+ChatGPT; LLM: Codex Omni; ban xóa DB.
 §
 Chốt phiên: tự remediation >=85; bind repo/task; Regression Gate. Claude CLI: sonnet 5.5; quota block dừng xin phép.
 §
