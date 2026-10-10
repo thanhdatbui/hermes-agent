@@ -148,6 +148,12 @@ Operate avatar-only changes on Taadaa TikTok farm devices without accidentally p
   * Kiểm tra thêm: duration video trong `video goc/<Video Gốc>` — video >45s thường là talkshow/podcast, không phải Shorts viral → dấu hiệu rõ niche sai.
   * Chi tiết trong `references/niche-mismatch-diagnosis-and-source-discovery-20261007.md`.
 
+- **KỶ LUẬT BẢO VỆ AVATAR ĐỔI THỦ CÔNG CHỐNG SCRIPT HÀNG LOẠT GHI ĐÈ (CRITICAL OPERATOR INVARIANT 10/10/2026):**
+  * **Chỉ thị Operator:** *"Từ h bất kì kênh nào t yêu cầu đổi ava = tay thì k đc script can thiệp nữa (hiện có code kiểu quét folder tạo ava lại hàng loạt, nó dùng fix mấy nick lúc trc, nhưng vô tình phá luôn nick t yêu cầu đổi = tay t chat vs m)"*.
+  * **3 Tầng bảo vệ bắt buộc:**
+    1. **In-folder marker:** Tạo file `.manual_avatar_locked` chứa metadata (folder, username, reason, locked_at) tại cả `D:\TIKTOK-videonuoinick\<folder>` và `D:\video goc\<folder>`.
+    2. **Central registry:** Ghi nhận folder vào `manual_avatar_protected_folders.json` tại `D:\Taadaa\Tiktok-video\data` và `D:\Taadaa\data`.
+    3. **Preflight Interceptor (`manual_avatar_guard.py`):** Các script quét đĩa tái tạo avatar diện rộng (`regenerate_unique_avatars.py`, `_make_avatar.py`, `download_by_niche.py`) BẮT BUỘC gọi `is_folder_avatar_protected(folder)`. Nếu True, loại trừ hoàn toàn khỏi danh sách tái tạo (`to_regen`) và skip với mã `SKIPPED_MANUAL_PROTECTED`, cấm tuyệt đối tự ý cắt frame đè lên avatar thủ công. Chi tiết xem `references/manual-avatar-protection-and-anti-mass-overwrite-guard-20261010.md`.
 - **KỶ LUẬT THAY AVATAR KHI DỌN NICHE / THAY NGUỒN VIDEO (CRITICAL OPERATOR INVARIANT 06/10/2026):**
   * **CẤM GIỮ LẠI AVATAR CŨ:** Khi dọn folder để chuyển sang Niche mới, BẮT BUỘC xóa sạch cả video cũ và file `avatar.jpg` cũ ở cả 2 đầu kho (`video goc` và `TIKTOK-videonuoinick`). Tuyệt đối không giữ avatar của niche cũ lắp vào niche mới.
   * **TUẦN TỰ BẮT BUỘC:** CHỈ tạo avatar mới SAU KHI đã tải thành công bộ video của niche hot mới vào folder (trích xuất frame nét từ video mới tải, seek 3.0s - 11.0s, crop vuông 512x512). CẤM tạo avatar trước khi có video mới.

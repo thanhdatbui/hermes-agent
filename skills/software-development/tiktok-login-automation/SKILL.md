@@ -13,9 +13,10 @@ description: TikTok login automation via ADB — inventory, login, 2FA, UI handl
 
 ## 🛑 STOP GATE (bắt buộc — chi tiết: skill taadaa-farm-ops-rules)
 - **CANONICAL APK-BANK & CLEANUP (2026-10-09)**: Dùng `install_farm_apks.py` từ `apk-bank`; xóa sổ ngay lập tức các thư mục APK lỗi/phân mảnh (chống giữ lại rác); quy trình xử lý VERSION_DOWNGRADE. Ref: `references/canonical-apk-bank-and-install-discipline-20261009.md`.
-- **PRE-LOGIN GMAIL LIVE GATE (2026-09-25 / 2026-10-10 UPDATE)**: Check live Gmail (`check_gmail_is_live`) trước khi login; cờ `--allow-parent-lock` cho watchdog. CẤM ĐÁNH ĐỒNG "Gmail die = TikTok die": tài khoản có 2FA Authenticator TOTP bypass hoàn toàn Gmail OTP, bắt buộc ưu tiên cứu và khôi phục thay vì reg nick mới đè lên. Ref: `references/pre-login-gmail-live-gate-and-parent-lock-handling-20260925.md`.
-- **SAFE TAP SWITCHER**: Bounds [0,1788][1080,1920] tap safe_y=1832. Ref: `references/account-switcher-safe-tap-and-tracking-sheet-filtering.md`.
-- **ĐỐI SOÁT ACC KÝ SINH & ACTIVE LOGOUT (2026-10-01)**: Bẫy ngộ nhận acc ký sinh đã out khi nó đang là Active Profile (không hiện trong Switcher list); quy trình audit 2 bước (Active Profile + Switcher) và logout từ Settings. Ref: `references/parasite-active-profile-logout-and-switcher-audit-20261001.md`.
+- **PRE-LOGIN GMAIL LIVE GATE & PHỤC HỒI 2FA (2026-10-10)**: Check live Gmail; cờ `--allow-parent-lock`. CẤM ĐÁNH ĐỒNG "Gmail die = TikTok die": nick có 2FA TOTP bypass Gmail OTP, ưu tiên khôi phục thay vì reg nick mới. Ref: `references/pre-login-gmail-live-gate-and-parent-lock-handling-20260925.md`.
+- **SAFE TAP SWITCHER**: Bounds [0,1788][1080,1920] safe_y=1832. Ref: `references/account-switcher-safe-tap-and-tracking-sheet-filtering.md`.
+- **ĐỐI SOÁT ACC KÝ SINH & ACTIVE LOGOUT (2026-10-01)**: Audit 2 bước (Active Profile + Switcher); logout từ Settings. Ref: `references/parasite-active-profile-logout-and-switcher-audit-20261001.md`.
+- **GIẢI PHÓNG SLOT TRẦN 8 NICK (2026-10-10)**: Gỡ nick mới/ký sinh giải phóng slot cho nick 2FA; điều hướng Settings ➔ Đăng xuất; nghiệm thu 7 nick và nút '+ Thêm tài khoản'. Ref: `references/eight-account-ceiling-slot-reclamation-and-2fa-recovery-20261010.md`.
 - **TRIAGE GMAIL OTP (2026-09-21)**: Ref: `references/tiktok-login-gmail-account-missing-and-checkmail-triage-20260921.md`.
 - **CẤM BỎ DỞ 2FA EMAIL OTP (2026-09-17)**: Ref: `references/tiktok-login-recovery-and-email-otp-workflow-20260917.md`.
 - **ĐỐI SOÁT TRẦN 8 & NICK MỒ CÔI (2026-09-17)**: Đối soát Switcher với Excel tìm nick mồ côi, logout nhả slot. Chi tiết: `references/tiktok-switcher-ceiling-8-and-orphan-account-recovery-20260917.md`.
