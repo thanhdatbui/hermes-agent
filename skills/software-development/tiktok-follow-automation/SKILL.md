@@ -1,15 +1,13 @@
 ---
 name: tiktok-follow-automation
-description: "Canonical TikTok Follow runner: Mode 1/2, video gate, Path B, UI evidence, and fail-closed farm operations."
+description: "TikTok follow runner and fail-closed farm ops."
 ---
 
 # TikTok Follow Automation
 
-Canonical TikTok follow runner. Chi tiết xem `references/`.
-
 ## Non-negotiable operating rules
 
-- **Tài liệu tham khảo chuyên sâu (`references/`):**
+- **Tài liệu tham khảo chuyên sâu (`references/`):** Xem `references/follow-report-semantics-and-concise-wording.md` để phân biệt `Success (0)` với không chạy và ghi ngắn `Nhả → khóa IP`.
     - `references/account-replacement-and-backfill-state-reset.md`: Kỷ luật reset state & bộ đếm video/follow khi thay nick die / reg bù — tránh bẫy kế thừa state cũ khiến nick mới bị cấp full budget đi follow sớm gây ban nick.
     - `references/fleet-follow-graduated-probation-ladder.md`: Bậc thang 3 nấc & Health-Tiered Reporting.
     - `references/daily-follow-matrix-and-trust-ceiling-analytics.md`: Daily Matrix Heatmap, Trust Ceiling, FOLLOW_CONCURRENCY, Sweet Spot Quota.

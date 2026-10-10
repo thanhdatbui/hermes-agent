@@ -145,7 +145,17 @@ Toàn bộ 80 máy Kibe dùng 40 proxy (mỗi proxy 2 máy: `[M1, M39]`, `[M2, M
   - **Row 1 & 2:** Dàn cựu binh nuôi lâu, >= 90% nick có >= 10-25 video, trung bình tích lũy 20–108 follow sạch.
   - **Row 3 đến 8:** Dàn nick gối đầu/mới reg bù, **76% - 90% nick CHƯA TỪNG follow được lần nào (0 follow)**, video ít.
   - Khi đưa nick non nớt (Rookie) vào cày follow thì dù chạy ở ca nào nó cũng sẽ bị thuật toán TikTok vặn cổ (`FOLLOW_FAILED`).
+  - **Bằng chứng thực nghiệm bóc tách 44 ca chiều/tối bị nhả:** 88% (44/50) là nick mầm 0 follow lịch sử, 6% là nick yếu (<5 follow), chỉ 4% (2 ca) là acc cựu binh. Khẳng định: hiện tượng chiều/tối dính nhả chủ yếu do **nội tại nick quá yếu** chứ không phải do lây nhiễm máy/IP từ ca sáng.
   - **Bằng chứng phản biện:** Khi cho nick Row 3 nhưng là **Nick Khỏe có Trust** chạy buổi trưa/chiều (M16_r3 `@lenhi09116` cày 10 follow ngày 03/10 và 15 follow ngày 07/10; M21_r3 `@hongloan992` cày 5 follow ngày 03/10 và 17 follow ngày 07/10), máy và IP hoàn toàn gánh được cả 2 ca mượt mà!
+
+### B. Mô Hình Khóa Kép (Dual-Layer Anti-Spam: Account vs IP Gateway) & Tử Huyệt Quota Hồi Phục:
+1. **TikTok phạt theo 2 tầng hoàn toàn độc lập:**
+   - **Tầng 1 - Khóa theo Account (Account Penalty State):** Cắm cờ trực tiếp vào profile TikTok. Nick bị cờ thì đổi sang IP sạch hay máy khác vẫn bị tuột follow trong suốt thời gian Cooldown (3–15 ngày).
+   - **Tầng 2 - Khóa theo IP/Subnet (Gateway Anomaly Flag):** Thuật toán cắm cờ IP khi phát hiện volume tương tác bất thường. Khi IP bị cắm cờ (48h–72h), **BẤT KỲ ACC NÀO (KỂ CẢ CỰU BINH SIÊU KHỎE)** bấm follow qua IP đó đều bị từ chối/nhả tại gateway (minh chứng: 50 ca acc khỏe cựu binh M14, M52, M1, M39 bị nhả rạng sáng 09/10).
+2. **Tử huyệt của Quota Hồi Phục khi chạy trên IP dính cờ:**
+   - Quy chế cấp quota hồi phục nhỏ (3–5 follow) cho nick mãn hạn Cooldown là **BẮT BUỘC ĐÚNG để re-test trust**.
+   - **NHƯNG NẾU CHO NICK HỒI PHỤC CHẠY TRÊN IP CHƯA HẠ NHIỆT (IP dính cờ 48h):** Nick sẽ bị nhả ngay lập tức do cơ chế Gateway Flag của IP ➔ Operator/Agent lầm tưởng nick chưa hồi phục và tăng án phạt streak, trong khi thủ phạm thực sự là dải IP đang bị cắm cờ.
+   - **Quy tắc bất di bất dịch:** Nick đang trong diện Probation / Hồi phục **CHỈ ĐƯỢC PHÉP CHẠY TRÊN IP HOÀN TOÀN SẠCH** (IP không có bất kỳ máy/row nào dính lỗi trong 48h qua).
 
 ### B. Quy tắc vận hành chuẩn: HOÃN FOLLOW TOÀN BỘ ĐẾN HẾT NGÀY (23:59:59) KHI DÍNH NHẢ
 1. **Phạm vi khóa của Circuit Breaker:** Bảng `ip_circuit_breaker` khóa theo `proxy_key` với `target_date = today` và `reset_at = 23:59:59`. Mọi ca chạy sau trong cùng ngày (bất kể khác máy hay cùng máy khác row) khi gọi `check_ip_breaker()` đều nhận cờ `TRIPPED` và tự động safe-skip.
