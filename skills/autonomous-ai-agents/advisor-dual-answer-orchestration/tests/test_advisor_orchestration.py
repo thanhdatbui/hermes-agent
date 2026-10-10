@@ -40,6 +40,9 @@ class TestAdvisorIntentClassification(unittest.TestCase):
             "có nên đổi proxy cho máy 62 không",
             "đánh giá kiến trúc này giúp tao",
             "plan thế nào để xử lý triệt để",
+            "mày nghĩ sao về cách này",
+            "nên dùng cách A hay B",
+            "Ngày nghỉ ổng nói có hợp lý không?",
             "sao bữa nay t đéo hề thấy mày gọi advisor nữa?",
             "theo mày nên dùng cách nào",
             "nhìn avatar thế nào có hợp không",
@@ -77,6 +80,8 @@ class TestAdvisorIntentClassification(unittest.TestCase):
             "lên plan cho phase 2",
             # Câu có từ chứa 'liệu' (dữ liệu, tài liệu) nhưng là mệnh lệnh
             "sửa dữ liệu avatar máy 62",
+            "kiểm tra plan hôm qua rồi báo cáo",
+            "Xem trạng thái review combo thế nào",
             "upload tài liệu lên drive",
             # Câu hỏi tiến độ / trạng thái (không phải xin ý kiến kiến trúc)
             "kiểm tra xem avatar máy 62 sao rồi",
