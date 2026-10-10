@@ -1,16 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-cron_night_tiktok_2fa_watchdog.py
-Watchdog tự động cuốn chiếu bật 2FA TikTok cho toàn bộ nick còn thiếu vào ban đêm (01:00 - 02:50).
-Khung giờ: 01:00 - 02:50 (HCM) trước khi ca dọn cache lúc 03:00 bắt đầu.
-Tự động bypass / skip các máy đang có lock hoặc bận feed.
-
-Return code convention from run_batch_live_2fa.py:
-  EXIT_SUCCESS = 0: All batches processed successfully.
-  EXIT_SAFE_SKIP = 4: All targets skipped safely (e.g. already have 2FA enabled, or ceded to another job).
-  ACCEPTABLE_RETURN_CODES = (EXIT_SUCCESS, EXIT_SAFE_SKIP)
-"""
+"""Watchdog tự động bật 2FA TikTok ban đêm cho tài khoản thiếu 2FA sau Ca 4."""
 from __future__ import annotations
 
 import argparse
