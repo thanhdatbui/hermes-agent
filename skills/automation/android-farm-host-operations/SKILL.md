@@ -45,6 +45,7 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
     - **CẤM TUYỆT ĐỐI** bắt người dùng đi rút cắm dây cáp vật lý ("rút dây còn phiền hơn reset máy") hoặc yêu cầu canh reset PC thủ công trước mỗi ca.
     - **Thực tế vận hành không bật XiaoWei:** Farm vẫn có thể văng máy do I/O micro-spikes (30–40 worker cùng dump XML/screencap dồn vào băng thông USB 2.0 trần 35 MB/s) hoặc tiếp xúc cáp Box 4.
     - **Giải pháp tự động hóa 100%:** Áp dụng cơ chế **Preflight Auto-Reboot trước Ca** (gọi `shutdown /r /t 2` qua SSH nếu có cụm máy kẹt socket). Với `AutoAdminLogon = 1`, PC tự khởi động lại trong ~45 giây và kéo toàn bộ 80 máy lên xanh trước ca chạy hoàn toàn tự động.
+    - **Kết quả thực nghiệm đã kiểm chứng (10/10/2026):** Sau reboot Admin PC, 79/79 thiết bị vật lý nhận đủ 100%, 0 máy offline, M269 mất ADB phục hồi lập tức. 8 máy unauthorized tự handshake xanh khi bật lại XiaoWei.
 
 ## 3. Worker Concurrency & Khống Chế Nghẽn USB 2.0 (Hạ Tải Tránh Văng Trong Ca)
 - **Tác động của số lượng Worker song song (`MaxWorkers`):**

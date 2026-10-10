@@ -46,6 +46,8 @@ Khi trích xuất `adb devices -l` trên Admin PC, toàn bộ các máy bị vă
 ### 3.1. Hạ Worker Khống Chế Tải USB 2.0:
 * Trong `D:\Taadaa\tiktok-luot nuoi acc\scripts\run-feed-session.ps1`:
   * Đã hạ `$MaxWorkers = 25` (thay vì 40).
+  * Khóa cứng mức an toàn bằng thuộc tính biên dịch PowerShell: `[ValidateRange(1, 30)]`. Chặn đứng bất kỳ lệnh nào truyền quá 30 worker làm sập bus USB 2.0.
+  * Xuất structured telemetry: `[TELEMETRY_METRIC] {"event": "feed_session_launch", "max_workers": 25, "target_machines": N}`.
   * Giảm 40% số luồng I/O microframe trên bus USB 2.0. Thời lượng ca nuôi 80 máy tăng từ 35-40p lên ~60p, vẫn nằm trọn trong khung an toàn 120p của từng Ca.
 
 ### 3.2. Kiến Trúc Reboot Tự Động 1 Ngày 1 Lần (Khung 05:30 Sáng):
@@ -59,3 +61,12 @@ Khi trích xuất `adb devices -l` trên Admin PC, toàn bộ các máy bị vă
 ### 3.3. Cảnh Báo Về Nâng Cấp Card PCIe USB 3.0:
 * CẤM mua card PCIe USB 3.0 giá rẻ loại 1 chip chia 4 cổng (như VIA VL805 hay NEC uPD720201 đơn chip) rồi cắm dồn 80 máy. Card đơn chip cũng bị giới hạn 64–96 Endpoints, sẽ tái hiện lỗi Code 43 chỉ nhận 8–10 máy tương tự xHCI onboard.
 * BẮT BUỘC dùng card Quad-Controller độc lập (mỗi cổng 1 chip riêng) hoặc phân bổ nhiều card PCIe x1/x16 riêng biệt (tối đa 20–25 máy/controller).
+
+---
+
+## 4. Kết Quả Thực Nghiệm Sau Khi Reboot Admin PC (10/10/2026)
+Sau khi kiểm tra 0 active locks và gửi lệnh reboot thực tế `shutdown /r /t 2`:
+* **TOTAL DEVICES:** **79 / 79 máy cắm vật lý nhận diện đầy đủ 100%** (M255 là slot trống không cắm máy).
+* **OFFLINE:** **0 máy bị offline** (sạch bóng lỗi kẹt socket phần cứng).
+* **M269 (`ce12160c99570e3004`):** Vốn biến mất hoàn toàn khỏi ADB trước reboot, đã hồi sinh ngay lập tức thành `device`.
+* **Hiện tượng 8 máy `unauthorized`:** Do daemon ADB mới khởi tạo và các máy đang tắt màn hình nên tạm thời chưa bắt tay lại key RSA. Khi mở phần mềm Tiểu Vi / Phóng Phi trên Desktop Admin hoặc đánh thức màn hình, 8 máy này tự động handshake xanh lại ngay lập tức.
