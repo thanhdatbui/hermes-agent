@@ -40,6 +40,20 @@ Truy vết chi tiết timestamp 8 ca chết đôi trên cùng IP tháng 10/2026 
      * **CẤM TUYỆT ĐỐI DELETE TRÊN DB PRODUCTION ĐỂ ÉP TEST PASS:** Khi test bị vướng state, CẤM TUYỆT ĐỐI chạy script `DELETE FROM ip_circuit_breaker` trên database live (`D:/Taadaa/data/tiktok_tracker.db`). Hành vi này sẽ xóa sạch danh sách proxy đang ngắt thực tế của ca chạy, làm mất lá chắn an toàn khiến các máy anh em (M8, M75, M78...) mất bảo vệ và lao vào IP dính cờ phạt. Phải sửa bằng cách bọc guard `PYTEST_CURRENT_TEST` hoặc monkeypatch test fixture.
      * **Quy trình khôi phục bảng Cầu Dao khi bị xóa nhầm (Zero-Loss Incident Recovery):** Nếu bảng bị xóa nhầm trong ca chạy, KHÔNG quét đĩa diện rộng (`os.walk`). Vào thẳng thư mục artifact live của ca chạy hiện tại (`D:/Taadaa/runtime/kibe/live/<DATE>/<BATCH>/machines/machine_<N>/<RUN_ID>/follow_result.json`), lọc các máy có `status == 'FOLLOW_FAILED'` hoặc `follow_failed == True`, map với file gán proxy (`D:/OneDrive/TaadaaData/kibe/PROXYgandienthoai.xlsx`) để lấy lại danh sách `proxy_key` và nạp phục hồi nguyên trạng vào SQLite.
 
+### 2. Decision Matrix: Khi Cổng Bị Ngắt, Có Nên Đổi Proxy (Change Proxy) Cho Máy Sau Chạy Cố?
+
+* **User Query / Decision Point:** Nếu proxy 1 acc bị lỗi (`FOLLOW_FAILED` / ngắt cầu dao), có nên đổi proxy khác để acc sau vẫn được chạy không?
+* **Quy tắc Vận Hành Chuẩn:** **CẤM TUYỆT ĐỐI đổi proxy để máy sau chạy cố khi nguyên nhân là `FOLLOW_FAILED` (TikTok nhả/chặn).**
+  - **Lý do 1: Phá vỡ Aging Trust Score:** Nick farm được nuôi theo cơ chế IP Tĩnh Dài Hạn (Home Wi-Fi Baseline) gắn chặt `[Hardware ID + Subnet/ASN + Geolocation]`. Đổi proxy đột ngột gây lỗi *Impossible Travel* / Flapping, kích hoạt cờ đỏ Anti-Fraud (bắt giải Captcha, checkpoint SMS hoặc shadowban).
+  - **Lý do 2: Tránh Cháy Lan Trong Bão Thuật Toán:** Khi nhiều proxy bị ngắt liên tiếp trong thời gian ngắn, đây là "bão quét tương tác" từ thuật toán TikTok. Nếu đổi proxy mới cho máy sau lao vào chạy tiếp -> Máy sau tiếp tục bị trảm trên proxy mới -> Vừa chết thêm nick, vừa mất thêm proxy dự phòng.
+  - **Lý do 3: Tỷ lệ Đánh Đổi Lỗ Nặng (Risk vs Reward):** Cố chạy chỉ thu thêm 9–12 follow/ca, nhưng rủi ro dính Cooldown 3–15 ngày hoặc hỏng vĩnh viễn nick nuôi nhiều tháng.
+* **Ma Trận Phân Biệt Xử Lý Proxy:**
+
+| Bản chất sự cố | Triệu chứng kỹ thuật | Xử lý điều phối |
+| :--- | :--- | :--- |
+| **TikTok cắm cờ (`FOLLOW_FAILED` / Nhả follow)** | Mạng vẫn thông, vào được TikTok nhưng bấm follow bị nhả hoặc app báo lỗi tương tác. | **CẤM ĐỔI PROXY ĐỂ CHẠY TIẾP.** Kích hoạt Circuit Breaker, máy anh em Safe-Skip (`CIRCUIT_BREAKER_SKIPPED`). Nghỉ ngơi dưỡng sinh, mai chạy tiếp. |
+| **Hạ tầng Mạng chết (`Dead Proxy / Timeout`)** | Proxy chết hẳn, rớt kết nối (`curl` timeout, mất IP, không ra được internet). | **ĐƯỢC PHÉP ĐỔI.** Thay bằng proxy mới nhưng bắt buộc phải là **proxy tĩnh cùng nhà mạng/cùng dải**, và phải kiểm tra curl thông mạng trước khi nạp vào máy. |
+
 ---
 
 ## 2. Chiến Lược Dò Trần Bằng Đội Dò Đường (Canary Cohort Testing)
