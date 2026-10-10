@@ -106,3 +106,18 @@ Khi User hoặc hệ thống reboot 1 hoặc cả 2 máy, toàn bộ các tiến
   - Khi đã đủ hoặc instance đang chạy, watchdog giữ `stdout` rỗng tuyệt đối (0% CPU, không log rác, không spam báo cáo).
 - **Kênh Báo Cáo Định Kỳ**:
   - Cron `farm-render-download-watchdog` chạy mỗi 6h (`0 */6 * * *`) đẩy trực tiếp về nhóm Telegram **Tiktok video** (`telegram:-5435853713`), chế độ `no_agent=true`.
+
+### Bẫy 8: Busy-Loop Khi Nguồn Cạn Video Mới (`src_cnt <= out_cnt`) & Kỷ Luật Bổ Sung Nguồn
+- **Hiện tượng**: Worker hoặc watchdog kiểm tra điều kiện nhận việc chỉ dùng `out_cnt < 45` và `src_cnt >= 35`, bỏ quên điều kiện `src_cnt > out_cnt`. Khi folder gốc chỉ có đúng số video đã được render (ví dụ: `src_cnt = 40`, `out_cnt = 40`), worker liên tục spawn `random_batch_render.py` với cờ `--resume-verify-existing`. Lệnh render thấy 40/40 clip đã tồn tại và hợp lệ nên thoát sau 1s mà không encode clip nào. Worker lặp lại quét mỗi 5s, tạo ra busy-loop ngầm hàng nghìn lần, ghi log phình to hàng chục ngàn dòng và watchdog báo render "đang dừng" vì ffmpeg không hoạt động.
+- **Cách xử lý & Điều kiện chuẩn**:
+  - Điều kiện nhận việc của Worker và Watchdog BẮT BUỘC phải kiểm tra:
+    ```python
+    if out_cnt < 45:
+        if src_cnt >= 35 and src_cnt > out_cnt:
+            # Nhận việc render
+    ```
+  - Khi một folder thành phẩm bị kẹt chưa đủ 45 clip vì nguồn cạn (ví dụ Tik7 M31 Out 247 kẹt 40/45 do Src 247 chỉ có 40 clip):
+    1. Kiểm tra chính xác Niche của folder (ví dụ Âm nhạc, Acoustic, Cười, v.v.).
+    2. Dùng yt-dlp cào bổ sung thêm các clip Shorts mới chất lượng cao đúng niche vào thư mục nguồn `D:\video goc\<src_id>` để nâng tổng clip gốc lên $\ge 45$.
+    3. Chạy render với `--resume-verify-existing` để render nốt các clip còn thiếu (`41.mp4`..`45.mp4`) lên đích.
+

@@ -17,7 +17,7 @@ description: "TikTok follow runner and fail-closed farm ops."
     - `references/dashboard-follow-reconcile-race-condition.md`: Lệch pha crawler vs chốt sổ; đối soát.
     - `references/contact-suggestion-popup-follow-lockdown.md`: Khóa popup danh bạ/bạn bè.
     - `references/contact-suggestion-auto-follow-leak-prevention.md`: Chống rò rỉ follow lẻ.
-    - `references/burst-follow-hibernation-cadence-gemphone-benchmark.md`: Burst 20-30 fl, ngủ đông 3-4d, cầu dao 40%.
+    - `references/burst-follow-hibernation-cadence-gemphone-benchmark.md`: Burst 20-30 fl, ngủ đông 3-4d, cầu dao 40% toàn ca & phanh nhả từng nick.
     - `references/zero-follow-shift-audit-and-fail-closed-breakdown.md`: Đối soát ca 0 follow (dưỡng sinh 1/3, cầu dao 48h, cooldown, nick non).
     - Case references: `references/case-ui-*.md`, `references/workflow-parity-*.md`, `references/fleet-follow-*.md`.
     - `references/case-ui-89-idempotent-session-actions-and-partial-follow-accounting.md`: Staging.

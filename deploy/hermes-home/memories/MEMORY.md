@@ -1,6 +1,6 @@
 Follow: Cầu dao IP 48h CHỈ ngắt khi nick Khỏe (graduated) nhả; nick non nhả tự đi tù, cấm ngắt IP. Nấc hồi phục 2 ngày sạch/nấc (N1: 1-2fl, N2: 5-8fl, N3: tốt nghiệp >=4d). CẤM auto-follow popup.
 §
-Watchdog Kibe [1-8]; 923 acc sync video_goc=folder_video. CẤM copy ava Kibe->Admin; Admin dùng video gốc m2, trích xuất venv-core024.
+Dual-Farm: Mọi cron/supervisor BẮT BUỘC chạy cả Kibe (1-80) & Admin (201-280). Excel Admin 10-11 cột (đọc cell idx<len(row)). Supervisor so le 2p; Báo cáo 6H gộp. CẤM copy ava Kibe->Admin; Admin dùng video gốc m2, venv-core024.
 §
 GPM 5ph. gmail_clean_v2 lưu LIVE, xóa DIE. CẤM coi Gmail die=TT die; nick có 2FA TOTP vẫn LIVE.
 §
@@ -18,8 +18,8 @@ TikTok Shadow: Path B 'Đã fl' ko commit; FOLLOW_FAILED trừ fl tự nhiên; s
 §
 Giao tiếp: gọi 'tên nick TikTok', cấm handle. Hotmail: reset OTP thanhdatbui1995@gmail.com sync Master C7, clean_v2, State.
 §
-Farm Proxy/WiFi: MikroTik 40 PPPoE 10001-10040 (M241-280 cấm >10040). Watchdog 'Lỗi proxy' check Wi-Fi & inspect máy, cấm lạc sang OmniRoute :20128/9. Aruba: M1-40 'kibe 1' (23102025); M41-80 'kibe 2', Admin 'admin 1/2' (19051995); cấm SSID Dat. X99: cấm xHCI, 4 Box, adb Semaphore 8.
+Farm Proxy/WiFi: MikroTik 40 PPPoE 10001-10040 (M241-280 cấm >10040, cấm mượn IP Farm). Watchdog check Wi-Fi/inspect, cấm lạc OmniRoute. Aruba: M1-40 'kibe 1'; M41-80 'kibe 2', Admin 'admin 1/2'; cấm SSID Dat. X99: cấm xHCI, 4 Box, adb Sem 8.
 §
-IP Farm: 2 máy/IP; Wave 1/2. Cầu dao 48h chỉ ngắt khi nick Khỏe nhả. Upload Phiên 2. Tik5 bài GemPhone: cào list Anchor 20-30fl/slot (delay 8-18s, 7-12p), xoay tua 3 slot/ngày + ngủ 3-4d (>50% retention). Cầu dao nhả 40% lướt feed 1-2d. Cấm tự khóa nick.
+IP Farm: 2 máy/IP; Wave 1/2. Cầu dao 48h chỉ ngắt khi nick Khỏe nhả. Upload P2. GemPhone: Anchor 20-30fl/slot (delay 8-18s), xoay 3 slot/d + ngủ 3-4d (>50% retention). Cầu dao nhả 40% lướt feed 1-2d. Cấm tự khóa nick.
 §
 adbjoinwifi tự cứu 2 cấp preflight khi rớt Wi-Fi; xóa lạ: service call wifi 14 i32 <id>. ADB: cấm lệnh trần, bọc with_device_lock.py; verify kernel CreationDate.
