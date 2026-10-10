@@ -267,3 +267,24 @@ GPM CDP Connect
 - **Khóa Logic: BẮT BUỘC 2FA KÍCH HOẠT XONG MỚI ĐƯỢC SANG BƯỚC ĐỔI PASS**:
   * Kiểm tra `has_totp_final = bool(totp_secret_key or get_2fa_secret(email) or page.locator("#TOTPAuthenticator").is_visible())`.
   * Nếu `has_totp_final == False`: Ném `RuntimeError` dừng ngay lập tức, cấm tuyệt đối nhảy sang trang `password/change` khi chưa có 2FA!
+
+---
+
+## 12. Bẫy Xác Minh Kép Khi Reset/Change Password Sau Khi Bật 2FA (Two-Step Verification Proof Picker)
+- **Hiện tượng**: Sau khi bật Two-step verification (`EnableTfa = ON`), khi tài khoản yêu cầu đổi mật khẩu hoặc đặt lại mật khẩu (`ResetPassword.aspx`):
+  * Microsoft yêu cầu **2 phương thức xác thực liên tiếp** ("Thêm một lần nữa / Two-step verification identity proof").
+  * **Proof 1**: Nhập mã từ Authenticator App (TOTP) (`#iVerifyText` -> Điền mã 6 số từ `pyotp.TOTP(secret).now()` -> Bấm `#iVerifyIdentityAction`).
+  * **Proof 2**: Chọn gửi mã qua email khôi phục (`Gửi email đến ga*****@fviainboxes.com`):
+    - Selector: `label:has-text('fviainboxes.com'), span:has-text('fviainboxes.com'), #textproofOption1`.
+    - Xuất hiện ô input xác nhận email: `#proofInput1` (`name="proofPickerEmail"`, `aria-label="Địa chỉ email"`).
+    - **CẠM BẪY NGHIÊM TRỌNG**: Microsoft đã in sẵn phần đuôi `@fviainboxes.com` ngay bên cạnh ô input.
+      * Nếu script điền **TOÀN BỘ EMAIL** (ví dụ `gabrielesalgero760jod@fviainboxes.com`), Microsoft sẽ báo lỗi đỏ:
+        *"Email này không trùng với email thay thế liên kết với tài khoản của bạn. Email chính xác bắt đầu bằng @fviainboxes.com"*.
+      * **BẮT BUỘC CHỈ ĐIỀN USERNAME**: Chỉ lấy phần trước `@` (ví dụ `rec_email.split('@')[0]` -> `gabrielesalgero760jod`).
+    - Bấm nút **[Nhận mã]** (`#iSelectProofAction`).
+    - Lấy mã OTP từ `fetch_recovery_email_otp(rec_email)`.
+    - Điền mã OTP vào `#iVerifyText` và bấm `#iVerifyIdentityAction`.
+  * Sau khi hoàn tất 2 Proofs: Trang đặt lại mật khẩu hiển thị (`#iPassword`, `#iRetypePassword`).
+  * Điền mật khẩu mới 14 ký tự mạnh mẽ và submit `#iResetPasswordAction`.
+  * Đăng nhập lại với Mật khẩu mới + TOTP + KMSI [Có] để hoàn tất phiên.
+  * **Lợi ích**: Luồng này giải phóng triệt để các tài khoản bị Microsoft chặn form đổi pass trực tiếp, đồng thời cập nhật mật khẩu mới và 2FA chuẩn thương mại 100%.
