@@ -57,6 +57,9 @@ current evidence.
 
 ## Live Batch Evidence
 
+### Avatar-normalization evidence split
+For avatar/niche normalization, treat four outputs as separate evidence classes: (1) workbook/state metadata, (2) source avatar file plus hash and visual QA, (3) queue status, and (4) live device Profile proof. Updating Excel/SQLite or obtaining a runner exit code never proves the avatar changed on-device. Before replacing a canonical `avatar.jpg`, preserve the prior file, visually inspect the exact upload candidate, and reject crops with clipped eyes/head/chin, UI/view-count text, hands/props, heavy vignette, artificial borders/padding, or insufficient resolution. If no candidate passes, restore the prior asset, keep the queue `PENDING`, and report the avatar portion as `BLOCKED/UNPROVEN`; do not run the device uploader or claim success. Record the source crop/bounding box and MD5/SHA-256 so the candidate is reproducible. See `references/avatar-normalization-candidate-gate.md` for the compact checklist.
+
 For a multi-device live batch, a non-zero launcher exit is an aggregate result,
 not a diagnosis. Read the batch manifest and each failed target's own log before
 reporting the cause. If the user asks to see the failure, send the exact

@@ -173,8 +173,13 @@ When an operator provides a screenshot of a TikTok profile (e.g. `LilyanLederhos
 - **State Machine OCR Pattern (`do_rename_m<ID>.py`)**:
   * Wrap in `operator_device_lock(machine=ID, serial=SERIAL, project="do_rename_m...", timeout=300)`.
   * Classify screen via WinRT OCR (`tools/ocr_boxes.ps1`): `FEED`, `PROFILE`, `SWITCHER`, `EDIT_PROFILE`, `NAME_EDIT`, `SAVE_LOGIN_POPUP`.
-  * Type base64 encoded UTF-8 string via AdbKeyboard (`ADB_KEYBOARD_INPUT_TEXT`), verify character counter (`len/30`, e.g. `9/30` for `Ngọc Linh`), tap "Lưu", and auto-confirm dialog ("Bạn chỉ có thể thay đổi biệt danh 7 ngày 1 lần").
-  * Readback verify that the profile screen displays the new name directly above `@username`.
+  * **Phân loại Profile Invariant**: Profile chưa set bio có nút "Thêm tiểu sử" (`id/t3z`). CẤM dùng `"tieu su" in t` đơn độc phân loại `EDIT_PROFILE`. BẮT BUỘC kiểm tra bottom bar navigation (`Hồ sơ` / `H6 sd` ở y > 1800): có bottom bar thì LUÔN là `PROFILE`. Màn `EDIT_PROFILE` không có bottom bar.
+  * **Điều hướng UI S7 TikTok v47**:
+    - Chạm tiêu đề danh tính `id/t7l` tại `(280, 320)` để bung bảng **Chuyển đổi tài khoản**.
+    - Chạm icon bút chì góc trên bên trái `(72, 148)` (`id/pke`) để vào thẳng `EDIT_PROFILE`.
+  * Type base64 encoded UTF-8 string qua AdbKeyboard (`ADB_KEYBOARD_INPUT_TEXT`), verify text và bộ đếm ký tự (`len/30`, e.g. `9/30` cho `Linh Bông`), tap "Lưu" `(980, 140)`.
+  * BẮT BUỘC xác nhận popup *"Đặt biệt danh? Bạn chỉ có thể thay đổi biệt danh 7 ngày 1 lần"* tại `(747, 1173)`.
+  * Readback verify: đọc lại màn hình Hồ sơ qua OCR, xác nhận dòng hiển thị ngay trên `@username` khớp với tên mới (`Linh Bông` trên `@lilyanzj8n1`).
 - **Hermetic Offline Pytest**: Create `tests/test_do_rename_m<ID>.py` testing `norm`, `compact`, `classify`, `is_target`, `is_target_user`, and `nickname_on_profile` offline (<0.5s) to guarantee zero regression before device execution.
 - **Background Execution**: Launch via `terminal(command="python D:/Taadaa/tools/do_rename_m<ID>.py", background=True, notify_on_complete=True, timeout=300)` adhering to event-driven wakeup.
 

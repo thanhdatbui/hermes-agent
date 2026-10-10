@@ -17,6 +17,7 @@ Patterns for diagnosing and reconciling Hotmail/GPM lifecycle state between inde
      * `has_chatgpt`: Đã có PASS CHATGPT (Cột 12 Master Excel) hoặc đã có timestamp `chatgpt_registered_at`.
    - Các tài khoản thiếu 1 trong 2 điều kiện trên bị giữ lại ở `WAIT_7D` (status `WAITING`), không đẩy lên `CHANGE_INFO`.
    - Không còn yêu cầu Dual Codex OAuth vì token Graph cũ sẽ bị xóa sạch khỏi Cột 9 sau khi đổi mật khẩu thành công.
+   - **Đồng bộ Báo cáo 6h**: File báo cáo `cron_hotmail_gpm_lifecycle_6h_report.py` phải căn cứ theo `eligible_change_pass_count` (TikTok + ChatGPT) thay vì `dual_codex_eligible_count` để không báo lệch số lượng tài khoản sẵn sàng đổi pass.
 3. **Phục hồi tài khoản kẹt hạ tầng**:
    - Kiểm tra `GPMClient.check_health()` hoặc endpoint `http://127.0.0.1:19995/api/v3/profiles`.
    - Nếu GPM đã 200 OK: Chuyển các tài khoản bị `BLOCKED` do `NewConnectionError` về `PENDING`, dọn `last_result = None`.
@@ -66,3 +67,7 @@ Khi phát hiện tài khoản báo sai mật khẩu ngay từ bước `HOTMAIL_L
   * Khi phát hiện URL chứa `complete-client-signin` hoặc `oauth-silent`: Bắt buộc gọi `page.wait_for_url(lambda u: "complete-client-signin" not in u, timeout=10000)` hoặc chủ động điều hướng sang `https://account.microsoft.com` với `wait_until="domcontentloaded"`.
   * Chờ tối thiểu 2-3 giây để giao diện Dashboard tải xong (hiện avatar/header/chữ "Tài khoản Microsoft").
   * Chỉ chụp ảnh sau khi màn hình đích thực sự hiển thị nội dung để đảm bảo OCR đọc được bằng chứng đăng nhập thành công.
+
+## 7. Cạm bẫy Cookie Banner che màn hình & Đứt gãy luồng Relogin (Post-Signout Artifact Integrity)
+- **Cạm bẫy MSN Redirect Race sau Sign Out Everywhere**: Gọi `/logout.srf` sau khi bấm Sign out everywhere trên Microsoft thường kích hoạt redirect race sang `https://www.msn.com/vi-vn`, làm văng lệnh `goto("https://login.live.com")` với lỗi navigation interrupted. Giải pháp: Tuyệt đối không dùng `/logout.srf`, điều hướng trực tiếp sang `https://login.live.com` kèm vòng lặp retry (2-3 lần) và xác minh URL domain hợp lệ trước khi thao tác form đăng nhập lại.
+- **Cạm bẫy Cookie Consent Banner làm méo ảnh Checkpoint 5 (Dashboard)**: Khi vừa relogin vào `account.microsoft.com`, Microsoft thường đè một modal toàn màn hình "Quản lý tùy chọn cookie" ("Chấp nhận" / "Accept"). Nếu gọi `page.screenshot(full_page=True)` khi banner đang hiển thị, ảnh Dashboard sẽ bị kéo giãn, méo mép hoặc che khuất thông tin tài khoản (trông như ảnh bị lỗi/corrupted). Giải pháp: Bắt buộc tìm và click đóng/chấp nhận cookie banner trước (`button:has-text('Chấp nhận')`, `#acceptButton`), chờ 2-4 giây cho modal biến mất hoàn toàn rồi mới chụp viewport thông thường (không dùng `full_page=True` trên Dashboard SPA).

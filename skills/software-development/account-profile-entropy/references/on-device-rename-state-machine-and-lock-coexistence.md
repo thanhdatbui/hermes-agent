@@ -24,27 +24,32 @@ Before touching the device:
 
 ## 3. Name Generation & Vietnamese Phonetic Mapping
 Apply the phonetic adaptation rules from `account-profile-entropy`:
-- Foreign prefixes: `lilyan-` -> `Ngọc Linh`, `Khánh Linh`, `Linh`
-- Base64 encoding: `base64.b64encode(NEW_NAME.encode('utf-8')).decode('ascii')` (e.g. `Ngọc Linh` -> `Tmfhu41jIExpbmg=`)
-- Character count: `len("Ngọc Linh") = 9` -> Counter on TikTok will be `9/30`.
+- Foreign prefixes: `lilyan-` -> `Linh Bông`, `Linh Miu`, `Linh Bơ` (stem: *Linh* ghép `_NICK_SUFFIX`) hoặc `Ngọc Linh`, `Thanh Linh` (Đệm + Tên).
+- **CẤM TUYỆT ĐỐI TÊN CỤT LỦN 1 TỪ**: Tuyệt đối không đặt tên 1 từ trơ trọi (như mỗi chữ *Linh*, *Thảo*, *Hải*). Khi user yêu cầu "Đặt <Tên> + cái gì đó", đây là phong cách Tên + Biệt danh đời thường (`_TEN_LIST + _NICK_SUFFIX`, ví dụ *Linh Bông*, *Linh Miu*, *Linh Bơ*, *Linh Gạo*, *Linh Nhím*).
+- Base64 encoding: `base64.b64encode(NEW_NAME.encode('utf-8')).decode('ascii')` (e.g. `Linh Bông` -> `TGluaCBCw7RuZw==`)
+- Character count: `len("Linh Bông") = 9` -> Counter on TikTok will be `9/30`.
 
 ## 4. State Machine OCR Rename Pattern (`do_rename_m<ID>.py`)
 Construct a dedicated device runner using WinRT OCR (`tools/ocr_boxes.ps1`) and `operator_device_lock`:
 - **Locking**: Wrap execution in `with operator_device_lock(machine=MACHINE_ID, serial=SERIAL, project="do_rename_m...", timeout=300):`
-- **State Classification**:
-  - `FEED`: Tap profile tab `(972, 1857)`.
-  - `PROFILE`: Extract nickname and username. If username != target, swipe up and tap header `(500, 140)` to open Switcher. If target, tap "Sửa hồ sơ" / pencil icon `(72, 148)`.
-  - `SWITCHER`: Tap the target username row. If not visible, swipe sheet up.
-  - `EDIT_PROFILE`: Identify label "Tên" (must be above "Tên người dùng") and tap the row.
+- **State Classification & Navigation Invariants**:
+  - `FEED`: Tap profile tab `(972, 1857)` / `(972, 1870)`.
+  - `PROFILE`:
+    - **Cạm bẫy "Thêm tiểu sử"**: Trên profile chưa set bio, nút full-width "Thêm tiểu sử" (`id/t3z`) xuất hiện chứa chữ "tiểu sử". KHÔNG ĐƯỢC để heuristic `"tieu su" in t` phân loại nhầm thành `EDIT_PROFILE`. BẮT BUỘC kiểm tra bottom bar navigation (`Hồ sơ` / `H6 sd` ở y > 1800): nếu có bottom bar navigation thì LUÔN LUÔN là `PROFILE`, không phải `EDIT_PROFILE`!
+    - **Bung Account Switcher**: Nếu username active != target, chạm trực tiếp vào node tiêu đề danh tính `id/t7l` (bounds `[36, 264][720, 408]`, tọa độ `(280, 320)`) để bung bảng **Chuyển đổi tài khoản**.
+    - **Vào màn Sửa hồ sơ**: Khi username active == target, chạm nút bút chì góc trên bên trái `(72, 148)` (`id/pke`) để vào thẳng `EDIT_PROFILE`.
+  - `SWITCHER`: Tap đúng dòng target username (ví dụ `lilyanzj8n1` ở `y=603`). Nếu chưa thấy trong tầm nhìn, vuốt sheet lên (`(540, 1500) -> (540, 900)`).
+  - `EDIT_PROFILE`: Identify label "Tên" (phải nằm trên "Tên người dùng", ví dụ y=752 so với y=878) và tap dòng "Tên" `(600, 752)`. Màn này KHÔNG BAO GIỜ có bottom navigation bar!
   - `NAME_EDIT`:
-    1. Tap clear text `(960, 576)`.
-    2. Broadcast `ADB_KEYBOARD_INPUT_TEXT` with base64 text.
-    3. Verify text and counter (`9/30`).
+    1. Tap clear text X `(960, 576)` hoặc broadcast `ADB_KEYBOARD_CLEAR_TEXT`.
+    2. Switch IME sang AdbKeyboard và broadcast `ADB_KEYBOARD_INPUT_TEXT` với base64 text.
+    3. Verify text qua OCR và kiểm tra bộ đếm ký tự (`len/30`, e.g. `9/30` cho `Linh Bông`).
     4. Tap "Lưu" `(980, 140)`.
-    5. Handle confirmation dialog ("Bạn chỉ có thể thay đổi biệt danh 7 ngày 1 lần") by tapping "Xác nhận".
-  - `SAVE_LOGIN_POPUP`: Dismiss automatically ("Để sau" / `(540, 1325)`).
-- **Readback Verification**: Re-read the profile screen via OCR, confirming the line immediately above `@username` matches the new name.
-- **Teardown**: Revert IME to the previous default if changed.
+    5. **Xác nhận đổi tên (BẮT BUỘC)**: TikTok luôn hiện dialog *"Đặt biệt danh? Bạn chỉ có thể thay đổi biệt danh 7 ngày 1 lần"*. Nhận diện nút "Xác nhận" qua OCR hoặc tap `(747, 1173)` để commit thay đổi.
+    6. Nhấn Back (`keyevent 4`) để quay về màn Profile.
+  - `SAVE_LOGIN_POPUP`: Dismiss tự động ("Để sau" / `(540, 1325)`).
+- **Readback Verification**: Re-read màn hình Profile qua WinRT OCR, xác nhận dòng hiển thị ngay trên `@username` khớp với tên mới (`Linh Bông` trên `@lilyanzj8n1`).
+- **Teardown**: Revert IME về bàn phím mặc định (`com.sec.android.inputmethod/.SamsungKeypad`).
 
 ## 5. Hermetic Offline Testing
 Before executing on the phone, create `tests/test_do_rename_m<ID>.py` testing pure logic:
