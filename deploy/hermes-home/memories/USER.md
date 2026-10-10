@@ -4,7 +4,7 @@ Dọn đĩa: duyệt trước (thư mục corrupt/lỗi xóa ngay), CẤM xóa n
 §
 Farm: nick cấm xóa/đè; SoT tiktok_tracker.db; cấm đè ava tay. Đổi mail TT: dùng Hotmail sạch chưa reg; ưu tiên Graph PC (cấm mở app khi có token), sai pass dùng --otp-only. LLM: Codex Omni.
 §
-Chốt phiên: tự remediation >=85; bind repo/task; Regression Gate. Claude CLI: sonnet 5.5; quota block dừng xin phép.
+Review/Chốt: tự loop đến khi APPROVED(>=85), cấm dừng hỏi xin phép; bind task. Claude: quota block dừng hỏi.
 §
 Report follow: % & tầng (Khỏe/Nấc 1/2/Cooldown/Nhả); khóa IP 1 dòng kèm máy cứu; máy nhả kèm lượt. Watchdog SILENT khi ko lỗi.
 §

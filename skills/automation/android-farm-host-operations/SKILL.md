@@ -265,6 +265,30 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
     * Pre-push hook của `Hermes` được cấu hình miễn trừ `skills/*` và governance files để tránh bị chặn bởi Closeout Gate `DIFF_TOO_LARGE`.
   - **Lợi ích vận hành:** Toàn bộ hạ tầng farm được quản lý tập trung trên GitHub (`https://github.com/thanhdatbui/taadaa-farm-tools.git`). Khi cài đặt PC controller mới (Kibe hoặc Admin) hoặc cần khôi phục Windows sau sự cố, chỉ cần `git pull` repo `tools` là có đầy đủ toàn bộ cấu hình, script cứu hộ USB và tài liệu vận hành mà không lo thất lạc.
 
+## 17. Quy Trình Chẩn Đoán Phân Tầng 3 Trạng Thái Thiết Bị (Mất Cả Vật Lý vs Mất ADB Còn PnP vs ADB Offline)
+- **Tình huống kích hoạt:** Khi màn hình tool quản lý/投屏 (Tiểu Vi / Phóng Phi / AoWei / Jiwei) xuất hiện các ô màu cam báo "Phone disconnected, please check".
+- **Bản chất kỹ thuật phân tầng (Triage 3 ranh giới):**
+  1. **Slot trống vật lý / Mất cả vật lý:**
+     * Windows PnP không tìm thấy InstanceId `USB\VID_...` (`Present: false` hoặc không tồn tại trong thiết bị USB).
+     * *Lưu ý quy tắc đặc biệt:* Máy 255 trên Admin Farm là slot trống vật lý đã biết trước, cấm báo sập máy.
+     * Với các máy khác: Rút cáp, đứt nguồn 5V VBUS hoặc máy sập nguồn hoàn toàn.
+  2. **Mất hẳn khỏi ADB nhưng vẫn cắm vật lý (Hardware Connected, ADB Vanished):**
+     * Windows PnP vẫn nhận diện thiết bị composite (`USB\VID_04E8&PID_6860\<SERIAL>` với `Status: OK`, `Present: true`).
+     * `adb devices` hoàn toàn không có serial này (không xuất hiện cả ở dạng `offline`).
+     * *Nguyên nhân:* Interface con ADB (`...&ADB\...`) bị lỗi driver/driver stack treo, hoặc tiến trình daemon `adbd` trên Android bị crash/kill ngầm mà không nhả VBUS.
+  3. **ADB `offline`:**
+     * `adb devices` vẫn liệt kê serial nhưng ở trạng thái `offline`.
+     * Windows PnP `Present: true`.
+     * *Nguyên nhân:* Kết nối vật lý và endpoint ADB vẫn tồn tại, nhưng socket handshake giữa host `adb.exe` và daemon `adbd` trên điện thoại bị timeout, flapping, hoặc màn hình khóa chưa accept USB debugging. Thường tự phục hồi qua `farm-adb-transport-healer` (`adb reconnect`).
+- **Quy trình truy vấn O(1) an toàn (Không vi phạm Hard Guard ADB & Không quét đĩa):**
+  * Lấy danh sách ADB an toàn: Chạy script chuẩn hóa `python D:/Taadaa/tools/inspect_machine.py`.
+  * Truy vấn phần cứng PnP qua PowerShell (Kibe Local hoặc qua SSH tới Admin PC):
+    ```powershell
+    Get-PnpDevice -Class USB | Where-Object { $_.Present -eq $true } | Select-Object InstanceId, Status, FriendlyName
+    ```
+  * So khớp serial từ `USB\VID_04E8&PID_6860\<SERIAL>` với file mapping `PROXYgandienthoai.xlsx` của từng cụm (Kibe: M01–M80, Admin: M201–M280) để phân loại chính xác từng máy.
+
+
 
 
 

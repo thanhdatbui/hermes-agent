@@ -1,4 +1,4 @@
-Follow: CHỈ nick Khỏe nhả mới giật cầu dao IP 48h; nick non phạt cooldown. Chu kỳ 4 ngày 3 ca (bỏ 0h): N1(A), N2(B), N3(R7,8,nick yếu), N4(Dưỡng sinh: feed+up, 0 fl), N5 xúc xắc A/B. CẤM tự xóa cooldown. CẤM trả lời solo câu hỏi chiến lược, bắt buộc gọi Advisor Sol.
+Follow: Cầu dao 48h khi nick Khỏe nhả; non phạt cooldown. Chu kỳ 4d 3 ca (bỏ 0h): N1(A), N2(B), N3(R7,8,yếu), N4(Dưỡng sinh feed+up), N5 xúc xắc A/B. CẤM xóa cooldown; hỏi chiến lược gọi Sol.
 §
 Dual-Farm: Mọi cron/supervisor BẮT BUỘC chạy cả Kibe (1-80) & Admin (201-280). Excel Admin 10-11 cột (đọc cell idx<len(row)). Supervisor so le 2p; Báo cáo 6H gộp. CẤM copy ava Kibe->Admin; Admin dùng video gốc m2, venv-core024.
 §
@@ -12,7 +12,7 @@ evidence_gate_verifier.py (WinRT OCR, PID reserve, fail-closed, >30s/3att L3 BLO
 §
 Canary: WoL ether3 (kibe 0C:EF:15:37:4C:20, admin 22:33:4D:06:4C:26; WG 13231); CẤM PASS khi followed=0/FOLLOW_FAILED; ảnh/log trước teardown. Admin: upload SSH admin-farm.
 §
-nick đổi tay tự khóa .manual_avatar_locked (chỉ user cho phép mới mở), cấm đè.
+Ava tay: tự khóa .manual_avatar_locked & registry; quét trùng bắt buộc clarify hỏi user. Claude: tự loop đến khi APPROVED.
 §
 TikTok Shadow: Path B 'Đã fl' ko commit; FOLLOW_FAILED trừ fl tự nhiên; slot `(folder-1)%8+1` cứng; reg bù độc lập. Dọn C duyệt trước.
 §
