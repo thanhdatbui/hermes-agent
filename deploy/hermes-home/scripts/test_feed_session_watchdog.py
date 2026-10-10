@@ -14,6 +14,9 @@ from feed_session_watchdog import (
     can_report_session,
     _add_minutes_to_hm,
     is_feed_runner_active,
+    format_success_follows,
+    format_released_follows,
+    classify_feed_failure,
 )
 
 
@@ -311,6 +314,50 @@ class TestRunnerZombieFilter(unittest.TestCase):
         with patch('time.time', return_value=now):
             with patch('psutil.process_iter', return_value=[active_proc]):
                 self.assertTrue(is_feed_runner_active())
+
+
+class TestFollowReportFormatting(unittest.TestCase):
+    def test_format_success_and_released_percentage_and_tiers(self):
+        all_follows = {
+            "1": {"followed": ["a", "b", "c"]},         # 3 -> Nấc 1
+            "2": {"followed": ["a", "b", "c", "d", "e", "f", "g"]}, # 7 -> Nấc 2
+            "3": {"followed": [f"u{i}" for i in range(12)]}, # 12 -> Nòng cốt
+            "4": {"followed": []},                      # 0 -> Nhả liền
+            "5": {"followed": ["a", "b"]},              # 2 -> Nhả Nấc 1
+            "6": {"followed": ["a", "b", "c", "d", "e", "f", "g", "h"]}, # 8 -> Nhả Nấc 2
+        }
+        fl_success = ["1", "2", "3"]
+        fl_released = ["4", "5", "6"]
+        total_attempt = 6
+
+        succ_lines = format_success_follows(fl_success, all_follows, total_attempt=total_attempt)
+        succ_text = "\n".join(succ_lines)
+        self.assertIn("Thành công (3 máy | 50.0%)", succ_text)
+        self.assertIn("Nhóm Khỏe (10+ lượt | 33.3%): (M3)", succ_text)
+        self.assertIn("Hồi phục 2 (5 - 9 lượt | 33.3%): (M2)", succ_text)
+        self.assertIn("Hồi phục 1 (1 - 4 lượt | 33.3%): (M1)", succ_text)
+
+        rel_lines = format_released_follows(fl_released, all_follows, total_attempt=total_attempt)
+        rel_text = "\n".join(rel_lines)
+        self.assertIn("Nhả follow (3 máy | 50.0%)", rel_text)
+        self.assertIn("Nhả liền (0 lượt | 33.3%): (M4)", rel_text)
+        self.assertIn("Nhả ở Hồi phục 1 (1 - 4 lượt | 33.3%): (M5: 2 lượt)", rel_text)
+        self.assertIn("Nhả ở Hồi phục 2 (5 - 9 lượt | 33.3%): (M6: 8 lượt)", rel_text)
+
+    def test_block_lines_uses_nat_follow_line(self):
+        # Đảm bảo không còn tham chiếu tới biến chưa định nghĩa tot_nat_follows trong block_lines
+        import inspect
+        import feed_session_watchdog
+        source = inspect.getsource(feed_session_watchdog.main)
+        self.assertNotIn("tot_nat_follows", source)
+
+    def test_classify_feed_failure(self):
+        self.assertEqual(classify_feed_failure("http_proxy is :0"), "Chưa gán Proxy / Proxy :0")
+        self.assertEqual(classify_feed_failure("ASSOCIATION_REJECTION on wifi"), "Mất kết nối Wi-Fi (AP)")
+        self.assertEqual(classify_feed_failure("dumpsys connectivity: Wi-Fi not connected"), "Mất kết nối Wi-Fi (AP)")
+        self.assertEqual(classify_feed_failure("proxy is unreachable: connection refused"), "Nghẽn đường truyền Proxy / 4G")
+        self.assertEqual(classify_feed_failure("device offline via transport"), "Mất kết nối ADB/USB")
+        self.assertEqual(classify_feed_failure("TikTok crash null pointer"), "Lỗi App TikTok/Script")
 
 
 if __name__ == "__main__":
