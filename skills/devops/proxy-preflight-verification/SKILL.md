@@ -422,4 +422,4 @@ See `references/adb-disconnect-vs-missing-proxy-preflight-20261009.md` for disti
       * File mapping chuẩn `D:\OneDrive\TaadaaData\admin\PROXYgandienthoai.xlsx` đã gom ghép các máy Admin vào dải cổng `10008..10035` (2–3 máy / port).
       * Canary M241: Gán `192.168.110.2:10021`, probe socket PASS, verify egress qua `atx-agent curl` ra đúng public IP Viettel PPPoE (`171.231.188.208`).
       * Fleet Recovery: Chạy `ssh admin-farm "powershell -Command \"python -u D:/Taadaa/AI-Tools/scripts/set_proxy_farm_admin_adb.py\""` để tự động cập nhật dải cổng chuẩn `10008..10035` cho toàn bộ máy online và tắt captive portal.
-      * Chi tiết xem `references/admin-s7-port-40-boundary-desync-triage-20261010.md`.
+      * Chi tiết xem `references/admin-s7-port-40-boundary-desync-triage-20261010.md` và `references/feed-watchdog-proxy-label-and-context-triage.md`.
