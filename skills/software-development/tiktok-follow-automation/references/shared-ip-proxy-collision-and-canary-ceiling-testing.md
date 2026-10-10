@@ -23,6 +23,17 @@ Truy vết chi tiết timestamp 8 ca chết đôi trên cùng IP tháng 10/2026 
 - 07/10 (Port 10001): M72 fail 06:29 -> M33 vào 06:47 dính nhả ngay (cách 17.9 phút).
 - 03/10 (Port 5131): M25 fail 06:24 -> M63 vào 06:46 dính nhả ngay (cách 22.8 phút).
 
+### Khảo Sát Thực Nghiệm Lây Nhiễm Xuyên Ca (Cross-Shift Multi-Row: Sáng vs Chiều/Tối):
+Khảo sát từ 10.677 lượt follow và 389 hồ sơ lỗi state trên hệ thống farm:
+1. **Trường hợp IP Sạch (Sáng follow bình thường -> Chiều/Tối chạy row khác):**
+   - Ghi nhận 19 ca tiêu biểu (ví dụ 01/10 Port 5113 M49_r1 sáng -> M11_r3/r5 chiều; 01/10 Port 5114 M50_r1 sáng -> M12_r3/r5 chiều; 03/10 & 07/10 Port 5118 M16_r1 sáng -> M16_r3 chiều...).
+   - **Kết luận:** Giãn cách ca sáng và chiều/tối (>= 4-6 tiếng) khi IP có Trust Score sạch cho phép các row khác trên máy hoặc máy partner cùng IP chạy follow bình thường an toàn.
+2. **Trường hợp IP Bẩn (Sáng dính nhả -> Chiều/Tối chạy row khác cùng IP):**
+   - Khảo sát 45 ca sáng dính `FOLLOW_FAILED` mà chiều/tối có row khác cùng IP vào follow:
+     - **44 / 45 ca (97.8%) CŨNG BỊ NHẢ NỐT** (ăn cờ phạt lây nhiễm chéo, ví dụ 03/10 M11_r1 sáng -> M11_r3 & M49_r3 chiều dính nhả; 06/10 M15_r2 sáng -> M53_r6 tối; 07/10 M16_r1 sáng -> M54_r3 chiều...).
+     - Chỉ duy nhất 1 ca (2.2%) ngoại lệ follow được.
+   - **Bằng chứng thực nghiệm khẳng định:** Cửa sổ phạt (Taint Window) của TikTok trên IP nhạy cảm kéo dài trọn chu kỳ ngày. Cơ chế **IP Circuit Breaker ngắt đến hết ngày (`23:59:59`)** là tối quan trọng, cấm tuyệt đối mở cho ca sau chạy cố.
+
 ### Giải Pháp Chuẩn: IP Circuit Breaker (Cầu Dao Tự Ngắt Theo IP)
 * **Bẫy Cấm Cứng / Session Mutex (User Correction):** Nếu cấm cứng 1 IP / 1 máy hoặc khóa mutex theo phiên trong ca chạy batch thì sẽ làm mất 50% công suất của dàn máy trong phiên đó.
 * **Cơ chế Soft Guard tối ưu (Đã triển khai):**
