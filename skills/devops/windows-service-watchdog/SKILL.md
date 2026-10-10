@@ -236,6 +236,7 @@ return $false  # Timed out
 | Pitfall | Fix |
 |---------|-----|
 | Single-shift watchdog expanded to multi-shift lacks dynamic naming & shift-isolated state | Hardcoded shift label in report (`[LOGIN GPM ĐÊM]`) fired at midday/morning confuses user ("Gì mà h ca tối"). Furthermore, setting daily monolithic `finished: true` at noon prematurely locks out the evening shift. Fix: resolve shift dynamically via `get_current_shift_info()` and isolate completion per shift (`finished_shifts = ['TRUA']`) so evening is not blocked |
+| Daily batch watchdog couples idempotency to 100% exit code 0 (`lane_status == "success"`), causing infinite re-runs and duplicate reports | When batch scripts (e.g. Reg Gmail / 2FA) return exit code 1 due to routine platform failures (`phone_verify`), requiring `lane_status == "success"` prevents `last_success_date` from being saved. On every subsequent cron tick (e.g. every 5m), `already_ran_today()` returns `False`, repeatedly triggering 60m+ batches across the entire time window (Run 1 -> Run 2 -> Run 3). Fix: Track `last_completed_date = today_str` unconditionally upon full iteration completion (or cap `max_daily_attempts = 1..2`), decouple once-a-day execution from 100% item success, and save attempt state even on partial failures. See `references/batch-watchdog-idempotency-and-partial-failure-loop.md`. |
 | Multiple watchdogs started via Startup folder + manual launch | Mutex on `Local\` namespace (per-session) prevents both |
 | Mutex initialization throws exception | In `catch` block, log error and `exit 1` immediately so no watchdog runs unshielded |
 | Application root path missing during restart attempt | Validate `Test-Path $AppDir` before stopping processes or attempting launch; abort restart if absent |
@@ -337,6 +338,7 @@ return $false  # Timed out
 
 ## References
 
+- `references/batch-watchdog-idempotency-and-partial-failure-loop.md` — Khắc phục lỗi lặp vô tận và báo cáo duplicate của watchdog theo ca khi idempotency bị trói chặt vào exit code 0 (`lane_status == "success"`) dù batch đã chạy trọn vẹn 1 lượt.
 - `references/watchdog-cron-registration-and-upload-sla-discipline.md` — Kỷ luật đăng ký cronjob khi triển khai watchdog/audit mới, phân biệt Media Inventory vs Account Freshness SLA, và quy chuẩn exit code 0 khi deliver alert qua no_agent: true.
 
 - `references/phone-farm-usb-bus-saturation-and-controller-reset.md` — Khắc phục nghẽn bus USB 2.0 (EHCI), tràn endpoint, và script reset controller không cần reboot PC trên dàn farm 80+ thiết bị.

@@ -10,11 +10,31 @@
 ### Nguyên nhân gốc rễ
 - Trên TikTok app v46+ (cụm Admin v46.6.3, Kibe v47.0.3), hệ thống TikTok chặn hoàn toàn thao tác gỡ/xóa Email đối với các tài khoản không liên kết Số điện thoại (SĐT).
 - Hàm `_disable_email_and_confirm_stable` trong `live_phase_b_adapter.py` cố gắng bấm "Email" -> "Xóa" -> "Xác nhận", nhưng popup xóa bị chặn hoặc giao diện không cho phép gỡ email, dẫn đến timeout `EMAIL_DISABLE_NOT_STABLE`.
-- Trên Kibe đã vá:
+- Trên Kibe lúc đầu vá tạm thời:
   ```python
   # BỎ BƯỚC GỠ EMAIL: TikTok v46+ chặn xóa email với tài khoản không có SĐT.
   return
   ```
+- **Bản vá chuẩn hóa Closeout Gate (APPROVED 86đ):**
+  Không được dùng `return` cụt ngủn (bị Sol Auditor reject vì phá vỡ luồng chuẩn khi gặp account cho phép gỡ email). Thay vào đó, giữ nguyên quy trình thử gỡ email nhưng bọc bắt `LiveAdapterError`:
+  ```python
+  if _method_checked(current, "Email") is True:
+      try:
+          self._tap_value("Email", prefix=True)
+          self._tap_value("Xóa")
+          self._tap_value("Xác nhận")
+          self._wait_stable(lambda xml: _method_checked(xml, "Email") is False, "EMAIL_DISABLE_NOT_STABLE")
+      except LiveAdapterError as exc:
+          # TikTok v46+ chặn gỡ email khi nick chưa có SĐT: ghi nhận telemetry và bảo toàn 2FA
+          if self.diagnostic_root is not None:
+              try:
+                  self.diagnostic_root.mkdir(parents=True, exist_ok=True)
+                  with (self.diagnostic_root / "phase_b_events.jsonl").open("a", encoding="utf-8") as fp:
+                      fp.write(json.dumps({"event": "EMAIL_REMOVE_SKIPPED", "reason": str(exc)}, ensure_ascii=False) + "\n")
+              except OSError:
+                  pass
+  ```
+  Nhờ đó: Nếu TikTok cho phép gỡ -> gỡ sạch. Nếu TikTok chặn -> ghi nhận telemetry sự kiện và tiếp tục hoàn tất 2FA, không bị crash dở dang.
 - Tuy nhiên, patch này chưa được commit và deploy sang repo `D:/Taadaa/tiktok-add-bao-mat-f2a` trên máy Admin (`admin-farm`). Đồng thời, file trên Admin còn bị lỗi bảng mã tiếng Việt (Mojibake: `Xóa` biến thành `XA3a`, `Xác nhận` biến thành `XA-c nh-n`), khiến adapter văng lỗi 100%.
 
 ### Quy tắc bất biến
@@ -53,7 +73,13 @@
          norm_letters = re.sub(r"[^a-z]", "", norm_req)
          for name in wb.sheetnames:
              name_letters = re.sub(r"[^a-z]", "", _strip(name))
-             if name_letters == norm_letters or (name_letters.startswith("t") and "kho" in name_letters and norm_letters.startswith("t") and "kho" in norm_letters):
+             # Thắt chặt heuristic: bắt buộc cùng ký tự đầu 't', đuôi 'n', chứa 'kho', và chênh lệch độ dài <= 2
+             if name_letters == norm_letters or (
+                 name_letters.startswith("t") and norm_letters.startswith("t")
+                 and name_letters.endswith("n") and norm_letters.endswith("n")
+                 and "kho" in name_letters and "kho" in norm_letters
+                 and abs(len(name_letters) - len(norm_letters)) <= 2
+             ):
                  return wb[name]
          raise WorkbookError("SOURCE_SHEET_MISSING")
      ```

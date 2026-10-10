@@ -58,5 +58,17 @@ Khi operator phản ánh "sao report không báo cáo phiên follow" hoặc "ca 
    - ~33% nghỉ Dưỡng sinh, proxy bẩn bị Cầu dao IP 48h chặn trước cửa app (`CIRCUIT_BREAKER_SKIPPED`), các nick được vào cày bấm anchor thì bị TikTok nhả ngay tức thì (`FOLLOW_FAILED` sau swipe).
    - Cơ chế Fail-Closed lập tức ngắt phiên tại lượt 0 để bảo vệ nick khỏi bị cấm tính năng vĩnh viễn ➔ Thống kê ghi nhận 0 lượt thành công nhưng toàn bộ hệ thống đã kích hoạt bảo vệ 100%.
 
+### 4. Giải Pháp Kiến Trúc Đã Chốt & Invariant Duy Trì 1 Dòng Tóm Tắt (Channel Blindness Invariant)
+- **Duy trì 1 dòng tóm tắt trên kênh chính:** Trong `dispatch_split_reports()`, khi tách báo cáo `fl_s` và `up_s`, BẮT BUỘC giữ lại dòng tiêu đề tóm tắt `fl_s[0]` và `up_s[0]` trong khối feed:
+  ```python
+  if fl_s: f_s.append(fl_s[0])
+  if up_s: f_s.append(up_s[0])
+  ```
+  Giúp người theo dõi kênh `Tiktok Luot Nuoi Acc` thấy ngay dòng:
+  `• Follow chéo (0 lượt follow) [Module 2 (Anchor): 0 | Module 1 (Bù): 0]:`
+  loại bỏ hoàn toàn cảm giác "báo cáo bị mất tích" hay "hệ thống quên chạy follow".
+- **Vòng lặp gửi tin cậy & Cô lập ngoại lệ:** Bọc `try...except` độc lập cho từng kênh (`cid`), retry 3 lần với timeout 15s để chống rớt tin khi Telegram API gặp độ trễ failover mạng. Ghi lỗi ra `sys.stderr` thay vì nuốt âm thầm.
+- **Đồng bộ Unit Test Invariant:** Khi cập nhật định dạng hiển thị (như `: N lượt` ở tier nhả follow), bắt buộc đồng bộ lại các chuỗi assert trong `test_feed_session_watchdog.py` để Closeout Gate luôn đạt chuẩn APPROVED $\ge 85$.
+
 ## Answer style
 Answer the operator's direct question first, in Vietnamese, with no speculative theory. Explain only the distinction needed to prevent the common misread that `Success (0)` equals “no machine ran.”
