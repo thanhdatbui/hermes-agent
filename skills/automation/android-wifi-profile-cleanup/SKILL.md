@@ -67,6 +67,11 @@ Use status values such as `NO_DAT_EVIDENCE`, `CLEAN_AND_ONLINE`, `CLEAN_BUT_VERI
 - If removal succeeds but the mapped farm SSID does not complete with a farm-subnet IP, preserve the evidence and mark `CLEAN_BUT_VERIFY`; do not try another SSID.
 - If a device lock cannot be acquired, leave the device untouched and report the lock owner/timeout.
 - If a batch is interrupted, distinguish completed per-device artifacts from unprocessed machines; never infer success from the launcher exit code alone.
+- **Static IP Configuration Trap**: If a device's saved profile has `IP assignment: STATIC`, toggling Wi-Fi retains the stale static IP (e.g. `192.168.10.x`). The profile MUST be deleted via `service call wifi 14 i32 <ID>` and re-joined via `adbjoinwifi` so Android re-initiates DHCP lease negotiation on `192.168.110.x`.
+- **Preflight Prerequisite Integration**: Feed runners (`run-feed-session.ps1`, `tiktok_runner.py`) MUST export `FARM_WIFI_PROFILES_FILE=D:\Taadaa\machine-config\farm_wifi_profiles.json` so runner Stage 2 auto-recovery does not fail closed due to missing credentials.
+
+## Production Automation Scripts
+- `D:/Taadaa/tools/batch_clean_farm_wifi.py`: Parallel locked cleanup across Dual-Cluster Farm (M1-80 & M201-280, max_workers=20), removing rogue networks (`Dat`, `Dat-1`, `BOX`, `Green Media 5G`, `admin`, `kibe`) and enforcing pure Aruba SSID binding with DHCP.
 
 ## Reference
 
