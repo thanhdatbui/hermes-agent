@@ -12,11 +12,11 @@ description: TikTok login automation via ADB — inventory, login, 2FA, UI handl
 
 
 ## 🛑 STOP GATE (bắt buộc — chi tiết: skill taadaa-farm-ops-rules)
-- **CANONICAL APK-BANK (2026-10-09)**: Dùng `install_farm_apks.py` từ `apk-bank`. Ref: `references/canonical-apk-bank-and-install-discipline-20261009.md`.
-- **GMAIL LIVE & PHỤC HỒI 2FA (2026-10-10)**: Check live Gmail; `--allow-parent-lock`. CẤM ĐÁNH ĐỒNG "Gmail die = TT die": nick có 2FA TOTP bypass OTP mail, ưu tiên khôi phục. Ref: `references/gmail-die-vs-2fa-totp-recovery-and-slot-replacement-20261010.md`.
-- **SAFE TAP SWITCHER**: Bounds [0,1788][1080,1920] safe_y=1832. Ref: `references/account-switcher-safe-tap-and-tracking-sheet-filtering.md`.
-- **ĐỐI SOÁT KÝ SINH & ACTIVE LOGOUT (2026-10-01)**: Audit 2 bước; logout Settings. Ref: `references/parasite-active-profile-logout-and-switcher-audit-20261001.md`.
-- **GIẢI PHÓNG SLOT TRẦN 8 NICK (2026-10-10)**: Ref: `references/gmail-die-vs-2fa-totp-recovery-and-slot-replacement-20261010.md`.
+- **CANONICAL APK-BANK**: Dùng `install_farm_apks.py`. Ref: `references/canonical-apk-bank-and-install-discipline-20261009.md`.
+- **GMAIL LIVE & 2FA**: CẤM ĐÁNH ĐỒNG "Gmail die = TT die": nick 2FA TOTP bypass OTP mail, giải phóng trần 8 nick. Ref: `references/gmail-die-vs-2fa-totp-recovery-and-slot-replacement-20261010.md`.
+- **ĐỔI EMAIL TIKTOK**: Đổi thẳng email qua 2FA TOTP + Graph API OTP, không cần OTP mail cũ. Ref: `references/tiktok-change-linked-email-to-clean-hotmail-20261010.md`.
+- **SAFE TAP SWITCHER**: Safe_y=1832. Ref: `references/account-switcher-safe-tap-and-tracking-sheet-filtering.md`.
+- **ĐỐI SOÁT KÝ SINH & LOGOUT**: Audit 2 bước; logout Settings. Ref: `references/parasite-active-profile-logout-and-switcher-audit-20261001.md`.
 - **HOTMAIL GRAPH TOKEN OTP & FAKE PASS (2026-10-10)**: Đối soát sai pass nick OTP (pass rác tracking); ưu tiên token Graph API PC, cấm mở Outlook app; bẫy Samsung keyboard BACK văng app; bẫy `LivePlayActivity` sau OTP. Ref: `references/hotmail-token-graph-otp-and-fake-password-triage-20261010.md`. fix Samsung keyboard BACK văng app. Ref: `references/hotmail-token-graph-otp-and-fake-password-triage-20261010.md`.
 - **TRIAGE GMAIL OTP (2026-09-21)**: Ref: `references/tiktok-login-gmail-account-missing-and-checkmail-triage-20260921.md`.
 - **CẤM BỎ DỞ 2FA EMAIL OTP (2026-09-17)**: Ref: `references/tiktok-login-recovery-and-email-otp-workflow-20260917.md`.
