@@ -225,6 +225,13 @@ Operate avatar-only changes on Taadaa TikTok farm devices without accidentally p
     2. Tạo file cờ vật lý `.manual_avatar_locked` tại cả 2 đầu kho (`TIKTOK-videonuoinick` và `video goc`).
     3. Cập nhật Excel cột `Avatar = 'OK'` và database `avatar_replace_queue` về `status = 'DONE'`.
     4. CẤM TUYỆT ĐỐI quên hoặc đợi Operator phải hỏi "đã khóa chưa" mới đi khóa.
+  * **QUY TẮC BẤT BIẾN KHI QUÉT HÀNG LOẠT GẶP FOLDER KHÓA (HARD INVARIANT TỪ CLAUDE CLI):**
+    - Khi chạy bất kỳ script quét/tái sinh/download avatar hàng loạt nào (`regenerate_unique_avatars.py`, `download_and_extract_hot_avatars.py`), gặp folder bị khóa:
+      * CẤM TUYỆT ĐỐI tự ý mở khóa ngầm, cấm xóa marker, cấm tự ý ghi đè `avatar.jpg`, cấm tự ý UPDATE `avatar_replace_queue` về `PENDING`.
+      * BẮT BUỘC BỎ QUA an toàn (`SKIPPED_MANUAL_PROTECTED`).
+      * Nếu script báo cáo `LOCK_CONFLICT` (Exit code 3): Agent BẮT BUỘC dùng tool `clarify` hỏi lại Operator danh sách cụ thể các folder bị khóa.
+      * CHỈ KHI Operator trực tiếp chọn "Mở khóa ghi đè", hệ thống mới cấp `One-Time Override Grant` (hạn 15 phút, dùng đúng 1 lần, sao lưu ảnh cũ trước khi ghi). Ghi xong KHÓA VẪN GIỮ NGUYÊN.
+      * Nếu Operator không phản hồi: Mặc định LUÔN LÀ BỎ QUA GIỮ NGUYÊN (Fail-closed tuyệt đối). Chi tiết xem tài liệu kiến trúc tại `D:/Taadaa/Tiktok-video/docs/manual_avatar_protection_hardening.md`.
   * Lập tức tự chọn phương án tối ưu nhất theo niche, kiểm tra ảnh không dính subtitle/viền đen/lệch tâm qua vision, đồng bộ file ảnh nguồn cả 2 đầu kho (`D:\video goc\<folder>\avatar.jpg` và `D:\TIKTOK-videonuoinick\<folder>\avatar.jpg`), set queue `PENDING`, và kích hoạt ngay canonical runner (`run_tiktok_upload_avatar.ps1`) chạy nền có event-driven wakeup (`notify_on_complete=True`).
 
 - **MỞ RỘNG TARGET_TIKS WATCHDOG CHO ĐỦ 8 TIK KIBE & TELEMETRY OBSERVABILITY (2026-10-10):**

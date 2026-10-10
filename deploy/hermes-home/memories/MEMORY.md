@@ -1,4 +1,4 @@
-Follow: CHỈ nick Khỏe (graduated) nhả mới giật cầu dao 48h; nick non phạt cooldown account. Nấc hồi phục 2d/nấc (1-2fl -> 5-8fl -> Khỏe). Up chỉ Phiên 2 để tự cân bằng 2d/vid. Advisor fallback Terra Codex. CẤM auto-follow popup.
+Follow: CHỈ nick Khỏe nhả mới giật cầu dao IP 48h; nick non phạt cooldown. Chu kỳ 4 ngày 3 ca (bỏ 0h): N1(A), N2(B), N3(R7,8,nick yếu), N4(Dưỡng sinh: feed+up, 0 fl), N5 xúc xắc A/B. CẤM tự xóa cooldown. CẤM trả lời solo câu hỏi chiến lược, bắt buộc gọi Advisor Sol.
 §
 Dual-Farm: Mọi cron/supervisor BẮT BUỘC chạy cả Kibe (1-80) & Admin (201-280). Excel Admin 10-11 cột (đọc cell idx<len(row)). Supervisor so le 2p; Báo cáo 6H gộp. CẤM copy ava Kibe->Admin; Admin dùng video gốc m2, venv-core024.
 §
