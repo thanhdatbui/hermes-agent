@@ -14,17 +14,22 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
   2. Băng thông USB 2.0 trần chỉ 35-40 MB/s. Khi 30-40 worker chạy đồng loạt gọi `screencap` (~2MB/ảnh PNG) hoặc kéo video/app, xuất hiện I/O spike dồn dập làm nghẽn bus, tràn endpoint, controller treo thanh ghi phần cứng $\rightarrow$ văng toàn bộ hub.
   3. Reset PC cứu được là do gửi tín hiệu System Bus Reset giải phóng thanh ghi controller, không phải do cài đặt nguồn.
 
-## 2. Công Cụ Cứu Nhanh Tại Chỗ (3 Giây, Không Cần Reset PC)
+## 2. Công Cụ Cứu Nhanh Tại Chỗ & Giới Hạn Live-Reset Chip EHCI (Main X99)
 - **Nguồn repo quản lý (SSOT):** `D:\Taadaa\tools\services\Taadaa_Service\reset_usb_bus.bat`
 - **Vị trí triển khai trên Host:** `C:\Taadaa_Service\reset_usb_bus.bat` (Desktop shortcut: `RESET_USB_ADMIN.lnk`).
-- **Cơ chế:**
+- **Cơ chế script:**
   ```cmd
   @echo off
   taskkill /F /IM adb.exe >nul 2>&1
   powershell -Command "Get-PnpDevice | Where-Object { $_.FriendlyName -match 'Enhanced Host Controller' } | Disable-PnpDevice -Confirm:$false; Start-Sleep 2; Get-PnpDevice | Where-Object { $_.FriendlyName -match 'Enhanced Host Controller' } | Enable-PnpDevice -Confirm:$false"
   wscript.exe "C:\Taadaa_Service\start_adb_hidden.vbs"
   ```
-- **Tác dụng:** Reset xung nhịp 2 chip EHCI, 80 máy bắt tay lại ngay lập tức mà không làm sập các tiến trình khác trên PC.
+- **BẪY THỰC TẾ PHẦN CỨNG (HRESULT 0x8004100c):**
+  * Trên Windows với chipset Intel C610/X99 (`8D26`, `8D2D`), lệnh `Disable-PnpDevice` trên controller PCI EHCI **BỊ TỪ CHỐI** với lỗi `Disable-PnpDevice : Not supported (HRESULT 0x8004100c - NotImplemented)`.
+  * Lệnh `pnputil /restart-device` trên controller này cũng trả về `System reboot is needed to complete configuration operations! (Exit code 194)`.
+  * **Hệ quả:** Script chỉ thực chất kill và khởi động lại tiến trình `adb.exe`, **KHÔNG HỀ ngắt điện hay reset xung nhịp phần cứng 2 chip EHCI**.
+  * Nếu cụm máy bị văng do kẹt uevent/socket USB phần cứng (như Box 4 rụng 8 máy), script chạy xong máy vẫn giữ nguyên trạng thái `offline`.
+  * **Giải pháp dứt điểm:** Rút ra cắm lại trực tiếp sợi cáp USB tổng của Box đó ở mặt sau case PC (3 giây), hoặc reboot PC để BIOS reset thanh ghi bus.
 
 ## 3. Quy Tắc Safe Preflight Reset (Bảo Vệ Device Locks & Backoff Logic)
 - **Nguồn repo quản lý (SSOT):** `D:\Taadaa\tools\services\Taadaa_Service\safe_usb_guard.py`

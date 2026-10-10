@@ -340,7 +340,7 @@ def ensure_dual_answer(message: str, response: str, context: str = "") -> str:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Query Hermes Advisor Sol")
+    parser = argparse.ArgumentParser(description="Query Hermes Advisor Sol", allow_abbrev=False)
     parser.add_argument("--query", "-q", required=True, help="Câu hỏi hoặc yêu cầu tư vấn")
     parser.add_argument("--context", "-c", default="", help="Bối cảnh hiện trường")
     parser.add_argument("--classify-only", action="store_true", help="Chỉ kiểm tra intent")
@@ -351,15 +351,19 @@ def main():
     if args.classify_only:
         is_advice = classify_advice_intent(args.query)
         print("ADVICE_INTENT" if is_advice else "IMPERATIVE_INTENT")
-        sys.exit(0 if is_advice else 1)
+        sys.stdout.flush()
+        os._exit(0 if is_advice else 1)
 
     if args.enforce:
         output = ensure_dual_answer(args.query, args.response_text, args.context)
         print(output)
-        sys.exit(0)
+        sys.stdout.flush()
+        os._exit(0)
 
     result = consult_advisor(args.query, args.context)
     print(result["formatted"])
+    sys.stdout.flush()
+    os._exit(0)
 
 
 if __name__ == "__main__":
