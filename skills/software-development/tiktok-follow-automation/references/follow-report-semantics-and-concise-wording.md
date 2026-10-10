@@ -68,7 +68,12 @@ Khi operator phản ánh "sao report không báo cáo phiên follow" hoặc "ca 
   `• Follow chéo (0 lượt follow) [Module 2 (Anchor): 0 | Module 1 (Bù): 0]:`
   loại bỏ hoàn toàn cảm giác "báo cáo bị mất tích" hay "hệ thống quên chạy follow".
 - **Vòng lặp gửi tin cậy & Cô lập ngoại lệ:** Bọc `try...except` độc lập cho từng kênh (`cid`), retry 3 lần với timeout 15s để chống rớt tin khi Telegram API gặp độ trễ failover mạng. Ghi lỗi ra `sys.stderr` thay vì nuốt âm thầm.
-- **Đồng bộ Unit Test Invariant:** Khi cập nhật định dạng hiển thị (như `: N lượt` ở tier nhả follow), bắt buộc đồng bộ lại các chuỗi assert trong `test_feed_session_watchdog.py` để Closeout Gate luôn đạt chuẩn APPROVED $\ge 85$.
+- **Đồng bộ Unit Test Invariant & Coverage cho Dispatch Telegram:**
+  Khi sửa đổi hàm `dispatch_split_reports` (hoặc bất kỳ hàm dispatch tin nhắn Telegram nào có chia nhỏ tin nhắn và retry):
+  * **Test Chunking (> 4000 chars):** Bắt buộc tạo fixture block dài > 4000 ký tự và assert `urlopen.call_count > 1` để chứng minh thuật toán cắt line-buffer hoạt động thật.
+  * **Test Retry Loop (Transient Failure):** Mock `side_effect=[Exception("net"), MagicMock(), MagicMock()]` kết hợp `patch("time.sleep")` để chứng minh vòng lặp retry 3 lần tự hồi phục.
+  * **Test Persistent Failure Isolation:** Mock `side_effect=Exception("fail")` để xác nhận ngoại lệ được bắt an toàn tại từng kênh, in ra `sys.stderr`, không làm crash hàm và vẫn trả về nội dung báo cáo feed chính.
+  * Việc thiếu 3 bài test này sẽ bị Reviewer của Closeout Gate đánh tụt điểm Test Evidence và REJECT.
 
 ## Answer style
 Answer the operator's direct question first, in Vietnamese, with no speculative theory. Explain only the distinction needed to prevent the common misread that `Success (0)` equals “no machine ran.”
