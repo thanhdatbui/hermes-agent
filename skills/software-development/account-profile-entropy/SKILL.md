@@ -160,6 +160,20 @@ When registering or renaming accounts created from foreign/shop emails (e.g. `fr
   * **Tik 2 ➔ Tik 8 (Scale / Batch Reg / Wholesale Mails)**: Primarily generated with alphanumeric + numbers (e.g., `buithudung2011`, `nhimnhim1565`, `beheo5746`) or derived from external mail accounts (Hotmail/Outlook). Dots are deliberately minimized/omitted (0%–12%) to prevent syntax edge-cases (e.g. trailing dots after length slicing, consecutive `..`, or leading dots) and ensure 100% first-attempt submission success on high-throughput batch runs.
 - **Handle Sanitization Invariant**: Always enforce `.strip("._")` and regex `re.sub(r"[^a-z0-9_.]", "", s)` to guarantee no trailing/leading punctuation before typing into the TikTok handle field.
 
+### 10. On-Device TikTok Rename Workflow & Farm Device Lock Coexistence (`do_rename_m*.py`)
+
+When an operator provides a screenshot of a TikTok profile (e.g. `LilyanLederhos64090`, `@lilyanzj8n1`) and requests "Đổi tên nick này":
+
+- **O(1) Account & Hardware Identification**: Query `farm_account_info` and `account_mapping` in `D:/OneDrive/TaadaaData/tiktok_tracker.db` by username (`lilyanzj8n1`) to find device ID, cluster, and slot (e.g. Máy 76, slot 7). Cross-reference with `taikhoan_run_safe.xlsx` (row 608). Never run broad scans across disk.
+- **Device Lock & Process Coexistence Preflight**: Inspect `inspect_machine.py <ID>` and `~/.codex/device-locks/serial_<SERIAL>.lock.json`. If a multi-machine feed or follow session (`run_tiktok.py --mode multi-machine-feed-session`) is running on the device, **NEVER** kill the process or force ADB inputs. Wait for the feed session to finish its final swipe loop and release the lock cleanly.
+- **State Machine OCR Pattern (`do_rename_m<ID>.py`)**:
+  * Wrap in `operator_device_lock(machine=ID, serial=SERIAL, project="do_rename_m...", timeout=300)`.
+  * Classify screen via WinRT OCR (`tools/ocr_boxes.ps1`): `FEED`, `PROFILE`, `SWITCHER`, `EDIT_PROFILE`, `NAME_EDIT`, `SAVE_LOGIN_POPUP`.
+  * Type base64 encoded UTF-8 string via AdbKeyboard (`ADB_KEYBOARD_INPUT_TEXT`), verify character counter (`len/30`, e.g. `9/30` for `Ngọc Linh`), tap "Lưu", and auto-confirm dialog ("Bạn chỉ có thể thay đổi biệt danh 7 ngày 1 lần").
+  * Readback verify that the profile screen displays the new name directly above `@username`.
+- **Hermetic Offline Pytest**: Create `tests/test_do_rename_m<ID>.py` testing `norm`, `compact`, `classify`, `is_target`, `is_target_user`, and `nickname_on_profile` offline (<0.5s) to guarantee zero regression before device execution.
+- **Background Execution**: Launch via `terminal(command="python D:/Taadaa/tools/do_rename_m<ID>.py", background=True, notify_on_complete=True, timeout=300)` adhering to event-driven wakeup.
+
 ## Integration Point
 
 ```python
@@ -202,3 +216,4 @@ def generate_account_for_slot(slot, existing_emails=None, max_attempts=300):
 ## References
 
 - `references/gmail-reg-case.md` — Case study from `register gmail` repo
+- `references/on-device-rename-state-machine-and-lock-coexistence.md` — Complete on-device TikTok rename workflow, state-machine OCR pattern, device lock coexistence, and hermetic offline testing

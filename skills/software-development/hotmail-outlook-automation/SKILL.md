@@ -11,13 +11,7 @@ description: Hotmail automation.
 # Hotmail/Outlook Automation
 
 - **BoxTaiKhoan API**: Endpoint mua tự động `POST /ajaxs/client/product.php` (id 60 - OAuth2 393đ). Format: `mail|pass|refresh_token|client_id`. Lưu ý: Khi mua số lượng lớn, gọi API mua lẻ từng acc (`amount=1`) qua vòng lặp giúp nhận trực tiếp mảng `data` đầy đủ, tránh phụ thuộc vào trang chi tiết đơn hàng `/product-order/` trên web.
-- **Điều Kiện Đủ Để Change Pass Hotmail (Dual-OAuth Eligibility Gate - 2026-10-08)**:
-  - Tài khoản Hotmail **CHỈ ĐỦ ĐIỀU KIỆN CHANGE PASS** khi đã thỏa mãn đồng thời:
-    1. Đã đăng ký thành công Codex qua 5SIM/ChatGPT.
-    2. Đã nạp và kích hoạt OAuth Codex lên **OmniRoute (:20129)** (`provider_connections` có `provider='codex'`).
-    3. Đã nạp và kích hoạt OAuth Codex lên **9Router (:20128)** (`providerConnections` có `provider='codex'`).
-  - Thiếu 1 trong 2 server -> CẤM chuyển sang stage `CHANGE_INFO` hoặc đổi pass, nhằm bảo vệ toàn vẹn nguồn quota LLM trước khi đổi mật khẩu làm đứt token/session.
-  - *Chi tiết quy trình chuẩn 5 bước (2FA ON -> Đổi Pass -> Sign Out -> Relogin 2FA -> KMSI [Có], giữ mail KP gốc, xóa token Cột 9 Excel khi đổi pass)*: `references/gpm_hotmail_security_canonical_flow.md`.
+- **Change-pass eligibility (2026-10-10)**: Require prior TikTok registration (ID+password) and ChatGPT registration (Cột 12 `PASS CHATGPT`). Do **not** gate on Dual-OAuth Codex in OmniRoute/9Router: the post-change flow no longer needs Hotmail Graph OTP tokens. Keep domain, recovery-mail, changed/cooldown, and 1 Egress-IP+proxy/24h gates. After successful password change, clear old OAuth/Graph token in Cột 9 `gmail_clean_v2.xlsx`. Canonical 5-step flow remains in `references/gpm_hotmail_security_canonical_flow.md` (2FA -> password -> sign-out everywhere -> relogin TOTP -> KMSI Yes). Session-specific verified selectors and canary pitfalls: `references/change-info-canary-lessons-2026-10.md`.
 - **Kiến trúc kho Gmail Clean V2 & 2 Cột Trạng Thái (2026-08-25)**:
   - `gmail_clean_v2.xlsx` là **Single Source of Truth** chứa cả Gmail và Hotmail của farm.
   - Cột 11: `info_changed` (đánh dấu `1` khi đã đổi info/pass bảo mật Hotmail).

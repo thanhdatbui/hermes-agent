@@ -290,16 +290,29 @@ GPM CDP Connect
 
 ---
 
-## 15. Tiêu Chuẩn 3 Điều Kiện Tiên Quyết ("Dùng Hết Mới Được Đổi") & Cơ Chế OAuth Omni/9Router (2026-10-10)
+## 15. Tiêu Chuẩn Điều Kiện Tiên Quyết ("Dùng Hết Mới Được Đổi") & Cơ Chế OAuth Omni/9Router (2026-10-10)
 - **Tâm Lý & Nguyên Tắc Của User**:
-  * *"Yêu cầu các hotmail muốn change info phải thoả 3 điều kiện đã reg tiktok đã từng reg chatgpt... Chủ yếu là dùng hết hotmail rồi mới được change info ấy"*.
-- **3 Điều Kiện Tiên Quyết Bắt Buộc Trước Khi Change Info**:
+  * *"Yêu cầu các hotmail muốn change info phải thoả điều kiện đã reg tiktok đã từng reg chatgpt... K cần otp nữa thì bỏ điều kiện 3 đi"*.
+- **Điều Kiện Tiên Quyết Bắt Buộc Trước Khi Change Info**:
   1. **Đã Reg TikTok**: Tài khoản đã được liên kết với nick TikTok trên Phone Farm (Cột 3 có ID TikTok, Cột 4 có PASS TikTok trong `taikhoan_dat_v2_updated .xlsx`).
   2. **Đã Reg ChatGPT**: Tài khoản đã từng đăng ký tài khoản ChatGPT thành công (Cột 12 `PASS CHATGPT` khác trống).
-  3. **Đã Nạp Dual OAuth Codex**: Đã kết nối Codex lên CẢ **OmniRoute (:20129)** VÀ **9Router (:20128)**.
+  *(Lưu ý: Đã bỏ điều kiện bắt buộc Codex Dual-OAuth vì sau khi đổi pass không cần đọc OTP Hotmail nữa; các tài khoản đã reg TikTok và ChatGPT là đủ điều kiện change info).*
 - **Giải Đáp Về Cơ Chế OAuth OmniRoute & 9Router**:
   * *Hỏi: Sau khi đổi pass thì OmniRoute và 9Router có cần OTP về Hotmail nữa không?*
   * *Trả lời: HOÀN TOÀN KHÔNG CẦN OTP VỀ HOTMAIL.*
     - OmniRoute và 9Router lưu trữ trực tiếp `access_token` và `refresh_token` do OpenAI cấp trong database SQLite riêng (`storage.sqlite` và `data.sqlite`).
     - Việc refresh token diễn ra trực tiếp giữa OmniRoute/9Router với máy chủ OpenAI, hoàn toàn không liên quan đến Hotmail và không bao giờ gửi OTP về Hotmail nữa.
-    - Do đó, khi tài khoản đã thỏa mãn đủ 3 điều kiện trên thì Hotmail đã "vắt kiệt" toàn bộ giá trị sử dụng. Tiến hành Đổi Pass + 2FA + Xóa Token Cột 9 là thời điểm hoàn hảo và an toàn nhất.
+    - Do đó, khi tài khoản đã đổi pass và Sign out everywhere, token Cột 9 trong Excel bị Microsoft revoke và được script xóa trắng (`None`), hoàn toàn không làm gián đoạn các kết nối Codex đã nạp vào proxy.
+
+---
+
+## 16. Bẫy Navigation Race Sang MSN Khi Relogin Sau Sign Out Everywhere (2026-10-10)
+- **Hiện tượng**:
+  * Sau khi bấm `#DeleteTrustedDevices` (Sign out everywhere), nếu script gọi `page.goto("https://login.live.com/logout.srf")`, máy chủ Microsoft sẽ kích hoạt redirect ngầm sang `https://www.msn.com/vi-vn`.
+  * Nếu ngay sau đó gọi `page.goto("https://login.live.com")`, Playwright lập tức crash:
+    `Page.goto: Navigation to "https://login.live.com/" is interrupted by another navigation to "https://www.msn.com/vi-vn"`.
+  * Nếu bọc try-except lỏng lẻo bắt lỗi này, script sẽ **BỎ QUA BƯỚC RELOGIN**, dẫn tới profile bị sign out nhưng không đăng nhập lại bằng pass mới và không lưu KMSI!
+- **Khắc phục**:
+  * **CẤM TUYỆT ĐỐI** gọi `/logout.srf` sau Sign out everywhere. Sign out everywhere đã tự động revoke phiên đăng nhập.
+  * Điều hướng thẳng tới `https://login.live.com` với vòng lặp retry 2-3 lần có `time.sleep(3)` để chờ mọi redirect ngầm lắng xuống.
+  * **Kỷ luật Fail-Fast**: Relogin là chặng BẮT BUỘC. Nếu không relogin thành công và chưa thấy màn hình KMSI / Dashboard Microsoft (`account.microsoft.com`), CẤM ghi pass mới vào Excel hay đánh dấu hoàn thành!

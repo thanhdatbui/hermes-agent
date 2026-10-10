@@ -43,9 +43,10 @@ Khảo sát từ 10.677 lượt follow và 389 hồ sơ lỗi state trên hệ t
   2. **Safe-skip máy anh em:** Khi Máy B chuẩn bị chạy (`run_follow.py`), preflight gọi `check_ip_breaker(machine)`. Nếu IP đang bị ngắt, Máy B tự động skip ca với trạng thái `CIRCUIT_BREAKER_SKIPPED` (`failed=False`, `follow_failed=False`), không phạt nick, đồng thời ghi nhận `saved_machines` vào DB.
   3. **Giám sát trực quan trên Dashboard (:1905):** Hiển thị widget `⚡ Cầu Dao Tự Ngắt IP` và gắn nhãn Proxy Port + Partner Machine (`M28 :5134 (🔗M66)`) trên ma trận.
   4. **Báo cáo trong Report Ca Follow Telegram (feed_session_watchdog.py — User Invariant):**
-     * Trong mục Follow chéo, BẮT BUỘC liệt kê rõ ràng các IP bị ngắt và nick anh em được bảo vệ:
+     * Trong mục Follow chéo, BẮT BUỘC gom nhóm ngắn gọn các IP bị ngắt và nick anh em được bảo vệ (tránh in từng dòng gây tràn 4096 ký tự Telegram):
        `⚡ Cầu dao tự ngắt IP (X proxy đã khóa do dính nhả):`
-       `- Cổng <PORT>: M<A> dính nhả lúc <HH:MM:SS> -> Đã ngắt IP không follow | Đã khóa cứu nick: M<B>`
+       `- Khóa cứu partner (Y máy): M<A> (cổng <port1>), M<B> (cổng <port2>)`
+       `- Khóa toàn bộ nick cùng IP (Z proxy): <port3>, <port4>, ...`
      * Trong mục `Bỏ qua`, bóc tách riêng: `Khóa IP do máy cùng IP nhả (X: M...)` thay vì gộp mù vào lỗi script hay dưỡng sinh thông thường. Không báo lỗi ảo khi nick được an toàn skip bởi Circuit Breaker.
      * **BẪY TRÀN TẢI TELEGRAM 4096 KÝ TỰ (HTTP 400 MESSAGE_TOO_LONG):**
        - Khi ca chạy có nhiều máy dính nhả và nhiều proxy bị ngắt cầu dao (ví dụ 22 proxy ngắt, 25 máy nhả), tổng độ dài tin nhắn báo cáo gộp dễ dàng vượt quá giới hạn 4.096 ký tự của Telegram API (thường đạt 4.500 - 5.500 ký tự).

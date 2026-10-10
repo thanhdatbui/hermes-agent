@@ -38,3 +38,13 @@ if ch_tracker_path.is_file():
 - Khi Hotmail login báo fail: Không đoán mò lỗi proxy hay code.
 - Dùng WinRT OCR đọc ảnh `outputs/screenshots/post_login_*.png`.
 - Nếu có dòng `"Mật khẩu đó không đúng với tài khoản Microsoft của bạn"`: Xác nhận lỗi SAI MẬT KHẨU từ nguồn bán, duy trì cooldown 48h để bảo vệ dải IP, không retry mù.
+
+## 5. Truy vết tài khoản sai mật khẩu gốc (Root Cause & Procurement Forensics)
+Khi phát hiện hàng loạt tài khoản báo sai mật khẩu ngay từ bước `HOTMAIL_LOGIN`, thực hiện quy trình điều tra 3 bước:
+1. **Xác minh lịch sử đổi pass (`hotmail_changed_tracker.json`)**:
+   - Nếu email vắng mặt trong `changed_emails` và supervisor state vẫn là `HOTMAIL_LOGIN` (`history: []`, `hotmail_login_at: None`): Khẳng định tài khoản **CHƯA TỪNG ĐỔI PASS**, lỗi mật khẩu xuất phát từ lúc nhập kho ban đầu.
+2. **Truy xuất đơn hàng & file Master (`taikhoan_dat_v2_updated .xlsx`)**:
+   - Tra cứu vị trí Row, số Máy, Folder video, ID TikTok và mật khẩu gốc cột `PASS MAIL`.
+   - Đối chiếu ngày nhập/ngày tạo: Các tài khoản Hotmail thường mua tự động từ shop `boxtaikhoan.com` (Loại 1 GraphAPI 262đ hoặc Loại 2 OAuth2 393đ qua API key `a0ed850f635d5c7042e89f68b41476bb`).
+3. **Đánh giá hạn bảo hành của Shop**:
+   - Chính sách bảo hành sai pass của shop là **24 giờ** kể từ lúc mua (đơn hàng tự xóa sau 3 ngày). Nếu tài khoản đã mua từ 1–2 tháng trước phục vụ reg TikTok qua điện thoại thì đã hết hạn bảo hành; không thể khiếu nại shop. Cần đánh dấu cách ly hoặc thay thế mail mới khi cần nuôi web/Codex.
