@@ -389,6 +389,21 @@ When the task is "fix findings from audit R<X>", the working tree may ALREADY co
 
 - Make the boundary probe observe control flow, not only the final return value. If both sides return the same sentinel for different reasons, instrument a post-guard operation (or use a minimal safe stub) so the report proves that the newly-valid boundary passes the guard while the newly-invalid boundary is rejected before side effects. On Windows, if `py_compile` cannot target `os.devnull`, compile into a disposable `tempfile.TemporaryDirectory()` and remove it before the final status check; never write probe bytecode into the repository.
 
+## Cross-stage credential/data lineage audit
+
+When a downstream credential failure follows a successful earlier stage, audit the data path before blaming an external source. This applies to workbook → persisted state → subprocess argv → provider UI/API pipelines.
+
+1. Read the canonical source with its explicit sheet/table name and identify the exact normalized key.
+2. Read the persisted state for that key; compare field presence, length, and keyed hashes without printing secrets.
+3. Inspect the caller's argument construction and prove the credential-domain mapping. A fallback such as `mail_password or password` is unsafe: empty mail credentials must fail closed, never substitute a TikTok/ChatGPT password.
+4. Check whether state refresh excludes mutable or sensitive fields, allowing a blank/stale value to survive forever.
+5. Classify the boundary failure as `SOURCE_BAD`, `IMPORT_BAD`, `STATE_STALE`, or `RUNNER_MAPPED_WRONG_FIELD`.
+6. Treat earlier-stage success as scoped evidence only: OTP/mailbox access or TikTok registration does not prove a later web-login password was correct.
+7. Inspect change trackers separately. Tracker absence proves only “no recorded automated change,” not that no actor changed the password.
+8. Report exact files, rows, field names, and code locations; redact passwords, tokens, API keys, and full order lines. Do not retry live login or mutate state until the mismatch is classified.
+
+See the Hotmail umbrella reference `references/credential-lineage-and-cross-stage-audit.md` for the reusable evidence matrix and minimal probe sequence.
+
 ## Pitfalls
 
 - **Git review-base resolution must fail closed:** when an audit derives committed scope from a Git base ref, every requested base—including the default `origin/main`—is mandatory. Never substitute `HEAD~1..HEAD`, an empty-tree range, or an empty scope when ref resolution fails; that can silently omit older commits. Add a compact real-Git regression with multiple commits and no default base, asserting extraction and binding return an explicit unresolved-base error/telemetry. Add the positive case with an explicit valid base and distinct files across commits, asserting the complete multi-commit scope and unchanged SHA/binding behavior. Root-commit fixtures must use the empty-tree SHA explicitly under this contract.

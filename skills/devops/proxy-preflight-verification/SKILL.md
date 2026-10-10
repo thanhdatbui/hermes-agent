@@ -423,3 +423,18 @@ See `references/adb-disconnect-vs-missing-proxy-preflight-20261009.md` for disti
       * Canary M241: Gán `192.168.110.2:10021`, probe socket PASS, verify egress qua `atx-agent curl` ra đúng public IP Viettel PPPoE (`171.231.188.208`).
       * Fleet Recovery: Chạy `ssh admin-farm "powershell -Command \"python -u D:/Taadaa/AI-Tools/scripts/set_proxy_farm_admin_adb.py\""` để tự động cập nhật dải cổng chuẩn `10008..10035` cho toàn bộ máy online và tắt captive portal.
       * Chi tiết xem `references/admin-s7-port-40-boundary-desync-triage-20261010.md` và `references/feed-watchdog-proxy-label-and-context-triage.md`.
+
+35. **Nhãn Watchdog 'Lỗi cấu hình Proxy' Bao Gồm Cả Rớt Wi-Fi & Cơ Chế Tự Cứu Wi-Fi Cấp 2 (2026-10-10)**:
+    - **Cạm bẫy nhãn gom nhóm trên Watchdog**: Khi báo cáo feed session (hoặc cron watchdog) báo *"Lỗi cấu hình Proxy (N máy)"*, nhãn này gom tất cả các máy bị chặn ở `blocked-proxy-vpn`. Rất nhiều trường hợp bản chất là **máy bị rớt Wi-Fi** (`dumpsys connectivity: Wi-Fi not connected`), không phải proxy hỏng hay sai cấu hình.
+    - **Tại sao runner không tự cứu được khi rớt Wi-Fi**:
+      * Trong `vpn_preflight.py`, cơ chế phục hồi router transparent proxy (`wlan0`) trước đây chỉ có Cấp 1 (`svc wifi disable && sleep 1 && svc wifi enable`).
+      * Khi máy dính cờ `ASSOCIATION_REJECTION` từ AP Aruba hoặc bị xóa thông tin mạng, việc toggle vô hiệu $\rightarrow$ văng lỗi `required router proxy is unreachable ... Wi-Fi not connected` $\rightarrow$ fail-closed ngắt máy khỏi ca chạy.
+    - **Kiến trúc Tự cứu Wi-Fi 2 cấp chuẩn hóa trong Preflight**:
+      * Cấp 1: Radio toggle (`svc wifi disable` ➔ `svc wifi enable`).
+      * Cấp 2: Nếu Wi-Fi vẫn chưa UP, runner tự động map số máy theo quy hoạch Farm (`farm-wifi-governance`), kích hoạt `adbjoinwifi` ép re-join đúng SSID/Password:
+        - M1–40: SSID `kibe 1` (Pass `23102025`)
+        - M41–80: SSID `kibe 2` (Pass `19051995`)
+        - M201–240: SSID `admin 1` (Pass `19051995`)
+        - M241–280: SSID `admin 2` (Pass `19051995`)
+      * Sau khi join, ấn `input keyevent 3` (HOME) để đưa màn hình về trạng thái sạch và re-check preflight.
+    - Chi tiết xem `references/feed-watchdog-proxy-label-and-wifi-self-heal-20261010.md`.
