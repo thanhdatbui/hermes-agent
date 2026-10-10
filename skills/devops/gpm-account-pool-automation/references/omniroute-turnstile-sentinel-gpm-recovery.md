@@ -57,9 +57,18 @@ Chạy script query bảng `provider_connections` trong `C:\Users\Kibe\.omnirout
 3. **KỶ LUẬT CHỦ ĐỘNG (PROACTIVE ASSISTANCE):** Tuyệt đối KHÔNG dừng lại chỉ để bảo User tự bấm khi các button hoàn toàn click được qua automation.
    - Gọi `computer_use(action='click', element=<index_card_tai_khoan>, delivery_mode='background', capture_after=true)`.
    - Chờ 3-5 giây và capture lại fresh state để phân loại phản hồi tiếp theo:
-     * **Tình huống 1 - Yêu cầu mã OTP qua Email (`auth.openai.com/email-verification`):** OpenAI hết hạn phiên và gửi mã xác minh 6 số về hòm thư. Chụp ảnh màn hình, soi mắt qua WinRT OCR / Vision xác nhận ô "Mã", sau đó gửi ảnh `MEDIA:` và hướng dẫn User cung cấp OTP hoặc gõ thẳng vào cửa sổ.
+     * **Tình huống 1 - Yêu cầu mã OTP qua Email (`auth.openai.com/email-verification`):** 
+       - OpenAI hết hạn phiên và gửi mã 6 số về hòm thư.
+       - **TỰ ĐỘNG BÓC OTP (CẤM ĐẨY VIỆC CHO USER):**
+         + Với Hotmail: Tìm dòng tài khoản trong `D:/Taadaa/Hotmail/` (e.g. `hotmail_all_60_bought.txt`), lấy `refresh_token` và `client_id`. Gọi Microsoft Graph API (`https://login.microsoftonline.com/common/oauth2/v2.0/token` scope `https://graph.microsoft.com/Mail.Read offline_access` -> `https://graph.microsoft.com/v1.0/me/messages`), bóc mã OTP 6 số mới nhất từ thư "Mã đăng nhập ChatGPT tạm thời của bạn".
+         + Điền OTP tự động vào ô "Mã" bằng `computer_use(action='type', text=otp)` rồi click nút "Tiếp tục" (`computer_use(action='click', element=...)`).
+         + Chỉ hỏi User khi tài khoản không có refresh token / không bóc được OTP qua API.
      * **Tình huống 2 - Cloudflare Turnstile Checkbox:** Thử click vào checkbox Turnstile. Nếu bị kẹt hoặc dính puzzle hình ảnh thì mới bàn giao màn hình cho User kèm ảnh chụp thực tế.
      * **Tình huống 3 - Đăng nhập thành công:** Đóng profile an toàn và chuyển tiếp tài khoản tiếp theo.
+
+### Lưu ý quan trọng khi chọn tài khoản:
+- Phải kiểm tra trạng thái `is_active = 0` và `last_error` trong `C:\Users\Kibe\.omniroute\storage.sqlite` để chọn đúng profile đang thực sự cần gỡ cờ.
+- Kiểm tra hòm thư loại trừ các tài khoản đã nhận mail "OpenAI - Truy cập bị vô hiệu hóa" (tài khoản đã bị OpenAI khóa vĩnh viễn, không cố login lại).
 
 ### Bước 5: Đóng Profile sau khi hoàn tất
 Gọi API dừng profile để tránh rò rỉ tiến trình Chromium:

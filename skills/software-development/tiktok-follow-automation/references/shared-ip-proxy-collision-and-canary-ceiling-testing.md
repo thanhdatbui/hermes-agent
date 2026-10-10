@@ -169,3 +169,14 @@ Toàn bộ 80 máy Kibe dùng 40 proxy (mỗi proxy 2 máy: `[M1, M39]`, `[M2, M
    - **Trạng thái ghi nhận:** `CIRCUIT_BREAKER_SKIPPED` (`failed=False`, `follow_failed=False`). Nick không bị tính lỗi, không tăng `fail_streak`, không bị gán cooldown.
    - **Chuyển đổi công năng sang Dưỡng Sinh (Feed / Read-only):** Cấm đi follow (hành vi write nhạy cảm), nhưng ĐƯỢC PHÉP chạy phiên lướt nuôi dưỡng sinh (xem video, tương tác nhẹ). Hành vi này vừa an toàn vừa giúp "rửa IP" bằng lưu lượng người dùng tự nhiên.
    - **Báo cáo Telegram (User Invariant):** Liệt kê rõ trong shift report: `⚡ Cầu dao tự ngắt IP: Đã khóa cứu nick M<B> (do M<A> cùng IP dính nhả từ ca sáng)`.
+
+### C. Tử Huyệt Điều Phối Ca 0h & Nghịch Lý Nick Yếu Giật Cầu Dao Giam Oan Nick Khỏe (User Invariant 10/10/2026):
+- **Cạm bẫy lịch đồng hồ 0h00:**
+  - Khi lịch farm chạy theo ngày dương lịch bắt đầu từ 00:00 (Ca 4 - Đêm) với **Row 7/8** (dàn nick mầm non nớt nhất, mới reg bù, ít video, chưa có trust follow).
+  - Nếu để Row 7/8 được phép chạy follow hook lúc 0h: do nội tại nick yếu, TikTok phát hiện bất thường và nhả follow ngay (`FOLLOW_FAILED`) ➔ `trip_ip_breaker` kích hoạt khóa proxy đó trong **48 giờ rolling** (`now + 48h`).
+  - Đến **06:00 sáng** (Ca 1 - Sáng), **Row 1/2** (Dàn cựu binh trụ cột, 20–108 follow sạch, tài sản lớn nhất của farm) bước vào ca cày follow ➔ `check_ip_breaker` thấy proxy bị khóa từ lúc 00:30 do Row 7/8 làm cúp ➔ **Row 1/2 bị `CIRCUIT_BREAKER_SKIPPED` giam oan 48 tiếng!**
+  - Tương tự với **Row 3/4** ở Ca 2 (12:00 trưa): nếu Row 3/4 còn yếu chạy follow dính nhả ➔ Lại giật cầu dao 48h ➔ Sáng hôm sau (và hôm sau nữa) Row 1/2 tiếp tục bị giam!
+- **Kỷ Luật Bảo Vệ IP Sạch Cho Dàn Cựu Binh (Core Fleet IP Priority):**
+  1. **Ưu tiên tuyệt đối Ca 1 (06:00 & 08:00 sáng) cho Row 1/2:** Row 1 (ngày lẻ) và Row 2 (ngày chẵn) là dàn tài sản trụ cột, bắt buộc phải là đối tượng đầu tiên được sử dụng dải IP sạch nhất trong chu kỳ để cày follow.
+  2. **Cấm tuyệt đối Follow Hook ở Ca 4 (00:00 & 01:30 đêm):** Ban đêm thuật toán quét gắt gao và nick chạy ca đêm là Row 7/8 (nick mầm). 100% ca đêm chỉ chạy **Dưỡng Sinh Thuần Túy (Pure Feed + Upload)**, cấm mọi hành vi follow.
+  3. **Row 3 đến Row 8 — Chế độ Dưỡng Sinh:** Các row non nớt chỉ được lướt feed và upload video để tích lũy video ($\ge 15-25$ video) và xây dựng Aging Trust. Tuyệt đối không cấp quota follow bừa bãi làm cháy lan IP của dàn cựu binh Row 1/2.

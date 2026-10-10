@@ -459,3 +459,36 @@ See `references/adb-disconnect-vs-missing-proxy-preflight-20261009.md` for disti
       * Chỉ fallback về `reason:` hoặc `final_status:` khi `stop_reason:` rỗng hoặc bằng `"None"`.
       * Cơ chế này giúp `classify_feed_failure` bắt đúng từ khóa `adb/usb`, `device offline` đưa về nhãn **"Mất kết nối ADB/USB"** và `wi-fi not connected` đưa về nhãn **"Mất kết nối Wi-Fi (AP)"**.
     - Chi tiết xem `references/summary-stop-reason-priority-and-watchdog-false-proxy-label-20261010.md`.
+
+37. **Cơ Chế Tự Động Bù Pin Preflight (`ensure_safe_battery_level`) Cho Box Phone & Cấm Random Pin (2026-10-10)**:
+    - **Hiện tượng & Nguy cơ**:
+      * Trên Box Phone Farm (Samsung S7 mod nguồn box), mức pin hiển thị đôi khi bị tụt về mốc cạn kiệt (ví dụ M47 bị tụt về 2%).
+      * Khi pin `< 15%`, Samsung Android 8 tự động kích hoạt **Power Saving Mode**: hạ xung CPU, ngắt Wi-Fi nền khi màn hình tắt (`mWakefulness=Dozing`), và hiện pop-up "Pin yếu" che khuất màn hình TikTok.
+      * Khi runner preflight chạy, do Wi-Fi bị Android ngắt nên bị fail-closed và watchdog báo nhầm thành lỗi proxy/mạng.
+    - **Tại sao CẤM random mức pin nhảy cóc qua từng ca**:
+      * Telemetry AppLog SDK của TikTok ghi nhận `battery_level` cùng `uptimeMillis`.
+      * Nếu script random pin qua mỗi ca (ví dụ Ca sáng 40% -> Ca trưa 85% -> Ca chiều 30%), TikTok phát hiện bất thường logic (nhảy pin phi vật lý khi máy đang cắm nguồn liên tục), dẫn đến nguy cơ dính botnet flag/shadowban.
+      * Đồng thời nếu random rơi vào mức `< 15%` sẽ gây ra chính lỗi tiết kiệm pin kể trên.
+    - **Quy tắc bù pin tự động trong Preflight**:
+      * Tích hợp vào `require_proxy_connected` (`python_runner/core/vpn_preflight.py`):
+        ```python
+        def ensure_safe_battery_level(adb: Any, serial: str, min_level: int = 20, target_level: int = 85) -> int | None:
+            """Kiểm tra pin thiết bị, nếu thấp (< min_level) thì tự gán pin an toàn tránh popup pin yếu và sụt nguồn."""
+            try:
+                b_res = adb.shell(["dumpsys", "battery"], timeout=3.0, check=False)
+                out = str(getattr(b_res, "stdout", "") or "")
+                m = re.search(r"level:\s*(\d+)", out)
+                if m:
+                    cur_lvl = int(m.group(1))
+                    if cur_lvl < min_level:
+                        adb.shell(["dumpsys", "battery", "set", "level", str(target_level)], timeout=3.0, check=False)
+                        adb.shell(["dumpsys", "battery", "set", "status", "2"], timeout=3.0, check=False)
+                        return target_level
+                    return cur_lvl
+            except Exception:
+                pass
+            return None
+        ```
+      * Chỉ can thiệp khi `level < 20%`. Mức bình thường (>=20%) giữ nguyên tự nhiên.
+      * Khi thấp, tự động nâng lên `85% (Charging)` để giải phóng Power Saving Mode và giữ Wi-Fi luôn thức.
+    - Chi tiết xem `references/watchdog-stop-reason-parsing-and-auto-battery-heal-20261010.md`.

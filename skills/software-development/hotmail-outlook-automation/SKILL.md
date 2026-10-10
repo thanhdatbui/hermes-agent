@@ -11,7 +11,7 @@ description: Hotmail automation.
 # Hotmail/Outlook Automation
 
 - **BoxTaiKhoan API**: Endpoint mua tự động `POST /ajaxs/client/product.php` (id 60 - OAuth2 393đ). Format: `mail|pass|refresh_token|client_id`. Lưu ý: Khi mua số lượng lớn, gọi API mua lẻ từng acc (`amount=1`) qua vòng lặp giúp nhận trực tiếp mảng `data` đầy đủ, tránh phụ thuộc vào trang chi tiết đơn hàng `/product-order/` trên web.
-- **Change-pass eligibility (2026-10-10)**: Require TikTok ID+password and ChatGPT PASS (Cột 12); do not gate on Dual-OAuth. Keep domain, recovery, changed/cooldown, and IP+proxy/24h gates; clear Cột 9 after success. Canonical flow: `references/gpm_hotmail_security_canonical_flow.md`; canary lessons: `references/change-info-canary-lessons-2026-10.md`; supervisor gate alignment: `references/lifecycle-cron-gate-alignment.md`.
+- **Change-pass eligibility (2026-10-10)**: Require TikTok ID+password and ChatGPT PASS (Cột 12); do not gate on Dual-OAuth. Keep domain, recovery, changed/cooldown, and IP+proxy/24h gates; clear Cột 9 after success. Canonical flow: `references/gpm_hotmail_security_canonical_flow.md`; canary lessons: `references/change-info-canary-lessons-2026-10.md`; supervisor gate alignment: `references/lifecycle-cron-gate-alignment.md`; recovery & password reset: `references/hotmail_recovery_password_reset_guide.md`.
 - **Kiến trúc kho Gmail Clean V2 & 2 Cột Trạng Thái (2026-08-25)**:
   - `gmail_clean_v2.xlsx` là **Single Source of Truth** chứa cả Gmail và Hotmail của farm.
   - Cột 11: `info_changed` (đánh dấu `1` khi đã đổi info/pass bảo mật Hotmail).
