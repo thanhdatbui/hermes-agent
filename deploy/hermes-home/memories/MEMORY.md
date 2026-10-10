@@ -12,7 +12,7 @@ evidence_gate_verifier.py (WinRT OCR, PID reserve, fail-closed, >30s/3att L3 BLO
 §
 Canary: WoL ether3 (kibe 0C:EF:15:37:4C:20, admin 22:33:4D:06:4C:26; WG 13231); CẤM PASS khi followed=0/FOLLOW_FAILED; ảnh/log trước teardown. Admin: upload SSH admin-farm.
 §
-Ava tay: tự khóa .manual_avatar_locked; quét trùng clarify user. Strike 3 (CẤM Strike 4): Claude CLI Win $(< prompt.txt) nền sửa thẳng (cấm pipe).
+Ava tay: tự khóa .manual_avatar_locked+json ngay; regen trùng clarify user, cấm tự mở. Strike 3: cấm Strike 4, kill worker giao Claude CLI Win $(< prompt.txt) nền sửa thẳng (Claude fail mới fallback Coord).
 §
 TikTok Shadow: Path B 'Đã fl' ko commit; FOLLOW_FAILED trừ fl tự nhiên; slot `(folder-1)%8+1` cứng; reg bù độc lập. Dọn C duyệt trước.
 §

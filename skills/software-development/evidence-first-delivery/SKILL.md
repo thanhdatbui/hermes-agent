@@ -157,6 +157,13 @@ When the requested mutation is only “đổi avatar”, bind the run to an **av
 
 Use `references/avatar-only-scope-and-false-policy-refusal.md` for the incident-derived checklist and evidence matrix.
 
+- **Chống Bẫy Báo Cáo Xong Bằng Text Suông (Zero-Image Text Report Trap - 2026-10-10):**
+  * **CẤM TUYỆT ĐỐI** kết thúc tác vụ, hoàn thành đổi pass/2FA/login hoặc thi công xong mà chỉ trả lời bằng văn bản thuần (text suông) mà KHÔNG đính kèm thẻ `MEDIA:<path>` ngay trong tin nhắn!
+  * Người dùng cực kỳ dị ứng và coi là vi phạm kỷ luật nặng nề nếu bot "lại tiếp tục làm xong đéo gửi hình".
+  * Mọi phát biểu kết luận hoàn tất (kể cả hoàn thành kỹ thuật hay thành công một phần) BẮT BUỘC phải đi kèm ít nhất 1 ảnh chụp màn hình chứng minh đích thật (bảng đối soát Excel, màn hình 2FA TikTok, hoặc Switcher tài khoản).
+  * **Cơ chế Chốt chặn Cơ học Tầng Hook (`transform_llm_output`)**: Can thiệp chặn trực tiếp tại plugin guard (`farm-coordinator-guard`): nếu câu trả lời của Coordinator chứa khẳng định hoàn thành tác vụ UI/Farm mà thiếu thẻ `MEDIA:` hoặc ảnh chưa được soi mắt qua WinRT OCR / browser_vision -> FAIL-CLOSED chặn và ghi đè bằng cảnh báo đỏ vi phạm kỷ luật.
+  * Xem thêm: `references/claude-cli-evidence-first-gate-audit-and-text-only-report-trap-20261010.md` cho 5 lỗ hổng Claude CLI chỉ ra khi thẩm định Evidence-First Gate (regex hẹp, thiếu đối chiếu OCR ngữ nghĩa, nhận diện soi mắt lỏng lẻo, regex MEDIA cứng nhắc, fail-open).
+
 - **Chống Bẫy Dùng Màn Hình Feed Làm Bằng Chứng Login Thành Công (Feed vs Profile/Switcher Login Proof Trap - 2026-10-10):**
   * **CẤM TUYỆT ĐỐI** gửi ảnh màn hình Home Feed (video lướt trang chủ) rồi tuyên bố đăng nhập TikTok thành công! Người dùng sẽ phản ứng gay gắt ngay: *"Đây là màn feed thì lấy gì chứng minh login thành công. Đụ mẹ mày có xem hình trước khi gửi tao không vậy"*.
   * **Bản chất**: Video Home Feed chỉ chứng minh app TikTok đang mở và đang phát video, **HOÀN TOÀN KHÔNG CHỨNG MINH ĐƯỢC TÀI KHOẢN ĐÍCH ĐÃ ĐĂNG NHẬP HAY CHƯA** (TikTok có thể xem video ẩn danh hoặc đang ở phiên của một nick khác hoàn toàn).
@@ -182,6 +189,7 @@ Use `references/avatar-only-scope-and-false-policy-refusal.md` for the incident-
 
 ## References
 
+- `references/claude-cli-evidence-first-gate-audit-and-text-only-report-trap-20261010.md` — **[MỚI 10/10/2026]** Bài học thẩm định kỷ luật từ Claude Code CLI (58/100): Chốt chặn cơ học `Evidence-First Gate` qua hook `transform_llm_output`, 5 lỗ hổng chí tử (regex hẹp, lỏng lẻo OCR, thiếu mtime, regex MEDIA cứng nhắc, fail-open) và quy tắc dọn sạch pass láo `AUTH_BLOCKED` về `None` trong file Excel.
 - `references/telegram-media-tag-formatting-and-blockquote-masking-pitfall-20261010.md` — **[MỚI 10/10/2026]** Cạm bẫy định dạng thẻ `MEDIA:` trong Hermes Gateway: Cơ chế `_mask_protected_spans` che khuất `MEDIA:` nằm trong/sau blockquote (`>`), lỗi lộ text thô trên Telegram Desktop, và quy tắc bất biến đặt `MEDIA:` trên dòng độc lập ngoài quote.
 - `references/closeup-crop-and-legible-evidence-delivery-20261008.md` — **[MỚI 08/10/2026]** Kỷ luật Crop Cận Cảnh Bằng Chứng UI (Zoomed Focus Crop) & Chống Ảo Giác Ảnh Mù Toàn Màn Hình: CẤM chỉ gửi ảnh dọc 1080x1920 bị co nhỏ trên Telegram làm mờ chữ; bắt buộc crop vùng trọng tâm (input + nút + dòng lỗi) để mắt nhìn thấy ngay, và cơ chế ẩn bàn phím ảo trước khi chụp.
 - `references/mechanical-evidence-gate-architecture.md` — kiến trúc chi tiết Mechanical Evidence Gate Engine (V12 Perfect Integrity): Process-Liveness Atomic Reservation, Zero-Divergence Fail-Closed persistence, Anti-Replay Claim Binding, và Cryptographic Hash-Chained Audit Ledger (`audit_chain.jsonl`).

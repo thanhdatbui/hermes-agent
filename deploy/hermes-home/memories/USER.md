@@ -1,10 +1,10 @@
-Cào/Render: 12 niche hot; dọn video+ava; min 45; 1 wkr. Tên nick: cấm cụt 1 từ; luôn >=2 từ: stem+_NICK_SUFFIX hoặc Đệm+Tên.
+Cào/Render: 12 niche hot; min 45; 1 wkr. Tên nick: cấm cụt 1 từ; >=2 từ: stem+_NICK_SUFFIX hoặc Đệm+Tên.
 §
 Dọn đĩa: duyệt trước (thư mục corrupt/lỗi xóa ngay), CẤM xóa ngầm.
 §
 Farm: nick cấm xóa/đè; SoT tiktok_tracker.db; cấm đè ava tay. Đổi mail TT: dùng Hotmail sạch chưa reg; ưu tiên Graph PC (cấm mở app khi có token), sai pass dùng --otp-only. LLM: Codex Omni.
 §
-Review/Chốt: tự loop đến khi APPROVED(>=85), cấm dừng hỏi xin phép; bind task. Claude: quota block dừng hỏi.
+Review/Chốt: tự loop đến APPROVED(>=85), cấm dừng xin phép. Strike 3: giao Claude CLI. Claude quota block dừng hỏi.
 §
 Report follow: % & tầng (Khỏe/Nấc 1/2/Cooldown/Nhả); khóa IP 1 dòng kèm máy cứu; máy nhả kèm lượt. Watchdog SILENT khi ko lỗi.
 §
@@ -12,8 +12,8 @@ Kibe (1-80) & Admin (201-280) kho media độc lập (Admin D:\video goc may 2 &
 §
 Dubbing: đúng tiếng, 100% thoại, tắt tiếng gốc.
 §
-Canary đủ 5 ảnh; Login proof: Profile @username/Switcher, cấm Feed.
+Evidence: CẤM báo xong text suông; mọi task UI/login/2FA/pass BẮT BUỘC gửi MEDIA: đã soi (Profile/Switcher/2FA, cấm Feed). Pass láo: xóa về None trong Excel. Thi công đưa Claude duyệt.
 §
-Farm: MỌI cron/pipeline chạy đủ cả 2 farm Kibe(1-80)+Admin(201-280), cấm bỏ sót Admin. IP Mikrotik chỉ login acc farm đó. 2 máy/IP Wave 1->Cầu dao->Wave 2. Lock with_device_lock; cấm reset khi lock.
+Farm: cron/pipeline chạy đủ Kibe(1-80)+Admin(201-280). IP Mikrotik chỉ login acc farm đó. 2 máy/IP Wave 1->Wave 2. Lock with_device_lock.
 §
-Advisor Sol: :20129. Gate reject: Sol vá O(1); Strike 3 Claude. GPM/UI: tự lái computer_use, bóc OTP. BoxTaiKhoan: user thanhdatbui1995 (P3 đạt), lưu đủ đơn cũ (cấm tin banner 3 ngày). Cột 7 PASS MAIL độc lập Cột 12 PASS CHATGPT, cấm đè chéo. Chunk<=3900.
+Advisor Sol: :20129. Gate reject: Sol vá O(1). GPM: tự lái computer_use, bóc OTP. BoxTaiKhoan: user thanhdatbui1995, lưu đơn cũ. Cột 7 PASS MAIL độc lập Cột 12 PASS CHATGPT. Chunk<=3900.
