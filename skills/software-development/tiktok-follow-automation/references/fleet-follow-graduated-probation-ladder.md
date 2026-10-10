@@ -40,7 +40,7 @@
 * **NẤC 3 (Tốt nghiệp - Graduation, `clean_days >= 4`):**
   - Sau tổng cộng 4 ngày chạy sạch (~8 – 9 ngày ngoài đời thực).
   - Hệ thống chính thức tốt nghiệp (`graduated = True`, `fail_streak = 0`, xóa `probation_clean_days`), thăng hạng lên Nhóm Nick Khỏe (Full Budget 10 - 20 lượt).
-  - **Cầu Dao IP:** CHỈ KHI NICK ĐÃ TỐT NGHIỆP NÀY BỊ NHẢ mới kích hoạt ngắt Cầu dao IP 48h.
+  - **Cầu Dao IP (Tier-Aware Breaker):** CHỈ KHI NICK ĐÃ TỐT NGHIỆP (`was_graduated is True`) BỊ NHẢ mới kích hoạt ngắt Cầu dao IP 48h (`trip_ip_breaker`). Nick chưa tốt nghiệp (Tân binh, Hồi phục 1 & 2) bị nhả chỉ phạt Cooldown account, KHÔNG ngắt IP breaker (`[IP_BREAKER_SKIPPED_TIER]`).
 
 * **CHỐT AN TOÀN FAIL-CLOSED & PROGRESSIVE BACKOFF STREAK:**
   - Nếu ở bất kỳ nấc nào (`Hồi phục 1` hay `Hồi phục 2`) mà bị TikTok nhả follow (`set_follow_failed()`) hoặc không follow được:
