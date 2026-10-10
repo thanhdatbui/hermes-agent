@@ -16,9 +16,11 @@ Khi chốt phiên trong các repository có các cronjob tự động ngầm (v�
    - **Chiến lược xử lý chuẩn (2 Phương án theo ngữ cảnh):**
      * **Phương án A — Phân rã theo ngữ nghĩa (Gate 1 Decompose — Khuyến nghị hàng đầu):**
        Tách việc chốt phiên thành các Batch độc lập tuần tự:
-       - **Batch 1 (Policy, Documentation & Data Registry):** Các file `docs/*.md`, `data/*.json`, `AGENTS.md` (thường < 15KB). Review qua gate và commit trước.
-       - **Batch 2 (Core Code Logic & Unit Tests):** Các file `scripts/*.py`, `tests/*.py` (thường < 30KB). Review qua gate và commit sau.
-       *Lợi ích:* Giữ nguyên vẹn toàn bộ docstrings và tài liệu kỹ thuật mà vẫn bảo đảm blast radius <= 30KB cho mỗi lượt review.
+       - **Batch 1 (Core Code Logic & Focused Test):** Các file code cốt lõi `scripts/*.py` kèm file test tương ứng `tests/test_*.py` (thường < 30KB). Có file `.py` giúp Gate tự động nhận diện đúng focused test và pass trong vài giây (< 5s).
+       - **Batch 2 (Policy, Documentation & Data Registry):** Các file `docs/*.md`, `data/*.json`, `AGENTS.md`. 
+         * *CẠM BẪY NGHIÊM TRỌNG CẦN TRÁNH:* Nếu chỉ stage toàn file non-code (`.md`, `.json`), Gate không tìm thấy file Python mục tiêu nên sẽ fallback quét **TOÀN BỘ thư mục `tests/`** (hàng chục test files) dẫn đến **Timeout 120s**. Đồng thời cờ `--skip-test` bị cấm tuyệt đối ở `--repo` mode (`FATAL: --skip-test is forbidden in repo mode!`).
+         * *Cách xử lý chuẩn:* BẮT BUỘC ghép kèm 1 file focused test chạy nhanh (< 5s, ví dụ `tests/test_*.py` liên quan) vào dải `--files` của batch docs/data để Gate chạy focused test đó thay vì quét toàn bộ repository.
+       *Lợi ích:* Vừa vượt qua ngưỡng 30KB của Closeout Gate, vừa đảm bảo focused test chạy dưới 5s không bao giờ bị timeout.
      * **Phương án B — Rút gọn Docstrings O(1) (Khi 1 file đơn lẻ vượt trần):**
        Nếu riêng 1 file code/test đã sát ngưỡng 30KB:
        - Rút gọn các chuỗi docstrings dài dòng, comment giải thích rườm rà ở đầu file và các test docstrings.
