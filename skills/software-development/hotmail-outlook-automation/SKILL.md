@@ -17,7 +17,7 @@ description: Hotmail automation.
     2. Đã nạp và kích hoạt OAuth Codex lên **OmniRoute (:20129)** (`provider_connections` có `provider='codex'`).
     3. Đã nạp và kích hoạt OAuth Codex lên **9Router (:20128)** (`providerConnections` có `provider='codex'`).
   - Thiếu 1 trong 2 server -> CẤM chuyển sang stage `CHANGE_INFO` hoặc đổi pass, nhằm bảo vệ toàn vẹn nguồn quota LLM trước khi đổi mật khẩu làm đứt token/session.
-  - *Chi tiết quy trình chuẩn 4 bước (2FA ON -> Đổi Pass -> Sign Out -> Relogin KMSI, giữ mail KP gốc bán kèm TikTok)*: `references/gpm_hotmail_security_canonical_flow.md`.
+  - *Chi tiết quy trình chuẩn 5 bước (2FA ON -> Đổi Pass -> Sign Out -> Relogin 2FA -> KMSI [Có], giữ mail KP gốc, xóa token Cột 9 Excel khi đổi pass)*: `references/gpm_hotmail_security_canonical_flow.md`.
 - **Kiến trúc kho Gmail Clean V2 & 2 Cột Trạng Thái (2026-08-25)**:
   - `gmail_clean_v2.xlsx` là **Single Source of Truth** chứa cả Gmail và Hotmail của farm.
   - Cột 11: `info_changed` (đánh dấu `1` khi đã đổi info/pass bảo mật Hotmail).

@@ -323,3 +323,21 @@ GPM CDP Connect
     * **QUY TẮC CỨNG**: Chỉ điền username trước ký tự `@` (ví dụ `rec_email.split('@')[0]`), TUYỆT ĐỐI KHÔNG điền nguyên địa chỉ email đầy đủ vì sẽ bị báo lỗi định dạng.
     * Nút gửi mã: `#iSelectProofAction` (nút `Nhận mã`).
     * Ô điền mã OTP sau khi nhận: `#iVerifyText` (type `number`), submit qua `#iVerifyIdentityAction`.
+
+---
+
+## 14. Tự Động Xóa Token OAuth (Cột 9) Khi Đổi Mật Khẩu (2026-10-10)
+- **Cơ Chế Microsoft Revocation**:
+  * Việc đổi mật khẩu (`account.live.com/password/change` hoặc `ResetPassword.aspx`) kết hợp với `Sign out everywhere` (`#DeleteTrustedDevices`) sẽ kích hoạt thu hồi toàn bộ token ủy quyền OAuth2, refresh token và cookies phiên trên toàn hệ thống Microsoft.
+  * Token cũ ở Cột 9 `gmail_clean_v2.xlsx` trở thành dead token (vô giá trị).
+- **Kỷ Luật Cập Nhật Dữ Liệu Excel**:
+  * Trong hàm `update_excel_security_info(email, new_password, ...)`:
+    ```python
+    if new_password:
+        ws.cell(r, 3).value = new_password
+        # Đã đổi pass thì xóa luôn token OAuth cũ (Cột 9) vì Microsoft đã revoke
+        ws.cell(r, 9).value = None
+    ```
+  * Khi đổi pass thành công, script BẮT BUỘC phải xóa trắng Cột 9 (`token = None`) để tránh việc các runner/consumer đọc Graph API hiểu nhầm là token còn sống.
+  * Đồng thời khi quét dọn các acc đã đổi pass trong quá khứ (`changed_emails` trong tracker), phải đối soát và xóa trắng toàn bộ token còn sót lại ở Cột 9.
+

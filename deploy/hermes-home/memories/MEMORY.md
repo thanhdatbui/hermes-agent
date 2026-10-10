@@ -16,7 +16,7 @@ Claude CLI: khi user bảo/3-strike reject (kể cả mid-session); hand-off bà
 §
 TikTok Shadow: Path B 'Đã fl' ko commit; FOLLOW_FAILED trừ fl tự nhiên; slot `(folder-1)%8+1` cứng; reg bù độc lập. Dọn C duyệt trước.
 §
-Hotmail GPM: 1 IP/24h; 2FA TOTP (Col 4)->Đổi pass (cấm pass trước; lỗi service cooldown 24h nick+IP)->Sign out everywhere->Relogin KMSI (CP5). Canary=full flow --live; đủ 5 ảnh; MEDIA: slash '/'.
+Hotmail GPM: 1 IP/24h; 2FA TOTP (Col 4)->Đổi pass (xóa token Col 9; lỗi service cooldown 24h nick+IP)->Sign out everywhere->Relogin KMSI (CP5). Canary=full flow --live; đủ 5 ảnh; MEDIA: slash '/'.
 §
 Admin Farm: 3proxy S7 192.168.110.2:100xx. Aruba: M1-40 'kibe 1' (23102025); M41-80 'kibe 2', Admin 'admin 1/2' (19051995); cấm SSID Dat. X99: cấm xHCI; 4 Box tản; adb Semaphore 8; safe_usb_guard.
 §
