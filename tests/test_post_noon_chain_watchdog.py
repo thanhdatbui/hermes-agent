@@ -276,3 +276,47 @@ def test_gmail_batch_code_1_with_total_greater_than_zero_marks_success():
         assert details["lane_status"] == "success"
 
 
+def test_is_in_cooldown_behavior(tmp_path):
+    from datetime import datetime, timedelta
+    state_file = tmp_path / "post_noon_chain_state.json"
+    with patch.object(watchdog, "STATE_FILE", state_file):
+        # Case 1: Không có state file
+        assert watchdog.is_in_cooldown(45) is False
+
+        # Case 2: Vừa chạy cách đây 10 phút (< 45 phút) -> in cooldown
+        recent = (datetime.now(watchdog.HCMC) - timedelta(minutes=10)).isoformat()
+        state_file.write_text(watchdog.json.dumps({"last_run_at": recent}), encoding="utf-8")
+        assert watchdog.is_in_cooldown(45) is True
+
+        # Case 3: Đã chạy cách đây 50 phút (> 45 phút) -> hết cooldown
+        old = (datetime.now(watchdog.HCMC) - timedelta(minutes=50)).isoformat()
+        state_file.write_text(watchdog.json.dumps({"last_run_at": old}), encoding="utf-8")
+        assert watchdog.is_in_cooldown(45) is False
+
+        # Case 4: Khi main() chạy trong lúc cooldown -> exit 0 ngay lập tức mà không gọi batch
+        with (
+            patch.object(watchdog, "already_ran_today", return_value=False),
+            patch.object(watchdog, "is_in_cooldown", return_value=True),
+            patch.object(watchdog, "run_gmail_batch") as mock_gmail,
+            patch.object(sys, "argv", ["post_noon_chain_watchdog.py"]),
+        ):
+            assert watchdog.main() == 0
+            mock_gmail.assert_not_called()
+
+
+def test_parse_summary_counts_tiktok_table_and_skip_table_split():
+    raw_output = (
+        "1 | 101 | user1 | success | OK\n"
+        "2 | 102 | user2 | failed | OTP_TIMEOUT\n"
+        "3 | 103 | user3 | skipped | NO_2FA_NEEDED\n"
+        "Skip do device lock:\n"
+        "1 | 101 | user1 | skipped | ALREADY_COUNTED\n"
+    )
+    res = watchdog.parse_summary_counts(raw_output)
+    assert res["total"] == 3
+    assert res["success"] == 1
+    assert res["failed"] == 1
+    assert res["skip_safe"] == 1
+
+
+
