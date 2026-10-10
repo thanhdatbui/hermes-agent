@@ -72,3 +72,19 @@
 - **Xử lý Rate Limit khi thử lại:**
   - Nếu gửi OTP liên tiếp > 3 lần trong thời gian ngắn, Microsoft sẽ chặn tạm thời: *"Bạn đã đạt đến giới hạn của mình với phương thức đăng nhập này"*.
   - Biện pháp: Set cooldown tối thiểu 2 giờ trong file state json để Microsoft hạ nhiệt trước khi thực hiện lại.
+
+## 7. Đối Soát Lịch Sử Đơn Hàng BoxTaiKhoan & Bẫy Banner "Lưu Trong 3 Ngày" (2026-10-10)
+- **Tài khoản sàn của User:** BoxTaiKhoan (`boxtaikhoan.com`), user `thanhdatbui1995` (Profile 3 Chrome "đạt", User ID 1406).
+- **BẪY BANNER "LƯU TRONG 3 NGÀY" (Anti-False-Assumption / User Frustration Signal):**
+  - Khi truy cập `boxtaikhoan.com/product-orders`, trên đầu trang có banner cảnh báo: *"Lịch sử đơn hàng trên hệ thống chỉ được lưu trong 3 ngày kể từ thời điểm mua... Sau thời gian này, đơn hàng dữ liệu có thể bị xóa và không thể khôi phục"*.
+  - **CẤM TUYỆT ĐỐI** Agent nhìn thấy dòng chữ này mà vội kết luận "đơn hàng cũ đã bị xóa / không còn tra được trên sàn". Đây chỉ là câu khuyến cáo sao lưu chung của web sàn, **thực tế hệ thống BoxTaiKhoan vẫn lưu trữ toàn bộ lịch sử đơn hàng cũ qua hệ thống phân trang (pagination)** (hàng trăm đơn từ nhiều tháng trước, trải dài qua 17+ trang).
+  - **Quy trình đối soát chuẩn xác:**
+    1. Không dừng lại ở trang 1; bấm phân trang lùi về các trang trước (`?page=14`, `?page=15`...) theo mốc thời gian mua ghi trong log/tracking (ví dụ 22/08/2026).
+    2. Tìm đúng mã đơn hàng theo ngày giờ và số lượng mua (ví dụ `#821P6a8977522f650`).
+    3. Mở chi tiết đơn hàng (`boxtaikhoan.com/product-order/<order_id>`) để lấy chuỗi bàn giao gốc từ shop: `email|password|token|client_id`.
+    4. Đối chiếu mật khẩu shop bàn giao (ví dụ `x2any*9797`) với mật khẩu trong Excel (thường bị gõ nhầm hoặc mất đồng bộ thành chuỗi khác như `g6K9b5F1e8`). Thử đăng nhập lại bằng mật khẩu gốc của shop trước khi kết luận nick bị hỏng.
+- **Trang `complete-client-signin-oauth-silent` sau khi nhập pass:**
+  - Khi mật khẩu đúng, Microsoft không báo lỗi mà chuyển hướng qua `https://account.microsoft.com/auth/complete-client-signin-oauth-silent?state=...`.
+  - Đây là bước cấp OAuth token ngầm; sau 3-5 giây sẽ chuyển tiếp vào `https://account.microsoft.com/?lang=vi-VN` (Title: *"Microsoft account | Trang chủ"*).
+  - Phải chờ redirect và click giải phóng modal Cookie Consent ("Chấp nhận"), tránh nhận nhầm là kẹt `Status: BLOCKED`.
+

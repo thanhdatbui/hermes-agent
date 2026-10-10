@@ -16,4 +16,4 @@ Canary đủ 5 ảnh; Login proof: Profile @username/Switcher, cấm Feed.
 §
 Farm: MỌI cron/pipeline chạy đủ cả 2 farm Kibe(1-80)+Admin(201-280), cấm bỏ sót Admin. IP Mikrotik chỉ login acc farm đó. 2 máy/IP Wave 1->Cầu dao->Wave 2. Lock with_device_lock; cấm reset khi lock.
 §
-Advisor Sol: consult_advisor.py (:20129 115 accs). Gate reject: Sol vá O(1); Strike 3 Claude CLI. GPM/UI: tự lái computer_use & tự bóc OTP Graph API, cấm đẩy user làm tay; mở đúng acc error. Telegram chunk <=3900.
+Advisor Sol: consult_advisor.py (:20129). Gate reject: Sol vá O(1); Strike 3 Claude. GPM/UI: tự lái computer_use & bóc OTP Graph, cấm đẩy user làm tay. BoxTaiKhoan: user thanhdatbui1995 (P3 đạt), lưu đủ đơn cũ (cấm tin banner 3 ngày). Chunk<=3900.
