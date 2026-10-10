@@ -8,12 +8,13 @@ description: "TikTok follow runner and fail-closed farm ops."
 ## Non-negotiable operating rules
 
 - **Tài liệu tham khảo chuyên sâu (`references/`):** Xem `references/follow-report-semantics-and-concise-wording.md` để phân biệt `Success (0)` với không chạy và ghi ngắn `Nhả → khóa IP`.
-    - `references/account-replacement-and-backfill-state-reset.md`: Kỷ luật reset state & bộ đếm video/follow khi thay nick die / reg bù — tránh bẫy kế thừa state cũ khiến nick mới bị cấp full budget đi follow sớm gây ban nick.
+    - `references/account-replacement-and-backfill-state-reset.md`: Kỷ luật reset state & bộ đếm video/follow khi thay nick die / reg bù.
     - `references/fleet-follow-graduated-probation-ladder.md`: Bậc thang 3 nấc & Health-Tiered Reporting.
-    - `references/daily-follow-matrix-and-trust-ceiling-analytics.md`: Daily Matrix Heatmap, Trust Ceiling, FOLLOW_CONCURRENCY, Sweet Spot Quota.
-    - `references/shared-ip-proxy-collision-and-canary-ceiling-testing.md`: Hiện trường trùng IP (1 IP : 2 Máy), IP Circuit Breaker tự ngắt, báo cáo Telegram, Canary 5-10%.
-    - `references/wave-scheduling-and-multi-farm-unified-governance.md`: Wave 1 (độc lập IP) -> Cầu dao -> Wave 2; Vận hành đủ 2 cụm Kibe(1-80)+Admin(201-280) tập trung CSDL tiktok_tracker.db.
-    - `references/dashboard-follow-reconcile-race-condition.md`: Lệch pha crawler vs ca chốt sổ; đối soát log/sqlite cấm đoán mò.
+    - `references/daily-follow-matrix-and-trust-ceiling-analytics.md`: Daily Matrix Heatmap, Trust Ceiling, FOLLOW_CONCURRENCY.
+    - `references/shared-ip-proxy-collision-and-canary-ceiling-testing.md`: Trùng IP (1 IP : 2 Máy), IP Circuit Breaker tự ngắt, Canary 5-10%.
+    - `references/wave-scheduling-and-multi-farm-unified-governance.md`: Wave 1 (độc lập IP) -> Cầu dao -> Wave 2; Vận hành Kibe(1-80)+Admin(201-280) tập trung CSDL.
+    - `references/dashboard-follow-reconcile-race-condition.md`: Lệch pha crawler vs ca chốt sổ; đối soát log/sqlite cấm phán bừa.
+    - `references/contact-suggestion-popup-follow-lockdown.md`: Khóa tuyệt đối auto-follow từ popup gợi ý danh bạ/bạn bè để bảo vệ nick yếu và giữ trust.
     - `references/contact-suggestion-auto-follow-leak-prevention.md`: Chống rò rỉ follow lẻ từ popup danh bạ/bạn bè; cấm auto-follow popup bảo vệ nick yếu/dưỡng sinh.
     - Case references: `references/case-ui-*.md`, `references/workflow-parity-*.md`, `references/fleet-follow-*.md`.
     - `references/case-ui-89-idempotent-session-actions-and-partial-follow-accounting.md`: Staging.

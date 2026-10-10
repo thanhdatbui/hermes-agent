@@ -106,6 +106,7 @@ See `references/claude-cli-investigation-sol-webpool-hard-enforcement-20261010.m
 See `references/pure-sol-discipline-and-clean-fail-20261010.md` for the Operator policy: pure Sol route only (:20129 review), timeout >= 45s, clean fail to unavailable without messy Gemini/9Router fallbacks.
 See `references/claude-cli-review-loop-and-mechanical-advisor-enforcement.md` for the 4-round Claude CLI review progression (62 -> 72 -> 86 -> 91 APPROVED), 3-tier fallback architecture, leak-proof redaction engine, and classifier edge cases.
 See `references/mechanical-dual-answer-enforcement-and-stream-deadline-audit-20261010.md` for intent classification matrix, stream wall-clock deadline handling, and mechanical enforcement gate.
+See `references/omniroute-turnstile-sentinel-circuit-breaker-20261010.md` for Turnstile 403 Sentinel challenge, 5-failure 30min circuit breaker lockout, and stream timeout diagnostic.
 
 ## Common failure modes
 
