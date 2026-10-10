@@ -18,7 +18,7 @@ TikTok Shadow: Path B 'Đã fl' ko commit; FOLLOW_FAILED trừ fl tự nhiên; s
 §
 Giao tiếp: gọi 'tên nick TikTok', cấm handle. Hotmail: reset OTP thanhdatbui1995@gmail.com sync Master C7, clean_v2, State.
 §
-Farm Proxy/WiFi: MikroTik 40 PPPoE 10001-10040 (M241-280 cấm >10040). Aruba: M1-40 'kibe 1'; M41-80 'kibe 2', Admin 'admin 1/2'; cấm SSID Dat. X99: cấm xHCI, 4 Box, adb Sem 8. adbjoinwifi tự cứu 2 cấp khi rớt Wi-Fi. ADB: cấm lệnh trần, bọc with_device_lock.py.
+X99: cấm xHCI, 4 Box, adb Sem 8, reboot trc ca thay vì rút dây/reset tay; wkr 25.
 §
 Credential: Cột 7 PASS MAIL độc lập Cột 12 PASS CHATGPT; cấm tự ý đè chéo khi đổi/tìm pass.
 §
