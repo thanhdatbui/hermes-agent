@@ -212,7 +212,10 @@ Khi kiểm tra hoặc đồng bộ hệ thống workbook phân bổ farm (`Tik1.
 1. **Rule 1 (Slot Limit Per Machine)**: Mỗi máy có tối đa 8 dòng/slot. Không xuất hiện trùng lặp máy trong cùng 1 file Tik.
 2. **Rule 2 (No Duplicate Accounts Cross-Files)**: Tài khoản không bị trùng lặp trên 2 slot khác nhau trong cùng 1 file hoặc xuyên suốt các file `Tik1..Tik8.xlsx` (trừ `None`/trống).
 3. **Rule 3 (Folder Video Formula & Uniqueness)**: Cột `Folder Video` (cột 4) phải độc bản trên toàn farm và khớp tuyệt đối công thức: `Folder Video(m, slot) = (m - 1) * 8 + slot`. Tuyệt đối không để chuỗi ký tự lạ, mật khẩu hay số lệch vào cột này.
-4. **Rule 4 (Video Gốc Formula & Uniqueness)**: Cột `Video Gốc` (cột 5) phải độc bản trong cùng 1 file `Tik{slot}.xlsx` (không 2 máy nào trong cùng 1 ca dùng chung video gốc), và khớp công thức: `Video Gốc(m, slot) = (slot - 1) * 80 + m`.
+4. **Rule 4 (Video Gốc Formula & Uniqueness)**: Cột `Video Gốc` (cột 5) phải độc bản trong cùng 1 file `Tik{slot}.xlsx` (không 2 máy nào trong cùng 1 ca dùng chung video gốc), và khớp một trong hai chuẩn hợp lệ của farm:
+   - Chuẩn đồng bộ Folder Video (923 acc sync `video_goc = folder_video`): `(m - 1) * 8 + slot` (hoặc offset tương ứng cho Admin: `(m - 201) * 8 + slot`).
+   - Chuẩn slot-offset legacy: `(slot - 1) * 80 + m`.
+   *Lưu ý validator*: Cả hai công thức đều được chấp nhận hợp lệ trong `excel_preflight_validator.py` để không làm chặn luồng `taikhoan-run-safe-sync`. Cột video gốc tuyệt đối không được để trống hoặc mang số rác.
 5. **Rule 5 (taikhoan_run_safe.xlsx Invariants)**: Mỗi máy tối đa 8 dòng, 100% có serial phần cứng không rỗng, tài khoản không trùng lặp giữa các máy khác nhau.
 
 ### Tích hợp Preflight Gate vào Sync Cron:

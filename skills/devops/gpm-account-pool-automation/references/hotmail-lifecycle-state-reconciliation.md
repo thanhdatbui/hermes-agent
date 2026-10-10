@@ -91,3 +91,19 @@ Khi phát hiện tài khoản báo sai mật khẩu ngay từ bước `HOTMAIL_L
 - **Kỷ luật Proxy Mikrotik Farm**:
   * Dải IP Mikrotik PPPoE (`10001 - 10040`) là IP nội bộ của Farm. CHỈ dùng đăng nhập đúng tài khoản Hotmail của dàn máy farm đó. CẤM TUYỆT ĐỐI dùng ké dải IP này để đăng nhập các tài khoản ngoài farm / tài khoản thử nghiệm.
 - **Hợp nhất Báo cáo 6h Toàn Farm**: Script `cron_hotmail_gpm_lifecycle_6h_report.py` bắt buộc đọc song song cả 2 state (`kibe` + `admin`), báo cáo tổng queue và chi tiết từng farm (Kibe 1-80 vs Admin 201-280).
+- **Kế thừa biến môi trường Subprocess & Child Script Path Resolution**:
+  * `batch_gpm_5profiles_supervisor.py` bắt buộc chạy `subprocess.run(argv, env=os.environ.copy())` để truyền cấu hình môi trường cụm (Kibe vs Admin) xuống tiến trình con.
+  * Các script hạ tầng được gọi con như `gpm_change_hotmail_security.py` BẮT BUỘC đọc `GPM_SUPERVISOR_DATA_DIR`, `GPM_SUPERVISOR_ACCOUNT_XLSX`, `GPM_SUPERVISOR_STATE_PATH`, tuyệt đối không hardcode cứng đường dẫn `kibe` để tránh việc chạy `CHANGE_INFO` cho Admin nhưng lại đọc/ghi nhầm Excel và state của Kibe.
+
+## 10. Kỷ Luật Dọn Dẹp & Quản Lý Pool ChatGPT Web Trong OmniRoute ("Ban Xóa DB Giữ GPM")
+- **Phân loại triệt để HTTP 401**:
+  * `AccountDeactivated` / `token_revoked`: Tài khoản bị OpenAI quét ban vĩnh viễn. Phải xóa dứt điểm khỏi bảng `provider_connections` trong `storage.sqlite` của OmniRoute để tránh kích hoạt Circuit Breaker 30 phút của pool `chatgpt-web`.
+  * `Session Expired / No Token`: Tài khoản chỉ hết hạn cookie phiên trình duyệt (sau 7–14 ngày ngâm không tương tác). Tài khoản và mail vẫn sống 100%, chỉ cần re-login qua Playwright CDP và lấy cookie mới.
+- **Quy tắc bất biến "Ban xóa DB giữ GPM"**:
+  * Xóa tài khoản bị vô hiệu hóa khỏi CSDL OmniRoute, nhưng TUYỆT ĐỐI GIỮ NGUYÊN profile trên GPMLogin để bảo vệ hồ sơ máy và phục vụ các tác vụ tài khoản khác.
+- **Tự động gắn Proxy khi đăng ký ChatGPT Web mới**:
+  * Khi hàm `sync_registered_chatgpt_web_connection` thêm connection mới vào `provider_connections`, BẮT BUỘC kiểm tra và chèn bản ghi tương ứng vào `proxy_assignments` với một proxy đang hoạt động (`status NOT IN ('inactive','error','disabled','dead','down')`) từ bảng `proxy_registry`.
+
+## 11. Kỷ Luật Proxy Mikrotik Farm vs Mobile Proxy Khi Re-login Web
+- **Dải Mobile Proxy (`5101 - 5140`)**: Do lưu lượng farm hoạt động liên tục, dải IP này dễ bị OpenAI rate-limit khi bắt đầu luồng login web mới (`auth/error?error=undefined`). Tuân thủ nghiêm ngặt **GATE 6 & Anti-Insanity**: Khi gặp rate limit phải dừng ngay, đóng profile an toàn để tránh cháy proxy; tuyệt đối không chạy vòng lặp mù cố đấm ăn xôi.
+- **Dải Mikrotik PPPoE (`10001 - 10040`)**: Residential dynamic IP sạch của gia đình, không bị OpenAI rate-limit form đăng nhập web. TUY NHIÊN, đây là IP độc quyền của dàn máy Farm: **CHỈ DÙNG để đăng nhập các tài khoản thuộc dàn máy đó**, tuyệt đối cấm dùng ké để thử nghiệm nick ngoài farm làm ảnh hưởng độ tin cậy của thiết bị thật.
