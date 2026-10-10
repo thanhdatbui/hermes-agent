@@ -1,4 +1,4 @@
-Follow: Cầu dao 48h khi Khỏe nhả; non phạt cooldown. Chu kỳ 4d 3 ca (bỏ 0h): N1(A), N2(B), N3(R7,8,yếu), N4(Dưỡng sinh feed+up; đăng P1 chính, P2 fallback, 1 vid/d skip), N5 xúc xắc A/B. CẤM xóa cooldown; hỏi Sol.
+Follow: Cầu dao 48h khi Khỏe nhả; non phạt cooldown (CHỈ tắt fl, VẪN đăng 1 vid/d; cấm chặn upload ngày nghỉ). Chu kỳ 4d 3 ca (bỏ 0h): N1(A), N2(B), N3(R7,8,yếu), N4(Dưỡng sinh feed+up; đăng P1 chính, P2 fallback, 1 vid/d skip), N5 xúc xắc A/B. CẤM xóa cooldown; hỏi Sol.
 §
 Dual-Farm: Cron/supervisor chạy cả Kibe (1-80) & Admin (201-280). Excel Admin 10-11 cột. Supervisor so le 2p; Báo cáo 6H gộp. CẤM copy ava Kibe->Admin; Admin dùng video gốc m2.
 §
@@ -18,7 +18,7 @@ TikTok Shadow: Path B 'Đã fl' ko commit; FOLLOW_FAILED trừ fl tự nhiên; s
 §
 Giao tiếp: gọi 'tên nick TikTok', cấm handle. Hotmail: reset OTP thanhdatbui1995@gmail.com sync Master C7, clean_v2, State.
 §
-X99: cấm xHCI (trần 96 endpoint); wkr 25. CẤM bắt user rút dây; Task Taadaa_Farm_Daily_Reboot_0530 tự reboot 05:30 (Kibe+Admin).
+X99: cấm xHCI; wkr 25. CẤM bắt user rút dây; Task 05:30 reboot (Kibe+Admin). ADB SYSTEM unauth fix: set ADB_VENDOR_KEYS Machine + adb task user Admin.
 §
 Credential: Cột 7 PASS MAIL độc lập Cột 12 PASS CHATGPT; cấm tự ý đè chéo khi đổi/tìm pass.
 §

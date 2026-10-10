@@ -304,25 +304,34 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
 
 ## 19. Bẫy ADB Daemon Chạy Dưới Quyền SYSTEM vs User Interactive (Admin) Gây Lỗi Unauthorized Hàng Loạt Trên XiaoWei
 - **Triệu chứng:** Sau khi máy tính khởi động lại, `adb devices` báo hàng loạt máy (như M243, M251, M257, M266, M267, M269, M270, M273) ở trạng thái `unauthorized`. Trên giao diện XiaoWei/Jiwei, các máy này hiện icon đứt cáp màu cam ("Phone disconnected, please check"), không thể click phóng to hay điều khiển, dù phần cứng USB PnP vẫn `Present: true`.
-- **Nguyên nhân cốt lõi (User Session Mismatch trên Windows):**
-  1. Khi Windows vừa boot lên, nếu có Scheduled Task chạy ngầm dưới quyền `NT AUTHORITY\SYSTEM` (Session 0) gọi lệnh `adb` trước, daemon `adb.exe` sẽ được khởi tạo dưới quyền `SYSTEM` và chiếm cổng `127.0.0.1:5037`.
-  2. Khi phần mềm XiaoWei mở lên trên màn hình Desktop (chạy dưới interactive user `ADMIN-PC\Admin`, Session 1), nó kết nối vào cổng 5037 đã bị `SYSTEM` chiếm giữ.
-  3. Daemon của `SYSTEM` đọc file key tại `C:\Windows\System32\config\systemprofile\.android\adbkey` thay vì profile của `Admin`, hoặc thiếu môi trường interactive session $\rightarrow$ các máy điện thoại từ chối bắt tay key RSA, rơi vào trạng thái `unauthorized`.
-  4. XiaoWei không thể mở socket shell hay start minitouch/minicap trên thiết bị `unauthorized` $\rightarrow$ XiaoWei hiển thị icon đứt cáp màu cam, đánh lừa người dùng rằng máy bị rút cáp hoặc sập nguồn.
-- **Quy trình xử lý O(1) từ xa (Không cần bấm tay trên điện thoại):**
-  1. Kiểm tra username sở hữu tiến trình adb:
+- **Nguyên nhân cốt lõi (User Session Mismatch & Thiếu ADB_VENDOR_KEYS toàn cục):**
+  1. Khi Windows vừa boot lên, nếu có Scheduled Task chạy ngầm dưới quyền `NT AUTHORITY\SYSTEM` (Session 0) như `Taadaa_Safe_USB_Guard_15m` gọi lệnh `adb devices`, daemon `adb.exe` sẽ được khởi tạo dưới quyền `SYSTEM` và chiếm cổng `127.0.0.1:5037`.
+  2. Biến môi trường `$ADB_VENDOR_KEYS` cấp Machine chưa được gán, daemon `SYSTEM` đọc key từ `systemprofile` hoặc không có key $\rightarrow$ điện thoại từ chối handshake key RSA và rơi vào `unauthorized`.
+  3. Lỗi cú pháp trong script khởi động `start_admin_adb.bat`: lệnh `if %0% equ 0 exit /b 0` (thay vì `%errorlevel%`) khiến kiểm tra port listening bị sai.
+  4. Khi phần mềm XiaoWei mở lên trên màn hình Desktop (chạy dưới interactive user `ADMIN-PC\Admin`, Session 1), nó kết nối vào cổng 5037 đã bị `SYSTEM` chiếm giữ $\rightarrow$ XiaoWei không thể mở socket shell hay start minitouch/minicap trên thiết bị `unauthorized` $\rightarrow$ XiaoWei hiển thị icon đứt cáp màu cam, đánh lừa người dùng rằng máy bị rút cáp hoặc sập nguồn.
+- **Quy trình vá dứt điểm 3 bước (Permanently Fix để không bao giờ bị lại sau reboot):**
+  1. **Bước 1 — Khóa biến môi trường toàn cục `ADB_VENDOR_KEYS` (Cấp Machine):**
      ```powershell
-     (Get-Process | Where-Object { $_.ProcessName -eq 'adb' } -IncludeUserName).UserName
+     [Environment]::SetEnvironmentVariable('ADB_VENDOR_KEYS', 'C:\Users\Admin\.android\adbkey', 'Machine')
      ```
-  2. Nếu trả về `NT AUTHORITY\SYSTEM`: cưỡng chế kill ngay:
-     ```cmd
-     taskkill /F /IM adb.exe
-     ```
-  3. Khởi chạy lại ADB daemon dưới quyền interactive user `Admin`:
+     Đảm bảo bất kể user nào gọi ADB (SYSTEM hay Admin), daemon đều nạp đúng 100% key RSA chuẩn của Farm.
+  2. **Bước 2 — Chuyển quyền Scheduled Task `Taadaa_Safe_USB_Guard_15m` sang User `Admin`:**
+     Trong `setup_usb_guard_task.ps1`, bỏ cờ `-User "SYSTEM"` để task đăng ký dưới user interactive hiện tại (`Admin`):
      ```powershell
-     Start-ScheduledTask -TaskName 'Taadaa_ADB_User_Remote'
+     Register-ScheduledTask -TaskName "Taadaa_Safe_USB_Guard_15m" -Action $action -Trigger $trigger -Settings $settings -Force
      ```
-  4. Ngay khi daemon chạy dưới quyền `ADMIN-PC\Admin`, toàn bộ máy sẽ tự động handshake key RSA thành công, chuyển từ `unauthorized` sang `device` (100% xanh lè) và XiaoWei tự động load lại hình ảnh bình thường mà không cần người dùng phải bấm tay vào điện thoại.
+     Ngăn chặn hoàn toàn việc daemon ADB bị SYSTEM chiếm cổng 5037 lúc máy vừa boot.
+  3. **Bước 3 — Sửa cú pháp kiểm tra cổng trong `start_admin_adb.bat`:**
+     ```bat
+     @echo off
+     netstat -ano | findstr ":5037" | findstr "LISTENING" >nul 2>&1
+     if %errorlevel% equ 0 exit /b 0
+     wscript.exe "C:\Taadaa_Service\start_adb_hidden.vbs"
+     ```
+  4. **Cứu hộ tức thời nếu đang bị chiếm cổng:**
+     Kiểm tra username sở hữu tiến trình adb:
+     `(Get-Process | Where-Object { $_.ProcessName -eq 'adb' } -IncludeUserName).UserName`
+     Nếu là `NT AUTHORITY\SYSTEM`: kill ngay `taskkill /F /IM adb.exe` và chạy `Start-ScheduledTask -TaskName 'Taadaa_ADB_User_Remote'` để đưa về quyền `Admin`. 100% máy xanh trở lại lập tức.
 
 ## 16. Quy Chuẩn Quản Lý & Lưu Trữ Cấu Hình Farm Lên Git (`taadaa-farm-tools`)
 - **Nguyên tắc Invariant (User Directed: "Từ h đẩy hết vào repo quản lí đi"):** CẤM để các file cấu hình host và script dịch vụ phần cứng trôi nổi ngoài git (như ở thư mục mẹ `D:\Taadaa\` hay `C:\Taadaa_Service\`). BẮT BUỘC phiên bản hóa và đẩy tập trung vào repo quản lý trung tâm `taadaa-farm-tools` (`D:\Taadaa\tools`):

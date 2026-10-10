@@ -79,66 +79,56 @@
 
 ## 4. Giải Pháp Bắt Buộc Khi Thao Tác Với GPM Profiles
 
-### 4.1 Luôn tra cứu bằng `search=<email>` trước khi tạo
+### 4.1 Luôn tra cứu bằng `search=<email>` và kiểm tra chặt chẽ email + proxy trước khi tạo
 Endpoint `GET /api/v3/profiles?search=<keyword>` tìm kiếm trên **toàn bộ database**, không bị kẹt ở trang 1.
-Nếu profile đã tồn tại nhưng proxy hiện tại khác proxy yêu cầu, cập nhật `raw_proxy` thay vì sinh profile mới:
-```python
-def ensure_profile_by_email(email: str, expected_name: str, raw_proxy: str) -> str:
-    # 1. Tìm kiếm theo email trên toàn bộ GPM profiles
-    import urllib.parse
-    res = requests.get(f"{GPM_API_BASE}/profiles?search={urllib.parse.quote(email)}", timeout=20).json()
-    items = res.get("data", res) if isinstance(res, dict) else res
-    for item in items or []:
-        if email in str(item.get("name", "")).lower():
-            pid = item.get("id") or item.get("profile_id")
-            # Cập nhật proxy nếu thay đổi, tuyệt đối không tạo mới
-            if raw_proxy and item.get("raw_proxy") != raw_proxy:
-                try:
-                    requests.post(f"{GPM_API_BASE}/profiles/update/{pid}", json={"raw_proxy": raw_proxy}, timeout=20)
-                except Exception:
-                    pass
-            return str(pid)
+Khi đối soát các profile tìm được:
+- Bắt buộc kiểm tra kết hợp: `email in name` VÀ khớp đúng `raw_proxy == expected_proxy` (hoặc profile không cấu hình proxy) để tránh nhận nhầm profile của tài khoản/máy khác.
+- Tuyệt đối không gọi `POST /create` nếu đã tồn tại profile khớp email và proxy:
 
-    # 2. Chưa từng có profile -> Mới được phép tạo mới
-    created = requests.post(
-        f"{GPM_API_BASE}/profiles/create",
-        json={
-            "profile_name": expected_name,
-            "raw_proxy": raw_proxy,
-            "group_id": 1,
-            "browser_type": "Chrome"
-        },
-        timeout=20
-    ).json()
+```python
+def ensure_profile(info: Dict[str, Any]) -> str:
+    if info.get("profile_id"):
+        return str(info["profile_id"])
+    email = str(info.get("email") or "").strip().lower()
+    try:
+        if email:
+            import urllib.parse
+            listed = api("GET", f"/api/v3/profiles?search={urllib.parse.quote(email)}")
+            items = listed.get("data", listed) if isinstance(listed, dict) else listed
+            for item in items or []:
+                name = str(item.get("name") or "").lower()
+                raw_proxy = str(item.get("raw_proxy") or "")
+                if email in name and (not info.get("proxy") or raw_proxy == info["proxy"]):
+                    pid = item.get("id") or item.get("profile_id")
+                    if pid:
+                        info["profile_id"] = str(pid)
+                        return str(pid)
+        else:
+            listed = api("GET", "/api/v3/profiles")
+            items = listed.get("data", listed) if isinstance(listed, dict) else listed
+            for item in items or []:
+                if str(item.get("name", "")).strip() == info.get("profile_name", ""):
+                    info["profile_id"] = item.get("id") or item.get("profile_id")
+                    return str(info["profile_id"])
+    except Exception as exc:
+        raise RuntimeError(f"GPM profile lookup failed: {exc}") from exc
+
+    # Chỉ khi hoàn toàn không tìm thấy mới được phép tạo profile mới
+    created = api("POST", "/api/v3/profiles/create", ...)
     ...
 ```
 
-### 4.2 Xóa bỏ triệt để logic `ORDER BY RANDOM()` tự gán proxy
-- Trong các script sync provider (như `chatgpt_gpm_direct_reg.py`), **tuyệt đối không** dùng truy vấn `SELECT id FROM proxy_registry ... ORDER BY RANDOM() LIMIT 1` để tự động gán proxy cho connection khi vắng proxy.
-- Hành vi này vi phạm kỷ luật Farm và dẫn đến ô nhiễm mapping proxy cố định. Chỉ gán proxy khi có nguồn cấu hình/Excel tường minh.
+### 4.2 Tự Động Phân Giải Profile Khi Phát Hiện Trùng (Disk Cookie Heuristic Resolver)
+Trong các watchdog (như `cron_chatgpt_web_pool_watchdog.py`), khi gặp `len(candidates) > 1`, thay vì vội vàng ném lỗi `AMBIGUOUS_GPM_PROFILE` dừng toàn bộ quy trình:
+- Đọc trực tiếp kích thước file session cookie trên đĩa (`<profile_path>/Default/Network/Cookies`).
+- Nếu có 1 profile có cookie thực tế lớn (>50KB) trong khi các profile clone còn lại là rỗng/nhỏ (0–45KB) $\rightarrow$ Tự động chọn profile có cookie session thật để tiếp tục vận hành.
 
-### 4.2 Phân trang đầy đủ khi duyệt danh sách profile
-Khi cần nạp toàn bộ danh sách profile vào bộ nhớ (như trong watchdog map):
-```python
-def get_all_gpm_profiles():
-    profiles = []
-    page = 1
-    while True:
-        res = requests.get(f"{GPM_API_BASE}/profiles?page={page}&per_page=50", timeout=10).json()
-        items = res.get("data", [])
-        if not items:
-            break
-        profiles.extend(items)
-        pagination = res.get("pagination", {})
-        total_page = pagination.get("total_page", 1)
-        if page >= total_page:
-            break
-        page += 1
-    return profiles
-```
-
-### 4.3 Deduplication Cleanup định kỳ
-- Quét các email có `len(profiles) > 1`.
-- Giữ lại 1 profile duy nhất (profile có `profile_path` chứa dữ liệu session mới nhất hoặc đúng port hiện tại).
-- Gọi `DELETE /api/v3/profiles/delete/{id}` dọn các profile clone rỗng để tránh rác đĩa và giải phóng `AMBIGUOUS_GPM_PROFILE`.
-- Tool chạy tự động sẵn có: `scripts/deduplicate_gpm_profiles.py` (chạy với `--apply` để xóa sạch các clone sau khi đối soát).
+### 4.3 Deduplication Cleanup An Toàn Có Audit & Backup
+- **Quy trình dọn dẹp chuẩn:** Tool `D:\Taadaa\GPM auto\scripts\deduplicate_gpm_profiles.py` (chạy với `--apply`, mặc định dry-run).
+- **Sao lưu bắt buộc:** Luôn sao lưu SQLite DB `profile_data.db.backup_<ts>` trước khi xóa.
+- **Audit JSON:** Ghi nhận `deduplicate_gpm_profiles.audit.json` lưu số lượng profile đã xóa, trạng thái dry-run, và đường dẫn file backup để phục vụ kiểm toán closeout gate.
+- **Tiêu chí xếp hạng giữ lại:**
+  1. Kích thước file Cookies lớn nhất (`Default/Network/Cookies` > 50KB).
+  2. Khớp đúng số máy (`M<mid>`) theo SoT `taikhoan_dat_v2_updated .xlsx` và cổng proxy chuẩn trong `PROXYgandienthoai.xlsx`.
+  3. Thời gian cập nhật gần nhất (`mtime`).
+- **Xóa kép:** Gọi API GPM `/api/v3/profiles/delete/{id}?mode=1` kết hợp dọn dẹp SQLite row để tránh dữ liệu mồ côi. Unit test bao phủ tại `tests/test_deduplicate_gpm_profiles.py`.

@@ -14,7 +14,8 @@ Use for GPM v3 (19995), Gmail/Hotmail lifecycle, proxy-safe account selection, C
 - Turnstile GPM: `references/omniroute-turnstile-sentinel-gpm-recovery.md`.
 - Hotmail Pass Mapping: `references/hotmail-password-mapping-and-cookie-consent-pitfalls.md`.
 - Silent Watchdog: `references/no-agent-cron-silent-watchdog-and-telegram-chunking.md`.
-- GPM Pagination, Duplicate Spawn & Proxy Invariant: `references/gpm-profile-pagination-and-duplicate-spawn-pitfall.md` (CẤM script tự nhảy/random proxy khi sập; nguồn chân lý duy nhất là PROXYgandienthoai.xlsx).
+- 2FA Deadlock & Silent Reporting: `references/gpm-gmail-2fa-lifecycle-deadlock-and-silent-reporting.md`.
+- GPM Pagination: `references/gpm-profile-pagination-and-duplicate-spawn-pitfall.md` (nguồn chân lý: PROXYgandienthoai.xlsx).
 - Browser-core repair: `references/gpm-browser-core-repair-source-integrity.md`.
 - Preflight Liveness & Auto-Launch: `references/gpm-local-api-liveness-and-autolaunch-pattern.md`.
 - Hook ChatGPT Web/Codex: `references/codex-oauth-phone-verification-5sim-and-sumistore.md`.
