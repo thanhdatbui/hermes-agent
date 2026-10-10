@@ -20,91 +20,100 @@ from typing import Any, Tuple
 
 # Regex nhận diện câu hỏi tư vấn / kiến trúc / phân tích nguyên nhân
 ADVICE_PATTERNS = [
-    r"\btại sao\b",
-    r"\bvì sao\b",
-    r"\bthấy sao\b",
-    r"\blà sao\b",
-    r"\bhợp lý\b",
-    r"\bhợp lí\b",
-    r"\bđúng không\b",
-    r"\bđúng ko\b",
-    r"\bđúng k\b",
-    r"\bhay không\b",
-    r"\bhay ko\b",
-    r"\bhay k\b",
-    r"\bthì sao\b",
-    r"\bchứ hay\b",
-    r"\bcó nên\b",
-    r"\bk nên\b",
-    r"\bkhông nên\b",
-    r"\bổn không\b",
-    r"\bổn ko\b",
-    r"\bổn k\b",
-    r"\bđánh giá\b",
-    r"\bkiến trúc\b",
-    r"\bplan\b",
-    r"\btư vấn\b",
-    r"\blời khuyên\b",
-    r"\breview\b",
-    r"\bphân tích\b",
-    r"\btheo mày\b",
-    r"\bnhìn\b.*\bthế nào\b",
-    r"\bthế nào\b",
-    r"\bcó hợp không\b",
-    r"\bcó ổn không\b",
-    r"\bđc k nhỉ\b",
-    r"\bđc ko nhỉ\b",
-    r"\bko nhỉ\b",
-    r"\bk nhỉ\b",
-    r"\bliệu\b",
-    r"\bhay là do\b",
-    r"\bnguyên nhân\b",
-    r"\bcăn nguyên\b",
-    r"\bhướng giải quyết\b",
-    r"\bnên làm gì\b",
-    r"\bnên xử lý thế nào\b",
-    r"\bphải làm sao\b",
-    r"\bxem có gì lạ\b",
-    r"\bcó bất thường không\b",
-    r"\bsao lại\b",
-    r"\bsao thế\b",
-    r"\bsao bữa nay\b",
-    r"\bsao dạo này\b",
-    r"\bsao cứ\b",
-    r"\bsao không\b",
-    r"\bsao k\b",
-    r"\bsao chưa\b",
-    r"\bsao nhìn\b",
-    r"\bsao\b.*(?:\bv\b|\bvậy\b|\bthế\b|\bấy\b|\bhả\b)",
-    r"\bsao\b.*\b(cứ|lại|bị|được|mất|rớt|lỗi)\b",
-    r"\bk ổn định\b",
-    r"\bkhông ổn định\b",
-    r"\bchập chờn\b",
+    r"tại sao",
+    r"vì sao",
+    r"thấy sao",
+    r"nghĩ sao",
+    r"mày nghĩ",
+    r"là sao",
+    r"hợp lý",
+    r"hợp lí",
+    r"đúng không",
+    r"đúng ko",
+    r"đúng k",
+    r"hay không",
+    r"hay ko",
+    r"hay k",
+    r"thì sao",
+    r"chứ hay",
+    r"có nên",
+    r"k nên",
+    r"không nên",
+    r"nên dùng.*(?:hay|hoặc)",
+    r"nên chọn.*(?:hay|hoặc)",
+    r"nên làm.*(?:hay|hoặc)",
+    r"nên.*(?:cách nào|phương án nào|hướng nào)",
+    r"ổn không",
+    r"ổn ko",
+    r"ổn k",
+    r"đánh giá",
+    r"kiến trúc",
+    r"lên plan",
+    r"xin plan",
+    r"nhờ plan",
+    r"tư vấn",
+    r"lời khuyên",
+    r"review giúp",
+    r"review cho",
+    r"phân tích",
+    r"theo mày",
+    r"(nhìn|thấy|đánh giá|xử lý).*thế nào",
+    r"có hợp không",
+    r"có ổn không",
+    r"đc k nhỉ",
+    r"đc ko nhỉ",
+    r"ko nhỉ",
+    r"k nhỉ",
+    r"liệu",
+    r"hay là do",
+    r"nguyên nhân",
+    r"căn nguyên",
+    r"hướng giải quyết",
+    r"nên làm gì",
+    r"nên xử lý thế nào",
+    r"phải làm sao",
+    r"xem có gì lạ",
+    r"có bất thường không",
+    r"sao lại",
+    r"sao thế",
+    r"sao bữa nay",
+    r"sao dạo này",
+    r"sao cứ",
+    r"sao không",
+    r"sao k",
+    r"sao chưa",
+    r"sao nhìn",
+    r"sao.*(?:v|vậy|thế|ấy|hả)",
+    r"sao.*(cứ|lại|bị|được|mất|rớt|lỗi)",
+    r"k ổn định",
+    r"không ổn định",
+    r"chập chờn",
 ]
 
-# Các cụm từ trạng thái / phó từ cần LOẠI TRỪ (tránh False-Positive)
 EXCLUDE_ADVICE_PHRASES = [
-    r"\bsao rồi\b",
-    r"\bsao r\b",
-    r"\bnhư thế nào rồi\b",
-    r"\bra sao rồi\b",
-    r"\bsao cho\b",  # ví dụ "sửa cái này sao cho nhanh"
+    r"(kiểm tra|check|xem|đọc|báo cáo|gửi)\s+(?:lại\s+)?(?:tiến độ|trạng thái|status|plan|kế hoạch)",
+    r"(trạng thái|status|tiến độ).*(thế nào|ra sao|sao rồi|sao r)",
+    r"sao rồi",
+    r"sao r",
+    r"như thế nào rồi",
+    r"ra sao rồi",
+    r"sao cho",
 ]
 
 IMPERATIVE_STARTS = [
-    r"^\s*chạy\b",
-    r"^\s*sửa\b",
-    r"^\s*fix\b",
-    r"^\s*làm đi\b",
-    r"^\s*làm luôn\b",
-    r"^\s*triển khai\b",
-    r"^\s*restart\b",
-    r"^\s*upload\b",
-    r"^\s*adb\b",
-    r"^\s*git\b",
+    r"^\s*chạy",
+    r"^\s*sửa",
+    r"^\s*fix",
+    r"^\s*làm đi",
+    r"^\s*làm luôn",
+    r"^\s*triển khai",
+    r"^\s*restart",
+    r"^\s*upload",
+    r"^\s*adb",
+    r"^\s*git",
+    r"^\s*xem",
+    r"^\s*kiểm tra",
 ]
-
-
 def redact_secrets(text: str) -> str:
     """Loại bỏ token, API key, password và dữ liệu nhạy cảm trước khi gửi ra ngoài."""
     if not text:
@@ -234,44 +243,47 @@ def _call_stream_chat(url: str, headers: dict[str, str], payload: dict[str, Any]
 
 
 def consult_advisor(prompt: str, context: str = "", timeout_sec: float = 45.0) -> dict[str, Any]:
-    """
-    Truy vấn Advisor Sol độc lập qua đúng endpoint chuẩn:
-    OmniRoute :20129 route 'gpt-web-sol' hoặc combo 'review' (Sol Web High / 115 accounts ChatGPT-Web).
-    Thời gian timeout tối thiểu 45s để reasoning model sinh token trọn vẹn.
-    Nếu thất bại/timeout -> Báo fail ngay (unavailable), tuyệt đối không fallback sang Gemini hay 9Router.
-    """
-    clean_prompt = redact_secrets(prompt)
-    clean_context = redact_secrets(context)
+    """Truy vấn trực tiếp Advisor Sol (:20129 review / gpt-web-sol) với deadline tổng <= 45s."""
+    cleaned_prompt = redact_secrets(prompt)
+    cleaned_context = redact_secrets(context)
 
-    full_prompt = clean_prompt
-    if clean_context:
-        full_prompt = f"Bối cảnh hiện trường:\n{clean_context}\n\nNhiệm vụ tư vấn / đánh giá:\n{clean_prompt}"
-
-    system_instruction = (
-        "Bạn là Advisor Sol độc lập của Taadaa Phone Farm. "
-        "Hãy đưa ra đánh giá kiến trúc, phân tích nguyên nhân và phương án xử lý thẳng thắn, "
-        "súc tích, có tính hành động cao, tuyệt đối không giáo điều hoặc nói chung chung."
+    messages = []
+    system_text = (
+        "Bạn là Advisor Sol, cố vấn chiến lược và kiến trúc hệ thống Taadaa Farm. "
+        "Hãy phân tích sắc bén, khách quan, đưa ra giải pháp rõ ràng, súc tích."
     )
+    messages.append({"role": "system", "content": system_text})
+    if cleaned_context:
+        messages.append({"role": "user", "content": f"[BỐI CẢNH HIỆN TRƯỜNG]
+{cleaned_context}
 
-    messages = [
-        {"role": "system", "content": system_instruction},
-        {"role": "user", "content": full_prompt},
-    ]
+[CÂU HỎI]
+{cleaned_prompt}"})
+    else:
+        messages.append({"role": "user", "content": cleaned_prompt})
 
     omni_url = "http://127.0.0.1:20129/v1/chat/completions"
     omni_headers = {"Content-Type": "application/json", "Authorization": "Bearer dummy"}
-    
-    # 1. Ưu tiên gọi trực tiếp model gpt-web-sol (Pool 115 accounts ChatGPT-Web)
+
+    t_start = time.monotonic()
+    max_total_sec = 45.0
+
     for target_model in ["gpt-web-sol", "review"]:
+        elapsed = time.monotonic() - t_start
+        remaining = max_total_sec - elapsed
+        if remaining <= 3.0:
+            break
+        timeout_this_call = min(timeout_sec, remaining)
         payload = {"model": target_model, "messages": messages}
-        ok, text = _call_stream_chat(omni_url, omni_headers, payload, timeout_sec=timeout_sec)
-        if ok and len(text) > 20:
+        ok, text_resp = _call_stream_chat(omni_url, omni_headers, payload, timeout_sec=timeout_this_call)
+        if ok and len(text_resp) > 20:
             return {
                 "status": "success",
                 "model": "Sol / review",
                 "tier": 1,
-                "advice": text,
-                "formatted": f"--- Advisor (Sol / review) ---\n{text}",
+                "advice": text_resp,
+                "formatted": f"--- Advisor (Sol / review) ---
+{text_resp}",
             }
 
     err_msg = "Advisor: unavailable (Sol / review timeout hoặc pool limit; chỉ hiển thị câu trả lời Coordinator)"
@@ -280,49 +292,8 @@ def consult_advisor(prompt: str, context: str = "", timeout_sec: float = 45.0) -
         "model": "none",
         "tier": 0,
         "advice": "",
-        "formatted": f"--- Advisor ---\n{err_msg}",
+        "formatted": f"--- Advisor ---
+{err_msg}",
     }
-
-
-def ensure_dual_answer(message: str, response: str, context: str = "") -> str:
-    """
-    Cơ chế bảo vệ cơ học (Mechanical Enforcement Gate):
-    Nếu user message là Advice Intent mà phản hồi chưa có khối Advisor,
-    hàm sẽ tự động kích hoạt Advisor và gắn khối kết quả vào cuối phản hồi.
-    """
-    if not classify_advice_intent(message):
-        return response
-
-    if "--- Advisor (" in response or "--- Advisor ---" in response:
-        return response
-
-    # Tự động gọi Advisor bổ sung
-    adv_res = consult_advisor(message, context)
-    return f"{response.rstrip()}\n\n{adv_res['formatted']}"
-
-
-def main():
-    parser = argparse.ArgumentParser(description="Query Hermes Advisor Sol")
-    parser.add_argument("--query", "-q", required=True, help="Câu hỏi hoặc yêu cầu tư vấn")
-    parser.add_argument("--context", "-c", default="", help="Bối cảnh hiện trường")
-    parser.add_argument("--classify-only", action="store_true", help="Chỉ kiểm tra intent")
-    parser.add_argument("--enforce", action="store_true", help="Chạy qua mechanical dual-answer gate")
-    parser.add_argument("--response-text", default="", help="Phản hồi chính để kiểm tra enforce")
-    args = parser.parse_args()
-
-    if args.classify_only:
-        is_advice = classify_advice_intent(args.query)
-        print("ADVICE_INTENT" if is_advice else "IMPERATIVE_INTENT")
-        sys.exit(0 if is_advice else 1)
-
-    if args.enforce:
-        output = ensure_dual_answer(args.query, args.response_text, args.context)
-        print(output)
-        sys.exit(0)
-
-    result = consult_advisor(args.query, args.context)
-    print(result["formatted"])
-
-
 if __name__ == "__main__":
     main()
