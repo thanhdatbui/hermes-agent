@@ -12,13 +12,13 @@ evidence_gate_verifier.py (WinRT OCR, PID reserve, fail-closed, >30s/3att L3 BLO
 §
 Canary: WoL ether3 (kibe 0C:EF:15:37:4C:20, admin 22:33:4D:06:4C:26; WG 13231); CẤM PASS khi followed=0/FOLLOW_FAILED; ảnh/log trước teardown. Admin: upload SSH admin-farm.
 §
-Ava tay: khóa .manual_avatar_locked. Strike 3/Sol kẹt 78-82: giao Claude CLI nền sửa code dứt điểm.
+Ava tay: khóa .manual_avatar_locked. Strike 3: Claude CLI nền. Reviewer :20129: Sol High; fallback codex-terra (cấm bại liệt khi Sol 402/timeout).
 §
 TikTok Shadow: Path B 'Đã fl' ko commit; FOLLOW_FAILED trừ fl tự nhiên; slot `(folder-1)%8+1` cứng; reg bù độc lập. Dọn C duyệt trước.
 §
 Giao tiếp: gọi 'tên nick TikTok', cấm handle. Hotmail: Báo cáo 6h tách riêng BLOCKED; Change info GPM full 5b, xóa Col 9 token; Nick ko mail khôi phục cấm add TOTP đơn lẻ (iec=500); OTP sync thanhdatbui1995@gmail.com.
 §
-X99: cấm xHCI; wkr 25. CẤM bắt user rút dây; Task 05:30 reboot (Kibe+Admin). ADB SYSTEM unauth fix: set ADB_VENDOR_KEYS Machine + adb task user Admin.
+X99: cấm xHCI; wkr 25. Task 05:30 reboot (Kibe+Admin). ADB unauth fix: ADB_VENDOR_KEYS Machine + adb task Admin.
 §
 Credential: Cột 7 PASS MAIL độc lập Cột 12 PASS CHATGPT; cấm tự ý đè chéo khi đổi/tìm pass.
 §

@@ -14,6 +14,7 @@ metadata:
 > **Canonical policy precedence:** For orchestration and closeout precedence, follow `D:\Taadaa\HERMES_SUBAGENT_RULES.md` marker `CANONICAL-POLICY-PRECEDENCE-2026-10-05`; this skill points to it and does not redefine it.
 
 References:
+- `references/reviewer-fallback-terra-codex-discipline-20261011.md` — **[MỚI 11/10/2026]** Kỷ luật Reviewer fallback Terra Codex (`--model codex-terra` qua :20129): khi Sol High lỗi/timeout/402, cấm bại liệt đóng băng báo cáo suông, bắt buộc lập tức fallback gọi Terra Codex chấm điểm; khắc phục test suite toàn diện và portability Path.home().
 - `references/closeout-gate-reviewer-handoff-loop-circuit-breaker-20261011.md` — **[MỚI 11/10/2026]** Bài học cắt vòng lặp Closeout Gate & chống spam thông báo nền: khi chạm `REVIEWER_HANDOFF_TRIGGERED` hoặc User chỉ thị chuyển quyền ("K cần sol high chấm nx"), cấm tiếp tục loop gọi Sol High mà phải chuyển giao dứt điểm cho Claude CLI chấm điểm / nghiệm thu.
 - `references/sol-review-config-script-telemetry-and-preview-test-patterns-20261010.md` — **[MỚI 10/10/2026]** Kinh nghiệm vượt Closeout Gate cho thay đổi config/PowerShell: loại bỏ pytest warning qua `pytest.ini`, bổ sung structured JSON telemetry `[TELEMETRY_METRIC]`, và viết test mock CLI preview + negative failure mode trong ngân sách <= 30 dòng.
 - `references/strike-3-handoff-hard-guard-and-anti-strike-4-discipline-20261010.md` — **[MỚI 10/10/2026]** Kỷ luật Strike 3 Hand-off dứt khoát: cấm tuyệt đối ảo giác "Strike 4", cơ chế Hard Guard tự động ngắt cầu dao dispatch khi chạm trần 3 lần reject.
