@@ -23,18 +23,42 @@
 
 ---
 
-## 2. Lỗi Transcode Bảng Mã CLI Qua SSH PowerShell (`--workbook-sheet`)
+## 2. Lỗi Transcode Bảng Mã CLI Qua SSH PowerShell (`--workbook-sheet`) & Cơ Chế `resolve_sheet`
 
 ### Hiện tượng
 - Gọi remote batch qua SSH PowerShell với EncodedCommand:
   `powershell -NoProfile -EncodedCommand ...`
   khi truyền tham số có dấu tiếng Việt như `--workbook-sheet 'Tài Khoản'`.
 - Tham số khi vào Python trên máy đích bị biến dạng thành `--workbook-sheet 'Ti Kho?n'` do PowerShell chuyển đổi tham số sang OEM ANSI code page (CP1252/CP1258).
-- Gây lỗi `WorkbookError("SOURCE_SHEET_MISSING")` hoặc sai lệch định danh sheet.
+- Gây lỗi `WorkbookError("SOURCE_SHEET_MISSING")` hoặc `KeyError: 'Worksheet Ti Kho?n does not exist.'`.
 
-### Giải pháp chuẩn hóa
-- Trong `run_batch_live_2fa.py`, biến `DEFAULT_SHEET = "Tài Khoản"` đã được hardcode chuẩn UTF-8 bên trong mã nguồn Python.
-- Khi gọi lệnh qua SSH PowerShell, **KHÔNG truyền cờ `--workbook-sheet`** nếu đang dùng sheet mặc định, để Python tự load hằng số nội tại mà không qua lớp CLI parsing của Windows PowerShell.
+### Giải pháp chuẩn hóa (2 Tầng Phòng Vệ)
+1. **Tầng Watchdog / Runner**:
+   - Trong `run_batch_live_2fa.py`, biến `DEFAULT_SHEET = "Tài Khoản"` đã được hardcode chuẩn UTF-8 bên trong mã nguồn Python.
+   - Khi watchdog gọi qua SSH PowerShell, **KHÔNG truyền cờ `--workbook-sheet`** nếu đang dùng sheet mặc định, để Python tự load hằng số nội tại mà không qua lớp CLI parsing của Windows PowerShell.
+
+2. **Tầng Adapter Workbook (`core/workbook.py`) — Resilient Sheet Lookup**:
+   - Thêm hàm `resolve_sheet(wb, requested_sheet)` tự động nhận diện mềm dẻo:
+     ```python
+     def resolve_sheet(wb: openpyxl.Workbook, requested_sheet: str):
+         if requested_sheet in wb.sheetnames:
+             return wb[requested_sheet]
+         import unicodedata, re
+         def _strip(s: str) -> str:
+             return "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn").casefold().strip()
+         norm_req = _strip(requested_sheet)
+         for name in wb.sheetnames:
+             if _strip(name) == norm_req:
+                 return wb[name]
+         norm_letters = re.sub(r"[^a-z]", "", norm_req)
+         for name in wb.sheetnames:
+             name_letters = re.sub(r"[^a-z]", "", _strip(name))
+             if name_letters == norm_letters or (name_letters.startswith("t") and "kho" in name_letters and norm_letters.startswith("t") and "kho" in norm_letters):
+                 return wb[name]
+         raise WorkbookError("SOURCE_SHEET_MISSING")
+     ```
+   - Thay thế toàn bộ các điểm truy cập `wb[target.source_sheet]` trong các hàm nghiệp vụ (`inspect_target`, `password_is_blank`, `read_pass_value`, `read_email_value`, `update`, `verify`) thành `resolve_sheet(wb, target.source_sheet)`.
+   - Kết quả: Kể cả khi CLI bị lỗi transcode thành `'Ti Kho?n'`, hàm vẫn nhận diện chính xác sheet `'Tài Khoản'`.
 
 ---
 
@@ -52,16 +76,35 @@
   quét toàn bộ stdout và khớp cả 2 bảng, khiến mỗi target skip bị cộng 2 lần.
 
 ### Giải pháp
-- Khi parse bảng output của `run_batch_live_2fa.py`, chỉ parse bảng đầu tiên hoặc deduplicate theo cặp `(machine, source_row)`.
+- Khi parse bảng output của `run_batch_live_2fa.py`, chỉ parse phần kết quả đầu tiên trước tiêu đề `Skip do device lock`:
+  ```python
+  table_section = output
+  if "Skip do device lock" in output:
+      table_section = output.split("Skip do device lock")[0]
+  table_rows = re.findall(r"^\s*(\d+)\s*\|\s*(\d+)\s*\|\s*[^|]+\|\s*(\w+)", table_section, re.M)
+  ```
 
 ---
 
-## 4. Timeout Chuỗi Tuần Tự Do Thiết Bị Offline Trong Vòng Lặp Preflight
+## 4. Quy Trình Đồng Bộ & Nghiệm Thu Mã Nguồn Sang Farm Admin
 
-### Hiện tượng
-- Trước khi worker song song được khởi chạy, hàm `main()` của `run_batch_live_2fa.py` duyệt tuần tự qua danh sách `targets` để acquire device lock và chạy `require_android_vpn`.
-- Nếu có thiết bị đang ở trạng thái `offline`, `CoreAdbClient` sẽ kích hoạt cơ chế tự phục hồi: gọi `reconnect` và `wait-for-device` (timeout 20s) lặp lại 3 lần = 60s/thiết bị.
-- Nếu có 5-6 máy offline, vòng lặp preflight bị nghẽn tới 5-6 phút trước khi ThreadPoolExecutor kịp chạy máy đầu tiên.
-
-### Giải pháp
-- Đảm bảo preflight loại trừ hoặc kiểm tra nhanh danh sách thiết bị online từ `adb devices` trước khi bước vào vòng lặp acquire lock tuần tự.
+Khi sửa code trong `tiktok-add-bao-mat-f2a` trên máy Kibe, BẮT BUỘC thực hiện nghiệm thu theo 3 bước:
+1. **Chạy Unit Test Trên Kibe**:
+   ```bash
+   python -m unittest discover -s "D:/Taadaa/tiktok-add-bao-mat-f2a/python_runner" -p "test_workbook.py"
+   python -m unittest discover -s "D:/Taadaa/tiktok-add-bao-mat-f2a/python_runner" -p "test_run_batch_live_2fa.py"
+   python -m unittest discover -s "D:/Taadaa/tiktok-add-bao-mat-f2a/python_runner" -p "test_live_phase_b_adapter.py"
+   ```
+2. **Đồng Bộ Sang Admin-PC Qua SCP**:
+   ```bash
+   scp -o ConnectTimeout=10 \
+     "D:/Taadaa/tiktok-add-bao-mat-f2a/python_runner/core/workbook.py" \
+     "D:/Taadaa/tiktok-add-bao-mat-f2a/python_runner/core/live_phase_b_adapter.py" \
+     "D:/Taadaa/tiktok-add-bao-mat-f2a/python_runner/run_batch_live_2fa.py" \
+     admin-farm:"D:/Taadaa/tiktok-add-bao-mat-f2a/python_runner/"
+   ```
+3. **Chạy Unit Test & Dry-Run Trực Tiếp Trên Admin-PC**:
+   ```bash
+   ssh admin-farm "powershell -Command \"& 'D:\Taadaa\python-envs\automation\Scripts\python.exe' -m unittest discover -s 'D:/Taadaa/tiktok-add-bao-mat-f2a/python_runner' -p 'test_workbook.py'\""
+   ssh admin-farm "powershell -Command \"& 'D:\Taadaa\python-envs\automation\Scripts\python.exe' D:/Taadaa/tiktok-add-bao-mat-f2a/python_runner/run_batch_live_2fa.py --workbook-path 'D:\OneDrive\TaadaaData\admin\taikhoan_dat_v2_updated .xlsx' --limit 5\""
+   ```
