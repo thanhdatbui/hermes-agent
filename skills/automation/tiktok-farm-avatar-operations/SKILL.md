@@ -218,8 +218,13 @@ Operate avatar-only changes on Taadaa TikTok farm devices without accidentally p
   * **CẤM BỎ CUỘC SỚM (ANTI-PREMATURE SURRENDER):** Tuyệt đối CẤM kiểm tra vài video đầu rồi vội kết luận "kho video không có frame đạt chuẩn" và khôi phục avatar cũ rồi dừng lại. Một kho video TikTok có tới 45 clip thường trộn lẫn clip dạy làm tóc (chụp sau gáy), clip b-roll với các clip đời thường/áo dài/selfie của creator.
   * Khi User ra lệnh *"Quét lại tạo ava coi"*: BẮT BUỘC quét lưới nhanh toàn bộ 45 clip (lấy mẫu 2-3 timestamp/clip tránh timeout HDD), gom các video có mặt creator thành 3-4 phong cách khác nhau (chân dung trực diện, ngoại cảnh tươi cười, trang phục truyền thống/áo dài, phong cách aesthetic).
   * **Dựng bảng đối chiếu vuông 2x2 (900x900):** CẤM ghép dẹt ngang (panoramic) làm co rúm trên Telegram mobile. Dựng bảng vuông 2x2 (mỗi ô 450x450 có vòng tròn mô phỏng avatar TikTok, banner tập/giây phía trên và mô tả phía dưới), đồng thời xuất kèm file vuông nguyên bản 512x512 của Option 1. Soi mắt qua Vision API trước khi gửi `MEDIA:` để User duyệt trực quan. Chi tiết xem `references/full-video-pool-rescan-and-2x2-showcase-grid-20261010.md`.
-- **KỶ LUẬT KHI USER BẢO "TỰ PICK CÁI NÀO ỔN NHẤT ĐI" / "ĐỔI ĐI HỎI LẠI CHI V":**
+- **KỶ LUẬT KHI USER BẢO "TỰ PICK CÁI NÀO ỔN NHẤT ĐI" / "ĐỔI ĐI HỎI LẠI CHI V" & TỰ ĐỘNG KHÓA VĨNH VIỄN:**
   * **Lệnh ủy quyền dứt điểm tuyệt đối:** Khi User hỏi "chuẩn chưa", sau khi chỉ ra các điểm lệch/rủi ro mà User bảo "Đổi đi hỏi lại chi v" hoặc "Đổi đi" / "Làm luôn" $\rightarrow$ CẤM TUYỆT ĐỐI hỏi lại, cấm dừng lại đưa option chờ duyệt, và cấm kết câu bằng câu mở ngỏ dạng *"Nếu cần thì tao sẽ đổi..."*.
+  * **TỰ ĐỘNG KHÓA BẢO VỆ NGAY (CẤM CHỜ USER HỎI MỚI KHÓA):** Mọi tài khoản khi Operator đã yêu cầu đổi/chọn avatar thủ công qua chat, Coordinator BẮT BUỘC PHẢI TỰ ĐỘNG KHÓA NGAY LẬP TỨC:
+    1. Ghi cả folder render và video gốc vào `manual_avatar_protected_folders.json` (cả 2 bản `D:\Taadaa\Tiktok-video\data\` và `D:\Taadaa\data\`).
+    2. Tạo file cờ vật lý `.manual_avatar_locked` tại cả 2 đầu kho (`TIKTOK-videonuoinick` và `video goc`).
+    3. Cập nhật Excel cột `Avatar = 'OK'` và database `avatar_replace_queue` về `status = 'DONE'`.
+    4. CẤM TUYỆT ĐỐI quên hoặc đợi Operator phải hỏi "đã khóa chưa" mới đi khóa.
   * Lập tức tự chọn phương án tối ưu nhất theo niche, kiểm tra ảnh không dính subtitle/viền đen/lệch tâm qua vision, đồng bộ file ảnh nguồn cả 2 đầu kho (`D:\video goc\<folder>\avatar.jpg` và `D:\TIKTOK-videonuoinick\<folder>\avatar.jpg`), set queue `PENDING`, và kích hoạt ngay canonical runner (`run_tiktok_upload_avatar.ps1`) chạy nền có event-driven wakeup (`notify_on_complete=True`).
 
 - **MỞ RỘNG TARGET_TIKS WATCHDOG CHO ĐỦ 8 TIK KIBE & TELEMETRY OBSERVABILITY (2026-10-10):**

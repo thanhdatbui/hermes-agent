@@ -41,16 +41,24 @@ Xác định chính xác: Số Máy (ví dụ `19`), Slot Tik (ví dụ `4`), v�
 
 ---
 
-### Bước 4: Chuẩn hoá 4 Tầng Dữ liệu (Khóa Nguồn & Niche)
-1. **Workbook `Tik<N>.xlsx`**:
-   - Khóa cứng `video gốc = Folder Video` (ví dụ gán cột 5 thành `148`).
+### Bước 4: Chuẩn hoá 4 Tầng Dữ liệu & TỰ ĐỘNG KHÓA BẢO VỆ THỦ CÔNG
+1. **Tự động Khóa Avatar Thủ công (Anti-Mass Regeneration Guard):**
+   - BẮT BUỘC tự động ghi `Folder Video` và `video gốc` vào cả 2 file registry:
+     * `D:/Taadaa/Tiktok-video/data/manual_avatar_protected_folders.json`
+     * `D:/Taadaa/data/manual_avatar_protected_folders.json`
+   - BẮT BUỘC tạo file marker vật lý `.manual_avatar_locked` tại cả 2 đầu kho:
+     * `D:/TIKTOK-videonuoinick/<Folder Video>/.manual_avatar_locked`
+     * `D:/video goc/<video gốc>/.manual_avatar_locked`
+   - CẤM TUYỆT ĐỐI chờ Operator phải nhắc lệnh khóa; bất kỳ nick nào Operator đã yêu cầu đổi/chọn ava qua chat đều BẮT BUỘC PHẢI TỰ ĐỘNG KHÓA NGAY LẬP TỨC.
+2. **Workbook `Tik<N>.xlsx`**:
+   - Khóa cứng `video gốc = Folder Video` (hoặc số folder video gốc thật tương ứng).
    - Cập nhật `Keyword Video` chuẩn 1 trong 12 Niche Hot (ví dụ `Học sinh`).
-   - Cập nhật `Hashtag Pool` khớp chính xác nội dung video (ví dụ `#hocsinh #hocsinhvietnam #hocsinhcap3 #genz #thpt #hocduong #tuoihocsinh #xuhuong #fyp #tiktokvietnam #viral`).
-   - Đặt cột `Avatar` = `PENDING`.
-2. **SQLite `tiktok_tracker.db` (`avatar_replace_queue`)**:
-   - Cập nhật `video_goc = Folder Video`, `status = 'PENDING'`, `last_error = NULL`, `updated_at = datetime('now', 'localtime')`.
-3. **`state.db` (Cả 2 bản C: và D:)**:
-   - `UPDATE folders SET niche='hocsinh' WHERE folder_num=<Folder Video>;`
+   - Cập nhật `Hashtag Pool` khớp chính xác nội dung video.
+   - Đặt cột `Avatar` = `OK` (khi đã up xong) hoặc `PENDING` (khi chờ runner).
+3. **SQLite `tiktok_tracker.db` (`avatar_replace_queue`)**:
+   - Cập nhật `video_goc = Folder Video`, `status = 'DONE'` (nếu đã up xong) hoặc `'PENDING'` (nếu chờ up), `last_error = NULL`, `updated_at = datetime('now', 'localtime')`.
+4. **`state.db` (Cả 2 bản C: và D:)**:
+   - `UPDATE folders SET niche='<niche>' WHERE folder_num=<Folder Video>;`
 
 ---
 
