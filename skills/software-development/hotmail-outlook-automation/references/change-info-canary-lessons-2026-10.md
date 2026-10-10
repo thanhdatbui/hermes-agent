@@ -30,6 +30,8 @@ Do not require Codex Dual-OAuth presence in OmniRoute or 9Router. That gate was 
 
 ## Evidence and safety
 
+- **Cookie Banner Overlay & Screenshot Distortion**: When landing on `account.microsoft.com` post-KMSI, Microsoft frequently displays a full-screen cookie consent banner (`Quản lý tùy chọn cookie`). Using `full_page=True` while this banner is active distorts or blacks out the dashboard, causing "corrupted image" reports. Always dismiss cookie banners (`button:has-text('Chấp nhận')`, `#acceptButton`) before capturing, and avoid `full_page=True` on dashboard SPAs.
+- **Supervisor Cron Gate Alignment**: In lifecycle supervisors (`batch_gpm_5profiles_supervisor.py`), ensure `WAIT_7D` and `CHANGE_INFO` candidacy checks match the current policy: verify `has_tiktok` (ID+PASS) and `has_chatgpt` (PASS CHATGPT or registered state) instead of obsolete `check_dual_oauth` locks, preventing soaked accounts from being permanently starved.
 - Capture proof screenshots at each checkpoint, including the sign-out confirmation modal and final relogin/KMSI state.
 - Never put passwords, TOTP secrets, OTPs, refresh tokens, or access tokens in reports or skill files; redact them.
 - Keep the 24-hour cooldown on both the observed egress IP and the proxy endpoint. A different proxy endpoint must still be checked against its actual egress IP.

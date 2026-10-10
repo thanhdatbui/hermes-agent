@@ -11,9 +11,12 @@ Patterns for diagnosing and reconciling Hotmail/GPM lifecycle state between inde
 1. **Đối soát Tracker với State tổng**:
    - Quét `hotmail_changed_tracker.json` lấy danh sách `changed_emails`.
    - Nếu email đã đổi pass thành công trong tracker nhưng supervisor state != `DONE` / `COMPLETED`: Cập nhật ngay `stage = "DONE"`, `status = "COMPLETED"`.
-2. **Kiểm tra Dual-OAuth Gate cho Stage `CHANGE_INFO`**:
-   - Query SQLite của OmniRoute (`provider_connections`, provider='codex') và 9Router (`providerConnections`, provider='codex').
-   - Tài khoản ở `CHANGE_INFO` mà thiếu 1 trong 2 server: Lập tức hạ về `WAIT_7D` (status `WAITING`), gán detail rõ ràng `Waiting for Dual-OAuth (omni=..., 9router=...)`.
+2. **Kiểm tra Điều kiện Tiên quyết cho Stage `CHANGE_INFO`**:
+   - **Chính sách cập nhật (2026-10-10)**: Bỏ kiểm tra Dual-OAuth Gate trên OmniRoute/9Router. Thay vào đó, kiểm tra 2 điều kiện cốt lõi:
+     * `has_tiktok`: Đã có ID và PASS TikTok (đã reg TikTok thành công).
+     * `has_chatgpt`: Đã có PASS CHATGPT (Cột 12 Master Excel) hoặc đã có timestamp `chatgpt_registered_at`.
+   - Các tài khoản thiếu 1 trong 2 điều kiện trên bị giữ lại ở `WAIT_7D` (status `WAITING`), không đẩy lên `CHANGE_INFO`.
+   - Không còn yêu cầu Dual Codex OAuth vì token Graph cũ sẽ bị xóa sạch khỏi Cột 9 sau khi đổi mật khẩu thành công.
 3. **Phục hồi tài khoản kẹt hạ tầng**:
    - Kiểm tra `GPMClient.check_health()` hoặc endpoint `http://127.0.0.1:19995/api/v3/profiles`.
    - Nếu GPM đã 200 OK: Chuyển các tài khoản bị `BLOCKED` do `NewConnectionError` về `PENDING`, dọn `last_result = None`.
