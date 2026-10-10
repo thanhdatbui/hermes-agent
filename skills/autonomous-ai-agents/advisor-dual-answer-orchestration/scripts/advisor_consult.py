@@ -290,29 +290,36 @@ def _consult_inner(prompt: str, context: str = "") -> dict[str, Any]:
 
 
 def consult_advisor(prompt: str, context: str = "", timeout_sec: float = 45.0) -> dict[str, Any]:
-    """Truy vấn trực tiếp Advisor Sol (:20129 review) với DEADLINE CỨNG WALL-CLOCK <= 45s qua ThreadPool."""
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-        future = executor.submit(_consult_inner, prompt, context)
+    """Truy vấn trực tiếp Advisor Sol (:20129 review) với DEADLINE CỨNG WALL-CLOCK <= 45s (wait=False)."""
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    future = executor.submit(_consult_inner, prompt, context)
+    try:
+        return future.result(timeout=timeout_sec)
+    except concurrent.futures.TimeoutError:
+        executor.shutdown(wait=False, cancel_futures=True)
+        err_msg = f"Advisor: unavailable (Sol / review wall-clock deadline exceeded >{timeout_sec}s; chỉ hiển thị câu trả lời Coordinator)"
+        return {
+            "status": "unavailable",
+            "model": "none",
+            "tier": 0,
+            "advice": "",
+            "formatted": f"--- Advisor ---\n{err_msg}",
+        }
+    except Exception as exc:
+        executor.shutdown(wait=False, cancel_futures=True)
+        err_msg = f"Advisor: unavailable ({exc}; chỉ hiển thị câu trả lời Coordinator)"
+        return {
+            "status": "unavailable",
+            "model": "none",
+            "tier": 0,
+            "advice": "",
+            "formatted": f"--- Advisor ---\n{err_msg}",
+        }
+    finally:
         try:
-            return future.result(timeout=timeout_sec)
-        except concurrent.futures.TimeoutError:
-            err_msg = f"Advisor: unavailable (Sol / review wall-clock deadline exceeded >{timeout_sec}s; chỉ hiển thị câu trả lời Coordinator)"
-            return {
-                "status": "unavailable",
-                "model": "none",
-                "tier": 0,
-                "advice": "",
-                "formatted": f"--- Advisor ---\n{err_msg}",
-            }
-        except Exception as exc:
-            err_msg = f"Advisor: unavailable ({exc}; chỉ hiển thị câu trả lời Coordinator)"
-            return {
-                "status": "unavailable",
-                "model": "none",
-                "tier": 0,
-                "advice": "",
-                "formatted": f"--- Advisor ---\n{err_msg}",
-            }
+            executor.shutdown(wait=False, cancel_futures=True)
+        except Exception:
+            pass
 
 
 def ensure_dual_answer(message: str, response: str, context: str = "") -> str:
