@@ -1,6 +1,6 @@
 Follow: Sáng/chiều=row khác. 15+ Simpson ảo. S1 Score>=70 Fast-track 1 ca về Khỏe; Cautious 3 ca; S2: 2 ca; S3+: 3-5fl. Canary +10% ĐỘC QUYỀN Khỏe.
 §
-Sót data: CẤM tin Excel/DB; Switcher cuộn đáy. Chuẩn 8 nick/máy. Watchdog tối: kibe [5-8,3,4] trừ Tik1&2; 140 acc MISMATCH_GOC sync video_goc=folder_video runner riêng.
+Watchdog Kibe đã mở [1-8]; 923 acc đã sync video_goc=folder_video. Admin: media root D:\TIKTOK-videonuoinick-admin cần tarball sync 640 ava từ Kibe.
 §
 GPM 5ph/nick. gmail_clean_v2 chỉ lưu LIVE; xóa DIE, ghi gmail_die_tong; slot TT die dọn safe + track backfill.
 §
