@@ -197,6 +197,12 @@ Operate avatar-only changes on Taadaa TikTok farm devices without accidentally p
 
 ## 5. Evidence gate
 - For every live UI action, maintain step-by-step visual evidence according to the farm Gate 6 rules.
+- **BẪY ẢNH COMPOSITE DẸT NGANG (PANORAMIC COLLAGE) GÂY LỖI HIỂN THỊ TRÊN TELEGRAM MOBILE (OPERATOR CORRECTION 10/10/2026):**
+  * **Hiện tượng:** Ghép ảnh đối chiếu ngang 3-4 cột (ví dụ 1280x560, w > 1.5*h). Khi gửi qua Telegram, app điện thoại (iOS/Android màn hình dọc) tự động co rút ảnh thành một dải mỏng dính xẹp lép (letterboxing), chữ mờ tịt, mặt người bị thu nhỏ li ti khiến Operator nhìn tưởng ảnh lỗi và tức giận phản ứng: *"Gửi ảnh lỗi r đm cứ gửi lỗi hoài"*.
+  * **Quy chuẩn hiển thị bắt buộc:**
+    1. **Luôn ưu tiên gửi trực tiếp file vuông nguyên bản `avatar.jpg` (512x512):** Khung vuông 1:1 hiển thị to, tràn viền tự nhiên, sắc nét nhất trên giao diện chat Telegram di động, chạm vào bung full-screen rõ từng chi tiết.
+    2. **CẤM TUYỆT ĐỐI ghép dàn hàng ngang thành dải dẹt:** Nếu cần dựng ảnh đối chiếu (Cũ vs Mới), bắt buộc xếp theo chiều dọc 2 tầng (trên Cũ, dưới Mới, tỷ lệ 4:5 hoặc 1:2) hoặc lưới vuông 2x2, kích thước mỗi ô $\ge 400\text{px}$.
+    3. **Hai lớp ảnh nghiệm thu khi đổi Avatar:** Lớp 1 (trước khi up) gửi trực tiếp `avatar.jpg` vuông 512x512; Lớp 2 (sau khi up xong) gửi FULL SCREENSHOT Profile (1080x1920) chụp từ thiết bị thật. Chi tiết xem `references/mobile-telegram-aspect-ratio-and-avatar-media-delivery-20261010.md`.
 - **BẮT BUỘC DÙNG VISION SOI MẮT ĐỌC ẢNH TRƯỚC KHI GỬI (CHỐNG GỬI ẢNH CHO CÓ LỆ):**
   * CẤM TUYỆT ĐỐI Coordinator / Agent gửi thẻ `MEDIA:<path>` cho User mà chưa thực sự mở ảnh ra soi mắt kiểm tra (Direct Vision API qua 9Router, WinRT OCR, hoặc `browser_vision`).
   * **BẪY TREO SESSION DO BẬT BROWSER SOI ẢNH ĐĨA (CRITICAL PITFALL 06/10/2026):**
@@ -308,6 +314,8 @@ Operate avatar-only changes on Taadaa TikTok farm devices without accidentally p
 - Closeout is not DONE until the device evidence, focused verification, and required reviewer gate are satisfied.
 
 ## References
+- `references/yae-miko-cosplay-cross-space-avatar-triage-20261010.md` — case study @darrellppere17 (M71 Tik 2), bẫy lệch niche do trích xuất nhầm kho thô 562 thay vì video gốc 151, lặp thẩm định Vision 3 phiên bản crop Yae Miko 8.8/10, đồng bộ 4 đầu kho, và bẫy chặn Hard Gate #5 cấm gõ keyevent ADB thủ công.
+- `references/mobile-telegram-aspect-ratio-and-avatar-media-delivery-20261010.md` — bẫy ảnh composite dẹt ngang (1280x560) bị letterboxing co rút trên Telegram mobile khiến Operator tưởng ảnh hỏng, quy chuẩn ưu tiên gửi trực tiếp file vuông gốc `avatar.jpg` (512x512) và xếp tầng dọc nếu so sánh.
 - `references/admin-cluster-media-root-drift-and-niche-reconciliation-20261010.md` — bẫy trôi đường dẫn kho media trên cụm Admin (`D:\TIKTOK-videonuoinick-admin` thay vì `TIKTOK-videonuoinick`), quy trình 4 bước chuẩn hoá khi nhận screenshot profile lẻ (định danh máy/slot, sửa workbook niche/hashtag, scp media sang Admin, và dựng composite 3 panel kiểm chứng Vision).
 - `references/mismatch-goc-stale-drift-and-day-tik-watchdog-gap-20261010.md` — bẫy 140 nick Tik 1 và Tik 2 Kibe bị kẹt cờ MISMATCH_GOC từ 02/10 do lệch không gian đánh số Folder Video vs video gốc, khoảng trống của Watchdog ca tối bỏ quên Tik 1 & 2 ca ngày, quy trình 3 bước đồng bộ dứt điểm (Excel + SQLite + đĩa) và kỷ luật MaxParallel 8 cho Kibe.
 - `references/mismatch-goc-drift-and-watchdog-tik-exclusion-20261010.md` — đối soát ground truth 140 acc dính MISMATCH_GOC từ 02/10 do lệch công thức kép bị watchdog ca tối bỏ quên vì exclude Tik 1 & Tik 2 Kibe; quy trình đồng bộ SQLite/Workbook và kích hoạt runner độc lập.
