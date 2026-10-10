@@ -14,9 +14,14 @@
 - Do thiếu cờ `--allow-parent-lock`, `tiktok_login_v1.py` phát hiện thiết bị đang bị lock bởi tiến trình cha và quăng `DeviceLockNeedsUserDecision`, dẫn đến `exit=2` ngay lập tức.
 - **Kỷ luật:** Mọi runner/watchdog cha khi gọi `tiktok_login_v1.py` BẮT BUỘC phải truyền `--allow-parent-lock` và đảm bảo tên project cha nằm trong whitelist `PARENT_LOCK_PROJECTS`.
 
-### B. Thiếu cổng Pre-login Live Check cho Gmail
+### B. Thiếu cổng Pre-login Live Check cho Gmail & Cạm bẫy "Gmail DIE = TikTok DIE" (P0 Warning)
 - Nếu tài khoản Gmail đã DIE hoặc bị mất phiên / dính Action Required, việc mở app TikTok, điều hướng đến form OTP và chờ lấy mã 150s sẽ gây lãng phí tài nguyên và làm kẹt màn hình máy farm.
 - Cần có cơ chế fail-fast: kiểm tra liveness của Gmail trước khi thực hiện bất kỳ thao tác UI nào.
+- 🚨 **CẠM BẪY PHÁN BỪA TÀI KHOẢN DIE (COORDINATOR TRIAGE TRAP - 2026-10-10)**:
+  * Tuyệt đối **CẤM ĐÁNH ĐỒNG "Gmail die = TikTok die"**!
+  * Rất nhiều tài khoản TikTok có **2FA Authenticator TOTP** (`twofa` key trong Excel) đã đăng ký từ trước. Khi đăng nhập, TikTok chỉ yêu cầu Password + 6 số TOTP sinh từ Authenticator app, **HOÀN TOÀN KHÔNG CẦN OTP GMAIL**.
+  * Khi đối soát hoặc thấy máy báo `ACCOUNT_MISSING`, Coordinator BẮT BUỘC kiểm tra: (1) Cột 2FA trong Master Excel có secret key không? (2) Bảng `snapshots` trong `tiktok_tracker.db` tài khoản có còn trạng thái `LIVE` không?
+  * Nếu tài khoản có 2FA và vẫn `LIVE` trên TikTok: Đây là tài sản có giá trị (tuổi cao, có sẵn video/followers), **CẤM TUYỆT ĐỐI phán nick die để reg nick mới đè lên**, mà phải ưu tiên đăng nhập khôi phục bằng TOTP.
 
 ---
 

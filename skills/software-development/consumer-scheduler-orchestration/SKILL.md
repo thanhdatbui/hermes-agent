@@ -539,6 +539,13 @@ Use `references/p1-harness-audit-gates.md` for a ready-to-apply checklist and re
 
 Các gotcha khi tạo job trên Hermes cron tool — đã dính và fix trực tiếp:
 
+- **Kỷ luật đóng vòng đăng ký cronjob cho tool audit/watchdog mới (2026-10-10):**
+  Khi phát triển bất kỳ công cụ đối soát, cảnh báo hoặc watchdog nào (như `audit_stale_upload_accounts.py`), Coordinator TUYỆT ĐỐI KHÔNG DỪNG LẠI ở bước viết script và unit test. Viết script xong mà không gọi `cronjob(action='create')` sẽ khiến công cụ bị 'chết trên đĩa' (không bao giờ tự động chạy, người dùng không nhận được cảnh báo định kỳ).
+  Quy trình đóng vòng bắt buộc:
+  1. Script phân tích lõi + unit test.
+  2. Headless wrapper tại `~/.hermes/scripts/cron_<name>.py` (chuẩn hóa output Telegram $\le 3800$ chars, exit 0 an toàn).
+  3. Đăng ký ngay qua `cronjob(action='create', ...)` với lịch chạy và kênh Telegram đích (nhóm Farm Alert `-5435853713` hoặc `-5373649734`).
+  4. Test chạy thử ngay 1 lần (`cronjob action='run'`) để kiểm chứng payload và trạng thái thành công.
 - **Script path PHẢI tương đối với `~/.hermes/scripts/`** — path tuyệt đối bị từ chối: `Script path must be relative to ~/.hermes/scripts/. Got absolute or home-relative path`. Pattern chuẩn: repo giữ logic (commit được), `~/.hermes/scripts/<launcher>.py` chỉ là cầu nối subprocess gọi repo script bằng python env đúng (thường `D:\Taadaa\python-envs\automation\Scripts\python.exe` — không dùng python mặc định của Hermes, repo script import `automation_core`).
 - **Schedule gotcha:** `1m` → job tạo ra là `once in 1m` (one-shot, KHÔNG lặp). `every 1m` cũng vẫn hiển thị `repeat: once`. Để lặp vô hạn phải dùng cron expression `*/1 * * * *` **VÀ** truyền `repeat=0` — thiếu `repeat=0` thì vẫn `once` dù schedule là cron expr. Luôn kiểm tra response trả về: phải thấy `"repeat": "forever"`.
 - **`no_agent=true` = watchdog im lặng:** script chạy mỗi tick, **stdout rỗng → không gửi gì**, stdout non-empty → gửi verbatim về origin chat. Dùng cho sync/check định kỳ: chỉ in khi CÓ thay đổi/lỗi, im lặng khi không có gì (không spam Telegram). Exit code != 0 kèm stdout = alert lỗi.
