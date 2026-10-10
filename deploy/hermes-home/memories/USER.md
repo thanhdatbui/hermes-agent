@@ -12,8 +12,8 @@ Kibe controller; 1 SoT. Cấm ngắt pipeline sau. Batch/2FA Kibe (1-80) & Admin
 §
 Dubbing: đúng tiếng, 100% thoại, tắt tiếng gốc.
 §
-Evidence: MEDIA: path '/'; form rõ chữ; OTP ĐÃ ĐIỀN; Logout modal; Canary=FULL FLOW live (đổi pass+2FA+signout+relogin KMSI đủ 5 ảnh); cấm acc khác.
+Evidence: MEDIA '/' form rõ chữ; OTP ĐÃ ĐIỀN; Logout modal; Canary=FULL FLOW live đủ 5 ảnh; cấm acc khác.
 §
-Farm: BẮT BUỘC lock trước khi can thiệp thiết bị (cấm adb trần, dùng with_device_lock); cấm reset khi lock; slot 255 trống; lỗi HW/BIOS ưu tiên; cấm báo online ảo; OTP thiếu gửi ảnh mail.
+Farm: Đủ 2 cụm Kibe(1-80)+Admin(201-280) tập trung CSDL/state. IP sticky nuôi Trust; 2 máy/IP chạy Wave 1 độc lập IP -> Cầu dao -> Wave 2. Lock with_device_lock; cấm reset khi lock.
 §
 Advisor Sol: qua consult_advisor.py (:20129); cấm mạo danh. Gate reject: Sol vá O(1); Strike 3 Claude CLI; gọi Claude CLI audit bế tắc điều phối.

@@ -12,8 +12,9 @@ Canonical TikTok follow runner. Chi tiết xem `references/`.
 - **Tài liệu tham khảo chuyên sâu (`references/`):**
     - `references/account-replacement-and-backfill-state-reset.md`: Kỷ luật reset state & bộ đếm video/follow khi thay nick die / reg bù — tránh bẫy kế thừa state cũ khiến nick mới bị cấp full budget đi follow sớm gây ban nick.
     - `references/fleet-follow-graduated-probation-ladder.md`: Bậc thang 3 nấc & Health-Tiered Reporting.
-    - `references/daily-follow-matrix-and-trust-ceiling-analytics.md`: Daily Matrix Heatmap, Trust Ceiling, FOLLOW_CONCURRENCY van (15-20), Sweet Spot Quota.
-    - `references/shared-ip-proxy-collision-and-canary-ceiling-testing.md`: Hiện trường trùng IP (1 IP : 2 Máy), bẫy dữ liệu cũ verify sai (31/08-01/09), số liệu chuẩn tháng 10 (70.6% vs 36.4%), hiện tượng ăn nhả dắt dây (cascading failure), giải pháp IP Circuit Breaker tự ngắt cứu nick, báo cáo chi tiết trong shift report Telegram, và chiến lược Canary Cohort 5-10% dò trần.
+    - `references/daily-follow-matrix-and-trust-ceiling-analytics.md`: Daily Matrix Heatmap, Trust Ceiling, FOLLOW_CONCURRENCY, Sweet Spot Quota.
+    - `references/shared-ip-proxy-collision-and-canary-ceiling-testing.md`: Hiện trường trùng IP (1 IP : 2 Máy), IP Circuit Breaker tự ngắt, báo cáo Telegram, Canary 5-10%.
+    - `references/wave-scheduling-and-multi-farm-unified-governance.md`: Wave 1 (độc lập IP) -> Cầu dao -> Wave 2; Vận hành đủ 2 cụm Kibe(1-80)+Admin(201-280) tập trung CSDL tiktok_tracker.db.
     - Case references: `references/case-ui-*.md`, `references/workflow-parity-*.md`, `references/fleet-follow-*.md`.
     - `references/case-ui-89-idempotent-session-actions-and-partial-follow-accounting.md`: Staging.
     - `references/case-ui-96-released-follow-invalidation-regardless-of-count.md`: Khấu trừ nhả follow.

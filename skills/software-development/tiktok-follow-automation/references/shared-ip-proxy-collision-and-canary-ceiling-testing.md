@@ -103,3 +103,21 @@ Toàn bộ 80 máy Kibe dùng 40 proxy (mỗi proxy 2 máy: `[M1, M39]`, `[M2, M
 * **Số nick active/ngày:** Tối đa **2 – 4 nick / IP**.
 * **Khoảng cách thời gian (Time Gap):** Tối thiểu **30 – 45 phút** giữa các máy chạy trên cùng IP.
 * **Trần tổng Follow / IP / 24h:** **Không quá 40 – 50 lượt** cho cả 2 máy cộng lại. Vượt quá ngưỡng này, tỷ lệ dính shadow-follow (F5 mất số) lên tới hơn 80%.
+
+---
+
+## 5. Điều Phối Nick Chung IP Khác Ca (Cross-Shift / Sáng-Chiều) & Switcher Đa Nick
+
+### A. Tình huống nghiệp vụ:
+Khi 1 nick bị TikTok nhả (`FOLLOW_FAILED`) ở ca trước (ví dụ ca sáng), nick khác dùng chung IP đó nhưng lên lịch chạy ở ca khác (chiều/tối, hoặc row khác trên cùng máy Switcher) thì có được chạy follow tiếp không?
+
+### B. Quy tắc vận hành chuẩn: HOÃN FOLLOW TOÀN BỘ ĐẾN HẾT NGÀY (23:59:59)
+1. **Phạm vi khóa của Circuit Breaker:** Bảng `ip_circuit_breaker` khóa theo `proxy_key` với `target_date = today` và `reset_at = 23:59:59`. Mọi ca chạy sau trong cùng ngày (bất kể khác máy hay cùng máy khác row) khi gọi `check_ip_breaker()` đều nhận cờ `TRIPPED` và tự động safe-skip.
+2. **Cơ sở kỹ thuật (Taint Window 24h):**
+   - TikTok cắm cờ nghi vấn theo bộ ba `[Hardware ID + IP/Subnet + Pattern]`. Cửa sổ phạt không hết sau vài tiếng.
+   - **Kịch bản khác máy chung IP (Cặp proxy song sinh, ví dụ M14 & M52):** Tỷ lệ nhả khi chạy đôi cùng IP trong ngày là 70.6%. Ca sáng đã gãy thì ca chiều lao vào follow sẽ tiếp tục ăn nhả ngay lượt đầu (0 follow) và dính án phạt Cooldown 3–15 ngày.
+   - **Kịch bản cùng máy Switcher (8 nick/máy, sáng Nick A, chiều Nick B):** Mức độ rủi ro tối đa vì trùng cả IP lẫn Hardware ID. TikTok sẽ dễ dàng liên kết và quét trảm chùm nick clone trên thiết bị.
+3. **Cơ chế bảo vệ nick ca sau:**
+   - **Trạng thái ghi nhận:** `CIRCUIT_BREAKER_SKIPPED` (`failed=False`, `follow_failed=False`). Nick không bị tính lỗi, không tăng `fail_streak`, không bị gán cooldown.
+   - **Chuyển đổi công năng sang Dưỡng Sinh (Feed / Read-only):** Cấm đi follow (hành vi write nhạy cảm), nhưng ĐƯỢC PHÉP chạy phiên lướt nuôi dưỡng sinh (xem video, tương tác nhẹ). Hành vi này vừa an toàn vừa giúp "rửa IP" bằng lưu lượng người dùng tự nhiên.
+   - **Báo cáo Telegram (User Invariant):** Liệt kê rõ trong shift report: `⚡ Cầu dao tự ngắt IP: Đã khóa cứu nick M<B> (do M<A> cùng IP dính nhả từ ca sáng)`.

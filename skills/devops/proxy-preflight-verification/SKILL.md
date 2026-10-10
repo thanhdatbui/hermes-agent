@@ -411,3 +411,15 @@ See `references/adb-disconnect-vs-missing-proxy-preflight-20261009.md` for disti
       * Chuẩn hóa parser `inspect_machine.py` hỗ trợ tiền tố `M<N>` (`M204` -> `204`).
       * Không chỉ giải thích hiện trường mà BẮT BUỘC rà soát lỗ hổng timeout/retry của runner để vá triệt để trước khi báo resume.
     - Chi tiết xem `references/dual-cluster-batch-alert-adb-timeout-and-pppoe-renegotiation-20261010.md`, `references/scheduled-reboot-window-collision-and-adb-probe-timeout-20261010.md`, và `references/batch-alert-code-hardening-anti-complacency-20261010.md`.
+
+34. **Lệch Cấu Hình Dải Cổng Farm Admin M201-M280 Vượt Ngưỡng 40 Port MikroTik (2026-10-10)**:
+    - **Hiện tượng**: Farm Alert diện rộng trên cụm Admin (M201–M280) ghi nhận 24 máy đồng loạt fail-closed với signature `proxy server port is closed/refused for <serial>`. Điểm đặc trưng: 100% máy lỗi đều có số máy `>= 241` (M241-M250, M253, M254, M256-M262, M264, M271-M273, M280). Các máy M201-M240 hoàn toàn không bị lỗi này.
+    - **Bản chất nguyên nhân**:
+      1. Trên thiết bị Android, cài đặt `settings get global http_proxy` trước đó bị gán nhầm theo công thức 1:1 (`port = 10000 + M - 200` $\rightarrow$ gán dải `10001..10080`).
+      2. Router MikroTik x86 (`192.168.110.2`) thực tế chỉ cấu hình tối đa **40 đường PPPoE (cổng 10001..10040)**. Các cổng từ `10041` đến `10080` hoàn toàn KHÔNG tồn tại và trả về `Connection Refused` (`10035`).
+      3. Hàm `_proxy_server_live` ưu tiên đọc proxy active trên máy. Với M201-M240, socket probe tới cổng 10001-10040 PASS. Với M241-M280, socket probe tới cổng 10041-10080 bị từ chối và kích hoạt fail-closed `<= 1.5s` để chống Direct IP Leak.
+    - **Quy trình phục hồi O(1)**:
+      * File mapping chuẩn `D:\OneDrive\TaadaaData\admin\PROXYgandienthoai.xlsx` đã gom ghép các máy Admin vào dải cổng `10008..10035` (2–3 máy / port).
+      * Canary M241: Gán `192.168.110.2:10021`, probe socket PASS, verify egress qua `atx-agent curl` ra đúng public IP Viettel PPPoE (`171.231.188.208`).
+      * Fleet Recovery: Chạy `ssh admin-farm "powershell -Command \"python -u D:/Taadaa/AI-Tools/scripts/set_proxy_farm_admin_adb.py\""` để tự động cập nhật dải cổng chuẩn `10008..10035` cho toàn bộ máy online và tắt captive portal.
+      * Chi tiết xem `references/admin-s7-port-40-boundary-desync-triage-20261010.md`.

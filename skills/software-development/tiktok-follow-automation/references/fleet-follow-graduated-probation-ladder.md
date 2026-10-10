@@ -102,3 +102,25 @@
   - **Link trực tiếp đến profile TikTok (USER INVARIANT):** Trên mỗi thẻ nick, `@username` BẮT BUỘC phải là link `<a>` (`href="https://www.tiktok.com/@username" target="_blank"`) kèm icon `↗` và `📈` để người dùng chạm vào là bung ngay ra trang cá nhân của nick đó trên TikTok, giống như ngoài Dashboard chính. Tuyệt đối cấm để username dạng text tĩnh không click được.
   - Tích hợp ô tìm kiếm nhanh (theo số máy `m1`, `18` hoặc `username`).
   - **Deduplication:** Tự động lọc bỏ các file state legacy không có `_row_` (như `follow_state_1.json`) để không bị duplicate dòng hiển thị trên Dashboard.
+
+---
+
+## 5. Đối Soát Số Liệu Dashboard: Phân Biệt "Đã Follow (Delta)" vs "🔗 Nội Bộ"
+
+### A. Bản chất kỹ thuật của 2 chỉ số:
+- **`ĐÃ FOLLOW: X (+Y)` (`delta_following`):**
+  - Số liệu thực tế cào từ profile công khai TikTok qua snapshot mới nhất.
+  - Hiệu số `+Y` phản ánh **tổng biến động thực tế** của following trên TikTok giữa 2 lần quét: `delta_following = following_hien_tai - following_snapshot_truoc`.
+  - Bao gồm TẤT CẢ các hành vi follow: follow chéo nội bộ, follow tự nhiên khi lướt feed, follow kênh idol / kênh niche theo kịch bản nuôi.
+- **`🔗 Nội bộ: +Z` (`internal_followed`):**
+  - Số liệu telemetry ghi nhận từ các script kịch bản (`feed_session_watchdog` / `run_follow`) được lưu vào bảng `session_account_actions` và tổng hợp ở `daily_account_actions` trong `tiktok_tracker.db`.
+  - Chỉ đếm các lượt **follow chéo giữa các tài khoản nội bộ farm** theo `target_date = max_dt`.
+
+### B. Giải mã hiện tượng Following tăng (+12, +2...) nhưng "🔗 Nội bộ: +0":
+1. **Follow tự nhiên ngoài luồng chéo (Natural / Niche Follows):**
+   - Khi chạy ca lướt nuôi nick (`feed_session`), kịch bản bấm follow các video/kênh hot hoặc tài khoản gợi ý bên ngoài để tăng trust account và định hình niche.
+   - Các lượt này làm tăng số Following trên TikTok (`delta_following` dương), nhưng không thuộc danh sách đối soát follow chéo chùm nick nội bộ farm.
+2. **Lệch mốc thời gian / Chưa có phiên chéo trong ngày:**
+   - Dashboard lấy `internal_follows` theo ngày của snapshot mới nhất (`target_date = max_dt`).
+   - Nếu ngày đó mới chỉ chạy ca lướt đêm/sáng sớm (`internal_follows = 0`), hoặc nick không thuộc danh sách phân bổ chạy follow chéo của ngày (ví dụ ca follow chia theo ngày chẵn/lẻ hoặc chỉ phân bổ cho 1 nhóm máy nhất định), hệ thống trả về giá trị mặc định `+0`.
+   - Kết luận: Khi thấy Following tăng mà Nội bộ +0, tài khoản hoàn toàn khỏe mạnh và đang tăng follow tự nhiên ngoài luồng chéo, không phải lỗi hệ thống hay nhả follow.
