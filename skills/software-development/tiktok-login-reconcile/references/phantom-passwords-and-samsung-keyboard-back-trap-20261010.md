@@ -41,4 +41,10 @@ python D:/Taadaa/Tiktok_Reg/tiktok_login_v1.py <STT> --email <ID_HOAC_EMAIL> --o
 ## 4. Bẫy Samsung Keyboard Dismiss Gây Văng Ra Launcher
 - **Triệu chứng:** Runner fail với lỗi `STOPPED: [06_email_option] Không tìm thấy: Email / icon email`, dump UI cho thấy máy đang ở màn hình Home (`LauncherActivity`).
 - **Nguyên nhân:** Trong hàm `dismiss_samsung_keyboard_tutorial()`: Khi kiểm tra thấy chuỗi package `"com.sec.android.inputmethod"` trong UI XML mà gửi mù `keyevent 4` (phím BACK), thiết bị Samsung S7 sẽ thoát khỏi TikTok ra ngoài màn hình chính. Package bàn phím Samsung thường trú thường xuyên trong system dump, không đồng nghĩa với tutorial popup đang hiển thị.
-- **Khắc phục:** Không gửi `keyevent 4` trừ khi có marker tutorial/skipButton rõ ràng, và luôn kiểm tra foreground package phải là TikTok (`com.ss.android.ugc.trill`) sau thao tác dismiss.
+- **Khắc phục:** Không gửi `keyevent 4` trừ khi có marker tutorial/skipButton rõ ràng. Package `com.sec.android.inputmethod` tự nó chỉ là bàn phím đang chạy, không chứng minh tutorial đang hiện. Focused regression check: generic keyboard-package XML phải trả `False` và không gọi shell/BACK; XML có `skipButton` mới được phép BACK. Sau live action, kiểm tra foreground vẫn là TikTok (`com.ss.android.ugc.trill`) trước bước kế tiếp.
+
+## 5. Hotmail token-first OTP recovery
+- Kiểm tra token Graph bằng `hotmail_provider.resolve_graph_credentials(email)`; không log refresh token, client ID, mail password hoặc OTP.
+- Nếu có credentials, production reader phải gọi `read_tiktok_otp_from_graph_token(device, email, stt=...)`. Hàm nhận mailbox identity và tự resolve credentials; không truyền refresh token như positional `device`/`email` nhầm lẫn.
+- Chỉ fallback sang Outlook app khi không có token hoặc Graph reader thất bại. Token test chỉ chứng minh mailbox đọc được; phải áp dụng freshness/new-message guard và không dùng code cũ cho một attempt mới.
+- Trước live retry phải kiểm tra exact machine/serial lock. Nếu lock thuộc batch khác, ghi owner project/PID và dừng; không giật lock, không force-stop owner. Chỉ rerun `--otp-only --ss` sau khi lock được nhả sạch.
