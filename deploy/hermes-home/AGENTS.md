@@ -1747,3 +1747,14 @@ Sự cố tham chiếu: proxy08 502 → Coordinator bỏ task 2FA của user 3h2
    - CẤM luôn các hành vi tương đương: `pm clear` TikTok, gỡ app, xóa cache phiên.
 4. **Gặp nick không có trong Excel:** Đóng băng máy (dừng automation) -> Chụp ảnh & OCR -> Ghi `unrecorded_assets_incident.jsonl` -> Truy vết backup Excel và log Reg/nuôi -> BÁO CÁO USER & CHỜ CHỈ ĐẠO. Tuyệt đối không có timeout nào cho phép tự xử lý.
 5. **Code Guard:** Mọi logout BẮT BUỘC phải đi qua `logout_guard.py` và `do_logout_account.py`. Cấm viết đường logout khác. Cấm bắt `LogoutForbidden` rồi bỏ qua.
+
+<!-- CREDENTIAL-ISOLATION-POLICY:START -->
+## KỶ LUẬT ĐỘC LẬP CREDENTIAL (CẤM ĐÈ PASS CHATGPT/TIKTOK BẰNG PASS MAIL)
+- **Độc lập dịch vụ:** Hotmail/Gmail, ChatGPT, và TikTok là 3 hệ thống/dịch vụ hoàn toàn riêng biệt.
+  * Cột 4 (`PASS`): Mật khẩu tài khoản TikTok.
+  * Cột 7 (`PASS MAIL`): Mật khẩu hòm thư Hotmail/Gmail.
+  * Cột 12 (`PASS CHATGPT`): Mật khẩu tài khoản ChatGPT.
+- **CẤM TỰ TIỆN SUY DIỄN / ĐỒNG BỘ CHÉO:** Dù trong quá khứ các cột có cùng mang một giá trị thì khi tìm lại, khôi phục hoặc đổi `PASS MAIL`, TUYỆT ĐỐI CẤM tự ý ghi đè hay đồng bộ sang Cột 12 `PASS CHATGPT` hoặc Cột 4 `PASS` TikTok.
+- **Quy tắc thao tác an toàn:** Mọi tác vụ xử lý mail (đổi pass, tìm pass đơn hàng BoxTaiKhoan, forgot password) CHỈ ĐƯỢC PHÉP ghi vào Cột 7 (`PASS MAIL`). CẤM chạm vào Cột 12 `PASS CHATGPT` trừ khi có lệnh đích danh từ User yêu cầu đổi/cập nhật mật khẩu ChatGPT.
+- *Quy tắc này phục vụ an toàn dữ liệu credential, KHÔNG dùng để từ chối hoặc trì hoãn việc sửa lỗi khi được yêu cầu.*
+<!-- CREDENTIAL-ISOLATION-POLICY:END -->
