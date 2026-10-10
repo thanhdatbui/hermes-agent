@@ -46,12 +46,23 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
 - **Tác động của số lượng Worker song song (`MaxWorkers`):**
   * Mặc định `MaxWorkers = 40` khiến 40 máy cùng bắn command ADB (heartbeat, am start, dump window, logcat) dồn dập vào 2 chip USB 2.0 (băng thông trần 35 MB/s).
   * Sau 10–20 phút, hiện tượng lệch pha thời lượng video (Phase Drift) tạo ra các đợt microframe congestion gây rớt gói tin trên nhánh cáp dài/yếu (Box 4).
-  * **Hạ `MaxWorkers` từ 40 xuống 20–25 workers:**
-    - Giảm 40–50% xung nhịp I/O trên bus USB 2.0, hạn chế tối đa rớt gói tin microframe trong phiên nuôi.
-    - Thời lượng ca nuôi 80 máy tăng từ 35–40 phút lên 60–70 phút, vẫn nằm trọn vẹn trong cửa sổ ca 2 tiếng an toàn.
+  * **Hạ `MaxWorkers` từ 40 xuống 25 workers (`run-feed-session.ps1`):**
+    - Giảm 40% xung nhịp I/O trên bus USB 2.0, hạn chế tối đa rớt gói tin microframe trong phiên nuôi.
+    - Thời lượng ca nuôi 80 máy tăng từ 35–40 phút lên ~60 phút, vẫn nằm trọn vẹn trong cửa sổ ca 2 tiếng an toàn.
   * **Kết hợp kép:** Reset máy trước ca (làm sạch 100% máy xanh) + Giảm worker (chống nghẽn trong ca) là bộ giải pháp vận hành tối ưu nhất.
 
-## 3. Quy Tắc Safe Preflight Reset (Bảo Vệ Device Locks & Backoff Logic)
+## 4. Kiến Trúc Tự Động Hóa Reboot Đầu Ngày (Daily Safe Reboot 05:30 Sáng)
+- **Nguồn repo quản lý (SSOT):** `D:\Taadaa\tools\services\Taadaa_Service\farm_preflight_daily_reset.py`
+- **Vị trí triển khai trên Host:** `C:\Taadaa_Service\farm_preflight_daily_reset.py`
+- **Task Scheduler:** `Taadaa_Farm_Daily_Reboot_0530` (đăng ký chạy Daily lúc đúng 05:30:00 sáng tại Dead Zone 03:00 - 05:59 trước Ca 1).
+- **Quy trình tự động song song (Silent Watchdog — không gửi tin nhắn rác Telegram):**
+  1. Kiểm tra an toàn: Quét `~/.codex/device-locks`. Nếu có $\ge 1$ máy bận lock $\rightarrow$ **HỦY REBOOT NGAY**.
+  2. Nếu 0 active lock: Gọi SSH sang Admin PC ra lệnh `shutdown /r /t 2`.
+  3. Chờ 3 giây cho SSH đóng socket sạch sẽ, kích hoạt lệnh local trên Kibe PC: `shutdown /r /t 5`.
+  4. Cả 2 máy tính đều đã có `AutoAdminLogon = 1` $\rightarrow$ Tự động vào thẳng Desktop sau ~60 giây, các Task Scheduler tự khởi chạy lại ADB Server và Hermes Gateway.
+  5. Ghi log lịch sử tại `C:\Taadaa_Service\daily_reset.log`.
+
+## 5. Quy Tắc Safe Preflight Reset (Bảo Vệ Device Locks & Backoff Logic)
 - **Nguồn repo quản lý (SSOT):** `D:\Taadaa\tools\services\Taadaa_Service\safe_usb_guard.py`
 - **Vị trí triển khai trên Host:** `C:\Taadaa_Service\safe_usb_guard.py` (Script nguồn mẫu lưu tại `scripts/safe_usb_guard.py`).
 - **Nguyên tắc an toàn tối thượng:**

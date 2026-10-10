@@ -21,6 +21,13 @@ Khi chốt phiên trong các repository có các cronjob tự động ngầm (v�
          * *CẠM BẪY NGHIÊM TRỌNG CẦN TRÁNH:* Nếu chỉ stage toàn file non-code (`.md`, `.json`), Gate không tìm thấy file Python mục tiêu nên sẽ fallback quét **TOÀN BỘ thư mục `tests/`** (hàng chục test files) dẫn đến **Timeout 120s**. Đồng thời cờ `--skip-test` bị cấm tuyệt đối ở `--repo` mode (`FATAL: --skip-test is forbidden in repo mode!`).
          * *Cách xử lý chuẩn:* BẮT BUỘC ghép kèm 1 file focused test chạy nhanh (< 5s, ví dụ `tests/test_*.py` liên quan) vào dải `--files` của batch docs/data để Gate chạy focused test đó thay vì quét toàn bộ repository.
        *Lợi ích:* Vừa vượt qua ngưỡng 30KB của Closeout Gate, vừa đảm bảo focused test chạy dưới 5s không bao giờ bị timeout.
+     * **CẠM BẪY COMMIT HOOK & R5 SELECTOR GUARD TRONG DOCS:**
+       - Trong repository Taadaa, hook `pre-commit` tự động chạy `guard_selector_change.py --cached`.
+       - Nếu sửa đổi `docs/farm-automation-cases.md`, rule R5 bắt buộc trong đoạn text thêm mới (`+`) phải có đủ 3 trường:
+         `Layout:`, `Fixture:`, và `Anti-pattern:` (chính xác từng ký tự hoa/thường).
+       - Nếu thiếu hoặc viết hoa sai (ví dụ `Anti-Pattern:` thay vì `Anti-pattern:`), commit sẽ bị chặn cứng với lỗi:
+         `SELECTOR_GUARD REJECT: R5: Mục case mới trong docs/farm-automation-cases.md thiếu trường bắt buộc...`
+       - Đồng thời, khi nộp review Closeout Gate cho batch chỉ có docs/cases, reviewer Sol High có thể chấm trượt nếu chỉ thấy text tài liệu mà không thấy diff code tương ứng. Bắt buộc ghi rõ trong phần mô tả case các commit ID implementation đã được merge trước đó (ví dụ: `scripts/manual_avatar_guard.py (commit 7fda746)`), và bổ sung assertions kiểm thử telemetry runtime để đáp ứng đủ tiêu chí scorecard của reviewer.
      * **Phương án B — Rút gọn Docstrings O(1) (Khi 1 file đơn lẻ vượt trần):**
        Nếu riêng 1 file code/test đã sát ngưỡng 30KB:
        - Rút gọn các chuỗi docstrings dài dòng, comment giải thích rườm rà ở đầu file và các test docstrings.
