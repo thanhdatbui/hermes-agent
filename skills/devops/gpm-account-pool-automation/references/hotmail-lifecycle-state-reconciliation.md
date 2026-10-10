@@ -34,17 +34,24 @@ if ch_tracker_path.is_file():
         pass
 ```
 
-## 4. Kiểm chứng hình ảnh lỗi Hotmail Login (Gate 6 OCR)
+## 4. Kiểm chứng hình ảnh lỗi Hotmail Login & Chống bẫy đổ lỗi nguồn bán (Gate 6 OCR)
 - Khi Hotmail login báo fail: Không đoán mò lỗi proxy hay code.
 - Dùng WinRT OCR đọc ảnh `outputs/screenshots/post_login_*.png`.
-- Nếu có dòng `"Mật khẩu đó không đúng với tài khoản Microsoft của bạn"`: Xác nhận lỗi SAI MẬT KHẨU từ nguồn bán, duy trì cooldown 48h để bảo vệ dải IP, không retry mù.
+- Nếu có dòng `"Mật khẩu đó không đúng với tài khoản Microsoft của bạn"`:
+  * **CẤM TUYỆT ĐỐI kết luận vội là lỗi mật khẩu từ shop bán** nếu chưa kiểm tra giá trị thực tế truyền vào form đăng nhập!
+  * **Cạm bẫy Fallback nhầm Pass dịch vụ khác (Cross-Service Fallback Trap)**: Nếu tài khoản đã từng nhận OTP reg TikTok hoặc dịch vụ khác thành công mà login Hotmail web báo sai pass, nguyên nhân hàng đầu là **code lấy nhầm Pass TikTok (cột PASS) thay vì Pass Mail (cột PASS MAIL)** do fallback tai hại `info.get("mail_password") or info.get("password")`.
+  * **Cạm bẫy State Desynchronization**: Kiểm tra xem state supervisor có bị giữ `mail_password` rỗng không được refresh từ Master Excel (`taikhoan_dat_v2_updated .xlsx`) hay không.
+  * Chỉ khi đã xác minh 100% mật khẩu truyền vào form khớp đúng chuỗi ở cột `PASS MAIL` trong Master Excel mà Microsoft vẫn từ chối thì mới kết luận là sai mật khẩu gốc, và duy trì cooldown 48h để bảo vệ dải IP.
 
 ## 5. Truy vết tài khoản sai mật khẩu gốc (Root Cause & Procurement Forensics)
-Khi phát hiện hàng loạt tài khoản báo sai mật khẩu ngay từ bước `HOTMAIL_LOGIN`, thực hiện quy trình điều tra 3 bước:
-1. **Xác minh lịch sử đổi pass (`hotmail_changed_tracker.json`)**:
-   - Nếu email vắng mặt trong `changed_emails` và supervisor state vẫn là `HOTMAIL_LOGIN` (`history: []`, `hotmail_login_at: None`): Khẳng định tài khoản **CHƯA TỪNG ĐỔI PASS**, lỗi mật khẩu xuất phát từ lúc nhập kho ban đầu.
-2. **Truy xuất đơn hàng & file Master (`taikhoan_dat_v2_updated .xlsx`)**:
+Khi phát hiện tài khoản báo sai mật khẩu ngay từ bước `HOTMAIL_LOGIN`, thực hiện quy trình điều tra 4 bước:
+1. **Kiểm tra tính logic nghiệp vụ (Cross-Service Reality Check)**:
+   - Nick đã reg TikTok hoặc nhận OTP thành công chưa? Nếu đã reg TikTok thành công, kiểm tra ngay mapping mật khẩu giữa cột `PASS` (TikTok) và cột `PASS MAIL` (Hotmail) trong Master Excel và state supervisor.
+2. **Kiểm tra tính toàn vẹn của State Supervisor**:
+   - Đối chiếu trường `mail_password` trong file state với cột `PASS MAIL` của Excel. Đảm bảo hàm `load_state()` luôn đồng bộ `mail_password` từ Excel vào state, và tuyệt đối cấm fallback sang `password` TikTok khi login Hotmail.
+3. **Xác minh lịch sử đổi pass (`hotmail_changed_tracker.json`)**:
+   - Nếu email vắng mặt trong `changed_emails` và supervisor state vẫn là `HOTMAIL_LOGIN` (`history: []`, `hotmail_login_at: None`): Khẳng định tài khoản **CHƯA TỪNG ĐỔI PASS**.
+4. **Truy xuất đơn hàng & file Master (`taikhoan_dat_v2_updated .xlsx`)**:
    - Tra cứu vị trí Row, số Máy, Folder video, ID TikTok và mật khẩu gốc cột `PASS MAIL`.
    - Đối chiếu ngày nhập/ngày tạo: Các tài khoản Hotmail thường mua tự động từ shop `boxtaikhoan.com` (Loại 1 GraphAPI 262đ hoặc Loại 2 OAuth2 393đ qua API key `a0ed850f635d5c7042e89f68b41476bb`).
-3. **Đánh giá hạn bảo hành của Shop**:
-   - Chính sách bảo hành sai pass của shop là **24 giờ** kể từ lúc mua (đơn hàng tự xóa sau 3 ngày). Nếu tài khoản đã mua từ 1–2 tháng trước phục vụ reg TikTok qua điện thoại thì đã hết hạn bảo hành; không thể khiếu nại shop. Cần đánh dấu cách ly hoặc thay thế mail mới khi cần nuôi web/Codex.
+   - Đánh giá hạn bảo hành của Shop: Chính sách bảo hành sai pass của shop là **24 giờ** kể từ lúc mua (đơn hàng tự xóa sau 3 ngày). Nếu tài khoản mua từ 1–2 tháng trước phục vụ reg TikTok qua điện thoại thì đã hết hạn bảo hành; không thể khiếu nại shop. Cần đánh dấu cách ly hoặc thay thế mail mới khi cần nuôi web/Codex.

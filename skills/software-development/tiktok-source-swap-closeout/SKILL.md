@@ -103,6 +103,8 @@ If the process is still running, report `RUNNING` with the exact log path and do
   Khi tiến trình render worker nền (`run_kibe_render_worker.py`) đang chạy, nếu workbook `Tik<N>.xlsx` có `video gốc` khác `Folder Video` (ví dụ `video gốc: 622`, `Folder Video: 496`), worker nền sẽ quét thấy thiếu clip thành phẩm và âm thầm render từ `video gốc` cũ vào `Folder Video`, gây lỗi `PermissionError [WinError 32]` khóa file `*.mp4`. Khi swap nguồn, BẮT BUỘC cập nhật ngay trong workbook: `video gốc = Folder Video`, `Keyword Video` đúng ngách mới, và bảo lưu `Video Đã Đăng` trước khi render.
 - **MikroTik Proxy Timeout & Direct Failover trong Swap Pipeline:**
   Khi mạng proxy LAN (MikroTik port 10001-10035) bị rớt port hoặc timeout bắt tay, yt-dlp sẽ treo hoặc fail tải video. Đặt biến môi trường `set "NO_PROXY_OVERRIDE=1"` trong launcher `.bat` để pipeline ưu tiên fallback trực tiếp về Direct IP tốc độ cao, đảm bảo tiến trình tải hoàn tất liên tục mà không bị nghẽn mạng.
+- **Bẫy Schema 13 cột trong bảng `videos` của `state.db`:**
+  Khi insert bản ghi vào `videos`, schema yêu cầu đúng 13 cột: `(video_id, source_url, platform, niche, source_channel, uploader, view_count, language, language_score, status, folder, checked_at, output_path)`. Thiếu cột sẽ ném `OperationalError: 12 values for 13 columns`. Chi tiết xem `references/clean-wipe-and-hot-niche-reconciliation-20261010.md`.
 
 See `references/source-swap-closeout-evidence.md` for reusable query patterns and an evidence template.
 See `references/tiktok-secuid-playlist-extraction-and-interleaved-purge-20261009.md` for TikTok sec_uid playlist scraping bypass, legacy database tracing, and interleaved bad video purge with start_seq cursor preservation.
@@ -110,3 +112,4 @@ See `references/state-db-codexruntime-path-and-historical-pre-sept11-audit-20261
 See `references/tiktok-secuid-bypass-and-render-worker-drift-20261009.md` for TikTok sec_uid playlist bypass, background render worker collision triage, and device lock anti-collision.
 See `references/interleaved-niche-drift-recovery-and-secuid-crawl-protocol-20261009.md` for interleaved niche drift recovery, historical state.db tracing, three-tier dedup protocol, and device-lock safe avatar upload verification.
 See `references/partial-crawl-topup-and-explicit-clean-old-20261010.md` for explicit full-replacement handling, partial crawl top-up, source-ID deduplication, and hashtag synchronization.
+See `references/clean-wipe-and-hot-niche-reconciliation-20261010.md` for clean wipe discipline, top-up continuation, 13-column state.db schema, and avatar-only verification.
