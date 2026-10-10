@@ -146,6 +146,11 @@ with sync_playwright() as p:
   - Định dạng data trả về: `Email|Password|Refresh Token|Client ID|Recovery Email`.
   - Tool mua tự động chuẩn: `D:\Taadaa\tools\buy_hotmail.py` (đồng bộ sang `AI-Tools` và `Hotmail`) hiện đặt CloneFBIG làm default provider, tự động duyệt `categories -> products` qua `/api/products.php` để lấy tồn kho, trích xuất `recovery_email` và nạp vào cột 5 của `gmail_clean_v2.xlsx`. Có cờ chuyển provider: `--provider clonefbig` hoặc `--provider boxtaikhoan` (ID 129).
 
+- **Tra cứu đơn hàng BoxTaiKhoan (`boxtaikhoan.com`) & Bẫy ngộ nhận banner "chỉ lưu 3 ngày" (Cập nhật 2026-10-10)**:
+  - *Bẫy banner tĩnh*: Đầu trang web `boxtaikhoan.com` có dòng thông báo *"Lưu ý: Đơn hàng chỉ lưu trữ trong 3 ngày"*. CẤM TUYỆT ĐỐI tin vào banner tĩnh này mà vội vã báo User là đơn cũ đã bị xóa! Thực tế backend BoxTaiKhoan vẫn lưu nguyên vẹn toàn bộ lịch sử (hàng trăm đơn hàng qua nhiều tháng).
+  - *Cách tra soát chuẩn*: Dùng Chrome `Profile 3` (tên "đạt" - `thanhdatbui1995@gmail.com` chứa session thật) truy cập `https://boxtaikhoan.com/product-orders`. Lật phân trang (`?page=N`) hoặc nhảy về các trang cũ (trang 14-17) theo mốc thời gian mua hàng.
+  - *Bóc tách dữ liệu gốc*: Mở chi tiết đơn hàng (`/product-order/<order_id>`) để trích xuất định dạng gốc sàn bàn giao: `email|password_gốc|token|client_id`. Đối chiếu mật khẩu gốc từ shop thay vì đoán mò khi tài khoản báo sai pass.
+
 - **Đánh giá nguồn Mail dongvanfb.net (Cập nhật 2026-09-21)**:
   - *Kiến trúc & API*: Frontend Nuxt/Vue, API public `https://api.dongvanfb.net/api/products_lists` (dùng để kiểm tra real-time danh mục, tồn kho và giá mà không cần API key). Mua hàng qua API `GET https://api.dongvanfb.net/user/buy?apikey=<KEY>&account_type=<ID>&quality=<QTY>&type=full`.
   - *Định dạng token*: Trả về `email|password|refresh_token|client_id` (hỗ trợ đọc qua Microsoft Graph API / OAuth2).

@@ -102,6 +102,7 @@ A valid acceptance sequence is:
 5. Do not report `DONE` from adapter status alone. If only the adapter canary passes, report `adapter PASS; orchestration canary pending`.
 
 See `references/dual-answer-canary.md` for the concrete evidence matrix and failure classifications.
+See `references/claude-cli-investigation-root-cause-drift-20261010.md` for Claude CLI investigation on why soft prompt rules fail (prompt attenuation & guard blindness to text responses) and mechanical auto-append hook architecture.
 See `references/claude-cli-investigation-sol-webpool-hard-enforcement-20261010.md` for Claude CLI investigation on Sol-WebPool naming collision (`gpt-5.6-sol` vs `gpt-web-sol`), 115 accounts web pool verification, and `D:/Taadaa/tools/consult_advisor.py` hard enforcement.
 See `references/pure-sol-discipline-and-clean-fail-20261010.md` for the Operator policy: pure Sol route only (:20129 review), timeout >= 45s, clean fail to unavailable without messy Gemini/9Router fallbacks.
 See `references/claude-cli-review-loop-and-mechanical-advisor-enforcement.md` for the 4-round Claude CLI review progression (62 -> 72 -> 86 -> 91 APPROVED), 3-tier fallback architecture, leak-proof redaction engine, and classifier edge cases.

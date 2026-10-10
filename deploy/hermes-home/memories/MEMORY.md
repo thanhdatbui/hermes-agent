@@ -21,3 +21,5 @@ Giao tiếp: gọi 'tên nick TikTok', cấm handle. Hotmail: reset OTP thanhdat
 Farm Proxy/WiFi: MikroTik 40 PPPoE 10001-10040 (M241-280 cấm >10040, cấm mượn IP Farm). Watchdog check Wi-Fi/inspect, cấm lạc OmniRoute. Aruba: M1-40 'kibe 1'; M41-80 'kibe 2', Admin 'admin 1/2'; cấm SSID Dat. X99: cấm xHCI, 4 Box, adb Sem 8.
 §
 adbjoinwifi tự cứu 2 cấp preflight khi rớt Wi-Fi; xóa lạ: service call wifi 14 i32 <id>. ADB: cấm lệnh trần, bọc with_device_lock.py; verify kernel CreationDate.
+§
+Credential: Cột 7 PASS MAIL độc lập Cột 12 PASS CHATGPT; cấm tự ý đè chéo khi đổi/tìm pass.
