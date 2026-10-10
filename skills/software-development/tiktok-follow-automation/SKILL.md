@@ -15,6 +15,7 @@ Canonical TikTok follow runner. Chi tiết xem `references/`.
     - `references/daily-follow-matrix-and-trust-ceiling-analytics.md`: Daily Matrix Heatmap, Trust Ceiling, FOLLOW_CONCURRENCY, Sweet Spot Quota.
     - `references/shared-ip-proxy-collision-and-canary-ceiling-testing.md`: Hiện trường trùng IP (1 IP : 2 Máy), IP Circuit Breaker tự ngắt, báo cáo Telegram, Canary 5-10%.
     - `references/wave-scheduling-and-multi-farm-unified-governance.md`: Wave 1 (độc lập IP) -> Cầu dao -> Wave 2; Vận hành đủ 2 cụm Kibe(1-80)+Admin(201-280) tập trung CSDL tiktok_tracker.db.
+    - `references/dashboard-follow-reconcile-race-condition.md`: Chẩn đoán lệch pha crawler snapshot (07:04) vs ca chốt sổ (07:35) khiến dashboard báo Following +N nhưng Nội bộ +0; quy trình đối soát follow_result.json vs daily_account_actions.
     - Case references: `references/case-ui-*.md`, `references/workflow-parity-*.md`, `references/fleet-follow-*.md`.
     - `references/case-ui-89-idempotent-session-actions-and-partial-follow-accounting.md`: Staging.
     - `references/case-ui-96-released-follow-invalidation-regardless-of-count.md`: Khấu trừ nhả follow.
@@ -28,8 +29,8 @@ Canonical TikTok follow runner. Chi tiết xem `references/`.
 
 - **Tài liệu tham khảo chuyên sâu:**
   - `references/targeted-post-session-follow-reconciliation.md`: Kiến trúc đối soát Following 2 tầng (UI vs Server Profile Scrape Delta), quy trình trigger cào targeted qua pool 67 proxy và đối chiếu báo cáo Telegram.
-  - `references/case-ui-75-optimistic-ui-follow-cache-and-split-dex-safeguard.md`: Case UI-75 Bẫy Optimistic UI Follow Giả Trên RAM Cache, Phối Hợp Xác Minh Phá Cache 80% Refresh Jitter + 20% Re-entry, Selector Drift fm9/fmp & Quy Trình Nạp TikTok 47.0.3 Split Dex An Toàn Trên Samsung S7 (2026-09-20).
-  - `references/case-ui-74-tiktok-v47-adb-split-session-install-dex2oat-and-anti-fraud.md`: Case UI-74 Quy Trình Nạp Split Dex `split_df_a_dex.apk` TikTok v47.0.3 Qua Session ADB, Quản Lý Tiến Trình `dex2oat` Trên Samsung S7, Giữ Chữ Ký Gốc ByteDance & Thẩm Định An Toàn Anti-Fraud (Sol Verdict) (2026-09-20).
+  - `references/case-ui-75-optimistic-ui-follow-cache-and-split-dex-safeguard.md`: Bẫy Optimistic UI Follow Giả Trên RAM Cache, Phối Hợp Xác Minh Phá Cache.
+  - `references/case-ui-74-tiktok-v47-adb-split-session-install-dex2oat-and-anti-fraud.md`: Quy Trình Nạp Split Dex `split_df_a_dex.apk` TikTok v47.0.3 Qua Session ADB.
   - `references/case-ui-73-tiktok-v47-split-apk-dex2oat-pipeline-and-anti-fraud.md`: Case UI-73 Quy Trình Nạp Split Dex `split_df_a_dex.apk` TikTok v47.0.3, Tiến Trình `dex2oat` Trên Samsung S7, Chống Sụt Áp USB & Thẩm Định An Toàn Anti-Fraud (Sol Verdict) (2026-09-20).
   - `references/case-ui-72-natural-follow-verification-and-split-dex-injection.md`: Case UI-72 Phối Hợp Xác Minh Follow Tự Nhiên (80% Pull-to-refresh Jitter + 20% Re-entry theo Sol Verdict) & Quy Trình Nạp Split Dex `split_df_a_dex.apk` Qua Session ADB Không Crash App, Không Mất Nick (2026-09-20).
   - `references/case-ui-71-user-intent-disambiguation-and-separated-source-unified-view.md`: Case UI-71 User Intent Disambiguation ("rồi làm đi" = Execute Approved Plan, cấm hallucinate "stop script") & Phân tách Sổ cái Vận hành vs View Danh bạ Gộp Đọc (930 UIDs, Hard Gate Anchor <=80, 122/160 anchors do gate >=10 video).
