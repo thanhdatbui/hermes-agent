@@ -8,16 +8,16 @@ version: 1.2.0
 
 ## 1. Khi nào sử dụng
 
-Use for GPM v3 (19995), Gmail/Hotmail lifecycle, proxy-safe account selection, CRX/CDP, cache/core issues, OAuth, ChatGPT/Codex pool operations, watchdogs, pagination, and geo-safety. Existing topic detail remains in `references/`; cron summary handling is in `references/cron-watchdog-report-triage.md`.
-- Hotmail State: `references/hotmail-lifecycle-state-reconciliation.md`.
+Use for GPM v3 (19995), Gmail/Hotmail lifecycle, proxy-safe accounts, CRX/CDP, cache/core, OAuth, ChatGPT/Codex, watchdogs, pagination, geo-safety. Topic detail in `references/`; cron summary in `references/cron-watchdog-report-triage.md`.
+- Hotmail State & iec=500: `references/hotmail-lifecycle-state-reconciliation.md`, `references/hotmail-security-change-flow-and-iec500-pitfalls.md`.
 - Credential Isolation: `references/credential-isolation-policy-hotmail-chatgpt-tiktok.md`.
 - Turnstile GPM: `references/omniroute-turnstile-sentinel-gpm-recovery.md`.
 - Hotmail Pass Mapping: `references/hotmail-password-mapping-and-cookie-consent-pitfalls.md`.
 - Silent Watchdog: `references/no-agent-cron-silent-watchdog-and-telegram-chunking.md`.
-- 2FA Deadlock & Silent Reporting: `references/gpm-gmail-2fa-lifecycle-deadlock-and-silent-reporting.md`.
-- GPM Pagination: `references/gpm-profile-pagination-and-duplicate-spawn-pitfall.md` (nguồn chân lý: PROXYgandienthoai.xlsx).
+- 2FA Deadlock: `references/gpm-gmail-2fa-lifecycle-deadlock-and-silent-reporting.md`.
+- GPM Pagination: `references/gpm-profile-pagination-and-duplicate-spawn-pitfall.md`.
 - Browser-core repair: `references/gpm-browser-core-repair-source-integrity.md`.
-- Preflight Liveness & Auto-Launch: `references/gpm-local-api-liveness-and-autolaunch-pattern.md`.
+- Preflight Liveness: `references/gpm-local-api-liveness-and-autolaunch-pattern.md`.
 - Hook ChatGPT Web/Codex: `references/codex-oauth-phone-verification-5sim-and-sumistore.md`.
 - Bounded Codex OAuth: `references/codex-oauth-bounded-live-run-evidence.md`.
 - Map proxy Farm S7 ↔ Profile GPM (Kibe 1:1 vs Admin pool).

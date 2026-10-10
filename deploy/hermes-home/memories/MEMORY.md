@@ -8,15 +8,15 @@ Kho video: min 45; Render 1 wkr (--parallel 1); Cào 20 wkr (max-folder 1); Glob
 §
 evidence_gate_verifier.py (WinRT OCR, PID reserve, fail-closed, >30s/3att L3 BLOCKED).
 §
-[TIKTOK LOGIN]: APK lỗi xóa. Admin 55 split v46.6.3; Kibe 65 split v47.0.3. Dock (540,150) Switcher. One-tap/Guest tap nick. Pass sai: --otp-only. Admin: TARGET_INVENTORY, 192.168.110.119:5037. 2FA: pass None đổi qua Graph OTP. MEDIA: đặt dòng riêng trống, cấm dưới >.
+[TIKTOK LOGIN]: APK lỗi xóa. Admin 55 v46.6.3; Kibe 65 v47.0.3. Dock (540,150) Switcher. One-tap/Guest tap nick. Pass sai: --otp-only. Admin: 192.168.110.119:5037. 2FA: pass None đổi qua Graph OTP. MEDIA: đặt dòng riêng trống, cấm dưới >.
 §
 Canary: WoL ether3 (kibe 0C:EF:15:37:4C:20, admin 22:33:4D:06:4C:26; WG 13231); CẤM PASS khi followed=0/FOLLOW_FAILED; ảnh/log trước teardown. Admin: upload SSH admin-farm.
 §
-Ava tay: khóa .manual_avatar_locked. Strike 3 / Sol kẹt 78-82: giao Claude CLI nền sửa thẳng code chấm dứt điểm.
+Ava tay: khóa .manual_avatar_locked. Strike 3/Sol kẹt 78-82: giao Claude CLI nền sửa code dứt điểm.
 §
 TikTok Shadow: Path B 'Đã fl' ko commit; FOLLOW_FAILED trừ fl tự nhiên; slot `(folder-1)%8+1` cứng; reg bù độc lập. Dọn C duyệt trước.
 §
-Giao tiếp: gọi 'tên nick TikTok', cấm handle. Hotmail: reset OTP thanhdatbui1995@gmail.com sync Master C7, clean_v2, State.
+Giao tiếp: gọi 'tên nick TikTok', cấm handle. Hotmail: Báo cáo 6h tách riêng BLOCKED; Change info GPM full 5b, xóa Col 9 token; Nick ko mail khôi phục cấm add TOTP đơn lẻ (iec=500); OTP sync thanhdatbui1995@gmail.com.
 §
 X99: cấm xHCI; wkr 25. CẤM bắt user rút dây; Task 05:30 reboot (Kibe+Admin). ADB SYSTEM unauth fix: set ADB_VENDOR_KEYS Machine + adb task user Admin.
 §
@@ -24,4 +24,4 @@ Credential: Cột 7 PASS MAIL độc lập Cột 12 PASS CHATGPT; cấm tự ý 
 §
 [ROUTER TB]: R3G V1 (Tailscale 100.86.119.82). Cổng xanh=DHCP; 2 trắng=PPPoE Line 1 (`hyn_gftth_tamnhb0`) & Line 2 (`hyn_gftth_tamnhb1`).
 §
-Proxy: User KO tự đổi proxy. CẤM script tự nhảy/random proxy khi sập hoặc tính port mò (5100+mid) làm đẻ profile GPM rác. SoT duy nhất: PROXYgandienthoai.xlsx; down -> fail-closed.
+Proxy: User KO tự đổi proxy. CẤM script nhảy/random proxy hoặc tính port mò đẻ profile GPM rác. SoT duy nhất: PROXYgandienthoai.xlsx; down -> fail-closed.
