@@ -24,23 +24,21 @@
 - Script của ông anh cũng có bước kiểm tra nhả và **hễ phát hiện nhả là dừng ngay lập tức**.
 - CẤM TUYỆT ĐỐI tư tưởng "chấp nhận dung sai 40% để bấm tiếp trong cùng 1 phiên".
 
-### C. Bản chất Cầu dao 40% (Fleet-Level 40% Circuit Breaker)
-- Ngưỡng 40% trong ghi chú của ông anh: *"Nếu tỉ lệ nhả quá 40% thì dừng toàn bộ tik cho đi nuôi 1,2 ngày"*.
-- Đây là **Cầu dao tổng theo Ca / Theo Đợt (Fleet/Batch Threshold)**:
-  * Nếu trong một ca/ngày chạy mà có **> 40% số nick trên dàn máy bị dính cờ nhả follow** ➔ Tín hiệu TikTok đang siết chặt thuật toán hoặc dải IP/hạ tầng bị soi.
-  * Xử lý: **Dừng toàn bộ các nick còn lại trên farm, hoãn follow và chuyển tất cả sang lướt nuôi 1–2 ngày**.
+### C. Cầu dao IP MikroTik là Bản Nâng Cấp Cao Cấp của Luật Nhả 40% (User Invariant 2026-10-10)
+- Nguyên lý của ông anh: *"Nếu tỉ lệ nhả quá 40% thì dừng toàn bộ tik cho đi nuôi 1,2 ngày"*. Đây là cơ chế bảo vệ dạng "búa tạ" thô sơ ở cấp toàn farm khi không kiểm soát được IP theo từng thiết bị.
+- **Bản nâng cấp trên Farm Taadaa:** Hệ thống Cầu dao IP 48h theo cổng MikroTik PPPoE (1 IP : 2 máy) chính là bản nâng cấp granular vượt trội:
+  * Khi Máy A bị TikTok nhả follow $\rightarrow$ Lập tức cúp cầu dao proxy cổng đó 48h để bảo vệ Máy B đi chung IP.
+  * Các dải IP sạch khác của farm **vẫn tiếp tục vận hành bình thường**, không bị tê liệt hay chết chùm toàn farm một cách mù quáng.
 
-### D. Chu kỳ xoay tua 3 Tik/ngày + Rest Day toàn máy (Burst & Hibernate)
-- Ghi chú thực chiến của ông anh: *"8 tick mỗi tick ngày đi 3 tick, đi hết 8 tick thì nghỉ 1 ngày. Ngày thứ 2 chạy cảm thấy follow ok thì làm tiếp còn k thì lướt nuôi"*.
-- **Cách vận hành:**
-  * Mỗi máy cài 8 nick. Mỗi ngày chỉ chạy **3 nick (3 row)**.
-    * Ngày 1: Tik 1, 2, 3 (mỗi nick cày 20–30 follow).
-    * Ngày 2: Tik 4, 5, 6.
-    * Ngày 3: Tik 7, 8.
-    * Ngày 4: **CẢ MÁY NGHỈ 1 NGÀY (Rest Day)**.
-  * **Thời gian tiêu hóa gậy (Digestion Period):** Mỗi nick sau một cữ cày 20–30 follow sẽ được **ngủ đông từ 3 đến 4 ngày** mới đến lượt tiếp theo. Thời gian nghỉ dài giúp TikTok tự động gỡ cờ nghi vấn và giữ lại lượng follow thật (>50%).
-  * Giảm tải điểm bất thường phần cứng (Hardware Anomaly Score) vì mỗi ngày máy chỉ mở 3 app thay vì đảo liên tục cả 8 nick.
-- **Không huyễn hoặc "cơ chế nuôi chuyên biệt":** Ông anh không có script thần thánh nào để chữa cờ nhả. Khi bị nhả thì chỉ đơn giản là dừng follow, cho nick lướt feed thông thường 1–2 ngày để tự hồi phục.
+### D. Chu kỳ xoay tua 3 Ca/ngày (Bỏ Hẳn Ca 0h Đêm) & Dưỡng Sinh Phục Hồi (Triển khai 2026-10-10)
+- **Bỏ hoàn toàn ca 0h đêm (00:00 – 02:30):**
+  * Loại bỏ hành vi bất thường cày đêm (Human Behavior Anomaly).
+  * Cho phép thiết bị Android S7 và dải IP MikroTik nguội máy, giải phóng RAM và xả tải hoàn toàn từ 21:30 đến 05:59 sáng hôm sau.
+- **Lịch xoay tua Chu kỳ 3 ngày (3 Ca / ngày: Sáng 06h/08h, Trưa 12h/14h, Tối 18h/20h):**
+  * **Ngày 1:** Sáng Row 1 — Trưa Row 3 — Tối Row 5.
+  * **Ngày 2:** Sáng Row 2 — Trưa Row 4 — Tối Row 6.
+  * **Ngày 3:** Sáng Row 7 — Trưa Row 8 — **Ca tối chuyên dưỡng sinh luân phiên Row 3 / Row 4 pure feed (`rest_day=True`, 0 follow, 0 upload)**.
+- **Hiệu quả:** Mỗi nick cày follow xong có từ **48h đến 72h nghỉ ngơi** tiêu hóa cờ trước cữ tiếp theo. Row 3 và Row 4 (hai row cần hồi trust nhất) được cấp slot lướt feed chuyên biệt để rửa sạch điểm rủi ro.
 
 ---
 

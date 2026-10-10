@@ -1,4 +1,4 @@
-Follow: Cầu dao 48h chỉ ngắt khi nick Khỏe nhả; non nhả tự đi tù. Nấc phục hồi 2d sạch/nấc (N1: 1-2fl, N2: 5-8fl, N3: >=4d). CẤM auto-follow popup. IP Farm: 2 máy/IP Wave 1/2; Upload P2; GemPhone 20-30fl/slot (8-18s). Cấm tự khóa nick.
+Follow: Cầu dao 48h MikroTik thay cutoff 40%. Nhả 1 phát là drop sạch session (Anchor canary bắt buộc, cấm ảo tưởng dung sai). Lịch 3 ca (bỏ 0h đêm), chu kỳ 3d: N1 (R1,3,5), N2 (R2,4,6), N3 (R7,8 + tối dưỡng sinh pure feed R3/4). CẤM auto-follow popup.
 §
 Dual-Farm: Mọi cron/supervisor BẮT BUỘC chạy cả Kibe (1-80) & Admin (201-280). Excel Admin 10-11 cột (đọc cell idx<len(row)). Supervisor so le 2p; Báo cáo 6H gộp. CẤM copy ava Kibe->Admin; Admin dùng video gốc m2, venv-core024.
 §

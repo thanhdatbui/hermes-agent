@@ -76,6 +76,13 @@ Shop acc MMO Việt (giá VND "đ", `boxtaikhoan.com@gmail.com`, Zalo/Telegram, 
 
 Chi tiết 2 sản phẩm + lập luận: `references/boxtaikhoan-hotmail-2026-08-16.md`.
 
+### Tra cứu lịch sử đơn hàng & Pitfall cảnh báo "chỉ lưu 3 ngày" (2026-10)
+- **URL đơn hàng:** `https://boxtaikhoan.com/product-orders`. Chi tiết đơn: `/product-order/<order_id>`.
+- **Pitfall cảnh báo tĩnh (Static Disclaimer Trap):** Trang đơn hàng có banner: *"Lịch sử đơn hàng trên hệ thống chỉ được lưu trong 3 ngày... Sau thời gian này, đơn hàng dữ liệu có thể bị xóa..."*.
+  - **CẤM TUYỆT ĐỐI** đọc banner này rồi vội kết luận với User là đơn hàng đã bị xóa không lấy lại được!
+  - **Thực tế:** Sàn vẫn lưu trữ toàn bộ đơn hàng cũ nhiều tháng qua (166+ kết quả trên 17 trang). Bắt buộc lật qua phân trang các trang sau (page 14, 15, 16...) hoặc tìm theo mã đơn.
+  - Chi tiết đơn hàng lưu nguyên bản chuỗi credential gốc bàn giao: `mail|pass|refresh_token|client_id`. Dùng để đối soát pass gốc khi Excel/DB bị ghi đè. Chi tiết quy trình: `references/boxtaikhoan-order-history-retrieval.md`.
+
 ## Phân loại tài khoản TikTok trên thị trường MMO (Giỏ hàng vs Live vs 1k Follow)
 
 Khi user yêu cầu nghiên cứu/tìm kiếm thực tế các gói bán tài khoản TikTok (trên TaphoaMMO, Telegram Store bot, chợ MMO):
@@ -137,6 +144,8 @@ Khi user nhờ tìm kiếm/nghiên cứu sản phẩm trên Shopee / TikTok Shop
 
 ## References
 
+- `references/boxtaikhoan-hotmail-2026-08-16.md` — dữ liệu 2 tier Hotmail trên boxtaikhoan.com (token Graph API vs mail thường).
+- `references/boxtaikhoan-order-history-retrieval.md` — quy trình tra cứu đơn hàng cũ trên boxtaikhoan.com, lật phân trang, đọc credential gốc bàn giao và pitfall cảnh báo tĩnh "chỉ lưu 3 ngày".
 - `references/tiktok-account-reverse-engineering-and-growth-playbook.md` — Playbook bóc tách dữ liệu ngược (Snowflake ID decoding, bypass WAF/Captcha qua yt-dlp) và công thức nuôi kênh TikTok từ thực chiến (Aging 74 ngày, chiến lược bậc thang 20-26s khung 21h, Hook 3s đầu).
 - `references/tiktok-market-accounts-pricing-2026.md` — bảng giá thị trường thực tế các loại acc TikTok (Giỏ hàng 0 follow vs 1k Follow vs Full Combo Live + Giỏ hàng) kèm link khảo sát thực tế (MuaCash, ShopGiangMedia, Taikhoanre) & kỹ thuật fallback tìm kiếm Cốc Cốc qua browser.
 - `references/tuitehao-cc.md` — dữ liệu chi tiết tuitehao.cc (danh mục, giá, chính sách) đã thu thập 2026-08.
