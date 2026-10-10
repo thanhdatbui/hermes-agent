@@ -7,6 +7,7 @@ description: >-
 
 # Farm Alert Autonomous Recovery
 
+> 📎 Ref: `references/asynchronous-stale-cron-alert-triage-protocol-20261010.md` (**[10/10/2026]** Stale cron alert triage & reassurance).
 > 📎 Ref: `references/midday-shift-feed-triage-and-dual-cluster-auto-healing-20261010.md` (**[10/10/2026]** Midday triage & auto-heal).
 > 📎 Ref: `references/guest-profile-and-one-tap-auto-login-triage-20261010.md` (**[10/10/2026]** Guest profile button & profile/switcher login proof).
 > 📎 Ref: `references/scheduled-pc-reboot-preflight-abort-triage-20261010.md` (**[10/10/2026]** Reboot abort triage).

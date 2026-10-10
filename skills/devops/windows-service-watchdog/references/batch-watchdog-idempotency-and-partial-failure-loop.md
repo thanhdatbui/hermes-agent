@@ -79,3 +79,51 @@ def save_state(today_str: str, details: dict) -> None:
 1. **Unconditional Completion Lockout:** Once a multi-phase batch runs its full course and emits a final report, it MUST mark `last_completed_date = today_str` regardless of child exit codes.
 2. **Explicit Bounded Retries:** If partial failures must be retried, use an explicit `daily_run_count < MAX_RETRIES` counter with an enforced cooldown interval (e.g., minimum 2 hours), NEVER an unconstrained loop on every cron tick.
 3. **Atomic File Locking:** Continue using atomic `.tmp` + `os.replace()` to prevent race conditions during state writes.
+
+## 4. Concrete Production Case Study (`post_noon_chain_watchdog.py`)
+In `post_noon_chain_watchdog.py`, the runner (`run_all.ps1`) exits with code 1 whenever any device encounters normal Google platform errors (`phone_verify`, `account_creation_error`).
+
+### The Solution Implemented in Production:
+1. **Exit Code 1 Acceptance with Item Metric (`g_tot > 0`):**
+   ```python
+   # Chấp nhận hoàn tất hợp lệ khi code 0 hoặc code 1 có xử lý máy
+   gmail_ok = (g_code == 0) or (g_code == 1 and g_tot > 0)
+   t2fa_ok = t2fa_code in (0, 4)
+
+   save_state(today_str, {
+       ...
+       "gmail_status": "success" if gmail_ok else "failed",
+       "2fa_status": "success" if t2fa_ok else "failed",
+       "lane_status": "success" if (
+           (gmail_ok if args.lane in ("gmail", "all") else True) and
+           (t2fa_ok if args.lane in ("tiktok", "all") else True)
+       ) else "failed",
+   })
+   ```
+
+2. **Temporal Cooldown Guard (45 Minutes):**
+   Even with state persistence, add an explicit time check on `last_run_at` to prevent consecutive cron ticks (e.g. 5m intervals) from firing when a run just completed:
+   ```python
+   def is_in_cooldown(threshold_minutes: int = 45) -> bool:
+       if not STATE_FILE.is_file():
+           return False
+       try:
+           data = json.loads(STATE_FILE.read_text(encoding="utf-8"))
+           last_run_str = data.get("last_run_at")
+           if not last_run_str:
+               return False
+           last_run_dt = datetime.fromisoformat(last_run_str)
+           elapsed_seconds = (datetime.now(HCMC) - last_run_dt).total_seconds()
+           return 0 <= elapsed_seconds < (threshold_minutes * 60)
+       except Exception:
+           return False
+
+   # Inside main():
+   if is_in_cooldown(threshold_minutes=45) and not args.force and not args.dry_run:
+       return 0
+   ```
+
+3. **Multi-Repository Synchronization Invariant:**
+   Whenever patching watchdog scripts that operate across the farm:
+   - Synchronize across `deploy/hermes-home/scripts/`, `%LOCALAPPDATA%/hermes/scripts/`, `D:/Taadaa/tools/`, and OneDrive shared cron `D:/OneDrive/Taadaa_Sync_Shared/hermes-cron/scripts/`.
+   - Update the existing state file (`last_success_date: today`, `lane_status: success`) if manual intervention was required after an unwanted multi-run event.
