@@ -24,7 +24,22 @@ ADVICE_PATTERNS = [
     r"\bvì sao\b",
     r"\bthấy sao\b",
     r"\blà sao\b",
+    r"\bhợp lý\b",
+    r"\bhợp lí\b",
+    r"\bđúng không\b",
+    r"\bđúng ko\b",
+    r"\bđúng k\b",
+    r"\bhay không\b",
+    r"\bhay ko\b",
+    r"\bhay k\b",
+    r"\bthì sao\b",
+    r"\bchứ hay\b",
     r"\bcó nên\b",
+    r"\bk nên\b",
+    r"\bkhông nên\b",
+    r"\bổn không\b",
+    r"\bổn ko\b",
+    r"\bổn k\b",
     r"\bđánh giá\b",
     r"\bkiến trúc\b",
     r"\bplan\b",
@@ -163,7 +178,7 @@ def classify_advice_intent(message: str) -> bool:
 
     # 7. Kiểm tra cấu trúc câu hỏi đánh giá / nguyên nhân với từ để hỏi và dấu '?'
     if "?" in msg_cleaned:
-        if re.search(r"\b(tại sao|vì sao|lý do gì|nguyên nhân gì|thế nào|ra sao|có nên|thấy sao)\b", msg_cleaned):
+        if re.search(r"\b(tại sao|vì sao|lý do gì|nguyên nhân gì|thế nào|ra sao|có nên|thấy sao|hợp lý|hợp lí|đúng không|đúng ko|đúng k|ổn không|ổn ko|ổn k|được không|đc ko|đc k|hay không|hay ko|hay k|thì sao)\b", msg_cleaned):
             return True
         if re.search(r"\bsao\b", msg_cleaned) and not re.search(r"\bsao (rồi|r|cho)\b", message.lower()):
             return True
@@ -253,13 +268,13 @@ def consult_advisor(prompt: str, context: str = "", timeout_sec: float = 45.0) -
         if ok and len(text) > 20:
             return {
                 "status": "success",
-                "model": f"Sol / {target_model}",
+                "model": "Sol / review",
                 "tier": 1,
                 "advice": text,
-                "formatted": f"--- Advisor (Sol / {target_model}) ---\n{text}",
+                "formatted": f"--- Advisor (Sol / review) ---\n{text}",
             }
 
-    err_msg = "Advisor: unavailable (Sol / gpt-web-sol timeout hoặc pool limit; chỉ hiển thị câu trả lời Coordinator)"
+    err_msg = "Advisor: unavailable (Sol / review timeout hoặc pool limit; chỉ hiển thị câu trả lời Coordinator)"
     return {
         "status": "unavailable",
         "model": "none",

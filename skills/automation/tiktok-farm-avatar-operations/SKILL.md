@@ -372,6 +372,7 @@ Operate avatar-only changes on Taadaa TikTok farm devices without accidentally p
 - Closeout is not DONE until the device evidence, focused verification, and required reviewer gate are satisfied.
 
 ## References
+- `references/manual-avatar-protection-and-clarify-gate-20261010.md` — Quy trình đóng đinh bảo vệ avatar thủ công G1-G7 & R1-R5 (fail-closed, đối soát kép, One-Time Grant atomic, chống lừa path folder, exit code 3 LOCK_CONFLICT) và kỷ luật tự động loop remediation đến khi Claude CLI APPROVED (>=85/100).
 - `references/manual-avatar-guard-g1-g5-hardening-and-atomic-grants-20261010.md` — Chi tiết kiến trúc bảo mật G1-G5 và R3: Fail-closed GuardIntegrityError, đối soát kép registry, ràng buộc path-folder NUOI+VG (consume=False/True), One-Time Grant nonce+atomic .used, và exit code 3 khi có LOCK_CONFLICT.
 - `references/manual-avatar-protection-hardening-and-clarify-gate.md` — Quy trình đóng đinh bảo vệ avatar thủ công: 5 nguyên tắc bất biến (fail-closed, One-Time Override Grant, guarded_replace), bộ chốt chặn G1-G7 & R1-R5, và giao thức Clarify Gate bắt buộc khi quét hàng loạt gặp folder khóa.
 - `references/manual-avatar-protection-g1-g7-and-r1-r5-hardening-20261010.md` — kiến trúc và đặc tả tích hợp bộ chốt chặn G1-G7 & R1-R5: Fail-closed GuardIntegrityError, LockedFolderError, One-Time Override Grant (15 phút), get_lock_info, guarded_replace kèm backup tự động và mã thoát exit code 3 LOCK_CONFLICT.
