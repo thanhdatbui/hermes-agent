@@ -41,6 +41,12 @@ claude -p "$(< C:/Users/Kibe/AppData/Local/hermes/claude_handoff_prompt.txt)" --
 - Ở Strike 1 và Strike 2: Coordinator phải tự động remediate (qua Sol Repair hoặc Worker) theo danh sách lỗi Reviewer chỉ ra.
 - **CẤM hỏi xin phép thụ động:** Cấm hỏi "Bạn có muốn tôi sửa tiếp không?" khi chưa đi hết quyền hạn. Lệnh của User "làm đến khi duyệt" nghĩa là phải tự động loop cho đến khi APPROVED hoặc chạm mốc Strike 3.
 
+### D. Cơ Chế Fallback Khi Gọi Claude CLI Bị Fail (Tránh Deadlock)
+Cầu dao cứng chỉ chặn `delegate_task` (ngăn Coordinator ném việc cho Worker chạy mò mẫm), **KHÔNG khóa quyền can thiệp trực tiếp của Coordinator** (`patch`, `terminal`, `write_file`, `clarify`). Khi gọi Claude CLI thất bại, Coordinator kích hoạt fallback theo 3 nhánh:
+1. **Quota Block / Rate Limit:** Claude bị kẹt hạn mức tuần (>=90%) hoặc hết credit API -> Dừng lại gọi `clarify` báo Operator để đổi provider (Codex CLI / Sol Repair).
+2. **Crash / Timeout / Lỗi Shell Môi Trường:** Tiến trình Claude CLI exit != 0 hoặc timeout -> Coordinator kích hoạt **L2 Emergency Surgery** nếu đã rõ exact diff O(1) (<= 2 files, <= 30 dòng), chạy focused test, và nộp lại Closeout Gate. Khi Gate `passed == True`, lock tự động được giải phóng.
+3. **Claude CLI Bó Tay (Xung Đột Kiến Trúc Lớn):** Claude CLI phân tích kết luận ngoài khả năng in-scope -> Chuyển **L3 BLOCKED** kèm toàn bộ báo cáo phân tích thực tế của Claude cho Operator xem, tiếp tục làm task khác, không phá codebase.
+
 ---
 
 ## 4. Cơ Chế Hard Guard Bằng Code (Đã Thi Công Trong Taadaa)

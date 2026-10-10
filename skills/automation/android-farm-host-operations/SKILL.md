@@ -29,7 +29,10 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
   * Lệnh `pnputil /restart-device` trên controller này cũng trả về `System reboot is needed to complete configuration operations! (Exit code 194)`.
   * **Hệ quả:** Script chỉ thực chất kill và khởi động lại tiến trình `adb.exe`, **KHÔNG HỀ ngắt điện hay reset xung nhịp phần cứng 2 chip EHCI**.
   * Nếu cụm máy bị văng do kẹt uevent/socket USB phần cứng (như Box 4 rụng 8 máy), script chạy xong máy vẫn giữ nguyên trạng thái `offline`.
-  * **Giải pháp dứt điểm:** Rút ra cắm lại trực tiếp sợi cáp USB tổng của Box đó ở mặt sau case PC (3 giây), hoặc reboot PC để BIOS reset thanh ghi bus.
+  * **Kỷ luật vận hành tự động (User Invariant):** 
+    - **CẤM TUYỆT ĐỐI** bắt người dùng đi rút cắm dây cáp vật lý ("rút dây còn phiền hơn reset máy") hoặc yêu cầu canh reset PC thủ công trước mỗi ca.
+    - **Thực tế vận hành không bật XiaoWei:** Farm vẫn có thể văng máy do I/O micro-spikes (30–40 worker cùng dump XML/screencap dồn vào băng thông USB 2.0 trần 35 MB/s) hoặc tiếp xúc cáp Box 4.
+    - **Giải pháp tự động hóa:** Áp dụng cơ chế **Preflight Auto-Reboot trước Ca** (gọi `shutdown /r /t 0` qua SSH nếu có cụm máy kẹt socket). Với `AutoAdminLogon = 1`, PC tự khởi động lại trong ~45 giây và kéo toàn bộ 80 máy lên xanh trước ca chạy hoàn toàn tự động.
 
 ## 3. Quy Tắc Safe Preflight Reset (Bảo Vệ Device Locks & Backoff Logic)
 - **Nguồn repo quản lý (SSOT):** `D:\Taadaa\tools\services\Taadaa_Service\safe_usb_guard.py`
@@ -100,7 +103,11 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
     2. *Test tải đồng thời (Concurrency Stress Test):* Bộ test BẮT BUỘC có test đa luồng (`ThreadPoolExecutor` 20 workers) chứng minh `max_observed <= _limit` (kẹp cứng $\le 8$), không gây starvation, và release token an toàn về 0.
 - **GIẢI PHÁP PHẦN CỨNG NẾU MUỐN NÂNG CẤP LÊN USB 3.0 (CÂN 80–200 MÁY):**
   * Tuyệt đối không trông chờ vào xHCI onboard của main X99.
-  * Bắt buộc cắm thêm **Card PCIe to USB 3.0 rời** (dùng chip độc lập như Renesas/NEC uPD720201 hoặc VIA VL805, có nguồn phụ SATA). Mỗi card gánh 1 nhánh 40–50 máy, bộ đệm endpoint độc lập hoàn toàn.
+  * **CẢNH BÁO BẪY TRÀN ENDPOINT KHI MUA CARD PCIE USB 3.0 (CHỐNG LẶP LẠI LỖI CODE 43):**
+    - Nếu mua loại card PCIe USB 3.0 giá rẻ dùng **1 chip điều khiển duy nhất** (1x Renesas uPD720201 hoặc 1x VIA VL805 chia sẻ 4 cổng) mà cắm dồn cả dàn 80 máy vào: **SẼ BỊ LỖI Y CHANG NHƯ LÚC BẬT USB 3.0 TRONG BIOS**! Con chip đó cũng bị trần 64–96 Endpoints, chỉ nhận được 8–10 máy là dính Code 43 (`VID_0000&PID_0000`) tê liệt toàn bộ máy còn lại.
+    - **Quy tắc bắt buộc khi lắp Card PCIe USB 3.0:**
+      * Dùng **nhiều card PCIe x1 rời riêng biệt** (mỗi card cắm đúng 1 dây Box Farm, tối đa 20–25 máy/card).
+      * Hoặc dùng loại **Card PCIe Quad-Controller chuyên dụng** (bo mạch tích hợp 4 chip controller độc lập, mỗi cổng 1 chip riêng biệt và 1 làn PCIe riêng, có nguồn phụ SATA).
   * Tài liệu đặc tả kỹ thuật chi tiết lưu tại repo: `D:\Taadaa\tools\docs\HARDWARE_USB_FARM_PCIE_GUIDE.md` (bản sao lưu: `D:\Taadaa\docs\HARDWARE_USB_FARM_PCIE_GUIDE.md`).
 
 ## 6. Quy Hoạch Phần Cứng Mở Rộng Farm (80 - 200 Máy)
