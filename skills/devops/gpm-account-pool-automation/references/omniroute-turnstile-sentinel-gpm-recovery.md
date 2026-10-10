@@ -68,7 +68,27 @@ Chạy script query bảng `provider_connections` trong `C:\Users\Kibe\.omnirout
 
 ### Lưu ý quan trọng khi chọn tài khoản:
 - Phải kiểm tra trạng thái `is_active = 0` và `last_error` trong `C:\Users\Kibe\.omniroute\storage.sqlite` để chọn đúng profile đang thực sự cần gỡ cờ.
-- Kiểm tra hòm thư loại trừ các tài khoản đã nhận mail "OpenAI - Truy cập bị vô hiệu hóa" (tài khoản đã bị OpenAI khóa vĩnh viễn, không cố login lại).
+- **BẪY CHẨN ĐOÁN LẦM LẪN (FALSE SENTINEL/TURNSTILE ERROR):**
+  * Trong `chatgpt-web.ts`, OmniRoute bắt mọi lỗi `HTTP 401` hoặc `403` trên `/backend-api/sentinel/chat-requirements/prepare` rồi tự động ném ra chuỗi: `ChatGPT blocked the request (Sentinel/Turnstile required). Try again later or open chatgpt.com in a browser to refresh state.`
+  * **Bản chất thực tế:** Hầu hết các lỗi `HTTP 401` này KHÔNG PHẢI do Cloudflare Turnstile, mà do OpenAI trả về `{"error": {"code": "token_revoked", "message": "Encountered invalidated oauth token for user"}}` vì tài khoản đã bị OpenAI khóa/vô hiệu hóa vĩnh viễn (`account_deactivated`).
+  * **Cách chẩn đoán chính xác:** Giải mã cookie từ SQLite (`api_key` với secret `STORAGE_ENCRYPTION_KEY`), gọi `/api/auth/session` lấy `accessToken`, rồi gọi trực tiếp `POST /backend-api/sentinel/chat-requirements/prepare` với `{"p": ""}`:
+    - Nếu `HTTP 200`: Tài khoản **LIVE 100%**.
+    - Nếu `token_revoked`: Tài khoản đã **BỊ BAN / VÔ HIỆU HÓA**. Áp dụng ngay luật **"ban xóa DB giữ GPM"**: Xóa bản ghi trong `provider_connections` và xóa khỏi `models` của combo (`gpt-web-sol`, `chatgpt-web-pool`, `gpt-web-luna`). Giữ nguyên profile GPM.
+    - Nếu `token_expired` hoặc hết hạn session: Tài khoản còn sống, chỉ cần re-login.
+
+- **BẪY CẦU DAO TREO CẢ HỆ THỐNG (30-MIN CIRCUIT BREAKER TRAP):**
+  * Nếu để các tài khoản bị ban/revoked trong combo Round-Robin, hệ thống sẽ gọi trúng 5 tài khoản lỗi liên tiếp và kích hoạt cầu dao tự ngắt: `Circuit breaker tripped for chatgpt-web: 5 consecutive failures. Blocked for 30min.`
+  * Cầu dao này nằm trong RAM của OmniRoute (`_circuitBreaker["chatgpt-web"]`), sẽ phong tỏa toàn bộ 100% tài khoản (kể cả các tài khoản LIVE), khiến mọi lệnh gọi Advisor (`consult_advisor.py`) bị timeout >45s.
+  * **Quy trình phục hồi khẩn cấp:**
+    1. Lọc và lấy danh sách các connection ID thực sự LIVE (HTTP 200 trên `/prepare`).
+    2. Cập nhật SQLite: Chỉ đặt `is_active = 1` cho các ID live; xóa bỏ các ID bị ban; cập nhật lại JSON `models` của các combo `gpt-web-sol`, `chatgpt-web-pool`, `gpt-web-luna` chỉ chứa các ID live.
+    3. Buộc restart tiến trình OmniRoute (qua `Stop-Process` PowerShell, watchdog `omniroute_watchdog.ps1` sẽ tự khởi động lại sau ~20s) để xóa sạch biến circuit breaker trong RAM.
+    4. Kiểm chứng lại bằng: `python D:/Taadaa/tools/consult_advisor.py "test ping"`.
+
+- **CANARY & GATE 6 KHI RE-LOGIN QUA GPM:**
+  * Luôn chạy Canary trên 1 tài khoản trước khi chạy hàng loạt.
+  * CHECKPOINT 1 (Pre-submit): Điền email xong, chụp ảnh kiểm tra bằng WinRT OCR/vision.
+  * CHECKPOINT 2 (Post-submit): Submit xong chụp ảnh ngay. Nếu gặp thông báo *"Chúng tôi đã gặp sự cố khi đăng nhập cho bạn, vui lòng tạm dừng một lát và thử lại sau"* (OpenAI rate-limit IP proxy), DỪNG NGAY LẬP TỨC. Tuyệt đối không cố chạy vòng lặp mù làm cháy proxy/tài khoản.
 
 ### Bước 5: Đóng Profile sau khi hoàn tất
 Gọi API dừng profile để tránh rò rỉ tiến trình Chromium:
