@@ -47,6 +47,12 @@ Khảo sát từ 10.677 lượt follow và 389 hồ sơ lỗi state trên hệ t
        `⚡ Cầu dao tự ngắt IP (X proxy đã khóa do dính nhả):`
        `- Cổng <PORT>: M<A> dính nhả lúc <HH:MM:SS> -> Đã ngắt IP không follow | Đã khóa cứu nick: M<B>`
      * Trong mục `Bỏ qua`, bóc tách riêng: `Khóa IP do máy cùng IP nhả (X: M...)` thay vì gộp mù vào lỗi script hay dưỡng sinh thông thường. Không báo lỗi ảo khi nick được an toàn skip bởi Circuit Breaker.
+     * **BẪY TRÀN TẢI TELEGRAM 4096 KÝ TỰ (HTTP 400 MESSAGE_TOO_LONG):**
+       - Khi ca chạy có nhiều máy dính nhả và nhiều proxy bị ngắt cầu dao (ví dụ 22 proxy ngắt, 25 máy nhả), tổng độ dài tin nhắn báo cáo gộp dễ dàng vượt quá giới hạn 4.096 ký tự của Telegram API (thường đạt 4.500 - 5.500 ký tự).
+       - Telegram API sẽ từ chối gửi tin nhắn với mã lỗi HTTP 400: `Bad Request: message is too long`. Nếu chỉ bọc `try...except logger.warning`, tin nhắn báo cáo Follow sẽ bị nuốt im lặng mà không hề gửi tới nhóm `-5127276494` (`Tiktok Follow`).
+       - **Giải pháp bắt buộc (Auto-Chunking & Cluster Scoping):**
+         1. **Line-Aware Auto-Chunking:** Trong `dispatch_split_reports()`, kiểm tra độ dài `full_msg`. Nếu `> 4000` ký tự, tự động ngắt theo dòng giữ nguyên `keepends=True` thành các chunks `<= 3900` ký tự và gửi lần lượt qua Telegram.
+         2. **Cluster Scoping cho Circuit Breaker:** Bảng danh sách Cầu dao IP chỉ xuất hiện 1 lần trong khối cụm liên quan (`cluster.get("name") == "kibe"`), tuyệt đối không lặp lại trong khối cụm Admin khiến độ dài tin nhắn tăng gấp đôi.
   5. **Kỷ luật cô lập kiểm thử & Chống xóa nhầm DB Production (Pytest Isolation Guard):**
      * Trong `follow_state.py` và `run_follow.py`, bắt buộc bọc guard `if not os.environ.get("PYTEST_CURRENT_TEST"):` trước khi gọi `trip_ip_breaker()` hoặc `check_ip_breaker()`.
      * *Bài học xương máu:* Nếu không có guard này, các unit test thử nghiệm nhánh `FOLLOW_FAILED` sẽ tự động ghi cờ `TRIPPED` vào DB live `D:/Taadaa/data/tiktok_tracker.db`, dẫn đến các test case tiếp theo chạy trên Machine 1 bị Circuit Breaker ngắt hàng loạt (`CIRCUIT_BREAKER_SKIPPED`) và làm vỡ test suite `test_cli.py`.

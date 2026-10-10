@@ -126,6 +126,16 @@ GPM CDP Connect
 
 ---
 
+## 7. Kỷ Luật Đường Dẫn Media Telegram (Chống Nuốt Ảnh)
+- **Pitfall**: Sử dụng dấu gạch ngược Windows trong tag `MEDIA:D:\Taadaa\runtime\artifacts\...` làm xuất hiện escape character `\a` (ASCII Bell), khiến bộ chuyển đổi gateway Telegram (`extract_media`) nuốt chửng thẻ ảnh và không gửi ảnh tới user.
+- **Quy tắc bất biến**: Mọi đường dẫn trong thẻ `MEDIA:` **BẮT BUỘC** phải chuẩn hóa dùng dấu gạch chéo `/`:
+  ```text
+  MEDIA:D:/Taadaa/runtime/artifacts/ten_anh.png
+  ```
+- **Soi mắt OCR**: Trước khi gửi bất kỳ thẻ `MEDIA:` nào, phải dùng WinRT OCR đọc xác nhận text trên ảnh để đảm bảo không bị đen hình hay mất viền.
+
+---
+
 ## 8. Bẫy Playwright CDP Sau Khi Submit Form Đổi Mật Khẩu (Navigation Race Condition)
 - **Hiện tượng**: Bấm submit nút `#save` hoặc `#UpdatePasswordAction` xong, gọi ngay `page.content()` để kiểm tra thông báo lỗi thì Playwright văng exception:
   `[-] Lỗi trong quá trình thao tác CDP/Playwright: Page.content: Unable to retrieve content because the page is navigating and changing the content.`
@@ -140,11 +150,6 @@ GPM CDP Connect
   except Exception as e_cnt:
       log(f"Kiểm tra nội dung trang sau đổi pass (an toàn trước navigation): {e_cnt}")
   ```
-- **Selector linh hoạt cho form đổi mật khẩu**:
-  * Ô mật khẩu hiện tại (có thể không xuất hiện nếu vừa re-auth): `#currentPassword, input[name='CurrentPassword']`.
-  * Ô mật khẩu mới: `#iPassword, #newPassword, #newPasswordInput, input[name='Password']`.
-  * Ô xác nhận mật khẩu: `#iRetypePassword, #confirmPassword, #confirmPasswordInput, input[name='RetypePassword']`.
-  * Ô nhập mã 2FA TOTP: `#iVerifyText` (thường là type `number`, placeholder `Nhập mã`) hoặc `#idTxtBx_SAOTCC_OTC`.
 
 ---
 
@@ -183,28 +188,6 @@ GPM CDP Connect
     - `taikhoan_dat_v2_updated .xlsx` (Cột G - PASS MAIL).
     - `gmail_clean_v2.xlsx` (Cột 3 - PASS).
   * Đồng thời dọn sạch bản ghi lỗi trong runtime state (`hotmail_changed_tracker.json`). Không để rác mật khẩu ảo.
-- **Thực Tế Dual OAuth Gating Trên Hotmail**:
-  * Trong kho Hotmail, chỉ có 5 tài khoản đã sync đồng thời lên cả OmniRoute (`:20129`) VÀ 9Router (`:20128`).
-  * Các tài khoản còn lại (như 23 acc ở rows 317-529) chỉ có OAuth trên OmniRoute (`:20129`).
-  * Khi vận hành batch, cần đối chiếu rõ cổng gating để tránh bị chặn toàn bộ tài khoản hợp lệ.
-- **Selector chọn "Sử dụng ứng dụng" trong menu Thêm cách đăng nhập mới & Đa Ngôn Ngữ EN/VI**:
-  * Khi click `#AddProofLink` ("Thêm một cách đăng nhập khác cho tài khoản" / "Add another way to sign in"), giao diện có thể là tiếng Việt hoặc tiếng Anh:
-    - Tiếng Việt: `text='Sử dụng ứng dụng'`, nút `Tiếp theo`, `Hoàn tất`, `Lưu`, `Đăng xuất`, `Có`.
-    - Tiếng Anh: `text='Use an app'`, nút `Next`, `Finish`, `Save`, `Sign out`, `Yes`.
-  * Bộ selector chuẩn hoá hỗ trợ song ngữ:
-    - Add link: `locator("#AddProofLink, a:has-text('Thêm một cách đăng nhập khác'), a:has-text('Add a new way to sign in'), a:has-text('Add another way to sign in'), a:has-text('Add another way')")`
-    - App button: `locator("#Add_msAuthApp, a:has-text('Sử dụng ứng dụng'), div:has-text('Sử dụng ứng dụng'), a:has-text('Use an app'), div:has-text('Use an app')")`
-    - EnableTfa: `locator("#iNext, input[value='Tiếp theo'], button:has-text('Tiếp theo'), input[value='Hoàn tất'], button:has-text('Hoàn tất'), input[value='Next'], button:has-text('Next'), input[value='Finish'], button:has-text('Finish')")`
-    - Save pass: `locator("#UpdatePasswordAction, input[value='Lưu'], button:has-text('Lưu'), input[value='Save'], button:has-text('Save'), #save, #idSubmit_SAV_btnSubmit")`
-  * Ô đổi mật khẩu `#iPassword`, `#iRetypePassword` bắt buộc `.click()` để nhận focus trước khi `.fill()` nhằm kích hoạt input event của Microsoft.
-* Kỷ luật báo cáo Canary tài khoản mới:
-* Khi user yêu cầu "canary acc khác t coi", user kỳ vọng **nghiệm thu thực tế toàn diện**.
-* BẮT BUỘC gửi ngay 4 chặng ảnh chứng minh trong cùng 1 báo cáo:
-  1. Ảnh nhập mã kích hoạt 2FA Authenticator (`gpm_totp_pre` / Proofs).
-  2. Ảnh điền mật khẩu mới và nút [Lưu] (`gpm_pre_change`).
-  3. Ảnh modal dialog xác nhận `Sign out everywhere` (`gpm_signout_confirm_dialog`).
-  4. Ảnh đăng nhập lại thành công (giải 2FA TOTP + màn hình KMSI bấm [Có] hoặc Account Dashboard).
-* Không bao giờ gửi kết quả sơ sài thiếu ảnh của bất kỳ chặng nào.
 
 ---
 
@@ -226,24 +209,6 @@ GPM CDP Connect
   4. Báo cáo trung thực, rõ ràng ngay cho User về hiện tượng bị chặn và trạng thái cooldown của nick. Cấm ỉm lỗi hoặc báo hoàn thành ảo.
 * **Bỏ qua tự động ở các lượt chạy sau**:
   * Trong hàm `find_target_accounts()`, bắt buộc kiểm tra `is_in_cooldown(email)`. Nếu tài khoản còn trong thời gian 24h cooldown thì tự động bỏ qua (`[COOLDOWN_SKIP]`), không cố chấp retry làm tăng rủi ro spam/flag tài khoản.
-- **Kỷ luật Visual Evidence - Đủ 5 Chặng Bằng Chứng**:
-* Mọi lượt chạy Canary nghiệm thu BẮT BUỘC phải gửi đủ 5 chặng ảnh hiện trường đã qua WinRT OCR soi chữ:
-  1. Ảnh nhập mã OTP liên kết 2FA Authenticator.
-  2. Ảnh form điền mật khẩu mới kèm nút Lưu.
-  3. Ảnh modal dialog xác nhận Đăng xuất khỏi mọi nơi.
-  4. Ảnh nhập mã 2FA TOTP khi đăng nhập lại.
-  5. Ảnh màn hình Duy trì đăng nhập (KMSI) bấm nút "Có".
-
-
----
-
-## 7. Kỷ Luật Đường Dẫn Media Telegram (Chống Nuốt Ảnh)
-- **Pitfall**: Sử dụng dấu gạch ngược Windows trong tag `MEDIA:D:\Taadaa\runtime\artifacts\...` làm xuất hiện escape character `\a` (ASCII Bell), khiến bộ chuyển đổi gateway Telegram (`extract_media`) nuốt chửng thẻ ảnh và không gửi ảnh tới user.
-- **Quy tắc bất biến**: Mọi đường dẫn trong thẻ `MEDIA:` **BẮT BUỘC** phải chuẩn hóa dùng dấu gạch chéo `/`:
-  ```text
-  MEDIA:D:/Taadaa/runtime/artifacts/ten_anh.png
-  ```
-- **Soi mắt OCR**: Trước khi gửi bất kỳ thẻ `MEDIA:` nào, phải dùng WinRT OCR đọc xác nhận text trên ảnh để đảm bảo không bị đen hình hay mất viền.
 
 ---
 
@@ -259,11 +224,10 @@ GPM CDP Connect
     - Đặt cooldown 24h cho tài khoản: `set_cooldown(email, hours=24, reason=err_msg)`.
     - Đặt cooldown 24h cho cả IP lẫn Proxy: `set_ip_cooldown(ip, proxy, email, hours=24, reason=err_msg)`.
     - Dừng tiến trình ngay lập tức (Fail-Fast), **TUYỆT ĐỐI CẤM** ghi đè mật khẩu vào Excel.
-- **Khắc Phục Interstitial "Ghi chú nhanh về tài khoản Microsoft"**:
-  * Microsoft thường chèn màn hình thông báo *"Ghi chú nhanh về tài khoản Microsoft"* (hoặc *"A quick note about your Microsoft account"*) chắn trước trang proofs / change password.
-  * Nếu không xử lý, trang sẽ bị kẹt lại, script không tìm thấy `#AddProofLink` và bỏ qua bước Add 2FA.
+- **Khắc Phục Interstitial "Ghi chú nhanh về tài khoản Microsoft" & FIDO/Passkey**:
+  * Microsoft thường chèn màn hình thông báo *"Ghi chú nhanh về tài khoản Microsoft"* chắn trước trang proofs / change password.
   * Bắt buộc có selector click `[OK]`: `button:has-text('OK')`, `input[value='OK']`, `#iShowG`, `button[id*='ok']`.
-  * Đồng thời click `Bỏ qua / Skip` cho các gợi ý Passkey / FIDO / Windows Hello (`button:has-text('Bỏ qua')`, `button:has-text('Skip')`, `button:has-text('Không, cảm ơn')`).
+  * Đồng thời click `Bỏ qua / Skip` cho các gợi ý Passkey / FIDO / Windows Hello (`/consumers/fido/create`): `button:has-text('Bỏ qua')`, `button:has-text('Skip')`, `button:has-text('Không, cảm ơn')`.
 - **Khóa Logic: BẮT BUỘC 2FA KÍCH HOẠT XONG MỚI ĐƯỢC SANG BƯỚC ĐỔI PASS**:
   * Kiểm tra `has_totp_final = bool(totp_secret_key or get_2fa_secret(email) or page.locator("#TOTPAuthenticator").is_visible())`.
   * Nếu `has_totp_final == False`: Ném `RuntimeError` dừng ngay lập tức, cấm tuyệt đối nhảy sang trang `password/change` khi chưa có 2FA!
@@ -287,13 +251,12 @@ GPM CDP Connect
   * Sau khi hoàn tất 2 Proofs: Trang đặt lại mật khẩu hiển thị (`#iPassword`, `#iRetypePassword`).
   * Điền mật khẩu mới 14 ký tự mạnh mẽ và submit `#iResetPasswordAction`.
   * Đăng nhập lại với Mật khẩu mới + TOTP + KMSI [Có] để hoàn tất phiên.
-  * **Lợi ích**: Luồng này giải phóng triệt để các tài khoản bị Microsoft chặn form đổi pass trực tiếp, đồng thời cập nhật mật khẩu mới và 2FA chuẩn thương mại 100%.
 
 ---
 
 ## 13. Kỷ Luật Bắt Buộc Hoàn Thành Đủ 5 Bước Không Được Làm Nửa Vời & Selector Relogin Mới (2026-10-10)
 - **Tâm Lý & Yêu Cầu Tối Cao Của User**:
-  * User cực kỳ gay gắt khi agent chỉ chạy nửa chừng (ví dụ chỉ đổi pass rồi dừng lại mà không Sign out everywhere và Relogin lại để lưu phiên sống): *"R signout all rồi sign in lại chưa, chứ sao cứ đéo chạy đủ cái flow change info hotmail thế"*.
+  * User cực kỳ gay gắt khi agent chỉ chạy nửa chừng: *"R signout all rồi sign in lại chưa, chứ sao cứ đéo chạy đủ cái flow change info hotmail thế"*.
   * **Định nghĩa ĐỦ FLOW (5 Milestone Bắt Buộc)**:
     1. *Bước 1 (Add 2FA)*: Thêm Authenticator App -> Lấy Base32 Key ghi Cột 4 Excel -> Nhập OTP 6 số kích hoạt -> Bật `EnableTfa = ON`.
     2. *Bước 2 (Đổi Pass)*: Đổi mật khẩu mới mạnh 14 ký tự -> Submit Lưu -> Ghi Cột 3 `gmail_clean_v2` và Cột G `taikhoan_dat_v2`.
@@ -302,27 +265,11 @@ GPM CDP Connect
     5. *Bước 5 (KMSI Bấm Có)*: Bắt màn hình "Duy trì đăng nhập?" -> Click **[Có]** để lưu cookie session vĩnh viễn trên GPM Profile.
   * **CẤM TUYỆT ĐỐI**: Báo cáo xong khi chưa đi hết Bước 5. Nếu dừng lại ở bất kỳ bước nào giữa chừng mà không hoàn tất đều bị coi là **THẤT BẠI NGHIÊM TRỌNG**.
 - **Cạm Bẫy Selector TOTP Trên Giao Diện Relogin Mới Của Microsoft**:
-  * Trên giao diện đăng nhập hiện đại của Microsoft, form thử thách 2FA Authenticator khi đăng nhập lại **KHÔNG DÙNG** selector cũ `#idTxtBx_SAOTCC_OTC` hay `input[type='tel']`.
+  * Trên giao diện đăng nhập hiện đại của Microsoft, form thử thách 2FA Authenticator khi đăng nhập lại **KHÔNG DÙNG** selector cũ `#idTxtBx_SAOTCC_OTC`.
   * Thay vào đó, Microsoft sử dụng cấu trúc DOM mới:
     * Ô nhập mã OTP: `#floatingLabelInput5`, `input[aria-label*="Mã"]`, `input[aria-label*="Mã"]`, `input[placeholder*="Mã"]`, `input[type="text"]` với label `Mã`.
     * Checkbox tin cậy thiết bị: `#trusted-device-checkbox`, `input[type="checkbox"]` với label `Không hỏi lại tôi trên thiết bị này` (bắt buộc check để không bị hỏi lại OTP khi mở profile).
     * Nút submit: `button[type="submit"]:has-text("Tiếp theo")`, `button[type="submit"]`.
-  * Bộ selector đồng bộ trong script:
-    ```python
-    totp_input = page.locator('#floatingLabelInput5, input[aria-label*="Mã"], input[aria-label*="Mã"], input[placeholder*="Mã"], #idTxtBx_SAOTCC_OTC, input[name="otc"]').first
-    if totp_input.is_visible(timeout=5000):
-        totp_input.fill(pyotp.TOTP(sec_key).now())
-        chk = page.locator('#trusted-device-checkbox, input[type="checkbox"]').first
-        if chk.is_visible(timeout=2000) and not chk.is_checked():
-            chk.check()
-        page.locator('button[type="submit"]:has-text("Tiếp theo"), #idSubmit_SAOTCC_Continue, #idSIButton9').first.click()
-    ```
-- **Xử Lý Form "Hoàn Thành Phần Ẩn" Khi Xác Minh Mail Khôi Phục (Recovery Email Proof)**:
-  * Trong bước xác minh danh tính qua email khôi phục (`proofPickerEmail`):
-    * Microsoft in sẵn đuôi `@fviainboxes.com` bên ngoài ô input `#proofInput1`.
-    * **QUY TẮC CỨNG**: Chỉ điền username trước ký tự `@` (ví dụ `rec_email.split('@')[0]`), TUYỆT ĐỐI KHÔNG điền nguyên địa chỉ email đầy đủ vì sẽ bị báo lỗi định dạng.
-    * Nút gửi mã: `#iSelectProofAction` (nút `Nhận mã`).
-    * Ô điền mã OTP sau khi nhận: `#iVerifyText` (type `number`), submit qua `#iVerifyIdentityAction`.
 
 ---
 
@@ -341,3 +288,18 @@ GPM CDP Connect
   * Khi đổi pass thành công, script BẮT BUỘC phải xóa trắng Cột 9 (`token = None`) để tránh việc các runner/consumer đọc Graph API hiểu nhầm là token còn sống.
   * Đồng thời khi quét dọn các acc đã đổi pass trong quá khứ (`changed_emails` trong tracker), phải đối soát và xóa trắng toàn bộ token còn sót lại ở Cột 9.
 
+---
+
+## 15. Tiêu Chuẩn 3 Điều Kiện Tiên Quyết ("Dùng Hết Mới Được Đổi") & Cơ Chế OAuth Omni/9Router (2026-10-10)
+- **Tâm Lý & Nguyên Tắc Của User**:
+  * *"Yêu cầu các hotmail muốn change info phải thoả 3 điều kiện đã reg tiktok đã từng reg chatgpt... Chủ yếu là dùng hết hotmail rồi mới được change info ấy"*.
+- **3 Điều Kiện Tiên Quyết Bắt Buộc Trước Khi Change Info**:
+  1. **Đã Reg TikTok**: Tài khoản đã được liên kết với nick TikTok trên Phone Farm (Cột 3 có ID TikTok, Cột 4 có PASS TikTok trong `taikhoan_dat_v2_updated .xlsx`).
+  2. **Đã Reg ChatGPT**: Tài khoản đã từng đăng ký tài khoản ChatGPT thành công (Cột 12 `PASS CHATGPT` khác trống).
+  3. **Đã Nạp Dual OAuth Codex**: Đã kết nối Codex lên CẢ **OmniRoute (:20129)** VÀ **9Router (:20128)**.
+- **Giải Đáp Về Cơ Chế OAuth OmniRoute & 9Router**:
+  * *Hỏi: Sau khi đổi pass thì OmniRoute và 9Router có cần OTP về Hotmail nữa không?*
+  * *Trả lời: HOÀN TOÀN KHÔNG CẦN OTP VỀ HOTMAIL.*
+    - OmniRoute và 9Router lưu trữ trực tiếp `access_token` và `refresh_token` do OpenAI cấp trong database SQLite riêng (`storage.sqlite` và `data.sqlite`).
+    - Việc refresh token diễn ra trực tiếp giữa OmniRoute/9Router với máy chủ OpenAI, hoàn toàn không liên quan đến Hotmail và không bao giờ gửi OTP về Hotmail nữa.
+    - Do đó, khi tài khoản đã thỏa mãn đủ 3 điều kiện trên thì Hotmail đã "vắt kiệt" toàn bộ giá trị sử dụng. Tiến hành Đổi Pass + 2FA + Xóa Token Cột 9 là thời điểm hoàn hảo và an toàn nhất.

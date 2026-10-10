@@ -45,3 +45,7 @@ Mọi báo cáo, dashboard và công cụ thống kê BẮT BUỘC bao quát c�
 - **Cụm Admin:** Máy 201 – 280 (615 accounts), proxy cổng `100xx` (`D:/OneDrive/TaadaaData/admin/PROXYgandienthoai.xlsx`).
 - **Tổng Quy Mô Toàn Farm:** 160 máy / 1.255 accounts.
 - **Tập Trung CSDL & State:** Toàn bộ dữ liệu follow, session stats và circuit breakers lưu chung tại `D:/Taadaa/data/tiktok_tracker.db` để dễ dàng tra cứu, kiểm soát đồng bộ toàn farm.
+- **Giao Diện Dashboard :1905 & Chống Xung Đột DOM ID:**
+  - Bảng Ma Trận Lịch Sử Follow hỗ trợ chuyển nhanh giữa các cụm: `[ 🌐 Toàn Farm (160) ]` | `[ M1-80 (Kibe) ]` | `[ M201-280 (Admin) ]`.
+  - **BẪY XUNG ĐỘT DOM ID TRÊN MOBILE:** Các nút bấm lọc cụm của widget con (như Follow Matrix) BẮT BUỘC đặt ID có tiền tố phân biệt (`btn-fh-cluster-all`, `btn-fh-cluster-kibe`, `btn-fh-cluster-admin`). TUYỆT ĐỐI CẤM dùng chung ID `btn-cluster-*` với bộ lọc tổng của Fleet Heatmap, vì xung đột ID sẽ khiến `document.getElementById` chọn sai phần tử và làm liệt tính năng bấm chọn cụm trên trình duyệt điện thoại.
+  - Ánh xạ proxy và máy cặp đôi (`partner`) được nạp tự động từ cả 2 file Excel của Kibe và Admin để hiển thị nhãn cổng proxy và máy chạy chung IP (ví dụ `M28 :5134 (🔗M66)`, `M209 :10010 (🔗M207, M208)`).
