@@ -65,6 +65,14 @@ Khảo sát từ 10.677 lượt follow và 389 hồ sơ lỗi state trên hệ t
   - **Lý do 1: Phá vỡ Aging Trust Score:** Nick farm được nuôi theo cơ chế IP Tĩnh Dài Hạn (Home Wi-Fi Baseline) gắn chặt `[Hardware ID + Subnet/ASN + Geolocation]`. Đổi proxy đột ngột gây lỗi *Impossible Travel* / Flapping, kích hoạt cờ đỏ Anti-Fraud (bắt giải Captcha, checkpoint SMS hoặc shadowban).
   - **Lý do 2: Tránh Cháy Lan Trong Bão Thuật Toán:** Khi nhiều proxy bị ngắt liên tiếp trong thời gian ngắn, đây là "bão quét tương tác" từ thuật toán TikTok. Nếu đổi proxy mới cho máy sau lao vào chạy tiếp -> Máy sau tiếp tục bị trảm trên proxy mới -> Vừa chết thêm nick, vừa mất thêm proxy dự phòng.
   - **Lý do 3: Tỷ lệ Đánh Đổi Lỗ Nặng (Risk vs Reward):** Cố chạy chỉ thu thêm 9–12 follow/ca, nhưng rủi ro dính Cooldown 3–15 ngày hoặc hỏng vĩnh viễn nick nuôi nhiều tháng.
+  - **Lý do 4: Bẫy Account Switcher Làm Cháy Lan IP Mới (User Insight):**
+    - Trên mỗi điện thoại Samsung S7, các nick vận hành qua tính năng Account Switcher của app TikTok.
+    - Khi mở app TikTok để chuyển sang nick mới (Row sau), app luôn **render phiên làm việc của nick cũ trước** (chính là nick ca trước vừa dính vết nhả follow).
+    - Nick cũ lập tức gửi request ping vi phạm lên TikTok trên dải IP mới toanh trước khi kịp bấm chuyển tài khoản.
+    - **Hậu quả:** Tự tay liên kết IP mới với tài khoản vi phạm, làm bẩn IP mới ngay từ giây đầu tiên và lây cờ đỏ sang nick mới ở ca sau.
+* **Hiện trường thực nghiệm: Cầu dao 24h là KHÔNG ĐỦ (User Query & Field Proof):**
+  - Khảo sát 236 lượt theo dõi IP từ 02/10 đến 10/10/2026 sau ngày dính nhả: Nếu ngày hôm sau (qua 00:00) cho chạy tiếp trên cùng IP đó thì **161 / 169 ca (95.2%) VẪN TIẾP TỤC BỊ DÍNH NHẢ NỐT!** Chỉ 4.8% thành công.
+  - Cửa sổ phạt (Taint Window) của TikTok trên IP nhạy cảm kéo dài tối thiểu **48h đến 72h** (đồng bộ với thời gian cooldown của nick). Cầu dao ngắt chỉ trong ngày (23:59:59) là chưa đủ an toàn nếu qua hôm sau cho cày dồn dập.
 * **Ma Trận Phân Biệt Xử Lý Proxy:**
 
 | Bản chất sự cố | Triệu chứng kỹ thuật | Xử lý điều phối |
@@ -126,10 +134,14 @@ Toàn bộ 80 máy Kibe dùng 40 proxy (mỗi proxy 2 máy: `[M1, M39]`, `[M2, M
 
 ## 5. Điều Phối Nick Chung IP Khác Ca (Cross-Shift / Sáng-Chiều) & Switcher Đa Nick
 
-### A. Tình huống nghiệp vụ:
-Khi 1 nick bị TikTok nhả (`FOLLOW_FAILED`) ở ca trước (ví dụ ca sáng), nick khác dùng chung IP đó nhưng lên lịch chạy ở ca khác (chiều/tối, hoặc row khác trên cùng máy Switcher) thì có được chạy follow tiếp không?
+### A. Tình huống nghiệp vụ & Bản Chất Lệch Độ Trưởng Thành Các Row (User Correction & Insight):
+- Khi khảo sát hiện tượng "Sáng follow bình thường nhưng Chiều/Tối cùng máy lại bị nhả" (15 ca ghi nhận từ 02/10 đến 07/10/2026), **nguyên nhân cốt lõi không phải do phần cứng hay Account Switcher làm bẩn nick sau**, mà do **ĐỘ LỆCH SỨC KHỎE (ROOKIE vs VETERAN) GIỮA CÁC ROW**:
+  - **Row 1 & 2:** Dàn cựu binh nuôi lâu, >= 90% nick có >= 10-25 video, trung bình tích lũy 20–108 follow sạch.
+  - **Row 3 đến 8:** Dàn nick gối đầu/mới reg bù, **76% - 90% nick CHƯA TỪNG follow được lần nào (0 follow)**, video ít.
+  - Khi đưa nick non nớt (Rookie) vào cày follow thì dù chạy ở ca nào nó cũng sẽ bị thuật toán TikTok vặn cổ (`FOLLOW_FAILED`).
+  - **Bằng chứng phản biện:** Khi cho nick Row 3 nhưng là **Nick Khỏe có Trust** chạy buổi trưa/chiều (M16_r3 `@lenhi09116` cày 10 follow ngày 03/10 và 15 follow ngày 07/10; M21_r3 `@hongloan992` cày 5 follow ngày 03/10 và 17 follow ngày 07/10), máy và IP hoàn toàn gánh được cả 2 ca mượt mà!
 
-### B. Quy tắc vận hành chuẩn: HOÃN FOLLOW TOÀN BỘ ĐẾN HẾT NGÀY (23:59:59)
+### B. Quy tắc vận hành chuẩn: HOÃN FOLLOW TOÀN BỘ ĐẾN HẾT NGÀY (23:59:59) KHI DÍNH NHẢ
 1. **Phạm vi khóa của Circuit Breaker:** Bảng `ip_circuit_breaker` khóa theo `proxy_key` với `target_date = today` và `reset_at = 23:59:59`. Mọi ca chạy sau trong cùng ngày (bất kể khác máy hay cùng máy khác row) khi gọi `check_ip_breaker()` đều nhận cờ `TRIPPED` và tự động safe-skip.
 2. **Cơ sở kỹ thuật (Taint Window 24h):**
    - TikTok cắm cờ nghi vấn theo bộ ba `[Hardware ID + IP/Subnet + Pattern]`. Cửa sổ phạt không hết sau vài tiếng.

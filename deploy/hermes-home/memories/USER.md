@@ -2,7 +2,7 @@ Cào/Render: giữ niche, mới 12 niche hot; dọn video+ava; Watchdog 6h; min 
 §
 Dọn đĩa: duyệt trước (thư mục corrupt/lỗi xóa ngay), CẤM xóa ngầm.
 §
-Farm: nick cấm xóa/đè; SoT tiktok_tracker.db. GPM 7d; Hotmail bật 2FA TOTP. LLM: Codex 9Router pool Omni ver số, cấm pool web; nick ban xóa DB giữ GPM.
+Farm: nick cấm xóa/đè; SoT tiktok_tracker.db. GPM 7d. Hotmail chỉ change info khi dùng hết (đã reg TT+ChatGPT+Dual OAuth); đổi pass xóa token Col 9. LLM: Codex pool Omni ver số, cấm web; ban xóa DB giữ GPM.
 §
 Chốt phiên: tự remediation >=85; bind repo/task; Regression Gate. Claude CLI: sonnet 5.5 (user bảo mới dùng); quota block dừng xin phép.
 §
