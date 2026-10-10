@@ -1434,6 +1434,8 @@ def dispatch_split_reports(header: str, cluster_blocks: list[str], cluster_stats
         sec = lambda kw: next((lines[i:next((j for j in range(i+1, len(lines)) if lines[j].startswith("• ")), len(lines))] for i, l in enumerate(lines) if l.startswith(f"• {kw}")), [])
         fl_s, up_s = sec("Follow chéo"), sec("Đăng Video")
         f_s = [l for l in lines if l not in fl_s and l not in up_s]
+        if fl_s: f_s.append(fl_s[0])
+        if up_s: f_s.append(up_s[0])
         if f_s: feed_p.append("\n".join(f_s))
         if fl_s: fl_p.append("\n".join(hdr + fl_s))
         if up_s: up_p.append("\n".join(hdr + up_s))
@@ -1449,29 +1451,41 @@ def dispatch_split_reports(header: str, cluster_blocks: list[str], cluster_stats
         t = _load_bot_token()
         for cid, hdr, parts in [("-5127276494", fl_hdr, fl_p), ("-5435853713", up_hdr, up_p)]:
             if t and parts:
-                full_msg = hdr + "\n\n" + "\n\n".join(parts)
-                # Tự động chia nhỏ tin nhắn nếu vượt giới hạn 4000 ký tự của Telegram
-                chunks = []
-                if len(full_msg) <= 4000:
-                    chunks = [full_msg]
-                else:
-                    curr_lines = []
-                    curr_len = 0
-                    for line in full_msg.splitlines(keepends=True):
-                        if curr_len + len(line) > 3900:
+                try:
+                    full_msg = hdr + "\n\n" + "\n\n".join(parts)
+                    # Tự động chia nhỏ tin nhắn nếu vượt giới hạn 4000 ký tự của Telegram
+                    chunks = []
+                    if len(full_msg) <= 4000:
+                        chunks = [full_msg]
+                    else:
+                        curr_lines = []
+                        curr_len = 0
+                        for line in full_msg.splitlines(keepends=True):
+                            if curr_len + len(line) > 3900:
+                                chunks.append("".join(curr_lines))
+                                curr_lines = [line]
+                                curr_len = len(line)
+                            else:
+                                curr_lines.append(line)
+                                curr_len += len(line)
+                        if curr_lines:
                             chunks.append("".join(curr_lines))
-                            curr_lines = [line]
-                            curr_len = len(line)
-                        else:
-                            curr_lines.append(line)
-                            curr_len += len(line)
-                    if curr_lines:
-                        chunks.append("".join(curr_lines))
 
-                for chunk in chunks:
-                    body = urllib.parse.urlencode({"chat_id": cid, "text": chunk}).encode("utf-8")
-                    urllib.request.urlopen(urllib.request.Request(f"https://api.telegram.org/bot{t}/sendMessage", data=body), timeout=10)
-                logger.info("[WATCHDOG_TELEGRAM_DISPATCH_SUCCESS] chat_id=%s hdr=%s chunks=%d", cid, hdr, len(chunks))
+                    for chunk in chunks:
+                        body = urllib.parse.urlencode({"chat_id": cid, "text": chunk}).encode("utf-8")
+                        req = urllib.request.Request(f"https://api.telegram.org/bot{t}/sendMessage", data=body)
+                        for attempt in range(3):
+                            try:
+                                urllib.request.urlopen(req, timeout=15)
+                                break
+                            except Exception:
+                                if attempt == 2:
+                                    raise
+                                time.sleep(2)
+                    logger.info("[WATCHDOG_TELEGRAM_DISPATCH_SUCCESS] chat_id=%s hdr=%s chunks=%d", cid, hdr, len(chunks))
+                except Exception as dispatch_err:
+                    sys.stderr.write(f"[WATCHDOG_TELEGRAM_DISPATCH_FAIL] chat_id={cid} err={dispatch_err}\n")
+                    logger.warning("[WATCHDOG_TELEGRAM_DISPATCH_FAIL] chat_id=%s err=%s", cid, dispatch_err)
     except Exception as exc:
         logger.warning("[WATCHDOG_TELEGRAM_DISPATCH_FAIL] err=%s", exc)
     return feed_hdr + "\n\n" + "\n\n".join(feed_p)
