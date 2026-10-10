@@ -8,6 +8,7 @@ Tự động fallback đa tầng để chống timeout/waterfall, đảm bảo l
 
 from __future__ import annotations
 
+import concurrent.futures
 import argparse
 import json
 import os
@@ -247,8 +248,7 @@ def _call_stream_chat(url: str, headers: dict[str, str], payload: dict[str, Any]
         return False, str(exc)
 
 
-def consult_advisor(prompt: str, context: str = "", timeout_sec: float = 45.0) -> dict[str, Any]:
-    """Truy vấn trực tiếp Advisor Sol (:20129 review / gpt-web-sol) với deadline tổng <= 45s."""
+def _consult_inner(prompt: str, context: str = "") -> dict[str, Any]:
     cleaned_prompt = redact_secrets(prompt)
     cleaned_context = redact_secrets(context)
 
@@ -267,17 +267,9 @@ def consult_advisor(prompt: str, context: str = "", timeout_sec: float = 45.0) -
     omni_url = "http://127.0.0.1:20129/v1/chat/completions"
     omni_headers = {"Content-Type": "application/json", "Authorization": "Bearer dummy"}
 
-    t_start = time.monotonic()
-    max_total_sec = 45.0
-
     for target_model in ["gpt-web-sol", "review"]:
-        elapsed = time.monotonic() - t_start
-        remaining = max_total_sec - elapsed
-        if remaining <= 3.0:
-            break
-        timeout_this_call = min(timeout_sec, remaining)
         payload = {"model": target_model, "messages": messages}
-        ok, text_resp = _call_stream_chat(omni_url, omni_headers, payload, timeout_sec=timeout_this_call)
+        ok, text_resp = _call_stream_chat(omni_url, omni_headers, payload, timeout_sec=25.0)
         if ok and len(text_resp) > 20:
             return {
                 "status": "success",
@@ -295,6 +287,32 @@ def consult_advisor(prompt: str, context: str = "", timeout_sec: float = 45.0) -
         "advice": "",
         "formatted": f"--- Advisor ---\n{err_msg}",
     }
+
+
+def consult_advisor(prompt: str, context: str = "", timeout_sec: float = 45.0) -> dict[str, Any]:
+    """Truy vấn trực tiếp Advisor Sol (:20129 review) với DEADLINE CỨNG WALL-CLOCK <= 45s qua ThreadPool."""
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(_consult_inner, prompt, context)
+        try:
+            return future.result(timeout=timeout_sec)
+        except concurrent.futures.TimeoutError:
+            err_msg = f"Advisor: unavailable (Sol / review wall-clock deadline exceeded >{timeout_sec}s; chỉ hiển thị câu trả lời Coordinator)"
+            return {
+                "status": "unavailable",
+                "model": "none",
+                "tier": 0,
+                "advice": "",
+                "formatted": f"--- Advisor ---\n{err_msg}",
+            }
+        except Exception as exc:
+            err_msg = f"Advisor: unavailable ({exc}; chỉ hiển thị câu trả lời Coordinator)"
+            return {
+                "status": "unavailable",
+                "model": "none",
+                "tier": 0,
+                "advice": "",
+                "formatted": f"--- Advisor ---\n{err_msg}",
+            }
 
 
 def ensure_dual_answer(message: str, response: str, context: str = "") -> str:
