@@ -51,3 +51,24 @@
 
 ## 5. Kỷ Luật Giao Tiếp & Thuật Ngữ
 - **CẤM DÙNG THUẬT NGỮ JARGON GÂY KHÓ CHỊU:** Tuyệt đối không gọi tài khoản TikTok là `@handle` hay `TikTok ID handle`. Trong hệ thống và giao tiếp với User, chỉ gọi đơn giản là **ID** hoặc **tên nick TikTok** (ví dụ: `@thanhlee327`, nick `thanhlee327`).
+
+## 6. Quy Trình Cứu Nick Tự Động Qua GPM Playwright + Gmail IMAP OTP (2026-10-10)
+- **Phát hiện form có mail khôi phục cá nhân:**
+  - Khi Microsoft hiển thị: *"Xác minh email của bạn - Chúng tôi sẽ gửi mã đến th*****@gmail.com"* -> Điền email khôi phục đầy đủ (`thanhdatbui1995@gmail.com`) vào selector `#proof-confirmation-email-input` -> Click `button:has-text('Gửi mã')`.
+  - Phân biệt với form không có mail khôi phục: Nếu là form *"Khôi phục tài khoản của bạn - Nhập địa chỉ email khác để liên hệ..."* -> Tài khoản chưa gán mail khôi phục cá nhân, không thể cứu bằng luồng OTP tự động.
+- **Lấy OTP 6 số từ Gmail qua IMAP:**
+  - Đọc credentials từ Windows Environment (`winreg.HKEY_CURRENT_USER\Environment`):
+    - `OTP_MAIL_USER`: `thanhdatbui1995@gmail.com`
+    - `OTP_MAIL_APP_PASSWORD`: App password (16 ký tự).
+  - Kết nối `imap.gmail.com:993`, tìm email mới nhất từ `Microsoft` / `account-security-noreply@accountprotection.microsoft.com`.
+  - **BẪY CẦN TRÁNH:** Bỏ qua mã `521839` (đây là ID link chính sách quyền riêng tư của Microsoft nằm trong email, không phải OTP).
+- **Điền OTP 6 số trên giao diện web:**
+  - Microsoft phân chia thành 6 ô input riêng biệt: `#codeEntry-0` đến `#codeEntry-5`.
+  - Lặp qua 6 chữ số và điền vào từng ô tương ứng (delay 0.1s mỗi ô).
+- **Xử lý các màn hình chuyển tiếp sau khi nhập OTP:**
+  - **Điều khoản (Terms):** Click *"Tiếp theo"* (`button:has-text('Tiếp theo'), #iNext`).
+  - **Duy trì đăng nhập (KMSI):** Click *"Không"* (`#idBtn_Back`, `input[value='Không']`) -> Microsoft sẽ hoàn tất auth và chuyển hướng ngay lập tức vào Dashboard, tránh bị kẹt sticky prompt nếu click "Có".
+  - **Cookie Consent:** Click *"Chấp nhận"* (`button:has-text('Chấp nhận')`).
+- **Xử lý Rate Limit khi thử lại:**
+  - Nếu gửi OTP liên tiếp > 3 lần trong thời gian ngắn, Microsoft sẽ chặn tạm thời: *"Bạn đã đạt đến giới hạn của mình với phương thức đăng nhập này"*.
+  - Biện pháp: Set cooldown tối thiểu 2 giờ trong file state json để Microsoft hạ nhiệt trước khi thực hiện lại.
