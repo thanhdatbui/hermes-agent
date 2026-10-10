@@ -7,15 +7,17 @@ description: "TikTok follow runner and fail-closed farm ops."
 
 ## Non-negotiable operating rules
 
-- **Tài liệu tham khảo chuyên sâu (`references/`):** Xem `references/follow-report-semantics-and-concise-wording.md` để phân biệt `Success (0)` với không chạy và ghi ngắn `Nhả → khóa IP`.
-    - `references/account-replacement-and-backfill-state-reset.md`: Kỷ luật reset state & bộ đếm video/follow khi thay nick die / reg bù.
+- **Tài liệu tham khảo chuyên sâu (`references/`):**
+    - `references/follow-report-semantics-and-concise-wording.md`: Phân biệt `Success (0)` với không chạy (`Nhả → khóa IP`).
+    - `references/account-replacement-and-backfill-state-reset.md`: Reset state & bộ đếm video/follow khi thay nick die / reg bù.
     - `references/fleet-follow-graduated-probation-ladder.md`: Bậc thang 3 nấc & Health-Tiered Reporting.
     - `references/daily-follow-matrix-and-trust-ceiling-analytics.md`: Daily Matrix Heatmap, Trust Ceiling, FOLLOW_CONCURRENCY.
-    - `references/shared-ip-proxy-collision-and-canary-ceiling-testing.md`: Trùng IP (1 IP : 2 Máy), IP Circuit Breaker tự ngắt, Canary 5-10%.
-    - `references/wave-scheduling-and-multi-farm-unified-governance.md`: Wave 1 (độc lập IP) -> Cầu dao -> Wave 2; Vận hành Kibe(1-80)+Admin(201-280) tập trung CSDL.
-    - `references/dashboard-follow-reconcile-race-condition.md`: Lệch pha crawler vs ca chốt sổ; đối soát log/sqlite cấm phán bừa.
-    - `references/contact-suggestion-popup-follow-lockdown.md`: Khóa tuyệt đối auto-follow từ popup gợi ý danh bạ/bạn bè để bảo vệ nick yếu và giữ trust.
-    - `references/contact-suggestion-auto-follow-leak-prevention.md`: Chống rò rỉ follow lẻ từ popup danh bạ/bạn bè; cấm auto-follow popup bảo vệ nick yếu/dưỡng sinh.
+    - `references/shared-ip-proxy-collision-and-canary-ceiling-testing.md`: Trùng IP (1 IP : 2 Máy), IP Circuit Breaker, Canary 5-10%.
+    - `references/wave-scheduling-and-multi-farm-unified-governance.md`: Wave 1 -> Cầu dao -> Wave 2; Cụm Kibe(1-80)+Admin(201-280).
+    - `references/dashboard-follow-reconcile-race-condition.md`: Lệch pha crawler vs ca chốt sổ; đối soát log/sqlite.
+    - `references/contact-suggestion-popup-follow-lockdown.md`: Khóa auto-follow từ popup danh bạ/bạn bè.
+    - `references/contact-suggestion-auto-follow-leak-prevention.md`: Chống rò rỉ follow lẻ từ popup danh bạ bảo vệ nick yếu.
+    - `references/zero-follow-shift-audit-and-fail-closed-breakdown.md`: Đối soát ca 0 follow (dưỡng sinh 1/3, cầu dao 48h, cooldown, nick non).
     - Case references: `references/case-ui-*.md`, `references/workflow-parity-*.md`, `references/fleet-follow-*.md`.
     - `references/case-ui-89-idempotent-session-actions-and-partial-follow-accounting.md`: Staging.
     - `references/case-ui-96-released-follow-invalidation-regardless-of-count.md`: Khấu trừ nhả follow.
