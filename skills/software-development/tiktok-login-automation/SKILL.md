@@ -18,7 +18,7 @@ description: TikTok login automation via ADB — inventory, login, 2FA, UI handl
 - **SAFE TAP SWITCHER**: Safe_y=1832. Ref: `references/account-switcher-safe-tap-and-tracking-sheet-filtering.md`.
 - **ĐỐI SOÁT KÝ SINH & LOGOUT**: Audit 2 bước; logout Settings. Ref: `references/parasite-active-profile-logout-and-switcher-audit-20261001.md`.
 - **HOTMAIL GRAPH TOKEN OTP (2026-10-10)**: Ref: `references/hotmail-token-graph-otp-and-fake-password-triage-20261010.md`.
-- **NGÂM NGUỘI & TÁI CẤP NICK THU HỒI (2026-10-10)**: Ngâm nguội 24-48h chống bẫy Device Hopping; xếp trước vào Excel Admin/Kibe và kiểm định bằng `excel_preflight_validator.py`. Ref: `references/kicked-out-parasite-relocation-and-soak-policy-20261010.md`.
+- **NGÂM NGUỘI & TÁI CẤP NICK THU HỒI (2026-10-10)**: Ngâm nguội 24-48h chống bẫy Device Hopping; xếp trước vào Excel Admin/Kibe và gán folder video độc lập theo `(folder-1)%8+1`. Ref: `references/displaced-account-cooldown-and-reallocation-20261010.md`.Kibe và kiểm định bằng `excel_preflight_validator.py`. Ref: `references/kicked-out-parasite-relocation-and-soak-policy-20261010.md`.
 - **TRIAGE GMAIL OTP (2026-09-21)**: Ref: `references/tiktok-login-gmail-account-missing-and-checkmail-triage-20260921.md`.
 - **CẤM BỎ DỞ 2FA EMAIL OTP (2026-09-17)**: Ref: `references/tiktok-login-recovery-and-email-otp-workflow-20260917.md`.
 - **ĐỐI SOÁT TRẦN 8 & NICK MỒ CÔI (2026-09-17)**: Đối soát Switcher với Excel tìm nick mồ côi, logout nhả slot. Chi tiết: `references/tiktok-switcher-ceiling-8-and-orphan-account-recovery-20260917.md`.
