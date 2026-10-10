@@ -90,6 +90,12 @@ Chạy script query bảng `provider_connections` trong `C:\Users\Kibe\.omnirout
   * CHECKPOINT 1 (Pre-submit): Điền email xong, chụp ảnh kiểm tra bằng WinRT OCR/vision.
   * CHECKPOINT 2 (Post-submit): Submit xong chụp ảnh ngay. Nếu gặp thông báo *"Chúng tôi đã gặp sự cố khi đăng nhập cho bạn, vui lòng tạm dừng một lát và thử lại sau"* (OpenAI rate-limit IP proxy), DỪNG NGAY LẬP TỨC. Tuyệt đối không cố chạy vòng lặp mù làm cháy proxy/tài khoản.
 
+- **KỶ LUẬT CÁCH LY PROXY FARM & ĐỒNG BỘ DUAL-FARM (KIBE + ADMIN):**
+  * Dải IP Mikrotik PPPoE (`10001-10040`) là IP nội bộ của dàn farm thiết bị, dùng cố định cho các tài khoản TikTok/Hotmail của dàn máy đó, tuyệt đối không được tùy tiện dùng ké để đăng nhập lan man.
+  * Mọi quy trình vòng đời GPM/Hotmail (`batch_gpm_5profiles_supervisor.py`) BẮT BUỘC hỗ trợ cả 2 Farm: Kibe (`D:\OneDrive\TaadaaData\kibe`) và Admin (`D:\OneDrive\TaadaaData\admin`).
+  * Master Excel Kibe có 12 cột (`PASS CHATGPT`), còn Admin chỉ có 10-11 cột; code đọc Excel bắt buộc dùng boundary check safe `idx < len(row)` tránh `IndexError`.
+  * Lập lịch cron supervisor cho 2 cluster lệch phút (Kibe `0,5,10...`, Admin `2,7,12...`) để tránh nghẽn GPM concurrency. Báo cáo 6h phải gộp số liệu cả 2 Farm.
+
 ### Bước 5: Đóng Profile sau khi hoàn tất
 Gọi API dừng profile để tránh rò rỉ tiến trình Chromium:
 `GET http://127.0.0.1:19995/api/v3/profiles/stop/{profile_id}`
