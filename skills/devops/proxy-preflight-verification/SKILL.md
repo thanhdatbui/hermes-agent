@@ -336,6 +336,8 @@ See `scripts/scan_singbox_farm_proxies.py` for concurrent proxy cluster scanner 
 ## Reference
 
 See `references/singbox-dns-failure-on-mikrotik-pppoe-outage-20261009.md` for Singbox proxy stalling on MikroTik PPPoE outage, DNS context deadline exceeded, and two-tier triage between upstream MobiProxy and local wrapper (2026-10-09).
+See `references/summary-stop-reason-priority-and-watchdog-false-proxy-label-20261010.md` for summary parser stop_reason priority and watchdog false proxy label fix (2026-10-10).
+See `android-device-automation` → `references/battery-spoofing-anti-fraud-and-hardware-monitoring.md` for why battery spoofing via dumpsys battery set level is strictly forbidden (sensor inconsistency vs SecSDK, risk of hard power-off crash).
 See `references/fpt-dual-path-lan-alive-vs-mikrotik-pppoe-down-20261009.md` for FPT dual-path architecture (LAN alive vs MikroTik PPPoE RX-zero outage), bridge port misplugging, and Singbox container routing failure (2026-10-09).
 See `references/admin-unassigned-proxy-direct-leak-incident-20261008.md` for the Admin S7 unassigned proxy and direct IP leak incident postmortem, root causes, and 3-tier emergency kill procedure (2026-10-08).
 See `references/ap-transient-disconnect-vs-batch-preflight-window-20261008.md` for the AP transient disconnect vs batch preflight timing collision pattern (2026-10-08).
