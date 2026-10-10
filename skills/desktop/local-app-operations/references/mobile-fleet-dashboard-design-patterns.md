@@ -97,3 +97,11 @@ On desktop, keep `<details open>`; on mobile, default closed to allow direct acc
    - When consolidating multiple disjoint panels into a unified toggle panel, preserve all existing IDs as container wrappers or hidden elements (`<div id="fhSectionList" style="display:none;"></div>`) to prevent breaking existing test assertions.
 3. **Template Nesting & Orphaned Tag Guard**:
    - When patching inline HTML string templates inside multi-line Python f-strings, verify opening/closing `<div>` tag counts across patch boundaries. Stray `</div>` tags can prematurely close parent flex containers and distort layout. Always run `pytest` and inspect rendered DOM output before restarting the service.
+4. **Auto-Refresh Scroll Preservation & In-Place Leaf Updates**:
+   - In 30s polling loops (`setInterval`), never wipe parent containers (`container.innerHTML = ...`) as collapsing height causes mobile browsers to snap `window.scrollY` to 0, and resets nested scrollable containers (`grid.scrollTop = 0`).
+   - Branch on `isAutoRefresh && document.getElementById('gridId')`: update text in KPI cards, `<tbody>` rows, and button counters in-place.
+   - Capture `const prevScroll = grid.scrollTop;` prior to card rendering and restore `if (prevScroll) grid.scrollTop = prevScroll;` immediately after.
+5. **Scoped Media Queries vs Auxiliary Summary Tables (`table { display: block }` Trap)**:
+   - Global mobile rules like `@media (max-width: 640px) { table, tr, td { display: block } }` intended for primary multi-column accounts tables inadvertently explode secondary summary tables (like daily/weekly stats) into tall multi-line cards, blowing out viewport height.
+   - Always scope card transforms strictly (e.g. `.table-container table, .table-container tr`), and explicitly force `.fleet-table, .fleet-table tr { display: table / table-row !important; } .fleet-table td { display: table-cell !important; }` inside bounded scroll boxes (`max-height: 260px; overflow-y: auto;`) so daily metrics remain clean 1-line rows (`Ngày | +Lượt | Nick`).
+
