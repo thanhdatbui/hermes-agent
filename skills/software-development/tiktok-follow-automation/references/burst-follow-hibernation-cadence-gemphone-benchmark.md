@@ -48,15 +48,24 @@ Khác với việc search liên tục gây áp lực bàn phím, script GemPhone
 
 ---
 
-## 4. Điểm khác biệt mấu chốt so với Taadaa Runner hiện tại
+## 4. Điểm khác biệt mấu chốt & Nghịch lý "Tự trói chân" (Root Cause Analysis)
 
-| Tiêu chí | GemPhoneFarm Workflow | Taadaa Runner (Hiện tại) |
+### A. Thực trạng Farm đối soát (Tháng 10/2026):
+- Khi quét 410 file trạng thái `runs/state/follow_state_*_row_*.json`:
+  * **Row 1:** 65/80 nick bị khóa (`follow_failed: True`), 74 nick dính án phạt `fail_streak`.
+  * **Row 2:** 71/78 nick bị khóa.
+  * **Row 3 & 4:** 64–70 nick bị khóa (streak 1–3), tê liệt gần như toàn bộ.
+  * **Tik 5:** Ông anh đã chạy follow ổn (>50% retention), trong khi bên ta Tik 3 & 4 vẫn còn "ngọng" nặng.
+
+### B. So sánh cấu trúc điều hành:
+| Tiêu chí | Chiến lược của ông anh | Hệ thống Taadaa Runner hiện tại |
 | :--- | :--- | :--- |
+| **Dung sai nhả (Tolerance)** | **Chấp nhận dung sai 40%:** Bấm 20–30 phát, nhả 8–10 phát (giữ 12–15 phát) ➔ **Thành công**, tích lũy follow đều. | **Zero-tolerance (0% dung sai):** Chỉ cần 1 phát bị nhả hoặc lag sync ➔ Dập tắt session ngay lập tức với 0 follow. |
+| **Hậu quả khi bị nhả** | Nhả > 40% ➔ Dừng cho đi lướt nuôi 1–2 ngày (không tăng streak, không phạt giam cầm). | Tự giam nick vào Cooldown 3d ➔ 5d ➔ 7d ➔ 15d. Vừa mãn hạn lại bị ép nấc probation 1–2 fl/ngày ➔ Nick tê liệt vĩnh viễn. |
 | **Vị trí thao tác** | Đứng im trong list Following của Anchor, tap + cuộn. | Mở Profile con qua `_path_b_verify`, xem video, back ra reload. |
-| **Áp lực Activity UI** | Cực thấp (1 Activity duy nhất). | Cực cao (liên tục switch Activity Profile ↔ List). |
-| **Đối soát nhả follow** | **Không verify reload.** Chấp nhận nhả một phần, giữ lại phần còn lại. | Verify 100% từng nick. Nhả hoặc sync chậm là gắn `FOLLOW_FAILED`. |
-| **Hậu quả khi bị nhả** | Không tự giam nick. Chu kỳ sau chạy tiếp. | Tự giam nick vào Cooldown 48h ➔ 4 ngày ➔ 7 ngày (tự khóa chân). |
+| **Chu kỳ máy** | **Xoay tua 3 slot/ngày** (Ngày 1: 1-3, Ngày 2: 4-6, Ngày 3: 7-8, Ngày 4: Nghỉ). Ngủ đông 3–4 ngày/nick. | Chạy liên tục các ca nuôi feed cả 8 slot trên máy. Không có Rest Day toàn máy. |
 
-### Bài học cốt lõi:
-- Việc verify quá sớm và quá chặt chẽ (`_path_b_verify` 100% + Pull-to-refresh) vô tình biến các lỗi sync delay hoặc cờ nhẹ thành án phạt nặng, khiến dàn nick tự rơi vào trạng thái đóng băng ("ngọng").
-- Để scale sản lượng follow an toàn cho dàn nick đã có video (> 10 video): Áp dụng nhịp nghỉ sâu giữa các lần tap (8–18s) trong cùng 1 list Anchor + chu kỳ Burst 20–30 follow kèm ngủ đông 3–4 ngày.
+### C. Bài học cốt lõi & Hướng điều chỉnh kiến trúc:
+1. **Ân xá Farm:** Cần cơ chế dọn sạch cờ `follow_failed` và `fail_streak` ảo do hệ thống tự dập tắt để cứu dàn Row 3, 4, 5.
+2. **Cầu dao theo Tỷ lệ phiên (Session-level Drop Rate):** Thay vì dừng ở nick đầu tiên, cho phép chạy đủ quota với delay sâu 8–18s. Nếu cuối phiên đối soát tỷ lệ nhả > 40% mới ngắt và chuyển sang lướt feed nuôi 1–2 ngày.
+3. **Chu kỳ 3 slot + Ngủ đông 3–4 ngày:** Nick chạy 20–30 follow xong phải được nghỉ ngơi để TikTok thẩm định tự nhiên trước khi chạy tiếp.
