@@ -10,6 +10,9 @@ Trong các phiên chạy nuôi feed (`multi-machine-feed-session`), nhiều máy
    - Khi runner được kích hoạt từ PowerShell (`run-feed-session.ps1`) hoặc `tiktok_runner.py`, biến môi trường này không được truyền vào.
    - Kết quả: `get_wifi_credentials_for_machine(machine)` trả về `None`, code bỏ qua Cấp 2 và ném lỗi fail-closed ngay lập tức.
    - **Giải pháp**: Preflight bắt buộc phải có fallback trỏ tới `D:/Taadaa/machine-config/farm_wifi_profiles.json` nếu env rỗng.
+   - **Telemetry & Closeout Gate Requirement**:
+     - Phát sinh log INFO: `_VPN_TIMEOUT_LOGGER.info("WIFI_PROFILES_FILE_LOAD path=%s", Path(file_path).name)` để Sol Reviewer và watchdog có thể kiểm chứng runtime mà không làm lộ credentials.
+     - Reviewer yêu cầu unit test xác nhận cả fallback trong runner script (`run-feed-session.ps1`) và assertion bắt log `WIFI_PROFILES_FILE_LOAD` trong `test_vpn_preflight_router.py`.
 
 2. **Lệch pha thời gian (Timing Mismatch)**:
    - Worker preflight chỉ chờ 2 giây sau khi toggle Wi-Fi.

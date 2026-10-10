@@ -107,3 +107,27 @@
           return
   ```
   Tự động gửi phím BACK để thoát khỏi ứng dụng Settings và đưa TikTok trở lại foreground trước khi thử lại.
+
+---
+
+## 7. Bẫy Hiển Thị Ảnh `MEDIA:<path>` Bị Lộ Text Thô Trên Telegram & Kỷ Luật Định Dạng
+- **Triệu chứng**: Agent gửi tin nhắn báo cáo có đính kèm thẻ `MEDIA:D:/Taadaa/tmp/screen.png`, nhưng trên giao diện Telegram của User chỉ hiện dòng chữ thô `MEDIA:D:\...` mà không hề tải ảnh hay hiển thị hình ảnh inline.
+- **Căn nguyên kỹ thuật**:
+  - Trong core Hermes Agent (`gateway/platforms/base.py`, hàm `_mask_protected_spans`), code có cơ chế tự động chuyển đổi các khối Markdown đặc biệt (code blocks, blockquotes `>`) thành khoảng trắng để tránh gửi nhầm file ví dụ trong văn bản.
+  - Khi Agent đặt đoạn chú thích kết quả Vision trong khối trích dẫn Markdown (dòng có dấu `>`) mà dòng `MEDIA:` nằm ngay bên dưới hoặc cùng khối, regex `^>.*$` đã mask dòng `MEDIA:` thành khoảng trắng.
+  - Hậu quả: `extract_media()` không nhận diện được thẻ media để tải ảnh lên Telegram, đồng thời không xóa thẻ `MEDIA:` khỏi văn bản, khiến text thô `MEDIA:...` bị lộ ra màn hình chat.
+- **Quy tắc định dạng bất biến khi gửi ảnh**:
+  1. **TUYỆT ĐỐI KHÔNG ĐƯỢC** đặt `MEDIA:<path>` bên trong hoặc ngay dưới khối trích dẫn Markdown (`>`), danh sách bullet lồng, hay khối code.
+  2. Luôn đặt `MEDIA:<path>` trên **MỘT DÒNG ĐỘC LẬP HOÀN TOÀN**, không có dấu cách thụt đầu dòng, không in đậm `**`, không bọc backticks.
+  3. Sử dụng dấu gạch xuôi chuẩn `/` trong đường dẫn tuyệt đối (vd: `MEDIA:D:/Taadaa/tmp/image.png`).
+
+---
+
+## 8. Giải Mã Bản Chất Vì Sao Một Máy Bị "Văng Hoài Liên Tục" (Case Study M261)
+- **Thực tế hiện trường**:
+  - Nick **KHÔNG HỀ BỊ LOGOUT HOẶC BỊ BAN**: Các session cũ vẫn lưu nguyên vẹn trong danh sách One-tap của thiết bị.
+  - Do cấu hình Samsung S7 RAM thấp (3.6GB), tải CPU cao (~8.5), khi app bị OOM kill hoặc sau ca chạy trước kết thúc (`cleanup_close_all`), TikTok khởi động lại không tự động vào Profile của nick nào mà dừng ở màn hình trung gian (Guest Profile / One-tap "Chào mừng bạn trở lại").
+  - Do lỗi Gate Mismatch trong Feed Runner cũ (Mục 2), cứ mỗi ca nuôi mở lên gặp màn hình này, runner lại báo lỗi đỏ `login/account screen detected` thay vì bấm chọn nick hoặc nạp nick.
+  - Hậu quả: Toàn bộ 7 ca (Row 1-7) trong ngày chạy qua máy đều bị fail liên tục, tạo ảo giác rằng máy bị văng session liên tục.
+  - Sau khi vá Mục 1, 2 và đăng nhập đủ 7 tài khoản vào máy, máy sẽ tự động chọn nick trong Switcher và chạy mượt mà.
+

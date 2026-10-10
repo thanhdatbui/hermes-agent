@@ -1,4 +1,4 @@
-Follow: Cầu dao IP 48h CHỈ ngắt khi nick Khỏe (graduated) nhả; nick non nhả tự đi tù, cấm ngắt IP. Nấc hồi phục 2 ngày sạch/nấc (N1: 1-2fl, N2: 5-8fl, N3: tốt nghiệp >=4d). CẤM auto-follow popup.
+Follow: Cầu dao 48h chỉ ngắt khi nick Khỏe nhả; non nhả tự đi tù. Nấc phục hồi 2d sạch/nấc (N1: 1-2fl, N2: 5-8fl, N3: >=4d). CẤM auto-follow popup. IP Farm: 2 máy/IP Wave 1/2; Upload P2; GemPhone 20-30fl/slot (8-18s). Cấm tự khóa nick.
 §
 Dual-Farm: Mọi cron/supervisor BẮT BUỘC chạy cả Kibe (1-80) & Admin (201-280). Excel Admin 10-11 cột (đọc cell idx<len(row)). Supervisor so le 2p; Báo cáo 6H gộp. CẤM copy ava Kibe->Admin; Admin dùng video gốc m2, venv-core024.
 §
@@ -8,7 +8,7 @@ Kho video: min 45; Render 1 wkr (--parallel 1); Cào 10 wkr; Global Ledger; nich
 §
 evidence_gate_verifier.py (WinRT OCR, PID reserve, fail-closed, >30s/3att L3 BLOCKED).
 §
-[TIKTOK LOGIN]: APK lỗi xóa. Admin 55 split v46.6.3; Kibe 65 split v47.0.3. Dock (540,150) Switcher. One-tap/Guest Profile: tự tap nick/Đăng nhập. Pass sai: --otp-only. Admin: TARGET_INVENTORY, 192.168.110.119:5037, admin.yaml.
+[TIKTOK LOGIN]: APK lỗi xóa. Admin 55 split v46.6.3; Kibe 65 split v47.0.3. Dock (540,150) Switcher. One-tap/Guest: tap nick/Đăng nhập. Pass sai: --otp-only. Admin: TARGET_INVENTORY, 192.168.110.119:5037, admin.yaml. 2FA: pass None tự đổi pass qua Graph OTP; pass sai xóa về None để ép rotate. MEDIA: cấm đặt dưới > (blockquote); đặt dòng riêng trống.
 §
 Canary: WoL ether3 (kibe 0C:EF:15:37:4C:20, admin 22:33:4D:06:4C:26; WG 13231); CẤM PASS khi followed=0/FOLLOW_FAILED; ảnh/log trước teardown. Admin: upload SSH admin-farm.
 §
@@ -19,7 +19,5 @@ TikTok Shadow: Path B 'Đã fl' ko commit; FOLLOW_FAILED trừ fl tự nhiên; s
 Giao tiếp: gọi 'tên nick TikTok', cấm handle. Hotmail: reset OTP thanhdatbui1995@gmail.com sync Master C7, clean_v2, State.
 §
 Farm Proxy/WiFi: MikroTik 40 PPPoE 10001-10040 (M241-280 cấm >10040, cấm mượn IP Farm). Watchdog check Wi-Fi/inspect, cấm lạc OmniRoute. Aruba: M1-40 'kibe 1'; M41-80 'kibe 2', Admin 'admin 1/2'; cấm SSID Dat. X99: cấm xHCI, 4 Box, adb Sem 8.
-§
-IP Farm: 2 máy/IP; Wave 1/2. Cầu dao 48h chỉ ngắt khi nick Khỏe nhả. Upload P2. GemPhone: Anchor 20-30fl/slot (delay 8-18s), xoay 3 slot/d + ngủ 3-4d (>50% retention). Cầu dao nhả 40% lướt feed 1-2d. Cấm tự khóa nick.
 §
 adbjoinwifi tự cứu 2 cấp preflight khi rớt Wi-Fi; xóa lạ: service call wifi 14 i32 <id>. ADB: cấm lệnh trần, bọc with_device_lock.py; verify kernel CreationDate.
