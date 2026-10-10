@@ -80,16 +80,24 @@
 ## 4. Giải Pháp Bắt Buộc Khi Thao Tác Với GPM Profiles
 
 ### 4.1 Luôn tra cứu bằng `search=<email>` trước khi tạo
-Endpoint `GET /api/v3/profiles?search=<keyword>` tìm kiếm trên **toàn bộ database**, không bị kẹt ở trang 1:
+Endpoint `GET /api/v3/profiles?search=<keyword>` tìm kiếm trên **toàn bộ database**, không bị kẹt ở trang 1.
+Nếu profile đã tồn tại nhưng proxy hiện tại khác proxy yêu cầu, cập nhật `raw_proxy` thay vì sinh profile mới:
 ```python
 def ensure_profile_by_email(email: str, expected_name: str, raw_proxy: str) -> str:
     # 1. Tìm kiếm theo email trên toàn bộ GPM profiles
-    res = requests.get(f"{GPM_API_BASE}/profiles?search={email}", timeout=10).json()
-    items = res.get("data", [])
-    if items:
-        # Đã có profile chứa email này -> lấy ID profile đầu tiên/mới nhất, CẤM tạo mới
-        profile_id = items[0].get("id") or items[0].get("profile_id")
-        return str(profile_id)
+    import urllib.parse
+    res = requests.get(f"{GPM_API_BASE}/profiles?search={urllib.parse.quote(email)}", timeout=20).json()
+    items = res.get("data", res) if isinstance(res, dict) else res
+    for item in items or []:
+        if email in str(item.get("name", "")).lower():
+            pid = item.get("id") or item.get("profile_id")
+            # Cập nhật proxy nếu thay đổi, tuyệt đối không tạo mới
+            if raw_proxy and item.get("raw_proxy") != raw_proxy:
+                try:
+                    requests.post(f"{GPM_API_BASE}/profiles/update/{pid}", json={"raw_proxy": raw_proxy}, timeout=20)
+                except Exception:
+                    pass
+            return str(pid)
 
     # 2. Chưa từng có profile -> Mới được phép tạo mới
     created = requests.post(
@@ -104,6 +112,10 @@ def ensure_profile_by_email(email: str, expected_name: str, raw_proxy: str) -> s
     ).json()
     ...
 ```
+
+### 4.2 Xóa bỏ triệt để logic `ORDER BY RANDOM()` tự gán proxy
+- Trong các script sync provider (như `chatgpt_gpm_direct_reg.py`), **tuyệt đối không** dùng truy vấn `SELECT id FROM proxy_registry ... ORDER BY RANDOM() LIMIT 1` để tự động gán proxy cho connection khi vắng proxy.
+- Hành vi này vi phạm kỷ luật Farm và dẫn đến ô nhiễm mapping proxy cố định. Chỉ gán proxy khi có nguồn cấu hình/Excel tường minh.
 
 ### 4.2 Phân trang đầy đủ khi duyệt danh sách profile
 Khi cần nạp toàn bộ danh sách profile vào bộ nhớ (như trong watchdog map):
