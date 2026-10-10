@@ -58,18 +58,18 @@ Khác với việc search liên tục gây áp lực bàn phím, script GemPhone
   * **Row 3 & 4:** 64–70 nick bị khóa (streak 1–3), tê liệt gần như toàn bộ.
   * **Tik 5:** Ông anh đã chạy follow ổn (>50% retention), trong khi bên ta Tik 3 & 4 vẫn còn "ngọng" nặng.
 
-### B. So sánh cấu trúc điều hành:
-| Tiêu chí | Chiến lược của ông anh | Hệ thống Taadaa Runner hiện tại |
+### B. So sánh cấu trúc điều hành & Bẫy "Follow Chéo Nội Bộ" (Root Cause):
+| Tiêu chí | Chiến lược của ông anh | Hệ thống Taadaa Runner trước đây |
 | :--- | :--- | :--- |
-| **Kiểm tra nhả tại từng nick** | **Phanh dừng ngay lập tức:** Có check nhả từng nick. Hễ phát hiện nhả là dừng phiên ngay, tuyệt đối không cố follow tiếp (vì đã nhả là TikTok silent drop sạch chuỗi sau, càng cố càng đốt nick). | **Phanh dừng ngay lập tức:** Bấm phát nào check phát đó, hễ nhả là dừng session ngay (`FOLLOW_FAILED`). |
-| **Hành vi sau khi phanh vì nhả** | **Chuyển sang LƯỚT NUÔI 1–2 NGÀY (Active Healing Feed):** Chuyển sang chạy script nuôi gốc (For You, Bạn bè, Đã Follow, tim nhẹ 15%) để rửa trust score trước khi thử lại. | **Giam Cooldown thụ động:** Tự giam nick vào Cooldown 3d ➔ 5d ➔ 7d ➔ 15d mà không có quy trình lướt nuôi phục hồi chuyên biệt. Hết hạn thò ra bấm lại bị nhả tiếp. |
-| **Cầu dao diện rộng (Fleet 40%)** | **Cầu dao toàn ca:** Nếu trong ca/ngày có > 40% số nick bị dính nhả ➔ Dừng toàn bộ các nick còn lại trên farm, chuyển tất cả sang lướt nuôi 1–2 ngày để tránh bão quét IP/hạ tầng. | Không có cầu dao ngắt đồng loạt toàn ca khi chạm ngưỡng nhả 40%. |
+| **Tệp đối tượng đi follow (Target UIDs) — NGUYÊN NHÂN CỐT TỬ** | **Follow tài khoản THẬT ngoài xã hội:** Mở list Following của Anchor, cào các nick người dùng tự nhiên trong list (Outbound Discovery). TikTok ghi nhận là hành vi mở rộng quan hệ bạn bè tự nhiên ➔ **Giữ được > 50%!** | **Bẫy Follow Chéo Nội Bộ (`internal_uids`):** Mode 2 bị ép lọc `_normalize_handle(uname) in internal_uids` (chỉ follow nick trong farm), Mode 1 search nick farm khác. Đây là mô hình **Closed Follow Ring** (farm tự bơm cho nhau trên cùng hạ tầng/IP). TikTok Anti-Fraud bắt bài ngay và silent drop (nhả sạch) 100% ➔ **Lý do Tik 3, 4 ngọng ngay từ phát đầu!** |
+| **Kiểm tra nhả tại từng nick** | **Phanh dừng ngay lập tức:** Có check nhả từng nick. Hễ nhả là dừng phiên ngay, tuyệt đối không cố follow tiếp (vì đã nhả là TikTok silent drop sạch chuỗi sau, càng cố càng đốt nick). | **Phanh dừng ngay lập tức:** Bấm phát nào check phát đó, hễ nhả là dừng session ngay (`FOLLOW_FAILED`). |
+| **Cầu dao diện rộng** | **Cầu dao toàn ca/đợt:** Nếu trong ca/ngày có > 40% số nick bị dính nhả ➔ Dừng toàn bộ các nick còn lại trên farm, chuyển tất cả sang lướt nuôi 1–2 ngày. | Hiện tại đã có Cầu dao IP 48h (ngắt khi nick Khỏe nhả). |
 | **Vị trí thao tác** | Đứng im trong list Following của Anchor, tap + cuộn. | Mở Profile con qua `_path_b_verify`, xem video, back ra reload. |
 | **Chu kỳ máy** | **Xoay tua 3 slot/ngày** (Ngày 1: 1-3, Ngày 2: 4-6, Ngày 3: 7-8, Ngày 4: Nghỉ). Ngủ đông 3–4 ngày/nick. | Chạy liên tục các ca nuôi feed cả 8 slot trên máy. Không có Rest Day toàn máy. |
 
 ### C. Bài học cốt lõi & Hướng điều chỉnh kiến trúc:
-1. **Ân xá Farm:** Cần cơ chế dọn sạch cờ `follow_failed` và `fail_streak` ảo do hệ thống tự giam cầm để cứu dàn Row 3, 4, 5.
-2. **Quy tắc Bất di bất dịch tại từng nick:** Một khi nhả là dừng ngay lập tức, CẤM cố bấm tiếp trong session đó.
-3. **Quy trình Phục hồi Chủ động (Active Healing Feed):** Sau khi dừng vì nhả, tự động đưa nick vào hàng đợi lướt nuôi 1–2 ngày (script lướt nuôi 3 tab) để hồi phục trust score thay vì chỉ ngâm cooldown chờ chết.
+1. **Xóa bỏ triệt để bẫy Closed Follow Ring (`internal_uids`):** CẤM ép tài khoản farm đi follow chéo lẫn nhau trong nội bộ farm (`taikhoan_run_safe`). BẮT BUỘC cho Mode 2 follow tài khoản người thật ngoài xã hội trong danh sách Following của Anchor (như script của ông anh).
+2. **Quy tắc Bất di bất dịch tại từng nick (User Invariant):** Đã bị nhả là TikTok sẽ nhả sạch toàn bộ chuỗi follow sau đó. Càng cố bấm tiếp càng đốt nick. Hễ phát hiện nhả ở 1 nick là BẮT BUỘC DỪNG PHIÊN NGAY LẬP TỨC.
+3. **Không huyễn hoặc "cơ chế nuôi chuyên biệt":** Ông anh không hề có script thần thánh nào chữa cờ nhả; bí quyết chỉ là: (a) follow người thật ngoài xã hội, (b) nhả thì dừng ngay cho lướt feed tự nhiên 1–2 ngày, và (c) chu kỳ xoay tua 3 slot/ngày + Rest Day.
 4. **Cầu dao 40% toàn ca/farm:** Khi tỷ lệ acc dính cờ nhả trong ca vượt 40%, ngắt toàn bộ các máy còn lại, bảo toàn hạ tầng và chuyển sang lướt nuôi 1–2 ngày.
 5. **Chu kỳ 3 slot + Ngủ đông 3–4 ngày:** Nick chạy 20–30 follow xong phải được nghỉ ngơi 3–4 ngày để TikTok thẩm định tự nhiên trước khi chạy tiếp.

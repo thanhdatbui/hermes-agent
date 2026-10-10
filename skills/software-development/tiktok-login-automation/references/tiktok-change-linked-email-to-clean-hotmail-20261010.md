@@ -25,11 +25,22 @@ Khi chọn Hotmail để link vào tài khoản TikTok chính thức:
 ## 3. QUY TRÌNH TỰ ĐỘNG HÓA A-Z (`change_email_m20.py` / `change_email_m2.py`)
 1. **Khóa thiết bị an toàn**:
    - Bắt buộc bọc trong `operator_device_lock(machine=M, serial=SERIAL, project="change_email_m...")` để tôn trọng bulkhead farm.
-2. **Điều hướng UI TikTok**:
-   - Mở app TikTok, vào Hồ sơ nick đích.
-   - Mở Menu 3 gạch ➔ `Cài đặt và quyền riêng tư` (toạ độ an toàn `[621, 1248]` hoặc regex text).
-   - Chọn `Tài khoản` (`[540, 350]`) ➔ `Thông tin người dùng / tài khoản` (`[540, 300]`).
-   - Tap dòng `Email` ➔ Tap `Thay đổi email`.
+2. **Điều hướng UI TikTok (Kèm chốt chặn Active Profile & Toạ độ chuẩn v47)**:
+   - **BƯỚC QUAN TRỌNG NHẤT: Xác thực Active Profile**:
+     * Mở tab Hồ sơ (`[972, 1857]`). Kiểm tra text/handle trên màn hình có đúng nick cần đổi hay không.
+     * CẢNH BÁO ĐỔI NHẦM NICK: Nếu đang ở nick khác trên máy (ví dụ máy 8 nick), BẮT BUỘC tap Switcher `[301, 322]` (resource-id `t7l`), chọn đúng nick (slot 8 dưới cùng tọa độ `[540, 1850]`), chờ app reload rồi mới tiếp tục.
+   - **Mở Cài đặt và quyền riêng tư**:
+     * Tap Menu 3 gạch (`[1005, 150]`) ➔ Tap `Cài đặt và quyền riêng tư` (`[621, 1248]`).
+   - **Toạ độ điều hướng chuẩn trong Cài đặt (Khắc phục bẫy toạ độ sai)**:
+     * CẤM tap `[540, 350]` (chạm vào vùng Hoạt động/trống).
+     * BẮT BUỘC tap mục `Tài khoản` ở đáy màn hình: toạ độ chuẩn **`[540, 1791]`** (bounds `[24,1704][1056,1878]`).
+     * Trong màn hình Tài khoản: tap `Thông tin tài khoản` ở đầu trang: **`[540, 324]`**.
+     * Trong Thông tin tài khoản: tap dòng `Email`: **`[540, 480]`**.
+     * Màn hình Email options: tap `Thay đổi email` (`[540, 1362]`).
+     * Dialog xác nhận "Thay đổi email? Email mới cũng sẽ được dùng cho xác minh 2 bước": BẮT BUỘC tap `Tiếp tục` (`[750, 1150]` hoặc nút Tiếp tục từ XML) để mở màn hình xác minh danh tính.
+   - **Xử lý 502 Bad Gateway / atx-agent hang**:
+     * Nếu atx-agent dump văng HTTP 502: restart ngay `killall atx-agent && /data/local/tmp/atx-agent server -d`.
+     * Ưu tiên dùng `social_reg_v1` native bridge kết hợp ADB keyevent trực tiếp.
 3. **Vượt Checkpoint Xác minh**:
    - Nếu màn hình hỏi mã 6 số từ Authenticator: sinh mã `code = pyotp.TOTP(secret).now()`, điền vào qua `adb shell input text <code>`.
    - Nếu hỏi mật khẩu TikTok: điền mật khẩu hiện tại ➔ Bấm Tiếp tục.

@@ -2,7 +2,7 @@ Cào/Render: 12 niche hot; dọn video+ava; min 45; 1 wkr. Tên nick: cấm cụ
 §
 Dọn đĩa: duyệt trước (thư mục corrupt/lỗi xóa ngay), CẤM xóa ngầm.
 §
-Farm: nick cấm xóa/đè; SoT tiktok_tracker.db; cấm đè ava tay. Hotmail OTP: ưu tiên token Graph PC (cấm mở app khi có token), ko token mới đọc app; sai pass dùng --otp-only. LLM: Codex Omni.
+Farm: nick cấm xóa/đè; SoT tiktok_tracker.db; cấm đè ava tay. Đổi mail TT: dùng Hotmail sạch chưa reg; ưu tiên Graph PC (cấm mở app khi có token), sai pass dùng --otp-only. LLM: Codex Omni.
 §
 Chốt phiên: tự remediation >=85; bind repo/task; Regression Gate. Claude CLI: sonnet 5.5; quota block dừng xin phép.
 §
