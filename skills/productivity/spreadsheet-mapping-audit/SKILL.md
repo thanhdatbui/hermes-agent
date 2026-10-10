@@ -159,6 +159,10 @@ Khi chuẩn hóa số thứ tự video MP4 trong các folder `D:\TIKTOK-videonuo
   - Cột 7 (`PASS MAIL`) là mật khẩu tài khoản email/Hotmail (thường là chuỗi chữ thường + số như `qaxvon909063`).
   - TUYỆT ĐỐI CẤM lấy giá trị cột `PASS MAIL` điền đè vào cột `PASS` TikTok khi thực hiện sync/restore dữ liệu bị thiếu.
   - Khi cần khôi phục mật khẩu TikTok bị mất do ghi đè/lỗi sync, quét thư mục `C:\Users\Kibe\AppData\Local\Taadaa\Tiktok_Reg\workbook-backups\` để lấy lại mật khẩu gốc từ các bản snapshot `taikhoan_dat_v2_updated_before_account_success_*.xlsx` tạo ngay lúc reg thực tế.
+- **Kỷ Luật Độc Lập Credential Giữa Các Dịch Vụ (CẤM ĐÈ PASS CHATGPT/TIKTOK BẰNG PASS MAIL)**:
+  - Cột 7 (`PASS MAIL`), Cột 4 (`PASS` TikTok), và Cột 12 (`PASS CHATGPT`) là các thông tin xác thực hoàn toàn độc lập của 3 dịch vụ khác nhau.
+  - TUYỆT ĐỐI CẤM tự tiện suy diễn rằng pass các cột giống nhau rồi tiện tay đồng bộ hay ghi đè `PASS CHATGPT` khi tìm lại được hoặc đổi `PASS MAIL`.
+  - Bất kỳ thao tác cập nhật mật khẩu nào chỉ được phép tác động ĐÚNG DUY NHẤT cột mục tiêu (ví dụ đổi pass mail chỉ ghi cột 7 `PASS MAIL`). Tuyệt đối không bao giờ chạm vào Cột 12 `PASS CHATGPT` hay Cột 4 `PASS` TikTok trừ khi có lệnh đích danh từ User.
 - **Duplicate ID Audit & Cleanup Policy (`taikhoan_dat_v2`)**:
   - Khi quét duplicate ID TikTok trên file master: phân loại các hàng trùng thành (1) hàng rác/trống info (`PassTT=None` và `2FA=None`) vs (2) hàng có info riêng (có Pass riêng, 2FA riêng, hoặc Mail riêng).
   - Chỉ xóa trắng ô `ID` ở các dòng trống info để giải phóng slot rảnh cho batch reg mới; TUYỆT ĐỐI KHÔNG tự ý xóa dòng có Pass/2FA mà phải liệt kê bảng đối soát (Row, Máy, PassTT, 2FA, Gmail, PassMail) báo cáo user kiểm tra.

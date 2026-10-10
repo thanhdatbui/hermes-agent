@@ -9,8 +9,9 @@ version: 1.2.0
 ## 1. Khi nào sử dụng
 
 Use for GPM v3 (19995), Gmail/Hotmail lifecycle, proxy-safe account selection, CRX/CDP, cache/core issues, OAuth, ChatGPT/Codex pool operations, watchdogs, pagination, and geo-safety. Existing topic detail remains in `references/`; cron summary handling is in `references/cron-watchdog-report-triage.md`.
-- Hotmail State Reconciliation & Dual-OAuth Guard: `references/hotmail-lifecycle-state-reconciliation.md`.
-- OmniRoute ChatGPT-Web Turnstile / Sentinel Block & GPM Recovery: `references/omniroute-turnstile-sentinel-gpm-recovery.md` (chủ động click card tài khoản qua background `computer_use`, không đẩy việc cho user; phân loại OTP mail vs Turnstile).
+- Hotmail State: `references/hotmail-lifecycle-state-reconciliation.md`.
+- Credential Isolation (CẤM đè chéo PASS MAIL ↔ PASS CHATGPT): `references/credential-isolation-policy-hotmail-chatgpt-tiktok.md`.
+- Turnstile GPM Recovery: `references/omniroute-turnstile-sentinel-gpm-recovery.md` (click card qua background `computer_use`, không đẩy user).
 - Hotmail Password Mapping & TikTok Pass Fallback Pitfall: `references/hotmail-password-mapping-and-cookie-consent-pitfalls.md`.
 - No-Agent Cron Silent Watchdog: `references/no-agent-cron-silent-watchdog-and-telegram-chunking.md`.
 - Browser-core repair source integrity and reboot-safe validation: `references/gpm-browser-core-repair-source-integrity.md`.
