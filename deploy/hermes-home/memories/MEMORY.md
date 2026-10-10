@@ -1,4 +1,4 @@
-Follow: Sáng/chiều=row khác. Ca 0h (Row 7/8) cấm follow giữ IP cho Row 1/2 ca 6h. Row 3/4 chỉ nick có trust/fl>0 chạy; nick non chỉ feed. CẤM popup danh bạ. S1>=70 Fast-track 1 ca về Khỏe; Cautious 3 ca; S2: 2 ca; S3+: 3-5fl.
+Follow: Cầu dao IP 48h CHỈ ngắt khi nick Khỏe (graduated) nhả; nick non nhả tự đi tù, cấm ngắt IP. Nấc hồi phục 2 ngày sạch/nấc (N1: 1-2fl, N2: 5-8fl, N3: tốt nghiệp >=4d). CẤM auto-follow popup.
 §
 Watchdog Kibe [1-8]; 923 acc sync video_goc=folder_video. CẤM copy ava Kibe->Admin; Admin dùng video gốc m2, trích xuất venv-core024.
 §

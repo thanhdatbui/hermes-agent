@@ -23,25 +23,24 @@
 - Giữ nguyên 100% budget hiện tại: 10 - 20 follows/phiên (theo config máy).
 - Tuyệt đối không tự ý hạ trần vô lý của nhóm này làm giảm hiệu suất chung của farm.
 
-### Nhóm 2: Tân Binh & Nick Có Tiền Án (Bắt buộc đi qua lộ trình 3 nấc)
-- **Quy tắc Tân Binh (USER INVARIANT):** Nick mới đủ Dual Gate (`age >= 30d`, `video >= 10`) nhưng chưa từng đi follow hoặc chưa tích lũy đủ follow an toàn (`< 15` follows, chưa có cờ `graduated`) **CẤM TUYỆT ĐỐI nhảy cóc lên Full Quota**. Tân binh bắt buộc phải đi từ `Hồi phục 1` -> `Hồi phục 2` rồi mới được thăng hạng lên Full Quota.
-- **Quy tắc Nick Ra Tù:** Nick vừa hết hạn cooldown quay lại thử thách.
+### Nhóm 2: Tân Binh & Nick Có Tiền Án (Bắt buộc đi qua lộ trình 3 nấc accelerated)
+- **Quy tắc Tân Binh (USER INVARIANT):** Nick mới đủ Dual Gate (`age >= 21d`, `video >= 6`) nhưng chưa từng đi follow hoặc chưa tích lũy đủ follow an toàn (`< 15` follows, chưa có cờ `graduated`) đi dò với Quota 1–2 lượt. Bị nhả chỉ phạt cá nhân (tăng fail_streak, cooldown 3-14 ngày dưỡng sinh), **CẤM TUYỆT ĐỐI GIẬT CẦU DAO IP** (xem chi tiết `references/tier-aware-circuit-breaker-and-accelerated-probation.md`).
+- **Quy tắc Nick Ra Tù:** Nick vừa hết hạn cooldown quay lại thử thách với Quota 1–2 lượt.
 
-Áp dụng lộ trình 3 nấc thang tính theo số ngày chạy sạch (`probation_clean_days`):
+Áp dụng lộ trình 3 nấc thang tính theo số ngày chạy sạch (`probation_clean_days` - 2 ngày sạch / nấc):
 
-* **HỒI PHỤC 1 (Probation Tier 1 - Tân binh khởi động & Nick mới ra tù, `clean_days < 3`):**
-  - **Đặt tên chuẩn ngắn gọn:** Gọi là `Hồi phục 1` (tránh đặt dài dòng như `Nấc 1 Thử Thách` gây chật chội trên mobile và Telegram).
-  - **Quota:** 3 – 5 follows / ngày.
-  - **Tiến độ thực tế:** Cần 3 ngày chạy sạch. Do lịch chạy đảo Parity (chẵn/lẻ) và tỷ lệ dưỡng sinh (1/3), trung bình mỗi nick chạy 1 lần/2.3 ngày. Do đó, Hồi phục 1 kéo dài **~7 ngày (1 tuần)** ngoài đời thực.
+* **HỒI PHỤC 1 (Probation Tier 1 - Tân binh khởi động & Nick mới ra tù, `clean_days < 2`):**
+  - **Quota:** 1 – 2 follows / ca (đồng nhất cho cả tân binh và nick ra tù).
+  - **Tiến độ thực tế:** Cần 2 ngày chạy sạch (~3 – 4 ngày ngoài đời thực).
 
-* **HỒI PHỤC 2 (Probation Tier 2 - Tăng tải an toàn, `3 <= clean_days < 6`):**
-  - **Đặt tên chuẩn ngắn gọn:** Gọi là `Hồi phục 2` (ngắn gọn, trực quan, thay vì `Nấc 2 Thử Thách`).
-  - **Quota:** 7 – 9 follows / ngày (vùng an toàn 90%).
-  - **Tiến độ thực tế:** Cần thêm 3 ngày chạy sạch tiếp theo mà không bị phạt -> Kéo dài thêm **~7 ngày (thêm 1 tuần)** ngoài đời thực.
+* **HỒI PHỤC 2 (Probation Tier 2 - Tăng tải an toàn, `2 <= clean_days < 4`):**
+  - **Quota:** 5 – 8 follows / ca.
+  - **Tiến độ thực tế:** Cần thêm 2 ngày chạy sạch tiếp theo (~3 – 4 ngày ngoài đời thực).
 
-* **NẤC 3 (Tốt nghiệp - Graduation, `clean_days >= 6`):**
-  - Sau tổng cộng 6 ngày chạy sạch (~14 - 15 ngày, tức nửa tháng dưỡng acc liên tục).
+* **NẤC 3 (Tốt nghiệp - Graduation, `clean_days >= 4`):**
+  - Sau tổng cộng 4 ngày chạy sạch (~8 – 9 ngày ngoài đời thực).
   - Hệ thống chính thức tốt nghiệp (`graduated = True`, `fail_streak = 0`, xóa `probation_clean_days`), thăng hạng lên Nhóm Nick Khỏe (Full Budget 10 - 20 lượt).
+  - **Cầu Dao IP:** CHỈ KHI NICK ĐÃ TỐT NGHIỆP NÀY BỊ NHẢ mới kích hoạt ngắt Cầu dao IP 48h.
 
 * **CHỐT AN TOÀN FAIL-CLOSED & PROGRESSIVE BACKOFF STREAK:**
   - Nếu ở bất kỳ nấc nào (`Hồi phục 1` hay `Hồi phục 2`) mà bị TikTok nhả follow (`set_follow_failed()`) hoặc không follow được:
