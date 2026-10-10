@@ -51,13 +51,15 @@ Chạy script query bảng `provider_connections` trong `C:\Users\Kibe\.omnirout
    `PUT http://{remote_debugging_address}/json/new?https://chatgpt.com`
 3. Đưa cửa sổ lên màn hình desktop bằng Win32 GUI (`win32gui.ShowWindow(hwnd, win32con.SW_SHOW)`).
 
-### Bước 4: Kiểm chứng bằng chứng trước khi báo User (GATE 6 & WinRT OCR)
-1. Chụp ảnh cửa sổ bằng `PrintWindow` hoặc `computer_use`.
-2. Chạy WinRT OCR (`skills/productivity/windows-native-ocr/scripts/winrt_ocr.py`) xác nhận:
-   - Đúng màn hình ChatGPT / Modal "Chào mừng trở lại".
-   - Hiển thị đúng email cần xử lý.
-   - Ảnh không bị màn hình đen / popup crash che khuất.
-3. Gửi thông báo kèm `MEDIA:<path_anh>` để User thao tác click vượt Turnstile trên màn hình.
+### Bước 4: Chủ động thao tác Click qua Background Computer Use (Chống đẩy việc cho User)
+1. Chụp ảnh cửa sổ và quét SOM tree bằng `computer_use(action='capture', mode='som', pid=..., window_id=...)`.
+2. Chạy WinRT OCR (`skills/productivity/windows-native-ocr/scripts/winrt_ocr.py`) xác nhận đúng email và modal "Chào mừng trở lại".
+3. **KỶ LUẬT CHỦ ĐỘNG (PROACTIVE ASSISTANCE):** Tuyệt đối KHÔNG dừng lại chỉ để bảo User tự bấm khi các button hoàn toàn click được qua automation.
+   - Gọi `computer_use(action='click', element=<index_card_tai_khoan>, delivery_mode='background', capture_after=true)`.
+   - Chờ 3-5 giây và capture lại fresh state để phân loại phản hồi tiếp theo:
+     * **Tình huống 1 - Yêu cầu mã OTP qua Email (`auth.openai.com/email-verification`):** OpenAI hết hạn phiên và gửi mã xác minh 6 số về hòm thư. Chụp ảnh màn hình, soi mắt qua WinRT OCR / Vision xác nhận ô "Mã", sau đó gửi ảnh `MEDIA:` và hướng dẫn User cung cấp OTP hoặc gõ thẳng vào cửa sổ.
+     * **Tình huống 2 - Cloudflare Turnstile Checkbox:** Thử click vào checkbox Turnstile. Nếu bị kẹt hoặc dính puzzle hình ảnh thì mới bàn giao màn hình cho User kèm ảnh chụp thực tế.
+     * **Tình huống 3 - Đăng nhập thành công:** Đóng profile an toàn và chuyển tiếp tài khoản tiếp theo.
 
 ### Bước 5: Đóng Profile sau khi hoàn tất
 Gọi API dừng profile để tránh rò rỉ tiến trình Chromium:
