@@ -51,3 +51,5 @@ Khi chỉnh sửa `post_noon_chain_watchdog.py`:
 1. Repo gốc / test: `D:/Taadaa/Hermes/deploy/hermes-home/scripts/post_noon_chain_watchdog.py`
 2. Hermes runtime script: `C:/Users/Kibe/AppData/Local/hermes/scripts/post_noon_chain_watchdog.py`
 3. Tools fallback: `D:/Taadaa/tools/post_noon_chain_watchdog.py`
+4. OneDrive shared cron: `D:/OneDrive/Taadaa_Sync_Shared/hermes-cron/scripts/post_noon_chain_watchdog.py`
+
