@@ -45,7 +45,36 @@ Tại sao cơ chế tự nạp nick `_maybe_recover_missing_account_via_login` k
      python D:/Taadaa/Tiktok_Reg/tiktok_login_v1.py <STT> --email <nick> --ss --no-track
      ```
    - Chú ý: `tiktok_login_v1.py` đã có sẵn logic bypass màn hình "Chào mừng bạn trở lại" bằng cách tap *"Thêm tài khoản khác"* (`one_tap_bypass`).
-3. **Cải tiến lâu dài cho Feed Runner (`feed_swipe_smoke.py`)**:
-   - Khi `profile_preflight_identity_guard` phát hiện màn hình "Chào mừng bạn trở lại" (`is_welcome_back_screen`):
-     * Nếu nick đích có trong One-tap list: Tap chọn nick đích để restore session.
-     * Nếu nick đích không có trong One-tap list: Không dừng thẳng `manual-needed:login` mà gọi thẳng `_maybe_recover_missing_account_via_login(ctx, expected)`.
+3. **Cải tiến đã thực thi cho Feed Runner (`feed_swipe_smoke.py`)**:
+   - Khi `verify_and_switch_profile` nhận `identity_manual_row` mang nhãn `login` (như `manual-needed:login` hoặc `login/account screen detected`):
+     ```python
+     if isinstance(identity_manual_row, dict):
+         if allow_auto_reconcile and any("login" in str(identity_manual_row.get(k) or "").lower() for k in ("detected", "safety_reason", "reason")):
+             if _maybe_recover_missing_account_via_login(ctx, expected, results=results, max_swipes=max_swipes, result_kwargs=result_kwargs):
+                 ctx.logger.log(
+                     device_id=ctx.device_id, account=ctx.account,
+                     step=f"{SESSION_ARTIFACT_PREFIX}/profile_preflight",
+                     action="auto_login_recovered_from_login_screen", result="retry",
+                     extra={"reason": f"auto-login succeeded after login screen for {expected}", "expected_account": expected},
+                 )
+                 return verify_and_switch_profile(ctx, expected_account, results=results, max_swipes=max_swipes, result_kwargs=result_kwargs, allow_auto_reconcile=False)
+     ```
+   - Cơ chế này bẻ gãy việc fail-closed mù quáng, cho phép feed runner tự động gọi `tiktok_login_v1.py` để nạp hoặc kích hoạt tài khoản đích ngay tại chỗ, sau đó tự re-verify profile và tiếp tục lướt feed.
+
+## 4. Ba Bẫy Tử Huyệt Khi Chạy Login Recovery (`tiktok_login_v1.py` & `social_reg_v1.py`)
+1. **Bẫy Màn Hình "Hồ Sơ Khách" (Guest Profile Screen - `d01`)**:
+   - *Hiện tượng*: Khi máy chưa có session nào active, vào Profile không có tên hay chevron `rv5`. Màn hình hiện text *"Đăng nhập vào tài khoản hiện có"* và nút to đỏ **`Đăng nhập`** (`rid='com.ss.android.ugc.trill:id/d01'`).
+   - *Hậu quả cũ*: Script cố tìm `open_account_dropdown` và văng lỗi `[03_dropdown] Khong mo duoc account dropdown`.
+   - *Khắc phục chuẩn*: Trong `ensure_login_entry_screen`, nếu phát hiện text *"dang nhap vao tai khoan hien co"* hoặc nút `d01`, tap ngay vào nút `Đăng nhập` để bung màn hình "Chào mừng bạn trở lại" (One-tap).
+2. **Bẫy Đối Chiếu Tài Khoản Đã Có Sẵn Trong One-tap List**:
+   - Trên màn hình "Chào mừng bạn trở lại", nếu tài khoản đích cần nuôi **đã có sẵn trong danh sách** (VD: `@thuthanh2911`, `@lamhongloan1907`), script phải **chạm trực tiếp vào tên tài khoản** để chuyển active session ngay lập tức mà không cần nhập pass/OTP (`already_logged_in`).
+   - Chỉ khi nick đích **chưa có trong danh sách** mới tap *"Thêm tài khoản khác"* để vào form nhập email/pass.
+3. **Bẫy `dismiss_profile_overlays` Tap Nhầm Nút `Đóng` (`z7l`) Do Regex Thông Báo Samsung**:
+   - *Hiện tượng*: Trên Samsung Galaxy S7, thanh trạng thái có thông báo hệ thống: *"Tìm di động của bạn: Nếu bạn mất điện thoại thì sao?"*.
+   - *Căn nguyên*: Trong `social_reg_v1.py`, hàm `dismiss_profile_overlays` có dòng `if any(k in flat for k in ["add phone", "them so dien thoai", "so dien thoai cua ban"]):`. Chuỗi `"so dien thoai cua ban"` sau khi `strip_accents` bị khớp dính chữ *"dien thoai cua ban"* trong thông báo Samsung! Script ngộ nhận là popup đòi thêm số điện thoại nên tap nút `Đóng` (`rid='com.ss.android.ugc.trill:id/z7l'`) ở góc trên phải, làm tắt mất màn hình "Chào mừng bạn trở lại"!
+   - *Khắc phục*: Trong `dismiss_profile_overlays`, đặt ngay đầu hàm:
+     ```python
+     if any(k in flat for k in ["chao mung ban tro lai", "welcome back", "them tai khoan khac"]):
+         return
+     ```
+     Bảo toàn tuyệt đối màn hình One-tap Login để luồng xử lý tài khoản tiếp quản.
