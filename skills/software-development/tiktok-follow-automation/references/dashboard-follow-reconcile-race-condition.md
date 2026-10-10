@@ -14,7 +14,7 @@ Khi tài khoản **nghỉ follow hoặc chưa đủ video** (`organic-rest-day-p
 - **Hiện trường kiểm chứng:**
   + So sánh file `profile_identity/ui.xml` ở đầu ca (ví dụ: `Đã follow = 0`) với `verify_profile/ui.xml` ở cuối ca (ví dụ: `Đã follow = 1`).
   + Kiểm tra `log.jsonl` của máy: tìm step `contact_follow_suggestion` hoặc `dismiss_not_interested_button`, tọa độ tap rơi vào nút Follow của card gợi ý bạn bè.
-- **Xử lý:** Tắt `pre_action="tap_follow_button"` và nút bấm follow trong `benign_popup.py`, chỉ cho phép đóng (`dismiss`) hoặc swipe bỏ qua.
+- **Xử lý (Đã chuẩn hóa 2026-10-10, commit `590a831`):** Gỡ bỏ hoàn toàn `pre_action="tap_follow_button"` và nhánh trả về `follow_target` trong `detect_contact_follow_suggestion`. Khi gặp popup/card gợi ý bạn bè/danh bạ, handler **chỉ được phép đóng / bỏ qua** (`dismiss_not_interested_button` hoặc icon Close X `dismiss_close_x`), bảo đảm nick yếu, nick đang dưỡng sinh (`organic rest`), hoặc chưa đủ 6 video không bao giờ bị tăng follow ngoài luồng làm hỏng trust/bị nhả follow.
 
 ### Nguyên nhân 2: Race Condition giữa Snapshot Crawler và Watchdog Chốt Ca
 1. **Thời điểm cào Snapshot toàn Farm:**
