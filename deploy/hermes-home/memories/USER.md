@@ -12,8 +12,8 @@ Kibe (1-80) & Admin (201-280) kho media độc lập (Admin D:\video goc may 2 &
 §
 Dubbing: đúng tiếng, 100% thoại, tắt tiếng gốc.
 §
-Evidence: MEDIA '/' form rõ; OTP ĐÃ ĐIỀN; Logout modal; Canary FULL FLOW đủ 5 ảnh; cấm acc khác.
+Canary đủ 5 ảnh; Login proof: Profile @username/Switcher, cấm Feed.
 §
-Farm: Đủ 2 cụm Kibe(1-80)+Admin(201-280) tập trung CSDL/state. IP sticky nuôi Trust; 2 máy/IP chạy Wave 1 độc lập IP -> Cầu dao -> Wave 2. Lock with_device_lock; cấm reset khi lock.
+Farm: MỌI cron/pipeline chạy đủ cả 2 farm Kibe(1-80)+Admin(201-280), cấm bỏ sót Admin. IP Mikrotik chỉ login acc farm đó. 2 máy/IP Wave 1->Cầu dao->Wave 2. Lock with_device_lock; cấm reset khi lock.
 §
 Advisor Sol: consult_advisor.py (:20129 115 accs). Gate reject: Sol vá O(1); Strike 3 Claude CLI. GPM/UI: tự lái computer_use & tự bóc OTP Graph API, cấm đẩy user làm tay; mở đúng acc error. Telegram chunk <=3900.

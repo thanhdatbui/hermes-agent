@@ -151,6 +151,14 @@ When the requested mutation is only “đổi avatar”, bind the run to an **av
 
 Use `references/avatar-only-scope-and-false-policy-refusal.md` for the incident-derived checklist and evidence matrix.
 
+- **Chống Bẫy Dùng Màn Hình Feed Làm Bằng Chứng Login Thành Công (Feed vs Profile/Switcher Login Proof Trap - 2026-10-10):**
+  * **CẤM TUYỆT ĐỐI** gửi ảnh màn hình Home Feed (video lướt trang chủ) rồi tuyên bố đăng nhập TikTok thành công! Người dùng sẽ phản ứng gay gắt ngay: *"Đây là màn feed thì lấy gì chứng minh login thành công. Đụ mẹ mày có xem hình trước khi gửi tao không vậy"*.
+  * **Bản chất**: Video Home Feed chỉ chứng minh app TikTok đang mở và đang phát video, **HOÀN TOÀN KHÔNG CHỨNG MINH ĐƯỢC TÀI KHOẢN ĐÍCH ĐÃ ĐĂNG NHẬP HAY CHƯA** (TikTok có thể xem video ẩn danh hoặc đang ở phiên của một nick khác hoàn toàn).
+  * **BẮT BUỘC ĐIỀU HƯỚNG LẤY BẰNG CHỨNG ĐÍCH**: Sau khi vượt qua OTP/mật khẩu, script/coordinator BẮT BUỘC phải chuyển sang tab **Hồ sơ (Profile)** và/hoặc mở **Account Switcher**:
+    1. **Màn hình Hồ sơ (Profile)**: Phải hiển thị rõ ràng `@<username>` đích, tên hiển thị, các chỉ số Đang follow/Follower/Thích.
+    2. **Màn hình Account Switcher (Chuyển đổi tài khoản)**: Phải hiển thị danh sách tài khoản kèm dấu tích xanh chọn trúng tài khoản đích.
+  * Chỉ khi có 1 trong 2 màn hình này (được kiểm chứng qua OCR/Vision thấy đúng username đích) thì mới được phép công nhận và tuyên bố login thành công.
+
 - **Chống Bẫy Báo Cáo Thiếu Chặng Trong Quy Trình Đa Bước (Anti-Omitted-Step Report Trap - 2026-10-10):**
   Khi thực hiện các quy trình tự động hóa đa bước (ví dụ: chuỗi bảo mật Hotmail/TikTok: *1. Add 2FA -> 2. Đổi mật khẩu -> 3. Sign out everywhere -> 4. Relogin 2FA -> 5. KMSI / Dashboard*):
   * Người dùng cực kỳ dị ứng và coi là thất bại nghiêm trọng nếu báo cáo thiếu ảnh của bất kỳ chặng nào ("bước đăng nhập lại hình ảnh chứng minh đâu, bước add 2fa đâu?", "sao cứ làm đéo đủ v").

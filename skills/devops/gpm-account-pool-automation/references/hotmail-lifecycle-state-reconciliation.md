@@ -79,3 +79,15 @@ Khi phát hiện tài khoản báo sai mật khẩu ngay từ bước `HOTMAIL_L
 - **Telemetry Observability cho Candidate Filtering**:
   * Khi bộ lập lịch `select_candidates()` loại bỏ tài khoản ở các stage chờ (`WAIT_7D`, `CHANGE_INFO`) do chưa đủ điều kiện `has_tiktok` hoặc `has_chatgpt`, BẮT BUỘC phát sự kiện structured telemetry `candidate_ineligible_skip` ghi nhận rõ `key`, `stage`, `has_tiktok`, `has_chatgpt`, `reason`.
   * Điều này đảm bảo tính quan sát (observability), giúp việc giám sát và debug nguyên nhân tài khoản bị giữ/bỏ qua trong pipeline hoàn toàn minh bạch qua telemetry mà không cần đọc mò file state/Excel.
+
+## 9. Nguyên Tắc Phủ Kín Cả 2 Farm (Dual-Farm Coverage Invariant: Kibe 1-80 & Admin 201-280)
+- **Quy tắc bất biến từ User**: Toàn bộ pipeline, cron, nạp tài khoản, supervisor vòng đời GPM/Hotmail và báo cáo định kỳ BẮT BUỘC phải chạy đồng thời cho CẢ 2 FARM (Kibe 1-80 và Admin 201-280), tuyệt đối không được cấu hình thiên vị hoặc bỏ quên Farm Admin!
+- **Tách biệt Data Dir, State & Wrapper**:
+  * Farm Kibe: `DATA_DIR = D:\OneDrive\TaadaaData\kibe`, state `D:\Taadaa\runtime\kibe\cron-state\batch_gpm_5profiles_supervisor_state.json`, cron `gpm-5profiles-lifecycle-supervisor` (chạy phút */5).
+  * Farm Admin: `DATA_DIR = D:\OneDrive\TaadaaData\admin`, state `D:\Taadaa\runtime\admin\cron-state\batch_gpm_5profiles_supervisor_state.json`, cron `gpm-5profiles-supervisor-admin` (chạy so le phút 2,7,12,17...).
+- **Xử lý bất đồng nhất schema Excel (Missing Column Guard)**:
+  * Master Excel của Admin (`D:\OneDrive\TaadaaData\admin\taikhoan_dat_v2_updated .xlsx`) có thể khuyết cột hoặc ít hơn 12 cột so với Kibe.
+  * Hàm `load_accounts()` bắt buộc kiểm tra biên mảng an toàn qua helper `_cell(col_name, fallback_idx)` với điều kiện `idx < len(row)`, cấm index trực tiếp `row[col.get("PASS CHATGPT", 11)]` gây crash `IndexError: tuple index out of range`.
+- **Kỷ luật Proxy Mikrotik Farm**:
+  * Dải IP Mikrotik PPPoE (`10001 - 10040`) là IP nội bộ của Farm. CHỈ dùng đăng nhập đúng tài khoản Hotmail của dàn máy farm đó. CẤM TUYỆT ĐỐI dùng ké dải IP này để đăng nhập các tài khoản ngoài farm / tài khoản thử nghiệm.
+- **Hợp nhất Báo cáo 6h Toàn Farm**: Script `cron_hotmail_gpm_lifecycle_6h_report.py` bắt buộc đọc song song cả 2 state (`kibe` + `admin`), báo cáo tổng queue và chi tiết từng farm (Kibe 1-80 vs Admin 201-280).

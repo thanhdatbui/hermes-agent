@@ -8,8 +8,8 @@ description: >-
 # Farm Alert Autonomous Recovery
 
 > 📎 Ref: `references/midday-shift-feed-triage-and-dual-cluster-auto-healing-20261010.md` (**[10/10/2026]** Midday triage & auto-heal).
-> 📎 Ref: `references/one-tap-welcome-back-guard-bypass-and-auto-login-trap-20261010.md`, `references/admin-cluster-batch-feed-triage-and-missing-session-onetap-20261010.md`.
-> 📎 Ref: `references/scheduled-pc-reboot-preflight-abort-triage-20261010.md`, `references/feed-suggestion-xoa-and-scrolled-profile-triage-20261009.md`.
+> 📎 Ref: `references/guest-profile-and-one-tap-auto-login-triage-20261010.md` (**[10/10/2026]** Guest profile button & profile/switcher login proof).
+> 📎 Ref: `references/scheduled-pc-reboot-preflight-abort-triage-20261010.md` (**[10/10/2026]** Reboot abort triage).
 > 📎 Ref: `references/preflight-reg-bu-machine-full-reconcile-pipeline-20261008.md`, `references/anti-skip-physical-hook-gate-discipline-20261004.md`.
 > 📎 Ref: `references/avatar-edit-layout-detector-and-closeout-contract.md`, `references/feed-failure-taxonomy-and-guard-boundary.md`.
 
