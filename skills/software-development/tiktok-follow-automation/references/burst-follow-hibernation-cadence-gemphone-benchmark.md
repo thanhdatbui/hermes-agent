@@ -11,14 +11,13 @@
 
 ## 2. Các điểm cốt tử giải mã vì sao Tik 5 của ông anh chạy ngon (>50%) còn Tik 3, Tik 4 bên mình ngọng
 
-### A. Bẫy chết tại Cửa Anchor (`_ensure_anchor_followed`) — NGUYÊN NHÂN SỐ 1
-- **Hiện trường log thực tế (Phiên Row 4 ngày 10/10/2026 tại `runtime/kibe/live`):**
-  * 100% các máy dính `FOLLOW_FAILED` đều chết vì đúng 1 lý do duy nhất:
-    `FOLLOW_FAILED: anchor @<uid> bị nhả sau vuốt — dừng session` (Máy 12, 16, 52, 55...).
-  * Hiệu ứng domino chết chùm: Khi các máy này dính lỗi ở Anchor ➔ Kích hoạt Cầu dao IP ➔ **21 máy khác cùng dải IP bị `CIRCUIT_BREAKER_SKIPPED` dừng theo**, cả ca tê liệt hoàn toàn!
-- **Sự khác biệt cốt tử giữa 2 script:**
-  * **Bên mình:** Ép nick phải follow thành công Anchor trước khi được vào danh sách (`_ensure_anchor_followed`: mở video anchor, xem 8–15s, like, tap follow trên video player, back ra profile, vuốt pull-to-refresh). Cú follow trên video player này rất dễ bị TikTok rollback/delay. Hễ nút nhảy về đỏ ➔ **Code dập tắt cả phiên ngay lập tức với 0 lượt follow**, phạt streak và ngắt cầu dao IP.
-  * **Bên ông anh:** **KHÔNG ÉP NICK PHẢI FOLLOW ANCHOR**. Anchor của ổng là nick Tik 1/2 đã có sẵn danh sách following. Script của ổng chỉ search Anchor, mở profile ra rồi **bấm thẳng vào tab "Đang follow" (Following)** để vào danh sách cào nick! Ổng không tự tạo ra cái bẫy Anchor để tự bóp chết phiên chạy của mình.
+### A. Cửa ngõ Anchor là Canary Gate Hợp Lệ (User Correction 2026-10-10)
+- **Khẳng định nguyên lý:** Việc kiểm tra follow Anchor (`_ensure_anchor_followed`) trước khi mở danh sách con là **HOÀN TOÀN ĐÚNG ĐẮN VỀ MẶT THUẬT TOÁN**:
+  * Nếu một tài khoản follow Anchor mà đã bị TikTok âm thầm rollback (nhả follow) thì tài khoản đó đang nằm trong diện **High Risk / Action Block ngầm**. Nếu cố mở list con ra bấm tiếp thì 100% các cú follow sau cũng sẽ bị nhả sạch.
+  * Việc phanh dừng ngay tại cửa Anchor là chốt chặn **Fail-Closed chuẩn mực**, bảo vệ nick không bị nướng thêm hành động rác và tránh bị phạt nặng hơn.
+- **Bản chất vì sao Anchor bị nhả:**
+  * Không phải do cơ chế check Anchor bị sai hay lỗi code (đã đối soát DB xác nhận nhả thật 100%).
+  * Nguyên nhân gốc rễ là **Tài khoản chưa kịp hồi phục (chưa tiêu hóa cờ phạt)** do mật độ chạy trên máy quá dày (chạy liên tục các slot/ngày, thiếu Rest Day xả bất thường phần cứng). Khi mật độ quá dày, thiết bị và nick bị gắn cờ từ trước, nên vừa chạm vào cú follow đầu tiên (ở Anchor) là bị server drop ngay lập tức.
 
 ### B. Quy tắc Bất di bất dịch khi bị nhả (User Invariant 2026-10-10)
 - **ĐÃ BỊ NHẢ LÀ SẼ NHẢ HẾT CẢ PHIÊN:** Khi TikTok backend đã kích hoạt Action Block ngầm (silent drop) đối với một tài khoản, mọi cú tap follow tiếp theo trong cùng phiên sẽ bị drop 100%. **Càng cố follow tiếp càng chết nick và nát trust score**.
@@ -60,7 +59,7 @@ Trích xuất từ `TIKTOK-FLOW-TÌM-KIẾM-Thành-đạt_decrypted.json` (389 n
 
 ## 4. Checklist Khắc Phục Cho Taadaa Runner
 
-1. [ ] **Gỡ bỏ cửa ải bắt buộc follow Anchor (`_ensure_anchor_followed`):** Không ép nick phải follow thành công Anchor trên video player. Cho phép mở thẳng tab Following của Anchor để cào danh sách.
-2. [ ] **Giữ nguyên nguyên tắc dừng ngay khi bị nhả (Fail-Closed):** Một khi phát hiện 1 nick bị nhả là dừng session của nick đó ngay lập tức, không cố bấm tiếp.
-3. [ ] **Triển khai lịch xoay tua 3 slot/ngày + Rest Day toàn máy:** Áp dụng chu kỳ 4 ngày (3 ngày chạy xoay tua 8 slot, ngày thứ 4 nghỉ cả máy).
+1. [x] **Giữ vững Canary Gate Anchor (`_ensure_anchor_followed`):** Chốt chặn Fail-Closed bảo vệ nick không bị nướng thêm lượt follow rác khi đang dính cờ nhả ngầm (đối soát DB xác nhận nhả thật).
+2. [x] **Giữ nguyên nguyên tắc dừng ngay khi bị nhả (Fail-Closed Invariant):** Đã nhả 1 phát là dừng toàn bộ session của nick đó ngay lập tức (vì đã nhả là nhả sạch phía sau), cấm tư tưởng cố follow bù trong session.
+3. [ ] **Triển khai thử nghiệm lịch xoay tua 3 slot/máy/ngày + Rest Day toàn máy:** Áp dụng chu kỳ 4 ngày (3 ngày chạy xoay tua 8 slot, ngày thứ 4 nghỉ cả máy để nick có 3–4 ngày tiêu hóa cờ).
 4. [ ] **Kích hoạt Cầu dao 40% toàn ca:** Nếu trong 1 ca chạy có > 40% số máy bị nhả follow, tự động abort toàn bộ ca follow đó và chuyển farm sang lướt feed 24h–48h.
