@@ -30,50 +30,55 @@ dmesg | grep -E 'mt7530.*Link is' | tail -n 10
 
 ---
 
-## 2. Converting LAN Port to WAN2 (Dual-WAN Setup)
+## 2. Port Role Mapping: Remote-Hands Ergonomics (Rescue vs PPPoE)
 
-### The Problem
-ISP fiber lines in regional branches (e.g. VNPT / Viettel Thai Binh) frequently enforce a hard cap of 8 concurrent PPPoE sessions per physical fiber line. To supply 16 concurrent public IPs for an 80-device farm, 2 separate physical fiber lines (2 ONT modems in bridge mode) must be connected to the router.
+### Intuitive 3-Port Layout for Non-Technical Remote Hands
+In a satellite deployment, family members or non-technical on-site contacts physically plug in cables. Avoid confusing layouts (e.g. blue WAN + 1 white LAN for PPPoE, 1 white LAN for rescue).
 
-A 3-port router has only 1 dedicated WAN port. The secondary LAN port (`lan2`) must be detached from the local bridge and converted into `wan2`.
+**Recommended Canonical Layout:**
+* **Blue Port (Inscribed WAN on chassis): RESCUE & Tailscale Port (`rescue` in `br-lan`)**
+  * Configured as DHCP client (`proto dhcp`, metric 200).
+  * **CRITICAL:** Disable router's internal DHCP server (`uci set dhcp.lan.ignore='1'`). Plugging into a family home router will NOT disrupt their existing network or hand out rogue IPs.
+  * *Ergonomics:* Remote hands naturally associate the distinct Blue/WAN port with "connect to home internet".
+* **Two White Ports (LAN 1 center, LAN 2 outer): Dedicated PPPoE Lines (`wan`, `wan2`)**
+  * Symmetrical white ports map directly to ISP Bridge ONT 1 (`hyn_gftth_...0`, metric 10) and ONT 2 (`hyn_gftth_...1`, metric 20).
+* **Normal vs Rescue Operating Principle:**
+  * **Normal State:** Only the 2 white ports need to be plugged. If either line dials successfully, the router has Internet and Tailscale comes online automatically. The blue port remains empty.
+  * **Rescue State:** If both fiber lines are down or pending technician install, plug the blue port into any household router to bring Tailscale online for remote management.
 
-### UCI Configuration Sequence
+### Safe Live Migration Sequence (Avoiding SSH Lockout)
+When modifying ports while connected via SSH over one of the LAN ports:
+1. **Step 1 (Add WAN to bridge):** Add the physical blue `wan` port into `br-lan` bridge device. Verify both blue WAN and LAN1 now serve management access (`192.168.5.1`).
+2. **Step 2 (Physical swap):** Move the admin PC cable from LAN1 to the Blue WAN port.
+3. **Step 3 (Free LAN ports for PPPoE):** Once connected via the blue port, safely remove `lan1` and `lan2` from `br-lan` and reassign them to `wan` and `wan2` PPPoE interfaces.
+
 ```bash
-# 1. Remove lan2 from br-lan bridge
-uci del_list network.@device[0].ports='lan2'
+# Example: Convert Blue port to Rescue DHCP and White ports to PPPoE
+uci set network.@device[0].ports='wan'
+uci set network.rescue=interface
+uci set network.rescue.device='br-lan'
+uci set network.rescue.proto='dhcp'
+uci set network.rescue.metric='200'
+uci set dhcp.lan.ignore='1'
 
-# 2. Create wan2 interface bound directly to lan2 physical device
+# Configure White Port 1 (lan1) -> PPPoE Line 1
+uci set network.wan=interface
+uci set network.wan.device='lan1'
+uci set network.wan.proto='pppoe'
+uci set network.wan.username='<user_line1>'
+uci set network.wan.password='<pass_line1>'
+uci set network.wan.metric='10'
+
+# Configure White Port 2 (lan2) -> PPPoE Line 2
 uci set network.wan2=interface
 uci set network.wan2.device='lan2'
-uci set network.wan2.proto='dhcp'  # Or 'pppoe' if dialing directly
+uci set network.wan2.proto='pppoe'
+uci set network.wan2.username='<user_line2>'
+uci set network.wan2.password='<pass_line2>'
+uci set network.wan2.metric='20'
 
-# 3. Add wan2 to firewall zone 'wan' for NAT Masquerade and forwarding
-uci add_list firewall.@zone[1].network='wan2'
-
-# 4. Commit to flash persistent storage
 uci commit network
-uci commit firewall
-
-# 5. Reload subsystems
-/etc/init.d/firewall reload
-/etc/init.d/network reload
-```
-
-### Read-Back Validation
-```bash
-# Verify no pending uncommitted changes
-uci changes
-
-# Verify bridge configuration
-cat /etc/config/network | grep -A 5 'config device'
-# Expected: list ports 'lan1' only
-
-# Verify firewall zone
-cat /etc/config/firewall | grep -A 6 "option name 'wan'"
-# Expected: list network 'wan', 'wan6', 'wan2'
-
-# Verify interface state in netifd
-ubus call network.interface.wan2 status
+uci commit dhcp
 ```
 
 ---
@@ -102,18 +107,49 @@ When a farm requires 3 to 6 fiber lines (e.g. 24–48 public IPs) on a router wi
 
 ---
 
-## 4. Pre-Shipment Invariants for Remote Routers
+## 4. Pre-Shipment Invariants & Hardening for Remote Routers
 
 Before packaging and shipping any configured router to a remote satellite location:
 
 1. **Remote Access Tunnel Pre-requisite (NON-NEGOTIABLE):**
    * **Never ship a router without a pre-configured reverse VPN tunnel (WireGuard client or Tailscale) dialing back to the main controller/MikroTik.**
    * Once installed behind an ISP modem at the remote site without port forwarding or public DDNS, the router is completely inaccessible from the outside. Remote re-configuration would otherwise require on-site personnel with a laptop and TeamViewer.
-   * WireGuard client must have `persistent-keepalive = 25` and autostart enabled so that the tunnel establishes immediately upon receiving an Internet connection.
+   * Tailscale: install `tailscale` and `tailscaled` ipk (OpenWrt 21.02, ~9MB total). Open inbound firewall in `/etc/firewall.user`:
+     ```bash
+     iptables -I INPUT -i tailscale0 -j ACCEPT
+     ```
+     Enable service on boot: `/etc/init.d/tailscale enable`.
 
-2. **Persistent Storage Verification:**
+2. **CRITICAL TAILSCALE INVARIANT — KEY EXPIRY DISABLEMENT:**
+   * **The 180-Day Trap:** Tailscale node keys expire after 180 days (6 months) by default! When expired, the node drops offline and demands interactive web browser re-authentication, permanently stranding the satellite device.
+   * **Remediation:** In Tailscale Admin Console (`console.tailscale.com/admin/machines`), locate the device row $\rightarrow$ click action menu `...` $\rightarrow$ select **Disable key expiry**.
+   * **Evidence Gate:** Verify machine detail page displays status badge `Expiry disabled` and `Key expiry: No expiry`.
+
+3. **NTP Time Synchronization (No Hardware RTC):**
+   * Router SoCs (MT7621A) have NO battery-backed hardware RTC. If system time boots with an incorrect date (e.g. year 1970 or 2021), TLS handshakes fail and Tailscale cannot connect to control servers.
+   * Ensure `/etc/config/system` contains international reliable NTP pools:
+     ```bash
+     uci add_list system.ntp.server='time.cloudflare.com'
+     uci add_list system.ntp.server='time.google.com'
+     uci add_list system.ntp.server='pool.ntp.org'
+     uci commit system
+     ```
+
+4. **Service & Routing Hygiene (Anti-Flapping & Security):**
+   * **Disable Unneeded Daemons:** Disable web file managers or scrapers (e.g. `alist`), and remove unnecessary open WAN ports (e.g. 5244, 1194) in `/etc/config/firewall`.
+   * **Disable Multi-WAN Balancer (`mwan3`):** When running clean primary/secondary PPPoE with gateway metrics (metric 10 vs metric 20), disable `mwan3` and `mwan3helper` to allow pure kernel metric failover without tracking jitter.
+   * **Disable Blind Watchcat:** Turn off `watchcat` reboot ping rules that may cause repetitive reboot loops while the device sits uninstalled prior to fiber turn-up.
+
+5. **Pre-Shipment Configuration Backup:**
+   * Generate a full sysupgrade backup archive and copy it off-router:
+     ```bash
+     sysupgrade -b /tmp/pre-ship-backup.tar.gz
+     ```
+   * Download to local engineering machine before boxing the hardware.
+
+6. **Persistent Storage Verification:**
    * Run `uci changes`. If non-empty, run `uci commit`.
    * Uncommitted changes reside in volatile `/tmp/.uci/` and are wiped upon power disconnection.
 
-3. **Physical Action Protocol:**
+7. **Physical Action Protocol:**
    * Only instruct the user to unplug power/cables when all read-back tests pass and `uci changes` is verified empty.

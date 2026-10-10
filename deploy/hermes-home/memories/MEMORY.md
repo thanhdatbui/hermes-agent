@@ -22,4 +22,4 @@ X99: cấm xHCI, 4 Box, adb Sem 8, reboot trc ca thay vì rút dây/reset tay; w
 §
 Credential: Cột 7 PASS MAIL độc lập Cột 12 PASS CHATGPT; cấm tự ý đè chéo khi đổi/tìm pass.
 §
-[ROUTER THÁI BÌNH]: R3G V1 (r3g-thaibinh, Tailscale 100.86.119.82, pass password). Cổng xanh=cứu hộ DHCP; 2 cổng trắng=PPPoE Line 1 (`hyn_gftth_tamnhb0`) & Line 2 (`hyn_gftth_tamnhb1`).
+[ROUTER THÁI BÌNH]: R3G V1 (r3g-thaibinh, Tailscale 100.86.119.82, no-expiry). Cổng xanh=cứu hộ DHCP; 2 cổng trắng=PPPoE Line 1 (`hyn_gftth_tamnhb0`) & Line 2 (`hyn_gftth_tamnhb1`). Backup pre-ship-backup.tar.gz.

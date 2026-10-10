@@ -78,7 +78,7 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
      - Đã cài đặt Scheduled Task `Taadaa_Safe_USB_Guard_15m` trên **Admin PC** (User SYSTEM) và **Kibe PC** (User Kibe) chạy ngầm định kỳ mỗi 15 phút.
      - *Lưu ý quyền Windows khi đăng ký Task Scheduler:* Trên môi trường không elevated Administrator, cờ `-User "SYSTEM"` sẽ bị từ chối với lỗi `Access is denied (HRESULT 0x80070005)`. Đăng ký trực tiếp dưới user phiên làm việc hiện tại (bỏ tham số `-User "SYSTEM"`) để task kích hoạt ở trạng thái `Ready` thành công 100%.
 
-## 6. Bệnh Bàn Phím Mất Tín Hiệu & Cách Vào BIOS (Main X99)
+## 7. Bệnh Bàn Phím Mất Tín Hiệu & Cách Vào BIOS (Main X99)
 - **Triệu chứng 1 (Trước khi vào BIOS):** Khi khởi động, tại logo main xoay tròn thì bàn phím tắt đèn, chỉ sáng khi vào màn hình gõ pass Windows. Bấm Delete / F2 không vào được BIOS.
   * **Nguyên nhân:** Mainboard bật Fast Boot / Ultra Fast Boot, bỏ qua khởi tạo USB keyboard ở giai đoạn POST (POST rút ngắn < 0.5s) hoặc bàn phím cắm vào cổng USB phụ/hub nối tầng.
   * **Hiện tượng có pass nhưng restart không bắt gõ:** Trong Registry `HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon` có `AutoAdminLogon = 1` (set qua `netplwiz`), Windows tự nạp credentials từ LSA Secrets và vào thẳng Desktop.
@@ -95,7 +95,7 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
     2. Bấm Restart lại máy $\rightarrow$ Đèn bàn phím sẽ sáng ngay lập tức trong BIOS và điều khiển phím mũi tên mượt mà.
     3. Cài đặt BIOS xong, bấm F10 lưu lại. Chờ máy boot vào tới màn hình Windows mới cắm lại 4 dây cáp tổng của Farm.
 
-## 5. Bẫy Tử Thần: xHCI Mode (USB 3.0) Onboard vs Giới Hạn Endpoint Main X99
+## 8. Bẫy Tử Thần: xHCI Mode (USB 3.0) Onboard vs Giới Hạn Endpoint Main X99
 - **BẪY CHẾT NGƯỜI (CẤM ENABLE xHCI ONBOARD CHO DÀN 80 MÁY):**
   * Trên bo mạch chủ X99 (Huananzhi X99-F8D / chipset Intel C610 series), bộ điều khiển xHCI Onboard (`8D31`) có giới hạn cứng phần cứng là **tối đa 96 USB Endpoint Contexts**.
   * Mỗi điện thoại Samsung S7 bật gỡ lỗi USB (MTP, ADB, Modem) ngốn tới **8 đến 10 endpoints**.
@@ -138,7 +138,7 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
       * Hoặc dùng loại **Card PCIe Quad-Controller chuyên dụng** (bo mạch tích hợp 4 chip controller độc lập, mỗi cổng 1 chip riêng biệt và 1 làn PCIe riêng, có nguồn phụ SATA).
   * Tài liệu đặc tả kỹ thuật chi tiết lưu tại repo: `D:\Taadaa\tools\docs\HARDWARE_USB_FARM_PCIE_GUIDE.md` (bản sao lưu: `D:\Taadaa\docs\HARDWARE_USB_FARM_PCIE_GUIDE.md`).
 
-## 6. Quy Hoạch Phần Cứng Mở Rộng Farm (80 - 200 Máy)
+## 9. Quy Hoạch Phần Cứng Mở Rộng Farm (80 - 200 Máy)
 - **Giới hạn 1 card USB:** 1 chip Host Controller chỉ chịu được 64 - 96 USB Endpoint contexts (mỗi S7 tốn 3-5 endpoints). 1 card chỉ cân tối đa 40 - 50 máy.
 - **Dàn 200 máy trên main Dual Xeon X99:** Bắt buộc cắm 3 đến 4 Card PCIe USB 3.0 độc lập (chip Renesas uPD720201 / VIA VL805 có nguồn phụ SATA/Molex) vào các khe PCIe x16/x1 trống, mỗi card gánh 1 nhánh 50-60 máy.
 - **Sơ đồ cắm 4 Box Farm chuẩn trên bo mạch Huananzhi X99-F8D (8 cổng / 4 tầng):**
@@ -151,11 +151,11 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
   * **Lợi ích kép:** Vừa chia đều 4 Box sang 2 chip EHCI độc lập (Tầng 1-2 vào EHCI #1, Tầng 3-4 vào EHCI #2, mỗi bên gánh đúng 40 máy), vừa tránh sụt áp đường mạch 5V (không dồn 2 Box công suất lớn vào chung 1 cặp cổng).
 - **Hiện tượng Phase Drift dù có Max Workers 40:** Giới hạn 40 workers chỉ cân tải CPU/Proxy. Cơ chế `machine_launch.py` stagger lúc mở app sau 5-15 phút sẽ bị lệch pha do thời lượng video khác nhau, dẫn tới 10-20 máy vô tình chụp ảnh (`screencap`) trùng giây $\rightarrow$ gây spike nghẽn USB 2.0. Giải pháp căn cơ là cắm thêm Card PCIe USB 3.0 mở rộng riêng hoặc dùng Semaphore khống chế I/O trong script (tuyệt đối không bật xHCI Onboard của mainboard).
 
-## 7. Hermes Gateway Telegram Cold Boot vs Reconnect
+## 10. Hermes Gateway Telegram Cold Boot vs Reconnect
 - **Cơ chế Telegram Adapter:** Khi PC reset (Cold Boot, `is_reconnect=False`), cờ `drop_pending_updates=True` được kích hoạt.
 - **Hệ quả:** Mọi tin nhắn gửi đến bot Telegram trong lúc PC đang tắt/reboot đều bị server Telegram hủy bỏ (purge). Bot sẽ không thấy các tin nhắn này sau khi online lại.
 
-## 8. Bẫy Treo Remote ADB Portproxy & Dịch Vụ IP Helper (iphlpsvc) Trên Host Admin
+## 11. Bẫy Treo Remote ADB Portproxy & Dịch Vụ IP Helper (iphlpsvc) Trên Host Admin
 - **Hiện tượng:** Từ host controller (Kibe PC), lệnh gọi ADB tới remote host (Admin `192.168.110.119:5037`) văng lỗi `adb.EXE: protocol fault (couldn't read status): connection reset` hoặc lệnh `inspect_machine.py <N>` bị timed out liên tục.
 - **Bản chất kỹ thuật:**
   1. Trên Windows host phụ (Admin PC), cổng `5037` được publish ra ngoài mạng LAN cho Kibe PC qua Windows Portproxy:
@@ -174,7 +174,7 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
      ```
   3. Thao tác trên giải phóng hoàn toàn socket portproxy kẹt trong ~3 giây, kết nối Remote ADB thông suốt ngay lập tức.
 
-## 9. Chẩn Đoán Từ Xa Qua MikroTik REST API & Đánh Thức Máy Farm (WoL)
+## 12. Chẩn Đoán Từ Xa Qua MikroTik REST API & Đánh Thức Máy Farm (WoL)
 - **Địa chỉ & Xác thực:** `http://192.168.110.2:9090` (HTTP Basic Auth: `admin:N0spam@@`).
 - **Kiểm tra trạng thái nguồn/kết nối vật lý của Host PC:**
   - Gọi `GET /rest/ip/dhcp-server/lease`.
@@ -197,7 +197,7 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
     2. Nếu số đường `running == 0`, đường quang WAN1/FPT đang bị rớt hoặc mất tín hiệu ISP.
     3. Kiểm tra log: `GET /rest/log`. Nếu thấy `PPPoE-Watchdog: pppoe-outXX not running -> Resetting...` và `pppoe-outX: terminating... - disconnected`: Toàn bộ proxy ngõ ra đang bị tê liệt. **BẮT BUỘC giữ nguyên Fail-Closed**, tuyệt đối không bypass VPN gate.
 
-## 10. Kỷ Luật Xử Lý Split APK Farm & Bẫy Downgrade (TikTok Trill)
+## 13. Kỷ Luật Xử Lý Split APK Farm & Bẫy Downgrade (TikTok Trill)
 - **Kỷ luật xóa ngay thư mục APK lỗi / phân mảnh (User Invariant):**
   - Khi phát hiện một thư mục APK trong kho (ví dụ `apk-bank/.../v47.0.3`) bị lỗi thiếu file split dynamic modules, gây lỗi trích xuất native thư viện (`INSTALL_FAILED_CONTAINER_ERROR`) hoặc thiếu Dex class (`NoClassDefFoundError`):
   - **CẤM TUYỆT ĐỐI** giữ lại để chắp vá hay sửa mò.
@@ -215,7 +215,7 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
     4. Ghi từng file APK vào session: `pm install-write -S <size> <session_id> <name> <file_path>`
     5. Commit session: `adb shell pm install-commit <session_id>` $\rightarrow$ nhận `Success`.
 
-## 11. Bệnh Tiểu Vi (XiaoWei/Jiwei - Tauri/WebView2) Không Bật Được / Ghost Process
+## 14. Bệnh Tiểu Vi (XiaoWei/Jiwei - Tauri/WebView2) Không Bật Được / Ghost Process
 - **Hiện tượng:** Click đúp icon Tiểu Vi trên Desktop không có phản hồi, không mở cửa sổ giao diện, không báo lỗi popup gì.
 - **Bản chất kỹ thuật (Trích xuất từ log `app_rCURRENT.log`):**
   1. Tiểu Vi xây dựng trên nền tảng **Tauri (Rust + Microsoft Edge WebView2)**.
@@ -235,7 +235,7 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
      ```
   3. Sau khi dọn cache, bấm mở lại Tiểu Vi trên Desktop $\rightarrow$ WebView2 tự động tái tạo profile sạch và cửa sổ GUI 80 máy hiển thị lên ngay lập tức.
 
-## 12. Phân Biệt Rớt Cả Cụm Hub vs Chập Chờn Tiếp Xúc Cáp Micro-USB Từng Máy
+## 15. Phân Biệt Rớt Cả Cụm Hub vs Chập Chờn Tiếp Xúc Cáp Micro-USB Từng Máy
 - **Bẫy vội vàng kết luận:** Khi thấy Tiểu Vi báo 1-2 ô cam (Disconnected) trong khi tổng số máy online trên ADB đạt 77-79 máy:
   * Tuyệt đối không vội vàng reset USB bus hay nghi ngờ sập hub.
   * Đối soát serial máy lỗi với danh sách máy lân cận trong `PROXYgandienthoai.xlsx` (ví dụ máy 224 có serial `ce0416041158642b05`):
@@ -244,7 +244,7 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
 - **Quy tắc slot trống vật lý đã biết trước trên Farm:**
   * **Máy 255 trên Admin Farm:** Không có máy vật lý (slot trống). Tuyệt đối không báo cáo 255 là "máy lỗi" hay "máy sập" gây hoang mang cho người dùng.
 
-## 13. Hiện Tượng Điện Thoại Sáng Đèn/Lên Nguồn Nhưng Tiểu Vi Không Nhận & Bệnh Flapping
+## 16. Hiện Tượng Điện Thoại Sáng Đèn/Lên Nguồn Nhưng Tiểu Vi Không Nhận & Bệnh Flapping
 - **Bản chất phần cứng cáp Micro-USB (Nguồn vs Dữ liệu):**
   * Cáp Micro-USB có 4 đường tín hiệu: 2 đường nguồn ngoài cùng (Pin 1: VCC 5V, Pin 5: GND) và 2 đường dữ liệu ở giữa (Pin 2: D-, Pin 3: D+).
   * **Hiện tượng:** Máy điện thoại cắm vào màn hình sáng, đèn sạc bật, máy lên nguồn bình thường NHƯNG máy tính báo `Present: False` hoặc Tiểu Vi không nhận.
@@ -262,7 +262,7 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
   * **CẤM TUYỆT ĐỐI** lấy snapshot tức thời 1 lần của lệnh `adb devices` ngay sau khi reboot máy để vội vàng tuyên bố "ĐÃ NHẬN ĐỦ 79/80". Máy đang trong giai đoạn boot có thể nhấp nháy online 1 giây rồi rớt ngay (flapping).
   * **Quy tắc nghiệm thu chuẩn:** Bắt buộc kiểm tra tính ổn định (Stability Check): quét `adb devices` tối thiểu 2 lần cách nhau 3–5 giây VÀ đối soát danh sách thiết bị ổn định. Nếu có máy rớt/thiếu so với slot thực tế, phải nêu đích danh số máy đang chập chờn/thiếu (ví dụ: "78 máy online ổn định, máy 224 đang chập chờn/chưa nhận data") thay vì làm tròn số để báo cáo lấy thành tích.
 
-## 14. Bẫy Lệch Subnet Wi-Fi & Quy Trình Khôi Phục Wi-Fi 2 Cấp (09/10/2026)
+## 17. Bẫy Lệch Subnet Wi-Fi & Quy Trình Khôi Phục Wi-Fi 2 Cấp (09/10/2026)
 - **Tai nạn fallback SSID bậy:** Khi máy mất Wi-Fi, CẤM TUYỆT ĐỐI cho nhảy sang SSID ngoài farm (`Dat`, `Dat-1`, `BOX 2`...). Nhảy SSID lạ sẽ bị cấp dải IP `192.168.10.x` thay vì dải chuẩn Farm `192.168.110.x`, gây đứt socket tới Singbox/3proxy trên MikroTik và nguy cơ lộ IP Direct FPT.
 - **Cố định quy hoạch 40 máy/AP:** M01–M40 (`kibe 1` - pass `23102025` - AP .253), M41–M80 (`kibe 2` - pass `19051995` - AP .252), M201–M240 (`admin 1` - pass `19051995` - AP .251), M241–M280 (`admin 2` - pass `19051995` - AP .250). CẤM dồn máy sang AP khác.
 - **Bẫy chuỗi ADB-Join-Wifi & Lifecycle Activity:**
@@ -278,7 +278,7 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
 - Quy trình phục hồi 2 cấp: Cấp 1 (Radio toggle) ➔ Cấp 2 (`adb-join-wifi` kèm `--es`). Thất bại thì giữ hiện trường báo watchdog, CẤM gán bừa mạng khác.
 - Chi tiết: `references/aruba-wifi-recovery-and-anti-drift-incident-20261009.md`.
 
-## 15. Kiến Trúc Giám Sát Đa Tầng Farm (Kibe PC vs Admin PC Watchdogs)
+## 18. Kiến Trúc Giám Sát Đa Tầng Farm (Kibe PC vs Admin PC Watchdogs)
 - **Tầng 1: Khôi phục Socket/Transport ADB (`farm-adb-transport-healer`):**
   * Chạy trên Kibe PC qua cronjob `121a95f18996` mỗi 3 phút (`*/3 * * * *`).
   * Quét song song cả 2 cụm: Kibe Local và Admin Remote (`192.168.110.119:5037`).
