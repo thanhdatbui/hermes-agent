@@ -53,3 +53,18 @@
 ## 5. Quy Định Giao Tiếp Với User
 - **CẤM TUYỆT ĐỐI dùng biệt ngữ kỹ thuật rườm rà**: CẤM dùng từ `"TikTok ID handle"`, `"handle"`, `"identifier"`. Luôn luôn gọi bằng từ ngữ thuần Việt tự nhiên: **`"tên nick TikTok"`** hoặc **`"tên nick"`**.
 - **Giải trình sự cố trung thực & có căn cứ kỹ thuật**: Không bao giờ đổ lỗi vô căn cứ cho bên thứ ba (như suy diễn shop tự đổi pass) khi chưa kiểm tra kỹ toàn bộ logic lưu dữ liệu và log thực thi của hệ thống.
+
+## 6. Kiểm Tra Hiện Trường Hotmail / Outlook Trên Thiết Bị Farm (Samsung S7)
+- **Cơ chế lưu tài khoản trên Android**:
+  - `dumpsys account` chỉ liệt kê tài khoản đăng ký với hệ thống Android AccountManager (ví dụ Google account, tài khoản IMAP trong Gmail hoặc Samsung Email).
+  - Ứng dụng **Microsoft Outlook (`com.microsoft.office.outlook`)** quản lý tài khoản độc lập trong cơ sở dữ liệu riêng, không nhất thiết đăng ký với AccountManager.
+- **Quy trình kiểm tra an toàn bọc `with_device_lock`**:
+  1. Luôn bọc toàn bộ lệnh qua `python D:/Taadaa/tools/with_device_lock.py --machine <N> --timeout 30 -- python <script>`.
+  2. Đánh thức màn hình: `input keyevent 224`.
+  3. Khởi chạy app Outlook: `am start -n com.microsoft.office.outlook/com.acompli.acompli.CentralActivity`.
+  4. Mở ngăn kéo (Drawer menu) bằng tap góc trên bên trái (`input tap 90 155`) để hiển thị danh sách các tài khoản đang đăng nhập.
+  5. Chụp màn hình (`screencap -p`) và soi mắt qua WinRT OCR để đọc địa chỉ email trên Drawer.
+  6. **BẮT BUỘC trả thiết bị về trạng thái nghỉ (Quiescent State)** trước khi nhả lock: Bấm Home (`input keyevent 3`) $\rightarrow$ Khóa màn hình (`input keyevent 26`).
+- **Nguyên lý vì sao nick TikTok chạy trên máy nhưng hòm thư Hotmail KHÔNG có trên máy**:
+  - Nếu nick TikTok được đăng ký bằng luồng **Hotmail Graph API (`[otp-graph]`)**, mã OTP được máy tính kéo trực tiếp qua Microsoft Graph API Token từ xa và điền vào form TikTok.
+  - Luồng này hoàn toàn không đăng nhập hay cài đặt tài khoản Hotmail vào app Outlook trên điện thoại S7. Do đó, điện thoại chỉ lưu phiên TikTok mà không hề có tài khoản hay mật khẩu Hotmail.
