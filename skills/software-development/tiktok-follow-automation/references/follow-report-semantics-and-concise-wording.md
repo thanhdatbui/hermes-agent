@@ -13,15 +13,27 @@ Use when a follow-session report shows `Success (0)` and the operator asks wheth
 
 Do not collapse attempted, successful, released, skipped, and protected into one number. If the report lacks an explicit attempt count, say that the attempt count is not directly shown rather than inventing it.
 
-## Compact Telegram Circuit Breaker Formatting (User Correction)
-Khi nhiều proxy bị ngắt cầu dao (20–40 proxy), TUYỆT ĐỐI KHÔNG in từng dòng riêng lẻ cho mỗi proxy làm tràn giới hạn 4096 ký tự của Telegram và trôi màn hình. BẮT BUỘC gom nhóm ngắn gọn:
+## Compact Telegram Circuit Breaker & Released Formatting (User Correction)
+### 1. Cầu Dao Tự Ngắt IP (Ultra-Concise 1 Line)
+Operator yêu cầu khóa IP chỉ ghi số lượng kèm máy partner được cứu, tuyệt đối KHÔNG liệt kê danh sách cổng rườm rà:
+- Có máy partner được cứu:
+  ```text
+  ⚡ Cầu dao tự ngắt IP (X proxy đã khóa): Khóa cứu Y máy (M78, M75, M8)
+  ```
+- Không có máy partner cần cứu:
+  ```text
+  ⚡ Cầu dao tự ngắt IP (X proxy đã khóa)
+  ```
+
+### 2. Định Dạng Máy Nhả Follow Kèm Số Lượt Thực Tế
+Khi máy đạt được một số lượt follow thành công rồi mới bị nhả ở lượt cuối (`Nhả ở Hồi phục 1/2`, `Nhả ở Cấp Khỏe`), BẮT BUỘC ghi rõ số lượt đã đạt được cạnh tên máy:
 ```text
-  ⚡ Cầu dao tự ngắt IP (X proxy đã khóa do dính nhả):
-    - Khóa cứu partner (Y máy): M<A> (cổng <port1>), M<B> (cổng <port2>)
-    - Khóa toàn bộ nick cùng IP (Z proxy): <port3>, <port4>, <port5>, ...
+  + Nhả follow (25 máy | 100.0%):
+    - Nhả liền (0 lượt | 92.0%): (M3, M4, M9, M16, ...)
+    - Nhả ở Hồi phục 1 (1 - 4 lượt | 4.0%): (M1: 2 lượt)
+    - Nhả ở Cấp Khỏe (10+ lượt | 4.0%): (M18: 12 lượt)
 ```
-- Dòng 1: Danh sách các máy partner được khóa cứu an toàn kèm cổng proxy (high-signal).
-- Dòng 2: Gom các cổng proxy còn lại trên 1 dòng liệt kê số cổng ngắn gọn.
+Tuyệt đối không in trơ trọi tên máy `(M1)` hay `(M18)` khiến operator hiểu lầm là máy bị nhả trắng 0 lượt như nhóm `Nhả liền`.
 
 ## Compact wording
 Preferred shorthand: `Nhả → khóa IP`.
