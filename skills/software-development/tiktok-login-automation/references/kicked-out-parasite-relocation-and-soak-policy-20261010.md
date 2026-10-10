@@ -26,3 +26,31 @@ Trong thời gian tài khoản đang ngâm nguội (chưa login trên thiết b�
    - Chạy lệnh kiểm tra cấu trúc dữ liệu:
      `python D:/Taadaa/tools/excel_preflight_validator.py --excel-dir "D:/OneDrive/TaadaaData/<kibe|admin>"`
    - BẮT BUỘC đạt `PASS 100% - Toàn bộ Invariant Rules hợp lệ (0 cảnh báo)`.
+
+---
+
+## 3. BẢO TOÀN ĐỘC LẬP KHO VIDEO (VIDEO FOLDER ISOLATION) VÀ TIẾP NỐI TIẾN ĐỘ
+Khi xử lý cặp tài khoản "Nick cũ được cứu" và "Nick ký sinh bị đá ra":
+1. **Cô lập kho video 100% giữa 2 tài khoản**:
+   - Khi nick ký sinh bị gán nhầm, nó thường trỏ chung vào Folder Video của nick cũ (ví dụ Folder 153 của Kibe).
+   - Khi chuyển nick ký sinh sang máy/cụm khác (ví dụ Admin M255 Slot 2), **BẮT BUỘC cấp Folder Video mới hoàn toàn theo quy hoạch của máy/cụm mới** (ví dụ Folder 434 thuộc kho Admin `D:\TIKTOK-videonuoinick-admin\434` trên `admin-farm`).
+   - Tuyệt đối không để 2 nick trỏ cùng 1 Folder Video dù ở khác máy hay khác cụm (tránh bẫy duplicate content của TikTok).
+2. **Quy tắc tiếp nối tiến độ đăng video**:
+   - **Nick ký sinh chuyển sang vị trí mới**: Reset `Video Đã Đăng` về `0` trong `Tik*.xlsx` và `taikhoan_run_safe.xlsx` để bot bắt đầu đăng từ clip `1.mp4`.
+   - **Nick cũ vừa được phục hồi**: **BẮT BUỘC giữ nguyên số video đã đăng trong lịch sử** (ví dụ đã đăng 21 video thì ghi nhận đúng 21). Ca đăng tiếp theo sẽ lấy clip kế tiếp (ví dụ `22.mp4`). **CẤM reset về 0** khiến bot đăng lặp lại các clip cũ.
+
+---
+
+## 4. ĐỐI SOÁT XÁC THỰC KÊNH GỐC VÀ TĂNG TRƯỞNG TỰ NHIÊN (ORGANIC METRICS AUDIT)
+Trước khi đưa nick cũ vừa phục hồi trở lại lịch chạy tự động:
+1. **Đối soát 3 lớp với cơ sở dữ liệu (`tiktok_tracker.db`)**:
+   - Tra cứu bảng `snapshots` theo `username`:
+     * UID tài khoản khớp chính xác UID lịch sử.
+     * Ngày tạo / ngày sinh khớp với hồ sơ gốc (ví dụ reg 04/03/2026).
+     * Số lượng video hiển thị trên profile khớp số lượng video đã đăng.
+2. **Đánh giá sức khỏe qua chỉ số tăng trưởng tự nhiên (Organic Metrics)**:
+   - Trong thời gian kênh tạm dừng đăng, đối soát chuỗi `snapshots` theo thời gian:
+     * Nếu Follower và Like (Heart) vẫn nhích tăng đều (ví dụ +5 fl, +17 likes trong thời gian nghỉ), đây là bằng chứng thép chứng minh:
+       - Thuật toán TikTok vẫn đang phân phối video cũ.
+       - Kênh hoàn toàn khỏe mạnh, không bị shadowban, gậy vi phạm hay bóp tương tác.
+     * Khi resume đăng clip tiếp theo, kênh sẽ bắt nhịp đề xuất lại rất nhanh.
