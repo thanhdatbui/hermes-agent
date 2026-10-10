@@ -40,14 +40,22 @@
 
 ---
 
-## 2. Nguyên Nhân Phụ: Lệch Quy Cách Đặt Tên (Naming Pattern Drift)
+## 2. Nguyên Nhân Cốt Lõi: Script Tự Ý Tráo / Fallback Proxy Khi Thấy Down (Auto-Proxy Mutation Trap)
 
-### 2.1 Cú pháp tên profile gắn chặt với cấu hình động
-- Tên profile thường được sinh từ: `{Số_máy} - {Email} - {Cổng_proxy}` (ví dụ: `28 - user@gmail.com - 5134`).
-- Khi cấu hình thay đổi:
-  - Máy được đổi proxy port (ví dụ từ port 4G `5103` sang Mikrotik `10003`).
-  - Tài khoản được chuyển sang số máy khác (ví dụ từ máy 28 sang máy 61).
-- Nếu script chỉ so khớp exact string `item.get("name") == info["profile_name"]`, profile cũ (port 5103) không khớp với tên mới (port 10003) $\rightarrow$ script tạo profile mới toanh thay vì tái sử dụng / cập nhật profile cũ.
+### 2.1 CẤM NGỘ NHẬN "USER TỰ ĐỔI PROXY" (HARD USER CORRECTION)
+- **Kỷ luật bất biến**: User **KHÔNG BAO GIỜ** tự ý chuyển hay đổi proxy của các máy/tài khoản.
+- **Thực tế đã xảy ra**: Do các script trong hệ thống thấy proxy bị lỗi, sập mạng, hoặc thiếu mapping đã **tự ý đổi phá**:
+  1. Tự động bốc proxy ngẫu nhiên từ registry: `ORDER BY RANDOM() LIMIT 1` (ví dụ trong `chatgpt_gpm_direct_reg.py`).
+  2. Tự tính toán công thức fallback port theo số máy: `5100 + machine` (ví dụ: máy 66 có port thật là 5134 nhưng script tự tính thành `5166`; máy 33 bị script tráo giữa Mobi 5133 và Mikrotik 10001).
+  3. Tự fallback sang port Mikrotik `20000 + m_idx` khi không đọc được mapping (ví dụ trong `sync_gpm_lifecycle.py`).
+
+### 2.2 Hậu quả: Lệch tên profile -> GPM sinh thêm profile clone
+- Cú pháp tên profile được format theo: `{Số_máy} - {Email} - {Cổng_proxy}`.
+- Khi script tự ý nhảy proxy sang port khác $\rightarrow$ Tên profile bị lệch port (ví dụ: `66 - ... - 5134` biến thành `66 - ... - 5166`) $\rightarrow$ Script so khớp chuỗi không thấy $\rightarrow$ GPM API tạo thêm profile mới toanh với port mới, làm phân mảnh session và sinh lỗi `AMBIGUOUS_GPM_PROFILE`.
+
+### 2.3 QUY TẮC BẢO VỆ PROXY BẤT BIẾN (PROXY INVARIANT):
+- **Source of Truth duy nhất**: Duy nhất file `PROXYgandienthoai.xlsx` của User.
+- **Fail-Closed khi Proxy lỗi/sập**: Nếu proxy bị timeout, die, hoặc sập $\rightarrow$ BẮT BUỘC giữ nguyên mapping, log error và dừng chờ; **CẤM TUYỆT ĐỐI** tự ý đổi port, đổi proxy, fallback công thức hay random proxy khác gán vào tài khoản!
 
 ---
 

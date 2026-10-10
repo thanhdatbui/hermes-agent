@@ -12,14 +12,16 @@ evidence_gate_verifier.py (WinRT OCR, PID reserve, fail-closed, >30s/3att L3 BLO
 §
 Canary: WoL ether3 (kibe 0C:EF:15:37:4C:20, admin 22:33:4D:06:4C:26; WG 13231); CẤM PASS khi followed=0/FOLLOW_FAILED; ảnh/log trước teardown. Admin: upload SSH admin-farm.
 §
-Ava tay: khóa .manual_avatar_locked. Strike 3: giao Claude CLI nền sửa thẳng code. Sol kẹt 78-82 điểm task nhỏ user lệnh dừng: chuyển Claude CLI tự chấm dứt điểm.
+Ava tay: khóa .manual_avatar_locked. Strike 3 / Sol kẹt 78-82: giao Claude CLI nền sửa thẳng code chấm dứt điểm.
 §
 TikTok Shadow: Path B 'Đã fl' ko commit; FOLLOW_FAILED trừ fl tự nhiên; slot `(folder-1)%8+1` cứng; reg bù độc lập. Dọn C duyệt trước.
 §
 Giao tiếp: gọi 'tên nick TikTok', cấm handle. Hotmail: reset OTP thanhdatbui1995@gmail.com sync Master C7, clean_v2, State.
 §
-X99: cấm xHCI onboard (trần 96 endpoint tràn Code 43); EHCI ko hỗ trợ live PnP reset; Task Taadaa_Farm_Daily_Reboot_0530 tự reboot 05:30 (Kibe+Admin); feed MaxWorkers 25.
+X99: cấm xHCI (trần 96 endpoint); Task Taadaa_Farm_Daily_Reboot_0530 tự reboot 05:30 (Kibe+Admin); feed wkr 25.
 §
 Credential: Cột 7 PASS MAIL độc lập Cột 12 PASS CHATGPT; cấm tự ý đè chéo khi đổi/tìm pass.
 §
-[ROUTER THÁI BÌNH]: R3G V1 (r3g-thaibinh, Tailscale 100.86.119.82, no-expiry). Cổng xanh=cứu hộ DHCP; 2 cổng trắng=PPPoE Line 1 (`hyn_gftth_tamnhb0`) & Line 2 (`hyn_gftth_tamnhb1`). Backup pre-ship-backup.tar.gz.
+[ROUTER TB]: R3G V1 (Tailscale 100.86.119.82). Cổng xanh=DHCP; 2 trắng=PPPoE Line 1 (`hyn_gftth_tamnhb0`) & Line 2 (`hyn_gftth_tamnhb1`).
+§
+Proxy: User KO tự đổi proxy. CẤM script tự nhảy/random proxy khi sập hoặc tính port mò (5100+mid) làm đẻ profile GPM rác. SoT duy nhất: PROXYgandienthoai.xlsx; down -> fail-closed.
