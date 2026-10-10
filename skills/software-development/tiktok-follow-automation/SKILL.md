@@ -8,15 +8,16 @@ description: "TikTok follow runner and fail-closed farm ops."
 ## Non-negotiable operating rules
 
 - **Tài liệu tham khảo chuyên sâu (`references/`):**
-    - `references/follow-report-semantics-and-concise-wording.md`: Phân biệt `Success (0)` với không chạy (`Nhả → khóa IP`).
-    - `references/account-replacement-and-backfill-state-reset.md`: Reset state & bộ đếm video/follow khi thay nick die / reg bù.
+    - `references/follow-report-semantics-and-concise-wording.md`: Phân biệt `Success (0)` vs `Nhả → khóa IP`.
+    - `references/account-replacement-and-backfill-state-reset.md`: Reset state & bộ đếm video/follow khi thay nick die/reg bù.
     - `references/fleet-follow-graduated-probation-ladder.md`: Bậc thang 3 nấc & Health-Tiered Reporting.
-    - `references/daily-follow-matrix-and-trust-ceiling-analytics.md`: Daily Matrix Heatmap, Trust Ceiling, FOLLOW_CONCURRENCY.
-    - `references/shared-ip-proxy-collision-and-canary-ceiling-testing.md`: Trùng IP (1 IP : 2 Máy), IP Circuit Breaker, Canary 5-10%.
-    - `references/wave-scheduling-and-multi-farm-unified-governance.md`: Wave 1 -> Cầu dao -> Wave 2; Cụm Kibe(1-80)+Admin(201-280).
-    - `references/dashboard-follow-reconcile-race-condition.md`: Lệch pha crawler vs ca chốt sổ; đối soát log/sqlite.
-    - `references/contact-suggestion-popup-follow-lockdown.md`: Khóa auto-follow từ popup danh bạ/bạn bè.
-    - `references/contact-suggestion-auto-follow-leak-prevention.md`: Chống rò rỉ follow lẻ từ popup danh bạ bảo vệ nick yếu.
+    - `references/daily-follow-matrix-and-trust-ceiling-analytics.md`: Heatmap, Trust Ceiling, Concurrency.
+    - `references/shared-ip-proxy-collision-and-canary-ceiling-testing.md`: Trùng IP, Circuit Breaker, Canary.
+    - `references/wave-scheduling-and-multi-farm-unified-governance.md`: Wave 1 -> Cầu dao -> Wave 2; Kibe + Admin.
+    - `references/dashboard-follow-reconcile-race-condition.md`: Lệch pha crawler vs chốt sổ; đối soát.
+    - `references/contact-suggestion-popup-follow-lockdown.md`: Khóa popup danh bạ/bạn bè.
+    - `references/contact-suggestion-auto-follow-leak-prevention.md`: Chống rò rỉ follow lẻ.
+    - `references/burst-follow-hibernation-cadence-gemphone-benchmark.md`: Burst 20-30 fl, ngủ đông 3-4d, cầu dao 40%.
     - `references/zero-follow-shift-audit-and-fail-closed-breakdown.md`: Đối soát ca 0 follow (dưỡng sinh 1/3, cầu dao 48h, cooldown, nick non).
     - Case references: `references/case-ui-*.md`, `references/workflow-parity-*.md`, `references/fleet-follow-*.md`.
     - `references/case-ui-89-idempotent-session-actions-and-partial-follow-accounting.md`: Staging.
