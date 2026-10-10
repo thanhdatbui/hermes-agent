@@ -34,9 +34,11 @@ Truy vết chi tiết timestamp 8 ca chết đôi trên cùng IP tháng 10/2026 
        `⚡ Cầu dao tự ngắt IP (X proxy đã khóa do dính nhả):`
        `- Cổng <PORT>: M<A> dính nhả lúc <HH:MM:SS> -> Đã ngắt IP không follow | Đã khóa cứu nick: M<B>`
      * Trong mục `Bỏ qua`, bóc tách riêng: `Khóa IP do máy cùng IP nhả (X: M...)` thay vì gộp mù vào lỗi script hay dưỡng sinh thông thường. Không báo lỗi ảo khi nick được an toàn skip bởi Circuit Breaker.
-  5. **Kỷ luật cô lập kiểm thử (Pytest Isolation Guard):**
+  5. **Kỷ luật cô lập kiểm thử & Chống xóa nhầm DB Production (Pytest Isolation Guard):**
      * Trong `follow_state.py` và `run_follow.py`, bắt buộc bọc guard `if not os.environ.get("PYTEST_CURRENT_TEST"):` trước khi gọi `trip_ip_breaker()` hoặc `check_ip_breaker()`.
-     * *Bài học xương máu:* Nếu không có guard này, các unit test thử nghiệm nhánh `FOLLOW_FAILED` sẽ tự động ghi cờ `TRIPPED` vào DB live `D:/Taadaa/data/tiktok_tracker.db`, dẫn đến các test case tiếp theo chạy trên Machine 1 bị Circuit Breaker ngắt hàng loạt (`CIRCUIT_BREAKER_SKIPPED`) và làm vỡ test suite `test_cli.py`. Guard này giữ test suite offline và deterministic 100%.
+     * *Bài học xương máu:* Nếu không có guard này, các unit test thử nghiệm nhánh `FOLLOW_FAILED` sẽ tự động ghi cờ `TRIPPED` vào DB live `D:/Taadaa/data/tiktok_tracker.db`, dẫn đến các test case tiếp theo chạy trên Machine 1 bị Circuit Breaker ngắt hàng loạt (`CIRCUIT_BREAKER_SKIPPED`) và làm vỡ test suite `test_cli.py`.
+     * **CẤM TUYỆT ĐỐI DELETE TRÊN DB PRODUCTION ĐỂ ÉP TEST PASS:** Khi test bị vướng state, CẤM TUYỆT ĐỐI chạy script `DELETE FROM ip_circuit_breaker` trên database live (`D:/Taadaa/data/tiktok_tracker.db`). Hành vi này sẽ xóa sạch danh sách proxy đang ngắt thực tế của ca chạy, làm mất lá chắn an toàn khiến các máy anh em (M8, M75, M78...) mất bảo vệ và lao vào IP dính cờ phạt. Phải sửa bằng cách bọc guard `PYTEST_CURRENT_TEST` hoặc monkeypatch test fixture.
+     * **Quy trình khôi phục bảng Cầu Dao khi bị xóa nhầm (Zero-Loss Incident Recovery):** Nếu bảng bị xóa nhầm trong ca chạy, KHÔNG quét đĩa diện rộng (`os.walk`). Vào thẳng thư mục artifact live của ca chạy hiện tại (`D:/Taadaa/runtime/kibe/live/<DATE>/<BATCH>/machines/machine_<N>/<RUN_ID>/follow_result.json`), lọc các máy có `status == 'FOLLOW_FAILED'` hoặc `follow_failed == True`, map với file gán proxy (`D:/OneDrive/TaadaaData/kibe/PROXYgandienthoai.xlsx`) để lấy lại danh sách `proxy_key` và nạp phục hồi nguyên trạng vào SQLite.
 
 ---
 
