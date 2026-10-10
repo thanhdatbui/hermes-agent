@@ -7,13 +7,11 @@ description: >-
 
 # Farm Alert Autonomous Recovery
 
-> 📎 Ref: `references/one-tap-welcome-back-guard-bypass-and-auto-login-trap-20261010.md` (**[10/10/2026]** One-tap guard & auto-login recovery).
-> 📎 Ref: `references/admin-cluster-batch-feed-triage-and-missing-session-onetap-20261010.md` (**[10/10/2026]** Admin batch triage).
-> 📎 Ref: `references/scheduled-pc-reboot-preflight-abort-triage-20261010.md` (**[10/10/2026]** Reboot abort triage).
-> 📎 Ref: `references/feed-suggestion-xoa-and-scrolled-profile-triage-20261009.md`.
-> 📎 Ref: `references/preflight-reg-bu-machine-full-reconcile-pipeline-20261008.md`.
-> 📎 Ref: `references/anti-skip-physical-hook-gate-discipline-20261004.md`, `references/avatar-edit-layout-detector-and-closeout-contract.md`.
-> 📎 Ref: `references/feed-failure-taxonomy-and-guard-boundary.md`.
+> 📎 Ref: `references/midday-shift-feed-triage-and-dual-cluster-auto-healing-20261010.md` (**[10/10/2026]** Midday triage & auto-heal).
+> 📎 Ref: `references/one-tap-welcome-back-guard-bypass-and-auto-login-trap-20261010.md`, `references/admin-cluster-batch-feed-triage-and-missing-session-onetap-20261010.md`.
+> 📎 Ref: `references/scheduled-pc-reboot-preflight-abort-triage-20261010.md`, `references/feed-suggestion-xoa-and-scrolled-profile-triage-20261009.md`.
+> 📎 Ref: `references/preflight-reg-bu-machine-full-reconcile-pipeline-20261008.md`, `references/anti-skip-physical-hook-gate-discipline-20261004.md`.
+> 📎 Ref: `references/avatar-edit-layout-detector-and-closeout-contract.md`, `references/feed-failure-taxonomy-and-guard-boundary.md`.
 
 ## 🛑 QUY TẮC BẰNG CHỨNG HÌNH ẢNH: CẤM GỬI ẢNH MÀN HÌNH HOME/LAUNCHER
 - User duyệt hiện trường qua `MEDIA:<path>`. **CẤM TUYỆT ĐỐI** gửi ảnh màn hình Home/Launcher Android làm bằng chứng sau teardown/khi lỗi.
