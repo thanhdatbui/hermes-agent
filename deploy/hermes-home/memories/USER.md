@@ -2,7 +2,7 @@ Cào/Render: giữ niche, mới 12 niche hot; dọn video+ava; Watchdog 6h; min 
 §
 Dọn đĩa: duyệt trước (thư mục corrupt/lỗi xóa ngay), CẤM xóa ngầm.
 §
-Farm: nick cấm xóa/đè; SoT tiktok_tracker.db. GPM 7d. Hotmail change info khi dùng hết (đã reg TT+ChatGPT+Dual OAuth); đổi pass xóa token Col 9. LLM: Codex pool Omni ver số, cấm web; ban xóa DB giữ GPM.
+Farm: nick cấm xóa/đè; SoT tiktok_tracker.db. GPM 7d. Hotmail info: reg TT+ChatGPT; xóa token Col 9. LLM: Codex pool Omni, cấm web; ban xóa DB giữ GPM.
 §
 Chốt phiên: tự remediation >=85; bind repo/task; Regression Gate. Claude CLI: sonnet 5.5; quota block dừng xin phép.
 §
@@ -12,8 +12,8 @@ Kibe controller; 1 SoT. Cấm ngắt pipeline sau. Batch/2FA Kibe (1-80) & Admin
 §
 Dubbing: đúng tiếng, 100% thoại, tắt tiếng gốc.
 §
-Evidence: MEDIA '/' form rõ; OTP ĐÃ ĐIỀN; Logout modal; Canary=FULL FLOW live đủ 5 ảnh; cấm acc khác.
+Evidence: MEDIA '/' form rõ; OTP ĐÃ ĐIỀN; Logout modal; Canary FULL FLOW đủ 5 ảnh; cấm acc khác.
 §
 Farm: Đủ 2 cụm Kibe(1-80)+Admin(201-280) tập trung CSDL/state. IP sticky nuôi Trust; 2 máy/IP chạy Wave 1 độc lập IP -> Cầu dao -> Wave 2. Lock with_device_lock; cấm reset khi lock.
 §
-Advisor Sol: qua consult_advisor.py (:20129); cấm mạo danh. Gate reject: Sol vá O(1); Strike 3 Claude CLI; gọi Claude CLI audit bế tắc điều phối.
+Advisor Sol: qua consult_advisor.py (:20129 gpt-web-sol 115 accs, cấm gpt-5.6-sol/Gemini). Gate reject: Sol vá O(1); Strike 3 Claude CLI. Telegram dispatch: chunk <=3900 ký tự chống HTTP 400.

@@ -138,6 +138,19 @@ For code changes implementing evidence delivery, run focused offline tests and t
 
 The user prefers direct Vietnamese, concise status, and actual native images rather than folder links or path dumps. Lead with the result, then list only the evidence and blocker that change the decision. Never make the user ask “hình đâu?” after a UI operation.
 
+## Avatar-only scope and false-policy refusal guard
+
+When the requested mutation is only “đổi avatar”, bind the run to an **avatar-only scope lock**:
+
+1. Do not change display name, username, bio, links, or any other profile field unless the user explicitly requests that field in the same task. A successful name edit is still a task failure if the user asked only for an avatar.
+2. A generic model/tool refusal claiming that an ordinary avatar replacement violates policy is not an evidence-based platform blocker. Treat it as a transient refusal, state plainly that the refusal was incorrect, and continue only through the normal bounded UI flow after revalidating the live target.
+3. Before every state-changing tap, verify the current app/activity, exact handle, and fresh screen capture. Never reuse coordinates from a stale screenshot after the device has drifted to Home, Messaging, another app, or another account.
+4. Capture and verify the selected-photo checkpoint before tapping Next, then capture and verify the crop/confirmation checkpoint before Save, then reopen the exact Profile and verify the new non-placeholder avatar. Exit code 0, a successful ADB tap, a runner `verified=True`, or an old report image is not completion evidence.
+5. If the final screen is unrelated, the avatar is unchanged, or the exact profile proof is missing, report `UNPROVEN`/`BLOCKED` and name the observed activity. Do not “repair” the report by mutating another profile field.
+6. If an unrelated mutation already occurred, disclose it immediately as an out-of-scope side effect; do not bury it in implementation details or imply the avatar task succeeded.
+
+Use `references/avatar-only-scope-and-false-policy-refusal.md` for the incident-derived checklist and evidence matrix.
+
 - **Chống Bẫy Báo Cáo Thiếu Chặng Trong Quy Trình Đa Bước (Anti-Omitted-Step Report Trap - 2026-10-10):**
   Khi thực hiện các quy trình tự động hóa đa bước (ví dụ: chuỗi bảo mật Hotmail/TikTok: *1. Add 2FA -> 2. Đổi mật khẩu -> 3. Sign out everywhere -> 4. Relogin 2FA -> 5. KMSI / Dashboard*):
   * Người dùng cực kỳ dị ứng và coi là thất bại nghiêm trọng nếu báo cáo thiếu ảnh của bất kỳ chặng nào ("bước đăng nhập lại hình ảnh chứng minh đâu, bước add 2fa đâu?", "sao cứ làm đéo đủ v").

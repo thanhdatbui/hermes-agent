@@ -341,6 +341,7 @@ return $false  # Timed out
 - `references/dual-tier-reboot-survival-and-daemon-watchdog.md` — Dual-tier reboot survival (Windows Startup headless `.vbs` + Hermes cron periodic watchdog) with kernel-level `msvcrt` single-instance locking for background heavy workers (downloader, renderers).
 - `references/dual-pc-scheduled-reboot-and-autologon-trap.md` — Dual-PC (Controller + Remote Host) scheduled reboot orchestration order, farm dead-zone window (04:30 - 05:00 AM), and Windows AutoAdminLogon interactive task recovery.
 - `references/openblas-memory-allocation-high-core-windows.md` — OpenBLAS/MKL thread pool allocation failure on high-core Windows hosts (Dual CPU 56 cores), root cause analysis, and 3-tier defense implementation.
+- `references/telegram-message-length-limit-and-line-aware-chunking.md` — Telegram API 4096-character limit (HTTP 400 Bad Request message is too long) in long farm watchdogs & line-aware auto-chunking pattern.
 
 - `references/multi-shift-silent-watchdog-state.md` — Multi-shift silent watchdog pattern: dynamic shift naming (Sáng/Trưa/Tối) and shift-isolated state management (`finished_shifts`) preventing premature whole-day lockouts and confusing report labels.
 - `references/midnight-boundary-silent-watchdog-deadlock.md` — Detailed post-midnight boundary alignment for silent watchdogs on Hermes cron, avoiding dropped final summary reports.

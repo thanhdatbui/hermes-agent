@@ -20,6 +20,6 @@ Hotmail GPM: lọc acc đã reg TT (Col 3-4)+ChatGPT (Col 12), BỎ Dual-OAuth; 
 §
 Admin Farm: 3proxy S7 192.168.110.2:100xx. Aruba: M1-40 'kibe 1' (23102025); M41-80 'kibe 2', Admin 'admin 1/2' (19051995); cấm SSID Dat. X99: cấm xHCI; 4 Box tản; adb Semaphore 8; safe_usb_guard.
 §
-IP Farm: 2 máy/IP; Wave 1 bốc 40 máy khác IP, Wave 2 máy còn lại. FOLLOW_FAILED -> giật cầu dao ngắt IP ngày đó; report ca follow ghi rõ proxy ngắt & nick cứu.
+IP Farm: 2 máy/IP; Wave 1 bốc 40 máy khác IP, Wave 2 còn lại. FOLLOW_FAILED -> giật cầu dao ngắt IP rolling 48h (now+48h, chỉ cấm follow, feed bth); report ghi proxy ngắt & nick cứu.
 §
 adbjoinwifi: nháy 'admin 1'; xóa lạ: service call wifi 14 i32 <id>. ADB: cấm lệnh trần ko lock, bọc with_device_lock.py; verify kernel CreationDate chống giả lock.
