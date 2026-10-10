@@ -75,6 +75,32 @@ else:
     logger.info(f"✓ Hoàn tất nuôi {success_count}/{total_count} profile thành công (Silent Watchdog).")
 ```
 
+### 2.2.1 Diff-Based Silent Watchdog: Chống Báo Lỗi Lặp Lại Cố Hữu ("Sao cứ báo như v hoài thế")
+Khi watchdog quét hồi sinh định kỳ (ví dụ: `chatgpt-web-pool-healer` mỗi 6h) có những tài khoản lỗi cố hữu (Google Bot-check, chờ người giải captcha thủ công, mất quyền OAuth) chưa thể tự hồi sinh ngay:
+- **Bẫy lặp lại**: Cứ mỗi 6 tiếng script lại gom toàn bộ danh sách lỗi cũ in ra stdout $\rightarrow$ Telegram nhận cùng 1 tin nhắn báo lỗi lặp đi lặp lại $\rightarrow$ Người dùng bức xúc hỏi *"Sao cứ báo như v hoài thế"*.
+- **Quy tắc Diff-Based Silent Watchdog**:
+  1. Đọc cache telemetry/state của lần quét trước (`telemetry.json` / `state.json`).
+  2. Xác định danh sách lỗi mới: `new_failures = current_failures - prev_failures`.
+  3. **CHỈ in ra stdout để gửi tin Telegram khi**:
+     - Có ít nhất 1 tài khoản được hồi sinh thành công (`recovered > 0`), HOẶC
+     - Có lỗi MỚI xuất hiện (`len(new_failures) > 0`), HOẶC
+     - Có thay đổi trạng thái quản trị tường minh (ví dụ: disabled token revoked).
+  4. **Nếu 0 tài khoản hồi sinh VÀ toàn bộ lỗi 100% là lỗi cũ đã biết từ lượt trước** $\rightarrow$ **SILENT TUYỆT ĐỐI (`stdout = ""`, `return`)**!
+```python
+# Mẫu triển khai chuẩn Diff-Based Silent Watchdog:
+prev_failures = load_previous_failures_from_telemetry_cache()
+current_failures = {str(item["account"]).lower() for item in all_failed}
+new_failures = current_failures - prev_failures
+
+has_recovery = bool(recovered_chatgpt or recovered_ag or recovered_codex)
+has_new_issues = bool(new_failures)
+
+# Silent Watchdog Rule: 0 recovery và không có lỗi mới -> Giữ im lặng tuyệt đối!
+if not has_recovery and not has_new_issues and not disabled_accounts:
+    logger.info("[SILENT-WATCHDOG] 0 acc hồi sinh, không có lỗi mới phát sinh. Giữ im lặng.")
+    return
+```
+
 ### 2.3 Auto-Heal & Safe Skip Khi Nền Tảng Offline (Tránh Crash Alert)
 Khi script phụ thuộc vào phần mềm nền tảng cục bộ (như GPMLogin API port 19995):
 1. **Auto-Heal:** Trước khi từ bỏ, tự kiểm tra và khởi động ứng dụng nếu chưa chạy:

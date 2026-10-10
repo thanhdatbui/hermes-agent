@@ -64,9 +64,12 @@ Khi trích xuất `adb devices -l` trên Admin PC, toàn bộ các máy bị vă
 
 ---
 
-## 4. Kết Quả Thực Nghiệm Sau Khi Reboot Admin PC (10/10/2026)
+## 4. Kết Quả Thực Nghiệm Sau Khi Reboot Admin PC & Bẫy Unauthorized (10/10/2026)
 Sau khi kiểm tra 0 active locks và gửi lệnh reboot thực tế `shutdown /r /t 2`:
 * **TOTAL DEVICES:** **79 / 79 máy cắm vật lý nhận diện đầy đủ 100%** (M255 là slot trống không cắm máy).
 * **OFFLINE:** **0 máy bị offline** (sạch bóng lỗi kẹt socket phần cứng).
 * **M269 (`ce12160c99570e3004`):** Vốn biến mất hoàn toàn khỏi ADB trước reboot, đã hồi sinh ngay lập tức thành `device`.
-* **Hiện tượng 8 máy `unauthorized`:** Do daemon ADB mới khởi tạo và các máy đang tắt màn hình nên tạm thời chưa bắt tay lại key RSA. Khi mở phần mềm Tiểu Vi / Phóng Phi trên Desktop Admin hoặc đánh thức màn hình, 8 máy này tự động handshake xanh lại ngay lập tức.
+* **Hiện tượng 8 máy `unauthorized` (M243, M251, M257, M266, M267, M269, M270, M273) trên XiaoWei:**
+  - *Bẫy phát hiện:* Sau khi boot, một Scheduled Task chạy dưới quyền `NT AUTHORITY\SYSTEM` đã spawn tiến trình `adb.exe` trước. Khi XiaoWei (chạy dưới user `Admin`) mở lên kết nối vào adb của `SYSTEM`, key RSA bị lệch quyền môi trường khiến 8 máy rơi vào trạng thái `unauthorized` và XiaoWei hiển thị icon đứt cáp màu cam.
+  - *Khắc phục O(1):* `taskkill /F /IM adb.exe`, sau đó chạy `Start-ScheduledTask -TaskName 'Taadaa_ADB_User_Remote'` để đưa daemon adb về đúng interactive user `Admin`.
+  - Kết quả: Toàn bộ 8 máy tự động handshake thành công, chuyển thành `device` (79/79 máy online xanh 100%) mà người dùng không cần chạm tay vào màn hình điện thoại.

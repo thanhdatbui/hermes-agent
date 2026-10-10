@@ -302,6 +302,28 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
   * Bounded Semaphore 8 tokens trong `automation_core.adb` bảo vệ bus USB 2.0 khi các script chạy auto chụp màn hình / kéo file.
   * Lưu ý: Semaphore này chỉ quản lý code Python nội bộ, KHÔNG khống chế được luồng stream của app bên thứ ba như Tiểu Vi (cần giảm trực tiếp trên UI XiaoWei: 720p/480p, 15 FPS).
 
+## 19. Bẫy ADB Daemon Chạy Dưới Quyền SYSTEM vs User Interactive (Admin) Gây Lỗi Unauthorized Hàng Loạt Trên XiaoWei
+- **Triệu chứng:** Sau khi máy tính khởi động lại, `adb devices` báo hàng loạt máy (như M243, M251, M257, M266, M267, M269, M270, M273) ở trạng thái `unauthorized`. Trên giao diện XiaoWei/Jiwei, các máy này hiện icon đứt cáp màu cam ("Phone disconnected, please check"), không thể click phóng to hay điều khiển, dù phần cứng USB PnP vẫn `Present: true`.
+- **Nguyên nhân cốt lõi (User Session Mismatch trên Windows):**
+  1. Khi Windows vừa boot lên, nếu có Scheduled Task chạy ngầm dưới quyền `NT AUTHORITY\SYSTEM` (Session 0) gọi lệnh `adb` trước, daemon `adb.exe` sẽ được khởi tạo dưới quyền `SYSTEM` và chiếm cổng `127.0.0.1:5037`.
+  2. Khi phần mềm XiaoWei mở lên trên màn hình Desktop (chạy dưới interactive user `ADMIN-PC\Admin`, Session 1), nó kết nối vào cổng 5037 đã bị `SYSTEM` chiếm giữ.
+  3. Daemon của `SYSTEM` đọc file key tại `C:\Windows\System32\config\systemprofile\.android\adbkey` thay vì profile của `Admin`, hoặc thiếu môi trường interactive session $\rightarrow$ các máy điện thoại từ chối bắt tay key RSA, rơi vào trạng thái `unauthorized`.
+  4. XiaoWei không thể mở socket shell hay start minitouch/minicap trên thiết bị `unauthorized` $\rightarrow$ XiaoWei hiển thị icon đứt cáp màu cam, đánh lừa người dùng rằng máy bị rút cáp hoặc sập nguồn.
+- **Quy trình xử lý O(1) từ xa (Không cần bấm tay trên điện thoại):**
+  1. Kiểm tra username sở hữu tiến trình adb:
+     ```powershell
+     (Get-Process | Where-Object { $_.ProcessName -eq 'adb' } -IncludeUserName).UserName
+     ```
+  2. Nếu trả về `NT AUTHORITY\SYSTEM`: cưỡng chế kill ngay:
+     ```cmd
+     taskkill /F /IM adb.exe
+     ```
+  3. Khởi chạy lại ADB daemon dưới quyền interactive user `Admin`:
+     ```powershell
+     Start-ScheduledTask -TaskName 'Taadaa_ADB_User_Remote'
+     ```
+  4. Ngay khi daemon chạy dưới quyền `ADMIN-PC\Admin`, toàn bộ máy sẽ tự động handshake key RSA thành công, chuyển từ `unauthorized` sang `device` (100% xanh lè) và XiaoWei tự động load lại hình ảnh bình thường mà không cần người dùng phải bấm tay vào điện thoại.
+
 ## 16. Quy Chuẩn Quản Lý & Lưu Trữ Cấu Hình Farm Lên Git (`taadaa-farm-tools`)
 - **Nguyên tắc Invariant (User Directed: "Từ h đẩy hết vào repo quản lí đi"):** CẤM để các file cấu hình host và script dịch vụ phần cứng trôi nổi ngoài git (như ở thư mục mẹ `D:\Taadaa\` hay `C:\Taadaa_Service\`). BẮT BUỘC phiên bản hóa và đẩy tập trung vào repo quản lý trung tâm `taadaa-farm-tools` (`D:\Taadaa\tools`):
   - `machine-config/`: `kibe.yaml` (M1–80), `admin.yaml` (M201–280), `hermes-admin-config.yaml`.

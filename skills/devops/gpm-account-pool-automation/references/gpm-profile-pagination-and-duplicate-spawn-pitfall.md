@@ -141,3 +141,4 @@ def get_all_gpm_profiles():
 - Quét các email có `len(profiles) > 1`.
 - Giữ lại 1 profile duy nhất (profile có `profile_path` chứa dữ liệu session mới nhất hoặc đúng port hiện tại).
 - Gọi `DELETE /api/v3/profiles/delete/{id}` dọn các profile clone rỗng để tránh rác đĩa và giải phóng `AMBIGUOUS_GPM_PROFILE`.
+- Tool chạy tự động sẵn có: `scripts/deduplicate_gpm_profiles.py` (chạy với `--apply` để xóa sạch các clone sau khi đối soát).
