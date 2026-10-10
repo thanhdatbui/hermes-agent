@@ -345,14 +345,19 @@ When inspecting or maintaining single-file Python HTTP dashboards (e.g. `server.
      - Ensure the default table view (e.g. "Toàn bộ Farm") preserves standard search, status filters, and multi-column sorting when switching back from a leaderboard tab.
      - In auto-refresh loops (`setInterval` fetch `/api/data`), ensure in-memory state (`initialData.items`) updates without resetting the user's active view tab, search input, or pagination.
      - **Auto-Refresh Scroll-Jumping & Page-Snapping to Top Pitfall (Height Collapse in `setInterval`):**
-       * In polling/auto-refreshing dashboards (e.g. 30s `setInterval`), calling `tbody.innerHTML = ''` and triggering forced reflow / fade animations (`void tbody.offsetWidth`) causes the table/container height to instantaneously collapse to near-zero.
-       * When document height shrinks below the current scroll offset, the browser automatically clamps `window.scrollY` to 0. When new rows populate, the user gets abruptly snapped back to the top of the page while browsing mid-list.
-       * **Seamless Update Invariant:**
-         1. Pass an `isAutoRefresh` flag to render functions during periodic intervals.
-         2. Skip fade/empty animations entirely when `isAutoRefresh` is true.
-         3. Lock container height before rendering: `container.style.minHeight = container.offsetHeight + 'px'`.
-         4. Build all rows into a `DocumentFragment` and swap atomically via `tbody.replaceChildren(fragment)` instead of wiping innerHTML.
-         5. Record `prevScrollY = window.scrollY` and restore position inside `requestAnimationFrame(() => { container.style.minHeight = ''; if (Math.abs(window.scrollY - prevScrollY) > 5) window.scrollTo({ top: prevScrollY, behavior: 'instant' }); })`.
+       * In polling/auto-refreshing dashboards (e.g. 30s `setInterval`), calling `tbody.innerHTML = ''` or wiping the parent container via `container.innerHTML = ...` causes container height to instantaneously collapse to near-zero.
+       * When document height shrinks below current scroll offset, mobile browsers (especially WebKit/iOS Safari) automatically clamp `window.scrollY` to 0. Additionally, destroying and recreating DOM nodes completely resets internal `element.scrollTop` on nested scrollable containers (e.g. card grids `#fhCardsGrid` or matrix table wrappers `#fhMatrixTableWrapper` with `overflow-y: auto`), abruptly snapping browsing position back to card 1.
+       * **In-Place Update Invariant on Auto-Refresh:**
+         1. Distinguish initial tab render (`isAutoRefresh === false`) from periodic polling (`isAutoRefresh === true`).
+         2. When `isAutoRefresh === true` and the view skeleton already exists: **CẤM TUYỆT ĐỐI** gán đè `container.innerHTML = ...`. Update only dynamic leaf nodes in-place (KPI value text, `<tbody>` content via `replaceChildren`, filter count badges) so DOM nodes, input focus, and scroll containers are preserved.
+         3. Lock container height before child updates: `container.style.minHeight = container.offsetHeight + 'px'`.
+         4. Capture both window and inner container scroll offsets: `const prevWinY = window.scrollY; const prevInnerY = scrollEl ? scrollEl.scrollTop : 0; const prevInnerX = scrollEl ? scrollEl.scrollLeft : 0;`.
+         5. Restore all offsets post-update inside `requestAnimationFrame`: `container.style.minHeight = ''; if (scrollEl && prevInnerY) scrollEl.scrollTop = prevInnerY; if (scrollEl && prevInnerX) scrollEl.scrollLeft = prevInnerX; if (window.scrollY !== prevWinY) window.scrollTo({ top: prevWinY, behavior: 'instant' });`.
+     - **Global `table` Mobile Block Collateral Damage (Auxiliary Analytics Table Bloat):**
+       * A generic responsive rule `@media (max-width: 640px) { table, thead, tbody, th, td, tr { display: block; } tr { margin-bottom: 12px; border: 1px solid var(--card-border); padding: 12px; } }` intended for the primary multi-column accounts table accidentally catches auxiliary analytical tables (`.fleet-table` for Daily/Weekly stats).
+       * *Symptom*: A compact 3-column table (Ngày | +Lượt | Nick) is exploded into tall, multi-line cards (each date consuming 100-120px with separate lines for date, follows, accounts), blowing out mobile viewport height (>1,000px for 10 days) and creating massive visual fatigue.
+       * *Remedy*: Scope responsive block/card rules strictly to the target entity table (e.g. `.table-container table, .table-container thead, ...`), never bare `table`.
+       * Defensively enforce `.fleet-table, .fleet-table thead, .fleet-table tbody, .fleet-table tr { display: table / table-row !important; }` and `.fleet-table th, .fleet-table td { display: table-cell !important; padding: 5px 8px !important; font-size: 12px !important; }` so daily/weekly metrics always stay as single compact rows with aligned numeric columns. Wrap in a bounded scroll container (`max-height: 260px; overflow-y: auto;`) for clean, effortless mobile browsing.
      - **False-Positive Anomaly Drop Alert on Small Accounts (-1/-2 Normal Variance vs Real Drop):**
        * On accounts with ~50-100 followers, losing just 1 follower yields a `drop_rate` of ~1.0%. A naive threshold like `delta_f < 0 and drop_rate >= 1.0%` falsely brands normal accounts losing 1 follower (`-1 | 1.01%`) with alarming red badges (`⚠️ TỤT BẤT THƯỜNG`), causing operator panic and alert fatigue.
        * On social media platforms (TikTok/IG), drops of 1 or 2 followers (-1, -2) are standard daily variance (accidental unfollows, periodic bot sweeps).

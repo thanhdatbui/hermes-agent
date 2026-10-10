@@ -288,3 +288,38 @@ GPM CDP Connect
   * Điền mật khẩu mới 14 ký tự mạnh mẽ và submit `#iResetPasswordAction`.
   * Đăng nhập lại với Mật khẩu mới + TOTP + KMSI [Có] để hoàn tất phiên.
   * **Lợi ích**: Luồng này giải phóng triệt để các tài khoản bị Microsoft chặn form đổi pass trực tiếp, đồng thời cập nhật mật khẩu mới và 2FA chuẩn thương mại 100%.
+
+---
+
+## 13. Kỷ Luật Bắt Buộc Hoàn Thành Đủ 5 Bước Không Được Làm Nửa Vời & Selector Relogin Mới (2026-10-10)
+- **Tâm Lý & Yêu Cầu Tối Cao Của User**:
+  * User cực kỳ gay gắt khi agent chỉ chạy nửa chừng (ví dụ chỉ đổi pass rồi dừng lại mà không Sign out everywhere và Relogin lại để lưu phiên sống): *"R signout all rồi sign in lại chưa, chứ sao cứ đéo chạy đủ cái flow change info hotmail thế"*.
+  * **Định nghĩa ĐỦ FLOW (5 Milestone Bắt Buộc)**:
+    1. *Bước 1 (Add 2FA)*: Thêm Authenticator App -> Lấy Base32 Key ghi Cột 4 Excel -> Nhập OTP 6 số kích hoạt -> Bật `EnableTfa = ON`.
+    2. *Bước 2 (Đổi Pass)*: Đổi mật khẩu mới mạnh 14 ký tự -> Submit Lưu -> Ghi Cột 3 `gmail_clean_v2` và Cột G `taikhoan_dat_v2`.
+    3. *Bước 3 (Sign out everywhere)*: Vào `#DeleteTrustedDevices` -> Bắt modal dialog -> Click xác nhận **[Đăng xuất]** để thu hồi token bên bán.
+    4. *Bước 4 (Relogin Live)*: Vào `login.live.com` -> Điền email + mật khẩu mới -> Điền mã TOTP offline -> Tích chọn tin cậy thiết bị.
+    5. *Bước 5 (KMSI Bấm Có)*: Bắt màn hình "Duy trì đăng nhập?" -> Click **[Có]** để lưu cookie session vĩnh viễn trên GPM Profile.
+  * **CẤM TUYỆT ĐỐI**: Báo cáo xong khi chưa đi hết Bước 5. Nếu dừng lại ở bất kỳ bước nào giữa chừng mà không hoàn tất đều bị coi là **THẤT BẠI NGHIÊM TRỌNG**.
+- **Cạm Bẫy Selector TOTP Trên Giao Diện Relogin Mới Của Microsoft**:
+  * Trên giao diện đăng nhập hiện đại của Microsoft, form thử thách 2FA Authenticator khi đăng nhập lại **KHÔNG DÙNG** selector cũ `#idTxtBx_SAOTCC_OTC` hay `input[type='tel']`.
+  * Thay vào đó, Microsoft sử dụng cấu trúc DOM mới:
+    * Ô nhập mã OTP: `#floatingLabelInput5`, `input[aria-label*="Mã"]`, `input[aria-label*="Mã"]`, `input[placeholder*="Mã"]`, `input[type="text"]` với label `Mã`.
+    * Checkbox tin cậy thiết bị: `#trusted-device-checkbox`, `input[type="checkbox"]` với label `Không hỏi lại tôi trên thiết bị này` (bắt buộc check để không bị hỏi lại OTP khi mở profile).
+    * Nút submit: `button[type="submit"]:has-text("Tiếp theo")`, `button[type="submit"]`.
+  * Bộ selector đồng bộ trong script:
+    ```python
+    totp_input = page.locator('#floatingLabelInput5, input[aria-label*="Mã"], input[aria-label*="Mã"], input[placeholder*="Mã"], #idTxtBx_SAOTCC_OTC, input[name="otc"]').first
+    if totp_input.is_visible(timeout=5000):
+        totp_input.fill(pyotp.TOTP(sec_key).now())
+        chk = page.locator('#trusted-device-checkbox, input[type="checkbox"]').first
+        if chk.is_visible(timeout=2000) and not chk.is_checked():
+            chk.check()
+        page.locator('button[type="submit"]:has-text("Tiếp theo"), #idSubmit_SAOTCC_Continue, #idSIButton9').first.click()
+    ```
+- **Xử Lý Form "Hoàn Thành Phần Ẩn" Khi Xác Minh Mail Khôi Phục (Recovery Email Proof)**:
+  * Trong bước xác minh danh tính qua email khôi phục (`proofPickerEmail`):
+    * Microsoft in sẵn đuôi `@fviainboxes.com` bên ngoài ô input `#proofInput1`.
+    * **QUY TẮC CỨNG**: Chỉ điền username trước ký tự `@` (ví dụ `rec_email.split('@')[0]`), TUYỆT ĐỐI KHÔNG điền nguyên địa chỉ email đầy đủ vì sẽ bị báo lỗi định dạng.
+    * Nút gửi mã: `#iSelectProofAction` (nút `Nhận mã`).
+    * Ô điền mã OTP sau khi nhận: `#iVerifyText` (type `number`), submit qua `#iVerifyIdentityAction`.
