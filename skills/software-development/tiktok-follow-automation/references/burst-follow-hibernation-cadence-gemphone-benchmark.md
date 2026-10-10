@@ -44,6 +44,11 @@
   * **NGÀY LƯỚT FEED VẪN ĐĂNG VIDEO BÌNH THƯỜNG!**
   * Hai hệ thống của TikTok độc lập: Hệ thống Hành vi (Anti-Fraud) phạt spam follow, còn Hệ thống Đề xuất (Recommendation) chấm điểm chất lượng kênh. Người thật / Creator thật vào ngày nghỉ vẫn đăng video và lướt feed bình thường. Đăng video chứng minh tài khoản là Creator thật, không phải bot spam.
   * **Ngày nghỉ follow: VẪN ĐĂNG VIDEO + LƯỚT FEED BÌNH THƯỜNG, CHỈ TẮT DUY NHẤT HÀNH ĐỘNG FOLLOW!**
+  * **Cơ chế Đăng Video Idempotent (Phiên 1 hoặc Phiên 2 — Cấm Single Point of Failure):**
+    - Thay vì chỉ đóng đinh ở Phiên 2 (dễ mất trắng lượt đăng cả ngày nếu Phiên 2 lỗi app/mạng), cho phép chạy kiểm tra đăng ở cả **Phiên 1 (Primary)** và **Phiên 2 (Fallback)**.
+    - **Nguyên tắc Idempotent 1 video/ngày:** Phiên nào đăng thành công trước thì chốt state `posted = true` cho ngày đó; phiên còn lại tự động bỏ qua (Skip).
+    - **Cấm Double-post:** Bắt buộc kiểm tra state cấp ngày trước khi upload; đã đăng trong ngày thì tuyệt đối không đăng thêm video thứ 2.
+    - **Giãn cách tự nhiên:** Phiên 1 lỗi thì tắt ca chờ đến khung giờ Phiên 2 mới thử lại, cấm retry dồn dập tức thì làm TikTok nghi ngờ bot spam.
 - **CẤM TỰ Ý XÓA ÁN COOLDOWN / FAIL_STREAK (User Correction 2026-10-10):**
   * Án Cooldown và `fail_streak` sinh ra do TikTok nhả follow thực tế phải được giữ nguyên.
   * Coordinator CẤM TUYỆT ĐỐI tự ý quét và xóa sạch án phạt Cooldown/fail_streak khi chưa có sự cho phép rõ ràng từ Operator.

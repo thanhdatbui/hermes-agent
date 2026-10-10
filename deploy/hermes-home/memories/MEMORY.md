@@ -1,4 +1,4 @@
-Follow: Cầu dao 48h khi nick Khỏe nhả; non phạt cooldown. Chu kỳ 4d 3 ca (bỏ 0h): N1(A), N2(B), N3(R7,8,yếu), N4(Dưỡng sinh feed+up), N5 xúc xắc A/B. CẤM xóa cooldown; hỏi chiến lược gọi Sol.
+Follow: Cầu dao 48h khi Khỏe nhả; non phạt cooldown. Chu kỳ 4d 3 ca (bỏ 0h): N1(A), N2(B), N3(R7,8,yếu), N4(Dưỡng sinh feed+up; đăng P1 chính, P2 fallback, 1 vid/d skip), N5 xúc xắc A/B. CẤM xóa cooldown; hỏi Sol.
 §
 Dual-Farm: Cron/supervisor chạy cả Kibe (1-80) & Admin (201-280). Excel Admin 10-11 cột. Supervisor so le 2p; Báo cáo 6H gộp. CẤM copy ava Kibe->Admin; Admin dùng video gốc m2.
 §
@@ -12,7 +12,7 @@ evidence_gate_verifier.py (WinRT OCR, PID reserve, fail-closed, >30s/3att L3 BLO
 §
 Canary: WoL ether3 (kibe 0C:EF:15:37:4C:20, admin 22:33:4D:06:4C:26; WG 13231); CẤM PASS khi followed=0/FOLLOW_FAILED; ảnh/log trước teardown. Admin: upload SSH admin-farm.
 §
-Ava tay: tự khóa .manual_avatar_locked+json ngay; regen trùng clarify user, cấm tự mở. Strike 3: cấm Strike 4, kill worker giao Claude CLI Win $(< prompt.txt) nền sửa thẳng (Claude fail mới fallback Coord).
+Ava tay: tự khóa .manual_avatar_locked+json ngay; regen trùng clarify user. Strike 3: cấm Strike 4, cấm Coord tự sửa tiếp hay gọi Claude review passive; BẮT BUỘC giao Claude CLI nền sửa thẳng code.
 §
 TikTok Shadow: Path B 'Đã fl' ko commit; FOLLOW_FAILED trừ fl tự nhiên; slot `(folder-1)%8+1` cứng; reg bù độc lập. Dọn C duyệt trước.
 §
