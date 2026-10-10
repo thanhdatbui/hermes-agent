@@ -105,8 +105,11 @@ If the process is still running, report `RUNNING` with the exact log path and do
   Khi mạng proxy LAN (MikroTik port 10001-10035) bị rớt port hoặc timeout bắt tay, yt-dlp sẽ treo hoặc fail tải video. Đặt biến môi trường `set "NO_PROXY_OVERRIDE=1"` trong launcher `.bat` để pipeline ưu tiên fallback trực tiếp về Direct IP tốc độ cao, đảm bảo tiến trình tải hoàn tất liên tục mà không bị nghẽn mạng.
 - **Bẫy Schema 13 cột trong bảng `videos` của `state.db`:**
   Khi insert bản ghi vào `videos`, schema yêu cầu đúng 13 cột: `(video_id, source_url, platform, niche, source_channel, uploader, view_count, language, language_score, status, folder, checked_at, output_path)`. Thiếu cột sẽ ném `OperationalError: 12 values for 13 columns`. Chi tiết xem `references/clean-wipe-and-hot-niche-reconciliation-20261010.md`.
+- **Closeout Gate Routing Cho Phiên Pure Media / Content Swap:**
+  Phiên đổi content/avatar thuần túy là `RUNTIME_OPERATIONAL` (`NO_CANDIDATE`), không có commit git code. CẤM chạy `closeout_gate.py` so sánh với `HEAD~1` của repo code (dẫn đến đánh giá sai diff cũ và fail gate). Closeout của phiên media chỉ thẩm định bằng: Biên bản xác nhận đĩa/DB, Lớp 1-3 của Avatar runner, và ảnh nghiệm thu thực tế `MEDIA:` qua Vision.
 
 See `references/source-swap-closeout-evidence.md` for reusable query patterns and an evidence template.
+See `references/clean-swap-execution-order-and-topup-continuation-20261010.md` for clean swap execution discipline, top-up continuation on short batches, and operational runtime closeout routing.
 See `references/tiktok-secuid-playlist-extraction-and-interleaved-purge-20261009.md` for TikTok sec_uid playlist scraping bypass, legacy database tracing, and interleaved bad video purge with start_seq cursor preservation.
 See `references/state-db-codexruntime-path-and-historical-pre-sept11-audit-20261009.md` for ground-truth state.db path resolution under CodexRuntime and historical pre-Sept 11 download reconciliation.
 See `references/tiktok-secuid-bypass-and-render-worker-drift-20261009.md` for TikTok sec_uid playlist bypass, background render worker collision triage, and device lock anti-collision.

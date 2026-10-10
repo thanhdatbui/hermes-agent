@@ -1,6 +1,6 @@
-Follow: Sáng/chiều=row khác. 15+ Simpson ảo. S1 Score>=70 Fast-track 1 ca về Khỏe; Cautious 3 ca; S2: 2 ca; S3+: 3-5fl. Canary +10% ĐỘC QUYỀN Khỏe.
+Follow: Sáng/chiều=row khác. 15+ Simpson ảo. S1>=70 Fast-track 1 ca về Khỏe; Cautious 3 ca; S2: 2 ca; S3+: 3-5fl. Canary +10% Khỏe. CẤM auto-follow popup danh bạ/bạn bè.
 §
-Watchdog Kibe mở [1-8]; 923 acc sync video_goc=folder_video. CẤM copy ava Kibe sang Admin; Admin dùng video goc may 2, trích xuất bằng venv-core024.
+Watchdog Kibe [1-8]; 923 acc sync video_goc=folder_video. CẤM copy ava Kibe->Admin; Admin dùng video gốc m2, trích xuất venv-core024.
 §
 GPM 5ph/nick. gmail_clean_v2 chỉ lưu LIVE; xóa DIE, ghi gmail_die_tong; slot TT die dọn safe + track backfill.
 §

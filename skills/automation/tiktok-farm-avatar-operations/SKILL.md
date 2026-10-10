@@ -75,6 +75,10 @@ Operate avatar-only changes on Taadaa TikTok farm devices without accidentally p
   * **Đường dẫn chuẩn:** Tap vào icon cây bút chì ở góc trên bên trái `(72, 148)` để mở trang Sửa hồ sơ (`edit_state == 'ready'`).
   * **Đổi tên biệt danh an toàn:** Dùng `AdbKeyboard` xóa và gõ text base64 tiếng Việt (ví dụ `Vy Miu`), kiểm tra bộ đếm ký tự `N/30` trước khi bấm "Lưu", và tự động xác nhận popup *"Đặt biệt danh? Bạn chỉ có thể thay đổi biệt danh 7 ngày 1 lần"*.
   * **Tỷ lệ biệt danh trong `make_tiktok_name`:** Hàm đặt tên trong `social_reg_v1.py` đã tích hợp sẵn 30% tỷ lệ tên mang phong cách biệt danh (20% Tên + Biệt danh như `Vy Miu`, `Linh Bông`; 10% Tên lặp như `Bé Heo`, `Miu Miu`).
+  * **Bẫy Khóa Tên 7 Ngày (Server-side Cooldown) & Khóa Giới Tính Theo Niche (10/10/2026):**
+    - TikTok chỉ cho đổi biệt danh 1 lần mỗi 7 ngày. Khi vừa đổi xong, nút "Lưu" bị disable mờ màu hồng nhạt, thông báo *"Bạn chỉ có thể thay đổi biệt danh sau ngày DD tháng MM, YYYY"*.
+    - **CẤM bốc ngẫu nhiên tên nam (`Phong, Tuấn, Dũng, Nam...`) cho kênh có avatar/video nhân vật nữ**, vì một khi đã commit sẽ bị kẹt tên nam suốt 7 ngày! Bắt buộc lọc danh sách tên nữ (`Linh, Hương, Thảo, Vy, Nhi, Mai, Hân, Quỳnh...`) khi sinh tên cho kênh nữ/cosplay.
+    - Nếu gặp màn hình Cooldown 7 ngày: Đọc chính xác ngày mở khóa qua OCR, chụp ảnh báo cáo BLOCKED, bấm "Hủy" `(75, 150)` và gửi `keyevent 3` về Home an toàn. CẤM cố tình tap mò hay lặp lại lệnh đổi tên khi nút Lưu đã bị disable.
   * **Up avatar không dính Story:** Vào "Thay đổi ảnh" $\to$ "Tải ảnh lên" $\to$ chọn ô ảnh đầu tiên $\to$ bấm "Tiếp" $\to$ tại màn Cắt ảnh bắt buộc kiểm tra checkbox *"Đăng ảnh này lên Nhật ký"* (không được tích) trước khi bấm "Lưu" `(790, 1794)`.
 
 - **Thoát hiểm khi kẹt gate/budget & ranh giới "kiểm tra" vs "sửa":**
@@ -111,12 +115,13 @@ Operate avatar-only changes on Taadaa TikTok farm devices without accidentally p
   * Khi User phản ánh "ava thấy sai sai / lệch niche", tạo ảnh composite đối chiếu các phương án thực tế kèm chú thích nguồn video (tập mấy, giây thứ mấy). Gửi qua `MEDIA:` để User duyệt trực quan trước khi đưa vào queue upload.
 - If a duplicate is confirmed, regenerate from the target folder’s own source video using the canonical avatar-generation tooling; do not copy another account’s avatar.
 - Re-hash and verify the regenerated image before uploading. Toàn bộ kho phải đạt 0 nhóm trùng lặp trước khi kết luận sạch nguồn.
-- **BẪY LỆCH ĐƯỜNG DẪN KHO MEDIA CỤM ADMIN & CẤM COPY AVATAR XUYÊN CỤM (CRITICAL OPERATOR INVARIANT 2026-10-10):**
-  * **CẤM TUYỆT ĐỐI LẤY AVATAR KIBE NÉM QUA ADMIN:** Sếp chấn chỉnh gay gắt: *"Là sao? Tự nhiên lấy của kibe ném qua admin!!?"*. Hai trạm Kibe và Admin dùng 2 kho video độc lập: Kibe là `D:\video goc` & `D:\TIKTOK-videonuoinick`; Admin là `D:\video goc may 2` & `D:\TIKTOK-videonuoinick-admin`. Dù cùng số folder (như Folder 1), video trên Admin là bé gái học sinh tiểu học, nhưng Kibe là thanh niên đeo kính râm ôm mèo reaction. Việc copy đè avatar từ Kibe sang Admin gây ô nhiễm chéo ngách toàn diện.
-  * **Quy tắc trích xuất tại chỗ cho Admin:** Avatar trên Admin BẮT BUỘC trích xuất 100% từ chính video nguồn của Admin (`D:\video goc may 2\<folder>`). Nếu folder thiếu video thì để trống chờ downloader cào về, CẤM bốc ảnh Kibe lấp vào. Nếu lỡ copy đè, phải lập tức revert xóa sạch file Kibe và khôi phục từ `video goc may 2`. Chi tiết: `references/cross-cluster-media-isolation-and-admin-reversion-20261010.md`.
-  * Trên trạm Kibe, kho video nuôi là `D:\TIKTOK-videonuoinick`. Nhưng trên máy chủ Admin (`admin-farm`), cấu hình `config-admin.yaml` chỉ định `avatar_source_root` và `media_source_root` là **`D:\TIKTOK-videonuoinick-admin`**.
-  * Khi xử lý đổi avatar/hashtag cho các máy cụm Admin (M201-280), việc chỉ tạo avatar trên đĩa Kibe sẽ KHÔNG có tác dụng trên Admin nếu chưa đồng bộ sang `admin-farm:D:/TIKTOK-videonuoinick-admin/<folder>/avatar.jpg`. Thư mục trên Admin nếu chứa avatar cũ (như ảnh chùa/cảnh quan) sẽ làm thiết bị tiếp tục bốc ảnh cũ.
-  * Quy trình chuẩn: Đồng bộ cả avatar và video sang `admin-farm:D:/TIKTOK-videonuoinick-admin/<folder>`, cập nhật `Tik<N>.xlsx` của Admin, và nạp `status = 'PENDING'` vào `avatar_replace_queue` kèm SCP `tiktok_tracker.db` sang Admin.
+- **BẪY LỆCH ĐƯỜNG DẪN KHO MEDIA CỤM ADMIN (D:\TIKTOK-videonuoinick-admin 2026-10-10):**
+  * Trên trạm Kibe, kho video nuôi là `D:\TIKTOK-videonuoinick`. Nhưng trên máy chủ Admin (`admin-farm`), cấu hình `config-admin.yaml` chỉ định `avatar_source_root` và `media_source_root` là **`D:\TIKTOK-videonuoinick-admin`**, còn kho video thô là **`D:\video goc may 2`**.
+  * **CẤM TUYỆT ĐỐI COPY AVATAR GIỮA HAI TRẠM KIBE VÀ ADMIN (CRITICAL OPERATOR CORRECTION 2026-10-10):**
+    - Sếp chấn chỉnh gay gắt: *"Là sao? Tự nhiên lấy của kibe ném qua admin!!?"*.
+    - Kibe (Máy 1–80) và Admin (Máy 201–280) là 2 tập tài khoản và 2 kho video độc lập hoàn toàn. Ví dụ Folder 1 Kibe là meme thanh niên ôm mèo, nhưng Folder 1 Admin là vlog bé gái học sinh tiểu học.
+    - Lệnh *"Làm cả admin"* hoặc *"Chuẩn hoá admin"* CHỈ CÓ NGHĨA LÀ: kiểm tra và trích xuất chuẩn avatar từ chính kho video của Admin (`D:\video goc may 2`), khóa công thức `video_goc = folder_video` trong `admin/Tik1..8.xlsx`, TUYỆT ĐỐI CẤM nén avatar từ Kibe copy sang Admin gây ô nhiễm chéo ngách toàn diện.
+    - Trích xuất avatar trên Admin BẮT BUỘC dùng Python venv `D:\CodexRuntime\tiktok-video\venv-core024\Scripts\python.exe` (đã có sẵn `cv2 4.11.0`), tránh dùng Python hệ thống bị thiếu cv2. Chi tiết xem `references/cross-farm-avatar-isolation-and-admin-video-goc-may-2.md`.
 - **BẪY LỆCH HỆ THỐNG 637/640 ACC DO CÔNG THỨC KÉP FOLDER VIDEO VS VIDEO GỐC (2026-10-10):**
   * **Hiện tượng:** Nick tên nữ ("Dương Chi" M62 Tik 3), đăng video bạn nữ áo đỏ kính cận (folder 491), nhưng avatar lại là thanh niên gym đeo kính râm gồng bắp tay (folder 222).
   * **Nguyên nhân hệ thống:** 637/640 dòng trong `Tik1..8.xlsx` bị lệch giữa `Folder Video = (Máy-1)*8 + Tik` (chia theo máy) và `video gốc = (Tik-1)*80 + Máy` (chia theo ca). Bot upload đọc `Folder Video`, nhưng tool avatar bốc theo `video gốc`.

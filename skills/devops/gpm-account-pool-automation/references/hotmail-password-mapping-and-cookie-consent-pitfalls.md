@@ -19,7 +19,17 @@
   - Luôn đồng bộ `mail_password` từ cột `PASS MAIL` vào state nếu Excel có dữ liệu.
   - CẤM TUYỆT ĐỐI fallback sang trường `password` TikTok khi đăng nhập Hotmail. Nếu thiếu `mail_password` phải fail-closed báo thiếu dữ liệu để kiểm tra Excel, không được lấy pass của dịch vụ khác gõ bừa vào Microsoft.
 
-## 2. Bẫy Microsoft Cookie Consent Banner
+## 2. Bằng Chứng Nhận Biết Tài Khoản ĐÃ TỪNG ĐỔI PASS (Change Info)
+- Mail mua từ shop (`boxtaikhoan.com`, `clonefbig.com`...) ban đầu chỉ có mail khôi phục mặc định dạng `...fviainboxes.com` hoặc không có mail khôi phục.
+- Khi truy cập màn hình đăng nhập hoặc quên mật khẩu, nếu Microsoft hiển thị gợi ý:
+  `"Gửi mã đến th*****@gmail.com"` (hoặc email khôi phục cá nhân của Operator)
+  -> **Điều này chứng minh 100% tài khoản này đã từng được User/hệ thống thực hiện quy trình ĐỔI MẬT KHẨU / THÊM MAIL KHÔI PHỤC trước đây!**
+- **Nguyên nhân mất mật khẩu mới (Lưu ẩu):**
+  - Script đổi mật khẩu (`gpm_change_hotmail_security.py`) chỉ cập nhật vào `gmail_clean_v2.xlsx` mà bỏ quên Master Tracking `taikhoan_dat_v2_updated .xlsx`.
+  - OneDrive/Excel lock tiến trình ghi file làm lệnh `wb.save()` thất bại âm thầm, làm mất chuỗi mật khẩu mới.
+  - **Khắc phục:** Khi tài khoản đã có mail khôi phục cá nhân mà mất pass, bắt buộc dùng quy trình khôi phục: gửi OTP về Gmail cá nhân -> reset mật khẩu mới -> đồng bộ ngay lập tức vào CẢ HAI file Excel (`gmail_clean_v2.xlsx` Cột 3 và `taikhoan_dat_v2_updated .xlsx` Cột 7).
+
+## 3. Bẫy Microsoft Cookie Consent Banner
 - **Hiện tượng:** Sau khi submit mật khẩu Hotmail đúng, Microsoft chuyển hướng qua `auth/complete-client-signin-oauth-silent` và bật modal/banner Cookie Consent: *"Chúng tôi dùng cookie tùy chọn để cải thiện trải nghiệm của bạn... [Chấp nhận] [Từ chối]"*.
 - Nếu script không click banner này, trang web bị dừng lại ở URL chuyển hướng hoặc landing ban đầu, khiến detector nhận nhầm là tài khoản bị kẹt/BLOCKED.
 - **Xử lý chuẩn:**
@@ -35,6 +45,9 @@
     ```
   - Chờ trang hoàn tất chuyển tiếp sang `https://account.microsoft.com/account` rồi mới chụp ảnh Post-submit và xác nhận `LOGIN SUCCESS`.
 
-## 3. Đồng Bộ `last_result` Khi Cứu Hộ Profile
+## 4. Đồng Bộ `last_result` Khi Cứu Hộ Profile
 - Báo cáo định kỳ (Lifecycle 6h) kiểm tra lỗi qua cả `info.get("status")` và `info.get("last_result", {}).get("status")`.
 - Khi can thiệp cứu hộ một profile từ FAILED/BLOCKED sang PENDING/COMPLETED, bắt buộc phải làm sạch hoặc cập nhật `last_result` sang `COMPLETED`, tránh việc profile đã chạy xong nhưng báo cáo 6h vẫn đếm nhầm vào danh sách "CẦN XỬ LÝ".
+
+## 5. Kỷ Luật Giao Tiếp & Thuật Ngữ
+- **CẤM DÙNG THUẬT NGỮ JARGON GÂY KHÓ CHỊU:** Tuyệt đối không gọi tài khoản TikTok là `@handle` hay `TikTok ID handle`. Trong hệ thống và giao tiếp với User, chỉ gọi đơn giản là **ID** hoặc **tên nick TikTok** (ví dụ: `@thanhlee327`, nick `thanhlee327`).
