@@ -65,10 +65,19 @@ Hệ thống giám sát vận hành Farm bắt buộc bao phủ đầy đủ 3 t
      * Chỉ đưa cảnh báo tóm tắt số lượng ngoại lệ nếu có nick bị starved cá biệt (>96h) kèm link trỏ về Dashboard.
   2. **Web Dashboard (`http://127.0.0.1:1905`) = Giám sát VI MÔ cấp từng Account:**
      * Là nơi duy nhất tra cứu chi tiết toàn bộ 1,280 accounts (Kibe + Admin).
-     * Bắt buộc có Tab/Chế độ lọc `🌾 Sức Khỏe Nuôi Acc`:
+     * Bắt buộc có Tab/Chế độ lọc `🌾 Sức Khỏe Nuôi Acc` (Endpoint: `/api/nurture-health`):
        - Cho phép **Sort 1-click "Đói nhất lên đầu"** theo `last_nurtured` / `hours_since_last_nurture`.
        - Bộ lọc nhanh: Theo Cụm (Kibe / Admin), theo Row (1-8), hoặc chỉ hiện nick bị bỏ đói (`🔴 > 96h`).
        - Bóc tách nguyên nhân kẹt: App crash, mất ADB, lỗi proxy, hoặc trống slot.
+     * **Quy tắc Mapping Row (Slot `tik` Invariant):**
+       - **Pitfall:** Suy diễn Row từ số máy `may` bằng công thức phân bổ `((may - 1) // 8) + 1`.
+       - **Thực tế Taadaa Farm:** Mỗi điện thoại chứa 8 accounts ứng với 8 slot Row 1 đến Row 8. Trường `tik` trong bảng SQLite `farm_account_info` CHÍNH LÀ Row slot của nick trên thiết bị (`tik = 1..8`).
+       - **Bắt buộc:** Map `row_num = int(tik)` (fallback 1 nếu null/lỗi). CẤM TUYỆT ĐỐI dùng số máy `may` để suy diễn Row.
+     * **Kỹ thuật Quét Live Artifact O(1) (CẤM `rglob("*")`):**
+       - **Pitfall:** Dùng `Path(live_root).rglob("*")` để tìm folder `row-*`. Trong farm 80 máy chạy 60 ngày, `rglob("*")` duyệt đệ quy qua >200,000 files/dirs, gây nghẽn đĩa và timeout tiến trình >600s.
+       - **Bắt buộc:** Chỉ quét 2 cấp phẳng:
+         1. Cấp 1: `root_path.glob("????-??-??")`, chỉ lấy tối đa 7 ngày mới nhất.
+         2. Cấp 2: Trong mỗi ngày, chỉ duyệt `d_dir.glob("row-*")` để bóc tách timestamp từ tên folder `row-<R>-<HHMMSS>`. Thời gian quét hoàn tất <0.05 giây.
 
 ---
 
