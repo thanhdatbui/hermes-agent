@@ -117,6 +117,17 @@ This skill captures learnings and pitfalls for driving the user's desktop via to
 - **Playwright CDP Screenshot Font Loading Timeout on Heavy Web Apps (Google Cloud Console, etc.):**
   - Calling `await page.screenshot()` on complex SPA pages like Google Cloud Console can hang and fail with `TimeoutError: Page.screenshot: Timeout 30000ms exceeded. waiting for fonts to load...`.
   - *Fix:* When verifying actions on heavy SPAs, pass `timeout=5000` or rely on DOM element inspection (`query_selector`, text/checkbox status) rather than full-page screenshot capture that blocks on external web fonts and analytics beacons.
+- **Background Browser Automation with `computer_use` & Native "Save As" Dialog Handling (2026-10-12):**
+  - *Context:* When user requests automating tasks on an existing logged-in browser session (e.g. BoxTaiKhoan, marketplace, web shop) where Chrome is already open without remote debugging port 9222 attached, killing the browser disrupts user tabs.
+  - *Reliable Background Execution:*
+    1. **Synthetic Click Reliability:** In `Chrome_WidgetWin_1` windows, `delivery_mode='background'` clicks on web elements (buttons, links, comboboxes) succeed reliably via synthetic events without raising the window or moving the host OS cursor.
+    2. **Handling Native HTML `<select>` (Items per Page / Filters):** Setting `AXValue` on a Chromium ComboBox does not fire the DOM `change` event. Instead, click the ComboBox in background mode to open the list, then click the target `ListItem` (e.g. `500` or `1000`).
+    3. **Handling Modal Dialogs (SweetAlert / Confirmation):** Background clicks on confirmation buttons (e.g., `#36 Button 'Đồng ý'`) trigger web actions immediately.
+    4. **Handling Windows Common Dialog "Save As" in Background:**
+       - When a browser action triggers a file download with a "Save As" prompt, Windows spawns a `#32770` dialog owned by `chrome.exe`.
+       - Run `computer_use(action='list_windows')` to find the exact `pid` and `window_id` of the `Save As` dialog.
+       - Capture the `Save As` window via `action='capture', pid=..., window_id=...` and click element `Button 'Save'` (UIA Invoke). The file is saved directly to the target folder (`Downloads`) without stealing focus.
+    5. **Viewport Expansion via Maximization:** If table rows/elements lie below the viewport height (<1000px), click element `Button 'Phóng to'` to maximize the window to 1080p, bringing more rows into view for background interaction without mouse scrolling.
 - **`computer_use` capture returns 0×0 / empty elements while `hermes computer-use doctor` reports ALL OK** (verified 2026-08-13): the cua-driver MCP session is a zombie. Doctor only health-checks the driver binary, not the live MCP session. Confirm by checking the Hermes agent log (`~/AppData/Local/hermes/logs/agent.log`) for `session 'hermes-<id>' has ended; tool call '<...>' was rejected. Call start_session with this id to revive it`. Fix = a fresh cua-driver session (restart the gateway or kill+respawn cua-driver). Note: `Stop-Process`/`taskkill /F /IM cua-driver.exe` may be access-denied and the process survives — and the user may explicitly forbid a gateway restart while other processes are live; then fall back to a manual action on the user's machine instead of forcing it.
 
 ## Cua-driver lifecycle and protocol mismatch recovery
@@ -140,7 +151,7 @@ This skill captures learnings and pitfalls for driving the user's desktop via to
 - For a repo-backed dev instance, separate the gates: (1) identify/update the source revision, (2) install dependencies, (3) run the build, (4) start/reload the app, (5) verify the live health endpoint. Report each gate in Vietnamese and do not call the app updated until the live endpoint answers.
 - If the upstream revision contains a reproducible build-breaking defect, make the smallest source correction needed for the requested app update, record the exact file/line and build result, and keep unrelated user changes backed up rather than silently merging them.
 
-See `references/application-vs-repository-update.md` for the checklist and evidence pattern for distinguishing an installed/running app update from a source-repository update. See `references/omniroute-update-lessons.md` for the OmniRoute-specific update/build/health sequence and failure patterns. See `references/gpmlogin-local-api-cdp.md` for the GPMLogin Local API + Playwright CDP background automation recipe.
+See `references/application-vs-repository-update.md` for the checklist and evidence pattern for distinguishing an installed/running app update from a source-repository update. See `references/omniroute-update-lessons.md` for the OmniRoute-specific update/build/health sequence and failure patterns. See `references/gpmlogin-local-api-cdp.md` for the GPMLogin Local API + Playwright CDP background automation recipe. See `references/background-browser-download-and-save-as-workflow.md` for background browser control, SweetAlert modals, and Windows "Save As" file download automation via `computer_use`.
 
 ## Unexpected privileged windows and cross-machine attribution
 - Trigger: the user sees an unexpected Administrator terminal, firewall help/error output, or says the command was typed on another machine.
