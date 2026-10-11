@@ -358,7 +358,7 @@ exactly what the app reads).
   is the provider default used only when no explicit effort is supplied.
 
 Taadaa `invoke-opencode-audit.ps1` wrapper (model allowlist, failure error strings, OpenCode free-model catalog renames, UTF-16LE JSONL gotcha, verify recipe): `references/taadaa-opencode-audit-wrapper.md`.
-Coordinator deadlock breakthrough via external autonomous CLI (bypassing in-session subagent dispatch limits, background execution & prompt keyword defense): `references/coordinator-deadlock-cli-breakthrough.md`.
+Coordinator deadlock breakthrough via external autonomous CLI (bypassing in-session subagent dispatch limits, background execution, git-push sandbox override & pre-push hook quoting traps): `references/coordinator-deadlock-cli-breakthrough.md`.
 Lỗi rách turn Gemini HTTP 400 (`Invalid function call turn sequence`), vòng lặp treo stream chunks và quy trình cứu hộ context dở dang qua session_search: xem skill `hermes-session-tuning` (`references/gemini-turn-sequence-corruption-and-session-recovery.md`).
 Taadaa auto-recovery architecture + exact fallback insertion point: `references/taadaa-auto-recovery-codex-routing.md`.
 Full error-1920 PATH-vs-store-stub diagnostic (which/order/file/symlink checks + verified fix): `references/windows-sandbox-error-1920-path-stub.md`.

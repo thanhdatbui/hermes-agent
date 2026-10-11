@@ -97,12 +97,14 @@ GPM CDP Connect
   * Cột F (6): Email Hotmail
   * Cột G (7): PASS MAIL
 - **`gmail_clean_v2.xlsx`**: Tên sheet là `'Gmail Accounts'` (KHÔNG PHẢI `'Tài Khoản'`).
-  * Gọi `wb['Tài Khoản']` trên file này sẽ văng crash: `KeyError: 'Worksheet Tài Khoản does not exist.'`.
+  * Gọi `wb['Tài Khoản']` trên file này sẽ văng crash: `KeyError: 'Worksheet Tài Khoản does not exist.'` hoặc fallback sai về active sheet làm trả về rỗng.
   * Cột B (2): Email
   * Cột C (3): PASS
   * Cột D (4): 2FA Secret Key Base32
   * Cột E (5): Recovery Email gốc
-- **Kỷ luật code**: Luôn dùng logic an toàn `ws = wb['Gmail Accounts'] if 'Gmail Accounts' in wb.sheetnames else (wb['Tài Khoản'] if 'Tài Khoản' in wb.sheetnames else wb.active)`.
+- **Kỷ luật code tra cứu an toàn**:
+  * Luôn dùng logic an toàn `ws = wb['Gmail Accounts'] if 'Gmail Accounts' in wb.sheetnames else (wb['Tài Khoản'] if 'Tài Khoản' in wb.sheetnames else wb.active)`.
+  * Áp dụng bắt buộc cho cả 3 hàm: `get_recovery_email`, `get_2fa_secret`, và `update_excel_security_info`. CẤM hardcode `wb['Tài Khoản']` khi đọc `gmail_clean_v2.xlsx`.
 
 ---
 
