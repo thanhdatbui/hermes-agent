@@ -31,6 +31,13 @@ Khi nhận yêu cầu đổi avatar từ ảnh chụp màn hình hoặc username
     WHERE username = '<username>' AND may = <may>;
     ```
 
+## 4.1. Điều phối Worker & Bảo toàn Ngân sách T1 (Coordinator Discipline)
+- **Bảo toàn hạn ngạch T1:** Coordinator có trần cứng T1 (tối đa 5 files, <= 200 dòng cộng dồn cả phiên). CẤM Coordinator tự ý dùng `write_file` tạo các script cào frame/inspect/HTML nháp trong `D:/Taadaa/tmp/`. Việc viết script trích xuất frame, crop ảnh, ghi file và update DB/Excel thuộc trách nhiệm của Worker.
+- **Scope Lock Whitelist trong `delegate_task`:**
+  - Guard kiểm soát delegation yêu cầu khai báo `FILE: <đường_dẫn_tuyệt_đối>` trong mục tiêu.
+  - Đường dẫn file khai báo BẮT BUỘC phải nằm trong whitelist repo `D:\Taadaa` (ví dụ: `FILE: D:\Taadaa\tmp\prepare_avatar_<folder>.py`).
+  - CẤM khai báo trực tiếp file ngoài whitelist như `D:\OneDrive\TaadaaData\kibe\Tik*.xlsx` vào dòng `FILE: ...` của contract (sẽ bị guard chặn `OUT OF REPO WHITELIST`). Hãy để Worker script dưới `D:\Taadaa` mở và cập nhật file OneDrive.
+
 ## 5. Kích hoạt Runner Avatar chuyên biệt (Avatar-Only Mode)
 - Sử dụng launcher `run_tiktok_upload_avatar.ps1` với `-ForceAvatarMachineList`:
   ```powershell
