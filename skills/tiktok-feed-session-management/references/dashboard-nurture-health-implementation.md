@@ -25,6 +25,8 @@ Use this reference when extending TikTok feed watchdog reporting or the Port 190
 
 ## Worker dispatch pitfalls
 - For delegated edits, put literal `FILE: <absolute path>` lines in the worker context. Keep each task to at most two files (one implementation file and one test file).
+- **Never dispatch parallel workers within the same repo workspace without worktrees:** A second dispatch overwrites the first worker's active Scope Lock, causing immediate `[WORKER GATE - SCOPE LOCK BREACH]` when the first worker attempts to write. Always serialize edits in the same repo.
+- **Provide O(1) Patch Contracts on monoliths (>1,500 lines):** Never dispatch open-ended exploratory goals to `tiktok_dashboard.py` (3,200+ lines). Workers burn their 12-15 calls paginating the file and hit `ABORT_SCOPE`. Pre-verify unique anchors with `grep -F -c == 1` and provide explicit `OLD_STRING` / `NEW_STRING`.
 - A worker report saying “completed” is not verification. Re-read `git status`, inspect the target markers, run the focused test, and check `py_compile` for Python modules.
 - If an earlier worker had a mismatched scope lock, re-dispatch with a fresh exact contract; do not treat the abort as a code result.
 

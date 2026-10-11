@@ -1,4 +1,4 @@
-Chu kỳ 4d 3 ca (bỏ 0h): N1(Sáng R1/2, Trưa R3/4, Tối R5/6), N2(bù), N3(R7,8, tối yếu), N4(3 ca yếu+up, 0 fl). Nuôi: 4d/lần, Starvation 96h. CẤM xóa cooldown.
+Chu kỳ 4d 3 ca: N1 random {1,3,5} hoặc {2,4,6}, N2 nhóm còn lại, N3(R7,8, tối dưỡng), N4(dưỡng 0 fl+up non<10). Nuôi 4d/lần, Starvation 96h. CẤM xóa cooldown.
 §
 Dual-Farm: Cron/supervisor chạy cả Kibe (1-80) & Admin (201-280). Excel Admin 10-11 cột. Supervisor so le 2p; 8-Row tách riêng Kibe/Admin; Dashboard 1905 tra cứu acc đói >96h. CẤM copy ava Kibe->Admin; Admin dùng video gốc m2.
 §

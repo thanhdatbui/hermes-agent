@@ -32,6 +32,16 @@ Khi dispatch Worker thực hiện task EDIT / FIX:
 - **Lỗi thực tế:** `MULTI_FILE_VIOLATION: Phát hiện 3 files trong 1 task. Tối đa <= 2 files (1 file nghiệp vụ + 1 file test). Bắt buộc chẻ nhỏ task!`
 - **Quy tắc cứng:** Mỗi subagent task chỉ được phép chứa tối đa 2 file trong Scope Lock (1 file nghiệp vụ + 1 file test). Nếu cần sửa nhiều file hơn, bắt buộc phải phân rã thành các task tuần tự hoặc bọc qua 1 entrypoint script duy nhất.
 
+### Bẫy 4: Xung đột Scope Lock khi Dispatch Đồng Thời (Concurrent Worker Collision)
+- **Lỗi thực tế:** `[WORKER GATE - SCOPE LOCK BREACH]: Worker đang cố sửa file 'FILE_A' nằm ngoài danh sách Scope Lock được cấp phép: ['FILE_B']!`
+- **Nguyên nhân:** Khi Coordinator dispatch nhiều worker song song hoặc dispatch worker mới trong khi worker cũ vẫn đang chạy trong cùng repo workspace, Scope Lock của worker sau sẽ ghi đè Scope Lock toàn cục của repo. Worker trước khi thực hiện ghi file sẽ bị kiểm tra chéo với danh sách của worker sau và bị chặn ngay lập tức.
+- **Quy tắc cứng:** CẤM TUYỆT ĐỐI dispatch song song 2 task EDIT trong cùng một repo workspace nếu không tạo `git worktree` riêng. Trong cùng 1 working copy, mọi task sửa code bắt buộc phải chạy tuần tự (serialize): đợi worker trước hoàn tất kết quả mới dispatch worker tiếp theo.
+
+### Bẫy 5: Cháy Budget Khảo Sát trên Monolith > 1.500 dòng (Exploration Budget Burnout)
+- **Lỗi thực tế:** Worker chạm trần budget 12-15 calls khi đọc/tìm kiếm và abort mà chưa kịp áp dụng bất kỳ patch nào (`ABORT_SCOPE`).
+- **Nguyên nhân:** Trên các file monolith lớn (> 1.500 đến 3.000+ dòng như `tiktok_dashboard.py`), nếu Coordinator giao goal mở ("tự tìm", "tự tích hợp", "soạn hàm và view") mà không cung cấp anchor O(1), worker sẽ tốn toàn bộ budget để paginate và định vị DOM/JS/route.
+- **Quy tắc cứng:** Đối với file monolith, Coordinator BẮT BUỘC tự dùng `grep -F -c` O(1) kiểm tra anchor duy nhất (`count == 1`), soạn sẵn exact `OLD_STRING` và `NEW_STRING` để worker chỉ cần gọi tool `patch` trong 1-2 lượt rồi chạy focused test ngay.
+
 ---
 
 ## 2. Ngân Sách T1 Coordinator & Kỷ Luật Không Viết Script Rác
