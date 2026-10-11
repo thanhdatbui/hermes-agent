@@ -14,12 +14,26 @@ adb shell am start -a android.settings.WIFI_SAVED_NETWORK_SETTINGS
 - Lệnh binder `service call wifi 14 i32 <net_id>` bị từ chối với lỗi:
   `SecurityException: Neither user 2000 nor current process has android.permission.CHANGE_WIFI_STATE`
 - File lưu trữ `/data/misc/wifi/WifiConfigStore.xml` có quyền `0660 wifi:wifi`, quyền shell ADB (UID 2000) không thể đọc/ghi trực tiếp (thiết bị farm không có root `su`).
-- **Giải pháp tối ưu & an toàn**: 
-  * Không thực hiện "Đặt lại cài đặt mạng" (Reset network settings) vì thao tác này làm mất toàn bộ chứng chỉ và cấu hình VPN proxy.
-  * Áp dụng giải pháp **Re-bind cưỡng bức**: Dùng app `com.steinwurf.adbjoinwifi` (app đã được cấp sẵn `CHANGE_WIFI_STATE`) để ép thiết bị kết nối cố định vào SSID mục tiêu (`admin 1`, `admin 2`, `kibe 1`, `kibe 2`).
-  * Runner (`vpn_preflight.py`) duy trì cơ chế fail-closed: nếu thiết bị roam sang `Dat` (dải `192.168.10.x`), Runner phát hiện lệch subnet và tự động kích hoạt `adbjoinwifi` kéo thiết bị về lại đúng AP Aruba farm (`192.168.110.x`).
 
-## 3. Quy trình giành Lock an toàn (OPERATOR_PREEMPT)
+## 3. Đột phá kỹ thuật: Xóa sạch vĩnh viễn qua UI Long-Press & Active Modal
+Mặc dù màn hình `WIFI_SAVED_NETWORK_SETTINGS` bị ẩn, màn hình chính `android.settings.WIFI_SETTINGS` hoàn toàn hiển thị SSID `Dat` và cho phép xóa sạch vĩnh viễn 100% không cần root theo 2 kịch bản đã được kiểm chứng thực tế:
+
+### Kịch bản A: Khi mạng rác đang ngắt kết nối (nằm ở "MẠNG ĐANG CÓ")
+- **Bẫy 1 chạm (Single-tap trap)**: Bấm 1 chạm vào SSID ngắt kết nối sẽ khiến Android hiểu là lệnh kết nối và bắt đầu dò DHCP ("Đang kiểm tra chất lượng..."), không hiện nút Quên mạng.
+- **Kỹ thuật Long-press Context Menu**:
+  1. `am force-stop com.android.settings` (bắt buộc đóng sạch popup/dialog cũ).
+  2. `am start -a android.settings.WIFI_SETTINGS` và chờ 3s.
+  3. **Nhấn giữ 1.2s** tại hàng 1 `(304, 820)`: `input swipe 304 820 304 820 1200`.
+  4. Hệ thống bật Context Menu 3 mục -> Bấm chính xác vào mục **"Quên mạng"** tại tâm `(500, 1195)` (bounds `[374, 1171, 614, 1217]`).
+  5. Profile rác lập tức bị xóa sổ vĩnh viễn khỏi `WifiConfigStore.xml`.
+  6. Re-join AP quy hoạch (`admin 1` / `admin 2`) bằng `adbjoinwifi` và về Home.
+
+### Kịch bản B: Khi mạng rác đang kết nối (nằm ở "MẠNG HIỆN TẠI")
+- Tap vào dòng SSID đang kết nối tại `(300, 530)` để bật modal thông tin mạng (tốc độ, bảo mật, IP).
+- Bấm nút **"QUÊN"** ở góc dưới phải tại tọa độ `(876, 1412)` (bounds `[828, 1389, 925, 1436]`).
+- Profile bị xóa ngay lập tức -> Re-join AP quy hoạch.
+
+## 4. Quy trình giành Lock an toàn (OPERATOR_PREEMPT)
 Khi User/Operator phát lệnh giành lock (ví dụ: *"Giành lock đi. Ca nuôi nick hết luôn r thì phải"*):
 - **CẤM TUYỆT ĐỐI**: Không tự tiện dùng Python xóa file `rm -f ~/.codex/device-locks/*.lock.json` vì sẽ phá vỡ tính toàn vẹn của lock protocol version 2 và gây race condition nếu có tiến trình khác đang ghi.
 - **CHUẨN VẬN HÀNH**: 
