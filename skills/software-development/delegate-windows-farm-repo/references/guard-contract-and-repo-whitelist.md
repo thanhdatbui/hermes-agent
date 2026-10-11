@@ -44,21 +44,40 @@ Khi dispatch Worker thực hiện task EDIT / FIX:
 
 ---
 
-## 3. Template Dispatch Chuẩn Mực Cho Worker Thao Tác Dữ Liệu
+## 3. Template Dispatch Chuẩn Mực & Bộ Quy Tắc Contract Guard Cho Task EDIT
 
-Khi cần thao tác cập nhật cấu hình hoặc dữ liệu farm:
+Khi dispatch Worker thực hiện sửa code (`TASK_KIND: EDIT`), Coordinator Guard kiểm tra nghiệm ngặt 7 trường sau. Thiếu bất kỳ trường nào lệnh dispatch sẽ bị reject ngay lập tức:
 
+### 7 Thành phần bắt buộc trong Context của Task EDIT:
+1. `TASK_KIND: EDIT` (Bắt buộc).
+2. `FILE: <đường_dẫn_tuyệt_đối>` (Bắt buộc nằm trong whitelist `['D:\\Taadaa']`, không dùng bullet point `- ` dính liền).
+3. `OLD_STRING: <<< ... >>>` (Đoạn code gốc cần thay thế, bọc trong triple angle brackets `<<<` và `>>>`).
+4. `NEW_STRING: <<< ... >>>` (Đoạn code mới thay thế, bọc trong triple angle brackets `<<<` và `>>>`).
+5. `DIFF_BUDGET`: Tổng số dòng thay đổi dự tính BẮT BUỘC `<= 30 dòng`. Nếu vượt quá, guard sẽ báo `DIFF_BUDGET_EXCEEDED` và reject; phải chẻ nhỏ task thành các sub-task O(1).
+6. `FOCUSED_TEST`: Bắt buộc đúng cú pháp chuẩn:
+   - Dạng pytest: `FOCUSED_TEST: python -m pytest <file.py>::<test_node> -q`
+   - Hoặc dạng compile: `FOCUSED_TEST: python -m py_compile <file.py>` (Lưu ý: đường dẫn file tương đối so với repo cwd, không bọc nháy kép).
+7. `FAIL_FAST`: Bắt buộc chứa câu lệnh Fail-Fast nguyên văn:
+   `FAIL_FAST: Nếu trong <= 3 iterations đầu thấy scope bất khả thi với budget 15 calls thì DỪNG NGAY (ABORT) và trả về anchor + proposed contract, cấm đốt hết budget để mò file rồi fail im lặng.`
+
+### Template Chuẩn Task EDIT (Copy & Điền):
 ```python
 delegate_task(
-    goal="Sua D:/Taadaa/tools/sync_worker.py de cap nhat hashtag kenh",
-    context="""SCOPE LOCK:
-FILE: D:/Taadaa/tools/sync_worker.py
+    goal="Vá lỗi X trong D:/Taadaa/repo/file.py",
+    context="""TASK_KIND: EDIT
+FILE: D:/Taadaa/repo/scripts/target.py
+OLD_STRING: <<<
+        old_line_1
+        old_line_2
+>>>
+NEW_STRING: <<<
+        new_line_1
+        new_line_2
+>>>
+FOCUSED_TEST: python -m py_compile scripts/target.py
+FAIL_FAST: Nếu trong <= 3 iterations đầu thấy scope bất khả thi với budget 15 calls thì DỪNG NGAY (ABORT) và trả về anchor + proposed contract, cấm đốt hết budget để mò file rồi fail im lặng.
 
-Yeu cau:
-1. Doc file Excel/DB can xu ly, tao ban sao luu .bak truoc khi ghi.
-2. Cap nhat chinh xac du lieu theo spec.
-3. Verify lai noi dung sau khi ghi va in ra evidence ro rang.
-Budget: <= 5 tool calls.
+Repo working directory: D:/Taadaa/repo
 """,
     role="leaf"
 )
