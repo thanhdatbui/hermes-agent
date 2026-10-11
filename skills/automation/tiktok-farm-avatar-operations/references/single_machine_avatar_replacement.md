@@ -28,11 +28,17 @@ Khi nhận yêu cầu đổi avatar từ ảnh chụp màn hình hoặc username
     * Khi User phản hồi "Mày tạo ảnh cho ra đúng đi đã" hoặc chê ảnh lạ: BẮT BUỘC tập trung xử lý dứt điểm Khâu 1 (trích xuất, crop, gửi ảnh preview người thật), KHÔNG ĐƯỢC vội vàng chạy loop up máy rồi gửi ảnh chụp màn hình máy bị lỗi logo cũ khiến User ức chế.
     * Tách bạch rõ ràng: Ảnh thành phẩm đã đúng hình người chưa? Nếu chưa -> sửa crop/chọn frame khác. Chỉ khi ảnh thành phẩm đã 100% chuẩn hình người mới chuyển sang Khâu 2 (nạp máy).
 
-## 3. Đồng bộ kho ảnh 2 đầu (SSOT Dual-Sync)
-- Copy file avatar thành phẩm `avatar.jpg` vào đồng thời cả hai kho:
-  1. `D:/TIKTOK-videonuoinick/<folder>/avatar.jpg` (Kho render trực tiếp)
-  2. `D:/video goc/<folder>/avatar.jpg` (Kho gốc bảo toàn)
-- Đảm bảo file có quyền đọc và kích thước hợp lệ (> 10KB, định dạng JPEG chuẩn).
+## 3. Đồng bộ kho ảnh 2 đầu (SSOT Dual-Sync) & Xử lý Rác Video Lệch Ngách
+- **Đồng bộ file Avatar:**
+  - Copy file avatar thành phẩm `avatar.jpg` vào đồng thời cả hai kho:
+    1. `D:/TIKTOK-videonuoinick/<folder>/avatar.jpg` (Kho render trực tiếp)
+    2. `D:/video goc/<folder>/avatar.jpg` (Kho gốc bảo toàn)
+  - Đảm bảo file có quyền đọc và kích thước hợp lệ (> 10KB, định dạng JPEG chuẩn).
+- **Quy trình Dọn Video Rác & Đồng bộ Video Gốc khi Phát hiện Lệch Ngách:**
+  - Khi phát hiện `D:/video goc/<folder>/` chứa video rác/lạc đề từ chu kỳ cũ trong khi `D:/TIKTOK-videonuoinick/<folder>/` chứa video creator thật đang đăng thực tế:
+    1. Cô lập/archive toàn bộ video cũ trong `D:/video goc/<folder>/` sang thư mục backup an toàn (ví dụ `D:/Taadaa/tmp/backup_goc_<folder>_slides/`).
+    2. Đồng bộ các video chuẩn từ `D:/TIKTOK-videonuoinick/<folder>/` sang `D:/video goc/<folder>/` để bảo toàn tính đồng nhất dữ liệu hai đầu (SSOT).
+    3. Cập nhật lại cột `Keyword Video` và `Hashtag Pool` trong workbook `Tik<N>.xlsx` cho khớp với nội dung thực tế của video đang đăng, triệt tiêu nguy cơ các script automation sau này gán nhầm ngách.
 
 ## 4. Đồng bộ Workbook & Hàng đợi Database
 - **Workbook `Tik<N>.xlsx`:**
