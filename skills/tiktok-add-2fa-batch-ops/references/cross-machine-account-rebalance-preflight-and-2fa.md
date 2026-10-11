@@ -15,3 +15,18 @@
   - Cập nhật thông tin nick vào các file Excel của máy nhận (TikN.xlsx, taikhoan_run_safe.xlsx, taikhoan_dat_v2_updated .xlsx).
   - TUYỆT ĐỐI CHƯA vội login lên máy nhận cho đến khi có ca chạy hoặc chỉ đạo.
   - Đăng xuất nick khỏi máy nguồn để nhả slot cho nick chính chủ.
+
+## 3. Pitfalls Kỹ Thuật Khi Chạy Phase B Trên Nick Điều Chuyển
+- **Bẫy Stale 2FA Cell trong Workbook (`WorkbookPreflight has_2fa=True`)**:
+  * Khi gán nick mới vào một dòng trên Master Excel (`taikhoan_dat_v2_updated .xlsx`), nếu ô cột 5 (`2FA`) hoặc cột 4 (`PASS`) vẫn còn lưu secret/pass của nick cũ trước đó, `inspect_target()` sẽ trả về `has_2fa=True`.
+  * Hậu quả: `run_capture_phase_b.py` fail-closed ngay lập tức với `{"status": "failed", "reason": "WorkbookError"}`.
+  * Khắc phục: Trước khi kích hoạt Phase B, bắt buộc clear sạch ô:
+    ```python
+    ws.cell(row, 4).value = None  # PASS
+    ws.cell(row, 5).value = None  # 2FA
+    ```
+    Đảm bảo kiểm tra `WorkbookPreflight(identity_matches=True, has_2fa=False)` trước khi khởi chạy `--live`.
+- **Bẫy Tên File Master Có Khoảng Trắng (`taikhoan_dat_v2_updated .xlsx`)**:
+  * Chú ý file Master luôn có dấu cách trước phần mở rộng: `taikhoan_dat_v2_updated .xlsx`. Khi truyền qua bash terminal cần bọc nháy kép cẩn thận, tránh lỗi phân tách tham số hoặc regex guard.
+- **Kỷ Luật Output Điều Phối (Cấm Rò Rỉ Gate Text)**:
+  * Tuyệt đối không để text của các hook kiểm duyệt nội bộ (`[EVIDENCE FIRST GATE — FAIL-CLOSED VIOLATION]...`) xả thẳng vào output trả lời User trên Telegram. Báo cáo bằng chứng ngắn gọn, trung thực và tập trung vào kết quả thực tế.
