@@ -8,6 +8,7 @@ Trong quá trình gỡ bỏ profile Wi-Fi lạ (`service call wifi 14 i32 <net_i
   SecurityException: Neither user 2000 nor current process has android.permission.CHANGE_WIFI_STATE
   ```
 - **Xử lý an toàn**: Không cố gắng cấp quyền `pm grant` cho `com.android.shell` (sẽ bị SecurityException vì shell không declare permission này). Thay vào đó, dùng `com.steinwurf.adbjoinwifi` (app đã có `CHANGE_WIFI_STATE`) để ép re-bind sang đúng SSID quy hoạch (`admin 1`, `admin 2`, `kibe 1`, `kibe 2`).
+- **Phân loại báo cáo trung thực**: Khi bắt được `SecurityException`, tool BẮT BUỘC ghi nhận `failed_deletes` với mã `PERMISSION_DENIED` và gán trạng thái thiết bị là `ONLINE_BUT_ROGUE_SAVED`. Tuyệt đối không đếm tăng `deleted_networks` khi binder chưa trả về `00000001`. CẤM TUYỆT ĐỐI giấu số máy kẹt lock bận ca (`LOCK_TIMEOUT`) để làm tròn phần trăm hoàn thành.
 
 ## 2. Bẫy Static IP Subnet Mismatch (`192.168.10.x` vs `192.168.110.x`)
 - **Hiện tượng**: Máy đã kết nối đúng SSID `admin 1`, nhưng vẫn không thể ping hoặc kết nối tới MikroTik Proxy `192.168.110.2:100xx` (`dial tcp: network is unreachable`).
