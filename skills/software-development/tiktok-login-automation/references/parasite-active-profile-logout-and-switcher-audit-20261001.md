@@ -113,3 +113,21 @@ Khi kiểm tra tài khoản trên máy (kể cả kiểm tra acc ký sinh hay ki
   3. **Bước 3**: **ĐĂNG XUẤT NGAY** nick đó khỏi máy hiện tại để hạ danh sách Switcher xuống đúng 7 nick. Soi mắt ảnh Switcher xác nhận nick đã biến mất và slot đã trống.
   4. **Bước 4**: Mới được phép gọi script đăng nhập nạp nick mới vào máy. Cấm đốt cháy giai đoạn.
 
+---
+
+## 10. KỸ THUẬT LOGOUT KHI NICK LÀ ACTIVE PROFILE & NÚT THÊM TÀI KHOẢN MÁY 7 NICK (2026-10-12)
+- **Cạm bẫy đóng Switcher khi nick là Active Profile**:
+  - Khi nick cần logout đang là Active Profile, mở Switcher sẽ KHÔNG thấy tên nick.
+  - CẤM tap tọa độ mù `(540, 200)` để đóng Switcher vì trên màn hình Samsung S7 (1080x1920), bottom sheet kéo dài từ `y=96` đến `y=1920`, tọa độ `(540, 200)` vẫn nằm trong header của Switcher $\rightarrow$ Switcher KHÔNG đóng.
+  - Các thao tác tap menu tiếp theo sẽ chạm lệch vào các item trên Profile, kích hoạt webview `SparkActivity` ("Thời gian sử dụng màn hình") và gây nghẽn toàn bộ luồng.
+  - **Quy chuẩn**: BẮT BUỘC dùng phím **BACK (`keyevent 4`)** để đóng Switcher, sau đó tap `Menu hồ sơ (3 gạch)` tại `(1005, 150)`.
+- **Tọa độ chuẩn vào Cài đặt và Đăng xuất**:
+  - Tại Menu hồ sơ: tap `Cài đặt và quyền riêng tư` tại `(621, 1278)` (`rid='com.ss.android.ugc.trill:id/dui'`).
+  - Trong trang Cài đặt: cuộn 5-6 lần xuống đáy (`540, 1600` $\rightarrow$ `540, 400`).
+  - Bấm nút `Đăng xuất` màu đỏ ở đáy (fallback `(540, 1750)`).
+  - Khi popup xác nhận xuất hiện: bấm nút xác nhận màu đỏ tại `(540, 1640)`. CẤM tap mù vào `(750, 1100)` vì sẽ trúng vùng trống hoặc nút Hủy.
+- **Tọa độ nút "Thêm tài khoản" khi máy có 7 nick**:
+  - Khi máy có 7 nick, nút "Thêm tài khoản" (`com.ss.android.ugc.trill:id/ls_`) nằm kịch sàn ở mép đáy màn hình tại tọa độ `(540, 1850)` (bounds `[0,1788][1080,1920]`).
+  - Phần text con (`com.ss.android.ugc.trill:id/ndk`) bị lẹm mép dưới nên matcher text XML có thể bỏ sót.
+  - Handler trong `social_reg_v1.py` cần tap thẳng tọa độ `(540, 1850)` và kiểm tra modal đăng nhập xuất hiện trước khi thực hiện cuộn hoặc fallback.
+
