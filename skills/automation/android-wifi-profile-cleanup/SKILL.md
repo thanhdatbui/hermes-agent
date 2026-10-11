@@ -52,14 +52,14 @@ Each machine result should include:
 
 - machine number, cluster, serial
 - `rogue_active_id` or an explicit no-evidence status
-- removal transaction result
+- removal transaction result (verified against `Parcel(... 00000001 ...)`; never increment `deleted_networks` if binder returned `SecurityException` or failed — record as `PERMISSION_DENIED` under `failed_deletes`)
 - mapped target SSID
 - post-action current Wi-Fi summary
 - `ip_ok` for `192.168.110.x`
 - whether the rogue profile is still present in the configured-network readback
 - lock/wrapper errors separately from device-operation errors
 
-Use status values such as `NO_DAT_EVIDENCE`, `CLEAN_AND_ONLINE`, `CLEAN_BUT_VERIFY`, and `ERROR`. Do not report the batch as complete until the artifacts have been read and summarized.
+Use status values such as `NO_DAT_EVIDENCE`, `CLEAN_AND_ONLINE`, `ONLINE_BUT_ROGUE_SAVED`, `CLEAN_BUT_VERIFY`, and `ERROR`. Do not report the batch as complete until the artifacts have been read and summarized.
 
 ## Kỷ luật báo cáo chống làm tròn & chống giấu máy kẹt lock
 - **BẮT BUỘC liệt kê máy kẹt lock (LOCK_TIMEOUT):** Khi chạy batch farm, TUYỆT ĐỐI CẤM gộp số liệu hoặc chỉ báo cáo phần trăm máy thành công mà lờ đi các máy bị skip do lock bận ca. Mọi máy dính `LOCK_TIMEOUT` BẮT BUỘC phải xuất rõ danh sách số máy cụ thể (VD: `M1..M80 kẹt lock`).

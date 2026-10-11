@@ -12,6 +12,6 @@ Kibe(1-80) & Admin(201-280) media độc lập (Admin m2, cấm copy chéo). TT 
 §
 Dubbing: đúng tiếng, 100% thoại, tắt tiếng gốc.
 §
-Pass láo: xóa về None trong Excel. Subagent: ag gemini pool mặc định. Kí sinh = nick cũ sót chiếm trần 8 acc, tra gốc và logout ngay. CẤM gate rác lọt chat, cấm giải trình suông.
+Pass láo: xóa về None trong Excel. Subagent: ag gemini pool. Kí sinh = nick cũ sót trần 8 acc, tra gốc logout ngay. Báo cáo farm: CẤM làm tròn 100%, kẹt lock/lỗi quyền BẮT BUỘC liệt kê máy. User bảo tự chọn: thi công dứt điểm, cấm hứa suông.
 §
 Review :20129: 'review' (Sol Web->Terra Codex). Banned=ban thật, dọn cả Omni (:20129) & 9Router (:20128). Soi WinRT/vision: CẤM báo cáo láo/soi mù; avatar BẮT BUỘC crop zoom cận cảnh xác nhận đúng mặt người thật (cấm nhầm logo/áo). C7 PASS MAIL != C12 GPT.
