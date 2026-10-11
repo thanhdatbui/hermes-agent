@@ -112,6 +112,11 @@ Writing a new `do_rename_m<ID>.py` (~450 lines) exceeds Coordinator T1 direct-wr
   * `FAIL_FAST: Nếu trong <= 3 iterations đầu thấy scope bất khả thi với budget 15 calls thì DỪNG NGAY (ABORT)...` (Bắt buộc theo GATE 4).
   Thiếu bất kỳ header nào hoặc sai định dạng `FOCUSED_TEST`, Coordinator Guard sẽ chặn dispatch ngay lập tức (`EDIT_MISSING_OLD_STRING`, `EDIT_MISSING_NEW_STRING`, `INVALID_FOCUSED_TEST_FORMAT`, `GATE4_FAIL_FAST_MISSING`).
 - **Pitfall 2 (Subagent LLM Timeout)**: Worker subagents tasked with generating 500+ lines of ADB state-machine code from scratch frequently hang waiting for model response (`Operation interrupted: waiting for model response (470s+ elapsed)`).
+- **Pitfall 3 (Device Lock Deadlock khi Worker chạy runner thiết bị trực tiếp)**:
+  * Khi giao nhiệm vụ cho Worker subagent qua `delegate_task`: Worker CHỈ NÊN nhận nhiệm vụ **Code surgery / Patching file + Chạy focused unit test (offline test < 2s)**.
+  * **CẤM TUYỆT ĐỐI** giao Worker chạy trực tiếp runner thiết bị có chiếm lock (`python do_rename_m<ID>.py`) bên trong subagent!
+  * **Lý do**: Nếu trước đó có một tiến trình live bị terminate đột ngột hoặc rớt kết nối, file lock (`machine_<ID>.lock.json`) chứa PID cũ có thể làm `wait_for_device_lock` bên trong subagent bị block chờ tới 300s. Subagent sẽ bị treo ngầm và đụng trần `600s delegation timeout`.
+  * **Pattern chuẩn**: Worker chỉ làm code surgery + pytest mock. Sau khi subagent hoàn tất trả quyền về, **Coordinator ở session chính mới kích hoạt live runner** qua `terminal(background=True, notify_on_complete=True)` để harness tự theo dõi và wakeup theo event-driven pattern.
 
 ### The Battle-Tested Fast Scaffolding + Patch Pattern (Recommended)
 Instead of blind delegation or monolithic writing:
