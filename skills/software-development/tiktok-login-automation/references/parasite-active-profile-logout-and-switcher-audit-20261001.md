@@ -131,3 +131,17 @@ Khi kiểm tra tài khoản trên máy (kể cả kiểm tra acc ký sinh hay ki
   - Phần text con (`com.ss.android.ugc.trill:id/ndk`) bị lẹm mép dưới nên matcher text XML có thể bỏ sót.
   - Handler trong `social_reg_v1.py` cần tap thẳng tọa độ `(540, 1850)` và kiểm tra modal đăng nhập xuất hiện trước khi thực hiện cuộn hoặc fallback.
 
+---
+
+## 11. BẪY EXIT CODE 1 `TRACKING_ROW_CHANGED` KHI NẠP NICK VÀ XỬ LÝ DEAD LOCK (2026-10-12)
+- **Hiện tượng `TRACKING_ROW_CHANGED`**:
+  - `tiktok_login_v1.py` đã vượt qua 2FA TOTP, vào đến Home feed và Profile xác nhận `@<username>` thành công (`[profile] handle=@...`).
+  - Tuy nhiên ở bước ghi nhận sổ sách `upsert_tracking_account`, script phát hiện dòng dữ liệu bị lệch/thay đổi (`TRACKING_ROW_CHANGED`) và dừng lại với `exit code 1`.
+  - **Kỷ luật điều phối**: Coordinator CẤM TUYỆT ĐỐI chỉ nhìn vào `exit code 1` mà kết luận login thất bại rồi chạy lại từ đầu. BẮT BUỘC đọc log kiểm tra xem đã xuất hiện marker `[login-success]` và `[profile] handle=@...` chưa. Nếu nick đã vào máy thành công, chỉ cần cập nhật lại dòng sổ sách tương ứng thay vì lặp lại thao tác UI.
+- **Xử lý Dead Lock khi Background Process bị ngắt**:
+  - Khi tiến trình chạy nền hoặc subagent thao tác ADB qua `with_device_lock.py` bị timeout/kill, file lock trong `.codex/device-locks/` có thể bị kẹt lại trạng thái `owner_dead`.
+  - Các lệnh gọi ADB tiếp theo trên máy đó sẽ bị treo 300s chờ lock.
+  - **Quy chuẩn**: Trước khi retry bất kỳ thao tác thiết bị nào sau khi tiến trình nền kết thúc/timeout, BẮT BUỘC chạy `python "D:/Taadaa/tiktok-luot nuoi acc/scripts/reap-dead-owner-locks.py"` để dọn dẹp các dead-owner lock.
+- **Cờ `--verify-only` cho script logout**:
+  - Script điều tra như `do_logout_account.py` cần hỗ trợ cờ `--verify-only` để chỉ mở Switcher chụp ảnh nghiệm thu (`verify()`) mà không chạy lại toàn bộ quy trình logout.
+
