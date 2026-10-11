@@ -20,4 +20,4 @@ Giao tiếp: gọi 'tên nick TikTok', cấm handle. Hotmail: Báo cáo 6h BLOCK
 §
 [ROUTER TB]: R3G V1 (100.86.119.82). Xanh=DHCP; 2 trắng=PPPoE L1 & L2. Proxy: User KO đổi; CẤM script nhảy/random proxy; SoT: PROXYgandienthoai.xlsx; down->fail-closed.
 §
-Crop Avatar Video Dọc (9:16): Mặt người ở 15-25% trên (`cy ~ 0.2*H`). CẤM tâm giữa (`cy ~ 0.4-0.5*H`), mask tròn TikTok sẽ cụt đầu chỉ còn áo. BẮT BUỘC soi mắt avatar tròn profile trước khi gửi MEDIA:.
+Crop Avatar Dọc (9:16): Mặt ở 15-25% trên (`cy ~ 0.2*H`), cấm tâm giữa cụt đầu dính áo. Ava picker: tap checkbox (225,250), cấm tap tâm; bẫy nút Lưu Sửa hồ sơ false-positive. BẮT BUỘC soi zoom tròn profile.

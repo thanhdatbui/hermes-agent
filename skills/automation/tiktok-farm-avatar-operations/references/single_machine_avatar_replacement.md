@@ -90,8 +90,12 @@ Khi nhận yêu cầu đổi avatar từ ảnh chụp màn hình hoặc username
          2. **Lỗi tap tâm tile thay vì checkbox:** Trong giao diện chọn ảnh 4 cột của TikTok, việc tap vào tâm tile `(137, 355)` ở nhiều phiên bản TikTok chỉ mở xem trước ảnh lớn (Preview) chứ KHÔNG tick chọn ảnh. Muốn chọn ảnh, bắt buộc phải tap vào vòng tròn checkbox ở góc trên-phải của tile: `(right - 35, top + 35)` (ví dụ `(234, 257)` trên màn 1080x1920). Khi đó số "1" màu đỏ mới xuất hiện và nút "Tiếp (1)" ở đáy `(924, 1842)` mới mở được màn Crop. Nếu không tick được checkbox, bấm "Tiếp" sẽ thoát ngược về "Sửa hồ sơ", kích hoạt bẫy False Positive Save Surface.
        * **Kịch bản cứu hộ trực tiếp (Direct ADB Remediation Script):**
          Khi runner batch bị kẹt bẫy False Positive Save Surface, dùng script Python bọc dưới `operator_device_lock(machine=N, serial=SERIAL, project="avatar_fix")` để thực thi luồng tuần tự:
-         - Dọn sạch MediaStore và ảnh cũ trên máy -> Push ảnh chuẩn `avatar.jpg` -> Gửi broadcast scan.
+         - Dọn sạch MediaStore và ảnh cũ trên máy -> Push ảnh chuẩn `avatar.jpg` -> Gửi broadcast scan (nghỉ ít nhất 2s để MediaStore lập chỉ mục).
          - Mở TikTok (`am start com.ss.android.ugc.trill/...`) -> Tap Hồ sơ `(972, 1883)` -> Tap Sửa hồ sơ `(75, 150)` -> Tap Thay đổi ảnh `(540, 420)` -> Tap Tải ảnh lên `(540, 1600)`.
-         - Tap chính xác checkbox góc trên-phải `(234, 257)` -> Tap Tiếp `(924, 1842)` -> Tap Lưu crop `(792, 1794)`.
+         - **Thời gian chờ picker mở:** Chờ ít nhất 4–5s để TikTok mở xong picker và nạp thumbnails. Nếu tap quá sớm (sleep < 3s), sự kiện tap sẽ trượt và nút "Tiếp" vẫn xám xịt/disable.
+         - **Tọa độ tap chuẩn xác:**
+           * Checkbox vòng tròn góc trên-phải của tile 1: `(x=225, y=250)`.
+           * Nút "Tiếp (1)" màu đỏ góc dưới-phải: `(x=920, y=1855)`. Chờ 2s sau khi tick checkbox để nút đỏ kích hoạt rồi mới tap.
+           * Nút "Lưu" trên màn Crop: `(x=792, y=1794)`. Chờ 8s sau khi Lưu để đảm bảo hoàn tất upload CDN.
          - Chụp ảnh màn hình kiểm chứng kết quả và zoom-crop vòng tròn avatar để nghiệm thu.
   3. Gửi ảnh nghiệm thu kèm thẻ `MEDIA:<path_to_avatar-uploaded-confirmed.png>` trong câu trả lời cho User kèm xác nhận trực quan nội dung đã thấy tận mắt.

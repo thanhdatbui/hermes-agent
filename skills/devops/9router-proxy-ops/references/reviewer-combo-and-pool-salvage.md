@@ -40,6 +40,7 @@ Classify conservatively:
 ## Dangling combo model synchronization (Critical Pitfall)
 
 Deleting rows from `provider_connections` in `~/.omniroute/storage.sqlite` does NOT automatically clean the `models` list stored inside `combos.data`!
+Note schema: `combos` table has columns `(id, name, data)`, NOT `(id, name, models)`. The model list is nested inside JSON `data['models']`.
 If dead connection IDs remain inside `combos.data`:
 - OmniRoute retains in-memory references to deleted connection IDs.
 - Live traffic and test probes will attempt routing to non-existent connections, causing artificial timeouts and delay spikes before failover.
@@ -47,6 +48,37 @@ If dead connection IDs remain inside `combos.data`:
   1. Update `combos.data` JSON in SQLite: filter `models = [m for m in models if m.connectionId not in deleted_ids and m.connectionId in valid_db_ids]`.
   2. Hot-reload in-memory routes via REST: for each modified combo, execute `PUT http://127.0.0.1:20129/api/combos/{id}` with the filtered body.
   3. Canonical script: `python D:/Taadaa/tools/clean_omniroute_pools.py` handles the full audit, DB deletion, combo JSON filtering, REST PUT hot-reload, and live smoke test.
+
+## Automated GPM Login Verification & Re-Auth Pitfalls
+
+When automating GPM browser logins to verify OpenAI accounts or recover pools (`login_audit_and_purge_deactivated.py`):
+
+1. **Button selector mismatch on `chatgpt.com/auth/login`**:
+   - `b.innerText.includes('Tiếp tục')` or `includes('Continue')` will match the first button containing that text: **"Tiếp tục với Google"**!
+   - This causes unwanted redirection to `accounts.google.com/signin`, where OTP is mistakenly typed into Google's email field.
+   - **Mandatory filter**:
+     ```javascript
+     const contBtn = buttons.find(b => {
+         const t = (b.innerText || '').trim();
+         return (t === 'Tiếp tục' || t === 'Continue' || b.type === 'submit') &&
+                !t.includes('Google') && !t.includes('Apple') && !t.includes('thoại');
+     });
+     ```
+   - Always verify URL changed to `auth.openai.com/email-verification` before attempting to fill OTP.
+
+2. **GPM profile name substring matching**:
+   - Profile names in GPM often include indexing and proxy port suffixes (e.g. `06 - KamilahRannels635404@hotmail.com - 5106`).
+   - Exact equality matching (`email == profile_name`) yields 0 matches. Always use substring matching (`email.lower() in (p.get("name") or "").lower()`) and paginate through GPM API (`page=1..N`).
+
+3. **Distinction between LIVE verification vs RE-OAUTH**:
+   - Detecting that an account is LIVE on GPM browser (retaining active session, entering chat interface) is NOT the same as re-authenticating the router.
+   - Simply confirming "LIVE" does not inject new credentials into OmniRoute/9Router.
+   - To make live accounts usable in OmniRoute/9Router:
+     * For **ChatGPT-Web**: Extract session cookie `__Secure-next-auth.session-token` or access token from `/api/auth/session` via CDP, then create/update connection in `:20129`.
+     * For **Codex**: Must perform OAuth PKCE via `127.0.0.1:20128/api/oauth/codex/authorize` + callback on port 1455 + select personal workspace card to obtain fresh `refresh_token`.
+
+4. **Visual evidence invariant**:
+   - Never report `account_deactivated` or `LIVE` without verifying through native OCR or vision inspection first. Claiming an error screen while sending an image stuck at Google sign-in is a critical failure.
 
 ## Safety and evidence
 
