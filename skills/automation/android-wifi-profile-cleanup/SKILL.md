@@ -13,6 +13,7 @@ Use this class-level workflow when Android farm phones auto-connect to a non-far
 ## Safety contract
 
 - Never use a rogue SSID as a fallback or recovery network.
+- **Poison SSID Strict Blacklist (`Dat`, `Dat-1`, `BOX`)**: Tuyệt đối CẤM đưa các SSID ngoại lai ngoài farm (`Dat`, `Dat-1`, `BOX`) vào bất kỳ file cấu hình, tài liệu, script cứu hộ, hoặc logic fallback nào. Mọi SSID ngoài 4 AP Aruba quy hoạch cứng (`kibe 1`, `kibe 2`, `admin 1`, `admin 2`) đều là Poison SSID — hành động duy nhất được phép khi phát hiện là tiêu diệt/xóa vĩnh viễn (Purge/Forget) khỏi toàn bộ thiết bị. CẤM TUYỆT ĐỐI agent/script tự ý thử kết nối vào `Dat` để "chữa cháy" hay "test".
 - **Saved Network Roam Trap**: Removing fallback logic from host Python scripts is NOT enough. If phones previously joined a rogue SSID, Android OS stores the profile in `WifiConfigStore.xml` (priority 100) and will auto-roam to it during radio toggles or AP load spikes. Cleanup MUST actively verify and re-bind all devices.
 - Never remove a network by guessing an ID, by iterating through all IDs, or by trusting stale `dumpsys wifi` event history.
 - Every device mutation runs under `D:/Taadaa/tools/with_device_lock.py --machine <N> -- ...` with the correct cluster/serial.

@@ -10,7 +10,7 @@ TikTok Shadow: Path B 'Đã fl' ko commit; FOLLOW_FAILED trừ fl tự nhiên; s
 §
 Giao tiếp: gọi 'tên nick TikTok', cấm handle. Hotmail: Báo cáo 6h BLOCKED riêng; Change info GPM full 5b; Nick ko mail khôi phục cấm add TOTP đơn lẻ; OTP sync thanhdatbui1995@gmail.com.
 §
-[ROUTER TB]: R3G V1 (100.86.119.82). Xanh=DHCP; 2 trắng=PPPoE L1 & L2. Proxy: User KO đổi; CẤM script nhảy/random proxy; SoT: PROXYgandienthoai.xlsx; down->fail-closed.
+[ROUTER/WIFI]: R3G V1. AP Aruba cứng (kibe 1,2; admin 1,2). CẤM connect/fallback SSID 'Dat'/'BOX'; cấm kỵ, diệt ngay. Proxy: User KO đổi, SoT PROXYgandienthoai.xlsx.
 §
 Crop Ava 9:16: Mặt ở 15-25% trên (cy~0.2*H), cấm cụt đầu. Picker: tap checkbox (225,250), cấm tap tâm; bẫy nút Lưu Sửa hồ sơ. Soi zoom tròn profile.
 §
