@@ -14,4 +14,4 @@ Giao tiếp: gọi 'tên nick TikTok', cấm handle. Hotmail: Báo cáo 6h BLOCK
 §
 Crop Ava 9:16: Mặt ở 15-25% trên (cy~0.2*H), cấm cụt đầu. Picker: tap checkbox (225,250), cấm tap tâm; bẫy nút Lưu Sửa hồ sơ. Soi zoom tròn profile.
 §
-Tài khoản trên máy: Mọi nick đang login sống trên máy đều là tài sản farm (cấm gọi kí sinh/đòi logout vứt nick). Khi máy đụng trần 8 nick do reg dư: map lại nick có sẵn vào workbook máy đó, nick non nhất chuyển sang máy thiếu slot (phải add 2FA trước khi chuyển; ghi Excel trước, chỉ login khi user bảo).
+Tài khoản trên máy: Mọi nick login trên máy là tài sản farm (cấm gọi kí sinh/đòi logout vứt nick). Đụng trần 8 nick do reg dư: map lại nick có sẵn vào workbook, nick non nhất chuyển sang máy thiếu slot (add 2FA trước; ghi Excel trước, chỉ login khi user bảo). Cấm trả câu cảnh báo gate thô vào chat.
