@@ -25,8 +25,17 @@ Khi gọi CDP nạp 2FA Authenticator tại `https://account.live.com/proofs/man
   Hệ quả: Modal không hiển thị khóa bí mật, script đợi `#iPlainTextData` quá 35s sẽ timeout và bị set `BLOCKED`.
 - **Giải pháp xử lý chuẩn (User Invariant):**
   - **Tự động Add Mail Khôi Phục fviainboxes.com trước:**
-    Đối với các nick chỉ có Password, KHÔNG cố ép bấm Authenticator để bị `iec=500`. Bắt buộc chọn `#Add_email` ("Gửi mã qua email") -> sinh địa chỉ mail `{username}{suffix}@fviainboxes.com` -> gọi `mail_domain_otp_helper.fetch_recovery_email_otp()` để lấy OTP qua API -> nhập mã xác minh.
-    Sau khi thêm thành công mail khôi phục, Microsoft đã có anchor proof hợp lệ -> tiếp tục quy trình B1 thêm Authenticator TOTP như bình thường. Đồng thời lưu mail khôi phục vừa thêm vào Cột 5 `gmail_clean_v2.xlsx`.
+    Đối với các nick chỉ có Password, KHÔNG cố ép bấm Authenticator để bị `iec=500`. Bắt buộc thực hiện luồng:
+    1. Tại `https://account.live.com/proofs/manage/additional`: click `#AddProofLink` -> click `#Add_email` (`a#Add_email.box.passkey`).
+    2. Trang điều hướng sang `https://account.live.com/proofs/Add?mpsplit=2&apt=2`: sinh mail `{username}{suffix}@fviainboxes.com` -> điền vào `#EmailAddress` (`input[type="email"]#EmailAddress`) -> click `#iNext` (`input[type="submit"]#iNext`).
+    3. Trang chuyển tiếp sang `https://account.live.com/proofs/Verify?...`: gọi `mail_domain_otp_helper.fetch_recovery_email_otp(rec_email, timeout_seconds=40)` (API `https://fviainboxes.com/messages?username={u}&domain=fviainboxes.com`) lấy mã OTP 6 số.
+    4. Điền mã OTP vào ô `#iOttText` (`input[type="tel"]#iOttText`) -> click `#iNext` (`input[type="submit"]#iNext`).
+    5. Lưu ngay địa chỉ mail khôi phục vào Cột 5 `gmail_clean_v2.xlsx`.
+    Sau khi thêm thành công mail khôi phục, Microsoft đã có anchor proof hợp lệ -> tiếp tục quy trình B1 thêm Authenticator TOTP như bình thường.
+  - **Phân loại nguồn gốc từ đơn hàng mua Hotmail:**
+    - Đơn hàng xuất kho 4 trường (`email|pass|token|client_id` trong `latest_bought_70.txt`, `hotmail_all_60_bought.txt`) là sản phẩm KHÔNG kèm mail khôi phục từ bên bán.
+    - Đơn hàng xuất kho 5 trường (`email|pass|token|client_id|recovery_email` trong `latest_bought_8_m76_79.txt`) là sản phẩm ĐÃ CÓ sẵn mail khôi phục.
+    - Khi kiểm tra đơn hàng thấy chỉ có 4 trường, xác nhận ngay là bên bán giao không kèm mail khôi phục, tự động kích hoạt luồng tạo mail khôi phục `fviainboxes.com` nêu trên.
   - **Re-authentication Challenge & Form Submission Pitfall:**
     - Khi vào các trang bảo mật nhạy cảm (`EnableTfa` / `manage/additional` / `password/change`), Microsoft thường đòi đăng nhập lại.
     - CẢNH BÁO FORM MỚI: Microsoft cập nhật input từ `#i0116` / `#i0118` sang `#usernameEntry` / `#passwordEntry`.

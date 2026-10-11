@@ -4,7 +4,7 @@ Dual-Farm: Cron/supervisor Kibe (1-80) & Admin (201-280). Excel Admin 10-11 cộ
 §
 Canary: WoL ether3 (kibe 0C:EF:15:37:4C:20, admin 22:33:4D:06:4C:26; WG 13231); CẤM PASS khi followed=0/FOLLOW_FAILED; ảnh/log trước teardown. Admin: upload SSH admin-farm.
 §
-Reviewer :20129: Combo 'review' (Sol Web->Terra Codex). Acc account_deactivated là ban thật, dọn cả Omni (:20129) & 9Router (:20128). Submit ChatGPT GPM cấm dính Google/Apple. Graph API chỉ acc có token, ko token mở Outlook GPM dùng code bóc OTP. Acc die lưu chatgpt_account_lifecycle.json để O(1) SKIP. Re-OAuth nạp Omni; báo cáo chatgpt_lifecycle_report.json.
+Reviewer :20129: Combo 'review' (Sol Web->Terra Codex); Strike 3 Claude từ chối thì gọi Reviewer (Sol/Worker) sửa đến APPROVED. Acc account_deactivated dọn cả Omni (:20129) & 9Router (:20128). Submit ChatGPT GPM cấm click Google/Apple. Graph API chỉ acc có token, ko token mở Outlook GPM code canonical bóc OTP. Acc die lưu chatgpt_account_lifecycle.json O(1) SKIP. Re-OAuth nạp Omni; xuất chatgpt_lifecycle_report.json.
 §
 TikTok Shadow: Path B 'Đã fl' ko commit; FOLLOW_FAILED trừ fl tự nhiên; slot `(folder-1)%8+1` cứng; reg bù độc lập. Dọn C duyệt trước. Đối soát follow: chỉ tính nick có ca chạy hôm nay (cohort `internal_followed > 0`), cấm lấy nick rảnh bị tụt cấn trừ vào bot; nick chạy bị nhả trừ thẳng.
 §
