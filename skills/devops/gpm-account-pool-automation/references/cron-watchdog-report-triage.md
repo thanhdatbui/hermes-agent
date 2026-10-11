@@ -26,3 +26,14 @@ Use this reference when a scheduled GPM watchdog posts an aggregate result.
 ## Safety boundary
 
 A report such as “39 succeeded, 1 failed, 14 safely deferred” is sufficient for status reporting but not for root-cause diagnosis. Do not claim the failed account is transient, proxy-related, or an application error without corresponding evidence.
+
+## Triaging Local API Offline Failures (`port 19995: Max retries exceeded`)
+
+When a watchdog crashes with `HTTPConnectionPool(host='127.0.0.1', port=19995): Max retries exceeded`:
+1. **Check System Reboot Context**: The farm PC reboots daily (e.g. 05:30 task). If GPMLogin was not set to auto-start on boot, Local API v3 stays offline until the app is opened.
+2. **Inspect Process & Port First**:
+   - `tasklist /fi "imagename eq GPMLogin.exe"` to verify if process is alive.
+   - TCP probe on `127.0.0.1:19995` to check port liveness.
+3. **Distinguish Infrastructure Offline vs Script Crash**:
+   - If GPMLogin is not running, accounts are untouched; do not mark accounts as failed or edit job schedule.
+   - Scripts without `is_gpm_api_live()` auto-heal / safe-skip (`sys.exit(0)`) will emit exit code 1 alerts. Recommend user open GPMLogin or patch the script to follow the safe-skip pattern in `references/no-agent-cron-silent-watchdog-and-telegram-chunking.md`.

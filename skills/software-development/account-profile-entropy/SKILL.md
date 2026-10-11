@@ -181,6 +181,7 @@ When an operator provides a screenshot of a TikTok profile (e.g. `LilyanLederhos
   * BẮT BUỘC xác nhận popup *"Đặt biệt danh? Bạn chỉ có thể thay đổi biệt danh 7 ngày 1 lần"* tại `(747, 1173)`.
   * Readback verify: đọc lại màn hình Hồ sơ qua OCR, xác nhận dòng hiển thị ngay trên `@username` khớp với tên mới (`Linh Bông` trên `@lilyanzj8n1`).
 - **Hermetic Offline Pytest**: Create `tests/test_do_rename_m<ID>.py` testing `norm`, `compact`, `classify`, `is_target`, `is_target_user`, and `nickname_on_profile` offline (<0.5s) to guarantee zero regression before device execution.
+- **Tiered Workflow Dispatch Contract**: Script generation exceeds Coordinator T1 direct-write budget (<= 200 lines). Dispatch Worker via `delegate_task` with mandatory headers in `context`: `TASK_KIND: EDIT`, `TARGET_FILE: ...`, `TEST_FILE: ...`, and `FOCUSED_TEST: python -m pytest <path>::<node>` to satisfy Coordinator Guard.
 - **Background Execution**: Launch via `terminal(command="python D:/Taadaa/tools/do_rename_m<ID>.py", background=True, notify_on_complete=True, timeout=300)` adhering to event-driven wakeup.
 
 ## Integration Point

@@ -25,9 +25,13 @@ Before touching the device:
 ## 3. Name Generation & Vietnamese Phonetic Mapping
 Apply the phonetic adaptation rules from `account-profile-entropy`:
 - Foreign prefixes: `lilyan-` -> `Linh Bông`, `Linh Miu`, `Linh Bơ` (stem: *Linh* ghép `_NICK_SUFFIX`) hoặc `Ngọc Linh`, `Thanh Linh` (Đệm + Tên).
+- **"Tên nữ kèm biệt danh" (Female Name + Nickname)**: Khi operator yêu cầu đổi sang tên nữ kèm biệt danh (hoặc đổi tên kênh từ tên nam cũ như *Đạt* hay email handle):
+  * Bốc stem tên nữ từ `_TEN_LIST` (*Vy, Linh, Thảo, Trang, Mai, An, Hà, Quỳnh, Hương, Nhi, Trâm, Ngân...*).
+  * Ghép biệt danh đời thường từ `_NICK_SUFFIX` (*Miu, Nấm, Bơ, Kem, Bông, Nhím, Dâu, Su, Đậu, Cún...*).
+  * Ví dụ: *Vy Miu, Thảo Nấm, An Kem, Linh Bơ, Hà Moon, Trang Bông*.
 - **CẤM TUYỆT ĐỐI TÊN CỤT LỦN 1 TỪ**: Tuyệt đối không đặt tên 1 từ trơ trọi (như mỗi chữ *Linh*, *Thảo*, *Hải*). Khi user yêu cầu "Đặt <Tên> + cái gì đó", đây là phong cách Tên + Biệt danh đời thường (`_TEN_LIST + _NICK_SUFFIX`, ví dụ *Linh Bông*, *Linh Miu*, *Linh Bơ*, *Linh Gạo*, *Linh Nhím*).
-- Base64 encoding: `base64.b64encode(NEW_NAME.encode('utf-8')).decode('ascii')` (e.g. `Linh Bông` -> `TGluaCBCw7RuZw==`)
-- Character count: `len("Linh Bông") = 9` -> Counter on TikTok will be `9/30`.
+- Base64 encoding: `base64.b64encode(NEW_NAME.encode('utf-8')).decode('ascii')` (e.g. `Linh Bông` -> `TGluaCBCw7RuZw==`, `Vy Miu` -> `VnkgTWl1`)
+- Character count: `len("Linh Bông") = 9` -> Counter on TikTok will be `9/30` (`len("Vy Miu") = 6` -> `6/30`). Trong `NAME_EDIT`, kiểm tra `count_match` bao gồm cận biên dung sai `in (len-1, len, len+1)`.
 
 ## 4. State Machine OCR Rename Pattern (`do_rename_m<ID>.py`)
 Construct a dedicated device runner using WinRT OCR (`tools/ocr_boxes.ps1`) and `operator_device_lock`:
@@ -59,7 +63,21 @@ Before executing on the phone, create `tests/test_do_rename_m<ID>.py` testing pu
 - `is_target()` / `is_target_user()`: Fuzzy matching tolerances.
 - Run `pytest tests/test_do_rename_m<ID>.py` ensuring 100% pass (<0.5s).
 
-## 6. Execution via Background Terminal
+## 6. Tiered Workflow & Coordinator Dispatch Guard Contract
+Writing a new `do_rename_m<ID>.py` (~450 lines) exceeds Coordinator T1 direct-write budget (<= 200 lines total). Coordinator MUST delegate file creation to Worker Luna High via `delegate_task`:
+- **Contract Headers Invariant**: The Coordinator Guard blocks dispatch unless `context` contains:
+  ```
+  TASK_KIND: EDIT
+  TARGET_FILE: D:/Taadaa/tools/do_rename_m<ID>.py
+  TEST_FILE: D:/Taadaa/tools/tests/test_do_rename_m<ID>.py
+  FOCUSED_TEST: python -m pytest D:/Taadaa/tools/tests/test_do_rename_m<ID>.py::<test_node>
+  ```
+- **Guard Validation Failure Triggers**:
+  * Missing `TASK_KIND: EDIT` -> `MISSING_TASK_KIND`.
+  * Missing `FOCUSED_TEST` with `python -m pytest <path>::<node>` -> `EDIT_MISSING_FOCUSED_TEST`.
+- Provide exact specifications in context: machine ID, serial, target user, base64 new name, counter checks, and reference implementation (`do_rename_m76.py`).
+
+## 7. Execution via Background Terminal
 Adhere to farm event-driven wakeup:
 - Launch via `terminal(command="python D:/Taadaa/tools/do_rename_m<ID>.py", background=True, notify_on_complete=True, timeout=300)`.
 - Never poll sleep loops. Let the harness wake the agent upon completion.
