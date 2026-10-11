@@ -2,7 +2,7 @@ Cào/Render: 12 niche hot; min 45; 1 wkr. Tên nick: cấm cụt 1 từ; >=2 t�
 §
 Dọn đĩa: duyệt trước (thư mục corrupt/lỗi xóa ngay), CẤM xóa ngầm.
 §
-Farm: nick cấm xóa/đè; SoT tiktok_tracker.db; cấm đè ava tay. Đổi mail TT: dùng Hotmail sạch chưa reg; ưu tiên Graph PC (cấm mở app khi có token), sai pass dùng --otp-only. LLM: Codex Omni.
+Farm: nick cấm xóa/đè; SoT tiktok_tracker.db; cấm đè ava tay. Chu kỳ nuôi 4d 3 ca; Starvation 96h (cấm 48h false-alarm). Đổi mail TT: Hotmail sạch, ưu tiên Graph PC, sai pass dùng --otp-only.
 §
 Review: 'review' (Sol+Terra); loop APPROVED(>=85). Strike 3: Claude CLI Sonnet 5.5 (cấm 3.5).
 §

@@ -80,6 +80,16 @@ Chạy script query bảng `provider_connections` trong `C:\Users\Kibe\.omnirout
     - Nếu `token_revoked`: Tài khoản đã **BỊ BAN / VÔ HIỆU HÓA**. Áp dụng ngay luật **"ban xóa DB giữ GPM"**: Xóa bản ghi trong `provider_connections` và xóa khỏi `models` của combo (`gpt-web-sol`, `chatgpt-web-pool`, `gpt-web-luna`). Giữ nguyên profile GPM.
     - Nếu `token_expired` hoặc hết hạn session: Tài khoản còn sống, chỉ cần re-login.
 
+- **BẪY RE-LOGIN TRÊN GPM & CDP AUTOMATION (THỰC NGHIỆM CHI TIẾT):**
+  * **Landing Modal Trap vs Auth Login:** Khi mở `https://chatgpt.com/`, modal "Đăng nhập hoặc đăng ký" chỉ là guest onboarding vãng lai (`unauth-mweb`). Nút "Tiếp tục" trong modal này không gửi form xác thực OpenAI. Để đăng nhập thật vào OpenAI, BẮT BUỘC điều hướng thẳng đến `https://chatgpt.com/auth/login` để vào cổng xác thực chính thức `auth.openai.com`.
+  * **React DOM Input Value Trap:** Giao diện Next.js/React của ChatGPT bỏ qua thao tác gán `input.value = ...` thông thường. Muốn điền email/mật khẩu qua JS BẮT BUỘC dùng prototype setter:
+    `Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(input, val)` kèm `input.dispatchEvent(new Event('input', { bubbles: true }))` và `change`, HOẶC dùng CDP `Input.dispatchKeyEvent` gõ từng ký tự.
+  * **CDP WebSocket Origin 403 Trap:** Thư viện WebSocket chuẩn (như Python `websocket-client`) tự gửi header `Origin: http://127.0.0.1:<port>` sẽ bị Chromium CDP chặn `403 Forbidden (Rejected incoming WebSocket connection)`. Phải dùng raw socket kết nối trực tiếp không gửi header `Origin`.
+  * **Forced Email OTP & Xác nhận Account Deactivated:**
+    - OpenAI thường bỏ qua mật khẩu và ép xác minh OTP qua email (`auth.openai.com/email-verification`). Bóc OTP qua Graph API nếu là Hotmail có token.
+    - Sau khi nhập OTP, nếu màn hình hiện `error_code: account_deactivated` ("Bạn không có tài khoản vì tài khoản đó đã bị xóa hoặc vô hiệu hóa"), tài khoản đã bị OpenAI trảm thẳng server-side, không thể khôi phục.
+  * **Kỷ luật Visual Evidence:** Tuyệt đối không báo trạng thái tài khoản qua text suông. Bắt buộc chụp ảnh màn hình tại từng checkpoint, soi mắt qua vision/OCR xác nhận rõ màn hình trước khi báo cáo.
+
 - **BẪY CẦU DAO TREO CẢ HỆ THỐNG (30-MIN CIRCUIT BREAKER TRAP):**
   * Nếu để các tài khoản bị ban/revoked trong combo Round-Robin, hệ thống sẽ gọi trúng 5 tài khoản lỗi liên tiếp và kích hoạt cầu dao tự ngắt: `Circuit breaker tripped for chatgpt-web: 5 consecutive failures. Blocked for 30min.`
   * Cầu dao này nằm trong RAM của OmniRoute (`_circuitBreaker["chatgpt-web"]`), sẽ phong tỏa toàn bộ 100% tài khoản (kể cả các tài khoản LIVE), khiến mọi lệnh gọi Advisor (`consult_advisor.py`) bị timeout >45s.
