@@ -227,5 +227,12 @@
     kèm `background=True, notify_on_complete=True`.
   - Lệnh này hoàn toàn hợp lệ trong allowlist của Coordinator, chạy ngầm không gây block chat, và khi hoàn tất sẽ tự đánh thức hệ thống để thu thập report, log và ảnh `MEDIA:` nghiệm thu.
 
+## 17. Kỷ luật Đổi Tên Hiển Thị (Display Name) & Điểm Chạm Bút Chì Ẩn Cạnh Tên (TikTok 47+)
+- **Kỷ luật Zero Re-invent:** CẤM TUYỆT ĐỐI mỗi lần đổi tên nick lại copy/viết mới script `do_rename_m<ID>.py` và file test riêng lẻ.
+- **Hiện tượng nút Sửa hồ sơ biến mất khi Bio trống:**
+  * Trên các bản build TikTok 47+ (Samsung S7), với tài khoản chưa từng có tiểu sử (bio trống), TikTok ẩn toàn bộ nút "Sửa hồ sơ" chữ lớn và icon bút chì góc trên bên trái `(72, 148)` bị đổi thành icon "Tìm bạn bè". Dưới stats chỉ có duy nhất nút `+ Thêm tiểu sử` tại `(540, 867)`.
+  * **Điểm chạm chuẩn xác để mở Sửa hồ sơ:** Icon cây bút chì nhỏ nằm ẩn ngay bên phải dòng tên tài khoản tại `center=(870, 558)` (`bounds=[798,516][942,600]`).
+  * Tap trực diện vào `(870, 558)` sẽ mở thẳng `ProfileEditActivity` có đầy đủ các dòng: Tên, Tên người dùng, Tiểu sử $\rightarrow$ tap dòng Tên `center=(540, 753)` $\rightarrow$ xóa tên cũ và nhập tên mới qua AdbKeyboard $\rightarrow$ tap Lưu `(990, 138)` và xác nhận popup 7 ngày.
+
 
 

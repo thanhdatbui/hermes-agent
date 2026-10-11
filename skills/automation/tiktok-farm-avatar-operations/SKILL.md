@@ -11,6 +11,10 @@ description: Use when running avatar-only jobs on TikTok farm.
 ## Purpose
 Operate avatar-only changes on Taadaa TikTok farm devices without accidentally posting video, changing the wrong account, or claiming success without device evidence.
 
+### Canonical Tooling
+- Launcher up avatar nằm tại repo `D:/Taadaa/Tiktok-video`: `run_tiktok_upload_avatar.ps1` (hoặc `run_tiktok_upload_batch.ps1` chế độ avatar-only).
+- CẤM tự ý viết script upload avatar riêng lẻ.
+
 ## 1. Execute explicit operator commands immediately
 - Treat “chạy”, “upload avatar”, “làm đi”, “đổi đi”, “thay đi”, or an explicit machine/account command as an execution order.
 - When the operator has already identified the avatar as wrong and orders a replacement (e.g. “Đổi đi hỏi lại chi v”, “Đổi ava và hashtag kênh này về đúng cho t”), execute the canonical replacement flow immediately; do not ask them to choose between routine technical options, do not ask "có đổi không", and CẤM TUYỆT ĐỐI "mõm kế hoạch" — dừng lại ở bước phân tích rồi xuất proposal dài dòng mà không thực hiện. Phải trích xuất avatar đạt chuẩn qua Vision $\to$ đồng bộ kho $\to$ sửa workbook $\to$ chạy runner $\to$ gửi ảnh nghiệm thu `MEDIA:` trong cùng lượt.

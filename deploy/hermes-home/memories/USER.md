@@ -12,7 +12,7 @@ Kibe(1-80) & Admin(201-280) media độc lập (Admin m2, cấm copy chéo). TT 
 §
 Dubbing: đúng tiếng, 100% thoại, tắt tiếng gốc.
 §
-Pass láo: xóa về None trong Excel. Subagent: ag gemini pool mặc định, luna chỉ fallback. Đổi tên: canonical runner, cấm đẻ script m<N>.
+Pass láo: xóa về None trong Excel. Subagent: ag gemini pool mặc định, luna chỉ fallback. Đổi tên: canonical runner, cấm đẻ script m<N>. Script up ava nằm ở Tiktok-video (run_tiktok_upload_avatar.ps1).
 §
 Farm: cron Kibe(1-80)+Admin(201-280). IP Mikrotik chỉ login acc farm. 2 máy/IP; with_device_lock. Nuôi 4d/lần (Starvation 96h, cấm 48h).
 §
