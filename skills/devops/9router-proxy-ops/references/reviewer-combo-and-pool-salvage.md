@@ -32,8 +32,20 @@ Classify conservatively:
 - `429`, `usage_limit_reached`, quota exhausted, or cooldown: retain; the account is alive and temporarily limited.
 - `expired`, `401`, `invalidated oauth`, or `Token invalid or revoked`: do not delete first. Attempt OAuth refresh/re-auth through the account's assigned proxy. Update the connection only after receiving and validating a replacement token.
 - `banned`, `account_deactivated`, permanent upstream deactivation, or confirmed irreversible 403: remove from the OmniRoute pool only. Preserve the original GPM profile, Hotmail/farm record, and any external asset. User reminder: an OmniRoute/upstream `banned` status represents genuine deactivation/blocking, not an erroneous label from OmniRoute. Do not misclassify true deactivations as minor probe glitches.
+- `Cloudflare blocked / Sentinel / Turnstile required`: accounts whose web session tokens or Turnstile clearance have died and cannot complete upstream validation. Remove from active combos (`chatgpt-web-pool`, `gpt-web-sol`) immediately to stop dragging down pool latency.
 - transient timeout, 5xx, SSL, or proxy failure: retry/probe through the same account's assigned egress before classifying; never call it dead from one transient result.
 - `error` with insufficient evidence: quarantine/deactivate routing temporarily only if operationally necessary, record the evidence, and leave the farm asset untouched.
+
+## Dangling combo model synchronization (Critical Pitfall)
+
+Deleting rows from `provider_connections` in `~/.omniroute/storage.sqlite` does NOT automatically clean the `models` list stored inside `combos.data`!
+If dead connection IDs remain inside `combos.data`:
+- OmniRoute retains in-memory references to deleted connection IDs.
+- Live traffic and test probes will attempt routing to non-existent connections, causing artificial timeouts and delay spikes before failover.
+- **Mandatory 2-step sync**:
+  1. Update `combos.data` JSON in SQLite: filter `models = [m for m in models if m.connectionId not in deleted_ids and m.connectionId in valid_db_ids]`.
+  2. Hot-reload in-memory routes via REST: for each modified combo, execute `PUT http://127.0.0.1:20129/api/combos/{id}` with the filtered body.
+  3. Canonical script: `python D:/Taadaa/tools/clean_omniroute_pools.py` handles the full audit, DB deletion, combo JSON filtering, REST PUT hot-reload, and live smoke test.
 
 ## Safety and evidence
 
