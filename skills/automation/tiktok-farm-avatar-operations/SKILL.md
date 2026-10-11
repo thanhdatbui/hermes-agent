@@ -9,6 +9,7 @@ description: Use when running avatar-only jobs on TikTok farm.
 - Single-machine replacement guide: see [references/single_machine_avatar_replacement.md](references/single_machine_avatar_replacement.md) for on-demand extraction, dual-sync, workbook/queue trigger, and visual evidence closeout.
 - Picker checkbox trap & save surface false-positive: see [references/tiktok-avatar-picker-checkbox-trap-and-save-surface-false-positive-20261011.md](references/tiktok-avatar-picker-checkbox-trap-and-save-surface-false-positive-20261011.md) for TikTok photo-picker top-right checkbox coordinate requirement and edit-profile save surface false-positive trap.
 - Single-profile locator and worker contract: see [references/single-profile-request-account-locator-and-worker-contract.md](references/single-profile-request-account-locator-and-worker-contract.md) for SQLite/Workbook O(1) identity resolution, queue-state boundaries, and the mandatory `FILE:`/`FAIL_FAST:` dispatch contract.
+- Educational watermark / graphic false-face trap: see [references/educational_watermark_false_face_trap_and_human_verification.md](references/educational_watermark_false_face_trap_and_human_verification.md) for detecting slide/infographic video sources, avoiding false face detections on watermark emblems (e.g. GDĐT seal), and strict anti-hallucination vision verification rules.
 
 ## Purpose
 Operate avatar-only changes on Taadaa TikTok farm devices without accidentally posting video, changing the wrong account, or claiming success without device evidence.
