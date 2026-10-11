@@ -10,6 +10,6 @@ Kibe(1-80) & Admin(201-280) media độc lập (Admin m2, cấm copy chéo). TT 
 §
 Dubbing: đúng tiếng, 100% thoại, tắt tiếng gốc.
 §
-Pass láo: xóa None. Kí sinh=logout. Báo cáo: cấm tròn 100%, kẹt lock liệt kê máy; KPI chỉ nick có ca. Farm batch: cấm cuốn chiếu, BẮT BUỘC song song; UI có wifi rác bấm thẳng 'Quên'; hết ca giành lock (--preempt).
+Pass láo: xóa None. Nick trên máy là tài sản (cấm gọi kí sinh), reg dư thì map lại & dời nick non sang máy thiếu. Cấm ném text gate rác vào chat. Báo cáo: cấm tròn 100%. KPI chỉ nick có ca. Farm: chạy song song.
 §
 Review :20129: 'review' (Sol+Terra); loop APPROVED(>=85); Strike 3: Claude CLI Sonnet 5.5. Banned=ban thật, dọn cả Omni & 9Router. Soi WinRT/vision: CẤM báo cáo láo/soi mù/lẹm mép cụt góc; task GPM/app chụp đúng cửa sổ đích. C7 PASS MAIL != C12 GPT. Hotmail OTP: Graph API khi còn token, mất token vào webmail đọc bằng code login canonical có sẵn. Acc die cache O(1) skip; văng session cron tự login re-OAuth & xuất report.
