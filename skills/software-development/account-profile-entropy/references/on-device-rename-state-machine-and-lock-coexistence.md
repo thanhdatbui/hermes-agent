@@ -48,8 +48,12 @@ Construct a dedicated device runner using WinRT OCR (`tools/ocr_boxes.ps1`) and 
   - `PROFILE`:
     - **Cạm bẫy "Thêm tiểu sử"**: Trên profile chưa set bio, nút full-width "Thêm tiểu sử" (`id/t3z`) xuất hiện chứa chữ "tiểu sử". KHÔNG ĐƯỢC để heuristic `"tieu su" in t` phân loại nhầm thành `EDIT_PROFILE`. BẮT BUỘC kiểm tra bottom bar navigation (`Hồ sơ` / `H6 sd` ở y > 1800): nếu có bottom bar navigation thì LUÔN LUÔN là `PROFILE`, không phải `EDIT_PROFILE`!
     - **Bung Account Switcher**: Nếu username active != target, chạm trực tiếp vào node tiêu đề danh tính `id/t7l` (bounds `[36, 264][720, 408]`, tọa độ `(280, 320)`) để bung bảng **Chuyển đổi tài khoản**.
-    - **Vào màn Sửa hồ sơ**: Khi username active == target, chạm nút bút chì góc trên bên trái `(72, 148)` (`id/pke`) để vào thẳng `EDIT_PROFILE`.
-  - `SWITCHER`: Tap đúng dòng target username (ví dụ `lilyanzj8n1` ở `y=603`). Nếu chưa thấy trong tầm nhìn, vuốt sheet lên (`(540, 1500) -> (540, 900)`).
+    - **Vào màn Sửa hồ sơ & Cạm bẫy Top-Left (72, 148)**:
+      * CẤM TUYỆT ĐỐI fallback vào tọa độ góc trên bên trái `(72, 148)`: Trên TikTok S7 v47, `(72, 148)` là icon **"Tìm bạn bè"** (Add Friends), không phải bút chì! Tap nhầm sẽ bung màn Tìm bạn bè.
+      * WinRT OCR thường xuyên lẹm/méo chữ trên nút "Sửa hồ sơ" thành `Ill` / `Ill v`.
+      * Tọa độ chuẩn của nút **Sửa hồ sơ**: Nằm ở nửa trái màn hình ngay dưới Tiểu sử, center tại `(300, 985)` (vùng y trong [920, 1050], x < 500). Nếu regex `r"(sua|chinh sua|edit)\s*h[o0]"` không bắt được chữ, quét box ở `920 <= cy <= 1050 and x < 500` hoặc fallback cứng về `(300, 985)`.
+  - `SWITCHER`: Tap đúng dòng target username (ví dụ `lilyanzj8n1` ở `y=603`). Nếu chưa thấy trong tầm nhìn, vuốt sheet lên (`(540, 1500) -> (540, 900)`). Khi tap trúng acc, lập tức gán `seen_profile = False`.
+    * **Phân loại Switcher an toàn**: CẤM dùng keyword lỏng lẻo `"tai khoan" in t` đơn độc vì màn "Tìm bạn bè" có dòng *"Tài khoản được đề xuất"* sẽ bị nhận nhầm thành Switcher. Bắt buộc yêu cầu `"chuyen doi"` hoặc regex `chuy\w{0,4}n\s*d\w{0,4}i`.
   - `EDIT_PROFILE`: Identify label "Tên" (phải nằm trên "Tên người dùng", ví dụ y=752 so với y=878) và tap dòng "Tên" `(600, 752)`. Màn này KHÔNG BAO GIỜ có bottom navigation bar!
   - `NAME_EDIT`:
     1. Tap clear text X `(960, 576)` hoặc broadcast `ADB_KEYBOARD_CLEAR_TEXT`.
