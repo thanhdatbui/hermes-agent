@@ -18,9 +18,9 @@ Cross-reference with `D:\OneDrive\TaadaaData\kibe\taikhoan_run_safe.xlsx`:
 ## 2. Farm Safety & Device Lock Coexistence Preflight
 Before touching the device:
 1. Inspect device status: `python D:/Taadaa/tools/inspect_machine.py <machine_id>`
-2. Check device lock file: `C:\Users\Kibe\.codex\device-locks\serial_<SERIAL>.lock.json`
+2. Check device lock file: `C:\Users\Kibe\.codex\device-locks\machine_<ID>.lock.json` (Lưu ý: lock file đặt theo ID máy `machine_<ID>.lock.json`, không phải theo serial máy).
 3. Check active processes: If a multi-machine feed or follow session (`run_tiktok.py --mode multi-machine-feed-session`) is running on the device, **NEVER** kill the process, steal the lock, or force ADB inputs.
-4. **Coexistence Protocol**: Monitor the run log (`log.jsonl`) until the feed session finishes its final swipe and performs `close_all_apps_end`, releasing the lock cleanly.
+4. **Coexistence Protocol**: Nếu máy đang bị lock bởi ca nuôi (`queued_v2`), KHÔNG vội báo BLOCKED kết thúc task ("Thì canh máy rảnh chạy đi"). Ca nuôi thường chỉ kéo dài vài phút. Thường xuyên kiểm tra khi file `machine_<ID>.lock.json` biến mất hoặc `inspect_machine.py <ID>` xác nhận màn hình về Home Launcher an toàn, lập tức kích hoạt runner đổi tên ngay.
 
 ## 3. Name Generation & Vietnamese Phonetic Mapping
 Apply the phonetic adaptation rules from `account-profile-entropy`:
