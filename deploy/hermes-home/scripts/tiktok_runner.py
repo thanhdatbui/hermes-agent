@@ -65,60 +65,48 @@ ARTIFACT_BASE = KIBE_RUNTIME_ROOT / "live"
 
 
 # ---------------------------------------------------------------------------
-# Schedule: 4 Ca x 2 Phiên / ngày (0h = Ca đầu ngày, không cross-midnight)
-#   Ca 1 (Sáng): Phiên 1 lúc 06:00 (Row 1/2), Phiên 2 lúc 08:00 (Row 1/2)
-#   Ca 2 (Trưa): Phiên 1 lúc 12:00 (Row 3/4), Phiên 2 lúc 14:00 (Row 3/4)
-#   Ca 3 (Tối):  Phiên 1 lúc 18:00 (Row 5/6), Phiên 2 lúc 20:00 (Row 5/6)
-#   Ca 4 (Đêm):  Phiên 1 lúc 00:00 (Row 7/8), Phiên 2 lúc 01:30 (Row 7/8)
+# Schedule: 3 Ca x 2 Phiên / ngày (Chu kỳ 3 ngày xoay tua, bỏ ca 0h đêm)
+#   Ca 1 (Sáng): Phiên 1 lúc 06:00, Phiên 2 lúc 08:00 (+ Upload/Follow)
+#   Ca 2 (Trưa): Phiên 1 lúc 12:00, Phiên 2 lúc 14:00 (+ Upload/Follow)
+#   Ca 3 (Tối):  Phiên 1 lúc 18:00, Phiên 2 lúc 20:00 (+ Upload/Follow)
 #
-#   Day EVEN (date % 2 == 0): Row chẵn (Row 8, 2, 4, 6)
-#   Day ODD  (date % 2 == 1): Row lẻ   (Row 7, 1, 3, 5)
+#   Chu kỳ 3 ngày:
+#     - Ngày 1: Ca 1 (Row 1) - Ca 2 (Row 3) - Ca 3 (Row 5)
+#     - Ngày 2: Ca 1 (Row 2) - Ca 2 (Row 4) - Ca 3 (Row 6)
+#     - Ngày 3: Ca 1 (Row 7) - Ca 2 (Row 8) - Ca 3 (Dưỡng sinh Row 3/4 pure feed)
 # ---------------------------------------------------------------------------
 
-_SCHEDULE: dict[tuple[int, int], dict[int, int]] = {
-    # (hour, minute) -> {day_parity (0=even, 1=odd) -> row}
-    (0, 0):   {0: 8, 1: 7},   # Ca 4 Phiên 1
-    (1, 30):  {0: 8, 1: 7},   # Ca 4 Phiên 2
-    (6, 0):   {0: 2, 1: 1},   # Ca 1 Phiên 1
-    (8, 0):   {0: 2, 1: 1},   # Ca 1 Phiên 2
-    (12, 0):  {0: 4, 1: 3},   # Ca 2 Phiên 1
-    (14, 0):  {0: 4, 1: 3},   # Ca 2 Phiên 2
-    (18, 0):  {0: 6, 1: 5},   # Ca 3 Phiên 1
-    (20, 0):  {0: 6, 1: 5},   # Ca 3 Phiên 2
+BASE_ORDINAL = 739900  # date(2026, 10, 11).toordinal() -> Ngày 1 bắt đầu từ 11/10/2026
+
+_SCHEDULE: dict[tuple[int, int], dict[int, int | None]] = {
+    # slot_key -> {cycle_day (0, 1, 2, 3) -> row} (None = ca dưỡng sinh acc yếu/ăn nhả)
+    (6, 0):   {0: 1, 1: 2, 2: 7, 3: None},      # Ca 1 Phiên 1 (Sáng)
+    (8, 0):   {0: 1, 1: 2, 2: 7, 3: None},      # Ca 1 Phiên 2 (Sáng + Hook)
+    (12, 0):  {0: 3, 1: 4, 2: 8, 3: None},      # Ca 2 Phiên 1 (Trưa)
+    (14, 0):  {0: 3, 1: 4, 2: 8, 3: None},      # Ca 2 Phiên 2 (Trưa + Hook)
+    (18, 0):  {0: 5, 1: 6, 2: None, 3: None},   # Ca 3 Phiên 1 (Tối)
+    (20, 0):  {0: 5, 1: 6, 2: None, 3: None},   # Ca 3 Phiên 2 (Tối)
 }
 
 
-def _determine_row(now: datetime) -> tuple[int, int, str] | None:
-    """Return (row, session_index, window_key) or None if dead-zone / unmapped time window.
+def _determine_row(now: datetime) -> tuple[int, int, str, bool] | None:
+    """Return (row, session_index, window_key, is_rest_day) or None if dead-zone / unmapped time window.
 
-    Session 1: 00:00, 06:00, 12:00, 18:00 (Feed only)
-    Session 2: 01:30, 08:00, 14:00, 20:00 (Feed + Upload hook)
+    Session 1: 06:00, 12:00, 18:00 (Feed only)
+    Session 2: 08:00, 14:00, 20:00 (Feed + Upload/Follow hook)
     """
     hour = now.hour
     minute = now.minute
 
-    # Dead zone: 02:30 -> 05:59
-    if (hour == 2 and minute >= 30) or (3 <= hour <= 5):
+    # Dead zone: 21:30 -> 05:59 (Đêm nghỉ hoàn toàn, bỏ ca 0h đêm)
+    if hour < 6 or (hour == 21 and minute >= 30) or hour >= 22:
         return None
 
     # Match exact or nearest window slot
     slot_key: tuple[int, int] | None = None
     window_suffix: str = ""
 
-    if hour == 0:
-        slot_key = (0, 0)
-        window_suffix = "00"
-    elif hour == 1:
-        if minute >= 30:
-            slot_key = (1, 30)
-            window_suffix = "0130"
-        else:
-            return None
-    elif hour == 2:
-        # Từ 02:00 đến 02:29 vẫn thuộc window 01:30 nếu cron trễ
-        slot_key = (1, 30)
-        window_suffix = "0130"
-    elif hour == 6:
+    if hour == 6:
         slot_key = (6, 0)
         window_suffix = "06"
     elif hour == 8:
@@ -143,17 +131,27 @@ def _determine_row(now: datetime) -> tuple[int, int, str] | None:
     if slots is None:
         return None
 
-    session_index = 2 if slot_key in ((1, 30), (8, 0), (14, 0), (20, 0)) else 1
-    # Chu kỳ xoay tua 6 ngày cân bằng farm (4 acc/ngày + ngày dưỡng sinh rửa trust):
-    # Day 0, 4: Row lẻ (7, 1, 3, 5) - Cày Follow + Up
-    # Day 1, 3: Row chẵn (8, 2, 4, 6) - Cày Follow + Up
-    # Day 2: Row lẻ (7, 1, 3, 5) - DƯỠNG SINH RỬA TRUST (CHỈ LƯỚT FEED, 0 FOLLOW, KHÔNG UP)
-    # Day 5: Row chẵn (8, 2, 4, 6) - DƯỠNG SINH RỬA TRUST (CHỈ LƯỚT FEED, 0 FOLLOW, KHÔNG UP)
-    # Phân định lịch Chẵn / Lẻ theo ngày dương lịch (1 = row lẻ, 0 = row chẵn)
-    # Từng nick sẽ tự xác định ngày dưỡng sinh độc lập (1/3 organic rest) tại worker
-    parity = 0 if (now.day % 2 == 0) else 1
-    row = slots[parity]
+    session_index = 2 if slot_key in ((8, 0), (14, 0), (20, 0)) else 1
+
+    cycle_day = (now.date().toordinal() - BASE_ORDINAL) % 4
+    cycle_idx = (now.date().toordinal() - BASE_ORDINAL) // 4
+    if cycle_day == 2:
+        healing_row = 3 if (cycle_idx % 2 == 0) else 4
+    elif slot_key in ((6, 0), (8, 0)):
+        healing_row = 3
+    elif slot_key in ((12, 0), (14, 0)):
+        healing_row = 4
+    else:
+        healing_row = 5 if (cycle_idx % 2 == 0) else 6
+
+    target_row = slots[cycle_day]
     is_rest_day = False
+    if target_row is None:
+        row = healing_row
+        is_rest_day = True
+    else:
+        row = target_row
+
     window_key = f"{now.date().isoformat()}T{window_suffix}"
     return row, session_index, window_key, is_rest_day
 
@@ -301,7 +299,13 @@ def _preflight_ensure_accounts(row: int, window_key: str, cluster: dict[str, Any
         return
 
     try:
-        marker.write_text(datetime.now().isoformat(), encoding="utf-8")
+        marker_payload = {
+            "timestamp": datetime.now().isoformat(),
+            "cluster": cluster_name,
+            "row": row,
+            "status": "running",
+        }
+        marker.write_text(json.dumps(marker_payload), encoding="utf-8")
         sys.stdout.write(f"tiktok_runner [{cluster_name}]: preflight checking accounts for Row {row} (window {window_key})...\n")
         sys.stdout.flush()
 
@@ -311,14 +315,23 @@ def _preflight_ensure_accounts(row: int, window_key: str, cluster: dict[str, Any
         if cluster.get("adb_server_socket"):
             child_env["ADB_SERVER_SOCKET"] = cluster["adb_server_socket"]
 
-        subprocess.run(
+        res = subprocess.run(
             [target_python(), str(ensure_script), str(row)],
             check=False,
             timeout=5400,
             env=child_env,
         )
+        if res and res.returncode == 0:
+            marker_payload["status"] = "success"
+            marker_payload["completed_at"] = datetime.now().isoformat()
+            marker.write_text(json.dumps(marker_payload), encoding="utf-8")
+        else:
+            rc = getattr(res, "returncode", -1)
+            sys.stderr.write(f"tiktok_runner [{cluster_name}]: preflight ensure_row_accounts failed (code {rc}), releasing marker\n")
+            marker.unlink(missing_ok=True)
     except Exception as exc:
         sys.stderr.write(f"tiktok_runner [{cluster_name}]: preflight ensure_row_accounts error: {exc}\n")
+        marker.unlink(missing_ok=True)
 
 
 def _count_valid_accounts_for_row(row: int, workbook_path: str = ACCOUNT_WORKBOOK) -> int:
@@ -327,30 +340,36 @@ def _count_valid_accounts_for_row(row: int, workbook_path: str = ACCOUNT_WORKBOO
     if not safe_path.is_file():
         sys.stderr.write(f"tiktok_runner: Safe workbook khong ton tai: {safe_path}\n")
         return 0
-    try:
-        import openpyxl
-        wb = openpyxl.load_workbook(safe_path, read_only=True)
-        ws = wb.active
-        machine_slots: dict[int, list[object]] = {}
-        for r in ws.iter_rows(min_row=2, values_only=True):
-            if not r or r[0] is None:
+    for attempt in range(3):
+        try:
+            import openpyxl
+            wb = openpyxl.load_workbook(safe_path, read_only=True)
+            ws = wb.active
+            machine_slots: dict[int, list[object]] = {}
+            for r in ws.iter_rows(min_row=2, values_only=True):
+                if not r or r[0] is None:
+                    continue
+                try:
+                    m_num = int(str(r[0]).strip())
+                except ValueError:
+                    continue
+                machine_slots.setdefault(m_num, []).append(r[2] if len(r) > 2 else None)
+            wb.close()
+            slot_idx = row - 1
+            valid = 0
+            for m, slots in machine_slots.items():
+                if slot_idx < len(slots):
+                    val = slots[slot_idx]
+                    if val and str(val).strip() and str(val).strip().lower() != "none":
+                        valid += 1
+            return valid
+        except Exception as exc:
+            if attempt < 2:
+                import time
+                time.sleep(1.0)
                 continue
-            try:
-                m_num = int(str(r[0]).strip())
-            except ValueError:
-                continue
-            machine_slots.setdefault(m_num, []).append(r[2] if len(r) > 2 else None)
-        slot_idx = row - 1
-        valid = 0
-        for m, slots in machine_slots.items():
-            if slot_idx < len(slots):
-                val = slots[slot_idx]
-                if val and str(val).strip() and str(val).strip().lower() != "none":
-                    valid += 1
-        return valid
-    except Exception as exc:
-        sys.stderr.write(f"tiktok_runner: error reading safe workbook: {exc}\n")
-        return 0
+            sys.stderr.write(f"tiktok_runner: error reading safe workbook after 3 attempts: {exc}\n")
+            return 0
 
 
 # ---------------------------------------------------------------------------
@@ -368,6 +387,15 @@ def _spawn_feed_session(
     adb_server_socket: str | None = None,
 ) -> int:
     """Spawn run-feed-session.ps1 for the given Row and SessionIndex."""
+    # Pre-session scrape T0: lấy baseline followingCount cho Row hiện tại
+    try:
+        from follow_runner.core.workbook import load_mapping
+        _m = load_mapping(account_workbook)
+        _uids = [r.tik_id for r in getattr(_m, "rows", []) if getattr(r, "account_row_index", None) == row and getattr(r, "tik_id", None)]
+        if _uids:
+            subprocess.run([target_python(), r"D:\Taadaa\tools\tiktok_account_tracker.py", "--usernames", *_uids, "--workers", str(min(10, len(_uids)))], capture_output=True, timeout=60, check=False)
+    except Exception:
+        pass
     repo = repo_root()
     ps1_path = repo / "scripts" / "run-feed-session.ps1"
     if not ps1_path.is_file():
@@ -386,9 +414,9 @@ def _spawn_feed_session(
         "-Python", target_python(),
         "-Row", str(row),
         "-SessionIndex", str(session_index),
-        # Cơ chế cơ hội (Opportunistic Upload): Cho phép upload ở cả Phiên 1 & Phiên 2 khi KHÔNG phải ngày dưỡng sinh.
+        # Cơ chế cơ hội (Opportunistic Upload): Cho phép upload ở cả Phiên 1 & Phiên 2.
         # Hệ thống có sổ cái shift_upload_history.json tự động chặn nếu phiên trước đã đăng thành công.
-        *( ["-AllowUploadHook"] if not is_rest_day else [] ),
+        "-AllowUploadHook",
         "-Preset", "full",
         "-AccountWorkbook", account_workbook.replace("/", "\\"),
         "-ArtifactRoot", artifact_root,
@@ -400,13 +428,17 @@ def _spawn_feed_session(
     ]
 
     child_env = dict(os.environ)
-    child_env.pop("TAADAA_REST_DAY_NO_FOLLOW", None)
+    if is_rest_day:
+        child_env["TAADAA_REST_DAY_NO_FOLLOW"] = "1"
+    else:
+        child_env.pop("TAADAA_REST_DAY_NO_FOLLOW", None)
     if host_config:
         child_env["TAADAA_HOST_CONFIG"] = host_config
     if adb_server_socket:
         child_env["ADB_SERVER_SOCKET"] = adb_server_socket
     else:
         child_env.pop("ADB_SERVER_SOCKET", None)
+    child_env.setdefault("FARM_WIFI_PROFILES_FILE", r"D:\Taadaa\machine-config\farm_wifi_profiles.json")
     kwargs: dict = {
         "cwd": str(repo),
         "stdin": subprocess.DEVNULL,
@@ -467,9 +499,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         valid_count = _count_valid_accounts_for_row(row, workbook_path=cluster_wb)
         if valid_count == 0:
             sys.stdout.write(
-                f"tiktok_runner [{cluster_name}]: Row {row} co 0 account hop le trong {cluster_wb}, skipping window {window_key}.\n"
+                f"tiktok_runner [{cluster_name}]: Row {row} co 0 account hop le trong {cluster_wb}, skipping current tick (will retry next tick).\n"
             )
-            _save_state(row, window_key, now, state_file=cluster_state)
             continue
 
         sys.stdout.write(

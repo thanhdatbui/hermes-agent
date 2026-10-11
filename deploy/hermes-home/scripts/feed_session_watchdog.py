@@ -79,6 +79,32 @@ def should_trigger_farm_alert(
     return has_alert, reasons
 
 
+def get_row_nurture_summary(live_root: str = LIVE_ROOT, threshold_h: float = 96.0) -> tuple[str, list[int]]:
+    from pathlib import Path
+    now = datetime.now(HCMC)
+    last_runs: dict[int, Any] = {r: None for r in range(1, 9)}
+    lr = Path(live_root)
+    day_dirs = [d for d in lr.glob("????-??-??") if d.is_dir() and re.match(r"^\d{4}-\d{2}-\d{2}$", d.name)]
+    for d_dir in sorted(day_dirs, key=lambda d: d.name)[-7:]:
+        for r_dir in d_dir.glob("row-*"):
+            m = re.match(r"^row-(\d+)-(\d{2})(\d{2})", r_dir.name)
+            if m:
+                r = int(m.group(1))
+                try:
+                    dt = datetime.strptime(f"{d_dir.name} {m.group(2)}:{m.group(3)}", "%Y-%m-%d %H:%M").replace(tzinfo=HCMC)
+                    if 1 <= r <= 8 and (last_runs[r] is None or dt > last_runs[r]): last_runs[r] = dt
+                except ValueError as exc:
+                    logger.warning("get_row_nurture_summary: bỏ qua thư mục không hợp lệ %s: %s", r_dir, exc)
+    starved, parts = [], []
+    for r in range(1, 9):
+        dt = last_runs[r]
+        h = round((now - dt).total_seconds() / 3600.0, 1) if dt else 999.0
+        if h > threshold_h: starved.append(r)
+        st = "🔴" if h > threshold_h else ("🟡" if h > 72.0 else "🟢")
+        parts.append(f"R{r}:{st}{int(h)}h" if h < 900 else f"R{r}:🔴--")
+    return " | ".join(parts), starved
+
+
 def normalize_machine_key(m: Any) -> str:
     """Chuẩn hóa khóa định danh máy về chuỗi số duy nhất (ví dụ: '1', 'M1', 1 -> '1')."""
     s = str(m).strip()
@@ -909,10 +935,21 @@ def reconcile_cluster_following(
     if not wb_path or not os.path.exists(wb_path):
         return []
 
+    ws = None
+    last_exc: Optional[Exception] = None
+    for attempt in range(3):
+        try:
+            import openpyxl
+            ws = openpyxl.load_workbook(wb_path, read_only=True).active
+            break
+        except Exception as exc:
+            last_exc = exc
+            logger.warning("reconcile_cluster_following: mở workbook lần %d/3 thất bại (%s): %s", attempt + 1, wb_path, exc)
+            if attempt < 2:
+                time.sleep(1)
+    if ws is None:
+        return [f"  + Đối soát TikTok Web: Không đọc được workbook ({wb_path}): {last_exc}"]
     try:
-        import openpyxl
-        wb = openpyxl.load_workbook(wb_path, read_only=True)
-        ws = wb.active
         machine_slots: dict[str, list[Any]] = {}
         for r in ws.iter_rows(min_row=2, values_only=True):
             if not r or r[0] is None:
@@ -987,6 +1024,8 @@ def reconcile_cluster_following(
         )
 
     if not m_to_user:
+        if target_machines:
+            return [f"  + Đối soát TikTok Web: Không tìm thấy username trong workbook cho {len(target_machines)} máy follow"]
         return []
 
     target_users = list(m_to_user.values())
@@ -1433,7 +1472,7 @@ def dispatch_split_reports(header: str, cluster_blocks: list[str], cluster_stats
         hdr = [l for l in lines if l.startswith("🏢") or l.startswith("• Tổng máy")]
         sec = lambda kw: next((lines[i:next((j for j in range(i+1, len(lines)) if lines[j].startswith("• ")), len(lines))] for i, l in enumerate(lines) if l.startswith(f"• {kw}")), [])
         fl_s, up_s = sec("Follow chéo"), sec("Đăng Video")
-        f_s = [l for l in lines if l not in fl_s and l not in up_s]
+        f_s = [l for l in lines if l not in fl_s and l not in up_s and not l.startswith("• Follow chéo") and not l.startswith("• Đăng Video")]
         if f_s: feed_p.append("\n".join(f_s))
         if fl_s: fl_p.append("\n".join(hdr + fl_s))
         if up_s: up_p.append("\n".join(hdr + up_s))
@@ -1770,6 +1809,8 @@ def main():
                                 lbl = "Bị nhả follow"
                             elif "đã follow sẵn" in r_lower or "already-followed" in r_lower:
                                 lbl = "Đã follow sẵn"
+                            elif "sensitive" in r_lower:
+                                lbl = "Feed chưa ổn định"
                             elif r_text:
                                 lbl = r_text.split(":", 1)[1].strip() if ":" in r_text else r_text
                             else:
@@ -1928,6 +1969,13 @@ def main():
                         header = f"🚨 [FARM ALERT] PHÁT HIỆN LỖI SCRIPT HÀNG LOẠT ({', '.join(alert_reasons)}) - {win['name']} (Row {active_row})"
                     else:
                         header = f"📊 [TIKTOK NUÔI ACC] {win['name']} hoàn tất (Row {active_row})"
+                    try:
+                        n_sum, stv = get_row_nurture_summary(threshold_h=96.0)
+                        blk = f"🌾 【SỨC KHỎE NUÔI 8 ROW (CHU KỲ 4 NGÀY)】\n• Tiến độ: {n_sum}"
+                        if stv: blk += f"\n🚨 CẢNH BÁO BỎ ĐÓI: Row {stv} > 96h chưa nuôi thành công!"
+                        cluster_blocks.append(blk)
+                    except Exception as nurture_err:
+                        logger.warning("[NURTURE_SUMMARY_FAIL] err=%s", nurture_err)
                     msg = dispatch_split_reports(header, cluster_blocks, cluster_stats, win['name'], active_row)
                     messages.append(msg)
                     new_reported.add(session_key)
