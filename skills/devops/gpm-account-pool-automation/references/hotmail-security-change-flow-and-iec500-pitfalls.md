@@ -27,6 +27,22 @@ Khi gọi CDP nạp 2FA Authenticator tại `https://account.live.com/proofs/man
   - **Tự động Add Mail Khôi Phục fviainboxes.com trước:**
     Đối với các nick chỉ có Password, KHÔNG cố ép bấm Authenticator để bị `iec=500`. Bắt buộc chọn `#Add_email` ("Gửi mã qua email") -> sinh địa chỉ mail `{username}{suffix}@fviainboxes.com` -> gọi `mail_domain_otp_helper.fetch_recovery_email_otp()` để lấy OTP qua API -> nhập mã xác minh.
     Sau khi thêm thành công mail khôi phục, Microsoft đã có anchor proof hợp lệ -> tiếp tục quy trình B1 thêm Authenticator TOTP như bình thường. Đồng thời lưu mail khôi phục vừa thêm vào Cột 5 `gmail_clean_v2.xlsx`.
+  - **Re-authentication Challenge & Form Submission Pitfall:**
+    - Khi vào các trang bảo mật nhạy cảm (`EnableTfa` / `manage/additional` / `password/change`), Microsoft thường đòi đăng nhập lại.
+    - CẢNH BÁO FORM MỚI: Microsoft cập nhật input từ `#i0116` / `#i0118` sang `#usernameEntry` / `#passwordEntry`.
+    - CẤM TUYỆT ĐỐI chỉ dùng `press("Enter")` vì form mới không submit! Bắt buộc phải click tường minh nút submit: `button[type="submit"], #idSIButton9, input[value="Tiếp theo"]` / `input[value="Đăng nhập"]`, kèm click nút KMSI `button[type="submit"], #idSIButton9, input[value="Có"]`.
+
+## 4. GPMLogin Windows Boot Autostart & Local API Recovery
+- **Tự động mở khi khởi động máy (Boot Startup):**
+  File VBS đặt tại `C:\Users\Kibe\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\start_gpmlogin.vbs`:
+  ```vbs
+  Set WshShell = CreateObject("WScript.Shell")
+  WshShell.CurrentDirectory = "C:\Users\Kibe\AppData\Local\Programs\GPMLogin"
+  WshShell.Run """C:\Users\Kibe\AppData\Local\Programs\GPMLogin\GPMLogin.exe""", 1, False
+  Set WshShell = Nothing
+  ```
+- **Self-Healing trong Code (`ensure_gpm_running`):**
+  Trước khi gọi start/list profile, kiểm tra `check_health()`. Nếu port 19995 không phản hồi (GPMLogin bị tắt), client tự động khởi chạy và chờ tối đa 15s cho API sẵn sàng thay vì dừng báo lỗi làm gián đoạn cronjob.
   - **Điều kiện sàng lọc CHANGE_INFO trong Supervisor:**
     Đã BỎ hoàn toàn điều kiện Dual OAuth (OmniRoute + 9Router). CHỈ GIỮ 2 điều kiện tiên quyết: (1) Đã reg TikTok thành công (có ID & PASS) VÀ (2) Đã reg ChatGPT (có PASS CHATGPT Cột 12 hoặc `chatgpt_registered_at`).
   - **Kỷ luật bóc tách trạng thái trong Báo Cáo 6H:**

@@ -30,7 +30,7 @@ Classify conservatively:
 - `active` / successful probe: retain.
 - `429`, `usage_limit_reached`, quota exhausted, or cooldown: retain; the account is alive and temporarily limited.
 - `expired`, `401`, `invalidated oauth`, or `Token invalid or revoked`: do not delete first. Attempt OAuth refresh/re-auth through the account's assigned proxy. Update the connection only after receiving and validating a replacement token.
-- `banned`, `account_deactivated`, permanent upstream deactivation, or confirmed irreversible 403: remove from the OmniRoute pool only. Preserve the original GPM profile, Hotmail/farm record, and any external asset.
+- `banned`, `account_deactivated`, permanent upstream deactivation, or confirmed irreversible 403: remove from the OmniRoute pool only. Preserve the original GPM profile, Hotmail/farm record, and any external asset. User reminder: an OmniRoute/upstream `banned` status represents genuine deactivation/blocking, not an erroneous label from OmniRoute. Do not misclassify true deactivations as minor probe glitches.
 - transient timeout, 5xx, SSL, or proxy failure: retry/probe through the same account's assigned egress before classifying; never call it dead from one transient result.
 - `error` with insufficient evidence: quarantine/deactivate routing temporarily only if operationally necessary, record the evidence, and leave the farm asset untouched.
 
