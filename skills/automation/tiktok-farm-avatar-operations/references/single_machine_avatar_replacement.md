@@ -87,5 +87,11 @@ Khi nhận yêu cầu đổi avatar từ ảnh chụp màn hình hoặc username
      - **PITFALL PICKER CHỌN NHẦM ẢNH CŨ HOẶC KHÔNG CHỌN ĐƯỢC ẢNH:**
        * Nếu runner báo exit=0 nhưng avatar thực tế vẫn là logo cũ, có 2 nguyên nhân cốt lõi:
          1. **Thư viện chưa dọn:** TikTok picker tap nhầm ảnh cũ còn sót trong MediaStore thay vì ảnh mới push. Bắt buộc dọn sạch MediaStore và thư mục `/sdcard/Pictures`, `/sdcard/DCIM`, `/sdcard/Download` trước khi push.
-         2. **Lỗi tap tâm tile thay vì checkbox:** Trong giao diện chọn ảnh 4 cột của TikTok, việc tap vào tâm tile `(137, 355)` ở nhiều phiên bản TikTok chỉ mở xem trước ảnh lớn (Preview) chứ KHÔNG tick chọn ảnh. Muốn chọn ảnh, bắt buộc phải tap vào vòng tròn checkbox ở góc trên-phải của tile: `(right - 35, top + 35)` (ví dụ `(234, 257)`). Khi đó số "1" màu đỏ mới xuất hiện và nút "Tiếp (1)" ở đáy `(924, 1842)` mới mở được màn Crop. Nếu không tick được checkbox, bấm "Tiếp" sẽ thoát ngược về "Sửa hồ sơ", kích hoạt bẫy False Positive Save Surface.
+         2. **Lỗi tap tâm tile thay vì checkbox:** Trong giao diện chọn ảnh 4 cột của TikTok, việc tap vào tâm tile `(137, 355)` ở nhiều phiên bản TikTok chỉ mở xem trước ảnh lớn (Preview) chứ KHÔNG tick chọn ảnh. Muốn chọn ảnh, bắt buộc phải tap vào vòng tròn checkbox ở góc trên-phải của tile: `(right - 35, top + 35)` (ví dụ `(234, 257)` trên màn 1080x1920). Khi đó số "1" màu đỏ mới xuất hiện và nút "Tiếp (1)" ở đáy `(924, 1842)` mới mở được màn Crop. Nếu không tick được checkbox, bấm "Tiếp" sẽ thoát ngược về "Sửa hồ sơ", kích hoạt bẫy False Positive Save Surface.
+       * **Kịch bản cứu hộ trực tiếp (Direct ADB Remediation Script):**
+         Khi runner batch bị kẹt bẫy False Positive Save Surface, dùng script Python bọc dưới `operator_device_lock(machine=N, serial=SERIAL, project="avatar_fix")` để thực thi luồng tuần tự:
+         - Dọn sạch MediaStore và ảnh cũ trên máy -> Push ảnh chuẩn `avatar.jpg` -> Gửi broadcast scan.
+         - Mở TikTok (`am start com.ss.android.ugc.trill/...`) -> Tap Hồ sơ `(972, 1883)` -> Tap Sửa hồ sơ `(75, 150)` -> Tap Thay đổi ảnh `(540, 420)` -> Tap Tải ảnh lên `(540, 1600)`.
+         - Tap chính xác checkbox góc trên-phải `(234, 257)` -> Tap Tiếp `(924, 1842)` -> Tap Lưu crop `(792, 1794)`.
+         - Chụp ảnh màn hình kiểm chứng kết quả và zoom-crop vòng tròn avatar để nghiệm thu.
   3. Gửi ảnh nghiệm thu kèm thẻ `MEDIA:<path_to_avatar-uploaded-confirmed.png>` trong câu trả lời cho User kèm xác nhận trực quan nội dung đã thấy tận mắt.
