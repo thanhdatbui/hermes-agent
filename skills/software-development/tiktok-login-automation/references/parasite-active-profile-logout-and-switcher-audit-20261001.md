@@ -61,3 +61,18 @@ Khi kiểm tra tài khoản trên máy (kể cả kiểm tra acc ký sinh hay ki
 - **Nguyên nhân gốc rễ**: Header `"Folder Video"` chứa chữ `"id"` trong `"video"`. Logic `any(k in h for k in ("tiktok", "tik tok", "username", "id"))` match nhầm `"Folder Video"` làm `col_id` (chứa số folder như 167) thay vì cột `"ID"`, khiến guard đọc sai TikTok ID và ném lỗi `UNRECORDED` giả.
 - **Giải pháp chuẩn**: Bắt buộc kiểm tra loại trừ:
   `(h == "id" or any(k in h for k in ("tiktok", "tik tok", "username"))) and "video" not in h and "device" not in h`.
+
+---
+
+## 6. KỶ LUẬT ĐIỀU PHỐI DỒN 8 NICK: LOGOUT GIẢI PHÓNG VỀ 7 NICK TRƯỚC KHI GỌI TIKTOK_LOGIN_V1 (2026-10-11)
+- **Cơ chế ẩn nút của TikTok**: Khi TikTok app trên thiết bị đã đủ 8 nick lưu phiên, nút `Thêm tài khoản` (`Add account` / `Thêm tài khoản khác`) trong Bottom-Sheet Switcher bị TikTok **ẨN HOÀN TOÀN**.
+- **Hiện tượng lỗi**: Nếu chưa logout nick dư/nick non mà đã vội chạy `python D:/Taadaa/Tiktok_Reg/tiktok_login_v1.py <STT> --email <target>`, script mở Switcher nhưng không tìm thấy lối vào form login, dừng ở Bước 4 với lỗi:
+  `✗ Không thấy: ('Thêm tài khoản', 'Add account', 'Thêm tài khoản khác')` $\rightarrow$ cuộn 3 lần vô ích $\rightarrow$ `STOPPED: [adb-timeout] UI_XML_TIMEOUT detail=deadline-exceeded`.
+- **Thứ tự thực thi bất di bất dịch (Lockstep)**:
+  1. Chọn nick non nhất cần điều chuyển (reg mới nhất, ít video nhất).
+  2. Bật 2FA TOTP & đặt mật khẩu TikTok mới cho nick đó ngay trên máy nguồn (chống mất phiên / mất tài sản farm).
+  3. Ghi nhận đầy đủ thông tin vào sổ sách máy nhận (chưa vội login lên máy nhận).
+  4. **BẮT BUỘC ĐĂNG XUẤT NGAY** nick non khỏi máy nguồn qua menu *Cài đặt và quyền riêng tư > Đăng xuất* để đưa số nick trên máy về 7.
+  5. Mở lại Switcher xác nhận nút `Thêm tài khoản` đã hiển thị trở lại.
+  6. Mới được phép gọi `tiktok_login_v1.py` để đăng nhập nick đích vào máy nguồn.
+

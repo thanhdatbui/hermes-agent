@@ -33,6 +33,13 @@
        `adb -s <serial> shell pm install -t -g /data/local/tmp/app-uiautomator.apk`
        `adb -s <serial> shell pm install -t -g /data/local/tmp/app-uiautomator-test.apk`
     3. Sau khi cài, `atx-agent` sẽ dump XML bình thường, không còn bị timeout hay trả XML rỗng.
+- **Bẫy Mismatch Máy Trong Preflight Khi Chạy Cross-Machine (`identity_matches=False -> WorkbookError`)**:
+  * Khi chạy Phase B trên máy nguồn (ví dụ M74) nhưng trỏ vào file Master của máy nhận (ví dụ Admin row 621, máy 266), hàm `inspect_target()` trong `core/workbook.py` đối soát cột `Máy`:
+    `_clean(ws.cell(row, machine_col).value) == _clean(target.machine)`
+  * Nếu dòng trong Excel đã ghi số máy nhận (266) trong khi runner gọi `--machine 74`, đối soát fail ngay (`266 != 74`), trả về `WorkbookPreflight(identity_matches=False)` và văng `WorkbookError`.
+  * **Quy trình chuẩn**:
+    - Cách 1: Chạy Phase B trên dòng của máy nguồn (Kibe row) trước để lấy pass + 2FA secret, sau đó mới đồng bộ bộ thông tin hoàn chỉnh sang dòng máy nhận (Admin row).
+    - Cách 2: Nếu tạo dòng mới trên file máy nhận, tạm thời để cột `Máy` là số máy nguồn (74) trong lúc chạy `run_capture_phase_b.py --machine 74`, sau khi hoàn tất 2FA mới sửa lại thành số máy nhận (266).
 - **Bẫy Stale 2FA Cell trong Workbook (`WorkbookPreflight has_2fa=True`)**:
   * Khi gán nick mới vào một dòng trên Master Excel (`taikhoan_dat_v2_updated .xlsx`), nếu ô cột 5 (`2FA`) hoặc cột 4 (`PASS`) vẫn còn lưu secret/pass của nick cũ trước đó, `inspect_target()` sẽ trả về `has_2fa=True`.
   * Hậu quả: `run_capture_phase_b.py` fail-closed ngay lập tức với `{"status": "failed", "reason": "WorkbookError"}`.
