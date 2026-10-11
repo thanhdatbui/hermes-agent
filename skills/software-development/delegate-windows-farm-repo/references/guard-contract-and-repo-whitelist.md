@@ -50,15 +50,22 @@ Khi dispatch Worker thực hiện sửa code (`TASK_KIND: EDIT`), Coordinator Gu
 
 ### 7 Thành phần bắt buộc trong Context của Task EDIT:
 1. `TASK_KIND: EDIT` (Bắt buộc).
-2. `FILE: <đường_dẫn_tuyệt_đối>` (Bắt buộc nằm trong whitelist `['D:\\Taadaa']`, không dùng bullet point `- ` dính liền).
+2. `FILE: <<<\n<đường_dẫn_tuyệt_đối>\n>>>` (Bắt buộc nằm trong whitelist `['D:\\Taadaa']`, nên bọc trong `<<< ... >>>` để regex block parser trích xuất sạch sẽ, không đính kèm bullet point `- ` dính liền).
 3. `OLD_STRING: <<< ... >>>` (Đoạn code gốc cần thay thế, bọc trong triple angle brackets `<<<` và `>>>`).
 4. `NEW_STRING: <<< ... >>>` (Đoạn code mới thay thế, bọc trong triple angle brackets `<<<` và `>>>`).
 5. `DIFF_BUDGET`: Tổng số dòng thay đổi dự tính BẮT BUỘC `<= 30 dòng`. Nếu vượt quá, guard sẽ báo `DIFF_BUDGET_EXCEEDED` và reject; phải chẻ nhỏ task thành các sub-task O(1).
 6. `FOCUSED_TEST`: Bắt buộc đúng cú pháp chuẩn:
-   - Dạng pytest: `FOCUSED_TEST: python -m pytest <file.py>::<test_node> -q`
-   - Hoặc dạng compile: `FOCUSED_TEST: python -m py_compile <file.py>` (Lưu ý: đường dẫn file tương đối so với repo cwd, không bọc nháy kép).
+   - Dạng pytest: `FOCUSED_TEST: python -m pytest <file.py>::<test_node> -q` (LƯU Ý: `<file.py>` là đường dẫn tương đối, `<test_node>` là single test function/method identifier, CẤM lồng class `Class::test` vì regex parser chỉ nhận 1 cặp `::` với 1 identifier; không bọc nháy kép).
+   - Hoặc dạng compile: `FOCUSED_TEST: python -m py_compile <file.py>` (đường dẫn file tương đối, ví dụ `python -m py_compile scripts/target.py`).
 7. `FAIL_FAST`: Bắt buộc chứa câu lệnh Fail-Fast nguyên văn:
    `FAIL_FAST: Nếu trong <= 3 iterations đầu thấy scope bất khả thi với budget 15 calls thì DỪNG NGAY (ABORT) và trả về anchor + proposed contract, cấm đốt hết budget để mò file rồi fail im lặng.`
+
+### Bẫy Bổ Sung (Tránh Reject Ngay Lập Tức):
+- **Bẫy Monolith (`MONOLITH DISPATCH BLOCKED`):** CẤM dispatch worker sửa file monolith `*_smoke.py` cho popup (`COORDINATOR GUARD - MONOLITH DISPATCH BLOCKED`). Nếu phát hiện popup mới cần dismiss trên monolith, Coordinator phải dùng quyền Emergency Surgery (L2) xử lý trực tiếp O(1) (<= 15 dòng, 1 test focused <30s) hoặc đưa vào modular registry (`benign_popup_registry.py`).
+- **Bẫy Closeout Gate & Sol Repair Fallback:**
+  - Lệnh terminal chạy `closeout_gate.py` ở foreground bắt buộc `timeout <= 60s`.
+  - Khi Reviewer trả về `< 85` (REJECTED, Strike 1 & 2), BẮT BUỘC chạy `sol_repair.py` độc quyền trước. Chỉ khi `sol_repair.py` exit != 0 / crash / validation fail mới được fallback dispatch Worker.
+  - Reviewer thường trừ điểm các lỗi: quên đóng file (`wb.close()` trong `finally`), thiếu unit test độc lập cho nhánh retry/failure mới.
 
 ### Template Chuẩn Task EDIT (Copy & Điền):
 ```python

@@ -21,7 +21,7 @@ References:
 
 ## Session-derived improvement: runtime guard edits
 
-When a session changes a guard/allowlist through an external coding agent, preserve the class-level workflow and record the session-specific path/verification details in a reference file rather than expanding the main skill with one-off filenames. The minimum evidence bundle is: exact live symbol/anchor, one-file diff, focused positive and negative gate tests, compile result, and a separate reload/cache assessment. Never treat a successful target script invocation or worker self-report as proof that the gate is active.
+When a session changes a guard/allowlist through an external coding agent, preserve the class-level workflow and record the session-specific path/verification details in a reference file rather than expanding the main skill with one-off filenames. The minimum evidence bundle is: exact live symbol/anchor, one-file diff, focused positive and negative gate tests, compile result, and a separate reload/cache assessment. Never treat a successful target script invocation or worker self-report as proof that the gate is active. See `references/fail-closed-completion-claim-detection.md` for the reusable completion-claim false-positive matrix and guard regression recipe.
 
 - **SKILL.md ≤ 100,000 chars** (`MAX_SKILL_CONTENT_CHARS`). `skill_manage` rejects ANY patch above it — an oversized skill is UNEDITABLE until trimmed. Real incident: `tiktok-upload-ui-recovery` hit ~100.6K and every edit failed.
 - Skill edits are durable: the user's rule is **finish work → independent audit → fix findings → re-audit until `APPROVED`** (same model every round; see Audit gate below).
