@@ -41,7 +41,10 @@ Apply the phonetic adaptation rules from `account-profile-entropy`:
 Construct a dedicated device runner using WinRT OCR (`tools/ocr_boxes.ps1`) and `operator_device_lock`:
 - **Locking**: Wrap execution in `with operator_device_lock(machine=MACHINE_ID, serial=SERIAL, project="do_rename_m...", timeout=300):`
 - **State Classification & Navigation Invariants**:
-  - `FEED`: Tap profile tab `(972, 1857)` / `(972, 1870)`.
+  - `FEED`:
+    - **Cạm bẫy Stale `seen_profile` & Swiping kẹt Feed**: Sau khi chọn acc trong Switcher, TikTok chuyển về màn Home/Friends Feed (`Ban bè`). CẤM dùng logic `if seen_profile and not "de xu" in t: swipe_top` vì Friends Feed không có chữ "đề xuất" $\rightarrow$ script ngộ nhận là Profile đang cuộn và vuốt vô tận dẫn đến `ABORT: ket o FEED 5 lan`.
+    - **Invariant**: Luôn đặt lại `seen_profile = False` ngay khi tap chọn tài khoản trong Switcher.
+    - **Dynamic Bottom Bar Profile Tab Tap**: Trên FEED, luôn tìm nút Hồ sơ qua OCR `find_box(boxes, r"(h[o0]\s*s[o0]|h6\s*s[d0])")` ở `y > 1700` (lưu ý OCR WinRT thường đọc nhầm thành `H6 sd`). Nếu thấy thì tap vào tâm box, nếu không thì fallback về `XY_PROFILE_TAB = (972, 1857)`. Tuyệt đối không dùng lệnh swipe kéo đỉnh thay cho tap tab Hồ sơ.
   - `PROFILE`:
     - **Cạm bẫy "Thêm tiểu sử"**: Trên profile chưa set bio, nút full-width "Thêm tiểu sử" (`id/t3z`) xuất hiện chứa chữ "tiểu sử". KHÔNG ĐƯỢC để heuristic `"tieu su" in t` phân loại nhầm thành `EDIT_PROFILE`. BẮT BUỘC kiểm tra bottom bar navigation (`Hồ sơ` / `H6 sd` ở y > 1800): nếu có bottom bar navigation thì LUÔN LUÔN là `PROFILE`, không phải `EDIT_PROFILE`!
     - **Bung Account Switcher**: Nếu username active != target, chạm trực tiếp vào node tiêu đề danh tính `id/t7l` (bounds `[36, 264][720, 408]`, tọa độ `(280, 320)`) để bung bảng **Chuyển đổi tài khoản**.

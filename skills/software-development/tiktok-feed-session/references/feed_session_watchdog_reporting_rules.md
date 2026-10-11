@@ -47,3 +47,15 @@ Khi máy A trong cặp chia sẻ IP bị TikTok nhả (`FOLLOW_FAILED`), IP Circ
   - Trong `classify_machine_follow_result()`, nếu `status == "CIRCUIT_BREAKER_SKIPPED"` hoặc lý do chứa `circuit_breaker` -> phân loại vào nhóm `breaker_skipped`.
   - Trong dòng `Bỏ qua`, bóc tách riêng: `Khóa IP do máy cùng IP nhả (X: M...)` thay vì gộp mù vào lỗi script hay dưỡng sinh thông thường. Không báo lỗi ảo khi nick được bảo vệ an toàn bởi Circuit Breaker.
 
+---
+
+## 5. Chuẩn Hóa Nhãn Bỏ Qua Follow An Toàn (Safe Skip Labels — 2026-10-11)
+Khi phiên Feed gặp sự cố hoặc chưa đạt điều kiện tối thiểu để follow chéo, hệ thống kích hoạt Fail-Closed Sensitive Guard và ghi nhận kết quả follow `skipped` với reason `sensitive-skip-...`:
+* **Tuyệt đối không để lộ raw token lên Telegram:**
+  - Trong `feed_session_watchdog.py`, các reason chứa `sensitive` (`sensitive-skip-failed`, `sensitive-skip-manual_needed`) BẮT BUỘC được ánh xạ sang nhãn người dùng thân thiện: **`Feed chưa ổn định (N máy)`**.
+* **Bản chất nghiệp vụ:**
+  - `sensitive-skip-failed`: Phiên Feed kết thúc `failed` (mở app thất bại, mất focus app sau launch).
+  - `sensitive-skip-manual_needed`: Phiên Feed dính `manual-needed` (mất focus khi vào Profile, kẹt quảng cáo/splash không vuốt thoát được, hoặc username Profile không khớp).
+  - Cả hai diện trên đều được hủy follow chủ động để bảo vệ nick khỏi bị TikTok gắn cờ bot hoặc nhả follow.
+
+

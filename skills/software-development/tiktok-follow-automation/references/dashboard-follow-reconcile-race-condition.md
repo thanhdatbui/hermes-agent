@@ -33,6 +33,42 @@ Khi tài khoản **nghỉ follow hoặc chưa đủ video** (`organic-rest-day-p
      `SELECT username, internal_follows FROM daily_account_actions WHERE target_date = ?`
      Do chưa có dữ liệu trong ngày, Dashboard fallback về `0` (`🔗 Nội bộ: +0`).
 
+### Nguyên nhân 3: Duplicate Session Telemetry / Test Session Keys trong Database (Nhân bản số liệu từng nick)
+1. **Cơ chế khóa chính và hàm tổng hợp ngày:**
+   - Bảng chi tiết `session_account_actions` có khóa chính là `PRIMARY KEY (session_key, cluster, username)`.
+   - Script `feed_session_watchdog.py` chốt sổ và tổng hợp ra bảng ngày `daily_account_actions` bằng câu lệnh SQL:
+     ```sql
+     INSERT INTO daily_account_actions (target_date, username, may, internal_follows, updated_at)
+     SELECT target_date, username, MAX(may), SUM(internal_follows), MAX(updated_at)
+     FROM session_account_actions
+     WHERE target_date = ?
+     GROUP BY target_date, username
+     ON CONFLICT(target_date, username) DO UPDATE SET
+         internal_follows = excluded.internal_follows,
+         may = excluded.may,
+         updated_at = excluded.updated_at
+     ```
+2. **Hiện tượng nhân bản số liệu (Multiplying Bug):**
+   - Khi có kỹ sư hoặc worker chạy thử nghiệm test runner, debug probe, hoặc script nháp với các `session_key` không đúng quy chuẩn ca (ví dụ `test_check`, `2026-10-11_ca1_p1` thay vì chuẩn `YYYY-MM-DD_caX_phienY`), các bản ghi này sẽ được chèn độc lập (không bị conflict do khác `session_key`).
+   - Đến khi Watchdog chạy tổng hợp `SUM(internal_follows)` theo `target_date`, các lượt follow trong phiên test và phiên thật bị cộng dồn lại với nhau:
+     - `@tienpham7676`: 14 (thật) + 14 (nháp p1) + 14 (test) = **42**! (Thực tế bot chạy chỉ 14).
+     - `@trn.m.m620`: 2 (p1) + 2 (p2) + 2 (nháp) + 2 (test) = **8**! (Thực tế bot chạy chỉ 4).
+   - Trong khi đó, thẻ tổng KPI trên Header đọc từ `session_action_stats` (chỉ ghi nhận 2 phiên thật là 16 + 2 = 18), dẫn đến nghịch lý: Toàn farm bot chạy 18 lượt nhưng 1 nick riêng lẻ hiển thị đã follow 42 lượt!
+3. **Cách khắc phục:**
+   - Xóa các bản ghi rác có `session_key` không hợp lệ (`test_check`, `..._p1`) trong `session_account_actions`:
+     ```sql
+     DELETE FROM session_account_actions WHERE session_key IN ('test_check', '2026-10-11_ca1_p1');
+     ```
+   - Chạy lại lệnh tổng hợp `daily_account_actions` từ `session_account_actions` cho ngày hiện tại để số liệu trên Dashboard tự động hồi phục về đúng giá trị thực tế.
+
+### Nguyên nhân 4: Chênh Lệch Giữa Click Bot và Tăng Thật Web (Bot +18 vs Web +16)
+1. **Bản chất đo lường:**
+   - **Bot follow (Tiến độ hôm nay):** Đếm số lần bot tap nút Follow thành công trên UI app (`followed_count`).
+   - **Web tăng thật (Tổng Đã Follow):** Lấy hiệu số `delta_following` của trường `following` cào trực tiếp từ profile TikTok công khai giữa snapshot hôm nay và snapshot hôm qua.
+2. **Lý do có khoảng lệch 1-3 lượt:**
+   - **Nhả follow (Silent un-follow / Shadow drop):** TikTok có cơ chế rate limit hoặc anti-spam ngầm: khi tài khoản bấm follow quá nhanh hoặc IP bị soi, nút Follow trên UI máy hiển thị thành công nhưng sau 30s - vài phút server TikTok tự động hủy kết nối follow mà không thông báo lỗi.
+   - **Độ trễ CDN Cache của TikTok:** Counter `following` trên trang công khai của TikTok đôi khi có độ trễ cập nhật vài phút đến 1 tiếng so với hành động thực tế trên app.
+
 ## Quy trình chẩn đoán (CẤM đoán mò "follow tự nhiên")
 1. **CẤM TUYỆT ĐỐI phán đoán ẩu "đây là follow tự nhiên / kênh ngoài"** khi user đã cấu hình tắt follow tự nhiên trong feed runner.
 2. **Kiểm tra thời điểm:**

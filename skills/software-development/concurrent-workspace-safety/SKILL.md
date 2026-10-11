@@ -452,6 +452,7 @@ See `references/closeout-ownership-and-claude-review.md` for the collision timel
 
 ## References
 
+- `references/parallel-feed-alert-fix-contract.md` — split watchdog taxonomy and popup-handler fixes into bounded parallel branches with closed anchors, offline focused tests, and evidence requirements.
 - `references/canonical-workspace-preflight.md` — prove the coordinator-supplied absolute path is the intended Git checkout before source reads, tests, or writes; fail closed on missing/non-Git paths or cwd/repository drift.
 - `references/two-tier-gate-architecture-and-anti-paralysis.md` — Two-Tier Gate Separation (PA3): Tier 1 hardware/asset hard fail-closed vs Tier 2 advisory audit logging; telegram chunking invariant; git push subshell protocol handling.
 - `references/session-worktree-p3-contract.md` — Claude P3 isolated-worktree manager contract: pinned base worktree creation (`.worktrees/<session_id>`), per-worktree scoped registry with shared untracked `.leases`, 6-boundary containment matrix (`TARGET_IS_GIT_METADATA`, main checkout, sibling worktrees, symlink escape), raw/empty `base_blob_sha`, safe cleanup without `--force` refusing live leases, atomic CAS `update-ref` integration (`TARGET_MOVED`, `TARGET_BRANCH_CHECKED_OUT_ELSEWHERE`), and conflict-aborting coordinator integration (`rebase`/`fast-forward`).
