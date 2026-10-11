@@ -8,8 +8,9 @@ version: 1.2.0
 
 ## 1. Khi nào sử dụng
 
-Use for GPM v3 (19995), Gmail/Hotmail lifecycle, proxy-safe accounts, CRX/CDP, cache/core, OAuth, ChatGPT/Codex, watchdogs, pagination, geo-safety. Topic detail in `references/`; cron summary in `references/cron-watchdog-report-triage.md`.
-- Hotmail State & iec=500: `references/hotmail-lifecycle-state-reconciliation.md`, `references/hotmail-security-change-flow-and-iec500-pitfalls.md`.
+Use for GPM v3 (19995), Gmail/Hotmail lifecycle, proxy-safe accounts, CRX/CDP, cache/core, OAuth, ChatGPT/Codex, watchdogs, pagination, geo-safety.
+- Audit & OTP: `references/chatgpt-audit-graph-recursion-and-webmail-timeout.md`.
+- Hotmail State: `references/hotmail-lifecycle-state-reconciliation.md`, `references/hotmail-security-change-flow-and-iec500-pitfalls.md`.
 - Credential Isolation: `references/credential-isolation-policy-hotmail-chatgpt-tiktok.md`.
 - Turnstile GPM: `references/omniroute-turnstile-sentinel-gpm-recovery.md`.
 - Hotmail Pass Mapping: `references/hotmail-password-mapping-and-cookie-consent-pitfalls.md`.
