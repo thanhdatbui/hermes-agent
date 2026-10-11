@@ -77,3 +77,40 @@ Hệ thống báo cáo nuôi nick TikTok phân chia độc quyền theo 3 nhóm 
 - Cụm Admin (`Admin-PC`, máy 201-280): được Kibe điều phối từ xa qua **Remote ADB Server Socket (`tcp:192.168.110.119:5037`)**.
 - Các thao tác bảo trì hệ thống/sync file giữa Kibe và Admin sử dụng SSH (`ssh admin-farm`) và thư mục chia sẻ OneDrive `D:\OneDrive\TaadaaData\admin\`.
 - Khi runner báo skip Admin (0 account hợp lệ), nguyên nhân thường KHÔNG PHẢI do đứt SSH hay hỏng socket ADB, mà do OneDrive sync conflict làm mất file `taikhoan_run_safe.xlsx` trên đĩa. Luôn kiểm tra file workbook trước khi nghi ngờ hạ tầng mạng.
+
+---
+
+## 5. Pytest Duplicate Module Collision Invariant (`--import-mode=importlib`)
+
+### Hiện tượng lỗi:
+- Khi chạy `closeout_gate.py` hoặc pytest tổng hợp cho các module watchdog:
+  ```text
+  import file mismatch:
+  imported module 'test_feed_session_watchdog' has this __file__ attribute:
+    D:\Taadaa\tiktok-luot nuoi acc\tests\test_feed_session_watchdog.py
+  which is not the same as the test file we want to collect:
+    D:\Taadaa\tiktok-luot nuoi acc\python_runner\tests\test_feed_session_watchdog.py
+  HINT: remove __pycache__ / .pyc files and/or use a unique basename for your test file modules
+  ```
+- Nguyên nhân: Repo có 2 thư mục test (`tests/` và `python_runner/tests/`) cùng chứa file test có tên trùng nhau (`test_feed_session_watchdog.py`). Mặc định cơ chế import của pytest là `prepend` làm đè namespace module.
+
+### Quy tắc xử lý chuẩn:
+- Trong `pytest.ini` tại root repo, bắt buộc cấu hình:
+  ```ini
+  [pytest]
+  asyncio_default_fixture_loop_scope = function
+  addopts = --import-mode=importlib
+  ```
+- Chế độ `importlib` cô lập module theo từng path file độc lập, loại bỏ triệt để lỗi import file mismatch mà không cần đổi tên test file hay xóa `__pycache__` tạm bợ.
+- `closeout_gate.py` ở Step 3 chạy quét đồng thời cả 2 file test; nếu thiếu option này sẽ fail gate ngay lập tức vì collection error.
+
+---
+
+## 6. Watchdog Cron Deployment & Drift Verification Checklist
+
+1. **Vị trí script Cronjob:** Cron job `1d62cb3562e0` (`tiktok-feed-session-watchdog`) thực thi script từ `%LOCALAPPDATA%/hermes/scripts/feed_session_watchdog.py`.
+2. **Kiểm tra đồng bộ sau khi vá repo:**
+   - Sau khi commit/patch trên `D:/Taadaa/tiktok-luot nuoi acc/scripts/feed_session_watchdog.py`, BẮT BUỘC copy đè sang `%LOCALAPPDATA%/hermes/scripts/feed_session_watchdog.py`.
+   - Kiểm tra SHA-256 / byte hash để xác nhận hai file trùng khớp hoàn toàn (`Identical: True`).
+   - Chạy `python -m py_compile "$LOCALAPPDATA/hermes/scripts/feed_session_watchdog.py"` đảm bảo không có lỗi cú pháp.
+3. **Tuyệt đối không bỏ sót bước copy:** Nếu chỉ sửa trong repo mà quên copy sang `%LOCALAPPDATA%`, cronjob vẫn chạy code cũ và tiếp tục gửi report sai format hoặc nuốt đối soát.
