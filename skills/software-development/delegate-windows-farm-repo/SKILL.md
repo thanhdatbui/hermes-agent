@@ -5,6 +5,8 @@ description: Pitfalls and correct pattern when delegating build/commit tasks to 
 
 # Delegating to subagents on the Windows farm repo
 
+See `references/guard-contract-and-repo-whitelist.md` for Scope Lock formatting, repo whitelist invariants (`OUT OF REPO WHITELIST`), file count limits, and Coordinator T1 budget rules.
+
 Use when dispatching `delegate_task` workers that must write/commit to
 `D:\Taadaa\tiktok-luot nuoi acc` (or sibling worktrees). Two recurring
 failure modes have burned real retries.

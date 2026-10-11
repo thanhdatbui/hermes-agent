@@ -9,11 +9,12 @@ author: Hermes Agent
 
 ## References & Invariants
 - Split dispatch & OneDrive conflict rules: see [references/telegram-split-dispatch-and-onedrive-conflict-invariants.md](references/telegram-split-dispatch-and-onedrive-conflict-invariants.md).
+- Watchdog catch-all failure taxonomy & triage: see [references/feed-watchdog-catchall-taxonomy-and-triage.md](references/feed-watchdog-catchall-taxonomy-and-triage.md).
 
 ## Watchdog Upload Status Taxonomy & Triage
 
 ### Evidence-first cluster triage
-For mixed watchdog failures, do not treat the aggregate fail count as a single root cause. First separate each cluster into `proxy/config`, `app/script`, `ADB/device`, and `empty-slot/inventory`. Run `python D:/Taadaa/tools/inspect_machine.py <N>` on representative machines before proposing fixes. Devices reported as `device not found`, `offline`, or `UNKNOWN` are ADB/connectivity leads; do not label them as proxy failure without inspection. Online devices at Launcher after failure indicate app/script or teardown/flow issues, not proxy defects.
+For mixed watchdog failures, separate each cluster into `proxy/config`, `app/script`, `ADB/device`, and `empty-slot/inventory`. Run `python D:/Taadaa/tools/inspect_machine.py <N>` on representative machines before diagnosing. See `references/feed-watchdog-catchall-taxonomy-and-triage.md` for deconstruction of the `Lỗi App TikTok/Script` catch-all.
 
 Report both the percentage and the evidence-backed interpretation. If one cluster (for example Admin) has a materially higher proxy-failure share than another cluster (for example Kibe), prioritize proxy/egress triage there before editing feed logic. Record representative probe outputs and distinguish confirmed causes from hypotheses; if no code change was performed, say so explicitly and avoid claiming remediation.
 
