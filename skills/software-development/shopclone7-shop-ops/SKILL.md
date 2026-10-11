@@ -18,6 +18,10 @@ SHOPCLONE7 = CMSNT PHP shop (brand "Doravo"). The live site is served from a **r
 - **Execution boundary:** from the Windows dev machine you usually cannot execute on the VPS — no SSH key in this environment and the VPS MySQL is firewalled (remote 3306 refused/timeout). DB mutations and code deploys run **on the VPS**. Either get SSH access or hand the user exact SQL / @BotFather steps.
 - **Bot rename = user action:** rename the Telegram bot via @BotFather `/setname` (pick bot → type `doravo bot`). No code/DB needed. (Or call Telegram `setMyName` with the token from `settings.telegram_token`.)
 - No `php` CLI on the dev machine → can't `php -l` locally; edits are string swaps (low risk).
+- **Order history retention banner pitfall:** In client views (`views/client/product-orders.php`), the green notice banner claims *"Lịch sử đơn hàng trên hệ thống chỉ được lưu trong 3 ngày kể từ thời điểm mua. Sau thời gian này, đơn hàng dữ liệu có thể bị xóa và không thể khôi phục."* This is a static buyer advisory, NOT an active purge cron. Historical orders from months prior remain stored in MariaDB and can still be downloaded via `?page=N` or `ajaxs/client/view.php` (`action=download_order&trans_id=...`). Never abort account recovery or auditing tasks due to this notice.
+- **Product account data schemas:** Third-party sellers on ShopClone7 supply different data formats:
+  - 4 fields (`mail|pass|token|client_id`): Clean Zin accounts without recovery mail attached.
+  - 5 fields (`mail|pass|token|client_id|recovery`): Accounts pre-attached to temporary mail domains (e.g., `@fviainboxes.com`).
 
 ## Common edit map
 - **New API product auto-visible (not hidden):** `cron/suppliers/xscr.php`, `shopclone7.php`, `shopmail.php`. Line appears TWICE per file:

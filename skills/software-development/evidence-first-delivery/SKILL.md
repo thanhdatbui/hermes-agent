@@ -228,6 +228,7 @@ Use `references/avatar-only-scope-and-false-policy-refusal.md` for the incident-
 
 ## References
 
+- `references/conversational-followup-and-gate-spam-exemption-20261012.md` — **[MỚI 12/10/2026]** Sự cố spam `[EVIDENCE FIRST GATE — FAIL-CLOSED VIOLATION]` trên hội thoại follow-up/recap ("M làm xong hết r à"), cơ chế context-blind regex quét nhầm lời thoại thành claim, và nguyên tắc deferred login (để sẵn trên Excel chờ ca tự nạp).
 - `references/oauth-redirect-button-trap-and-blind-vision-hallucination-20261011.md` — **[MỚI 11/10/2026]** Bài học sự cố bắt nhầm nút Google OAuth trên form ChatGPT (`b.innerText.includes('Tiếp tục')`), gõ nhầm OTP vào ô email Google, ảo giác soi mắt mù (blind vision hallucination) và cơ chế khóa chặn token cơ học.
 - `references/evidence-first-gate-v4-3-adversarial-audit-lessons.md` — **[MỚI 11/10/2026]** Đúc kết các vòng thẩm định đối kháng với Claude Code CLI và bản vá Guard v4.3 (commit `fe1b5ba69`): Khóa chặt Collage Bypass, Dual-Condition 2FA Veto, Anti-HTML Spoofing, triệt tiêu False Positive trên quote/code/meta talk, và chuyển cơ chế xử lý vi phạm sang append thay vì ghi đè nuốt tin nhắn.
 - `references/claude-cli-evidence-first-gate-audit-and-text-only-report-trap-20261010.md` — **[MỚI 10/10/2026]** Bài học thẩm định kỷ luật từ Claude Code CLI (58/100): Chốt chặn cơ học `Evidence-First Gate` qua hook `transform_llm_output`, 5 lỗ hổng chí tử (regex hẹp, lỏng lẻo OCR, thiếu mtime, regex MEDIA cứng nhắc, fail-open) và quy tắc dọn sạch pass láo `AUTH_BLOCKED` về `None` trong file Excel.
