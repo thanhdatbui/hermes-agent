@@ -29,6 +29,10 @@ Apply the phonetic adaptation rules from `account-profile-entropy`:
   * Bốc stem tên nữ từ `_TEN_LIST` (*Vy, Linh, Thảo, Trang, Mai, An, Hà, Quỳnh, Hương, Nhi, Trâm, Ngân...*).
   * Ghép biệt danh đời thường từ `_NICK_SUFFIX` (*Miu, Nấm, Bơ, Kem, Bông, Nhím, Dâu, Su, Đậu, Cún...*).
   * Ví dụ: *Vy Miu, Thảo Nấm, An Kem, Linh Bơ, Hà Moon, Trang Bông*.
+- **"Tên kênh thú cưng / Niche Pet (Mèo, Cún, Động vật)"**: Khi operator yêu cầu đổi tên kênh theo chủ đề thú cưng:
+  * Soi nội dung video / thumbnail / avatar để bốc đúng tên nhân vật thú cưng chính trong video (ví dụ: thumbnail ghi "MI MI", "Mun", "Dứa").
+  * **Kỷ luật >= 2 từ bất biến**: CẤM TUYỆT ĐỐI đặt tên 1 từ cụt không dấu cách (như *Mimi*, *Mun*). BẮT BUỘC tách thành dạng Duo / Tên lặp có khoảng trắng (*Mi Mi*, *Miu Miu*, *Mun Mun*) hoặc ghép loài/danh xưng (*Mèo Mi Mi*, *Bé Miu*, *Bé Mun*, *Mimi Cat*).
+  * Tính chuẩn bộ đếm ký tự: e.g. `len("Mi Mi") = 5` -> counter `5/30` (dung sai `in (4, 5, 6)`), base64 `TWkgTWk=`.
 - **CẤM TUYỆT ĐỐI TÊN CỤT LỦN 1 TỪ**: Tuyệt đối không đặt tên 1 từ trơ trọi (như mỗi chữ *Linh*, *Thảo*, *Hải*). Khi user yêu cầu "Đặt <Tên> + cái gì đó", đây là phong cách Tên + Biệt danh đời thường (`_TEN_LIST + _NICK_SUFFIX`, ví dụ *Linh Bông*, *Linh Miu*, *Linh Bơ*, *Linh Gạo*, *Linh Nhím*).
 - Base64 encoding: `base64.b64encode(NEW_NAME.encode('utf-8')).decode('ascii')` (e.g. `Linh Bông` -> `TGluaCBCw7RuZw==`, `Vy Miu` -> `VnkgTWl1`)
 - Character count: `len("Linh Bông") = 9` -> Counter on TikTok will be `9/30` (`len("Vy Miu") = 6` -> `6/30`). Trong `NAME_EDIT`, kiểm tra `count_match` bao gồm cận biên dung sai `in (len-1, len, len+1)`.

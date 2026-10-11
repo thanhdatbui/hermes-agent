@@ -1,11 +1,11 @@
 # Dashboard Following Reconcile Race Condition & Telemetry Diagnostic
 
-## Hiện tượng
-Trên Web Dashboard (`tiktok_dashboard.py` / cổng 1905), tài khoản hiển thị:
-- `ĐÃ FOLLOW: X (+N)` (Ví dụ: 186 (+12) hoặc 12 (+1))
-- `🔗 Nội bộ: +0` (hoặc lệch thấp hơn +N)
+## Ba Hiện Tượng Lệch Pha Thường Gặp
+1. **Lệch thấp:** `ĐÃ FOLLOW: +13` nhưng `🔗 Nội bộ: +0` (hoặc thấp hơn).
+2. **Lệch cao (Nội bộ bị nhân bản gấp 2-3 lần):** `ĐÃ FOLLOW: +13` nhưng `🔗 Nội bộ: +42`; hoặc `ĐÃ FOLLOW: +4` nhưng `🔗 Nội bộ: +8`.
+3. **Lệch nhẹ ở Thẻ Tổng KPI:** `Bot +18 lượt` vs `Web Tổng tăng: +16`.
 
-## Hai Nguyên Nhân Gốc Rễ
+## Bốn Nguyên Nhân Gốc Rễ
 
 ### Nguyên nhân 1: Leak Follow từ Popup Gợi Ý Bạn Bè / Danh Bạ trong Feed Session (`benign_popup.py`)
 Khi tài khoản **nghỉ follow hoặc chưa đủ video** (`organic-rest-day-pure-feed`, `under-6-videos-follow-disabled`), runner không hề phát lệnh follow chéo nội bộ nào (`followed_count = 0`), bảng `daily_account_actions` ghi nhận `+0`. Tuy nhiên số `following` trên TikTok vẫn tăng (+1, +2):

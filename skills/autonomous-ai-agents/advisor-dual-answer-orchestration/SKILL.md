@@ -101,6 +101,7 @@ A valid acceptance sequence is:
    - an unavailable Advisor leaves the primary answer intact.
 5. Do not report `DONE` from adapter status alone. If only the adapter canary passes, report `adapter PASS; orchestration canary pending`.
 
+See `references/diurnal-cycle4-permutation-and-nurture-health-watchdog-20261011.md` for the finalized 4-day macro cycle (Day 1 strictly R1/R2 morning, Day 2 complement, Day 3 R7/R8 + evening weak, Day 4 rest day 0-follow 3 shifts feed + upload), weak-account definition (including healthy accounts under follow cooldown), immutable `cycle_plan.json`, and Row Nurture Health Starvation Watchdog (>48h alert).
 See `references/dynamic-weak-picker-and-rest-day-allocation-20261011.md` for the Dynamic Weak-Account Picker architecture (0-100 vulnerability scoring formula based on content deficit, cooldown penalties, and 7-day stagnation metrics), the 4-day farm rotation schedule (N1 healthy priority, N2 complement, N3 R7/R8 + evening weak, N4 rest day 0-follow pure feed), and immutable `cycle_plan.json` state design.
 See `references/claude-cli-strike-3-remediation-and-closeout-approved-20261010.md` for the Claude CLI Strike 3 code remediation hand-off, zero-spoof mechanical gate architecture, fail-closed terminal JSON decoding, durable telemetry logging, and Closeout Gate bundle approval (88/100 APPROVED).
 See `references/dual-answer-canary.md` for the concrete evidence matrix and failure classifications.
