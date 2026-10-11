@@ -35,15 +35,40 @@ Hệ thống giám sát vận hành Farm bắt buộc bao phủ đầy đủ 3 t
 - 🟡 **Sắp đến lượt (Pending Rotation):** Thời gian từ ca chạy cuối từ $72\text{h} - 96\text{h}$ (đang chờ ca theo đúng lịch).
 - 🔴 **BỊ BỎ ĐÓI (STARVED):** Thời gian từ ca chạy cuối $> 96\text{h}$ hoặc chưa từng chạy $\rightarrow$ **Cần can thiệp khẩn cấp**.
 
-### Định dạng hiển thị trong Báo Cáo 6H Watchdog:
+### Quy tắc Bắt Buộc: Phân Tách Báo Cáo Sức Khỏe Nuôi Theo Từng Cụm Farm (Dual-Farm Split Invariant)
+- **Pitfall chết người:** Gộp chung tiến độ 8 Row của toàn bộ hệ thống hoặc chỉ trỏ `live_root` vào `runtime/kibe/live` khiến Farm Admin (Máy 201-280) bị tàng hình. Nếu Kibe chạy xong Row 3 nhưng Admin bị kẹt USB/rớt máy bỏ lỡ Row 3, hệ thống vẫn báo xanh 🟢 giả tạo vì chỉ nhìn Kibe.
+- **Invariant bất biến:** Báo cáo sức khỏe nuôi 8 Row BẮT BUỘC phải phân tách độc lập theo từng cụm (Farm Kibe Máy 1-80 và Farm Admin Máy 201-280).
+- Mỗi cụm đọc đúng thư mục `runtime/<cluster>/live` tương ứng, có chuỗi tiến độ R1..R8 riêng và cảnh báo Starvation riêng, đặt trực tiếp dưới khối báo cáo của cụm đó.
+
+### Định dạng hiển thị trong Báo Cáo Watchdog:
 ```text
-🌾 【SỨC KHỎE NUÔI 8 ROW (96H)】
-• Tiến độ: R1:🟢3h | R2:🟢27h | R3:🟢45h | R4:🟢21h | R5:🟢39h | R6:🟢15h | R7:🟢58h | R8:🟢34h
+🏢 【FARM KIBE - MÁY 1-80】
+... (Lướt feed, tim, follow) ...
+🌾 Sức khỏe 8 Row: R1:🟢8h | R2:🟢32h | R3:🟢2h | R4:🟢26h | R5:🟢44h | R6:🟢20h | R7:🟢62h | R8:🟢38h
+
+🏢 【FARM ADMIN - MÁY 201-280】
+... (Lướt feed, tim, follow) ...
+🌾 Sức khỏe 8 Row: R1:🟢8h | R2:🟢32h | R3:🟢2h | R4:🟢28h | R5:🟢46h | R6:🟢22h | R7:🟢64h | R8:🟢40h
 ```
-* Nếu có Row bị Starved:
-  * Watchdog tự động thêm dòng: `• 🚨 CẢNH BÁO BỎ ĐÓI (>96h): Row [X]`
+* Nếu một Farm có Row bị Starved (> 96h):
+  * Watchdog tự động thêm dòng cảnh báo ngay dưới Farm đó: `• 🚨 CẢNH BÁO BỎ ĐÓI (>96h): Row [X]`
   * Header tin nhắn Telegram được nâng cấp thành:
-    `🚨 [CẢNH BÁO BỎ ĐÓI] PHÁT HIỆN ROW [X] > 96H CHƯA NUÔI THÀNH CÔNG! - <Tên Ca> (Row <Current>)`
+    `🚨 [CẢNH BÁO BỎ ĐÓI] PHÁT HIỆN ROW [X] CỤM [KIBE/ADMIN] > 96H CHƯA NUÔI THÀNH CÔNG!`
+
+---
+
+### Phân Định Ranh Giới Giám Sát: Telegram (Vĩ Mô) vs Web Dashboard Port 1905 (Vi Mô)
+- **Quy tắc phân công kiến trúc:**
+  1. **Telegram Watchdog = Giám sát VĨ MÔ cấp Fleet & Row:**
+     * Chỉ báo cáo tiến độ 8 Row theo từng Farm và tỷ lệ tổng thể.
+     * CẤM TUYỆT ĐỐI liệt kê chi tiết từng tài khoản lên Telegram (quy mô 1,280 accounts sẽ gây tràn ngưỡng 4,096 ký tự và tạo bão spam tin nhắn).
+     * Chỉ đưa cảnh báo tóm tắt số lượng ngoại lệ nếu có nick bị starved cá biệt (>96h) kèm link trỏ về Dashboard.
+  2. **Web Dashboard (`http://127.0.0.1:1905`) = Giám sát VI MÔ cấp từng Account:**
+     * Là nơi duy nhất tra cứu chi tiết toàn bộ 1,280 accounts (Kibe + Admin).
+     * Bắt buộc có Tab/Chế độ lọc `🌾 Sức Khỏe Nuôi Acc`:
+       - Cho phép **Sort 1-click "Đói nhất lên đầu"** theo `last_nurtured` / `hours_since_last_nurture`.
+       - Bộ lọc nhanh: Theo Cụm (Kibe / Admin), theo Row (1-8), hoặc chỉ hiện nick bị bỏ đói (`🔴 > 96h`).
+       - Bóc tách nguyên nhân kẹt: App crash, mất ADB, lỗi proxy, hoặc trống slot.
 
 ---
 
