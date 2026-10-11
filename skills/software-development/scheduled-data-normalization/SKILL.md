@@ -36,6 +36,9 @@ Run operational parity and exploratory drift scans separately. Uploader/channel-
 
 - Editing only the workbook while the source still contains the old category.
 - Adding a source slug without adding it to the generator's label/pool mapping.
+- Forgetting downstream consumer dictionaries (e.g. `KEYWORD_HASHTAGS` in selector code).
+- Windows CRLF newline conversions exploding git diff numstat on mapping files.
+- Asserting on cumulative `caplog.records` in pytest loops instead of `caplog.records[-1]`.
 - Counting `*_stats*`, backup, or temporary workbooks as live account workbooks.
 - Trusting a worker's success report without coordinator read-back.
 - Editing while the scheduler is concurrently writing.

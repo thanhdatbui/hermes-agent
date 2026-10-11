@@ -37,3 +37,14 @@ Uploader/channel names can identify candidates but do not prove a niche. For bul
 - final verdict: `DONE`, `PARTIAL`, or `BLOCKED`.
 
 Worker summaries are untrusted until these fields are independently re-read by the coordinator.
+
+## Runtime consumer and line-ending traps
+
+1. **Runtime consumer mapping (`KEYWORD_HASHTAGS`)**:
+   Adding a category to the source database and the mapping text file is necessary but not always sufficient. If the downstream consumer/selector module defines an internal keyword dictionary, the slug must also be added there; otherwise, runtime hashtag generation falls back to viral-only or unmatched behavior.
+
+2. **Windows CRLF line-ending mutation**:
+   Editing mapping text files on Windows can silently convert newlines from LF to CRLF (`\r\n`). In git repositories, this causes whole-file churn in `git diff --numstat` (e.g., 80+ lines replaced), violating O(1) change constraints. Always preserve or normalize byte-level LF endings when modifying mapping files.
+
+3. **Log telemetry assertions across test loops**:
+   When testing generator/selector telemetry across multiple input variations in pytest, `caplog.records` accumulates across iterations. Asserting on `next(...)` will inspect stale logs from earlier loop steps. Always take the latest record `caplog.records[-1]` or call `caplog.clear()` between iterations.

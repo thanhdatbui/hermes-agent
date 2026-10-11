@@ -24,11 +24,24 @@ Use this class-level workflow whenever a task produces visual/UI/farm/browser ev
    - the expected new state;
    - no Home/Launcher/lock screen, black/dozing capture, popup obstruction, clipping, stale content, or unreadable text.
    - **Chống Bẫy Ảo Giác Soi Mắt Mù & Bắt Buộc Cross-Check Token Đích (Anti-Hallucination Target Token Gate):**
-     * **Nguy cơ nhức nhối:** Coordinator gọi `browser_vision` hoặc OCR trước khi gửi thẻ `MEDIA:` nhưng chỉ gọi "cho có lệ" (blind compliance), sau đó tự động suy diễn/bịa ra câu mô tả đúng theo kỳ vọng của task (ví dụ: kỳ vọng thấy Account Switcher nhưng ảnh thực tế lại là màn hình Tìm kiếm/Mua sắm hàng hóa "dầu ăn simply"). Khi User nhận ảnh sẽ lập tức chất vấn nặng nề: *"Mày nói mày xem hình rồi mà mày gửi tao cái hình như vậy đó hả"*.
+     * **Nguy cơ nhức nhối:** Coordinator gọi `browser_vision` hoặc OCR trước khi gửi thẻ `MEDIA:` nhưng chỉ gọi "cho có lệ" (blind compliance), sau đó tự động suy diễn/bịa ra câu mô tả đúng theo kỳ vọng của task (ví dụ: kỳ vọng thấy Account Switcher nhưng ảnh thực tế lại là màn hình Tìm kiếm/Mua sắm hàng hóa "dầu ăn simply", hoặc kỳ vọng thấy trang lỗi `account_deactivated` nhưng thực tế script click nhầm nút Google OAuth khiến trang kẹt ở Google Sign-in và gõ OTP vào ô email). Khi User nhận ảnh sẽ lập tức chất vấn nặng nề: *"Nhảm cặc à đang kẹt trnag đăng nhập, mày có đọc hình trc khi gửi k thế"*.
      * **Quy tắc Cross-Check Token Cơ Học (Mandatory Token Cross-Check):** Trước khi xác nhận thành công và gắn thẻ `MEDIA:`, BẮT BUỘC phải đối soát trực tiếp các từ khóa đặc trưng của màn hình đích từ text OCR/Vision:
        - Với Account Switcher: BẮT BUỘC phải có các từ khóa như `"Chuyển đổi tài khoản"`, `"Thêm tài khoản"`, hoặc username đích.
        - Với Profile: BẮT BUỘC phải có `"Hồ sơ"`, `"Sửa hồ sơ"`, hoặc username đích.
-     * **Cơ Chế Phủ Quyết Tức Thì (Out-of-Context Token Veto):** NẾU kết quả OCR/Vision chứa các token lạ/lệch ngữ cảnh nghiêm trọng (ví dụ: màn hình Search với `"Tìm kiếm"`, `"Bạn có thể thích"`, tên hàng hóa; hoặc màn hình Home Feed với `"Trang chủ"`, `"Đề xuất"`... khi đang cần nghiệm thu Profile/Switcher): BẮT BUỘC KHÓA CHẶN NGAY LẬP TỨC! CẤM gắn thẻ `MEDIA:` gửi cho User, CẤM phát ngôn tuyên bố thành công. Báo cáo trung thực hiện trường bị trượt màn hình và thực hiện điều hướng lại.
+       - Với Màn hình Lỗi Xác Thực / Account Deactivated: BẮT BUỘC phải có token `"account_deactivated"`, `"Lỗi xác thực"`, `"vô hiệu hóa"`. CẤM TUYỆT ĐỐI gửi ảnh form OTP hoặc ảnh kẹt Google OAuth (`"Đăng nhập bằng Google"`) rồi bịa ra văn mẫu đã thấy trang lỗi!
+     * **Cơ Chế Phủ Quyết Tức Thì (Out-of-Context Token Veto):** NẾU kết quả OCR/Vision chứa các token lạ/lệch ngữ cảnh nghiêm trọng (ví dụ: màn hình Search với `"Tìm kiếm"`, `"Bạn có thể thích"`, tên hàng hóa; màn hình Home Feed với `"Trang chủ"`, `"Đề xuất"`; hoặc màn hình Google OAuth với `"accounts.google.com"`, `"Đăng nhập bằng Google"` khi đang cần submit form nội bộ): BẮT BUỘC KHÓA CHẶN NGAY LẬP TỨC! CẤM gắn thẻ `MEDIA:` gửi cho User, CẤM phát ngôn tuyên bố thành công. Báo cáo trung thực hiện trường bị trượt màn hình và thực hiện điều hướng lại.
+   - **Bẫy Exact Button Selector Trên Form Auth Đa Nền Tảng (ChatGPT/Google/Apple Auth Trap - 2026-10-11):**
+     * **Nguyên nhân**: Trên các trang đăng nhập hiện đại (`chatgpt.com/auth/login`), nút submit email chính mang text `"Tiếp tục"` hoặc `"Continue"`, nhưng trên form luôn có các nút OAuth mạng xã hội đứng trước như *"Tiếp tục với Google"*, *"Tiếp tục với Apple"*, *"Tiếp tục với số điện thoại"*.
+     * **Cạm bẫy chí mạng**: Viết selector lỏng lẻo `buttons.find(b => b.innerText.includes('Tiếp tục'))` sẽ match ngay nút đầu tiên là *"Tiếp tục với Google"*, kéo toàn bộ luồng tự động hóa trượt sang Google Sign-in, gõ nhầm mã OTP vào ô email Google và làm hỏng phiên kiểm thử.
+     * **BẮT BUỘC**: Luôn dùng exact match loại trừ:
+       ```javascript
+       const contBtn = buttons.find(b => {
+           const t = (b.innerText || '').trim();
+           return (t === 'Tiếp tục' || t === 'Continue' || b.type === 'submit') &&
+                  !t.includes('Google') && !t.includes('Apple') && !t.includes('thoại') && !t.includes('phone');
+       });
+       ```
+       Đồng thời trước khi gõ OTP, BẮT BUỘC assert URL đã chuyển sang `auth.openai.com/email-verification`, tuyệt đối không điền khi URL chứa `accounts.google.com`.
    - **Chống Bẫy Thẻ `MEDIA:` Bị Lọt Vào Khối Trích Dẫn Markdown (Blockquote) Khiến Telegram Không Gửi Ảnh (2026-10-10):**
      * **Căn nguyên kỹ thuật**: Hermes Gateway (`gateway/platforms/base.py`, hàm `_mask_protected_spans`) tự động quét và thay thế toàn bộ nội dung trong các dòng trích dẫn markdown (`^>.*$`) bằng khoảng trắng trước khi trích xuất media, nhằm tránh gửi nhầm các đường dẫn ví dụ.
      * **Hậu quả**: Nếu thẻ `MEDIA:<path>` bị đặt bên trong hoặc dính liền sau khối trích dẫn `>`:
@@ -215,6 +228,7 @@ Use `references/avatar-only-scope-and-false-policy-refusal.md` for the incident-
 
 ## References
 
+- `references/oauth-redirect-button-trap-and-blind-vision-hallucination-20261011.md` — **[MỚI 11/10/2026]** Bài học sự cố bắt nhầm nút Google OAuth trên form ChatGPT (`b.innerText.includes('Tiếp tục')`), gõ nhầm OTP vào ô email Google, ảo giác soi mắt mù (blind vision hallucination) và cơ chế khóa chặn token cơ học.
 - `references/evidence-first-gate-v4-3-adversarial-audit-lessons.md` — **[MỚI 11/10/2026]** Đúc kết các vòng thẩm định đối kháng với Claude Code CLI và bản vá Guard v4.3 (commit `fe1b5ba69`): Khóa chặt Collage Bypass, Dual-Condition 2FA Veto, Anti-HTML Spoofing, triệt tiêu False Positive trên quote/code/meta talk, và chuyển cơ chế xử lý vi phạm sang append thay vì ghi đè nuốt tin nhắn.
 - `references/claude-cli-evidence-first-gate-audit-and-text-only-report-trap-20261010.md` — **[MỚI 10/10/2026]** Bài học thẩm định kỷ luật từ Claude Code CLI (58/100): Chốt chặn cơ học `Evidence-First Gate` qua hook `transform_llm_output`, 5 lỗ hổng chí tử (regex hẹp, lỏng lẻo OCR, thiếu mtime, regex MEDIA cứng nhắc, fail-open) và quy tắc dọn sạch pass láo `AUTH_BLOCKED` về `None` trong file Excel.
 - `references/telegram-media-tag-formatting-and-blockquote-masking-pitfall-20261010.md` — **[MỚI 10/10/2026]** Cạm bẫy định dạng thẻ `MEDIA:` trong Hermes Gateway: Cơ chế `_mask_protected_spans` che khuất `MEDIA:` nằm trong/sau blockquote (`>`), lỗi lộ text thô trên Telegram Desktop, và quy tắc bất biến đặt `MEDIA:` trên dòng độc lập ngoài quote.
