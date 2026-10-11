@@ -73,7 +73,10 @@ Use status values such as `NO_DAT_EVIDENCE`, `CLEAN_AND_ONLINE`, `CLEAN_BUT_VERI
 - **Preflight Prerequisite Integration**: Feed runners (`run-feed-session.ps1`, `tiktok_runner.py`) MUST export `FARM_WIFI_PROFILES_FILE=D:\Taadaa\machine-config\farm_wifi_profiles.json` so runner Stage 2 auto-recovery does not fail closed due to missing credentials. Telemetry emits `WIFI_PROFILES_FILE_LOAD path=farm_wifi_profiles.json` on load.
 
 ## Production Automation Scripts
+- `D:/Taadaa/tools/scan_rogue_wifi_farm.py`: Fast non-intrusive pre-scan script across both clusters (Dual-Cluster Farm) to audit rogue Wi-Fi networks, active SSIDs, and IP assignment across all attached devices in ~10s without modifying state or blocking on write locks.
 - `D:/Taadaa/tools/batch_clean_farm_wifi.py`: Parallel locked cleanup across Dual-Cluster Farm (M1-80 & M201-280, max_workers=20), removing rogue networks (`Dat`, `Dat-1`, `BOX`, `Green Media 5G`, `admin`, `kibe`) and enforcing pure Aruba SSID binding with DHCP.
+- **ADB Binary Path Invariant**: Always prefer `C:\Users\Kibe\.GemPhoneFarm\app\adb-tool\adb.exe`. Avoid paths containing parentheses such as `C:\Program Files (x86)\...` which trigger Hermetic Shell Guard false-positives on subshell parenthesis syntax `(...)`.
+- **Subagent Delegation Contract**: When delegating Wi-Fi rescue or device cleanup to subagents, avoid `TASK_KIND: INVESTIGATE` if device mutation or script execution is expected (as `INVESTIGATE` enforces strict `[READ-ONLY WORKER]` guards). Launch `batch_clean_farm_wifi.py` directly via `terminal(background=True, notify_on_complete=True)` from Coordinator.
 
 ## Reference
 

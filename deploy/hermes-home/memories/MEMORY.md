@@ -6,7 +6,7 @@ GPM 5ph. gmail_clean_v2 lưu LIVE, xóa DIE. CẤM coi Gmail die=TT die; nick c�
 §
 Kho video: min 45; Render 1 wkr (--parallel 1); Cào 20 wkr (max-folder 1); Global Ledger; niches 80; SQLite retry 5; 12 Niche Hot.
 §
-evidence_gate_verifier.py (WinRT OCR, PID reserve, fail-closed, >30s/3att L3 BLOCKED).
+evidence_gate (OCR, fail-closed). Nuôi 8 Row: Starvation threshold 96h theo chu kỳ 4d (cấm 48h false-alarm).
 §
 [TIKTOK LOGIN]: APK lỗi xóa. Admin 55 v46.6.3; Kibe 65 v47.0.3. Dock (540,150). One-tap/Guest tap nick. Pass sai: --otp-only. Admin: 192.168.110.119:5037. 2FA: pass None -> Graph OTP. MEDIA dòng riêng, cấm dưới >.
 §

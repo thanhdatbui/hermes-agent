@@ -44,3 +44,39 @@ Hệ thống giám sát vận hành Farm bắt buộc bao phủ đầy đủ 3 t
   * Watchdog tự động thêm dòng: `• 🚨 CẢNH BÁO BỎ ĐÓI (>96h): Row [X]`
   * Header tin nhắn Telegram được nâng cấp thành:
     `🚨 [CẢNH BÁO BỎ ĐÓI] PHÁT HIỆN ROW [X] > 96H CHƯA NUÔI THÀNH CÔNG! - <Tên Ca> (Row <Current>)`
+
+---
+
+## 4. Kỷ Luật Lập Lịch Chu Kỳ 4 Ngày (4-Day Cycle Modulo 4 Invariants)
+
+### Bảng phân bổ ca & phiên (3 ca/ngày):
+- **Ngày 1 (Day 1 - Bảo vệ dải IP sau ngày nghỉ):**
+  - Ca 1 (Sáng: 06:00, 08:00): Bốc Row 1 hoặc Row 2 (hai row khỏe nhất, cấm đưa Row 7/acc yếu vào ca sáng Ngày 1 để tránh nổ cầu dao IP).
+  - Ca 2 (Trưa: 12:00, 14:00): Bốc Row 3 hoặc Row 4.
+  - Ca 3 (Tối: 18:00, 20:00): Bốc Row 5 hoặc Row 6.
+- **Ngày 2 (Day 2 - Bù trừ đối xứng):**
+  - Ca 1 (Sáng): Bốc Row còn lại trong cặp (1, 2).
+  - Ca 2 (Trưa): Bốc Row còn lại trong cặp (3, 4).
+  - Ca 3 (Tối): Bốc Row còn lại trong cặp (5, 6).
+- **Ngày 3 (Day 3 - Xử lý dải row phụ & dưỡng sinh sớm):**
+  - Ca 1 (Sáng): Row 7.
+  - Ca 2 (Trưa): Row 8.
+  - Ca 3 (Tối): Ca dưỡng sinh luân phiên cho Row 3 / Row 4 (dàn acc ăn nhả/cooldown cần rửa trust). Cờ `is_rest_day = True`, `_follow_rate = 0`.
+- **Ngày 4 (Day 4 - Dưỡng sinh xả tải toàn farm):**
+  - Cả 3 ca đều chạy dưỡng sinh (`is_rest_day = True`, `_follow_rate = 0`):
+    - Sáng: Row 3
+    - Trưa: Row 4
+    - Tối: Luân phiên Row 5 hoặc Row 6.
+
+---
+
+## 5. Tách Biệt Triệt Để Án Phạt Follow Cooldown vs Quyền Upload Video
+
+### Quy tắc bất biến:
+- **Án phạt Follow Cooldown chỉ cấm bấm nút follow:** Khi nick dính án nhả follow hoặc đang trong ca dưỡng sinh, bắt buộc `_follow_rate = 0` để chỉ lướt feed rửa trust.
+- **TUYỆT ĐỐI KHÔNG CẤM UPLOAD VIDEO:**
+  - Ca dưỡng sinh và nick dính Follow Cooldown **VẪN PHẢI UPLOAD ĐÚNG 1 VIDEO/NGÀY** để duy trì nhịp hoạt động tự nhiên của Creator.
+  - Cờ `-AllowUploadHook` bắt buộc **LUÔN ĐƯỢC BẬT ở cả Phiên 1 (Feed) và Phiên 2 (Feed + Hook)** trong mọi ca chạy.
+  - CẤM viết rào cản `if not is_rest_day` chặn upload hook.
+  - Sổ cái giao dịch `shift_upload_history.json` là cơ chế chốt hạ duy nhất đảm bảo tính idempotency: Mỗi nick chỉ upload thành công đúng 1 video trong ngày, phiên sau tự động bỏ qua nếu phiên trước đã upload thành công.
+
