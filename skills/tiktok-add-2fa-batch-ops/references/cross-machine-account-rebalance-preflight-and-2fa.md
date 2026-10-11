@@ -53,3 +53,25 @@
   * Chú ý file Master luôn có dấu cách trước phần mở rộng: `taikhoan_dat_v2_updated .xlsx`. Khi truyền qua bash terminal cần bọc nháy kép cẩn thận, tránh lỗi phân tách tham số hoặc regex guard.
 - **Kỷ Luật Output Điều Phối (Cấm Rò Rỉ Gate Text)**:
   * Tuyệt đối không để text của các hook kiểm duyệt nội bộ (`[EVIDENCE FIRST GATE — FAIL-CLOSED VIOLATION]...`) xả thẳng vào output trả lời User trên Telegram. Báo cáo bằng chứng ngắn gọn, trung thực và tập trung vào kết quả thực tế.
+
+## 4. Bẫy Lỗi `ACCOUNT_NOT_IN_SWITCHER` Do Thiếu `swipe()` Trên Adapter (Nick Nằm Dưới Fold)
+- **Hiện tượng**: Nick thực tế đang lưu trong máy nhưng `run_capture_phase_b.py` văng lỗi:
+  `{"status": "failed", "reason": "ACCOUNT_NOT_IN_SWITCHER"}`.
+- **Nguyên nhân cốt lõi**:
+  * Khi máy có đủ 8 tài khoản, bottom sheet Switcher của TikTok chỉ hiển thị 5-6 tài khoản đầu tiên ở viewport trên. Tài khoản non nhất (tạo muộn nhất, thường ở slot Tik 8) bị nằm khuất ở dưới fold (dưới đáy).
+  * Hàm chuẩn `automation_core.tiktok.account_switcher.select_exact_account` khi không thấy nick ở viewport đầu tiên sẽ bắt ngoại lệ `ACCOUNT_MISSING` và gọi `getattr(adapter, "swipe", None)` để vuốt bottom sheet lên (scroll down 3 lần).
+  * Lớp `_CanonicalAdapter` trong `python_runner/core/account_preflight.py` thiếu phương thức `swipe()`, khiến `callable(swipe_fn)` trả về `False`. Script không thể cuộn màn hình, ném thẳng `ACCOUNT_MISSING` -> bị map thành `ACCOUNT_NOT_IN_SWITCHER`.
+- **Bản vá bắt buộc**:
+  Bổ sung phương thức `swipe()` cho `_CanonicalAdapter`:
+  ```python
+  def swipe(self, x1: int, y1: int, x2: int, y2: int, duration_ms: int = 300) -> None:
+      self.adb.shell(["input", "swipe", str(x1), str(y1), str(x2), str(y2), str(duration_ms)], check=False)
+  ```
+
+## 5. Quy Tắc Đẩy Lùi Slot Khi Phục Hồi Nick Về Vị Trí Cũ (Shift-by-1 Slot Discipline)
+- Khi phục hồi một tài khoản cũ (ví dụ `samnga2403`) về lại đúng slot lịch sử của nó trên máy:
+  1. **Không đè lên Tik 1**: Giữ nguyên tài khoản thâm niên chính chủ ở Tik 1 (ví dụ `muyduyen4589`).
+  2. **Đưa nick cũ về đúng vị trí gốc**: Gán nick vào đúng vị trí ca cũ (ví dụ Tik 3).
+  3. **Lùi toàn bộ các nick sau nó 1 vị trí**: Các nick từ Tik 3 cũ lùi sang Tik 4, Tik 4 lùi sang Tik 5, ..., Tik 7 lùi sang Tik 8.
+  4. **Nick non nhất ở đuôi là nick chuyển đi**: Nick ở slot cuối cùng sau khi lùi (Tik 8) chính là nick non nhất, được chuyển giao sang máy thiếu slot.
+  5. **Đồng bộ toàn diện**: Cập nhật đồng thời toàn bộ 8 file `Tik1..Tik8.xlsx`, `taikhoan_run_safe.xlsx`, Master DAT `taikhoan_dat_v2_updated .xlsx`, và bảng `account_mapping` + `farm_account_info` trong SQLite `tiktok_tracker.db`.
