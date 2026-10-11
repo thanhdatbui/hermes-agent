@@ -93,3 +93,19 @@ Khi viết test suite cho các plugin guard:
 2. **Không mock hàm băm khi test tampering:** Phải ghi file thật lên đĩa, tính SHA-256 thật, sau đó ghi đè nội dung file thật để xác nhận hàm `_compute_file_sha256()` tự phát hiện sai lệch và kích hoạt fail-closed.
 3. **Phân biệt Session ID bằng UUID:** Sử dụng `uuid.uuid4().hex` cho từng ca test để triệt tiêu hoàn toàn race condition và ô nhiễm session state (`sess_state`) giữa các lần chạy test.
 4. **Kiểm thử hành vi hàm thực tế thay vì mock:** Với hàm kiểm tra provenance `_is_allowed_evidence_image_path()`, bắt buộc kiểm tra trực tiếp khả năng chặn đứng path traversal `..` ra ngoài thư mục cho phép.
+
+---
+
+## 8. BẪY FALSE POSITIVE TRÊN NỘI DUNG QUOTE / CODE BLOCK / META TALK & CHẤM DỨT VIỆC NUỐT TIN NHẮN (COMMIT FE1B5BA69)
+
+### Cạm bẫy:
+- **False Positive quét trúng text không phải claim**: Khi Coordinator trích dẫn lời User (`> ...`), in lệnh hoặc snippet trong code block (` ``` `), thảo luận về luật điều phối (meta talk về gate/rules), hoặc các mệnh đề giải thích trạng thái web/browser, regex nhận diện claim cũ vô tình bắt trúng các từ khóa như *"hoàn tất"*, *"thành công"*.
+- **Nuốt chửng tin nhắn (Total Message Overwrite)**: Khi phát hiện vi phạm, Guard cũ thay thế toàn bộ văn bản trả lời của Coordinator bằng thông báo đỏ vi phạm `[EVIDENCE FIRST GATE — FAIL-CLOSED VIOLATION]`. Hậu quả: Toàn bộ nội dung phân tích, đối soát thật sự của Coordinator bị xóa sạch, khiến User không hiểu chuyện gì xảy ra và bức xúc nặng nề.
+
+### Giải pháp cơ học (Guard v4.3 chuẩn hóa):
+1. **Masking & Whitelisting trước khi quét Claim**:
+   - Loại trừ hoàn toàn các đoạn văn bản nằm trong khối trích dẫn (`> ...`), code blocks (```` ````), inline code (`` ` ``).
+   - Bỏ qua các mệnh đề browser, log status, và đàm thoại meta về các quy tắc gate.
+2. **Append Violation thay vì Overwrite**:
+   - Khi có vi phạm thật sự, Guard chỉ **nối tiếp (append)** thông báo vi phạm bằng chứng thị giác xuống cuối câu trả lời.
+   - Giữ nguyên vẹn 100% nội dung giải trình gốc của Coordinator để User nắm được hiện trường mà không bị đứt gãy mạch hội thoại.
