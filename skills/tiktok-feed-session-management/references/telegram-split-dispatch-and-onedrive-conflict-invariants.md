@@ -11,9 +11,25 @@ Hệ thống báo cáo nuôi nick TikTok phân chia độc quyền theo 3 nhóm 
 ### Cấm tuyệt đối:
 - **CẤM append dòng tóm tắt Follow/Upload vào nhóm Feed**: Tuyệt đối không append `fl_s[0]` hay `up_s[0]` vào `feed_p` trong `dispatch_split_reports()`. Nhóm `Tiktok Luot Nuoi Acc` phải 100% sạch sẽ, không chứa các dòng header cụt lủn làm người dùng nhầm lẫn rằng follow bị ném sai nhóm. Lọc `f_s` bắt buộc loại bỏ triệt để: `not l.startswith("• Follow chéo") and not l.startswith("• Đăng Video")`.
 - **CẤM nuốt im lặng phần "Đối soát TikTok Web" (Silent Return Invariant)**:
-  * Trong `reconcile_cluster_following()`, khi mở file workbook `taikhoan_run_safe.xlsx` (dễ dính lock do OneDrive sync), BẮT BUỘC có retry tối thiểu 3 lần (sleep 1s).
-  * TUYỆT ĐỐI CẤM `return []` im lặng khi có máy follow phát sinh trong ca. Nếu đọc workbook thất bại sau retry hoặc không map được username, BẮT BUỘC xuất dòng cảnh báo rõ ràng `+ Đối soát TikTok Web: Không đọc được workbook (...)` thay vì âm thầm bỏ qua, tránh làm bốc hơi toàn bộ mục đối soát web đã thiết kế chuẩn.
+  * Trong `reconcile_cluster_following()`, khi mở file workbook `taikhoan_run_safe.xlsx` (dễ dính lock do OneDrive sync), BẮT BUỘC có retry tối thiểu 3 lần (sleep 1s):
+    ```python
+    ws = None
+    for _ in range(3):
+        try:
+            import openpyxl
+            ws = openpyxl.load_workbook(wb_path, read_only=True).active
+            break
+        except Exception:
+            time.sleep(1)
+    if ws is None:
+        return [f"  + Đối soát TikTok Web: Không đọc được workbook ({wb_path})"]
+    ```
+  * TUYỆT ĐỐI CẤM `return []` im lặng khi có máy follow phát sinh trong ca. Nếu đọc workbook thất bại sau retry hoặc không map được username (`if not m_to_user:` khi `target_machines` có máy follow), BẮT BUỘC xuất dòng cảnh báo rõ ràng `+ Đối soát TikTok Web: Không đọc được workbook (...)` hoặc `+ Đối soát TikTok Web: Không tìm thấy username trong workbook cho {len(target_machines)} máy follow` thay vì âm thầm bỏ qua, tránh làm bốc hơi toàn bộ mục đối soát web đã thiết kế chuẩn.
   * Nhóm Follow (`-5127276494`) BẮT BUỘC nhận trọn vẹn khối: `• Follow chéo` -> `+ Thành công` -> `+ Đối soát TikTok Web` -> `+ Nhả follow` -> `⚡ Cầu dao tự ngắt IP` -> `+ Lỗi script/xác minh` -> `+ Bỏ qua`.
+- **Đồng bộ 2 chiều Repo <-> Cron Runner (Cron Deployment Invariant)**:
+  * Cron job watchdog chạy script từ thư mục script của hệ thống.
+  * Mã nguồn phát triển nằm tại repo `tiktok-luot nuoi acc/scripts/feed_session_watchdog.py`.
+  * Sau khi sửa và test xanh trên repo, BẮT BUỘC đồng bộ sang thư mục script thực thi của cron để phiên tự động tiếp theo lập tức áp dụng logic mới nhất, không để tình trạng repo đã vá nhưng cronjob vẫn chạy bản cũ.
 - **CẤM nuốt lỗi dispatch ở kênh phụ**: Khi gửi bản tin sang `-5127276494` và `-5435853713`, không được nuốt exception trong khối `try...except` một cách im lặng. Phải có cơ chế retry tối thiểu 3 lần (timeout 15s) và ghi log telemetry `[WATCHDOG_TELEGRAM_DISPATCH_FAIL]` khi rớt kết nối.
 
 ---
