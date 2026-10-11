@@ -14,9 +14,25 @@
 - **Ghi sổ trước, login sau**:
   - Cập nhật thông tin nick vào các file Excel của máy nhận (TikN.xlsx, taikhoan_run_safe.xlsx, taikhoan_dat_v2_updated .xlsx).
   - TUYỆT ĐỐI CHƯA vội login lên máy nhận cho đến khi có ca chạy hoặc chỉ đạo.
-  - Đăng xuất nick khỏi máy nguồn để nhả slot cho nick chính chủ.
+  - **BẮT BUỘC ĐĂNG XUẤT NGAY KHỎI MÁY NGUỒN ĐỂ NHÀ SLOT (Cấm nhảy cóc sang login nick mới)**:
+    * Khi app TikTok trên máy đã đủ 8 nick, nút "Thêm tài khoản" (`Add account`) ở đáy Switcher bị **ẨN HOÀN TOÀN**.
+    * Nếu chưa logout nick non mà đã vội chạy `tiktok_login_v1.py` nạp nick mới, script sẽ văng lỗi `UI_XML_TIMEOUT` / `Không thấy: ('Thêm tài khoản', 'Add account')` do không có cửa vào form đăng nhập.
+    * Do đó, thứ tự bắt buộc: (1) Add 2FA & lưu pass -> (2) Logout dứt điểm nick non ra khỏi máy nguồn để máy về 7 slot -> (3) Mới tiến hành login nick đích.
 
 ## 3. Pitfalls Kỹ Thuật Khi Chạy Phase B Trên Nick Điều Chuyển
+- **Lỗi `non_xml_ui_dump` do thiếu APK Stub UiAutomator trên máy yếu (S7/Android 7)**:
+  * Khi `run_capture_phase_b.py` văng lỗi `{"status": "failed", "reason": "non_xml_ui_dump"}`, nguyên nhân do `atx-agent` (port 7912) không kết nối được stub JSON-RPC vì package `com.github.uiautomator` và `com.github.uiautomator.test` chưa được cài đặt hoặc bị disable ngầm trên thiết bị.
+  * Kho APK chuẩn có sẵn tại: `C:\Users\Kibe\.GemPhoneFarm\app\app-uiautomator.apk` và `app-uiautomator-test.apk`.
+  * Khắc phục nhanh:
+    1. Đẩy APK lên máy:
+       `adb -s <serial> push "C:/Users/Kibe/.GemPhoneFarm/app/app-uiautomator.apk" /data/local/tmp/`
+       `adb -s <serial> push "C:/Users/Kibe/.GemPhoneFarm/app/app-uiautomator-test.apk" /data/local/tmp/`
+    2. Cài đặt cấp quyền:
+       `adb -s <serial> shell pm uninstall com.github.uiautomator` (nếu có dấu vết cũ)
+       `adb -s <serial> shell pm uninstall com.github.uiautomator.test`
+       `adb -s <serial> shell pm install -t -g /data/local/tmp/app-uiautomator.apk`
+       `adb -s <serial> shell pm install -t -g /data/local/tmp/app-uiautomator-test.apk`
+    3. Sau khi cài, `atx-agent` sẽ dump XML bình thường, không còn bị timeout hay trả XML rỗng.
 - **Bẫy Stale 2FA Cell trong Workbook (`WorkbookPreflight has_2fa=True`)**:
   * Khi gán nick mới vào một dòng trên Master Excel (`taikhoan_dat_v2_updated .xlsx`), nếu ô cột 5 (`2FA`) hoặc cột 4 (`PASS`) vẫn còn lưu secret/pass của nick cũ trước đó, `inspect_target()` sẽ trả về `has_2fa=True`.
   * Hậu quả: `run_capture_phase_b.py` fail-closed ngay lập tức với `{"status": "failed", "reason": "WorkbookError"}`.
