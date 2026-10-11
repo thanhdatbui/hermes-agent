@@ -12,7 +12,7 @@ evidence_gate (OCR, fail-closed). Nuôi 8 Row: Starvation threshold 96h theo chu
 §
 Canary: WoL ether3 (kibe 0C:EF:15:37:4C:20, admin 22:33:4D:06:4C:26; WG 13231); CẤM PASS khi followed=0/FOLLOW_FAILED; ảnh/log trước teardown. Admin: upload SSH admin-farm.
 §
-Reviewer :20129: Combo 'review' (Sol Web Tier 0 + Terra Codex Tier 1 fallback). Strike 3: Claude CLI Sonnet 5.5 (CẤM 3.5). Banned acc OmniRoute là ban thật.
+Reviewer :20129: Combo 'review' (Sol Web Tier 0 + Terra Codex Tier 1 fallback). Strike 3: Claude CLI Sonnet 5.5. Acc báo account_deactivated là ban thật, dọn cả Omni (:20129) & 9Router (:20128).
 §
 TikTok Shadow: Path B 'Đã fl' ko commit; FOLLOW_FAILED trừ fl tự nhiên; slot `(folder-1)%8+1` cứng; reg bù độc lập. Dọn C duyệt trước.
 §

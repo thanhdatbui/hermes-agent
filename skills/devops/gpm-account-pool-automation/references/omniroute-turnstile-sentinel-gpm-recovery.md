@@ -71,6 +71,10 @@ Chạy script query bảng `provider_connections` trong `C:\Users\Kibe\.omnirout
    - **KỶ LUẬT ĐỐI SOÁT ẢNH THẬT BẰNG OCR / VISION TRƯỚC KHI BÁO CÁO (CHỐNG GỬI ẢNH MÙ):**
      * Trước khi đính kèm bất kỳ thẻ `MEDIA:<path>` nào, BẮT BUỘC gọi `browser_vision` hoặc WinRT OCR mở ảnh ra soi mắt kiểm tra từng dòng chữ.
      * TUYỆT ĐỐI CẤM tự suy diễn nội dung từ turn trước để khẳng định đã thấy trang lỗi `account_deactivated` khi ảnh thực tế vẫn đang kẹt ở màn hình Google Sign-in hoặc OTP chưa submit.
+   - **DỌN SẠCH CẢ OMNIROUTE (:20129) VÀ 9ROUTER (:20128):**
+     * Khi tài khoản dính lỗi `account_deactivated` / xóa vĩnh viễn, BẮT BUỘC phải dọn sạch ở cả hai proxy:
+       - OmniRoute (:20129): Gọi `DELETE /api/providers/{id}`, xóa trong bảng `provider_connections` và mảng `models` của các combos trong `~/.omniroute/storage.sqlite`, gọi `PUT /api/combos/{id}` sync in-memory.
+       - 9Router (:20128): Gọi `DELETE /api/providers/{id}` trên `:20128/api/providers` nếu connection tồn tại.
    - Gọi `computer_use(action='click', element=<index_card_tai_khoan>, delivery_mode='background', capture_after=true)`.
    - Chờ 3-5 giây và capture lại fresh state để phân loại phản hồi tiếp theo:
      * **Tình huống 1 - Yêu cầu mã OTP qua Email (`auth.openai.com/email-verification`):** 
