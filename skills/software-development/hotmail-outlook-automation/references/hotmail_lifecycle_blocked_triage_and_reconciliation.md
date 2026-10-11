@@ -19,8 +19,16 @@ Thực tế đối soát state file `batch_gpm_5profiles_supervisor_state.json`:
 
 ### Tác Động Khi Change Info:
 1. `gpm_change_hotmail_security.py` bốc tài khoản từ `taikhoan_dat_v2_updated .xlsx` qua hàm `find_target_accounts()`.
-2. Tuy nhiên, khi cần tra cứu Recovery Email hoặc 2FA Secret Key, script gọi `get_recovery_email()` và `get_2fa_secret()`, hai hàm này lại đọc từ `gmail_clean_v2.xlsx` (`GMAIL_CLEAN_PATH`).
-3. Nếu tài khoản nằm trong nhóm 151 nick chưa có trong `gmail_clean_v2.xlsx`, hoặc ô Cột 5 Recovery Email là `None`:
+2. **Bẫy tên sheet trong `gpm_change_hotmail_security.py`**:
+   - `gmail_clean_v2.xlsx` dùng tên sheet là `'Gmail Accounts'`, KHÔNG PHẢI `'Tài Khoản'`.
+   - Nếu code tra cứu (`get_recovery_email`, `get_2fa_secret`, `update_excel_security_info`) chỉ tìm `wb["Tài Khoản"]`, nó sẽ fallback về `wb.active` hoặc không khớp dữ liệu -> Trả về rỗng (`None`).
+   - Cần bắt buộc dùng logic đa tầng: `ws = wb["Gmail Accounts"] if "Gmail Accounts" in wb.sheetnames else (wb["Tài Khoản"] if "Tài Khoản" in wb.sheetnames else wb.active)`.
+3. **Thực tế đơn mua vs. Hiện trường Microsoft Account khi thiếu Mail Khôi Phục (2026-10-11)**:
+   - *Đơn mua từ BoxTaiKhoan (id 60 - OAuth2 393đ)*: API chỉ trả về **4 trường** (`email|pass|refresh_token|client_id`), **hoàn toàn không có mail khôi phục trong đơn hàng**. Không thể backfill từ file đơn mua.
+   - *Trên Microsoft Account*:
+     * Nhóm trắng bảo mật: Bên bán chưa từng gắn mail khôi phục nào. Vào `proofs` danh sách trống. Cần bật 2FA TOTP trước để chứng minh danh tính rồi mới đổi mật khẩu.
+     * Nhóm bị che mask (`***@fviainboxes.com`): Bên bán tự gắn script khi reg nhưng giấu 3 ký tự ngẫu nhiên trong username. Khi Microsoft challenge đòi nhập đủ email, ta không có địa chỉ đầy đủ -> Phải giữ nguyên `BLOCKED` fail-closed, cấm thử mò làm khóa nick.
+4. Nếu tài khoản nằm trong nhóm 151 nick chưa có trong `gmail_clean_v2.xlsx`, hoặc ô Cột 5 Recovery Email là `None`:
    - Khi Microsoft dựng challenge đòi xác minh danh tính qua mail khôi phục, script không có email để nhập -> Thất bại ngay lập tức.
    - Khi Microsoft phát hiện truy cập bất thường trên tài khoản không có phương thức bảo mật phụ, Microsoft chặn form đổi pass với câu *"There's a temporary problem with the service"* -> Script kích hoạt Fail-Fast dừng ngay và Supervisor đánh dấu `status: BLOCKED`.
 

@@ -107,3 +107,12 @@ Khi phát hiện tài khoản báo sai mật khẩu ngay từ bước `HOTMAIL_L
 ## 11. Kỷ Luật Proxy Mikrotik Farm vs Mobile Proxy Khi Re-login Web
 - **Dải Mobile Proxy (`5101 - 5140`)**: Do lưu lượng farm hoạt động liên tục, dải IP này dễ bị OpenAI rate-limit khi bắt đầu luồng login web mới (`auth/error?error=undefined`). Tuân thủ nghiêm ngặt **GATE 6 & Anti-Insanity**: Khi gặp rate limit phải dừng ngay, đóng profile an toàn để tránh cháy proxy; tuyệt đối không chạy vòng lặp mù cố đấm ăn xôi.
 - **Dải Mikrotik PPPoE (`10001 - 10040`)**: Residential dynamic IP sạch của gia đình, không bị OpenAI rate-limit form đăng nhập web. TUY NHIÊN, đây là IP độc quyền của dàn máy Farm: **CHỈ DÙNG để đăng nhập các tài khoản thuộc dàn máy đó**, tuyệt đối cấm dùng ké để thử nghiệm nick ngoài farm làm ảnh hưởng độ tin cậy của thiết bị thật.
+
+## 12. Cạm Bẫy Trạng Thái WAITING Trong Bộ Chọn Ứng Viên (`select_candidates`)
+- **Triệu chứng**: Sau khi tài khoản ngâm đủ 7 ngày tại `WAIT_7D`, supervisor gán `status = "WAITING"` kèm detail `"Ready for CHANGE_INFO"`. Tuy nhiên, ở các chu kỳ tick tiếp theo, hàm `select_candidates()` lại bỏ qua toàn bộ các tài khoản này khiến hàng đợi `CHANGE_INFO` bị đứng im, không profile nào được đưa vào xử lý.
+- **Nguyên nhân**: Trong điều kiện lọc của `select_candidates()`:
+  `if (stage == "DONE" or ... or status in {"FAILED", "ERROR", "BLOCKED", "QUARANTINE", "WAITING"}): continue`
+  Bộ lọc đã gom cả `status == "WAITING"` vào nhóm bị loại bỏ vĩnh viễn cùng với FAILED/ERROR/BLOCKED!
+- **Giải pháp xử lý (Unblock WAITING for Soaked WAIT_7D)**:
+  Bỏ `"WAITING"` khỏi danh sách bị chặn cứng, hoặc mở điều kiện ngoại lệ: nếu `stage == "WAIT_7D"` và tài khoản đã `soaked` (ngâm $\ge 7$ ngày) + có đủ TikTok và ChatGPT, thì cho phép chọn để kích hoạt chuyển sang `CHANGE_INFO`. Tuyệt đối không để `WAITING` trở thành ngõ cụt khóa vĩnh viễn các tài khoản đã đủ tuổi ngâm.
+
