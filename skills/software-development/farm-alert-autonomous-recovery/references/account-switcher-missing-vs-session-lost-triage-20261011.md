@@ -54,7 +54,7 @@
      ```bash
      python D:/Taadaa/tools/with_device_lock.py --machine <N> -- <adb_cmd>
      ```
-3. **Phân loại lỗi & Xử lý:**
+3. **Phân loại lỗi & Xử lý (Chống dừng lại ở khảo sát suông):**
    - Lỗi này thuộc về **UI Switcher Anchor Reliability** (tọa độ tap hoặc nhịp trễ animation mở bottom sheet trên TikTok v47.x), KHÔNG PHẢI lỗi tài khoản.
-   - Báo cáo rõ ràng hiện trạng kèm ảnh `MEDIA:` đã soi mắt cho User.
-   - Đánh giá batch: Nếu xảy ra rải rác khi chuyển ca, hệ thống sẽ tự reconcile ở các phiên tiếp theo hoặc trong đợt bảo trì hook UI Switcher.
+   - **CẤM DỪNG LẠI Ở KHẢO SÁT SUÔNG HOẶC CHỈ CẬP NHẬT DOCS:** User phát nổ khi Agent chỉ giải trình, cập nhật skill review mà "không chịu làm gì" để fix lỗi thật. Khảo sát T0 chỉ là bước đầu. Ngay khi tìm ra nguyên nhân gốc rễ (ví dụ: thiếu resource suffix `t_3`, `_PROFILE_HEADER_X_RATIO` bị lệch không phủ tới tọa độ profile name ở bên trái x=240), BẮT BUỘC phải chuyển ngay sang hành động sửa code (T1 O(1) hoặc dispatch Worker) và chạy Canary kiểm chứng.
+   - Báo cáo ngắn gọn hiện trạng kèm giải pháp code cụ thể và ảnh `MEDIA:` đã soi mắt cho User.
