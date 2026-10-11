@@ -105,6 +105,8 @@ checklist and assertion pattern. See
 `references/windows-nested-root-and-diff.md` for the nested-root/external-diff
 recipe. For offline Git candidate extraction/binding parity and oversized
 working-tree cases, use `references/offline-git-candidate-binding.md`.
+For preventing live alert/Telegram leakages in tests, see
+`references/hermetic-alert-dispatch-mocking.md`.
 
 ## Offline Git candidate binding coverage
 
@@ -235,6 +237,8 @@ transactional replacement recipe.
   `git -c diff.external= ... diff` workaround; do not replace the mandated
   `git diff --check` gate with an ad-hoc command.
 - When adding hermetic tests for fallback/default contracts (telemetry, fallback IDs, unset-env branches), verify whether shared test runner helpers seed or inherit ambient environment variables (such as `env.setdefault(...)`). Explicitly clear those variables (for example, with `monkeypatch.delenv(..., raising=False)`) in the test body so ambient or fixture-provided values do not flip `is_fallback` assertions or mask default behavior.
+- **Hermetic mocking of alert/notification dispatch:** Any test exercising functions that send external alerts, Telegram messages, or webhooks (e.g., `dispatch_split_reports`, `send_alert`) MUST hermetically mock BOTH credential/token loading (`automation_core.alerts._load_bot_token` -> `"fake_token"`) and transport (`urllib.request.urlopen` -> `MagicMock(status=200)`). Unmocked tests read live credentials from `.env` and broadcast dummy/malformed test reports to production chat channels every time `pytest` or `closeout_gate.py` runs, triggering severe spam.
+- **Coordinator delegation contract for test repairs:** Under farm guards, EDIT delegation contracts require `TASK_KIND: EDIT`, `FILE: <absolute_path>`, `OLD_STRING: <<< ... >>>`, `NEW_STRING: <<< ... >>>`, and `FOCUSED_TEST: python -m pytest <file.py>::<test_node> -q` (single `::` delimiter, mandatory `-q` flag, no unquoted spaces in paths).
 
 ## Verification
 
