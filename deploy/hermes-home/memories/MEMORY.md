@@ -8,7 +8,7 @@ Kho video: min 45; Render 1 wkr; Cào 20 wkr; niches 80; SQLite retry 5; 12 Nich
 §
 evidence_gate (OCR, fail-closed). Nuôi 8 Row: Starvation threshold 96h theo chu kỳ 4d (cấm 48h false-alarm).
 §
-[TIKTOK LOGIN]: APK lỗi xóa. Admin 55 v46.6.3; Kibe 65 v47.0.3. Dock (540,150). One-tap/Guest tap nick. Pass sai: --otp-only. Admin: 192.168.110.119:5037. 2FA: pass None -> Graph OTP. MEDIA dòng riêng, cấm dưới >.
+[TIKTOK LOGIN]: Kí sinh = nick cũ sót chiếm trần 8 acc gây ACCOUNT_MISSING; tra gốc & logout. Admin 55 v46.6.3; Kibe 65 v47.0.3. Dock (540,150). Pass sai: --otp-only. 2FA: pass None -> Graph OTP. MEDIA dòng riêng.
 §
 Canary: WoL ether3 (kibe 0C:EF:15:37:4C:20, admin 22:33:4D:06:4C:26; WG 13231); CẤM PASS khi followed=0/FOLLOW_FAILED; ảnh/log trước teardown. Admin: upload SSH admin-farm.
 §

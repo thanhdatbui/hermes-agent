@@ -12,6 +12,6 @@ Kibe(1-80) & Admin(201-280) media độc lập (Admin m2, cấm copy chéo). TT 
 §
 Dubbing: đúng tiếng, 100% thoại, tắt tiếng gốc.
 §
-Pass láo: xóa về None trong Excel. Subagent: ag gemini pool mặc định, luna chỉ fallback. Đổi tên: canonical runner, cấm đẻ script m<N>. Script up ava nằm ở Tiktok-video (run_tiktok_upload_avatar.ps1).
+Pass láo: xóa về None trong Excel. Subagent: ag gemini pool mặc định. Kí sinh = nick cũ sót chiếm trần 8 acc, tra gốc và logout ngay. CẤM gate rác lọt chat, cấm giải trình suông.
 §
 Review :20129: 'review' (Sol Web->Terra Codex). Banned=ban thật, dọn cả Omni (:20129) & 9Router (:20128). Soi WinRT/vision: CẤM báo cáo láo/soi mù; avatar BẮT BUỘC crop zoom cận cảnh xác nhận đúng mặt người thật (cấm nhầm logo/áo). C7 PASS MAIL != C12 GPT.
