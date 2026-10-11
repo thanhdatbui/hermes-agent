@@ -3,9 +3,25 @@
 ## Ba Hiện Tượng Lệch Pha Thường Gặp
 1. **Lệch thấp:** `ĐÃ FOLLOW: +13` nhưng `🔗 Nội bộ: +0` (hoặc thấp hơn).
 2. **Lệch cao (Nội bộ bị nhân bản gấp 2-3 lần):** `ĐÃ FOLLOW: +13` nhưng `🔗 Nội bộ: +42`; hoặc `ĐÃ FOLLOW: +4` nhưng `🔗 Nội bộ: +8`.
-3. **Lệch nhẹ ở Thẻ Tổng KPI:** `Bot +18 lượt` vs `Web Tổng tăng: +16`.
+3. **Lệch tam giác giữa 3 bảng số liệu (Lịch sử ngày vs Đối soát KPI vs Web):** Ví dụ: Thống kê theo ngày báo `+22 lượt (7 nick)`, Thẻ KPI Header báo `Bot +18 lượt`, nhưng Web chỉ ghi nhận `+16 lượt`.
 
 ## Bốn Nguyên Nhân Gốc Rễ
+
+### Nguyên nhân 0: Phân Biệt Ba Nguồn Dữ Liệu Khi Đối Soát Follow (22 vs 18 vs 16)
+Khi đọc Dashboard, cần phân biệt rõ 3 nguồn telemetry khác nhau cho cùng một ngày:
+1. **Bảng "Thống Kê Theo Ngày" (`daily_account_actions` qua `follow_health_helper.py`):**
+   - Query: `SELECT target_date, SUM(internal_follows), COUNT(DISTINCT username) FROM daily_account_actions`.
+   - Bản chất: Gom **toàn bộ số lần bot tap Follow thành công trên UI app** của từng nick xuyên suốt cả ngày, bao gồm cả ca chính (follow chéo) lẫn các ca phụ (lướt feed phát sinh follow lẻ).
+   - Ví dụ (ngày 11/10): `14 (tienpham M28) + 4 (trn.m.m M26) + 1 (debidxbr M78) + 1 (v.th.tho M44) + 1 (florence M38) + 1 (tyrus M62) + 0 (cleor M76) = 22 lượt` trên 7 nick.
+2. **Chỉ số "Bot" ở Thẻ Đối Soát Header (`session_action_stats`):**
+   - Query: `SELECT SUM(internal_follows) FROM session_action_stats WHERE target_date = ?`.
+   - Bản chất: Chỉ tính tổng lượt follow từ **các phiên follow chéo trọng điểm có chốt sổ ca nuôi chính** (ví dụ Ca 1: Phiên 1 được 16, Phiên 2 được 2 => Tổng = 18 lượt). Các ca lướt feed thông thường (Ca 2, Ca 3) không đặt mục tiêu follow chéo nên `internal_follows` của ca ghi nhận 0.
+3. **Chỉ số "Web Tổng tăng" (`snapshots` qua `get_farm_history`):**
+   - Query: Delta trường `following` thực tế cào từ profile công khai của TikTok giữa 2 ngày liên tiếp.
+   - Bản chất: Số follow thực tế TikTok ghi nhận công khai. Con số này thường **thấp hơn số lượt bot bấm** do:
+     - **Silent un-follow / Shadow drop:** Bot bấm thành công trên app nhưng TikTok quét nhả ngầm hoặc không lưu vào counter (như `@tienpham7676` bot bấm 14 nhưng web chỉ nhận 13).
+     - **Tụt tự nhiên trên nick rảnh:** Các nick rảnh không chạy hôm đó nhưng bị tụt `-1` do nick nó từng follow trước đây bị TikTok ban/xóa.
+     - Kết quả: `13 + 4 - 1 = +16 lượt`.
 
 ### Nguyên nhân 1: Leak Follow từ Popup Gợi Ý Bạn Bè / Danh Bạ trong Feed Session (`benign_popup.py`)
 Khi tài khoản **nghỉ follow hoặc chưa đủ video** (`organic-rest-day-pure-feed`, `under-6-videos-follow-disabled`), runner không hề phát lệnh follow chéo nội bộ nào (`followed_count = 0`), bảng `daily_account_actions` ghi nhận `+0`. Tuy nhiên số `following` trên TikTok vẫn tăng (+1, +2):
