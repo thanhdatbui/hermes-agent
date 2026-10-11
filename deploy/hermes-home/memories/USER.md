@@ -14,8 +14,4 @@ Dubbing: đúng tiếng, 100% thoại, tắt tiếng gốc.
 §
 Pass láo: xóa về None trong Excel. Subagent: ag gemini pool mặc định, luna chỉ fallback. Đổi tên: canonical runner, cấm đẻ script m<N>. Script up ava nằm ở Tiktok-video (run_tiktok_upload_avatar.ps1).
 §
-Farm: cron Kibe(1-80)+Admin(201-280). IP Mikrotik chỉ login acc farm. 2 máy/IP; with_device_lock. Nuôi 4d/lần (Starvation 96h, cấm 48h).
-§
-Review :20129: 'review' (Sol Web->Terra Codex). Banned=ban thật, dọn cả Omni (:20129) & 9Router (:20128). Soi WinRT/vision cấm gửi ảnh mù/nhầm Google. C7 PASS MAIL != C12 GPT.
-§
-Subagent: ag-gemini-pool ưu tiên, luna chỉ làm fallback.
+Review :20129: 'review' (Sol Web->Terra Codex). Banned=ban thật, dọn cả Omni (:20129) & 9Router (:20128). Soi WinRT/vision: CẤM báo cáo láo/soi mù; avatar BẮT BUỘC crop zoom cận cảnh xác nhận đúng mặt người thật (cấm nhầm logo/áo). C7 PASS MAIL != C12 GPT.
