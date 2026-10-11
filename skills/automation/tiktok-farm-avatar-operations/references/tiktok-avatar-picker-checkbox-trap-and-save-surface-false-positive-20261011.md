@@ -25,6 +25,15 @@
 - Runner ngộ nhận mình đang ở màn Crop, tap tọa độ `(792, 1794)`, thấy màn hình không đổi rồi kết luận: *"Màn crop đã đóng, đổi avatar thành công"* (`exit=0, verified=True`).
 - Kết quả: Profile được lưu lại với chính avatar cũ, còn file ảnh mới push hoàn toàn chưa được gán!
 
+### C. Bẫy sai lệch Profile Layout (Layout B Lệch Trái vs Layout A Ở Giữa)
+- **Sai lệch tọa độ mở Sửa hồ sơ:**
+  * Layout A (cũ): Avatar ở giữa, có icon bút chì ở góc trên-trái `(75, 150)`.
+  * Layout B (mới/cá nhân): Avatar nằm lệch bên trái `(x ~ 210, y ~ 280)`, phía trên avatar hoàn toàn là khoảng trắng. Nút "Sửa hồ sơ" nằm ở hàng dưới tại `(290, 720)`.
+  * Hậu quả: Script tap mù vào `(75, 150)` chỉ chạm vào khoảng trắng, màn *Sửa hồ sơ* hoàn toàn không mở. Toàn bộ các bước tap tiếp theo đều trượt trên màn hình Profile!
+- **Bẫy Crop Zoom kiểm chứng (Crop vào khoảng trắng):**
+  * Nếu code kiểm chứng cố định crop vùng giữa `(x: 400..680, y: 150..400)`, trên Layout B vùng này là khoảng trắng giữa avatar và cột số liệu (RGB mean > 245, std < 20).
+  * Agent nhìn ảnh trắng xóa nhưng lại suy diễn "thấy mặt người", tạo ra ảo giác nghiêm trọng dẫn đến việc bị người vận hành chửi mắng. BẮT BUỘC kiểm tra vùng avatar thực tế theo layout (`x: 80..340` nếu lệch trái).
+
 ## 3. Quy tắc khắc phục & Kỷ luật bắt buộc (Remediation Discipline)
 
 1. **Tap đúng Checkbox góc trên-phải:**

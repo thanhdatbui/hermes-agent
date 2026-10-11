@@ -77,7 +77,14 @@ Khi nhận yêu cầu đổi avatar từ ảnh chụp màn hình hoặc username
      - Artifacts chính: `avatar-uploaded-confirmed.png` (ảnh chụp Profile TikTok ngay sau khi lưu avatar), `report.json` (`avatar_status: "FORCED_REPLACED_VERIFIED"`).
   2. **Soi mắt kiểm tra qua `browser_vision` (Chống ảo giác / báo cáo mù):**
      - Mở trực tiếp hoặc bọc ảnh vào một file HTML viewport tối giản (`<style>body{margin:0}img{width:100vw}</style>`) để Chromium render toàn bộ chiều cao ảnh rõ nét.
-     - **CROP PHÓNG TO VÒNG TRÒN AVATAR:** Do avatar trên màn hình 1080x1920 rất nhỏ, CẤM nhìn lướt toàn màn hình rồi kết luận mù. BẮT BUỘC crop riêng vùng avatar tròn (`y: 150..400, x: 400..680`) để soi cận cảnh: xác nhận tận mắt rõ khuôn mặt người thật (mắt, mũi, miệng), hay đang bị dính logo/huy hiệu/mảng vải áo/placeholder cũ.
+     - **CROP PHÓNG TO VÒNG TRÒN AVATAR THEO LAYOUT THỰC TẾ (CHỐNG CROP VÙNG TRẮNG):**
+       TikTok có 2 layout trang cá nhân (Profile) khác nhau tùy phiên bản/tài khoản:
+       * **Layout A (Avatar ở giữa):** Vòng tròn avatar ở tâm ngang màn hình (`x: 400..680, y: 150..410`, center `(540, 280)`).
+       * **Layout B (Avatar lệch trái — phổ biến trên các nick cá nhân mới):** Vòng tròn avatar nằm bên trái (`x: 80..340, y: 150..410`, center `(210, 280)`), bên phải là cột số liệu Follow/Follower/Thích.
+       * **CẢNH BÁO CROP VÙNG TRẮNG:** Nếu crop nhầm vùng giữa (`x: 400..680`) trên Layout B, ảnh cắt ra sẽ hoàn toàn là nền trắng (RGB mean > 245, std < 20). CẤM TUYỆT ĐỐI nhìn ảnh trắng rồi ảo giác/báo cáo là thấy mặt người. BẮT BUỘC kiểm tra vị trí avatar thực tế trên màn hình (trái hay giữa) trước khi crop soi mắt!
+     - **TỌA ĐỘ NÚT "SỬA HỒ SƠ" TRÊN CÁC LAYOUT:**
+       * Trên Layout A: Nút có thể là icon bút chì góc trên-trái `(75, 150)` hoặc nút giữa.
+       * Trên Layout B: Nút "Sửa hồ sơ" là nút hình chữ nhật xám nằm ở hàng dưới, tọa độ `x ~ 290, y ~ 720` (bounds khoảng `[100, 660][510, 770]`). Tap `(75, 150)` trên Layout B sẽ rơi vào khoảng trắng phía trên avatar, khiến màn *Sửa hồ sơ* HOÀN TOÀN KHÔNG MỞ!
      - **BÁO CÁO TRUNG THỰC TUYỆT ĐỐI:** Nếu vòng tròn avatar chưa đổi (vẫn là logo/ảnh cũ), BẮT BUỘC báo cáo chính xác là chưa đổi; CẤM TUYỆT ĐỐI báo cáo khống đã cập nhật.
      - **CẠM BẪY FALSE POSITIVE TRONG RUNNER (Save Surface Trap):**
        - Màn "Sửa hồ sơ" (Edit profile) có nút đỏ "Lưu" ở đáy màn hình.
@@ -91,7 +98,11 @@ Khi nhận yêu cầu đổi avatar từ ảnh chụp màn hình hoặc username
        * **Kịch bản cứu hộ trực tiếp (Direct ADB Remediation Script):**
          Khi runner batch bị kẹt bẫy False Positive Save Surface, dùng script Python bọc dưới `operator_device_lock(machine=N, serial=SERIAL, project="avatar_fix")` để thực thi luồng tuần tự:
          - Dọn sạch MediaStore và ảnh cũ trên máy -> Push ảnh chuẩn `avatar.jpg` -> Gửi broadcast scan (nghỉ ít nhất 2s để MediaStore lập chỉ mục).
-         - Mở TikTok (`am start com.ss.android.ugc.trill/...`) -> Tap Hồ sơ `(972, 1883)` -> Tap Sửa hồ sơ `(75, 150)` -> Tap Thay đổi ảnh `(540, 420)` -> Tap Tải ảnh lên `(540, 1600)`.
+         - Mở TikTok (`am start com.ss.android.ugc.trill/...`) -> Tap Hồ sơ `(972, 1883)`.
+         - **Mở Sửa hồ sơ theo đúng layout:**
+           * Nếu Layout B (avatar lệch trái): BẮT BUỘC tap `(290, 720)` (hoặc tìm node text "Sửa hồ sơ"); CẤM TUYỆT ĐỐI tap `(75, 150)` vì trên Layout B đây là khoảng trắng làm hỏng toàn bộ chuỗi lệnh sau!
+           * Nếu Layout A (avatar ở giữa): Tap icon bút chì `(75, 150)` hoặc nút Sửa hồ sơ ở giữa.
+         - Sau khi vào màn "Sửa hồ sơ": Tap "Thay đổi ảnh" `(540, 420)` -> Tap "Tải ảnh lên" `(540, 1600)`.
          - **Thời gian chờ picker mở:** Chờ ít nhất 4–5s để TikTok mở xong picker và nạp thumbnails. Nếu tap quá sớm (sleep < 3s), sự kiện tap sẽ trượt và nút "Tiếp" vẫn xám xịt/disable.
          - **Tọa độ tap chuẩn xác:**
            * Checkbox vòng tròn góc trên-phải của tile 1: `(x=225, y=250)`.
