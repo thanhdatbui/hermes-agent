@@ -189,13 +189,33 @@ def test_determine_row_full_schedule_first_cycle(cycle_day: int, hour: int) -> N
 
 
 def test_determine_row_second_cycle_alternates_healing_rows() -> None:
-    # cycle_idx lẻ: dưỡng sinh ca tối đổi sang Row 6, ngày 2 ca tối đổi sang Row 4
+    # cycle_idx lẻ: dưỡng sinh ca tối đổi sang Row 6, ngày 2 ca tối đổi sang Row 4 (chỉ ảnh hưởng ca dưỡng sinh)
     day2 = tiktok_runner._determine_row((_BASE_DAY + timedelta(days=6)).replace(hour=18))
     assert (day2[0], day2[3]) == (4, True)
     day3 = tiktok_runner._determine_row((_BASE_DAY + timedelta(days=7)).replace(hour=20))
     assert (day3[0], day3[3]) == (6, True)
+    # parity cố định: mọi chu kỳ Day 0 = Row 1 lúc 6h, Day 1 = Row 2 lúc 6h
     day0 = tiktok_runner._determine_row((_BASE_DAY + timedelta(days=4)).replace(hour=6))
     assert (day0[0], day0[3]) == (1, False)
+    day1 = tiktok_runner._determine_row((_BASE_DAY + timedelta(days=5)).replace(hour=6))
+    assert (day1[0], day1[3]) == (2, False)
+
+
+@pytest.mark.parametrize("hour", [6, 8, 12, 14, 18, 20])
+def test_determine_row_main_rows_recur_exactly_every_96h(hour: int) -> None:
+    # Mỗi row chính (1-8) quay lại đúng 96h ở mọi chu kỳ, không phụ thuộc cycle_idx.
+    seen: dict[int, list[datetime]] = {}
+    for day in range(0, 4 * 12):
+        now = (_BASE_DAY + timedelta(days=day)).replace(hour=hour)
+        res = tiktok_runner._determine_row(now)
+        assert res is not None
+        row, _, _, is_rest = res
+        if not is_rest:
+            seen.setdefault(row, []).append(now)
+    assert seen
+    for row, times in seen.items():
+        gaps = {(b - a) for a, b in zip(times, times[1:])}
+        assert gaps == {timedelta(hours=96)}, (row, gaps)
 
 
 @pytest.mark.parametrize(
@@ -414,16 +434,21 @@ def _mk_run(live: Path, row: int, hours_ago: float) -> None:
 def test_row_nurture_summary_health_levels(tmp_path: Path) -> None:
     from feed_session_watchdog import get_row_nurture_summary
 
+    from feed_session_watchdog import NURTURE_CYCLE_H, STARVATION_THRESHOLD_H
+
+    assert (NURTURE_CYCLE_H, STARVATION_THRESHOLD_H) == (96.0, 108.0)
     _mk_run(tmp_path, 1, 1)
-    _mk_run(tmp_path, 2, 80)
-    _mk_run(tmp_path, 3, 100)
-    for r in range(4, 9):
+    _mk_run(tmp_path, 2, 100)  # quá chu kỳ 96h nhưng còn trong dung sai
+    _mk_run(tmp_path, 3, 120)  # quá ngưỡng bỏ đói
+    _mk_run(tmp_path, 4, 95)  # sát cuối chu kỳ vẫn xanh
+    for r in range(5, 9):
         _mk_run(tmp_path, r, 10)
-    summary, starved = get_row_nurture_summary(live_root=str(tmp_path), threshold_h=96.0)
+    summary, starved = get_row_nurture_summary(live_root=str(tmp_path))
     assert starved == [3]
     parts = summary.split(" | ")
     assert len(parts) == 8
     assert parts[0].startswith("R1:🟢") and parts[1].startswith("R2:🟡") and parts[2].startswith("R3:🔴")
+    assert parts[3].startswith("R4:🟢")
 
 
 def test_row_nurture_summary_uses_latest_run_and_ignores_junk(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:

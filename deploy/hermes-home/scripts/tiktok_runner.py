@@ -65,7 +65,7 @@ ARTIFACT_BASE = KIBE_RUNTIME_ROOT / "live"
 
 
 # ---------------------------------------------------------------------------
-# Schedule: 3 Ca x 2 Phiên / ngày (Chu kỳ 3 ngày xoay tua, bỏ ca 0h đêm)
+# Schedule: 3 Ca x 2 Phiên / ngày (Chu kỳ cố định 4 ngày = 96h, bỏ ca 0h đêm)
 #   Ca 1 (Sáng): Phiên 1 lúc 06:00, Phiên 2 lúc 08:00 (+ Upload/Follow)
 #   Ca 2 (Trưa): Phiên 1 lúc 12:00, Phiên 2 lúc 14:00 (+ Upload/Follow)
 #   Ca 3 (Tối):  Phiên 1 lúc 18:00, Phiên 2 lúc 20:00 (+ Upload/Follow)
@@ -74,9 +74,20 @@ ARTIFACT_BASE = KIBE_RUNTIME_ROOT / "live"
 #     - Ngày 1: Ca 1 (Row 1) - Ca 2 (Row 3) - Ca 3 (Row 5)
 #     - Ngày 2: Ca 1 (Row 2) - Ca 2 (Row 4) - Ca 3 (Row 6)
 #     - Ngày 3: Ca 1 (Row 7) - Ca 2 (Row 8) - Ca 3 (Dưỡng sinh Row 3/4 pure feed)
+#     - Ngày 4: Dưỡng sinh xả tải toàn farm (pure feed)
 # ---------------------------------------------------------------------------
 
 BASE_ORDINAL = 739900  # date(2026, 10, 11).toordinal() -> Ngày 1 bắt đầu từ 11/10/2026
+
+
+def _is_cycle_odd_first(cycle_idx: int) -> bool:
+    """Luôn True: mọi chu kỳ 4 ngày chạy Day 0 = rows lẻ, Day 1 = rows chẵn.
+
+    Parity cố định -> mỗi row quay lại đúng sau 96h (4 ngày x 24h, cùng slot giờ);
+    parity ngẫu nhiên từng làm khoảng cách giữa 2 lần nuôi một row lên tới 120h.
+    """
+    return True
+
 
 _SCHEDULE: dict[tuple[int, int], dict[int, int | None]] = {
     # slot_key -> {cycle_day (0, 1, 2, 3) -> row} (None = ca dưỡng sinh acc yếu/ăn nhả)
@@ -135,6 +146,11 @@ def _determine_row(now: datetime) -> tuple[int, int, str, bool] | None:
 
     cycle_day = (now.date().toordinal() - BASE_ORDINAL) % 4
     cycle_idx = (now.date().toordinal() - BASE_ORDINAL) // 4
+    if cycle_day in (0, 1) and not _is_cycle_odd_first(cycle_idx):
+        effective_day = 1 - cycle_day
+    else:
+        effective_day = cycle_day
+
     if cycle_day == 2:
         healing_row = 3 if (cycle_idx % 2 == 0) else 4
     elif slot_key in ((6, 0), (8, 0)):
@@ -144,7 +160,7 @@ def _determine_row(now: datetime) -> tuple[int, int, str, bool] | None:
     else:
         healing_row = 5 if (cycle_idx % 2 == 0) else 6
 
-    target_row = slots[cycle_day]
+    target_row = slots[effective_day]
     is_rest_day = False
     if target_row is None:
         row = healing_row
