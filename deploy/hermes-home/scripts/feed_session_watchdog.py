@@ -1434,8 +1434,6 @@ def dispatch_split_reports(header: str, cluster_blocks: list[str], cluster_stats
         sec = lambda kw: next((lines[i:next((j for j in range(i+1, len(lines)) if lines[j].startswith("• ")), len(lines))] for i, l in enumerate(lines) if l.startswith(f"• {kw}")), [])
         fl_s, up_s = sec("Follow chéo"), sec("Đăng Video")
         f_s = [l for l in lines if l not in fl_s and l not in up_s]
-        if fl_s: f_s.append(fl_s[0])
-        if up_s: f_s.append(up_s[0])
         if f_s: feed_p.append("\n".join(f_s))
         if fl_s: fl_p.append("\n".join(hdr + fl_s))
         if up_s: up_p.append("\n".join(hdr + up_s))

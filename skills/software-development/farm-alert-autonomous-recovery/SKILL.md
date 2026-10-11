@@ -7,14 +7,16 @@ description: >-
 
 # Farm Alert Autonomous Recovery
 
-> 📎 Ref: `references/asynchronous-stale-cron-alert-triage-protocol-20261010.md` (**[10/10/2026]** Stale cron alert triage & reassurance).
-> 📎 Ref: `references/midday-shift-feed-triage-and-dual-cluster-auto-healing-20261010.md` (**[10/10/2026]** Midday triage & auto-heal).
+> Ref: `references/asynchronous-stale-cron-alert-triage-protocol-20261010.md`.
+> Ref: `references/midday-shift-feed-triage-and-dual-cluster-auto-healing-20261010.md`.
 > 📎 Ref: `references/guest-profile-and-one-tap-auto-login-triage-20261010.md` (**[10/10/2026]** Guest profile button & profile/switcher login proof).
 > 📎 Ref: `references/scheduled-pc-reboot-preflight-abort-triage-20261010.md` (**[10/10/2026]** Reboot abort triage).
 > 📎 Ref: `references/preflight-reg-bu-machine-full-reconcile-pipeline-20261008.md`, `references/anti-skip-physical-hook-gate-discipline-20261004.md`.
 > 📎 Ref: `references/avatar-edit-layout-detector-and-closeout-contract.md`, `references/feed-failure-taxonomy-and-guard-boundary.md`.
 
-## 🛑 QUY TẮC BẰNG CHỨNG HÌNH ẢNH: CẤM GỬI ẢNH MÀN HÌNH HOME/LAUNCHER
+## UI evidence: target screen only
+
+> Ref: `references/report-routing-and-workbook-shape-20261011.md` — split-report routing proof and Admin workbook shape checks.
 - User duyệt hiện trường qua `MEDIA:<path>`. **CẤM TUYỆT ĐỐI** gửi ảnh màn hình Home/Launcher Android làm bằng chứng sau teardown/khi lỗi.
 - Bắt buộc chụp ảnh in-app thực tế (Profile, Settings, Popup, Dialog, Switcher) TRƯỚC KHI teardown/force-stop.
 

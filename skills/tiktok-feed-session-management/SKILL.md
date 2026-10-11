@@ -7,10 +7,13 @@ version: 1.0.0
 author: Hermes Agent
 ---
 
+## References & Invariants
+- Split dispatch & OneDrive conflict rules: see [references/telegram-split-dispatch-and-onedrive-conflict-invariants.md](references/telegram-split-dispatch-and-onedrive-conflict-invariants.md).
+
 ## Watchdog Upload Status Taxonomy & Triage
 
 ### Evidence-first cluster triage
-For a completed watchdog report with mixed failures, do not treat the aggregate fail count as a single root cause. First separate each cluster into `proxy/config`, `app/script`, `ADB/device`, and `empty-slot/inventory`. Use `python D:/Taadaa/tools/inspect_machine.py <N>` on at least one representative machine from each material category before proposing a fix. A device reported as `device not found`, `offline`, or `UNKNOWN` must remain an ADB/physical-connectivity lead until inspected; do not label it as proxy failure from the report alone. A device that is online but sitting at Launcher after a failed feed run is evidence for app/script or teardown/flow investigation, not proof of a proxy defect.
+For mixed watchdog failures, do not treat the aggregate fail count as a single root cause. First separate each cluster into `proxy/config`, `app/script`, `ADB/device`, and `empty-slot/inventory`. Run `python D:/Taadaa/tools/inspect_machine.py <N>` on representative machines before proposing fixes. Devices reported as `device not found`, `offline`, or `UNKNOWN` are ADB/connectivity leads; do not label them as proxy failure without inspection. Online devices at Launcher after failure indicate app/script or teardown/flow issues, not proxy defects.
 
 Report both the percentage and the evidence-backed interpretation. If one cluster (for example Admin) has a materially higher proxy-failure share than another cluster (for example Kibe), prioritize proxy/egress triage there before editing feed logic. Record representative probe outputs and distinguish confirmed causes from hypotheses; if no code change was performed, say so explicitly and avoid claiming remediation.
 

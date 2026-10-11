@@ -4,9 +4,10 @@ Khi Coordinator ủy quyền sửa code qua `delegate_task(role='leaf', ...)` ch
 
 ## 1. Các Thẻ Khởi Đầu Bắt Buộc
 - **`TASK_KIND: EDIT`**: Bắt buộc ở dòng đầu tiên.
-- **`FILE: <đường_dẫn_tuyệt_đối>`**: Bắt buộc là đường dẫn tuyệt đối (ví dụ `FILE: D:/Taadaa/tiktok-luot nuoi acc/scripts/feed_session_watchdog.py`). Tuyệt đối CẤM đường dẫn tương đối.
+- **`FILE: <đường_dẫn_tuyệt_đối>`**: Bắt buộc là đường dẫn tuyệt đối (ví dụ `FILE: D:/Taadaa/tiktok-luot nuoi acc/scripts/feed_session_watchdog.py`). Tuyệt đối CẤM đường dẫn tương đối. Cho phép tối đa 2 file (1 file nghiệp vụ + 1 file test).
 - **`FOCUSED_TEST: <lệnh_chuẩn>`**:
-  + Với pytest: `FOCUSED_TEST: python -m pytest <file.py>::<test_node> -q` (bắt buộc tên file trần, đúng 1 dấu phân tách `::`, có cờ `-q`, KHÔNG bọc dấu nháy kép `"`, KHÔNG có đường dẫn thư mục `tests/` hay ổ đĩa `D:/`).
+  + Bắt buộc khởi đầu bằng `python -m pytest` (CẤM dùng lệnh trần `pytest ...`).
+  + Bắt buộc chỉ định đúng 1 test node cụ thể qua phân tách `::` (ví dụ `FOCUSED_TEST: python -m pytest D:/Taadaa/Hermes/tests/test_target.py::test_specific_node -q`). Nếu thiếu `::<test_node>` hoặc dùng lệnh `pytest`, guard lập tức chặn `INVALID_FOCUSED_TEST_FORMAT`.
   + Với py_compile: `FOCUSED_TEST: python -m py_compile <file.py>` (bắt buộc tên file trần, KHÔNG có cờ `-q`, TUYỆT ĐỐI KHÔNG bọc dấu nháy kép `"` quanh đường dẫn file vì regex guard sẽ bị gãy).
 
 ## 2. Delimiter Bắt Buộc Cho Code Snippets
@@ -27,10 +28,12 @@ Khi Coordinator ủy quyền sửa code qua `delegate_task(role='leaf', ...)` ch
 Bắt buộc chứa ĐẦY ĐỦ VÀ NGUYÊN VĂN câu lệnh (CẤM viết tắt hoặc chế câu khác):
 `FAIL_FAST: Nếu trong <= 3 iterations đầu thấy scope bất khả thi với budget 15 calls thì DỪNG NGAY (ABORT) và trả về anchor + proposed contract, cấm đốt hết budget để mò file rồi fail im lặng.`
 
-## 4. Bẫy Token Phụ Tránh Vi Phạm `PATH_NOT_ABSOLUTE`
-- Tránh viết các dòng có dạng `1. Trong ...` hoặc chứa từ khóa `FILE`, `path`, `db` nếu theo sau là chuỗi không phải đường dẫn tuyệt đối chuẩn, vì regex kiểm tra path trong guard sẽ bắt nhầm và quăng lỗi:
+## 4. Bẫy Token Phụ Tránh Vi Phạm `PATH_NOT_ABSOLUTE` & `MULTI_FILE_VIOLATION`
+- **Bẫy từ khóa `file:` trong văn bản hướng dẫn**: Regex guard trích xuất danh sách file bằng mẫu `(?:FILE|Target file|target_file|File cần sửa|TARGET_FILE|SCOPE_LOCK)` không phân biệt hoa thường. Nếu trong phần hướng dẫn của context có viết các câu như `1. Đồng bộ file script sang OneDrive:` hoặc `FILE 1:`, regex sẽ bắt `file script sang OneDrive:` làm file đích thứ 3 và quăng lỗi `MULTI_FILE_VIOLATION: Phát hiện 3 files trong 1 task` hoặc `PATH_NOT_ABSOLUTE`.
+  + **Quy tắc tuyệt đối:** CẤM viết từ `file:` hoặc `file ...:` ở bất kỳ đâu trong context ngoại trừ các dòng khai báo đích danh `FILE: <đường_dẫn_tuyệt_đối>`. CẤM đánh số thứ tự như `FILE 1:`, `FILE 2:` (regex sẽ bắt nhầm `1: D:/...` làm đường dẫn và quăng lỗi `PATH_NOT_ABSOLUTE`).
+- Tránh viết các dòng có dạng `1. Trong ...` hoặc chứa từ khóa `path:`, `db:` nếu theo sau là chuỗi không phải đường dẫn tuyệt đối chuẩn, vì regex kiểm tra path trong guard sẽ bắt nhầm và quăng lỗi:
   `PATH_NOT_ABSOLUTE: '1. Trong ...' không phải đường dẫn tuyệt đối`.
-- Khi khai báo nhiều file đích (tối đa <= 2 files, kể cả test file), lặp lại thẻ `FILE:` riêng biệt cho từng file:
+- Khi khai báo nhiều file đích (tối đa <= 2 files: 1 file nghiệp vụ + 1 file test), lặp lại thẻ `FILE:` riêng biệt cho từng file:
   ```text
   FILE: D:/Taadaa/.../target.py
   FILE: D:/Taadaa/.../tests/test_target.py
@@ -48,9 +51,13 @@ Bắt buộc chứa ĐẦY ĐỦ VÀ NGUYÊN VĂN câu lệnh (CẤM viết tắ
   Hệ thống lập tức kích hoạt `GUARD SELF-PROTECTION / GUARD SOURCE BLACKLISTED` và chặn đứng tác vụ.
 - **Khắc phục:** Luôn trỏ tới source repository (`D:/Taadaa/Hermes/deploy/hermes-home/scripts/...`) hoặc OneDrive sync repository (`D:/OneDrive/Taadaa_Sync_Shared/hermes-cron/scripts/...`). Không nhúng trực tiếp đường dẫn runtime nội bộ người dùng vào argument.
 
-## 7. Kỹ Thuật O(1) Local-Assignment Để Tránh `DIFF_BUDGET_EXCEEDED` (> 30 Dòng)
-- **Hiện tượng:** Guard chặn task nếu tổng số dòng nghiệp vụ trong `OLD_STRING` + `NEW_STRING` vượt quá 30 dòng.
-- **Khắc phục:** Tránh bọc cấu trúc ngữ cảnh lớn quanh cả khối lệnh (làm thay đổi thụt lề 30-50 dòng). Khởi tạo biến/đối tượng ngay trước khối lệnh (ví dụ `executor = concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS)`), giữ nguyên thân khối lệnh để diff chỉ còn $\le 5$ dòng.
+## 7. Kỹ Thuật O(1) Để Tránh `DIFF_BUDGET_EXCEEDED` (> 30 Dòng Code Nghiệp Vụ)
+- **Hiện tượng:** Guard tính tổng số dòng thay đổi dự tính trên file nghiệp vụ (không tính file test). Nếu tổng số dòng thêm mới và sửa đổi vượt quá 30 dòng (ví dụ 32 hoặc 44 dòng), guard chặn cứng:
+  `⛔ [COORDINATOR GUARD - CONTRACT VIOLATION]: DIFF_BUDGET_EXCEEDED: Dự tính thay đổi N dòng code nghiệp vụ (> 30 dòng). Bắt buộc chẻ nhỏ task!`
+- **Khắc phục:**
+  1. Tránh bọc cấu trúc ngữ cảnh lớn quanh cả khối lệnh (làm thay đổi thụt lề 30-50 dòng).
+  2. Khi thêm các hàm trợ thủ (helper functions như `is_gpm_api_live`, `auto_heal...`), viết ngắn gọn súc tích: gộp `try/except` ngắn trên 1-2 dòng, inline các biểu thức kiểm tra điều kiện, bỏ các dòng trống thừa giữa các hàm nội bộ trong contract.
+  3. Đảm bảo tổng delta số dòng của tất cả các hunk trên file nghiệp vụ cộng lại $\le 25$ dòng để luôn có khoảng đệm an toàn dưới trần 30 dòng.
 
 ## 8. Quy Chuẩn Bắt Buộc Khi Dispatch `TASK_KIND: INVESTIGATE` (Budget <= 5 Calls & Strict Fail-Fast)
 - **Hiện tượng:** Khi dispatch worker làm nhiệm vụ đọc/thăm dò/trích xuất hiện trường (`TASK_KIND: INVESTIGATE`), nếu prompt ghi budget > 5 (ví dụ: "Max budget: 10 calls", "Tối đa 8 tool calls"), guard chặn đứng:

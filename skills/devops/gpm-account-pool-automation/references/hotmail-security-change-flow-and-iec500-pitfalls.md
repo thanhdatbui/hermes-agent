@@ -23,6 +23,11 @@ Khi gọi CDP nạp 2FA Authenticator tại `https://account.live.com/proofs/man
   Microsoft backend từ chối thêm app đơn lẻ và tự động redirect về:
   `https://account.live.com/proofs/Manage?iec=500&apt=3`
   Hệ quả: Modal không hiển thị khóa bí mật, script đợi `#iPlainTextData` quá 35s sẽ timeout và bị set `BLOCKED`.
-- **Giải pháp xử lý:**
-  - Với nick chưa có mail khôi phục: Bắt buộc chuyển hướng sang wizard cài đặt cưỡng bức qua URL: `https://account.live.com/proofs/EnableTfa` (hoặc add mail khôi phục trước).
-  - Re-authentication challenge: Khi vào các trang bảo mật nhạy cảm (`EnableTfa` / `AddProof`), Microsoft thường yêu cầu đăng nhập lại (redirect sang `login.live.com`). Runner bắt buộc phải kiểm tra và giải re-auth (`#i0116` + `#idSIButton9` -> `#i0118` + `#idSIButton9` -> `#idSIButton9` KMSI) trước khi tìm tiếp selector wizard.
+- **Giải pháp xử lý chuẩn (User Invariant):**
+  - **Tự động Add Mail Khôi Phục fviainboxes.com trước:**
+    Đối với các nick chỉ có Password, KHÔNG cố ép bấm Authenticator để bị `iec=500`. Bắt buộc chọn `#Add_email` ("Gửi mã qua email") -> sinh địa chỉ mail `{username}{suffix}@fviainboxes.com` -> gọi `mail_domain_otp_helper.fetch_recovery_email_otp()` để lấy OTP qua API -> nhập mã xác minh.
+    Sau khi thêm thành công mail khôi phục, Microsoft đã có anchor proof hợp lệ -> tiếp tục quy trình B1 thêm Authenticator TOTP như bình thường. Đồng thời lưu mail khôi phục vừa thêm vào Cột 5 `gmail_clean_v2.xlsx`.
+  - **Điều kiện sàng lọc CHANGE_INFO trong Supervisor:**
+    Đã BỎ hoàn toàn điều kiện Dual OAuth (OmniRoute + 9Router). CHỈ GIỮ 2 điều kiện tiên quyết: (1) Đã reg TikTok thành công (có ID & PASS) VÀ (2) Đã reg ChatGPT (có PASS CHATGPT Cột 12 hoặc `chatgpt_registered_at`).
+  - **Kỷ luật bóc tách trạng thái trong Báo Cáo 6H:**
+    Báo cáo 6H (`cron_hotmail_gpm_lifecycle_6h_report.py`) bắt buộc lọc sạch danh sách `CHANGE_INFO` (chỉ đếm các nick sẵn sàng, loại trừ các nick `BLOCKED/FAILED/ERROR`), và hiển thị dòng cảnh báo riêng `⚠️ Lỗi / Kẹt cần cứu (BLOCKED): N` để người vận hành nắm bắt ngay hiện trường lỗi thay vì giấu trong hàng đợi.

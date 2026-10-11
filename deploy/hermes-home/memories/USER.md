@@ -4,9 +4,9 @@ Dọn đĩa: duyệt trước (thư mục corrupt/lỗi xóa ngay), CẤM xóa n
 §
 Farm: nick cấm xóa/đè; SoT tiktok_tracker.db; cấm đè ava tay. Đổi mail TT: dùng Hotmail sạch chưa reg; ưu tiên Graph PC (cấm mở app khi có token), sai pass dùng --otp-only. LLM: Codex Omni.
 §
-Review/Chốt: tự loop đến APPROVED(>=85), cấm dừng xin phép. Strike 3: giao Claude CLI. Claude quota block dừng hỏi.
+Review/Chốt: combo 'review' (Sol Web + Terra Codex fallback); tự loop APPROVED(>=85), cấm dừng xin phép. Strike 3: Claude CLI.
 §
-Report follow: % & tầng; khóa IP 1 dòng kèm máy cứu; máy nhả kèm lượt. Watchdog/Auto-reboot SILENT (cấm spam thông báo). Vận hành: thà reboot PC tự động hơn bắt rút dây cáp.
+Report follow: % & tầng; khóa IP 1 dòng kèm máy cứu; máy nhả kèm lượt. Watchdog SILENT. Vận hành: thà reboot PC tự động hơn bắt rút dây cáp.
 §
 Kibe (1-80) & Admin (201-280) kho media độc lập (Admin D:\video goc may 2 & TIKTOK-videonuoinick-admin, cấm copy chéo). TT v47.0.3; Switcher dock; AP 40m; Config tools.
 §

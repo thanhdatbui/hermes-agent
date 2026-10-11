@@ -360,7 +360,7 @@ class TestFollowReportFormatting(unittest.TestCase):
         self.assertEqual(classify_feed_failure("TikTok crash null pointer"), "Lỗi App TikTok/Script")
 
 
-    def test_dispatch_split_reports_retains_summary_lines(self):
+    def test_dispatch_split_reports_excludes_follow_and_upload_from_feed(self):
         from unittest.mock import patch, MagicMock
         from feed_session_watchdog import dispatch_split_reports
         sample_block = (
@@ -376,8 +376,9 @@ class TestFollowReportFormatting(unittest.TestCase):
         with patch("automation_core.alerts._load_bot_token", return_value="fake_token"), \
              patch("urllib.request.urlopen", return_value=MagicMock(status=200)):
             res = dispatch_split_reports("HEADER", [sample_block], [], "Ca 2 - Phiên 1", 4)
-        self.assertIn("• Follow chéo (0 lượt follow)", res)
-        self.assertIn("• Đăng Video (1/2 - 0 video đã đăng):", res)
+        self.assertNotIn("• Follow chéo", res)
+        self.assertNotIn("• Đăng Video", res)
+        self.assertIn("• Lướt Feed:", res)
 
     def test_dispatch_split_reports_retry_failure_and_chunks(self):
         from unittest.mock import patch, MagicMock

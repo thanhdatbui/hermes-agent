@@ -8,11 +8,17 @@ User đã mắng gay gắt và chấn chỉnh ngay lập tức:
 
 ## Nguyên tắc Vận hành Chống Bại Liệt
 
-1. **Fallback Model Reviewer được cấu hình sẵn**:
-   - Khi Sol High trên `:20129` gặp sự cố (timeout, HTTP 402/401/429, kẹt queue):
-   - **BẮT BUỘC lập tức chuyển sang fallback reviewer Terra Codex**:
-     `python D:/Taadaa/tools/closeout_gate.py --repo <path> --files <files...> --model "codex-terra" --json-output`
-   - Model `codex-terra` trên `:20129` là `gpt-5.6-terra`, luôn trực chiến, phản hồi cực nhanh (~20-25s) và chấm điểm chuẩn mực theo rubric 100 điểm.
+1. **Kiến trúc Combo Reviewer Canonical trên OmniRoute :20129 (`review`)**:
+   - User chỉ thị rõ ràng: Ghép Terra Codex vào chung combo với ChatGPT Sol Web, để Terra Codex làm fallback tự động cho Sol Web trong combo.
+   - **Tier 0 (Primary)**: `chatgpt-web-pool` (ChatGPT Web Sol High - 78 accounts).
+   - **Tier 1 (Fallback)**: `codex-terra` (Codex Terra Pool - 97 accounts farm, chiến thuật `least-used`).
+   - **Cấu hình failover**: `failoverBeforeRetry: true`, `targetTimeoutMs: 45000`. Khi Sol Web gặp sự cố (HTTP 401/402/429/502/timeout), OmniRoute tự động chuyển sang Codex Terra ngay trong request đó.
+
+2. **Kỷ luật chạy Chốt Phiên (`closeout_gate.py`)**:
+   - Khi chốt phiên, **BẮT BUỘC gọi combo `review`**:
+     `python D:/Taadaa/tools/closeout_gate.py --repo <path> --model "review" --json-output`
+     *(Script `closeout_gate.py` mặc định đã trỏ vào model `review`)*.
+   - CẤM Coordinator tự ý dừng lại, than khóc báo kẹt hoặc đóng băng phiên khi Sol lỗi. Combo `review` sẽ tự động kích hoạt fallback Terra Codex.
 
 2. **Kỷ luật xử lý khi Closeout Gate bị từ chối (REJECTED)**:
    - CẤM ngồi im hoặc viện cớ an toàn để kết thúc phiên dang dở.
