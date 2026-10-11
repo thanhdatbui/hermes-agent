@@ -7,9 +7,17 @@ description: Use when running avatar-only jobs on TikTok farm.
 
 - Support reference: see [references/avatar_guard_hardened_patterns.md](references/avatar_guard_hardened_patterns.md) for hardened path resolve, pre-write atomic grant claims with rollback, and regenerator exit code discipline.
 - Single-machine replacement guide: see [references/single_machine_avatar_replacement.md](references/single_machine_avatar_replacement.md) for on-demand extraction, dual-sync, workbook/queue trigger, and visual evidence closeout.
+- Single-profile locator and worker contract: see [references/single-profile-request-account-locator-and-worker-contract.md](references/single-profile-request-account-locator-and-worker-contract.md) for SQLite/Workbook O(1) identity resolution, queue-state boundaries, and the mandatory `FILE:`/`FAIL_FAST:` dispatch contract.
 
 ## Purpose
 Operate avatar-only changes on Taadaa TikTok farm devices without accidentally posting video, changing the wrong account, or claiming success without device evidence.
+
+### Session-derived O(1) locator and worker contract
+- For a single-account screenshot request, identify the target in this order: `account_mapping`/`farm_account_info` in `D:/Taadaa/data/tiktok_tracker.db` by username, then confirm the exact row in the relevant `Tik<N>.xlsx` by machine and username. Record the tuple `(username, may, tik, serial, folder_video, video_goc, host_id)` before preparing any artifact.
+- Inspect the target device with the approved O(1) command `python D:/Taadaa/tools/inspect_machine.py <may>` before launching a runner. Treat `Screen: OFF`/sleep as a field-state fact, not upload success; preserve the queue as `PENDING` until post-upload evidence exists.
+- Worker dispatches for avatar preparation must include an explicit `FILE: D:\Taadaa\...` scope declaration and a `FAIL_FAST:` clause. If the dispatch guard rejects a contract for missing fail-fast, revise the contract once with the exact target/schema and do not retry the malformed prompt.
+- Keep preparation and device upload separate: the worker may stage/crop/sync the avatar and update workbook/SQLite queue, while the Coordinator launches the canonical avatar-only runner only after inspecting the staged artifact. Do not report completion from queue/file state alone.
+
 
 ### Canonical Tooling
 - Launcher up avatar nằm tại repo `D:/Taadaa/Tiktok-video`: `run_tiktok_upload_avatar.ps1` (hoặc `run_tiktok_upload_batch.ps1` chế độ avatar-only).

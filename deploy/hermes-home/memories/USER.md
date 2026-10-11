@@ -17,3 +17,5 @@ Pass láo: xóa về None trong Excel. Subagent: ag gemini pool mặc định, l
 Farm: cron Kibe(1-80)+Admin(201-280). IP Mikrotik chỉ login acc farm. 2 máy/IP; with_device_lock. Nuôi 4d/lần (Starvation 96h, cấm 48h).
 §
 Review :20129: 'review' (Sol Web->Terra Codex). Banned=ban thật, dọn cả Omni (:20129) & 9Router (:20128). Soi WinRT/vision cấm gửi ảnh mù/nhầm Google. C7 PASS MAIL != C12 GPT.
+§
+Subagent: ag-gemini-pool ưu tiên, luna chỉ làm fallback.

@@ -58,6 +58,12 @@ Construct a dedicated device runner using WinRT OCR (`tools/ocr_boxes.ps1`) and 
            - Nút 2 ở giữa `(534, 863)`: **+ Thêm tiểu sử** (CẠM BẪY CHÍ MẠNG: Nút này CHỈ mở popup sửa Tiểu sử `0/160`, KHÔNG mở trang Sửa hồ sơ để đổi tên, khiến runner kẹt loop UNKNOWN / PROFILE 5 lần!).
            - Nút 3 bên phải `(860, 865)`: **Chia sẻ hồ sơ**.
         3. Fallback cứng: `(210, 865)` khi không thấy text "Sửa hồ sơ" và màn hình có `+ Thêm tiểu sử`. CHỈ dùng `(300, 985)` khi profile đã có text bio đẩy hàng nút xuống dưới.
+      * **Đặc dị TikTok v47 Layout Trống Bio (Icon Bút chì bên phải Tên (870, 558))**:
+        - Trên các tài khoản chưa từng cài Bio (bio rỗng), TikTok v47 ẩn hoàn toàn nút "Sửa hồ sơ" và nút "Chia sẻ hồ sơ" bên dưới stats, chỉ để lại duy nhất nút `+ Thêm tiểu sử` ở giữa `[350, 825][730, 909]`.
+        - Góc trên bên trái `(72, 148)` là icon **"Tìm bạn bè"**, CẤM tap vào!
+        - Tapping vào dòng tên hoặc giữa màn hình `(540, 560)` mở **Account Switcher**, CẤM tap vào!
+        - 👉 **ĐIỂM CHẠM VÀO SỬA HỒ SƠ CHUẨN XÁC 100%**: Icon cây bút chì nhỏ nằm ngay bên phải dòng tên tại bounds `[798, 516][942, 600]` (tọa độ tâm `(870, 558)`). Chạm vào `(870, 558)` sẽ mở thẳng màn hình `Sửa hồ sơ` (Edit Profile) để sửa Tên ngay cả khi profile không có nút bấm nào ở dưới!
+        - Hoặc nếu lỡ chạm `+ Thêm tiểu sử`: Nhận diện màn `BIO_EDIT` (`re.search(r"chinh sta tieu|chinh sua tieu|tieu sd", t)`), gõ bio ngắn và Lưu để đưa layout về có nút Sửa hồ sơ.
   - `SWITCHER`: Tap đúng dòng target username (ví dụ `lilyanzj8n1` ở `y=603`). Nếu chưa thấy trong tầm nhìn, vuốt sheet lên (`(540, 1500) -> (540, 900)`). Khi tap trúng acc, lập tức gán `seen_profile = False`.
     * **Phân loại Switcher an toàn**: CẤM dùng keyword lỏng lẻo `"tai khoan" in t` đơn độc vì màn "Tìm bạn bè" có dòng *"Tài khoản được đề xuất"* sẽ bị nhận nhầm thành Switcher. Bắt buộc yêu cầu `"chuyen doi"` hoặc regex `chuy\w{0,4}n\s*d\w{0,4}i`.
   - `EDIT_PROFILE`: Identify label "Tên" (phải nằm trên "Tên người dùng", ví dụ y=752 so với y=878) và tap dòng "Tên" `(600, 752)`. Màn này KHÔNG BAO GIỜ có bottom navigation bar!
@@ -138,8 +144,16 @@ Instead of blind delegation or monolithic writing:
 4. **Autonomous Device Execution**:
    Launch in background via `terminal(command="python D:/Taadaa/tools/do_rename_m<ID>.py", background=True, notify_on_complete=True, timeout=300)` and let the harness wake the session on completion.
 
-## 7. Execution via Background Terminal
-Adhere to farm event-driven wakeup:
-- Launch via `terminal(command="python D:/Taadaa/tools/do_rename_m<ID>.py", background=True, notify_on_complete=True, timeout=300)`.
-- Never poll sleep loops. Let the harness wake the agent upon completion.
-- Once woken, inspect the resulting `m<ID>_<name>_nickname.png` and JSON report, verifying with OCR / vision before delivering `MEDIA:` to the operator.
+### 8. User Directives, Subagent Routing & Chống Over-Engineering Đổi Tên
+- **Cấm Đẻ Script Lẻ Từng Máy (`do_rename_m<ID>.py`)**:
+  * User khiển trách: *"là sao ngày nào t cũng đổi tên mà cứ đi viết lại code đổi tên chi v"*.
+  * Việc mỗi máy lại copy ra một file `do_rename_m<ID>.py` và `test_do_rename_m<ID>.py` riêng biệt là over-engineering nặng.
+  * Hướng đi chuẩn hóa: Sử dụng runner tham số hóa duy nhất `python D:/Taadaa/tools/do_rename.py --machine <ID> --name "<NEW_NAME>" --target-user "<USER>"`. Toàn bộ logic điểm chạm `(870, 558)` và `(210, 865)` đã được chứng minh ổn định cho mọi layout S7 TikTok v47.
+- **Quy Chuẩn Định Tuyến Subagent (Gemini Pool Priority)**:
+  * User chỉ thị: *"sửa là subagent chạy ag gemini pool, luna chỉ làm fallback"*.
+  * Mọi tác vụ dispatch worker qua `delegate_task` mặc định cấu hình model chạy trên **`ag-gemini-pool-3`** (Gemini). Luna chỉ được dùng làm fallback khi Gemini gặp rate limit hoặc transport failure.
+- **Vị Trí Canonical Của Script Upload Avatar**:
+  * Script điều phối upload avatar nằm độc quyền tại repo **`D:/Taadaa/Tiktok-video`**:
+    - Launcher avatar-only: `run_tiktok_upload_avatar.ps1` (gọi `run_tiktok_upload_batch.ps1` với `-ForceAvatarMachineList`).
+    - Tool sinh & đối soát: `D:/Taadaa/Tiktok-video/scripts/resolve_avatar_pending_machines.py`, `make_avatar_yolo.py`, `regenerate_unique_avatars.py`.
+
