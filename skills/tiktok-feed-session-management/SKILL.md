@@ -8,13 +8,14 @@ author: Hermes Agent
 ---
 
 ## References & Invariants
-- Split dispatch & OneDrive conflict rules: see [references/telegram-split-dispatch-and-onedrive-conflict-invariants.md](references/telegram-split-dispatch-and-onedrive-conflict-invariants.md) (Quy định bắt buộc không nuốt im lặng Đối soát Web và cấm rò rỉ header bullet sang nhóm Feed).
-- Watchdog catch-all failure taxonomy & triage: see [references/feed-watchdog-catchall-taxonomy-and-triage.md](references/feed-watchdog-catchall-taxonomy-and-triage.md).
+- Split dispatch & OneDrive rules: see [references/telegram-split-dispatch-and-onedrive-conflict-invariants.md](references/telegram-split-dispatch-and-onedrive-conflict-invariants.md).
+- Watchdog taxonomy & triage: see [references/feed-watchdog-catchall-taxonomy-and-triage.md](references/feed-watchdog-catchall-taxonomy-and-triage.md).
+- Row nurture starvation & cycle monitoring rules: see [references/row-nurture-starvation-and-cycle-monitoring.md](references/row-nurture-starvation-and-cycle-monitoring.md).
 
 ## Watchdog Upload Status Taxonomy & Triage
 
 ### Evidence-first cluster triage
-For mixed watchdog failures, separate each cluster into `proxy/config`, `app/script`, `ADB/device`, and `empty-slot/inventory`. Run `python D:/Taadaa/tools/inspect_machine.py <N>` on representative machines before diagnosing. See `references/feed-watchdog-catchall-taxonomy-and-triage.md` for deconstruction of the `Lỗi App TikTok/Script` catch-all.
+For mixed watchdog failures, see [references/feed-watchdog-catchall-taxonomy-and-triage.md](references/feed-watchdog-catchall-taxonomy-and-triage.md). Run `python D:/Taadaa/tools/inspect_machine.py <N>` on representative machines before diagnosing.
 
 Report both the percentage and the evidence-backed interpretation. If one cluster (for example Admin) has a materially higher proxy-failure share than another cluster (for example Kibe), prioritize proxy/egress triage there before editing feed logic. Record representative probe outputs and distinguish confirmed causes from hypotheses; if no code change was performed, say so explicitly and avoid claiming remediation.
 
