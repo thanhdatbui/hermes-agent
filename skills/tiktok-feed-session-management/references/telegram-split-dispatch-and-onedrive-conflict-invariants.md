@@ -33,3 +33,27 @@ Hệ thống báo cáo nuôi nick TikTok phân chia độc quyền theo 3 nhóm 
      • Trạng thái: Không có lượt chạy nào trong phiên (Chưa chạy / Bị skip)
      ```
    - CẤM TUYỆT ĐỐI `if not os.path.exists(date_live): continue` âm thầm bỏ qua cluster, làm cụm Admin biến mất hoàn toàn khỏi báo cáo tổng kết.
+
+---
+
+## 3. Safe Workbook Row Count & Machine Slicing Invariant (640 vs 688 Pitfall)
+
+### Nguy cơ nhầm lẫn số dòng (688 rows vs 640 rows):
+- **Cụm Admin (201-280)**: 80 máy × 8 slot = **Đúng chính xác 640 dòng dữ liệu** (không tính header).
+- **Cụm Kibe (1-80)**: 80 máy × 8 slot = 640 dòng base + 48 dòng từ `EXTRA_MACHINES` (máy 75-80) = **688 dòng dữ liệu**.
+- **Nguyên nhân bug 688 row ở Admin**:
+  - Trong `sync-safe-workbook.py`, biến `ACTIVE_EXTRA_MACHINES` kiểm tra `_is_kibe_host()`.
+  - Nếu chạy script đồng bộ Admin mà không set `TAADAA_HOST_ID=admin`, hàm sẽ mặc định coi là host Kibe và nhét thêm 48 dòng của máy 75-80 vào file Admin, làm phình lên 688 dòng rác!
+- **Invariant bất biến**:
+  - File `D:\OneDrive\TaadaaData\admin\taikhoan_run_safe.xlsx` BẮT BUỘC phải có đúng **640 data rows**. Bất kỳ khi nào đếm ra 688 rows nghĩa là đã bị nhiễm `EXTRA_MACHINES` của Kibe.
+  - Khi đồng bộ file Admin, BẮT BUỘC chạy qua `hermes_taikhoan_sync_cron.py` (đã truyền `TAADAA_HOST_ID=admin`) hoặc chạy script với cờ môi trường chuẩn.
+
+---
+
+## 4. Kiến trúc vận hành Dual-Farm (Kibe điều phối Admin)
+
+### Bản chất kết nối:
+- Cụm Kibe (`DESKTOP-3PFPGQC`, máy 1-80): chạy trực tiếp với local ADB.
+- Cụm Admin (`Admin-PC`, máy 201-280): được Kibe điều phối từ xa qua **Remote ADB Server Socket (`tcp:192.168.110.119:5037`)**.
+- Các thao tác bảo trì hệ thống/sync file giữa Kibe và Admin sử dụng SSH (`ssh admin-farm`) và thư mục chia sẻ OneDrive `D:\OneDrive\TaadaaData\admin\`.
+- Khi runner báo skip Admin (0 account hợp lệ), nguyên nhân thường KHÔNG PHẢI do đứt SSH hay hỏng socket ADB, mà do OneDrive sync conflict làm mất file `taikhoan_run_safe.xlsx` trên đĩa. Luôn kiểm tra file workbook trước khi nghi ngờ hạ tầng mạng.
