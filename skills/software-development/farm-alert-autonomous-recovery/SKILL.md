@@ -7,8 +7,8 @@ description: >-
 
 # Farm Alert Autonomous Recovery
 
+> Ref: `references/account-switcher-missing-vs-session-lost-triage-20261011.md`.
 > Ref: `references/asynchronous-stale-cron-alert-triage-protocol-20261010.md`.
-> Ref: `references/midday-shift-feed-triage-and-dual-cluster-auto-healing-20261010.md`.
 > 📎 Ref: `references/guest-profile-and-one-tap-auto-login-triage-20261010.md` (**[10/10/2026]** Guest profile button & profile/switcher login proof).
 > 📎 Ref: `references/scheduled-pc-reboot-preflight-abort-triage-20261010.md` (**[10/10/2026]** Reboot abort triage).
 > 📎 Ref: `references/preflight-reg-bu-machine-full-reconcile-pipeline-20261008.md`, `references/anti-skip-physical-hook-gate-discipline-20261004.md`.
