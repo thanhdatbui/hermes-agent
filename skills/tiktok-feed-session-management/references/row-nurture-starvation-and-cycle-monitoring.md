@@ -7,11 +7,12 @@
 - **Hậu quả:** Gây ra bão cảnh báo giả (false-alarm storm). Các Row đang nằm chờ lượt quay vòng tự nhiên (như Row 5, 6, 7, 8) sẽ liên tục bị gắn cờ đỏ `STARVED` dù script và hệ thống đang hoạt động hoàn toàn bình thường.
 
 ### Invariant bất biến:
-- Trong mô hình xoay tua $N$-ngày (hiện tại Farm Taadaa là **chu kỳ 4 ngày**):
-  $$\text{Starvation Threshold} \ge N \times 24\text{h} \quad (\text{chuẩn: } 96\text{h}, \text{ buffer an toàn: } 100\text{h})$$
-- Mọi Row từ Row 1 đến Row 8 bắt buộc phải có ít nhất $\ge 1$ lần được nuôi thành công trong cửa sổ 96 giờ.
+- Trong mô hình xoay tua $N$-ngày (hiện tại Farm Taadaa là **chu kỳ 4 ngày = 96 giờ**):
+  $$\text{Chu Kỳ Nuôi} = 96.0\text{h}, \quad \text{Dung Sai Trễ/Retry} = 12.0\text{h}, \quad \text{Ngưỡng Bỏ Đói (Starvation Threshold)} = 108.0\text{h}$$
 - CẤM TUYỆT ĐỐI đặt ngưỡng 48h trong chu kỳ 4 ngày.
-- Chỉ khi một Row vượt quá 96 giờ mà không có bất kỳ phiên chạy thành công nào, hệ thống mới được phép kích hoạt `🚨 [STARVATION ALERT]`.
+- Mọi Row từ Row 1 đến Row 8 được thiết kế để quay vòng lặp lại **chính xác 96 giờ** (4 ngày $\times$ 24 giờ).
+- Dung sai 12 giờ cho phép các ca bị trễ do nghẽn ADB, retry runner hoặc lệch lịch ca không kích hoạt báo động giả.
+- Chỉ khi một Row vượt quá **108 giờ** mà không có bất kỳ phiên chạy thành công nào, hệ thống mới kích hoạt `🚨 [STARVATION ALERT]`.
 
 ---
 

@@ -80,6 +80,27 @@ When automating GPM browser logins to verify OpenAI accounts or recover pools (`
 4. **Visual evidence invariant**:
    - Never report `account_deactivated` or `LIVE` without verifying through native OCR or vision inspection first. Claiming an error screen while sending an image stuck at Google sign-in is a critical failure.
 
+5. **Dual-Channel OTP Retrieval (Graph API vs Webmail Fallback)**:
+   - **Rule (Invariant)**: Microsoft Graph API (`https://graph.microsoft.com/v1.0/me/messages`) ONLY applies to Hotmail accounts that have an active OAuth `refresh_token` and `client_id`.
+   - Accounts without tokens or whose refresh tokens expired will return `HTTP 400 Bad Request` / `invalid_grant`.
+   - **Mandatory Webmail Fallback**: When Graph API fails or token is missing, the automation MUST open the mailbox directly via GPM browser (`https://outlook.live.com/mail/0/`).
+   - **Reuse Canonical Login Code**: CẤM tự chế selector hay script login Hotmail tạm bợ. BẮT BUỘC tái sử dụng các hàm và selector chuẩn từ `D:/Taadaa/Hotmail/scripts/batch_gpm_hotmail_password_login.py` và `read_otp_gpm.py`:
+     * Selector input: `input[name="loginfmt"]`, `input[name="passwd"]`.
+     * Selector submit: `#idSIButton9`, `input[type="submit"]`.
+     * Selector switch password: `#idA_PWD_SwitchToPassword`, `a:has-text('Use your password instead')`.
+     * Selector KMSI bypass: `#declineButton`, `#idSIButton9`.
+     * Mail row reading: `[role="row"]`, `[role="option"]`, bóc regex 6 số OTP.
+
+6. **Account Lifecycle State Machine & Re-OAuth Watchdog**:
+   - **Persistent State (`chatgpt_account_lifecycle.json`)**: Save account statuses (`DEAD_DEACTIVATED`, `LIVE`, `UNKNOWN`) atomically to disk.
+   - **$O(1)$ Skip on Dead Accounts**: Any account marked `DEAD_DEACTIVATED` must be skipped immediately in all future cron runs and manual sweeps — do not spin up GPM profiles or attempt OTP for confirmed dead accounts.
+   - **Periodic Re-OAuth on Dropped Sessions**:
+     * Cron/watchdog probes connection health on `:20129` and `:20128`.
+     * When session drop (401 / unauth / expired) is detected, attempt re-login on GPM using Dual-Channel OTP.
+     * If OpenAI displays `account_deactivated` ("Bạn không có tài khoản vì tài khoản đó đã bị xóa hoặc vô hiệu hóa"): capture screenshot proof to `D:/Taadaa/runtime/artifacts/deactivated_<email>.png`, update state to `DEAD_DEACTIVATED`, purge connection from OmniRoute & 9Router, clean combo models, and skip permanently.
+     * If login succeeds (active chat / session established): extract `__Secure-next-auth.session-token` via CDP `Network.getCookies`, update connection credentials in SQLite & REST API, restore to combo routing, and record `LIVE`.
+   - **Report Output**: Always emit structured audit JSON to `D:/Taadaa/reports/chatgpt_lifecycle_report.json` with counts (total audited, live, dead purged, skipped) and detail breakdowns.
+
 ## Safety and evidence
 
 - Never print access tokens, refresh tokens, passwords, OTPs, or full account identifiers in reports.

@@ -1,18 +1,12 @@
 Chu kỳ 4d 3 ca: N1 random {1,3,5} hoặc {2,4,6}, N2 nhóm còn lại, N3(R7,8, tối dưỡng), N4(dưỡng 0 fl+up non<10). Nuôi 4d/lần, Starvation 96h. CẤM xóa cooldown.
 §
-Dual-Farm: Cron/supervisor chạy cả Kibe (1-80) & Admin (201-280). Excel Admin 10-11 cột. Supervisor so le 2p; 8-Row tách riêng Kibe/Admin; Dashboard 1905 tra cứu acc đói >96h. CẤM copy ava Kibe->Admin; Admin dùng video gốc m2.
+Dual-Farm: Cron/supervisor Kibe (1-80) & Admin (201-280). Excel Admin 10-11 cột; so le 2p; 8-Row tách riêng. CẤM copy ava Kibe->Admin (dùng m2 gốc). GPM 5p. C7 PASS MAIL != C12 PASS GPT. ADB_VENDOR_KEYS + adb Admin.
 §
-GPM 5ph. gmail_clean_v2: LIVE lưu, DIE xóa. CẤM coi Gmail die=TT die; 2FA TOTP vẫn LIVE. Credential: C7 PASS MAIL != C12 PASS GPT; cấm đè chéo. X99: cấm xHCI; wkr 25; 05:30 reboot. ADB: ADB_VENDOR_KEYS + adb Admin.
-§
-Kho video: min 45; Render 1 wkr; Cào 20 wkr; niches 80; SQLite retry 5; 12 Niche Hot. Hashtag: sửa niche sửa DB nguồn + niches_pool.txt trước.
-§
-evidence_gate (OCR, fail-closed). Nuôi 8 Row: Starvation threshold 96h theo chu kỳ 4d (cấm 48h false-alarm).
-§
-[TIKTOK LOGIN]: Kí sinh = nick cũ sót chiếm trần 8 acc gây ACCOUNT_MISSING; tra gốc & logout. Admin 55 v46.6.3; Kibe 65 v47.0.3. Dock (540,150). Pass sai: --otp-only. 2FA: pass None -> Graph OTP. MEDIA dòng riêng.
+Kho video: min 45; Render 1 wkr; Cào 20; niches 80; SQLite retry 5; 12 Niche Hot. Nuôi 8 Row: Starvation 96h theo chu kỳ 4d (cấm 48h false-alarm). TT Login: Kí sinh tra gốc & logout. Admin 55 v46.6.3; Kibe 65 v47.0.3. Dock (540,150). Pass sai: --otp-only. 2FA: pass None -> Graph OTP. MEDIA dòng riêng.
 §
 Canary: WoL ether3 (kibe 0C:EF:15:37:4C:20, admin 22:33:4D:06:4C:26; WG 13231); CẤM PASS khi followed=0/FOLLOW_FAILED; ảnh/log trước teardown. Admin: upload SSH admin-farm.
 §
-Reviewer :20129: Combo 'review' (Sol Web Tier 0 + Terra Codex Tier 1 fallback). Strike 3: Claude CLI Sonnet 5.5. Acc báo account_deactivated là ban thật, dọn cả Omni (:20129) & 9Router (:20128). Bắt nút Submit ChatGPT GPM cấm dính Google/Apple; Graph API scope Mail.Read.
+Reviewer :20129: Combo 'review' (Sol Web->Terra Codex). Acc account_deactivated là ban thật, dọn cả Omni (:20129) & 9Router (:20128). Submit ChatGPT GPM cấm dính Google/Apple. Graph API chỉ acc có token, ko token mở Outlook GPM dùng code batch_gpm_hotmail_password_login.py bóc OTP. Acc die lưu D:\Taadaa\runtime\chatgpt_account_lifecycle.json để O(1) SKIP. Re-OAuth bóc __Secure-next-auth.session-token nạp Omni. Báo cáo D:\Taadaa\reports\chatgpt_lifecycle_report.json.
 §
 TikTok Shadow: Path B 'Đã fl' ko commit; FOLLOW_FAILED trừ fl tự nhiên; slot `(folder-1)%8+1` cứng; reg bù độc lập. Dọn C duyệt trước.
 §
