@@ -7,6 +7,7 @@ description: Use when running avatar-only jobs on TikTok farm.
 
 - Support reference: see [references/avatar_guard_hardened_patterns.md](references/avatar_guard_hardened_patterns.md) for hardened path resolve, pre-write atomic grant claims with rollback, and regenerator exit code discipline.
 - Single-machine replacement guide: see [references/single_machine_avatar_replacement.md](references/single_machine_avatar_replacement.md) for on-demand extraction, dual-sync, workbook/queue trigger, and visual evidence closeout.
+- Picker checkbox trap & save surface false-positive: see [references/tiktok-avatar-picker-checkbox-trap-and-save-surface-false-positive-20261011.md](references/tiktok-avatar-picker-checkbox-trap-and-save-surface-false-positive-20261011.md) for TikTok photo-picker top-right checkbox coordinate requirement and edit-profile save surface false-positive trap.
 - Single-profile locator and worker contract: see [references/single-profile-request-account-locator-and-worker-contract.md](references/single-profile-request-account-locator-and-worker-contract.md) for SQLite/Workbook O(1) identity resolution, queue-state boundaries, and the mandatory `FILE:`/`FAIL_FAST:` dispatch contract.
 
 ## Purpose

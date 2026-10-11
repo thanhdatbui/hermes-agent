@@ -54,7 +54,18 @@
      ```bash
      python D:/Taadaa/tools/with_device_lock.py --machine <N> -- <adb_cmd>
      ```
-3. **Phân loại lỗi & Xử lý (Chống dừng lại ở khảo sát suông):**
-   - Lỗi này thuộc về **UI Switcher Anchor Reliability** (tọa độ tap hoặc nhịp trễ animation mở bottom sheet trên TikTok v47.x), KHÔNG PHẢI lỗi tài khoản.
-   - **CẤM DỪNG LẠI Ở KHẢO SÁT SUÔNG HOẶC CHỈ CẬP NHẬT DOCS:** User phát nổ khi Agent chỉ giải trình, cập nhật skill review mà "không chịu làm gì" để fix lỗi thật. Khảo sát T0 chỉ là bước đầu. Ngay khi tìm ra nguyên nhân gốc rễ (ví dụ: thiếu resource suffix `t_3`, `_PROFILE_HEADER_X_RATIO` bị lệch không phủ tới tọa độ profile name ở bên trái x=240), BẮT BUỘC phải chuyển ngay sang hành động sửa code (T1 O(1) hoặc dispatch Worker) và chạy Canary kiểm chứng.
-   - Báo cáo ngắn gọn hiện trạng kèm giải pháp code cụ thể và ảnh `MEDIA:` đã soi mắt cho User.
+3. **Phân loại lỗi & Xử lý (2 Nhánh Chính — Chống dừng lại ở khảo sát suông):**
+   - **Nhánh A — UI Switcher Anchor Glitch:** Bottom-sheet chưa mở được (`stop_reason: manual-needed:account-switcher-not-open`). Tọa độ tap anchor tiêu đề trượt (ví dụ: thiếu resource suffix `t_3`, `_PROFILE_HEADER_X_RATIO` chưa bao quát vùng x=240). Bắt buộc chuyển ngay sang hành động sửa code (T1 O(1) hoặc dispatch Worker) và chạy focused test.
+   - **Nhánh B — Nick Ký Sinh (Parasite Account) chiếm slot:** Bottom sheet ĐÃ mở được (ví dụ kiểm tra `soft-reboot-account_switcher-before.png`), nhưng máy chỉ chứa tối đa 8 nick và có 1 nick cũ ("nick ký sinh", ví dụ `samnga2403`) từng bị xóa/thay thế trên DB/Excel nhưng chưa được logout vật lý trên điện thoại.
+     * Hậu quả: Nick ký sinh chiếm mất 1 slot khiến nick mới của Ca (ví dụ Tik 1 `muyduyen4589`) không thể login hoặc bị thiếu -> Runner vuốt tìm không thấy ném `ACCOUNT_MISSING`.
+     * Quy trình xử lý dứt điểm Nick Ký Sinh:
+       1. Đối soát 8 nick trong Switcher với 8 dòng của máy trong `taikhoan_run_safe.xlsx` để tìm ra tên nick lạ/ký sinh.
+       2. Chạy công cụ logout chính quy để trục xuất nick ký sinh:
+          `python D:/Taadaa/tools/do_logout_account.py <M> <parasite_username> <serial>`
+       3. Sau khi máy nhả slot, tiến hành login tài khoản chính chủ còn thiếu vào máy.
+
+---
+
+## 4. Kỷ Luật Hook Tránh Bị Evidence First Gate Chặn Gây Spam
+- **Nguyên nhân Gate chặn:** Con hook `Evidence First Gate` tự động quét output: nếu agent báo hoàn thành mà thiếu `MEDIA:`, hoặc gửi `MEDIA:<path>` mà đường dẫn đó CHƯA được nạp qua `evidence_gate_verifier.py` (hoặc WinRT OCR) ghi nhận vào audit ledger, hook sẽ lập tức chặn tin nhắn và thay bằng thông báo vi phạm (`[FAIL-CLOSED VIOLATION]` hoặc `[UNVERIFIED MEDIA]`).
+- **Kỷ luật:** BẮT BUỘC chạy `python D:/Taadaa/tools/evidence_gate_verifier.py --pre-image <path> --allow-single-inspection` trước khi đính kèm `MEDIA:<path>` trong câu trả lời. Tuyệt đối không để xảy ra tình trạng tin nhắn gate rác đè lên câu trả lời của agent và gửi đến User.
