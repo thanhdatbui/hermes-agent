@@ -115,4 +115,32 @@
   * Tránh dùng `keyevent 4` mù quáng sau khi tap switch nick vì dễ làm app thoát ra Launcher.
   * Luôn dùng chuỗi kiểm tra có đối soát XML/OCR: `find_text_tap("Hồ sơ")` -> `find_text_tap("Menu hồ sơ")` -> `find_text_tap("Cài đặt và quyền riêng tư")` -> `find_text_tap("Đăng xuất")`.
 
+## 8. Bẫy Exit Code 0 Giả (False-Positive) Trong Script Logout Khi Target Là Active Profile
+- **Hiện tượng**: Script `do_logout_account.py <M> <target_nick> <serial>` chạy xong với exit code 0, Coordinator tin tưởng báo cáo hoàn tất nhưng thực tế nick vẫn chưa được logout, app vẫn kẹt trần 8 nick.
+- **Căn nguyên logic**:
+  * Hàm `logout_nick(serial, username)` tìm nick trong Switcher. Vì nick đang active nên không có node nào khớp $\rightarrow$ nhánh cũ chạy `return False` ngay tại bước 2.
+  * Tuy nhiên, block `__main__` gọi:
+    ```python
+    logout_nick(ser, nick)
+    verify(ser, m)
+    ```
+    Hàm `verify()` tiếp tục chạy, mở lại Switcher, chụp ảnh `m<M>_verified_logout.png` và kết thúc với returncode 0. Script hoàn toàn không kiểm tra giá trị trả về của `logout_nick()`.
+- **Giải pháp dứt điểm**:
+  1. Trong `logout_nick`: Nếu không thấy node khớp trong Switcher, không `return False` mà in cảnh báo `@{username} có thể là Active Profile`, tap `(540, 200)` để đóng Switcher và tiếp tục luồng vào *Hồ sơ -> Menu 3 gạch -> Cài đặt -> Đăng xuất* nick hiện tại.
+  2. Bắt buộc kiểm tra `if not logout_nick(): sys.exit(1)`.
+  3. Bắt buộc đối soát WinRT OCR / Vision xác nhận nick mục tiêu thực sự biến mất khỏi danh sách 7 nick còn lại trước khi kết luận thành công.
+
+## 9. Cạm Bẫy Màn Hình Cài Đặt ComposeView Không Có Bottom Nav Trong `go_to_profile`
+- **Hiện tượng**: Khi `tiktok_login_v1.py` chạy qua fallback Cài đặt hoặc script trước để lại app ở màn hình Cài đặt và quyền riêng tư (`SettingContainerActivity`), bước `[2] Go to profile tab` bị kẹt hoặc tap trúng các item trong Cài đặt thay vì Profile nav.
+- **Nguyên nhân**: Màn hình Cài đặt TikTok v47 sử dụng `ComposeView` toàn màn hình (`[0,0][1080,1920]`), đè hoàn toàn lên thanh bottom nav. Thao tác tap `(972, 1857)` không trúng tab Hồ sơ mà trúng nút con trong Cài đặt (như Tải về, Hiển thị hồ sơ).
+- **Giải pháp**: Trong hàm `go_to_profile(device_id)`, trước khi tìm tab Hồ sơ:
+  ```python
+  if any(k in flat_cur for k in ["cai dat va quyen rieng tu", "quay lai man hinh truoc"]):
+      log("   [go_to_profile] Settings screen detected -> pressing BACK to return to main app")
+      keyevent(device_id, 4, wait=1.0)
+      cur_xml = get_ui_xml(device_id)
+      flat_cur = strip_accents(cur_xml).lower()
+  ```
+
+
 
