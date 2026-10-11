@@ -79,5 +79,10 @@ Khi nhận yêu cầu đổi avatar từ ảnh chụp màn hình hoặc username
      - Mở trực tiếp hoặc bọc ảnh vào một file HTML viewport tối giản (`<style>body{margin:0}img{width:100vw}</style>`) để Chromium render toàn bộ chiều cao ảnh rõ nét.
      - **CROP PHÓNG TO VÒNG TRÒN AVATAR:** Do avatar trên màn hình 1080x1920 rất nhỏ, CẤM nhìn lướt toàn màn hình rồi kết luận mù. BẮT BUỘC crop riêng vùng avatar tròn (`y: 150..400, x: 400..680`) để soi cận cảnh: xác nhận tận mắt rõ khuôn mặt người thật (mắt, mũi, miệng), hay đang bị dính logo/huy hiệu/mảng vải áo/placeholder cũ.
      - **BÁO CÁO TRUNG THỰC TUYỆT ĐỐI:** Nếu vòng tròn avatar chưa đổi (vẫn là logo/ảnh cũ), BẮT BUỘC báo cáo chính xác là chưa đổi; CẤM TUYỆT ĐỐI báo cáo khống đã cập nhật.
+     - **CẠM BẪY FALSE POSITIVE TRONG RUNNER (Save Surface Trap):**
+       - Màn "Sửa hồ sơ" (Edit profile) có nút đỏ "Lưu" ở đáy màn hình.
+       - Bộ nhận diện thị giác `_is_avatar_save_surface_visual` kiểm tra dải đỏ ở góc dưới `(552..1032, 1728..1860)`. Nút đỏ của màn "Sửa hồ sơ" có thể kích hoạt sai điều kiện này nếu picker bị thoát hoặc không mở crop.
+       - Runner sẽ tap nhầm vào nút "Lưu" của "Sửa hồ sơ", lưu lại profile cũ chưa đổi avatar, rồi kết luận khống là "Crop đóng, đổi avatar thành công" (`exit=0, verified=True`).
+       - Vì vậy, **CẤM TUYỆT ĐỐI tin vào exit code của runner**. Chỉ có ảnh crop phóng to vòng tròn avatar hiển thị đúng khuôn mặt mới là bằng chứng nghiệm thu hợp lệ duy nhất.
      - **PITFALL PICKER CHỌN NHẦM ẢNH CŨ:** Nếu runner báo exit=0 nhưng avatar thực tế vẫn là logo cũ, nguyên nhân thường do TikTok picker tap nhầm ảnh cũ còn sót trong MediaStore của máy thay vì ảnh mới push. Cần dọn sạch thư viện ảnh trên máy và kiểm tra lại picker.
   3. Gửi ảnh nghiệm thu kèm thẻ `MEDIA:<path_to_avatar-uploaded-confirmed.png>` trong câu trả lời cho User kèm xác nhận trực quan nội dung đã thấy tận mắt.
