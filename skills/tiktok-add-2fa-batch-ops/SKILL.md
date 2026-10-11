@@ -6,7 +6,7 @@ description: "Chạy batch bật 2FA TikTok bằng repo D:\\Taadaa\\tiktok-add-b
 # TikTok Add 2FA Batch Ops (repo tiktok-add-bao-mat-f2a)
 
 References:
-- `references/cross-machine-account-rebalance-preflight-and-2fa.md` — **[MỚI 11/10/2026]** Điều phối nick dư chạm trần 8 acc, kỷ luật bật 2FA & đặt pass trên máy nguồn trước khi chuyển, bẫy thiếu adapter `swipe()` gây lỗi `ACCOUNT_NOT_IN_SWITCHER`, và quy tắc shift-by-1 slot khi phục hồi nick cũ.
+- `references/cross-machine-account-rebalance-preflight-and-2fa.md` — **[MỚI 11/10/2026]** Điều phối nick dư chạm trần 8 acc, kỷ luật bật 2FA & đặt pass trên máy nguồn trước khi chuyển, bẫy thiếu adapter `swipe()` gây lỗi `ACCOUNT_NOT_IN_SWITCHER`, lỗi `UI_TARGET_AMBIGUOUS:Next:0` & cứu hộ Secret từ `2fa_audit.log`, và quy tắc shift-by-1 slot khi phục hồi nick cũ.
 - `references/dual-cluster-email-unlink-and-ssh-encoding-pitfalls-20261010.md` — **[MỚI 10/10/2026]** Bài học TikTok v46+ chặn gỡ Email (`EMAIL_DISABLE_NOT_STABLE`), lỗi Mojibake/transcoding tham số tiếng Việt qua SSH PowerShell (`Ti Kho?n`), và bẫy đếm trùng số lượng skip trong regex watchdog.
 - `references/auth-blocked-fake-password-reset-and-2fa-proof-discipline-20261010.md` — **[MỚI 10/10/2026]** Quy trình giải cứu nick dính pass sai (`AUTH_BLOCKED`), xóa pass về `None` để login qua OTP và kích hoạt đổi pass Phase B; vá nút song ngữ `UI_TARGET_AMBIGUOUS:Next:0`; và kỷ luật nghiệm thu 2FA bắt buộc chụp đúng màn hình Bảo mật đích (cấm gửi Switcher).
 - `references/night-2fa-ca4-session-interlock-and-schedule-gate.md` — **[MỚI 10/10/2026]** Khắc phục xung đột Device Lock giữa 2FA đêm và Ca 4 Phiên 2 (`is_ca4_finished` qua `feed_session_reported.json` + khung giờ `02:45 - 04:50`).

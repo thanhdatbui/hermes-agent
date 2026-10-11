@@ -75,3 +75,22 @@
   3. **Lùi toàn bộ các nick sau nó 1 vị trí**: Các nick từ Tik 3 cũ lùi sang Tik 4, Tik 4 lùi sang Tik 5, ..., Tik 7 lùi sang Tik 8.
   4. **Nick non nhất ở đuôi là nick chuyển đi**: Nick ở slot cuối cùng sau khi lùi (Tik 8) chính là nick non nhất, được chuyển giao sang máy thiếu slot.
   5. **Đồng bộ toàn diện**: Cập nhật đồng thời toàn bộ 8 file `Tik1..Tik8.xlsx`, `taikhoan_run_safe.xlsx`, Master DAT `taikhoan_dat_v2_updated .xlsx`, và bảng `account_mapping` + `farm_account_info` trong SQLite `tiktok_tracker.db`.
+
+## 6. Lỗi `UI_TARGET_AMBIGUOUS:Next:0` Trong `ensure_account_password_saved` & Cứu Hộ Secret Từ `2fa_audit.log`
+- **Hiện tượng**: Runner Phase B thực hiện xong các bước kích hoạt 2FA Authenticator, nhưng ở bước tạo/đổi mật khẩu cuối cùng (`ensure_account_password_saved`) thì văng lỗi:
+  `{"status": "failed", "reason": "UI_TARGET_AMBIGUOUS:Next:0"}`.
+- **Nguyên nhân**:
+  * Khi nick chưa có mật khẩu hoặc gặp màn hình "Xác minh danh tính" (Verify your identity), flow chọn xác minh qua Email rồi tìm nút "Tiếp" / "Next". Nếu TikTok đổi label (ví dụ "Gửi mã" / "Tiếp tục" hoặc nút bị mờ do chưa tích chọn phương thức), `find_tappable_value` không tìm thấy phần tử khớp nào (`len(choices) == 0`) và ném ngoại lệ `UI_TARGET_AMBIGUOUS:Next:0`.
+  * Do ngoại lệ xảy ra trước khi hàm `write_workbook()` được gọi ở cuối hàm `execute_phase_b()`, ô cột 2FA trong Excel chưa kịp được ghi.
+- **Cơ chế cứu hộ 2FA Secret (BẮT BUỘC KIỂM TRA TRƯỚC KHI RETRY)**:
+  * Trong `core/workbook.py`, hàm `write_2fa()` luôn ghi append một dòng audit log vào file đĩa **trước khi** cập nhật cell Excel:
+    `C:\Users\Kibe\AppData\Local\tiktok-add-bao-mat-f2a\logs\2fa_audit.log`
+  * Dòng log có định dạng:
+    `[YYYY-MM-DD HH:MM:SS] [ACCOUNT_RECORD] May: <M> | Sheet: Tài Khoản | Row: <R> | Username: <user> | 2FA_Secret: <SECRET_32_CHARS>`
+  * **Hành động cứu hộ**:
+    1. Đọc ngay 5 dòng cuối của file log:
+       `tail -n 5 "C:\Users\Kibe\AppData\Local\tiktok-add-bao-mat-f2a\logs\2fa_audit.log"`
+    2. Nếu thấy dòng record của tài khoản vừa chạy kèm `2FA_Secret` 32 ký tự: **Xác nhận 2FA đã được kích hoạt thành công trên TikTok!**
+    3. Trích xuất Secret Key đó và dùng script cập nhật thủ công vào cột 5 của hàng tương ứng trong Master DAT (`taikhoan_dat_v2_updated .xlsx`).
+    4. **CẤM TUYỆT ĐỐI** chạy lại flow 2FA từ đầu vì sẽ gây đè mã hoặc văng lỗi do nick đã có 2FA trên server TikTok. Tiến hành ngay bước tiếp theo (Logout nick non hoặc nạp nick mới).
+

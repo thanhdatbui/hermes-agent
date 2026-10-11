@@ -23,6 +23,10 @@ Khi tự động đăng nhập ChatGPT trên GPM và gặp màn hình yêu cầu
   3. Purge sạch tài khoản khỏi CSDL SQLite `~/.omniroute/storage.sqlite` (`provider_connections`) và loại bỏ ID khỏi mảng `models` trong `combos.data` (các combo `chatgpt-web-pool`, `gpt-web-sol`, `review`).
   4. Đồng bộ xóa provider trên cả OmniRoute (`:20129`) lẫn 9Router (`:20128`).
 - **O(1) Short-circuit Skip:** Ở tất cả các lần quét sau (chạy tay hay cron), hàm kiểm tra đọc state file và lập tức bỏ qua tài khoản đã dán nhãn `DEAD_DEACTIVATED` mà không mở profile GPM.
+- **Reporting & Visual Evidence Protocol:**
+  - Xuất báo cáo tổng hợp JSON ra `D:/Taadaa/reports/chatgpt_lifecycle_report.json` ghi nhận số lượng `total`, `live`, `dead`, `skipped`.
+  - Ghi nhật ký sự kiện chi tiết dạng JSON Lines vào `D:/Taadaa/logs/chatgpt_audit_trail.jsonl`.
+  - Tuân thủ Invariant Soi Mắt Đọc Ảnh: Trước khi đính kèm `MEDIA:<path>` trong báo cáo kết quả cho User, BẮT BUỘC dùng `vision_analyze` mở ảnh `deactivated_*.png` kiểm tra thực tế, xác nhận rõ lỗi `account_deactivated` / xóa tài khoản, đảm bảo ảnh không bị đen hay lẹm chữ.
 
 ## 3. Quy tắc An toàn Purge & Transaction SQLite
 - **Exact Match Isolation:** Khi tìm ID provider để xóa hoặc cập nhật token, CẤM dùng so khớp chuỗi lỏng lẻo (`email in name` hoặc `email in p_id`). Bắt buộc dùng hàm kiểm tra chính xác (`is_account_match`) để tránh xóa nhầm tài khoản có cùng tiền tố (ví dụ: `user@domain.com` xóa nhầm `user@domain.com.vn`).
