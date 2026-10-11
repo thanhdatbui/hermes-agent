@@ -12,7 +12,13 @@ Khi nhận yêu cầu đổi avatar từ ảnh chụp màn hình hoặc username
   - Crop cận cảnh (tight zoom / portrait): Khuôn mặt chủ thể (người / thú cưng) phải nằm ngay trung tâm, chiếm 40%–60% diện tích khung hình vuông `512x512`.
   - **CẢNH BÁO TÂM TỌA ĐỘ TRÊN VIDEO DỌC (9:16):** Với video dọc (576x1024, 1080x1920), đầu/mặt người luôn nằm ở 15%–25% trên cùng (`cy ~ 0.2 * H`), CẤM TUYỆT ĐỐI lấy tâm ở giữa hay phần thân (`cy ~ 0.4 - 0.5 * H` là vùng ngực/áo). Lấy tâm quá thấp sẽ khiến TikTok mask tròn cắt cụt mất toàn bộ đầu, chỉ còn mảng vải áo.
   - Không dính watermark, phụ đề, thanh tiến trình hay viền đen.
-- **Vision Pre-flight:** Mở ảnh qua `browser_vision` kiểm tra tận mắt độ nét, bố cục và xác nhận chủ thể đúng yêu cầu trước khi nạp vào hệ thống.
+- **Vision Pre-flight & Checkpoint Gửi Preview Cho Operator:**
+  - Sau khi crop 512x512, tạo ngay file preview đối sánh `avatar_preview_comparison.jpg` (ghép ngang: [Ảnh vuông gốc 512x512] + [Ảnh mask tròn TikTok 512x512 trên nền tối]).
+  - Mở ảnh qua `browser_vision` kiểm tra tận mắt độ nét, biểu cảm, bố cục khuôn mặt ở trung tâm (chiếm 40%–60% hình tròn).
+  - **BẮT BUỘC GỬI THẺ MEDIA: CHO OPERATOR TRƯỚC:** Gửi ngay `MEDIA:<path_to_avatar_preview_comparison.jpg>` cho User để xác nhận đúng chủ thể và đúng khuôn mặt trước khi nạp vào runner máy.
+  - **KỶ LUẬT TÁCH BẠCH 2 KHÂU (TẠO ẢNH vs UP MÁY):**
+    * Khi User phản hồi "Mày tạo ảnh cho ra đúng đi đã" hoặc chê ảnh lạ: BẮT BUỘC tập trung xử lý dứt điểm Khâu 1 (trích xuất, crop, gửi ảnh preview người thật), KHÔNG ĐƯỢC vội vàng chạy loop up máy rồi gửi ảnh chụp màn hình máy bị lỗi logo cũ khiến User ức chế.
+    * Tách bạch rõ ràng: Ảnh thành phẩm đã đúng hình người chưa? Nếu chưa -> sửa crop/chọn frame khác. Chỉ khi ảnh thành phẩm đã 100% chuẩn hình người mới chuyển sang Khâu 2 (nạp máy).
 
 ## 3. Đồng bộ kho ảnh 2 đầu (SSOT Dual-Sync)
 - Copy file avatar thành phẩm `avatar.jpg` vào đồng thời cả hai kho:
