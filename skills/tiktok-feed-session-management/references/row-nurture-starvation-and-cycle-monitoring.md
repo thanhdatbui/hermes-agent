@@ -72,26 +72,36 @@ Hệ thống giám sát vận hành Farm bắt buộc bao phủ đầy đủ 3 t
 
 ---
 
-## 4. Kỷ Luật Lập Lịch Chu Kỳ 4 Ngày (4-Day Cycle Modulo 4 Invariants)
+## 4. Kỷ Luật Lập Lịch Chu Kỳ 4 Ngày: Randomized Parity & Anti-Overengineering
 
-### Bảng phân bổ ca & phiên (3 ca/ngày):
-- **Ngày 1 (Day 1 - Bảo vệ dải IP sau ngày nghỉ):**
-  - Ca 1 (Sáng: 06:00, 08:00): Bốc Row 1 hoặc Row 2 (hai row khỏe nhất, cấm đưa Row 7/acc yếu vào ca sáng Ngày 1 để tránh nổ cầu dao IP).
-  - Ca 2 (Trưa: 12:00, 14:00): Bốc Row 3 hoặc Row 4.
-  - Ca 3 (Tối: 18:00, 20:00): Bốc Row 5 hoặc Row 6.
-- **Ngày 2 (Day 2 - Bù trừ đối xứng):**
-  - Ca 1 (Sáng): Bốc Row còn lại trong cặp (1, 2).
-  - Ca 2 (Trưa): Bốc Row còn lại trong cặp (3, 4).
-  - Ca 3 (Tối): Bốc Row còn lại trong cặp (5, 6).
-- **Ngày 3 (Day 3 - Xử lý dải row phụ & dưỡng sinh sớm):**
-  - Ca 1 (Sáng): Row 7.
-  - Ca 2 (Trưa): Row 8.
-  - Ca 3 (Tối): Ca dưỡng sinh luân phiên cho Row 3 / Row 4 (dàn acc ăn nhả/cooldown cần rửa trust). Cờ `is_rest_day = True`, `_follow_rate = 0`.
-- **Ngày 4 (Day 4 - Dưỡng sinh xả tải toàn farm):**
-  - Cả 3 ca đều chạy dưỡng sinh (`is_rest_day = True`, `_follow_rate = 0`):
-    - Sáng: Row 3
-    - Trưa: Row 4
-    - Tối: Luân phiên Row 5 hoặc Row 6.
+### Chống bẫy Over-Engineering (Pitfall: "Permutation per-machine trong cùng 1 ca"):
+- **Sai lầm:** Cố gắng cho mỗi máy chạy một Row khác nhau trong cùng một ca (ví dụ Máy 1 chạy Row 1, Máy 2 chạy Row 2 lúc 06:00).
+- **Hậu quả:** 
+  1. Phá vỡ cấu trúc batch runner PowerShell lõi (`run-feed-session.ps1` nhận 1 tham số `-Row` cho cả 80 workers).
+  2. Phá vỡ cấu trúc thư mục artifact `live/YYYY-MM-DD/row-X-HHMMSS/` và làm tê liệt toàn bộ parser của Watchdog.
+  3. Khiến tiêu đề và đối soát của Watchdog Telegram bị sai lệch (không thể báo cáo "Ca 1 hoàn tất (Row 1)" khi máy này chạy R1 máy kia chạy R2).
+
+### Cơ chế Chuẩn Hóa: Randomized Parity 4-Day Cycle (Chu kỳ 4 ngày đảo nhóm chẵn/lẻ ngẫu nhiên):
+Vẫn giữ nguyên **1 Ca = 1 Row trên toàn bộ fleet** để đảm bảo tính đồng bộ, ổn định và báo cáo chính xác, nhưng triệt tiêu hoàn toàn khả năng TikTok "bắt bài" chu kỳ bằng cách **đảo ngẫu nhiên thứ tự nhóm Chẵn/Lẻ theo từng chu kỳ 4 ngày**:
+- Mỗi chu kỳ 4 ngày (`cycle_idx = (ordinal - BASE_ORDINAL) // 4`), hệ thống tự động gieo xúc xắc ngẫu nhiên (Pseudo-random Hash Seed):
+  * **Nếu chu kỳ bắt đầu bằng Nhóm Lẻ (Odd-first):**
+    - **Ngày 1 (Day 1):** Ca 1 (Sáng) = Row 1 | Ca 2 (Trưa) = Row 3 | Ca 3 (Tối) = Row 5.
+    - **Ngày 2 (Day 2):** Ca 1 (Sáng) = Row 2 | Ca 2 (Trưa) = Row 4 | Ca 3 (Tối) = Row 6.
+  * **Nếu chu kỳ bắt đầu bằng Nhóm Chẵn (Even-first):**
+    - **Ngày 1 (Day 1):** Ca 1 (Sáng) = Row 2 | Ca 2 (Trưa) = Row 4 | Ca 3 (Tối) = Row 6.
+    - **Ngày 2 (Day 2):** Ca 1 (Sáng) = Row 1 | Ca 2 (Trưa) = Row 3 | Ca 3 (Tối) = Row 5.
+- **Ngày 3 (Day 3 - Về đích & Xả tối):**
+  * Ca 1 (Sáng: 06h & 08h): **Row 7** (Cày thực tế).
+  * Ca 2 (Trưa: 12h & 14h): **Row 8** (Cày thực tế).
+  * Ca 3 (Tối: 18h & 20h): **Dưỡng sinh nick yếu** (Tắt follow, lướt feed + up 1 video).
+- **Ngày 4 (Day 4 - Nghỉ xả tải toàn Farm):**
+  * Cả 3 Ca (Sáng, Trưa, Tối): **Dưỡng sinh nick yếu** (bao gồm cả nick ăn nhả follow lẫn nick non chưa đủ 10 video).
+  * **Tắt 100% follow** (`_follow_rate = 0`), thuần túy lướt feed rửa trust + đăng 1 video/ngày nếu nick chưa đăng.
+- **Bảo toàn nhịp sinh học (User Persona):**
+  * Cặp `{Row 1, Row 2}` luôn luôn lướt Sáng (06h & 08h).
+  * Cặp `{Row 3, Row 4}` luôn luôn lướt Trưa (12h & 14h).
+  * Cặp `{Row 5, Row 6}` luôn luôn lướt Tối (18h & 20h).
+  * Thói quen giờ giấc của từng tài khoản được giữ vững, không bao giờ bị xáo trộn giờ lướt.
 
 ---
 

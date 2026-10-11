@@ -34,6 +34,13 @@
   * Nếu code kiểm chứng cố định crop vùng giữa `(x: 400..680, y: 150..400)`, trên Layout B vùng này là khoảng trắng giữa avatar và cột số liệu (RGB mean > 245, std < 20).
   * Agent nhìn ảnh trắng xóa nhưng lại suy diễn "thấy mặt người", tạo ra ảo giác nghiêm trọng dẫn đến việc bị người vận hành chửi mắng. BẮT BUỘC kiểm tra vùng avatar thực tế theo layout (`x: 80..340` nếu lệch trái).
 
+### D. Bẫy Ngộ Nhận Chủ Thể Kênh Do Rác Trong `video goc` (Raw Folder vs Render Nuoi vs Profile Grid)
+- **Sự cố thực tế:**
+  * Thư mục `D:/video goc/156` chứa lẫn cả slide bài giảng ôn thi Lịch Sử từ đợt cào cũ (có watermark logo GDĐT) lẫn video creator. Thuật toán Haar cascade bắt nhầm logo GDĐT thành khuôn mặt, dẫn đến việc crop logo làm avatar và Agent tự suy diễn "kênh về giáo dục ôn thi THPT".
+  * Người vận hành phản ánh: *"Gì thế t thấy video của kênh đó toàn gái mà"*.
+  * Khi kiểm tra lưới video thực tế đã đăng (`profile_video_grid`) trên màn hình Profile TikTok và kho video nuôi `D:/TIKTOK-videonuoinick/156/`, 100% video thực tế đang đăng trên kênh là bạn nữ creator (áo croptop xám, hai dây trắng, selfie trong phòng).
+- **Nguyên nhân:** Agent chỉ quét vài file đầu trong `video goc` (`1.mp4`, `2.mp4`), thấy slide bài giảng là vội kết luận niche kênh mà không đối soát với kho render thực tế và lưới video đã đăng trên kênh TikTok.
+
 ## 3. Quy tắc khắc phục & Kỷ luật bắt buộc (Remediation Discipline)
 
 1. **Tap đúng Checkbox góc trên-phải:**
@@ -47,3 +54,7 @@
    - Dùng `browser_vision` soi trực diện: xác nhận thấy rõ ngũ quan người thật (mắt, mũi, miệng) và đối chiếu với ảnh nguồn trước khi báo cáo User.
 3. **Dọn sạch MediaStore trước khi Push:**
    - Tránh việc MediaStore lưu cache trỏ vào ảnh cũ, luôn purge bảng `content://media/external/images/media` và dọn các thư mục media trước khi push avatar mới.
+4. **Đối soát Chủ thể Kênh với Lưới Video Profile (Chống lệch Niche):**
+   - Chụp ảnh Profile TikTok, crop nửa dưới màn hình để kiểm tra lưới video bài đăng (`profile_video_grid`).
+   - Kho `D:/TIKTOK-videonuoinick/<folder>/` MỚI LÀ KHO VIDEO RENDER THỰC TẾ ĐANG ĐƯỢC UPLOAD LÊN TIKTOK của tài khoản.
+   - Trích xuất avatar trực tiếp từ video thực tế đang nuôi trong `D:/TIKTOK-videonuoinick/<folder>/` của chính creator xuất hiện trong các bài đăng đó; CẤM TUYỆT ĐỐI chỉ quét vài file ngẫu nhiên trong `video goc` rồi tự suy diễn chủ đề kênh.
