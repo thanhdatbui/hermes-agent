@@ -62,11 +62,15 @@ Khi tài khoản **nghỉ follow hoặc chưa đủ video** (`organic-rest-day-p
      ```
    - Chạy lại lệnh tổng hợp `daily_account_actions` từ `session_account_actions` cho ngày hiện tại để số liệu trên Dashboard tự động hồi phục về đúng giá trị thực tế.
 
-### Nguyên nhân 4: Chênh Lệch Giữa Click Bot và Tăng Thật Web (Bot +18 vs Web +16)
+### Nguyên nhân 4: Chênh Lệch Giữa Click Bot và Tăng Thật Web (Bot +18 vs Web +16 -> Web +17) & Invariant Đối Soát Sản Lượng
 1. **Bản chất đo lường:**
    - **Bot follow (Tiến độ hôm nay):** Đếm số lần bot tap nút Follow thành công trên UI app (`followed_count`).
-   - **Web tăng thật (Tổng Đã Follow):** Lấy hiệu số `delta_following` của trường `following` cào trực tiếp từ profile TikTok công khai giữa snapshot hôm nay và snapshot hôm qua.
-2. **Lý do có khoảng lệch 1-3 lượt:**
+   - **Web tăng thật (Tổng Đã Follow):** Lấy tổng số lượt tăng thực tế trên profile công khai giữa snapshot hôm nay và snapshot hôm qua.
+2. **Quy tắc bất biến (Business Invariant) khi tính Web Tổng Tăng:**
+   - **CẤM cấn trừ số âm vào sản lượng:** Khi tính tổng tiến độ cày follow toàn farm (`total_delta_following`), chỉ cộng dồn các lượt tăng dương (`max(0, delta_following)`).
+   - Nếu nick bị nhả follow hoặc tài khoản đối phương bị xóa khiến delta following bị âm (`delta_following < 0`), trên thẻ tổng đối soát **BẮT BUỘC tính là `+0`**, không được trừ ngược vào công sức của các nick cày thành công (ví dụ: nick A tăng +13, nick B tăng +4, nick C tụt -1 -> Tổng tăng là `13 + 4 + 0 = 17`, không được tính thành `16`).
+   - Tiến độ cày follow là đo lường sản lượng cày mới (Gross Positive Growth), việc lấy số tụt của nick nghỉ cấn trừ vào công sức cày là sai hoàn toàn về mặt đối soát.
+3. **Lý do có khoảng lệch 1-2 lượt giữa Bot và Web (ví dụ: Bot +18 vs Web +17):**
    - **Nhả follow (Silent un-follow / Shadow drop):** TikTok có cơ chế rate limit hoặc anti-spam ngầm: khi tài khoản bấm follow quá nhanh hoặc IP bị soi, nút Follow trên UI máy hiển thị thành công nhưng sau 30s - vài phút server TikTok tự động hủy kết nối follow mà không thông báo lỗi.
    - **Độ trễ CDN Cache của TikTok:** Counter `following` trên trang công khai của TikTok đôi khi có độ trễ cập nhật vài phút đến 1 tiếng so với hành động thực tế trên app.
 

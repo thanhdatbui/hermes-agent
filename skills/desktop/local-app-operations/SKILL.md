@@ -469,8 +469,10 @@ When inspecting or maintaining single-file Python HTTP dashboards (e.g. `server.
 3. **Background daemon runners:** Any scheduler or poller thread (e.g. `schedule_runner`) must be started in `main()` as a daemon thread and include per-minute debounce so scheduled tasks do not trigger repeatedly in the same interval.
 4. **Safe in-place update & port-bound background restart:**
    - Always run `python -m py_compile <path/to/server.py>` before restarting to ensure no syntax errors brick the service.
-   - Do not use generic `taskkill /f /im python.exe`. Target only the process owning the listening port. Note: on MSYS/Git-Bash shells on Windows, POSIX-style `//F //PID <PID>` or native `/F /PID` can fail with `ERROR: Invalid argument/option - '//F'`; invoke through `cmd.exe /c "taskkill /F /PID <PID>"` or PowerShell:
+   - Do not use generic `taskkill /f /im python.exe`. Target only the process owning the listening port. Note: on MSYS/Git-Bash shells on Windows, POSIX-style `//F //PID <PID>` fails with `ERROR: Invalid argument/option - '//PID'`, while `/F /PID` can be mangled by MSYS path conversion. Use dash flags (`taskkill -PID <PID> -F`) or invoke through `cmd.exe /c "taskkill /F /PID <PID>"`:
      ```bash
+     taskkill -PID <PID> -F
+     # hoặc:
      cmd.exe /c "taskkill /F /PID <PID>"
      ```
      Or via PowerShell:

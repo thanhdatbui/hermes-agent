@@ -55,6 +55,22 @@ Chạy script query bảng `provider_connections` trong `C:\Users\Kibe\.omnirout
 1. Chụp ảnh cửa sổ và quét SOM tree bằng `computer_use(action='capture', mode='som', pid=..., window_id=...)`.
 2. Chạy WinRT OCR (`skills/productivity/windows-native-ocr/scripts/winrt_ocr.py`) xác nhận đúng email và modal "Chào mừng trở lại".
 3. **KỶ LUẬT CHỦ ĐỘNG (PROACTIVE ASSISTANCE):** Tuyệt đối KHÔNG dừng lại chỉ để bảo User tự bấm khi các button hoàn toàn click được qua automation.
+   - **BẪY CHỌN NÚT "TIẾP TỤC" (TRÁNH BẤM NHẦM OAUTH GOOGLE):**
+     * Trên `chatgpt.com/auth/login`, các nút mạng xã hội gồm: *"Tiếp tục với Google"*, *"Tiếp tục với Apple"*, *"Tiếp tục với số điện thoại"*, và nút submit email chính là *"Tiếp tục"*.
+     * **CẤM DÙNG:** `b.innerText.includes('Tiếp tục')` vì nó sẽ match ngay nút đầu tiên là *"Tiếp tục với Google"*, đẩy trình duyệt sang Google Sign-in và nhập nhầm OTP vào ô email Google!
+     * **BẮT BUỘC DÙNG EXACT MATCH:**
+       ```javascript
+       const buttons = Array.from(document.querySelectorAll('button'));
+       const contBtn = buttons.find(b => {
+           const t = (b.innerText || '').trim();
+           return (t === 'Tiếp tục' || t === 'Continue' || b.type === 'submit') &&
+                  !t.includes('Google') && !t.includes('Apple') && !t.includes('thoại') && !t.includes('phone');
+       });
+       if (contBtn) contBtn.click();
+       ```
+   - **KỶ LUẬT ĐỐI SOÁT ẢNH THẬT BẰNG OCR / VISION TRƯỚC KHI BÁO CÁO (CHỐNG GỬI ẢNH MÙ):**
+     * Trước khi đính kèm bất kỳ thẻ `MEDIA:<path>` nào, BẮT BUỘC gọi `browser_vision` hoặc WinRT OCR mở ảnh ra soi mắt kiểm tra từng dòng chữ.
+     * TUYỆT ĐỐI CẤM tự suy diễn nội dung từ turn trước để khẳng định đã thấy trang lỗi `account_deactivated` khi ảnh thực tế vẫn đang kẹt ở màn hình Google Sign-in hoặc OTP chưa submit.
    - Gọi `computer_use(action='click', element=<index_card_tai_khoan>, delivery_mode='background', capture_after=true)`.
    - Chờ 3-5 giây và capture lại fresh state để phân loại phản hồi tiếp theo:
      * **Tình huống 1 - Yêu cầu mã OTP qua Email (`auth.openai.com/email-verification`):** 

@@ -109,13 +109,13 @@ For session handoff protocol (taking over a derailed/over-engineered Luna sessio
   1. **Đại Giám Khảo Chốt Phiên (Closeout Gate)**: Chấm điểm độc lập qua `closeout_gate.py` đạt >= 85/100 mới được phép đóng phiên / push. Đồng thời đối chiếu diff toàn phiên phải là tập con của các contracts đã dispatch (ngưỡng dung sai thống nhất `diff <= 30` dòng).
   2. **Pre-Plan / Tham Vấn Kiến Trúc (Trigger-based)**: Chỉ bắt buộc gọi khi dính trigger rủi ro cao: đụng module nhạy cảm (guard/hook/policy/schema), sửa trên 3 files/đa repo, hoặc bế tắc (deadlock sau >= 2 lần dispatch fail).
 - **Terra High (`codex/gpt-5.6-terra-high`)**: Đã loại khỏi luồng chính từ 27/09 do tốn quota Codex đắt đỏ và dễ timeout lock. **CHỈ là dự phòng duy nhất khi Sol Web tạm thời không khả dụng** (timeout x2 hoặc hết quota web), bắt buộc ghi lý do vào audit ledger.
-- **Thợ Vặn Ốc Trong Lồng (T2 Worker)**: Gemini Worker (`ag-gemini-pool-3` / `omni-worker`, reasoning effort medium) thi công trong lồng vô trùng theo đúng Patch Contract O(1) của Coordinator, budget cứng <= 15 calls, focused test < 30s.
+- **Thợ Vặn Ốc Trong Lồng (T2 Worker)**: Gemini Worker (`ag-gemini-pool-3` / `omni-worker`, reasoning effort medium) mặc định 100% thi công trong lồng vô trùng theo đúng Patch Contract O(1) của Coordinator, budget cứng <= 15 calls, focused test < 30s. **Luna High (`cx/gpt-5.6-luna-high`) CHỈ làm quota-fallback khi Gemini cạn/lỗi** (User chỉ thị bắt buộc 2026-10-11: *'subagent chạy ag gemini pool, luna chỉ làm fallback'*).
 
 | Role | Default strategy |
 |---|---|
 | Coordinator (T0/T1/T2 Plan) | Gemini Flash/Tiered: Triage, log inspection, direct hotfix <= 15 lines (T1), hoặc tự lập Patch Contract O(1) (T2) |
 | Pre-Plan & Architecture | Sol High (chatgpt-web pool, 0đ quota): Gọi theo trigger rủi ro cao (nhạy cảm, >3 files, deadlock) |
-| Worker (T2) | Gemini Subagent (medium reasoning, 15 calls) / Luna High (codex fallback): Thi công trong lồng vô trùng |
+| Worker (T2) | Gemini Subagent (`ag-gemini-pool-3`, reasoning medium, 15 calls) — Luna High CHỈ làm fallback |
 | Secondary Backup | Terra High (codex pool): Dự phòng duy nhất khi Sol Web không khả dụng |
 | Closeout Gate | Sol High: Automated verification >= 85/100 + diff-in-contract verification prior to push |
 
