@@ -7,6 +7,7 @@ description: >-
 
 # Farm Alert Autonomous Recovery
 
+> Ref: `references/parasite-account-quota-exhaustion-and-logout-protocol-20261011.md` (**[11/10/2026]** Parasite account quota exhaustion 8-slot & logout onboarding triage).
 > Ref: `references/account-switcher-mapping-drift-vs-anchor-failure-20261011.md`.
 > Ref: `references/account-switcher-missing-vs-session-lost-triage-20261011.md`.
 > Ref: `references/asynchronous-stale-cron-alert-triage-protocol-20261010.md`.
