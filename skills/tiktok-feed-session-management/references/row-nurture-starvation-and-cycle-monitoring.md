@@ -10,6 +10,7 @@
 - Trong mô hình xoay tua $N$-ngày (hiện tại Farm Taadaa là **chu kỳ 4 ngày**):
   $$\text{Starvation Threshold} \ge N \times 24\text{h} \quad (\text{chuẩn: } 96\text{h}, \text{ buffer an toàn: } 100\text{h})$$
 - Mọi Row từ Row 1 đến Row 8 bắt buộc phải có ít nhất $\ge 1$ lần được nuôi thành công trong cửa sổ 96 giờ.
+- CẤM TUYỆT ĐỐI đặt ngưỡng 48h trong chu kỳ 4 ngày.
 - Chỉ khi một Row vượt quá 96 giờ mà không có bất kỳ phiên chạy thành công nào, hệ thống mới được phép kích hoạt `🚨 [STARVATION ALERT]`.
 
 ---
