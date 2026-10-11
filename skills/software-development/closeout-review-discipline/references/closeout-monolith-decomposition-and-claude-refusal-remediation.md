@@ -30,7 +30,19 @@ When the scope involves automating 2FA/OTP extraction or account pooling across 
    - If Sol Repair cannot generate a unique anchor, dispatch a Worker subagent (`ag-gemini-pool-3`, reasoning medium) to implement the decomposition.
 3. **If still capped by architectural or production environment requirements**: Mark the task as **L3 BLOCKED with exact evidence** (scorecard, test output, Claude refusal transcript). An L3 BLOCKED state with comprehensive verification evidence is a valid, compliant session closeout outcome.
 
-## 3. Worker Subagent Model Invariant
+## 3. Worker Subagent Model Invariant & Prompt Inertia Correction
 - **Primary Subagent Worker**: **`ag-gemini-pool-3`** (reasoning effort: `medium`, call ceiling: $\le 15$ calls).
 - **Fallback Worker**: `cx/gpt-5.6-luna-high` is STRICTLY a quota-fallback when the Gemini pool is exhausted or deadlocked.
-- **Prompt Inertia Hygiene**: Any system prompt or rule file mentioning Luna as the default implementation worker must be updated to align with the Gemini primary mandate.
+- **Prompt Inertia Hygiene (User Correction 11/10/2026)**:
+  - Khi Coordinator báo cáo hoặc suy luận theo quán tính câu chữ từ prompt cũ (như *"Worker Luna High thi công"*), cần kiểm tra ngay:
+    1. Cấu hình `agent.system_prompt` trong `config.yaml` qua `hermes_cli.config.load_config()` & `save_config()`.
+    2. Tài liệu quy chuẩn `PROJECT_RULES.md` / `TIERED_WORKFLOW.md`.
+  - Cập nhật dứt điểm các chuỗi `(Model: cx/gpt-5.6-luna-high)` thành `(Model: ag-gemini-pool-3; Luna High chỉ làm quota-fallback)` để loại bỏ hoàn toàn lỗi quán tính phát ngôn.
+
+## 4. Multi-File Delegation Anti-Explosion Rule
+Khi thực hiện phân tách monolith thành các helper modules (`chatgpt_otp_helper.py`, `omniroute_purge_helper.py`):
+- Worker subagent dễ chạm trần 15 calls nếu bị giao cả việc tạo file mới, viết test mới và chạy pytest trong cùng 1 turn (`[WORKER GATE - BUDGET EXHAUSTED]`).
+- Phải tách thành các contract atomic $O(1)$:
+  * Turn 1: Tạo/ghi module helper đơn lẻ (`chatgpt_otp_helper.py`).
+  * Turn 2: Tạo/ghi module helper thứ hai (`omniroute_purge_helper.py`).
+  * Turn 3: Refactor file chính import từ helper và chạy unit test suite tổng hợp.

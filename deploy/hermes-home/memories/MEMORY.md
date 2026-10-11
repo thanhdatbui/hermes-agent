@@ -1,6 +1,6 @@
 Chu kỳ 4d: Parity cố định 96h (N1 lẻ, N2 chẵn; cấm random giãn 120h), N3(R7,8, tối dưỡng), N4(dưỡng 0 fl+up non). Starve 108h (96+12h grace). CẤM xóa cooldown.
 §
-Dual-Farm: Cron/supervisor Kibe (1-80) & Admin (201-280). Excel Admin 10-11 cột; so le 2p; 8-Row tách riêng. CẤM copy ava Kibe->Admin (dùng m2 gốc). GPM: auto-heal chống spawn trùng (psutil); API offline sau heal PHẢI exit 1 alert đỏ. C7 PASS MAIL != C12 PASS GPT. ADB_VENDOR_KEYS + adb Admin.
+Dual-Farm: Cron/supervisor Kibe (1-80) & Admin (201-280). Excel Admin 10-11 cột; so le 2p; 8-Row riêng. CẤM copy ava Kibe->Admin (dùng m2 gốc). GPM: auto-heal chống spawn trùng; API offline sau heal PHẢI exit 1 alert đỏ. C7 PASS MAIL != C12 PASS GPT. ADB_VENDOR_KEYS + adb Admin. Worker: AG Gemini (`ag-gemini-pool-3`, reasoning medium); Luna High CHỈ là quota-fallback; CẤM quán tính gọi Luna.
 §
 Canary: WoL ether3 (kibe 0C:EF:15:37:4C:20, admin 22:33:4D:06:4C:26; WG 13231); CẤM PASS khi followed=0/FOLLOW_FAILED; ảnh/log trước teardown. Admin: upload SSH admin-farm.
 §
@@ -14,4 +14,4 @@ Giao tiếp: gọi 'tên nick TikTok', cấm handle. Hotmail: Báo cáo 6h BLOCK
 §
 Crop Ava 9:16: Mặt ở 15-25% trên (cy~0.2*H), cấm cụt đầu. Picker: tap checkbox (225,250), cấm tap tâm; bẫy nút Lưu Sửa hồ sơ. Soi zoom tròn profile.
 §
-Tài khoản trên máy: Mọi nick login trên máy là tài sản farm (cấm gọi kí sinh/đòi logout vứt nick). Đụng trần 8 nick do reg dư: map lại nick có sẵn vào workbook, nick non nhất chuyển sang máy thiếu slot (add 2FA trước; ghi Excel trước, chỉ login khi user bảo). Cấm trả câu cảnh báo gate thô vào chat.
+Tài khoản trên máy: Mọi nick login trên máy là tài sản farm (cấm đòi logout). Trần 8 nick: map nick có sẵn, nick non nhất chuyển máy thiếu (add 2FA trước; ghi Excel trước, chỉ login khi user bảo). Cấm trả câu cảnh báo gate thô vào chat.
