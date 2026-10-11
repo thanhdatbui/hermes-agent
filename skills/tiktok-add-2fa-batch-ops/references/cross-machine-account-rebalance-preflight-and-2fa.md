@@ -94,7 +94,18 @@
     3. Trích xuất Secret Key đó và dùng script cập nhật thủ công vào cột 5 của hàng tương ứng trong Master DAT (`taikhoan_dat_v2_updated .xlsx`).
     4. **CẤM TUYỆT ĐỐI** chạy lại flow 2FA từ đầu vì sẽ gây đè mã hoặc văng lỗi do nick đã có 2FA trên server TikTok. Tiến hành ngay bước tiếp theo (Logout nick non hoặc nạp nick mới).
 
-## 7. Cạm Bẫy Bottom Sheet Switcher Khi Có 7 Nick & Quy Trình Đăng Xuất An Toàn
+## 7. Cạm Bẫy Bottom Sheet Switcher Khi Có 7 Nick & Cạm Bẫy Active Profile Khi Logout
+- **Cạm bẫy Active Profile Khi Logout Nick (Nick biến mất khỏi Switcher nhưng vẫn chiếm slot)**:
+  * Khi mở Bottom-Sheet Switcher, TikTok **chỉ hiển thị các tài khoản phụ**. Tài khoản đang mở trực tiếp (`Active Profile`) hiển thị trên header/bio của Profile và **HOÀN TOÀN KHÔNG CÓ TRONG DANH SÁCH SWITCHER**.
+  * **Hậu quả**: Nếu script logout mở Switcher và tìm target nick trong danh sách switcher:
+    - Nếu target nick vô tình đang là `Active Profile`, script tìm không thấy trong Switcher $\rightarrow$ báo trượt / bỏ qua bước logout.
+    - Nếu script wrapper không kiểm tra exit code và vẫn chụp ảnh Switcher nghiệm thu: Ảnh Switcher hiển thị 7 nick phụ khác (không thấy target nick) $\rightarrow$ Coordinator tưởng nhầm nick đã được đăng xuất!
+    - Thực tế target nick vẫn đang chiếm slot active trên máy $\rightarrow$ tổng số nick trên máy vẫn là `7 + 1 = 8 nick`! App chạm trần 8 nick nên nút "Thêm tài khoản" tiếp tục bị ẩn.
+  * **Quy tắc vàng khi Logout**:
+    1. Vào tab Hồ sơ (`bounds: [864,1794][1080,1920]`) đọc header xem `current_profile` có trùng với target nick không.
+    2. Nếu `current_profile == target`: **BỎ QUA SWITCHER**, đi thẳng vào *Menu 3 gạch (`[1005, 150]`) $\rightarrow$ Cài đặt và quyền riêng tư (`[540, 1248]`) $\rightarrow$ Cuộn đáy $\rightarrow$ Đăng xuất*.
+    3. Nếu `current_profile != target`: Mở Switcher, cuộn tìm target nick, switch sang rồi mới tiến hành logout.
+    4. Nghiệm thu: Tổng số nick trên máy phải là $\le 7$ (tức Switcher chỉ còn $\le 6$ nick phụ), và nút `+ Thêm tài khoản` phải hiện rõ ở đáy.
 - **Cạm bẫy Swipe Overshoot làm văng Bottom Sheet Switcher trên Samsung S7 (1080x1920)**:
   * Khi máy có 7 nick, nút "Thêm tài khoản" bị khuất ở đáy bottom sheet. Lệnh `swipe(540, 1500, 540, 800)` trong `tap_add_account()` kéo tọa độ vượt ra ngoài mép trên bottom sheet (`y=1050-1100`), Android kích hoạt sự kiện `TOUCH_OUTSIDE` và đóng dialog về Feed.
   * **Giải pháp**:
