@@ -1,6 +1,6 @@
 Chu kỳ 4d 3 ca (bỏ 0h): N1(Sáng R1/2, Trưa R3/4, Tối R5/6), N2(bù), N3(R7,8, tối yếu), N4(3 ca yếu+up, 0 fl). Nuôi: 4d/lần, Starvation 96h. CẤM xóa cooldown.
 §
-Dual-Farm: Cron/supervisor chạy cả Kibe (1-80) & Admin (201-280). Excel Admin 10-11 cột. Supervisor so le 2p; Báo cáo 6H gộp. CẤM copy ava Kibe->Admin; Admin dùng video gốc m2.
+Dual-Farm: Cron/supervisor chạy cả Kibe (1-80) & Admin (201-280). Excel Admin 10-11 cột. Supervisor so le 2p; 8-Row tách riêng Kibe/Admin; Dashboard 1905 tra cứu acc đói >96h. CẤM copy ava Kibe->Admin; Admin dùng video gốc m2.
 §
 GPM 5ph. gmail_clean_v2: LIVE lưu, DIE xóa. CẤM coi Gmail die=TT die; 2FA TOTP vẫn LIVE. Credential: C7 PASS MAIL != C12 PASS GPT; cấm đè chéo. X99: cấm xHCI; wkr 25; 05:30 reboot. ADB: ADB_VENDOR_KEYS + adb Admin.
 §
@@ -20,4 +20,4 @@ Giao tiếp: gọi 'tên nick TikTok', cấm handle. Hotmail: Báo cáo 6h BLOCK
 §
 [ROUTER TB]: R3G V1 (100.86.119.82). Xanh=DHCP; 2 trắng=PPPoE L1 & L2. Proxy: User KO đổi; CẤM script nhảy/random proxy; SoT: PROXYgandienthoai.xlsx; down->fail-closed.
 §
-Crop Avatar Dọc (9:16): Mặt ở 15-25% trên (`cy ~ 0.2*H`), cấm tâm giữa cụt đầu dính áo. Ava picker: tap checkbox (225,250), cấm tap tâm; bẫy nút Lưu Sửa hồ sơ false-positive. BẮT BUỘC soi zoom tròn profile.
+Crop Ava 9:16: Mặt ở 15-25% trên (cy~0.2*H), cấm cụt đầu. Picker: tap checkbox (225,250), cấm tap tâm; bẫy nút Lưu Sửa hồ sơ. Soi zoom tròn profile.

@@ -10,7 +10,7 @@ author: Hermes Agent
 ## References & Invariants
 - Split dispatch & OneDrive rules: see [references/telegram-split-dispatch-and-onedrive-conflict-invariants.md](references/telegram-split-dispatch-and-onedrive-conflict-invariants.md).
 - Watchdog taxonomy & triage: see [references/feed-watchdog-catchall-taxonomy-and-triage.md](references/feed-watchdog-catchall-taxonomy-and-triage.md).
-- Row nurture starvation & cycle monitoring rules: see [references/row-nurture-starvation-and-cycle-monitoring.md](references/row-nurture-starvation-and-cycle-monitoring.md).
+- Row nurture starvation & cycle monitoring rules: see [references/row-nurture-starvation-and-cycle-monitoring.md](references/row-nurture-starvation-and-cycle-monitoring.md). (Báo cáo sức khỏe 8 Row bắt buộc tách riêng từng Farm Kibe & Admin; tra cứu vi mô 1,280 acc đói >96h qua Web Dashboard Port 1905).
 
 ## Watchdog Upload Status Taxonomy & Triage
 
