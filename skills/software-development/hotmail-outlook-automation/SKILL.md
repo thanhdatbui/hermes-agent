@@ -13,6 +13,7 @@ description: Hotmail automation.
 - **BoxTaiKhoan API**: Buy OAuth2 product 60 via `POST /ajaxs/client/product.php`, one account per request (`amount=1`) to receive complete `data`; format `mail|pass|refresh_token|client_id`.
 - **Change-pass eligibility (2026-10-10)**: Require TikTok ID+pass and ChatGPT PASS (Col 12), clear Col 9 after success, and keep explicit BLOCKED reporting plus fail-closed supervisor behavior. See the canonical-flow and lifecycle references below.
 - **6H lifecycle report reconciliation**: Treat cron output as a point-in-time snapshot. Re-read canonical Kibe/Admin state, recompute BLOCKED by status, compare `updated_at` with the report time, classify stage/status before assigning a cause, and never bulk-reset or retry blocked profiles. See `references/6h_report_snapshot_reconciliation.md`.
+- **Sheet name fallback & recovery reconciliation**: File `gmail_clean_v2.xlsx` dùng tên sheet `'Gmail Accounts'` (không phải `'Tài Khoản'`). Mọi hàm tra cứu recovery mail và 2FA secret key bắt buộc ưu tiên `'Gmail Accounts'`, fallback `'Tài Khoản'` rồi mới `wb.active`. Xem chi tiết tại `references/hotmail_security_sheet_name_fallback_reconciliation.md`.
 - **Kiến trúc kho Gmail Clean V2 & 2 Cột Trạng Thái (2026-08-25)**:
   - `gmail_clean_v2.xlsx` là **Single Source of Truth** chứa cả Gmail và Hotmail của farm.
   - Cột 11: `info_changed` (đánh dấu `1` khi đã đổi info/pass bảo mật Hotmail).
