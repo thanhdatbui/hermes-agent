@@ -51,10 +51,13 @@ Construct a dedicated device runner using WinRT OCR (`tools/ocr_boxes.ps1`) and 
     - **Vào màn Sửa hồ sơ & Cạm bẫy Top-Left (72, 148) vs Video Tab Icon (Ill)**:
       * CẤM TUYỆT ĐỐI fallback vào tọa độ góc trên bên trái `(72, 148)`: Trên TikTok S7 v47, `(72, 148)` là icon **"Tìm bạn bè"** (Add Friends), không phải bút chì! Tap nhầm sẽ bung màn Tìm bạn bè.
       * **Cạm bẫy Video Tab Icon `Ill` / `Ill v`**: Trên profile chưa có bio, các tab video icon (`Ill` / `Ill v`) bắt đầu ngay tại `y ~ 969-1023, x ~ 143-223`. CẤM quét mù box ở `y trong [920, 1050] and x < 500` vì sẽ tap nhầm vào icon video tab `(165, 980)` lặp lại 5 lần dẫn đến abort!
-      * **Nút vào Sửa hồ sơ chuẩn**:
+      * **Nút vào Sửa hồ sơ chuẩn & Cạm bẫy 3-Button Row**:
         1. Ưu tiên 1: `find_box(boxes, r"(sua|chinh sua|edit)\s*h[o0]")`.
-        2. Ưu tiên 2 (khi acc chưa set bio): `find_box(boxes, r"th[eé]m\s*ti[eé]u\s*s[uử]")` hoặc tọa độ nút `+ Thêm tiểu sử` ở giữa màn hình `(534, 863)`.
-        3. Fallback cứng: `(300, 985)` CHỈ khi màn hình có text bio đẩy icon video xuống dưới `y > 1100`.
+        2. **Cạm bẫy "+ Thêm tiểu sử" (534, 863)**: Khi tài khoản chưa có bio, hàng nút dưới stats gồm 3 nút ngang hàng (y ~ 865):
+           - Nút 1 bên trái `(210, 865)`: **Sửa hồ sơ** (vào thẳng `EDIT_PROFILE`). WinRT OCR thường bỏ sót hoặc không đọc được chữ "Sửa hồ sơ" trên nút này do font/độ tương phản thấp trên S7. BẮT BUỘC dùng fallback `(210, 865)` (nằm ngang hàng bên trái của "+ Thêm tiểu sử").
+           - Nút 2 ở giữa `(534, 863)`: **+ Thêm tiểu sử** (CẠM BẪY CHÍ MẠNG: Nút này CHỈ mở popup sửa Tiểu sử `0/160`, KHÔNG mở trang Sửa hồ sơ để đổi tên, khiến runner kẹt loop UNKNOWN / PROFILE 5 lần!).
+           - Nút 3 bên phải `(860, 865)`: **Chia sẻ hồ sơ**.
+        3. Fallback cứng: `(210, 865)` khi không thấy text "Sửa hồ sơ" và màn hình có `+ Thêm tiểu sử`. CHỈ dùng `(300, 985)` khi profile đã có text bio đẩy hàng nút xuống dưới.
   - `SWITCHER`: Tap đúng dòng target username (ví dụ `lilyanzj8n1` ở `y=603`). Nếu chưa thấy trong tầm nhìn, vuốt sheet lên (`(540, 1500) -> (540, 900)`). Khi tap trúng acc, lập tức gán `seen_profile = False`.
     * **Phân loại Switcher an toàn**: CẤM dùng keyword lỏng lẻo `"tai khoan" in t` đơn độc vì màn "Tìm bạn bè" có dòng *"Tài khoản được đề xuất"* sẽ bị nhận nhầm thành Switcher. Bắt buộc yêu cầu `"chuyen doi"` hoặc regex `chuy\w{0,4}n\s*d\w{0,4}i`.
   - `EDIT_PROFILE`: Identify label "Tên" (phải nằm trên "Tên người dùng", ví dụ y=752 so với y=878) và tap dòng "Tên" `(600, 752)`. Màn này KHÔNG BAO GIỜ có bottom navigation bar!
@@ -99,14 +102,15 @@ Khi chạy lại Closeout Gate sau live execution, test suite sẽ verify cả l
 ## 6. Tiered Workflow & Guard Compliance: Fast Scaffolding Pattern vs Delegation Timeout
 Writing a new `do_rename_m<ID>.py` (~450 lines) exceeds Coordinator T1 direct-write budget (<= 200 lines total). However, attempting to delegate full runner creation from scratch to a worker subagent frequently hits two major pitfalls:
 - **Pitfall 1 (Contract Validation Failure & Coordinator Guard Strict Headers)**:
-  `TASK_KIND: EDIT` bắt buộc đủ 6 headers trong `context` của `delegate_task`:
+  `TASK_KIND: EDIT` bắt buộc đủ các headers trong `context` của `delegate_task`:
   * `TASK_KIND: EDIT`
   * `TARGET_FILE: ...`
   * `TEST_FILE: ...`
   * `FOCUSED_TEST: python -m pytest <path>::<node> -q` (hoặc `python -m py_compile <path>`. CẤM dùng `pytest ... -v` vì guard sẽ từ chối `INVALID_FOCUSED_TEST_FORMAT`).
   * `OLD_STRING: <<< ... >>>` (BẮT BUỘC bọc trong `<<<` và `>>>`).
   * `NEW_STRING: <<< ... >>>` (BẮT BUỘC bọc trong `<<<` và `>>>`).
-  Thiếu bất kỳ header nào hoặc sai định dạng `FOCUSED_TEST`, Coordinator Guard sẽ chặn dispatch ngay lập tức (`EDIT_MISSING_OLD_STRING`, `EDIT_MISSING_NEW_STRING`, `INVALID_FOCUSED_TEST_FORMAT`).
+  * `FAIL_FAST: Nếu trong <= 3 iterations đầu thấy scope bất khả thi với budget 15 calls thì DỪNG NGAY (ABORT)...` (Bắt buộc theo GATE 4).
+  Thiếu bất kỳ header nào hoặc sai định dạng `FOCUSED_TEST`, Coordinator Guard sẽ chặn dispatch ngay lập tức (`EDIT_MISSING_OLD_STRING`, `EDIT_MISSING_NEW_STRING`, `INVALID_FOCUSED_TEST_FORMAT`, `GATE4_FAIL_FAST_MISSING`).
 - **Pitfall 2 (Subagent LLM Timeout)**: Worker subagents tasked with generating 500+ lines of ADB state-machine code from scratch frequently hang waiting for model response (`Operation interrupted: waiting for model response (470s+ elapsed)`).
 
 ### The Battle-Tested Fast Scaffolding + Patch Pattern (Recommended)
