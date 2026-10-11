@@ -3,10 +3,22 @@
 ## Scope
 Use this reference when extending TikTok feed watchdog reporting or the Port 1905 dashboard with per-account nurture health.
 
-## Required data split
+## Required data split & Starvation thresholds
 - Telegram watchdog is aggregate-only: render the 8-Row health line inside each farm block, once for Kibe and once for Admin.
 - The Web Dashboard owns micro-level account inspection: account, machine, slot/Row, last nurture time, hours waiting, and status.
-- Keep the starvation threshold at **96 hours**. Suggested display bands: healthy `<=72h`, pending `>72h and <=96h`, starved `>96h`.
+- **Ngưỡng chu kỳ và bỏ đói đồng bộ (96h + 12h grace):**
+  * Hằng số chuẩn hóa: `NURTURE_CYCLE_H = 96.0h`, `STARVATION_THRESHOLD_H = 108.0h` (96h + 12h dung sai cho trễ ca / retry).
+  * 3 dải trạng thái hiển thị:
+    - 🟢 Đúng chu kỳ (healthy): `<= 96h` (trong vòng 1 chu kỳ 4 ngày).
+    - 🟡 Trễ trong dung sai (pending grace): `> 96h` và `<= 108h` (đang chờ ca theo lịch hoặc trễ nhẹ).
+    - 🔴 Bị bỏ đói thật sự (starved): `> 108h` -> Kích hoạt cảnh báo.
+  * **Cảnh báo bẫy toán học 120h của Random Parity:** Nếu đảo ngẫu nhiên chẵn/lẻ đầu mỗi chu kỳ 4 ngày (Odd-first <-> Even-first), hàng lẻ chạy Day 0 chu kỳ N và Day 1 chu kỳ N+1, tạo khoảng cách $5 \text{ ngày} = 120\text{h}$, gây bão đỏ báo động giả ở 16/60 chu kỳ. BẮT BUỘC giữ Fixed Parity (`_is_cycle_odd_first == True`) để khoảng cách giữa 2 lần nuôi của mọi Row chính 1-8 luôn là **CHÍNH XÁC 96 GIỜ** (`gaps == {timedelta(hours=96)}`).
+
+## Dashboard UI & Data Integrity Invariants
+- **Số lượng động (Dynamic Total):** CẤM hardcode số tĩnh "1,280 máy". Bắt buộc lấy động từ `${escapeHTML(sm.total || 0)}` khớp với số account thực tế trong DB (ví dụ: 1,255 accounts).
+- **Múi giờ đồng bộ:** Helper và Watchdog bắt buộc chuẩn hóa `Asia/Ho_Chi_Minh` (`HCMC`).
+- **Phòng chống XSS:** Mọi giá trị động (`username`, `cluster`, `err.message`) khi render vào `innerHTML` BẮT BUỘC phải qua hàm `escapeHTML()`.
+- **Minh bạch lỗi DB:** BẮT BUỘC trả mã HTTP 503 và thông báo rõ ràng khi DB lỗi/thiếu bảng, CẤM nuốt ngoại lệ `except Exception: pass` âm thầm khiến API trả 200 với danh sách rỗng giả tạo.
 
 ## Mapping invariant
 `farm_account_info.tik` is the account's slot/Row (1..8) on a machine. Do **not** infer Row from `may` using `((may - 1) // 8) + 1`; that groups machines and gives the wrong account-level Row. Normalize invalid or missing `tik` to Row 1 and test with accounts whose `may` values differ but whose `tik` values differ.

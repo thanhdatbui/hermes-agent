@@ -31,10 +31,11 @@ Hệ thống giám sát vận hành Farm bắt buộc bao phủ đầy đủ 3 t
 
 ## 3. Quy Cách Báo Cáo & Phân Loại Trạng Thái Nuôi 8 Row
 
-### Phân loại trạng thái trong cửa sổ 96h:
-- 🟢 **Bình thường (Normal):** Thời gian từ ca chạy cuối $\le 72\text{h}$.
-- 🟡 **Sắp đến lượt (Pending Rotation):** Thời gian từ ca chạy cuối từ $72\text{h} - 96\text{h}$ (đang chờ ca theo đúng lịch).
-- 🔴 **BỊ BỎ ĐÓI (STARVED):** Thời gian từ ca chạy cuối $> 96\text{h}$ hoặc chưa từng chạy $\rightarrow$ **Cần can thiệp khẩn cấp**.
+### Phân loại trạng thái trong cửa sổ 96h + 12h dung sai:
+- 🟢 **Đúng chu kỳ (Normal):** Thời gian từ ca chạy cuối $\le 96\text{h}$ (trong vòng 1 chu kỳ 4 ngày).
+- 🟡 **Trễ trong dung sai (Pending Grace):** Thời gian từ ca chạy cuối từ $96\text{h} - 108\text{h}$ (đang chờ ca theo đúng lịch hoặc trễ nhẹ/retry).
+- 🔴 **BỊ BỎ ĐÓI (STARVED):** Thời gian từ ca chạy cuối $> 108\text{h}$ hoặc chưa từng chạy $\rightarrow$ **Cần can thiệp khẩn cấp**.
+- **Hằng số đồng bộ:** `NURTURE_CYCLE_H = 96.0h`, `STARVATION_THRESHOLD_H = 108.0h` (đồng bộ giữa `feed_session_watchdog.py` và `nurture_health_helper.py`).
 
 ### Quy tắc Bắt Buộc: Phân Tách Báo Cáo Sức Khỏe Nuôi Theo Từng Cụm Farm (Dual-Farm Split Invariant)
 - **Pitfall chết người:** Gộp chung tiến độ 8 Row của toàn bộ hệ thống hoặc chỉ trỏ `live_root` vào `runtime/kibe/live` khiến Farm Admin (Máy 201-280) bị tàng hình. Nếu Kibe chạy xong Row 3 nhưng Admin bị kẹt USB/rớt máy bỏ lỡ Row 3, hệ thống vẫn báo xanh 🟢 giả tạo vì chỉ nhìn Kibe.
@@ -51,10 +52,10 @@ Hệ thống giám sát vận hành Farm bắt buộc bao phủ đầy đủ 3 t
 ... (Lướt feed, tim, follow) ...
 🌾 Sức khỏe 8 Row: R1:🟢8h | R2:🟢32h | R3:🟢2h | R4:🟢28h | R5:🟢46h | R6:🟢22h | R7:🟢64h | R8:🟢40h
 ```
-* Nếu một Farm có Row bị Starved (> 96h):
-  * Watchdog tự động thêm dòng cảnh báo ngay dưới Farm đó: `• 🚨 CẢNH BÁO BỎ ĐÓI (>96h): Row [X]`
+* Nếu một Farm có Row bị Starved (> 108h):
+  * Watchdog tự động thêm dòng cảnh báo ngay dưới Farm đó: `• 🚨 CẢNH BÁO BỎ ĐÓI (>108h): Row [X]`
   * Header tin nhắn Telegram được nâng cấp thành:
-    `🚨 [CẢNH BÁO BỎ ĐÓI] PHÁT HIỆN ROW [X] CỤM [KIBE/ADMIN] > 96H CHƯA NUÔI THÀNH CÔNG!`
+    `🚨 [CẢNH BÁO BỎ ĐÓI] PHÁT HIỆN ROW [X] CỤM [KIBE/ADMIN] > 108H CHƯA NUÔI THÀNH CÔNG!`
 
 ---
 
@@ -63,13 +64,18 @@ Hệ thống giám sát vận hành Farm bắt buộc bao phủ đầy đủ 3 t
   1. **Telegram Watchdog = Giám sát VĨ MÔ cấp Fleet & Row:**
      * Chỉ báo cáo tiến độ 8 Row theo từng Farm và tỷ lệ tổng thể.
      * CẤM TUYỆT ĐỐI liệt kê chi tiết từng tài khoản lên Telegram (quy mô 1,280 accounts sẽ gây tràn ngưỡng 4,096 ký tự và tạo bão spam tin nhắn).
-     * Chỉ đưa cảnh báo tóm tắt số lượng ngoại lệ nếu có nick bị starved cá biệt (>96h) kèm link trỏ về Dashboard.
+     * Chỉ đưa cảnh báo tóm tắt số lượng ngoại lệ nếu có nick bị starved cá biệt (>108h) kèm link trỏ về Dashboard.
   2. **Web Dashboard (`http://127.0.0.1:1905`) = Giám sát VI MÔ cấp từng Account:**
-     * Là nơi duy nhất tra cứu chi tiết toàn bộ 1,280 accounts (Kibe + Admin).
+     * Là nơi duy nhất tra cứu chi tiết toàn bộ accounts (Kibe + Admin).
      * Bắt buộc có Tab/Chế độ lọc `🌾 Sức Khỏe Nuôi Acc` (Endpoint: `/api/nurture-health`):
        - Cho phép **Sort 1-click "Đói nhất lên đầu"** theo `last_nurtured` / `hours_since_last_nurture`.
-       - Bộ lọc nhanh: Theo Cụm (Kibe / Admin), theo Row (1-8), hoặc chỉ hiện nick bị bỏ đói (`🔴 > 96h`).
+       - Bộ lọc nhanh: Theo Cụm (Kibe / Admin), theo Row (1-8), hoặc chỉ hiện nick bị bỏ đói (`🔴 > 108h`).
        - Bóc tách nguyên nhân kẹt: App crash, mất ADB, lỗi proxy, hoặc trống slot.
+     * **Tính toàn vẹn & Bảo mật Dashboard:**
+       - **Số lượng động:** CẤM hardcode chữ "1,280 máy". Bắt buộc dùng biến động `${escapeHTML(sm.total || 0)}` (khớp chính xác số account thực tế trong DB, vd 1,255 accs).
+       - **Múi giờ đồng bộ:** Bắt buộc chuẩn hóa `Asia/Ho_Chi_Minh` (`HCMC`) trong helper và watchdog.
+       - **XSS Prevention:** Mọi chuỗi động (`username`, `cluster`, `err.message`) khi render vào `innerHTML` BẮT BUỘC phải qua hàm `escapeHTML()`.
+       - **Minh bạch lỗi DB:** BẮT BUỘC trả mã HTTP 503 và thông báo rõ ràng khi DB lỗi/thiếu bảng, CẤM nuốt ngoại lệ `except Exception: pass` âm thầm.
      * **Quy tắc Mapping Row (Slot `tik` Invariant):**
        - **Pitfall:** Suy diễn Row từ số máy `may` bằng công thức phân bổ `((may - 1) // 8) + 1`.
        - **Thực tế Taadaa Farm:** Mỗi điện thoại chứa 8 accounts ứng với 8 slot Row 1 đến Row 8. Trường `tik` trong bảng SQLite `farm_account_info` CHÍNH LÀ Row slot của nick trên thiết bị (`tik = 1..8`).
@@ -82,31 +88,32 @@ Hệ thống giám sát vận hành Farm bắt buộc bao phủ đầy đủ 3 t
 
 ---
 
-## 4. Kỷ Luật Lập Lịch Chu Kỳ 4 Ngày: Randomized Parity & Anti-Overengineering
+## 4. Kỷ Luật Lập Lịch Chu Kỳ 4 Ngày: Fixed Parity 96h vs Bẫy Giãn 120h
 
-### Chống bẫy Over-Engineering (Pitfall: "Permutation per-machine trong cùng 1 ca"):
-- **Sai lầm:** Cố gắng cho mỗi máy chạy một Row khác nhau trong cùng một ca (ví dụ Máy 1 chạy Row 1, Máy 2 chạy Row 2 lúc 06:00).
-- **Hậu quả:** 
-  1. Phá vỡ cấu trúc batch runner PowerShell lõi (`run-feed-session.ps1` nhận 1 tham số `-Row` cho cả 80 workers).
-  2. Phá vỡ cấu trúc thư mục artifact `live/YYYY-MM-DD/row-X-HHMMSS/` và làm tê liệt toàn bộ parser của Watchdog.
-  3. Khiến tiêu đề và đối soát của Watchdog Telegram bị sai lệch (không thể báo cáo "Ca 1 hoàn tất (Row 1)" khi máy này chạy R1 máy kia chạy R2).
+### Bài học phát hiện qua Review (Pitfall: Bẫy Giãn 120 Giờ của Random Parity):
+- **Phân tích:** Nếu áp dụng cơ chế đảo ngẫu nhiên thứ tự nhóm Chẵn/Lẻ đầu mỗi chu kỳ 4 ngày (Odd-first $\leftrightarrow$ Even-first):
+  - Khi Chu kỳ $N$ chạy Odd-first $\rightarrow$ Row 1 chạy vào **Ngày 0**.
+  - Sang Chu kỳ $N+1$ gieo xúc xắc trúng Even-first $\rightarrow$ Row 1 bị đẩy sang **Ngày 1**.
+  - **Hậu quả:** Khoảng cách giữa 2 lần nuôi của Row 1 bị kéo giãn thành:
+    $$4\text{ ngày (chu kỳ hiện tại)} + 1\text{ ngày (bị đẩy lùi)} = 5\text{ ngày} = 120\text{ giờ}!$$
+  - Điều này khiến $16/60$ chu kỳ tự động bị vượt ngưỡng $96\text{h}$ và gây bão cảnh báo giả `🚨 [CẢNH BÁO BỎ ĐÓI]` trên Telegram và Dashboard dù hệ thống chạy đúng lịch.
 
-### Cơ chế Chuẩn Hóa: Randomized Parity 4-Day Cycle (Chu kỳ 4 ngày đảo nhóm chẵn/lẻ ngẫu nhiên):
-Vẫn giữ nguyên **1 Ca = 1 Row trên toàn bộ fleet** để đảm bảo tính đồng bộ, ổn định và báo cáo chính xác, nhưng triệt tiêu hoàn toàn khả năng TikTok "bắt bài" chu kỳ bằng cách **đảo ngẫu nhiên thứ tự nhóm Chẵn/Lẻ theo từng chu kỳ 4 ngày**:
-- Mỗi chu kỳ 4 ngày (`cycle_idx = (ordinal - BASE_ORDINAL) // 4`), hệ thống tự động gieo xúc xắc ngẫu nhiên (Pseudo-random Hash Seed):
-  * **Nếu chu kỳ bắt đầu bằng Nhóm Lẻ (Odd-first):**
-    - **Ngày 1 (Day 1):** Ca 1 (Sáng) = Row 1 | Ca 2 (Trưa) = Row 3 | Ca 3 (Tối) = Row 5.
-    - **Ngày 2 (Day 2):** Ca 1 (Sáng) = Row 2 | Ca 2 (Trưa) = Row 4 | Ca 3 (Tối) = Row 6.
-  * **Nếu chu kỳ bắt đầu bằng Nhóm Chẵn (Even-first):**
-    - **Ngày 1 (Day 1):** Ca 1 (Sáng) = Row 2 | Ca 2 (Trưa) = Row 4 | Ca 3 (Tối) = Row 6.
-    - **Ngày 2 (Day 2):** Ca 1 (Sáng) = Row 1 | Ca 2 (Trưa) = Row 3 | Ca 3 (Tối) = Row 5.
-- **Ngày 3 (Day 3 - Về đích & Xả tối):**
-  * Ca 1 (Sáng: 06h & 08h): **Row 7** (Cày thực tế).
-  * Ca 2 (Trưa: 12h & 14h): **Row 8** (Cày thực tế).
-  * Ca 3 (Tối: 18h & 20h): **Dưỡng sinh nick yếu** (Tắt follow, lướt feed + up 1 video).
-- **Ngày 4 (Day 4 - Nghỉ xả tải toàn Farm):**
-  * Cả 3 Ca (Sáng, Trưa, Tối): **Dưỡng sinh nick yếu** (bao gồm cả nick ăn nhả follow lẫn nick non chưa đủ 10 video).
-  * **Tắt 100% follow** (`_follow_rate = 0`), thuần túy lướt feed rửa trust + đăng 1 video/ngày nếu nick chưa đăng.
+### Cơ chế Chuẩn Hóa Bất Biến: Fixed Parity 96h Recurrence
+Để triệt tiêu hoàn toàn khoảng trễ 120 giờ và đảm bảo chu kỳ lặp lại toán học chính xác $100\%$:
+- Mọi chu kỳ 4 ngày (`cycle_idx = (ordinal - BASE_ORDINAL) // 4`) giữ nguyên Parity cố định (`_is_cycle_odd_first(cycle_idx) == True`):
+  * **Ngày 0 (Day 0):** Ca 1 (Sáng) = Row 1 | Ca 2 (Trưa) = Row 3 | Ca 3 (Tối) = Row 5.
+  * **Ngày 1 (Day 1):** Ca 1 (Sáng) = Row 2 | Ca 2 (Trưa) = Row 4 | Ca 3 (Tối) = Row 6.
+  * **Ngày 2 (Day 2 - Cày đích & Dưỡng sinh tối):**
+    - Ca 1 (Sáng: 06h & 08h): **Row 7** (Cày).
+    - Ca 2 (Trưa: 12h & 14h): **Row 8** (Cày).
+    - Ca 3 (Tối: 18h & 20h): **Dưỡng sinh nick yếu** (Tắt follow, lướt feed + up 1 video).
+  * **Ngày 3 (Day 3 - Nghỉ xả tải toàn Farm):**
+    - Cả 3 Ca (Sáng, Trưa, Tối): **Dưỡng sinh nick yếu** (bao gồm cả nick ăn nhả follow lẫn nick non chưa đủ 10 video).
+    - **Tắt 100% follow** (`_follow_rate = 0`), thuần túy lướt feed rửa trust + đăng 1 video/ngày nếu nick chưa đăng.
+- **Tính toán học đã chứng minh (Mathematical Invariant):**
+  - Mọi Row chính từ Row 1 đến Row 8 quay lại **CHÍNH XÁC 96 GIỜ** ở mọi chu kỳ:
+    $$\text{Gaps} = \{\text{timedelta}(\text{hours}=96)\}$$
+  - Đã được kiểm chứng qua test suite `test_determine_row_main_rows_recur_exactly_every_96h` xuyên suốt 48 ngày (12 chu kỳ liên tiếp).
 - **Bảo toàn nhịp sinh học (User Persona):**
   * Cặp `{Row 1, Row 2}` luôn luôn lướt Sáng (06h & 08h).
   * Cặp `{Row 3, Row 4}` luôn luôn lướt Trưa (12h & 14h).

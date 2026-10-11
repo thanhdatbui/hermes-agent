@@ -1,8 +1,8 @@
-Chu kỳ 4d 3 ca: N1 random {1,3,5} hoặc {2,4,6}, N2 nhóm còn lại, N3(R7,8, tối dưỡng), N4(dưỡng 0 fl+up non<10). Nuôi 4d/lần, Starvation 96h. CẤM xóa cooldown.
+Chu kỳ 4d: Parity cố định 96h (N1 lẻ, N2 chẵn; cấm random giãn 120h), N3(R7,8, tối dưỡng), N4(dưỡng 0 fl+up non). Starve 108h (96+12h grace). CẤM xóa cooldown.
 §
 Dual-Farm: Cron/supervisor Kibe (1-80) & Admin (201-280). Excel Admin 10-11 cột; so le 2p; 8-Row tách riêng. CẤM copy ava Kibe->Admin (dùng m2 gốc). GPM 5p. C7 PASS MAIL != C12 PASS GPT. ADB_VENDOR_KEYS + adb Admin.
 §
-Kho video: min 45; Render 1 wkr; Cào 20; niches 80; SQLite retry 5; 12 Niche Hot. Nuôi 8 Row: Starvation 96h theo chu kỳ 4d (cấm 48h false-alarm). TT Login: Kí sinh tra gốc & logout. Admin 55 v46.6.3; Kibe 65 v47.0.3. Dock (540,150). Pass sai: --otp-only. 2FA: pass None -> Graph OTP. MEDIA dòng riêng.
+Nuôi 8 Row: Chu kỳ 96h, Starve 108h (cấm 48h false-alarm).
 §
 Canary: WoL ether3 (kibe 0C:EF:15:37:4C:20, admin 22:33:4D:06:4C:26; WG 13231); CẤM PASS khi followed=0/FOLLOW_FAILED; ảnh/log trước teardown. Admin: upload SSH admin-farm.
 §
