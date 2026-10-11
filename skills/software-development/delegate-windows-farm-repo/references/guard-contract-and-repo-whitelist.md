@@ -78,6 +78,13 @@ Khi dispatch Worker thực hiện sửa code (`TASK_KIND: EDIT`), Coordinator Gu
   - Lệnh terminal chạy `closeout_gate.py` ở foreground bắt buộc `timeout <= 60s`.
   - Khi Reviewer trả về `< 85` (REJECTED, Strike 1 & 2), BẮT BUỘC chạy `sol_repair.py` độc quyền trước. Chỉ khi `sol_repair.py` exit != 0 / crash / validation fail mới được fallback dispatch Worker.
   - Reviewer thường trừ điểm các lỗi: quên đóng file (`wb.close()` trong `finally`), thiếu unit test độc lập cho nhánh retry/failure mới.
+- **Bẫy Line Ending CRLF vs LF Làm Thổi Phồng Git Diff (`git diff --numstat` Inflation Pitfall - 2026-10-11):**
+  - **Hiện tượng**: Worker trên Windows sửa một file nhỏ (ví dụ thêm 25 dòng code), nhưng khi nộp bài cho `closeout_gate.py` thì Reviewer chấm REJECTED / đánh rớt với lý do: *"Kiến trúc vẫn chứa rủi ro do file script bị thay đổi gần như toàn bộ (~1000 dòng thay đổi)"*.
+  - **Nguyên nhân gốc rễ**: Kho git lưu file dưới dạng line ending LF (`\\n`), nhưng khi Worker hoặc editor trên Windows ghi/patch file lại ghi bằng CRLF (`\\r\\n`). Khi chạy `git diff` mặc định (không có cờ `-w` / `--ignore-space-at-eol`), git xem toàn bộ 1000+ dòng trong file đều bị thay đổi! Closeout Gate trích xuất raw diff gửi cho AI Reviewer (Sol High / Reviewer), khiến Reviewer tưởng Worker đã viết lại cả file lớn và từ chối phê duyệt.
+  - **Khắc phục bắt buộc**:
+    - Trước khi chạy Closeout Gate hoặc sau khi Worker patch xong, Coordinator BẮT BUỘC kiểm tra `git diff --numstat <files>`.
+    - Nếu phát hiện số dòng thay đổi vượt trội bất thường (ví dụ: +1023 / -998 trên một hàm nhỏ), kiểm tra ngay CRLF: `data.count(b'\\r\\n')`.
+    - Chạy chuẩn hóa line ending về LF: `content.replace(b'\\r\\n', b'\\n')` trước khi commit hoặc gọi `closeout_gate.py`.
 
 ### Template Chuẩn Task EDIT (Copy & Điền):
 ```python
