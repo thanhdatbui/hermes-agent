@@ -94,3 +94,22 @@ Khi kiểm tra tài khoản trên máy (kể cả kiểm tra acc ký sinh hay ki
   - Màn hình Cài đặt TikTok v47 viết bằng `ComposeView`, không có thanh điều hướng bottom nav.
   - Trong hàm `go_to_profile`, nếu phát hiện text `cai dat va quyen rieng tu` hoặc icon `quay lai man hinh truoc`, BẮT BUỘC gửi `keyevent 4` (BACK) để đưa app về lại màn hình chính có bottom nav trước khi cố tap tab Hồ sơ.
 
+---
+
+## 8. CẠM BẪY BẪY WEBVIEW SPARKACTIVITY ("THỜI GIAN SỬ DỤNG MÀN HÌNH") (2026-10-12)
+- **Hiện tượng**: Script login hoặc go_to_profile chạy loop mãi nhưng không tìm thấy tab Profile hay Switcher, `atx-agent` dump XML chỉ thấy thanh trạng thái Android (`com.android.systemui`), toàn bộ phần dưới trống trơn.
+- **Nguyên nhân gốc rễ**: Khi script cuộn trang Cài đặt hoặc mở app, vô tình chạm vào mục "Thời gian sử dụng màn hình" (Screen Time / Wellbeing). Màn hình này chạy dạng Hybrid Webview của ByteDance: `com.bytedance.hybrid.spark.page.SparkActivity`. Do là Webview nội bộ, accessibility tree native không render các thành phần con. `open_app` thấy package TikTok trong foreground nên không relaunch, còn `go_to_profile` bấm tab Profile (972, 1857) vô tác dụng vì SparkActivity không có bottom nav.
+- **Giải pháp xử lý**:
+  1. Kiểm tra `mCurrentFocus`: nếu chứa `SparkActivity` hoặc `SettingContainerActivity`, BẮT BUỘC bấm phím BACK (`keyevent 4`) 1-2 lần để thoát webview quay về trang chính.
+  2. Trước khi chạy các flow quan trọng như `tiktok_login_v1.py`, nên force-stop app sạch (`am force-stop com.ss.android.ugc.trill`) để đảm bảo khởi động từ `MainActivity`, tránh bị dính activity webview rác từ phiên trước.
+
+---
+
+## 9. KỶ LUẬT TUẦN TỰ KHI CƠ CẤU / CHUYỂN NICK TRÊN MÁY KỊCH 8 SLOT (User chỉnh đốn 2026-10-12)
+- **Quy tắc tuyệt đối**: Tuyệt đối không nhảy cóc hoặc cố chạy `tiktok_login_v1` khi nick cần chuyển đi chưa được đăng xuất hoàn tất!
+- **Thứ tự 4 bước bắt buộc**:
+  1. **Bước 1**: Bật 2FA TOTP & khởi tạo mật khẩu chuẩn cho nick chuyển đi ngay trên máy hiện tại.
+  2. **Bước 2**: Ghi nhận Secret Key 2FA + Pass vào Master DAT / sổ sách máy nhận.
+  3. **Bước 3**: **ĐĂNG XUẤT NGAY** nick đó khỏi máy hiện tại để hạ danh sách Switcher xuống đúng 7 nick. Soi mắt ảnh Switcher xác nhận nick đã biến mất và slot đã trống.
+  4. **Bước 4**: Mới được phép gọi script đăng nhập nạp nick mới vào máy. Cấm đốt cháy giai đoạn.
+
