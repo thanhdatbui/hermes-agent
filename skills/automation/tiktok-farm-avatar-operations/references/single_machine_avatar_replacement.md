@@ -6,7 +6,15 @@ Khi nhận yêu cầu đổi avatar từ ảnh chụp màn hình hoặc username
 - Lấy chính xác bộ 4 thông số: `máy`, `tik`, `folder_video` (kho render), `video_goc` (kho gốc).
 
 ## 2. Tiêu chuẩn trích xuất & Cắt crop Avatar đạt chuẩn Vision
-- **Nguồn ảnh:** Trích xuất các frame rõ nét từ các video `.mp4` trong `D:/video goc/<folder>` hoặc `D:/TIKTOK-videonuoinick/<folder>`.
+- **Nguồn ảnh SSOT: Phân biệt `video goc` vs `TIKTOK-videonuoinick` (Chống ngộ nhận Niche/Chủ thể kênh):**
+  - Trong kiến trúc Taadaa Farm, `D:/video goc/<folder>/` có thể chứa scrap video cũ, video tải về từ nguồn bên ngoài chưa qua sàng lọc hoặc bị đổi ngách từ các chu kỳ trước (ví dụ folder 156 chứa slide bài giảng GDĐT từ đợt cào cũ trong khi video nuôi thực tế là bạn nữ creator).
+  - Kho `D:/TIKTOK-videonuoinick/<folder>/` MỚI LÀ KHO VIDEO RENDER THỰC TẾ ĐANG ĐƯỢC UPLOAD LÊN TIKTOK của tài khoản.
+  - **BẮT BUỘC ĐỐI SOÁT VỚI LƯỚI VIDEO TRÊN PROFILE TIKTOK:** Khi xác định chủ thể và phong cách avatar, BẮT BUỘC phải chụp ảnh Profile TikTok và soi mắt lưới video đã đăng (`profile_video_grid` ở nửa dưới màn hình) cùng kho `D:/TIKTOK-videonuoinick/<folder>/`.
+  - CẤM TUYỆT ĐỐI chỉ nhìn vào 1 vài file ngẫu nhiên trong `D:/video goc/<folder>/` rồi tự suy diễn chủ đề kênh (ví dụ: kênh toàn video bạn nữ selfie/dance nhưng lại phán là kênh ôn thi THPT chỉ vì folder `video goc` sót vài file bài giảng cũ).
+  - Chủ thể avatar BẮT BUỘC phải là chính chủ (creator) xuất hiện trong các video đang đăng thực tế của kênh.
+- **Quy tắc Trích xuất Chân dung Chính chủ từ Video Đang Nuôi:**
+  - Với kênh POV / Selfie / Creator cá nhân: Quét các video trong `D:/TIKTOK-videonuoinick/<folder>/` (ví dụ `1.mp4`, `2.mp4`...), trích xuất các frame có khuôn mặt creator nhìn thẳng camera, có ánh sáng tốt và nét mặt tự nhiên.
+  - Tránh lấy các frame bị điện thoại che mất nửa mặt (gương selfie che mặt) hoặc chuyển động nhanh bị nhòe mờ (motion blur).
 - **Quy tắc Crop tròn TikTok:**
   - Khung hình TikTok Profile là hình tròn. Tránh tuyệt đối lấy ảnh toàn thân ở góc xa (khi vào khung tròn mặt chủ thể sẽ bị nhỏ tí teo hoặc lệch góc).
   - Crop cận cảnh (tight zoom / portrait): Khuôn mặt chủ thể (người / thú cưng) phải nằm ngay trung tâm, chiếm 40%–60% diện tích khung hình vuông `512x512`.
