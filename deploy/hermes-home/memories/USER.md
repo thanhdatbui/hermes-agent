@@ -15,3 +15,5 @@ Pass láo: xóa None. Nick trên máy là tài sản (cấm gọi kí sinh), reg
 Strike 3: Claude CLI; Worker: AG Gemini default (Luna fallback).
 §
 Code automation: tách riêng từng script theo từng việc (single-responsibility helpers), cron/runner chỉ điều phối gọi các script.
+§
+Cơ cấu dời nick máy 8 slot: BẮT BUỘC tuần tự: (1) Bật 2FA & lưu pass nick non -> (2) Logout nick non giải phóng slot -> (3) Mới login nick mới; cấm nhảy cóc khi chưa out nick cũ.
