@@ -60,9 +60,11 @@ Chạy script query bảng `provider_connections` trong `C:\Users\Kibe\.omnirout
      * **Tình huống 1 - Yêu cầu mã OTP qua Email (`auth.openai.com/email-verification`):** 
        - OpenAI hết hạn phiên và gửi mã 6 số về hòm thư.
        - **TỰ ĐỘNG BÓC OTP (CẤM ĐẨY VIỆC CHO USER):**
-         + Với Hotmail: Tìm dòng tài khoản trong `D:/Taadaa/Hotmail/` (e.g. `hotmail_all_60_bought.txt`), lấy `refresh_token` và `client_id`. Gọi Microsoft Graph API (`https://login.microsoftonline.com/common/oauth2/v2.0/token` scope `https://graph.microsoft.com/Mail.Read offline_access` -> `https://graph.microsoft.com/v1.0/me/messages`), bóc mã OTP 6 số mới nhất từ thư "Mã đăng nhập ChatGPT tạm thời của bạn".
-         + Điền OTP tự động vào ô "Mã" bằng `computer_use(action='type', text=otp)` rồi click nút "Tiếp tục" (`computer_use(action='click', element=...)`).
-         + Chỉ hỏi User khi tài khoản không có refresh token / không bóc được OTP qua API.
+         + Với Hotmail: Tìm dòng tài khoản trong `D:/Taadaa/Hotmail/` (e.g. `latest_bought_70.txt`, `hotmail_all_60_bought.txt`), lấy `refresh_token` và `client_id`. Gọi Microsoft Graph API (`https://login.microsoftonline.com/common/oauth2/v2.0/token` scope `https://graph.microsoft.com/Mail.Read offline_access` -> `https://graph.microsoft.com/v1.0/me/messages`), bóc mã OTP 6 số mới nhất từ thư "Mã đăng nhập ChatGPT tạm thời của bạn".
+         + Điền OTP tự động vào ô "Mã" bằng `computer_use(action='type', text=otp, delivery_mode='foreground')` rồi click nút "Tiếp tục" (`computer_use(action='click', element=..., delivery_mode='foreground')`).
+         + **KẾT QUẢ XÁC MINH DIE THẬT (INVARIANT: BANNED LÀ BAN THẬT):**
+           - Nếu sau khi nhập OTP, OpenAI ném trang `Lỗi xác thực - OpenAI` với thông báo: *"Bạn không có tài khoản vì tài khoản đó đã bị xóa hoặc vô hiệu hóa"* kèm `error_code: account_deactivated` (đồng thời kiểm tra hòm thư có mail từ `trustandsafety@tm.openai.com` báo *"Truy cập bị vô hiệu hóa"*): Đây là **DIE THẬT Ở PHÍA SERVER OPENAI**. Banned không phải do OmniRoute dán nhãn bậy. CẤM cố gắng đăng nhập lại; áp dụng ngay quy tắc xóa connection khỏi DB proxy, xóa khỏi combo và bảo toàn GPM profile gốc.
+       - Chỉ hỏi User khi tài khoản không có refresh token / không bóc được OTP qua API.
      * **Tình huống 2 - Cloudflare Turnstile Checkbox:** Thử click vào checkbox Turnstile. Nếu bị kẹt hoặc dính puzzle hình ảnh thì mới bàn giao màn hình cho User kèm ảnh chụp thực tế.
      * **Tình huống 3 - Đăng nhập thành công:** Đóng profile an toàn và chuyển tiếp tài khoản tiếp theo.
 

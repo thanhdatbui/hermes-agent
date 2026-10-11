@@ -9,7 +9,11 @@ Hệ thống báo cáo nuôi nick TikTok phân chia độc quyền theo 3 nhóm 
 - **Nhóm Tiktok Video (`-5435853713`)**: Nhận độc quyền toàn bộ block Đăng Video (Success, Timeout, Lỗi script, Bỏ qua, v.v.).
 
 ### Cấm tuyệt đối:
-- **CẤM append dòng tóm tắt Follow/Upload vào nhóm Feed**: Tuyệt đối không append `fl_s[0]` hay `up_s[0]` vào `feed_p` trong `dispatch_split_reports()`. Nhóm `Tiktok Luot Nuoi Acc` phải 100% sạch sẽ, không chứa các dòng header cụt lủn làm người dùng nhầm lẫn rằng follow bị ném sai nhóm.
+- **CẤM append dòng tóm tắt Follow/Upload vào nhóm Feed**: Tuyệt đối không append `fl_s[0]` hay `up_s[0]` vào `feed_p` trong `dispatch_split_reports()`. Nhóm `Tiktok Luot Nuoi Acc` phải 100% sạch sẽ, không chứa các dòng header cụt lủn làm người dùng nhầm lẫn rằng follow bị ném sai nhóm. Lọc `f_s` bắt buộc loại bỏ triệt để: `not l.startswith("• Follow chéo") and not l.startswith("• Đăng Video")`.
+- **CẤM nuốt im lặng phần "Đối soát TikTok Web" (Silent Return Invariant)**:
+  * Trong `reconcile_cluster_following()`, khi mở file workbook `taikhoan_run_safe.xlsx` (dễ dính lock do OneDrive sync), BẮT BUỘC có retry tối thiểu 3 lần (sleep 1s).
+  * TUYỆT ĐỐI CẤM `return []` im lặng khi có máy follow phát sinh trong ca. Nếu đọc workbook thất bại sau retry hoặc không map được username, BẮT BUỘC xuất dòng cảnh báo rõ ràng `+ Đối soát TikTok Web: Không đọc được workbook (...)` thay vì âm thầm bỏ qua, tránh làm bốc hơi toàn bộ mục đối soát web đã thiết kế chuẩn.
+  * Nhóm Follow (`-5127276494`) BẮT BUỘC nhận trọn vẹn khối: `• Follow chéo` -> `+ Thành công` -> `+ Đối soát TikTok Web` -> `+ Nhả follow` -> `⚡ Cầu dao tự ngắt IP` -> `+ Lỗi script/xác minh` -> `+ Bỏ qua`.
 - **CẤM nuốt lỗi dispatch ở kênh phụ**: Khi gửi bản tin sang `-5127276494` và `-5435853713`, không được nuốt exception trong khối `try...except` một cách im lặng. Phải có cơ chế retry tối thiểu 3 lần (timeout 15s) và ghi log telemetry `[WATCHDOG_TELEGRAM_DISPATCH_FAIL]` khi rớt kết nối.
 
 ---

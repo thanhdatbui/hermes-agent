@@ -8,7 +8,7 @@ author: Hermes Agent
 ---
 
 ## References & Invariants
-- Split dispatch & OneDrive conflict rules: see [references/telegram-split-dispatch-and-onedrive-conflict-invariants.md](references/telegram-split-dispatch-and-onedrive-conflict-invariants.md).
+- Split dispatch & OneDrive conflict rules: see [references/telegram-split-dispatch-and-onedrive-conflict-invariants.md](references/telegram-split-dispatch-and-onedrive-conflict-invariants.md) (Quy định bắt buộc không nuốt im lặng Đối soát Web và cấm rò rỉ header bullet sang nhóm Feed).
 - Watchdog catch-all failure taxonomy & triage: see [references/feed-watchdog-catchall-taxonomy-and-triage.md](references/feed-watchdog-catchall-taxonomy-and-triage.md).
 
 ## Watchdog Upload Status Taxonomy & Triage
