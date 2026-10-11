@@ -11,6 +11,7 @@ description: Use when running avatar-only jobs on TikTok farm.
 - Single-profile locator and worker contract: see [references/single-profile-request-account-locator-and-worker-contract.md](references/single-profile-request-account-locator-and-worker-contract.md) for SQLite/Workbook O(1) identity resolution, queue-state boundaries, and the mandatory `FILE:`/`FAIL_FAST:` dispatch contract.
 - Avatar gender integrity & false face detection trap: see [references/avatar-subject-verification-and-gender-integrity.md](references/avatar-subject-verification-and-gender-integrity.md) for infographic watermark false face trap and mandatory gender verification rules.
 - Educational watermark / graphic false-face trap: see [references/educational_watermark_false_face_trap_and_human_verification.md](references/educational_watermark_false_face_trap_and_human_verification.md) for detecting slide/infographic video sources, avoiding false face detections on watermark emblems (e.g. GDĐT seal), and strict anti-hallucination vision verification rules.
+- Creator desync, badge false-positive & 0-byte video safeguards: see [references/avatar_creator_desync_and_logo_detector_trap.md](references/avatar_creator_desync_and_logo_detector_trap.md) for detecting face-detector false positives on circular emblems/logos, resolving `video goc` vs `TIKTOK-videonuoinick` desync, and handling 0-byte render files.
 
 ## Purpose
 Operate avatar-only changes on Taadaa TikTok farm devices without accidentally posting video, changing the wrong account, or claiming success without device evidence.
