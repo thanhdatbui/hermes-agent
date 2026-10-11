@@ -63,7 +63,9 @@ Khi nhận yêu cầu đổi avatar từ ảnh chụp màn hình hoặc username
      - Batch summary: `D:\CodexRuntime\tiktok-video\batch-runs\batch_tik<Tik>_list_80_<timestamp>\summary.csv`
      - Per-run directory: `D:\CodexRuntime\tiktok-video\runs\run_<device_serial>_<timestamp>\`
      - Artifacts chính: `avatar-uploaded-confirmed.png` (ảnh chụp Profile TikTok ngay sau khi lưu avatar), `report.json` (`avatar_status: "FORCED_REPLACED_VERIFIED"`).
-  2. **Soi mắt kiểm tra qua `browser_vision`:**
+  2. **Soi mắt kiểm tra qua `browser_vision` (Chống ảo giác / báo cáo mù):**
      - Mở trực tiếp hoặc bọc ảnh vào một file HTML viewport tối giản (`<style>body{margin:0}img{width:100vw}</style>`) để Chromium render toàn bộ chiều cao ảnh rõ nét.
-     - Dùng `browser_vision` soi mắt kiểm tra: xác nhận avatar tròn trên profile đã cập nhật đúng hình mới, đúng nick, không bị popup hay lỗi hiển thị.
+     - **CROP PHÓNG TO VÒNG TRÒN AVATAR:** Do avatar trên màn hình 1080x1920 rất nhỏ, CẤM nhìn lướt toàn màn hình rồi kết luận mù. BẮT BUỘC crop riêng vùng avatar tròn (`y: 150..400, x: 400..680`) để soi cận cảnh: xác nhận tận mắt rõ khuôn mặt người thật (mắt, mũi, miệng), hay đang bị dính logo/huy hiệu/mảng vải áo/placeholder cũ.
+     - **BÁO CÁO TRUNG THỰC TUYỆT ĐỐI:** Nếu vòng tròn avatar chưa đổi (vẫn là logo/ảnh cũ), BẮT BUỘC báo cáo chính xác là chưa đổi; CẤM TUYỆT ĐỐI báo cáo khống đã cập nhật.
+     - **PITFALL PICKER CHỌN NHẦM ẢNH CŨ:** Nếu runner báo exit=0 nhưng avatar thực tế vẫn là logo cũ, nguyên nhân thường do TikTok picker tap nhầm ảnh cũ còn sót trong MediaStore của máy thay vì ảnh mới push. Cần dọn sạch thư viện ảnh trên máy và kiểm tra lại picker.
   3. Gửi ảnh nghiệm thu kèm thẻ `MEDIA:<path_to_avatar-uploaded-confirmed.png>` trong câu trả lời cho User kèm xác nhận trực quan nội dung đã thấy tận mắt.
