@@ -12,7 +12,9 @@ Trong quá trình gỡ bỏ profile Wi-Fi lạ (`service call wifi 14 i32 <net_i
   1. **Tọa độ nút "QUÊN" (Forget) theo 2 loại modal thực tế (Samsung S7 Android 8)**:
      - **Modal Disconnected Network (khi tap mạng đã lưu dưới "MẠNG ĐANG CÓ")**: Modal ngắn gọn, nút "QUÊN" nằm tại bounds `[828, 1201, 925, 1248]`, tâm tap: **`(876, 1225)`**.
      - **Modal Connected Network (khi tap mạng đang active dưới "MẠNG HIỆN TẠI")**: Modal dài có hiển thị tốc độ/bảo mật/IP, nút "QUÊN" nằm tại bounds `[828, 1389, 925, 1436]`, tâm tap: **`(876, 1412)`**.
-  2. **Chiến lược Active-Promote O(1) chống trượt tọa độ do RSSI biến động**:
+  2. **Bẫy Modal Treo Cũ & Invariant `am force-stop com.android.settings`**:
+     Trước khi mở Wi-Fi Settings, BẮT BUỘC gọi `am force-stop com.android.settings` để xóa sạch mọi popup hỏi pass hoặc dialog cũ còn sót lại từ phiên trước, tránh việc dialog cũ che khuất danh sách mạng và làm trượt tọa độ tap.
+  3. **Chiến lược Active-Promote O(1) chống trượt tọa độ do RSSI biến động**:
      Danh sách "MẠNG ĐANG CÓ" liên tục đảo vị trí dòng theo sóng (RSSI). Giải pháp tối ưu tuyệt đối:
      - Gọi `adbjoinwifi` ép kết nối tạm thời vào `<ROGUE_SSID>` (ví dụ `Dat`) -> mạng lập tức nhảy lên vị trí cố định "MẠNG HIỆN TẠI" (`Y ~ 530`).
      - Tap `(300, 530)` mở modal connected network.
