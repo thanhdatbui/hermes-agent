@@ -103,15 +103,71 @@ if not has_recovery and not has_new_issues and not disabled_accounts:
 
 ### 2.3 Auto-Heal & Phân Biệt "Lỗi Thật Bắt Buộc Alert Đỏ" vs "Silent Watchdog Khi Thành Công"
 Khi script phụ thuộc vào phần mềm nền tảng cục bộ (như GPMLogin API port 19995):
-1. **Auto-Heal:** Trước khi kết luận lỗi, tự kiểm tra và khởi động ứng dụng nếu chưa chạy:
+1. **Auto-Heal Chuẩn Production (Chống Duplicate Process & Telemetry Đầy Đủ):**
+   Trước khi kết luận lỗi, tự kiểm tra và khởi động ứng dụng nếu chưa chạy:
+   - **Chống duplicate process:** Kiểm tra bằng `psutil` xem `GPMLogin.exe` có đang chạy/đang khởi động không trước khi gọi `subprocess.Popen`. Nếu tiến trình đã tồn tại, CHỈ polling chờ API sẵn sàng, CẤM spawn thêm instance gây đè lock hoặc crash GPM.
+   - **Đầy đủ telemetry:** Ghi nhận `retry_attempts`, `recovery_duration_s`, và nguyên nhân lỗi cụ thể (`GPM_EXE_NOT_FOUND`, `GPM_API_NOT_READY_AFTER_SPAWN`, `GPM_API_NOT_READY_AFTER_WAIT`, hoặc exception message) vào `log_telemetry_metric`.
    ```python
-   gpm_exe = Path(r"C:\Users\Kibe\AppData\Local\Programs\GPMLogin\GPMLogin.exe")
-   if gpm_exe.exists():
+   def is_gpm_process_running() -> bool:
        try:
+           import psutil
+           for p in psutil.process_iter(["name"]):
+               if (p.info.get("name") or "").lower() == "gpmlogin.exe":
+                   return True
+       except Exception:
+           pass
+       return False
+
+   def auto_heal_gpm_if_offline() -> bool:
+       if is_gpm_api_live():
+           return True
+       t0 = time.time()
+       attempts = 0
+       # 1. Nếu process đã chạy nhưng API chưa mở (đang tải), chỉ chờ không spawn thêm
+       if is_gpm_process_running():
+           for i in range(5):
+               attempts += 1
+               time.sleep(2)
+               if is_gpm_api_live():
+                   log_telemetry_metric("gpm_auto_heal_success", {
+                       "mode": "wait_existing_process", "retry_attempts": attempts,
+                       "recovery_duration_s": round(time.time() - t0, 2)
+                   })
+                   return True
+           log_telemetry_metric("gpm_auto_heal_failure", {
+               "mode": "wait_existing_process", "retry_attempts": attempts,
+               "error": "GPM_API_NOT_READY_AFTER_WAIT"
+           })
+           return is_gpm_api_live()
+
+       # 2. Process chưa chạy -> tìm file thực thi và spawn
+       gpm_exe = Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "GPMLogin" / "GPMLogin.exe"
+       if not gpm_exe.exists():
+           gpm_exe = Path(r"C:\Users\Kibe\AppData\Local\Programs\GPMLogin\GPMLogin.exe")
+       if not gpm_exe.exists():
+           log_telemetry_metric("gpm_auto_heal_failure", {"error": "GPM_EXE_NOT_FOUND"})
+           return False
+
+       try:
+           import subprocess
            subprocess.Popen([str(gpm_exe)])
-           time.sleep(5)
+           for i in range(5):
+               attempts += 1
+               time.sleep(2)
+               if is_gpm_api_live():
+                   log_telemetry_metric("gpm_auto_heal_success", {
+                       "mode": "spawn_process", "retry_attempts": attempts,
+                       "recovery_duration_s": round(time.time() - t0, 2)
+                   })
+                   return True
+           log_telemetry_metric("gpm_auto_heal_failure", {
+               "mode": "spawn_process", "retry_attempts": attempts,
+               "error": "GPM_API_NOT_READY_AFTER_SPAWN"
+           })
        except Exception as e:
-           logger.warning(f"Không thể tự khởi động GPMLogin: {e}")
+           logger.warning(f"Lỗi auto-heal GPM: {e}")
+           log_telemetry_metric("gpm_auto_heal_failure", {"error": str(e), "retry_attempts": attempts})
+       return is_gpm_api_live()
    ```
 2. **Kỷ Luật Cảnh Báo Khi Lỗi Nền Tảng Thật Sự (GPM Offline Sau Auto-Heal = PHẢI ALERT ĐỎ):**
    > 📌 **Chỉ thị trực tiếp từ User (11/10/2026):**  
