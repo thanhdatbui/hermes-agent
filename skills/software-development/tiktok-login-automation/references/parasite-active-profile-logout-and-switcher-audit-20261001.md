@@ -76,3 +76,21 @@ Khi kiểm tra tài khoản trên máy (kể cả kiểm tra acc ký sinh hay ki
   5. Mở lại Switcher xác nhận nút `Thêm tài khoản` đã hiển thị trở lại.
   6. Mới được phép gọi `tiktok_login_v1.py` để đăng nhập nick đích vào máy nguồn.
 
+---
+
+## 7. CẠM BẪY CUỘN BOTTOM SHEET SWITCHER & THOÁT MÀN HÌNH CÀI ĐẶT COMPOSEVIEW (2026-10-12)
+- **Lỗi `ACCOUNT_NOT_IN_SWITCHER` do thiếu method `swipe()` trong Adapter**:
+  - Khi máy có 7-8 nick, nick tạo muộn nhất (vị trí 7-8) nằm dưới nếp gấp (fold) của Bottom-Sheet Switcher.
+  - Các adapter gọi qua `canonical_account_switcher` (như `_CanonicalAdapter` trong runner 2FA) BẮT BUỘC phải implement method `swipe(self, x1, y1, x2, y2, duration_ms=300)` gọi `adb shell input swipe`. Nếu thiếu `swipe`, `getattr(adapter, "swipe", None)` trả về `None` khiến switcher ném ngay lỗi `ACCOUNT_MISSING` / `ACCOUNT_NOT_IN_SWITCHER` mà không chịu cuộn tìm nick.
+- **Biên độ cuộn chuẩn cho Switcher và độ trễ chờ UI settle**:
+  - Trên Galaxy S7 (1080x1920), Bottom-Sheet Switcher gần như full màn hình (`[0,96][1080,1920]`).
+  - Vuốt biên độ nhỏ (400px: 1500 $\rightarrow$ 1100) chỉ dịch chuyển ~1.8 dòng nick, không đủ làm lộ nút `Thêm tài khoản` hoặc nick cuối.
+  - Biên độ chuẩn: từ 80% chiều cao màn hình lên 40-50% (ví dụ `540, 1536` $\rightarrow$ `540, 800`..`960`, duration 450ms).
+  - BẮT BUỘC `time.sleep(2.0)` sau khi vuốt để animation dừng hẳn trước khi redump XML; redump dưới 1s sẽ dính XML cũ hoặc làm nghẽn `atx-agent`.
+- **Cấm bấm phím BACK sau khi Switch nick**:
+  - Trên TikTok v47, sau khi tap chọn nick trong Switcher, app tự đóng bottom sheet. TUYỆT ĐỐI KHÔNG gửi phím BACK (`keyevent 4`) vì sẽ làm thoát văng TikTok ra Launcher Android.
+  - Luôn điều hướng bằng cách tap trực tiếp tab Hồ sơ (`bounds: [864,1794][1080,1920]`) $\rightarrow$ tap Menu 3 gạch (`[1005, 150]`) $\rightarrow$ tap Cài đặt và quyền riêng tư.
+- **Tự động thoát màn hình Cài đặt con (Jetpack ComposeView)**:
+  - Màn hình Cài đặt TikTok v47 viết bằng `ComposeView`, không có thanh điều hướng bottom nav.
+  - Trong hàm `go_to_profile`, nếu phát hiện text `cai dat va quyen rieng tu` hoặc icon `quay lai man hinh truoc`, BẮT BUỘC gửi `keyevent 4` (BACK) để đưa app về lại màn hình chính có bottom nav trước khi cố tap tab Hồ sơ.
+
