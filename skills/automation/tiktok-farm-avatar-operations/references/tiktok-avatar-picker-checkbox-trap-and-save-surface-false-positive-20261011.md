@@ -58,3 +58,19 @@
    - Chụp ảnh Profile TikTok, crop nửa dưới màn hình để kiểm tra lưới video bài đăng (`profile_video_grid`).
    - Kho `D:/TIKTOK-videonuoinick/<folder>/` MỚI LÀ KHO VIDEO RENDER THỰC TẾ ĐANG ĐƯỢC UPLOAD LÊN TIKTOK của tài khoản.
    - Trích xuất avatar trực tiếp từ video thực tế đang nuôi trong `D:/TIKTOK-videonuoinick/<folder>/` của chính creator xuất hiện trong các bài đăng đó; CẤM TUYỆT ĐỐI chỉ quét vài file ngẫu nhiên trong `video goc` rồi tự suy diễn chủ đề kênh.
+
+## 4. Xử lý File 0-Byte Trong Kho Nuôi & Đồng Bộ SSOT Hai Đầu
+
+### A. Nguy cơ file 0-byte từ các đợt Render bị ngắt quãng
+- Khi tiến trình render video hoặc copy dữ liệu bị crash hoặc kill giữa chừng, hệ điều hành để lại các file `.mp4` có dung lượng đúng 0 KB.
+- Runner TikTok khi upload sẽ resolve `D:\TIKTOK-videonuoinick\{folder}\{video_number}.mp4`. Nếu số thứ tự chạm trúng file 0-byte, runner văng lỗi `MEDIA_EMPTY` và fail-closed toàn bộ ca đăng của máy.
+- **Quy trình xử lý 2 nhánh:**
+  1. **Nhánh Phục hồi (Recover):** Nếu trong `D:\video goc\<folder>\<filename>` có file gốc hợp lệ (> 100KB), dùng `shutil.copy2` copy đè sang kho nuôi để phục hồi file nguyên vẹn.
+  2. **Nhánh Cách ly (Quarantine):** Nếu không có file gốc tương ứng, di chuyển các file 0-byte sang thư mục cách ly `D:\Taadaa\tmp\corrupted_zero_byte_videos\<folder>\`, tuyệt đối không để file 0-byte nằm lẫn trong kho nuôi.
+
+### B. Quy trình đồng bộ SSOT khi phát hiện kho gốc bị lệch Niche so với kho nuôi
+- Nếu phát hiện `video goc` chứa video cũ/lỗi (ví dụ slide bài giảng cũ) trong khi kho nuôi đang chạy video của creator:
+  1. Cô lập và di chuyển các file cũ sang thư mục lưu trữ (`backup_goc_<folder>_slides`).
+  2. Đồng bộ toàn bộ các file `.mp4` từ `TIKTOK-videonuoinick` sang `video goc` để đảm bảo tính đồng nhất SSOT hai đầu.
+  3. Cập nhật workbook quản lý (`Tik<N>.xlsx`): Sửa lại `Keyword Video` và `Hashtag Pool` về đúng ngách thực tế của creator, đánh dấu `Avatar = OK`.
+
