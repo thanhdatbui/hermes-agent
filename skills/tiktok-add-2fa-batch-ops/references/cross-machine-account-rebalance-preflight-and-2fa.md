@@ -94,3 +94,14 @@
     3. Trích xuất Secret Key đó và dùng script cập nhật thủ công vào cột 5 của hàng tương ứng trong Master DAT (`taikhoan_dat_v2_updated .xlsx`).
     4. **CẤM TUYỆT ĐỐI** chạy lại flow 2FA từ đầu vì sẽ gây đè mã hoặc văng lỗi do nick đã có 2FA trên server TikTok. Tiến hành ngay bước tiếp theo (Logout nick non hoặc nạp nick mới).
 
+## 7. Cạm Bẫy Bottom Sheet Switcher Khi Có 7 Nick & Quy Trình Đăng Xuất An Toàn
+- **Cạm bẫy Swipe Overshoot làm văng Bottom Sheet Switcher trên Samsung S7 (1080x1920)**:
+  * Khi máy có 7 nick, nút "Thêm tài khoản" bị khuất ở đáy bottom sheet. Lệnh `swipe(540, 1500, 540, 800)` trong `tap_add_account()` kéo tọa độ vượt ra ngoài mép trên bottom sheet (`y=1050-1100`), Android kích hoạt sự kiện `TOUCH_OUTSIDE` và đóng dialog về Feed.
+  * **Giải pháp**:
+    1. Giới hạn tọa độ vuốt trong lòng sheet: `swipe(540, 1500, 540, 1100, 400)`.
+    2. Bổ sung fallback chắc chắn: nếu không thấy nút, gọi `_open_account_dropdown_via_settings(device_id)` để vào *Menu hồ sơ -> Cài đặt và quyền riêng tư -> cuộn đáy -> tap 'Thêm tài khoản'*. Trong màn hình Settings toàn màn hình, thao tác cuộn an toàn 100%.
+- **Cạm bẫy phím Back (Keyevent 4) sau khi switch nick trong script cứu hộ logout**:
+  * Tránh dùng `keyevent 4` mù quáng sau khi tap switch nick vì dễ làm app thoát ra Launcher.
+  * Luôn dùng chuỗi kiểm tra có đối soát XML/OCR: `find_text_tap("Hồ sơ")` -> `find_text_tap("Menu hồ sơ")` -> `find_text_tap("Cài đặt và quyền riêng tư")` -> `find_text_tap("Đăng xuất")`.
+
+
