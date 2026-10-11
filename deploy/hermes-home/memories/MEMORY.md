@@ -1,10 +1,10 @@
-Chu kỳ 4d 3 ca (bỏ 0h): N1(Sáng R1/2, Trưa R3/4, Tối R5/6), N2(bù), N3(R7,8, tối yếu), N4(3 ca yếu+up, 0 fl). Acc yếu gồm cả khỏe ăn nhả. Nuôi: 4d/lần, Starvation 96h (cấm 48h). CẤM xóa cooldown.
+Chu kỳ 4d 3 ca (bỏ 0h): N1(Sáng R1/2, Trưa R3/4, Tối R5/6), N2(bù), N3(R7,8, tối yếu), N4(3 ca yếu+up, 0 fl). Nuôi: 4d/lần, Starvation 96h. CẤM xóa cooldown.
 §
 Dual-Farm: Cron/supervisor chạy cả Kibe (1-80) & Admin (201-280). Excel Admin 10-11 cột. Supervisor so le 2p; Báo cáo 6H gộp. CẤM copy ava Kibe->Admin; Admin dùng video gốc m2.
 §
 GPM 5ph. gmail_clean_v2 lưu LIVE, xóa DIE. CẤM coi Gmail die=TT die; nick có 2FA TOTP vẫn LIVE.
 §
-Kho video: min 45; Render 1 wkr (--parallel 1); Cào 20 wkr (max-folder 1); Global Ledger; niches 80; SQLite retry 5; 12 Niche Hot.
+Kho video: min 45; Render 1 wkr; Cào 20 wkr; niches 80; SQLite retry 5; 12 Niche Hot. Hashtag: sửa niche bắt buộc sửa DB nguồn + niches_pool.txt trước, tránh bị cron 15p ghi đè Excel.
 §
 evidence_gate (OCR, fail-closed). Nuôi 8 Row: Starvation threshold 96h theo chu kỳ 4d (cấm 48h false-alarm).
 §

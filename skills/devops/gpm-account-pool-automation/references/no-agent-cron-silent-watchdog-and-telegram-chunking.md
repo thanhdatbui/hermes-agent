@@ -101,9 +101,9 @@ if not has_recovery and not has_new_issues and not disabled_accounts:
     return
 ```
 
-### 2.3 Auto-Heal & Safe Skip Khi Nền Tảng Offline (Tránh Crash Alert)
+### 2.3 Auto-Heal & Phân Biệt "Lỗi Thật Bắt Buộc Alert Đỏ" vs "Silent Watchdog Khi Thành Công"
 Khi script phụ thuộc vào phần mềm nền tảng cục bộ (như GPMLogin API port 19995):
-1. **Auto-Heal:** Trước khi từ bỏ, tự kiểm tra và khởi động ứng dụng nếu chưa chạy:
+1. **Auto-Heal:** Trước khi kết luận lỗi, tự kiểm tra và khởi động ứng dụng nếu chưa chạy:
    ```python
    gpm_exe = Path(r"C:\Users\Kibe\AppData\Local\Programs\GPMLogin\GPMLogin.exe")
    if gpm_exe.exists():
@@ -113,10 +113,15 @@ Khi script phụ thuộc vào phần mềm nền tảng cục bộ (như GPMLogi
        except Exception as e:
            logger.warning(f"Không thể tự khởi động GPMLogin: {e}")
    ```
-2. **Safe Skip (Bỏ qua an toàn):** Nếu sau khi thử kết nối lại mà API vẫn offline (người dùng cố tình tắt app để dùng máy hoặc giải phóng RAM):
-   - CHỈ ghi warning vào `logger.warning()` (stderr/file).
-   - Thoát êm bằng **`sys.exit(0)`** (hoặc `return`).
-   - **CẤM `sys.exit(1)`**: Thoát mã lỗi non-zero sẽ kích hoạt Hermes cron engine bắn alert đỏ về Telegram, vi phạm nguyên tắc Silent Watchdog.
+2. **Kỷ Luật Cảnh Báo Khi Lỗi Nền Tảng Thật Sự (GPM Offline Sau Auto-Heal = PHẢI ALERT ĐỎ):**
+   > 📌 **Chỉ thị trực tiếp từ User (11/10/2026):**  
+   > *"Ủa sao chống spam cảnh báo đỏ. Lỗi gpm thì gửi alert đúng r"*  
+   - **Bản chất**: Silent Watchdog chỉ áp dụng khi **hoạt động bình thường hoặc thành công 100%** (không in log thừa ra stdout).
+   - Khi hạ tầng nền tảng như GPMLogin bị tắt/hỏng mà sau khi auto-heal vẫn không kết nối được API, đó là **LỖI THỰC SỰ NGHIÊM TRỌNG**. Nếu script tự ý nuốt lỗi bằng `sys.exit(0)` ("Safe Skip" mù quáng), toàn bộ dàn tài khoản sẽ bị bỏ hoang mà User không hề hay biết!
+   - **Quy tắc bắt buộc:** Nếu auto-heal thất bại và API vẫn offline:
+     * Ghi `logger.error("Không lấy được danh sách profile từ GPM API! Hãy kiểm tra GPMLogin đang chạy.")`.
+     * **BẮT BUỘC `sys.exit(1)`**: Để Hermes cron engine bắn cảnh báo đỏ `⚠️ Cron '<job>' failed: Script exited with code 1...` lên Telegram ngay lập tức, báo hiệu cho User biết GPM đang sập để kịp thời xử lý.
+     * **CẤM TUYỆT ĐỐI** nuốt lỗi GPM offline thành `sys.exit(0)` nhân danh "chống spam alert đỏ"!
 3. **Lệnh Bật Lại GPMLogin Chuẩn Từ Terminal:**
    ```bash
    # Khởi chạy ứng dụng vào interactive desktop session:
