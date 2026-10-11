@@ -55,3 +55,21 @@ Khi User/Operator phát lệnh giành lock (ví dụ: *"Giành lock đi. Ca nuô
   - `takeover_authorized = True`
   - `takeover_reason = "operator force preempt"`
   Điều này cho phép tiến trình bảo trì giành lại quyền điều khiển thiết bị một cách hợp lệ, lưu lại đầy đủ audit trail trong lịch sử lock.
+
+## 5. Kỷ luật chạy song song đa luồng (Cấm cuốn chiếu khi dọn Wi-Fi)
+Khi User chỉ đạo: *"K cuốn chiếu chạy song song luôn"*:
+- **CẤM TUYỆT ĐỐI**: Chạy tuần tự cuốn chiếu (serial/rolling loop từng máy một).
+- **LÝ DO KỸ THUẬT**: Khi ngắt kết nối và re-bind từng máy một trong cụm 15-20 máy, AP Aruba bị biến động RSSI cục bộ khiến các máy kế cận tự động kích hoạt quét mạng và nhảy roam sang các SSID rác phát xung quanh (`Dat`), gây ra hiện tượng bão roaming (re-roam storm) kéo dài thời gian xử lý lên 15–30 phút.
+- **CHUẨN VẬN HÀNH**: 
+  Sử dụng `ThreadPoolExecutor(max_workers=len(targets))` bắn lệnh song song đồng loạt trên tất cả các máy mục tiêu:
+  ```python
+  with ThreadPoolExecutor(max_workers=len(targets)) as executor:
+      futs = {executor.submit(process_machine, m, s): m for m, s in targets}
+      for f in as_completed(futs):
+          results.append(f.result())
+  ```
+  Toàn bộ đợt xử lý 17-20 máy đồng loạt mở Settings -> Long-press -> Quên mạng -> Re-bind hoàn tất chỉ trong 20–30 giây, dập tắt triệt để mọi cơ hội bão roaming.
+
+## 6. Kỷ luật chống thoái thác "Knox chặn nên bỏ qua" (Anti-Passive Resignation)
+- **Bài học từ sự cố User chỉ trích**: *"Trong hình có wifi dat. Sao đéo bấm vào r bấm quên đi"*.
+- **Nguyên tắc hành động**: Khi gặp rào cản hệ thống ở tầng shell (`SecurityException` trên Knox), Coordinator/Worker KHÔNG ĐƯỢC thụ động chấp nhận rủi ro rồi báo cáo "đành để lại profile ngầm". BẤT KỲ khi nào mục tiêu có hiển thị trực quan trên màn hình (UI surface), BẮT BUỘC phải chuyển hướng sang giải pháp UI Automation (Long-press Context Menu hoặc Modal Details) để xử lý dứt điểm tận gốc vấn đề!
