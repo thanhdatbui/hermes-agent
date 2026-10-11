@@ -1,4 +1,4 @@
-Follow: Cầu dao 48h khi Khỏe nhả; non cooldown (tắt fl, VẪN up 1 vid/d). Chu kỳ 4d 3 ca (bỏ 0h): N1(Sáng chỉ R1/2, Trưa R3/4, Tối R5/6), N2(R bù), N3(R7,8, tối yếu), N4(3 ca yếu+up, 0 fl). Acc yếu gồm cả acc khỏe ăn nhả. CẤM xóa cooldown.
+Chu kỳ 4d 3 ca (bỏ 0h): N1(Sáng R1/2, Trưa R3/4, Tối R5/6), N2(bù), N3(R7,8, tối yếu), N4(3 ca yếu+up, 0 fl). Acc yếu gồm cả khỏe ăn nhả. Nuôi: 4d/lần, Starvation 96h (cấm 48h). CẤM xóa cooldown.
 §
 Dual-Farm: Cron/supervisor chạy cả Kibe (1-80) & Admin (201-280). Excel Admin 10-11 cột. Supervisor so le 2p; Báo cáo 6H gộp. CẤM copy ava Kibe->Admin; Admin dùng video gốc m2.
 §
