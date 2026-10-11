@@ -60,3 +60,14 @@
 - **Bắt buộc viết Unit Test cho Transient Recovery**:
   - Test case giả lập: Lần 1 throw Exception (transient error), lần 2 trả về workbook hợp lệ.
   - Assertions: `call_count == 2` VÀ `mock_wb.close()` được gọi đúng trong khối `finally`.
+
+## 6. Bẫy Background Process & Cờ In-Memory Của Bộ Điều Phối
+- **Hiện tượng**: `closeout_gate.py` chạy qua background process ngầm và hoàn tất thành công (`APPROVED >= 85` đã ghi vào audit log), nhưng khi Coordinator chạy `git push` vẫn bị chặn:
+  `COORDINATOR TERMINAL BLOCKED: Cấm 'git push' trước khi Closeout Gate trả về APPROVED >= 85!`
+- **Nguyên nhân**:
+  - Do thời gian LLM review trên cổng nội bộ thường mất 60s–90s, Coordinator bắt buộc dùng `background=True` để tránh vượt quá trần timeout 60s của lệnh foreground.
+  - Hook hậu kỳ của plugin điều phối (`post_tool_call`) chỉ phân tích chuỗi `output` trả về tức thời của lệnh đồng bộ. Đối với lệnh background, tool chỉ trả về `"Background process started"`, còn nội dung kết quả thật được đẩy qua event notification bất đồng bộ, khiến cờ `closeout_passed` trong RAM của phiên điều phối không được gán `True`.
+- **Kỷ luật xử lý**:
+  - Coordinator kiểm tra xác thực file audit log đã ghi nhận đầy đủ `APPROVED` với commit SHA và scope khớp 100%.
+  - CẤM đứng im, đóng băng hay chạy vòng lặp retry gây đơ phiên.
+  - Báo cáo rõ ràng kết quả scorecard đạt chuẩn và cung cấp lệnh push chuẩn (`git -C <repo> push origin <branch>`) để User hoặc shell ngoài chạy thẳng.

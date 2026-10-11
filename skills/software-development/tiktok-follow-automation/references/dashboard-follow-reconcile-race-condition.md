@@ -62,16 +62,18 @@ Khi tài khoản **nghỉ follow hoặc chưa đủ video** (`organic-rest-day-p
      ```
    - Chạy lại lệnh tổng hợp `daily_account_actions` từ `session_account_actions` cho ngày hiện tại để số liệu trên Dashboard tự động hồi phục về đúng giá trị thực tế.
 
-### Nguyên nhân 4: Chênh Lệch Giữa Click Bot và Tăng Thật Web (Bot +18 vs Web +16 -> Web +17) & Invariant Đối Soát Sản Lượng
+### Nguyên nhân 4: Chênh Lệch Giữa Click Bot và Tăng Thật Web (Bot +18 vs Web +17) & Quy Tắc Khoanh Vùng Cohort Đối Soát
 1. **Bản chất đo lường:**
    - **Bot follow (Tiến độ hôm nay):** Đếm số lần bot tap nút Follow thành công trên UI app (`followed_count`).
-   - **Web tăng thật (Tổng Đã Follow):** Lấy tổng số lượt tăng thực tế trên profile công khai giữa snapshot hôm nay và snapshot hôm qua.
-2. **Quy tắc bất biến (Business Invariant) khi tính Web Tổng Tăng:**
-   - **CẤM cấn trừ số âm vào sản lượng:** Khi tính tổng tiến độ cày follow toàn farm (`total_delta_following`), chỉ cộng dồn các lượt tăng dương (`max(0, delta_following)`).
-   - Nếu nick bị nhả follow hoặc tài khoản đối phương bị xóa khiến delta following bị âm (`delta_following < 0`), trên thẻ tổng đối soát **BẮT BUỘC tính là `+0`**, không được trừ ngược vào công sức của các nick cày thành công (ví dụ: nick A tăng +13, nick B tăng +4, nick C tụt -1 -> Tổng tăng là `13 + 4 + 0 = 17`, không được tính thành `16`).
-   - Tiến độ cày follow là đo lường sản lượng cày mới (Gross Positive Growth), việc lấy số tụt của nick nghỉ cấn trừ vào công sức cày là sai hoàn toàn về mặt đối soát.
+   - **Web tăng thật (Tổng Đã Follow):** Lấy tổng số lượt biến động following thực tế trên profile công khai giữa snapshot hôm nay và snapshot hôm qua của **CHÍNH CÁC NICK CÓ THAM GIA ĐI FOLLOW HÔM NAY**.
+2. **Quy tắc bất biến (Business Invariant) khi đối soát Tiến độ / Tổng tăng:**
+   - **Khoanh vùng đúng Cohort tham gia follow:** CHỈ đối soát các nick hôm nay có phát sinh hành động đi follow (`internal_followed > 0`). Các nick rảnh/nghỉ không chạy follow hôm nay (như nick M60 `@iyoqytawkzq` bị tụt `-1` do tài khoản nó từng follow trước đây bị TikTok ban/xóa) TUYỆT ĐỐI KHÔNG ĐƯỢC gộp vào cohort đối soát hôm nay. Việc gộp nick ngoài luồng làm sai lệch hoàn toàn hiệu quả của ca bot chạy.
+   - **CẤM dùng `max(0, ...)` để che giấu lỗi nhả follow:** Đối với chính các nick có tham gia chạy follow hôm nay, nếu bị TikTok quét nhả follow (delta âm hoặc thấp hơn số bot bấm):
+     **BẮT BUỘC PHẢI TRỪ THẲNG VÀO TỔNG DELTA ĐỐI SOÁT** (`total_delta_following += delta_following`).
+     - Ví dụ: Nick A đi follow tăng +13 (bot bấm 14, nhả 1 -> tính 13); Nick B đi follow tăng +4 (bot bấm 4 -> tính 4); Nick D đi follow bị nhả -2 (bot bấm 5, TikTok quét nhả 7 -> delta = -2) -> Tổng đối soát Web = `13 + 4 + (-2) = 15`. Lượt nhả trên nick chạy follow là hao hụt thật, phải phản ánh trung thực để phát hiện nick bị shadow drop / rate limit.
+   - **Khi không có nick nào chạy follow trong ngày (`has_active_follow == False`):** Hệ thống fallback về tính tổng delta của toàn bộ dàn nick để duy trì telemetry tổng thể của farm.
 3. **Lý do có khoảng lệch 1-2 lượt giữa Bot và Web (ví dụ: Bot +18 vs Web +17):**
-   - **Nhả follow (Silent un-follow / Shadow drop):** TikTok có cơ chế rate limit hoặc anti-spam ngầm: khi tài khoản bấm follow quá nhanh hoặc IP bị soi, nút Follow trên UI máy hiển thị thành công nhưng sau 30s - vài phút server TikTok tự động hủy kết nối follow mà không thông báo lỗi.
+   - **Nhả follow (Silent un-follow / Shadow drop):** TikTok có cơ chế rate limit hoặc anti-spam ngầm: khi tài khoản bấm follow quá nhanh hoặc IP bị soi, nút Follow trên UI máy hiển thị thành công nhưng sau 30s - vài phút server TikTok tự động hủy kết nối follow mà không thông báo lỗi (như `@tienpham7676` bot bấm 14 nhưng Web chỉ ghi nhận 13).
    - **Độ trễ CDN Cache của TikTok:** Counter `following` trên trang công khai của TikTok đôi khi có độ trễ cập nhật vài phút đến 1 tiếng so với hành động thực tế trên app.
 
 ## Quy trình chẩn đoán (CẤM đoán mò "follow tự nhiên")

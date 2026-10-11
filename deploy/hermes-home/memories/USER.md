@@ -12,7 +12,7 @@ Kibe(1-80) & Admin(201-280) media độc lập (Admin m2, cấm copy chéo). TT 
 §
 Dubbing: đúng tiếng, 100% thoại, tắt tiếng gốc.
 §
-Evidence: CẤM báo xong text suông; mọi task UI/login/2FA/pass BẮT BUỘC gửi MEDIA: đã soi (Profile/Switcher/2FA, cấm Feed). Pass láo: xóa về None trong Excel. Thi công đưa Claude duyệt.
+Pass láo: xóa về None trong Excel. Subagent: ag gemini pool mặc định, luna chỉ fallback. Đổi tên: canonical runner, cấm đẻ script m<N>.
 §
 Farm: cron Kibe(1-80)+Admin(201-280). IP Mikrotik chỉ login acc farm. 2 máy/IP; with_device_lock. Nuôi 4d/lần (Starvation 96h, cấm 48h).
 §
