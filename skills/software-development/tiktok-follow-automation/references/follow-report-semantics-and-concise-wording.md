@@ -8,12 +8,13 @@ Use when a follow-session report shows `Success (0)` and the operator asks wheth
 - `Follow chéo (X lượt follow)`: Tổng số lượt follow tích lũy được trong phiên (ví dụ 14 lượt).
 - `Thành công (0 máy)`: Không có máy nào hoàn tất phiên mà giữ sạch cờ — mọi máy đều dứt điểm bằng `FOLLOW_FAILED` (bị nhả ở lượt cuối).
 - `Nhả follow` / `Nhả liền`: Machines that attempted and were released before a successful count was recorded, hoặc follow được một số lượt (ví dụ M1 được 2 lượt, M18 được 12 lượt) rồi bị nhả ở lượt kế tiếp và rơi vào diện `Nhả follow`.
-- `Bỏ qua`: Safe skips such as cooldown, organic rest, eligibility, circuit-breaker protection (`Khóa IP do máy cùng IP nhả`), hoặc `sensitive-skip-*` (Fail-Closed Sensitive Guard: phiên Feed trước đó gặp lỗi/chưa đủ warm, hủy follow để bảo vệ nick).
+- `Bỏ qua`: Safe skips such as cooldown, organic rest, eligibility, circuit-breaker protection (`Khóa IP do máy cùng IP nhả`), hoặc `Feed chưa ổn định` (nguyên bản code là `sensitive-skip-*`: Fail-Closed Sensitive Guard khi phiên Feed trước đó gặp lỗi/chưa đủ warm, hủy follow để bảo vệ nick).
 - `Khóa IP`: Proxy/IP circuit-breaker events and protected machines.
 
-### 0. Phân Biệt Các Dạng Bỏ Qua (Safe Skips) & "sensitive-skip-*"
-Khi operator thấy các mã `sensitive-skip-...` trên báo cáo Telegram:
+### 0. Phân Biệt Các Dạng Bỏ Qua (Safe Skips) & Nhãn "Feed chưa ổn định" (Raw: "sensitive-skip-*")
+Khi operator thấy nhãn `Feed chưa ổn định` (hoặc các mã kỹ thuật cũ `sensitive-skip-...`) trên báo cáo Telegram:
 - **Bản chất `sensitive-skip`:** Là cơ chế bảo vệ nick (Fail-Closed Sensitive Guard) giữa Feed và Follow trong `multi_machine_feed_session.py`. Nick chỉ được đi follow chéo khi phiên feed trước đó hoàn tất sạch sẽ và đã warm tối thiểu 3 video (`completed_swipes >= 3`).
+- **Chuẩn hóa nhãn hiển thị Telegram:** Trong `feed_session_watchdog.py`, toàn bộ lý do chứa `sensitive` được tự động ánh xạ sang nhãn người dùng dễ hiểu: `Feed chưa ổn định (N máy)`.
 - **`sensitive-skip-failed`:** Phiên feed kết thúc với trạng thái `failed` (ví dụ: mở app thất bại, không focus được TikTok sau launch). Không thể chạy follow trên app đang lỗi ➔ Hủy an toàn.
 - **`sensitive-skip-manual_needed`:** Phiên feed kết thúc với trạng thái `manual-needed` (ví dụ: mất focus app khi vào profile, kẹt splash/ad không thể vuốt thoát, hoặc username trên profile không khớp với tài khoản chỉ định). Hủy follow để tránh thao tác nhầm trên sai tài khoản hoặc bị TikTok gắn cờ bot.
 

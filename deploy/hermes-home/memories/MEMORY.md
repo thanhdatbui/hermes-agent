@@ -12,7 +12,7 @@ evidence_gate_verifier.py (WinRT OCR, PID reserve, fail-closed, >30s/3att L3 BLO
 §
 Canary: WoL ether3 (kibe 0C:EF:15:37:4C:20, admin 22:33:4D:06:4C:26; WG 13231); CẤM PASS khi followed=0/FOLLOW_FAILED; ảnh/log trước teardown. Admin: upload SSH admin-farm.
 §
-Ava tay: khóa .manual_avatar_locked. Strike 3: Claude CLI. Reviewer :20129: Combo 'review' (Sol Web Tier 0 + Terra Codex Tier 1 fallback); closeout gọi 'review' tự failover, cấm dừng báo tắc khi Sol kẹt.
+Reviewer :20129: Combo 'review' (Sol Web Tier 0 + Terra Codex Tier 1 fallback); closeout gọi 'review' tự failover, cấm dừng báo tắc. Banned acc trên OmniRoute là ban thật (Sentinel/revoke).
 §
 TikTok Shadow: Path B 'Đã fl' ko commit; FOLLOW_FAILED trừ fl tự nhiên; slot `(folder-1)%8+1` cứng; reg bù độc lập. Dọn C duyệt trước.
 §

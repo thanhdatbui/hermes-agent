@@ -15,6 +15,7 @@ Verify before use:
 - Confirm `strategy: priority`, `failoverBeforeRetry: true`, and a bounded target timeout.
 - Smoke-test `POST /v1/chat/completions` with `model: review`; a `200` response proves the combo is routable, not that every underlying account is healthy.
 - Closeout must invoke `closeout_gate.py --model review` so the configured combo, rather than a manually selected single provider, performs the review.
+- Never freeze or abort execution when the primary reviewer (ChatGPT-Web Sol) hits transient errors or rate limits. The combo automatically delegates to Codex Terra. When running manual tests, always fall back to the secondary models configured in the combo rather than stopping with an error.
 
 ## Two-pool cleanup and rescue
 

@@ -144,6 +144,13 @@ For code changes implementing evidence delivery, run focused offline tests and t
 
 The user prefers direct Vietnamese, concise status, and actual native images rather than folder links or path dumps. Lead with the result, then list only the evidence and blocker that change the decision. Never make the user ask “hình đâu?” after a UI operation.
 
+- **Kỷ Luật Phản Hồi Khi User Bức Xúc Về Alert / Lỗi Hệ Thống ("Clgt", "Dlgt"):**
+  * **CẤM TUYỆT ĐỐI**: Trả lời dài dòng, liệt kê dàn trải các bước kỹ thuật rườm rà, phân bua cơ chế hook bảo vệ, hoặc thanh minh phòng thủ.
+  * **VÀO THẲNG BẢN CHẤT 3 Ý TẬP TRUNG**:
+    1. **Con số thực chất**: Tách bạch rõ tỷ lệ thành công của từng khâu (Feed vs Follow vs Upload) để User thấy bản chất hệ thống không gãy toàn diện.
+    2. **Sự cố cá biệt cốt lõi**: Nêu đúng nguyên nhân gốc rễ (ví dụ: máy kẹt ở switcher anchor do layout TikTok, không phải mất phiên / văng acc).
+    3. **Hiện trạng an toàn**: Khẳng định thiết bị đã giải phóng lock an toàn, dữ liệu nguyên vẹn, sẵn sàng cho ca tiếp theo.
+
 ## Avatar-only scope and false-policy refusal guard
 
 When the requested mutation is only “đổi avatar”, bind the run to an **avatar-only scope lock**:
@@ -194,7 +201,11 @@ Use `references/avatar-only-scope-and-false-policy-refusal.md` for the incident-
   * **Chặn Đứng HTML Spoofing & Localhost/Data URL:** Cấm dùng `browser_vision` trên file cục bộ `.html` / `.htm`, `http://127.0.0.1`, `http://localhost`, `data:` do agent tự render để làm giả bằng chứng thị giác. Cờ HTML phải được chuẩn hóa bỏ query/fragment và reset khi chuyển sang web thật.
   * **Bẫy Form Trống & Excel Không Phải Bằng Chứng Đổi Mật Khẩu:** Form nhập mật khẩu trống chưa submit (`đặt lại mật khẩu`, `mật khẩu mới`) và Bảng đối soát Excel chỉ chứng minh giao diện/sheet, KHÔNG chứng minh đổi pass thành công. Bằng chứng đổi mật khẩu hoàn tất bắt buộc là ảnh màn hình thiết bị TikTok thật chứa chỉ báo thành công sau submit (`đã đổi mật khẩu`, `mật khẩu đã được đổi`, `đổi mật khẩu thành công`, `đã cập nhật mật khẩu`).
   * **Bỏ Ngoại Lệ Dấu Hỏi Lỏng Lẻo:** Mọi câu hỏi có chứa tuyên bố hoàn thành đều bắt buộc phải kèm ảnh bằng chứng thị giác, không để lọt qua ngoại lệ `?`. Phủ định chỉ được tính khi đứng ngay sát trước động từ claim.
-  * **Fail-Closed Tuyệt Đối Khi Thiếu SHA-256:** Thiếu hash lúc OCR hoặc hash tính lại từ đĩa rỗng/lệch ➔ Lập tức đánh dấu `unverified`/`tampered` và chặn xuất bản.
+  - **Fail-Closed Tuyệt Đối Khi Thiếu SHA-256:** Thiếu hash lúc OCR hoặc hash tính lại từ đĩa rỗng/lệch ➔ Lập tức đánh dấu `unverified`/`tampered` và chặn xuất bản.
+    - **Bẫy Mất Dấu Vết Soi Mắt Khi Dùng `browser_navigate(file:///...)` + `browser_vision` (Guard Path-Tracking Desync):**
+      * **Căn nguyên kỹ thuật**: Hook kiểm tra cơ học `Evidence-First Gate` trong hệ thống quét tham số công cụ để xác nhận ảnh đính kèm đã qua kiểm chứng trước khi cho phép xuất bản thẻ `MEDIA:<path>`.
+      * **Hậu quả nếu bỏ sót**: Nếu Agent mở ảnh bằng `browser_navigate(url="file:///D:/path/to/img.png")` nhưng trong `browser_vision(question="...")` lại chỉ truyền câu hỏi chung chung (không chứa đường dẫn file), hook sẽ KHÔNG bóc tách được file path từ `browser_vision`. Khi phát hiện thẻ `MEDIA:D:/path/to/img.png` ở tin nhắn ra, gate lập tức kích hoạt chặn FAIL-CLOSED: `🛑 [EVIDENCE FIRST GATE — UNVERIFIED MEDIA]... Chưa qua WinRT OCR hoặc browser_vision`.
+      * **BẮT BUỘC**: Khi gọi `browser_vision`, tham số `question` **BẮT BUỘC PHẢI CHỨA RÕ RÀNG ĐƯỜNG DẪN TUYỆT ĐỐI CỦA ẢNH** (ví dụ: `browser_vision(question="Kiểm tra D:/Taadaa/.../image.png: xác nhận...")`), hoặc phải chạy WinRT OCR trực tiếp lên file path để hook ghi nhận audit trail hợp lệ 100%.
 
 ## References
 
