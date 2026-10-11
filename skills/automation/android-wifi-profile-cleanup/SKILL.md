@@ -64,6 +64,7 @@ Use status values such as `NO_DAT_EVIDENCE`, `CLEAN_AND_ONLINE`, `ONLINE_BUT_ROG
 ## Kỷ luật báo cáo chống làm tròn & chống giấu máy kẹt lock
 - **BẮT BUỘC liệt kê máy kẹt lock (LOCK_TIMEOUT):** Khi chạy batch farm, TUYỆT ĐỐI CẤM gộp số liệu hoặc chỉ báo cáo phần trăm máy thành công mà lờ đi các máy bị skip do lock bận ca. Mọi máy dính `LOCK_TIMEOUT` BẮT BUỘC phải xuất rõ danh sách số máy cụ thể (VD: `M1..M80 kẹt lock`).
 - **CẤM báo DONE khi chưa đọc ngược cấu hình (Read-back verification):** Không bao giờ suy diễn "đã xóa thành công" chỉ vì script đã bắn lệnh `service call wifi 14`. Trên các dòng máy Samsung Hàn Quốc (SM-G930S/L/K), lệnh shell UID 2000 bị chặn `SecurityException`. BẮT BUỘC phải đọc lại `dumpsys wifi` hoặc kiểm tra `WifiConfigStore.xml` để xác nhận profile rác đã thực sự biến mất khỏi danh sách đã lưu.
+- **Giành Lock khi Operator chỉ đạo (OPERATOR_PREEMPT):** Khi User/Operator phát lệnh giành lock (VD: *"Giành lock đi. Ca nuôi nick hết luôn r thì phải"*), sử dụng `force_preempt=True` trong `operator_device_lock` hoặc cờ `--preempt` trên tool `batch_clean_farm_wifi.py`. Cơ chế này kích hoạt `takeover_scope="OPERATOR_PREEMPT"` của `automation-core`, giành quyền can thiệp an toàn ngay lập tức mà không cần xóa tay file `.lock.json` bừa bãi.
 
 
 ## Failure handling
