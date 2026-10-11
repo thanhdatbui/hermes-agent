@@ -10,6 +10,7 @@ Khi nhận yêu cầu đổi avatar từ ảnh chụp màn hình hoặc username
 - **Quy tắc Crop tròn TikTok:**
   - Khung hình TikTok Profile là hình tròn. Tránh tuyệt đối lấy ảnh toàn thân ở góc xa (khi vào khung tròn mặt chủ thể sẽ bị nhỏ tí teo hoặc lệch góc).
   - Crop cận cảnh (tight zoom / portrait): Khuôn mặt chủ thể (người / thú cưng) phải nằm ngay trung tâm, chiếm 40%–60% diện tích khung hình vuông `512x512`.
+  - **CẢNH BÁO TÂM TỌA ĐỘ TRÊN VIDEO DỌC (9:16):** Với video dọc (576x1024, 1080x1920), đầu/mặt người luôn nằm ở 15%–25% trên cùng (`cy ~ 0.2 * H`), CẤM TUYỆT ĐỐI lấy tâm ở giữa hay phần thân (`cy ~ 0.4 - 0.5 * H` là vùng ngực/áo). Lấy tâm quá thấp sẽ khiến TikTok mask tròn cắt cụt mất toàn bộ đầu, chỉ còn mảng vải áo.
   - Không dính watermark, phụ đề, thanh tiến trình hay viền đen.
 - **Vision Pre-flight:** Mở ảnh qua `browser_vision` kiểm tra tận mắt độ nét, bố cục và xác nhận chủ thể đúng yêu cầu trước khi nạp vào hệ thống.
 
