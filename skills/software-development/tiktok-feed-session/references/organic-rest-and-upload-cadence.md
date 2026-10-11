@@ -1,30 +1,32 @@
-# Quy định Vận hành: Dưỡng Sinh (Organic Rest), Nhịp Đăng Video & Nick Cắn Đề Xuất
+# Quy định Vận hành: Dưỡng Sinh (Organic Rest), Nhịp Đăng Video & Cờ Upload (Cập nhật 2026-10-11)
 
-## 1. Định Nghĩa Bất Biến Về "Dưỡng Sinh" (Organic Rest)
-- **HIỂU LẦM TAI HẠI CẦN TRÁNH:** Tuyệt đối không được nhầm "dưỡng sinh" là đi lướt feed / xem video.
-- **NGUYÊN TẮC CỐT LÕI:**
-  - **100% mọi nick khi vào phiên/ca nuôi ĐỀU LƯỚT FEED:** Lướt FYP, xem video, thả tim tự nhiên là nền tảng bắt buộc để duy trì Trust Score và nuôi IP proxy cho thiết bị.
-  - **Dưỡng sinh (Organic Rest)** là cơ chế kiểm soát nhịp hành vi: **TẮT UPLOAD và TẮT FOLLOW (0-Upload + 0-Follow)** vào ngày nghỉ dưỡng sinh.
-  - **Công thức hiện tại trong code (`multi_machine_feed_session.py`):**
-    ```python
-    h = hashlib.md5(f"{date_str}:{m_num}:{r_num}".encode("utf-8")).hexdigest()
-    is_organic_rest = (int(h[:8], 16) % 3) == 0  # Xác suất 1/3 ngày
-    ```
+## 1. Cờ Upload & Khung Giờ Đăng Video (User chốt 2026-10-11)
+- **Luôn mở `-AllowUploadHook` ở CẢ 2 Phiên:**
+  - Phiên 1 (06:00, 12:00, 18:00)
+  - Phiên 2 (08:00, 14:00, 20:00)
+- **Cơ chế chống đăng trùng:**
+  - Hệ thống sử dụng sổ cái `shift_upload_history.json` (`_ShiftUploadLedger`).
+  - Nếu Phiên 1 đăng video thành công, Phiên 2 cùng ca tự động phát hiện và bỏ qua (`status: skipped`).
+  - Nếu Phiên 1 chưa kịp đăng (do mạng, hàng chờ), Phiên 2 tiếp tục thử đăng bù.
 
 ---
 
-## 2. Nhịp Đăng Video Theo Phân Loại Tài Khoản
-
-| Trạng thái Nick | Chế độ Dưỡng Sinh | Nhịp Đăng Video Thực Tế | Mục đích |
-| :--- | :--- | :--- | :--- |
-| **Nick Thường / Flop (`NORMAL`)** | Bật dưỡng sinh 1/3 (0-Up, 0-Follow) | **2.5 – 3 ngày / 1 video** | Tiết kiệm tài nguyên render, giảm áp lực kho video, tránh bị TikTok gán cờ Spam Creator cho kênh flop. |
-| **Nick Cắn Đề Xuất (`BOOST`)** *(Plan đã duyệt)* | **Gỡ bỏ ngày nghỉ Upload** (vẫn lướt feed 100%) | **Cố định 48h / 1 video (2 ngày 1 lần)** | Vét trọn làn sóng phân phối đề xuất của TikTok, giữ đà tương tác liên tục cho video. |
+## 2. Bỏ Tỷ Lệ Dưỡng Sinh Ngẫu Nhiên (Organic Rest Ratio Disabled)
+- **Thay đổi chính thức trong `multi_machine_feed_session.py` (commit `08cc160`):**
+  - Đã loại bỏ hoàn toàn cơ chế băm ngẫu nhiên `(int(h[:8], 16) % 3) == 0`.
+  - Hàm `_is_account_organic_rest_day` mặc định trả về `False` cho mọi tài khoản.
+  - Nick **KHÔNG** còn bị rơi ngẫu nhiên vào ngày nghỉ dưỡng sinh 33% làm chặn oan luồng đăng video hoặc follow.
+- **Deep Organic Rest chỉ áp dụng theo sổ cái can thiệp:**
+  - `_is_account_organic_rest_day` chỉ trả về `True` khi nick nằm trong `force_rest_ledger` (can thiệp kỹ thuật chủ động).
 
 ---
 
-## 3. Thực Trạng Codebase Hiện Tại (Đối Soát Production)
-- **Tình trạng:** Cơ chế tự động nhận diện nick cắn đề xuất để ưu tiên đăng nhịp 48h **MỚI CHỈ ĐẠT ĐỒNG THUẬN VỀ PLAN/SPEC**, **CHƯA ĐƯỢC CODE VÀO RUNNER**.
-- **Hiện thực trong runner (`multi_machine_feed_session.py:3771`):** Mọi nick (kể cả nick đang viral) hiện vẫn áp dụng công thức hash 1/3 nghỉ upload cố định. Chưa có bảng `account_state` trong SQLite `tiktok_tracker.db` để runner đọc và phân luồng đăng.
+## 3. Nhịp Đăng Video Tự Nhiên & Invariant Farm
+- **Cấm chặn upload ngày nghỉ:** Invariant cốt lõi của Taadaa Farm — không dùng cơ chế nghỉ dưỡng nhân tạo để chặn upload của nick.
+- **Tự cân bằng nhịp đăng:**
+  - Farm chạy luân phiên cách nhật Chẵn / Lẻ (Row 1/3/5/7 ngày lẻ, Row 2/4/6/8 ngày chẵn).
+  - Mỗi row tự nhiên có chu kỳ chạy cách nhau 48h (2 ngày / 1 lần).
+  - Khi không bị chặn bởi dưỡng sinh ngẫu nhiên, nhịp đăng tự động duy trì chuẩn **2 ngày / 1 video** (hoặc 4 ngày nếu xui xẻo mạng lag/hết kho video).
 
 ---
 
