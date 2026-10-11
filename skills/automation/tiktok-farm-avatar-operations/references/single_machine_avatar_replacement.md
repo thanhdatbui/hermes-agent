@@ -41,7 +41,12 @@ Khi nhận yêu cầu đổi avatar từ ảnh chụp màn hình hoặc username
 - **Kỷ luật Event-Driven:** Khởi chạy qua tiến trình nền `terminal(background=True, notify_on_complete=True, timeout=360)` để harness tự đánh thức khi runner kết thúc; CẤM TUYỆT ĐỐI polling vòng lặp sleep.
 
 ## 6. Nghiệm thu thực tế & Gửi ảnh bằng chứng (Gate 6)
-- Sau khi runner báo thành công:
-  1. Chụp ảnh màn hình Profile thực tế trên máy qua ADB (`screencap`).
-  2. Dùng `browser_vision` (hoặc OCR) soi mắt kiểm tra: xác nhận avatar tròn trên profile đã cập nhật đúng hình mới, không bị lỗi hiển thị.
-  3. Gửi ảnh nghiệm thu kèm thẻ `MEDIA:<path>` trong câu trả lời cho User kèm xác nhận trực quan nội dung đã thấy tận mắt.
+- Sau khi runner báo thành công (exit=0, verified=True):
+  1. **Định vị Artifact do runner xuất ra:**
+     - Batch summary: `D:\CodexRuntime\tiktok-video\batch-runs\batch_tik<Tik>_list_80_<timestamp>\summary.csv`
+     - Per-run directory: `D:\CodexRuntime\tiktok-video\runs\run_<device_serial>_<timestamp>\`
+     - Artifacts chính: `avatar-uploaded-confirmed.png` (ảnh chụp Profile TikTok ngay sau khi lưu avatar), `report.json` (`avatar_status: "FORCED_REPLACED_VERIFIED"`).
+  2. **Soi mắt kiểm tra qua `browser_vision`:**
+     - Mở trực tiếp hoặc bọc ảnh vào một file HTML viewport tối giản (`<style>body{margin:0}img{width:100vw}</style>`) để Chromium render toàn bộ chiều cao ảnh rõ nét.
+     - Dùng `browser_vision` soi mắt kiểm tra: xác nhận avatar tròn trên profile đã cập nhật đúng hình mới, đúng nick, không bị popup hay lỗi hiển thị.
+  3. Gửi ảnh nghiệm thu kèm thẻ `MEDIA:<path_to_avatar-uploaded-confirmed.png>` trong câu trả lời cho User kèm xác nhận trực quan nội dung đã thấy tận mắt.
