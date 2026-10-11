@@ -101,6 +101,20 @@ Chạy script query bảng `provider_connections` trong `C:\Users\Kibe\.omnirout
 
 - **CANARY & GATE 6 KHI RE-LOGIN QUA GPM:**
   * Luôn chạy Canary trên 1 tài khoản trước khi chạy hàng loạt.
+  * **PHÂN BIỆT RÕ CHECKPOINT FORM OTP vs ẢNH LỖI CUỐI CÙNG ("ẢNH LỖI ĐÂU?"):**
+    - Màn hình dừng ở ô nhập OTP (`auth.openai.com/email-verification`) CHƯA PHẢI là ảnh lỗi. Đó chỉ là checkpoint chờ mã xác thực.
+    - User đòi "Ảnh lỗi đâu?" là đòi bằng chứng xác thực việc tài khoản bị OpenAI từ chối/vô hiệu hóa.
+    - BẮT BUỘC phải hoàn tất bước nhập OTP (bóc qua Graph API/Outlook) rồi submit để ghi nhận màn hình thông báo lỗi chính thức: `Lỗi xác thực - OpenAI` (`error_code: account_deactivated`, *"Bạn không có tài khoản vì tài khoản đó đã bị xóa hoặc vô hiệu hóa"*).
+    - Chỉ gửi thẻ `MEDIA:` của màn hình báo lỗi này làm bằng chứng xác thực tài khoản bị xóa vĩnh viễn; cấm gửi ảnh form OTP rồi kết luận tài khoản die.
+  * **SCOPE CHUẨN MICROSOFT GRAPH API KHI BÓC OTP HOTMAIL:**
+    - Khi đổi `refresh_token` lấy `access_token` tại `https://login.microsoftonline.com/common/oauth2/v2.0/token`:
+    - BẮT BUỘC dùng: `scope = "https://graph.microsoft.com/Mail.Read offline_access"` kèm header `Content-Type: application/x-www-form-urlencoded`.
+    - TUYỆT ĐỐI CẤM dùng `scope = "https://graph.microsoft.com/.default offline_access"` vì Microsoft OAuth2 endpoint sẽ trả về `HTTP Error 400: Bad Request` đối với refresh token tài khoản cá nhân.
+  * **ĐIỀU HƯỚNG AUTH TRỰC TIẾP & BẪY REACT INPUT VALUE:**
+    - Tránh nhập email trên popup modal của `https://chatgpt.com/` (guest conversation onboarding). BẮT BUỘC navigate thẳng đến URL: `https://chatgpt.com/auth/login`.
+    - Form React của ChatGPT bỏ qua việc gán `input.value = ...` trực tiếp. Phải dùng:
+      `Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(input, email_val)`
+      kèm dispatch event `input` và `change` (`{ bubbles: true }`), hoặc dùng CDP `Input.dispatchKeyEvent` gõ từng ký tự.
   * CHECKPOINT 1 (Pre-submit): Điền email xong, chụp ảnh kiểm tra bằng WinRT OCR/vision.
   * CHECKPOINT 2 (Post-submit): Submit xong chụp ảnh ngay. Nếu gặp thông báo *"Chúng tôi đã gặp sự cố khi đăng nhập cho bạn, vui lòng tạm dừng một lát và thử lại sau"* (OpenAI rate-limit IP proxy), DỪNG NGAY LẬP TỨC. Tuyệt đối không cố chạy vòng lặp mù làm cháy proxy/tài khoản.
 
