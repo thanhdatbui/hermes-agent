@@ -230,6 +230,89 @@ def update_profile_state(email: str, entry: dict):
         except Exception as e:
             logger.error(f"Lỗi lưu state atomic: {e}")
 
+def is_gpm_api_live() -> bool:
+    try:
+        return requests.get(f"{GPM_API_BASE}/profiles?page=1&per_page=1", timeout=3).status_code == 200
+    except Exception:
+        return False
+
+def is_gpm_process_running() -> bool:
+    """Kiểm tra GPMLogin.exe đã có tiến trình chạy hoặc đang khởi động (chống spawn trùng)."""
+    if psutil is None:
+        return False
+    for p in psutil.process_iter(['name']):
+        try:
+            if (p.info.get('name') or '').lower() == 'gpmlogin.exe':
+                return True
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            continue
+    return False
+
+def auto_heal_gpm_if_offline() -> bool:
+    if is_gpm_api_live():
+        return True
+    heal_start = time.time()
+    if is_gpm_process_running():
+        logger.info("GPMLogin.exe đã có tiến trình chạy/đang khởi động, bỏ qua spawn trùng, chỉ chờ API sẵn sàng...")
+        for attempt in range(1, 6):
+            time.sleep(2)
+            if is_gpm_api_live():
+                log_telemetry_metric("gpm_auto_heal_success", {
+                    "mode": "wait_existing_process",
+                    "retry_attempts": attempt,
+                    "recovery_duration_s": round(time.time() - heal_start, 2),
+                })
+                return True
+        log_telemetry_metric("gpm_auto_heal_failure", {
+            "mode": "wait_existing_process",
+            "retry_attempts": 5,
+            "recovery_duration_s": round(time.time() - heal_start, 2),
+            "error": "GPM_API_NOT_READY_AFTER_WAIT",
+        })
+        return is_gpm_api_live()
+
+    exe = Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "GPMLogin" / "GPMLogin.exe"
+    if exe.exists():
+        logger.info(f"Đang kích hoạt auto-heal GPM: {exe}")
+        try:
+            import subprocess
+            subprocess.Popen([str(exe)])
+            for attempt in range(1, 6):
+                time.sleep(2)
+                if is_gpm_api_live():
+                    log_telemetry_metric("gpm_auto_heal_success", {
+                        "mode": "spawn_process",
+                        "exe": str(exe),
+                        "retry_attempts": attempt,
+                        "recovery_duration_s": round(time.time() - heal_start, 2),
+                    })
+                    return True
+            log_telemetry_metric("gpm_auto_heal_failure", {
+                "mode": "spawn_process",
+                "exe": str(exe),
+                "retry_attempts": 5,
+                "recovery_duration_s": round(time.time() - heal_start, 2),
+                "error": "GPM_API_NOT_READY_AFTER_SPAWN",
+            })
+        except Exception as e:
+            logger.warning(f"Lỗi auto-heal GPM: {e}")
+            log_telemetry_metric("gpm_auto_heal_failure", {
+                "mode": "spawn_process",
+                "exe": str(exe),
+                "retry_attempts": 0,
+                "recovery_duration_s": round(time.time() - heal_start, 2),
+                "error": str(e),
+            })
+    else:
+        log_telemetry_metric("gpm_auto_heal_failure", {
+            "mode": "no_executable",
+            "exe": str(exe),
+            "retry_attempts": 0,
+            "recovery_duration_s": round(time.time() - heal_start, 2),
+            "error": "GPM_EXE_NOT_FOUND",
+        })
+    return is_gpm_api_live()
+
 def get_all_gpm_profiles() -> list:
     all_profiles = []
     page = 1
@@ -843,7 +926,10 @@ def main():
     state = load_state()
     now_ts = time.time()
 
+    # Thử auto-heal nếu GPM offline; nếu vẫn thất bại thì báo lỗi để kích hoạt alert
     all_profiles = get_all_gpm_profiles()
+    if not all_profiles and not is_gpm_api_live() and auto_heal_gpm_if_offline():
+        all_profiles = get_all_gpm_profiles()
     if not all_profiles:
         logger.error("Không lấy được danh sách profile từ GPM API! Hãy kiểm tra GPMLogin đang chạy.")
         sys.exit(1)

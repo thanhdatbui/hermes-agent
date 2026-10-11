@@ -598,6 +598,7 @@ def test_telemetry_file_real_disk_write_and_read(tmp_path, monkeypatch):
     assert data["data"]["status"] == "SUCCESS"
 
 
+# Test cleanup_extra_tabs error handling
 def test_cleanup_extra_tabs_handles_page_close_error():
     p1 = MagicMock(url="https://youtube.com", is_closed=lambda: False)
     p2 = MagicMock(url="https://ad.com", is_closed=lambda: False)
@@ -605,6 +606,122 @@ def test_cleanup_extra_tabs_handles_page_close_error():
     ctx = MagicMock(pages=[p1, p2])
     kept = nurture.cleanup_extra_tabs(ctx, keep_page=p1)
     assert kept == p1
+
+
+def test_is_gpm_api_live():
+    with patch("requests.get") as mock_get:
+        mock_get.return_value.status_code = 200
+        assert nurture.is_gpm_api_live() is True
+        mock_get.side_effect = Exception("network down")
+        assert nurture.is_gpm_api_live() is False
+
+
+def test_auto_heal_gpm_success(monkeypatch):
+    responses = [False, True]
+    monkeypatch.setattr(nurture, "is_gpm_api_live", lambda: responses.pop(0) if responses else True)
+    monkeypatch.setattr(nurture, "is_gpm_process_running", lambda: False)
+    monkeypatch.setattr("pathlib.Path.exists", lambda self: True)
+    with patch("subprocess.Popen") as mock_popen, patch("time.sleep"):
+        assert nurture.auto_heal_gpm_if_offline() is True
+        mock_popen.assert_called_once()
+
+
+def test_is_gpm_process_running_detects_existing(monkeypatch):
+    mock_proc = MagicMock()
+    mock_proc.info = {"name": "GPMLogin.exe"}
+    monkeypatch.setattr(nurture, "psutil", MagicMock(process_iter=lambda attrs: [mock_proc]))
+    assert nurture.is_gpm_process_running() is True
+
+
+def test_is_gpm_process_running_none_found(monkeypatch):
+    mock_proc = MagicMock()
+    mock_proc.info = {"name": "chrome.exe"}
+    monkeypatch.setattr(nurture, "psutil", MagicMock(process_iter=lambda attrs: [mock_proc]))
+    assert nurture.is_gpm_process_running() is False
+
+
+def test_is_gpm_process_running_no_psutil(monkeypatch):
+    monkeypatch.setattr(nurture, "psutil", None)
+    assert nurture.is_gpm_process_running() is False
+
+
+def test_auto_heal_no_duplicate_spawn_when_process_already_running(monkeypatch):
+    """Chống duplicate: nếu GPMLogin.exe đã chạy/đang khởi động thì KHÔNG spawn thêm process mới."""
+    responses = [False, False, True]
+    monkeypatch.setattr(nurture, "is_gpm_api_live", lambda: responses.pop(0) if responses else True)
+    monkeypatch.setattr(nurture, "is_gpm_process_running", lambda: True)
+    with patch("subprocess.Popen") as mock_popen, patch("time.sleep"):
+        assert nurture.auto_heal_gpm_if_offline() is True
+        mock_popen.assert_not_called()
+
+
+def test_auto_heal_telemetry_records_retry_and_duration_on_success(monkeypatch):
+    responses = [False, False, True]
+    monkeypatch.setattr(nurture, "is_gpm_api_live", lambda: responses.pop(0) if responses else True)
+    monkeypatch.setattr(nurture, "is_gpm_process_running", lambda: False)
+    monkeypatch.setattr("pathlib.Path.exists", lambda self: True)
+    telemetry_events = []
+    monkeypatch.setattr(nurture, "log_telemetry_metric", lambda ev, data: telemetry_events.append((ev, data)))
+    with patch("subprocess.Popen"), patch("time.sleep"):
+        assert nurture.auto_heal_gpm_if_offline() is True
+    assert len(telemetry_events) == 1
+    ev, data = telemetry_events[0]
+    assert ev == "gpm_auto_heal_success"
+    assert data["retry_attempts"] == 2
+    assert "recovery_duration_s" in data
+
+
+def test_auto_heal_telemetry_records_failure_cause_when_exe_missing(monkeypatch):
+    monkeypatch.setattr(nurture, "is_gpm_api_live", lambda: False)
+    monkeypatch.setattr(nurture, "is_gpm_process_running", lambda: False)
+    monkeypatch.setattr("pathlib.Path.exists", lambda self: False)
+    telemetry_events = []
+    monkeypatch.setattr(nurture, "log_telemetry_metric", lambda ev, data: telemetry_events.append((ev, data)))
+    assert nurture.auto_heal_gpm_if_offline() is False
+    assert len(telemetry_events) == 1
+    ev, data = telemetry_events[0]
+    assert ev == "gpm_auto_heal_failure"
+    assert data["error"] == "GPM_EXE_NOT_FOUND"
+    assert data["retry_attempts"] == 0
+
+
+def test_auto_heal_telemetry_records_failure_cause_on_spawn_exception(monkeypatch):
+    monkeypatch.setattr(nurture, "is_gpm_api_live", lambda: False)
+    monkeypatch.setattr(nurture, "is_gpm_process_running", lambda: False)
+    monkeypatch.setattr("pathlib.Path.exists", lambda self: True)
+    telemetry_events = []
+    monkeypatch.setattr(nurture, "log_telemetry_metric", lambda ev, data: telemetry_events.append((ev, data)))
+    with patch("subprocess.Popen", side_effect=OSError("spawn denied")):
+        assert nurture.auto_heal_gpm_if_offline() is False
+    ev, data = telemetry_events[0]
+    assert ev == "gpm_auto_heal_failure"
+    assert "spawn denied" in data["error"]
+    assert data["retry_attempts"] == 0
+
+
+def test_auto_heal_telemetry_records_failure_when_api_never_comes_up_after_spawn(monkeypatch):
+    monkeypatch.setattr(nurture, "is_gpm_api_live", lambda: False)
+    monkeypatch.setattr(nurture, "is_gpm_process_running", lambda: False)
+    monkeypatch.setattr("pathlib.Path.exists", lambda self: True)
+    telemetry_events = []
+    monkeypatch.setattr(nurture, "log_telemetry_metric", lambda ev, data: telemetry_events.append((ev, data)))
+    with patch("subprocess.Popen"), patch("time.sleep"):
+        assert nurture.auto_heal_gpm_if_offline() is False
+    ev, data = telemetry_events[0]
+    assert ev == "gpm_auto_heal_failure"
+    assert data["mode"] == "spawn_process"
+    assert data["retry_attempts"] == 5
+    assert data["error"] == "GPM_API_NOT_READY_AFTER_SPAWN"
+
+
+def test_main_raises_when_gpm_offline_and_heal_fails(monkeypatch):
+    monkeypatch.setattr(nurture, "get_all_gpm_profiles", lambda: [])
+    monkeypatch.setattr(nurture, "is_gpm_api_live", lambda: False)
+    monkeypatch.setattr(nurture, "auto_heal_gpm_if_offline", lambda: False)
+    with patch.object(sys, "argv", ["cron_gpm_gmail_nurture.py", "--limit", "1"]):
+        with pytest.raises(SystemExit) as exc_info:
+            nurture.main()
+        assert exc_info.value.code == 1
 
 
 
