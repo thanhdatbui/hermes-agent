@@ -15,6 +15,7 @@ metadata:
 
 References:
 - `references/closeout-gate-files-dirty-target-strictness.md` — Quy tắc bắt buộc khi dùng `--files` trong `closeout_gate.py`: CHỈ truyền file có working-tree diff, tránh lỗi 'targets without working-tree changes'.
+- `references/closeout-gate-diff-ceiling-and-dynamic-test-payloads.md` — Xử lý lỗi Step 3 (Focused Tests) do test fixture hardcode kích thước diff khi trần `MAX_DIFF_BYTES_GATE` thay đổi, pattern tính payload động và cơ chế meta-test cascade trên repo `tools`.
 - `references/gate-audit-race-condition-and-resource-cleanup.md` — **[MỚI 11/10/2026]** Xử lý race condition khi `gate_audit.jsonl` bị repo khác ghi đè làm chặn `git push`, kỷ luật cấm ném lệnh git push cho User tự gõ khi audit pass, mẫu chuẩn giải phóng `wb.close()` cho `openpyxl`, và yêu cầu bổ sung test case cho error handling để đạt >= 85 điểm.
 - `references/strike-3-claude-cli-model-policy.md` — **[MỚI 11/10/2026]** Quy tắc Strike 3 Hand-off: Claude CLI DUY NHẤT là Sonnet 5.5 (`--model sonnet`), CẤM TUYỆT ĐỐI Sonnet 3.5; cấu trúc prompt giao quyền và kiểm soát quota.
 - `references/closeout-gate-scope-git-identity-remediation.md` — **[MỚI 11/10/2026]** Xử lý bẫy scope mismatch (`refusing partial committed scope`), khắc phục trượt điểm 84/100 bằng mock state machine E2E, và fix lỗi `Author identity unknown` không dùng cờ `-c`.

@@ -35,9 +35,9 @@ Khi nhận yêu cầu đổi avatar từ ảnh chụp màn hình hoặc username
 ## 4.1. Điều phối Worker & Bảo toàn Ngân sách T1 (Coordinator Discipline)
 - **Bảo toàn hạn ngạch T1:** Coordinator có trần cứng T1 (tối đa 5 files, <= 200 dòng cộng dồn cả phiên). CẤM Coordinator tự ý dùng `write_file` tạo các script cào frame/inspect/HTML nháp trong `D:/Taadaa/tmp/`. Việc viết script trích xuất frame, crop ảnh, ghi file và update DB/Excel thuộc trách nhiệm của Worker.
 - **Scope Lock Whitelist trong `delegate_task`:**
-  - Guard kiểm soát delegation yêu cầu khai báo `FILE: <đường_dẫn_tuyệt_đối>` trong mục tiêu.
+  - Guard kiểm soát delegation yêu cầu khai báo `FILE: <đường_dẫn_tuyệt_đối>` trong mục tiêu. Khai báo BẮT BUỘC nằm trên một dòng riêng biệt, có dấu xuống dòng ngăn cách rõ ràng; CẤM viết liền câu văn ngay sau đuôi file (`.py. Target...`) làm parser bốc sai tên file gây `SCOPE LOCK BREACH`.
   - Đường dẫn file khai báo BẮT BUỘC phải nằm trong whitelist repo `D:\Taadaa` (ví dụ: `FILE: D:\Taadaa\tmp\prepare_avatar_<folder>.py`).
-  - CẤM khai báo trực tiếp file ngoài whitelist như `D:\OneDrive\TaadaaData\kibe\Tik*.xlsx` vào dòng `FILE: ...` của contract (sẽ bị guard chặn `OUT OF REPO WHITELIST`). Hãy để Worker script dưới `D:\Taadaa` mở và cập nhật file OneDrive.
+  - Worker bị giới hạn chỉ truy cập trong `D:\Taadaa` và lệnh terminal chỉ gồm (`git`, `adb devices`, `inspect_machine.py`, `pytest`, `psutil`). Do đó, nếu cần chuẩn bị tích hợp (cập nhật DB, Excel, cắm cờ khóa, khởi chạy PowerShell runner), Coordinator nên viết và kích hoạt trực tiếp wrapper `D:\Taadaa\tmp\prepare_and_launch_avatar_<may>.py` chạy nền thay vì cố ủy quyền các tác vụ ngoài boundary cho Worker.
 
 ## 5. Kích hoạt Runner Avatar chuyên biệt (Avatar-Only Mode)
 - **Phân định quyền chạy Terminal (Coordinator vs Worker):**
