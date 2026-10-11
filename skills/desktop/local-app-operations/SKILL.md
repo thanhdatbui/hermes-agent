@@ -453,6 +453,18 @@ When inspecting or maintaining single-file Python HTTP dashboards (e.g. `server.
        * **Leading Plus Hardcoding & Double-Sign String Glitch ('+-' Trap):**
          - Tuyệt đối CẤM ghép chuỗi cứng dấu `+` đằng trước biến delta (ví dụ `+{summary['total_delta_following']}` hoặc `+${formatNum(totDeltaFl)}`). Khi giá trị âm, chuỗi sẽ biến thành dị dạng `+-85` (ví dụ `📈 Tổng tăng: +-85`).
          - Bắt buộc dùng hàm format có điều kiện: `(delta > 0 ? '+' : '') + formatNum(delta)` và đổi nhãn động (`Tổng tăng:` khi delta >= 0 vs `Biến động:` khi delta < 0). Xem chi tiết tại `references/farm-metric-delta-and-population-expansion-pitfalls.md`.
+       * **Heterogeneous Multi-Source Schema Drift & Frontend Template Interpolation ('undefined' String Glitch):**
+         - **Nguyên nhân cốt lõi**: Khi web dashboard tổng hợp thực thể fleet từ nhiều nguồn dữ liệu (ví dụ: các tài khoản đang chạy có state JSON file chứa key `row`, `partner: "M42"` trong khi các tài khoản mới/đang dưỡng nạp fallback từ SQLite DB `farm_account_info` lại dùng key `account_row_index`, `partner_machines: [42]`). Khi backend gán dictionary thiếu đồng bộ giữa các nhánh, các thuộc tính này nhận giá trị `None` hoặc bị bỏ quên.
+         - **Biểu hiện trên giao diện**: Trong template HTML/JavaScript (nhất là JS template literals `${a.row}` hoặc `M${a.partner}`), JavaScript không ném ngoại lệ mà tự động ép kiểu `undefined` thành chuỗi văn bản thô, làm lộ các chuỗi dị dạng trên dashboard như `(Row undefined)` và `(:5104 Mundefined)`.
+         - **Kỷ luật phòng ngừa 2 lớp (Dual-Layer Defense Invariant)**:
+           1. *Backend Schema Normalization*: Trong các hàm aggregate backend (như `follow_health_helper.py`), bắt buộc chuẩn hóa 100% dictionary trả về ở mọi nhánh nguồn:
+              `"row": a.get("row") if a.get("row") is not None else a.get("account_row_index", 1)`
+              `"partner": partner_str if partner_str else "-"`
+           2. *Frontend Defensive Fallback Chain*: Trong template literals JavaScript, TUYỆT ĐỐI KHÔNG nội suy trực tiếp biến đối tượng đơn lẻ mà không có fallback an toàn:
+              `(Row ${a.row || a.account_row_index || '-'})`
+              `a.partner && a.partner !== '-' ? ` 🔗M${a.partner}` : ''`
+           3. *Preflight API Schema Assertion*: Trước khi nghiệm thu giao diện fleet lớn, luôn chạy probe API O(1) kiểm tra `None` hoặc missing keys trên cả hai phân nhóm tài khoản (nhóm đã chạy và nhóm mới nạp từ DB):
+              `assert all('row' in a and a['row'] is not None and 'partner' in a for a in data['accounts'])`
 2. **Route alignment:** Every UI tab that promises data or actions (e.g. Schedules, API & cURL) must be backed by corresponding routes in `do_GET` / `do_POST`.
 3. **Background daemon runners:** Any scheduler or poller thread (e.g. `schedule_runner`) must be started in `main()` as a daemon thread and include per-minute debounce so scheduled tasks do not trigger repeatedly in the same interval.
 4. **Safe in-place update & port-bound background restart:**

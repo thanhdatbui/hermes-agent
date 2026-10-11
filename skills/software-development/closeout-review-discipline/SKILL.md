@@ -14,6 +14,7 @@ metadata:
 > **Canonical policy precedence:** For orchestration and closeout precedence, follow `D:\Taadaa\HERMES_SUBAGENT_RULES.md` marker `CANONICAL-POLICY-PRECEDENCE-2026-10-05`; this skill points to it and does not redefine it.
 
 References:
+- `references/gate-audit-race-condition-and-resource-cleanup.md` — **[MỚI 11/10/2026]** Xử lý race condition khi `gate_audit.jsonl` bị repo khác ghi đè làm chặn `git push`, mẫu chuẩn giải phóng `wb.close()` cho `openpyxl`, và yêu cầu bổ sung test case cho error handling để đạt >= 85 điểm.
 - `references/strike-3-claude-cli-model-policy.md` — **[MỚI 11/10/2026]** Quy tắc Strike 3 Hand-off: Claude CLI DUY NHẤT là Sonnet 5.5 (`--model sonnet`), CẤM TUYỆT ĐỐI Sonnet 3.5; cấu trúc prompt giao quyền và kiểm soát quota.
 - `references/closeout-gate-scope-git-identity-remediation.md` — **[MỚI 11/10/2026]** Xử lý bẫy scope mismatch (`refusing partial committed scope`), khắc phục trượt điểm 84/100 bằng mock state machine E2E, và fix lỗi `Author identity unknown` không dùng cờ `-c`.
 - `references/anti-phantom-claim-and-uncommitted-feature-trap.md` — **[MỚI 11/10/2026]** Kỷ luật chống Báo Cáo Khống (Anti-Phantom Claims): CẤM đưa các hạng mục chỉ mới thảo luận hoặc thống nhất bằng lời vào mục đã thi công trong Báo Cáo Chốt Phiên; mọi claim bắt buộc đối soát chéo khớp 100% với Git diff và commit SHA thực tế.

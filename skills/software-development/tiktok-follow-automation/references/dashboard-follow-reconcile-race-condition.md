@@ -55,7 +55,8 @@ Khi tài khoản **nghỉ follow hoặc chưa đủ video** (`organic-rest-day-p
      - `@trn.m.m620`: 2 (p1) + 2 (p2) + 2 (nháp) + 2 (test) = **8**! (Thực tế bot chạy chỉ 4).
    - Trong khi đó, thẻ tổng KPI trên Header đọc từ `session_action_stats` (chỉ ghi nhận 2 phiên thật là 16 + 2 = 18), dẫn đến nghịch lý: Toàn farm bot chạy 18 lượt nhưng 1 nick riêng lẻ hiển thị đã follow 42 lượt!
 3. **Cách khắc phục:**
-   - Xóa các bản ghi rác có `session_key` không hợp lệ (`test_check`, `..._p1`) trong `session_account_actions`:
+   - **Tự động bằng script:** Chạy `python scripts/reconcile_and_clean_test_telemetry.py --fix` (tự động sao lưu DB, phát hiện các session key bất thường và recalculate `daily_account_actions`).
+   - **Thao tác thủ công:** Xóa các bản ghi rác có `session_key` không hợp lệ (`test_check`, `..._p1`) trong `session_account_actions`:
      ```sql
      DELETE FROM session_account_actions WHERE session_key IN ('test_check', '2026-10-11_ca1_p1');
      ```
