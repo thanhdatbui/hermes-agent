@@ -390,6 +390,7 @@ See `references/concurrency-admission-and-binding.md` for the reusable matrix an
 
 ## Pitfalls
 
+- **Concurrent Worker Scope Overwrite without Worktrees:** In environments governed by workspace-level worker gate hooks (e.g. `guard_write_ownership` or repo-wide scope locks), dispatching multiple background subagents into the SAME working tree without isolated worktrees causes the subsequent dispatch to overwrite the active Scope Lock manifest of the repository. When the first worker attempts to write, it is blocked immediately with `[WORKER GATE - SCOPE LOCK BREACH]`. In a single-worktree setup, either strictly serialize subagent dispatches or assign each worker a dedicated Git worktree (`.worktrees/<session_id>`).
 - **Never revert/clobber foreign in-flight work.** Reverting is only safe if the writer is confirmed dead AND the coordinator authorizes rollback.
 - **One fresh temp state root PER probe.** Journal/bridge/state share filesystem state; reusing one root lets a later probe silently replay an earlier probe's journal entries and return a misleading outcome (observed: unregistered-handler probe returned HANDOFF instead of NO_HANDLER_IMPLEMENTED because an earlier probe's HANDOFF was in the same root's journal). `tempfile.mkdtemp()` per probe.
 - **Keep probe scripts OUTSIDE the repo** (e.g. `C:\Users\<user>\`), delete after. Keeps `git status` clean and avoids polluting the deliverable.

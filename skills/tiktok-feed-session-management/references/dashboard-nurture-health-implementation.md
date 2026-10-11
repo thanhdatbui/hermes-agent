@@ -22,6 +22,7 @@ Use this reference when extending TikTok feed watchdog reporting or the Port 190
 - Return a stable JSON envelope with `summary`, `accounts`, and optional telemetry/error fields.
 - Add a dedicated view/container rather than mixing account rows into the main farm table. The view needs client-side search and filters for cluster and status.
 - A passing baseline dashboard suite is not evidence that the new route/view works; add a focused test for the new endpoint/source markers and run it.
+- **Pythonpath pitfall in `tools/tests`:** `D:/Taadaa/tools/pytest.ini` does not specify `pythonpath = .`. Any newly created test file under `tools/tests/` MUST include `import sys, os; sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))` at the top before importing tool modules; otherwise pytest collection fails with `ModuleNotFoundError`.
 
 ## Worker dispatch pitfalls
 - For delegated edits, put literal `FILE: <absolute path>` lines in the worker context. Keep each task to at most two files (one implementation file and one test file).
