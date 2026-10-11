@@ -124,8 +124,8 @@ Khi kiểm tra tài khoản trên máy (kể cả kiểm tra acc ký sinh hay ki
 - **Tọa độ chuẩn vào Cài đặt và Đăng xuất**:
   - Tại Menu hồ sơ: tap `Cài đặt và quyền riêng tư` tại `(621, 1278)` (`rid='com.ss.android.ugc.trill:id/dui'`).
   - Trong trang Cài đặt: cuộn 5-6 lần xuống đáy (`540, 1600` $\rightarrow$ `540, 400`).
-  - Bấm nút `Đăng xuất` màu đỏ ở đáy (fallback `(540, 1750)`).
-  - Khi popup xác nhận xuất hiện: bấm nút xác nhận màu đỏ tại `(540, 1640)`. CẤM tap mù vào `(750, 1100)` vì sẽ trúng vùng trống hoặc nút Hủy.
+  - Bấm nút `Đăng xuất` màu đỏ ở đáy: Cần matcher đa thuộc tính `(text + " " + content-desc)` chứa `["đăng xuất", "dang xuat", "log out"]` vì trên TikTok v47 chữ thường nằm trong `content-desc`. Tọa độ fallback kết hợp: `(300, 1640)` và `(540, 1750)`.
+  - Khi popup xác nhận xuất hiện: kiểm tra `resource-id` chứa `["a6d", "a6e", "button1"]` hoặc text/desc chứa `"đăng xuất"` với bounds `[48,...` / `[0,...`. Bấm nút xác nhận màu đỏ tại `(540, 1640)` (fallback phụ `(750, 1100)`). CẤM tap mù một tọa độ khi chưa kiểm tra cả text lẫn content-desc.
 - **Tọa độ nút "Thêm tài khoản" khi máy có 7 nick**:
   - Khi máy có 7 nick, nút "Thêm tài khoản" (`com.ss.android.ugc.trill:id/ls_`) nằm kịch sàn ở mép đáy màn hình tại tọa độ `(540, 1850)` (bounds `[0,1788][1080,1920]`).
   - Phần text con (`com.ss.android.ugc.trill:id/ndk`) bị lẹm mép dưới nên matcher text XML có thể bỏ sót.
