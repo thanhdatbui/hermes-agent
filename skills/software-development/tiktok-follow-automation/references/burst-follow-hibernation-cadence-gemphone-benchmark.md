@@ -97,3 +97,4 @@ Trích xuất từ `TIKTOK-FLOW-TÌM-KIẾM-Thành-đạt_decrypted.json` (389 n
 3. [x] **Chu kỳ 4 ngày xoay tua + Xúc xắc Ngày 5:** Ngày 1-2 chạy xen kẽ, Ngày 3 (7,8,yếu), Ngày 4 (dưỡng sinh nick nhả, 0 follow), Ngày 5 xúc xắc lại.
 4. [x] **Bảo toàn quyền Đăng Video ngày nghỉ:** Ngày lướt feed vẫn đăng video bình thường, chỉ ngưng follow.
 5. [x] **Kỷ luật Cooldown State:** Giữ nguyên án phạt Cooldown, cấm Coordinator tự ý xóa án khi chưa có lệnh.
+6. [x] **Chuẩn hóa Master Config & Dọn dẹp Config tàn dư (Hoàn tất 2026-10-12):** Đã xóa sạch 18 file `config/machine*.yaml` tàn dư, chuẩn hóa script canary `scripts/run-follow.ps1` và test suite `test_config.py` đồng bộ dùng chung duy nhất master config `follow_runner/config.example.yaml` toàn farm.
