@@ -35,7 +35,18 @@ def start_profile(
     return res.json()
 ```
 
-### 3. Key Benefits & Invariants
+### 3. Telemetry & Closeout Gate Observability
+When starting profiles with custom arguments such as `--mute-audio`, emit structured telemetry before launching the profile to satisfy audit gates and operational observability:
+```python
+url = f"{GPM_API_BASE}/profiles/start/{profile_id}?win_scale=0.8&addition_args=--mute-audio"
+log_telemetry_metric("gpm_audio_mute_request", {
+    "profile_id": profile_id,
+    "mute_audio_requested": "--mute-audio" in url,
+    "endpoint": url.split("?")[0]
+})
+```
+
+### 4. Key Benefits & Invariants
 - **Reboot Immunity:** Persists across host machine restarts because the flag is passed on every process launch.
 - **Platform Telemetry Safety:** Platform watch-time, cookies, view counts, and engagement are completely unaffected.
 - **Resource Optimization:** Reduces CPU usage on worker machines by skipping host audio decoding/mixing pipelines.
