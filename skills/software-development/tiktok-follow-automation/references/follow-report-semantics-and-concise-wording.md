@@ -81,5 +81,18 @@ Khi operator phản ánh "sao report không báo cáo phiên follow" hoặc "ca 
   * **Test Persistent Failure Isolation:** Mock `side_effect=Exception("fail")` để xác nhận ngoại lệ được bắt an toàn tại từng kênh, in ra `sys.stderr`, không làm crash hàm và vẫn trả về nội dung báo cáo feed chính.
   * Việc thiếu 3 bài test này sẽ bị Reviewer của Closeout Gate đánh tụt điểm Test Evidence và REJECT.
 
+### 5. Sanitization & Error Reason Summarization (Chống Tuồn Raw Exception / HTTP Dump / Path Nội Bộ Vào Report)
+Khi tổng hợp mục `Lỗi script/xác minh` trong báo cáo Telegram (`feed_session_watchdog.py` / `follow_session_watchdog.py`):
+- **User Frustration Signal:** Phản ứng tiêu cực khi thấy báo cáo chứa rác debug: `Host: ifconfig.me`, `GET /ip HTTP/1.1`, `context deadline exceeded`, đường dẫn `C:\Program Files (x86)\xiaowei\tools\adb.exe` hoặc stack trace nhiều dòng.
+- **Root Cause:** Script lấy trực tiếp chuỗi `reason` từ execution artifact mà không lọc sạch, chỉ `split(":", 1)` sơ sài rồi ném thẳng chuỗi đa dòng vào tin nhắn.
+- **Quy tắc chuẩn hóa bắt buộc:**
+  1. **Làm sạch chuỗi (Sanitize):** Loại bỏ hoàn toàn ký tự xuống dòng (`\n`, `\r`), thay bằng dấu cách; cắt bỏ đường dẫn file/thư mục tuyệt đối và mọi header HTTP dump (`Host:`, `GET /`, `curl.go`, `goreq.go`).
+  2. **Ánh xạ nhãn 1 dòng (Categorized 1-Line Labels):**
+     * Lỗi VPN/Proxy/Egress verification (`vpn`, `proxy`, `ifconfig`, `egress`) ➔ `Lỗi kết nối VPN/Proxy` (ví dụ: `Lỗi kết nối VPN/Proxy (1: M13)`).
+     * Lỗi kết nối thiết bị/ADB (`offline`, `timed out`, `adb.exe`, `disconnect`) ➔ `Mất kết nối ADB/USB` (ví dụ: `Mất kết nối ADB/USB (1: M28)`).
+     * Lỗi popup cản trở (`dialog`, `popup`, `unexpected marker`) ➔ `Popup/Dialog bất thường`.
+     * Các lỗi ngoại lệ khác: Chỉ trích xuất thông điệp ngắn gọn đầu tiên (tối đa 60 ký tự), cấm in stack trace/command line thô.
+  3. **Nguyên tắc phân định môi trường:** Báo cáo Telegram chỉ hiển thị chỉ số và phân loại nghiệp vụ cấp cao. Chi tiết command line và stderr thô chỉ được lưu trong runtime log trên máy, tuyệt đối không tuồn lên kênh chat.
+
 ## Answer style
 Answer the operator's direct question first, in Vietnamese, with no speculative theory. Explain only the distinction needed to prevent the common misread that `Success (0)` equals “no machine ran.”

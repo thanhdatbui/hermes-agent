@@ -77,3 +77,25 @@
      finally:
          new_page.close()
      ```
+
+---
+
+## 3. Thứ tự thực thi chuẩn trong giai đoạn CHANGE_INFO & Quy tắc Ngâm
+
+### Vấn đề cốt lõi:
+- **Tài khoản Zin trắng chưa có mail khôi phục:** Microsoft **KHÔNG CHO PHÉP BẬT 2FA AUTHENTICATOR APP TRỰC TIẾP** vì tài khoản chỉ có duy nhất 1 phương thức xác thực (Mật khẩu). Microsoft yêu cầu tối thiểu 2 phương thức xác thực trước khi bật Two-step verification.
+- **Có cần ngâm thêm 7 ngày sau khi Add mail khôi phục không?**
+  - **HOÀN TOÀN KHÔNG.**
+  - Thời gian ngâm 7 ngày (`WAIT_7D`) là ngâm **Profile GPM + IP Proxy** để biến profile thành **Trusted Device**.
+  - Việc **THÊM MỚI** (Add additional method) một mail khôi phục được Microsoft **kích hoạt ngay lập tức (Active liền tại chỗ với tích xanh "Cập nhật")**, Microsoft KHÔNG áp đặt 30 ngày hay 7 ngày chờ. (Chỉ khi gỡ đè / thay thế toàn bộ thông tin cũ mà không có mã mới bị dính 30 ngày Security Hold).
+
+### Thứ tự 4 bước bắt buộc trong cùng 1 lần chạy CHANGE_INFO:
+1. **Bước 1 (Ưu tiên số 1):** `add_recovery_email_to_account` — Mở modal ➔ chọn `Gửi mã qua email` ➔ điền `<user><3rand>@fviainboxes.com` ➔ bóc OTP qua API `fviainboxes.com` ➔ submit xác nhận.
+   *(Lúc này tài khoản đã có đủ 2 phương thức: Mật khẩu + Mail khôi phục).*
+2. **Bước 2:** `setup_2fa` — Thiết lập 2FA Authenticator app (TOTP) và kích hoạt công tắc Two-step verification tổng.
+   *(Nếu Microsoft yêu cầu xác minh danh tính, hệ thống dùng ngay mail khôi phục vừa thêm ở Bước 1 để nhận OTP bóc qua API).*
+3. **Bước 3:** `change_password` — Đổi mật khẩu mới độ dài 14 ký tự có độ phức tạp cao.
+4. **Bước 4:** `sign_out_everywhere` — Bấm "Đăng xuất khỏi mọi nơi" để thu hồi toàn bộ token cũ.
+
+👉 **Toàn bộ 4 bước chạy tuần tự trong CÙNG 1 PHIÊN duy nhất**, hoàn tất xong là tài khoản sẵn sàng xuất bán, **tuyệt đối không tốn thêm 7 ngày ngâm vô ích**!
+

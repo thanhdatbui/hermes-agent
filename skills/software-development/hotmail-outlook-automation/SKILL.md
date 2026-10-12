@@ -13,7 +13,7 @@ description: Hotmail automation.
 - **BoxTaiKhoan API**: Buy OAuth2 product 60 via `POST /ajaxs/client/product.php`, one account per request (`amount=1`) to receive complete `data`; format `mail|pass|refresh_token|client_id`.
 - **Change-pass eligibility (2026-10-10)**: Require TikTok ID+pass & ChatGPT PASS (Col 12), clear Col 9 after success, keep explicit BLOCKED reporting.
 - **6H lifecycle report reconciliation**: Cron output is snapshot; re-read canonical state before determining causes, never bulk-reset. See `references/6h_report_snapshot_reconciliation.md`.
-- **Sheet fallback & recovery policy (2026-10-12)**: `gmail_clean_v2.xlsx` sheet `'Gmail Accounts'`. CẤM gán mail `thanhdatbui`; dùng `<u><3rand>@fviainboxes.com`. CẤM điền Excel khi bot chưa add thực tế trên Microsoft. Bỏ qua cảnh báo "lưu đơn 3 ngày" BoxTaiKhoan. Đóng tab CDP ko mất cookie. Xem `references/recovery_email_domain_policy_and_cdp_cleanup.md`.
+- **Sheet fallback, recovery policy & CHANGE_INFO order (2026-10-12)**: `gmail_clean_v2.xlsx` sheet `'Gmail Accounts'`. CẤM gán mail `thanhdatbui`; dùng `<u><3rand>@fviainboxes.com`. CẤM điền Excel khi bot chưa add thực tế trên Microsoft. Thứ tự CHANGE_INFO: BẮT BUỘC add mail kp trước (bóc OTP fviainboxes.com) -> add 2FA -> đổi pass -> đăng xuất mọi nơi trong CÙNG 1 PHIÊN, không ngâm thêm 7 ngày. Bỏ qua cảnh báo "lưu đơn 3 ngày" BoxTaiKhoan. Đóng tab CDP ko mất cookie. Xem `references/recovery_email_domain_policy_and_cdp_cleanup.md`.
 - **Kiến trúc kho Gmail Clean V2 & 2 Cột Trạng Thái (2026-08-25)**:
   - `gmail_clean_v2.xlsx` là **Single Source of Truth** chứa cả Gmail và Hotmail của farm.
   - Cột 11: `info_changed` (đánh dấu `1` khi đã đổi info/pass bảo mật Hotmail).
