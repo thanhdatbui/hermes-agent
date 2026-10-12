@@ -29,6 +29,17 @@ Trên farm TikTok (1.280 tài khoản gồm 2 cụm Kibe 1..80 và Admin 201..28
      * `D:/video goc/<F_{src}>/avatar.jpg`
      * `D:/video goc/<F_{out}>/avatar.jpg` (để mọi script dù đọc nhầm $F_{out}$ hay $F_{src}$ đều lấy đúng avatar).
 4. **Khóa Bảo Vệ Tránh Script Quét Đè (SSOT Protection)**:
-   - Thêm cả 2 số folder ($F_{src}$ và $F_{out}$) vào `D:/Taadaa/data/manual_avatar_protected_folders.json` (danh sách `protected_folders` và mapping `accounts`).
+   - Thêm cả 2 số folder ($F_{src}$ và $F_{out}$) vào danh sách `protected_folders` và mapping `accounts` trong CẢ 2 file registry:
+     * `D:/Taadaa/data/manual_avatar_protected_folders.json`
+     * `D:/Taadaa/Tiktok-video/data/manual_avatar_protected_folders.json`
 5. **Cập Nhật Keyword & Hashtag SoT Trong Excel**:
-   - Cập nhật lại cột `Keyword Video` và `Hashtag Pool` trong `Tik<Slot>.xlsx` và `Hashtag theo Folder` đúng với chủ đề thực tế của video kênh (ví dụ: `Gym` cho nam cơ bắp, `Chăm sóc bé` cho trẻ em/gia đình).
+   - Cập nhật lại cột `Keyword Video` và `Hashtag Pool` trong `Tik<Slot>.xlsx` (sheet active) và sheet `Hashtag theo Folder` đúng với chủ đề thực tế của video kênh (ví dụ: `Gym` cho nam cơ bắp, `Chăm sóc bé` cho trẻ em/gia đình).
+   - Đặt cột `Avatar` trong `Tik<Slot>.xlsx` thành `PENDING` (thay vì `OK`) để bộ lọc `resolve_avatar_pending_machines.py` nhận diện máy cần up avatar mới.
+6. **Kích Hoạt Hàng Đợi Database (avatar_replace_queue)**:
+   - Cập nhật SQLite `D:/Taadaa/data/tiktok_tracker.db`:
+     ```sql
+     UPDATE avatar_replace_queue 
+     SET status = 'PENDING', video_goc = '<F_src>', folder_video = '<F_out>', last_error = NULL, updated_at = datetime('now', 'localtime')
+     WHERE may = <M> AND tik = <Slot>;
+     ```
+   - Điều này đảm bảo khi runner batch hoặc watchdog quét qua sẽ tự động nạp avatar lên thiết bị.

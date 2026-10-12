@@ -107,6 +107,14 @@
   - **Link trực tiếp đến profile TikTok (USER INVARIANT):** Trên mỗi thẻ nick, `@username` BẮT BUỘC phải là link `<a>` (`href="https://www.tiktok.com/@username" target="_blank"`) kèm icon `↗` và `📈` để người dùng chạm vào là bung ngay ra trang cá nhân của nick đó trên TikTok, giống như ngoài Dashboard chính. Tuyệt đối cấm để username dạng text tĩnh không click được.
   - Tích hợp ô tìm kiếm nhanh (theo số máy `m1`, `18` hoặc `username`).
   - **Deduplication:** Tự động lọc bỏ các file state legacy không có `_row_` (như `follow_state_1.json`) để không bị duplicate dòng hiển thị trên Dashboard.
+  - **Quy chuẩn Adaptive Recovery Badge (USER INVARIANT - 2 Ca / Stage):**
+    * Thẻ hiển thị huy hiệu `recBadge`:
+      - `⚡ Fast-track (1 ca)`: Cho nick điểm tín nhiệm cao ($\ge 60$đ).
+      - `🛡️ Thận trọng (2 ca)`: Cho nick điểm tín nhiệm thấp ($< 60$đ) hoặc nick mới.
+    * **Công thức `sessions_needed`:**
+      - Hồi phục 1: `sessions_needed = max(1, 2 - clean_days)` (tối đa 2 ca).
+      - Hồi phục 2: `sessions_needed = max(1, 4 - clean_days)` (tối đa 2 ca).
+      - Fallback record (`farm_account_info`): BẮT BUỘC để `sessions_needed = 2`. CẤM TUYỆT ĐỐI để fallback 3 ca cũ gây mâu thuẫn giữa nhãn `(0/2 ngày)` và badge `Thận trọng (3 ca)`.
 
 ---
 
