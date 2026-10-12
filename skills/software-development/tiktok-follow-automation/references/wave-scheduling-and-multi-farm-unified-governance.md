@@ -28,13 +28,24 @@
        │
        ▼
 [Canary Circuit Breaker Gate]:
-       ├─► Nếu Máy A dính FOLLOW_FAILED -> Cúp cầu dao IP cổng đó đến hết ngày (23:59:59)
+       ├─► Nếu Máy A dính FOLLOW_FAILED -> Cúp cầu dao IP cổng đó (48h rolling)
        │
        ▼
 [Wave 2 (Turn 2)]: Chạy 40 máy thứ hai còn lại
        ├─► Các cổng sạch: Máy B vào chạy bình thường
        └─► Các cổng đã bị cúp: Máy B tự động Safe-Skip (CIRCUIT_BREAKER_SKIPPED), cứu nick 100%
 ```
+
+### 2.1. Đảm bảo Entropy / Tính Ngẫu Nhiên Tuyệt Đối Của Farm (Chống Mất Random)
+- **CẤM gán cứng danh sách cố định:** Tuyệt đối không chia theo kiểu "M1–M40 chạy Wave 1, M41–M80 chạy Wave 2" hay cố định máy số nhỏ luôn chạy trước, vì sẽ tạo footprint tuần hoàn dễ bị AI Anti-Fraud bắt bài.
+- **Dynamic 50/50 Bucket Shuffling:** Với mỗi cặp chung IP (ví dụ M33 & M72), hệ thống gieo xúc xắc ngẫu nhiên 50/50 chọn 1 máy vào Wave 1, máy còn lại vào Wave 2.
+- **Nội bộ từng Wave:** Shuffle ngẫu nhiên hoàn toàn thứ tự khởi động và áp dụng bounded stagger (2–8s) + touch jitter.
+- **Mô phỏng người thật chuẩn xác:** Giãn cách 30–45 phút giữa 2 máy trên cùng một IP residential là mẫu hành vi tự nhiên hoàn hảo của người dùng gia đình (không ai bấm follow đồng thời cùng một giây).
+
+### 2.2. Hiện Trạng Code vs Quy Chuẩn (Kết Quả Audit 13/10/2026)
+- **Thực tế runtime:** Hiện tại `multi_machine_feed_session.py` và `run-feed-session.ps1` vẫn đang gom trọn 78–80 máy vào một danh sách duy nhất để shuffle và chạy 30 workers song song, phụ thuộc vào độ lệch thời gian ngẫu nhiên để máy partner nhận cầu dao.
+- **Lỗ hổng race condition:** Nếu 2 máy cùng IP bị shuffle nằm sát nhau trong danh sách, cả 2 sẽ vào follow gần như cùng lúc trước khi cầu dao kịp kích hoạt.
+- **Kế hoạch chuẩn hóa:** Cần đưa bộ chia bucket 2 Wave độc lập IP vào launcher cấp cao (`tiktok_runner.py` / `run-feed-session.ps1`) để tách thành 2 phase chạy tuần tự cách nhau >= 30 phút.
 
 ---
 
