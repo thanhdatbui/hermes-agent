@@ -137,17 +137,19 @@ Khi nhận yêu cầu đổi avatar từ ảnh chụp màn hình hoặc username
          1. **Thư viện chưa dọn:** TikTok picker tap nhầm ảnh cũ còn sót trong MediaStore thay vì ảnh mới push. Bắt buộc dọn sạch MediaStore và thư mục `/sdcard/Pictures`, `/sdcard/DCIM`, `/sdcard/Download` trước khi push.
          2. **Lỗi tap tâm tile thay vì checkbox:** Trong giao diện chọn ảnh 4 cột của TikTok, việc tap vào tâm tile `(137, 355)` ở nhiều phiên bản TikTok chỉ mở xem trước ảnh lớn (Preview) chứ KHÔNG tick chọn ảnh. Muốn chọn ảnh, bắt buộc phải tap vào vòng tròn checkbox ở góc trên-phải của tile: `(right - 35, top + 35)` (ví dụ `(234, 257)` trên màn 1080x1920). Khi đó số "1" màu đỏ mới xuất hiện và nút "Tiếp (1)" ở đáy `(924, 1842)` mới mở được màn Crop. Nếu không tick được checkbox, bấm "Tiếp" sẽ thoát ngược về "Sửa hồ sơ", kích hoạt bẫy False Positive Save Surface.
        * **Kịch bản cứu hộ trực tiếp (Direct ADB Remediation Script):**
-         Khi runner batch bị kẹt bẫy False Positive Save Surface, dùng script Python bọc dưới `operator_device_lock(machine=N, serial=SERIAL, project="avatar_fix")` để thực thi luồng tuần tự:
+         Khi runner batch bị kẹt bẫy False Positive Save Surface hoặc văng lỗi `[AVATAR_UPLOAD_MENU_MISSING]` do TikTok Profile dùng Layout B (nơi runner cố tap tâm màn hình để mở bottom sheet nhưng thất bại), dùng script Python bọc dưới `operator_device_lock(machine=N, serial=SERIAL, project="avatar_fix")` (hoặc dọn stale lock trong `~/.codex/device-locks/machine_<N>.lock.json`) để thực thi luồng tuần tự:
          - Dọn sạch MediaStore và ảnh cũ trên máy -> Push ảnh chuẩn `avatar.jpg` -> Gửi broadcast scan (nghỉ ít nhất 2s để MediaStore lập chỉ mục).
          - Mở TikTok (`am start com.ss.android.ugc.trill/...`) -> Tap Hồ sơ `(972, 1883)`.
          - **Mở Sửa hồ sơ theo đúng layout:**
-           * Nếu Layout B (avatar lệch trái): BẮT BUỘC tap `(290, 720)` (hoặc tìm node text "Sửa hồ sơ"); CẤM TUYỆT ĐỐI tap `(75, 150)` vì trên Layout B đây là khoảng trắng làm hỏng toàn bộ chuỗi lệnh sau!
+           * Nếu Layout B (avatar lệch trái): BẮT BUỘC tap `(327, 748)` (hoặc bounds `[132, 705][522, 792]`); CẤM TUYỆT ĐỐI tap `(75, 150)` vì trên Layout B đây là khoảng trắng làm hỏng toàn bộ chuỗi lệnh sau!
            * Nếu Layout A (avatar ở giữa): Tap icon bút chì `(75, 150)` hoặc nút Sửa hồ sơ ở giữa.
          - Sau khi vào màn "Sửa hồ sơ": Tap "Thay đổi ảnh" `(540, 420)` -> Tap "Tải ảnh lên" `(540, 1600)`.
-         - **Thời gian chờ picker mở:** Chờ ít nhất 4–5s để TikTok mở xong picker và nạp thumbnails. Nếu tap quá sớm (sleep < 3s), sự kiện tap sẽ trượt và nút "Tiếp" vẫn xám xịt/disable.
+         - **Thời gian chờ picker mở:** Chờ ít nhất 3–4s để TikTok mở xong picker và nạp thumbnails.
          - **Tọa độ tap chuẩn xác:**
            * Checkbox vòng tròn góc trên-phải của tile 1: `(x=225, y=250)`.
-           * Nút "Tiếp (1)" màu đỏ góc dưới-phải: `(x=920, y=1855)`. Chờ 2s sau khi tick checkbox để nút đỏ kích hoạt rồi mới tap.
-           * Nút "Lưu" trên màn Crop: `(x=792, y=1794)`. Chờ 8s sau khi Lưu để đảm bảo hoàn tất upload CDN.
-         - Chụp ảnh màn hình kiểm chứng kết quả và zoom-crop vòng tròn avatar để nghiệm thu.
+           * Nút "Tiếp (1)" màu đỏ góc dưới-phải: `(x=920, 1855)`. Chờ 2s sau khi tick checkbox để nút đỏ kích hoạt rồi mới tap.
+           * Nút "Lưu" trên màn Crop: `(x=792, y=1794)`. Chờ 5–8s sau khi Lưu để đảm bảo hoàn tất upload CDN.
+           * Tap Back góc trên-trái: `(x=75, y=150)` để quay về màn hình Hồ sơ chính.
+         - Chụp ảnh màn hình kiểm chứng kết quả và zoom-crop vòng tròn avatar tại tâm `(210, 280)` bán kính `120` để nghiệm thu qua Gate 6.
+         - Đồng bộ kết quả: update `avatar_replace_queue` (`status = 'DONE'`) và workbook (`Avatar = 'OK'`).
   3. Gửi ảnh nghiệm thu kèm thẻ `MEDIA:<path_to_avatar-uploaded-confirmed.png>` trong câu trả lời cho User kèm xác nhận trực quan nội dung đã thấy tận mắt.

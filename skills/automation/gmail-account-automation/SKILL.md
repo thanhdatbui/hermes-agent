@@ -9,8 +9,7 @@ description: "Automation workflows for Gmail accounts on the Taadaa farm: Playwr
 - `references/s7-gmail-result-classification-and-chatgpt-decommission.md` — Dừng reg ChatGPT S7 & phân loại runner.
 - `references/s7-gmail-slot-eviction-and-gpm-cleanup-rules.md` — Giải phóng slot S7, TikTok Binding Gate, dọn DIE.
 - `references/slot-capacity-and-eviction-policy.md` — Trần số acc vs rolling eviction.
-- `references/newsletter-warmup-phantom-success-and-watchdog-report-cleanup.md` — Dọn watchdog report, tách lỗi nền tảng vs script.
-- `references/gmail-die-cleanup-lifecycle-and-sol-maturation-architecture.md` — Dọn Gmail DIE 3 tầng.
+- `references/s7-gmail-survival-rate-audit-and-admin-farm-orchestration.md` — Chuẩn đối soát tỉ lệ DIE/sống & điều phối Dual-Farm Admin.
 - `references/gpm-api-pagination-and-soak-gate-deadlock.md` — GPM API pagination, Soaking Gate deadlock.
 - `references/youtube-nurture-ad-handling-and-evidence-timing.md` — YouTube ad skip, timing trap & nuôi 5p/5w.
 

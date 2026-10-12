@@ -40,6 +40,34 @@ Before concluding any phone-verified account is dead, execute a dedicated OAuth 
 
 ---
 
+## 3. Phone-Registered Account Proxy Preservation Invariant
+
+### Farm Hardware Invariant:
+- Các tài khoản Hotmail hoặc Google được dùng để đăng ký tài khoản TikTok trên điện thoại thật (Samsung S7 farm) **BẮT BUỘC PHẢI GIỮ NGUYÊN CỔNG PROXY GÁN CỨNG THEO MÁY ĐÓ**.
+- **SoT đối soát:**
+  1. `D:\OneDrive\TaadaaData\kibe\taikhoan_dat_v2_updated .xlsx`: Cột Máy và Mail đăng ký (ví dụ: Nick `yenngo9591` ở Máy 49 dùng mail `vanharlingenmach959@hotmail.com`).
+  2. `D:\OneDrive\TaadaaData\kibe\PROXYgandienthoai.xlsx`: Cột Proxy của Máy tương ứng (Máy 49 được gán cổng `5113:mobi13`).
+- **CẤM TỰ Ý RE-BALANCE:** Khi thấy cổng 4G (như 5113) có nhiều account Google và Hotmail, CẤM kết luận là "map bừa bãi" rồi tự ý tách Hotmail sang dải MikroTik rảnh rỗi (`10008..10035`). Việc giữ nguyên IP đồng nhất với thiết bị đã reg giúp duy trì fingerprint mạng (ASN, Subnet), chống bị Microsoft / OpenAI / TikTok checkpoint ban do đổi IP đột ngột.
+
+---
+
+## 4. Long-Term Quota Cooldown Isolation (Quarantine 400+ Hours)
+
+### Hiện tượng & Rủi ro:
+- Các tài khoản Codex Free tier khi dùng quá hạn mức bị OpenAI khóa rate-limit lên tới hàng trăm giờ (`400h`, `415h`).
+- Trong bảng `provider_connections`, trường `provider_specific_data` lưu JSON: `codexScopeRateLimitedUntil: {"codex": "<ISO_TIMESTAMP>"}` (ví dụ: `2026-10-26T07:40:00.000Z`).
+- Nếu tài khoản này vẫn nằm trong danh sách `models` của combo `codex-terra`, `codex-luna`, hoặc `review`:
+  1. Mỗi khi combo fallback qua Codex, OmniRoute sẽ thử tài khoản đó và ghi log:
+     `codex | all 1 active accounts cooling down for model gpt-5.6-terra (reset after 415h 21m 28s)`
+  2. Request bị ngâm hoặc trả về 429/503/504, làm cạn kiệt ngân sách retry của caller (Hermes Gateway).
+
+### Quy trình cách ly chuẩn (Quarantine Protocol):
+1. **Kiểm tra và bóc tách:** Quét `codexScopeRateLimitedUntil` của các connection provider `codex` trong `storage.sqlite`.
+2. **Cách ly khỏi Combo:** Lọc bỏ các `connectionId` có `codexScopeRateLimitedUntil > now` khỏi mảng `models` trong combo `codex-terra` và `codex-luna`.
+3. **Phục hồi (De-quarantine):** Khi `now_utc >= codexScopeRateLimitedUntil`, tài khoản tự động hết hạn phạt và được phép đưa lại vào candidate pool.
+
+---
+
 ## 3. Tainted Proxy Quarantine & Redial Protocol
 
 When an account ban wave occurs (e.g. OpenAI IP-based ban), the egress IPs that were active during the incident are tainted. Continuing to run healthy or newly registered accounts through these tainted IPs risks immediate cross-contamination.

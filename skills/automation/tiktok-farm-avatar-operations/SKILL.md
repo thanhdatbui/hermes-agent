@@ -5,6 +5,7 @@ description: Use when running avatar-only jobs on TikTok farm.
 
 # TikTok Farm Avatar Operations
 
+- Profile Layout B remediation & runner fallback: see [references/single_machine_avatar_replacement.md](references/single_machine_avatar_replacement.md) for Layout B profile UI handling (where runner's `ENSURE_AVATAR` fails with `AVATAR_UPLOAD_MENU_MISSING` because 'Sửa hồ sơ' is a gray button at `(327, 748)` instead of center avatar tap), stale device locks clearing, and direct ADB sequential automation.
 - Support reference: see [references/avatar_guard_hardened_patterns.md](references/avatar_guard_hardened_patterns.md) for hardened path resolve, pre-write atomic grant claims with rollback, and regenerator exit code discipline.
 - Single-machine replacement guide: see [references/single_machine_avatar_replacement.md](references/single_machine_avatar_replacement.md) for on-demand extraction, dual-sync, workbook/queue trigger, and visual evidence closeout.
 - Picker checkbox trap, 0-byte audit & SSOT sync: see [references/tiktok-avatar-picker-checkbox-trap-and-save-surface-false-positive-20261011.md](references/tiktok-avatar-picker-checkbox-trap-and-save-surface-false-positive-20261011.md) for TikTok photo-picker top-right checkbox coordinate requirement, edit-profile save surface false-positive trap, 0-byte video recovery protocol, and niche desync remediation.
