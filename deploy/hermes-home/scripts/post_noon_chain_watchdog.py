@@ -11,12 +11,14 @@ Khung giờ: 14:30 - 17:30 (HCM).
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import os
 import re
 import subprocess
 import sys
 import time
+import uuid
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -40,6 +42,24 @@ if not Path(PYTHON_EXE).exists():
     PYTHON_EXE = sys.executable
 
 POWERSHELL_EXE = r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+
+RUN_ID = ""
+CLUSTER_LABELS = {"KIBE": "MÁY 1-80", "ADMIN": "MÁY 201-280"}
+
+
+def emit_event(event: str, **fields) -> None:
+    record = {"ts": datetime.now(HCMC).isoformat(), "run_id": RUN_ID or "n/a", "event": event, **fields}
+    sys.stderr.write("WATCHDOG_EVENT " + json.dumps(record, ensure_ascii=False) + "\n")
+
+
+def runner_failure_output(phase: str, cluster: str, exc: BaseException) -> str:
+    emit_event("cluster_runner_error", phase=phase, cluster=cluster, error=type(exc).__name__, detail=str(exc))
+    return f"=== CLUSTER {cluster} ({CLUSTER_LABELS[cluster]}) ===\nRUNNER_ERROR|{cluster}|{type(exc).__name__}: {exc}"
+
+
+def runner_error_suffix(text: str) -> str:
+    m = re.search(r"RUNNER_ERROR\|\w+\|([^\n]+)", text)
+    return f" | Runner lỗi: {m.group(1).strip()}" if m else ""
 
 
 def is_feed_runner_active() -> bool:
@@ -140,6 +160,11 @@ def save_state(today_str: str, details: dict) -> None:
     os.replace(str(tmp), str(STATE_FILE))
 
 
+def _build_admin_powershell_command(script_body: str) -> list[str]:
+    encoded = base64.b64encode(script_body.encode("utf-16le")).decode("ascii")
+    return ["ssh", "-o", "ConnectTimeout=10", "admin-farm", f"powershell -NoProfile -EncodedCommand {encoded}"]
+
+
 def run_gmail_batch(dry_run: bool = False) -> tuple[int, str]:
     if dry_run:
         return 0, "TOTAL=40 SUCCESS=40 FAILED=0 (dry-run)"
@@ -157,10 +182,26 @@ def run_gmail_batch(dry_run: bool = False) -> tuple[int, str]:
     env["PYTHONPATH"] = f"{GMAIL_REPO_DIR}{os.pathsep}{AUTOMATION_CORE_SRC}"
     env["GMAIL_REG_PYTHON_EXE"] = PYTHON_EXE
     try:
-        proc = subprocess.run(cmd, cwd=str(GMAIL_REPO_DIR), env=env, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5400)
-        return proc.returncode, proc.stdout + "\n" + proc.stderr
+        pk = subprocess.run(cmd, cwd=str(GMAIL_REPO_DIR), env=env, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5400)
+        outs = [f"=== CLUSTER KIBE (MÁY 1-80) ===\n{pk.stdout}\n{pk.stderr}"]
+        kc = pk.returncode
     except Exception as exc:
-        return 1, f"Loi chay Reg Gmail: {exc}"
+        outs = [runner_failure_output("gmail", "KIBE", exc)]
+        kc = 2
+    ps_a = ("$env:PYTHONIOENCODING='utf-8'; $env:PYTHONUTF8='1'; Set-Location 'D:/Taadaa/register gmail'; "
+              "$env:PROXY_DIENTHOAI_PATH='D:\\OneDrive\\TaadaaData\\admin\\PROXYgandienthoai.xlsx'; "
+              "$env:GMAIL_EXCEL_FILE='D:\\OneDrive\\TaadaaData\\admin\\gmail_clean_v2.xlsx'; "
+              "$env:PYTHONPATH='D:/Taadaa/register gmail;D:/Taadaa/automation-core/src'; "
+              "$env:GMAIL_REG_PYTHON_EXE='D:\\Taadaa\\python-envs\\automation\\Scripts\\python.exe'; "
+              "& powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ./run_all.ps1\n")
+    try:
+        pa = subprocess.run(_build_admin_powershell_command(ps_a), capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5400)
+        outs.append(f"=== CLUSTER ADMIN (MÁY 201-280) ===\n{pa.stdout}\n{pa.stderr}")
+        ac = pa.returncode
+    except Exception as exc:
+        outs.append(runner_failure_output("gmail", "ADMIN", exc))
+        ac = 2
+    return (0 if (kc in (0, 1) and ac in (0, 1)) else max(kc, ac)), "\n".join(outs)
 
 
 def run_tiktok_2fa_batch(dry_run: bool = False) -> tuple[int, str]:
@@ -201,11 +242,10 @@ def run_tiktok_2fa_batch(dry_run: bool = False) -> tuple[int, str]:
         outputs.append(f"=== CLUSTER KIBE (MÁY 1-80) ===\n{proc_kibe.stdout}\n{proc_kibe.stderr}")
         kibe_code = proc_kibe.returncode
     except Exception as exc:
-        outputs.append(f"Lỗi chạy Kibe 2FA: {exc}")
+        outputs.append(runner_failure_output("tiktok_2fa", "KIBE", exc))
         kibe_code = 1
 
     # 2. Cluster Admin (Máy 201 - 280) via SSH admin-farm with EncodedCommand
-    import base64
     ps_admin_script = (
         "$env:PYTHONIOENCODING = 'utf-8'\n"
         "$env:PYTHONUTF8 = '1'\n"
@@ -214,11 +254,7 @@ def run_tiktok_2fa_batch(dry_run: bool = False) -> tuple[int, str]:
         "& 'D:\\Taadaa\\python-envs\\automation\\Scripts\\python.exe' python_runner/run_batch_live_2fa.py "
         "--workbook-path $wb --max-workers 40 --live\n"
     )
-    b64_ps = base64.b64encode(ps_admin_script.encode("utf-16le")).decode("ascii")
-    cmd_admin = [
-        "ssh", "-o", "ConnectTimeout=10", "admin-farm",
-        f"powershell -NoProfile -EncodedCommand {b64_ps}"
-    ]
+    cmd_admin = _build_admin_powershell_command(ps_admin_script)
     try:
         proc_admin = subprocess.run(
             cmd_admin,
@@ -231,7 +267,7 @@ def run_tiktok_2fa_batch(dry_run: bool = False) -> tuple[int, str]:
         outputs.append(f"=== CLUSTER ADMIN (MÁY 201-280) ===\n{proc_admin.stdout}\n{proc_admin.stderr}")
         admin_code = proc_admin.returncode
     except Exception as exc:
-        outputs.append(f"Lỗi chạy Admin 2FA: {exc}")
+        outputs.append(runner_failure_output("tiktok_2fa", "ADMIN", exc))
         admin_code = 1
 
     combined_code = 0 if (kibe_code in (0, 4) and admin_code in (0, 4)) else max(kibe_code, admin_code)
@@ -326,9 +362,12 @@ def main() -> int:
         return 0
 
     # BẮT ĐẦU CHUỖI
+    global RUN_ID
+    RUN_ID = uuid.uuid4().hex[:12]
     start_dt = datetime.now(HCMC)
     start_epoch = start_dt.timestamp()
     sys.stderr.write(f"=== KÍCH HOẠT CHUỖI SAU CA TRƯA LÚC {start_dt.strftime('%H:%M:%S %d/%m/%Y')} ===\n")
+    emit_event("chain_start", lane=args.lane, dry_run=args.dry_run)
 
     g_code, g_out = 0, ""
     g_tot = 0
@@ -362,6 +401,7 @@ def main() -> int:
     report_lines = [
         f"[BÁO CÁO CHUỖI SAU CA TRƯA] [LANE {lane_label}]",
         f"- Thời gian: {start_dt.strftime('%H:%M')} -> {end_dt.strftime('%H:%M')} ({duration_min} phút)",
+        f"- Mã chạy (run_id): {RUN_ID}",
         "",
     ]
 
@@ -385,26 +425,28 @@ def main() -> int:
         p_str = f" ({p_cnt}): " + ", ".join(f"{k}: {v}" for k, v in p_err.items()) if p_cnt > 0 else ": 0"
         s_str = f" ({s_cnt}): " + ", ".join(f"{k}: {v}" for k, v in s_err.items()) if s_cnt > 0 else ": 0"
 
-        if g_tot == 0 and g_code != 0:
-            phase1_header = f"- Phase 1 (Reg Gmail - Code {g_code}): LỖI KHỞI ĐỘNG RUNNER"
+        if re.search(r"===\s*CLUSTER\s+ADMIN\b", g_out, re.I):
+            gp = re.split(r"===\s*CLUSTER\s+ADMIN\b", g_out, flags=re.I)
+            kr = parse_summary_counts(gp[0], log_dir_hint=Path("D:/CodexRuntime/codex_gmail_debug-register-gmail"), min_mtime=start_epoch)
+            ar = parse_summary_counts("=== CLUSTER ADMIN" + gp[1])
+            g_tot = kr["total"] + ar["total"]
+            report_lines.extend([f"- Phase 1 (Reg Gmail - Code {g_code}):",
+                f"  • Farm Kibe (Máy 1-80): Hoàn tất {kr['success']} máy | Bỏ qua {kr.get('skip_safe', 0)} | Lỗi {kr['failed']}{runner_error_suffix(gp[0])}",
+                f"  • Farm Admin (Máy 201-280): Hoàn tất {ar['success']} máy | Bỏ qua {ar.get('skip_safe', 0)} | Lỗi {ar['failed']}{runner_error_suffix(gp[1])}"])
         else:
-            phase1_header = f"- Phase 1 (Reg Gmail - Code {g_code}):"
-        report_lines.extend([
-            phase1_header,
-            f"  • Đã hoàn tất: {g_suc} máy",
-        ])
-        if g_skip > 0:
-            report_lines.append(f"  • Bỏ qua an toàn: {g_skip} máy (đầy slot / nhường cron khác)")
-        report_lines.append(f"  • Lỗi nền tảng{p_str}")
-        report_lines.append(f"  • Lỗi script{s_str}")
+            h = f"- Phase 1 (Reg Gmail - Code {g_code}): LỖI KHỞI ĐỘNG RUNNER" if (g_tot == 0 and g_code != 0) else f"- Phase 1 (Reg Gmail - Code {g_code}):"
+            report_lines.extend([h, f"  • Đã hoàn tất: {g_suc} máy"])
+            if g_skip > 0:
+                report_lines.append(f"  • Bỏ qua an toàn: {g_skip} máy (đầy slot / nhường cron khác)")
+            report_lines.extend([f"  • Lỗi nền tảng{p_str}", f"  • Lỗi script{s_str}"])
 
     if args.lane in ("tiktok", "all"):
         if args.lane == "all":
             report_lines.append("")
         
         # Phân tách báo cáo chi tiết theo từng cụm Farm (Kibe vs Admin)
-        if "=== CLUSTER ADMIN" in t2fa_out:
-            parts = t2fa_out.split("=== CLUSTER ADMIN")
+        if re.search(r"===\s*CLUSTER\s+ADMIN\b", t2fa_out, re.I):
+            parts = re.split(r"===\s*CLUSTER\s+ADMIN\b", t2fa_out, flags=re.I)
             kibe_text = parts[0]
             admin_text = "=== CLUSTER ADMIN" + parts[1]
             k_res = parse_summary_counts(kibe_text)
@@ -413,8 +455,8 @@ def main() -> int:
             phase2_header = f"- Phase 2 (Add 2FA TikTok - Code {t2fa_code}):"
             report_lines.extend([
                 phase2_header,
-                f"  • Farm Kibe (Máy 1-80): Hoàn tất {k_res['success']} máy | Bỏ qua {k_res.get('skip_safe', 0)} | Lỗi {k_res['failed']}",
-                f"  • Farm Admin (Máy 201-280): Hoàn tất {a_res['success']} máy | Bỏ qua {a_res.get('skip_safe', 0)} | Lỗi {a_res['failed']}",
+                f"  • Farm Kibe (Máy 1-80): Hoàn tất {k_res['success']} máy | Bỏ qua {k_res.get('skip_safe', 0)} | Lỗi {k_res['failed']}{runner_error_suffix(kibe_text)}",
+                f"  • Farm Admin (Máy 201-280): Hoàn tất {a_res['success']} máy | Bỏ qua {a_res.get('skip_safe', 0)} | Lỗi {a_res['failed']}{runner_error_suffix(admin_text)}",
             ])
         else:
             t_res = parse_summary_counts(t2fa_out)
@@ -437,7 +479,9 @@ def main() -> int:
     if not args.dry_run:
         gmail_ok = (g_code == 0) or (g_code == 1 and g_tot > 0)
         t2fa_ok = t2fa_code in (0, 4)
+        emit_event("chain_end", lane=args.lane, gmail_code=g_code, tiktok_2fa_code=t2fa_code, duration_min=duration_min)
         save_state(today_str, {
+            "run_id": RUN_ID,
             "gmail_code": g_code,
             "gmail_duration_min": g_duration_min,
             "2fa_code": t2fa_code,
