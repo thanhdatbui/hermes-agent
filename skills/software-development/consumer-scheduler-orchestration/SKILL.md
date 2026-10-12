@@ -372,6 +372,16 @@ Khi một cron watchdog duyệt danh sách tài nguyên/cohort/Tik (như `post_e
 3. **Cơ chế Cooldown Ledger:** Ghi nhận `avatar_launch_history` kèm timestamp trong `state.json`. Khi lặp qua `ordered`, kiểm tra cooldown (ví dụ: 1800s / 30 phút cho mỗi Tik). Nếu Tik vừa chạy trong vòng 1800s, tự động bỏ qua để nhường lượt cho Tik tiếp theo.
 4. **Action-First Session Delta:** Báo cáo cuối phiên (`format_report_html` / `report_final_summary`) không chỉ in snapshot tĩnh mà phải thống kê Session Delta: tổng số batch đã kích hoạt trong ca, các Tik đã phục vụ luân phiên, và số lượng thành công mới.
 
+### P22: Anti-pattern gộp kênh Telegram trong single watchdog — bắt buộc Single Responsibility Cronjob (2026-10-12)
+
+Khi một quy trình (như nuôi acc TikTok) hoàn tất nhiều mảng công việc cần gửi về các nhóm Telegram khác nhau (ví dụ: Lướt Feed gửi `-5377611430`, Follow chéo gửi `-5127276494`, Đăng Video gửi `-5435853713`):
+1. **Lỗi kiến trúc nghiêm trọng (Anti-pattern):** Giữ 1 cronjob duy nhất cho Hermes rồi trong script Python tự gọi `urllib.request.urlopen` bắn ngầm sang các nhóm khác. Socket raw của tiến trình con dễ bị timeout/lỗi mạng thoáng qua, bị khối `try...except` nuốt lỗi, trong khi phần in ra `stdout` vẫn gửi thành công $\rightarrow$ cronjob persist state và **làm mất vĩnh viễn báo cáo của kênh gọi qua urllib**.
+2. **Quy tắc Single Responsibility:** Tách độc lập thành các Hermes cronjob riêng lẻ:
+   - Mỗi cronjob có 1 file script (hoặc wrapper) riêng (`feed_session_watchdog.py`, `follow_session_watchdog.py`).
+   - Mỗi cronjob có file trạng thái và ProcessLock riêng (`feed_session_reported.json`, `follow_session_reported.json`).
+   - Tất cả đều dùng cơ chế **Hermes Cron Native Delivery** (`no_agent=True`, script chỉ in nội dung ra `stdout`, để Hermes Gateway chịu trách nhiệm queue/retry chuyển tiếp).
+   - Tuyệt đối không tự mở raw HTTP socket gửi tin Telegram trong thân script watchdog định kỳ.
+
 ## Operations: stop/start the whole scheduler fleet
 
 The 5+ schedulers are owned by Windows Scheduled Tasks plus the unified tray — not standalone processes. Full inventory + exact task actions (env vars, python paths) live in `references/scheduler-fleet-operations.md`. Cheat sheet:
