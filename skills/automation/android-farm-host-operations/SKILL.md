@@ -65,9 +65,14 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
   * Bo mạch chủ server/X99 khi POST/reset phần cứng sẽ ép quạt chạy 100% PWM (max RPM) trong 5–10 giây và còi buzzer BIOS kêu bíp. Không có lệnh phần mềm nào có thể can thiệp làm êm quạt ở tầng BIOS POST.
   * **CẤM TUYỆT ĐỐI** đặt lịch reboot tự động vào ban đêm hoặc rạng sáng (như 05:30 sáng) khi người dùng đang ngủ vì tiếng hú quạt gây giật mình mất giấc ngủ.
   * Còi BIOS bíp: Rút thẳng cục còi buzzer cắm trên chùm chân Front Panel của mainboard (hoặc dán băng dính điện đen bịt lỗ còi onboard) để tắt vĩnh viễn tiếng bíp.
-  * **Khung giờ vàng reboot an toàn:** Đặt vào ban ngày khi người dùng đã thức:
-    - *Khung giờ 1 (Lý tưởng):* **07:45 sáng** (ngay sau khi Phiên 1 Ca sáng chạy từ 06:00 kết thúc lúc ~07:30, máy đã nhả sạch lock, làm sạch bus USB để chuẩn bị cho Phiên 2 lúc 08:00).
-    - *Khung giờ 2:* **11:30 trưa** (giữa Ca sáng và Ca trưa, trước Ca 2 lúc 12:00 30 phút).
+- **Khung giờ vàng reboot an toàn (User Directed: "Sau phiên 1 ca 1 đi"):**
+    - **Lịch kích hoạt chính thức:** **07:45 sáng hàng ngày** qua Task Scheduler `Taadaa_Farm_Daily_Reboot_0745` (thay thế task cũ `05:30`).
+    - **Dòng chảy thời gian thực tế:**
+      * `06:00 - ~07:30`: Ca 1 Phiên 1 chạy bình thường.
+      * `~07:30 - 07:35`: Phiên 1 hoàn tất, toàn bộ máy nhả lock về trạng thái rảnh.
+      * `07:45`: Task thức dậy kiểm tra `~/.codex/device-locks`. Nếu 0 active lock $\rightarrow$ SSH reboot Admin PC, rồi reboot Kibe PC. Cả 2 máy boot vào lại Desktop lúc ~07:47 với 100% máy xanh. Nếu Phiên 1 trôi giờ còn máy giữ lock $\rightarrow$ tự động **HỦY REBOOT** an toàn.
+      * `08:00`: Ca 1 Phiên 2 bắt đầu chạy (có 13–15 phút đệm hoàn toàn sạch bus USB và RAM).
+    - Khung giờ này người dùng đã thức, giải quyết triệt để tiếng ồn quạt server POST trong lúc ngủ.
 - **Quy trình tự động song song (Silent Watchdog — không gửi tin nhắn rác Telegram):**
   1. Kiểm tra an toàn: Quét `~/.codex/device-locks`. Nếu có $\ge 1$ máy bận lock $\rightarrow$ **HỦY REBOOT NGAY**.
   2. Nếu 0 active lock: Gọi SSH sang Admin PC ra lệnh `shutdown /r /t 2`.

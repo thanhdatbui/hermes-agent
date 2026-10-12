@@ -50,13 +50,17 @@ Khi trích xuất `adb devices -l` trên Admin PC, toàn bộ các máy bị vă
   * Xuất structured telemetry: `[TELEMETRY_METRIC] {"event": "feed_session_launch", "max_workers": 25, "target_machines": N}`.
   * Giảm 40% số luồng I/O microframe trên bus USB 2.0. Thời lượng ca nuôi 80 máy tăng từ 35-40p lên ~60p, vẫn nằm trọn trong khung an toàn 120p của từng Ca.
 
-### 3.2. Kiến Trúc Reboot Tự Động 1 Ngày 1 Lần (Khung 05:30 Sáng):
-* Khung giờ `03:00 - 05:59` là Dead Zone (toàn bộ ca đêm đã xong, dọn cache TikTok hoàn tất lúc 04:30).
-* Lúc 05:30 sáng, hệ thống kiểm tra 0 active locks và kích hoạt chuỗi reboot tự động:
-  1. Gửi lệnh reboot Admin PC qua SSH: `ssh admin-farm "shutdown /r /t 2"`
-  2. Gửi lệnh reboot Kibe PC: `shutdown /r /t 5`
-* Cả 2 máy tính đều đã cấu hình `AutoAdminLogon = 1` và có Scheduled Tasks tự động khởi chạy lại Hermes, Telegram Gateway, và ADB daemon.
-* Reboot mỗi sáng giải phóng toàn bộ thanh ghi phần cứng của 2 chip EHCI mà không cần thao tác tay của con người.
+### 3.2. Kiến Trúc Reboot Tự Động 1 Ngày 1 Lần (Chuyển Sang 07:45 Sáng — Sau Phiên 1 Ca 1):
+* **Bài học tiếng ồn phần cứng & Giấc ngủ người dùng (User Invariant):**
+  - Mốc 05:30 sáng ban đầu gây tiếng quạt server hú 100% PWM và còi BIOS bíp khi người dùng đang ngủ.
+  - Còi BIOS POST: Rút hẳn cục còi buzzer trên Front Panel mainboard (hoặc dán băng dính điện đen bịt lỗ còi onboard).
+  - Quạt POST 100%: Do phần cứng ép xung, không thể tắt bằng phần mềm. Người dùng chỉ đạo: *"Reboot ngay sau phiên 1 ca 1 đi"*.
+* **Lịch kích hoạt chính thức:** Task `Taadaa_Farm_Daily_Reboot_0745` chạy lúc **07:45:00 sáng hàng ngày**:
+  1. `06:00 - ~07:30`: Ca 1 Phiên 1 chạy xong, giải phóng toàn bộ device lock.
+  2. `07:45`: Script kiểm tra 0 active locks $\rightarrow$ Gửi lệnh reboot Admin PC (`shutdown /r /t 2`), sau đó reboot Kibe PC (`shutdown /r /t 5`).
+  3. Sau ~45-60s, cả 2 máy tính tự đăng nhập Desktop (`AutoAdminLogon = 1`) và kéo lại ADB/Hermes Gateway.
+  4. `08:00`: Ca 1 Phiên 2 bắt đầu trên nền tảng bus USB và RAM sạch tinh (13-15 phút đệm an toàn).
+  5. Nếu Phiên 1 bị trễ còn lock $\rightarrow$ Script tự động hủy lệnh reboot an toàn.
 
 ### 3.3. Cảnh Báo Về Nâng Cấp Card PCIe USB 3.0:
 * CẤM mua card PCIe USB 3.0 giá rẻ loại 1 chip chia 4 cổng (như VIA VL805 hay NEC uPD720201 đơn chip) rồi cắm dồn 80 máy. Card đơn chip cũng bị giới hạn 64–96 Endpoints, sẽ tái hiện lỗi Code 43 chỉ nhận 8–10 máy tương tự xHCI onboard.
