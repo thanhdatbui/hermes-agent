@@ -14,6 +14,6 @@ Pass láo: xóa None. Nick trên máy là tài sản, reg dư map lại & dời 
 §
 Strike 3: Claude CLI; Worker: AG Gemini default (Luna fallback).
 §
-Code automation: tách riêng từng script & từng cronjob Hermes báo cáo độc lập (lướt nuôi riêng, follow riêng), cấm gộp script rồi tự split urllib ngầm.
+Code: script & cron Hermes độc lập. Hashtag sync: F_src=(Slot-1)*80+m_idx, cấm nhầm F_out sang F_src; 'Hashtag theo Folder' là SoT.
 §
 Dời nick máy 8 slot: Tuần tự (1) 2FA & lưu Excel nick non -> (2) Logout giải phóng slot -> (3) Login nick mới. Nick sang máy mới để sẵn Excel tới ca tự nạp (cấm login trước). Cấm spam text gate rác/media vào chat.
