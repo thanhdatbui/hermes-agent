@@ -98,6 +98,7 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
   4. **KỶ LUẬT ĐIỀU PHỐI (USER INVARIANT):**
      - **CẤM TUYỆT ĐỐI** đăng ký lại các cron/task reset mềm USB trên cả 2 máy. Reset PC (Reboot) định kỳ lúc 11:35 trưa là cơ chế DUY NHẤT thực sự hiệu quả để làm sạch thanh ghi USB phần cứng.
      - **CẤM BẮT USER TỰ GÕ LỆNH:** Khi user đang chơi game hoặc bận mà báo có cửa sổ lạ/lỗi trên máy Admin, Coordinator **BẮT BUỘC tự chủ động SSH sang Admin xử lý ngầm**, TUYỆT ĐỐI KHÔNG ĐƯỢC đưa lệnh bắt user tự mở PowerShell/CMD gõ tay!
+     - **Triệt tiêu cửa sổ Console nháy khi user chơi game:** Toàn bộ script Python trên cả 2 máy (Kibe & Admin) phải được cài `sitecustomize.py` ép cờ `CREATE_NO_WINDOW (0x08000000)`. Scheduled Task và VBScript runner trên Windows bắt buộc dùng `pythonw.exe` hoặc `wscript.exe` với `SW_HIDE`, cấm chạy trần `python.exe` trên interactive desktop session.
 
 ## 7. Bệnh Bàn Phím Mất Tín Hiệu & Cách Vào BIOS (Main X99)
 - **Triệu chứng 1 (Trước khi vào BIOS):** Khi khởi động, tại logo main xoay tròn thì bàn phím tắt đèn, chỉ sáng khi vào màn hình gõ pass Windows. Bấm Delete / F2 không vào được BIOS.
