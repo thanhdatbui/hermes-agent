@@ -53,3 +53,16 @@ Worker summaries are untrusted until these fields are independently re-read by t
    In multi-slot farm workbooks maintaining both output render folders ($F_{out} = (\text{Máy} - 1) \times 8 + \text{Slot}$) and source folders ($F_{src} = (\text{Slot} - 1) \times 80 + m_{idx}$):
    If an existing column named `video gốc` mistakenly holds $F_{out}$, a generator that queries the authoritative database using `video gốc` will look up the wrong folder's category (e.g., folder 141 bakery instead of folder 338 student skit) and systematically clobber all target accounts.
    Rule: Never trust an existing `video gốc` column in a consumer workbook without reconciling it against the canonical slot/machine coordinate formula or the reference mapping sheet. When syncing, calculate $F_{src} = (\text{Slot} - 1) \times 80 + m_{idx}$ or read the 1:1 mapping from the reference sheet, and update both the source ID column and the resolved labels/pools simultaneously to eliminate drift at its source.
+
+5. **The "Blind Syntax-Only Test Suite" Trap (Semantic vs Syntactic Parity)**:
+   A dangerous false sense of security occurs when test suites only verify syntactic presence:
+   `assert acc["keyword"] != ""` and `assert 3 <= len(tags) <= 5`.
+   When a normalization script mistakenly clobbers an account (e.g. overwriting student comedy with bakery), the field is non-empty and generates valid tag counts, so tests pass 100% green while data is completely corrupted.
+   Rule: Normalization tests must verify **Semantic Parity**:
+   Assert that every account's `Keyword Video` and `Hashtag Pool` matches the authoritative reference (`Hashtag theo Folder` or source database record for $F_{src}$) 1:1 across all operational workbooks.
+
+6. **Cluster Machine Offset & Boundary Guard**:
+   Dual-cluster architecture has distinct machine ranges:
+   - Cluster A (e.g. Kibe): $M \in [1..80] \implies m_{idx} = M$.
+   - Cluster B (e.g. Admin): $M \in [201..280] \implies m_{idx} = M - 200$.
+   Never write unchecked ternary expressions like `m if m <= 80 else m - 200`. Explicitly define constants (`KIBE_MAX_MACHINE = 80`, `ADMIN_MIN_MACHINE = 201`, `ADMIN_MAX_MACHINE = 280`, `ADMIN_MACHINE_OFFSET = 200`) and reject or flag any machine value outside `[1..80]` and `[201..280]` to prevent boundary overflow and silent mapping corruption.

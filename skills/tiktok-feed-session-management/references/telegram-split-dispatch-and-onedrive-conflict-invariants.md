@@ -37,6 +37,9 @@ Hệ thống báo cáo nuôi nick TikTok phân chia độc quyền theo 3 nhóm 
       1. `tiktok-feed-session-watchdog` -> chạy `feed_session_watchdog.py` -> in `stdout` -> `deliver: telegram:-5377611430` (`Tiktok Luot Nuoi Acc`). State: `feed_session_reported.json`.
       2. `tiktok-follow-session-watchdog` -> chạy `follow_session_watchdog.py` (`main(mode='follow')`) -> in `stdout` -> `deliver: telegram:-5127276494` (`Tiktok Follow`). State: `follow_session_reported.json`.
     - **100% tin nhắn báo cáo phải đi qua Hermes Gateway native**: Không phụ thuộc socket urllib trần. Từng cronjob có state file riêng, process lock riêng, retry độc lập và log telemetry chuẩn. Khi chưa có dữ liệu mới, stdout rỗng (silent run watchdog pattern).
+    - **Telemetry & State Isolation Invariant cho Multi-Mode Watchdogs**:
+      * Khi module watchdog dùng chung logic nền nhưng chạy 2 mode (`feed` và `follow`), BẮT BUỘC gắn nhãn telemetry động theo mode cả lúc bắt đầu (`[%s_WATCHDOG_START_TELEMETRY]`) lẫn khi giao hàng (`[%s_WATCHDOG_DELIVERY_TELEMETRY] event=one_message_delivered mode=%s`), ghi rõ basename của `target_state_file`.
+      * Unit tests bắt buộc có test assertion chứng minh `STATE_FILE != FOLLOW_STATE_FILE` và hai file trỏ về đúng `feed_session_reported.json` vs `follow_session_reported.json` để vượt qua Closeout Gate (tiêu chí Telemetry & Obs >= 85).
 
 ---
 

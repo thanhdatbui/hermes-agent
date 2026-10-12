@@ -37,6 +37,8 @@ Run operational parity and exploratory drift scans separately. Uploader/channel-
 - Editing only the workbook while the source still contains the old category.
 - Adding a source slug without adding it to the generator's label/pool mapping.
 - Reading an output/render folder ID ($F_{out}$) instead of the true canonical source folder ID ($F_{src}$) when querying authoritative records, systematically clobbering all target accounts.
+- Relying on syntactic-only assertions (e.g. "cell is non-empty", "count is 3..5") which pass 100% green while semantic categories are completely clobbered.
+- Using unchecked magic numbers for cluster machine offsets without boundary validation, causing out-of-range machines to silently map into corrupted source folders.
 - Forgetting downstream consumer dictionaries (e.g. `KEYWORD_HASHTAGS` in selector code).
 - Windows CRLF newline conversions exploding git diff numstat on mapping files.
 - Asserting on cumulative `caplog.records` in pytest loops instead of `caplog.records[-1]`.
