@@ -48,3 +48,8 @@ Worker summaries are untrusted until these fields are independently re-read by t
 
 3. **Log telemetry assertions across test loops**:
    When testing generator/selector telemetry across multiple input variations in pytest, `caplog.records` accumulates across iterations. Asserting on `next(...)` will inspect stale logs from earlier loop steps. Always take the latest record `caplog.records[-1]` or call `caplog.clear()` between iterations.
+
+4. **Output folder index vs canonical source folder trap ($F_{out}$ vs $F_{src}$)**:
+   In multi-slot farm workbooks maintaining both output render folders ($F_{out} = (\text{Máy} - 1) \times 8 + \text{Slot}$) and source folders ($F_{src} = (\text{Slot} - 1) \times 80 + m_{idx}$):
+   If an existing column named `video gốc` mistakenly holds $F_{out}$, a generator that queries the authoritative database using `video gốc` will look up the wrong folder's category (e.g., folder 141 bakery instead of folder 338 student skit) and systematically clobber all target accounts.
+   Rule: Never trust an existing `video gốc` column in a consumer workbook without reconciling it against the canonical slot/machine coordinate formula or the reference mapping sheet. When syncing, calculate $F_{src} = (\text{Slot} - 1) \times 80 + m_{idx}$ or read the 1:1 mapping from the reference sheet, and update both the source ID column and the resolved labels/pools simultaneously to eliminate drift at its source.
