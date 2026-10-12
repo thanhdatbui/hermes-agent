@@ -29,6 +29,15 @@
      $env:GMAIL_REG_PYTHON_EXE = 'D:\Taadaa\python-envs\automation\Scripts\python.exe'
      & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ./run_all.ps1
      ```
+   - Chuẩn hóa qua helper tái sử dụng `_build_admin_powershell_command` (tránh duplicate base64 UTF-16LE):
+     ```python
+     def _build_admin_powershell_command(script_body: str) -> list[str]:
+         b64_payload = base64.b64encode(script_body.encode("utf-16le")).decode("ascii")
+         return [
+             "ssh", "-o", "ConnectTimeout=10", "admin-farm",
+             f"powershell -NoProfile -EncodedCommand {b64_payload}"
+         ]
+     ```
    - Đầu ra log mang tiền tố: `=== CLUSTER ADMIN (MÁY 201-280) ===`.
 
 ---

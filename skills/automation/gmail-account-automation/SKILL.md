@@ -9,7 +9,7 @@ description: "Automation workflows for Gmail accounts on the Taadaa farm: Playwr
 - `references/s7-gmail-result-classification-and-chatgpt-decommission.md` — Dừng reg ChatGPT S7 & phân loại runner.
 - `references/s7-gmail-slot-eviction-and-gpm-cleanup-rules.md` — Giải phóng slot S7, TikTok Binding Gate, dọn DIE.
 - `references/slot-capacity-and-eviction-policy.md` — Trần số acc vs rolling eviction.
-- `references/dual-cluster-post-noon-gmail-and-watchdog-architecture.md` — Dual-cluster Kibe & Admin Reg Gmail, Exit Code 2 & Structured Events.
+- `references/dual-cluster-post-noon-gmail-and-watchdog-architecture.md` — Dual-cluster Kibe & Admin Reg Gmail, Exit Code 2 & Structured Events, và _build_admin_powershell_command helper.
 - `references/gpm-api-pagination-and-soak-gate-deadlock.md` — GPM API pagination, Soaking Gate deadlock.
 - `references/youtube-nurture-ad-handling-and-evidence-timing.md` — YouTube ad skip, timing trap & nuôi 5p/5w.
 
