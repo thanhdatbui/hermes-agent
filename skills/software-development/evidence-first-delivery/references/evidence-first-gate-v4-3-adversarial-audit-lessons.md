@@ -109,3 +109,26 @@ Khi viết test suite cho các plugin guard:
 2. **Append Violation thay vì Overwrite**:
    - Khi có vi phạm thật sự, Guard chỉ **nối tiếp (append)** thông báo vi phạm bằng chứng thị giác xuống cuối câu trả lời.
    - Giữ nguyên vẹn 100% nội dung giải trình gốc của Coordinator để User nắm được hiện trường mà không bị đứt gãy mạch hội thoại.
+
+---
+
+## 9. BẪY SPAM BANNER TRÊN RECAP & HỘI THOẠI FOLLOW-UP (PHÂN TÁCH LIVE UI VS BACKEND/EXCEL & LỆCH PHA RAM GATEWAY - 2026-10-12)
+
+### Cạm bẫy:
+- Sau khi Coordinator đã gửi ảnh nghiệm thu ở Turn N-1, sang Turn N khi User hỏi chuyện thoại ("M làm xong hết r à", "Thì để sẵn trên excel..."), Coordinator giải trình tóm tắt lại ("hoàn tất 100%", "đã login", "đã bật 2FA").
+- Hook `_enforce_evidence_first_gate` quét cứng regex từng câu, thấy từ khóa nghiệp vụ nhưng thiếu thẻ `MEDIA:` ở ngay turn đó (do ảnh đã gửi turn trước) ➔ Lập tức kích hoạt vi phạm và nhồi banner `[EVIDENCE FIRST GATE — FAIL-CLOSED VIOLATION]` vào chat, biến bot thành công cụ spam vô cảm khiến User bức xúc ("Sửa luôn cái thông báo media này. Nó spam bất chấp liên tục k đúng ý tao").
+- Các hành động backend/CLI (bật 2FA TOTP qua script terminal, ghi sổ sách Excel cho máy sau tới ca tự nạp) bị đánh đồng với thao tác UI điện thoại và bị đòi ảnh chụp màn hình TikTok phi lý.
+
+### Giải pháp cơ học:
+1. **Loại trừ mệnh đề Backend / Excel / Script trong `_detect_completion_claims`**:
+   - Mở rộng whitelist loại trừ cho các mệnh đề đề cập đến nghiệp vụ backend, sổ tính, script, hoặc mốc thời gian quá khứ/recap:
+     ```python
+     if re.search(r"\b(?:chatgpt|openai|gpm|gmail|hotmail|outlook|browser|trình\s+duyệt|excel|sổ\s+sách|totp|cli|terminal|kịch\s+bản|tới\s+ca|lúc\s+nãy|trước\s+đó|nhắc\s+lại|thu\s+dọn)\b", c_str, re.IGNORECASE):
+         continue
+     ```
+   - Thao tác ghi sổ sách hoặc chạy tool terminal không bị quy chụp thành thao tác UI máy cần ảnh.
+2. **Session-State Historical Claim Check**:
+   - Trước khi phạt vi phạm, kiểm tra `sess_state["verified_media_details"]`. Nếu category và tài khoản tương ứng đã có ảnh xác thực hợp lệ trong phiên ➔ Nhận diện là Recap hợp lệ và bỏ qua banner vi phạm.
+3. **Quy tắc Restart Detached Chống Lệch Pha RAM Gateway**:
+   - Tiến trình Hermes Gateway (`pythonw.exe`) chạy ngầm nạp module vào RAM lúc khởi động. Mọi sửa đổi plugin trên đĩa bắt buộc phải đi kèm lệnh restart detached (sau sleep 5s để hoàn tất turn gửi Telegram) để giải phóng PID cũ và nạp bytecode mới vào RAM.
+
