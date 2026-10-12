@@ -59,11 +59,18 @@ Khi nhận danh sách cảnh báo các nick không tăng video >14 ngày, **CẤ
 
 ---
 
-## 4. Giải pháp Khắc phục Triệt để (L2 Emergency Surgery Contract & Verification)
+## 4. Giải pháp Khắc phục Triệt để (L2 Emergency Surgery & Closeout Gate Remediation)
 - **Patch Contract trong `audit_stale_upload_accounts.py`:**
   - Hoán đổi ưu tiên: đặt `DEFAULT_DB_PATH = r"D:/Taadaa/data/tiktok_tracker.db"` (runtime) và `FALLBACK_DB_PATH = r"D:/OneDrive/TaadaaData/tiktok_tracker.db"` (OneDrive backup).
   - Bổ sung cơ chế auto-mtime check: nếu file fallback có mtime mới hơn file default, tự động chuyển `real_db` sang file mới hơn để phòng ngừa trường hợp sync OneDrive được cập nhật tươi hơn.
+  - **Telemetry & Safe Exception Handling (Reviewer Hard Invariant):** CẤM nuốt generic `Exception` âm thầm. Bắt buộc bắt cụ thể `OSError as exc` kèm log warning (`DB mtime check failed: %s`). Đồng thời log INFO `audit_upload_freshness selected_db=%s` và bổ sung trường `"selected_db": real_db` vào dict kết quả để telemetry minh bạch tại runtime.
 - **Quy trình nghiệm thu Live Cronjob sau fix:**
   - Chạy `python -m py_compile D:/Taadaa/tools/audit_stale_upload_accounts.py` kiểm tra cú pháp < 5s.
   - Commit audit trail theo chuẩn `[L2-surgery]`.
   - Kích hoạt chạy ngay watchdog qua `cronjob(action="run", job_id="<job_id>")` để xác nhận `last_status: ok` và tin nhắn báo cáo gửi đúng đích Telegram mà không cần chờ đến lịch hẹn ngày hôm sau.
+- **Quy chuẩn Vượt Closeout Gate (Reviewer Gate Remediation):**
+  - Khi Reviewer chấm trượt (< 85) với finding thiếu telemetry / nuốt exception / thiếu test chứng minh nhánh fallback DB:
+    1. Kích hoạt Sol High (`python D:/Taadaa/tools/sol_repair.py`) độc quyền tạo patch proposal O(1).
+    2. Coordinator áp dụng diff Sol, nghiệm thu `git diff --numstat <= 30 dòng`, commit `[L2-surgery]`.
+    3. Dispatch Worker bổ sung file test focused (`tests/test_audit_stale_upload_accounts.py`) mock 100% offline bao phủ 8 nhánh: basic metrics, drift mismatch, missing ID, fallback mtime, OSError handling, selected_db telemetry.
+    4. Chạy lại `closeout_gate.py` với test suite focused mới để đạt APPROVED.
