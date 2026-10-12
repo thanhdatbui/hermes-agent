@@ -1,19 +1,20 @@
 ---
 name: cloud-storage-sync-troubleshooting
-description: Troubleshoot and resolve sync errors, stuck files, and notification issues for cloud storage clients (Google Drive, OneDrive, Dropbox) on Windows.
+description: Troubleshoot and resolve sync errors, stuck files, authentication hangs, and notification issues for cloud storage clients (Google Drive, OneDrive, Dropbox, iCloud) on Windows.
 category: devops
 ---
 
 # Cloud Storage Sync Troubleshooting
 
 ## Overview
-Systematic approach to diagnose and fix sync client issues on Windows: stuck "Lost and Found" notifications, orphaned files, database corruption, and sync loops.
+Systematic approach to diagnose and fix sync client issues on Windows: stuck "Lost and Found" notifications, orphaned files, database corruption, sign-in hangs, and sync loops.
 
 ## Trigger Conditions
 - Persistent "Lost and Found" / "Bị thất lạc và đã tìm thấy" popup
 - Files stuck in sync queue (0 bytes, never complete)
 - Sync client high CPU / memory without progress
 - Notification drawer shows unresolved sync errors
+- iCloud desktop app stuck indefinitely on "Signing In..." with 0% CPU and CLOSE_WAIT sockets
 
 ## Google Drive for Desktop (Windows)
 
@@ -100,6 +101,16 @@ Systematic approach to diagnose and fix sync client issues on Windows: stuck "Lo
     scp admin-farm:D:/OneDrive/TaadaaData/admin/taikhoan_run_safe.xlsx D:/OneDrive/TaadaaData/admin/taikhoan_run_safe.xlsx
     ```
 
+### iCloud for Windows (AppX Sign-in Hang & AOSErrorDomain 1000)
+- **Symptom**: App window frozen on "Signing In..." indefinitely, CPU 0%, remote connection in `CLOSE_WAIT`.
+- **Logs**: `%LOCALAPPDATA%\Packages\AppleInc.iCloud_nzyj5cx40ttqa\LocalCache\Local\Logs\iCloudHome.*.log` shows `Registration failed with error: (AOSErrorDomain error 1000.)` and `setting retry timer for 43200 second(s)...` (12-hour freeze timer).
+- **Root Cause**: Microsoft Store AppX installation lacks `Apple Root CA` in the Windows Certificate Store (`ROOT`), causing WinINet/Schannel to fail with `12045 (ERROR_INTERNET_INVALID_CA)` against `gsa.apple.com`.
+- **Remediation**:
+  1. Kill hung process tree: `taskkill /F /IM iCloudHome.exe /IM iCloudDrive.exe /IM APSDaemon.exe /IM iCloudCKKS.exe /IM secd.exe /IM iCloudOutlookConfig64.exe /IM ApplePhotoStreams.exe`
+  2. Inject `Apple Server Authentication CA` into Windows `CA` store.
+  3. Install official `AppleRootCA.cer` (`https://www.apple.com/appleca/AppleIncRootCertificate.cer`) into `CurrentUser\Root` via `certutil -addstore -f -user Root AppleRootCA.cer` (accepting the Windows prompt).
+  4. See detailed walkthrough in `references/icloud-windows-appx-signin-hang.md`.
+
 ## Pitfalls
 - **Don't just dismiss notification** — file remains in cache, notification returns
 - **Don't delete from cloud** — verify cloud copy is intact first
@@ -120,3 +131,4 @@ Systematic approach to diagnose and fix sync client issues on Windows: stuck "Lo
 ## References
 - `references/google-drive-desktop-debugging.md` — Detailed log analysis, DB schemas, common error codes
 - `references/onedrive-dehydration-automation-failures.md` — Root cause, error signatures (0x8007017A, Errno 22), and remediation for OneDrive dehydrated cloud files breaking automated batch loops
+- `references/icloud-windows-appx-signin-hang.md` — In-depth breakdown of iCloud AppX sign-in freeze, WinINet error 12045, Apple PKI root CA import, and zombie process cleanup

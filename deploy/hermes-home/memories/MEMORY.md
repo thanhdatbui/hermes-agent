@@ -6,7 +6,7 @@ WoL ether3 (kibe 0C:EF:15:37:4C:20, admin 22:33:4D:06:4C:26; WG 13231); CẤM PA
 §
 Acc die SKIP; 400h cooldown quarantine động (skip khi chưa tới hạn, cấm xóa). Sandbox kẹt push: Claude CLI kèm gh auth push, cấm đưa lệnh user. Re-OAuth nạp Omni.
 §
-TikTok Shadow: Path B 'Đã fl' ko commit; FOLLOW_FAILED trừ fl tự nhiên; slot `(folder-1)%8+1` cứng; reg bù độc lập. Đối soát: chỉ tính nick có ca (cohort `internal_followed > 0`). Cron: tách feed_session_watchdog (-5377611430) & follow_session_watchdog (-5127276494, job 6991768931e1). Report: classify_error_reason() lọc sạch; cấm leak HTTP header (ifconfig) / path ADB.
+TikTok Follow: Quota 10-15 fl/phiên (20-30/ngày), like video 80%. Nick non nhả ko ngắt IP (chỉ ngắt khi nick tốt nghiệp nhả). Đối soát số fl theo file state (cấm lấy tổng DB tính trùng). Path B 'Đã fl' ko commit; slot (folder-1)%8+1 cứng; reg bù độc lập. Cron: feed_session_watchdog (-5377611430) & follow_session_watchdog (-5127276494). Report: classify_error_reason() lọc sạch; cấm leak HTTP header / path ADB.
 §
 Hotmail bán: CẤM gán mail cá nhân; tự sinh @fviainboxes.com đọc OTP qua API. Tab Chrome CDP đóng ko mất cookie (lưu Profile disk).
 §
@@ -16,4 +16,4 @@ Crop Ava 9:16: Mặt ở 15-25% trên (cy~0.2*H), cấm cụt đầu. Picker: ta
 §
 Sửa guard: restart_gw_detached.py nạp RAM; Gate miễn trừ tin Closeout/recap. Ranh giới session: chỉ gọi entry point, cấm kéo việc session khác (Hotmail/OTP), cấm spam subagent.
 §
-Khai tử Taadaa_Safe_USB_Guard_15m & cron soft-reset USB cả 2 máy (vô dụng + nháy CMD khi chơi game). Lỗi Admin Coordinator tự SSH ngầm, cấm bắt user gõ tay.
+Khai tử Taadaa_Safe_USB_Guard_15m & cron soft-reset USB cả 2 máy (vô dụng + nháy CMD). Lỗi Admin Coordinator tự SSH ngầm. Mua sắm/Shopee: bắt buộc link sản phẩm trực tiếp, cấm gửi link search.

@@ -178,12 +178,16 @@ Toàn bộ 80 máy Kibe dùng 40 proxy (mỗi proxy 2 máy: `[M1, M39]`, `[M2, M
      * Quota mỗi phiên của nick Tốt nghiệp (Full Quota) được hạ từ `10 - 20` xuống chuẩn **`10 - 15 follow/phiên`** (`budget_per_session_min: 10`, `budget_per_session_max: 15`).
      * Một ngày chạy 2 phiên (sáng Phiên 1 + Phiên 2) tích lũy chuẩn **20 - 30 follow/ngày**.
      * Đã đồng bộ code: `config.py`, `config.example.yaml`, `follow_state.py`, `follow_engine.py` và 117 tests passed 100%.
-   - **Quy chuẩn Module 2 Workflow (Xem video tự nhiên):**
-     * **Đối với follower đối phương (Path B verify):** Tỷ lệ xem video ngẫu nhiên trên trang cá nhân là **30% – 35%** (`_maybe_watch_profile_video`), thời gian xem **12 – 20 giây**, xác suất thả tim (like) **30%**, tự động chụp lưu ảnh screenshot evidence.
+   - **Quy chuẩn Module 2 Workflow (Xem video tự nhiên & Tỷ lệ Thả tim 80% — User Directive 12/10/2026):**
+     * **Đối với follower đối phương (Path B verify):** Tỷ lệ xem video ngẫu nhiên trên trang cá nhân là **30% – 35%** (`_maybe_watch_profile_video`), thời gian xem **12 – 20 giây**, **xác suất thả tim (like) nâng lên 80%** (`like_chance = 0.80`), tự động chụp lưu ảnh screenshot evidence.
      * **Đối với kênh Anchor:** Nếu chưa follow anchor -> Mở video đầu tiên xem **8 – 15 giây**, like 50–70%, bấm Follow trên video, rồi mới quay lại profile cào tiếp.
-   - **Rủi ro Lây Nhiễm Ngược từ Nick Non sang Nick Khỏe (Non-Graduated Taint Exposure):**
-     * Hiện tại code chỉ giật cầu dao khi nick tốt nghiệp (`was_graduated == True`) bị nhả. Khi hàng loạt nick non (Row 4) bị nhả trên cùng IP trong ca trưa, cầu dao IP KHÔNG ngắt.
-     * **Cảnh báo điều phối:** Dù nick non bị từ chối ở tầng account, dải IP đó vừa phát sinh nhiều request thất bại liên tiếp có thể đang bị TikTok "cắm cờ nóng". Nếu ca sau (Row 2 cựu binh) nhảy vào chạy ngay trên các IP này, nguy cơ rất cao nick già bị thuật toán soi và phạt oan. Coordinator cần theo dõi sát để đề xuất ngắt tạm thời 12-24h khi nick non dính nhả hàng loạt.
+   - **Thực Nghiệm Khẳng Định: Nick Non Nhả KHÔNG HỀ Làm Bẩn IP Đối Với Nick Già (User Invariant & Data Proof 02/10 - 12/10/2026):**
+     * Khảo sát dữ liệu đối soát thực tế từ ngày 02/10 đến 12/10/2026 chứng minh: Hiện tượng nick non (Row 4, Row 7/8) dính nhả follow là do **Spam Filter ở tầng Account (thiếu Inbound Trust/tương tác)**, **HOÀN TOÀN CHƯA CẮM CỜ DẢI IP**.
+     * **Bằng chứng thực địa đối soát chéo trên cùng máy & IP:**
+       - Ngày 04/10: Row 4 dính nhả hàng loạt (M4, M9, M41, M49...) -> Ngày 05/10: Row 1 cựu binh nhảy vào chính các máy/IP đó cày cực khỏe (M4: +31 fl, M9: +12 fl, M41: +7 fl, M49: +8 fl).
+       - Ngày 06/10: Row 4 lại dính nhả đồng loạt (M1, M2, M39, M50, M52...) -> Ngày 07/10: Row 1 nhảy vào chính các máy/IP đó cày bùng nổ 165 lượt (M2: +30 fl, M39: +17 fl, M50: +17 fl, M52: +15 fl, M1: +11 fl).
+       - Ngày 12/10: Sáng Row 2 (M17, M23) cày mượt +12 & +14 follow -> Trưa Row 4 vào trên chính IP đó bị nhả ngay lượt đầu.
+     * **Kỷ luật điều phối:** Giữ nguyên quy tắc bất di bất dịch của Cầu Dao IP: **CHỈ NGẮT CẦU DAO KHI NICK TỐT NGHIỆP / CẤP KHỎE BỊ NHẢ**. CẤM TUYỆT ĐỐI tự ý ngắt cầu dao khi nick non bị nhả, vì sẽ bóp nghẹt công suất và làm dàn nick già nòng cốt bị đóng băng oan uổng.
 3. **Cơ chế bảo vệ nick ca sau:**
    - **Trạng thái ghi nhận:** `CIRCUIT_BREAKER_SKIPPED` (`failed=False`, `follow_failed=False`). Nick không bị tính lỗi, không tăng `fail_streak`, không bị gán cooldown.
    - **Chuyển đổi công năng sang Dưỡng Sinh (Feed / Read-only):** Cấm đi follow (hành vi write nhạy cảm), nhưng ĐƯỢC PHÉP chạy phiên lướt nuôi dưỡng sinh (xem video, tương tác nhẹ). Hành vi này vừa an toàn vừa giúp "rửa IP" bằng lưu lượng người dùng tự nhiên.
