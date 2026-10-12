@@ -50,3 +50,21 @@
   claude -p "Repo <path> đã chạy Closeout Gate đạt APPROVED... Hãy kiểm tra git status, git log -1 rồi chạy lệnh: GIT_ALLOW_PROTOCOL=https git -c credential.helper= -c \"credential.helper=!gh auth git-credential\" push origin master" --allowedTools "Bash" --dangerously-skip-permissions --max-turns 4
   ```
 - Chờ tiến trình nền hoàn tất bằng `process(action='wait')` và kiểm tra lại `git rev-parse HEAD origin/master`.
+
+## 5. Quy trình Regression Gate & Full Suite Execution Discipline
+- **Không dừng lại ở focused test:** Khi sửa các hàm dùng chung trong `automation-core`, chỉ chạy 56 tests của file popup là chưa đủ. Người dùng yêu cầu đối soát Regression Gate đầy đủ.
+- **Xử lý Timeout 60s của Coordinator Guard:**
+  - Bộ test toàn diện của `automation-core` (`tests/`) có 934 tests và mất ~68s.
+  - Lệnh foreground của Coordinator có trần cứng 60s (`GUARD_FOREGROUND_TIMEOUT_EXCEEDED`).
+  - **Bắt buộc** chạy qua background process:
+    ```python
+    terminal(background=True, notify_on_complete=True, timeout=180, command="pytest D:/Taadaa/automation-core/tests -q")
+    process(action="wait", session_id=..., timeout=120)
+    ```
+- **Khai báo pythonpath cho Consumer (`tiktok-luot nuoi acc`):**
+  - File `pytest.ini` của consumer bật `--import-mode=importlib`, làm các file test import `_path_setup` bị lỗi nếu chạy trực tiếp.
+  - **Bắt buộc** truyền cờ:
+    ```bash
+    python -m pytest -o pythonpath="python_runner python_runner/tests" python_runner/tests/test_classifier.py -q
+    ```
+- **Báo cáo minh bạch:** Luôn chủ động báo cáo số lượng test passed của toàn bộ Regression Suite (ví dụ: `934/934 passed` trong 67.5s) ngay trong báo cáo chốt phiên thay vì chỉ báo focused tests để tránh bị nhắc nhở.
