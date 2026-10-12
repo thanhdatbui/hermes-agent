@@ -154,11 +154,11 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
   * Tuyệt đối không trông chờ vào xHCI onboard của main X99.
   * **CẢNH BÁO BẪY TRÀN ENDPOINT KHI MUA CARD PCIE USB 3.0 (CHỐNG LẶP LẠI LỖI CODE 43):**
     - Nếu mua loại card PCIe USB 3.0 giá rẻ dùng **1 chip điều khiển duy nhất** (1x Renesas uPD720201 hoặc 1x VIA VL805 chia sẻ 4 cổng) mà cắm dồn cả dàn 80 máy vào: **SẼ BỊ LỖI Y CHANG NHƯ LÚC BẬT USB 3.0 TRONG BIOS**! Con chip đó cũng bị trần 64–96 Endpoints, chỉ nhận được 8–10 máy là dính Code 43 (`VID_0000&PID_0000`) tê liệt toàn bộ máy còn lại.
-    - **Quy tắc mua & lắp đặt chuẩn 100% hoạt động (Chi phí ~300k–450k cho 80 máy):**
-      * **Số lượng:** Mua **2 Card PCIe x1 rời riêng biệt** (mỗi card ~150k–220k trên Shopee/Lazada). Mỗi card chỉ cắm 2 dây Box Farm (40 máy/card) để chia đều tải 2 chip xử lý độc lập.
+    - **Quy tắc mua & lắp đặt chuẩn 100% hoạt động (Thực dụng & Tiết kiệm):**
+      * **Phương án thực dụng (Khuyên dùng trước):** Mua **1 Card PCIe x1 rời trước** (~150k–200k trên Shopee/Lazada). Cắm Box 4 (dải M261–M280 hay rụng nhất) hoặc cả Box 3 + 4 sang card mới để chia lửa. Trên mainboard giữ lại Box 1 + 2 (40 máy) chạy trong ngưỡng an toàn của 2 chip EHCI onboard. Sau này nếu cần mở rộng thêm mới mua card thứ 2.
+      * **Tương thích tuyệt đối với Automation & atx-agent (CẤM HOANG MANG):** ADB Server và `atx-agent` (port 7912) định danh thiết bị theo **Device Serial duy nhất** và dùng `adb forward`. Cắm máy qua nhiều Card PCIe độc lập và cổng onboard chạy song song HOÀN TOÀN KHÔNG làm đổi port, không xung đột script và không phải sửa bất kỳ dòng code nào.
       * **Nguồn phụ (BẮT BUỘC):** Phải chọn loại card có **chân cắm nguồn SATA 15-pin (hoặc Molex 4-pin)** cắm trực tiếp từ nguồn máy tính (PSU) để chống sụt áp khe PCIe. Tuyệt đối không mua card trần không có nguồn phụ.
       * **Chipset:** Chọn chip **Renesas/NEC uPD720201/uPD720202** hoặc **VIA VL805**. Windows 10/11 tự nhận driver gốc Microsoft xHCI, cắm vào nhận ngay trong 5 giây, không cần cài driver ngoài.
-      * Hoặc dùng loại **Card PCIe Quad-Controller chuyên dụng** (bo mạch tích hợp 4 chip controller độc lập, mỗi cổng 1 chip riêng biệt và 1 làn PCIe riêng).
   * Tài liệu đặc tả kỹ thuật chi tiết lưu tại repo: `D:\Taadaa\tools\docs\HARDWARE_USB_FARM_PCIE_GUIDE.md` (bản sao lưu: `D:\Taadaa\docs\HARDWARE_USB_FARM_PCIE_GUIDE.md`).
 
 ## 9. Quy Hoạch Phần Cứng Mở Rộng Farm (80 - 200 Máy)

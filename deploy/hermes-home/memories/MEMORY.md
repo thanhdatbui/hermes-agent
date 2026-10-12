@@ -1,6 +1,6 @@
 Chu kỳ 4d: Parity cố định 96h (N1 lẻ, N2 chẵn; cấm random giãn 120h), N3(R7,8, tối dưỡng), N4(dưỡng 0 fl+up non). Starve 108h (96+12h grace). CẤM xóa cooldown.
 §
-Reboot 11:35 (chỉ chặn khi trong trận TFT League of Legends.exe; sảnh/app khác reboot đc). Admin có SSH (admin-farm): tự SSH xử lý trực tiếp, CẤM bảo user gõ tay; cron/task cả 2 máy tuyệt đối cấm nháy cmd phá game (bắt buộc pythonw/CREATE_NO_WINDOW).
+Host & USB Ops: Reboot 11:35 (chỉ chặn khi trong trận TFT League of Legends.exe; sảnh/app khác reboot đc). Admin có SSH: tự SSH xử lý trực tiếp, CẤM đưa lệnh user gõ tay. Task/cron cả 2 máy BẮT BUỘC pythonw/wscript (cấm giật cmd). USB: safe_usb_guard & adb-transport-healer vô dụng đã disable vĩnh viễn; nâng PCIe USB 3.0: mua 1 card x1 Renesas/VIA nguồn phụ SATA (~150-200k) gánh bớt Box 4 chia tải mainboard trước, ADB/atx-agent nhận theo serial ko xung đột.
 §
 WoL ether3 (kibe 0C:EF:15:37:4C:20, admin 22:33:4D:06:4C:26; WG 13231); CẤM PASS khi followed=0/FOLLOW_FAILED; log trước teardown; upload SSH admin-farm.
 §
@@ -14,6 +14,4 @@ Proxy: User KO đổi, SoT PROXYgandienthoai.xlsx (S7 Google & Hotmail reg TT gi
 §
 Crop Ava 9:16: Mặt ở 15-25% trên (cy~0.2*H), cấm cụt đầu. Picker: tap checkbox (225,250), cấm tap tâm; bẫy nút Lưu Sửa hồ sơ. Soi zoom tròn profile.
 §
-Sửa guard: restart_gw_detached.py nạp RAM; Gate miễn trừ tin Closeout & recap hybrid. Ranh giới session: Session cron/tách script chỉ tập trung gọi entry point, cấm kéo việc session khác (Hotmail/OTP); cấm spam subagent làm rác chat.
-§
-Admin/Kibe: Task Scheduler/script BẮT BUỘC pythonw/wscript (cấm giật cmd văng game). Tự SSH qua admin-farm, cấm đùn lệnh tay. USB: safe_usb_guard/adb-transport-healer vô dụng & đã disable vĩnh viễn; chỉ dùng Reboot 11:35; nâng USB 3.0: 2 card PCIe x1 Renesas/VIA nguồn SATA (150-220k/c, 40 máy/c).
+Sửa guard: restart_gw_detached.py nạp RAM; Gate miễn trừ tin Closeout/recap. Ranh giới session: chỉ gọi entry point, cấm kéo việc session khác (Hotmail/OTP), cấm spam subagent.
