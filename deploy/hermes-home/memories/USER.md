@@ -4,7 +4,7 @@ Dọn đĩa: duyệt trước (thư mục corrupt/lỗi xóa ngay), CẤM xóa n
 §
 Farm: nick cấm xóa/đè; SoT tiktok_tracker.db; cấm đè ava tay. Chu kỳ nuôi 4d 3 ca; Starvation 96h (cấm 48h false-alarm). Đổi mail TT: Hotmail sạch, ưu tiên Graph PC, sai pass dùng --otp-only.
 §
-Report follow: % & tầng; khóa IP 1 dòng kèm máy cứu; máy nhả kèm lượt. Watchdog SILENT khi OK; GPM/hạ tầng sập sau auto-heal PHẢI alert đỏ exit 1, cấm nuốt lỗi Safe-Skip.
+Report/Watchdog: % & tầng; khóa IP 1 dòng; máy nhả kèm lượt; cấm raw dump/trace/HTTP dump (sanitize 1 dòng sạch). SILENT khi OK; hạ tầng sập PHẢI alert đỏ exit 1.
 §
 Kibe(1-80) & Admin(201-280) media độc lập (Admin m2, cấm copy chéo). TT v47.0.3; Switcher dock; AP 40m; Config tools.
 §
