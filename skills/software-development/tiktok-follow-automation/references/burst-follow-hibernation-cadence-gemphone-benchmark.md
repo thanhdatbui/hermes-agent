@@ -78,7 +78,11 @@ Trích xuất từ `TIKTOK-FLOW-TÌM-KIẾM-Thành-đạt_decrypted.json` (389 n
    - **So sánh tổng thời gian thực thi (Cả 2 bên đều ~8–12 phút / phiên 20 nick):**
      * **Taadaa Runner:** Tap follow + chờ 2.5–5s + Path B mở profile đọc nút (2.5s, không vuốt) + (30% xem video 12–20s) + back về list + delay giữa các nick (8–25s) ➔ ~25–35s / nick ➔ 20 nick tốn ~8–11 phút. Ưu điểm: Bắt nhả chắc chắn 100% tại chỗ mà không tạo vòng lặp reload thừa.
      * **GemPhone:** Đứng im trong list, tap follow + delay 5.2–18.5s + các nhịp nghỉ đệm sâu 16–43s (Node `muwrdaa`, `bfeodrk`) + vuốt cuộn ➔ ~18–25s / nick ➔ 20–30 nick tốn ~7–12 phút.
-     * **Lưu ý cấu hình per-machine vs feed-session:** File `config.example.yaml` dùng cho feed-session chạy `delay_min: 8`, `delay_max: 25`. Một số config cũ (`machine38.yaml`) dùng `delay_min: 1..3` kết hợp `inter_follow_delay_min: 5..10`. Cả 2 cấu hình đều đảm bảo nhịp độ thực tế an toàn 18–25s/nick, không dồn dập.
+     * **Chuẩn hóa cấu hình Farm (Loại bỏ phân mảnh config từng máy):**
+       - Toàn bộ 80 máy khi chạy feed session tự động (`multi_machine_feed_session.py`) **BẮT BUỘC đồng bộ 100% từ 1 file master config duy nhất** (`follow_runner/config.example.yaml` với `delay_min: 8`, `delay_max: 25`, `verify_sample_every: 1`).
+       - **CẤM DUY TRÌ CONFIG RIÊNG TỪNG MÁY:** Các file `config/machine*.yaml` (như `machine38.yaml`) là tàn dư test tay cũ gây lệch thông số và phân mảnh code. Cần dọn sạch toàn bộ 18 file `machine*.yaml`, đồng thời chuẩn hóa:
+         1. `scripts/run-follow.ps1`: Chuyển default `$Config` trỏ về `follow_runner/config.example.yaml`.
+         2. `follow_runner/tests/test_config.py`: Đổi test case sang kiểm tra trực tiếp master config `follow_runner/config.example.yaml` để test suite không bị gãy khi xóa các file máy lẻ.
    - **Tiến độ triển khai Chu kỳ 4 ngày (3 Ca / ngày: 8 tick trong 3 ngày + 1 ngày Rest Day):**
      * Triển khai qua `tiktok_runner.py` trên 2 cụm Kibe & Admin. Trạng thái live đã xác minh đang chạy ổn định đúng lịch trình (Ngày 1: rows lẻ 1, 3, 5; Ngày 2: rows chẵn 2, 4, 6; Ngày 3: row 7, 8, dưỡng; Ngày 4: nghỉ toàn máy).
 5. **Kỷ luật điều phối phiên thảo luận (Coordinator Discipline):**
