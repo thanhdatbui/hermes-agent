@@ -10,7 +10,7 @@ Kibe(1-80) & Admin(201-280) media độc lập (Admin m2, cấm copy chéo). TT 
 §
 Dubbing: đúng tiếng, 100% thoại, tắt tiếng gốc.
 §
-Pass láo: xóa None. Nick trên máy là tài sản (cấm gọi kí sinh), reg dư thì map lại & dời nick non sang máy thiếu. Cấm ném text gate rác vào chat. Báo cáo: cấm tròn 100%. KPI chỉ nick có ca. Farm: chạy song song.
+Pass láo: xóa None. Nick trên máy là tài sản, reg dư map lại & dời nick non sang máy thiếu. Cấm ném text gate rác vào chat. Báo cáo: cấm tròn 100%. KPI chỉ nick có ca. Farm: song song.
 §
 Strike 3: Claude CLI; Worker: AG Gemini default (Luna fallback).
 §
