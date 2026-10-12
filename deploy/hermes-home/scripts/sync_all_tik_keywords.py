@@ -1,11 +1,11 @@
 """
 Script & Cron Watchdog: Tự động quét và đồng bộ Niche, Keyword, Hashtag Pool từ state.db
-sang TOÀN BỘ CÁC FILE TIK (Tik1 -> Tik8).
+sang TOÀN BỘ CÁC FILE TIK (Tik1 -> Tik8) cho CẢ 2 CLUSTER (Kibe & Admin).
 
 Mục đích:
 - Tự động phát hiện khi một folder video gốc (1..640) được gán/đổi niche mới trong state.db.
 - Nếu nick bị xóa, đổi nội dung hoặc tạo bộ video mới, script sẽ tự động cập nhật lại đúng
-  Keyword Video và Hashtag Pool vào file Tik tương ứng.
+  Keyword Video và Hashtag Pool vào file Tik tương ứng của cả Kibe và Admin.
 - Đảm bảo tính nhất quán tuyệt đối giữa:
   `state.db` -> `niches_pool.txt` -> `Hashtag theo Folder` -> `TaiKhoan` (cột Keyword & Hashtag).
 """
@@ -30,9 +30,14 @@ try:
     from automation_core.workbook import atomic_workbook_update
 except ImportError:
     atomic_workbook_update = None
+
 STATE_DB = Path(r"D:\CodexRuntime\tiktok-video\state.db")
 NICHES_POOL_FILE = Path(r"D:\Taadaa\Tiktok-video\data\niches_pool.txt")
-TIK_DIR = Path(r"D:\OneDrive\TaadaaData\kibe")
+
+FARM_DIRS = [
+    ("Kibe", Path(r"D:\OneDrive\TaadaaData\kibe")),
+    ("Admin", Path(r"D:\OneDrive\TaadaaData\admin")),
+]
 
 # 8 file Tik tương ứng 8 slot
 TIK_FILES = [
@@ -69,11 +74,15 @@ def load_niche_definitions() -> dict[str, str]:
 def load_existing_hashtag_pools() -> dict[str, str]:
     """Thu thập toàn bộ mapping mẫu (Keyword/Label -> Hashtag Pool) từ các file Tik đã chuẩn hóa."""
     keyword_to_pool: dict[str, str] = {}
-    if not TIK_DIR.exists() or openpyxl is None:
+    if openpyxl is None:
+        return keyword_to_pool
+
+    kibe_dir = Path(r"D:\OneDrive\TaadaaData\kibe")
+    if not kibe_dir.exists():
         return keyword_to_pool
 
     for filename, _, _ in TIK_FILES[:6]:
-        p = TIK_DIR / filename
+        p = kibe_dir / filename
         if not p.exists():
             continue
         try:
@@ -99,8 +108,6 @@ def generate_hashtag_pool(slug: str, label: str, existing_pools: dict[str, str])
     if kw_key in existing_pools:
         return existing_pools[kw_key]
 
-    # Sinh pool chuẩn theo quy ước:
-    # #<slug> #<slug>vietnam #<slug>moingay #tiktokvietnam #xuhuong #fyp #videohay
     clean_slug = re.sub(r"[^a-zA-Z0-9_]", "", slug).lower()
     pool = (
         f"#{clean_slug} #{clean_slug}vietnam #{clean_slug}moingay "
@@ -137,6 +144,7 @@ def get_state_db_niches() -> dict[int, tuple[str, int, str]]:
 
 
 def sync_tik_file(
+    folder_path: Path,
     filename: str,
     slot_num: int,
     base_source: int,
@@ -145,7 +153,7 @@ def sync_tik_file(
     existing_pools: dict[str, str],
 ) -> int:
     """Đồng bộ 1 file Tik."""
-    p = TIK_DIR / filename
+    p = folder_path / filename
     if not p.exists() or openpyxl is None:
         return 0
 
@@ -161,25 +169,62 @@ def sync_tik_file(
             ws_tai_khoan = wb["TaiKhoan"] if "TaiKhoan" in wb.sheetnames else wb.active
             headers = [str(c or "").strip().lower() for c in next(ws_tai_khoan.iter_rows(max_row=1, values_only=True))]
 
+            may_col = headers.index("máy") if "máy" in headers else -1
             vg_col = headers.index("video gốc") if "video gốc" in headers else 4
             kw_col = headers.index("keyword video") if "keyword video" in headers else 5
             ht_col = headers.index("hashtag pool") if "hashtag pool" in headers else 6
 
+            # 0. Build cache from Hashtag theo Folder if available
+            ht_map = {}
+            if "Hashtag theo Folder" in wb.sheetnames:
+                ws_ht_preload = wb["Hashtag theo Folder"]
+                for r in ws_ht_preload.iter_rows(min_row=2, values_only=True):
+                    if r[0] is not None and len(r) >= 4 and r[2] and r[3]:
+                        try:
+                            ht_map[int(r[0])] = (str(r[2]).strip(), str(r[3]).strip())
+                        except (ValueError, TypeError):
+                            pass
+
             # 1. Update sheet TaiKhoan
             for row in range(2, ws_tai_khoan.max_row + 1):
-                vg_val = ws_tai_khoan.cell(row, vg_col + 1).value
-                if vg_val is None:
-                    continue
-                try:
-                    f_src = int(vg_val)
-                except (ValueError, TypeError):
+                m_val = None
+                if may_col != -1:
+                    m_val = ws_tai_khoan.cell(row, may_col + 1).value
+
+                if m_val is not None:
+                    try:
+                        m_int = int(m_val)
+                        m_idx = m_int if m_int <= 80 else m_int - 200
+                        f_src = base_source + m_idx
+                    except (ValueError, TypeError):
+                        f_src = None
+                else:
+                    vg_val = ws_tai_khoan.cell(row, vg_col + 1).value
+                    if vg_val is None:
+                        continue
+                    try:
+                        f_src = int(vg_val)
+                    except (ValueError, TypeError):
+                        continue
+
+                if f_src is None:
                     continue
 
+                curr_vg = ws_tai_khoan.cell(row, vg_col + 1).value
+                if curr_vg != f_src:
+                    ws_tai_khoan.cell(row, vg_col + 1, f_src)
+                    updates += 1
+
+                label = None
+                pool = None
                 if f_src in db_niches:
                     niche_slug, _, _ = db_niches[f_src]
                     label = niche_labels.get(niche_slug, niche_slug.capitalize())
                     pool = generate_hashtag_pool(niche_slug, label, existing_pools)
+                elif f_src in ht_map:
+                    label, pool = ht_map[f_src]
 
+                if label and pool:
                     curr_kw = ws_tai_khoan.cell(row, kw_col + 1).value
                     curr_ht = ws_tai_khoan.cell(row, ht_col + 1).value
 
@@ -237,6 +282,7 @@ def sync_tik_file(
         sys.stderr.write(f"Failed to update {filename}: {e}\n")
         return 0
 
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Auto sync keywords & hashtags from state.db to all Tik workbooks.")
     parser.add_argument("--silent", action="store_true", help="Do not print if no updates")
@@ -249,16 +295,19 @@ def main() -> int:
     total_updated = 0
     details = []
 
-    for filename, slot_num, base_source in TIK_FILES:
-        n = sync_tik_file(filename, slot_num, base_source, db_niches, niche_labels, existing_pools)
-        if n > 0:
-            details.append(f"{filename}: {n} updates")
-            total_updated += n
+    for cluster_name, cluster_dir in FARM_DIRS:
+        if not cluster_dir.exists():
+            continue
+        for filename, slot_num, base_source in TIK_FILES:
+            n = sync_tik_file(cluster_dir, filename, slot_num, base_source, db_niches, niche_labels, existing_pools)
+            if n > 0:
+                details.append(f"{cluster_name}/{filename}: {n} updates")
+                total_updated += n
 
     if total_updated > 0:
         print(f"[SYNC_KEYWORDS] Synced {total_updated} changes across workbooks: {', '.join(details)}")
     elif not args.silent:
-        print("[SYNC_KEYWORDS] All Tik workbooks (Tik1..Tik8) are already up to date with state.db.")
+        print("[SYNC_KEYWORDS] All Tik workbooks (Kibe & Admin) are already up to date with state.db.")
 
     return 0
 
