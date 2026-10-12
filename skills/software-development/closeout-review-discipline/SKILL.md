@@ -15,6 +15,7 @@ metadata:
 
 References:
 - `references/closeout-gate-files-dirty-target-strictness.md` — Quy tắc bắt buộc khi dùng `--files` trong `closeout_gate.py`: CHỈ truyền file có working-tree diff, tránh lỗi 'targets without working-tree changes'.
+- `references/closeout-gate-committed-scope-exactness.md` — **[MỚI 12/10/2026]** Khắc phục lỗi `refusing partial committed scope` trong chế độ `committed_targeted`: tập hợp `--files` bắt buộc khớp 100% với `git diff <base>..HEAD --name-only`.
 - `references/closeout-gate-multirepo-and-large-diff-pitfalls.md` — **[MỚI 11/10/2026]** Khắc phục lỗi `DIFF_TOO_LARGE` (>120KB) do lệch origin/main trong multi-repo (dùng `--base HEAD`), xử lý untracked files cần `git add`, và quy trình Sol Repair khi Gate trượt.
 - `references/monolith-decomposition-and-mock-ceiling-remediation.md` — **[MỚI 12/10/2026]** Chỉ đạo bóc tách monolith thành các helper độc lập khi chạm trần 80-84/100, bẫy mock propagation namespace, chuẩn redact OTP trên log, atomic write, SQLite rollback và giải pháp đóng phiên L3 BLOCKED hợp lệ.
 - `references/closeout-monolith-decomposition-and-claude-refusal-remediation.md` — **[MỚI 11/10/2026]** Bẫy trần 84/100 do script monolith >700 dòng bị trừ điểm kiến trúc, quy chuẩn tách helper đơn trách nhiệm, xử lý Claude CLI Strike 3 từ chối dual-use, và kỷ luật worker AG Gemini default.

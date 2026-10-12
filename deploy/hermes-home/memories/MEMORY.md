@@ -8,10 +8,10 @@ Reviewer :20129: Combo 'review' (Sol Web->Terra Codex); Strike 3 Claude từ ch�
 §
 TikTok Shadow: Path B 'Đã fl' ko commit; FOLLOW_FAILED trừ fl tự nhiên; slot `(folder-1)%8+1` cứng; reg bù độc lập. Dọn C duyệt trước. Đối soát follow: chỉ tính nick có ca chạy hôm nay (cohort `internal_followed > 0`), cấm lấy nick rảnh bị tụt cấn trừ vào bot; nick chạy bị nhả trừ thẳng.
 §
-Hotmail bán: CẤM TUYỆT ĐỐI gán mail cá nhân thanhdatbui; bắt buộc tự sinh <user><3rand>@fviainboxes.com đọc OTP qua API. Đóng tab Chrome CDP ko mất session/cookie do lưu Profile disk.
+Hotmail bán: CẤM gán mail cá nhân; tự sinh @fviainboxes.com đọc OTP qua API. Tab Chrome CDP đóng ko mất cookie (lưu Profile disk).
 §
-[ROUTER/WIFI]: R3G V1. AP Aruba cứng (kibe 1,2; admin 1,2). CẤM connect/fallback SSID 'Dat'/'BOX'; cấm kỵ, diệt ngay. Proxy: User KO đổi, SoT PROXYgandienthoai.xlsx.
+[ROUTER/WIFI]: R3G V1. AP Aruba cứng (kibe 1,2; admin 1,2). CẤM SSID 'Dat'/'BOX'; diệt ngay. Proxy: User KO đổi, SoT PROXYgandienthoai.xlsx.
 §
 Crop Ava 9:16: Mặt ở 15-25% trên (cy~0.2*H), cấm cụt đầu. Picker: tap checkbox (225,250), cấm tap tâm; bẫy nút Lưu Sửa hồ sơ. Soi zoom tròn profile.
 §
-Tài khoản trên máy: Mọi nick login trên máy là tài sản farm (cấm đòi logout). Trần 8 nick: map nick có sẵn, nick non nhất chuyển máy thiếu (add 2FA trước; ghi Excel trước, chỉ login khi user bảo). Cấm trả câu cảnh báo gate thô vào chat.
+Tài khoản: Mọi nick là tài sản farm (cấm logout). Trần 8: map nick có sẵn, nick non dời máy thiếu (add 2FA & ghi Excel trước, chỉ login khi user bảo). Cấm text gate thô. Sửa guard: BẮT BUỘC restart_gw_detached.py nạp RAM, tránh văng cảnh báo cũ.

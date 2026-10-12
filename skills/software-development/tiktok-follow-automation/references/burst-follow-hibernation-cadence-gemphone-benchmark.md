@@ -83,6 +83,11 @@ Trích xuất từ `TIKTOK-FLOW-TÌM-KIẾM-Thành-đạt_decrypted.json` (389 n
        - **CẤM DUY TRÌ CONFIG RIÊNG TỪNG MÁY:** Các file `config/machine*.yaml` (như `machine38.yaml`) là tàn dư test tay cũ gây lệch thông số và phân mảnh code. Cần dọn sạch toàn bộ 18 file `machine*.yaml`, đồng thời chuẩn hóa:
          1. `scripts/run-follow.ps1`: Chuyển default `$Config` trỏ về `follow_runner/config.example.yaml`.
          2. `follow_runner/tests/test_config.py`: Đổi test case sang kiểm tra trực tiếp master config `follow_runner/config.example.yaml` để test suite không bị gãy khi xóa các file máy lẻ.
+         3. **Cơ chế Backward-Compatibility & Telemetry Fallback (Closeout Gate Lesson 2026-10-12):**
+            * Khi dọn sạch các file config máy lẻ, bắt buộc thêm cơ chế fallback tự động trong `load_config()` cho các lệnh canary / legacy caller cũ:
+              Nếu file truyền vào không tồn tại nhưng tên khớp regex nghiêm ngặt `re.fullmatch(r"machine\d+\.ya?ml", p.name.lower())`, tự động fallback về `config.example.yaml` và phát warning log telemetry `[CONFIG_FALLBACK]`.
+            * CẤM dùng substring lỏng lẻo (như `if "machine" in name`) vì sẽ nuốt lỗi cấu hình của các file custom khác.
+            * Bắt buộc có unit test kiểm chứng cả 2 nhánh: (a) legacy machine config phát warning telemetry và fallback thành công, (b) non-matching missing config vẫn bắn `ConfigError`. Giúp Closeout Gate đạt điểm Approved (>= 85/100).
    - **Tiến độ triển khai Chu kỳ 4 ngày (3 Ca / ngày: 8 tick trong 3 ngày + 1 ngày Rest Day):**
      * Triển khai qua `tiktok_runner.py` trên 2 cụm Kibe & Admin. Trạng thái live đã xác minh đang chạy ổn định đúng lịch trình (Ngày 1: rows lẻ 1, 3, 5; Ngày 2: rows chẵn 2, 4, 6; Ngày 3: row 7, 8, dưỡng; Ngày 4: nghỉ toàn máy).
 5. **Kỷ luật điều phối phiên thảo luận (Coordinator Discipline):**

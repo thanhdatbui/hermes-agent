@@ -231,6 +231,7 @@ Use `references/avatar-only-scope-and-false-policy-refusal.md` for the incident-
 
 ## References
 
+- `references/recap-exemption-and-gateway-ram-desync-lessons.md` — **[MỚI 12/10/2026]** Bài học vá Evidence-First Gate: Cơ chế miễn trừ câu thoại nhắc lại (Conversational Recap Exemption), loại trừ các hành động backend/Excel/TOTP, và bài học tử huyệt lệch pha bytecode giữa RAM Gateway và đĩa cứng dẫn đến việc tái phát cảnh báo đỏ ngay cả khi file đã được sửa.
 - `references/conversational-followup-and-gate-spam-exemption-20261012.md` — **[MỚI 12/10/2026]** Sự cố spam `[EVIDENCE FIRST GATE — FAIL-CLOSED VIOLATION]` trên hội thoại follow-up/recap ("M làm xong hết r à"), cơ chế context-blind regex quét nhầm lời thoại thành claim, và nguyên tắc deferred login (để sẵn trên Excel chờ ca tự nạp).
 - `references/session-state-recap-exemption-and-anti-spam-20261012.md` — Bài học chốt chặn bằng chứng thị giác: cơ chế kiểm tra lịch sử phiên (Session-State Recap Exemption) chống spam thông báo vi phạm khi trả lời đàm thoại tiếp nối, và quy trình hoãn nạp tài khoản trên Excel chờ ca chạy tự động.
 - `references/oauth-redirect-button-trap-and-blind-vision-hallucination-20261011.md` — **[MỚI 11/10/2026]** Bài học sự cố bắt nhầm nút Google OAuth trên form ChatGPT (`b.innerText.includes('Tiếp tục')`), gõ nhầm OTP vào ô email Google, ảo giác soi mắt mù (blind vision hallucination) và cơ chế khóa chặn token cơ học.
