@@ -100,8 +100,14 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
      - Tối đa 2 lần reset liên tiếp. Nếu sau 2 lần mà ADB vẫn lỗi, hệ thống kích hoạt cooldown 30 phút, từ chối reset để bảo vệ phần cứng controller và ghi log vào `C:\Taadaa_Service\safe_usb_guard.log`.
      - Khi ADB khỏe mạnh trở lại $\rightarrow$ tự động xóa bộ đếm về 0.
   4. **Lập lịch tự động (Dual-Host: Đã triển khai trên cả Admin PC & Kibe PC):**
-     - Đã cài đặt Scheduled Task `Taadaa_Safe_USB_Guard_15m` trên **Admin PC** (User SYSTEM) và **Kibe PC** (User Kibe) chạy ngầm định kỳ mỗi 15 phút.
+     - Đã cài đặt Scheduled Task `Taadaa_Safe_USB_Guard_15m` trên **Admin PC** và **Kibe PC** chạy ngầm định kỳ mỗi 15 phút.
      - *Lưu ý quyền Windows khi đăng ký Task Scheduler:* Trên môi trường không elevated Administrator, cờ `-User "SYSTEM"` sẽ bị từ chối với lỗi `Access is denied (HRESULT 0x80070005)`. Đăng ký trực tiếp dưới user phiên làm việc hiện tại (bỏ tham số `-User "SYSTEM"`) để task kích hoạt ở trạng thái `Ready` thành công 100%.
+     - **BẪY BUNG CỬA SỔ CONSOLE / VĂNG GAME (Zero-Console Invariant):**
+       * Khi đăng ký Task Scheduler dưới user interactive (`Admin` hoặc `Kibe`), **BẮT BUỘC gọi qua `pythonw.exe` hoặc bọc qua VBScript (`wscript.exe` SW_HIDE)**.
+       * **CẤM TUYỆT ĐỐI** dùng `python.exe` trong Action của Task Scheduler hoặc file `.bat` trần, vì mỗi 15 phút Windows sẽ giật cửa sổ console `conhost.exe` lên Desktop ~1-2 giây in log rồi tắt $\rightarrow$ làm mất focus, khựng hình hoặc văng ván game của user (TFT / League).
+       * Khi user đang chơi game mà báo bị nháy cmd, Coordinator **BẮT BUỘC tự chủ động SSH sang Admin để tắt ngay (`schtasks /change /tn "..." /disable`)** qua `admin_ssh_exec.py`, **CẤM TUYỆT ĐỐI** bắt user tự mở CMD gõ lệnh tay!
+       * Cấu hình chuẩn không cửa sổ cho `Taadaa_Safe_USB_Guard_15m`:
+         `schtasks /change /tn "Taadaa_Safe_USB_Guard_15m" /tr "D:\Taadaa\python-envs\automation\Scripts\pythonw.exe C:\Taadaa_Service\safe_usb_guard.py"`
 
 ## 7. Bệnh Bàn Phím Mất Tín Hiệu & Cách Vào BIOS (Main X99)
 - **Triệu chứng 1 (Trước khi vào BIOS):** Khi khởi động, tại logo main xoay tròn thì bàn phím tắt đèn, chỉ sáng khi vào màn hình gõ pass Windows. Bấm Delete / F2 không vào được BIOS.

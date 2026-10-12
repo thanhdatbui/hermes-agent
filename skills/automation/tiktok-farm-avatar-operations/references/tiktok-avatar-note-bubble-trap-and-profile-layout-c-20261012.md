@@ -37,13 +37,22 @@ TikTok có nhiều biến thể giao diện trang cá nhân (Profile):
 
 ## 3. Quy tắc khắc phục & Kỷ luật vận hành bắt buộc
 
-### 1. Phân loại Layout trước khi Tap (UI XML Pre-check)
+### 1. Phân loại Layout trước khi Tap (UI XML Pre-check) & Xác minh đúng Nick
 - CẤM TUYỆT ĐỐI tap mù theo tọa độ cứng khi chưa xác định layout.
+- **Xác minh đúng tài khoản (Anti-drift sau ca nuôi):** Các tiến trình nuôi (`multi-machine-feed-session`) khi chạy qua máy thường tự động chuyển qua lại giữa các nick (máy 8 slot). Sau khi ca nuôi nhả lock, TikTok có thể đang ở một nick khác (ví dụ máy 21 đang ở `@michekbz8oz` thay vì `@cao.m.phng7`). BẮT BUỘC kiểm tra node username `@<expected_id>` trên màn hình Profile. Nếu sai nick: tap góc trên-trái `(180, 320)` để mở Account Switcher và chọn đúng nick mục tiêu.
 - Trước khi thực hiện luồng đổi avatar, BẮT BUỘC dump UI XML (`uiautomator dump`) để xác định layout:
   * Nếu XML có node text `"Sửa hồ sơ"` -> Layout B: Lấy bounds chính xác của node đó để tap (thường `327, 748`).
-  * Nếu avatar nằm ở `x > 700` và có text `"Thêm tiểu sử"` -> **Layout C**: Avatar ở góc phải, cần xử lý luồng riêng, không dùng tọa độ Layout B.
+  * Nếu avatar nằm ở `x > 700` và có text `"Thêm tiểu sử"` -> **Layout C**: Avatar ở góc phải `[708,300][1080,636]`.
+  * **Tọa độ tap an toàn trên vòng tròn avatar Layout C:** Tránh nửa trên bị bong bóng Note đè (`y: 258..465`) và tránh góc dưới-phải bị icon badge "Tạo một Nhật ký" đè (`[931,499][1080,636]`). Điểm tap an toàn duy nhất để vào avatar là nửa dưới-trái của vòng tròn: `(x=780, y=520)`.
 
-### 2. Kỷ luật Zoom Crop Vòng tròn Avatar chuẩn theo Layout (Chống Báo cáo Láo)
+### 2. Kỷ luật Điều phối Worker khi gặp Layout C (Chống Cạn Ngân sách T1)
+- Việc giải quyết layout A/B test không có nút "Sửa hồ sơ" đòi hỏi chuỗi lệnh ADB dò tìm và thử nghiệm. Coordinator tự viết nhiều script tạm sẽ nhanh chóng cạn ngân sách T1 (<= 5 files, <= 200 dòng).
+- Khi phát hiện Layout C hoặc layout dị thường: Coordinator BẮT BUỘC dispatch Worker qua `delegate_task`:
+  * Khai báo rõ ràng: `TASK_KIND: INVESTIGATE`.
+  * Khai báo Fail-fast: `FAIL_FAST: Dừng ngay nếu trong 3 iteration đầu không thể kết nối máy hoặc không mở được Photo Picker`.
+  * Khóa máy bằng `with_device_lock.py --machine <N>`.
+
+### 3. Kỷ luật Zoom Crop Vòng tròn Avatar chuẩn theo Layout (Chống Báo cáo Láo)
 - Tọa độ crop kiểm chứng BẮT BUỘC phải lấy theo bounds của node `Ảnh hồ sơ` trong XML:
   * Layout A: Center `(540, 280)`.
   * Layout B: Center `(210, 280)`.
