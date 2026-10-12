@@ -174,6 +174,16 @@ Toàn bộ 80 máy Kibe dùng 40 proxy (mỗi proxy 2 máy: `[M1, M39]`, `[M2, M
        1. **73% (57/78 nick) đang dính án phạt Cooldown tích lũy:** Do các đợt bão quét ngày 06, 08, 10/10, các nick bị tăng `fail_streak` lên 2-6 và bị giam Cooldown kéo dài (từ 5 đến 15 ngày, đến 13/10 - 27/10). Khi tới ca chạy, `follow_failed()` kiểm tra thấy còn hạn phạt nên safe-skip toàn bộ.
        2. **Cơ chế Probation Tier 1 siết trần:** Trong 21 nick sạch, chỉ có 2 nick Tốt nghiệp được cấp Full Quota (M23: 14 fl, M17: 12 fl). Các nick còn lại vừa mãn hạn tù hoặc chưa đủ 4 ngày sạch đều bị xếp vào `probation_tier1` và chỉ được cấp nhỏ giọt đúng 1-2 lượt/ngày (M8: 2, M33: 2, M64: 2) để thăm dò an toàn.
    - **Quy tắc đối soát sự cố nhả follow cho Coordinator:** BẮT BUỘC kiểm tra trực tiếp các file state (`runs/state/follow_state_*.json`) lọc `last_failed_date == today` và `last_fail_reason`, CẤM TUYỆT ĐỐI chỉ nhìn vào bảng `ip_circuit_breaker` trống trơn rồi vội vàng kết luận farm sạch không dính nhả!
+   - **Cập nhật Quota Phiên & Ngày (User Directive 12/10/2026):**
+     * Quota mỗi phiên của nick Tốt nghiệp (Full Quota) được hạ từ `10 - 20` xuống chuẩn **`10 - 15 follow/phiên`** (`budget_per_session_min: 10`, `budget_per_session_max: 15`).
+     * Một ngày chạy 2 phiên (sáng Phiên 1 + Phiên 2) tích lũy chuẩn **20 - 30 follow/ngày**.
+     * Đã đồng bộ code: `config.py`, `config.example.yaml`, `follow_state.py`, `follow_engine.py` và 117 tests passed 100%.
+   - **Quy chuẩn Module 2 Workflow (Xem video tự nhiên):**
+     * **Đối với follower đối phương (Path B verify):** Tỷ lệ xem video ngẫu nhiên trên trang cá nhân là **30% – 35%** (`_maybe_watch_profile_video`), thời gian xem **12 – 20 giây**, xác suất thả tim (like) **30%**, tự động chụp lưu ảnh screenshot evidence.
+     * **Đối với kênh Anchor:** Nếu chưa follow anchor -> Mở video đầu tiên xem **8 – 15 giây**, like 50–70%, bấm Follow trên video, rồi mới quay lại profile cào tiếp.
+   - **Rủi ro Lây Nhiễm Ngược từ Nick Non sang Nick Khỏe (Non-Graduated Taint Exposure):**
+     * Hiện tại code chỉ giật cầu dao khi nick tốt nghiệp (`was_graduated == True`) bị nhả. Khi hàng loạt nick non (Row 4) bị nhả trên cùng IP trong ca trưa, cầu dao IP KHÔNG ngắt.
+     * **Cảnh báo điều phối:** Dù nick non bị từ chối ở tầng account, dải IP đó vừa phát sinh nhiều request thất bại liên tiếp có thể đang bị TikTok "cắm cờ nóng". Nếu ca sau (Row 2 cựu binh) nhảy vào chạy ngay trên các IP này, nguy cơ rất cao nick già bị thuật toán soi và phạt oan. Coordinator cần theo dõi sát để đề xuất ngắt tạm thời 12-24h khi nick non dính nhả hàng loạt.
 3. **Cơ chế bảo vệ nick ca sau:**
    - **Trạng thái ghi nhận:** `CIRCUIT_BREAKER_SKIPPED` (`failed=False`, `follow_failed=False`). Nick không bị tính lỗi, không tăng `fail_streak`, không bị gán cooldown.
    - **Chuyển đổi công năng sang Dưỡng Sinh (Feed / Read-only):** Cấm đi follow (hành vi write nhạy cảm), nhưng ĐƯỢC PHÉP chạy phiên lướt nuôi dưỡng sinh (xem video, tương tác nhẹ). Hành vi này vừa an toàn vừa giúp "rửa IP" bằng lưu lượng người dùng tự nhiên.
