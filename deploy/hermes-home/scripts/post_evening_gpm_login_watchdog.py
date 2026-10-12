@@ -69,37 +69,37 @@ def log_telemetry_metric(event_type: str, data: dict):
 
 def is_within_time_window() -> bool:
     """Cho phép chạy trong các khoảng thời gian rảnh giữa các ca nuôi:
-    - Sáng: 07:15 đến 08:45
-    - Trưa: 12:00 đến 13:45
-    - Tối: 20:15 đến 23:45
+    - Sáng: 09:30 đến 11:20 (sau Ca 1 kết thúc lúc 09:25)
+    - Chiều: 15:30 đến 17:20 (sau Ca 2 kết thúc lúc 15:25)
+    - Tối: 21:30 đến 23:45 (sau Ca 3 kết thúc lúc 21:25)
     """
     now = datetime.now(HCMC)
     current = now.hour * 60 + now.minute
-    morning = 7 * 60 + 15 <= current <= 8 * 60 + 45
-    noon = 12 * 60 <= current <= 13 * 60 + 45
-    evening = 20 * 60 + 15 <= current <= 23 * 60 + 45
-    return morning or noon or evening
+    morning = 9 * 60 + 30 <= current <= 11 * 60 + 20
+    afternoon = 15 * 60 + 30 <= current <= 17 * 60 + 20
+    evening = 21 * 60 + 30 <= current <= 23 * 60 + 45
+    return morning or afternoon or evening
 
 def get_current_shift_info() -> tuple[str, str, str]:
     """Trả về thông tin ca hiện tại: (shift_code, shift_label, shift_desc)
-    - 07:15 - 08:45 -> ("SANG", "SÁNG", "sáng")
-    - 12:00 - 13:45 -> ("TRUA", "TRƯA", "trưa")
-    - 20:15 - 23:45 -> ("TOI", "TỐI", "tối")
-    - Fallback: < 12 -> SANG, < 18 -> TRUA, else TOI
+    - 09:30 - 11:20 -> ("SANG", "SÁNG", "sáng")
+    - 15:30 - 17:20 -> ("CHIEU", "CHIỀU", "chiều")
+    - 21:30 - 23:45 -> ("TOI", "TỐI", "tối")
+    - Fallback: < 13:00 -> SANG, < 19:00 -> CHIEU, else TOI
     """
     now = datetime.now(HCMC)
     current = now.hour * 60 + now.minute
-    if 7 * 60 + 15 <= current <= 8 * 60 + 45:
+    if 9 * 60 + 30 <= current <= 11 * 60 + 20:
         return ("SANG", "SÁNG", "sáng")
-    if 12 * 60 <= current <= 13 * 60 + 45:
-        return ("TRUA", "TRƯA", "trưa")
-    if 20 * 60 + 15 <= current <= 23 * 60 + 45:
+    if 15 * 60 + 30 <= current <= 17 * 60 + 20:
+        return ("CHIEU", "CHIỀU", "chiều")
+    if 21 * 60 + 30 <= current <= 23 * 60 + 45:
         return ("TOI", "TỐI", "tối")
 
-    if now.hour < 12:
+    if now.hour < 13:
         return ("SANG", "SÁNG", "sáng")
-    elif now.hour < 18:
-        return ("TRUA", "TRƯA", "trưa")
+    elif now.hour < 19:
+        return ("CHIEU", "CHIỀU", "chiều")
     else:
         return ("TOI", "TỐI", "tối")
 
@@ -709,15 +709,18 @@ def run_login(c: dict) -> dict:
     except Exception as ex:
         log(f"[M{mid:02d}] ERR {email}: {ex}")
         return {**c, "status": "FAIL", "fail_type": "SCRIPT", "error": str(ex)}
-def _format_summary_report(total_success: int, total_fail: int, shift_label: str = "TỐI", shift_desc: str = "tối") -> str:
+def _format_summary_report(total_success: int, total_fail: int, shift_label: str = "TỐI", shift_desc: str = "tối", skipped_busy: int = 0) -> str:
     live_anti_count = len(_get_live_omniroute_antigravity_emails())
     session_count = len(_get_gpm_profiles_with_google_session())
-    return (
-        f"[LOGIN GPM {shift_label} - TỔNG KẾT]\n"
-        f"• Kết quả ca: ✓ {total_success} | ✗ {total_fail} | proxy_limit 2/port/ngày | Hoàn tất ca {shift_desc}\n"
-        f"• Antigravity Pool: {live_anti_count} accounts LIVE trên OmniRoute (:20129)\n"
-        f"• Profile sẵn Google Session chờ OAuth: {session_count} accounts"
-    )
+    lines = [
+        f"[LOGIN GPM {shift_label} - TỔNG KẾT]",
+        f"• Kết quả ca: ✓ {total_success} | ✗ {total_fail} | proxy_limit 2/port/ngày | Hoàn tất ca {shift_desc}",
+    ]
+    if skipped_busy > 0:
+        lines.append(f"• Bỏ qua an toàn: {skipped_busy} acc nhường máy đang bận cron khác (TikTok/Avatar)")
+    lines.append(f"• Antigravity Pool: {live_anti_count} accounts LIVE trên OmniRoute (:20129)")
+    lines.append(f"• Profile sẵn Google Session chờ OAuth: {session_count} accounts")
+    return "\n".join(lines)
 
 def main():
     if not is_within_time_window():
@@ -800,12 +803,12 @@ def main():
     if not ready:
         now_hcm = datetime.now(HCMC)
         is_late = (
-            (shift_code == "SANG" and (now_hcm.hour > 8 or (now_hcm.hour == 8 and now_hcm.minute >= 40)))
-            or (shift_code == "TRUA" and (now_hcm.hour > 13 or (now_hcm.hour == 13 and now_hcm.minute >= 40)))
-            or (shift_code == "TOI" and (now_hcm.hour == 23 and now_hcm.minute >= 30))
+            (shift_code == "SANG" and now_hcm.hour >= 11 and now_hcm.minute >= 15)
+            or (shift_code == "CHIEU" and now_hcm.hour >= 17 and now_hcm.minute >= 15)
+            or (shift_code == "TOI" and now_hcm.hour >= 23 and now_hcm.minute >= 30)
         )
         if is_late:
-            log(f"Hết giờ ca {shift_desc} ({now_hcm.strftime('%H:%M')}) nhưng còn máy bận. Chốt ca và gửi báo cáo.")
+            log(f"Hết giờ ca {shift_desc} ({now_hcm.strftime('%H:%M')}) nhưng còn {len(candidates)} candidates chờ máy rảnh. Chốt ca và gửi báo cáo.")
             log_telemetry_metric("shift_forced_close", {
                 "shift": shift_code,
                 "busy_candidates_count": len(candidates),
@@ -813,12 +816,12 @@ def main():
                 "total_fail": total_fail,
             })
             if shift_code not in reported_shifts:
-                if total_success > 0 or total_fail > 0:
-                    print(_format_summary_report(total_success, total_fail, shift_label, shift_desc))
+                if total_success > 0 or total_fail > 0 or len(candidates) > 0:
+                    print(_format_summary_report(total_success, total_fail, shift_label, shift_desc, skipped_busy=len(candidates)))
                 reported_shifts.append(shift_code)
             if shift_code not in finished_shifts:
                 finished_shifts.append(shift_code)
-            all_day_finished = {"SANG", "TRUA", "TOI"}.issubset(set(finished_shifts))
+            all_day_finished = {"SANG", "CHIEU", "TOI"}.issubset(set(finished_shifts))
             state.update({
                 "date": today_str,
                 "processed": processed,
@@ -865,22 +868,23 @@ def main():
 
     now_hcm = datetime.now(HCMC)
     is_late = (
-        (shift_code == "SANG" and now_hcm.hour == 8 and now_hcm.minute >= 40)
-        or (shift_code == "TRUA" and now_hcm.hour == 13 and now_hcm.minute >= 40)
-        or (shift_code == "TOI" and now_hcm.hour == 23 and now_hcm.minute >= 30)
+        (shift_code == "SANG" and now_hcm.hour >= 11 and now_hcm.minute >= 15)
+        or (shift_code == "CHIEU" and now_hcm.hour >= 17 and now_hcm.minute >= 15)
+        or (shift_code == "TOI" and now_hcm.hour >= 23 and now_hcm.minute >= 30)
     )
     all_done = (len(processed) >= len(candidates) + len(batch)) or is_late
 
+    skipped_busy_count = max(0, len(candidates) - len(batch))
     # IM LẶNG trong lúc chạy batch lẻ; CHỈ BÁO CÁO 1 LẦN DUY NHẤT khi hoàn tất toàn ca hoặc hết giờ ca
     if all_done:
         if shift_code not in reported_shifts:
-            if total_success > 0 or total_fail > 0:
-                print(_format_summary_report(total_success, total_fail, shift_label, shift_desc))
+            if total_success > 0 or total_fail > 0 or skipped_busy_count > 0:
+                print(_format_summary_report(total_success, total_fail, shift_label, shift_desc, skipped_busy=skipped_busy_count))
             reported_shifts.append(shift_code)
         if shift_code not in finished_shifts:
             finished_shifts.append(shift_code)
 
-    all_day_finished = (shift_code == "TOI" and all_done) or ({"SANG", "TRUA", "TOI"}.issubset(set(finished_shifts)))
+    all_day_finished = (shift_code == "TOI" and all_done) or ({"SANG", "CHIEU", "TOI"}.issubset(set(finished_shifts)))
 
     state = {
         "date": today_str,

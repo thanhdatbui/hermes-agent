@@ -771,6 +771,30 @@ def _coord_redirect_violation(seg: str) -> str:
     return ""
 
 
+_GATE_AUDIT_LOG = Path("D:/Taadaa/logs/gate_audit.jsonl")
+
+
+def _closeout_approved_in_audit() -> bool:
+    """Fallback cho git push: closeout_gate chạy background nên cờ in-memory không bao giờ bật.
+    Đọc gate_audit.jsonl ngược từ cuối, lấy entry APPROVED (passed, score >= 85) mới nhất."""
+    try:
+        with open(_GATE_AUDIT_LOG, "rb") as fh:
+            fh.seek(0, os.SEEK_END)
+            fh.seek(max(0, fh.tell() - 2_000_000))
+            lines = fh.read().decode("utf-8", errors="replace").splitlines()
+    except OSError:
+        return False
+    for line in reversed(lines):
+        try:
+            entry = json.loads(line)
+            if (entry.get("passed") is True and entry.get("verdict") == "APPROVED"
+                    and float(entry.get("score", 0)) >= 85):
+                return True
+        except (ValueError, TypeError, AttributeError):
+            continue
+    return False
+
+
 def _coord_segment_gate(seg: str, state: dict) -> Tuple[bool, str]:
     if re.match(r"^(?:cd|Set-Location|pushd|popd)(?:\s|$)", seg, re.IGNORECASE):
         return True, ""
@@ -788,7 +812,10 @@ def _coord_segment_gate(seg: str, state: dict) -> Tuple[bool, str]:
         if re.search(r"(?:^|\s)-c\s", opts) or re.search(r"--exec\b", rest):
             return False, "COORDINATOR TERMINAL BLOCKED: Cờ git nguy hiểm (-c / --exec) bị cấm!"
         if sub == "push":
-            if not state.get("closeout_passed") and not state.get("last_closeout_score", 0) >= 85:
+            passed = state.get("closeout_passed", False) or state.get("last_closeout_score", 0) >= 85
+            if not passed:
+                passed = _closeout_approved_in_audit()
+            if not passed:
                 return False, "COORDINATOR TERMINAL BLOCKED: Cấm 'git push' trước khi Closeout Gate trả về APPROVED >= 85!"
             return True, ""
         if sub == "reset" and re.search(r"--hard\b", rest):

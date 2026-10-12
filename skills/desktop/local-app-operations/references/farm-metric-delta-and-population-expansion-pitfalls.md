@@ -50,7 +50,20 @@ Since new accounts contribute $\delta = 0$, `total_delta` measures **only the ne
 - **Top KPI Cards:** Show the aggregate macro sum of the entire fleet ($\sum \delta = -17$).
 - **Leaderboard Views (`bxh_follower`, `bxh_following`):** Filter for active growth (`item.delta_follower > 0`) and sort descending. Operators see top accounts gaining $+5, +4, +2$ and conclude the farm is booming, without realizing dozens of dormant accounts each lost $-1$ or $-2$ at the bottom of the list.
 
-### 4. Double-Sign String Interpolation Bug (`+-` Glitch)
+### 4. Direct Metric Reconciliation Protocol (Addressing Operator "Sao +N được nhì?")
+When operators query a specific positive or unexpected fleet delta (e.g. *"Sao follower +113 được nhì đúng con số không dữ liệu tính sao"*):
+1. **Never answer with generic formulas alone:** Operators want to know whether the number is genuine growth vs artifact/double-counting.
+2. **Follow the 4-step audit breakdown:**
+   - **Step 1 (Formula context):** Explain succinctly that the delta is the algebraic sum of individual account deltas between the latest snapshot and the preceding valid day's snapshot ($\sum \delta_i$).
+   - **Step 2 (Bincount & Net Decomposition):** Break down the fleet into:
+     - Zero-delta accounts (unchanged, e.g. 1,201 accs).
+     - Positive-delta accounts (sum positive, e.g. +120 across 53 accs).
+     - Negative-delta accounts (drops/unfollows, e.g. -7 across 6 accs).
+     - Resulting net delta: $120 - 7 = +113$.
+   - **Step 3 (Top Growth Driver Callouts):** Surface the specific anchor accounts driving the bulk of the change (e.g. `@huy010822` M18 gained +44 fl / +109 likes due to a viral video; M39, M6, M218 gained +6 fl each). This provides immediate, tangible proof that the spike came from actual algorithmic traction on specific devices, removing all operator doubt.
+   - **Step 4 (Multi-Day Trajectory Context):** Provide the preceding 3-5 days' delta trajectory (+37, +126, +134, +71, +113) to demonstrate that the daily rate fits expected farm cadence.
+
+### 5. Double-Sign String Interpolation Bug (`+-` Glitch)
 In template strings and client-side DOM refresh loops:
 ```html
 <!-- Server HTML Template -->

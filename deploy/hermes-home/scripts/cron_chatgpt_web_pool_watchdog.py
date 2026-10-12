@@ -100,6 +100,7 @@ UPDATED_XLSX_PATH = r"D:\OneDrive\TaadaaData\kibe\taikhoan_dat_v2_updated .xlsx"
 if not os.path.exists(UPDATED_XLSX_PATH):
     UPDATED_XLSX_PATH = r"D:\OneDrive\TaadaaData\kibe\taikhoan_dat_v2_updated.xlsx"
 DIRECT_OAUTH_URL = "https://chatgpt.com/auth/login_with?callback_path=%2F&connection=google-oauth2&screen_hint=login_or_signup&ext-web-mobile-direct-social-login=true"
+RECOVERY_EMAIL_FALLBACK = "thanhdatbui1995@gmail.com"
 
 def get_chatgpt_password_from_workbook(email: str) -> str:
     """Đọc mật khẩu ChatGPT chính chủ từ cột L (PASS CHATGPT) trong workbook taikhoan_dat_v2_updated."""
@@ -298,6 +299,22 @@ def get_unambiguous_gpm_profile(gpm_map, email):
     if len(candidates) == 1:
         return candidates[0]
     if len(candidates) > 1:
+        # Ưu tiên chọn profile có cookie session thực tế lớn nhất trên đĩa
+        best = None
+        best_size = -1
+        base_dir = Path.home() / "AppData" / "Local" / "Programs" / "GPMLogin" / "profile"
+        for p in candidates:
+            ppath = p.get("profile_path")
+            if ppath:
+                cfile = base_dir / ppath / "Default" / "Network" / "Cookies"
+                if cfile.exists():
+                    sz = cfile.stat().st_size
+                    if sz > best_size:
+                        best_size = sz
+                        best = p
+        if best and best_size > 50000:
+            log(f"[GPM-RESOLVE-BEST] {email}: Chọn profile ID {best.get('id')} có cookie session {best_size}B")
+            return best
         details = "; ".join(
             f"id={p.get('id')}, profile_path={p.get('profile_path')}, created_at={p.get('created_at') or p.get('created_time')}"
             for p in candidates
@@ -706,23 +723,43 @@ def solve_recaptcha_audio(page) -> bool:
         return False
 
     try:
-        anchor_btn = anchor_frame.locator("#recaptcha-anchor, .recaptcha-checkbox")
-        if anchor_btn.count() > 0:
-            anchor_btn.first.click(timeout=5000)
-            time.sleep(2.5)
+        has_bframe = any("recaptcha" in f.url and ("bframe" in f.url or "api2/bframe" in f.url) for f in page.frames)
+        if not has_bframe:
+            try:
+                anchor_btn = anchor_frame.locator("#recaptcha-anchor, .recaptcha-checkbox")
+                if anchor_btn.count() > 0:
+                    anchor_btn.first.click(timeout=3000, force=True)
+                    time.sleep(1)
+                    if anchor_btn.first.get_attribute("aria-checked") != "true":
+                        try:
+                            anchor_btn.first.dispatch_event("click")
+                        except Exception: pass
+                        time.sleep(2)
+            except Exception:
+                pass
 
-        if anchor_frame.locator("#recaptcha-anchor").get_attribute("aria-checked") == "true":
-            log("reCAPTCHA checkbox passed automatically (green check)!")
-            post_btn = page.locator('button:has-text("Tiếp theo"), button:has-text("Next"), #recaptchaNext').first
-            if post_btn.count() > 0 and post_btn.is_visible():
-                post_btn.click(timeout=5000)
-            return True
+        try:
+            if anchor_frame.locator("#recaptcha-anchor").get_attribute("aria-checked") == "true":
+                log("reCAPTCHA checkbox passed automatically (green check)!")
+                post_btn = page.locator('button:has-text("Tiếp theo"), button:has-text("Next"), #recaptchaNext').first
+                if post_btn.count() > 0 and post_btn.is_visible():
+                    post_btn.click(timeout=5000)
+                return True
+        except Exception:
+            pass
 
-        for _ in range(6):
-            for f in page.frames:
-                if "recaptcha" in f.url and ("bframe" in f.url or "api2/bframe" in f.url):
-                    bframe = f
-                    break
+        for _ in range(12):
+            bframe = next((f for f in page.frames if "recaptcha" in f.url and
+                           ("bframe" in f.url or "api2/bframe" in f.url)), None)
+            if not bframe:
+                try:
+                    srcs = page.locator("iframe[src*='recaptcha']").evaluate_all(
+                        "els => els.map(el => el.src || el.getAttribute('src') || '')")
+                    bframe = next((f for f in page.frames if any(src and
+                                   (src == f.url or ('bframe' in src and 'bframe' in f.url))
+                                   for src in srcs)), None)
+                except Exception:
+                    pass
             if bframe:
                 break
             time.sleep(1)
@@ -797,7 +834,7 @@ def perform_antigravity_oauth(cdp_addr: str, email: str, creds: dict = None):
     acc_info = (creds or {}).get(email.lower(), {})
     password = acc_info.get('password')
     totp_key = acc_info.get('totp')
-    recovery_email = acc_info.get('recovery_email')
+    recovery_email = acc_info.get('recovery_email') or RECOVERY_EMAIL_FALLBACK
 
     with sync_playwright() as p:
         browser = p.chromium.connect_over_cdp(f"http://{cdp_addr}")
@@ -820,6 +857,7 @@ def perform_antigravity_oauth(cdp_addr: str, email: str, creds: dict = None):
         
         page.goto(auth_url, wait_until="domcontentloaded", timeout=60000)
         start_t = time.time()
+        oauth_error = None
         while time.time() - start_t < 120:
             if captured_code:
                 break
@@ -862,7 +900,8 @@ def perform_antigravity_oauth(cdp_addr: str, email: str, creds: dict = None):
                     return (txt.includes('phone number') || txt.includes('số điện thoại')) && (txt.includes('enter a phone') || txt.includes('nhập số'));
                 }''')
                 if is_phone_cp:
-                    log(f"[{email}] Google yêu cầu xác minh qua SỐ ĐIỆN THOẠI (Phone Checkpoint). Dừng xử lý để bảo vệ tài khoản.")
+                    oauth_error = "PHONE_CHECKPOINT: Google yêu cầu xác minh qua SỐ ĐIỆN THOẠI"
+                    log(f"[{email}] {oauth_error}. Dừng xử lý để bảo vệ tài khoản.")
                     break
 
                 otp_inp = page.locator('input[name="code"], #idvPin, input[id*="idvPin"], input[id*="Pin"]:not([id*="phone"]):not([id*="Phone"]), input[name="pin"]').first
@@ -922,12 +961,12 @@ def perform_antigravity_oauth(cdp_addr: str, email: str, creds: dict = None):
                 clicked_code_opt = False
                 for txt_candidate in ["Get a verification code at", "Nhận mã xác minh tại", "Get a verification code"]:
                     loc = page.get_by_text(txt_candidate, exact=False).first
-                    if loc.count() > 0 and loc.is_visible():
-                        loc.click(timeout=4000)
+                    if loc.count() > 0 and loc.is_visible() and not page.evaluate("() => /Confirm your recovery email|Xác nhận email khôi phục|Unavailable because of too many attempts|Please try again later/i.test(document.body.innerText || '')"):
+                        loc.evaluate("el => (el.closest('[role=\\\"link\\\"], [role=\\\"button\\\"], li, [data-challengeindex], div[jsaction]') || el).click()")
                         clicked_code_opt = True
                         break
 
-                if not clicked_code_opt:
+                if not clicked_code_opt and not page.evaluate("() => /Confirm your recovery email|Xác nhận email khôi phục|Unavailable because of too many attempts|Please try again later/i.test(document.body.innerText || '')"):
                     clicked_code_opt = page.evaluate('''() => {
                         if (document.querySelector('input[name="code"], input[id*="idvPin"], input[id*="Pin"], input[id*="code"], #idvPin, #pin')) {
                             return false;
@@ -952,20 +991,6 @@ def perform_antigravity_oauth(cdp_addr: str, email: str, creds: dict = None):
 
             # 2.4. Xử lý "Confirm your recovery email" nếu Google yêu cầu
             try:
-                clicked_opt = page.evaluate('''() => {
-                    for (const el of document.querySelectorAll('div, li, span, a, [role="link"], [data-challengeindex]')) {
-                        const txt = (el.innerText || el.textContent || '').trim();
-                        if (txt === 'Confirm your recovery email' || txt === 'Xác nhận email khôi phục' || txt.includes('Confirm your recovery email')) {
-                            el.click();
-                            return true;
-                        }
-                    }
-                    return false;
-                }''')
-                if clicked_opt:
-                    time.sleep(3)
-                    continue
-
                 filled = False
                 if recovery_email:
                     filled = page.evaluate(f'''() => {{
@@ -979,9 +1004,24 @@ def perform_antigravity_oauth(cdp_addr: str, email: str, creds: dict = None):
                         return false;
                     }}''')
                 if filled:
-                    next_btn = page.locator('button:has-text("Tiếp theo"), button:has-text("Next"), #next, [role="button"]:has-text("Next")').first
-                    if next_btn.count() > 0 and next_btn.is_visible():
-                        next_btn.click(timeout=5000)
+                    page.keyboard.press("Enter")
+                    btn = page.locator('button:has-text("Tiếp theo"), button:has-text("Next"), #next, [role="button"]:has-text("Next"), #knowledgePreregisteredEmailNext').first
+                    if btn.count() > 0 and btn.is_visible(): btn.click(timeout=5000)
+                    time.sleep(3)
+                    continue
+
+                clicked_opt = page.evaluate('''() => {
+                    for (const el of document.querySelectorAll('[data-challengeindex], [data-challengetype], li, [role="link"], [role="button"]')) {
+                        const txt = (el.innerText || el.textContent || '').trim();
+                        if ((txt.includes('Confirm your recovery email') || txt.includes('Xác nhận email khôi phục')) && el.offsetParent !== null) {
+                            if (el.getAttribute('aria-disabled') === 'true' || el.disabled) continue;
+                            el.click();
+                            return true;
+                        }
+                    }
+                    return false;
+                }''')
+                if clicked_opt:
                     time.sleep(3)
                     continue
             except Exception as e:
@@ -1031,7 +1071,7 @@ def perform_antigravity_oauth(cdp_addr: str, email: str, creds: dict = None):
                 ss_dir.mkdir(parents=True, exist_ok=True)
                 page.screenshot(path=str(ss_dir / f"oauth_err_{email.split('@')[0]}.png"))
             except Exception: pass
-            return False, "Timeout bắt OAuth code"
+            return False, oauth_error or "Timeout bắt OAuth code"
             
         ex_resp = requests.post(f"{OMNI_API}/api/oauth/antigravity/exchange", json={
             "code": captured_code,
@@ -1468,6 +1508,10 @@ def main():
     codex_active_cnt = sum(1 for c in codex_after if c.get('isActive') and c.get('testStatus') == 'active')
     
     all_failed = failed_chatgpt + failed_ag + failed_codex
+    deduped_failures = {}
+    for account, error in all_failed:
+        deduped_failures.setdefault(str(account).strip().lower(), (account, error))
+    all_failed = list(deduped_failures.values())
 
     from datetime import datetime, timezone
     
@@ -1479,6 +1523,23 @@ def main():
     failure_categories = {}
     for f_item in categorized_failures:
         failure_categories[f_item["category"]] = failure_categories.get(f_item["category"], 0) + 1
+
+    # Đọc danh sách failure từ lần quét trước để dedup alert (Silent Watchdog)
+    prev_failed_accounts = set()
+    try:
+        if os.path.exists(TELEMETRY_CACHE_PATH):
+            with open(TELEMETRY_CACHE_PATH, "r", encoding="utf-8") as f_prev:
+                prev_data = json.load(f_prev)
+                prev_failed_accounts = {
+                    str(f_item.get("account", "")).strip().lower()
+                    for f_item in prev_data.get("failures", [])
+                    if isinstance(f_item, dict) and f_item.get("account")
+                }
+    except Exception:
+        pass
+
+    current_failed_accounts = {str(a).strip().lower() for a, _ in all_failed}
+    new_failed_accounts = current_failed_accounts - prev_failed_accounts
 
     scan_ts = datetime.now(timezone.utc).isoformat()
     telemetry_data = {
@@ -1500,7 +1561,12 @@ def main():
     except Exception as e_tel:
         log(f"[WATCHDOG-TELEMETRY-WARN] Lỗi ghi telemetry: {e_tel}")
 
-    if not recovered_chatgpt and not recovered_ag and not all_failed and not disabled_codex:
+    has_actions = bool(recovered_chatgpt or recovered_ag or recovered_codex or disabled_codex)
+    has_new_issues = bool(new_failed_accounts)
+
+    # Silent Watchdog Rule: Nếu không có hành động thành công và không có lỗi MỚI xuất hiện -> Giữ im lặng hoàn toàn!
+    if not has_actions and not has_new_issues:
+        log("[SILENT-WATCHDOG] Không có thay đổi trạng thái mới (0 acc hồi sinh, không có lỗi mới). Giữ im lặng.")
         return
 
     report_lines = [

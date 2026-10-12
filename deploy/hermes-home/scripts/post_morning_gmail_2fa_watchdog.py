@@ -390,14 +390,17 @@ def main():
     busy_feed = get_upcoming_feed_machines(buffer_minutes=60) if not args.force else set()
 
     eligible_candidates = []
+    skipped_busy_machines = []
     for c in candidates:
         m = c.get("machine", 0)
         if not args.force and m > 0:
             if m in active_locks:
                 log(f"[LOCK-SKIP] Bỏ qua {c['email']} (Máy {m}): máy đang có lock ({active_locks})")
+                skipped_busy_machines.append(f"M{m:02d} ({c['email']}): nhường lock tiến trình khác")
                 continue
             if m in busy_feed:
                 log(f"[FEED-SKIP] Bỏ qua {c['email']} (Máy {m}): máy đang hoặc sắp chạy feed ({busy_feed})")
+                skipped_busy_machines.append(f"M{m:02d} ({c['email']}): nhường lịch nuôi TikTok")
                 continue
         eligible_candidates.append(c)
 
@@ -468,6 +471,10 @@ def main():
             report.append(f"- Cần lưu ý ({len(fail_list)}):")
             for f_item in fail_list:
                 report.append(f"  + {f_item}")
+        if skipped_busy_machines:
+            report.append(f"- Bỏ qua an toàn ({len(skipped_busy_machines)} máy nhường cron khác):")
+            for sk in skipped_busy_machines:
+                report.append(f"  • {sk}")
         if pending_list:
             report.append(f"- Đang chờ đăng nhập GPM ({len(pending_list)}):")
             for p_item in pending_list:

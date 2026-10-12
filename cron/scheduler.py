@@ -2098,13 +2098,19 @@ def _run_job_script(script_path: str) -> tuple[bool, str]:
         from tools.environments.local import _sanitize_subprocess_env
 
         popen_kwargs = {"creationflags": windows_hide_flags()} if sys.platform == "win32" else {}
+        cron_env = _sanitize_subprocess_env(os.environ.copy())
+        # Default thread caps to prevent OpenBLAS/MKL memory allocation failures on high-core hosts
+        cron_env.setdefault("OPENBLAS_NUM_THREADS", "1")
+        cron_env.setdefault("MKL_NUM_THREADS", "1")
+        cron_env.setdefault("OMP_NUM_THREADS", "1")
+        cron_env.setdefault("NUMEXPR_NUM_THREADS", "1")
         result = subprocess.run(
             argv,
             capture_output=True,
             text=True,
             timeout=script_timeout,
             cwd=str(path.parent),
-            env=_sanitize_subprocess_env(os.environ.copy()),
+            env=cron_env,
             **popen_kwargs,
         )
         stdout = (result.stdout or "").strip()

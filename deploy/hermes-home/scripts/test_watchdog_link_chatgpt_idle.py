@@ -13,7 +13,8 @@ import post_evening_gpm_login_watchdog as w_gpm
 
 class TestWatchdogLinkChatgptAndGpm(unittest.TestCase):
     def test_get_live_targets_from_mock_excel(self):
-        with patch("watchdog_link_chatgpt_idle.MASTER_XLSX") as mock_p:
+        with patch("watchdog_link_chatgpt_idle.get_gpm_pending_emails", return_value={"live_ok@gmail.com"}), \
+             patch("watchdog_link_chatgpt_idle.MASTER_XLSX") as mock_p:
             mock_p.exists.return_value = True
             with patch("openpyxl.load_workbook") as mock_wb_func:
                 mock_wb = MagicMock()
@@ -46,7 +47,7 @@ class TestWatchdogLinkChatgptAndGpm(unittest.TestCase):
                         self.assertIn("scanned_targets", res)
 
     def test_post_evening_gpm_login_constants(self):
-        self.assertEqual(w_gpm.MAX_WORKERS, 2)
+        self.assertEqual(w_gpm.MAX_WORKERS, 5)
         self.assertEqual(w_gpm.MAX_LOGINS_PER_PROXY, 2)
         self.assertEqual(w_gpm.MIN_IDLE_BUFFER_MIN, 45)
 

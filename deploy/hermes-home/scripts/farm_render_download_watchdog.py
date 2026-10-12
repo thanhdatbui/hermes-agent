@@ -6,16 +6,25 @@ import os
 import sys
 import sqlite3
 import datetime
+import json
+import subprocess
 
 try:
     import psutil
 except ImportError:
     psutil = None
 
+if sys.stdout and hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 
 def detect_host():
-    # Kiểm tra Admin host
-    if os.path.exists(r"D:\video goc may 2") or os.environ.get("TAADAA_HOST", "").lower() == "admin":
+    user = os.environ.get("USERNAME", "").lower()
+    # Kiểm tra Admin host dựa trên Username hoặc TAADAA_HOST
+    if user == "admin" or os.environ.get("TAADAA_HOST", "").lower() == "admin":
         return {
             "name": "FARM ADMIN",
             "video_goc": r"D:\video goc may 2",
@@ -41,28 +50,24 @@ def detect_host():
 
 
 def is_download_running():
-    if not psutil:
-        return False
-    for p in psutil.process_iter(["name", "cmdline"]):
-        try:
-            cmd = " ".join(p.info["cmdline"] or []).lower()
-            if "download_by_niche.py" in cmd or "download_all_sources.py" in cmd:
-                return True
-        except Exception:
-            pass
+    try:
+        out = subprocess.check_output('wmic process where "name=\'python.exe\'" get commandline', shell=True, text=True, timeout=5)
+        out_lower = out.lower()
+        if "download_by_niche.py" in out_lower or "download_all_sources.py" in out_lower or "auto_rescan_loop.py" in out_lower or "smart_gaixinh" in out_lower or "distribute_exclusive" in out_lower or "clean_vn" in out_lower or "run_admin_clean_vn" in out_lower or "run_admin_downloader" in out_lower:
+            return True
+    except Exception:
+        pass
     return False
 
 
 def is_render_running():
-    if not psutil:
-        return False
-    for p in psutil.process_iter(["name", "cmdline"]):
-        try:
-            cmd = " ".join(p.info["cmdline"] or []).lower()
-            if "random_batch_render.py" in cmd or "ffmpeg" in cmd:
-                return True
-        except Exception:
-            pass
+    try:
+        out = subprocess.check_output('wmic process where "name=\'python.exe\' or name=\'ffmpeg.exe\'" get commandline', shell=True, text=True, timeout=5)
+        out_lower = out.lower()
+        if "random_batch_render.py" in out_lower or "run_render" in out_lower or "ffmpeg" in out_lower or "admin_render_chain" in out_lower:
+            return True
+    except Exception:
+        pass
     return False
 
 
@@ -103,7 +108,6 @@ def get_source_video_stats(host_info):
                     if entry.is_dir() and entry.name.isdigit():
                         total_folders += 1
                         try:
-                            # Chỉ lấy tối đa 50 file để tránh đơ HDD
                             cnt = 0
                             with os.scandir(entry.path) as sub_it:
                                 for f in sub_it:
@@ -144,73 +148,184 @@ def get_render_stats(host_info):
     total_rendered = 0
 
     for slot in range(1, 9):
-        ge30_folders = 0
+        ge45_folders = 0
         total_clips = 0
         for m in range(base_machine, base_machine + 80):
             folder_num = (m - base_machine) * 8 + slot
             folder_path = os.path.join(render_root, str(folder_num))
             c = count_clips_in_folder(folder_path)
             total_clips += c
-            if c >= 30:
-                ge30_folders += 1
+            if c >= 45:
+                ge45_folders += 1
         
         tik_stats[slot] = {
-            "ge30": ge30_folders,
+            "ge45": ge45_folders,
             "total_clips": total_clips,
-            "pct": (ge30_folders / 80.0) * 100.0
+            "pct": (ge45_folders / 80.0) * 100.0
         }
         total_rendered += total_clips
 
     return tik_stats, total_rendered
 
 
-def main():
-    host_info = detect_host()
-    now_str = datetime.datetime.now().strftime("%H:%M %d/%m/%Y")
-    
-    # 1. Video gốc
-    is_running = is_download_running()
-    status_icon = "🟢" if is_running else "⚪"
-    status_text = "Đang chạy" if is_running else "Đang dừng"
-    
-    src_folders, src_ge30, src_ge45, src_mp4 = get_source_video_stats(host_info)
-
-    # 2. Render Tik1..Tik8
-    is_render = is_render_running()
-    render_icon = "🟢" if is_render else "⚪"
-    render_text = "Đang chạy" if is_render else "Đang dừng"
-    tik_stats, total_rendered = get_render_stats(host_info)
+def format_cluster_section(label, render_root, video_goc, is_running, sf, s30, s45, smp4, is_rd, tik_stats, total_rendered):
+    rd_icon = "🟢" if is_rd else "⚪"
+    rd_text = "Đang chạy" if is_rd else "Đang dừng"
+    dl_icon = "🟢" if is_running else "⚪"
+    dl_text = "Đang chạy" if is_running else "Đang dừng"
 
     tik_lines = []
     for slot in range(1, 9):
-        st = tik_stats[slot]
-        ge30 = st["ge30"]
-        pct = st["pct"]
-        clips = st["total_clips"]
-        if ge30 >= 80:
+        st = tik_stats.get(str(slot), tik_stats.get(slot, {}))
+        ge45 = st.get("ge45", st.get("ge30", 0))
+        pct = st.get("pct", 0.0)
+        clips = st.get("total_clips", 0)
+        if ge45 >= 80:
             icon = "✅"
-        elif ge30 > 0:
+        elif ge45 > 0:
             icon = "🟡"
         else:
             icon = "⚪"
-        tik_lines.append(f"{icon} Tik{slot}: <b>{ge30}/80</b> folder (≥30 clip) [{pct:.1f}%] | <b>{clips:,}</b> clip")
-
+        tik_lines.append(f"{icon} Tik{slot}: <b>{ge45}/80</b> folder (≥45 clip) [{pct:.1f}%] | <b>{clips:,}</b> clip")
     tik_output = "\n".join(tik_lines)
 
-    msg = f"""📊 <b>BÁO CÁO TIẾN ĐỘ {host_info['name']} (DOWNLOAD & RENDER)</b> - {now_str}
+    show_download = is_running or s45 < 640
+    dl_part = ""
+    if show_download:
+        dl_part = f"""📥 <b>Video gốc (<code>{video_goc}</code>):</b>
+• Trạng thái download: {dl_icon} <b>{dl_text}</b>
+• Đạt ≥ 45 video: <b>{s45:,}/{sf:,}</b> folder | <b>{smp4:,}</b> clip
+"""
 
-📥 <b>1. Video gốc (<code>{host_info['video_goc']}</code>):</b>
-• Trạng thái download: {status_icon} <b>{status_text}</b>
-• Tổng folder nguồn: <b>{src_folders:,}</b> folder
-• Đạt ≥ 30 video: <b>{src_ge30:,}</b> folder
-• Đạt ≥ 45 video: <b>{src_ge45:,}</b> folder
-• Tổng video mp4 gốc: <b>{src_mp4:,}</b> video
-
-🎬 <b>2. Tiến độ Render Tik1..Tik8 (<code>{host_info['render_root']}</code>):</b>
-• Trạng thái render: {render_icon} <b>{render_text}</b>
+    return f"""🏢 <b>{label} (<code>{render_root}</code>):</b>
+{dl_part}• Trạng thái render: {rd_icon} <b>{rd_text}</b>
 {tik_output}
+👉 Đã render cụm: <b>{total_rendered:,}</b> clip"""
 
-🔥 <b>Tổng clip render toàn farm:</b> <b>{total_rendered:,}</b> video"""
+
+ADMIN_CACHE_PATH = r"D:\OneDrive\TaadaaData\admin\last_render_stats.json"
+
+
+def fetch_admin_stats_remote():
+    try:
+        cmd = ['ssh', '-o', 'ConnectTimeout=3', 'admin-farm', 'python -c "import sys; sys.path.append(r\'%LOCALAPPDATA%\\hermes\\scripts\'); import farm_render_download_watchdog as f, json; h = f.detect_host(); is_dl = f.is_download_running(); sf, s30, s45, smp4 = f.get_source_video_stats(h); is_rd = f.is_render_running(); tst, trd = f.get_render_stats(h); print(json.dumps({\'name\': h[\'name\'], \'video_goc\': h[\'video_goc\'], \'render_root\': h[\'render_root\'], \'is_dl\': is_dl, \'src_folders\': sf, \'src_ge30\': s30, \'src_ge45\': s45, \'src_mp4\': smp4, \'is_rd\': is_rd, \'tik_stats\': tst, \'total_rendered\': trd}))"']
+        res = subprocess.run(cmd, capture_output=True, text=True, errors="replace", timeout=8)
+        if res.returncode == 0:
+            for line in res.stdout.splitlines():
+                line = line.strip()
+                if line.startswith("{") and line.endswith("}"):
+                    data = json.loads(line)
+                    try:
+                        os.makedirs(os.path.dirname(ADMIN_CACHE_PATH), exist_ok=True)
+                        with open(ADMIN_CACHE_PATH, "w", encoding="utf-8") as f:
+                            json.dump(data, f, ensure_ascii=False, indent=2)
+                    except Exception:
+                        pass
+                    return data, "LIVE"
+    except Exception:
+        pass
+
+    if os.path.exists(ADMIN_CACHE_PATH):
+        try:
+            with open(ADMIN_CACHE_PATH, "r", encoding="utf-8") as f:
+                return json.load(f), "CACHE"
+        except Exception:
+            pass
+
+    return None, "OFFLINE"
+
+
+def main():
+    host_info = detect_host()
+    now_str = datetime.datetime.now().strftime("%H:%M %d/%m/%Y")
+
+    # Local stats
+    is_running = is_download_running()
+    src_folders, src_ge30, src_ge45, src_mp4 = get_source_video_stats(host_info)
+    is_render = is_render_running()
+    tik_stats, total_rendered = get_render_stats(host_info)
+
+    # If called with --json or on Admin machine directly: output local cluster only
+    if "--json" in sys.argv or host_info["name"] == "FARM ADMIN":
+        payload = {
+            "name": host_info["name"],
+            "video_goc": host_info["video_goc"],
+            "render_root": host_info["render_root"],
+            "is_dl": is_running,
+            "src_folders": src_folders,
+            "src_ge30": src_ge30,
+            "src_ge45": src_ge45,
+            "src_mp4": src_mp4,
+            "is_rd": is_render,
+            "tik_stats": tik_stats,
+            "total_rendered": total_rendered,
+        }
+        if "--json" in sys.argv:
+            print(json.dumps(payload))
+            return
+        # If on Admin directly without --json
+        sec = format_cluster_section(
+            "FARM ADMIN (MÁY 201-280)",
+            host_info["render_root"],
+            host_info["video_goc"],
+            is_running,
+            src_folders,
+            src_ge30,
+            src_ge45,
+            src_mp4,
+            is_render,
+            tik_stats,
+            total_rendered,
+        )
+        print(f"📊 <b>BÁO CÁO TIẾN ĐỘ FARM ADMIN</b> - {now_str}\n\n{sec}\n\n🔥 <b>Tổng clip render:</b> <b>{total_rendered:,}</b> video")
+        return
+
+    # Running on KIBE: generate unified report for BOTH KIBE and ADMIN
+    kibe_sec = format_cluster_section(
+        "FARM KIBE (MÁY 1-80)",
+        host_info["render_root"],
+        host_info["video_goc"],
+        is_running,
+        src_folders,
+        src_ge30,
+        src_ge45,
+        src_mp4,
+        is_render,
+        tik_stats,
+        total_rendered,
+    )
+
+    admin_data, admin_mode = fetch_admin_stats_remote()
+    if admin_data:
+        admin_sec = format_cluster_section(
+            "FARM ADMIN (MÁY 201-280)",
+            admin_data["render_root"],
+            admin_data["video_goc"],
+            admin_data.get("is_dl", False),
+            admin_data.get("src_folders", 0),
+            admin_data.get("src_ge30", 0),
+            admin_data.get("src_ge45", 0),
+            admin_data.get("src_mp4", 0),
+            admin_data.get("is_rd", False),
+            admin_data.get("tik_stats", {}),
+            admin_data.get("total_rendered", 0),
+        )
+        grand_total = total_rendered + admin_data.get("total_rendered", 0)
+        msg = f"""📊 <b>BÁO CÁO TIẾN ĐỘ RENDER TOÀN FARM</b> - {now_str}
+
+{kibe_sec}
+
+{admin_sec}
+
+🔥 <b>TỔNG CLIP RENDER TOÀN BỘ 2 FARM:</b> <b>{grand_total:,}</b> video"""
+    else:
+        msg = f"""📊 <b>BÁO CÁO TIẾN ĐỘ RENDER TOÀN FARM</b> - {now_str}
+
+{kibe_sec}
+
+⚠️ <i>Farm Admin (M201-280): Không kết nối được qua mạng LAN</i>
+
+🔥 <b>Tổng clip render Farm Kibe:</b> <b>{total_rendered:,}</b> video"""
 
     print(msg)
 

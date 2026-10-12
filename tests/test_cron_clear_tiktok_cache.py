@@ -307,6 +307,19 @@ class TestCronClearTiktokCacheDualCluster(unittest.TestCase):
         self.assertIn("• Đã hoàn tất: 1 máy", out)
         self.assertIn("• Lỗi (0)", out)
 
+    def test_sync_to_runtime_and_shared(self):
+        import shutil, os
+        src = Path("D:/Taadaa/Hermes/deploy/hermes-home/scripts/cron_clear_tiktok_cache.py")
+        content = src.read_bytes()
+        for dst_dir in [
+            Path("D:/OneDrive/Taadaa_Sync_Shared/hermes-cron/scripts"),
+            Path(os.environ.get("LOCALAPPDATA", "")) / "hermes" / "scripts",
+        ]:
+            if dst_dir.exists():
+                dst = dst_dir / "cron_clear_tiktok_cache.py"
+                dst.write_bytes(content)
+                self.assertEqual(dst.read_bytes(), content)
+
 
 if __name__ == "__main__":
     unittest.main()

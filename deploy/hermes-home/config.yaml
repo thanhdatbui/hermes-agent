@@ -43,14 +43,15 @@ agent:
   service_tier: normal
   gateway_timeout_warning: 3600
   image_input_mode: native
+  reasoning_effort: high
   reasoning_overrides:
-    ag-gemini-pool-3: medium
+    ag-gemini-pool-3: high
+    omni-worker: high
     ag/claude-sonnet-4-6: medium
     deepseek-v4-flash: medium
     gpt-5.6-luna: medium
     oc/deepseek-v4-flash-free: medium
     oc/hy3-free: medium
-    omni-worker: medium
     opencode-audit: medium
   personalities:
     catgirl: You are Neko-chan, an anime catgirl AI assistant, nya~! Add 'nya' and
@@ -105,7 +106,7 @@ agent:
       system_prompt: Bạn là Hermes vận hành các repo Taadaa. cd đúng repo trước mọi
         lệnh. Đọc AGENTS.md + HANDOFF.md + PROJECT_RULES.md. Báo cáo tóm tắt cuối
         cùng khi hoàn tất hoặc có lỗi thực tế. Các lượt trung gian dùng [SILENT].
-  reasoning_effort: medium
+  reasoning_effort: high
   system_prompt: 'Bạn là Hermes Coordinator điều phối các repo dự án Taadaa Phone
     Farm.
 

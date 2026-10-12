@@ -40,6 +40,7 @@ CLUSTERS = [
         "adb_socket": None,
         "adb_args": [],
         "fleet_range": (1, 80),
+        "max_workers": 15,
     },
     {
         "name": "admin",
@@ -48,6 +49,7 @@ CLUSTERS = [
         "adb_socket": "tcp:192.168.110.119:5037",
         "adb_args": ["-H", "192.168.110.119", "-P", "5037"],
         "fleet_range": (201, 280),
+        "max_workers": 5,
     },
 ]
 
@@ -299,96 +301,60 @@ def main() -> int:
         sys.stderr.write(f"[CRON][DRY-RUN] Would clear {len(target_machines)} machines; state unchanged.\n")
         return 0
 
-    sys.stderr.write(f"[CRON] Starting concurrent TikTok cache clear on {len(target_machines)} machines (workers={MAX_WORKERS})...\n")
+    sys.stderr.write(f"[CRON] Starting concurrent TikTok cache clear on {len(target_machines)} machines...\n")
 
     success_machines: list[int] = []
-    failed_machines: list[tuple[int, str]] = []
+    failed_machines = []
+    locked_machines = []
+    machine_retries = state_data.get("machine_retries", {})
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        futures = {
-            executor.submit(clear_device_cache, m, s, cluster): m
-            for m, s, cluster in target_machines
-        }
-        for future in concurrent.futures.as_completed(futures):
-            m_num, serial, ok, msg, c_name = future.result()
-            sys.stderr.write(f"[{c_name.upper()}] {msg}\n")
-            if ok:
-                success_machines.append(m_num)
-                if not args.dry_run:
-                    cleared_today.add(m_num)
-                    state_data["cleared_machines"] = sorted(list(cleared_today))
-                    save_state(state_data)
-            else:
-                if "[LOCKED]" in msg:
-                    continue
+    executors = []
+    futures = {}
+    for cluster in CLUSTERS:
+        c_targets = [item for item in target_machines if item[2]["name"] == cluster["name"]]
+        if not c_targets:
+            continue
+        c_workers = cluster.get("max_workers", MAX_WORKERS)
+        c_exec = concurrent.futures.ThreadPoolExecutor(max_workers=c_workers)
+        executors.append(c_exec)
+        for m, s, cl in c_targets:
+            futures[c_exec.submit(clear_device_cache, m, s, cl)] = m
 
-                machine_retries[str(m_num)] = machine_retries.get(str(m_num), 0) + 1
-                state_data["machine_retries"] = machine_retries
+    for future in concurrent.futures.as_completed(futures):
+        m_num, serial, ok, msg, c_name = future.result()
+        sys.stderr.write(f"[{c_name.upper()}] {msg}\n")
+        if ok:
+            success_machines.append(m_num)
+            if not args.dry_run:
+                cleared_today.add(m_num)
+                state_data["cleared_machines"] = sorted(list(cleared_today))
                 save_state(state_data)
+        else:
+            if "[LOCKED]" in msg:
+                locked_machines.append(m_num)
+                continue
 
-                reason = "Error"
-                if "WIDGET_MISS" in msg:
-                    reason = "WIDGET_MISS"
-                elif "timed out" in msg.lower() or "timeout" in msg.lower():
-                    reason = "Timeout"
-                elif "[WARN]" in msg or "[ERROR]" in msg:
-                    parts = msg.split(":", 2)
-                    reason = parts[2].strip() if len(parts) >= 3 else parts[-1].strip()
-                failed_machines.append((m_num, reason))
+            machine_retries[str(m_num)] = machine_retries.get(str(m_num), 0) + 1
+            state_data["machine_retries"] = machine_retries
+            save_state(state_data)
+
+            reason = "Error"
+            if "WIDGET_MISS" in msg:
+                reason = "WIDGET_MISS"
+            elif "timed out" in msg.lower() or "timeout" in msg.lower():
+                reason = "Timeout"
+            elif "[WARN]" in msg or "[ERROR]" in msg:
+                parts = msg.split(":", 2)
+                reason = parts[2].strip() if len(parts) >= 3 else parts[-1].strip()
+            failed_machines.append((m_num, reason))
+
+    for ex in executors:
+        ex.shutdown(wait=False)
 
     s_count = len(success_machines)
     f_count = len(failed_machines)
     total_attempted = len(target_machines)
 
-    # Anti-spam alert:
-    # 1. Chỉ cảnh báo nếu tỷ lệ fail thực sự lớn trên quy mô farm (ít nhất 5 máy fail và > 30% số máy quét)
-    # 2. Debounce: Chỉ báo duy nhất 1 lần trong ngày đối với cùng danh sách/nội dung lỗi (alert-once)
-    if total_attempted > 0 and f_count >= 5 and f_count > (total_attempted * 0.3):
-        f_summary_str = ", ".join(f"{m:02d} ({r})" for m, r in sorted(failed_machines))
-        alert_msg = f"Đa số máy dọn cache thất bại/timeout ({f_count}/{total_attempted} máy fail): {f_summary_str}"
-        if state_data.get("last_alert_date") != today_str or state_data.get("last_alert_msg") != alert_msg:
-            _send_clear_cache_alert(alert_msg)
-            state_data["last_alert_date"] = today_str
-            state_data["last_alert_msg"] = alert_msg
-            save_state(state_data)
-
-    if s_count == 0:
-        sys.stderr.write(f"[CRON] s_count == 0 ({f_count} failed), im lặng không xuất stdout.\n")
-        return 0
-
-    if state_data.get("reported_date") == today_str:
-        # Completion condition: all currently online fleet machines must be in cleared_today
-        if connected_fleet_machines and connected_fleet_machines.issubset(cleared_today):
-            print(
-                f"[DỌN CACHE TIKTOK] Đã dọn bù thành công: {s_count} máy. "
-                f"Toàn farm online ({len(connected_fleet_machines)}/{len(connected_fleet_machines)} máy) đã hoàn tất."
-            )
-        else:
-            sys.stderr.write(f"[CRON] Đã dọn bù {s_count} máy. Đã báo cáo hôm nay rồi, im lặng.\n")
-        return 0
-
-    report = [
-        f"[BÁO CÁO DỌN DẸP CACHE TIKTOK]",
-        f"• Đã hoàn tất: {len(cleared_today)} máy",
-    ]
-    for cluster in CLUSTERS:
-        c_label = cluster["label"]
-        min_m, max_m = cluster["fleet_range"]
-        c_succ = [m for m in success_machines if min_m <= m <= max_m]
-        c_fail = [(m, r) for m, r in failed_machines if min_m <= m <= max_m]
-        s_list = ", ".join(f"{m:02d}" for m in sorted(c_succ)) if c_succ else "None"
-        report.append(f"\n🏢 【{c_label}】")
-        report.append(f"• Đã hoàn tất: {len(c_succ)} máy ({s_list})")
-        if c_fail:
-            f_list = ", ".join(f"{m:02d}" for m, _ in sorted(c_fail))
-            report.append(f"• Lỗi ({len(c_fail)}): {f_list}")
-            for m, reason in sorted(c_fail):
-                report.append(f"  - Máy {m:02d}: {reason}")
-        else:
-            report.append(f"• Lỗi (0)")
-
-    print("\n".join(report))
-    state_data["reported_date"] = today_str
     state_data["last_cluster_stats"] = {
         c["name"]: {
             "success": len([m for m in success_machines if c["fleet_range"][0] <= m <= c["fleet_range"][1]]),
@@ -414,6 +380,62 @@ def main() -> int:
         for c in CLUSTERS
     }
     save_state(state_data)
+
+    if total_attempted > 0 and f_count >= 5 and f_count > (total_attempted * 0.3):
+        f_summary_str = ", ".join(f"{m:02d} ({r})" for m, r in sorted(failed_machines))
+        alert_msg = f"Đa số máy dọn cache thất bại/timeout ({f_count}/{total_attempted} máy fail): {f_summary_str}"
+        if state_data.get("last_alert_date") != today_str or state_data.get("last_alert_msg") != alert_msg:
+            _send_clear_cache_alert(alert_msg)
+            state_data["last_alert_date"] = today_str
+            state_data["last_alert_msg"] = alert_msg
+            save_state(state_data)
+
+    all_done = bool(connected_fleet_machines and connected_fleet_machines.issubset(cleared_today))
+    has_retries_left = any(
+        m not in cleared_today and machine_retries.get(str(m), 0) < 2
+        for m in connected_fleet_machines
+    )
+
+    should_report = False
+    if state_data.get("reported_date") != today_str or args.force:
+        if all_done:
+            should_report = True
+        elif not has_retries_left:
+            should_report = True
+
+    if not should_report:
+        sys.stderr.write(f"[CRON] Đang trong nhịp retry hoặc đã báo cáo hôm nay (cleared={len(cleared_today)}/{len(connected_fleet_machines)}). Im lặng.\n")
+        return 0
+
+    report = [
+        f"[BÁO CÁO DỌN DẸP CACHE TIKTOK]",
+        f"• Đã hoàn tất: {len(cleared_today)} máy",
+    ]
+    fail_map = dict(failed_machines)
+    for cluster in CLUSTERS:
+        c_label = cluster["label"]
+        min_m, max_m = cluster["fleet_range"]
+        c_succ = [m for m in sorted(cleared_today) if min_m <= m <= max_m]
+        c_fail_ids = [m for m in sorted(connected_fleet_machines) if min_m <= m <= max_m and m not in cleared_today]
+        c_lock = [m for m in sorted(locked_machines) if min_m <= m <= max_m]
+        s_list = ", ".join(f"{m:02d}" for m in c_succ) if c_succ else "None"
+        report.append(f"\n🏢 【{c_label}】")
+        report.append(f"• Đã hoàn tất: {len(c_succ)} máy ({s_list})")
+        if c_lock:
+            l_list = ", ".join(f"{m:02d}" for m in c_lock)
+            report.append(f"• Bỏ qua an toàn: {len(c_lock)} máy ({l_list}) (nhường lock tiến trình khác)")
+        if c_fail_ids:
+            f_list = ", ".join(f"{m:02d}" for m in c_fail_ids)
+            report.append(f"• Lỗi ({len(c_fail_ids)}): {f_list}")
+            for m in c_fail_ids:
+                reason = fail_map.get(m, "Timeout hoặc lỗi kết nối sau 2 lần thử")
+                report.append(f"  - Máy {m:02d}: {reason}")
+        else:
+            report.append(f"• Lỗi (0)")
+
+    print("\n".join(report))
+    state_data["reported_date"] = today_str
+    save_state(state_data)
     return 0
 
 
@@ -421,5 +443,11 @@ if __name__ == "__main__":
     try:
         sys.exit(main())
     except Exception as exc:
-        _send_clear_cache_alert(f"Lỗi script nghiêm trọng: {exc}")
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        err_msg = f"Lỗi script nghiêm trọng: {exc}"
+        state_data = load_state(today_str)
+        if state_data.get("last_script_err") != err_msg:
+            _send_clear_cache_alert(err_msg)
+            state_data["last_script_err"] = err_msg
+            save_state(state_data)
         raise

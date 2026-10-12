@@ -83,7 +83,7 @@ ADMIN_CRON_JOBS = [
         "expr": "*/5 * * * *",
         "no_agent": True,
         "script": "feed_session_watchdog.py",
-        "deliver": "telegram:-5373649734",
+        "deliver": "telegram:-5377611430",
         "workdir": None,
     },
     {
@@ -99,7 +99,7 @@ ADMIN_CRON_JOBS = [
         "expr": "0 * * * *",
         "no_agent": True,
         "script": "farm_render_download_watchdog.py",
-        "deliver": "telegram:-5373649734",
+        "deliver": "telegram:-5435853713",
         "workdir": None,
     },
     {
@@ -123,7 +123,7 @@ ADMIN_CRON_JOBS = [
         "expr": "*/10 21,22,23 * * *",
         "no_agent": True,
         "script": "post_evening_avatar_watchdog.py",
-        "deliver": "telegram:-5373649734",
+        "deliver": "telegram:-5435853713",
         "workdir": None,
     },
     {
@@ -131,7 +131,7 @@ ADMIN_CRON_JOBS = [
         "expr": "*/10 21,22,23 * * *",
         "no_agent": True,
         "script": "post_evening_gpm_login_watchdog.py",
-        "deliver": "telegram:-5373649734",
+        "deliver": "telegram:-5256944036",
         "workdir": None,
     },
     {

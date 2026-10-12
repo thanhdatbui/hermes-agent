@@ -20141,6 +20141,17 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
                             "Queued follow-up for session %s: skipping resend because final streamed delivery was confirmed.",
                             session_key or "?",
                         )
+                    if first_response and adapter:
+                        try:
+                            _ev = pending_event or MessageEvent(
+                                platform=source.platform,
+                                event_type=EventType.MESSAGE,
+                                source=source,
+                                text=first_response,
+                            )
+                            await self._deliver_media_from_response(first_response, _ev, adapter)
+                        except Exception as _med_err:
+                            logger.warning("Failed to deliver media before queued message: %s", _med_err)
                     # Release deferred bg-review notifications now that the
                     # first response has been delivered.  Pop from the
                     # adapter's callback dict (prevents double-fire in

@@ -313,6 +313,21 @@ def main() -> int:
                 except OSError:
                     pass
 
+        # Giám sát và tự động bật lại OpenCode Bridge :20130 nếu bị tắt
+        try:
+            import urllib.request
+            req = urllib.request.Request("http://127.0.0.1:20130/health")
+            with urllib.request.urlopen(req, timeout=2) as r:
+                pass
+        except Exception:
+            try:
+                import subprocess
+                bridge_script = r"D:\Taadaa\tools\opencode_bridge.py"
+                if os.path.exists(bridge_script):
+                    subprocess.Popen([sys.executable, bridge_script], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except Exception:
+                pass
+
         return 0
     except Exception:
         return 0

@@ -62,7 +62,8 @@ if ($targetPid) {
         $procInfo = Get-CimInstance Win32_Process -Filter "ProcessId = $targetPid" -ErrorAction SilentlyContinue
         if ($procInfo -and ($procInfo.CommandLine -like "*gateway*run*" -or $procInfo.Name -like "pythonw*")) {
             Stop-Process -Id $targetPid -Force -ErrorAction SilentlyContinue
-            Log-Msg "Da gui lenh dung Gateway PID: $targetPid."
+            Wait-Process -Id $targetPid -Timeout 10 -ErrorAction SilentlyContinue
+            Log-Msg "Da gui lenh dung Gateway PID: $targetPid va doi tien trinh thoat hoan toan."
         } else {
             Log-Msg "Canh bao: PID $targetPid khong phai Gateway hop le, bo qua kill."
         }

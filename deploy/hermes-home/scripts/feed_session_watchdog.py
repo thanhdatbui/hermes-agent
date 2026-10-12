@@ -52,6 +52,7 @@ def _get_runtime_root() -> str:
 _RT_ROOT = _get_runtime_root()
 LIVE_ROOT = os.path.join(_RT_ROOT, "live")
 STATE_FILE = os.path.join(_RT_ROOT, "cron-state", "feed_session_reported.json")
+FOLLOW_STATE_FILE = os.path.join(_RT_ROOT, "cron-state", "follow_session_reported.json")
 SOURCE_CONFIG = os.path.join(_RT_ROOT, "cron-source", "hermes_cron_source_config.json")
 SHIFT_UPLOAD_LEDGER_PATH = r"C:\ProgramData\Taadaa\tiktok-upload-concurrency-v1\shift_upload_history.json"
 
@@ -79,7 +80,12 @@ def should_trigger_farm_alert(
     return has_alert, reasons
 
 
-def get_row_nurture_summary(live_root: str = LIVE_ROOT, threshold_h: float = 96.0) -> tuple[str, list[int]]:
+# Chu kỳ nuôi cố định 96h + 12h dung sai (cron trễ/retry). Đồng bộ với tools/nurture_health_helper.py.
+NURTURE_CYCLE_H = 96.0
+STARVATION_THRESHOLD_H = NURTURE_CYCLE_H + 12.0
+
+
+def get_row_nurture_summary(live_root: str = LIVE_ROOT, threshold_h: float = STARVATION_THRESHOLD_H) -> tuple[str, list[int]]:
     from pathlib import Path
     now = datetime.now(HCMC)
     last_runs: dict[int, Any] = {r: None for r in range(1, 9)}
@@ -100,7 +106,7 @@ def get_row_nurture_summary(live_root: str = LIVE_ROOT, threshold_h: float = 96.
         dt = last_runs[r]
         h = round((now - dt).total_seconds() / 3600.0, 1) if dt else 999.0
         if h > threshold_h: starved.append(r)
-        st = "🔴" if h > threshold_h else ("🟡" if h > 72.0 else "🟢")
+        st = "🔴" if h > threshold_h else ("🟡" if h > NURTURE_CYCLE_H else "🟢")
         parts.append(f"R{r}:{st}{int(h)}h" if h < 900 else f"R{r}:🔴--")
     return " | ".join(parts), starved
 
@@ -924,6 +930,7 @@ def reconcile_cluster_following(
     all_follows: dict,
     active_row: int,
     session_start_iso: Optional[str] = None,
+    session_end_iso: Optional[str] = None,
     db_path: str = r"D:/Taadaa/data/tiktok_tracker.db",
     python_exe: str = r"D:/Taadaa/python-envs/automation/Scripts/python.exe",
     tracker_script: str = r"D:/Taadaa/tools/tiktok_account_tracker.py",
@@ -936,19 +943,22 @@ def reconcile_cluster_following(
         return []
 
     ws = None
-    last_exc: Optional[Exception] = None
-    for attempt in range(3):
+    wb = None
+    for attempt in range(1, 4):
         try:
             import openpyxl
-            ws = openpyxl.load_workbook(wb_path, read_only=True).active
+            wb = openpyxl.load_workbook(wb_path, read_only=True)
+            ws = wb.active
             break
-        except Exception as exc:
-            last_exc = exc
-            logger.warning("reconcile_cluster_following: mở workbook lần %d/3 thất bại (%s): %s", attempt + 1, wb_path, exc)
-            if attempt < 2:
+        except (IOError, OSError, PermissionError) as exc:
+            logger.warning("reconcile_cluster_following: thử tải workbook lần %d thất bại (%s): %s", attempt, wb_path, exc)
+            if attempt < 3:
                 time.sleep(1)
-    if ws is None:
-        return [f"  + Đối soát TikTok Web: Không đọc được workbook ({wb_path}): {last_exc}"]
+        except Exception as exc:
+            logger.error("reconcile_cluster_following: workbook hỏng hoặc không thể đọc (%s): %s", wb_path, exc)
+            break
+    if ws is None or wb is None:
+        return [f"  + Đối soát TikTok Web: Không đọc được workbook ({wb_path})"]
     try:
         machine_slots: dict[str, list[Any]] = {}
         for r in ws.iter_rows(min_row=2, values_only=True):
@@ -961,7 +971,12 @@ def reconcile_cluster_following(
             machine_slots.setdefault(m_str, []).append(r[2] if len(r) > 2 else None)
     except Exception as exc:
         logger.warning("reconcile_cluster_following: không đọc được workbook: %s", exc)
-        return []
+        return [f"  + Đối soát TikTok Web: Lỗi đọc dữ liệu workbook ({wb_path})"]
+    finally:
+        try:
+            wb.close()
+        except Exception:
+            pass
 
     slot_idx = int(active_row) - 1
     m_to_user: dict[str, str] = {}
@@ -1068,15 +1083,26 @@ def reconcile_cluster_following(
             expected_delta = m_to_reported[m]
             report_label = f"script báo {expected_delta} (chéo {cross_cnt}, tự nhiên {natural_cnt})"
             try:
-                cur.execute("""
-                    SELECT following, timestamp
-                    FROM snapshots
-                    WHERE LOWER(username) = LOWER(?)
-                    ORDER BY timestamp DESC, id DESC
-                    LIMIT 2
-                """, (u,))
-                pair = cur.fetchall()
-                latest_row = pair[0] if len(pair) >= 1 else None
+                if session_end_iso:
+                    cur.execute("""
+                        SELECT following, timestamp
+                        FROM snapshots
+                        WHERE LOWER(username) = LOWER(?) AND timestamp <= ?
+                        ORDER BY timestamp DESC, id DESC
+                        LIMIT 1
+                    """, (u, session_end_iso))
+                    l_rows = cur.fetchall()
+                    latest_row = l_rows[0] if l_rows else None
+                else:
+                    cur.execute("""
+                        SELECT following, timestamp
+                        FROM snapshots
+                        WHERE LOWER(username) = LOWER(?)
+                        ORDER BY timestamp DESC, id DESC
+                        LIMIT 2
+                    """, (u,))
+                    pair = cur.fetchall()
+                    latest_row = pair[0] if len(pair) >= 1 else None
 
                 baseline_row = None
                 if latest_row and session_start_iso:
@@ -1465,6 +1491,32 @@ def classify_feed_failure(reason: Any) -> str:
     return "Lỗi App TikTok/Script"
 
 
+def classify_error_reason(reason: Any) -> str:
+    """Làm sạch và phân loại chuỗi lỗi kỹ thuật thô thành nhãn 1 dòng ngắn gọn cho báo cáo."""
+    r = str(reason or "").strip()
+    if not r:
+        return "Lỗi không xác định"
+    r_lower = r.lower()
+    if any(k in r_lower for k in ("device not found", "device offline", "not found in adb", "transport", "adb/usb", "adb.exe", "adb command timed out")):
+        return "Mất kết nối ADB/USB"
+    if any(k in r_lower for k in ("wi-fi", "wifi", "wlan0 down", "no-carrier", "association_rejection")):
+        return "Mất kết nối Wi-Fi (AP)"
+    if any(k in r_lower for k in ("ifconfig", "egress ip", "context deadline", "awaiting headers", "deadline exceeded", "proxy timeout", "proxy is unreachable")):
+        return "Nghẽn đường truyền Proxy / 4G"
+    if any(k in r_lower for k in ("vpn", "proxy")):
+        return "Lỗi kết nối VPN/Proxy"
+    if "unexpected popup" in r_lower or "dialog" in r_lower:
+        return "Popup/Dialog bất thường"
+    if "device-lock" in r_lower or "lock" in r_lower:
+        return "Kẹt Device Lock"
+    first = r.splitlines()[0].strip()
+    if ":" in first:
+        first = first.split(":")[-1].strip() or first.split(":")[0].strip()
+    first = re.sub(r"[A-Za-z]:\\[^\s]+", "", first)
+    first = re.sub(r"\s+", " ", first).strip()
+    return first[:60] if first else "Lỗi script/xác minh"
+
+
 def dispatch_split_reports(header: str, cluster_blocks: list[str], cluster_stats: list[dict] | None = None, win_name: str = "", active_row: Any = "") -> str:
     feed_p, fl_p, up_p = [], [], []
     for b in cluster_blocks:
@@ -1486,61 +1538,66 @@ def dispatch_split_reports(header: str, cluster_blocks: list[str], cluster_stats
         from automation_core.alerts import _load_bot_token
         import urllib.request, urllib.parse
         t = _load_bot_token()
-        for cid, hdr, parts in [("-5127276494", fl_hdr, fl_p), ("-5435853713", up_hdr, up_p)]:
+        for cid, hdr, parts in [("-5435853713", up_hdr, up_p)]:
             if t and parts:
-                try:
-                    full_msg = hdr + "\n\n" + "\n\n".join(parts)
-                    # Tự động chia nhỏ tin nhắn nếu vượt giới hạn 4000 ký tự của Telegram
-                    chunks = []
-                    if len(full_msg) <= 4000:
-                        chunks = [full_msg]
-                    else:
-                        curr_lines = []
-                        curr_len = 0
-                        for line in full_msg.splitlines(keepends=True):
-                            if curr_len + len(line) > 3900:
-                                chunks.append("".join(curr_lines))
-                                curr_lines = [line]
-                                curr_len = len(line)
-                            else:
-                                curr_lines.append(line)
-                                curr_len += len(line)
-                        if curr_lines:
+                full_msg = hdr + "\n\n" + "\n\n".join(parts)
+                # Tự động chia nhỏ tin nhắn nếu vượt giới hạn 4000 ký tự của Telegram
+                chunks = []
+                if len(full_msg) <= 4000:
+                    chunks = [full_msg]
+                else:
+                    curr_lines = []
+                    curr_len = 0
+                    for line in full_msg.splitlines(keepends=True):
+                        if curr_len + len(line) > 3900:
                             chunks.append("".join(curr_lines))
+                            curr_lines = [line]
+                            curr_len = len(line)
+                        else:
+                            curr_lines.append(line)
+                            curr_len += len(line)
+                    if curr_lines:
+                        chunks.append("".join(curr_lines))
 
-                    for chunk in chunks:
-                        body = urllib.parse.urlencode({"chat_id": cid, "text": chunk}).encode("utf-8")
-                        req = urllib.request.Request(f"https://api.telegram.org/bot{t}/sendMessage", data=body)
-                        for attempt in range(3):
-                            try:
-                                urllib.request.urlopen(req, timeout=15)
-                                break
-                            except Exception:
-                                if attempt == 2:
-                                    raise
-                                time.sleep(2)
-                    logger.info("[WATCHDOG_TELEGRAM_DISPATCH_SUCCESS] chat_id=%s hdr=%s chunks=%d", cid, hdr, len(chunks))
-                except Exception as dispatch_err:
-                    sys.stderr.write(f"[WATCHDOG_TELEGRAM_DISPATCH_FAIL] chat_id={cid} err={dispatch_err}\n")
-                    logger.warning("[WATCHDOG_TELEGRAM_DISPATCH_FAIL] chat_id=%s err=%s", cid, dispatch_err)
+                for chunk in chunks:
+                    body = urllib.parse.urlencode({"chat_id": cid, "text": chunk}).encode("utf-8")
+                    urllib.request.urlopen(urllib.request.Request(f"https://api.telegram.org/bot{t}/sendMessage", data=body), timeout=10)
+                logger.info("[WATCHDOG_TELEGRAM_DISPATCH_SUCCESS] chat_id=%s hdr=%s chunks=%d", cid, hdr, len(chunks))
     except Exception as exc:
         logger.warning("[WATCHDOG_TELEGRAM_DISPATCH_FAIL] err=%s", exc)
     return feed_hdr + "\n\n" + "\n\n".join(feed_p)
 
 
-def main():
+def format_follow_report_from_blocks(cluster_blocks: list[str], cluster_stats: list[dict] | None = None, win_name: str = "", active_row: Any = "") -> str:
+    fl_p = []
+    for b in cluster_blocks:
+        lines = b.splitlines()
+        hdr = [l for l in lines if l.startswith("🏢") or l.startswith("• Tổng máy")]
+        sec = lambda kw: next((lines[i:next((j for j in range(i+1, len(lines)) if lines[j].startswith("• ")), len(lines))] for i, l in enumerate(lines) if l.startswith(f"• {kw}")), [])
+        fl_s = sec("Follow chéo")
+        if fl_s:
+            fl_p.append("\n".join(hdr + fl_s))
+    st = cluster_stats or []
+    tot_fl = sum(len(b.get("fl_error", [])) for b in st)
+    fl_hdr = f"🚨 [FARM ALERT] PHÁT HIỆN LỖI SCRIPT FOLLOW HÀNG LOẠT ({tot_fl} máy lỗi script Follow) - {win_name} (Row {active_row})" if tot_fl >= DEFAULT_FARM_ALERT_THRESHOLD else f"📊 [TIKTOK FOLLOW] {win_name} hoàn tất (Row {active_row})"
+    return fl_hdr + "\n\n" + "\n\n".join(fl_p)
+
+
+def main(mode: str = "feed"):
     now = datetime.now(HCMC)
     today = now.strftime("%Y-%m-%d")
     yesterday = (now.date() - timedelta(days=1)).isoformat()
     now_hm = now.strftime("%H:%M")
 
-    lock = ProcessLock(f"{STATE_FILE}.proc_lock")
+    target_state_file = FOLLOW_STATE_FILE if mode == "follow" else STATE_FILE
+    lock = ProcessLock(f"{target_state_file}.proc_lock")
     if not lock.acquire():
         return
+    logger.info("[%s_WATCHDOG_START_TELEMETRY] mode=%s state_file=%s", mode.upper(), mode, os.path.basename(target_state_file))
 
     try:
         # Load state
-        reported = _load_reported_sessions(STATE_FILE)
+        reported = _load_reported_sessions(target_state_file)
         messages = []
         new_reported = set(reported)
         runner_busy = is_feed_runner_active()
@@ -1784,9 +1841,8 @@ def main():
                         fl_err_reasons = {}
                         for m in fl_error:
                             r_text = str(all_follows.get(m, {}).get("reason") or all_machines.get(m, {}).get("reason") or "Lỗi không xác định").strip()
-                            if ":" in r_text:
-                                r_text = r_text.split(":", 1)[1].strip()
-                            fl_err_reasons.setdefault(r_text, []).append(f"M{m}" if not str(m).startswith("M") else str(m))
+                            lbl = classify_error_reason(r_text)
+                            fl_err_reasons.setdefault(lbl, []).append(f"M{m}" if not str(m).startswith("M") else str(m))
                         e_str = "; ".join(f"{r} ({len(m_list)}: {', '.join(m_list)})" for r, m_list in fl_err_reasons.items())
                     else:
                         e_str = "Không có"
@@ -1812,7 +1868,7 @@ def main():
                             elif "sensitive" in r_lower:
                                 lbl = "Feed chưa ổn định"
                             elif r_text:
-                                lbl = r_text.split(":", 1)[1].strip() if ":" in r_text else r_text
+                                lbl = classify_error_reason(r_text)
                             else:
                                 lbl = "Khác"
                             reasons_map.setdefault(lbl, []).append(m_val)
@@ -1866,9 +1922,11 @@ def main():
                         likes=tot_likes,
                         swipes=tot_swipes,
                     )
+                    end_time_str = "23:59:59" if win["end"] in {"24:00", "00:00"} else f"{win['end']}:00"
                     reconcile_lines = reconcile_cluster_following(
                         cluster, fl_success, all_follows, active_row,
                         session_start_iso=f"{target_date} {win['start']}:00",
+                        session_end_iso=f"{target_date} {end_time_str}",
                         all_machines=all_machines,
                         session_key=session_key,
                     )
@@ -1944,6 +2002,17 @@ def main():
                             block_lines.append(f"  + Hết video/Cần cào ({len(up_novideo)}): {', '.join(up_novideo)}")
                         block_lines.append(f"  + Bỏ qua ({total_up_skipped}): {up_skip_summary}")
 
+                    try:
+                        c_live = cluster.get("live_root")
+                        if c_live and os.path.exists(c_live):
+                            n_sum, stv = get_row_nurture_summary(live_root=c_live, threshold_h=STARVATION_THRESHOLD_H)
+                            block_lines.append(f"🌾 Sức khỏe 8 Row (Chu kỳ 4 ngày): {n_sum}")
+                            if stv:
+                                stv_str = ", ".join(f"Row {r}" for r in stv)
+                                block_lines.append(f"  🚨 CẢNH BÁO BỎ ĐÓI: {stv_str} > {STARVATION_THRESHOLD_H:g}h chưa nuôi thành công!")
+                    except Exception as nurture_err:
+                        logger.warning("[NURTURE_SUMMARY_FAIL] cluster=%s err=%s", cluster.get("name"), nurture_err)
+
                     cluster_blocks.append("\n".join(block_lines))
                     cluster_stats.append({
                         "fl_error": fl_error if 'fl_error' in locals() else [],
@@ -1965,18 +2034,14 @@ def main():
                         tot_fl_err, tot_up_err, DEFAULT_FARM_ALERT_THRESHOLD, has_script_alert, alert_reasons
                     )
 
-                    if has_script_alert:
-                        header = f"🚨 [FARM ALERT] PHÁT HIỆN LỖI SCRIPT HÀNG LOẠT ({', '.join(alert_reasons)}) - {win['name']} (Row {active_row})"
+                    if mode == "follow":
+                        msg = format_follow_report_from_blocks(cluster_blocks, cluster_stats, win['name'], active_row)
                     else:
-                        header = f"📊 [TIKTOK NUÔI ACC] {win['name']} hoàn tất (Row {active_row})"
-                    try:
-                        n_sum, stv = get_row_nurture_summary(threshold_h=96.0)
-                        blk = f"🌾 【SỨC KHỎE NUÔI 8 ROW (CHU KỲ 4 NGÀY)】\n• Tiến độ: {n_sum}"
-                        if stv: blk += f"\n🚨 CẢNH BÁO BỎ ĐÓI: Row {stv} > 96h chưa nuôi thành công!"
-                        cluster_blocks.append(blk)
-                    except Exception as nurture_err:
-                        logger.warning("[NURTURE_SUMMARY_FAIL] err=%s", nurture_err)
-                    msg = dispatch_split_reports(header, cluster_blocks, cluster_stats, win['name'], active_row)
+                        if has_script_alert:
+                            header = f"🚨 [FARM ALERT] PHÁT HIỆN LỖI SCRIPT HÀNG LOẠT ({', '.join(alert_reasons)}) - {win['name']} (Row {active_row})"
+                        else:
+                            header = f"📊 [TIKTOK NUÔI ACC] {win['name']} hoàn tất (Row {active_row})"
+                        msg = dispatch_split_reports(header, cluster_blocks, cluster_stats, win['name'], active_row)
                     messages.append(msg)
                     new_reported.add(session_key)
                     break
@@ -1986,20 +2051,22 @@ def main():
             # Atomic claim và persist state
             state_written = False
             try:
-                current_reported = _load_reported_sessions(STATE_FILE)
+                current_reported = _load_reported_sessions(target_state_file)
                 combined = sorted(current_reported.union(new_reported))
                 current_state = {"reported_sessions": combined}
-                tmp = f"{STATE_FILE}.{os.getpid()}.tmp"
+                tmp = f"{target_state_file}.{os.getpid()}.tmp"
                 with open(tmp, "w", encoding="utf-8") as f:
                     json.dump(current_state, f, ensure_ascii=False, indent=2)
-                os.replace(tmp, STATE_FILE)
+                os.replace(tmp, target_state_file)
                 state_written = True
             except Exception:
                 pass
 
             if state_written:
                 logger.info(
-                    "[WATCHDOG_DELIVERY_TELEMETRY] event=one_message_delivered session_key=%s",
+                    "[%s_WATCHDOG_DELIVERY_TELEMETRY] event=one_message_delivered mode=%s session_key=%s",
+                    mode.upper(),
+                    mode,
                     list(new_reported - current_reported),
                 )
                 print(messages[0])
@@ -2009,4 +2076,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    mode_arg = "feed"
+    if len(sys.argv) > 1 and any(arg in sys.argv[1].lower() for arg in ("follow", "--mode=follow")):
+        mode_arg = "follow"
+    main(mode=mode_arg)
