@@ -14,6 +14,7 @@ metadata:
 > **Canonical policy precedence:** For orchestration and closeout precedence, follow `D:\Taadaa\HERMES_SUBAGENT_RULES.md` marker `CANONICAL-POLICY-PRECEDENCE-2026-10-05`; this skill points to it and does not redefine it.
 
 References:
+- `references/closeout-gate-rejection-remediation.md` — **[MỚI 12/10/2026]** Kỷ luật xử lý khi closeout gate bị REJECTED (<85đ): Cấm dừng lại ở L3 xin đóng phiên, bám sát finding sửa đến cùng, quy trình Strike 3 hand-off Claude CLI.
 - `references/closeout-gate-files-dirty-target-strictness.md` — Quy tắc bắt buộc khi dùng `--files` trong `closeout_gate.py`: CHỈ truyền file có working-tree diff, tránh lỗi 'targets without working-tree changes'.
 - `references/closeout-gate-committed-scope-exactness.md` — **[MỚI 12/10/2026]** Khắc phục lỗi `refusing partial committed scope` trong chế độ `committed_targeted`: tập hợp `--files` bắt buộc khớp 100% với `git diff <base>..HEAD --name-only`.
 - `references/closeout-gate-multirepo-and-large-diff-pitfalls.md` — **[MỚI 11/10/2026]** Khắc phục lỗi `DIFF_TOO_LARGE` (>120KB) do lệch origin/main trong multi-repo (dùng `--base HEAD`), xử lý untracked files cần `git add`, và quy trình Sol Repair khi Gate trượt.

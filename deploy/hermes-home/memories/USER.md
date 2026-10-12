@@ -8,11 +8,9 @@ Report follow: % & tầng; khóa IP 1 dòng kèm máy cứu; máy nhả kèm lư
 §
 Kibe(1-80) & Admin(201-280) media độc lập (Admin m2, cấm copy chéo). TT v47.0.3; Switcher dock; AP 40m; Config tools.
 §
-Dubbing: đúng tiếng, 100% thoại, tắt tiếng gốc.
+Dubbing: đúng tiếng, 100% thoại, tắt tiếng gốc. Pass láo: xóa None. Nick trên máy là tài sản, reg dư map lại. Cấm text gate rác/media chat. Báo cáo: cấm tròn 100%. KPI chỉ nick có ca. Farm song song.
 §
-Pass láo: xóa None. Nick trên máy là tài sản, reg dư map lại & dời nick non sang máy thiếu. Cấm ném text gate rác vào chat. Báo cáo: cấm tròn 100%. KPI chỉ nick có ca. Farm: song song.
-§
-Strike 3: Claude CLI; Worker: AG Gemini default (Luna fallback).
+Strike 3: Claude CLI; Worker: AG Gemini default (Luna fallback). Gate: cấm dừng ở L3 xin đóng phiên khi gate REJECTED; sửa đến khi APPROVED >=85.
 §
 Code: script & cron Hermes độc lập. Hashtag sync: F_src=(Slot-1)*80+m_idx, cấm nhầm F_out sang F_src; 'Hashtag theo Folder' là SoT.
 §
