@@ -4,7 +4,7 @@ Dual-Farm: Cron/supervisor Kibe (1-80) & Admin (201-280). Excel Admin 10-11 cộ
 §
 WoL ether3 (kibe 0C:EF:15:37:4C:20, admin 22:33:4D:06:4C:26; WG 13231); CẤM PASS khi followed=0/FOLLOW_FAILED; log trước teardown; upload SSH admin-farm.
 §
-Reviewer :20129: Combo 'review' (Sol Web->Terra Codex); Strike 3 Claude từ chối thì gọi Reviewer (Sol/Worker) sửa đến APPROVED. Acc account_deactivated dọn cả Omni (:20129) & 9Router (:20128). Submit ChatGPT GPM cấm click Google/Apple. Graph API chỉ acc có token, ko token mở Outlook GPM code canonical bóc OTP. Acc die lưu chatgpt_account_lifecycle.json O(1) SKIP. Re-OAuth nạp Omni; xuất chatgpt_lifecycle_report.json.
+Acc die SKIP; 400h cooldown quarantine động (skip khi chưa tới hạn, cấm xóa). Sandbox kẹt push: Claude CLI kèm gh auth push, cấm đưa lệnh user. Re-OAuth nạp Omni.
 §
 TikTok Shadow: Path B 'Đã fl' ko commit; FOLLOW_FAILED trừ fl tự nhiên; slot `(folder-1)%8+1` cứng; reg bù độc lập. Đối soát: chỉ tính nick có ca (cohort `internal_followed > 0`). Cron: tách feed_session_watchdog (-5377611430) & follow_session_watchdog (-5127276494, job 6991768931e1). Report: classify_error_reason() lọc sạch; cấm leak HTTP header (ifconfig) / path ADB.
 §
