@@ -32,3 +32,9 @@ Hàng loạt tài khoản (ví dụ 53/69 tài khoản) trả về kết quả `
 2. **Fail-Closed khi tài khoản ở trạng thái UNKNOWN**:
    - Khi không đọc được OTP hoặc chưa vào được giao diện chính của ChatGPT, script bắt buộc đánh dấu `UNKNOWN`.
    - CẤM TUYỆT ĐỐI tự ý đánh dấu `DEAD` hay `purge_account()` khi chưa có screenshot xác nhận `account_deactivated` hoặc lỗi vô hiệu hóa chính thức từ OpenAI.
+
+3. **Background Process & Visual Verification Invariant trong Audit Runner**:
+   - Khi chạy batch lớn qua `--all` (ví dụ 69-70 tài khoản trên GPM), script mất thời gian 15-25 phút do tuần tự khởi động GPM profile, kết nối CDP, đọc OTP qua Graph/Webmail và kiểm tra DOM ChatGPT.
+   - Bắt buộc chạy script dưới dạng background process (`terminal(background=True)` hoặc `process(action='wait', timeout=60)` polling) thay vì foreground ngắn gây timeout.
+   - Trước khi đính kèm `MEDIA:<path>` minh chứng tài khoản DEAD, Agent BẮT BUỘC gọi `vision_analyze` để soi mắt kiểm tra ảnh chụp màn hình artifact thực tế (chứng minh thông báo lỗi tài khoản bị xóa / vô hiệu hóa hiển thị rõ, không bị màn hình đen hay che khuất).
+   - Báo cáo audit phải phân tách rõ ràng: LIVE, DEAD_DEACTIVATED (kèm ảnh chụp đã soi và xác nhận purge đồng bộ combo SQLite + OmniRoute :20129), SKIPPED_DEAD (tối ưu hóa bỏ qua acc đã purge trước đó), và UNKNOWN (cần xử lý challenge/OTP).
