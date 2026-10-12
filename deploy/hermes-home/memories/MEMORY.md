@@ -15,3 +15,5 @@ Proxy: User KO đổi, SoT PROXYgandienthoai.xlsx (S7 Google & Hotmail reg TT gi
 Crop Ava 9:16: Mặt ở 15-25% trên (cy~0.2*H), cấm cụt đầu. Picker: tap checkbox (225,250), cấm tap tâm; bẫy nút Lưu Sửa hồ sơ. Soi zoom tròn profile.
 §
 Sửa guard: restart_gw_detached.py nạp RAM; Gate miễn trừ tin Closeout & recap hybrid. Ranh giới session: Session cron/tách script chỉ tập trung gọi entry point, cấm kéo việc session khác (Hotmail/OTP); cấm spam subagent làm rác chat.
+§
+Admin PC (201-280) có Hermes riêng, cần nạp install_silent_sitecustomize.py để triệt tiêu popup cmd khi chơi game.

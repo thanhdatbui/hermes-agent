@@ -157,3 +157,13 @@ res = subprocess.run(cmd, capture_output=True, text=True, timeout=10, **WIN_KWAR
   * Farm automation venv: `D:\Taadaa\python-envs\automation\Lib\site-packages\sitecustomize.py`
   * Task Scheduler trên Admin: Mọi task định kỳ gọi watchdog phải trỏ sang `wscript.exe run_hidden.vbs`, cấm gọi trực tiếp `powershell.exe -WindowStyle Hidden` hay `.bat`.
   * Remote SSH commands từ Kibe sang Admin: Đảm bảo không kích hoạt tiến trình tạo GUI/console conhost trên desktop tương tác của Admin.
+
+### 3. Triage Sai Host & Giao Thức Cấp Cứu Khi User Đang Chơi Game
+- **Bẫy chẩn đoán sai host (Misattributing Host-Local Cron to Remote Controller):**
+  * Trong mô hình Dual-Master (cả Kibe và Admin đều chạy bot Hermes và `jobs.json` riêng), khi User báo "máy Admin nhảy bảng cmd rồi tắt liền", **thủ phạm thường là chính Hermes nội bộ trên Admin** (chạy `taikhoan_sync_cron_launcher.py`, `hermes_stale_watchdog.py`, `feed_session_watchdog.py` mỗi 2–5 phút), CHỨ KHÔNG PHẢI lệnh SSH từ Kibe.
+  * Tự ý pause cron trên Kibe rồi tuyên bố "đã xong" sẽ khiến User ức chế tột độ khi 2 phút sau cmd tiếp tục nhảy trên Admin.
+- **Quy trình xử lý khẩn cấp 2 bước (Action-First Gaming Incident):**
+  1. **Bước 1 (Cứu nguy tức thời 3s):** Đưa ngay lệnh 1 dòng PowerShell dập tắt nóng Hermes/Python trên đúng máy User đang chơi:
+     `Stop-Process -Name hermes -Force -ErrorAction SilentlyContinue`
+     hoặc chạy script kill nhanh (`stop_admin_cron_game.bat`). KHÔNG đoán mò, KHÔNG giải thích dông dài khi User đang trong trận game.
+  2. **Bước 2 (Vá triệt để vĩnh viễn sau trận):** Hướng dẫn chạy `python D:/Taadaa/tools/install_silent_sitecustomize.py` trên máy đó để nạp cờ `CREATE_NO_WINDOW` vào toàn bộ Python environments (`Python311`, `Python312`, `automation`, `hermes-agent\venv`).
