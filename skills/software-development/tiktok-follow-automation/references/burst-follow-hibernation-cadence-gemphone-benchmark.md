@@ -71,9 +71,15 @@ Trích xuất từ `TIKTOK-FLOW-TÌM-KIẾM-Thành-đạt_decrypted.json` (389 n
      * Node `muwrdaa`: nghỉ **16.5s – 27.0s**
      * Node `bfeodrk`: nghỉ **15.9s – 43.5s**
    - **Tổng thời gian phiên:** 20–30 follow chạy rải rác kéo dài từ **7 đến 12 phút**.
-4. **Bản chất khác biệt so với Taadaa Runner:**
-   - Taadaa Runner trước đây cấu hình `delay_min: 8`, `delay_max: 25` nhưng bị kẹp chuỗi thao tác chuyển Activity liên tục (mở profile con `_path_b_verify`, xem video, back ra, Pull-to-refresh) tạo ra áp lực UI và tần suất tương tác dày đặc.
-   - Gemphone của ông anh chỉ đứng nguyên tại một màn hình danh sách, thao tác tap-and-scroll rải rác kèm các cú nghỉ sâu 20–43s, mô phỏng đúng hành vi người thật lướt xem danh bạ bạn bè.
+4. **Bản chất khác biệt & So sánh thời gian chạy thực tế (Taadaa Runner vs GemPhone):**
+   - **Cơ chế Path B Verify (Không vuốt reload profile con):**
+     * Trong `_path_b_verify`, khi tap mở Profile của nick con từ follower list lên, **TUYỆT ĐỐI KHÔNG vuốt pull-to-refresh**: TikTok client khi mở profile mới đã tự động kéo fresh state từ server. Nếu follow bị nhả, nút lập tức render lại `Follow` / `Follow lại` ngay trên Profile.
+     * Vuốt pull-to-refresh reload trang **CHỈ DÙNG ở 2 vị trí**: (1) Anchor (`_ensure_anchor_followed` sau khi tap trên video player rồi back ra profile), và (2) Module 1 (`mode1_search_follow.py` khi đứng nguyên tại profile search).
+   - **So sánh tổng thời gian thực thi (Cả 2 bên đều ~8–12 phút / phiên 20 nick):**
+     * **Taadaa Runner:** Tap follow + chờ 2.5–5s + Path B mở profile đọc nút (2.5s, không vuốt) + (30% xem video 12–20s) + back về list + delay giữa các nick (8–25s) ➔ ~25–35s / nick ➔ 20 nick tốn ~8–11 phút. Ưu điểm: Bắt nhả chắc chắn 100% tại chỗ mà không tạo vòng lặp reload thừa.
+     * **GemPhone:** Đứng im trong list, tap follow + delay 5.2–18.5s + các nhịp nghỉ đệm sâu 16–43s (Node `muwrdaa`, `bfeodrk`) + vuốt cuộn ➔ ~18–25s / nick ➔ 20–30 nick tốn ~7–12 phút.
+   - **Tiến độ triển khai Chu kỳ 4 ngày (3 Ca / ngày: 8 tick trong 3 ngày + 1 ngày Rest Day):**
+     * Triển khai qua `tiktok_runner.py` trên 2 cụm Kibe & Admin. Trạng thái live đã xác minh đang chạy ổn định đúng lịch trình (Ngày 1: rows lẻ 1, 3, 5; Ngày 2: rows chẵn 2, 4, 6; Ngày 3: row 7, 8, dưỡng; Ngày 4: nghỉ toàn máy).
 5. **Kỷ luật điều phối phiên thảo luận (Coordinator Discipline):**
    - Khi phiên thảo luận kỹ thuật kéo dài với nhiều tranh luận về luồng/thuật toán, Coordinator BẮT BUỘC phải chốt và tổng kết rõ ràng mọi thắc mắc ban đầu của User (đặc biệt là các so sánh thông số định lượng như khoảng nghỉ/delay) trước khi kết thúc phiên; tuyệt đối không để trôi việc rồi báo xong phiên.
 
