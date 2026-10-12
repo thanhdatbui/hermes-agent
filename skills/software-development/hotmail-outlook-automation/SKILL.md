@@ -13,7 +13,7 @@ description: Hotmail automation.
 - **BoxTaiKhoan API**: Buy OAuth2 product 60 via `POST /ajaxs/client/product.php`, one account per request (`amount=1`) to receive complete `data`; format `mail|pass|refresh_token|client_id`.
 - **Change-pass eligibility (2026-10-10)**: Require TikTok ID+pass & ChatGPT PASS (Col 12), clear Col 9 after success, keep explicit BLOCKED reporting.
 - **6H lifecycle report reconciliation**: Cron output is snapshot; re-read canonical state before determining causes, never bulk-reset. See `references/6h_report_snapshot_reconciliation.md`.
-- **Bỏ add mail kp & Thẳng tiến 2FA TOTP (2026-10-12)**: Microsoft KHÔNG bắt buộc có mail khôi phục để bật 2FA; cho phép bật Authenticator TOTP trực tiếp ngay trên nick Zin trắng. Bỏ hẳn bước add mail kp theo chỉ thị User để tối ưu tốc độ và độc lập 100% không phụ thuộc domain tạm. CẤM mail cá nhân `thanhdatbui`. Xem `references/hotmail_change_info_recovery_and_2fa_flow.md`.
+- **Bắt buộc có Mail khôi phục trước khi bật 2FA TOTP (2026-10-13)**: Microsoft BẮT BUỘC tài khoản phải có ít nhất 2 phương thức xác minh (Mật khẩu + Mail khôi phục) thì mới cho phép bật 2FA Authenticator TOTP. Không cần ngâm thêm sau khi add mail kp, chạy tuần tự 5 bước trong cùng phiên. CẤM mail cá nhân `thanhdatbui`, 100% dùng domain tạm `@fviainboxes.com`. Xem `references/hotmail_change_info_recovery_and_2fa_flow.md`.
 - **Phạm vi Dual-Farm (Kibe + Admin)**: Toàn bộ 2 farm gồm ~1.280 tài khoản (Kibe 1-80: 640 accounts, Admin 201-280: ~640 accounts). Cấm đếm thiếu cụm Admin khi đối soát số lượng.
 - **Kiến trúc kho Gmail Clean V2 & 2 Cột Trạng Thái (2026-08-25)**:
   - `gmail_clean_v2.xlsx` là **Single Source of Truth** chứa cả Gmail và Hotmail của farm.

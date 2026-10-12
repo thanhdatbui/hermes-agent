@@ -1,24 +1,30 @@
 # Hotmail Change Info: Recovery Email & 2FA Flow (2026-10-12)
 
-## 1. Đính chính thực tế: Microsoft KHÔNG bắt buộc có Mail khôi phục để bật 2FA
-- **Sự thật kỹ thuật:** Microsoft cho phép thiết lập ứng dụng xác thực (Authenticator App / TOTP Secret Key) **TRỰC TIẾP** ngay trên tài khoản Zin trắng chỉ có mật khẩu. Mật khẩu là yếu tố 1, Authenticator App là yếu tố 2.
-- Việc trước đây tưởng Microsoft bắt buộc có mail khôi phục là do script cũ `gpm_change_hotmail_security.py` tự chặn cứng (`if not rec_email: return False`) gây ra lỗi `BLOCKED` giả.
-- **Chỉ thị của User (2026-10-12):** Bỏ hẳn bước add mail khôi phục trong luồng `CHANGE_INFO`, đi thẳng vào thiết lập 2FA Authenticator TOTP. Điều này giúp loại bỏ 100% sự phụ thuộc vào bên thứ 3 (API domain tạm `fviainboxes.com`), chạy nhanh gấp 3 lần và hoàn toàn không lo nghẽn mạng hay trễ OTP.
+## 1. Kết quả kiểm chứng thực tế live (2026-10-13): Microsoft BẮT BUỘC có Mail khôi phục mới cho bật 2FA
+- **Sự thật kỹ thuật được kiểm chứng qua Canary:**
+  - Trên nick Zin trắng chỉ có mật khẩu (`AlyceBroberg15774@hotmail.com`):
+    * Khi click `#Add_msAuthApp` trong modal proofs: Microsoft từ chối mở form cài đặt và tự động đóng modal.
+    * Khi truy cập thẳng `https://account.live.com/proofs/EnableTfa`: Microsoft chặn đứng và hiển thị thông báo bắt buộc: *"Để bật xác nhận hai bước, chúng tôi cần hai cách để chắc chắn bạn là bạn. Bạn có muốn nhận mã xác nhận thứ hai của mình không?"* kèm form ép nhập email/SĐT khôi phục.
+  - Trên nick đã add email khôi phục (`MarilynnCott83008@hotmail.com`): Microsoft lập tức cho phép mở form Authenticator App, trích xuất 2FA Secret Key TOTP và bật 2FA thành công 100%.
+- **Quy tắc bất biến:** Tài khoản Hotmail Zin BẮT BUỘC phải add Mail khôi phục trước (dùng domain tạm `@fviainboxes.com`) ➔ Xác minh OTP ➔ Sau đó mới Add 2FA Authenticator TOTP.
+- **Về việc ngâm:** HOÀN TOÀN KHÔNG CẦN NGÂM THÊM sau khi add mail khôi phục! Vừa add mail khôi phục xong là add được 2FA Authenticator ngay trong cùng 1 phiên.
 
-## 2. Thứ tự thực thi chuẩn tinh gọn (Đi thẳng vào 2FA)
+## 2. Thứ tự thực thi chuẩn liên hoàn (5 Bước Khép Kín)
 Không cần ngâm thêm. Thực hiện tuần tự trong cùng 1 phiên:
-1. **Thiết lập 2FA Authenticator (TOTP) trực tiếp:**
-   - Click "Thêm một cách đăng nhập khác cho tài khoản" (`button:has-text('Thêm một cách đăng nhập khác cho tài khoản')`).
-   - Chọn "Sử dụng ứng dụng" -> Chọn "Tôi muốn sử dụng ứng dụng xác thực khác" (`#iSelectProofTypeAlternate`).
+1. **Bước 1: Add Mail Khôi Phục (Domain tạm `@fviainboxes.com`):**
+   - Kiểm tra xem trên trang proofs đã có mail khôi phục chưa (thẻ "Gửi mã qua email"). Nếu đã có sẵn -> Bỏ qua bước này.
+   - Nếu chưa có: Mở modal -> Chọn "Gửi mã qua email" (`#Add_email`) -> Điền mail `<username><3_rand>@fviainboxes.com` -> Bóc OTP qua API `fviainboxes.com/messages` -> Điền xác minh.
+2. **Bước 2: Thiết lập 2FA Authenticator (TOTP) & Bật công tắc tổng:**
+   - Mở modal -> Chọn "Sử dụng ứng dụng" (`#Add_msAuthApp`) -> Chọn "Tôi muốn sử dụng ứng dụng xác thực khác" (`#iSelectProofTypeAlternate`).
    - Bấm tiếp theo -> Chọn hiển thị secret key dạng text (`#iShowPlainLink`).
    - Bóc Secret Key (16 ký tự Base32) -> Lưu vào Cột 4 của `gmail_clean_v2.xlsx`.
    - Sinh mã TOTP 6 số bằng `pyotp` -> Điền vào `#iTOTPField` và xác nhận.
    - Điều hướng tới `https://account.live.com/proofs/EnableTfa` để bật công tắc Two-step verification tổng.
-2. **Đổi mật khẩu mới:**
-   - Điều hướng `https://account.live.com/password/change` -> Nhập mật khẩu hiện tại -> Điền mật khẩu mới (chuỗi 14 ký tự ngẫu nhiên) -> Submit.
-3. **Đăng xuất khỏi mọi nơi (Sign out everywhere):**
+3. **Bước 3: Đổi mật khẩu mới:**
+   - Điều hướng `https://account.live.com/password/change` -> Nhập mật khẩu hiện tại -> Điền mật khẩu mới (chuỗi 14 ký tự ngẫu nhiên) -> Submit. Lưu Cột 3 Excel.
+4. **Bước 4: Đăng xuất khỏi mọi nơi (Sign out everywhere):**
    - Quay lại trang `proofs` -> Click `#DeleteTrustedDevices` -> Xác nhận dialog "Đăng xuất" để hủy mọi phiên cũ toàn cầu.
-4. **Đăng nhập lại (Relogin & KMSI):**
+5. **Bước 5: Đăng nhập lại (Relogin & KMSI):**
    - Điều hướng `https://login.live.com` -> Điền email + mật khẩu mới.
    - Nếu Microsoft đòi mã 2FA -> Dùng Secret Key vừa lưu sinh mã TOTP điền vào.
    - Bấm "Có" tại màn hình Duy trì đăng nhập (KMSI) để lưu phiên sống bền vững trên profile GPM.
