@@ -159,12 +159,15 @@ Toàn bộ 80 máy Kibe dùng 40 proxy (mỗi proxy 2 máy: `[M1, M39]`, `[M2, M
    - **NHƯNG NẾU CHO NICK HỒI PHỤC CHẠY TRÊN IP CHƯA HẠ NHIỆT (IP dính cờ 48h):** Nick sẽ bị nhả ngay lập tức do cơ chế Gateway Flag của IP ➔ Operator/Agent lầm tưởng nick chưa hồi phục và tăng án phạt streak, trong khi thủ phạm thực sự là dải IP đang bị cắm cờ.
    - **Quy tắc bất di bất dịch:** Nick đang trong diện Probation / Hồi phục **CHỈ ĐƯỢC PHÉP CHẠY TRÊN IP HOÀN TOÀN SẠCH** (IP không có bất kỳ máy/row nào dính lỗi trong 48h qua).
 
-### B. Quy tắc vận hành chuẩn: HOÃN FOLLOW TOÀN BỘ ĐẾN HẾT NGÀY (23:59:59) KHI DÍNH NHẢ
-1. **Phạm vi khóa của Circuit Breaker:** Bảng `ip_circuit_breaker` khóa theo `proxy_key` với `target_date = today` và `reset_at = 23:59:59`. Mọi ca chạy sau trong cùng ngày (bất kể khác máy hay cùng máy khác row) khi gọi `check_ip_breaker()` đều nhận cờ `TRIPPED` và tự động safe-skip.
-2. **Cơ sở kỹ thuật (Taint Window 24h):**
-   - TikTok cắm cờ nghi vấn theo bộ ba `[Hardware ID + IP/Subnet + Pattern]`. Cửa sổ phạt không hết sau vài tiếng.
-   - **Kịch bản khác máy chung IP (Cặp proxy song sinh, ví dụ M14 & M52):** Tỷ lệ nhả khi chạy đôi cùng IP trong ngày là 70.6%. Ca sáng đã gãy thì ca chiều lao vào follow sẽ tiếp tục ăn nhả ngay lượt đầu (0 follow) và dính án phạt Cooldown 3–15 ngày.
-   - **Kịch bản cùng máy Switcher (8 nick/máy, sáng Nick A, chiều Nick B):** Mức độ rủi ro tối đa vì trùng cả IP lẫn Hardware ID. TikTok sẽ dễ dàng liên kết và quét trảm chùm nick clone trên thiết bị.
+### B. Quy tắc vận hành chuẩn: CẦU DAO TỰ NGẮT IP 48H ROLLING (ĐỐI SOÁT THỰC ĐỊA 10/10 - 12/10/2026)
+1. **Phạm vi & Thời hạn khóa 48h Rolling:**
+   - Khi nick cựu binh dính nhả (`FOLLOW_FAILED`), hàm `trip_ip_breaker()` ghi nhận proxy `TRIPPED` với `reset_at = now + 48 hours` (thay vì khóa cứng hết ngày `23:59:59`).
+   - Mọi ca chạy sau (cùng ngày hay sang ngày hôm sau) khi kiểm tra `check_ip_breaker()` đều đối soát mốc thời gian thực tế `reset_dt > now` theo giờ Hồ Chí Minh (`Asia/Ho_Chi_Minh`). Nếu IP chưa hết 48 tiếng cách ly -> Safe-skip an toàn (`CIRCUIT_BREAKER_SKIPPED`).
+2. **Bằng chứng hiệu quả thực địa 2 ngày qua (10/10 - 12/10/2026):**
+   - **Ngày 10/10:** Bão quét tương tác dồn dập, 30 cổng proxy bị ngắt trong khung `06:14 - 14:22`. Cầu dao phát huy tác dụng cứu an toàn **28 máy cặp đôi** (M39, M14, M78, M38, M8, M6, M41, M23, M17...), giữ nguyên điểm tín nhiệm không bị phạt Cooldown dắt dây.
+   - **Ngày 11/10:** Nghiêm túc dưỡng quân tuân thủ thời hạn 48h, dàn máy skip các proxy đang cách ly, chỉ chạy trên các proxy sạch (22 follow an toàn, chỉ phát sinh duy nhất M28 lúc 06:21 bị ngắt -> cứu M66).
+   - **Ngày 12/10:** Bắt đầu từ 06:14 sáng, 30/31 proxy hoàn thành đủ 48 tiếng cách ly đã **tự động mở khóa cuốn chiếu (rolling unlock)** an toàn. Sản lượng phục hồi ngoạn mục lên **40 follow** trên 15 nick mà **KHÔNG CÓ BẤT KỲ PROXY NÀO BỊ NHẢ LẠI**.
+   - **Kết luận:** Cơ chế 48h rolling triệt tiêu hoàn toàn tỷ lệ nhả 95.2% khi chạy lại sau 24h, giúp IP "hạ nhiệt" tuyệt đối trước khi mở lại.
 3. **Cơ chế bảo vệ nick ca sau:**
    - **Trạng thái ghi nhận:** `CIRCUIT_BREAKER_SKIPPED` (`failed=False`, `follow_failed=False`). Nick không bị tính lỗi, không tăng `fail_streak`, không bị gán cooldown.
    - **Chuyển đổi công năng sang Dưỡng Sinh (Feed / Read-only):** Cấm đi follow (hành vi write nhạy cảm), nhưng ĐƯỢC PHÉP chạy phiên lướt nuôi dưỡng sinh (xem video, tương tác nhẹ). Hành vi này vừa an toàn vừa giúp "rửa IP" bằng lưu lượng người dùng tự nhiên.
