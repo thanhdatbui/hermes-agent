@@ -55,16 +55,27 @@
 
 ---
 
-## 3. Nhịp độ thực thi chi tiết trong GemPhone (Node Delays)
-Trích xuất từ `TIKTOK-FLOW-TÌM-KIẾM-Thành-đạt_decrypted.json` (389 nodes):
+## 3. Nhịp độ thực thi chi tiết trong GemPhone (Node Delays & So sánh Khoảng nghỉ)
+Trích xuất từ `TIKTOK-FLOW-TÌM-KIẾM-Thành-đạt_decrypted.json` (389 nodes) và đối chiếu với Taadaa Runner:
 1. **Search Anchor:** Search đúng 1 UID Anchor từ file `tik1va2.txt`, ngâm profile **5.8s – 12.5s** (Node `uo18cfi`).
 2. **Mở danh sách:** Bấm tab `Đã follow` (Node `cicjh98` / `yuouuca`) mở danh sách Following của Anchor.
-3. **Loop cào trong list:**
+3. **Loop cào trong list & các khoảng nghỉ sâu:**
    - Trước khi tap: ngập ngừng `0.5s – 4.5s`.
    - Tap nút: `//node[@text="Follow" or @text="Follow lại"]`.
    - Vuốt cuộn danh sách: `swipe-scroll up` (750ms).
-   - Nghỉ sâu giữa 2 lần follow: Node `7t6ltgz` (5.2s–18.5s), Node `vc1yhpb` (8.1s–14.4s), Node `7u8v7yd` (7.2s–15.4s).
-   - 20–30 follow chạy rải rác kéo dài từ **7 đến 12 phút**.
+   - **Khoảng nghỉ thường giữa 2 lần follow:**
+     * Node `7t6ltgz`: nghỉ **5.2s – 18.5s**
+     * Node `vc1yhpb`: nghỉ **8.1s – 14.4s**
+     * Node `7u8v7yd`: nghỉ **7.2s – 15.4s**
+   - **Các nhịp nghỉ đệm sâu bất thường (Deep Jitter / Pacing Nodes):**
+     * Node `muwrdaa`: nghỉ **16.5s – 27.0s**
+     * Node `bfeodrk`: nghỉ **15.9s – 43.5s**
+   - **Tổng thời gian phiên:** 20–30 follow chạy rải rác kéo dài từ **7 đến 12 phút**.
+4. **Bản chất khác biệt so với Taadaa Runner:**
+   - Taadaa Runner trước đây cấu hình `delay_min: 8`, `delay_max: 25` nhưng bị kẹp chuỗi thao tác chuyển Activity liên tục (mở profile con `_path_b_verify`, xem video, back ra, Pull-to-refresh) tạo ra áp lực UI và tần suất tương tác dày đặc.
+   - Gemphone của ông anh chỉ đứng nguyên tại một màn hình danh sách, thao tác tap-and-scroll rải rác kèm các cú nghỉ sâu 20–43s, mô phỏng đúng hành vi người thật lướt xem danh bạ bạn bè.
+5. **Kỷ luật điều phối phiên thảo luận (Coordinator Discipline):**
+   - Khi phiên thảo luận kỹ thuật kéo dài với nhiều tranh luận về luồng/thuật toán, Coordinator BẮT BUỘC phải chốt và tổng kết rõ ràng mọi thắc mắc ban đầu của User (đặc biệt là các so sánh thông số định lượng như khoảng nghỉ/delay) trước khi kết thúc phiên; tuyệt đối không để trôi việc rồi báo xong phiên.
 
 ---
 

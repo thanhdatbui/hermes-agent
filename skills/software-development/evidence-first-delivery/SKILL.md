@@ -127,6 +127,9 @@ Use this class-level workflow whenever a task produces visual/UI/farm/browser ev
 The delivery layer should validate outbound completion claims before the platform adapter sends them:
 
 - Completion claims must carry valid `MEDIA:` evidence.
+- **Session-State Recap Exemption (Chống bẫy spam trên hội thoại tiếp nối/recap):** Khi phiên làm việc đã từng gửi và kiểm chứng ảnh thành công (`sess_state["verified_media_paths"]` > 0), các câu trả lời thoại, giải trình, hoặc recap tiếp theo KHÔNG được coi là vi phạm thiếu ảnh và tuyệt đối KHÔNG được chèn banner vi phạm `[EVIDENCE FIRST GATE — FAIL-CLOSED VIOLATION]`. Chỉ đòi hỏi ảnh mới khi phiên làm việc chưa từng có ảnh kiểm chứng hoặc xuất hiện claim về một entity/tác vụ hoàn toàn mới.
+- **Quy tắc Bất biến Restart Gateway khi sửa Plugin/Hook:** Tiến trình Daemon Messaging Gateway (`pythonw.exe`) lưu bytecode trong RAM. Mọi sửa đổi file `.py` trên đĩa BẮT BUỘC phải đi kèm detached restart (`delayed-restart.ps1`) để nạp bytecode mới vào RAM trước khi thông báo cho người dùng, tránh bẫy lệch pha RAM khiến cảnh báo cũ tiếp tục văng ra.
+- **Tuyệt đối cấm ném text gate rác vào chat:** Cảnh báo nội bộ chỉ ghi log hệ thống (`logger.warning`), không được làm ô nhiễm khung chat của người dùng.
 - Reject bare paths, code-fenced media tokens, missing files, stale files, wrong roots, invalid images, and evidence that does not satisfy the run context.
 - The gate must be active even when the caller omits optional evidence context. Optional context must default to the safest fail-closed context, not disable validation.
 - Record structured telemetry for every validation/block: event name, timestamp, platform, chat/target, valid flag, reason, and evidence paths. A warning log alone is not sufficient for auditability.
