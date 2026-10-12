@@ -15,18 +15,24 @@ Khi dispatch Worker thực hiện task EDIT / FIX:
   - Scope Lock bắt buộc trỏ vào một script/tool nằm trong `D:/Taadaa/` (ví dụ `FILE: D:/Taadaa/tools/...` hoặc `FILE: D:/Taadaa/scripts/...`).
   - Worker sẽ thực thi thông qua script đó để đọc/ghi file bên ngoài (kèm backup `.bak` và verify).
 
-### Bẫy 2: Thiếu thẻ FILE tuyệt đối (`EDIT_MISSING_FILE` & `PATH_NOT_ABSOLUTE`)
+### Bẫy 2: Thiếu thẻ FILE tuyệt đối (`EDIT_MISSING_FILE` & `PATH_NOT_ABSOLUTE` & `MISSING_TASK_KIND`)
 - **Lỗi thực tế 1:** `EDIT_MISSING_FILE: Task EDIT bắt buộc có 'FILE: <đường_dẫn_tuyệt_đối>' (SCOPE LOCK MISSING TARGET FILE)`.
 - **Lỗi thực tế 2:** `PATH_NOT_ABSOLUTE: '- D:\OneDrive\TaadaaData\kibe\Tik4.xlsx' không phải đường dẫn tuyệt đối`.
+- **Lỗi thực tế 3:** `MISSING_TASK_KIND: Bắt buộc khai báo 'TASK_KIND: EDIT' hoặc 'TASK_KIND: INVESTIGATE' trong context (SCOPE LOCK MISSING TARGET FILE)`.
+- **Lỗi thực tế 4:** `PATH_NOT_ABSOLUTE: '- Goal: Ghi đè toàn bộ nội dung file D:\Taadaa\tools\...' không phải đường dẫn tuyệt đối`.
 - **Nguyên nhân:**
+  - Mọi task dispatch bắt buộc khai báo rõ ràng `TASK_KIND: EDIT` hoặc `TASK_KIND: INVESTIGATE` ngay đầu context.
   - Task edit bắt buộc khai báo rõ ràng `SCOPE LOCK:` kèm dòng `FILE: <đường_dẫn_tuyệt_đối>`.
-  - Trong phần context/prompt, nếu viết gạch đầu dòng ngay trước đường dẫn (ví dụ `- D:/...`), bộ parser regex có thể bốc cả dấu `- ` thành token đường dẫn, dẫn đến không nhận diện được đường dẫn tuyệt đối chuẩn.
+  - Trong phần context/prompt, nếu viết gạch đầu dòng ngay trước đường dẫn (ví dụ `- D:/...` hoặc `- Goal: sửa file D:/...`), bộ parser regex của guard quét toàn bộ context tìm token đường dẫn và bốc cả câu dính dấu gạch đầu dòng `- `, dẫn đến fail kiểm tra `os.path.isabs()` và văng `PATH_NOT_ABSOLUTE`.
 - **Giải pháp:**
-  - Luôn ghi đường dẫn tuyệt đối sạch sẽ, không đính kèm bullet point `- ` dính liền:
+  - Luôn ghi đường dẫn tuyệt đối sạch sẽ, bọc trong triple angle brackets `<<<` và `>>>`:
     ```markdown
-    SCOPE LOCK:
-    FILE: D:/Taadaa/tools/update_tik_hashtags.py
+    TASK_KIND: EDIT
+    FILE: <<<
+    D:/Taadaa/tools/update_tik_hashtags.py
+    >>>
     ```
+  - Trong các câu mô tả khác trong context, KHÔNG viết đường dẫn tuyệt đối gắn liền sau dấu bullet point `- `. Dùng tên file tương đối hoặc tách dòng.
 
 ### Bẫy 3: Quá số lượng file trong 1 task (`MULTI_FILE_VIOLATION`)
 - **Lỗi thực tế:** `MULTI_FILE_VIOLATION: Phát hiện 3 files trong 1 task. Tối đa <= 2 files (1 file nghiệp vụ + 1 file test). Bắt buộc chẻ nhỏ task!`

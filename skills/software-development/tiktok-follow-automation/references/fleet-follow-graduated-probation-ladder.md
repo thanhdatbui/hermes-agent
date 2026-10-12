@@ -23,22 +23,24 @@
 - Budget chuẩn: 10 - 15 follows/phiên (hạ từ 10-20 xuống 10-15 theo quyết định vận hành 12/10/2026, ngày 2 phiên tích lũy 20 - 30 follow).
 - Tuyệt đối không tự ý hạ trần vô lý của nhóm này làm giảm hiệu suất chung của farm.
 
-### Nhóm 2: Tân Binh & Nick Có Tiền Án (Bắt buộc đi qua lộ trình 3 nấc accelerated)
+### Nhóm 2: Tân Binh & Nick Có Tiền Án (Bắt buộc đi qua lộ trình 2 nấc accelerated: 2 ca/stage)
 - **Quy tắc Tân Binh (USER INVARIANT):** Nick mới đủ Dual Gate (`age >= 21d`, `video >= 6`) nhưng chưa từng đi follow hoặc chưa tích lũy đủ follow an toàn (`< 15` follows, chưa có cờ `graduated`) đi dò với Quota 1–2 lượt. Bị nhả chỉ phạt cá nhân (tăng fail_streak, cooldown 3-14 ngày dưỡng sinh), **CẤM TUYỆT ĐỐI GIẬT CẦU DAO IP** (xem chi tiết `references/tier-aware-circuit-breaker-and-accelerated-probation.md`).
 - **Quy tắc Nick Ra Tù:** Nick vừa hết hạn cooldown quay lại thử thách với Quota 1–2 lượt.
 
-Áp dụng lộ trình 3 nấc thang tính theo số ngày chạy sạch (`probation_clean_days` - 2 ngày sạch / nấc):
+Áp dụng lộ trình 2 nấc thang tính theo số ca/ngày chạy sạch (`probation_clean_days` - 2 ca sạch / nấc; mỗi stage chỉ đúng 2 lần chạy hoàn thành là thăng cấp):
 
 * **HỒI PHỤC 1 (Probation Tier 1 - Tân binh khởi động & Nick mới ra tù, `clean_days < 2`):**
   - **Quota:** 1 – 2 follows / ca (đồng nhất cho cả tân binh và nick ra tù).
-  - **Tiến độ thực tế:** Cần 2 ngày chạy sạch (~3 – 4 ngày ngoài đời thực).
+  - **Tiến độ thực tế:** Cần đúng 2 ca chạy sạch hoàn thành để thăng lên Hồi phục 2 (`sessions_needed = max(1, 2 - clean_days)`).
+  - **Hiển thị Badge Thận trọng:** Tối đa 2 ca (`🛡️ Thận trọng (2 ca)` khi mới vào nấc, giảm còn `1 ca` sau 1 ca sạch). CẤM TUYỆT ĐỐI để công thức cũ `3 - clean_days` văng ra 3 ca gây mâu thuẫn với nhãn `0/2 ngày`.
 
 * **HỒI PHỤC 2 (Probation Tier 2 - Tăng tải an toàn, `2 <= clean_days < 4`):**
   - **Quota:** 5 – 8 follows / ca.
-  - **Tiến độ thực tế:** Cần thêm 2 ngày chạy sạch tiếp theo (~3 – 4 ngày ngoài đời thực).
+  - **Tiến độ thực tế:** Cần thêm đúng 2 ca chạy sạch tiếp theo để tốt nghiệp (`sessions_needed = max(1, 4 - clean_days)`).
+  - **Hiển thị Badge Thận trọng:** Tối đa 2 ca (`🛡️ Thận trọng (2 ca)`).
 
 * **NẤC 3 (Tốt nghiệp - Graduation, `clean_days >= 4`):**
-  - Sau tổng cộng 4 ngày chạy sạch (~8 – 9 ngày ngoài đời thực).
+  - Sau tổng cộng 4 ngày/ca chạy sạch (~8 – 9 ngày ngoài đời thực).
   - Hệ thống chính thức tốt nghiệp (`graduated = True`, `fail_streak = 0`, xóa `probation_clean_days`), thăng hạng lên Nhóm Nick Khỏe (Full Budget 10 - 20 lượt).
   - **Cầu Dao IP (Tier-Aware Breaker):** CHỈ KHI NICK ĐÃ TỐT NGHIỆP (`was_graduated is True`) BỊ NHẢ mới kích hoạt ngắt Cầu dao IP 48h (`trip_ip_breaker`). Nick chưa tốt nghiệp (Tân binh, Hồi phục 1 & 2) bị nhả chỉ phạt Cooldown account, KHÔNG ngắt IP breaker (`[IP_BREAKER_SKIPPED_TIER]`).
 

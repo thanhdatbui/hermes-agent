@@ -26,15 +26,16 @@
 ### Vấn đề của cơ chế cũ (3 ngày sạch / nấc = 6 ngày mới tốt nghiệp):
 * Do farm chạy theo lịch cách nhật (ngày chẵn / ngày lẻ), 6 ngày sạch thực tế ngoài đời kéo dài tới **14 – 15 ngày** (nửa tháng trời). Nick cựu binh lỡ sảy chân 1 lần phải bò lết quá lâu, làm mất sản lượng lớn.
 
-### Quy Chuẩn 2 Ngày Sạch / Nấc (Tổng 4 Ngày Sạch Tốt Nghiệp):
+### Quy Chuẩn 2 Ngày/Ca Sạch / Nấc (Tổng 4 Ca Sạch Tốt Nghiệp - Mỗi Stage Chỉ Đúng 2 Ca Hoàn Thành):
 * **HỒI PHỤC 1 (Probation Tier 1 - Tân binh đi dò & Mới ra tù, `clean_days < 2`):**
   - Quota: **1 – 2 lượt** / ca.
-  - Tiến độ: Cần 2 ngày chạy sạch (~3 – 4 ngày ngoài đời thực).
+  - Tiến độ: Cần đúng 2 ca chạy sạch hoàn thành để thăng lên Hồi phục 2.
+  - Hiển thị Dashboard: Badge `🛡️ Thận trọng` tối đa 2 ca (`sessions_needed = max(1, 2 - clean_days)`), CẤM để công thức cũ 3 ca.
 * **HỒI PHỤC 2 (Probation Tier 2 - Tăng tải thử thách, `2 <= clean_days < 4`):**
   - Quota: **5 – 8 lượt** / ca.
-  - Tiến độ: Cần thêm 2 ngày chạy sạch tiếp theo (~3 – 4 ngày ngoài đời thực).
+  - Tiến độ: Cần thêm đúng 2 ca chạy sạch tiếp theo để tốt nghiệp (`sessions_needed = max(1, 4 - clean_days)`).
 * **TỐT NGHIỆP (Graduation - Lên Cấp Khỏe, `clean_days >= 4`):**
-  - Đạt $\ge 4$ ngày sạch: Tự động tốt nghiệp (`graduated = True`, `fail_streak = 0`, xóa `probation_clean_days`), thăng hạng lên Nhóm Nick Khỏe (Full Quota 10 – 20 lượt).
+  - Đạt $\ge 4$ ca/ngày sạch: Tự động tốt nghiệp (`graduated = True`, `fail_streak = 0`, xóa `probation_clean_days`), thăng hạng lên Nhóm Nick Khỏe (Full Quota 10 – 20 lượt).
   - Tổng thời gian hồi phục thực tế ngoài đời: **~8 – 9 ngày** (thay vì 15 ngày).
 
 ---

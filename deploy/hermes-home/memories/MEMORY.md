@@ -6,7 +6,7 @@ WoL ether3 (kibe 0C:EF:15:37:4C:20, admin 22:33:4D:06:4C:26; WG 13231); CẤM PA
 §
 Acc die SKIP; 400h cooldown quarantine động (skip khi chưa tới hạn, cấm xóa). Sandbox kẹt push: Claude CLI kèm gh auth push, cấm đưa lệnh user. Re-OAuth nạp Omni.
 §
-TikTok Follow: (máy,row) độc lập, ca khác row khác cấm gộp máy; Quota 10-15/ca (Khỏe), Fast-track 1 ca sạch, Thận trọng 3 ca; Canary nhóm Khỏe +10% dò trần; like 80%. Nick non nhả cấm ngắt IP. Đối soát fl theo file state. Path B 'Đã fl' ko commit; slot (folder-1)%8+1 cứng; reg bù độc lập. Cron: feed_session_watchdog & follow_session_watchdog.
+TikTok Follow: (máy,row) độc lập, ca khác row khác cấm gộp máy; Quota 10-15/ca (Khỏe), Fast-track 1 ca sạch, Thận trọng max 2 ca/stage (clean_days < 2 lên HP2, clean_days < 4 tốt nghiệp); Canary nhóm Khỏe +10% dò trần; like 80%. Nick non nhả cấm ngắt IP. Đối soát fl theo file state. Path B 'Đã fl' ko commit; slot (folder-1)%8+1 cứng; reg bù độc lập. Cron: feed_session_watchdog & follow_session_watchdog.
 §
 Hotmail bán: CẤM gán mail cá nhân; tự sinh @fviainboxes.com đọc OTP qua API. Tab Chrome CDP đóng ko mất cookie (lưu Profile disk).
 §
@@ -15,3 +15,5 @@ Proxy: User KO đổi, SoT PROXYgandienthoai.xlsx (S7 Google & Hotmail reg TT gi
 Crop Ava 9:16: Mặt ở 15-25% trên (cy~0.2*H), cấm cụt đầu. Picker: tap checkbox (225,250), cấm tap tâm; bẫy nút Lưu Sửa hồ sơ. Soi zoom tròn profile.
 §
 Sửa guard: restart_gw_detached.py nạp RAM; Gate miễn trừ tin Closeout/recap. Ranh giới session: chỉ gọi entry point, cấm kéo việc session khác (Hotmail/OTP), cấm spam subagent.
+§
+Farm Dispatch Invariant: context delegate_task bắt buộc có TASK_KIND: EDIT/INVESTIGATE. FILE: bọc <<< D:/... >>>, cấm viết đường dẫn sau gạch đầu dòng '- ' tránh lỗi regex PATH_NOT_ABSOLUTE. Khi user yêu cầu kiểm tra farm: BẮT BUỘC chủ động chạy công cụ inspect/scan, CẤM ngồi thụ động xin số máy.
