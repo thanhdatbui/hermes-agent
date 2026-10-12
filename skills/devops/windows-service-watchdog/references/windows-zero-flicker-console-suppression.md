@@ -167,3 +167,22 @@ res = subprocess.run(cmd, capture_output=True, text=True, timeout=10, **WIN_KWAR
      `Stop-Process -Name hermes -Force -ErrorAction SilentlyContinue`
      hoặc chạy script kill nhanh (`stop_admin_cron_game.bat`). KHÔNG đoán mò, KHÔNG giải thích dông dài khi User đang trong trận game.
   2. **Bước 2 (Vá triệt để vĩnh viễn sau trận):** Hướng dẫn chạy `python D:/Taadaa/tools/install_silent_sitecustomize.py` trên máy đó để nạp cờ `CREATE_NO_WINDOW` vào toàn bộ Python environments (`Python311`, `Python312`, `automation`, `hermes-agent\venv`).
+
+### 4. Bẫy Task Scheduler Hardware Guard (`Taadaa_Safe_USB_Guard_15m` / `safe_usb_guard.py`)
+- **Dấu hiệu nhận biết ("cron check usb ấy"):**
+  * Cửa sổ CMD bung lên đều đặn mỗi 15 phút trên máy Admin, in nhanh các dòng:
+    `[GUARD PASS] Khong co may nao dang ban giu lock (Fleet ranh).`
+    `[SKIP] ADB va bus USB van dang khoe manh, khong can reset.`
+    rồi tắt ngay sau 1–2 giây, làm văng hoặc mất focus game toàn màn hình.
+- **Nguyên nhân:**
+  * Tác vụ Windows Task Scheduler được đăng ký gọi trực tiếp `python.exe C:\Taadaa_Service\safe_usb_guard.py` dưới phiên đăng nhập tương tác (`Session 1`) thay vì `pythonw.exe`.
+- **Cứu nguy tức thời trong 1 giây:**
+  ```cmd
+  schtasks /change /tn "Taadaa_Safe_USB_Guard_15m" /disable
+  ```
+- **Khắc phục vĩnh viễn:**
+  Đổi action sang `pythonw.exe` để chạy câm lặng 100% trong background:
+  ```cmd
+  schtasks /change /tn "Taadaa_Safe_USB_Guard_15m" /tr "pythonw.exe C:\Taadaa_Service\safe_usb_guard.py"
+  schtasks /change /tn "Taadaa_Safe_USB_Guard_15m" /enable
+  ```
