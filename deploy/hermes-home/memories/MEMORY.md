@@ -16,4 +16,4 @@ Crop Ava 9:16: Mặt ở 15-25% trên (cy~0.2*H), cấm cụt đầu. Picker: ta
 §
 Sửa guard: restart_gw_detached.py nạp RAM; Gate miễn trừ tin Closeout & recap hybrid. Ranh giới session: Session cron/tách script chỉ tập trung gọi entry point, cấm kéo việc session khác (Hotmail/OTP); cấm spam subagent làm rác chat.
 §
-Admin PC: Task Scheduler/script nền BẮT BUỘC pythonw.exe/wscript (cấm python.exe trần giật cmd văng game). Điều khiển Admin tự SSH qua admin_ssh_exec.py, cấm đùn việc cho user.
+Admin/Kibe: Task Scheduler/script BẮT BUỘC pythonw/wscript (cấm giật cmd văng game). Tự SSH qua admin-farm, cấm đùn lệnh tay. USB: safe_usb_guard/adb-transport-healer vô dụng & đã disable vĩnh viễn; chỉ dùng Reboot 11:35; nâng USB 3.0: 2 card PCIe x1 Renesas/VIA nguồn SATA (150-220k/c, 40 máy/c).

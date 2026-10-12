@@ -67,3 +67,18 @@ TikTok có nhiều biến thể giao diện trang cá nhân (Profile):
   * Dùng `psutil.Process(pid).is_running()` để kiểm tra tiến trình.
   * **NẾU PID CÒN SỐNG:** Đây là tiến trình nuôi hợp lệ của Farm! CẤM XÓA LOCK, CẤM CAN THIỆP MÁY. Báo cáo rõ ràng máy đang bận ca nuôi và chờ nhả lock.
   * **CHỈ ĐƯỢC XÓA LOCK** khi `psutil.NoSuchProcess` xác nhận tiến trình đã chết (stale lock thực sự).
+
+### 4. False-Positive Bút Chì Top-Left & Deep-link Fallback (Bug `TopLeftPencilLayout`)
+- **Triệu chứng:** `TopLeftPencilLayout` trong `profile_layouts/top_left_pencil.py` nhận diện nhầm icon "Thêm bạn bè" `[24,96][126,204]` thành bút chì sửa hồ sơ do icon không có `text` hay `desc`, dẫn đến việc tap trượt vào `(75, 150)` và sau đó văng vào bẫy Note bubble (`[AVATAR_UPLOAD_MENU_MISSING]`).
+- **Dấu hiệu nhận biết Add Friend:** Node `[24,96][126,204]` luôn đi kèm với button `id/zz5` hoặc `id/pwb` (`[126,96][228,204]`).
+- **Cách khắc phục trong code:**
+  * Bổ sung điều kiện loại trừ trong `TopLeftPencilLayout.matches()`: `if tree.has_rid("zz5", "pwb") or tree.has_text("thêm bạn", "thêm người", "find friends", "add friends"): return False`.
+  * Khi `TopLeftPencilLayout` bị loại trừ, `state_machine.py` kích hoạt fallback deep-link `snssdk1233://profile/edit` của TikTok APAC để mở thẳng màn Sửa hồ sơ.
+
+### 5. Kỷ luật Fix Script khi Coordinator chạm trần T1 (Chống Bại liệt / Trốn việc)
+- Khi gặp bug script farm nhưng Coordinator đã chạm trần ngân sách T1 (<= 200 dòng, <= 5 files), **CẤM TUYỆT ĐỐI đứng im báo BLOCKED để đùn việc cho User**.
+- BẮT BUỘC lập **Patch Contract O(1)** và dispatch Worker AG Gemini (`ag-gemini-pool-3`) theo chuẩn guard:
+  * Khai báo: `TASK_KIND: EDIT`
+  * Khai báo file: `FILE: <đường_dẫn_tuyệt_đối>`
+  * Khai báo test: `FOCUSED_TEST: python -m pytest <path>::<test_node>`
+  * Khai báo anchor: `OLD_STRING:` và `NEW_STRING:` (bắt buộc khác nhau, anchor duy nhất `c == 1` trong file).

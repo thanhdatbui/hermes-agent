@@ -87,27 +87,17 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
   4. Cả 2 máy tính đều đã có `AutoAdminLogon = 1` $\rightarrow$ Tự động vào thẳng Desktop sau ~60 giây, các Task Scheduler tự khởi chạy lại ADB Server và Hermes Gateway.
   5. Ghi log lịch sử tại `C:\Taadaa_Service\daily_reset.log`.
 
-## 5. Quy Tắc Safe Preflight Reset (Bảo Vệ Device Locks & Backoff Logic)
-- **Nguồn repo quản lý (SSOT):** `D:\Taadaa\tools\services\Taadaa_Service\safe_usb_guard.py`
-- **Vị trí triển khai trên Host:** `C:\Taadaa_Service\safe_usb_guard.py` (Script nguồn mẫu lưu tại `scripts/safe_usb_guard.py`).
-- **Nguyên tắc an toàn tối thượng:**
-  1. **Kiểm tra Device Locks trước:** Quét `~/.codex/device-locks/*.lock.json`. Nếu CÓ BẤT KỲ máy nào đang bận (`running/active/locked` và PID còn sống) $\rightarrow$ **CẤM TUYỆT ĐỐI RESET USB**.
-  2. **Chỉ reset khi thỏa mãn CẢ 2 điều kiện:**
-     - Toàn bộ fleet rảnh rỗi (0 active locks).
-     - ADB phát hiện lỗi: `adb devices` bị treo (>8s) hoặc số máy online tụt giảm bất thường (< 50 máy).
-  3. **Cơ chế Backoff chống Reset lặp (Theo đặc tả Advisor Sol):**
-     - Lưu trạng thái tại `C:\Taadaa_Service\usb_guard_state.json`.
-     - Tối đa 2 lần reset liên tiếp. Nếu sau 2 lần mà ADB vẫn lỗi, hệ thống kích hoạt cooldown 30 phút, từ chối reset để bảo vệ phần cứng controller và ghi log vào `C:\Taadaa_Service\safe_usb_guard.log`.
-     - Khi ADB khỏe mạnh trở lại $\rightarrow$ tự động xóa bộ đếm về 0.
-  4. **Lập lịch tự động (Dual-Host: Đã triển khai trên cả Admin PC & Kibe PC):**
-     - Đã cài đặt Scheduled Task `Taadaa_Safe_USB_Guard_15m` trên **Admin PC** và **Kibe PC** chạy ngầm định kỳ mỗi 15 phút.
-     - *Lưu ý quyền Windows khi đăng ký Task Scheduler:* Trên môi trường không elevated Administrator, cờ `-User "SYSTEM"` sẽ bị từ chối với lỗi `Access is denied (HRESULT 0x80070005)`. Đăng ký trực tiếp dưới user phiên làm việc hiện tại (bỏ tham số `-User "SYSTEM"`) để task kích hoạt ở trạng thái `Ready` thành công 100%.
-     - **BẪY BUNG CỬA SỔ CONSOLE / VĂNG GAME (Zero-Console Invariant):**
-       * Khi đăng ký Task Scheduler dưới user interactive (`Admin` hoặc `Kibe`), **BẮT BUỘC gọi qua `pythonw.exe` hoặc bọc qua VBScript (`wscript.exe` SW_HIDE)**.
-       * **CẤM TUYỆT ĐỐI** dùng `python.exe` trong Action của Task Scheduler hoặc file `.bat` trần, vì mỗi 15 phút Windows sẽ giật cửa sổ console `conhost.exe` lên Desktop ~1-2 giây in log rồi tắt $\rightarrow$ làm mất focus, khựng hình hoặc văng ván game của user (TFT / League).
-       * Khi user đang chơi game mà báo bị nháy cmd, Coordinator **BẮT BUỘC tự chủ động SSH sang Admin để tắt ngay (`schtasks /change /tn "..." /disable`)** qua `admin_ssh_exec.py`, **CẤM TUYỆT ĐỐI** bắt user tự mở CMD gõ lệnh tay!
-       * Cấu hình chuẩn không cửa sổ cho `Taadaa_Safe_USB_Guard_15m`:
-         `schtasks /change /tn "Taadaa_Safe_USB_Guard_15m" /tr "D:\Taadaa\python-envs\automation\Scripts\pythonw.exe C:\Taadaa_Service\safe_usb_guard.py"`
+## 5. Khai Tử Watchdog Reset Mềm USB (`safe_usb_guard.py` & `Taadaa_Safe_USB_Guard_15m`)
+- **Kết luận thực nghiệm & Quyết định hủy bỏ (User Directed 12/10/2026: "Vô dụng thì tắt cụ nó đi"):**
+  1. **Bản chất vô dụng:** Lệnh phần mềm (`reset_usb_bus.bat`, `Disable-PnpDevice`) không thể giải phóng thanh ghi phần cứng Intel X99 (lỗi `HRESULT 0x8004100c`) và không thể giải quyết giới hạn Endpoint. Ngưỡng kích hoạt trong code (`< 50` máy) khiến nó không bao giờ cứu được các ca rụng chùm 8–9 máy.
+  2. **Tác hại nghiêm trọng (Bung cửa sổ CMD phá game):** Task Scheduler chạy bằng `python.exe` cứ mỗi 15 phút lại giật bung cửa sổ console đen lên màn hình desktop, in log rồi tắt $\rightarrow$ làm cướp focus chuột/phím và văng game của người dùng (TFT / League of Legends).
+  3. **Trạng thái chính thức:** **ĐÃ VÔ HIỆU HÓA VĨNH VIỄN (DISABLED) TRÊN CẢ 2 MÁY ADMIN VÀ KIBE**.
+     - Admin PC: `schtasks /change /tn "Taadaa_Safe_USB_Guard_15m" /disable`
+     - Kibe PC: `schtasks /change /tn "Taadaa_Safe_USB_Guard_15m" /disable`
+     - Hermes Cron Kibe: Đã xóa sổ vĩnh viễn cronjob `farm-adb-transport-healer`.
+  4. **KỶ LUẬT ĐIỀU PHỐI (USER INVARIANT):**
+     - **CẤM TUYỆT ĐỐI** đăng ký lại các cron/task reset mềm USB trên cả 2 máy. Reset PC (Reboot) định kỳ lúc 11:35 trưa là cơ chế DUY NHẤT thực sự hiệu quả để làm sạch thanh ghi USB phần cứng.
+     - **CẤM BẮT USER TỰ GÕ LỆNH:** Khi user đang chơi game hoặc bận mà báo có cửa sổ lạ/lỗi trên máy Admin, Coordinator **BẮT BUỘC tự chủ động SSH sang Admin xử lý ngầm**, TUYỆT ĐỐI KHÔNG ĐƯỢC đưa lệnh bắt user tự mở PowerShell/CMD gõ tay!
 
 ## 7. Bệnh Bàn Phím Mất Tín Hiệu & Cách Vào BIOS (Main X99)
 - **Triệu chứng 1 (Trước khi vào BIOS):** Khi khởi động, tại logo main xoay tròn thì bàn phím tắt đèn, chỉ sáng khi vào màn hình gõ pass Windows. Bấm Delete / F2 không vào được BIOS.
@@ -164,9 +154,11 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
   * Tuyệt đối không trông chờ vào xHCI onboard của main X99.
   * **CẢNH BÁO BẪY TRÀN ENDPOINT KHI MUA CARD PCIE USB 3.0 (CHỐNG LẶP LẠI LỖI CODE 43):**
     - Nếu mua loại card PCIe USB 3.0 giá rẻ dùng **1 chip điều khiển duy nhất** (1x Renesas uPD720201 hoặc 1x VIA VL805 chia sẻ 4 cổng) mà cắm dồn cả dàn 80 máy vào: **SẼ BỊ LỖI Y CHANG NHƯ LÚC BẬT USB 3.0 TRONG BIOS**! Con chip đó cũng bị trần 64–96 Endpoints, chỉ nhận được 8–10 máy là dính Code 43 (`VID_0000&PID_0000`) tê liệt toàn bộ máy còn lại.
-    - **Quy tắc bắt buộc khi lắp Card PCIe USB 3.0:**
-      * Dùng **nhiều card PCIe x1 rời riêng biệt** (mỗi card cắm đúng 1 dây Box Farm, tối đa 20–25 máy/card).
-      * Hoặc dùng loại **Card PCIe Quad-Controller chuyên dụng** (bo mạch tích hợp 4 chip controller độc lập, mỗi cổng 1 chip riêng biệt và 1 làn PCIe riêng, có nguồn phụ SATA).
+    - **Quy tắc mua & lắp đặt chuẩn 100% hoạt động (Chi phí ~300k–450k cho 80 máy):**
+      * **Số lượng:** Mua **2 Card PCIe x1 rời riêng biệt** (mỗi card ~150k–220k trên Shopee/Lazada). Mỗi card chỉ cắm 2 dây Box Farm (40 máy/card) để chia đều tải 2 chip xử lý độc lập.
+      * **Nguồn phụ (BẮT BUỘC):** Phải chọn loại card có **chân cắm nguồn SATA 15-pin (hoặc Molex 4-pin)** cắm trực tiếp từ nguồn máy tính (PSU) để chống sụt áp khe PCIe. Tuyệt đối không mua card trần không có nguồn phụ.
+      * **Chipset:** Chọn chip **Renesas/NEC uPD720201/uPD720202** hoặc **VIA VL805**. Windows 10/11 tự nhận driver gốc Microsoft xHCI, cắm vào nhận ngay trong 5 giây, không cần cài driver ngoài.
+      * Hoặc dùng loại **Card PCIe Quad-Controller chuyên dụng** (bo mạch tích hợp 4 chip controller độc lập, mỗi cổng 1 chip riêng biệt và 1 làn PCIe riêng).
   * Tài liệu đặc tả kỹ thuật chi tiết lưu tại repo: `D:\Taadaa\tools\docs\HARDWARE_USB_FARM_PCIE_GUIDE.md` (bản sao lưu: `D:\Taadaa\docs\HARDWARE_USB_FARM_PCIE_GUIDE.md`).
 
 ## 9. Quy Hoạch Phần Cứng Mở Rộng Farm (80 - 200 Máy)

@@ -10,7 +10,7 @@ Kibe(1-80) & Admin(201-280) media độc lập (Admin m2, cấm copy chéo). TT 
 §
 Dubbing: đúng tiếng, 100% thoại, tắt tiếng gốc. Pass láo: xóa None. Nick trên máy là tài sản, reg dư map lại. Cấm text gate rác/media chat. Báo cáo: cấm tròn 100%. KPI chỉ nick có ca. Farm song song.
 §
-Strike 3: Claude CLI. Gate: sửa đến khi APPROVED >=85. Chơi TFT cấm reboot; reboot farm 11:35 trưa (cấm sáng sớm ồn ngủ). Worker: AG Gemini default.
+Worker: AG Gemini default (cấm fallback Luna khi chưa cạn quota; chủ động fix script qua Worker contract, cấm viện cớ đóng băng/báo BLOCKED).
 §
 Code: script & cron Hermes độc lập. Hashtag sync: F_src=(Slot-1)*80+m_idx, cấm nhầm F_out sang F_src; 'Hashtag theo Folder' là SoT.
 §
