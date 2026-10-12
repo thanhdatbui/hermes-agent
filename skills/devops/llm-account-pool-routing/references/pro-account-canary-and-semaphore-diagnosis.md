@@ -12,11 +12,18 @@ When Google AI Pro accounts show quota in Omni but requests fail, do not infer F
 3. Canary the exact model with the exact connection header:
    `x-omniroute-connection: <connectionId>`
    Never use `x-omniroute-connection-id` for this test; it may be ignored and route elsewhere.
+   Use minimal token payload: `model: 'antigravity/gemini-3.8-flash-tiered'`, `messages: [{"role": "user", "content": "1"}]`, `max_tokens: 1`.
 4. Capture HTTP status, elapsed time, and raw error body. Interpretation:
    - `Semaphore timeout after 30000ms` (or the configured semaphore timeout), especially after ~30s: Omni internal account semaphore/queue saturation. It is not proof of quota exhaustion, Free-pool failure, or Google banning Pro.
    - Google body containing `RESOURCE_EXHAUSTED`, explicit quota/reset/credits language: upstream quota/rate-limit classification; preserve the raw reason.
    - 401/403 or explicit entitlement/plan denial: investigate OAuth/token/tier entitlement; do not disable or delete the account without direct evidence.
-5. Repeat on a small canary set, not the whole pool, and compare after the suspected busy requests drain.
+5. Batch execution discipline for full-pool audits (Harness Timeout Safety):
+   - Inference latency per account is ~3.5s - 6.5s. Probing 20+ accounts sequentially in a single command takes >80s and triggers harness/terminal timeout (exit code 124 at 60s cap).
+   - Divide the pool into batches of 4-5 accounts per probe call (`timeout: 35s`).
+   - Use `print(..., flush=True)` so results stream in real time and pinpoint hanging accounts immediately.
+6. Pool Triage: Distinguish Pro from Disabled Non-Pro Accounts:
+   - When inspecting `provider_connections` where `is_active = 0`, verify tier before reporting "locked accounts".
+   - Disabled accounts are typically `standard-tier` (`VALIDATION_REQUIRED`) or `free-tier` (`401 / unrecoverable_refresh_error`), NOT `g1-pro-tier`. Pro accounts remain active and isolated from standard-tier identity locks.
 
 ## Reporting rule
 Lead with the proven failure layer and exact raw body. Do not broaden scope from Pro to Free accounts when the canary is pinned to Pro. Do not call an account dead or say Google banned Pro based only on a stale/mismatched dashboard label. State uncertainty about the tier mismatch until a direct Google entitlement response or successful/failed exact-model canary proves it.
