@@ -8,7 +8,7 @@ description: Best practices and safety patterns for using computer-use and deskt
 This skill captures learnings and pitfalls for driving the user's desktop via tools like `computer_use`.
 
 ## Safety & Style Guidelines
-- **User Preference (Action-First vs. Passive Instructions):** When the user sends a screenshot of an app error, desktop toast, or sync warning, they expect the agent to immediately use tools to diagnose and remediate the issue directly — do not just explain the cause and list manual steps for the user to do unless user intervention is strictly required.
+- **User Preference (Action-First vs. Passive Instructions):** When the user reports an app error, freeze, or failure, they expect the agent to immediately use tools to diagnose and remediate the issue directly — DO NOT just explain the cause, create `.bat`/`.sh` scripts, or list manual steps for the user to execute. The agent has tools (`terminal`, background execution, `computer_use`) to perform the execution directly end-to-end. Asking the user to run files or click through scripts is considered laziness and an operational failure unless strictly impossible without elevation.
 - **Autonomous Operation:** The user expects autonomous operation but prioritizes not having their active work interrupted.
 - **Do Not Disrupt:** Never close windows, log out, or perform destructive actions unless explicitly requested. Always verify the element label in a SOM capture before clicking, especially near window controls.
 - **Communication:** If the AI is struggling to interact with a specific app (e.g., Chrome/Browser), stop and explain why rather than repeatedly sending potentially destructive commands.
