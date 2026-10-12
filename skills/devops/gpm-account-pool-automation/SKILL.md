@@ -17,6 +17,7 @@ Use for GPM v3 (19995), Gmail/Hotmail lifecycle, proxy-safe accounts, CRX/CDP, c
 - Silent Watchdog: `references/no-agent-cron-silent-watchdog-and-telegram-chunking.md`.
 - 2FA Deadlock: `references/gpm-gmail-2fa-lifecycle-deadlock-and-silent-reporting.md`.
 - GPM Pagination: `references/gpm-profile-pagination-and-duplicate-spawn-pitfall.md`.
+- Mute Audio (--mute-audio): `references/gpm-chromium-mute-audio-flag.md`.
 - Browser-core repair: `references/gpm-browser-core-repair-source-integrity.md`.
 - Preflight Liveness: `references/gpm-local-api-liveness-and-autolaunch-pattern.md`.
 - Hook ChatGPT Web/Codex: `references/codex-oauth-phone-verification-5sim-and-sumistore.md`.

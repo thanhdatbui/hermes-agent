@@ -20,7 +20,7 @@
 ## 2. Quy Chuẩn 3 Nấc Thang Thử Thách (Graduated Probation Ladder)
 
 ### Nhóm 1: Nick Khỏe / Nòng Cốt (Đã tốt nghiệp: `>= 15` follows an toàn HOẶC `graduated == True`, `fail_streak == 0`)
-- Giữ nguyên 100% budget hiện tại: 10 - 20 follows/phiên (theo config máy).
+- Budget chuẩn: 10 - 15 follows/phiên (hạ từ 10-20 xuống 10-15 theo quyết định vận hành 12/10/2026, ngày 2 phiên tích lũy 20 - 30 follow).
 - Tuyệt đối không tự ý hạ trần vô lý của nhóm này làm giảm hiệu suất chung của farm.
 
 ### Nhóm 2: Tân Binh & Nick Có Tiền Án (Bắt buộc đi qua lộ trình 3 nấc accelerated)
