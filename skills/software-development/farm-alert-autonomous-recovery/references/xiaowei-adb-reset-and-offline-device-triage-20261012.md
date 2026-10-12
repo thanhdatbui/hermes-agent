@@ -40,5 +40,9 @@ Kết quả sẽ chỉ rõ:
 
 ### Bước 4: Nguyên tắc phục hồi (Anti-Panic)
 - Không kill ADB server thủ công khi farm đang chạy ca nuôi (sẽ làm đứt session của 70+ máy khác).
+- **CẤM gõ `adb reconnect` trần:** Hard Gate #5 sẽ chặn vì thiếu `-s <serial>` và thiếu Device Lock. Nếu cần reconnect máy cụ thể qua ADB, BẮT BUỘC bọc qua device lock:
+  ```cmd
+  python D:/Taadaa/tools/with_device_lock.py --machine <N> -- adb -s <serial> reconnect
+  ```
 - Để watchdog chuyên trách `farm-adb-transport-healer` (chạy định kỳ 3 phút/lần) tự động giải phóng socket transport và reconnect máy bị kẹt.
 - Báo cáo rõ ràng: số máy đang online (`device`), số máy `offline` (kèm số máy cụ thể), và xác nhận trạng thái tiến trình XiaoWei.
