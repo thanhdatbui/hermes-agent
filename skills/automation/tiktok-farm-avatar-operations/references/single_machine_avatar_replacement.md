@@ -14,6 +14,7 @@ Khi nhận yêu cầu đổi avatar từ ảnh chụp màn hình hoặc username
   - Chủ thể avatar BẮT BUỘC phải là chính chủ (creator) xuất hiện trong các video đang đăng thực tế của kênh.
 - **Quy tắc Trích xuất Chân dung Chính chủ từ Video Đang Nuôi:**
   - Với kênh POV / Selfie / Creator cá nhân: Quét các video trong `D:/TIKTOK-videonuoinick/<folder>/` (ví dụ `1.mp4`, `2.mp4`...), trích xuất các frame có khuôn mặt creator nhìn thẳng camera, có ánh sáng tốt và nét mặt tự nhiên.
+  - Với kênh Nhân vật Hoạt hình / Tâm lý / Triết lý / Podcast (Brand/Character Mascot vs Ảnh gái lạc ngách): Khi kênh thuộc ngách đồ họa/kiến thức (ví dụ "ÔNG CHÚ TÂM LÝ", "NGHĨ THẤU"), avatar cũ thường bị gán nhầm ảnh bạn nữ từ đợt nuôi ban đầu. BẮT BUỘC trích xuất chính nhân vật đại diện/thương hiệu từ frame tựa đề (thường tại giây 1.5 - 2.5s của video 1/2/3 nơi nhân vật đứng yên trọn vẹn, không dính motion blur hay subtitle che mặt).
   - Tránh lấy các frame bị điện thoại che mất nửa mặt (gương selfie che mặt) hoặc chuyển động nhanh bị nhòe mờ (motion blur).
 - **Quy tắc Crop tròn TikTok:**
   - Khung hình TikTok Profile là hình tròn. Tránh tuyệt đối lấy ảnh toàn thân ở góc xa (khi vào khung tròn mặt chủ thể sẽ bị nhỏ tí teo hoặc lệch góc).
@@ -77,6 +78,18 @@ Khi nhận yêu cầu đổi avatar từ ảnh chụp màn hình hoặc username
     subprocess.run([ADB, "-s", serial, "shell", "rm", "-rf", "/sdcard/Pictures/*", "/sdcard/DCIM/*", "/sdcard/Download/*"])
     # 3. Sau đó mới gọi powershell run_tiktok_upload_avatar.ps1
     ```
+  - **Gỡ Stale Device Lock Trước Khi Launch (Chống Bẫy SKIPPED_LOCKED):**
+    Khi máy vừa hoàn thành đợt feed session chung (batch 80 máy), tiến trình cha `multi-machine-feed-session` có thể vẫn giữ lock `machine_<M>.lock.json` và `serial_<S>.lock.json` trong `~/.codex/device-locks/` cho tới khi toàn bộ 80 máy kết thúc. Khi đó `run_tiktok_upload_avatar.ps1` sẽ thấy máy bị khóa và skip với `status: 'SKIPPED_LOCKED'`.
+    Trước khi gọi PowerShell, wrapper BẮT BUỘC kiểm tra nếu máy đã hoàn tất phiên trước (`run_manifest.json` ghi `status: success`), thì xóa 2 file lock này để `machine_inventory.py` nhận diện máy là `eligible`.
+  - **Kỷ luật Byte Decode Subprocess trên Windows (Chống UnicodeDecodeError Crash):**
+    Console output của PowerShell trên Windows chứa các byte không phải UTF-8 (CP1258/CP437/ký tự đóng khung như `0xad`).
+    CẤM TUYỆT ĐỐI dùng `subprocess.run(..., capture_output=True, text=True)` vì `_readerthread` của Python sẽ văng `UnicodeDecodeError: 'utf-8' codec can't decode byte...`, làm `proc.stdout` thành `None` và crash tiến trình.
+    BẮT BUỘC đọc raw bytes và decode với `errors='replace'`:
+    ```python
+    proc = subprocess.run(cmd, capture_output=True)
+    stdout_str = proc.stdout.decode('utf-8', errors='replace') if proc.stdout else ""
+    stderr_str = proc.stderr.decode('utf-8', errors='replace') if proc.stderr else ""
+    ```
   ```python
   import subprocess
   cmd = [
@@ -86,7 +99,10 @@ Khi nhận yêu cầu đổi avatar từ ảnh chụp màn hình hoặc username
       "-HostConfigPath", r"D:\Taadaa\machine-config\kibe.yaml",
       "-ForceAvatarMachineList", str(may)
   ]
-  subprocess.run(cmd, check=True)
+  proc = subprocess.run(cmd, capture_output=True)
+  stdout_str = proc.stdout.decode('utf-8', errors='replace') if proc.stdout else ""
+  if proc.returncode != 0:
+      raise SystemExit(proc.returncode)
   ```
 - **Kỷ luật Event-Driven:** Khởi chạy wrapper qua tiến trình nền `terminal(background=True, notify_on_complete=True, timeout=360, command="python D:/Taadaa/tmp/launch_avatar_<may>.py")` để harness tự đánh thức khi runner kết thúc; CẤM TUYỆT ĐỐI polling vòng lặp sleep.
 
