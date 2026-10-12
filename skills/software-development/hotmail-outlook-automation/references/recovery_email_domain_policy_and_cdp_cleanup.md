@@ -20,7 +20,18 @@
 ### Cơ chế tự động hóa trong `gpm_change_hotmail_security.py`:
 - Trong `get_recovery_email(email)`:
   - Kiểm tra cột 5 file `gmail_clean_v2.xlsx`.
-  - Nếu không tìm thấy, rỗng, `'None'`, hoặc chứa `'thanhdatbui'`, tự động sinh `<username><3rand>@fviainboxes.com`, gọi `update_excel_security_info` ghi vào Excel rồi mới sử dụng.
+  - Nếu không tìm thấy, rỗng, `'None'`, hoặc chứa `'thanhdatbui'`, tự động sinh `<username><3rand>@fviainboxes.com` làm mail dự kiến.
+- **QUY TẮC BẤT BIẾN: CẤM ĐIỀN EXCEL / BÁO XONG TRƯỚC KHI ADD MICROSOFT THỰC TẾ:**
+  - Tuyệt đối KHÔNG ghi mail khôi phục vào Excel như thể đã hoàn tất khi bot chưa thực sự chạy add trên Microsoft. Điền trước sẽ tạo dữ liệu "khống", khi bán cho khách Microsoft không thể gửi OTP về mail đó.
+  - Mail khôi phục chỉ được ghi nhận chính thức vào `gmail_clean_v2.xlsx` Cột 5 **SAU KHI**:
+    1. Bot Playwright điều hướng tới `account.live.com/proofs/manage/additional`.
+    2. Mở modal `Thêm một cách đăng nhập khác` -> Chọn `Gửi mã qua email`.
+    3. Điền địa chỉ mail domain dự kiến và bấm Tiếp theo.
+    4. Gọi API `fetch_recovery_email_otp(rec_email)` lấy OTP 6 số từ `fviainboxes.com`.
+    5. Điền OTP và xác nhận thành công trên giao diện Microsoft.
+- **BỎ QUA CẢNH BÁO "CHỈ LƯU ĐƠN 3 NGÀY" TRÊN BOXTAIKHOAN:**
+  - Cảnh báo "Chỉ lưu đơn hàng trong 3 ngày..." là thông báo tĩnh của SHOPCLONE7. Database thực tế vẫn lưu toàn bộ đơn hàng đã thanh toán từ nhiều tháng trước.
+  - Phải chủ động duyệt qua pagination (các trang cũ) hoặc dùng URL lọc để tải file đơn hàng, cấm dừng tìm kiếm với lý do "quá 3 ngày".
 - **Selector tương thích giao diện modal Microsoft mới:**
   - `add_sel`: Bổ sung `button:has-text('Thêm một cách đăng nhập khác')` và `div[role='button']:has-text('Thêm một cách đăng nhập khác')`.
   - `app_sel`: Bổ sung `button:has-text('Sử dụng ứng dụng')` và `button:has-text('Use an app')`.

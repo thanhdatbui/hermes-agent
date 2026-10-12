@@ -14,12 +14,19 @@ Trong các phiên chạy nuôi feed (`multi-machine-feed-session`), nhiều máy
      - Phát sinh log INFO: `_VPN_TIMEOUT_LOGGER.info("WIFI_PROFILES_FILE_LOAD path=%s", Path(file_path).name)` để Sol Reviewer và watchdog có thể kiểm chứng runtime mà không làm lộ credentials.
      - Reviewer yêu cầu unit test xác nhận cả fallback trong runner script (`run-feed-session.ps1`) và assertion bắt log `WIFI_PROFILES_FILE_LOAD` trong `test_vpn_preflight_router.py`.
 
-2. **Lệch pha thời gian (Timing Mismatch)**:
+2. **Lệch pha thời gian (Timing Mismatch) & Cửa sổ DHCP Lease**:
    - Worker preflight chỉ chờ 2 giây sau khi toggle Wi-Fi.
-   - `farm_wifi_auto_healer.py` chạy theo nhịp cronjob mỗi 5 phút (`*/5 * * * *`).
-   - Nếu worker không tự ép join lại tại chỗ trong vòng 5-8 giây, nó sẽ fail phiên trước khi cronjob kịp quét đến.
+   - Trên dòng Samsung S7 (Android 8) kết nối AP Aruba, quá trình bắt tay WPA2 và xin cấp phát IP DHCP mất trung bình 5–7 giây.
+   - Nếu preflight hoặc recovery handler thăm dò (`check_android_vpn`) ở giây thứ 4 khi IP inet chưa gán xong, nó sẽ kết luận sai `dumpsys connectivity: Wi-Fi not connected` và kích hoạt fail-closed dừng ca.
+   - BẮT BUỘC: Sau khi gọi `adbjoinwifi`, phải có thời gian lắng đọng tối thiểu 6–8 giây trước khi kiểm tra trạng thái mạng.
+   - `farm_wifi_auto_healer.py` chạy theo nhịp cronjob mỗi 5 phút (`*/5 * * * *`). Nếu worker không tự ép join lại tại chỗ trong vòng 6-8 giây, nó sẽ fail phiên trước khi cronjob kịp quét đến.
 
-3. **Bẫy Saved Network Roam Trap (SSID `Dat` / dải `192.168.10.x`)**:
+3. **Bẫy Watchdog Cắt Cụt SSID & Sinh Profile Rác Mới (`farm_wifi_auto_healer`)**:
+   - Khi truyền `-e ssid kibe 2` (không bọc nháy kép) qua ADB shell, Android `/system/bin/sh` tách thành `ssid="kibe"` và arg phụ `"2"`.
+   - Kết quả: `adbjoinwifi` tạo ra profile rác mới tên `kibe` hoặc `admin` (Net ID mới, priority 100). Khi máy mất sóng, supplicant cố nối vào profile rác này và thất bại.
+   - Regex kiểm tra thành công `re.search(r"inet\s+(192\.168\.\d+\.\d+)", ...)` nuốt chửng lỗi nếu máy ăn phải IP `192.168.10.x` của `Dat-1`. BẮT BUỘC siết regex `192.168.110.\d+`.
+
+4. **Bẫy Saved Network Roam Trap (SSID `Dat` / dải `192.168.10.x`)**:
    - Các máy từng lưu mạng ngoài farm (`Dat`) sẽ tự nhảy sang dải `192.168.10.x` khi AP Aruba bị nghẽn tải.
    - Từ `192.168.10.x`, máy không thể kết nối tới MikroTik proxy IP `192.168.110.2:100xx` (báo `network is unreachable`).
    - **Giải pháp**: Xóa vĩnh viễn cấu hình mạng rác trong Android bằng `service call wifi 14 i32 <net_id>` (tham khảo `android-wifi-profile-cleanup`).

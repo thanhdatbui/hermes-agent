@@ -14,4 +14,4 @@ Hotmail bán: CẤM gán mail cá nhân; tự sinh @fviainboxes.com đọc OTP q
 §
 Crop Ava 9:16: Mặt ở 15-25% trên (cy~0.2*H), cấm cụt đầu. Picker: tap checkbox (225,250), cấm tap tâm; bẫy nút Lưu Sửa hồ sơ. Soi zoom tròn profile.
 §
-Tài khoản: Mọi nick là tài sản farm (cấm logout). Trần 8: map nick có sẵn, nick non dời máy thiếu (add 2FA & ghi Excel trước, chỉ login khi user bảo). Cấm text gate thô. Sửa guard: BẮT BUỘC restart_gw_detached.py nạp RAM, tránh văng cảnh báo cũ.
+Sửa guard: restart_gw_detached.py nạp RAM; Gate miễn trừ tin Closeout & recap hybrid.
