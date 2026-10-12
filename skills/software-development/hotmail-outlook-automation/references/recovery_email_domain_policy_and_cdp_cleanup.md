@@ -35,6 +35,25 @@
 - **Selector tương thích giao diện modal Microsoft mới:**
   - `add_sel`: Bổ sung `button:has-text('Thêm một cách đăng nhập khác')` và `div[role='button']:has-text('Thêm một cách đăng nhập khác')`.
   - `app_sel`: Bổ sung `button:has-text('Sử dụng ứng dụng')` và `button:has-text('Use an app')`.
+  - `email_opt`: Dùng `text='Gửi mã qua email'`, `div:has-text('Gửi mã qua email')` để trigger chuyển hướng sang `account.live.com/proofs/Add`.
+  - Form `proofs/Add`: Input email là `#EmailAddress` hoặc `input[name='EmailAddress']`; nút submit là `input[value='Tiếp theo']` hoặc `#iBtn_action`.
+  - Form `proofs/Verify`: Điền mã OTP 6 số vào `#codeEntry-0..5` hoặc `#iOttText`, bấm xác nhận. Màn hình proofs/Manage sẽ hiện thẻ "Gửi mã qua email" kèm tick xanh "Cập nhật".
+  - Code mẫu chuẩn đã verify live (Máy 13 OTP `382537`):
+    ```python
+    # 1. Fill email
+    inp = page.locator('#EmailAddress, input[type="email"], input[name="EmailAddress"]').first
+    inp.fill(rec_email)
+    page.locator('#iBtn_action, input[value="Tiếp theo"], button:has-text("Tiếp theo")').first.click()
+    # 2. Poll OTP & fill
+    otp = fetch_recovery_email_otp(rec_email, timeout_seconds=40)
+    if otp:
+        if page.locator('#codeEntry-0').is_visible():
+            for idx, ch in enumerate(otp[:6]):
+                page.locator(f'#codeEntry-{idx}').fill(ch)
+        else:
+            page.locator('#iOttText, input[name="otc"]').first.fill(otp)
+        page.locator('#iBtn_action, input[value="Tiếp theo"], #idSIButton9').first.click()
+    ```
 
 ---
 

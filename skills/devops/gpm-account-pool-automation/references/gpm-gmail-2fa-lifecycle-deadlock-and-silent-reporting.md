@@ -70,3 +70,18 @@ Khi điều hướng tới `/two-step-verification/authenticator`, Google có th
    - `gmail_clean_v2.xlsx`.
    - `gpm_gmail_nurture_state.json`: cập nhật `status: "success"`, `last_nurtured: time.time()`.
    - `post_morning_gmail_2fa_state.json`: ghi nhận thành công.
+
+---
+
+## 4. Chuẩn Hóa Kiến Trúc Báo Cáo 6h & Closeout Gate Production Standard
+
+Khi đưa script báo cáo 6h qua Closeout Gate (Sol Auditor / OmniRoute :20129) để đạt điểm >= 85:
+1. **Phân tách I/O tuyệt đối**:
+   - `stdout`: CHỈ xuất bản nội dung báo cáo Telegram (được cron no_agent: true gửi cho user). Khi delta = 0 sự kiện, stdout PHẢI rỗng (`return 0`).
+   - `stderr`: Đi toàn bộ log vận hành, chẩn đoán exception, và structured telemetry metrics dạng JSON:
+     `[TELEMETRY_METRIC] {"event": "gmail_2fa_6h_report", "group": 10, "silent": true, ...}`
+2. **Không nuốt Exception im lặng**:
+   - Không dùng `except Exception: pass` làm ẩn lỗi dữ liệu (SQLite header hỏng, Excel zip hỏng, JSON corrupt).
+   - Log rõ ràng tên file và exception; gom vào danh sách `failed_sources` và hiển thị cảnh báo `⚠️ Nguồn dữ liệu lỗi` trong báo cáo nếu có nguồn hỏng.
+3. **Bộ kiểm thử toàn diện (Pytest 30+ cases)**:
+   - Bao phủ các nhánh: event trong 6h, silent watchdog khi 0 event, timezone 'Z' vs offset, unreadable/corrupted state JSON, SQLite header corrupt, Excel file thiếu sheet / rỗng, phân loại 2FA / soaking / ready.
