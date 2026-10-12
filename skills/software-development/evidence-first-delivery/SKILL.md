@@ -231,6 +231,7 @@ Use `references/avatar-only-scope-and-false-policy-refusal.md` for the incident-
 
 ## References
 
+- `references/anti-recap-spam-and-gateway-ram-sync-20261012.md` — **[MỚI 12/10/2026]** Khắc phục lỗi spam banner vi phạm bằng chứng đỏ lòm khi recap/đối thoại: Session-State Recap Exemption (đối soát `verified_media_details`), regex loại trừ mệnh đề backend/Excel/TOTP/recap, và quy trình restart Gateway detached để tránh lệch pha bytecode cũ trong RAM.
 - `references/session-recap-and-gateway-ram-sync-pitfalls.md` — **[MỚI 12/10/2026]** Sự cố lệch pha RAM Gateway daemon (`pythonw.exe`) sau khi sửa plugin, bẫy false-positive trên tin nhắn recap/đàm thoại, và cơ chế kiểm tra `sess_state` bỏ qua banner vi phạm.
 - `references/recap-exemption-and-gateway-ram-desync-lessons.md` — **[MỚI 12/10/2026]** Bài học vá Evidence-First Gate: Cơ chế miễn trừ câu thoại nhắc lại (Conversational Recap Exemption), loại trừ các hành động backend/Excel/TOTP, và bài học tử huyệt lệch pha bytecode giữa RAM Gateway và đĩa cứng dẫn đến việc tái phát cảnh báo đỏ ngay cả khi file đã được sửa.
 - `references/conversational-followup-and-gate-spam-exemption-20261012.md` — **[MỚI 12/10/2026]** Sự cố spam `[EVIDENCE FIRST GATE — FAIL-CLOSED VIOLATION]` trên hội thoại follow-up/recap ("M làm xong hết r à"), cơ chế context-blind regex quét nhầm lời thoại thành claim, và nguyên tắc deferred login (để sẵn trên Excel chờ ca tự nạp).
