@@ -58,4 +58,20 @@ Khi phiên Feed gặp sự cố hoặc chưa đạt điều kiện tối thiểu
   - `sensitive-skip-manual_needed`: Phiên Feed dính `manual-needed` (mất focus khi vào Profile, kẹt quảng cáo/splash không vuốt thoát được, hoặc username Profile không khớp).
   - Cả hai diện trên đều được hủy follow chủ động để bảo vệ nick khỏi bị TikTok gắn cờ bot hoặc nhả follow.
 
+---
+
+## 6. Tiêu Chuẩn Làm Sạch Lý Do Lỗi Báo Cáo (Sanitized Error Reasons Invariant — 2026-10-12)
+* **CẤM TUYỆT ĐỐI tuồn raw exception/traceback lên Telegram:**
+  - Trong các dòng tổng kết `Lỗi script/xác minh` và `Bỏ qua`, TUYỆT ĐỐI KHÔNG ĐƯỢC ném nguyên văn chuỗi lỗi thô từ exception hoặc stderr của subprocess vào tin nhắn.
+  - CẤM làm lộ các debug header HTTP (như `GET /ip HTTP/1.1`, `Host: ifconfig.me`, `context deadline exceeded`), và các đường dẫn file nội bộ (như `C:\Program Files (x86)\xiaowei\tools\adb.exe`).
+* **BẮT BUỘC quy hoạch qua hàm `classify_error_reason(reason)`:**
+  - Ánh xạ các lỗi mạng/proxy/egress IP/ifconfig -> Nhãn sạch 1 dòng: `Nghẽn đường truyền Proxy / 4G` hoặc `Lỗi kết nối VPN/Proxy`.
+  - Ánh xạ các lỗi adb command timeout/offline/transport (kể cả dump câu lệnh adb CLI) -> Nhãn sạch 1 dòng: `Mất kết nối ADB/USB`.
+  - Ánh xạ lỗi popup/dialog -> `Popup/Dialog bất thường`.
+  - Ánh xạ lỗi lock -> `Kẹt Device Lock`.
+* **Quy chuẩn dọn rác hiển thị:**
+  - Triệt tiêu toàn bộ ký tự xuống dòng (`\n`).
+  - Regex xóa sạch toàn bộ đường dẫn file tuyệt đối (`C:\...`).
+  - Giới hạn độ dài lý do không xác định tối đa <= 60 ký tự trên 1 dòng đơn.
+
 

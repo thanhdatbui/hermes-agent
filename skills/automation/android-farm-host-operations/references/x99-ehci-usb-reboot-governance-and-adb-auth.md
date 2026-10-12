@@ -20,14 +20,19 @@ Khi máy tính khởi động lại, để tránh việc thiết bị Android r�
    if %errorlevel% equ 0 exit /b 0
    ```
 
-## 3. Quy chuẩn Reboot Farm hàng ngày (TFT Game Guard)
+## 3. Quy chuẩn Reboot Farm hàng ngày (TFT Game Guard: Chỉ chặn khi In-Match)
 - **Khung giờ tối ưu:** 11:35 sáng (25 phút trước Ca 2 trưa 12:00). Tránh reboot lúc sáng sớm (05:30) vì còi POST BIOS và quạt CPU bung 100% RPM gây ồn khi người dùng đang ngủ.
-- **TFT Game Guard:** Trước khi reboot, script preflight (`farm_preflight_daily_reset.py`) BẮT BUỘC quét các tiến trình game TFT / Đấu Trường Chân Lý:
-  - `League of Legends.exe` (Trận đấu đang diễn ra)
-  - `LeagueClient.exe` / `LeagueClientUx.exe` (Client / Phòng chờ)
-  - Nếu phát hiện đang chạy game TFT: **ABORT REBOOT NGAY LẬP TỨC** để tránh gián đoạn trận đấu của user.
-  - Nếu không chạy TFT: Cho phép reboot tự động cả 2 máy (các tác vụ nền khác như cào video/sync/cron chấp nhận reboot làm sạch).
+- **TFT Game Guard (User Invariant — Chỉ chặn khi đang trong trận đấu thực sự):**
+  * Script preflight (`farm_preflight_daily_reset.py`) **CHỈ CHẶN** tiến trình engine 3D:
+    `League of Legends.exe` (Trận đấu TFT đang diễn ra).
+    Nếu phát hiện `League of Legends.exe`: **ABORT REBOOT NGAY LẬP TỨC** để tránh làm user bị xử thua AFK.
+  * **Cho phép reboot khi ở ngoài sảnh / hàng chờ:** Nếu user chỉ mở Riot Client, `LeagueClient.exe`, `LeagueClientUx.exe` (lobby / queue / xem BXH) $\rightarrow$ **VẪN TIẾN HÀNH REBOOT BÌNH THƯỜNG**.
+  * **Tất cả tác vụ nền khác (farm, cào video, render ffmpeg, cron, sync):** Chấp nhận tự động reboot làm sạch trước ca trưa.
 
-## 4. Trần Concurrency USB 2.0 cho Feed Session
+## 4. Tự Động Phục Hồi Cào & Render Sau Reboot Trên Admin Farm
+- Khi Admin PC reboot xong, tính năng Windows `AutoAdminLogon = 1` tự nạp thẳng vào Desktop của user `Admin` (Session 1).
+- Toàn bộ các tiến trình crawler (`run_admin_downloader`) và render engine (`ffmpeg.exe` xử lý kho `D:\video goc may 2`, script hàng đợi tại `D:/Taadaa/Tiktok-video/scripts`) được liên kết với Windows Startup $\rightarrow$ Tự động hồi sinh và tiếp tục cày cuốc mà không cần can thiệp thủ công.
+
+## 5. Trần Concurrency USB 2.0 cho Feed Session
 - Hạ `MaxWorkers` mặc định từ 40 xuống 25.
 - Đặt ràng buộc cứng mức engine `[ValidateRange(1, 30)]` trong `run-feed-session.ps1` để ngăn chặn tham số vượt ngưỡng an toàn băng thông USB 2.0.
