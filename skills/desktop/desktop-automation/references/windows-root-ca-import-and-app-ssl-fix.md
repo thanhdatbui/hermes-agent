@@ -53,3 +53,21 @@ Launch the store app cleanly:
 import os
 os.startfile(r"shell:AppsFolder\AppleInc.iCloud_nzyj5cx40ttqa!iCloud")
 ```
+
+### Step 6: AppContainer Stale Session Reset & UI Onboarding Navigation
+If SSL handshake is verified clean but the app STILL hangs at a loading state (e.g. "Signing In..." under a past user name), the app is stuck in an auto-resume loop attempting to refresh an expired token (`kAOSErrorInvalidCredentials`):
+1. **Identify Stale Storage Locations in AppX Container:**
+   - `%LOCALAPPDATA%\Packages\<Package>\LocalCache\Roaming\Apple Computer\Preferences\com.apple.AOSKit.plist` (cached encrypted session tokens).
+   - `%LOCALAPPDATA%\Packages\<Package>\LocalCache\Roaming\Apple Computer\Keychains\keychain-2.db*` (expired credentials).
+   - `%LOCALAPPDATA%\Packages\<Package>\Settings\settings.dat` (Windows Store app settings).
+   - `%LOCALAPPDATA%\Packages\<Package>\SystemAppData\Helium\User.dat` (AppContainer virtualized registry hive).
+2. **Atomic Reset Sequence:**
+   - Terminate all app processes (`taskkill /F`).
+   - Backup `Preferences` and `Keychains` to `Preferences_backup` and `Keychains_backup`.
+   - Remove stale token files: `com.apple.AOSKit.plist`, `com.apple.AOSKit.RegInfo.plist`, `iCloudWinPref.plist`, and `keychain-2.db*`.
+   - Wipe `settings.dat` and `Helium\User.dat` to completely reset the virtualized registry hive.
+   - Relaunch the AppX cleanly: `os.startfile(r"shell:AppsFolder\AppleInc.iCloud_nzyj5cx40ttqa!iCloud")`.
+3. **Automated Onboarding Transition via `computer_use`:**
+   - After reset, the app opens to the welcome onboarding screen ("Get all your iCloud content on your PC").
+   - Perform SOM capture (`computer_use(action='capture', mode='som')`) and click `#7 Button 'Get Started'`.
+   - Verify with visual capture that the interface transitions to the active login prompt: **"Sign in to iCloud with your Apple Account"** with empty Email/Password input fields.
