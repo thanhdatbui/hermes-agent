@@ -66,3 +66,17 @@ Worker summaries are untrusted until these fields are independently re-read by t
    - Cluster A (e.g. Kibe): $M \in [1..80] \implies m_{idx} = M$.
    - Cluster B (e.g. Admin): $M \in [201..280] \implies m_{idx} = M - 200$.
    Never write unchecked ternary expressions like `m if m <= 80 else m - 200`. Explicitly define constants (`KIBE_MAX_MACHINE = 80`, `ADMIN_MIN_MACHINE = 201`, `ADMIN_MAX_MACHINE = 280`, `ADMIN_MACHINE_OFFSET = 200`) and reject or flag any machine value outside `[1..80]` and `[201..280]` to prevent boundary overflow and silent mapping corruption.
+
+7. **Case-Insensitive Workbook Filename Resolution**:
+   On Windows/OneDrive file sync or legacy naming (e.g. `Tik3.xlsx` vs `tik3.xlsx`), hardcoded case matching in file synchronization loops can cause specific workbooks to be skipped silently.
+   Rule: Always implement case-insensitive fallback (`f.name.lower() == target_name.lower()`) when locating workbooks in target directories.
+
+8. **Structured Telemetry & No-Silent-Swallow Pattern**:
+   Do not catch broad `Exception` silently with `pass` in workbook loading or parsing routines. Log specific warnings (`OSError`, `KeyError`, `ValueError`).
+   Expose structured JSON telemetry summary (`SYNC_KEYWORDS_SUMMARY`) with `workbooks_checked`, `total_updated`, `skipped_rows`, `error_count`, and `status` to enable automated downstream audit and alerting.
+
+9. **Multi-Layered Test Evidence for Closeout Review**:
+   Closeout gate reviewers require evidence at multiple tiers:
+   - Tier 1: Unit tests for pure calculation logic (`resolve_source_folder`, boundaries, invalid types).
+   - Tier 2: Integration tests using `tmp_path` generating mock multi-sheet workbooks (`TaiKhoan` + `Hashtag theo Folder`), asserting data mutation and structural integrity.
+   - Tier 3: Operational parity test across live workbooks ensuring 100% of accounts match authoritative source.
