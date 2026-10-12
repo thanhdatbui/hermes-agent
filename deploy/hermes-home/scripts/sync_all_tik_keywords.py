@@ -17,6 +17,7 @@ import re
 import sqlite3
 import sys
 from pathlib import Path
+from typing import Any
 
 try:
     import openpyxl
@@ -50,6 +51,35 @@ TIK_FILES = [
     ("Tik7.xlsx", 7, 480),   # slot 7, base source: (7-1)*80 = 480 -> 481..560
     ("Tik8.xlsx", 8, 560),   # slot 8, base source: (8-1)*80 = 560 -> 561..640
 ]
+
+# Machine range and offset definitions across dual clusters
+KIBE_MAX_MACHINE = 80
+ADMIN_MIN_MACHINE = 201
+ADMIN_MAX_MACHINE = 280
+ADMIN_MACHINE_OFFSET = 200
+
+
+def resolve_source_folder(slot_num: int, machine_val: Any) -> int | None:
+    """
+    Calculate source folder F_src from slot (1..8) and machine number.
+    - Kibe: machines 1..80 -> m_idx = machine (1..80)
+    - Admin: machines 201..280 -> m_idx = machine - 200 (1..80)
+    Formula: F_src = (slot_num - 1) * 80 + m_idx (range: 1..640)
+    """
+    if machine_val is None or not (1 <= slot_num <= 8):
+        return None
+    try:
+        m_int = int(machine_val)
+    except (ValueError, TypeError):
+        return None
+
+    if 1 <= m_int <= KIBE_MAX_MACHINE:
+        m_idx = m_int
+    elif ADMIN_MIN_MACHINE <= m_int <= ADMIN_MAX_MACHINE:
+        m_idx = m_int - ADMIN_MACHINE_OFFSET
+    else:
+        return None
+    return (slot_num - 1) * 80 + m_idx
 
 
 def load_niche_definitions() -> dict[str, str]:
@@ -187,18 +217,10 @@ def sync_tik_file(
 
             # 1. Update sheet TaiKhoan
             for row in range(2, ws_tai_khoan.max_row + 1):
-                m_val = None
-                if may_col != -1:
-                    m_val = ws_tai_khoan.cell(row, may_col + 1).value
+                m_val = ws_tai_khoan.cell(row, may_col + 1).value if may_col != -1 else None
+                f_src = resolve_source_folder(slot_num, m_val)
 
-                if m_val is not None:
-                    try:
-                        m_int = int(m_val)
-                        m_idx = m_int if m_int <= 80 else m_int - 200
-                        f_src = base_source + m_idx
-                    except (ValueError, TypeError):
-                        f_src = None
-                else:
+                if f_src is None:
                     vg_val = ws_tai_khoan.cell(row, vg_col + 1).value
                     if vg_val is None:
                         continue
@@ -206,9 +228,6 @@ def sync_tik_file(
                         f_src = int(vg_val)
                     except (ValueError, TypeError):
                         continue
-
-                if f_src is None:
-                    continue
 
                 curr_vg = ws_tai_khoan.cell(row, vg_col + 1).value
                 if curr_vg != f_src:
