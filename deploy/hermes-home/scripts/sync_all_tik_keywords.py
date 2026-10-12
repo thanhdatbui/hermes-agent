@@ -12,12 +12,17 @@ Mục đích:
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
+import json
+import logging
 import os
 import re
 import sqlite3
 import sys
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger("sync_all_tik_keywords")
 
 try:
     import openpyxl
@@ -34,6 +39,7 @@ except ImportError:
 
 STATE_DB = Path(r"D:\CodexRuntime\tiktok-video\state.db")
 NICHES_POOL_FILE = Path(r"D:\Taadaa\Tiktok-video\data\niches_pool.txt")
+DEFAULT_TELEMETRY_LOG = Path("D:/Taadaa/logs/sync_keywords.jsonl")
 
 FARM_DIRS = [
     ("Kibe", Path(r"D:\OneDrive\TaadaaData\kibe")),
@@ -67,6 +73,10 @@ def resolve_source_folder(slot_num: int, machine_val: Any) -> int | None:
     Formula: F_src = (slot_num - 1) * 80 + m_idx (range: 1..640)
     """
     if machine_val is None or not (1 <= slot_num <= 8):
+        return None
+    if isinstance(machine_val, float) and not machine_val.is_integer():
+        return None
+    if isinstance(machine_val, str) and not machine_val.strip().isdigit():
         return None
     try:
         m_int = int(machine_val)
@@ -126,8 +136,10 @@ def load_existing_hashtag_pools() -> dict[str, str]:
                         if kw and tags and kw not in keyword_to_pool:
                             keyword_to_pool[kw] = tags
             wb.close()
-        except Exception:
-            pass
+        except (OSError, KeyError, ValueError) as err:
+            logger.warning(f"Could not load hashtag pools from {p}: {err}")
+        except Exception as err:
+            logger.warning(f"Unexpected error loading hashtag pools from {p}: {err}")
 
     return keyword_to_pool
 
@@ -181,17 +193,36 @@ def sync_tik_file(
     db_niches: dict[int, tuple[str, int, str]],
     niche_labels: dict[str, str],
     existing_pools: dict[str, str],
+    stats: dict[str, Any] | None = None,
 ) -> int:
     """Đồng bộ 1 file Tik."""
     p = folder_path / filename
+    if not p.exists() and folder_path.exists():
+        target_lower = filename.lower()
+        for f in folder_path.iterdir():
+            if f.name.lower() == target_lower:
+                p = f
+                break
     if not p.exists() or openpyxl is None:
         return 0
+
+    if stats is not None:
+        stats["workbooks_checked"] = stats.get("workbooks_checked", 0) + 1
 
     def _update_workbook(target_path: Path) -> int:
         try:
             wb = openpyxl.load_workbook(str(target_path))
-        except Exception as e:
+        except (OSError, KeyError, ValueError) as e:
+            logger.error(f"Cannot open {filename}: {e}")
             sys.stderr.write(f"Cannot open {filename}: {e}\n")
+            if stats is not None:
+                stats["error_count"] = stats.get("error_count", 0) + 1
+            return 0
+        except Exception as e:
+            logger.error(f"Unexpected error opening {filename}: {e}")
+            sys.stderr.write(f"Cannot open {filename}: {e}\n")
+            if stats is not None:
+                stats["error_count"] = stats.get("error_count", 0) + 1
             return 0
 
         updates = 0
@@ -212,8 +243,8 @@ def sync_tik_file(
                     if r[0] is not None and len(r) >= 4 and r[2] and r[3]:
                         try:
                             ht_map[int(r[0])] = (str(r[2]).strip(), str(r[3]).strip())
-                        except (ValueError, TypeError):
-                            pass
+                        except (ValueError, TypeError) as err:
+                            logger.warning(f"Invalid folder id row in 'Hashtag theo Folder' {filename}: {err}")
 
             # 1. Update sheet TaiKhoan
             for row in range(2, ws_tai_khoan.max_row + 1):
@@ -221,12 +252,23 @@ def sync_tik_file(
                 f_src = resolve_source_folder(slot_num, m_val)
 
                 if f_src is None:
+                    if m_val is not None:
+                        logger.warning(
+                            f"[{filename}] Row {row}: Invalid machine value '{m_val}' for slot {slot_num}"
+                        )
                     vg_val = ws_tai_khoan.cell(row, vg_col + 1).value
                     if vg_val is None:
+                        if stats is not None:
+                            stats["skipped_rows"] = stats.get("skipped_rows", 0) + 1
                         continue
                     try:
                         f_src = int(vg_val)
-                    except (ValueError, TypeError):
+                    except (ValueError, TypeError) as err:
+                        logger.warning(
+                            f"[{filename}] Row {row}: Invalid 'video gốc' value '{vg_val}': {err}"
+                        )
+                        if stats is not None:
+                            stats["skipped_rows"] = stats.get("skipped_rows", 0) + 1
                         continue
 
                 curr_vg = ws_tai_khoan.cell(row, vg_col + 1).value
@@ -302,6 +344,44 @@ def sync_tik_file(
         return 0
 
 
+def build_sync_telemetry(
+    clusters: list[str],
+    total_updated: int,
+    details: list[str],
+    stats: dict[str, Any],
+) -> dict[str, Any]:
+    """Tạo payload telemetry có cấu trúc chuẩn JSON."""
+    return {
+        "event": "SYNC_KEYWORDS_SUMMARY",
+        "correlation_id": f"sync_{int(datetime.now(timezone.utc).timestamp())}",
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "clusters": clusters,
+        "total_updated": total_updated,
+        "workbooks_checked": stats.get("workbooks_checked", 0),
+        "skipped_rows": stats.get("skipped_rows", 0),
+        "error_count": stats.get("error_count", 0),
+        "details": details,
+        "status": "SUCCESS" if stats.get("error_count", 0) == 0 else "WARNING",
+    }
+
+
+def emit_sync_telemetry(telemetry: dict[str, Any], log_path: Path | str | None = None) -> Path | None:
+    """Ghi append 1 dòng JSON telemetry vào file jsonl; trả về đường dẫn đã ghi hoặc None."""
+    if log_path is None:
+        if not DEFAULT_TELEMETRY_LOG.parent.exists():
+            return None
+        log_path = DEFAULT_TELEMETRY_LOG
+    target = Path(log_path)
+    try:
+        with open(target, "a", encoding="utf-8") as f:
+            f.write(json.dumps(telemetry, ensure_ascii=False) + "\n")
+    except OSError as err:
+        logger.error(f"Cannot write sync telemetry to {target}: {err}")
+        sys.stderr.write(f"Cannot write sync telemetry to {target}: {err}\n")
+        return None
+    return target
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Auto sync keywords & hashtags from state.db to all Tik workbooks.")
     parser.add_argument("--silent", action="store_true", help="Do not print if no updates")
@@ -313,15 +393,33 @@ def main() -> int:
 
     total_updated = 0
     details = []
+    stats: dict[str, Any] = {
+        "workbooks_checked": 0,
+        "skipped_rows": 0,
+        "error_count": 0,
+    }
 
     for cluster_name, cluster_dir in FARM_DIRS:
         if not cluster_dir.exists():
             continue
         for filename, slot_num, base_source in TIK_FILES:
-            n = sync_tik_file(cluster_dir, filename, slot_num, base_source, db_niches, niche_labels, existing_pools)
+            n = sync_tik_file(
+                cluster_dir,
+                filename,
+                slot_num,
+                base_source,
+                db_niches,
+                niche_labels,
+                existing_pools,
+                stats=stats,
+            )
             if n > 0:
                 details.append(f"{cluster_name}/{filename}: {n} updates")
                 total_updated += n
+
+    telemetry = build_sync_telemetry([c[0] for c in FARM_DIRS], total_updated, details, stats)
+    logger.info(json.dumps(telemetry))
+    emit_sync_telemetry(telemetry)
 
     if total_updated > 0:
         print(f"[SYNC_KEYWORDS] Synced {total_updated} changes across workbooks: {', '.join(details)}")
