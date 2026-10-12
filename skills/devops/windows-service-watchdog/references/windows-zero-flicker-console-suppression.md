@@ -140,3 +140,20 @@ res = subprocess.run(cmd, capture_output=True, text=True, timeout=10, **WIN_KWAR
    Lần theo `ParentProcessId` để xác định chính xác script Python đang spawn `adb.exe`.
 2. **Khắc phục**:
    Bổ sung `{"creationflags": subprocess.CREATE_NO_WINDOW} if os.name == "nt" else {}` vào mọi lời gọi `subprocess.run` / `Popen` trong các script liên quan.
+
+---
+
+## Dual-Cluster / Multi-Host Parity & Gaming Protection Invariant
+
+### 1. Invariant Chống Phá Game (Gaming Focus Protection)
+- Người dùng thường xuyên chơi game toàn màn hình (TFT / League of Legends / game đồ họa) trên các máy farm (Kibe hoặc Admin-PC).
+- Bất kỳ cửa sổ CMD/conhost nào bật lên dù chỉ 50ms cũng khiến Windows giật focus, khựng hình hoặc văng alt-tab ra ngoài màn hình nền, gây ức chế tột độ.
+- **Kỷ luật thiết kế cron/watchdog:** TUYỆT ĐỐI CẤM thiết kế hoặc triển khai bất kỳ cronjob/watchdog nào chạy chu kỳ ngắn (1m, 2m, 5m, 15m) mà gọi trực tiếp `powershell.exe`, `cmd.exe`, `.bat` hay `python.exe` trong phiên tương tác mà không qua wrapper `wscript.exe` (`SW_HIDE / 0`) hoặc `pythonw.exe`.
+
+### 2. Dual-Cluster Parity (Kibe ↔ Admin-PC `admin-farm`)
+- Khi một máy (ví dụ Kibe) đã được vá triệt để với `sitecustomize.py` và Task Scheduler VBS wrapper, **BẮT BUỘC phải đồng bộ và kiểm tra sang máy còn lại (Admin-PC `admin-farm`)**.
+- Các vị trí bắt buộc đồng bộ trên Admin-PC:
+  * Python global: `C:\Users\Admin\AppData\Local\Programs\Python\Python311\Lib\site-packages\sitecustomize.py`
+  * Farm automation venv: `D:\Taadaa\python-envs\automation\Lib\site-packages\sitecustomize.py`
+  * Task Scheduler trên Admin: Mọi task định kỳ gọi watchdog phải trỏ sang `wscript.exe run_hidden.vbs`, cấm gọi trực tiếp `powershell.exe -WindowStyle Hidden` hay `.bat`.
+  * Remote SSH commands từ Kibe sang Admin: Đảm bảo không kích hoạt tiến trình tạo GUI/console conhost trên desktop tương tác của Admin.

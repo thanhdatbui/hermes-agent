@@ -42,11 +42,11 @@
 ## 2. Quy chuẩn Watchdog Báo cáo (`farm_render_download_watchdog.py`)
 - **Tiêu chuẩn đánh giá Render Tik1..Tik8**:
   - Từng slot Tik1..Tik8: Tính số folder đạt $\ge 45$ clip thành phẩm (`ge45_folders`).
-  - **Bẫy Ngưỡng 45 Gây Báo Động Ảo (False Incomplete Alert Trap - User Invariant 12/10/2026)**:
-    - Kho video nuôi nick thực tế chỉ cần $\ge 40$ clip (hoặc $\ge 30$ clip) là đã đủ điều kiện đăng 1–2 tháng (*"Kho đủ đéo yêu cầu min 45 video đâu"*).
-    - Nếu watchdog hardcode điều kiện `count >= 45`, các folder có 40–44 clip (như Folder 63 Máy 8 có 40 clip) sẽ bị tính là thiếu, hiển thị chấm vàng `🟡 79/80 (98.8%)` gây hoang mang và mâu thuẫn với báo cáo hoàn tất 100% trước đó của phiên.
-    - Chuẩn hóa: Watchdog nên kiểm tra theo mức đạt chuẩn kho nuôi nick ($\ge 40$ clip) để công nhận hoàn thành `✅ 80/80`, hoặc phân định rõ mức đạt chuẩn nuôi nick thay vì bắt buộc cứng ngắc 45 clip.
-  - Trạng thái `✅`: Chỉ hiển thị khi đạt đủ **`80/80 folder`**. Nếu dưới 80 folder hiển thị icon `🟡` (hoặc `⚪` nếu 0 folder).
+  - **Kỷ Luật Bất Biến Về Ngưỡng 45 (Strict 45-Clip Policy - User Invariant 12/10/2026)**:
+    - Tiêu chuẩn của Farm bắt buộc **tối thiểu $\ge 45$ video/folder** (`COMPLETION_THRESHOLD = 45`).
+    - CẤM TUYỆT ĐỐI hạ chuẩn xuống 40 clip hay ngụy biện *"40 clip là đủ nuôi nick rồi"* khi Watchdog báo thiếu `🟡 79/80 (98.8%)`.
+    - Khi phát hiện folder $< 45$ clip: Bắt buộc tìm đúng kênh nguồn để cào bổ sung hoặc đối soát kho gốc $F_{src}$ để render bù bằng `--resume-verify-existing` cho đủ $\ge 45$ clip.
+  - Trạng thái `✅`: Chỉ hiển thị khi đạt đủ **`80/80 folder (≥45 clip) [100.0%]`**. Nếu dưới 80 folder hiển thị icon `🟡` (hoặc `⚪` nếu 0 folder).
 - **Tiêu chuẩn ẩn mục Download Video gốc**:
   - Chỉ ẩn mục `1. Video gốc` khi kho gốc đạt đủ tiêu chuẩn $\ge 45$ clip cho cả 640/640 folder nguồn (`s45 >= 640`) VÀ không có tiến trình download nào đang chạy ngầm (`is_download_running() == False`).
 - **Đồng bộ liên máy**:
@@ -200,6 +200,28 @@ A known failure mode is repeated Windows `[WinError 183]` while renaming `<n>.m4
 - Khi render nối tiếp bắt đầu từ `--start-seq <K>` (ví dụ nick đã đăng 9 clip, bắt đầu từ `10.mp4`), nếu render 20 clip thì file cuối cùng mang tên `29.mp4`.
 - **Bẫy ngộ nhận**: Con số `29` là số thứ tự clip cuối cùng trong thư mục render của nick (ví dụ `D:/TIKTOK-videonuoinick/269`), hoàn toàn **KHÔNG PHẢI có 29 folder**. Số lượng clip thực tế là:
   $$\text{Số clip} = \text{max\_seq} - \text{start\_seq} + 1 = 29 - 10 + 1 = 20\text{ video}.$$
+
+### A.1. Bẫy Khuyết File Giữa Chừng (`max_seq == 45` nhưng `count < 45`) & Quy Trình Vá O(1) `--resume-verify-existing`:
+- **Bẫy ngộ nhận giữa Sequence Max và Count thực tế**:
+  - Khi kiểm tra thư mục render (ví dụ `D:/TIKTOK-videonuoinick/63`), thấy file `45.mp4` tồn tại không đồng nghĩa là đã đủ 45 clip.
+  - Phải luôn đếm `len([f for f in dir if f.endswith('.mp4')])` và so sánh với `set(range(1, 46))`. Nếu thư mục bị khuyết giữa chừng các file (như `19, 20, 21, 23, 28` do đợt render cũ bị lỗi 0-byte slide âm thanh bị xóa), số file thực tế chỉ là 40 clip, khiến Watchdog báo thiếu `🟡 79/80 (98.8%)`.
+- **Kỷ luật Bất Biến: BẮT BUỘC ĐỦ $\ge 45$ CLIP, CẤM HẠ CHUẨN**:
+  - Tiêu chuẩn duy nhất của Farm là **BẮT BUỘC ĐỦ $\ge 45$ CLIP**. CẤM TUYỆT ĐỐI ngụy biện hoặc đề xuất hạ chuẩn xuống 40 clip. Bất kỳ folder nào $< 45$ clip đều là THIẾU và bắt buộc phải xử lý cho đủ.
+- **Quy trình vá O(1) không render lại từ đầu**:
+  - Dùng `random_batch_render.py` với cờ `--resume-verify-existing` và `--parallel 1`:
+    ```bash
+    python D:/Taadaa/Tiktok-video/scripts/random_batch_render.py \
+      --input-dir "D:/video goc/<src_id>" \
+      --file-list "<path_to_file_list>" \
+      --output-dir "D:/TIKTOK-videonuoinick/<out_id>" \
+      --preset "D:/Taadaa/Tiktok-video/presets/preset_owner.json" \
+      --slot <slot-1> --machine-id <m-1> \
+      --randomize --parallel 1 --resume-verify-existing
+    ```
+  - Cơ chế: `ffprobe` xác nhận và skip 100% các file đã có, chỉ render đúng các file bị khuyết (`19, 20, 21, 23, 28`). Chỉ mất 1-2 phút là thư mục đạt đủ liên tục 45/45 clip.
+- **Đối soát đúng nguồn thực tế ($F_{src}$ vs $F_{out}$)**:
+  - Bắt buộc tính đúng: $F_{src} = (\text{Slot} - 1) \times 80 + \text{Machine}$ (ví dụ Tik7 Máy 8 có $F_{out}=63$ nhưng $F_{src}=488$).
+  - Kiểm tra kho gốc $F_{src}$ trước: nếu đã có sẵn $\ge 45$ clip thì kích hoạt render bù ngay. Nếu kho gốc $F_{src}$ thực sự thiếu $< 45$ clip thì mới tìm đúng kênh đó để cào thêm.
 
 ### B. Cơ chế Isolated Staging & Rollback nguyên tử khi Swap Nguồn:
 - Khi đổi nguồn video cho một nick (`swap_single_folder_pipeline.py`):
