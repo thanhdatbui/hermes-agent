@@ -36,7 +36,7 @@ Run operational parity and exploratory drift scans separately. Uploader/channel-
 
 - Editing only the workbook while the source still contains the old category.
 - Adding a source slug without adding it to the generator's label/pool mapping.
-- Reading an output/render folder ID ($F_{out}$) instead of the true canonical source folder ID ($F_{src}$) when querying authoritative records, systematically clobbering all target accounts.
+- **The $F_{out}$ vs $F_{src}$ Query Trap**: Reading an output/render folder ID ($F_{out} = (M-1)*8 + S$) instead of the true canonical source folder ID ($F_{src} = (S-1)*80 + M$) when querying authoritative records. When an output folder ID happens to match an unrelated category in the source database, the sync script silently and systematically overwrites correct categories with wrong ones (e.g. overwriting student comedy with bakery).
 - Relying on syntactic-only assertions (e.g. "cell is non-empty", "count is 3..5") which pass 100% green while semantic categories are completely clobbered.
 - Using unchecked magic numbers for cluster machine offsets without boundary validation, causing out-of-range machines to silently map into corrupted source folders.
 - Forgetting downstream consumer dictionaries (e.g. `KEYWORD_HASHTAGS` in selector code).
