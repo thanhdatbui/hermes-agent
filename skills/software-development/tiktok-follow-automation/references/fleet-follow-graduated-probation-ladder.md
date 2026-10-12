@@ -51,6 +51,10 @@
     * `fail_streak >= 3`: Giam 15 ngày (quota = 0).
   - Khi mãn hạn Cooldown: Bắt buộc quay lại từ vạch xuất phát `Hồi phục 1` (1 - 2 lượt/ca). Nếu chạy sạch 2 ngày -> lên `Hồi phục 2` (5 - 8 lượt/ca) -> chạy sạch thêm 2 ngày -> tốt nghiệp lên `Khỏe` (10 - 20 lượt/ca). Nếu tại bất kỳ nấc nào bị nhả tiếp thì tiếp tục tăng `fail_streak` và quay lại Cooldown dài hơn.
   - **Chống bẫy thống kê Simpson:** Thống kê tỷ lệ giữ follow phải phân tầng độc lập (tỷ lệ của riêng Hồi phục 1, Hồi phục 2, Khỏe), CẤM gộp phẳng toàn farm khiến mức 15+ của nick Khỏe bị hiểu nhầm là an toàn nhất trong khi mức 1-4 của nick sau phạt bị kéo tụt tỷ lệ.
+  - **Tương tác giữa Cooldown (Đi tù) vs Cầu Dao IP (Circuit Breaker) vs Ngày sạch:**
+    * **Ngày đi tù (Cooldown) chạy theo Calendar Time:** Án phạt chốt theo ISO UTC timestamp (`cooldown_until_at`) và ngày kết thúc (`cooldown_until_date`). Dù ngày đó trùng ngày IP bị giật cầu dao hoặc máy không chạy, đồng hồ thụ án vẫn trôi tự nhiên và nick mãn hạn ra tù đúng hẹn.
+    * **Mãn hạn đúng ngày IP bị ngắt:** Hệ thống kích hoạt Safe-Skip (`CIRCUIT_BREAKER_SKIPPED`), không cho nick bấm follow trên IP bẩn (tránh bị nhả dắt dây), bảo vệ nick an toàn chờ IP sạch mới vào Hồi phục 1.
+    * **Phân biệt với Ngày sạch (`probation_clean_days`):** Ngày sạch để tốt nghiệp chỉ được tính khi có phiên follow thực tế thành công (`recovered_date < today`). Ngày bị ngắt cầu dao chỉ lướt feed dưỡng sinh thì KHÔNG được cộng ngày sạch, nhưng cũng tuyệt đối KHÔNG bị tính lỗi hay tăng streak.
 
 ---
 
