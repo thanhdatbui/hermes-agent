@@ -14,5 +14,15 @@ A 6-hour lifecycle report is a point-in-time snapshot. The supervisor may proces
 ## Reporting style
 Lead with deltas and actions, not a verbatim restatement of every metric. Explicitly call out report-vs-live-state mismatches and the evidence for any post-report additions. If the error payload is absent, say the cause is unclassified rather than guessing.
 
+## Two Distinct Reporting Streams for Hotmail
+1. **GPM PC Lifecycle (`hotmail-gpm-lifecycle-6h-report`, job `61570a1e37b1` → `telegram:-5583559484`)**:
+   - Scope: Hotmail accounts in GPMLogin browser profiles on PC (`HOTMAIL_LOGIN` → `CHATGPT_REG` → `WAIT_7D` → `CHANGE_INFO` → `DONE`).
+   - Reporting cadence: Every 6 hours (`0 */6 * * *`).
+   - Stage visibility: In newer revisions, `HOTMAIL_LOGIN` is aggregated or suppressed from top headline blocks when virtually all farm accounts have completed it, surfacing primarily when accounts hit `BLOCKED` or `QUARANTINE`.
+2. **Physical Phone Farm Outlook App (`post_noon_chain_watchdog` → `telegram:-5373649734` & `daily-tiktok-farm-tracker`)**:
+   - Scope: Hotmail/Outlook accounts logged into the Outlook Android app on physical farm devices (`app_logged_in = 1` in `gmail_clean_v2.xlsx`).
+   - Reporting cadence: Post-noon shifts (14:00–18:00) and 07:00 daily farm tracker.
+   - When asked where "tiến độ login hotmail" is reported, distinguish GPM PC lifecycle vs physical phone farm Outlook app.
+
 ## Evidence pattern from the lifecycle farm
 A report showing 51 Kibe BLOCKED was followed by a live state showing 53: the canonical state had 52 `CHANGE_INFO` BLOCKED and 1 `HOTMAIL_LOGIN` QUARANTINE, with two profiles' `updated_at` values after the report snapshot. This is the expected way to explain a stale report without rewriting historical telemetry.
