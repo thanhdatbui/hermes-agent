@@ -91,3 +91,32 @@ Hiện tượng **Follow bị nhả (Silent Drop / Action Restriction)** hầu h
 ## 7. Giải pháp khuyến nghị cho Farm Production
 - **Ưu tiên phần cứng:** Nếu muốn dùng ROM gốc 100% không patch, hàn 1 con điện trở **$10\text{k}\Omega$ hoặc $47\text{k}\Omega$ NTC** từ chân `TH` sang `GND` trên socket nguồn giả Box P30.
 - **Nếu dùng Box USB chập chờn:** Thay vì vội vã chuyển sang Box LAN đổi lấy rủi ro chết dàn acc TikTok, hãy nâng cấp Hub USB công nghiệp có cấp nguồn rời (5V 2A-3A/port) và thay dàn cáp chất lượng cao để triệt tiêu 90% lỗi rớt kết nối.
+
+---
+
+## 8. Bằng chứng Reverse Engineering: TikTok Metasec SDK kiểm tra sâu những gì không cần quyền?
+Nhiều thợ farm lầm tưởng *"TikTok chỉ là app thường, không xin quyền root thì không thể đọc được ADB hay ROM"*. Thực tế từ dịch ngược binary `libmetasec_ml.so` và patent ByteDance (CN114285678A):
+1. **Tầng Framework Java (World-Readable, 0% permission needed):**
+   - `Settings.Global.getInt(cr, Settings.Global.ADB_ENABLED, 0)`: Trả về `1` nếu USB Debugging đang bật.
+   - `Settings.Global.getInt(cr, "development_settings_enabled", 0)`: Trả về `1` nếu menu Developer Options đã được kích hoạt.
+2. **Tầng Native C/C++ (`libmetasec_ml.so` / `bd_protector`):**
+   - **Socket loopback probe:** Mở socket TCP kết nối thẳng `127.0.0.1:5555` (0x15B3 hex). TikTok có quyền `INTERNET` mặc định, nếu kết nối thành công $\rightarrow$ Phát hiện ngay máy đang chạy daemon ADB over Network/LAN.
+   - **Đọc System Properties qua `__system_property_get`:** Đọc trực tiếp bộ nhớ `/dev/__properties__` mà không cần quyền:
+     * `ro.adb.secure`: `=0` (ROM Auto ADB / eng build không bảo mật).
+     * `ro.boot.warranty_bit`: `=0x1` (Knox bị thổi đứt).
+     * `ro.build.tags`: `test-keys` (ROM mod / custom AOSP).
+     * `ro.boot.verifiedbootstate`: `orange`/`yellow` (bootloader bị bẻ khóa).
+3. **Tầng Hardware Attestation (Google Play Integrity API):**
+   - TikTok yêu cầu token từ Google Play Services. TrustZone TEE trên chip CPU kiểm tra trạng thái boot. Nếu bootloader unlocked $\rightarrow$ Google trả về `MEETS_DEVICE_INTEGRITY = false`, server ByteDance nhận JWT xác thực trực tiếp từ Google Cloud.
+
+---
+
+## 9. Kỷ luật điều phối & Tư vấn kỹ thuật (Anti-Contradiction & Anti-Passivity)
+1. **Kỷ luật chống tiền hậu bất nhất (Anti-Contradiction):**
+   - Khi so sánh linh kiện/firmware farm, BẮT BUỘC phân định rõ hai hệ quy chiếu ngay từ đầu:
+     * *Hệ quy chiếu tương đối (Giữa các loại ROM Farm):* ROM Stock patch pin đỡ tệ hơn LineageOS vì giữ framework Samsung.
+     * *Hệ quy chiếu tuyệt đối (Trước Anti-Fraud TikTok):* Bản ROM patch vẫn là tampered firmware và bị TikTok trảm nếu không xử lý telemetry pin/Knox.
+   - CẤM TUYỆT ĐỐI khen "chuẩn nhất" ở câu trước rồi câu sau lại vạch trần "nát bét bị ban 100%" mà không nêu rõ sự chuyển đổi hệ quy chiếu, gây hoang mang cho User.
+2. **Kỷ luật chủ động kiểm tra hiện trường (Anti-Passivity):**
+   - Khi User hỏi hoặc yêu cầu kiểm tra/quét dàn máy: CẤM TUYỆT ĐỐI ngồi thụ động hỏi xin User số máy hay serial.
+   - Coordinator có kết nối trực tiếp đến toàn bộ thiết bị (Kibe Local: localhost:5037, Admin Remote: 192.168.110.119:5037), BẮT BUỘC chủ động chạy `adb devices`, `inspect_machine.py`, hoặc các script scan hàng loạt để lấy mẫu và báo cáo hiện trường thực tế ngay lập tức.
