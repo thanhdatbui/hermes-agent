@@ -5,7 +5,7 @@
 2. **Lệch cao (Nội bộ bị nhân bản gấp 2-3 lần):** `ĐÃ FOLLOW: +13` nhưng `🔗 Nội bộ: +42`; hoặc `ĐÃ FOLLOW: +4` nhưng `🔗 Nội bộ: +8`.
 3. **Lệch tam giác giữa 3 bảng số liệu (Lịch sử ngày vs Đối soát KPI vs Web):** Ví dụ: Thống kê theo ngày báo `+22 lượt (7 nick)`, Thẻ KPI Header báo `Bot +18 lượt`, nhưng Web chỉ ghi nhận `+16 lượt`.
 
-## Bốn Nguyên Nhân Gốc Rễ
+## Các Nguyên Nhân Gốc Rễ
 
 ### Nguyên nhân 0: Phân Biệt Ba Nguồn Dữ Liệu Khi Đối Soát Follow (22 vs 18 vs 16)
 Khi đọc Dashboard, cần phân biệt rõ 3 nguồn telemetry khác nhau cho cùng một ngày:
@@ -91,6 +91,22 @@ Khi tài khoản **nghỉ follow hoặc chưa đủ video** (`organic-rest-day-p
 3. **Lý do có khoảng lệch 1-2 lượt giữa Bot và Web (ví dụ: Bot +18 vs Web +17):**
    - **Nhả follow (Silent un-follow / Shadow drop):** TikTok có cơ chế rate limit hoặc anti-spam ngầm: khi tài khoản bấm follow quá nhanh hoặc IP bị soi, nút Follow trên UI máy hiển thị thành công nhưng sau 30s - vài phút server TikTok tự động hủy kết nối follow mà không thông báo lỗi (như `@tienpham7676` bot bấm 14 nhưng Web chỉ ghi nhận 13).
    - **Độ trễ CDN Cache của TikTok:** Counter `following` trên trang công khai của TikTok đôi khi có độ trễ cập nhật vài phút đến 1 tiếng so với hành động thực tế trên app.
+
+### Nguyên nhân 5: Lệch Cửa Sổ Snapshot Khi Watchdog Quét Bù Ca Cũ (Backfill Uncapped Snapshot Window)
+1. **Hiện tượng nhận biết:**
+   - Watchdog gửi báo cáo một ca (ví dụ `Ca 1 - Phiên 1/2 (Sáng) hoàn tất (Row 1)`), số liệu đối soát Web tăng vọt đột biến (`+129 Following thật | Lệch +62 so với script báo 67`).
+   - Hàng loạt máy có độ lệch lớn: M4 script 14 -> web 32 (lệch +18), M37 script 8 -> web 26 (lệch +18), M41 script 7 -> web 17 (lệch +10), các máy nghỉ không chạy (script 0) vẫn thấy web tăng (+5, +2).
+   - Thoạt nhìn rất dễ lầm tưởng bot bị "chạy loạn follow tự nhiên", nhưng thực tế là do lỗi đối soát snapshot.
+2. **Cơ chế gây lỗi (Backfill Snapshot Window Bug):**
+   - Khi watchdog khởi động lại hoặc có ca cũ trong cửa sổ retention (7 ngày) chưa nằm trong `follow_session_reported.json`, nó sẽ kích hoạt backfill chạy lại các phiên cũ (ví dụ `2026-10-05_ca1_phien1`).
+   - Trong `feed_session_watchdog.py` (`reconcile_cluster_following`):
+     + Mốc bắt đầu (`baseline_row`): Lấy snapshot với điều kiện `timestamp <= session_start_iso` (ví dụ `2026-10-05 06:00:00`, trả về snapshot ngày 04/10).
+     + Mốc kết thúc (`latest_row`): Truy vấn `SELECT following, timestamp FROM snapshots WHERE LOWER(username) = ? ORDER BY timestamp DESC LIMIT 2` **HOÀN TOÀN KHÔNG CÓ ĐIỀU KIỆN CHẶN TRẦN** `timestamp <= session_end_iso`.
+     + Kết quả: `latest_row` luôn bốc trúng snapshot mới nhất của ngày hiện tại (12/10), khiến `web_delta = latest_fl - prev_fl` đo lường mức tăng trưởng tích lũy của **suốt 7 ngày (04/10 đến 12/10)**, rồi đem so với số lượt follow của **duy nhất 1 phiên cũ (05/10)**.
+   - Thêm vào đó, tiêu đề báo cáo Telegram không in `target_date` (`Ca 1 - Phiên 1/2 (Sáng)` thay vì `[2026-10-05] Ca 1...`), khiến người vận hành nhầm lẫn là ca của ngày hôm nay.
+3. **Quy tắc xử lý & phòng ngừa:**
+   - **Bắt buộc chặn trần snapshot:** Mốc kết thúc `latest_row` trong mọi hàm reconcile đối soát phiên bắt buộc phải có điều kiện `AND timestamp <= session_end_iso` (hoặc chặn trần ở cuối khung giờ phiên của ngày đang xét).
+   - **Gắn date tag trên tiêu đề watchdog:** Mọi thông báo Telegram của session watchdog bắt buộc phải chứa `[target_date]` để phân biệt rành mạch ca realtime hôm nay với ca backfill lịch sử.
 
 ## Quy trình chẩn đoán (CẤM đoán mò "follow tự nhiên")
 1. **CẤM TUYỆT ĐỐI phán đoán ẩu "đây là follow tự nhiên / kênh ngoài"** khi user đã cấu hình tắt follow tự nhiên trong feed runner.
