@@ -333,7 +333,7 @@ def get_all_gpm_profiles() -> list:
     return all_profiles
 
 def start_gpm_profile(profile_id: str) -> Optional[str]:
-    url = f"{GPM_API_BASE}/profiles/start/{profile_id}?win_scale=0.8"
+    url = f"{GPM_API_BASE}/profiles/start/{profile_id}?win_scale=0.8&addition_args=--mute-audio"
     for attempt in range(3):
         try:
             res = requests.get(url, timeout=30).json()
