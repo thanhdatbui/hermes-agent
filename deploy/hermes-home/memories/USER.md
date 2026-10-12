@@ -14,4 +14,4 @@ Worker: AG Gemini default (cấm fallback Luna khi chưa cạn quota; chủ đ�
 §
 Code: script & cron Hermes độc lập. Hashtag sync: F_src=(Slot-1)*80+m_idx, cấm nhầm F_out sang F_src; 'Hashtag theo Folder' là SoT.
 §
-Dời nick máy 8 slot: (1) 2FA lưu Excel -> (2) Logout -> (3) Login mới. Nick sang máy mới chờ ca tự nạp. Fix lỗi: tự làm dứt điểm end-to-end, cấm tạo script bắt user chạy tay.
+Dời nick: (1) 2FA Excel -> (2) Logout -> (3) Login mới. Fix lỗi: tự làm end-to-end, cấm tạo script bắt user chạy. Đã nối all máy thì chủ động inspect/quét mẫu kiểm chứng, CẤM đùn bảo user ném số máy/tự gõ.
