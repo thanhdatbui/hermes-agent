@@ -8,7 +8,7 @@ Reviewer :20129: Combo 'review' (Sol Web->Terra Codex); Strike 3 Claude từ ch�
 §
 TikTok Shadow: Path B 'Đã fl' ko commit; FOLLOW_FAILED trừ fl tự nhiên; slot `(folder-1)%8+1` cứng; reg bù độc lập. Dọn C duyệt trước. Đối soát follow: chỉ tính nick có ca chạy hôm nay (cohort `internal_followed > 0`), cấm lấy nick rảnh bị tụt cấn trừ vào bot; nick chạy bị nhả trừ thẳng.
 §
-Nick ko mail khôi phục cấm add TOTP đơn lẻ; OTP sync thanhdatbui1995@gmail.com; CẤM gán mail cá nhân thanhdatbui vào nick bán, nick bán tự sinh <user><3rand>@fviainboxes.com đọc OTP qua API.
+Hotmail bán: CẤM TUYỆT ĐỐI gán mail cá nhân thanhdatbui; bắt buộc tự sinh <user><3rand>@fviainboxes.com đọc OTP qua API. Đóng tab Chrome CDP ko mất session/cookie do lưu Profile disk.
 §
 [ROUTER/WIFI]: R3G V1. AP Aruba cứng (kibe 1,2; admin 1,2). CẤM connect/fallback SSID 'Dat'/'BOX'; cấm kỵ, diệt ngay. Proxy: User KO đổi, SoT PROXYgandienthoai.xlsx.
 §
