@@ -6,7 +6,7 @@ WoL ether3 (kibe 0C:EF:15:37:4C:20, admin 22:33:4D:06:4C:26; WG 13231); CẤM PA
 §
 Acc die SKIP; 400h cooldown quarantine động (skip khi chưa tới hạn, cấm xóa). Sandbox kẹt push: Claude CLI kèm gh auth push, cấm đưa lệnh user. Re-OAuth nạp Omni.
 §
-TikTok Follow: Quota 10-15 fl/phiên (20-30/d), like video 80%. Nick non nhả cấm ngắt IP (chỉ ngắt khi nick tốt nghiệp nhả). Đối soát số fl theo file state (cấm lấy tổng DB tính trùng). Path B 'Đã fl' ko commit; slot (folder-1)%8+1 cứng; reg bù độc lập. Cron: feed_session_watchdog (-5377611430) & follow_session_watchdog (-5127276494).
+TikTok Follow: (máy,row) độc lập, ca khác row khác cấm gộp máy; Quota 10-15/ca (Khỏe), Fast-track 1 ca sạch, Thận trọng 3 ca; Canary nhóm Khỏe +10% dò trần; like 80%. Nick non nhả cấm ngắt IP. Đối soát fl theo file state. Path B 'Đã fl' ko commit; slot (folder-1)%8+1 cứng; reg bù độc lập. Cron: feed_session_watchdog & follow_session_watchdog.
 §
 Hotmail bán: CẤM gán mail cá nhân; tự sinh @fviainboxes.com đọc OTP qua API. Tab Chrome CDP đóng ko mất cookie (lưu Profile disk).
 §
