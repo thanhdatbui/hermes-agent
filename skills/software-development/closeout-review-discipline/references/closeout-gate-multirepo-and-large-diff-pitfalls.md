@@ -57,3 +57,29 @@ Khi gọi `closeout_gate.py`, bước 4 gọi model `review` trên `:20129` có 
    - Strike 1 & 2 Remediation: BẮT BUỘC dùng `python D:/Taadaa/tools/sol_repair.py --repo <repo> --files <files> --findings "..."` để Sol High sinh patch O(1).
    - Kiểm tra `git diff --numstat <= 30` dòng trước khi apply.
    - Chạy focused pytest verify lại trước khi rerun `closeout_gate.py`.
+
+---
+
+## 4. Pitfall: Xung Đột Ghi Audit Log Đa Repo (`gate_audit.jsonl` Collision Trap) & Lỗi Chặn `git push`
+
+### Hiện tượng:
+Repo vừa hoàn tất kiểm thử và được Reviewer chấm điểm đạt `APPROVED >= 85/100`, nhưng khi chạy `git push` thì Coordinator Guard chặn đứng:
+```text
+⛔ [COORDINATOR GUARD - TERMINAL BLOCKED]: COORDINATOR TERMINAL BLOCKED: Cấm 'git push' trước khi Closeout Gate trả về APPROVED >= 85!
+```
+
+### Nguyên nhân gốc rễ (Root Cause):
+- Toàn bộ các repo trên hệ thống Taadaa Phone Farm chia sẻ chung một tệp nhật ký thẩm định tập trung tại `D:/Taadaa/logs/gate_audit.jsonl`.
+- Khi có nhiều worker, cronjob hoặc quy trình chạy song song (ví dụ: một subagent khác đang audit `D:/Taadaa/tools` cùng lúc), mỗi lần `closeout_gate.py` kết thúc sẽ nối (append) một dòng JSON vào cuối file `gate_audit.jsonl`.
+- Hook kiểm tra an toàn `git push` của Coordinator Guard đọc bản ghi thẩm định ở đuôi tệp (`tail /d/Taadaa/logs/gate_audit.jsonl`). Nếu repo khác vừa append một kết quả `REJECTED` (ví dụ score 82 < 85), Guard sẽ đọc nhầm trạng thái của repo đó và tưởng rằng phiên hiện tại chưa đạt chuẩn, dẫn đến chặn lệnh push oan.
+
+### Quy tắc điều phối & Khắc phục:
+1. **Kiểm tra đuôi log audit ngay lập tức:**
+   - Dùng lệnh `tail -n 5 /d/Taadaa/logs/gate_audit.jsonl` để đối soát xem dòng cuối cùng thuộc repo nào (`"repo"`) và kết quả là gì (`"verdict"`).
+2. **Tái kích hoạt Gate để chiếm đỉnh Log:**
+   - Nếu dòng cuối cùng bị đè bởi repo khác có verdict REJECTED, Coordinator chỉ cần chạy lại `closeout_gate.py` cho repo hiện tại:
+     `python D:/Taadaa/tools/closeout_gate.py --repo "<repo_path>" --base HEAD~1 --files <files> --json-output`
+   - Bản ghi `APPROVED` mới sẽ được nối vào cuối file `gate_audit.jsonl`.
+3. **Thực thi `git push` ngay sau đó:**
+   - Khi tệp log đã có bản ghi mới nhất là `APPROVED` của repo hiện tại, Guard sẽ lập tức mở khóa cho lệnh `git push`.
+
