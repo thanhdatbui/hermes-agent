@@ -24,5 +24,9 @@ Lead with deltas and actions, not a verbatim restatement of every metric. Explic
    - Reporting cadence: Post-noon shifts (14:00–18:00) and 07:00 daily farm tracker.
    - When asked where "tiến độ login hotmail" is reported, distinguish GPM PC lifecycle vs physical phone farm Outlook app.
 
+## Farm Admin (M201-280) vs Farm Kibe (M1-80) GPM Lifecycle Discrepancies
+- **Why Admin skips `HOTMAIL_LOGIN`**: In `batch_gpm_5profiles_supervisor.py`, `initial_stage = "CHATGPT_REG" if has_token else "HOTMAIL_LOGIN"`. Since 681/682 accounts in Admin's `gmail_clean_v2.xlsx` already have OAuth tokens (Col 9), Admin accounts bypass browser login on GPM and directly use Microsoft Graph API to extract verification OTPs. They jump directly to `CHATGPT_REG`.
+- **Why Admin ChatGPT Reg paces at 28/day**: Farm Admin only has 28 distinct Mikrotik proxy ports (`10008`–`10035`) shared across 80 machines. The supervisor enforces a strict 24h cooldown per proxy port for the same operation (`ip_action_history[port][stage]`). Thus, Admin can only process 28 accounts/day. In reports showing e.g. 84/620 (28 x 3 days) with 535 pending, the remaining accounts are NOT broken; they are safely waiting for the 24h per-IP cooldown window to roll over.
+
 ## Evidence pattern from the lifecycle farm
 A report showing 51 Kibe BLOCKED was followed by a live state showing 53: the canonical state had 52 `CHANGE_INFO` BLOCKED and 1 `HOTMAIL_LOGIN` QUARANTINE, with two profiles' `updated_at` values after the report snapshot. This is the expected way to explain a stale report without rewriting historical telemetry.
