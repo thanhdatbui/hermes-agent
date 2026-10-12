@@ -56,3 +56,14 @@ Khi nhận danh sách cảnh báo các nick không tăng video >14 ngày, **CẤ
   - Database snapshot ghi: `1 video`.
   - File Excel ghi: `3 video` hoặc `7 video` (trạng thái `OK`).
 - **Kết luận:** Tracker cào dữ liệu qua web public TikTok (`__UNIVERSAL_DATA_FOR_REHYDRATION__`). Các clip mới đăng có thể đang bị xét duyệt, gắn cờ giới hạn hoặc đặt riêng tư nên không hiển thị công khai trên web. Thiết bị thực tế đã hoàn thành upload theo đúng sổ cái.
+
+---
+
+## 4. Giải pháp Khắc phục Triệt để (L2 Emergency Surgery Contract & Verification)
+- **Patch Contract trong `audit_stale_upload_accounts.py`:**
+  - Hoán đổi ưu tiên: đặt `DEFAULT_DB_PATH = r"D:/Taadaa/data/tiktok_tracker.db"` (runtime) và `FALLBACK_DB_PATH = r"D:/OneDrive/TaadaaData/tiktok_tracker.db"` (OneDrive backup).
+  - Bổ sung cơ chế auto-mtime check: nếu file fallback có mtime mới hơn file default, tự động chuyển `real_db` sang file mới hơn để phòng ngừa trường hợp sync OneDrive được cập nhật tươi hơn.
+- **Quy trình nghiệm thu Live Cronjob sau fix:**
+  - Chạy `python -m py_compile D:/Taadaa/tools/audit_stale_upload_accounts.py` kiểm tra cú pháp < 5s.
+  - Commit audit trail theo chuẩn `[L2-surgery]`.
+  - Kích hoạt chạy ngay watchdog qua `cronjob(action="run", job_id="<job_id>")` để xác nhận `last_status: ok` và tin nhắn báo cáo gửi đúng đích Telegram mà không cần chờ đến lịch hẹn ngày hôm sau.
