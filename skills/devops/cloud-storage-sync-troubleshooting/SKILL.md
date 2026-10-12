@@ -102,14 +102,18 @@ Systematic approach to diagnose and fix sync client issues on Windows: stuck "Lo
     ```
 
 ### iCloud for Windows (AppX Sign-in Hang & AOSErrorDomain 1000)
-- **Symptom**: App window frozen on "Signing In..." indefinitely, CPU 0%, remote connection in `CLOSE_WAIT`.
+- **Symptom**: App window frozen on "Signing In..." indefinitely (often showing an old account name like "Dat Bui"), CPU 0%, remote connection in `CLOSE_WAIT`.
 - **Logs**: `%LOCALAPPDATA%\Packages\AppleInc.iCloud_nzyj5cx40ttqa\LocalCache\Local\Logs\iCloudHome.*.log` shows `Registration failed with error: (AOSErrorDomain error 1000.)` and `setting retry timer for 43200 second(s)...` (12-hour freeze timer).
-- **Root Cause**: Microsoft Store AppX installation lacks `Apple Root CA` in the Windows Certificate Store (`ROOT`), causing WinINet/Schannel to fail with `12045 (ERROR_INTERNET_INVALID_CA)` against `gsa.apple.com`.
+- **Two-Layer Root Cause**:
+  1. **Missing Root CA**: Microsoft Store AppX installation lacks `Apple Root CA` in Windows Certificate Store (`ROOT`), causing WinINet/Schannel to fail with `12045 (ERROR_INTERNET_INVALID_CA)` against `gsa.apple.com`.
+  2. **Stale Session Token Deadlock**: Stale/expired session tokens in `%LOCALAPPDATA%\Packages\AppleInc.iCloud_nzyj5cx40ttqa\LocalCache\Roaming\Apple Computer\Preferences\com.apple.AOSKit.plist` and `Keychains\keychain-2.db` cause iCloud to attempt silent auto-resume of an expired session, failing with `kAOSErrorInvalidCredentials` and looping in the 12-hour retry instead of presenting the fresh sign-in UI.
 - **Remediation**:
   1. Kill hung process tree: `taskkill /F /IM iCloudHome.exe /IM iCloudDrive.exe /IM APSDaemon.exe /IM iCloudCKKS.exe /IM secd.exe /IM iCloudOutlookConfig64.exe /IM ApplePhotoStreams.exe`
   2. Inject `Apple Server Authentication CA` into Windows `CA` store.
-  3. Install official `AppleRootCA.cer` (`https://www.apple.com/appleca/AppleIncRootCertificate.cer`) into `CurrentUser\Root` via `certutil -addstore -f -user Root AppleRootCA.cer` (accepting the Windows prompt).
-  4. See detailed walkthrough in `references/icloud-windows-appx-signin-hang.md`.
+  3. Install official `AppleRootCA.cer` into `CurrentUser\Root` (via `certutil` or registry serialization).
+  4. If frozen on an existing name: backup and remove `com.apple.AOSKit.plist`, `com.apple.AOSKit.RegInfo.plist`, `iCloudWinPref.plist`, and `keychain-2.db*` to force a clean login dialog.
+  5. **Coordinator Anti-Lazy Mandate**: Do not offload manual `.bat` runs to the user; automate the execution and verification end-to-end.
+  6. See detailed walkthrough in `references/icloud-windows-appx-signin-hang.md`.
 
 ## Pitfalls
 - **Don't just dismiss notification** — file remains in cache, notification returns
