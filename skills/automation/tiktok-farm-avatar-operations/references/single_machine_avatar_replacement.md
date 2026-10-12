@@ -45,6 +45,10 @@ Khi nhận yêu cầu đổi avatar từ ảnh chụp màn hình hoặc username
 - **Workbook `Tik<N>.xlsx`:**
   - Cập nhật cột `Avatar` của máy thành `PENDING` (để trigger runner nhận diện).
   - Kiểm tra và đồng bộ lại `Keyword Video` và `Hashtag Pool` cho chuẩn ngách nếu có sự sai lệch.
+  - **Quy tắc Kiểm tra & Đối soát Hashtag Song Song (SoT Farm):**
+    * Khi User hỏi "Chuẩn hashtag luôn chưa": BẮT BUỘC kiểm tra đối soát sheet `Hashtag theo Folder` trong `Tik<N>.xlsx`.
+    * Công thức mapping folder nguồn: `F_src = (Slot - 1) * 80 + m_idx`. Đối chiếu hàng có `Folder Video == <folder>` hoặc `Folder Nguồn == F_src` để xác nhận `Keyword/Niche` và `Hashtag Pool`.
+    * Đối chiếu với sheet `TaiKhoan` (dòng tương ứng của máy): đảm bảo cột `Hashtag Pool` và `Keyword Video` trùng khớp 100% với sheet `Hashtag theo Folder`.
 - **Database `D:/Taadaa/data/tiktok_tracker.db`:**
   - Cập nhật bảng `avatar_replace_queue`:
     ```sql
