@@ -160,6 +160,9 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
       * **Tương thích tuyệt đối với Automation & atx-agent (CẤM HOANG MANG):** ADB Server và `atx-agent` (port 7912) định danh thiết bị theo **Device Serial duy nhất** và dùng `adb forward`. Cắm máy qua nhiều Card PCIe độc lập và cổng onboard chạy song song HOÀN TOÀN KHÔNG làm đổi port, không xung đột script và không phải sửa bất kỳ dòng code nào.
       * **Nguồn phụ (BẮT BUỘC):** Phải chọn loại card có **chân cắm nguồn SATA 15-pin (hoặc Molex 4-pin)** cắm trực tiếp từ nguồn máy tính (PSU) để chống sụt áp khe PCIe. Tuyệt đối không mua card trần không có nguồn phụ.
       * **Chipset:** Chọn chip **Renesas/NEC uPD720201/uPD720202** hoặc **VIA VL805**. Windows 10/11 tự nhận driver gốc Microsoft xHCI, cắm vào nhận ngay trong 5 giây, không cần cài driver ngoài.
+      * **Bẫy Review Shopee & Cung Cấp Link Sản Phẩm Trực Tiếp (User Rule 12/10/2026):**
+        - Khi tìm mua card trên sàn thương mại điện tử (Shopee), BẮT BUỘC cung cấp link sản phẩm trực tiếp (`/product/{shopid}/{itemid}` hoặc `...-i.{shopid}.{itemid}`) của đúng mẫu chip Renesas/NEC D720201 có chân nguồn phụ SATA. CẤM TUYỆT ĐỐI chỉ ném link trang tìm kiếm chung (`/search?keyword=...`) làm user bực mình ("mày đưa link trang tìm kiếm chứ phải link sp đâu").
+        - Cảnh giác với rating tổng thể: Sản phẩm đạt 4.8⭐ (600+ đã bán) như con 195k vẫn có thể bị sập trên farm vì 95% khách mua cắm chuột/phím nhẹ. Phải đào sâu review có bình luận của dân cắm Box Phone (đã có cảnh báo 1⭐: *"Ae cắm thêm box phone không ổn chút nào ae nhé! Cân nhắc khi mua"* do chip hub chia sẻ băng thông). Luôn ưu tiên card dùng chip Host Controller độc lập Renesas D720201 chuẩn server.
   * Tài liệu đặc tả kỹ thuật chi tiết lưu tại repo: `D:\Taadaa\tools\docs\HARDWARE_USB_FARM_PCIE_GUIDE.md` (bản sao lưu: `D:\Taadaa\docs\HARDWARE_USB_FARM_PCIE_GUIDE.md`).
 
 ## 9. Quy Hoạch Phần Cứng Mở Rộng Farm (80 - 200 Máy)
