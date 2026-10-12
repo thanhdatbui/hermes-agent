@@ -30,7 +30,15 @@ Hệ thống báo cáo nuôi nick TikTok phân chia độc quyền theo 3 nhóm 
   * Cron job watchdog chạy script từ thư mục script của hệ thống.
   * Mã nguồn phát triển nằm tại repo `tiktok-luot nuoi acc/scripts/feed_session_watchdog.py`.
   * Sau khi sửa và test xanh trên repo, BẮT BUỘC đồng bộ sang thư mục script thực thi của cron để phiên tự động tiếp theo lập tức áp dụng logic mới nhất, không để tình trạng repo đã vá nhưng cronjob vẫn chạy bản cũ.
-- **CẤM nuốt lỗi dispatch ở kênh phụ**: Khi gửi bản tin sang `-5127276494` và `-5435853713`, không được nuốt exception trong khối `try...except` một cách im lặng. Phải có cơ chế retry tối thiểu 3 lần (timeout 15s) và ghi log telemetry `[WATCHDOG_TELEGRAM_DISPATCH_FAIL]` khi rớt kết nối.
+- **CẤM nuốt lỗi dispatch ở kênh phụ & Bất đối xứng trạng thái (State Atomicity Invariant)**:
+  * **Bản chất bất đối xứng**: Kênh chính (`Tiktok Luot Nuoi Acc` - `-5377611430`) được phân phối qua **Hermes Cron Scheduler daemon** (bắt `stdout`, daemon duy trì kết nối bền vững), trong khi kênh phụ (`Tiktok Follow` - `-5127276494` và `Tiktok Video` - `-5435853713`) chạy qua **raw HTTP connection** (`urllib.request.urlopen`) ngắn hạn trong ephemeral process của script.
+  * **Cạm bẫy Silent Swallow & False Done**: Khi gửi qua kênh phụ bị fail (timeout, nghẽn DNS đến `api.telegram.org`), nếu chỉ `except Exception: logger.warning(...)` mà không raise:
+    - Script vẫn in phần Lướt Feed ra `stdout` và ghi nhận session đã hoàn tất vào `feed_session_reported.json`.
+    - Hậu quả: Nhóm Nuôi Acc vẫn có báo cáo lướt feed, nhưng nhóm Follow bị mất trắng vĩnh viễn, không bao giờ được gửi lại ở các nhịp sau! Người dùng thấy cực kỳ vô lý vì cùng 1 ca chạy nhưng 1 bên có tin, 1 bên mất tích.
+  * **Quy tắc xử lý bắt buộc**:
+    1. Khi gửi kênh phụ, retry tối thiểu 3 lần (timeout 15s).
+    2. Nếu sau 3 lần vẫn thất bại: **TUYỆT ĐỐI CẤM ghi nhận session vào `feed_session_reported.json`** để nhịp 5 phút tiếp theo của watchdog tự động retry gửi lại; HOẶC tự động kích hoạt **Fallback gộp tin**: gom toàn bộ khối Follow/Upload bị gửi lỗi nối ngược vào `feed_p` (`stdout`) để đẩy chung qua nhóm Nuôi Acc, đảm bảo dữ liệu không bị thất lạc trong bóng tối.
+    3. Ghi log telemetry chuẩn `[WATCHDOG_TELEGRAM_DISPATCH_FAIL] chat_id=... err=...`.
 
 ---
 

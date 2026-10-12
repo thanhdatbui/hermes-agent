@@ -11,6 +11,7 @@ description: >-
 > Ref: `references/account-switcher-mapping-drift-vs-anchor-failure-20261011.md`.
 > Ref: `references/account-switcher-missing-vs-session-lost-triage-20261011.md`.
 > Ref: `references/asynchronous-stale-cron-alert-triage-protocol-20261010.md`.
+> Ref: `references/stale-upload-watchdog-and-tracker-db-drift-triage-20261012.md`.
 > Ref: `references/guest-profile-and-one-tap-auto-login-triage-20261010.md`.
 > Ref: `references/scheduled-pc-reboot-preflight-abort-triage-20261010.md`.
 > Ref: `references/preflight-reg-bu-machine-full-reconcile-pipeline-20261008.md`.

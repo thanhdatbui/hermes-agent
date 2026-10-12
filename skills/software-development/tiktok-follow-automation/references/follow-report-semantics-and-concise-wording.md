@@ -65,15 +65,14 @@ Khi operator phản ánh "sao report không báo cáo phiên follow" hoặc "ca 
    - ~33% nghỉ Dưỡng sinh, proxy bẩn bị Cầu dao IP 48h chặn trước cửa app (`CIRCUIT_BREAKER_SKIPPED`), các nick được vào cày bấm anchor thì bị TikTok nhả ngay tức thì (`FOLLOW_FAILED` sau swipe).
    - Cơ chế Fail-Closed lập tức ngắt phiên tại lượt 0 để bảo vệ nick khỏi bị cấm tính năng vĩnh viễn ➔ Thống kê ghi nhận 0 lượt thành công nhưng toàn bộ hệ thống đã kích hoạt bảo vệ 100%.
 
-### 4. Giải Pháp Kiến Trúc Đã Chốt & Invariant Duy Trì 1 Dòng Tóm Tắt (Channel Blindness Invariant)
-- **Duy trì 1 dòng tóm tắt trên kênh chính:** Trong `dispatch_split_reports()`, khi tách báo cáo `fl_s` và `up_s`, BẮT BUỘC giữ lại dòng tiêu đề tóm tắt `fl_s[0]` và `up_s[0]` trong khối feed:
-  ```python
-  if fl_s: f_s.append(fl_s[0])
-  if up_s: f_s.append(up_s[0])
-  ```
-  Giúp người theo dõi kênh `Tiktok Luot Nuoi Acc` thấy ngay dòng:
-  `• Follow chéo (0 lượt follow) [Module 2 (Anchor): 0 | Module 1 (Bù): 0]:`
-  loại bỏ hoàn toàn cảm giác "báo cáo bị mất tích" hay "hệ thống quên chạy follow".
+### 4. Giải Pháp Kiến Trúc Đã Chốt & Invariant Chống Bất Đối Xứng Giao Vận (Delivery Asymmetry & State Atomicity Invariant)
+- **Bản chất bất đối xứng giao vận (Delivery Asymmetry):**
+  * Kênh Lướt Feed (`-5377611430`) được gửi bởi daemon **Hermes Cron Scheduler** (hứng `stdout` của script, gateway kết nối bền vững, buffer tin cậy).
+  * Kênh Follow (`-5127276494`) và Video (`-5435853713`) lại do tiến trình Python watchdog tự gọi raw HTTP socket (`urllib.request.urlopen`) ngắn hạn.
+  * Khi tiến trình con bị đứt socket/DNS tới Telegram, nếu script nuốt lỗi trong `try...except`, nó vẫn in lướt feed ra `stdout` và ghi nhận session đã hoàn tất vào `feed_session_reported.json`.
+  * Hậu quả: Nhóm Nuôi Acc nhận tin bình thường, nhưng nhóm Follow bị mất trắng vĩnh viễn và không bao giờ được gửi bù ở các nhịp sau! Người dùng thấy cực kỳ vô lý vì cùng một lần chạy của watchdog mà kênh này có, kênh kia mất.
+- **Quy tắc State Atomicity bắt buộc:**
+  * Nếu gửi kênh phụ thất bại sau 3 lần retry: **CẤM ghi nhận hoàn tất vào file state**, HOẶC tự động gom block Follow nối ngược vào `stdout` để đẩy chung qua nhóm Nuôi Acc (không để dữ liệu biến mất trong bóng tối).
 - **Vòng lặp gửi tin cậy & Cô lập ngoại lệ:** Bọc `try...except` độc lập cho từng kênh (`cid`), retry 3 lần với timeout 15s để chống rớt tin khi Telegram API gặp độ trễ failover mạng. Ghi lỗi ra `sys.stderr` thay vì nuốt âm thầm.
 - **Đồng bộ Unit Test Invariant & Coverage cho Dispatch Telegram:**
   Khi sửa đổi hàm `dispatch_split_reports` (hoặc bất kỳ hàm dispatch tin nhắn Telegram nào có chia nhỏ tin nhắn và retry):
