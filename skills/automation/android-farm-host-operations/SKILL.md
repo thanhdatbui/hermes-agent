@@ -52,14 +52,22 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
   * Mặc định `MaxWorkers = 40` khiến 40 máy cùng bắn command ADB (heartbeat, am start, dump window, logcat) dồn dập vào 2 chip USB 2.0 (băng thông trần 35 MB/s).
   * Sau 10–20 phút, hiện tượng lệch pha thời lượng video (Phase Drift) tạo ra các đợt microframe congestion gây rớt gói tin trên nhánh cáp dài/yếu (Box 4).
   * **Hạ `MaxWorkers` từ 40 xuống 25 workers (`run-feed-session.ps1`):**
+    - Khóa trần an toàn ở cấp parameter binding: `[ValidateRange(1, 30)]` và gán mặc định `[int]$MaxWorkers = 25`.
     - Giảm 40% xung nhịp I/O trên bus USB 2.0, hạn chế tối đa rớt gói tin microframe trong phiên nuôi.
     - Thời lượng ca nuôi 80 máy tăng từ 35–40 phút lên ~60 phút, vẫn nằm trọn vẹn trong cửa sổ ca 2 tiếng an toàn.
+    - Bổ sung structured JSON telemetry: `[TELEMETRY_METRIC] {"event": "feed_session_launch", "max_workers": 25, "target_machines": 30}` phục vụ giám sát vận hành.
   * **Kết hợp kép:** Reset máy trước ca (làm sạch 100% máy xanh) + Giảm worker (chống nghẽn trong ca) là bộ giải pháp vận hành tối ưu nhất.
 
-## 4. Kiến Trúc Tự Động Hóa Reboot Đầu Ngày (Daily Safe Reboot 05:30 Sáng)
+## 4. Kiến Trúc Tự Động Hóa Reboot Đầu Ngày (Daily Safe Reboot) & Quy Tắc Khung Giờ Chống Ồn Giấc Ngủ
 - **Nguồn repo quản lý (SSOT):** `D:\Taadaa\tools\services\Taadaa_Service\farm_preflight_daily_reset.py`
 - **Vị trí triển khai trên Host:** `C:\Taadaa_Service\farm_preflight_daily_reset.py`
-- **Task Scheduler:** `Taadaa_Farm_Daily_Reboot_0530` (đăng ký chạy Daily lúc đúng 05:30:00 sáng tại Dead Zone 03:00 - 05:59 trước Ca 1).
+- **Quy tắc tiếng ồn phần cứng & Khung giờ giấc ngủ (User Invariant):**
+  * Bo mạch chủ server/X99 khi POST/reset phần cứng sẽ ép quạt chạy 100% PWM (max RPM) trong 5–10 giây và còi buzzer BIOS kêu bíp. Không có lệnh phần mềm nào có thể can thiệp làm êm quạt ở tầng BIOS POST.
+  * **CẤM TUYỆT ĐỐI** đặt lịch reboot tự động vào ban đêm hoặc rạng sáng (như 05:30 sáng) khi người dùng đang ngủ vì tiếng hú quạt gây giật mình mất giấc ngủ.
+  * Còi BIOS bíp: Rút thẳng cục còi buzzer cắm trên chùm chân Front Panel của mainboard (hoặc dán băng dính điện đen bịt lỗ còi onboard) để tắt vĩnh viễn tiếng bíp.
+  * **Khung giờ vàng reboot an toàn:** Đặt vào ban ngày khi người dùng đã thức:
+    - *Khung giờ 1 (Lý tưởng):* **07:45 sáng** (ngay sau khi Phiên 1 Ca sáng chạy từ 06:00 kết thúc lúc ~07:30, máy đã nhả sạch lock, làm sạch bus USB để chuẩn bị cho Phiên 2 lúc 08:00).
+    - *Khung giờ 2:* **11:30 trưa** (giữa Ca sáng và Ca trưa, trước Ca 2 lúc 12:00 30 phút).
 - **Quy trình tự động song song (Silent Watchdog — không gửi tin nhắn rác Telegram):**
   1. Kiểm tra an toàn: Quét `~/.codex/device-locks`. Nếu có $\ge 1$ máy bận lock $\rightarrow$ **HỦY REBOOT NGAY**.
   2. Nếu 0 active lock: Gọi SSH sang Admin PC ra lệnh `shutdown /r /t 2`.
