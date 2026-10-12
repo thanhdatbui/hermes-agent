@@ -42,7 +42,11 @@
 ## 2. Quy chuẩn Watchdog Báo cáo (`farm_render_download_watchdog.py`)
 - **Tiêu chuẩn đánh giá Render Tik1..Tik8**:
   - Từng slot Tik1..Tik8: Tính số folder đạt $\ge 45$ clip thành phẩm (`ge45_folders`).
-  - Trạng thái `✅`: Chỉ hiển thị khi đạt đủ **`80/80 folder (≥45 clip) [100.0%]`**. Nếu dưới 80 folder hiển thị icon `🟡` (hoặc `⚪` nếu 0 folder).
+  - **Bẫy Ngưỡng 45 Gây Báo Động Ảo (False Incomplete Alert Trap - User Invariant 12/10/2026)**:
+    - Kho video nuôi nick thực tế chỉ cần $\ge 40$ clip (hoặc $\ge 30$ clip) là đã đủ điều kiện đăng 1–2 tháng (*"Kho đủ đéo yêu cầu min 45 video đâu"*).
+    - Nếu watchdog hardcode điều kiện `count >= 45`, các folder có 40–44 clip (như Folder 63 Máy 8 có 40 clip) sẽ bị tính là thiếu, hiển thị chấm vàng `🟡 79/80 (98.8%)` gây hoang mang và mâu thuẫn với báo cáo hoàn tất 100% trước đó của phiên.
+    - Chuẩn hóa: Watchdog nên kiểm tra theo mức đạt chuẩn kho nuôi nick ($\ge 40$ clip) để công nhận hoàn thành `✅ 80/80`, hoặc phân định rõ mức đạt chuẩn nuôi nick thay vì bắt buộc cứng ngắc 45 clip.
+  - Trạng thái `✅`: Chỉ hiển thị khi đạt đủ **`80/80 folder`**. Nếu dưới 80 folder hiển thị icon `🟡` (hoặc `⚪` nếu 0 folder).
 - **Tiêu chuẩn ẩn mục Download Video gốc**:
   - Chỉ ẩn mục `1. Video gốc` khi kho gốc đạt đủ tiêu chuẩn $\ge 45$ clip cho cả 640/640 folder nguồn (`s45 >= 640`) VÀ không có tiến trình download nào đang chạy ngầm (`is_download_running() == False`).
 - **Đồng bộ liên máy**:

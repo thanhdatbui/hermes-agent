@@ -6,7 +6,7 @@ WoL ether3 (kibe 0C:EF:15:37:4C:20, admin 22:33:4D:06:4C:26; WG 13231); CẤM PA
 §
 Reviewer :20129: Combo 'review' (Sol Web->Terra Codex); Strike 3 Claude từ chối thì gọi Reviewer (Sol/Worker) sửa đến APPROVED. Acc account_deactivated dọn cả Omni (:20129) & 9Router (:20128). Submit ChatGPT GPM cấm click Google/Apple. Graph API chỉ acc có token, ko token mở Outlook GPM code canonical bóc OTP. Acc die lưu chatgpt_account_lifecycle.json O(1) SKIP. Re-OAuth nạp Omni; xuất chatgpt_lifecycle_report.json.
 §
-TikTok Shadow: Path B 'Đã fl' ko commit; FOLLOW_FAILED trừ fl tự nhiên; slot `(folder-1)%8+1` cứng; reg bù độc lập. Đối soát: chỉ tính nick có ca hôm nay (cohort `internal_followed > 0`). Cron: tách riêng feed_session_watchdog (-5377611430) và follow_session_watchdog (-5127276494, job 6991768931e1); state riêng; cấm split urllib ngầm.
+TikTok Shadow: Path B 'Đã fl' ko commit; FOLLOW_FAILED trừ fl tự nhiên; slot `(folder-1)%8+1` cứng; reg bù độc lập. Đối soát: chỉ tính nick có ca (cohort `internal_followed > 0`). Cron: tách feed_session_watchdog (-5377611430) & follow_session_watchdog (-5127276494, job 6991768931e1). Report: classify_error_reason() lọc sạch; cấm leak HTTP header (ifconfig) / path ADB.
 §
 Hotmail bán: CẤM gán mail cá nhân; tự sinh @fviainboxes.com đọc OTP qua API. Tab Chrome CDP đóng ko mất cookie (lưu Profile disk).
 §
