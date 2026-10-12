@@ -48,6 +48,12 @@ When a parent task gives a hard inspection/iteration/tool-call budget, budget th
 
 ## Workflow
 
+### 0. Cross-session task discovery (`session_search`) before duplicate work
+
+When coordinating in a multi-session / multi-topic environment (such as Telegram topics or concurrent CLI sessions) where users dispatch related requests across sessions:
+- Before modifying shared automation runners, singletons, or pipeline scripts, run `session_search(query='<target_script_or_pipeline>', sort='newest')` to detect whether another active session is concurrently investigating, patching, or running canary on the exact same task.
+- If a sibling session is already actively modifying the files or waiting on a background process (`proc_*`), DO NOT dispatch competing patches or overwrite their unstaged working tree. Reconcile by inspecting `git diff`, verify what the sibling session completed, and report the shared progress rather than racing to duplicate execution.
+
 ### 1. Baseline snapshot at session start (mandatory)
 
 Before any read-heavy or write work, record a reference frame:
