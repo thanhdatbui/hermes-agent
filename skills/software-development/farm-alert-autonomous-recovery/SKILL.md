@@ -9,12 +9,11 @@ description: >-
 
 > Ref: `references/excess-reg-account-rebalance-and-8-slot-cap-protocol-20261011.md`.
 > Ref: `references/xiaowei-adb-reset-and-offline-device-triage-20261012.md`.
+> Ref: `references/friends-feed-contact-suggestion-false-positive-triage-20261013.md`.
 > Ref: `references/account-switcher-mapping-drift-vs-anchor-failure-20261011.md`.
 > Ref: `references/account-switcher-missing-vs-session-lost-triage-20261011.md`.
 > Ref: `references/gemphonefarm-blind-popup-action-miss-triage-20261012.md`.
 > Ref: `references/stale-upload-watchdog-and-tracker-db-drift-triage-20261012.md`.
-> Ref: `references/scheduled-pc-reboot-preflight-abort-triage-20261010.md`.
-> Ref: `references/preflight-reg-bu-machine-full-reconcile-pipeline-20261008.md`.
 > Ref: `references/avatar-edit-layout-detector-and-closeout-contract.md`.
 
 ## UI evidence: target screen only
