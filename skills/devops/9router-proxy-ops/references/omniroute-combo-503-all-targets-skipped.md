@@ -43,6 +43,47 @@ In the Dashboard / Call Logs, duration is near zero or very low (<2s), token usa
    - `Skipping <model> — provider <provider> in global cooldown`
    - `Skipping <model> — model locked by resilience (cooldown active)`
    - `hard-bound connection <id> unavailable; refusing sibling selection`
+   - `Combo loop safety timeout (600000ms) reached without a terminal response — force-terminating`
+
+## False "Server Crash" vs Real Routing Outage Triage
+When user/agent reports "OmniRoute sập / không phản hồi":
+1. **Process Liveness Verification**:
+   OmniRoute process (PID `node.exe scripts/dev/run-next.mjs start`) often **did NOT crash**. `/api/health` still returns `{"status":"ok"}`.
+   - Use `psutil` in Python (avoid `subprocess`/`netstat`/`curl` if guarded):
+     ```python
+     import psutil
+     for p in psutil.process_iter(['pid', 'name', 'create_time', 'cmdline']):
+         if p.info['name'] == 'node.exe':
+             print(p.info['pid'], p.info['create_time'], p.info['cmdline'])
+     ```
+2. **Per-Minute Incident Timeline via SQLite**:
+   Aggregate failures by minute to pinpoint exact collapse window and cascading statuses:
+   ```python
+   import sqlite3
+   conn = sqlite3.connect(r'C:\Users\Kibe\.omniroute\storage.sqlite')
+   cur = conn.cursor()
+   cur.execute('''
+       SELECT strftime('%Y-%m-%d %H:%M', timestamp) as m, status, count(*)
+       FROM call_logs
+       WHERE timestamp >= datetime('now', '-2 hours')
+       GROUP BY m, status ORDER BY m ASC
+   ''')
+   for r in cur.fetchall(): print(r)
+   ```
+3. **Dual Upstream Failure Cascade Pattern**:
+   - `Antigravity` accounts hit `403` (auth lost/invalidated) or `429` (individual quota reset delay ~60m) on Claude/Gemini.
+   - Simultaneously `ChatGPT Web` accounts hit `502` ("You've hit your limit") or `499` (request aborted > 45s).
+   - This trips circuit breakers across ALL fallback targets, producing:
+     - Immediate `503 ALL_TARGETS_SKIPPED` bursts.
+     - 10-minute hanging requests terminated only by `Combo loop safety timeout (600000ms)`.
+4. **Guarded Health Check Verification**:
+   Probe via Python `urllib.request`:
+   ```python
+   import urllib.request, json
+   res = urllib.request.urlopen('http://127.0.0.1:20129/api/monitoring/health')
+   data = json.loads(res.read().decode())
+   print('Circuit breakers:', data.get('circuitBreakers', {}))
+   ```
 
 ## Hot Recovery & Long-Term Prevention
 1. **Hot Circuit Breaker / Cooldown Reset**:
