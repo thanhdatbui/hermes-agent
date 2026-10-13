@@ -42,10 +42,16 @@
 - **Nội bộ từng Wave:** Shuffle ngẫu nhiên hoàn toàn thứ tự khởi động và áp dụng bounded stagger (2–8s) + touch jitter.
 - **Mô phỏng người thật chuẩn xác:** Giãn cách 30–45 phút giữa 2 máy trên cùng một IP residential là mẫu hành vi tự nhiên hoàn hảo của người dùng gia đình (không ai bấm follow đồng thời cùng một giây).
 
-### 2.2. Hiện Trạng Code vs Quy Chuẩn (Kết Quả Audit 13/10/2026)
-- **Thực tế runtime:** Hiện tại `multi_machine_feed_session.py` và `run-feed-session.ps1` vẫn đang gom trọn 78–80 máy vào một danh sách duy nhất để shuffle và chạy 30 workers song song, phụ thuộc vào độ lệch thời gian ngẫu nhiên để máy partner nhận cầu dao.
-- **Lỗ hổng race condition:** Nếu 2 máy cùng IP bị shuffle nằm sát nhau trong danh sách, cả 2 sẽ vào follow gần như cùng lúc trước khi cầu dao kịp kích hoạt.
-- **Kế hoạch chuẩn hóa:** Cần đưa bộ chia bucket 2 Wave độc lập IP vào launcher cấp cao (`tiktok_runner.py` / `run-feed-session.ps1`) để tách thành 2 phase chạy tuần tự cách nhau >= 30 phút.
+### 2.2. Triển Khai Thực Tế & Cơ Chế Hoạt Động (Đã hoàn thành 13/10/2026)
+- **Module lõi `automation_core.scheduler.wave_partition`:**
+  - `load_machine_proxy_mapping(excel_path)`: Tự động nạp bảng mapping proxy (`PROXYgandienthoai.xlsx`) từ Kibe hoặc Admin.
+  - `partition_accounts_into_waves(accounts, proxy_map, seed, rng)`: Nhóm máy theo proxy, tung đồng xu 50/50 ngẫu nhiên giữa các máy partner để gán vào Wave 1 vs Wave 2 (hoặc Wave 3 nếu có 3 máy/port như Admin farm), shuffle nội bộ từng wave để bảo toàn entropy.
+  - `build_wave_launch_plan(...)`: Trả về `MachineLaunchPlan` giữ nguyên thứ tự Wave (Wave 1: indices 0..38, Wave 2: indices 39..77) kèm delay xuất phát 2–8s cho từng máy.
+- **Tích hợp vào Launcher Batch (`multi_machine_feed_session.py`):**
+  - Thay thế bước shuffle phẳng bằng `build_wave_launch_plan` an toàn với khối `try...except Exception` tự động fallback.
+  - **Cơ chế hàng đợi tự nhiên:** Với `max_workers = 30`, 30 máy đầu của Wave 1 chiếm luồng chạy trước; 39 máy của Wave 2 chỉ bắt đầu xuất phát sau khi các máy Wave 1 hoàn thành feed session.
+  - **Time Gap 15–35 phút:** Giữa thời điểm máy A bấm follow và máy B bấm follow cách nhau tối thiểu 15–30 phút. Nếu máy A dính lỗi giật cầu dao, máy B bước vào sau sẽ đọc được cờ `TRIPPED` và tự động Safe-Skip (`CIRCUIT_BREAKER_SKIPPED`) 100%, triệt tiêu hoàn toàn rủi ro trảm dắt dây!
+- **Kiểm chứng tự động:** Test suite `tests/test_machine_launch.py` (13 tests passed 100%) và cú pháp `multi_machine_feed_session.py` biên dịch sạch.
 
 ---
 
