@@ -109,6 +109,22 @@ Khi tài khoản **nghỉ follow hoặc chưa đủ video** (`organic-rest-day-p
    - **Bắt buộc chặn trần snapshot:** Mốc kết thúc `latest_row` trong mọi hàm reconcile đối soát phiên bắt buộc phải có điều kiện `AND timestamp <= session_end_iso` (hoặc chặn trần ở cuối khung giờ phiên của ngày đang xét).
    - **Gắn date tag trên tiêu đề watchdog:** Mọi thông báo Telegram của session watchdog bắt buộc phải chứa `[target_date]` để phân biệt rành mạch ca realtime hôm nay với ca backfill lịch sử.
 
+### Nguyên nhân 6: Lệch Phạm Vi Báo Cáo Phiên Độc Lập vs Tổng Ngày Database (Session Watchdog Report vs Daily DB Aggregate)
+1. **Hiện tượng nhận biết:**
+   - Người dùng thấy trên Database (`daily_account_actions` hoặc Dashboard KPI "Tiến độ hôm nay: Bot +1 lượt") báo có **1 lượt follow**, nhưng tin nhắn báo cáo Telegram vừa nhận lại báo **0 lượt follow** (`Follow chéo (0 lượt follow)`).
+2. **Cơ chế lệch phạm vi (Session Scope vs Daily Aggregate):**
+   - Farm chia 1 ca thành nhiều phiên chạy độc lập (ví dụ Ca 1 gồm Phiên 1 lúc 06:00 và Phiên 2 lúc 08:00).
+   - Watchdog (`feed_session_watchdog.py` / `follow_session_watchdog.py`) gửi báo cáo **THEO TỪNG PHIÊN RIÊNG BIỆT (Session-based)**: mỗi khi một phiên kết thúc sẽ gửi đúng 1 thông báo cho phiên đó.
+   - Lượt follow thành công đã diễn ra ở **Phiên 1** (ví dụ Máy 29 follow thành công 1 nick `@thanh.h.dng00` lúc 06:02) và đã được chốt sổ gửi báo cáo ở Phiên 1.
+   - Ở **Phiên 2**, Máy 29 gặp anchor bị nhả nút sau vuốt (`FOLLOW_FAILED`) $\rightarrow$ dừng an toàn session với `followed_count = 0`. Watchdog gửi báo cáo Phiên 2: `Follow chéo (0 lượt follow)` và xếp Máy 29 vào nhóm `Nhả liền (0 lượt)`.
+   - Trong khi đó, bảng `daily_account_actions` và Dashboard là **tổng hợp tích lũy cả ngày** (`GROUP BY target_date, username` lấy `SUM(internal_follows)`), vẫn ghi nhận 1 lượt của Phiên 1.
+3. **Quy trình chẩn đoán O(1):**
+   - Query nhanh bảng `session_action_stats` theo `target_date` để xem chi tiết từng phiên:
+     ```sql
+     SELECT session_key, cluster, internal_follows, created_at FROM session_action_stats WHERE target_date = ?;
+     ```
+   - Kiểm tra thư mục run thực tế của từng phiên trong `runtime/kibe/live/<YYYY-MM-DD>/` (file `follow_result.json` của máy liên quan) để xác định chính xác phiên nào sinh ra lượt follow và phiên nào bị dừng do `FOLLOW_FAILED`.
+
 ## Quy trình chẩn đoán (CẤM đoán mò "follow tự nhiên")
 1. **CẤM TUYỆT ĐỐI phán đoán ẩu "đây là follow tự nhiên / kênh ngoài"** khi user đã cấu hình tắt follow tự nhiên trong feed runner.
 2. **Kiểm tra thời điểm:**

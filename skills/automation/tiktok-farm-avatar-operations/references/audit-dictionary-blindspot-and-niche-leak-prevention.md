@@ -36,3 +36,18 @@
    - Bước 2: Cập nhật sheet `TaiKhoan` cột `Keyword Video` và `Hashtag Pool`.
    - Bước 3: Đưa folder vào `manual_avatar_protected_folders.json` để khóa bảo vệ SSOT.
    - Bước 4: Chạy `sync_all_tik_keywords.py` để đồng bộ nhất quán trên toàn bộ cluster Kibe & Admin.
+
+## 4. Kỷ Luật Khóa Cứng Hashtag & Avatar Đã Sửa Tay (Hard-Lock Manual Hashtags)
+Khi người dùng yêu cầu: *"Khóa cứng hashtag fix tay lại tránh script quét đè lên"*:
+1. **Khóa 2 Đầu Registry (`manual_avatar_protected_folders.json`)**:
+   - BẮT BUỘC cập nhật CẢ 2 file:
+     * `D:/Taadaa/data/manual_avatar_protected_folders.json`
+     * `D:/Taadaa/Tiktok-video/data/manual_avatar_protected_folders.json`
+   - Bổ sung cả $F_{src}$ và $F_{out}$ vào `protected_folders` và dictionary `accounts`.
+   - Kiểm tra bằng `from manual_avatar_guard import is_folder_avatar_protected; assert is_folder_avatar_protected(F_src) and is_folder_avatar_protected(F_out)`.
+2. **Chặn Đứng Ghi Đè Ngược Từ Upstream Database**:
+   - Khi script `sync_all_tik_keywords.py` quét, nếu database nguồn của video vẫn mang nhãn cũ (ví dụ `gym`), script sẽ cố đồng bộ lại.
+   - Do đó, khi sửa tay một kênh, BẮT BUỘC cập nhật đồng bộ cột `niche` trong bảng `folders` của database nguồn về đúng niche mới (ví dụ `chamsocbe`). Khi upstream đã chuẩn, script sync dù có chạy lại cũng không sinh ra diff lệch để ghi đè.
+3. **Pattern Dispatch Script Helper O(1) Cho Excel & SQLite**:
+   - Do `Tik<Slot>.xlsx` nằm tại `D:/OneDrive/...` (ngoài repo whitelist `['D:/Taadaa']`), Coordinator không được truyền trực tiếp file Excel vào Scope Lock `FILE: ...`.
+   - Giải pháp chuẩn: Cho subagent patch script helper nằm trong `D:/Taadaa/tools/` (ví dụ `tmp_find_account.py` hoặc `prep_mXX_avatar_swap.py`) theo ngân sách `DIFF_BUDGET <= 30 dòng` (chia 2 bước nếu cần: Bước 1 sync avatar, Bước 2 update Excel + SQLite), sau đó chạy script để thực thi đồng bộ dữ liệu.
