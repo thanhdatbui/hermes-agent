@@ -9,6 +9,7 @@ No picker / cohort / manifest dependency.
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import subprocess
@@ -100,6 +101,22 @@ _SCHEDULE: dict[tuple[int, int], dict[int, int | None]] = {
 }
 
 
+def _load_determine_healing_row() -> tuple[Any, Path]:
+    """Load determine_healing_row from tools/healing_selector.py without touching sys.path."""
+    env_tools = os.environ.get("HERMES_CRON_TOOLS_DIR")
+    candidates = [Path(env_tools)] if env_tools else []
+    candidates += [p / "tools" for p in Path(__file__).resolve().parents]
+    tools_dir = next((p for p in candidates if (p / "healing_selector.py").is_file()), None)
+    if tools_dir is None:
+        raise ImportError("healing_selector.py not found (set HERMES_CRON_TOOLS_DIR)")
+    spec = importlib.util.spec_from_file_location("healing_selector", tools_dir / "healing_selector.py")
+    if spec is None or spec.loader is None:
+        raise ImportError(f"cannot load healing_selector from {tools_dir}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.determine_healing_row, tools_dir
+
+
 def _determine_row(now: datetime) -> tuple[int, int, str, bool] | None:
     """Return (row, session_index, window_key, is_rest_day) or None if dead-zone / unmapped time window.
 
@@ -151,19 +168,39 @@ def _determine_row(now: datetime) -> tuple[int, int, str, bool] | None:
     else:
         effective_day = cycle_day
 
-    if cycle_day == 2:
-        healing_row = 3 if (cycle_idx % 2 == 0) else 4
-    elif slot_key in ((6, 0), (8, 0)):
-        healing_row = 3
-    elif slot_key in ((12, 0), (14, 0)):
-        healing_row = 4
-    else:
-        healing_row = 5 if (cycle_idx % 2 == 0) else 6
-
     target_row = slots[effective_day]
     is_rest_day = False
     if target_row is None:
-        row = healing_row
+        window_label = f"{slot_key[0]:02d}:{slot_key[1]:02d}"
+        try:
+            determine_healing_row, tools_dir = _load_determine_healing_row()
+            row = determine_healing_row(now, slot_key, cycle_day, cycle_idx)
+            sys.stdout.write(json.dumps({
+                "event": "healing_row_selected",
+                "row": row,
+                "window": window_label,
+                "cycle_day": cycle_day,
+                "cycle_idx": cycle_idx,
+                "tools_dir": str(tools_dir),
+            }, sort_keys=True) + "\n")
+        except Exception as exc:
+            if cycle_day == 2:
+                row = 3 if (cycle_idx % 2 == 0) else 4
+            elif slot_key in ((6, 0), (8, 0)):
+                row = 3
+            elif slot_key in ((12, 0), (14, 0)):
+                row = 4
+            else:
+                row = 5 if (cycle_idx % 2 == 0) else 6
+            sys.stderr.write(json.dumps({
+                "event": "healing_row_fallback",
+                "row": row,
+                "window": window_label,
+                "cycle_day": cycle_day,
+                "cycle_idx": cycle_idx,
+                "error_type": type(exc).__name__,
+                "error": str(exc),
+            }, sort_keys=True) + "\n")
         is_rest_day = True
     else:
         row = target_row
