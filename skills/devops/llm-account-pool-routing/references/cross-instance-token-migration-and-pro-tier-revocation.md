@@ -27,7 +27,10 @@ Khi cần khôi phục hoặc thay thế tài khoản Pro nhanh chóng mà khôn
 
 ### Cơ Chế Mã Hóa Của OmniRoute (Field-Level AES-256-GCM)
 OmniRoute lưu trữ credential trong SQLite tại `C:\Users\Kibe\.omniroute\storage.sqlite` (bảng `provider_connections`), bắt buộc mã hóa AES-256-GCM nếu có cấu hình `STORAGE_ENCRYPTION_KEY`:
-- File cấu hình: `C:\Users\Kibe\OmniRoute\.env` (`STORAGE_ENCRYPTION_KEY=...`)
+- **Thứ tự nạp file cấu hình (BẮT BUỘC)**:
+  1. `C:\Users\Kibe\.omniroute\.env` (Ưu tiên số 1 - nơi daemon production lưu key thật).
+  2. `C:\Users\Kibe\.omniroute\server.env` (Ưu tiên số 2).
+  3. `C:\Users\Kibe\OmniRoute\.env` (Ưu tiên số 3 - **CẢNH BÁO**: file này thường để trống `STORAGE_ENCRYPTION_KEY=`, nếu đọc nhầm file này sẽ mã hóa bằng chuỗi rỗng dẫn đến lỗi `Antigravity access token not available` do server không giải mã được!).
 - **Key Derivation (Chuẩn static salt v3.7.9+)**:
   ```javascript
   const crypto = require('crypto');
@@ -37,6 +40,13 @@ OmniRoute lưu trữ credential trong SQLite tại `C:\Users\Kibe\.omniroute\sto
 - **Cipher Format**:
   - Thuật toán: `aes-256-gcm`, IV ngẫu nhiên 16 bytes.
   - Định dạng chuỗi lưu vào DB: `enc:v1:<iv_hex>:<ciphertext_hex>:<authTag_hex>`
+
+### Cạm Bẫy Schema Trong Bảng `provider_connections` (SQLite)
+- Cột token tên là `access_token` (KHÔNG PHẢI `token`).
+- `created_at` và `updated_at` có ràng buộc `NOT NULL` và nhận chuỗi ISO 8601 (ví dụ `2026-10-13T13:21:42.000Z`). Cấm bỏ trống `created_at` hoặc dùng chuỗi raw SQL `datetime('now')` khi bind params.
+- Cột `provider_specific_data` bắt buộc định dạng JSON hợp lệ:
+  `{"clientProfile":"ide","projectId":"...","tier":"g1-pro-tier","apiKeyHealth":{},"subscriptionTier":"Google AI Pro","plan":"Pro"}`
+- `priority` là integer, `is_active` = 1, `test_status` = `'active'`, `max_concurrent` = 5, `proxy_enabled` = 1.
 
 ### Quy Trình Di Trú O(1) Tự Động
 1. **Trích xuất**: Đọc `accessToken`, `refreshToken`, `scope`, `projectId` của tài khoản mục tiêu từ 9Router SQLite.

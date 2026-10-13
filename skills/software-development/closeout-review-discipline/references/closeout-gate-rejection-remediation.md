@@ -38,6 +38,11 @@
      * Cơ chế **Log Rotation**: Khi kích thước file vượt ngưỡng (ví dụ > 5MB), tự động xoay vòng sang `.jsonl.1` để tránh phình đĩa vô hạn.
 10. **Bẫy State Cũ / Lệch Ngày (Stale & Corrupt State Fallback)**:
     - Các rule dựa trên state file (như `last_window`, `last_row`) bắt buộc phải có test case kiểm thử khi dữ liệu state cũ từ hôm trước hoặc bị corrupt, chứng minh hệ thống tự động rơi về fallback an toàn mà không sập.
+11. **Bẫy Lệch Docstring vs Thực Tế Code (Docstring Scope Bloat Trap - 13/10/2026)**:
+    - Reviewer Sol High trừ điểm rất nặng nếu docstring ở đầu file liệt kê những chức năng không có trong implementation (ví dụ: tuyên bố đồng bộ cơ sở dữ liệu phụ, scan đĩa, nhưng code thực tế chỉ transform workbook/json).
+    - Reviewer coi khoảng cách giữa docstring và code là "thiếu trung thực về phạm vi hoặc bỏ dở tính năng". Docstring BẮT BUỘC chỉ mô tả chính xác những gì code thực sự làm.
+12. **Telemetry Return Contract Cho Scripts Chuẩn Hóa/Batch**:
+    - Hàm `main()` của các script batch/sync bắt buộc `return` telemetry dictionary chuẩn có cấu trúc (ví dụ: `{"event": "...", "folders_synced": N, "status": "SUCCESS"}`) để test suite và harness có thể kiểm chứng trực tiếp thay vì chỉ parse stdout print.
 
 ## 3. Thang Leo Thang Sửa Chữa (Remediation Ladder)
 - **Vòng 1 & 2 (Sol Repair / Worker Remediation)**:
