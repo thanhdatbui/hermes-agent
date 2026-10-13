@@ -222,8 +222,8 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
      cmd.exe /c start /b "" "C:\Program Files (x86)\xiaowei\tools\adb.exe" -a nodaemon server
      ```
   3. Khi không có portproxy trung gian, `adb.exe` bind trực tiếp vào `0.0.0.0:5037`, Kibe PC kết nối thẳng qua LAN cực kỳ mượt mà, triệt tiêu 100% hiện tượng kẹt socket hay crash của `iphlpsvc`.
-- **Kỷ luật kiểm tra Uptime/Boot Time trước khi phán đoán (User Rule "Reset r mà"):**
-  - Khi thấy máy rớt hoặc nhận alert sau giờ ca, Coordinator BẮT BUỘC kiểm tra uptime hệ thống bằng `psutil.boot_time()` trước khi vội vàng khẳng định máy "chưa reboot".
+- **Kỷ luật kiểm tra Uptime/Boot Time trước khi phán đoán (User Rule):**
+  - Khi thấy máy rớt hoặc nhận alert sau giờ ca, Coordinator BẮT BUỘC kiểm tra uptime hệ thống bằng `psutil.boot_time()` trước khi vội vàng khẳng định máy chưa reboot.
   - Tránh nhầm lẫn mốc thời gian khiến báo cáo sai lệch với hành động thực tế của người dùng hoặc Task Scheduler đã thực thi.
 
 ## 12. Chẩn Đoán Từ Xa Qua MikroTik REST API & Đánh Thức Máy Farm (WoL)
