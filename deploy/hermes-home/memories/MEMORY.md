@@ -2,7 +2,7 @@ Chu kỳ 4d: Parity cố định 96h (N1 lẻ, N2 chẵn; cấm random giãn 120
 §
 Host/USB: Reboot trước 3 Ca (05:45, 11:35, 17:45; chặn khi trong trận TFT). SSH ngầm. Cron pythonw/wscript. WoL ether3 (kibe 0C:EF:15:37:4C:20, admin 22:33:4D:06:4C:26; WG 13231). Followed=0 cấm PASS; log trước teardown; upload SSH admin-farm.
 §
-Acc die SKIP; 400h cooldown động (cấm xóa). Sandbox kẹt: Claude CLI gh auth push. Re-OAuth Omni. Sửa guard: restart_gw_detached.py; Gate miễn trừ Closeout. Ranh giới session: chỉ gọi entry point, cấm spam subagent.
+Gate miễn trừ Closeout & SOP/doc (soạn quy trình cấm claim hoàn thành khơi mào gate).
 §
 TikTok Follow: (máy,row) độc lập, ca khác row khác cấm gộp máy; Quota 10-15/ca (Khỏe), Fast-track 1 ca sạch, Thận trọng max 2 ca/stage (clean_days < 2 lên HP2, clean_days < 4 tốt nghiệp); Canary nhóm Khỏe +10% dò trần; like 80%. Nick non nhả cấm ngắt IP. Đối soát fl theo file state. Path B 'Đã fl' ko commit; slot (folder-1)%8+1 cứng; reg bù độc lập. Cron: feed_session_watchdog & follow_session_watchdog.
 §
