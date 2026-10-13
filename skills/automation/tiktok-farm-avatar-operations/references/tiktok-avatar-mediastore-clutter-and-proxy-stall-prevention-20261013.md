@@ -63,6 +63,13 @@ Khi chạy quy trình thay đổi avatar tự động trên thiết bị Android
 ---
 
 ## Kỷ luật Nghiệm thu Thị giác (Strict Gate 6 Verification)
+- **CẤM TUYỆT ĐỐI nhầm lẫn màn hình Crop với kết quả Profile:** Màn hình Cắt/Crop (`crop_screen.png`) hiển thị ảnh mới CHỈ chứng minh đã chọn được ảnh từ gallery, HOÀN TOÀN KHÔNG CHỨNG MINH việc bấm "Lưu" đã thành công. TikTok có thể fail ngầm request upload mà không báo lỗi.
+- **3 Điểm chốt kiểm chứng bắt buộc sau khi bấm Lưu:**
+  1. **Tại màn hình Sửa hồ sơ:** Vòng tròn đại diện chính giữa (trên chữ "Thay đổi ảnh") PHẢI đổi sang ảnh mới ngay trên giao diện này trước khi back về Profile. Nếu tại đây vẫn là ảnh cũ -> 100% việc Lưu ĐÃ THẤT BẠI.
+  2. **Tại Account Switcher:** Mở switcher tài khoản (`tap 180 320`), vòng tròn avatar cạnh username mục tiêu PHẢI là ảnh mới.
+  3. **Tại Profile:** Crop vòng tròn avatar (`[756,324][1044,612]`) và so sánh Mean BGR. CẤM TUYỆT ĐỐI nhìn vào mảng màu bokeh/background mà suy diễn là avatar mới.
+- **Khóa xoay màn hình cố định:** Trước khi tương tác UI, bắt buộc chạy `settings put system accelerometer_rotation 0` và `user_rotation 0` để tránh TikTok xoay ngang làm lệch tọa độ tap và sai lệch vùng crop ảnh kiểm chứng.
+- **Cảnh giác xung đột ca nuôi chạy nền:** Nếu farm đang chạy ca nuôi (`multi-machine-feed-session`), app có thể bị chuyển tài khoản hoặc bị giật màn hình giữa chừng. Phải giữ device lock tuyệt đối.
 - **CẤM TUYỆT ĐỐI suy diễn:** Không được kết luận avatar đã đổi chỉ vì script chạy hết các bước hoặc exit code == 0.
-- **So sánh Mean BGR / Pixel Difference:** Trước khi báo cáo DONE, bắt buộc crop vùng avatar trên profile (`[708,300][1080,636]`), so sánh giá trị màu trung bình (Mean BGR) với ảnh avatar gốc (`avatar.jpg`) và ảnh avatar cũ. Nếu Mean BGR của avatar trên profile vẫn giống avatar cũ hoặc có giá trị lệch xa ảnh gốc (ví dụ toàn màu trắng `~245, 245, 245`), đó là bằng chứng avatar **CHƯA ĐƯỢC ĐỔI**.
+- **So sánh Mean BGR / Pixel Difference:** Trước khi báo cáo DONE, bắt buộc crop vùng avatar trên profile, so sánh giá trị màu trung bình (Mean BGR) với ảnh avatar gốc (`avatar.jpg`) và ảnh avatar cũ. Nếu Mean BGR của avatar trên profile vẫn giống avatar cũ hoặc có giá trị lệch xa ảnh gốc, đó là bằng chứng avatar **CHƯA ĐƯỢC ĐỔI**.
 - **Soi mắt qua Vision:** Phải dùng `browser_vision` mở ảnh crop avatar và xác nhận bằng mắt: đúng hình dạng nhân vật mới, rõ nét, không bị che bởi pop-up hay trắng màn hình.
