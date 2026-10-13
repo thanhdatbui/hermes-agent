@@ -82,3 +82,8 @@ Trên farm TikTok (1.280 tài khoản gồm 2 cụm Kibe 1..80 và Admin 201..28
    - **Phòng Chống Treo Closeout Gate Do Diff Phình To (CRLF Churn Timeout)**:
      * Khi chạy Closeout Gate (`closeout_gate.py`), nếu repo có file bị convert CRLF/LF diện rộng (ví dụ >100KB diff), Sol High (:20129) sẽ bị timeout đọc sau 300s.
      * Bắt buộc kiểm tra `git status` và `git diff --stat`, unstage các file rác CRLF (`git restore --staged <file>`), chỉ stage và chỉ định đúng `--files <target_file>` để diff review đạt chuẩn O(1) <= 30 dòng, giúp gate hoàn thành duyệt trong vài giây.
+   - **Kỷ Luật Phân Loại Closeout Khi User Nói "Done" / "Chốt Phiên" (Operational Scope vs Code Candidate)**:
+     * Khi nhiệm vụ chỉ là vận hành dữ liệu farm (crop avatar, cập nhật OneDrive Excel, cập nhật SQLite `avatar_replace_queue`, cập nhật JSON registry local):
+     * Phiên này thuộc phân loại `RUNTIME_CONFIG / FARM_OPERATION` (`NO_CODE_CANDIDATE`).
+     * CẤM TUYỆT ĐỐI tự ý kéo repo Git ra stage các file dirty lưu cữu từ phiên khác (như `top_left_pencil.py` hay `post_evening_avatar_watchdog.py`) rồi chạy `closeout_gate.py`. Việc này vi phạm ranh giới phiên, gây reject điểm số hoặc timeout giả tạo.
+     * Áp dụng `task-scope-and-closeout`: Xuất ngay `SESSION CLOSEOUT RECEIPT` ghi nhận `session_class: RUNTIME_CONFIG`, `commit_required: false`, `gate_status: NOT_APPLICABLE`, chốt phiên an toàn với đầy đủ bằng chứng thị giác `MEDIA:`.

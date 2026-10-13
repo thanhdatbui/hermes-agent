@@ -38,3 +38,15 @@ Mọi cron / watchdog chạy trong khoảng nghỉ giữa các ca liên quan đ�
 
 ### D. Tác vụ Dọn dẹp Cache cuối ngày — Ví dụ `end-of-day-clear-tiktok-cache`
 - Cron schedule phải kết thúc trước 05:00: `*/15 3,4 * * *` (chạy 03:00 – 04:45), trả lại vùng đệm sạch hoàn toàn trước mốc reboot 05:20.
+
+---
+
+## 4. Kỷ Luật Dispatch Worker & Closeout Verification Pitfalls
+1. **Pitfall `guard_dispatch_contract.py` (Lỗi `OLD_EQUALS_NEW`):**
+   - Khi Coordinator soạn contract `delegate_task` cho Worker: Guard so sánh dòng đầu tiên của `OLD_STRING` và `NEW_STRING`. Nếu dòng đầu tiên giống nhau (do gom dòng context ở trên), guard sẽ chặn:
+     `OLD_EQUALS_NEW: Đoạn mã cũ và mới #1 hoàn toàn giống nhau`
+   - **Cách khắc phục:** Cắt bỏ dòng context ở đầu; `OLD_STRING` và `NEW_STRING` bắt buộc phải bắt đầu ngay tại dòng có sự thay đổi thực sự.
+
+2. **Pitfall Telemetry Verification Cho Windows Task Scheduler:**
+   - Khi script cập nhật Scheduled Task (`update_reboot_schedule.py`), Sol Reviewer yêu cầu phải có post-update verification telemetry (`validation: {"task_exists": True, "trigger_count": N}`) đọc ngược lại từ `Get-ScheduledTask` để chứng minh task đã được đăng ký thành công trên host thực tế thay vì chỉ tin vào exit code của process con.
+
