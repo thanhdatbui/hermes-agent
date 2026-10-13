@@ -70,9 +70,12 @@
    - Push ảnh vào `/sdcard/DCIM/Camera/IMG_<timestamp>.jpg` và `/sdcard/Pictures/`.
    - Chạy `am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/DCIM/Camera/IMG_<timestamp>.jpg`.
 
-4. **Chọn ảnh (Tránh Checkbox Trap)**:
-   - Tap checkbox góc trên phải của ô ảnh đầu tiên tại `(225, 255)` hoặc `(225, 290)`.
-   - Tap nút "Tiếp" tại `(912, 1844)`.
+4. **Chọn ảnh (Tránh Checkbox & Preview Trap)**:
+   - *Cách 1 (Trên Grid View)*: Tap chính xác vào tâm vòng tròn radio checkbox ở góc trên bên phải của ô ảnh đầu tiên tại tọa độ `(220, 272)` (bounds `[179,240][251,312]`). Sau khi radio hiển thị số "1" và nút "Tiếp" ở góc dưới phải `(912, 1844)` sáng đỏ, tap "Tiếp" để vào màn hình Crop.
+   - *Cách 2 (Nếu lỡ tap vào giữa ảnh và mở Full-screen Preview `ProfileAvatarChoosePhotoActivity`)*:
+     + Ở màn hình Preview, nút "Tiếp" ở góc dưới phải bị mờ. BẮT BUỘC tap vào vòng tròn radio bên trái chữ "Chọn" tại tọa độ `(84, 1839)` để tick chọn ảnh (nút Tiếp sẽ chuyển sang màu đỏ `[254, 44, 85]`), sau đó tap nút Tiếp tại `(923, 1841)`.
+     + Hoặc nhấn Back (`input keyevent 4`) để quay lại grid view rồi thực hiện theo Cách 1.
+   - *Lưu ý tiên quyết*: Trước khi chạy upload, BẮT BUỘC kiểm tra kỹ avatar hiện tại trên Profile/Switcher xem đã đổi đúng nhân vật của folder chưa. Tránh để bong bóng Note ("Thì thầm to nhỏ") đánh lừa thị giác khiến agent tưởng nhầm avatar chưa đổi và chạy upload thừa thãi.
 
 5. **Màn hình Cắt (Crop) & Lưu**:
    - Bounds nút Lưu: `[552,1728][1032,1860]`. Nút Hủy: `[48,1728][528,1860]`.

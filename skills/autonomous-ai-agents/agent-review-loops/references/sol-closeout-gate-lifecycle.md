@@ -33,6 +33,13 @@ In `closeout_gate.py` (`run_sol_closeout_state_machine`):
 
 ## 3. Sol Web HTTP 413 Payload Ceiling & Truncation Invariants (`sol_payload_guard.py`)
 
+- **Closeout Gate Execution Pattern (Background vs Foreground Timeout Guard)**:
+  - `closeout_gate.py` khi chạy toàn bộ pipeline (sanitize locks, trích xuất diff, chạy pytest focused, gọi OmniRoute :20129 chấm điểm) tốn trung bình từ 45s đến 75s.
+  - Lệnh terminal foreground có giới hạn bảo vệ thời gian chạy (timeout <= 60s). Đặt timeout foreground > 60s sẽ bị guard chặn (`GUARD_FOREGROUND_TIMEOUT_EXCEEDED`), còn đặt <= 60s rất dễ bị kill với exit code 124 giữa chừng khi model review phản hồi chậm.
+  - **Quy chuẩn thực thi an toàn**: Bắt buộc khởi chạy `closeout_gate.py` ở chế độ background với redirect output ra file log:
+    `terminal(background=True, command='python D:/Taadaa/tools/closeout_gate.py --repo <path> --base HEAD~1 --json-output > <path>/closeout_result.txt 2>&1', notify_on_complete=True, timeout=300)`
+    Sau đó dùng `process(action='wait', session_id=..., timeout=240)` và `read_file` đọc lại file output để nghiệm thu Scorecard.
+
 When sending diffs, logs, or prompt contexts to ChatGPT Web upstream (`gpt-web-sol` on OmniRoute `:20129`):
 - **Physical Fracture Threshold**: Upstream Nginx/Cloudflare crashes with HTTP 413 at **66,724 Bytes (~65 KiB)**.
 - **Payload Guard Thresholds**:

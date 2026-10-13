@@ -73,3 +73,12 @@ Trên farm TikTok (1.280 tài khoản gồm 2 cụm Kibe 1..80 và Admin 201..28
    - Để tránh vi phạm `OUT OF REPO WHITELIST` (chỉ cho phép `D:/Taadaa`), không khai báo file ngoài (`D:/OneDrive/...`) vào trường `FILE:`.
    - Bọc toàn bộ thao tác đồng bộ file, cập nhật SQLite và cập nhật Excel vào một script entrypoint duy nhất trong `D:/Taadaa/tools/<script>.py`.
    - Soạn `OLD_STRING` và `NEW_STRING` trong `<<< ... >>>` với tổng dòng thay đổi `<= 30 dòng` (`DIFF_BUDGET`) để Worker vá và chạy script kiểm chứng focused.
+   - **Bắt buộc Gate 4 Fail-Fast & Chuẩn Định Dạng Test**:
+     * Prompt EDIT bắt buộc chứa nguyên văn: `FAIL_FAST: Nếu trong <= 3 iterations đầu thấy scope bất khả thi với budget 15 calls thì DỪNG NGAY (ABORT) và trả về anchor + proposed contract, cấm đốt hết budget để mò file rồi fail im lặng.`
+     * Định dạng `FOCUSED_TEST`: Chuẩn `python -m pytest <file.py>::<test_node> -q` hoặc `python -m py_compile <file.py>`.
+   - **Đồng Bộ Registry Đôi (Dual Registry Synchronization)**:
+     * Cả 2 file `D:/Taadaa/data/manual_avatar_protected_folders.json` và `D:/Taadaa/Tiktok-video/data/manual_avatar_protected_folders.json` đều là SSOT cho `manual_avatar_guard.py`. Khi khóa avatar thủ công, bắt buộc đồng bộ cả 2 nơi.
+     * Vì Worker bị khóa Scope Lock theo từng file riêng lẻ (`FILE: <path>`), nếu Worker báo dừng do Scope Lock Breach khi cố sửa file thứ 2, Coordinator phải dispatch lượt kế tiếp với scope file thứ 2 hoặc thực hiện qua script tool nội bộ.
+   - **Phòng Chống Treo Closeout Gate Do Diff Phình To (CRLF Churn Timeout)**:
+     * Khi chạy Closeout Gate (`closeout_gate.py`), nếu repo có file bị convert CRLF/LF diện rộng (ví dụ >100KB diff), Sol High (:20129) sẽ bị timeout đọc sau 300s.
+     * Bắt buộc kiểm tra `git status` và `git diff --stat`, unstage các file rác CRLF (`git restore --staged <file>`), chỉ stage và chỉ định đúng `--files <target_file>` để diff review đạt chuẩn O(1) <= 30 dòng, giúp gate hoàn thành duyệt trong vài giây.

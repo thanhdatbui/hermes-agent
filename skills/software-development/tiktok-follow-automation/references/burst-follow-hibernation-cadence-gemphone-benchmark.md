@@ -37,7 +37,11 @@
 - **Chu kỳ 4 ngày xoay tua (3 Ca / ngày: Sáng 06h/08h, Trưa 12h/14h, Tối 18h/20h):**
   * **Ngày 1:** 3 ca, bốc thăm ngẫu nhiên (50/50) giữa nhóm `[1, 3, 5]` hoặc `[2, 4, 6]`.
   * **Ngày 2:** 3 ca, chạy nhóm còn lại (`[2, 4, 6]` hoặc `[1, 3, 5]`).
-  * **Ngày 3:** Ca 1 (Row 7) — Ca 2 (Row 8) — Ca 3 (Lướt feed acc yếu).
+  * **Ngày 3:** Ca 1 (Row 7) — Ca 2 (Row 8) — Ca 3 (Lướt feed acc yếu/dưỡng sinh: luân phiên Row 3 vs Row 4).
+    - **Quy tắc ưu tiên dưỡng sinh (Nhả Follow vs Non ít video):**
+      + **Ưu tiên 1 (P0 - Khẩn cấp):** Nick bị nhả follow (dính cờ action block ngầm / rollback). BẮT BUỘC ưu tiên lướt dưỡng sinh (0 follow) để rửa cờ phạt và hồi phục Trust Score, ngăn ngừa lây lan tainted proxy/device.
+      + **Ưu tiên 2 (Bồi dưỡng nền tảng):** Nick non ít video (< 10 video). Vốn dĩ đã bị khóa cứng `follow_rate = 0` theo quy tắc an toàn farm, mỗi lần lên máy bản chất đã là dưỡng sinh tự nhiên để ngâm tuổi và đăng clip.
+      + **Cơ chế Runner tự động:** Ca 3 Ngày 3 luân phiên `healing_row` giữa Row 3 (`cycle_idx % 2 == 0`) và Row 4 (`cycle_idx % 2 == 1`) vì đây là hai lứa Tik 3 / Tik 4 đang vào đợt cày follow dày, nhạy cảm nhất toàn farm.
   * **Ngày 4 (Tái cân bằng hành vi / Recovery Day):** Nghỉ follow hoàn toàn. Chạy 3 ca lướt feed chuyên cho các nick đang bị nhả follow (nếu không có nick bị nhả thì chọn các nick yếu chạy 3 ca).
   * **Ngày 5:** Bắt đầu chu kỳ mới, lúc này mới xúc xắc lại giữa `(1,3,5)` vs `(2,4,6)` để phá vỡ chu kỳ tuần hoàn cơ học (Temporal Correlation Pattern).
 - **Quy tắc Đăng Video Ngày Dưỡng Sinh / Lướt Feed (Advisor Sol & User Invariant 2026-10-10):**
