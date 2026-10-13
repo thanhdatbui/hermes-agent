@@ -195,22 +195,29 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
 
 ## 11. Bẫy Treo Remote ADB Portproxy & Dịch Vụ IP Helper (iphlpsvc) Trên Host Admin
 - **Hiện tượng:** Từ host controller (Kibe PC), lệnh gọi ADB tới remote host (Admin `192.168.110.119:5037`) văng lỗi `adb.EXE: protocol fault (couldn't read status): connection reset` hoặc lệnh `inspect_machine.py <N>` bị timed out liên tục.
-- **Bản chất kỹ thuật:**
-  1. Trên Windows host phụ (Admin PC), cổng `5037` được publish ra ngoài mạng LAN cho Kibe PC qua Windows Portproxy:
+- **Bản chất kỹ thuật (Bẫy Xung Đột Cổng 10048 giữa Portproxy & `adb.exe -a`):**
+  1. Trên Windows host phụ (Admin PC), cổng `5037` từng được publish ra ngoài mạng LAN cho Kibe PC qua Windows Portproxy:
      `netsh interface portproxy add v4tov4 listenaddress=192.168.110.119 listenport=5037 connectaddress=127.0.0.1 connectport=5037`
   2. Dịch vụ đảm nhận chuyển tiếp TCP portproxy trong Windows là **IP Helper (`iphlpsvc`)** chạy dưới tiến trình `svchost.exe`.
-  3. Khi daemon `adb.exe` cục bộ trên Admin PC bị crash, restart ngầm hoặc khi nhiều request ADB từ xa dồn dập, backend `127.0.0.1:5037` bị đóng nhưng `svchost.exe` vẫn tiếp tục lắng nghe trên `192.168.110.119:5037`. Khi Kibe PC bắt tay TCP, `svchost.exe` chuyển tiếp vào backend đã chết và nhận RST $\rightarrow$ Kibe PC bị `connection reset`.
-  4. Hơn nữa, `iphlpsvc` có thể bị treo trạng thái session nội bộ khiến kết nối mới bị drop hoặc không kết nối lại được vào `127.0.0.1:5037` dù adb daemon đã online.
-- **Quy trình cứu hộ O(1) từ xa qua SSH (Không cần khởi động lại Windows):**
-  1. Cưỡng chế restart dịch vụ IP Helper trên Admin PC:
+  3. **Tử huyệt xung đột WSAEADDRINUSE (Error 10048):** Khi script khởi động (`start_adb_hidden.vbs` hoặc `run_adb_server.bat`) gọi `adb.exe -a nodaemon server`, cờ `-a` ép ADB bind vào `0.0.0.0:5037`. Do `iphlpsvc` đã chiếm socket `192.168.110.119:5037`, ADB bị Windows từ chối:
+     `could not install *smartsocket* listener: cannot bind to 0.0.0.0:5037: Only one usage of each socket address is normally permitted (10048)` $\rightarrow$ ADB crash ngay lập tức (exit code 9).
+  4. **Bẫy kiểm tra giả trong `start_admin_adb.bat`:** Script khởi động kiểm tra:
+     `netstat -ano | findstr ":5037" | findstr "LISTENING"`
+     Vì portproxy đang listen trên `192.168.110.119:5037`, script tưởng ADB đang chạy nên `exit /b 0`, **KHÔNG BAO GIỜ khởi động lại ADB**!
+     Hậu quả: Portproxy tiếp tục lắng nghe nhưng trỏ vào backend chết (`127.0.0.1:5037` ở trạng thái `SYN_SENT`), Kibe PC kết nối sang bị `connection reset` vĩnh viễn dù Admin vừa reboot!
+- **Quy trình cứu hộ O(1) dứt điểm qua SSH (Loại bỏ triệt để Portproxy):**
+  1. Xóa bỏ cấu hình portproxy thừa trên Admin PC (để giải phóng socket `192.168.110.119:5037`):
      ```cmd
-     ssh admin-farm "powershell -Command \"Restart-Service iphlpsvc -Force\""
+     netsh interface portproxy delete v4tov4 listenaddress=192.168.110.119 listenport=5037
      ```
-  2. Đảm bảo daemon `adb.exe` cục bộ trên Admin PC đang chạy:
+  2. Khởi chạy ADB server nền với `-a` (bind trực tiếp vào `0.0.0.0:5037`):
      ```cmd
-     ssh admin-farm "\"C:\Program Files (x86)\xiaowei\tools\adb.exe\" start-server"
+     cmd.exe /c start /b "" "C:\Program Files (x86)\xiaowei\tools\adb.exe" -a nodaemon server
      ```
-  3. Thao tác trên giải phóng hoàn toàn socket portproxy kẹt trong ~3 giây, kết nối Remote ADB thông suốt ngay lập tức.
+  3. Khi không có portproxy trung gian, `adb.exe` bind trực tiếp vào `0.0.0.0:5037`, Kibe PC kết nối thẳng qua LAN cực kỳ mượt mà, triệt tiêu 100% hiện tượng kẹt socket hay crash của `iphlpsvc`.
+- **Kỷ luật kiểm tra Uptime/Boot Time trước khi phán đoán (User Rule "Reset r mà"):**
+  - Khi thấy máy rớt hoặc nhận alert sau giờ ca, Coordinator BẮT BUỘC kiểm tra uptime hệ thống bằng `psutil.boot_time()` trước khi vội vàng khẳng định máy "chưa reboot".
+  - Tránh nhầm lẫn mốc thời gian khiến báo cáo sai lệch với hành động thực tế của người dùng hoặc Task Scheduler đã thực thi.
 
 ## 12. Chẩn Đoán Từ Xa Qua MikroTik REST API & Đánh Thức Máy Farm (WoL)
 - **Địa chỉ & Xác thực:** `http://192.168.110.2:9090` (HTTP Basic Auth: `admin:N0spam@@`).
