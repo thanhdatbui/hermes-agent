@@ -42,3 +42,33 @@ def _kill_gpm_chrome(host_port):
 ### Lợi ích & An toàn
 - Số lượng cửa sổ profile GPM trên màn hình / taskbar luôn $\le N$ tại mọi thời điểm, không spam giao diện người dùng.
 - Tốc độ xử lý tối ưu liên tục (saturation), không có khoảng thời gian chết chờ đợi giữa các batch.
+
+---
+
+## 3. Template Triển Khai Chuẩn Python (Rolling Pool 5 Workers)
+
+```python
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+def run_rolling_audit_pool(matched_targets, max_workers=5):
+    results = []
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # submit toàn bộ task vào queue; ThreadPoolExecutor duy trì đúng max_workers chạy đồng thời
+        future_to_acc = {
+            executor.submit(verify_single_account, acc, pid): acc
+            for acc, pid in matched_targets
+        }
+        for future in as_completed(future_to_acc):
+            acc = future_to_acc[future]
+            try:
+                status, proof = future.result()
+                results.append((acc["email"], status, proof))
+                logger.info("[PROGRESS] %s: %s (Total completed: %d/%d)", acc["email"], status, len(results), len(matched_targets))
+            except Exception as exc:
+                logger.error("[ERROR] Task failed for %s: %s", acc["email"], exc)
+                results.append((acc["email"], "ERROR", None))
+            # Ghi nhận kết quả lũy tiến (Write-Through) để tránh mất dữ liệu nếu bị ngắt ngang
+            _flush_intermediate_report(results)
+    return results
+```
+*Lưu ý cốt lõi:* Trong hàm worker (`verify_single_account`), khối `finally` BẮT BUỘC phải gọi `_stop_gpm_profile(profile_id, host_port=host_port)` để dọn sạch tiến trình Chrome trước khi slot được nhả lại cho worker kế tiếp.
