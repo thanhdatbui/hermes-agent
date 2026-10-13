@@ -9,7 +9,8 @@
 
 ### 1.1. Top-Left Pencil Header `(75, 150)` & Cấm Tự Chế Bánh Xe Thay Thế Script Canonical
 - **Sự thật đã được xác nhận**: Trên layout TikTok mới (Layout C: avatar nằm bên phải kèm bong bóng Note), icon ở góc trên cùng bên trái tại tọa độ `(75, 150)` **CHÍNH LÀ CÂY BÚT CHÌ SỬA HỒ SƠ** (mở trực tiếp `ProfileEditActivity`).
-- **Kỷ luật Canonical Tooling**: Script upload avatar canonical của User (ví dụ `D:/Taadaa/tools/do_upload_avatar_m71.py`) **ĐÃ ĐƯỢC FIX CHUẨN ĐỂ TAP THẲNG VÀO CÂY BÚT CHÌ (75, 150)**.
+- **Kỷ luật Canonical Tooling & Zero Re-invent**: Script upload avatar canonical của User (ví dụ `run_tiktok_upload_avatar.ps1` hoặc `do_upload_avatar_m71.py`) **ĐÃ ĐƯỢC CHUẨN HÓA TRONG HỆ THỐNG**.
+- **Design Spec Zero Re-invent & Fix-at-Source (Thiết kế bởi Claude Code CLI)**: Chi tiết xem tại [references/zero-reinvent-canonical-tooling-and-fix-at-source-protocol-20261013.md](zero-reinvent-canonical-tooling-and-fix-at-source-protocol-20261013.md). Khi runner vấp màn hình lạ/bounds lệch, **BẮT BUỘC sửa/handle trực tiếp vào core codebase của chính runner đó** (`top_left_pencil.py`), cấm tuyệt đối tự chế lại script tap tay ngoài lề!
 - **Sai lầm chết người của Agent**:
   - Tự suy diễn sai rằng `(75, 150)` là icon Add-Friend (`zz5`/`pwb`), từ đó tự ý viết patch phá vỡ layout detector và tự viết script tap tay ngoài lề.
   - User chất vấn gay gắt: *"thấy cây bút góc trái trên cùng k? ... t nhớ có script upload ava t đã fix chỉ bấm vào cây bút r mà... có chạy script upload ava k hay lại đi ngồi viết lại script"*.
