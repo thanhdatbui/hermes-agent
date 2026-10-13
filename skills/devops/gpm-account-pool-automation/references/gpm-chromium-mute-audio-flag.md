@@ -8,10 +8,10 @@ Muting the master volume on Windows often reverts after a PC reboot because Wind
 Chromium provides the standard flag `--mute-audio` which mutes all web contents without interfering with DOM playback APIs (`HTMLMediaElement.play()`, autoplay policies, or view event tracking).
 
 ### GPM Local REST API (v3) Integration
-In GPMLogin v3, the profile start endpoint `/api/v3/profiles/start/{profile_id}` accepts `addition_args`:
+In GPMLogin v3, the profile start endpoint `/api/v3/profiles/start/{profile_id}` has a vendor parameter typo (`addination_args` instead of `addition_args`). Passing only `addition_args` causes GPM to silently ignore the flag. Always pass BOTH simultaneously for dual compatibility:
 ```python
-# Query parameter pattern:
-url = f"{GPM_API_BASE}/profiles/start/{profile_id}?win_scale=0.8&addition_args=--mute-audio"
+# Query parameter pattern (dual-param compatibility):
+url = f"{GPM_API_BASE}/profiles/start/{profile_id}?win_scale=0.8&addination_args=--mute-audio&addition_args=--mute-audio"
 res = requests.get(url, timeout=30).json()
 ```
 Or via `GPMClient.start_profile`:
@@ -20,6 +20,9 @@ client.start_profile(
     profile_id=profile_id,
     addition_args="--mute-audio"
 )
+# Inside GPMClient.start_profile:
+# params["addination_args"] = addition_args
+# params["addition_args"] = addition_args
 ```
 
 ### Invariant & Key Benefits

@@ -13,6 +13,7 @@ References:
 - `references/preflight-3shift-reboot-schedule-and-task-validation-20261013.md` — Quy chuẩn reboot 3 Ca chính (05:20, 11:20, 17:20, 40p đệm), chống reboot dày đặc theo phiên, fail-fast validation và read-back test.
 - `references/inter-shift-cron-reboot-avoidance-and-warmup-buffer-20261013.md` — Quy chuẩn 40 phút warmup buffer (05:20, 11:20, 17:20) và cơ chế tự né giờ reboot cho các cron/watchdog thao tác trên thiết bị S7 giữa các ca.
 - `references/feed-watchdog-misclassification-and-usb-stall.md` — Phân tích bẫy phân loại fallback "Lỗi App TikTok/Script" trong feed_session_watchdog.py khi USB pipe bị treo (13/10/2026).
+- `references/lingering-tiktok-keep-screen-on-and-healer-pitfalls-20261014.md` — Phân tích bẫy TikTok giữ FLAG_KEEP_SCREEN_ON phát xuyên đêm, ảo giác ca đêm, và lỗ hổng của farm_idle_screen_and_app_healer (14/10/2026).
 
 Scripts:
 - `scripts/safe_usb_guard.py` — Script nguồn mẫu giám sát và reset EHCI bus theo ngưỡng.
@@ -432,6 +433,23 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
     1. **Bước 1 (Đọc stop_reason thực):** Đọc trực tiếp `summary.txt` của run tại `D:\Taadaa\runtime\<cluster>\live\<date>\<session>\<timestamp>\summary.txt` (bảng tổng hợp `multi_machine_summary`). Xem chính xác `stop_reason` của từng máy.
     2. **Bước 2 (Chỉ ra bẫy watchdog):** Giải thích rõ watchdog đang phân loại theo fallback mặc định chứ không phải app TikTok bị lỗi thật.
     3. **Bước 3 (Test hiện trường O(1)):** Chạy `python D:/Taadaa/tools/inspect_machine.py <N>` trên 2–3 máy trong nhóm báo lỗi. Nếu thấy `device not found` hoặc lệnh `adb shell` treo timeout > 15s $\rightarrow$ khẳng định ngay: **"100% rớt kết nối USB/ADB, không có con app nào lỗi cả, watchdog phân loại nhầm."** Chốt giải pháp duy nhất: Reboot host để giải phóng thanh ghi USB.
+
+## 21. Bẫy TikTok Sáng Đèn Xuyên Đêm (FLAG_KEEP_SCREEN_ON), Nhầm Lẫn Ca Đêm & Ranh Giới Phóng Vệ vs Healer Cron
+- **Ảo giác "Ca đêm đang chạy" lúc rạng sáng (00:30–01:00):**
+  * **Hiện tượng:** Người dùng bật Phóng Vệ (XiaoWei / JiWei) lúc nửa đêm thấy 30+ máy đang sáng trưng và liên tục phát video TikTok, nghi ngờ có cron chạy lén hoặc hệ thống tự ý kích hoạt ca đêm (dù đã bỏ ca đêm).
+  * **Bản chất kỹ thuật:**
+    1. Khi Ca tối (Ca 3) gặp sự cố (timeout ADB / nghẽn USB), runner bị ngắt đột ngột và **bỏ qua hoàn toàn bước cleanup cuối phiên (`cleanup_close_all_after_session`)**, để mặc TikTok tiếp tục chạy.
+    2. Player của TikTok trên Android luôn giữ cờ **`FLAG_KEEP_SCREEN_ON`**. Dù máy có cấu hình `screen_off_timeout = 600000` (10 phút) thì bộ đếm tắt màn hình của Android **KHÔNG BAO GIỜ kích hoạt** khi app giữ wake lock này. TikTok sẽ phát video suốt đêm gây nóng máy, chai pin và ngốn proxy.
+- **Ranh giới thực tế: Phóng Vệ (XiaoWei) vs ADB Command Shell:**
+  * **Tại sao Phóng Vệ chỉ hiện 9 ô cam (Disconnected) trong khi Watchdog báo rụng 48 máy:**
+    - Phóng Vệ chỉ cần luồng USB stream hình ảnh (minicap/video socket) còn thông là hiển thị màn hình mượt mà.
+    - Script automation bắt buộc giao tiếp qua **ADB Command Shell** (`settings get`, `dumpsys window`, `input swipe`). Khi controller USB hoặc socket `adbd` bị nghẽn đệm, lệnh shell bị treo cứng (>25s timeout), runner không thể gửi lệnh nên đánh dấu máy thất bại hàng loạt dù màn hình Phóng Vệ vẫn thấy video chạy.
+- **Tại sao Cron `farm_idle_screen_and_app_healer.py` Không Tắt Được Màn Hình:**
+  1. **Mù với máy rớt ADB:** Script chỉ lấy danh sách máy từ `adb devices`. Các máy đang phát TikTok rớt ADB không nằm trong danh sách nên cron bỏ qua hoàn toàn.
+  2. **Thiếu lệnh tắt màn hình chủ động:** Script chỉ set `settings put system screen_off_timeout 600000` thụ động, **KHÔNG HỀ gọi `input keyevent 26` (Power / Tắt màn hình)**. Do TikTok giữ `FLAG_KEEP_SCREEN_ON`, thiết lập timeout thụ động 10 phút là vô hiệu.
+  3. **Lệnh `dumpsys window` bị timeout ngầm:** Timeout 4s trong script quá ngắn đối với Samsung S7 trên USB 2.0, khối `except Exception: pass` nuốt lỗi nên không bao giờ kích hoạt được `am force-stop`.
+- **Cứu hộ tức thời ban đêm khi máy mất ADB:**
+  * Dùng tính năng **"Đóng tất cả ứng dụng"** và **"Tắt màn hình"** trên thanh công cụ của Phóng Vệ (XiaoWei). Driver USB native của XiaoWei vẫn gửi được signal tới các máy đang nghẽn ADB.
 
 
 
