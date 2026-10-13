@@ -44,9 +44,14 @@ Khi dispatch Worker thực hiện task EDIT / FIX:
 - **Quy tắc cứng:** CẤM TUYỆT ĐỐI dispatch song song 2 task EDIT trong cùng một repo workspace nếu không tạo `git worktree` riêng. Trong cùng 1 working copy, mọi task sửa code bắt buộc phải chạy tuần tự (serialize): đợi worker trước hoàn tất kết quả mới dispatch worker tiếp theo.
 
 ### Bẫy 5: Cháy Budget Khảo Sát trên Monolith > 1.500 dòng (Exploration Budget Burnout)
-- **Lỗi thực tế:** Worker chạm trần budget 12-15 calls khi đọc/tìm kiếm và abort mà chưa kịp áp dụng bất kỳ patch nào (`ABORT_SCOPE`).
-- **Nguyên nhân:** Trên các file monolith lớn (> 1.500 đến 3.000+ dòng như `tiktok_dashboard.py`), nếu Coordinator giao goal mở ("tự tìm", "tự tích hợp", "soạn hàm và view") mà không cung cấp anchor O(1), worker sẽ tốn toàn bộ budget để paginate và định vị DOM/JS/route.
-- **Quy tắc cứng:** Đối với file monolith, Coordinator BẮT BUỘC tự dùng `grep -F -c` O(1) kiểm tra anchor duy nhất (`count == 1`), soạn sẵn exact `OLD_STRING` và `NEW_STRING` để worker chỉ cần gọi tool `patch` trong 1-2 lượt rồi chạy focused test ngay.
+- **Lỗi thực tế:** Worker chạm trần budget 12-15 calls khi đọc/tìm kiếm và abort mà chưa kịp áp dụng bất kỳ patch nào (`files_modified == 0`).
+- **Nguyên nhân:** Trên các file monolith lớn (> 1.500 đến 15.000+ dòng như `state_machine.py`, `tiktok_dashboard.py`), nếu Coordinator không cấm mò file, Worker có xu hướng tự chạy `grep`, `search_files`, hoặc chia nhỏ `read_file` để tìm số dòng chính xác. Trong môi trường sandbox Worker, các lệnh shell này thường bị hook filter chặn hoặc timeout, khiến Worker đốt sạch 15 iterations vào tìm kiếm vô nghĩa.
+- **Quy tắc cứng:**
+  - Đối với file monolith, Coordinator BẮT BUỘC tự dùng `grep -n` O(1) kiểm tra anchor duy nhất (`count == 1`), soạn sẵn exact `OLD_STRING` và `NEW_STRING`.
+  - **Chỉ thị dập tắt hành vi mò mẫm:** Trong context dispatch, BẮT BUỘC ghi rõ:
+    * *"CẤM dùng grep, CẤM dùng search_files, CẤM đọc toàn bộ file."*
+    * *"GỌI NGAY tool patch() trong turn 1 với path, old_string và new_string đã cung cấp sẵn. Tool patch() tự động dùng fuzzy match 9 chiến lược để định vị và thay thế chính xác mà không cần biết số dòng."*
+    * *"Sau khi patch xong, tại turn 2 chạy đúng lệnh FOCUSED_TEST và kết thúc ngay."*
 
 ---
 
