@@ -13,6 +13,9 @@
 - **Nguyên tắc ghi dữ liệu lũy tiến (Write-Through Persistence — Chống mất dữ liệu):**
   * TUYỆT ĐỐI KHÔNG đợi đến khi hết phiên hay đợi đăng nhập lại (relogin) mới ghi file Excel.
   * Làm tới bước nào, thành công bước nào là BẮT BUỘC ghi ngay lập tức xuống ổ cứng bước đó. Nếu rớt mạng hay crash ở bước sau thì tài khoản vẫn bảo toàn 100% dữ liệu mới.
+  * `Add Recovery Email thành công`: Ghi ngay vào Cột 5 `gmail_clean_v2.xlsx`.
+  * `Bóc 2FA Secret Key`: Ghi ngay vào Cột 4 `gmail_clean_v2.xlsx`.
+  * `Microsoft chấp nhận Pass mới`: Ghi ngay vào Cột 3 `gmail_clean_v2.xlsx` (xóa OAuth Cột 9), Cột 7 (PASS MAIL) workbook farm, và State tracker TRƯỚC KHI Sign Out Everywhere.
 
 Thực hiện tuần tự trong cùng 1 phiên:
 1. **Bước 1: Add Mail Khôi Phục (Domain tạm `@fviainboxes.com`):**
@@ -55,3 +58,11 @@ Thực hiện tuần tự trong cùng 1 phiên:
 
 ## 4. Đóng tab Chrome CDP
 - Đóng tab qua CDP endpoint `/json/close/{target_id}` chỉ giải phóng RAM render, hoàn toàn không mất cookies hay session đăng nhập do toàn bộ session được Chrome lưu bền vững trên ổ đĩa Profile.
+
+## 5. Telemetry & E2E Testing Coverage cho Production Farm
+- **Structured Telemetry Events**:
+  * Phát sinh event dạng JSON qua `log_telemetry_event(event_type, email, machine, **kwargs)` kèm `trace_id` 12 ký tự (SHA-256 từ email + date).
+  * Chuẩn hóa các event: `recovery_email_synced`, `totp_key_saved`, `password_changed`, `signout_triggered`, `relogin_completed`, `error_occurred`.
+- **E2E Test Suite Mocked CDP**:
+  * Đạt 36 unit tests bao phủ toàn bộ nhánh: dry-run canary, live mutation, Microsoft error handling, missing submit button, missing 2FA prerequisite, cooldown isolation, và recovery sync.
+
