@@ -1,4 +1,4 @@
-Cào/Render: 12 niche hot; min 45; 1 wkr. Tên nick: cấm cụt 1 từ; >=2 từ: stem+_NICK_SUFFIX hoặc Đệm+Tên.
+Cào/Render: 12 niche hot (rải xen kẽ máy, cấm trùng niche cùng phiên); min 45; 1 wkr.
 §
 Dọn đĩa: duyệt trước (thư mục corrupt/lỗi xóa ngay), CẤM xóa ngầm.
 §
@@ -14,4 +14,4 @@ Worker: AG Gemini default (cấm fallback Luna khi chưa cạn quota; chủ đ�
 §
 Hashtag sync: F_src=(Slot-1)*80+m_idx, SoT 'Hashtag theo Folder'; nick fix tay khóa manual_avatar_protected_folders.json cấm sync đè.
 §
-Dời nick: (1) 2FA Excel -> (2) Logout -> (3) Login mới. Fix lỗi: làm end-to-end, cấm đùn gõ tay. Topic Telegram: nhiều session fix bug song song, cấm bắt user chat tay từng topic sau boot (tự resume turn dở).
+Telegram: song song nhiều topic, tự resume turn dở sau boot.
