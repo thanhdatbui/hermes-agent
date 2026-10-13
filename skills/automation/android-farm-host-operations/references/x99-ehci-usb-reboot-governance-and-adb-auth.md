@@ -21,7 +21,8 @@ Khi máy tính khởi động lại, để tránh việc thiết bị Android r�
    ```
 
 ## 3. Quy chuẩn Reboot Farm hàng ngày (TFT Game Guard: Chỉ chặn khi In-Match)
-- **Khung giờ tối ưu:** 11:35 sáng (25 phút trước Ca 2 trưa 12:00). Tránh reboot lúc sáng sớm (05:30) vì còi POST BIOS và quạt CPU bung 100% RPM gây ồn khi người dùng đang ngủ.
+- **Lịch reboot chính thức (User Directed 2026-10-13):** Đúng 3 mốc thời gian trước 3 Ca chạy chính trong ngày (`05:45` trước Ca 1 Sáng, `11:35` trước Ca 2 Trưa, `17:45` trước Ca 3 Tối).
+- **Kỷ luật tần suất (Bẫy Ca vs Phiên):** Tuyệt đối CẤM cài reboot trước từng phiên con lẻ (07:45, 13:45, 19:45) vì mật độ 2 tiếng/lần quá dày ("phiên thì dày quá") gây gián đoạn máy liên tục. Chỉ reboot trước 3 Ca chính (chu kỳ 6 tiếng).
 - **TFT Game Guard (User Invariant — Chỉ chặn khi đang trong trận đấu thực sự):**
   * Script preflight (`farm_preflight_daily_reset.py`) **CHỈ CHẶN** tiến trình engine 3D:
     `League of Legends.exe` (Trận đấu TFT đang diễn ra).

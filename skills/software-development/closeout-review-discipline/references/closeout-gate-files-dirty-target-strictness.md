@@ -24,5 +24,7 @@ Hệ thống thoát ngay lập tức với `exit code 1` tại Step 2:
 2. **Loại bỏ triệt để file không dirty:**
    - CHỈ đưa vào `--files` các file có cờ `M`, `A`, hoặc `??` (được thêm mới) thực sự thuộc về task hiện tại.
    - TUYỆT ĐỐI KHÔNG đưa file test hoặc file phụ trợ vào `--files` nếu file đó không bị sửa đổi trong phiên làm việc.
-3. **Chạy test cho file không sửa:**
-   - Nếu muốn chạy test suite của file test không bị sửa, hãy để `closeout_gate.py` tự động phát hiện test hoặc chạy test độc lập trước khi kích hoạt closeout gate, không nhồi nhét file test sạch vào cờ `--files`.
+3. **Cơ chế phát hiện Focused Test & Bẫy `--skip-test`:**
+   - **CẤM TUYỆT ĐỐI dùng `--skip-test` trong repo mode:** `closeout_gate.py` sẽ chặn đứng vô điều kiện với lỗi `FATAL: --skip-test is forbidden in repo mode! Closeout Gate requires verified test execution.`
+   - **Cơ chế ghép cặp Focused Test O(1):** `closeout_gate.py` tự động dò tìm file test tương ứng theo mẫu `tests/test_<stem>.py` (dựa trên tên file đích `<stem>.py`). Nếu tìm thấy, gate CHỈ chạy đúng test file đó (`pytest tests/test_<stem>.py -q`) trong < 2 giây.
+   - **Bẫy Timeout Full-Suite:** Nếu file đích không có file test tương ứng dạng `tests/test_<stem>.py`, gate sẽ fallback về lệnh mặc định `pytest tests` quét toàn bộ hàng trăm test trong repo, dẫn tới nguy cơ timeout > 120s. Vì vậy, khi tạo/sửa file mới `<stem>.py`, BẮT BUỘC tạo kèm `tests/test_<stem>.py` để gate chạy focused test siêu tốc.
