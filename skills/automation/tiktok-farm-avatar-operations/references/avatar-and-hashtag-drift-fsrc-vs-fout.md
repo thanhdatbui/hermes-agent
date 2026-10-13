@@ -35,6 +35,7 @@ Trên farm TikTok (1.280 tài khoản gồm 2 cụm Kibe 1..80 và Admin 201..28
 5. **Cập Nhật Keyword & Hashtag SoT Trong Excel**:
    - Cập nhật lại cột `Keyword Video` và `Hashtag Pool` trong `Tik<Slot>.xlsx` (sheet active) và sheet `Hashtag theo Folder` đúng với chủ đề thực tế của video kênh (ví dụ: `Gym` cho nam cơ bắp, `Chăm sóc bé` cho trẻ em/gia đình).
    - Đặt cột `Avatar` trong `Tik<Slot>.xlsx` thành `PENDING` (thay vì `OK`) để bộ lọc `resolve_avatar_pending_machines.py` nhận diện máy cần up avatar mới.
+   - **Khóa Cứng Chống Script Quét Đè (Hard-Lock Manual Hashtags Invariant)**: Khi operator đã fix tay hashtag/niche cho một kênh, bắt buộc kích hoạt `is_folder_avatar_protected(F_src)` trong cả 2 file `manual_avatar_protected_folders.json`. Script `sync_all_tik_keywords.py` khi quét qua các folder này BẮT BUỘC phải skip (`continue`), tuyệt đối không đè lại dữ liệu từ database trung tâm. Đồng thời cập nhật tận gốc cột `niche` trong database nguồn để ngăn ngừa tái phát vĩnh viễn.
 6. **Kích Hoạt Hàng Đợi Database (avatar_replace_queue)**:
    - Cập nhật SQLite `D:/Taadaa/data/tiktok_tracker.db`:
      ```sql
@@ -44,7 +45,17 @@ Trên farm TikTok (1.280 tài khoản gồm 2 cụm Kibe 1..80 và Admin 201..28
      ```
    - Điều này đảm bảo khi runner batch hoặc watchdog quét qua sẽ tự động nạp avatar lên thiết bị.
 
-## 4. Tra Cứu O(1) & Nghiệm Thu Thị Giác Tận Mắt (Gate 6 & Reverse Lookup)
+## 4. Bẫy False-Negative Khi Audit Niche (Audit Keyword Dictionary Blind-spot)
+1. **Bản chất sự cố**: Sau các đợt chuẩn hóa hashtag diện rộng, một số tài khoản vẫn tiếp tục bị gán sai niche (ví dụ kênh bé thiếu nhi Mina nhưng bị gán tag `#gym #tapgym`).
+2. **Nguyên nhân gốc rễ**:
+   - Script audit (`audit_video_niche_mismatches.py`) sử dụng từ điển `NICHE_KEYWORDS` cố định nhưng thiếu các chủ đề chuyên biệt (ví dụ thiếu `chamsocbe`, `mevabe`, `giadinh`).
+   - Mặc dù audio trích xuất từ video nhận diện rõ lời thoại/bài hát thiếu nhi, do không khớp với 10 từ khóa có sẵn nên `detected_niche` trả về `None`.
+   - Tool mặc định quy ước `mismatch = False` khi `detected_niche is None`, dẫn đến bỏ sót tài khoản bị lệch và coi là hợp lệ.
+3. **Quy tắc khắc phục**:
+   - Bổ sung đầy đủ toàn bộ dải niche (đặc biệt `chamsocbe`, `giadinh`, `mevabe`) vào `NICHE_KEYWORDS`.
+   - Khi `detected_niche is None` nhưng `current_niche` là các chủ đề dễ lệch (như `gym`, `gaixinh`, `oto`), bắt buộc đánh dấu `AUDIT_SUSPECT` để người hoặc LLM kiểm tra lại thay vì ngầm định `mismatch = False`.
+
+## 5. Tra Cứu O(1) & Nghiệm Thu Thị Giác Tận Mắt (Gate 6 & Reverse Lookup)
 1. **Tra Cứu Máy & Slot Từ Screenshot Người Dùng (Reverse Profile Lookup)**:
    - Khi người dùng gửi ảnh màn hình profile TikTok (có username/handle `@<name>`):
    - Truy vấn SQLite `D:/OneDrive/TaadaaData/tiktok_tracker.db` (hoặc `C:/Users/Kibe/iCloudDrive/Backup_OneDrive/TaadaaData/tiktok_tracker.db`):

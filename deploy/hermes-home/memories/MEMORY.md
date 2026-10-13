@@ -1,6 +1,6 @@
 Chu kỳ 4d: Parity cố định 96h (N1 lẻ, N2 chẵn; cấm random giãn 120h), N3(R7,8, tối dưỡng), N4(dưỡng 0 fl+up non). Starve 108h (96+12h grace). CẤM xóa cooldown.
 §
-Host/USB: Reboot 11:35 (chặn khi chơi TFT). SSH ngầm. Cron pythonw/wscript. WoL ether3 (kibe 0C:EF:15:37:4C:20, admin 22:33:4D:06:4C:26; WG 13231). Followed=0 cấm PASS; log trước teardown; upload SSH admin-farm.
+Host/USB: Reboot trước 6 phiên (05:45, 07:45, 11:35, 13:45, 17:45, 19:45; chặn khi trong trận TFT). SSH ngầm. Cron pythonw/wscript. WoL ether3 (kibe 0C:EF:15:37:4C:20, admin 22:33:4D:06:4C:26; WG 13231). Followed=0 cấm PASS; log trước teardown; upload SSH admin-farm.
 §
 Acc die SKIP; 400h cooldown động (cấm xóa). Sandbox kẹt: Claude CLI gh auth push. Re-OAuth Omni. Sửa guard: restart_gw_detached.py; Gate miễn trừ Closeout. Ranh giới session: chỉ gọi entry point, cấm spam subagent.
 §
@@ -10,7 +10,7 @@ Hotmail bán: CẤM gán mail cá nhân; tự sinh @fviainboxes.com đọc OTP q
 §
 Proxy: User KO đổi, SoT PROXYgandienthoai.xlsx (S7 Google & Hotmail reg TT giữ nguyên port; cấm tự tách; acc 400h cách ly khỏi combo).
 §
-Crop Ava: Mặt 15-25% trên, cấm cụt đầu. Picker tap checkbox (225,250), cấm tap tâm; bẫy nút Lưu. Duyệt ava: soi mắt lưới video kênh/1..3.mp4 khớp đúng nhân vật, ghép lưới 4 ô kèm viền tròn cho user duyệt trước khi nạp máy; cấm crop logo/huy hiệu slide. Copy ảnh cache: dùng wildcard 'cp /c/Users/Kibe/App*Data/Local/h*s/image_cache/<f> /d/Taadaa/tmp/'.
+Bắt buộc soi vision trước khi gửi; MEDIA: đứng riêng dòng trống né nuốt ảnh.
 §
 Farm Dispatch Invariant: context delegate_task bắt buộc có TASK_KIND: EDIT/INVESTIGATE. FILE: D:/... (đường dẫn tuyệt đối trực tiếp, CẤM bọc ngoặc <<< >>> và cấm gạch đầu dòng '- ' tránh lỗi PATH_NOT_ABSOLUTE). Bắt buộc có FOCUSED_TEST.
 §

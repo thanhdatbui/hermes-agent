@@ -5,11 +5,11 @@ description: Use when running avatar-only jobs on TikTok farm.
 
 # TikTok Farm Avatar Operations
 
-- Hashtag Hard-Lock & Anti-Overwrite (2026-10-13): Hard-lock manually customized hashtags and niches against automated sync scripts.
-- Audit Blindspot & Niche Leak (2026-10-13): [references/audit-dictionary-blindspot-and-niche-leak-prevention.md](references/audit-dictionary-blindspot-and-niche-leak-prevention.md) — Fix Default-Pass audit trap when detected_niche is null, stop tag re-sync.
-- Avatar Drift vs F_src / F_out (2026-10-13): [references/avatar-and-hashtag-drift-fsrc-vs-fout.md](references/avatar-and-hashtag-drift-fsrc-vs-fout.md) — Fix F_out vs F_src drift, cy ~ 0.2*H cropping, dual-dir sync.
+- Avatar Hallucination & Video Face Extraction (2026-10-13): [references/avatar-hallucination-prevention-and-raw-video-face-extraction.md](references/avatar-hallucination-prevention-and-raw-video-face-extraction.md) — Anti-hallucination vision gate, raw video face crop, standalone MEDIA: tag.
+- Hashtag Hard-Lock & Niche Audit (2026-10-13): [references/audit-dictionary-blindspot-and-niche-leak-prevention.md](references/audit-dictionary-blindspot-and-niche-leak-prevention.md)
+- Avatar Drift vs F_src / F_out (2026-10-13): [references/avatar-and-hashtag-drift-fsrc-vs-fout.md](references/avatar-and-hashtag-drift-fsrc-vs-fout.md)
 - CRLF & Dispatch Guards (2026-10-13): [references/crlf-anchor-and-avatar-task-dispatch-guards.md](references/crlf-anchor-and-avatar-task-dispatch-guards.md)
-- MediaStore Clutter & Verification (2026-10-13): [references/tiktok-avatar-mediastore-clutter-and-proxy-stall-prevention-20261013.md](references/tiktok-avatar-mediastore-clutter-and-proxy-stall-prevention-20261013.md) — .nomedia screencaps, Cronet proxy stall fix, pixel verify.
+- MediaStore Clutter & Verification (2026-10-13): [references/tiktok-avatar-mediastore-clutter-and-proxy-stall-prevention-20261013.md](references/tiktok-avatar-mediastore-clutter-and-proxy-stall-prevention-20261013.md)
 - Layout C & App-Drift (2026-10-13): [references/tiktok-avatar-layout-c-add-friend-zz5-and-drift-prevention-20261013.md](references/tiktok-avatar-layout-c-add-friend-zz5-and-drift-prevention-20261013.md) — Header icon disambiguation, app-drift prevention.
 
 - Avatar Candidates & Logo Trap Prevention (2026-10-13): [references/avatar-candidate-generation-and-logo-trap-prevention-20261013.md](references/avatar-candidate-generation-and-logo-trap-prevention-20261013.md) — Eliminate GDĐT logo traps, human portrait extraction, user pre-approval.
