@@ -66,14 +66,12 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
   * Bo mạch chủ server/X99 khi POST/reset phần cứng sẽ ép quạt chạy 100% PWM (max RPM) trong 5–10 giây và còi buzzer BIOS kêu bíp. Không có lệnh phần mềm nào có thể can thiệp làm êm quạt ở tầng BIOS POST.
   * **CẤM TUYỆT ĐỐI** đặt lịch reboot tự động vào ban đêm hoặc rạng sáng (như 05:30 sáng) khi người dùng đang ngủ vì tiếng hú quạt gây giật mình mất giấc ngủ.
   * Còi BIOS bíp: Rút thẳng cục còi buzzer cắm trên chùm chân Front Panel của mainboard (hoặc dán băng dính điện đen bịt lỗ còi onboard) để tắt vĩnh viễn tiếng bíp.
-- **Khung giờ vàng reboot an toàn (User Directed: "Reboot trước mỗi phiên chạy, chỉ không reboot khi đang chơi TFT"):**
-    - **Lịch kích hoạt chính thức:** Cả **6 mốc trước 6 phiên nuôi hàng ngày** qua Task Scheduler `Taadaa_Farm_Daily_Reboot_1135`:
-      * 05:45 (trước Ca 1 Phiên 1 - 06:00)
-      * 07:45 (trước Ca 1 Phiên 2 - 08:00)
-      * 11:35 (trước Ca 2 Phiên 1 - 12:00)
-      * 13:45 (trước Ca 2 Phiên 2 - 14:00)
-      * 17:45 (trước Ca 3 Phiên 1 - 18:00)
-      * 19:45 (trước Ca 3 Phiên 2 - 20:00)
+- **Khung giờ vàng reboot an toàn (User Directed 2026-10-13: "Reboot trước Ca chạy thôi, phiên dày quá"):**
+    - **Lịch kích hoạt chính thức:** Đúng **3 mốc trước 3 Ca chạy chính hàng ngày** qua Task Scheduler `Taadaa_Farm_Daily_Reboot_1135`:
+      * **05:45** (trước Ca 1 Sáng 06:00)
+      * **11:35** (trước Ca 2 Trưa 12:00)
+      * **17:45** (trước Ca 3 Tối 18:00)
+    - **Bẫy phân định Ca vs Phiên (Pitfall — Chống reboot dày đặc):** Farm chạy 3 Ca chính (mỗi Ca gồm 2 phiên cách nhau 2 tiếng). CẤM TUYỆT ĐỐI đặt reboot trước từng phiên con lẻ (chu kỳ 2 tiếng) vì làm gián đoạn máy liên tục. Chỉ reboot trước 3 Ca chính (chu kỳ 6 tiếng).
     - **Cơ chế hoạt động:**
       * Script `farm_preflight_daily_reset.py` được gọi tại mỗi mốc.
       * **TFT Game Guard (User Invariant — Chỉ chặn khi đang trong trận đấu thực sự):** Script kiểm tra `League of Legends.exe`. Nếu đang trong trận đấu TFT 3D $\rightarrow$ **HỦY REBOOT NGAY (`ABORT`)** để bảo vệ ván cờ của user, không bị xử thua AFK.
