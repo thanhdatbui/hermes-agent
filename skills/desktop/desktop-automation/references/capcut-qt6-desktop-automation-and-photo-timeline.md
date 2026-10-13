@@ -51,5 +51,10 @@ When ingesting a raw photo directory (e.g. iCloud Photos with flat UUIDs or diso
 2. **Chronological Milestone Selection:**
    - Sort images by actual capture date from birth to milestone date (e.g. 1st birthday / thôi nôi).
    - Downsample/distribute evenly into $N$ representative slots (e.g. 12 milestones for 12 months).
-3. **Template Feeding:**
-   - Import the $N$ sorted photos into CapCut's media bin or drag them directly into the template's replaceable clip track (`Mẫu [duration] - N clip cần thay thế`).
+3. **Template Feeding & Replacement Mechanics (PC Desktop vs. Mobile App UX):**
+   - **Crucial Platform UX Difference:**
+     - **Mobile App (iOS/Android):** Tapping "Sử dụng mẫu" opens a modal grid of empty numbered slots (e.g., 40 slots) where users simply tap 40 photos sequentially from the album to batch populate all clips at once.
+     - **Desktop PC (CapCut Windows):** There is NO batch slot-picker modal. Tapping the template track on the timeline displays a single unified group clip labeled `Mẫu [duration] - N clip cần thay thế`. Double-clicking or clicking the track does not open a replacement popup.
+   - **How Replacement Actually Works on Desktop PC:**
+     - **Method 1 (Drag & Drop Replace):** In the Media panel (`Tệp phương tiện`), click and drag an image directly down over the specific clip segment on the timeline template track. Release mouse to open the contextual popup (`Thay thế / Chèn`) and choose **Thay thế (Replace)**.
+     - **Method 2 (Batch Replace Preparation):** Due to the high friction of replacing 30–50 clips individually via drag-and-drop on PC, advise users to prefer smaller fixed-milestone templates (e.g. 10–12 clips) or to use the mobile CapCut app for large batches (40+ clips) where native bulk selection exists.
