@@ -530,10 +530,16 @@ Each `claude -p` call starts a fresh, isolated session. It does NOT retain conve
 
 ### Claude Code CLI: Non-Interactive File Edits Require `--dangerously-skip-permissions`
 
-In print mode (`-p`), Claude CLI may refuse to edit files or ask for confirmation unless permissions are bypassed.
-**Fix**:
-Pass `--dangerously-skip-permissions` when delegating autonomous file edits:
-`claude --dangerously-skip-permissions -p "Sửa file X..."`
+In print mode (`-p`), Claude CLI will silently refuse file writes or edits without an interactive TTY unless permissions are explicitly bypassed.
+- **Symptom**: Claude CLI completes with exit code 0, but stdout reports:
+  `"The write to <path> was denied for lack of permission, and I haven't run pytest. I haven't retried the edit or tried another way to write the file, since the denial may be deliberate."`
+  The caller assumes the task succeeded because exit code was 0, but no files were actually modified.
+- **Consequence in Automation / Strike Hand-off**: During closeout remediation or automated fallback lanes, omitting this flag causes remediation loops to spin without applying fixes.
+- **Fix**:
+  ALWAYS pass `--dangerously-skip-permissions` whenever delegating automated file modification or test repair via print mode:
+  ```bash
+  claude --dangerously-skip-permissions -p "Sửa file X..."
+  ```
 
 ### Claude Code CLI: Backgrounding Subprocess Trap (`run_in_background=True` & Premature Exit)
 
