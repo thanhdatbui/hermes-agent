@@ -10,7 +10,8 @@ References:
 - `references/x99-ehci-pnp-limit-and-daily-reset-architecture-20261010.md` — Phân tích giới hạn phần cứng Live-Disable PnP trên Intel X99 EHCI (HRESULT 0x8004100c), bằng chứng transport ID liên tiếp, hạ MaxWorkers 25 và kiến trúc Preflight Auto-Reboot định kỳ (10/10/2026).
 - `references/aruba-wifi-recovery-and-anti-drift-incident-20261009.md`
 - `references/hermes-gateway-reboot-auto-resume-architecture-20261013.md` — Kiến trúc tự động bảo toàn và kích hoạt chạy tiếp session Hermes Telegram sau khi host reboot (Zero-Chat Auto-Resume).
-- `references/preflight-3shift-reboot-schedule-and-task-validation-20261013.md` — Quy chuẩn reboot 3 Ca chính (05:45, 11:35, 17:45), chống reboot dày đặc theo phiên, fail-fast validation và read-back test.
+- `references/preflight-3shift-reboot-schedule-and-task-validation-20261013.md` — Quy chuẩn reboot 3 Ca chính (05:20, 11:20, 17:20, 40p đệm), chống reboot dày đặc theo phiên, fail-fast validation và read-back test.
+- `references/inter-shift-cron-reboot-avoidance-and-warmup-buffer-20261013.md` — Quy chuẩn 40 phút warmup buffer (05:20, 11:20, 17:20) và cơ chế tự né giờ reboot cho các cron/watchdog thao tác trên thiết bị S7 giữa các ca.
 
 Scripts:
 - `scripts/safe_usb_guard.py` — Script nguồn mẫu giám sát và reset EHCI bus theo ngưỡng.
@@ -69,10 +70,12 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
   * **CẤM TUYỆT ĐỐI** đặt lịch reboot tự động vào ban đêm hoặc rạng sáng (như 05:30 sáng) khi người dùng đang ngủ vì tiếng hú quạt gây giật mình mất giấc ngủ.
   * Còi BIOS bíp: Rút thẳng cục còi buzzer cắm trên chùm chân Front Panel của mainboard (hoặc dán băng dính điện đen bịt lỗ còi onboard) để tắt vĩnh viễn tiếng bíp.
 - **Khung giờ vàng reboot an toàn (User Directed 2026-10-13: "Reboot trước 3 Ca chạy, không reboot theo phiên vì quá dày"):**
-    - **Lịch kích hoạt chính thức:** Đúng **3 mốc trước 3 Ca chạy chính hàng ngày** qua Task Scheduler `Taadaa_Farm_Daily_Reboot_1135`:
-      * **05:45** (trước Ca 1 Sáng 06:00, 15p đệm)
-      * **11:35** (trước Ca 2 Trưa 12:00, 25p đệm)
-      * **17:45** (trước Ca 3 Tối 18:00, 15p đệm)
+    - **Lịch kích hoạt chính thức:** Đúng **3 mốc trước 3 Ca chạy chính hàng ngày** (với **40 phút đệm** để chipset X99 enumerate đủ 80 máy và daemon ADB nguội máy) qua Task Scheduler `Taadaa_Farm_Daily_Reboot_1135`:
+      * **05:20** (trước Ca 1 Sáng 06:00, 40p đệm)
+      * **11:20** (trước Ca 2 Trưa 12:00, 40p đệm)
+      * **17:20** (trước Ca 3 Tối 18:00, 40p đệm)
+    - **Quy tắc Inter-Shift Cron Tự Né Giờ Reboot (S7 Device Protection):**
+      * Mọi cron / watchdog chạy giữa các ca liên quan tới thiết bị S7 (`post_noon_chain_watchdog`, `post_morning_gmail_2fa_watchdog`, `post_evening_avatar_watchdog`, `farm_idle_screen_and_app_healer`) BẮT BUỘC có cơ chế kiểm tra và tự dừng / skip trước các mốc reboot ít nhất 10–15 phút (hoặc không nhận batch mới nếu thời lượng > thời gian còn lại đến reboot), tuyệt đối không để tiến trình chạy đè qua mốc reboot làm gãy dở thiết bị.
     - **Bẫy phân định Ca vs Phiên (Pitfall — Chống reboot dày đặc):** Farm chạy 3 Ca chính (mỗi Ca gồm 2 phiên cách nhau 2 tiếng). CẤM TUYỆT ĐỐI đặt reboot trước từng phiên con lẻ (chu kỳ 2 tiếng: 06:00, 08:00, 12:00, 14:00, 18:00, 20:00) vì làm gián đoạn máy liên tục. Chỉ reboot trước 3 Ca chính (chu kỳ 6 tiếng).
     - **Cơ chế hoạt động:**
       * Script `farm_preflight_daily_reset.py` được gọi tại mỗi mốc.
