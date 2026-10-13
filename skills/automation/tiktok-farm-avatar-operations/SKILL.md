@@ -7,6 +7,8 @@ description: Use when running avatar-only jobs on TikTok farm.
 
 - Avatar & Hashtag Drift vs F_src / F_out (2026-10-13): see [references/avatar-and-hashtag-drift-fsrc-vs-fout.md](references/avatar-and-hashtag-drift-fsrc-vs-fout.md) for fixing F_out vs F_src mismatch, cropping invariants (cy ~ 0.2*H), and dual-directory sync.
 
+- CRLF Anchor & Multi-File Dispatch Guards (2026-10-13): see [references/crlf-anchor-and-avatar-task-dispatch-guards.md](references/crlf-anchor-and-avatar-task-dispatch-guards.md) for handling Windows CRLF anchor failures, forward-slash path normalization, and multi-file decomposition under Taadaa Coordinator guards.
+
 - MediaStore Clutter & True Verification (2026-10-13): see [references/tiktok-avatar-mediastore-clutter-and-proxy-stall-prevention-20261013.md](references/tiktok-avatar-mediastore-clutter-and-proxy-stall-prevention-20261013.md) for isolating screencaps, fixing Cronet proxy stalls, and pixel-level verification.
 
 - Layout C & App-Drift Prevention (2026-10-13): see [references/tiktok-avatar-layout-c-add-friend-zz5-and-drift-prevention-20261013.md](references/tiktok-avatar-layout-c-add-friend-zz5-and-drift-prevention-20261013.md) for handling new header icons and eliminating false-positive pencil matches.
