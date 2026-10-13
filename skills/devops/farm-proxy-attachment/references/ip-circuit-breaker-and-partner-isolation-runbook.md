@@ -43,4 +43,11 @@ if is_tripped:
     1. Gom nhóm các máy theo từng cổng proxy (`host:port`).
     2. Với mỗi nhóm proxy, xáo trộn ngẫu nhiên (50/50) để phân bổ 1 máy vào Wave 1, máy đối tác vào Wave 2 (hoặc Wave 3 nếu có 3 máy/cổng như cụm Admin).
     3. Xáo trộn ngẫu nhiên nội bộ từng Wave để giữ trọn vẹn tính ngẫu nhiên (entropy) xuất phát và hành vi người dùng thật.
-    4. Đảm bảo 100% trong mỗi Wave không có bất kỳ 2 máy nào trùng proxy IP, tạo khoảng trễ tự nhiên (10–20 phút) để Cầu dao IP kịp giật và bảo vệ an toàn tuyệt đối cho máy đối tác.
+    4. Đảm bảo 100% trong mỗi Wave không có bất kỳ 2 máy nào trùng proxy IP, tạo khoảng trễ tự nhiên (15–30 phút) để Cầu dao IP kịp giật và bảo vệ an toàn tuyệt đối cho máy đối tác.
+
+### 4. Triển Khai Thực Tế Trong Codebase (2026-10-13)
+- **Module lõi**: `D:/Taadaa/automation-core/src/automation_core/scheduler/wave_partition.py`
+  * `partition_accounts_into_waves`: gom bucket, phân chia wave, log telemetry có cấu trúc (`extra={"wave_partition_decision": ...}`).
+  * `build_wave_launch_plan`: wrap danh sách máy vào `MachineLaunchPlan` với bounded stagger (2–8s) theo thứ tự Wave 1 rồi đến Wave 2.
+- **Tích hợp launcher**: `D:/Taadaa/tiktok-luot nuoi acc/python_runner/flows/multi_machine_feed_session.py` gọi `build_wave_launch_plan` với fallback an toàn `try...except` về `build_machine_launch_plan` truyền thống nếu có lỗi đọc file.
+- **Kiểm chứng**: `tests/test_machine_launch.py` (21 unit tests PASS, bao phủ zero-collision, unmapped machine fallback, admin 3 machines/port, telemetry payload và launch plan contract).
