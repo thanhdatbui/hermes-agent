@@ -2,13 +2,22 @@
 
 ## 1. Chuẩn hóa 5 Bước Bảo Mật Hotmail qua GPM (100% PC, Không Dùng S7)
 Quy trình đổi bảo mật trên profile GPM theo runner canonical `gpm_change_hotmail_security.py`:
-1. **Bước 1 (Bật 2FA TOTP):** Sinh Secret Key offline (`pyotp`), nạp xác thực vào Microsoft proofs, lưu Secret Key vào Cột 4 Excel `gmail_clean_v2.xlsx`.
-   *BẮT BUỘC add 2FA thành công mới được sang Bước 2. CẤM đổi pass mù khi chưa có 2FA.*
-2. **Bước 2 (Đổi Mật khẩu):** Sinh pass mạnh ngẫu nhiên $\ge 14$ ký tự, đổi pass thành công ghi ngay vào Cột G `taikhoan_dat_v2_updated .xlsx` và Cột 3 `gmail_clean_v2.xlsx`.
-3. **Bước 3 (Sign Out Everywhere):** Bấm "Đăng xuất khỏi mọi nơi" và xác nhận dialog để thu hồi token bên bán trên toàn cầu.
-4. **Bước 4 (Relogin Live pass mới + TOTP):** Điều hướng trực tiếp `login.live.com`, đăng nhập lại bằng email + pass mới + giải 2FA TOTP, tích "Không hỏi lại trên thiết bị này".
-5. **Bước 5 (KMSI - Duy trì đăng nhập):** Đóng Cookie consent banner và bấm [Có] tại màn hình "Duy trì đăng nhập?" để lưu sống cookie/phiên vĩnh viễn trên profile GPM.
-6. **Xóa Token Cột 9 & Cooldown:** Xóa trắng Cột 9 (`token = None`) trong `gmail_clean_v2.xlsx`, gán cooldown 24h cho Egress IP và Proxy port.
+- **Nguyên tắc ghi dữ liệu lũy tiến (Write-Through Persistence — Chống mất dữ liệu):**
+  * TUYỆT ĐỐI KHÔNG gom lại chờ relogin hay chờ hết phiên mới ghi file Excel.
+  * Làm tới đâu, thành công bước nào là BẮT BUỘC ghi ngay lập tức xuống ổ cứng bước đó để tránh mất dữ liệu nếu rớt mạng/crash ở bước sau:
+    1. Vừa add mail khôi phục và xác minh OTP xong ➔ Ghi ngay vào Cột 5 `gmail_clean_v2.xlsx`.
+    2. Vừa bóc Secret Key 2FA xong ➔ Ghi ngay vào Cột 4 `gmail_clean_v2.xlsx` trước khi kích hoạt.
+    3. Microsoft vừa chấp nhận mật khẩu mới ➔ Ghi ngay vào Cột 3 `gmail_clean_v2.xlsx` và Cột G (Cột 7 - PASS MAIL) workbook farm `taikhoan_dat_v2_updated .xlsx`, xóa OAuth Cột 9, và ghi nhận state file TRƯỚC KHI Sign Out Everywhere hay Relogin.
+- **Phạm vi quản lý Dual-Farm (Kibe + Admin):**
+  * Toàn bộ 2 farm gồm ~1.280 tài khoản (Kibe 1-80: 640 accounts, Admin 201-280: ~640 accounts). CẤM đếm thiếu cụm Admin khi đối soát số lượng và báo cáo.
+
+1. **Bước 1 (Add Mail Khôi Phục nếu chưa có):** Sinh mail tạm `<username><3_rand>@fviainboxes.com`, điền Microsoft, bóc OTP qua API `fviainboxes.com/messages` xác minh thành công -> Ghi ngay Cột 5 Excel. (Nếu nick đã có mail kp sẵn thì skip bước này).
+2. **Bước 2 (Bật 2FA TOTP):** Sinh/bóc Secret Key offline (`pyotp`), ghi ngay Cột 4 Excel, nạp xác thực vào Microsoft proofs và kích hoạt công tắc Two-step verification tổng qua `EnableTfa`.
+   *BẮT BUỘC add 2FA thành công mới được sang Bước 3. CẤM đổi pass mù khi chưa có 2FA.*
+3. **Bước 3 (Đổi Mật khẩu):** Sinh pass mạnh ngẫu nhiên $\ge 14$ ký tự, đổi pass thành công -> Ghi ngay vào Cột G `taikhoan_dat_v2_updated .xlsx` và Cột 3 `gmail_clean_v2.xlsx` kèm xóa token Cột 9.
+4. **Bước 4 (Sign Out Everywhere):** Bấm "Đăng xuất khỏi mọi nơi" và xác nhận dialog để thu hồi token bên bán trên toàn cầu.
+5. **Bước 5 (Relogin Live pass mới + TOTP):** Điều hướng trực tiếp `login.live.com`, đăng nhập lại bằng email + pass mới + giải 2FA TOTP, tích "Không hỏi lại trên thiết bị này" (KMSI) để lưu sống cookie/phiên vĩnh viễn trên profile GPM.
+6. **Cooldown IP & Proxy:** Gán cooldown 24h cho Egress IP và Proxy port sau khi hoàn tất.
 
 ## 2. Kỷ Luật Báo Cáo Định Kỳ 6H (cron_hotmail_gpm_lifecycle_6h_report.py)
 - **Tách riêng lỗi BLOCKED:** TUYỆT ĐỐI KHÔNG gộp số nick bị lỗi/kẹt vào hàng đợi đang chờ (`CHANGE_INFO`). Báo cáo bắt buộc phải có dòng riêng:
