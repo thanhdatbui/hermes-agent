@@ -7,18 +7,19 @@ version: 1.0.0
 # LLM Account Pool Routing
 
 ## References
+- `references/cross-instance-token-migration-and-pro-tier-revocation.md`: Pro revocation & migration.
 - `references/antigravity-multi-session-burst-tpm-and-concurrency-limits.md`: TPM/503.
-- `references/omniroute-per-account-proxy-egress-assignment.md`: OmniRoute proxy (`proxy_assignments`).
-- `references/phone-verified-account-salvage-and-tainted-proxy-rotation.md`: Salvage phone-verified & rotate tainted proxy.
+- `references/omniroute-per-account-proxy-egress-assignment.md`: Proxy assign.
+- `references/phone-verified-account-salvage-and-tainted-proxy-rotation.md`: Salvage proxy.
 - `references/codex-oauth-gpm-pool-verification.md`: Codex OAuth/GPM.
-- `references/watchdog-db-guard-and-sync-contract.md`: Provider guard & sync.
-- `references/business-restricted-recovery.md`: Antigravity Business/Restricted.
-- `references/omniroute-429-watchdog-thinking-discipline.md`: Runbook 429 Semaphore 30s.
-- `references/omniroute-global-cooldown-zombie-proxy-and-eventloop-choke.md`: Cooldown 1h trap & Event Loop choke.
-- `references/shared-gemini-flash-pro-quota-routing.md`: Quota & 429.
+- `references/watchdog-db-guard-and-sync-contract.md`: Provider guard.
+- `references/business-restricted-recovery.md`: AG Restricted.
+- `references/omniroute-429-watchdog-thinking-discipline.md`: Runbook 429.
+- `references/omniroute-global-cooldown-zombie-proxy-and-eventloop-choke.md`: Cooldown trap.
+- `references/shared-gemini-flash-pro-quota-routing.md`: Quota 429.
 - `references/pro-account-canary-and-semaphore-diagnosis.md`: Canary Pro.
 - `references/semaphore-vs-pre-cascade-queue-and-strategy-tradeoffs.md`: Semaphore.
-- `references/omniroute-combo-routing-pathology.md`: Combo router failure modes.
+- `references/omniroute-combo-routing-pathology.md`: Combo modes.
 - `references/omniroute-v38-live-log-triage-and-pool-leakage.md`: Triage live OmniRoute v3.8.x qua `/api/usage/call-logs`, đối soát `inPool`, giải mã UI Quota đỏ.
 - `references/omniroute-proxy-fallback-and-quota-telemetry.md`: Proxy fallback & quota telemetry.
 - `references/chatgpt-web-sentinel-and-account-deactivation.md`: Sentinel 403, OpenAI bans & phone checkpoints.
