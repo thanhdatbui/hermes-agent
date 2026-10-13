@@ -36,19 +36,19 @@ Hướng dẫn đối soát và xử lý khi nhận cảnh báo tiến độ upl
 
 ---
 
-## 3. Quy tắc Phân loại 3 Tầng khi Triage Top Nick Bị Đóng Băng (>14 ngày)
+## 3. Quy tắc Phân loại 4 Tầng khi Triage Top Nick Bị Đóng Băng (>14 ngày)
 
-Khi nhận danh sách cảnh báo các nick không tăng video >14 ngày, **CẤM** suy diễn vội vàng hoặc sửa mò code upload. Bắt buộc phân loại theo 3 nhóm nguyên nhân độc lập:
+Khi nhận danh sách cảnh báo các nick không tăng video >14 ngày, **CẤM** suy diễn vội vàng hoặc sửa mò code upload. Bắt buộc phân loại theo 4 nhóm nguyên nhân độc lập:
 
 ### Tầng 1: Lỗi Phần cứng / ADB Thiết bị (Hardware Disconnect)
-- **Kiểm tra:** Chạy `python D:/Taadaa/tools/inspect_machine.py <N>` cho các máy xuất hiện trong top đầu (ví dụ Máy 10, Máy 30).
+- **Kiểm tra:** Chạy `python D:/Taadaa/tools/inspect_machine.py <N>` cho các máy xuất hiện trong top đầu (ví dụ Máy 10, Máy 30, Máy 44, Máy 55, Máy 69).
 - **Dấu hiệu:** ADB trả về `device not found` hoặc `offline` (tuột cáp USB, sập nguồn, treo hub).
 - **Kết luận:** Nick không thể đăng video do máy vật lý mất kết nối từ ngày máy bắt đầu offline. Cần thao tác vật lý (cắm lại cáp/bật nguồn), không phải lỗi runner.
 
 ### Tầng 2: Quy hoạch Cụm Máy / Trạng thái Dưỡng (Cohort / Host Status)
 - **Kiểm tra:** Gom nhóm danh sách stale theo `host_id` (`kibe` vs `admin`) và phân bố số ngày kẹt.
-- **Dấu hiệu:** Phần lớn nick stale (ví dụ >80%) tập trung ở cụm `admin` (Máy 201–280), đều dừng ở mức 1–2 clip và cùng kẹt đúng một mốc số ngày (ví dụ 22 ngày).
-- **Kết luận:** Đây là các tài khoản thuộc nhóm test ban đầu của Farm Admin, hiện đang trong chu kỳ dưỡng/ngâm hoặc đang chờ phân phối nguồn video render riêng biệt cho cụm Admin.
+- **Dấu hiệu:** Phần lớn nick stale (ví dụ >80%) tập trung ở cụm `admin` (Máy 201–280), đều dừng ở mức 1–2 clip và cùng kẹt đúng một mốc số ngày (ví dụ 22–23 ngày).
+- **Kết luận:** Đây là các tài khoản thuộc nhóm test ban đầu của Farm Admin. Admin media độc lập với Kibe và hiện tại cụm Admin đang trong giai đoạn download & render video gốc (`last_render_stats.json` chưa đủ 45 video/folder, Tik 6–8 là 0%), chưa mở batch upload toàn cụm. Tài khoản đang ngâm dưỡng chờ nguồn video, hoàn toàn bình thường.
 
 ### Tầng 3: Lệch giữa Public Scraping Tracker vs File Sổ Cái Excel (Scrape Drift)
 - **Kiểm tra:** Mở file `Tik<slot>.xlsx` tại dòng máy tương ứng, đọc cột `Video Đã Đăng` (cột 8) và so sánh với trường `video` trong database snapshot.
@@ -56,6 +56,18 @@ Khi nhận danh sách cảnh báo các nick không tăng video >14 ngày, **CẤ
   - Database snapshot ghi: `1 video`.
   - File Excel ghi: `3 video` hoặc `7 video` (trạng thái `OK`).
 - **Kết luận:** Tracker cào dữ liệu qua web public TikTok (`__UNIVERSAL_DATA_FOR_REHYDRATION__`). Các clip mới đăng có thể đang bị xét duyệt, gắn cờ giới hạn hoặc đặt riêng tư nên không hiển thị công khai trên web. Thiết bị thực tế đã hoàn thành upload theo đúng sổ cái.
+
+### Tầng 4: Phân lập Slot Đơn Lẻ trên Máy Kibe Đang Online (Single-Slot Isolation)
+Khi một máy Kibe vật lý đang **ONLINE** nhưng chỉ có 1–2 nick/slot bị cảnh báo stale (ví dụ M13 Tik 1, M19 Tik 1, M21 Tik 7, M54 Tik 7, M80 Tik 5):
+- **CẤM TUYỆT ĐỐI** kết luận máy bị kẹt hoặc runner sập.
+- **Đối soát đa tầng qua 8 slot (Tik 1..Tik 8):**
+  1. Kiểm tra toàn bộ 8 file `Tik<N>.xlsx` của máy: Nếu các slot khác (T2–T8) vẫn tăng số video đều đặn (ví dụ M13 T2 đạt 19v, T3 đạt 12v; M19 T2 đạt 16v, T3 đạt 15v; M54 T2, T4, T6 đăng đều) -> Máy và runner hoàn toàn khỏe mạnh.
+  2. Phân loại nguyên nhân của slot đơn lẻ:
+     - **Slot kết thúc chu kỳ thường quy (Tik 1 / Tik 2):** Tik 1 và Tik 2 không còn chạy upload tự động hàng ngày; các nick đạt ngưỡng trần giai đoạn (ví dụ M19 T1 đạt 27 clips) được giữ nguyên ngâm dưỡng.
+     - **Lỗi nhận diện UI nút tạo video (`[VIDEO_PICK_CREATE_ENTRY_UNCONFIRMED]`):** App TikTok bị lag, popup che hoặc nút `[+]` ở giữa thanh điều hướng không nhận diện được -> run trả về `MANUAL_REVIEW` (ví dụ M21). Cần restart app / dismiss popup.
+     - **Slot nick mới ngoài ca quay vòng hiện tại:** Nick mới tạo hoặc mới đăng 1–2 clip thử nghiệm (ví dụ M54 T7, M80 T5), đang chờ xếp lịch theo parity/cohort.
+     - **Mạng VPN / Tun0 chập chờn (Network Flutter):** Kết nối ADB hoặc interface `tun0` bị timeout lúc khởi động (ví dụ M74).
+  3. **Bẫy nhận diện thư mục Batch Runs:** Trong `D:/CodexRuntime/tiktok-video/batch-runs`, các thư mục dạng `batch_tik<N>_list_80_<timestamp>` nhưng `eligible_machines` chỉ có 2–4 máy là batch của watchdog avatar (`-ForceAvatarMachineList`), **không phải** batch upload video toàn farm. Đọc `report.json` và `execution.log` trong `D:/CodexRuntime/tiktok-video/runs/` để thấy chính xác ca upload gần nhất của từng serial.
 
 ---
 

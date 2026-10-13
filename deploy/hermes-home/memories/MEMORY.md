@@ -16,6 +16,6 @@ Crop Ava 9:16: Mặt ở 15-25% trên (cy~0.2*H), cấm cụt đầu. Picker: ta
 §
 Sửa guard: restart_gw_detached.py nạp RAM; Gate miễn trừ tin Closeout/recap. Ranh giới session: chỉ gọi entry point, cấm kéo việc session khác (Hotmail/OTP), cấm spam subagent.
 §
-Farm Dispatch Invariant: context delegate_task bắt buộc có TASK_KIND: EDIT/INVESTIGATE. FILE: bọc <<< D:/... >>>, cấm viết đường dẫn sau gạch đầu dòng '- ' tránh lỗi regex PATH_NOT_ABSOLUTE.
+Farm Dispatch Invariant: context delegate_task bắt buộc có TASK_KIND: EDIT/INVESTIGATE. FILE: D:/... (đường dẫn tuyệt đối trực tiếp, CẤM bọc ngoặc <<< >>> và cấm gạch đầu dòng '- ' tránh lỗi PATH_NOT_ABSOLUTE). Bắt buộc có FOCUSED_TEST.
 §
 GPM Hotmail: GPM duy nhất trên Kibe; Admin là data lưu Hotmail farm Admin để log dần lên GPM Kibe (gộp 1 cron duy nhất gpm-5profiles-lifecycle-supervisor, cấm đẻ cron admin riêng). Hotmail bắt buộc qua HOTMAIL_LOGIN giữ cookie GPM, cấm nhảy cóc CHATGPT_REG dù có OAuth token.
