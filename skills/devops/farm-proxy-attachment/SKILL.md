@@ -162,6 +162,10 @@ description: Verify or configure per-device proxy attachment for the Taadaa Andr
   - Toàn bộ 80 máy dùng đúng 40 proxy (mỗi proxy chia đều đúng 2 máy).
   - Cụm MikroTik PPPoE: `M33/M72` (10001), `M34/M73` (10002), `M35/M74` (10003), `M36/M75` (10004), `M37/M77` (10005), `M71/M78` (10006), `M79/M80` (10007).
   - Cụm MobiProxy: Các máy `01..32` ghép cặp với `39..70` qua `test.taadaa.click:5101..5138`.
+  - **Kiến Trúc Lập Lịch Phân Tách 2 Wave (Wave Scheduling — Triển khai 13/10/2026):**
+    + Triệt tiêu 100% rủi ro 2 máy chung IP chạy trùng giờ gây dắt dây nhả follow (`FOLLOW_FAILED` 70.6% co-run vs 36.4% solo).
+    + Module `automation_core.scheduler.wave_partition` (`build_wave_launch_plan` / `partition_accounts_into_waves`): Nhóm máy theo proxy, gieo xúc xắc 50/50 ngẫu nhiên chia 1 máy vào Wave 1, máy partner vào Wave 2 (hoặc Wave 3 cho Admin), shuffle nội bộ từng wave để giữ nguyên entropy ngẫu nhiên của farm.
+    + Với giới hạn luồng `max_workers = 30` trong `multi_machine_feed_session.py`, 39 máy Wave 1 chạy trước, 39 máy Wave 2 xuất phát sau 15–35 phút. Nếu máy Wave 1 dính nhả giật cầu dao IP, máy Wave 2 đến sau sẽ tự động **Safe-Skip** (`CIRCUIT_BREAKER_SKIPPED`), bảo vệ tài khoản an toàn 100%. Chi tiết: `references/wave-partition-and-proxy-collision-prevention.md`.
   - **Quy tắc phân chia Wave chống trùng IP (`automation_core.scheduler.wave_partition` — 2026-10-13):**
     + Khi chạy batch 80 máy, các máy chung IP (ví dụ M33 & M72 trên port 10001) bắt buộc được phân tách thành các Wave độc lập: Wave 1 (máy 1) -> Wave 2 (máy đối tác).
     + Trong mỗi Wave, 100% không có 2 máy nào trùng proxy IP (zero collision). Thứ tự máy giữa các Wave và nội bộ từng Wave được xáo trộn ngẫu nhiên (50/50 toss + shuffle) để giữ nguyên tính ngẫu nhiên (entropy) đối với thuật toán TikTok, đồng thời tạo cửa sổ thời gian an toàn cho Cầu dao tự ngắt IP (`ip_circuit_breaker`) bảo vệ nick anh em.
