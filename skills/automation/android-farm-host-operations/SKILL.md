@@ -10,6 +10,7 @@ References:
 - `references/x99-ehci-pnp-limit-and-daily-reset-architecture-20261010.md` — Phân tích giới hạn phần cứng Live-Disable PnP trên Intel X99 EHCI (HRESULT 0x8004100c), bằng chứng transport ID liên tiếp, hạ MaxWorkers 25 và kiến trúc Preflight Auto-Reboot định kỳ (10/10/2026).
 - `references/aruba-wifi-recovery-and-anti-drift-incident-20261009.md`
 - `references/hermes-gateway-reboot-auto-resume-architecture-20261013.md` — Kiến trúc tự động bảo toàn và kích hoạt chạy tiếp session Hermes Telegram sau khi host reboot (Zero-Chat Auto-Resume).
+- `references/preflight-3shift-reboot-schedule-and-task-validation-20261013.md` — Quy chuẩn reboot 3 Ca chính (05:45, 11:35, 17:45), chống reboot dày đặc theo phiên, fail-fast validation và read-back test.
 
 Scripts:
 - `scripts/safe_usb_guard.py` — Script nguồn mẫu giám sát và reset EHCI bus theo ngưỡng.

@@ -37,3 +37,19 @@ Khi chua co ban va ma nguon Gateway, phuong an thuc dung nhat la:
 - Coordinator doc database session, phan loai cac topic bi dut mid-flight (`last_role IN ('user', 'tool')`).
 - Dispatch cac worker song song qua `delegate_task` xu ly dut diem tung task.
 - Ban ket qua nghiem thu vao tung topic tuong ung qua `hermes send --to telegram:<chat_id>:<thread_id>`.
+
+## 5. Quy Trinh Tham Dinh Thiet Ke Qua Claude CLI (Claude Code Review Loop Until APPROVED)
+- **Nguyen tac chi dao (User Directive 2026-10-13):** Khi trien khai cac thay doi kien truc nen tang (nhu sua Gateway, co che resume sau reboot), bat buoc goi Claude CLI doc lap tham dinh va sua den khi Claude CLI duyet hoan toan.
+- **Lenh goi Claude CLI tham dinh thiet ke (Print Mode O(1)):**
+  ```cmd
+  claude -p "Review thiet ke va diff sua doi he thong Hermes Gateway Auto-Resume sau reboot host:
+  1. Mo rong max_age_seconds trong gateway/session.py tu 120s len 1800s.
+  2. Dong dau resume_pending trong farm_preflight_daily_reset.py truoc shutdown.
+  3. Chuyen huong prompt resume trong gateway/run.py sang chu dong thuc thi task.
+  Kiem tra ky cac nguy co: restart loop, tranh chap lock ADB/thiet bi, long-polling Telegram va tinh toan ven session.
+  Tra ve VERDICT: APPROVED hoac REJECTED kem danh sach van de can sua."
+  ```
+- **Vong lap lap lai (Iterative Remediation):**
+  - Neu Claude CLI tra ve `REJECTED`: Coordinator tiep nhan danh sach phan bien, soan Patch Contract O(1) cho Worker sua code.
+  - Chay lai `claude -p` tham dinh tren diff moi.
+  - Chi bao cao hoan tat va ban giao khi Claude tra ve `VERDICT: APPROVED`.

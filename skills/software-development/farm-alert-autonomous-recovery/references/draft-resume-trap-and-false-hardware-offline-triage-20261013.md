@@ -52,6 +52,11 @@ xml_text = adapter.dump_ui()
 * **Kỷ luật xử lý triệt để:** Bắt buộc gọi `_delete_all_profile_drafts(prof_xml)` để xóa sạch toàn bộ bản nháp lỗi trên profile nếu resume thất bại. Tránh để bản nháp rác tồn đọng khiến các chu kỳ nuôi sau tiếp tục rơi vào bẫy retry.
 * **Chuẩn hóa điều hướng:** Gọi `_normalize_to_home_for_video_pick` để bấm `Back` thoát sạch các subpage/thư viện nháp, đưa app về màn hình **Trang chủ** có nút `[+]` được kiểm chứng visual gate trước khi tiếp tục luồng upload chuẩn.
 
+### 3.3. Tính Toàn Vẹn Của Video Gốc Khi Xóa Bản Nháp (Zero-Loss Guarantee)
+- **Video gốc an toàn tuyệt đối:** Kho video gốc nằm trên PC (`D:\TIKTOK-videonuoinick\<folder_video>\<N>.mp4`) là bất biến, script automation không bao giờ xóa file trong kho.
+- **Sổ cái Excel bảo vệ số thứ tự:** Cột `Video Đã Đăng` trong file Excel (`Tik1..8.xlsx`) CHỈ tăng (+1) khi video đã xuất hiện công khai trên profile (`post_verified == True`).
+- **Cơ chế nạp lại tự động:** Khi xóa bản nháp dở trên app, số `Video Đã Đăng` vẫn giữ nguyên $\rightarrow$ hệ thống lập tức nạp lại đúng file `<posted_count + 1>.mp4` từ PC vào điện thoại để chọn đăng mới hoàn toàn từ đầu, không mất video và không bị nhảy cóc bất kỳ clip nào.
+
 ---
 
 ## 4. Nghiệm Thu Thực Tế Bằng Canary Trên Máy Thật (Machine 21 Case Study)
