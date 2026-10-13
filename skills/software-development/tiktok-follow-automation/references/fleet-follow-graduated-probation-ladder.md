@@ -118,6 +118,29 @@
 
 ---
 
+## 6. Kiến Trúc Chuẩn Hóa: Tách Biệt Cấp Bậc (Stage) vs Lộ Trình (Path) vs Tiến Độ (Progress)
+
+### A. Nguyên nhân gây lú lẫn cho Operator:
+- Lỗi UX: **Biến bộ đếm tiến độ / đếm ngược (Countdown) thành nhãn phân cấp (Classification Badge)**.
+- Khi hiển thị `🛡️ Thận trọng (2 ca)` rồi đếm ngược xuống `🛡️ Thận trọng (1 ca)`, Operator bị lú lẫn, tưởng rằng hệ thống sinh thêm các cấp bậc con kỳ quặc (Thận trọng 3 ca, 2 ca, 1 ca) đè lên cấp `Hồi phục 1 / Hồi phục 2`.
+
+### B. Ba tầng độc lập chuẩn hóa (Tư vấn kiến trúc từ Advisor Sol):
+1. **Layer 1: Cấp bậc / Nấc thang (Stage / Level):**
+   - Trả lời: *Nick đang được cấp quota tải bao nhiêu?*
+   - Cấp 1: `🟠 Hồi phục 1` (1–2 fl/ca).
+   - Cấp 2: `🟡 Hồi phục 2` (5–8 fl/ca).
+   - Cấp 3: `🟢 Khỏe / Nòng cốt` (10–15 fl/ca).
+2. **Layer 2: Lộ trình thử thách (Recovery Path):**
+   - Trả lời: *Nick đi đường thường hay đường ưu tiên?*
+   - `Đường thường (Standard)`: Nick tân binh / mới lên giàn / điểm uy tín thấp ($< 60$đ) $\rightarrow$ Đi tuần tự qua từng nấc.
+   - `⚡ Ưu tiên (Priority / Fast-track)`: Nick cựu binh uy tín cao ($\ge 60$đ, tuổi đời lớn, nhiều video) $\rightarrow$ Rút ngắn thời gian thử thách (1 ca sạch promote ngay).
+3. **Layer 3: Tiến độ nâng cấp (Progress & Requirement):**
+   - Trả lời: *Còn bao nhiêu ca sạch nữa để thăng hạng?*
+   - Hiển thị rõ dạng tiến độ: `X/2 ca sạch` và `Cần thêm Y ca sạch để lên Cấp tiếp theo`.
+   - **CẤM TUYỆT ĐỐI:** Nhồi nhét chữ `(X ca)` vào tên huy hiệu (như `Thận trọng (X ca)` hay `Thận trọng (1 ca)`) làm rối loạn phân loại của Operator.
+
+---
+
 ## 5. Đối Soát Số Liệu Dashboard: Phân Biệt "Đã Follow (Delta)" vs "🔗 Nội Bộ"
 
 ### A. Bản chất kỹ thuật của 2 chỉ số:
