@@ -2,9 +2,9 @@ Cào/Render: 12 niche hot (rải xen kẽ máy, cấm trùng niche cùng phiên)
 §
 Dọn đĩa: duyệt trước (thư mục corrupt/lỗi xóa ngay), CẤM xóa ngầm.
 §
-Farm: nick cấm xóa/đè; SoT tiktok_tracker.db; cấm đè ava tay. Chu kỳ nuôi 4d 3 ca; Starvation 96h (cấm 48h false-alarm). Đổi mail TT: Hotmail sạch, ưu tiên Graph PC, sai pass dùng --otp-only.
+Farm: nick cấm xóa/đè; SoT tiktok_tracker.db; cấm đè ava tay. Chu kỳ nuôi 4d 3 ca (đã bỏ ca đêm, máy idle dập TikTok & tắt màn keyevent 223); Starvation 96h (cấm 48h false-alarm). Đổi mail TT: Hotmail sạch, ưu tiên Graph PC, sai pass dùng --otp-only.
 §
-Report/Watchdog: % & tầng; khóa IP 1 dòng; cấm raw/trace dump; cấm báo cáo khống thị giác (bắt buộc OCR+diff thật, cấm bịa thấy ảnh mới). SILENT khi OK; sập alert đỏ exit 1.
+Report/Watchdog: % & tầng; khóa IP 1 dòng; cấm raw/trace dump; cấm văn vở/bao biện khi sự cố (vào thẳng cốt lõi); cấm báo cáo khống thị giác (bắt buộc OCR+diff thật, cấm bịa thấy ảnh mới). SILENT khi OK; sập alert đỏ exit 1.
 §
 Kibe(1-80) & Admin(201-280) media độc lập (Admin m2, cấm copy chéo). TT v47.0.3; Switcher dock; AP 40m; Config tools.
 §

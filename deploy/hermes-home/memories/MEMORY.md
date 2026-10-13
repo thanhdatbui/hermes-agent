@@ -12,7 +12,7 @@ Proxy: User KO đổi, SoT PROXYgandienthoai.xlsx. Soi vision mở, assert mCurr
 §
 Farm Dispatch Invariant: delegate_task context cần TASK_KIND: EDIT/INVESTIGATE. FILE: D:/... (path tuyệt đối trực tiếp, cấm ngoặc/gạch đầu dòng). Có FOCUSED_TEST.
 §
-GPM Hotmail: Kibe duy nhất chạy GPM, Admin log dần; 1 cron supervisor. Hotmail qua HOTMAIL_LOGIN giữ cookie, cấm nhảy cóc REG. CHANGE_INFO: MS ép mail kp (@fviainboxes) trước 2FA; ghi Excel lũy tiến từng bước (mail->C5, bóc 2FA->C4, đổi pass->C3+Col G) trước signout.
+GPM: Kibe chạy, stop API ko kill chrome -> bắt buộc kèm _kill_gpm_chrome(psutil). Cuốn chiếu = duy trì max 5 worker (xong kéo acc mới ngay). Hotmail qua HOTMAIL_LOGIN giữ cookie. CHANGE_INFO: MS ép mail kp (@fviainboxes); ghi Excel lũy tiến (C5,C4,C3+G) trước signout.
 §
 Triage Stale Upload: CẤM quy chụp máy rớt ADB là nick kẹt >14d; slot khác tăng clip thì máy bình thường, do draft trap. Mở draft hỏng bắt buộc xóa sạch (_delete_all_profile_drafts), về Home. Xóa draft an toàn vì video gốc trên PC & Excel giữ số TT. state_machine.py bắt buộc LF.
 §

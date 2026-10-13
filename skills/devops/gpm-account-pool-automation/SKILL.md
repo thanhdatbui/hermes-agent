@@ -10,7 +10,7 @@ version: 1.2.0
 
 Use for GPM v3 (19995), Gmail/Hotmail lifecycle, proxy-safe accounts, OAuth, ChatGPT/Codex, watchdogs, pagination.
 - Audit & OTP: `references/chatgpt-audit-graph-recursion-and-webmail-timeout.md`.
-- Hotmail State & Sec: `references/hotmail-lifecycle-state-reconciliation.md`, `references/hotmail-security-change-flow-and-iec500-pitfalls.md`.
+- GPM Zombie & Rolling: `references/gpm-stop-api-zombie-leak-and-rolling-concurrency.md`.
 - Credential & Pass: `references/credential-isolation-policy-hotmail-chatgpt-tiktok.md`, `references/hotmail-password-mapping-and-cookie-consent-pitfalls.md`.
 - Turnstile & Watchdog: `references/omniroute-turnstile-sentinel-gpm-recovery.md`, `references/no-agent-cron-silent-watchdog-and-telegram-chunking.md`.
 - 2FA & Pagination: `references/gpm-gmail-2fa-lifecycle-deadlock-and-silent-reporting.md`, `references/gpm-profile-pagination-and-duplicate-spawn-pitfall.md`.
