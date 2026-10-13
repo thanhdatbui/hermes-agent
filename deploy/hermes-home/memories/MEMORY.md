@@ -4,7 +4,7 @@ Host/USB: Reboot 3 Ca (05:45, 11:35, 17:45; chặn trong TFT; sentinel reboot_se
 §
 Gate miễn trừ Closeout. Runner fail phải vá core, cấm viết script tap tay ngoài lề.
 §
-TikTok Follow: (máy,row) độc lập, ca khác row khác cấm gộp máy; Quota 10-15/ca (Khỏe), Fast-track 1 ca sạch, Thận trọng max 2 ca/stage (clean_days < 2 lên HP2, clean_days < 4 tốt nghiệp); Canary nhóm Khỏe +10% dò trần; like 80%. Nick non nhả cấm ngắt IP. Đối soát fl theo file state. Path B 'Đã fl' ko commit; slot (folder-1)%8+1 cứng; reg bù độc lập. Cron: feed_session_watchdog & follow_session_watchdog.
+TikTok Follow: (máy,row) độc lập, ca khác row khác cấm gộp máy; Quota 10-15/ca (Khỏe); Hồi phục 1 & 2 mỗi stage đúng 2 ca sạch (tiêu chuẩn: Cần X ca sạch; cựu binh: Ưu tiên 1 ca; cấm nhãn Thận trọng); Canary nhóm Khỏe +10% dò trần; like 80%. Nick non nhả cấm ngắt IP. Đối soát fl theo file state. Path B 'Đã fl' ko commit; slot (folder-1)%8+1 cứng; reg bù độc lập. Cron: feed_session_watchdog & follow_session_watchdog.
 §
 Hotmail bán: CẤM gán mail cá nhân; tự sinh @fviainboxes.com đọc OTP qua API. Tab Chrome CDP đóng ko mất cookie (lưu Profile disk).
 §
