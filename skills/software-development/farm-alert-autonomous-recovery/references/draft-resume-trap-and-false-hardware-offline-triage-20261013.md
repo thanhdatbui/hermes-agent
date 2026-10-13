@@ -43,3 +43,45 @@ xml_text = adapter.dump_ui()
 ```
 * Bắt buộc dùng `_normalize_to_home_for_video_pick` để bấm `Back` thoát sạch các subpage/thư viện nháp, đưa app về màn hình **Trang chủ** có nút `[+]` được kiểm chứng visual gate trước khi tiếp tục luồng upload chuẩn.
 * Kiểm tra và dọn dẹp các bản nháp hỏng trên profile bằng `_delete_all_profile_drafts` nếu resume liên tục thất bại.
+
+---
+
+## 4. Nghiệm Thu Thực Tế Bằng Canary Trên Máy Thật (Machine 21 Case Study)
+- **Thiết bị:** Máy 21 (`ce011601fca4ee2505`), tài khoản `@rillecoq5ml` (Tik 7, slot từng bị kẹt lúc 08:10 với lỗi `VIDEO_PICK_CREATE_ENTRY_UNCONFIRMED`).
+- **Thực thi:** Chạy upload clip số 4 (`167/4.mp4`) sau khi áp dụng bản vá.
+- **Diễn biến log (`run_ce011601fca4ee2505_20261013_104342`):**
+  1. `[ACCOUNT_READY]` phát hiện bản nháp trên profile.
+  2. `[VIDEO_PICK]` resume bản nháp thất bại $\rightarrow$ fallthrough $\rightarrow$ kích hoạt `[MEDIA_PUSH] Normalize Home: Back bounded subpage` thành công về Home.
+  3. Bấm chọn video số 4, đăng bài và verify post thành công.
+  4. Số video profile tăng từ 3 lên 4; Excel `Tik7.xlsx` cột *Video Đã Đăng* tăng lên 4.
+  5. WinRT OCR ảnh profile xác nhận bài đăng mới hiển thị trên lưới video.
+
+---
+
+## 5. Bẫy Device Lock Khi Viết Script Canary Thủ Công
+- **Bẫy:** Nếu script wrapper tự gọi `acquire_device_lock(project="custom-canary")`, rồi gọi subprocess `python -m scripts.tiktok_workflow`, tiến trình con sẽ bị chặn với lỗi:
+  `[NEEDS_USER_DECISION] ACQUIRE_LOCKS: device needs user decision (locked by another owner)`
+- **Nguyên nhân:** Subprocess tự quản lý lock và thấy lock đang bị chiếm bởi một tiến trình cha khác project ID.
+- **Giải pháp:** Cho phép `scripts.tiktok_workflow` tự acquire và release device lock của chính nó, hoặc truyền `CODEX_DEVICE_LOCK_RUN_ID` tương thích.
+
+---
+
+## 6. WinRT OCR PowerShell Type Loading Trap
+- **Bẫy:** Khi gọi WinRT OCR qua PowerShell trong Python subprocess, lệnh có thể văng lỗi:
+  `ERROR: Unable to find type [Windows.Storage.StorageFile].`
+- **Nguyên nhân:** Thiếu nạp runtime types của Windows trước khi gọi các lớp WindowsRuntime.
+- **Khắc phục:** Luôn khai báo và nạp đầy đủ mảng `$types` trong PowerShell:
+  ```powershell
+  $types = @(
+      "Windows.Globalization.Language, Windows.Globalization, ContentType=WindowsRuntime",
+      "Windows.Graphics.Imaging.BitmapDecoder, Windows.Graphics.Imaging, ContentType=WindowsRuntime",
+      "Windows.Graphics.Imaging.SoftwareBitmap, Windows.Graphics.Imaging, ContentType=WindowsRuntime",
+      "Windows.Media.Ocr.OcrEngine, Windows.Media.Ocr, ContentType=WindowsRuntime",
+      "Windows.Media.Ocr.OcrResult, Windows.Media.Ocr, ContentType=WindowsRuntime",
+      "Windows.Storage.StorageFile, Windows.Storage, ContentType=WindowsRuntime",
+      "Windows.Storage.Streams.IRandomAccessStream, Windows.Storage.Streams, ContentType=WindowsRuntime",
+      "Windows.Storage.FileAccessMode, Windows.Storage, ContentType=WindowsRuntime"
+  )
+  foreach ($t in $types) { try { [void][Type]::GetType($t, $true) } catch {} }
+  ```
+  Và đảm bảo `$imgPath` là đường dẫn tuyệt đối với dấu gạch chéo ngược Windows (`D:\...`).
