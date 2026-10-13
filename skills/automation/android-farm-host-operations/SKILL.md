@@ -446,8 +446,13 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
     - Script automation bắt buộc giao tiếp qua **ADB Command Shell** (`settings get`, `dumpsys window`, `input swipe`). Khi controller USB hoặc socket `adbd` bị nghẽn đệm, lệnh shell bị treo cứng (>25s timeout), runner không thể gửi lệnh nên đánh dấu máy thất bại hàng loạt dù màn hình Phóng Vệ vẫn thấy video chạy.
 - **Tại sao Cron `farm_idle_screen_and_app_healer.py` Không Tắt Được Màn Hình:**
   1. **Mù với máy rớt ADB:** Script chỉ lấy danh sách máy từ `adb devices`. Các máy đang phát TikTok rớt ADB không nằm trong danh sách nên cron bỏ qua hoàn toàn.
-  2. **Thiếu lệnh tắt màn hình chủ động:** Script chỉ set `settings put system screen_off_timeout 600000` thụ động, **KHÔNG HỀ gọi `input keyevent 26` (Power / Tắt màn hình)**. Do TikTok giữ `FLAG_KEEP_SCREEN_ON`, thiết lập timeout thụ động 10 phút là vô hiệu.
-  3. **Lệnh `dumpsys window` bị timeout ngầm:** Timeout 4s trong script quá ngắn đối với Samsung S7 trên USB 2.0, khối `except Exception: pass` nuốt lỗi nên không bao giờ kích hoạt được `am force-stop`.
+  2. **Thiếu lệnh tắt màn hình chủ động & Bẫy Keyevent 26 vs 223:**
+     - Script cũ chỉ set `settings put system screen_off_timeout 600000` thụ động mà không gửi lệnh tắt màn hình trực tiếp. Do TikTok giữ `FLAG_KEEP_SCREEN_ON`, thiết lập timeout thụ động 10 phút là hoàn toàn vô hiệu.
+     - **Bẫy tử huyệt `input keyevent 26` (Power):** Nút Power (26) là nút toggle. Nếu máy đã tắt màn hình sẵn (như 35 máy dưỡng sinh), gửi 26 sẽ **BẬT SÁNG MÀN HÌNH TRỞ LẠI**.
+     - **Giải pháp chuẩn xác — `input keyevent 223` (KEYCODE_SLEEP):** Lệnh 223 có tính chất idempotent: nếu màn hình đang sáng (`Display Power: state=ON` / `mWakefulness=Awake`) thì đưa về sleep/dozing; nếu màn hình đã tắt sẵn thì **giữ nguyên tắt 100%**, không bao giờ bị bật ngược.
+  3. **Lệnh `dumpsys window` bị timeout ngầm ➔ Thay bằng `pidof`:**
+     - `dumpsys window` trên Android 8 xuất ra payload lớn (>4MB), dễ bị timeout 4s qua bus USB 2.0 khiến khối `except Exception: pass` nuốt lỗi và không bao giờ gọi được `am force-stop`.
+     - BẮT BUỘC thay bằng lệnh nhị phân nhẹ `pidof com.ss.android.ugc.trill com.zhiliaoapp.musically` (<0.1s) để phát hiện tức thì và gọi `am force-stop` dập tắt app ngay khi máy nhàn rỗi (không có active lock trong `~/.codex/device-locks/`).
 - **Cứu hộ tức thời ban đêm khi máy mất ADB:**
   * Dùng tính năng **"Đóng tất cả ứng dụng"** và **"Tắt màn hình"** trên thanh công cụ của Phóng Vệ (XiaoWei). Driver USB native của XiaoWei vẫn gửi được signal tới các máy đang nghẽn ADB.
 
