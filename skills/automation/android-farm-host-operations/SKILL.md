@@ -181,9 +181,17 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
   * **Lợi ích kép:** Vừa chia đều 4 Box sang 2 chip EHCI độc lập (Tầng 1-2 vào EHCI #1, Tầng 3-4 vào EHCI #2, mỗi bên gánh đúng 40 máy), vừa tránh sụt áp đường mạch 5V (không dồn 2 Box công suất lớn vào chung 1 cặp cổng).
 - **Hiện tượng Phase Drift dù có Max Workers 40:** Giới hạn 40 workers chỉ cân tải CPU/Proxy. Cơ chế `machine_launch.py` stagger lúc mở app sau 5-15 phút sẽ bị lệch pha do thời lượng video khác nhau, dẫn tới 10-20 máy vô tình chụp ảnh (`screencap`) trùng giây $\rightarrow$ gây spike nghẽn USB 2.0. Giải pháp căn cơ là cắm thêm Card PCIe USB 3.0 mở rộng riêng hoặc dùng Semaphore khống chế I/O trong script (tuyệt đối không bật xHCI Onboard của mainboard).
 
-## 10. Hermes Gateway Telegram Cold Boot vs Reconnect
+## 10. Hermes Gateway Telegram Cold Boot vs Reconnect & Phục Hồi Đa Phiên (Multi-Session Recovery)
 - **Cơ chế Telegram Adapter:** Khi PC reset (Cold Boot, `is_reconnect=False`), cờ `drop_pending_updates=True` được kích hoạt.
 - **Hệ quả:** Mọi tin nhắn gửi đến bot Telegram trong lúc PC đang tắt/reboot đều bị server Telegram hủy bỏ (purge). Bot sẽ không thấy các tin nhắn này sau khi online lại.
+- **Bản chất session không tự chạy tiếp sau Reboot:**
+  * Hàm `suspend_recently_active(max_age_seconds: int = 120)` trong Gateway dùng ngưỡng cứng 120s. Mainboard server Dual Xeon X99 khi reboot (POST BIOS, check RAM, AutoAdminLogon) mất 130–150s nên mọi session đang chạy dở trước reboot đều bị coi là quá hạn và bỏ qua.
+  * Nếu Gateway tự phục hồi với empty text (`event.text == ""`), system note mặc định dặn model *"skip any unfinished work from the conversation history"*, khiến model chỉ chào hỏi thay vì tiếp tục fix bug.
+- **Quy trình điều phối Phục hồi Đa phiên (One-Click Master Resume):**
+  * Thay vì người dùng phải vào từng topic Telegram (5–10 topics) gõ lệnh, chỉ cần gõ 1 câu tại 1 topic tổng: *"Tiếp tục các session đang dở trước reboot đi"*.
+  * Coordinator truy vấn SQLite lọc các session unended trong 2–3 giờ qua có `last_role IN ('user', 'tool')` (turn đang làm dở khi máy tắt).
+  * Dispatch các worker song song qua `delegate_task` để kiểm tra hiện trường mới và hoàn tất task.
+  * Bắn kết quả nghiệm thu trực tiếp vào đúng từng topic Telegram tương ứng qua `hermes send --to telegram:<chat_id>:<thread_id>` kèm bằng chứng.
 
 ## 11. Bẫy Treo Remote ADB Portproxy & Dịch Vụ IP Helper (iphlpsvc) Trên Host Admin
 - **Hiện tượng:** Từ host controller (Kibe PC), lệnh gọi ADB tới remote host (Admin `192.168.110.119:5037`) văng lỗi `adb.EXE: protocol fault (couldn't read status): connection reset` hoặc lệnh `inspect_machine.py <N>` bị timed out liên tục.

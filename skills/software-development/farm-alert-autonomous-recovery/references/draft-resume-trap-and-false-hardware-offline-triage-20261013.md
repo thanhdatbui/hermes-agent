@@ -33,16 +33,24 @@
 7. Workflow dừng ở `MANUAL_REVIEW`, không đăng được clip.
 8. Ở các ca nuôi tiếp theo (cách nhau 96h theo chu kỳ 4 ngày), bản nháp vẫn nằm nguyên trên profile $\rightarrow$ **Lặp lại lỗi y hệt và kẹt vĩnh viễn**.
 
-### 3.2. Giải pháp kỹ thuật chuẩn hóa
+### 3.2. Giải pháp kỹ thuật chuẩn hóa (Phương án A: Dọn sạch bản nháp lỗi khi resume thất bại)
 Ngay sau khi `_resume_draft_from_profile` trả về `False`:
 ```python
+logger.warning("[VIDEO_PICK] Mở bản nháp không thành công; dọn sạch bản nháp và tiếp tục fallthrough")
+if not self.context.dry_run:
+    try:
+        prof_xml = self._open_profile_root_recovered(adapter)
+        self._delete_all_profile_drafts(prof_xml)
+    except Exception as _del_err:
+        logger.warning("[VIDEO_PICK] Dọn dẹp bản nháp gặp lỗi: %s", _del_err)
+self.context.has_profile_draft = False
 if not self._normalize_to_home_for_video_pick(adapter, adapter.dump_ui()):
     logger.error("[VIDEO_PICK] Không thể trở về Home sau khi mở bản nháp thất bại")
     return False
 xml_text = adapter.dump_ui()
 ```
-* Bắt buộc dùng `_normalize_to_home_for_video_pick` để bấm `Back` thoát sạch các subpage/thư viện nháp, đưa app về màn hình **Trang chủ** có nút `[+]` được kiểm chứng visual gate trước khi tiếp tục luồng upload chuẩn.
-* Kiểm tra và dọn dẹp các bản nháp hỏng trên profile bằng `_delete_all_profile_drafts` nếu resume liên tục thất bại.
+* **Kỷ luật xử lý triệt để:** Bắt buộc gọi `_delete_all_profile_drafts(prof_xml)` để xóa sạch toàn bộ bản nháp lỗi trên profile nếu resume thất bại. Tránh để bản nháp rác tồn đọng khiến các chu kỳ nuôi sau tiếp tục rơi vào bẫy retry.
+* **Chuẩn hóa điều hướng:** Gọi `_normalize_to_home_for_video_pick` để bấm `Back` thoát sạch các subpage/thư viện nháp, đưa app về màn hình **Trang chủ** có nút `[+]` được kiểm chứng visual gate trước khi tiếp tục luồng upload chuẩn.
 
 ---
 
