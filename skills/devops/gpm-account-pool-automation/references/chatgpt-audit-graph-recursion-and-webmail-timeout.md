@@ -33,7 +33,16 @@ Hàng loạt tài khoản (ví dụ 53/69 tài khoản) trả về kết quả `
    - Khi không đọc được OTP hoặc chưa vào được giao diện chính của ChatGPT, script bắt buộc đánh dấu `UNKNOWN`.
    - CẤM TUYỆT ĐỐI tự ý đánh dấu `DEAD` hay `purge_account()` khi chưa có screenshot xác nhận `account_deactivated` hoặc lỗi vô hiệu hóa chính thức từ OpenAI.
 
-3. **Background Process & Visual Verification Invariant trong Audit Runner**:
+3. **Giao diện tiếng Việt & DOM Marker ChatGPT (`LOGGED_IN_MARKERS`)**:
+   - ChatGPT trên GPM profile có IP Việt Nam thường hiển thị sidebar / nút chat bằng tiếng Việt.
+   - Bên cạnh `"New chat"` và `"Cuộc trò chuyện mới"`, giao diện web ChatGPT mới nhất hiển thị `"Trò chuyện mới"` ở panel bên trái và nút new chat.
+   - Bắt buộc kiểm tra cả `"Trò chuyện mới"` trong `LOGGED_IN_MARKERS`. Nếu thiếu marker này, các tài khoản đã login hợp lệ và hiển thị giao diện sẵn sàng chat sẽ bị đánh nhầm thành `UNKNOWN`.
+
+4. **OmniRoute & 9Router Provider Schema Compatibility (`connections` vs `providers`)**:
+   - Khi query REST API `GET /api/providers` trên OmniRoute (:20129) và 9Router (:20128), response JSON chứa key root là `connections` (ví dụ `{"connections": [...], "total": N}`), KHÔNG phải `providers` hay `data`.
+   - Hàm `_list_providers` / đồng bộ token bắt buộc trích xuất theo thứ tự ưu tiên: `data.get("connections", data.get("providers", data.get("data", [])))`. Nếu chỉ đọc key `providers`, kết quả trả về rỗng và vô hiệu hóa việc đồng bộ / purge provider tương ứng.
+
+5. **Background Process & Visual Verification Invariant trong Audit Runner**:
    - Khi chạy batch lớn qua `--all` (ví dụ 69-70 tài khoản trên GPM), script mất thời gian 15-25 phút do tuần tự khởi động GPM profile, kết nối CDP, đọc OTP qua Graph/Webmail và kiểm tra DOM ChatGPT.
    - Bắt buộc chạy script dưới dạng background process (`terminal(background=True)` hoặc `process(action='wait', timeout=60)` polling) thay vì foreground ngắn gây timeout.
    - Trước khi đính kèm `MEDIA:<path>` minh chứng tài khoản DEAD, Agent BẮT BUỘC gọi `vision_analyze` để soi mắt kiểm tra ảnh chụp màn hình artifact thực tế (chứng minh thông báo lỗi tài khoản bị xóa / vô hiệu hóa hiển thị rõ, không bị màn hình đen hay che khuất).
