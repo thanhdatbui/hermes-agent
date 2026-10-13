@@ -8,16 +8,17 @@ description: "TikTok follow runner and fail-closed farm ops."
 ## Non-negotiable operating rules
 
 - **Tài liệu tham khảo chuyên sâu (`references/`):**
-    - `references/mode2-anchor-selection-and-deep-scroll.md`: Chọn anchor >= 150 fl, duyệt anchor đã/chưa fl & cuộn sâu.
-    - `references/follow-report-semantics-and-concise-wording.md`: Phân biệt `Success (0)` vs `Nhả → khóa IP`.
-    - `references/account-replacement-and-backfill-state-reset.md`: Reset state khi thay nick die/reg bù.
-    - `references/fleet-follow-graduated-probation-ladder.md`: Bậc thang 3 nấc & Health-Tiered Reporting.
-    - `references/daily-follow-matrix-and-trust-ceiling-analytics.md`: Heatmap, Trust Ceiling, Concurrency.
-    - `references/shared-ip-proxy-collision-and-canary-ceiling-testing.md`: Trùng IP, Circuit Breaker, Canary.
+    - `references/mode2-anchor-selection-and-deep-scroll.md`: Anchor >= 150 fl, cuộn sâu.
+    - `references/follow-report-semantics-and-concise-wording.md`: Success (0) vs Nhả khóa IP.
+    - `references/account-replacement-and-backfill-state-reset.md`: Reset state khi thay nick/reg bù.
+    - `references/fleet-follow-graduated-probation-ladder.md`: Bậc thang 3 nấc & Health.
+    - `references/daily-follow-matrix-and-trust-ceiling-analytics.md`: Heatmap & Trust Ceiling.
+    - `references/shared-ip-proxy-collision-and-canary-ceiling-testing.md`: Trùng IP & Circuit Breaker.
     - `references/wave-scheduling-and-multi-farm-unified-governance.md`: Wave 1 -> Cầu dao -> Wave 2.
-    - `references/dashboard-follow-reconcile-race-condition.md`: Lệch pha crawler vs chốt sổ; đối soát.
-    - `references/contact-suggestion-popup-follow-lockdown.md`: Khóa popup danh bạ & chống leak follow.
-    - `references/burst-follow-hibernation-cadence-gemphone-benchmark.md`: Burst 20-30 fl, ngủ đông 3-4d, cầu dao 40% toàn ca & phanh nhả từng nick.
+    - `references/dashboard-follow-reconcile-race-condition.md`: Lệch pha crawler & đối soát.
+    - `references/contact-suggestion-popup-follow-lockdown.md`: Khóa popup danh bạ.
+    - `references/burst-follow-hibernation-cadence-gemphone-benchmark.md`: Burst 20-30 fl, ngủ đông 3-4d, cầu dao 40%.
+    - `references/dynamic-healing-row-selection-and-anti-consecutive-cadence.md`: Chọn row dưỡng động, ghép session, chống kẹp ca & cache 60s.
     - `references/zero-follow-shift-audit-and-fail-closed-breakdown.md`: Đối soát ca 0 follow (dưỡng sinh 1/3, cầu dao 48h, cooldown, nick non).
     - Case references: `references/case-ui-*.md`, `references/workflow-parity-*.md`, `references/fleet-follow-*.md`.
     - `references/case-ui-89-idempotent-session-actions-and-partial-follow-accounting.md`: Staging.
