@@ -29,9 +29,19 @@ Không cần ngâm thêm. Thực hiện tuần tự trong cùng 1 phiên:
    - Nếu Microsoft đòi mã 2FA -> Dùng Secret Key vừa lưu sinh mã TOTP điền vào.
    - Bấm "Có" tại màn hình Duy trì đăng nhập (KMSI) để lưu phiên sống bền vững trên profile GPM.
 
-## 3. Pitfall: Bấm nhầm nút Tiếp theo của Form
-- Trong hàm `handle_microsoft_interstitials` (xử lý màn hình điều khoản/KMSI): BẮT BUỘC bỏ qua kiểm tra nút "Tiếp theo" khi URL đang chứa `proofs` (`if "proofs" in page.url.lower(): pass`).
-- Nếu không kiểm tra URL, bot sẽ tưởng nút "Tiếp theo" của form proofs là màn hình điều khoản và click trước khi điền dữ liệu, gây lỗi submit rỗng.
+## 3. Pitfalls & Tránh Lỗi Thao Tác UI GPM/CDP
+- **Nhầm lẫn ô input `ai_do@example.com` khi bật 2FA:**
+  * Màn hình `https://account.live.com/proofs/EnableTfa` của Microsoft bản địa hóa tiếng Việt hiển thị placeholder `ai_do@example.com` (tương đương `someone@example.com`).
+  * Đây KHÔNG PHẢI lỗi hay giao diện nhập code 2FA, mà là bằng chứng Microsoft đang chặn luồng và ép nhập email khôi phục thứ hai trước khi mở luồng 2FA.
+- **Bấm nhầm nút Tiếp theo của Form:**
+  * Trong hàm `handle_microsoft_interstitials` (xử lý màn hình điều khoản/KMSI): BẮT BUỘC bỏ qua kiểm tra nút "Tiếp theo" khi URL đang chứa `proofs` (`if "proofs" in page.url.lower(): pass`).
+  * Nếu không kiểm tra URL, bot sẽ tưởng nút "Tiếp theo" của form proofs là màn hình điều khoản và click trước khi điền dữ liệu, gây lỗi submit rỗng.
+- **Selector chính xác trong Modal Proofs Microsoft:**
+  * Option "Sử dụng ứng dụng": selector là `#Add_msAuthApp` (thẻ `<a>` có class `.box.passkey`), không phải button đơn thuần.
+  * Option "Gửi mã qua email": selector là `#Add_email`.
+- **Đồng bộ STAGE_ORDER trong Supervisor (`batch_gpm_5profiles_supervisor.py`):**
+  * Đóng gói stage `CHANGE_INFO` thành luồng độc lập, khi hoàn thành chuyển thẳng sang `DONE`.
+  * STAGE_ORDER chuẩn: `["HOTMAIL_LOGIN", "CHATGPT_REG", "CODEX_OAUTH", "WAIT_7D", "CHANGE_INFO", "DONE"]`. Không chia vụn thành các sub-stage riêng biệt gây kẹt supervisor.
 
 ## 4. Đóng tab Chrome CDP
 - Đóng tab qua CDP endpoint `/json/close/{target_id}` chỉ giải phóng RAM render, hoàn toàn không mất cookies hay session đăng nhập do toàn bộ session được Chrome lưu bền vững trên ổ đĩa Profile.
