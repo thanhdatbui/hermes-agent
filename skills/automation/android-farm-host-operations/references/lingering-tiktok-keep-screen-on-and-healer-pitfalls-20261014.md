@@ -31,4 +31,16 @@
   * Khi phát hiện PID: chạy `am force-stop` cả 2 package, gửi `input keyevent 3` (Home) và `input keyevent 223` (Sleep).
 - **Bộ kiểm thử tự động (Unit Test Regression):**
   * File test: `D:/Taadaa/tools/tests/test_farm_idle_screen_and_app_healer.py`.
-  * Bao phủ 4 nhánh kiểm thử: `test_is_near_reboot_window`, `test_heal_device_locked`, `test_heal_device_lingering_tiktok_and_screen_off`, `test_heal_device_clean_idle` (100% passed).
+  * Bao phủ 7 nhánh kiểm thử: `test_is_near_reboot_window`, `test_heal_device_locked`, `test_heal_device_lingering_tiktok_and_screen_off`, `test_heal_device_clean_idle`, `test_heal_device_adb_timeout`, `test_get_online_devices_failure`, `test_concurrent_healing` (100% passed).
+  * Xử lý ngoại lệ tường minh: Thay vì nuốt `pass`, mọi lỗi lệnh ADB (`subprocess.TimeoutExpired`, runtime failure) đều được bắt vào danh sách `errors` và tính thời gian `duration_ms` cho từng thiết bị.
+  * Xuất structured telemetry cuối phiên: `[TELEMETRY_METRIC] {"event": "idle_healer_done", "online": N, "healed": N, "stopped": N, "off": N}`.
+
+## 4. Cơ Chế 3-Strike Closeout Remediation & Reviewer Hand-off
+- **Quy trình Closeout Gate khi nghiệm thu tool farm:**
+  * Strike 1 & 2: Sol High (:20129) tạo proposal O(1) qua `sol_repair.py`. Nếu Sol Repair không thể xử lý (exit != 0 / no findings), fallback dispatch Worker Gemini qua `delegate_task`.
+  * Strike 3 Hand-off: Khi Sol High từ chối 3 lần liên tiếp trên cùng `scope_hash`, Closeout Gate in tín hiệu `[REVIEWER_HANDOFF_TRIGGERED: ...]`.
+  * **Hành động bắt buộc:** CẢ Coordinator, Worker và Sol Repair DỪNG LẠI, chuyển giao quyền can thiệp cho Reviewer (Claude Code CLI) tự sửa theo tiêu chuẩn riêng của nó:
+    ```bash
+    claude -p "<Prompt bàn giao phạm vi allowlist và tiêu chí nghiệm thu>" --dangerously-skip-permissions
+    ```
+    Chạy nền với `notify_on_complete=True` để hoàn tất chốt phiên an toàn.
