@@ -55,6 +55,15 @@ When ingesting a raw photo directory (e.g. iCloud Photos with flat UUIDs or diso
    - **Crucial Platform UX Difference:**
      - **Mobile App (iOS/Android):** Tapping "Sử dụng mẫu" opens a modal grid of empty numbered slots (e.g., 40 slots) where users simply tap 40 photos sequentially from the album to batch populate all clips at once.
      - **Desktop PC (CapCut Windows):** There is NO batch slot-picker modal. Tapping the template track on the timeline displays a single unified group clip labeled `Mẫu [duration] - N clip cần thay thế`. Double-clicking or clicking the track does not open a replacement popup.
-   - **How Replacement Actually Works on Desktop PC:**
-     - **Method 1 (Drag & Drop Replace):** In the Media panel (`Tệp phương tiện`), click and drag an image directly down over the specific clip segment on the timeline template track. Release mouse to open the contextual popup (`Thay thế / Chèn`) and choose **Thay thế (Replace)**.
-     - **Method 2 (Batch Replace Preparation):** Due to the high friction of replacing 30–50 clips individually via drag-and-drop on PC, advise users to prefer smaller fixed-milestone templates (e.g. 10–12 clips) or to use the mobile CapCut app for large batches (40+ clips) where native bulk selection exists.
+   - **How Replacement Actually Works on Desktop PC & Critical Pitfalls:**
+     - **The Drag & Drop Timeline-Stretching Trap (Music Beat Desync):**
+       - In the Media panel (`Tệp phương tiện`), dragging an image down onto a template track segment often defaults to the static image duration (3–5 seconds) rather than conforming to the template slice (0.5–1.2 seconds) unless explicitly trimmed.
+       - *Severe Consequence:* In 30–50 clip templates (e.g., milestone/birthday videos), replacing clips naively balloons the timeline from 30s to 4+ minutes (e.g., `04:32:17`), completely ruining the sync with background music and effects.
+     - **The Compound Clip Trap (`Dòng thời gian 02` & Yellow Tooltip):**
+       - Double-clicking or drilling into template tracks automatically jumps the user into a nested compound clip timeline (**`Dòng thời gian 02`**) and displays a yellow callout bubble: *"Clip của bạn được lưu ở đây. Bạn có thể chuyển về lại dòng thời gian trước đó bất cứ lúc nào."*
+       - *User Experience Impact:* Users unfamiliar with NLE compound clips perceive this as an app crash/severe glitch ("Gì lỗi app kinh khủng v").
+       - *Recovery:* Dismiss the yellow popup ("Đã hiểu"), click back to tab **`Dòng thời gian 01`** to restore the main project timeline.
+     - **Best Practice & User Advice (Mobile vs. PC):**
+       - **NEVER recommend replacing large templates (20–40+ clips) on CapCut PC.** CapCut PC lacks the mobile "Template Wizard" (Batch Slot Picker). Replacing 40 clips one-by-one with manual crop confirmation on PC is agonizingly tedious and error-prone.
+       - **Always redirect large batch templates (thôi nôi, anniversary, baby milestone) to CapCut Mobile (iOS/Android):** Users tap "Sử dụng mẫu", select all 40 photos sequentially from their album, and export in under 60 seconds with perfect beat synchronization.
+       - If forced to use PC: Right-click the segment -> **Thay thế clip (Replace clip)** -> select image -> **Confirm Crop Region (Xác nhận vùng cắt)** to prevent duration expansion, or restrict to short templates with $\le 10-12$ slots.
