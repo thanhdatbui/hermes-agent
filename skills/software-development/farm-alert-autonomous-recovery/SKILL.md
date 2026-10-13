@@ -14,13 +14,14 @@ description: >-
 > Ref: `references/account-switcher-missing-vs-session-lost-triage-20261011.md`.
 > Ref: `references/gemphonefarm-blind-popup-action-miss-triage-20261012.md`.
 > Ref: `references/stale-upload-watchdog-and-tracker-db-drift-triage-20261012.md`.
+> Ref: `references/draft-resume-trap-and-false-hardware-offline-triage-20261013.md`.
 > Ref: `references/avatar-edit-layout-detector-and-closeout-contract.md`.
 
 ## UI evidence: target screen only
 
-> Ref: `references/report-routing-and-workbook-shape-20261011.md` — split-report routing proof and Admin workbook shape checks.
-- User duyệt hiện trường qua `MEDIA:<path>`. **CẤM TUYỆT ĐỐI** gửi ảnh màn hình Home/Launcher Android làm bằng chứng sau teardown/khi lỗi.
-- Bắt buộc chụp ảnh in-app thực tế (Profile, Settings, Popup, Dialog, Switcher) TRƯỚC KHI teardown/force-stop.
+> Ref: `references/report-routing-and-workbook-shape-20261011.md` — split-report routing proof.
+- User duyệt hiện trường qua `MEDIA:<path>`. CẤM gửi ảnh màn hình Home/Launcher Android làm bằng chứng sau teardown/khi lỗi.
+- Bắt buộc chụp ảnh in-app thực tế (Profile, Settings, Popup, Dialog, Switcher) TRƯỚC KHI teardown.
 
 ## 🛑 TRIAGE LỖI CÁP VẬT LÝ ADB (CM_PROB_PHANTOM)
 - Khi nhận alert máy offline / `[01_open]` mà ADB báo `device not found` hoặc `offline`:

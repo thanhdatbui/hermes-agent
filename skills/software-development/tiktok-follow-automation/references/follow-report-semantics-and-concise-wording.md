@@ -94,5 +94,26 @@ Khi tổng hợp mục `Lỗi script/xác minh` trong báo cáo Telegram (`feed_
      * Các lỗi ngoại lệ khác: Chỉ trích xuất thông điệp ngắn gọn đầu tiên (tối đa 60 ký tự), cấm in stack trace/command line thô.
   3. **Nguyên tắc phân định môi trường:** Báo cáo Telegram chỉ hiển thị chỉ số và phân loại nghiệp vụ cấp cao. Chi tiết command line và stderr thô chỉ được lưu trong runtime log trên máy, tuyệt đối không tuồn lên kênh chat.
 
+### 6. Phân Biệt Số Follow Trên DB/Dashboard (Cộng Dồn Ngày) vs Báo Cáo Phiên Watchdog (Per-Session)
+Khi operator thắc mắc: *"Sao trên db báo 1 lượt mà ở đây báo 0?"*:
+- **Bản chất lệch số:** 
+  * `tiktok_tracker.db` (bảng `daily_account_actions`, `session_action_stats`) và trang Dashboard thống kê lũy kế **TOÀN BỘ NGÀY HÔM NAY** (`target_date`). Nếu Phiên 1 (06:00) có máy bấm được 1 follow, DB sẽ ghi nhận `1 lượt`.
+  * Báo cáo Watchdog trên Telegram (`feed_session_watchdog.py`, `follow_session_watchdog.py`) gửi tổng kết **ĐỘC LẬP THEO TỪNG PHIÊN** (Session Window, ví dụ Phiên 2 lúc 07:30–09:30).
+  * Trong Phiên 2, nếu các máy đều bị nhả hoặc skip ➔ Báo cáo Phiên 2 ghi `• Follow chéo (0 lượt follow)`. Đây là kết quả chuẩn xác của riêng phiên đó, không phủ nhận lượt follow thành công của Phiên 1 đã lưu trong DB.
+- **Cách trả lời Operator:** Khẳng định ngay lượt trên DB là thật (từ Phiên 1), giải thích báo cáo Telegram là của riêng Phiên 2, đối soát rõ số máy và thời điểm bấm.
+
+### 7. Bẫy Báo Động Giả "LỖI SCRIPT FOLLOW HÀNG LOẠT" Khi Thiết Bị Rớt Cáp/Nghẽn USB
+- **Hiện tượng:** Watchdog bắn tin cảnh báo đỏ:
+  `🚨 [FARM ALERT] PHÁT HIỆN LỖI SCRIPT FOLLOW HÀNG LOẠT (10 máy lỗi script Follow)`
+  kèm chi tiết: `Lỗi script/xác minh (10): Mất kết nối ADB/USB (10: M12, M27, ...)`.
+- **Bản chất kỹ thuật & Sự ngộ nhận:**
+  * Script Follow (`run_follow.py`) **HOÀN TOÀN KHÔNG BỊ BUG HAY CRASH**. Khi kiểm tra preflight VPN, script phát hiện thiết bị rớt ADB thì chủ động dừng khẩn cấp (`status: BLOCKED`) để bảo vệ tài khoản khỏi lộ IP direct — đây là cơ chế Fail-Closed chuẩn.
+  * Tuy nhiên, hàm `classify_machine_follow_result` trong watchdog gom toàn bộ các ca `BLOCKED` vào danh sách `fl_error`. Khi số máy rớt $\ge 8$ (ngưỡng `DEFAULT_FARM_ALERT_THRESHOLD`), watchdog tự động giật tít `PHÁT HIỆN LỖI SCRIPT FOLLOW HÀNG LOẠT`.
+  * Tiêu đề này đánh lừa operator rằng code bot Python bị lỗi, trong khi nguyên nhân thực chất 100% là **nghẽn bus USB 2.0 EHCI (phần cứng main X99)** sau chu kỳ chạy dài (>24–29 tiếng chưa reboot).
+- **Kỷ luật xử lý khi nhận lệnh "Fix đi":**
+  1. **Không sửa mò script:** Khẳng định script follow không lỗi, giải thích rõ nguyên nhân phần cứng.
+  2. **Giải pháp phục hồi:** Kiểm tra TFT Game Guard (`farm_preflight_daily_reset.py --check-only`). Nếu PASS, kích hoạt Reboot BIOS POST qua Task `Taadaa_Farm_Daily_Reboot_1135` lúc 11:35 (hoặc hỏi operator nếu muốn reboot ngay) để reset thanh ghi phần cứng và kéo 80 máy xanh lại trước Ca 2 (12:00).
+  3. **Chuẩn hóa Telemetry Watchdog:** Tách riêng nhánh `device_disconnected` / `hardware_offline` khỏi `fl_error` để watchdog chỉ báo "Lỗi script" khi có crash/unhandled exception thực sự.
+
 ## Answer style
 Answer the operator's direct question first, in Vietnamese, with no speculative theory. Explain only the distinction needed to prevent the common misread that `Success (0)` equals “no machine ran.”
