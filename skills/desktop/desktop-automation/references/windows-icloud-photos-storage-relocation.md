@@ -1,4 +1,4 @@
-# Windows iCloud Photos Storage Relocation to Secondary Drive
+# Windows iCloud Photos Storage Relocation & Album Handling
 
 ## Problem & Background
 Modern versions of **iCloud for Windows** (distributed via Microsoft Store, integrating with the Windows 10/11 Microsoft Photos app) do not expose a "Change..." folder button for iCloud Photos in the "Photo Settings" dialog, unlike iCloud Drive.
@@ -86,3 +86,9 @@ if hr_get == 0:
 ## Postconditions & Verification
 - After setting Known Folder to `D:\Pictures`, any newly initialized iCloud Photos sync creates its root at `D:\Pictures\iCloud Photos\Photos`.
 - Existing photos already downloaded on C can be migrated or left as-is, saving system drive storage while directing future large downloads exclusively to D:.
+
+## iCloud Photos Album Visibility & Fast Media Filtering in Windows File Dialogs
+- **Limitation in File Pickers:** In standard Windows File Open Dialogs (`Chọn tài nguyên phương tiện`) or File Explorer, the `iCloud Photos\Photos` directory is completely flat. It dumps thousands of photos and videos into a single folder using hash/UUID filenames (e.g., `0F29741D-9A81-4194-A506-3360C1ED8557.mp4`). Apple Albums (such as "Ảnh bé", "Gia đình") exist only as cloud metadata tags, not physical subdirectories on NTFS.
+- **Fast Album Selection Workflows:**
+  1. **Web iCloud (`icloud.com/photos`)**: Browse directly to the specific Album on the web, select the required assets, and download them as a zip/batch into a dedicated local folder (e.g. `D:\Anh_Be`). Standard file dialogs can then point directly to this folder for instant selection.
+  2. **Microsoft Photos App (`Microsoft.Windows.Photos`)**: Apple officially integrates album indexing with the Windows Photos app. The sidebar features an "iCloud Photos" section showing native albums, favorites, and timeline views.
