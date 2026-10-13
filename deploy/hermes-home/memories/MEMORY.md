@@ -8,7 +8,7 @@ TikTok Follow: (máy,row) độc lập, ca khác row khác cấm gộp máy; Quo
 §
 Hotmail bán: CẤM gán mail cá nhân; tự sinh @fviainboxes.com đọc OTP qua API. Tab Chrome CDP đóng ko mất cookie (lưu Profile disk).
 §
-Proxy: User KO đổi, SoT PROXYgandienthoai.xlsx (S7 Google & Hotmail reg TT giữ nguyên port; cấm tự tách; acc 400h cách ly khỏi combo).
+Proxy: User KO đổi, SoT PROXYgandienthoai.xlsx (S7 Google & Hotmail reg TT giữ nguyên port; cấm tự tách; acc 400h cách ly khỏi combo). Wave scheduling tách máy trùng IP (W1 1 máy/proxy, W2 đối tác; 0 collision/wave; gap 15-35m cho Cầu dao).
 §
 Bắt buộc soi vision trước khi gửi; MEDIA: đứng riêng dòng trống né nuốt ảnh.
 §

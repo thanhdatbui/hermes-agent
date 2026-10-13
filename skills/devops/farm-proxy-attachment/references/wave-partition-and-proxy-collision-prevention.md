@@ -15,6 +15,7 @@ Tọa lạc tại: `D:/Taadaa/automation-core/src/automation_core/scheduler/wave
 1. `load_machine_proxy_mapping(excel_path=None)`:
    - Tự động nạp bảng mapping proxy chuẩn từ `PROXYgandienthoai.xlsx` (hỗ trợ cả Kibe và Admin).
    - Chuẩn hóa thành `dict[int, str]` map `machine -> "host:port"`.
+   - Có cơ chế bắt lỗi an toàn (resilience): nếu file Excel không tồn tại hoặc lỗi, trả về mapping rỗng kèm log warning, không làm crash tiến trình.
 2. `partition_accounts_into_waves(accounts, proxy_map=None, seed=None, rng=None)`:
    - Gom nhóm tài khoản theo từng đường proxy (`host:port`).
    - Tung đồng xu / xáo trộn ngẫu nhiên từng bucket proxy để phân bổ máy vào Wave 1, Wave 2 (hoặc Wave 3 nếu cụm Admin có 3 máy/cổng).
@@ -38,13 +39,35 @@ try:
         max_workers=int(ctx.config.get("_max_workers") or len(reserved_accounts) or 1),
     )
 except Exception:
-    launch_plan = build_machine_launch_plan(...)
+    launch_plan = build_machine_launch_plan(
+        [account.machine for account in reserved_accounts],
+        min_stagger_ms=int(stagger[0]),
+        max_stagger_ms=int(stagger[1]),
+        max_workers=int(ctx.config.get("_max_workers") or len(reserved_accounts) or 1),
+    )
+launch_evidence = launch_plan.evidence()
 ```
 
-### Cơ chế hoạt động thực tế:
-- ThreadPoolExecutor chạy với `max_workers = 30`.
-- 30 workers đầu tiên bốc 30 máy của Wave 1 (hoàn toàn khác IP).
-- Khi các máy Wave 1 hoàn thành feed, 9 máy còn lại của Wave 1 tiếp tục chạy.
-- Toàn bộ máy Wave 2 chỉ bắt đầu được nạp vào luồng khi các máy Wave 1 đã giải phóng slot.
-- Tạo ra khoảng cách thời gian tự nhiên **10–20 phút** giữa máy Wave 1 và máy đối tác Wave 2.
-- Nếu máy Wave 1 dính `FOLLOW_FAILED` -> Cầu dao giật ngắt cổng proxy 48h -> Đến khi máy Wave 2 bước vào ca follow, `check_ip_breaker` bắt được cờ `TRIPPED` và Safe-Skip an toàn 100%.
+## 4. Cơ Chế Giãn Cách Thời Gian Thực Tế Giữa 2 Máy Chung IP (Time Gap)
+Khi người dùng hỏi: *"30 máy 1 lúc thì ví dụ máy A ip 1 xong thì máy B ip 1 nối tiếp đúng không?"*:
+- **Cơ chế hàng đợi không nối tiếp ngay lập tức:**
+  * Wave 1 (39 máy): Nằm ở chỉ mục `0..38` trong kế hoạch khởi động.
+  * Wave 2 (39 máy): Nằm ở chỉ mục `39..77` trong kế hoạch khởi động.
+  * Khi 30 workers ban đầu chạy: máy A (IP 1) bắt đầu ở Wave 1. Khi máy A hoàn thành feed session, worker trống sẽ bốc tiếp các máy còn lại của Wave 1 (từ máy 31 đến 39) trước.
+  * Hết Wave 1, các workers mới bắt đầu bốc sang Wave 2.
+  * Trong Wave 2, máy B (IP 1) lại được shuffle ngẫu nhiên ở một vị trí bất kỳ (đầu, giữa hoặc cuối danh sách 39 máy Wave 2).
+- **Khoảng cách an toàn (Time Gap) thực tế:**
+  * Máy B xuất phát sau máy A từ **15 đến 35 phút**.
+  * Khi máy B được bốc, nó tiếp tục mất **10–15 phút lướt feed** trước khi chạm đến bước bấm Follow.
+  * Do đó, thời điểm máy A bấm follow và máy B bấm follow cách nhau **ít nhất 15–35 phút**.
+  * Nếu máy A dính nhả follow ở Wave 1 $\to$ Cầu dao giật ngắt IP ngay lập tức $\to$ Đến phút 25–40 khi máy B chuẩn bị bấm follow, `check_ip_breaker` phát hiện cờ `TRIPPED` và **Safe-Skip** ngay lập tức, cứu nick an toàn 100%.
+
+## 5. Bằng Chứng Kiểm Chứng (Verification Evidence)
+- **Unit test suite:** `D:/Taadaa/automation-core/tests/test_machine_launch.py` (16 passed in 0.73s).
+- **Ca test bao phủ:**
+  1. `test_partition_no_collisions_within_any_wave`: 80 máy, 40 proxy, 2 waves, zero collision trong cả 2 wave.
+  2. `test_partition_admin_three_machines`: 3 máy cùng 1 proxy admin, phân tách chuẩn sang 3 waves.
+  3. `test_partition_empty_and_single`: danh sách rỗng và 1 máy đơn lẻ.
+  4. `test_build_wave_launch_plan_contract`: xác nhận thứ tự order của launch plan xếp trọn vẹn Wave 1 trước Wave 2.
+  5. `test_load_machine_proxy_mapping_resilience`: xử lý an toàn khi file Excel bị thiếu/hỏng mà không crash.
+  6. `test_partition_partner_isolation_flow`: mô phỏng cặp máy M33 & M72 trên port 10001, xác nhận 1 máy vào Wave 1 và 1 máy vào Wave 2.
