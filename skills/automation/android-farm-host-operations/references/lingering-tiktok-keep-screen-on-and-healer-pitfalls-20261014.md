@@ -21,6 +21,14 @@
 2. **Không gọi tắt màn hình chủ động:** Code chỉ chạy `settings put system screen_off_timeout 600000` mà không gọi `input keyevent 26` (Power). Khi TikTok giữ wake lock, thiết lập này vô tác dụng.
 3. **Timeout `dumpsys window` quá ngắn:** Đặt 4s khiến Samsung S7 thường xuyên TimeoutExpired và bị khối `except Exception: pass` nuốt chửng, không thể kích hoạt `am force-stop`.
 
-## 3. Quy Trình Cứu Hộ & Khắc Phục
-- **Cứu hộ tức thời:** Dùng nút "Đóng tất cả ứng dụng" và "Tắt màn hình" trên thanh công cụ của Phóng Vệ (XiaoWei).
-- **Vá cron healer:** Cần bổ sung lệnh `input keyevent 26` sau khi dọn app về Home, và giảm phụ thuộc vào `dumpsys window` bằng cách kiểm tra trực tiếp qua activity stack hoặc force-stop thẳng nếu máy rảnh.
+## 3. Quy Trình Cứu Hộ & Khắc Phục Chuẩn Xác
+- **Cứu hộ tức thời:** Dùng nút "Đóng tất cả ứng dụng" và "Tắt màn hình" trên thanh công cụ của Phóng Vệ (XiaoWei) vì driver USB của XiaoWei vẫn gửi được signal tới các máy đang nghẽn ADB.
+- **Bẫy tử huyệt `input keyevent 26` (Power toggle) vs Giải pháp chuẩn `input keyevent 223` (KEYCODE_SLEEP):**
+  * Nút Power (keyevent 26) là phím đảo trạng thái (toggle). Nếu thiết bị đã ngủ sẵn (như các máy dưỡng sinh), gửi 26 sẽ **BẬT SÁNG MÀN HÌNH TRỞ LẠI**.
+  * BẮT BUỘC dùng **`input keyevent 223` (KEYCODE_SLEEP)**: Lệnh này có tính chất idempotent tuyệt đối — nếu màn hình đang sáng (`Display Power: state=ON` / `mWakefulness=Awake`) thì đưa về sleep; nếu màn hình đã ngủ sẵn thì **giữ nguyên ngủ 100%**, không bao giờ bị bật sáng ngược.
+- **Thay thế `dumpsys window` bằng `pidof` (<0.1s):**
+  * Lệnh nhị phân `pidof com.ss.android.ugc.trill com.zhiliaoapp.musically` phát hiện tức thì app TikTok còn sót trên máy nhàn rỗi (không có active lock trong `~/.codex/device-locks/`).
+  * Khi phát hiện PID: chạy `am force-stop` cả 2 package, gửi `input keyevent 3` (Home) và `input keyevent 223` (Sleep).
+- **Bộ kiểm thử tự động (Unit Test Regression):**
+  * File test: `D:/Taadaa/tools/tests/test_farm_idle_screen_and_app_healer.py`.
+  * Bao phủ 4 nhánh kiểm thử: `test_is_near_reboot_window`, `test_heal_device_locked`, `test_heal_device_lingering_tiktok_and_screen_off`, `test_heal_device_clean_idle` (100% passed).
