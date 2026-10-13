@@ -122,6 +122,34 @@ def _is_allowed_evidence_image_path(img_path: str) -> bool:
     return any(norm_p.startswith(pref) for pref in allowed_prefixes)
 
 
+def _validate_image_content(img_path: str) -> bool:
+    """Xác thực ảnh là file ảnh thật hợp lệ, chống giả mạo bằng file rác/placeholder
+    (Round 10 — Actual Image Content Validation, chống việc Gate chấp nhận mù bất kỳ
+    file nào tồn tại trên đĩa làm bằng chứng mà không hề decode nội dung thật của nó).
+    Mở và decode bằng Pillow (CORE dependency của Hermes); bác bỏ file hỏng, không phải
+    ảnh, hoặc có kích thước quá nhỏ bất thường (nghi ngờ placeholder 1x1/giả mạo).
+    """
+    try:
+        from PIL import Image, UnidentifiedImageError
+    except ImportError:
+        logger.warning("[FARM_GUARD] Pillow không khả dụng -> FAIL-CLOSED, không thể xác thực nội dung ảnh: %s", img_path)
+        return False
+
+    try:
+        with Image.open(img_path) as im:
+            im.verify()
+        with Image.open(img_path) as im2:
+            width, height = im2.size
+    except (UnidentifiedImageError, OSError, ValueError) as exc:
+        logger.warning("[FARM_GUARD] Ảnh '%s' không phải file ảnh hợp lệ hoặc bị hỏng (content validation failed): %s", img_path, exc)
+        return False
+
+    if width < 20 or height < 20:
+        logger.warning("[FARM_GUARD] Ảnh '%s' có kích thước bất thường (%dx%d) -> nghi ngờ placeholder/giả mạo, từ chối.", img_path, width, height)
+        return False
+    return True
+
+
 def _compute_file_sha256(path: str) -> str:
     """Tính SHA-256 của file ảnh trên đĩa để chống tampering."""
     try:
@@ -1297,6 +1325,10 @@ def _on_post_tool_call(
                     logger.warning("[FARM_GUARD] OCR image rejected by Provenance Enforcement: %s", img_p)
                     return
 
+                if not _validate_image_content(img_p):
+                    logger.warning("[FARM_GUARD] OCR image rejected: not a decodable real image (content validation failed): %s", img_p)
+                    return
+
                 file_sha = _compute_file_sha256(img_p)
                 if not file_sha:
                     logger.warning("[FARM_GUARD] OCR target image SHA-256 could not be computed: %s", img_p)
@@ -1352,7 +1384,7 @@ def _on_post_tool_call(
             m_sc = re.search(sc_pat, res_str)
             if m_sc:
                 sc_p = os.path.normcase(os.path.normpath(m_sc.group(1).strip().strip('"\'')))
-                if os.path.isfile(sc_p) and _is_allowed_evidence_image_path(sc_p):
+                if os.path.isfile(sc_p) and _is_allowed_evidence_image_path(sc_p) and _validate_image_content(sc_p):
                     sc_sha = _compute_file_sha256(sc_p)
                     if sc_sha:
                         if sc_p not in verified:
@@ -1629,6 +1661,22 @@ def _extract_media_paths(text: str) -> List[str]:
     return paths
 
 
+_PROCESS_DOC_EXEMPTION_PATTERN = re.compile(
+    r"\b(?:quy\s*trình|đóng\s*gói|hướng\s*dẫn|đặc\s*tả|tài\s*liệu|sop|tiêu\s*chuẩn|cẩm\s*nang|quy\s*chuẩn)\b",
+    re.IGNORECASE,
+)
+
+
+def _is_process_doc_exempt(text: str) -> bool:
+    """Miễn trừ các văn bản mang tính tổng hợp quy trình, đóng gói quy trình, hướng dẫn,
+    tài liệu, đặc tả, SOP, tiêu chuẩn, cẩm nang, quy chuẩn — không phải tuyên bố kết quả
+    tác vụ thật trên máy, nên không cần bắt buộc đính kèm MEDIA bằng chứng.
+    """
+    if not text:
+        return False
+    return bool(_PROCESS_DOC_EXEMPTION_PATTERN.search(text))
+
+
 def _enforce_evidence_first_gate(response_text: str, session_id: str) -> Optional[str]:
     """Cơ chế Chốt chặn Bằng chứng Thị giác (Evidence-First Hard Gate v4.3 — Round 8 Production Certified):
     Nếu Coordinator tuyên bố hoàn thành tác vụ UI/Farm (đã đăng nhập, bật 2fa, đổi pass, v.v.):
@@ -1648,6 +1696,8 @@ def _enforce_evidence_first_gate(response_text: str, session_id: str) -> Optiona
         return None
     if _is_worker_session(session_id):
         return None
+    if _is_process_doc_exempt(response_text):
+        return None
 
     has_completion_claim, claim_types = _detect_completion_claims(response_text)
     if not has_completion_claim:
@@ -1664,7 +1714,13 @@ def _enforce_evidence_first_gate(response_text: str, session_id: str) -> Optiona
     except Exception:
         verified_details_recap = {}
 
-    if claim_types and verified_details_recap:
+    # Chỉ áp dụng bypass "recap" khi turn NÀY không đính kèm MEDIA mới.
+    # Nếu Coordinator đính kèm MEDIA mới (có thể bị tampered hoặc không khớp nội dung/entity),
+    # bắt buộc phải đi qua toàn bộ pipeline xác thực thật bên dưới (SHA-256, content, per-image
+    # per-user binding) — tuyệt đối không được bỏ qua chỉ vì một category từng khớp trước đó.
+    media_paths_this_turn = _extract_media_paths(response_text)
+
+    if claim_types and verified_details_recap and not media_paths_this_turn:
         recap_keywords_map = {
             "2fa": [
                 r"\b(?:xác minh 2 bước|2 bước|two-step|two-factor)\s+(?:đang\s+bật|bật|on)\b",
@@ -1718,7 +1774,7 @@ def _enforce_evidence_first_gate(response_text: str, session_id: str) -> Optiona
     if re.search(r"\b(?:closeout|kết\s+thúc\s+phiên|tổng\s+kết|bảng\s+điểm|phiên\s+làm\s+việc|nghiệm\s+thu|sol\s+auditor)\b", response_text, re.IGNORECASE):
         return None
 
-    media_paths = _extract_media_paths(response_text)
+    media_paths = media_paths_this_turn
     if not media_paths:
         if sess_state_recap.get("verified_media_paths"):
             logger.info(

@@ -4,14 +4,24 @@ import time
 import uuid
 import tempfile
 import unittest
+from io import BytesIO
 from pathlib import Path
 from unittest.mock import patch, MagicMock
+
+from PIL import Image
 
 PLUGIN_DIR = os.path.dirname(os.path.abspath(__file__))
 if PLUGIN_DIR not in sys.path:
     sys.path.insert(0, PLUGIN_DIR)
 
 import __init__ as guard_plugin
+
+
+def _real_png_bytes(size=(64, 64), color=(10, 20, 30)) -> bytes:
+    """Sinh bytes của một ảnh PNG thật, hợp lệ, decode được (dùng cho test thay cho bytes rác)."""
+    buf = BytesIO()
+    Image.new("RGB", size, color).save(buf, format="PNG")
+    return buf.getvalue()
 
 
 class TestEvidenceFirstGateV43(unittest.TestCase):
@@ -51,6 +61,18 @@ class TestEvidenceFirstGateV43(unittest.TestCase):
     def test_detect_claims_actual_failure_ignored(self):
         self.assertFalse(guard_plugin._detect_completion_claims("Chưa đăng nhập thành công")[0])
         self.assertFalse(guard_plugin._detect_completion_claims("Không bật được 2fa")[0])
+
+    def test_process_doc_exemption_bypasses_gate(self):
+        """Văn bản tổng hợp/đóng gói quy trình, hướng dẫn, đặc tả, tài liệu, SOP, tiêu chuẩn,
+        cẩm nang, quy chuẩn không phải tuyên bố kết quả thật -> gate phải trả về None ngay,
+        không được bắt lỗi thiếu MEDIA."""
+        text = (
+            "ĐÃ ĐÓNG GÓI HOÀN CHỈNH QUY TRÌNH CHUẨN ĐỔI BẢO MẬT & 2FA CHO HOTMAIL TRÊN GPM "
+            "(CHANGE_INFO):"
+        )
+        self.assertTrue(guard_plugin._is_process_doc_exempt(text))
+        sess_id = f"test_doc_exempt_{uuid.uuid4().hex[:8]}"
+        self.assertIsNone(guard_plugin._enforce_evidence_first_gate(text, sess_id))
 
     def test_detect_claims_false_positives_ignored(self):
         """Kiểm thử chống false positive: hội thoại bình thường hoặc mô tả lỗi không bị coi là hoàn tất."""
@@ -100,9 +122,9 @@ class TestEvidenceFirstGateV43(unittest.TestCase):
             valid_img = os.path.join(tmp_dir, "valid.png")
             unauthorized_img = os.path.join(tmp_dir, "unauthorized.png")
             with open(valid_img, "wb") as f:
-                f.write(b"valid image")
+                f.write(_real_png_bytes())
             with open(unauthorized_img, "wb") as f:
-                f.write(b"unauthorized image")
+                f.write(_real_png_bytes())
 
             real_ocr_script = sorted(list(guard_plugin._allowed_ocr_scripts()))[0]
 
@@ -135,7 +157,7 @@ class TestEvidenceFirstGateV43(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp_dir:
             valid_sc = os.path.join(tmp_dir, "valid.png")
             with open(valid_sc, "wb") as f:
-                f.write(b"valid")
+                f.write(_real_png_bytes())
 
             # Ca 1: Navigate từ file:///.../page.html -> BỊ TỪ CHỐI!
             guard_plugin._on_post_tool_call(
@@ -187,6 +209,71 @@ class TestEvidenceFirstGateV43(unittest.TestCase):
                 )
                 state = guard_plugin._get_session_state(sess_id)
                 self.assertIn(os.path.normcase(valid_sc), state.get("verified_media_paths", []))
+
+    # --- 5b. KIỂM THỬ XÁC THỰC NỘI DUNG ẢNH THẬT (CHỐNG BLIND-ACCEPT FILE RÁC/GIẢ MẠO) ---
+    def test_validate_image_content_rejects_fake_and_tiny_files(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            real_png = os.path.join(tmp_dir, "real.png")
+            with open(real_png, "wb") as f:
+                f.write(_real_png_bytes())
+            self.assertTrue(guard_plugin._validate_image_content(real_png))
+
+            fake_txt_as_png = os.path.join(tmp_dir, "fake.png")
+            with open(fake_txt_as_png, "wb") as f:
+                f.write(b"not actually an image, just text pretending to be one")
+            self.assertFalse(guard_plugin._validate_image_content(fake_txt_as_png))
+
+            tiny_png = os.path.join(tmp_dir, "tiny.png")
+            with open(tiny_png, "wb") as f:
+                f.write(_real_png_bytes(size=(2, 2)))
+            self.assertFalse(guard_plugin._validate_image_content(tiny_png))
+
+            missing_png = os.path.join(tmp_dir, "missing.png")
+            self.assertFalse(guard_plugin._validate_image_content(missing_png))
+
+    def test_ocr_registration_rejects_non_image_file_despite_good_provenance(self):
+        """Gate phải decode ảnh thật, không chỉ tin vào exit_code=0 + text OCR không rỗng."""
+        sess_id = f"test_ocr_fake_{uuid.uuid4().hex[:8]}"
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            fake_img = os.path.join(tmp_dir, "fake.png")
+            with open(fake_img, "wb") as f:
+                f.write(b"this is not a real image, just garbage bytes with .png extension")
+
+            real_ocr_script = sorted(list(guard_plugin._allowed_ocr_scripts()))[0]
+            with patch("__init__._is_allowed_evidence_image_path", return_value=True):
+                guard_plugin._on_post_tool_call(
+                    tool_name="terminal",
+                    args={"command": f'python "{real_ocr_script}" "{fake_img}"'},
+                    result={"output": "xác minh 2 bước đang bật", "exit_code": 0},
+                    session_id=sess_id,
+                )
+                state = guard_plugin._get_session_state(sess_id)
+                self.assertNotIn(os.path.normcase(fake_img), state.get("verified_media_paths", []))
+
+    def test_browser_vision_registration_rejects_non_image_file_despite_good_navigation(self):
+        """Gate phải decode ảnh thật được dẫn ra từ 'Screenshot path:', không chỉ tin
+        mù vào chuỗi text 'Visual inspect ok' do tool trả về."""
+        sess_id = f"test_vision_fake_{uuid.uuid4().hex[:8]}"
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            fake_sc = os.path.join(tmp_dir, "fake_shot.png")
+            with open(fake_sc, "wb") as f:
+                f.write(b"garbage bytes claiming to be a screenshot")
+
+            guard_plugin._on_post_tool_call(
+                tool_name="browser_navigate",
+                args={"url": "https://www.tiktok.com"},
+                result="navigated",
+                session_id=sess_id,
+            )
+            with patch("__init__._is_allowed_evidence_image_path", return_value=True):
+                guard_plugin._on_post_tool_call(
+                    tool_name="browser_vision",
+                    args={},
+                    result=f"Visual inspect ok. Screenshot path: {fake_sc}",
+                    session_id=sess_id,
+                )
+                state = guard_plugin._get_session_state(sess_id)
+                self.assertNotIn(os.path.normcase(fake_sc), state.get("verified_media_paths", []))
 
     # --- 6. KIỂM THỬ BẢO VỆ SCRIPT OCR (F6) ---
     def test_ocr_scripts_are_protected_targets(self):
