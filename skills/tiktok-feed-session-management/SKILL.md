@@ -8,17 +8,14 @@ author: Hermes Agent
 ---
 
 ## References & Invariants
+- Watchdog timezone deadlock & concurrency starvation: see [references/watchdog-timezone-deadlock-and-concurrency-starvation.md](references/watchdog-timezone-deadlock-and-concurrency-starvation.md).
 - Split dispatch & OneDrive rules: see [references/telegram-split-dispatch-and-onedrive-conflict-invariants.md](references/telegram-split-dispatch-and-onedrive-conflict-invariants.md).
 - Watchdog taxonomy & triage: see [references/feed-watchdog-catchall-taxonomy-and-triage.md](references/feed-watchdog-catchall-taxonomy-and-triage.md).
 - Row starvation: see [references/row-nurture-starvation-and-cycle-monitoring.md](references/row-nurture-starvation-and-cycle-monitoring.md).
 - Dashboard health implementation lessons: see [references/dashboard-nurture-health-implementation.md](references/dashboard-nurture-health-implementation.md).
 
 ## Watchdog Upload Status Taxonomy & Triage
-
-### Evidence-first cluster triage
-For mixed watchdog failures, see [references/feed-watchdog-catchall-taxonomy-and-triage.md](references/feed-watchdog-catchall-taxonomy-and-triage.md). Run `python D:/Taadaa/tools/inspect_machine.py <N>` on representative machines before diagnosing.
-
-Report both the percentage and the evidence-backed interpretation. If one cluster (for example Admin) has a materially higher proxy-failure share than another cluster (for example Kibe), prioritize proxy/egress triage there before editing feed logic. Record representative probe outputs and distinguish confirmed causes from hypotheses; if no code change was performed, say so explicitly and avoid claiming remediation.
+See detailed taxonomy and field breakdown in [references/feed-watchdog-catchall-taxonomy-and-triage.md](references/feed-watchdog-catchall-taxonomy-and-triage.md). If one cluster (for example Admin) has a materially higher proxy-failure share than another cluster (for example Kibe), prioritize proxy/egress triage there before editing feed logic. Record representative probe outputs and distinguish confirmed causes from hypotheses; if no code change was performed, say so explicitly and avoid claiming remediation.
 
 When interpreting upload metrics in `feed_session_watchdog` reports (e.g. `Đang dưỡng sinh`, `Khác`, `Hết video/Cần cào`):
 - `Đang dưỡng sinh`: Normal organic rest policy (~33% farm), no upload/follow attempted.

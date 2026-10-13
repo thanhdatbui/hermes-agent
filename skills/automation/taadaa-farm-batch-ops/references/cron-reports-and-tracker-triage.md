@@ -100,3 +100,47 @@ File tại `D:/Taadaa/reports/tiktok_tracker_report.xlsx`, sheet `TikTok Account
   + Dùng script kiểm tra số lượng clip `.mp4` trong từng folder của Tik đó (`formula: (m - 1) * 8 + slot`).
   + Tìm folder có `< 30 clip` (thường là 29 clip, thiếu đúng 1 clip).
   + Chạy render bù đơn lẻ đúng folder đó bằng FFmpeg hoặc single-task script để đưa toàn bộ cụm về 100% (80/80).
+
+---
+
+## 5. Bẫy Ngộ Nhận Thiết Bị Offline vs Nick Kẹt Khi Đọc Báo Cáo Stale Watchdog (> 14 Ngày)
+
+### A. Triệu chứng & Bẫy kết luận vội vàng
+- Watchdog `daily-stale-upload-accounts-watchdog` hoặc lệnh audit báo:
+  `🚨 M10, M44, M55, M69... kẹt > 14-26 ngày (1-3 clip)`.
+- Khi agent chạy `adb devices` thấy máy đó đang offline (do vừa nghẽn bus USB), agent vội vàng phán: *"Máy M bị hỏng phần cứng / tuột cáp suốt 20+ ngày qua"*.
+- **HẬU QUẢ**: Bị User bắt bẻ và chỉnh đốn ngay lập tức vì thực tế máy đó hôm qua và sáng nay vẫn online chạy bình thường.
+
+### B. Kỷ luật kiểm chứng đối soát O(1) (BẮT BUỘC)
+- Trước khi tuyên bố máy bị hỏng phần cứng lâu ngày, BẮT BUỘC kiểm tra trạng thái **7 slot còn lại trên cùng máy** trong `taikhoan_run_safe.xlsx` hoặc database SQLite `snapshots`:
+  ```python
+  # Kiểm tra số video của cả 8 slot trên máy M
+  # Nếu các slot khác vẫn có video tăng đều (10 - 33 clip) và có snapshot trong 24h qua:
+  # -> THIẾT BỊ PHẦN CỨNG HOÀN TOÀN BÌNH THƯỜNG!
+  ```
+- **Quy tắc phân định**:
+  1. Con số "kẹt > 20 ngày" là thời gian trôi của **riêng 1 tài khoản/slot cụ thể**, KHÔNG PHẢI thời gian máy bị offline.
+  2. Hiện tượng nhiều máy rớt ADB cùng lúc (như 30–40 máy) trên Host chạy >24h là do **nghẽn buffer bus USB 2.0 EHCI tạm thời**, sẽ tự động được giải phóng sạch sẽ bằng System Bus Reset lúc 11:35 trưa qua Task Scheduler `Taadaa_Farm_Daily_Reboot_1135`.
+
+---
+
+## 6. Căn Nguyên Kẹt Slot Lẻ Trên Máy Online (Draft Resume Trap & Chu Kỳ 96h)
+
+### A. Bug "Bản Nháp Trap" (Draft Resume Fallthrough)
+- **Cơ chế gây lỗi trong `state_machine.py`**:
+  1. Khi tài khoản có bản nháp cũ lưu trên Profile, hàm `_handle_video_pick` phát hiện `has_profile_draft` và gọi `_resume_draft_from_profile`.
+  2. Script tap vào bản nháp để mở nhưng không xác nhận được màn hình Composer (`COMPOSER_NOT_CONFIRMED`).
+  3. Script log cảnh báo và fallthrough sang luồng upload thông thường:
+     `[VIDEO_PICK] Mở bản nháp không thành công; tiếp tục fallthrough luồng upload chuẩn`.
+  4. **Tử huyệt**: Sau khi mở bản nháp thất bại, màn hình điện thoại **vẫn đang kẹt trong giao diện Thư viện Bản nháp**, hoàn toàn không có thanh điều hướng Home với nút `[+]` (Quay) ở đáy màn hình.
+  5. Luồng upload thường tìm không thấy nút `[+]` $\rightarrow$ văng lỗi `[VIDEO_PICK_CREATE_ENTRY_UNCONFIRMED] Recaptured surface did not prove a labelled bottom-centre create control` $\rightarrow$ abort sang `MANUAL_REVIEW`.
+  6. Các chu kỳ sau lặp lại y hệt do bản nháp vẫn nằm trên Profile, khiến nick đó bị kẹt vĩnh viễn ở số clip thấp.
+- **Cách khắc phục**:
+  - Tức thời: Vào app TikTok trên máy đó xóa sạch bản nháp đang lưu trên Profile.
+  - Tận gốc: Trong `state_machine.py`, nếu resume bản nháp thất bại, BẮT BUỘC phải thực hiện lệnh `Back` hoặc `Home` để đưa app về màn hình chính có thanh điều hướng trước khi fallthrough sang luồng upload thường.
+
+### B. Hiệu ứng cộng dồn chu kỳ nuôi 4 ngày (96h)
+- Farm vận hành theo chu kỳ cố định 4 ngày: **Day 0 (Row 1, 3, 5) — Day 1 (Row 2, 4, 6) — Day 2 (Row 7, 8) — Day 3 (Nghỉ)**.
+- Mỗi row chỉ đến lượt chạy đúng **1 lần duy nhất sau mỗi 96 giờ**.
+- Nếu 1 nick dính cờ nghỉ dưỡng sinh (trước ngày 11/10) hoặc gặp lỗi UI (như bug bản nháp ở trên), nick đó phải chờ tiếp **4 ngày sau** mới có cơ hội thử lại.
+- Chỉ cần trượt 4 chu kỳ liên tiếp là nick đã trôi thành **16 ngày kẹt**, dẫn đến cảnh báo stale > 14 ngày của watchdog trong khi dàn máy vẫn chạy đều đặn mỗi ngày.
