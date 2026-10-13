@@ -12,6 +12,7 @@ References:
 - `references/hermes-gateway-reboot-auto-resume-architecture-20261013.md` — Kiến trúc tự động bảo toàn và kích hoạt chạy tiếp session Hermes Telegram sau khi host reboot (Zero-Chat Auto-Resume).
 - `references/preflight-3shift-reboot-schedule-and-task-validation-20261013.md` — Quy chuẩn reboot 3 Ca chính (05:20, 11:20, 17:20, 40p đệm), chống reboot dày đặc theo phiên, fail-fast validation và read-back test.
 - `references/inter-shift-cron-reboot-avoidance-and-warmup-buffer-20261013.md` — Quy chuẩn 40 phút warmup buffer (05:20, 11:20, 17:20) và cơ chế tự né giờ reboot cho các cron/watchdog thao tác trên thiết bị S7 giữa các ca.
+- `references/feed-watchdog-misclassification-and-usb-stall.md` — Phân tích bẫy phân loại fallback "Lỗi App TikTok/Script" trong feed_session_watchdog.py khi USB pipe bị treo (13/10/2026).
 
 Scripts:
 - `scripts/safe_usb_guard.py` — Script nguồn mẫu giám sát và reset EHCI bus theo ngưỡng.
@@ -410,13 +411,27 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
      * `adb devices` vẫn liệt kê serial nhưng ở trạng thái `offline`.
      * Windows PnP `Present: true`.
      * *Nguyên nhân:* Kết nối vật lý và endpoint ADB vẫn tồn tại, nhưng socket handshake giữa host `adb.exe` và daemon `adbd` trên điện thoại bị timeout, flapping, hoặc màn hình khóa chưa accept USB debugging. Thường tự phục hồi qua `farm-adb-transport-healer` (`adb reconnect`).
-- **Quy trình truy vấn O(1) an toàn (Không vi phạm Hard Guard ADB & Không quét đĩa):**
-  * Lấy danh sách ADB an toàn: Chạy script chuẩn hóa `python D:/Taadaa/tools/inspect_machine.py`.
-  * Truy vấn phần cứng PnP qua PowerShell (Kibe Local hoặc qua SSH tới Admin PC):
-    ```powershell
-    Get-PnpDevice -Class USB | Where-Object { $_.Present -eq $true } | Select-Object InstanceId, Status, FriendlyName
-    ```
-  * So khớp serial từ `USB\VID_04E8&PID_6860\<SERIAL>` với file mapping `PROXYgandienthoai.xlsx` của từng cụm (Kibe: M01–M80, Admin: M201–M280) để phân loại chính xác từng máy.
+## 20. Bẫy Watchdog Phân Loại Nhầm "Lỗi App TikTok/Script" & Kỷ Luật Kiểm Chứng O(1) Chống Văn Vẻ
+- **Bản chất code trong `feed_session_watchdog.py` (`classify_feed_failure`):**
+  ```python
+  def classify_feed_failure(reason: Any) -> str:
+      r = str(reason or "").lower()
+      if any(k in r for k in ("device not found", "device offline", "not found in adb", "no-run-recorded", "unauthorized", "transport", "adb/usb")):
+          return "Mất kết nối ADB/USB"
+      ...
+      return "Lỗi App TikTok/Script"  # <--- BẪY FALLBACK MẶC ĐỊNH CHO MỌI LỖI KHÔNG XÁC ĐỊNH!
+  ```
+- **Hiện tượng thực tế trong ca nuôi:**
+  1. Khi USB bus bị nghẽn đệm hoặc đứt kết nối ngầm, lệnh mở app hoặc kiểm tra màn hình (`dumpsys window` / `get_focused_activity`) trả về `None` / `unknown`.
+  2. Runner ghi nhận: `prepare-tiktok failed to focus TikTok after launch`.
+  3. Khi watchdog quét qua chuỗi lỗi này, vì không chứa chữ *"device not found"* hay *"adb/usb"*, nó **tự động tống vào nhãn "Lỗi App TikTok/Script"**.
+  4. Đồng thời, các máy bị timeout ở bước kiểm tra proxy ban đầu (`adb command timed out` khi check `settings get global http_proxy`) bị runner ghi `blocked-proxy-vpn` $\rightarrow$ Watchdog gom vào "Mất kết nối ADB/USB".
+- **Kỷ Luật Phản Hồi Khi Nhận Alert Lỗi App Hàng Loạt (CHỐNG VĂN VẺ / SUY DIỄN SUÔNG):**
+  * **CẤM TUYỆT ĐỐI** Coordinator ngồi suy diễn lý thuyết hoa mỹ ("nhóm dưỡng sinh sống sót vì I/O thấp...", "nguyên lý triết học...") gây bức xúc cho người dùng ("Làm gì có chuyện văn khiếp thế").
+  * **BẮT BUỘC Quy Trình Đối Soát O(1) 3 Bước Thực Tế Trước Khi Trả Lời:**
+    1. **Bước 1 (Đọc stop_reason thực):** Đọc trực tiếp `summary.txt` của run tại `D:\Taadaa\runtime\<cluster>\live\<date>\<session>\<timestamp>\summary.txt` (bảng tổng hợp `multi_machine_summary`). Xem chính xác `stop_reason` của từng máy.
+    2. **Bước 2 (Chỉ ra bẫy watchdog):** Giải thích rõ watchdog đang phân loại theo fallback mặc định chứ không phải app TikTok bị lỗi thật.
+    3. **Bước 3 (Test hiện trường O(1)):** Chạy `python D:/Taadaa/tools/inspect_machine.py <N>` trên 2–3 máy trong nhóm báo lỗi. Nếu thấy `device not found` hoặc lệnh `adb shell` treo timeout > 15s $\rightarrow$ khẳng định ngay: **"100% rớt kết nối USB/ADB, không có con app nào lỗi cả, watchdog phân loại nhầm."** Chốt giải pháp duy nhất: Reboot host để giải phóng thanh ghi USB.
 
 
 
