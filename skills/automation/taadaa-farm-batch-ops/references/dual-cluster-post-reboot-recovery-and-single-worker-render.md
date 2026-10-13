@@ -121,3 +121,19 @@ Khi User hoặc hệ thống reboot 1 hoặc cả 2 máy, toàn bộ các tiến
     2. Dùng yt-dlp cào bổ sung thêm các clip Shorts mới chất lượng cao đúng niche vào thư mục nguồn `D:\video goc\<src_id>` để nâng tổng clip gốc lên $\ge 45$.
     3. Chạy render với `--resume-verify-existing` để render nốt các clip còn thiếu (`41.mp4`..`45.mp4`) lên đích.
 
+### Bẫy 9: SSH Background Process Exit Code 255 & Detached Process Isolation
+- **Hiện tượng**: Khi Coordinator chạy lệnh nền từ xa qua SSH (e.g. `ssh admin-farm "python -u ... > log 2>&1"`):
+  - Bất kỳ thao tác kill tiến trình cũ (để giải phóng lock ổ đĩa trước khi realign thư mục), rớt mạng LAN, hoặc reset máy Admin sẽ khiến tiến trình SSH trả về cảnh báo `exited (exit code 255)`.
+- **Kỷ luật xử lý**:
+  - Coordinator KHÔNG được hoảng loạn hoặc kết luận toàn bộ tiến trình render/cào đã chết. BẮT BUỘC kiểm tra liveness của `ffmpeg.exe` hoặc `python.exe` qua lệnh không vướng SSH pipe hoặc qua log đuôi.
+  - Để tiến trình render Admin sống sót hoàn toàn độc lập với SSH session: ưu tiên đẩy script launcher detached (`Start-Process python -ArgumentList ... -WindowStyle Hidden` qua PowerShell hoặc dùng `subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS` trong script launcher Python).
+
+### Bẫy 10: Chống Im Lặng Khi Tác Vụ Nền Kéo Dài (Anti-Silence & Proactive Telemetry)
+- **Tín hiệu người dùng**: Người dùng bức xúc ("Sao r chả thấy cạp nhật v") khi Coordinator giữ im lặng quá lâu trong lúc các tiến trình render hàng chục folder đang chạy ngầm (mỗi folder mất 15-30 phút).
+- **Kỷ luật điều phối**:
+  - Khi quản lý batch render/cào đường dài, mỗi khi nhận sự kiện hoàn thành của một subprocess con hoặc sau mỗi checkpoint kiểm tra, BẮT BUỘC chủ động cập nhật tóm tắt hiện trường cho User:
+    + Số lượng folder đã hoàn tất / tổng số folder (kèm phần trăm rõ ràng, e.g. `611/640 (95.5%)`).
+    + Tên và folder cụ thể đang render trực tiếp (e.g. `Tik7 M41 Out 327 <- Src 521`).
+    + PID phần cứng và dung lượng RAM của các tiến trình chủ chốt (`ffmpeg.exe`, `python.exe`).
+  - Tuyệt đối không chờ đến khi toàn bộ batch 30-40 folder chạy xong mới báo cáo.
+

@@ -120,3 +120,18 @@ Nhiều thợ farm lầm tưởng *"TikTok chỉ là app thường, không xin q
 2. **Kỷ luật chủ động kiểm tra hiện trường (Anti-Passivity):**
    - Khi User hỏi hoặc yêu cầu kiểm tra/quét dàn máy: CẤM TUYỆT ĐỐI ngồi thụ động hỏi xin User số máy hay serial.
    - Coordinator có kết nối trực tiếp đến toàn bộ thiết bị (Kibe Local: localhost:5037, Admin Remote: 192.168.110.119:5037), BẮT BUỘC chủ động chạy `adb devices`, `inspect_machine.py`, hoặc các script scan hàng loạt để lấy mẫu và báo cáo hiện trường thực tế ngay lập tức.
+
+---
+
+## 10. Phân biệt TikTok Trill (`com.ss.android.ugc.trill`) & Window Focus Triage
+1. **Phân nhánh Package chính thức của ByteDance theo vùng địa lý (Geo-distribution):**
+   - `com.ss.android.ugc.trill` (**TikTok Trill**): Nhánh chính thức cho Đông Nam Á (VN, Thái, Indo, Mã...) và Đông Á (Nhật, Hàn). Khi tải từ Google Play tại Việt Nam, máy nhận mặc định bản Trill này. Đây là app gốc 100% của ByteDance, hoàn toàn vô hại và tối ưu chữ ký địa lý cho farm Việt Nam.
+   - `com.zhiliaoapp.musically`: Nhánh quốc tế (Bắc Mỹ, Châu Âu, Global ngoài châu Á) kế thừa từ Musical.ly.
+   - `com.ss.android.ugc.aweme`: Douyin nội địa Trung Quốc.
+2. **Cơ chế `mCurrentFocus` vs `PackageManager` (Tránh hiểu lầm khi scan farm):**
+   - `mCurrentFocus` (từ `dumpsys window`) chỉ thể hiện cửa sổ/app đang chiếm trọn mặt tiền (Foreground) tại thời điểm lệnh chạy.
+   - Máy báo `com.sec.android.app.launcher`: Đang ở Màn hình chính (Home Screen) của Samsung ở trạng thái nghỉ (Idle/Sleep).
+   - Máy báo `com.ss.android.ugc.trill`: Đang mở trực tiếp giao diện TikTok (ví dụ màn đổi Avatar, xem video).
+   - *Quy tắc:* Việc máy ở `Launcher` không có nghĩa là máy không cài TikTok; 100% máy trong farm đều cài sẵn TikTok Trill trong bộ nhớ, chỉ mở ra khi ca nuôi chạy.
+3. **Công cụ trích xuất toàn farm O(1):**
+   - Dùng `python D:/Taadaa/tools/inspect_machine.py --all` để quét song song đa luồng (`ThreadPoolExecutor`) toàn bộ 160 slot máy (1-80 và 201-280), trích xuất nhanh Model, Pin, Màn hình và Current Focus trong < 40s mà không nghẽn daemon ADB.
