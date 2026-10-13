@@ -7,16 +7,24 @@
 
 ## 1. Bản chất Sự cố & Cạm bẫy
 
-### 1.1. False-Positive: Add-Friend Header Icon (`zz5`/`pwb`) vs Top-Left Pencil
-- **Hiện tượng**: Trên layout TikTok mới (Avatar nằm góc trên bên phải `[708,300][1080,636]` kèm bong bóng Note "Thì thầm to nhỏ" / "Tám chuyện nào"), icon trên cùng bên trái `[24,96][126,204]` thực chất là **icon "Thêm bạn bè" (Add friends)** có resource-id `com.ss.android.ugc.trill:id/zz5` hoặc `pwb`.
-- **Cạm bẫy code**: `TopLeftPencilLayout.matches(tree)` kiểm tra bounds `left 10..45, top 70..130` mà không loại trừ `zz5`/`pwb`, dẫn đến nhận diện nhầm icon Add-Friend thành bút chì sửa hồ sơ.
-- **Hậu quả**: Runner tap trượt, sau đó tap thẳng vào avatar thì bị vướng vào pop-up Story 24h ("Hiển thị với follower trong 24 giờ"), không có menu "Tải ảnh lên" ➔ Crash `AVATAR_UPLOAD_MENU_MISSING`.
-- **Fix đã áp dụng**:
-  ```python
-  # Trong TopLeftPencilLayout.matches():
-  if tree.has_text("sửa hồ sơ", "chỉnh sửa hồ sơ", "edit profile") or tree.has_rid("zz5", "pwb"):
-      return False
-  ```
+### 1.1. Top-Left Pencil Header `(75, 150)` & Cấm Tự Chế Bánh Xe Thay Thế Script Canonical
+- **Sự thật đã được xác nhận**: Trên layout TikTok mới (Layout C: avatar nằm bên phải kèm bong bóng Note), icon ở góc trên cùng bên trái tại tọa độ `(75, 150)` **CHÍNH LÀ CÂY BÚT CHÌ SỬA HỒ SƠ** (mở trực tiếp `ProfileEditActivity`).
+- **Kỷ luật Canonical Tooling**: Script upload avatar canonical của User (ví dụ `D:/Taadaa/tools/do_upload_avatar_m71.py`) **ĐÃ ĐƯỢC FIX CHUẨN ĐỂ TAP THẲNG VÀO CÂY BÚT CHÌ (75, 150)**.
+- **Sai lầm chết người của Agent**:
+  - Tự suy diễn sai rằng `(75, 150)` là icon Add-Friend (`zz5`/`pwb`), từ đó tự ý viết patch phá vỡ layout detector và tự viết script tap tay ngoài lề.
+  - User chất vấn gay gắt: *"thấy cây bút góc trái trên cùng k? ... t nhớ có script upload ava t đã fix chỉ bấm vào cây bút r mà... có chạy script upload ava k hay lại đi ngồi viết lại script"*.
+- **Quy tắc bất di bất dịch**:
+  1. CẤM TUYỆT ĐỐI tự ngồi viết script tap tay ADB mới khi User đã có script canonical `do_upload_avatar_m71.py` đã kiểm chứng.
+  2. Khi cần đổi avatar cho bất kỳ máy nào, CHỈ ĐƯỢC dùng script canonical `do_upload_avatar_m71.py`, cấu hình đúng `MACHINE_ID`, `SERIAL`, và `local_avatar`.
+
+### 1.2. TikTok Note Trap: Bong Bóng "Thì Thầm To Nhỏ" / "Bạn Có Chuyện Vui?" & Ảo Giác Avatar
+- **Hiện tượng**: Tính năng Ghi chú (Note) trên TikTok profile tạo ra một bong bóng thoại màu trắng nổi bật phía trên avatar mang nội dung *"Thì thầm to nhỏ"*, *"Tám chuyện nào"* hoặc *"Bạn có chuyện vui?"*.
+- **Cạm bẫy ảo giác thị giác (Vision Hallucination)**:
+  - Khi soi mắt toàn màn hình Profile, Model rất dễ bị phân tâm bởi bong bóng màu trắng này và nhận định sai lầm rằng avatar "vẫn là người phụ nữ cũ" hoặc "bị lỗi", trong khi thực tế vòng tròn avatar bên dưới đã hiển thị đúng 100% nhân vật của folder (ví dụ: nhân vật hoạt hình nam tóc cam pompadour, kính hồng của folder 163).
+  - Hậu quả: Agent tưởng nhầm avatar chưa đổi, loay hoay thử lại liên tục hàng giờ và làm phiền User dù avatar thực tế đã đúng từ đầu!
+- **Phương pháp kiểm chứng chuẩn xác**:
+  1. Crop riêng vòng tròn avatar loại bỏ bong bóng Note ở trên.
+  2. Đối chiếu trực tiếp với màn hình **Sửa hồ sơ** (`ProfileEditActivity`) hoặc màn hình **Chuyển đổi tài khoản (Account Switcher)** — đây là 2 nơi avatar hiển thị nguyên bản, sạch 100% không bị bong bóng Note che khuất.
 
 ### 1.3. Cạm bẫy Bounds Cứng `n.l >= 10` Khiến Top-Left Pencil Bị Reject (UNKNOWN_LAYOUT Crash)
 - **Hiện tượng**: Khi chạy runner tự động `run_tiktok_upload_avatar.ps1`, log văng:
