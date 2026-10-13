@@ -1,6 +1,6 @@
 Chu kỳ 4d: Parity cố định 96h (N1 lẻ, N2 chẵn; cấm random giãn 120h), N3(R7,8, tối dưỡng), N4(dưỡng 0 fl+up non). Starve 108h (96+12h grace). CẤM xóa cooldown.
 §
-Host/USB: Reboot 3 Ca (05:45, 11:35, 17:45; chặn trong TFT; sentinel reboot_sentinel_*.flag). SSH ngầm. WoL ether3 (kibe 0C:EF:15:37:4C:20, admin 22:33:4D:06:4C:26; WG 13231). Followed=0 cấm PASS; log trước teardown; upload SSH admin-farm. Resume reboot: chỉ nhận turn dở.
+Host/USB: Reboot 3 Ca (05:20, 11:20, 17:20; chặn trong TFT; sentinel reboot_sentinel_*.flag). SSH ngầm. WoL ether3 (kibe 0C:EF:15:37:4C:20, admin 22:33:4D:06:4C:26; WG 13231). Followed=0 cấm PASS; log trước teardown; upload SSH admin-farm. Resume reboot: chỉ nhận turn dở.
 §
 Gate miễn trừ Closeout. Runner fail phải vá core, cấm viết script tap tay ngoài lề.
 §
