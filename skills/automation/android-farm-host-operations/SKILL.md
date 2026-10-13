@@ -370,6 +370,11 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
   - **Lợi ích vận hành:** Toàn bộ hạ tầng farm được quản lý tập trung trên GitHub (`https://github.com/thanhdatbui/taadaa-farm-tools.git`). Khi cài đặt PC controller mới (Kibe hoặc Admin) hoặc cần khôi phục Windows sau sự cố, chỉ cần `git pull` repo `tools` là có đầy đủ toàn bộ cấu hình, script cứu hộ USB và tài liệu vận hành mà không lo thất lạc.
 
 ## 17. Quy Trình Chẩn Đoán Phân Tầng 3 Trạng Thái Thiết Bị (Mất Cả Vật Lý vs Mất ADB Còn PnP vs ADB Offline)
+- **Bẫy Phân Loại Nhầm: ADB Timeout/Flapping Biến Thành Lỗi App TikTok/Script (`prepare-tiktok failed to focus`):**
+  * Khi host controller chạy dồn dập >24h không reboot, bus USB 2.0 EHCI bị nghẽn đệm khiến các lệnh ADB shell nhẹ (`dumpsys window`, `settings get global http_proxy`) bị delay, timeout hoặc trả về null.
+  * Script nuôi acc (`device_prepare.py`, `feed_swipe_smoke.py`) khi kiểm tra focus sau `launch_tiktok` nhận `focused package is unknown` $\rightarrow$ kết luận nhầm là `prepare-tiktok failed to focus TikTok after launch` (phân loại vào "Lỗi App TikTok/Script" hoặc "focus/device issue").
+  * **Kỷ luật chẩn đoán O(1) trước khi sửa code:** Khi thấy số máy "Lỗi App/Script" tăng vọt đồng thời với danh sách "Mất kết nối ADB/USB", BẮT BUỘC kiểm tra uptime của 2 host (`psutil.boot_time()`). Nếu host uptime > 24h và ADB dropped count cao, đây là hiện tượng cascade do nghẽn bus USB EHCI phần cứng, TUYỆT ĐỐI KHÔNG sửa script TikTok hay sửa code app mò mẫm.
+
 - **Tình huống kích hoạt:** Khi màn hình tool quản lý/投屏 (Tiểu Vi / Phóng Phi / AoWei / Jiwei) xuất hiện các ô màu cam báo "Phone disconnected, please check".
 - **Bản chất kỹ thuật phân tầng (Triage 3 ranh giới):**
   1. **Slot trống vật lý / Mất cả vật lý:**

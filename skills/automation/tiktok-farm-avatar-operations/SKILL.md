@@ -5,6 +5,7 @@ description: Use when running avatar-only jobs on TikTok farm.
 
 # TikTok Farm Avatar Operations
 
+- Hashtag Hard-Lock & Anti-Overwrite (2026-10-13): Hard-lock manually customized hashtags and niches against automated sync scripts.
 - Audit Blindspot & Niche Leak (2026-10-13): [references/audit-dictionary-blindspot-and-niche-leak-prevention.md](references/audit-dictionary-blindspot-and-niche-leak-prevention.md) — Fix Default-Pass audit trap when detected_niche is null, stop tag re-sync.
 - Avatar Drift vs F_src / F_out (2026-10-13): [references/avatar-and-hashtag-drift-fsrc-vs-fout.md](references/avatar-and-hashtag-drift-fsrc-vs-fout.md) — Fix F_out vs F_src drift, cy ~ 0.2*H cropping, dual-dir sync.
 - CRLF & Dispatch Guards (2026-10-13): [references/crlf-anchor-and-avatar-task-dispatch-guards.md](references/crlf-anchor-and-avatar-task-dispatch-guards.md)

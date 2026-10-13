@@ -12,6 +12,6 @@ Dubbing: đúng tiếng, 100% thoại, tắt tiếng gốc. Pass láo: xóa None
 §
 Worker: AG Gemini default (cấm fallback Luna khi chưa cạn quota; chủ động fix script qua Worker contract, cấm viện cớ đóng băng/báo BLOCKED).
 §
-Code: script & cron Hermes độc lập. Hashtag sync: F_src=(Slot-1)*80+m_idx, cấm nhầm F_out sang F_src; 'Hashtag theo Folder' là SoT.
+Hashtag sync: F_src=(Slot-1)*80+m_idx, SoT 'Hashtag theo Folder'; nick fix tay khóa manual_avatar_protected_folders.json cấm sync đè.
 §
 Dời nick: (1) 2FA Excel -> (2) Logout -> (3) Login mới. Fix lỗi: tự làm end-to-end, cấm tạo script bắt user chạy. Đã nối all máy thì chủ động inspect/quét mẫu kiểm chứng, CẤM đùn bảo user ném số máy/tự gõ.
