@@ -43,6 +43,15 @@
     - Reviewer coi khoảng cách giữa docstring và code là "thiếu trung thực về phạm vi hoặc bỏ dở tính năng". Docstring BẮT BUỘC chỉ mô tả chính xác những gì code thực sự làm.
 12. **Telemetry Return Contract Cho Scripts Chuẩn Hóa/Batch**:
     - Hàm `main()` của các script batch/sync bắt buộc `return` telemetry dictionary chuẩn có cấu trúc (ví dụ: `{"event": "...", "folders_synced": N, "status": "SUCCESS"}`) để test suite và harness có thể kiểm chứng trực tiếp thay vì chỉ parse stdout print.
+13. **Bẫy Test Thuần Thuật Toán vs Test Dữ Liệu Thực Tế Trên Disk/Workbook (13/10/2026)**:
+    - Reviewer Sol High trừ điểm nặng nếu test suite chỉ kiểm tra công thức tính toán trong memory mà không kiểm chứng dữ liệu thực tế được ghi ra file Excel (`Tik<N>.xlsx`) hoặc artifact `.json`.
+    - Bắt buộc bổ sung integration test đọc trực tiếp file artifact trên disk để kiểm chứng:
+      * Không trùng lặp giữa các máy liền kề chạy cùng phiên (`niches[i] != niches[i+1]`).
+      * Không trùng lặp chéo giữa các slot trên cùng một máy (`len(set(slots)) == 3`).
+      * Đồng bộ 100% giữa sheet `TaiKhoan` và sheet `Hashtag theo Folder`.
+14. **Kỷ Luật Phân Bổ Xen Kẽ Chống Dồn Cục (Anti-Clustering Interleaved Distribution)**:
+    - Khi phân bổ ngách cho farm nhiều máy chạy song song: CẤM gán 1 niche đồng loạt cho toàn bộ máy trong 1 slot.
+    - Bắt buộc dùng bước nhảy hoán vị ($\gcd(stride, N) = 1$) để các máy chạy cùng phiên luôn mang các ngách khác nhau, tránh thuật toán nhận diện cụm farm dồn cục và tránh tự cạnh tranh nội bộ.
 
 ## 3. Thang Leo Thang Sửa Chữa (Remediation Ladder)
 - **Vòng 1 & 2 (Sol Repair / Worker Remediation)**:
