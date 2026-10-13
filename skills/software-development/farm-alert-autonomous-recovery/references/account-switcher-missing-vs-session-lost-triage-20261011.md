@@ -63,10 +63,14 @@
        2. Chạy công cụ logout chính quy để trục xuất nick ký sinh:
           `python D:/Taadaa/tools/do_logout_account.py <M> <parasite_username> <serial>`
        3. Sau khi máy nhả slot, tiến hành login tài khoản chính chủ còn thiếu vào máy.
-   - **Nhánh C — Bottom-Sheet Đã Mở & Nick Mục Tiêu ĐÃ CÓ Trong Danh Sách (Classifier Loop & Pre-tap Guard Mismatch):**
-     * Hiện tượng: Bottom sheet mở thành công, trích xuất OCR/XML thấy đủ 8 nick và nick mục tiêu của Ca (ví dụ `trinhgiang7694` ở vị trí 7) nằm sờ sờ trên UI. Tuy nhiên, runner phân loại màn hình là `manual-needed:account-switcher`, khiến bước lặp pre-tap guard kế tiếp (vốn kỳ vọng màn hình `Profile`) bị kẹt do thấy bottom-sheet đã mở, không thực hiện tap chọn nick và kết luận sai `ACCOUNT_MISSING`.
+   - **Nhánh C — Bottom-Sheet Đã Mở & Nick Mục Tiêu ĐÃ CÓ Trong Danh Sách (Classifier Loop, Touch Offset & Anti-Báo-Cáo-Suông):**
+     * Hiện tượng: Bottom sheet mở thành công, trích xuất OCR/XML thấy đủ 8 nick và nick mục tiêu của Ca (ví dụ `trinhgiang7694` ở vị trí 7) nằm sờ sờ trên UI. Tuy nhiên, khi runner tap vào nick mục tiêu, giao diện chưa kịp chuyển đổi (UI lag hoặc tap lệch) hoặc runner phân loại màn hình là `manual-needed:account-switcher`, khiến bước lặp kế tiếp không thấy nick hoặc kẹt pre-tap guard và kết luận sai `ACCOUNT_MISSING`.
      * Triage: 100% False Alarm cho mất phiên. Tài khoản hoàn toàn nguyên vẹn trên máy. CẤM xóa nick/đổi mail/đổi pass.
-     * Xử lý: Không can thiệp DB/nick. Cải tiến runner switcher để khi bottom sheet đã mở thì bỏ qua pre-tap profile và tap trực tiếp vào item nick.
+     * KỶ LUẬT PHẢN HỒI CHỐNG BÁO CÁO SUÔNG (User Invariant: "Ủa chứ sao báo động giả fix đi chứ"):
+       - **CẤM TUYỆT ĐỐI** chỉ dừng lại ở việc tuyên bố "100% false alarm" rồi để đó / đóng băng task. Báo động giả thì PHẢI LẬP KẾ HOẠCH FIX DỨT ĐIỂM.
+       - Khi máy đang nằm trong cụm kẹt transport phần cứng (DEVICE_OFFLINE do USB 2.0 EHCI micro-spike nghẽn bus): Bắt buộc giải thích rõ ràng thiết bị đang kẹt socket ADB nên không thể tap hay sửa tức thời, đồng thời cam kết lộ trình phục hồi 2 bước cụ thể:
+         1. *Bước 1 (11:35 trưa):* Chờ Task `Taadaa_Farm_Daily_Reboot_1135` kích hoạt System Bus Reset từ BIOS (có TFT Game Guard bảo vệ ván cờ) để kéo toàn bộ 80 máy lên xanh.
+         2. *Bước 2 (11:36 - Trước ca trưa 12:00):* Ngay khi máy online lại, chủ động chạy inspect O(1) và canary test chuyển tài khoản trực tiếp trên máy; kiểm tra token thực tế của nick trong Switcher: nếu nick còn nguyên vẹn thì thực hiện switch, nếu token thực sự hết hạn thì kích hoạt auto-login recovery từ kho credential, chụp ảnh in-app gửi User nghiệm thu.
      * Lưu ý thẩm định ảnh hiện trường cũ: Khi chạy `evidence_gate_verifier.py` để verify artifact của các run trước đó (>10 phút), bắt buộc thêm cờ `--max-age 86400` để tránh bị chặn bởi `ANTI_REPLAY_VIOLATION: Pre-submit image is stale/replayed`.
 
 ---
