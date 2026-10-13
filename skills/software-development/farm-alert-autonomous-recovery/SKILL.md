@@ -15,7 +15,7 @@ description: >-
 > Ref: `references/gemphonefarm-blind-popup-action-miss-triage-20261012.md`.
 > Ref: `references/stale-upload-watchdog-and-tracker-db-drift-triage-20261012.md`.
 > Ref: `references/draft-resume-trap-and-false-hardware-offline-triage-20261013.md`.
-> Ref: `references/remote-adb-protocol-fault-vs-hardware-offline-triage-20261013.md`.
+> Ref: `references/inter-shift-cron-reboot-avoidance-and-warmup-buffer-20261013.md`.
 > Ref: `references/avatar-edit-layout-detector-and-closeout-contract.md`.
 
 ## UI evidence: target screen only
