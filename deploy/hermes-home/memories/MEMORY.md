@@ -15,3 +15,5 @@ Farm Dispatch Invariant: delegate_task context cần TASK_KIND: EDIT/INVESTIGATE
 GPM Hotmail: Kibe duy nhất chạy GPM, Admin log dần; 1 cron supervisor. Hotmail qua HOTMAIL_LOGIN giữ cookie, cấm nhảy cóc REG. CHANGE_INFO: MS ép mail kp (@fviainboxes) trước 2FA; ghi Excel lũy tiến từng bước (mail->C5, bóc 2FA->C4, đổi pass->C3+Col G) trước signout.
 §
 Triage Stale Upload: CẤM quy chụp máy rớt ADB là nick kẹt >14d; nếu slot khác tăng clip thì máy bình thường, lỗi do draft trap. Mở draft hỏng bắt buộc xóa sạch (_delete_all_profile_drafts), normalize về Home. Xóa draft an toàn vì video gốc trên PC và Excel giữ số thứ tự. state_machine.py bắt buộc LF tránh DIFF_TOO_LARGE. Strike 3 Closeout giao Claude CLI self-remediate.
+§
+Niche farm: CẤM gán 1 tik cùng 1 niche hàng loạt; bắt buộc phân bổ xen kẽ/random giữa các máy để cùng phiên không bị trùng niche.

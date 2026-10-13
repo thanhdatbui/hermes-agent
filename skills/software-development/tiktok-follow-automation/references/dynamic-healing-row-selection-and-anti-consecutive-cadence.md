@@ -43,7 +43,7 @@ $$\text{Score}(R) = 100 \times P_{\text{fail\_active}} + 20 \times P_{\text{youn
 
 ---
 
-## 3. Cạm bẫy kỹ thuật & Lưu ý sống còn (Pitfalls & Invariants)
+## 3. Cạm bẫy kỹ thuật & Lưu ý sống còn (Closeout Gate Lessons 2026-10-13)
 
 1. **Bẫy `fail_streak` lịch sử:**
    - Trong `follow_state_*.json`, khi nick từng dính nhả từ 2 tuần trước, trường `fail_streak = 1` vẫn được lưu vĩnh viễn (do luật không được tự ý xóa án).
@@ -52,9 +52,35 @@ $$\text{Score}(R) = 100 \times P_{\text{fail\_active}} + 20 \times P_{\text{youn
    - Quét 413 file JSON trạng thái tốn ~1.7 giây mỗi lần.
    - Khi chạy test suite lặp 48 ngày (96 lần gọi), thời gian tăng vọt lên > 160 giây và gây timeout test suite.
    - **Giải pháp bắt buộc:** Cài đặt bộ đệm in-memory 60 giây (`_CACHE_FAIL_RATES`, TTL = 60.0s). Giúp các lệnh gọi liên tiếp trong vòng 1 phút phản hồi tức thì (< 10ms) mà vẫn đảm bảo tính tươi mới tuyệt đối giữa các tick cron 15 phút.
-3. **Cơ chế Fallback Fail-Safe & Tương thích ngược (Closeout Gate Lesson 2026-10-13):**
+3. **Cơ chế Fallback Fail-Safe & Tương thích ngược:**
    - Nếu `healing_selector` gặp lỗi (thiếu module, DB bận hoặc sai path), tuyệt đối **CẤM fallback im lặng gán cứng row = 2**. Gán cứng sẽ tạo điểm mù vận hành và làm chệch lịch cũ.
-   - **Bắt buộc:**
-     1. Fallback phải bảo toàn 100% logic tương thích ngược của lịch cũ (`Row 3/4/5/6` theo `cycle_day`, `cycle_idx` và `slot_key`).
-     2. Bắt buộc bắn Telemetry warning log rõ ràng ra `sys.stderr`: `[HEALING_SELECTOR_FALLBACK] <exc>, fallback to Row <row>` để watchdog phát hiện ngay.
-     3. Kiểm tra an toàn `tools_dir.is_dir()` trước khi chèn vào `sys.path`.
+   - Fallback **bắt buộc bảo toàn 100% logic tương thích ngược** của lịch cũ (`Row 3/4/5/6` theo `cycle_day`, `cycle_idx` và `slot_key`).
+4. **Structured JSON Telemetry Invariant (Reviewer Requirement):**
+   - CẤM log chuỗi tự do (như `[HEALING_SELECTOR_FALLBACK] ...`) gây khó khăn cho log parser và phân tích dài hạn.
+   - **Bắt buộc emit JSON event có cấu trúc**:
+     - Khi chọn thành công (stdout):
+       ```python
+       sys.stdout.write(json.dumps({
+           "event": "healing_row_selected",
+           "row": row,
+           "window": window_label,
+           "cycle_day": cycle_day,
+           "cycle_idx": cycle_idx,
+           "tools_dir": str(tools_dir),
+       }, sort_keys=True) + "\n")
+       ```
+     - Khi rơi vào fallback (stderr):
+       ```python
+       sys.stderr.write(json.dumps({
+           "event": "healing_row_fallback",
+           "row": row,
+           "window": window_label,
+           "cycle_day": cycle_day,
+           "cycle_idx": cycle_idx,
+           "error_type": type(exc).__name__,
+           "error": str(exc),
+       }, sort_keys=True) + "\n")
+       ```
+5. **Đường dẫn Portable (Anti-Hardcoded Path Invariant):**
+   - CẤM hardcode trực tiếp `D:/Taadaa/tools` trong runtime script. Khi deploy sang máy khác hoặc chạy test isolated sẽ gãy ngay.
+   - **Pattern chuẩn:** Ưu tiên đọc biến môi trường `HERMES_CRON_TOOLS_DIR`, sau đó dò ngược qua các thư mục cha `[p / "tools" for p in Path(__file__).resolve().parents]` để tìm chính xác nơi chứa `healing_selector.py`.
