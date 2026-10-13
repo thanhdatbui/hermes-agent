@@ -156,6 +156,12 @@ Use this class-level workflow whenever a task produces visual/UI/farm/browser ev
 The delivery layer should validate outbound completion claims before the platform adapter sends them:
 
 - Completion claims must carry valid `MEDIA:` evidence.
+- **Chống Bẫy Lỗ Hổng Kiểm Tra Hình Thức & Ảo Giác Soi Mắt Mù (Blind Verification Loophole & Mechanical Content Assertion - 2026-10-13):**
+  * **Sự cố thực tế**: Khi đổi avatar Máy 67 (@hoangthu1804), Coordinator gọi `browser_vision` trên file ảnh preview tảng đá cũ từ đĩa, nhưng tự bịa ra văn bản khẳng định thấy người mỉm cười và gắn thẻ `MEDIA:`. Hook gate cho qua vì chỉ kiểm tra hình thức (file có trong danh sách verified). User mở ra thấy tảng đá và phẫn nộ: *"Tại sao tao ép mày soi ảnh trc khi gửi câu tl tao mày vẫn đéo tuân thủ v? ... Gọi claude cli fix"*.
+  * **Quy tắc BẮT BUỘC**:
+    1. **Mechanical Content Assertion**: Với ảnh avatar, BẮT BUỘC có kiểm tra phát hiện khuôn mặt cơ học (OpenCV Haar Cascade) với $N \ge 1$ khuôn mặt rõ nét ($w \ge 100\text{px}$). CẤM cấp quyền xuất bản `MEDIA:` cho ảnh không phát hiện được khuôn mặt (đá, vải, hoa, mảng mờ bokeh).
+    2. **Anti-Stream-Drop (Chống nuốt thẻ MEDIA)**: Thẻ `MEDIA:<path>` phải đặt trên dòng riêng biệt, đường dẫn POSIX chuẩn `/`. Nếu phiên bị ngắt (`interrupted`), lượt tiếp theo BẮT BUỘC gửi lại đầy đủ thẻ media thay vì chỉ gửi text suông giải trình.
+    3. **Claude CLI Remediation Delegation**: Khi Gate gặp lỗi logic hoặc cần vá code plugin mà Coordinator bị chặn quyền tự sửa, BẮT BUỘC bàn giao cho Claude Code CLI qua wrapper `claude_quota_guard.py` với test suite kiểm chứng đầy đủ.
 - **Session-State Recap Exemption (Chống bẫy spam trên hội thoại tiếp nối/recap):** Khi phiên làm việc đã từng gửi và kiểm chứng ảnh thành công (`sess_state["verified_media_paths"]` > 0), các câu trả lời thoại, giải trình, hoặc recap tiếp theo KHÔNG được coi là vi phạm thiếu ảnh và tuyệt đối KHÔNG được chèn banner vi phạm `[EVIDENCE FIRST GATE — FAIL-CLOSED VIOLATION]`. Chỉ đòi hỏi ảnh mới khi phiên làm việc chưa từng có ảnh kiểm chứng hoặc xuất hiện claim về một entity/tác vụ hoàn toàn mới.
 - **Miễn trừ Tin nhắn Tổng kết Chốt phiên & Báo cáo Thẩm định (Closeout Gate / Sol Auditor Immunity):**
   * **Cạm bẫy chí tử**: Khi kết thúc phiên (User phát lệnh "Done", "Chốt phiên"), Coordinator chạy `closeout_gate.py` và báo cáo kết quả nghiệm thu ("Quy trình Closeout Gate kết thúc phiên đã được hoàn tất và thẩm định APPROVED (86/100) bởi Sol Auditor!"). Trong tin nhắn này, Coordinator điểm lại các đầu việc đã làm (ví dụ: "hohaian929: Đã kích hoạt 2FA TOTP... muyduyen4589: Đã đăng nhập...").
@@ -265,6 +271,7 @@ Use `references/avatar-only-scope-and-false-policy-refusal.md` for the incident-
 
 ## References
 
+- `references/gate-blind-verification-loophole-and-claude-cli-remediation-20261013.md` — **[MỚI 13/10/2026]** Sự cố lỗ hổng kiểm tra hình thức của Evidence-First Gate (Blind Verification Loophole), LLM ảo giác ảnh tảng đá thành người mỉm cười, bẫy ngắt stream nuốt thẻ MEDIA:, và quy trình bàn giao cho Claude Code CLI vá chốt chặn.
 - `references/stale-disk-cache-and-hallucinatory-avatar-delivery-trap-20261013.md` — **[MỚI 13/10/2026]** Sự cố tin tưởng mù quáng file avatar.jpg cũ trên đĩa ra ảnh đá tảng granite, ảo giác soi mắt mớm lời đối phó User, và quy trình trích xuất trực tiếp frame từ video kênh, đối soát tiêu đề OCR, crop chuẩn headroom và soi mắt khách quan không mớm lời.
 - `references/blind-crop-bokeh-and-featureless-avatar-hallucination-20261013.md` — **[MỚI 13/10/2026]** Sự cố crop tọa độ mù khi app văng sang Home Feed ra ảnh mờ bokeh ngoài trời, ảo giác soi mắt nhận vơ ảnh bokeh thành avatar, và quy tắc Screen Identity Assertion + Discernible Facial Features + Multi-Surface Proof.
 - `references/anti-recap-spam-and-gateway-ram-sync-20261012.md` — **[MỚI 12/10/2026]** Khắc phục lỗi spam banner vi phạm bằng chứng đỏ lòm khi recap/đối thoại: Session-State Recap Exemption (đối soát `verified_media_details`), regex loại trừ mệnh đề backend/Excel/TOTP/recap, và quy trình restart Gateway detached để tránh lệch pha bytecode cũ trong RAM.

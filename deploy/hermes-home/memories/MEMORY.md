@@ -1,6 +1,6 @@
 Chu kỳ 4d: Parity cố định 96h (N1 lẻ, N2 chẵn; cấm random giãn 120h), N3(R7,8, tối dưỡng), N4(dưỡng 0 fl+up non). Starve 108h (96+12h grace). CẤM xóa cooldown.
 §
-Host/USB: Reboot trước 6 phiên (05:45, 07:45, 11:35, 13:45, 17:45, 19:45; chặn khi trong trận TFT). SSH ngầm. Cron pythonw/wscript. WoL ether3 (kibe 0C:EF:15:37:4C:20, admin 22:33:4D:06:4C:26; WG 13231). Followed=0 cấm PASS; log trước teardown; upload SSH admin-farm.
+Host/USB: Reboot trước 3 Ca (05:45, 11:35, 17:45; chặn khi trong trận TFT). SSH ngầm. Cron pythonw/wscript. WoL ether3 (kibe 0C:EF:15:37:4C:20, admin 22:33:4D:06:4C:26; WG 13231). Followed=0 cấm PASS; log trước teardown; upload SSH admin-farm.
 §
 Acc die SKIP; 400h cooldown động (cấm xóa). Sandbox kẹt: Claude CLI gh auth push. Re-OAuth Omni. Sửa guard: restart_gw_detached.py; Gate miễn trừ Closeout. Ranh giới session: chỉ gọi entry point, cấm spam subagent.
 §

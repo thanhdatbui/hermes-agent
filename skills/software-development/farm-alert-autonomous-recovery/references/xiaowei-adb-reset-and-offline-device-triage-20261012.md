@@ -39,10 +39,8 @@ Kết quả sẽ chỉ rõ:
 - Tình trạng sạc / pin / màn hình.
 
 ### Bước 4: Nguyên tắc phục hồi (Anti-Panic)
-- Không kill ADB server thủ công khi farm đang chạy ca nuôi (sẽ làm đứt session của 70+ máy khác).
-- **CẤM gõ `adb reconnect` trần:** Hard Gate #5 sẽ chặn vì thiếu `-s <serial>` và thiếu Device Lock. Nếu cần reconnect máy cụ thể qua ADB, BẮT BUỘC bọc qua device lock:
-  ```cmd
-  python D:/Taadaa/tools/with_device_lock.py --machine <N> -- adb -s <serial> reconnect
-  ```
-- Để watchdog chuyên trách `farm-adb-transport-healer` (chạy định kỳ 3 phút/lần) tự động giải phóng socket transport và reconnect máy bị kẹt.
+- Không kill ADB server thủ công khi farm đang chạy ca nuôi (sẽ làm đứt session của các máy khác).
+- **CẤM gõ `adb reconnect` trần:** Hard Gate #5 sẽ chặn vì thiếu `-s <serial>` và thiếu Device Lock.
+- **Khai tử soft-reconnect / transport-healer:** Cronjob `farm-adb-transport-healer` và `safe_usb_guard.py` đã bị xóa sổ vì lệnh mềm không thể giải phóng thanh ghi phần cứng Intel X99 (lỗi `HRESULT 0x8004100c`) và làm bung cửa sổ đen phá game TFT.
+- **Cơ chế phục hồi chuẩn tự động (User Invariant):** Áp dụng **Preflight Auto-Reboot trước mỗi phiên chạy** (6 mốc: 05:45, 07:45, 11:35, 13:45, 17:45, 19:45) qua Task `Taadaa_Farm_Daily_Reboot_1135` (`farm_preflight_daily_reset.py`). Script có TFT Game Guard chỉ hủy reboot khi đang trong trận đấu 3D `League of Legends.exe`. Sau reboot (~60s), System Bus Reset từ BIOS sẽ giải phóng hoàn toàn thanh ghi EHCI USB và kéo 100% thiết bị lên xanh sạch sẽ trước ca chạy.
 - Báo cáo rõ ràng: số máy đang online (`device`), số máy `offline` (kèm số máy cụ thể), và xác nhận trạng thái tiến trình XiaoWei.
