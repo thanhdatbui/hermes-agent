@@ -28,5 +28,20 @@ When Google AI Pro accounts show quota in Omni but requests fail, do not infer F
 ## Reporting rule
 Lead with the proven failure layer and exact raw body. Do not broaden scope from Pro to Free accounts when the canary is pinned to Pro. Do not call an account dead or say Google banned Pro based only on a stale/mismatched dashboard label. State uncertainty about the tier mismatch until a direct Google entitlement response or successful/failed exact-model canary proves it.
 
+## Quota Dashboard Count Drop Triage (Pro Downgrade vs Account Deletion)
+When the user reports a drop in Pro account count on OmniRoute dashboard (e.g. 22 down to 21):
+1. **Never infer account deletion or ban**: OmniRoute rarely deletes accounts on its own. Accounts change status or tier.
+2. **Fast Diff Identification**:
+   - Compare the combo membership (e.g. `ag-gemini-pool-3` models in `/api/combos`) or historical baseline against current active Pro connections (`tier: 'g1-pro-tier'` from `/api/providers`).
+   - The missing account will almost always be found under `tier: 'free-tier'` / `plan: 'Antigravity starter quota'` in `provider_connections`.
+3. **Inspect Upstream Entitlement**:
+   - Query `GET /api/usage/<connectionId>`.
+   - Check `subscriptionInfo.paidTier`: if `id: "free-tier"` and message states `"This account is ineligible for higher rate limits through a Google AI plan at this time."`, Google upstream has downgraded the account (subscription expired, card billing failed, or Google One AI plan was cancelled/refunded).
+   - The dashboard filter `Pro` excludes it automatically because OmniRoute sync updates the card to `Starter`.
+4. **Combo Hygiene & Operational Impact**:
+   - OmniRoute does NOT automatically evict downgraded accounts from combo model lists (`combos.data.models`).
+   - The downgraded account remains in the pool and can still accept requests (using starter quota), but has no Pro rate limits (1,500 req/day), risking premature 429s for the pool.
+   - Action: User must either renew Google One AI on that account or operator must prune its connection ID from the Pro combo to maintain pool quality.
+
 ## Routing fix target
 If the raw body is Omni semaphore timeout, fix the routing path so combo `queueTimeoutMs` reaches `acquireAccountSemaphore`. A multi-account combo should spill to the next connection within its configured queue timeout (typically ~1000ms), rather than falling back to a hard 30s default. Add a focused regression test and rebuild/restart the production runtime before declaring the fix live.

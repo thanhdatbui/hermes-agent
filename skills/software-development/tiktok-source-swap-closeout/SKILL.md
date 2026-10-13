@@ -111,7 +111,13 @@ If the process is still running, report `RUNNING` with the exact log path and do
   Khi insert bản ghi vào `videos`, schema yêu cầu đúng 13 cột: `(video_id, source_url, platform, niche, source_channel, uploader, view_count, language, language_score, status, folder, checked_at, output_path)`. Thiếu cột sẽ ném `OperationalError: 12 values for 13 columns`. Chi tiết xem `references/clean-wipe-and-hot-niche-reconciliation-20261010.md`.
 - **Closeout Gate Routing Cho Phiên Pure Media / Content Swap:**
   Phiên đổi content/avatar thuần túy là `RUNTIME_OPERATIONAL` (`NO_CANDIDATE`), không có commit git code. CẤM chạy `closeout_gate.py` so sánh với `HEAD~1` của repo code (dẫn đến đánh giá sai diff cũ và fail gate). Closeout của phiên media chỉ thẩm định bằng: Biên bản xác nhận đĩa/DB, Lớp 1-3 của Avatar runner, và ảnh nghiệm thu thực tế `MEDIA:` qua Vision.
+- **Content DNA & Story Engine vs. Static Visual Niche Bias (2026-10-13):**
+  1. *Thực nghiệm CSDL Farm*: Dữ liệu thực tế chứng minh các kênh cắn đề xuất mạnh nhất (như `chungan981` 19.7k tim với 6 clip, `tuantuannguyen56` 4.9k tim, `thleyzilkva` 2.7k tim) nằm ở ngách `Câu chuyện` (Storytelling), `Thú vị` (Facts/Curiosity), `Học sinh`, `Cuộc sống` — KHÔNG nằm ở 12 ngách visual trần (Gái xinh, Siêu xe, Ẩm thực trần).
+  2. *Bản chất thuật toán*: Niche visual trần có retention nông (0–2s đẹp mắt rồi swipe). Ngách câu chuyện/tò mò kích hoạt *Curiosity Gap* và *Retention Loop* (người xem nán lại chờ cái kết, completion rate cao, comment tranh luận nhiều).
+  3. *Bẫy chuyển 100% sang cào Kênh Hot*: Cấm chuyển mù toàn bộ sang cào kênh hot vì 3 rủi ro: (a) Kênh lớn bị TikTok quét multimodal duplicate/bản quyền, (b) Các máy farm tự dẫm chân nhau, (c) Cạn pool video.
+  4. *Chiến lược phân bổ Hybrid*: Duy trì 40% Story Engine, 30% Hot Niche (story hóa có voice/kịch bản), 20% Channel Mining (micro-creators 50k-300k fl), 10% Experiment. Chi tiết xem `references/content-dna-story-retention-vs-hot-niche-curation-20261013.md`.
 
+See `references/content-dna-story-retention-vs-hot-niche-curation-20261013.md` for empirical farm evidence on story/curiosity retention loops vs visual niches and hybrid allocation rules.
 See `references/source-swap-closeout-evidence.md` for reusable query patterns and an evidence template.
 See `references/clean-swap-execution-order-and-topup-continuation-20261010.md` for clean swap execution discipline, top-up continuation on short batches, and operational runtime closeout routing.
 See `references/tiktok-secuid-playlist-extraction-and-interleaved-purge-20261009.md` for TikTok sec_uid playlist scraping bypass, legacy database tracing, and interleaved bad video purge with start_seq cursor preservation.

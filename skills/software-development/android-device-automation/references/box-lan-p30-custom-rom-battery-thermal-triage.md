@@ -134,4 +134,24 @@ Nhiều thợ farm lầm tưởng *"TikTok chỉ là app thường, không xin q
    - Máy báo `com.ss.android.ugc.trill`: Đang mở trực tiếp giao diện TikTok (ví dụ màn đổi Avatar, xem video).
    - *Quy tắc:* Việc máy ở `Launcher` không có nghĩa là máy không cài TikTok; 100% máy trong farm đều cài sẵn TikTok Trill trong bộ nhớ, chỉ mở ra khi ca nuôi chạy.
 3. **Công cụ trích xuất toàn farm O(1):**
-   - Dùng `python D:/Taadaa/tools/inspect_machine.py --all` để quét song song đa luồng (`ThreadPoolExecutor`) toàn bộ 160 slot máy (1-80 và 201-280), trích xuất nhanh Model, Pin, Màn hình và Current Focus trong < 40s mà không nghẽn daemon ADB.
+   - Dùng `python D:/Taadaa/tools/inspect_machine.py --all` để quét song song đa luồng (`ThreadPoolExecutor`) toàn bộ 160 slot máy (1-80 và 201-280) trong < 40s.
+
+---
+
+## 11. Cạm bẫy quét nông ở tầng UI Launcher & Phương pháp quét sâu Knox eFuse (`ro.boot.warranty_bit`)
+### A. Cạm bẫy "Vỏ bọc Samsung"
+- Khi chạy script kiểm tra phân loại ROM trên farm, nếu chỉ kiểm tra process/launcher (`com.sec.android.app.launcher`) hay model máy (`SM-G930F`), Coordinator sẽ **bị đánh lừa 100% rằng toàn bộ máy là ROM Stock chuẩn**.
+- **Bản chất:** Các bản ROM Auto ADB / ROM bypass nguồn giả đều được cook từ chính nền ROM Samsung TouchWiz gốc. Giao diện bên ngoài, launcher, app hệ thống hoàn toàn nguyên vẹn, nhưng phân vùng `boot.img` và kernel bên dưới đã bị mổ xẻ để ép cờ ADB tự động và bypass RSA.
+
+### B. Phương pháp quét sâu chuẩn xác qua cờ bảo mật phần cứng
+BẮT BUỘC đọc trực tiếp các thuộc tính phần cứng qua ADB (`getprop`):
+1. **`ro.boot.warranty_bit` / `ro.warranty_bit` (Knox eFuse):**
+   - `= 0`: Máy nguyên bản chuẩn (Knox `0x0`), bootloader chưa từng bị bẻ khóa.
+   - `= 1`: Bootloader đã bị mở, cầu chì Knox eFuse bị thổi đứt vĩnh viễn (`0x1`) do đã nạp kernel/ROM mod (chính là ROM Auto ADB).
+2. **`ro.adb.secure`:** Cờ xác thực RSA (`1` là chuẩn, `0` là bản eng/userdebug mở toang).
+3. **`ro.boot.verifiedbootstate`:** `green` (khóa boot an toàn) vs `orange`/`yellow` (bị can thiệp).
+
+### C. Dữ liệu thực tế đối chứng trên Taadaa Farm (156 máy online):
+- **Cụm Admin (Máy 201 - 280):** 97.2% máy online (70/72 máy) chạy ROM Auto ADB (`Knox = 1`). Chỉ duy nhất **2 máy giữ được Knox 0x0 nguyên bản**: **M251** (`SM-G930U`) và **M264** (`SM-G930L`).
+- **Cụm Kibe (Máy 1 - 80):** 100% máy online (75/75 máy) đều có `Knox = 1`.
+- **Tổng kết:** 98.6% dàn máy (145/147 máy active) thực chất đang chạy ROM Auto ADB / Kernel Mod (`Knox 0x1`). Đây là bằng chứng gốc rễ giải thích tại sao tài khoản TikTok mới/yếu khi nuôi trên dàn này bị backend TikTok kích hoạt silent rollback (nhả follow) do rớt Google Play Integrity cấp phần cứng. Nuôi trên dàn này bắt buộc phải ngâm và lướt feed dài ngày hơn để tích lũy Trust Score bù lại phần cứng.
