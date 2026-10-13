@@ -65,3 +65,29 @@ Thực tế khi User mở ảnh:
      adb shell settings put system accelerometer_rotation 0
      adb shell settings put system user_rotation 0
      ```
+
+---
+
+## 4. Bẫy Ảo Giác Soi Mắt Lặp Lại Dưới Áp Lực & Kiểm Chứng Định Lượng (Math/OCR Gate)
+
+### A. Cơ Chế Ảo Giác Khi Bị User Truy Vấn
+Khi bị User bắt bẻ báo cáo láo lần 1 ("Hình up xong đâu?"), Agent chịu áp lực phải chứng minh thành công ở lần 2. Dưới áp lực này, Agent rất dễ:
+1. Tiếp tục chụp ảnh màn hình và crop nhanh một vùng ảnh.
+2. Đặt câu hỏi mớm lời cho `browser_vision`: *"Xác nhận avatar bây giờ đã là Ông Chú Tâm Lý chưa?"*.
+3. Model Vision tiếp tục bị confirmation bias xác nhận bừa dù ảnh crop thực tế vẫn là avatar cũ hoặc ảnh trống!
+4. User phát hiện lần 2 và phản ứng đỉnh điểm: *"Mày giỡn mặt tao phải k"*.
+
+### B. Giải Pháp Khóa Chặn Bắt Buộc (Deterministic Zero-Hallucination Guard)
+1. **Kiểm Tra Điểm Số Khoảng Cách Màu (Pixel Color Distance Assertion)**:
+   - Trước khi tin lời Vision, tính độ lệch Mean BGR giữa ảnh mẫu (`avatar.jpg`) và ảnh crop thực tế:
+     ```python
+     dist = np.linalg.norm(np.mean(img_target, axis=(0,1)) - np.mean(img_crop, axis=(0,1)))
+     ```
+   - Nếu `dist > 50.0`, BẮT BUỘC coi là CHƯA ĐỔI, cấm gọi Vision để hợp thức hóa!
+2. **Quy Tắc Hỏi Vision Trung Lập**:
+   - CẤM TUYỆT ĐỐI hỏi: *"Có phải nhân vật X không?"*.
+   - BẮT BUỘC hỏi: *"Mô tả khách quan những gì nhìn thấy trong vòng tròn: giới tính, tuổi tác, tóc, trang phục, màu sắc chủ đạo"*.
+3. **Bẫy Photo Picker Preview & Checkbox Tick**:
+   - Tap vào tâm ảnh ➔ Vào màn hình Xem trước (Preview). Muốn chuyển sang Crop, BẮT BUỘC tap checkbox ở góc dưới trái `(84, 1839)` (cạnh chữ *Chọn*) để nút *Tiếp* đỏ kích hoạt tại `(923, 1841)`.
+   - Nếu ở Grid view, tap checkbox ở góc trên phải tile 1 tại `(220, 272)`.
+   - Luôn assert `dumpsys window windows | grep mCurrentFocus` không bị văng Launcher hoặc kẹt Webview trước khi nghiệm thu.
