@@ -54,7 +54,7 @@
      ```bash
      python D:/Taadaa/tools/with_device_lock.py --machine <N> -- <adb_cmd>
      ```
-3. **Phân loại lỗi & Xử lý (2 Nhánh Chính — Chống dừng lại ở khảo sát suông):**
+3. **Phân loại lỗi & Xử lý (3 Nhánh Chính — Chống dừng lại ở khảo sát suông):**
    - **Nhánh A — UI Switcher Anchor Glitch:** Bottom-sheet chưa mở được (`stop_reason: manual-needed:account-switcher-not-open`). Tọa độ tap anchor tiêu đề trượt (ví dụ: thiếu resource suffix `t_3`, `_PROFILE_HEADER_X_RATIO` chưa bao quát vùng x=240). Bắt buộc chuyển ngay sang hành động sửa code (T1 O(1) hoặc dispatch Worker) và chạy focused test.
    - **Nhánh B — Nick Ký Sinh (Parasite Account) chiếm slot:** Bottom sheet ĐÃ mở được (ví dụ kiểm tra `soft-reboot-account_switcher-before.png`), nhưng máy chỉ chứa tối đa 8 nick và có 1 nick cũ ("nick ký sinh", ví dụ `samnga2403`) từng bị xóa/thay thế trên DB/Excel nhưng chưa được logout vật lý trên điện thoại.
      * Hậu quả: Nick ký sinh chiếm mất 1 slot khiến nick mới của Ca (ví dụ Tik 1 `muyduyen4589`) không thể login hoặc bị thiếu -> Runner vuốt tìm không thấy ném `ACCOUNT_MISSING`.
@@ -63,6 +63,11 @@
        2. Chạy công cụ logout chính quy để trục xuất nick ký sinh:
           `python D:/Taadaa/tools/do_logout_account.py <M> <parasite_username> <serial>`
        3. Sau khi máy nhả slot, tiến hành login tài khoản chính chủ còn thiếu vào máy.
+   - **Nhánh C — Bottom-Sheet Đã Mở & Nick Mục Tiêu ĐÃ CÓ Trong Danh Sách (Classifier Loop & Pre-tap Guard Mismatch):**
+     * Hiện tượng: Bottom sheet mở thành công, trích xuất OCR/XML thấy đủ 8 nick và nick mục tiêu của Ca (ví dụ `trinhgiang7694` ở vị trí 7) nằm sờ sờ trên UI. Tuy nhiên, runner phân loại màn hình là `manual-needed:account-switcher`, khiến bước lặp pre-tap guard kế tiếp (vốn kỳ vọng màn hình `Profile`) bị kẹt do thấy bottom-sheet đã mở, không thực hiện tap chọn nick và kết luận sai `ACCOUNT_MISSING`.
+     * Triage: 100% False Alarm cho mất phiên. Tài khoản hoàn toàn nguyên vẹn trên máy. CẤM xóa nick/đổi mail/đổi pass.
+     * Xử lý: Không can thiệp DB/nick. Cải tiến runner switcher để khi bottom sheet đã mở thì bỏ qua pre-tap profile và tap trực tiếp vào item nick.
+     * Lưu ý thẩm định ảnh hiện trường cũ: Khi chạy `evidence_gate_verifier.py` để verify artifact của các run trước đó (>10 phút), bắt buộc thêm cờ `--max-age 86400` để tránh bị chặn bởi `ANTI_REPLAY_VIOLATION: Pre-submit image is stale/replayed`.
 
 ---
 

@@ -37,4 +37,10 @@ if is_tripped:
 ### 3. Nguyên Tắc An Toàn
 - **Safe Skip (Không phạt nick)**: Trạng thái `CIRCUIT_BREAKER_SKIPPED` được phân loại là bỏ qua an toàn, tuyệt đối không tính vào streak lỗi hay đẩy nick vào Probation/Cooldown.
 - **Auto-Reset theo ngày**: CSDL lưu trường `target_date`, cầu dao tự động đóng lại (reset) vào 00:00:00 của ngày tiếp theo.
-- **Wave Scheduling**: Turn 1 bốc các máy hoàn toàn độc lập IP (tối đa 40 máy). Turn 2 chạy các máy còn lại sau khi đã loại trừ các cổng bị cầu dao ngắt ở Turn 1.
+- **Wave Scheduling (Dynamic Bucket Partitioning — 2026-10-13)**:
+  - *Hiện tượng cần tránh*: Nếu chạy tất cả máy trong 1 batch ngẫu nhiên chung, 2 máy chung IP (ví dụ M33 & M72 trên port 10001) có thể vô tình xuất phát sát nhau và cùng chạy follow đồng thời. Khi máy A dính lỗi nhả, máy B đã vào app follow nên không kịp nhận tín hiệu cầu dao.
+  - *Thuật toán Dynamic Bucket Wave Partitioning (`automation_core.scheduler.wave_partition`)*:
+    1. Gom nhóm các máy theo từng cổng proxy (`host:port`).
+    2. Với mỗi nhóm proxy, xáo trộn ngẫu nhiên (50/50) để phân bổ 1 máy vào Wave 1, máy đối tác vào Wave 2 (hoặc Wave 3 nếu có 3 máy/cổng như cụm Admin).
+    3. Xáo trộn ngẫu nhiên nội bộ từng Wave để giữ trọn vẹn tính ngẫu nhiên (entropy) xuất phát và hành vi người dùng thật.
+    4. Đảm bảo 100% trong mỗi Wave không có bất kỳ 2 máy nào trùng proxy IP, tạo khoảng trễ tự nhiên (10–20 phút) để Cầu dao IP kịp giật và bảo vệ an toàn tuyệt đối cho máy đối tác.

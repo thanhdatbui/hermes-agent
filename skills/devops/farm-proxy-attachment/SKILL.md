@@ -162,6 +162,9 @@ description: Verify or configure per-device proxy attachment for the Taadaa Andr
   - Toàn bộ 80 máy dùng đúng 40 proxy (mỗi proxy chia đều đúng 2 máy).
   - Cụm MikroTik PPPoE: `M33/M72` (10001), `M34/M73` (10002), `M35/M74` (10003), `M36/M75` (10004), `M37/M77` (10005), `M71/M78` (10006), `M79/M80` (10007).
   - Cụm MobiProxy: Các máy `01..32` ghép cặp với `39..70` qua `test.taadaa.click:5101..5138`.
+  - **Quy tắc phân chia Wave chống trùng IP (`automation_core.scheduler.wave_partition` — 2026-10-13):**
+    + Khi chạy batch 80 máy, các máy chung IP (ví dụ M33 & M72 trên port 10001) bắt buộc được phân tách thành các Wave độc lập: Wave 1 (máy 1) -> Wave 2 (máy đối tác).
+    + Trong mỗi Wave, 100% không có 2 máy nào trùng proxy IP (zero collision). Thứ tự máy giữa các Wave và nội bộ từng Wave được xáo trộn ngẫu nhiên (50/50 toss + shuffle) để giữ nguyên tính ngẫu nhiên (entropy) đối với thuật toán TikTok, đồng thời tạo cửa sổ thời gian an toàn cho Cầu dao tự ngắt IP (`ip_circuit_breaker`) bảo vệ nick anh em.
   - **Quy tắc Cấp Proxy Tạm Thời Khi Upstream Chết (Emergency Temp Reassignment):**
     + Khi một line upstream bị chết (ví dụ `khoalee.duckdns.org` sập port), cho phép mượn tạm proxy đang sống khác trong farm Kibe.
     + **Nguyên tắc trần tỷ lệ:** Mỗi máy chết được gán vào 1 proxy sống riêng biệt, nâng số lượng máy dùng chung proxy đó từ 2 lên **TỐI ĐA 3 MÁY / PROXY**. Tuyệt đối không dồn quá 3 máy vào 1 port proxy.
