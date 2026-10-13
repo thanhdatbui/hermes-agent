@@ -8,16 +8,13 @@ version: 1.2.0
 
 ## 1. Khi nào sử dụng
 
-Use for GPM v3 (19995), Gmail/Hotmail lifecycle, proxy-safe accounts, CRX/CDP, cache/core, OAuth, ChatGPT/Codex, watchdogs, pagination, geo-safety.
+Use for GPM v3 (19995), Gmail/Hotmail lifecycle, proxy-safe accounts, OAuth, ChatGPT/Codex, watchdogs, pagination.
 - Audit & OTP: `references/chatgpt-audit-graph-recursion-and-webmail-timeout.md`.
-- Hotmail State: `references/hotmail-lifecycle-state-reconciliation.md`, `references/hotmail-security-change-flow-and-iec500-pitfalls.md`.
-- Credential Isolation: `references/credential-isolation-policy-hotmail-chatgpt-tiktok.md`.
-- Turnstile GPM: `references/omniroute-turnstile-sentinel-gpm-recovery.md`.
-- Hotmail Pass Mapping: `references/hotmail-password-mapping-and-cookie-consent-pitfalls.md`.
-- Silent Watchdog: `references/no-agent-cron-silent-watchdog-and-telegram-chunking.md`.
-- 2FA Deadlock: `references/gpm-gmail-2fa-lifecycle-deadlock-and-silent-reporting.md`.
-- GPM Pagination: `references/gpm-profile-pagination-and-duplicate-spawn-pitfall.md`.
-- Mute Audio (--mute-audio): `references/gpm-chromium-mute-audio-flag.md`.
+- Hotmail State & Sec: `references/hotmail-lifecycle-state-reconciliation.md`, `references/hotmail-security-change-flow-and-iec500-pitfalls.md`.
+- Credential & Pass: `references/credential-isolation-policy-hotmail-chatgpt-tiktok.md`, `references/hotmail-password-mapping-and-cookie-consent-pitfalls.md`.
+- Turnstile & Watchdog: `references/omniroute-turnstile-sentinel-gpm-recovery.md`, `references/no-agent-cron-silent-watchdog-and-telegram-chunking.md`.
+- 2FA & Pagination: `references/gpm-gmail-2fa-lifecycle-deadlock-and-silent-reporting.md`, `references/gpm-profile-pagination-and-duplicate-spawn-pitfall.md`.
+- Mute Audio & Concurrency: `references/gpm-chromium-mute-audio-noise-control.md`, `references/gpm-supervisor-concurrency-cap-and-openai-age-form-trap.md`.
 - Browser-core repair: `references/gpm-browser-core-repair-source-integrity.md`.
 - Preflight Liveness: `references/gpm-local-api-liveness-and-autolaunch-pattern.md`.
 - Hook ChatGPT Web/Codex: `references/codex-oauth-phone-verification-5sim-and-sumistore.md`.
