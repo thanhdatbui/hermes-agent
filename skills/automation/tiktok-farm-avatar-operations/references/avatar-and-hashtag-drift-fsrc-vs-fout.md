@@ -43,3 +43,22 @@ Trên farm TikTok (1.280 tài khoản gồm 2 cụm Kibe 1..80 và Admin 201..28
      WHERE may = <M> AND tik = <Slot>;
      ```
    - Điều này đảm bảo khi runner batch hoặc watchdog quét qua sẽ tự động nạp avatar lên thiết bị.
+
+## 4. Tra Cứu O(1) & Nghiệm Thu Thị Giác Tận Mắt (Gate 6 & Reverse Lookup)
+1. **Tra Cứu Máy & Slot Từ Screenshot Người Dùng (Reverse Profile Lookup)**:
+   - Khi người dùng gửi ảnh màn hình profile TikTok (có username/handle `@<name>`):
+   - Truy vấn SQLite `D:/OneDrive/TaadaaData/tiktok_tracker.db` (hoặc `C:/Users/Kibe/iCloudDrive/Backup_OneDrive/TaadaaData/tiktok_tracker.db`):
+     ```sql
+     SELECT may, tik, username FROM account_mapping WHERE username LIKE '%<handle>%';
+     ```
+   - Đối soát số lượng video trong lưới 3x3 của ảnh với cột `Video Đã Đăng` trong `Tik<Slot>.xlsx` hoặc `taikhoan_run_safe_combined.xlsx` để chốt chặn chính xác 100% `(M, Slot)`.
+   - Tính toán ngay $F_{src} = (Slot - 1) \times 80 + M$.
+2. **Soi Mắt Kiểm Tra Khung Tròn Profile (Invariant LLM Soi Mắt)**:
+   - Dùng `browser_navigate(url="file:///D:/video goc/<F_src>/avatar.jpg")` và `browser_vision` để trực tiếp kiểm tra ảnh đại diện có đúng là nhân vật xuất hiện trong các video trên kênh hay không.
+   - Tạo ảnh mô phỏng khung tròn profile TikTok: vẽ mask hình tròn tâm `(w//2, h//2)`, bán kính $R = \min(w, h)//2$, làm tối 70% vùng nền ngoài vòng tròn.
+   - Lưu ra `tmp_<name>_avatar_preview.jpg` và mở qua `browser_navigate` + `browser_vision` để xác nhận tận mắt: mặt ở trục giữa, đỉnh đầu không bị cắt, cằm và vai vừa vặn trong vòng tròn trước khi gửi thẻ `MEDIA:` cho người dùng.
+3. **Kỷ Luật Dispatch Worker Khi Hết Ngân Sách T1 Coordinator**:
+   - Khi Coordinator đã đạt giới hạn ghi T1 (5 files / 200 dòng): BẮT BUỘC dispatch Worker qua `delegate_task`.
+   - Để tránh vi phạm `OUT OF REPO WHITELIST` (chỉ cho phép `D:/Taadaa`), không khai báo file ngoài (`D:/OneDrive/...`) vào trường `FILE:`.
+   - Bọc toàn bộ thao tác đồng bộ file, cập nhật SQLite và cập nhật Excel vào một script entrypoint duy nhất trong `D:/Taadaa/tools/<script>.py`.
+   - Soạn `OLD_STRING` và `NEW_STRING` trong `<<< ... >>>` với tổng dòng thay đổi `<= 30 dòng` (`DIFF_BUDGET`) để Worker vá và chạy script kiểm chứng focused.
