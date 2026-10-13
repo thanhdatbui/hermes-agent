@@ -9,6 +9,7 @@ References:
 - `references/x99-ehci-usb-reboot-governance-and-adb-auth.md` — Quy chuẩn reboot Farm hàng ngày trước Ca trưa (TFT Game Guard), xử lý dứt điểm lỗi ADB unauthorized sau reboot và khống chế concurrency USB 2.0.
 - `references/x99-ehci-pnp-limit-and-daily-reset-architecture-20261010.md` — Phân tích giới hạn phần cứng Live-Disable PnP trên Intel X99 EHCI (HRESULT 0x8004100c), bằng chứng transport ID liên tiếp, hạ MaxWorkers 25 và kiến trúc Preflight Auto-Reboot định kỳ (10/10/2026).
 - `references/aruba-wifi-recovery-and-anti-drift-incident-20261009.md`
+- `references/hermes-gateway-reboot-auto-resume-architecture-20261013.md` — Kiến trúc tự động bảo toàn và kích hoạt chạy tiếp session Hermes Telegram sau khi host reboot (Zero-Chat Auto-Resume).
 
 Scripts:
 - `scripts/safe_usb_guard.py` — Script nguồn mẫu giám sát và reset EHCI bus theo ngưỡng.
@@ -66,12 +67,12 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
   * Bo mạch chủ server/X99 khi POST/reset phần cứng sẽ ép quạt chạy 100% PWM (max RPM) trong 5–10 giây và còi buzzer BIOS kêu bíp. Không có lệnh phần mềm nào có thể can thiệp làm êm quạt ở tầng BIOS POST.
   * **CẤM TUYỆT ĐỐI** đặt lịch reboot tự động vào ban đêm hoặc rạng sáng (như 05:30 sáng) khi người dùng đang ngủ vì tiếng hú quạt gây giật mình mất giấc ngủ.
   * Còi BIOS bíp: Rút thẳng cục còi buzzer cắm trên chùm chân Front Panel của mainboard (hoặc dán băng dính điện đen bịt lỗ còi onboard) để tắt vĩnh viễn tiếng bíp.
-- **Khung giờ vàng reboot an toàn (User Directed 2026-10-13: "Reboot trước Ca chạy thôi, phiên dày quá"):**
+- **Khung giờ vàng reboot an toàn (User Directed 2026-10-13: "Reboot trước 3 Ca chạy, không reboot theo phiên vì quá dày"):**
     - **Lịch kích hoạt chính thức:** Đúng **3 mốc trước 3 Ca chạy chính hàng ngày** qua Task Scheduler `Taadaa_Farm_Daily_Reboot_1135`:
-      * **05:45** (trước Ca 1 Sáng 06:00)
-      * **11:35** (trước Ca 2 Trưa 12:00)
-      * **17:45** (trước Ca 3 Tối 18:00)
-    - **Bẫy phân định Ca vs Phiên (Pitfall — Chống reboot dày đặc):** Farm chạy 3 Ca chính (mỗi Ca gồm 2 phiên cách nhau 2 tiếng). CẤM TUYỆT ĐỐI đặt reboot trước từng phiên con lẻ (chu kỳ 2 tiếng) vì làm gián đoạn máy liên tục. Chỉ reboot trước 3 Ca chính (chu kỳ 6 tiếng).
+      * **05:45** (trước Ca 1 Sáng 06:00, 15p đệm)
+      * **11:35** (trước Ca 2 Trưa 12:00, 25p đệm)
+      * **17:45** (trước Ca 3 Tối 18:00, 15p đệm)
+    - **Bẫy phân định Ca vs Phiên (Pitfall — Chống reboot dày đặc):** Farm chạy 3 Ca chính (mỗi Ca gồm 2 phiên cách nhau 2 tiếng). CẤM TUYỆT ĐỐI đặt reboot trước từng phiên con lẻ (chu kỳ 2 tiếng: 06:00, 08:00, 12:00, 14:00, 18:00, 20:00) vì làm gián đoạn máy liên tục. Chỉ reboot trước 3 Ca chính (chu kỳ 6 tiếng).
     - **Cơ chế hoạt động:**
       * Script `farm_preflight_daily_reset.py` được gọi tại mỗi mốc.
       * **TFT Game Guard (User Invariant — Chỉ chặn khi đang trong trận đấu thực sự):** Script kiểm tra `League of Legends.exe`. Nếu đang trong trận đấu TFT 3D $\rightarrow$ **HỦY REBOOT NGAY (`ABORT`)** để bảo vệ ván cờ của user, không bị xử thua AFK.

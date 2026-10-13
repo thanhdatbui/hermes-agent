@@ -18,6 +18,25 @@
       return False
   ```
 
+### 1.3. Cạm bẫy Bounds Cứng `n.l >= 10` Khiến Top-Left Pencil Bị Reject (UNKNOWN_LAYOUT Crash)
+- **Hiện tượng**: Khi chạy runner tự động `run_tiktok_upload_avatar.ps1`, log văng:
+  `[PROFILE_EDIT] [METRIC] event=unknown_layout_quarantined matched=[]`
+  `[AVATAR_EDIT_OPEN_FAILED] ENSURE_AVATAR: Màn Sửa hồ sơ không mở`
+- **Nguyên nhân gốc rễ**:
+  Trong `TopLeftPencilLayout._find_pencil_candidates()`:
+  ```python
+  if 10 <= n.l <= 45 and 70 <= n.t <= 130:
+  ```
+  Trên thiết bị Samsung S7 (TikTok v47.0.3+), XML dump thực tế của icon bút chì / navigation header ở góc trên bên trái có bounds là `[0,75][168,243]`.
+  Do `left == 0 < 10`, điều kiện `10 <= n.l` bị **FAIL**!
+  Kết quả: `TopLeftPencilLayout` từ chối nhận diện, `ClassicTextLayout` không tìm thấy text, dẫn đến `resolve()` trả về `UNKNOWN_LAYOUT` và crash fail-closed.
+- **Quy tắc sửa chuẩn**: Bounds của icon góc trái bắt buộc nới lỏng `0 <= n.l <= 45` và `50 <= n.w <= 170`, `50 <= n.h <= 170` để nhận diện trúng bounds `[0,75][168,243]`.
+
+### 1.4. Xung Đột Device Lock Khi Batch Feed-Session Đang Chạy Nền
+- **Hiện tượng**: Lệnh ad-hoc `with_device_lock.py --machine 33` bị timeout 30s (`Exit 124`).
+- **Nguyên nhân**: Tiến trình nuôi nick đa máy nền (`run_tiktok.py --mode multi-machine-feed-session --machines 1..80`, ví dụ PID `29492`) đã đặt sẵn lock đặt chỗ (`status: queued_v2`, `ttl_seconds: 3600`).
+- **Xử lý**: Kiểm tra `psutil` xem có tiến trình con nào đang thực sự gửi lệnh ADB tới serial máy hay không (`target_serial in cmd`). Nếu máy chỉ đang nằm trong hàng đợi reservation nhưng cần can thiệp avatar khẩn cấp, phải đợi đợt feed của máy đó nhả hoặc dùng script chuyên dụng Layout C với lease ngắn hạn.
+
 ### 1.2. App-Drift & Ảo giác Screencap (Samsung Browser / Google Trap)
 - **Sự cố**: Trong quá trình test deep link hoặc back nhầm, thiết bị bị văng ra trình duyệt Samsung Internet (`com.sec.android.app.sbrowser`) mở trang Google xoay ngang (`1920x1080`) có nút "Đánh dấu" (hình quyển sách).
 - **Hậu quả nghiêm trọng**: Coordinator không kiểm tra `mCurrentFocus`, screencap nhầm màn hình Google, xoay ngang và tự "mớm" vision rằng đã thấy avatar Ông Chú Tâm Lý ➔ Gửi ảnh sách "Đánh dấu" khiến User phẫn nộ chất vấn báo cáo láo.
