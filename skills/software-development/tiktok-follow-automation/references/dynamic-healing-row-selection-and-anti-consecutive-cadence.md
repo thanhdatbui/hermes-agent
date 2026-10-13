@@ -84,3 +84,8 @@ $$\text{Score}(R) = 100 \times P_{\text{fail\_active}} + 20 \times P_{\text{youn
 5. **Đường dẫn Portable (Anti-Hardcoded Path Invariant):**
    - CẤM hardcode trực tiếp `D:/Taadaa/tools` trong runtime script. Khi deploy sang máy khác hoặc chạy test isolated sẽ gãy ngay.
    - **Pattern chuẩn:** Ưu tiên đọc biến môi trường `HERMES_CRON_TOOLS_DIR`, sau đó dò ngược qua các thư mục cha `[p / "tools" for p in Path(__file__).resolve().parents]` để tìm chính xác nơi chứa `healing_selector.py`.
+6. **Audit JSONL Bền Vững & Log Rotation (Closeout Gate Standards 2026-10-13):**
+   - Mọi quyết định chọn Row bắt buộc xuất bản ghi JSONL bất biến vào `D:/Taadaa/runtime/audit_logs/healing_decision_audit.jsonl`.
+   - Payload bắt buộc chuẩn hóa `schema_version: "1.0"` kèm `trace_id` ngẫu nhiên, `timestamp` ISO UTC, `row`, `score` và danh sách `candidates`.
+   - **Cơ chế xoay vòng file (Log Rotation):** Khi file vượt ngưỡng 5MB, tự động đổi tên sang `.jsonl.1` trước khi ghi mới để chống phình đĩa.
+   - **Cấm nuốt exception rộng (No Broad Silent Pass):** Toàn bộ các khối try-except quét state file, truy vấn SQLite và scan thư mục live bắt buộc ghi nhận `logger.warning` / `logger.exception`, tuyệt đối không để `pass` im lặng che giấu lỗi dữ liệu.

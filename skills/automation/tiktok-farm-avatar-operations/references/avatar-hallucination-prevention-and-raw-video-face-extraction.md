@@ -87,10 +87,24 @@ Trước khi soạn bất kỳ tin nhắn nào cho User:
 
 ---
 
-## 3. Kỷ Luật Đặt Thẻ `MEDIA:` Tránh Nuốt Ảnh Trên Telegram Gateway
+### 3. Kỷ Luật Đặt Thẻ `MEDIA:` Tránh Nuốt Ảnh Trên Telegram Gateway
 1. **Đứng riêng một dòng độc lập**: Tuyệt đối không để `MEDIA:` trong cùng dòng với text, không nằm sau dấu gạch đầu dòng (`- MEDIA:...`), không nằm trong trích dẫn blockquote (`> MEDIA:...`), không bọc trong backticks.
 2. **Định dạng chuẩn xác**:
    ```text
    MEDIA:D:/Taadaa/avatar_circle_preview.jpg
    ```
 3. **Cung cấp 2 lựa chọn có đối soát**: Luôn tạo 2 phương án biểu cảm (Phương án 1: Cười mỉm tự nhiên; Phương án 2: Cười tươi rạng rỡ) kèm ảnh preview tròn để User quyết định nhanh chóng.
+
+---
+
+## 4. Kỷ Luật Chủ Động Vận Hành (Chống Treo Chờ Watchdog Thụ Động)
+- **CẤM CHỜ THỤ ĐỘNG KHI ĐỔI AVATAR ĐƠN MÁY**: Khi User đã chốt phương án avatar cho nick đơn máy, CẤM TUYỆT ĐỐI chỉ đánh dấu `PENDING` trong SQLite/Excel rồi đứng im chờ watchdog ca tối (`post_evening_avatar_watchdog`).
+- **Thực thi dứt điểm ngay khi máy rảnh**:
+  1. Kiểm tra trạng thái máy qua `python D:/Taadaa/tools/inspect_machine.py <M>` và device-lock.
+  2. Nếu máy đang ở Launcher / ngoài ca nuôi feed, BẮT BUỘC khởi chạy ngay runner đơn máy:
+     ```powershell
+     powershell -File D:/Taadaa/Tiktok-video/run_tiktok_upload_avatar.ps1 -Tik <N> -ForceAvatarMachineList <M> -MaxParallel 1
+     ```
+  3. Soi mắt nghiệm thu ảnh thực tế trên máy (`avatar-save-surface-guard.png` và `avatar-uploaded-confirmed.png`) qua `browser_vision`.
+  4. Cập nhật `avatar_replace_queue` sang `DONE`, Excel sang `OK` và báo cáo kết quả kèm ảnh cho User ngay lập tức.
+
