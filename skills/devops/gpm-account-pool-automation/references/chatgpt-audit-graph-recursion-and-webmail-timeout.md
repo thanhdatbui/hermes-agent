@@ -43,7 +43,7 @@ Hàng loạt tài khoản (ví dụ 53/69 tài khoản) trả về kết quả `
    - Hàm `_list_providers` / đồng bộ token bắt buộc trích xuất theo thứ tự ưu tiên: `data.get("connections", data.get("providers", data.get("data", [])))`. Nếu chỉ đọc key `providers`, kết quả trả về rỗng và vô hiệu hóa việc đồng bộ / purge provider tương ứng.
 
 5. **Background Process & Visual Verification Invariant trong Audit Runner**:
-   - Khi chạy batch lớn qua `--all` (ví dụ 69-70 tài khoản trên GPM), script mất thời gian 15-25 phút do tuần tự khởi động GPM profile, kết nối CDP, đọc OTP qua Graph/Webmail và kiểm tra DOM ChatGPT.
-   - Bắt buộc chạy script dưới dạng background process (`terminal(background=True)` hoặc `process(action='wait', timeout=60)` polling) thay vì foreground ngắn gây timeout.
+   - Khi chạy script kiểm tra sức khỏe `login_audit_and_purge_deactivated.py` (kể cả batch nhỏ `--limit 5` hoặc `--all` 69-70 tài khoản), mỗi tài khoản khởi động GPM + CDP + đọc mail mất từ 15-30 giây (5 tài khoản mất ~80-120 giây).
+   - **Bẫy Foreground Timeout Guard**: Trên môi trường Coordinator, lệnh foreground bị guard giới hạn cứng `timeout <= 60s` (nếu đặt `timeout > 60s` sẽ bị chặn `GUARD_FOREGROUND_TIMEOUT_EXCEEDED`; nếu đặt `timeout <= 60s` sẽ bị đứt giữa chừng). Do đó, BẮT BUỘC khởi chạy qua `terminal(background=True)` và kiểm soát tiến trình qua `process(action='wait', timeout=60, session_id=...)` lặp lại cho tới khi hoàn tất.
    - Trước khi đính kèm `MEDIA:<path>` minh chứng tài khoản DEAD, Agent BẮT BUỘC gọi `vision_analyze` để soi mắt kiểm tra ảnh chụp màn hình artifact thực tế (chứng minh thông báo lỗi tài khoản bị xóa / vô hiệu hóa hiển thị rõ, không bị màn hình đen hay che khuất).
    - Báo cáo audit phải phân tách rõ ràng: LIVE, DEAD_DEACTIVATED (kèm ảnh chụp đã soi và xác nhận purge đồng bộ combo SQLite + OmniRoute :20129), SKIPPED_DEAD (tối ưu hóa bỏ qua acc đã purge trước đó), và UNKNOWN (cần xử lý challenge/OTP).
