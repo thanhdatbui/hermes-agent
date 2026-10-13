@@ -65,7 +65,22 @@
 17. **Kỷ Luật Đường Dẫn Prompt Hand-off Cho Claude CLI (Repo-Local Prompt Path — 13/10/2026)**:
     - Khi chuẩn bị prompt bàn giao cho Claude CLI ở Strike 3:
     - BẮT BUỘC lưu file prompt trong thư mục repo target (ví dụ `<repo>/claude_handoff_prompt.txt`), sau đó khởi chạy Claude CLI nền đọc prompt qua `$(< ...)`:
-      `claude -p "$(< '<repo>/claude_handoff_prompt.txt')" --model sonnet --dangerously-skip-permissions --max-turns 20`
+      `claude -p "$(< '<repo>/claude_handoff_prompt.txt')" --model sonnet --dangerously-skip-permissions`
+    - **Bẫy `Reached max turns (20)`**: TUYỆT ĐỐI KHÔNG đặt cờ `--max-turns 20` (hoặc bất kỳ số turns nhỏ nào) khi gọi Claude CLI sửa code multi-file. Bỏ cờ `--max-turns` hoàn toàn và để `timeout=300` (hoặc timeout của terminal tool) làm giới hạn an toàn. Việc đặt `--max-turns 20` khiến Claude CLI bị dừng giữa chừng khi đang chạy test / patch dở dang và văng `Error: Reached max turns (20)`.
+
+18. **Bẫy Lệch Staged vs Unstaged Khi Dùng `--files` Trong `closeout_gate.py` (Staged Target Mismatch — 13/10/2026)**:
+    - Khi chạy `closeout_gate.py` với cờ `--files <f1> <f2> ...`, nếu chỉ một phần các file mục tiêu bị `git add` (staged) trong khi các file còn lại chưa staged, gate sẽ báo lỗi:
+      `Failed to extract diff: staged files [...] != --files targets [...]; unstage extras or adjust --files`
+    - **Khắc phục**: Đồng bộ trạng thái: chạy `git reset HEAD <files>` để toàn bộ target nằm ở worktree (unstaged) hoặc `git add <files>` toàn bộ các target trước khi chạy gate.
+
+19. **Kỷ Luật Kiểm Thử Concurrency Cap & Timeout Recovery Để Vượt Mốc 85 Điểm (13/10/2026)**:
+    - Khi bổ sung cơ chế Concurrency Cap (giới hạn N profile/process song song) và hạ Timeout (ví dụ 1800s xuống 300s), Reviewer Sol High sẽ trừ điểm nếu chỉ có unit test đơn giản.
+    - Để đạt điểm cao (>= 85/100), BẮT BUỘC có đủ bộ kiểm thử 4 góc:
+      1. **Cap Trigger Test**: Khi số process $\ge N$, supervisor skip tick và phát telemetry event `concurrency_cap_skipped` kèm số active profile.
+      2. **Under-Limit Pass Test**: Khi số process $< N$, supervisor tiếp tục luồng bình thường và KHÔNG phát event skip.
+      3. **Permission/Scan Error Test**: Khi scanner gặp `psutil.AccessDenied` hoặc ngoại lệ, supervisor không crash, ghi nhận telemetry `concurrency_cap_scan_failed` và tiếp tục an toàn.
+      4. **Timeout Recovery Test**: Khi lệnh thực thi (`run_cmd`) trả về `False` (do timeout hoặc lỗi script), hàm `execute()` xử lý fail-safe: đánh dấu status `FAILED`, giữ nguyên stage để retry chu kỳ sau, và không corrupt state.
+      5. **Form Active Gate Test**: Luồng điền form kiểm tra cờ `form_active` trước khi trigger submit, và hỗ trợ đầy đủ các biến thể nút bấm tiếng Việt (`"Bắt đầu"`, `"Xác nhận"`, `"Tiếp tục"`, `"Continue"`).
 
 ## 3. Thang Leo Thang Sửa Chữa (Remediation Ladder)
 - **Vòng 1 & 2 (Sol Repair / Worker Remediation)**:

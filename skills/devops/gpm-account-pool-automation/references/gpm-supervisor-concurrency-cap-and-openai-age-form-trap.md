@@ -26,10 +26,14 @@
            return 0
 
    # Trong hàm tick:
-   active_gpm = count_running_gpm_browsers()
-   if active_gpm >= 5:
-       print(f"[CONCURRENCY_CAP] Dang co {active_gpm} profile GPM hoat dong. Bo qua tick.")
-       return 0
+   try:
+       active_gpm = count_running_gpm_browsers()
+       if active_gpm >= 5:
+           print(f"[CONCURRENCY_CAP] Dang co {active_gpm} profile GPM hoat dong. Bo qua tick.")
+           log_telemetry_event("concurrency_cap_skipped", {"active_profiles": active_gpm})
+           return 0
+   except Exception as exc:
+       log_telemetry_event("concurrency_cap_scan_failed", {"error": str(exc)})
    ```
 2. **Cap timeout tối đa cho mỗi lượt thao tác web:**
    Giảm timeout của `run_cmd` khi gọi script tương tác browser từ 1.800s xuống tối đa 300s (5 phút).
@@ -60,23 +64,39 @@
 ### Giải pháp chuẩn hóa
 Tách biệt hoàn toàn việc kiểm tra Name, Age, Birthday và lệnh click Continue:
 ```python
-# 1. Điền Tên nếu có
+# 1. Khởi tạo cờ kiểm soát form
+form_active = False
+
+# 2. Điền Tên nếu có
 name_inp = page.locator('input[name="name"], input#name, input[autocomplete="name"]').first
 if name_inp.is_visible(timeout=3000):
     name_inp.fill("Chau Ta")
+    form_active = True
 
-# 2. Điền Tuổi độc lập (không lồng trong Name)
+# 3. Điền Tuổi độc lập (không lồng trong Name)
 age_inp = page.locator('input[name="age"], input#age, input[type="number"], input[placeholder*="Age"], input[placeholder*="tuổi"], input[placeholder*="Tuổi"], input[aria-label*="Age"], input[aria-label*="tuổi"], input[inputmode="numeric"]').first
 if age_inp.is_visible(timeout=2000):
     age_inp.fill("25")
+    form_active = True
 
-# 3. Điền Ngày sinh nếu có
+# 4. Điền Ngày sinh nếu có
 dob_inp = page.locator('input[name="birthdate"], input#birthdate, input[name="birthday"], input[type="date"]').first
 if dob_inp.is_visible(timeout=2000):
     dob_inp.fill("2000-04-17")
+    form_active = True
 
-# 4. Luôn gọi click continue sau khi xử lý các trường onboarding
-click_continue_btn(page)
-time.sleep(5)
+# 5. Fallback kiểm tra tiêu đề màn hình hỏi tuổi
+if not form_active:
+    try:
+        heading = page.locator('h1, h2').first.inner_text(timeout=1000).strip().lower()
+        if any(kw in heading for kw in ["tuổi", "age", "about you"]):
+            form_active = True
+    except Exception:
+        pass
+
+# 6. Chỉ click continue khi form thực sự đang active (tránh click mù ngoài luồng)
+if form_active:
+    click_continue_btn(page)
+    time.sleep(5)
 ```
 - Bổ sung vào danh sách nút của `click_continue_btn`: `button:has-text("Bắt đầu")`, `button:has-text("Xác nhận")`, `button:has-text("Hoàn tất")` để không bị kẹt ở modal Onboarding tiếng Việt.
