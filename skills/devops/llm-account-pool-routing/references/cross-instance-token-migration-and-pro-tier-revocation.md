@@ -49,6 +49,13 @@ OmniRoute lưu trữ credential trong SQLite tại `C:\Users\Kibe\.omniroute\sto
 - `priority` là integer, `is_active` = 1, `test_status` = `'active'`, `max_concurrent` = 5, `proxy_enabled` = 1.
 
 ### Quy Trình Di Trú O(1) Tự Động
+Đã có sẵn script tự động hóa toàn bộ luồng di trú tại: `D:/Taadaa/tools/sync_pro_accounts.py`.
+Khi cần đồng bộ thêm tài khoản, chỉ cần điều chỉnh danh sách email trong script hoặc chạy trực tiếp:
+```bash
+python D:/Taadaa/tools/sync_pro_accounts.py
+```
+
+Các bước cốt lõi script thực hiện:
 1. **Trích xuất**: Đọc `accessToken`, `refreshToken`, `scope`, `projectId` của tài khoản mục tiêu từ 9Router SQLite.
 2. **Mã hóa**: Dùng subprocess Node.js hoặc thư viện crypto tương thích để mã hóa cả `accessToken` và `refreshToken` theo đúng định dạng `enc:v1:...` với static key.
 3. **Upsert vào OmniRoute**:
