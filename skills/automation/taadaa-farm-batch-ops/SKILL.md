@@ -9,19 +9,20 @@ tags: [tiktok, farm, batch, render, upload, resume, kibe]
 # Taadaa Farm Batch Ops
 
 > 📌 **Tài liệu tham khảo & Tools chuyên sâu**:
-> - `references/diagnosing-download-stopped-status.md`: Downloader tự dừng.
+> - `references/diagnosing-download-stopped-status.md`: Downloader.
 > - `references/workbook-sync-lock-and-mass-missing-id-diagnosis.md`: Sync lock.
-> - `references/tiktok-farm-tracker-rescan-and-nonlive-diagnosis.md`: Rescan LIVE.
+> - `references/tiktok-farm-tracker-rescan-and-nonlive-diagnosis.md`: Rescan.
 > - `references/cron-reports-and-tracker-triage.md`: Cron triage.
 > - `references/avatar-batch-watchdog-reporting-and-rescan.md`: Avatar watchdog.
 > - `references/video-sourcing-gaixinh-two-tier-allocation.md`: Gái Xinh.
 > - `references/gaixinh-pipeline-cookies-and-admin-remote-ops.md`: Admin batch.
 > - `references/video-farm-standard-45-clips-and-supplementary-pipeline.md`: Chuẩn 45.
 > - `references/dual-cluster-post-reboot-recovery-and-single-worker-render.md`: Reboot.
-> - `references/dual-cluster-downloader-concurrency-and-proxy-hygiene.md`: Downloader & proxy.
-> - `references/admin-render-cross-mapping-realignment.md`: Mapping 8 Tik.
-> - `references/cross-machine-dedup-and-pet-sourcing.md`: Chống đụng hàng Kibe vs Admin.
-> - `scripts/verify_gaixinh_sourcing.py`: Probe kiểm tra claims dedup & ViT/leftover.
+> - `references/dual-cluster-downloader-concurrency-and-proxy-hygiene.md`: Downloader.
+> - `references/admin-render-cross-mapping-realignment.md`: Mapping.
+> - `references/balanced-niche-distribution-per-slot-and-shift.md`: Random niche.
+> - `references/cross-machine-dedup-and-pet-sourcing.md`: Chống trùng.
+> - `scripts/verify_gaixinh_sourcing.py`: Probe.
 > - `references/tiktok-dashboard-prev-day-delta-baseline.md`: Delta dashboard.
 
 

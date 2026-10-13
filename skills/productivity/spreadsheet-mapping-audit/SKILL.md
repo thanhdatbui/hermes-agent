@@ -250,3 +250,4 @@ For off-grid folder video drift and modulo-8 slot collisions on the Admin cluste
 For hashtag-by-source-folder niche, `video gốc` allocation rules, 8-row/machine restore, random render launcher, and the silent progress watchdog, see `references/tikn-hashtag-source-and-render.md`.
 For fingerprint ledger vs workbook video count drift audit, see `references/fingerprint-vs-workbook-video-count-audit-20260902.md`.
 For single-account hashtag drift between `Folder Video` and `video gốc` (e.g. pet videos with automotive hashtags), see `references/hashtag-drift-render-source-reconciliation.md`.
+For niche allocation anti-clustering permutations across 80 machines and two-sheet hashtag synchronization, see `references/niche-allocation-anti-clustering-and-hashtag-sync-20261013.md`.
