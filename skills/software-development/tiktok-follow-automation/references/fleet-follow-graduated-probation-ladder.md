@@ -134,10 +134,28 @@
    - Trả lời: *Nick đi đường thường hay đường ưu tiên?*
    - `Đường thường (Standard)`: Nick tân binh / mới lên giàn / điểm uy tín thấp ($< 60$đ) $\rightarrow$ Đi tuần tự qua từng nấc.
    - `⚡ Ưu tiên (Priority / Fast-track)`: Nick cựu binh uy tín cao ($\ge 60$đ, tuổi đời lớn, nhiều video) $\rightarrow$ Rút ngắn thời gian thử thách (1 ca sạch promote ngay).
+   - **THUẬT TOÁN CHẤM ĐIỂM TÍN NHIỆM (RECOVERY TRUST SCORE 0 - 100):**
+     $$\text{Recovery Score} = \max\Big(0,\; \text{Base Trust} - \text{Violation Penalty}\Big)$$
+     * **Điểm Uy Tín Cơ Sở (Base Trust — Tối đa 100đ):**
+       - Lịch sử Follow (`total_followed`): $\ge 100$ fl (40đ), $50-99$ fl (30đ), $20-49$ fl (20đ), $< 20$ fl (10đ).
+       - Kỷ lục Max Safe (`max_safe`): $\ge 30$ fl (40đ), $15-29$ fl (30đ), $5-14$ fl (15đ), $< 5$ fl (5đ).
+       - Tiến độ sạch (`clean_days`): mỗi ca sạch +10đ (max 20đ).
+     * **Điểm Trừ Vi Phạm (USER INVARIANT — PHẢI LÀ PHÉP TRỪ):**
+       - Streak 0: trừ 0đ.
+       - Streak 1 (Lần đầu bị nhả / nghi do IP/lag): **TRỪ 15đ**.
+       - Streak 2 (Tái phạm lần 2): **TRỪ 35đ**.
+       - Streak >= 3 (Tái phạm nặng / Sổ đen): **TRỪ 60đ**.
+     * **Cơ chế Farm Điểm Lên Fast-Track Tự Động:** Nick ở nhóm Thận trọng ($< 60$đ) hoàn toàn có thể tự leo lên Fast-track qua các pipeline: Upload video đều đặn (+20–30đ), tích lũy micro-follow sạch 3–4 fl/ca (+10đ/ca). Khi điểm chạm $\ge 60$đ, hệ thống tự động thăng lên Fast-track.
 3. **Layer 3: Tiến độ nâng cấp (Progress & Requirement):**
    - Trả lời: *Còn bao nhiêu ca sạch nữa để thăng hạng?*
    - Hiển thị rõ dạng tiến độ: `X/2 ca sạch` và `Cần thêm Y ca sạch để lên Cấp tiếp theo`.
    - **CẤM TUYỆT ĐỐI:** Nhồi nhét chữ `(X ca)` vào tên huy hiệu (như `Thận trọng (X ca)` hay `Thận trọng (1 ca)`) làm rối loạn phân loại của Operator.
+
+### C. Nghịch Lý Simpson (Simpson's Paradox) & Công Thức Tối Ưu Quota Theo Rủi Ro:
+- **Cạm bẫy thống kê Flat:** Thống kê gộp toàn farm khiến nhóm 15+ fl trông an toàn nhất (96.9%) còn nhóm 1-4 fl lại báo nhả cao (33.3%). Đây là **Survivorship Bias** kinh điển: chỉ có nick nòng cốt siêu khỏe mới được cấp 15+ fl, trong khi chỉ có nick mới ra tù / tân binh yếu mới chạy 1-4 fl. Nếu vặn 15+ fl cho nick yếu sẽ chết 100%.
+- **Công thức tính Quota tự động (Risk-Adjusted Decision Optimization):**
+  $$U(q) = q \times (1 - P_{\text{nhả}}(q)) - P_{\text{nhả}}(q) \times \text{Cost}_{\text{Cooldown}}$$
+  với chi phí giam Cooldown phạt nặng theo tầng: S1 ($\approx 30$ fl), S2 ($\approx 60$ fl), Khỏe ($\approx 120$ fl). Công thức này tự động tìm điểm ngọt $q^*$ bền vững cho từng tầng độc lập.
 
 ---
 

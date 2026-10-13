@@ -97,11 +97,17 @@ Khảo sát từ 10.677 lượt follow và 389 hồ sơ lỗi state trên hệ t
 * Không vội vàng kết luận trần cứng cho cả dàn chỉ dựa trên vài ca bị nhả lẻ tẻ.
 
 ### Phân tầng kiểm thử trần (Canary Architecture):
-1. **90–95% Dàn chính (Core Fleet):** Giữ ở cận dưới an toàn tuyệt đối (ví dụ 8–10 follow/ca). Nhóm này chịu trách nhiệm tạo sản lượng đều đặn, không mạo hiểm.
-2. **5–10% Đội dò đường (Canary Cohort):** Chọn ra 3–5 nick trâu nhất (những nick có `Max Safe` lịch sử từng đạt 40–50 như M28, M50). Chỉ nhóm nhỏ này mới được tăng dần tải (+2 follow mỗi chu kỳ) để thăm dò phản ứng của thuật toán TikTok.
-3. **Quy tắc nghiệm thu trần:**
-   - Nếu Canary vượt qua 3 chu kỳ sạch liên tiếp ở mức cao hơn -> Mới cân nhắc nâng nhẹ cận trên của dàn chính.
-   - Nếu Canary dính nhả -> Bán kính thiệt hại chỉ gói gọn trong 2-3 nick thử nghiệm, 95% dàn chính hoàn toàn an toàn.
+1. **90–95% Dàn chính (Core Fleet):** Giữ ở cận dưới an toàn tuyệt đối (Baseline Quota tối ưu theo từng nhóm, ví dụ 12–16 follow/ca ở nhóm Khỏe). Nhóm này chịu trách nhiệm tạo sản lượng đều đặn, không mạo hiểm.
+2. **5–10% Đội dò đường (Canary Cohort) — ĐỘC QUYỀN CHO NHÓM KHỎE:** 
+   - **USER INVARIANT:** Tuyệt đối **KHÔNG BAO GIỜ bốc máy ở nhóm Hồi phục (S1 / S2) làm Canary**.
+     * *Bản chất:* Nhóm Khỏe là "Phòng thí nghiệm" (thử sức chịu tải, xui fail chỉ dính Streak 1 nghỉ 3 ngày); Nhóm Hồi phục là "Bệnh nhân phòng hồi sức", mục tiêu duy nhất là xuất viện sống sót an toàn. Ép tải +10% ở nhóm hồi phục chỉ thêm 1 follow nhưng nếu xui sẽ dính Streak 2/3 bị tống giam 7–15 ngày!
+   - **Tiêu chí bốc Canary tự động (Automated Canary Selection & Diversity Rule):**
+     * Chọn 4–5 nick trâu nhất nhóm Khỏe (sắp xếp theo `max_safe` >= 40, `total_followed` >= 150).
+     * **Mỗi nick 1 cổng Proxy riêng biệt**, loại trừ các proxy vừa dính ngắt cầu dao.
+     * Cấp Quota Canary = Baseline * 1.10 (+10% Quota, ví dụ 16 -> 18 lượt/ca).
+3. **Quy tắc nghiệm thu trần (Closed-Loop Feedback):**
+   - Nếu Canary vượt qua 3 chu kỳ sạch liên tiếp ở mức cao hơn -> Tự động nới trần Baseline cho toàn dàn chính.
+   - Nếu Canary dính nhả -> Lập tức kích hoạt Kill-switch dừng thử nghiệm, giữ nguyên trần an toàn của dàn chính. Bán kính thiệt hại chỉ gói gọn trong 2-3 nick thử nghiệm, 95% dàn chính hoàn toàn an toàn.
 
 ---
 
