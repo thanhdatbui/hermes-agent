@@ -26,6 +26,18 @@
 7. **Bẫy Thiếu Unit Test Cho Failure Paths (Validation & Timeout)**:
    - Khi thêm cơ chế validation hậu kiểm (xác minh task scheduler, response format, trigger list), Reviewer Sol High sẽ trừ điểm nếu chỉ có test nhánh thành công ("happy path").
    - Bắt buộc bổ sung các unit test mô phỏng failure paths: subprocess timeout/OSError, dữ liệu parse trả về rỗng, trigger times không khớp kỳ vọng, hoặc trạng thái task bị Disabled.
+8. **Bẫy Nuốt Ngoại Lệ Ngầm Trong Quét Dữ Liệu/Database (Silent Broad Pass)**:
+   - Các khối `try...except Exception: pass` trong hàm quét file, đọc state hoặc query SQLite khiến Reviewer trừ điểm rất nặng vì nghi ngờ "che giấu lỗi dữ liệu hoặc làm sai lệch quyết định mà không tạo tín hiệu cảnh báo".
+   - Luôn thay `pass` bằng `logger.warning(...)` hoặc `logger.exception(...)` ghi rõ path/query bị lỗi.
+9. **Kỷ Luật Telemetry Bền Vững Cho Decision Engine (Versioned Schema & Log Rotation)**:
+   - In-memory counter (như `METRICS["selected"]`) không đủ cho decision engine vì bay mất sau khi process restart.
+   - Quyết định lựa chọn (như chọn Row dưỡng, gán Quota) bắt buộc phải ghi ra persistent audit log (`.jsonl`) với:
+     * `schema_version`: Đặt version cụ thể (ví dụ `"1.0"`).
+     * `trace_id`: UUID hoặc `os.urandom(8).hex()` để theo dõi tương quan.
+     * `timestamp`: ISO UTC timestamp.
+     * Cơ chế **Log Rotation**: Khi kích thước file vượt ngưỡng (ví dụ > 5MB), tự động xoay vòng sang `.jsonl.1` để tránh phình đĩa vô hạn.
+10. **Bẫy State Cũ / Lệch Ngày (Stale & Corrupt State Fallback)**:
+    - Các rule dựa trên state file (như `last_window`, `last_row`) bắt buộc phải có test case kiểm thử khi dữ liệu state cũ từ hôm trước hoặc bị corrupt, chứng minh hệ thống tự động rơi về fallback an toàn mà không sập.
 
 ## 3. Thang Leo Thang Sửa Chữa (Remediation Ladder)
 - **Vòng 1 & 2 (Sol Repair / Worker Remediation)**:
