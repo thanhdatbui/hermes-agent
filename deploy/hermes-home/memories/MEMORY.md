@@ -8,10 +8,10 @@ TikTok Follow: (máy,row) độc lập, ca khác row khác cấm gộp máy; Quo
 §
 Hotmail bán: CẤM gán mail cá nhân; tự sinh @fviainboxes.com đọc OTP qua API. Tab Chrome CDP đóng ko mất cookie (lưu Profile disk).
 §
-Proxy: User KO đổi, SoT PROXYgandienthoai.xlsx (S7 Google & Hotmail reg TT giữ nguyên port; cấm tự tách; acc 400h cách ly khỏi combo). Wave scheduling tách máy trùng IP (W1 1 máy/proxy, W2 đối tác; 0 collision/wave; gap 15-35m cho Cầu dao).
-§
-Bắt buộc soi vision trước khi gửi; MEDIA: đứng riêng dòng trống né nuốt ảnh.
+Proxy: User KO đổi, SoT PROXYgandienthoai.xlsx (S7 Google & Hotmail reg TT giữ nguyên port; acc 400h cách ly). Wave: W1 1 máy/proxy, W2 đối tác; gap 15-35m Cầu dao. Soi vision trước khi gửi; MEDIA: riêng dòng trống né nuốt ảnh.
 §
 Farm Dispatch Invariant: context delegate_task bắt buộc có TASK_KIND: EDIT/INVESTIGATE. FILE: D:/... (đường dẫn tuyệt đối trực tiếp, CẤM bọc ngoặc <<< >>> và cấm gạch đầu dòng '- ' tránh lỗi PATH_NOT_ABSOLUTE). Bắt buộc có FOCUSED_TEST.
 §
 GPM Hotmail: GPM duy nhất trên Kibe; Admin là data lưu Hotmail farm Admin để log dần lên GPM Kibe (gộp 1 cron duy nhất gpm-5profiles-lifecycle-supervisor, cấm đẻ cron admin riêng). Hotmail bắt buộc qua HOTMAIL_LOGIN giữ cookie GPM, cấm nhảy cóc CHATGPT_REG dù có OAuth token.
+§
+Triage Stale Upload: CẤM quy chụp máy rớt ADB tức thời thành nick kẹt >14d; kiểm tra đa slot trên máy, nếu slot khác tăng clip thì máy bình thường, lỗi do workflow/draft trap. Mở bản nháp hỏng bắt buộc xóa sạch (_delete_all_profile_drafts) và normalize về Home.

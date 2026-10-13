@@ -40,10 +40,13 @@ Hướng dẫn đối soát và xử lý khi nhận cảnh báo tiến độ upl
 
 Khi nhận danh sách cảnh báo các nick không tăng video >14 ngày, **CẤM** suy diễn vội vàng hoặc sửa mò code upload. Bắt buộc phân loại theo 4 nhóm nguyên nhân độc lập:
 
-### Tầng 1: Lỗi Phần cứng / ADB Thiết bị (Hardware Disconnect)
+### Tầng 1: Lỗi Phần cứng / ADB Thiết bị (Hardware Disconnect vs Temporary EHCI Drop)
 - **Kiểm tra:** Chạy `python D:/Taadaa/tools/inspect_machine.py <N>` cho các máy xuất hiện trong top đầu (ví dụ Máy 10, Máy 30, Máy 44, Máy 55, Máy 69).
-- **Dấu hiệu:** ADB trả về `device not found` hoặc `offline` (tuột cáp USB, sập nguồn, treo hub).
-- **Kết luận:** Nick không thể đăng video do máy vật lý mất kết nối từ ngày máy bắt đầu offline. Cần thao tác vật lý (cắm lại cáp/bật nguồn), không phải lỗi runner.
+- **Dấu hiệu:** ADB trả về `device not found` hoặc `offline` (tuột cáp USB, sập nguồn, treo hub, hoặc nghẽn bus USB EHCI sau 24h).
+- **CẢNH BÁO QUY KẾT NHẦM (User Correction 13/10/2026):**
+  - CẤM vội vàng quy kết nick kẹt >14 ngày là do offline phần cứng chỉ vì lúc kiểm tra thấy máy rớt ADB.
+  - Phải kiểm tra chéo các slot khác (Tik 1..8) của máy trong database/Excel: Nếu các slot khác vẫn đăng video trong vài ngày qua, máy hoàn toàn online bình thường, việc rớt ADB chỉ là nghẽn bus EHCI tạm thời (sẽ tự phục hồi sau reboot 11:35). Lỗi kẹt nick thuộc về logic workflow của riêng slot đó (xem Tầng 4).
+- **Kết luận:** Chỉ kết luận lỗi phần cứng dài ngày khi TẤT CẢ các slot trên máy đều dừng cùng một mốc thời gian và máy không có bất kỳ log run nào thành công trong suốt thời gian đó. Cần thao tác vật lý (cắm lại cáp/bật nguồn), không phải lỗi runner.
 
 ### Tầng 2: Quy hoạch Cụm Máy / Trạng thái Dưỡng (Cohort / Host Status)
 - **Kiểm tra:** Gom nhóm danh sách stale theo `host_id` (`kibe` vs `admin`) và phân bố số ngày kẹt.
