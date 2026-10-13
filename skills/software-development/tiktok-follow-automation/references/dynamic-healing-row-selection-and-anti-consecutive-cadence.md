@@ -52,5 +52,9 @@ $$\text{Score}(R) = 100 \times P_{\text{fail\_active}} + 20 \times P_{\text{youn
    - Quét 413 file JSON trạng thái tốn ~1.7 giây mỗi lần.
    - Khi chạy test suite lặp 48 ngày (96 lần gọi), thời gian tăng vọt lên > 160 giây và gây timeout test suite.
    - **Giải pháp bắt buộc:** Cài đặt bộ đệm in-memory 60 giây (`_CACHE_FAIL_RATES`, TTL = 60.0s). Giúp các lệnh gọi liên tiếp trong vòng 1 phút phản hồi tức thì (< 10ms) mà vẫn đảm bảo tính tươi mới tuyệt đối giữa các tick cron 15 phút.
-3. **Cơ chế Fallback Fail-Safe:**
-   - Nếu `tiktok_tracker.db` bị lock hoặc không đọc được folder state, hệ thống tự động fallback về danh sách an toàn `[2, 4, 1, 3, 5, 6, 7, 8]` (vẫn tuân thủ luật loại trừ `last_row`), không bao giờ để tiến trình cron bị crash.
+3. **Cơ chế Fallback Fail-Safe & Tương thích ngược (Closeout Gate Lesson 2026-10-13):**
+   - Nếu `healing_selector` gặp lỗi (thiếu module, DB bận hoặc sai path), tuyệt đối **CẤM fallback im lặng gán cứng row = 2**. Gán cứng sẽ tạo điểm mù vận hành và làm chệch lịch cũ.
+   - **Bắt buộc:**
+     1. Fallback phải bảo toàn 100% logic tương thích ngược của lịch cũ (`Row 3/4/5/6` theo `cycle_day`, `cycle_idx` và `slot_key`).
+     2. Bắt buộc bắn Telemetry warning log rõ ràng ra `sys.stderr`: `[HEALING_SELECTOR_FALLBACK] <exc>, fallback to Row <row>` để watchdog phát hiện ngay.
+     3. Kiểm tra an toàn `tools_dir.is_dir()` trước khi chèn vào `sys.path`.
