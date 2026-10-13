@@ -8,6 +8,15 @@ Quy trình đổi bảo mật trên profile GPM theo runner canonical `gpm_chang
     1. Vừa add mail khôi phục và xác minh OTP xong ➔ Ghi ngay vào Cột 5 `gmail_clean_v2.xlsx`.
     2. Vừa bóc Secret Key 2FA xong ➔ Ghi ngay vào Cột 4 `gmail_clean_v2.xlsx` trước khi kích hoạt.
     3. Microsoft vừa chấp nhận mật khẩu mới ➔ Ghi ngay vào Cột 3 `gmail_clean_v2.xlsx` và Cột G (Cột 7 - PASS MAIL) workbook farm `taikhoan_dat_v2_updated .xlsx`, xóa OAuth Cột 9, và ghi nhận state file TRƯỚC KHI Sign Out Everywhere hay Relogin.
+- **Bản chất kỹ thuật kiểm chứng thực tế: Tại sao BẮT BUỘC có Mail Khôi Phục mới bật được 2FA?**
+  * Thực nghiệm kiểm chứng: Nick Zin chỉ có Password khi cố nhảy cóc truy cập `https://account.live.com/proofs/EnableTfa`, Microsoft chặn cứng với thông báo: *"Để bật xác nhận hai bước, chúng tôi cần hai cách để chắc chắn bạn là bạn"* và hiển thị ô bắt buộc điền email `ai_do@example.com` (bản dịch của `someone@example.com`).
+  * Microsoft từ chối mở wizard Authenticator nếu tài khoản chưa có tối thiểu 2 phương thức xác minh (Mật khẩu + Email khôi phục).
+  * Quy tắc ngâm: Sau khi add email khôi phục và bóc OTP thành công (vài giây), tài khoản đủ điều kiện và Microsoft mở khóa cho add 2FA Authenticator liền tại chỗ, HOÀN TOÀN KHÔNG CẦN NGÂM THÊM 7 ngày.
+- **Phân tách ngữ cảnh Interstitials (Proofs URL Isolation):**
+  * Khi xử lý các popup chuyển tiếp Microsoft (`handle_microsoft_interstitials`), BẮT BUỘC kiểm tra URL: Nếu URL chứa `proofs`, TUYỆT ĐỐI KHÔNG tự động click các nút có text `Tiếp theo`, `Next` vì sẽ bấm nhầm vào form đang cấu hình. Chỉ xử lý interstitial khi ở trang login/interstitial thuần túy.
+- **Telemetry & Structured Observability (Trace Correlation):**
+  * Mọi bước quan trọng đều phát sinh sự kiện chuẩn JSON qua `log_telemetry_event(event_type, email, machine, **kwargs)`.
+  * Deterministic `trace_id` (SHA-256 12 ký tự từ `email + YYYYMMDD`) giúp trace correlation liên thông toàn bộ lifecycle của nick trên farm scale lớn.
 - **Phạm vi quản lý Dual-Farm (Kibe + Admin):**
   * Toàn bộ 2 farm gồm ~1.280 tài khoản (Kibe 1-80: 640 accounts, Admin 201-280: ~640 accounts). CẤM đếm thiếu cụm Admin khi đối soát số lượng và báo cáo.
 
