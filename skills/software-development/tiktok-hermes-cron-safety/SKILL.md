@@ -6,6 +6,7 @@ description: Phase 9A.x → 9C.x production-safety work in the Taadaa Hermes-cro
 # TikTok Hermes-Cron Production-Safety Remediation (Phase 9A.x → 9B.x)
 
 - **Troubleshooting Reference**: [references/manifest-identity-mismatch-troubleshooting.md](references/manifest-identity-mismatch-troubleshooting.md)
+- **Healing Selector Loader Troubleshooting**: [references/cron-dynamic-healing-selector-loader.md](references/cron-dynamic-healing-selector-loader.md)
 - **Cohort Validation & Block Index Troubleshooting**: [references/cohort-validation-and-block-index-troubleshooting.md](references/cohort-validation-and-block-index-troubleshooting.md)
 - **4 Ca x 2 Phiên Invariants**: [references/manifest-4-block-2-session-invariants.md](references/manifest-4-block-2-session-invariants.md)
 - **Cadence 4 Ca x 2 Phiên Spec**: [references/cadence-4ca-2phien-manifest-spec.md](references/cadence-4ca-2phien-manifest-spec.md) — xử lý lỗi `MANIFEST_IDENTITY_MISMATCH` khi source config drift mid-day.
