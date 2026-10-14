@@ -147,16 +147,70 @@ if pwd_input.count() > 0 and pwd_input.first.is_visible():
 
 # 3. Tự sinh & điền mã TOTP 2FA nếu Google thách thức
 if account_cred.get("2fa"):
-    totp_input = page.locator("input[type='tel'], input#idvPin, input[name='totpPin']")
-    if totp_input.count() > 0 and totp_input.first.is_visible():
-        totp_code = pyotp.TOTP(account_cred["2fa"]).now()
-        totp_input.first.fill(totp_code)
-        time.sleep(1)
-        page.locator("#totpNext, button:has-text('Tiếp theo'), button:has-text('Next')").first.click()
-        time.sleep(3)
+    totp_found = False
+    for sel_totp in ["input[type='tel']", "input#totpPin", "input[name='totpPin']", "input[type='number']"]:
+        pin_in = page.locator(sel_totp)
+        if pin_in.count() > 0 and pin_in.first.is_visible():
+            totp_code = pyotp.TOTP(account_cred["2fa"]).now()
+            pin_in.first.fill(totp_code)
+            pin_next = page.locator("#totpNext")
+            if pin_next.count() > 0 and pin_next.first.is_visible():
+                pin_next.first.click()
+            else:
+                pin_in.first.press("Enter")
+            time.sleep(3)
+            totp_found = True
+            break
+
+    # BẪY 2FA DEVICE PROMPT (GALAXY S7): Nếu Google đòi xác nhận trên thiết bị
+    if not totp_found:
+        try:
+            # QUAN TRỌNG: Cấm dùng "button:has-text(), text='...'" (lỗi Unexpected token '=' in Playwright CSS parser)
+            other_btn = page.get_by_text("Thử cách khác")
+            if other_btn.count() > 0 and other_btn.first.is_visible():
+                other_btn.first.click()
+                time.sleep(2)
+                auth_opt = page.get_by_text("Authenticator")
+                if auth_opt.count() > 0 and auth_opt.first.is_visible():
+                    auth_opt.first.click()
+                    time.sleep(2)
+        except Exception:
+            pass
+
+# BẪY ACCOUNT CHOOSER CLICK: Chỉ click khi đang ở trang /chooser hoặc /identifier
+if any(x in cur_url for x in ["/chooser", "/identifier"]):
+    try:
+        acc_elem = page.locator(f"[data-email*='{EMAIL}']")
+        if acc_elem.count() > 0 and acc_elem.first.is_visible():
+            acc_elem.first.click()
+            time.sleep(2)
+    except Exception:
+        pass
 
 # 4. Consent Approve
 consent_btn = page.locator("#submit_approve_access, button:has-text('Tiếp tục'), button:has-text('Cho phép')")
 if consent_btn.count() > 0 and consent_btn.first.is_visible():
     consent_btn.first.click()
 ```
+
+---
+
+## 6. Giải nén Token & Đóng gói Profile Headless (`unpack_omni_connection.py`)
+
+Sau khi OmniRoute thực hiện exchange OAuth code và lưu vào `storage.sqlite`:
+
+1. **Giải mã Token at rest (AES-256-GCM):**
+   - Khóa giải mã được derive từ `STORAGE_ENCRYPTION_KEY` với salt `omniroute-field-encryption-v1` (scrypt `N=16384, r=8, p=1, dklen=32`).
+   - Nếu file `.env` rỗng trên đĩa, script tự động đọc biến môi trường `STORAGE_ENCRYPTION_KEY` từ tiến trình `node.exe` đang chạy qua `psutil.process_iter()`.
+2. **Tạo Profile Sandbox tức thì:**
+   - Script tiện ích `D:/Taadaa/tools/unpack_omni_connection.py <email> <profile_name> [raw_proxy]` tự động:
+     - Tạo thư mục `D:/Taadaa/agy_profiles/<profile_name>/.gemini`
+     - Sinh UUID `installation_id` mới
+     - Ghi `oauth_creds.json` và `google_accounts.json`
+     - Sao chép `settings.json`, `state.json`, `projects.json` mẫu từ `acc_01`
+     - Ghi nhận `profile_name`, đường dẫn và Proxy 4G vào `profiles_config.json`
+3. **Chỉ định Profile cụ thể khi Kiểm thử (`--profile`):**
+   ```bash
+   python D:/Taadaa/tools/ag_cli.py ask "Test prompt" --profile acc_02
+   ```
+   Cờ `--profile` bỏ qua vòng lặp auto-select round-robin để kiểm tra trực tiếp tài khoản mới và kết nối proxy vừa gán.
