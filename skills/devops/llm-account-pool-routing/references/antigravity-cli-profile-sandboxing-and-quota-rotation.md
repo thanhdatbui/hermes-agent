@@ -214,3 +214,26 @@ Sau khi OmniRoute thực hiện exchange OAuth code và lưu vào `storage.sqlit
    python D:/Taadaa/tools/ag_cli.py ask "Test prompt" --profile acc_02
    ```
    Cờ `--profile` bỏ qua vòng lặp auto-select round-robin để kiểm tra trực tiếp tài khoản mới và kết nối proxy vừa gán.
+
+---
+
+## 7. Kiến Trúc Điều Phối: Hermes Coordinator vs Native `agy` CLI
+
+### 1. Tại sao Hermes Coordinator không thể dùng trực tiếp `agy.exe` làm Model Backend nguyên bản?
+- **Khác biệt về giao thức (Protocol Impedance Mismatch):**
+  - **Hermes Coordinator:** Cần một **HTTP REST Server** (chuẩn OpenAI `/v1/chat/completions`) hỗ trợ HTTP streaming token, duy trì context nhiều vòng và thực thi ReAct Tool Calling lặp lại (Hermes tự gọi ADB, Telegram, OCR, Cronjob, Computer Use).
+  - **`agy.exe`:** Là một **Command Line Interface (CLI)** thực thi đơn nhiệm (One-Shot Process). Khi nhận lệnh, nó khởi động Go runtime, suy luận, thực thi tool nội bộ của nó (AST edit, bash test), in kết quả ra stdout rồi **exit tiến trình ngay lập tức (Exit 0)**.
+- **Rào cản:** Nếu ép Hermes mỗi lượt chat lại spawn một tiến trình `agy`, Hermes sẽ mất toàn bộ khả năng tương tác với hệ thống farm (không thể tự chụp màn hình, không thể click ADB, không thể dispatch task) và độ trễ tăng vọt do mỗi lượt đều phải khởi động lại binary Go.
+
+### 2. Hai Mô Hình Tích Hợp Chuẩn:
+- **Mô hình A (Hiện tại - Khuyên dùng): "Tổng Quản & Đao Phủ"**
+  - **Hermes làm Coordinator:** Nhận alert Telegram, trực ban 24/7, quản lý Cronjob, kiểm soát farm và ADB.
+  - **Thi công Code trực tiếp:** Khi có task sửa code, Hermes Coordinator **tự gọi trực tiếp `ag_cli.py fix` mà không cần spawn Worker subagent** (tiết kiệm quota, không làm lag session vì `ag_cli.py` trả về kết quả O(1) trong 3–15s).
+- **Mô hình B: "CLI-to-API Daemon" (Dành cho việc muốn Coordinator xài 100% Native TLS của agy):**
+  - Dựng một Web Server nền (ví dụ Python FastAPI tại `:20130` hoặc Cockpit Local Proxy) cung cấp endpoint `/v1/chat/completions`.
+  - Khi Hermes gửi request, Daemon này nhận tin nhắn và pipe vào `agy` qua profile sandbox đang rảnh, format kết quả trả về JSON/SSE cho Hermes.
+  - **Đánh đổi:** Độ trễ câu trả lời tăng thêm 2-3s mỗi turn và không streaming mượt từng chữ, nhưng đổi lại Hermes được dùng 100% BoringSSL Native của Google qua Proxy 4G.
+
+### 3. Kỷ luật Bằng chứng Thị giác (Gate 6 Pitfall):
+- **Bẫy ảnh Checkpoint Pre-action:** Khi script tự động chụp ảnh màn hình ở bước 2FA / Password để lưu bằng chứng (`gpm_oauth_2fa_step.jpg`), ảnh này ghi nhận **hiện trường lúc ô nhập mã đang trống**.
+- **Quy tắc phản hồi:** Tránh chỉ gửi ảnh Checkpoint khiến người dùng hiểu nhầm là tiến trình bị kẹt ở màn hình xác minh. Bắt buộc phải kèm theo bằng chứng Post-action (log xác nhận nhận mã OTP, Token exchange thành công, hoặc kết quả gọi API kiểm chứng thực tế).
