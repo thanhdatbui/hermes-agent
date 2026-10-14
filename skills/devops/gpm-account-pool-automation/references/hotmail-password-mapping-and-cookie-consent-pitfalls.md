@@ -88,3 +88,29 @@
   - Đây là bước cấp OAuth token ngầm; sau 3-5 giây sẽ chuyển tiếp vào `https://account.microsoft.com/?lang=vi-VN` (Title: *"Microsoft account | Trang chủ"*).
   - Phải chờ redirect và click giải phóng modal Cookie Consent ("Chấp nhận"), tránh nhận nhầm là kẹt `Status: BLOCKED`.
 
+## 8. Bẫy False-Positive Nhận Diện Nhầm "Bảo Vệ Tài Khoản" Trên Trang Chủ Microsoft (2026-10-15)
+- **Hiện tượng & Triệu chứng:** Tài khoản Hotmail đăng nhập thành công vào đến `https://account.microsoft.com` (đã hiển thị Avatar, tên tài khoản, icon quản lý), nhưng script đăng nhập (`batch_gpm_hotmail_password_login.py`) vẫn báo `status: BLOCKED` với lỗi `Standard challenge requested: PROTECT_ACCOUNT_VERIFICATION`. Profile bị đưa vào Cooldown 48h, đồng thời port proxy bị khóa 24h làm tắc nghẽn toàn bộ hàng đợi máy đó.
+- **Root Cause cốt lõi trong code:**
+  - Script quét toàn bộ nội dung text của trang sau login:
+    ```python
+    page_text = page.inner_text("body").lower()
+    if "help us protect your account" in page_text or "bảo vệ tài khoản" in page_text:
+        is_challenge = True
+        challenge_reason = "PROTECT_ACCOUNT_VERIFICATION"
+    ```
+  - Trên trang chủ `account.microsoft.com` giao diện tiếng Việt, Microsoft luôn hiển thị một card bảo mật tiêu chuẩn: *"Bảo mật: Cập nhật thông tin để giúp bảo vệ tài khoản của bạn"* kèm modal Cookie Consent.
+  - Khi duyệt tới đây, chuỗi `"bảo vệ tài khoản"` khớp với card giới thiệu bảo mật của trang chủ, script tưởng lầm là trang checkpoint OTP/challenge nên tự đánh trượt và return `BLOCKED`.
+- **Quy tắc phòng ngừa bất biến:**
+  1. **Tách biệt URL kiểm tra:** Substring challenge (`"bảo vệ tài khoản"`, `"help us protect your account"`, `"nhập mã"`) CHỈ ĐƯỢC PHÉP kiểm tra khi URL còn đang ở `login.live.com` hoặc `login.microsoftonline.com`.
+  2. **Xác nhận thành công tuyệt đối theo URL:** Một khi URL đã chuyển sang `account.microsoft.com` hoặc `outlook.live.com`, tài khoản đã xác thực thành công 100%. TUYỆT ĐỐI KHÔNG quét từ khóa challenge trên body của `account.microsoft.com`.
+  3. **Xử lý Cookie Consent:** Luôn click *"Chấp nhận"* hoặc *"Từ chối"* trên modal cookie để giải phóng trang, không để cookie banner che khuất DOM.
+
+## 9. Đối Soát Phân Bổ Proxy Port & Năng Suất: Kibe vs Admin (2026-10-15)
+- **Sự thật số liệu Proxy Port:**
+  - **Farm Kibe (Máy 1–80):** 39 port proxy khả dụng (`5101`–`5180` trong `PROXYgandienthoai.xlsx`).
+  - **Farm Admin (Máy 201–280):** Chỉ có đúng 28 port proxy (`10008`–`10035`).
+  - **CẤM TUYỆT ĐỐI** Agent phỏng đoán sai lệch rằng "Admin nhiều port hơn Kibe".
+- **Bản chất khác biệt về năng suất lịch sử:**
+  - Admin đạt 344 nick `WAIT_7D` nhanh trong quá khứ là do các đợt chạy trước có sẵn OAuth Refresh Token trong file mua, script cũ tự động nhảy cóc bỏ qua `HOTMAIL_LOGIN` để chạy thẳng `CHATGPT_REG` qua Graph API OTP (mất chỉ 30s/nick).
+  - Kibe phải thực hiện đăng nhập mật khẩu trực tiếp qua trình duyệt GPM. Khi gặp bug false-positive ở mục 8, mỗi nick fail kéo theo port proxy bị phạt khóa 24h, làm tốc độ login thực tế bị bóp nghẹt nghiêm trọng dù Kibe có nhiều port proxy hơn.
+

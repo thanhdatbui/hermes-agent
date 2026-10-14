@@ -6,10 +6,11 @@ description: "Chạy batch bật 2FA TikTok bằng repo D:\\Taadaa\\tiktok-add-b
 # TikTok Add 2FA Batch Ops (repo tiktok-add-bao-mat-f2a)
 
 References:
-- `references/workbook-lock-contention-and-journal-recovery-20261014.md` — **[MỚI 14/10/2026]** Xử lý nghẽn Lock Workbook khi 40 workers đồng loạt submit OTP; cứu hộ 29 acc `authenticator_confirmed` từ DPAPI journal không chạm thiết bị; hạ `max-workers=15` chống timeout OneDrive.
+- `references/continuous-rolling-2fa-and-anti-legacy-ca4.md` — **[15/10/2026]** Cuốn chiếu 2FA các khung rảnh (đêm 21:30 - 04:00, giữa ca ngày), xóa deadlock `is_ca4_finished` (bỏ Ca 4), hạ tải workbook lock, báo cáo định kỳ 6h/12h.
+- `references/workbook-lock-contention-and-journal-recovery-20261014.md` — Xử lý nghẽn Lock Workbook khi 40 workers submit OTP; cứu hộ 29 acc từ DPAPI journal; hạ `max-workers=15`.
 - `references/cross-machine-account-rebalance-preflight-and-2fa.md` — Nick dư trần 8 acc, adapter `swipe()`, bẫy `ACCOUNT_NOT_IN_SWITCHER`.
 - `references/dual-cluster-email-unlink-and-ssh-encoding-pitfalls-20261010.md` — TikTok v46+ chặn gỡ Email (`EMAIL_DISABLE_NOT_STABLE`), Mojibake SSH PowerShell.
-- `references/auth-blocked-fake-password-reset-and-2fa-proof-discipline-20261010.md` — **[MỚI 10/10/2026]** Quy trình giải cứu nick dính pass sai (`AUTH_BLOCKED`), xóa pass về `None` để login qua OTP và kích hoạt đổi pass Phase B; vá nút song ngữ `UI_TARGET_AMBIGUOUS:Next:0`; và kỷ luật nghiệm thu 2FA bắt buộc chụp đúng màn hình Bảo mật đích (cấm gửi Switcher).
+- `references/auth-blocked-fake-password-reset-and-2fa-proof-discipline-20261010.md` — Giải cứu nick pass sai (`AUTH_BLOCKED`), xóa pass về `None` để login OTP và đổi pass.ss Phase B; vá nút song ngữ `UI_TARGET_AMBIGUOUS:Next:0`; và kỷ luật nghiệm thu 2FA bắt buộc chụp đúng màn hình Bảo mật đích (cấm gửi Switcher).
 - `references/night-2fa-ca4-session-interlock-and-schedule-gate.md` — **[MỚI 10/10/2026]** Khắc phục xung đột Device Lock giữa 2FA đêm và Ca 4 Phiên 2 (`is_ca4_finished` qua `feed_session_reported.json` + khung giờ `02:45 - 04:50`).
 - `references/night-tiktok-2fa-watchdog-hardening-and-dual-cluster-pitfalls-20261010.md` — **[MỚI 10/10/2026]** Khắc phục lỗi UnboundLocalError trong watchdog ban đêm `cron_night_tiktok_2fa_watchdog.py`, chuẩn hóa exit code semantics (`EXIT_SAFE_SKIP=4`), cấu hình biến môi trường chống hardcode, telemetry `correlation_id` và quy chuẩn Triage Sol Repair / Strike 3 Reviewer Hand-off.
 - `references/watchdog-telemetry-return-codes-and-test-contract.md` — **[MỚI 10/10/2026]** Chuẩn hóa hằng số mã thoát `EXIT_SUCCESS=0` / `EXIT_SAFE_SKIP=4`, telemetry logging & structured state (`failure_reason`, `clusters`), cùng bộ unit test contract cho Dual-Cluster Watchdog.
