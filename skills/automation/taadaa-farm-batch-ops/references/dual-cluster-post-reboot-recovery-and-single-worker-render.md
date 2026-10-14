@@ -137,3 +137,16 @@ Khi User hoặc hệ thống reboot 1 hoặc cả 2 máy, toàn bộ các tiến
     + PID phần cứng và dung lượng RAM của các tiến trình chủ chốt (`ffmpeg.exe`, `python.exe`).
   - Tuyệt đối không chờ đến khi toàn bộ batch 30-40 folder chạy xong mới báo cáo.
 
+### Bẫy 11: Chống Spawn Trùng Tiến Trình Khi User Lệnh "Fix Đi" Cho Folder Render Chưa Đủ
+- **Hiện tượng**: Báo cáo watchdog (cronjob 6h) báo farm "Đang dừng" hoặc một folder chưa đủ 45 clip (ví dụ Tik 1 thiếu Folder 441 [79/80 folder]). Khi User ra lệnh ngắn gọn *"Fix đi"*, phản xạ vội vàng của Coordinator là gõ ngay lệnh render lại folder đó.
+- **Nguy cơ nghiêm trọng**:
+  - Snapshot trong cronjob phản ánh trạng thái quá khứ (ví dụ lúc 18:00). Giữa 18:00 và thời điểm User chat, một tiến trình render ngầm có thể đã được trigger hoặc đang chạy nền qua gateway/service (`random_batch_render.py`).
+  - Nếu Coordinator không kiểm tra tiến trình mà lập tức gọi lệnh render mới, 2 tiến trình `ffmpeg.exe` sẽ chạy song song ghi cùng vào 1 thư mục đích, gây xung đột file lock, nghẽn 100% CPU/GPU, làm corrupt video và vi phạm quy định `--parallel 1`.
+- **Kỷ luật xử lý 2 bước (Pre-flight Process & Growth Probe)**:
+  1. **Process Liveness Probe**: Quét danh sách process (`psutil.process_iter`) kiểm tra xem có `ffmpeg.exe` hoặc `random_batch_render.py` nào đang chứa đối số trỏ về folder đó không (ví dụ `--output-dir .../441`).
+  2. **File Growth Probe**: Đếm số clip hiện tại trong folder đích (`len(list(folder.glob("*.mp4")))`) và kiểm tra `mtime` của các clip mới nhất. Nếu clip đang tăng dần (ví dụ 24 -> 27 -> 31 -> 34 clip) và có file vừa sinh trong vài phút gần nhất:
+     - **CẤM TUYỆT ĐỐI** spawn thêm bất kỳ lệnh render nào.
+     - Xác định rõ tiến trình cha (PID), số clip đã có / tổng clip gốc, và báo cáo tiến độ trực tiếp cho User kèm thời gian dự kiến hoàn tất.
+  3. **Chỉ spawn khi probe xác nhận hoàn toàn chết (Dead confirmed)**: Khi không có process nào chạy VÀ số lượng file không đổi sau probe mtime, mới được phép kích hoạt 1 worker đơn luồng duy nhất (`--parallel 1`) với cờ `--resume-verify-existing` để render bù clip còn thiếu.
+
+
