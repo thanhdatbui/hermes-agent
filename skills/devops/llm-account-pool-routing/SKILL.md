@@ -7,6 +7,7 @@ version: 1.0.0
 # LLM Account Pool Routing
 
 ## References
+- `references/antigravity-cli-profile-sandboxing-and-quota-rotation.md`: Antigravity agy profile sandboxing & quota rotation.
 - `references/cross-instance-token-migration-and-pro-tier-revocation.md`: Pro revocation & migration.
 - `references/antigravity-multi-session-burst-tpm-and-concurrency-limits.md`: TPM/503.
 - `references/omniroute-per-account-proxy-egress-assignment.md`: Proxy assign.
@@ -20,7 +21,7 @@ version: 1.0.0
 - `references/pro-account-canary-and-semaphore-diagnosis.md`: Canary Pro.
 - `references/semaphore-vs-pre-cascade-queue-and-strategy-tradeoffs.md`: Semaphore.
 - `references/omniroute-combo-routing-pathology.md`: Combo modes.
-- `references/omniroute-v38-live-log-triage-and-pool-leakage.md`: Triage live OmniRoute v3.8.x qua `/api/usage/call-logs`, đối soát `inPool`, giải mã UI Quota đỏ.
+- `references/omniroute-v38-live-log-triage-and-pool-leakage.md`: Triage call-logs.I Quota đỏ.
 - `references/omniroute-proxy-fallback-and-quota-telemetry.md`: Proxy fallback & quota telemetry.
 - `references/chatgpt-web-sentinel-and-account-deactivation.md`: Sentinel 403, OpenAI bans & phone checkpoints.
 - `references/omniroute-proxy-assignment-invariants.md`: Static proxy binding & connection verification.
