@@ -2,15 +2,15 @@ Chu kỳ 4d: Parity 96h (N1 lẻ, N2 chẵn), N3(R7,8), N4(dưỡng 0fl+up). Sta
 §
 Followed=0 cấm PASS. Admin SSH: dùng D:/Taadaa/tools/admin_ssh.py (--powershell/--json); CẤM thoái thác khi Guard block raw ssh. Auto-resume reboot: locks==0.
 §
-Worker: haiku_worker.py O(1) fallback ag_cli.py (7 acc Pro 2-3s). Closeout invariant: score < 85 cấm báo DONE (báo BLOCKED). Strike 3 Handoff Claude CLI (sonnet-5-5) dính 429 bắt buộc fallback ag_cli.py. Quota Pro đọc qua plan-usage-history.json.
+Worker: haiku_worker.py O(1), fallback ag_cli.py (7 acc Pro). Strike 3 Handoff 429 fallback ag_cli.py.
 §
 TikTok Follow: (máy,row) độc lập; Quota 10-15/ca; Hồi phục 1&2 2 ca sạch; Canary Khỏe +10%; like 80%. Path B 'Đã fl' ko commit; slot (folder-1)%8+1. Mode 2: anchor >= 150 fl; cuộn sâu. Cron: feed/follow_watchdog.
 §
 Hotmail: CẤM mail cá nhân; sinh @fviainboxes.com đọc OTP API. Write-Through: ghi ngay Excel Cột 3,4,5 & G farm, cấm đợi relogin. CDP đóng ko mất cookie. Dual-farm ~1280 acc.
 §
-Proxy: SoT PROXYgandienthoai.xlsx (Admin 28 port < Kibe 39 port). Vision mở assert mCurrentFocus+OCR, MEDIA: dòng riêng. Ava & 2FA: cuốn chiếu khung rảnh (đêm 21h30-5h15, ngày 9h30-11h45, 15h30-17h45), né 3 ca nuôi & cache (4h); báo 6h; cấm báo ảo.
+Proxy: SoT PROXYgandienthoai.xlsx (Admin 28p < Kibe 39p). Vision assert mCurrentFocus+OCR, MEDIA: dòng riêng. Ava & 2FA né 3 ca nuôi & cache 4h; báo 6h.
 §
-Farm Dispatch Invariant: delegate_task context cần TASK_KIND: EDIT/INVESTIGATE. FILE: D:/... (path tuyệt đối trực tiếp, cấm ngoặc/gạch đầu dòng). Có FOCUSED_TEST.
+Farm Dispatch: delegate_task TASK_KIND: EDIT/INVESTIGATE/CREATE. FILE: D:/...; FOCUSED_TEST chuẩn: 'python -m py_compile <f>' hoặc 'python -m pytest <f>::<n> -q'. Task EDIT bắt buộc OLD_STRING: <<< ... >>>. S7 rescue: recover_stuck_s7.py (L1 soft 3s -> L2 direct reboot 5s -> L3 reconnect); batch_recover_s7.py kẹp trần max_reboots=2.
 §
 GPM: Kibe chạy, stop API kèm _kill_gpm_chrome; max 5 wkr. Hotmail: qua HOTMAIL_LOGIN giữ cookie, cấm ngâm ảo 7d; MS landing check is_auth trước challenge; MS ép mail @fviainboxes; ghi Excel (C5,4,3+G) trước signout.
 §
