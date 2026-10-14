@@ -15,6 +15,7 @@ References:
 - `references/feed-watchdog-misclassification-and-usb-stall.md` — Phân tích bẫy phân loại fallback "Lỗi App TikTok/Script" trong feed_session_watchdog.py khi USB pipe bị treo (13/10/2026).
 - `references/lingering-tiktok-keep-screen-on-and-healer-pitfalls-20261014.md` — Phân tích bẫy TikTok giữ FLAG_KEEP_SCREEN_ON phát xuyên đêm, ảo giác ca đêm, và lỗ hổng của farm_idle_screen_and_app_healer (14/10/2026).
 - `references/remote-desktop-virtual-keystuck-and-chinese-ime-runaway.md` — Hiện tượng kẹt phím ảo (KeyUp drop) khi remote host farm, bản chất ký tự gạch ngang dài tiếng Trung (破折号 ——) và cách xử lý triệt để.
+- `references/focus-delay-cascade-and-post-reboot-triage-20261014.md` — Phân tích tương quan cụm lỗi kép (focus delay do nghẽn ADB transport USB), quy trình triage sau reboot và cơ chế fast-fail khép kín.
 
 Scripts:
 - `scripts/safe_usb_guard.py` — Script nguồn mẫu giám sát và reset EHCI bus theo ngưỡng.
