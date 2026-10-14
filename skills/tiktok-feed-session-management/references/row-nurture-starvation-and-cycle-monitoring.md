@@ -168,7 +168,9 @@ $$\text{Score} = 100.0 \times p_{\text{fail}} + 20.0 \times p_{\text{young}}$$
     ```
 - **Kỷ luật khắc phục & phòng ngừa:**
   1. Trong `tiktok_runner.py`: Danh sách `candidates` bắt buộc bổ sung đường dẫn tuyệt đối chuẩn của repo/tools (`Path("D:/Taadaa/tools")`, `Path("D:/Taadaa/tiktok-luot nuoi acc/tools")`).
-  2. Trong `env.json` của cron: BẮT BUỘC khai báo rõ ràng `"HERMES_CRON_TOOLS_DIR": "D:/Taadaa/tools"`.
-  3. Cảnh báo lỗi: Tuyệt đối không nuốt im lặng `ImportError` trong khối `except` mà phải phát cảnh báo hoặc fallback có nhật ký rõ ràng.
+     * **Pattern an toàn cho Unit Test:** Chỉ bổ sung candidate roots khi `not env_tools` (`if not env_tools: candidates.append(...)`). Nếu `HERMES_CRON_TOOLS_DIR` được mock hoặc gán thư mục tạm trống trong unit test, candidate roots sẽ không bị thêm vào, giữ nguyên tính độc lập để test nhánh `healing_selector_missing` / fallback an toàn mà không bị tìm thấy file thật trên đĩa D:.
+  2. Đọc `env.json`: Hàm `_load_determine_healing_row()` phải fallback đọc qua `repo_env_overrides().get("HERMES_CRON_TOOLS_DIR")` khi biến môi trường hệ thống chưa được set trực tiếp.
+  3. Trong `env.json` của cron: BẮT BUỘC khai báo rõ ràng `"HERMES_CRON_TOOLS_DIR": "D:/Taadaa/tools"`.
+  4. Cảnh báo lỗi: Tuyệt đối không nuốt im lặng `ImportError` trong khối `except` mà phải phát cảnh báo hoặc fallback có nhật ký rõ ràng.
 
 
