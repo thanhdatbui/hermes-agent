@@ -3,8 +3,9 @@
 ## Năm Hiện Tượng Lệch Pha Thường Gặp
 1. **Lệch thấp:** `ĐÃ FOLLOW: +13` nhưng `🔗 Nội bộ: +0` (hoặc thấp hơn).
 2. **Lệch cao (Nội bộ bị nhân bản gấp 2-3 lần):** `ĐÃ FOLLOW: +13` nhưng `🔗 Nội bộ: +42`; hoặc `ĐÃ FOLLOW: +4` nhưng `🔗 Nội bộ: +8`.
-3. **Lệch tam giác giữa 3 bảng số liệu (Lịch sử ngày vs Đối soát KPI vs Web):** Ví dụ: Thống kê theo ngày báo `+22 lượt (7 nick)`, Thẻ KPI Header báo `Bot +18 lượt`, nhưng Web chỉ ghi nhận `+16 lượt`.
-4. **Lệch cửa sổ snapshot khi quét bù ca cũ (Backfill uncapped window):** Báo cáo ca cũ nhưng số liệu web bốc trúng snapshot hiện tại sau 7 ngày, tạo lệch ảo khủng (+62).
+3. **Lệch tam giác giữa 3 bảng số liệu (Lịch sử ngày vs Đối soát KPI vs Web):** Ví dụ: Thống kê theo ngày báo `+22 lượt (6/7 nick)`, Thẻ KPI Header báo `Bot +18 lượt`, nhưng Web chỉ ghi nhận `+16 lượt`.
+4. **Quy ước hiển thị Cột Nick (Thống Kê Ngày & Tuần) dạng `Thành công / Tổng chạy`:** Loại bỏ nghịch lý thị giác khi nick bị nhả/0 lượt vẫn tính trong tổng số nick chạy (ví dụ `1/2 nick`, `10/17 nick`).
+5. **Lệch cửa sổ snapshot khi quét bù ca cũ (Backfill uncapped window):** Báo cáo ca cũ nhưng số liệu web bốc trúng snapshot hiện tại sau 7 ngày, tạo lệch ảo khủng (+62).
 
 ## Các Nguyên Nhân Gốc Rễ
 
