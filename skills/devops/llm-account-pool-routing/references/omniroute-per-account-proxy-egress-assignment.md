@@ -81,6 +81,16 @@ Any script registering or syncing sessions to OmniRoute (e.g. `chatgpt_gpm_direc
      UPDATE provider_connections SET is_active = 1, test_status = 'active' WHERE id = ?;
      ```
   - *Hard Invariant:* If Step 2 fails (proxy dead or missing from registry), the connection **STAYS `is_active = 0`**. Never activate an account without confirmed proxy binding!
+  - *Hard Anti-Deception Invariant:* Coordinator/Worker must NEVER report or conclude "Đang cho rà soát / Đang xử lý" without an active background process (`terminal(background=True)` or `delegate_task`). Stating an action as in-progress without an active PID or transcript handle is a critical violation.
+  - *GPM Automation Trap - Login Modal & PID Mismatch*:
+    1. **Early Break on Domain:** Never break the login loop merely because `page.url` contains `chatgpt.com` if login modals/dialogs are still visible. Only break when `__Secure-next-auth.session-token` is verified in `context.cookies()` or avatar/profile button is fully rendered.
+    2. **GPM Profile ID Drift:** Hardcoded PIDs in scripts can drift if profiles are recreated. Always reconcile target accounts against `profile_data.db` (matching email and port) before calling `start_gpm(pid)`.
+    3. **Playwright Mobile Auth Dialog Pointer Interception (`#mobile-auth-dialog`):**
+       - *Symptom:* `Locator.click: Timeout 30000ms exceeded. <dialog id="mobile-auth-dialog"> intercepts pointer events` when attempting to click login button (`button:has-text("Đăng nhập")`).
+       - *Root Cause:* ChatGPT's modern responsive layout automatically mounts `<dialog id="mobile-auth-dialog">` (bottom sheet modal) upon load. The standard "Đăng nhập" button sits in the background DOM, covered by the modal overlay, causing Playwright click actions to hang for 30s.
+       - *Resolution:* Look for Google OAuth button (`button[data-provider="google"]`, `button:has-text("Continue with Google")`, `button:has-text("Tiếp tục với Google")`) INSIDE the dialog first. If present, click it directly with `force=True` and short timeout (5-7s). Only attempt background button if dialog is absent, wrapped in `try/except` with a short 5s timeout.
+    4. **Anti-Deception & Real Execution Invariant (User Rule 15/10/2026):**
+       - Coordinator/Worker must NEVER report "Đang cho rà soát / Đang xử lý" without an active background process (`terminal(background=True)` or `delegate_task`). Stating an action as in-progress without an active PID or transcript handle is a critical failure. Never attempt to rationalize away in-flight stall as "waiting for user" when a turn was left abandoned.
 
 - **Reference Implementation (`sync_registered_chatgpt_web_connection` - Deterministic Matching & Fail-Closed)**:
   ```python

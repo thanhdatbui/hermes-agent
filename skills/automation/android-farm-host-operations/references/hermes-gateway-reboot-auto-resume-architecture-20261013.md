@@ -49,7 +49,32 @@ Khi chua co ban va ma nguon Gateway, phuong an thuc dung nhat la:
   Kiem tra ky cac nguy co: restart loop, tranh chap lock ADB/thiet bi, long-polling Telegram va tinh toan ven session.
   Tra ve VERDICT: APPROVED hoac REJECTED kem danh sach van de can sua."
   ```
-- **Vong lap lap lai (Iterative Remediation):**
+- Vong lap lap lai (Iterative Remediation):
   - Neu Claude CLI tra ve `REJECTED`: Coordinator tiep nhan danh sach phan bien, soan Patch Contract O(1) cho Worker sua code.
   - Chay lai `claude -p` tham dinh tren diff moi.
   - Chi bao cao hoan tat va ban giao khi Claude tra ve `VERDICT: APPROVED`.
+
+## 6. Lỗ Hổng Bỏ Sót Session Do `entry['updated_at']` Bị Đóng Băng & Bản Vá 15/10/2026
+- **Triệu chứng:** Session đang chạy chuỗi tool call / subagent dở dang ngay trước khi reboot (như debug alert 25 phút) nhưng sau reboot lại không được auto-resume, nằm im bất động.
+- **Bản chất kỹ thuật (Root Cause):**
+  1. Trong kiến trúc Hermes Gateway, trường `entry["updated_at"]` trong bảng `gateway_routing` **CHỈ được cập nhật một lần duy nhất khi User gửi tin nhắn vào**.
+  2. Khi Agent thực thi chuỗi tool call dài (20–40 phút), `updated_at` trong routing bị đóng băng ở thời điểm gửi tin nhắn của User.
+  3. Hàm preflight `preserve_in_flight_sessions` so sánh `updated < cutoff` (với `lookback_minutes = 20`): Nếu User nhắn từ 25 phút trước, `updated` bị coi là quá hạn và session bị bỏ qua trong im lặng.
+- **Bản vá kiến trúc chuẩn mực (15/10/2026):**
+  1. **Nâng mốc lookback:** Mở rộng `lookback_minutes` mặc định từ 20 phút lên **60 phút** trong `farm_preflight_daily_reset.py`.
+  2. **Truy vấn mốc thời gian thực từ database messages:**
+     ```python
+     sid = entry.get("session_id")
+     with db._lock:
+         row_ts = db._conn.execute(
+             "SELECT MAX(timestamp) FROM messages WHERE session_id = ? AND active = 1", (sid,)
+         ).fetchone()
+     last_activity_ts = row_ts[0] if (row_ts and row_ts[0]) else None
+     if updated < cutoff and not (last_activity_ts is not None and float(last_activity_ts) >= cutoff.timestamp()):
+         continue
+     ```
+  3. **Lớp bảo vệ sau boot (`gateway/session.py`):**
+     - Nâng `max_age_seconds` trong `suspend_recently_active()` lên 3600s (1 giờ).
+     - Bổ sung helper `_last_message_at(session_id)` đối soát mốc message thực tế, tránh lệ thuộc vào `entry.updated_at`.
+  4. **Kỷ luật trả lời User (Chống ngụy biện / giải thích bao biện):**
+     - Khi hệ thống không tự resume vì lỗi logic thời gian, Agent BẮT BUỘC nhận lỗi thẳng thắn và chỉ ra đúng dòng code / điều kiện bị lọt, CẤM TUYỆT ĐỐI nói dối hay viện cớ "đã trả lời xong đang chờ lệnh" để lấp liếm sự cố.

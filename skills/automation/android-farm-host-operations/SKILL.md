@@ -20,6 +20,7 @@ References:
 - `references/s7-shell-hang-vs-adb-reboot-and-enumeration-storm.md` — Bản chất kẹt ADB shell vs ADB direct reboot service, tác hại enumeration storm khi reboot đồng loạt 80 máy S7, và module cứu hộ phân tầng O(1).
 - `references/s7-hung-shell-triage-and-reboot-governance-20261015.md` — Phân tích bản chất nghẽn USB Host PC vs S7, cấm batch reboot 80 máy đồng loạt, và kiến trúc cứu hộ 3 cấp độ (recover_stuck_s7.py) khi kẹt shell (15/10/2026).
 - `references/s7-stuck-shell-and-rolling-reboot-throttle-architecture-20261015.md` — Kiến trúc cứu hộ phân tầng Samsung S7 kẹt shell (L1 soft, L2 direct reboot bypass shell, L3 transport triage) và cơ chế Rolling Healer toàn farm khống chế semaphore reboot <= 2 (15/10/2026).
+- `references/s7-recovery-production-hardening-and-closeout-findings-20261015.md` — Kiến trúc cứu hộ phân tầng Samsung S7, sửa cú pháp adb -s <serial> reconnect, preflight get-state, chống reboot loop cooldown 300s và kết quả live test 159 máy (15/10/2026).
 - `references/user-directed-reboot-anti-paralysis-and-sentinel-bypass.md` — Kỷ luật chống tê liệt xin phép khi user ra lệnh reboot, cơ chế xóa sentinel flag và bảo toàn session Telegram để tự động chạy tiếp sau boot.
 - `references/host-pc-display-sleep-timeout-and-guard-bypass.md` — Quy trình cấu hình thời gian tắt màn hình Windows PC (Kibe & Admin), kỹ thuật vượt Guard default-deny và đối soát readback index 0x0000012c (15/10/2026).
 
@@ -507,10 +508,11 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
   * Khi kẹt USB transport (nghẽn đệm controller EHCI hoặc đứt pipe `/dev/android_adb` trên kernel Linux của S7): Toàn bộ ADB (cả shell lẫn reboot) đều tê liệt. Do nguồn 5V VBUS từ hub vẫn duy trì, S7 không phát sinh uevent ngắt kết nối nên không tự restart lại `adbd`.
   * **Giải pháp cứu hộ từ PC không chạm tay:** (1) Thử `taskkill /F /IM adb.exe` trên Windows để dọn buffer socket; (2) Dùng nút Reboot trên toolbar của XiaoWei (driver native); (3) Reboot Host PC (BIOS POST ngắt nguồn VBUS và gửi xung PCI bus reset, S7 tự động nhận lại 100% khi Windows boot).
   * **Module cứu hộ phân tầng O(1) (`D:/Taadaa/tools/recover_stuck_s7.py`) & Rolling Healer toàn Farm (`batch_recover_s7.py`):**
-    - Cấp 1 (Soft recovery, timeout 3s): `am force-stop` + `input keyevent 223` (tắt màn hình, chống nóng). Cứu máy trong 1.5s không cần reboot.
-    - Cấp 2 (Bypass shell reboot, timeout 5s): Bắn trực tiếp `adb -s <serial> reboot` ở tầng daemon, chờ `wait-for-device` 60s.
-    - Cấp 3 (Transport/Hardware triage): Thử `reconnect <serial>`, nếu unresponsive thì fail-fast báo `failed_transport`, chống treo tiến trình nền.
-    - **Cơ chế Rolling Healer toàn Farm (`batch_recover_s7.py`):** Quét cuốn chiếu `--max-workers 8`, kẹp trần cứng `reboot_sem = threading.Semaphore(max_reboots=2)` bảo đảm tối đa chỉ 2 máy được reboot đồng thời trên toàn farm, triệt tiêu sụt áp hub và bão Wi-Fi.
+    - Cấp 0 (Pre-flight State Check): Kiểm tra `adb -s <serial> get-state`. Nếu khác `device` (như `offline`, `unauthorized`), nhảy thẳng xuống Cấp 3 Reconnect/Transport, tuyệt đối không reboot mù.
+    - Cấp 1 (Soft recovery, timeout 3s): `am force-stop` + `input keyevent 223` (tắt màn hình). Bắt buộc hậu kiểm ping nhẹ `shell echo 1` (timeout 2s) để xác nhận shell đã thực sự phản hồi ổn định. Cứu máy trong 1.5s không cần reboot.
+    - Cấp 2 (Bypass shell direct reboot, timeout 5s): Khóa an toàn chống Reboot Loop (`reboot_cooldown_<serial>.json`, 300s). Nếu máy vừa reboot trong vòng 5 phút, chặn ngay (`aborted_cooldown`). Nếu đủ điều kiện, bắn trực tiếp `adb -s <serial> reboot` ở tầng daemon, chờ `wait-for-device` 60s.
+    - Cấp 3 (Transport/Hardware triage): Cú pháp chuẩn ADB là `adb [-H ...] -s <serial> reconnect` (hoặc `adb reconnect offline`), CẤM TUYỆT ĐỐI dựng sai cú pháp `adb reconnect <serial>`. Nếu unresponsive thì fail-fast báo `failed_transport`, chống treo tiến trình nền.
+    - **Cơ chế Rolling Healer toàn Farm (`batch_recover_s7.py`):** Quét cuốn chiếu `--max-workers 8`, kẹp trần cứng `reboot_sem = threading.Semaphore(max_reboots=2)` bảo đảm tối đa chỉ 2 máy được reboot đồng thời trên toàn farm, triệt tiêu sụt áp hub và bão Wi-Fi. Kết quả thực nghiệm 15/10/2026: 155/159 máy vật lý soft recovered trong 32 giây (Admin 17.1s, Kibe 15.2s), nhận diện chính xác 3 máy lỏng giắc cáp Micro-USB (M10, M30, M228).
   * Chi tiết: `references/s7-hung-shell-triage-and-reboot-governance-20261015.md` và `references/s7-stuck-shell-and-rolling-reboot-throttle-architecture-20261015.md`.
 
 ## 25. Cấu Hình Display Sleep/Timeout Host PC (Kibe & Admin) & Vượt Rào Coordinator Guard
