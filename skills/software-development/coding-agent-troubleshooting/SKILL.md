@@ -384,7 +384,9 @@ agy --dangerously-skip-permissions --model "gemini-3.8-flash-high" -p "<task>"
 ```
 Taadaa farm production bridge: `python D:/Taadaa/tools/ag_cli.py {ask,fix,models}`.
 Auth/Quota source lives under `~/.gemini/` (`google_accounts.json` & `oauth_creds.json`), consuming that specific Google account's quota directly (completely independent of OmniRoute/GPM pools).
-See `references/antigravity-cli-agy-vs-ide-wrapper.md` for full comparison matrix, auth audit, and troubleshooting details.
+Supports hidden native env knob `AGY_ACCOUNT=<email>` for in-session account switching.
+For running multi-account pools (10–20+ Pro accounts) safely without Sybil ban risk, each account requires an isolated `USERPROFILE` (to sandbox `.gemini/installation_id`) and a dedicated residential/4G mobile proxy.
+See `references/antigravity-cli-agy-vs-ide-wrapper.md` for full comparison matrix, auth audit, TLS fingerprint analysis vs OmniRoute, and troubleshooting details.
 
 ## OpenCode CLI — Windows Timeout, Encoding & Workspace Traps
 

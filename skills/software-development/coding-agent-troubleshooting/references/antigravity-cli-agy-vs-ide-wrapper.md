@@ -60,3 +60,24 @@ agy --dangerously-skip-permissions --model "gemini-3.8-flash-high" -p "<task>"
 - **Codex CLI vs agy CLI in Cockpit**: Cockpit Tools (`cockpit-cliproxy.exe` port `60818`) performs automated token-takeover and pool rotation for Codex CLI via `~/.codex/auth.json`. However, it does NOT hook or proxy `agy.exe`.
 - **Instance Separation**: Cockpit Tools manages Antigravity desktop IDE profiles via `instances.json` and `current_account.json` (e.g. `thanhdatbui19951@gmail.com`). Switching accounts inside Cockpit Tools GUI does NOT change the account used by `agy.exe`.
 - **Decoupled Quotas**: `agy.exe` directly reads `~/.gemini/oauth_creds.json` (e.g. `jinrakal@gmail.com`). To change the account used by `agy.exe`, run `agy login` from terminal, or route through OmniRoute (`:20129`) if pool rotation across multiple accounts is needed.
+
+### 6. Multi-Account Scaling, Hidden Env Vars & Anti-Fraud Fingerprint Isolation
+- **Hidden Environment Variables in `agy.exe` Binary**:
+  Binary reverse engineering revealed native environment knobs supported by `agy.exe`:
+  * `AGY_ACCOUNT`: Selects which account from `~/.gemini/google_accounts.json` will execute the task (bypasses default `active` pointer).
+  * `AGY_LLM_GATEWAY_URL`, `AGY_LLM_GATEWAY_API_KEY`, `AGY_LLM_GATEWAY_PROXY_URL`: Upstream gateway & proxy override endpoints.
+- **Why `agy` CLI is Structurally Superior to Generic API Callers (Hermes/OmniRoute)**:
+  * Calling Gemini API via OmniRoute/9Router means Hermes is the execution harness: Hermes manually performs diffing/patching via python, which fails frequently on monoliths (>500 lines) with indent errors and context bloat.
+  * Delegating to `agy` CLI leverages Google DeepMind's native agentic harness: internal AST refactoring, repo indexing, file edits, and error recovery loops run inside `agy` before delivering clean stdout.
+- **Fingerprinting & Ban Risk: Native `agy` CLI vs OmniRoute (`:20129`)**:
+  * *OmniRoute*: Spoofs L7 headers and JSON body field order (`cliFingerprints.ts`), but uses Node.js `fetch` (`undici`). TLS handshake (JA3/JA4) and HTTP/2 settings frames match Node.js, not a real Google client. High risk during Google bot-sweep ban waves.
+  * *Native `agy.exe`*: Native Go/BoringSSL TLS client compiled by Google; TLS fingerprint is 100% genuine.
+- **Multi-Account Farm Isolation Recipe (Running 10–20+ Pro Accounts Safely)**:
+  * *The Trap*: If multiple accounts rotate on the same machine sharing `~/.gemini/installation_id` across different proxy IPs, Google's anti-abuse flags it as Sybil farming.
+  * *The Fix (Profile Sandboxing)*: Isolate `USERPROFILE` per account so each receives its own `.gemini/installation_id`:
+    ```python
+    env = os.environ.copy()
+    env["USERPROFILE"] = rf"D:\Taadaa\agy_profiles\acc_{idx:02d}"
+    env["HTTPS_PROXY"] = f"http://127.0.0.1:{proxy_port}"  # Dedicated residential/4G proxy
+    ```
+    Never use datacenter IPs (AWS/Hetzner/Vultr) for Google Cloud Code/Antigravity accounts; only residential or 4G mobile proxies (CGNAT).
