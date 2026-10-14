@@ -23,7 +23,7 @@
    - Hàm xác nhận tab Friends phát hiện đang ở `for-you` $\rightarrow$ fail `feed not confirmed`.
 
 ## 3. Bản vá Chuẩn hóa (Remediation Pattern)
-1. **Loại trừ màn hình Friends feed trong detector:**
+1. **Loại trừ màn hình Friends feed & Main feed trong detector:**
    - Thêm danh sách `friends_feed_markers` vào `detect_contact_follow_suggestion`:
      ```python
      friends_feed_markers = (
@@ -38,6 +38,18 @@
      )
      if _has_contains(values, friends_feed_markers):
          logger.debug("detect_contact_follow_suggestion: skipping friends feed matching marker")
+         return None
+     ```
+   - **Bổ sung Main Feed Invariant Check (2026-10-14):** Khi Friends feed hiển thị card gợi ý trống ("Mời Bạn bè", "Follow bạn", "Follow lại"), màn hình không chứa các chuỗi dài trên nhưng luôn có đồng thời:
+     + Bottom nav: `"trang chủ"` hoặc `"home"`
+     + Top tabs: `"đề xuất"` / `"for you"` hoặc `"bạn bè"` / `"friends"`
+     Bắt buộc bỏ qua khi phát hiện cấu trúc feed chính:
+     ```python
+     if _has_contains(values, ("trang chủ", "home")) and (
+         _has_contains(values, ("đề xuất", "for you"))
+         or _has_contains(values, ("bạn bè", "friends"))
+     ):
+         logger.debug("detect_contact_follow_suggestion: skipping main feed screen")
          return None
      ```
 2. **Siết chặt `_close_candidate`:**
