@@ -7,7 +7,7 @@ description: "Chạy batch bật 2FA TikTok bằng repo D:\\Taadaa\\tiktok-add-b
 
 References:
 - `references/night-rolling-avatar-2fa-and-cache-clean-arbitration-20261015.md` — **[15/10/2026]** Cuốn chiếu ban đêm tới 05:15 sáng (bỏ Ca 4), đệm dừng 04:45, no_agent exitcode=0, khóa max-workers=15, 2 tầng chống đụng dọn cache 04:00, báo cáo 6H.
-- `references/workbook-lock-contention-and-journal-recovery-20261014.md` — Xử lý nghẽn Lock Workbook khi 40 workers submit OTP; cứu hộ 29 acc từ DPAPI journal; hạ `max-workers=15`.
+- `references/workbook-lock-contention-and-journal-recovery-20261014.md` — Xử lý nghẽn Lock Workbook khi 40 workers submit OTP; cứu hộ 29 acc từ DPAPI journal; kiến trúc 2 tầng in-place retry & post-batch journal drain.
 - `references/cross-machine-account-rebalance-preflight-and-2fa.md` — Nick dư trần 8 acc, adapter `swipe()`, bẫy `ACCOUNT_NOT_IN_SWITCHER`.
 - `references/dual-cluster-email-unlink-and-ssh-encoding-pitfalls-20261010.md` — TikTok v46+ chặn gỡ Email (`EMAIL_DISABLE_NOT_STABLE`), Mojibake SSH PowerShell.
 - `references/auth-blocked-fake-password-reset-and-2fa-proof-discipline-20261010.md` — Giải cứu nick pass sai (`AUTH_BLOCKED`), xóa pass về `None` để login OTP và đổi pass.ss Phase B; vá nút song ngữ `UI_TARGET_AMBIGUOUS:Next:0`; và kỷ luật nghiệm thu 2FA bắt buộc chụp đúng màn hình Bảo mật đích (cấm gửi Switcher).

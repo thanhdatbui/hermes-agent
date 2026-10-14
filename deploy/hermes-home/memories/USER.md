@@ -10,7 +10,7 @@ Kibe(1-80) & Admin(201-280) cào nguồn & media độc lập 100% (cấm trùng
 §
 Ghim video: pin_top_videos.py (Share->Ghim); BẮT BUỘC cuộn sâu (--scrolls) quét toàn kênh gom clip peak view (như 21k dưới fold), cấm chỉ nhìn màn đầu; DB ko lưu view, đọc live ATX; re-dump sau mỗi lần ghim chống đảo lưới.
 §
-Worker: Haiku 5.5 CLI (haiku_worker.py 6-15s O(1)) chính, AG CLI 7 acc Pro dự phòng; đo chất lượng code/diff thật; quota thật qua plan-usage-history.json; Coord giữ Hermes 24/7.
+Worker: Haiku 5.5 CLI (haiku_worker.py 6-15s O(1)) chính, AG CLI 7 acc Pro dự phòng; đo chất lượng code/diff thật; quota thật qua plan-usage-history.json; Coord giữ Hermes 24/7; Advisor TTFT 75s, idle 25s.
 §
 Hashtag sync: F_src=(Slot-1)*80+m_idx, SoT 'Hashtag theo Folder'; nick fix tay khóa manual_avatar_protected_folders.json cấm sync đè.
 §

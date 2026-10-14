@@ -58,3 +58,24 @@ Hàm `_resume` sẽ:
    * *Ưu điểm:* Mở file Excel đúng 1 lần duy nhất, ghi n record đồng thời trong <15s, 0% rủi ro nghẽn lock, zero touch (không chạm ADB, không cần device lock, không sợ đụng ca nuôi).
    * *Hậu kiểm:* Script tự động đối soát identity (Máy, ID), verify committed cell và purge journal tương ứng.
 3. **Khi nào mới dùng `--rows ... --live`:** Chỉ dùng khi nick bị kẹt ở bước trước đó (`otp_submitted` hoặc `captured` mà chưa confirm được authenticator). Khi journal đã ở trạng thái `authenticator_confirmed`, CẤM bật lại `--live` làm phiền thiết bị.
+
+---
+
+## 3. Kiến Trúc Vá Triệt Để 2 Tầng: In-Place Retry & Post-Batch Journal Drain (15/10/2026)
+
+### Tầng 1: Tự động Retry tại chỗ khi ghi Excel (`_write_cell`)
+- Khi worker hoàn tất OTP, `write_2fa` gọi `_write_cell`.
+- Thay vì văng lỗi `WorkbookError` ngay lập tức khi chạm `BLOCKED_TIMEOUT_WORKBOOK_LOCK` hoặc `WORKBOOK_REPLACE_FAILED`, `_write_cell` được bọc vòng lặp retry 5 lần:
+  * Khoảng chờ ngẫu nhiên có jitter: `sleep_func(random.uniform(1.5, 4.0) * (attempt + 1))`
+  * Cho phép hàng đợi ghi file tự giải phóng thay vì làm fail worker.
+
+### Tầng 2: Tự động gom ghi bù cuối Batch (`_drain_pending_journals`)
+- Tại hàm `main()` của `run_batch_live_2fa.py`, ngay sau khi tất cả worker hoàn tất:
+  * Quét các target có trạng thái `failed`.
+  * Nếu phát hiện journal ở trạng thái `AUTHENTICATOR_CONFIRMED`, runner mở file Excel đúng 1 lần, ghi đồng loạt tất cả các secret còn thiếu vào Cột 5 (`2FA`), verify lại và purge journal.
+  * Cập nhật kết quả các target đó sang `success` (`RECONCILED_FROM_JOURNAL`).
+  * Tuyệt đối không để secret tồn đọng trong journal bắt user phải chờ sang các ca sau.
+
+### Kỷ luật Watchdog No-Agent Exit Code
+- Với cronjob chạy ngầm (`no_agent: true`), việc có một số máy fail/skip trong cụm 160 máy là trạng thái vận hành bình thường (`partial_failure`).
+- CẤM script watchdog trả về `return 1` khi `fail > 0` vì sẽ làm Hermes kích hoạt báo động đỏ sập cron giả tạo (`Cron failed: Script exited with code 1`). Chỉ trả về non-zero khi script crash hệ thống không thể chạy tiếp.

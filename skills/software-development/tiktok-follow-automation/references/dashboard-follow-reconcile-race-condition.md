@@ -11,13 +11,20 @@
 ### Nguyên nhân 0: Phân Biệt Ba Nguồn Dữ Liệu Khi Đối Soát Follow (22 vs 18 vs 16)
 Khi đọc Dashboard, cần phân biệt rõ 3 nguồn telemetry khác nhau cho cùng một ngày:
 1. **Bảng "Thống Kê Theo Ngày" (`daily_account_actions` qua `follow_health_helper.py`):**
-   - Query: `SELECT target_date, SUM(internal_follows), COUNT(DISTINCT username) FROM daily_account_actions`.
+   - Query: 
+     ```sql
+     SELECT target_date, 
+            SUM(internal_follows) as tot_fl, 
+            COUNT(DISTINCT CASE WHEN internal_follows > 0 THEN username END) as succ_cnt,
+            COUNT(DISTINCT username) as total_cnt 
+     FROM daily_account_actions GROUP BY target_date
+     ```
    - Bản chất: Gom **toàn bộ số lần bot tap Follow thành công trên UI app** của từng nick xuyên suốt cả ngày, bao gồm cả ca chính (follow chéo) lẫn các ca phụ (lướt feed phát sinh follow lẻ).
-   - **Định nghĩa cột "Nick" (`COUNT(DISTINCT username)`):** Đếm **toàn bộ số nick được phân bổ chạy follow trong ngày**, bao gồm **cả nick follow thành công lẫn nick bị nhả liền / fail-reset về 0 lượt**. 
-     + Khi nick chạy bị TikTok nhả hoặc lỗi `FOLLOW_FAILED`, watchdog ghi nhận `internal_follows = 0` vào `session_account_actions` rồi rollup sang `daily_account_actions`. Vì câu query không có `WHERE internal_follows > 0`, nick 0 lượt vẫn được đếm vào số nick.
-     + Ví dụ: Ngày 13/10 báo `+1 lượt (2 nick)` vì Máy 29 follow được 1 lượt, Máy 15 bị nhả ngay nên `internal_follows = 0`, bảng đếm đủ 2 nick.
-     + Ví dụ: Ngày 12/10 báo `+41 lượt (17 nick)`: Thực tế có 10 nick follow thành công (tổng 41 lượt) và 7 nick bị nhả/0 lượt -> bảng hiển thị 17 nick.
-   - Ví dụ (ngày 11/10): `14 (tienpham M28) + 4 (trn.m.m M26) + 1 (debidxbr M78) + 1 (v.th.tho M44) + 1 (florence M38) + 1 (tyrus M62) + 0 (cleor M76) = 22 lượt` trên 7 nick.
+   - **Định nghĩa cột "Nick" (Quy chuẩn `Thành công / Tổng chạy`):**
+     + Hiển thị dạng phân số `succ_cnt/total_cnt` (ví dụ `1/2 nick`, `10/17 nick`, `6/7 nick`).
+     + Phản ánh rõ ràng: tử số là **số nick thực sự có đóng góp follow thành công**, mẫu số là **tổng số nick được điều phối chạy trong ngày** (bao gồm cả các nick bị TikTok nhả ngay từ đầu / `FOLLOW_FAILED` khiến `internal_follows = 0`).
+     + Loại bỏ hoàn toàn nghịch lý thị giác (ví dụ ngày 13/10 thấy `+1 lượt` mà ghi `2 nick`, nay hiển thị `1/2 nick` giúp người vận hành hiểu ngay là 1 nick thành công trên 2 nick chạy, có 1 nick bị nhả nút).
+   - Ví dụ (ngày 11/10): `14 (tienpham M28) + 4 (trn.m.m M26) + 1 (debidxbr M78) + 1 (v.th.tho M44) + 1 (florence M38) + 1 (tyrus M62) + 0 (cleor M76) = 22 lượt` trên `6/7 nick` (6 nick thành công, 1 nick bị nhả về 0).
 2. **Chỉ số "Bot" ở Thẻ Đối Soát Header (`session_action_stats`):**
    - Query: `SELECT SUM(internal_follows) FROM session_action_stats WHERE target_date = ?`.
    - Bản chất: Chỉ tính tổng lượt follow từ **các phiên follow chéo trọng điểm có chốt sổ ca nuôi chính** (ví dụ Ca 1: Phiên 1 được 16, Phiên 2 được 2 => Tổng = 18 lượt). Các ca lướt feed thông thường (Ca 2, Ca 3) không đặt mục tiêu follow chéo nên `internal_follows` của ca ghi nhận 0.
