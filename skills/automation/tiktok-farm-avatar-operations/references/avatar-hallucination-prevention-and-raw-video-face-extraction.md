@@ -111,3 +111,11 @@ Trước khi soạn bất kỳ tin nhắn nào cho User:
   3. Soi mắt nghiệm thu ảnh thực tế trên máy (`avatar-save-surface-guard.png` và `avatar-uploaded-confirmed.png`) qua `browser_vision`.
   4. Cập nhật `avatar_replace_queue` sang `DONE`, Excel sang `OK` và báo cáo kết quả kèm ảnh cho User ngay lập tức.
 
+---
+
+## 5. Đối Soát Lưới Video & Phòng Chống Lệch Niche (Workbook F_src Mismatch)
+- **CẤM TIN MÙ QUÁNG VÀO EXCEL $F_{src}$ KHI USER GỬI ẢNH KÊNH CÓ LƯỚI VIDEO**:
+  1. Đọc tiêu đề/chủ đề các video đã đăng trên lưới trang cá nhân từ ảnh/OCR (ví dụ: *"GHẺ ĐẤY BỐ MẸ Ạ"*, *"CHÁU KHỊT MŨI KÉO DÀI"* -> Niche Bác sĩ nhi khoa).
+  2. Kiểm tra nội dung video đầu tiên trong folder $F_{src}$ ghi ở Excel. Nếu Excel ghi niche khác (ví dụ: `Phụ kiện`) và video chứa sản phẩm/phụ kiện không khớp với kênh: BẮT BUỘC DỪNG CROP NGAY.
+  3. Quét tìm đúng folder video gốc thực tế tương ứng với niche và các tiêu đề đó (ví dụ: folder 113) rồi mới trích xuất frame từ `.avatar_work/representative_frames/` hoặc video gốc.
+
