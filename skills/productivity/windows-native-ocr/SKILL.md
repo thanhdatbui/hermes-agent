@@ -80,6 +80,7 @@ print(text)
 | Pitfall | Fix |
 |---------|-----|
 | Python `import winrt` (`ModuleNotFoundError: No module named 'winrt'`) | WinRT is a native Windows/.NET API, **not** a pre-installed Python module. Do **not** try to `import winrt` in Python directly. Always invoke PowerShell via `subprocess.run(["powershell", "-ExecutionPolicy", "Bypass", "-File", ...])` or call `scripts/winrt_ocr.py`. |
+| Forward slash in Windows path (`/`) | WinRT `GetFileFromPathAsync` crashes with `AggregateException: One or more errors occurred` if given forward slashes (e.g. `D:/path/file.jpg`). Always normalize path with Windows native backslashes: `os.path.abspath(path).replace('/', '\\')` before passing to PowerShell. |
 | Relative path | Use **absolute** path (`C:\...`) — `GetFileFromPathAsync` fails silently on relative |
 | Double backslash in single-quoted PS string | In `$imgPath = '$IMG_PATH'`, do **not** double `\` to `\\`. In PowerShell single quotes `'...'`, `\` is literal; doubling creates `C:\\path` which crashes `GetFileFromPathAsync` with `AggregateException`. Only escape `'` as `''`. |
 | `$outputBoxes` string boolean evaluation | In PowerShell, `[bool]($WITH_BOXES -eq 'True')` fails if `$WITH_BOXES` is injected without quotes or evaluates to non-boolean (unquoted `True` in PowerShell evaluates to empty/false). Always wrap as `[bool]('$WITH_BOXES' -eq 'True')`. |

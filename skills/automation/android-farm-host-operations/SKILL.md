@@ -14,6 +14,7 @@ References:
 - `references/inter-shift-cron-reboot-avoidance-and-warmup-buffer-20261013.md` — Quy chuẩn 40 phút warmup buffer (05:20, 11:20, 17:20) và cơ chế tự né giờ reboot cho các cron/watchdog thao tác trên thiết bị S7 giữa các ca.
 - `references/feed-watchdog-misclassification-and-usb-stall.md` — Phân tích bẫy phân loại fallback "Lỗi App TikTok/Script" trong feed_session_watchdog.py khi USB pipe bị treo (13/10/2026).
 - `references/lingering-tiktok-keep-screen-on-and-healer-pitfalls-20261014.md` — Phân tích bẫy TikTok giữ FLAG_KEEP_SCREEN_ON phát xuyên đêm, ảo giác ca đêm, và lỗ hổng của farm_idle_screen_and_app_healer (14/10/2026).
+- `references/remote-desktop-virtual-keystuck-and-chinese-ime-runaway.md` — Hiện tượng kẹt phím ảo (KeyUp drop) khi remote host farm, bản chất ký tự gạch ngang dài tiếng Trung (破折号 ——) và cách xử lý triệt để.
 
 Scripts:
 - `scripts/safe_usb_guard.py` — Script nguồn mẫu giám sát và reset EHCI bus theo ngưỡng.
@@ -455,6 +456,19 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
      - BẮT BUỘC thay bằng lệnh nhị phân nhẹ `pidof com.ss.android.ugc.trill com.zhiliaoapp.musically` (<0.1s) để phát hiện tức thì và gọi `am force-stop` dập tắt app ngay khi máy nhàn rỗi (không có active lock trong `~/.codex/device-locks/`).
 - **Cứu hộ tức thời ban đêm khi máy mất ADB:**
   * Dùng tính năng **"Đóng tất cả ứng dụng"** và **"Tắt màn hình"** trên thanh công cụ của Phóng Vệ (XiaoWei). Driver USB native của XiaoWei vẫn gửi được signal tới các máy đang nghẽn ADB.
+
+## 22. Hiện Tượng Kẹt Phím Ảo (KeyUp Drop) & Tự Gõ Chuỗi Ký Tự (`——`) Khi Remote Host Farm
+- **Hiện tượng:** Trên host phụ (Admin PC - cụm M201–M280) khi remote qua UltraViewer/TeamViewer/AnyDesk và mở phần mềm chiếu màn hình farm (牧卫 / 孜卫 / XiaoWei), máy đột ngột tự gõ chuỗi dài `————————` liên tục không dừng lại, kích hoạt khung tìm kiếm (search overlay) che màn hình.
+- **Bản chất kỹ thuật:**
+  1. **Rớt gói tin KeyUp trên đường truyền Remote:** Khi lag mạng hoặc dùng `Alt+Tab`/phím tắt chuyển cửa sổ, gói tin nhả phím (`WM_KEYUP`) bị drop. Windows trên máy remote hiểu phím đang bị đè giữ (Stuck Virtual Key) và kích hoạt lặp phím liên thanh theo `Keyboard Repeat Rate`.
+  2. **Ký tự `——` (破折号 - Full-width Em-Dash):** Ký tự này sinh ra do máy Admin đang bật bộ gõ tiếng Trung (Microsoft Pinyin / Chinese IME) hoặc chế độ Full-width. Phím `-` bị đè sẽ tự động ghép thành dấu gạch ngang dài tiếng Trung.
+  3. **Xung đột 2 bộ gõ EVKey song song:** Bật EVKey trên cả máy Kibe và máy Admin gây xung đột hook bàn phím qua luồng remote desktop.
+- **Quy trình cứu kẹt & Phòng ngừa:**
+  * **Cứu kẹt tức thì:** Nhấn dứt khoát 1–2 lần các phím `Esc`, `-` (phím số & phím chữ), `Shift`, `Ctrl`, `Alt` để gửi lại gói tin KeyUp; click chuột ra ngoài Desktop giải phóng focus search overlay.
+  * **Khóa bàn phím Admin về ENG:** Chuyển bộ gõ trên Admin PC về `ENG` (English US), gỡ bỏ gói bàn phím tiếng Trung không dùng.
+  * **Quy tắc Single IME:** Chỉ bật EVKey trên máy điều khiển (Kibe), tắt hẳn EVKey trên máy Admin khi remote.
+  * **Phần mềm chiếu màn hình (牧卫 / 孜卫):** Tắt tính năng đồng bộ phím (关闭实时按键同步) nếu không cần điều khiển hàng loạt máy bằng phím PC.
+  * Chi tiết: `references/remote-desktop-virtual-keystuck-and-chinese-ime-runaway.md`.
 
 
 
