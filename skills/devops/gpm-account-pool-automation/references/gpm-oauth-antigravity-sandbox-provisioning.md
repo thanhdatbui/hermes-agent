@@ -13,7 +13,7 @@ Khi vận hành pool tài khoản Google One / Antigravity Pro trên dàn máy T
 
 Các thông số này được Google nhúng công khai trong client Antigravity:
 - **Client ID:** `1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com`
-- **Client Secret:** `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`
+- **Client Secret:** `GOCSPX-[REDACTED_PUBLIC_DESKTOP_CLIENT_SECRET]`
 - **Authorize URL:** `https://accounts.google.com/o/oauth2/v2/auth`
 - **Token Endpoint:** `https://oauth2.googleapis.com/token`
 - **Scopes Bắt buộc:**
