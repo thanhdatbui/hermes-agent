@@ -274,6 +274,7 @@ Use `references/avatar-only-scope-and-false-policy-refusal.md` for the incident-
 
 ## References
 
+- `references/procedural-vision-gate-bypass-and-claude-hook-remediation-20261014.md` — **[MỚI 14/10/2026]** Sự cố lỗ hổng Gate thủ tục (Procedural Vision Gate Bypass), LLM bị mù ảnh native tự hallucinate mô tả em bé/áo gym thành bác sĩ mỉm cười, cơ chế Stop Hook vật lý `media_vision_gate.py` của Claude CLI và quy trình Semantic Grounding qua proxy :20129.
 - `references/git-pre-push-hook-msys-pwd-windows-python-path-trap.md` — **[MỚI 13/10/2026]** Sự cố pre-push hook trên Windows dùng `REPO_DIR="$(pwd)"` trả về POSIX `/d/...` khiến Python con không tìm thấy thư mục và báo không khớp audit_binding, và quy tắc bất biến `REPO_DIR="$(pwd -W 2>/dev/null || pwd)"`.
 - `references/documentation-and-sop-exemption-gate-20261013.md` — **[MỚI 13/10/2026]** Sự cố false-positive của Evidence-First Gate khi User yêu cầu đóng gói quy trình / tài liệu / SOP (đòi ảnh chụp màn hình khi làm tài liệu), quy tắc miễn trừ từ khóa lý thuyết và cơ chế bàn giao Claude CLI.
 - `references/telegram-raw-media-leak-and-windows-path-drop-remediation.md` — **[MỚI 13/10/2026]** Sự cố lộ text thô `MEDIA:` trên Telegram do edit_message stream bị biến đổi, lỗi thẩm định đường dẫn Windows silently drop ảnh, và quy trình tạo mosaic đa phương án avatar.
