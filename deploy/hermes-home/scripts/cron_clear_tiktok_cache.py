@@ -389,20 +389,22 @@ def main() -> int:
     }
     save_state(state_data)
 
-    if total_attempted > 0 and f_count >= 5 and f_count > (total_attempted * 0.3):
-        f_summary_str = ", ".join(f"{m:02d} ({r})" for m, r in sorted(failed_machines))
-        alert_msg = f"Đa số máy dọn cache thất bại/timeout ({f_count}/{total_attempted} máy fail): {f_summary_str}"
-        if state_data.get("last_alert_date") != today_str or state_data.get("last_alert_msg") != alert_msg:
-            _send_clear_cache_alert(alert_msg)
-            state_data["last_alert_date"] = today_str
-            state_data["last_alert_msg"] = alert_msg
-            save_state(state_data)
-
     all_done = bool(connected_fleet_machines and connected_fleet_machines.issubset(cleared_today))
     has_retries_left = any(
         m not in cleared_today and machine_retries.get(str(m), 0) < 2
         for m in connected_fleet_machines
     )
+    total_fleet = len(connected_fleet_machines)
+    total_unresolved = len([m for m in connected_fleet_machines if m not in cleared_today])
+
+    if not has_retries_left and total_fleet > 0 and total_unresolved >= 10 and total_unresolved > (total_fleet * 0.3):
+        f_summary_str = ", ".join(f"{m:02d} ({r})" for m, r in sorted(failed_machines))
+        alert_msg = f"Tỷ lệ dọn cache thất bại cao ({total_unresolved}/{total_fleet} máy chưa xong sau retry): {f_summary_str}"
+        if state_data.get("last_alert_date") != today_str or state_data.get("last_alert_msg") != alert_msg:
+            _send_clear_cache_alert(alert_msg)
+            state_data["last_alert_date"] = today_str
+            state_data["last_alert_msg"] = alert_msg
+            save_state(state_data)
 
     should_report = False
     if state_data.get("reported_date") != today_str or args.force:
