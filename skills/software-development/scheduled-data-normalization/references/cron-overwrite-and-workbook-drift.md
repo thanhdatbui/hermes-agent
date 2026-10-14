@@ -80,3 +80,9 @@ Worker summaries are untrusted until these fields are independently re-read by t
    - Tier 1: Unit tests for pure calculation logic (`resolve_source_folder`, boundaries, invalid types).
    - Tier 2: Integration tests using `tmp_path` generating mock multi-sheet workbooks (`TaiKhoan` + `Hashtag theo Folder`), asserting data mutation and structural integrity.
    - Tier 3: Operational parity test across live workbooks ensuring 100% of accounts match authoritative source.
+
+10. **The Dual-Cluster Single-Authority Shadowing Trap**:
+   When managing dual clusters (e.g. Cluster A: Kibe, Cluster B: Admin) that maintain independent raw media directories (`video goc` vs `video goc may 2`) and independent crawl sources/databases:
+   - A single-authority sync script configured with `FARM_DIRS = [Cluster_A, Cluster_B]` that queries only Cluster A's database will forcibly overwrite Cluster B's workbooks with Cluster A's categories and hashtags.
+   - Even if an operator manually fixes Cluster B's workbooks, the scheduled cron sync will clobber them on the very next scheduled cycle.
+   - Rule: Before running or scheduling bulk multi-cluster syncs, verify whether clusters share the same source-of-truth database or maintain separate cluster authorities. When media sources are independent, sync scripts MUST partition cluster authorities (querying each cluster's own store) or be strictly scoped to the targeted cluster only.
