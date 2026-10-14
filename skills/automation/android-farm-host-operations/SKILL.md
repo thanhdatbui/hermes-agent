@@ -478,9 +478,15 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
   * Dập tiến trình EVKey Admin: `Stop-Process -Name EVKey64, EVKey32, UniKeyNT -Force -ErrorAction SilentlyContinue`.
   * Chi tiết: `references/remote-desktop-virtual-keystuck-and-chinese-ime-runaway.md`.
 
-## 23. Bẫy Tê Liệt Khi Nhận Lệnh Reboot & Quy Trình Sentinel Bypass
-- **Bẫy tê liệt xin phép (Paralysis by Confirmation):** Khi User ra lệnh rõ ràng *"Reboot kibe r thử lại cho t"*, CẤM TUYỆT ĐỐI hỏi lại "tôi phát lệnh reboot nhé?" khiến task bị kẹt hàng tiếng đồng hồ khi user đi ngủ/rời máy. Lệnh của user chính là authorization cuối cùng.
-- **Quy trình 3 bước bắt buộc khi user ra lệnh reboot:**
+## 23. Bẫy Tê Liệt Khi Nhận Lệnh Reboot & Quy Trình Sentinel Bypass (Chỉ Dành Riêng Cho Lệnh Trực Tiếp Từ User)
+- **CẤM TUYỆT ĐỐI TỰ Ý REBOOT KHI KHÔNG CÓ LỆNH USER (AUTONOMOUS REBOOT BAN):**
+  * Reboot máy chủ (Kibe PC / Admin PC) là thao tác cấp 4 gây gián đoạn nghiêm trọng (Disruptive / Destructive): văng game của user (TFT), ngắt kết nối remote, hủy toàn bộ tiến trình và worker đang chạy dở trên toàn farm.
+  * Khi gặp máy rớt ADB, timeout hay kẹt task: Agent CHỈ ĐƯỢC PHÉP báo `BLOCKED` kèm bằng chứng hiện trường, hoặc chờ mốc Auto-Reboot định kỳ (05:20, 11:20, 17:20).
+  * **CẤM TUYỆT ĐỐI** Agent tự tiện xóa file cờ `reboot_sentinel_*.flag` và tự chạy `farm_preflight_daily_reset.py` hay lệnh `shutdown /r` khi User KHÔNG hề yêu cầu reboot (sự cố 14/10/2026: bot đang làm task ghim video tự ý xóa flag reboot máy làm văng PC giữa ban ngày khiến User bức xúc *"Clgt"*).
+- **Bẫy tê liệt xin phép (Paralysis by Confirmation — CHỈ ÁP DỤNG KHI USER ĐÃ RA LỆNH):**
+  * Khi User ra lệnh rõ ràng dứt khoát (*"Reboot kibe r thử lại cho t"*, *"Restart máy đi"*): **Lệnh của User chính là authorization cuối cùng**.
+  * CẤM TUYỆT ĐỐI hỏi lại "tôi phát lệnh reboot nhé?" khiến task bị kẹt hàng tiếng đồng hồ khi user đi ngủ/rời máy.
+- **Quy trình 3 bước bắt buộc CHỈ KHI USER YÊU CẦU REBOOT:**
   1. *Sentinel Bypass:* Xóa cờ `C:\Taadaa_Service\reboot_sentinel_<today>.flag` nếu có, tránh script preflight daily reset coi là đã reboot hôm nay rồi thoát `[SKIP]`.
   2. *Bảo toàn in-flight sessions:* Gọi `preserve_in_flight_sessions(lookback_minutes=60)` để đóng dấu `resume_pending=True` và xóa `.clean_shutdown`.
   3. *Phát lệnh shutdown:* Gọi script `farm_preflight_daily_reset.py` (hoặc `shutdown /r /t 5`).

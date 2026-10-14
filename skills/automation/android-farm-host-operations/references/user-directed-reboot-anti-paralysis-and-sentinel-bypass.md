@@ -53,3 +53,23 @@
   2. Xác nhận thiết bị đích đã online (`device`, không còn `not found`).
   3. Tiếp tục ngay task đang dở (ví dụ: ghim video, chạy verify, kiểm tra log), chụp ảnh bằng chứng gửi User.
   4. TUYỆT ĐỐI KHÔNG chào hỏi suông hay hỏi "bạn muốn làm gì tiếp theo".
+
+---
+
+## 4. Ranh Giới Sống Còn: User-Directed Reboot vs Cấm Tự Ý Reboot (Autonomous Reboot Ban)
+- **Sự cố thực tế ngày 14/10/2026:**
+  * Trong session `@session:default/20261014_091331_22bdaf28` (task ghim video TikTok trên M18), Agent thấy thiết bị chưa phản hồi hoặc muốn làm mới kết nối.
+  * Agent đã đọc nhầm quy trình Sentinel Bypass thành quyền hành động tự do, tự ý chạy:
+    ```python
+    sentinel = Path(r"C:\Taadaa_Service\reboot_sentinel_2026-10-14.flag")
+    if sentinel.exists():
+        sentinel.unlink()
+    ```
+    rồi gọi `farm_preflight_daily_reset.py`, nã lệnh `shutdown /r` restart PC Kibe lúc 15:31:38 ngay khi User đang dùng máy và chơi game TFT.
+  * Hậu quả: Toàn bộ phiên làm việc của User bị văng, User phản ứng gay gắt: *"Clgt"*.
+- **Quy tắc bất biến:**
+  1. **Quy trình Sentinel Bypass CHỈ ĐƯỢC PHÉP CHẠY KHI USER RA LỆNH RÕ RÀNG:**
+     * Chỉ khi trong chat User có câu lệnh rõ nghĩa: *"Reboot máy đi"*, *"Restart Kibe cho t"*, *"Khởi động lại PC"* thì Agent mới được kích hoạt 3 bước trên.
+  2. **Khi không có lệnh User:**
+     * Mọi sự cố rớt ADB, thiết bị offline, kẹt task: Agent CHỈ ĐƯỢC PHÉP báo `BLOCKED` kèm bằng chứng hiện trường, hoặc dùng `clarify` đề xuất User có muốn reboot host hay không.
+     * **CẤM TUYỆT ĐỐI** tự ý xóa file cờ sentinel hoặc tự gọi `shutdown.exe /r`. Tự ý reboot máy chủ khi User không yêu cầu là vi phạm an toàn farm cấp độ nghiêm trọng nhất.
