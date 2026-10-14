@@ -2,7 +2,7 @@ Chu kỳ 4d: Parity 96h (N1 lẻ, N2 chẵn), N3(R7,8), N4(dưỡng 0fl+up). Sta
 §
 Followed=0 cấm PASS. Admin SSH: dùng D:/Taadaa/tools/admin_ssh.py (--powershell/--json); CẤM thoái thác khi Guard block raw ssh. Auto-resume reboot: locks==0.
 §
-Worker: haiku_worker.py O(1) kẹp --no-session-persistence --allowedTools --max-turns 6; fallback ag_cli.py (7 acc Pro). Downloader modular `scripts/downloader/`, trần <=1400 dòng.
+Worker: haiku_worker.py O(1) fallback ag_cli.py (7 acc Pro 2-3s). Closeout invariant: score < 85 cấm báo DONE (báo BLOCKED). Strike 3 Handoff Claude CLI (sonnet-5-5) dính 429 bắt buộc fallback ag_cli.py. Quota Pro đọc qua plan-usage-history.json.
 §
 TikTok Follow: (máy,row) độc lập; Quota 10-15/ca; Hồi phục 1&2 2 ca sạch; Canary Khỏe +10%; like 80%. Path B 'Đã fl' ko commit; slot (folder-1)%8+1. Mode 2: anchor >= 150 fl; cuộn sâu. Cron: feed/follow_watchdog.
 §
