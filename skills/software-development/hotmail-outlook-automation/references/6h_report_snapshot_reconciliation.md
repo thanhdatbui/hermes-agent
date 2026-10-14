@@ -40,6 +40,10 @@ Lead with deltas and actions, not a verbatim restatement of every metric. Explic
 ## Farm Admin (M201-280) vs Farm Kibe (M1-80) GPM Lifecycle Architecture (Updated 2026-10-13)
 - **HOTMAIL_LOGIN mandatory locking**: As of 2026-10-13, the side-effect jumping from `HOTMAIL_LOGIN` directly to `CHATGPT_REG` when Microsoft Graph OAuth tokens exist was eliminated. `HOTMAIL_LOGIN` is now the mandatory initial stage for ALL Hotmail accounts across both Kibe and Admin to persist authenticated sessions/cookies in GPMLogin profiles on Kibe.
 - **Why Admin ChatGPT Reg paces at 28/day**: Farm Admin only has 28 distinct Mikrotik proxy ports (`10008`–`10035`) shared across 80 machines. The supervisor enforces a strict 24h cooldown per proxy port for the same operation (`ip_action_history[port][stage]`). Thus, Admin can only process 28 accounts/day. In reports showing e.g. 84/620 (28 x 3 days) with 535 pending, the remaining accounts are NOT broken; they are safely waiting for the 24h per-IP cooldown window to roll over.
+- **Kibe vs Admin Proxy Port Reality & Historical Throughput**:
+  - Kibe has 39 distinct proxy ports (`5101`–`5180`), whereas Admin has only 28 ports (`10008`–`10035`). Never assume Admin has more proxy ports.
+  - Admin's historical 344 accounts in `WAIT_7D` was achieved because accounts with tokens skipped `HOTMAIL_LOGIN` prior to 2026-10-13.
+  - Kibe's slower throughput was compounded by a false-positive bug in `batch_gpm_hotmail_password_login.py`: matching `"bảo vệ tài khoản"` on the `account.microsoft.com` homepage cards misclassified successful logins as `BLOCKED: PROTECT_ACCOUNT_VERIFICATION`, which penalised the account with 48h cooldown and locked the proxy port for 24h. Always gate challenge detection to `login.live.com` / `login.microsoftonline.com` only.
 
 ## Evidence pattern from the lifecycle farm
 A report showing 51 Kibe BLOCKED was followed by a live state showing 53: the canonical state had 52 `CHANGE_INFO` BLOCKED and 1 `HOTMAIL_LOGIN` QUARANTINE, with two profiles' `updated_at` values after the report snapshot. This is the expected way to explain a stale report without rewriting historical telemetry.

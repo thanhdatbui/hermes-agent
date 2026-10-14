@@ -23,6 +23,7 @@ Use this skill when one agent coordinates work while another model or coding CLI
 
 - Hermes should plan, delegate, and verify rather than implement everything itself.
 - A coding worker has different quota or quality characteristics from the coordinator.
+- Quota fallback: Claude Pro chạm trần 5h window tự động chuyển sang Antigravity CLI pool (`ag_cli.py fix`).
 - Antigravity CLI Pool (`ag_cli.py` / `agy.exe`): Thợ code headless chạy Go/BoringSSL native với sandbox multi-profile, tự xoay tua LRU và proxy 4G riêng (xem chi tiết tại `references/antigravity-worker-pool-routing.md`). native Go TLS qua proxy 4G, xem chi tiết tại `references/antigravity-cli-pool-worker.md`.
 - Multiple models such as Codex and OpenCode Go need role-based routing.
 - A local OpenAI-compatible router is being considered for centralized credentials and fallback.
@@ -243,6 +244,11 @@ client → local router → upstream provider/model
 Store the upstream credential in the router. Configure the client with the router endpoint and the router's local authentication key, not the upstream credential. Keep direct configuration when only one client needs the provider or when simpler debugging is more valuable than centralized routing.
 
 ## Pitfalls
+
+- **Claude CLI Quota Cache Staleness Trap (2026-10-15)**:
+  + *Bẫy cache cũ*: File `plan-usage-history.json` không được `claude -p` headless cập nhật liên tục mà chỉ cập nhật qua desktop session. Khi mtime cũ (>30 phút), dữ liệu % quota trong cache hoàn toàn không đáng tin cậy (ngỡ còn 96% nhưng thực tế tài khoản đã dùng cạn 100%).
+  + *Phòng thủ kép*: Kiểm tra tuổi cache (`age_min > 30` thì coi là unverified), đồng thời luôn bọc bộ bắt chuỗi `hit your session limit` / `resets at` trực tiếp trên stdout/stderr của lệnh để tự động failover ngay sang Antigravity CLI pool (`ag_cli.py fix`).
+  + *Kỷ luật Thin-Slice Monolith*: Khi refactor script lớn (>1.500 dòng), phân vai rõ: model lớn thiết kế kiến trúc, model nhỏ/nhanh (Haiku / Gemini Flash) thi công cắt lát O(1) từng module độc lập (proxy, dedup, avatar, language) kèm test hồi quy chạy liên tục. Khi user yêu cầu làm tự động liên tục, hoàn tất toàn bộ chuỗi lát cắt trước khi tổng kết.
 
 - **Claude Code CLI Advisor Latency Trap & Pure Benchmark Parity (2026-10-14)**:
   + *Cạm bẫy Advisor ngầm*: Khi từng chạy `/advisor` trong TUI, cờ `"advisorModel": "sonnet"` được ghi cố định vào `~/.claude/settings.json` và tự động áp dụng cho mọi lệnh headless `claude -p`. Trên các bài toán code nhiều ràng buộc, Sonnet tự động gọi một con Sonnet Advisor ngầm (`advisor_message` nuốt 13k+ tokens context), kéo latency từ 6s lên **56s – 103s** và gây tâm lý rụt rè dẫn đến từ chối code nhạy cảm (Proxy/Farm Compliance Refusal).
