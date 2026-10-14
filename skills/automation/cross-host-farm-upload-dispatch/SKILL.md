@@ -59,4 +59,5 @@ For a completed fix, record: target file and exact Gate 5/dispatch delta; compil
 
 ## Supporting detail
 
-See `references/cross-host-admin-upload.md` for the Taadaa-specific command contract, observed false-alert chain, and verification matrix.
+- See `references/cross-host-admin-upload.md` for the Taadaa-specific command contract, observed false-alert chain, and verification matrix.
+- See `references/cloud-media-decoupling-architecture.md` for decoupling stateless media scrapers and ffmpeg renderers off physical farm hosts onto cloud workers.
