@@ -53,8 +53,17 @@ If the process is still running, report `RUNNING` with the exact log path and do
 - Duplicate source-channel claims do not by themselves prove duplicate video posts; compare recorded video IDs and live posted counts.
 - Do not swap to another famous/watermarked creator merely because the channel is unclaimed; dedup safety and rights/algorithm safety are different gates.
 - Do not send a tiny, stale, or cropped screenshot as UI evidence; inspect the actual full-screen artifact first.
-- **Bẫy chặn cứng số lượng 40 video (`min_videos = 40` Truncation Fallacy):**
-  - Không tự ý giới hạn tải 40 clip khi user không yêu cầu. Script pipeline swap mặc định có thể để `min_videos = 40`, nhưng phải kiểm tra tổng số video thực tế của kênh trên TikTok/YouTube (`videoCount` trong hydration data). Nếu kênh có nhiều hơn (ví dụ 100-250 clip), phải tải trọn vẹn toàn bộ kênh hoặc đối soát với user thay vì âm thầm ngắt ở 40 clip rồi báo xong khiến kho video bị thiếu hụt và user bức xúc ("Sao lại 40. T có yêu cầu chỉ tải 40 k?").
+- **Quy tắc giới hạn trần 60 video mỗi channel (Hard Cap 60 Videos Per Channel):**
+  - CẤM cào full toàn bộ hàng trăm video của kênh lớn (tránh nghẽn băng thông, đầy đĩa và dồn rủi ro thuật toán vào 1 creator).
+  - Chuẩn quy hoạch mới của farm: Mỗi channel cào tối đa đúng **60 video** rồi dừng lại (`TARGET_COUNT = 60`).
+  - Không tự ý ngắt ở ngưỡng sàn mặc định 40 clip (`min_videos = 40`), nhưng cũng không được cào vô tội vạ đến 100-250 clip.
+  - Khi phát hiện tải thừa (> 60 clip), tận thu chuyển ngay sang `D:/video goc/curated_pool/pool<folder>_<idx>.mp4` để chia cho các kênh khác, cấm xóa bỏ lãng phí.
+- **Tiếp nhận Avatar do User cung cấp trực tiếp (User-Provided Avatar Invariant):**
+  - Khi User gửi ảnh trực tiếp trong chat yêu cầu làm avatar ("Ok dùng ava này đi"):
+    1. Chuyển ảnh sang dạng vuông 512x512 bằng `ffmpeg` (scale=512:512, crop=512:512 căn chuẩn tâm đối tượng).
+    2. BẮT BUỘC gọi `browser_vision` soi mắt kiểm tra trước khi xác nhận với User (xác nhận đúng chủ thể, không vỡ hạt, không méo góc).
+    3. Ghi đè đồng bộ vào cả 2 kho: `D:/video goc/<folder>/avatar.jpg` và `D:/TIKTOK-videonuoinick/<folder>/avatar.jpg`.
+    4. Không chạy lại `_make_avatar.py` tự động để tránh bị cắt frame video đè mất avatar User đã chọn.
 - **Kỷ luật kiểm định Avatar kênh (Text-Overlay Rejection Invariant):**
   - Tuyệt đối cấm bốc frame video dính chữ/phụ đề câu hỏi/caption (ví dụ khung chữ vàng "Bác nào hiểu tình huống này...") làm avatar đại diện. Avatar kênh TikTok phải là:
     (a) Avatar chính chủ chất lượng cao của kênh tải từ CDN (`avatarLarger` trong hydration data).
