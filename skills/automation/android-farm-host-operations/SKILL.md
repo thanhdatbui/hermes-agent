@@ -526,8 +526,10 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
   3. **Readback đối soát (Bắt buộc):**
      * Truy vấn: `powercfg /query SCHEME_CURRENT SUB_VIDEO VIDEOIDLE`
      * Đọc `Current AC Power Setting Index` và `Current DC Power Setting Index` (dạng thập lục phân giây: `0x0000012c` = 300s = 5 phút; `0x00000258` = 600s = 10 phút; `0x00000384` = 900s = 15 phút).
-- **Đồng bộ với Phone Farm Idle Healer (`farm_idle_screen_and_app_healer.py`):**
-  * Cập nhật `screen_off_timeout` của Android từ 10 phút (`600000` ms) về 5 phút (`300000` ms) khi máy nhàn rỗi.
+- **BẪY NHẦM LẪN PC HOST VS THIẾT BỊ S7 (USER INVARIANT: S7 ĐỂ IM 10 PHÚT):**
+  * **Quy tắc phân định:** Khi user yêu cầu "tắt màn hình cả kibe lẫn admin sau 5ph", điều này CHỈ áp dụng cho 2 máy tính Windows Host PC (Kibe & Admin).
+  * **CẤM ĐỤNG VÀO S7:** Toàn bộ dàn điện thoại Samsung S7 (cả Kibe M1–80 và Admin M201–280) BẮT BUỘC giữ nguyên mốc chuẩn **10 phút** (`600000` ms trong `farm_idle_screen_and_app_healer.py`).
+  * **Lý do kỹ thuật:** Rút timeout S7 xuống 5 phút sẽ khiến màn hình bị tắt phụt giữa chừng khi app TikTok lag, mạng xoay vòng, hoặc khi ADB shell bị trễ focus, làm vỡ luồng automation và bấm trượt UI.
   * Khi dispatch Worker sửa code via `delegate_task`: Format `FOCUSED_TEST` bắt buộc phải là `python -m pytest <file.py>::<test_node> -q` hoặc `python -m py_compile <file.py>`, cấm truyền toàn bộ file pytest không có test node.
 
 

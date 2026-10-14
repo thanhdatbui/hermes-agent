@@ -13,6 +13,10 @@ Khi đọc Dashboard, cần phân biệt rõ 3 nguồn telemetry khác nhau cho 
 1. **Bảng "Thống Kê Theo Ngày" (`daily_account_actions` qua `follow_health_helper.py`):**
    - Query: `SELECT target_date, SUM(internal_follows), COUNT(DISTINCT username) FROM daily_account_actions`.
    - Bản chất: Gom **toàn bộ số lần bot tap Follow thành công trên UI app** của từng nick xuyên suốt cả ngày, bao gồm cả ca chính (follow chéo) lẫn các ca phụ (lướt feed phát sinh follow lẻ).
+   - **Định nghĩa cột "Nick" (`COUNT(DISTINCT username)`):** Đếm **toàn bộ số nick được phân bổ chạy follow trong ngày**, bao gồm **cả nick follow thành công lẫn nick bị nhả liền / fail-reset về 0 lượt**. 
+     + Khi nick chạy bị TikTok nhả hoặc lỗi `FOLLOW_FAILED`, watchdog ghi nhận `internal_follows = 0` vào `session_account_actions` rồi rollup sang `daily_account_actions`. Vì câu query không có `WHERE internal_follows > 0`, nick 0 lượt vẫn được đếm vào số nick.
+     + Ví dụ: Ngày 13/10 báo `+1 lượt (2 nick)` vì Máy 29 follow được 1 lượt, Máy 15 bị nhả ngay nên `internal_follows = 0`, bảng đếm đủ 2 nick.
+     + Ví dụ: Ngày 12/10 báo `+41 lượt (17 nick)`: Thực tế có 10 nick follow thành công (tổng 41 lượt) và 7 nick bị nhả/0 lượt -> bảng hiển thị 17 nick.
    - Ví dụ (ngày 11/10): `14 (tienpham M28) + 4 (trn.m.m M26) + 1 (debidxbr M78) + 1 (v.th.tho M44) + 1 (florence M38) + 1 (tyrus M62) + 0 (cleor M76) = 22 lượt` trên 7 nick.
 2. **Chỉ số "Bot" ở Thẻ Đối Soát Header (`session_action_stats`):**
    - Query: `SELECT SUM(internal_follows) FROM session_action_stats WHERE target_date = ?`.

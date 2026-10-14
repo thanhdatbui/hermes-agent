@@ -6,7 +6,7 @@ Mục tiêu là cấu hình thời gian chờ tắt màn hình Windows (Monitor 
 - **Kibe PC:** Máy trạm chính (Local Windows 10 Host)
 - **Admin PC:** Máy trạm phụ điều khiển Farm Máy 201–280 (Remote Windows qua SSH tại `192.168.110.119`)
 
-Đồng thời liên đới tới việc chuẩn hóa `screen_off_timeout` của dàn máy Android Phone Farm trong watchdog `farm_idle_screen_and_app_healer.py`.
+Đồng thời tách bạch rõ ràng với `screen_off_timeout` của dàn máy Android Phone Farm: thiết bị S7 giữ nguyên 10 phút, cấm hạ xuống 5 phút.
 
 ---
 
@@ -58,3 +58,13 @@ Kết quả trả về dạng Hex:
 - `Current DC Power Setting Index: 0x0000012c` ($300\text{ giây} = 5\text{ phút}$)
 *(Đối chiếu: `0x00000258` = 600s = 10 phút; `0x00000384` = 900s = 15 phút).*
 Cả 2 host Kibe và Admin đều đã read-back khớp `0x0000012c`.
+
+---
+
+## 4. User Invariant: Dàn Điện Thoại S7 Bắt Buộc Giữ Nguyên 10 Phút
+- **Bẫy tư duy suy diễn:** Khi user ra lệnh "Cài đặt tắt màn hình cả kibe lẫn admin sau 5ph", trợ lý không được tự ý sửa timeout của điện thoại S7 từ 10 phút về 5 phút.
+- **Quy tắc chuẩn hóa:**
+  1. Yêu cầu 5 phút chỉ áp dụng cho **2 máy tính Windows Host PC (Kibe & Admin)**.
+  2. Toàn bộ thiết bị Samsung S7 và watchdog `farm_idle_screen_and_app_healer.py` **giữ nguyên 10 phút (`600000` ms)**.
+  3. Nếu hạ S7 xuống 5 phút, khi TikTok lag, dump XML chậm hoặc kết nối ADB bị trễ microframe, màn hình điện thoại sẽ bị tắt ngang giữa ca làm vỡ flow tự động và phát sinh lỗi hàng loạt.
+
