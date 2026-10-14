@@ -113,4 +113,50 @@ When using CLI agents (Claude Code CLI / Haiku Worker) to refactor or maintain m
 When the user asks to modularize across multiple repos:
 1. **Commit Early:** Commit the completed refactor of Repo A immediately (`acb8e11`). Never leave dirty workspace or uncommitted refactors while moving to Repo B.
 2. **Stabilization Before Cross-Repo Spread:** As Senior Architects advise: Refactor is risk borrowed upfront. A newly modularized script must undergo live soak or canary validation before ripping apart the next repository.
-3. **Proactive Backlog Management:** Maintain an explicit queue of monolith targets (e.g. `feed_session_watchdog.py` 2.088 lines) and propose next steps without prematurely assuming the user wants to stop.
+3. **Proactive Backlog Management:** Maintain an explicit queue of monolith targets (e.g. `feed_session_watchdog.py` 2.088 lines, `run_tiktok.py` 1.104 lines, `run_follow.py` 709 lines) and proactively suggest the next target to the operator instead of prematurely declaring the session finished.
+
+---
+
+## 6. Dual-Path Import Fallback Pattern for Scripts
+
+When a script lives inside a subdirectory (e.g., `scripts/feed_session_watchdog.py`) and is executed both directly via CLI (`python scripts/feed_session_watchdog.py`, where `scripts/` is added to `sys.path`) AND via test suites or root orchestrators (`import scripts.feed_session_watchdog`):
+- A direct `from scripts.subpackage import ...` fails with `ModuleNotFoundError: No module named 'scripts'` when run from tests or inside `scripts/`.
+- A direct `from subpackage import ...` fails when imported from the repository root.
+
+**Mandatory Dual-Path Fallback Pattern:**
+```python
+try:
+    from watchdog.lock import ProcessLock, is_feed_runner_active, is_pid_alive
+except ImportError:
+    from scripts.watchdog.lock import ProcessLock, is_feed_runner_active, is_pid_alive
+```
+And in test files (`tests/test_watchdog_*.py`):
+```python
+import os, sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'scripts')))
+try:
+    from watchdog.lock import ProcessLock
+except ImportError:
+    from scripts.watchdog.lock import ProcessLock
+```
+
+---
+
+## 7. Haiku Worker Monolith-Editing Rules & Turn Clamping
+
+When delegating code extraction or monolith edits to `haiku_worker.py`:
+1. **Single-Hunk Task Granularity:** On files > 1.500 lines, Haiku worker with `--max-turns 6` fails with `Error: Reached max turns (6)` if given multiple tasks across disparate line ranges (e.g., adding imports + deleting 4 different functions across 1.000 lines). Break the prompt into atomic O(1) single-hunk operations.
+2. **Foreground vs Background Execution:** Host terminal guards enforce `timeout <= 60s`. Multi-turn worker tasks on large files easily exceed 60s. For operations requiring `--max-turns > 6` or `--timeout > 60s`, Coordinator must run via `terminal(background=True, notify_on_complete=True)`.
+3. **Exact Signature Matching in Tests:** When generating test suites via worker, specify the exact function signatures and argument shapes (e.g., `merge_machine_result(prev: dict, new: dict)` takes 2 arguments, not 1 list) to prevent worker from guessing incorrect signatures.
+
+---
+
+## 8. Closeout Gate Diff-Budget Trap (> 30.000 bytes)
+
+`closeout_gate.py` has a hard fail-fast rule: `MAX_DIFF_BYTES_GATE = 30_000` (30 KB diff).
+- When a large monolith refactor touches 10+ files and generates 50–80 KB of diff, `closeout_gate.py` rejects with `[Gate Fail-Fast: DIFF_TOO_LARGE] targeted diff quá lớn (76137 > 30000 bytes)`.
+- Furthermore, `--files` requires exact matching with committed files in `HEAD~1..HEAD` (`refusing partial committed scope` if even `__init__.py` is omitted).
+- **Remediation Strategy:** Commit each thin-slice modularization incrementally as its own micro-commit (< 25 KB diff each) rather than grouping 5 modules into a massive 80 KB commit, or run closeout evaluation per individual thin-slice branch.
+
+See `references/architecture-gate-and-line-budget-patterns.md` for architecture gate test patterns.
+See `references/monolith-haiku-worker-and-import-patterns-20261015.md` for dual-path import fallback, Haiku worker turn-clamping, and Closeout Gate diff-budget patterns.

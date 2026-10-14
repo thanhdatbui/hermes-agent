@@ -225,5 +225,43 @@ Trước khi soạn bất kỳ tin nhắn nào cho User:
      - **BẮT BUỘC BỎ TICK**: Tại màn hình Cắt ảnh, kiểm tra checkbox "Đăng ảnh này lên Nhật ký" — bắt buộc để trống (không tick) trước khi bấm "Lưu".
      - Chụp ảnh màn hình Profile xác nhận avatar mới hiển thị thực tế trước khi đánh dấu hoàn tất.
 
+---
+
+## 11. Bẫy Khách Mời / Chuyên Gia Trong Video Tin Tức & Phỏng Vấn (Guest Speaker Trap)
+- **Hiện tượng**:
+  - Khi trích xuất khuôn mặt tự động từ các video dạng tin tức, tài chính hoặc talkshow/phỏng vấn (ví dụ kênh `@karunmmkx35` - M65 Tik 5 "Bản tin Tài chính"), các frame quét ở đoạn giữa/cuối video thường nhận diện khuôn mặt của chuyên gia, khách mời hoặc người trả lời phỏng vấn (ví dụ người đàn ông trung niên phát biểu lúc 22s).
+  - Tên kênh TikTok là nữ ("Mai"), thumbnail trên lưới trang cá nhân toàn bộ là Nữ MC dẫn tin áo dạ hồng / đỏ đô, nhưng nếu script tự động lấy face lớn nhất ở giây 22 sẽ cho ra avatar đàn ông trung niên lạc đề.
+- **Quy tắc phân biệt Host chính vs Khách mời**:
+  1. **Đối chiếu tần suất xuất hiện trên lưới trang cá nhân**: Chủ kênh / MC chính LUÔN là người xuất hiện lặp đi lặp lại ở khung hình mở đầu (3–5s đầu) của phần lớn video trên grid.
+  2. **Soi mắt qua `ag_cli.py` & `browser_vision`**:
+     - Phân tích chi tiết bối cảnh: MC ngồi ở bàn dẫn tin trường quay (có logo chương trình, ticker chữ chạy phía dưới) khác hoàn toàn với khách mời/chuyên gia (thường ở bục hội thảo, hiện trường ngoài trời hoặc khung phỏng vấn).
+     - Khi cung cấp 2 phương án cho User, Option 1 LUÔN LUÔN là MC/Host chính diện, Option 2 có thể là góc quay khác của Host; nếu đưa frame khách mời thì BẮT BUỘC chú thích rõ là "Khách mời / Chuyên gia phát biểu" để User không bị chọn nhầm.
+
+---
+
+## 12. Mẫu Self-Contained Test Khi Dispatch Worker Crop Avatar (Vượt Scope Lock & Terminal Whitelist)
+- **Bối cảnh điều phối**:
+  - Khi Coordinator hết hạn ngạch ghi T1 (> 200 dòng) và phải dispatch Worker leaf để tạo script xử lý ảnh:
+  - Guard bắt buộc định dạng: `FOCUSED_TEST: python -m pytest <file.py>::<test_node> -q` (cấm `pytest` trần, cấm sai cú pháp).
+  - Terminal sandbox của Worker áp dụng Default-Deny: cấm `python -m py_compile`, chỉ cho phép `pytest`.
+  - Đồng thời Worker bị khóa cứng Single-File Scope Lock (`FILE: D:/Taadaa/reports/<script>.py`). Nếu Worker cố tạo thêm file test riêng (như `test_<script>.py`) sẽ bị Guard chặn vì vi phạm Scope Lock.
+- **Kỹ thuật Self-Contained Test chuẩn O(1)**:
+  - Nhúng trực tiếp hàm test vào cuối file script chính:
+    ```python
+    def test_generate_and_verify_avatars():
+        main()
+        expected = ["avatar_opt1.jpg", "preview_opt1.jpg", ...]
+        for fname in expected:
+            p = os.path.join(OUTPUT_DIR, fname)
+            assert os.path.exists(p) and os.path.getsize(p) > 1000
+    ```
+  - Khai báo contract dispatch:
+    ```text
+    TASK_KIND: CREATE
+    FILE: D:/Taadaa/reports/create_final_avatars.py
+    FOCUSED_TEST: python -m pytest D:/Taadaa/reports/create_final_avatars.py::test_generate_and_verify_avatars -q
+    ```
+  - Kết quả: Worker chỉ cần tạo đúng 1 file duy nhất, chạy 1 lệnh pytest pass 100%, vừa sinh đủ file ảnh vừa thỏa mãn mọi gate điều phối mà không bị kẹt sandbox.
+
 
 
