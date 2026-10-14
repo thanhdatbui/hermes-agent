@@ -1,8 +1,8 @@
-Chu kỳ 4d: Parity 96h (N1 lẻ, N2 chẵn), N3(R7,8), N4(dưỡng 0fl+up). Starve 108h. CẤM xóa cooldown. Dưỡng động: healing_selector.py; S2 bám S1; cache 60s; audit schema 1.0. Bỏ ca 4 đêm, 3 ca (06h, 12h, 18h). Đêm 21:30-04h rảnh cho 2FA/Avatar cuốn chiếu; báo cáo định kỳ 6h (00h,06h,12h,18h); cấm gán nhãn ảo 'nhường lịch nuôi'.
+Chu kỳ 4d: Parity 96h (N1 lẻ, N2 chẵn), N3(R7,8), N4(dưỡng 0fl+up). Starve 108h. CẤM xóa cooldown. Dưỡng động: healing_selector.py; S2 bám S1; cache 60s; audit schema 1.0. Bỏ ca 4 đêm, 3 ca (6,12,18h). Đêm 21:30-4h rảnh cho 2FA/Avatar cuốn chiếu; báo cáo định kỳ 6h (0,6,12,18h); cấm gán nhãn ảo 'nhường lịch nuôi'.
 §
 Followed=0 cấm PASS. Admin SSH: dùng D:/Taadaa/tools/admin_ssh.py (--powershell/--json); CẤM thoái thác khi Guard block raw ssh. Auto-resume reboot: locks==0.
 §
-AG CLI: ag_cli.py (7 acc Pro acc_01..07, 2-3s). Claude CLI: haiku_worker.py (Haiku 5.5 O(1), auto-fallback ag_cli khi chạm trần, tắt advisor).
+AG CLI: ag_cli.py (7 acc Pro, 2-3s, fallback khi Claude 429). Claude: advisor=off, haiku_worker.py O(1). delegate_task spawn ag-gemini-pool-3.
 §
 TikTok Follow: (máy,row) độc lập; Quota 10-15/ca; Hồi phục 1&2 2 ca sạch; Canary Khỏe +10%; like 80%. Path B 'Đã fl' ko commit; slot (folder-1)%8+1. Mode 2: anchor >= 150 fl; cuộn sâu. Cron: feed/follow_watchdog.
 §

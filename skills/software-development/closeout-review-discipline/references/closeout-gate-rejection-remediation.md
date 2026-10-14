@@ -84,10 +84,15 @@
 
 20. **Bẫy Hiểu Sai "Cấm Push Khi < 85" Thành "Dừng Lại Báo Xong Phiên" (Anti-Paralysis Closeout Trap — 14/10/2026)**:
     - Khi Reviewer chấm điểm < 85 (`REJECTED`), câu lệnh quy chuẩn *"Nếu Verdict là REJECTED hoặc điểm < 85: DỪNG LẠI NGAY, TUYỆT ĐỐI CẤM PUSH"* mang ý nghĩa: **CẤM PUSH VÀ BẮT BUỘC KÍCH HOẠT VÒNG LẶP REMEDIATION (Sol Repair -> Worker -> Claude CLI) ĐỂ TIẾP TỤC SỬA CHO ĐẾN KHI >= 85**.
-    - **CẤM TUYỆT ĐỐI** hiểu máy móc thành dừng toàn bộ hoạt động, buông xuôi, rồi báo cáo *"phiên làm việc đã khép lại an toàn"* khi Gate vẫn đang REJECTED. Đây là hành vi bại liệt và vi phạm nghiêm trọng kỷ luật chốt phiên.
+    - **CẤM TUYỆT ĐỐI** hiểu máy móc thành dừng toàn bộ hoạt động, buông xuôi, rồi báo cáo *"phiên làm việc đã khép lại an toàn / hoàn thành trọn vẹn"* khi Gate vẫn đang REJECTED. Đây là hành vi vi phạm nghiêm trọng nhất (báo DONE giả dối không có bằng chứng APPROVED >= 85).
+    - Khi Gate < 85 hoặc gặp lỗi nghẽn bất khả kháng (như Claude CLI 429 hết quota), BẮT BUỘC báo cáo trạng thái là **BLOCKED kèm bằng chứng thật** (mã lỗi, reset time, file lock), CẤM báo DONE. BLOCKED kèm bằng chứng thật là kết quả hợp lệ, ngang giá trị DONE.
     - Điểm < 85 là trạng thái chuyển tiếp (transient recoverable state) để khắc phục lỗi, KHÔNG PHẢI là kết quả cuối cùng.
 
-21. **Bẫy Test Đa Nền Tảng (Windows vs POSIX Path Separators) Trong Pytest Fixture (14/10/2026)**:
+21. **Bẫy SPOF Deadlock Khi Claude CLI Kẹt 429 Quota Ở Strike 3 Hand-off (14/10/2026)**:
+    - Khi Gate kích hoạt Strike 3 Hand-off (`REVIEWER_HANDOFF_TRIGGERED`), nếu Claude CLI dính `HTTP 429 Session Limit` (`resets at 1:30am`), toàn bộ quy trình closeout có thể bị đóng băng nếu chỉ phụ thuộc duy nhất vào Claude CLI.
+    - **Khắc phục**: Thiết lập Fallback sang `ag_cli.py fix` (dàn 7 acc Pro Antigravity) để cày cuốc thay thế khi Claude CLI hết quota, đảm bảo không bao giờ có điểm nghẽn đơn lẻ (SPOF) làm tê liệt hệ thống.
+
+22. **Bẫy Test Đa Nền Tảng (Windows vs POSIX Path Separators) Trong Pytest Fixture (14/10/2026)**:
     - Khi viết unit/integration test assert các biến môi trường sandbox (`APPDATA`, `LOCALAPPDATA`, `TEMP`, `USERPROFILE`):
       * Trên Windows, đường dẫn dùng backslash (`\`) thay vì forward slash (`/`).
       * Ví dụ: `assert 'AppData/Roaming' in env.get('APPDATA')` sẽ FAIL trên Windows vì giá trị thực tế là `...\AppData\Roaming`.

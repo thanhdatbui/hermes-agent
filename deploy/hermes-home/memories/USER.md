@@ -4,7 +4,7 @@ Dọn đĩa: duyệt trước (thư mục corrupt/lỗi xóa ngay), CẤM xóa n
 §
 Nuôi 4d 3 ca (bỏ ca đêm, idle dập TT & tắt màn 223; Ava & 2FA cuốn chiếu né ca nuôi, báo 6h). Starve 96h. Đổi mail: Hotmail sạch, ưu tiên Graph PC.
 §
-cấm telemetry JSON ra stdout cron (bắt buộc stderr); chốt phiên push remote thật mới báo DONE; OTP mail user: tự đọc qua read_otp_mail.py ('add mail khoi phuc'), cấm hỏi mã.
+cấm telemetry JSON stdout cron; chốt phiên: Reviewer APPROVED>=85 & push remote mới báo DONE, điểm<85 cấm báo xong/trọn vẹn; OTP mail: tự đọc read_otp_mail.py.
 §
 Kibe(1-80) & Admin(201-280) cào nguồn & media độc lập 100% (cấm trùng video, cấm sync chéo Niche/Hashtag). TT v47.0.3; Switcher dock; AP 40m.
 §
