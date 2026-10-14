@@ -5,7 +5,7 @@ description: Use when running avatar-only jobs on TikTok farm.
 
 # TikTok Farm Avatar Operations
 
-- Avatar Hallucination & Video Face Extraction (2026-10-13): [references/avatar-hallucination-prevention-and-raw-video-face-extraction.md](references/avatar-hallucination-prevention-and-raw-video-face-extraction.md) — Anti-hallucination vision gate, raw video face crop, standalone MEDIA: tag.
+- Avatar Hallucination & Video Face Extraction (2026-10-14): [references/avatar-hallucination-prevention-and-raw-video-face-extraction.md](references/avatar-hallucination-prevention-and-raw-video-face-extraction.md) — Anti-hallucination vision gate, raw video face crop, standalone MEDIA: tag.
 - Hashtag Hard-Lock & Niche Audit (2026-10-13): [references/audit-dictionary-blindspot-and-niche-leak-prevention.md](references/audit-dictionary-blindspot-and-niche-leak-prevention.md)
 - Avatar Drift vs F_src / F_out (2026-10-13): [references/avatar-and-hashtag-drift-fsrc-vs-fout.md](references/avatar-and-hashtag-drift-fsrc-vs-fout.md)
 - CRLF & Dispatch Guards (2026-10-13): [references/crlf-anchor-and-avatar-task-dispatch-guards.md](references/crlf-anchor-and-avatar-task-dispatch-guards.md)
