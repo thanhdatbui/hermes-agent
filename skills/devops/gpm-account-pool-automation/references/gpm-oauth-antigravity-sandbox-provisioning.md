@@ -12,7 +12,7 @@ Khi vận hành pool tài khoản Google One / Antigravity Pro trên dàn máy T
 ## Thông số OAuth Chính thức của Antigravity CLI
 
 Các thông số này được Google nhúng công khai trong client Antigravity:
-- **Client ID:** `1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com`
+- **Client ID:** `[REDACTED_GOOGLE_CLIENT_ID].apps.googleusercontent.com`
 - **Client Secret:** `GOCSPX-[REDACTED_PUBLIC_DESKTOP_CLIENT_SECRET]`
 - **Authorize URL:** `https://accounts.google.com/o/oauth2/v2/auth`
 - **Token Endpoint:** `https://oauth2.googleapis.com/token`
@@ -112,3 +112,5 @@ Ghi nhận profile vào `D:/Taadaa/agy_profiles/profiles_config.json`:
 1. **Canary Đơn Nick Đầu Tiên:** Bắt buộc chạy thử nghiệm hoàn chỉnh trên 1 nick trước khi kích hoạt batch cuốn chiếu.
 2. **Dọn dẹp Tiến trình Chrome (Zombified Process Prevention):** GPM đóng profile qua API đôi khi để sót tiến trình Chrome ngầm. Bắt buộc kết hợp `psutil` để quét và kill triệt để Chrome instance sau khi lấy token xong.
 3. **Không Tái sử dụng `installation_id`:** Mỗi sandbox profile bắt buộc phải sở hữu một mã UUID riêng biệt để tránh kích hoạt cơ chế phát hiện Sybil/Multi-account của Google Cloud Code.
+4. **Không Viết Plaintext Client Secret/ID vào Markdown Skill:** Chuỗi Google OAuth Client Secret có tiền tố `GOCSPX-` và Client ID dạng `...apps.googleusercontent.com` bị GitHub Push Protection quét tự động và CHẶN ĐỨNG lệnh push toàn repository (`push declined due to repository rule violations`). Bắt buộc luôn che giấu dạng `[REDACTED_...]` hoặc nạp từ file cấu hình/biến môi trường.
+
