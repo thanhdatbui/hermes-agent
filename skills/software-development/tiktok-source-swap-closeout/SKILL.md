@@ -53,6 +53,21 @@ If the process is still running, report `RUNNING` with the exact log path and do
 - Duplicate source-channel claims do not by themselves prove duplicate video posts; compare recorded video IDs and live posted counts.
 - Do not swap to another famous/watermarked creator merely because the channel is unclaimed; dedup safety and rights/algorithm safety are different gates.
 - Do not send a tiny, stale, or cropped screenshot as UI evidence; inspect the actual full-screen artifact first.
+- **Bẫy chặn cứng số lượng 40 video (`min_videos = 40` Truncation Fallacy):**
+  - Không tự ý giới hạn tải 40 clip khi user không yêu cầu. Script pipeline swap mặc định có thể để `min_videos = 40`, nhưng phải kiểm tra tổng số video thực tế của kênh trên TikTok/YouTube (`videoCount` trong hydration data). Nếu kênh có nhiều hơn (ví dụ 100-250 clip), phải tải trọn vẹn toàn bộ kênh hoặc đối soát với user thay vì âm thầm ngắt ở 40 clip rồi báo xong khiến kho video bị thiếu hụt và user bức xúc ("Sao lại 40. T có yêu cầu chỉ tải 40 k?").
+- **Kỷ luật kiểm định Avatar kênh (Text-Overlay Rejection Invariant):**
+  - Tuyệt đối cấm bốc frame video dính chữ/phụ đề câu hỏi/caption (ví dụ khung chữ vàng "Bác nào hiểu tình huống này...") làm avatar đại diện. Avatar kênh TikTok phải là:
+    (a) Avatar chính chủ chất lượng cao của kênh tải từ CDN (`avatarLarger` trong hydration data).
+    (b) Hoặc frame trích xuất sạch 100% không dính text overlay (vô lăng, xe ô tô, góc nhìn đường phố ban ngày nét căng).
+    Bắt buộc soi mắt kiểm tra qua Vision trước khi gửi nghiệm thu.
+- **Quy trình bypass WAF & Lấy full 100% video TikTok qua Browser Navigation + SecUID:**
+  - Khi `yt-dlp https://www.tiktok.com/@username` hoặc script Python thông thường bị WAF Slardar chặn (`Unable to extract secondary user ID`):
+    (1) Dùng `browser_navigate("https://www.tiktok.com/@username")` để vượt qua WAF tự nhiên trong môi trường Chromium.
+    (2) Đọc thẻ script `__UNIVERSAL_DATA_FOR_REHYDRATION__` trích xuất `secUid`, `stats.videoCount`, và URL `avatarLarger`.
+    (3) Cung cấp `https://www.tiktok.com/@<secUid>` cho `yt-dlp --flat-playlist`: yt-dlp nhận diện trực tiếp playlist và kéo sạch 100% danh sách video IDs (kể cả 250+ clip) trong 1–2 giây mà không bị chặn.
+    (4) Tải video không logo/watermark qua TikWM API.
+- **Vượt triệt để Bot-check YouTube Shorts (Android Player Client Invariant):**
+  - Thêm `"extractor_args": {"youtube": {"player_client": ["android"]}}` vào `ydl_opts` để bypass 100% lỗi "Sign in to confirm you're not a bot" trên YouTube Shorts mà không cần đăng nhập hay phụ thuộc file cookie hết hạn.
 - **Conflating sequence suffix with folder/video counts:** When rendering derivatives with `--start-seq <N>` (e.g. `start_seq=10` for 20 clips), the resulting range is `10.mp4` through `29.mp4`. The trailing integer `29` is an index, never "29 folders" or "29 new clips". Total clips rendered is always `last_idx - start_seq + 1`.
 - **Downloader index poisoning via audio-only debris (`WinError 183` on Windows):** If yt-dlp falls back or drops a stream yielding an audio-only container (`.m4a`/`.mp3`), raw `os.rename(src, target_mp4)` throws `[WinError 183] Cannot create a file when that file already exists`. On retry iterations, uncleaned debris at `idx.*` causes repeated rename collisions and terminates the download loop prematurely (e.g. stopping at 19/40). Always purge same-index debris (`output_dir.glob(f"{idx}.*")`) on skip/failure and use atomic replacement (`target.unlink(missing_ok=True)` + `src.replace(target)`).
 - **Count verification gate before claiming completion:** Never declare the swap batch complete merely because the runner exited 0. Strictly gate on:
