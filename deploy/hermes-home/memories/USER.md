@@ -6,7 +6,7 @@ Farm: nick cấm xóa/đè; SoT tiktok_tracker.db; cấm đè ava tay; Canary t�
 §
 Report/Watchdog: % & tầng; khóa IP 1 dòng; cấm raw/trace dump; cấm nịnh bợ/văn vở/bao biện (vào thẳng cốt lõi kỹ thuật); cấm báo cáo khống thị giác (bắt buộc OCR+diff thật, cấm bịa thấy ảnh mới). SILENT khi OK; sập alert đỏ exit 1.
 §
-Kibe(1-80) & Admin(201-280) media độc lập (Admin m2, cấm copy chéo). TT v47.0.3; Switcher dock; AP 40m; Config tools.
+Kibe(1-80) & Admin(201-280) cào nguồn & media độc lập 100% (cấm trùng video, cấm sync chéo Niche/Hashtag). TT v47.0.3; Switcher dock; AP 40m.
 §
 Ghim video: pin_top_videos.py; mở video->Share->Ghim; sàn min-views 1000; DB không lưu view từng clip, bắt buộc đọc live Profile ATX.
 §

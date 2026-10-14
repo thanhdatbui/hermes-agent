@@ -69,7 +69,10 @@ python D:/Taadaa/tools/pin_top_videos.py --machine 28 --min-views 5000 --max-pin
   * Hàm `parse_profile_tiles(xml)` tính toán bounding box và tâm (`center`) riêng biệt cho từng ô trong toàn bộ lưới hiển thị, bất kể video nằm ở hàng nào.
   * Bộ lọc `cands` sắp xếp toàn bộ video thỏa mãn $\ge \text{min\_views}$ theo thứ tự view giảm dần: clip view cao nhất luôn được chọn ghim trước.
   * **Hiệu ứng dồn lưới:** Khi một video ở hàng dưới (ví dụ Hàng 3) được ghim, TikTok sẽ đưa video đó lên chiếm ô đầu tiên `[0, 0]` trên Profile và gắn nhãn đỏ `"Đã ghim"`. Các video còn lại tự động dịch chuyển 1 ô.
-  * **Ghim nhiều clip (vòng lặp lũy tiến):** Sau khi ghim xong 1 clip và bấm Back về Profile, làm mới UI XML để nhận diện lại vị trí mới của các clip còn lại và tiếp tục ghim clip cao tiếp theo cho đến khi đạt `max_pins` (tối đa 3 clip).
+  * **Ghim nhiều clip (vòng lặp lũy tiến & Bẫy Grid Reorder Race):**
+    - **Bẫy dịch chuyển lưới:** Khi một video được ghim thành công, TikTok đưa ngay video đó lên chiếm ô `[0, 0]` (Hàng 1, Cột 1). Các video còn lại trên lưới tự động bị đẩy dịch sang phải hoặc xuống hàng dưới (ví dụ video 19.5K ban đầu ở Hàng 1 Cột 1, sau khi ghim 2 clip khác bị dạt sang Hàng 1 Cột 3).
+    - **Cơ chế chống tap nhầm clip đã ghim:** BẮT BUỘC re-dump UI XML sau MỖI lần ghim thành công và tính toán lại danh sách `cands` còn lại. TUYỆT ĐỐI CẤM tái sử dụng tọa độ cũ vì sẽ tap trúng clip vừa ghim $\to$ Action Sheet hiện `"Bỏ ghim"` (UNPIN) khiến script tưởng hết video cần ghim và bỏ sót các video viral chưa ghim.
+    - Nếu gặp Action Sheet báo `"Bỏ ghim"`, script phải lập tức bấm Back, đánh dấu video đó đã ghim và quét tiếp các ứng viên khác trên lưới mới.
 - **Video ngoài viewport (Deep Scroll):** Nếu video viral nằm sâu phía dưới (ngoài màn hình hiện tại), thực hiện swipe cuộn lưới lên (`swipe(540, 1500, 540, 700, 400)`) bên trong vùng grid container để nạp các ô video cũ vào viewport trước khi tap.
 
 ## 6. Invariant: Database `tiktok_tracker.db` KHÔNG Lưu View Từng Video
@@ -93,4 +96,12 @@ python D:/Taadaa/tools/pin_top_videos.py --machine 28 --min-views 5000 --max-pin
 - **Bảo toàn và Tự Động Resume Session (Zero-Chat Auto-Resume):**
   * Gọi hàm `preserve_in_flight_sessions` trong `farm_preflight_daily_reset.py` để đóng dấu `resume_pending = True` cho topic Telegram hiện tại trong `SessionDB` và xóa bỏ `.clean_shutdown`.
   * Sau khi host PC hoàn tất reboot và AutoAdminLogon nạp Hermes Gateway, bot sẽ tự động được đánh thức trong chính topic đó, kiểm tra lại trạng thái kết nối thiết bị và tiếp tục thực thi task ghim video mà không cần người dùng phải gõ lại tin nhắn nhắc việc.
+
+## 9. Kỷ Luật Thực Thi Lệnh Reboot & Chống Đóng Băng Chờ Xác Nhận (Anti-Passivity)
+- **Bối cảnh vi phạm:** Khi User đã phát lệnh rõ ràng dứt khoát (*"Reboot kibe r thử lại cho t. Khi reboot có thể tự động resume session này k"*), Coordinator kiểm tra an toàn xong lại dừng lại hỏi xin phép: *"Tôi phát lệnh reboot ngay bây giờ nhé? Chỉ cần bạn gõ ok/reboot..."* $\to$ khiến User bỏ đi ngủ 2 tiếng dậy vẫn kẹt nguyên hiện trường, gây bức xúc tột cùng.
+- **Quy tắc dứt điểm:** Khi User đã yêu cầu Reboot:
+  1. Kiểm tra nhanh điều kiện an toàn (`active locks == 0` và không có trận game TFT 3D).
+  2. Gọi `preserve_in_flight_sessions()` đóng dấu session auto-resume.
+  3. Kích hoạt lệnh reboot ngay lập tức (`farm_preflight_daily_reset.py` hoặc `shutdown /r /t 5`).
+  4. TUYỆT ĐỐI CẤM hỏi lại hay chờ User confirm lần 2. Mọi quyền thực thi L0–L2 đã được cấp sẵn!
 

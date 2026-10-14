@@ -59,14 +59,15 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
 
 ## 3. Worker Concurrency & Khống Chế Nghẽn USB 2.0 (Hạ Tải Tránh Văng Trong Ca)
 - **Tác động của số lượng Worker song song (`MaxWorkers`):**
-  * Mặc định `MaxWorkers = 40` khiến 40 máy cùng bắn command ADB (heartbeat, am start, dump window, logcat) dồn dập vào 2 chip USB 2.0 (băng thông trần 35 MB/s).
-  * Sau 10–20 phút, hiện tượng lệch pha thời lượng video (Phase Drift) tạo ra các đợt microframe congestion gây rớt gói tin trên nhánh cáp dài/yếu (Box 4).
-  * **Hạ `MaxWorkers` từ 40 xuống 25 workers (`run-feed-session.ps1`):**
-    - Khóa trần an toàn ở cấp parameter binding: `[ValidateRange(1, 30)]` và gán mặc định `[int]$MaxWorkers = 25`.
-    - Giảm 40% xung nhịp I/O trên bus USB 2.0, hạn chế tối đa rớt gói tin microframe trong phiên nuôi.
-    - Thời lượng ca nuôi 80 máy tăng từ 35–40 phút lên ~60 phút, vẫn nằm trọn vẹn trong cửa sổ ca 2 tiếng an toàn.
-    - Bổ sung structured JSON telemetry: `[TELEMETRY_METRIC] {"event": "feed_session_launch", "max_workers": 25, "target_machines": 30}` phục vụ giám sát vận hành.
-  * **Kết hợp kép:** Reset máy trước ca (làm sạch 100% máy xanh) + Giảm worker (chống nghẽn trong ca) là bộ giải pháp vận hành tối ưu nhất.
+  * `MaxWorkers = 40` hoặc `25`: 25+ máy cùng bắn command ADB (heartbeat, am start, dump window, logcat) dồn dập vào 2 chip USB 2.0 EHCI (băng thông trần 35 MB/s).
+  * Sau 10–20 phút, hiện tượng lệch pha thời lượng video (Phase Drift) và bão socket làm nghẽn bus EHCI, gây rớt đồng loạt 25–30 máy (`device '<serial>' not found`), kéo theo 10+ máy khác bị trễ timeout focus TikTok (`failed to focus TikTok after launch`).
+  * **Hạ `MaxWorkers` từ 25 xuống 16 workers (`run-feed-session.ps1` — Chuẩn hóa 14/10/2026):**
+    - Khóa trần an toàn ở cấp parameter binding: `[ValidateRange(1, 30)]` và gán mặc định `[int]$MaxWorkers = 16`.
+    - Giảm thêm 36% xung nhịp I/O và socket đồng thời trên bus USB 2.0, triệt tiêu rớt gói tin microframe trong phiên nuôi.
+    - Nới rộng nhịp khởi động: `$effectiveMachineStartStaggerMs` tăng từ `2000,8000` lên `3000,10000` (giãn cách 3s–10s giữa các máy khi mở app), đồng bộ qua cả `scripts/hermes_cron/tiktok_runner.py` và `run_74machines.bat`.
+    - Thời lượng ca nuôi 80 máy tăng nhẹ ~10 phút nhưng bus USB chạy êm 100%, không còn hiện tượng sụt hub giữa chừng.
+    - Bổ sung structured JSON telemetry: `[TELEMETRY_METRIC] {"event": "feed_session_launch", "max_workers": 16, "target_machines": 80}` phục vụ giám sát vận hành.
+  * **Kết hợp kép:** Reset máy trước ca (làm sạch 100% máy xanh) + Khống chế 16 workers (chống nghẽn trong ca) là bộ giải pháp vận hành tối ưu nhất.
 
 ## 4. Kiến Trúc Tự Động Hóa Reboot Đầu Ngày (Daily Safe Reboot) & Quy Tắc Khung Giờ Chống Ồn Giấc Ngủ
 - **Nguồn repo quản lý (SSOT):** `D:\Taadaa\tools\services\Taadaa_Service\farm_preflight_daily_reset.py`
