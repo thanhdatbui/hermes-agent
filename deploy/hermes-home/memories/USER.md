@@ -15,3 +15,5 @@ Worker: AG Gemini default (cấm fallback Luna khi chưa cạn quota; chủ đ�
 Hashtag sync: F_src=(Slot-1)*80+m_idx, SoT 'Hashtag theo Folder'; nick fix tay khóa manual_avatar_protected_folders.json cấm sync đè.
 §
 Telegram: song song nhiều topic, tự resume turn dở sau boot.
+§
+Reboot: user lệnh là làm ngay, cấm hỏi lại 'reboot nhé'; tự xóa sentinel flag, stamp preserve_in_flight & shutdown.

@@ -16,6 +16,7 @@ References:
 - `references/lingering-tiktok-keep-screen-on-and-healer-pitfalls-20261014.md` — Phân tích bẫy TikTok giữ FLAG_KEEP_SCREEN_ON phát xuyên đêm, ảo giác ca đêm, và lỗ hổng của farm_idle_screen_and_app_healer (14/10/2026).
 - `references/remote-desktop-virtual-keystuck-and-chinese-ime-runaway.md` — Hiện tượng kẹt phím ảo (KeyUp drop) khi remote host farm, bản chất ký tự gạch ngang dài tiếng Trung (破折号 ——) và cách xử lý triệt để.
 - `references/focus-delay-cascade-and-post-reboot-triage-20261014.md` — Phân tích tương quan cụm lỗi kép (focus delay do nghẽn ADB transport USB), quy trình triage sau reboot và cơ chế fast-fail khép kín.
+- `references/user-directed-reboot-anti-paralysis-and-sentinel-bypass.md` — Kỷ luật chống tê liệt xin phép khi user ra lệnh reboot, cơ chế xóa sentinel flag và bảo toàn session Telegram để tự động chạy tiếp sau boot.
 
 Scripts:
 - `scripts/safe_usb_guard.py` — Script nguồn mẫu giám sát và reset EHCI bus theo ngưỡng.
@@ -471,8 +472,17 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
     `python <path_skill>/scripts/admin_ssh.py "<powershell_command>"`
     hoặc gọi script Python chạy `subprocess.run(["ssh", "-o", "ConnectTimeout=8", "admin-farm", f"powershell -NoProfile -EncodedCommand {b64}"])`.
   * **Khóa bàn phím Admin về en-US:** Chạy `$list = New-WinUserLanguageList 'en-US'; Set-WinUserLanguageList $list -Force` xóa sạch layout tiếng Việt (`0000042a`) và tiếng Trung, chỉ giữ `00000409`.
-  * **Dập tiến trình EVKey Admin:** `Stop-Process -Name EVKey64, EVKey32, UniKeyNT -Force -ErrorAction SilentlyContinue`.
+  * Dập tiến trình EVKey Admin: `Stop-Process -Name EVKey64, EVKey32, UniKeyNT -Force -ErrorAction SilentlyContinue`.
   * Chi tiết: `references/remote-desktop-virtual-keystuck-and-chinese-ime-runaway.md`.
+
+## 23. Bẫy Tê Liệt Khi Nhận Lệnh Reboot & Quy Trình Sentinel Bypass
+- **Bẫy tê liệt xin phép (Paralysis by Confirmation):** Khi User ra lệnh rõ ràng *"Reboot kibe r thử lại cho t"*, CẤM TUYỆT ĐỐI hỏi lại "tôi phát lệnh reboot nhé?" khiến task bị kẹt hàng tiếng đồng hồ khi user đi ngủ/rời máy. Lệnh của user chính là authorization cuối cùng.
+- **Quy trình 3 bước bắt buộc khi user ra lệnh reboot:**
+  1. *Sentinel Bypass:* Xóa cờ `C:\Taadaa_Service\reboot_sentinel_<today>.flag` nếu có, tránh script preflight daily reset coi là đã reboot hôm nay rồi thoát `[SKIP]`.
+  2. *Bảo toàn in-flight sessions:* Gọi `preserve_in_flight_sessions(lookback_minutes=60)` để đóng dấu `resume_pending=True` và xóa `.clean_shutdown`.
+  3. *Phát lệnh shutdown:* Gọi script `farm_preflight_daily_reset.py` (hoặc `shutdown /r /t 5`).
+- **Post-reboot invariant:** Khi Gateway tự động resume topic, Coordinator BẮT BUỘC kiểm tra hiện trường O(1) ngay lập tức và tiếp tục thực hiện task, tuyệt đối không chào hỏi suông hay hỏi "làm gì tiếp theo".
+- Chi tiết: `references/user-directed-reboot-anti-paralysis-and-sentinel-bypass.md`.
 
 
 
