@@ -2,7 +2,7 @@ Chu kỳ 4d: Parity 96h (N1 lẻ, N2 chẵn), N3(R7,8, tối dưỡng), N4(dư�
 §
 Followed=0 cấm PASS. Admin SSH: dùng D:/Taadaa/tools/admin_ssh.py (--powershell/--json); CẤM thoái thác khi Guard block raw ssh. Auto-resume reboot: locks==0.
 §
-AG CLI: ag_cli.py (5 acc Pro 4G acc_02..07, acc_01 no-proxy off, taskkill /F /T+DEVNULL chống kẹt pipe, 2-3s). Claude CLI: tắt advisorModel:'off' (tránh sonnet ngâm 100s/refusal); Haiku 5.5 (haiku_worker.py) 6-15s O(1) rẻ quota.
+AG CLI: ag_cli.py (7 acc Pro sạch acc_01..07, taskkill /F /T+DEVNULL chống kẹt pipe, 2-3s). Claude CLI: tắt advisorModel:'off' (tránh sonnet ngâm 100s/refusal); Haiku 5.5 (haiku_worker.py) 6-15s O(1) rẻ quota.
 §
 TikTok Follow: (máy,row) độc lập; Quota 10-15/ca; Hồi phục 1&2 2 ca sạch; Canary Khỏe +10%; like 80%. Path B 'Đã fl' ko commit; slot (folder-1)%8+1. Mode 2: anchor >= 150 fl; cuộn sâu. Cron: feed/follow_watchdog.
 §
