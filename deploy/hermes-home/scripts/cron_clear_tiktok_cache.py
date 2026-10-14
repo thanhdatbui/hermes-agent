@@ -216,12 +216,20 @@ def _send_clear_cache_alert(error_reason: str) -> None:
 
 
 def is_ca4_finished(today_str: str) -> bool:
+    """Kiểm tra ca tối (Ca 3) hoàn tất để dọn cache ban đêm (do đã bỏ Ca 4)."""
     if not REPORTED_FILE.is_file():
         return False
     try:
+        from datetime import timedelta
+        yesterday_str = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
         data = json.loads(REPORTED_FILE.read_text(encoding="utf-8"))
         sessions = set(data.get("reported_sessions", []))
-        return f"{today_str}_ca4_phien2" in sessions or f"{today_str}_ca4" in sessions
+        return (
+            f"{yesterday_str}_ca3_phien2" in sessions
+            or f"{yesterday_str}_ca3" in sessions
+            or f"{today_str}_ca4_phien2" in sessions
+            or f"{today_str}_ca4" in sessions
+        )
     except Exception:
         return False
 

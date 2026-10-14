@@ -43,6 +43,32 @@ LOCK_DIR = Path(r"C:\Users\Kibe\AppData\Local\automation-core\device-locks")
 CODEX_LOCK_DIR = Path(r"C:\Users\Kibe\.codex\device-locks")
 
 
+def is_safe_rolling_window(now_dt: datetime) -> bool:
+    """Né 3 ca nuôi: 05:15-09:30, 11:45-15:30, 17:45-21:30, và né dọn cache 04:00-04:30."""
+    h, m = now_dt.hour, now_dt.minute
+    if (h == 5 and m >= 15) or h in (6, 7, 8) or (h == 9 and m < 30): return False
+    if (h == 11 and m >= 45) or h in (12, 13, 14) or (h == 15 and m < 30): return False
+    if (h == 17 and m >= 45) or h in (18, 19, 20) or (h == 21 and m < 30): return False
+    return not (h == 4 and m < 30)
+
+
+def is_clear_cache_active() -> bool:
+    """Kiểm tra có tiến trình dọn dẹp cache TikTok đang chạy không."""
+    try:
+        import psutil
+        for p in psutil.process_iter(["name", "cmdline"]):
+            try:
+                cmd = " ".join(p.info.get("cmdline") or []).lower()
+                if "clear-tiktok-cache" in cmd or "cron_clear_tiktok_cache" in cmd:
+                    logger.info("Phát hiện tiến trình dọn cache đang chạy: %s", cmd[:80])
+                    return True
+            except Exception:
+                pass
+    except Exception as exc:
+        logger.warning("Lỗi kiểm tra cache cleaner: %s", exc)
+    return False
+
+
 def is_ca4_finished(today_str: str) -> bool:
     """Kiểm tra Ca 4 Phiên 2 đã hoàn tất và đã được Watchdog báo cáo hay chưa."""
     if not REPORTED_FILE.is_file():
@@ -254,22 +280,16 @@ def main() -> int:
     now = datetime.now(HCMC)
     today_str = now.strftime("%Y-%m-%d")
 
-    # Khung giờ chạy đêm an toàn: 02:45 - 04:50 (sau khi Ca 4 Phiên 2 hoàn tất)
-    in_window = (now.hour == 2 and now.minute >= 45) or (3 <= now.hour <= 4)
-    if not in_window and not args.force and not args.dry_run:
-        logger.info("Ngoài khung giờ chạy đêm an toàn (02:45 - 04:50): %s", now.strftime("%H:%M"))
-        return 0
-
-    if not is_ca4_finished(today_str) and not args.force and not args.dry_run:
-        logger.info("Bỏ qua vì Ca 4 (Phiên 2) chưa hoàn tất báo cáo: %s", today_str)
-        return 0
-
-    if already_ran_today(today_str) and not args.force:
-        logger.info("Đã chạy thành công trong ngày hôm nay: %s", today_str)
+    # Khung giờ chạy an toàn
+    if not is_safe_rolling_window(now) and not args.force and not args.dry_run:
+        logger.info("Ngoài khung giờ an toàn (đang trong ca nuôi hoặc dọn cache): %s", now.strftime("%H:%M"))
         return 0
 
     if is_feed_runner_active() and not args.dry_run:
-        logger.warning("Bỏ qua ca đêm vì feed session đang hoạt động")
+        logger.warning("Bỏ qua vì feed session đang hoạt động")
+        return 0
+
+    if is_clear_cache_active() and not args.dry_run:
         return 0
 
     start_dt = datetime.now(HCMC)
@@ -280,11 +300,13 @@ def main() -> int:
     end_dt = datetime.now(HCMC)
     duration_min = max(1, int((end_dt - start_dt).total_seconds() // 60))
 
-    header = f"[BÁO CÁO 2FA TIKTOK BAN ĐÊM] (Code {code}):" if code in ACCEPTABLE_RETURN_CODES else f"[BÁO CÁO 2FA TIKTOK BAN ĐÊM - LỖI RUNNER] (Code {code}):"
+    is_6h_window = (now.hour in (0, 6, 12, 18) and now.minute < 30) or args.force or args.dry_run
+    header = f"⏰ [FARM REPORT][TOÀN FARM] BÁO CÁO 2FA TIKTOK ĐỊNH KỲ (6H):" if code in ACCEPTABLE_RETURN_CODES else f"⚠️ [FARM REPORT][TOÀN FARM] BÁO CÁO 2FA TIKTOK - LỖI RUNNER (Code {code}):"
     report_lines = [
         header,
         f"- Correlation ID: {CORRELATION_ID}",
         f"- Thời gian: {start_dt.strftime('%H:%M')} -> {end_dt.strftime('%H:%M')} ({duration_min} phút)",
+        f"- Trạng thái: Đang chạy cuốn chiếu né giờ nuôi",
     ]
 
     cluster_details = {}
@@ -312,10 +334,13 @@ def main() -> int:
         cluster_details = {"single": res}
         report_lines.append(f"- Đã hoàn tất: {suc} máy")
         if skip > 0:
-            report_lines.append(f"- Bỏ qua an toàn: {skip} máy (đã có 2FA / nhường cron khác)")
+            report_lines.append(f"- Bỏ qua an toàn: {skip} máy (đã có 2FA / chờ lượt)")
         report_lines.append(f"- Lỗi ({fail})" if fail > 0 else "- Lỗi: 0")
 
-    print("\n".join(report_lines))
+    if is_6h_window:
+        print("\n".join(report_lines))
+    else:
+        logger.info("Batch 2FA hoàn tất im lặng ngoài mốc 6H (suc=%d, fail=%d, skip=%d)", suc, fail, skip)
 
     failure_reason = None
     if code not in ACCEPTABLE_RETURN_CODES:

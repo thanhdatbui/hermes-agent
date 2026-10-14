@@ -46,7 +46,7 @@ def test_format_report_html_unassigned_tik():
     now_dt = datetime(2026, 9, 15, 22, 30, tzinfo=ZoneInfo("Asia/Ho_Chi_Minh"))
     report = format_report_html(host_id=host_id, all_done=True, stats_by_tik=stats, target_tiks=[1, 2], now_dt=now_dt)
 
-    assert "chưa gán nick (0/80 acc)" in report
+    assert "Chưa gán nick" in report and "Tik 2" in report
     assert "HOÀN TẤT UP AVATAR CHO CÁC ACC ĐÃ CÓ NICK" in report
 
 

@@ -168,35 +168,17 @@ def send_farm_alert(text: str) -> bool:
 
 
 def is_post_evening_window(now_dt: datetime) -> bool:
-    """Mở cuốn chiếu an toàn sau ca nuôi acc:
-    - Ca tối: sau P2 (20:15 -> 23:45)
-    - Ca sáng: sau Ca 1 P2 (08:30 -> 11:15)
-    - Ca đêm: sau Ca 4 P2 (03:15 -> 05:45)
-    """
+    """Mở cuốn chiếu liên tục né giờ nuôi (05:15-09:30, 11:45-15:30, 17:45-21:30) và dọn cache (04:00-04:30)."""
     h, m = now_dt.hour, now_dt.minute
-    if h in (21, 22):
-        return True
-    if h == 20 and m >= 15:
-        return True
-    if h == 23 and m <= 45:
-        return True
-    if (h == 8 and m >= 30) or h in (9, 10) or (h == 11 and m <= 15):
-        return True
-    if (h == 3 and m >= 15) or h in (4, 5) and not (h == 5 and m > 45):
-        return True
-    return False
+    if (h == 5 and m >= 15) or h in (6, 7, 8) or (h == 9 and m < 30): return False
+    if (h == 11 and m >= 45) or h in (12, 13, 14) or (h == 15 and m < 30): return False
+    if (h == 17 and m >= 45) or h in (18, 19, 20) or (h == 21 and m < 30): return False
+    return not (h == 4 and m < 30)
 
 
 def is_after_evening_window(now_dt: datetime) -> bool:
-    """Hết khung giờ ca tối hoặc sau khung sáng."""
-    h, m = now_dt.hour, now_dt.minute
-    if h == 23 and m > 45:
-        return True
-    if h == 5 and m > 45:
-        return True
-    if h == 11 and 15 < m <= 35:
-        return True
-    return False
+    """Mốc báo cáo định kỳ mỗi 6H (00:00, 06:00, 12:00, 18:00)."""
+    return now_dt.hour in (0, 6, 12, 18) and now_dt.minute < 30
 
 
 def count_active_locks() -> int:
@@ -240,15 +222,10 @@ def is_feed_session_finished_for_window(now_dt: datetime) -> bool:
         data = json.loads(reported_file.read_text(encoding="utf-8"))
         sessions = set(data.get("reported_sessions", []))
         if 0 <= now_dt.hour < 6:
-            return (
-                f"{today_str}_ca4_phien2" in sessions
-                or f"{yesterday_str}_ca4_phien2" in sessions
-                or f"{today_str}_ca4" in sessions
-                or f"{yesterday_str}_ca4" in sessions
-            )
+            return f"{yesterday_str}_ca3_phien2" in sessions or f"{yesterday_str}_ca3" in sessions
         if 6 <= now_dt.hour < 14:
             return f"{today_str}_ca1_phien2" in sessions or f"{today_str}_ca1" in sessions
-        return f"{today_str}_ca3_phien2" in sessions or f"{today_str}_ca3" in sessions or f"{today_str}_ca3_phien3" in sessions
+        return f"{today_str}_ca3_phien2" in sessions or f"{today_str}_ca3" in sessions
     except Exception:
         return False
 
@@ -825,11 +802,11 @@ def format_report_html(
         sess_fail = session_stats.get("session_failed_by_reason", {})
         total_fail = sum(len(m_list) for m_list in sess_fail.values())
         if sess_up or sess_fail:
-            session_lines.append(f"• Kết quả ca tối nay: Thành công +{len(sess_up)} acc mới | Lỗi {total_fail} máy")
+            session_lines.append(f"• Kết quả gần đây: Thành công +{len(sess_up)} acc mới | Lỗi {total_fail} máy")
         elif all_done or (stats_by_cluster and tot_miss == 0):
-            session_lines.append("• Kết quả ca tối nay: Hoàn tất 100%, không ghi nhận lỗi.")
+            session_lines.append("• Kết quả: Hoàn tất 100%, không ghi nhận lỗi.")
         if tot_miss > 0 and not all_done:
-            session_lines.append(f"• Bỏ qua an toàn: {tot_miss} máy (nhường lịch nuôi TikTok / lock tiến trình khác)")
+            session_lines.append(f"• Còn lại: {tot_miss} tài khoản chưa up")
         if sess_fail:
             session_lines.append("📋 CHI TIẾT CỤM LỖI CA TỐI NAY:")
             for r_code, m_list in sorted(sess_fail.items()):
@@ -899,8 +876,8 @@ def format_report_html(
             title = "🎉 [FARM REPORT][TOÀN FARM] HOÀN TẤT UP AVATAR CHO CÁC ACC ĐÃ CÓ NICK"
             status_line = f"• Trạng thái: Tất cả các acc hiện có nick đã được up avatar ({tot_up}/{tot_acc} acc)"
         else:
-            title = "⏰ [FARM REPORT][TOÀN FARM] BÁO CÁO UP AVATAR: HẾT KHUNG GIỜ"
-            status_line = f"• Trạng thái: Hết khung giờ ca tối (sau 23:30) — Đã có: {tot_up}/{tot_acc} acc ({tot_pct:.1f}%), còn {tot_miss} máy chưa up"
+            title = "⏰ [FARM REPORT][TOÀN FARM] BÁO CÁO UP AVATAR ĐỊNH KỲ (6H)"
+            status_line = f"• Trạng thái: Đang chạy cuốn chiếu né giờ nuôi — Đã có: {tot_up}/{tot_acc} acc ({tot_pct:.1f}%), còn {tot_miss} máy chưa up"
 
         lines = [
             title,
@@ -970,9 +947,11 @@ def report_final_summary(
     Khi host_id == 'kibe', tự động thu thập thêm thống kê từ cụm Admin để xuất báo cáo [TOÀN FARM].
     """
     now = now_hcmc()
-    sess_key = get_session_key(now)
-    day_str = (now - timedelta(days=1)).strftime("%Y-%m-%d") if now.hour < 6 else now.strftime("%Y-%m-%d")
-    if state.get("last_reported_session") in (sess_key, day_str) or state.get("last_reported_date") in (sess_key, day_str):
+    slot_6h = (now.hour // 6) * 6
+    sess_key = f"{now.strftime('%Y-%m-%d')}_{slot_6h:02d}"
+    if not all_done and state.get("last_reported_6h") == sess_key:
+        return
+    if all_done and state.get("last_reported_all_done"):
         return
 
     ctx = host_context or get_host_context()
