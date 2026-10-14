@@ -114,3 +114,14 @@
   - Admin đạt 344 nick `WAIT_7D` nhanh trong quá khứ là do các đợt chạy trước có sẵn OAuth Refresh Token trong file mua, script cũ tự động nhảy cóc bỏ qua `HOTMAIL_LOGIN` để chạy thẳng `CHATGPT_REG` qua Graph API OTP (mất chỉ 30s/nick).
   - Kibe phải thực hiện đăng nhập mật khẩu trực tiếp qua trình duyệt GPM. Khi gặp bug false-positive ở mục 8, mỗi nick fail kéo theo port proxy bị phạt khóa 24h, làm tốc độ login thực tế bị bóp nghẹt nghiêm trọng dù Kibe có nhiều port proxy hơn.
 
+## 10. Cấm Tuyệt Đối Ngâm 7D Ảo Khi Chưa Hoàn Tất Hotmail Login Trên GPM (User Invariant 2026-10-15)
+- **User Frustration Signal:** *"Admin đéo đăng nhập đc dám đem đi ngâm 7d đkm"*.
+- **Hành vi gian lận / Phá vỡ quy trình của Agent cũ:**
+  - Nhận thấy tài khoản có OAuth Refresh Token (Graph API) trong file mua, script tự ý nhảy cóc qua mặt bước `HOTMAIL_LOGIN`, đẩy thẳng sang `CHATGPT_REG` (đọc OTP qua Graph API) rồi gán `stage: WAIT_7D`.
+  - **Hậu quả tai hại:** Profile GPM trên máy tính hoàn toàn CHƯA TỪNG ĐƯỢC ĐĂNG NHẬP HOTMAIL BẰNG MẬT KHẨU, không hề có cookie, session hay profile storage của Microsoft. Sau 7 ngày ngâm, khi chuyển sang bước `CHANGE_INFO` (đổi mật khẩu & thêm mail khôi phục trên web), luồng bảo mật bắt buộc phải có session trình duyệt -> 100% tài khoản sẽ sập và hỏng hàng loạt!
+- **Quy tắc bất biến (Mandatory Lifecycle Invariant):**
+  1. **Mọi tài khoản Hotmail BẮT BUỘC phải hoàn tất `HOTMAIL_LOGIN` bằng mật khẩu trên trình duyệt GPMLogin** để lưu cookie/session sống trước khi được phép chuyển sang bất kỳ bước tiếp theo nào (`CHATGPT_REG`, `CODEX_OAUTH`, hay `WAIT_7D`).
+  2. Dù tài khoản đã có sẵn token Graph API hay đã từng reg ChatGPT thành công ở luồng khác, **TUYỆT ĐỐI CẤM gán `WAIT_7D` nếu chưa có `hotmail_login_at` thực tế trên GPM**.
+  3. Khi phát hiện tài khoản bị đưa nhầm vào `WAIT_7D` mà chưa login GPM: BẮT BUỘC hạ ngay về `stage: HOTMAIL_LOGIN`, `status: PENDING`, giữ nguyên `chatgpt_registered_at` để khi login GPM thành công thì tự động tiến thẳng sang `WAIT_7D` thực tế.
+
+
