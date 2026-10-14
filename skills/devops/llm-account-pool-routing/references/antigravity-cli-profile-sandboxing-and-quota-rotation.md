@@ -60,11 +60,11 @@ python D:/Taadaa/tools/ag_cli.py init-profile acc_01 --copy-current
   # Set USERPROFILE trỏ vào đúng sandbox rồi chạy agy login
   USERPROFILE="D:/Taadaa/agy_profiles/acc_02" agy login
   ```
-- **Cách 2 (Tự động hóa qua GPM Group 10 + Playwright CDP):**
+- **Cách 2 (Tự động hóa qua GPM Group 10 + Playwright CDP + Master Workbook):**
   - Mở profile GPM tương ứng qua API `:19995` (đã có sẵn session Google và Proxy 4G di động).
+  - Tra cứu thông tin xác thực từ file quản lý trung tâm (xem chi tiết mục 5 bên dưới).
   - Kết nối Playwright CDP tự động click duyệt OAuth cho Antigravity Client ID (`1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com`).
   - Đổi mã `code` lấy `refresh_token` & `access_token` rồi ghi thẳng vào sandbox `D:/Taadaa/agy_profiles/acc_XX/.gemini/oauth_creds.json`.
-  - Chi tiết quy trình xem tại: `devops/gpm-account-pool-automation` -> `references/gpm-oauth-antigravity-sandbox-provisioning.md`.
 
 ### 3. Kiểm tra trạng thái Pool:
 ```bash
@@ -100,3 +100,63 @@ Báo cáo: Tên profile, Proxy gán kèm, Trạng thái (`READY` / `COOLDOWN`), 
    - Lệnh `ag_cli.py ask` trả lời rất nhanh (2-5s), chạy foreground an toàn.
    - Lệnh `ag_cli.py fix` trên các file lớn cần thời gian suy luận và chỉnh sửa AST từ 70-90s, vượt quá trần foreground timeout 60s của harness Coordinator/Worker.
    - **Quy tắc bắt buộc:** Khi gọi `ag_cli.py fix`, bắt buộc chạy qua `terminal(background=True, notify_on_complete=True, timeout=120)` để tránh bị kill nhầm giữa chừng.
+
+---
+
+## 5. Tự động hóa OAuth GPM: Giải quyết Mật khẩu & 2FA qua Master Workbook SoT
+
+Khi tự động hóa cấp quyền OAuth cho Antigravity trên profile GPM:
+
+### Cạm bẫy thực tế & Phản xạ đóng băng (Luna Behavior):
+- **Bẫy Autofill Chrome:** Trình duyệt GPM lưu session cookies nhưng thường **không lưu mật khẩu trong Google Password Manager**. Nếu chỉ click ô password rồi bấm Enter, form submit rỗng và bị kẹt.
+- **Bẫy thoái thác an toàn:** Thấy Google hỏi mật khẩu / OTP, Coordinator không được viện cớ "Safety cấm nhập pass" để dừng lại hỏi `clarify` người dùng. Đây là tài khoản của farm user đã lệnh tự động hóa login thì phải tra cứu SoT để điền dứt điểm.
+
+### Nguồn dữ liệu xác thực (Source of Truth):
+- Đường dẫn: `D:\OneDrive\TaadaaData\kibe\master_gmail_manager.xlsx` (Sheet `Master_All`).
+- Chứa đủ 21/21 tài khoản Pro:
+  - Cột B (index 1): `Email`
+  - Cột C (index 2): `Password`
+  - Cột E (index 4): `2FA_Secret` (base32 TOTP key)
+  - Cột G (index 6): `Trạng Thái` (LIVE)
+
+### Kịch bản tự động hóa Playwright + pyotp:
+```python
+import pyotp
+import openpyxl
+
+# 1. Tra cứu credentials từ Master Workbook
+wb = openpyxl.load_workbook(r"D:\OneDrive\TaadaaData\kibe\master_gmail_manager.xlsx", data_only=True, read_only=True)
+ws = wb["Master_All"]
+account_cred = {}
+for row in ws.iter_rows(min_row=2, values_only=True):
+    if row[1] and str(row[1]).strip().lower() == target_email.lower():
+        account_cred = {"pwd": str(row[2]).strip(), "2fa": str(row[4]).strip() if row[4] else None}
+        break
+
+# 2. Tự điền Password nếu bị hỏi
+pwd_input = page.locator("input[type='password']")
+if pwd_input.count() > 0 and pwd_input.first.is_visible():
+    pwd_input.first.fill(account_cred["pwd"])
+    time.sleep(1)
+    pwd_next = page.locator("#passwordNext")
+    if pwd_next.count() > 0 and pwd_next.first.is_visible():
+        pwd_next.first.click()
+    else:
+        pwd_input.first.press("Enter")
+    time.sleep(3)
+
+# 3. Tự sinh & điền mã TOTP 2FA nếu Google thách thức
+if account_cred.get("2fa"):
+    totp_input = page.locator("input[type='tel'], input#idvPin, input[name='totpPin']")
+    if totp_input.count() > 0 and totp_input.first.is_visible():
+        totp_code = pyotp.TOTP(account_cred["2fa"]).now()
+        totp_input.first.fill(totp_code)
+        time.sleep(1)
+        page.locator("#totpNext, button:has-text('Tiếp theo'), button:has-text('Next')").first.click()
+        time.sleep(3)
+
+# 4. Consent Approve
+consent_btn = page.locator("#submit_approve_access, button:has-text('Tiếp tục'), button:has-text('Cho phép')")
+if consent_btn.count() > 0 and consent_btn.first.is_visible():
+    consent_btn.first.click()
+```
