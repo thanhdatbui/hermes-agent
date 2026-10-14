@@ -18,6 +18,7 @@ description: "TikTok follow runner and fail-closed farm ops."
     - `references/dashboard-follow-reconcile-race-condition.md`: Lệch pha crawler & đối soát.
     - `references/contact-suggestion-popup-follow-lockdown.md`: Khóa popup danh bạ.
     - `references/burst-follow-hibernation-cadence-gemphone-benchmark.md`: Burst 20-30 fl, ngủ đông 3-4d, cầu dao 40%.
+    - `references/probation-ladder-4day-cycle-adaptation.md`: Thích ứng bậc thang thử thách (1 phiên sạch / nấc) với chu kỳ 4 ngày.
     - `references/dynamic-healing-row-selection-and-anti-consecutive-cadence.md`: Chọn row dưỡng động, ghép session, chống kẹp ca & cache 60s.
     - `references/zero-follow-shift-audit-and-fail-closed-breakdown.md`: Đối soát ca 0 follow (dưỡng sinh 1/3, cầu dao 48h, cooldown, nick non).
     - Case references: `references/case-ui-*.md`, `references/workflow-parity-*.md`, `references/fleet-follow-*.md`.
@@ -48,8 +49,8 @@ description: "TikTok follow runner and fail-closed farm ops."
   - `references/case-ui-64-optimistic-ui-cache-break-pull-refresh-vs-reentry.md`: Case UI-64 Optimistic UI Cache Break — Pull-to-refresh Jitter (80%) vs Natural Re-entry (20%) theo Sol Approved.
   - `references/case-ui-63-tiktok-46-9-3-fm9-optimistic-ui-reentry.md`: Case UI-63 Selector id/fm9, Optimistic UI lừa đảo, phân bổ video Sol-approved & Fresh Re-entry verify.
   - `references/tiktok-46-9-3-selector-drift-and-adaptive-video-watch.md`: TikTok 46.9.3 `id/fm9` drift, fail-closed khi unknown, chọn video ngẫu nhiên 70/25/5%, server truth trên Following RecyclerView.
-  - `references/case-ui-63-tiktok-46-9-3-fm9-selector-drift-and-following-row-server-truth.md`: Case UI-63 Selector Drift TikTok 46.9.3 (id/fm9), Ground Truth xác thực nút trên Following Row, và phân bổ xem video tự nhiên (Sol Approved).
-  - `references/low-follow-count-triage-warmup-and-deadline.md`: Triage Follow 1–5 lượt (Warm-up sau cooldown, Gate 180s skip Mode 1, cạn nick).
+  - `references/case-ui-63-tiktok-46-9-3-fm9-selector-drift-and-following-row-server-truth.md`: Case UI-63 Selector Drift TikTok 46.9.3 (id/fm9).
+  - `references/low-follow-count-triage-warmup-and-deadline.md`: Triage Follow 1–5 lượt (Warm-up sau cooldown).
     - `references/follow-release-investigation-and-gemphone-comparison.md`: Dữ liệu 144 máy, Verify 2 tầng, đối chiếu GemPhoneFarm.
     - `references/case-ui-60-anchor-safe-skip-and-module-reporting.md`: Case UI-60 safe-skip anchor no_video, tách metrics mode1/mode2, bảo toàn flag UI-59.
 - Treat `taikhoan_run_safe.xlsx` / the configured safe workbook as the only UID mapping source. Do not read credential columns or substitute a legacy UID source.
