@@ -23,7 +23,7 @@ Use this skill when one agent coordinates work while another model or coding CLI
 
 - Hermes should plan, delegate, and verify rather than implement everything itself.
 - A coding worker has different quota or quality characteristics from the coordinator.
-- Antigravity CLI Pool (`ag_cli.py` / `agy.exe`): Thợ code native Go TLS qua proxy 4G, xem chi tiết tại `references/antigravity-cli-pool-worker.md`.
+- Antigravity CLI Pool (`ag_cli.py` / `agy.exe`): Thợ code headless chạy Go/BoringSSL native với sandbox multi-profile, tự xoay tua LRU và proxy 4G riêng (xem chi tiết tại `references/antigravity-worker-pool-routing.md`). native Go TLS qua proxy 4G, xem chi tiết tại `references/antigravity-cli-pool-worker.md`.
 - Multiple models such as Codex and OpenCode Go need role-based routing.
 - A local OpenAI-compatible router is being considered for centralized credentials and fallback.
 
