@@ -93,5 +93,19 @@ Khi số lượng tài khoản active trên OmniRoute rớt dưới ngưỡng an
   4. *CẤM TUYỆT ĐỐI:*
      - Cấm dùng `ORDER BY RANDOM()`.
      - Cấm nạp connection trần vào `provider_connections` mà không tạo ngay dòng tương ứng trong `proxy_assignments`.
+     - Cấm bật `is_active = 1` trước khi dòng `proxy_assignments` đã được tạo thành công (bắt buộc theo Atomic 3-Step Fail-Closed: Staging is_active=0 -> Match Proxy 1-1 -> Gated Activation is_active=1).
      - Cấm gán chéo proxy giữa dàn Kibe (Mobi 51xx, MikroTik 10001..10007) và dàn Admin (MikroTik 10008..10035).
+
+---
+
+## 6. Hiện Tượng Reboot Máy Chủ & Khả Năng Tự Phục Hồi (Reboot Resilience)
+- **Tình huống:** Máy chủ farm tự động reboot định kỳ vào sáng sớm (~05:20 AM trước ca nuôi 1) hoặc do operator reboot giải phóng bus phần cứng EHCI USB.
+- **Cơ chế phục hồi tự động:**
+  - Các service chạy dưới nền (OmniRoute port 20129, GPMLogin port 19995, 9Router port 20128) được cấu hình tự khởi động lại cùng Windows Startup / Service watchdog.
+  - Các watchdog và supervisor cronjob tự động chạy tiếp theo schedule (như `gpm_5profiles_supervisor`, `feed_session_watchdog`).
+- **Xử lý Session dở dang (Interrupted Turns):**
+  - Nếu phiên làm việc của Coordinator bị ngắt giữa chừng do reboot:
+    1. Trạng thái database và file code đã patch vẫn tồn tại an toàn trên ổ đĩa.
+    2. Turn đang chờ phản hồi sẽ không bị mất dữ liệu ngữ cảnh mà được lưu trong session DB.
+    3. Coordinator dùng `session_search` rà soát lại các mốc thời gian quanh thời điểm reboot (`psutil.boot_time()`) để xác nhận phần việc đã hoàn tất và tiếp tục thực thi mượt mà, tránh chạy trùng lặp tác vụ.
 

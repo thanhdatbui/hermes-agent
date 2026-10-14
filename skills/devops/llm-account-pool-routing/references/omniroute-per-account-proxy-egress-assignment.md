@@ -69,15 +69,31 @@ To protect against unassigned or newly added connections silently leaking host I
 
 ---
 
-## Sync Script Auto-Assignment Invariant
-Any script registering or syncing sessions to OmniRoute (e.g. `chatgpt_gpm_direct_reg.py`):
-- **MUST** insert into `provider_connections` AND immediately verify/insert a row into `proxy_assignments` (`scope='account'`, `scope_id=connection_id`).
-- Creating bare `provider_connections` records without matching `proxy_assignments` is strictly prohibited.
-- **Reference Implementation (`sync_registered_chatgpt_web_connection` - Deterministic Matching)**:
+## Sync Script Auto-Assignment & Fail-Closed Activation Invariant
+Any script registering or syncing sessions to OmniRoute (e.g. `chatgpt_gpm_direct_reg.py`, `feed_one_acc_per_ip_omniroute.py`):
+- **MUST** enforce the **Atomic 3-Step Fail-Closed Sequence** to prevent the mass ban catastrophe ("Cấm lặp lại lỗi làm ban 1 mớ acc của tao"):
+  1. **Step 1 (Safe Staging):** Insert/Update `provider_connections` with `is_active = 0` (inactive by default).
+  2. **Step 2 (Deterministic Proxy Assignment):** Query `proxy_registry` by exact `(host, port)` extracted from GPM profile / SoT. Insert into `proxy_assignments` (`scope='account'`, `scope_id=cid`).
+     - *CẤM TUYỆT ĐỐI* `ORDER BY RANDOM()`.
+     - *CẤM TUYỆT ĐỐI* gán chéo proxy giữa Kibe (5101..5138, 10001..10007) và Admin (10008..10035).
+  3. **Step 3 (Gated Activation):** ONLY AFTER `proxy_assignments` row is confirmed to exist, execute:
+     ```sql
+     UPDATE provider_connections SET is_active = 1, test_status = 'active' WHERE id = ?;
+     ```
+  - *Hard Invariant:* If Step 2 fails (proxy dead or missing from registry), the connection **STAYS `is_active = 0`**. Never activate an account without confirmed proxy binding!
+
+- **Reference Implementation (`sync_registered_chatgpt_web_connection` - Deterministic Matching & Fail-Closed)**:
   ```python
-  # CẤM TUYỆT ĐỐI ORDER BY RANDOM()! Bắt buộc match chính xác host:port của GPM Profile/SoT
+  # 1. Khởi tạo / cập nhật ở trạng thái is_active = 0
+  cur.execute("""
+      INSERT INTO provider_connections (id, provider, auth_type, name, email, api_key, is_active, test_status, ...)
+      VALUES (?, 'chatgpt-web', 'apikey', ?, ?, ?, 0, 'unavailable', ...)
+  """, (cid, name, email, token))
+
+  # 2. Match chính xác host:port từ GPM Profile / SoT (CẤM ORDER BY RANDOM!)
   cur.execute("SELECT id FROM proxy_assignments WHERE scope='account' AND scope_id=?", (cid,))
-  if not cur.fetchone():
+  pa_row = cur.fetchone()
+  if not pa_row:
       cur.execute(
           "SELECT id FROM proxy_registry WHERE host = ? AND port = ? AND (status IS NULL OR status = 'active') LIMIT 1",
           (profile_proxy_host, profile_proxy_port)
@@ -85,11 +101,17 @@ Any script registering or syncing sessions to OmniRoute (e.g. `chatgpt_gpm_direc
       px_row = cur.fetchone()
       if px_row:
           cur.execute(
-              "INSERT INTO proxy_assignments (proxy_id, scope, scope_id, position, created_at, updated_at) VALUES (?, 'account', ?, 0, datetime('now'), datetime('now'))",
+              "INSERT INTO proxy_assignments (proxy_id, scope, scope_id, position, created_at, updated_at) "
+              "VALUES (?, 'account', ?, 0, datetime('now'), datetime('now'))",
               (px_row[0], cid)
           )
+          # 3. Kích hoạt an toàn sau khi đã gán proxy thành công
+          cur.execute("UPDATE provider_connections SET is_active = 1, test_status = 'active' WHERE id = ?", (cid,))
       else:
-          logger.error(f"[{email}] Không tìm thấy proxy tương ứng {profile_proxy_host}:{profile_proxy_port} trong proxy_registry! Không được gán bừa.")
+          logger.error(f"[{email}] FAIL-CLOSED: Không tìm thấy proxy {profile_proxy_host}:{profile_proxy_port} trong registry! Giữ is_active=0 chống rò rỉ IP.")
+  else:
+      # Đã có proxy assignment từ trước -> an toàn kích hoạt
+      cur.execute("UPDATE provider_connections SET is_active = 1, test_status = 'active' WHERE id = ?", (cid,))
   ```
 
 ---
