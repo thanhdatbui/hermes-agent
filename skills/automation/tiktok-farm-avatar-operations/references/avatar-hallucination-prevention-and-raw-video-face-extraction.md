@@ -93,7 +93,10 @@ Trước khi soạn bất kỳ tin nhắn nào cho User:
    ```text
    MEDIA:D:/Taadaa/avatar_circle_preview.jpg
    ```
-3. **Cung cấp 2 lựa chọn có đối soát**: Luôn tạo 2 phương án biểu cảm (Phương án 1: Cười mỉm tự nhiên; Phương án 2: Cười tươi rạng rỡ) kèm ảnh preview tròn để User quyết định nhanh chóng.
+3. **Cung cấp 2 lựa chọn có đối soát thực tế — CẤM VĂN MẪU TỰ ĐỘNG BỊA "CƯỜI"**:
+   - Cung cấp 2 phương án crop/góc nhìn khác nhau (ví dụ: Phương án 1: Nhìn trực diện ống kính; Phương án 2: Góc nghiêng hoặc góc quay khác).
+   - **CẤM TUYỆT ĐỐI dùng văn mẫu bịa đặt**: KHÔNG ĐƯỢC tự động viết "cười tươi", "cười mỉm", "biểu cảm tươi tắn" khi chưa nhìn tận mắt, đặc biệt khi đối tượng ĐANG ĐEO KHẨU TRANG, KÍNH BẢO HỘ hoặc che mặt. BẮT BUỘC chỉ mô tả đúng những gì mắt thấy thực tế (màu khẩu trang, kính, tóc, trang phục, hướng ánh nhìn).
+   - Trước khi gửi tin nhắn, BẮT BUỘC phải đọc kỹ ảnh từ `browser_vision` / WinRT OCR, xác nhận không phải texture/phông nền rác và đối tượng thực sự có mặt trong ảnh.
 
 ---
 
