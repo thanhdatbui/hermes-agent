@@ -462,7 +462,7 @@ Chi tiết cross-folder channel deduplication & persistent claims cho gai xinh p
   - **Khắc phục**: Thêm `"extractor_args": {"youtube": {"player_client": ["android"]}}` vào `ydl_opts` để ép dùng Android player API.
   - Khi IP bị YouTube rate-limit ("rate-limited by YouTube for up to an hour"), xoay qua cổng **MikroTik LAN PPPoE proxy pool (`192.168.110.2:10001..10035` với auth `admin@1:admin@1`)** để lấy IP dân cư nội bộ độ trễ 0.01s, tốc độ tải 10–26 MB/s.
   - Cài đặt `deno` (`pip install deno`) để cung cấp JS runtime tự động cho yt-dlp.
-  - Chi tiết xem: `references/youtube-android-client-and-mikrotik-pool-fix.md` và `references/youtube-transcript-and-metadata-botcheck-bypass.md` (Android player client & public endpoints bypass bot-check cho transcript & metadata).
+  - Chi tiết xem: `references/youtube-android-client-and-mikrotik-pool-fix.md`, `references/youtube-captions-android-client-without-download.md` (trích xuất phụ đề/captions json3 không cần tải media hay cookies), và `references/youtube-transcript-and-metadata-botcheck-bypass.md`.
 - ⚠️ **Lỗi C++ `brotli` vs `brotlicffi` trên Windows**: Gói `brotli 1.2.0` gốc C++ bị lỗi memory allocation (`ERROR: brotli: unable to allocate memory` dẫn tới exit code 127/139) khi xử lý giải nén HTTP stream trên nhiều worker song song. Khắc phục: `pip install brotlicffi` và `pip uninstall -y brotli`.
 - ⚠️ **Lỗi Windows File Lock khi ghi Cache (`[WinError 5] Access is denied`)**: Khi đa luồng cùng ghi file cache (như `audio_lang_cache.json`), không dùng cơ chế ghi file `.part.json` rồi `replace()` vì Windows sẽ lock file gây `Access is denied`. Phải dùng `threading.Lock()` ghi trực tiếp vào file đích.
 - ⚠️ **CTranslate2 / Faster-Whisper multi-thread Segfault (C++ crash exit code 127/139)**: 
