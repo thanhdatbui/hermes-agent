@@ -82,6 +82,25 @@
       4. **Timeout Recovery Test**: Khi lệnh thực thi (`run_cmd`) trả về `False` (do timeout hoặc lỗi script), hàm `execute()` xử lý fail-safe: đánh dấu status `FAILED`, giữ nguyên stage để retry chu kỳ sau, và không corrupt state.
       5. **Form Active Gate Test**: Luồng điền form kiểm tra cờ `form_active` trước khi trigger submit, và hỗ trợ đầy đủ các biến thể nút bấm tiếng Việt (`"Bắt đầu"`, `"Xác nhận"`, `"Tiếp tục"`, `"Continue"`).
 
+20. **Bẫy Hiểu Sai "Cấm Push Khi < 85" Thành "Dừng Lại Báo Xong Phiên" (Anti-Paralysis Closeout Trap — 14/10/2026)**:
+    - Khi Reviewer chấm điểm < 85 (`REJECTED`), câu lệnh quy chuẩn *"Nếu Verdict là REJECTED hoặc điểm < 85: DỪNG LẠI NGAY, TUYỆT ĐỐI CẤM PUSH"* mang ý nghĩa: **CẤM PUSH VÀ BẮT BUỘC KÍCH HOẠT VÒNG LẶP REMEDIATION (Sol Repair -> Worker -> Claude CLI) ĐỂ TIẾP TỤC SỬA CHO ĐẾN KHI >= 85**.
+    - **CẤM TUYỆT ĐỐI** hiểu máy móc thành dừng toàn bộ hoạt động, buông xuôi, rồi báo cáo *"phiên làm việc đã khép lại an toàn"* khi Gate vẫn đang REJECTED. Đây là hành vi bại liệt và vi phạm nghiêm trọng kỷ luật chốt phiên.
+    - Điểm < 85 là trạng thái chuyển tiếp (transient recoverable state) để khắc phục lỗi, KHÔNG PHẢI là kết quả cuối cùng.
+
+21. **Bẫy Test Đa Nền Tảng (Windows vs POSIX Path Separators) Trong Pytest Fixture (14/10/2026)**:
+    - Khi viết unit/integration test assert các biến môi trường sandbox (`APPDATA`, `LOCALAPPDATA`, `TEMP`, `USERPROFILE`):
+      * Trên Windows, đường dẫn dùng backslash (`\`) thay vì forward slash (`/`).
+      * Ví dụ: `assert 'AppData/Roaming' in env.get('APPDATA')` sẽ FAIL trên Windows vì giá trị thực tế là `...\AppData\Roaming`.
+      * **Khắc phục**: Dùng substring không phụ thuộc dấu gạch như `assert 'Roaming' in env.get('APPDATA')` hoặc chuẩn hóa qua `os.path.normpath()` / `os.path.join()`.
+
+22. **Kỷ Luật Bộ Test Đột Phá Điểm Số Closeout Gate Vượt Ngưỡng 85 Điểm (14/10/2026)**:
+    - Với các module CLI bridge / Pool Manager / Orchestration: Reviewer Sol High thường giữ điểm ở mức 76–82/100 nếu test suite chỉ có unit test đơn lẻ.
+    - Để đạt điểm số $\ge 85/100$ (`APPROVED`), test suite BẮT BUỘC bổ sung đủ 4 nhóm test hành vi thực tế:
+      1. **CLI Entrypoint Test**: Mô phỏng gọi `main()` với `sys.argv` (ví dụ `pool-status`, `--help`) và kiểm tra `capsys.readouterr()` + return code 0.
+      2. **Failover Rotation Flow Test**: Mock `subprocess.run` / `Popen` sao cho profile đầu tiên trả 429 quota và profile kế tiếp thành công, assert phát telemetry `quota_failover` và chuyển profile mượt mà.
+      3. **Atomic State Recovery Test**: Kiểm tra tính toàn vẹn và cơ chế phục hồi dữ liệu state/config khi có gián đoạn hoặc corrupt file json.
+      4. **Process Contention Test**: Kiểm tra acquire lock đồng thời giữa các tiến trình để xác nhận atomic exclusive lease.
+
 ## 3. Thang Leo Thang Sửa Chữa (Remediation Ladder)
 - **Vòng 1 & 2 (Sol Repair / Worker Remediation)**:
   * Đọc `KEY FINDINGS` từ file log gate.
