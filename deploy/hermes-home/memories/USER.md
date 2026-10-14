@@ -2,7 +2,7 @@ Cào/Render: 12 niche hot (rải xen kẽ máy, cấm trùng niche cùng phiên)
 §
 Dọn đĩa: duyệt trước (thư mục corrupt/lỗi xóa ngay), CẤM xóa ngầm.
 §
-Nuôi 4d 3 ca (bỏ ca đêm, idle dập TT & tắt màn 223; Ava & 2FA cuốn chiếu né ca nuôi, báo 6h). Starve 96h. Đổi mail: Hotmail sạch, ưu tiên Graph PC.
+Nuôi 4d 3 ca (bỏ ca đêm, tắt màn 223). Cuốn chiếu Avatar & 2FA tới 5h15 (né nuôi & né dọn cache 4h-4h30); báo cáo 6h. Starve 96h. Đổi mail: ưu tiên Graph PC.
 §
 cấm telemetry JSON stdout cron; chốt phiên: Reviewer APPROVED>=85 & push remote mới báo DONE, điểm<85 cấm báo xong/trọn vẹn; OTP mail: tự đọc read_otp_mail.py.
 §

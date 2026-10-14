@@ -370,6 +370,7 @@ Pytest cache contention (Errno 13), foreground timeout accumulation & anti-hang 
 Claude CLI quota exhaustion, worker subagent delegation & Windows directory junction fallback: `references/claude-cli-quota-exhaustion-and-junction-fallback.md`.
 Antigravity CLI (`agy`) vs IDE GUI launcher trap (`antigravity-ide.cmd chat`), missing binary diagnostics, and headless worker patterns: `references/antigravity-cli-agy-vs-ide-wrapper.md`.
 Monolith thin-slice refactoring pattern & Claude CLI model alias resolution (`--model haiku`): `references/monolith-thin-slice-surgery-and-haiku-alias.md`.
+Claude CLI quota telemetry, Windows Startup background sync, and Antigravity pool failover: `references/claude-cli-quota-telemetry-and-antigravity-fallback.md`.
 
 ## Antigravity CLI (`agy`) — Headless Subagent vs IDE GUI Wrapper Trap
 
@@ -593,6 +594,21 @@ When calling Claude Code CLI via `--model`:
 - Passing unaliased/extended model IDs such as `--model claude-haiku-5-5` triggers CLI catalog warnings:
   `"claude-haiku-5-5" isn't described by this version's model catalog; update Claude Code, or map it with behavesAs on a modelPicker row... Warning: Advisor disabled — base model 'claude-haiku-5-5' has no advisor rank...`
 - **Fix**: Use the standard CLI model alias: `--model haiku` (or `sonnet`, `opus`). It resolves directly to the active version in Claude Code without startup warning or window enforcement fallbacks.
+
+### Claude Code CLI: Ground-Truth Telemetry & Pro Quota Protection (`plan-usage-history.json`)
+
+- **Root Cause of Pro Quota Blindness**: `claude auth status` (và `--text`) không trả về `% quota` cho tài khoản Claude Pro. Cơ chế tính cước là cửa sổ trượt 5 giờ (5h rolling window) và hạn ngạch 7 ngày.
+- **Vị trí Telemetry thực tế từ Anthropic Server**:
+  `C:\Users\Kibe\AppData\Roaming\Claude\plan-usage-history.json`
+  Do Claude Desktop đồng bộ trực tiếp từ Anthropic:
+  ```json
+  {"t": 1791923514000, "u": {"fh": 4, "sd": 45}}
+  ```
+  * `fh`: % đã dùng trong cửa sổ trượt 5h (ngưỡng phanh 85%).
+  * `sd`: % đã dùng trong 7 ngày (ngưỡng phanh 90%).
+- **Startup Auto-Sync**: Script `C:\Users\Kibe\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\start_claude_desktop.vbs` tự động mở Claude Desktop chạy nền khi khởi động máy để sync dữ liệu liên tục.
+- **Fail-Closed Gate & Fallback sang Antigravity**:
+  Khi `fh >= 85%` hoặc `sd >= 90%` hoặc khi Claude CLI trả về lỗi session limit (`resets at...`), worker script (`haiku_worker.py`) tự động phanh và fallback sang `python D:/Taadaa/tools/ag_cli.py fix` (dàn 7 tài khoản Google Pro xoay tua) để đảm bảo không làm gián đoạn farm.
 
 ### Claude Code CLI: Advisor Trap ('advisorModel': 'sonnet' vs 'off')
 

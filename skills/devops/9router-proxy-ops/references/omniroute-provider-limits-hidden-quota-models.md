@@ -70,3 +70,10 @@ Update the JSON array in `key_value` where `namespace = 'modelCompatOverrides' A
 | :--- | :--- | :--- | :--- |
 | **Green dot + Red `Token expired`** | OAuth access token (1h TTL) has elapsed, but account is **HEALTHY & ACTIVE**. | **None (Informative)** | Tokens are rotated automatically on-demand via `refresh_token` when inference requests arrive. Do NOT re-authorize or disable accounts. |
 | **Gray dot + Red banner `Failed to refresh credentials...`** | Upstream returned `401 Unauthorized` / `token_revoked`. | **Action Required** | Refresh token is genuinely invalid (password changed, session revoked by Google/OpenAI). Requires OAuth re-authentication. |
+
+---
+
+## 6. Root Cause Incident: Agent UI Cleanup Trap
+- **Historical Context**: Một lỗi phổ biến từng xảy ra khi người dùng yêu cầu "lọc sạch model rác / dọn menu /model Telegram". AI Agent dùng browser tự động mở OmniRoute UI vào trang Provider Antigravity và bấm nút **"Ẩn tất cả" (`visibility_off`)**, sau đó chỉ unhide các alias cụ thể (như `gemini-3.7-flash-high`).
+- **Hệ quả ngầm**: Nút "Ẩn tất cả" đặt `isHidden: true` lên toàn bộ upstream bucket keys (`gemini-3.7-flash-tiered`, `gemini-pro-agent`, `gemini-3.1-flash-lite`), khiến UI Usage dashboard giấu sạch toàn bộ hạn ngạch Gemini.
+- **Kỷ luật Coordinator / Worker**: TUYỆT ĐỐI CẤM dùng browser bấm "Ẩn tất cả" trên OmniRoute để dọn dẹp menu client. Việc lọc model cho Hermes/Telegram phải thực hiện ở tầng cấu hình client (`config.yaml` / `FARM_MODELS` / `custom_providers`), không được can thiệp vào danh mục model gốc của Provider trên OmniRoute.

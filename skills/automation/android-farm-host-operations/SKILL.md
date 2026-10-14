@@ -16,6 +16,7 @@ References:
 - `references/lingering-tiktok-keep-screen-on-and-healer-pitfalls-20261014.md` — Phân tích bẫy TikTok giữ FLAG_KEEP_SCREEN_ON phát xuyên đêm, ảo giác ca đêm, và lỗ hổng của farm_idle_screen_and_app_healer (14/10/2026).
 - `references/remote-desktop-virtual-keystuck-and-chinese-ime-runaway.md` — Hiện tượng kẹt phím ảo (KeyUp drop) khi remote host farm, bản chất ký tự gạch ngang dài tiếng Trung (破折号 ——) và cách xử lý triệt để.
 - `references/focus-delay-cascade-and-post-reboot-triage-20261014.md` — Phân tích tương quan cụm lỗi kép (focus delay do nghẽn ADB transport USB), quy trình triage sau reboot và cơ chế fast-fail khép kín.
+- `references/s7-reboot-anti-pattern-and-adb-shell-vs-transport-stall.md` — Phân tích bẫy tư duy reboot S7 trước ca nuôi, tác hại bão PnP/throttling, và phân biệt kẹt ADB shell vs USB transport stall.
 - `references/user-directed-reboot-anti-paralysis-and-sentinel-bypass.md` — Kỷ luật chống tê liệt xin phép khi user ra lệnh reboot, cơ chế xóa sentinel flag và bảo toàn session Telegram để tự động chạy tiếp sau boot.
 
 Scripts:
@@ -492,6 +493,16 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
   3. *Phát lệnh shutdown:* Gọi script `farm_preflight_daily_reset.py` (hoặc `shutdown /r /t 5`).
 - **Post-reboot invariant:** Khi Gateway tự động resume topic, Coordinator BẮT BUỘC kiểm tra hiện trường O(1) ngay lập tức và tiếp tục thực hiện task, tuyệt đối không chào hỏi suông hay hỏi "làm gì tiếp theo".
 - Chi tiết: `references/user-directed-reboot-anti-paralysis-and-sentinel-bypass.md`.
+
+## 24. S7 Reboot Anti-Pattern & Phân Biệt Kẹt ADB Shell vs USB Transport Stall
+- **Bẫy tư duy thêm bước reboot 80 máy S7 trước ca nuôi:**
+  * **CẤM TUYỆT ĐỐI reboot đồng loạt S7 trước ca nuôi.** Nút thắt nghẽn USB 2.0 nằm 100% ở 2 controller EHCI (`8D26`, `8D2D`) trên bo mạch PC Huananzhi X99 (trần 35–40 MB/s), không nằm ở S7.
+  * Reboot S7 không giải phóng được thanh ghi controller USB của PC, mà còn tạo bão kết nối (USB Enumeration Storm) làm sập cụm Hub, flapping cáp Micro-USB dão (socket 10061, `unauthorized`), CPU S7 bị thermal throttling 5–10 phút đầu (MediaScanner, dexopt, Knox), bão DHCP Wi-Fi và giết chết daemon `atx-agent` (port 7912).
+- **Phân biệt bản chất: Kẹt ADB Shell vs Kẹt USB Transport:**
+  * `adb reboot` KHÔNG chạy qua `/system/bin/sh` mà là service `reboot:` độc lập trong daemon `adbd`. Khi kẹt lệnh con bên trong Android (dumpsys, app deadlock), `adb -s <serial> reboot` từ PC vẫn hoạt động bình thường.
+  * Khi kẹt USB transport (nghẽn đệm controller EHCI hoặc đứt pipe `/dev/android_adb` trên kernel Linux của S7): Toàn bộ ADB (cả shell lẫn reboot) đều tê liệt. Do nguồn 5V VBUS từ hub vẫn duy trì, S7 không phát sinh uevent ngắt kết nối nên không tự restart lại `adbd`.
+  * **Giải pháp cứu hộ từ PC không chạm tay:** (1) Thử `taskkill /F /IM adb.exe` trên Windows để dọn buffer socket; (2) Dùng nút Reboot trên toolbar của XiaoWei (driver native); (3) Reboot Host PC (BIOS POST ngắt nguồn VBUS và gửi xung PCI bus reset, S7 tự động nhận lại 100% khi Windows boot).
+  * Chi tiết: `references/s7-reboot-anti-pattern-and-adb-shell-vs-transport-stall.md`.
 
 
 

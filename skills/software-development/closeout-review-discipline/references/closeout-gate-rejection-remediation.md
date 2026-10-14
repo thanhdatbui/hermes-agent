@@ -106,6 +106,10 @@
       3. **Atomic State Recovery Test**: Kiểm tra tính toàn vẹn và cơ chế phục hồi dữ liệu state/config khi có gián đoạn hoặc corrupt file json.
       4. **Process Contention Test**: Kiểm tra acquire lock đồng thời giữa các tiến trình để xác nhận atomic exclusive lease.
 
+23. **Bẫy DIFF_TOO_LARGE (>30KB) Do Truyền File Config/JSON Lớn Hoặc Drift Base Do Cron Commit (15/10/2026)**:
+    - **CẤM truyền file config/data lớn vào `--files`**: Cờ `--files` của `closeout_gate.py` CHỈ DÀNH CHO các file source code (`.py`) và test suite (`test_*.py`) thuộc phạm vi sửa đổi O(1). Tuyệt đối không truyền các file cấu hình lớn như `jobs.json` (30KB+), file state `.json`, hay workbook `.xlsx` vào `--files`. File config lớn khi re-dump format sẽ làm diff vượt ngưỡng 30.000 bytes của gate, gây fail-fast: `[Gate Fail-Fast: DIFF_TOO_LARGE] targeted diff quá lớn (> 30000 bytes)`.
+    - **Bẫy Floating `HEAD~1` Khi Cron Tự Động Commit Ngầm**: Trong các repo có cron nền tự động đồng bộ (như `sync-hermes-skills-and-brain-to-git` commit mỗi 5 phút), con trỏ `HEAD` di chuyển liên tục. Việc dùng mù quáng `--base HEAD~1` có thể bị trượt trúng commit sync nền (`chore: sync...`). BẮT BUỘC kiểm tra `git log -n 5 --oneline` để xác định rõ commit SHA gốc trước thay đổi của phiên (ví dụ `--base <commit_sha>~1` hoặc gán SHA cụ thể) để gate so sánh chính xác tuyệt đối diff của phiên làm việc.
+
 ## 3. Thang Leo Thang Sửa Chữa (Remediation Ladder)
 - **Vòng 1 & 2 (Sol Repair / Worker Remediation)**:
   * Đọc `KEY FINDINGS` từ file log gate.

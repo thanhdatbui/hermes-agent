@@ -73,14 +73,23 @@ To protect against unassigned or newly added connections silently leaking host I
 Any script registering or syncing sessions to OmniRoute (e.g. `chatgpt_gpm_direct_reg.py`):
 - **MUST** insert into `provider_connections` AND immediately verify/insert a row into `proxy_assignments` (`scope='account'`, `scope_id=connection_id`).
 - Creating bare `provider_connections` records without matching `proxy_assignments` is strictly prohibited.
-- **Reference Implementation (`sync_registered_chatgpt_web_connection`)**:
+- **Reference Implementation (`sync_registered_chatgpt_web_connection` - Deterministic Matching)**:
   ```python
+  # CẤM TUYỆT ĐỐI ORDER BY RANDOM()! Bắt buộc match chính xác host:port của GPM Profile/SoT
   cur.execute("SELECT id FROM proxy_assignments WHERE scope='account' AND scope_id=?", (cid,))
   if not cur.fetchone():
-      cur.execute("SELECT id FROM proxy_registry WHERE (status IS NULL OR status NOT IN ('inactive','error','disabled','dead','down')) ORDER BY RANDOM() LIMIT 1")
+      cur.execute(
+          "SELECT id FROM proxy_registry WHERE host = ? AND port = ? AND (status IS NULL OR status = 'active') LIMIT 1",
+          (profile_proxy_host, profile_proxy_port)
+      )
       px_row = cur.fetchone()
       if px_row:
-          cur.execute("INSERT INTO proxy_assignments (proxy_id, scope, scope_id, position, created_at, updated_at) VALUES (?, 'account', ?, 0, datetime('now'), datetime('now'))", (px_row[0], cid))
+          cur.execute(
+              "INSERT INTO proxy_assignments (proxy_id, scope, scope_id, position, created_at, updated_at) VALUES (?, 'account', ?, 0, datetime('now'), datetime('now'))",
+              (px_row[0], cid)
+          )
+      else:
+          logger.error(f"[{email}] Không tìm thấy proxy tương ứng {profile_proxy_host}:{profile_proxy_port} trong proxy_registry! Không được gán bừa.")
   ```
 
 ---

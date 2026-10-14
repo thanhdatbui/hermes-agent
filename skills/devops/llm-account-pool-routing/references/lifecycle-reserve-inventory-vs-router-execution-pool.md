@@ -52,7 +52,7 @@
 
 ## 4. Chính Sách Bơm Bù Tài Khoản (Replenishment & Top-Up Protocol)
 
-Khi số lượng tài khoản active trên OmniRoute rớt dưới ngưỡng an toàn (< 25 tài khoản active):
+Khi số lượng tài khoản active trên OmniRoute rớt dưới ngưỡng an toàn (< 25 tài khoản active) hoặc cần mở rộng quy mô:
 1. **Lọc ứng viên từ Kho Dự Trữ GPM:**
    - Chọn các tài khoản đã hoàn thành `WAIT_7D` hoặc `DONE` trong file state của Kibe / Admin.
 2. **Gán Proxy Chuẩn Farm:**
@@ -63,3 +63,35 @@ Khi số lượng tài khoản active trên OmniRoute rớt dưới ngưỡng an
    - Chạy test xác thực qua `/api/providers/validate` (phải trả về `HTTP 200 / valid: true`).
 4. **Cập Nhật Combo:**
    - Thêm các connection mới vào combo `chatgpt-web-pool` và `review` trên `:20129`.
+
+---
+
+## 5. Nguyên Tắc Phủ Tối Thiểu 1 Account / Proxy IP & Kỷ Luật "Cấm Phá Proxy"
+
+### A. Chỉ Thị Vận Hành: "Mỗi IP có ít nhất 1 acc"
+- **Mục tiêu:** Mọi proxy endpoint trong `proxy_registry` (32 cổng Mobi `test.taadaa.click:5101..5138`, 35 cổng MikroTik `mirotik1.taadaa.click:10001..10035`) đều phải có **ít nhất 1 tài khoản ChatGPT-Web active**.
+- **Lợi ích kiến trúc:**
+  - Phân tán đều lưu lượng ra 100% dải IP 4G và router MikroTik của farm.
+  - Tránh dồn tải nhiều request vào 1–2 IP gây rate-limit / Cloudflare Challenge, đồng thời không để lãng phí proxy rảnh.
+
+### B. Kỷ Luật Bất Biến: Cấm Phá Proxy (Anti-Random-Proxy Invariant)
+- **Bẫy phá proxy từng xảy ra ("như lần trước"):**
+  - Script tự ý dùng lệnh `SELECT id FROM proxy_registry ... ORDER BY RANDOM() LIMIT 1` bốc proxy ngẫu nhiên khi connection bị thiếu hoặc lỗi.
+  - Hậu quả nghiêm trọng: Tài khoản bị đảo proxy liên tục, dính bot-check Google/OpenAI, bị router Direct Fallback lộ IP host máy chủ `1.53.55.190` dẫn đến deactivation hàng loạt.
+- **Quy tắc gán chuẩn tuyệt đối (Deterministic 1:1 Mapping Contract):**
+  1. *Lấy Port từ Nguồn Chuẩn:* Trích xuất `raw_proxy` từ Profile GPM (hoặc bảng Excel `PROXYgandienthoai.xlsx` theo số máy).
+  2. *Truy Vấn Khớp Tuyệt Đối:* 
+     ```sql
+     SELECT id FROM proxy_registry WHERE host = ? AND port = ?;
+     ```
+  3. *Bắt Buộc Gán Vào `proxy_assignments`:*
+     ```sql
+     DELETE FROM proxy_assignments WHERE scope = 'account' AND scope_id = ?;
+     INSERT INTO proxy_assignments (proxy_id, scope, scope_id, position, created_at, updated_at)
+     VALUES (?, 'account', ?, 0, datetime('now'), datetime('now'));
+     ```
+  4. *CẤM TUYỆT ĐỐI:*
+     - Cấm dùng `ORDER BY RANDOM()`.
+     - Cấm nạp connection trần vào `provider_connections` mà không tạo ngay dòng tương ứng trong `proxy_assignments`.
+     - Cấm gán chéo proxy giữa dàn Kibe (Mobi 51xx, MikroTik 10001..10007) và dàn Admin (MikroTik 10008..10035).
+
