@@ -17,15 +17,21 @@ Lead with deltas and actions, not a verbatim restatement of every metric. Explic
 ## Two Distinct Reporting Streams for Hotmail
 1. **GPM PC Lifecycle (`hotmail-gpm-lifecycle-6h-report`, job `61570a1e37b1` → `telegram:-5583559484`)**:
    - Scope: Hotmail accounts in GPMLogin browser profiles on PC (`HOTMAIL_LOGIN` → `CHATGPT_REG` → `WAIT_7D` → `CHANGE_INFO` → `DONE`).
-   - Reporting cadence: Every 6 hours (`0 */6 * * *`).
+   - Reporting cadence: Every 6 hours (`0 */6 * * *` at `00:00, 06:00, 12:00, 18:00`).
    - Delivery destination: Delivered specifically to the dedicated Hotmail Telegram channel/topic (`telegram:-5583559484`), NOT to general Farm Alerts (`-5373649734`) or user DM threads.
-   - Stage visibility pitfall: In revisions where `HOTMAIL_LOGIN` block is omitted/suppressed from headline metrics, users cannot see Hotmail login progress even though hundreds of accounts may be in `HOTMAIL_LOGIN` (e.g. after removing the token-skip side effect). The 6h report must maintain explicit `HOTMAIL_LOGIN` counts (Login OK, PENDING, BLOCKED 48h cooldown).
+   - Stage visibility invariant: Báo cáo 6h BẮT BUỘC duy trì đủ 4 khối theo vòng đời:
+     (1) `🔑 TIẾN ĐỘ HOTMAIL LOGIN` (Login OK, PENDING, BLOCKED 48h cooldown)
+     (2) `🤖 TIẾN ĐỘ CHATGPT REG`
+     (3) `🔐 TIẾN ĐỘ CHANGE HOTMAIL & BẢO MẬT` (DONE, CHANGE_INFO, WAIT_7D)
+     (4) `🌐 CHATGPT WEB POOL (:20129)`
+     CẤM cắt bỏ khối Login khi nâng cấp các khối khác để đảm bảo tính observability.
    - Canonical partition formula (zero-leak invariant: `login_ok + login_pending + login_blocked == total`):
      ```python
      login_ok = sum(1 for p in profiles.values() if p.get("hotmail_login_at") or p.get("stage") != "HOTMAIL_LOGIN")
      login_pending = sum(1 for p in profiles.values() if p.get("stage") == "HOTMAIL_LOGIN" and p.get("status") not in {"BLOCKED", "FAILED", "ERROR", "QUARANTINE"} and not p.get("hotmail_login_at"))
      login_blocked = sum(1 for p in profiles.values() if p.get("stage") == "HOTMAIL_LOGIN" and p.get("status") in {"BLOCKED", "FAILED", "ERROR", "QUARANTINE"} and not p.get("hotmail_login_at"))
      ```
+   - Deployment & synchronization: Khi chỉnh sửa script tại `D:/Taadaa/Hermes/deploy/hermes-home/scripts/cron_hotmail_gpm_lifecycle_6h_report.py`, BẮT BUỘC chạy `python D:/Taadaa/Hermes/deploy/hermes-home/scripts/cron_sync_watchdog.py` để đồng bộ sang local runtime và OneDrive Shared. Kích hoạt ngay bản tin mới bằng `cronjob(action='run', job_id='61570a1e37b1')`.
 2. **Physical Phone Farm Outlook App (`post_noon_chain_watchdog` → `telegram:-5373649734` & `daily-tiktok-farm-tracker`)**:
    - Scope: Hotmail/Outlook accounts logged into the Outlook Android app on physical farm devices (`app_logged_in = 1` in `gmail_clean_v2.xlsx`).
    - Reporting cadence: Post-noon shifts (14:00–18:00) and 07:00 daily farm tracker.
