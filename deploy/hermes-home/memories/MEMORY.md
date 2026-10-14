@@ -4,7 +4,7 @@ Followed=0 cấm PASS; upload SSH admin. SSH Admin: cấm thoái thác do guard 
 §
 Strike 3 Claude CLI. AG CLI: agy.exe qua D:/Taadaa/tools/ag_cli.py (ask/fix/pool-status, gemini-3.8-flash-high). Pool D:/Taadaa/agy_profiles/ cô lập UUID+proxy, 429 auto-rotate.
 §
-TikTok Follow: (máy,row) độc lập, ca khác row khác cấm gộp; Quota 10-15/ca (Khỏe); Hồi phục 1&2 mỗi stage 2 ca sạch; Canary Khỏe +10% dò trần; like 80%. Nick non nhả cấm ngắt IP. Đối soát fl file state. Path B 'Đã fl' ko commit; slot (folder-1)%8+1; reg bù độc lập. Mode 2: anchor >= 150 fl; cuộn sâu. Cron: feed_session_watchdog & follow_session_watchdog.
+TikTok Follow: (máy,row) độc lập; Quota 10-15/ca (Khỏe); Hồi phục 1&2 mỗi stage 2 ca sạch; Canary Khỏe +10%; like 80%. Nick non nhả cấm ngắt IP. Path B 'Đã fl' ko commit; slot (folder-1)%8+1; reg bù độc lập. Mode 2: anchor >= 150 fl; cuộn sâu. Cron: feed/follow_session_watchdog.
 §
 Hotmail bán: CẤM mail cá nhân; sinh @fviainboxes.com đọc OTP API. Write-Through: xong bước nào ghi ngay Excel Cột 3,4,5 & Cột G farm, cấm đợi relogin. CDP đóng ko mất cookie. Dual-farm ~1280 acc.
 §
@@ -16,4 +16,4 @@ GPM: Kibe chạy, stop API ko kill chrome -> bắt buộc kèm _kill_gpm_chrome(
 §
 Stale Upload: CẤM quy chụp rớt ADB là kẹt >14d; do draft trap. Mở draft hỏng xóa sạch (_delete_all_profile_drafts), về Home. Xóa draft an toàn vì video gốc trên PC & Excel giữ số TT. state_machine.py bắt buộc LF.
 §
-Niche farm: CẤM gán 1 tik cùng 1 niche hàng loạt; bắt buộc phân bổ xen kẽ/random giữa các máy để cùng phiên không bị trùng niche.
+Cô lập Kibe vs Admin: Kibe(1-80, F1-640) và Admin(201-280, F1-640) cào nguồn riêng, video riêng, niche riêng. CẤM TUYỆT ĐỐI dùng DB Kibe ghi đè Niche/Hashtag sang Admin. Cấm sync chéo. CẤM gán 1 tik cùng niche hàng loạt; phân bổ xen kẽ máy.
