@@ -128,6 +128,7 @@ If the process is still running, report `RUNNING` with the exact log path and do
   3. *Bẫy chuyển 100% sang cào Kênh Hot*: Cấm chuyển mù toàn bộ sang cào kênh hot vì 3 rủi ro: (a) Kênh lớn bị TikTok quét multimodal duplicate/bản quyền, (b) Các máy farm tự dẫm chân nhau, (c) Cạn pool video.
   4. *Chiến lược phân bổ Hybrid*: Duy trì 40% Story Engine, 30% Hot Niche (story hóa có voice/kịch bản), 20% Channel Mining (micro-creators 50k-300k fl), 10% Experiment. Chi tiết xem `references/content-dna-story-retention-vs-hot-niche-curation-20261013.md`.
 
+See `references/traffic-niche-reversion-and-youtube-shorts-bypass-20261014.md` for the traffic niche reversion case study, ledger retrieval, and YouTube Shorts Android player API bot-check bypass in the swap pipeline.
 See `references/content-dna-story-retention-vs-hot-niche-curation-20261013.md` for empirical farm evidence on story/curiosity retention loops vs visual niches and hybrid allocation rules.
 See `references/source-swap-closeout-evidence.md` for reusable query patterns and an evidence template.
 See `references/clean-swap-execution-order-and-topup-continuation-20261010.md` for clean swap execution discipline, top-up continuation on short batches, and operational runtime closeout routing.

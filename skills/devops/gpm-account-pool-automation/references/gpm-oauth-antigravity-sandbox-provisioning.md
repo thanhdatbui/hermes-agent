@@ -29,22 +29,34 @@ Các thông số này được Google nhúng công khai trong client Antigravity
 
 ## Quy trình Tự động hóa qua Playwright CDP
 
-### 1. Khởi động Profile GPM & Kết nối CDP
+### 1. Khởi động Profile GPM & Kết nối CDP (Chống ECONNREFUSED)
 ```python
 start_res = gpm_get(f"/profiles/start/{PID}?win_scale=0.8")
 cdp = start_res["data"]["remote_debugging_address"]
+# Bắt buộc: Chờ Chrome mở hoàn toàn cổng remote debugging trước khi connect CDP
+time.sleep(4)
 browser = playwright.chromium.connect_over_cdp(f"http://{cdp}")
 page = browser.contexts[0].pages[0]
 ```
 
-### 2. Mở URL Cấp quyền & Tự động Bấm Duyệt
-GPM profile đã lưu sẵn cookie Google nên không cần gõ mật khẩu:
-1. Điều hướng tới `authorize_url`.
-2. Bắt sự kiện chọn tài khoản:
+### 2. Mở URL Cấp quyền (Kèm login_hint) & Xử lý Thử thách Google
+Khi xin quyền các scopes nhạy cảm (`cloud-platform`, `cclog`), Google thường kích hoạt cơ chế tái xác thực (Re-authentication):
+1. **Tiêm login_hint vào Auth URL:**
+   ```python
+   if EMAIL and "login_hint=" not in auth_url:
+       auth_url += f"&login_hint={urllib.parse.quote(EMAIL)}"
+   ```
+   Giúp Google nhận diện thẳng tài khoản cần cấp quyền, giảm tỷ lệ văng về trang chọn tài khoản chung.
+2. **Bắt sự kiện chọn tài khoản (Account Chooser):**
    - Click `[data-email*='{EMAIL}']` hoặc `text={EMAIL}`.
-3. Bắt sự kiện chấp thuận quyền:
-   - Click `#submit_approve_access` hoặc button `has-text('Tiếp tục')`, `has-text('Allow')`.
-4. Lắng nghe callback URL (`http://127.0.0.1:.../callback?code=...`) để bóc tách tham số `code`.
+3. **Bẫy Mật khẩu Tái xác thực (Password Re-auth Trap) & Chống Hang 90s:**
+   - Khi Google hiện màn hình *"Chào mừng <email> - Nhập mật khẩu của bạn"*:
+     - **Lỗi phổ biến:** Script chỉ phát hiện `has_pwd` rồi log `BỊ HỎI PASSWORD!` và đứng nhìn hết timeout 90s.
+     - **Cách xử lý đúng:** Tự động click vào ô password để kích hoạt autofill của Chrome, sau đó bấm `#passwordNext` hoặc gửi phím `Enter`.
+     - Nếu sau 2 lần thử không vượt qua (password chưa lưu hoặc dính 2FA OTP): Chụp ngay ảnh màn hình runtime `gpm_oauth_checkpoint.jpg` và thoát fail-fast ngay lập tức, CẤM ngồi chờ hết timeout 90s.
+4. **Bắt sự kiện chấp thuận quyền:**
+   - Click `#submit_approve_access`, `#identifierNext`, hoặc button `has-text('Tiếp theo')`, `has-text('Tiếp tục')`, `has-text('Allow')`.
+5. Lắng nghe callback URL (`http://127.0.0.1:.../callback?code=...`) để bóc tách tham số `code`.
 
 ### 3. Đổi Code Lấy Tokens
 Gửi POST request tới `https://oauth2.googleapis.com/token`:

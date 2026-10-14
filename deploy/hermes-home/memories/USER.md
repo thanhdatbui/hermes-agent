@@ -4,7 +4,7 @@ Dọn đĩa: duyệt trước (thư mục corrupt/lỗi xóa ngay), CẤM xóa n
 §
 Farm: nick cấm xóa/đè; SoT tiktok_tracker.db; cấm đè ava tay; Canary tự mở app & chuyển nick qua automation_core, cấm gọi user mở tay. Nuôi 4d 3 ca (bỏ ca đêm, idle dập TT & tắt màn 223); Starve 96h. Đổi mail: Hotmail sạch, ưu tiên Graph PC.
 §
-Report/Watchdog: % & tầng; khóa IP 1 dòng; cấm raw/trace dump; cấm văn vở/bao biện (vào thẳng cốt lõi); cấm báo cáo khống thị giác (bắt buộc OCR+diff thật). SILENT khi OK; sập alert đỏ exit 1.
+Giao tiếp: cấm văn vở/nói nhiều khi tìm nguồn (đưa thẳng link/kênh, ko thuyết giáo); cấm raw/trace dump; % & tầng; khóa IP 1 dòng; cấm báo khống (bắt buộc OCR/vision thật). SILENT khi OK; sập alert đỏ exit 1.
 §
 Kibe(1-80) & Admin(201-280) cào nguồn & media độc lập 100% (cấm trùng video, cấm sync chéo Niche/Hashtag). TT v47.0.3; Switcher dock; AP 40m.
 §
