@@ -225,14 +225,37 @@ Sau khi OmniRoute thực hiện exchange OAuth code và lưu vào `storage.sqlit
   - **`agy.exe`:** Là một **Command Line Interface (CLI)** thực thi đơn nhiệm (One-Shot Process). Khi nhận lệnh, nó khởi động Go runtime, suy luận, thực thi tool nội bộ của nó (AST edit, bash test), in kết quả ra stdout rồi **exit tiến trình ngay lập tức (Exit 0)**.
 - **Rào cản:** Nếu ép Hermes mỗi lượt chat lại spawn một tiến trình `agy`, Hermes sẽ mất toàn bộ khả năng tương tác với hệ thống farm (không thể tự chụp màn hình, không thể click ADB, không thể dispatch task) và độ trễ tăng vọt do mỗi lượt đều phải khởi động lại binary Go.
 
-### 2. Hai Mô Hình Tích Hợp Chuẩn:
-- **Mô hình A (Hiện tại - Khuyên dùng): "Tổng Quản & Đao Phủ"**
+### 2. Hai Mô Hình Tích Hợp Chuẩn & Quyết Định Phân Vai Cốt Lõi:
+- **Quyết định Phân vai Tối ưu (User Approved 2026-10-14):**
+  - **Coordinator (Hermes):** Giữ nguyên qua OmniRoute xoay tua dàn 21 tài khoản Google Pro. Lý do: Lưu lượng chat và điều phối Telegram/Farm của Coordinator rất nhẹ (vài chục requests/ngày), hoàn toàn dưới ngưỡng giám sát của Google. Giữ trên OmniRoute giúp Coordinator bảo toàn 100% khả năng Function Calling (ReAct Loop, ADB, Vision, Cronjob, Telegram Gateway).
+  - **Worker (Thợ code):** Đổi toàn bộ sang `ag_cli.py` (`agy.exe`). Lý do: Đây là nơi gánh 90% tải token nặng nhất, tạo ra burst traffic (đọc nhiều file, phân tích AST, diff code). Chạy Worker qua `agy.exe` Native Go BoringSSL + Sandbox độc lập + Proxy 4G riêng sẽ bảo vệ an toàn tuyệt đối cho tài khoản.
+- **Mô hình A (Hiện tại - Chuẩn vận hành): "Tổng Quản & Đao Phủ"**
   - **Hermes làm Coordinator:** Nhận alert Telegram, trực ban 24/7, quản lý Cronjob, kiểm soát farm và ADB.
-  - **Thi công Code trực tiếp:** Khi có task sửa code, Hermes Coordinator **tự gọi trực tiếp `ag_cli.py fix` mà không cần spawn Worker subagent** (tiết kiệm quota, không làm lag session vì `ag_cli.py` trả về kết quả O(1) trong 3–15s).
+  - **Thi công Code trực tiếp:** Khi có task sửa code, Hermes Coordinator **tự gọi trực tiếp `ag_cli.py fix` mà không cần spawn Subagent qua `delegate_task`** (tiết kiệm quota, tránh lỗi `ANCHOR_NOT_FOUND`, không làm lag session vì `ag_cli.py` trả về kết quả O(1) trong 15–25s).
 - **Mô hình B: "CLI-to-API Daemon" (Dành cho việc muốn Coordinator xài 100% Native TLS của agy):**
   - Dựng một Web Server nền (ví dụ Python FastAPI tại `:20130` hoặc Cockpit Local Proxy) cung cấp endpoint `/v1/chat/completions`.
   - Khi Hermes gửi request, Daemon này nhận tin nhắn và pipe vào `agy` qua profile sandbox đang rảnh, format kết quả trả về JSON/SSE cho Hermes.
-  - **Đánh đổi:** Độ trễ câu trả lời tăng thêm 2-3s mỗi turn và không streaming mượt từng chữ, nhưng đổi lại Hermes được dùng 100% BoringSSL Native của Google qua Proxy 4G.
+  - **Đánh đổi:** Mất Function Calling JSON schema chuẩn của Hermes và độ trễ câu trả lời tăng thêm 2-3s mỗi turn, không streaming mượt từng chữ.
+
+---
+
+## 8. Quy Trình Vận Hành Worker `ag_cli.py fix` (One-Touch Execution)
+
+### Lợi ích vượt trội so với Worker Subagent truyền thống:
+1. **Triệt tiêu lỗi vỡ Anchor (`ANCHOR_NOT_FOUND`):** Worker subagent thông thường dùng string matching để patch file, rất dễ đứt gãy khi file lớn hoặc code bị format lại. `agy.exe` phân tích toàn diện cây cú pháp trừu tượng (AST), hiểu cấu trúc logic để viết lại code chuẩn xác.
+2. **Khả năng tự kiểm chứng (Self-Testing Loop):** `agy.exe` tự động kích hoạt terminal nội bộ để chạy thử file/test suite. Nó chỉ trả về kết quả cho Coordinator khi code đã pass test thực tế.
+3. **Giữ sạch Context Coordinator:** Thay vì Coordinator phải đọc 10-15 lần tool calls (`read_file`, `patch`, `py_compile`), Coordinator chỉ nhận đúng bản diff/log nghiệm thu cuối cùng.
+
+### Cú pháp gọi chuẩn từ Coordinator:
+```bash
+python D:/Taadaa/tools/ag_cli.py fix "Mô tả chi tiết yêu cầu sửa/viết code..." --file "đường_dẫn_file_mục_tiêu"
+```
+*Lưu ý:* Bắt buộc chạy background với timeout tối thiểu 120s:
+`terminal(background=True, notify_on_complete=True, timeout=120)`.
+
+### Thực nghiệm kiểm chứng thực tế (Farm Device Audit Task):
+- **Yêu cầu:** Viết hàm `audit_farm_devices(devices)` vào `D:/Taadaa/tools/test_cli_runner.py` kiểm tra các tiêu chuẩn: `status != 'device'` (offline), `battery < 20 or > 90` (battery_abnormal), không chứa `Aruba` trong wifi (rogue_wifi).
+- **Kết quả:** `agy.exe` tự động nạp `acc_01`, sinh code hoàn chỉnh có Type Hints, tự viết test mẫu trong `__main__`, tự chạy terminal in `FARM_AUDIT_PASS`, trả về exit code 0 trong 25 giây. Coordinator hậu kiểm độc lập đạt 100% tính toàn vẹn.
 
 ### 3. Kỷ luật Bằng chứng Thị giác (Gate 6 Pitfall):
 - **Bẫy ảnh Checkpoint Pre-action:** Khi script tự động chụp ảnh màn hình ở bước 2FA / Password để lưu bằng chứng (`gpm_oauth_2fa_step.jpg`), ảnh này ghi nhận **hiện trường lúc ô nhập mã đang trống**.

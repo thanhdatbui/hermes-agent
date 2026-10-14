@@ -2,7 +2,7 @@ Chu kỳ 4d: Parity 96h (N1 lẻ, N2 chẵn), N3(R7,8, tối dưỡng), N4(dư�
 §
 Followed=0 cấm PASS. Admin SSH: dùng canonical D:/Taadaa/tools/admin_ssh.py (--powershell/--json); CẤM thoái thác/đầu hàng non/bịa cớ Session Isolation khi Guard block raw ssh. Auto-resume reboot: locks==0.
 §
-Strike 3 Claude CLI. AG CLI: agy.exe; Pool agy_profiles/ 429 auto-rotate. Worker: Haiku 5.5 CLI nhanh gấp 5-16x Sonnet (6-15s), 0 bẫy đạo đức farm. Coord ngốn token 30x: Coord giữ Gemini 0đ, Worker dùng Haiku Pro.
+Strike 3 Claude CLI. AG CLI: agy.exe; Pool agy_profiles/ 429 auto-rotate. Coord: Gemini qua OmniRoute (21 acc Pro 0đ, giữ tool call). Worker: Native agy CLI (ag_cli.py fix, Go TLS+4G proxy, AST+self-test).
 §
 TikTok Follow: (máy,row) độc lập; Quota 10-15/ca; Hồi phục 1&2 2 ca sạch; Canary Khỏe +10%; like 80%. Path B 'Đã fl' ko commit; slot (folder-1)%8+1. Mode 2: anchor >= 150 fl; cuộn sâu. Cron: feed/follow_watchdog.
 §
