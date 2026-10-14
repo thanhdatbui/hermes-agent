@@ -105,3 +105,19 @@ python D:/Taadaa/tools/pin_top_videos.py --machine 28 --min-views 5000 --max-pin
   3. Kích hoạt lệnh reboot ngay lập tức (`farm_preflight_daily_reset.py` hoặc `shutdown /r /t 5`).
   4. TUYỆT ĐỐI CẤM hỏi lại hay chờ User confirm lần 2. Mọi quyền thực thi L0–L2 đã được cấp sẵn!
 
+## 10. Bẫy Khởi Động TikTok từ Trạng Thái Tắt/Nền (Monkey vs am start)
+- **Hiện tượng:** Khi máy vừa khởi động lại hoặc vừa chạy xong tác vụ khác (như reg Gmail), lệnh `am start -n com.ss.android.ugc.trill/.MainActivity` thường không kéo được TikTok lên foreground mà bị kẹt tại Launcher hoặc màn hình Splash rỗng.
+- **Giải pháp dứt điểm:** BẮT BUỘC dùng lệnh `monkey` để launch intent launcher chuẩn:
+  ```bash
+  adb -s <serial> shell monkey -p com.ss.android.ugc.trill -c android.intent.category.LAUNCHER 1
+  ```
+- Chờ 3.5 giây cho app cold start xong $\to$ dump XML hoặc tap tab Hồ sơ (`bounds=[864,1794][1080,1920]`, tâm `(972, 1857)`).
+
+## 11. Chống Nói Mõm / Chống Hứa Hẹn Khi Có Tiến Trình Nền Giữ Lock (Anti-Talking-Without-Acting)
+- **Nguyên tắc hành động:** Khi phát hiện thiết bị đang có tiến trình khác giữ Device Lock (như `gmail_reg_v10.py`), CẤM TUYỆT ĐỐI hứa hẹn suông với User theo kiểu *"khoảng 1-2 phút nữa khi tiến trình xong tôi sẽ ghim..."* rồi đứng im không làm gì (khiến User bực bội: *"Là mày cài watchdog canh rồi hay mày nói mõm cho vui?"*).
+- **Kỷ luật xử lý:**
+  1. Kiểm tra trạng thái PID (`psutil.pid_exists(pid)`).
+  2. Nếu PID vừa thoát / lock vừa nhả: BẮT BUỘC thực thi hành động ngay trong cùng lượt, không giải thích dông dài.
+  3. Nếu tiến trình còn đang chạy thật: Bắt buộc đăng ký watchdog hoặc terminal background kiểm tra, không phát ngôn hứa hẹn khi chưa có cơ chế đánh thức tự động.
+
+
