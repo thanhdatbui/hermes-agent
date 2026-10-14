@@ -86,3 +86,11 @@ python D:/Taadaa/tools/pin_top_videos.py --machine 28 --min-views 5000 --max-pin
 - **Kỷ luật kiểm chứng O(1) chống cãi / chống văn vẻ:**
   * Bắn socket TCP trực tiếp kiểm tra daemon ADB: gửi `000Chost:devices` tới `127.0.0.1:5037` để đếm chính xác số thiết bị nhận diện thực tế trên ADB daemon.
   * Nếu socket không có serial đó $\implies$ Khẳng định 100% rớt kết nối USB/ADB tại cổng hoặc cáp của máy đó, không phán đoán mò hay sửa script automation.
+
+## 8. Quy Chuẩn Reboot Host Cứu ADB & Tự Động Resume Session Sau Boot
+- **Kiểm tra Device Lock trước khi Reboot (Tuyệt đối không làm gãy ca nuôi):**
+  * Quét `~/.codex/device-locks/*.json`: Nếu `active locks > 0` (thường là ca nuôi 80 máy trưa/sáng đang chạy), BẮT BUỘC cảnh báo và chờ ca hoàn tất (`active locks == 0`), tuyệt đối không reboot ngang làm gãy dở tiến trình.
+- **Bảo toàn và Tự Động Resume Session (Zero-Chat Auto-Resume):**
+  * Gọi hàm `preserve_in_flight_sessions` trong `farm_preflight_daily_reset.py` để đóng dấu `resume_pending = True` cho topic Telegram hiện tại trong `SessionDB` và xóa bỏ `.clean_shutdown`.
+  * Sau khi host PC hoàn tất reboot và AutoAdminLogon nạp Hermes Gateway, bot sẽ tự động được đánh thức trong chính topic đó, kiểm tra lại trạng thái kết nối thiết bị và tiếp tục thực thi task ghim video mà không cần người dùng phải gõ lại tin nhắn nhắc việc.
+
