@@ -296,3 +296,29 @@ Sau đợt thẩm định độc lập từ Claude Haiku CLI (`claude -p --model
 - `profiles_config.json` hỗ trợ trường `"enabled": false`.
 - Khi một proxy hoặc tài khoản gặp lỗi tạm thời (ví dụ: `acc_05` dính proxy Bad Gateway), hệ thống chỉ cần đặt `enabled: false` để tạm rút profile ra khỏi pool mà không cần xóa thư mục hay thông tin xác thực. Pool tiếp tục vận hành mượt mà với các tài khoản READY còn lại.
 
+---
+
+## 10. Kỷ luật Closeout Gate & Observability cho Antigravity CLI Pool
+
+Khi đưa `ag_cli.py` và các module hỗ trợ vào quy trình kiểm toán tự động (`closeout_gate.py`):
+
+### 1. Structured Telemetry & Tracing:
+- Không chỉ dùng `print()` log stdout đơn thuần, `ag_cli.py` tích hợp hàm `emit_telemetry(event, data, correlation_id)`.
+- Ghi log JSONL có cấu trúc cho các sự kiện trọng yếu:
+  * `profile_dispatched`: Ghi nhận tên profile, model và timestamp bắt đầu thực thi.
+  * `quota_failover`: Ghi nhận lý do 429, thời gian cooldown và profile kế tiếp được chọn.
+  * Cho phép tracing và đo lường tỷ lệ xoay tua thực tế giữa các tài khoản farm.
+
+### 2. Kiểm thử Tương tranh & Tránh Va chạm (Concurrency Contention):
+- Đối với hệ thống có nhiều session chạy đồng thời, bắt buộc phải có test case kiểm thử race condition:
+  * Giả lập 2 tiến trình gọi `acquire_profile_lock()` trong cùng một tích tắc.
+  * Khẳng định đúng 1 tiến trình trả về `True` (chiếm lock thành công) và tiến trình thứ 2 trả về `False` (bỏ qua bốc profile kế tiếp).
+  * Bảo đảm tính đúng đắn của cờ nguyên tử `os.O_CREAT | os.O_EXCL` trên hệ điều hành Windows.
+
+### 3. Vận Hành Không Phụ Thuộc Hardcode (Dynamic Environment Discovery):
+- Mọi thông số nhạy cảm và đường dẫn vận hành (GPM PID, Target Email, Proxy URL, API Endpoints, Profiles Dir) đều phải được bọc qua `os.environ.get(KEY, default)`:
+  * `AGY_PROFILES_DIR`: Tùy biến thư mục profiles sandbox.
+  * `GPM_API_URL` & `OMNIROUTE_API_URL`: Cho phép chuyển đổi endpoint khi chạy trên các máy farm khác nhau.
+- Tích hợp lớp kiểm tra hợp lệ (`validate_credentials`) trước khi ghi token và áp dụng cơ chế rollback file tạm (`.tmp` -> `replace`) để tránh hỏng dữ liệu cấu hình khi có sự cố bất ngờ.
+
+

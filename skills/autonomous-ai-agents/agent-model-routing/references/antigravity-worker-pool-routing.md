@@ -63,3 +63,10 @@ cooldown profiles          calls ASC)
   - Isolated `AppData/Roaming`, `AppData/Local`, and `Temp` subdirectories.
   - Dedicated 4G proxy injected into `HTTP_PROXY` and `HTTPS_PROXY` environment variables.
 - Execution uses native Go BoringSSL TLS in `agy.exe`, bypassing web proxy TLS fingerprints.
+
+### Invariant 5: Structured Telemetry, Dynamic Configuration & Pre-write Validation
+- **Structured JSONL Telemetry (`emit_telemetry`)**: Emits structured JSON events (`profile_dispatched`, `quota_failover`) with `correlation_id` and timestamp to trace execution lifecycles and monitor pool rotation across farm profiles.
+- **Dynamic Environment Discovery**: Configuration relies on `os.environ.get(...)` with sensible fallbacks (`AGY_PROFILES_DIR`, `GPM_API_URL`, `OMNIROUTE_API_URL`, `GPM_PID`), eliminating fragile hardcoded paths, ports, or credentials.
+- **Pre-write Validation & Rollback**: Validates credentials (`validate_credentials`) before provisioning and uses atomic temporary-file replacement (`.tmp` -> `replace`) to prevent corrupt profile states during unexpected interruptions.
+- **Explicit Concurrency Testing**: The test suite includes multi-process contention verification (`test_profile_lock_two_process_contention`) asserting atomic single-winner locking under race conditions.
+
