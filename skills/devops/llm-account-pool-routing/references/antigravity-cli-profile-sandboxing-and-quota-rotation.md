@@ -55,10 +55,16 @@ python D:/Taadaa/tools/ag_cli.py init-profile acc_01 --copy-current
 ```
 
 ### 2. Đăng nhập tài khoản Google cho Sandbox:
-```bash
-# Set USERPROFILE trỏ vào đúng sandbox rồi chạy agy login
-USERPROFILE="D:/Taadaa/agy_profiles/acc_02" agy login
-```
+- **Cách 1 (Thủ công trên máy):**
+  ```bash
+  # Set USERPROFILE trỏ vào đúng sandbox rồi chạy agy login
+  USERPROFILE="D:/Taadaa/agy_profiles/acc_02" agy login
+  ```
+- **Cách 2 (Tự động hóa qua GPM Group 10 + Playwright CDP):**
+  - Mở profile GPM tương ứng qua API `:19995` (đã có sẵn session Google và Proxy 4G di động).
+  - Kết nối Playwright CDP tự động click duyệt OAuth cho Antigravity Client ID (`1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com`).
+  - Đổi mã `code` lấy `refresh_token` & `access_token` rồi ghi thẳng vào sandbox `D:/Taadaa/agy_profiles/acc_XX/.gemini/oauth_creds.json`.
+  - Chi tiết quy trình xem tại: `devops/gpm-account-pool-automation` -> `references/gpm-oauth-antigravity-sandbox-provisioning.md`.
 
 ### 3. Kiểm tra trạng thái Pool:
 ```bash
