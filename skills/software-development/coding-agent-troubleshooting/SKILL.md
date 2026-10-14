@@ -376,11 +376,13 @@ Antigravity CLI (`agy`) vs IDE GUI launcher trap (`antigravity-ide.cmd chat`), m
 When attempting to hook Antigravity as an external CLI worker for Hermes, Claude Code, or Codex, never use `antigravity-ide.cmd chat -m agent`. That executable belongs to the desktop IDE (VS Code GUI fork) and only dispatches IPC to open the chat panel, exiting 0 immediately without waiting or writing output to stdout. It cannot function as an automated headless worker.
 
 ### 2. The Headless Antigravity CLI (`agy`)
-The actual headless coding agent CLI provided by Google is `agy`. If `which agy` fails, the CLI is not yet installed on the host (install via Google's official install script: `https://antigravity.google/docs/cli/install` and run `agy login`).
-When installed, call it like any headless CLI worker:
+The actual headless coding agent CLI provided by Google is `agy`. If `which agy` fails, download the Windows native binary (`cli_windows_x64.exe`) from Google's manifest (`https://antigravity-cli-auto-updater-974169037036.us-central1.run.app/manifests/windows_amd64.json`) and save as `agy.exe` in a PATH directory (e.g. `C:\Users\Kibe\AppData\Local\Programs\Antigravity IDE\bin\agy.exe`). Existing IDE/Google Cloud Code auth is inherited automatically.
+
+⚠️ **Flag-Ordering Trap**: Always place `--dangerously-skip-permissions` and `--model` BEFORE `-p`:
 ```bash
-agy -p "<task>" --model "Gemini 3.6 Flash (Low)" --dangerously-skip-permissions
+agy --dangerously-skip-permissions --model "gemini-3.8-flash-high" -p "<task>"
 ```
+Taadaa farm production bridge: `python D:/Taadaa/tools/ag_cli.py {ask,fix,models}`.
 See `references/antigravity-cli-agy-vs-ide-wrapper.md` for full comparison matrix and troubleshooting details.
 
 ## OpenCode CLI — Windows Timeout, Encoding & Workspace Traps
