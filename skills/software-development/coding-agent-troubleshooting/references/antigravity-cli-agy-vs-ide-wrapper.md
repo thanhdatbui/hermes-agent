@@ -55,3 +55,8 @@ agy --dangerously-skip-permissions --model "gemini-3.8-flash-high" -p "<task>"
   ```bash
   python -c "import json; print(json.load(open(r'C:\Users\Kibe\.gemini\google_accounts.json'))['active'])"
   ```
+
+### 5. Cockpit Tools vs agy CLI Quota Isolation
+- **Codex CLI vs agy CLI in Cockpit**: Cockpit Tools (`cockpit-cliproxy.exe` port `60818`) performs automated token-takeover and pool rotation for Codex CLI via `~/.codex/auth.json`. However, it does NOT hook or proxy `agy.exe`.
+- **Instance Separation**: Cockpit Tools manages Antigravity desktop IDE profiles via `instances.json` and `current_account.json` (e.g. `thanhdatbui19951@gmail.com`). Switching accounts inside Cockpit Tools GUI does NOT change the account used by `agy.exe`.
+- **Decoupled Quotas**: `agy.exe` directly reads `~/.gemini/oauth_creds.json` (e.g. `jinrakal@gmail.com`). To change the account used by `agy.exe`, run `agy login` from terminal, or route through OmniRoute (`:20129`) if pool rotation across multiple accounts is needed.

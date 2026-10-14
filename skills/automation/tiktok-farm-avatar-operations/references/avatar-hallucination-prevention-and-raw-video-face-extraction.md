@@ -119,3 +119,40 @@ Trước khi soạn bất kỳ tin nhắn nào cho User:
   2. Kiểm tra nội dung video đầu tiên trong folder $F_{src}$ ghi ở Excel. Nếu Excel ghi niche khác (ví dụ: `Phụ kiện`) và video chứa sản phẩm/phụ kiện không khớp với kênh: BẮT BUỘC DỪNG CROP NGAY.
   3. Quét tìm đúng folder video gốc thực tế tương ứng với niche và các tiêu đề đó (ví dụ: folder 113) rồi mới trích xuất frame từ `.avatar_work/representative_frames/` hoặc video gốc.
 
+---
+
+## 6. Lỗ Hổng "Gate Thủ Tục" & Kiểm Chứng Thị Giác Độc Lập Qua Proxy :20129
+- **Cạm bẫy mù thị giác của mô hình điều phối**:
+  - Khi runtime gắn screenshot vào context qua `browser_vision`, nếu Coordinator model không giải mã được native image tokens, model sẽ **bịa đặt nội dung (hallucination)** dù vẫn thỏa mãn điều kiện hình thức của Safety Gate (`called browser_vision = True`).
+  - Hậu quả: Gửi ảnh em bé hoặc áo tập gym nhưng lại mô tả là bác sĩ mỉm cười thân thiện, khiến User bức xúc nghiêm trọng.
+- **Quy trình kiểm chứng thị giác bắt buộc (Semantic Grounding)**:
+  CẤM dựa vào cảm tính hoặc text mô tả không có căn cứ. BẮT BUỘC chạy script Python độc lập gọi proxy nội bộ `:20129` model `ag-gemini-pool-3` để lấy mô tả khách quan in ra stdout trước khi gửi:
+  ```python
+  import urllib.request, json, base64
+
+  def verify_image_content(img_path, question="Describe what is inside the green circle in 1 sentence."):
+      with open(img_path, "rb") as f:
+          b64 = base64.b64encode(f.read()).decode()
+      payload = {
+          "model": "ag-gemini-pool-3",
+          "stream": False,
+          "messages": [{
+              "role": "user",
+              "content": [
+                  {"type": "text", "text": question},
+                  {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
+              ]
+          }]
+      }
+      req = urllib.request.Request(
+          "http://127.0.0.1:20129/v1/chat/completions",
+          data=json.dumps(payload).encode(),
+          headers={"Content-Type": "application/json"}
+      )
+      with urllib.request.urlopen(req, timeout=10) as r:
+          res = json.loads(r.read().decode())
+          return res["choices"][0]["message"]["content"].strip()
+  ```
+  - Ảnh resize tối đa 512×512 để request phản hồi tức thì (<2s), tránh timeout.
+  - Chỉ khi stdout xác nhận đúng đối tượng mục tiêu (đúng người, đúng trang phục, đúng bối cảnh), Coordinator mới được phép đính kèm `MEDIA:`.
+
