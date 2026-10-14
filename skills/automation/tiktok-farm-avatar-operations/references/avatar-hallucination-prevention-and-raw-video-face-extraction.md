@@ -198,4 +198,32 @@ Trước khi soạn bất kỳ tin nhắn nào cho User:
   - Triển khai tại `D:/Taadaa/.claude/hooks/media_vision_gate.py` và đăng ký trong `D:/Taadaa/.claude/settings.json`.
   - Mỗi khi kết thúc lượt trả lời, Hook kiểm tra mọi thẻ `MEDIA:<path>`. Nếu path đó chưa từng được mở và kiểm tra qua lệnh đọc ảnh có vision thật (`type: image`) trong phiên $\rightarrow$ **Block lượt xuất tin nhắn ngay lập tức**, triệt tiêu hoàn toàn khả năng gửi ảnh mù hoặc nói dối đã soi ảnh.
 
+---
+
+## 10. Xử Lý Lỗi [AVATAR_UPLOAD_MENU_MISSING] Do App Văng Về Home Launcher & Quy Trình Khôi Phục Foreground
+- **Triệu chứng & Cạm bẫy**:
+  - Runner upload avatar báo lỗi: `[AVATAR_UPLOAD_MENU_MISSING] ENSURE_AVATAR: Không tìm thấy Tải ảnh lên`.
+  - Kiểm tra file dump `avatar_menu_dump.xml` hoặc `popup_before.xml` thấy toàn bộ cây UI thuộc `package="com.sec.android.app.launcher"` (Samsung Home Launcher), hoàn toàn không có node nào của `com.ss.android.ugc.trill` (TikTok).
+- **Nguyên nhân gốc rễ**:
+  - Sau khi push file avatar vào `/sdcard/Pictures/` và phát broadcast `MEDIA_SCANNER_SCAN_FILE`, thiết bị (nhất là dòng máy Ram 4GB cũ như Samsung S7) bị áp lực RAM hoặc ANR khiến TikTok bị đẩy về background hoặc bị OS kill ngầm.
+  - Script automation re-tap theo tọa độ avatar circle cố định (ví dụ: `(540, 400)` hoặc `(75, 150)`) mà không re-verify foreground package trước khi tap. Cú tap rơi vào icon màn hình Home Launcher, khiến UI dump không thể tìm thấy nút "Tải ảnh lên" / "Upload photo", dẫn tới báo lỗi giả `AVATAR_UPLOAD_MENU_MISSING`.
+- **Quy trình chẩn đoán & khôi phục foreground bắt buộc**:
+  1. **Kiểm tra trạng thái focus thật**:
+     ```bash
+     adb -s <serial> shell dumpsys window | grep -E "mCurrentFocus|mFocusedApp"
+     ```
+  2. **Đánh thức và mở khóa màn hình nếu bị sleep**:
+     - Gửi `input keyevent 224` (KEYWAKE) và swipe mở khóa: `input swipe 540 1600 540 400 300`.
+  3. **Khởi động lại TikTok tin cậy qua Monkey Launcher**:
+     ```bash
+     adb -s <serial> shell monkey -p com.ss.android.ugc.trill -c android.intent.category.LAUNCHER 1
+     ```
+     *(Tránh dùng `am start -n ...MainActivity` trực tiếp vì TikTok thường xuyên đổi main activity class gây lỗi "Activity class does not exist").*
+  4. **Đối soát Profile & Thực hiện flow đổi ảnh**:
+     - Kiểm tra tab Hồ sơ hiển thị đúng username mục tiêu (tránh chạm nhầm nick khác).
+     - Vào Sửa hồ sơ $\rightarrow$ Bấm avatar $\rightarrow$ Bấm "Tải ảnh lên" $\rightarrow$ Chọn ảnh trong album "Pictures" $\rightarrow$ Bấm "Tiếp" (lưu ý nút Tiếp ở mép dưới $y \approx 1920$ có thể cần tap ở $y \approx 1895-1900$).
+     - **BẮT BUỘC BỎ TICK**: Tại màn hình Cắt ảnh, kiểm tra checkbox "Đăng ảnh này lên Nhật ký" — bắt buộc để trống (không tick) trước khi bấm "Lưu".
+     - Chụp ảnh màn hình Profile xác nhận avatar mới hiển thị thực tế trước khi đánh dấu hoàn tất.
+
+
 
