@@ -461,7 +461,9 @@ Chi tiết cross-folder channel deduplication & persistent claims cho gai xinh p
   - `yt-dlp` bản mới (2026.08+) mặc định dùng `visionos player API` dẫn đến văng lỗi `Video unavailable` giả.
   - **Khắc phục**: Thêm `"extractor_args": {"youtube": {"player_client": ["android"]}}` vào `ydl_opts` để ép dùng Android player API.
   - **Trích xuất Phụ Đề / Captions không cần tải Media**: Thêm `"skip_download": True` cùng `"extractor_args": {"youtube": {"player_client": ["android"]}}` cho phép bypass bot-check / CAPTCHA và đọc trực tiếp phụ đề tự động (`vi-orig`, `vi`, `en`) dạng `json3` mà không cần cookie phiên hay Camoufox.
-  - **Metadata không chặn**: Endpoint public oEmbed `https://www.youtube.com/oembed?url=<url>&format=json` lấy tiêu đề, tác giả, thumbnail siêu tốc 0.2s mà không bao giờ bị chặn.
+  - **Metadata & Chapter Outline không chặn (Zero-Dependency Python urllib)**:
+    - *oEmbed*: `https://www.youtube.com/oembed?url=<url>&format=json` lấy tiêu đề, tác giả, thumbnail siêu tốc 0.2s mà không bao giờ bị chặn.
+    - *Innertube Player API (lấy full shortDescription + chapters/timestamps)*: `POST https://www.youtube.com/youtubei/v1/player` với JSON body `{"videoId": "<id>", "context": {"client": {"clientName": "WEB", "clientVersion": "2.20240101.00.00", "hl": "vi", "gl": "VN"}}}`. Trả về `videoDetails.title`, `videoDetails.shortDescription` (chứa toàn bộ timeline chapters, mô tả video) mà không cần cài đặt yt-dlp, browser hay cookies.
   - Khi IP bị YouTube rate-limit ("rate-limited by YouTube for up to an hour"), xoay qua cổng **MikroTik LAN PPPoE proxy pool (`192.168.110.2:10001..10035` với auth `admin@1:admin@1`)** để lấy IP dân cư nội bộ độ trễ 0.01s, tốc độ tải 10–26 MB/s.
   - Cài đặt `deno` (`pip install deno`) để cung cấp JS runtime tự động cho yt-dlp.
   - Chi tiết xem: `references/youtube-android-client-and-mikrotik-pool-fix.md`, `references/youtube-captions-android-client-without-download.md` (trích xuất phụ đề/captions json3 không cần tải media hay cookies), và `references/youtube-transcript-and-metadata-botcheck-bypass.md`.
