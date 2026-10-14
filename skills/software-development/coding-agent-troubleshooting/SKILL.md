@@ -369,6 +369,7 @@ Codex CLI on OmniRoute (:20129) & 9Router (:20128) GPT Sol routing (wire_api="re
 Pytest cache contention (Errno 13), foreground timeout accumulation & anti-hang pattern: `references/pytest-cache-and-timeout-anti-hang-pattern.md`.
 Claude CLI quota exhaustion, worker subagent delegation & Windows directory junction fallback: `references/claude-cli-quota-exhaustion-and-junction-fallback.md`.
 Antigravity CLI (`agy`) vs IDE GUI launcher trap (`antigravity-ide.cmd chat`), missing binary diagnostics, and headless worker patterns: `references/antigravity-cli-agy-vs-ide-wrapper.md`.
+Monolith thin-slice refactoring pattern & Claude CLI model alias resolution (`--model haiku`): `references/monolith-thin-slice-surgery-and-haiku-alias.md`.
 
 ## Antigravity CLI (`agy`) — Headless Subagent vs IDE GUI Wrapper Trap
 
@@ -577,6 +578,25 @@ claude -p "task" --permission-mode bypassPermissions
 # or
 claude -p "task" --dangerously-skip-permissions
 ```
+
+### Claude Code CLI: Model Alias Pitfall ('haiku' vs 'claude-haiku-5-5')
+
+When calling Claude Code CLI via `--model`:
+- Passing unaliased/extended model IDs such as `--model claude-haiku-5-5` triggers CLI catalog warnings:
+  `"claude-haiku-5-5" isn't described by this version's model catalog; update Claude Code, or map it with behavesAs on a modelPicker row... Warning: Advisor disabled — base model 'claude-haiku-5-5' has no advisor rank...`
+- **Fix**: Use the standard CLI model alias: `--model haiku` (or `sonnet`, `opus`). It resolves directly to the active version in Claude Code without startup warning or window enforcement fallbacks.
+
+### Monolith Thin-Slice Surgery: Coordinator Contract + Haiku CLI vs Heavy Model Trap
+
+When refactoring large monoliths (>1.500 lines, e.g. `download_by_niche.py`):
+- **Heavy Model Trap**: Asking Sonnet or Opus to "refactor this monolith" open-endedly triggers broad exploratory turns, huge token spend, and multi-hundred-line diffs that violate O(1) surgery gates and get rejected by `closeout_gate.py`.
+- **Coordinator + Haiku Pattern**:
+  1. Coordinator identifies the exact slice boundary and writes the isolated target module (e.g. `scripts/downloader/proxy.py`).
+  2. Coordinator drafts an exact O(1) contract: replace local definitions with imports.
+  3. Dispatch to fast **Haiku CLI** (`haiku_worker.py --model haiku` or `claude -p --model haiku --dangerously-skip-permissions`).
+  4. Haiku executes the surgery in 10–15s without touching unrelated code.
+  5. Run focused unit test + regression test suite immediately (`pytest tests/test_downloader_proxy.py` & `pytest tests/test_download_by_niche.py`).
+- **Result**: Zero quota burnout, clean diff (<120 lines total reduction), and 100% test pass on live production code.
 
 ## Dispatch Fallback Pattern
 

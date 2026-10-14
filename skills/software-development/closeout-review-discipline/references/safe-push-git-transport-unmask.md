@@ -22,6 +22,7 @@ Nếu cố unmask bằng git config local, Git tiếp tục fail do không tìm 
 python D:/Taadaa/tools/closeout_gate.py --repo <repo_dir> --files <target_files> --push --json-output
 ```
 - Khi verdict đạt `APPROVED (score >= 85)`, Gate sẽ **tự động gọi `safe_push` đẩy thẳng commit lên origin** và in: `[Closeout Auto-Push] Push origin <branch> thành công.`
+- Nếu commit đã tạo trước đó chưa có audit log, chạy `python D:/Taadaa/tools/closeout_gate.py --repo <repo> --base HEAD~1 --files <targets> --push --json-output` để Gate vừa nghiệm thu commit vừa kích hoạt auto-push thông suốt.
 - Nếu push lỗi hoặc chưa đủ điều kiện, Gate văng exit 1 và in thông báo lỗi rõ ràng.
 - Coordinator không cần phải chạy git push thủ công bằng tay, triệt tiêu nguy cơ quên push.
 
@@ -77,9 +78,11 @@ Báo cáo kết quả." --allowedTools "Bash" --dangerously-skip-permissions --m
      Hai dòng SHA trả về phải **TRÙNG KHỚP 100%**. Nếu xuất hiện bất kỳ chuỗi `[ahead N]` nào -> Task chưa hoàn tất, tuyệt đối không được báo Done.
 
 ## Kỷ Luật Chốt Phiên Bắt Buộc Push (Session Close Invariant)
-1. **Remediation Loop:** Khi Closeout Gate trả về `< 85` (REJECTED), đây là lệnh **TIẾP TỤC SỬA**, tuyệt đối CẤM dừng lại báo BLOCKED hay buông xuôi báo cáo dở dang. Phải bám đuổi đọc `key_findings` của Sol Reviewer, sửa code/test cho tới khi đạt $\ge 85$ (`APPROVED`).
-2. **Bắt Buộc Push:** Khi Gate đã `APPROVED (>= 85)`:
+1. **Remediation Loop (Cấm Tự Ý Dừng Lại Khi < 85):**
+   - Khi Closeout Gate trả về `< 85` (REJECTED), đây là mệnh lệnh **BẮT BUỘC TIẾP TỤC VÒNG LẶP SỬA CODE/TEST**, tuyệt đối CẤM dừng lại báo BLOCKED hay buông xuôi kết thúc phiên. Phải bám đuổi đọc `key_findings` của Sol Reviewer, sửa code/test cho tới khi đạt $\ge 85$ (`APPROVED`).
+   - *Cảnh báo bẫy nhận thức:* Câu chữ trong quy tắc "Nếu REJECTED hoặc điểm < 85: DỪNG LẠI NGAY, TUYỆT ĐỐI CẤM PUSH" mang ý nghĩa duy nhất: **CẤM PUSH LÊN REMOTE KHI CHƯA QUA GATE**, TUYỆT ĐỐI KHÔNG ĐƯỢC ngộ nhận thành "dừng phiên, buông tay không sửa nữa"!
+2. **Bắt Buộc Push & Đối Soát Xong Mới Báo Done:** Khi Gate đã `APPROVED (>= 85)`:
    - Tự động `git commit`.
-   - **BẮT BUỘC gọi `safe_push.py` hoặc Claude CLI để đẩy commit lên remote**.
+   - **BẮT BUỘC dùng cờ `--push` / `--auto-push` trong `closeout_gate.py` hoặc gọi `safe_push.py` / Claude CLI để đẩy commit lên remote ngay lập tức**.
+   - **CẤM TUYỆT ĐỐI gửi báo cáo Chốt phiên / Báo Done khi mới commit ở local mà chưa push remote**: Phải có bằng chứng push exit 0 hoặc đối soát remote SHA xong xuôi mới gửi báo cáo, tuyệt đối không để User phải nhắc "Push chưa".
    - Kiểm tra đối soát `git status -uno` hoặc `git rev-parse HEAD origin/<branch>` xác nhận HEAD cục bộ và remote đã đồng bộ hoàn toàn.
-   - CẤM TUYỆT ĐỐI dừng lại ở bước commit mà không push lên remote!
