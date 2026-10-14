@@ -18,7 +18,11 @@ Khi dispatch Worker thực hiện task EDIT / FIX:
 ### Bẫy 2: Thiếu thẻ FILE tuyệt đối (`EDIT_MISSING_FILE` & `PATH_NOT_ABSOLUTE` & `MISSING_TASK_KIND`)
 - **Lỗi thực tế 1:** `EDIT_MISSING_FILE: Task EDIT bắt buộc có 'FILE: <đường_dẫn_tuyệt_đối>' (SCOPE LOCK MISSING TARGET FILE)`.
 - **Lỗi thực tế 2:** `PATH_NOT_ABSOLUTE: '- D:\OneDrive\TaadaaData\kibe\Tik4.xlsx' không phải đường dẫn tuyệt đối`.
-- **Lỗi thực tế 3:** `MISSING_TASK_KIND: Bắt buộc khai báo 'TASK_KIND: EDIT' hoặc 'TASK_KIND: INVESTIGATE' trong context (SCOPE LOCK MISSING TARGET FILE)`.
+- `MISSING_TASK_KIND: Bắt buộc khai báo 'TASK_KIND: EDIT' hoặc 'TASK_KIND: INVESTIGATE' trong context (SCOPE LOCK MISSING TARGET FILE)`.
+- *Lưu ý về TASK_KIND:* Có 3 task kinds hợp lệ:
+  * `TASK_KIND: EDIT` (bắt buộc kèm `FILE: ...`, `OLD_STRING: <<< ... >>>`, `NEW_STRING: <<< ... >>>`).
+  * `TASK_KIND: CREATE` (dùng khi tạo file mới hoàn toàn, KHÔNG yêu cầu `OLD_STRING`/`NEW_STRING`, nhưng vẫn bắt buộc có `FILE: ...` và `FOCUSED_TEST: ...`).
+  * `TASK_KIND: INVESTIGATE` (dùng cho task chỉ đọc/khảo sát, cấm sửa code).
 - **Lỗi thực tế 4:** `PATH_NOT_ABSOLUTE: '- Goal: Ghi đè toàn bộ nội dung file D:\Taadaa\tools\...' không phải đường dẫn tuyệt đối`.
 - **Nguyên nhân:**
   - Mọi task dispatch bắt buộc khai báo rõ ràng `TASK_KIND: EDIT` hoặc `TASK_KIND: INVESTIGATE` ngay đầu context.
@@ -75,7 +79,7 @@ Khi dispatch Worker thực hiện sửa code (`TASK_KIND: EDIT`), Coordinator Gu
 3. `OLD_STRING: <<< ... >>>` (Đoạn code gốc cần thay thế, bọc trong triple angle brackets `<<<` và `>>>`).
 4. `NEW_STRING: <<< ... >>>` (Đoạn code mới thay thế, bọc trong triple angle brackets `<<<` và `>>>`).
 5. `DIFF_BUDGET`: Tổng số dòng thay đổi dự tính BẮT BUỘC `<= 30 dòng`. Nếu vượt quá, guard sẽ báo `DIFF_BUDGET_EXCEEDED` và reject; phải chẻ nhỏ task thành các sub-task O(1).
-6. `FOCUSED_TEST`: Bắt buộc đúng cú pháp chuẩn:
+6. `FOCUSED_TEST`: Bắt buộc đúng cú pháp chuẩn (nếu dùng bare `pytest ... -v` sẽ bị Guard reject ngay với `INVALID_FOCUSED_TEST_FORMAT`):
    - Dạng pytest: `FOCUSED_TEST: python -m pytest <file.py>::<test_node> -q` (LƯU Ý: `<file.py>` là đường dẫn tương đối, `<test_node>` là single test function/method identifier, CẤM lồng class `Class::test` vì regex parser chỉ nhận 1 cặp `::` với 1 identifier; không bọc nháy kép).
      * **BẪY KHO CÓ KHOẢNG TRẮNG (SPACES IN REPO PATH — 2026-10-14):** Với các repo có khoảng trắng trong tên thư mục (như `D:/Taadaa/tiktok-luot nuoi acc`), nếu truyền đường dẫn tuyệt đối (kể cả có nháy kép), regex `\S+` của Coordinator Guard sẽ tokenize trượt và văng `INVALID_FOCUSED_TEST_FORMAT`. BẮT BUỘC `cd` vào thư mục repo trước và chỉ truyền đường dẫn tương đối sạch không có khoảng trắng (ví dụ `FOCUSED_TEST: python -m pytest tests/test_runner.py::test_foo -q`).
    - Hoặc dạng compile: `FOCUSED_TEST: python -m py_compile <file.py>` (đường dẫn file tương đối, ví dụ `python -m py_compile scripts/target.py`).
