@@ -108,7 +108,7 @@ Hệ thống giám sát vận hành Farm bắt buộc bao phủ đầy đủ 3 t
     - Ca 2 (Trưa: 12h & 14h): **Row 8** (Cày).
     - Ca 3 (Tối: 18h & 20h): **Dưỡng sinh nick yếu** (Tắt follow, lướt feed + up 1 video).
   * **Ngày 3 (Day 3 - Nghỉ xả tải toàn Farm):**
-    - Cả 3 Ca (Sáng, Trưa, Tối): **Dưỡng sinh nick yếu** (bao gồm cả nick ăn nhả follow lẫn nick non chưa đủ 10 video).
+    - Cả 3 Ca (Sáng, Trưa, Tối): **Dưỡng sinh nick yếu** (bao gồm cả nick ăn nhả follow lẫn nick non chưa đủ 10 video) qua thuật toán chọn Row động `healing_selector.py`.
     - **Tắt 100% follow** (`_follow_rate = 0`), thuần túy lướt feed rửa trust + đăng 1 video/ngày nếu nick chưa đăng.
 - **Tính toán học đã chứng minh (Mathematical Invariant):**
   - Mọi Row chính từ Row 1 đến Row 8 quay lại **CHÍNH XÁC 96 GIỜ** ở mọi chu kỳ:
