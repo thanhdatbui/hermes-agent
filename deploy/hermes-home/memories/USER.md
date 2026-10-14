@@ -10,7 +10,7 @@ Kibe(1-80) & Admin(201-280) cào nguồn & media độc lập 100% (cấm trùng
 §
 Ghim video: pin_top_videos.py (Share->Ghim, min 1000 view); DB ko lưu view, đọc live ATX; re-dump sau mỗi lần ghim chống bẫy đảo lưới.
 §
-Worker: AG Gemini default (cấm fallback Luna khi chưa cạn quota; chủ động fix script qua Worker contract, cấm viện cớ đóng băng/báo BLOCKED).
+Worker: Haiku 5.5 CLI (haiku_worker.py) hoặc AG Gemini (ag_cli.py); cấm fallback Luna khi chưa cạn; Coord bắt buộc giữ model Hermes 24/7 (cấm đưa CLI làm Coord).
 §
 Hashtag sync: F_src=(Slot-1)*80+m_idx, SoT 'Hashtag theo Folder'; nick fix tay khóa manual_avatar_protected_folders.json cấm sync đè.
 §

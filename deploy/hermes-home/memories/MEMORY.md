@@ -1,8 +1,8 @@
 Chu kỳ 4d: Parity 96h (N1 lẻ, N2 chẵn), N3(R7,8, tối dưỡng), N4(dưỡng 0fl+up). Starve 108h. CẤM xóa cooldown. Dưỡng động: healing_selector.py chọn row theo p_fail(100)+p_young(20); S2 bám S1; cấm kẹp ca; N4 3 ca 3 row; cache 60s; audit schema 1.0 + rotate 5MB.
 §
-Followed=0 cấm PASS. Admin SSH: dùng canonical D:/Taadaa/tools/admin_ssh.py (--powershell/--json); CẤM thoái thác/đầu hàng non/bịa cớ Session Isolation khi Guard block raw ssh. Auto-resume reboot: locks==0.
+Followed=0 cấm PASS. Admin SSH: dùng D:/Taadaa/tools/admin_ssh.py (--powershell/--json); CẤM thoái thác khi Guard block raw ssh. Auto-resume reboot: locks==0.
 §
-Strike 3 Claude CLI. AG CLI: agy.exe (ag_cli.py fix); Pool 21 acc Pro + Proxy 4G, LRU + Atomic Lock (os.O_EXCL). Coord: Gemini qua Omni (21 acc Pro, Sticky Session). Worker: agy CLI (Go TLS sạch, AST+self-test).
+AG CLI: ag_cli.py (5 acc Pro 4G acc_02..07, acc_01 no-proxy off, taskkill /F /T+DEVNULL chống kẹt pipe, 2-3s). Claude CLI: tắt advisorModel:'off' (tránh sonnet ngâm 100s/refusal); Haiku 5.5 (haiku_worker.py) 6-15s O(1) rẻ quota.
 §
 TikTok Follow: (máy,row) độc lập; Quota 10-15/ca; Hồi phục 1&2 2 ca sạch; Canary Khỏe +10%; like 80%. Path B 'Đã fl' ko commit; slot (folder-1)%8+1. Mode 2: anchor >= 150 fl; cuộn sâu. Cron: feed/follow_watchdog.
 §
