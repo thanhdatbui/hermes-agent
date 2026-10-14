@@ -18,14 +18,15 @@ Lead with deltas and actions, not a verbatim restatement of every metric. Explic
 1. **GPM PC Lifecycle (`hotmail-gpm-lifecycle-6h-report`, job `61570a1e37b1` → `telegram:-5583559484`)**:
    - Scope: Hotmail accounts in GPMLogin browser profiles on PC (`HOTMAIL_LOGIN` → `CHATGPT_REG` → `WAIT_7D` → `CHANGE_INFO` → `DONE`).
    - Reporting cadence: Every 6 hours (`0 */6 * * *`).
-   - Stage visibility: In newer revisions, `HOTMAIL_LOGIN` is aggregated or suppressed from top headline blocks when virtually all farm accounts have completed it, surfacing primarily when accounts hit `BLOCKED` or `QUARANTINE`.
+   - Delivery destination: Delivered specifically to the dedicated Hotmail Telegram channel/topic (`telegram:-5583559484`), NOT to general Farm Alerts (`-5373649734`) or user DM threads.
+   - Stage visibility pitfall: In revisions where `HOTMAIL_LOGIN` block is omitted/suppressed from headline metrics, users cannot see Hotmail login progress even though hundreds of accounts may be in `HOTMAIL_LOGIN` (e.g. after removing the token-skip side effect). The 6h report must maintain explicit `HOTMAIL_LOGIN` counts (Login OK, PENDING, BLOCKED 48h cooldown).
 2. **Physical Phone Farm Outlook App (`post_noon_chain_watchdog` → `telegram:-5373649734` & `daily-tiktok-farm-tracker`)**:
    - Scope: Hotmail/Outlook accounts logged into the Outlook Android app on physical farm devices (`app_logged_in = 1` in `gmail_clean_v2.xlsx`).
    - Reporting cadence: Post-noon shifts (14:00–18:00) and 07:00 daily farm tracker.
    - When asked where "tiến độ login hotmail" is reported, distinguish GPM PC lifecycle vs physical phone farm Outlook app.
 
-## Farm Admin (M201-280) vs Farm Kibe (M1-80) GPM Lifecycle Discrepancies
-- **Why Admin skips `HOTMAIL_LOGIN`**: In `batch_gpm_5profiles_supervisor.py`, `initial_stage = "CHATGPT_REG" if has_token else "HOTMAIL_LOGIN"`. Since 681/682 accounts in Admin's `gmail_clean_v2.xlsx` already have OAuth tokens (Col 9), Admin accounts bypass browser login on GPM and directly use Microsoft Graph API to extract verification OTPs. They jump directly to `CHATGPT_REG`.
+## Farm Admin (M201-280) vs Farm Kibe (M1-80) GPM Lifecycle Architecture (Updated 2026-10-13)
+- **HOTMAIL_LOGIN mandatory locking**: As of 2026-10-13, the side-effect jumping from `HOTMAIL_LOGIN` directly to `CHATGPT_REG` when Microsoft Graph OAuth tokens exist was eliminated. `HOTMAIL_LOGIN` is now the mandatory initial stage for ALL Hotmail accounts across both Kibe and Admin to persist authenticated sessions/cookies in GPMLogin profiles on Kibe.
 - **Why Admin ChatGPT Reg paces at 28/day**: Farm Admin only has 28 distinct Mikrotik proxy ports (`10008`–`10035`) shared across 80 machines. The supervisor enforces a strict 24h cooldown per proxy port for the same operation (`ip_action_history[port][stage]`). Thus, Admin can only process 28 accounts/day. In reports showing e.g. 84/620 (28 x 3 days) with 535 pending, the remaining accounts are NOT broken; they are safely waiting for the 24h per-IP cooldown window to roll over.
 
 ## Evidence pattern from the lifecycle farm
