@@ -49,6 +49,12 @@ Hàm `_resume` sẽ:
 4. Trả về `PhaseBResult("success", "resumed")`.
 
 ### Biện pháp phòng ngừa nghẽn lock
-1. **Hạ `max-workers` khi chạy batch:** Với thao tác ghi chung 1 file Excel nằm trên OneDrive, khuyến nghị `--max-workers 15` hoặc tối đa `20` thay vì `40` để rải đều thời gian hoàn tất OTP, giảm đỉnh tải tranh chấp lock.
-2. **Khôi phục từng cụm nhỏ:** Khi có journal tồn đọng (`authenticator_confirmed`), chạy lệnh nhắm mục tiêu theo danh sách dòng:
-   `python python_runner/run_batch_live_2fa.py --workbook-path "..." --rows <row1,row2,...> --max-workers 5 --live`
+1. **Hạ `max-workers` khi chạy batch:** Với thao tác ghi chung 1 file Excel nằm trên OneDrive, BẮT BUỘC đặt `--max-workers 15` (hoặc tối đa `20`) thay vì `40` để rải đều thời gian hoàn tất OTP, triệt tiêu đỉnh tải tranh chấp lock.
+2. **Quy trình Write-Through tức thì (Direct Journal Flush) — CẤM NGÂM CHỜ:**
+   Khi kết thúc ca batch mà có nick dính lỗi do nghẽn lock Excel (nhưng OTP đã confirm trên TikTok và secret đã lưu journal DPAPI), Coordinator BẮT BUỘC chạy ngay script xả journal vào Excel thay vì bắt user chờ ca sau:
+   ```bash
+   python D:/Taadaa/tools/recover_journal_2fa_to_excel.py --apply
+   ```
+   * *Ưu điểm:* Mở file Excel đúng 1 lần duy nhất, ghi n record đồng thời trong <15s, 0% rủi ro nghẽn lock, zero touch (không chạm ADB, không cần device lock, không sợ đụng ca nuôi).
+   * *Hậu kiểm:* Script tự động đối soát identity (Máy, ID), verify committed cell và purge journal tương ứng.
+3. **Khi nào mới dùng `--rows ... --live`:** Chỉ dùng khi nick bị kẹt ở bước trước đó (`otp_submitted` hoặc `captured` mà chưa confirm được authenticator). Khi journal đã ở trạng thái `authenticator_confirmed`, CẤM bật lại `--live` làm phiền thiết bị.

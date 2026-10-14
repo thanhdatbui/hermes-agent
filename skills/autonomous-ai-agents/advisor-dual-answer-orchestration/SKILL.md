@@ -65,6 +65,7 @@ When an advice-intent turn presents a diagnosis and proposed remediation:
 2. **User asks Advisor for plan ("Gọi sol plan", "Sol lên plan", "Nhờ Sol vẽ kiến trúc"):**
    - Explicit Planning Intent: User specifically pauses execution to request an architectural blueprint from Advisor Sol before coding starts.
    - Plan Generation Guard (avoiding 60s timeout): Claude Opus Thinking on 9Router has high reasoning latency. Generating a monolithic plan easily hits the host's 60s terminal timeout (`Exit 124`). Prompt Sol for high-density, concise bullet points and code skeletons (<40 lines per section), or break into focused queries (e.g., Section 1: Architecture & Guards, Section 2: Roadmap & Immediate Actions).
+   - Anti-Corporate Multi-Week Pitfall ("Ủa mà sao phải làm từng tuần"): Do not default to multi-week gantt roadmaps. Differentiate immediate in-session implementation from physical soak periods; code and verification must be executed immediately without artificial schedule padding.
 
 ## Advisor safety boundary
 
