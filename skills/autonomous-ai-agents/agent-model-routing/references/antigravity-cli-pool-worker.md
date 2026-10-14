@@ -28,9 +28,10 @@
   - Khi có task mới, sắp xếp danh sách sẵn sàng theo `last_used` tăng dần (ưu tiên nick nghỉ lâu nhất).
   - Tránh dồn tải nặng vào 1 nick gây nghẽn RPM/TPM của Google.
 - **Failover & Exponential Backoff Cooldown:**
-  - Phát hiện `429`, `RESOURCE_EXHAUSTED`, `quota exceeded`.
+  - Phát hiện `429`, `RESOURCE_EXHAUSTED`, `quota exceeded` (CHỈ kiểm tra khi `proc.returncode != 0` để tránh false-positive khi prompt hoặc code có chứa chuỗi "429").
   - Phạt cooldown lũy tiến: lần 1 = 30 phút, lần 2 = 60 phút, lần 3 = 120 phút.
   - Jitter ngẫu nhiên 5-10s trước khi chuyển nick tiếp theo để chống Google burst correlation.
+  - Bộ lọc `is_profile_enabled(p)`: Tự động bỏ qua các profile có cờ `"enabled": false` (ví dụ proxy 4G dính Bad Gateway) trước khi chọn `ready_profiles`.
 
 ## 4. Lệnh thực thi mẫu cho Coordinator
 
