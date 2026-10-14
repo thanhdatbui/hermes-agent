@@ -18,6 +18,7 @@ References:
 - `references/focus-delay-cascade-and-post-reboot-triage-20261014.md` — Phân tích tương quan cụm lỗi kép (focus delay do nghẽn ADB transport USB), quy trình triage sau reboot và cơ chế fast-fail khép kín.
 - `references/s7-reboot-anti-pattern-and-adb-shell-vs-transport-stall.md` — Phân tích bẫy tư duy reboot S7 trước ca nuôi, tác hại bão PnP/throttling, và phân biệt kẹt ADB shell vs USB transport stall.
 - `references/s7-shell-hang-vs-adb-reboot-and-enumeration-storm.md` — Bản chất kẹt ADB shell vs ADB direct reboot service, tác hại enumeration storm khi reboot đồng loạt 80 máy S7, và module cứu hộ phân tầng O(1).
+- `references/s7-hung-shell-triage-and-reboot-governance-20261015.md` — Phân tích bản chất nghẽn USB Host PC vs S7, cấm batch reboot 80 máy đồng loạt, và kiến trúc cứu hộ 3 cấp độ (recover_stuck_s7.py) khi kẹt shell (15/10/2026).
 - `references/user-directed-reboot-anti-paralysis-and-sentinel-bypass.md` — Kỷ luật chống tê liệt xin phép khi user ra lệnh reboot, cơ chế xóa sentinel flag và bảo toàn session Telegram để tự động chạy tiếp sau boot.
 
 Scripts:
@@ -503,7 +504,12 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
   * `adb reboot` KHÔNG chạy qua `/system/bin/sh` mà là service `reboot:` độc lập trong daemon `adbd`. Khi kẹt lệnh con bên trong Android (dumpsys, app deadlock), `adb -s <serial> reboot` từ PC vẫn hoạt động bình thường.
   * Khi kẹt USB transport (nghẽn đệm controller EHCI hoặc đứt pipe `/dev/android_adb` trên kernel Linux của S7): Toàn bộ ADB (cả shell lẫn reboot) đều tê liệt. Do nguồn 5V VBUS từ hub vẫn duy trì, S7 không phát sinh uevent ngắt kết nối nên không tự restart lại `adbd`.
   * **Giải pháp cứu hộ từ PC không chạm tay:** (1) Thử `taskkill /F /IM adb.exe` trên Windows để dọn buffer socket; (2) Dùng nút Reboot trên toolbar của XiaoWei (driver native); (3) Reboot Host PC (BIOS POST ngắt nguồn VBUS và gửi xung PCI bus reset, S7 tự động nhận lại 100% khi Windows boot).
-  * Chi tiết: `references/s7-reboot-anti-pattern-and-adb-shell-vs-transport-stall.md`.
+  * **Module cứu hộ phân tầng O(1) (`D:/Taadaa/tools/recover_stuck_s7.py`):**
+    - Cấp 1 (Soft recovery, timeout 3s): `am force-stop` + `input keyevent 223` (tắt màn hình, chống nóng). Cứu máy trong 1.5s không cần reboot.
+    - Cấp 2 (Bypass shell reboot, timeout 5s): Bắn trực tiếp `adb -s <serial> reboot` ở tầng daemon, chờ `wait-for-device` 60s.
+    - Cấp 3 (Transport/Hardware triage): Thử `reconnect <serial>`, nếu unresponsive thì fail-fast báo `failed_transport`, chống treo tiến trình nền.
+    - Quy tắc áp dụng: Chỉ cứu hộ cá biệt theo từng máy (`--machine <N>`); CẤM batch reboot đồng loạt 80 máy làm sập hub.
+  * Chi tiết: `references/s7-hung-shell-triage-and-reboot-governance-20261015.md` và `references/s7-reboot-anti-pattern-and-adb-shell-vs-transport-stall.md`.
 
 
 
