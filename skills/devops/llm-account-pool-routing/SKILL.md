@@ -7,19 +7,20 @@ version: 1.0.0
 # LLM Account Pool Routing
 
 ## References
-- `references/antigravity-cli-profile-sandboxing-and-quota-rotation.md`: Antigravity agy profile sandboxing & quota rotation.
-- `references/cross-instance-token-migration-and-pro-tier-revocation.md`: Pro revocation & migration.
+- `references/antigravity-cli-profile-sandboxing-and-quota-rotation.md`: AG.
+- `references/cross-instance-token-migration-and-pro-tier-revocation.md`: Pro.
 - `references/antigravity-multi-session-burst-tpm-and-concurrency-limits.md`: TPM/503.
-- `references/omniroute-per-account-proxy-egress-assignment.md`: Proxy assign.
-- `references/phone-verified-account-salvage-and-tainted-proxy-rotation.md`: Salvage proxy.
-- `references/codex-oauth-gpm-pool-verification.md`: Codex OAuth/GPM.
-- `references/watchdog-db-guard-and-sync-contract.md`: Provider guard.
+- `references/omniroute-per-account-proxy-egress-assignment.md`: Proxy.
+- `references/phone-verified-account-salvage-and-tainted-proxy-rotation.md`: Salvage.
+- `references/codex-oauth-gpm-pool-verification.md`: Codex.
+- `references/watchdog-db-guard-and-sync-contract.md`: Guard.
 - `references/business-restricted-recovery.md`: AG Restricted.
-- `references/omniroute-429-watchdog-thinking-discipline.md`: Runbook 429.
-- `references/omniroute-global-cooldown-zombie-proxy-and-eventloop-choke.md`: Cooldown trap.
-- `references/shared-gemini-flash-pro-quota-routing.md`: Quota 429.
-- `references/pro-account-canary-and-semaphore-diagnosis.md`: Canary Pro.
-- `references/semaphore-vs-pre-cascade-queue-and-strategy-tradeoffs.md`: Semaphore.
+- `references/omniroute-429-watchdog-thinking-discipline.md`: 429.
+- `references/omniroute-global-cooldown-zombie-proxy-and-eventloop-choke.md`: Cooldown.
+- `references/shared-gemini-flash-pro-quota-routing.md`: Quota.
+- `references/pro-account-canary-and-semaphore-diagnosis.md`: Canary.
+- `references/semaphore-vs-pre-cascade-queue-and-strategy-tradeoffs.md`: Queue.
+- `references/lifecycle-reserve-inventory-vs-router-execution-pool.md`: Kho GPM vs OmniRoute.
 - `references/omniroute-combo-routing-pathology.md`: Combo modes.
 - `references/omniroute-v38-live-log-triage-and-pool-leakage.md`: Triage call-logs.I Quota đỏ.
 - `references/omniroute-proxy-fallback-and-quota-telemetry.md`: Proxy fallback & quota telemetry.
