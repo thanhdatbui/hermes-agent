@@ -8,7 +8,7 @@ Report/Watchdog: % & tầng; khóa IP 1 dòng; cấm raw/trace dump; cấm văn 
 §
 Kibe(1-80) & Admin(201-280) media độc lập (Admin m2, cấm copy chéo). TT v47.0.3; Switcher dock; AP 40m; Config tools.
 §
-Dubbing: đúng tiếng, 100% thoại, tắt tiếng gốc. Pass láo: xóa None. Nick trên máy là tài sản, reg dư map lại. Cấm text gate rác/media chat. Báo cáo: cấm tròn 100%. KPI chỉ nick có ca. Farm song song.
+Dubbing: đúng tiếng, 100% thoại, tắt tiếng gốc; pass láo xóa None. Nick là tài sản, reg dư map lại; cấm text gate rác; KPI chỉ nick có ca; cấm báo 100%. Ghim video: đè cảm ứng (long-press 1s) ô video Profile grid -> chọn 'Ghim lên đầu'; sàn min-views 1000.
 §
 Worker: AG Gemini default (cấm fallback Luna khi chưa cạn quota; chủ động fix script qua Worker contract, cấm viện cớ đóng băng/báo BLOCKED).
 §
