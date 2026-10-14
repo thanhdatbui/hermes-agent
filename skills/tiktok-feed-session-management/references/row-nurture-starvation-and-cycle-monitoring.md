@@ -132,3 +132,43 @@ Hệ thống giám sát vận hành Farm bắt buộc bao phủ đầy đủ 3 t
   - CẤM viết rào cản `if not is_rest_day` chặn upload hook.
   - Sổ cái giao dịch `shift_upload_history.json` là cơ chế chốt hạ duy nhất đảm bảo tính idempotency: Mỗi nick chỉ upload thành công đúng 1 video trong ngày, phiên sau tự động bỏ qua nếu phiên trước đã upload thành công.
 
+---
+
+## 6. Cơ Chế Chọn Row Dưỡng Sinh Động (`healing_selector.py`) & Bẫy Fallback Tĩnh
+
+### Thuật toán chấm điểm ưu tiên Row yếu (`healing_selector.py`):
+Trong các ca dưỡng sinh (Ngày 2 Ca 3 và Ngày 3/N4 cả 3 ca), `_SCHEDULE` trả về `None` để chuyển quyền cho `healing_selector.py` tính toán:
+$$\text{Score} = 100.0 \times p_{\text{fail}} + 20.0 \times p_{\text{young}}$$
+- $p_{\text{fail}}$: Tỷ lệ thiết bị dính án phạt Follow Cooldown hoặc lỗi `follow_failed` (quét trong `runs/state/follow_state_*.json`, có cache 60s).
+- $p_{\text{young}}$: Tỷ lệ tài khoản non chưa đủ 10 video (truy vấn từ bảng `farm_account_info` / `snapshots` trong `tiktok_tracker.db`, cache 60s).
+- Row có điểm số cao nhất sẽ được chọn để ưu tiên nuôi dưỡng, rửa trust và kéo tương tác.
+
+### 4 Ràng buộc điều phối bắt buộc:
+1. **Pairing Rule (S2 bám S1):** Session 2 (08:00, 14:00, 20:00) BẮT BUỘC chạy cùng Row với Session 1 (06:00, 12:00, 18:00) trong cùng một ca.
+2. **Chống kẹp ca (Anti-consecutive):** Session 1 loại trừ `last_row` của ca liền trước để không lặp lại cùng một Row qua ranh giới 2 ca.
+3. **N4 3 ca 3 row (Rest Day Exclude):** Vào Ngày 3 (Day 3 / cycle_day == 3), loại trừ toàn bộ các Row đã chạy trước đó trong ngày (quét live folder `D:/Taadaa/runtime/<cluster>/live/YYYY-MM-DD/row-*`). Đảm bảo mỗi ca dưỡng một Row yếu khác nhau, không bị trùng.
+4. **Audit Trail Schema 1.0:** Mọi quyết định chọn Row động bắt buộc ghi audit log vào `D:/Taadaa/runtime/audit_logs/healing_decision_audit.jsonl` (tự rotate khi file > 5MB).
+
+### 🚨 Pitfall Chí Mạng: Bẫy Nuốt Ngoại Lệ & Fallback Tĩnh Khi Chạy Cron
+- **Triệu chứng:** Vào Ngày 4 dưỡng sinh, hệ thống không bốc các Row có tỷ lệ nhả follow cao nhất (như Row 4, Row 2, Row 7) mà luôn luôn chạy cố định: Ca 1 -> Row 3, Ca 2 -> Row 4, Ca 3 -> Row 5.
+- **Nguyên nhân gốc rễ (Root Cause):**
+  - Khi script `tiktok_runner.py` được Cron (`no_agent: true`) kích hoạt từ thư mục scripts cục bộ trên ổ `C:`.
+  - Hàm `_load_determine_healing_row()` chỉ tìm `healing_selector.py` qua:
+    `candidates += [p / "tools" for p in Path(__file__).resolve().parents]`
+  - Cây thư mục cha trên ổ `C:` không có thư mục `tools/`, đồng thời file `env.json` của cron thiếu biến `HERMES_CRON_TOOLS_DIR`.
+  - Hệ quả: Hàm văng `ImportError: healing_selector.py not found (set HERMES_CRON_TOOLS_DIR)`, nhưng ngoại lệ bị khối `except Exception` nuốt chửng và âm thầm kích hoạt khối **fallback tĩnh**:
+    ```python
+    except Exception as exc:
+        elif slot_key in ((6, 0), (8, 0)):
+            row = 3
+        elif slot_key in ((12, 0), (14, 0)):
+            row = 4
+        else:
+            row = 5 if (cycle_idx % 2 == 0) else 6
+    ```
+- **Kỷ luật khắc phục & phòng ngừa:**
+  1. Trong `tiktok_runner.py`: Danh sách `candidates` bắt buộc bổ sung đường dẫn tuyệt đối chuẩn của repo/tools (`Path("D:/Taadaa/tools")`, `Path("D:/Taadaa/tiktok-luot nuoi acc/tools")`).
+  2. Trong `env.json` của cron: BẮT BUỘC khai báo rõ ràng `"HERMES_CRON_TOOLS_DIR": "D:/Taadaa/tools"`.
+  3. Cảnh báo lỗi: Tuyệt đối không nuốt im lặng `ImportError` trong khối `except` mà phải phát cảnh báo hoặc fallback có nhật ký rõ ràng.
+
+
