@@ -72,12 +72,30 @@ agy --dangerously-skip-permissions --model "gemini-3.8-flash-high" -p "<task>"
 - **Fingerprinting & Ban Risk: Native `agy` CLI vs OmniRoute (`:20129`)**:
   * *OmniRoute*: Spoofs L7 headers and JSON body field order (`cliFingerprints.ts`), but uses Node.js `fetch` (`undici`). TLS handshake (JA3/JA4) and HTTP/2 settings frames match Node.js, not a real Google client. High risk during Google bot-sweep ban waves.
   * *Native `agy.exe`*: Native Go/BoringSSL TLS client compiled by Google; TLS fingerprint is 100% genuine.
-- **Multi-Account Farm Isolation Recipe (Running 10–20+ Pro Accounts Safely)**:
-  * *The Trap*: If multiple accounts rotate on the same machine sharing `~/.gemini/installation_id` across different proxy IPs, Google's anti-abuse flags it as Sybil farming.
-  * *The Fix (Profile Sandboxing)*: Isolate `USERPROFILE` per account so each receives its own `.gemini/installation_id`:
+- **Multi-Account Farm Isolation Recipe (Sol Web P0 Hardened Architecture)**:
+  * *The Trap*: If multiple accounts rotate on the same machine sharing `~/.gemini/installation_id` or default Windows AppData/Temp paths across different proxy IPs, Google's anti-abuse flags it as Sybil farming. Furthermore, `USERPROFILE` alone does NOT redirect `%LOCALAPPDATA%` or `%APPDATA%`, leaking shared state in `C:\Users\<user>\AppData\Local\...`.
+  * *The Hardened Sandbox Pattern (P0)*:
+    Inject full environment virtualization for every profile:
     ```python
     env = os.environ.copy()
-    env["USERPROFILE"] = rf"D:\Taadaa\agy_profiles\acc_{idx:02d}"
-    env["HTTPS_PROXY"] = f"http://127.0.0.1:{proxy_port}"  # Dedicated residential/4G proxy
+    env["USERPROFILE"] = prof_dir
+    env["HOME"] = prof_dir
+    env["APPDATA"] = os.path.join(prof_dir, "AppData", "Roaming")
+    env["LOCALAPPDATA"] = os.path.join(prof_dir, "AppData", "Local")
+    env["TEMP"] = os.path.join(prof_dir, "Temp")
+    env["TMP"] = os.path.join(prof_dir, "Temp")
+    if proxy:
+        env["HTTPS_PROXY"] = proxy
+        env["HTTP_PROXY"] = proxy
     ```
-    Never use datacenter IPs (AWS/Hetzner/Vultr) for Google Cloud Code/Antigravity accounts; only residential or 4G mobile proxies (CGNAT).
+  * *Profile Lease Locking (Concurrency Protection)*:
+    Prevent concurrent sessions/cronjobs from colliding on the same profile using a file lease lock:
+    `<prof_dir>/.profile.lock` containing `{"pid": os.getpid(), "timestamp": time.time()}` with 300s lease timeout.
+  * *Failover Jitter (Anti-Correlation)*:
+    When rotating to the next profile upon hitting `RESOURCE_EXHAUSTED` / `429`, inject random delay `time.sleep(random.uniform(5.0, 10.0))` to prevent burst correlation detection by Google Cloud Armor.
+  * *Production Management Commands (`D:/Taadaa/tools/ag_cli.py`)*:
+    - `python D:/Taadaa/tools/ag_cli.py pool-status`: Inspect account states (READY, COOLDOWN, proxies).
+    - `python D:/Taadaa/tools/ag_cli.py init-profile <name> [--proxy <url>] [--copy-current]`: Provision sandbox with unique `installation_id` UUID.
+    - Login new profile: `USERPROFILE="D:/Taadaa/agy_profiles/<name>" agy login`.
+  * *Architectural Verdict (Sol Web Audit, Oct 2026)*:
+    "Identity Authenticity beats Identity Imitation." OmniRoute's Node.js `fetch` Layer 4/5 TLS mismatch creates a single-cluster blast radius. Native `agy.exe` + Sandboxed Profiles + 4G Mobile Proxy isolates blast radius per account, providing the highest long-term survival rate for paid Pro pools.

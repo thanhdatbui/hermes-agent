@@ -382,10 +382,10 @@ The actual headless coding agent CLI provided by Google is `agy`. If `which agy`
 ```bash
 agy --dangerously-skip-permissions --model "gemini-3.8-flash-high" -p "<task>"
 ```
-Taadaa farm production bridge: `python D:/Taadaa/tools/ag_cli.py {ask,fix,models}`.
+Taadaa farm production bridge: `python D:/Taadaa/tools/ag_cli.py {ask,fix,models,pool-status,init-profile}`.
 Auth/Quota source lives under `~/.gemini/` (`google_accounts.json` & `oauth_creds.json`), consuming that specific Google account's quota directly (completely independent of OmniRoute/GPM pools).
 Supports hidden native env knob `AGY_ACCOUNT=<email>` for in-session account switching.
-For running multi-account pools (10–20+ Pro accounts) safely without Sybil ban risk, each account requires an isolated `USERPROFILE` (to sandbox `.gemini/installation_id`) and a dedicated residential/4G mobile proxy.
+For running multi-account pools (10–20+ Pro accounts) safely without Sybil ban risk, each account requires full sandbox virtualization (`USERPROFILE`, `HOME`, `APPDATA`, `LOCALAPPDATA`, `TEMP`, `TMP`), an isolated `installation_id` UUID, a dedicated residential/4G mobile proxy, `.profile.lock` concurrency protection, and failover jitter (5–10s).
 See `references/antigravity-cli-agy-vs-ide-wrapper.md` for full comparison matrix, auth audit, TLS fingerprint analysis vs OmniRoute, and troubleshooting details.
 
 ## OpenCode CLI — Windows Timeout, Encoding & Workspace Traps
