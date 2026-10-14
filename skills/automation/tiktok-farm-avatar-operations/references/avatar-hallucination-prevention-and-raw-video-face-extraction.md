@@ -187,3 +187,15 @@ Trước khi soạn bất kỳ tin nhắn nào cho User:
   - `ag_cli.py` gọi trực tiếp `gemini-3.8-flash-high`, trả về phân tích thị giác chi tiết, đọc từng chữ subtitle tiếng Việt/Nhật, nhận diện chính xác từng nhân vật anime/người thật, chỉ ra ngay nếu frame bị lệch chủ đề.
   - BẮT BUỘC có kết quả xác nhận từ `ag_cli.py` trước khi soạn tin nhắn báo cáo và đính kèm thẻ `MEDIA:` cho User.
 
+---
+
+## 9. Cấm Map Số Đuôi Username Làm Folder & Kích Hoạt Stop Hook `media_vision_gate.py`
+- **Cấm tự ý suy diễn folder từ số đuôi username**:
+  - Nick `@dokieu203` có số đuôi 203 nhưng **Folder Video thực tế là 67** (ghi rõ trong `taikhoan_dat_v2_updated .xlsx` / `Tik3.xlsx`).
+  - Lấy nhầm folder 203 (quán nhậu) hoặc nhầm folder 113 sẽ dẫn tới gửi sai ảnh (em bé / áo gym).
+  - Khung hình bác sĩ nhi khoa thực tế chuẩn của kênh: `D:/TIKTOK-videonuoinick/67/.avatar_work/representative_frames/v03_002.jpg` và `v03_003.jpg`.
+- **Cơ chế Hard Guard vật lý (`media_vision_gate.py`)**:
+  - Triển khai tại `D:/Taadaa/.claude/hooks/media_vision_gate.py` và đăng ký trong `D:/Taadaa/.claude/settings.json`.
+  - Mỗi khi kết thúc lượt trả lời, Hook kiểm tra mọi thẻ `MEDIA:<path>`. Nếu path đó chưa từng được mở và kiểm tra qua lệnh đọc ảnh có vision thật (`type: image`) trong phiên $\rightarrow$ **Block lượt xuất tin nhắn ngay lập tức**, triệt tiêu hoàn toàn khả năng gửi ảnh mù hoặc nói dối đã soi ảnh.
+
+
