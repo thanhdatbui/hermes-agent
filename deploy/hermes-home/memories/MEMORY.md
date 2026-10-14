@@ -2,13 +2,13 @@ Chu kỳ 4d: Parity 96h (N1 lẻ, N2 chẵn), N3(R7,8), N4(dưỡng 0fl+up). Sta
 §
 Followed=0 cấm PASS. Admin SSH: dùng D:/Taadaa/tools/admin_ssh.py (--powershell/--json); CẤM thoái thác khi Guard block raw ssh. Auto-resume reboot: locks==0.
 §
-AG CLI: ag_cli.py (7 acc Pro sạch acc_01..07, taskkill /F /T+DEVNULL chống kẹt pipe, 2-3s). Claude CLI: tắt advisorModel:'off' (tránh sonnet ngâm 100s/refusal); Haiku 5.5 (haiku_worker.py) 6-15s O(1) rẻ quota.
+AG CLI: ag_cli.py (7 acc Pro acc_01..07, taskkill /F /T+DEVNULL chống kẹt pipe, 2-3s). Claude CLI: advisorModel:'off'; Haiku 5.5 (haiku_worker.py 6-15s O(1)) rẻ quota.
 §
 TikTok Follow: (máy,row) độc lập; Quota 10-15/ca; Hồi phục 1&2 2 ca sạch; Canary Khỏe +10%; like 80%. Path B 'Đã fl' ko commit; slot (folder-1)%8+1. Mode 2: anchor >= 150 fl; cuộn sâu. Cron: feed/follow_watchdog.
 §
-Hotmail bán: CẤM mail cá nhân; sinh @fviainboxes.com đọc OTP API. Write-Through: xong bước nào ghi ngay Excel Cột 3,4,5 & Cột G farm, cấm đợi relogin. CDP đóng ko mất cookie. Dual-farm ~1280 acc.
+Hotmail: CẤM mail cá nhân; sinh @fviainboxes.com đọc OTP API. Write-Through: ghi ngay Excel Cột 3,4,5 & G farm, cấm đợi relogin. CDP đóng ko mất cookie. Dual-farm ~1280 acc.
 §
-Proxy: User KO đổi, SoT PROXYgandienthoai.xlsx. Soi vision mở, assert mCurrentFocus+OCR; MEDIA: riêng dòng. Ava/2FA: watchdog cuốn chiếu đêm (21:30-04h) & giữa ca, né giờ nuôi, báo cáo 6h.
+Proxy: SoT PROXYgandienthoai.xlsx, User KO đổi. Vision mở assert mCurrentFocus+OCR, MEDIA: dòng riêng. Ava & 2FA: cuốn chiếu khung rảnh (đêm 21h30-4h, ngày 9h30-11h45, 15h30-17h45), né 3 ca nuôi & cache; báo cáo 6h (0,6,12,18h); cấm báo ảo nhường lịch.
 §
 Farm Dispatch Invariant: delegate_task context cần TASK_KIND: EDIT/INVESTIGATE. FILE: D:/... (path tuyệt đối trực tiếp, cấm ngoặc/gạch đầu dòng). Có FOCUSED_TEST.
 §
