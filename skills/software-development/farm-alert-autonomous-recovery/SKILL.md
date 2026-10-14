@@ -7,7 +7,7 @@ description: >-
 
 # Farm Alert Autonomous Recovery
 
-> Ref: `references/excess-reg-account-rebalance-and-8-slot-cap-protocol-20261011.md`.
+> Ref: `references/benny-triage-device-lock-and-feature-map-protocol-20261015.md`.
 > Ref: `references/xiaowei-adb-reset-and-offline-device-triage-20261012.md`.
 > Ref: `references/friends-feed-contact-suggestion-false-positive-triage-20261013.md`.
 > Ref: `references/account-switcher-mapping-drift-vs-anchor-failure-20261011.md`.

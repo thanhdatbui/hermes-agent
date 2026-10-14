@@ -73,7 +73,10 @@ python D:/Taadaa/tools/pin_top_videos.py --machine 28 --min-views 5000 --max-pin
     - **Bẫy dịch chuyển lưới:** Khi một video được ghim thành công, TikTok đưa ngay video đó lên chiếm ô `[0, 0]` (Hàng 1, Cột 1). Các video còn lại trên lưới tự động bị đẩy dịch sang phải hoặc xuống hàng dưới (ví dụ video 19.5K ban đầu ở Hàng 1 Cột 1, sau khi ghim 2 clip khác bị dạt sang Hàng 1 Cột 3).
     - **Cơ chế chống tap nhầm clip đã ghim:** BẮT BUỘC re-dump UI XML sau MỖI lần ghim thành công và tính toán lại danh sách `cands` còn lại. TUYỆT ĐỐI CẤM tái sử dụng tọa độ cũ vì sẽ tap trúng clip vừa ghim $\to$ Action Sheet hiện `"Bỏ ghim"` (UNPIN) khiến script tưởng hết video cần ghim và bỏ sót các video viral chưa ghim.
     - Nếu gặp Action Sheet báo `"Bỏ ghim"`, script phải lập tức bấm Back, đánh dấu video đó đã ghim và quét tiếp các ứng viên khác trên lưới mới.
-- **Video ngoài viewport (Deep Scroll):** Nếu video viral nằm sâu phía dưới (ngoài màn hình hiện tại), thực hiện swipe cuộn lưới lên (`swipe(540, 1500, 540, 700, 400)`) bên trong vùng grid container để nạp các ô video cũ vào viewport trước khi tap.
+- **Video ngoài viewport (Deep Scroll & Invariant Quét Toàn Kênh):**
+  * **Bẫy Viewport Cố Hữu:** Màn hình đầu tiên chỉ hiển thị 9 – 12 video mới nhất (thường chỉ 200 – 1.900 view). Các video nổ view đề xuất thật sự (10K, 21K, 50K+) thường là video cũ nằm sâu ở các fold dưới.
+  * **Kỷ luật điều phối:** Khi user yêu cầu 'ghim video nhiều view / pin top video', CẤM TUYỆT ĐỐI chỉ quét màn hình đầu rồi vội vàng ghim clip 1.9K hay clip đầu tiên. BẮT BUỘC chạy với `--scrolls 4` (hoặc cao hơn) để cuộn tích lũy danh sách video toàn kênh, sắp xếp giảm dần và ghim đúng top clip viral thật sự.
+  * **Tái định vị viewport:** Sau khi quét cuộn sâu, tọa độ clip mục tiêu có thể bị trôi ra khỏi màn hình. BẮT BUỘC định vị lại và đưa clip vào viewport trước khi tap.
 
 ## 6. Invariant: Database `tiktok_tracker.db` KHÔNG Lưu View Từng Video
 - **Bản chất Schema:** Bảng `snapshots` trong `tiktok_tracker.db` chỉ lưu các trường: `timestamp`, `username`, `uid`, `follower`, `following`, `heart` (tổng tim toàn kênh), `video` (tổng số clip), `status`, `avatar_thumb`, `has_avatar`, `created_at`.
