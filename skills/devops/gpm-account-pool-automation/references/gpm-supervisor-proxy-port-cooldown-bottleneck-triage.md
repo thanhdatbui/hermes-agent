@@ -19,6 +19,28 @@
 - Tài khoản gặp lỗi login (sai mật khẩu mail, checkpoint, captcha khó, lỗi mạng) bị gán status `BLOCKED`.
 - Logic tự phục hồi yêu cầu ngâm đủ 48 tiếng (`(now_dt - fail_time).total_seconds() >= 2 * 86400`) mới auto-unblock về `PENDING` để retry (tối đa 3 lần trước khi vào `QUARANTINE`).
 
+### 2.3. Bẫy False-Positive "Bảo vệ tài khoản" trên Microsoft Account Landing Page (CHÍ MẠNG)
+- **Hiện tượng:** Nick đã login thành công vào tới trang chủ `account.microsoft.com` nhưng script vẫn phán `FAILED / BLOCKED: Hotmail login that bai`.
+- **Nguyên nhân gốc:**
+  - Trên trang chủ `account.microsoft.com` giao diện tiếng Việt, Microsoft có sẵn card bảo mật chứa dòng chữ: *"Cập nhật thông tin để giúp bảo vệ tài khoản của bạn"*.
+  - Nếu script đăng nhập (`batch_gpm_hotmail_password_login.py`) quét `page.inner_text("body")` tìm chuỗi `"bảo vệ tài khoản"` hoặc `"help us protect your account"` mà KHÔNG kiểm tra domain hiện tại, nó sẽ tưởng nhầm là checkpoint bảo vệ tài khoản (Challenge/OTP).
+  - Không có Graph token để bypass OTP -> script tự đánh rớt thành `BLOCKED`.
+- **Hậu quả kép:**
+  1. Tài khoản đã login thành công bị đánh trượt và ngâm cooldown 48 tiếng.
+  2. Cổng proxy của máy đó bị ghi nhận vừa chạy lỗi và bị khóa cứng 24 tiếng, khiến tất cả các nick `PENDING` khác trên cùng máy bị đóng băng hàng loạt.
+- **Quy tắc bất biến:** BẮT BUỘC kiểm tra `is_auth = urlparse(cur_url).netloc.lower() in ["account.microsoft.com", "outlook.live.com", "privacynotice.account.microsoft.com"]`. Khi đã vào các domain này, XÁC NHẬN LOGIN THÀNH CÔNG NGAY, CẤM quét chuỗi challenge trên trang đã authenticated!
+
+### 2.4. Cấm "Ngâm Ảo 7 Ngày" (WAIT_7D) khi chưa login session thật trên GPM
+- **Sai lầm kiến trúc:** Thấy tài khoản có OAuth Refresh Token (Graph API) liền tự ý nhảy cóc qua mặt bước `HOTMAIL_LOGIN`, đẩy thẳng sang reg ChatGPT rồi đưa vào `WAIT_7D`.
+- **Hậu quả:** Profile GPM không hề có session/cookie đăng nhập Hotmail thật bằng mật khẩu. Sau 7 ngày ngâm, khi chuyển sang bước đổi mật khẩu (`CHANGE_INFO` / `gpm_change_hotmail_security.py`), script mở profile lên sẽ thấy màn hình trắng hoặc bắt đăng nhập lại từ đầu -> Fail 100%!
+- **Quy tắc bất biến:** 100% tài khoản Hotmail BẮT BUỘC phải chạy qua `HOTMAIL_LOGIN` trên GPM để lưu session sống trong trình duyệt.
+- **Cơ chế Fast-track:** Sau khi `HOTMAIL_LOGIN` thành công, nếu tài khoản đã có sẵn cờ `chatgpt_registered_at` (đã reg ChatGPT trước đó), hệ thống lập tức chuyển thẳng sang `WAIT_7D` thật cùng session GPM sống, bỏ qua việc gọi lại script reg ChatGPT.
+
+### 2.5. Đối soát Port Proxy Kibe vs Admin (Chống ngộ nhận)
+- **Kibe (M1–80):** Có **39 port proxy** khả dụng (dải port `5101`–`5180` trong `D:/OneDrive/TaadaaData/kibe/PROXYgandienthoai.xlsx`).
+- **Admin (M201–280):** Chỉ có **28 port proxy** khả dụng (dải port `10008`–`10035` trong `D:/OneDrive/TaadaaData/admin/PROXYgandienthoai.xlsx`).
+- **CẤM TUYỆT ĐỐI** ngộ nhận Admin nhiều port hơn Kibe khi phân tích tốc độ hoặc tỷ lệ throughput.
+
 ## 3. Quy trình chẩn đoán O(1) trạng thái Queue
 
 Thay vì quét đĩa hay đoán mò, đọc trực tiếp file state:

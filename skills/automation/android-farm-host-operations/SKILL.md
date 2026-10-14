@@ -17,6 +17,7 @@ References:
 - `references/remote-desktop-virtual-keystuck-and-chinese-ime-runaway.md` — Hiện tượng kẹt phím ảo (KeyUp drop) khi remote host farm, bản chất ký tự gạch ngang dài tiếng Trung (破折号 ——) và cách xử lý triệt để.
 - `references/focus-delay-cascade-and-post-reboot-triage-20261014.md` — Phân tích tương quan cụm lỗi kép (focus delay do nghẽn ADB transport USB), quy trình triage sau reboot và cơ chế fast-fail khép kín.
 - `references/s7-reboot-anti-pattern-and-adb-shell-vs-transport-stall.md` — Phân tích bẫy tư duy reboot S7 trước ca nuôi, tác hại bão PnP/throttling, và phân biệt kẹt ADB shell vs USB transport stall.
+- `references/s7-shell-hang-vs-adb-reboot-and-enumeration-storm.md` — Bản chất kẹt ADB shell vs ADB direct reboot service, tác hại enumeration storm khi reboot đồng loạt 80 máy S7, và module cứu hộ phân tầng O(1).
 - `references/user-directed-reboot-anti-paralysis-and-sentinel-bypass.md` — Kỷ luật chống tê liệt xin phép khi user ra lệnh reboot, cơ chế xóa sentinel flag và bảo toàn session Telegram để tự động chạy tiếp sau boot.
 
 Scripts:
