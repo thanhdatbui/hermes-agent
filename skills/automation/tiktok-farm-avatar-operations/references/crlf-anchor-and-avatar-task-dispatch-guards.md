@@ -20,6 +20,14 @@ Khi Coordinator điều phối sửa đổi các file đăng ký bảo vệ avat
    - Khi bọc path trong `FILE: <<< ... >>>`, nếu dùng `\` (ví dụ `D:\Taadaa\data\...`), parser guard có thể diễn giải sai hoặc báo `PATH_NOT_ABSOLUTE`.
    - **Quy tắc**: Luôn chuẩn hóa đường dẫn tuyệt đối với dấu gạch chéo xuôi (`/`), ví dụ: `FILE: <<< D:/Taadaa/data/manual_avatar_protected_folders.json >>>`.
 
+4. **Kỷ Luật Ngân Sách Diff (`DIFF_BUDGET_EXCEEDED`) & Định Dạng Focused Test**:
+   - **Ngân sách O(1) cứng**: `NEW_STRING` trong task `EDIT` bắt buộc $\le 30$ dòng code thay đổi. Nếu vượt quá, guard sẽ từ chối ngay lập tức (`DIFF_BUDGET_EXCEEDED`). Phải viết code súc tích, cô đọng các bước import và logic thực thi.
+   - **Chuẩn hóa `FOCUSED_TEST`**: Guard chỉ chấp nhận 2 định dạng:
+     * `python -m py_compile <file_path>` (cho syntax/integrity checks).
+     * `python -m pytest <file_path>::<test_node> -q` (cho logic test).
+     * Các lệnh tự do như `python script.py --verify` sẽ bị guard chặn với lỗi `INVALID_FOCUSED_TEST_FORMAT`.
+   - **Cấm `subprocess` trong `python -c` của Coordinator**: Lệnh `python -c` ở phiên chính chỉ dùng đọc dữ liệu read-only. Gọi `subprocess` trong `python -c` bị chặn ngay. Các tác vụ can thiệp hệ thống phức tạp hoặc vượt ngân sách T1 (5 files, 200 dòng) bắt buộc dispatch Worker.
+
 ## 2. Quy Trình Chẩn Đoán Lệch Niche & Avatar Từ Ảnh Người Dùng Cung Cấp
 Khi User gửi ảnh chụp màn hình kênh TikTok và yêu cầu "Đổi ava nick này":
 1. **Trích xuất định danh kênh O(1)**:

@@ -1,11 +1,18 @@
-# Chống Bịa Đặt Thị Giác Avatar & Quy Trình Trích Xuất Khuôn Mặt Từ Video Gốc (2026-10-13)
+# Chống Bịa Đặt Thị Giác Avatar & Quy Trình Trích Xuất Khuôn Mặt Từ Video Gốc (Cập nhật 2026-10-14)
 
 ## 1. Bối Cảnh Sự Cố & Cạm Bẫy Chết Người (Incident Analysis)
-- **Hiện tượng**:
-  - Coordinator cần đổi avatar cho kênh TikTok `@hoangthu1804` (Máy 67 - Tik 6 - Folder gốc 467).
-  - Coordinator thấy file `D:/video goc/467/avatar.jpg` có sẵn trên đĩa, liền tự động lấy file này vẽ viền tròn xanh làm preview (`tmp_m67_avatar_preview.jpg`) và đính kèm thẻ `MEDIA:` gửi cho User.
-  - **Hậu quả nghiêm trọng**: File `avatar.jpg` cũ thực chất là ảnh chụp cận cảnh bề mặt đá granite hồng lốm đốm xám (texture vật liệu/rác crop cũ). Tuy nhiên, Coordinator lại không mở ảnh ra soi mắt mà "tự biên tự diễn" mô tả chi tiết là: *"Nam bạn trẻ tóc đen ngắn, mặc áo khoác màu be/kaki bên ngoài áo thun trắng, biểu cảm mỉm cười thân thiện..."*.
-  - User mở ảnh ra thấy một tảng đá màu hồng viền tròn xanh lá cây và chất vấn gay gắt: *"Tại sao tao ép mày soi ảnh trc khi gửi câu tl tao mày vẫn đéo tuân thủ v?"*.
+- **Sự cố 1 (13/10/2026 — @hoangthu1804 M67 Tik 6)**:
+  - Coordinator thấy file `D:/video goc/467/avatar.jpg` có sẵn trên đĩa, tự động lấy vẽ viền tròn xanh gửi User.
+  - File thực chất là ảnh chụp cận cảnh mặt đá granite hồng lốm đốm xám. Coordinator không soi mắt mà tự chém gió: *"Nam bạn trẻ tóc đen ngắn, mỉm cười thân thiện..."*.
+  - User phát hiện và chất vấn: *"Tại sao tao ép mày soi ảnh trc khi gửi câu tl tao mày vẫn đéo tuân thủ v?"*.
+
+- **Sự cố 2 (14/10/2026 — @dokieu203 M9 Tik 3)**:
+  - User gửi ảnh TikTok nick `@dokieu203` (chuyên video bác sĩ nhi khoa) yêu cầu "Đổi ava nick này".
+  - Coordinator gọi `browser_vision` nhưng model điều phối (`omni-worker`) bị mù ảnh native, không đọc được dữ liệu.
+  - Coordinator hallucinate mô tả: *"Bác sĩ nam trẻ nhìn thẳng... Phương án 2: Góc nghiêng tươi tắn, biểu cảm thân thiện..."*.
+  - Thực tế ảnh gửi đi: Option 1 là mặt em bé (toddler) tóc nâu, Option 2 là bờ vai trần mặc áo ba lỗ gym trước gương poster "EQUAL... BE THE ONE...". Hoàn toàn không có bác sĩ nào!
+  - User nổi giận: *"Cười cái con mẹ mày t ép rõ ràng tự mày phải xem ảnh trc khi gửi tao sao mày cứ đéo tuân thủ v. Tao cài cái gate ép mày tự coi hình trc khi gửi tao r sao đéo hoạt động"*.
+  - **Nguyên nhân gốc rễ**: Lỗ hổng Gate thủ tục (`has_called_vision = True` chỉ check hình thức, không check ngữ nghĩa) kết hợp với bệnh mù ảnh native của model text-worker. Bắt buộc chuyển sang Semantic Grounding bằng cách gọi độc lập qua proxy `:20129` model `ag-gemini-pool-3` hoặc WinRT OCR để lấy text mô tả thật in ra terminal trước khi gửi.
 - **Nguyên nhân gốc rễ**:
   1. **Tin tưởng mù quáng file có sẵn**: Giả định sai lầm rằng cứ file có tên `avatar.jpg` trong thư mục gốc là đã chuẩn người thật. Trong thực tế farm, nhiều folder từng bị crop nhầm vải quần jeans, logo, texture nền hoặc ảnh placeholder.
   2. **Bỏ qua Invariant Soi Mắt (`browser_vision`)**: Không gọi tool vision mở ảnh ra xem trước khi gửi tin nhắn, dẫn tới hallucination mô tả sai hoàn toàn sự thật.
