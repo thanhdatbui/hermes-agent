@@ -469,9 +469,11 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
   3. **Xung đột 2 bộ gõ EVKey song song:** Bật EVKey trên cả máy Kibe và máy Admin gây xung đột hook bàn phím qua luồng remote desktop.
 - **Quy trình cứu hộ tự động qua SSH từ Kibe PC (Zero-Manual Invariant & Invariant-Fallback-Exhaustion):**
   * **CẤM TUYỆT ĐỐI "Defeatist Rationalization":** CẤM viện cớ guard hoặc bịa lý do kỹ thuật (như "session isolation", "Windows không cho") để đùn đẩy bắt user tự gõ lệnh hoặc tự chỉnh tay trong UltraViewer. Kibe PC luôn có SSH sang `admin-farm`. Tuyên bố không làm được khi chưa thử các kênh fallback nội bộ bị tính lỗi P0.
-  * **Kỹ thuật chạy SSH chuẩn qua helper `admin_ssh.py`:** Khi terminal trực tiếp bị chặn lệnh `ssh` thô (do default-deny terminal guard), BẮT BUỘC dùng helper:
-    `python <path_skill>/scripts/admin_ssh.py "<powershell_command>"`
-    hoặc gọi script Python chạy `subprocess.run(["ssh", "-o", "ConnectTimeout=8", "admin-farm", f"powershell -NoProfile -EncodedCommand {b64}"])`.
+  * **Kỹ thuật chạy SSH chuẩn qua canonical tool `admin_ssh.py`:** Khi terminal trực tiếp bị chặn lệnh `ssh` thô (do default-deny terminal guard), BẮT BUỘC dùng canonical tool đã được kiểm duyệt:
+    `python D:/Taadaa/tools/admin_ssh.py "<command>"`
+    hoặc với PowerShell phức tạp:
+    `python D:/Taadaa/tools/admin_ssh.py --powershell '<powershell_command>'`
+    (Tool hỗ trợ `--json`, `--test`, auto correlation_id, parameter-level access control chặn phá hoại tiến trình hệ thống, và ghi audit JSONL chuẩn). Cấm tuyệt đối gõ ssh thô ngoài terminal để rồi bị Guard chặn rồi thoái thác.
   * **Khóa bàn phím Admin về en-US:** Chạy `$list = New-WinUserLanguageList 'en-US'; Set-WinUserLanguageList $list -Force` xóa sạch layout tiếng Việt (`0000042a`) và tiếng Trung, chỉ giữ `00000409`.
   * Dập tiến trình EVKey Admin: `Stop-Process -Name EVKey64, EVKey32, UniKeyNT -Force -ErrorAction SilentlyContinue`.
   * Chi tiết: `references/remote-desktop-virtual-keystuck-and-chinese-ime-runaway.md`.

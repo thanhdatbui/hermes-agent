@@ -1,10 +1,10 @@
 Chu kỳ 4d: Parity 96h (N1 lẻ, N2 chẵn), N3(R7,8, tối dưỡng), N4(dưỡng 0fl+up). Starve 108h. CẤM xóa cooldown. Dưỡng động: healing_selector.py chọn row theo p_fail(100)+p_young(20); S2 bám S1; cấm kẹp ca; N4 3 ca 3 row; cache 60s; audit schema 1.0 + rotate 5MB.
 §
-Followed=0 cấm PASS; upload SSH admin. SSH Admin: cấm thoái thác do guard terminal, bọc python subprocess b64. Auto-resume reboot: locks==0; nạp Gateway chạy tiếp.
+Followed=0 cấm PASS. Admin SSH: dùng canonical D:/Taadaa/tools/admin_ssh.py (--powershell/--json); CẤM thoái thác/đầu hàng non/bịa cớ Session Isolation khi Guard block raw ssh. Auto-resume reboot: locks==0.
 §
 Strike 3 Claude CLI. AG CLI: agy.exe qua D:/Taadaa/tools/ag_cli.py (ask/fix/pool-status, gemini-3.8-flash-high). Pool D:/Taadaa/agy_profiles/ cô lập UUID+proxy, 429 auto-rotate.
 §
-TikTok Follow: (máy,row) độc lập; Quota 10-15/ca (Khỏe); Hồi phục 1&2 mỗi stage 2 ca sạch; Canary Khỏe +10%; like 80%. Nick non nhả cấm ngắt IP. Path B 'Đã fl' ko commit; slot (folder-1)%8+1; reg bù độc lập. Mode 2: anchor >= 150 fl; cuộn sâu. Cron: feed/follow_session_watchdog.
+TikTok Follow: (máy,row) độc lập; Quota 10-15/ca; Hồi phục 1&2 2 ca sạch; Canary Khỏe +10%; like 80%. Path B 'Đã fl' ko commit; slot (folder-1)%8+1. Mode 2: anchor >= 150 fl; cuộn sâu. Cron: feed/follow_watchdog.
 §
 Hotmail bán: CẤM mail cá nhân; sinh @fviainboxes.com đọc OTP API. Write-Through: xong bước nào ghi ngay Excel Cột 3,4,5 & Cột G farm, cấm đợi relogin. CDP đóng ko mất cookie. Dual-farm ~1280 acc.
 §
