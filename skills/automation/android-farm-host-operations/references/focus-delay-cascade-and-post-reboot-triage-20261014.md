@@ -23,7 +23,12 @@ ls -la ~/.codex/device-locks/
 ```
 - Điều kiện: Không có file `.lock.json` đang hoạt động (`locks == 0`).
 
-### Bước 2: Kiểm tra phục hồi ADB Fleet O(1)
+### Bước 2: Kiểm tra phục hồi ADB Fleet & Đối soát Uptime O(1)
+Khi có nghi vấn "máy không reset mà tự hết", BẮT BUỘC kiểm tra ngay thời điểm boot của host:
+```bash
+python -c "import psutil, time; print('Uptime:', (time.time() - psutil.boot_time()) // 60, 'phút')"
+```
+- Nếu thời gian boot sát với thời điểm sau khi kết thúc batch: khẳng định 100% PC đã reboot và System Bus Reset từ BIOS giải phóng thanh ghi EHCI.
 Chạy script inspect chuẩn của farm:
 ```bash
 python D:/Taadaa/tools/inspect_machine.py
@@ -53,3 +58,11 @@ Trong repo `tiktok-luot nuoi acc`:
 3. **Bộ test kiểm chứng focused:**
    - `python_runner/tests/test_device_prepare.py` (33 tests pass)
    - `python_runner/tests/test_multi_machine_fast_fail.py` (3 tests pass)
+
+---
+
+## 4. Ngăn Ngừa Tái Diễn: Hạ Trần Concurrency & Nới Nhịp Khởi Động
+Để ngăn chặn hoàn toàn hiện tượng USB bus saturation tái diễn trong các ca chạy 80 máy:
+- **`MaxWorkers` = 16** (hạ từ 25 trong `run-feed-session.ps1`): giảm 36% áp lực I/O đồng thời.
+- **`MachineStartStaggerMs` = 3000,10000** (tăng từ 2000,8000): giãn cách 3s–10s giữa các lượt mở app, triệt tiêu cú sốc I/O tức thời.
+- Đồng bộ cấu hình tại: `scripts/run-feed-session.ps1`, `scripts/hermes_cron/tiktok_runner.py`, và `run_74machines.bat`.
