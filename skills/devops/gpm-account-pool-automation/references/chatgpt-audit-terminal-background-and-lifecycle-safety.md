@@ -1,0 +1,20 @@
+# ChatGPT GPM Audit: Terminal Background Execution & Verification Lifecycle
+
+## Context & Quirks
+Khi vận hành script `login_audit_and_purge_deactivated.py` qua cron job hoặc CLI agent:
+1. **Terminal Foreground Guard**:
+   - Môi trường Hermes agent trên máy host enforce `[GUARD_FOREGROUND_TIMEOUT_MISSING]`.
+   - Các lệnh terminal foreground bắt buộc phải có tham số `timeout <= 60s`.
+   - Với quy trình audit nhiều tài khoản GPM (mỗi tài khoản mở profile, kết nối CDP, giải/lấy OTP qua Graph API hoặc Outlook webmail, kiểm tra DOM mất từ 20s - 45s mỗi tài khoản): tổng thời gian audit 5 tài khoản có thể vượt quá 60s.
+   - **Quy tắc thực thi**: Bắt buộc khởi chạy script ở chế độ background `terminal(command="python D:/Taadaa/tools/login_audit_and_purge_deactivated.py --limit 5", background=True)` và điều phối bằng `process(action='wait', session_id=..., timeout=25-30)` theo từng cửa sổ thời gian (polling/wait loop) cho đến khi `process_running: false`.
+
+2. **Cron Environment & Notifications**:
+   - Phiên cron job / one-shot runner không hỗ trợ nhận async notification (`notify_on_complete / watch_patterns are not available in this session`).
+   - Agent cần chủ động dùng `process(action='wait')` hoặc `process(action='poll')` với timeout xác định để chờ script hoàn tất thay vì dựa vào notification.
+
+3. **UNKNOWN Status vs DEAD_DEACTIVATED**:
+   - Nếu account sau khi điền OTP chưa kịp render xong marker giao diện (`New chat`, `Cuộc trò chuyện mới`) hoặc timeout khi tải webmail, kết quả trả về là `UNKNOWN`.
+   - **Quy tắc an toàn**: Tuyệt đối không quy chụp `UNKNOWN` thành `DEAD_DEACTIVATED`. Chỉ thực hiện purge khi có marker xác thực cụ thể (`account_deactivated` hoặc `đã bị xóa hoặc vô hiệu hóa`) kèm ảnh chụp bằng chứng màn hình lưu vào `artifacts/`.
+
+4. **Dọn dẹp Zombie Process**:
+   - Mỗi chu kỳ audit tài khoản GPM, hàm `_kill_gpm_chrome(host_port)` sử dụng psutil để quét và kill triệt để Chrome headless theo debug port. Đảm bảo không tồn đọng orphan processes làm chiếm dụng port hoặc RAM.

@@ -1,7 +1,7 @@
 ---
 name: gpm-account-pool-automation
 description: "GPMLogin v3 + Playwright/CDP account-pool operations: proxy-safe Gmail lifecycle, nurture, OAuth, and ChatGPT direct registration."
-version: 1.2.0
+version: 1.2.1
 ---
 
 # GPMLogin Local API & Account Pool Automation
@@ -9,7 +9,7 @@ version: 1.2.0
 ## 1. Khi nào sử dụng
 
 Use for GPM v3 (19995), Gmail/Hotmail lifecycle, proxy-safe accounts, OAuth, ChatGPT/Codex, watchdogs, pagination.
-- Audit & OTP: `references/chatgpt-audit-graph-recursion-and-webmail-timeout.md`.
+- Audit: `references/chatgpt-audit-terminal-background-and-lifecycle-safety.md`.
 - GPM Zombie & Rolling: `references/gpm-stop-api-zombie-leak-and-rolling-concurrency.md`.
 - Credential & Pass: `references/credential-isolation-policy-hotmail-chatgpt-tiktok.md`, `references/hotmail-password-mapping-and-cookie-consent-pitfalls.md`.
 - Turnstile & Watchdog: `references/omniroute-turnstile-sentinel-gpm-recovery.md`, `references/no-agent-cron-silent-watchdog-and-telegram-chunking.md`.
