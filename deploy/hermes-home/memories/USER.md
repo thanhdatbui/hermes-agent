@@ -4,7 +4,7 @@ Dọn đĩa: duyệt trước (thư mục corrupt/lỗi xóa ngay), CẤM xóa n
 §
 Farm: nick cấm xóa/đè; SoT tiktok_tracker.db; cấm đè ava tay; Canary tự mở app & chuyển nick qua automation_core, cấm gọi user mở tay. Nuôi 4d 3 ca (bỏ ca đêm, idle dập TT & tắt màn 223); Starve 96h. Đổi mail: Hotmail sạch, ưu tiên Graph PC.
 §
-cấm raw/trace dump hay telemetry JSON ra stdout cron (bắt buộc stderr); chốt phiên bắt buộc push remote thật rồi mới báo DONE;
+cấm telemetry JSON ra stdout cron (bắt buộc stderr); chốt phiên push remote thật mới báo DONE; OTP mail user: tự đọc qua read_otp_mail.py ('add mail khoi phuc'), cấm hỏi mã.
 §
 Kibe(1-80) & Admin(201-280) cào nguồn & media độc lập 100% (cấm trùng video, cấm sync chéo Niche/Hashtag). TT v47.0.3; Switcher dock; AP 40m.
 §
