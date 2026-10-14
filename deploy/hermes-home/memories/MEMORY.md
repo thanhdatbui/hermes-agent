@@ -2,7 +2,7 @@ Chu kỳ 4d: Parity 96h (N1 lẻ, N2 chẵn), N3(R7,8, tối dưỡng), N4(dư�
 §
 Host/USB: Reboot 3 Ca (05:20, 11:20, 17:20; chặn TFT). SSH ngầm. WoL ether3 (kibe 0C:EF:15:37:4C:20, admin 22:33:4D:06:4C:26). Followed=0 cấm PASS; upload SSH admin. Resume reboot: chỉ nhận turn dở.
 §
-Gate miễn trừ Closeout. Runner fail vá core, cấm tap tay ngoài lề. Strike 3 Closeout giao Claude CLI self-remediate.
+Gate miễn Closeout. Runner fail vá core, cấm tap tay. Strike 3 giao Claude CLI. Khi user bảo dùng Claude Haiku: gọi claude --model claude-haiku-5-5 (mặc định giữ sonnet-5-5).
 §
 TikTok Follow: (máy,row) độc lập, ca khác row khác cấm gộp; Quota 10-15/ca (Khỏe); Hồi phục 1&2 mỗi stage 2 ca sạch; Canary Khỏe +10% dò trần; like 80%. Nick non nhả cấm ngắt IP. Đối soát fl file state. Path B 'Đã fl' ko commit; slot (folder-1)%8+1; reg bù độc lập. Mode 2: anchor >= 150 fl; cuộn sâu. Cron: feed_session_watchdog & follow_session_watchdog.
 §
@@ -14,6 +14,6 @@ Farm Dispatch Invariant: delegate_task context cần TASK_KIND: EDIT/INVESTIGATE
 §
 GPM: Kibe chạy, stop API ko kill chrome -> bắt buộc kèm _kill_gpm_chrome(psutil). Cuốn chiếu = duy trì max 5 worker (xong kéo acc mới ngay). Hotmail qua HOTMAIL_LOGIN giữ cookie. CHANGE_INFO: MS ép mail kp (@fviainboxes); ghi Excel lũy tiến (C5,C4,C3+G) trước signout.
 §
-Triage Stale Upload: CẤM quy chụp máy rớt ADB là nick kẹt >14d; slot khác tăng clip thì máy bình thường, do draft trap. Mở draft hỏng bắt buộc xóa sạch (_delete_all_profile_drafts), về Home. Xóa draft an toàn vì video gốc trên PC & Excel giữ số TT. state_machine.py bắt buộc LF.
+Stale Upload: CẤM quy chụp rớt ADB là kẹt >14d; do draft trap. Mở draft hỏng xóa sạch (_delete_all_profile_drafts), về Home. Xóa draft an toàn vì video gốc trên PC & Excel giữ số TT. state_machine.py bắt buộc LF.
 §
 Niche farm: CẤM gán 1 tik cùng 1 niche hàng loạt; bắt buộc phân bổ xen kẽ/random giữa các máy để cùng phiên không bị trùng niche.
