@@ -10,7 +10,7 @@ Hotmail: CẤM mail cá nhân; sinh @fviainboxes.com đọc OTP API. Write-Throu
 §
 Proxy: SoT PROXYgandienthoai.xlsx. OmniRoute Web: gán 1-1 proxy_assignments host:port, cấm random/direct (chống ban mass). Vision assert mCurrentFocus+OCR, MEDIA: dòng riêng. Ava & 2FA né ca nuôi & cache 4h. Ghim clip: cuộn sâu ghim top view. S7 TT sleep >=6s.
 §
-Farm Dispatch: delegate_task TASK_KIND: EDIT/INVESTIGATE/CREATE. FILE: D:/...; FOCUSED_TEST chuẩn: 'python -m py_compile <f>' hoặc 'python -m pytest <f>::<n> -q'. Task EDIT bắt buộc OLD_STRING: <<< ... >>>. S7 rescue: recover_stuck_s7.py (L1 soft 3s -> L2 direct reboot 5s -> L3 reconnect); batch_recover_s7.py kẹp trần max_reboots=2.
+Farm Dispatch: Sửa code dùng haiku_worker.py O(1) (hook chặn delegate_task EDIT trừ cờ ALLOW_SUBAGENT_CODE_EDIT). delegate_task chỉ cho INVESTIGATE (<=5 calls). S7 rescue: recover_stuck_s7.py (L1 soft 3s -> L2 reboot 5s -> L3 reconnect); batch_recover_s7.py kẹp max_reboots=2.
 §
 GPM: Kibe chạy, stop API kèm _kill_gpm_chrome; max 5 wkr. Hotmail: qua HOTMAIL_LOGIN giữ cookie, cấm ngâm ảo 7d; MS landing check is_auth trước challenge; MS ép mail @fviainboxes; ghi Excel (C5,4,3+G) trước signout.
 §

@@ -28,6 +28,17 @@ Khi Coordinator điều phối sửa đổi các file đăng ký bảo vệ avat
      * Các lệnh tự do như `python script.py --verify` sẽ bị guard chặn với lỗi `INVALID_FOCUSED_TEST_FORMAT`.
    - **Cấm `subprocess` trong `python -c` của Coordinator**: Lệnh `python -c` ở phiên chính chỉ dùng đọc dữ liệu read-only. Gọi `subprocess` trong `python -c` bị chặn ngay. Các tác vụ can thiệp hệ thống phức tạp hoặc vượt ngân sách T1 (5 files, 200 dòng) bắt buộc dispatch Worker.
 
+5. **Cạm Bẫy Cạn Kiệt Ngân Sách T1 Coordinator Khi Xử Lý Lô Nhiều Nick (Multi-Account T1 Exhaustion)**:
+   - **Hiện tượng**: Khi nhận yêu cầu xử lý avatar cho nhiều nick cùng lúc (ví dụ lô 3 nick), Coordinator tự viết liên tiếp các script trích xuất frame, lọc khuôn mặt, tạo preview bằng `write_file`.
+   - **Hậu quả**: Chạm trần ngân sách tích lũy của Coordinator: `⛔ [COORDINATOR WRITE DENIED]: Hết ngân sách T1 (tối đa 5 files, <= 200 dòng cộng dồn cả session)`. Coordinator bị khóa quyền ghi file trong toàn bộ phần còn lại của session.
+   - **Kỷ luật điều phối bắt buộc**:
+     * Coordinator CHỈ tra cứu định danh, đọc mapping Excel/DB read-only O(1) trong phiên chính.
+     * CẤM TUYỆT ĐỐI tự tạo chuỗi 3–4 script xử lý ảnh trực tiếp trong session Coordinator.
+     * BẮT BUỘC dispatch Worker subagent ngay từ đầu qua `delegate_task` với `TASK_KIND: CREATE`, `FILE: D:/Taadaa/reports/<script>.py`, và `FOCUSED_TEST: python -m py_compile D:/Taadaa/reports/<script>.py` để Worker viết code và tự thực thi trích xuất/crop ảnh.
+   - **Bẫy `lifecycle_guard.py` với lệnh terminal inline**:
+     * Lệnh Python inline (`python -c "..."`) nhiều dòng phức tạp chứa escape nháy, ký tự đặc biệt hoặc đường dẫn lồng nhau dễ khiến `lifecycle_guard.py` gặp lỗi `ValueError: open: embedded null character in path` hoặc kích hoạt `GUARD_DANGEROUS_ROOT`.
+     * Luôn giữ lệnh terminal ngắn gọn hoặc giao Worker viết file script chuyên dụng để chạy.
+
 ## 2. Quy Trình Chẩn Đoán Lệch Niche & Avatar Từ Ảnh Người Dùng Cung Cấp
 Khi User gửi ảnh chụp màn hình kênh TikTok và yêu cầu "Đổi ava nick này":
 1. **Trích xuất định danh kênh O(1)**:
