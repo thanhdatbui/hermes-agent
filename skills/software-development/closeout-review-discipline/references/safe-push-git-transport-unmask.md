@@ -13,9 +13,19 @@ fatal: transport 'https' not allowed
 ```
 Nếu cố unmask bằng git config local, Git tiếp tục fail do không tìm thấy Windows Git Credential Manager để lấy GitHub Personal Access Token / OAuth.
 
-## Giải Pháp Chuẩn: Tool `D:/Taadaa/tools/safe_push.py`
-Để tránh bị chặn bởi các biến trên mà không can thiệp vào tiến trình cha của Hermes, luôn gọi qua tool wrapper:
+## Giải Pháp Chuẩn: Tool `D:/Taadaa/tools/safe_push.py` & Cờ `--push` Trong `closeout_gate.py`
+Để tránh bị chặn bởi các biến trên mà không can thiệp vào tiến trình cha của Hermes, có 2 cách thực hiện:
 
+### Cách 1 (Khuyến nghị): Chạy Closeout Gate với cờ `--push` / `--auto-push`
+`closeout_gate.py` đã được Claude CLI tích hợp trực tiếp `safe_push`:
+```bash
+python D:/Taadaa/tools/closeout_gate.py --repo <repo_dir> --files <target_files> --push --json-output
+```
+- Khi verdict đạt `APPROVED (score >= 85)`, Gate sẽ **tự động gọi `safe_push` đẩy thẳng commit lên origin** và in: `[Closeout Auto-Push] Push origin <branch> thành công.`
+- Nếu push lỗi hoặc chưa đủ điều kiện, Gate văng exit 1 và in thông báo lỗi rõ ràng.
+- Coordinator không cần phải chạy git push thủ công bằng tay, triệt tiêu nguy cơ quên push.
+
+### Cách 2: Gọi trực tiếp qua tool wrapper `safe_push.py`
 ```bash
 python D:/Taadaa/tools/safe_push.py <repo_dir> [remote] [branch] [-- extra_git_args]
 ```

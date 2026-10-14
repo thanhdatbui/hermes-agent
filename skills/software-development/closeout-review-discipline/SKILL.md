@@ -14,7 +14,7 @@ metadata:
 > **Canonical policy precedence:** For orchestration and closeout precedence, follow `D:\Taadaa\HERMES_SUBAGENT_RULES.md` marker `CANONICAL-POLICY-PRECEDENCE-2026-10-05`; this skill points to it and does not redefine it.
 
 References:
-- `references/safe-push-git-transport-unmask.md` — **[MỚI 14/10/2026]** Xử lý triệt để lỗi `transport 'https' not allowed` và credential block trong subshell Hermes khi git push bằng tool `D:/Taadaa/tools/safe_push.py` hoặc Claude CLI với gh credential helper; bắt buộc đối soát `git status -sb` và remote SHA sau push để chống bẫy "báo chốt phiên nhưng đọng commit chưa push".
+- `references/safe-push-git-transport-unmask.md` — **[MỚI 14/10/2026]** Tích hợp cờ `--push` / `--auto-push` trực tiếp vào `closeout_gate.py`: Tự động unmask `GIT_ALLOW_PROTOCOL=file` và credential blocks qua `D:/Taadaa/tools/safe_push.py` để push thẳng lên remote ngay khi Gate đạt `APPROVED >= 85`; cấm Coordinator dừng lại buông xuôi khi chưa push hoặc khi score < 85.
 - `references/closeout-gate-rejection-remediation.md` — **[MỚI 12/10/2026]** Kỷ luật xử lý khi closeout gate bị REJECTED (<85đ): Cấm dừng lại ở L3 xin đóng phiên, bám sát finding sửa đến cùng, quy trình Strike 3 hand-off Claude CLI.
 - `references/closeout-gate-files-dirty-target-strictness.md` — Quy tắc bắt buộc khi dùng `--files` trong `closeout_gate.py`: CHỈ truyền file có working-tree diff, tránh lỗi 'targets without working-tree changes'.
 - `references/closeout-gate-committed-scope-exactness.md` — **[MỚI 12/10/2026]** Khắc phục lỗi `refusing partial committed scope` trong chế độ `committed_targeted`: tập hợp `--files` bắt buộc khớp 100% với `git diff <base>..HEAD --name-only`.
