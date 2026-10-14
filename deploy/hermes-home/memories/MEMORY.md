@@ -4,7 +4,7 @@ Followed=0 cấm PASS. Admin SSH: dùng D:/Taadaa/tools/admin_ssh.py (--powershe
 §
 Worker: haiku_worker.py O(1), fallback ag_cli.py (7 acc Pro). Strike 3 Handoff 429 fallback ag_cli.py.
 §
-TikTok Follow: (máy,row) độc lập; Quota 10-15/ca; Hồi phục 1&2 2 ca sạch; Canary Khỏe +10%; like 80%. Path B 'Đã fl' ko commit; slot (folder-1)%8+1. Mode 2: anchor >= 150 fl; cuộn sâu. Cron: feed/follow_watchdog.
+TikTok Follow: (máy,row) độc lập; Quota 10-15/ca; Hồi phục 1(2-4fl,1ca) & 2(6-8fl,1ca); clean>=2 tốt nghiệp; Canary Khỏe +10%; like 80%. Path B 'Đã fl' ko commit; slot (folder-1)%8+1. Mode 2: anchor >= 150 fl; cuộn sâu. Cron: feed/follow_watchdog.
 §
 Hotmail: CẤM mail cá nhân; sinh @fviainboxes.com đọc OTP API. Write-Through: ghi ngay Excel Cột 3,4,5 & G farm, cấm đợi relogin. CDP đóng ko mất cookie. Dual-farm ~1280 acc.
 §

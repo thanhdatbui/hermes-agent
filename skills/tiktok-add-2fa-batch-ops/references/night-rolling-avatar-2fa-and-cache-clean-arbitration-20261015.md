@@ -26,3 +26,15 @@
 - **Nhịp báo cáo:** Thay vì báo lắt nhắt từng batch hoặc ngắt ca lúc 23:30, hệ thống chuyển sang nhịp định kỳ **mỗi 6H** (`00:00`, `06:00`, `12:00`, `18:00`) hoặc khi **hoàn tất 100%**.
 - **Cấm gán nhãn gây hiểu nhầm:** Tuyệt đối không dùng cụm từ `"nhường lịch nuôi TikTok / lock tiến trình khác"` cho các tài khoản chưa kịp xử lý khi hết giờ. Thay bằng số liệu rõ ràng: `"• Còn lại: N tài khoản chưa up"`.
 - **Silent Batch:** Giữa các khung 6H, cron chạy ngầm cuốn chiếu hoàn toàn im lặng trên stdout để giữ sạch kênh thông báo Telegram.
+
+## 5. Kỷ Luật Exit Code Watchdog `no_agent: true` & Đệm Chặn 04:45
+- **Exit Code Semantics trong Hermes:**
+  * Với job `no_agent: true`, bất kỳ `exit code != 0` nào đều bị Hermes scheduler bắt lại và giật chuông cảnh báo `⚠️ Cron failed: Script exited with code 1`.
+  * CẤM script trả về `return 1` khi chỉ dính `fail > 0` (máy lẻ lỗi/timeout là bình thường trong cụm 160 máy). Script BẮT BUỘC lưu `fail_count` vào persistent state JSON để báo cáo vào mốc 6H, nhưng return `0` khi `code in ACCEPTABLE_RETURN_CODES (0, 4)`. Chỉ return non-zero khi chính tiến trình runner bị crash hoàn toàn.
+- **Đệm an toàn trước ca sáng (04:45 Hard Cutoff):**
+  * Mỗi batch 2FA/Avatar chạy mất từ 15-25 phút. Nếu cho phép khởi chạy lúc `05:00 - 05:07`, tiến trình sẽ kéo dài qua mốc `05:15` và chiếm giữ Device Lock khi Ca 1 bắt đầu lúc `06:00`.
+  * `is_safe_rolling_window` BẮT BUỘC chặn khởi chạy batch mới sau `04:45`: `if (h == 4 and m >= 45) or (h == 5 and m >= 15) or h in (6, 7, 8): return False`.
+
+## 6. Khóa Trần Concurrency `--max-workers 15` & SSH PowerShell Exit Code
+- **Bắt buộc `--max-workers 15`:** Cả Kibe lẫn Admin đều phải truyền `--max-workers 15` vào `run_batch_live_2fa.py`. Tuyệt đối không dùng `40` để tránh bão tranh chấp lock workbook trên OneDrive.
+- **PowerShell SSH `$LASTEXITCODE`:** Khi dispatch cluster Admin qua `ssh admin-farm powershell -EncodedCommand`, PowerShell script BẮT BUỘC có dòng `exit $LASTEXITCODE` ở cuối. Nếu thiếu, PowerShell sẽ nuốt return code của Python (hoặc trả 1 do stderr) làm watchdog nhận diện sai trạng thái thành công.
