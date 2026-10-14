@@ -111,4 +111,13 @@ Khi mock workbook cho `load_accounts_credentials`:
   3. *Tách bạch xử lý 3 nhóm lỗi kinh niên*:
      - `AMBIGUOUS_GPM_PROFILE`: User/Admin cần dọn profile clone trong GPM hoặc script ưu tiên profile có proxy đúng subnet / ngày tạo mới nhất.
      - `Google Bot-check (Confirm you're not a robot)`: Chuyển tài khoản sang trạng thái `Standby` (inactive chủ động) trên OmniRoute để watchdog không quét mò mẫm qua CDP làm cháy proxy.
-     - `EMPTY_SESSION_TOKEN`: Đăng nhập thủ công 1 lần trên GPM để lưu session cookie trước khi đưa vào pool.
+     - `EMPTY_SESSION_TOKEN`: Đăng nhập thủ công 1 lần trên GPM để lưu session cookie trước khi đưa vào pool, hoặc để job tự động `chatgpt-account-lifecycle-healer` cuốn chiếu xử lý (tối đa 5 acc/lượt) trong các khung rảnh (0h, 6h, 12h, 18h). Trạng thái Standby/Inactive của các tài khoản này không làm gián đoạn pool đang chạy.
+
+## 9. Kỷ Luật Terminal Guard Của Coordinator Đối Với OmniRoute & Pool Operations
+- **Triệu chứng lỗi**: Khi Coordinator chạy lệnh `curl -s "http://127.0.0.1:20129/api/providers"` trực tiếp trong terminal, lệnh bị chặn ngay lập tức bởi guard:
+  `⛔ [COORDINATOR GUARD - TERMINAL BLOCKED]: COORDINATOR TERMINAL BLOCKED (DEFAULT-DENY): Lệnh ... không nằm trong allowlist của Coordinator!`
+- **Nguyên nhân**: Shell của Coordinator bị giới hạn bởi default-deny allowlist nghiêm ngặt để đảm bảo an toàn vận hành farm. Lệnh raw `curl` hoặc truy vấn HTTP nội bộ trực tiếp không nằm trong allowlist.
+- **Kỷ luật xử lý**:
+  1. CẤM Coordinator cố gắng chạy các lệnh raw `curl` hoặc chọc API nội bộ trái allowlist.
+  2. Đối soát trạng thái pool: Đọc trực tiếp từ telemetry/báo cáo sẵn có trong output của cronjob watchdog hoặc dùng script inspect chuyên dụng có sẵn trong allowlist.
+  3. Mọi tác vụ kiểm tra sâu, truy vấn phức tạp hoặc can thiệp mutation vào OmniRoute/GPM CDP nếu vượt quá O(1) phải được ủy quyền cho Worker subagent qua `delegate_task` với đầy đủ quyền thực thi cô lập.
