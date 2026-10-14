@@ -8,13 +8,12 @@ version: 1.2.1
 
 ## 1. Khi nào sử dụng
 
-Use for GPM v3 (19995), Gmail/Hotmail lifecycle, proxy-safe accounts, OAuth, ChatGPT/Codex, watchdogs, pagination.
-- Audit: `references/chatgpt-audit-terminal-background-and-lifecycle-safety.md`.
-- GPM Zombie & Rolling: `references/gpm-stop-api-zombie-leak-and-rolling-concurrency.md`.
+Use for GPM v3 (19995), Gmail/Hotmail lifecycle, proxy-safe accounts, OAuth, ChatGPT/Codex, watchdogs.
+- Audit & Recovery: `references/chatgpt-audit-terminal-background-and-lifecycle-safety.md`, `references/gpm-stop-api-zombie-leak-and-rolling-concurrency.md`.
 - Credential & Pass: `references/credential-isolation-policy-hotmail-chatgpt-tiktok.md`, `references/hotmail-password-mapping-and-cookie-consent-pitfalls.md`.
 - Turnstile & Watchdog: `references/omniroute-turnstile-sentinel-gpm-recovery.md`, `references/no-agent-cron-silent-watchdog-and-telegram-chunking.md`.
 - 2FA & Pagination: `references/gpm-gmail-2fa-lifecycle-deadlock-and-silent-reporting.md`, `references/gpm-profile-pagination-and-duplicate-spawn-pitfall.md`.
-- Mute Audio & Concurrency: `references/gpm-chromium-mute-audio-noise-control.md`, `references/gpm-supervisor-concurrency-cap-and-openai-age-form-trap.md`.
+- Concurrency & Cooldown: `references/gpm-chromium-mute-audio-noise-control.md`, `references/gpm-supervisor-concurrency-cap-and-openai-age-form-trap.md`, `references/gpm-supervisor-proxy-port-cooldown-bottleneck-triage.md`.
 - Browser-core repair: `references/gpm-browser-core-repair-source-integrity.md`.
 - Preflight Liveness: `references/gpm-local-api-liveness-and-autolaunch-pattern.md`.
 - Hook ChatGPT Web/Codex: `references/codex-oauth-phone-verification-5sim-and-sumistore.md`.
