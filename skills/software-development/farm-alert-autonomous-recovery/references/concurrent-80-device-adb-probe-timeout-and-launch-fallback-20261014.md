@@ -34,3 +34,21 @@
 - **Bẫy điều phối:** Hard Gate #5 bắt chặt mọi lệnh terminal có chứa token `adb` mà không đi kèm `-s <serial>`.
 - **Hệ quả:** Lệnh `git commit -m "[L2-surgery] Fix ADB probe timeout..."` sẽ bị Hard Gate #5 chặn đứng vì chuỗi chứa chữ "ADB".
 - **Kỷ luật thực thi:** Tránh dùng token `adb` trần trong commit message hoặc shell command. Dùng thay thế: `Fix probe timeout...` hoặc `git commit -m "[L2-surgery] Fix device probe timeout and TikTok launch fallback..."`.
+
+---
+
+## 3. Sol Reviewer Closeout Expectations & Unit Test Assertions
+Khi vá probe timeout và launch fallback để chốt phiên qua Closeout Gate (Sol Auditor :20129):
+- **Assert tham số Timeout:** Sol Auditor sẽ từ chối nếu unit test chỉ mock thành công mà không assert rõ ràng tham số timeout mới:
+  `assert fake_adb.shell.call_args_list[0].kwargs["timeout"] == 15.0`
+- **Đồng bộ Timeout Preflight:** Đổi `timeout=15.0` cho cả lệnh đọc `http_proxy` lẫn lệnh `check_android_vpn(..., timeout=15.0)` trong `vpn_preflight.py` để tránh lệch pha giữa hai bước probe.
+- **Phân biệt Telemetry Action:** Khi fallback `am start` tại attempt 6, không tái sử dụng action name `retry_monkey_launch`. Bắt buộc đổi action thành `retry_am_start_launch` để telemetry phân biệt được số lần fallback và assert sự hiện diện của action này trong log (`ctx.artifacts.log_path.read_text()`).
+
+---
+
+## 4. `inspect_machine.py` Path Priority & Windows Execution Alias Trap
+- **Bẫy `shutil.which("adb")` trên Windows:** Windows 10/11 tự động thêm thư mục `AppData\Local\Microsoft\WindowsApps` vào đầu biến môi trường `PATH`. Thư mục này chứa execution alias rỗng `adb.EXE` (0KB). Nếu code dùng `shutil.which("adb")` trước, Python sẽ trỏ vào alias này gây treo lệnh vô thời hạn (timeout sau 10s–25s).
+- **Quy tắc trỏ binary chuẩn:** Luôn kiểm tra file vật lý tồn tại trước:
+  `_DEFAULT_ADB = r"C:\Program Files (x86)\xiaowei\tools\adb.exe"`
+  `ADB_BIN = _DEFAULT_ADB if os.path.isfile(_DEFAULT_ADB) else (shutil.which("adb") or "adb")`
+- **Current Focus O(1):** Bổ sung trích xuất `mCurrentFocus` từ `dumpsys window windows` vào output của `inspect_machine.py` để lập tức nhận diện thiết bị đang ở `LauncherActivity` hay kẹt popup mà không cần dump XML/chụp ảnh.
