@@ -5,7 +5,7 @@ from tools.registry import registry
 ADVISOR_ENDPOINT = os.getenv("HERMES_ADVISOR_ENDPOINT", "http://127.0.0.1:20129/v1/chat/completions")
 ADVISOR_MODEL = "review"
 MAX_RAW_ADVICE = 12000
-DEFAULT_TIMEOUT = 15
+DEFAULT_TIMEOUT = 55
 MAX_PAYLOAD_BYTES = 16000
 _SECRET_KEYS = {"password", "apikey", "accesstoken", "refreshtoken", "sessiontoken", "cookie", "authorization", "authheader", "secret", "token", "privatekey", "clientsecret"}
 _BEARER_RE = re.compile(r"(?i)\bbearer\s+[A-Za-z0-9._~+/=-]+")
