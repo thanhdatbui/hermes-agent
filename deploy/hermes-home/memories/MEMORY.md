@@ -4,11 +4,11 @@ Followed=0 cấm PASS. Admin SSH: dùng D:/Taadaa/tools/admin_ssh.py (--powershe
 §
 Worker: haiku_worker.py O(1) mac dinh (6-15s); fallback ag_cli.py; CAM omni-worker tru khi user lenh. Strike 3 Handoff 429 fallback ag_cli.py.
 §
-TikTok Follow: (máy,row) độc lập; Quota 10-15/ca; Hồi phục 1(2-4fl,1ca) & 2(6-8fl,1ca); clean>=2 tốt nghiệp; Canary Khỏe +10%; like 80%. Path B 'Đã fl' ko commit; slot (folder-1)%8+1. Mode 2: anchor >= 150 fl; cuộn sâu. Cron: feed/follow_watchdog.
+TikTok Follow: (máy,row) độc lập; Quota 10-15/ca; Hồi phục 1&2; clean>=2 tốt nghiệp; Canary +10%; like 80%. Path B ko commit; slot (folder-1)%8+1. Mode 2: anchor >= 150 fl; cuộn sâu. Cron: follow_watchdog.
 §
 Hotmail: CẤM mail cá nhân; sinh @fviainboxes.com đọc OTP API. Write-Through: ghi ngay Excel Cột 3,4,5 & G farm. CDP đóng ko mất cookie. Dual-farm ~1280 acc.
 §
-Proxy: SoT PROXYgandienthoai.xlsx. Vision assert mCurrentFocus+OCR, MEDIA: dòng riêng. Ava & 2FA né ca nuôi & cache 4h. Ghim clip: cấm ghim clip đầu (mới ít view), bắt buộc cuộn sâu gom cả kênh ghim top view thật (vd 21k). S7 mở TT sleep >=6s.
+Proxy: SoT PROXYgandienthoai.xlsx. OmniRoute Web: gán 1-1 proxy_assignments host:port, cấm random/direct (chống ban mass). Vision assert mCurrentFocus+OCR, MEDIA: dòng riêng. Ava & 2FA né ca nuôi & cache 4h. Ghim clip: cuộn sâu ghim top view. S7 TT sleep >=6s.
 §
 Farm Dispatch: delegate_task TASK_KIND: EDIT/INVESTIGATE/CREATE. FILE: D:/...; FOCUSED_TEST chuẩn: 'python -m py_compile <f>' hoặc 'python -m pytest <f>::<n> -q'. Task EDIT bắt buộc OLD_STRING: <<< ... >>>. S7 rescue: recover_stuck_s7.py (L1 soft 3s -> L2 direct reboot 5s -> L3 reconnect); batch_recover_s7.py kẹp trần max_reboots=2.
 §
