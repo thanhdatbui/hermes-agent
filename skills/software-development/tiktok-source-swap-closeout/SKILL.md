@@ -86,6 +86,10 @@ If the process is still running, report `RUNNING` with the exact log path and do
   1. Báo ngay 2-3 kênh nguồn cụ thể, đo sẵn số lượng clip hợp lệ $\ge 30$ Shorts.
   2. Tra cứu ngay lịch sử kênh trong `global-ledger` để tìm đúng kênh gốc trước khi bị flop.
   3. Lên phương án thực thi và kích hoạt pipeline ngay thay vì bắt User đọc tường chữ.
+- **Tránh bẫy ngắt số lượng theo ngưỡng tối thiểu (`min_videos`) khi khôi phục nguồn cũ (Full Channel Recovery vs Min Batch):**
+  Khi user yêu cầu khôi phục hoặc "cào lại kênh cũ" từ lịch sử sổ cái, CẤM áp đặt ngưỡng `min_videos = 40` làm giới hạn trần (hard cap) khiến script dừng sớm trong khi kênh còn nhiều video hơn trong ledger (ví dụ có 47 URL mà chỉ tải 40). `min_videos` chỉ là ngưỡng sàn an toàn; khi khôi phục kênh cũ bắt buộc phải duyệt và tải 100% toàn bộ video URLs có trong `global-ledger`.
+- **Khai thác TikWM Direct API từ URL Ledger khi Profile TikTok bị WAF/Captcha:**
+  Khi profile TikTok chặn scraper (`Unable to extract secondary user ID` / SlardarWAF), nhưng trong `global-ledger/*.jsonl` đã có sẵn danh sách `video_url`: Trích xuất toàn bộ URL từ ledger và dùng endpoint TikWM (`https://tikwm.com/api/?url=<url>`) lấy link `data.play` tải trực tiếp stream MP4 gốc không watermark với tốc độ cao (0.5s-1s/clip) mà không cần render browser hay giải captcha.
 - **YouTube Shorts Bot-Check Bypass trong Swap Pipeline (`player_client: ['android']`):**
   Khi tải video từ YouTube Shorts, `yt-dlp` mặc định thường văng lỗi `Sign in to confirm you’re not a bot`. Trong `swap_single_folder_pipeline.py`, thêm ngay `'extractor_args': {'youtube': {'player_client': ['android']}}` vào `ydl_opts_dl` để bypass 100% bot-check mà không cần cookies file.
 - **Ngưỡng Kích Thước File Video Ngắn (Shorts Threshold Gate):**

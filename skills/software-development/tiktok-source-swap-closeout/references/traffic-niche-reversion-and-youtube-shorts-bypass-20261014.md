@@ -26,6 +26,9 @@
 - **Khắc phục**:
   1. Trích xuất toàn bộ 47 URL video đơn lẻ đã ghi trong sổ cái `global-ledger/*.jsonl`.
   2. Dùng TikWM API (`https://tikwm.com/api/?url={video_url}`) phân giải link tải CDN `play` trực tiếp. Tải về video MP4 gốc sạch không logo trong 7-8s/clip.
+- **Bẫy Hard Cap `min_videos = 40` (User: "Sao lại 40. T có yêu cầu chỉ tải 40 k?")**:
+  - Khi cào lại kênh cũ từ danh sách URL trong ledger, CẤM gán cứng `TARGET_COUNT = 40`.
+  - Phải tải trọn vẹn 100% video URL có trong lịch sử sổ cái (ví dụ toàn bộ 47 video). `min_videos` chỉ là ngưỡng tối thiểu để nghiệm thu, không được dùng làm giới hạn cắt ngang quá trình tải.
 
 ## 4. Kỷ luật Dọn Sạch Video Cũ (Clean-Old Invariant)
 - Khi swap hoặc revert nguồn video, khi User yêu cầu dọn sạch video cũ:
