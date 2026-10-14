@@ -14,6 +14,6 @@ Farm Dispatch Invariant: delegate_task context cần TASK_KIND: EDIT/INVESTIGATE
 §
 GPM: Kibe chạy, stop API ko kill chrome -> bắt buộc kèm _kill_gpm_chrome(psutil). Cuốn chiếu = duy trì max 5 worker (xong kéo acc mới ngay). Hotmail qua HOTMAIL_LOGIN giữ cookie. CHANGE_INFO: MS ép mail kp (@fviainboxes); ghi Excel lũy tiến (C5,C4,C3+G) trước signout.
 §
-Stale Upload: draft trap, mở draft hỏng xóa sạch (_delete_all_profile_drafts). Revert kênh flop: quét global-ledger lấy video URLs gốc; TikWM API tải CDN trực tiếp; xóa sạch folder render trước khi render mới.
+Stale Upload: draft trap, xóa sạch (_delete_all_profile_drafts). Revert flop: quét global-ledger lấy video gốc; TikWM tải CDN; xóa sạch render trước khi làm mới. Cào video: max 60 clip/channel, cấm cào full.
 §
 Cô lập Kibe vs Admin: Kibe(1-80, F1-640) và Admin(201-280, F1-640) cào nguồn riêng, video riêng, niche riêng. CẤM TUYỆT ĐỐI dùng DB Kibe ghi đè Niche/Hashtag sang Admin. Cấm sync chéo. CẤM gán 1 tik cùng niche hàng loạt; phân bổ xen kẽ máy.

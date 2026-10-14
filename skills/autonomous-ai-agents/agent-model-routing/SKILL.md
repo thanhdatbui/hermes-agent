@@ -122,7 +122,7 @@ For session handoff protocol (taking over a derailed/over-engineered Luna sessio
 |---|---|
 | Coordinator (T0/T1/T2 Plan) | Gemini Flash/Tiered: Triage, log inspection, direct hotfix <= 15 lines (T1), hoặc tự lập Patch Contract O(1) (T2) |
 | Pre-Plan & Architecture | Sol High (chatgpt-web pool, 0đ quota): Gọi theo trigger rủi ro cao (nhạy cảm, >3 files, deadlock) |
-| Worker (T2) | Gemini Subagent (`ag-gemini-pool-3`, reasoning medium, 15 calls) — Luna High CHỈ làm fallback |
+| Worker (T2 Code/Fix) | Ưu tiên `ag_cli.py fix` (Native Go BoringSSL, Sandbox LRU pool 6+ acc Pro, 3-15s O(1) self-test); Subagent (`ag-gemini-pool-3`) / Luna High làm fallback |
 | Secondary Backup | Terra High (codex pool): Dự phòng duy nhất khi Sol Web không khả dụng |
 | Closeout Gate | Sol High: Automated verification >= 85/100 + diff-in-contract verification prior to push |
 

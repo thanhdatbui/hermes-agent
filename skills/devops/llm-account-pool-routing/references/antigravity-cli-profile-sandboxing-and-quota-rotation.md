@@ -260,3 +260,39 @@ python D:/Taadaa/tools/ag_cli.py fix "Mô tả chi tiết yêu cầu sửa/viế
 ### 3. Kỷ luật Bằng chứng Thị giác (Gate 6 Pitfall):
 - **Bẫy ảnh Checkpoint Pre-action:** Khi script tự động chụp ảnh màn hình ở bước 2FA / Password để lưu bằng chứng (`gpm_oauth_2fa_step.jpg`), ảnh này ghi nhận **hiện trường lúc ô nhập mã đang trống**.
 - **Quy tắc phản hồi:** Tránh chỉ gửi ảnh Checkpoint khiến người dùng hiểu nhầm là tiến trình bị kẹt ở màn hình xác minh. Bắt buộc phải kèm theo bằng chứng Post-action (log xác nhận nhận mã OTP, Token exchange thành công, hoặc kết quả gọi API kiểm chứng thực tế).
+
+---
+
+## 9. Cải Tiến Kiến Trúc P0: Atomic Exclusive Lock & LRU Load Balancing (Claude Haiku Audit)
+
+Sau đợt thẩm định độc lập từ Claude Haiku CLI (`claude -p --model haiku`), hệ thống `ag_cli.py` đã được vá 3 chốt chặn tối quan trọng:
+
+### 1. Phân định Chiến lược Điều phối: Coordinator vs Worker
+- **Coordinator (OmniRoute `ag-gemini-pool-3`):** Cần **Sticky Session + Least-Used** (`stickyRoundRobinLimit: 15`).
+  * *Nguyên nhân:* Coordinator chạy phiên dài multi-turn (context tích lũy 30k–100k tokens). Bắt buộc phải bám 1 account để tận dụng **Prompt Caching của Google Gemini** (giảm 75% chi phí token và tăng tốc 3–5x).
+- **Worker (`agy cli`):** Bắt buộc dùng **Least-Recently-Used (LRU) + Exclusive Atomic Lock** (KHÔNG dùng Sticky Session).
+  * *Nguyên nhân:* Worker là tác vụ độc lập (Stateless One-shot task, sửa file xong 5–25s là thoát). Nếu dùng Sticky Session hoặc dồn nhiều session cùng lúc vào `acc_01`, tài khoản sẽ chạm trần **RPM / TPM (Requests/Tokens Per Minute)** của Google, gây lỗi 429 liên hoàn.
+  * *Cơ chế LRU:* Sắp xếp `ready_profiles` theo `(last_used_timestamp, calls)` tăng dần -> Ưu tiên bốc tài khoản nghỉ lâu nhất để san phẳng tải đều cho cả dàn 21 acc.
+
+### 2. Khóa Độc Quyền Nguyên Tử (Atomic Exclusive Lock):
+- **Lỗ hổng cũ:** Giữa bước check `is_profile_locked()` và ghi `json.dump()`, có khe hở micro-giây nếu 2 session hoặc cronjob cùng khởi động đồng thời, dẫn tới race condition va chạm 2 tiến trình vào cùng 1 profile.
+- **Giải pháp chuẩn:** Dùng cờ nguyên tử cấp hệ điều hành:
+  ```python
+  fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+  with os.fdopen(fd, "wb") as f:
+      f.write(payload)
+  ```
+- **Xử lý Stale Lock 2 lượt:** Bắt `FileExistsError`, nếu lock cũ đã hết hạn (lease > 300s) hoặc PID đã chết (`not psutil.pid_exists(pid)`), an toàn xóa lock cũ và retry tạo atomic lock.
+- **Triết lý Fail-Closed:** Khi file lock bị lỗi đọc hoặc OS đang ghi dở, hàm `is_profile_locked` trả về `True` (coi như profile đang bận) để an toàn chuyển ngay sang profile khác, không bao giờ để 2 tiến trình đè nhau.
+
+### 3. Cooldown Lũy Tiến (Exponential Backoff):
+- Mỗi lần chạm giới hạn quota (`429`, `RESOURCE_EXHAUSTED`), hệ thống đếm số lần hit (`quota_hits` trong `pool_state.json`):
+  * Lần 1: Cooldown 30 phút (1.800s).
+  * Lần 2: Cooldown 60 phút (3.600s).
+  * Lần 3+: Cooldown 120 phút (7.200s, trần 4x).
+- Giúp tài khoản có đủ thời gian "ngủ" để Google reset sâu hạn mức, tránh bị phạt nặng hơn.
+
+### 4. Tách biệt Trạng thái Bật/Tắt Profile (`is_profile_enabled`):
+- `profiles_config.json` hỗ trợ trường `"enabled": false`.
+- Khi một proxy hoặc tài khoản gặp lỗi tạm thời (ví dụ: `acc_05` dính proxy Bad Gateway), hệ thống chỉ cần đặt `enabled: false` để tạm rút profile ra khỏi pool mà không cần xóa thư mục hay thông tin xác thực. Pool tiếp tục vận hành mượt mà với các tài khoản READY còn lại.
+
