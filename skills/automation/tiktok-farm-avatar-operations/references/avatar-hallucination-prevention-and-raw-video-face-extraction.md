@@ -163,3 +163,27 @@ Trước khi soạn bất kỳ tin nhắn nào cho User:
   - Ảnh resize tối đa 512×512 để request phản hồi tức thì (<2s), tránh timeout.
   - Chỉ khi stdout xác nhận đúng đối tượng mục tiêu (đúng người, đúng trang phục, đúng bối cảnh), Coordinator mới được phép đính kèm `MEDIA:`.
 
+---
+
+## 7. Cạm Bẫy Lệch Kho `video goc` vs Kho Render Thực Tế `TIKTOK-videonuoinick` (Sự Cố 14/10/2026 - @hoaikhoa9547)
+- **Hiện tượng**:
+  - Khi crop avatar cho kênh TikTok `@hoaikhoa9547` (Máy 57 - Tik 3), Coordinator đọc video từ `D:/video goc/451`.
+  - Folder `D:/video goc/451` thực chất chứa video crawl cũ/lỗi (cảnh tàu hỏa chạy vỉa hè "Gần quá!", ẩm thực đường phố máy ép mỡ "Dễ ăn").
+  - Trong khi đó, toàn bộ 9 video đã đăng trên lưới profile của kênh thực chất đến từ kho render thực tế **`D:/TIKTOK-videonuoinick/451`** (chứa 65 video về mô hình & merchandise Hatsune Miku, Nendoroid pajama, Mecha Miku).
+  - Hậu quả: Coordinator lấy frame từ `video goc/451` rồi hallucinate thành Miku neon cyan, gửi User bị mắng: *"Cả 3 hình mày gửi đéo lq đến anime"*.
+- **Quy tắc đối soát 2 kho bắt buộc**:
+  1. Kiểm tra kích thước và nội dung video giữa `D:/video goc/<F>/1.mp4` và `D:/TIKTOK-videonuoinick/<F>/1.mp4`.
+  2. Với các kênh đã có bài đăng trên TikTok: Kho video RENDER THỰC TẾ đang nuôi và đăng bài LUÔN nằm tại `D:/TIKTOK-videonuoinick/<F>/`.
+  3. BẮT BUỘC trích xuất frame ứng viên avatar trực tiếp từ các file `.mp4` trong `D:/TIKTOK-videonuoinick/<F>/`. CẤM chỉ quét `.avatar_work/representative_frames/` của `video goc` mà không đối chiếu nội dung thực tế.
+
+---
+
+## 8. Sử Dụng Antigravity Headless CLI (`ag_cli.py`) Làm Giám Định Thị Giác Tối Cao
+- **Công cụ tiêu chuẩn trên host**:
+  - Khi cần soi mắt kiểm định ảnh/khung hình (chống hallucination), sử dụng trực tiếp CLI bridge headless Antigravity:
+    ```bash
+    python D:/Taadaa/tools/ag_cli.py ask --file "<path_anh_preview>" "Mô tả thật chính xác từng ô trong ảnh: là hình ảnh gì cụ thể? Có nhân vật anime hay người thật? Bố cục viền tròn có lẹm mặt không?"
+    ```
+  - `ag_cli.py` gọi trực tiếp `gemini-3.8-flash-high`, trả về phân tích thị giác chi tiết, đọc từng chữ subtitle tiếng Việt/Nhật, nhận diện chính xác từng nhân vật anime/người thật, chỉ ra ngay nếu frame bị lệch chủ đề.
+  - BẮT BUỘC có kết quả xác nhận từ `ag_cli.py` trước khi soạn tin nhắn báo cáo và đính kèm thẻ `MEDIA:` cho User.
+
