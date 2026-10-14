@@ -21,6 +21,7 @@ References:
 - `references/s7-hung-shell-triage-and-reboot-governance-20261015.md` — Phân tích bản chất nghẽn USB Host PC vs S7, cấm batch reboot 80 máy đồng loạt, và kiến trúc cứu hộ 3 cấp độ (recover_stuck_s7.py) khi kẹt shell (15/10/2026).
 - `references/s7-stuck-shell-and-rolling-reboot-throttle-architecture-20261015.md` — Kiến trúc cứu hộ phân tầng Samsung S7 kẹt shell (L1 soft, L2 direct reboot bypass shell, L3 transport triage) và cơ chế Rolling Healer toàn farm khống chế semaphore reboot <= 2 (15/10/2026).
 - `references/s7-recovery-production-hardening-and-closeout-findings-20261015.md` — Kiến trúc cứu hộ phân tầng Samsung S7, sửa cú pháp adb -s <serial> reconnect, preflight get-state, chống reboot loop cooldown 300s và kết quả live test 159 máy (15/10/2026).
+- `references/s7-tiered-recovery-and-rolling-healer-architecture-20261015.md` — Phân tích bản chất nghẽn USB Host vs S7, cấm reboot đồng loạt 80 máy S7, kiến trúc cứu hộ 3 cấp (recover_stuck_s7.py) và cơ chế Rolling Healer cuốn chiếu toàn Farm (batch_recover_s7.py) với Semaphore khống chế tối đa 2 reboot đồng thời (15/10/2026).
 - `references/user-directed-reboot-anti-paralysis-and-sentinel-bypass.md` — Kỷ luật chống tê liệt xin phép khi user ra lệnh reboot, cơ chế xóa sentinel flag và bảo toàn session Telegram để tự động chạy tiếp sau boot.
 - `references/host-pc-display-sleep-timeout-and-guard-bypass.md` — Quy trình cấu hình thời gian tắt màn hình Windows PC (Kibe & Admin), kỹ thuật vượt Guard default-deny và đối soát readback index 0x0000012c (15/10/2026).
 
