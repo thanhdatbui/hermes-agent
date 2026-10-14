@@ -44,3 +44,14 @@ agy --dangerously-skip-permissions --model "gemini-3.8-flash-high" -p "<task>"
   * `python D:/Taadaa/tools/ag_cli.py ask "<prompt>"` (read-only / analysis)
   * `python D:/Taadaa/tools/ag_cli.py fix "<prompt>" --file <file>` (modifications)
   * `python D:/Taadaa/tools/ag_cli.py models` (available models: `gemini-3.8-flash-high`, `claude-sonnet-4-6`, `claude-opus-4-6-thinking`)
+
+### 4. Quota & Auth Source Architecture (`~/.gemini/`)
+- **Credentials Location**: On Windows, `agy.exe` stores its active OAuth session in `%USERPROFILE%\.gemini\`:
+  * `~/.gemini/google_accounts.json`: Tracks `active` email vs `old` list (e.g. `{"active": "user@gmail.com", "old": [...]}`).
+  * `~/.gemini/oauth_creds.json`: Contains active Google OAuth `access_token`, `refresh_token`, and JWT `id_token`.
+  * `~/.gemini/projects.json`: Maps directory paths to Google Cloud Code project IDs (e.g. `"d:\\taadaa": "taadaa"`).
+- **Quota Separation**: `agy` CLI consumes the personal Google One AI / Gemini Advanced quota of the active account in `~/.gemini/google_accounts.json`. It is completely decoupled from OmniRoute (`:20129`), Cockpit, or multi-account farm pools.
+- **Quick Account Inspection**:
+  ```bash
+  python -c "import json; print(json.load(open(r'C:\Users\Kibe\.gemini\google_accounts.json'))['active'])"
+  ```

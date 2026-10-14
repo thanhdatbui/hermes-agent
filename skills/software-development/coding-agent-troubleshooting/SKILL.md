@@ -383,7 +383,8 @@ The actual headless coding agent CLI provided by Google is `agy`. If `which agy`
 agy --dangerously-skip-permissions --model "gemini-3.8-flash-high" -p "<task>"
 ```
 Taadaa farm production bridge: `python D:/Taadaa/tools/ag_cli.py {ask,fix,models}`.
-See `references/antigravity-cli-agy-vs-ide-wrapper.md` for full comparison matrix and troubleshooting details.
+Auth/Quota source lives under `~/.gemini/` (`google_accounts.json` & `oauth_creds.json`), consuming that specific Google account's quota directly (completely independent of OmniRoute/GPM pools).
+See `references/antigravity-cli-agy-vs-ide-wrapper.md` for full comparison matrix, auth audit, and troubleshooting details.
 
 ## OpenCode CLI — Windows Timeout, Encoding & Workspace Traps
 
