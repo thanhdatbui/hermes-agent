@@ -1,8 +1,8 @@
 Chu kỳ 4d: Parity 96h (N1 lẻ, N2 chẵn), N3(R7,8), N4(dưỡng 0fl+up). Starve 108h. CẤM xóa cooldown. Dưỡng động: healing_selector.py; S2 bám S1; schema 1.0. 3 ca (6,12,18h). Đêm 21h30-5h15 (né cache 4h) cho 2FA/Ava; báo 6h; cấm báo ảo.
 §
-Auto-resume: MAX(msg ts)<=60m; locks==0.
+Auto-resume: Hook Startup 00_Hermes_AutoResume_Hook.vbs tự gắn resume_pending khi Windows boot (kể cả rs tay/sập nguồn) nếu tin cuối là user/tool (<60m); locks==0.
 §
-Worker: claude_worker.py (Haiku/Sonnet). Advisor Sol Web: BẮT BUỘC nhận Context Pack (3-5 turns briefing + máy/nick) qua advisor_context.py; redact trước khi clip; prompt <= 4500 chars bảo toàn query. Closeout: cấm buông xuôi khi REJECTED; push qua safe_push.py.
+Worker: claude_worker.py (Haiku/Sonnet). Advisor Sol: kèm Context Pack (3-5 turns) qua advisor_context.py; prompt<=4500 chars. Closeout: cấm buông xuôi khi REJECTED; push qua safe_push.py.
 §
 TikTok Follow: (máy,row) độc lập; Quota 10-15/ca; Hồi phục 1&2; clean>=2 tốt nghiệp; Canary +10%; like 80%. Path B ko commit; slot (folder-1)%8+1. Mode 2: anchor >= 150 fl; cuộn sâu. Cron: follow_watchdog.
 §
