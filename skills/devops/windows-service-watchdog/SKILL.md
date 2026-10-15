@@ -344,6 +344,7 @@ return $false  # Timed out
 ## References
 
 - `references/periodic-window-report-dedup-and-state-key-mismatch.md` — Phòng ngừa spam báo cáo định kỳ theo khung giờ (6H) khi chạy trên cronjob tần suất cao (5m/15m) do thiếu dedup hoặc lệch key lưu state.
+- `references/xiaowei-adb-orphan-cleanup-and-fail-closed-watchdog.md` — Xiaowei (玖卫) ADB port 5038 rogue conflict, WinUSB bus separation, fail-closed 3-state logic (True/False/None), in-pipeline atomic race prevention, and avoiding taskkill /T on shared automation hosts.
 - `references/telemetry-stdout-leak-in-no-agent-cron-reports.md` — Quy chuẩn tách biệt Telemetry JSON (ra stderr) và báo cáo người dùng (ra stdout) trong cronjob no_agent: true để chống spam Telegram.
 - `references/batch-watchdog-idempotency-and-partial-failure-loop.md` — Khắc phục lỗi lặp vô tận và báo cáo duplicate của watchdog theo ca khi idempotency bị trói chặt vào exit code 0 (`lane_status == "success"`) dù batch đã chạy trọn vẹn 1 lượt.
 - `references/watchdog-cron-registration-and-upload-sla-discipline.md` — Kỷ luật đăng ký cronjob khi triển khai watchdog/audit mới, phân biệt Media Inventory vs Account Freshness SLA, và quy chuẩn exit code 0 khi deliver alert qua no_agent: true.
