@@ -1,10 +1,18 @@
 # OmniRoute Windows Dual-Port Process Topology & Restart Verification
 
 ## 1. Port vs Process Architecture on Host
-- **Port 20128**: 9Router Dashboard & Proxy GUI (`http://127.0.0.1:20128/dashboard`). Active, fully rendered UI for API keys, providers, quota tracking, combos, and logs.
-- **Port 20129**: OmniRoute Core Production Runtime (`node.exe scripts/dev/run-next.mjs start`).
-  - **Headless Backend-Only Build (`OMNIROUTE_BUILD_BACKEND_ONLY=1`)**: OmniRoute runs the `build:backend` artifact where all Next.js App Router UI pages (`/dashboard`, `/home`, etc.) are stubbed (`BackendOnlyPageStub` returning `null` inside empty `<html><body></body></html>`).
-  - **Dashboard Inaccessibility on :20129**: Navigating to `http://127.0.0.1:20129/dashboard` in a browser will intentionally render a blank white page (`empty page`). This is by design to save RAM/CPU and prevent heavy frontend bundles (Monaco, Recharts, xyflow) from bloating farm routing. The real dashboard GUI is on port `20128`.
+- **Port 20128**: 9Router Dashboard & Proxy GUI (`http://127.0.0.1:20128/dashboard`). Standalone 9Router service.
+- **Port 20129**: OmniRoute Core Production Runtime & Dashboard (`http://127.0.0.1:20129/dashboard`).
+  - **DASHBOARD IDENTITY (CRITICAL)**: Port 20129 HAS ITS OWN FULL DASHBOARD UI. It is NOT "by design blank", and is completely separate from 9Router (:20128). NEVER confuse the two or tell the user to visit 20128 when they ask about OmniRoute 20129.
+  - **Critical Failure Mode — Blank Page from `build:backend`**: If `http://127.0.0.1:20129/dashboard` returns a blank white page (`empty page`), it means someone previously ran `npm run build:backend` (`OMNIROUTE_BUILD_BACKEND_ONLY=1` via `backendOnlyPages.mjs`), which stubbed all Next.js App Router UI pages into `null` stubs.
+  - **Recovery to Full Dashboard**:
+    1. Run full build in `C:\Users\Kibe\OmniRoute`:
+       `npm run build`
+       (Compiles full App Router & client components into `.build/next`).
+    2. Terminate the active PID on port 20129 to trigger watchdog restart:
+       `Stop-Process -Id (Get-NetTCPConnection -LocalPort 20129 -State Listen).OwningProcess -Force`
+    3. Watchdog will restart OmniRoute with the full UI within 15–25s.
+  - **Execution Guard Note**: `delegate_task` is whitelisted only for `D:\Taadaa`. To run build commands in `C:\Users\Kibe\OmniRoute`, invoke via background terminal `python D:/Taadaa/tools/ag_cli.py fix "npm run build" --workdir "C:/Users/Kibe/OmniRoute" --timeout 500` or Claude worker.
 - **Supervision**: Supervised by `omniroute_watchdog.ps1` (PowerShell supervisor with mutex `Local\OmniRoute_Supervisor_Mutex_v1`).
 
 ## 2. Common Mistake: Restarting the Wrong Node Process

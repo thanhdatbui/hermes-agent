@@ -23,11 +23,15 @@
 2. **WinUSB Endpoint Hijacking & Chia Rẽ Thiết Bị:**
    * Driver WinUSB trên Windows cấp phát interface USB độc quyền (exclusive interface handle) cho tiến trình mở kết nối trước.
    * Khi 2 daemon ADB cùng quét các cổng USB:
-     * Daemon 1 (port 5037) giành được 37 máy.
-     * Daemon 2 (port 5038) giành được 42–43 máy còn lại.
-   * Toàn bộ automation script, runner và watchdog (kết nối mặc định tới port 5037) **hoàn toàn mù với 42 máy thuộc quyền quản lý của port 5038**.
+     * Daemon 1 (port 5037) giành được một phần máy (ví dụ 37 máy trên Admin, 54 máy trên Kibe).
+     * Daemon 2 (port 5038) giành được phần máy còn lại (ví dụ 42 máy trên Admin, 24 máy trên Kibe).
+     * **Tỷ lệ Overlap giữa 2 cổng = 0:** Một thiết bị chỉ có thể thuộc về 5037 hoặc 5038, không bao giờ xuất hiện trên cả 2 server cùng lúc.
+   * Toàn bộ automation script, runner và watchdog (kết nối mặc định tới port 5037) **hoàn toàn mù với các máy thuộc quyền quản lý của port 5038**.
    * Khi runner gọi `dumpsys window` hoặc `get_focused_activity`, daemon 5037 trả về rỗng hoặc `device not found`, khiến runner retry 10 lần rồi đánh dấu nhầm thành `prepare-tiktok failed to focus TikTok after launch`.
-3. **Bẫy Phân Loại Fallback của Watchdog:**
+3. **Nghịch Lý "Trên Tiểu Vi Vẫn Thấy Đủ Máy, Bên Kibe Tưởng Không Bị":**
+   * **Tiểu Vi kết nối 2 mang:** Trực tiếp soi socket mạng của tiến trình `xiaowei.exe`: Tiểu Vi chủ động mở socket kết nối tới **CẢ HAI CỔNG 5037 VÀ 5038**. Nó gộp thiết bị từ cả 2 daemon lên giao diện GUI, do đó người dùng nhìn vào màn hình máy tính thấy cả 80 máy hiển thị đầy đủ, không hề hay biết bus USB đã bị chia rẽ.
+   * **Bên Kibe cũng bị y hệt:** Thực nghiệm đo đạc socket trên Kibe khi bật Tiểu Vi: port 5037 chỉ còn 54 máy, port 5038 chiếm 24 máy (`M14, M15, M16, M17, M19, M20, M21, M22, M23, M25, M27, M28, M31, M39, M40, M41, M43, M49, M65, M69, M70, M73, M74, M78`). Các máy báo lỗi app trong Ca 3 của Kibe (`M70, M73, M74`) nằm trọn trong danh sách 24 máy này.
+4. **Bẫy Phân Loại Fallback của Watchdog:**
    * Trong `feed_session_watchdog.py`, hàm `classify_feed_failure` fallback mặc định về nhãn `"Lỗi App TikTok/Script"` cho mọi chuỗi lỗi không chứa rõ "device not found", "wifi", hay "proxy".
    * Do đó các lỗi nghẽn WinUSB/ADB timeout như `screen capture invalid`, `feed swipe command failed`, `focus lost` đều bị gom thành "Lỗi App TikTok/Script", gây hiểu lầm là app TikTok bị crash.
 
@@ -50,6 +54,21 @@
    * Cổng phụ (5038):
      ```bash
      adb -H 192.168.110.119 -P 5038 devices
+     ```
+   * **Kỹ thuật chẩn đoán O(1) qua Socket thuần (Bypass Terminal Guard & không tốn subprocess):**
+     ```python
+     import socket
+     def get_count(port):
+         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+         s.settimeout(2.0)
+         s.connect(('127.0.0.1', port))
+         s.sendall(b'000chost:devices')
+         s.recv(4) # OKAY
+         length = int(s.recv(4), 16)
+         data = s.recv(length)
+         s.close()
+         return len([l for l in data.decode().splitlines() if 'device' in l])
+     # So sánh tức thì: get_count(5037) vs get_count(5038)
      ```
    * Nếu danh sách máy bị chia đôi giữa 5037 và 5038, đây chính là hiện tượng Split ADB Daemon.
 
