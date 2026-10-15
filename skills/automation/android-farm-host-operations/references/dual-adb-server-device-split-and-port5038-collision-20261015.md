@@ -13,10 +13,11 @@
 
 ---
 
-## 2. Bản Chất Kỹ Thuật (Root Cause)
-1. **Xung đột 2 Daemon ADB chạy song song:**
-   * Trên host Windows (Admin PC), xuất hiện một tiến trình con hoặc tool khởi động một server ADB thứ hai chạy trên cổng không chuẩn:
-     `"C:\Program Files (x86)\xiaowei\tools\adb.exe" tools/adb -P 5038 nodaemon server start` (PID `12296`).
+## 2. Bản Chất Kỹ Thuật (Root Cause) & Nguồn Gốc Tiến Trình Mồ Côi
+1. **Xung đột 2 Daemon ADB chạy song song & Nguồn gốc port 5038:**
+   * Phần mềm **Tiểu Vi / Xiaowei (极卫)** khi mở lên luôn tự spawn một server ADB riêng chạy trên cổng 5038:
+     `"C:\Program Files (x86)\xiaowei\tools\adb.exe" tools/adb -P 5038 nodaemon server start` (PID `12296`, parent là tiến trình `xiaowei.exe`).
+   * **Bẫy tiến trình mồ côi (Orphan Daemon):** Khi `xiaowei.exe` bị tắt hoặc bị watchdog đóng (`taskkill /F /IM xiaowei.exe`), Windows không tự động kill các tiến trình con. Daemon `adb.exe -P 5038` bị sót lại chạy ngầm vô thời hạn.
    * Đồng thời, server ADB mặc định của hệ thống vẫn đang chạy trên cổng chuẩn 5037:
      `"C:\Program Files (x86)\xiaowei\tools\adb.exe" -a nodaemon server start` (PID `16388`).
 2. **WinUSB Endpoint Hijacking & Chia Rẽ Thiết Bị:**
@@ -26,6 +27,9 @@
      * Daemon 2 (port 5038) giành được 42–43 máy còn lại.
    * Toàn bộ automation script, runner và watchdog (kết nối mặc định tới port 5037) **hoàn toàn mù với 42 máy thuộc quyền quản lý của port 5038**.
    * Khi runner gọi `dumpsys window` hoặc `get_focused_activity`, daemon 5037 trả về rỗng hoặc `device not found`, khiến runner retry 10 lần rồi đánh dấu nhầm thành `prepare-tiktok failed to focus TikTok after launch`.
+3. **Bẫy Phân Loại Fallback của Watchdog:**
+   * Trong `feed_session_watchdog.py`, hàm `classify_feed_failure` fallback mặc định về nhãn `"Lỗi App TikTok/Script"` cho mọi chuỗi lỗi không chứa rõ "device not found", "wifi", hay "proxy".
+   * Do đó các lỗi nghẽn WinUSB/ADB timeout như `screen capture invalid`, `feed swipe command failed`, `focus lost` đều bị gom thành "Lỗi App TikTok/Script", gây hiểu lầm là app TikTok bị crash.
 
 ---
 
@@ -51,16 +55,20 @@
 
 ---
 
-## 4. Quy Trình Khôi Phục O(1) Chuẩn Xác
-1. **Cưỡng chế hạ gục daemon rogue port 5038:**
-   Dùng `Stop-Process` qua `admin_ssh.py`:
-   ```powershell
-   Stop-Process -Name adb -Force
+## 4. Quy Trình Khôi Phục O(1) Phẫu Thuật Không Gián Đoạn (Surgical Zero-Disruption Recovery)
+*Lưu ý cốt lõi:* CẤM TUYỆT ĐỐI dùng `Stop-Process -Name adb -Force` bừa bãi nếu đang có batch nuôi acc, upload hoặc 2FA đêm chạy trên port 5037, vì kill toàn bộ adb sẽ làm crash tiến trình live đó!
+
+1. **Bắn lệnh kill-server đích danh cổng 5038 (Phẫu thuật O(1)):**
+   Qua SSH tới Admin PC, gọi trực tiếp binary adb của Xiaowei ra lệnh kill duy nhất server 5038:
+   ```python
+   python D:/Taadaa/tools/admin_ssh.py 'python -c "import subprocess; adb=r\"C:\Program Files (x86)\xiaowei\tools\adb.exe\"; print(subprocess.run([adb, \"-P\", \"5038\", \"kill-server\"], capture_output=True, text=True))"'
    ```
-   (Lệnh này sẽ dập toàn bộ các daemon ADB cũ đang tranh chấp).
-2. **Khởi động lại duy nhất 1 daemon ADB chuẩn trên port 5037:**
-   ```cmd
-   cmd.exe /c start /b "" "C:\Program Files (x86)\xiaowei\tools\adb.exe" -a nodaemon server
+2. **Cơ chế tự giải phóng WinUSB:**
+   - Ngay khi daemon 5038 thoát, 42 thiết bị đang bị chiếm giữ được WinUSB trả tự do lập tức.
+   - Daemon chính trên port 5037 tự động handshake nhận lại 42 thiết bị này thành `device` trong vòng 1–2 giây mà **KHÔNG CẦN khởi động lại port 5037**, bảo toàn 100% các batch 2FA/nuôi acc đang chạy!
+3. **Đối soát phục hồi tức thì:**
+   Chạy lệnh kiểm đếm nhanh:
+   ```python
+   python D:/Taadaa/tools/admin_ssh.py 'python -c "import subprocess; adb=r\"C:\Program Files (x86)\xiaowei\tools\adb.exe\"; out=subprocess.run([adb, \"devices\"], capture_output=True, text=True).stdout; devs=[l.split()[0] for l in out.strip().splitlines()[1:] if \"device\" in l]; print(\"Total connected devices:\", len(devs))"'
    ```
-3. **Đối soát phục hồi:**
-   Chạy `python D:/Taadaa/tools/inspect_machine.py` để xác nhận danh sách `List of devices attached` trên Admin Remote hồi phục đủ 78–79 máy.
+   Xác nhận trả về đủ `Total connected devices: 79` và 0 máy offline.
