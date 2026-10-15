@@ -115,6 +115,16 @@
   * Lệnh gọi ADB bắt buộc có `timeout=15` bọc `try...except Exception: return ""` để khi 1 máy bị đơ kết nối USB không làm treo toàn bộ batch.
   * Vòng lặp `as_completed` bọc `try...except` cho từng future (`fut.result()`).
 - **Cronjob Hermes Delivery:** Tác vụ chạy 25 workers tốn >60s bắt buộc cấu hình `deliver: 'local'` trên cronjob. CẤM để `origin` vì LLM gateway sẽ timeout sau 60s và bắn tin nhắn báo lỗi giả về Telegram.
-- **Xử lý Switcher tự động:** Khi vào Profile, nếu active account khác target, mở Switcher chuyển đúng tài khoản. Nếu không có trong Switcher, bấm `keyevent 4` thoát ra an toàn và trả về `(None, False)`.
+- **Xử lý Switcher tự động & Bẫy OCR Méo Dấu (Cực kỳ quan trọng):**
+  * Khi vào Profile, nếu active account khác target, mở Switcher chuyển đúng tài khoản. Nếu không có trong Switcher, bấm `keyevent 4` thoát ra an toàn và trả về `(None, False)`.
+  * **Cạm bẫy OCR méo dấu tiêu đề Switcher:** Trên font chữ TikTok Samsung S7, chữ *"Chuyển đổi tài khoản"* thường xuyên bị WinRT OCR nhận diện sai dấu thành `"chuydn ddi tai khoan"` hoặc `"chuydn ddi täi khoån"`. Nếu dùng regex cứng `"chuyen doi tai khoan"` thì state machine sẽ coi là `UNKNOWN`, lập tức bấm Back đóng Switcher và báo lỗi *"mo Switcher 3 lan, acc active van la..."*.
+  * **Regex chuẩn hóa chống méo dấu:**
+    ```python
+    if re.search(r"chuy\w{0,3}n\s*d\w{0,3}i|chuy\w{0,3}n.*kho\w{0,2}n|switch account|them tai khoan|add account", t):
+        return "SWITCHER"
+    if not (profile_has_user and profile_markers) and (("tai khoan" in t or "khoan" in t) and ("chuy" in t or "switch" in t or "them" in t)):
+        return "SWITCHER"
+    ```
+  * **Timeout Subprocess khi chạy song song 25 workers:** Khi 25 máy cùng lúc gọi `ocr_boxes.ps1`, CPU host bị tải đỉnh khiến mỗi bước OCR tăng từ 1-2s lên 4-6s. Quá trình cuộn Switcher và kiểm tra 35 bước có thể mất 250–300s. Timeout subprocess trong watchdog BẮT BUỘC đặt `>= 320s` (thay vì 240s) để tránh bị SIGTERM oan khi máy đang ở bước cuối.
 - **Canary Gate & Vision Inspection:** Trước khi kích hoạt hàng loạt trên 25 máy, BẮT BUỘC chạy Canary trên 1 máy thật (`test_canary_safe_rename.py`), dùng `browser_vision` soi mắt đọc ảnh `MEDIA:<path>` xác nhận nickname hiển thị đúng trên Profile, không che popup, không kẹt phím.
 
