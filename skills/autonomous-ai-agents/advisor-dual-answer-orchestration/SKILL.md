@@ -122,6 +122,12 @@ See `references/advisor-context-starvation-and-session-briefing-20261015.md` for
 
 ## Common failure modes
 
+- **Advisor Sol Web Context Starvation & Tái cấu trúc Ngữ cảnh Phiên (15/10/2026):**
+  * *Vấn đề cốt lõi:* ChatGPT-Web pool (:20129 `gpt-web-sol`) là API stateless. Nếu chỉ truyền tin nhắn gần nhất (`original_user_message`), Advisor hoàn toàn mù ngữ cảnh phiên (máy mấy, nick nào, lỗi trước đó là gì), dẫn tới câu trả lời cụt lủn, ngây ngô và lạc đề.
+  * *Giải pháp chuẩn hóa:* Luôn trích xuất `build_session_briefing(messages)` từ 3-5 lượt đối thoại gần nhất (rút gọn <= 280 ký tự/turn, tổng <= 1.500 ký tự) và bóc tách `field_context` (máy, nick, serial).
+  * *Cấu trúc Prompt 5 tầng gửi Sol:* `[Bối cảnh hiện trường]` (Máy, Nick, Tác vụ) + `[Diễn biến gần nhất]` (Briefing) + `[Trạng thái Agent]` (<= 1.000 ký tự) + `[Câu hỏi tư vấn]` + `[Yêu cầu]` (Solution Architect phản biện, ngắn gọn, thực chiến).
+  * *Ràng buộc an toàn:* Prompt tổng <= 4.500 ký tự, redact toàn bộ credentials/tokens/passwords. Nếu timeout > 45s thì retry với prompt tối giản (câu hỏi + 500 ký tự bối cảnh gần nhất).
+
 - **Kỷ luật Strike 3 Hand-off: CẤM Coordinator tiếp tục tự sửa code hoặc chỉ gọi Claude CLI làm Reviewer passive:** Khi đã fail 3 lần liên tiếp (Strike 3), Coordinator và Worker BẮT BUỘC DỪNG SỬA CODE ngay lập tức. Phải bàn giao quyền can thiệp sửa code cho Claude Code CLI chạy nền (`claude -p "$(< prompt.txt)" --dangerously-skip-permissions --max-turns 20`). Cấm tuyệt đối lách luật bằng cách tự sửa tiếp rồi chỉ gọi Claude CLI làm Reviewer chấm điểm (`--tools ""`).
 - **Terminal tool JSON decoded validation (Fail-Closed):** Tool `terminal` trong production trả về kết quả dạng JSON string hoặc dict `{"output": "...", "exit_code": 0}`. Nếu chỉ so sánh `res_str.startswith("--- Advisor")` thì luôn fail vì chuỗi bắt đầu bằng `{"output": "`. Bắt buộc phải parse JSON, kiểm tra `exit_code == 0` (chỉ nhận `int` thật, cấm `bool` hay string `"0"`), và trích xuất `output` sạch trước khi so khớp marker.
 - **Python ThreadPoolExecutor `with` context manager blocking on TimeoutError:** `with ThreadPoolExecutor(...)` invokes `__exit__` which defaults to `shutdown(wait=True)`. Even if `future.result(timeout=45.0)` raises `TimeoutError` at 45s, the context manager blocks execution until the worker thread actually finishes (which can be 90s+ if the upstream socket is stuck). Fix: do NOT use `with ThreadPoolExecutor`. Instantiate the executor directly and call `executor.shutdown(wait=False, cancel_futures=True)` in `except TimeoutError` and `finally`.

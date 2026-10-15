@@ -8,10 +8,8 @@ cấm telemetry JSON stdout cron; chốt phiên: Reviewer APPROVED>=85 & tự pu
 §
 Kibe(1-80) & Admin(201-280) cào nguồn & media độc lập 100% (cấm trùng video, cấm sync chéo Niche/Hashtag). TT v47.0.3; Switcher dock; AP 40m.
 §
-Ghim clip: pin_top_videos.py (Share->Ghim, cuộn sâu gom peak view, re-dump).
+Worker: Haiku 5.5 CLI (6-15s O(1)), AG CLI dự phòng; đo chất lượng code thật. Advisor Sol: cấm gửi prompt cụt lủn, bắt buộc Briefing Pack (3-5 turns) + field context.
 §
-Worker: Haiku 5.5 CLI (6-15s O(1)) chính, AG CLI 7 acc Pro dự phòng; đo chất lượng code thật; Coord giữ Hermes 24/7.
-§
-Telegram: đa topic, auto-resume turn dở. Cấm báo cáo láo/hứa suông khi chưa dispatch thật. Soạn tin gửi đối tác/ông anh: cực ngắn gọn, đi thẳng vào việc để copy gửi ngay.
+Telegram: auto-resume turn dở; cấm báo láo. Soạn tin gửi đối tác: cực ngắn gọn để copy gửi ngay. Ghim: pin_top_videos.py (Share->Ghim, gom peak view).
 §
 Reboot 3 ca (05:20, 11:20, 17:20), né khi ca đang chạy; user lệnh là làm ngay cấm hỏi lại; sentinel chia theo ca.
