@@ -317,6 +317,28 @@ for row in ws.iter_rows(min_row=2):
      * Gọi ngay `cronjob(action='run', job_id='<id>')`.
      * Kiểm tra `last_status: ok` để đảm bảo script không crash, không thiếu module và thoát im lặng an toàn trước khi kết thúc turn.
 
+## 15. Cạm Bẫy Watchdog Stub In Rác Ra Stdout & Hermes Cron Auto-Delivery (False Alert '?' Trap)
+- **User Frustration Signal**:
+  * Cron bắn tin nhắn: *"No feed active, running rename watchdog tick... Watchdog active: 0 machines locked currently."*
+  * User reply ngay: *"?"*
+  * Ý nghĩa: User nhìn thấy watchdog thông báo đang chạy và thấy máy rảnh (0 machines locked), nhưng không thấy bất kỳ nick nào được đổi tên, hiểu nhầm rằng hệ thống bị treo hoặc agent dựng script mõm đối phó.
+- **Nguyên nhân kỹ thuật**:
+  * Trong Hermes Cron với `no_agent: True`: BẤT KỲ ký tự nào in ra `stdout` đều được runtime gom lại và gửi thẳng về chat Telegram.
+  * Nếu watchdog chứa các câu `print()` chẩn đoán trong nhánh kiểm tra điều kiện (preflight check), Hermes sẽ hiểu đó là kết quả cần báo cáo và chuyển tiếp ngay tới Telegram trên mỗi tick.
+  * Nguy hiểm hơn: Nếu script mới chỉ là bản nháp kiểm tra rảnh/bận mà chưa nối hàm thực thi đổi tên thực tế, user sẽ nhận thông báo "máy rảnh" nhưng không thấy hành động gì.
+- **Quy Chuẩn Bất Biến Cho Silent Watchdog (`no_agent: True`)**:
+  1. **EMPTY stdout = SILENT**:
+     - Khi không có hành động thực tế nào xảy ra (máy bận, đang trong ca nuôi, không có ứng viên hợp lệ, hoặc các máy đang trong cooldown 7 ngày): script BẮT BUỘC thoát trong im lặng tuyệt đối (`sys.exit(0)`).
+     - CẤM in log chẩn đoán ra `stdout`. Nếu cần debug, chuyển sang `sys.stderr.write(...)` hoặc ghi vào file log runtime.
+  2. **CHỈ PRINT KHI HOÀN THÀNH HÀNH ĐỘNG CÓ Ý NGHĨA**:
+     - Chỉ `print()` ra `stdout` đúng 1 block tóm tắt khi đã bốc máy và thực thi đổi tên thành công trên thiết bị thật:
+       ```python
+       print(f"✅ [ROLLING RENAME] Máy {m:02d}: @{u} -> '{new_name}' | Ảnh: {proof}")
+       ```
+  3. **CẤM TRIỂN KHAI HOẶC CHẠY THỬ CRON KHI CHƯA NỐI KHỐI THỰC THI**:
+     - Không bao giờ được deploy một script chỉ chứa print kiểm tra máy rảnh vào cron. Script watchdog phải hoàn chỉnh từ khâu lock, mở app, gõ AdbKeyboard, xác nhận OCR đến ghi state trước khi đăng ký vào hệ thống.
+
+
 
 
 

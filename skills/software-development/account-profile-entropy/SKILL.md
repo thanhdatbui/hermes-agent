@@ -244,5 +244,5 @@ def generate_account_for_slot(slot, existing_emails=None, max_attempts=300):
 ## References
 
 - `references/gmail-reg-case.md` — Case study from `register gmail` repo
-- `references/on-device-rename-state-machine-and-lock-coexistence.md` — Complete on-device TikTok rename workflow, state-machine OCR pattern, device lock coexistence, hermetic offline testing, anti-1-word name discipline, and Section 13 Action-First Watchdog Cron discipline.
+- `references/on-device-rename-state-machine-and-lock-coexistence.md` — Complete on-device TikTok rename workflow, state-machine OCR pattern, device lock coexistence, hermetic offline testing, anti-1-word name discipline, and Section 13/15 Action-First Silent Watchdog Cron discipline.
 - `references/stereotyped-nickname-audit-and-natural-profile-rollout.md` — Audit stereotyped bot nicknames across farm workbooks, 3 error groups, and "user bình thường" 70/30 distribution rollout.

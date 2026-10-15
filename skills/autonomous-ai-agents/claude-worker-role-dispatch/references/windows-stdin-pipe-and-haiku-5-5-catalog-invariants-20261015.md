@@ -58,6 +58,7 @@ Warning: Advisor disabled — base model 'claude-haiku-5-5' has no advisor rank 
 ### Hard Rule
 - **NEVER** assume the model name is broken or invalid.
 - **NEVER** hallucinate that the model should be renamed to legacy names like `claude-3-5-haiku` or `claude-3-7-sonnet`. Doing so will break system parity and user trust.
+- **NEVER** diagnose an execution failure as an invalid model name when Claude CLI prints an advisory warning (`"claude-haiku-5-5" isn't described by this version's model catalog`). The real error is in the execution mechanism (e.g. stdin piping), not the model identity.
 - The model strings on this system are strictly:
   - Worker: `claude-haiku-5-5`
   - Planner: `claude-sonnet-5-5`
