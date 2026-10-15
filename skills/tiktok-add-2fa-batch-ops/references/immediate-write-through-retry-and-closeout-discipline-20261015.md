@@ -24,8 +24,10 @@ Khi áp dụng vòng lặp retry cho các thao tác I/O hoặc khóa dữ liệu
 3. **Bắt buộc Unit Test Coverage cho Logic Retry Mới:**
    - Phải có test case giả lập (mock) lỗi transient lock để chứng minh:
      * Retry thành công sau N lần transient failure (`test_transient_lock_timeout_retries_and_succeeds`).
-     * Exhaust 5 lần thì raise đúng ngoại lệ.
-     * Non-transient error raise ngay lần đầu.
+     * Exhaust 5 lần thì raise đúng ngoại lệ `WorkbookError`.
+     * Non-transient error raise ngay lần đầu không qua `sleep_func`.
+4. **Nhất quán API Surface:**
+   - Nếu hàm nội bộ (như `_write_cell`) được import sang test file để mock dependencies, cần khai báo vào `__all__` của module để tránh warning API surface không nhất quán.
 
 ---
 
@@ -39,3 +41,17 @@ Khi áp dụng vòng lặp retry cho các thao tác I/O hoặc khóa dữ liệu
 - **Cách xử lý chuẩn:**
   * Giữ nguyên byte xuống dòng `\n` của file nguồn khi dùng tool patch/write.
   * Trước khi gọi closeout gate, luôn kiểm tra `git diff --numstat`. Nếu thấy số dòng nhảy vọt tương đương tổng số dòng trong file (`589 583`), kiểm tra ngay tỷ lệ CRLF/LF bằng Python để chuẩn hóa về LF trước khi review.
+
+---
+
+## 4. Xử Lý Khi Reviewer (:20129) Bị Timeout Trong Closeout Gate
+- **Hiện tượng:** Lệnh `python D:/Taadaa/tools/closeout_gate.py` treo 300s và exit code 1 với lỗi:
+  `[OmniRouteClient] Request timed out on read: HTTPConnectionPool(host='localhost', port=20129): Read timed out.`
+- **Nguyên nhân:** Model mặc định `--model review` trỏ về alias upstream bị nghẽn luồng suy luận hoặc kết nối proxy bị đơ.
+- **Giải pháp xử lý:**
+  1. Thăm dò các model dự phòng hoạt động nhanh trên `:20129`: `antigravity/claude-sonnet-4-6`, `ag-gemini-pool-3`, `antigravity/gemini-3-flash`.
+  2. Bổ sung tham số model tường minh khi chạy gate:
+     ```bash
+     python D:/Taadaa/tools/closeout_gate.py --repo "D:/Taadaa/tiktok-add-bao-mat-f2a" --base HEAD --files <files...> --model antigravity/claude-sonnet-4-6 --json-output
+     ```
+  3. Nếu `sol_repair.py` bị exit code 1 do model trong allowlist bị timeout, kích hoạt ngay **Fallback Worker** theo quy tắc Closeout Remediation để sửa theo findings của Reviewer.
