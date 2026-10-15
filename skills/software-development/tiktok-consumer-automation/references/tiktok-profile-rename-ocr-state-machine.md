@@ -127,4 +127,6 @@
     ```
   * **Timeout Subprocess khi chạy song song 25 workers:** Khi 25 máy cùng lúc gọi `ocr_boxes.ps1`, CPU host bị tải đỉnh khiến mỗi bước OCR tăng từ 1-2s lên 4-6s. Quá trình cuộn Switcher và kiểm tra 35 bước có thể mất 250–300s. Timeout subprocess trong watchdog BẮT BUỘC đặt `>= 320s` (thay vì 240s) để tránh bị SIGTERM oan khi máy đang ở bước cuối.
 - **Canary Gate & Vision Inspection:** Trước khi kích hoạt hàng loạt trên 25 máy, BẮT BUỘC chạy Canary trên 1 máy thật (`test_canary_safe_rename.py`), dùng `browser_vision` soi mắt đọc ảnh `MEDIA:<path>` xác nhận nickname hiển thị đúng trên Profile, không che popup, không kẹt phím.
+- **Tiêu Chuẩn Báo Cáo Canary (Chống Báo Canary No-op):** CẤM TUYỆT ĐỐI báo cáo "Đã chạy Canary xong" khi kết quả runner thực chất chỉ là Skipped/No-op (ví dụ: máy test có active account không khớp target username và Switcher không có nick đó -> runner tự lùi ra an toàn trả về `(None, False)`). Trường hợp máy test không đủ điều kiện thi công, Coordinator phải lập tức bốc ngay máy khác có target account sẵn sàng để chạy thực nghiệm đầy đủ đến khi ra ảnh Profile nghiệm thu tên mới thành công.
+
 
