@@ -338,6 +338,29 @@ for row in ws.iter_rows(min_row=2):
   3. **CẤM TRIỂN KHAI HOẶC CHẠY THỬ CRON KHI CHƯA NỐI KHỐI THỰC THI**:
      - Không bao giờ được deploy một script chỉ chứa print kiểm tra máy rảnh vào cron. Script watchdog phải hoàn chỉnh từ khâu lock, mở app, gõ AdbKeyboard, xác nhận OCR đến ghi state trước khi đăng ký vào hệ thống.
 
+## 16. Quy Chuẩn Batch Concurrency: 25 Parallel Workers Cho Rolling Watchdog Toàn Farm
+- **User Direct Order**: *"Đéo liên quan, để worker 25 cho tao"* — khi vận hành đổi tên cuốn chiếu trên quy mô toàn farm (hơn 400 nick), chạy đơn luồng 1 máy/lần là quá chậm và không tận dụng được thời gian rảnh giữa các ca nuôi.
+- **Kiến Trúc Concurrency Chuẩn (ThreadPoolExecutor max_workers=25)**:
+  1. **Lọc Danh Sách Máy Rảnh Độc Lập**:
+     - Quét `online_serials` qua `adb devices`.
+     - Lọc các nick rập khuôn trên các máy online mà máy đó **KHÔNG có active lock** (`m not in locked`) và **CHƯA ĐƯỢC CHỌN TRONG TICK NÀY** (`m not in seen_machines`).
+     - Bỏ qua nick đang trong cooldown 7 ngày.
+     - Gom tối đa 25 máy rảnh khác nhau (`len(targets) <= 25`).
+  2. **Thực Thi Song Song Qua ThreadPoolExecutor**:
+     ```python
+     with ThreadPoolExecutor(max_workers=min(MAX_WORKERS, len(targets))) as pool:
+         futs = [pool.submit(_worker, t) for t in targets]
+         for f in as_completed(futs):
+             m, u, n, p = f.result()
+             state[u] = {"machine": m, "new_name": n, "renamed_at": datetime.now().isoformat(), "proof": str(p)}
+             print(f"✅ [ROLLING RENAME] Máy {m:02d}: @{u} -> '{n}' | Ảnh: {p}")
+     ```
+  3. **Invariants Bắt Buộc**:
+     - Mỗi thread giữ độc lập `operator_device_lock(machine=m, serial=s, project="rolling_rename", timeout=300)`.
+     - Tuyệt đối cấm 2 worker chạy chung 1 máy.
+     - Kiểm tra `is_feed_active()` ngay đầu tick: nếu phát hiện ca nuôi (Feed Session) đang chạy thì toàn bộ batch thoát im lặng ngay lập tức trước khi khởi tạo bất kỳ thread nào.
+
+
 
 
 

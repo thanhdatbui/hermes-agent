@@ -88,14 +88,23 @@ Khi triển khai cronjob tự động hóa đổi biệt danh cho toàn bộ cá
 ### A. Preflight Gates Bắt Buộc (Fail-Silent & Farm Safety):
 1. **Kiểm tra tiến trình ca nuôi đang chạy**:
    - Dùng `psutil` quét lệnh đang chạy: nếu chứa `run_tiktok.py`, `multi-machine-feed-session`, hoặc `run-feed-session.ps1` -> `sys.exit(0)` ngay lập tức trong im lặng, tuyệt đối không in stdout gây cảnh báo rác.
-2. **Kiểm tra Device Locks**:
+2. **Kiểm tra Device Locks & Online Devices**:
    - Quét cả 2 thư mục lock: `C:\Users\Kibe\.codex\device-locks\` và `C:\Users\Kibe\AppData\Local\automation-core\device-locks\`.
-   - Bỏ qua các máy đang có lock active hoặc file lock của tiến trình còn sống (`psutil.pid_exists(pid)`).
-3. **Giới hạn số lượng máy (Bulkhead)**:
-   - Mỗi tick cron (ví dụ mỗi 15 phút) **CHỈ XỬ LÝ TỐI ĐA 1 MÁY RẢNH DUY NHẤT**.
-   - Tránh việc bắn lệnh đồng loạt gây nghẽn bus USB hoặc quá tải ADB daemon.
+   - Chỉ chọn các máy đang online qua `adb devices` và KHÔNG có lock active.
+3. **Cấu Hình Worker Song Song (Parallel Worker Pool - Invariant 25 Workers)**:
+   - Khi chạy batch đổi tên cuốn chiếu, hỗ trợ chạy song song tối đa **25 workers** (`ThreadPoolExecutor(max_workers=25)`).
+   - **Quy tắc máy độc lập**: Mỗi worker trong pool bốc đúng 1 máy rảnh khác nhau (`seen_machines.add(m)`). Tuyệt đối cấm nhiều worker chạy chung trên 1 máy.
+   - Mỗi worker giữ độc lập `operator_device_lock(machine=m, serial=s, project="rolling_rename", timeout=300)`.
 
-### B. State Tracking & Chu Kỳ 7 Ngày:
+### B. Invariant Silent Watchdog & Hermes Cron Deployment:
+- **Tuyệt đối cấm stdout rác khi không có hành động**:
+  * Trong Hermes, mọi nội dung in ra `stdout` từ script cronjob (kể cả log chẩn đoán `0 machines locked`) đều sẽ bị runtime auto-deliver thẳng về Telegram của User dưới dạng tin nhắn.
+  * Vì vậy, watchdog bắt buộc phải **hoàn toàn im lặng (`sys.exit(0)`)** khi farm đang bận hoặc không có máy rảnh. CHỈ in ra `stdout` khi có tài khoản đổi tên thành công (`✅ [ROLLING RENAME] Máy M: @user -> 'Tên Mới' | Ảnh: ...`).
+- **Quy tắc triển khai script cho Hermes Cron**:
+  * Hermes Cron chỉ nhận script nằm trong `%LOCALAPPDATA%\hermes\scripts\`. Không truyền đường dẫn tuyệt đối `D:/Taadaa/...`.
+  * Quy trình chuẩn: Copy script vào repo Deploy `D:\Taadaa\Hermes\deploy\hermes-home\scripts\`, sau đó chạy `python D:\Taadaa\Hermes\deploy\hermes-home\scripts\cron_sync_watchdog.py` để tự động đồng bộ sang `%LOCALAPPDATA%\hermes\scripts\` và `OneDrive\hermes-cron\scripts`.
+
+### C. State Tracking & Chu Kỳ 7 Ngày:
 - Lưu vết lịch sử đổi tên vào file JSON: `D:\Taadaa\runtime\kibe\cron-state\rename_natural_state.json`.
 - Cấu trúc:
   ```json
