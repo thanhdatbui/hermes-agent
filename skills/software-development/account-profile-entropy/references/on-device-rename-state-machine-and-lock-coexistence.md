@@ -252,3 +252,18 @@ for row in ws.iter_rows(min_row=2):
   2. Sửa cột `Folder Video` đồng bộ với `video gốc` thực tế của kênh.
   3. Thêm folder số vào `data/manual_avatar_protected_folders.json` để khóa bảo vệ chống script quét tạo lại hàng loạt ghi đè mất avatar thủ công.
 
+## 11. Cạm Bẫy Tên Cụt Lủn 1 Từ Khi Đổi Avatar / Triage Profile & Xử Lý Giao Diện LIVE Khi Rename
+- **User Frustration Signal**: *"Sao đặt tên gì chán v cụt lủn v. Hàm đặt tên t có thiết kế đặt tên giống người dùng bth r mà. Hay cứ để cụt lủn v cũng đc"*
+- **Nguyên nhân gốc rễ**:
+  * Các tài khoản reg cũ hoặc chưa chuẩn hóa thường mang tên hiển thị 1 từ trơ trọi (như `Mai`, `Thảo`, `An`). Khi inspect/đổi avatar, Coordinator nhìn thấy tên 1 từ nhưng không chủ động nhận diện vi phạm quy chuẩn, vẫn để nguyên tên cụt lủn báo cáo.
+  * **Kỷ luật bất biến**: CẤM TUYỆT ĐỐI chấp nhận tên hiển thị 1 từ dưới mọi hình thức! Ngay khi inspect thấy tên 1 từ hoặc khi người dùng yêu cầu đổi avatar/chuẩn hóa profile, BẮT BUỘC tự động chạy hàm `make_tiktok_name(email)` (trong `D:/Taadaa/Tiktok_Reg/social_reg_v1.py`) để sinh tên chuẩn người dùng thật (tối thiểu 2 từ: Họ + Đệm + Tên, Đệm + Tên, hoặc Tên + Biệt danh đời thường).
+- **Cạm bẫy giao diện TikTok LIVE khi Rename**:
+  * Khi mở TikTok bằng Monkey Launcher hoặc Intent, TikTok có thể tự động restore session rơi vào màn hình xem **TikTok LIVE** (livestream bán hàng, PK, idol).
+  * **Hậu quả nếu bấm mù tọa độ**: Bấm tọa độ tĩnh `(350, 750)` hoặc `(540, 750)` sẽ chạm trúng giỏ hàng TikTok Shop, nút Mua sản phẩm, hoặc khung chat của phòng LIVE $\rightarrow$ không vào được Sửa hồ sơ, gây lệch luồng nghiêm trọng!
+  * **Quy chuẩn điều hướng State Machine OCR**:
+    1. Nhận diện trạng thái `LIVE`: OCR chứa các từ khóa (`dddc tai trd`, `da tham gia`, `mua ngay`, `gio hang`, `host`, `pk`, `phien live`).
+    2. Thoát LIVE an toàn: Nhấn nút Back `(75, 150)` hoặc `keyevent 4`, hoặc tap trực tiếp vào icon đóng phòng `X` ở góc trên cùng.
+    3. Luôn luôn kiểm tra có thanh điều hướng đáy (`Hồ sơ` ở `y > 1700`) trước khi tap chuyển về tab Profile. Chỉ bấm Sửa hồ sơ khi đã xác nhận `state == PROFILE`.
+
+
+
