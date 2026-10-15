@@ -72,3 +72,18 @@
    python D:/Taadaa/tools/admin_ssh.py 'python -c "import subprocess; adb=r\"C:\Program Files (x86)\xiaowei\tools\adb.exe\"; out=subprocess.run([adb, \"devices\"], capture_output=True, text=True).stdout; devs=[l.split()[0] for l in out.strip().splitlines()[1:] if \"device\" in l]; print(\"Total connected devices:\", len(devs))"'
    ```
    Xác nhận trả về đủ `Total connected devices: 79` và 0 máy offline.
+
+---
+
+## 5. Cơ Chế Bảo Hiểm Chống Tái Diễn & Nâng Cấp Watchdog Tự Động (Prevention Invariant)
+1. **Lỗ hổng của Watchdog đóng Tiểu Vi cũ (`xiaowei_idle_auto_close_watchdog.py`):**
+   - Chỉ dùng `taskkill /F /IM xiaowei.exe` thiếu cờ `/T` (Tree Kill), khiến tiến trình con `adb.exe -P 5038` không bị hạ sát khi app đóng.
+   - Chỉ quét khi `is_xiaowei_running() == True`: Nếu người dùng tự đóng giao diện Tiểu Vi bằng tay (nút X), watchdog cũ im lặng thoát và bỏ rơi tiến trình `adb -P 5038` chạy vĩnh viễn.
+2. **Cơ chế phòng thủ chủ động 2 lớp (Đã triển khai & đồng bộ):**
+   - **Lớp 1 (Tree Kill):** Ép cờ `/T` trong `taskkill /F /T /IM xiaowei.exe` để diệt sạch cả cây tiến trình con.
+   - **Lớp 2 (Orphan Cleaner Hook):** Cứ mỗi chu kỳ 5 phút, ngay cả khi Tiểu Vi KHÔNG chạy (`not is_xiaowei_running()`), watchdog tự động chạy hàm `cleanup_orphan_xiaowei_adb()` bắn `adb -P 5038 kill-server` dọn sạch mọi tiến trình mồ côi sót lại.
+   - **Đồng bộ đa cụm:** Đồng bộ qua `cron_sync_watchdog.py` sang cả runtime Admin PC (`%LOCALAPPDATA%\hermes\scripts\xiaowei_idle_auto_close_watchdog.py`) và Kibe PC.
+3. **Xử lý thiết bị kẹt socket USB transport sau khi giải phóng port 5038:**
+   - Nếu thiết bị đã về `device` nhưng lệnh shell bị timeout (hung socket): Bắn `adb -s <serial> reconnect` để ép Linux kernel reset lại pipe `/dev/android_adb`. Thiết bị sẽ phản hồi trở lại bình thường trong < 1s mà không cần reboot.
+   - Trong `farm_adb_transport_auto_healer.py`: BẮT BUỘC bọc `try...except Exception: pass` quanh `reconnect` và `keyevent 224` để timeout của một máy không làm crash toàn bộ batch khôi phục.
+

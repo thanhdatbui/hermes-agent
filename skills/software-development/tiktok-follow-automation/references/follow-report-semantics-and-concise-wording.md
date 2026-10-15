@@ -144,5 +144,22 @@ Khi operator thắc mắc: *"Sao trên db báo 1 lượt mà ở đây báo 0?"*
      * Các máy bị nhả ở Phiên 2 (ví dụ 9 máy) là những máy ở Phiên 1 chỉ hoàn thành lướt feed mà chưa bấm được lượt follow nào (0 lượt, status `OK` do skip anchor hoặc không thấy mục tiêu), sang Phiên 2 mới bấm trúng anchor bị nhả.
      * Kèm theo các máy được bảo vệ bởi Cầu dao IP partner (`CIRCUIT_BREAKER_SKIPPED`) và Gate an toàn video/tuổi nick (`under_video_gate` < 6 video hoặc < 21 ngày).
 
+### 10.1. Triage Bẫy Hiểu Lầm "Sao Phiên 1 Máy Không Chạy Follow Mà Chỉ Hoàn Thành Feed?" (Nhóm "Bỏ qua: Khác")
+- **Hiện tượng:** Operator thấy báo cáo Watchdog ghi `Bỏ qua ... Khác (27)` và thắc mắc tại sao máy chỉ hoàn thành feed mà không chạy follow.
+- **Bản chất kỹ thuật (Follow Runner ĐÃ CHẠY 100%):**
+  1. **Tiến trình Follow đã thực thi:** Sau khi feed hoàn tất, `multi_machine_feed_session.py` gọi subprocess `run_follow.py` (chạy ~60–90 giây). Máy không hề bị skip ở tầng launcher.
+  2. **Mode 2 gặp Anchor đã follow sẵn & Cạn nick nội bộ:**
+     - Bot bốc ngẫu nhiên Anchor nội bộ (Tik1/Tik2). Nếu Anchor đó **đã được nick này follow từ trước** (`classification == "followed"`), bot không cần bấm follow Anchor mà nhảy thẳng vào tab Following của Anchor.
+     - Bot duyệt danh sách Following để lọc nick thuộc farm (`UID ∈ internal_uids`). Nếu các nick nội bộ trong danh sách đó nick này **đã follow hết từ các ngày trước** (`state.is_followed() == True`), bot không tìm thấy nick mới nào hợp lệ để bấm.
+     - Bot kết thúc Mode 2 an toàn với `used = 0`, trả về payload `status: "OK", followed: [], followed_count: 0`.
+  3. **Tại sao không bị dính "Nhả follow" ở Phiên 1:**
+     - Do không có nick nào hợp lệ, bot **HOÀN TOÀN KHÔNG BẤM NÚT FOLLOW NÀO** trên UI TikTok.
+     - Thuật toán TikTok không ghi nhận action follow mới -> Cờ tài khoản giữ sạch nguyên vẹn, không kích hoạt kiểm tra nhả.
+     - Watchdog khi gom số liệu thấy máy trả về `status: OK` nhưng `followed: 0` thì phân loại vào `other_skipped` và hiển thị trên Telegram dưới nhãn `Bỏ qua: Khác`.
+  4. **Tại sao sang Phiên 2 lại dính Nhả (`FOLLOW_FAILED`):**
+     - Ở Phiên 2, bot shuffle bốc trúng **Anchor mới chưa từng follow**.
+     - Theo quy trình an toàn của Mode 2 (`_ensure_anchor_followed`), bot bắt buộc phải follow Anchor trước: mở video của Anchor -> thả tim ngẫu nhiên -> bấm nút Follow trên video -> quay về Profile vuốt reload (pull-to-refresh) để kiểm tra.
+     - Vì **thực sự có hành động bấm follow**, thuật toán TikTok can thiệp và nhả nút follow về màu đỏ -> Bot bắt được tín hiệu nhả (`refreshed_classification == "not_followed"`), ngắt phiên khẩn cấp và kích hoạt cờ `FOLLOW_FAILED`.
+
 ## Answer style
 Answer the operator's direct question first, in Vietnamese, with no speculative theory. Explain only the distinction needed to prevent the common misread that `Success (0)` equals “no machine ran.”

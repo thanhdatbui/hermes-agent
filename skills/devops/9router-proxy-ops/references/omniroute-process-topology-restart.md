@@ -1,8 +1,10 @@
 # OmniRoute Windows Dual-Port Process Topology & Restart Verification
 
 ## 1. Port vs Process Architecture on Host
-- **Port 20128**: 9Router / Next.js dev routing process (`node.exe server.js` or standalone next).
+- **Port 20128**: 9Router Dashboard & Proxy GUI (`http://127.0.0.1:20128/dashboard`). Active, fully rendered UI for API keys, providers, quota tracking, combos, and logs.
 - **Port 20129**: OmniRoute Core Production Runtime (`node.exe scripts/dev/run-next.mjs start`).
+  - **Headless Backend-Only Build (`OMNIROUTE_BUILD_BACKEND_ONLY=1`)**: OmniRoute runs the `build:backend` artifact where all Next.js App Router UI pages (`/dashboard`, `/home`, etc.) are stubbed (`BackendOnlyPageStub` returning `null` inside empty `<html><body></body></html>`).
+  - **Dashboard Inaccessibility on :20129**: Navigating to `http://127.0.0.1:20129/dashboard` in a browser will intentionally render a blank white page (`empty page`). This is by design to save RAM/CPU and prevent heavy frontend bundles (Monaco, Recharts, xyflow) from bloating farm routing. The real dashboard GUI is on port `20128`.
 - **Supervision**: Supervised by `omniroute_watchdog.ps1` (PowerShell supervisor with mutex `Local\OmniRoute_Supervisor_Mutex_v1`).
 
 ## 2. Common Mistake: Restarting the Wrong Node Process
