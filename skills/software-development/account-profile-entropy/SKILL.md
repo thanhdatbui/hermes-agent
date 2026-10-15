@@ -142,7 +142,7 @@ When registering or renaming accounts created from foreign/shop emails (e.g. `fr
     - `debi-` / `debora-` → **Diệp Anh**, **Hồng Diệp** (stem: *Diệp*)
     - `ancil-` → **Hoài An**, **An Bơ** (stem: *An*)
     - `brolly-` → **Quốc Bảo**, **Gia Bảo** (stem: *Bảo*)
-  * **CẤM TUYỆT ĐỐI TÊN CỤT LỦN 1 TỪ**: Hàm đặt tên `make_tiktok_name` và quy chuẩn farm KHÔNG BAO GIỜ cho phép tên 1 từ trơ trọi (như mỗi chữ *Linh*, *Phương*, *Sa*, *An*). Display name luôn luôn phải tối thiểu 2 từ. Khi bốc phonetic stem (VD: `lilyan` -> *Linh*):
+  * **CẤM TUYỆT ĐỐI TÊN CỤT LỦN 1 TỪ**: Hàm đặt tên `make_tiktok_name` và quy chuẩn farm KHÔNG BAO GIỜ cho phép tên 1 từ trơ trọi (như mỗi chữ *Linh*, *Phương*, *Sa*, *An*, *Mai*, *Thảo*). Display name luôn luôn phải tối thiểu 2 từ. Khi thực hiện đổi avatar hoặc audit tài khoản mà thấy tên cũ cụt lủn 1 từ, BẮT BUỘC phải chủ động đề xuất và kích hoạt runner đổi tên chuẩn người dùng thật theo `make_tiktok_name`. Khi bốc phonetic stem (VD: `lilyan` -> *Linh*):
     - Ưu tiên phong cách **Tên + Biệt danh đời thường**: BẮT BUỘC ghép `stem + _NICK_SUFFIX` (VD: *Linh Bông*, *Linh Miu*, *Linh Bơ*, *Linh Gạo*, *Linh Nhím*, *Linh Heo*, *Linh Cún*, *Linh Nấm*...).
     - Hoặc phong cách **Đệm + Tên** (*Ngọc Linh*, *Thanh Linh*, *Khánh Linh*), **Tên lặp / Duo** (*Linh Linh*).
     - CẤM để tên cụt 1 từ dưới mọi hình thức!

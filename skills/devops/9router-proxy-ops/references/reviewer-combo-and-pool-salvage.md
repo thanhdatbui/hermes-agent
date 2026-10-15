@@ -37,13 +37,19 @@ Classify conservatively:
 - transient timeout, 5xx, SSL, or proxy failure: retry/probe through the same account's assigned egress before classifying; never call it dead from one transient result.
 - `error` with insufficient evidence: quarantine/deactivate routing temporarily only if operationally necessary, record the evidence, and leave the farm asset untouched.
 
+## Active Database Path on Windows Host (Critical Distinction)
+
+- **ACTIVE DATABASE**: `C:\Users\Kibe\.omniroute\storage.sqlite` (`~/.omniroute/storage.sqlite` — ~1.5 GB). This is the live database used by OmniRoute production runtime.
+- **STALE ARCHIVE**: `C:\Users\Kibe\AppData\Roaming\omniroute\storage.sqlite` (~33 MB). Do NOT query or clean this stale file; changes there have zero effect on live `:20129` routing.
+- Always use `os.path.expanduser("~/.omniroute/storage.sqlite")` in cleanup and inspection scripts.
+
 ## Dangling combo model synchronization (Critical Pitfall)
 
 Deleting rows from `provider_connections` in `~/.omniroute/storage.sqlite` does NOT automatically clean the `models` list stored inside `combos.data`!
 Note schema: `combos` table has columns `(id, name, data)`, NOT `(id, name, models)`. The model list is nested inside JSON `data['models']`.
 If dead connection IDs remain inside `combos.data`:
 - OmniRoute retains in-memory references to deleted connection IDs.
-- Live traffic and test probes will attempt routing to non-existent connections, causing artificial timeouts and delay spikes before failover.
+- Round-robin requests inside `chatgpt-web-pool` or `gpt-web-sol` will route to dead/banned connection IDs, hanging for the full `targetTimeoutMs` (60s) before failover, eventually causing total review timeout (>300s).
 - **Mandatory 2-step sync**:
   1. Update `combos.data` JSON in SQLite: filter `models = [m for m in models if m.connectionId not in deleted_ids and m.connectionId in valid_db_ids]`.
   2. Hot-reload in-memory routes via REST: for each modified combo, execute `PUT http://127.0.0.1:20129/api/combos/{id}` with the filtered body.
