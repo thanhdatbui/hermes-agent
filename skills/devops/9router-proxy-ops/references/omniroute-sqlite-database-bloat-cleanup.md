@@ -34,18 +34,32 @@ cmd.exe /c "node run-next.mjs >> logs\omniroute-stdout.log 2>&1"
 ```
 Đồng thời thêm logic tự xoay vòng log khi file vượt quá 50MB.
 
-### Bước 2: Dọn dẹp Database an toàn & Atomic Transaction
-1. **Sao lưu trước khi dọn**: Copy `storage.sqlite` sang `storage.sqlite.bak_cleanup_<YYYYMMDD>`.
-2. **Xóa bản ghi bằng Atomic Transaction (chống Partial Cleanup)**:
-   Bọc cả 2 câu lệnh xóa trong `with conn:` của Python để nếu xảy ra lỗi ở bảng thứ hai hoặc database lock thì tự động rollback:
-   ```python
-   with conn:
-       cursor.execute("DELETE FROM conversation_turn_nodes WHERE last_seen_at < ?", (cutoff_iso,))
-       cursor.execute("DELETE FROM agentic_conversations WHERE last_seen_at < ?", (cutoff_iso,))
-   ```
-3. **Dồn WAL checkpoint an toàn**:
+### Bước 2: Dọn dẹp Database an toàn & Chunking qua rowid (Chống Full Table Scan Lock)
+
+1. **Cạm bẫy Full Table Scan trên `conversation_turn_nodes`**:
+   - Bảng `conversation_turn_nodes` **KHÔNG có index trên `last_seen_at`**.
+   - CẤM TUYỆT ĐỐI chạy lệnh xóa đơn lẻ:
+     ```sql
+     DELETE FROM conversation_turn_nodes WHERE last_seen_at < ?;
+     ```
+     Lệnh này sẽ quét toàn bộ 1.5M+ dòng (FULL TABLE SCAN) trong một transaction độc quyền kéo dài 20–40s, block cứng Event Loop của Node.js và khiến OmniRoute timeout / bị watchdog kill ngay lập tức.
+   - Thêm vào đó, bảng có 3 B-Tree indexes (`idx_turn_nodes_conversation`, `idx_turn_nodes_parent`, `idx_turn_nodes_content_hash`), việc xóa đòi hỏi cập nhật liên tục các index này (~6-11s cho mỗi 20k-25k rows).
+
+2. **Giải pháp: Binary Search rowid & Chunking nhả lock**:
+   - Dùng Binary Search tìm `target_rowid` tương ứng với `cutoff_iso` qua `ORDER BY rowid ASC LIMIT 1` (chỉ mất < 5ms).
+   - Xóa theo từng batch nhỏ (20,000 – 25,000 dòng theo `WHERE rowid <= ?`).
+   - Sau mỗi batch bắt buộc `time.sleep(0.05)` để nhả lock SQLite, cho phép các request LLM (`/v1/chat/completions`) và `/api/health` của OmniRoute đi qua bình thường.
+
+3. **Mở rộng các bảng bloat cần dọn dẹp**:
+   Ngoài `conversation_turn_nodes` và `agentic_conversations`, cần dọn các bảng tích tụ snapshot/audit:
+   - `quota_snapshots`: Dọn bản ghi cũ hơn 2 ngày (có index `idx_quota_snapshots_created_at`, xóa 25k dòng chỉ mất ~0.15s).
+   - `xp_audit_log`: Dọn bản ghi cũ hơn 3 ngày (xóa 25k dòng chỉ mất ~0.03s).
+   - `call_logs`: Dọn bản ghi cũ hơn 3 ngày (dùng index `idx_cl_timestamp`).
+   - `proxy_logs` & `job_runs`: Dọn bản ghi cũ hơn 3 ngày.
+
+4. **Dồn WAL checkpoint an toàn**:
    - Nếu OmniRoute đang tắt: Chạy `VACUUM;` để co kích thước file SQLite vật lý.
-   - Nếu OmniRoute đang chạy online: Sử dụng `PRAGMA wal_checkpoint(PASSIVE);` và `PRAGMA optimize;` để không gây lock exclusive lên các request LLM đang phục vụ.
+   - Nếu OmniRoute đang chạy online: Sử dụng `PRAGMA wal_checkpoint(PASSIVE);` và `PRAGMA optimize;` để không gây lock exclusive lên các request LLM đang phục vụ. Trang trống sẽ nằm trong `freelist` và SQLite tái sử dụng ngay lập tức mà không cần VACUUM.
 
 ### Bước 3: Dọn dẹp các file `.bak` cũ giải phóng ổ C
 Chỉ giữ lại file backup gần nhất, xóa bỏ các file `.bak` cũ hơn 7 ngày để chống tràn ổ C. Tuyệt đối loại trừ các file đang hoạt động: `storage.sqlite`, `storage.sqlite-wal`, `storage.sqlite-shm`.
