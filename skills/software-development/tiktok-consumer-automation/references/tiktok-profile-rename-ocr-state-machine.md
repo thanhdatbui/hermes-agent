@@ -106,9 +106,15 @@
 ## 6. Rolling Rename Watchdog Architecture (25 Workers & Fail-Safe)
 
 - **Độ song song:** Watchdog chạy `MAX_WORKERS = 25` (`ThreadPoolExecutor`) gom tối đa 25 máy rảnh khác nhau cùng lúc giữa các ca nuôi.
+- **Subprocess Isolation Architecture:**
+  * BẮT BUỘC tách runner thực thi thành CLI độc lập (`do_rename_canonical_runner.py --machine <M> --serial <S> --username <U> --name <N>`).
+  * Watchdog `_worker` gọi qua `subprocess.run(cmd, timeout=240, capture_output=True)`. Cách ly triệt để bộ nhớ, tránh nghẽn thread pool khi 25 workers đồng thời gọi PowerShell WinRT OCR (`ocr_boxes.ps1`).
+- **Xử lý trễ Splash Screen trên Samsung S7:**
+  * App TikTok trên chip Exynos 8890 tải splash màn hình đen/chữ TikTok có thể mất 10–15s. State machine thiết lập `MAX_STEPS = 25-35` bước, kiên nhẫn bỏ qua 3–5 step đầu nếu màn hình vẫn ở Splash/UNKNOWN trước khi xác định kẹt.
 - **Fail-Safe chống đơ ADB Transport:**
   * Lệnh gọi ADB bắt buộc có `timeout=15` bọc `try...except Exception: return ""` để khi 1 máy bị đơ kết nối USB không làm treo toàn bộ batch.
   * Vòng lặp `as_completed` bọc `try...except` cho từng future (`fut.result()`).
 - **Cronjob Hermes Delivery:** Tác vụ chạy 25 workers tốn >60s bắt buộc cấu hình `deliver: 'local'` trên cronjob. CẤM để `origin` vì LLM gateway sẽ timeout sau 60s và bắn tin nhắn báo lỗi giả về Telegram.
 - **Xử lý Switcher tự động:** Khi vào Profile, nếu active account khác target, mở Switcher chuyển đúng tài khoản. Nếu không có trong Switcher, bấm `keyevent 4` thoát ra an toàn và trả về `(None, False)`.
+- **Canary Gate & Vision Inspection:** Trước khi kích hoạt hàng loạt trên 25 máy, BẮT BUỘC chạy Canary trên 1 máy thật (`test_canary_safe_rename.py`), dùng `browser_vision` soi mắt đọc ảnh `MEDIA:<path>` xác nhận nickname hiển thị đúng trên Profile, không che popup, không kẹt phím.
 
