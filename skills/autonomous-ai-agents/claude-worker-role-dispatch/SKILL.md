@@ -118,3 +118,4 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
 
 See `references/claude-worker-role-dispatch-and-turns-hard-cap-20261015.md` for full incident analysis.
 See `references/mechanical-gate-delegate-task-lockdown-20261015.md` for mechanical gate dispatch lockdown, delegate_task blocks on code edits, and the 3-tier worker fallback ladder (Haiku -> AG CLI -> L2/subagent escape valve).
+See `references/windows-stdin-pipe-and-haiku-5-5-catalog-invariants-20261015.md` for analysis of the Windows Node.js stdin pipe bug (`--print` error) and host-level invariants for `claude-haiku-5-5` & `claude-sonnet-5-5`.
