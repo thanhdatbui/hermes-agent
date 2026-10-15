@@ -16,6 +16,11 @@ Verify before use:
 - Smoke-test `POST /v1/chat/completions` with `model: review`; a `200` response proves the combo is routable, not that every underlying account is healthy.
 - Closeout must invoke `closeout_gate.py --model review` so the configured combo, rather than a manually selected single provider, performs the review.
 - Never freeze or abort execution when the primary reviewer (ChatGPT-Web Sol) hits transient errors or rate limits. The combo automatically delegates to Codex Terra. When running manual tests, always fall back to the secondary models configured in the combo rather than stopping with an error.
+- **Reviewer Combo Timeout / Hang Recovery**:
+  * If `closeout_gate.py` hangs on model `review` (HTTP timeout 300s) because web-pool/codex connections time out before failover:
+    1. Reset in-memory circuit breakers immediately via `curl -X DELETE http://localhost:20129/api/monitoring/health`.
+    2. Check which accounts are alive in `~/.omniroute/storage.sqlite` and purge stale connection IDs from combo models using `D:/Taadaa/tools/clean_omniroute_pools.py`.
+    3. If the combo remains unresponsive, execute `closeout_gate.py --model antigravity/gemini-3.8-flash-tiered` (or another active tier on `:20129`) as an authorized fallback to complete audit scoring without hanging.
 
 ## Two-pool cleanup and rescue
 

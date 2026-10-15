@@ -61,6 +61,28 @@ GIT_ALLOW_PROTOCOL=https git -C \"<đường_dẫn_repo>\" -c credential.helper=
 Báo cáo kết quả." --allowedTools "Bash" --dangerously-skip-permissions --max-turns 4
 ```
 
+### 3. CẤM Bắt User Push Bằng Tay — Bắt Buộc Dùng Cờ `--user-override` Kèm `--push`
+- **Sự cố thực tế & Phản ứng tiêu cực từ User (15/10/2026):** Khi Closeout Gate bị kẹt ở Strike 3 do diff quá lớn (>30KB) bị cắt ngắn (Truncated Diff) hoặc bất đồng scope đánh giá, Coordinator đề xuất User chọn "Hướng A (Override)" nhưng lại bảo User tự mở terminal gõ `cd D:/Taadaa/tools && git push origin main`. User đã cực kỳ phẫn nộ trước hành vi bắt làm tay này ("Tại sao cứ khóc lóc bắt tao làm tay v tao bực lắm r đấy gate guard gì ngu học v?"). Hơn nữa, nếu User gõ tay lệnh push từ trong môi trường có pre-push hook thì Git vẫn sẽ bị hook chặn vì chưa có audit log `APPROVED >= 85`!
+- **Quy tắc Bắt Buộc (Invariant):**
+  1. **CẤM TUYỆT ĐỐI BẮT USER CHẠY TAY `git push`:** Khi User đã chấp thuận phương án Override (hoặc chỉ thị rõ ràng "push đi / chọn A / override"), Coordinator BẮT BUỘC phải thực thi tự động từ đầu đến cuối, không được đẩy việc bấm tay cho User.
+  2. **CƠ CHẾ `--user-override` CỦA `closeout_gate.py`:**
+     `closeout_gate.py` đã tích hợp sẵn cờ `--user-override` và `--override-note`:
+     ```bash
+     python D:/Taadaa/tools/closeout_gate.py \
+       --repo <đường_dẫn_repo> \
+       --base <base_ref> \
+       --files <target_files> \
+       --user-override \
+       --override-note "<Lý do User chỉ thị, e.g. User explicitly approved Option A push>" \
+       --push \
+       --json-output
+     ```
+  3. **Quy trình hoạt động tự động khi có cờ `--user-override`:**
+     - Gate tự động chạy bộ test thật (`pytest`). Nếu test FAIL $\rightarrow$ Gate vẫn từ chối (bảo vệ an toàn tuyệt đối, không override cho code hỏng).
+     - Nếu test PASS 100% $\rightarrow$ Gate bỏ qua ngưỡng điểm đánh giá ngữ nghĩa của reviewer AI, ghi nhận biên lai audit hợp lệ `[USER_OVERRIDE_PUSH]` (verdict: USER_OVERRIDE, exit code 0).
+     - Biên lai này lập tức thỏa mãn `pre-push.sh` hook.
+     - Cờ `--push` tự động kích hoạt `safe_push.py` để unmask sandbox và đẩy code lên remote an toàn, kết thúc phiên tự động 100%.
+
 ## Bẫy "Chốt Phiên Khống — Commit Xong Quên Push" (Critical Invariant)
 - **Sự cố thực tế (14/10/2026):** Rà soát phát hiện đến 6 repositories (`Tiktok-video`, `tiktok-follow`, `Tiktok_Reg`, `Hotmail`, `tiktok-log-in`, `AI-Tools`) đều có commit từ các phiên làm việc trước bị đọng lại ở local (ahead of origin từ 1 đến 5 commits). Nguyên nhân: Các Coordinator/Subagent trước đó chạy Closeout Gate thấy pass, tạo commit xong gõ `git push` bị lỗi ngầm `transport 'https' not allowed` nhưng vẫn nhắm mắt báo cáo "Chốt phiên thành công / Done" cho User.
 - **Quy tắc Bắt Buộc (Invariant):**
