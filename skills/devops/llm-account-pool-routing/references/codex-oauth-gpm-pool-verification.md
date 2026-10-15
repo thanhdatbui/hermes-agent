@@ -211,13 +211,21 @@ Use when reauthenticating a Codex account from a GPM browser profile, checking w
 
 ## Inactive (is_active = 0) & Stale Quota Card Triage Runbook
 
-When triaging disabled Codex connection cards on OmniRoute Quota Dashboard (`/dashboard/quota`):
-1. **Never trust UI quota color alone**: The Quota UI displays cached data from `quota_snapshots`. An account with a revoked token will still display green (e.g. 89% or 100% left) if it had unused quota before revocation.
-2. **Execute live probe test**: Call `POST http://127.0.0.1:20129/api/providers/{id}/test` with payload `{}`:
-   - If `valid: true` and account is Hotmail in `batch_gpm_5profiles_supervisor_state.json` (`stage: WAIT_24_48H`) -> `SOAKING_48H`. Check `created_at` or `codex_oauth_at`. Let cronjob `omni-activate-soaked-codex` auto-activate after 48h.
-   - If `valid: false` with `error: "Token invalid or revoked"` (HTTP 401) -> `TOKEN_REVOKED_401`. Do NOT toggle `is_active=1` manually. Schedule GPM profile re-authentication.
-   - If `valid: true` and not soaking (e.g. recovered/refreshed) -> Safe to re-enable.
-3. **Inspect SQLite audit logs**:
+When triaging disabled Codex or ChatGPT-Web connection cards on OmniRoute Quota Dashboard (`/dashboard/quota`) or after receiving Pool Healer health reports (`ChatGPT-Web: X/Y ACTIVE`):
+1. **Never acknowledge passively or trust UI/report status without active probe**:
+   - Khi Pool Healer báo số lượng active thấp (ví dụ `3/40 ACTIVE`), CẤM trả lời ghi nhận suông hoặc đứng im chờ đợi.
+   - BẮT BUỘC thực hiện triage phân loại ngay: Phân biệt tài khoản hỏng token thực sự (`token_expired` / 401) vs tài khoản sống nhưng bị tắt `is_active=0` (do import mới, soaking 48h xong chưa kích hoạt, hoặc standby).
+2. **Execute live probe test on all inactive connections**:
+   - Gọi `POST http://127.0.0.1:20129/api/providers/{id}/test` với payload `{}`:
+     * Nếu `valid: true`: Token/cookie còn sống 100%. Bật lại ngay bằng `PUT http://127.0.0.1:20129/api/providers/{id}` kèm payload `{"isActive": true}`.
+     * Nếu `valid: false` với `ChatGPT session expired`: Tài khoản hết hạn session thực sự, xếp hàng cho `cron_auto_feed_chatgpt_pool.py` hoặc auto-relogin qua GPM.
+     * Nếu là Codex OAuth và `valid: false` (401 revoked): Disable an toàn và xếp hàng re-auth qua cổng 1455.
+3. **Synchronize Newly Activated Accounts into Active Combos (Combo Enrollment Contract)**:
+   - Kích hoạt `isActive: true` tại connection là chưa đủ để router chuyển tiếp traffic! BẮT BUỘC phải đối soát danh sách `models` trong các combos đích (`chatgpt-web-pool`, `gpt-web-sol`, `gpt-web-luna`).
+   - Nếu `connectionId` chưa có trong combo: Thêm bản ghi model mới vào mảng `models` và gọi `PUT /api/combos/{combo_id}` để combo router thực sự mở rộng dung lượng pool.
+   - Chạy Zero Dangling Reference Integrity Check sau khi cập nhật để đảm bảo 100% ID khớp với DB.
+4. **Never trust UI quota color alone**: The Quota UI displays cached data from `quota_snapshots`. An account with a revoked token will still display green (e.g. 89% or 100% left) if it had unused quota before revocation.
+5. **Inspect SQLite audit logs**:
    ```sql
    SELECT timestamp, action, target, details 
    FROM audit_log 

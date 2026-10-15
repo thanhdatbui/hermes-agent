@@ -86,6 +86,24 @@
 6. **Phía Thiết Bị (Android Phone):**
    - Tiến trình `app_process` (scrcpy backend) trên các máy online vẫn chạy bình thường (`ps -A | grep app_process`). Lỗi 100% nằm ở phía quản lý tiến trình của Xiaowei trên PC.
 
+7. **Xung Đột Hai Cổng ADB Daemon (5037 vs 5038 Rogue) & Orphan Process Giằng Xé WinUSB:**
+   - **Bản chất kỹ thuật:** Xiaowei (Tauri/Rust app) được lập trình hardcode trong mã máy (`xiaowei.exe` tại offset `0x120b158`) lệnh khởi chạy ADB server riêng:
+     `tools/adb -P 5038 nodaemon server start`
+   - **Hiện tượng "Tiểu Vi nhìn thấy đủ máy nhưng script chết la liệt":**
+     * Giao diện Xiaowei kết nối đồng thời vào CẢ HAI cổng (5037 và 5038), gộp danh sách thiết bị lại nên trên màn hình PC người vận hành nhìn thấy đủ 80 máy, bấm xem màn hình vẫn mượt.
+     * Tuy nhiên, driver WinUSB trên Windows không cho phép 2 daemon cùng điều khiển chung thiết bị. Thiết bị nào bị daemon 5038 bắt tay thì cổng 5037 hoàn toàn mất quyền truy cập (overlap = 0 máy).
+     * Toàn bộ script nuôi acc, cronjob, uiautomator đều kết nối cổng chuẩn mặc định 5037. Kết quả là dàn máy bị **XẺ LÀM ĐÔI**: ví dụ 5038 giữ 42 máy, 5037 chỉ còn 37 máy. Khi runner đụng vào 42 máy kia thì bị văng timeout, watchdog báo nhầm thành "Lỗi App TikTok/Script".
+   - **Cái bẫy Orphan Process sau khi tắt Xiaowei:**
+     * Khi người dùng tắt cửa sổ Xiaowei (hoặc taskkill thiếu cờ `/T`), giao diện đồ họa tắt nhưng tiến trình con `adb.exe -P 5038` BỊ BỎ RƠI CHẠY NGẦM VĨNH VIỄN. Dù đã đóng Xiaowei, cổng 5038 vẫn tiếp tục ghim chết hàng chục máy.
+   - **Nguyên tắc bất biến & Giải pháp triệt để:**
+     * **Cổng 5037 là TRỤC CHÍNH ĐỘC QUYỀN** của toàn bộ farm. Tuyệt đối không chuyển script sang cổng 5038 (vì 5037 là chuẩn mặc định Android SDK, thiết bị vẫn bị xẻ đôi và gãy toàn bộ runner/test suite).
+     * **Cơ chế Dual-Strike Auto-Purge:** Tích hợp vào `xiaowei_idle_auto_close_watchdog.py` chạy chu kỳ 2 phút (`*/2 * * * *`):
+       1. Khi Xiaowei không mở (`is_xiaowei_running() == False`), kiểm tra listener cổng 5038.
+       2. Tầng 1: Chạy `adb -P 5038 kill-server`.
+       3. Tầng 2: Nếu socket bị treo, dùng WMI/CIM hạ sát đúng PID của Xiaowei ADB:
+          `Get-CimInstance Win32_Process -Filter "Name = 'adb.exe'" | Where-Object { $_.CommandLine -match '5038' } | Invoke-CimMethod -MethodName Terminate`
+     * Khi taskkill Xiaowei, bắt buộc dùng cờ `/T` (Tree Kill) để quét sạch toàn bộ cây tiến trình con.
+
 ---
 
 ## Quy Trình Chẩn Đoán Nhanh (Fast Triage Checklist)

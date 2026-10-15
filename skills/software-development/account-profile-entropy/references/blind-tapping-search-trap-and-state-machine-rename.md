@@ -62,3 +62,23 @@ Khi điều khiển giao diện TikTok Android (bản v47.x trên Samsung S7 đ�
 6. **Kỷ Luật Phản Hồi Khi User Hỏi Số Worker**:
    - Khi User hỏi *"Đang chạy worker bn đó"*, Coordinator phải phân biệt chính xác ngữ cảnh tác vụ User đang quan tâm (ví dụ: số worker của watchdog đang cấu hình vs số worker của ca nuôi feed toàn farm), cấm trả lời lệch trọng tâm gây hiểu lầm.
 
+## 7. Kiến Trúc Tách Rời Subprocess Runner vs ThreadPoolExecutor Trong Batch 25 Workers
+
+1. **Cạm Bẫy Monolithic Inline Threading**:
+   - Khi viết gộp toàn bộ logic State-Machine ADB + WinRT OCR chạy trực tiếp trong các worker thread của 1 script Python duy nhất (`tiktok_rename_rolling_watchdog.py`), trên Windows và môi trường MSYS/git-bash dễ xảy ra:
+     * Tranh chấp tài nguyên PowerShell WinRT OCR (`ocr_boxes.ps1`) chạy đồng thời gây timeout hoặc xung đột file ảnh tạm (`rename_<serial>.png`).
+     * Exception hoặc crash tiến trình con kéo theo toàn bộ pool dừng đột ngột hoặc bỏ dở vòng lặp kết quả.
+     * Khó kiểm thử Canary độc lập trên 1 máy thật khi cần tái hiện hoặc verify.
+
+2. **Giải Pháp Chuẩn Hóa Kiến Trúc Decoupled Subprocess**:
+   - **Module CLI Runner độc lập (`do_rename_canonical_runner.py`)**:
+     * Nhận tham số qua `argparse`: `--machine`, `--serial`, `--username`, `--name`.
+     * Chịu trách nhiệm trọn vẹn: State-Machine OCR 35 bước, tự động chuyển tài khoản qua Switcher, gõ Unicode UTF-8 qua AdbKeyboard, xác nhận popup đổi tên 7 ngày, readback OCR nghiệm thu trên Profile.
+     * Xuất đầy đủ artifact: ảnh nghiệm thu `m{m}_{u}_rename_confirmed.png` và JSON report `m{m}_{u}_rename_confirmed.json`.
+     * Trả về exit code `0` kèm stdout `KET QUA: RENAMED` hoặc `KET QUA: ALREADY`.
+   - **Watchdog Scheduler (`tiktok_rename_rolling_watchdog.py`)**:
+     * Đóng vai trò phân phối và điều phối O(1): bốc danh sách máy rảnh không có device-lock và chưa đổi tên trong 7 ngày.
+     * Gọi runner qua `subprocess.run(cmd, capture_output=True, text=True, timeout=240)` bên trong `ThreadPoolExecutor(max_workers=25)`.
+     * Bọc `try...except Exception: pass` cho từng `fut.result()` trong `as_completed()`, chỉ ghi nhận vào `rename_natural_state.json` khi `ok and p.exists()`.
+   - **Hiệu quả thực tế**: Cách ly hoàn toàn bộ nhớ và I/O giữa 25 máy. Máy nào đơ ADB tự rớt theo timeout 240s mà không làm nghẽn các máy khác, giúp farm chạy ổn định liên tục.
+
