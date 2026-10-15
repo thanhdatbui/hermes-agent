@@ -297,5 +297,26 @@ for row in ws.iter_rows(min_row=2):
        * Báo cáo dứt điểm cho User: **Job ID**, **Schedule**, và cơ chế **Fail-closed im lặng khi máy bận, tự động bốc ngay khi máy rảnh**.
   2. Bất biến "Canh rảnh": Cơ chế watchdog tự kiểm tra `psutil` (tiến trình feed) và `device_locks`. Có máy rảnh thì bốc xử lý O(1); không có máy rảnh thì thoát `sys.exit(0)` trong im lặng. Đó mới là "đã bật canh máy" đúng nghĩa!
 
+## 14. Quy Chuẩn Deploy Script Watchdog Vào Hermes Cron (Khắc Phục Lỗi 'Script not found')
+- **Cơ chế Hermes Cron**:
+  * Công cụ `cronjob` BẮT BUỘC tham số `script` phải là tên file tương đối nằm dưới thư mục script chuẩn của Hermes (`~/.hermes/scripts/`).
+  * Nếu truyền đường dẫn tuyệt đối (VD: `D:/Taadaa/tools/my_script.py`), Hermes Cron sẽ từ chối: `Script path must be relative to ~/.hermes/scripts/. Got absolute or home-relative path`.
+  * Nếu script chưa được đưa vào thư mục scripts của Hermes, cron khi kích hoạt sẽ bắn alert lỗi: `⚠️ Cron '<name>' failed: Script not found: ...`.
+- **Pipeline Deploy Chuẩn Cho Taadaa Farm**:
+  1. **Source of Truth**: Đặt script vào thư mục deploy chung của repo: `D:/Taadaa/Hermes/deploy/hermes-home/scripts/<script_name>.py`.
+  2. **Đồng bộ tự động**: Chạy runner đồng bộ để copy sang runtime và OneDrive:
+     ```bash
+     python D:/Taadaa/Hermes/deploy/hermes-home/scripts/cron_sync_watchdog.py
+     ```
+     Kiểm tra log xác nhận: `[SYNC] <script_name>.py -> ...scripts`.
+  3. **Tạo / Kích hoạt Cron**:
+     ```python
+     cronjob(action='create', name='<name>', script='<script_name>.py', schedule='*/15 * * * *', no_agent=True)
+     ```
+  4. **Kiểm thử tức thì (Canary Run)**:
+     * Gọi ngay `cronjob(action='run', job_id='<id>')`.
+     * Kiểm tra `last_status: ok` để đảm bảo script không crash, không thiếu module và thoát im lặng an toàn trước khi kết thúc turn.
+
+
 
 
