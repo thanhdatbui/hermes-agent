@@ -92,14 +92,14 @@ Khi triển khai cronjob tự động hóa đổi biệt danh cho toàn bộ cá
    - Quét cả 2 thư mục lock: `C:\Users\Kibe\.codex\device-locks\` và `C:\Users\Kibe\AppData\Local\automation-core\device-locks\`.
    - Chỉ chọn các máy đang online qua `adb devices` và KHÔNG có lock active.
 3. **Cấu Hình Worker Song Song (Parallel Worker Pool - Invariant 25 Workers)**:
-   - Khi chạy batch đổi tên cuốn chiếu, hỗ trợ chạy song song tối đa **25 workers** (`ThreadPoolExecutor(max_workers=25)`).
+   - Khi chạy batch đổi tên cuốn chiếu, BẮT BUỘC hỗ trợ chạy song song tối đa **25 workers** (`ThreadPoolExecutor(max_workers=25)`). User chỉ đạo dứt khoát: "để worker 25 cho tao", cấm tự ý hạ xuống đơn luồng 1 worker gây chậm trễ.
    - **Quy tắc máy độc lập**: Mỗi worker trong pool bốc đúng 1 máy rảnh khác nhau (`seen_machines.add(m)`). Tuyệt đối cấm nhiều worker chạy chung trên 1 máy.
    - Mỗi worker giữ độc lập `operator_device_lock(machine=m, serial=s, project="rolling_rename", timeout=300)`.
 
 ### B. Invariant Silent Watchdog & Hermes Cron Deployment:
 - **Tuyệt đối cấm stdout rác khi không có hành động**:
-  * Trong Hermes, mọi nội dung in ra `stdout` từ script cronjob (kể cả log chẩn đoán `0 machines locked`) đều sẽ bị runtime auto-deliver thẳng về Telegram của User dưới dạng tin nhắn.
-  * Vì vậy, watchdog bắt buộc phải **hoàn toàn im lặng (`sys.exit(0)`)** khi farm đang bận hoặc không có máy rảnh. CHỈ in ra `stdout` khi có tài khoản đổi tên thành công (`✅ [ROLLING RENAME] Máy M: @user -> 'Tên Mới' | Ảnh: ...`).
+  * Trong Hermes, mọi nội dung in ra `stdout` từ script cronjob (kể cả log chẩn đoán `0 machines locked`, `watchdog active` hay `No feed active`) đều sẽ bị runtime auto-deliver thẳng về Telegram của User dưới dạng tin nhắn, gây khó chịu và bối rối ("?").
+  * Vì vậy, watchdog bắt buộc phải **hoàn toàn im lặng (`sys.exit(0)`)** khi farm đang bận hoặc không có máy rảnh / chưa có nick nào đổi. CHỈ in ra `stdout` khi có tài khoản đổi tên thành công (`✅ [ROLLING RENAME] Máy M: @user -> 'Tên Mới' | Ảnh: ...`).
 - **Quy tắc triển khai script cho Hermes Cron**:
   * Hermes Cron chỉ nhận script nằm trong `%LOCALAPPDATA%\hermes\scripts\`. Không truyền đường dẫn tuyệt đối `D:/Taadaa/...`.
   * Quy trình chuẩn: Copy script vào repo Deploy `D:\Taadaa\Hermes\deploy\hermes-home\scripts\`, sau đó chạy `python D:\Taadaa\Hermes\deploy\hermes-home\scripts\cron_sync_watchdog.py` để tự động đồng bộ sang `%LOCALAPPDATA%\hermes\scripts\` và `OneDrive\hermes-cron\scripts`.
