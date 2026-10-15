@@ -30,3 +30,20 @@
   - Nếu bị vướng password/2FA: lấy credential từ Excel/backup điền tự động.
   - Nếu selector consent thay đổi: cập nhật thêm selector vào `cron_chatgpt_web_pool_watchdog.py`.
   - Hoàn tất OAuth exchange và đóng profile ngay lập tức.
+
+### C. Lỗi "ChatGPT-Web 0/N ACTIVE" (Mass Session Flush & EMPTY_SESSION_TOKEN)
+- **Triệu chứng**: Watchdog báo `ChatGPT-Web: 0/40 ACTIVE`. Danh sách tài khoản báo `Validate fail: EMPTY_SESSION_TOKEN` hoặc `401 ChatGPT auth failed`, một số tài khoản có thể báo `404: ChatGPT returned 404 — model no longer available`.
+- **Bản chất**: Xảy ra khi có đợt flush session hàng loạt (sau khi reboot host, reset GPM cache hoặc OpenAI rotate/invalidate session token `__Secure-next-auth.session-token`). Watchdog healer tự động chuyển `is_active=0` cho các account validate fail.
+- **Đối soát DB O(1)**:
+  ```python
+  import sqlite3
+  conn = sqlite3.connect(r'C:\Users\Kibe\.omniroute\storage.sqlite')
+  # Kiểm tra phân bố trạng thái
+  print(conn.execute("SELECT is_active, test_status, count(*) FROM provider_connections WHERE provider='chatgpt-web' GROUP BY is_active, test_status").fetchall())
+  # Xem lỗi chi tiết
+  print(conn.execute("SELECT email, is_active, test_status, last_error FROM provider_connections WHERE provider='chatgpt-web' LIMIT 10").fetchall())
+  ```
+- **Xử lý & Cơ chế tự hồi phục**:
+  - Không can thiệp tay vội vã khi các pool chính (Antigravity, Codex) vẫn duy trì đủ quota (>90 ACTIVE) cho farm.
+  - Watchdog supervisor `gpm-5profiles-lifecycle-supervisor` (hoặc healer cron) sẽ tự động cuốn chiếu qua GPM từng đợt (5 profile / 5 phút) để lấy cookie mới nạp lại vào OmniRoute.
+
