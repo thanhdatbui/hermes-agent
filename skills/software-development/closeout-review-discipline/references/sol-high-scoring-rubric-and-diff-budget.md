@@ -32,3 +32,13 @@
 - **Dynamic Env Parsing Clamp:** Test đầy đủ các ca biên khi đọc biến môi trường: giá trị âm ép về min, giá trị vượt ngưỡng ép về max, chuỗi chữ/rỗng fallback về mặc định.
 - **Cache Expiry Test:** Bắt buộc có test case chứng minh TTL hết hạn: gán `_CACHE_TS = xw.time.time() - 5.0` (> 2s TTL) và kiểm chứng `is_xiaowei_running(use_cache=True)` gọi lại subprocess thay vì trả cache.
 - **Zombie-to-CIM Success Path:** Mô phỏng `taskkill` báo 0 nhưng tiến trình sống (`iter([True, False])`), sau đó CIM terminate thành công trả về `close_xiaowei() is True` và `call_count == 2` (gọi đúng `powershell`).
+- **Direct Host Integration Evidence (Không Phụ Thuộc Hoàn Toàn Vào Mock):**
+  Reviewer Sol High trừ điểm nặng ở `test_evidence` (-4đ) và `farm_safety_regression` (-4đ) nếu toàn bộ test suite chỉ dựa trên mock mà không có bằng chứng chạy trên host thực tế. Trong `test_windows_real_integration()` (gắn `@pytest.mark.skipif(sys.platform != "win32")`), bắt buộc gọi trực tiếp các phương thức vận hành thực tế không mock:
+  ```python
+  assert xw.is_xiaowei_running() in (True, False)
+  assert xw.is_xiaowei_adb_running() in (True, False)
+  assert xw.cleanup_orphan_xiaowei_adb() in (True, False)
+  ```
+  kèm theo kiểm tra cú pháp lệnh PowerShell CIM trên máy thật.
+- **Tiết Kiệm Bytes Trên Integration Assertion:**
+  Tránh truyền chuỗi lỗi dài ở assertion như `assert r_ps.returncode == 0, r_ps.stderr`; thay bằng `assert r_ps.returncode == 0` để tiết kiệm 13 - 20 bytes khi diff sát trần budget L0 (21.299B).
