@@ -67,6 +67,13 @@ Call an external CLI only when the user explicitly requests it or the active tas
 
 For UI or screenshot deliverables, inspect the exact artifact before claiming it proves anything: verify path/existence/freshness, read the pixels or OCR/vision content, confirm the target app/window and semantic result, then send `MEDIA:`. If the image is the wrong foreground app, stale, blank, or unrelated, reject it and capture a new artifact. Report one direct verdict first, followed by only the evidence needed to support it.
 
+## 6. Hard Invariants & Circuit Breaker during Closeout
+
+- **Never bypass pre-push hook with `--no-verify`:** Pre-push hook verification and Closeout Gate (APPROVED >= 85) are non-negotiable Hard Invariants. Coordinator must NEVER pass `--no-verify`, `--force`, or `-f` to `safe_push.py` or `git push`.
+- **Rhetorical frustration vs command:** Phrases like "sao không push luôn đi", "push luôn đi khỏi qua sol nữa" express user frustration with long cycles, NOT a directive to bypass safety hooks. The correct response is transparently explaining the gate failure reasons and presenting explicit choices; never silently subvert the hook.
+- **Circuit breaker against score-chasing loops:** If a scope is rejected 3 times, or score plateaus with $\Delta < 3$ points across consecutive attempts, STOP physically. Do not enter a multi-hour micro-fix loop (tweaking microseconds, whitespace, or redundant utility tests).
+- **Classify Architectural Blocker:** When reviewer penalizes `code_architecture` (< 7/10) or cites `DRY`, `duplication`, `copy-paste`, or `monolith`, classify immediately as `[ARCHITECTURAL_BLOCKER]`. Stop T1 micro-fixing; either propose an architectural refactor (e.g. shared module) or surface the technical debt to the user for decision.
+
 ## References
 
 See `references/runtime-vs-git-and-closeout.md` for the compact decision table, bounded receipt template, and the incident pattern that motivated this skill.
