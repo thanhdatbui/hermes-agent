@@ -20,7 +20,9 @@ Before touching the device:
 1. Inspect device status: `python D:/Taadaa/tools/inspect_machine.py <machine_id>`
 2. Check device lock file: `C:\Users\Kibe\.codex\device-locks\machine_<ID>.lock.json` (Lưu ý: lock file đặt theo ID máy `machine_<ID>.lock.json`, không phải theo serial máy).
 3. Check active processes: If a multi-machine feed or follow session (`run_tiktok.py --mode multi-machine-feed-session`) is running on the device, **NEVER** kill the process, steal the lock, or force ADB inputs.
-4. **Coexistence Protocol**: Nếu máy đang bị lock bởi ca nuôi (`queued_v2`), KHÔNG vội báo BLOCKED kết thúc task ("Thì canh máy rảnh chạy đi"). Ca nuôi thường chỉ kéo dài vài phút. Thường xuyên kiểm tra khi file `machine_<ID>.lock.json` biến mất hoặc `inspect_machine.py <ID>` xác nhận màn hình về Home Launcher an toàn, lập tức kích hoạt runner đổi tên ngay.
+4. **Coexistence Protocol & Anti-Procrastination Invariant**:
+   - Nếu máy đang bị lock bởi ca nuôi (`queued_v2`), KHÔNG vội báo BLOCKED kết thúc task ("Thì canh máy rảnh chạy đi") và **CẤM TUYỆT ĐỐI chỉ phân tích suông rồi đứng im chờ user nhắc ("sao đã chạy chưa, hay nói mõm cho vui")**.
+   - **Quy trình chủ động**: Lập tức hoàn tất việc sinh file runner, patch tham số target, chạy offline unit test 100% passed trong khi chờ máy rảnh. Định kỳ inspect lock; ngay khi file `machine_<ID>.lock.json` biến mất hoặc `inspect_machine.py <ID>` xác nhận màn hình về Home Launcher, lập tức kích hoạt background runner ngay!
 
 ## 3. Name Generation & Vietnamese Phonetic Mapping
 Apply the phonetic adaptation rules from `account-profile-entropy`:
@@ -65,12 +67,13 @@ Construct a dedicated device runner using WinRT OCR (`tools/ocr_boxes.ps1`) and 
         - 👉 **ĐIỂM CHẠM VÀO SỬA HỒ SƠ CHUẨN XÁC 100%**: Icon cây bút chì nhỏ nằm ngay bên phải dòng tên tại bounds `[798, 516][942, 600]` (tọa độ tâm `(870, 558)`). Chạm vào `(870, 558)` sẽ mở thẳng màn hình `Sửa hồ sơ` (Edit Profile) để sửa Tên ngay cả khi profile không có nút bấm nào ở dưới!
         - Hoặc nếu lỡ chạm `+ Thêm tiểu sử`: Nhận diện màn `BIO_EDIT` (`re.search(r"chinh sta tieu|chinh sua tieu|tieu sd", t)`), gõ bio ngắn và Lưu để đưa layout về có nút Sửa hồ sơ.
   - `SWITCHER`: Tap đúng dòng target username (ví dụ `lilyanzj8n1` ở `y=603`). Nếu chưa thấy trong tầm nhìn, vuốt sheet lên (`(540, 1500) -> (540, 900)`). Khi tap trúng acc, lập tức gán `seen_profile = False`.
-    * **Phân loại Switcher an toàn**: CẤM dùng keyword lỏng lẻo `"tai khoan" in t` đơn độc vì màn "Tìm bạn bè" có dòng *"Tài khoản được đề xuất"* sẽ bị nhận nhầm thành Switcher. Bắt buộc yêu cầu `"chuyen doi"` hoặc regex `chuy\w{0,4}n\s*d\w{0,4}i`.
+    * **Phân loại Switcher an toàn**: CẤM dùng keyword lỏng lẻo `"tai khoan" in t` đơn độc vì màn "Tìm bạn bè" có dòng *"Tài khoản được đề xuất"* sẽ bị nhận nhầm thành Switcher. Bắt buộc yêu cầu `"chuyen doi"` hoặc regex `chuy\w{0,4}n\s*d\w{0,4}i` hoặc `switch account`. CẤM dùng `TARGET_USER in compact(t)` đơn độc để phân loại Switcher vì khi màn hình Profile hay Add Friends chứa username thì script sẽ nhận nhầm là Switcher và vuốt sheet mù!
   - `EDIT_PROFILE`: Identify label "Tên" (phải nằm trên "Tên người dùng", ví dụ y=752 so với y=878) và tap dòng "Tên" `(600, 752)`. Màn này KHÔNG BAO GIỜ có bottom navigation bar!
   - `NAME_EDIT`:
     1. Tap clear text X `(960, 576)` hoặc broadcast `ADB_KEYBOARD_CLEAR_TEXT`.
     2. Switch IME sang AdbKeyboard và broadcast `ADB_KEYBOARD_INPUT_TEXT` với base64 text.
-    3. Verify text qua OCR và kiểm tra bộ đếm ký tự (`len/30`, e.g. `9/30` cho `Linh Bông`).
+    3. Verify text qua OCR và kiểm tra bộ đếm ký tự (`len/30`, e.g. `9/30` cho `Linh Bông`, `8/30` cho `Tươi Lưu`).
+       * **Cạm bẫy OCR Méo Dấu Tiếng Việt (False-Positive Abort)**: WinRT OCR thường đọc méo các ký tự có dấu phức tạp (VD: `Tươi Lưu` bị đọc thành `Tl-fdi LUU` hoặc `TUdi LUU` / `Tddi LUU`). Nếu dùng `SequenceMatcher >= 0.75` thuần túy sẽ bị trượt (`ratio ~ 0.66`) dẫn đến hủy oan! BẮT BUỘC nới lỏng `SequenceMatcher >= 0.5` HOẶC kiểm tra substring từ khóa chính (như `"luu" in norm(text)`) KÈM THEO kiểm tra bộ đếm ký tự `(\d{1,2})/30` trong dung sai `in (len-1, len, len+1)`.
     4. Tap "Lưu" `(980, 140)`.
     5. **Xác nhận đổi tên (BẮT BUỘC)**: TikTok luôn hiện dialog *"Đặt biệt danh? Bạn chỉ có thể thay đổi biệt danh 7 ngày 1 lần"*. Nhận diện nút "Xác nhận" qua OCR hoặc tap `(747, 1173)` để commit thay đổi.
     6. Nhấn Back (`keyevent 4`) để quay về màn Profile.

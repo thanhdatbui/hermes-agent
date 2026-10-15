@@ -2,7 +2,7 @@ Chu kỳ 4d: Parity 96h (N1 lẻ, N2 chẵn), N3(R7,8), N4(dưỡng 0fl+up). Sta
 §
 Auto-resume: MAX(msg ts)<=60m (né bẫy routing updated_at); locks==0.
 §
-Worker: haiku_worker.py O(1) mac dinh (6-15s, kep max-turns 6-12 chong chay quota); fallback ag_cli.py; CAM omni-worker. Sol Web/Advisor: model suy luan, phai cho idle stream timeout, cam cat ngang.
+Worker: claude_worker.py (--role worker Haiku 8t, planner/reviewer Sonnet <=6t read-only); hard-cap clamp chống runaway; cấm raw claude -p; fallback ag_cli.py; CAM omni-worker. Sol Web/Advisor: model suy luận, streaming idle timeout, cấm cắt ngang.
 §
 TikTok Follow: (máy,row) độc lập; Quota 10-15/ca; Hồi phục 1&2; clean>=2 tốt nghiệp; Canary +10%; like 80%. Path B ko commit; slot (folder-1)%8+1. Mode 2: anchor >= 150 fl; cuộn sâu. Cron: follow_watchdog.
 §

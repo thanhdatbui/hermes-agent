@@ -177,7 +177,8 @@ When an operator provides a screenshot of a TikTok profile (e.g. `LilyanLederhos
   * **Phân loại Profile Invariant**: Profile chưa set bio có nút "Thêm tiểu sử" (`id/t3z`). CẤM dùng `"tieu su" in t` đơn độc phân loại `EDIT_PROFILE`. BẮT BUỘC kiểm tra bottom bar navigation (`Hồ sơ` / `H6 sd` ở y > 1800): có bottom bar thì LUÔN là `PROFILE`. Màn `EDIT_PROFILE` không có bottom bar.
   * **Điều hướng UI S7 TikTok v47**:
     - Chạm tiêu đề danh tính `id/t7l` tại `(280, 320)` để bung bảng **Chuyển đổi tài khoản**.
-    - Chạm icon bút chì góc trên bên trái `(72, 148)` (`id/pke`) để vào thẳng `EDIT_PROFILE`.
+    - Vào **Sửa hồ sơ**: Chạm cây bút chì bên phải dòng tên tại `(870, 558)` hoặc nút Sửa hồ sơ `(210, 865)` (CẤM fallback góc trái `(72, 148)` vì là icon Tìm bạn bè).
+    - Xử lý OCR méo dấu trong `NAME_EDIT`: WinRT OCR đọc méo dấu tiếng Việt (e.g. `Tươi Lưu` -> `Tl-fdi LUU`), bắt buộc nới lỏng `SequenceMatcher >= 0.5` hoặc substring stem kết hợp bộ đếm ký tự `(\d{1,2})/30` để tránh abort oan.
   * Type base64 encoded UTF-8 string qua AdbKeyboard (`ADB_KEYBOARD_INPUT_TEXT`), verify text và bộ đếm ký tự (`len/30`, e.g. `9/30` cho `Linh Bông`), tap "Lưu" `(980, 140)`.
   * BẮT BUỘC xác nhận popup *"Đặt biệt danh? Bạn chỉ có thể thay đổi biệt danh 7 ngày 1 lần"* tại `(747, 1173)`.
   * Readback verify: đọc lại màn hình Hồ sơ qua OCR, xác nhận dòng hiển thị ngay trên `@username` khớp với tên mới (`Linh Bông` trên `@lilyanzj8n1`).
