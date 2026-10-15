@@ -144,6 +144,35 @@ Chạy script query bảng `provider_connections` trong `C:\Users\Kibe\.omnirout
   * Master Excel Kibe có 12 cột (`PASS CHATGPT`), còn Admin chỉ có 10-11 cột; code đọc Excel bắt buộc dùng boundary check safe `idx < len(row)` tránh `IndexError`.
   * Lập lịch cron supervisor cho 2 cluster lệch phút (Kibe `0,5,10...`, Admin `2,7,12...`) để tránh nghẽn GPM concurrency. Báo cáo 6h phải gộp số liệu cả 2 Farm.
 
-### Bước 5: Đóng Profile sau khi hoàn tất
-Gọi API dừng profile để tránh rò rỉ tiến trình Chromium:
-`GET http://127.0.0.1:19995/api/v3/profiles/stop/{profile_id}`
+### Bước 5: Đóng Profile & Dọn Dẹp Tiến Trình Mồ Côi (Chống Khóa File Cookies & Tràn RAM)
+1. Gọi API dừng profile:
+   `GET http://127.0.0.1:19995/api/v3/profiles/stop/{profile_id}`
+2. **BẪY RÒ RỈ TIẾN TRÌNH CON GPM CHROMIUM:**
+   - GPM Stop API thường xuyên để sót tiến trình `gpm_browser_chromium_core.exe` chạy ngầm. Các tiến trình này tiếp tục giữ file lock trên `Cookies` (gây lỗi `sqlite3.OperationalError: unable to open database file` cho các tiến trình kiểm tra sau) và ngốn cạn RAM hệ thống.
+   - **Bắt buộc dọn dẹp bằng psutil sau mỗi profile:**
+     ```python
+     import psutil
+     for p in psutil.process_iter(['name', 'exe']):
+         name = (p.info.get('name') or '').lower()
+         exe = (p.info.get('exe') or '').lower()
+         if 'gpm_browser' in name or 'gpmlogin\\gpm_browser' in exe:
+             try: p.kill()
+             except Exception: pass
+     ```
+     *(Lưu ý: Chỉ kill `gpm_browser_chromium_core.exe` trong thư mục GPMLogin, tuyệt đối không chạm vào `chrome.exe` thông thường của User).*
+
+---
+
+## 4. Các Bẫy Kiến Trúc & Quy Tắc Nạp Pool OmniRoute Cần Nhớ
+
+### Bẫy 1: Lưu Bare Session-Token Gây 403 Sentinel/Turnstile Block
+- Khi nạp cookie vào `provider_connections.api_key` của OmniRoute, nếu **chỉ lưu duy nhất giá trị token `__Secure-next-auth.session-token`** (`eyJhbG...`), Cloudflare Sentinel sẽ phát hiện thiếu fingerprint trình duyệt và chặn lại bằng mã lỗi:
+  `[403]: ChatGPT blocked the request (Sentinel/Turnstile required)`.
+- **Giải pháp:** Hàm `extract_cookies` qua CDP Playwright bắt buộc phải lấy toàn bộ cookies từ `https://chatgpt.com` và `https://auth.openai.com` (đặc biệt là `cf_clearance`, `oai-did`, `oai-sc`, `__cf_bm`) và nối thành chuỗi:
+  `"; ".join(f"{c['name']}={c['value']}" for c in cookies)`
+  Hàm `buildSessionCookieHeader` của OmniRoute sẽ giữ nguyên chuỗi đầy đủ này khi gửi tới `backend-api/f/conversation`, giúp vượt qua kiểm tra Sentinel.
+
+### Bẫy 2: Kỷ Luật Thực Thi Chống Nói Suông & Chuyển Giao Worker Khi Quota Chạm Ngưỡng
+- **Chống nói suông:** Khi nhận nhiệm vụ rà soát hoặc nạp pool, CẤM emit câu chat text "em đang cho rà soát..." rồi dừng lại khiến task bị treo chết suốt hàng chục phút qua cữ reboot máy. Tác vụ dài BẮT BUỘC phải dispatch ngay qua `terminal(background=True, notify_on_complete=True)` hoặc subagent.
+- **Kỷ luật bảo vệ Claude Quota:** Khi Claude CLI chạm ngưỡng an toàn 85% quota 5h (`CLAUDE_QUOTA_GUARD_BLOCKED`), hệ thống phải lập tức chuyển giao quyền can thiệp sang worker dự phòng **Antigravity CLI** (`python D:/Taadaa/tools/ag_cli.py fix ...` qua profile `acc_01..acc_07`, model `gemini-3.8-flash-high`), không được dừng im hay xin phép lòng vòng.
+
