@@ -74,6 +74,15 @@ Khi tài khoản **nghỉ follow hoặc chưa đủ video** (`organic-rest-day-p
        - Snapshot chốt ca ghi lúc `08:00:38` nằm gọn trong `query_end_iso` của P1 (`<= 08:10:00`), được P1 thu nạp trọn vẹn làm `latest_row`.
        - Đồng thời snapshot `08:00:38` cũng nằm trong `query_start_iso` của P2 (`<= 08:10:00`), được P2 chọn làm `baseline_row`.
        - `latest_row(P1) == baseline_row(P2)` được khóa cứng trong SQL, triệt tiêu 100% hiện tượng P1 thiếu 20 và P2 thừa 20 lượt.
+   - **Các cạm bẫy triển khai thực tế & Tiêu chuẩn Closeout (Production Hardening 15/10/2026):**
+     * **Bẫy regex phiên (Phiên 10+ bị nhầm là Phiên 1):** Nếu dùng `phien1 in session_key` hoặc `\b` đơn giản, `phien10` sẽ bị dính `1` và coi là Phiên 1, khiến baseline không được buffer. Phải dùng regex negative lookahead:
+       `has_p1 = bool(re.search(r"[_.-]?(?:phien|session|p)[\s_.-]*1(?![0-9])", s_lower))`
+       `has_later_phien = bool(re.search(r"[_.-]?(?:phien|session|p)[\s_.-]*([2-9]|\d{2,})", s_lower))`
+       Fail-safe default: Nếu `session_key` rỗng hoặc không xác định được phiên, mặc định là P1 (giữ nguyên start_iso, cấm buffer tiến về tương lai).
+     * **Bẫy so sánh chuỗi ISO:** So sánh `query_start_iso >= session_end_iso` bằng string comparison rất dễ văng lỗi do lệch format (T vs space, microsecond, timezone). Bắt buộc parse ra `datetime` trước khi so sánh guard.
+     * **Telemetry đo đạc (`RECONCILE_METRICS`):** Thay vì chỉ log debug vô định hình, bổ sung module dict đếm số lần: `buffer_applied`, `buffer_capped` (vượt 23:59:59 EOD), `guard_triggered` (start >= end fallback), và `parse_fallback`. Cung cấp hàm `reset_reconcile_metrics()` để cô lập test.
+     * **Đồng bộ song hành `scripts/` và `hermes_cron/`:** Khi watchdog được triển khai ở 2 vị trí, bắt buộc duy trì 100% source code identity và có test kiểm tra `inspect.getsource()`.
+     * **Kỷ luật ngân sách dòng (Line Budget Gate):** `feed_session_watchdog.py` bị khóa ngân sách cứng `<= 1450` dòng (`test_feed_session_watchdog_line_budget`). Mọi hàm thêm vào phải tinh gọn.
 
 ### Nguyên nhân 3: Duplicate Session Telemetry / Test Session Keys trong Database (Nhân bản số liệu từng nick)
 1. **Cơ chế khóa chính và hàm tổng hợp ngày:**

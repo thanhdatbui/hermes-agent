@@ -18,9 +18,10 @@ Verify before use:
 - Never freeze or abort execution when the primary reviewer (ChatGPT-Web Sol) hits transient errors or rate limits. The combo automatically delegates to Codex Terra. When running manual tests, always fall back to the secondary models configured in the combo rather than stopping with an error.
 - **Reviewer Combo Timeout / Hang Recovery**:
   * If `closeout_gate.py` hangs on model `review` (HTTP timeout 300s) because web-pool/codex connections time out before failover:
-    1. Reset in-memory circuit breakers immediately via `curl -X DELETE http://localhost:20129/api/monitoring/health`.
-    2. Check which accounts are alive in `~/.omniroute/storage.sqlite` and purge stale connection IDs from combo models using `D:/Taadaa/tools/clean_omniroute_pools.py`.
-    3. If the combo remains unresponsive, execute `closeout_gate.py --model antigravity/gemini-3.8-flash-tiered` (or another active tier on `:20129`) as an authorized fallback to complete audit scoring without hanging.
+    1. **Kiểm tra `targetTimeoutMs` trong cấu hình Combo `review`**: Mặc định `targetTimeoutMs: 15000` (15s) là quá ngắn cho các reasoning models (`ag-opus-pool`, `claude-opus-4-6-thinking`, `gemini-3.8-flash-tiered`), khiến OmniRoute liên tục hủy request (`[499] Request aborted` sau đúng 14.9s) trước khi model kịp sinh xong bài review. Nâng lên `targetTimeoutMs: 60000` (60s) qua `GET /api/combos` -> sửa JSON -> `PUT /api/combos/{id}` để model suy luận có đủ thời gian hoàn thành (thường 10-25s).
+    2. Reset in-memory circuit breakers immediately via `curl -X DELETE http://localhost:20129/api/monitoring/health`.
+    3. Check which accounts are alive in `~/.omniroute/storage.sqlite` and purge stale connection IDs from combo models using `D:/Taadaa/tools/clean_omniroute_pools.py`.
+    4. If the combo remains unresponsive, execute `closeout_gate.py --model antigravity/gemini-3.8-flash-tiered` (or another active tier on `:20129`) as an authorized fallback to complete audit scoring without hanging.
 
 ## Two-pool cleanup and rescue
 
