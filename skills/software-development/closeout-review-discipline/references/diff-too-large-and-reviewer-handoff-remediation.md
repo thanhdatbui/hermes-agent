@@ -30,12 +30,12 @@
 ## 4. Strike 3 Reviewer Hand-off Execution (Claude CLI)
 - Khi gate trượt 3 lần liên tiếp trên cùng `scope_hash` (`count_consecutive_rejections >= 3`), gate kích hoạt:
   `[REVIEWER_HANDOFF_TRIGGERED: 4 consecutive rejections reached for scope_hash=...]`
-- **Quy tắc bắt buộc:**
+- **Quy tắc bắt buộc (TỰ ĐỘNG THỰC THI — CẤM HỎI XIN PHÉP OPERATOR):**
   1. CẢ Coordinator, Worker và Sol Repair ĐỀU PHẢI DỪNG LẠI việc đoán mò hoặc tạo patch proposal.
-  2. Coordinator gọi trực tiếp **Claude CLI** làm Reviewer-with-write-access:
-     `claude -p "<remediate_prompt>" --allowedTools "Read,Edit,Write,Bash" --dangerously-skip-permissions --max-turns 15`
-  3. Claude CLI đọc toàn bộ findings của Reviewer, tự sửa code theo chuẩn của chính nó, chạy focused test pass 100%.
-  4. Sau khi Claude CLI hoàn thành, Coordinator kiểm tra lại `git status` và `pytest`, commit sạch sẽ và chạy lại `closeout_gate.py`.
+  2. Coordinator BẮT BUỘC tự động chuyển giao và gọi trực tiếp **Claude CLI** qua `claude_worker.py --role worker` (hoặc Claude CLI với write access) kèm toàn bộ Reviewer Findings. TUYỆT ĐỐI CẤM dừng lại hỏi xin phép Operator ("anh có muốn em gọi Claude CLI không?"), CẤM dùng `clarify` hay than vãn đùn đẩy trách nhiệm cho Operator.
+  3. **Xử lý Dirty Repo / Worktree Refusal:** Khi repo có uncommitted changes, Claude CLI sẽ từ chối sửa trực tiếp và hỏi base branch để tạo worktree (làm tắc nghẽn background process). Prompt cho Claude CLI bắt buộc phải có câu lệnh in-place: `"Directly edit in place in the current repository without creating any worktrees. Do not touch other uncommitted files."` và bắt đầu bằng động từ hành động dạng mệnh lệnh (`Add...`, `Fix...`, `Refactor...`).
+  4. Claude CLI đọc toàn bộ findings của Reviewer, tự sửa code theo chuẩn của chính nó, chạy focused test pass 100%.
+  5. Sau khi Claude CLI hoàn thành, Coordinator kiểm tra lại `git status` và `pytest`, commit sạch sẽ và chạy lại `closeout_gate.py`.
 
 ## 5. Đồng bộ 100% giữa Root Scripts và Hermes Cron
 - Các repo có thư mục `scripts/hermes_cron/` song song với `scripts/`:
