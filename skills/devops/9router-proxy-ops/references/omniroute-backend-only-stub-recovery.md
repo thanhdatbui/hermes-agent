@@ -38,3 +38,8 @@ Khi truy cập `http://127.0.0.1:20129/dashboard` mà trình duyệt chỉ nhậ
 4. **Hậu kiểm**:
    - `http://127.0.0.1:20129/api/health` trả về `{"status":"ok"}`.
    - Dùng `browser_navigate` và `browser_vision` mở `http://127.0.0.1:20129/dashboard` soi mắt kiểm tra dashboard hiển thị đầy đủ giao diện, sidebar, và nội dung.
+
+## 4. An toàn dữ liệu cấu hình (Persistent Data Safety)
+- Thao tác build/rebuild `.build/next/` chỉ biên dịch và tạo mới file tĩnh frontend (HTML/JS/CSS).
+- Toàn bộ database `C:\Users\Kibe\.omniroute\storage.sqlite` (180+ connections, 16 combos gồm `chatgpt-web-pool`, `gpt-web-sol`, `gpt-web-luna`, dàn 40 accounts ChatGPT Web, 5 API keys) và file key mã hóa `server.env` nằm độc lập, **hoàn toàn không bị ảnh hưởng hay mất mát khi rebuild frontend**.
+

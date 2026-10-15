@@ -106,3 +106,27 @@
    - Nếu thiết bị đã về `device` nhưng lệnh shell bị timeout (hung socket): Bắn `adb -s <serial> reconnect` để ép Linux kernel reset lại pipe `/dev/android_adb`. Thiết bị sẽ phản hồi trở lại bình thường trong < 1s mà không cần reboot.
    - Trong `farm_adb_transport_auto_healer.py`: BẮT BUỘC bọc `try...except Exception: pass` quanh `reconnect` và `keyevent 224` để timeout của một máy không làm crash toàn bộ batch khôi phục.
 
+---
+
+## 6. Tại Sao Không Thể Ép Tiểu Vi Mở Cổng 5037 (Phân Tích Nhị Phân Reverse Engineering)
+- **Câu hỏi đặt ra từ vận hành:** *"Có cách nào cấu hình hoặc ép Tiểu Vi (XiaoWei) chỉ mở cổng 5037 để không bị xẻ đôi thiết bị không?"*
+- **Bằng chứng dịch ngược nhị phân (`xiaowei.exe`):**
+  1. **Nền tảng kiến trúc:** Tiểu Vi được viết bằng **Rust (Tauri Framework)**. File mã nguồn xử lý ADB nằm tại `src-tauri/src/adb/adb.rs`.
+  2. **Hardcode cố định trong mã máy:** Lệnh khởi động ADB phụ được nhúng cứng (hardcoded string constant) tại offset `0x120b158` trong file nhị phân `xiaowei.exe`:
+     `tools/adb -P 5038 nodaemon server start` (chuỗi dài 35 bytes).
+  3. **Không có cấu hình ngoài:**
+     * File cấu hình `sys_config.toml` chỉ chứa duy nhất `[brand] brand_code = "WECAN88888"`.
+     * Registry (`HKCU\Software\xiaowei`) chỉ lưu `DiskSerial`.
+     * File LevelDB trong `%LOCALAPPDATA%\xiaowei\EBWebView` chỉ lưu token UI, không lưu port ADB.
+     * Biến môi trường: `xiaowei.exe` không đọc `ADB_SERVER_SOCKET` để override port server.
+  4. **Tại sao CẤM patch nhị phân hex (`xiaowei.exe`):**
+     * Chuỗi lệnh gốc có độ dài 35 bytes. Nếu đổi sang `-P 5037`, độ dài tăng lên 39 bytes, sẽ ghi đè và làm hỏng con trỏ Rust string slice table (`X\xd1 A\x01...`) dẫn đến crash app ngay khi khởi động (`Panic: invalid memory reference`).
+     * Tiểu Vi tích hợp trình tự động cập nhật (`updater.exe` / `client-updater.exe`): mỗi khi có bản cập nhật mới, binary gốc sẽ bị tải lại và ghi đè hoàn toàn bản patch.
+- **Kết luận kiến trúc & Kỷ luật vận hành:**
+  * **Chấp nhận tính chất tạm thời của port 5038:** Khi người dùng mở Tiểu Vi lên soi màn hình farm, port 5038 sẽ sinh ra và tạm thời chia sẻ thiết bị. Người dùng vẫn xem đủ 80 máy vì Tiểu Vi kết nối đồng thời cả 5037 và 5038.
+  * **Giải pháp bền vững:** Không can thiệp sửa đổi `xiaowei.exe`, mà quản lý chặt vòng đời (Lifecycle Governance):
+    1. Khi tắt Tiểu Vi: Tree Kill `/T` dọn sạch con cháu `adb.exe -P 5038`.
+    2. Khi máy nhàn rỗi: Watchdog định kỳ 5 phút quét dập tắt bất kỳ tiến trình mồ côi `adb -P 5038` nào (`cleanup_orphan_xiaowei_adb()`).
+    3. Trong giờ chạy ca nuôi acc: Tuyệt đối không mở Tiểu Vi, giữ trọn 100% thiết bị cho cổng chuẩn 5037.
+
+
