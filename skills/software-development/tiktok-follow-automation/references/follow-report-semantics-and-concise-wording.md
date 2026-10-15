@@ -125,5 +125,12 @@ Khi operator thắc mắc: *"Sao trên db báo 1 lượt mà ở đây báo 0?"*
   2. **Nghiệm thu hiện trường:** Chạy lại `python D:/Taadaa/tools/inspect_machine.py <N>` (chỉ mất ~2s) để xác nhận Pin, Màn hình Awake, Current Focus và ROM ONLINE.
   3. **Báo cáo gọn:** Xác nhận phục hồi kết nối và nghiệm thu hiện trường cho Operator.
 
+### 9. Nguyên Lý Vận Hành Silent Trong Hermes Cron Job Của Watchdog
+- **Bản chất Cron Runner:** Task scheduled cron chạy định kỳ (ví dụ mỗi 10-15 phút) gọi `follow_session_watchdog.py`.
+- **Cơ chế Silent [SILENT]:** 
+  * Watchdog sử dụng file state `follow_session_reported.json` để track các phiên đã báo cáo (`<date>_ca<N>_phien<M>`).
+  * Khi tất cả các phiên hiện tại trong ngày đã được báo cáo và lưu state thành công (hoặc phiên hiện tại chưa kết thúc / chưa đủ điều kiện xuất tin), watchdog chạy xong và không print gì ra stdout.
+  * Trong vai trò Agent chạy cron job, nếu watchdog không in ra báo cáo mới nào (đã claim/report xong trước đó), BẮT BUỘC trả về duy nhất chuỗi `[SILENT]` (theo chỉ thị cron delivery) để triệt tiêu việc gửi tin rác / tin trống về kênh Telegram của User.
+
 ## Answer style
 Answer the operator's direct question first, in Vietnamese, with no speculative theory. Explain only the distinction needed to prevent the common misread that `Success (0)` equals “no machine ran.”

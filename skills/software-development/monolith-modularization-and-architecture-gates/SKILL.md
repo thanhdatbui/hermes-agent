@@ -214,6 +214,10 @@ When delegating code extraction or monolith edits to `haiku_worker.py`:
   - **Remediation Strategy:** Separate into 2 micro-slices:
     * *Slice 1 (Backend Query Layer):* Extract the 500+ lines of Python backend queries into `dashboard/queries.py` while leaving the HTML string in the orchestrator. Total diff is ~550 lines removed + ~560 lines added in new file (< 25 KB diff) -> Passes gate easily!
     * *Slice 2 (Frontend Layer):* Extract CSS/JS into static files or template file as a subsequent standalone slice.
+- **Bẫy CRLF vs LF Line Endings Làm Phình Ảo Diff Trên Windows:**
+  Khi các công cụ hoặc script trên Windows vô tình ghi đè file bằng CRLF (`\r\n`) trong khi Git repository đang lưu bằng LF (`\n`), Git diff sẽ coi MỌI DÒNG trong file đều bị thay đổi!
+  *Hậu quả:* Một file test chỉ sửa 10 dòng assertion nhưng diff vọt lên 521 dòng (22.518 bytes), cộng với các file khác lập tức làm diff tổng vượt 30 KB và bị Closeout Gate từ chối ngay ở Step 2.
+  *Cách khắc phục:* Luôn kiểm tra line endings khi diff phình bất thường (`git diff -w --stat` không thấy diff nhưng `git diff --stat` thấy hàng trăm dòng). Chuẩn hóa triệt để về LF bằng script Python: `Path(f).write_bytes(Path(f).read_bytes().replace(b"\r\n", b"\n"))` trước khi stage commit.
 - Furthermore, `--files` requires exact matching with committed files in `HEAD~1..HEAD` (`refusing partial committed scope` if even `__init__.py` is omitted).
 
 ---
