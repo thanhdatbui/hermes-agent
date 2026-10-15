@@ -200,6 +200,33 @@
 - **Truy Vết Sự Kiện Bằng Correlation ID Trong Structured Telemetry:**
   - Bổ sung `RUN_ID = os.environ.get("WATCHDOG_RUN_ID", hex(int(time.time() * 1000))[2:])` và tự động gắn `correlation_id: RUN_ID` vào tất cả các record của `log_event()`. Điều này cho phép các log aggregator lọc và liên kết toàn bộ chuỗi hành vi của cùng một chu kỳ chạy watchdog.
 
+## 17. PEP 257 Docstring Ordering, Emergency Kill-Switch (Dry-Run) & Zombie Process Detection (16/10)
+- **Chuẩn Hóa Thứ Tự Khởi Tạo Theo PEP 257 (Shebang -> Docstring -> Future Imports):**
+  - Shebang `#!/usr/bin/env python3` nằm ở dòng 1 tuyệt đối.
+  - Module docstring `"""..."""` BẮT BUỘC nằm ngay sau shebang (dòng 2 trở đi) trước mọi câu lệnh import.
+  - `from __future__ import annotations` nằm ngay sau module docstring. Đặt `from __future__` trước docstring làm mất thuộc tính `__doc__` của module và vi phạm nghiêm ngặt quy ước PEP 257 khiến Reviewer Sol trừ điểm Code Architecture.
+- **Cơ Chế Khẩn Cấp Kill-Switch / Dry-Run Cho Script Vận Hành Farm:**
+  - Mọi script watchdog/cleanup tác động tiến trình trên farm BẮT BUỘC hỗ trợ biến môi trường kill-switch:
+    `DRY_RUN_MODE = os.environ.get('WATCHDOG_DRY_RUN', '0').lower() in ('1', 'true', 'yes')`.
+  - Ngay đầu `main()`: `if DRY_RUN_MODE: log_event('DRY_RUN_ENABLED', level='WARNING'); return`.
+  - Cho phép người vận hành farm lập tức vô hiệu hóa can thiệp phá hủy từ xa mà không cần sửa mã nguồn hoặc deploy lại.
+  - Test suite bắt buộc có test case trực tiếp kích hoạt `DRY_RUN_MODE` và assert log `DRY_RUN_ENABLED` được phát ra mà không thực hiện hành động kill/cleanup.
+- **Nhận Diện Tiến Trình Treo / Zombie Sau Khi `taskkill` Thoát Mã 0:**
+  - Trên Windows, `taskkill /F /IM app.exe` có thể trả mã thoát 0 nhưng tiến trình vẫn tồn tại do kernel handle bị giữ hoặc quyền elevated.
+  - Sau khi `taskkill` trả mã 0, nếu `is_running()` vẫn `True`: BẮT BUỘC phát sự kiện cảnh báo `log_event('XIAOWEI_ZOMBIE_DETECTED', level='WARNING')` trước khi leo thang sang nhánh cưỡng chế WMI/CIM fallback.
+  - Test suite phải có dedicated assertion mô phỏng trường hợp này để chứng minh nhánh phát hiện zombie được kích hoạt và chuyển tiếp an toàn sang CIM fallback.
+- **Kẹp Biên (Clamping) & Xử Lý An Toàn Khi Parse Biến Môi Trường Timeout:**
+  - Tránh parse trần `int(os.environ.get(...))` dễ crash khi gặp chuỗi rỗng hoặc giá trị âm/rác.
+  - Bọc an toàn:
+    ```python
+    try:
+        _raw_t = int(os.environ.get("XIAOWEI_CIM_TIMEOUT", "15"))
+        CIM_TIMEOUT_SECONDS = max(5, min(60, _raw_t))
+    except Exception:
+        CIM_TIMEOUT_SECONDS = 15
+    ```
+  - Bổ sung test assertion cho các giá trị biên dị thường: rỗng `''`, chữ `'a'`, số âm `'-1'` đều fallback về giá trị an toàn hợp lệ mà không crash.
+
 
 
 
