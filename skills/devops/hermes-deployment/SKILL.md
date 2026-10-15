@@ -595,6 +595,22 @@ When propagating updated watchdog or cron scripts from primary (Kibe) to seconda
   3. Run `python -m py_compile %LOCALAPPDATA%\hermes\scripts\<script>.py` on Admin to verify syntax.
   4. Test-execute the script once via SSH to confirm expected return code.
 
+### 29. Trailing Backslash Escaping Double Quote in Remote CLI Commands
+
+When invoking remote command execution or shell wrappers (e.g. `python admin_ssh_exec.py "dir D:\\"`):
+- **Symptom:** Command fails with unexpected bash EOF errors or triggers interactive approval popups with `Reason: command parser limit or malformed executable payload`.
+- **Root Cause:** In MSYS / bash and Hermes security parsers, `\\"` immediately preceding a double quote causes the second backslash to escape the quote (`\"`). The string remains unterminated, breaking tokenization.
+- **Remedy:** Never end a quoted argument with a backslash. Use forward slashes (`"dir D:/"`) or omit the trailing slash (`"dir D:"`).
+
+### 30. Secondary Farm Node (Admin) Disk Exhaustion & Safe Media Deduplication
+
+When desktop applications (such as Riot Client, League of Legends, TFT) fail to update with generic errors like `COULDN'T UPDATE: Something went wrong with the update`:
+- **Inspection:** Inspect `%localappdata%\Riot Games\Riot Client\Logs\Launcher\<latest>.log`. An `OS error 112: There is not enough space on the disk` indicates drive D has 0 bytes free. Ensure `vgc` is set to `Automatic` and `RUNNING`.
+- **Safe Farm Media Cleanup:** Reclaim disk space without breaking active farm cron workflows:
+  1. Delete installer packages in `D:\Downloads` (`.exe`, `.msi`, `.rar`, etc.) to reclaim 3+ GB immediately.
+  2. Cross-check `D:\video goc may 2\<folder>\<file>.mp4` against `D:\TIKTOK-videonuoinick-admin\<folder>\<file>.mp4`. ONLY delete raw videos whose rendered counterparts exist and have size > 100KB. This safely frees 150–200 GB.
+- See `references/remote-admin-disk-exhaustion-and-clean-protocol.md` for full script delivery and execution instructions.
+
 ## Remote OmniRoute & 9Router LAN Setup (Admin PC → Kibe PC)
 
 When connecting a secondary machine (Admin) to the main machine's (Kibe) dual LLM proxy stack (OmniRoute at `:20129` for primary routing/combos and 9Router at `:20128` for fallback/auxiliary/compression):
@@ -718,4 +734,5 @@ Full loop details: `references/two-agent-review-loop.md` (merged from the former
 - `references/upgrade-git-install.md` — Upgrading a git-installed Hermes source tree (shallow-clone unshallow, stash/merge/pop, CRLF-vs-logic conflict resolution, venv reinstall after big upstream merges)
 - `references/restore-codex-removed-feature.md` — Restoring a feature Codex removed from the Hermes source tree (runtime-sync-package-backups as pre-deletion snapshot; 4-layer DB/RPC/tool/model-context restore; porting 0.18.2 RPC files into 0.20.0 server.py; temp-DB schema pitfall)
 - `references/taadaa-multi-host-provisioning.md` — Complete per-host recipe (branch map, data templates, venv, pitfalls from the 2026-08-23 Admin setup)
+- `references/remote-admin-disk-exhaustion-and-clean-protocol.md` — Quy trình chẩn đoán cạn kiệt ổ đĩa trên máy Admin, khắc phục lỗi update Riot/Vanguard và kịch bản dọn dẹp video render an toàn không ảnh hưởng farm.
 - `references/assistant-brain-backup-and-governance-sync-20261009.md` — Assistant Brain Backup & Multi-Host Governance Sync: backing up SOUL.md, memories, AGENTS, SUBAGENT_RULES to repo, pre-push hook governance exemption for DIFF_TOO_LARGE, and 1-click sync-from-kibe.ps1 restoration.

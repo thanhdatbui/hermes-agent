@@ -64,12 +64,13 @@ cmd.exe /c "node run-next.mjs >> logs\omniroute-stdout.log 2>&1"
 ### Bước 3: Dọn dẹp các file `.bak` cũ giải phóng ổ C
 Chỉ giữ lại file backup gần nhất, xóa bỏ các file `.bak` cũ hơn 7 ngày để chống tràn ổ C. Tuyệt đối loại trừ các file đang hoạt động: `storage.sqlite`, `storage.sqlite-wal`, `storage.sqlite-shm`.
 
-### Bước 4: Lập lịch tự động dọn định kỳ (Script `cleanup_omniroute_db.py`)
-Triển khai script `cleanup_omniroute_db.py` chạy qua Cronjob Hermes vào 03:00 sáng Chủ Nhật hàng tuần:
-- Schedule: `0 3 * * 0`
-- Script: `cleanup_omniroute_db.py`
-- Mode: `no_agent=True`, `deliver=local` (mô hình silent watchdog).
-- **Telemetry Observability**: Ghi nhận metric `db_size_before`, `db_size_after`, `deleted_turn_nodes`, `deleted_conversations`, `elapsed_ms` vào `D:/Taadaa/runtime/audit_logs/omniroute_cleanup_audit.jsonl` (cấu hình linh hoạt qua `OMNIROUTE_AUDIT_LOG_DIR`).
+### Bước 4: Lập lịch tự động dọn định kỳ HÀNG NGÀY (Script `cleanup_omniroute_db.py` / `clean_omniroute_safe_chunks.py`)
+Triển khai script chạy qua Cronjob Hermes vào **03:30 sáng HÀNG NGÀY**:
+- **Schedule**: `30 3 * * *` (Tuyệt đối KHÔNG đặt chu kỳ 1 tuần/lần `0 3 * * 0` vì OmniRoute sinh ~100k dòng quota_snapshots/ngày và ~60k dòng audit/ngày, chỉ 3-4 ngày là DB đã phình thêm hơn 1.5GB làm nghẽn Event Loop).
+- **Cronjob ID**: `e61bfd81da93` (`daily-omniroute-db-cleanup`).
+- **Script**: `cleanup_omniroute_db.py` (nằm trong `~/.hermes/scripts/`, tự động đồng bộ qua `cron-sync-watchdog`).
+- **Mode**: `no_agent=True`, `deliver=local` (mô hình silent watchdog, chạy trực tiếp không tốn token LLM).
+- **Telemetry Observability**: Ghi nhận metric `db_size_before`, `db_size_after`, `deleted_turn_nodes`, `deleted_conversations`, `deleted_quota_snapshots`, `deleted_xp_audit`, `elapsed_ms` vào `D:/Taadaa/runtime/audit_logs/omniroute_cleanup_audit.jsonl` (cấu hình linh hoạt qua `OMNIROUTE_AUDIT_LOG_DIR`).
 
 ### Bước 5: Kỷ luật Test Suite đạt chuẩn Sol Auditor
 - Bắt buộc kiểm chứng cả 3 luồng:
