@@ -127,3 +127,17 @@ Khi triển khai cronjob tự động hóa đổi biệt danh cho toàn bộ cá
 - Chạy State Machine OCR qua `do_rename.py` tham số hóa hoặc scaffold runner, bắt buộc xác nhận popup cảnh báo 7 ngày `(747, 1173)`.
 - Chụp ảnh màn hình nghiệm thu sau khi đổi lưu vào `D:\Taadaa\reports\`.
 
+### D. Bẫy Blind Tapping Tọa Độ Top-Left (75, 150) & Cú Lừa "Không Tìm Thấy Kết Quả":
+- **Hiện tượng lỗi**:
+  * Khi viết watchdog, nếu dùng chuỗi `tap()` mù tọa độ thay vì State Machine OCR:
+  * Tọa độ `(75, 150)` hoặc `(72, 148)` trên góc trên bên trái màn hình Profile TikTok v47 (Samsung S7) là icon **"Tìm bạn bè / Thêm bạn" (Find Friends icon)**, KHÔNG PHẢI nút Back!
+  * Khi script tap nhầm vào `(75, 150)`, TikTok lập tức mở màn hình **Tìm bạn bè**, với thanh Search ở trên cùng được focus tự động.
+  * Tiếp theo, lệnh gõ tên mới qua `AdbKeyboard` sẽ gõ thẳng chuỗi tên (e.g. `Hải Cường`, `Trọng Cường`, `Đặng Đạt`) vào thanh Search và tự động kích hoạt truy vấn tìm kiếm người dùng.
+  * Màn hình hiển thị: Search bar: `Hải Cường`, Giữa màn hình: **`Không tìm thấy kết quả`**, Đáy màn hình: 4 nút của AdbKeyboard `[∞] [Clear Text] [Search] [Switch IME]`.
+  * Script mù không có OCR readback verification sẽ chụp ảnh màn hình này và ngộ nhận là "Rename Confirmed", dẫn đến việc báo cáo hoàn thành ảo trong khi tên nick không hề thay đổi!
+- **Quy chuẩn bắt buộc (Anti-Blind Tapping Invariant)**:
+  * CẤM TUYỆT ĐỐI blind-tapping tọa độ khi thực hiện đổi tên.
+  * BẮT BUỘC dùng State Machine OCR (`do_rename_m2.py` / `do_rename_m71.py` pattern) để phân loại rõ ràng 5 states: `FEED`, `PROFILE`, `SWITCHER`, `EDIT_PROFILE`, `NAME_EDIT`.
+  * Chỉ khi OCR xác nhận màn hình thực sự là `EDIT_PROFILE` mới được click vào dòng "Tên".
+  * Sau khi bấm Lưu và xác nhận popup 7 ngày, BẮT BUỘC thoát về màn hình `PROFILE` và dùng WinRT OCR đọc lại dòng hiển thị ngay trên `@username`: CHỈ KHI tên hiển thị khớp với tên mới thì mới được đánh dấu thành công và lưu vào `rename_natural_state.json`!
+

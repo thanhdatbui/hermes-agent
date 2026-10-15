@@ -234,6 +234,8 @@ def generate_account_for_slot(slot, existing_emails=None, max_attempts=300):
 | Bare 2–3 digit usernames | Short Vietnamese names with 2–3 digits collide >90% on Google | Target 16–26 chars with 4 digits, salts, or natural suffixes right from Attempt 1 |
 | Truncating at 30 chars on a dot | `u[:30]` can cut mid-dot leaving trailing `.` → violates Google username format | Always apply `rstrip('.')` immediately after any length slice |
 | Truncating after appending retry extra | `(u + extra)[:30]` cuts off the newly added retry salt/numbers | Slice base first: `u[:30 - len(extra)].rstrip('.') + extra` to preserve full retry entropy |
+| Blind tapping (75, 150) during TikTok rename | (75, 150) is Find Friends icon on TikTok v47 → types name into Search bar → 'Không tìm thấy kết quả' | BẮT BUỘC dùng State Machine OCR (classify EDIT_PROFILE), cấm tap mù; readback verify tên trên PROFILE |
+| deliver='origin' on batch watchdogs (>60s) | Parallel batch (25 workers) takes >60s → Hermes cron delivery times out with 'provider timeout' alert | BẮT BUỘC đặt deliver='local' cho batch cronjob nặng để chạy ngầm hoàn toàn độc lập, triệt tiêu alert ảo |
 
 ## Verification
 
