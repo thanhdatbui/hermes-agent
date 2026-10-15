@@ -82,4 +82,5 @@ To minimize token costs and eliminate latency:
 ## References
 
 - `references/mcp-configuration-and-intelligence-security.md` — Diagnostics for ChatGPT plugin/MCP URL errors, competitive intelligence security analysis (3rd-party vs private MCP), and partner messaging templates.
+- `references/private-mcp-server-architecture-and-sse-specs.md` — Reverse-engineered ChatGPT MCP SSE/HTTP transport specifications, OAuth discovery metadata, Nginx zero-buffering stream proxy rules, and FastMCP SQLite decoupling architecture.
 
