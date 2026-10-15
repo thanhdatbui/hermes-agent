@@ -17,6 +17,7 @@ Reference files:
 - `references/80-20-modular-adequacy-and-excel-invariants-20261015.md`: Kỷ luật 80/20 (điểm dừng modular hóa, tránh over-modularization) & quy trình sửa lỗi Invariant Excel Folder Video.
 - `references/line-budget-dual-copy-and-gate-remediation-20261015.md`: Xử lý kẹt line budget trần cứng, dual-copy text sync parity (scripts vs hermes_cron), binding mismatch ở Step 2 Closeout Gate và chuẩn hợp đồng 5 trường delegate_task EDIT.
 - `references/closeout-gate-reviewer-rubric-and-telemetry-dedup-invariants-20261015.md`: Rubric chấm điểm Sol Auditor (bẫy commit test-only), deduplication log telemetry, chuẩn hóa subsecond SQLite timestamp và Strike 3 hand-off protocol.
+- `references/closeout-diff-bounding-and-subsecond-precision-20261015.md`: Bounding diff <= 30KB cho closeout_gate, xử lý subsecond capping toán học chuẩn xác, PEP 8 line budget discipline, dual-module execution parity và bẫy commit test-only.
 
 ## 1. Core Principles & The Monolith Problem
 
