@@ -168,28 +168,23 @@
 
 ## 9. Tiêu Chuẩn An Toàn & Unit Test Nghiêm Ngặt Khi Dọn ADB 5038 (Closeout Gate Standards)
 Để vượt qua kiểm duyệt nghiêm ngặt của Closeout Gate / Sol Auditor (tránh bị trừ điểm Logic Correctness và Farm Safety):
-1. **Kiểm tra điều kiện an toàn trước khi hành động (Pre-condition Guard):**
-   - CẤM gọi `kill-server` mù quáng khi chưa xác minh.
-   - BẮT BUỘC kiểm tra 2 điều kiện:
-     * `is_xiaowei_running() == False`: Xác nhận Tiểu Vi thực sự không còn chạy.
-     * `is_xiaowei_adb_running() == True`: Tiến trình `adb.exe` với command line `-match '5038'` thực sự đang tồn tại trên hệ thống. Nếu không có tiến trình 5038 nào $\rightarrow$ thoát sớm `return False`, không phát sinh lệnh thừa.
+1. **Kiểm tra điều kiện an toàn trước khi hành động (Pre-condition Guard & Process Ownership Binding):**
+   - CẤM gọi `kill-server` hoặc terminate mù quáng khi chưa xác minh quyền sở hữu.
+   - CẤM dùng regex dòng lệnh lỏng lẻo (`CommandLine -match '5038'`) vì có thể va chạm với tiến trình ADB của tác vụ khác.
+   - BẮT BUỘC xác minh quyền sở hữu kép:
+     * Cổng TCP 5038 thực sự ở trạng thái Listen: `Get-NetTCPConnection -LocalPort 5038 -State Listen` để lấy đúng PID `OwningProcess`.
+     * Đường dẫn thực thi (`ExecutablePath`) của PID đó bắt buộc phải nằm trong thư mục cài đặt của Tiểu Vi (`-like '*\xiaowei\*'`).
+   - **Chống lỗi TOCTOU (Time-of-Check to Time-of-Use):** Kiểm tra lại `is_xiaowei_running()` ngay trước từng thao tác hủy diệt (`kill-server` và CIM `Terminate`). Nếu người dùng vừa mở lại Tiểu Vi trong tích tắc $\rightarrow$ lập tức hủy dọn dẹp (`ADB_CLEANUP_ABORTED`).
 2. **Xác thực kết quả thực tế (Truthful Return Value):**
    - Biến kết quả (`return True`) CHỈ ĐƯỢC PHÉP trả về khi và chỉ khi:
      * Lệnh gọi (`kill-server` hoặc CIM `Terminate`) có `returncode == 0`.
      * VÀ kiểm tra lại `is_xiaowei_adb_running() == False` (tiến trình 5038 đã thực sự bị tiêu diệt khỏi bộ nhớ).
-3. **Telemetry & Quan Sát Có Cấu Trúc (Structured Observability):**
+3. **Telemetry & Quan Sát Có Cấu Trúc (Structured JSON Telemetry):**
    - Không được dùng `except Exception: pass` nuốt lỗi im lặng.
-   - BẮT BUỘC ghi log rõ ràng:
-     * Thành công: `[timestamp] [ADB_CLEANUP] Killed orphan ADB 5038 via kill-server` (hoặc `via CIM fallback`).
-     * Lỗi: in ra `sys.stderr` thông điệp lỗi cụ thể (`kill-server error: ...`, `CIM fallback error: ...`).
-4. **Bộ Test Suite Chuẩn Hóa Bao Phủ Toàn Diện:**
-   - Bộ unit test (`tests/test_xiaowei_idle_auto_close_watchdog.py`) phải bao phủ trọn vẹn:
-     * Nhánh `is_xiaowei_running` (True/False).
-     * Nhánh `is_xiaowei_adb_running` (True/False).
-     * Bỏ qua an toàn khi Tiểu Vi đang chạy hoặc khi không có ADB 5038.
-     * Dọn dẹp thành công qua `kill-server`.
-     * Dọn dẹp thành công qua fallback CIM khi `kill-server` thất bại.
-     * Xử lý chính xác (trả về False) khi cả 2 phương thức đều thất bại.
+   - BẮT BUỘC chuẩn hóa JSON log `log_event(event, level, **fields)` ghi rõ timestamp ISO, method (`kill-server` / `cim-terminate`), port, và error details.
+4. **Kỷ Luật Tinh Gọn Test Suite Chống TRUNCATION_MANIFEST:**
+   - Bộ unit test (`tests/test_xiaowei_idle_auto_close_watchdog.py`) phải bao phủ trọn vẹn các nhánh (process check, adb check, cleanup, CIM fallback, exception, idle threshold) nhưng BẮT BUỘC giữ dung lượng dưới **120 dòng (< 5KB)**.
+   - Giữ diff dưới 15KB để Closeout Gate không kích hoạt cắt ngắn diff (`TRUNCATION_MANIFEST`), bảo đảm Sol Auditor chấm đạt điểm tối đa (>=85).
 
 
 

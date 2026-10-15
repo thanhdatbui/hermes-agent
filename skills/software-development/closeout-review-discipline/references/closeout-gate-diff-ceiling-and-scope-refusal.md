@@ -30,3 +30,15 @@ Khi gate reject 3 lần liên tiếp trên cùng `scope_hash` (`count_consecutiv
 - BẮT BUỘC bàn giao cho Claude CLI:
   `claude -p "<finding history + exact allowlist + acceptance command>" --allowedTools "Read,Edit,Write,Bash" --dangerously-skip-permissions --max-turns 15`
 - **Lưu ý Claude CLI:** Claude CLI trên máy có thể cảnh báo unrecognized model nếu env default là `claude-sonnet-5-5`. Claude CLI vẫn tự sửa code và verify test bình thường trước khi chạm turn limit. Luôn kiểm tra `git status` và `pytest` sau khi tiến trình kết thúc.
+
+## 4. Bẫy Tử Huyệt TRUNCATION_MANIFEST (Ngưỡng Ngầm 15KB Trừ Điểm Reviewer)
+Mặc dù trần `MAX_DIFF_BYTES_GATE = 30_000` bytes mới kích hoạt Exit 3, trong hàm đóng gói prompt gửi cho AI Reviewer (`build_review_prompt`), Closeout Gate áp dụng ngưỡng cắt ngầm:
+- Nếu một file trong diff (thường là file test mới viết quá dài với 300-400 dòng) vượt quá ~15,000 ký tự, gate sẽ **tự động cắt ngắn nội dung file và chèn cờ `[TRUNCATION_MANIFEST]`**.
+- **Hậu quả chấm điểm của Sol Auditor:**
+  * Sol Auditor có luật kiểm duyệt nghiêm ngặt: Khi phát hiện `TRUNCATION_MANIFEST`, Reviewer sẽ coi phần diff bị lược là **CHƯA ĐƯỢC CHỨNG MINH (UNVERIFIED CODE)**.
+  * Reviewer sẽ ghi rõ trong Key Findings: *"TRUNCATION_MANIFEST xác nhận file test bị lược một phần. Vì vậy, không thể coi toàn bộ các dòng test là đã review đầy đủ... Phạm vi diff test bị lược khiến chưa đủ cơ sở để chấm mức sẵn sàng đóng việc."*
+  * Điểm số bị kẹp trần ở mức 70–78 điểm, **TUYỆT ĐỐI KHÔNG THỂ ĐẠT NGƯỠNG APPROVED >= 85**.
+- **Kỷ Luật Tinh Gọn File Test & Candidate Diff (User Invariant: Diff < 15KB):**
+  1. File test unit/integration đi kèm diff BẮT BUỘC viết tinh gọn dưới **120 dòng (< 5KB)**.
+  2. Dùng `@pytest.mark.parametrize` và gộp các assertions có cùng cấu trúc mock thay vì copy-paste 20–30 test methods dài dòng lặp đi lặp lại.
+  3. Đảm bảo toàn bộ candidate diff gửi sang Closeout Gate luôn **dưới 15KB (zero truncation)** để Reviewer có thể đọc trọn vẹn 100% diff và chấm điểm tối đa.
