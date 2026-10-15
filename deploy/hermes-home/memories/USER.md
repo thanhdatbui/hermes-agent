@@ -1,4 +1,4 @@
-Cào/Render: 12 niche hot (rải xen kẽ máy, cấm trùng niche cùng phiên); min 45; 1 wkr.
+Cào/Render: 12 niche hot (rải xen kẽ máy, cấm trùng niche cùng phiên), min 45, 1 wkr. Hashtag: F_src=(Slot-1)*80+m_idx; Chuẩn hoá 3 món (Ava-Hashtag-Pin); nick sửa tay khóa chống đè.
 §
 Dọn đĩa: duyệt trước, cấm xóa ngầm. Cấm đẻ script trùng (đối soát tools/cron: REUSE>EXTEND>NEW); tách rõ read/mock vs write thật.
 §
@@ -8,12 +8,10 @@ cấm telemetry JSON stdout cron; chốt phiên: Reviewer APPROVED>=85 & tự pu
 §
 Kibe(1-80) & Admin(201-280) cào nguồn & media độc lập 100% (cấm trùng video, cấm sync chéo Niche/Hashtag). TT v47.0.3; Switcher dock; AP 40m.
 §
-Ghim clip: pin_top_videos.py (Share->Ghim); cuộn sâu gom clip peak view dưới fold (live ATX); re-dump sau ghim.
+Ghim clip: pin_top_videos.py (Share->Ghim, cuộn sâu gom peak view, re-dump).
 §
 Worker: Haiku 5.5 CLI (6-15s O(1)) chính, AG CLI 7 acc Pro dự phòng; đo chất lượng code thật; Coord giữ Hermes 24/7.
 §
-Hashtag: F_src=(Slot-1)*80+m_idx; Chuẩn hoá kênh: tự duyệt đủ 3 Ava-Hashtag-Pin; nick sửa tay khóa cả Ava lẫn Hashtag chống đè.
-§
-Telegram: song song nhiều topic, auto-resume turn dở sau boot. Cấm báo cáo láo/hứa suông khi chưa dispatch thật.
+Telegram: đa topic, auto-resume turn dở. Cấm báo cáo láo/hứa suông khi chưa dispatch thật. Soạn tin gửi đối tác/ông anh: cực ngắn gọn, đi thẳng vào việc để copy gửi ngay.
 §
 Reboot 3 ca (05:20, 11:20, 17:20), né khi ca đang chạy; user lệnh là làm ngay cấm hỏi lại; sentinel chia theo ca.

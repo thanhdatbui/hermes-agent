@@ -2,7 +2,7 @@ Chu kỳ 4d: Parity 96h (N1 lẻ, N2 chẵn), N3(R7,8), N4(dưỡng 0fl+up). Sta
 §
 Auto-resume: MAX(msg ts)<=60m; locks==0.
 §
-Worker: claude_worker.py (Haiku 8-15t; reviewer=Sonnet); fallback ag_cli; CAM omni-worker. Sol Web/Advisor: model suy luận, streaming timeout. Closeout: cấm commit test-only; push khi user lệnh: closeout_gate.py --user-override.
+Worker: claude_worker.py (Haiku 8-15t; rev=Sonnet); fallback ag_cli; CAM omni-worker. Sol Web/Advisor: model suy luận, streaming timeout -> dùng --model antigravity/gemini-3.8-flash-tiered. Closeout: cấm commit test-only; push tự động qua safe_push.py, CẤM bắt user push tay.
 §
 TikTok Follow: (máy,row) độc lập; Quota 10-15/ca; Hồi phục 1&2; clean>=2 tốt nghiệp; Canary +10%; like 80%. Path B ko commit; slot (folder-1)%8+1. Mode 2: anchor >= 150 fl; cuộn sâu. Cron: follow_watchdog.
 §

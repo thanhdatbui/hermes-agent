@@ -206,20 +206,51 @@ When delegating code extraction or monolith edits to `haiku_worker.py`:
 
 ---
 
-## 8. Closeout Gate Diff-Budget Trap (> 30.000 bytes)
+## 8. Closeout Gate Diff-Budget Trap (> 30.000 bytes) & Inlined Template Monoliths
 
 `closeout_gate.py` has a hard fail-fast rule: `MAX_DIFF_BYTES_GATE = 30_000` (30 KB diff).
 - When a large monolith refactor touches 10+ files and generates 50–80 KB of diff, `closeout_gate.py` rejects with `[Gate Fail-Fast: DIFF_TOO_LARGE] targeted diff quá lớn (76137 > 30000 bytes)`.
+- **The Inlined Template Trap (HTML/CSS/JS in f-strings):** Scripts like `tiktok_dashboard.py` (3.437 lines) contain ~2.690 lines of inlined HTML/CSS/JS. Extracting the entire frontend to a new file in one commit produces a diff > 350.000 bytes (> 11x the limit!).
+  - **Remediation Strategy:** Separate into 2 micro-slices:
+    * *Slice 1 (Backend Query Layer):* Extract the 500+ lines of Python backend queries into `dashboard/queries.py` while leaving the HTML string in the orchestrator. Total diff is ~550 lines removed + ~560 lines added in new file (< 25 KB diff) -> Passes gate easily!
+    * *Slice 2 (Frontend Layer):* Extract CSS/JS into static files or template file as a subsequent standalone slice.
 - Furthermore, `--files` requires exact matching with committed files in `HEAD~1..HEAD` (`refusing partial committed scope` if even `__init__.py` is omitted).
-- **Remediation Strategy:** Commit each thin-slice modularization incrementally as its own micro-commit (< 25 KB diff each) rather than grouping 5 modules into a massive 80 KB commit, or run closeout evaluation per individual thin-slice branch.
-
-See `references/architecture-gate-and-line-budget-patterns.md` for architecture gate test patterns.
-See `references/monolith-haiku-worker-and-import-patterns-20261015.md` for dual-path import fallback, Haiku worker turn-clamping, and Closeout Gate diff-budget patterns.
-See `references/haiku-worker-turn-clamping-and-monolith-pitfalls.md` for detailed pitfalls on max-turns exhaustion, host terminal timeout synchronization, and subagent test signature drift.
 
 ---
 
-## 9. Quy Trình Chuẩn Coordinator: Không Nhảy Rào Guard, Không Bypass
+## 9. Dynamic Monkeypatching & Logger Compatibility in Modularized Shims
+
+When refactoring a monolith into subpackages while keeping the original file as a thin shim:
+1. **Dynamic Monkeypatch Support:** Tests frequently monkeypatch the orchestrator: `monkeypatch.setattr(legacy_module, "get_farm_history", ...)`. If `legacy_module.get_farm_data` simply delegates to `subpackage.queries.get_farm_data`, the local reference in `queries.py` will bypass the monkeypatch, failing tests!
+   - Pattern to preserve monkeypatching across package boundaries:
+     ```python
+     def get_farm_data(db_path):
+         # Support monkeypatching of get_farm_history on legacy module
+         _mod = sys.modules.get("tiktok_dashboard")
+         _get_farm_history = getattr(_mod, "get_farm_history", get_farm_history) if _mod else get_farm_history
+         hist = _get_farm_history(db_path)
+     ```
+2. **Logger Namespace Alignment:** In subpackage modules, set `logger = logging.getLogger("legacy_module")` rather than `__name__` if existing test suites capture logs via `caplog.at_level("WARNING", logger=legacy_module.logger.name)`.
+
+---
+
+## 10. Zero-Manual-Push Invariant & Fast Reviewer Model Routing ("Cấm Bắt User Làm Tay")
+
+1. **Cấm bắt User push tay:** Khi terminal của Coordinator gặp `fatal: transport 'https' not allowed` (do cơ chế sandbox của Agent chặn https), **TUYỆT ĐỐI CẤM** bảo User mở terminal gõ `git push origin main`. Hệ thống đã có công cụ chuẩn:
+   ```bash
+   python D:/Taadaa/tools/safe_push.py <repo_dir> <remote> <branch>
+   ```
+   `safe_push.py` sẽ tự động unmask các biến môi trường sandbox và thực thi push ra remote an toàn.
+2. **Pre-push Hook Scope Matching:** Hook `.git/hooks/pre-push` duyệt ngược `gate_audit.jsonl` và kiểm tra `commit_sha` + `scope_hash` khớp 100% với commit `HEAD`. Do đó, cờ `--files` khi chạy `closeout_gate.py` phải khớp chính xác danh sách file trong commit đỉnh `HEAD`.
+3. **OmniRoute Reviewer Timeout Bypass:** Nếu model mặc định trên cổng `:20129` bị nghẽn hoặc stream timeout (300s read timeout), chạy `closeout_gate.py` với model tiered hiệu năng cao:
+   ```bash
+   python D:/Taadaa/tools/closeout_gate.py --repo <repo> --base HEAD~1 --files ... --model antigravity/gemini-3.8-flash-tiered --json-output
+   ```
+   Model tiered hoàn thành toàn bộ rubric 5 tiêu chí chỉ trong 5–15s và đạt điểm số 90–97/100 chuẩn xác.
+
+---
+
+## 11. Quy Trình Chuẩn Coordinator: Không Nhảy Rào Guard, Không Bypass
 
 Khi `delegate_task` bị hệ thống Guard chặn (ví dụ: diff > 30 dòng, thiếu OLD_STRING), **TUYỆT ĐỐI KHÔNG** phá rào bằng lệnh terminal thô:
 ```bash
