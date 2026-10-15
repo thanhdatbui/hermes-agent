@@ -78,3 +78,39 @@ for row in ws.iter_rows():
 - **Chiến lược cuốn chiếu**:
   - Không chạy ồ ạt cùng lúc; lập bảng mapping danh tính mới cho toàn bộ các nick rập khuôn.
   - Tích hợp vào thời điểm máy rảnh giữa các ca nuôi (`multi-machine-feed-session`), tận dụng `operator_device_lock` để thực hiện đổi tên an toàn mà không làm gián đoạn lịch nuôi hay bị đụng tiến trình.
+
+---
+
+## 4. Thiết Kế Silent Watchdog Cronjob Đổi Tên Cuốn Chiếu Toàn Farm (`tiktok_rename_natural_watchdog.py`)
+
+Khi triển khai cronjob tự động hóa đổi biệt danh cho toàn bộ các nick rập khuôn trên farm (hơn 400 nick), bắt buộc tuân thủ chặt chẽ kiến trúc Silent Watchdog:
+
+### A. Preflight Gates Bắt Buộc (Fail-Silent & Farm Safety):
+1. **Kiểm tra tiến trình ca nuôi đang chạy**:
+   - Dùng `psutil` quét lệnh đang chạy: nếu chứa `run_tiktok.py`, `multi-machine-feed-session`, hoặc `run-feed-session.ps1` -> `sys.exit(0)` ngay lập tức trong im lặng, tuyệt đối không in stdout gây cảnh báo rác.
+2. **Kiểm tra Device Locks**:
+   - Quét cả 2 thư mục lock: `C:\Users\Kibe\.codex\device-locks\` và `C:\Users\Kibe\AppData\Local\automation-core\device-locks\`.
+   - Bỏ qua các máy đang có lock active hoặc file lock của tiến trình còn sống (`psutil.pid_exists(pid)`).
+3. **Giới hạn số lượng máy (Bulkhead)**:
+   - Mỗi tick cron (ví dụ mỗi 15 phút) **CHỈ XỬ LÝ TỐI ĐA 1 MÁY RẢNH DUY NHẤT**.
+   - Tránh việc bắn lệnh đồng loạt gây nghẽn bus USB hoặc quá tải ADB daemon.
+
+### B. State Tracking & Chu Kỳ 7 Ngày:
+- Lưu vết lịch sử đổi tên vào file JSON: `D:\Taadaa\runtime\kibe\cron-state\rename_natural_state.json`.
+- Cấu trúc:
+  ```json
+  {
+    "last_run": "2026-10-15 14:30:00",
+    "accounts": {
+      "lieuhoan03": {"machine": 2, "new_name": "Hoàn Liễu", "renamed_at": "2026-10-15 10:08:00"},
+      "luutuoi02": {"machine": 51, "new_name": "Tươi Lưu", "renamed_at": "2026-10-15 10:14:00"}
+    }
+  }
+  ```
+- Nếu một account đã đổi tên trong vòng 7 ngày gần nhất (`now - renamed_at < 7 days`), tự động bỏ qua để tránh chạm trần khóa đổi tên của TikTok.
+
+### C. Cơ Chế Sinh Tên Tự Nhiên & Thực Thi UI:
+- Sinh tên ngẫu nhiên theo tỷ lệ 70% Họ Đệm Tên / 30% Tên + Biệt danh đời thường (`_TEN_LIST + _NICK_SUFFIX`).
+- Chạy State Machine OCR qua `do_rename.py` tham số hóa hoặc scaffold runner, bắt buộc xác nhận popup cảnh báo 7 ngày `(747, 1173)`.
+- Chụp ảnh màn hình nghiệm thu sau khi đổi lưu vào `D:\Taadaa\reports\`.
+

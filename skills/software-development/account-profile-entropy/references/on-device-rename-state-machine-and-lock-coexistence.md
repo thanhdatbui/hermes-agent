@@ -106,6 +106,9 @@ def is_target(name_line):
     if not name_line: return False
     nl = norm(name_line)
     if nl == NEW_NAME_NORM: return True
+    words = nl.split()
+    if len(words) < 2:  # BẮT BUỘC: chống false-positive khi gặp tên cụt 1 từ (như 'Tươi' ratio=0.67 với 'Tươi Lưu')
+        return False
     if difflib.SequenceMatcher(None, nl, NEW_NAME_NORM).ratio() >= 0.6:
         return True
     # Fallback: stem từ cuối + độ dài hợp lý (chống méo nặng)

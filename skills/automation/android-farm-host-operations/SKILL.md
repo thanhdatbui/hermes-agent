@@ -11,6 +11,7 @@ References:
 - `references/aruba-wifi-recovery-and-anti-drift-incident-20261009.md`
 - `references/hermes-gateway-reboot-auto-resume-architecture-20261013.md` — Kiến trúc tự động bảo toàn và kích hoạt chạy tiếp session Hermes Telegram sau khi host reboot (Zero-Chat Auto-Resume).
 - `references/shift-aware-sentinel-and-in-flight-lock-guard-20261015.md` — Bẫy bỏ qua reboot trưa/tối do sentinel cờ theo ngày trong farm_preflight_daily_reset.py, kiến trúc phân định sentinel theo 3 ca (morning/noon/evening) và khóa an toàn in-flight device lock (15/10/2026).
+- `references/preflight-3shift-sentinel-shift-partition-and-active-lock-skip-20261015.md` — Bẫy sentinel cờ ngày chặn reboot mốc 11:20/17:20, phân vùng shift sentinel và cơ chế has_active_device_locks chống cắt ngang ca nuôi.
 - `references/daily-reboot-sentinel-shift-pitfall-and-recovery.md` — Phân tích bẫy sentinel flag theo ngày khiến mốc reboot 11:20/17:20 bị skip và cơ chế phân định ca shift sentinel kết hợp kiểm tra uptime (15/10/2026).
 - `references/preflight-3shift-reboot-schedule-and-task-validation-20261013.md` — Quy chuẩn reboot 3 Ca chính (05:20, 11:20, 17:20, 40p đệm), chống reboot dày đặc theo phiên, fail-fast validation và read-back test.
 - `references/inter-shift-cron-reboot-avoidance-and-warmup-buffer-20261013.md` — Quy chuẩn 40 phút warmup buffer (05:20, 11:20, 17:20) và cơ chế tự né giờ reboot cho các cron/watchdog thao tác trên thiết bị S7 giữa các ca.
