@@ -2,9 +2,10 @@
 
 ## Context & Quirks
 Khi vận hành script `login_audit_and_purge_deactivated.py` qua cron job hoặc CLI agent:
-1. **Terminal Foreground Guard**:
+1. **Terminal Foreground Guard & Coordinator Allowlist**:
    - Môi trường Hermes agent trên máy host enforce `[GUARD_FOREGROUND_TIMEOUT_MISSING]`.
    - Các lệnh terminal foreground bắt buộc phải có tham số `timeout <= 60s`.
+   - **Coordinator Guard Default-Deny**: Tuyệt đối không tự ý chạy các lệnh probe ad-hoc như `curl http://127.0.0.1:19995/...` hay `curl ...:20129` để preflight ở session chính vì sẽ bị Coordinator Guard chặn (DEFAULT-DENY). Script `login_audit_and_purge_deactivated.py` đã tự tích hợp sẵn preflight, timeout handling và fallback nội bộ; Coordinator chỉ cần gọi trực tiếp script.
    - Với quy trình audit nhiều tài khoản GPM (mỗi tài khoản mở profile, kết nối CDP, giải/lấy OTP qua Graph API hoặc Outlook webmail, kiểm tra DOM mất từ 20s - 45s mỗi tài khoản): tổng thời gian audit 5 tài khoản có thể vượt quá 60s.
    - **Quy tắc thực thi**: Bắt buộc khởi chạy script ở chế độ background `terminal(command="python D:/Taadaa/tools/login_audit_and_purge_deactivated.py --limit 5", background=True)` và điều phối bằng `process(action='wait', session_id=..., timeout=25-30)` theo từng cửa sổ thời gian (polling/wait loop) cho đến khi `process_running: false`.
 
