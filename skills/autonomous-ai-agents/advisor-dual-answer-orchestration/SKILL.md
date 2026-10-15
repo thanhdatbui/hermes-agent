@@ -114,6 +114,7 @@ See `references/claude-cli-review-loop-and-mechanical-advisor-enforcement.md` fo
 See `references/mechanical-dual-answer-enforcement-and-stream-deadline-audit-20261010.md` for intent classification matrix, stream wall-clock deadline handling, and mechanical enforcement gate.
 See `references/omniroute-turnstile-sentinel-circuit-breaker-20261010.md` for Turnstile 403 Sentinel challenge, 5-failure 30min circuit breaker lockout, and stream timeout diagnostic.
 See `references/reasoning-model-stream-timeout-and-idle-discipline-20261015.md` for reasoning models thinking allowance vs stream keepalive timeout architecture.
+See `references/context-enrichment-and-prompt-packaging-for-sol.md` for the 5-layer prompt packaging, early redaction, dynamic briefing budget, and session context injection architecture preventing Sol context starvation.
 See `references/advisor-session-context-enrichment-and-briefing-pack-20261015.md` for Advisor Sol context starvation root cause, Session Briefing Pack architecture, 5-tier prompt structure, and token ceiling guardrails.
 See `references/advisor-context-starvation-and-session-briefing-20261015.md` for Advisor Sol context starvation root cause, Session Briefing Pack format, and automated context enrichment.
 
