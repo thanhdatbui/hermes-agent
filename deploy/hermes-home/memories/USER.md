@@ -12,7 +12,7 @@ Ghim clip: pin_top_videos.py (Share->Ghim); cuộn sâu gom clip peak view dư�
 §
 Worker: Haiku 5.5 CLI (6-15s O(1)) chính, AG CLI 7 acc Pro dự phòng; đo chất lượng code thật; Coord giữ Hermes 24/7.
 §
-Hashtag sync: F_src=(Slot-1)*80+m_idx, SoT 'Hashtag theo Folder'; nick fix tay khóa manual_avatar_protected_folders.json cấm sync đè.
+Hashtag: F_src=(Slot-1)*80+m_idx; Chuẩn hoá kênh: tự duyệt đủ 3 Ava-Hashtag-Pin; nick sửa tay khóa cả Ava lẫn Hashtag chống đè.
 §
 Telegram: song song nhiều topic, auto-resume turn dở sau boot. Cấm báo cáo láo/hứa suông khi chưa dispatch thật.
 §
