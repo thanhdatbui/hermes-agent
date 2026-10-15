@@ -54,4 +54,10 @@
 ## 6. Local Fallback Architectures: Antigravity IDE vs Cockpit Tools
 - **Antigravity IDE (`ag_cli.py`)**: Electron GUI IDE (`antigravity-ide.cmd chat -m ask|agent`), NOT an OpenAI HTTP API server. Cannot be configured in `fallback_providers` or `providers` for Hermes agentic loops.
 - **Antigravity Cockpit (`cockpit-tools.exe`)**: Runs a local OpenAI-compatible endpoint on port `60818` (`http://127.0.0.1:60818/v1`) using `COCKPIT_API_KEY` (`agt_codex_...`). It rotates Codex accounts from `~/.antigravity_cockpit/codex_accounts.json`. It CAN serve as a secondary local fallback if Cockpit Tools is running.
-- **Direct Account Status**: Direct Codex free accounts hit quota limit 429 (`usage_limit_reached`); OpenCode Go is expired (403) and free models suffer severe queue latency.
+- Direct Account Status: Direct Codex free accounts hit quota limit 429 (`usage_limit_reached`); OpenCode Go is expired (403) and free models suffer severe queue latency.
+
+## 7. HARD INVARIANT: CẤM Chạy Backend-Only Build Gây Phá Hỏng Dashboard (:20129)
+- **CẤM TUYỆT ĐỐI**: Không bao giờ chạy `npm run build:backend` hoặc truyền cờ `OMNIROUTE_BUILD_BACKEND_ONLY=1` khi compile lại OmniRoute.
+- **Hậu quả nếu vi phạm**: Cờ này kích hoạt `scripts/build/backendOnlyPages.mjs` stub toàn bộ ~126 page giao diện App Router thành `null`, làm trắng xóa trang `http://127.0.0.1:20129/dashboard`.
+- **Quy chuẩn bắt buộc**: Bất kỳ phiên nào cần build lại OmniRoute sau khi sửa code/executors BẮT BUỘC phải dùng `npm run build` đầy đủ (gọi `node scripts/build/build-next-isolated.mjs` không có cờ backend-only).
+
