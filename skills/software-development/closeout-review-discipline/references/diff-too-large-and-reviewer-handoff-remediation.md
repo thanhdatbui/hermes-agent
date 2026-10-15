@@ -80,3 +80,20 @@
   - Không emit 2 dòng log liên tiếp cho cùng 1 event (ví dụ vừa log `capped boundary ...` vừa log `[RECONCILE_BUFFER_TELEMETRY] ... capped=True`). Reviewer coi đây là code cẩu thả / log noise và trừ điểm Observability.
 - **Ngân Sách Turns Cho Claude CLI Strike 3 Hand-Off:**
   - Khi ủy quyền cho Claude CLI tự sửa ở Strike 3 (`claude -p`), cấp tối thiểu `--max-turns 25` hoặc `30` (thay vì 15) để đảm bảo Claude CLI đủ budget đọc file, sửa code và chạy test pass mà không bị ngắt giữa chừng vì chạm trần turns.
+
+## 9. Bất Biến Vật Lý Pre-Push Hook & Tiêu Chuẩn Nâng Điểm Reviewer >= 85 Cho Micro-Fixes
+- **Bất Biến Vật Lý Pre-Push Hook (`INC-HERMES-2026-001`):**
+  - **Câu hỏi của User:** *"Thì claude cli làm xong r push luôn đi khỏi qua sol nữa"*
+  - **Nguyên lý cốt lõi:** Tuyệt đối KHÔNG THỂ và CẤM bypass Sol để push thẳng. Mọi repo Taadaa đều cài đặt `.git/hooks/pre-push` thực thi đoạn mã Python kiểm tra file `$TAADAA_ROOT/logs/gate_audit.jsonl`.
+  - Hook bắt buộc tồn tại một bản ghi audit có:
+    `verdict == 'APPROVED'`, `score >= 85`, `passed == True`, khớp chính xác `current_commit` và `scope_hash(current_scope)`.
+  - Nếu thiếu bản ghi này, `git push` bị chặn cứng vật lý (`❌ [BLOCKED - PRE-PUSH HOOK]`).
+  - Claude CLI khi nhận Strike 3 Hand-Off chỉ đóng vai trò *Reviewer-with-write-access* để tự sửa code/test, nhưng sau đó BẮT BUỘC Coordinator phải chạy lại `closeout_gate.py` để lấy chữ ký APPROVED hợp lệ vào `gate_audit.jsonl` trước khi push.
+- **Tiêu Chuẩn Nâng Điểm Sol Reviewer >= 85 Cho Micro-Fixes:**
+  - Khi một task có phạm vi code production nhỏ (micro-fix vài dòng, ví dụ chuẩn hóa microsecond SQLite timestamp), Sol Reviewer thường chỉ chấm 62–72 điểm và từ chối duyệt nếu thiếu chiều sâu kỹ thuật. Để đạt điểm >= 85, commit bắt buộc phải có đủ 5 trụ cột:
+    1. **Telemetry Metric thật:** Không chỉ thêm log text, phải bổ sung counter đo đạc cụ thể vào `RECONCILE_METRICS` (ví dụ `subsecond_capped`), có `threading.Lock` bảo vệ, có hàm get/reset, và có log trường dữ liệu đó.
+    2. **Integration Test với SQLite DB thật:** Unit test mock hàm utility là chưa đủ. Bắt buộc tạo database SQLite tạm, chèn bản ghi và truy vấn `SELECT ... WHERE timestamp <= ?` để chứng minh chuỗi format khớp 100% với toán tử so sánh string của SQLite.
+    3. **Automated Mirror Parity Test:** Đối với các file có bản sao (`scripts/` vs `scripts/hermes_cron/`), comment giải thích DRY là chưa đủ. Bắt buộc có test tự động nạp cả 2 modules và assert kết quả trả về giống hệt nhau trên mọi test vectors (`test_hermes_cron_buffer_reconcile_iso_parity`).
+    4. **Chứng minh Không Suy Thoái Ca Farm:** Thêm test xác nhận các mốc thời gian của các Ca sản xuất thực tế (Ca 1: 12:00, Ca 2: 18:00, Ca 3: 23:59:59) không bị cắt xén hay lệch biên (`test_production_ca_windows_not_truncated`).
+    5. **Tài Liệu Hóa Quyết Định Thiết Kế (Trade-Off):** Ghi rõ trong docstring/comments lý do làm tròn thời gian (ví dụ chấp nhận sai số < 1s cuối ngày để đảm bảo toàn vẹn định dạng chuẩn của SQLite query).
+
