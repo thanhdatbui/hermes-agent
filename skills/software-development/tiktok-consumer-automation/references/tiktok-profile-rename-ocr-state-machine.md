@@ -178,3 +178,30 @@
 4. **Chốt chặn an toàn tối cao (Post-Save Gate):**
    - Xác thực mềm ở ô input chỉ để quyết định có bấm 'Lưu' hay không.
    - Việc công nhận đổi tên thành công (`verified = True`) **vẫn bắt buộc kiểm tra 100% tại màn hình Profile root sau khi Lưu**: Tại đây font chữ in đậm lớn, WinRT OCR đạt độ chính xác `>= 75%`.
+
+---
+
+## 8. Kiến Trúc Cụm Kép: Cụm Kibe (Máy 1–80) vs Cụm Admin (Máy 201–280)
+
+### Phân Định Phần Cứng & Kết Nối Vật Lý:
+- **Cụm Kibe (Máy 1–80):** Cắm cáp USB trực tiếp vào host local Kibe PC (`C:\Program Files (x86)\xiaowei\tools\adb.exe`).
+- **Cụm Admin (Máy 201–280):** Cắm cáp USB trực tiếp vào máy tính Admin-PC (`192.168.110.119`, ~77 máy online).
+- **CẤM TUYỆT ĐỐI:** Chạy ADB local từ Kibe PC để điều khiển dải máy 201–280 (không tìm thấy thiết bị, gây timeout).
+
+### Đồng Bộ & Thực Thi Song Song 2 Cụm (Tổng 50 Workers):
+1. **Dữ liệu tài khoản dùng chung:**
+   - File sổ cái `D:/OneDrive/TaadaaData/taikhoan_run_safe_combined.xlsx` chứa đầy đủ thông tin mapping cả 160 máy (sheet `Accounts`: Máy 1–80 và Máy 201–280).
+2. **Cơ chế triển khai trên Admin-PC:**
+   - Đồng bộ module `do_rename_canonical_runner.py` và `ocr_boxes.ps1` sang `Admin-PC` qua OneDrive (`Taadaa_Sync_Shared/hermes-cron/scripts`) hoặc SSH (`tools/admin_ssh.py`).
+   - Khởi chạy runner/watchdog trên chính `Admin-PC` để tận dụng USB bus và WinRT OCR cục bộ của Admin-PC.
+   - Khi chạy song song: Host Kibe chạy 25 workers cho cụm 1–80; Host Admin chạy 25 workers cho cụm 201–280 $\rightarrow$ Tổng công suất đạt **50 workers song song** toàn farm mà không gây nghẽn bus USB hay quá tải CPU.
+
+---
+
+## 9. Cấu Hình Cronjob Tự Động Báo Cáo Về Phiên Chat (`deliver='origin'`)
+
+- Khi User yêu cầu: *"Để im session này tới ca rảnh chạy tiếp rồi báo cáo ở session này"*:
+  * Cấu hình cronjob: `cronjob(action='update', job_id=..., deliver='origin')`.
+  * **Điều kiện tiên quyết bắt buộc:** Job BẮT BUỘC phải có `no_agent=True` để chạy theo mô hình classic script watchdog.
+  * **Cơ chế im lặng khi không có việc (Watchdog Silence):** Khi farm đang trong ca nuôi feed (`is_feed_active() == True`) hoặc không có máy rảnh, script gọi `sys.exit(0)` với stdout rỗng. Scheduler Hermes sẽ im lặng hoàn toàn, không spam tin nhắn rác vào chat.
+  * **Cơ chế bắn tin khi có kết quả:** Khi có máy hoàn tất đổi tên, script in kết quả với `print(..., flush=True)` và stdout này sẽ được daemon Cron tự động đẩy thẳng về phiên chat Telegram của User mà không bị timeout 60s như chế độ agent LLM.
