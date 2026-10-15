@@ -89,7 +89,50 @@ Before executing on the phone, create `tests/test_do_rename_m<ID>.py` testing pu
 - `is_target()` / `is_target_user()`: Fuzzy matching tolerances.
 - Run `pytest tests/test_do_rename_m<ID>.py` ensuring 100% pass (<0.5s).
 
-### Closeout Gate & Sol Reviewer Test Evidence Bridge
+## 5. Hermetic Offline Testing
+
+### OCR Fuzzy Match Calibration (WinRT dấu méo — BẮT BUỘC cho tên có `ư`, `ơ`, `ươ`)
+
+WinRT OCR thường đọc méo tone tiếng Việt trong `NAME_EDIT`, đặc biệt ký tự `ư/ươ`:
+
+| Tên thật | OCR đọc ra | SequenceMatcher(0.75) |
+|---|---|---|
+| `Tươi Lưu` | `Tl-fdi LUU` | ~0.67 → ABORT ❌ |
+| `Hoàn Liễu` | `Hoän LiéU` | ~0.82 → PASS ✅ |
+
+**Fix chuẩn trong `is_target(name_line)`**:
+```python
+def is_target(name_line):
+    if not name_line: return False
+    nl = norm(name_line)
+    if nl == NEW_NAME_NORM: return True
+    if difflib.SequenceMatcher(None, nl, NEW_NAME_NORM).ratio() >= 0.6:
+        return True
+    # Fallback: stem từ cuối + độ dài hợp lý (chống méo nặng)
+    stem = NEW_NAME_NORM.split()[-1]
+    if stem and len(stem) >= 3 and stem in nl and len(nl) < 15:
+        return True
+    return False
+```
+
+**Fix trong `ok_text` block của `NAME_EDIT`**:
+```python
+ok_text = (any(is_target(l) for l in lines)
+           or NEW_NAME_NORM in norm(" ".join(lines))
+           or difflib.SequenceMatcher(None, norm(" ".join(lines)), NEW_NAME_NORM).ratio() >= 0.5
+           or stem in norm(" ".join(lines)))
+```
+
+Dùng `ok_count` (bộ đếm `/30`) làm gate chính — đúng số ký tự thì đã gõ xong.
+
+**Fix SWITCHER trong `classify()`** — tránh nhận nhầm màn "Tìm bạn bè":
+```python
+# Màn Tìm bạn bè có "Tài khoản được đề xuất" → "tai khoan" bị nhận nhầm
+if re.search(r"chuyen doi tai khoan|switch account|them tai khoan|add account|chuy\w{0,4}\s*d\w{0,4}i", t):
+    return "SWITCHER"
+```
+
+### Closeout Gate &amp; Sol Reviewer Test Evidence Bridge
 Sol High / Closeout Gate reviews test evidence rigorously (scoring `test_evidence` out of 25). If tests only cover pure logic mocks, the gate will score ~18/25 and reject (< 85) citing "chưa thấy log state machine, kết quả đổi tên thành công hoặc kiểm chứng runtime artifact".
 👉 **BẮT BUỘC**: Bổ sung test kiểm chứng artifact sau khi chạy thực tế trong file test:
 ```python
@@ -159,6 +202,37 @@ Instead of blind delegation or monolithic writing:
   * Script điều phối upload avatar nằm độc quyền tại repo **`D:/Taadaa/Tiktok-video`**:
     - Launcher avatar-only: `run_tiktok_upload_avatar.ps1` (gọi `run_tiktok_upload_batch.ps1` với `-ForceAvatarMachineList`).
     - Tool sinh & đối soát: `D:/Taadaa/Tiktok-video/scripts/resolve_avatar_pending_machines.py`, `make_avatar_yolo.py`, `regenerate_unique_avatars.py`.
+
+## 9. Chống Báo Cáo Gây Hiểu Lầm Khi Đổi Tên + Đổi Avatar Song Song
+
+**User frustration signal**: *"T éo hề thấy mày đổi ava. Lại báo cáo láo hả"* — khi agent hoàn thành đổi tên và gửi ảnh Profile kèm tiêu đề thắng lợi mà không nhấn mạnh avatar vẫn là ảnh cũ, user nhìn vào vòng tròn avatar cũ kết luận ngay agent báo cáo gian.
+
+**Kỷ Luật Báo Cáo Đa Mục Tiêu (Invariant)**:
+- Khi task có ≥2 mục tiêu con (đổi tên + đổi avatar): tách thành 2 block trạng thái rõ ràng:
+  * `[1. ĐỔI BIỆT DANH]`: ✅ **ĐÃ XONG** + OCR evidence.
+  * `[2. ĐỔI AVATAR]`: ⏳ **ĐANG THỰC HIỆN** + giải thích lý do chưa xong.
+- Trong chú thích ảnh đính kèm: ghi rõ *"vòng tròn avatar hiện vẫn là ảnh cũ, đang chuẩn bị nạp avatar mới"*.
+- CẤM TUYỆT ĐỐI dùng "HOÀN TẤT 100%" cho toàn task khi một mục tiêu con chưa xong.
+
+## 10. Workbook Folder Video vs Video Gốc Drift Pitfall
+
+**Hiện tượng**: Cột 4 (`Folder Video`) trong `TikN.xlsx` bị lệch so với cột 5 (`video gốc`):
+- M2: `Folder Video = 12` (Gym/xăm trổ) nhưng `video gốc = 242` (Tài chính) → nạp avatar xăm trổ ❌
+- M51: `Folder Video = 404` (Chó cưng) nhưng `video gốc = 291` (Kỷ yếu áo dài) → nạp avatar chó ❌
+
+**Triage O(1)**:
+```python
+import openpyxl
+wb = openpyxl.load_workbook("D:/OneDrive/TaadaaData/kibe/Tik4.xlsx")
+ws = wb.active
+for row in ws.iter_rows(min_row=2):
+    may, folder_v, video_goc = row[0].value, row[3].value, row[4].value
+    if folder_v != video_goc:
+        print(f"DRIFT: Máy {may} Folder={folder_v} but VideoGoc={video_goc}")
+```
+
+**Fix**: Sửa `row[3].value = video_goc`, save workbook. Sau đó thêm folder vào `data/manual_avatar_protected_folders.json` để khóa chống script hàng loạt ghi đè.
+
 
 ## 9. Communication Protocol: Tách Bạch Nghiệm Thu Đổi Tên vs Đổi Avatar (Chống Báo Cáo Gây Hiểu Lầm)
 - **User Frustration Signal**: *"T éo hề thấy mày đổi ava. Lại báo cáo láo hả"* — khi user yêu cầu cả 2 việc: `[1] Đổi tên biệt danh` và `[2] Đổi avatar`, nếu agent hoàn thành đổi tên và gửi ảnh chụp Profile kèm tiêu đề thắng lợi ("ĐÃ THÀNH CÔNG 100%") mà không nhấn mạnh rõ avatar vẫn là avatar cũ, user nhìn vào vòng tròn avatar cũ sẽ lập tức kết luận agent báo cáo láo/gian dối!
