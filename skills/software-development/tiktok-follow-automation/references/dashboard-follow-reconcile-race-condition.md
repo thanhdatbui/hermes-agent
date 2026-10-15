@@ -49,18 +49,23 @@ Khi tài khoản **nghỉ follow hoặc chưa đủ video** (`organic-rest-day-p
   + **Tách bạch Feed vs Follow chéo:** Khóa popup hoàn toàn KHÔNG ảnh hưởng đến follow chéo nội bộ, vì `follow_runner` chỉ chạy qua Mode 1 (Search username → Profile → Follow) và Mode 2 (Follow từ danh sách Followers), không bao giờ phụ thuộc vào popup.
   + **Bảo vệ Trust & Persona người thật:** Người dùng thật luôn có phản xạ bấm đóng/bỏ qua các popup gợi ý danh bạ/bạn bè phiền phức. Việc đóng popup là hành vi tự nhiên 100%, bảo vệ nick yếu không bị TikTok gắn nhãn clicker bot, không bị loãng niche, và chặn đứng nguy cơ bị thuật toán silent un-follow.
 
-### Nguyên nhân 2: Race Condition giữa Snapshot Crawler và Watchdog Chốt Ca
+### Nguyên nhân 2: Race Condition giữa Snapshot Crawler và Watchdog Chốt Ca (Bẫy Lệch Bù Trừ P1 Âm -> P2 Dương)
 1. **Thời điểm cào Snapshot toàn Farm:**
    - Hệ thống crawler snapshot toàn farm (`snapshots` table) cào định kỳ (thường vào sáng sớm, ví dụ 07:04:09).
    - Snapshot đọc trực tiếp số `following` công khai từ profile web của TikTok, ghi nhận mức tăng ngay lập tức (`delta_following = +12`).
 2. **Thời điểm Watchdog chốt sổ Ca Nuôi/Follow:**
    - Ca chạy nuôi nick / follow chéo (ví dụ: ca sáng 06:00 - 07:35:55) ghi nhận chi tiết follow từng máy vào `follow_result.json`.
    - Bảng `session_account_actions` và bảng tổng hợp ngày `daily_account_actions` trong SQLite (`tiktok_tracker.db`) **CHỈ ĐƯỢC WATCHDOG GHI NHẬN KHI CA CHẠY KẾT THÚC HOÀN TOÀN** (hàm `save_session_action_stats` và `reconcile_cluster_following` chạy lúc ~07:35:58).
-3. **Cửa sổ lệch pha (Race Window):**
-   - Trong khoảng thời gian ca đang chạy (06:00 - 07:35), snapshot đã quét thấy following tăng (+12), nhưng bảng `daily_account_actions` của ngày đó chưa có bản ghi (hoặc chưa cập nhật máy này).
-   - Dashboard truy vấn:
-     `SELECT username, internal_follows FROM daily_account_actions WHERE target_date = ?`
-     Do chưa có dữ liệu trong ngày, Dashboard fallback về `0` (`🔗 Nội bộ: +0`).
+3. **Cửa sổ lệch pha (Race Window) & Bẫy Lệch Bù Trừ Giữa 2 Phiên Liên Tiếp (P1 Âm -> P2 Dương):**
+   - **Hiện tượng:** Ở Phiên 1, watchdog báo lệch âm lớn (-20 lượt, ví dụ M4 báo script 4 web 0, M26 script 8 web 0). Người vận hành nghi ngờ bot "ăn nhả rồi vẫn cố chạy". Nhưng ngay sang Phiên 2, watchdog lại báo ngược lại: Web tăng vượt Script (M4 script 1 web 4 lệch +3, M26 script 0 web 8 lệch +8)!
+   - **Cơ chế gốc rễ (Snapshot Timestamp Lag vài chục giây):**
+     * Khi Phiên 1 chốt lúc `08:00:00`, câu lệnh SQL của watchdog lọc `WHERE timestamp <= '08:00:00'`.
+     * Tuy nhiên tiến trình cào profile web sau ca thực tế ghi nhận vào database lúc `08:00:38` (chậm hơn mốc chặn trần đúng 38 giây).
+     * Watchdog Phiên 1 bị hụt snapshot này, fallback về snapshot đầu ca lúc `07:04:26` (lúc bot chưa cày xong). Cũ trừ cũ ra `0 lượt` -> Báo lệch âm ảo!
+     * Sang Phiên 2 (chốt lúc 09:25): Watchdog Phiên 2 bốc trúng snapshot `08:00:38` (hoặc `09:25:56`), khiến Phiên 2 "ăn đền" toàn bộ số follow tích lũy từ Phiên 1 -> Báo lệch dương ảo!
+   - **Kỷ luật đối soát bất biến:**
+     * Khi thấy P1 âm và P2 dương trên cùng dàn nick có `status=success`: Tuyệt đối KHÔNG kết luận là bot ăn nhả cố chạy hay TikTok silent drop.
+     * BẮT BUỘC đối soát **Tổng tích lũy 2 phiên**: Lấy snapshot sau P2 (`09:25:56`) trừ thẳng snapshot trước P1 (`07:04:26`) và so với `Tổng bot bấm (P1 + P2)`. Nếu tổng khớp hoặc chỉ lệch 1-2 lượt (M4: 5/5, M26: 8/9, M36: 8/7, M37: 13/11) thì khẳng định 100% nick đã ăn follow thật vào profile, độ lệch từng phiên chỉ là lệch pha thời điểm cào snapshot.
 
 ### Nguyên nhân 3: Duplicate Session Telemetry / Test Session Keys trong Database (Nhân bản số liệu từng nick)
 1. **Cơ chế khóa chính và hàm tổng hợp ngày:**

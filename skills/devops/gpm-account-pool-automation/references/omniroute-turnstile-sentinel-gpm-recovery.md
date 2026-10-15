@@ -192,3 +192,22 @@ Chạy script query bảng `provider_connections` trong `C:\Users\Kibe\.omnirout
   (Tránh parse nhầm các con số trong địa chỉ email như `1961`, `2011`, `8792`).
   Phương pháp này giúp quét 1.400 profile chỉ trong 3 giây, lọc ra ngay lập tức các profile đang có sẵn phiên đăng nhập active cho từng port.
 
+### Bẫy 4: Lệch Nhịp Asset Bundle Trong PoW Sentinel (/prepare) Gây 401 Blocked
+- **Bản chất lỗi:** Trong `open-sse/executors/chatgpt-web.ts`, hàm `fetchDpl()` cào `scriptSrc` từ HTML `chatgpt.com` để nhúng vào Proof-of-Work config `[..., userAgent, scriptSrc, dpl, ...]`.
+- **Nguyên nhân 401 Sentinel /prepare blocked:**
+  * OpenAI đã chuyển từ Next.js Webpack chunks (`_next/static/chunks/webpack-*.js`) sang bundle hiện đại tải qua `<link rel="modulepreload" href="/cdn/assets/entry.client-*.js">`.
+  * Regex cũ `<script[^>]+src="...">` trả về `null`, khiến OmniRoute rơi vào fallback sinh file ngẫu nhiên: `webpack-${randomHex(16)}.js`.
+  * Server Sentinel của OpenAI kiểm tra thấy URL script không hề tồn tại trên CDN của họ -> Lập tức chặn lại với `HTTP 401 Unauthorized` / `SENTINEL_BLOCKED`.
+  * Đồng thời phiên bản client version cũ (`prod-81e0c5cdf...`, seq `6128297`) đã bị outdate so với build hiện tại (`prod-a55478c...`, seq `12234531`).
+- **Khắc phục:** Cập nhật regex quét script trong `fetchDpl()` để bóc link từ `<link rel="modulepreload" href="([^"]+/cdn/assets/[^"]+\.js)">` và gán prefix `https://chatgpt.com`.
+
+### Bẫy 5: Giải Mã Chuẩn API Key enc:v1 Trong storage.sqlite Khi Chẩn Đoán Probe Độc Lập
+- CSDL `C:\Users\Kibe\.omniroute\storage.sqlite` mã hóa các trường nhạy cảm (`api_key`, `access_token`) bằng thuật toán AES-256-GCM định dạng: `enc:v1:<iv_hex>:<ciphertext_hex>:<authTag_hex>`.
+- Khóa bí mật `STORAGE_ENCRYPTION_KEY` được lưu trữ tại `C:\Users\Kibe\AppData\Roaming\omniroute\server.env`.
+- **Key derivation chuẩn:** Dùng Scrypt với salt cố định `b"omniroute-field-encryption-v1"`, length 32, `n=16384, r=8, p=1`. Khi viết script chẩn đoán hoặc test probe độc lập qua Python, phải dùng KDF này để giải mã lấy chuỗi cookie đầy đủ trước khi gửi request probe.
+
+### Bẫy 6: Auto-Resume Gateway Sau Reboot Bị Bỏ Sót Do Lọc Sai Timestamp
+- **Hiện tượng:** Máy tính reboot xong nhưng session dài đang chạy dở của Telegram không tự động tiếp tục, bot im lặng chờ User nhắn tin mới.
+- **Nguyên nhân:** File preflight `farm_preflight_daily_reset.py` trước đây dùng `entry['updated_at']` với cutoff 20 phút. Khi Agent chạy một chuỗi tool call hoặc subagent dài > 20 phút mà User không gửi thêm tin nhắn, `updated_at` bị ghim ở thời điểm User nhắn -> bị coi là idle và không gắn cờ `resume_pending`.
+- **Khắc phục:** Truy vấn trực tiếp `MAX(timestamp)` từ bảng `messages` trong SQLite của session đó, đồng thời nâng ngưỡng lookback an toàn lên 60 phút. Đã đồng bộ tại cả `farm_preflight_daily_reset.py` và `gateway/session.py`.
+
