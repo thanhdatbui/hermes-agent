@@ -54,3 +54,23 @@ Khi User gửi ảnh chụp màn hình kênh TikTok và yêu cầu "Đổi ava n
    - So sánh nội dung video trên kênh (từ thumbnail/tiêu đề trong ảnh) với `Keyword Video` trong Excel.
    - Kiểm tra xem $F_{src}$ hay $F_{out}$ đang chứa video trùng khớp với kênh.
    - Kiểm tra trạng thái máy qua `python D:/Taadaa/tools/inspect_machine.py <M>`. Nếu thiết bị offline, báo cáo rõ hiện trường phần cứng (cáp USB/nguồn) song song với việc chuẩn bị sẵn avatar đạt chuẩn $cy \approx 0.2 \times H$.
+
+## 3. Quy Trình Định Vị & Chuẩn Hóa Kênh TikTok Đa Cụm (Kibe Local vs Admin Remote)
+Khi User gửi ảnh/username và yêu cầu "Chuẩn hoá kênh này":
+1. **Đối soát 3 món bắt buộc (Ava - Hashtag - Pin)**:
+   - **Ghim video (Pin)**: Quét lượt xem trên lưới video của kênh. Bất kỳ video nào đạt $\ge 1.000$ view (ví dụ `3.800` view) mà chưa ghim $\rightarrow$ BẮT BUỘC ghim lên đầu profile qua `tools/pin_top_videos.py` hoặc luồng action sheet ADB.
+   - **Avatar**: Trích xuất frame mới từ video trong kho tương ứng (loại bỏ avatar cũ nếu dính chữ phụ đề vàng/che mặt), crop 512x512 chuẩn ngũ quan & headroom, khóa `.manual_avatar_locked`.
+   - **Hashtag**: Đối soát niche chuẩn trong `Tik<N>.xlsx`, khóa `.manual_hashtag_locked`.
+
+2. **Tra cứu tài khoản qua 2 cụm (Kibe vs Admin)**:
+   - Nếu tra cứu trong các file Kibe (`D:/OneDrive/TaadaaData/kibe/taikhoan_dat_v2_updated .xlsx`, `D:/Taadaa/taikhoan_dat_v2.xlsx`) báo không thấy:
+     $\rightarrow$ BẮT BUỘC tra soát ngay tại cụm Admin: `D:/OneDrive/TaadaaData/admin/taikhoan_dat_v2_updated .xlsx` và `D:/OneDrive/TaadaaData/admin/Tik*.xlsx`.
+   - Máy $\ge 200$ thuộc cụm Admin Remote:
+     * ADB endpoint: `192.168.110.119:5037` (`adb -H 192.168.110.119 -P 5037 -s <serial>`).
+     * Công cụ tra hiện trường O(1): `python D:/Taadaa/tools/inspect_machine.py <N>` (tự động nhận diện cụm).
+     * Kho video render trên Admin: `D:/TIKTOK-videonuoinick-admin/<Folder>/`.
+     * Kho video gốc trên Admin: `D:/video goc may 2/<Folder>/`.
+
+3. **Kỷ luật Dispatch Task & Bẫy Guard Coordinator**:
+   - **Bắt buộc khai báo `TASK_KIND`**: Khi gọi `delegate_task`, context BẮT BUỘC chứa dòng khai báo `TASK_KIND: INVESTIGATE` (với task đọc/chạy script) hoặc `TASK_KIND: EDIT` / `TASK_KIND: CREATE` (với task sửa/tạo code). Nếu thiếu sẽ bị chặn ngay bởi `[COORDINATOR GUARD - CONTRACT VIOLATION]: MISSING_TASK_KIND`.
+   - **Cấm đọc file live transcript log**: Đường dẫn `cache/delegation/live/...` nằm trong danh sách đen bảo vệ hệ thống (`GUARD_SOURCE_BLACKLISTED`). CẤM dùng `read_file` để thăm dò log của subagent; subagent chạy nền và sẽ tự trả về kết quả khi hoàn tất.

@@ -18,36 +18,30 @@
      - Hết thời gian phiên (`has_time_for_next_action() == False`).
 
 ## 3. Phân biệt các trường hợp "0 lượt an toàn" (status: OK) vs "Nhả Anchor" (FOLLOW_FAILED):
-   - **TRƯỜNG HỢP 1: Chưa mở được Anchor hoặc Search không ra (`skipped: []`, `followed: []`):**
-     * Log: `skipped: []`, thời gian chạy ngắn (60-90s cho 3 anchor).
-     * Nguyên nhân thực tế: Bot gõ UID anchor vào thanh tìm kiếm nhưng `_nav_search` trả về `not_found` (mạng lag, TikTok đổi layout search, hoặc không khớp exact thẻ card anchor), hoặc không xác minh được profile anchor.
-     * Code tự động `_back_to_feed` và thử tiếp anchor kế tiếp. Hết 3 anchor không mở được ai -> thoát an toàn `status: OK, followed: 0`.
-     * **Nick non (Row 5 ca tối) gặp 0 lượt mà `skipped: []` là 100% do trường hợp này**, tuyệt đối KHÔNG ĐƯỢC suy đoán bậy bạ là "đã follow hết list anchor" vì nick non mới tạo lịch sử cả đời mới follow vài nick.
-     * Vì chưa mở được vào và chưa bấm nút Follow của bất kỳ ai, TikTok không có hành động để nhả -> cờ `follow_failed` giữ sạch nguyên.
-   - **TRƯỜNG HỢP 2: Đã vào danh sách nhưng không có nick farm hợp lệ (`skipped: [uid1, uid2...]`):**
-     * Log: `skipped` có chứa danh sách các handle bên ngoài farm (như M59 có 11 nick skipped).
-     * Nguyên nhân: Đã mở được tab Following của anchor, nhưng các nick nhìn thấy là người ngoài farm (hoặc nick farm nhưng tài khoản đã follow từ trước).
-     * Cuộn tới ngưỡng dừng an toàn (`idle_scrolls >= 25`) không còn nick mới -> dừng `status: OK, followed: 0`.
-   - **TRƯỜNG HỢP 3: Bị nhả ngay tại Anchor (`FOLLOW_FAILED: anchor @{uid} bị nhả sau vuốt`):**
+   - **TRƯỜNG HỢP 1: Bị chặn bởi Dual Gate (`budget = 0`):**
+     * Log: `status: OK, followed: [], skipped: []`, thời gian chạy 0s (thoát ngay sau feed swipe).
+     * Nguyên nhân: Nick chưa đủ điều kiện Dual Gate (`account_age_days < 30` HOẶC `video_count < 10`). Hệ thống tự động cấp `budget = 0` để bảo vệ nick non khỏi bị TikTok silent-drop / nhả follow.
+     * Khi điều tra máy báo 0 lượt, BẮT BUỘC kiểm tra `video_count` và `account_age_days` trong safe workbook trước tiên.
+   - **TRƯỜNG HỢP 2: Đã vào list Following nhưng không có nick farm chưa follow (`idle_scrolls >= 25`):**
+     * Log: `status: OK, followed: [], skipped: []` (hoặc `skipped` có vài nick nếu có row internal xen kẽ), thời gian chạy ~70-95s (tương ứng 25 lần cuộn x ~3.8s/cuộn).
+     * Nguyên nhân: Anchor có nhiều following nhưng phần lớn là nick tự nhiên ngoài farm, hoặc các nick farm trong list đó nick này đã follow hết từ trước.
+     * **Cạm bẫy telemetry `skipped: []`:** Trong `mode2_follow_followers.py`, khi màn hình không có nick farm nào (`not internal_pending`), code lập tức cuộn tiếp (`_scroll_follower_list`) mà KHÔNG duyệt vòng lặp `for row in pending`. Do đó `res.skipped` VẪN LÀ `[]` dù bot đã mở list và cuộn 25 lần qua hàng chục nick ngoài farm. CẤM TUYỆT ĐỐI kết luận "skipped: [] là do không tìm thấy anchor".
+   - **TRƯỜNG HỢP 3: Chưa mở được Anchor hoặc Search không ra (`not_found`):**
+     * Log: `status: OK, followed: [], skipped: []`, bot thử lần lượt qua 3-5 anchor và back về feed.
+     * Nguyên nhân: Search anchor bị lag timeout hoặc màn hình tìm kiếm trả về không khớp thẻ card.
+   - **TRƯỜNG HỢP 4: Bị nhả ngay tại Anchor (`FOLLOW_FAILED: anchor @{uid} bị nhả sau vuốt`):**
      * Xảy ra khi máy bốc trúng Anchor **chưa follow** và tìm kiếm thành công, vào được Profile anchor (`_ensure_anchor_followed`).
      * Bot xem video, thả tim, bấm Follow trên video rồi quay về Profile vuốt kéo reload kiểm tra.
      * Nút follow bị TikTok revert ngay lập tức về màu đỏ (`refreshed_classification == 'not_followed'`) ➔ Bot ngắt phiên ngay lập tức để bảo vệ nick. Lúc này máy thậm chí chưa kịp bấm vào tab Following của anchor.
 
-## 4. Chi tiết kỹ thuật lỗi `not_found` khi tìm kiếm Anchor & Chuẩn hóa cách xử lý
-- **Bản chất `not_found` trong `_nav_search`:**
-  1. Bot gõ UID anchor vào thanh tìm kiếm TikTok (`_nav_search`).
-  2. TikTok mở tab "Top": bot chờ thẻ user (`account_card` có `tv_username` hoặc `tv_aweme_id`) tối đa 12s.
-  3. Nếu không có, bot tự động click tab "Người dùng" (Users) và chờ tiếp 12s.
-  4. Nếu cả 2 tab đều không render ra thẻ user khớp exact normalized UID -> bot gán `_last_search_outcome = "not_found"`.
-- **Nguyên nhân gốc rễ (Root Causes):**
-  - **Gõ UID trần thiếu `@`:** `adapter.type_text(uid)` gõ chuỗi trần khiến thuật toán TikTok hiểu là tìm kiếm từ khóa nội dung chung (Video/Sound/Shop), đẩy thẻ User xuống dưới màn hình hoặc ẩn khỏi tab Top. Khi gõ kèm tiền tố `@` (`@{uid}`), TikTok nhận diện ngay đây là handle người dùng và ưu tiên hiển thị thẻ profile lên đầu.
-  - **Timeout 12s không đủ bù độ trễ proxy:** Trên mạng VPN/proxy giờ cao điểm, trang kết quả tìm kiếm mất 13-16s để render danh sách user. Hết 12s bot đã vội timeout.
-  - **Anchor Pool thử nghiệm quá hẹp (`uids[:3]`):** Chỉ lấy tối đa 3 anchor ngẫu nhiên. Nếu cả 3 anchor trúng nick khó search hoặc lag mạng, bot cạn anchor và thoát phiên 0 lượt.
-- **Kỷ luật điều tra bắt buộc (Chống suy đoán bậy):**
-  - Khi thấy máy trả về `status: OK, followed: 0`, BẮT BUỘC kiểm tra trường `skipped`:
-    * `skipped: []` + thời gian chạy ~60-90s: Chắc chắn là chưa mở được Anchor (bị `not_found` ở bước tìm kiếm), CẤM TUYỆT ĐỐI bịa chuyện "đã follow hết list".
-    * `skipped: [...]` (có handle): Đã vào được list và lướt qua nick ngoài farm.
-  - Giải pháp code chuẩn khi nâng cấp:
-    1. Gõ `@uid` thay vì `uid` trần: `adapter.type_text(f"@{uid.lstrip('@')}")`.
-    2. Nâng timeout render `_wait_search_result` từ 12s lên 18s để dung sai tốt hơn với proxy.
-    3. Mở rộng số lượng thử anchor từ 3 lên 5 (`uids[:5]`) để tăng khả năng chạy đủ budget.
+## 4. Kỷ luật điều tra bắt buộc & Cảnh giác bẫy gõ `@` qua ADB
+- **Cấm tự ý vá code khi Ca nuôi đang chạy:**
+  * Trước khi đụng vào code runner, BẮT BUỘC kiểm tra xem farm có đang chạy ca live không (`psutil` kiểm tra `run_tiktok.py` hoặc inspect lock `~/.codex/device-locks`). Tuyệt đối không can thiệp code/process khi farm đang chạy ca (ví dụ Ca 1 sáng 06:00).
+- **Cảnh giác bẫy gõ ký tự đặc biệt `@` bằng ADB (Case UI-08):**
+  * Hàm `adapter.type_text` dùng `adb shell input text <string>`. Lệnh này trên Android (đặc biệt Galaxy S7) KHÔNG xử lý được ký tự `@` (bị nuốt hoặc lỗi ký tự). CẤM sửa `type_text(uid)` thành `type_text(f"@{uid}")` qua `input text` thô nếu không qua `AdbKeyboard` broadcast Base64.
+- **Kỷ luật điều tra 0 lượt (Chống suy đoán mò):**
+  * BƯỚC 1: Kiểm tra Dual Gate: `video_count >= 10` và `age >= 30` không? Nếu không -> `budget = 0` là hành vi đúng.
+  * BƯỚC 2: Kiểm tra thời lượng chạy follow hook trong `log.jsonl`:
+    - Dưới 10s: Thoát do budget = 0 hoặc cooldown.
+    - ~70-100s: Đã vào Mode 2 cuộn 25 lần chạm trần `idle_scrolls >= 25`.
+    - ~3-5 phút: Bấm follow thật và bị nhả (`FOLLOW_FAILED`) sau quy trình xem video + reload.
