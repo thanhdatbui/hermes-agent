@@ -103,6 +103,8 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
 - **Misleading old name:** `haiku_worker.py` implied "Haiku only", causing bypasses for Sonnet tasks. `claude_worker.py` is model-agnostic and role-based.
 - **Stale quota cache:** Refresh via `claude /usage` or by injecting a fresh sample if >2h stale.
 - **Foreground terminal timeout:** Host guard blocks commands > 60s. Use `--timeout 55` or `background=True` for deep reasoning tasks.
+- **Windows CLI Stdin Pipe Bug (`Input must be provided either through stdin or as a prompt argument`):** When invoking `claude -p` on Windows via `subprocess.run`, piping prompt text exclusively via `stdin` (`input=prompt_input`) without passing a prompt positional argument after `-p` triggers Node.js stream detection failure in Claude CLI, causing `Error: Input must be provided either through stdin or as a prompt argument when using --print` (exit code 1). Always pass the prompt directly as a CLI argument: `claude -p "<prompt>" ...`.
+- **Host Model Catalog & Naming Invariant:** The models configured and active on this host are strictly `claude-haiku-5-5` and `claude-sonnet-5-5`. NEVER dispute these model names or attempt to rename/fallback to legacy strings (e.g. `claude-3-5-haiku` or `claude-3-7-sonnet`). Even if Claude CLI prints a warning (`"claude-haiku-5-5" isn't described by this version's model catalog...`), it executes with exit code 0 and handles the prompt correctly. Disputing this model name is a severe violation.
 
 ---
 
