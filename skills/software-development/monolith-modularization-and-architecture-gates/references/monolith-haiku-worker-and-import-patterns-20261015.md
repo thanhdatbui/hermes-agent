@@ -2,8 +2,8 @@
 
 ## 1. Background
 During the refactoring of two massive farm monoliths:
-1. `D:/Taadaa/Tiktok-video/scripts/download_by_niche.py` (1.936 -> 1.352 lines)
-2. `D:/Taadaa/tiktok-luot nuoi acc/scripts/feed_session_watchdog.py` (2.088 -> 1.761 lines in progress)
+1. `D:/Taadaa/Tiktok-video/scripts/download_by_niche.py` (1.936 -> 1.352 lines, commit acb8e11)
+2. `D:/Taadaa/tiktok-luot nuoi acc/scripts/feed_session_watchdog.py` (2.088 -> 1.373 lines, commit 03e3216, 5 modules: lock, merger, alerts, formatters, parser; 55/55 tests passing)
 
 Key systemic failure patterns and their solutions were identified.
 
