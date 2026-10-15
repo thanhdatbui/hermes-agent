@@ -8,7 +8,7 @@ chốt phiên: Reviewer APPROVED>=85 tự push qua safe_push; user lệnh ép pu
 §
 Kibe(1-80) & Admin(201-280) cào nguồn & media độc lập 100% (cấm trùng video, cấm sync chéo Niche/Hashtag). TT v47.0.3; Switcher dock; AP 40m.
 §
-Worker: Haiku 5.5 CLI (6-15s O(1)), AG CLI dự phòng; cấm delegate_task sửa code/test; Closeout Strike 3 hand-off Claude CLI. Đổi tên farm: ép 25 workers song song; hỏi tiến trình nào trả lời đúng cái đó, cấm lảng việc khác.
+Worker: Haiku 5.5 CLI, AG CLI dự phòng (CẤM AGY làm Reviewer); cấm tự override Quota Guard; cấm delegate_task sửa code; trượt 3 lần Closeout STOP hand-off. Đổi tên farm: ép 25 workers song song; hỏi tiến trình nào trả lời đúng cái đó.
 §
 Vận hành: tự làm dứt điểm đến push remote, cấm than vãn bắt user làm; Telegram: auto-resume, cấm báo láo, cấm văng log/spam batch completion, soạn tin cực ngắn 1 thông điệp tiếng Việt khi xong.
 §
