@@ -64,7 +64,7 @@ cmd.exe /c "node run-next.mjs >> logs\omniroute-stdout.log 2>&1"
 ### Bước 3: Dọn dẹp các file `.bak` cũ giải phóng ổ C
 Chỉ giữ lại file backup gần nhất, xóa bỏ các file `.bak` cũ hơn 7 ngày để chống tràn ổ C. Tuyệt đối loại trừ các file đang hoạt động: `storage.sqlite`, `storage.sqlite-wal`, `storage.sqlite-shm`.
 
-### Bước 4: Lập lịch tự động dọn định kỳ HÀNG NGÀY (Script `cleanup_omniroute_db.py` / `clean_omniroute_safe_chunks.py`)
+### Bước 4: Lập lịch tự động dọn định kỳ HÀNG NGÀY (Script `scripts/clean_omniroute_safe_chunks.py` / `cleanup_omniroute_db.py`)
 Triển khai script chạy qua Cronjob Hermes vào **03:30 sáng HÀNG NGÀY**:
 - **Schedule**: `30 3 * * *` (Tuyệt đối KHÔNG đặt chu kỳ 1 tuần/lần `0 3 * * 0` vì OmniRoute sinh ~100k dòng quota_snapshots/ngày và ~60k dòng audit/ngày, chỉ 3-4 ngày là DB đã phình thêm hơn 1.5GB làm nghẽn Event Loop).
 - **Cronjob ID**: `e61bfd81da93` (`daily-omniroute-db-cleanup`).
