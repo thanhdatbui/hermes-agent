@@ -230,6 +230,7 @@ Chạy script query bảng `provider_connections` trong `C:\Users\Kibe\.omnirout
 - **Giải pháp triệt để:** Đặt file hook khởi động ưu tiên cao nhất `00_Hermes_AutoResume_Hook.vbs` trong thư mục Windows Startup (`AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\`). File này gọi `auto_resume_startup_hook.py` quét SQLite của Hermes trong 60 phút gần nhất ngay khi Windows login, tự động bật `resume_pending = true` cho các session đang dở dang trước khi `Hermes_Gateway.vbs` khởi động.
 
 ### Bẫy 11: Kỷ Luật Cuốn Chiếu 5 Worker & Đóng Sạch Profile GPM
-- **Nguyên tắc:** Chạy batch nạp ChatGPT Web giới hạn tối đa 5 worker song song (`ThreadPoolExecutor(max_workers=5)`), dùng file lock `.lock` chống chạy đè giữa các tick cron 15-20 phút.
+- **Nguyên tắc:** Chạy batch nạp ChatGPT Web giới hạn đúng 5 worker song song (`ThreadPoolExecutor(max_workers=5)`), dùng file lock `.lock` chống chạy đè giữa các tick cron 15-20 phút.
 - **Khối finally bắt buộc:** Trong mọi trường hợp (thành công, timeout, lỗi), bắt buộc gọi GPM API `/profiles/stop/{pid}` kết hợp `psutil` kill sạch tiến trình `gpm_browser_chromium_core.exe` theo `profile_path`, đảm bảo không rò rỉ RAM và không giữ khóa file `Cookies`.
+- **Triển khai Cronjob:** Thiết lập cronjob `cron-auto-feed-chatgpt-pool` chạy chu kỳ `*/15 * * * *`, delivery `local` (ghi log ngầm, không spam Telegram), tự động nạp càn hết kho >600 profile GPM vào pool.
 

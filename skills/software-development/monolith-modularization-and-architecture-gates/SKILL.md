@@ -15,6 +15,7 @@ Use this skill when refactoring monolithic production scripts (> 1.500 lines) in
 
 Reference files:
 - `references/80-20-modular-adequacy-and-excel-invariants-20261015.md`: Kỷ luật 80/20 (điểm dừng modular hóa, tránh over-modularization) & quy trình sửa lỗi Invariant Excel Folder Video.
+- `references/line-budget-dual-copy-and-gate-remediation-20261015.md`: Xử lý kẹt line budget trần cứng, dual-copy text sync parity (scripts vs hermes_cron), binding mismatch ở Step 2 Closeout Gate và chuẩn hợp đồng 5 trường delegate_task EDIT.
 
 ## 1. Core Principles & The Monolith Problem
 

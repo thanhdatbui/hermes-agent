@@ -285,6 +285,28 @@ Trước khi soạn bất kỳ tin nhắn nào cho User:
      - [ ] **Đệm an toàn (Headroom & Chin clearance)**: Cả đỉnh đầu/tóc và cằm đều phải cách đường viền tròn xanh một khoảng an toàn (chin clearance $\ge 20$px), không để viền tròn cắt ngang cằm hay chỏm tóc.
      - [ ] **Không dính phụ đề rác**: Vùng trên đỉnh đầu không được chứa dòng chữ slogan, caption hay logo to choán diện tích.
 
+---
+
+## 14. Cạm Bẫy Up Lại Y Hệt Avatar Cũ & Quy Tắc Trích Xuất Nhân Vật Mới (Sự Cố 15/10/2026 — @sambich012 Máy 49)
+- **Hiện tượng & Bị User mắng chửi gay gắt**:
+  - Khi User gửi ảnh profile hoặc yêu cầu "chuẩn hoá kênh này" / "đổi ava", Coordinator thấy trên đĩa tại `D:/TIKTOK-videonuoinick/<F_out>/avatar.jpg` đã có sẵn file `avatar.jpg`.
+  - Thay vì trích xuất ảnh mới khác biệt, Coordinator chạy thẳng runner upload file có sẵn đó lên thiết bị.
+  - Kết quả: TikTok nạp lại y hệt bức ảnh đại diện cũ mà kênh đang dùng từ trước. User nổi giận: *"dụd mẹ t ns đổi ava mày đưa y cái ava cũ..."*.
+- **Nguyên nhân cốt lõi**:
+  1. **Hiểu sai ngữ nghĩa "Đổi avatar"**: Khi User yêu cầu đổi avatar hoặc chuẩn hoá kênh, mục tiêu là thay diện mạo mới cho kênh. File `avatar.jpg` tồn tại sẵn trong folder thường chính là avatar cũ từng up từ các phiên trước.
+  2. **Thiếu bước so khớp sai khác (Visual/Diff Check)**: Không so sánh ảnh trong folder với avatar đang hiển thị trên TikTok profile của máy/ảnh User gửi.
+- **Quy tắc bắt buộc khi thực hiện "Đổi Avatar"**:
+  1. **BẮT BUỘC TRÍCH XUẤT NHÂN VẬT/FRAME MỚI**: Luôn trích xuất khuôn mặt nhân vật từ các video `.mp4` khác trong `D:/video goc/<F_src>` (hoặc từ `.avatar_work/representative_frames/`).
+  2. **Loại trừ tuyệt đối frame trùng avatar cũ**:
+     - So sánh trực quan hoặc tính sai khác với avatar hiện tại của kênh.
+     - Nếu ứng viên trùng khớp biểu cảm/quần áo/góc chụp với avatar hiện tại: LOẠI BỎ NGAY, chọn video khác (ví dụ: đang dùng frame video 1 thì chuyển sang video 10, 20...).
+  3. **Ghi đè đồng bộ 3 kho trước khi chạy runner**:
+     - `D:/TIKTOK-videonuoinick/<F_out>/avatar.jpg`
+     - `D:/video goc/<F_src>/avatar.jpg`
+     - `D:/video goc/<F_out>/avatar.jpg` (nếu có)
+  4. **Tạo marker vật lý `.manual_avatar_locked`**:
+     - Tạo file marker `.manual_avatar_locked` tại cả 3 folder trên để khóa cứng `is_folder_avatar_protected` = `True` ngay lập tức, ngăn ngừa mọi cron/script quét hàng loạt ghi đè.
+
 
 
 
