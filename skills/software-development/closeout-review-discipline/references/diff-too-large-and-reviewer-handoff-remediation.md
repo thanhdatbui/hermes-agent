@@ -52,3 +52,14 @@
 - **Nhất quán Microsecond trong hàm Time Buffer:**
   - Khi triển khai logic capping cuối ngày (`end_of_day = 23:59:59`), tuyệt đối tránh đặt `microsecond=999999` lúc so sánh nhưng lúc format lại ép về `microsecond=0`. Reviewer sẽ bắt lỗi off-by-1-microsecond không nhất quán.
   - Luôn thống nhất `dt.replace(hour=23, minute=59, second=59, microsecond=0)` cho cả điều kiện kẹp trần và kết quả trả về.
+
+## 7. Cấm Cosmetic Reformatting để Lách Line Budget & Bắt Buộc Test Trực Tiếp Cho Logic Fix
+- **Chống Cosmetic Reformatting:**
+  - Tuyệt đối CẤM nén nhiều imports lên 1 dòng (`import os, sys, subprocess...`) hoặc gộp các khối `with / if` thành 1 dòng để lách line budget (ví dụ <= 1450 dòng). Sol Auditor sẽ coi đây là hành vi trốn tránh / code smell, vi phạm PEP 8 và trừ thẳng 15-20 điểm Architecture & Safety.
+  - Cách xử lý line budget chuẩn: Tách các hàm helper không cốt lõi hoặc xóa các docstring/comments dư thừa, giữ nguyên cấu trúc PEP 8 dễ đọc.
+- **Bắt buộc Unit Test trực tiếp cho Logic Fix:**
+  - Khi sửa bug (ví dụ `negative minutes clamping`, `parse_reconcile_iso_dt` giữ microsecond), KHÔNG ĐƯỢC chỉ trông chờ vào test cũ pass ngầm. Bắt buộc viết test case trực tiếp assert riêng cho logic mới (ví dụ assert clamp về `00:00:00`, assert microsecond preserved, assert `minutes==0` suppress telemetry log).
+  - Thiếu test trực tiếp cho code diff mới = Reviewer đánh rớt ngay vì coi là "test nông, không chứng minh được tính đúng đắn của logic mới".
+- **Sự Cố Watchdog Cronjob Đứt Gãy Khi Chạy Từ AppData:**
+  - Khi script watchdog chạy qua Hermes cron (`%LOCALAPPDATA%\hermes\scripts\<script>.py`), `sys.path[0]` là thư mục AppData. Nếu script trong repo được chia nhỏ thành package con (`scripts/watchdog/`), bản copy ở AppData sẽ văng `ModuleNotFoundError: No module named 'watchdog'`.
+  - Quy tắc: Cấu hình cronjob trỏ thẳng tới file script gốc trong repo (`D:/Taadaa/tiktok-luot nuoi acc/scripts/<script>.py`) hoặc bắt buộc có đoạn boilerplate nạp `_candidate_dirs` vào `sys.path` trước mọi import nội bộ.
