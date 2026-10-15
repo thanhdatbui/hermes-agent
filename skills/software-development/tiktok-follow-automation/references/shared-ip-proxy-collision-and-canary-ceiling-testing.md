@@ -43,6 +43,11 @@ Khảo sát từ 10.677 lượt follow và 389 hồ sơ lỗi state trên hệ t
   2. **Safe-skip máy anh em và row sau:** Khi Máy B hoặc row sau chuẩn bị chạy (`run_follow.py`), preflight gọi `check_ip_breaker(machine)`. Hàm kiểm tra `status == 'TRIPPED'` và `reset_at > now`. Nếu IP đang trong thời gian cách ly 48h, tự động skip follow với trạng thái `CIRCUIT_BREAKER_SKIPPED` (`failed=False`, `follow_failed=False`), không phạt nick, đồng thời ghi nhận `saved_machines` vào DB.
   3. **Chỉ cấm Follow — Nuôi/Feed vẫn chạy bình thường:** Trong 48h ngắt cầu dao, các nick trên IP đó CHỈ BỊ CHẶN BẤM FOLLOW. Toàn bộ tiến trình nuôi/lướt feed dưỡng sinh vẫn chạy bình thường để "rửa IP" bằng lưu lượng xem video tự nhiên.
   3. **Giám sát trực quan trên Dashboard (:1905):** Hiển thị widget `⚡ Cầu Dao Tự Ngắt IP` và gắn nhãn Proxy Port + Partner Machine (`M28 :5134 (🔗M66)`) trên ma trận.
+     * **BẪY BÁO ĐỎ ẢO DO THIẾU BỘ LỌC HẾT HẠN RESET TRÊN DASHBOARD / API (User Invariant 15/10/2026):**
+       - Bảng `ip_circuit_breaker` trong SQLite (`tiktok_tracker.db`) lưu vết các lần giật cầu dao kèm mốc `reset_at = now + 48h`.
+       - Ở tầng runner (`check_ip_breaker`), hệ thống đối soát `reset_dt > now` nên các cổng hết hạn 48h được tự động mở lại cho máy chạy bình thường.
+       - **Tử huyệt Dashboard:** Trong `follow_health_helper.py`, nếu query chỉ dùng `SELECT ... FROM ip_circuit_breaker ORDER BY tripped_at DESC LIMIT 30` mà thiếu điều kiện `WHERE status = 'TRIPPED' AND reset_at > datetime('now', 'localtime')`, thì khi farm chạy êm không phát sinh lỗi mới, các bản ghi cũ từ nhiều ngày trước (như ngày 10/10) vẫn nằm trong top 30 và bị kéo lên giao diện. Hệ quả: Dashboard báo ảo "30 Proxy Đã Ngắt" và hiển thị thẻ đỏ từ quá khứ dù thực tế proxy đã hết hạn cách ly và chạy bình thường từ lâu.
+       - **Chuẩn hóa truy vấn:** Bắt buộc lọc `WHERE status = 'TRIPPED' AND reset_at > datetime('now', 'localtime')` trong API Dashboard để chỉ hiển thị các proxy đang thực sự bị ngắt tại thời điểm truy cập.
   4. **Báo cáo trong Report Ca Follow Telegram (feed_session_watchdog.py — User Invariant):**
      * Trong mục Follow chéo, BẮT BUỘC gom nhóm cực ngắn (1 dòng) số lượng proxy bị ngắt và nick anh em được bảo vệ (tránh in danh sách cổng dài dòng làm loãng report):
        - Có máy partner được cứu: `⚡ Cầu dao tự ngắt IP (X proxy đã khóa): Khóa cứu Y máy (M<A>, M<B>)`

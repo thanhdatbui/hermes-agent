@@ -28,6 +28,46 @@
   * Pending Queue (machines waiting for next batch).
   * NEVER claim "nhường lịch nuôi" unless verified active feed lock exists.
 
+## 6. Cạm Bẫy Báo Cáo 6H Chạy Trên Cron 5m/15m: Lệch State Key Gây Spam Liên Tục ("Clg report này gửi liên tục spam v")
+- **Hiện tượng sự cố:**
+  - Watchdog chạy theo lịch cron định kỳ cao (mỗi 5 phút `*/5 * * * *` hoặc mỗi 15 phút `*/15 * * * *`).
+  - Hàm kiểm tra khung giờ 6H mở trong 30 phút: `is_6h_window = (now.hour in (0, 6, 12, 18) and now.minute < 30)`.
+  - Trong suốt 30 phút đó, mỗi tick cron (5 phút) đều kích hoạt và bắn báo cáo vào Telegram, gây ra chuỗi spam 6 tin nhắn giống hệt nhau liên tiếp.
+- **Nguyên nhân gốc rễ (Lệch Key State Guard):**
+  - Trong logic chặn trùng (dedup), script kiểm tra:
+    ```python
+    slot_6h = (now.hour // 6) * 6
+    sess_key = f"{now.strftime('%Y-%m-%d')}_{slot_6h:02d}"
+    if not all_done and state.get("last_reported_6h") == sess_key:
+        return
+    ```
+  - Nhưng ở đoạn `save_state` sau khi gửi báo cáo, script lại lưu vào key cũ:
+    ```python
+    state["last_reported_session"] = sess_key
+    state["last_reported_date"] = sess_key
+    # ❌ QUÊN GHI: state["last_reported_6h"] = sess_key
+    ```
+  - Hậu quả: `state.get("last_reported_6h")` vĩnh viễn là `None`. Guard bị vô hiệu hoá hoàn toàn, watchdog bắn lặp mỗi 5 phút cho đến khi hết phút 30.
+- **Quy tắc chuẩn hóa Dedup 6H bắt buộc:**
+  1. Kiểm tra bao quát cả key mới lẫn key kế thừa (fallback):
+     ```python
+     if not all_done and (
+         state.get("last_reported_6h") == sess_key
+         or state.get("last_reported_session") == sess_key
+         or state.get("last_reported_date") == sess_key
+     ):
+         return
+     ```
+  2. Ghi đầy đủ và đồng bộ cả 3 key khi phát báo cáo:
+     ```python
+     state["last_reported_6h"] = sess_key
+     state["last_reported_session"] = sess_key
+     state["last_reported_date"] = sess_key
+     if all_done:
+         state["last_reported_all_done"] = True
+     ```
+  3. BẮT BUỘC viết unit test kiểm chứng idempotency (gọi 2 lần liên tiếp trong cùng window 6H chỉ gửi đúng 1 lần alert duy nhất).
+
 ## 4. Cạm Bẫy Cột Avatar Excel `OK` vs Kích Hoạt Watchdog (`FORCE_UPLOAD`)
 - **Nguyên nhân bỏ sót máy cần đổi avatar:**
   - `post_evening_avatar_watchdog.py` sử dụng `resolve_avatar_pending_machines.py <Tik>` để lập danh sách máy cần upload.
