@@ -194,5 +194,12 @@
    - *Đo lường nội bộ với Thread-Safety (`_METRICS_LOCK`):* Duy trì từ điển `WATCHDOG_METRICS` được bảo vệ bởi khóa `threading.Lock` để đếm chính xác số lần cleanup attempts, successes, và aborted race conditions.
    - *Khử trùng lặp Telemetry & Thống nhất JSON Contract:* Khi đóng Tiểu Vi thất bại, `main()` phát sự kiện tổng hợp `XIAOWEI_CLOSE_FAILED_SUMMARY` mang đầy đủ ngữ cảnh `idle_seconds` và `idle_minutes`, loại bỏ hoàn toàn các thông điệp print thô và tránh phát sinh nhiều event lỗi trùng lặp làm méo mó bộ đếm alert của Farm.
 
+6. **Triết Lý Fail-Closed Tri-State (`True` / `False` / `None`) & Sub-Action Status Binding (16/10/2026):**
+   - *Fail-Closed Tri-State trong Kiểm Tra Daemon:* Khi kiểm tra trạng thái một daemon phụ (như ADB port 5038), nếu truy vấn PowerShell gặp lỗi returncode != 0 hoặc Exception, hàm `is_xiaowei_adb_running()` BẮT BUỘC trả về `None` (trạng thái không xác định), TUYỆT ĐỐI KHÔNG trả về `False`.
+   - *Chống False-Positive Success:* Nếu trả về `False` khi lỗi, biểu thức hậu kiểm sau khi kill `if not is_running():` sẽ bị ngộ nhận thành `True` $\rightarrow$ sinh ra cảnh báo thành công giả (`ADB_CLEANUP_OK`) dù tiến trình vẫn đang chạy ngầm.
+   - *Ràng Buộc Kết Quả Sub-Action vào Trạng Thái Hành Động Cha:* Trong `close_xiaowei()`, kết quả dọn dẹp ADB bắt buộc được gán `adb_cleaned = cleanup_orphan_xiaowei_adb()` và truyền cờ `adb_cleaned=adb_cleaned` vào sự kiện telemetry của hành động cha (`XIAOWEI_CLOSE_OK` / `XIAOWEI_CLOSE_FAILED`).
+   - *Phát Hành Metrics Ra Kênh Telemetry Cấu Trúc:* Trong `main()`, khi dọn dẹp mồ côi thành công, phát sự kiện `WATCHDOG_SUMMARY` mang theo `action="orphan_cleanup"` và `metrics=get_metrics()`. Đồng thời nhúng snapshot metrics vào các sự kiện `XIAOWEI_CLOSE_TRIGGERED` và `XIAOWEI_CLOSE_FAILED_SUMMARY`.
+
+
 
 

@@ -99,4 +99,32 @@ Khi điều khiển giao diện TikTok Android (bản v47.x trên Samsung S7 đ�
 - **CẤM BÁO CANARY NO-OP**: CẤM TUYỆT ĐỐI báo cáo "Đã chạy Canary xong" khi kết quả runner thực chất chỉ là Skipped/No-op (ví dụ: máy test có active account không khớp target username và Switcher không có nick đó -> runner tự lùi ra an toàn trả về `(None, False)`). Trường hợp máy test không đủ điều kiện thi công, Coordinator phải lập tức bốc ngay máy khác có target account sẵn sàng để chạy thực nghiệm đầy đủ đến khi ra ảnh Profile nghiệm thu tên mới thành công.
 - **Quy tắc Chống Báo Cáo Nhầm Trạng Thái**: Khi User hỏi *"Đâu kết quả chạy canary đâu?"*, Coordinator phải thừa nhận trung thực ngay lập tức nếu lượt chạy trước đó chỉ là no-op/skipped, đưa ra bằng chứng thực tế từ máy đủ điều kiện, không được cố thanh minh hay bao biện.
 
+## 9. Cạm Bẫy False-Negative Abort ở Ô Nhập Tên (`NAME_EDIT`) do OCR Méo Dấu & Quy Chuẩn 2 Lớp (2-Tier Verification)
+
+1. **Hiện Tượng Thực Tế**:
+   - Khi gõ tên mới qua `AdbKeyboard` (`ADB_KEYBOARD_INPUT_TEXT` với Base64 chuỗi UTF-8), văn bản đưa vào Android EditText là **chuẩn xác 100%**, và bộ đếm ký tự của TikTok `N/30` trên giao diện hiển thị chính xác độ dài `len(NEW_NAME)`.
+   - Tuy nhiên, trong ô nhập tên TikTok có con trỏ chuột nhấp nháy, chữ màu xám nhạt và font rendering của hệ thống Android khiến công cụ OCR Windows WinRT thường xuyên đọc sai các nguyên âm có dấu tiếng Việt (ví dụ: `Sơn Nấm` đọc thành `Sdn I\läm`, `Tươi Đậu` đọc thành `Tl-fdi DåU`, `Bùi Duy Phương` đọc thành `Bbi Duy Phi-fdng`, `Huy Tít` đọc mất chữ `Tít`...).
+   - Nếu áp dụng ngưỡng so khớp cứng nhắc (`difflib ratio >= 0.70`), script sẽ ném ra lỗi `OCR khong xac nhan o nhap = ...` và tự động bấm "Hủy", khiến hàng chục máy trong batch 25 workers bị abort oan dù đã gõ tên hoàn toàn chính xác!
+
+2. **Quy Chuẩn Kiểm Tra 2 Lớp An Toàn (2-Tier Verification)**:
+   - **Lớp 1 (Ô nhập tên `NAME_EDIT`)**:
+     * Kiểm tra bộ đếm ký tự: `ok_count = (count_match is not None and abs(int(count_match.group(1)) - expected_len) <= 1) or f"{expected_len}/30" in box`.
+     * Kiểm tra text linh hoạt (chống rớt do méo dấu): Chỉ cần bộ đếm `ok_count` khớp chuẩn VÀ tìm thấy ít nhất 1 từ trong tên (`found_word = any(w in norm(" ".join(lines)) or any(difflib.SequenceMatcher(None, norm(l), w).ratio() >= 0.6 for l in lines) for w in words)`) HOẶC `difflib ratio >= 0.45` là BẮT BUỘC bấm "Lưu".
+     ```python
+     words = [norm(w) for w in NEW_NAME.split() if len(w) >= 2]
+     found_word = any(w in norm(" ".join(lines)) or any(difflib.SequenceMatcher(None, norm(l), w).ratio() >= 0.6 for l in lines) for w in words)
+     ratio = difflib.SequenceMatcher(None, norm(" ".join(lines)), NEW_NAME_NORM).ratio()
+     ok_text = (any(is_target(l) for l in lines)
+                or NEW_NAME_NORM in norm(" ".join(lines))
+                or ratio >= 0.45
+                or found_word)
+     if not (ok_text and ok_count):
+         tap(XY_NAME_CANCEL, 2)
+         raise Abort(f"OCR khong xac nhan o nhap = '{NEW_NAME}' ({expected_len}/30) -> Huy, KHONG Luu")
+     ```
+   - **Lớp 2 (Chốt chặn tối cao tại Profile)**:
+     * Sau khi bấm Lưu, máy bắt buộc quay về Profile và OCR đọc lại dòng tên nằm ngay trên `@username`.
+     * Trên Profile, tên được hiển thị bằng font chữ lớn, in đậm, tương phản cao và không có con trỏ nhấp nháy nên OCR đọc cực kỳ chuẩn xác.
+     * Lúc này mới áp dụng ngưỡng so khớp nghiêm ngặt (`difflib ratio >= 0.75` và `is_target_user`) để quyết định `verified=True`.
+
 

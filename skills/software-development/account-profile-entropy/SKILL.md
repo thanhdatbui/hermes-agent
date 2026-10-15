@@ -241,6 +241,7 @@ def generate_account_for_slot(slot, existing_emails=None, max_attempts=300):
 | Canary no-op false pass | Reporting Canary passed when target was skipped/ineligible (verified=False) | BẮT BUỘC chạy Canary trên máy có target asset đến khi ra verified=True và kiểm tra ảnh qua vision |
 | Rigid regex on Switcher OCR title | WinRT OCR reads 'chuydn ddi tai khoan' → regex 'chuyen doi tai khoan' fails → classified UNKNOWN → Back loop | Dùng regex dung sai cao `chuy\w{0,3}n\s*d\w{0,3}i` kết hợp ("tai khoan" / "khoan") và ("chuy" / "switch") |
 | Subprocess timeout <300s on 25 workers | 25 concurrent OCR calls spike host CPU → 35-step runner exceeds 240s → premature SIGTERM | Đặt timeout >= 320s cho subprocess runner trong watchdog ThreadPoolExecutor(max_workers=25) |
+| Rigid text matching in `NAME_EDIT` | WinRT OCR distorts diacritics in low-contrast input box (`Sơn Nấm` -> `Sdn I\läm`, `Tươi Đậu` -> `Tl-fdi DåU`) → ratio <0.70 triggers false-abort | Dùng 2-Tier Verification: ở `NAME_EDIT` chỉ cần counter `N/30` + tìm thấy 1 từ / ratio >=0.45 là Lưu; chốt chặn nghiêm ngặt (ratio >=0.75) nằm ở Profile readback |
 
 ## Verification
 
