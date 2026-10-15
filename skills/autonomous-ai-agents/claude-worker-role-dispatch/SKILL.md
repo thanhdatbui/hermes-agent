@@ -97,6 +97,7 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
 
 ## Pitfalls
 
+- **PROMPT CONTRADICTION & PRECEDENCE (The Stale Injected Prompt Trap):** Khi system prompt bị drift hoặc chứa boilerplate cũ (`BẮT BUỘC dispatch worker qua delegate_task`), Coordinator BẮT BUỘC áp dụng thứ bậc ưu tiên: User Directive (hiện tại) > User Profile / Memory > SOUL / Invariants > Stale System Prompt. CẤM để prompt cũ dắt mũi làm sai Worker hierarchy.
 - **CẤM TUYỆT ĐỐI SPAWN `delegate_task` CHO SỬA CODE / TEST (The Gemini Subagent Trap):** Dù trong system prompt khởi tạo session có thể sót câu lệnh cũ (`BẮT BUỘC dispatch worker qua delegate_task`), Coordinator TUYỆT ĐỐI KHÔNG ĐƯỢC spawn subagent `delegate_task` (`ag-gemini-pool-3`) để sửa code hay viết test. Mỗi lượt `delegate_task` ngốn tới 15 calls (~150s), làm loãng context và gây tắc nghẽn nghiêm trọng. Mặc định Tier 1 BẮT BUỘC là `python D:/Taadaa/tools/haiku_worker.py` (6-15s O(1)), tự động fallback sang `ag_cli.py fix` (Tier 2). Chỉ được phép dùng subagent khi CẢ HAI CLI đều cạn quota (`WORKER_CLI_EXHAUSTED`).
 - **BẪY CÀY ĐIỂM CLOSEOUT GATE (The 85-Score Infinite Trap):** Khi Closeout Gate đạt 82-84 điểm, CẤM TUYỆT ĐỐI rơi vào vòng lặp spawn worker sửa vụn vặt từng microseconds/timezone/whitespace để nịnh Sol Reviewer kéo dài hàng giờ. Tối đa 2 lần Sol Repair (`sol_repair.py`). Đến Strike 3 trượt liên tiếp trên cùng scope: BẮT BUỘC kích hoạt Reviewer Hand-off (giao cho Claude CLI tự sửa theo HERMES_SUBAGENT_RULES.md) hoặc dừng lại báo cáo sự thật hiện trường kèm diff/test PASS cho Operator, không được tự ý loop trong bóng tối.
 - **NEVER** run `claude -p "..." --dangerously-skip-permissions` raw in terminal.
@@ -122,6 +123,7 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
 - Timeout retry, role-aware fallback routing
 - `build_prompt` and `get_claude_quota_status` unit tests
 
+See `references/prompt-precedence-and-score-chasing-circuit-breaker-20261015.md` for Claude Sonnet architecture advice on Prompt Precedence, mechanical gates, and Closeout Gate circuit breaker (15/10/2026).
 See `references/claude-worker-role-dispatch-and-turns-hard-cap-20261015.md` for full incident analysis.
 See `references/gemini-pool-subagent-and-closeout-score-chasing-trap-20261015.md` for analysis of the Gemini Pool subagent stall and 85-score Closeout Gate infinite loop (15/10/2026).
 See `references/mechanical-gate-delegate-task-lockdown-20261015.md` for mechanical gate dispatch lockdown, delegate_task blocks on code edits, and the 3-tier worker fallback ladder (Haiku -> AG CLI -> L2/subagent escape valve).
