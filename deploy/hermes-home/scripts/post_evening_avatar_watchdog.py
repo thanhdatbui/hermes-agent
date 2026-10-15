@@ -949,7 +949,11 @@ def report_final_summary(
     now = now_hcmc()
     slot_6h = (now.hour // 6) * 6
     sess_key = f"{now.strftime('%Y-%m-%d')}_{slot_6h:02d}"
-    if not all_done and state.get("last_reported_6h") == sess_key:
+    if not all_done and (
+        state.get("last_reported_6h") == sess_key
+        or state.get("last_reported_session") == sess_key
+        or state.get("last_reported_date") == sess_key
+    ):
         return
     if all_done and state.get("last_reported_all_done"):
         return
@@ -1005,6 +1009,9 @@ def report_final_summary(
     except Exception as e:
         sys.stderr.write(f"[WATCHDOG] send_farm_alert failed: {e}\n")
 
+    if all_done:
+        state["last_reported_all_done"] = True
+    state["last_reported_6h"] = sess_key
     state["last_reported_session"] = sess_key
     state["last_reported_date"] = sess_key
     save_state(state, state_file=ctx["state_file"])

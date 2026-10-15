@@ -144,6 +144,7 @@ def save_state(today_str: str, details: dict) -> None:
     payload = {
         "last_success_date": today_str if details.get("status") == "success" else None,
         "last_run_at": datetime.now(HCMC).isoformat(),
+        "last_reported_6h": details.get("last_reported_6h"),
         "correlation_id": details.get("correlation_id", CORRELATION_ID),
         "details": details,
     }
@@ -199,7 +200,7 @@ def run_night_batch(dry_run: bool = False) -> tuple[int, str]:
         "--workbook-sheet", "Tài Khoản",
         "--adb-path", str(ADB_PATH),
         "--live",
-        "--max-workers", "40",
+        "--max-workers", "15",
     ]
     env_kibe = dict(os.environ)
     env_kibe["PYTHONPATH"] = f"{TIKTOK_2FA_REPO_DIR / 'python_runner'}{os.pathsep}{AUTOMATION_CORE_SRC}"
@@ -232,7 +233,8 @@ def run_night_batch(dry_run: bool = False) -> tuple[int, str]:
         f"Set-Location '{_ps_quote(ADMIN_REPO_DIR)}'\n"
         f"$wb = '{_ps_quote(ADMIN_WORKBOOK)}'\n"
         f"& '{_ps_quote(ADMIN_PYTHON)}' python_runner/run_batch_live_2fa.py "
-        "--workbook-path $wb --workbook-sheet 'Tài Khoản' --max-workers 40 --live\n"
+        "--workbook-path $wb --workbook-sheet 'Tài Khoản' --max-workers 15 --live\n"
+        "exit $LASTEXITCODE\n"
     )
     b64_ps = base64.b64encode(ps_admin_script.encode("utf-16le")).decode("ascii")
     cmd_admin = [
@@ -300,7 +302,18 @@ def main() -> int:
     end_dt = datetime.now(HCMC)
     duration_min = max(1, int((end_dt - start_dt).total_seconds() // 60))
 
+    slot_6h = (now.hour // 6) * 6
+    sess_key = f"{today_str}_{slot_6h:02d}"
     is_6h_window = (now.hour in (0, 6, 12, 18) and now.minute < 30) or args.force or args.dry_run
+
+    state_prev = {}
+    if STATE_FILE.is_file():
+        try:
+            state_prev = json.loads(STATE_FILE.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    already_reported_6h = (state_prev.get("last_reported_6h") == sess_key)
+    should_report = (is_6h_window and not already_reported_6h) or args.force or args.dry_run
     header = f"⏰ [FARM REPORT][TOÀN FARM] BÁO CÁO 2FA TIKTOK ĐỊNH KỲ (6H):" if code in ACCEPTABLE_RETURN_CODES else f"⚠️ [FARM REPORT][TOÀN FARM] BÁO CÁO 2FA TIKTOK - LỖI RUNNER (Code {code}):"
     report_lines = [
         header,
@@ -337,7 +350,7 @@ def main() -> int:
             report_lines.append(f"- Bỏ qua an toàn: {skip} máy (đã có 2FA / chờ lượt)")
         report_lines.append(f"- Lỗi ({fail})" if fail > 0 else "- Lỗi: 0")
 
-    if is_6h_window:
+    if should_report:
         print("\n".join(report_lines))
     else:
         logger.info("Batch 2FA hoàn tất im lặng ngoài mốc 6H (suc=%d, fail=%d, skip=%d)", suc, fail, skip)
@@ -356,6 +369,7 @@ def main() -> int:
             "success_count": suc,
             "failed_count": fail,
             "skip_count": skip,
+            "last_reported_6h": sess_key if should_report else state_prev.get("last_reported_6h"),
             "failure_reason": failure_reason,
             "clusters": cluster_details,
         })
@@ -365,7 +379,6 @@ def main() -> int:
         return code if code != 0 else 1
     if fail > 0:
         logger.warning("Ca 2FA ban đêm hoàn tất nhưng có %d máy lỗi", fail)
-        return 1
     return 0
 
 
