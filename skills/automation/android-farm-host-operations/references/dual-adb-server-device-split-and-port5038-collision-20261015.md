@@ -126,7 +126,42 @@
   * **Chấp nhận tính chất tạm thời của port 5038:** Khi người dùng mở Tiểu Vi lên soi màn hình farm, port 5038 sẽ sinh ra và tạm thời chia sẻ thiết bị. Người dùng vẫn xem đủ 80 máy vì Tiểu Vi kết nối đồng thời cả 5037 và 5038.
   * **Giải pháp bền vững:** Không can thiệp sửa đổi `xiaowei.exe`, mà quản lý chặt vòng đời (Lifecycle Governance):
     1. Khi tắt Tiểu Vi: Tree Kill `/T` dọn sạch con cháu `adb.exe -P 5038`.
-    2. Khi máy nhàn rỗi: Watchdog định kỳ 5 phút quét dập tắt bất kỳ tiến trình mồ côi `adb -P 5038` nào (`cleanup_orphan_xiaowei_adb()`).
+    2. Khi máy nhàn rỗi: Watchdog định kỳ 2 phút quét dập tắt bất kỳ tiến trình mồ côi `adb -P 5038` nào (`cleanup_orphan_xiaowei_adb()`).
     3. Trong giờ chạy ca nuôi acc: Tuyệt đối không mở Tiểu Vi, giữ trọn 100% thiết bị cho cổng chuẩn 5037.
+
+---
+
+## 7. Bẫy Đổi Cổng Ngược (Anti-Pattern: Chuyển Toàn Bộ Script Sang Port 5038)
+- **Câu hỏi từ vận hành:** *"Nếu Tiểu Vi cứ khăng khăng dùng port 5038, tại sao chúng ta không chuyển toàn bộ runner và script của farm sang chạy port 5038 luôn?"*
+- **3 Tử huyệt kỹ thuật chứng minh chuyển sang 5038 VẪN SẼ LỖI Y NHƯ CŨ:**
+  1. **Tử huyệt WinUSB Exclusive Locking — Dàn máy VẪN BỊ CHẺ ĐÔI:**
+     - Bản chất WinUSB không cho phép 2 daemon cùng giữ chung thiết bị; daemon nào bắt tay trước thì giữ máy đó.
+     - Thực nghiệm tại chỗ trên Kibe khi cả 2 daemon chạy: Cổng 5037 giữ 54 máy, cổng 5038 chỉ giữ 24 máy (overlap = 0).
+     - Nếu chuyển script sang 5038: Script chỉ giao tiếp được với 24 máy, còn 54 máy kia (đang nằm ở 5037) sẽ lập tức văng lỗi `device not found` / timeout hàng loạt. Đổi cổng chỉ là dời lỗi từ nhóm máy này sang nhóm máy khác!
+  2. **Cổng 5037 là chuẩn mặc định toàn cầu của Android SDK:**
+     - Cổng 5037 được hardcode làm default trong toàn bộ thư viện Android, ADB binary, uiautomator2, adbutils.
+     - Bất cứ khi nào có lệnh gọi ADB không kèm `-P 5038` (như healthcheck, Cron watchdog, tool inspect), ADB client sẽ **tự động spawn một daemon port 5037 ngay lập tức**, tiếp tục giằng xé thiết bị với 5038.
+  3. **Rủi ro phá vỡ toàn bộ hệ sinh thái Farm:**
+     - Hơn 50 cronjob, Task Scheduler (`Taadaa_ADB_User_Remote`), atx-agent (port 7912), test suites, monitoring đều neo cố định ở port 5037.
+  * **Kết luận:** Cổng 5037 BẮT BUỘC là trục chính độc quyền duy nhất của Farm.
+
+---
+
+## 8. Hệ Thống Phòng Thủ 3 Lớp Vĩnh Viễn (Defense-in-Depth v2.0 - 16/10/2026)
+Để triệt tiêu hoàn toàn khả năng lọt tiến trình 5038 mồ côi làm ảnh hưởng ca nuôi acc, kiến trúc phòng thủ đã được nâng cấp lên 3 lớp:
+1. **Lớp 1 — Rút ngắn chu kỳ quét Watchdog xuống 2 phút (`*/2 * * * *`):**
+   - Áp dụng đồng bộ cho cả `xiaowei-idle-auto-close-kibe` (Job `0a4a81f4f164`) và `xiaowei-idle-auto-close-admin` (Job `164300fc5547`).
+   - Ngay sau khi người dùng tắt cửa sổ Tiểu Vi, tối đa trong vòng 2 phút, watchdog tự động phát hiện `not is_xiaowei_running()` và kích hoạt dọn dẹp port 5038.
+2. **Lớp 2 — Cơ chế trảm tiến trình 2 tầng (Dual-Strike Cleanup):**
+   - Trong `xiaowei_idle_auto_close_watchdog.py`:
+     * *Tầng 1 (Graceful):* Gửi lệnh chuẩn `adb -P 5038 kill-server`.
+     * *Tầng 2 (Hard WMI/CIM Terminate):* Nếu server 5038 bị treo socket USB không phản hồi, script kích hoạt lệnh PowerShell CIM:
+       `Get-CimInstance Win32_Process -Filter "Name = 'adb.exe'" | Where-Object { $_.CommandLine -match '5038' } | Invoke-CimMethod -MethodName Terminate`
+       Ép Windows Kernel hạ sát ngay lập tức PID 5038, giải phóng 100% USB endpoint.
+3. **Lớp 3 — Chốt chặn Preflight ngay trước khi Shift Runner khởi động (`tiktok_runner.py`):**
+   - Ngay trước khi `tiktok_runner.py` phát lệnh chạy phiên nuôi acc (cho cả Kibe Local và Admin Remote):
+     * Với Kibe: Bắn lệnh preflight kill server 5038 local.
+     * Với Admin: Gọi qua `admin_ssh.py` bắn lệnh kill server 5038 remote.
+   - Bảo đảm dù người dùng có vừa tắt Tiểu Vi 5 giây trước khi ca nuôi bắt đầu thì cổng 5038 cũng bị quét sạch trước khi điện thoại đầu tiên nhận lệnh.
 
 
