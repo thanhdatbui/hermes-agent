@@ -115,3 +115,4 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
 - `build_prompt` and `get_claude_quota_status` unit tests
 
 See `references/claude-worker-role-dispatch-and-turns-hard-cap-20261015.md` for full incident analysis.
+See `references/mechanical-gate-delegate-task-lockdown-20261015.md` for mechanical gate dispatch lockdown, delegate_task blocks on code edits, and the 3-tier worker fallback ladder (Haiku -> AG CLI -> L2/subagent escape valve).
