@@ -10,6 +10,6 @@ Kibe(1-80) & Admin(201-280) cào nguồn & media độc lập 100% (cấm trùng
 §
 Worker: Haiku 5.5 CLI (6-15s O(1)), AG CLI dự phòng; đo chất lượng code thật. Advisor Sol: cấm gửi prompt cụt lủn, bắt buộc Briefing Pack (3-5 turns) + field context.
 §
-Telegram: auto-resume turn dở; cấm báo láo (soi mắt face ava); cấm văng log/lẩm bẩm debug ra chat. Soạn tin ngắn gọn. Ghim: pin_top_videos.py.
+Giao tiếp & Vận hành: 80/20 triệt để (tập trung 20% cốt lõi, bỏ rườm rà). Telegram: auto-resume; cấm báo láo (soi mắt ava); cấm văng log/lẩm bẩm chat. Soạn tin cực ngắn. Ghim: pin_top_videos.py.
 §
 Reboot 3 ca (05:20, 11:20, 17:20), né khi ca đang chạy; user lệnh là làm ngay cấm hỏi lại; sentinel chia theo ca.

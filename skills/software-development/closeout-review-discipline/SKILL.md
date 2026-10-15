@@ -14,7 +14,8 @@ metadata:
 > **Canonical policy precedence:** For orchestration and closeout precedence, follow `D:\Taadaa\HERMES_SUBAGENT_RULES.md` marker `CANONICAL-POLICY-PRECEDENCE-2026-10-05`; this skill points to it and does not redefine it.
 
 References:
-- `references/reviewer-model-characteristics-sol-vs-opus.md` — So sánh Sol High (thực dụng, 79-88đ) vs Opus Pool (over-engineering học thuật, 62-72đ); kỷ luật Git Pre-Push Hook chặn đứng git push khi gate <85đ.
+- `references/metrics-lock-lookbehind-and-closeout-gate-truncation.md` — **[MỚI 15/10/2026]** Metrics lock snapshot test, lookbehind regex, và bẫy truncation diff 30KB.
+- `references/reviewer-model-characteristics-sol-vs-opus.md` — So sánh Sol High vs Opus Pool; Pre-Push Hook <85đ.
 - `references/safe-push-git-transport-unmask.md` — **[MỚI 14/10/2026]** Tích hợp cờ `--push` vào `closeout_gate.py`: Tự động unmask qua `safe_push.py` push remote khi `APPROVED >= 85`.
 - `references/closeout-gate-rejection-remediation.md` — **[MỚI 12/10/2026]** Kỷ luật xử lý khi closeout gate bị REJECTED (<85đ): Cấm dừng lại ở L3 xin đóng phiên, bám sát finding sửa đến cùng, quy trình Strike 3 hand-off Claude CLI.
 - `references/closeout-gate-files-dirty-target-strictness.md` — Quy tắc bắt buộc khi dùng `--files` trong `closeout_gate.py`: CHỈ truyền file có working-tree diff, tránh lỗi 'targets without working-tree changes'.
