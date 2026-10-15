@@ -15,7 +15,9 @@
 | **Cuộn Header Hồ sơ** | `(540, 1100)` → `(540, 600)` | Vuốt nhẹ để ghim username lên sticky header |
 | **Ghim ID / Mở Switcher** | `(500, 140)` | Tap username trên header mở sheet 'Chuyển đổi tài khoản' |
 | **Cuộn Sheet Switcher** | `(540, 1500)` → `(540, 900)` | Khi máy có 8 acc, cuộn lên để thấy 4 acc phía dưới |
-| **Nút Sửa hồ sơ** | `(72, 148)` hoặc `find_box("sua ho s")` | Icon cây bút top-left hoặc nút chữ 'Sửa hồ sơ' |
+| **Nút Sửa hồ sơ** | `find_box("sua ho s")` hoặc `(360, 730)` | Nút chữ nhật 'Sửa hồ sơ' giữa màn hình (dưới Follower). CẤM tap `(72, 148)`! |
+| **BẪY TỬ HUYỆT (75, 150)** | `CẤM TAP (75, 150)` | Trên TikTok v47.x, góc trên trái là icon "Tìm bạn bè". Tap vào đây sẽ mở màn Search và gõ nhầm tên vào ô tìm kiếm ("Không tìm thấy kết quả")! |
+| **Thao tác Quay lại (Back)** | `input keyevent 4` | Luôn dùng KEYCODE_BACK phần cứng để lùi trang, TUYỆT ĐỐI CẤM tap tọa độ góc trên trái! |
 | **Hàng 'Tên' (Nickname)** | `(600, 752)` | Hàng đầu tiên trong 'Sửa hồ sơ', nằm trên 'Tên người dùng' |
 | **Nút Xóa tên cũ (X)** | `(960, 576)` | Nút clear trong ô nhập Tên |
 | **Nút 'Lưu' (Save)** | `(980, 140)` | Góc trên bên phải header màn sửa Tên |
@@ -98,3 +100,15 @@
       # Thực thi flow an toàn, tự động restore default IME khi hoàn tất
   ```
 - Tránh xung đột tuyệt đối với các cron nuôi acc (feed/follow/upload) đang chạy trên farm.
+
+---
+
+## 6. Rolling Rename Watchdog Architecture (25 Workers & Fail-Safe)
+
+- **Độ song song:** Watchdog chạy `MAX_WORKERS = 25` (`ThreadPoolExecutor`) gom tối đa 25 máy rảnh khác nhau cùng lúc giữa các ca nuôi.
+- **Fail-Safe chống đơ ADB Transport:**
+  * Lệnh gọi ADB bắt buộc có `timeout=15` bọc `try...except Exception: return ""` để khi 1 máy bị đơ kết nối USB không làm treo toàn bộ batch.
+  * Vòng lặp `as_completed` bọc `try...except` cho từng future (`fut.result()`).
+- **Cronjob Hermes Delivery:** Tác vụ chạy 25 workers tốn >60s bắt buộc cấu hình `deliver: 'local'` trên cronjob. CẤM để `origin` vì LLM gateway sẽ timeout sau 60s và bắn tin nhắn báo lỗi giả về Telegram.
+- **Xử lý Switcher tự động:** Khi vào Profile, nếu active account khác target, mở Switcher chuyển đúng tài khoản. Nếu không có trong Switcher, bấm `keyevent 4` thoát ra an toàn và trả về `(None, False)`.
+
