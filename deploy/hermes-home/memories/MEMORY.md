@@ -1,6 +1,6 @@
 Chu kỳ 4d: Parity 96h (N1 lẻ, N2 chẵn), N3(R7,8), N4(dưỡng 0fl+up). Starve 108h. CẤM xóa cooldown. Dưỡng động: healing_selector.py; S2 bám S1; schema 1.0. 3 ca (6,12,18h). Đêm 21h30-5h15 (né cache 4h) cho 2FA/Ava; báo 6h; cấm báo ảo.
 §
-Followed=0 cấm PASS. Admin SSH: dùng D:/Taadaa/tools/admin_ssh.py (--powershell/--json); CẤM thoái thác khi Guard block raw ssh. Auto-resume reboot: locks==0.
+Auto-resume: MAX(msg ts)<=60m (né bẫy routing updated_at); locks==0.
 §
 Worker: haiku_worker.py O(1) mac dinh (6-15s); fallback ag_cli.py; CAM omni-worker tru khi user lenh. Strike 3 Handoff 429 fallback ag_cli.py.
 §
