@@ -176,3 +176,19 @@ Chạy script query bảng `provider_connections` trong `C:\Users\Kibe\.omnirout
 - **Chống nói suông:** Khi nhận nhiệm vụ rà soát hoặc nạp pool, CẤM emit câu chat text "em đang cho rà soát..." rồi dừng lại khiến task bị treo chết suốt hàng chục phút qua cữ reboot máy. Tác vụ dài BẮT BUỘC phải dispatch ngay qua `terminal(background=True, notify_on_complete=True)` hoặc subagent.
 - **Kỷ luật bảo vệ Claude Quota:** Khi Claude CLI chạm ngưỡng an toàn 85% quota 5h (`CLAUDE_QUOTA_GUARD_BLOCKED`), hệ thống phải lập tức chuyển giao quyền can thiệp sang worker dự phòng **Antigravity CLI** (`python D:/Taadaa/tools/ag_cli.py fix ...` qua profile `acc_01..acc_07`, model `gemini-3.8-flash-high`), không được dừng im hay xin phép lòng vòng.
 
+### Bẫy 3: Quét Trực Tiếp SQLite Cookies GPM Thay Vì Khởi Động Mù Hàng Loạt Trình Duyệt
+- Khởi động từng profile GPM qua API để kiểm tra trạng thái đăng nhập rất chậm (mỗi profile mất 15-20s), dễ dính bẫy Google Sign-in đòi mật khẩu và làm cháy proxy.
+- **Kỹ thuật quét O(1) siêu tốc:** Đọc trực tiếp file SQLite Cookies tại:
+  `C:/Users/Kibe/AppData/Local/Programs/GPMLogin/profile/{ProfilePath}/Default/Network/Cookies`
+  với mode read-only an toàn: `sqlite3.connect('file:' + path + '?mode=ro&immutable=1', uri=True)`.
+- Query kiểm tra:
+  ```sql
+  SELECT count(*) FROM cookies 
+  WHERE name LIKE '%session-token%' 
+    AND (host_key LIKE '%chatgpt%' OR host_key LIKE '%openai%');
+  ```
+- **Xác định cổng Proxy từ Tên Profile:** Cổng proxy của GPM luôn nằm ở cụm số cuối cùng trong tên profile:
+  `port = re.findall(r'\b(51\d{2}|100\d{2})\b', name)[-1]`
+  (Tránh parse nhầm các con số trong địa chỉ email như `1961`, `2011`, `8792`).
+  Phương pháp này giúp quét 1.400 profile chỉ trong 3 giây, lọc ra ngay lập tức các profile đang có sẵn phiên đăng nhập active cho từng port.
+
