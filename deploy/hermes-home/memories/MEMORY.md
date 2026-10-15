@@ -1,14 +1,14 @@
-Chu kỳ 4d: Parity 96h (N1 lẻ, N2 chẵn), N3(R7,8), N4(dưỡng 0fl+up). Starve 108h. CẤM xóa cooldown. Dưỡng động: healing_selector.py; S2 bám S1. 3 ca (6,12,18h). Đêm 21h30-5h15 (né cache 4h) cho 2FA/Ava; báo 6h; cấm báo ảo.
+Chu kỳ 4d: Parity 96h (N1 lẻ, N2 chẵn), N3(R7,8), N4(dưỡng 0fl+up). Starve 108h. CẤM xóa cooldown. Dưỡng: healing_selector.py; S2 bám S1. 3 ca (6,12,18h). Đêm 21h30-5h15 né cache 4h cho 2FA/Ava; báo 6h cấm báo ảo.
 §
-Auto-resume: Hook 00_Startup; locks==0. Closeout: diff<15KB (TRUNCATION_MANIFEST khi test>120 dòng); Sol 5 trụ cột (Metrics, Real Integration, Concurrency, Strict Assertion, Arch); Strike 3 trượt 3 lần giao Claude CLI tự sửa cấm dừng hỏi; safe_push; cấm --no-verify. OmniRoute 20129: npm run build.
+Auto-resume: Hook 00_Startup; locks==0. Closeout: diff<20.8KB (chống L4 truncation); Sol 5 trụ cột; Strike 3 trượt 3 lần giao Claude CLI tự sửa cấm dừng hỏi; safe_push; cấm --no-verify. OmniRoute 20129: npm run build.
 §
 TikTok Follow: (máy,row) độc lập; Quota 10-15/ca; Hồi phục 1&2; clean>=2 tốt nghiệp; Canary +10%; like 80%. Path B ko commit; slot (folder-1)%8+1. Mode 2: anchor >= 150 fl; cuộn sâu. Cron: follow_watchdog.
 §
 Hotmail: CẤM mail cá nhân; sinh @fviainboxes.com đọc OTP API. Write-Through: ghi ngay Excel Cột 3,4,5 & G farm. CDP đóng ko mất cookie. Dual-farm ~1280 acc.
 §
-Proxy: 1-1 PROXYgandienthoai.xlsx. Chuẩn hóa 3 món (Ava-Hashtag-Pin): Đổi ava trích frame mới, cấm up lại ảnh cũ; runner exit 0 vẫn có thể SKIPPED_LOCKED (check summary.csv); lock sửa tay manual_hashtag/avatar+marker. TT v47.0.3 monkey launcher. Pin >=1000 view. Soi mắt trước gửi.
+Proxy: 1-1 PROXYgandienthoai.xlsx. Chuẩn hóa 3 món (Ava-Hashtag-Pin): Ava trích frame mới, cấm up lại ảnh cũ; runner exit 0 vẫn có thể SKIPPED_LOCKED (check summary.csv); lock sửa tay manual_hashtag/avatar+marker. TT v47.0.3 monkey. Pin >=1000 view. Soi mắt trước gửi.
 §
-Farm: haiku_worker O(1) 6-15s (ag_cli dự phòng). Tiểu Vi: hardcode adb 5038 xẻ WinUSB; watchdog 2p dọn 5038; cấm đổi script sang 5038. S7: recover_stuck_s7; max_reboots=2. Rename: 25 wkr; cấm tap (75,150); State-Machine OCR+readback; cron nặng deliver=local.
+Farm: haiku_worker O(1) 6-15s (ag_cli dự phòng). Tiểu Vi: adb 5038 xẻ WinUSB; watchdog 2p dọn 5038; cấm sửa binary xiaowei; cấm đổi hệ thống sang 5038; PEP 257 (shebang d1 rồi docstring rồi __future__); dry-run WATCHDOG_DRY_RUN; lock cache riêng lock metric. S7: recover_stuck_s7; max_reboots=2. Rename: 25 wkr; cấm tap (75,150); OCR+readback; cron deliver=local.
 §
 GPM: Kibe chạy, stop API kèm _kill_gpm_chrome; max 5 wkr; cron-auto-feed nạp cuốn chiếu pool chatgpt-web 15p/lần (Hotmail ưu tiên trước). Hotmail: qua HOTMAIL_LOGIN giữ cookie; MS landing check is_auth; ép mail @fviainboxes; ghi Excel (C5,4,3+G).
 §
