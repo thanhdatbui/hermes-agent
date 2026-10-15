@@ -23,11 +23,11 @@
 - Budget chuẩn: 10 - 15 follows/phiên (hạ từ 10-20 xuống 10-15 theo quyết định vận hành 12/10/2026, ngày 2 phiên tích lũy 20 - 30 follow).
 - Tuyệt đối không tự ý hạ trần vô lý của nhóm này làm giảm hiệu suất chung của farm.
 
-### Nhóm 2: Tân Binh & Nick Có Tiền Án (Bắt buộc đi qua lộ trình 2 nấc accelerated: 2 ca/stage)
-- **Quy tắc Tân Binh (USER INVARIANT):** Nick mới đủ Dual Gate (`age >= 21d`, `video >= 6`) nhưng chưa từng đi follow hoặc chưa tích lũy đủ follow an toàn (`< 15` follows, chưa có cờ `graduated`) đi dò với Quota 1–2 lượt. Bị nhả chỉ phạt cá nhân (tăng fail_streak, cooldown 3-14 ngày dưỡng sinh), **CẤM TUYỆT ĐỐI GIẬT CẦU DAO IP** (xem chi tiết `references/tier-aware-circuit-breaker-and-accelerated-probation.md`).
-- **Quy tắc Nick Ra Tù:** Nick vừa hết hạn cooldown quay lại thử thách với Quota 1–2 lượt.
+### Nhóm 2: Tân Binh & Nick Có Tiền Án (Lộ trình rút gọn thích ứng chu kỳ 4 ngày: 1 ca sạch / nấc)
+- **Quy tắc Tân Binh (USER INVARIANT):** Nick mới đủ Dual Gate (`age >= 21d`, `video >= 6`) nhưng chưa từng đi follow hoặc chưa tích lũy đủ follow an toàn (`< 15` follows, chưa có cờ `graduated`) đi dò với Quota 2–4 lượt. Bị nhả chỉ phạt cá nhân (tăng fail_streak, cooldown 3-14 ngày dưỡng sinh), **CẤM TUYỆT ĐỐI GIẬT CẦU DAO IP** (xem chi tiết `references/tier-aware-circuit-breaker-and-accelerated-probation.md`).
+- **Quy tắc Nick Ra Tù:** Nick vừa hết hạn cooldown quay lại thử thách với Quota 2–4 lượt.
 
-Áp dụng lộ trình 2 nấc thang tính theo số ca/ngày chạy sạch (`probation_clean_days` - 2 ca sạch / nấc; mỗi stage chỉ đúng 2 lần chạy hoàn thành là thăng cấp):
+Áp dụng lộ trình 2 nấc thang tính theo số ca/phiên chạy sạch (`probation_clean_days` - ĐÚNG 1 CA SẠCH / NẤC; mỗi stage chỉ đúng 1 lần chạy sạch hoàn thành là thăng cấp):
 
 * **HỒI PHỤC 1 (Probation Tier 1 - Tân binh khởi động & Nick mới ra tù, `clean_days < 1`):**
   - **Quota:** 2 – 4 follows / ca (đồng nhất cho cả tân binh và nick ra tù; điều chỉnh tối ưu theo chu kỳ 4 ngày).
@@ -108,14 +108,14 @@
   - **Link trực tiếp đến profile TikTok (USER INVARIANT):** Trên mỗi thẻ nick, `@username` BẮT BUỘC phải là link `<a>` (`href="https://www.tiktok.com/@username" target="_blank"`) kèm icon `↗` và `📈` để người dùng chạm vào là bung ngay ra trang cá nhân của nick đó trên TikTok, giống như ngoài Dashboard chính. Tuyệt đối cấm để username dạng text tĩnh không click được.
   - Tích hợp ô tìm kiếm nhanh (theo số máy `m1`, `18` hoặc `username`).
   - **Deduplication:** Tự động lọc bỏ các file state legacy không có `_row_` (như `follow_state_1.json`) để không bị duplicate dòng hiển thị trên Dashboard.
-  - **Quy chuẩn Adaptive Recovery Badge (USER INVARIANT - 2 Ca / Stage):**
+  - **Quy chuẩn Adaptive Recovery Badge (USER INVARIANT - 1 Ca / Stage theo chu kỳ 4 ngày):**
     * Thẻ hiển thị huy hiệu `recBadge`:
-      - `⚡ Fast-track (1 ca)`: Cho nick điểm tín nhiệm cao ($\ge 60$đ).
-      - `🛡️ Thận trọng (2 ca)`: Cho nick điểm tín nhiệm thấp ($< 60$đ) hoặc nick mới.
-    * **Công thức `sessions_needed`:**
-      - Hồi phục 1: `sessions_needed = max(1, 2 - clean_days)` (tối đa 2 ca).
-      - Hồi phục 2: `sessions_needed = max(1, 4 - clean_days)` (tối đa 2 ca).
-      - Fallback record (`farm_account_info`): BẮT BUỘC để `sessions_needed = 2`. CẤM TUYỆT ĐỐI để fallback 3 ca cũ gây mâu thuẫn giữa nhãn `(0/2 ngày)` và badge `Thận trọng (3 ca)`.
+      - `⚡ Ưu tiên (1 ca)`: Cho nick điểm tín nhiệm cao ($\ge 60$đ).
+      - `🎯 Cần 1 ca sạch`: Cho nick đang trong nấc Hồi phục 1 hoặc Hồi phục 2 (`sessions_needed = 1`).
+    * **Công thức `sessions_needed` & Nhãn tiến độ:**
+      - Hồi phục 1 (`clean_days < 1`): nhãn `🟠 Hồi phục 1 (0/1 ca)`, `sessions_needed = max(1, 1 - clean_days) = 1 ca sạch` để lên Hồi phục 2.
+      - Hồi phục 2 (`1 <= clean_days < 2`): nhãn `🟡 Hồi phục 2 (0/1 ca)`, `sessions_needed = max(1, 2 - clean_days) = 1 ca sạch` để tốt nghiệp lên Khỏe.
+      - Fallback record (`farm_account_info`): BẮT BUỘC để `sessions_needed = 1` và `(0/1 ca)`. CẤM TUYỆT ĐỐI để fallback 2 ca cũ gây mâu thuẫn giữa thực tế runner và giao diện.
 
 ---
 
@@ -149,7 +149,7 @@
      * **Cơ chế Farm Điểm Lên Fast-Track Tự Động:** Nick ở nhóm Thận trọng ($< 60$đ) hoàn toàn có thể tự leo lên Fast-track qua các pipeline: Upload video đều đặn (+20–30đ), tích lũy micro-follow sạch 3–4 fl/ca (+10đ/ca). Khi điểm chạm $\ge 60$đ, hệ thống tự động thăng lên Fast-track.
 3. **Layer 3: Tiến độ nâng cấp (Progress & Requirement):**
    - Trả lời: *Còn bao nhiêu ca sạch nữa để thăng hạng?*
-   - Hiển thị rõ dạng tiến độ: `X/2 ca sạch` và `Cần thêm Y ca sạch để lên Cấp tiếp theo`.
+   - Hiển thị rõ dạng tiến độ: `X/1 ca sạch` (mỗi stage đúng 1 ca sạch) và `Cần thêm 1 ca sạch để lên Cấp tiếp theo`.
    - **CẤM TUYỆT ĐỐI:** Nhồi nhét chữ `(X ca)` vào tên huy hiệu (như `Thận trọng (X ca)` hay `Thận trọng (1 ca)`) làm rối loạn phân loại của Operator.
 
 ### C. Nghịch Lý Simpson (Simpson's Paradox) & Công Thức Tối Ưu Quota Theo Rủi Ro:
