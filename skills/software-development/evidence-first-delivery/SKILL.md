@@ -203,6 +203,13 @@ For code changes implementing evidence delivery, run focused offline tests and t
 
 The user prefers direct Vietnamese, concise status, and actual native images rather than folder links or path dumps. Lead with the result, then list only the evidence and blocker that change the decision. Never make the user ask “hình đâu?” after a UI operation.
 
+- **Chống Bẫy Báo Cáo Canary No-Op / Skipped (User chất vấn: "Đâu kết quả chạy canary đâu?" - 2026-10-16):**
+  * **Sự cố thực tế**: Khi kiểm thử code mới, Coordinator chạy Canary trên máy test. Do tài khoản active không khớp target và không có trong Switcher, runner kích hoạt fail-safe thoát an toàn (`None, False`). Coordinator báo cáo "Đã chạy Canary xong" mà không đính kèm ảnh đổi trạng thái thực tế. User lập tức chất vấn: *"Đâu kết quả chạy canary đâu?"*.
+  * **Căn nguyên**: Nhầm lẫn giữa một lượt chạy an toàn (fail-safe no-op) với việc kiểm chứng thành công tính năng (positive verification).
+  * **Quy tắc BẮT BUỘC**:
+    1. Canary CHỈ ĐƯỢC COI LÀ ĐẠT khi có ảnh nghiệm thu thực tế (`MEDIA:<path>`) chứng minh hành động thay đổi trạng thái đã diễn ra và thành công trên máy thật.
+    2. Nếu máy test bị skip/no-op, BẮT BUỘC lập tức bốc máy khác có tài khoản mục tiêu sẵn sàng để thực thi đầy đủ luồng đến khi có ảnh nghiệm thu, CẤM báo cáo xong và CẤM kích hoạt chạy hàng loạt khi chưa có ảnh Canary đạt.
+
 - **Kỷ Luật Phản Hồi Khi User Bức Xúc Về Alert / Lỗi Hệ Thống ("Clgt", "Dlgt"):**
   * **CẤM TUYỆT ĐỐI**: Trả lời dài dòng, liệt kê dàn trải các bước kỹ thuật rườm rà, phân bua cơ chế hook bảo vệ, hoặc thanh minh phòng thủ.
   * **VÀO THẲNG BẢN CHẤT 3 Ý TẬP TRUNG**:
@@ -274,6 +281,7 @@ Use `references/avatar-only-scope-and-false-policy-refusal.md` for the incident-
 
 ## References
 
+- `references/canary-verification-positive-proof-and-anti-noop-trap-20261016.md` — **[MỚI 16/10/2026]** Bẫy báo cáo Canary No-Op / Skipped (User chất vấn *"Đâu kết quả chạy canary đâu?"*): Nhầm lẫn giữa fail-safe exit an toàn và nghiệm thu thực tế; quy tắc Canary bắt buộc phải là positive end-to-end verification trên thiết bị có tài khoản sẵn sàng, tạo ra ảnh nghiệm thu `MEDIA:<path>` và xác nhận qua Vision trước khi chạy hàng loạt.
 - `references/with-device-lock-screencap-binary-corruption-and-pull-pattern-20261015.md` — **[MỚI 15/10/2026]** Bẫy `stdout` ban text log từ `with_device_lock.py` ô nhiễm ảnh PNG binary khiến file chỉ 340 bytes; quy chuẩn 2 bước bắt buộc: `shell screencap -p /sdcard/...` rồi `adb pull` để tách byte ảnh khỏi log wrapper; kiểm tra kích thước file `.png` phải >= 100KB trước khi gắn thẻ `MEDIA:`.
 - `references/avatar-headroom-cropping-and-watchdog-dispatch-20261015.md` — **[MỚI 15/10/2026]** Bẫy lệch tâm avatar (chỉ thấy tóc/mất ngũ quan), công thức crop headroom an toàn trên video dọc, cơ chế kích hoạt FORCE_UPLOAD trên Excel và đối soát khung giờ thực tế của watchdog tránh hứa suông ("nói mõm").
 - `references/guest-speaker-trap-and-multiact-avatar-triage-20261015.md` — **[MỚI 15/10/2026]** Bẫy khách mời/đại biểu phỏng vấn khi trích xuất mặt tự động (Guest Speaker Trap) nhầm nam chuyên gia thay vì nữ MC, quy chuẩn FOCUSED_TEST pytest khi điều phối Worker trong hạn mức T1.
