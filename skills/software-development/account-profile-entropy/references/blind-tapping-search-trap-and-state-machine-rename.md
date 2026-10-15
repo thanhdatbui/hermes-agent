@@ -35,12 +35,24 @@ Khi điều khiển giao diện TikTok Android (bản v47.x trên Samsung S7 đ�
    - Mọi thao tác lùi trang (từ Sửa tên về Sửa hồ sơ, từ Sửa hồ sơ về Hồ sơ) **BẮT BUỘC dùng `input keyevent 4`**.
    - Tuyệt đối CẤM tap tọa độ góc trên bên trái (`75, 150` hay `72, 148`) vì nếu màn hình vô tình ở tab khác hoặc đã back về Profile sớm, cú tap đó sẽ rơi trúng icon "Tìm bạn bè".
 
-2. **Switcher Preflight Guard (Chống Sửa Đè Nick Khác)**:
+2. **Switcher Preflight Guard & Bẫy Méo Dấu OCR Trên Bottom Sheet**:
    - Trước khi sửa tên, bắt buộc đọc `@username` trên Profile.
    - Nếu `active_user != target_user`: Mở Switcher tại `(500, 140)`.
+   - **Bẫy méo dấu OCR nghiêm trọng trên Switcher TikTok v47 (Galaxy S7)**:
+     * Trên màn hình Chuyển đổi tài khoản (Bottom Sheet), font chữ TikTok kết hợp độ phân giải S7 khiến WinRT OCR đọc chữ `Chuyển đổi tài khoản` bị méo thành `chuydn ddi tai khoan` (hoặc `Chuydn ddi täi khoån`).
+     * Regex cũ `"chuyen doi tai khoan"` hoặc điều kiện cứng `"tai khoan" in t and "chuyen doi" in t` BỊ XỊT 100%, khiến script xếp màn hình này vào `UNKNOWN`.
+     * Khi rơi vào `UNKNOWN`, runner tự bấm Back đóng Switcher lại, dẫn đến tình trạng hàng loạt máy abort với lỗi `mo Switcher 3 lan, acc active van la @...`!
+     * **Quy chuẩn Regex dung sai cao bắt buộc cho Switcher**:
+       ```python
+       if re.search(r"chuy\w{0,3}n\s*d\w{0,3}i|chuy\w{0,3}n.*kho\w{0,2}n|switch account|them tai khoan|add account", t):
+           return "SWITCHER"
+       if not (profile_has_user and profile_markers) and (("tai khoan" in t or "khoan" in t) and ("chuy" in t or "switch" in t or "them" in t)):
+           return "SWITCHER"
+       ```
    - Tìm kiếm `target_user` trong Switcher:
      * Nếu tìm thấy: Tap chọn để chuyển nick (chờ 6s).
-     * Nếu KHÔNG tìm thấy: Bấm `keyevent 4` thoát an toàn và trả về `(None, False)`. **CẤM TUYỆT ĐỐI sửa đè lên nick đang active trên máy!**
+     * Nếu chưa thấy: Cuộn sheet lên `swipe(SWIPE_SHEET_UP, 2)` (tọa độ `(540, 1500, 540, 900, 300)`).
+     * Nếu KHÔNG tìm thấy sau khi cuộn: Bấm `keyevent 4` thoát an toàn và trả về `(None, False)`. **CẤM TUYỆT ĐỐI sửa đè lên nick đang active trên máy!**
 
 3. **Chống Crash Toàn Cụm Khi Đơ ADB Transport**:
    - Khi chạy 25 workers đồng loạt, nếu 1 máy bị lỏng cáp hoặc ADB daemon trên điện thoại bị đơ, lệnh ADB sẽ văng `subprocess.TimeoutExpired`.
@@ -78,7 +90,7 @@ Khi điều khiển giao diện TikTok Android (bản v47.x trên Samsung S7 đ�
      * Trả về exit code `0` kèm stdout `KET QUA: RENAMED` hoặc `KET QUA: ALREADY`.
    - **Watchdog Scheduler (`tiktok_rename_rolling_watchdog.py`)**:
      * Đóng vai trò phân phối và điều phối O(1): bốc danh sách máy rảnh không có device-lock và chưa đổi tên trong 7 ngày.
-     * Gọi runner qua `subprocess.run(cmd, capture_output=True, text=True, timeout=240)` bên trong `ThreadPoolExecutor(max_workers=25)`.
+     * Gọi runner qua `subprocess.run(cmd, capture_output=True, text=True, timeout=320)` bên trong `ThreadPoolExecutor(max_workers=25)` (Timeout bắt buộc >= 300s–320s để các máy có danh sách tài khoản dài kịp cuộn sheet Switcher và tải OCR hoàn chỉnh).
      * Bọc `try...except Exception: pass` cho từng `fut.result()` trong `as_completed()`, chỉ ghi nhận vào `rename_natural_state.json` khi `ok and p.exists()`.
-   - **Hiệu quả thực tế**: Cách ly hoàn toàn bộ nhớ và I/O giữa 25 máy. Máy nào đơ ADB tự rớt theo timeout 240s mà không làm nghẽn các máy khác, giúp farm chạy ổn định liên tục.
+   - **Hiệu quả thực tế**: Cách ly hoàn toàn bộ nhớ và I/O giữa 25 máy. Máy nào đơ ADB tự rớt theo timeout 320s mà không làm nghẽn các máy khác, giúp farm chạy ổn định liên tục (thực tế đạt thông lượng 14 nick/lượt chạy).
 
