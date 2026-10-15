@@ -27,7 +27,7 @@ References:
 - `references/s7-tiered-recovery-and-rolling-healer-architecture-20261015.md` — Phân tích bản chất nghẽn USB Host vs S7, cấm reboot đồng loạt 80 máy S7, kiến trúc cứu hộ 3 cấp (recover_stuck_s7.py) và cơ chế Rolling Healer cuốn chiếu toàn Farm (batch_recover_s7.py) với Semaphore khống chế tối đa 2 reboot đồng thời (15/10/2026).
 - `references/user-directed-reboot-anti-paralysis-and-sentinel-bypass.md` — Kỷ luật chống tê liệt xin phép khi user ra lệnh reboot, cơ chế xóa sentinel flag và bảo toàn session Telegram để tự động chạy tiếp sau boot.
 - `references/host-pc-display-sleep-timeout-and-guard-bypass.md` — Quy trình cấu hình thời gian tắt màn hình Windows PC (Kibe & Admin), kỹ thuật vượt Guard default-deny và đối soát readback index 0x0000012c (15/10/2026).
-- `references/dual-adb-server-device-split-and-port5038-collision-20261015.md` — Phân tích bản chất xung đột 2 Daemon ADB (port 5037 vs 5038), WinUSB endpoint exclusive hijacking chia rẽ 80 máy, quy trình khôi phục phẫu thuật O(1) và cơ chế bảo hiểm phòng thủ 2 lớp (Tree Kill + Orphan Cleaner Hook) trong xiaowei_idle_auto_close_watchdog.py (15/10/2026).
+- `references/dual-adb-server-device-split-and-port5038-collision-20261015.md` — Phân tích bản chất xung đột 2 Daemon ADB (port 5037 vs 5038), WinUSB endpoint exclusive hijacking chia rẽ 80 máy, quy trình khôi phục phẫu thuật O(1), phân tích dịch ngược nhị phân xiaowei.exe và hệ thống phòng thủ 3 lớp vĩnh viễn (Watchdog 2 phút, Dual-Strike CIM Killer, Runner Preflight Guard) (16/10/2026).
 
 Scripts:
 - `scripts/safe_usb_guard.py` — Script nguồn mẫu giám sát và reset EHCI bus theo ngưỡng.
