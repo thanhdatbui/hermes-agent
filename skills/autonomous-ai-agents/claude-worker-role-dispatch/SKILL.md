@@ -130,6 +130,7 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
 - Timeout retry, role-aware fallback routing
 - `build_prompt` and `get_claude_quota_status` unit tests
 
+See `references/mechanical-gate-pitfalls-and-anti-paralysis-discipline-20261015.md` for Mechanical Gate indentation pitfalls, Strike-3 Reviewer Hand-off, and the Anti-Paralysis Protocol (15/10/2026).
 See `references/prompt-precedence-and-score-chasing-circuit-breaker-20261015.md` for Claude Sonnet architecture advice on Prompt Precedence, mechanical gates, and Closeout Gate circuit breaker (15/10/2026).
 See `references/strike-3-automatic-claude-handoff-and-worktree-bypass-20261015.md` for Strike 3 automatic Claude CLI hand-off and dirty repo worktree bypass rules (15/10/2026).
 See `references/claude-worker-role-dispatch-and-turns-hard-cap-20261015.md` for full incident analysis.
