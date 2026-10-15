@@ -292,3 +292,23 @@
   - Khi cần bổ sung nhiều ca kiểm thử giá trị biên cho timeout hay env parsing, tránh dùng `@pytest.mark.parametrize` kèm 10-15 decorators làm phình file test thêm 50-80 dòng (dễ đẩy tổng diff vượt trần 21,299 bytes).
   - Thay vào đó, gom vào vòng lặp `for val, expected in [...]` súc tích (10-12 dòng), vừa bảo toàn 100% test coverage vừa giữ diff an toàn ở cấp `level=L0` (0 truncation).
 
+## 22. Vực Thẳm Cắt Tỉa (Truncation Cliff) 25-Byte & Điều Phối Khi Hết Ngân Sách T1 (16/10)
+- **Vực Thẳm Cắt Tỉa Truncation Cliff Của Sol Payload Guard:**
+  - `sol_payload_guard.py` có điều kiện nhị phân tuyệt đối: `if nbytes(clean_diff) <= budget: return DiffDigest(clean_diff, "L0", ...)`.
+  - Chỉ cần vượt trần dù chỉ **25 bytes** (ví dụ `21,324 bytes` so với `diff_b = 21,299 bytes`), hệ thống lập tức đánh rớt xuống `L4` và kích hoạt `[TRUNCATION_MANIFEST]`.
+  - Mỗi dòng assertion lặp lại trong test (ví dụ `assert 'XIAOWEI_CHECK_ERROR' in capsys...` lặp lại 2 lần) chiếm từ 40 đến 80 bytes.
+  - **Kỹ thuật gom assertion (Assertion Consolidation):**
+    Thay vì viết 2 lệnh assert độc lập xen kẽ các khối patch, gom lại thành một lần đọc:
+    `assert capsys.readouterr().out.count('"event": "XIAOWEI_CHECK_ERROR"') == 2`.
+    Điều này lập tức tiết kiệm 50–100 bytes, kéo `clean_diff` thụt lùi xuống an toàn dưới 21,299 bytes và chuyển trạng thái về `L0` hoàn hảo.
+- **Kỷ Luật Điều Phối Khi Chạm Trần Ngân Sách Coordinator T1 (Cumulative Budget Cap):**
+  - Trong Tiered Workflow 2.0, Coordinator chỉ được vá ốc lỏng T1 trong giới hạn tích lũy cả session (tối đa 5 files, <= 200 dòng diff).
+  - Khi Coordinator Guard kích hoạt chặn ghi (`COORDINATOR WRITE DENIED: Hết ngân sách T1 ... L2 chưa đủ điều kiện`), CẤM cố gắng dùng các lệnh shell/terminal để lách guard.
+  - **Hành động bắt buộc:** Lập tức chuyển giao cho Worker qua `delegate_task` với Patch Contract O(1) chuẩn hóa tuyệt đối:
+    1. Cung cấp đường dẫn tuyệt đối (`D:/Taadaa/Hermes/...`).
+    2. Chỉ định rõ `Old lines` và `New lines` duy nhất.
+    3. Cung cấp lệnh kiểm thử focused test < 30s.
+    4. Giới hạn ngân sách nghiêm ngặt (budget <= 5 iterations).
+  - Cách làm này vừa bảo vệ context của Coordinator, vừa giải quyết triệt để nút thắt payload truncation mà không vi phạm quy tắc an toàn farm.
+
+
