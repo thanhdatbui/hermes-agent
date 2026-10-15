@@ -16,4 +16,4 @@ Hashtag: F_src=(Slot-1)*80+m_idx; Chuẩn hoá kênh: tự duyệt đủ 3 Ava-H
 §
 Telegram: song song nhiều topic, auto-resume turn dở sau boot. Cấm báo cáo láo/hứa suông khi chưa dispatch thật.
 §
-Reboot: user lệnh là làm ngay, cấm hỏi lại 'reboot nhé'; tự xóa sentinel flag, stamp preserve_in_flight & shutdown.
+Reboot 3 ca (05:20, 11:20, 17:20), né khi ca đang chạy; user lệnh là làm ngay cấm hỏi lại; sentinel chia theo ca.

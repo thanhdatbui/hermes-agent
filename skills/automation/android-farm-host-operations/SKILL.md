@@ -94,6 +94,11 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
     - **Quy tắc Inter-Shift Cron Tự Né Giờ Reboot (S7 Device Protection):**
       * Mọi cron / watchdog chạy giữa các ca liên quan tới thiết bị S7 (`post_noon_chain_watchdog`, `post_morning_gmail_2fa_watchdog`, `post_evening_avatar_watchdog`, `farm_idle_screen_and_app_healer`) BẮT BUỘC có cơ chế kiểm tra và tự dừng / skip trước các mốc reboot ít nhất 10–15 phút (hoặc không nhận batch mới nếu thời lượng > thời gian còn lại đến reboot), tuyệt đối không để tiến trình chạy đè qua mốc reboot làm gãy dở thiết bị.
     - **Bẫy phân định Ca vs Phiên (Pitfall — Chống reboot dày đặc):** Farm chạy 3 Ca chính (mỗi Ca gồm 2 phiên cách nhau 2 tiếng). CẤM TUYỆT ĐỐI đặt reboot trước từng phiên con lẻ (chu kỳ 2 tiếng: 06:00, 08:00, 12:00, 14:00, 18:00, 20:00) vì làm gián đoạn máy liên tục. Chỉ reboot trước 3 Ca chính (chu kỳ 6 tiếng).
+    - **Bẫy Sentinel ngày vs 3 Ca chạy (Critical Bug 15/10/2026):**
+      * File cờ sentinel dạng `reboot_sentinel_YYYY-MM-DD.flag` (1 flag/ngày) khiến các mốc 11:20 và 17:20 bị `[SKIP]` oan do 05:20 sáng đã ghi flag.
+      * Bắt buộc phân định sentinel theo 3 ca: `reboot_sentinel_{YYYY-MM-DD}_{shift}.flag` (`morning`: 05:20–11:19, `noon`: 11:20–17:19, `evening`: 17:20–05:19 hôm sau) qua hàm `get_current_shift_name()`.
+      * Bắt buộc kiểm tra `has_active_device_locks()` trước khi shutdown: Nếu đang có tiến trình nuôi acc chạy dở giữ lock (`status: running`), script phải `[SKIP]` để không cắt ngang ca chạy.
+      * Tự động dọn dẹp sentinel flag cũ quá 7 ngày (`cleanup_old_sentinels()`) chống tích tụ rác disk.
     - **Cơ chế hoạt động:**
       * Script `farm_preflight_daily_reset.py` được gọi tại mỗi mốc.
       * **TFT Game Guard (User Invariant — Chỉ chặn khi đang trong trận đấu thực sự):** Script kiểm tra `League of Legends.exe`. Nếu đang trong trận đấu TFT 3D $\rightarrow$ **HỦY REBOOT NGAY (`ABORT`)** để bảo vệ ván cờ của user, không bị xử thua AFK.
