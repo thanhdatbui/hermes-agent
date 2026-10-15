@@ -329,5 +329,27 @@
   - Khi hàm nghiệp vụ triển khai cơ chế retry (ví dụ thử lại 1 lần khi truy vấn trả về `None`, dẫn đến gọi tối đa 2 lần `_query`), mỗi lần gọi hàm thất bại sẽ phát ra 2 sự kiện lỗi.
   - Nếu test gọi hàm 2 lần liên tiếp mà không xả buffer `capsys.readouterr()`, tổng số event lỗi tích lũy trong stdout là `4` (2 calls × 2 retries), không phải `2`. Assertions kiểm đếm tổng thể cần tính đúng hệ số nhân này để tránh false failure.
 
+## 24. Tối Ưu Hóa Cycle Time Watchdog, Backoff Retry & Khử Trùng Lặp Fixture Cho Trần L0 (16/10)
+- **Tối Ưu Hóa Watchdog Cycle Time & Timeout Clamping:**
+  - Giá trị timeout mặc định của các lệnh CIM/PowerShell trong watchdog script không nên đặt quá cao (ví dụ 15s) vì nếu có nhiều lệnh CIM/PowerShell tuần tự trong một chu kỳ watchdog (check + terminate + orphan cleanup), tổng thời gian có thể tích lũy lên tới >45s gây chậm trễ chu kỳ cron.
+  - Hạ giá trị mặc định xuống `10s` (kẹp trong dải an toàn `[5, 60]`):
+    ```python
+    try:
+        _raw_t = int(os.environ.get('XIAOWEI_CIM_TIMEOUT', '10'))
+        CIM_TIMEOUT_SECONDS = max(5, min(60, _raw_t))
+    except Exception:
+        CIM_TIMEOUT_SECONDS = 10
+    ```
+    Giúp chu kỳ watchdog phản hồi nhanh hơn, giảm tải WMI trên các máy farm và tránh timeout chồng chéo.
+- **Thêm Backoff Giữa Các Lần Retry Thăm Dò Tiến Trình:**
+  - Khi thăm dò trạng thái tiến trình (như `_query_xiaowei_running()`), nếu lần 1 thất bại (trả về `None` do `tasklist` bị nghẽn hoặc timeout), không nên retry cứng ngay lập tức.
+  - Bổ sung `time.sleep(0.1)` backoff trước lần thử thứ 2 giúp hệ điều hành nhả tài nguyên I/O và tăng tỷ lệ thành công của lần thử lại.
+- **Khử Assertion Dư Thừa Để Triệt Tiêu Vượt Budget 50-70 Bytes:**
+  - Khi đã có `@pytest.fixture(autouse=True)` tự động reset metrics và cache, các lệnh gọi thủ công `xw.reset_metrics()` và `assert set(xw.get_metrics().values()) == {0}` bên trong từng test function trở nên dư thừa.
+  - Xóa bỏ các dòng này giúp tiết kiệm 70-80 bytes quý giá, kéo `clean_diff` từ 21,345 bytes xuống 21,271 bytes, chuyển trạng thái từ `L4` truncation sang `L0` hoàn hảo (0 truncation).
+- **Đồng Bộ Test Suite Khi Thay Đổi Hằng Số Cấu Hình:**
+  - Khi đổi giá trị mặc định của hằng số cấu hình (ví dụ từ `15` sang `10`), các test case kiểm thử phân tích biến môi trường động (`test_cim_timeout_env_parsing`) phải được cập nhật đồng thời (`[(None, 10), ("-1", 5), ("120", 60), ("abc", 10)]`) để tránh lệch pha giữa code production và test assertion.
+
+
 
 
