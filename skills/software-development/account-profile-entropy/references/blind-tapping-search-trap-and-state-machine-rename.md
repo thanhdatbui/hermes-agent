@@ -28,3 +28,30 @@ Khi điều khiển giao diện TikTok Android (bản v47.x trên Samsung S7 đ�
    - `EDIT_PROFILE` -> OCR tìm dòng có chữ "Tên" rồi mới tap mở ô sửa tên.
    - `NAME_EDIT` -> gõ AdbKeyboard -> BẮT BUỘC đọc lại OCR kiểm tra tên mới + bộ đếm ký tự `{len}/30` -> tap Lưu `(980, 140)`.
    - `PROFILE (Readback)` -> Trở lại Profile, OCR đọc lại dòng ngay trên `@username`. Chỉ khi tên thật trên Profile khớp 100% với tên mới thì mới lưu trạng thái hoàn thành.
+
+## 4. Quy Chuẩn Vận Hành 25 Workers Song Song & Fail-Safe Vững Chắc
+
+1. **Back an toàn bằng phím cứng KEYCODE_BACK**:
+   - Mọi thao tác lùi trang (từ Sửa tên về Sửa hồ sơ, từ Sửa hồ sơ về Hồ sơ) **BẮT BUỘC dùng `input keyevent 4`**.
+   - Tuyệt đối CẤM tap tọa độ góc trên bên trái (`75, 150` hay `72, 148`) vì nếu màn hình vô tình ở tab khác hoặc đã back về Profile sớm, cú tap đó sẽ rơi trúng icon "Tìm bạn bè".
+
+2. **Switcher Preflight Guard (Chống Sửa Đè Nick Khác)**:
+   - Trước khi sửa tên, bắt buộc đọc `@username` trên Profile.
+   - Nếu `active_user != target_user`: Mở Switcher tại `(500, 140)`.
+   - Tìm kiếm `target_user` trong Switcher:
+     * Nếu tìm thấy: Tap chọn để chuyển nick (chờ 6s).
+     * Nếu KHÔNG tìm thấy: Bấm `keyevent 4` thoát an toàn và trả về `(None, False)`. **CẤM TUYỆT ĐỐI sửa đè lên nick đang active trên máy!**
+
+3. **Chống Crash Toàn Cụm Khi Đơ ADB Transport**:
+   - Khi chạy 25 workers đồng loạt, nếu 1 máy bị lỏng cáp hoặc ADB daemon trên điện thoại bị đơ, lệnh ADB sẽ văng `subprocess.TimeoutExpired`.
+   - Hàm `adb(serial, *args, timeout=15)` bắt buộc bọc `try...except Exception: return ""` (hạ timeout xuống 15s).
+   - Vòng lặp thu thập kết quả `as_completed([pool.submit(_worker, t) for t in targets])` bắt buộc bọc `try...except Exception: pass` cho từng `fut.result()` để sự cố của 1 máy không bao giờ làm sập cả batch.
+
+4. **Cấu Hình Cronjob Hermes Tránh False Alert Timeout**:
+   - Tác vụ 25 workers song song thực thi qua ADB + OCR thường mất từ 60s – 120s.
+   - Cronjob của Hermes nếu để `deliver: 'origin'` sẽ bị gateway timeout sau 60s và bắn tin nhắn cảnh báo giả `provider timeout` về Telegram dù tiến trình nền vẫn hoàn tất 100%.
+   - **BẮT BUỘC đặt `deliver: 'local'`** cho các batch watchdog nặng để tiến trình chạy ngầm im lặng, ghi log local và triệt tiêu tin nhắn spam báo ảo.
+
+5. **Kỷ Luật Phản Hồi Khi User Hỏi Số Worker**:
+   - Khi User hỏi *"Đang chạy worker bn đó"*, Coordinator phải phân biệt chính xác ngữ cảnh tác vụ User đang quan tâm (ví dụ: số worker của watchdog đang cấu hình vs số worker của ca nuôi feed toàn farm), cấm trả lời lệch trọng tâm gây hiểu lầm.
+
