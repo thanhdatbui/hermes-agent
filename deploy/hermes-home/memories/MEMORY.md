@@ -2,7 +2,7 @@ Chu kỳ 4d: Parity 96h (N1 lẻ, N2 chẵn), N3(R7,8), N4(dưỡng 0fl+up). Sta
 §
 Auto-resume: MAX(msg ts)<=60m; locks==0.
 §
-Worker: claude_worker.py (Haiku 8-15t; rev=Sonnet); fallback ag_cli; CAM omni-worker. Closeout: cấm buông xuôi khi REJECTED; push qua safe_push.py (cấm bắt user push tay). Fix gate: lock mutate dict, regex lookbehind (?<![a-z0-9]), cấm test fake inline, diff <=30KB.
+Worker: claude_worker.py (Haiku/Sonnet). Advisor Sol Web: BẮT BUỘC nhận Context Pack (3-5 turns briefing + máy/nick) qua advisor_context.py; redact trước khi clip; prompt <= 4500 chars bảo toàn query. Closeout: cấm buông xuôi khi REJECTED; push qua safe_push.py.
 §
 TikTok Follow: (máy,row) độc lập; Quota 10-15/ca; Hồi phục 1&2; clean>=2 tốt nghiệp; Canary +10%; like 80%. Path B ko commit; slot (folder-1)%8+1. Mode 2: anchor >= 150 fl; cuộn sâu. Cron: follow_watchdog.
 §
