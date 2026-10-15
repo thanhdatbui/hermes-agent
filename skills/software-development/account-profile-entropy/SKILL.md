@@ -238,6 +238,9 @@ def generate_account_for_slot(slot, existing_emails=None, max_attempts=300):
 | Blind tapping (75, 150) during TikTok rename | (75, 150) is Find Friends icon on TikTok v47 → types name into Search bar → 'Không tìm thấy kết quả' | BẮT BUỘC dùng State Machine OCR (classify EDIT_PROFILE), cấm tap mù; readback verify tên trên PROFILE |
 | Linear sleep on TikTok launch | Cold boot latency on S7 takes 10–20s → fixed sleep drops taps on Splash screen | BẮT BUỘC dùng State Machine loop kiểm tra UNKNOWN/Splash, chờ app vào FEED rồi mới tap Profile |
 | deliver='origin' on batch watchdogs (>60s) | Parallel batch (25 workers) takes >60s → Hermes cron delivery times out with 'provider timeout' alert | BẮT BUỘC đặt deliver='local' cho batch cronjob nặng để chạy ngầm hoàn toàn độc lập, triệt tiêu alert ảo |
+| Canary no-op false pass | Reporting Canary passed when target was skipped/ineligible (verified=False) | BẮT BUỘC chạy Canary trên máy có target asset đến khi ra verified=True và kiểm tra ảnh qua vision |
+| Rigid regex on Switcher OCR title | WinRT OCR reads 'chuydn ddi tai khoan' → regex 'chuyen doi tai khoan' fails → classified UNKNOWN → Back loop | Dùng regex dung sai cao `chuy\w{0,3}n\s*d\w{0,3}i` kết hợp ("tai khoan" / "khoan") và ("chuy" / "switch") |
+| Subprocess timeout <300s on 25 workers | 25 concurrent OCR calls spike host CPU → 35-step runner exceeds 240s → premature SIGTERM | Đặt timeout >= 320s cho subprocess runner trong watchdog ThreadPoolExecutor(max_workers=25) |
 
 ## Verification
 

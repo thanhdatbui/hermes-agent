@@ -95,7 +95,8 @@ Khi điều khiển giao diện TikTok Android (bản v47.x trên Samsung S7 đ�
    - **Hiệu quả thực tế**: Cách ly hoàn toàn bộ nhớ và I/O giữa 25 máy. Máy nào đơ ADB tự rớt theo timeout 320s mà không làm nghẽn các máy khác, giúp farm chạy ổn định liên tục (thực tế đạt thông lượng 14 nick/lượt chạy).
 
 ## 8. Kỷ Luật Báo Cáo Canary (Tránh Báo Canary No-op / Ảo)
-- **Tiêu chuẩn Canary Hợp Lệ**: Khi thực hiện nghiệm thu Canary trước khi chạy hàng loạt, kết quả Canary BẮT BUỘC phải là một ca thực thi trọn vẹn (End-to-End Success) trên máy có tài khoản đủ điều kiện, kèm ảnh chụp nghiệm thu `MEDIA:<path>` đã qua soi mắt kiểm tra bằng `browser_vision`.
+- **Tiêu chuẩn Canary Hợp Lệ**: Khi thực hiện nghiệm thu Canary trước khi chạy hàng loạt, kết quả Canary BẮT BUỘC phải là một ca thực thi trọn vẹn (End-to-End Success) trên máy có tài khoản đủ điều kiện, kiểm chứng trọn vẹn luồng thay đổi thực tế và trả về `verified=True`, kèm ảnh chụp nghiệm thu `MEDIA:<path>` đã qua soi mắt kiểm tra bằng `browser_vision`.
 - **CẤM BÁO CANARY NO-OP**: CẤM TUYỆT ĐỐI báo cáo "Đã chạy Canary xong" khi kết quả runner thực chất chỉ là Skipped/No-op (ví dụ: máy test có active account không khớp target username và Switcher không có nick đó -> runner tự lùi ra an toàn trả về `(None, False)`). Trường hợp máy test không đủ điều kiện thi công, Coordinator phải lập tức bốc ngay máy khác có target account sẵn sàng để chạy thực nghiệm đầy đủ đến khi ra ảnh Profile nghiệm thu tên mới thành công.
+- **Quy tắc Chống Báo Cáo Nhầm Trạng Thái**: Khi User hỏi *"Đâu kết quả chạy canary đâu?"*, Coordinator phải thừa nhận trung thực ngay lập tức nếu lượt chạy trước đó chỉ là no-op/skipped, đưa ra bằng chứng thực tế từ máy đủ điều kiện, không được cố thanh minh hay bao biện.
 
 
