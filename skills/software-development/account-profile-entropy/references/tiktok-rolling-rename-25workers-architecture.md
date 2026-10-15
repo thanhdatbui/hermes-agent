@@ -64,14 +64,17 @@ Tách thành 2 tầng độc lập:
 - **Quy chuẩn 2-Tier Verification**:
   1. **Tier 1 (Soft Gate tại ô input `NAME_EDIT`)**:
      - Kiểm tra bộ đếm: `ok_count` khớp `{len}/30` (dung sai ±1).
-     - Kiểm tra text mềm: Khớp ít nhất 1 từ đơn (`found_word`) HOẶC `ratio >= 0.45` là BẮT BUỘC bấm "Lưu".
+     - **Bẫy so khớp cả dòng (Line vs Word Penalty):** Nếu so sánh `difflib.SequenceMatcher(None, norm(l), w)` thì khi một dòng OCR gom cả cụm từ (ví dụ `"Trpng HI-fdng"`), độ dài dòng lớn khiến ratio bị kéo tụt xuống `< 0.45` dù từ `"Trpng"` giống `"Trọng"` tới 80%!
+     - **Giải pháp bóc tách mảng từ đơn (`all_ocr_words`):** Bắt buộc bóc tách mảng từ đơn lẻ `all_ocr_words = [norm(w) for l in lines for w in l.split()]` để so khớp độc lập từng từ.
+     - Kiểm tra text mềm: Khớp ít nhất 1 từ đơn (`found_word`) HOẶC `ratio >= 0.35` là BẮT BUỘC bấm "Lưu":
      ```python
      words = [norm(w) for w in NEW_NAME.split() if len(w) >= 2]
-     found_word = any(w in norm(" ".join(lines)) or any(difflib.SequenceMatcher(None, norm(l), w).ratio() >= 0.6 for l in lines) for w in words)
+     all_ocr_words = [norm(w) for l in lines for w in l.split()]
+     found_word = any(any(difflib.SequenceMatcher(None, ow, w).ratio() >= 0.6 for ow in all_ocr_words) for w in words)
      ratio = difflib.SequenceMatcher(None, norm(" ".join(lines)), NEW_NAME_NORM).ratio()
      ok_text = (any(is_target(l) for l in lines)
                 or NEW_NAME_NORM in norm(" ".join(lines))
-                or ratio >= 0.45
+                or ratio >= 0.35
                 or found_word)
      if not (ok_text and ok_count):
          tap(XY_NAME_CANCEL, 2)
@@ -83,9 +86,12 @@ Tách thành 2 tầng độc lập:
 
 ---
 
-## 4. Kỷ Luật Vận Hành Hermes Cron & Canary Testing
+## 4. Kỷ Luật Vận Hành Hermes Cron, Stdout Flush & Canary Testing
 
-1. **Cấu hình `deliver: 'local'` cho Batch nặng**:
+1. **Cơ chế Flush Buffer Stdout Trong Tiến Trình Nền (Windows C-Runtime Buffer)**:
+   - Khi chạy script đa luồng / watchdog trong background trên Windows (`terminal(background=True)`), stdout mặc định bị C-runtime block-buffer (chỉ đẩy ra khi đầy 4KB hoặc tiến trình đóng sạch).
+   - Lệnh in thông báo hoàn tất BẮT BUỘC dùng `print(..., flush=True)` để harness Hermes nhận được ngay sự kiện nghiệm thu (`✅ [ROLLING RENAME]`), không bị nuốt output.
+2. **Cấu hình `deliver: 'local'` cho Batch nặng**:
    - Batch 25 workers chạy mất 60s–180s. Hermes Cron timeout mặc định là 60s.
    - BẮT BUỘC cấu hình `deliver: 'local'` để tránh bắn cảnh báo lỗi giả `provider timeout` về Telegram.
 2. **Kỷ luật nghiệm thu Canary (Anti-No-op Pass)**:
