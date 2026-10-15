@@ -142,11 +142,14 @@ When registering or renaming accounts created from foreign/shop emails (e.g. `fr
     - `debi-` / `debora-` → **Diệp Anh**, **Hồng Diệp** (stem: *Diệp*)
     - `ancil-` → **Hoài An**, **An Bơ** (stem: *An*)
     - `brolly-` → **Quốc Bảo**, **Gia Bảo** (stem: *Bảo*)
-  * **CẤM TUYỆT ĐỐI TÊN CỤT LỦN 1 TỪ**: Hàm đặt tên `make_tiktok_name` và quy chuẩn farm KHÔNG BAO GIỜ cho phép tên 1 từ trơ trọi (như mỗi chữ *Linh*, *Phương*, *Sa*, *An*, *Mai*, *Thảo*). Display name luôn luôn phải tối thiểu 2 từ. Khi thực hiện đổi avatar hoặc audit tài khoản mà thấy tên cũ cụt lủn 1 từ, BẮT BUỘC phải chủ động đề xuất và kích hoạt runner đổi tên chuẩn người dùng thật theo `make_tiktok_name` (ghép họ đệm hoặc biệt danh đời thường).
-  * **Bẫy Blind Tapping Khi Đổi Tên vs Bắt Buộc State-Machine OCR**: Khi đổi tên trên thiết bị, CẤM TUYỆT ĐỐI dùng script tap mù tọa độ (`tap(x, y)` vào nút Sửa hồ sơ) vì TikTok thường mở lên ở màn hình LIVE (livestream bán hàng) hoặc Feed Đề xuất, khiến cú tap rơi vào giỏ hàng hoặc phòng live. BẮT BUỘC dùng State-Machine OCR (`do_rename_m71.py` pattern) để phân loại màn hình (`LIVE`, `FEED`, `PROFILE`, `EDIT_PROFILE`, `NAME_EDIT`), tự thoát LIVE về Profile rồi mới định vị dòng Tên và gõ UTF-8 qua AdbKeyboard.
-    - Ưu tiên phong cách **Tên + Biệt danh đời thường**: BẮT BUỘC ghép `stem + _NICK_SUFFIX` (VD: *Linh Bông*, *Linh Miu*, *Linh Bơ*, *Linh Gạo*, *Linh Nhím*, *Linh Heo*, *Linh Cún*, *Linh Nấm*...).
-    - Hoặc phong cách **Đệm + Tên** (*Ngọc Linh*, *Thanh Linh*, *Khánh Linh*), **Tên lặp / Duo** (*Linh Linh*).
-    - CẤM để tên cụt 1 từ dưới mọi hình thức!
+  - **CẤM TUYỆT ĐỐI TÊN CỤT LỦN 1 TỪ**: Hàm đặt tên `make_tiktok_name` và quy chuẩn farm KHÔNG BAO GIỜ cho phép tên 1 từ trơ trọi (như mỗi chữ *Linh*, *Phương*, *Sa*, *An*, *Mai*, *Thảo*). Display name luôn luôn phải tối thiểu 2 từ. Khi thực hiện đổi avatar hoặc audit tài khoản mà thấy tên cũ cụt lủn 1 từ, BẮT BUỘC phải chủ động đề xuất và kích hoạt runner đổi tên chuẩn người dùng thật theo `make_tiktok_name` (ghép họ đệm hoặc biệt danh đời thường).
+    * **Bẫy Blind Tapping Khi Đổi Tên vs Bắt Buộc State-Machine OCR**: Khi đổi tên trên thiết bị, CẤM TUYỆT ĐỐI dùng script tap mù tọa độ (`tap(x, y)` vào nút Sửa hồ sơ) vì TikTok thường mở lên ở màn hình LIVE (livestream bán hàng) hoặc Feed Đề xuất, khiến cú tap rơi vào giỏ hàng hoặc phòng live. BẮT BUỘC dùng State-Machine OCR (`do_rename_m71.py` pattern) để phân loại màn hình (`LIVE`, `FEED`, `PROFILE`, `EDIT_PROFILE`, `NAME_EDIT`), tự thoát LIVE về Profile rồi mới định vị dòng Tên và gõ UTF-8 qua AdbKeyboard.
+    * **Cạm bẫy nút "+ Thêm tiểu sử" trên Profile**: Trong `classify(lines)`, kiểm tra `PROFILE` TRƯỚC `EDIT_PROFILE`. CẤM dùng bare `"tieu su" in t` để kết luận `EDIT_PROFILE` vì profile chưa có bio luôn có nút `+ Thêm tiểu sử` khiến script nhận nhầm và văng app về Feed.
+    * **Tọa độ dòng Tên S7**: Dòng Tên nằm ở $y \approx 670 - 690$ (dùng `XY_NAME_ROW = (600, 680)`), không dùng $y = 752$ vì chạm sát `user_box`.
+    * **Nhiễu OCR từ Badge `9+` và Note Balloon**: Bỏ qua huy hiệu `9+` bên cạnh tên và bong bóng ghi chú trạng thái trên avatar khi đối soát `nickname_on_profile`.
+      - Ưu tiên phong cách **Tên + Biệt danh đời thường**: BẮT BUỘC ghép `stem + _NICK_SUFFIX` (VD: *Linh Bông*, *Linh Miu*, *Linh Bơ*, *Linh Gạo*, *Linh Nhím*, *Linh Heo*, *Linh Cún*, *Linh Nấm*...).
+      - Hoặc phong cách **Đệm + Tên** (*Ngọc Linh*, *Thanh Linh*, *Khánh Linh*, *Ngọc Mai*, *Tuấn Minh*), **Tên lặp / Duo** (*Linh Linh*).
+      - CẤM để tên cụt 1 từ dưới mọi hình thức!
 - **Natural Real-User Distribution (`social_reg_v1.py` - make_tiktok_name)**:
   * Họ + Đệm + Tên (25%): *Trần Minh Đạt, Nguyễn Hoài An*
   * Họ + Tên (25%): *Lê Linh, Vũ Nam*

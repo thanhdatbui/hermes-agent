@@ -110,14 +110,26 @@
     - **CẤM truyền file config/data lớn vào `--files`**: Cờ `--files` của `closeout_gate.py` CHỈ DÀNH CHO các file source code (`.py`) và test suite (`test_*.py`) thuộc phạm vi sửa đổi O(1). Tuyệt đối không truyền các file cấu hình lớn như `jobs.json` (30KB+), file state `.json`, hay workbook `.xlsx` vào `--files`. File config lớn khi re-dump format sẽ làm diff vượt ngưỡng 30.000 bytes của gate, gây fail-fast: `[Gate Fail-Fast: DIFF_TOO_LARGE] targeted diff quá lớn (> 30000 bytes)`.
     - **Bẫy Floating `HEAD~1` Khi Cron Tự Động Commit Ngầm**: Trong các repo có cron nền tự động đồng bộ (như `sync-hermes-skills-and-brain-to-git` commit mỗi 5 phút), con trỏ `HEAD` di chuyển liên tục. Việc dùng mù quáng `--base HEAD~1` có thể bị trượt trúng commit sync nền (`chore: sync...`). BẮT BUỘC kiểm tra `git log -n 5 --oneline` để xác định rõ commit SHA gốc trước thay đổi của phiên (ví dụ `--base <commit_sha>~1` hoặc gán SHA cụ thể) để gate so sánh chính xác tuyệt đối diff của phiên làm việc.
 
-24. **Bẫy Reviewer Timeout Trên OmniRoute (:20129) & Model Fallback (15/10/2026)**:
-    - Khi `closeout_gate.py` gọi model mặc định `review`, nếu kết nối proxy bị đơ hoặc upstream bị nghẽn luồng suy luận, gate sẽ treo đúng 300s và trả về lỗi:
-      `[OmniRouteClient] Request timed out on read: HTTPConnectionPool(host='localhost', port=20129): Read timed out.`
-    - **Cách khắc phục**:
-      * Kiểm tra các model còn sống trên `:20129` qua endpoint `/v1/models`.
-      * Truyền model dự phòng trực tiếp qua cờ `--model`:
-        `python D:/Taadaa/tools/closeout_gate.py --repo <path> --base <ref> --files <files...> --model antigravity/claude-sonnet-4-6 --json-output`
-      * Model `antigravity/claude-sonnet-4-6` phản hồi nhanh (5-15s), chấm điểm công bằng và tuân thủ chặt chẽ Closeout Rubric.
+24. **Bẫy Reviewer Timeout Trên OmniRoute (:20129) & Chẩn Đoán Cạn Kiệt ChatGPT-Web Pool (15/10/2026)**:
+    - Khi `closeout_gate.py` gọi model mặc định `review`, nếu upstream bị nghẽn luồng suy luận hoặc toàn bộ tài khoản bị lỗi session, gate sẽ treo đúng 300s và trả về lỗi:
+      `[OmniRouteClient] Request timed out on read: HTTPConnectionPool(host='192.168.110.123', port=20129): Read timed out.`
+    - **CẤM retry mù quáng liên tục**: Bắt buộc thực hiện quy trình chẩn đoán O(1) để phân định rõ nguyên nhân hạ tầng:
+      1. **Kiểm tra Health Endpoint**: `GET http://127.0.0.1:20129/api/health` -> nếu HTTP 200 thì tiến trình OmniRoute vẫn sống, lỗi nằm ở upstream target.
+      2. **Bắn Probe Từng Target Trong Combo**:
+         * `gpt-web-sol`: Nếu timeout hoặc trả về HTTP 503 `ALL_TARGETS_SKIPPED` -> Cụm ChatGPT-Web không có connection khả dụng.
+         * `codex/gpt-5.6-terra-high`: Nếu trả về HTTP 429 `Too Many Requests` -> Cạn quota tuần/5h của Codex.
+         * `ag-gemini-pool-3`: Kiểm tra xem cụm Gemini Google Cloud có còn sống (HTTP 200) hay không.
+      3. **Truy Vấn SQLite `storage.sqlite` Tìm Căn Nguyên Gốc**:
+         * Đường dẫn DB: `C:\Users\Kibe\.omniroute\storage.sqlite`
+         * Kiểm tra số connection active:
+           `SELECT COUNT(*) FROM provider_connections WHERE provider LIKE '%chatgpt%' AND is_active = 1;`
+         * Xem lỗi cụ thể trong `provider_connections` và `call_logs`:
+           - Thường gặp: `[404] ChatGPT returned 404 — chat-requirements-token expired` (hết hạn session cookie, cần refresh qua GPM).
+           - Hoặc: `[Proxy Fast-Fail] Proxy unreachable` / Turnstile Cloudflare ngâm request.
+      4. **Phương Án Cứu Hộ Closeout**:
+         * Nếu pool `chatgpt-web` chết cookie và `codex` dính 429: Chuyển sang model khả dụng trên `:20129`:
+           `python D:/Taadaa/tools/closeout_gate.py --repo <path> --base <ref> --files <files...> --model antigravity/claude-sonnet-4-6 --json-output`
+         * Nếu toàn bộ model reviewer đều kẹt: Báo cáo trạng thái **L3 BLOCKED kèm bằng chứng đối soát thực tế** từ `storage.sqlite` / probe HTTP (mã lỗi 404 expired token, 429 quota, 503 skipped). BLOCKED có bằng chứng thật chứng minh code + test đã hoàn tất 100% là kết quả hợp lệ, ngang giá trị DONE. Cấm báo DONE khống khi chưa qua gate.
 
 25. **Bẫy Test Phụ Thuộc `__globals__` Của Module Nội Bộ (Test Driving Internal Anti-Pattern — 15/10/2026)**:
     - Reviewer Sol High trừ điểm rất nặng (chấm 61-74/100) nếu unit test chọc vào `__globals__` của hàm nội bộ để mock dependencies:

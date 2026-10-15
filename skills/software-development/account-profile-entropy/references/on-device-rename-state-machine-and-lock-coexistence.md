@@ -265,5 +265,20 @@ for row in ws.iter_rows(min_row=2):
     2. Thoát LIVE an toàn: Nhấn nút Back `(75, 150)` hoặc `keyevent 4`, hoặc tap trực tiếp vào icon đóng phòng `X` ở góc trên cùng.
     3. Luôn luôn kiểm tra có thanh điều hướng đáy (`Hồ sơ` ở `y > 1700`) trước khi tap chuyển về tab Profile. Chỉ bấm Sửa hồ sơ khi đã xác nhận `state == PROFILE`.
 
+## 12. Ba Cạm Bẫy Phân Loại Màn Hình & Tọa Độ Trong State Machine Rename (2026-10-15)
+1. **Lỗi Phân Loại Nhầm PROFILE sang EDIT_PROFILE do nút `+ Thêm tiểu sử`**:
+   - Trong hàm `classify(lines)`: Nếu đặt `edit_marks = "tieu su" in t` kiểm tra trước `PROFILE`, trên mọi nick chưa có Bio, nút `+ Thêm tiểu sử` trên Profile sẽ khiến script nhận nhầm là `EDIT_PROFILE`.
+   - Trong `EDIT_PROFILE`, script không tìm thấy các dòng sửa tên nên bấm Back, làm văng app về Feed/Live và kẹt loop UNKNOWN 5 lần!
+   - **Fix chuẩn**: Kiểm tra `PROFILE` TRƯỚC (có `@username` và các chỉ số `follower`, `da follow`, `thich`). Trong `EDIT_PROFILE`, chỉ kích hoạt khi có `re.search(r"thay d\w{0,3} anh", t)` hoặc `tiktok.com` kèm các trường edit, CẤM dùng bare `"tieu su"`.
+2. **Sai Lệch Tọa Độ Dòng "Tên" Trên Màn Sửa Hồ Sơ S7 (`XY_NAME_ROW`)**:
+   - Trên Samsung S7 (1080x1920), dòng "Tên" thực tế nằm ở $y \approx 670 - 690$, còn $y \approx 750 - 780$ đã chạm vào vùng của "Tên người dùng" (`user_box`).
+   - Nếu để `XY_NAME_ROW = (600, 752)`, điều kiện an toàn `if xy[1] > user_box[1] - 30: raise Abort(...)` sẽ kích hoạt và hủy lệnh vì tưởng bấm nhầm vào username.
+   - **Fix chuẩn**: Đặt `XY_NAME_ROW = (600, 680)`. Khi tìm thấy `ten_box` qua OCR thì lấy `center(ten_box)[1]`, fallback mặc định là `(540, 680)`.
+3. **Nhiễu OCR Từ Huy Hiệu `9+` và Bong Bóng Ghi Chú Trạng Thái (Note Balloon)**:
+   - Trên Profile TikTok, bên phải tên hiển thị thường có huy hiệu đỏ hình viên thuốc ghi số thông báo **`9+`** (VD: `Ngọc Mai 9+`, `Tuấn Minh 9+`).
+   - Phía trên avatar thường có bong bóng ghi chú trạng thái (VD: *"Bạn có chuyện ...", "Bạn có tin vui?"*).
+   - Hàm trích xuất tên `nickname_on_profile(boxes)` có thể bốc nhầm chữ trong bong bóng ghi chú hoặc bị dính chuỗi `9+` vào tên.
+   - **Fix chuẩn**: Khi kiểm tra tên hiển thị mới trên Profile: loại bỏ `9+` và các ký tự số cuối dòng, kiểm tra dòng text nằm ngay sát trên `@username` (khoảng cách $y < 60px$), dùng `SequenceMatcher >= 0.7` hoặc kiểm tra stem từ khóa chính thay vì so sánh tuyệt đối `==`.
+
 
 
