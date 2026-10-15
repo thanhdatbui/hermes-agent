@@ -244,6 +244,20 @@
   - Giữ kích thước file test dưới 8,500 bytes (tương đương diff test dưới 9,000 bytes) để khi kết hợp cùng file mã nguồn chính (~12,000 bytes), tổng diff thô luôn duy trì ổn định ở mức **20,700 – 20,950 bytes** (nằm trọn vẹn dưới trần tuyệt đối **21,299 bytes** của `sol_payload_guard.py`).
   - Đảm bảo trạng thái review luôn là `level=L0` với `omitted=[]` để Reviewer Sol High có đầy đủ ngữ cảnh đánh giá cao nhất.
 
+## 19. Kiểm Chứng Sub-Action Trong Success Path, Boundary Equality & Cache TTL (16/10)
+- **Kiểm Chứng Gọi Hàm Cleanup Trong Success Path (Caller Sub-Action Verification):**
+  - Khi một hàm cha (`close_xiaowei`) gọi hàm con dọn dẹp (`cleanup_orphan_xiaowei_adb`) sau khi `taskkill` thành công, nếu test chỉ mock `cleanup_orphan_xiaowei_adb = lambda: False` mà không assert, Sol Reviewer sẽ bắt lỗi: *"Không có test verify rằng close_xiaowei gọi cleanup_orphan_xiaowei_adb sau khi taskkill thành công (chỉ mock lambda trả False)"*.
+  - **Khắc phục:** Dùng `cleanup_mock = MagicMock(return_value=False)` gắn qua `monkeypatch.setattr(xw, "cleanup_orphan_xiaowei_adb", cleanup_mock)`, và sau khi assert `xw.close_xiaowei() is True`, gọi ngay `cleanup_mock.assert_called()` để chứng minh bằng chứng thực nghiệm rằng luồng dọn dẹp phụ trợ thực sự được kích hoạt trong success path.
+- **Kiểm Thử Giá Trị Biên Ngưỡng Thời Gian (Boundary Equality Assertion):**
+  - Khi code có điều kiện `if idle_sec >= IDLE_THRESHOLD_SECONDS:`, nếu chỉ test `idle_sec = 300` (dưới ngưỡng) và `idle_sec = 1350` (trên ngưỡng), Reviewer sẽ đánh dấu thiếu sót: *"Không có test cho edge case IDLE_THRESHOLD_SECONDS chính xác bằng idle_sec (boundary test)"*.
+  - Bắt buộc bổ sung test case với giá trị chính xác bằng ngưỡng: `monkeypatch.setattr(xw, 'get_idle_seconds', lambda: 1200.0)`, chạy `xw.main()` và assert `XIAOWEI_CLOSE_TRIGGERED` được phát ra.
+- **Quản Trị Vòng Đời Cache Bằng TTL Trong Watchdog Script:**
+  - Để tránh việc cache trạng thái tiến trình (`_XIAOWEI_RUNNING_CACHE`) bị stale vĩnh viễn khi script hoặc module được gọi từ nhiều context khác nhau (hoặc chạy persistent), bổ sung `CACHE_TTL_SECONDS = 2.0` và `_CACHE_TS = 0.0`.
+  - Khi kiểm tra `use_cache=True`: chỉ dùng cache nếu `time.time() - _CACHE_TS < CACHE_TTL_SECONDS`. Khi ghi cache, cập nhật `_CACHE_TS = time.time()`. Trong `main()`, reset cả `_XIAOWEI_RUNNING_CACHE = None` và `_CACHE_TS = 0.0` dưới bảo vệ của `_CACHE_LOCK`.
+- **Bẫy Mock State Leaks Trong Pytest (Reset Fixtures Giữa Các Khối):**
+  - Khi dùng `monkeypatch.setattr(xw, "DRY_RUN_MODE", True)` trong một test function kiểm thử nhiều kịch bản, các bước kiểm thử phía sau sẽ bị kẹt trong chế độ dry-run nếu không reset lại `DRY_RUN_MODE = False`. Luôn explicit reset state hoặc dùng context managers / fixtures riêng biệt để tránh false failure.
+
+
 
 
 
