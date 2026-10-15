@@ -16,6 +16,7 @@ Use when the skill library needs consolidation: duplicate/overlapping skills, SK
 
 References:
 - `references/evaluating-third-party-skills-and-plugins.md` — Quy tắc thẩm định framework ngoài (như `obra/superpowers`): cấm cài plugin hook `pre_llm_call` cưỡng chế gây phá vỡ Coordinator O(1), ưu tiên cherry-pick & adapt skill đơn lẻ.
+- `references/pareto-80-20-curation-and-stopping-rules.md` — Nguyên tắc 80/20 trong điều phối và điểm dừng dứt khoát khi hệ thống đã đạt chuẩn kiến trúc & xanh 100%, chống over-engineering.
 - `references/surgery-patterns.md` — Pattern one-shot khôi phục và cắt tỉa file an toàn.
 - `references/runtime-guard-allowlist-edits.md` — Quy trình điều phối sửa guard/allowlist qua Claude CLI: định vị đúng file runtime plugin thay vì hook workspace, hợp đồng 1 file, kiểm chứng độc lập hai chiều (positive/negative), và cảnh báo reload cache.
 
