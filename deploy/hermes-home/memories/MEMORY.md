@@ -2,7 +2,7 @@ Chu kỳ 4d: Parity 96h (N1 lẻ, N2 chẵn), N3(R7,8), N4(dưỡng 0fl+up). Sta
 §
 Auto-resume: MAX(msg ts)<=60m; locks==0.
 §
-Worker: claude_worker.py (worker=Haiku <=15t, planner/reviewer=Sonnet <=10t/8t); hard-cap clamp; cấm raw claude -p; fallback ag_cli; CAM omni-worker. Sol Web/Advisor: model suy luận, streaming idle timeout, cấm cắt ngang. Closeout: cấm commit test-only chạy gate (telemetry=0); diff >500 dòng bị truncate, phải commit thin-slice.
+Worker: claude_worker.py (worker=Haiku 8t hard-cap 15t, planner/reviewer=Sonnet <=6t/4t read-only); cấm raw claude -p; fallback ag_cli; CAM omni-worker. Sol Web/Advisor: model suy luận, streaming idle timeout, cấm cắt ngang. Closeout: cấm commit test-only chạy gate (telemetry=0); diff lớn bị truncate, commit thin-slice.
 §
 TikTok Follow: (máy,row) độc lập; Quota 10-15/ca; Hồi phục 1&2; clean>=2 tốt nghiệp; Canary +10%; like 80%. Path B ko commit; slot (folder-1)%8+1. Mode 2: anchor >= 150 fl; cuộn sâu. Cron: follow_watchdog.
 §
