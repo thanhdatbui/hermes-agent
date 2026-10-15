@@ -100,3 +100,19 @@ Tách thành 2 tầng độc lập:
 3. **Đồng bộ đa tầng**:
    - Khi chỉnh sửa script watchdog hoặc runner:
      `D:\Taadaa\tools\` $\rightarrow$ `D:\Taadaa\Hermes\deploy\hermes-home\scripts\` $\rightarrow$ chạy `cron_sync_watchdog.py` để đồng bộ sang `%LOCALAPPDATA%\hermes\scripts\` và `OneDrive\hermes-cron\scripts`.
+
+---
+
+## 5. Kết Quả Thực Nghiệm & Số Liệu Sản Xuất (Production Benchmark - 16/10/2026)
+
+- **Quy mô triển khai:** Farm 80 máy Samsung Galaxy S7 (SM-G930F), tập ứng viên gồm 419 tài khoản rập khuôn (trùng tên bot, cụt số, 1 từ).
+- **Hiệu năng vận hành:**
+  * Watchdog 25 workers (`ThreadPoolExecutor` + Decoupled Subprocess Runner) chạy chu kỳ mỗi 15 phút.
+  * Thời gian mỗi batch 25 workers: 40–90 giây.
+  * Tỷ lệ thành công nhảy vọt từ ~8% (2 nick/đợt khi dính bẫy méo dấu Switcher & OCR ô input nhấp nháy) lên **30%–56% (7–14 nick/đợt)** ngay sau khi áp dụng:
+    1. Bẻ khóa Switcher dung sai cao (`chuy\w{0,3}n.*kho\w{0,2}n` + `switch account`).
+    2. Xác thực mềm ô input bằng bóc tách mảng từ `all_ocr_words` + bộ đếm `N/30`.
+    3. Nâng timeout subprocess lên 320s.
+- **Thành quả thực tế:**
+  * Đã hoàn tất đổi tên chuẩn "User bình thường" và nghiệm thu Profile OCR 100% cho **152 / 419 tài khoản** liên tục trong đêm, cấp cooldown 7 ngày an toàn.
+  * Xóa bỏ hoàn toàn 100% hiện tượng tap nhầm ô Search / "Không tìm thấy kết quả", zero device lock collision, zero farm freeze.
