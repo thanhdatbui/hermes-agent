@@ -311,4 +311,23 @@
     4. Giới hạn ngân sách nghiêm ngặt (budget <= 5 iterations).
   - Cách làm này vừa bảo vệ context của Coordinator, vừa giải quyết triệt để nút thắt payload truncation mà không vi phạm quy tắc an toàn farm.
 
+## 23. Chuẩn Hóa Khung Contract Guard Khi Dispatch & Kiểm Chứng Nhánh Zombie-To-CIM (16/10)
+- **Cấu Trúc Bắt Buộc Của Patch Contract Cho Task EDIT Qua `delegate_task`:**
+  - Hệ thống guard của Coordinator kiểm tra regex nghiêm ngặt trên `context` của `delegate_task`. Bất kỳ task EDIT nào BẮT BUỘC phải có đầy đủ 6 thành phần sau:
+    1. `TASK_KIND: EDIT`
+    2. `FILE: <đường_dẫn_tuyệt_đối>` (phải là đường dẫn tuyệt đối, duy nhất 1 file/task).
+    3. `OLD_STRING: <<< ... >>>` (bắt buộc dùng dấu bao `<<<` và `>>>`).
+    4. `NEW_STRING: <<< ... >>>`
+    5. `FOCUSED_TEST: python -m pytest <path>::<node>` (phải đúng định dạng pytest node).
+    6. `FAIL_FAST: Nếu trong <= 3 iterations đầu thấy scope bất khả thi với budget 15 calls thì DỪNG NGAY (ABORT)...` (Gate 4 Fail-Fast injection bắt buộc).
+  - Thiếu bất kỳ thành phần nào trong 6 mục trên sẽ bị `COORDINATOR GUARD - CONTRACT VIOLATION` từ chối tức thì.
+- **Kiểm Chứng Đầy Đủ Nhánh Zombie-To-CIM Invocation:**
+  - Khi code có luồng: `taskkill` thoát mã 0 nhưng `is_running()` vẫn `True` (zombie process) $\rightarrow$ log `ZOMBIE_DETECTED` $\rightarrow$ leo thang gọi CIM fallback.
+  - Nếu test chỉ kiểm tra log cảnh báo mà không assert lệnh CIM phía sau được gọi, Reviewer sẽ đánh dấu thiếu sót: *"Test zombie path chỉ kiểm tra log, không verify CIM được gọi sau đó"*.
+  - **Khắc phục:** Trong test mock `subprocess.run`: assert rõ ràng `run.call_count == 2` và `run.call_args_list[1].args[0][0] == "powershell"` để chứng minh lệnh WMI/CIM thực sự được kích hoạt sau khi phát hiện zombie.
+- **Hệ Số Nhân Trong Assertions Telemetry Khi Có Retry:**
+  - Khi hàm nghiệp vụ triển khai cơ chế retry (ví dụ thử lại 1 lần khi truy vấn trả về `None`, dẫn đến gọi tối đa 2 lần `_query`), mỗi lần gọi hàm thất bại sẽ phát ra 2 sự kiện lỗi.
+  - Nếu test gọi hàm 2 lần liên tiếp mà không xả buffer `capsys.readouterr()`, tổng số event lỗi tích lũy trong stdout là `4` (2 calls × 2 retries), không phải `2`. Assertions kiểm đếm tổng thể cần tính đúng hệ số nhân này để tránh false failure.
+
+
 
