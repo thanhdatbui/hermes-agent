@@ -147,3 +147,4 @@ See `references/claude-worker-role-dispatch-and-turns-hard-cap-20261015.md` for 
 See `references/gemini-pool-subagent-and-closeout-score-chasing-trap-20261015.md` for analysis of the Gemini Pool subagent stall and 85-score Closeout Gate infinite loop (15/10/2026).
 See `references/mechanical-gate-delegate-task-lockdown-20261015.md` for mechanical gate dispatch lockdown, delegate_task blocks on code edits, and the 3-tier worker fallback ladder (Haiku -> AG CLI -> L2/subagent escape valve).
 See `references/windows-stdin-pipe-and-haiku-5-5-catalog-invariants-20261015.md` for analysis of the Windows Node.js stdin pipe bug (`--print` error) and host-level invariants for `claude-haiku-5-5` & `claude-sonnet-5-5`.
+See `references/closed-loop-autonomous-completion-and-fail-safe-ladder.md` for Closed-Loop Autonomous Completion, the 4-Tier Fail-Safe Ladder when quota is exhausted, and the Strike 3 Automatic Hand-off Protocol (16/10/2026).
