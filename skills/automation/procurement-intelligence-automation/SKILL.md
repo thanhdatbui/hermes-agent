@@ -40,6 +40,17 @@ When clients request to "see data on their own app" or complain that Telegram re
 | **Automation** | Hands-free background cronjob at fixed hours | On-demand whenever user opens the ChatGPT mobile app |
 | **Best Use Case** | Daily early-warning sentinel for new tenders | Ad-hoc technical dossier evaluation, BoQ breakdown |
 
+### Decoupled CQRS Architecture & Dual-Cadence Data Freshness
+- **Why VPS Must NOT Scrape Directly:**
+  1. *WAF & SSL Blockade:* Portals block cloud datacenter IP ranges and trigger cipher negotiation issues (e.g. `SSL: DH_KEY_TOO_SMALL`); residential home connections browse cleanly.
+  2. *SPA Resource Burden:* Dynamic client-rendered portals require Chrome CDP (1-2 GB RAM), which risks starving VPS production services (`doravo.net`).
+  3. *ChatGPT Timeout (30-45s):* Multi-scope sweeps (42 queries) take ~2.8m, exceeding ChatGPT's strict timeout.
+- **CQRS Separation:**
+  - *Crawler (Home Machine):* Runs batch sweeps (08:00, 13:30, 17:00 ~2.5m/run) and on-demand pulls -> syncs clean data to VPS SQLite cache.
+  - *Query Daemon (VPS FastMCP):* Reads SQLite in <50ms -> returns SSE stream to ChatGPT in <0.2s without timeout risk.
+- **Freshness Cadence:** General queries read from the latest of 3 daily sweeps with timestamp labels; specific bid codes pull on-demand in 3-5 seconds.
+- **Universal vs Tailored Scope:** Any public bid nationwide can be searched/parsed by code; specialized compliance rules (e.g. YCCMED 4 models) apply selectively to core product lines.
+
 ---
 
 ## 3. ChatGPT Plugin / MCP Configuration Pitfalls & Security
@@ -81,6 +92,7 @@ To minimize token costs and eliminate latency:
 
 ## References
 
+- `references/decoupled-cqrs-bidding-mcp-and-freshness-strategy.md` — Decoupled CQRS architecture (residential IP crawler vs cloud VPS FastMCP query daemon), why VPS must not scrape government portals directly (WAF/SSL/RAM/timeout limits), dual-cadence data freshness (3 golden batch sweeps at 08:00, 13:30, 17:00 + 3-5s on-demand fetch), and universal vs tailored scope.
 - `references/mcp-configuration-and-intelligence-security.md` — Diagnostics for ChatGPT plugin/MCP URL errors, competitive intelligence security analysis (3rd-party vs private MCP), and partner messaging templates.
 - `references/private-mcp-server-architecture-and-sse-specs.md` — Reverse-engineered ChatGPT MCP SSE/HTTP transport specifications, OAuth discovery metadata, Nginx zero-buffering stream proxy rules, and FastMCP SQLite decoupling architecture.
 
