@@ -84,3 +84,11 @@ Nếu phát hiện hệ thống đã lỡ render nhầm dạng 1-1 từ `Src N` 
    3. Cả hệ thống rơi vào Deadlock: nick báo lỗi hết video liên tục.
 
    **Quy tắc bắt buộc:** Mỗi khi dọn đĩa hoặc phát hiện video gốc bị xóa, bắt buộc phải đối soát (reconcile) giữa filesystem và database quản lý download: thư mục nào thực tế thiếu video thì reset trạng thái về `pending` để downloader tự động cào tải bù.
+
+   ### Quy trình Reconcile 4 bước khi xảy ra lệch pha:
+   1. Backup database SQLite quản lý cào video (`.bak_reconcile`).
+   2. Quét toàn bộ folder nguồn (1..640): lấy số lượng và danh sách file mp4 thực tế trên đĩa.
+   3. Với mọi folder thực tế < 35 clip nhưng database đánh dấu hoàn thành:
+      - Cập nhật bảng `folders`: `SET status='pending', video_count=<so_clip_thuc_te>`.
+      - Dọn sạch các bản ghi video ma trong bảng `videos` và `perceptual_hashes` (những video_id có output_path không còn tồn tại trên đĩa).
+   4. Thực thi qua SSH an toàn bằng cách bọc code Python qua Base64 (`python -c "import base64; exec(base64.b64decode(...).decode())"`) để triệt tiêu lỗi shell escape trên Windows. Downloader nền sẽ lập tức nhận diện trạng thái `pending` và tự động cào tải bù đầy đủ.
