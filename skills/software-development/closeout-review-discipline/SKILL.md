@@ -14,11 +14,12 @@ metadata:
 > **Canonical policy precedence:** For orchestration and closeout precedence, follow `D:\Taadaa\HERMES_SUBAGENT_RULES.md` marker `CANONICAL-POLICY-PRECEDENCE-2026-10-05`; this skill points to it and does not redefine it.
 
 References:
-- `references/closeout-gate-diff-too-large-and-committed-scope-invariant.md` — **[15/10]** DIFF_TOO_LARGE (>30KB), committed scope & worker edit contract.
-- `references/msys-git-diff-external-and-multicommit-gate.md` — **[15/10]** MSYS git diff ext & multi-commit.
-- `references/metrics-lock-lookbehind-and-closeout-gate-truncation.md` — **[15/10]** Metrics lock & lookbehind.
-- `references/reviewer-model-characteristics-sol-vs-opus.md` — Sol vs Opus; Pre-Push Hook <85đ.
-- `references/safe-push-git-transport-unmask.md` — **[14/10]** Cờ `--push` auto safe_push khi APPROVED>=85.
+- `references/strike-3-reviewer-handoff-claude-cli.md` — **[15/10]** Strike 3 Reviewer Hand-off: gọi Claude CLI (`claude -p`) sau 3 lần REJECTED.
+- `references/closeout-gate-diff-too-large-and-committed-scope-invariant.md` — DIFF_TOO_LARGE (>30KB).
+- `references/msys-git-diff-external-and-multicommit-gate.md` — MSYS git diff.
+- `references/metrics-lock-lookbehind-and-closeout-gate-truncation.md` — Metrics lock.
+- `references/reviewer-model-characteristics-sol-vs-opus.md` — Sol vs Opus.
+- `references/safe-push-git-transport-unmask.md` — `--push` auto safe_push.
 - `references/closeout-gate-rejection-remediation.md` — **[MỚI 12/10/2026]** Kỷ luật xử lý khi closeout gate bị REJECTED (<85đ): Cấm dừng lại ở L3 xin đóng phiên, bám sát finding sửa đến cùng, quy trình Strike 3 hand-off Claude CLI.
 - `references/closeout-gate-files-dirty-target-strictness.md` — Quy tắc bắt buộc khi dùng `--files` trong `closeout_gate.py`: CHỈ truyền file có working-tree diff, tránh lỗi 'targets without working-tree changes'.
 - `references/closeout-gate-committed-scope-exactness.md` — **[MỚI 12/10/2026]** Khắc phục lỗi `refusing partial committed scope` trong chế độ `committed_targeted`: tập hợp `--files` bắt buộc khớp 100% với `git diff <base>..HEAD --name-only`.
