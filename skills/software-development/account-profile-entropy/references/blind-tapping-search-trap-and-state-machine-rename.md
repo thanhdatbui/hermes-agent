@@ -52,6 +52,13 @@ Khi điều khiển giao diện TikTok Android (bản v47.x trên Samsung S7 đ�
    - Cronjob của Hermes nếu để `deliver: 'origin'` sẽ bị gateway timeout sau 60s và bắn tin nhắn cảnh báo giả `provider timeout` về Telegram dù tiến trình nền vẫn hoàn tất 100%.
    - **BẮT BUỘC đặt `deliver: 'local'`** cho các batch watchdog nặng để tiến trình chạy ngầm im lặng, ghi log local và triệt tiêu tin nhắn spam báo ảo.
 
-5. **Kỷ Luật Phản Hồi Khi User Hỏi Số Worker**:
+5. **Độ Trễ Khởi Động App (Splash / Cold Boot Latency Trap trên Samsung S7)**:
+   - Trên các thiết bị phần cứng cũ (Galaxy S7), TikTok khởi động nguội (cold boot) thường mất từ 10–20s để vượt qua màn hình Splash ("TikTok" logo giữa màn hình đen/trắng).
+   - **Cạm bẫy kịch bản tuyến tính (Linear Script)**: Dùng `time.sleep(5-6s)` cố định rồi tap ngay vào tab Hồ sơ sẽ khiến cú tap rơi vào màn hình Splash và bị nuốt chửng (dropped). Sau đó các cú tap tiếp theo rơi lệch vào Feed hoặc LIVE.
+   - **Quy chuẩn State Machine bắt buộc**:
+     * Nếu OCR thấy `UNKNOWN` (chỉ có chữ "TikTok" hoặc ít hơn 3 dòng text không có nút bấm): tiếp tục chờ 3-4s và chụp lại, CẤM tap mù tiếp theo.
+     * Tự động dọn dẹp Search kẹt từ phiên trước: Nếu mở app lên mà thấy màn hình Search / Search Results (`id/hu0` hoặc thanh tìm kiếm có nút X), BẮT BUỘC bấm `keyevent 4` (Back) 2–3 lần để lùi về Feed/Home trước khi vào Profile.
+
+6. **Kỷ Luật Phản Hồi Khi User Hỏi Số Worker**:
    - Khi User hỏi *"Đang chạy worker bn đó"*, Coordinator phải phân biệt chính xác ngữ cảnh tác vụ User đang quan tâm (ví dụ: số worker của watchdog đang cấu hình vs số worker của ca nuôi feed toàn farm), cấm trả lời lệch trọng tâm gây hiểu lầm.
 

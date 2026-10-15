@@ -17,18 +17,18 @@
      - Chạm trần an toàn `max_scrolls`.
      - Hết thời gian phiên (`has_time_for_next_action() == False`).
 
-## 3. Phân biệt "Nhả Anchor" (_ensure_anchor_followed) vs "0 lượt an toàn" (status: OK)
-
-Khi operator thắc mắc: *"Tại sao phiên 1 ra 0 lượt (status: OK / Bỏ qua: Khác), sang phiên 2 lại dính Nhả follow?"* hoặc nghi ngờ anchor cạn nick:
-
-1. **Không kết luận "Anchor hết following":** Anchor pool luôn lọc sàn `MIN_ANCHOR_FOLLOWING >= 150` (dựa trên snapshots DB) nên anchor luôn có 150-340 following dày.
-2. **Bản chất nhả follow tại Anchor (`FOLLOW_FAILED: anchor @{uid} bị nhả sau vuốt`):**
-   - Xảy ra khi máy bốc trúng Anchor **chưa follow**. Bot bắt buộc phải mở video của Anchor, thả tim, bấm Follow rồi quay về profile vuốt reload kiểm tra (`_ensure_anchor_followed`).
-   - Nếu nick/IP bị TikTok theo dõi gắt, nút follow Anchor bị revert ngay lập tức ➔ Bot ghi nhận `FOLLOW_FAILED` tại chính Anchor và dừng phiên bảo vệ nick (chưa hề chạm tới danh sách con bên trong).
-3. **Bản chất 0 lượt an toàn (`status: OK`, `followed: 0`) ở phiên trước:**
-   - Xảy ra khi máy bốc trúng Anchor **đã follow sẵn từ các phiên trước**. Bot không cần bấm follow Anchor nữa nên không bị dính cờ nhả ở cửa vào.
-   - Khi vào trong danh sách 150-340 Following:
-     * Bot chỉ bấm follow nick nội bộ farm Taadaa (`internal_uids`).
-     * Các nick farm trong list đó máy này đã follow hết từ trước (`state.is_followed() == True`), các nick còn lại là người ngoài farm (bị lọc bỏ).
-     * Bot cuộn vét tới ngưỡng trần (`idle_scrolls >= 25`) mà không có nick farm nào mới để bấm ➔ Hoàn thành phiên với `status: OK, followed: 0`.
-     * **Vì không có hành động bấm follow nào diễn ra**, TikTok không có sự kiện để "nhả", máy giữ sạch cờ và không bị kích hoạt cooldown phạt.
+## 3. Phân biệt các trường hợp "0 lượt an toàn" (status: OK) vs "Nhả Anchor" (FOLLOW_FAILED):
+   - **TRƯỜNG HỢP 1: Chưa mở được Anchor hoặc Search không ra (`skipped: []`, `followed: []`):**
+     * Log: `skipped: []`, thời gian chạy ngắn (60-90s cho 3 anchor).
+     * Nguyên nhân thực tế: Bot gõ UID anchor vào thanh tìm kiếm nhưng `_nav_search` trả về `not_found` (mạng lag, TikTok đổi layout search, hoặc không khớp exact thẻ card anchor), hoặc không xác minh được profile anchor.
+     * Code tự động `_back_to_feed` và thử tiếp anchor kế tiếp. Hết 3 anchor không mở được ai -> thoát an toàn `status: OK, followed: 0`.
+     * **Nick non (Row 5 ca tối) gặp 0 lượt mà `skipped: []` là 100% do trường hợp này**, tuyệt đối KHÔNG ĐƯỢC suy đoán bậy bạ là "đã follow hết list anchor" vì nick non mới tạo lịch sử cả đời mới follow vài nick.
+     * Vì chưa mở được vào và chưa bấm nút Follow của bất kỳ ai, TikTok không có hành động để nhả -> cờ `follow_failed` giữ sạch nguyên.
+   - **TRƯỜNG HỢP 2: Đã vào danh sách nhưng không có nick farm hợp lệ (`skipped: [uid1, uid2...]`):**
+     * Log: `skipped` có chứa danh sách các handle bên ngoài farm (như M59 có 11 nick skipped).
+     * Nguyên nhân: Đã mở được tab Following của anchor, nhưng các nick nhìn thấy là người ngoài farm (hoặc nick farm nhưng tài khoản đã follow từ trước).
+     * Cuộn tới ngưỡng dừng an toàn (`idle_scrolls >= 25`) không còn nick mới -> dừng `status: OK, followed: 0`.
+   - **TRƯỜNG HỢP 3: Bị nhả ngay tại Anchor (`FOLLOW_FAILED: anchor @{uid} bị nhả sau vuốt`):**
+     * Xảy ra khi máy bốc trúng Anchor **chưa follow** và tìm kiếm thành công, vào được Profile anchor (`_ensure_anchor_followed`).
+     * Bot xem video, thả tim, bấm Follow trên video rồi quay về Profile vuốt kéo reload kiểm tra.
+     * Nút follow bị TikTok revert ngay lập tức về màu đỏ (`refreshed_classification == 'not_followed'`) ➔ Bot ngắt phiên ngay lập tức để bảo vệ nick. Lúc này máy thậm chí chưa kịp bấm vào tab Following của anchor.
