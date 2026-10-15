@@ -115,6 +115,8 @@ See `references/mechanical-dual-answer-enforcement-and-stream-deadline-audit-202
 See `references/omniroute-turnstile-sentinel-circuit-breaker-20261010.md` for Turnstile 403 Sentinel challenge, 5-failure 30min circuit breaker lockout, and stream timeout diagnostic.
 See `references/reasoning-model-stream-timeout-and-idle-discipline-20261015.md` for reasoning models thinking allowance vs stream keepalive timeout architecture.
 
+- **claude_worker.py — Cổng Điều Phối Role-Based Thế Hệ Mới (15/10/2026):** Để tránh lặp lại sự cố bypass 72 turns (2.1M tokens Sonnet), toàn bộ lệnh gọi Claude CLI trên Farm BẮT BUỘC đi qua `python D:/Taadaa/tools/claude_worker.py --role [worker|planner|reviewer]`. Wrapper này cưỡng chế tự động: hard-cap `max_turns` theo role (reviewer: 4 mặc định/8 tối đa, planner: 6/10, worker: 8/15), chọn đúng model mặc định (Sonnet cho planner/reviewer, Haiku cho worker), khóa cứng `--disallowedTools Edit,Write,NotebookEdit` cho planner/reviewer, và tự động fallback sang `ag_cli.py ask` (không phải `fix`) khi Quota chạm ngưỡng 85%/90%. Quota stale threshold hạ xuống 2.0h. CẤM gọi `claude -p` thô trong terminal mà không qua wrapper.
+
 ## Common failure modes
 
 - **Kỷ luật Strike 3 Hand-off: CẤM Coordinator tiếp tục tự sửa code hoặc chỉ gọi Claude CLI làm Reviewer passive:** Khi đã fail 3 lần liên tiếp (Strike 3), Coordinator và Worker BẮT BUỘC DỪNG SỬA CODE ngay lập tức. Phải bàn giao quyền can thiệp sửa code cho Claude Code CLI chạy nền (`claude -p "$(< prompt.txt)" --dangerously-skip-permissions --max-turns 20`). Cấm tuyệt đối lách luật bằng cách tự sửa tiếp rồi chỉ gọi Claude CLI làm Reviewer chấm điểm (`--tools ""`).

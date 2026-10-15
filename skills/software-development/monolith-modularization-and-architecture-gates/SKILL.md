@@ -161,3 +161,19 @@ When delegating code extraction or monolith edits to `haiku_worker.py`:
 See `references/architecture-gate-and-line-budget-patterns.md` for architecture gate test patterns.
 See `references/monolith-haiku-worker-and-import-patterns-20261015.md` for dual-path import fallback, Haiku worker turn-clamping, and Closeout Gate diff-budget patterns.
 See `references/haiku-worker-turn-clamping-and-monolith-pitfalls.md` for detailed pitfalls on max-turns exhaustion, host terminal timeout synchronization, and subagent test signature drift.
+
+---
+
+## 9. Quy Trình Chuẩn Coordinator: Không Nhảy Rào Guard, Không Bypass
+
+Khi `delegate_task` bị hệ thống Guard chặn (ví dụ: diff > 30 dòng, thiếu OLD_STRING), **TUYỆT ĐỐI KHÔNG** phá rào bằng lệnh terminal thô:
+```bash
+# NGHIÊM CẤM — Đây là nguồn gốc cháy 2.1 triệu Sonnet tokens trong 1 task:
+claude -p "..." --dangerously-skip-permissions > log.txt 2>&1
+```
+Quy trình xử lý ĐÚNG:
+1. Guard chặn vì diff > 30 dòng → Coordinator chẻ nhỏ thành ≥ 2 nhát cắt Thin-slice.
+2. Guard chặn vì thiếu OLD_STRING → Coordinator tự đọc file, lấy anchor rõ ràng, cấp Patch Contract chuẩn.
+3. Worker bị `Reached max turns` → KHÔNG tăng `--max-turns` bừa bãi; chia thêm nhỏ hơn.
+
+**Bài học sự cố 15/10/2026:** Coordinator gặp Guard chặn diff 218 dòng → bypass bằng terminal thô `claude -p ... --dangerously-skip-permissions` không kẹp --max-turns → Sonnet tự do chạy 72 turns, ngốn 2.117.100 tokens, đẩy quota từ 5% lên 98%.
