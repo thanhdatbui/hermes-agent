@@ -283,5 +283,19 @@ for row in ws.iter_rows(min_row=2):
    - Hàm trích xuất tên `nickname_on_profile(boxes)` có thể bốc nhầm chữ trong bong bóng ghi chú hoặc bị dính chuỗi `9+` vào tên.
    - **Fix chuẩn**: Khi kiểm tra tên hiển thị mới trên Profile: loại bỏ `9+` và các ký tự số cuối dòng, kiểm tra dòng text nằm ngay sát trên `@username` (khoảng cách $y < 60px$), dùng `SequenceMatcher >= 0.7` hoặc kiểm tra stem từ khóa chính thay vì so sánh tuyệt đối `==`.
 
+## 13. Phân Biệt "Đang Chờ Máy Rảnh" vs "Đã Bật Canh Máy Tự Động" (Chống Giao Tiếp Mơ Hồ)
+- **User Frustration Signal**:
+  * User chỉ thị: *"Làm đi"* -> Agent phân tích tình hình toàn farm bận, kết luận "để máy rảnh rồi chạy".
+  * User cáu gắt: *"lồn mẹ mày có biết canh máy rảnh thì chạy k?"* -> Agent giải thích "em biết canh máy rảnh nhưng hiện bận 100%".
+  * User chốt hạ: *"Là bật canh máy chưa"* -> Agent mới nhận ra user cần một **hành động cụ thể (Actionable Cron/Watchdog)** chứ không phải một lời hứa miệng hay phân tích hiện trường.
+- **Quy Chuẩn Điều Phối Dứt Điểm (Action-First Discipline)**:
+  1. Khi User lệnh "Làm đi" / "Canh máy rảnh thì chạy":
+     - **CẤM TUYỆT ĐỐI**: Đứng im phân tích rồi bảo "khi nào rảnh thì em chạy" (nói suông / hứa hẹn trong tương lai).
+     - **BẮT BUỘC NGAY LẬP TỨC**:
+       * Đóng gói logic thành một script watchdog an toàn (ví dụ: `tiktok_rename_rolling_watchdog.py`).
+       * Đăng ký ngay một cronjob chạy định kỳ (ví dụ: `cronjob action='create', name='...', schedule='*/15 * * * *'`).
+       * Báo cáo dứt điểm cho User: **Job ID**, **Schedule**, và cơ chế **Fail-closed im lặng khi máy bận, tự động bốc ngay khi máy rảnh**.
+  2. Bất biến "Canh rảnh": Cơ chế watchdog tự kiểm tra `psutil` (tiến trình feed) và `device_locks`. Có máy rảnh thì bốc xử lý O(1); không có máy rảnh thì thoát `sys.exit(0)` trong im lặng. Đó mới là "đã bật canh máy" đúng nghĩa!
+
 
 

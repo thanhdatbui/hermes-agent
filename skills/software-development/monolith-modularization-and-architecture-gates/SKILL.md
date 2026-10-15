@@ -117,28 +117,83 @@ When the user asks to modularize across multiple repos:
 
 ---
 
-## 6. Dual-Path Import Fallback Pattern for Scripts
+## 6. Dual-Path Import Fallback & Candidate Root Anchoring (Anti-Cron-Breakage)
 
-When a script lives inside a subdirectory (e.g., `scripts/feed_session_watchdog.py`) and is executed both directly via CLI (`python scripts/feed_session_watchdog.py`, where `scripts/` is added to `sys.path`) AND via test suites or root orchestrators (`import scripts.feed_session_watchdog`):
-- A direct `from scripts.subpackage import ...` fails with `ModuleNotFoundError: No module named 'scripts'` when run from tests or inside `scripts/`.
-- A direct `from subpackage import ...` fails when imported from the repository root.
+### The Harness/Deployment Trap
+When a script (e.g. `scripts/feed_session_watchdog.py`) is modularized into subpackages (`scripts/watchdog/`):
+- Simple `from watchdog.lock import ...` or `from scripts.watchdog.lock import ...` works ONLY when running inside the repo or with repo root in `sys.path`.
+- **THE FATAL TRAP:** When the script is deployed or executed by an external runner (e.g., Hermes cron copies or runs scripts from `%LOCALAPPDATA%\hermes\scripts\`, CI runners, or background daemons), the script runs from a directory where `watchdog/` does NOT exist, and `scripts` is not in `sys.path`.
+- Result:
+  ```text
+  ModuleNotFoundError: No module named 'watchdog'
+  ModuleNotFoundError: No module named 'scripts'
+  ```
+- **Downstream Cascade:** Any child scripts (like `follow_session_watchdog.py`) that do `import feed_session_watchdog as fsw` get killed immediately as collateral damage.
 
-**Mandatory Dual-Path Fallback Pattern:**
+### Mandatory Candidate Roots Anchor Pattern
+Before importing any subpackage modules, every script that may run outside its repo source tree MUST anchor its candidate repo directories into `sys.path`:
+
 ```python
+import os
+import sys
+
+_candidate_dirs = [
+    os.path.dirname(os.path.abspath(__file__)),
+    os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")),
+    r"D:\Taadaa\tiktok-luot nuoi acc\scripts",
+    r"D:\Taadaa\tiktok-luot nuoi acc",
+]
+for _d in _candidate_dirs:
+    if os.path.isdir(_d) and _d not in sys.path:
+        sys.path.insert(0, _d)
+
 try:
     from watchdog.lock import ProcessLock, is_feed_runner_active, is_pid_alive
+    from watchdog.merger import is_device_locked_skip, merge_machine_result, merge_follow_result, merge_upload_result
+    from watchdog.alerts import DEFAULT_FARM_ALERT_THRESHOLD, NURTURE_CYCLE_H, STARVATION_THRESHOLD_H, should_trigger_farm_alert, get_row_nurture_summary, normalize_machine_key, get_expected_machines_for_cluster
+    from watchdog.formatters import (
+        classify_machine_follow_result,
+        format_success_follows,
+        format_released_follows,
+        format_ip_circuit_breaker_report,
+        classify_feed_failure,
+        classify_error_reason,
+    )
+    from watchdog.parser import parse_run_all, parse_run_machines, parse_follow_results, parse_upload_results
 except ImportError:
     from scripts.watchdog.lock import ProcessLock, is_feed_runner_active, is_pid_alive
+    from scripts.watchdog.merger import is_device_locked_skip, merge_machine_result, merge_follow_result, merge_upload_result
+    from scripts.watchdog.alerts import DEFAULT_FARM_ALERT_THRESHOLD, NURTURE_CYCLE_H, STARVATION_THRESHOLD_H, should_trigger_farm_alert, get_row_nurture_summary, normalize_machine_key, get_expected_machines_for_cluster
+    from scripts.watchdog.formatters import (
+        classify_machine_follow_result,
+        format_success_follows,
+        format_released_follows,
+        format_ip_circuit_breaker_report,
+        classify_feed_failure,
+        classify_error_reason,
+    )
+    from scripts.watchdog.parser import parse_run_all, parse_run_machines, parse_follow_results, parse_upload_results
 ```
+
 And in test files (`tests/test_watchdog_*.py`):
 ```python
 import os, sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'scripts')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 try:
     from watchdog.lock import ProcessLock
 except ImportError:
     from scripts.watchdog.lock import ProcessLock
 ```
+
+---
+
+## 7. Anti-Pattern Cảnh Báo: Spam L2-Surgery Mù Khi Gặp Lỗi Import Deployment
+
+Khi một cronjob hay daemon báo lỗi `ModuleNotFoundError` (ví dụ: `ModuleNotFoundError: No module named 'watchdog'`):
+1. **CẤM TUYỆT ĐỐI** tự ý suy diễn là do logic code rồi spam commit `[L2-surgery]` sửa đổi regex, window datetime, metrics, hay cấu trúc file trong repo.
+2. **BẮT BUỘC** kiểm tra môi trường chạy thật (`which python`, working directory, `__file__` path, và vị trí file đang được cron gọi).
+3. Nếu script chạy từ cache/staging ngoài repo (`%LOCALAPPDATA%\hermes\scripts`), lỗi 100% nằm ở việc thiếu submodule trong thư mục deploy hoặc thiếu `sys.path` candidate dirs, KHÔNG PHẢI lỗi business logic. Sửa nhầm logic repo chỉ làm hỏng thêm các watchdog đang chạy ổn định.
 
 ---
 

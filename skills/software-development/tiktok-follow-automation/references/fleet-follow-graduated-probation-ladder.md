@@ -100,7 +100,8 @@
     * **Hiệu ứng bấm thẻ trực quan (Micro-interaction & Active Feedback):**
       - Thẻ KPI khi hover/click phải có hiệu ứng tương tác như các thẻ KPI khác (`:hover { transform: translateY(-3px); box-shadow: ... }`, `:active { transform: translateY(-1px); }`).
       - Thẻ được chọn BẮT BUỘC có class `.active` với background gradient highlight, viền rực màu neon accent, và hiệu ứng chấm tròn active (`::after`) để người dùng nhận biết ngay thẻ nào đang kích hoạt.
-    * **CẤM tạo thêm hàng nút chọn nhóm lặp lại ở phía dưới (loại bỏ redundancy):** Khi 4 thẻ KPI đã có đủ chức năng và số liệu, việc tạo thêm một hàng nút chọn nhóm phía dưới là dư thừa và làm rối mắt. Xóa bỏ hàng nút dưới, chỉ giữ lại thanh tìm kiếm `🔍 Tìm máy hoặc username...` và tiêu đề danh sách rõ ràng.
+    * **CẤM tạo thêm hàng nút chọn nhóm lặp lại ở phía dưới (loại bỏ redundancy):** Khi 4 thẻ KPI đã có đủ chức năng và số liệu, việc tạo thêm một hàng nút chọn nhóm phía dưới là dư thừa và làm rối mắt. Nếu giao diện có hàng nút lọc nhanh cho Ma Trận, BẮT BUỘC phải có đủ cả 4 tầng: `[Tất Cả]`, `[Khỏe]`, `[Hồi phục 1]`, `[Hồi phục 2]`, `[Cooldown]`; CẤM TUYỆT ĐỐI bỏ sót `Hồi phục 1` và `Hồi phục 2`.
+    * **Chỉ số và bộ lọc Follow Gần Đây (Recent Follows Invariant):** Dashboard BẮT BUỘC hiển thị chỉ số follow thực tế tích lũy trong 12 ngày gần nhất (`recent_followed` / `Gần đây (+X)`) trên mỗi thẻ và bảng, kèm tính năng sort `Gần đây ↕` để operator theo dõi ngay các nick đang cày follow tốt nhất thay vì bị che khuất bởi dàn nick 0 follow.
     * Bấm vào thẻ KPI nào là lập tức kích hoạt lọc và **tự động cuộn mượt (`scrollIntoView`)** xuống thẳng danh sách máy của nhóm đó, không bắt người dùng phải kéo tay tìm kiếm.
     * Có highlight trực quan (`.active`) trên thẻ KPI đang được chọn.
   - Mặc định khi mở tab phải chọn ngay nhóm **`[💪 Khỏe]`** để hiển thị ngay dàn nick nòng cốt sạch đẹp.
