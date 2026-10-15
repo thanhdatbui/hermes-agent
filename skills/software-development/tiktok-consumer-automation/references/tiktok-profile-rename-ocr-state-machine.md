@@ -154,12 +154,27 @@
      expected_len = len(NEW_NAME)
      ok_count = (count_match is not None and abs(int(count_match.group(1)) - expected_len) <= 1) or f"{expected_len}/30" in box
      ```
-2. **Thuật toán so khớp mềm kết hợp tách từ (Word Matching):**
-   - Tách tên mới thành các từ đơn: `words = [norm(w) for w in NEW_NAME.split() if len(w) >= 2]`.
-   - Điều kiện text hợp lệ (`ok_text = True`) khi thỏa mãn **BẤT KỲ** điều kiện nào sau đây:
-     * Tỷ lệ SequenceMatcher toàn chuỗi `>= 0.45` (chống méo dấu).
-     * Hoặc tìm thấy ít nhất 1 từ đơn (`found_word`) khớp trong các dòng OCR (SequenceMatcher từng từ `>= 0.6`).
-     * Hoặc chuỗi không dấu nằm trọn trong ô nhập.
-3. **Chốt chặn an toàn tối cao (Post-Save Gate):**
+2. **Thuật toán so khớp mềm kết hợp tách từ (Word-by-Word Tokenization):**
+   - **Bẫy so sánh cả dòng:** Nếu so khớp `difflib.SequenceMatcher(norm(line), word)` thì khi `line` chứa nhiều từ (ví dụ `'Trpng HI-fdng'`), độ dài dòng lớn khiến ratio bị kéo tụt xuống `< 0.45` dù từ `'Trpng'` giống `'Trọng'` tới 80%!
+   - **Giải pháp bóc tách mảng từ (all_ocr_words):** Bắt buộc tách toàn bộ các dòng OCR thành danh sách từ đơn:
+     ```python
+     words = [norm(w) for w in NEW_NAME.split() if len(w) >= 2]
+     all_ocr_words = [norm(w) for l in lines for w in l.split()]
+     found_word = any(any(difflib.SequenceMatcher(None, ow, w).ratio() >= 0.6 for ow in all_ocr_words) for w in words)
+     ratio = difflib.SequenceMatcher(None, norm(" ".join(lines)), NEW_NAME_NORM).ratio()
+     ok_text = (any(is_target(l) for l in lines)
+                or NEW_NAME_NORM in norm(" ".join(lines))
+                or ratio >= 0.35
+                or found_word)
+     ```
+   - Điều kiện text hợp lệ (`ok_text = True`) khi thỏa mãn:
+     * `ok_count = True`: Bộ đếm ký tự khớp `{len(NEW_NAME)}/30` (±1).
+     * `ok_text = True`: Tìm thấy ít nhất 1 từ đơn (`found_word`) khớp trong `all_ocr_words` (ratio >= 0.6) HOẶC ratio toàn chuỗi >= 0.35.
+
+3. **Cơ chế Flush Buffer Stdout Trong Tiến Trình Nền (Windows C-Runtime Buffer):**
+   - Khi chạy script đa luồng / watchdog trong background trên Windows (`terminal(background=True)`), stdout mặc định bị C-runtime block-buffer (chỉ đẩy ra khi đầy 4KB hoặc tiến trình đóng sạch).
+   - Lệnh in thông báo hoàn tất BẮT BUỘC dùng `print(..., flush=True)` để harness Hermes nhận được ngay sự kiện nghiệm thu (`✅ [ROLLING RENAME]`), không bị nuốt output.
+
+4. **Chốt chặn an toàn tối cao (Post-Save Gate):**
    - Xác thực mềm ở ô input chỉ để quyết định có bấm 'Lưu' hay không.
    - Việc công nhận đổi tên thành công (`verified = True`) **vẫn bắt buộc kiểm tra 100% tại màn hình Profile root sau khi Lưu**: Tại đây font chữ in đậm lớn, WinRT OCR đạt độ chính xác `>= 75%`.
