@@ -218,6 +218,11 @@ When delegating code extraction or monolith edits to `haiku_worker.py`:
   Khi các công cụ hoặc script trên Windows vô tình ghi đè file bằng CRLF (`\r\n`) trong khi Git repository đang lưu bằng LF (`\n`), Git diff sẽ coi MỌI DÒNG trong file đều bị thay đổi!
   *Hậu quả:* Một file test chỉ sửa 10 dòng assertion nhưng diff vọt lên 521 dòng (22.518 bytes), cộng với các file khác lập tức làm diff tổng vượt 30 KB và bị Closeout Gate từ chối ngay ở Step 2.
   *Cách khắc phục:* Luôn kiểm tra line endings khi diff phình bất thường (`git diff -w --stat` không thấy diff nhưng `git diff --stat` thấy hàng trăm dòng). Chuẩn hóa triệt để về LF bằng script Python: `Path(f).write_bytes(Path(f).read_bytes().replace(b"\r\n", b"\n"))` trước khi stage commit.
+- **Bẫy Auto-Discovered Test Cascade của Closeout Gate:**
+  Khi commit CHỈ chứa file logic (không chứa file test, ví dụ chỉ commit `tiktok_dashboard.py`), `closeout_gate.py` không tìm thấy `direct_tests` nên tự động quét danh sách candidate fallback (`test_closeout_binding_tamper.py`, `test_closeout_guard_integration.py`, `test_sol_payload_guard.py`). Nếu bất kỳ file guard test nào trong số đó bị fail do pre-existing test debt, gate sẽ dừng ngay ở Step 3 và từ chối review.
+  *Cách khắc phục:* Luôn đính kèm file test trực tiếp (architecture gate hoặc unit test) vào chung commit với file code (ví dụ `tiktok_dashboard.py` + `tests/test_dashboard_architecture_gate.py`). Khi có file test trực tiếp, `closeout_gate.py` sẽ CHỈ chạy bộ test tập trung đó, cô lập hoàn toàn khỏi test debt của các module khác.
+- **Đồng bộ Docstring và Ngưỡng Assert trong Architecture Gate Đa Giai Đoạn:**
+  Khi phân rã monolith theo từng lát cắt (Slice 1: tách query giảm từ 3437 xuống 2914 dòng; Slice 2: tách template giảm xuống < 300 dòng), test gác cổng phải ghi rõ ngữ cảnh giai đoạn trong tên hàm và docstring (ví dụ `test_dashboard_slice1_line_budget_under_3000`). Nếu docstring ghi `< 300 lines` nhưng code assert `< 3000`, LLM Reviewer sẽ coi đây là lỗi bất cẩn / lỏng lẻo và trừ điểm gate.
 - Furthermore, `--files` requires exact matching with committed files in `HEAD~1..HEAD` (`refusing partial committed scope` if even `__init__.py` is omitted).
 
 ---
@@ -267,3 +272,13 @@ Quy trình xử lý ĐÚNG:
 3. Worker bị `Reached max turns` → KHÔNG tăng `--max-turns` bừa bãi; chia thêm nhỏ hơn.
 
 **Bài học sự cố 15/10/2026:** Coordinator gặp Guard chặn diff 218 dòng → bypass bằng terminal thô `claude -p ... --dangerously-skip-permissions` không kẹp --max-turns → Sonnet tự do chạy 72 turns, ngốn 2.117.100 tokens, đẩy quota từ 5% lên 98%.
+
+---
+
+## 12. Coordinator T1 Budget Hard-Limit & Chuyển Giao Worker
+
+- **Ngân sách T1 cứng:** Coordinator chỉ được sửa tối đa 5 files và <= 200 dòng cộng dồn trong toàn bộ phiên.
+- **Phản ứng khi chạm trần:** Khi Guard báo `COORDINATOR WRITE DENIED: Hết ngân sách T1`, **TUYỆT ĐỐI CẤM** tìm cách viết file bằng công cụ khác hay lách luật. Coordinator BẮT BUỘC phải chuyển giao ngay sang Worker qua `delegate_task`:
+  - `goal`: Bắt buộc chứa `FILE: <đường_dẫn_tuyệt_đối>`
+  - `context`: Cung cấp Patch Contract O(1) rõ ràng với `OLD:` và `NEW:` chuẩn xác (không trùng nhau) cùng lệnh test focused.
+  - Sau khi Worker hoàn thành, nghiệm thu bằng test suite trước khi commit/push.
