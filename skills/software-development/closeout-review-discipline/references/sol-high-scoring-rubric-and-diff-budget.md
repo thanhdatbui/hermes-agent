@@ -20,9 +20,12 @@
 
 ### B. Code Architecture (10 điểm)
 - **Giảm Cyclomatic Complexity:** Phân rã các hàm dài (>30 dòng) có nhiều tầng lồng `try/except` và fallback thành các hàm đơn nhiệm rõ ràng (ví dụ: `_try_kill_server()`, `_try_cim_terminate()`).
+- **Atomic Cache Pattern (Chống TOCTOU Lock):** Không được nhả lock giữa lúc đọc cache và lúc ghi đè cache (`subtle TOCTOU gap between read-check and write-update`). Bọc toàn bộ khối kiểm tra cache, truy vấn hệ thống và cập nhật timestamp `_CACHE_TS` trong cùng một khối `with _CACHE_LOCK:` nguyên tử.
 - **Cache Invalidation Tường Minh:** Tách helper `_invalidate_cache()` thread-safe; bắt buộc gọi invalidation ngay sau khi tiến trình được đóng thành công trước khi chuyển sang bước cleanup tiếp theo, triệt tiêu khoảng trống TOCTOU giữa `close` và `cleanup`.
+- **Zombie Escalation Delay:** Khi phát hiện zombie (taskkill rc=0 nhưng tiến trình vẫn còn chạy), thêm khoảng chờ ngắn `time.sleep(0.5)` trước khi gọi CIM terminate để tránh race condition với tiến trình đang trong quá trình thoát dở dang.
 
 ### C. Test Evidence & Edge Cases (25 điểm)
 - **Double-None Retry:** Bắt buộc có test mock `side_effect=[None, None]` để chứng minh nhánh fail-closed hoạt động đúng khi retry cả 2 lần đều lỗi.
 - **Dynamic Env Parsing Clamp:** Test đầy đủ các ca biên khi đọc biến môi trường: giá trị âm ép về min, giá trị vượt ngưỡng ép về max, chuỗi chữ/rỗng fallback về mặc định.
-- **Zombie Escalation Path:** Khi `taskkill` báo thành công (`returncode == 0`) nhưng tiến trình vẫn còn chạy (zombie), test phải verify phát cảnh báo `ZOMBIE_DETECTED` VÀ verify tầng fallback CIM tiếp tục được kích hoạt (`call_count == 2` và gọi đúng command `powershell`).
+- **Cache Expiry Test:** Bắt buộc có test case chứng minh TTL hết hạn: gán `_CACHE_TS = xw.time.time() - 5.0` (> 2s TTL) và kiểm chứng `is_xiaowei_running(use_cache=True)` gọi lại subprocess thay vì trả cache.
+- **Zombie-to-CIM Success Path:** Mô phỏng `taskkill` báo 0 nhưng tiến trình sống (`iter([True, False])`), sau đó CIM terminate thành công trả về `close_xiaowei() is True` và `call_count == 2` (gọi đúng `powershell`).
