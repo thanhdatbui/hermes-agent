@@ -263,5 +263,28 @@ Trước khi soạn bất kỳ tin nhắn nào cho User:
     ```
   - Kết quả: Worker chỉ cần tạo đúng 1 file duy nhất, chạy 1 lệnh pytest pass 100%, vừa sinh đủ file ảnh vừa thỏa mãn mọi gate điều phối mà không bị kẹt sandbox.
 
+---
+
+## 13. Cạm Bẫy Trôi Tâm Crop & Cắt Mất Miệng/Cằm (Sự Cố 15/10/2026 — "Thấy Mỗi Cái Tóc / Không Thấy Người")
+- **Hiện tượng & Bị User mắng**:
+  - Khi crop avatar cho kênh TikTok `@nhathasz4vw` (Folder 396) và `@pegsofuh038` (Folder 325), script tạo ra ảnh viền tròn xanh chỉ thấy trán, lông mày hoặc chóp mũ đội ngược nằm ép sát đáy vòng tròn, trong khi 70% diện tích bên trên là trần nhà, phụ đề slogan chữ viết tay (*"...xua đuổi mấy tên dê trong 1 nốt nhạc"*).
+  - Toàn bộ mũi, miệng, cằm bị cắt cụt ngoài viền tròn. User phản ứng gay gắt: *"Ava loz gì k thấy ng hoặc thấy mỗi cái tóc v"*.
+- **Nguyên nhân gốc rễ**:
+  1. **Công thức Headroom bị giật ngược lên phụ đề**: Công thức cũ `y1 = fy - int(fh * 0.45) - 35` giả định đỉnh tóc nằm ngay trên trán. Nhưng trong video TikTok dọc ($1080 \times 1920$), ngay phía trên đầu nhân vật thường chèn phụ đề/chữ trang trí. Trừ ngược quá tay khiến `y0` kéo tít lên vùng chữ, đẩy toàn bộ khuôn mặt thật xuống đáy crop.
+  2. **Tọa độ trục dọc sai lệch nghiêm trọng trên video dọc 9:16**: Nhân vật ngồi/đứng làm việc trong video $1080 \times 1920$ thường có tâm đầu ở $y \approx 800 - 950$, nhưng script hardcode hoặc tính Haar nhầm $y \approx 420$ (rơi vào khoảng không gian trống phía trên).
+  3. **Vi phạm tiêu chuẩn nghiệm thu Vision**: Kiểm tra mắt chỉ nhìn xem "có mặt người không" mà không kiểm tra độ trọn vẹn của ngũ quan và vị trí tâm.
+- **Quy tắc vàng Crop Avatar Ngũ Quan Chuẩn 100%**:
+  1. **Định vị tâm mặt (Center-based Crop)**:
+     - Luôn tính tâm mặt trước: `center_x = fx + fw * 0.5`, `center_y = fy + fh * 0.55` (ngay giữa sống mũi).
+     - Chiều rộng crop vuông: `side = int(min(fw * 2.6, w * 0.9, h * 0.55))`.
+     - Tọa độ góc trên: `x0 = int(center_x - side / 2)`, `y0 = int(center_y - side * 0.5)`.
+     - Kẹp an toàn trong khung hình: `x0 = max(0, min(x0, w - side))`, `y0 = max(0, min(y0, h - side))`.
+  2. **Tiêu chuẩn nghiệm thu Vision qua `ag_cli.py ask` (Checklist 4 điểm bắt buộc)**:
+     - [ ] **Đủ ngũ quan**: Phải nhìn thấy rõ trọn vẹn cả hai mắt, sống mũi, miệng/môi, cằm và đường quai hàm. CẤM chấp nhận ảnh bị mất mũi, môi hoặc cằm.
+     - [ ] **Cân đối tâm**: Khuôn mặt phải nằm ở giữa vòng tròn (cho phép thiên nhẹ 5-10% lên trên để lấy cổ áo, nhưng CẤM tụt xuống sát đáy).
+     - [ ] **Đệm an toàn (Headroom & Chin clearance)**: Cả đỉnh đầu/tóc và cằm đều phải cách đường viền tròn xanh một khoảng an toàn (chin clearance $\ge 20$px), không để viền tròn cắt ngang cằm hay chỏm tóc.
+     - [ ] **Không dính phụ đề rác**: Vùng trên đỉnh đầu không được chứa dòng chữ slogan, caption hay logo to choán diện tích.
+
+
 
 
