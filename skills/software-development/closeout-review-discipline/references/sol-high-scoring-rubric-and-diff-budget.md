@@ -15,12 +15,14 @@
 - **Fail-Closed Semantics:** Khi kiểm tra trạng thái tiến trình gặp lỗi hoặc ngoại lệ, bắt buộc trả về `True` (coi như đang chạy) để tuyệt đối không kill nhầm tiến trình đang hoạt động.
 - **Backoff trên Retry:** Khi retry `_query_*`, thêm backoff tối thiểu (`time.sleep(0.1)`) thay vì retry tức thì.
 - **Tránh Subprocess Redundancy:** Lưu kết quả vào biến cục bộ (ví dụ: `is_running = is_xiaowei_running()`) thay vì gọi lại liên tiếp trong cùng một khối `if/else`.
-- **DRY_RUN Guard Tại Từng Hàm Hành Động:** Đặt kiểm tra `if DRY_RUN_MODE: return ...` ngay đầu các hàm phá hủy (`close_*`, `cleanup_*`), không chỉ ở `main()`, tránh việc các hàm bị gọi trực tiếp ngoài entrypoint gây side-effect không mong muốn.
+- **DRY_RUN Guard Tại Từng Hàm Hành Động:** Đặt kiểm tra `if DRY_RUN_MODE: return ...` ngay đầu các hàm phá hủy (`close_*`, `cleanup_*`), không chỉ ở `main()`, tránh việc các hàm bị gọi trực tiếp ngoài entrypoint gây side-effect không mong muốn. Bắt buộc có test assertion trực tiếp: `assert close_func() is False and "DRY_RUN_SKIP" in capsys.readouterr().out`.
 - **CIM Timeout Tuning:** Cấu hình mặc định cho các lệnh WMI/CIM trên máy farm nên là <= 10s (thay vì 15-30s) để tránh làm nghẽn chu kỳ cron watchdog khi WMI service phản hồi chậm.
+- **Fresh Race-Check Bỏ Qua Cache:** Trong các hàm guard an toàn đa tầng (như `_xiaowei_started_before` kiểm tra trước mỗi bước kill destructive), BẮT BUỘC dùng `use_cache=False` (truy vấn fresh). Dùng cache TTL 2s ở các bước race-check tạo ra khoảng trống TOCTOU nguy hiểm cho farm.
 
 ### B. Code Architecture (10 điểm)
 - **Giảm Cyclomatic Complexity:** Phân rã các hàm dài (>30 dòng) có nhiều tầng lồng `try/except` và fallback thành các hàm đơn nhiệm rõ ràng (ví dụ: `_try_kill_server()`, `_try_cim_terminate()`).
-- **Atomic Cache Pattern (Chống TOCTOU Lock):** Không được nhả lock giữa lúc đọc cache và lúc ghi đè cache (`subtle TOCTOU gap between read-check and write-update`). Bọc toàn bộ khối kiểm tra cache, truy vấn hệ thống và cập nhật timestamp `_CACHE_TS` trong cùng một khối `with _CACHE_LOCK:` nguyên tử.
+- **Lock Scope Tối Ưu (Chống Deadlock):** TUYỆT ĐỐI KHÔNG bọc `subprocess.run` hay `time.sleep` bên trong `with _CACHE_LOCK:` vì nguy cơ deadlock dưới tải cao. Chỉ giữ lock khi đọc cache (`if use_cache: with _CACHE_LOCK: return cache`) và khi cập nhật cache (`with _CACHE_LOCK: _CACHE = result; _CACHE_TS = time.time()`).
+- **Configurable Cache TTL:** Không hardcode `CACHE_TTL_SECONDS = 2.0`. Bắt buộc đọc từ biến môi trường có fallback: `CACHE_TTL_SECONDS = float(os.environ.get("..._CACHE_TTL", "2.0"))`.
 - **Cache Invalidation Tường Minh:** Tách helper `_invalidate_cache()` thread-safe; bắt buộc gọi invalidation ngay sau khi tiến trình được đóng thành công trước khi chuyển sang bước cleanup tiếp theo, triệt tiêu khoảng trống TOCTOU giữa `close` và `cleanup`.
 - **Zombie Escalation Delay:** Khi phát hiện zombie (taskkill rc=0 nhưng tiến trình vẫn còn chạy), thêm khoảng chờ ngắn `time.sleep(0.5)` trước khi gọi CIM terminate để tránh race condition với tiến trình đang trong quá trình thoát dở dang.
 
