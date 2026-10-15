@@ -294,3 +294,14 @@ Quy trình xử lý ĐÚNG:
   - `goal`: Bắt buộc chứa `FILE: <đường_dẫn_tuyệt_đối>`
   - `context`: Cung cấp Patch Contract O(1) rõ ràng với `OLD:` và `NEW:` chuẩn xác (không trùng nhau) cùng lệnh test focused.
   - Sau khi Worker hoàn thành, nghiệm thu bằng test suite trước khi commit/push.
+
+## 13. Cross-Script Import Cascade & Hermes Cron Invocation Hygiene
+Khi bảo trì hoặc refactor một script watchdog/runner:
+- **Rà soát quan hệ phụ thuộc chéo (Cross-Dependencies):** Kiểm tra xem có script nào khác trong repo import trực tiếp từ file này không (ví dụ `follow_session_watchdog.py` import `feed_session_watchdog as fsw`). Bất kỳ lỗi import/signature ở script gốc sẽ kéo sập toàn bộ các cronjob phụ thuộc.
+- **Quy tắc cấu hình Cronjob (Explicit Invocation):** Với các repo có package con (`scripts/watchdog/`), không dùng tham số `script:` (khiến Hermes copy lẻ file sang `%LOCALAPPDATA%\hermes\scripts` làm mất submodule context). Bắt buộc dùng `prompt:` gọi trực tiếp file trong repo:
+  ```yaml
+  no_agent: false
+  prompt: Chạy python "D:/Taadaa/.../script.py" và xuất kết quả.
+  script: ""
+  workdir: "D:/Taadaa/.../scripts"
+  ```
