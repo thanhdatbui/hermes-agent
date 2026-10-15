@@ -183,6 +183,23 @@
   - Gom các đường dẫn nhị phân (`XIAOWEI_DIR`, `XIAOWEI_ADB_BIN`) thành hằng số duy nhất, không hardcode lặp lại ở nhiều khối mã.
   - Bắt buộc kiểm thử negative path: Khi file nhị phân chính không tồn tại trên đĩa (`os.path.exists == False`), kiểm chứng hệ thống tự động rơi xuống nhánh CIM fallback và thực thi `Invoke-CimMethod` thành công.
 
+## 16. Chuẩn Hóa Shebang, Độc Lập Khóa (Lock Decoupling) & Bẫy Cấu Hình Môi Trường (16/10)
+- **Vị Trí Shebang Tuyệt Đối Khi Dùng `from __future__ import annotations`:**
+  - Shebang `#!/usr/bin/env python3` BẮT BUỘC phải nằm ở dòng 1 tuyệt đối của file script.
+  - `from __future__ import annotations` BẮT BUỘC nằm ở dòng 2 (ngay sau shebang và trước docstring/imports).
+  - Đặt `from __future__ import annotations` ở dòng 1 làm shebang bị đẩy xuống dòng 2, vô hiệu hóa hoàn toàn cơ chế hashbang trên Linux/Cron/POSIX khiến script không thể chạy trực tiếp bằng `./script.py`. Reviewer Sol coi đây là lỗi nghiêm trọng trừ thẳng điểm Architecture & Correctness.
+- **Nguyên Tắc Độc Lập Khóa (Single Responsibility cho `threading.Lock`):**
+  - CẤM lạm dụng một khóa (Lock Abuse): Không dùng chung `_METRICS_LOCK` để vừa bảo vệ biến đo đạc telemetry vừa bảo vệ cache trạng thái tiến trình (`_XIAOWEI_RUNNING_CACHE`).
+  - BẮT BUỘC tách thành hai khóa độc lập: `_METRICS_LOCK = threading.Lock()` cho telemetry metrics và `_CACHE_LOCK = threading.Lock()` cho runtime process cache.
+  - Mọi thao tác đọc (`cached = _XIAOWEI_RUNNING_CACHE`) và ghi (`_XIAOWEI_RUNNING_CACHE = ...`) đều phải nằm 100% bên trong khối `with _CACHE_LOCK:`.
+  - Đầu hàm entrypoint (`main()`), BẮT BUỘC reset `_XIAOWEI_RUNNING_CACHE = None` bên trong `with _CACHE_LOCK:` để đảm bảo mỗi lần kích hoạt độc lập không bị ảnh hưởng bởi stale cache của lần chạy trước.
+- **Bọc An Toàn và Giới Hạn Biên (Clamping) Khi Đọc Biến Môi Trường:**
+  - Tuyệt đối tránh ép kiểu trực tiếp `int(os.environ.get(...))` vì nếu giá trị biến môi trường là chuỗi rỗng, chữ cái hoặc số âm sẽ làm crash tiến trình hoặc gây timeout lỗi.
+  - Bắt buộc bọc trong `try/except (ValueError, TypeError)` kết hợp hàm kẹp biên an toàn:
+    `CIM_TIMEOUT_SECONDS = max(min_sec, min(max_sec, int(raw_val)))`.
+- **Truy Vết Sự Kiện Bằng Correlation ID Trong Structured Telemetry:**
+  - Bổ sung `RUN_ID = os.environ.get("WATCHDOG_RUN_ID", hex(int(time.time() * 1000))[2:])` và tự động gắn `correlation_id: RUN_ID` vào tất cả các record của `log_event()`. Điều này cho phép các log aggregator lọc và liên kết toàn bộ chuỗi hành vi của cùng một chu kỳ chạy watchdog.
+
 
 
 
