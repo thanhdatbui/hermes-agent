@@ -56,7 +56,22 @@ When modularizing in thin slices (Slice 1: extract backend queries -> line budge
 - **Best Practice:** Name tests explicitly per stage:
   ```python
   def test_dashboard_slice1_line_budget_under_3000(self):
-      """Assert main dashboard module stays under 3000 lines during Slice 1 (reduced from 3437 lines)."""
-      self.assertLess(line_count, 3000, f"Line count {line_count} exceeds Slice 1 budget of 3000")
+  """Assert main dashboard module stays under 3000 lines during Slice 1 (reduced from 3437 lines)."""
+  self.assertLess(line_count, 3000, f"Line count {line_count} exceeds Slice 1 budget of 3000")
   ```
+
+  ## 7. Pre-Push Hook Binding & Exact Scope Matching
+  Hook `.git/hooks/pre-push` duyệt ngược `D:/Taadaa/logs/gate_audit.jsonl` và kiểm tra 3 điều kiện:
+  1. `entry["verdict"] == "APPROVED"` và `entry["score"] >= 85`.
+  2. `entry["audit_binding"]["commit_sha"] == HEAD`.
+  3. `entry["audit_binding"]["scope_hash"]` khớp đúng danh sách file trong `git diff-tree --name-only -r HEAD`.
+
+  **Hệ quả điều phối:**
+  - `closeout_gate.py` phải được chạy trên đúng commit HEAD chuẩn bị push (`--base HEAD~1` hoặc `--base origin/<branch>`), với danh sách `--files` liệt kê chính xác các file có trong commit đó.
+  - Nếu OmniRoute `:20129` bị stream timeout (300s) với model mặc định, truyền trực tiếp model tiered chuyên dụng:
+  ```bash
+  python D:/Taadaa/tools/closeout_gate.py --repo <repo_dir> --base HEAD~1 --files <files...> --model antigravity/gemini-3.8-flash-tiered --json-output
+  ```
+  - Sau khi có tem APPROVED, gọi ngay `safe_push.py` để đẩy code lên remote. CẤM TUYỆT ĐỐI bắt user thao tác tay.
+
 
