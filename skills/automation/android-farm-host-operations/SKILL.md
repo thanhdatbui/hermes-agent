@@ -27,6 +27,7 @@ References:
 - `references/s7-tiered-recovery-and-rolling-healer-architecture-20261015.md` — Phân tích bản chất nghẽn USB Host vs S7, cấm reboot đồng loạt 80 máy S7, kiến trúc cứu hộ 3 cấp (recover_stuck_s7.py) và cơ chế Rolling Healer cuốn chiếu toàn Farm (batch_recover_s7.py) với Semaphore khống chế tối đa 2 reboot đồng thời (15/10/2026).
 - `references/user-directed-reboot-anti-paralysis-and-sentinel-bypass.md` — Kỷ luật chống tê liệt xin phép khi user ra lệnh reboot, cơ chế xóa sentinel flag và bảo toàn session Telegram để tự động chạy tiếp sau boot.
 - `references/host-pc-display-sleep-timeout-and-guard-bypass.md` — Quy trình cấu hình thời gian tắt màn hình Windows PC (Kibe & Admin), kỹ thuật vượt Guard default-deny và đối soát readback index 0x0000012c (15/10/2026).
+- `references/dual-adb-server-device-split-and-port5038-collision-20261015.md` — Phân tích bản chất xung đột 2 Daemon ADB (port 5037 vs 5038), WinUSB endpoint exclusive hijacking chia rẽ 80 máy, gây lỗi focus ảo và quy trình khôi phục O(1) (15/10/2026).
 
 Scripts:
 - `scripts/safe_usb_guard.py` — Script nguồn mẫu giám sát và reset EHCI bus theo ngưỡng.
@@ -452,7 +453,8 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
   * **BẮT BUỘC Quy Trình Đối Soát O(1) 3 Bước Thực Tế Trước Khi Trả Lời:**
     1. **Bước 1 (Đọc stop_reason thực):** Đọc trực tiếp `summary.txt` của run tại `D:\Taadaa\runtime\<cluster>\live\<date>\<session>\<timestamp>\summary.txt` (bảng tổng hợp `multi_machine_summary`). Xem chính xác `stop_reason` của từng máy.
     2. **Bước 2 (Chỉ ra bẫy watchdog):** Giải thích rõ watchdog đang phân loại theo fallback mặc định chứ không phải app TikTok bị lỗi thật.
-    3. **Bước 3 (Test hiện trường O(1)):** Chạy `python D:/Taadaa/tools/inspect_machine.py <N>` trên 2–3 máy trong nhóm báo lỗi. Nếu thấy `device not found` hoặc lệnh `adb shell` treo timeout > 15s $\rightarrow$ khẳng định ngay: **"100% rớt kết nối USB/ADB, không có con app nào lỗi cả, watchdog phân loại nhầm."** Chốt giải pháp duy nhất: Reboot host để giải phóng thanh ghi USB.
+    3. **Bước 3 (Test hiện trường O(1)):** Chạy `python D:/Taadaa/tools/inspect_machine.py <N>` trên 2–3 máy trong nhóm báo lỗi. Nếu thấy `device not found` hoặc lệnh `adb shell` treo timeout > 15s $\rightarrow$ khẳng định ngay: **"100% rớt kết nối USB/ADB, không có con app nào lỗi cả, watchdog phân loại nhầm."**
+    4. **Bước 4 (Đối soát bẫy 2 Daemon ADB - Port 5037 vs 5038):** Nếu PnP Device Manager vẫn báo 79 máy OK nhưng `adb devices` port 5037 chỉ nhận ~37 máy: Kiểm tra ngay `Get-Process adb` trên Admin-PC. Nếu xuất hiện tiến trình ADB thứ 2 chạy port 5038 (`-P 5038`), đây là thủ phạm chia rẽ endpoint WinUSB khiến port 5037 mất 40+ máy (Chi tiết: `references/dual-adb-server-device-split-and-port5038-collision-20261015.md`). Dập ngay `Stop-Process -Name adb -Force` và khởi động lại duy nhất daemon 5037.
 
 ## 21. Bẫy TikTok Sáng Đèn Xuyên Đêm (FLAG_KEEP_SCREEN_ON), Nhầm Lẫn Ca Đêm & Ranh Giới Phóng Vệ vs Healer Cron
 - **Ảo giác "Ca đêm đang chạy" lúc rạng sáng (00:30–01:00):**
