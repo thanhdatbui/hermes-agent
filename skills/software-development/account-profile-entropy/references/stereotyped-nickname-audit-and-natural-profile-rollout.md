@@ -100,6 +100,10 @@ Khi triển khai cronjob tự động hóa đổi biệt danh cho toàn bộ cá
 - **Tuyệt đối cấm stdout rác khi không có hành động**:
   * Trong Hermes, mọi nội dung in ra `stdout` từ script cronjob (kể cả log chẩn đoán `0 machines locked`, `watchdog active` hay `No feed active`) đều sẽ bị runtime auto-deliver thẳng về Telegram của User dưới dạng tin nhắn, gây khó chịu và bối rối ("?").
   * Vì vậy, watchdog bắt buộc phải **hoàn toàn im lặng (`sys.exit(0)`)** khi farm đang bận hoặc không có máy rảnh / chưa có nick nào đổi. CHỈ in ra `stdout` khi có tài khoản đổi tên thành công (`✅ [ROLLING RENAME] Máy M: @user -> 'Tên Mới' | Ảnh: ...`).
+- **Khắc phục bẫy `provider timeout` khi chạy batch 25 workers (`deliver='local'`)**:
+  * Khi chạy song song 25 worker trên dàn máy thật, tổng thời gian thực thi toàn batch thường mất từ 60s – 120s.
+  * Hermes Cronjob có timeout delivery mặc định là **60s**. Nếu job để `deliver='origin'`, runtime chờ quá 60s sẽ văng cảnh báo lỗi: `⚠️ Cron ... failed: provider timeout. Fallback chain was exhausted or unavailable` về Telegram của User mặc dù script Python bên dưới vẫn đang chạy ngầm hoàn tất bình thường!
+  * 👉 **Quy chuẩn bắt buộc**: Mọi cronjob batch watchdog nặng (>60s) BẮT BUỘC phải cấu hình **`deliver: 'local'`** để job chạy nền độc lập, triệt tiêu 100% cảnh báo timeout ảo về chat của User.
 - **Quy tắc triển khai script cho Hermes Cron**:
   * Hermes Cron chỉ nhận script nằm trong `%LOCALAPPDATA%\hermes\scripts\`. Không truyền đường dẫn tuyệt đối `D:/Taadaa/...`.
   * Quy trình chuẩn: Copy script vào repo Deploy `D:\Taadaa\Hermes\deploy\hermes-home\scripts\`, sau đó chạy `python D:\Taadaa\Hermes\deploy\hermes-home\scripts\cron_sync_watchdog.py` để tự động đồng bộ sang `%LOCALAPPDATA%\hermes\scripts\` và `OneDrive\hermes-cron\scripts`.

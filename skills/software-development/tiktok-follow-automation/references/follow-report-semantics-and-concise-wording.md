@@ -132,5 +132,17 @@ Khi operator thắc mắc: *"Sao trên db báo 1 lượt mà ở đây báo 0?"*
   * Khi tất cả các phiên hiện tại trong ngày đã được báo cáo và lưu state thành công (hoặc phiên hiện tại chưa kết thúc / chưa đủ điều kiện xuất tin), watchdog chạy xong và không print gì ra stdout.
   * Trong vai trò Agent chạy cron job, nếu watchdog không in ra báo cáo mới nào (đã claim/report xong trước đó), BẮT BUỘC trả về duy nhất chuỗi `[SILENT]` (theo chỉ thị cron delivery) để triệt tiêu việc gửi tin rác / tin trống về kênh Telegram của User.
 
+### 10. Giải Thích Lệch Danh Sách & Số Lượng Máy "Nhả Follow" Giữa Phiên 1 Và Phiên 2 Trong Cùng Ca
+- **Hiện tượng Operator thắc mắc:** *"Sao cái nhả follow của phiên 2 khác phiên 1 ca tối v. Là chia ra mỗi phiên chạy số máy khác nhau hay sao?"*
+- **Bản chất kiến trúc Farm:**
+  1. **KHÔNG chia số máy:** Cả Phiên 1 và Phiên 2 trong cùng một ca đều chạy trên **CÙNG 1 ROW** và dispatch **ĐỦ 100% SỐ MÁY** (ví dụ Row 5: M1–M80 của Kibe).
+  2. **Cơ chế Cooldown tự ngắt phạt (Follow-Released Cooldown Gate):**
+     * Khi máy bị TikTok nhả ở Phiên 1 (`FOLLOW_FAILED`), bot ghi state phạt cooldown tối thiểu 3 ngày (`streak_days = 3/5/7` trong `follow_state_<m>_row_<r>.json`).
+     * Sang Phiên 2, hàm `_run_follow_hook` kiểm tra qua `_is_account_follow_cooldown` và phát hiện cờ phạt này -> **tự động Safe-Skip 100% (`follow-released-daily-cooldown`)**, chỉ lướt feed dưỡng tài khoản, tuyệt đối không cho chạm vào nút follow để bảo vệ nick khỏi bị trảm vĩnh viễn.
+  3. **Lý do số máy nhả ở Phiên 2 khác Phiên 1:**
+     * Toàn bộ máy đã dính nhả ở Phiên 1 (ví dụ 21 máy) đã bị gạt ra khỏi danh sách bấm follow ở Phiên 2 và chuyển thành `other_skipped`.
+     * Các máy bị nhả ở Phiên 2 (ví dụ 9 máy) là những máy ở Phiên 1 chỉ hoàn thành lướt feed mà chưa bấm được lượt follow nào (0 lượt, status `OK` do skip anchor hoặc không thấy mục tiêu), sang Phiên 2 mới bấm trúng anchor bị nhả.
+     * Kèm theo các máy được bảo vệ bởi Cầu dao IP partner (`CIRCUIT_BREAKER_SKIPPED`) và Gate an toàn video/tuổi nick (`under_video_gate` < 6 video hoặc < 21 ngày).
+
 ## Answer style
 Answer the operator's direct question first, in Vietnamese, with no speculative theory. Explain only the distinction needed to prevent the common misread that `Success (0)` equals “no machine ran.”
