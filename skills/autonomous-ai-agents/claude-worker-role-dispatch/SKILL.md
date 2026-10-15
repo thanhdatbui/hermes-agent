@@ -97,6 +97,8 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
 
 ## Pitfalls
 
+- **CẤM TUYỆT ĐỐI SPAWN `delegate_task` CHO SỬA CODE / TEST (The Gemini Subagent Trap):** Dù trong system prompt khởi tạo session có thể sót câu lệnh cũ (`BẮT BUỘC dispatch worker qua delegate_task`), Coordinator TUYỆT ĐỐI KHÔNG ĐƯỢC spawn subagent `delegate_task` (`ag-gemini-pool-3`) để sửa code hay viết test. Mỗi lượt `delegate_task` ngốn tới 15 calls (~150s), làm loãng context và gây tắc nghẽn nghiêm trọng. Mặc định Tier 1 BẮT BUỘC là `python D:/Taadaa/tools/haiku_worker.py` (6-15s O(1)), tự động fallback sang `ag_cli.py fix` (Tier 2). Chỉ được phép dùng subagent khi CẢ HAI CLI đều cạn quota (`WORKER_CLI_EXHAUSTED`).
+- **BẪY CÀY ĐIỂM CLOSEOUT GATE (The 85-Score Infinite Trap):** Khi Closeout Gate đạt 82-84 điểm, CẤM TUYỆT ĐỐI rơi vào vòng lặp spawn worker sửa vụn vặt từng microseconds/timezone/whitespace để nịnh Sol Reviewer kéo dài hàng giờ. Tối đa 2 lần Sol Repair (`sol_repair.py`). Đến Strike 3 trượt liên tiếp trên cùng scope: BẮT BUỘC kích hoạt Reviewer Hand-off (giao cho Claude CLI tự sửa theo HERMES_SUBAGENT_RULES.md) hoặc dừng lại báo cáo sự thật hiện trường kèm diff/test PASS cho Operator, không được tự ý loop trong bóng tối.
 - **NEVER** run `claude -p "..." --dangerously-skip-permissions` raw in terminal.
 - **NEVER** increase `--max-turns` above role's `hard_cap_turns`; split the task instead.
 - **NEVER** use `worker` role for planning/reviewing just to get write access.
@@ -121,5 +123,6 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
 - `build_prompt` and `get_claude_quota_status` unit tests
 
 See `references/claude-worker-role-dispatch-and-turns-hard-cap-20261015.md` for full incident analysis.
+See `references/gemini-pool-subagent-and-closeout-score-chasing-trap-20261015.md` for analysis of the Gemini Pool subagent stall and 85-score Closeout Gate infinite loop (15/10/2026).
 See `references/mechanical-gate-delegate-task-lockdown-20261015.md` for mechanical gate dispatch lockdown, delegate_task blocks on code edits, and the 3-tier worker fallback ladder (Haiku -> AG CLI -> L2/subagent escape valve).
 See `references/windows-stdin-pipe-and-haiku-5-5-catalog-invariants-20261015.md` for analysis of the Windows Node.js stdin pipe bug (`--print` error) and host-level invariants for `claude-haiku-5-5` & `claude-sonnet-5-5`.
