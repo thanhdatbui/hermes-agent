@@ -2,15 +2,15 @@ Chu kỳ 4d: Parity 96h (N1 lẻ, N2 chẵn), N3(R7,8), N4(dưỡng 0fl+up). Sta
 §
 Auto-resume: MAX(msg ts)<=60m; locks==0.
 §
-Worker: claude_worker.py (--role worker Haiku 8t, planner/reviewer Sonnet <=6t read-only); hard-cap clamp chống runaway; cấm raw claude -p; fallback ag_cli.py; CAM omni-worker. Sol Web/Advisor: model suy luận, streaming idle timeout, cấm cắt ngang.
+Worker: claude_worker.py (worker=Haiku <=15t, planner/reviewer=Sonnet <=10t/8t); hard-cap clamp; cấm raw claude -p; fallback ag_cli; CAM omni-worker. Sol Web/Advisor: model suy luận, streaming idle timeout, cấm cắt ngang. Closeout: cấm commit test-only chạy gate (telemetry=0); diff >500 dòng bị truncate, phải commit thin-slice.
 §
 TikTok Follow: (máy,row) độc lập; Quota 10-15/ca; Hồi phục 1&2; clean>=2 tốt nghiệp; Canary +10%; like 80%. Path B ko commit; slot (folder-1)%8+1. Mode 2: anchor >= 150 fl; cuộn sâu. Cron: follow_watchdog.
 §
 Hotmail: CẤM mail cá nhân; sinh @fviainboxes.com đọc OTP API. Write-Through: ghi ngay Excel Cột 3,4,5 & G farm. CDP đóng ko mất cookie. Dual-farm ~1280 acc.
 §
-Proxy: SoT PROXYgandienthoai.xlsx. OmniRoute Web: gán 1-1 proxy_assignments host:port, cấm random/direct (chống ban mass). Vision assert mCurrentFocus+OCR, MEDIA: dòng riêng. Ava & 2FA né ca nuôi & cache 4h. Ghim clip: cuộn sâu ghim top view. S7 TT sleep >=6s.
+Proxy: SoT PROXYgandienthoai.xlsx. OmniRoute Web: gán 1-1 proxy_assignments host:port, cấm random/direct. Vision assert mCurrentFocus+OCR, MEDIA: dòng riêng. Ava & 2FA né ca nuôi & cache 4h. Ghim clip: cuộn sâu ghim top view. S7 TT sleep >=6s.
 §
-Farm Dispatch: Sửa code dùng haiku_worker.py O(1) 6-15s (hook chặn delegate_task EDIT trừ cờ ALLOW_SUBAGENT_CODE_EDIT / WORKER_CLI_EXHAUSTED). delegate_task chỉ cho INVESTIGATE <=5 calls. S7 rescue: recover_stuck_s7.py (L1 soft 3s -> L2 reboot 5s -> L3 reconnect); batch_recover_s7 max_reboots=2.
+Farm Dispatch: Sửa code dùng haiku_worker.py O(1) 6-15s (guard_dispatch_contract chặn cứng delegate_task EDIT; fallback ag_cli 7 Pro accs; van xả áp: WORKER_CLI_EXHAUSTED/ALLOW_SUBAGENT_CODE_EDIT). delegate_task chỉ INVESTIGATE <=5 calls. S7: recover_stuck_s7.py; max_reboots=2.
 §
 GPM: Kibe chạy, stop API kèm _kill_gpm_chrome; max 5 wkr. Hotmail: qua HOTMAIL_LOGIN giữ cookie, cấm ngâm ảo 7d; MS landing check is_auth trước challenge; MS ép mail @fviainboxes; ghi Excel (C5,4,3+G) trước signout.
 §

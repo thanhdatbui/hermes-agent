@@ -4,30 +4,33 @@
 - **Chỉ thị dứt khoát từ User:** Khi tài khoản đã bật 2FA thành công trên TikTok, secret BẮT BUỘC phải được ghi ngay bằng mọi giá vào file Excel (`taikhoan_dat_v2_updated .xlsx`).
 - **Hành vi cấm:** Tuyệt đối không được chấp nhận thất bại do nghẽn lock tạm thời rồi để secret nằm ngâm trong local journal chờ sang các phiên kế tiếp.
 - **Kiến trúc giải quyết 2 tầng:**
-  1. *Tầng 1 (In-Place Retry trong `_write_cell`):* Bọc lệnh ghi `single_writer_workbook_update` bằng vòng lặp thử lại 5 lần kèm exponential backoff + jitter ngẫu nhiên (`random.uniform(1.5, 4.0) * (attempt + 1)`).
+  1. *Tầng 1 (In-Place Retry trong `_write_cell`):* Bọc lệnh ghi `single_writer_workbook_update` bằng vòng lặp thử lại 5 lần kèm exponential backoff + jitter ngẫu nhiên (`sleep_func(min(random.uniform(1.5, 4.0) * (_i + 1), 12.0))`).
   2. *Tầng 2 (Post-Batch Journal Drain trong `run_batch_live_2fa.py`):* Ở cuối mỗi batch, tự động kích hoạt `recover_journal_2fa_to_excel.py --apply` để quét gom và xả toàn bộ journal `authenticator_confirmed` vào file Excel trong đúng 1 nhịp mở/ghi duy nhất.
 
 ---
 
 ## 2. Tiêu Chuẩn Thẩm Định Sol Reviewer (Closeout Gate Rubric) Cho Vòng Lặp Retry
 Khi áp dụng vòng lặp retry cho các thao tác I/O hoặc khóa dữ liệu (file lock), Reviewer AI (`closeout_gate.py`) bắt buộc các điều kiện sau để đạt điểm `>= 85/100`:
-1. **Phân loại lỗi chính xác (Explicit Error Classification):**
+1. **Phân loại lỗi chính xác bằng frozenset hằng số:**
+   - Khai báo hằng số `TRANSIENT_WORKBOOK_ERRORS = frozenset({...})` **TRƯỚC** hàm sử dụng nó (Sol Reviewer sẽ trừ điểm nặng nếu đặt sau hàm).
+   - Đưa `TRANSIENT_WORKBOOK_ERRORS` vào `__all__`, nhưng **KHÔNG** đưa `_write_cell` vào `__all__` (tránh lộ API nội bộ ra public surface).
    - Chỉ retry đối với các lỗi transient thực sự: `"TIMEOUT"`, `"CROSS_HOST"`.
    - **CẤM** retry trên `"REPLACE"` nếu hàm bên dưới đã có cơ chế replace retry (tránh cấp số nhân số lần thử, ví dụ 5 x 8 = 40 lần gây vỡ unit test `test_replace_failure_is_reported_and_original_unchanged`).
    - Lỗi non-transient (mismatch identity, missing header, invalid format) bắt buộc phải `raise` ngay lập tức mà không retry.
-2. **Bắt buộc Structured Telemetry Logging:**
+2. **Sleep Ceiling Bắt Buộc:**
+   - Phải có trần sleep cứng: `sleep_func(min(random.uniform(1.5, 4.0) * (_i + 1), 12.0))` để tránh worst-case stall ~80s trên farm.
+3. **Bắt buộc Structured Telemetry Logging:**
    - Mỗi lần retry phải có log telemetry rõ ràng:
      ```python
      print(f"[telemetry:workbook-lock-retry] attempt={_i+1} err={_e}", flush=True)
      ```
    - Không được dùng one-liner im lặng (`except WorkbookError: continue`) vì vi phạm nguyên tắc quan sát (observability) trong production farm.
-3. **Bắt buộc Unit Test Coverage cho Logic Retry Mới:**
+4. **Bắt buộc Unit Test Coverage cho Logic Retry Mới:**
    - Phải có test case giả lập (mock) lỗi transient lock để chứng minh:
      * Retry thành công sau N lần transient failure (`test_transient_lock_timeout_retries_and_succeeds`).
-     * Exhaust 5 lần thì raise đúng ngoại lệ `WorkbookError`.
-     * Non-transient error raise ngay lần đầu không qua `sleep_func`.
-4. **Nhất quán API Surface:**
-   - Nếu hàm nội bộ (như `_write_cell`) được import sang test file để mock dependencies, cần khai báo vào `__all__` của module để tránh warning API surface không nhất quán.
+     * Exhaust 5 lần thì raise đúng ngoại lệ `WorkbookError` (`attempts == 5`, `sleeps == 4`, kiểm tra bounds cho từng sleep).
+     * Non-transient error raise ngay lần đầu không qua `sleep_func` (`attempts == 1`, `sleeps == 0`).
+   - **Anti-pattern test bị trừ điểm:** `patch.object(_write_cell.__globals__["_shared"], ...)` — test không được chọc vào `__globals__` của hàm nội bộ. Chuẩn hóa: `from core import workbook as wb_mod` rồi `patch.object(wb_mod._shared, "single_writer_workbook_update", ...)`.
 
 ---
 
@@ -41,6 +44,7 @@ Khi áp dụng vòng lặp retry cho các thao tác I/O hoặc khóa dữ liệu
 - **Cách xử lý chuẩn:**
   * Giữ nguyên byte xuống dòng `\n` của file nguồn khi dùng tool patch/write.
   * Trước khi gọi closeout gate, luôn kiểm tra `git diff --numstat`. Nếu thấy số dòng nhảy vọt tương đương tổng số dòng trong file (`589 583`), kiểm tra ngay tỷ lệ CRLF/LF bằng Python để chuẩn hóa về LF trước khi review.
+  * Trong closeout gate, chỉ định rõ `--files` cụ thể để bỏ qua các file bị trôi CRLF chưa kịp chuẩn hóa.
 
 ---
 
@@ -55,3 +59,19 @@ Khi áp dụng vòng lặp retry cho các thao tác I/O hoặc khóa dữ liệu
      python D:/Taadaa/tools/closeout_gate.py --repo "D:/Taadaa/tiktok-add-bao-mat-f2a" --base HEAD --files <files...> --model antigravity/claude-sonnet-4-6 --json-output
      ```
   3. Nếu `sol_repair.py` bị exit code 1 do model trong allowlist bị timeout, kích hoạt ngay **Fallback Worker** theo quy tắc Closeout Remediation để sửa theo findings của Reviewer.
+
+---
+
+## 5. Strike 3 → Claude CLI Handoff Protocol
+Khi `closeout_gate.py` reject 3 lần liên tiếp trên cùng scope_hash:
+- Gate phát tín hiệu: `[REVIEWER_HANDOFF_TRIGGERED: 3 consecutive rejections reached...]`
+- CẢ Coordinator, Worker VÀ Sol Repair ĐỀU PHẢI DỪNG đoán/sửa.
+- Chuyển giao ngay cho **Claude Code CLI** chạy print-mode (`claude -p`):
+  ```bash
+  claude -p "You are fixing code quality issues after 3 failed Sol Reviewer rounds: [exact findings]" \
+    --allowedTools "Read,Edit,Bash" \
+    --max-turns 20 \
+    --output-format json \
+    --workdir "D:/Taadaa/tiktok-add-bao-mat-f2a"
+  ```
+- Claude CLI có quyền ghi file và chạy test độc lập ngoài guard, sửa dứt điểm các điểm cấu trúc/anti-pattern mà Worker subagent hay lặp lại.

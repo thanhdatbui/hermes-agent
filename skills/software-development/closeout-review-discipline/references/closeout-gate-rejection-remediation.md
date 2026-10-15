@@ -110,6 +110,27 @@
     - **CẤM truyền file config/data lớn vào `--files`**: Cờ `--files` của `closeout_gate.py` CHỈ DÀNH CHO các file source code (`.py`) và test suite (`test_*.py`) thuộc phạm vi sửa đổi O(1). Tuyệt đối không truyền các file cấu hình lớn như `jobs.json` (30KB+), file state `.json`, hay workbook `.xlsx` vào `--files`. File config lớn khi re-dump format sẽ làm diff vượt ngưỡng 30.000 bytes của gate, gây fail-fast: `[Gate Fail-Fast: DIFF_TOO_LARGE] targeted diff quá lớn (> 30000 bytes)`.
     - **Bẫy Floating `HEAD~1` Khi Cron Tự Động Commit Ngầm**: Trong các repo có cron nền tự động đồng bộ (như `sync-hermes-skills-and-brain-to-git` commit mỗi 5 phút), con trỏ `HEAD` di chuyển liên tục. Việc dùng mù quáng `--base HEAD~1` có thể bị trượt trúng commit sync nền (`chore: sync...`). BẮT BUỘC kiểm tra `git log -n 5 --oneline` để xác định rõ commit SHA gốc trước thay đổi của phiên (ví dụ `--base <commit_sha>~1` hoặc gán SHA cụ thể) để gate so sánh chính xác tuyệt đối diff của phiên làm việc.
 
+24. **Bẫy Reviewer Timeout Trên OmniRoute (:20129) & Model Fallback (15/10/2026)**:
+    - Khi `closeout_gate.py` gọi model mặc định `review`, nếu kết nối proxy bị đơ hoặc upstream bị nghẽn luồng suy luận, gate sẽ treo đúng 300s và trả về lỗi:
+      `[OmniRouteClient] Request timed out on read: HTTPConnectionPool(host='localhost', port=20129): Read timed out.`
+    - **Cách khắc phục**:
+      * Kiểm tra các model còn sống trên `:20129` qua endpoint `/v1/models`.
+      * Truyền model dự phòng trực tiếp qua cờ `--model`:
+        `python D:/Taadaa/tools/closeout_gate.py --repo <path> --base <ref> --files <files...> --model antigravity/claude-sonnet-4-6 --json-output`
+      * Model `antigravity/claude-sonnet-4-6` phản hồi nhanh (5-15s), chấm điểm công bằng và tuân thủ chặt chẽ Closeout Rubric.
+
+25. **Bẫy Test Phụ Thuộc `__globals__` Của Module Nội Bộ (Test Driving Internal Anti-Pattern — 15/10/2026)**:
+    - Reviewer Sol High trừ điểm rất nặng (chấm 61-74/100) nếu unit test chọc vào `__globals__` của hàm nội bộ để mock dependencies:
+      `with patch.object(_write_cell.__globals__["_shared"], ...)`
+    - Đây bị coi là "test smell" giòn và vi phạm nguyên tắc đóng gói module.
+    - **Chuẩn hóa bắt buộc**: Import module chính thống `from core import workbook as wb_mod` rồi mới mock `patch.object(wb_mod._shared, ...)`. Tuyệt đối không import hàm private vào `__all__` chỉ để thỏa mãn test.
+
+26. **Kỷ Luật Thứ Tự Khai Báo Hằng Số & Sleep Ceiling Cho Vòng Lặp Retry (15/10/2026)**:
+    - Hằng số lỗi transient (ví dụ `TRANSIENT_WORKBOOK_ERRORS = frozenset(...)`) **bắt buộc phải khai báo TRƯỚC** hàm sử dụng nó trong file code. Đặt hằng số sau hàm bị Reviewer bắt lỗi nghiêm trọng về thứ tự định nghĩa (NameError risk khi extract hàm).
+    - Vòng lặp retry có exponential backoff + jitter **bắt buộc phải có trần (ceiling)**:
+      `sleep_func(min(random.uniform(1.5, 4.0) * (_i + 1), 12.0))`
+      để chặn đứng rủi ro stall farm kéo dài quá 80s trong kịch bản xấu nhất.
+
 ## 3. Thang Leo Thang Sửa Chữa (Remediation Ladder)
 - **Vòng 1 & 2 (Sol Repair / Worker Remediation)**:
   * Đọc `KEY FINDINGS` từ file log gate.

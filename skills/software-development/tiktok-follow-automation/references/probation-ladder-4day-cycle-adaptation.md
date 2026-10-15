@@ -32,3 +32,29 @@ Nhờ chu kỳ 4 ngày đã tạo ra **khoảng nghỉ đệm tự nhiên 72–9
 
 - **Thời gian tốt nghiệp:** Rút ngắn từ **17 ngày xuống còn 8 ngày** (chỉ sau 2 chu kỳ chạy sạch).
 - **Bảo toàn Canary Gate:** Phiên đầu (2–4 fl) đóng vai trò là probe dò đường an toàn: nếu nick chưa sạch án thì phanh ngay, chỉ phạt cá nhân account, không làm giật Cầu dao IP farm.
+
+---
+
+## 3. Pitfall Lệch Pha Đồng Bộ: Core Runner vs Dashboard Helper (:1905)
+
+### Nguyên nhân gây lệch pha
+Khi rút ngắn bậc thang thử thách trong core runner (`follow_runner/core/follow_state.py`) từ 2 ca/nấc xuống 1 ca/nấc, nếu bỏ quên Dashboard helper (`follow_health_helper.py` và `tiktok_dashboard.py`), giao diện sẽ tiếp tục hiển thị `(0/2 ca)` và `🎯 Cần 2 ca sạch`, gây hoang mang cho Operator tưởng rằng nick vẫn bị giam 2 ca.
+
+### Checklist đồng bộ bắt buộc trên Dashboard Helper & Frontend:
+1. **Phân tầng sức khỏe (`follow_health_helper.py`):**
+   - Ngưỡng lên Hồi phục 2: Đổi từ `clean_days >= 2` thành `clean_days >= 1`.
+   - Nhãn hiển thị (`tier_label`):
+     * Tier 1: `🟠 Hồi phục 1 ({clean_days}/1 ca)`
+     * Tier 2: `🟡 Hồi phục 2 ({clean_days - 1}/1 ca)`
+   - Tiến độ thăng cấp (`sessions_needed`):
+     * Tier 1: `sessions_needed = max(1, 1 - clean_days)` (cần 1 ca sạch để lên Hồi phục 2).
+     * Tier 2: `sessions_needed = max(1, 2 - clean_days)` (cần thêm 1 ca sạch để tốt nghiệp).
+     * Fallback DB record (`farm_account_info`): BẮT BUỘC gán `sessions_needed = 1`.
+   - Sweet spot text: `"Hồi phục chuẩn, 1 ca sạch"`.
+2. **Giao diện HTML/JS (`tiktok_dashboard.py`):**
+   - Badge tooltip & fallback: Sửa `sessions_needed || 2` thành `sessions_needed || 1`.
+3. **Kỷ luật viết Unit Test (`test_tiktok_dashboard_history.py`):**
+   - Tài khoản mẫu cho nhóm `healthy_full`: BẮT BUỘC truyền `"graduated": true` vào state JSON mock. Nếu chỉ set `fail_streak: 0, probation_clean_days: 0` mà thiếu lịch sử follow, helper sẽ coi là tân binh chưa tốt nghiệp và đẩy về Tier 1.
+   - Mock test transition: Mock clean_days=0 cho Tier 1 (0/1 ca), clean_days=1 cho Tier 2 (0/1 ca).
+4. **Độ trễ Cache (:1905):**
+   - Web Dashboard có bộ đệm cache 15s (`_CACHE_TTL = 15.0`). Khi verify API qua script, gọi trực tiếp `get_follow_health_data()` để lấy kết quả tức thì O(1) thay vì curl qua HTTP cache cũ.

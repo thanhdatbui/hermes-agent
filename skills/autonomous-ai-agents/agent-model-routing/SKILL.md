@@ -19,6 +19,13 @@ Use this skill when one agent coordinates work while another model or coding CLI
 > **Canonical policy precedence:** For orchestration and closeout policy, follow `D:\Taadaa\HERMES_SUBAGENT_RULES.md` marker `CANONICAL-POLICY-PRECEDENCE-2026-10-05`; this routing skill points to it and must not redefine it.
 
 
+### Wrapper bắt buộc: `claude_worker.py` (Kẹp turns & Quota gate)
+Mọi lượt gọi Claude CLI bắt buộc đi qua `D:/Taadaa/tools/claude_worker.py` (hoặc `haiku_worker.py` tương thích ngược):
+- `--role worker` (Haiku 5.5, max 15 turns): Thợ gõ code O(1), tool Read/Edit/Write/Bash.
+- `--role planner` (Sonnet 5.5, max 10 turns): Lên bản vẽ kiến trúc, tool Read/Bash (cấm Edit/Write).
+- `--role reviewer` (Sonnet 5.5, max 8 turns): Soi lỗi, chấm điểm nghiệm thu, tool Read/Bash (cấm Edit/Write).
+- **CẤM TUYỆT ĐỐI** gọi raw CLI `claude -p` không có wrapper: Một session trước đã thả rông Sonnet không kẹp max-turns, chạy 72 turns đốt 2.1M tokens (98% quota).
+
 ## When to Use
 
 - Hermes should plan, delegate, and verify rather than implement everything itself.
