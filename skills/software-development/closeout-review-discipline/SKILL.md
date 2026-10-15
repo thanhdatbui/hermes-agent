@@ -14,6 +14,7 @@ metadata:
 > **Canonical policy precedence:** For orchestration and closeout precedence, follow `D:\Taadaa\HERMES_SUBAGENT_RULES.md` marker `CANONICAL-POLICY-PRECEDENCE-2026-10-05`; this skill points to it and does not redefine it.
 
 References:
+- `references/gate-scope-matching-and-parity-lessons.md` — **[15/10]** Scope matching (refusing partial committed scope), diff ceiling (<30KB), string slice parity test, pre-push audit binding.
 - `references/closeout-gate-diff-ceiling-and-scope-refusal.md` — **[15/10]** DIFF_TOO_LARGE (>30KB), refusing partial committed scope invariant, Strike 3 Claude CLI hand-off.
 - `references/sync-hermes-cron-block-identity-and-line-budget.md` — Đồng bộ 100% block giữa scripts/ và hermes_cron/ tránh lệch test helper_block, và kiểm soát line budget Architecture Gate.
 - `references/strike-3-reviewer-handoff-claude-cli.md` — **[15/10]** Strike 3 Reviewer Hand-off: gọi Claude CLI (`claude -p`) sau 3 lần REJECTED.

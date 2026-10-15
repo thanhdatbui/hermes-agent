@@ -47,7 +47,18 @@ Khảo sát từ 10.677 lượt follow và 389 hồ sơ lỗi state trên hệ t
        - Bảng `ip_circuit_breaker` trong SQLite (`tiktok_tracker.db`) lưu vết các lần giật cầu dao kèm mốc `reset_at = now + 48h`.
        - Ở tầng runner (`check_ip_breaker`), hệ thống đối soát `reset_dt > now` nên các cổng hết hạn 48h được tự động mở lại cho máy chạy bình thường.
        - **Tử huyệt Dashboard:** Trong `follow_health_helper.py`, nếu query chỉ dùng `SELECT ... FROM ip_circuit_breaker ORDER BY tripped_at DESC LIMIT 30` mà thiếu điều kiện `WHERE status = 'TRIPPED' AND reset_at > datetime('now', 'localtime')`, thì khi farm chạy êm không phát sinh lỗi mới, các bản ghi cũ từ nhiều ngày trước (như ngày 10/10) vẫn nằm trong top 30 và bị kéo lên giao diện. Hệ quả: Dashboard báo ảo "30 Proxy Đã Ngắt" và hiển thị thẻ đỏ từ quá khứ dù thực tế proxy đã hết hạn cách ly và chạy bình thường từ lâu.
-       - **Chuẩn hóa truy vấn:** Bắt buộc lọc `WHERE status = 'TRIPPED' AND reset_at > ?` với tham số `now_iso = now.strftime("%Y-%m-%d %H:%M:%S")` trong `follow_health_helper.py` để chỉ hiển thị các proxy đang thực sự bị ngắt tại thời điểm truy cập.
+       - **Chuẩn hóa truy vấn & Bẫy so sánh chuỗi SQLite (Sol High Review Warning):**
+         * **CẠM BẪY:** Không dùng phép so sánh chuỗi đơn thuần trong SQL `WHERE reset_at > ?` trên cột TEXT của SQLite, vì:
+           1. Nếu `reset_at` bị NULL hoặc format lạ, phép so sánh chuỗi sẽ tự động loại bỏ bản ghi (vi phạm nguyên tắc Fail-Closed: proxy TRIPPED không có reset_at hợp lệ phải được coi là ĐANG NGẮT để bảo vệ nick).
+           2. Chuỗi ISO8601 có ký tự `T` hoặc lệch timezone sẽ so sánh sai âm thầm.
+         * **GIẢI PHÁP DEFENSIVE PYTHON PARSING:**
+           - Query `SELECT ... WHERE status = 'TRIPPED'` lấy danh sách proxy bị ngắt.
+           - Trong Python, parse `reset_raw = (r[5] or "").strip()`:
+             * Chuẩn hóa `clean_ts = reset_raw.replace("T", " ")[:19]`.
+             * Parse `datetime.strptime(clean_ts, "%Y-%m-%d %H:%M:%S").replace(tzinfo=HCMC)`.
+             * Chỉ đánh dấu hết hạn (`is_active = False`) khi và chỉ khi `reset_dt <= now`.
+             * Nếu `reset_at` là NULL hoặc parse bị exception -> Mặc định giữ `is_active = True` (Fail-Closed).
+         * **Bổ sung Telemetry Metric:** Ghi nhận `circuit_breakers_active` và `circuit_breakers_filtered` vào khối `telemetry` để dễ dàng quan sát, giám sát và cảnh báo.
        - **Khởi động lại Dashboard :1905 để nạp code mới:** `tiktok_dashboard.py` nạp `follow_health_helper.py` vào memory khi khởi động. Sau khi sửa helper, bắt buộc terminate tiến trình cũ (`taskkill -F -PID <PID>`); watchdog nền `tiktok_dashboard_watchdog.ps1` (chạy mỗi 60s) sẽ tự động phát hiện cổng 1905 rớt và relaunch lại qua `start_tiktok_dashboard_hidden.vbs` để nạp mã nguồn mới.
   4. **Báo cáo trong Report Ca Follow Telegram (feed_session_watchdog.py — User Invariant):**
      * Trong mục Follow chéo, BẮT BUỘC gom nhóm cực ngắn (1 dòng) số lượng proxy bị ngắt và nick anh em được bảo vệ (tránh in danh sách cổng dài dòng làm loãng report):
