@@ -12,7 +12,7 @@
 - **`infer_field_ctx(messages)`**: Quét ngược toàn bộ messages (từ tin nhắn mới nhất) bằng regex an toàn:
   * Máy: `(?:máy|machine)\s*#?(\d+)`
   * Nick: `(?<![\w@])@([a-zA-Z0-9_.]{2,32})` (dùng negative lookbehind để chặn bắt nhầm địa chỉ email).
-  * Serial: `(?:serial|thiết bị|device)\s*[:=]?\s*([0-9a-f]{14,20})\b` (bắt buộc có tiền tố định danh để không bắt nhầm token/hash hex ngẫu nhiên).
+  * Serial: `(?:serial|thiết bị|device)\s*[:=]?\s*(?=[a-zA-Z0-9]*\d)([a-zA-Z0-9]{8,24})\b` (lookahead `(?=[a-zA-Z0-9]*\d)` bắt buộc có ít nhất 1 chữ số để hỗ trợ serial alphanumeric như `R58N12ABCDE`, đồng thời chặn triệt để false-positives từ log ADB như `device unauthorized`, `device offline`, `device connection lost`).
 - **`build_session_briefing(messages)`**:
   * Lấy tối đa 5 turns gần nhất (`user` và `assistant`). Bỏ tin nhắn user cuối nếu nó trùng với câu hỏi hiện tại.
   * Với assistant message có tool calls, rút gọn thành `ran: tool1, tool2 | content`.
@@ -48,3 +48,9 @@
 3. **Phủ kín Dict Keys & Quoted JSON**:
    - Redaction cho dict phải kiểm tra substring `any(sk in norm_key for sk in _SECRET_KEYS)` để bắt trọn các key có tiền tố như `MY_API_KEY`, `GITHUB_TOKEN`.
    - Bao phủ các cặp `"key": "value"` trong JSON string cho cả `cookie`, `authorization`, `secret`.
+4. **Che Giấu Cookie Toàn Dòng (Multi-Pair Cookie Leak)**:
+   - Header Cookie thường chứa nhiều cặp phân tách bởi chấm phẩy (`Cookie: a=1; b=2; c=3`). Regex key-value `[^\s,;]+` chỉ che được cặp đầu `a=1` và làm lộ các session cookie nhạy cảm phía sau (`sid_tt=...`, `sessionid=...`). Bắt buộc dùng pattern riêng `\bcookie\s*[:=]\s*[^\r\n]+` để che sạch toàn bộ dòng.
+5. **Che Toàn Bộ Credential Của Authorization (Không Chỉ Riêng Bearer)**:
+   - Header `Authorization: Basic <base64>` hay các scheme khác cần được che phủ toàn bộ credential phía sau bằng `\bauthorization\s*:\s*[^\r\n,;]+`, tránh chỉ che chữ `Basic` mà để lộ payload.
+6. **Cập Nhật Metrics Dưới Lock**:
+   - Trong `conversation_loop.py`, tuyệt đối không tăng trực tiếp `ADVISOR_METRICS[...] += 1` mà phải gọi qua `_advisor_metric_inc(name)` để bảo đảm thread-safety dưới `_ADVISOR_METRICS_LOCK`.
