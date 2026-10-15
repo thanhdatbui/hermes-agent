@@ -21,13 +21,20 @@
 - **Fresh Race-Check Bỏ Qua Cache:** Trong các hàm guard an toàn đa tầng (như `_xiaowei_started_before` kiểm tra trước mỗi bước kill destructive), BẮT BUỘC dùng `use_cache=False` (truy vấn fresh). Dùng cache TTL 2s ở các bước race-check tạo ra khoảng trống TOCTOU nguy hiểm cho farm.
 
 ### B. Code Architecture (10 điểm)
+- **Cân Nhắc Loại Bỏ Over-Engineering Caching Trong Single-Shot Watchdog:**
+  Với các script vận hành theo mô hình single-shot watchdog (chạy theo chu kỳ cron 1-2 phút rồi thoát), việc đưa vào cơ chế global in-memory cache + Lock + TTL thường bị Reviewer coi là over-engineering và là nguồn cơn của các trừ điểm kiến trúc (TOCTOU giữa read và write, lock contention, stale reads). Nếu chỉ gọi 2-3 lần trong một chu kỳ ngắn, giải pháp kiến trúc tối ưu nhất là **bỏ hoàn toàn cache**, giữ hàm kiểm tra tiến trình thuần túy, fail-closed và có backoff sleep ngắn (`0.1s`) giữa các lần retry.
 - **Giảm Cyclomatic Complexity:** Phân rã các hàm dài (>30 dòng) có nhiều tầng lồng `try/except` và fallback thành các hàm đơn nhiệm rõ ràng (ví dụ: `_try_kill_server()`, `_try_cim_terminate()`).
-- **Lock Scope Tối Ưu (Chống Deadlock):** TUYỆT ĐỐI KHÔNG bọc `subprocess.run` hay `time.sleep` bên trong `with _CACHE_LOCK:` vì nguy cơ deadlock dưới tải cao. Chỉ giữ lock khi đọc cache (`if use_cache: with _CACHE_LOCK: return cache`) và khi cập nhật cache (`with _CACHE_LOCK: _CACHE = result; _CACHE_TS = time.time()`).
+- **Lock Scope Tối Ưu (Chống Deadlock Nếu Dùng Cache):** Nếu buộc phải dùng cache, TUYỆT ĐỐI KHÔNG bọc `subprocess.run` hay `time.sleep` bên trong `with _CACHE_LOCK:` vì nguy cơ deadlock dưới tải cao. Chỉ giữ lock khi đọc cache (`if use_cache: with _CACHE_LOCK: return cache`) và khi cập nhật cache (`with _CACHE_LOCK: _CACHE = result; _CACHE_TS = time.time()`).
 - **Configurable Cache TTL:** Không hardcode `CACHE_TTL_SECONDS = 2.0`. Bắt buộc đọc từ biến môi trường có fallback: `CACHE_TTL_SECONDS = float(os.environ.get("..._CACHE_TTL", "2.0"))`.
 - **Cache Invalidation Tường Minh:** Tách helper `_invalidate_cache()` thread-safe; bắt buộc gọi invalidation ngay sau khi tiến trình được đóng thành công trước khi chuyển sang bước cleanup tiếp theo, triệt tiêu khoảng trống TOCTOU giữa `close` và `cleanup`.
 - **Zombie Escalation Delay:** Khi phát hiện zombie (taskkill rc=0 nhưng tiến trình vẫn còn chạy), thêm khoảng chờ ngắn `time.sleep(0.5)` trước khi gọi CIM terminate để tránh race condition với tiến trình đang trong quá trình thoát dở dang.
 
-### C. Test Evidence & Edge Cases (25 điểm)
+### C. Telemetry & Observability (15 điểm)
+- **Đo Lường Độ Trễ Subprocess (`duration_ms` / `latency_ms`):**
+  Reviewer Sol High trừ điểm nếu telemetry chỉ có timestamp và status mà thiếu metric đo lường thời gian thực thi của các thao tác hệ thống nặng. Đo `t0 = time.time()` trước các lệnh subprocess `taskkill` hoặc `powershell` và phát `duration_ms = round((time.time() - t0) * 1000, 1)` vào bản ghi `log_event("..._OK", duration_ms=dur_ms)`.
+- **Lifecycle Telemetry:** Phát event `WATCHDOG_START` / `WATCHDOG_SUMMARY` kèm metrics snapshot để log harvester truy vết vòng đời thực thi across invocations.
+
+### D. Test Evidence & Edge Cases (25 điểm)
 - **Double-None Retry:** Bắt buộc có test mock `side_effect=[None, None]` để chứng minh nhánh fail-closed hoạt động đúng khi retry cả 2 lần đều lỗi.
 - **Dynamic Env Parsing Clamp:** Test đầy đủ các ca biên khi đọc biến môi trường: giá trị âm ép về min, giá trị vượt ngưỡng ép về max, chuỗi chữ/rỗng fallback về mặc định.
 - **Cache Expiry Test:** Bắt buộc có test case chứng minh TTL hết hạn: gán `_CACHE_TS = xw.time.time() - 5.0` (> 2s TTL) và kiểm chứng `is_xiaowei_running(use_cache=True)` gọi lại subprocess thay vì trả cache.
