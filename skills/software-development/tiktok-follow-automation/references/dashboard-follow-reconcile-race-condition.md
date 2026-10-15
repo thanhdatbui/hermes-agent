@@ -64,8 +64,16 @@ Khi tài khoản **nghỉ follow hoặc chưa đủ video** (`organic-rest-day-p
      * Watchdog Phiên 1 bị hụt snapshot này, fallback về snapshot đầu ca lúc `07:04:26` (lúc bot chưa cày xong). Cũ trừ cũ ra `0 lượt` -> Báo lệch âm ảo!
      * Sang Phiên 2 (chốt lúc 09:25): Watchdog Phiên 2 bốc trúng snapshot `08:00:38` (hoặc `09:25:56`), khiến Phiên 2 "ăn đền" toàn bộ số follow tích lũy từ Phiên 1 -> Báo lệch dương ảo!
    - **Kỷ luật đối soát bất biến:**
-     * Khi thấy P1 âm và P2 dương trên cùng dàn nick có `status=success`: Tuyệt đối KHÔNG kết luận là bot ăn nhả cố chạy hay TikTok silent drop.
-     * BẮT BUỘC đối soát **Tổng tích lũy 2 phiên**: Lấy snapshot sau P2 (`09:25:56`) trừ thẳng snapshot trước P1 (`07:04:26`) và so với `Tổng bot bấm (P1 + P2)`. Nếu tổng khớp hoặc chỉ lệch 1-2 lượt (M4: 5/5, M26: 8/9, M36: 8/7, M37: 13/11) thì khẳng định 100% nick đã ăn follow thật vào profile, độ lệch từng phiên chỉ là lệch pha thời điểm cào snapshot.
+     * Khi thấy P1 âm và P2 dương trên cùng dàn nick có `status=success`: Tuyệt đối KHÔNG vội vàng quy chụp là bot ăn nhả cố chạy hay TikTok shadow-drop.
+     * BẮT BUỘC đối soát **Tổng tích lũy 2 phiên**: Lấy snapshot sau P2 (`09:25:56`) trừ thẳng snapshot trước P1 (đầu ngày) và so với `Tổng bot bấm (P1 + P2)`. Nếu tổng khớp hoặc chỉ lệch 1-2 lượt (M4: 5/5, M26: 8/9, M36: 8/7, M37: 13/11) thì khẳng định 100% nick đã ăn follow thật vào profile, độ lệch từng phiên chỉ là lệch pha thời điểm cào snapshot.
+   - **Giải pháp kiến trúc dứt điểm (Đã vá 2026-10-15, commit `ccec6b9`):**
+     * Trong `feed_session_watchdog.py` (`reconcile_cluster_following`), bổ sung **Grace Buffer 10 phút** (`_buffer_iso(iso_val, minutes=10)`) cho cả `session_end_iso` và `session_start_iso`:
+       - `query_end_iso = _buffer_iso(session_end_iso, 10)` (ví dụ: `08:00:00` -> `08:10:00`).
+       - `query_start_iso = _buffer_iso(session_start_iso, 10)`.
+     * **Nguyên lý bảo đảm (Continuous Balance Invariant):**
+       - Snapshot chốt ca ghi lúc `08:00:38` nằm gọn trong `query_end_iso` của P1 (`<= 08:10:00`), được P1 thu nạp trọn vẹn làm `latest_row`.
+       - Đồng thời snapshot `08:00:38` cũng nằm trong `query_start_iso` của P2 (`<= 08:10:00`), được P2 chọn làm `baseline_row`.
+       - `latest_row(P1) == baseline_row(P2)` được khóa cứng trong SQL, triệt tiêu 100% hiện tượng P1 thiếu 20 và P2 thừa 20 lượt.
 
 ### Nguyên nhân 3: Duplicate Session Telemetry / Test Session Keys trong Database (Nhân bản số liệu từng nick)
 1. **Cơ chế khóa chính và hàm tổng hợp ngày:**
