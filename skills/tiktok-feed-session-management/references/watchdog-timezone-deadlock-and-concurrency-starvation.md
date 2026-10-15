@@ -40,6 +40,7 @@ if end_hm >= win_end_hm:
   - Phải luôn chỉ định `timeout` (ví dụ `timeout: 60`) để vượt qua rule guard terminal.
   - Khi import `watchdog` từ script inline Python, cần `sys.path.insert(0, r"D:/Taadaa/tiktok-luot nuoi acc/scripts")` vì các submodule watchdog nằm trực tiếp trong thư mục `scripts/watchdog` (import `from watchdog.lock ...` thay vì `from scripts.watchdog.lock ...`).
   - Nếu phiên hiện tại chưa đến giờ kết thúc hoặc runner đang chạy (`is_feed_runner_active() == True`), watchdog sẽ exit 0 âm thầm mà không in ra báo cáo nào (đúng thiết kế để cronjob chạy nền êm đềm).
+  - Khi watchdog trả về rỗng (silent) trong cronjob Hermes, agent tuân thủ trả về `[SILENT]` duy nhất để triệt tiêu thông báo rác lên Telegram. Không tự ý bịa đặt nội dung báo cáo khi runner chưa kết thúc và chưa có output từ watchdog.
 
 ---
 
