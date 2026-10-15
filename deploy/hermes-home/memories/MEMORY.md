@@ -8,7 +8,7 @@ TikTok Follow: (máy,row) độc lập; Quota 10-15/ca; Hồi phục 1&2; clean>
 §
 Hotmail: CẤM mail cá nhân; sinh @fviainboxes.com đọc OTP API. Write-Through: ghi ngay Excel Cột 3,4,5 & G farm. CDP đóng ko mất cookie. Dual-farm ~1280 acc.
 §
-Proxy: PROXYgandienthoai.xlsx 1-1. Vision assert mCurrentFocus+OCR. Chuẩn hóa 3 món (Ava-Hashtag-Pin): lock sửa tay manual_hashtag_protected_folders.json; Pin >=1000 view. Đổi ava: ghi FORCE_UPLOAD vào Tik.xlsx cột Avatar cho watchdog bốc, cấm hứa suông; video dọc lọc fy>0.2h tránh cụt cằm/chữ.
+Proxy: PROXYgandienthoai.xlsx 1-1. Chuẩn hóa 3 món (Ava-Hashtag-Pin): lock sửa tay qua manual_hashtag_protected_folders.json (sync_all_tik skip f_src) & manual_avatar_protected_folders.json. TT v47.0.3 dùng monkey launcher. Pin >=1000 view. Soi mắt trước gửi, cấm gửi ảnh đen. Đổi ava: PENDING/FORCE_UPLOAD cột Avatar.
 §
 Farm Dispatch: Sửa code dùng haiku_worker.py O(1) 6-15s (guard_dispatch_contract chặn cứng delegate_task EDIT; fallback ag_cli 7 Pro accs; van xả áp: WORKER_CLI_EXHAUSTED/ALLOW_SUBAGENT_CODE_EDIT). delegate_task chỉ INVESTIGATE <=5 calls. S7: recover_stuck_s7.py; max_reboots=2.
 §
