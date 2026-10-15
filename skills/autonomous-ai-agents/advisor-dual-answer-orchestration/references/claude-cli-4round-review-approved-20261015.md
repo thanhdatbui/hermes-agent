@@ -66,3 +66,17 @@ _COOKIE_RE = re.compile(r"(?i)\bcookie\s*[:=]\s*[^\r\n]+")
 ## 3. Kỷ Luật Giao Tiếp Telegram Khi Chạy Review Loop Tự Động
 - Khi điều phối các subagent chạy ngầm kết hợp kiểm thử với Claude CLI, Coordinator **tuyệt đối không được xuất các câu lẩm bẩm debug, trích đoạn guard warning, hay log kỹ thuật thô vào tin nhắn chat Telegram**.
 - Operator cần kết quả rõ ràng, súc tích và minh bạch. Báo cáo tiến độ theo hướng outcome-first: "Đang sửa điểm X -> Đang chạy review vòng Y -> Kết quả APPROVED".
+
+---
+
+## 4. Cơ Chế Chống Spam Log Tiếng Anh Khi Dispatch Subagent (Async Delegation Invariant)
+- **Nguyên nhân gốc rễ (Root Cause):**
+  * Trong Hermes, các lệnh gọi `delegate_task` ở top-level mặc định bị ép chạy nền (`background=True`).
+  * Khi subagent hoàn thành, tiến trình gửi sự kiện `async_delegation` vào `completion_queue`.
+  * `_async_delegation_watcher` trong `gateway/run.py` đọc sự kiện này và bốc toàn bộ bản tóm tắt tiếng Anh thô `[ASYNC DELEGATION BATCH COMPLETE — deleg_...]` bơm thẳng vào session Telegram như một tin nhắn mới.
+  * Nếu một phiên chạy 5-7 lượt review/patch liên tiếp, Telegram của Operator sẽ bị dội bom hàng loạt tin nhắn tiếng Anh rác, gây ức chế nghiêm trọng ("Ủa nãy h chạy sub agent nào v? Model nào, sao spam 1 đống log tiếng anh ra v").
+- **3 Tầng Khắc Phục Triệt Để:**
+  1. **Tôn trọng `background=False` trong `run_agent.py`:** Cho phép Coordinator truyền tường minh `background=False` để subagent chạy đồng bộ, kết quả trả thẳng về tool result của Coordinator mà không bị đưa vào hàng đợi `completion_queue` bắn ra Telegram.
+  2. **Bộ lọc thông báo Gateway (`gateway/run.py`):** Trong `_async_delegation_watcher`, kiểm tra `_load_background_notifications_mode()`. Nếu cấu hình `display.background_process_notifications` là `off` hoặc `error` (khi task thành công), Gateway tự động bỏ qua không inject tin nhắn thông báo thô ra chat Telegram.
+  3. **Cấu hình hiển thị yên tĩnh:** Cấu hình `display.platforms.telegram.tool_progress: off` hoặc `cleanup_progress: true` để dọn dẹp các bong bóng tiến trình.
+- **Kỷ luật Coordinator:** Luôn dùng tiếng Việt súc tích, chỉ trả lời 1 thông điệp kết quả duy nhất sau khi các subagent hoàn thành, cấm để lọt tin nhắn phân vai nội bộ ra ngoài chat.
