@@ -28,6 +28,9 @@ The failures in this catch-all category consistently decompose into 4 distinct f
   - `fullscreen Shop ad swipe recapture is not a valid feed: manual-needed:popup`
   - `sponsored/ad feedback overlay requires manual review`
   - `startup ad/splash marker detected; swipe recovery (2 swipes) still stuck`
+  - `startup ad/splash marker detected`
+  - `screen capture invalid; feed not confirmed`
+  - `feed swipe command failed`
 * **Root Cause:** TikTok pushes dialogs (TikTok Shop coupons, phone binding prompts, ad surveys) that cover the video surface. Fail-closed safety terminates the session with `manual-needed` to avoid unintended clicks.
 * **Remediation:** Enhance `benign_popup.py` or `feed_swipe_smoke.py` with dismiss bounds / close selectors for the newly observed popup marker.
 

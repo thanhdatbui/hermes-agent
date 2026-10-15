@@ -185,6 +185,12 @@ When an operator provides a screenshot of a TikTok profile (e.g. `LilyanLederhos
   * BẮT BUỘC xác nhận popup *"Đặt biệt danh? Bạn chỉ có thể thay đổi biệt danh 7 ngày 1 lần"* tại `(747, 1173)`.
   * Readback verify: đọc lại màn hình Hồ sơ qua OCR, xác nhận dòng hiển thị ngay trên `@username` khớp với tên mới (`Linh Bông` trên `@lilyanzj8n1`).
   * **Tách bạch báo cáo đa mục tiêu (Anti-False Completion)**: Khi yêu cầu gồm cả đổi tên + đổi avatar, TUYỆT ĐỐI CẤM báo "HOÀN TẤT 100%" kèm ảnh khi mới chỉ đổi xong tên mà avatar vẫn là ảnh cũ. Bắt buộc ghi rõ ràng từng trạng thái: Tên (ĐÃ ĐỔI) và Avatar (ĐANG NẠP/CHỜ XỬ LÝ) để chống gây hiểu lầm là báo cáo láo.
+  * **Kiểm tra sổ cái Tik*.xlsx trước khi nạp avatar**: Trước khi chạy upload avatar lên thiết bị, bắt buộc kiểm tra cột `Folder Video` (Cột 4) trong `TikN.xlsx` có trỏ đúng folder chứa video kênh không. Lỗi thường gặp: tool cũ bốc nhầm avatar từ folder sai (e.g. Máy 2 bị ghi Folder=12 thay vì 242, dẫn đến nạp ảnh xăm trổ từ Gym). Cách sửa O(1): `openpyxl` đọc + ghi lại đúng số folder cho dòng tương ứng.
+  * **OCR WinRT méo dấu tiếng Việt trong `is_target()` và `NAME_EDIT`**: WinRT OCR thường đọc sai dấu tone (e.g. `Tươi Lưu` → `Tl-fdi LUU`). Hậu quả: `difflib.SequenceMatcher(...) >= 0.75` bắn false-ABORT dù tên đã được gõ đúng. Fix chuẩn:
+    - Hạ ngưỡng `SequenceMatcher` xuống `>= 0.5` hoặc `>= 0.6`.
+    - Bổ sung fallback keyword stem: `or "luu" in nl and len(nl) < 15`.
+    - Kết hợp bộ đếm ký tự `/30` `(ok_count)` làm gate chính thay vì exact text match.
+    - Áp dụng tương tự cho `classify()` SWITCHER: dùng regex `chuy\w{0,4}\s*d\w{0,4}i` thay vì exact `"chuyen doi tai khoan"` để chịu được OCR noise.
 - **Hermetic Offline Pytest**: Create `tests/test_do_rename_m<ID>.py` testing `norm`, `compact`, `classify`, `is_target`, `is_target_user`, and `nickname_on_profile` offline (<0.5s) to guarantee zero regression before device execution.
 - **Tiered Workflow Dispatch Contract**: Script generation exceeds Coordinator T1 direct-write budget (<= 200 lines). Dispatch Worker via `delegate_task` with mandatory headers in `context`: `TASK_KIND: EDIT`, `TARGET_FILE: ...`, `TEST_FILE: ...`, and `FOCUSED_TEST: python -m pytest <path>::<node>` to satisfy Coordinator Guard.
 - **Background Execution**: Launch via `terminal(command="python D:/Taadaa/tools/do_rename_m<ID>.py", background=True, notify_on_complete=True, timeout=300)` adhering to event-driven wakeup.

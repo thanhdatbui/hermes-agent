@@ -49,6 +49,29 @@ def classify_display_name(username, display_name):
     return "NATURAL_USER"
 ```
 
+### B. Kiểm Tra Workbook `Folder Video` Trước Khi Upload Avatar:
+
+**Bug pattern tái phát**: Cột `Folder Video` (Cột 4) trong `TikN.xlsx` bị ghi sai số folder, khiến tool bốc nhầm `avatar.jpg` từ folder lạc đề:
+- Máy 2 (`@lieuhoan03`, Niche Tài chính, VideoGoc=242): bị ghi `Folder Video = 12` (Gym/xăm trổ) → nạp avatar xăm trổ.
+- Máy 51 (`@luutuoi02`, Niche Kỷ yếu/Áo dài, VideoGoc=291): bị ghi `Folder Video = 404` (Thú cưng chó lông xù) → nạp avatar chó cưng.
+
+**Triage O(1)**:
+```python
+import openpyxl
+wb = openpyxl.load_workbook("D:/OneDrive/TaadaaData/kibe/Tik4.xlsx")
+ws = wb.active
+for row in ws.iter_rows():
+    may, folder_video, video_goc = row[0].value, row[3].value, row[4].value
+    if folder_video != video_goc:  # Nếu Folder Video != Video Goc thì đang sai
+        print(f"MAY {may}: Folder={folder_video} nhưng VideoGoc={video_goc} -> sửa Folder thành {video_goc}")
+```
+
+**Fix O(1)**: Sửa cột `row[3].value = video_goc` cho các dòng lệch, save lại workbook.
+
+**Invariant**: `Folder Video` PHẢI bằng `Video Goc` (cả hai đều là số folder dưới `D:/TIKTOK-videonuoinick/`). Nếu không bằng → cross-check lịch sử import, xác định folder nào chứa video đúng ngách trước khi sửa.
+
+---
+
 ### B. Rào cản TikTok 7-Day Rename Cooldown:
 - TikTok áp dụng giới hạn cứng trên máy chủ: **Chỉ được đổi biệt danh 1 lần / 7 ngày**.
 - Khi một nick vừa đổi tên xong, màn hình Sửa hồ sơ sẽ khóa nút Lưu và hiển thị thông báo: *"Bạn chỉ có thể thay đổi biệt danh 7 ngày 1 lần. Bạn có thể tiếp tục thay đổi biệt danh sau ngày DD tháng MM, YYYY"*.
