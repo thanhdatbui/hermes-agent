@@ -108,7 +108,7 @@
 - **Độ song song:** Watchdog chạy `MAX_WORKERS = 25` (`ThreadPoolExecutor`) gom tối đa 25 máy rảnh khác nhau cùng lúc giữa các ca nuôi.
 - **Subprocess Isolation Architecture:**
   * BẮT BUỘC tách runner thực thi thành CLI độc lập (`do_rename_canonical_runner.py --machine <M> --serial <S> --username <U> --name <N>`).
-  * Watchdog `_worker` gọi qua `subprocess.run(cmd, timeout=240, capture_output=True)`. Cách ly triệt để bộ nhớ, tránh nghẽn thread pool khi 25 workers đồng thời gọi PowerShell WinRT OCR (`ocr_boxes.ps1`).
+  * Watchdog `_worker` gọi qua `subprocess.run(cmd, timeout=320, capture_output=True)`. Cách ly triệt để bộ nhớ, tránh nghẽn thread pool khi 25 workers đồng thời gọi PowerShell WinRT OCR (`ocr_boxes.ps1`).
 - **Xử lý trễ Splash Screen trên Samsung S7:**
   * App TikTok trên chip Exynos 8890 tải splash màn hình đen/chữ TikTok có thể mất 10–15s. State machine thiết lập `MAX_STEPS = 25-35` bước, kiên nhẫn bỏ qua 3–5 step đầu nếu màn hình vẫn ở Splash/UNKNOWN trước khi xác định kẹt.
 - **Fail-Safe chống đơ ADB Transport:**
@@ -131,4 +131,35 @@
 - **Bẫy Layout Profile Mới & Thoát Bằng Keyevent Back:** Trên một số tài khoản/phiên bản TikTok mới, layout Profile không còn nút 'Sửa hồ sơ' to giữa màn hình mà icon cây bút chì chỉnh sửa nằm ở góc trên bên trái `(75, 150)`. BẮT BUỘC chỉ được tương tác với tọa độ này khi State Machine xác nhận chắc chắn 100% đang ở `PROFILE`. Tuyệt đối CẤM tap `(75, 150)` để lùi trang sau khi Lưu, vì nếu app đã tự lùi về Profile rồi mà lại bấm tiếp `(75, 150)` thì sẽ mở màn hình Tìm kiếm bạn bè và AdbKeyboard gõ nhầm text vào ô Search! Luôn dùng `input keyevent 4` (KEYCODE_BACK phần cứng) để lùi trang an toàn.
 - **Chiến Lược Tách Runner Độc Lập Cho Watchdog 25 Workers:** Khi chạy cuốn chiếu 25 workers song song, tách toàn bộ State Machine OCR 35 bước thành CLI độc lập `do_rename_canonical_runner.py` và gọi qua `subprocess.run(timeout=320)`. Cách ly triệt để bộ nhớ, chống tắc nghẽn thread pool khi nhiều máy cùng gọi WinRT OCR `ocr_boxes.ps1`, giúp farm cuốn chiếu ổn định vượt mốc hàng chục nick/phiên.
 
+---
 
+## 7. Bẫy OCR Méo Dấu Trong Ô Nhập Tên (NAME_EDIT) & Thuật Toán Xác Thực Mềm
+
+### Hiện tượng & Căn nguyên:
+- Khi `AdbKeyboard` gõ tên mới vào ô input (ví dụ: `Sơn Nấm`, `Tươi Đậu`, `Bùi Duy Phương`, `Đạt Tít`):
+  * Chữ trong ô input màu xám nhạt, kèm con trỏ nhấp nháy (`|`) và gạch chân Android.
+  * WinRT OCR quét qua ô input thường làm rớt hoặc méo các ký tự có dấu phức tạp:
+    - `"Sơn Nấm"` $\rightarrow$ OCR đọc thành `"Sdn I\läm"` (similarity ratio rớt xuống ~0.62).
+    - `"Tươi Đậu"` $\rightarrow$ OCR đọc thành `"Tl-fdi DåU"`.
+    - `"Bùi Duy Phương"` $\rightarrow$ OCR đọc thành `"Bbi Duy Phi-fdng"`.
+    - `"Đạt Tít"` $\rightarrow$ OCR đọc thành `"Dat"`.
+- Nếu script áp dụng ngưỡng so khớp chuỗi khắt khe (`ratio >= 0.7`), script sẽ hiểu lầm là AdbKeyboard gõ sai text, tự động bấm 'Hủy' và Abort (`OCR khong xac nhan o nhap = ...`). Hàng loạt máy bị rớt oan dù text đã gõ đúng 100%!
+
+### Giải pháp Xác Thực Mềm (Soft Pre-Save Verification):
+1. **Bộ đếm ký tự là neo vật lý chuẩn xác nhất:**
+   - TikTok luôn hiển thị bộ đếm `{len}/{max}` ở góc dưới ô input (ví dụ: `7/30`, `8/30`, `14/30`).
+   - OCR đọc bộ đếm này với độ chính xác ~99%. Bắt buộc kiểm tra:
+     ```python
+     count_match = re.search(r"(\d{1,2})\s*/\s*30", box)
+     expected_len = len(NEW_NAME)
+     ok_count = (count_match is not None and abs(int(count_match.group(1)) - expected_len) <= 1) or f"{expected_len}/30" in box
+     ```
+2. **Thuật toán so khớp mềm kết hợp tách từ (Word Matching):**
+   - Tách tên mới thành các từ đơn: `words = [norm(w) for w in NEW_NAME.split() if len(w) >= 2]`.
+   - Điều kiện text hợp lệ (`ok_text = True`) khi thỏa mãn **BẤT KỲ** điều kiện nào sau đây:
+     * Tỷ lệ SequenceMatcher toàn chuỗi `>= 0.45` (chống méo dấu).
+     * Hoặc tìm thấy ít nhất 1 từ đơn (`found_word`) khớp trong các dòng OCR (SequenceMatcher từng từ `>= 0.6`).
+     * Hoặc chuỗi không dấu nằm trọn trong ô nhập.
+3. **Chốt chặn an toàn tối cao (Post-Save Gate):**
+   - Xác thực mềm ở ô input chỉ để quyết định có bấm 'Lưu' hay không.
+   - Việc công nhận đổi tên thành công (`verified = True`) **vẫn bắt buộc kiểm tra 100% tại màn hình Profile root sau khi Lưu**: Tại đây font chữ in đậm lớn, WinRT OCR đạt độ chính xác `>= 75%`.
