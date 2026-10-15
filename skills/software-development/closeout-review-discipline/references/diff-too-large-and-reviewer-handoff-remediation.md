@@ -165,6 +165,25 @@
   * Khi `clean_diff <= 21,299 bytes`: `digest_diff` trả về `level=L0`, `omitted=[]` và `manifest=""` (hoàn toàn không có `[TRUNCATION_MANIFEST]`). Reviewer Sol sẽ nhìn thấy 100% mã nguồn và test suite, đủ điều kiện chấm điểm xuất sắc >= 85.
   * Tinh gọn docstrings trong code (1–2 dòng súc tích thay vì 8–10 dòng giải thích dài dòng) và cô đọng test suite bằng helper fixtures/sub-functions để giảm 4–6KB payload mà vẫn bảo toàn 100% test coverage.
 
+## 15. Triệt Tiêu Race Window Khi Kill, Tránh Lãng Phí Subprocess & Negative Path Test (16/10)
+- **Bẫy Race Window Giữa Thao Tác Kill và Hậu Kiểm (Kill-to-Verify Race Window):**
+  - Không được chèn hàm phụ trợ hay cleanup (như `cleanup_orphan_xiaowei_adb()`) vào giữa lệnh `taskkill` và câu lệnh kiểm tra `not is_running()`.
+  - Nếu chèn vào giữa, thời gian thực thi cleanup (chạy PowerShell hoặc kill-server mất từ vài trăm ms đến vài giây) sẽ tạo ra một khoảng trống thời gian nguy hiểm khiến tiến trình có thể vừa bị đóng rồi lại hồi sinh hoặc trạng thái không còn phản ánh đúng kết quả của `taskkill`.
+  - Quy tắc chuẩn: Thực hiện verify `not is_running()` ngay lập tức sau lệnh kill; chỉ khi đã xác nhận tiến trình cha đã chết hoàn toàn mới tiến hành dọn dẹp các tài nguyên con phụ trợ bên trong khối `if`.
+- **Khôi Phục Kiểm Tra Chuỗi `success in stdout` Cho Windows `taskkill`:**
+  - Trên một số phiên bản Windows hoặc ngữ cảnh thực thi, `taskkill` có thể trả returncode khác 0 nhưng stdout vẫn báo thành công, hoặc ngược lại.
+  - Bắt buộc kiểm tra kết hợp: `if (r.returncode == 0 or "success" in (r.stdout or "").lower()) and not is_running():` để tránh false-negative kill rejection. Reviewer Sol sẽ bắt lỗi regression nếu bỏ qua chuỗi `success in stdout`.
+- **Triệt Tiêu Blind Spot (Fail-Safe Asymmetry) & Giảm Thiểu Subprocess Overhead:**
+  - *Vấn đề Asymmetry:* Hàm `is_running()` trả về `True` khi lỗi `tasklist` (để fail-safe không kill nhầm). Nhưng nếu hàm cleanup gọi `if is_running(): return False` thì khi `tasklist` bị lỗi tạm thời (chậm/timeout), cleanup bị bỏ qua vĩnh viễn (blind spot).
+  - *Khắc phục:*
+    1. Bổ sung tham số cache nội bộ `is_running(use_cache=False)` trong cùng một chu kỳ invocation để tránh spawn 3–4 lần subprocess `tasklist` lãng phí CPU.
+    2. Retry 1 lần khi truy vấn tiến trình gặp lỗi trước khi kết luận trạng thái.
+    3. Trong hàm cleanup, kiểm tra rõ ràng `if is_running() is True: return False` để trạng thái `None` (lỗi không xác định) không bị coi là đang chạy mà bỏ rơi orphan process.
+- **DRY Binary Paths & Kiểm Thử Nhánh Khuyết (Negative Path Coverage):**
+  - Gom các đường dẫn nhị phân (`XIAOWEI_DIR`, `XIAOWEI_ADB_BIN`) thành hằng số duy nhất, không hardcode lặp lại ở nhiều khối mã.
+  - Bắt buộc kiểm thử negative path: Khi file nhị phân chính không tồn tại trên đĩa (`os.path.exists == False`), kiểm chứng hệ thống tự động rơi xuống nhánh CIM fallback và thực thi `Invoke-CimMethod` thành công.
+
+
 
 
 

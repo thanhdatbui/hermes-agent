@@ -127,9 +127,15 @@ Khi operator thắc mắc: *"Sao trên db báo 1 lượt mà ở đây báo 0?"*
 
 ### 9. Nguyên Lý Vận Hành Silent Trong Hermes Cron Job Của Watchdog
 - **Bản chất Cron Runner:** Task scheduled cron chạy định kỳ (ví dụ mỗi 10-15 phút) gọi `follow_session_watchdog.py`.
+- **Cơ chế Ca Đêm (Ca 4: 00:00 - 06:00) Không Chạy & Unreported State:**
+  * Farm vận hành theo chính sách 3 ca (Ca 1: 06h, Ca 2: 12h, Ca 3: 18h); ca đêm (21h30-5h15) bỏ nuôi để dành slot cho 2FA / Avatar.
+  * Trong `feed_session_watchdog.py`, `SESSION_WINDOWS` vẫn có cấu hình Ca 4 (`00:00 - 06:00`). Khi watchdog quét, do không có lượt chạy nào (`session_runs == []`), điều kiện `has_any_cluster_runs = any("• Tổng máy xử lý:" in b for b in cluster_blocks)` đánh giá là False.
+  * Watchdog coi phiên này là chưa có dữ liệu thực thi nên KHÔNG ghi nhận vào `reported_sessions`. Vì vậy, các key `ca4_phien1` và `ca4_phien2` tồn đọng dạng un-reported là hoàn toàn bình thường theo thiết kế.
+- **Kỷ Luật Thực Thi Terminal Guard Trong Cron:**
+  * Lệnh chạy qua `terminal` foreground bắt buộc truyền tham số `timeout: 60` (hoặc `<= 60s`), nếu không sẽ bị chặn bởi `[GUARD_FOREGROUND_TIMEOUT_MISSING]`.
 - **Cơ chế Silent [SILENT]:** 
   * Watchdog sử dụng file state `follow_session_reported.json` để track các phiên đã báo cáo (`<date>_ca<N>_phien<M>`).
-  * Khi tất cả các phiên hiện tại trong ngày đã được báo cáo và lưu state thành công (hoặc phiên hiện tại chưa kết thúc / chưa đủ điều kiện xuất tin), watchdog chạy xong và không print gì ra stdout.
+  * Khi tất cả các phiên hiện tại trong ngày đã được báo cáo và lưu state thành công (hoặc phiên hiện tại chưa kết thúc / chưa có dữ liệu chạy mới như ca đêm), watchdog chạy xong và không print gì ra stdout.
   * Trong vai trò Agent chạy cron job, nếu watchdog không in ra báo cáo mới nào (đã claim/report xong trước đó), BẮT BUỘC trả về duy nhất chuỗi `[SILENT]` (theo chỉ thị cron delivery) để triệt tiêu việc gửi tin rác / tin trống về kênh Telegram của User.
 
 ### 10. Giải Thích Lệch Danh Sách & Số Lượng Máy "Nhả Follow" Giữa Phiên 1 Và Phiên 2 Trong Cùng Ca
