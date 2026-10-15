@@ -14,7 +14,8 @@ metadata:
 > **Canonical policy precedence:** For orchestration and closeout precedence, follow `D:\Taadaa\HERMES_SUBAGENT_RULES.md` marker `CANONICAL-POLICY-PRECEDENCE-2026-10-05`; this skill points to it and does not redefine it.
 
 References:
-- `references/metrics-lock-lookbehind-and-closeout-gate-truncation.md` — **[MỚI 15/10/2026]** Metrics lock snapshot test, lookbehind regex, và bẫy truncation diff 30KB.
+- `references/msys-git-diff-external-and-multicommit-gate.md` — **[MỚI 15/10/2026]** MSYS git diff ext, multi-commit & timeout.
+- `references/metrics-lock-lookbehind-and-closeout-gate-truncation.md` — **[MỚI 15/10/2026]** Metrics lock, lookbehind, truncation 30KB.
 - `references/reviewer-model-characteristics-sol-vs-opus.md` — So sánh Sol High vs Opus Pool; Pre-Push Hook <85đ.
 - `references/safe-push-git-transport-unmask.md` — **[MỚI 14/10/2026]** Tích hợp cờ `--push` vào `closeout_gate.py`: Tự động unmask qua `safe_push.py` push remote khi `APPROVED >= 85`.
 - `references/closeout-gate-rejection-remediation.md` — **[MỚI 12/10/2026]** Kỷ luật xử lý khi closeout gate bị REJECTED (<85đ): Cấm dừng lại ở L3 xin đóng phiên, bám sát finding sửa đến cùng, quy trình Strike 3 hand-off Claude CLI.
