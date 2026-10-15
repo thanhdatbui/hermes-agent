@@ -66,3 +66,21 @@ Nếu phát hiện hệ thống đã lỡ render nhầm dạng 1-1 từ `Src N` 
    - Dùng 1 watchdog Python nhẹ (`watchdog_admin_render.py`): kiểm tra liveness của `run_admin_render_worker.py` qua `psutil`. Nếu đang chạy thì thoát ngay O(1), nếu vắng mặt thì gọi launcher detached (`subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS`).
    - Bọc qua VBScript (`start_render_watchdog.vbs`) sử dụng `WScript.Shell.Run ..., 0, False` để triệt tiêu 100% cửa sổ console nhấp nháy trên màn hình máy Farm.
    - Đặt wrapper VBS vào thư mục Startup người dùng (`%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\`) kết hợp watchdog định kỳ của Hermes để đảm bảo máy khởi động lại là worker tự hồi sinh và render đúng slot.
+
+   ---
+
+   ## 3. Bẫy Map Ngang Khi Dọn Đĩa & Nguy Cơ Lệch Pha Database (Disk Cleanup & Reconcile Invariant)
+
+   ### Bẫy map ngang (The Horizontal Mapping Trap):
+   Khi dọn đĩa Admin giải phóng dung lượng, **TUYỆT ĐỐI CẤM** kiểm tra theo kiểu map ngang:
+   - `video goc may 2/<N>` so sánh với `render/<N>`
+   Vì `f_src = (slot - 1) * 80 + m_idx` KHÁC HOÀN TOÀN với `f_vid = (m_idx - 1) * 8 + slot`.
+   Chỉ được xóa raw video trong `f_src` khi folder render đích thật `f_vid` đã có đủ >= 30 clip.
+
+   ### Bẫy lệch pha Database (The Database Desync Deadlock):
+   Nếu xóa video gốc trên đĩa mà không cập nhật lại database download:
+   1. Downloader kiểm tra database thấy trạng thái đã complete/đủ clip -> `action=skip`, **bỏ qua không bao giờ tải lại**.
+   2. Render worker kiểm tra đĩa thấy < 35 clip gốc -> **bỏ qua không render**.
+   3. Cả hệ thống rơi vào Deadlock: nick báo lỗi hết video liên tục.
+
+   **Quy tắc bắt buộc:** Mỗi khi dọn đĩa hoặc phát hiện video gốc bị xóa, bắt buộc phải đối soát (reconcile) giữa filesystem và database quản lý download: thư mục nào thực tế thiếu video thì reset trạng thái về `pending` để downloader tự động cào tải bù.

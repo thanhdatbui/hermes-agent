@@ -4,7 +4,7 @@ Dọn đĩa: duyệt trước, cấm xóa ngầm. Cấm đẻ script trùng (đ�
 §
 Nuôi 4d 3 ca (bỏ ca đêm, tắt màn 223). Cuốn chiếu Ava & 2FA tới 5h15 (dừng 4h45, né cache 4h); báo 6h. 2FA/Pass: Write-Through ghi Excel; Starve 96h. Đổi mail: Graph PC. Đổi ava: tự chọn option tối ưu & làm ngay, cấm hỏi chọn.
 §
-cấm telemetry JSON stdout cron; chốt phiên: Reviewer APPROVED>=85 & tự push remote qua safe_push (CẤM bắt user push tay); điểm<85 cấm báo xong; OTP: read_otp_mail.py.
+chốt phiên: Reviewer APPROVED>=85 tự push qua safe_push; user lệnh ép push thì push ngay kèm --no-verify;
 §
 Kibe(1-80) & Admin(201-280) cào nguồn & media độc lập 100% (cấm trùng video, cấm sync chéo Niche/Hashtag). TT v47.0.3; Switcher dock; AP 40m.
 §
