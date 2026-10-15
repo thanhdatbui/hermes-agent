@@ -65,16 +65,21 @@ Hàm `_resume` sẽ:
 
 ### Tầng 1: Tự động Retry tại chỗ khi ghi Excel (`_write_cell`)
 - Khi worker hoàn tất OTP, `write_2fa` gọi `_write_cell`.
-- Thay vì văng lỗi `WorkbookError` ngay lập tức khi chạm `BLOCKED_TIMEOUT_WORKBOOK_LOCK` hoặc `WORKBOOK_REPLACE_FAILED`, `_write_cell` được bọc vòng lặp retry 5 lần:
+- Thay vì văng lỗi `WorkbookError` ngay lập tức khi chạm `BLOCKED_TIMEOUT_WORKBOOK_LOCK` hoặc `BLOCKED_CROSS_HOST_WORKBOOK_LOCK`, `_write_cell` được bọc vòng lặp retry 5 lần:
   * Khoảng chờ ngẫu nhiên có jitter: `sleep_func(random.uniform(1.5, 4.0) * (attempt + 1))`
   * Cho phép hàng đợi ghi file tự giải phóng thay vì làm fail worker.
+  * **CẠM BẪY CẦN TRÁNH (CRITICAL PITFALL):** CHỈ retry trên `"TIMEOUT"` và `"CROSS_HOST"`, **CẤM** retry trên `"REPLACE"`. Lý do: Hàm `single_writer_workbook_update` đã có sẵn cơ chế `replace_with_retry` bên trong (8 lần thử). Nếu tầng ngoài retry thêm `REPLACE_FAILED` sẽ nhân số lần thử lên 40 lần (5 x 8 = 40), vi phạm contract kiểm soát thay thế file và làm fail bộ unit test (`test_replace_failure_is_reported_and_original_unchanged`).
 
-### Tầng 2: Tự động gom ghi bù cuối Batch (`_drain_pending_journals`)
-- Tại hàm `main()` của `run_batch_live_2fa.py`, ngay sau khi tất cả worker hoàn tất:
-  * Quét các target có trạng thái `failed`.
-  * Nếu phát hiện journal ở trạng thái `AUTHENTICATOR_CONFIRMED`, runner mở file Excel đúng 1 lần, ghi đồng loạt tất cả các secret còn thiếu vào Cột 5 (`2FA`), verify lại và purge journal.
-  * Cập nhật kết quả các target đó sang `success` (`RECONCILED_FROM_JOURNAL`).
-  * Tuyệt đối không để secret tồn đọng trong journal bắt user phải chờ sang các ca sau.
+### Tầng 2: Tự động gom ghi bù cuối Batch (`recover_journal_2fa_to_excel.py`)
+- Tại hàm `main()` của `run_batch_live_2fa.py`, ngay sau khi tất cả worker hoàn tất (`finally:` block) và trước khi `_print_results`:
+  * Gọi trực tiếp script `recover_journal_2fa_to_excel.py --apply`.
+  * Script tự động mở file Excel đúng 1 lần, kiểm tra identity (Máy, ID), ghi đồng loạt tất cả các secret còn thiếu vào Cột 5 (`2FA`), verify lại và purge journal tương ứng.
+  * Tuyệt đối không để secret tồn đọng trong journal bắt user phải chờ sang các ca sau (nguyên tắc Write-Through).
+
+### Cạm bẫy Line Endings Windows (CRLF vs LF) & Closeout Gate
+- Khi sửa code trên môi trường Windows (git-bash), các công cụ hoặc editor có thể ghi file với định dạng xuống dòng CRLF (`\r\n`).
+- Nếu repo gốc chuẩn hóa bằng LF (`\n`), việc vô tình lưu CRLF sẽ khiến `git diff` nhận định toàn bộ file bị thay đổi (ví dụ file 580 dòng sẽ phình diff lên >50KB), kích hoạt lỗi chặn `[Gate Fail-Fast: DIFF_TOO_LARGE]` (>30KB) tại `closeout_gate.py`.
+- **Giải pháp:** Khi sửa code trên Windows, luôn đảm bảo giữ nguyên định dạng LF cho các repo chuẩn hóa LF.
 
 ### Kỷ luật Watchdog No-Agent Exit Code
 - Với cronjob chạy ngầm (`no_agent: true`), việc có một số máy fail/skip trong cụm 160 máy là trạng thái vận hành bình thường (`partial_failure`).
