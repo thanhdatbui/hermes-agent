@@ -97,3 +97,15 @@
     4. **Chứng minh Không Suy Thoái Ca Farm:** Thêm test xác nhận các mốc thời gian của các Ca sản xuất thực tế (Ca 1: 12:00, Ca 2: 18:00, Ca 3: 23:59:59) không bị cắt xén hay lệch biên (`test_production_ca_windows_not_truncated`).
     5. **Tài Liệu Hóa Quyết Định Thiết Kế (Trade-Off):** Ghi rõ trong docstring/comments lý do làm tròn thời gian (ví dụ chấp nhận sai số < 1s cuối ngày để đảm bảo toàn vẹn định dạng chuẩn của SQLite query).
 
+## 10. Cạm bẫy 'targets without working-tree changes' và Bứt Phá Điểm Sol Reviewer (82-84 -> >=85)
+- **Cạm bẫy 'targets without working-tree changes':**
+  - Trong `closeout_gate.py`, khi truyền `--files F1 F2 F3`, nếu một file có diff vs HEAD (unstaged/staged) trong khi các file khác đã commit vào HEAD (không còn diff vs HEAD), nhánh `if changed:` kích hoạt nhưng `sorted(changed) != targets` -> gate crash văng `ValueError: targets without working-tree changes: [...]`.
+  - Khắc phục: Hoặc tất cả cùng uncommitted (`git reset --soft <base>`), hoặc tất cả cùng committed vào HEAD và `git diff HEAD -- <targets>` sạch hoàn toàn.
+- **5 Test cases cốt lõi đưa điểm Sol Reviewer từ 82-84 lên >=85:**
+  1. **Subsecond Regression Proof:** Test so sánh trực tiếp datetime `23:58:59.500000 + 1m`: `buffered <= eod_micro` (bug cũ không cap) nhưng `buffered > eod_sec` (fix mới cap chính xác về 23:59:59).
+  2. **Rollover qua Midnight:** Test khi input gần nửa đêm có minutes lớn (ví dụ `23:55:00` + 10m = `00:05:00` ngày hôm sau), `was_subsecond_capped` phải là `False`, chỉ tính `buffer_capped`.
+  3. **Concurrent Thread Safety:** Test 5 threads x 20 calls đồng thời gọi hàm để chứng minh `_METRICS_LOCK` bảo vệ `RECONCILE_METRICS` an toàn, assert đúng tổng số counts.
+  4. **Direct SQLite WHERE Clause Behavior:** Tạo bảng SQLite thật, chèn timestamp microsecond (`23:59:59.250000`) và truy vấn `WHERE ts <= ?` với timestamp đã cap (`23:59:59`) để chứng minh snapshot microsecond bị loại trừ đúng như kỳ vọng so sánh chuỗi.
+  5. **Edge Cases & Parity:** Whitespace, timezone offset `+07:00`, negative minutes clamp về `00:00:00`, và assert `caplog` không sinh telemetry log rác khi `minutes == 0`.
+
+
