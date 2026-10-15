@@ -15,7 +15,7 @@ metadata:
 
 References:
 - `references/pareto-80-20-closeout-and-stopping-discipline-20261015.md` — **[15/10]** Vận hành, dừng task & báo cáo 80/20.
-- `references/diff-too-large-and-reviewer-handoff-remediation.md` — **[15/10]** Diff ceiling (>30KB), scope `--files`, Strike 3 hand-off.
+- `references/diff-too-large-and-reviewer-handoff-remediation.md` — **[16/10]** Diff ceiling (<15KB), scope `--files`, Strike 3 hand-off, fail-closed tri-state, sub-action status binding, và MSYS quoting.
 - `references/gate-scope-matching-and-parity-lessons.md` — **[15/10]** Scope matching, diff ceiling (<30KB), audit binding.
 - `references/closeout-gate-diff-ceiling-and-scope-refusal.md` — **[15/10]** DIFF_TOO_LARGE (>30KB), refusing partial committed scope invariant, Strike 3 Claude CLI hand-off.
 - `references/sync-hermes-cron-block-identity-and-line-budget.md` — Đồng bộ 100% block giữa scripts/ và hermes_cron/ tránh lệch test helper_block, và kiểm soát line budget Architecture Gate.

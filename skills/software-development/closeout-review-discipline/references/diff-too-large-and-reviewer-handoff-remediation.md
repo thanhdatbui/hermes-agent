@@ -134,4 +134,21 @@
 - **Khử trùng lặp Telemetry & Thống nhất JSON Contract:**
   - Khi đóng ứng dụng thất bại, `main()` phát sự kiện tổng hợp `_FAILED_SUMMARY` mang đầy đủ ngữ cảnh `idle_seconds` và `idle_minutes`, loại bỏ hoàn toàn các thông điệp print thô và tránh phát sinh nhiều event lỗi trùng lặp làm méo mó bộ đếm alert của Farm.
 
+## 13. Fail-Closed Tri-State, Sub-Action Status Binding & Windows Bash Quoting Quirk (16/10)
+- **Triết lý Fail-Closed Tri-State (`True` / `False` / `None`) trong Kiểm Tra Daemon/Dịch Vụ:**
+  - Khi kiểm tra trạng thái một daemon phụ (như ADB port 5038), nếu truy vấn PowerShell gặp lỗi hoặc Exception, hàm BẮT BUỘC trả về `None` (trạng thái không xác định), TUYỆT ĐỐI KHÔNG trả về `False`.
+  - **Tử huyệt False-Positive Success:** Nếu trả về `False` khi lỗi, biểu thức hậu kiểm sau khi kill `if not is_running():` sẽ bị ngộ nhận thành `True` $\rightarrow$ sinh ra cảnh báo thành công giả (`ADB_CLEANUP_OK`) dù tiến trình vẫn đang chạy ngầm!
+  - **Quy tắc nghiệm thu:**
+    * Pre-condition: Chỉ chạy cleanup khi trạng thái xác nhận chắc chắn đang chạy: `if is_running() is not True: return False`.
+    * Post-condition: Chỉ ghi nhận thành công khi trạng thái xác nhận chắc chắn đã biến mất: `if r.returncode == 0 and is_running() is False: return True`.
+- **Ràng Buộc Kết Quả Sub-Action vào Trạng Thái Hành Động Cha (Action Status Binding):**
+  - Khi một hàm điều phối cha (`close_xiaowei`) gọi một hàm con dọn dẹp phụ trợ (`cleanup_orphan_xiaowei_adb`), CẤM gọi theo kiểu fire-and-forget bỏ rơi kết quả trả về.
+  - BẮT BUỘC lưu vết `adb_cleaned = cleanup_orphan_xiaowei_adb()` và truyền cờ `adb_cleaned=adb_cleaned` vào sự kiện telemetry của hành động cha (`XIAOWEI_CLOSE_OK` / `XIAOWEI_CLOSE_FAILED`), giúp hệ thống giám sát phân biệt rõ đóng app thành công có đi kèm dọn daemon hay không.
+- **Phát Hành Metrics Ra Kênh Telemetry Cấu Trúc (Observability Emission):**
+  - Dictionary lưu metrics trong bộ nhớ (`WATCHDOG_METRICS`) chỉ có ý nghĩa khi được phát ra ngoài cho log collector. BẮT BUỘC nhúng `metrics=get_metrics()` vào sự kiện `WATCHDOG_SUMMARY` hoặc khi có hành động kích hoạt.
+- **Bẫy Cắt Dòng Prompt khi Gọi Haiku / Claude CLI trên Windows Git-Bash (MSYS Quoting):**
+  - Trên môi trường Windows MSYS / Git-Bash, khi truyền chuỗi prompt chứa ký tự xuống dòng (`\n`) bên trong dấu ngoặc kép đôi `"..."`, shell sẽ ngắt chuỗi ngay tại dòng đầu tiên khiến Claude chỉ nhận được câu mở đầu (ví dụ: *"Sua file deploy/..."*) và dừng lại hỏi lại.
+  - **Khắc phục:** Mọi lệnh dispatch gọi `haiku_worker.py` hoặc `claude -p` từ terminal BẮT BUỘC phải viết trên một dòng duy nhất (Single-Line Prompt, ngăn cách bằng dấu chấm hoặc chấm phẩy), không được chèn ký tự newline thô vào tham số CLI.
+
+
 
