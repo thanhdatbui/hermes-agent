@@ -41,4 +41,24 @@
   ```
   kèm theo kiểm tra cú pháp lệnh PowerShell CIM trên máy thật.
 - **Tiết Kiệm Bytes Trên Integration Assertion:**
-  Tránh truyền chuỗi lỗi dài ở assertion như `assert r_ps.returncode == 0, r_ps.stderr`; thay bằng `assert r_ps.returncode == 0` để tiết kiệm 13 - 20 bytes khi diff sát trần budget L0 (21.299B).
+  Tránh truyền chuỗi lỗi dài ở assertion như `assert r_ps.returncode == 0, r_ps.stderr`; thay bằng `assert r_ps.returncode == 0` để tiết kiệm 13 - 20 bytes khi diff sát trần budget L0 (21.299B). Bỏ `text=True` trong `subprocess.run(..., capture_output=True)` nếu chỉ assert `returncode == 0` (tiết kiệm 11 bytes). Gộp các assertion liền kề qua `and` (ví dụ: `assert A in (True, False) and B in (True, False)` tiết kiệm 18 bytes).
+
+### D. Farm Safety & Regression (15 điểm)
+- **Bằng Chứng Cách Ly Cổng Farm (Explicit Port Isolation Assertion):**
+  Reviewer Sol High đòi hỏi bằng chứng cứng rằng tool phụ trợ/watchdog tuyệt đối không giết nhầm ADB server của farm trên port 5037. Trong test integration thực tế, bắt buộc assert rõ:
+  ```python
+  assert xw.XIAOWEI_ADB_PORT == 5038 and "5037" not in xw.XIAOWEI_ADB_TARGET_PS
+  ```
+  chứng minh bằng chuỗi lệnh tĩnh và kiểm thử động rằng port 5037 không nằm trong filter.
+- **Fixture Dùng Helper Invalidation Thread-Safe:**
+  Trong `@pytest.fixture(autouse=True) def _clean_state()`, TUYỆT ĐỐI KHÔNG gán trực tiếp biến mutable global (`xw._XIAOWEI_RUNNING_CACHE = None`) vì Reviewer sẽ bắt lỗi vi phạm thread-safety ngoài lock. BẮT BUỘC gọi hàm helper chính thống:
+  ```python
+  @pytest.fixture(autouse=True)
+  def _clean_state():
+      xw.reset_metrics()
+      xw._invalidate_cache()
+      yield
+      xw.reset_metrics()
+      xw._invalidate_cache()
+  ```
+
