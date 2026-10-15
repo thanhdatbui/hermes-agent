@@ -369,6 +369,7 @@ Codex CLI on OmniRoute (:20129) & 9Router (:20128) GPT Sol routing (wire_api="re
 Pytest cache contention (Errno 13), foreground timeout accumulation & anti-hang pattern: `references/pytest-cache-and-timeout-anti-hang-pattern.md`.
 Claude CLI quota exhaustion, worker subagent delegation & Windows directory junction fallback: `references/claude-cli-quota-exhaustion-and-junction-fallback.md`.
 Antigravity CLI (`agy`) vs IDE GUI launcher trap (`antigravity-ide.cmd chat`), missing binary diagnostics, and headless worker patterns: `references/antigravity-cli-agy-vs-ide-wrapper.md`.
+Antigravity CLI (`ag_cli.py`) subcommand flag schemas (`--profile` trap on `fix`), task scope sizing, and timeout management: `references/ag-cli-argument-and-timeout-traps.md`.
 Monolith thin-slice refactoring pattern & Claude CLI model alias resolution (`--model haiku`): `references/monolith-thin-slice-surgery-and-haiku-alias.md`.
 Claude CLI quota telemetry, Windows Startup background sync, and Antigravity pool failover: `references/claude-cli-quota-telemetry-and-antigravity-fallback.md`.
 
@@ -389,14 +390,17 @@ Auth/Quota source lives under `~/.gemini/` (`google_accounts.json` & `oauth_cred
 Supports hidden native env knob `AGY_ACCOUNT=<email>` for in-session account switching.
 For running multi-account pools (10–20+ Pro accounts) safely without Sybil ban risk, each account requires full sandbox virtualization (`USERPROFILE`, `HOME`, `APPDATA`, `LOCALAPPDATA`, `TEMP`, `TMP`), an isolated `installation_id` UUID, a dedicated residential/4G mobile proxy, `.profile.lock` concurrency protection, and failover jitter (5–10s).
 
-### 3. Windows IPC Named Pipe Hangs & Process Tree Cleanup Trap (`agy.exe`)
-When running `agy.exe` in headless background or automated Python runners on Windows:
-- If `stdin` is left open without TTY or if an execution hits a timeout, the parent process may be terminated while the background daemon (`agy.exe`) remains alive in Task Manager.
-- This orphaned daemon retains an exclusive hold on the Windows Named Pipe (`\\.\pipe\antigravity-...`), causing all subsequent `agy` invocations on that profile to hang indefinitely in a blocked wait.
-- **Fix**:
-  1. Always pass `stdin=subprocess.DEVNULL` to `subprocess.Popen` when invoking `agy`.
-  2. On timeout or cancellation, immediately execute `taskkill /F /T /PID <pid>` to forcibly terminate the entire child process tree and release the named pipe socket immediately.
-See `references/antigravity-cli-agy-vs-ide-wrapper.md` for full comparison matrix, auth audit, TLS fingerprint analysis vs OmniRoute, and troubleshooting details.
+### 4. CLI Argument Ordering & Subcommand Flag Traps (`ag_cli.py`)
+In `ag_cli.py`, the CLI parser defines subcommands (`ask`, `fix`, `models`, `pool-status`, `init-profile`).
+- **The `--profile` Argument Trap**:
+  In `ag_cli.py`, `--profile` is defined ONLY under the `ask` subcommand parser, NOT under `fix`.
+  Passing `python ag_cli.py fix --profile acc_01 "..."` causes `argparse` to fail immediately with:
+  `ag_cli.py: error: unrecognized arguments: --profile`.
+  **Fix**: When calling `fix`, omit `--profile`. The `fix` runner automatically coordinates and selects an available, non-cooldown profile via LRU / pool rotation.
+- **Task Scope & Timeout Sizing**:
+  Requesting an entire multi-file module (5+ files, full SQLite schema, FastMCP server, and test suite) in a single `ag_cli.py fix` call exceeds the typical 180s timeout.
+  **Fix**: Decompose into bite-sized 1-to-2 file tasks with focused prompts, or raise timeout to 240s-300s in background execution (`terminal(background=True, notify_on_complete=True)`).
+
 
 ## OpenCode CLI — Windows Timeout, Encoding & Workspace Traps
 
