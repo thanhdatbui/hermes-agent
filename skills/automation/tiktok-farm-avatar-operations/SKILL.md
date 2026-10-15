@@ -232,12 +232,8 @@ Operate avatar-only changes on Taadaa TikTok farm devices without accidentally p
       3. `D:/video goc/<Video Gốc>/avatar.jpg`
       4. `D:/TIKTOK-videonuoinick/<Video Gốc>/avatar.jpg`
     - Đồng thời lập tức `UPDATE avatar_replace_queue SET status='PENDING', last_error=NULL, updated_at=datetime('now','localtime') WHERE username=...;` trong `D:/Taadaa/data/tiktok_tracker.db`.
-- **BẪY ASSIGNMENTMANIFEST & WORKERID KHI CHẠY SINGLE-MACHINE AVATAR UPLOAD (2026-10-09):**
-  * Runner chuẩn xác cho single machine: `echo AVATAR-SMOKE | python D:/Taadaa/Tiktok-video/scripts/run_workflow_cli.py --config D:/CodexRuntime/tiktok-video/config-machine-62.yaml --workflow-workbook D:/OneDrive/TaadaaData/kibe/Tik<Tik>.xlsx --machine <M> --avatar-smoke --force-avatar-upload --force-avatar-machines <M> --verbose` (xem chi tiết [references/avatar-canonical-smoke-flow-and-account-verification-20261013.md](references/avatar-canonical-smoke-flow-and-account-verification-20261013.md)).
-  * **Quy tắc 3 điểm khi Audit Avatar cho Operator:**
-    1. **Khớp Niche & Tên kênh:** Thú cưng đi với cún/mèo; công sở đi với clip văn phòng; tên nữ trẻ đi với hình nữ chính chủ.
-    2. **An toàn chính sách (Safety):** CẤM TUYỆT ĐỐI ảnh lãnh tụ, cờ Đảng/Tổ quốc lẹm méo, vũ khí, bạo lực.
-    3. **Thẩm mỹ & Độ sạch (Clean visual):** CẤM dính phụ đề vietsub lẹm ở mép, cấm frame đen, cấm logo rác/GDĐT.
+- **BẪY ASSIGNMENTMANIFEST & WORKERID KHI CHẠY SINGLE-MACHINE AVATAR UPLOAD:** Xem chi tiết tại [references/avatar-canonical-smoke-flow-and-account-verification-20261013.md](references/avatar-canonical-smoke-flow-and-account-verification-20261013.md).
+- **Chuẩn Hoá Kênh 3 Món (Ava - Hashtag - Pin) & USB Debounce:** Xem chi tiết tại [references/channel-normalization-3-items-and-usb-debounce.md](references/channel-normalization-3-items-and-usb-debounce.md).
 - **KỶ LUẬT TRÍCH XUẤT AVATAR TỪ VIDEO GỐC (RAW), CẤM BỐC TỪ FOLDER RENDER (CRITICAL OPERATOR INVARIANT 2026-10-10):**
   * Sếp chấn chỉnh dứt khoát: *"Lấy từ video gốc ấy đừng lấy từ render"*.
   * **Bản chất lỗi:** Thư mục render (`D:\TIKTOK-videonuoinick\<folder>`) là thành phẩm đã qua pipeline re-up: chèn dark vignette nặng ở đỉnh/đáy, zoom/crop đổi tỷ lệ 9:16 (1080x1920) làm rỗ hạt và bệt mịn da nhân tạo. Mọi avatar cắt từ folder render đều bị Vision chấm FAIL hoặc rớt điểm do tối đỉnh đầu và mờ.
