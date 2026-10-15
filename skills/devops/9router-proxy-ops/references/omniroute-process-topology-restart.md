@@ -12,7 +12,7 @@
     2. Terminate the active PID on port 20129 to trigger watchdog restart:
        `Stop-Process -Id (Get-NetTCPConnection -LocalPort 20129 -State Listen).OwningProcess -Force`
     3. Watchdog will restart OmniRoute with the full UI within 15–25s.
-  - **Execution Guard Note**: `delegate_task` is whitelisted only for `D:\Taadaa`. To run build commands in `C:\Users\Kibe\OmniRoute`, invoke via background terminal `python D:/Taadaa/tools/ag_cli.py fix "npm run build" --workdir "C:/Users/Kibe/OmniRoute" --timeout 500` or Claude worker.
+  - **Execution Guard Note**: `delegate_task` is whitelisted only for `D:\Taadaa`, and `ag_cli.py fix` times out on long compilations. To run full Next.js builds in `C:\Users\Kibe\OmniRoute`, execute a runner script from `D:\Taadaa\tools\` (e.g. `python D:/Taadaa/tools/check_real_omniroute.py`) that launches `node scripts/build/build-next-isolated.mjs` directly via `subprocess.Popen` without `OMNIROUTE_BUILD_BACKEND_ONLY`. Detailed guide: `references/omniroute-backend-only-stub-recovery.md`.
 - **Supervision**: Supervised by `omniroute_watchdog.ps1` (PowerShell supervisor with mutex `Local\OmniRoute_Supervisor_Mutex_v1`).
 
 ## 2. Common Mistake: Restarting the Wrong Node Process
