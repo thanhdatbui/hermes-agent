@@ -5,12 +5,13 @@ description: Use when running avatar-only jobs on TikTok farm.
 
 # TikTok Farm Avatar Operations
 
-- Avatar Hallucination & Video Face Extraction (2026-10-14): [references/avatar-hallucination-prevention-and-raw-video-face-extraction.md](references/avatar-hallucination-prevention-and-raw-video-face-extraction.md) — Vision gate, AVATAR_UPLOAD_MENU_MISSING recovery, raw crop, MEDIA: tag.
-- Hashtag Hard-Lock & Niche Audit (2026-10-13): [references/audit-dictionary-blindspot-and-niche-leak-prevention.md](references/audit-dictionary-blindspot-and-niche-leak-prevention.md)
-- Avatar Drift vs F_src / F_out (2026-10-13): [references/avatar-and-hashtag-drift-fsrc-vs-fout.md](references/avatar-and-hashtag-drift-fsrc-vs-fout.md)
-- CRLF & Dispatch Guards (2026-10-13): [references/crlf-anchor-and-avatar-task-dispatch-guards.md](references/crlf-anchor-and-avatar-task-dispatch-guards.md)
-- MediaStore Clutter & Verification (2026-10-13): [references/tiktok-avatar-mediastore-clutter-and-proxy-stall-prevention-20261013.md](references/tiktok-avatar-mediastore-clutter-and-proxy-stall-prevention-20261013.md)
-- Continuous Rolling Avatar (2026-10-15): [references/continuous-rolling-avatar-and-anti-false-yield.md](references/continuous-rolling-avatar-and-anti-false-yield.md) — Bỏ Ca 4, mở đêm 21:30 - 04:00 cuốn chiếu 100%, xóa ngắt 23:45, xóa nhãn ảo nhường lịch nuôi, báo cáo 6h/12h.
+- Avatar Hallucination & Face Extraction: [references/avatar-hallucination-prevention-and-raw-video-face-extraction.md](references/avatar-hallucination-prevention-and-raw-video-face-extraction.md)
+- Hashtag Hard-Lock & Niche Audit: [references/audit-dictionary-blindspot-and-niche-leak-prevention.md](references/audit-dictionary-blindspot-and-niche-leak-prevention.md)
+- Avatar Drift F_src vs F_out: [references/avatar-and-hashtag-drift-fsrc-vs-fout.md](references/avatar-and-hashtag-drift-fsrc-vs-fout.md)
+- CRLF & Dispatch Guards: [references/crlf-anchor-and-avatar-task-dispatch-guards.md](references/crlf-anchor-and-avatar-task-dispatch-guards.md)
+- MediaStore Clutter & Verification: [references/tiktok-avatar-mediastore-clutter-and-proxy-stall-prevention-20261013.md](references/tiktok-avatar-mediastore-clutter-and-proxy-stall-prevention-20261013.md)
+- Continuous Rolling Avatar: [references/continuous-rolling-avatar-and-anti-false-yield.md](references/continuous-rolling-avatar-and-anti-false-yield.md)
+- Autonomous Multi-Account Avatar Operations (2026-10-15): [references/autonomous-multi-account-avatar-replacement-protocol.md](references/autonomous-multi-account-avatar-replacement-protocol.md) — Bỏ Ca 4, mở đêm 21:30 - 04:00 cuốn chiếu 100%, xóa ngắt 23:45, xóa nhãn ảo nhường lịch nuôi, báo cáo 6h/12h.
 - Layout C & App-Drift (2026-10-13): [references/tiktok-avatar-layout-c-add-friend-zz5-and-drift-prevention-20261013.md](references/tiktok-avatar-layout-c-add-friend-zz5-and-drift-prevention-20261013.md) — Top-left pencil (75, 150), layout C profile edit.
 - Avatar Candidates & Logo Trap Prevention (2026-10-13): [references/avatar-candidate-generation-and-logo-trap-prevention-20261013.md](references/avatar-candidate-generation-and-logo-trap-prevention-20261013.md) — Chống logo GDĐT, trích xuất chân dung.
 - Active Account & Switcher Layout C (2026-10-13): [references/tiktok-avatar-active-account-verification-and-switcher-layout-c.md](references/tiktok-avatar-active-account-verification-and-switcher-layout-c.md) — Verify handle, switcher anchor `[36, 280][567, 364]`.

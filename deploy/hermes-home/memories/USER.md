@@ -2,7 +2,7 @@ Cào/Render: 12 niche hot (rải xen kẽ máy, cấm trùng niche cùng phiên)
 §
 Dọn đĩa: duyệt trước, cấm xóa ngầm. Cấm đẻ script trùng (đối soát tools/cron: REUSE>EXTEND>NEW); tách rõ read/mock vs write thật.
 §
-Nuôi 4d 3 ca (bỏ ca đêm, tắt màn 223). Cuốn chiếu Ava & 2FA tới 5h15 (dừng 4h45, né cache 4h); báo 6h. 2FA/Pass: Write-Through ghi ngay Excel, lỗi lock retry + auto drain; Starve 96h. Đổi mail: ưu tiên Graph PC.
+Nuôi 4d 3 ca (bỏ ca đêm, tắt màn 223). Cuốn chiếu Ava & 2FA tới 5h15 (dừng 4h45, né cache 4h); báo 6h. 2FA/Pass: Write-Through ghi Excel; Starve 96h. Đổi mail: Graph PC. Đổi ava: tự chọn option tối ưu & làm ngay, cấm hỏi chọn.
 §
 cấm telemetry JSON stdout cron; chốt phiên: Reviewer APPROVED>=85 & push remote mới báo DONE, điểm<85 cấm báo xong/trọn vẹn; OTP mail: tự đọc read_otp_mail.py.
 §
