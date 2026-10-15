@@ -160,3 +160,4 @@ When delegating code extraction or monolith edits to `haiku_worker.py`:
 
 See `references/architecture-gate-and-line-budget-patterns.md` for architecture gate test patterns.
 See `references/monolith-haiku-worker-and-import-patterns-20261015.md` for dual-path import fallback, Haiku worker turn-clamping, and Closeout Gate diff-budget patterns.
+See `references/haiku-worker-turn-clamping-and-monolith-pitfalls.md` for detailed pitfalls on max-turns exhaustion, host terminal timeout synchronization, and subagent test signature drift.
