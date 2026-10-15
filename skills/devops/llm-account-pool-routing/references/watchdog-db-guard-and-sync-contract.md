@@ -121,3 +121,33 @@ Khi mock workbook cho `load_accounts_credentials`:
   1. CẤM Coordinator cố gắng chạy các lệnh raw `curl` hoặc chọc API nội bộ trái allowlist.
   2. Đối soát trạng thái pool: Đọc trực tiếp từ telemetry/báo cáo sẵn có trong output của cronjob watchdog hoặc dùng script inspect chuyên dụng có sẵn trong allowlist.
   3. Mọi tác vụ kiểm tra sâu, truy vấn phức tạp hoặc can thiệp mutation vào OmniRoute/GPM CDP nếu vượt quá O(1) phải được ủy quyền cho Worker subagent qua `delegate_task` với đầy đủ quyền thực thi cô lập.
+
+## 10. Giải Mã Hiện Tượng 'ChatGPT-Web: 0/N ACTIVE' (is_active vs test_status & Mass Session Flush)
+- **Triệu chứng & Cảnh báo Watchdog**:
+  Watchdog báo cáo:
+  `• ChatGPT-Web: 0/40 ACTIVE`
+  `• Đã hồi sinh ChatGPT (8 acc): ...`
+  `• Cần chú ý (23 acc): ... EMPTY_SESSION_TOKEN`
+  User thắc mắc: *"Là sao pool web 0/40 rồi"* (tại sao đã hồi sinh 8 acc mà active vẫn bằng 0?).
+- **Cơ chế đối soát DB (`~/.omniroute/storage.sqlite` qua Python O(1))**:
+  Truy vấn nhóm trạng thái thực tế:
+  ```sql
+  SELECT is_active, test_status, count(*) 
+  FROM provider_connections 
+  WHERE provider='chatgpt-web' 
+  GROUP BY is_active, test_status;
+  ```
+  Kết quả điển hình khi gặp lỗi:
+  - `(0, 'active', 32)`: 32 tài khoản bị watchdog tắt (`is_active = 0`) do session cookie hết hạn (`EMPTY_SESSION_TOKEN` hoặc 401), nhưng cột `test_status` vẫn lưu giá trị cũ `'active'`.
+  - `(1, 'unavailable', 8)`: 8 tài khoản được đánh dấu kích hoạt (`is_active = 1`), nhưng khi test endpoint chatgpt thì dính lỗi `[404]: ChatGPT returned 404 — usually the model is no longer available on this account or the chat-requirements`, khiến OmniRoute hạ `test_status = 'unavailable'`.
+- **Nguyên nhân ACTIVE = 0**:
+  Router và Watchdog chỉ tính một tài khoản là **ACTIVE khả dụng** khi đồng thời thỏa mãn:
+  `is_active = 1 AND test_status = 'active'` (hoặc `test_status != 'unavailable'`).
+  Vì 32 acc có `is_active = 0` và 8 acc có `test_status = 'unavailable'`, số tài khoản thực chiến rơi về 0.
+- **Nguyên nhân gốc rễ (Mass Session Flush)**:
+  Khi GPM profile restart hàng loạt, đổi IP proxy cụm hoặc OpenAI xoay chu kỳ cookie, toàn bộ token `__Secure-next-auth.session-token` bị invalidate cùng một thời điểm.
+- **Quy trình phục hồi & Giải thích cho User**:
+  1. Không hoang mang hay can thiệp tay sửa bừa DB.
+  2. Cronjob `gpm-5profiles-lifecycle-supervisor` đang chạy nền cuốn chiếu 5 profile mỗi 5 phút để đăng nhập lại và lấy cookie mới. Cần thời gian cuốn chiếu (~40–60 phút cho 40 acc).
+  3. Antigravity pool (Gemini/Google Code) và Codex pool độc lập hoàn toàn, vẫn giữ quota vận hành cho hệ thống và farm.
+

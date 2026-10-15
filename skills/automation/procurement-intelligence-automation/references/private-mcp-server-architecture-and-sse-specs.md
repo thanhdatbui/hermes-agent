@@ -58,28 +58,43 @@ location /mcp/ {
 
 ---
 
-## 3. FastMCP Server Implementation Pattern (Python)
+## 3. FastMCP Server Implementation Pattern (Python) & Dual Transport
+
+In modern `mcp` SDK (v1.28+), `FastMCP` does **not** have `get_asgi_app()`. The verified production pattern mounts `mcp.streamable_http_app()` inside a FastAPI application with an asynchronous lifespan managing `mcp.session_manager.run()`, while also supporting stdio transport when executed directly:
 
 ```python
 import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from mcp.server.fastmcp import FastMCP
 
-mcp = FastMCP("Bidding Intelligence", description="Private National Bidding Assistant")
+mcp = FastMCP("YCCMED Bidding Assistant", description="Private National Bidding Assistant")
 
 @mcp.tool()
-def search_medical_tenders(keyword: str = "trocar", only_open: bool = True) -> str:
+def search_medical_tenders(keyword: str = "trocar", scope: str = "", only_open: bool = True, limit: int = 15) -> str:
     """Tra cứu các gói thầu y tế đang mở nhận hồ sơ trên Mua Sắm Công."""
     # Query local SQLite cache populated by daily crawler
     return "Danh sách các gói thầu..."
 
 @mcp.tool()
-def evaluate_tender_compliance(bid_code: str) -> str:
+def evaluate_tender_yccmed(bid_code: str) -> str:
     """Thẩm định tiêu chuẩn kỹ thuật gói thầu với sản phẩm của công ty."""
     return "Kết quả thẩm định..."
 
-app = mcp.get_asgi_app()
+@mcp.tool()
+def get_tender_details(bid_code: str) -> str:
+    """Bóc tách toàn bộ thông tin chi tiết gói thầu từ cache."""
+    return "Chi tiết gói thầu..."
+
+# 1. Lifespan for HTTP/SSE streamable session manager
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    async with mcp.session_manager.run():
+        yield
+
+mcp_asgi_app = mcp.streamable_http_app()
+app = FastAPI(lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -87,11 +102,46 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.get("/health")
+def health():
+    return {"status": "ok", "service": "yccmed-mcp"}
+
+@app.get("/.well-known/oauth-authorization-server")
+def oauth(request: Request):
+    return {
+        "issuer": str(request.base_url).rstrip("/"),
+        "authorization_endpoint": f"{request.base_url}oauth/authorize",
+        "token_endpoint": f"{request.base_url}oauth/token",
+    }
+
+app.mount("/", mcp_asgi_app)
+
+# 2. Dual-Transport support: Stdio when invoked directly (for agy CLI / local debug)
+if __name__ == "__main__":
+    mcp.run()
 ```
 
 ---
 
-## 4. Key Operational Insights from Field Practice
+## 4. End-to-End Verification with Antigravity CLI (`agy`)
+
+Before delivering the MCP endpoint to ChatGPT, verify the tool registration and execution using local Antigravity CLI:
+
+```bash
+# 1. Register stdio server in Antigravity CLI
+agy mcp add yccmed python "D:/path/to/server.py"
+
+# 2. Check registration status
+agy mcp list
+
+# 3. Test tool call execution
+python D:/Taadaa/tools/ag_cli.py ask --profile acc_01 "Sử dụng MCP tool search_medical_tenders của server yccmed tìm kiếm gói thầu trocar"
+```
+
+---
+
+## 5. Key Operational Insights from Field Practice
 
 1. **Crawler Decoupling:** Never run browser-based crawling synchronously inside an MCP tool call (ChatGPT has a 30s-60s tool execution timeout). The crawler must run asynchronously via cron (e.g. daily watchdog), continuously indexing bids into SQLite. The MCP tool must read directly from the fast SQLite cache ($O(1) < 50\text{ms}$).
 2. **User Experience Distinction:**

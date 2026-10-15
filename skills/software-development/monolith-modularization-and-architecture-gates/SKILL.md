@@ -13,6 +13,9 @@ metadata:
 
 Use this skill when refactoring monolithic production scripts (> 1.500 lines) into modular subpackages without disrupting active workloads, breaking backward compatibility, or letting subsequent AI agents undo the modularization.
 
+Reference files:
+- `references/80-20-modular-adequacy-and-excel-invariants-20261015.md`: Kỷ luật 80/20 (điểm dừng modular hóa, tránh over-modularization) & quy trình sửa lỗi Invariant Excel Folder Video.
+
 ## 1. Core Principles & The Monolith Problem
 
 ### The Problem
@@ -129,6 +132,11 @@ When a script (e.g. `scripts/feed_session_watchdog.py`) is modularized into subp
   ModuleNotFoundError: No module named 'scripts'
   ```
 - **Downstream Cascade:** Any child scripts (like `follow_session_watchdog.py`) that do `import feed_session_watchdog as fsw` get killed immediately as collateral damage.
+
+### 80/20 Discipline: Stopping at Modular Adequacy vs The Over-Modularization Trap
+When modularizing monoliths, adhere to the **80/20 Principle**:
+- **20% Core Action (80% Value):** Extract the primary heavy sub-domains (process locks, result merging, alerts, formatting, parsing) into isolated modules so line count drops below the architecture gate budget (e.g. $\le 1.450$ lines) and unit tests pass.
+- **The 80% Effort Trap (Zero Marginal Value):** Once the architecture gate passes and the cron/daemon executes cleanly (`exit 0`), **STOP IMMEDIATELY**. Do not obsess over extracting secondary helpers or micro-domains (e.g., small reconcile math or telemetry formatters) purely for the sake of abstract purity. Pushing modularization beyond operational sufficiency risks breaking subtle cross-module interactions and wasting context budget without delivering business value.
 
 ### Mandatory Candidate Roots Anchor Pattern
 Before importing any subpackage modules, every script that may run outside its repo source tree MUST anchor its candidate repo directories into `sys.path`:
