@@ -608,7 +608,7 @@ When desktop applications (such as Riot Client, League of Legends, TFT) fail to 
 - **Inspection:** Inspect `%localappdata%\Riot Games\Riot Client\Logs\Launcher\<latest>.log`. An `OS error 112: There is not enough space on the disk` indicates drive D has 0 bytes free. Ensure `vgc` is set to `Automatic` and `RUNNING`.
 - **Safe Farm Media Cleanup:** Reclaim disk space without breaking active farm cron workflows:
   1. Delete installer packages in `D:\Downloads` (`.exe`, `.msi`, `.rar`, etc.) to reclaim 3+ GB immediately.
-  2. Cross-check `D:\video goc may 2\<folder>\<file>.mp4` against `D:\TIKTOK-videonuoinick-admin\<folder>\<file>.mp4`. ONLY delete raw videos whose rendered counterparts exist and have size > 100KB. This safely frees 150–200 GB.
+  2. Map each raw folder `folder_src` (1..640) to its true target `folder_video = ((folder_src - 1) % 80) * 8 + ((folder_src - 1) // 80) + 1` in `D:\TIKTOK-videonuoinick-admin`. ONLY delete raw videos if that target folder already has >= 30 valid rendered clips (> 100KB). Never compare index-to-index (`folder_src == folder_video`), which deletes raw media for wrong machines.
 - See `references/remote-admin-disk-exhaustion-and-clean-protocol.md` for full script delivery and execution instructions.
 
 ## Remote OmniRoute & 9Router LAN Setup (Admin PC → Kibe PC)

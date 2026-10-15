@@ -36,12 +36,26 @@ Delete stale installer packages in `D:\Downloads` and root `D:\`:
 - Extensions: `.exe`, `.msi`, `.rar`, `.tar.xz`, `.zip.crdownload`
 - Keep operational scripts, `.ini`, `.xlsx`, or proxy configurations intact.
 
-### Stage 2: Deduplicate Rendered vs Raw Videos
-On Taadaa Farm Admin, videos are downloaded raw into `D:\video goc may 2\<folder>\<file>.mp4` and rendered into `D:\TIKTOK-videonuoinick-admin\<folder>\<file>.mp4`.
-- **Invariant:** A raw video file `D:\video goc may 2\<folder>\<file>.mp4` is ONLY safe to delete if:
-  1. The rendered video `D:\TIKTOK-videonuoinick-admin\<folder>\<file>.mp4` exists.
-  2. The rendered file is non-corrupt / non-empty (`size > 100 KB`).
-- Running this cross-check reclaims 150–200+ GB safely without deleting unrendered media or interrupting cron sessions.
+### Stage 2: Deduplicate Rendered vs Raw Videos (CRITICAL MAPPING INVARIANT)
+On Taadaa Farm (both Kibe and Admin), folder numbering between raw videos and rendered videos **DOES NOT MAP 1:1 BY INDEX**:
+* **Raw Video Root (`folder_src`):** `D:\video goc` (Kibe) or `D:\video goc may 2` (Admin).
+  Numbered **BY SLOT / COHORT** (80 machines per slot):
+  $$\text{folder\_src} = (slot - 1) \times 80 + m\_idx \quad (1..640)$$
+* **Rendered Video Root (`folder_video`):** `D:\TIKTOK-videonuoinick` (Kibe) or `D:\TIKTOK-videonuoinick-admin` (Admin).
+  Numbered **BY MACHINE** (8 slots per machine):
+  $$\text{folder\_video} = (m\_idx - 1) \times 8 + slot \quad (1..640)$$
+* **THE FATAL TRAP:** Comparing `video goc\<N>` against `render\<N>` using the same index $N$ will check a completely unrelated account's rendered files! (e.g. raw folder 2 is Machine 202 Slot 1, while rendered folder 2 is Machine 201 Slot 2).
+* **MANDATORY CONVERSION FORMULA:**
+  Before checking if raw videos in `folder_src` can be deleted, calculate its true destination:
+  ```python
+  m_idx = ((folder_src - 1) % 80) + 1
+  slot = ((folder_src - 1) // 80) + 1
+  folder_video = (m_idx - 1) * 8 + slot
+  ```
+* **Invariant:** Raw videos in `folder_src` are ONLY safe to delete if:
+  1. The target folder `render_root\<folder_video>` exists and has $\ge 30$ valid rendered clips (`> 100 KB`).
+  2. If the target folder has $< 30$ rendered clips, raw videos in `folder_src` MUST be preserved for rendering.
+  3. Never assume folder index parity ($folder\_src == folder\_video$) except for the lone case $m=1, slot=1$.
 
 ## 4. Script Delivery Pattern over SSH to Admin
 Because `D:\Taadaa\tools` on Kibe is local and may not match the file structure on Admin:

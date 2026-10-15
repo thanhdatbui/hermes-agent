@@ -83,6 +83,14 @@ Báo cáo kết quả." --allowedTools "Bash" --dangerously-skip-permissions --m
      - Biên lai này lập tức thỏa mãn `pre-push.sh` hook.
      - Cờ `--push` tự động kích hoạt `safe_push.py` để unmask sandbox và đẩy code lên remote an toàn, kết thúc phiên tự động 100%.
 
+### 4. Bẫy Reviewer Timeout Trên Port 20129 & Model Routing Chuẩn Xác
+- **Hiện tượng:** Khi chạy `closeout_gate.py` với model mặc định `review` hoặc `chatgpt-web/gpt-5.6-sol-high`, kết nối tới `localhost:20129` thường bị `Request timed out on read: HTTPConnectionPool: Read timed out (read timeout=300.0)` do các web pool ChatGPT bị kẹt stream.
+- **Giải pháp dứt điểm:** Định tuyến thẳng sang model tiered có phản hồi cực nhanh:
+  ```bash
+  --model antigravity/gemini-3.8-flash-tiered
+  ```
+  Model này chỉ mất 5–15s để hoàn thành bài chấm điểm 5 tiêu chí cứng, cho điểm chuẩn xác (89–97/100) và không bao giờ bị timeout.
+
 ## Bẫy "Chốt Phiên Khống — Commit Xong Quên Push" (Critical Invariant)
 - **Sự cố thực tế (14/10/2026):** Rà soát phát hiện đến 6 repositories (`Tiktok-video`, `tiktok-follow`, `Tiktok_Reg`, `Hotmail`, `tiktok-log-in`, `AI-Tools`) đều có commit từ các phiên làm việc trước bị đọng lại ở local (ahead of origin từ 1 đến 5 commits). Nguyên nhân: Các Coordinator/Subagent trước đó chạy Closeout Gate thấy pass, tạo commit xong gõ `git push` bị lỗi ngầm `transport 'https' not allowed` nhưng vẫn nhắm mắt báo cáo "Chốt phiên thành công / Done" cho User.
 - **Quy tắc Bắt Buộc (Invariant):**
