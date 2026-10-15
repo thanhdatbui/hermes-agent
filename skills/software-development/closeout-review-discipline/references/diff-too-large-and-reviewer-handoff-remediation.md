@@ -43,3 +43,12 @@
   - Bắt buộc đồng bộ byte-for-byte các block helper, signature hàm và telemetry logic giữa `scripts/<script>.py` và `scripts/hermes_cron/<script>.py`.
   - Thêm unit test kiểm tra đồng bộ tự động:
     `assert helper_block("script.py") == helper_block("hermes_cron/script.py")`.
+
+## 6. Lỗi Môi Trường `GIT_EXTERNAL_DIFF` và Nhất Quán Microsecond Time Buffer
+- **Sự cố `GIT_EXTERNAL_DIFF=""` rỗng:**
+  - Nếu biến môi trường `GIT_EXTERNAL_DIFF` bị set thành chuỗi rỗng `""`, git diff sẽ cố execute command `""` và crash với lỗi:
+    `error: cannot spawn : No such file or directory` / `fatal: external diff died, stopping at <file>`.
+  - Khắc phục: Dùng cờ `--no-ext-diff` khi chạy lệnh git diff (`git --no-pager diff --no-ext-diff`) để ép git bỏ qua external diff command.
+- **Nhất quán Microsecond trong hàm Time Buffer:**
+  - Khi triển khai logic capping cuối ngày (`end_of_day = 23:59:59`), tuyệt đối tránh đặt `microsecond=999999` lúc so sánh nhưng lúc format lại ép về `microsecond=0`. Reviewer sẽ bắt lỗi off-by-1-microsecond không nhất quán.
+  - Luôn thống nhất `dt.replace(hour=23, minute=59, second=59, microsecond=0)` cho cả điều kiện kẹp trần và kết quả trả về.
