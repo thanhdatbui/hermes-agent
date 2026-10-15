@@ -274,6 +274,7 @@ Use `references/avatar-only-scope-and-false-policy-refusal.md` for the incident-
 
 ## References
 
+- `references/with-device-lock-screencap-binary-corruption-and-pull-pattern-20261015.md` — **[MỚI 15/10/2026]** Bẫy `stdout` ban text log từ `with_device_lock.py` ô nhiễm ảnh PNG binary khiến file chỉ 340 bytes; quy chuẩn 2 bước bắt buộc: `shell screencap -p /sdcard/...` rồi `adb pull` để tách byte ảnh khỏi log wrapper; kiểm tra kích thước file `.png` phải >= 100KB trước khi gắn thẻ `MEDIA:`.
 - `references/guest-speaker-trap-and-multiact-avatar-triage-20261015.md` — **[MỚI 15/10/2026]** Bẫy khách mời/đại biểu phỏng vấn khi trích xuất mặt tự động (Guest Speaker Trap) nhầm nam chuyên gia thay vì nữ MC, quy chuẩn FOCUSED_TEST pytest khi điều phối Worker trong hạn mức T1.
 - `references/procedural-vision-gate-bypass-and-claude-hook-remediation-20261014.md` — **[MỚI 14/10/2026]** Sự cố lỗ hổng Gate thủ tục (Procedural Vision Gate Bypass), LLM bị mù ảnh native tự hallucinate mô tả em bé/áo gym thành bác sĩ mỉm cười, cơ chế Stop Hook vật lý `media_vision_gate.py` của Claude CLI và quy trình Semantic Grounding qua proxy :20129.
 - `references/git-pre-push-hook-msys-pwd-windows-python-path-trap.md` — **[MỚI 13/10/2026]** Sự cố pre-push hook trên Windows dùng `REPO_DIR="$(pwd)"` trả về POSIX `/d/...` khiến Python con không tìm thấy thư mục và báo không khớp audit_binding, và quy tắc bất biến `REPO_DIR="$(pwd -W 2>/dev/null || pwd)"`.
