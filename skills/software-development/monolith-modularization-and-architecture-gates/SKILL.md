@@ -202,6 +202,7 @@ Khi một cronjob hay daemon báo lỗi `ModuleNotFoundError` (ví dụ: `Module
 1. **CẤM TUYỆT ĐỐI** tự ý suy diễn là do logic code rồi spam commit `[L2-surgery]` sửa đổi regex, window datetime, metrics, hay cấu trúc file trong repo.
 2. **BẮT BUỘC** kiểm tra môi trường chạy thật (`which python`, working directory, `__file__` path, và vị trí file đang được cron gọi).
 3. Nếu script chạy từ cache/staging ngoài repo (`%LOCALAPPDATA%\hermes\scripts`), lỗi 100% nằm ở việc thiếu submodule trong thư mục deploy hoặc thiếu `sys.path` candidate dirs, KHÔNG PHẢI lỗi business logic. Sửa nhầm logic repo chỉ làm hỏng thêm các watchdog đang chạy ổn định.
+4. **Khắc phục tầng cấu hình Cronjob (Explicit Invocation):** Với các kịch bản phụ thuộc cấu trúc package phức tạp, cấu hình cronjob gọi thẳng file trong repo qua CLI string (`prompt: Chạy python "D:/Taadaa/.../script.py"`) thay vì dựa vào cơ chế `script:` copy ra `%LOCALAPPDATA%` làm đứt gãy package context.
 
 ---
 
