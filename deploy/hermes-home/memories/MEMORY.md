@@ -1,6 +1,6 @@
 Chu kỳ 4d: Parity 96h (N1 lẻ, N2 chẵn), N3(R7,8), N4(dưỡng 0fl+up). Starve 108h. CẤM xóa cooldown. Dưỡng động: healing_selector.py; S2 bám S1; schema 1.0. 3 ca (6,12,18h). Đêm 21h30-5h15 (né cache 4h) cho 2FA/Ava; báo 6h; cấm báo ảo.
 §
-Auto-resume: MAX(msg ts)<=60m (né bẫy routing updated_at); locks==0.
+Auto-resume: MAX(msg ts)<=60m; locks==0.
 §
 Worker: claude_worker.py (--role worker Haiku 8t, planner/reviewer Sonnet <=6t read-only); hard-cap clamp chống runaway; cấm raw claude -p; fallback ag_cli.py; CAM omni-worker. Sol Web/Advisor: model suy luận, streaming idle timeout, cấm cắt ngang.
 §

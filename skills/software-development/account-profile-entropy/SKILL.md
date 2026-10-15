@@ -174,7 +174,9 @@ When an operator provides a screenshot of a TikTok profile (e.g. `LilyanLederhos
 - **State Machine OCR Pattern (`do_rename_m<ID>.py`)**:
   * Wrap in `operator_device_lock(machine=ID, serial=SERIAL, project="do_rename_m...", timeout=300)`.
   * Classify screen via WinRT OCR (`tools/ocr_boxes.ps1`): `FEED`, `PROFILE`, `SWITCHER`, `EDIT_PROFILE`, `NAME_EDIT`, `SAVE_LOGIN_POPUP`.
-  * **Phân loại Profile Invariant**: Profile chưa set bio có nút "Thêm tiểu sử" (`id/t3z`). CẤM dùng `"tieu su" in t` đơn độc phân loại `EDIT_PROFILE`. BẮT BUỘC kiểm tra bottom bar navigation (`Hồ sơ` / `H6 sd` ở y > 1800): có bottom bar thì LUÔN là `PROFILE`. Màn `EDIT_PROFILE` không có bottom bar.
+  * **Phân loại Profile & Switcher Invariant**:
+    - Profile chưa set bio có nút "Thêm tiểu sử" (`id/t3z`). CẤM dùng `"tieu su" in t` đơn độc phân loại `EDIT_PROFILE`. BẮT BUỘC kiểm tra bottom bar navigation (`Hồ sơ` / `H6 sd` ở y > 1800): có bottom bar thì LUÔN là `PROFILE`. Màn `EDIT_PROFILE` không có bottom bar.
+    - **Phân loại Switcher an toàn**: CẤM dùng keyword lỏng lẻo `"tai khoan" in t` đơn độc vì màn "Tìm bạn bè" có dòng *"Tài khoản được đề xuất"* sẽ bị nhận nhầm thành Switcher. Bắt buộc yêu cầu `"chuyen doi"` hoặc regex `chuy\w{0,4}n\s*d\w{0,4}i` hoặc `switch account`.
   * **Điều hướng UI S7 TikTok v47**:
     - Chạm tiêu đề danh tính `id/t7l` tại `(280, 320)` để bung bảng **Chuyển đổi tài khoản**.
     - Vào **Sửa hồ sơ**: Chạm cây bút chì bên phải dòng tên tại `(870, 558)` hoặc nút Sửa hồ sơ `(210, 865)` (CẤM fallback góc trái `(72, 148)` vì là icon Tìm bạn bè).
@@ -182,6 +184,7 @@ When an operator provides a screenshot of a TikTok profile (e.g. `LilyanLederhos
   * Type base64 encoded UTF-8 string qua AdbKeyboard (`ADB_KEYBOARD_INPUT_TEXT`), verify text và bộ đếm ký tự (`len/30`, e.g. `9/30` cho `Linh Bông`), tap "Lưu" `(980, 140)`.
   * BẮT BUỘC xác nhận popup *"Đặt biệt danh? Bạn chỉ có thể thay đổi biệt danh 7 ngày 1 lần"* tại `(747, 1173)`.
   * Readback verify: đọc lại màn hình Hồ sơ qua OCR, xác nhận dòng hiển thị ngay trên `@username` khớp với tên mới (`Linh Bông` trên `@lilyanzj8n1`).
+  * **Tách bạch báo cáo đa mục tiêu (Anti-False Completion)**: Khi yêu cầu gồm cả đổi tên + đổi avatar, TUYỆT ĐỐI CẤM báo "HOÀN TẤT 100%" kèm ảnh khi mới chỉ đổi xong tên mà avatar vẫn là ảnh cũ. Bắt buộc ghi rõ ràng từng trạng thái: Tên (ĐÃ ĐỔI) và Avatar (ĐANG NẠP/CHỜ XỬ LÝ) để chống gây hiểu lầm là báo cáo láo.
 - **Hermetic Offline Pytest**: Create `tests/test_do_rename_m<ID>.py` testing `norm`, `compact`, `classify`, `is_target`, `is_target_user`, and `nickname_on_profile` offline (<0.5s) to guarantee zero regression before device execution.
 - **Tiered Workflow Dispatch Contract**: Script generation exceeds Coordinator T1 direct-write budget (<= 200 lines). Dispatch Worker via `delegate_task` with mandatory headers in `context`: `TASK_KIND: EDIT`, `TARGET_FILE: ...`, `TEST_FILE: ...`, and `FOCUSED_TEST: python -m pytest <path>::<node>` to satisfy Coordinator Guard.
 - **Background Execution**: Launch via `terminal(command="python D:/Taadaa/tools/do_rename_m<ID>.py", background=True, notify_on_complete=True, timeout=300)` adhering to event-driven wakeup.

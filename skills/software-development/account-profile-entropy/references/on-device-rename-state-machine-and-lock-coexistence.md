@@ -160,3 +160,21 @@ Instead of blind delegation or monolithic writing:
     - Launcher avatar-only: `run_tiktok_upload_avatar.ps1` (gọi `run_tiktok_upload_batch.ps1` với `-ForceAvatarMachineList`).
     - Tool sinh & đối soát: `D:/Taadaa/Tiktok-video/scripts/resolve_avatar_pending_machines.py`, `make_avatar_yolo.py`, `regenerate_unique_avatars.py`.
 
+## 9. Communication Protocol: Tách Bạch Nghiệm Thu Đổi Tên vs Đổi Avatar (Chống Báo Cáo Gây Hiểu Lầm)
+- **User Frustration Signal**: *"T éo hề thấy mày đổi ava. Lại báo cáo láo hả"* — khi user yêu cầu cả 2 việc: `[1] Đổi tên biệt danh` và `[2] Đổi avatar`, nếu agent hoàn thành đổi tên và gửi ảnh chụp Profile kèm tiêu đề thắng lợi ("ĐÃ THÀNH CÔNG 100%") mà không nhấn mạnh rõ avatar vẫn là avatar cũ, user nhìn vào vòng tròn avatar cũ sẽ lập tức kết luận agent báo cáo láo/gian dối!
+- **Kỷ Luật Báo Cáo Đa Mục Tiêu (Invariant)**:
+  * Khi task có $\ge 2$ mục tiêu con trên cùng một màn hình (VD: đổi tên + đổi avatar):
+    1. BẮT BUỘC tách thành 2 block trạng thái rõ ràng, dùng icon phân biệt:
+       - `[1. ĐỔI BIỆT DANH]`: ✅ **ĐÃ XONG** (Tên cũ $\rightarrow$ Tên mới, bằng chứng OCR text trên header).
+       - `[2. ĐỔI AVATAR]`: ⏳ **ĐANG THỰC HIỆN / CHƯA XONG** (Giải thích rõ lý do: kho media đang lệch ngách, đang trích xuất frame chuẩn, tránh up lại ảnh rác cũ).
+    2. Trong chú thích ảnh đính kèm: BẮT BUỘC ghi rõ: *"Ảnh trên xác nhận tên đã đổi thành công; vòng tròn avatar hiện vẫn là ảnh cũ, đang chuẩn bị nạp avatar mới"*.
+    3. CẤM TUYỆT ĐỐI dùng cụm từ *"HOÀN TẤT 100%"* cho cả task khi một trong các mục tiêu con chưa xong thực tế trên thiết bị.
+
+## 10. Workbook Folder Video vs Video Gốc Drift Pitfall
+- **Hiện tượng**: Trong các file `TikN.xlsx` (như `Tik4.xlsx`), cột 4 (`Folder Video`) bị lệch so với cột 5 (`video gốc`) (VD: M2 có `Folder Video = 12` [Gym xăm trổ] trong khi `video gốc = 242` [Tài chính]; M51 có `Folder Video = 404` [Chó cưng] trong khi `video gốc = 291` [Kỷ yếu áo dài]).
+- **Hậu quả**: Script upload avatar tự động resolve path theo `Folder Video` $\rightarrow$ bốc nhầm ảnh xăm trổ nạp cho kênh tài chính và bốc nhầm ảnh chó con nạp cho kênh nữ sinh kỷ yếu.
+- **Quy tắc xử lý**:
+  1. Khi phát hiện kênh lệch avatar, BẮT BUỘC đối soát đồng thời cả 2 cột `Folder Video` và `video gốc` trong workbook `TikN.xlsx`.
+  2. Sửa cột `Folder Video` đồng bộ với `video gốc` thực tế của kênh.
+  3. Thêm folder số vào `data/manual_avatar_protected_folders.json` để khóa bảo vệ chống script quét tạo lại hàng loạt ghi đè mất avatar thủ công.
+
