@@ -120,4 +120,18 @@
   - Khi quota 5h/weekly trong trạng thái an toàn (0%/73%) nhưng dữ liệu quota cũ hơn `MAX_QUOTA_STALE_HOURS` (2h), `claude_worker.py` sẽ tự động kích hoạt gate `stale_quota` và fallback sang AG CLI.
   - **Khắc phục:** Chạy `python D:/Taadaa/tools/claude_quota_guard.py allow 30` để cấp quyền tạm thời 30 phút, bỏ qua kiểm tra stale quota một cách an toàn và minh bạch.
 
+## 12. Chuẩn Hóa Fail-Safe State, Anti-Tree-Kill & Atomic In-Pipeline Race Prevention (16/10)
+- **Nguyên lý Fail-Safe State khi kiểm tra tiến trình / dịch vụ:**
+  - Nếu lệnh kiểm tra (như `tasklist` hay PowerShell) gặp lỗi `returncode != 0` hoặc exception, hàm kiểm tra trạng thái (`is_running()`) BẮT BUỘC trả về `True` (ngầm định ứng dụng đang chạy).
+  - Tránh tuyệt đối việc trả về `False` khi lỗi vì sẽ khiến các cơ chế cleanup hiểu lầm rằng ứng dụng đã tắt, từ đó kích hoạt hạ sát tiến trình nhầm.
+- **Bẫy `taskkill /T` (Tree Kill) vs Single Target Process:**
+  - Cờ `/T` trong `taskkill` sẽ tiêu diệt đệ quy toàn bộ cây tiến trình con của ứng dụng trên toàn Windows. Nếu ứng dụng có tiến trình con dùng chung với hệ thống hoặc farm, `/T` sẽ gây sập dây chuyền (cascade failure).
+  - Khắc phục: Chỉ dùng lệnh đóng đơn lẻ (`taskkill /F /IM <target>.exe`) và để các hàm cleanup chuyên biệt đảm nhận việc thu hồi tiến trình con mồ côi.
+- **Khóa chống Race Condition nguyên tử trong PowerShell Pipeline:**
+  - Thay vì kiểm tra trạng thái Python rồi mới gọi lệnh PowerShell terminate (tạo ra khoảng trống TOCTOU), nhúng thẳng điều kiện kiểm tra tồn tại của ứng dụng cha ngay trong cùng một pipeline thực thi PowerShell:
+    `if (-not (Get-Process -Name <parent> -ErrorAction SilentlyContinue)) { ... | Invoke-CimMethod -MethodName Terminate }`.
+  - Nếu ứng dụng cha vừa được mở lại ngay giữa lúc thực thi, nhánh terminate tự động bị hủy bỏ ngay trong kernel mà không cần qua tầng trung gian.
+- **Khử trùng lặp Telemetry & Thống nhất JSON Contract:**
+  - Khi đóng ứng dụng thất bại, `main()` phát sự kiện tổng hợp `_FAILED_SUMMARY` mang đầy đủ ngữ cảnh `idle_seconds` và `idle_minutes`, loại bỏ hoàn toàn các thông điệp print thô và tránh phát sinh nhiều event lỗi trùng lặp làm méo mó bộ đếm alert của Farm.
+
 

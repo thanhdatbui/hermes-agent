@@ -186,5 +186,13 @@
    - Bộ unit test (`tests/test_xiaowei_idle_auto_close_watchdog.py`) phải bao phủ trọn vẹn các nhánh (process check, adb check, cleanup, CIM fallback, exception, idle threshold) nhưng BẮT BUỘC giữ dung lượng dưới **120 dòng (< 5KB)**.
    - Giữ diff dưới 15KB để Closeout Gate không kích hoạt cắt ngắn diff (`TRUNCATION_MANIFEST`), bảo đảm Sol Auditor chấm đạt điểm tối đa (>=85).
 
+5. **5 Trụ Cột Vượt Chuẩn Nghiệm Thu Closeout Gate An Toàn Farm (16/10/2026):**
+   - *Nguyên lý Fail-Safe khi kiểm tra tiến trình:* Khi `tasklist` gặp lỗi hoặc exception, `is_xiaowei_running()` BẮT BUỘC trả về `True` (fail-safe: ngầm định ứng dụng đang chạy khi chưa thể kiểm chứng), tuyệt đối không trả về `False` để tránh ngộ nhận app đã tắt mà kích hoạt dọn dẹp ADB nhầm.
+   - *Bẫy `taskkill /T` (Anti-Tree-Kill):* Tuyệt đối CẤM dùng cờ `/T` (Tree Kill) khi đóng `xiaowei.exe`. Cờ `/T` hủy diệt toàn bộ cây tiến trình con một cách vô tội vạ, dễ làm chết các tiến trình con dùng chung của farm. Chỉ dùng lệnh đóng đơn lẻ `taskkill /F /IM xiaowei.exe` và để hàm chuyên biệt `cleanup_orphan_xiaowei_adb()` xử lý riêng duy nhất port 5038.
+   - *Khóa chống Race Condition nguyên tử trong PowerShell Pipeline:* Để triệt tiêu hoàn toàn race condition TOCTOU (khi Tiểu Vi vừa được người dùng mở lại giữa lúc kiểm tra và lúc hạ sát ADB), nhúng lệnh kiểm tra tiến trình nguyên tử ngay trong cùng một pipeline PowerShell:
+     `if (-not (Get-Process -Name xiaowei -ErrorAction SilentlyContinue)) { $ports = ...; Get-CimInstance ... | Invoke-CimMethod -MethodName Terminate }`.
+   - *Đo lường nội bộ với Thread-Safety (`_METRICS_LOCK`):* Duy trì từ điển `WATCHDOG_METRICS` được bảo vệ bởi khóa `threading.Lock` để đếm chính xác số lần cleanup attempts, successes, và aborted race conditions.
+   - *Khử trùng lặp Telemetry & Thống nhất JSON Contract:* Khi đóng Tiểu Vi thất bại, `main()` phát sự kiện tổng hợp `XIAOWEI_CLOSE_FAILED_SUMMARY` mang đầy đủ ngữ cảnh `idle_seconds` và `idle_minutes`, loại bỏ hoàn toàn các thông điệp print thô và tránh phát sinh nhiều event lỗi trùng lặp làm méo mó bộ đếm alert của Farm.
+
 
 
