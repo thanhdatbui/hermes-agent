@@ -14,12 +14,21 @@ Thu thập: 2026-08-11.
 
 ## Giá tham khảo (¥, 2026-08)
 
-### TikTok
-- 白号 random IP ¥1–1.5 (tồn 35k, bán 3.3k) · UK/FR/DE/IT IP reg ¥1.5 · Cookies login ¥1.6 · US IP +微软邮箱 ¥3 (bán 2.3k)
-- 新号 random Live权限测试 ¥2.38 · **老号 2025年 ¥8 (tồn 53.5k, bán 2.5k)** · UK 2025 + Hotmail OAuth2 ¥3
-- US 老号 có video cũ/avatar ¥33–37 · 100粉 (`tiktok100粉`) ¥7 · **~1000粉 (`tiktok新号-千粉左右`) ¥66** (URL: `/products/tiktok-1k-followers.html`, định dạng Hotmail `UID----Pass----Mail----PassMail`, thường xuyên tạm hết hàng / 暂时无货 — bản chất là nick nuôi/buff 1k thường, KHÔNG mở sẵn giỏ hàng/TikTok Shop Creator hay cam kết Live).
-- **TikTok Giỏ hàng (Showcase/Shop/橱窗/带货): tuitehao KHÔNG bán** bất kỳ sản phẩm nào mở sẵn giỏ hàng. Về Live chỉ có mã test giá rẻ `TikTok 新号-随机Live权限测试` ¥2.38 (không bảo hành tính năng).
-- **Mục đích MMO TQ:** Dân TQ làm TikTok là để chạy thị trường ngoài (VN/US/SEA). Họ gom acc 1k follow về ngâm IP sạch 3-7 ngày nuôi trust, sau đó mới tự bấm Creator Tools mở giỏ hàng/bật live do thị trường VN/ĐNA duyệt tự động không cần KYC CCCD gắt như US.
+### TikTok (cập nhật kiểm tra live 2026-10)
+- Danh mục con TikTok trên Tuitehao gồm 3 nhóm:
+  1. `/category/tiktok-follower-account.html` (Tiktok粉丝号 — 2 sp):
+     - `tiktok100粉` ¥7 (stock 0, sold 0).
+     - `tiktok新号-千粉左右` **¥66** (~231k VNĐ / ~$8.7) (stock 0, sold 0, URL: `/products/tiktok-1k-followers.html`). Định dạng: `UID----Pass----Mail----PassMail` (Hotmail). Thường xuyên hết hàng (*Temporarily out of stock*). Acc trắng buff follow, KHÔNG mở sẵn giỏ hàng (Showcase/Shop) hay cam kết quyền Live.
+  2. `/category/tiktok.html` (TikTok-新号 — 15 sp):
+     - New Việt Nam IP APP reg + Outlook + Cookie: ¥0.9 (stock 0, sold 6)
+     - New Random IP reg tay ngâm 6 tháng: ¥1.5 (stock ~19k, sold ~6.5k)
+     - New US IP reg 2FA: ¥1.4 (stock ~4.5k, sold ~3.7k)
+     - New UK/FR/DE/IT IP reg ngâm 6 tháng: ¥1.5 (stock ~100–5k)
+     - New Random Live test quyền Live (không bảo hành): ¥2.38 (stock 0, sold 16)
+  3. `/category/aged-tiktok-account.html` (Tiktok老号 — 4 sp):
+     - **老号 2025年 ¥8 (stock ~51.5k, sold ~3.8k)** — mã TikTok bán chạy nhất sàn, khách gom về tự ngâm IP sạch rồi buff lên 1k follow.
+     - UK 2025 Hotmail OAuth2: ¥3 (stock 0, sold 61)
+     - US Old acc có video cũ/avatar: ¥33–37.08 (stock 0, sold 5–74)
 
 ### Twitter/X (danh mục chính, 21+14+24+7+2 sp)
 - X mới: Outlook reg + 2FA + Auth Token/CT0 ¥0.8–1.1 · 解敏邮箱新号 2FA ¥1.5 (**bán 46k — best seller**) · 满月 2FA ¥1.6–1.8 (bán tới 26.9k)

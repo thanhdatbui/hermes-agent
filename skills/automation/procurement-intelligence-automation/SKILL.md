@@ -89,6 +89,7 @@ To minimize token costs and eliminate latency:
 - **Direct & Actionable:** When drafting messages for the user to forward to business partners, keep the copy under 3–5 bullet points.
 - **Immediate Fix First:** Lead with the 10-second fix (e.g., the exact URL to replace) before explaining long-term architecture.
 - **No Jargon Overload:** Avoid technical buzzwords ("OAuth handshakes", "JSON-RPC", "headless chromium"); explain in terms of business value: *"Server riêng bảo mật 100% không sợ lộ thầu cho bên thứ ba, hiển thị trực tiếp trên app ChatGPT cho anh dễ coi."*
+- **Ready-to-Copy Delivery:** When the user demands message drafts (*"Đưa tn đây"*, *"Soạn tn đi ngắn gọn thôi"*), deliver the clean text block immediately, strictly under 4–5 lines without verbose preamble, conversational meta-commentary, or fluff, ready for instant forwarding.
 
 ## References
 

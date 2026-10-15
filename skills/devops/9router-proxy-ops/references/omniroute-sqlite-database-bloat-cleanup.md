@@ -4,17 +4,25 @@
 - Hermes báo lỗi: `⚠️ The model provider failed after retries` khi gọi model qua OmniRoute cổng `:20129`.
 - Cổng `192.168.110.123:20129` hoặc `127.0.0.1:20129` không phản hồi `/api/health` hoặc kết nối bị từ chối (`Connection refused`).
 - Tiến trình OmniRoute bị chết liên tục sau 15–20 phút hoạt động, watchdog đếm lỗi restart liên tục.
-- File DB `C:\Users\Kibe\.omniroute\storage.sqlite` phình to bất thường (3.5 GB - 7 GB) kèm file WAL `storage.sqlite-wal` cũng lên tới 3.5 GB.
+- File DB `C:\Users\Kibe\.omniroute\storage.sqlite` phình to bất thường (1.5 GB - 7 GB) kèm file WAL `storage.sqlite-wal` cũng lên tới vài trăm MB - vài GB.
+- Giao diện Dashboard (`/dashboard/logs`) mở trên trình duyệt bị trắng bóc (blank screen) do SSR/client query vào SQLite bị treo (HTML thô mất >9s, API client không hoàn tất).
+- Endpoint `/v1/models` bị chậm bất thường (>10s) hoặc timeout (>20s).
+- Endpoint `/api/health` phản hồi chậm (3s-5s thay vì <20ms) hoặc thỉnh thoảng rớt nhịp.
 - Thư mục `C:\Users\Kibe\.omniroute\` tích tụ nhiều file `.bak` cũ chiếm tới 10–15 GB ổ C.
 
-## 2. Nguyên nhân gốc rễ
-1. **Phình dữ liệu bảng hội thoại**:
-   - Bảng `conversation_turn_nodes` và `agentic_conversations` trong SQLite của OmniRoute tích tụ hàng triệu bản ghi (hơn 2.29 triệu turn nodes) phục vụ giao diện chat history.
+## 2. Nguyên nhân gốc rễ & Cạm bẫy chẩn đoán nhầm (Diagnostic Anti-Pattern)
+1. **Phình dữ liệu các bảng lớn**:
+   - Bảng `conversation_turn_nodes` (>1.5M rows), `quota_snapshots` (>400k rows), `xp_audit_log` (>250k rows), `call_logs` (>90k rows) và `agentic_conversations` tích tụ hàng triệu bản ghi.
    - OmniRoute không có background cron tự động dọn dẹp các bảng này.
 2. **Synchronous I/O Block Event Loop**:
-   - Khi thư viện SQLite của NodeJS thực hiện checkpoint WAL hoặc commit khối lượng lớn dữ liệu (vài GB), toàn bộ Event Loop của Node.js bị block cứng.
-   - Endpoint `/api/health` không kịp trả lời trong timeout của watchdog $\rightarrow$ tiến trình bị coi là treo hoặc tự crash.
-3. **Mất dấu nguyên nhân crash**:
+   - Khi Next.js dashboard query dữ liệu hoặc SQLite thực hiện WAL checkpoint / transaction commit trên file DB > 1.5GB, toàn bộ Event Loop đơn luồng của Node.js bị block cứng.
+   - Hậu quả liên hoàn: `/dashboard/logs` trả về HTML mất 9–10s và client API không render được (màn hình trắng bóc), `/v1/models` timeout > 20s, `/api/health` mất 3s–5s hoặc timeout $\rightarrow$ Watchdog thấy 3 lần fail liên tiếp và restart tiến trình theo chu kỳ 20–25 phút.
+3. **Bẫy chẩn đoán nhầm: "Do dead accounts làm chậm /v1/models và dashboard"**:
+   - Khi soi log thấy ChatGPT-web 401 (hết hạn session cookie), Antigravity 429 (hết quota), hoặc proxy unreachable, người quan sát dễ kết luận nhầm rằng dead accounts làm chậm model-listing và dashboard.
+   - **Thực tế**: Dead accounts CHỈ gây trễ retry combo (45s–78s per request) và spam thêm dòng lỗi vào `call_logs`. Thủ phạm DUY NHẤT khiến `/api/health` chậm và Dashboard trắng bóc là **Event Loop bị kẹt I/O do DB 1.5GB**.
+4. **Lỗi "Decryption failed" trong log**:
+   - Thường do credentials rác cũ từ các lần bootstrap trước đổi key, không phải mất key `STORAGE_ENCRYPTION_KEY` (key vẫn nằm nguyên vẹn trong `server.env`).
+5. **Mất dấu nguyên nhân crash**:
    - Watchdog nguyên bản không chuyển hướng stdout/stderr của tiến trình node ra file, khiến crash không để lại trace trong Windows Event Viewer.
 
 ## 3. Quy trình khắc phục chuẩn hóa

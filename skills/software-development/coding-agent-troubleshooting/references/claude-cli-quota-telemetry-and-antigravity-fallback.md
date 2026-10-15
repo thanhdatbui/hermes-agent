@@ -42,3 +42,13 @@ To prevent session lockout (HTTP 429), the CLI wrapper enforces:
    python D:/Taadaa/tools/ag_cli.py fix "<prompt>" [--file <file>] [--workdir <workdir>]
    ```
    This invokes the pool of 7 Google Pro accounts over dedicated 4G mobile proxies with zero extra cost and zero downtime.
+
+## 5. 2026 Model Deprecation & Execution Guardrails
+1. **Model Catalog Deprecation**:
+   - Claude 3.5 Haiku (`claude-3-5-haiku-20241022`) and Claude 3.7 Sonnet (`claude-3-7-sonnet-20250219`) were retired on February 19, 2026.
+   - Unaliased model names (e.g. `claude-haiku-5-5`) cause catalog resolution failures and stdin requirement errors in `claude -p`.
+   - When `haiku_worker.py` fails due to model retirement, switch immediately to `ag_cli fix`.
+2. **Terminal Foreground Timeout Guard**:
+   - On Windows host terminal, foreground timeout is hard-capped at <= 60s.
+   - Any worker fix task that may take > 60s must NOT use foreground with `timeout=120+` (blocked by `GUARD_FOREGROUND_TIMEOUT_EXCEEDED`).
+   - Bounded multi-turn agent runs must be dispatched with `background=True, notify_on_complete=True, timeout=300`.

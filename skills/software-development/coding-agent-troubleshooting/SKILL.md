@@ -588,6 +588,21 @@ claude -p "task" --permission-mode bypassPermissions
 claude -p "task" --dangerously-skip-permissions
 ```
 
+### Claude Code CLI: Model Deprecation (2026 EOL) & Antigravity CLI Failover
+
+When calling `haiku_worker.py` or Claude Code CLI:
+- Models such as `claude-3-5-haiku-20241022` and `claude-3-7-sonnet-20250219` are retired/EOL in 2026 (`The model ... is deprecated and will reach end-of-life on February 19th, 2026`).
+- Using an unmapped model like `claude-haiku-5-5` fails with catalog errors and prompt stdin errors.
+- **Failover to Antigravity CLI (`ag_cli.py`)**:
+  When Claude CLI hits deprecation or model errors, failover immediately to `python D:/Taadaa/tools/ag_cli.py fix`:
+  ```bash
+  python D:/Taadaa/tools/ag_cli.py fix --workdir "<dir>" --file "<file>" "<task>"
+  ```
+  Uses `gemini-3.8-flash-high` across 7 rotation profiles (`acc_01`..`acc_07`).
+- **Foreground Timeout Rule for `ag_cli fix`**:
+  Host terminal enforces `timeout <= 60s`. For tasks taking > 60s, do NOT pass `timeout=120` in foreground (triggers `GUARD_FOREGROUND_TIMEOUT_EXCEEDED`). Always execute via:
+  `terminal(command="python D:/Taadaa/tools/ag_cli.py fix ...", background=True, notify_on_complete=True, timeout=300)`
+
 ### Claude Code CLI: Model Alias Pitfall ('haiku' vs 'claude-haiku-5-5')
 
 When calling Claude Code CLI via `--model`:
