@@ -257,8 +257,23 @@
 - **Bẫy Mock State Leaks Trong Pytest (Reset Fixtures Giữa Các Khối):**
   - Khi dùng `monkeypatch.setattr(xw, "DRY_RUN_MODE", True)` trong một test function kiểm thử nhiều kịch bản, các bước kiểm thử phía sau sẽ bị kẹt trong chế độ dry-run nếu không reset lại `DRY_RUN_MODE = False`. Luôn explicit reset state hoặc dùng context managers / fixtures riêng biệt để tránh false failure.
 
-
-
-
-
-
+## 20. Phân Rã Cyclomatic Complexity & Tận Dụng Cache Loại Bỏ Subprocess Overhead (16/10)
+- **Tách Hàm Giảm Cyclomatic Complexity (`Code Architecture`):**
+  - Khi một hàm cleanup hoặc logic phụ (`cleanup_orphan_xiaowei_adb`) dài ~40–50 dòng với nhiều tầng lồng `try/except`, `if os.path.exists`, `if _started_before`, Sol Reviewer sẽ bắt lỗi kiến trúc (thường chỉ cho 6/10 Code Architecture): *"Hàm dài, nhiều nhánh lồng, cyclomatic complexity cao, nên tách thành _try_kill_server() và _try_cim_terminate()"*.
+  - **Cách khắc phục chuẩn:** Phân rã thành 2 helper methods nhỏ chuyên biệt `_try_kill_server() -> bool` và `_try_cim_terminate() -> bool`. Hàm điều phối chính chỉ còn 6–8 dòng mạch lạc:
+    ```python
+    if is_xiaowei_running(use_cache=True) is True or is_xiaowei_adb_running() is not True:
+        return False
+    _bump_metric("adb_cleanup_attempts")
+    if _try_kill_server() or _try_cim_terminate():
+        return True
+    log_event("ADB_CLEANUP_FAILED", level="ERROR", port=XIAOWEI_ADB_PORT)
+    return False
+    ```
+- **Tận Dụng `use_cache=True` Trong Chuỗi Kiểm Tra Nội Bộ (Eliminating Redundant Subprocess Calls):**
+  - Khi bổ sung cờ `use_cache=True` với `CACHE_TTL_SECONDS = 2.0`, nếu các hàm trong cùng module (`cleanup_orphan_xiaowei_adb`, `_xiaowei_started_before`, `close_xiaowei`) vẫn gọi `is_xiaowei_running()` mặc định `use_cache=False`, Reviewer sẽ bắt lỗi: *"use_cache gần như dead code; spawn 3-4 subprocess tasklist tuần tự lãng phí CPU"*.
+  - Bắt buộc truyền `is_xiaowei_running(use_cache=True)` trong toàn bộ các bước kiểm tra precondition và race-guard của cùng chu kỳ execution.
+- **Hiện Tượng Truncated JSON Response Từ OmniRoute (:20129) Khiến Verdict Thành UNKNOWN:**
+  - Khi OmniRoute (:20129) sinh response dài nhưng bị ngắt quãng giữa chừng (ví dụ dừng lại ở giữa câu kết luận `Tuy nhiên thiếu flush/rotation policy...`), `_parse_scorecard_and_verdict()` trong `closeout_gate.py` sẽ gặp lỗi `json.loads` và trả về `(verdict="UNKNOWN", scorecard=None)`.
+  - Hậu quả: `gate_audit.jsonl` ghi nhận `verdict: UNKNOWN, score: 0`, làm Gate báo fail dù điểm số trước khi ngắt có thể đã đạt 82–84 điểm.
+  - Khắc phục: Giữ prompt và diff gọn gàng để model response súc tích, không bị cạn token hay timeout lúc streaming output.
