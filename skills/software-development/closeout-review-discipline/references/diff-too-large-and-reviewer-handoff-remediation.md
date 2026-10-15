@@ -277,3 +277,18 @@
   - Khi OmniRoute (:20129) sinh response dài nhưng bị ngắt quãng giữa chừng (ví dụ dừng lại ở giữa câu kết luận `Tuy nhiên thiếu flush/rotation policy...`), `_parse_scorecard_and_verdict()` trong `closeout_gate.py` sẽ gặp lỗi `json.loads` và trả về `(verdict="UNKNOWN", scorecard=None)`.
   - Hậu quả: `gate_audit.jsonl` ghi nhận `verdict: UNKNOWN, score: 0`, làm Gate báo fail dù điểm số trước khi ngắt có thể đã đạt 82–84 điểm.
   - Khắc phục: Giữ prompt và diff gọn gàng để model response súc tích, không bị cạn token hay timeout lúc streaming output.
+
+## 21. Cô Lập Trạng Thái Test (Autouse Fixture), Dynamic Reload Cho Env Clamping & Double-None Retry (16/10)
+- **Cô Lập Trạng Thái Toàn Cục Trong Test Bằng Autouse Fixture:**
+  - Khi module có global mutable state (`_XIAOWEI_RUNNING_CACHE`, `WATCHDOG_METRICS`), nếu các hàm test trực tiếp gán đè biến toàn cục (`xw._XIAOWEI_RUNNING_CACHE = True`), Reviewer Sol sẽ bắt lỗi: *"Global mutable state without test isolation — tests mutate module globals directly causing order-dependent failures"*.
+  - **Khắc phục:** Định nghĩa `@pytest.fixture(autouse=True) def _clean_state():` trong file test để tự động reset metrics (`reset_metrics()`) và làm sạch cache (`_XIAOWEI_RUNNING_CACHE = None`, `_CACHE_TS = 0.0`) cả TRƯỚC và SAU mỗi hàm test.
+- **Kiểm Thử Động Cho Biến Môi Trường Parse Lúc Import (Dynamic Module Reload Probe):**
+  - Các biến môi trường được đọc và kẹp biên ở cấp module (`CIM_TIMEOUT_SECONDS = max(5, min(60, int(...)))`) không thể kiểm thử bằng cách monkeypatch `os.environ` sau khi module đã import.
+  - **Khắc phục:** Sử dụng `importlib.util.spec_from_file_location` và `exec_module` trong test để tải động một module probe độc lập với các cấu hình môi trường khác nhau (`None` -> mặc định 15, `"-1"` -> kẹp min 5, `"120"` -> kẹp max 60, `"abc"` -> fallback 15), chứng minh 100% logic clamping và try/except hoạt động chính xác mà không làm bẩn module chính.
+- **Bắt Buộc Kiểm Thử Nhánh Retry Kép (Double-None Retry Fail-Closed):**
+  - Khi logic kiểm tra tiến trình có cơ chế thử lại (`if result is None: result = _query_...; if result is None: result = True`), Reviewer sẽ kiểm tra kỹ: *"Chưa có test nào cover nhánh retry khi cả 2 lần đều trả None rồi fail closed về True"*.
+  - Bắt buộc patch `_query_xiaowei_running` với `side_effect=[None, None]` và assert `is_xiaowei_running() is True` đồng thời `q.call_count == 2`.
+- **Kỹ Thuật Viết Test Gọn Nhẹ Tránh Phình Diff Khi Bổ Sung Edge Cases:**
+  - Khi cần bổ sung nhiều ca kiểm thử giá trị biên cho timeout hay env parsing, tránh dùng `@pytest.mark.parametrize` kèm 10-15 decorators làm phình file test thêm 50-80 dòng (dễ đẩy tổng diff vượt trần 21,299 bytes).
+  - Thay vào đó, gom vào vòng lặp `for val, expected in [...]` súc tích (10-12 dòng), vừa bảo toàn 100% test coverage vừa giữ diff an toàn ở cấp `level=L0` (0 truncation).
+
