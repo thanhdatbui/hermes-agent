@@ -115,5 +115,15 @@ Khi operator thắc mắc: *"Sao trên db báo 1 lượt mà ở đây báo 0?"*
   2. **Giải pháp phục hồi:** Kiểm tra TFT Game Guard (`farm_preflight_daily_reset.py --check-only`). Nếu PASS, kích hoạt Reboot BIOS POST qua Task `Taadaa_Farm_Daily_Reboot_1135` lúc 11:35 (hoặc hỏi operator nếu muốn reboot ngay) để reset thanh ghi phần cứng và kéo 80 máy xanh lại trước Ca 2 (12:00).
   3. **Chuẩn hóa Telemetry Watchdog:** Tách riêng nhánh `device_disconnected` / `hardware_offline` khỏi `fl_error` để watchdog chỉ báo "Lỗi script" khi có crash/unhandled exception thực sự.
 
+### 8. Quy Trình Cứu Hộ Nhanh Khi Báo 1-2 Máy "Mất kết nối ADB/USB" (Single-Machine S7 Rescue)
+- **Hiện tượng:** Watchdog báo `Lỗi script/xác minh (1): Mất kết nối ADB/USB (1: M<N>)` (ví dụ M38).
+- **Cạm bẫy:** Chạy ngay `inspect_machine.py <N>` sẽ bị timeout (>30s) do thiết bị nghẽn ADB transport (ADB pipe treo, các lệnh `shell getprop`, `dumpsys` lần lượt chờ timeout 10s).
+- **Quy trình cứu hộ chuẩn O(1):**
+  1. **Chạy cứu hộ phân tầng:** `python D:/Taadaa/tools/recover_stuck_s7.py --machine <N>`
+     * Script tự động thực thi phân tầng: L1 (soft 3s) -> L2 (reboot 5s) -> L3 (reconnect 5s).
+     * Ở L3 (`adb reconnect`), thông thường chỉ mất ~2.2s là transport phục hồi ngay lập tức (`status: 'reconnected'`).
+  2. **Nghiệm thu hiện trường:** Chạy lại `python D:/Taadaa/tools/inspect_machine.py <N>` (chỉ mất ~2s) để xác nhận Pin, Màn hình Awake, Current Focus và ROM ONLINE.
+  3. **Báo cáo gọn:** Xác nhận phục hồi kết nối và nghiệm thu hiện trường cho Operator.
+
 ## Answer style
 Answer the operator's direct question first, in Vietnamese, with no speculative theory. Explain only the distinction needed to prevent the common misread that `Success (0)` equals “no machine ran.”
