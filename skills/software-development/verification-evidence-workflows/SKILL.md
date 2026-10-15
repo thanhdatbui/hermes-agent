@@ -150,6 +150,11 @@ When unit-testing path resolvers, fallback roots, or legacy media locators that 
   2. If monkeypatching `pathlib.Path`, intercept **all** hardcoded search/fallback roots referenced by the function under test (normalizing paths case-insensitively and with forward/backward slashes), redirecting them to non-existent temporary directories (`tmp_path / "fake_dir"`).
   3. Ensure the test passes 100% independently of host disk state.
 
+### Sol High Payload Guard & Truncation-Free Diff Budgeting
+
+When closeout review loops evaluate targeted diffs through Sol High (:20129), `sol_payload_guard.py` enforces a strict 32KB payload budget with 65% allocated to diff (`diff_b` ≈ 21,299 bytes). Exceeding this budget causes `_render_file` to truncate hunks into `[TRUNCATION_MANIFEST]`, triggering immediate score penalties. Always verify candidates with the pre-flight probe (`references/sol-payload-guard-l0-digest-recipe.md`) to guarantee `level=L0` and `omitted=[]` before launching the gate.
+
+
 Use a fresh temp verifier when the harness still reports `unverified`; create/run/delete it in one evidence window and prove old verifier paths are absent before finalizing. Details and the strict-lease example are in `references/shared-core-version-compatibility.md`.
 
 For the deployment-side counterpart (core source fix → versioned wheel build → artifact copy to the pinned path → consumer file-pin repin → isolated provenance probe via wheel-extract + PYTHONPATH subprocess → dual-wheel A/B pre-existing-vs-regression attribution), see `portable-consumer-repo-maintenance` §"Offline versioned-wheel bump and consumer repin".
@@ -460,3 +465,5 @@ When adding direct helper coverage, call the existing helper rather than reprodu
 - [ ] Working and cached scoped path sets were checked independently
 - [ ] Scoped diff checks were used; unrelated dirty whitespace was not attributed
   to the candidate
+- [ ] Sol High payload budget was checked via `digest_diff` probe; diff text fits `diff_b` (<= 21.2KB) with `level=L0` and `omitted=[]` to avoid `[TRUNCATION_MANIFEST]` scoring penalties
+
