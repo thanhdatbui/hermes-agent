@@ -35,7 +35,33 @@ Nhờ chu kỳ 4 ngày đã tạo ra **khoảng nghỉ đệm tự nhiên 72–9
 
 ---
 
-## 3. Pitfall Lệch Pha Đồng Bộ: Core Runner vs Dashboard Helper (:1905)
+## 3. Kiến Trúc Config-Driven & Phòng Ngừa Bug Tiềm Ẩn (Closeout Remediation Lessons)
+
+### A. Tuyệt đối không hardcode magic numbers trong state logic
+- Mọi ngưỡng thử thách phải được externalize vào `FollowConfig` (`follow_runner/core/config.py`):
+  * `probation_graduation_clean_days: int = 2`
+  * `probation_tier1_clean_days: int = 1`
+- **Validation nghiêm ngặt:** Bắt buộc validate cả 2 tham số `>= 1` (`ConfigError` nếu `<= 0`). Cần có unit test kiểm tra riêng nhánh validation này (`test_validate_rejects_zero_probation_graduation_clean_days`).
+- **Truy cập trực tiếp:** Dùng `self.cfg.probation_graduation_clean_days` thay vì `getattr(self.cfg, ..., default)` lỏng lẻo dễ che giấu lỗi schema.
+
+### B. Bug tiềm ẩn: Bắt buộc pop `probation_clean_days` khi Graduate
+- Khi nick đạt tốt nghiệp (`clean_days >= probation_graduation_clean_days`), BẮT BUỘC phải thực hiện:
+  ```python
+  self._data["fail_streak"] = 0
+  self._data["graduated"] = True
+  self._data.pop("probation_clean_days", None)
+  ```
+- **Hậu quả nếu quên pop:** Biến `probation_clean_days` vẫn tồn dư trong file state JSON. Nếu sau này tài khoản bị thu hồi graduated bằng tay hoặc re-enter probation, giá trị `clean_days` cũ sẽ làm nhảy cóc nấc thang sai lệch.
+- **Telemetry sự kiện:** Lưu `last_graduation_event` với `{clean_days, graduated_at, machine, row}` để audit và observability.
+
+### C. Test suite edge cases bắt buộc:
+1. `test_reenter_probation_after_rapid_graduation`: Acc tốt nghiệp sau 2 ca, bị fail lại $\rightarrow$ revoke graduated, `probation_clean_days` reset về 0, quay về Tier 1 (`[2, 4]`).
+2. `test_graduation_clean_days_one_graduates_immediate`: Biên `probation_graduation_clean_days = 1` tốt nghiệp ngay ngày đầu tiên sạch.
+3. `test_probation_clean_days_configurable`: Kiểm chứng config tùy biến hoạt động chính xác.
+
+---
+
+## 4. Pitfall Lệch Pha Đồng Bộ: Core Runner vs Dashboard Helper (:1905)
 
 ### Nguyên nhân gây lệch pha
 Khi rút ngắn bậc thang thử thách trong core runner (`follow_runner/core/follow_state.py`) từ 2 ca/nấc xuống 1 ca/nấc, nếu bỏ quên Dashboard helper (`follow_health_helper.py` và `tiktok_dashboard.py`), giao diện sẽ tiếp tục hiển thị `(0/2 ca)` và `🎯 Cần 2 ca sạch`, gây hoang mang cho Operator tưởng rằng nick vẫn bị giam 2 ca.
