@@ -211,3 +211,25 @@ Chạy script query bảng `provider_connections` trong `C:\Users\Kibe\.omnirout
 - **Nguyên nhân:** File preflight `farm_preflight_daily_reset.py` trước đây dùng `entry['updated_at']` với cutoff 20 phút. Khi Agent chạy một chuỗi tool call hoặc subagent dài > 20 phút mà User không gửi thêm tin nhắn, `updated_at` bị ghim ở thời điểm User nhắn -> bị coi là idle và không gắn cờ `resume_pending`.
 - **Khắc phục:** Truy vấn trực tiếp `MAX(timestamp)` từ bảng `messages` trong SQLite của session đó, đồng thời nâng ngưỡng lookback an toàn lên 60 phút. Đã đồng bộ tại cả `farm_preflight_daily_reset.py` và `gateway/session.py`.
 
+### Bẫy 7: Bắt Lầm Cookie JWT Rác vs Cookie Session-Token Thật Của ChatGPT
+- **Bẫy code:** Kiểm tra `c.get("value").startswith("eyJhbG")` bất kể tên cookie là gì. Khi mở `auth.openai.com` chưa đăng nhập, OpenAI vẫn set các JWT tracking/OAuth tạm thời (`oai-did`, `auth0`, `__cf_bm`) có value bắt đầu bằng `eyJhbG`.
+- **Hậu quả:** Script tưởng đã lấy được token nên lưu chuỗi rác vào CSDL `storage.sqlite`, khi OmniRoute gọi `/api/auth/session` lập tức bị OpenAI trả về `HTTP 401 Unauthorized` (`ChatGPT auth failed`).
+- **Quy tắc bắt buộc:** Bắt buộc cookie phải có `name` chứa `session-token` (`__Secure-next-auth.session-token` hoặc chunked `__Secure-next-auth.session-token.0`), độ dài chuỗi cookie đầy đủ phải > 2.000 ký tự mới được xác nhận là ĐÃ ĐĂNG NHẬP.
+
+### Bẫy 8: Xác Thực Proxy Mobi Từng Cổng 1-1 (MobiProxy 5101..5138)
+- **Bẫy code:** Hardcode username proxy là `mobi28:TaadaaMobi#2026!` cho toàn bộ các port `5101..5138` trên `test.taadaa.click`.
+- **Hậu quả:** Proxy server trả về `HTTP 407 Proxy Authentication Required`, OmniRoute kích hoạt cơ chế `[Proxy Fast-Fail] Proxy unreachable: http://test.taadaa.click:51xx` và đánh rớt 503 toàn bộ request qua combo.
+- **Quy tắc bắt buộc:** Mỗi cổng Mobi `51xx` có username riêng tương ứng với số đuôi: `username = f"mobi{port - 5100}"`, password `TaadaaMobi#2026!`. Luôn kiểm tra tính sẵn sàng bằng HTTP request test trước khi kích hoạt `is_active = 1`.
+
+### Bẫy 9: Bộ Lọc Hardcode Domain Bỏ Quên Kho Profile Hotmail Sẵn Có
+- **Hiện tượng:** Các script cũ (`batch_chatgpt_web_5workers.py`) dùng regex cứng `re.search(r'@gmail\.com', name)` khiến toàn bộ hơn 460 profile `@hotmail.com` trong GPM bị bỏ qua, trong khi nhóm Hotmail này phần lớn đã được đăng nhập sẵn ChatGPT web (`session-token` hợp lệ).
+- **Quy tắc:** Bộ lọc candidate bắt buộc dùng regex mở rộng `re.search(r'([a-zA-Z0-9_.+-]+@(gmail|hotmail)\.com)', name, re.IGNORECASE)`. Ưu tiên quét và nạp nhóm Hotmail trước vì tốc độ lấy token tức thì (không vướng Google OAuth chooser).
+
+### Bẫy 10: Tự Động Resume Khi Restart Máy Bằng Tay Hoặc Sập Nguồn (Startup Hook vs Preflight)
+- **Vấn đề:** Hàm `preserve_in_flight_sessions` trong `farm_preflight_daily_reset.py` chỉ chạy khi máy tự reboot theo lịch cron. Nếu User bấm Restart tay trong Windows hoặc máy sập nguồn/crash, preflight không chạy nên session bị mất cờ `resume_pending`.
+- **Giải pháp triệt để:** Đặt file hook khởi động ưu tiên cao nhất `00_Hermes_AutoResume_Hook.vbs` trong thư mục Windows Startup (`AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\`). File này gọi `auto_resume_startup_hook.py` quét SQLite của Hermes trong 60 phút gần nhất ngay khi Windows login, tự động bật `resume_pending = true` cho các session đang dở dang trước khi `Hermes_Gateway.vbs` khởi động.
+
+### Bẫy 11: Kỷ Luật Cuốn Chiếu 5 Worker & Đóng Sạch Profile GPM
+- **Nguyên tắc:** Chạy batch nạp ChatGPT Web giới hạn tối đa 5 worker song song (`ThreadPoolExecutor(max_workers=5)`), dùng file lock `.lock` chống chạy đè giữa các tick cron 15-20 phút.
+- **Khối finally bắt buộc:** Trong mọi trường hợp (thành công, timeout, lỗi), bắt buộc gọi GPM API `/profiles/stop/{pid}` kết hợp `psutil` kill sạch tiến trình `gpm_browser_chromium_core.exe` theo `profile_path`, đảm bảo không rò rỉ RAM và không giữ khóa file `Cookies`.
+

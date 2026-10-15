@@ -8,10 +8,10 @@ Hotmail: CẤM mail cá nhân; sinh @fviainboxes.com đọc OTP API. Write-Throu
 §
 Proxy: 1-1 PROXYgandienthoai.xlsx. Chuẩn hóa 3 món (Ava-Hashtag-Pin): lock sửa tay kép manual_hashtag_protected_folders.json (sync_all_tik skip cả 2 sheet) & manual_avatar_protected_folders.json + 4 marker. TT v47.0.3 cấm am start, dùng monkey launcher. Pin >=1000 view. Soi mắt trước gửi, cấm gửi ảnh đen. Đổi ava: PENDING/FORCE_UPLOAD cột Avatar.
 §
-Farm Dispatch: haiku_worker O(1) 6-15s (guard chặn delegate EDIT; fallback ag_cli; van: WORKER_CLI_EXHAUSTED). delegate_task INVESTIGATE <=5 calls. S7: recover_stuck_s7; max_reboots=2. Rolling Rename Watchdog: chạy song song 25 workers (ThreadPoolExecutor max_workers=25); Silent Watchdog cấm in stdout khi bận; chỉ in khi đổi tên thành công.
+Farm Dispatch: haiku_worker O(1) 6-15s (guard chặn delegate EDIT; fallback ag_cli; van: WORKER_CLI_EXHAUSTED). delegate_task INVESTIGATE <=5 calls. S7: recover_stuck_s7; max_reboots=2. Rename Watchdog: 25 workers.
 §
 GPM: Kibe chạy, stop API kèm _kill_gpm_chrome; max 5 wkr. Hotmail: qua HOTMAIL_LOGIN giữ cookie, cấm ngâm ảo 7d; MS landing check is_auth trước challenge; MS ép mail @fviainboxes; ghi Excel (C5,4,3+G) trước signout.
 §
 Stale Upload: draft trap, xóa sạch (_delete_all_profile_drafts). Revert flop: quét ledger lấy video gốc; TikWM tải CDN; xóa render trước làm mới. Cào video: max 60 clip/channel, cấm cào full.
 §
-Cô lập Kibe vs Admin: Kibe(1-80, F1-640) và Admin(201-280, F1-640) cào nguồn riêng, video riêng, niche riêng. CẤM TUYỆT ĐỐI dùng DB Kibe ghi đè Niche/Hashtag sang Admin. Cấm sync chéo. CẤM gán 1 tik cùng niche hàng loạt; phân bổ xen kẽ máy.
+Cô lập Kibe vs Admin: Kibe(1-80) & Admin(201-280) cào riêng. CẤM sync chéo Niche/Hashtag. Dọn đĩa Admin 1TB: cấm map ngang D:\video goc may 2\<N> với render\<N>; f_src=(slot-1)*80+m_idx phải tính ra f_vid=(m_idx-1)*8+slot; chỉ xóa raw khi f_vid >=30 clip. Shell remote cấm để \" cuối lệnh.

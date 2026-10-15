@@ -56,6 +56,7 @@ On Taadaa Farm (both Kibe and Admin), folder numbering between raw videos and re
   1. The target folder `render_root\<folder_video>` exists and has $\ge 30$ valid rendered clips (`> 100 KB`).
   2. If the target folder has $< 30$ rendered clips, raw videos in `folder_src` MUST be preserved for rendering.
   3. Never assume folder index parity ($folder\_src == folder\_video$) except for the lone case $m=1, slot=1$.
+* **Audit & Recovery:** If raw videos were prematurely purged due to index mismatch, verify the background downloader service (`run_admin_downloader_service.py` on Admin or `download_by_niche.py`) is alive; it will automatically re-download missing qualified clips into `video goc may 2` using the configured proxy pool.
 
 ## 4. Script Delivery Pattern over SSH to Admin
 Because `D:\Taadaa\tools` on Kibe is local and may not match the file structure on Admin:
