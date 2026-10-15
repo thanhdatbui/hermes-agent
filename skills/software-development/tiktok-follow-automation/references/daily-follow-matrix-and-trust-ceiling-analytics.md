@@ -65,7 +65,11 @@
 
 ### A. Bảng Ma Trận Lịch Sử Ngày Chạy (Daily Matrix Heatmap)
 - **Quy tắc hiển thị cốt lõi (User Correction Invariant):** Cột ngày BẮT BUỘC tính theo **các ngày/ca nick thực tế có chạy** có giãn cách (ví dụ: `09-27`, `09-29`, `09-30`, `10-01`, `10-02`, `10-03`, `10-04`, `10-05`, `10-06`, `10-07`, `10-08`, `10-09`), TUYỆT ĐỐI KHÔNG dùng ngày lịch cố định liên tục vô nghĩa vì mỗi nick chạy có chu kỳ nghỉ dưỡng và giãn cách ngày (rest 1/3, cooldown 3 ngày).
-- **Bộ lọc mặc định (Default Filter Invariant):** Mặc định bảng ma trận BẮT BUỘC hiển thị **`Tất Cả` (Toàn bộ 410 nick)** thay vì chỉ hiển thị nhóm `Khỏe` (11 nick). Tuyệt đối không để mặc định nhóm `Khỏe` vì sẽ ẩn toàn bộ máy đang dính Cooldown, gây hiểu nhầm là ma trận chỉ có máy chưa bị nhả. Bổ sung cụm nút lọc nhanh: `Tất Cả (410)` | `Khỏe (11)` | `Cooldown (344)`.
+- **Bộ lọc mặc định & Đầy đủ 4 Tầng Sức Khỏe (Complete Tier Filter Invariant):**
+  - Thanh nút lọc nhanh của Ma trận BẮT BUỘC có đầy đủ cả 4 tầng đồng bộ với KPI: `[Tất Cả]` | `[Khỏe]` | `[Hồi phục 1]` | `[Hồi phục 2]` | `[Cooldown]`. Tuyệt đối CẤM chỉ để 3 nút `Tất Cả / Khỏe / Cooldown` làm biến mất 2 tầng Hồi phục 1 & 2 khiến người vận hành không theo dõi được các nick đang leo thang hồi phục.
+- **Chỉ Số & Sắp Xếp Theo Lượng Follow Gần Đây (Recent Follows Sorting Invariant):**
+  - Ngoài `Tổng`, `TB/Ca`, `Max Safe`, trên mỗi Thẻ và Bảng Ma Trận BẮT BUỘC hiển thị chỉ số **`Gần đây (+X)`** (tổng số follow thực tế tích lũy trong phạm vi các ngày ma trận gần nhất, ví dụ 12 ngày gần nhất).
+  - Bổ sung nút / tiêu đề cột sắp xếp **`Gần đây ↕`** để người vận hành có thể 1 chạm đưa ngay toàn bộ các nick đang cày follow tốt nhất gần đây lên đầu danh sách, thay vì chỉ thấy các nick nòng cốt cũ đang trong chu kỳ nghỉ giãn cách.
 - **Thứ tự sắp xếp mặc định theo độ khỏe (Health-Descending Sort Invariant):** Danh sách máy BẮT BUỘC sắp xếp mặc định theo **độ khỏe giảm dần (`health_score` descending)** thay vì theo số thứ tự máy tăng dần (`M1, M2...`):
   1. **Nhóm Khỏe / Nòng Cốt đứng đầu:** Sắp xếp theo `Tổng đã follow (total_followed)` hoặc `Max Safe` giảm dần (ví dụ `M28 R1` 214 fl, `M50 R1` 213 fl lên trên cùng; nick ít follow xuống dưới).
   2. **Tiếp theo là Nhóm Hồi Phục:** Sắp xếp theo số ngày sạch (`clean_days`) và follow tích lũy.
