@@ -30,6 +30,9 @@ Nick **CHƯA follow** (hoặc vừa bấm follow nhưng bị TikTok server drop/
     - `[Bạn bè]` (Mutual) + `[Nhắn tin]`
     - `[Đang theo dõi]` + `[Nhắn tin]`
     - Hoặc duy nhất 1 nút lớn `[Nhắn tin]` (CHỈ KHI `allow_message_alone=True`). Khi `allow_message_alone=False` (mặc định), màn hình chỉ có duy nhất nút `[Nhắn tin]` bắt buộc trả về `unknown` để fail-closed chống false-positive đối với tài khoản mở DM công khai nhưng chưa follow.
+  * **LOẠI TRỪ TOP BAR FEED ($y_1 < 200$):** Các tabs trên đỉnh màn hình Feed (như `"Bạn bè"`, `"LIVE"`, `"Dành cho bạn"`) có $y_1 < 200$. Mặc định tham số `y_min = 200` để tránh việc OCR đọc trúng tab "Bạn bè" trên thanh điều hướng đỉnh rồi kết luận sai là đã follow.
+  * **LỰA CHỌN TÂM NÚT THEO TRỌNG TÂM DỌC (`anchor_y`):** Khi có nhiều nút thỏa mãn điều kiện follow, `find_follow_button_center_ocr` ưu tiên ứng viên gần `anchor_y` nhất (mặc định trung tâm dải Y: `(y_min + y_max) // 2`), đồng thời ưu tiên nhãn chuẩn (`"follow"` priority 0 so với `"follow lai"` priority 1).
+  * **CẦU DAO POPUP NHẠY CẢM DÙNG REGEX WORD BOUNDARY:** Quét từ khóa nhạy cảm (`mật khẩu`, `captcha`, `otp`, `đăng nhập`, `thanh toán`) phải dùng regex `\b` word boundary (`re.search(r"\b" + re.escape(sk) + r"\b", n_txt)`), tránh false-positive khi gặp từ ngữ vô hại có chứa chuỗi con (như "Prepayment" hay "Footprint").
 
 ---
 

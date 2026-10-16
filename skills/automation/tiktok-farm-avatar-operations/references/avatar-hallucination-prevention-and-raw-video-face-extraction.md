@@ -974,6 +974,34 @@ Trước khi soạn bất kỳ tin nhắn nào cho User:
   - Dispatch Worker leaf với contract `TASK_KIND: CREATE`, file tại `D:/Taadaa/reports/<script>.py`, kèm `FOCUSED_TEST: python -m py_compile D:/Taadaa/reports/<script>.py` và `WORKER_CLI_EXHAUSTED: true`.
   - Script helper này gom toàn bộ 5 tầng trên vào 1 lần chạy nguyên tử (atomic), có kiểm chứng tự động (asserts 100% pass) trước khi hoàn tất task.
 
+---
+
+## 40. Đối Soát Nguồn Kép F_out vs F_src, Tinh Chỉnh Headroom Offset & Xử Lý RecentsActivity Khi Upload Avatar (Sự Cố 16/10/2026 — @daunthzrqig M66 Tik 4)
+- **Hiện tượng & Bối cảnh**:
+  - Khi User gửi ảnh TikTok profile `@daunthzrqig` yêu cầu "Chuẩn hoá acc này":
+  - Tra cứu $O(1)$ qua SQLite `account_mapping` xác định tài khoản thuộc Máy 66 Tik 4.
+  - Workbook `Tik4.xlsx` ghi `Folder Video (Render Dich)` = `524`, nhưng `Video Goc (Nguon Cao)` = `306`.
+  - Kho `D:/TIKTOK-videonuoinick/524` chứa video lẫn lộn người khác (nữ áo đen, nữ sơ mi caro), trong khi lưới profile thực tế 100% là nam thanh niên review mỹ phẩm đeo kính. Kho video gốc `D:/video goc/306` mới chứa đúng 100% video của nam creator này.
+- **Kỹ thuật trích xuất & tinh chỉnh Headroom Offset**:
+  - Khi crop bằng tham số mặc định (`side_scale = 2.2 - 2.3`, `cy_shift = 0.55`), đỉnh đầu bị viền tròn xanh cắt lẹm $5-10\%$ do Haar cascade tính tâm hơi thấp.
+  - **Công thức chuẩn hóa Headroom an toàn tuyệt đối**:
+    * Nâng `side_mult` lên $2.65 - 2.7$ (kết hợp padding canvas `cv2.BORDER_REPLICATE` với `pad = side`).
+    * Áp dụng `cy_offset = -30` đến `-35` px (dịch tâm crop lên trên, hạ khuôn mặt và đỉnh tóc xuống sâu hơn bên trong vòng tròn an toàn).
+    * Kết quả kiểm định độc lập: Đỉnh tóc cách viền xanh trên $\approx 115 - 120$px, cằm cách đáy viền $\approx 125 - 130$px, ngũ quan trọn vẹn, sạch chữ rác, đạt điểm tuyệt đối 10/10.
+- **Quy trình nạp avatar thiết bị thật & Tránh Timeout / RecentsActivity / Empty Response**:
+  1. **Khởi chạy Event-Driven Wakeup đầy đủ**:
+     - Flow upload avatar trên thiết bị thật (wake máy, mở TikTok, chuyển profile, mở Sửa hồ sơ, nạp ảnh từ Pictures, bỏ tick Nhật ký, bấm Lưu) kéo dài $90 - 150$s.
+     - CẤM chạy foreground terminal timeout ngắn ($< 60$s) vì lệnh bị kill giữa chừng sẽ bỏ dở app ở `RecentsActivity`.
+     - Luôn chạy qua `terminal(background=True, notify_on_complete=True, timeout=600)` và chờ harness đánh thức.
+  2. **Tự động hóa xử lý RecentsActivity không bấm tay ADB**:
+     - Khi máy bị ngắt ngang ở `RecentsActivity`, CẤM TUYỆT ĐỐI gõ tay ADB `input keyevent 3` (vi phạm Hard Gate #5).
+     - State machine của runner đã có exception handler tự động: phát hiện `RecentsActivity` và tự bấm HOME an toàn trong code.
+  3. **Chống Empty Response sau khi Process hoàn tất**:
+     - Khi background process hoàn tất và gửi notification, Coordinator đọc log xong BẮT BUỘC phải xuất đoạn text phản hồi cập nhật trạng thái rõ ràng trước khi kết thúc lượt; cấm trả về response rỗng chỉ chứa tool calls.
+  4. **Nghiệm thu thị giác trên file xác nhận thực tế**:
+     - Soi mắt file `avatar-uploaded-confirmed.png` tại thư mục run qua `ag_cli.py ask` để xác nhận giao diện Sửa hồ sơ hiển thị avatar mới hoàn chỉnh trước khi gửi thẻ `MEDIA:<path>` cho User.
+
+
 
 
 
