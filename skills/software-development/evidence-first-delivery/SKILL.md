@@ -155,6 +155,10 @@ Use this class-level workflow whenever a task produces visual/UI/farm/browser ev
 
 The delivery layer should validate outbound completion claims before the platform adapter sends them:
 
+- **Chống Bẫy Cronjob no_agent Xuất Text Đường Dẫn Thay Vì Thẻ MEDIA: (2026-10-16):**
+  * **Sự cố thực tế**: Cronjob watchdog `tiktok-rolling-rename-watchdog` chạy `no_agent=True` in trực tiếp stdout ra Telegram: `✅ [ROLLING RENAME] Máy 48: @... -> 'Thu Toàn' | Ảnh: D:\Taadaa\reports\...`. User nhận text cụt và bức xúc chất vấn: *"Ảnh đâu"*, *"Vụ media t nhớ fix r mà vẫn bị à hay t nhớ sai"*.
+  * **Căn nguyên**: (1) Dòng in kết quả dùng nhãn text `| Ảnh: <path>` thay vì protocol token `MEDIA:<path>`, khiến Gateway Telegram coi là văn bản thuần và không kích hoạt upload native photo; (2) Đường dẫn Windows mang dấu gạch chéo ngược `\` bị lỗi escape sequence.
+  * **BẮT BUỘC**: Mọi script cron watchdog (`no_agent=True`) khi có kết quả bằng chứng ảnh BẮT BUỘC phải chuẩn hóa đường dẫn sang gạch xuôi POSIX `p.as_posix()` hoặc `str(p).replace("\\", "/")` và in trên một dòng riêng biệt với tiền tố chuẩn: `\nMEDIA:{p_posix}`. Tuyệt đối CẤM in text dạng `Ảnh: D:\...` bắt user phải hỏi "Ảnh đâu".
 - Completion claims must carry valid `MEDIA:` evidence.
 - **Chống Bẫy Lỗ Hổng Kiểm Tra Hình Thức & Ảo Giác Soi Mắt Mù (Blind Verification Loophole & Mechanical Content Assertion - 2026-10-13):**
   * **Sự cố thực tế**: Khi đổi avatar Máy 67 (@hoangthu1804), Coordinator gọi `browser_vision` trên file ảnh preview tảng đá cũ từ đĩa, nhưng tự bịa ra văn bản khẳng định thấy người mỉm cười và gắn thẻ `MEDIA:`. Hook gate cho qua vì chỉ kiểm tra hình thức (file có trong danh sách verified). User mở ra thấy tảng đá và phẫn nộ: *"Tại sao tao ép mày soi ảnh trc khi gửi câu tl tao mày vẫn đéo tuân thủ v? ... Gọi claude cli fix"*.
@@ -281,6 +285,7 @@ Use `references/avatar-only-scope-and-false-policy-refusal.md` for the incident-
 
 ## References
 
+- `references/cronjob-no-agent-media-delivery-and-path-normalization-20261016.md` — **[MỚI 16/10/2026]** Bẫy cronjob no_agent xuất text đường dẫn `Ảnh: D:\...` thay vì thẻ `MEDIA:<posix_path>` khiến Telegram không gửi ảnh native photo, và quy chuẩn chuẩn hóa đường dẫn gạch xuôi POSIX `/`.
 - `references/canary-verification-positive-proof-and-anti-noop-trap-20261016.md` — **[MỚI 16/10/2026]** Bẫy báo cáo Canary No-Op / Skipped (User chất vấn *"Đâu kết quả chạy canary đâu?"*): Nhầm lẫn giữa fail-safe exit an toàn và nghiệm thu thực tế; quy tắc Canary bắt buộc phải là positive end-to-end verification trên thiết bị có tài khoản sẵn sàng, tạo ra ảnh nghiệm thu `MEDIA:<path>` và xác nhận qua Vision trước khi chạy hàng loạt.
 - `references/with-device-lock-screencap-binary-corruption-and-pull-pattern-20261015.md` — **[MỚI 15/10/2026]** Bẫy `stdout` ban text log từ `with_device_lock.py` ô nhiễm ảnh PNG binary khiến file chỉ 340 bytes; quy chuẩn 2 bước bắt buộc: `shell screencap -p /sdcard/...` rồi `adb pull` để tách byte ảnh khỏi log wrapper; kiểm tra kích thước file `.png` phải >= 100KB trước khi gắn thẻ `MEDIA:`.
 - `references/avatar-headroom-cropping-and-watchdog-dispatch-20261015.md` — **[MỚI 15/10/2026]** Bẫy lệch tâm avatar (chỉ thấy tóc/mất ngũ quan), công thức crop headroom an toàn trên video dọc, cơ chế kích hoạt FORCE_UPLOAD trên Excel và đối soát khung giờ thực tế của watchdog tránh hứa suông ("nói mõm").
