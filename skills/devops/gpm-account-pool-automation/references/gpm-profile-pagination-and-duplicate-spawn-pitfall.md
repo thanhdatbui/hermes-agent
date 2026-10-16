@@ -7,21 +7,21 @@
 
 ## 1. Bản Chất Kỹ Thuật: Bẫy Phân Trang GPM Local API v3
 
-### 1.1 Mặc định phân trang 50 profiles của GPMLogin v3
+### 1.1 Mặc định phân trang 50 profiles của GPMLogin v3 (và bẫy kẹt trang 1 với per_page=300)
 - Endpoint `GET /api/v3/profiles` của GPMLogin Local API (cổng 19995) mặc định trả về:
   ```json
   {
     "success": true,
     "data": [ ... 50 profiles ... ],
     "pagination": {
-      "total": 690,
+      "total": 1223,
       "page": 1,
       "page_size": 50,
-      "total_page": 14
+      "total_page": 25
     }
   }
   ```
-- **Lỗi phổ biến trong script (supervisor / batch create)**:
+- **Lỗi phổ biến 1 (supervisor / batch create)**:
   ```python
   # ❌ BẪY CHÍ MẠNG: Chỉ gọi GET không tham số
   listed = api("GET", "/api/v3/profiles")
@@ -32,7 +32,43 @@
   # Không tìm thấy trong 50 profiles trang 1 -> Tự động gọi create!
   created = api("POST", "/api/v3/profiles/create", ...)
   ```
-- **Hậu quả**: Khi farm có trên 50 profile (thực tế 690+ profiles chia trên 14 trang), 640 profile ở các trang 2–14 hoàn toàn vô hình với hàm kiểm tra. Mỗi chu kỳ chạy, script không thấy profile $\rightarrow$ tưởng chưa có $\rightarrow$ tạo mới tiếp một profile trùng tên!
+- **Lỗi phổ biến 2 (nurture / scan profiles toàn pool)**:
+  ```python
+  # ❌ BẪY THẦM LẶNG: Chỉ gọi page 1 dù per_page=300
+  url = f"{GPM_API_BASE}/profiles?page=1&per_page=300"
+  res = requests.get(url, timeout=15).json()
+  return res.get("data", [])
+  ```
+  *Hậu quả thực tế:* Khi hệ thống có 1.200+ profiles, Group 10 (`Google_Live_Ready`) nằm toàn bộ ở Page 4 (69 profiles) và Page 5 (8 profiles). Trang 1 có **0 profile** Group 10. Script tưởng nhầm toàn bộ farm không có profile cần nuôi $\rightarrow$ bỏ qua suốt nhiều tuần khiến 79 acc văng session cookie (`NEEDS_LOGIN`).
+
+- **Chuẩn hóa hàm `get_all_gpm_profiles()` an toàn toàn diện (Production Contract):**
+  ```python
+  def get_all_gpm_profiles(max_pages: int = 50) -> list:
+      profiles = []
+      page = 1
+      per_page = 300
+      while page <= max_pages:
+          try:
+              res = requests.get(f"{GPM_API_BASE}/profiles?page={page}&per_page={per_page}", timeout=15)
+              if res.status_code != 200:
+                  logger.warning(f"[GPM_API] Trang {page} trả về status {res.status_code}")
+                  break
+              payload = res.json()
+              data = payload.get("data")
+              items = data if isinstance(data, list) else (data.get("list", []) if isinstance(data, dict) else [])
+              if not items:
+                  break
+              profiles.extend(items)
+              pagination = payload.get("pagination") or {}
+              total_page = pagination.get("total_page", 1)
+              if page >= total_page:
+                  break
+              page += 1
+          except Exception as e:
+              logger.error(f"[GPM_API] Lỗi kết nối trang {page}: {e}")
+              break
+      return profiles
+  ```
 
 ### 1.2 GPM API không có Unique Constraint
 - GPMLogin Local API cho phép tạo vô số profile có cùng `profile_name` hoặc cùng chứa một email mà không hề báo lỗi hay từ chối.
