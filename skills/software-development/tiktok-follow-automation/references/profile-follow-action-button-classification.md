@@ -113,3 +113,22 @@ Tuyệt đối không thay thế toàn bộ XML bằng OCR một cách mù quán
   - Bắt buộc đặt ngưỡng giới hạn dưới **$y_{min} = 200$** trong `classify_button_from_ocr` và `find_follow_button_center_ocr` (tức là chỉ quét trong dải $200 \le y \le 1200$).
   - Mọi chữ `Bạn bè`, `Đang follow` nằm ở dải $y < 200$ đều thuộc thanh điều hướng chung của app, bắt buộc bỏ qua để trả về `unknown` trên màn hình Feed.
 
+## 10. Kỷ Luật Telemetry, Observability & Tempfile Hygiene cho OCR (Closeout Remediation Standards)
+- **Cấm nuốt ngoại lệ im lặng (No Silent Exception Swallowing):**
+  - Trong `FollowAdapter.ocr_screen()` và `verify_follow._classify_with_fallback()`, việc `except Exception: return []` hoặc `pass` làm mất hoàn toàn dấu vết vận hành khi xảy ra lỗi hạ tầng (ADB timeout, WinRT crash, PowerShell hang).
+  - Bắt buộc ghi log có cấu trúc đo `elapsed=%.3f`, ghi nhận `serial`, `boxes=%d` và phân loại `reason` rõ ràng:
+    - `invalid_screencap`: Ảnh rỗng hoặc thiếu PNG magic header.
+    - `timeout`: Quá thời gian quy định ($30s$).
+    - `ocr_error`: Lỗi thực thi script hoặc lỗi hệ điều hành.
+    - `success`: OCR trả về text boxes hợp lệ.
+    - Fallback reasons: `empty_ui_dump`, `unknown_classification`, `classified`, `unclassified`.
+- **Xác thực định dạng ảnh (PNG Magic Header Validation):**
+  - Kiểm tra `len(png) < 100` là chưa đủ vì khi lệnh `exec-out screencap -p` gặp sự cố, đầu ra có thể là chuỗi text báo lỗi dài hơn 100 bytes.
+  - Bắt buộc kiểm tra `png.startswith(b"\x89PNG\r\n\x1a\n")`. Nếu không khớp, lập tức ghi log warning `reason=invalid_screencap` và trả về `[]` thay vì ghi vào temp file đưa cho WinRT.
+- **Vệ sinh Tempfile trong khối `finally` (Deterministic Tempfile Cleanup):**
+  - Mọi file tạm được tạo ra từ `tempfile.NamedTemporaryFile` bắt buộc phải được `unlink(missing_ok=True)` trong khối `finally:`.
+  - Bọc `try...except OSError` quanh lệnh `unlink` và ghi log `ocr_temp_cleanup_failed` nếu xóa thất bại, đảm bảo không rò rỉ đĩa trên các máy farm chạy 24/7.
+- **Tiêu chuẩn Unit Test bảo vệ:**
+  - Bắt buộc có unit test kiểm thử nhánh `screencap` rỗng, nhánh chuỗi bytes không phải PNG header, nhánh `TimeoutError` giả lập và xác nhận `created_paths[0].exists() == False` sau khi hàm kết thúc.
+
+

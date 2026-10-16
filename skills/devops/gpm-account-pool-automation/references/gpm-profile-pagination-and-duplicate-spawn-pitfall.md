@@ -168,3 +168,19 @@ Trong các watchdog (như `cron_chatgpt_web_pool_watchdog.py`), khi gặp `len(c
   2. Khớp đúng số máy (`M<mid>`) theo SoT `taikhoan_dat_v2_updated .xlsx` và cổng proxy chuẩn trong `PROXYgandienthoai.xlsx`.
   3. Thời gian cập nhật gần nhất (`mtime`).
 - **Xóa kép:** Gọi API GPM `/api/v3/profiles/delete/{id}?mode=1` kết hợp dọn dẹp SQLite row để tránh dữ liệu mồ côi. Unit test bao phủ tại `tests/test_deduplicate_gpm_profiles.py`.
+
+### 4.4 Cấu Trúc Lấy Profile Toàn Hệ Thống Phân Trang An Toàn (Pagination & Shape Resilience)
+Khi cần lấy toàn bộ profile trên GPM qua REST API v3 (ví dụ trong nurture runners hay inventory scanners):
+- **Phân trang lặp (Pagination Loop):** Bắt buộc chạy vòng lặp `while page <= MAX_PAGES` (trần an toàn `MAX_PAGES = 50`) với `per_page = 300` để duyệt toàn bộ database. Cấm chỉ gọi trang 1 (`page=1&per_page=300`) vì các profile mới tạo hoặc thuộc GroupId phía sau sẽ nằm ở trang 4–5+.
+- **Tương thích Data Shape:** API GPM v3 có thể trả về `res["data"]` dưới dạng `list` hoặc `dict` (chứa `{"list": [...]}`). Bắt buộc xử lý cả hai trường hợp:
+  ```python
+  data = res.get("data")
+  if isinstance(data, list):
+      items = data
+  elif isinstance(data, dict):
+      items = data.get("list") or []
+  else:
+      items = []
+  ```
+- **Xử lý total_page an toàn:** Khi `pagination.total_page` thiếu hoặc sai định dạng, nếu trang hiện tại trả về đủ `len(items) == per_page` (300) thì không dừng sớm mà tiếp tục duyệt trang kế tiếp cho đến khi gặp trang rỗng hoặc `len(items) < per_page`.
+- **Quan sát & Phân biệt dữ liệu gián đoạn (Telemetry & Partial Data):** Khi gặp lỗi giữa chừng (HTTP status != 200, timeout, crash), log warning rõ ràng và đánh dấu `complete = False`. Bắn telemetry `{"pages_fetched": pages, "total": len(profiles), "complete": complete}` để giám sát biết danh sách có bị thiếu do lỗi mạng hay không.
