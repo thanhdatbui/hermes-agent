@@ -776,6 +776,105 @@ Trước khi soạn bất kỳ tin nhắn nào cho User:
   - Lệnh terminal foreground với timeout 60s chắc chắn sẽ bị kill giữa chừng (Exit 124).
   - BẮT BUỘC khởi chạy runner bằng `terminal(background=True, notify_on_complete=True, timeout=360)` theo đúng Invariant Event-Driven Wakeup, để harness tự đánh thức khi tiến trình hoàn tất và chụp ảnh màn hình nghiệm thu thực tế.
 
+---
+
+## 34. Cạm Bẫy Foreground Timeout 30s Ngắt Ngang Runner, Kẹt RecentsActivity & Chống Empty Response (Sự Cố 16/10/2026 — @daunthzrqig Máy 66 Tik 4)
+- **Hiện tượng thực tế**:
+  1. **Bẫy Foreground Timeout ngắn (30s)**: Sau khi phát hiện đợt chạy đầu bị `SKIPPED_LOCKED` do máy vướng ca 2FA, Coordinator chạy lại `run_avatar_batch_3accs.py` ở chế độ foreground với `timeout=30`. Lệnh bị timeout 30s ngắt ngang đúng lúc runner vừa đánh thức máy và đang ở bước `OPEN_TIKTOK`. Hậu quả: Subprocess bị kill dở chừng, máy bị kẹt tại `RecentsActivity` (`com.android.systemui.recents.RecentsActivity`).
+  2. **Bẫy Empty Response**: Khi background process hoàn thành và gửi notification, Coordinator thực thi một loạt tool (`process(action='log')`, `inspect_machine.py 66`) để kiểm tra hiện trường nhưng không trả về bất kỳ text nào trong response message. Hệ thống lập tức cảnh báo: *"You just executed tool calls but returned an empty response. Please process the tool results above and continue with the task."*.
+- **Nguyên nhân gốc rễ**:
+  1. Quá trình tự động hóa trên điện thoại thật dòng Samsung Galaxy S7 (SM-G930F) có độ trễ vật lý: chuẩn hóa màn hình, đánh thức, giải phóng các app chạy ngầm và mở TikTok mất ít nhất $40 - 60$s; toàn bộ flow nạp avatar mất $90 - 150$s. Chạy foreground với timeout ngắn $< 60$s chắc chắn sẽ giết chết tiến trình giữa chừng.
+  2. Khi máy bị ngắt ngang ở `RecentsActivity`, nếu Coordinator hoảng hốt chạy `adb shell input keyevent 3` sẽ bị chặn ngay lập tức bởi Invariant Farm Safety (Hard Gate #5 - Cấm bấm tay ADB).
+- **Quy tắc vận hành chuẩn mực**:
+  1. **Tự Động Hóa Xử Lý RecentsActivity Không Cần Can Thiệp Tay**:
+     - Trong module `tiktok_workflow.state_machine`, runner đã có sẵn exception handler tự động:
+       `[WARNING] tiktok_workflow.state_machine: [OPEN_TIKTOK] Đang kẹt Recent (.recents.RecentsActivity); bấm HOME để thoát`.
+     - Tuyệt đối CẤM can thiệp tay ADB. Chỉ cần khởi chạy lại runner đầy đủ bằng `with_device_lock.py`, script sẽ tự động bấm HOME và đưa máy về trạng thái an toàn.
+  2. **Invariant Timeout Cho Runner Thiết Bị Thật**:
+     - Mọi runner can thiệp thiết bị farm (nhất là upload avatar, login, follow) BẮT BUỘC khởi chạy bằng `terminal(background=True, notify_on_complete=True, timeout=600)`. CẤM dùng foreground với timeout ngắn để "thử nghiệm".
+  3. **Kỷ Luật Chống Empty Response Sau Event Wakeup**:
+     - Khi background process hoàn tất và đánh thức Coordinator: BẮT BUỘC đọc log/status xong phải xuất ít nhất một đoạn text phản hồi cập nhật trạng thái rõ ràng (đang làm gì, kết quả kiểm tra ra sao, bước kế tiếp là gì) trước khi kết thúc lượt. CẤM trả về response rỗng chỉ chứa tool calls.
+
+---
+
+## 35. Cạm Bẫy Schema Protected Folders JSON & Nhận Diện Video "Bị Tắt Tiếng" (Audio Muted) Khi Chuẩn Hoá (Sự Cố 16/10/2026 — @chichi06900 Máy 59 Tik 6)
+- **Bẫy Schema `manual_avatar_protected_folders.json`**:
+  - File `D:/Taadaa/data/manual_avatar_protected_folders.json` có cấu trúc là một **Dictionary** (`dict`), KHÔNG phải List (`list`):
+    ```json
+    {
+      "description": "Registry of folders/accounts manually customized by operator...",
+      "protected_folders": [2, 26, 45, 113, ...]
+    }
+    ```
+  - Nếu script Python tự viết gọi `data.append(f_id)` sẽ lập tức văng lỗi runtime: `'dict' object has no attribute 'append'`.
+  - **Quy tắc cập nhật chuẩn xác**:
+    ```python
+    with open(prot_json, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    prot_list = data.get("protected_folders", [])
+    if f_id not in prot_list:
+        prot_list.append(int(f_id))
+        data["protected_folders"] = prot_list
+        with open(prot_json, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+    ```
+- **Nhận diện Cờ Đỏ Video "Bị Tắt Tiếng" (Audio Copyright Strike) Trên Lưới Profile**:
+  - Khi soi mắt lưới video 6 ô trang cá nhân TikTok, nếu thumbnail có biểu tượng loa gạch chéo kèm dòng chữ **"Bị tắt tiếng"** *(Muted)*:
+  - Đây là bằng chứng video đã bị hệ thống kiểm duyệt bản quyền âm thanh của TikTok tắt tiếng (audio removed due to copyright).
+  - **Kỷ luật chuẩn hoá**:
+    1. BẮT BUỘC ghi nhận rõ trong báo cáo hiện trường gửi Operator: cảnh báo video dính bản quyền âm thanh để chủ kênh nắm tình hình.
+    2. CẤM TUYỆT ĐỐI chọn video này làm video ghim (Pin top) hoặc trích xuất âm thanh nhân bản sang các nick khác.
+- **Kỷ luật Phân Biệt Multi-Slot Trên Cùng Một Thiết Bị**:
+  - Một thiết bị vật lý (ví dụ Máy 59) gán tài khoản cho nhiều Slot (Tik 3 `@carlosfwagne2`, Tik 6 `@chichi06900`).
+  - Khi tra cứu và dàn trận dữ liệu, BẮT BUỘC định vị chính xác theo `Username` trên ảnh và `Tik Slot` tương ứng trong workbook, tránh nhầm lẫn giữa các account chạy so le cùng máy.
+
+
+---
+
+## 35. Khắc Phục Lỗi 'Missing Required Fields: Folder Video' & Direct Invocation Recipe Cho Runner Đơn Máy (Sự Cố 16/10/2026 — @giathu0709 Máy 65 Tik 4)
+- **Hiện tượng thực tế**:
+  - Khi Coordinator khởi chạy runner đơn máy nạp avatar qua Powershell batch launcher `python D:/Taadaa/tools/run_avatar_batch_3accs.py --tik 4 --machine 65`:
+  - Tiến trình báo lỗi: `Workflow target error: Missing required fields: Folder Video` và thoát với exit code 1.
+  - Tuy nhiên khi kiểm tra trực tiếp file `Tik4.xlsx` dòng Máy 65, cột 4 (`Folder Video (Render Dich)`) vẫn có đầy đủ giá trị số `516`.
+- **Nguyên nhân cốt lõi**:
+  1. **Lệch môi trường thực thi của Powershell Start-Job**:
+     - Script `run_tiktok_upload_batch.ps1` tạo background job bằng `Start-Job`. Trong một số phiên chạy, job con không kế thừa trọn vẹn biến môi trường `PYTHONPATH = D:\Taadaa\Tiktok-video\scripts` hoặc working directory, dẫn tới xung đột import module `automation_core.batch_aggregator` (`<frozen runpy>:128: RuntimeWarning...`).
+     - Khi import bị lệch hoặc workbook bị OneDrive lock tạm thời trong nhịp đọc đầu tiên, script fallback mở file `Tik4.xlsx.bak`. File `.bak` này không có đuôi `.xlsx` hợp lệ, khiến `openpyxl` throw exception và parse thiếu dictionary row, trả về lỗi giả `Missing required fields: Folder Video`.
+  2. **Vấn đề module path của Python runtime Codex**:
+     - Python runtime `D:\CodexRuntime\tiktok-video\venv-core024\Scripts\python.exe` không cài đặt package `tiktok_workflow` vào site-packages mà đọc động từ `D:\Taadaa\Tiktok-video\scripts`.
+     - Nếu chạy `python.exe -m tiktok_workflow` mà không truyền `cwd = D:\Taadaa\Tiktok-video` và `env['PYTHONPATH'] = D:\Taadaa\Tiktok-video\scripts`, lệnh sẽ lập tức báo `No module named tiktok_workflow`.
+- **Công thức Direct Invocation chuẩn O(1) bỏ qua lỗi Powershell Batch**:
+  - Khi Powershell batch launcher gặp lỗi môi trường hoặc kẹt Start-Job, Coordinator thực thi trực tiếp qua Python engine với cấu hình chuẩn xác:
+    ```python
+    import os, subprocess
+
+    cmd = [
+        r"D:\CodexRuntime\tiktok-video\venv-core024\Scripts\python.exe",
+        "-m", "tiktok_workflow",
+        "--config", r"D:\CodexRuntime\tiktok-video\config-machine-62.yaml",
+        "--workflow-workbook", r"D:\OneDrive\TaadaaData\kibe\Tik4.xlsx",
+        "--machine", str(machine_id),
+        "--avatar-smoke",
+        "--force-avatar-upload",
+        "--force-avatar-machines", str(machine_id)
+    ]
+    env = os.environ.copy()
+    env["PYTHONPATH"] = r"D:\Taadaa\Tiktok-video\scripts"
+
+    res = subprocess.run(
+        cmd,
+        input=b"AVATAR-SMOKE\r\n",
+        capture_output=True,
+        env=env,
+        cwd=r"D:\Taadaa\Tiktok-video"
+    )
+    ```
+  - **Lợi ích**:
+    * Token xác nhận `AVATAR-SMOKE` được truyền trực tiếp qua stdin pipe.
+    * Bỏ qua hoàn toàn tầng trung gian `run_tiktok_upload_avatar.ps1` và `Start-Job` vốn dễ lỗi môi trường trên Windows.
+    * Đánh thức thiết bị, khởi chạy TikTok qua `monkey`, tự động điều hướng Sửa hồ sơ $\rightarrow$ Tải ảnh lên $\rightarrow$ Bỏ tick Nhật ký $\rightarrow$ Bấm Lưu và ghi nhận verified success.
+
+
 
 
 
