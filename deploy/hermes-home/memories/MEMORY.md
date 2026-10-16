@@ -6,7 +6,7 @@ Hotmail: CẤM mail cá nhân; sinh @fviainboxes.com đọc OTP API. Write-Throu
 §
 Proxy: 1-1. Chuẩn hóa 3 món: End-to-End (crop 512x512 -> lock marker/Excel -> nạp app run_avatar_batch_3accs.py -> MEDIA:avatar-uploaded-confirmed.png); cấm dừng chờ giục; kẹt lock nuôi BẮT BUỘC đặt watcher/cron tự động re-attempt cấm nằm im; TT v47 monkey. Pin >=1000 view. Soi mắt trước gửi.
 §
-TVi adb 5038; watchdog 2p (focus 10ph).
+Farm: dispatch_worker O(1) (T1 Haiku single-line prompt, target+unrelated hash gate, exit 125 quota->T2 Agy fix; watchdog 2p).
 §
 GPM: stop API kèm _kill_gpm_chrome (pid cmdline); max 5 wkr; cron-auto-feed nạp pool chatgpt-web 15p/lần (Hotmail ưu tiên). Hotmail: check is_auth, @fviainboxes, ghi Excel (C5,4,3+G).
 §

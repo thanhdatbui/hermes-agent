@@ -145,12 +145,9 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
 ---
 
 ## Tests
-27/27 passing in `D:/Taadaa/tools/tests/test_claude_worker.py`:
-- Role configs, hard-cap clamping, tool restrictions
-- Quota gate (unreadable / stale / 85% / 90%)
-- Session limit detection (exact markers only)
-- Timeout retry, role-aware fallback routing
-- `build_prompt` and `get_claude_quota_status` unit tests
+43/43 passing across the worker dispatch subsystem:
+- `D:/Taadaa/tools/tests/test_claude_worker.py`: 32/32 tests (role configs, turns clamping, tool lockdown, quota gate, stale cache, session limits, single-line prompt sanitization, `--no-fallback`, `EXIT_QUOTA_BLOCKED = 125`).
+- `D:/Taadaa/tools/tests/test_dispatch_worker.py`: 11/11 tests (CRLF/whitespace normalization, failure hierarchy, snapshot & hash gate, target deletion rejection, unrelated files guard, anchored BLOCKED detection, PermissionError mapping, correlation ID consistency, Haiku/Agy fallback orchestration mocks).
 
 See `references/mechanical-gate-indentation-and-git-diff-trap-20261015.md` for Mechanical Gate indentation bug, regex boundary decay trap, and GIT_EXTERNAL_DIFF environment variable fix (15/10/2026).
 See `references/mechanical-gate-pitfalls-and-anti-paralysis-discipline-20261015.md` for Mechanical Gate indentation pitfalls, Strike-3 Reviewer Hand-off, and the Anti-Paralysis Protocol (15/10/2026).

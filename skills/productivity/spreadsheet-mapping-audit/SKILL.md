@@ -114,6 +114,10 @@ Khi chuẩn hóa số thứ tự video MP4 trong các folder `D:\TIKTOK-videonuo
 
 ## Common pitfalls
 
+- **Bẫy Nhầm Lẫn Cột 4 `Folder Video` vs Cột 5 `video gốc` (Tik1..Tik8.xlsx)**:
+  * Cột 4 là `Folder Video (Render Dich)`: Thư mục render đích nạp vào điện thoại theo công thức phần cứng `(Máy - 1) * 8 + Slot` (Kibe) hoặc `((Máy - 200) - 1) * 8 + Slot` (Admin). CẤM TUYỆT ĐỐI ghi đè ID nguồn cào vào cột này khi đổi nguồn video/avatar.
+  * Cột 5 là `Video Goc (Nguon Cao)`: Thư mục nguồn cào Douyin `(Slot - 1) * 80 + Máy` (Kibe) hoặc `(Slot - 1) * 80 + (Máy - 200)` (Admin). Khi swap folder hoặc đổi nguồn video, CHỈ ĐƯỢC PHÉP đổi Cột 5.
+  * Chi tiết công thức, bẫy tử huyệt và các script độc hại đã vô hiệu hóa: `references/folder-video-render-vs-source-invariant.md`.
 - **Off-Grid Folder Video Drift & Slot Collisions on Cluster Admin (Máy 201–280)**:
   * Công thức Folder Video chuẩn cho cụm Admin: $\text{Folder Base} = (STT - 201) \times 8 + 1 \dots (STT - 201) \times 8 + 8$ (dải 1..640).
   * Khi tool reg ghi nhận Folder vượt ra ngoài dải (ví dụ $\text{base} + 8 + \text{slot}$ do gán nhầm hoặc cộng dồn, M264 có base 505..512 nhưng gán 513, 514), công thức tính slot trong `sync-safe-workbook.py` (`(folder - 1) % 8`) sẽ quay vòng và va chạm với Slot 1 hoặc Slot 2 đã có sẵn nick.
@@ -251,3 +255,4 @@ For hashtag-by-source-folder niche, `video gốc` allocation rules, 8-row/machin
 For fingerprint ledger vs workbook video count drift audit, see `references/fingerprint-vs-workbook-video-count-audit-20260902.md`.
 For single-account hashtag drift between `Folder Video` and `video gốc` (e.g. pet videos with automotive hashtags), see `references/hashtag-drift-render-source-reconciliation.md`.
 For niche allocation anti-clustering permutations across 80 machines and two-sheet hashtag synchronization, see `references/niche-allocation-anti-clustering-and-hashtag-sync-20261013.md`.
+For the critical invariant between Folder Video (Render Dich) and Video Goc (Nguon Cao) and how to prevent taikhoan_run_safe corruption, see `references/folder-video-render-vs-source-invariant.md`.
