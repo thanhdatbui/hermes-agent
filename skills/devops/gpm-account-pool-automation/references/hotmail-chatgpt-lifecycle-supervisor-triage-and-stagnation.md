@@ -77,3 +77,58 @@ Với các nick đã có `chatgpt_password` hoặc `has_chatgpt: True` từ Exce
 ### Bước 4: Xử lý 65 nick BLOCKED
 - Nếu đã qua 48h: Kiểm tra log `hotmail_login_cooldown_unblock` trong telemetry xem cron tự nhả chưa.
 - Nếu cần can thiệp trước 48h: Chỉ reset `status: "PENDING"` cho các nick có mật khẩu hợp lệ trong Excel và proxy còn sống.
+
+---
+
+## 3. Cron Nạp Pool ChatGPT Web (`cron_auto_feed_chatgpt_pool.py`) & Dọn Dẹp Zombie
+
+### Cạm bẫy tên tiến trình Chrome trên Windows (`chrome.exe` vs `gpm_browser`)
+- **Lỗi:** Dùng `if 'gpm_browser' in (p.info.get('name') or '').lower()` để tìm và kill tiến trình GPM Chrome.
+- **Thực tế:** Trên Windows, tên tiến trình luôn là `chrome.exe` (chỉ có đường dẫn binary nằm trong thư mục `gpm_browser_chromium_core_...`). Kiểm tra theo tên `gpm_browser` luôn trả về False, khiến sau mỗi lượt chạy bị rò rỉ hàng chục zombie Chrome processes làm nghẽn CPU/RAM.
+- **Khắc phục chuẩn:**
+```python
+for p in psutil.process_iter(['name', 'cmdline']):
+    try:
+        if 'chrome' in (p.info.get('name') or '').lower():
+            cmd = ' '.join(p.info.get('cmdline') or []).lower()
+            if pid.lower() in cmd and 'google/chrome/user data' not in cmd.replace('\\', '/'):
+                p.kill()
+    except Exception:
+        pass
+```
+
+### Phân vùng ưu tiên ứng viên (Candidate Partitioning)
+- Tránh tình trạng các profile Gmail cũ bị hết hạn session (kẹt ở màn hình Google OAuth `accounts.google.com/v3/signin/...`) chiếm trọn slot nạp pool, khiến nạp 0/10 liên tục.
+- BẮT BUỘC tách danh sách ứng viên và ưu tiên Hotmail trước:
+```python
+cand_h = []
+cand_g = []
+for pid, name in rows:
+    # ... lọc email và port ...
+    if email not in active_emails:
+        item = {"pid": pid, "email": email, "port": port}
+        if "hotmail" in email:
+            cand_h.append(item)
+        else:
+            cand_g.append(item)
+return (cand_h + cand_g)[:limit]
+```
+
+### Dọn dẹp profile GPM bị treo qua Watchdog
+- Khi phát hiện rò rỉ Chrome, chạy ngay công cụ dọn dẹp chuyên dụng:
+```bash
+python "D:/OneDrive/Taadaa_Sync_Shared/hermes-cron/scripts/gpm_stale_profile_watchdog.py" --threshold 900
+```
+
+---
+
+## 4. Kỷ Luật Phản Hồi Báo Cáo Cron ("Kiểm Tra Lỗi")
+
+### Chống báo cáo đối phó / "bình thường hóa" số liệu lỗi
+- Khi người dùng gửi lệnh "Kiểm tra lỗi cho t" và nhận báo cáo định kỳ (như báo cáo 6H), **CẤM TUYỆT ĐỐI** đọc lướt rồi trả lời xã giao "hệ thống đang ổn định" hay "tiếp tục theo dõi".
+- BẮT BUỘC soi ngay vào các chỉ số bất thường:
+  1. **Tỷ lệ bất thường giữa các farm:** Tại sao Kibe chỉ 4/409 (0.9%) mà Admin là 442/626? ➔ Kiểm tra trường đếm trong script report có khớp với Excel/state không.
+  2. **Tiến độ cuối phễu = 0:** Tại sao Admin đã reg 442 ChatGPT nhưng Đổi pass (`DONE`) lại bằng 0/626? ➔ Kiểm tra state machine có bị nghẽn ở stage trung gian không (ví dụ kẹt ở `HOTMAIL_LOGIN` chưa chuyển sang `WAIT_7D`).
+  3. **Tài khoản BLOCKED / Cooldown:** Có bao nhiêu tài khoản đang bị khóa? Nguyên nhân lỗi là gì? Cần gỡ thủ công hay chờ cooldown?
+  4. **ChatGPT Web Pool:** Có bao nhiêu acc active? Cron nạp pool 15p có sinh lỗi 0/10 không?
+- Phản hồi người dùng phải đi thẳng vào **Root Cause** và đề xuất hành động cụ thể (Fix ngay / Chờ cooldown / Đồng bộ mã nguồn).

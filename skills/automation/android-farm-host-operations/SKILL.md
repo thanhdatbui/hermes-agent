@@ -552,6 +552,18 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
   * **Lý do kỹ thuật:** Rút timeout S7 xuống 5 phút sẽ khiến màn hình bị tắt phụt giữa chừng khi app TikTok lag, mạng xoay vòng, hoặc khi ADB shell bị trễ focus, làm vỡ luồng automation và bấm trượt UI.
   * Khi dispatch Worker sửa code via `delegate_task`: Format `FOCUSED_TEST` bắt buộc phải là `python -m pytest <file.py>::<test_node> -q` hoặc `python -m py_compile <file.py>`, cấm truyền toàn bộ file pytest không có test node.
 
+## 26. Kỷ Luật Cứu Hộ Tự Động 2 Tầng (In-Flight & Pre-Session vs Bẫy Cứu Hộ Vuốt Đuôi)
+- **Bẫy "Cứu hộ vuốt đuôi" sau ca chạy (User Critique 16/10/2026: "Tại sao k tự động cứu hộ lúc cron chạy. H chạy xong r cứu hộ làm gì"):**
+  * Cứu hộ thiết bị sau khi phiên nuôi acc đã đóng log/báo cáo là hành vi thụ động, vô nghĩa đối với sản lượng của ca hiện tại.
+  * Toàn bộ 15–20 máy rớt ADB/USB lúc mở runner đã bị bỏ qua hoàn toàn lượt tương tác/nuôi acc trong ca đó.
+- **Quy tắc Kiến Trúc Cứu Hộ Tự Động 2 Tầng Bắt Buộc:**
+  1. *Tầng 1 (In-Flight Self-Healing tại `vpn_preflight.py`):*
+     * Tại bước kiểm tra `settings get global http_proxy`, nếu lần thử đầu gặp timeout (>15s) hoặc connection lost: CẤM chỉ `time.sleep(1.0)` rồi gọi lại lệnh cũ.
+     * BẮT BUỘC gọi ngay Level 3 Reconnect (`adb reconnect` hoặc `adb -s <serial> reconnect`), ngủ 2.0s để daemon ADB bắt tay lại gói `A_SYNC`, rồi mới thực hiện lần thử thứ hai.
+     * Chỉ được phép raise `ConsumerPreflightError` (chuyển `blocked-proxy-vpn`) khi và chỉ khi đã thực hiện reconnect mà thiết bị vẫn không phản hồi.
+  2. *Tầng 2 (Pre-Session Readiness Gate tại `tiktok_runner.py`):*
+     * Trước khi phát lệnh spawn `run-feed-session.ps1` (hoặc trước mỗi batch máy), launcher bắt buộc chạy quét nhanh `batch_recover_s7.py` (Level 1 soft recovery) trong 10–15s để giải phóng socket và đưa các máy bị kẹt shell/treo focus về trạng thái sẵn sàng trước khi đổ tải đồng loạt.
+
 
 
 
