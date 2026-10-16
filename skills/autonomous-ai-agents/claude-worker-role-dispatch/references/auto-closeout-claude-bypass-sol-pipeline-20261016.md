@@ -9,6 +9,7 @@ Trong phiên đêm 15-16/10/2026, Coordinator bị kẹt trong vòng lặp thẩ
   > *"Có nên tiếp tục giữ sol làm reviewer k thế? Bữa h xài bth tự nhiên hqua tới h mỗi lần bảo chốt phiền mày toàn chạy mấy chục vòng tốn 4-5h của tao có bị over engineer quá không"*
   > *"Vấn đề t cần là tự động hoá chứ k phải fail r báo blocked khóc lóc"*
   > *"K. Đkm quarantine xong cách ly khác lồn gì khóc lóc. H tao muốn khi claude cli vào sửa xong claude cli duyệt r thì push luôn đéo cần qua sol nữa đkm"*
+  > *"Nếu claude cli hết quota thì sao? Vẫn failbakc qua agy cli xử lý đến khi sol duyệt à. Với t ép worker phải là haiku và agy cli failback cho haiku. Sao vẫn cứ cố spawn sub agent chạy qua omni route v"*
 
 ---
 
@@ -17,8 +18,12 @@ Trong phiên đêm 15-16/10/2026, Coordinator bị kẹt trong vòng lặp thẩ
    Ngưỡng 85 đặt ngay giữa vùng nhiễu 82-85 điểm của GPT-4o Sol High. Điểm số này biến đổi theo câu chữ prompt và digest truncation, không phản ánh rủi ro kỹ thuật thực tế.
 2. **CẤM Quarantine / CẤM Báo BLOCKED Khóc Lóc:**
    Mọi cơ chế "cách ly code rồi để đó" hoặc "báo BLOCKED chờ người xử lý" đều bị coi là trốn tránh trách nhiệm. Operator cần **TỰ ĐỘNG HÓA HOÀN TOÀN ĐẾN KHI PUSH XONG**.
-3. **Mệnh lệnh Push trực tiếp sau khi Claude duyệt:**
-   Một khi Sol trượt 2 lần (hoặc dùng cờ `--skip-sol`), Claude CLI được điều động vào sửa. Sau khi Claude Reviewer duyệt -> **KÍCH HOẠT CỔNG KIỂM CHỨNG CƠ HỌC -> PUSH LUÔN, BỎ QUA SOL HOÀN TOÀN**. Sol không còn quyền đứng chặn ở đường push.
+3. **Mệnh lệnh Push trực tiếp sau khi Claude / Agy duyệt (Bypass Sol Vĩnh viễn):**
+   Một khi Sol trượt ở First-Pass Check (hoặc dùng cờ `--skip-sol`), Claude CLI được điều động vào sửa. Sau khi Claude Reviewer (hoặc Agy CLI Reviewer) duyệt -> **KÍCH HOẠT CỔNG KIỂM CHỨNG CƠ HỌC -> PUSH LUÔN, BỎ QUA SOL HOÀN TOÀN**. Sol tuyệt đối không còn quyền đứng chặn ở đường push hay đòi hỏi thêm vòng nào nữa.
+4. **Kỷ luật Worker & Fallback khi cạn Quota:**
+   - Worker bắt buộc: Tier 1 là **Haiku 5.5 CLI** (`claude_worker.py --role worker`), Fallback Tier 2 là **Agy CLI fix** (`ag_cli.py fix`).
+   - Reviewer bắt buộc: Tier 1 là **Sonnet 5.5 CLI** (`claude_worker.py --role reviewer`), Fallback Tier 2 là **Agy CLI ask** (`ag_cli.py ask`).
+   - **CẤM TUYỆT ĐỐI spawn subagent qua OmniRoute (`delegate_task` / `ag-gemini-pool-3`)** cho việc sửa code hay test. Khi Claude hết quota, Agy CLI gánh toàn bộ (từ fix đến review) và push thẳng sau khi test xanh, KHÔNG BAO GIỜ quay lại Sol.
 
 ---
 
@@ -37,10 +42,9 @@ Pipeline tự động hoá khép kín 6 bước:
 [BƯỚC 3: Snapshot Patch Bảo vệ Code (pre_fix)]
                    │ (Lưu patch nhị phân, tuyệt đối cấm git checkout HEAD xóa code)
                    ▼
-[BƯỚC 4: Claude CLI Autonomous Remediation]
-     ├── Dispatch: claude_worker.py --role worker --workdir <repo> "<Prompt In-Place + Sol Findings>"
-     ├── Fallback khi hết quota: ag_cli.py fix (Cụm 7 tài khoản Google Pro)
-     └── Claude Review Pass: claude_worker.py --role reviewer --workdir <repo> (VERDICT: APPROVED)
+[BƯỚC 4: Autonomous Remediation & Review (Haiku -> Agy CLI Fallback)]
+     ├── Fixer: claude_worker.py --role worker -> fallback ag_cli.py fix
+     └── Reviewer: claude_worker.py --role reviewer -> fallback ag_cli.py ask (VERDICT: APPROVED)
                    │
                    ▼
 [BƯỚC 5: Mechanical Verification Gate (AI Push Gate - 4 Nấc Cơ Học Không Thể Gian Lận)]

@@ -14,4 +14,4 @@ GPM: Kibe chạy, stop API kèm _kill_gpm_chrome; max 5 wkr; cron-auto-feed nạ
 §
 Stale Upload: draft trap, xóa sạch (_delete_all_profile_drafts). Revert flop: quét ledger lấy video gốc; TikWM tải CDN; xóa render trước làm mới. Cào video: max 60 clip/channel, cấm cào full.
 §
-Cô lập Kibe vs Admin: Kibe(1-80) & Admin(201-280) cào riêng. CẤM sync chéo Niche/Hashtag. Dọn đĩa Admin 1TB: cấm map ngang D:\video goc may 2\<N> với render\<N>; f_src=(slot-1)*80+m_idx phải tính ra f_vid=(m_idx-1)*8+slot; chỉ xóa raw khi f_vid >=30 clip. Shell remote cấm để \" cuối lệnh.
+Kibe(1-80) & Admin(201-280) cào riêng. CẤM sync chéo Niche/Hashtag. Dọn đĩa Admin 1TB: cấm map ngang D:\video goc may 2\<N> với render\<N>; f_src=(slot-1)*80+m_idx phải tính ra f_vid=(m_idx-1)*8+slot; chỉ xóa raw khi f_vid >=30 clip. Shell remote cấm để \" cuối lệnh. Closeout: auto_closeout.py; Sol fail -> Haiku (fallback Agy fix) -> Claude reviewer (fallback Agy ask) -> 4 nấc cơ học -> PUSH THẲNG bypass Sol, cấm loop lại Sol cày điểm, cấm spawn delegate_task qua OmniRoute.
