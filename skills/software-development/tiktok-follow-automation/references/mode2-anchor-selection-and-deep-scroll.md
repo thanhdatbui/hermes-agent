@@ -22,10 +22,16 @@
      * Log: `status: OK, followed: [], skipped: []`, thời gian chạy 0s (thoát ngay sau feed swipe).
      * Nguyên nhân: Nick chưa đủ điều kiện Dual Gate (`account_age_days < 30` HOẶC `video_count < 10`). Hệ thống tự động cấp `budget = 0` để bảo vệ nick non khỏi bị TikTok silent-drop / nhả follow.
      * Khi điều tra máy báo 0 lượt, BẮT BUỘC kiểm tra `video_count` và `account_age_days` trong safe workbook trước tiên.
-   - **TRƯỜNG HỢP 2: Đã vào list Following nhưng không có nick farm chưa follow (`idle_scrolls >= 25`):**
-     * Log: `status: OK, followed: [], skipped: []` (hoặc `skipped` có vài nick nếu có row internal xen kẽ), thời gian chạy ~70-95s (tương ứng 25 lần cuộn x ~3.8s/cuộn).
-     * Nguyên nhân: Anchor có nhiều following nhưng phần lớn là nick tự nhiên ngoài farm, hoặc các nick farm trong list đó nick này đã follow hết từ trước.
-     * **Cạm bẫy telemetry `skipped: []`:** Trong `mode2_follow_followers.py`, khi màn hình không có nick farm nào (`not internal_pending`), code lập tức cuộn tiếp (`_scroll_follower_list`) mà KHÔNG duyệt vòng lặp `for row in pending`. Do đó `res.skipped` VẪN LÀ `[]` dù bot đã mở list và cuộn 25 lần qua hàng chục nick ngoài farm. CẤM TUYỆT ĐỐI kết luận "skipped: [] là do không tìm thấy anchor".
+   - **TRƯỜNG HỢP 2: Cuộn rỗng danh sách (`idle_scrolls >= 25`):**
+     * Log: `status: OK, followed: [], skipped: []`, thời gian chạy ~70-95s (tương ứng 25 lần cuộn x ~3.8s/cuộn).
+     * **SỰ THẬT VỀ LIST ANCHOR (CHỐNG SUY DIỄN MÒ):**
+       + Danh sách Following của Anchor Tik1/Tik2 có **99.5% là nick nội bộ farm** (thực tế đối soát database: anchor follow 180-250 người thì 180+ nick là trong farm; nick anchor follow tự nhiên bên ngoài cực kỳ ít).
+       + Nick ca tối (Row 4, Row 5...) là nick non mới nuôi, chỉ mới follow 0-5 người trong toàn bộ vòng đời (còn hơn 170+ nick farm trong list anchor chưa hề follow).
+       + **CẤM TUYỆT ĐỐI suy diễn và giải thích nhảm nhí rằng: "Anchor follow người ngoài nhiều" hoặc "Nick non đã follow hết danh sách của anchor"**. Đây là ngụy biện vô căn cứ khiến User phản ứng gay gắt.
+     * **NGUYÊN NHÂN GỐC RỄ THỰC TẾ KHI GẶP `idle_scrolls >= 25` TRÊN NICK NON:**
+       + **Lỗi Mù Giao Diện / Trượt Selector:** Bot mở được list nhưng không nhận diện được nick hay nút bấm do TikTok đổi selector (`id/u68`, `id/u2f`, `id/u9f`...), hoặc `_extract_row_handle` trượt không lấy được handle -> `internal_pending = []` -> bot tưởng rỗng nên vuốt cuộn 25 lần rồi thoát an toàn.
+       + **Bẫy telemetry `skipped: []`:** Khi không nhận diện được nick nội bộ (`not internal_pending`), code cuộn tiếp mà không vào vòng `for row in pending`, nên `res.skipped` vẫn là `[]`.
+       + **Kẹt trước khi vào list:** Bot chạy ~70-90s có thể do kẹt ở khâu tìm kiếm 2-3 anchor (`_nav_search` timeout 35s/anchor) rồi thoát ra mà chưa từng vào được list Following.
    - **TRƯỜNG HỢP 3: Chưa mở được Anchor hoặc Search không ra (`not_found`):**
      * Log: `status: OK, followed: [], skipped: []`, bot thử lần lượt qua 3-5 anchor và back về feed.
      * Nguyên nhân: Search anchor bị lag timeout hoặc màn hình tìm kiếm trả về không khớp thẻ card.
@@ -43,5 +49,5 @@
   * BƯỚC 1: Kiểm tra Dual Gate: `video_count >= 10` và `age >= 30` không? Nếu không -> `budget = 0` là hành vi đúng.
   * BƯỚC 2: Kiểm tra thời lượng chạy follow hook trong `log.jsonl`:
     - Dưới 10s: Thoát do budget = 0 hoặc cooldown.
-    - ~70-100s: Đã vào Mode 2 cuộn 25 lần chạm trần `idle_scrolls >= 25`.
+    - ~70-100s: Chạm trần `idle_scrolls >= 25` (do trượt selector / mù UI) hoặc kẹt 2-3 anchor search timeout (~35s x 2). BẮT BUỘC kiểm tra selector nút follow / handle text / XML dump hiện trường, TUYỆT ĐỐI KHÔNG đổ lỗi "nick non đã follow hết list của anchor" hay "anchor toàn người ngoài".
     - ~3-5 phút: Bấm follow thật và bị nhả (`FOLLOW_FAILED`) sau quy trình xem video + reload.

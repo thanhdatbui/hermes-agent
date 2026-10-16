@@ -324,6 +324,56 @@ Trước khi soạn bất kỳ tin nhắn nào cho User:
   3. **Cấm bịa đặt quan hệ "Kênh Nguồn vs Kênh Clone"**: Khi User dùng từ số ít ("kênh này") và gửi nhiều ảnh, mặc định là các đoạn cuộn khác nhau của cùng 1 kênh.
   4. **Gộp toàn bộ video để xếp hạng Pin Video**: Gom toàn bộ video trên tất cả các ảnh được gửi vào một danh sách, sắp xếp view giảm dần để chọn đúng top video (không được bỏ sót clip viral ở ảnh cuộn sâu).
 
+---
+
+## 16. Cạm Bẫy Avatar Nhiễm Màn Hình Cài Đặt (Settings Artifact) & Bẫy Cột Avatar "OK" Ảo (Sự Cố 16/10/2026 — @lenhi09116 Máy 16 Tik 3)
+- **Hiện tượng thực tế**:
+  - Khi User yêu cầu "Chuẩn hoá kênh này" kèm ảnh profile `@lenhi09116` (Máy 16 Tik 3).
+  - Tra cứu Excel `Tik3.xlsx`: Cột `Avatar` ghi `OK`, SQLite `avatar_replace_queue` từng đánh dấu `DONE`.
+  - Tuy nhiên, avatar thực tế hiển thị trên kênh và file lưu trên đĩa (`D:/TIKTOK-videonuoinick/123/avatar.jpg`, `D:/video goc/123/avatar.jpg`) lại là ảnh chụp màn hình danh mục **Cài đặt (Settings)** Samsung One UI (chứa chữ *Màn hình*, *Hình nền và phong cách*, *Theme*, *Màn hình chờ*, *Màn hình khóa*...).
+- **Nguyên nhân gốc rễ**:
+  1. Trong một lần chạy runner tự động trước đó, thiết bị bị văng hoặc bấm nhầm vào ứng dụng Cài đặt của điện thoại khi chụp màn hình/crop, dẫn tới lưu nhầm giao diện Settings thành `avatar.jpg`.
+  2. Runner exit 0 và đánh dấu `OK` / `DONE` vào database/Excel mà không qua bước giám định thị giác ngữ nghĩa (`ag_cli.py ask`).
+  3. Cột `Avatar = OK` trong Excel trở thành "OK ảo", che giấu avatar rác suốt nhiều phiên.
+- **Quy trình chuẩn hóa 3 món (Ava - Hashtag - Pin) chuẩn xác**:
+  1. **Ghim video (Pin Rule $\ge 1.000$ view)**:
+     - Quét toàn bộ lượt xem hiển thị trên lưới video của profile từ ảnh gửi hoặc ADB UI dump.
+     - **Chỉ ghim video có lượt xem $\ge 1.000$ view** (ví dụ 1.200, 3.800, 15.000 view).
+     - Nếu toàn bộ video trên lưới đều $< 1.000$ view (ví dụ cao nhất chỉ 358 view): **TUYỆT ĐỐI KHÔNG GHIM**, giữ nguyên thứ tự video tự nhiên.
+  2. **Giám định thị giác file avatar hiện tại**:
+     - BẮT BUỘC gọi `ag_cli.py ask --file "<path_avatar>" "Mô tả ngắn gọn nội dung: có người hay không, chi tiết là gì?"`.
+     - Nếu phát hiện avatar là giao diện cài đặt (Settings), màn hình Home Launcher, texture hoặc không có người $\rightarrow$ Coi như avatar bị hỏng hoàn toàn dù Excel ghi `OK`.
+  3. **Trích xuất nhân vật từ video thực tế của kênh**:
+     - Đọc video từ kho render `D:/TIKTOK-videonuoinick/<F_out>/` hoặc `.avatar_work/representative_frames/`.
+     - Trích xuất frame góc mặt rõ nét, áp dụng Center-based Crop ngũ quan chuẩn (Section 13) với Headroom & Chin clearance $\ge 20$px.
+     - Cung cấp 2 phương án preview viền tròn xanh đã qua kiểm chứng `ag_cli.py ask` cho User lựa chọn trước khi nạp lên máy.
+  4. **Xử lý thiết bị S7 bị treo ADB Shell trong quá trình chuẩn hóa**:
+     - Nếu lệnh adb shell/dumpsys bị timeout do thiết bị S7 bị đơ: Chạy `recover_stuck_s7.py --machine <N>` qua `with_device_lock.py` ở chế độ background để khôi phục phân tầng (Soft recovery $\rightarrow$ Reboot có cooldown 300s $\rightarrow$ Reconnect).
+
+---
+
+## 17. Cạm Bẫy Avatar Dính Chữ Overlay/Emoji & Lệch Niche Lưới Video Khi Chuẩn Hoá Kênh (Sự Cố 16/10/2026 — @dinhgia0906 Máy 70 & @minhan2473 Máy 8)
+- **Hiện tượng**:
+  - Khi User yêu cầu *"Chuẩn hoá 2 kênh này"* kèm 2 ảnh chụp TikTok profile:
+    1. Kênh `@dinhgia0906` (Máy 70 Tik 2, F_src 150, F_out 554): Avatar hiện tại trên TikTok profile bị dính chữ cắt dở và emoji cười ra nước mắt: `"tổng cộng km 😂"` đè ngang mặt (do cắt nhầm frame từ video đi bộ *"hôm nay đi bộ tổng cộng 20km 😂"*).
+    2. Kênh `Vy Miu` (`@minhan2473`) (Máy 8 Tik 2, F_src 88, F_out 58): Video thực tế trên lưới là cơ sở chăm sóc mắt/spa y tế *Tâm An Đường*, nhưng workbook `Tik2.xlsx` lại gán Niche `Thời trang` và pool hashtag `#thoitrang...`; avatar trong kho lại là ảnh nam thanh niên selfie phòng gym đeo tai nghe đen.
+- **Nguyên nhân gốc rễ**:
+  1. Khi trích xuất avatar tự động từ video clip TikTok dọc ($1080 \times 1920$), frame nhận diện khuôn mặt thường rơi trúng các giây có chèn chữ caption overlay hoặc sticker/emoji hoạt hình. Nếu không soi kỹ sẽ crop dính chữ/emoji lên mặt avatar.
+  2. Lệch Niche (Niche Drift) giữa thực tế bài đăng trên kênh và dữ liệu Excel: Kênh đã chuyển hướng đăng nội dung spa/chăm sóc mắt nhưng Excel chưa cập nhật, dẫn tới gán nhầm hashtag và nuôi lệch tệp.
+- **Quy tắc chuẩn hóa 3 món chuẩn mực**:
+  1. **Kiểm tra Text/Emoji trên Avatar**:
+     - Phải kiểm tra và loại bỏ các frame có chữ caption/overlay hoặc emoji đè lên mặt.
+     - Trích xuất frame từ video gốc ở những giây không có text (hoặc video không chèn chữ to lên nhân vật).
+  2. **Đối soát Niche Lưới Video trước khi khóa Hashtag**:
+     - CẤM khóa mù quáng hashtag từ Excel khi chưa đối soát với video trên profile.
+     - Nếu phát hiện kênh đăng video y tế/spa mắt Tâm An Đường mà Excel ghi Thời trang $\rightarrow$ Báo cáo lệch niche, sửa lại Niche/Hashtag trong Excel cho đúng thực tế trước khi ghi nhận `.manual_hashtag_locked`.
+  3. **Ngưỡng Ghim Video (Pin Gate $\ge 1.000$ view)**:
+     - Kênh `@dinhgia0906` (max 790 view) và `@minhan2473` (max 230 view) đều chưa đạt ngưỡng $\ge 1.000$ view $\rightarrow$ Giữ nguyên thứ tự tự nhiên, KHÔNG ghim.
+  4. **Kỷ luật Device Lock khi thao tác ADB Farm**:
+     - Mọi lệnh ADB kiểm tra hoặc thao tác trên máy thật bắt buộc chạy qua `python D:/Taadaa/tools/with_device_lock.py --machine <N> -- <cmd>` để tránh xung đột với tiến trình nuôi ngầm (`HARD GATE #5 - DEVICE LOCK REQUIRED`). Tuyệt đối không can thiệp trần vào thiết bị.
+
+
+
 
 
 
