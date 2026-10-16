@@ -1,6 +1,6 @@
 Chu kỳ 4d: Parity 96h (N1 lẻ, N2 chẵn), N3(R7,8), N4(dưỡng 0fl+up). Starve 108h. CẤM xóa cooldown. Dưỡng: healing_selector; S2 bám S1. 3 ca (6,12,18h). Đêm 21h30-5h15 né cache 4h cho 2FA/Ava; báo 6h cấm báo ảo.
 §
-Follow: P1/P2 khóa trần ca (hết quota P2 skip). Dò trần +2/ca (max 30); dính nhả vào tù, ra tù qua Hồi phục 1,2 khôi phục proven_safe_ceiling (lùi 4, sàn 15). 3 cohort (Rookie/Mid/Veteran, P20). Nhả follow là account-level action block: chưa đủ khỏe cấm follow mọi hình thức (kể cả tự nhiên trên feed), chỉ chạy pure feed; cấm chế luật né anchor. :1905.
+Follow: P1/P2 khóa trần ca (hết quota P2 skip). Dò trần +2/ca (max 30); dính nhả vào tù, ra tù lùi 4 sàn 15. 3 cohort; non <10fl chỉ dưỡng feed 0fl; nhả follow là action block. Canary bắt buộc 3-4 máy đa dạng 4 màn (Feed, DM, Profile, Sửa hồ sơ). OCR action band bắt buộc y_min=200 né tab Bạn bè top bar Feed. :1905.
 §
 Hotmail: CẤM mail cá nhân; sinh @fviainboxes.com đọc OTP API. Write-Through: ghi ngay Excel Cột 3,4,5 & G farm. Dual-farm ~1280 acc.
 §

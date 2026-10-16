@@ -103,3 +103,13 @@ Tuyệt đối không thay thế toàn bộ XML bằng OCR một cách mù quán
    - *Giao diện:* Danh sách follower cuộn dọc gồm nhiều hàng xen kẽ (Nút `Follow`, `Follow lại`, `Bạn bè`).
    - *Kỳ vọng:* Nhận diện đúng từng row nội bộ, skip các row đã follow, tap chuẩn xác không lệch tọa độ khi cuộn.
 - **Tiêu chuẩn chọn máy Canary:** Chọn tối thiểu 2-3 máy đại diện các thế hệ ID/layout khác nhau trên farm (ví dụ Máy 1 layout `id/fds`, Máy 2 layout `id/ff8`, Máy 6 layout `id/fij`), kiểm tra trực tiếp qua `with_device_lock.py` và đính kèm ảnh `MEDIA:` soi mắt trước khi báo cáo.
+
+## 9. Cạm Bẫy Feed Top-Nav Tabs trong Phân Loại OCR (Feed Screen False-Positive)
+- **Hiện tượng:** Trên màn hình Video Feed (dành cho bạn / lướt video bình thường), thanh điều hướng trên cùng (Top Navigation Bar) chứa các tab: `LIVE`, `Bạn bè`, `Đang follow`, `Dành cho bạn`.
+  - Chữ `Bạn bè` xuất hiện ở tọa độ $y \approx 140 - 180$.
+- **Hậu quả nếu dùng $y_{min} = 0$:** OCR phát hiện từ khóa `"Bạn bè"` (`friends` / `ban be`) ở dải trên cùng màn hình và kết luận sai lầm rằng màn hình hiện tại là **`followed`**!
+- **Kỷ luật khắc phục:**
+  - Vùng chứa các nút hành động trên Profile chuẩn luôn nằm ở khoảng $y \ge 400 - 800$.
+  - Bắt buộc đặt ngưỡng giới hạn dưới **$y_{min} = 200$** trong `classify_button_from_ocr` và `find_follow_button_center_ocr` (tức là chỉ quét trong dải $200 \le y \le 1200$).
+  - Mọi chữ `Bạn bè`, `Đang follow` nằm ở dải $y < 200$ đều thuộc thanh điều hướng chung của app, bắt buộc bỏ qua để trả về `unknown` trên màn hình Feed.
+
