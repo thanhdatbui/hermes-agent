@@ -16,11 +16,14 @@ Khi Coordinator điều phối sửa đổi các file đăng ký bảo vệ avat
      * CẤM gộp tất cả 4-5 files vào 1 task `delegate_task`.
      * Bắt buộc phân rã theo ngữ nghĩa: 1 task chuyên cho registry SSOT, 1 task cho Excel/DB, hoặc sử dụng runner script chuẩn có sẵn trên farm.
 
-3. **Lỗi `PATH_NOT_ABSOLUTE` do dấu gạch chéo ngược Windows (`\`)**:
-   - Khi bọc path trong `FILE: <<< ... >>>`, nếu dùng `\` (ví dụ `D:\Taadaa\data\...`), parser guard có thể diễn giải sai hoặc báo `PATH_NOT_ABSOLUTE`.
-   - **Quy tắc**: Luôn chuẩn hóa đường dẫn tuyệt đối với dấu gạch chéo xuôi (`/`), ví dụ: `FILE: <<< D:/Taadaa/data/manual_avatar_protected_folders.json >>>`.
+3. **Lỗi `PATH_NOT_ABSOLUTE` do bọc dấu `<<< >>>` hoặc dùng dấu `\`**:
+   - Parser guard của `guard_dispatch_contract.py` đọc trực tiếp đường dẫn sau `FILE:`. Nếu bọc đường dẫn trong `<<< ... >>>` (ví dụ `FILE: <<< D:/... >>>`), guard sẽ coi toàn bộ cụm `<<< ... >>>` là tên đường dẫn và báo lỗi `PATH_NOT_ABSOLUTE`.
+   - **Quy tắc chuẩn**: Viết trực tiếp đường dẫn tuyệt đối dạng POSIX forward-slash, KHÔNG dùng dấu bọc `<<< >>>`:
+     `FILE: D:/Taadaa/reports/<script>.py`
+     (Chỉ có `OLD_STRING` và `NEW_STRING` mới dùng `<<< ... >>>`).
 
-4. **Kỷ Luật Ngân Sách Diff (`DIFF_BUDGET_EXCEEDED`) & Định Dạng Focused Test**:
+4. **Kỷ Luật Ngân Sách Diff (`DIFF_BUDGET_EXCEEDED`), Mechanical Gate & Focused Test**:
+   - **Vượt rào Mechanical Gate #3**: Đối với task `EDIT` hoặc `CREATE`, bắt buộc khai báo `WORKER_CLI_EXHAUSTED: true` trong context để vượt qua chốt chặn cơ học chống dispatch bừa bãi.
    - **Ngân sách O(1) cứng**: `NEW_STRING` trong task `EDIT` bắt buộc $\le 30$ dòng code thay đổi. Nếu vượt quá, guard sẽ từ chối ngay lập tức (`DIFF_BUDGET_EXCEEDED`). Phải viết code súc tích, cô đọng các bước import và logic thực thi.
    - **Chuẩn hóa `FOCUSED_TEST`**: Guard chỉ chấp nhận 2 định dạng:
      * `python -m py_compile <file_path>` (cho syntax/integrity checks).
