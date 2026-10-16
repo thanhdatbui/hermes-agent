@@ -738,6 +738,7 @@ Full loop details: `references/two-agent-review-loop.md` (merged from the former
 ## References
 
 - `references/kibe-master-admin-remote-adb-architecture.md` — Kiến trúc Master-ThinWorker (Kibe Master điều khiển 160 máy qua Remote ADB LAN 192.168.110.119:5037, Admin làm Standby Node, cách ly Excel cụm cluster, và SSH quản trị).
+- `references/secondary-node-cron-decommission-recipe.md` — Quy trình phân loại, pause cron reporting & runner xung đột, và chuyển giao điều phối tập trung về Kibe Master (Zero-Spam & Zero-Conflict).
 - `references/kibe-master-remote-adb-architecture.md` — Kiến trúc Master-ThinWorker (Kibe Master điều khiển 160 máy qua Remote ADB LAN, Admin làm Standby Node, cách ly Excel cụm cluster).
 - `references/multi-host-session-close-scorecard-parity.md` — Chuẩn hóa quy trình chốt phiên & chấm điểm Scorecard đa máy (Kibe ↔ Admin): phân tích bản chất shell hook vs session close prompt và cấu hình OMNI_ROUTE_URL LAN.
 - `references/admin-bot-model-sync-prompt.md` — Self-contained prompt recipe and 1-click script for continuous multi-host config, skills & gateway sync (Admin PC <-> Kibe PC)
