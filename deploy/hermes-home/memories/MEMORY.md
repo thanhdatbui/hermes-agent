@@ -10,7 +10,7 @@ Proxy: 1-1 PROXYgandienthoai.xlsx. Chuẩn hóa 3 món (Ava-Hashtag-Pin): Ava tr
 §
 Farm: haiku_worker O(1) 6-15s (dispatch_worker.py: Haiku->Agy CLI; CẤM delegate_task sửa code; cấm Gemini fake Reviewer). Tiểu Vi: adb 5038; watchdog 2p. S7: recover_stuck_s7. Rename: Kibe+Admin 25wkr song song; cấm tap (75,150); Switcher méo dấu; Name OCR len/30; State-Machine; cron print bắt buộc MEDIA:<posix_path> gạch xuôi /.
 §
-GPM: Kibe chạy, stop API kèm _kill_gpm_chrome; max 5 wkr; cron-auto-feed nạp cuốn chiếu pool chatgpt-web 15p/lần (Hotmail ưu tiên trước). Hotmail: qua HOTMAIL_LOGIN giữ cookie; MS landing check is_auth; ép mail @fviainboxes; ghi Excel (C5,4,3+G).
+GPM: Kibe chạy, stop API kèm _kill_gpm_chrome theo pid (cmdline); max 5 wkr; cron-auto-feed nạp cuốn chiếu pool chatgpt-web 15p/lần (Hotmail ưu tiên trước, gắn proxy_assignments 1-1 + combo chatgpt-web-pool & gpt-web-sol). Hotmail: qua HOTMAIL_LOGIN giữ cookie; MS landing check is_auth; ép mail @fviainboxes; ghi Excel (C5,4,3+G).
 §
 Stale Upload: draft trap, xóa sạch (_delete_all_profile_drafts). Revert flop: quét ledger lấy video gốc; TikWM tải CDN; xóa render trước làm mới. Cào video: max 60 clip/channel, cấm cào full.
 §

@@ -104,8 +104,12 @@ Khi tổng hợp mục `Lỗi script/xác minh` trong báo cáo Telegram (`feed_
      * Lỗi VPN/Proxy/Egress verification (`vpn`, `proxy`, `ifconfig`, `egress`) ➔ `Lỗi kết nối VPN/Proxy` (ví dụ: `Lỗi kết nối VPN/Proxy (1: M13)`).
      * Lỗi kết nối thiết bị/ADB (`offline`, `timed out`, `adb.exe`, `disconnect`) ➔ `Mất kết nối ADB/USB` (ví dụ: `Mất kết nối ADB/USB (1: M28)`).
      * Lỗi popup cản trở (`dialog`, `popup`, `unexpected marker`) ➔ `Popup/Dialog bất thường`.
+     * Lỗi Anchor Mode 2 cạn/không khả dụng (`anchor_exhausted`, `mode2_anchor`) ➔ `Anchor không khả dụng` (ví dụ: `Anchor không khả dụng (9: M8, M13)`).
+     * Lỗi lệch layout giao diện / nút bấm (`follower row không có nút follow`, `manual_review`) ➔ `Lệch layout nút Follow` (ví dụ: `Lệch layout nút Follow (2: M59, M65)`).
      * Các lỗi ngoại lệ khác: Chỉ trích xuất thông điệp ngắn gọn đầu tiên (tối đa 60 ký tự), cấm in stack trace/command line thô.
-  3. **Nguyên tắc phân định môi trường:** Báo cáo Telegram chỉ hiển thị chỉ số và phân loại nghiệp vụ cấp cao. Chi tiết command line và stderr thô chỉ được lưu trong runtime log trên máy, tuyệt đối không tuồn lên kênh chat.
+  3. **Nguyên tắc phân định môi trường & Yêu cầu độ ngắn gọn (User Correction):**
+     * **User Preference:** *"Report có nhưng ngắn gọn thôi, để t biết lỗi là đc r"*. Operator cần nhìn vào biết ngay nhóm lỗi là gì (Hạ tầng mạng/ADB, Anchor, hay Lệch layout giao diện) trong 1 giây, tuyệt đối không in dài dòng giải thích dông dài hoặc nhồi nhét log kỹ thuật thô.
+     * Báo cáo Telegram chỉ hiển thị chỉ số và phân loại nghiệp vụ cấp cao 1 dòng ngắn gọn. Chi tiết command line và stderr thô chỉ được lưu trong runtime log trên máy, tuyệt đối không tuồn lên kênh chat.
 
 ### 6. Phân Biệt Số Follow Trên DB/Dashboard (Cộng Dồn Ngày) vs Báo Cáo Phiên Watchdog (Per-Session)
 Khi operator thắc mắc: *"Sao trên db báo 1 lượt mà ở đây báo 0?"*:
