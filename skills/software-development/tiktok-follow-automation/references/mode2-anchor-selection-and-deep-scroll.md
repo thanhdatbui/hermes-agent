@@ -33,9 +33,13 @@
          - Tại `follow_runner/flows/mode2_follow_followers.py:188`, hàm `_classify_row_button` quét text và `content_desc` của nút qua danh sách `FOLLOWED_TEXT` ("Đã follow", "Following", "Bạn bè", "Nhắn tin"...).
          - Khi TikTok đổi layout hoặc subtext trong hàng/cluster bị overlap, nút quan hệ bị phân loại nhầm thành `followed`, dẫn tới `follow_one_follower` trả về `("skipped", "đã follow sẵn (skip)")` hàng loạt (ví dụ: M59 chưa từng follow ai nhưng bị skip 11 nick liên tiếp).
          - Khi tất cả hàng bị skip hoặc gán `follow_button = None` (`missing_button_rows`), `internal_pending` rỗng, bot kích hoạt vòng lặp vuốt `idle_scrolls += 1` lên 25 và thoát an toàn.
-       + **Bẫy `_ensure_anchor_followed` kẹt cửa Profile video (Bằng chứng M8 chạy ~89s):**
+       + **Bẫy `_ensure_anchor_followed` kẹt cửa Profile video (Bằng chứng M8 chạy ~89s) & Bản vá Live Fallback:**
          - Tại dòng 504–575, trước khi vào Following list, bot tìm `video_covers` trên Profile anchor để xem video trước khi follow. Nếu không bắt được cover (`cover`, `tv_play_count`, `exx`, `aweme`), bot coi là `no_video` và safe-skip anchor.
-         - `run_mode2` chỉ lấy tối đa 3 anchor (`uids = uids[:3]`). Nếu cả 3 anchor đều bị skip ở khâu tìm video cover, bot thoát vòng lặp, kết thúc phiên với `status: OK, followed: 0` mà **hoàn toàn chưa từng mở vào tab Following**.
+         - *Lỗ hổng cũ:* Code cũ chặn fallback bằng điều kiện `if is_mock_adapter:`, khiến máy thật trên farm bị skip 100% khi không bắt được video cover.
+         - *Bản vá chuẩn (Commit 613d201):* Mở fallback tap nút Follow trực tiếp trên Profile cho cả live device và mock adapter sau khi dwell. Chỉ khi không tap được nút mới coi là `no_video`.
+       + **Bẫy telemetry mù khiến Operator không đọc được lỗi (Đã vá):**
+         - Khi Mode 2 kết thúc với 0 lượt follow (`used == 0`), code cũ để `res.reason = ""` khiến Watchdog gom vào `Bỏ qua: Khác` gây mù hiện trường.
+         - *Bản vá chuẩn:* Thu thập `skipped_anchors_reasons` và ghi rõ vào `res.reason = "MODE2_ANCHOR_EXHAUSTED: ..."` và `res.details['skipped_anchors']`, giúp báo cáo Telegram hiển thị minh bạch lý do từng máy kẹt ở đâu.
        + **Bẫy telemetry `skipped: []`:** Khi không nhận diện được nick nội bộ (`not internal_pending`), code cuộn tiếp mà không vào vòng `for row in pending`, nên `res.skipped` vẫn là `[]`.
        + **Kẹt trước khi vào list:** Bot chạy ~70-90s có thể do kẹt ở khâu tìm kiếm 2-3 anchor (`_nav_search` timeout 35s/anchor) rồi thoát ra mà chưa từng vào được list Following.
    - **TRƯỜNG HỢP 3: Chưa mở được Anchor hoặc Search không ra (`not_found`):**

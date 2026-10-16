@@ -176,10 +176,11 @@ Khi operator thắc mắc: *"Sao trên db báo 1 lượt mà ở đây báo 0?"*
   2. **Dấu hiệu nhận biết kỹ thuật (Hard Telemetry Evidence):**
      * Trong `follow_result.json`, nếu `followed == []` VÀ `skipped == []` VÀ `reason == ""`: **Chứng minh 100% bot CHƯA HỀ MỞ ĐƯỢC danh sách Following của bất kỳ anchor nào**.
      * Bởi vì trong `mode2_follow_followers.py`, khi bot đã vào được danh sách Following và cuộn qua các tài khoản ngoài farm, bot bắt buộc ghi nhận chúng vào `res.skipped`. `skipped == []` đồng nghĩa bot chưa từng chạm tới dòng danh sách nào.
-  3. **Nguyên nhân Phiên 1 kết thúc `status: OK, followed: 0`:**
+  3. **Nguyên nhân Phiên 1 kết thúc `status: OK, followed: 0` & Bản vá Telemetry Minh Bạch:**
      * Bot bốc 3 anchor ngẫu nhiên nhưng gặp lỗi tìm kiếm điều hướng (`not_found` do layout Search TikTok không kịp trả về exact user card trong 12s) hoặc profile anchor dính cờ an toàn (`zero_following` / `no_video`).
      * Theo code Mode 2, các lỗi này được safe-skip sang anchor tiếp theo (`continue`) mà không kích hoạt `MANUAL_REVIEW`. Khi hết 3 anchor, bot kết thúc với `exit_code: 0, status: OK, followed: 0`.
      * **Vì bot chưa bấm bất kỳ nút Follow nào trên thiết bị**, TikTok chưa có thao tác để gắn cờ nhả ➔ Cờ `follow_failed` vẫn sạch nguyên (False), watchdog phân loại vào diện `Bỏ qua: Khác`.
+     * **Bản vá Telemetry (Commit 613d201):** Code cũ để `reason: ""` khiến báo cáo bị mù. Sau bản vá, code bắt buộc gán `res.reason = "MODE2_ANCHOR_EXHAUSTED: @anchor1(not_found); @anchor2(no_video)..."` và ghi nhận `res.details['skipped_anchors']`, giúp báo cáo Telegram nêu đích danh lý do từng máy kẹt mà không cần mở file log.
   4. **Tại sao sang Phiên 2 lại dính Nhả (`FOLLOW_FAILED`):**
      * Ở Phiên 2, bot shuffle bốc trúng **Anchor khác mà bot tìm kiếm thành công và mở được profile**.
      * Theo quy trình an toàn của Mode 2 (`_ensure_anchor_followed`), bot bắt buộc phải follow Anchor trước: mở video của Anchor -> thả tim ngẫu nhiên -> bấm nút Follow trên video -> quay về Profile vuốt reload (pull-to-refresh) để kiểm tra.
