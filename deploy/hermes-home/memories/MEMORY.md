@@ -4,7 +4,7 @@ Follow: P1/P2 trần ca. Dò +2/ca (max 30); dính nhả vào tù, ra lùi 4 sà
 §
 Hotmail: CẤM mail cá nhân; sinh @fviainboxes.com đọc OTP API. Write-Through: ghi ngay Excel Cột 3,4,5 & G farm. Dual-farm ~1280 acc.
 §
-Proxy: 1-1. Chuẩn hóa 3 món: End-to-End (crop 512x512 -> lock/Excel -> nạp app -> MEDIA:); trích frame video nuôi cấm avatar.jpg cũ; TT v47 monkey. Pin >=1000 view. Soi mắt trước gửi.
+Proxy: 1-1. Chuẩn hóa 3 món End-to-End (crop 512x512 -> user chốt PA -> lock/Excel -> KÍCH HOẠT NGAY run_tiktok_upload_avatar.ps1 nạp app, CẤM dừng chờ watchdog/chờ giục -> MEDIA:); TT v47 monkey. Pin >=1000 view. Soi mắt trước gửi.
 §
 Farm: dispatch O(1). CẤM đẻ script mới thay canonical runner; lỗi Folder Video do .bak fallback khi xlsx bị lock; protected folders json ép int type-safe.
 §
