@@ -186,5 +186,14 @@ Khi operator thắc mắc: *"Sao trên db báo 1 lượt mà ở đây báo 0?"*
      * Theo quy trình an toàn của Mode 2 (`_ensure_anchor_followed`), bot bắt buộc phải follow Anchor trước: mở video của Anchor -> thả tim ngẫu nhiên -> bấm nút Follow trên video -> quay về Profile vuốt reload (pull-to-refresh) để kiểm tra.
      * Vì **thực sự có hành động bấm follow**, thuật toán TikTok can thiệp và nhả nút follow về màu đỏ -> Bot bắt được tín hiệu nhả (`refreshed_classification == "not_followed"`), ngắt phiên khẩn cấp và kích hoạt cờ `FOLLOW_FAILED: anchor @... bị nhả sau vuốt`.
 
+### 10.2. Operator Triage: "Report hiện tại có đủ để đọc biết lỗi script follow không?" (Khắc Phục Báo Cáo Mù)
+- **User Frustration Signal:** Operator hỏi: *"Report hiện tại có đủ để t đọc biết lỗi script follow k?"* khi thấy bot báo cáo nhiều máy ra 0 lượt follow nhưng không có bất kỳ dòng log lỗi nào, dẫn tới hiểu lầm hoặc suy diễn sai.
+- **Thực trạng báo cáo cũ (Gây mù thông tin):**
+  * Khi Follow Runner thử hết 3 anchor mà không vào được list (do search không ra `not_found`, profile không có video `no_video`, hoặc không nhận diện được tab Following), code cũ âm thầm `continue` và trả về `status: OK, followed: [], reason: ""`.
+  * Watchdog Telegram thấy `status: OK` nên chỉ gom vào nhóm `Bỏ qua: Khác (N máy)` hoặc `Thành công (0 máy)`. Operator nhìn vào báo cáo hoàn toàn không biết script có chạy không, đã thử những anchor nào, và kẹt ở bước nào.
+- **Quy tắc Telemetry Minh Bạch Đã Chuẩn Hóa:**
+  1. **Bắt buộc ghi rõ lý do:** Khi Mode 2 kết thúc với 0 lượt follow (`used == 0`), `res.reason` BẮT BUỘC ghi rõ `MODE2_ANCHOR_EXHAUSTED: @anchor1(not_found); @anchor2(no_video)...` kèm `res.details['skipped_anchors']`.
+  2. **Cách trả lời Operator khi được hỏi:** Trả lời thẳng thắn: Report cũ KHÔNG ĐỦ và đã được vá minh bạch. Nêu đích danh các bước đã thử và lý do cụ thể từ telemetry thật thay vì trả lời mơ hồ hoặc suy đoán mò.
+
 ## Answer style
 Answer the operator's direct question first, in Vietnamese, with no speculative theory. Explain only the distinction needed to prevent the common misread that `Success (0)` equals “no machine ran.”
