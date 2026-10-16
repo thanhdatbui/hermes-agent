@@ -214,3 +214,60 @@
 1. **Khóa 1 phiên/ngày cho nhóm Hồi phục:** Toàn bộ tài khoản thuộc `probation_tier1` hoặc `probation_tier2` **BẮT BUỘC chỉ được chạy 1 phiên/ngày (Phiên 1), Phiên 2 tự động Safe-Skip / Nghỉ dưỡng**. Tuyệt đối không để nick vừa follow xong ở P1 lại bị đè ra follow tiếp ở P2.
 2. **Chiến lược ăn chắc mặc bền:** Giữ nguyên quy trình Hồi phục 1 (2–4 lượt) $\rightarrow$ Hồi phục 2 (6–8 lượt) $\rightarrow$ Khỏe (10–15 lượt). Không chạy A/B test cấp full quota bừa bãi làm tăng fail streak giam nick 15 ngày.
 
+---
+
+## 8. Cơ Chế Dò Trần Tăng Tiến Có Bộ Nhớ (Adaptive Progressive Ceiling +2 Đến 30 Lượt)
+
+### A. Vấn đề năng suất và bài học thực tế:
+- **Trần tĩnh 16 là hạn chế năng suất đối với nick khỏe:** Dàn nick nòng cốt dày dặn (M37, M36, M39...) hoàn toàn có khả năng cày 20–30 lượt/ca nếu được tăng nhịp đều đặn và phân bổ 2 phiên hợp lý.
+- **Không áp dụng dò trần cho Hồi phục 1 & 2:** Giai đoạn hồi phục cần sự ổn định tuyệt đối (Zero-Variance) để rửa án phạt của TikTok, chỉ nick đã tốt nghiệp (`graduated == True`) mới được kích hoạt dò trần.
+
+### B. Nguyên lý vận hành Dò Trần Tăng Tiến (+2 mỗi ca sạch):
+1. **Dò trần tăng dần:**
+   - Nick vừa tốt nghiệp: Chạy mức cơ sở 10–15 lượt.
+   - Mỗi khi hoàn thành ca sạch $\ge 15$ lượt: Runner tự động nâng trần:
+     $$\text{active\_ceiling} = \min(30, \;\text{proven\_safe\_ceiling} + 2)$$
+   - Trần nở dần theo nhịp: $15 \xrightarrow{+2} 17 \xrightarrow{+2} 19 \xrightarrow{+2} 21 \dots \xrightarrow{+2} \mathbf{30\text{ lượt (kịch kim)}}$.
+2. **Kỷ luật khi bị TikTok nhả (Bảo toàn quy tắc farm):**
+   - Khi dính `FOLLOW_FAILED`: Bắt buộc vào Cooldown (đi tù 3–15 ngày tùy streak), thu hồi graduated.
+   - Ghi nhận `last_failed_ceiling = current_ceiling`.
+   - Lùi trần an toàn một bước đệm:
+     $$\text{proven\_safe\_ceiling} = \max(\mathbf{base\_max}, \;\text{curr\_proven} - 4)$$
+   - **Sàn chặn dưới cứng:** `base_max = 15`. Không bao giờ bị tụt không phanh dưới mức tốt nghiệp.
+3. **Khôi phục thông minh sau khi ra tù (Không mất trí nhớ):**
+   - Hết án phạt, nick hoàn thành đủ 2 ca Hồi phục 1 và Hồi phục 2 để tốt nghiệp lại.
+   - Ngay khi tốt nghiệp, hệ thống đọc lại `proven_safe_ceiling` (ví dụ 20 hoặc 22) và cấp thẳng lại mức này cho nick cày tiếp, không bắt nick phải bò lại từ mốc 10–15.
+
+4. **Tương tác giữa Proven Safe Ceiling và Cohort Core Cap (Empirical Priority Invariant):**
+   - *Cạm bẫy thiết kế:* Khi áp đặt giới hạn tĩnh của 3 Cohort (Rookie: 16, Mid: 22, Veteran: 30), nếu dùng `active_cap = min(core_cap, ...)` thì một nick non (video < 15 hoặc age < 60) đã từng cày an toàn và có `proven_safe_ceiling = 20` sẽ bị Cohort Rookie đè bẹp xuống 16, phá vỡ nguyên tắc không mất trí nhớ!
+   - *Quy tắc bất biến:* Số liệu kiểm chứng thực tế (`proven_safe_ceiling`) của chính tài khoản LUÔN THẮNG giả định phân tầng tĩnh (`cohort core_cap`).
+   - *Công thức chuẩn trong code:*
+     $$\text{active\_cap} = \max\Big(\text{proven\_safe\_ceiling},\; \min(\text{core\_cap},\; \max(\text{base\_max},\; \text{active\_ceiling}))\Big)$$
+   - Đảm bảo trần phiên `session_budget` luôn được bảo toàn ở mức tối thiểu bằng `proven_safe_ceiling` mà nick đã chứng minh an toàn trong quá khứ.
+
+---
+
+## 9. Mô Hình Học Hỏi Phân Tầng 3 Cohort (Stratified Cohort Learning) & Anchor Guard
+
+### A. Bài toán Selection & Survivorship Bias:
+- **Hiện tượng Row 1 vs Row 2:** Row 1 (nick già 200d, video 25+, following 100+) cày 5-9 lượt êm 100%. Row 2 (nick mỏng mới reg, video 11-15, following 0-6) bị nhả 82.6% ngay tại Anchor.
+- **Cấm lấy số trung bình (Mean) gộp toàn farm:** Nick già kéo số liệu lên cao, đem áp cho nick non sẽ làm đàn nick non gãy hàng loạt.
+
+### B. Ba Cohort phân loại TRƯỚC KHI CHẠY (`determine_cohort`):
+1. **Cohort Rookie (Nick mỏng / non):**
+   - Tiêu chí: `following < 30` HOẶC `video < 15` HOẶC `age < 60d`.
+   - Quota trần: Hồi phục 1 = 4, Hồi phục 2 = 6, Nòng cốt = 16.
+   - **Anchor Guard (Bắt buộc):** Nick có `following < 30` CẤM TUYỆT ĐỐI tap Anchor to (`following >= 150`) để triệt tiêu lỗi nhả 82.6% tại Anchor; chỉ được mồi chéo nick nhỏ để nâng following.
+2. **Cohort Mid (Nick tầm trung):**
+   - Tiêu chí: `following 30–100`, `video 15–25`, `age 60–180d`.
+   - Quota trần: Hồi phục 1 = 4, Hồi phục 2 = 8, Nòng cốt = 22.
+3. **Cohort Veteran (Nick cựu binh / già):**
+   - Tiêu chí: `following > 100`, `video > 25`, `age > 180d`.
+   - Quota trần: Hồi phục 1 = 5, Hồi phục 2 = 9, Nòng cốt = 30.
+
+### C. Tiêu chí chọn mẫu & Bảo toàn tính đại diện (Consensus Spec V2):
+- **Phân vị thận trọng (Conservative Quantile P20):** Chọn mức quota mà 20% nick yếu nhất trong cohort vẫn an toàn.
+- **Ràng buộc an toàn cứng:** Drop rate của cohort phải $\le 8\%$ (T1) và $\le 10\%$ (T2).
+- **Hysteresis chống giật cục:** Chỉ tăng/giảm tối đa 1 bước mỗi chu kỳ đánh giá, tránh dao động đột ngột.
+
+
