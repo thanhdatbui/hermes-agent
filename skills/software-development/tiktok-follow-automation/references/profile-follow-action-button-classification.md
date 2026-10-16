@@ -62,3 +62,17 @@ Tuyệt đối không thay thế toàn bộ XML bằng OCR một cách mù quán
 - **Nguyên nhân lệch số liệu giữa Runner và Web:** Khi tài khoản bị shadowban hoặc bị TikTok ngắt quyền follow ngầm (silent-drop), cú tap Follow trong danh sách khiến client app TikTok lưu tạm trạng thái optimistic.
 - **Sai lầm chết người:** Mở profile nick vừa follow mà **KHÔNG vuốt kéo reload (`pull_to_refresh_profile`)** vì lầm tưởng việc chuyển màn hình đã tải lại dữ liệu mới. Thực tế app TikTok vẫn hiển thị cache cục bộ (nút "Nhắn tin"), khiến runner ghi nhận thành công trong khi server TikTok thực tế là `0` lượt follow.
 - **Quy tắc bắt buộc:** 100% các bước verify sau tap (cả Anchor lẫn Path B verify từng nick) **BẮT BUỘC thực hiện pull-to-refresh có jitter** để ép app TikTok kéo dữ liệu thực từ server về trước khi phân loại (XML hoặc OCR).
+
+## 7. Bẫy Bất Đối Xứng trong `_is_profile_action_node` & Kỷ luật Canary khi Farm đang chạy ca
+
+### A. Bẫy Bất Đối Xứng (Asymmetric Action Node Matcher):
+- **Hiện tượng:** Trong `_is_profile_action_node`, nút Nhắn tin được nhận diện tự do qua semantic text (`values & message_markers`) cho mọi ID, trong khi nút Follow lại bị ép cứng theo whitelist ID (`_ACTION_BUTTON_SUFFIXES`).
+- **Hậu quả:** Khi TikTok cập nhật obfuscated ID mới cho nút Follow (như `id/fmp`, `id/fo4`), nút Follow bị loại khỏi `action_nodes`, chỉ còn nút Nhắn tin lọt qua $\rightarrow$ `classify_button` tưởng màn hình không còn nút Follow và trả về `followed` khống!
+- **Kỷ luật sửa:** Nhận diện nút hành động bắt buộc đối xứng: mở rộng `action_text_markers` bao gồm cả `FOLLOW_BUTTON_TEXT + FOLLOW_BACK_TEXT + FOLLOWED_TEXT` cho vùng `bounds[1] < 1200` (loại trừ stat counters).
+
+### B. Kỷ luật Canary khi Farm đang chạy ca (Active Cohort Isolation):
+- Khi User yêu cầu: *"Làm xong chạy canary vài acc kiểm tra xem lỗi không"*:
+  1. **Preflight kiểm tra lịch Farm (`psutil` / manifests):** Kiểm tra xem có ca nuôi nào đang chạy live hay không (ví dụ Ca 3 Row 6 `multi-machine-feed-session`).
+  2. **CẤM TUYỆT ĐỐI chạy canary đè lệnh ADB** lên máy đang trong phiên nuôi active (tránh race condition, xung đột socket và vỡ phiên).
+  3. **Tận dụng khe rảnh giữa các phiên (Pair Gap):** Chờ phiên hiện tại kết thúc (khoảng nghỉ giữa P1 và P2 thường là 45-60 phút) hoặc bốc các máy đã chạy xong P1 sớm và đã nhả sạch lock thiết bị.
+  4. **Quy trình Canary chuẩn:** Acquire device lock (`user_authorized=True`) -> Chạy canary -> Soi mắt kiểm tra ảnh thực tế (`MEDIA:`) -> Nhả lock và báo cáo.

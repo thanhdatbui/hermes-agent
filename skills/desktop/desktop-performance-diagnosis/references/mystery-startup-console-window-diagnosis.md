@@ -4,6 +4,7 @@
 - On Windows startup or login, a blank or flashing PowerShell / CMD console window pops up on the desktop (e.g. title: `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe`).
 - The window interior may be completely empty / transparent / clear, or flash repeatedly every few seconds.
 - User question: *"máy mới bật lên nó nhảy cái này là gì vậy?"* (When machine boots, this window pops up, what is it?).
+- **In-Game Micro-Stutter / Cursor Desync:** During active fullscreen or borderless gameplay (e.g. TFT, League of Legends), the user experiences periodic 2–3s display micro-flickers or sudden mouse cursor dropouts ("nháy màn chuột văng"). Users often blame visible heavy overlays (MetaTFT/Overwolf), but the true root cause is background console storm context-switches from tray companion apps.
 
 ## Root Causes
 1. **Third-Party Background/Companion Apps (e.g. Electron overlays, game aids, hardware utilities):**
@@ -62,8 +63,18 @@ Select-String -Path "<AppDir>\resources\app.asar" -Pattern "<CommandSnippet>" | 
 ```
 
 ## Remediation
-1. **Immediate user resolution:**
-   - Disable the companion app from Windows Startup: Open **Task Manager** -> **Startup** tab -> select the app -> **Disable** (or toggle off "Start with Windows" in the app's settings).
+1. **Immediate user resolution / process termination:**
+   - Terminate the companion app process tree immediately:
+     ```cmd
+     taskkill /f /im <App.exe>
+     ```
+   - Disable from Windows Startup via Task Manager (**Startup** tab -> select app -> **Disable**).
+   - Programmatically remove the Electron autostart registry entry:
+     ```cmd
+     reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "electron.app.<AppName>" /f
+     reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "__disabled_electron.app.<AppName>" /f
+     ```
+     *(Note: Electron `app.setLoginItemSettings` registers as `electron.app.<AppName>`, and Windows prefixes disabled entries as `__disabled_electron.app.<AppName>`. Clean both so updates don't resurrect the auto-start).*
 2. **Script / automation resolution:**
    - If spawned by internal batch scripts: wrap with `wscript.exe //B //Nologo script.vbs` or pass `-WindowStyle Hidden -NonInteractive`.
    - In Node.js / Electron child process calls: always specify `{ windowsHide: true }`.
