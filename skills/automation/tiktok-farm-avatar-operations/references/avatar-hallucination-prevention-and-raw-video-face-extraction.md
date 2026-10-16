@@ -668,6 +668,32 @@ Trước khi soạn bất kỳ tin nhắn nào cho User:
      - Hướng dẫn User gửi ảnh Profile TikTok (hoặc nhắn rõ Máy / Username).
      - Tóm tắt ngắn gọn 4 bước sẽ thực thi ngay khi nhận ảnh (Định vị $O(1)$ $\rightarrow$ Pin Gate $\ge 1.000$ view $\rightarrow$ Niche & Hashtags $\rightarrow$ Trích xuất Avatar chuẩn từ video gốc có soi mắt nghiệm thu).
 
+---
+
+## 30. Bẫy Bỏ Qua Máy Khi Nạp Avatar Do Cột Avatar Đang Mang Trạng Thái 'OK' / 'DONE' (Sự Cố 16/10/2026 — Machine Skip Preflight Pitfall)
+- **Hiện tượng**:
+  - Khi Coordinator chuẩn bị xong file `avatar.jpg` và các file marker `.manual_avatar_locked`, sau đó cập nhật ngay `Avatar = OK` vào file Excel `Tik<N>.xlsx` rồi gọi `run_avatar_batch_3accs.py` / `run_tiktok_upload_avatar.ps1`.
+  - Kết quả: Runner kết thúc ngay tức thì (`ExitCode: 0`) nhưng không có thiết bị nào được nạp ảnh. Log hiển thị: `Target bị bỏ qua trước/đầu launch: ... [Silent Skip]`.
+- **Nguyên nhân gốc rễ**:
+  1. Launcher script `run_tiktok_upload_avatar.ps1` gọi script tiền kiểm `resolve_avatar_pending_machines.py <Tik>`.
+  2. Script này duyệt qua các dòng của file Excel và lọc: `if ava_val != "OK": pending.append(m_int)`. Đồng thời nó kiểm tra bảng SQLite `avatar_replace_queue`: `SELECT may FROM avatar_replace_queue WHERE tik = ? AND status = 'PENDING'`.
+  3. Nếu cột `Avatar` trong Excel đã ghi `OK` và SQLite queue đang là `DONE` (từ avatar cũ), máy mục tiêu sẽ bị loại khỏi danh sách pending và runner sẽ bỏ qua máy đó hoàn toàn!
+- **Quy trình chuẩn bị PENDING 3 bước trước khi kích hoạt Runner**:
+  1. **Bước 1 — Kích hoạt cờ PENDING trong Excel**:
+     - Mở workbook `D:/OneDrive/TaadaaData/kibe/Tik<N>.xlsx`, đặt giá trị ô cột `Avatar` của máy mục tiêu thành `'PENDING'` (chưa ghi `OK`).
+  2. **Bước 2 — Cập nhật SQLite `avatar_replace_queue`**:
+     - Cập nhật dòng của máy mục tiêu trong bảng `avatar_replace_queue` (`D:/Taadaa/data/tiktok_tracker.db`):
+       ```sql
+       UPDATE avatar_replace_queue
+       SET status = 'PENDING', video_goc = '<F_src>', updated_at = datetime('now', 'localtime')
+       WHERE may = <M> AND tik = <Tik> AND username = '<username>'
+       ```
+  3. **Bước 3 — Đối soát Preflight $O(1)$ trước khi chạy**:
+     - Chạy lệnh: `python D:/Taadaa/Tiktok-video/scripts/resolve_avatar_pending_machines.py <Tik>`
+     - Xác nhận máy mục tiêu `<M>` có tên trong chuỗi output (ví dụ: `...,65,...`).
+  4. **Bước 4 — Nghiệm thu & Chuyển sang OK**:
+     - Chỉ sau khi runner nạp ảnh thành công (`AVATAR_SMOKE_SUCCESS`) và đã chụp ảnh màn hình trang cá nhân thực tế, soi mắt qua `browser_vision` xác nhận avatar mới hiển thị sắc nét $\rightarrow$ lúc đó mới cập nhật cột `Avatar = OK` và SQLite `status = DONE`.
+
 
 
 
