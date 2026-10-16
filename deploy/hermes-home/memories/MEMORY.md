@@ -16,4 +16,4 @@ User ép push -> safe_push --owner-override.
 §
 Admin Remote (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; Python OpenCV D:/CodexRuntime/tiktok-video/venv-core024/Scripts/python.exe; launcher chạy trên host admin qua admin_ssh.py (cấm chạy local báo DEVICE_OFFLINE); Haar cascade hay báo ảo đĩa ăn/chó mèo nên bắt buộc soi mắt trước khi nạp ava.
 §
-Lỗi Upload farm: (1) Rớt USB EHCI/tun0 lúc cao điểm là transient L0, cấm reboot; (2) POST_RECHECK trễ kích hoạt Idempotency Guard cấm ép đăng lại; (3) Hết video do nhảy cóc dãy số cần render bù start-seq đúng số thiếu; (4) Ảnh màn hình đen do máy ngủ cấm gửi MEDIA: đối phó.
+Lỗi Upload farm: (1) Rớt USB EHCI/tun0 cao điểm là transient L0; (2) POST_RECHECK trễ chặn repost an toàn; (3) Hết video nhảy cóc cần render bù start-seq từ kho gốc đúng 1 kênh/creator (cấm trộn nguồn); (4) Màn đen cấm gửi MEDIA; (5) Proxy Admin cào video bắt buộc IP LAN MikroTik 192.168.110.2:100xx (né 502 loopback).
