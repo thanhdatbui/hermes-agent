@@ -39,8 +39,22 @@
 - **Quy trình restart downloader**:
   1. Dùng `psutil` chỉ nhắm mục tiêu các tiến trình chứa `run_admin_downloader_service` và `download_by_niche`.
   2. Đảm bảo xóa stale lock nếu bị kẹt: `C:\Users\Admin\AppData\Local\hermes\locks\admin_downloader.lock`.
-  3. Khởi động lại service bằng PowerShell detached:
-     ```powershell
-     Start-Process -FilePath "D:\CodexRuntime\tiktok-video\venv-core024\Scripts\python.exe" -ArgumentList "C:\Users\Admin\run_admin_downloader_service.py" -WindowStyle Hidden
-     ```
+  3. Khởi động lại service bằng WMIC Session 0 hoặc PowerShell detached (tránh bẫy OpenSSH ngắt kết nối làm chết process):
+     - Tạo file batch `C:\Users\Admin\launch_admin_downloader.bat`:
+       ```batch
+       @echo off
+       setlocal
+       set PYTHONUTF8=1
+       set PYTHONIOENCODING=utf-8
+       cd /d C:\Users\Admin
+       C:\Users\Admin\AppData\Local\Programs\Python\Python311\python.exe -u run_admin_downloader_service.py
+       ```
+     - Khởi chạy nền Session 0 qua WMIC (bất tử trước việc ngắt kết nối SSH):
+       ```bash
+       wmic process call create "cmd.exe /c C:\Users\Admin\launch_admin_downloader.bat"
+       ```
+     - Hoặc PowerShell detached:
+       ```powershell
+       Start-Process -FilePath "D:\CodexRuntime\tiktok-video\venv-core024\Scripts\python.exe" -ArgumentList "C:\Users\Admin\run_admin_downloader_service.py" -WindowStyle Hidden
+       ```
   4. Hậu kiểm bằng `psutil` qua SSH xác nhận tiến trình con `download_by_niche.py` đã lên với đúng tham số `--parallel 20` và `--max-folders-per-channel 1`.
