@@ -29,3 +29,10 @@ Rất nhiều tài khoản **CHƯA FOLLOW** (hoặc bị server TikTok nhả fol
   - Khi có đúng 1 nút `not_followed` (`Follow`/`Follow lại`) và 1 nút `Nhắn tin`, bắt buộc phân loại là `not_followed`.
 - **Trong bộ phân tích OCR (`ocr.py`):**
   - Khi OCR phát hiện text chứa từ khóa `not_followed` (`follow lai`, `follow`, `theo doi`), bắt buộc ưu tiên kết luận `not_followed`, không để từ khóa `nhan tin` làm nhiễu khiến bộ phân loại rơi vào `unknown`.
+  - Tuyệt đối không bao giờ coi `Nhắn tin` đơn độc là bằng chứng `followed` nếu chưa reload hoặc chưa chứng minh được nút Follow đỏ đã biến mất.
+
+## 5. Cạm bẫy Optimistic UI Cache trong Path B Verify
+- **Nguyên nhân lệch số liệu giữa Runner và Web:** Khi tài khoản bị shadowban hoặc bị TikTok ngắt quyền follow ngầm (silent-drop), cú tap Follow trong danh sách khiến client app TikTok lưu tạm trạng thái optimistic.
+- **Sai lầm chết người:** Mở profile nick vừa follow mà **KHÔNG vuốt kéo reload (`pull_to_refresh_profile`)** vì lầm tưởng việc chuyển màn hình đã tải lại dữ liệu mới. Thực tế app TikTok vẫn hiển thị cache cục bộ (nút "Nhắn tin"), khiến runner ghi nhận thành công trong khi server TikTok thực tế là `0` lượt follow.
+- **Quy tắc bắt buộc:** 100% các bước verify sau tap (cả Anchor lẫn Path B verify từng nick) **BẮT BUỘC thực hiện pull-to-refresh có jitter** để ép app TikTok kéo dữ liệu thực từ server về trước khi phân loại (XML hoặc OCR).
+
