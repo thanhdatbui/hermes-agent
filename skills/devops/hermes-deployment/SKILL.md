@@ -611,6 +611,22 @@ When desktop applications (such as Riot Client, League of Legends, TFT) fail to 
   2. Map each raw folder `folder_src` (1..640) to its true target `folder_video = ((folder_src - 1) % 80) * 8 + ((folder_src - 1) // 80) + 1` in `D:\TIKTOK-videonuoinick-admin`. ONLY delete raw videos if that target folder already has >= 30 valid rendered clips (> 100KB). Never compare index-to-index (`folder_src == folder_video`), which deletes raw media for wrong machines.
 - See `references/remote-admin-disk-exhaustion-and-clean-protocol.md` for full script delivery and execution instructions.
 
+### 31. Coordinator Guard Blocks Direct `ssh`: Use `admin_ssh_exec.py` with Foreground Timeout
+
+When diagnosing or managing the secondary farm node (Admin) from Kibe:
+- **Symptom:** Running direct ssh commands like `ssh admin-farm "<cmd>"` or `ssh -o ...` from Coordinator terminal triggers:
+  `⛔ [COORDINATOR GUARD - TERMINAL BLOCKED]: COORDINATOR TERMINAL BLOCKED (DEFAULT-DENY): Lệnh 'ssh ...' không nằm trong allowlist của Coordinator!`
+- **Root Cause:** The Coordinator shell hook enforces an explicit command allowlist. Bare `ssh` binary invocations are default-denied to prevent unvetted interactive sessions.
+- **Remedy:** Execute remote commands through the authorized Python wrapper:
+  ```powershell
+  python D:/Taadaa/tools/admin_ssh_exec.py "<remote_cmd>"
+  ```
+  *Rules when using `admin_ssh_exec.py`:*
+  1. Always pass `timeout <= 60` (e.g. `timeout: 30`) to satisfy foreground terminal timeout guards.
+  2. To query all cron jobs (including paused/disabled) on Admin: `python D:/Taadaa/tools/admin_ssh_exec.py "hermes cron list --all"`.
+  3. Never end the remote command argument with a trailing backslash (`\\"` escapes the closing quote).
+  4. Avoid nested complex one-liners with multiple quotes and semicolons inside the command string; prefer running standard Hermes or Python CLI commands directly.
+
 ## Remote OmniRoute & 9Router LAN Setup (Admin PC → Kibe PC)
 
 When connecting a secondary machine (Admin) to the main machine's (Kibe) dual LLM proxy stack (OmniRoute at `:20129` for primary routing/combos and 9Router at `:20128` for fallback/auxiliary/compression):
