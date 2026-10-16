@@ -2,7 +2,7 @@ Chu kỳ 4d: Parity 96h (N1 lẻ, N2 chẵn), N3(R7,8), N4(dưỡng 0fl+up). Sta
 §
 Strike 3: Claude CLI sửa xong duyệt cơ học -> PUSH LUÔN bypass Sol, cấm quarantine/khóc;
 §
-Mode 2: anchor >= 150 fl (99.5% farm); cuộn sâu. Cron: follow_watchdog.
+Mode 2: anchor >= 150 fl (99.5% farm); cuộn sâu; live video fallback; tele anchor_exhausted. Cron: follow_watchdog.
 §
 Hotmail: CẤM mail cá nhân; sinh @fviainboxes.com đọc OTP API. Write-Through: ghi ngay Excel Cột 3,4,5 & G farm. CDP đóng ko mất cookie. Dual-farm ~1280 acc.
 §

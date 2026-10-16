@@ -3,6 +3,13 @@
 ## 1. Concurrency Parity: Kibe vs Admin Downloader
 - **Kibe Downloader**: `run_download_kibe.py` chạy với `--parallel 20` (20 workers song song).
 - **Admin Downloader**: Service nền chạy tại `C:\Users\Admin\run_admin_downloader_service.py` trên máy Admin. Mặc định có thể được cấu hình `--parallel 10`, `--parallel 20` hoặc nâng lên `--parallel 40` khi cần đẩy nhanh kho nguồn video gốc.
+- **Script Controller Tiện ích Chuẩn hóa**:
+  - Quản lý tập trung qua `D:/Taadaa/Tiktok-video/scripts/admin_downloader_controller.py` trên Kibe:
+    - Kiểm tra trạng thái & workers: `python D:/Taadaa/Tiktok-video/scripts/admin_downloader_controller.py --check`
+    - Đổi số workers và restart service an toàn: `python D:/Taadaa/Tiktok-video/scripts/admin_downloader_controller.py --set-workers 40`
+    - Khởi chạy nền Session 0: `python D:/Taadaa/Tiktok-video/scripts/admin_downloader_controller.py --start-service`
+    - Kiểm tra tổng quan tài nguyên Farm Admin (Đĩa C/D, CPU, RAM, số tiến trình render/ffmpeg/download): `python D:/Taadaa/Tiktok-video/scripts/admin_downloader_controller.py --overview`
+    - Xem 20 dòng log mới nhất: `python D:/Taadaa/Tiktok-video/scripts/admin_downloader_controller.py --tail-log`
 - **Quy chuẩn điều khiển từ xa qua SSH & Tránh lỗi Coordinator Guard**:
   - Khi Coordinator tạo controller script hoặc dispatch worker can thiệp Admin, mọi đường dẫn trong contract của `delegate_task` bắt buộc phải là đường dẫn tuyệt đối thuộc repo whitelist `D:\Taadaa\...` (ví dụ `D:\Taadaa\Tiktok-video\scripts\admin_downloader_controller.py`). Tránh để đường dẫn tương đối (bị lỗi `PATH_NOT_ABSOLUTE`) hoặc đường dẫn ổ C ngoài whitelist (bị lỗi `OUT OF REPO WHITELIST`).
   - Khi gửi Python code qua `ssh admin-farm "python -"`, bắt buộc thêm `-o LogLevel=ERROR` để triệt tiêu cảnh báo post-quantum SSH làm rác stdout gây crash parser JSON.
@@ -57,4 +64,4 @@
        ```powershell
        Start-Process -FilePath "D:\CodexRuntime\tiktok-video\venv-core024\Scripts\python.exe" -ArgumentList "C:\Users\Admin\run_admin_downloader_service.py" -WindowStyle Hidden
        ```
-  4. Hậu kiểm bằng `psutil` qua SSH xác nhận tiến trình con `download_by_niche.py` đã lên với đúng tham số `--parallel 20` và `--max-folders-per-channel 1`.
+  4. Hậu kiểm bằng `psutil` qua SSH hoặc chạy `python D:/Taadaa/Tiktok-video/scripts/admin_downloader_controller.py --check` xác nhận tiến trình con `download_by_niche.py` đã lên với đúng tham số worker mục tiêu (ví dụ `--parallel 40`) và `--max-folders-per-channel 1`.

@@ -61,3 +61,15 @@
     - Dưới 10s: Thoát do budget = 0 hoặc cooldown.
     - ~70-100s: Chạm trần `idle_scrolls >= 25` (do trượt selector / mù UI) hoặc kẹt 2-3 anchor search timeout (~35s x 2). BẮT BUỘC kiểm tra selector nút follow / handle text / XML dump hiện trường, TUYỆT ĐỐI KHÔNG đổ lỗi "nick non đã follow hết list của anchor" hay "anchor toàn người ngoài".
     - ~3-5 phút: Bấm follow thật và bị nhả (`FOLLOW_FAILED`) sau quy trình xem video + reload.
+
+## 5. Pitfall Unit Test Cô Lập `priority_targets.txt` (Regression Gate)
+- **Hiện tượng:** Chạy `pytest follow_runner/tests/test_mode2_following.py` bị rớt test `test_anchor_prefers_row1_row2` với lỗi:
+  `AssertionError: assert 'bangtam2311' in ('user_01', 'user_02')`.
+- **Nguyên nhân gốc rễ:**
+  * Hàm `FollowEngine.follow_uids()` tự động kiểm tra sự tồn tại của file `config/priority_targets.txt` (dùng cho các chiến dịch follow target bên ngoài do operator chỉ định).
+  * Nếu file này có dữ liệu (ví dụ `@bangtam2311`), `follow_uids()` sẽ chèn các target ưu tiên này lên đầu danh sách trả về.
+  * Test `test_anchor_prefers_row1_row2` khởi tạo `FollowEngine` thông thường mà không cô lập file cấu hình này, khiến `uids[0]` nhận giá trị `bangtam2311` thay vì `user_01` hoặc `user_02`.
+- **Giải pháp chuẩn hóa (Pattern từ `test_priority_targets_prepend_and_dedup`):**
+  * Trong test suite, bắt buộc tạo một thư mục repo cô lập trong `tmp_path`, ghi file `config/priority_targets.txt` rỗng.
+  * Sử dụng `monkeypatch.setattr(follow_engine_module, "__file__", str(isolated_repo / "follow_runner" / "flows" / "follow_engine.py"))` để test đọc đúng file rỗng cô lập, bảo toàn thứ tự workbook ban đầu.
+
