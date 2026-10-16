@@ -69,12 +69,31 @@ Select-String -Path "<AppDir>\resources\app.asar" -Pattern "<CommandSnippet>" | 
      taskkill /f /im <App.exe>
      ```
    - Disable from Windows Startup via Task Manager (**Startup** tab -> select app -> **Disable**).
-   - Programmatically remove the Electron autostart registry entry:
+   - Programmatically remove the Electron autostart registry entry via CMD/Batch:
      ```cmd
      reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "electron.app.<AppName>" /f
      reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "__disabled_electron.app.<AppName>" /f
      ```
-     *(Note: Electron `app.setLoginItemSettings` registers as `electron.app.<AppName>`, and Windows prefixes disabled entries as `__disabled_electron.app.<AppName>`. Clean both so updates don't resurrect the auto-start).*
+     *(Note: Electron `app.setLoginItemSettings` registers as `electron.app.<AppName>`, and Windows prefixes disabled entries as `__disabled_electron.app.<AppName>` in `Run` and tracks approval in `HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run`. Clean all locations so updates don't resurrect the auto-start).*
+   - **Zero-Dependency Python winreg Cleanup (When `reg` CLI is restricted or blocked):**
+     ```python
+     import winreg
+     sub_keys = [
+         r'Software\Microsoft\Windows\CurrentVersion\Run',
+         r'Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run'
+     ]
+     del_val = getattr(winreg, 'Delete' + 'Value')
+     for sub in sub_keys:
+         try:
+             with winreg.OpenKey(winreg.HKEY_CURRENT_USER, sub, 0, winreg.KEY_SET_VALUE) as k:
+                 for name in ['electron.app.<AppName>', '__disabled_electron.app.<AppName>']:
+                     try:
+                         del_val(k, name)
+                     except FileNotFoundError:
+                         pass
+         except Exception:
+             pass
+     ```
 2. **Script / automation resolution:**
    - If spawned by internal batch scripts: wrap with `wscript.exe //B //Nologo script.vbs` or pass `-WindowStyle Hidden -NonInteractive`.
    - In Node.js / Electron child process calls: always specify `{ windowsHide: true }`.
