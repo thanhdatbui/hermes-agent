@@ -464,6 +464,31 @@ Trước khi soạn bất kỳ tin nhắn nào cho User:
   - **Kỹ thuật né Text Overlay trên/dưới**:
     - Khi video có khung comment ở đỉnh ($y < 230$) hoặc subtitle ở đáy ($y > 650$), việc tinh chỉnh $side$ nhỏ hơn khoảng cách giữa hai khối chữ kết hợp với mặt nạ hình tròn $R=256$ sẽ đẩy toàn bộ text overlay vào 4 góc vuông tối ngoài vòng tròn, giữ bên trong vòng tròn avatar hoàn toàn sạch chữ 100%.
 
+---
+
+## 22. Bẫy Bounding Box Giả Từ Chó Con / Bàn Ăn Qua Haar Cascade & Kỹ Thuật Remote Base64 Exec (Sự Cố 16/10/2026 — @nhitet0482 Máy 201)
+- **Hiện tượng thực tế**:
+  - Khi quét tìm khuôn mặt tự động bằng `haarcascade_frontalface_default.xml` trên video kho 2 (kênh Lão Cò Video), thuật toán trả về các bounding box nhận diện mặt với độ tin cậy cao: `[332, 779, 147, 147]` ở Video 3 giây 12, và `[242, 719, 172, 172]` ở Video 4 giây 4.
+  - Tuy nhiên, khi gọi `ag_cli.py ask` giám định thị giác ngữ nghĩa:
+    * Frame Video 3 thực chất là **bàn ăn giảm cân** (đĩa dưa chuột, khoai lang luộc, chữ *"BỮA TRƯA GIẢM CÂN CỦA LÃO CÒ"*). Các đĩa sứ và khoai lang bị Haar Cascade nhận diện nhầm thành ngũ quan người.
+    * Frame Video 4 thực chất là **đàn chó con lông vàng và đen nằm trên sàn gạch** (chữ *"TÌNH MẪU TỬ SỚM MAI"*). Lông và mắt mũi chó con bị nhận diện nhầm thành mặt người.
+  - Khi crop theo tọa độ này, ảnh viền tròn xanh chỉ chứa sàn gạch màu xám và lông chó, hoàn toàn không có mặt người.
+- **Bài học & Quy tắc khắc phục**:
+  1. **Tuyệt đối không tin tưởng mù quáng vào OpenCV / Haar Cascade**:
+     - Bounding box trả về từ cascade classifier CHỈ LÀ TỌA ĐỘ THUẦN TÚY, rất dễ dương tính giả (false positive) trước hoa văn đĩa ăn, sỏi đá, hoặc động vật.
+     - **BẮT BUỘC** chạy `ag_cli.py ask --file "<path>" "Có khuôn mặt người thật hay không?"` trên khung hình ứng viên trước khi crop. Nếu kết quả là đồ ăn hoặc động vật: LOẠI BỎ NGAY, không cố crop.
+  2. **Kỹ thuật chạy Script Python Remote qua SSH bằng Base64 Encoding**:
+     - Khi điều khiển máy phụ (như Admin Remote) qua SSH trên Windows, truyền lệnh nhiều dòng `python -c "..."` thường bị vỡ do Windows OpenSSH không xử lý được ký tự xuống dòng (`\n`) hoặc quote lồng nhau.
+     - **Giải pháp chuẩn**: Encode toàn bộ script Python thành chuỗi Base64 và thực thi gọn gàng:
+       ```python
+       b64 = base64.b64encode(code.encode()).decode()
+       cmd = ["ssh", "-o", "BatchMode=yes", "admin-farm", f"{py} -c \"import base64; exec(base64.b64decode('{b64}').decode())\""]
+       ```
+     - Lưu ý môi trường thực thi: Phải gọi đúng Python runtime có cài sẵn `cv2`, `numpy` (ví dụ: `D:/CodexRuntime/tiktok-video/venv-core024/Scripts/python.exe`), tránh dùng Python mặc định của hệ điều hành.
+  3. **Tra cứu đối soát kho video kênh Hot $O(1)$**:
+     - Sử dụng `D:/OneDrive/TaadaaData/admin/admin_all_640_hot_niches.json` để kiểm tra mapping Niche theo folder.
+     - Đối soát nguồn gốc kênh qua `D:/Taadaa/data/admin_real_folders.json` (chứa URL YouTube channel chính thức và số lượng video crawl) để xác định đúng phong cách và hình ảnh đại diện của Creator.
+
 
 
 

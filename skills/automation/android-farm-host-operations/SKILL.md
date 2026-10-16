@@ -30,6 +30,7 @@ References:
 - `references/dual-adb-server-device-split-and-port5038-collision-20261015.md` — Phân tích bản chất xung đột 2 Daemon ADB (port 5037 vs 5038), WinUSB endpoint exclusive hijacking chia rẽ 80 máy, quy trình khôi phục phẫu thuật O(1), phân tích dịch ngược nhị phân xiaowei.exe và hệ thống phòng thủ 3 lớp vĩnh viễn (Watchdog 2 phút, Dual-Strike CIM Killer, Runner Preflight Guard) (16/10/2026).
 - `references/in-flight-self-healing-vs-post-hoc-recovery-20261016.md` — Phân tích bẫy cứu hộ thụ động sau ca (post-hoc recovery vô nghĩa vì máy đã mất lượt nuôi), lỗ hổng thiếu reconnect trong vpn_preflight settings get http_proxy, và cơ chế in-flight transport self-healing (16/10/2026).
 - `references/in-flight-preflight-healing-vs-post-session-recovery-20261016.md` — Quy chuẩn cứu hộ tự động 2 tầng (In-flight self-healing tại vpn_preflight.py và preflight readiness gate tại tiktok_runner.py), triệt tiêu bẫy "cứu hộ vuốt đuôi" sau khi ca chạy đã kết thúc (16/10/2026).
+- `references/post-reboot-screen-healer-gap-and-script-sync-20261016.md` — Phân tích nguyên nhân dàn máy bật sáng sau reboot (11:20), bẫy điểm mù 30 phút trong is_near_reboot_window, trôi timeout 25 ngày (2147483647 ms) và quy chuẩn đồng bộ script runtime cron (16/10/2026).
 
 Scripts:
 - `scripts/safe_usb_guard.py` — Script nguồn mẫu giám sát và reset EHCI bus theo ngưỡng.
