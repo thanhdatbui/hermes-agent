@@ -8,7 +8,7 @@ Chốt phiên: Vào main, cấm park WIP; Grace 80-84 (diff<=30, test 100%) auto
 §
 Kibe(1-80) & Admin(201-280) cào nguồn & media độc lập 100% (cấm trùng video, cấm sync chéo Niche/Hashtag). TT v47.0.3; Switcher dock; AP 40m.
 §
-Worker: Haiku 5.5 CLI, AG CLI dự phòng (cấm reviewer/override quota/delegate_task sửa code); trượt 3 lần giao Claude CLI; hỏi tiến trình nào đáp đúng cái đó.
+Worker: Haiku/AG/Sol dự phòng (cấm tự commit/closeout, xong chỉ báo diff+test); trượt 3 lần giao Claude; hỏi tiến trình nào đáp đúng cái đó.
 §
 Canary: test đa máy + đa layout màn hình, đính kèm MEDIA:, cấm text 'Ảnh: D:...';
 §

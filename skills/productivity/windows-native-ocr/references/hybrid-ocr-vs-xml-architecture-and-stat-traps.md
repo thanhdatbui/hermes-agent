@@ -87,3 +87,16 @@ def match_not_followed(n_txt: str) -> bool:
 Toàn bộ logic đã được đóng gói chuẩn hóa tại:
 - **Module:** `D:/Taadaa/automation-core/src/automation_core/ocr.py`
 - **Unit Tests:** `D:/Taadaa/automation-core/tests/test_ocr.py` (100% offline, bao phủ telemetry, nonzero returncode, popup safety guard, follow dominance).
+
+---
+
+## 5. Quy Chuẩn Adapter Telemetry, Header Validation & Tempfile Cleanup (17/10/2026)
+
+Khi tích hợp WinRT OCR vào Adapter/Engine (`FollowAdapter.ocr_screen`, `verify_after_tap`):
+1. **Xác thực PNG Magic Bytes (`b"\x89PNG\r\n\x1a\n"`)**:
+   - Không chỉ kiểm tra `len(png) < 100`. Nếu ADB bị lỗi hoặc trả về text banner cảnh báo, dữ liệu rác vẫn có thể vượt qua kiểm tra độ dài. Bắt buộc kiểm tra `png.startswith(b"\x89PNG\r\n\x1a\n")` để đảm bảo dữ liệu hợp lệ trước khi ghi file tạm.
+2. **Deterministic Tempfile Cleanup trong khối `finally`**:
+   - Việc gọi `unlink()` chỉ trong khối `try` sẽ làm rò rỉ file tạm trên đĩa khi OCR gặp `TimeoutError` hoặc crash bất ngờ.
+   - Luôn dọn dẹp file tạm trong khối `finally` kèm try-catch `OSError` để ghi log cảnh báo (`ocr_temp_cleanup_failed`) thay vì làm crash luồng chính.
+3. **Structured Telemetry thay cho Silent Swallowing**:
+   - CẤM nuốt ngoại lệ im lặng (`except Exception: return []` hoặc `pass`). Bắt buộc ghi log có cấu trúc: thời gian `elapsed`, `serial`, nguyên nhân thất bại (`invalid_screencap`, `timeout`, `ocr_error`), và loại ngoại lệ `error_type=type(exc).__name__` để hỗ trợ giám sát vận hành dài hạn.
