@@ -13,6 +13,13 @@
   - Thực tế ảnh gửi đi: Option 1 là mặt em bé (toddler) tóc nâu, Option 2 là bờ vai trần mặc áo ba lỗ gym trước gương poster "EQUAL... BE THE ONE...". Hoàn toàn không có bác sĩ nào!
   - User nổi giận: *"Cười cái con mẹ mày t ép rõ ràng tự mày phải xem ảnh trc khi gửi tao sao mày cứ đéo tuân thủ v. Tao cài cái gate ép mày tự coi hình trc khi gửi tao r sao đéo hoạt động"*.
   - **Nguyên nhân gốc rễ**: Lỗ hổng Gate thủ tục (`has_called_vision = True` chỉ check hình thức, không check ngữ nghĩa) kết hợp với bệnh mù ảnh native của model text-worker. Bắt buộc chuyển sang Semantic Grounding bằng cách gọi độc lập qua proxy `:20129` model `ag-gemini-pool-3` hoặc WinRT OCR để lấy text mô tả thật in ra terminal trước khi gửi.
+
+- **Sự cố 2.1 (16/10/2026 — @thanh.huyn4934 M39 Tik 1 — Bẫy Ảo Giác Nhầm 2 Ảnh Cùng Kênh Thành Kênh Nguồn & Kênh Re-up)**:
+  - User gửi 2 ảnh yêu cầu "Chuẩn hoá kênh này và pin video nhiều view cái". Ảnh 1 là màn hình Profile đỉnh trang, Ảnh 2 là khi cuộn xuống (Sticky Bar hiện avatar thu nhỏ và nút Follow khi view từ iOS cá nhân).
+  - Coordinator không so khớp lưới video mà vội vàng hallucinate phán: *"Ảnh 2 là Kênh nguồn gốc (Source idol channel), Ảnh 1 là Kênh farm clone re-up"*.
+  - User chửi thẳng: *"Xàm lồn 2 ảnh cùng 1 kênh của tao"*.
+  - **Nguyên nhân gốc rễ**: Nhìn thấy thanh sticky bar có nút Follow liền suy diễn sai là kênh của người khác (idol), mà không nhận ra đây là cùng một profile của User khi được cuộn xuống để xem các video cũ nhiều view (clip 31,3K view).
+  - **Quy tắc đối soát 2 ảnh profile**: Khi User gửi nhiều ảnh trong một yêu cầu chuẩn hoá/pin video: BẮT BUỘC kiểm tra xem các ảnh có phải là các đoạn cuộn (scroll viewports) của cùng một trang cá nhân hay không (cùng nhân vật, cùng style nội dung, cùng bio/avatar). Tuyệt đối không tự suy diễn ảnh là "kênh nguồn / kênh đối thủ" khi chưa có xác nhận rõ ràng.
 - **Nguyên nhân gốc rễ**:
   1. **Tin tưởng mù quáng file có sẵn**: Giả định sai lầm rằng cứ file có tên `avatar.jpg` trong thư mục gốc là đã chuẩn người thật. Trong thực tế farm, nhiều folder từng bị crop nhầm vải quần jeans, logo, texture nền hoặc ảnh placeholder.
   2. **Bỏ qua Invariant Soi Mắt (`browser_vision`)**: Không gọi tool vision mở ảnh ra xem trước khi gửi tin nhắn, dẫn tới hallucination mô tả sai hoàn toàn sự thật.

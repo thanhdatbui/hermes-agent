@@ -21,7 +21,7 @@ Khi dispatch Worker thực hiện task EDIT / FIX:
 - `MISSING_TASK_KIND: Bắt buộc khai báo 'TASK_KIND: EDIT' hoặc 'TASK_KIND: INVESTIGATE' trong context (SCOPE LOCK MISSING TARGET FILE)`.
 - *Lưu ý về TASK_KIND:* Có 3 task kinds hợp lệ:
   * `TASK_KIND: EDIT` (bắt buộc kèm `FILE: ...`, `OLD_STRING: <<< ... >>>`, `NEW_STRING: <<< ... >>>`).
-  * `TASK_KIND: CREATE` (dùng khi tạo file mới hoàn toàn, KHÔNG yêu cầu `OLD_STRING`/`NEW_STRING`, nhưng vẫn bắt buộc có `FILE: ...` và `FOCUSED_TEST: ...`).
+  * `TASK_KIND: CREATE` (dùng khi tạo file mới hoàn toàn, KHÔNG yêu cầu `OLD_STRING`/`NEW_STRING`, nhưng vẫn bắt buộc có `FILE: <<< <đường_dẫn_tuyệt_đối> >>>` và `FOCUSED_TEST: ...`).
   * `TASK_KIND: INVESTIGATE` (dùng cho task chỉ đọc/khảo sát, cấm sửa code).
 - **Lỗi thực tế 4:** `PATH_NOT_ABSOLUTE: '- Goal: Ghi đè toàn bộ nội dung file D:\Taadaa\tools\...' không phải đường dẫn tuyệt đối`.
 - **Nguyên nhân:**
@@ -37,6 +37,7 @@ Khi dispatch Worker thực hiện task EDIT / FIX:
     >>>
     ```
   - Trong các câu mô tả khác trong context, KHÔNG viết đường dẫn tuyệt đối gắn liền sau dấu bullet point `- `. Dùng tên file tương đối hoặc tách dòng.
+  - Khi Coordinator hết ngân sách T1 (`COORDINATOR WRITE DENIED`), giải pháp duy nhất để chạy tác vụ mới là dispatch Worker qua `delegate_task` với `TASK_KIND: CREATE` và bọc trong `FILE: <<< D:/Taadaa/... >>>`. CẤM cố gắng gọi write_file tiếp trong phiên chính.
 
 ### Bẫy 3: Quá số lượng file trong 1 task (`MULTI_FILE_VIOLATION`)
 - **Lỗi thực tế:** `MULTI_FILE_VIOLATION: Phát hiện 3 files trong 1 task. Tối đa <= 2 files (1 file nghiệp vụ + 1 file test). Bắt buộc chẻ nhỏ task!`
