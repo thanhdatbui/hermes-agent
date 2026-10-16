@@ -425,12 +425,37 @@ Trước khi soạn bất kỳ tin nhắn nào cho User:
      - Báo cáo rõ ràng, trung thực: Khẳng định KHÔNG tạo watchdog mới, mà chỉ cập nhật trạng thái `PENDING` vào bảng SQLite `avatar_replace_queue` có sẵn để cronjob hiện hành xử lý.
      - Kiểm tra trạng thái máy: Nếu thiết bị rảnh và kết nối ADB thông suốt thì kích hoạt runner đơn máy nạp dứt điểm ngay; nếu thiết bị đang bận ca nuôi hoặc bị nghẽn phần cứng/USB transport (timeout ADB) thì giữ trạng thái `PENDING` an toàn chờ chu kỳ hồi phục.
 
-- **Kỷ luật Closeout ("Done" / "Chốt phiên") Đối Với Phiên Vận Hành Media/Data**:
+- Kỷ luật Closeout ("Done" / "Chốt phiên") Đối Với Phiên Vận Hành Media/Data**:
   1. Khi User phát lệnh kết thúc phiên bằng từ khóa *"Done"* / *"Chốt phiên"* sau một chuỗi tác vụ chuẩn hóa kênh (Avatar, Hashtag, Pin):
   2. BẮT BUỘC kiểm tra `git status` tại repo công việc (`D:/Taadaa/tiktok-luot nuoi acc`).
   3. Nếu phiên làm việc thuần túy là tác vụ vận hành media và cập nhật dữ liệu farm (không có code diff/thay đổi mã nguồn trong Git):
      - Xác nhận rõ ràng với User: Tác vụ vận hành media/database farm đã hoàn tất và được bảo vệ (marker `.manual_avatar_locked`, `.manual_hashtag_locked`, SQLite queue `PENDING`).
      - Không phát sinh code diff cần review/commit/push lên remote branch, tránh kích hoạt nhầm vòng lặp remediation code cho diff cũ của các phiên trước.
+
+---
+
+## 21. Kỹ Thuật Canvas Expansion & Border Padding Khi Crop Video Cận Cảnh (Bảo Toàn Trọn Vẹn Đỉnh Tóc & Cằm)
+- **Hiện tượng & Giới hạn vật lý khi crop cận cảnh ($W=640$ / $W=576$)**:
+  - Khi trích xuất avatar từ các video quay góc cận cảnh (selfie close-up), khuôn mặt chiếm phần lớn khung hình ($fw > 450$px trên video rộng 640px). Chiều cao từ đỉnh đầu đến cằm đạt $\approx 550$px.
+  - Nếu crop thông thường kẹp trong khung ảnh gốc ($side \le 640$px), đường tròn viền xanh ($R=256$) bắt buộc sẽ cắt lẹm một trong hai: hoặc cắt ngang đỉnh tóc (mất ngọn tóc, không có headroom an toàn), hoặc cắt ngang dưới cằm (mất cằm hoàn toàn).
+- **Giải pháp kỹ thuật: Mở rộng Canvas bằng Border Padding (`cv2.BORDER_REPLICATE`)**:
+  - Mở rộng đều 4 phía ảnh gốc một khoảng đệm an toàn (`pad = side // 2`):
+    ```python
+    pad = side // 2
+    padded = cv2.copyMakeBorder(im, pad, pad, pad, pad, cv2.BORDER_REPLICATE)
+    cx_pad = int(center_x) + pad
+    cy_pad = int(center_y) + pad
+    x0 = cx_pad - side // 2
+    y0 = cy_pad - side // 2
+    crop = padded[y0:y0 + side, x0:x0 + side]
+    sq = cv2.resize(crop, (512, 512), interpolation=cv2.INTER_LANCZOS4)
+    ```
+  - **Lợi ích vượt trội**:
+    1. Cho phép nâng `side` lên $700 - 750$px (vượt qua giới hạn chiều rộng 640px của ảnh gốc) mà không làm biến dạng tỷ lệ nhân vật.
+    2. Căn tâm dọc chính xác: $cy = (y_{hair\_top} + y_{chin\_bottom}) / 2$, đảm bảo khuôn mặt nằm ngay tâm đường tròn.
+    3. Đường tròn xanh bao bọc trọn vẹn cả đỉnh tóc (với khoảng đệm headroom tự nhiên $\approx 30-40$px từ nền cây cối/phông nền nhân bản) và toàn bộ cằm, cổ áo sơ mi mà không bị chạm hay cắt viền.
+  - **Kỹ thuật né Text Overlay trên/dưới**:
+    - Khi video có khung comment ở đỉnh ($y < 230$) hoặc subtitle ở đáy ($y > 650$), việc tinh chỉnh $side$ nhỏ hơn khoảng cách giữa hai khối chữ kết hợp với mặt nạ hình tròn $R=256$ sẽ đẩy toàn bộ text overlay vào 4 góc vuông tối ngoài vòng tròn, giữ bên trong vòng tròn avatar hoàn toàn sạch chữ 100%.
 
 
 
