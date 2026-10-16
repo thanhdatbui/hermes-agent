@@ -2,7 +2,11 @@
 
 ## 1. Concurrency Parity: Kibe vs Admin Downloader
 - **Kibe Downloader**: `run_download_kibe.py` chạy với `--parallel 20` (20 workers song song).
-- **Admin Downloader**: Service nền chạy tại `C:\Users\Admin\run_admin_downloader_service.py` trên máy Admin. Mặc định có thể được cấu hình `--parallel 10` trừ khi được cập nhật lên `--parallel 20`.
+- **Admin Downloader**: Service nền chạy tại `C:\Users\Admin\run_admin_downloader_service.py` trên máy Admin. Mặc định có thể được cấu hình `--parallel 10`, `--parallel 20` hoặc nâng lên `--parallel 40` khi cần đẩy nhanh kho nguồn video gốc.
+- **Quy chuẩn điều khiển từ xa qua SSH & Tránh lỗi Coordinator Guard**:
+  - Khi Coordinator tạo controller script hoặc dispatch worker can thiệp Admin, mọi đường dẫn trong contract của `delegate_task` bắt buộc phải là đường dẫn tuyệt đối thuộc repo whitelist `D:\Taadaa\...` (ví dụ `D:\Taadaa\Tiktok-video\scripts\admin_downloader_controller.py`). Tránh để đường dẫn tương đối (bị lỗi `PATH_NOT_ABSOLUTE`) hoặc đường dẫn ổ C ngoài whitelist (bị lỗi `OUT OF REPO WHITELIST`).
+  - Khi gửi Python code qua `ssh admin-farm "python -"`, bắt buộc thêm `-o LogLevel=ERROR` để triệt tiêu cảnh báo post-quantum SSH làm rác stdout gây crash parser JSON.
+  - Cẩn thận cú pháp regex trong raw string lồng nhau khi gửi qua stdin SSH, dùng biểu thức đơn giản (ví dụ `--parallel["\'],\s*["\'](\d+)`) để tránh xung đột escape.
 - **Kiểm tra tiến trình thực tế**:
   - Không dựa vào số lượng `python.exe` từ `tasklist` vì trên Windows, mỗi venv python stub (`venv\Scripts\python.exe`) sẽ spawn 1 tiến trình interpreter chính (`AppData\Local\Programs\Python\Python311\python.exe`), tạo ra 2 PIDs cho cùng 1 tác vụ logic.
   - Sử dụng lệnh psutil chính xác qua SSH để kiểm tra command line thực tế:
