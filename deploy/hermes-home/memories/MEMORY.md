@@ -6,7 +6,7 @@ Hotmail: CẤM mail cá nhân; sinh @fviainboxes.com đọc OTP API. Write-Throu
 §
 Proxy: 1-1. Chuẩn hóa 3 món: End-to-End (crop 512x512 -> lock marker/Excel -> nạp app run_avatar_batch_3accs.py -> MEDIA:avatar-uploaded-confirmed.png); cấm dừng chờ giục; kẹt lock nuôi BẮT BUỘC đặt watcher/cron tự động re-attempt cấm nằm im; TT v47 monkey. Pin >=1000 view. Soi mắt trước gửi.
 §
-Farm: haiku_worker O(1) (dispatch_worker: Haiku->Agy CLI; CẤM delegate sửa code; cấm Gemini fake Reviewer). Tiểu Vi: adb 5038; watchdog 2p. S7: recover_stuck_s7. Rename: 25wkr song song; cấm tap (75,150); Switcher méo dấu; Name OCR len/30; State-Machine; cron in MEDIA:<posix_path> gạch /.
+Farm: haiku_worker O(1) 6-25s (dispatch_worker: T1 Haiku single-line prompt, hash verify diff, exit 125 quota->T2 Agy fix, cấm probe; cấm delegate sửa code). TVi adb 5038; watchdog 2p. S7: recover_stuck_s7. Rename: 25wkr song song; cấm tap (75,150); Switcher méo dấu; Name OCR len/30; State-Machine; cron in MEDIA:<posix_path> gạch /.
 §
 GPM: stop API kèm _kill_gpm_chrome (pid cmdline); max 5 wkr; cron-auto-feed nạp pool chatgpt-web 15p/lần (Hotmail ưu tiên). Hotmail: check is_auth, @fviainboxes, ghi Excel (C5,4,3+G).
 §

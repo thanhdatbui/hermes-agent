@@ -19,6 +19,7 @@ description: "TikTok follow runner and fail-closed farm ops."
     - `references/contact-suggestion-popup-follow-lockdown.md`: Khóa popup danh bạ.
     - `references/burst-follow-hibernation-cadence-gemphone-benchmark.md`: Burst 20-30 fl, ngủ đông 3-4d.
     - `references/probation-ladder-4day-cycle-adaptation.md`: Bậc thang thử thách chu kỳ 4 ngày.
+    - `references/shift-budget-cap-and-session2-drop-prevention.md`: Khóa trần ca P1/P2 và chống nhả follow Optimistic UI.
     - `references/row1-row2-follow-released-investigation-guide.md`: Bóc tách log thật điều tra nhả follow Row 1 & 2.
     - `references/dynamic-healing-row-selection-and-anti-consecutive-cadence.md`: Chọn row dưỡng động.
     - `references/zero-follow-shift-audit-and-fail-closed-breakdown.md`: Đối soát ca 0 follow.
