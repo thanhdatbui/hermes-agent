@@ -16,8 +16,7 @@ description: "TikTok follow runner and fail-closed farm ops."
     - `references/adaptive-ceiling-and-stratified-cohort-governance.md`: Dò trần (+2 đến 30 fl), khôi phục bộ nhớ & 3 Cohort.
     - `references/daily-follow-matrix-and-trust-ceiling-analytics.md`: Heatmap & Ceiling.
     - `references/shared-ip-proxy-collision-and-canary-ceiling-testing.md`: Trùng IP.
-    - `references/wave-scheduling-and-multi-farm-unified-governance.md`: Wave 1 & 2.
-    - `references/dashboard-follow-reconcile-race-condition.md`: Lệch pha crawler.
+    - `references/account-level-action-restriction-and-anchor-fallacy.md`: Phân tích lỗi nhả do nick chưa đủ khỏe vs ngộ nhận do Anchor; phân định Telegram vs Dashboard.
     - `references/contact-suggestion-popup-follow-lockdown.md`: Khóa popup danh bạ.
     - `references/burst-follow-hibernation-cadence-gemphone-benchmark.md`: Burst 20-30 fl.
     - `references/probation-ladder-4day-cycle-adaptation.md`: Chu kỳ 4 ngày.

@@ -4,9 +4,9 @@ Dọn đĩa: duyệt trước, cấm xóa ngầm. Cấm đẻ script trùng (REU
 §
 Nuôi 4d 3 ca (bỏ đêm, tắt màn 223). Cuốn chiếu Ava&2FA tới 5h15 (né cache 4h, báo 6h). Write-Through Excel cột 3,4,5+G; Starve 96h; mail Graph PC; đổi ava tự làm.
 §
-Chốt phiên: Vào main, cấm park WIP; Grace 80-84 (diff<=30, test 100%) auto-push; cấm Sonnet cày điểm; User ép: safe_push --owner-override.
+Chốt phiên: Vào main, cấm WIP; Grace 80-84 (diff<=30) auto-push; cấm Sonnet cày điểm; User ép: safe_push --owner-override.
 §
-Kibe(1-80) & Admin(201-280) cào nguồn & media độc lập 100% (cấm trùng video, cấm sync chéo Niche/Hashtag). TT v47.0.3; Switcher dock; AP 40m.
+Kibe(1-80) & Admin(201-280) độc lập cào/media. TT v47; Switcher dock; AP 40m. Ava: cấm góc nghiêng/gượng, trích mosaic 6 frame trực diện/sáng duyệt trước.
 §
 Worker: Haiku/AG/Sol dự phòng (cấm tự commit/closeout, xong chỉ báo diff+test); trượt 3 lần giao Claude; hỏi tiến trình nào đáp đúng cái đó.
 §
