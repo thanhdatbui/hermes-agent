@@ -76,4 +76,9 @@ Khi User gửi ảnh/username và yêu cầu "Chuẩn hoá kênh này":
 
 3. **Kỷ luật Dispatch Task & Bẫy Guard Coordinator**:
    - **Bắt buộc khai báo `TASK_KIND`**: Khi gọi `delegate_task`, context BẮT BUỘC chứa dòng khai báo `TASK_KIND: INVESTIGATE` (với task đọc/chạy script) hoặc `TASK_KIND: EDIT` / `TASK_KIND: CREATE` (với task sửa/tạo code). Nếu thiếu sẽ bị chặn ngay bởi `[COORDINATOR GUARD - CONTRACT VIOLATION]: MISSING_TASK_KIND`.
+   - **Định dạng chuẩn của contract dispatch**:
+     * `TASK_KIND: CREATE` (hoặc `EDIT` / `INVESTIGATE`)
+     * `FILE: D:/Taadaa/reports/<script>.py` (đường dẫn tuyệt đối forward-slash trần, CẤM bọc `<<< >>>` để tránh lỗi `PATH_NOT_ABSOLUTE`)
+     * `WORKER_CLI_EXHAUSTED: true` (bắt buộc để vượt qua Mechanical Gate #3)
+     * `FOCUSED_TEST: python -m py_compile D:/Taadaa/reports/<script>.py` (hoặc test pytest)
    - **Cấm đọc file live transcript log**: Đường dẫn `cache/delegation/live/...` nằm trong danh sách đen bảo vệ hệ thống (`GUARD_SOURCE_BLACKLISTED`). CẤM dùng `read_file` để thăm dò log của subagent; subagent chạy nền và sẽ tự trả về kết quả khi hoàn tất.

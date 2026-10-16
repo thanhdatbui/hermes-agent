@@ -10,6 +10,6 @@ Kibe(1-80) & Admin(201-280) cào nguồn & media độc lập 100% (cấm trùng
 §
 Worker: Haiku 5.5 CLI, AG CLI dự phòng (cấm làm reviewer, cấm override quota guard, cấm delegate_task sửa code); trượt 3 lần giao Claude CLI tự sửa; đổi tên farm 25 wkr; hỏi tiến trình nào đáp đúng cái đó.
 §
-Canary đa trường hợp/layout màn hình, đính kèm MEDIA:, cấm text 'Ảnh: D:...';
+Canary: bắt buộc test đa máy (cấm chỉ thử 1 máy) + đa layout màn hình, đính kèm MEDIA:, cấm text 'Ảnh: D:...';
 §
 Reboot 3 ca (05:20, 11:20, 17:20), né khi ca đang chạy; user lệnh là làm ngay cấm hỏi lại; sentinel chia theo ca.

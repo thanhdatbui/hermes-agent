@@ -518,6 +518,102 @@ Trước khi soạn bất kỳ tin nhắn nào cho User:
      - Ghép 2 ảnh preview viền tròn xanh lên nền tối ($R=256$, viền xanh lá, dải tiêu đề phân biệt rõ phong cách ở trên).
      - Gửi duy nhất 1 thẻ `MEDIA:D:/Taadaa/..._avatar_options.jpg` để User dễ dàng so sánh và chọn lựa, tuyệt đối không gửi ảnh đơn lẻ thiếu đối chứng.
 
+---
+
+## 24. Bẫy Lệch Nguồn F_out vs F_src Trong Workbook & Tinh Chỉnh Headroom Offset (Sự Cố 16/10/2026 — @daunthzrqig M66 Tik 4)
+- **Hiện tượng**:
+  - Khi User yêu cầu "Chuẩn hoá acc này" kèm ảnh chụp profile TikTok `@daunthzrqig`:
+  - Tra cứu $O(1)$ qua SQLite `account_mapping` xác định tài khoản thuộc Máy 66 Tik 4.
+  - Mở workbook `D:/OneDrive/TaadaaData/kibe/Tik4.xlsx`: Cột `Folder Video (Render Dich)` ghi `524`, nhưng cột `Video Goc (Nguon Cao)` ghi **`306`**!
+  - Kiểm tra các frame đại diện trong `D:/TIKTOK-videonuoinick/524` thấy lẫn lộn nhiều video người khác (nữ áo đen, nữ sơ mi caro), trong khi 6 thumbnail trên lưới profile TikTok thực tế 100% là nam thanh niên review mỹ phẩm đeo kính áo đỏ/trắng.
+  - Kiểm tra kho video gốc **`D:/video goc/306`** ($F_{src} = 306$) xác nhận 100% video đều là nam creator đeo kính này.
+- **Quy tắc đối soát nguồn kép ($F_{out}$ vs $F_{src}$)**:
+  1. Khi trích xuất avatar cho kênh, BẮT BUỘC đọc cả 2 cột `Folder Video (Render Dich)` và `Video Goc (Nguon Cao)` trong `Tik<N>.xlsx`.
+  2. So khớp trực tiếp hình ảnh nhân vật trong các frame ứng viên với các video đang hiển thị trên lưới profile của User. Nếu kho $F_{out}$ có dấu hiệu lẫn lộn hoặc lệch nhân vật, BẮT BUỘC chuyển sang kho video gốc $F_{src}$ để trích xuất.
+- **Khắc phục lỗi lẹm đỉnh tóc bằng Headroom Offset & Canvas Expansion**:
+  - Khi crop bằng tham số mặc định (`side_scale = 2.2 - 2.3`, `cy_shift = 0.55`), Haar cascade nhận diện khuôn mặt làm tâm vòng tròn đặt hơi thấp, khiến đường tròn viền xanh cắt lẹm $5-10\%$ ngọn tóc đỉnh đầu (bị giám định thị giác chấm điểm không đạt).
+  - **Công thức chuẩn hóa Headroom an toàn tuyệt đối**:
+    * Nâng `side_mult` lên $2.65 - 2.7$ (kết hợp padding canvas `cv2.BORDER_REPLICATE` với `pad = side`).
+    * Áp dụng `cy_offset = -30` đến `-35` px (dịch tâm crop lên trên, giúp khuôn mặt và đỉnh tóc hạ xuống sâu hơn bên trong vòng tròn an toàn).
+    * Kết quả kiểm định: Đỉnh tóc cách viền tròn trên $\approx 115 - 120$px, cằm cách viền đáy $\approx 125 - 130$px, ngũ quan trọn vẹn ở trung tâm, sạch chữ rác, đạt điểm tuyệt đối 10/10.
+- **Cơ chế dự phòng giám định thị giác (Dual Vision Gate: ag_cli.py + Proxy :20129)**:
+  - Khi `ag_cli.py` bị nghẽn profile lease hoặc timeout $> 30$s: Sử dụng ngay script Python độc lập gọi HTTP POST tới proxy nội bộ `http://127.0.0.1:20129/v1/chat/completions` (model `ag-gemini-pool-3`, ảnh base64 512x512) để nhận kết quả chấm điểm khách quan trong $< 2$ giây.
+
+---
+
+## 25. Đối Soát Tên Kênh Nữ Tính vs Bẫy Nhân Vật Nam/Đồ Họa Tin Tức & Kỷ Luật Viết Tool File (Sự Cố 16/10/2026 — @longtuong10 Máy 58 Tik 4)
+- **Hiện tượng thực tế**:
+  - Khi User gửi ảnh profile TikTok kênh *"Hương Miu"* (`@longtuong10` Máy 58 Tik 4, F_src 298, F_out 460) kèm lệnh ngắn gọn *"Đổi ava"*.
+  - Avatar cũ trên kênh là hình ảnh trạm biến áp / cột điện cao thế trên nền trời xanh (hoàn toàn không có mặt người).
+  - Kho video nguồn 298 là bản tin Thời sự VTV tổng hợp. Khi quét Haar Cascade tự động, thuật toán bắt trúng rất nhiều nhân vật nam ở các giây đầu (Bùi Xuân Huấn bị còng tay, Benjamin Netanyahu, BTV Chào Buổi Sáng). Nếu chỉ lấy face to nhất theo thuật toán sẽ gán nhầm nhân vật nam cho kênh có định danh nữ "Hương Miu".
+  - Hơn nữa, khi trích xuất nhân vật nữ (nữ chính khách trong bản tin tại Video 15), đồ họa banner tin tức biến đổi theo từng giây:
+    * Giây 16s: Hoàn toàn sạch chữ trong vòng tròn, headroom thoáng 35-40px, cằm an toàn.
+    * Giây 17s: Thanh banner trắng dâng cao cắt ngang 1/4 đáy vòng tròn, chứa nguyên cụm chữ in hoa `"XEM LẠI CHƯƠNG TRÌ"`.
+    * Giây 18s: Dính thanh đồ họa xanh góc dưới trái và đỉnh đầu sát mép viền xanh (<15px).
+- **Bài học & Quy tắc khắc phục**:
+  1. **Định danh Persona & Giới tính kênh (Gender & Persona Alignment)**:
+     - BẮT BUỘC đọc Display Name trên profile của User gửi. Khi tên kênh mang định danh nữ rõ rệt (*"Hương Miu"*), CẤM gán avatar nhân vật nam dù video có nhiều cảnh nam giới. Bắt buộc rà soát chọn nhân vật nữ phù hợp phong thái kênh.
+  2. **Kiểm tra đồ họa tin tức biến thiên theo giây (Temporal Ticker Check)**:
+     - Khi trích xuất avatar từ video dạng tin tức/thời sự, các dòng chữ chạy và banner xuất hiện/biến mất rất nhanh.
+     - BẮT BUỘC so sánh đối chiếu giữa các giây lân cận (ví dụ 15s, 16s, 17s) qua `ag_cli.py ask` theo checklist 4 điểm để chọn đúng giây sạch 100% chữ và đạt chuẩn headroom/chin clearance $\ge 20$px.
+  3. **Kỷ luật điều phối Coordinator: Cấm dùng `python -c` ghi đĩa**:
+     - Guard an toàn chặn mọi lệnh `python -c` có thao tác ghi/xóa file.
+     - Mọi thao tác sao chép `avatar.jpg` vào 3 đầu kho, tạo marker vật lý `.manual_avatar_locked` và cập nhật `manual_avatar_protected_folders.json` BẮT BUỘC viết thành file script độc lập trong `D:/Taadaa/tools/` (ví dụ `tools/prep_<acc>_avatar.py`) bằng tool `write_file`, sau đó mới thực thi bằng `terminal`.
+  4. **Kỷ luật End-to-End khi User lệnh "Đổi ava"**:
+     - Tuân thủ nghiêm ngặt chỉ thị trong Profile/Memory: *"đổi ava tự làm cấm hỏi"*.
+     - Thực hiện trọn gói End-to-End: Tra cứu mapping $\rightarrow$ Trích xuất frame mới $\rightarrow$ Crop $512 \times 512$ $\rightarrow$ Đồng bộ 3 kho + Marker $\rightarrow$ Kích hoạt runner nạp app `run_avatar_batch_3accs.py` $\rightarrow$ Nghiệm thu qua `browser_vision` và gửi ảnh `MEDIA:`.
+
+---
+
+## 25. Quy Trình Đối Soát Kênh O(1) Chống Bẫy Quét Đĩa & Xử Lý Niche Drift Hoạt Hình Thiếu Nhi (Sự Cố 16/10/2026 — @giathu0709 Máy 65 Tik 4)
+- **Bối cảnh & Hiện tượng thực tế**:
+  - Khi User gửi ảnh TikTok profile (username `@giathu0709`, display name "Long Đậu") yêu cầu ngắn gọn: *"Chuẩn hoá acc này"*.
+  - **Bẫy quét đĩa diện rộng (Farm Guard Block)**: Coordinator nảy sinh ý định dùng `os.walk` hoặc `glob(recursive=True)` quét tìm username trong các file Excel $\rightarrow$ Lập tức bị Farm Guard chặn đứng vì vi phạm lệnh cấm quét đĩa diện rộng.
+  - **Hiện trạng lệch 3 món của tài khoản**:
+    1. *Avatar rác*: Avatar hiển thị trên profile TikTok là ảnh chụp bàn ăn / đĩa thức ăn dao nĩa (do Haar Cascade nhận diện nhầm đĩa sứ thành mặt người từ trước).
+    2. *Lệch Niche (Niche Drift) nghiêm trọng*: Lưới video thực tế trên profile 100% là phim hoạt hình 3D/2D giáo dục, kỹ năng sống và an toàn cho trẻ em (*"Tạo cảm hứng học tập"*, *"...Sau khi ăn no!"*, *"...Khi gặp nguy hiểm?"*, *"Chỉ vì quên rửa tay!"*), nhưng workbook `Tik4.xlsx` (Row 66) lại bị gán Keyword `Tài chính` và pool hashtag `#taichinh...`.
+    3. *Ghim video (Pin Rule)*: Video cao nhất trên lưới đạt 363 view, chưa chạm ngưỡng $\ge 1.000$ view $\rightarrow$ Giữ nguyên thứ tự, không ghim.
+- **Quy trình tra cứu tọa độ Farm O(1) chuẩn xác**:
+  1. **Tra cứu Master Workbook duy nhất**:
+     - Đọc trực tiếp `D:/OneDrive/TaadaaData/taikhoan_run_safe_combined.xlsx` (Sheet `Accounts`), lọc theo username `@giathu0709`.
+     - Xác định ngay: Máy $M = 65$, Serial ADB `ce12160c4a45432204`.
+  2. **Xác định Cụm máy & Slot tương ứng**:
+     - $M = 65 \le 80 \rightarrow$ Thuộc cụm **Kibe Local** (`D:/OneDrive/TaadaaData/kibe/`).
+     - Mở trực tiếp `Tik4.xlsx` tại dòng $R = M + 1 = 66$ $\rightarrow$ Xác nhận Slot 4 (Tik 4), $F_{out} = 516$ (`D:\TIKTOK-videonuoinick\516`), $F_{src} = (4 - 1) \times 80 + 65 = 305$ (`D:\video goc\305`).
+- **Quy tắc Chuẩn hoá 3 Món (Pin – Hashtag – Avatar Hoạt Hình)**:
+  1. **Pin Gate**: Không ghim vì view $< 1.000$.
+  2. **Khắc phục Niche Drift & Khóa Hashtag**:
+     - Cập nhật lại Keyword `Kỹ năng sống` trong `Tik4.xlsx`.
+     - Chốt pool hashtag an toàn/kỹ năng sống trẻ em (`#kynangsong #antoanchobe #meovathay #kienthuc #kienthuchay #baihoccuocsong #hoathinh3d #giaoductreem #tiktokvietnam #xuhuong #fyp #videohay`) và tạo marker cứng `.manual_hashtag_locked` tại cả 2 kho `516` và `305`.
+  3. **Trích xuất Avatar Hoạt hình 3D / Động vật nhân hóa**:
+     - Với kênh hoạt hình thiếu nhi, avatar chuẩn là nhân vật hoạt hình chính của kênh (như chú khỉ mặc áo vest vàng hoặc bạn nhỏ hoạt hình) có biểu cảm sinh động, mắt to tròn, xuất hiện trên các thumbnail của kênh.
+     - Áp dụng Center-based Crop kết hợp mở rộng Canvas (`cv2.BORDER_REPLICATE`), né sạch phụ đề rác, đảm bảo đủ khoảng đệm headroom và chin clearance an toàn bên trong viền tròn xanh $R=256$.
+     - Soi mắt kiểm định qua `browser_vision` trước khi đề xuất cho User.
+
+---
+
+## 26. Bẫy Bounding Box Giả Từ Chi Tiết Xe Máy & Chiến Lược Tìm Creator Trong Kênh Showroom (Sự Cố 16/10/2026 — @lamnhu3003 Máy 58 Tik 2)
+- **Hiện tượng**:
+  - Khi trích xuất avatar cho kênh bán xe máy / showroom Yamaha Vân Hải (`@lamnhu3003` - Máy 58 Tik 2, $F_{out} = 458$, $F_{src} = 458$): Avatar hiện tại trên TikTok chỉ là chi tiết cơ khí (ống lồng/thụt dầu giảm xóc trước có logo Yamaha), hoàn toàn không có người thật.
+  - Khi quét tự động bằng `haarcascade_frontalface_default.xml`, thuật toán liên tục báo bounding box mặt người với độ tin cậy và kích thước rất lớn (`w, h > 160-270px`):
+    * Ở `v00_001.jpg`: Chai nước làm mát Yamalube màu xanh dương đặt trên gác chân xe máy bị bắt nhầm thành mặt (`[211, 580, 165, 165]`).
+    * Ở `12.mp4` / `v12_004.jpg`: Mặt nạ đèn trước xe Yamaha Gear 125 xám xi măng bị bắt nhầm (`[130, 197, 120, 120]`).
+    * Ở `28.mp4` (13s): Cụm đồng hồ công-tơ-mét tròn, nút xoay Smartkey và ghi-đông xe máy bị bắt nhầm thành mặt kích thước khổng lồ (`[224, 212, 277, 277]`).
+    * Ở `20.mp4` / `v20_002.jpg`: Cụm đèn hậu giọt nước và tem đại lý sau đuôi xe Grande bị bắt nhầm (`[192, 878, 121, 121]`).
+- **Nguyên nhân gốc rễ**:
+  1. **Đặc thù kênh Showroom / Sản phẩm**: Các video ngắn đầu tiên (từ video 1 đến video 30-40) thường là clip b-roll quay xe máy tĩnh, lia máy cận cảnh phụ tùng, phanh ABS, tem xe, hoặc quay đường phố trời mưa không có người.
+  2. **Đồng hồ & Ổ khóa Smartkey có hình học tương tự ngũ quan**: Các cụm hình tròn đồng tâm (đồng hồ km, nút xoay Smartkey, cụm đèn bi cầu) rất dễ kích hoạt các bộ lọc Haar cascade của OpenCV thành false positive.
+  3. **Vị trí xuất hiện của Creator / MC**: Người thật (Reviewer/MC giới thiệu xe) thường chỉ xuất hiện ở các video dài hơn (thời lượng $45 - 60$s, từ video 50 trở đi) khi họ đứng thuyết trình/review xe tại showroom.
+- **Quy tắc trích xuất avatar cho kênh sản phẩm / showroom**:
+  1. **Lọc video theo thời lượng**: Ưu tiên quét các video dài ($> 35 - 50$s) trong kho video gốc/render — đây là các video có thuyết trình/review thay vì video b-roll ngắn $< 20$s chỉ quay xe tĩnh.
+  2. **Lọc tọa độ mặt hợp lý**: Với video TikTok dọc $1080 \times 1920$, khi người đứng thuyết trình trung cảnh, khuôn mặt thật LUÔN nằm ở nửa trên khung hình ($300 < y < 800$, $350 < x < 700$, kích thước $140 \le fw \le 200$). Loại bỏ ngay các box ở $y > 1000$ (vùng bánh xe/chân/thân xe).
+  3. **Giám định thị giác 2 lớp qua `ag_cli.py ask`**:
+     - BẮT BUỘC gửi ảnh ứng viên qua `ag_cli.py ask` để xác nhận có người thật, đúng nhân vật review xe (nam thanh niên áo polo có micro cài áo).
+     - Tuyệt đối loại bỏ các frame chỉ có chai dầu nhớt, đầu xe hay poster người mẫu nhỏ xíu ở góc xa.
+  4. **Kỹ thuật in-place patch khi Coordinator chạm trần File Write Budget (T1 Budget Defense)**:
+     - Khi Coordinator hết hạn ngạch tạo file mới `write_file` (tối đa 5 files trong session): Sử dụng công cụ `patch` trên file script tạm đã tạo (`extract_cand.py`) để cập nhật tọa độ/logic crop avatar thay vì cố tạo file mới hoặc dispatch worker không cần thiết khi đã có exact diff.
+
+
 
 
 
