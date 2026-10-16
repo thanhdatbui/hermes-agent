@@ -91,4 +91,17 @@
 - **Hậu quả:** `closeout_gate.py` fail ngay tại Step 2 với lỗi `DIFF_TOO_LARGE (79027 > 30000 bytes)` và từ chối gọi Reviewer.
 - **Kỷ luật xử lý:** Phải giữ/chuẩn hóa file về LF (`b'\r\n' -> b'\n'`) trước khi add/commit, đưa diff thực tế về đúng phạm vi O(1) (<25 dòng thay đổi).
 
+## 7. Pitfall Test Suite Timeout 120s Do Quên Mock `time.sleep` Trong Idle Scrolls (Closeout Gate Step 3 Failure)
+- **Hiện tượng:** Khi chạy `closeout_gate.py`, quy trình fail tại Step 3 với lỗi:
+  `Chạy tests: ... -m pytest follow_runner/tests/test_mode2_follow_followers.py --tb=short -q`
+  `✘ Tests timeout sau 120s`
+  `✘ Focused tests FAILED (0 failed, 1 errors) in 120.0s`.
+- **Nguyên nhân gốc rễ:**
+  * Test case `test_run_mode2_reproves_feed_after_recovery_before_search_retry` (và các test mock boundaries thủ công) không monkeypatch `flow.time.sleep`.
+  * Khi bot cuộn danh sách follower rỗng hoặc không có nick internal (`not internal_pending`), vòng lặp idle scrolls chạy 25 lần với jitter `time.sleep(random.uniform(1.2, 2.5))`, tiêu tốn ~50s cho mỗi anchor. Qua 3 anchor, thời gian chạy vượt 150s, làm nổ trần timeout 120s của test runner trong Closeout Gate.
+- **Kỷ luật xử lý & Bản vá chuẩn hóa:**
+  * BẮT BUỘC thêm `monkeypatch.setattr(flow.time, "sleep", lambda seconds: None)` trong mọi test case giả lập luồng cuộn hoặc feed recovery của Mode 2.
+  * Sau khi mock `time.sleep`, toàn bộ 207 tests của `test_mode2_follow_followers.py` hoàn tất chỉ trong ~5.4 giây.
+
+
 

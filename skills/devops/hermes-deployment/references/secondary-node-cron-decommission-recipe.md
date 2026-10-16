@@ -57,11 +57,21 @@ These jobs execute hardware-local work on Admin and must not be touched:
    python D:/Taadaa/tools/admin_ssh_exec.py "hermes cron list"
    ```
    Verify 0 jobs have `Deliver: telegram:...`. All active jobs must show `Deliver: local`.
-2. **Kibe Remote ADB Health:**
+   *(CLI Trap: To modify a job's delivery target, use `hermes cron edit <job_id> --deliver local`, as `hermes cron update` is not a valid subcommand).*
+2. **Kibe Remote ADB Health & Fleet-Wide Sampling:**
    ```bash
    python D:/Taadaa/tools/inspect_machine.py 201
-   python D:/Taadaa/tools/inspect_machine.py 280
+   python D:/Taadaa/tools/inspect_machine.py 250
+   python D:/Taadaa/tools/inspect_machine.py 279
    ```
-   Verify response is instant (<2s) and serial matches `PROXYgandienthoai.xlsx`.
-3. **Kibe Dual-Cluster Runner Parity:**
-   Verify `phase9-runner-tiktok-feed` on Kibe logs `[kibe]` and `[admin]` clusters in `D:/Taadaa/runtime/admin/cron-state/runner_simple_state.json`.
+   Do not test only M201 and M280 (boundary devices like M280 may occasionally be offline/unplugged). Sample across the range (M201, M220, M240, M250, M260, M279) to ensure the entire USB cluster is responsive over Gigabit LAN.
+3. **Kibe Dual-Cluster Runner Parity & Telemetry:**
+   Verify `phase9-runner-tiktok-feed` on Kibe logs `[kibe]` and `[admin]` clusters in `D:/Taadaa/runtime/admin/cron-state/runner_simple_state.json`. Both `runtime/kibe` and `runtime/admin` runner state files will record identical window and row timestamps.
+4. **Disaster Recovery Live Drill:**
+   Verify that Admin standby node can immediately take over if Kibe Master goes down:
+   ```bash
+   python D:/Taadaa/tools/admin_ssh_exec.py "hermes cron resume <clear_cache_id> && hermes cron pause <clear_cache_id>"
+   ```
+   Confirm output logs `Resumed job: ... Next run: ...` in <2s, verifying the cold standby is 100% operational.
+5. **Bash Shell Escaping in Remote Commands:**
+   When invoking PowerShell commands through `admin_ssh_exec.py`, escape pipeline variables (`\$_` instead of `$_`) to prevent local bash from expanding them into the last argument of the prior command.

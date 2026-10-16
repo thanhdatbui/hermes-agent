@@ -180,3 +180,37 @@
    - Dashboard lấy `internal_follows` theo ngày của snapshot mới nhất (`target_date = max_dt`).
    - Nếu ngày đó mới chỉ chạy ca lướt đêm/sáng sớm (`internal_follows = 0`), hoặc nick không thuộc danh sách phân bổ chạy follow chéo của ngày (ví dụ ca follow chia theo ngày chẵn/lẻ hoặc chỉ phân bổ cho 1 nhóm máy nhất định), hệ thống trả về giá trị mặc định `+0`.
    - Kết luận: Khi thấy Following tăng mà Nội bộ +0, tài khoản hoàn toàn khỏe mạnh và đang tăng follow tự nhiên ngoài luồng chéo, không phải lỗi hệ thống hay nhả follow.
+
+---
+
+## 7. Giải Mã Hiện Tượng "Chết Ở Lượt Thứ 2" Khi Chạy 2 Phiên/Ca & Quy Tắc Cửa Sổ Trượt (Sliding Window Decay)
+
+### A. Tại sao giả thuyết "cắn luôn 20–30 lượt rồi nghỉ 4 ngày" là bất khả thi?
+1. **Thuật toán Cửa sổ trượt (Sliding Window / Leaky Bucket) của TikTok:**
+   - TikTok kiểm soát tốc độ follow theo block thời gian (theo phút và theo giờ), **không bao giờ đợi gom đủ 20–30 lượt rồi mới khóa**.
+   - Với dàn nick farm nuôi bình thường, ngưỡng chịu đựng an toàn trong 1 giờ chỉ từ **4 đến 8 lượt**.
+   - Nếu cố bấm dồn, từ lượt thứ 6–8 trở đi server TikTok đã âm thầm từ chối (silent-drop). Nút bấm trên UI dù đổi trạng thái nhưng server không ghi nhận, đối soát web = 0.
+2. **Hậu quả cố nhồi quota khi server đã chặn:**
+   - TikTok đánh dấu hành vi *Spam Burst*, kích hoạt án phạt `fail_streak` lũy tiến: Streak 1 (3 ngày), Streak 2 (5 ngày), Streak 3 (7 ngày), Streak >= 4 (giam kịch khung 15–19 ngày).
+   - Dữ liệu thực tế farm ghi nhận có tới **327 lượt tài khoản** bị giam cooldown kéo dài tới cuối tháng vì các đợt cố bấm dồn trước đây. CẤM TUYỆT ĐỐI thử nghiệm cấp full quota cho dàn đang dưỡng.
+
+### B. Cơ chế "Chết ở lượt thứ 2" tại Phiên 2 (Dữ liệu đối chứng P1 lúc 06:00 vs P2 lúc 08:00):
+- **Phân hóa 2 nhóm rõ rệt:**
+  * **Nhóm Khỏe (Trust cao — M37, M36, M39...):** Video $\ge 25$, Follower $> 90$, tuổi $> 200$ ngày. Thuật toán cấp trần ngày 15–20 lượt $\rightarrow$ Ăn trọn cả P1 (7 fl) và P2 (6 fl), tổng 13 lượt sạch 100% không nhả.
+  * **Nhóm Hồi phục (Probation Tier 1 & 2 — M4, M14, M21, M28, M41, M52, M57...):** Đang trong diện thử thách, TikTok siết trần sinh tồn chỉ **5–8 lượt/ngày**.
+- **Kịch bản "bấm cái thứ 2 là nhả" tại Phiên 2:**
+  1. P1 và P2 cách nhau quá ngắn (chỉ 2 tiếng), cửa sổ decay window chưa kịp hồi quota.
+  2. Ở P1, nick đã cắn 4–7 lượt (gần cạn quota ngày).
+  3. Sang P2, nick chỉ còn đúng **1 slot quota thoi thóp cuối cùng**. Bot bấm lượt 1 thành công.
+  4. Đến **lượt thứ 2**: Nút trên danh sách vẫn hiện "Đang follow" do cơ chế **Optimistic UI** của app TikTok lừa đảo. Nhưng khi runner chạy **Path B Verify** (click thẳng vào profile cá nhân kiểm tra) thì nút bị server TikTok trả về màu đỏ (chưa follow).
+  5. Runner phát hiện silent-drop, lập tức trả về `FOLLOW_FAILED: TikTok không nhận follow (profile vẫn chưa follow)` và dừng session.
+  6. Nếu ở P1 nick đã cắn kịch trần 8 lượt (như M26) thì sang P2 vừa bấm nick đầu tiên là dính nhả 0 lượt ngay.
+
+### C. Phân hóa Inbound Trust Score theo độ dày Profile (Row 1 vs Row 2):
+- **Row 1 (Tik1 — Nick già, following dày 100–390):** Bị nhả **60.4% ở nick con** do chạm trần rate-limit ngày.
+- **Row 2 (Tik2 — Nick mỏng, following 0–6):** Bị nhả **82.6% ngay tại Anchor** (`_ensure_anchor_followed`). Nick non nớt vừa vào bấm ngay một Anchor to ($\ge 150$ following) khiến AI chống bot của TikTok phát hiện bất thường và nhả nút follow về xám lập tức.
+
+### D. Quy Tắc Điều Phối Bắt Buộc (Invariant Enforcements):
+1. **Khóa 1 phiên/ngày cho nhóm Hồi phục:** Toàn bộ tài khoản thuộc `probation_tier1` hoặc `probation_tier2` **BẮT BUỘC chỉ được chạy 1 phiên/ngày (Phiên 1), Phiên 2 tự động Safe-Skip / Nghỉ dưỡng**. Tuyệt đối không để nick vừa follow xong ở P1 lại bị đè ra follow tiếp ở P2.
+2. **Chiến lược ăn chắc mặc bền:** Giữ nguyên quy trình Hồi phục 1 (2–4 lượt) $\rightarrow$ Hồi phục 2 (6–8 lượt) $\rightarrow$ Khỏe (10–15 lượt). Không chạy A/B test cấp full quota bừa bãi làm tăng fail streak giam nick 15 ngày.
+
