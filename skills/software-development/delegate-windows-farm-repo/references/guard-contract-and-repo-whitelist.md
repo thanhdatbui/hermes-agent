@@ -110,6 +110,27 @@ Khi dispatch Worker thực hiện sửa code (`TASK_KIND: EDIT`), Coordinator Gu
     - Nếu phát hiện số dòng thay đổi vượt trội bất thường (ví dụ: +1023 / -998 trên một hàm nhỏ), kiểm tra ngay CRLF: `data.count(b'\\r\\n')`.
     - Chạy chuẩn hóa line ending về LF: `content.replace(b'\\r\\n', b'\\n')` trước khi commit hoặc gọi Closeout Gate.
 
+- **Bẫy Phân Định Quyền Hạn Worker vs Chốt Phiên (Worker Report-Only Boundary - 2026-10-17):**
+  - Worker BẮT BUỘC chỉ dừng ở mức sửa code theo Scope Lock và chạy focused test verification. Worker KHÔNG CÓ QUYỀN tự tiện `git commit` hay chạy closeout gate.
+  - Khi code và test xong, Worker CHỈ xuất báo cáo tóm tắt diff và test evidence về cho Coordinator/User.
+  - Chỉ User hoặc Coordinator mới kích hoạt `closeout_gate.py` để chấm điểm và thực hiện commit an toàn.
+
+- **Bẫy Dirty Worktree & Untracked Files trong Repo Tools (`D:/Taadaa/tools` Scoping - 2026-10-17):**
+  - Thư mục `D:/Taadaa/tools` là repo git nhưng chứa hơn 200 untracked files (`??`) và một số tracked files đang dirty có test fail (như `safe_push.py`).
+  - CẤM TUYỆT ĐỐI `git add .` hoặc chạy `closeout_gate.py` không có cờ `--files` (sẽ kéo theo toàn bộ diff bẩn và làm fail reviewer).
+  - BẮT BUỘC chỉ định danh sách file mục tiêu qua `--files <target_files>` khi chạy `closeout_gate.py` và chỉ `git add <target_files>`.
+
+- **Bẫy Foreground Timeout khi Chạy Closeout Gate (`GUARD_FOREGROUND_TIMEOUT_EXCEEDED` - 2026-10-17):**
+  - Lệnh terminal foreground bị Coordinator Guard chặn nếu `timeout > 60s`. Trong khi đó Sol Web Reviewer (:20129) cần 60-120s để suy luận sâu.
+  - BẮT BUỘC chạy `closeout_gate.py` qua `terminal(background=True, notify_on_complete=True, timeout=300)` để harness tự đánh thức khi reviewer hoàn tất mà không vi phạm guard.
+
+- **Hạ Tầng Fallback Sol Web Worker Qua OmniRoute (`sol_worker.py` :20129 - 2026-10-17):**
+  - Khi Claude CLI và Agy CLI cạn quota, pool ChatGPT Web (`:20129`) đóng vai trò Fallback Worker khẩn cấp.
+  - Worker này chạy ReAct loop cục bộ với 3 lớp bảo vệ:
+    1. Local State Engine: Lưu lịch sử messages tại máy local, xoay tua account web mượt mà không mất context.
+    2. Patch Search/Replace Constraint: CẤM ghi đè cả file; bắt buộc anchor `SEARCH` duy nhất và kiểm tra AST syntax trước khi ghi đè (chống tật lười code và cắt cụt code của Web).
+    3. Tolerant DSL Parser: Dùng khối văn bản `ACTION: READ_FILE | PATCH | COMMAND | DONE | BLOCKED` để chống vỡ JSON khi streaming dài.
+
 - **Quyền Hạn Chuẩn Của Worker vs Closeout Gate (`Worker Report-Only Boundary` - 2026-10-16):**
   - **Kỷ luật cốt tử**: Worker (kể cả Claude Worker, Agy CLI, Haiku Worker hay Sol Worker) **CHỈ CÓ QUYỀN SỬA CODE, CHẠY FOCUSED TEST VÀ BÁO CÁO BẰNG CHỨNG (Diff + Test evidence)** về cho Coordinator & User.
   - **CẤM TUYỆT ĐỐI**: Worker tự ý commit, tự tiện push hay tự động kích hoạt vòng thẩm định chốt phiên.

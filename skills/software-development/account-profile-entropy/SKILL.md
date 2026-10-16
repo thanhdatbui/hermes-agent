@@ -129,6 +129,18 @@ When automating account creation on phone farms (Samsung S7 / Android):
 
 ### 8. TikTok Display Name & Foreign Email Adaptation (`make_tiktok_name()`)
 
+#### Handle-Derived Name Generation & Syllable Extraction (User Directive 2026-10-16)
+Khi tài khoản đã có `@username` (dù tạo từ reg cũ hay mua từ nguồn ngoài):
+- **Nguyên tắc cốt lõi**: BẮT BUỘC ưu tiên sinh tên hiển thị **gần giống và ăn khớp với username** thay vì bốc tên ngẫu nhiên hoàn toàn (tránh tài khoản `@vothitram` lại mang tên `Hải Cường`).
+- **Bóc tách âm tiết tiếng Việt (`parse_username_syllables`)**:
+  * Lọc sạch ký tự số và dấu chấm trong username (`re.sub(r'[^a-zA-Z]', '', u).lower()`).
+  * Đối chiếu từ điển âm tiết Họ - Đệm - Tên không dấu (`HO_MAP`, `DEM_MAP`, `TEN_MAP`) theo thuật toán greedy matching ưu tiên từ dài nhất.
+- **Phân bổ 50 / 50 theo chuẩn người dùng thật**:
+  * **50% Tên đầy đủ có dấu**: Reconstruct lại Họ + Đệm + Tên tiếng Việt chuẩn (VD: `vothitram` -> **`Võ Thị Trâm`**, `buitruc190` -> **`Bùi Trúc`**, `thiphong960` -> **`Thị Phong`**, `lequynh2043` -> **`Lê Quỳnh`**).
+  * **50% Tên chính + Biệt danh đời thường ("Trâm xxx")**: Bốc từ tố cuối cùng (Tên chính) ghép với hậu tố biệt danh đời thường trong `NICK_SFX` (VD: `vothitram123` -> **`Trâm Mập`**, **`Trâm Bơ`**, **`Trâm Miu`**, **`Trâm Nấm`**; `dokieu203` -> **`Kiều Tít`**).
+- **Với username 1 từ** (VD: `tuan31075` -> từ tố `tuan`): Ghép Đệm + Tên (**`Duy Tuấn`**) hoặc Tên + Nickname (**`Tuấn Miu`**).
+- **Với username ngẫu nhiên / chữ nước ngoài không nhận diện được âm tiết** (VD: `lilyan...`, `frances...`, `stutectzyes`): Chuyển tự ngữ âm sang stem tiếng Việt gần âm (`Linh Bông`, `Phương Thảo`) hoặc fallback tên đời thường 2-3 từ tự nhiên.
+
 When registering or renaming accounts created from foreign/shop emails (e.g. `francesuhunt5@gmail.com`, `LilyanLederhos64090@hotmail.com`):
 
 - **Anti-Pattern: Raw Email Local-Part**: TikTok display name allows max 30 chars. Using raw username (`LilyanLederhos64090` or `francesuhunt5`) looks unnatural, exposes the raw handle, and flags the account as an automated bot.
@@ -243,6 +255,7 @@ def generate_account_for_slot(slot, existing_emails=None, max_attempts=300):
 | Subprocess timeout <300s on 25 workers | 25 concurrent OCR calls spike host CPU → 35-step runner exceeds 240s → premature SIGTERM | Đặt timeout >= 320s cho subprocess runner trong watchdog ThreadPoolExecutor(max_workers=25) |
 | Rigid text matching in `NAME_EDIT` | WinRT OCR distorts diacritics in low-contrast input box (`Sơn Nấm` -> `Sdn I\läm`, `Tươi Đậu` -> `Tl-fdi DåU`) → ratio <0.70 triggers false-abort | Dùng 2-Tier Verification: ở `NAME_EDIT` bóc tách `all_ocr_words` so khớp từng từ (`ratio >= 0.6`) + counter `N/30` / ratio >=0.35 là Lưu; chốt chặn nghiêm ngặt (ratio >=0.75) nằm ở Profile readback |
 | Missing flush=True on background prints | Windows C-runtime block-buffers stdout in background subprocesses → completion messages delayed until process exit | Bắt buộc dùng `print(..., flush=True)` trong tiến trình nền để harness Hermes bắt được ngay sự kiện hoàn tất |
+| Completely random names on VN-syllable usernames | e.g. @vothitram renamed to 'Hải Cường' looks disconnected and bot-like | BẮT BUỘC dùng syllable segmenter (`parse_username_syllables`) ánh xạ @vothitram -> 'Võ Thị Trâm' (50%) hoặc 'Trâm xxx' (50%) |
 
 ## Verification
 

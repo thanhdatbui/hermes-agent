@@ -44,10 +44,26 @@ Với kênh dạng Shop / Sản phẩm / Tổ chức giáo dục (không có m�
 
 ## 4. Chuẩn Hoá Đồng Bộ Niche & Hashtag Pool Khi Chuẩn Hoá Kênh
 - Khi phát hiện Niche Drift giữa nội dung video và dữ liệu Excel:
-  1. **Cập nhật Workbook `Tik<N>.xlsx`**:
+  1. **Cập nhật Workbook `Tik<N>.xlsx` (Lưu ý Sheet Name)**:
+     - **Bẫy `wb.active`**: Không dùng `sheet = wb.active` vì có thể rơi vào sheet thống kê khác; BẮT BUỘC chỉ định rõ `sheet = wb["TaiKhoan"] if "TaiKhoan" in wb.sheetnames else wb.active`.
      - Sửa `Keyword Video` về đúng ngách (ví dụ: từ `Sáng tạo` $\to$ `Sách và đọc sách`).
      - Sửa `Hashtag Pool` tương ứng:
        `#sach #sachhay #docsach #sachgiaokhoa #sachthieunhi #nhasach #dodunghoctap #dungcuhoctap #hocsinh #tiktokvietnam #xuhuong #fyp #videohay`
   2. **Khóa bảo vệ Registry & Physical Marker**:
      - Thêm folder vào `D:/Taadaa/data/manual_hashtag_protected_folders.json`.
      - Tạo marker `.manual_hashtag_locked` tại cả 3 đầu kho (`TIKTOK-videonuoinick/<F_out>`, `video goc/<F_src>`, `video goc/<F_out>`).
+
+---
+
+## 5. Xử Lý Lỗi [AVATAR_UPLOAD_MENU_MISSING] Do App Văng Về Trang Chủ (Feed) Sau Media Scan
+- **Hiện tượng**:
+  - Khi chạy runner upload avatar, quá trình push ảnh và phát broadcast `MEDIA_SCANNER_SCAN_FILE` khiến TikTok bị giật hoặc chuyển tab về **Trang chủ (Home Feed)**.
+  - Log ghi nhận: `[AVATAR_UPLOAD_MENU_MISSING] ENSURE_AVATAR: Không tìm thấy Tải ảnh lên`, và `popup_before.xml` chứa danh sách text `['Trang chủ', 'Cửa hàng', 'Hộp thư', 'Hồ sơ']`.
+- **Phân loại lỗi**:
+  - Đây là lỗi **TRANSIENT L0** (do broadcast hệ thống Android hoặc áp lực RAM làm thay đổi viewport foreground tạm thời).
+- **Quy trình xử lý dứt điểm**:
+  1. Không tính vào Circuit Breaker.
+  2. Dọn sạch Recent apps và đưa thiết bị về Home Launcher qua `automation-core`.
+  3. Kiểm tra lock qua `with_device_lock.py --machine <M>`.
+  4. Thực hiện retry L0 chạy lại runner ngay lập tức (tối đa 2 lần). Không được đánh dấu BLOCKED hay đóng băng phiên.
+
