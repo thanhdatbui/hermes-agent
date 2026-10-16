@@ -101,7 +101,9 @@ Trên farm TikTok (1.280 tài khoản gồm 2 cụm Kibe 1..80 và Admin 201..28
      * Trích xuất frame nhân vật mới từ video nguồn/render, crop chuẩn ngũ quan & headroom 512x512, tạo marker `.manual_avatar_locked` tại cả 2 đầu thư mục.
    - **Niche & Hashtags**:
      * Kiểm tra nội dung video đã đăng trên profile và kho video đang chờ render (`F_out`) xem có khớp với `Keyword Video` và `Hashtag Pool` trong `Tik<Slot>.xlsx` hay không.
-     * Nếu lệch (ví dụ kho video là Biệt thự / Kiến trúc nhưng Excel ghi Ẩm thực), bắt buộc chuẩn hóa lại Excel và tạo marker `.manual_hashtag_locked`.
+     * Nếu lệch (ví dụ kho video là Biệt thự / Kiến trúc nhưng Excel ghi Ẩm thực, hoặc video Mèo con nhưng Excel ghi Làng quê), bắt buộc chuẩn hóa lại Excel và tạo marker `.manual_hashtag_locked`.
+   - **Tên Hiển Thị Kênh (Display Name)**:
+     * Kênh mang tên cá nhân ngẫu nhiên lúc reg (ví dụ `Quân Tít`), khi chuẩn hoá 3 món cần kiểm tra và đề xuất tên thương hiệu gắn liền với Niche của kênh (ví dụ: *Tiệm Mèo Béo*, *Mèo Bán Hàng Rong*, *Góc Mèo Con*) để phục vụ đợt auto rename tự nhiên.
 
 2. **Kỹ Thuật Thao Tác Remote Cụm Admin (Máy 201..280)**:
    - **Môi trường Python & OpenCV**:

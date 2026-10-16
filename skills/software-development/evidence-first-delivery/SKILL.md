@@ -214,6 +214,18 @@ The user prefers direct Vietnamese, concise status, and actual native images rat
     1. Canary CHỈ ĐƯỢC COI LÀ ĐẠT khi có ảnh nghiệm thu thực tế (`MEDIA:<path>`) chứng minh hành động thay đổi trạng thái đã diễn ra và thành công trên máy thật.
     2. Nếu máy test bị skip/no-op, BẮT BUỘC lập tức bốc máy khác có tài khoản mục tiêu sẵn sàng để thực thi đầy đủ luồng đến khi có ảnh nghiệm thu, CẤM báo cáo xong và CẤM kích hoạt chạy hàng loạt khi chưa có ảnh Canary đạt.
 
+- **Chống Bẫy Canary Đơn Máy / Đơn Màn Hình (Anti-Single-Device Canary Trap - User chất vấn: "Sao canary có 1 máy thì lấy gì đảm bảo máy khác k lỗi" - 2026-10-16):**
+  * **Sự cố thực tế**: Sau khi sửa logic nhận diện nút Follow/Nhắn tin và WinRT OCR, Coordinator chỉ chạy thử Canary trên 1 máy duy nhất (Máy 6 - Profile mở DM) rồi vội vã báo cáo hoàn tất và hỏi chốt phiên. User lập tức chỉnh đốn workflow: *"Sao canary có 1 máy thì lấy gì đảm bảo máy khác k lỗi"*. Khi Coordinator mở rộng Canary sang Máy 8 (đang ở màn hình Feed lướt video), OCR bất ngờ bắt chữ `Bạn bè` trên thanh tab điều hướng ($y_1 = 141$) và phán nhầm màn hình Feed là `followed`! Nếu không có lệnh chấn chỉnh của User, một lỗi false-positive nghiêm trọng đã bị lọt lưới lên toàn bộ farm.
+  * **Căn nguyên**: Tư duy kiểm thử đối phó / thiển cận (narrow confirmation bias): chỉ chọn 1 máy có kịch bản thuận lợi nhất, bỏ qua các trạng thái màn hình khác nhau (Feed, Profile chính chủ, Profile cài đặt) và các biến thể ID/layout giữa các máy trên farm.
+  * **Quy tắc BẮT BUỘC (Ma Trận Canary Tối Thiểu 3 Máy / 3 Trạng Thái)**:
+    1. **CẤM TUYỆT ĐỐI Canary trên 1 máy đơn lẻ**: Nghiệm thu bản vá logic UI/OCR bắt buộc phải chạy tối thiểu trên 3-4 thiết bị thật độc lập.
+    2. **Bao phủ tối thiểu 4 trạng thái màn hình**:
+       - (a) Màn hình Profile đối tượng (nút đỏ `[Follow]` + nút xám `[Nhắn tin]`).
+       - (b) Màn hình Profile chính chủ (chỉ có nút sửa hồ sơ + stat counter, cấm nhận nhầm stat count `1 Đã follow` thành followed).
+       - (c) Màn hình Video Feed (thanh tab điều hướng `Bạn bè`, `Đang follow` ở $y < 200$, cấm nhận nhầm tab bar thành nút action).
+       - (d) Màn hình Cài đặt / Sửa hồ sơ / Lỗi (fail-closed trả về `unknown`).
+    3. **Bằng chứng thị giác độc lập**: Mỗi máy trong ma trận Canary đều bắt buộc screencap, kiểm chứng qua Vision/OCR, và gửi ảnh `MEDIA:<path>` kèm readback cụ thể trước khi được phép đề xuất chốt phiên.
+
 - **Kỷ Luật Phản Hồi Khi User Bức Xúc Về Alert / Lỗi Hệ Thống ("Clgt", "Dlgt"):**
   * **CẤM TUYỆT ĐỐI**: Trả lời dài dòng, liệt kê dàn trải các bước kỹ thuật rườm rà, phân bua cơ chế hook bảo vệ, hoặc thanh minh phòng thủ.
   * **VÀO THẲNG BẢN CHẤT 3 Ý TẬP TRUNG**:
@@ -285,6 +297,7 @@ Use `references/avatar-only-scope-and-false-policy-refusal.md` for the incident-
 
 ## References
 
+- `references/multi-machine-canary-matrix-and-feed-top-nav-ocr-trap-20261016.md` — **[MỚI 16/10/2026]** Bài học bẫy Canary đơn máy (User chất vấn *"Sao canary có 1 máy thì lấy gì đảm bảo máy khác k lỗi"*): Nhờ mở rộng Canary đa máy đã phát hiện lỗi OCR nhận nhầm tab bar "Bạn bè" trên màn hình Feed ($y_1=141$) thành followed; quy chuẩn ma trận Canary tối thiểu 4 góc nhìn (Profile mở DM, Profile chính chủ, Feed, Edit profile) và ngưỡng $y_{min}=200$.
 - `references/cronjob-no-agent-media-delivery-and-path-normalization-20261016.md` — **[MỚI 16/10/2026]** Bẫy cronjob no_agent xuất text đường dẫn `Ảnh: D:\...` thay vì thẻ `MEDIA:<posix_path>` khiến Telegram không gửi ảnh native photo, và quy chuẩn chuẩn hóa đường dẫn gạch xuôi POSIX `/`.
 - `references/canary-verification-positive-proof-and-anti-noop-trap-20261016.md` — **[MỚI 16/10/2026]** Bẫy báo cáo Canary No-Op / Skipped (User chất vấn *"Đâu kết quả chạy canary đâu?"*): Nhầm lẫn giữa fail-safe exit an toàn và nghiệm thu thực tế; quy tắc Canary bắt buộc phải là positive end-to-end verification trên thiết bị có tài khoản sẵn sàng, tạo ra ảnh nghiệm thu `MEDIA:<path>` và xác nhận qua Vision trước khi chạy hàng loạt.
 - `references/with-device-lock-screencap-binary-corruption-and-pull-pattern-20261015.md` — **[MỚI 15/10/2026]** Bẫy `stdout` ban text log từ `with_device_lock.py` ô nhiễm ảnh PNG binary khiến file chỉ 340 bytes; quy chuẩn 2 bước bắt buộc: `shell screencap -p /sdcard/...` rồi `adb pull` để tách byte ảnh khỏi log wrapper; kiểm tra kích thước file `.png` phải >= 100KB trước khi gắn thẻ `MEDIA:`.
