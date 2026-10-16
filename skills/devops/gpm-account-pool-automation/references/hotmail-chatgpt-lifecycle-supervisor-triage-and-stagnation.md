@@ -132,3 +132,23 @@ python "D:/OneDrive/Taadaa_Sync_Shared/hermes-cron/scripts/gpm_stale_profile_wat
   3. **Tài khoản BLOCKED / Cooldown:** Có bao nhiêu tài khoản đang bị khóa? Nguyên nhân lỗi là gì? Cần gỡ thủ công hay chờ cooldown?
   4. **ChatGPT Web Pool:** Có bao nhiêu acc active? Cron nạp pool 15p có sinh lỗi 0/10 không?
 - Phản hồi người dùng phải đi thẳng vào **Root Cause** và đề xuất hành động cụ thể (Fix ngay / Chờ cooldown / Đồng bộ mã nguồn).
+
+---
+
+## 5. Đồng Bộ Tài Khoản ChatGPT Reg Thành Công Lên OmniRoute Web Pool & Gán Proxy 1-1
+
+### Cơ Chế Đồng Bộ Tự Động (Cron `cron-auto-feed-chatgpt-pool`)
+- **Tên Cron:** `cron-auto-feed-chatgpt-pool` (Job ID: `3269c6faeb03`), chạy chu kỳ **mỗi 15 phút** (`*/15 * * * *`).
+- **Nhiệm vụ:** Quét cuốn chiếu các profile GPM đã reg ChatGPT (ưu tiên Hotmail), mở trình duyệt trích xuất cookie `__Secure-next-auth.session-token`, sau đó tự động nạp vào OmniRoute SQLite (`~/.omniroute/storage.sqlite`).
+
+### Quy Trình Gán Proxy 1-1 & Nạp Combos Chuẩn Chỉ
+1. **Trích xuất Proxy Port:** Phân tích port từ tên profile GPM (ví dụ: `5101`–`5180` là Kibe `test.taadaa.click`, `10001`–`10080` là Admin `mirotik1.taadaa.click`).
+2. **Tra cứu `proxy_registry`:** Truy vấn `proxy_id` tương ứng trong bảng `proxy_registry` của OmniRoute. Nếu không tìm thấy proxy, **BẮT BUỘC FAIL-CLOSED** (bỏ qua, không bật `is_active = 1` để chống rò rỉ IP máy chủ).
+3. **Upsert `proxy_assignments`:** Gán bản ghi `scope = 'account'`, `scope_id = <connection_id>`, `proxy_id = <proxy_id>` để đảm bảo mọi request web chatgpt đều đi qua đúng proxy của máy.
+4. **Nạp vào Combos:** Tự động append `connectionId` vào mảng `models` của 2 combo cốt lõi:
+   - `chatgpt-web-pool` (dùng cho bot/nurture).
+   - `gpt-web-sol` (dùng cho Sol Auditor / Reviewer).
+
+### Bẫy Kẹt Ứng Viên Cũ (Stale Gmail Candidate Starvation)
+- **Bệnh lý:** `get_dynamic_candidates()` chỉ lấy 10 profile đầu tiên trong `profile_data.db`. Nếu 10 profile đầu là các tài khoản Gmail cũ đã hết hạn cookie và kẹt ở màn hình Google OAuth, script sẽ chạy đi chạy lại đúng 10 tài khoản lỗi đó mỗi 15 phút (báo 0/10), không bao giờ chạm tới kho hàng trăm tài khoản Hotmail mới reg.
+- **Biện pháp bắt buộc:** Phân vùng ứng viên (Partitioning), tách riêng `cand_h` (Hotmail) và `cand_g` (Gmail), trả về `(cand_h + cand_g)[:limit]` để Hotmail luôn được ưu tiên nạp pool trước.
