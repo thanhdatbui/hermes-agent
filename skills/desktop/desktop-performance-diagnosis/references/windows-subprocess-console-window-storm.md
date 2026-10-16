@@ -36,6 +36,46 @@ WIN_KWARGS = {"creationflags": subprocess.CREATE_NO_WINDOW} if os.name == "nt" e
 subprocess.run([ADB, "-s", serial, "shell", ...], capture_output=True, timeout=10, **WIN_KWARGS)
 ```
 
+### Pattern 3: Module-Level Subprocess Monkeypatch (Preferred for zero-touch refactoring)
+When refactoring legacy monolith or watchdog scripts with multiple internal functions without altering dozens of call sites:
+```python
+import sys
+import subprocess
+
+if sys.platform == "win32":
+    _orig_subp_run = subprocess.run
+    def _silent_subp_run(*args, **kwargs):
+        if "creationflags" not in kwargs:
+            kwargs["creationflags"] = 0x08000000
+        return _orig_subp_run(*args, **kwargs)
+    subprocess.run = _silent_subp_run
+```
+
+### Pattern 4: Global Environment Hardening via `sitecustomize.py`
+To eliminate console window flashes across all sub-scripts and Python environments permanently:
+```python
+# In site-packages/sitecustomize.py
+import sys
+if sys.platform == "win32":
+    try:
+        import subprocess
+        if not getattr(subprocess, "_hermes_no_window_patched", False):
+            subprocess._hermes_no_window_patched = True
+            _orig_popen_init = subprocess.Popen.__init__
+            def _silent_popen_init(self, *args, **kwargs):
+                flags = kwargs.get("creationflags", 0)
+                kwargs["creationflags"] = (flags & ~0x00000008) | 0x08000000
+                _orig_popen_init(self, *args, **kwargs)
+            subprocess.Popen.__init__ = _silent_popen_init
+    except Exception:
+        pass
+```
+
+## Hidden Scheduled Task & WindowStyle Hidden Pitfall
+Even when background scheduled tasks (e.g. `Hermes_Gateway_Watchdog`, `WakeUpForCron`) use `wscript.exe` or `powershell.exe -WindowStyle Hidden` or `cmd.exe /c exit`, running on short intervals (e.g. every 2 minutes `PT2M`) causes Windows Desktop Window Manager (DWM) to allocate a transient console session. In fullscreen/borderless games (Warcraft 3, League of Legends), this creates an intermittent 1-frame screen blink/flicker ("lâu lâu nháy màn hình 1 cái").
+- **Diagnosis:** Query PowerShell Event Log ID 400 (`HostApplication`) to trace recurring hidden PowerShell invocations.
+- **Fix:** Disable or consolidate redundant watchdog scheduled tasks in favor of persistent daemons or event-driven triggers.
+
 ## Coordinator Subagent Dispatch Rule
 When patching multiple standalone scripts across directories to address console storms:
 - Do not bundle 4+ scripts into one worker dispatch prompt (causes 600s timeout / iteration exhaustion).

@@ -649,6 +649,25 @@ Trước khi soạn bất kỳ tin nhắn nào cho User:
   4. **Tầng 4 (Soi mắt `browser_vision` bắt buộc trước khi gửi)**:
      - Mở trực tiếp file `optA_circle_preview.jpg` và `optB_circle_preview.jpg` qua `browser_navigate` và gọi `browser_vision` để mắt thật của Coordinator xác nhận đạt chuẩn trước khi đính kèm thẻ `MEDIA:<path>`.
 
+---
+
+## 29. Bẫy Lệnh "Chuẩn Hoá Acc Này" Thiếu Ảnh Kèm Theo & Kỷ Luật Chống Suy Diễn Chéo Session (Sự Cố 16/10/2026)
+- **Hiện tượng thực tế**:
+  - User gửi tin nhắn chỉ có đúng 4 chữ: *"Chuẩn hoá acc này"* (hoặc *"Đổi ava acc này"*), hoàn toàn KHÔNG có ảnh đính kèm (`[Image attached at: ...]`) và KHÔNG cung cấp số máy hay username.
+  - Đây là trường hợp phổ biến trên Telegram khi: (1) User gửi text trước dự định gửi ảnh sau; (2) Telegram gateway phân mảnh tin nhắn; (3) User gửi ảnh bị nghẽn mạng; hoặc (4) User tưởng bot tự biết máy nào đang cầm trên tay.
+- **Các cạm bẫy Coordinator rất dễ mắc phải**:
+  1. **Bẫy Cross-Session Archaeology (Rò rỉ ngữ cảnh session khác)**: Dùng `session_search` thấy các session vừa chạy trước đó có ảnh tài khoản khác (ví dụ Máy 34 `@yobi1965`, Máy 54 `@anan197563`, Máy 65 `@giathu0709`), liền tự ý "nhận vơ" tài khoản của session cũ đem ra chuẩn hoá tiếp. Việc này vi phạm nghiêm trọng **Cross-Session Context Bleed Guard**, User sẽ mắng vì "trả lời nhầm session" hoặc can thiệp sai máy.
+  2. **Bẫy Quét Đĩa & Đụng Guard Hệ Thống**: Cố gắng quét đĩa diện rộng (`image_cache`, `D:/Taadaa/reports`) hoặc truy cập file nội bộ Hermes, kích hoạt cảnh báo đỏ của `GUARD SELF-PROTECTION` và làm kẹt lượt xử lý (loop warning).
+  3. **Bẫy Đoán Mò Máy (Blind Machine Triage)**: Tự tiện pick 1 máy đang chạy trên Farm rồi vào can thiệp lung tung.
+- **Quy tắc ứng xử bất biến (Missing Image & Target Guard)**:
+  1. **Kiểm tra Input Gate Turn 1**: Kiểm tra prompt có metadata đính kèm ảnh (`[Image attached at: ...]`) hoặc chuỗi username (`@...`), số máy (`Máy N`) hay không.
+  2. **Dừng ngay lập tức nếu thiếu cả Ảnh lẫn Target**: CẤM TUYỆT ĐỐI lục lọi tìm ảnh từ session cũ hoặc tự chọn nick để làm.
+  3. **Phản hồi 4 ý cốt lõi chuẩn mực**:
+     - Xác nhận đã sẵn sàng thực hiện quy trình **Chuẩn hoá 3 món (Avatar – Hashtag/Niche – Ghim Video)**.
+     - Nêu rõ tình trạng: Tin nhắn hiện tại **chưa có ảnh chụp màn hình Profile TikTok đính kèm** (hoặc thiếu số máy/username).
+     - Hướng dẫn User gửi ảnh Profile TikTok (hoặc nhắn rõ Máy / Username).
+     - Tóm tắt ngắn gọn 4 bước sẽ thực thi ngay khi nhận ảnh (Định vị $O(1)$ $\rightarrow$ Pin Gate $\ge 1.000$ view $\rightarrow$ Niche & Hashtags $\rightarrow$ Trích xuất Avatar chuẩn từ video gốc có soi mắt nghiệm thu).
+
 
 
 

@@ -25,6 +25,7 @@ Trên farm TikTok (1.280 tài khoản gồm 2 cụm Kibe 1..80 và Admin 201..28
 2. **Crop Avatar Theo Chuẩn Invariant Của Farm**:
    - Kích thước: Chuẩn vuông `512x512` (hoặc `1080x1080`).
    - Tỷ lệ bố cục: Mặt ở khoảng 15–25% phía trên ($cy \approx 0.2 \times H$), khoảng trống đỉnh đầu (headroom) vừa đủ, **cấm cụt đầu**.
+   - Trích xuất tự động qua Haar Cascade từ `D:/video goc/<F_src>/.avatar_work/representative_frames/`: Lọc frame có đúng 1 khuôn mặt kích thước lớn (`minSize=(100, 100)`), tính `crop_size = int(fh * 2.2)`, căn giữa theo trục ngang và chừa `int(fy - crop_size * 0.18)` khoảng trống trên đỉnh đầu trước khi resize 512x512 `cv2.INTER_LANCZOS4`.
    - Kiểm tra bằng `browser_vision` tận mắt trước khi gửi hoặc upload.
 3. **Đồng Bộ Hai Đầu Thư Mục**:
    - Copy file `avatar.jpg` chuẩn vào cả:
@@ -70,14 +71,15 @@ Trên farm TikTok (1.280 tài khoản gồm 2 cụm Kibe 1..80 và Admin 201..28
    - Dùng `browser_navigate(url="file:///D:/video goc/<F_src>/avatar.jpg")` và `browser_vision` để trực tiếp kiểm tra ảnh đại diện có đúng là nhân vật xuất hiện trong các video trên kênh hay không.
    - Tạo ảnh mô phỏng khung tròn profile TikTok: vẽ mask hình tròn tâm `(w//2, h//2)`, bán kính $R = \min(w, h)//2$, làm tối 70% vùng nền ngoài vòng tròn.
    - Lưu ra `tmp_<name>_avatar_preview.jpg` và mở qua `browser_navigate` + `browser_vision` để xác nhận tận mắt: mặt ở trục giữa, đỉnh đầu không bị cắt, cằm và vai vừa vặn trong vòng tròn trước khi gửi thẻ `MEDIA:` cho người dùng.
-3. **Kỷ Luật Dispatch Worker Khi Hết Ngân Sách T1 Coordinator**:
+3. **Kỷ Luật Dispatch Worker Khi Hết Ngân Sách T1 Của Coordinator**:
    - Khi Coordinator đã đạt giới hạn ghi T1 (5 files / 200 dòng): BẮT BUỘC dispatch Worker qua `delegate_task`.
    - Để tránh vi phạm `OUT OF REPO WHITELIST` (chỉ cho phép `D:/Taadaa`), không khai báo file ngoài (`D:/OneDrive/...`) vào trường `FILE:`.
    - Bọc toàn bộ thao tác đồng bộ file, cập nhật SQLite và cập nhật Excel vào một script entrypoint duy nhất trong `D:/Taadaa/tools/<script>.py`.
    - Soạn `OLD_STRING` và `NEW_STRING` trong `<<< ... >>>` với tổng dòng thay đổi `<= 30 dòng` (`DIFF_BUDGET`) để Worker vá và chạy script kiểm chứng focused.
-   - **Bắt buộc Gate 4 Fail-Fast & Chuẩn Định Dạng Test**:
-     * Prompt EDIT bắt buộc chứa nguyên văn: `FAIL_FAST: Nếu trong <= 3 iterations đầu thấy scope bất khả thi với budget 15 calls thì DỪNG NGAY (ABORT) và trả về anchor + proposed contract, cấm đốt hết budget để mò file rồi fail im lặng.`
-     * Định dạng `FOCUSED_TEST`: Chuẩn `python -m pytest <file.py>::<test_node> -q` hoặc `python -m py_compile <file.py>`.
+   - **Quy tắc bắt buộc khi khai báo delegate_task**:
+     * Cả `goal` và `context` BẮT BUỘC có dòng đầu tiên: `FILE: <đường_dẫn_tuyệt_đối>` (ví dụ: `FILE: D:/Taadaa/tools/prep_m57_avatar_swap.py`). Thiếu dòng này guard sẽ chặn ngay với lỗi: `EDIT_MISSING_FILE: Task EDIT bắt buộc có 'FILE: <đường_dẫn_tuyệt_đối>'`.
+     * `FOCUSED_TEST`: Bắt buộc đúng 1 trong 2 định dạng chuẩn: `python -m pytest <file.py>::<test_node> -q` hoặc `python -m py_compile <file.py>`. Lệnh thô như `python <script>` sẽ bị chặn bởi `INVALID_FOCUSED_TEST_FORMAT`.
+     * Luôn kèm chỉ thị `FAIL_FAST: Nếu trong <= 3 iterations đầu thấy scope bất khả thi với budget 15 calls thì DỪNG NGAY (ABORT)...`.
    - **Đồng Bộ Registry Đôi (Dual Registry Synchronization)**:
      * Cả 2 file `D:/Taadaa/data/manual_avatar_protected_folders.json` và `D:/Taadaa/Tiktok-video/data/manual_avatar_protected_folders.json` đều là SSOT cho `manual_avatar_guard.py`. Khi khóa avatar thủ công, bắt buộc đồng bộ cả 2 nơi.
      * Vì Worker bị khóa Scope Lock theo từng file riêng lẻ (`FILE: <path>`), nếu Worker báo dừng do Scope Lock Breach khi cố sửa file thứ 2, Coordinator phải dispatch lượt kế tiếp với scope file thứ 2 hoặc thực hiện qua script tool nội bộ.
