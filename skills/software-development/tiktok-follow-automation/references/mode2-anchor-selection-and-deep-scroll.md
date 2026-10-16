@@ -29,7 +29,13 @@
        + Nick ca tối (Row 4, Row 5...) là nick non mới nuôi, chỉ mới follow 0-5 người trong toàn bộ vòng đời (còn hơn 170+ nick farm trong list anchor chưa hề follow).
        + **CẤM TUYỆT ĐỐI suy diễn và giải thích nhảm nhí rằng: "Anchor follow người ngoài nhiều" hoặc "Nick non đã follow hết danh sách của anchor"**. Đây là ngụy biện vô căn cứ khiến User phản ứng gay gắt.
      * **NGUYÊN NHÂN GỐC RỄ THỰC TẾ KHI GẶP `idle_scrolls >= 25` TRÊN NICK NON:**
-       + **Lỗi Mù Giao Diện / Trượt Selector:** Bot mở được list nhưng không nhận diện được nick hay nút bấm do TikTok đổi selector (`id/u68`, `id/u2f`, `id/u9f`...), hoặc `_extract_row_handle` trượt không lấy được handle -> `internal_pending = []` -> bot tưởng rỗng nên vuốt cuộn 25 lần rồi thoát an toàn.
+       + **Bẫy `_classify_row_button` nhận nhầm trạng thái "đã follow sẵn" (Bằng chứng M59/M65):**
+         - Tại `follow_runner/flows/mode2_follow_followers.py:188`, hàm `_classify_row_button` quét text và `content_desc` của nút qua danh sách `FOLLOWED_TEXT` ("Đã follow", "Following", "Bạn bè", "Nhắn tin"...).
+         - Khi TikTok đổi layout hoặc subtext trong hàng/cluster bị overlap, nút quan hệ bị phân loại nhầm thành `followed`, dẫn tới `follow_one_follower` trả về `("skipped", "đã follow sẵn (skip)")` hàng loạt (ví dụ: M59 chưa từng follow ai nhưng bị skip 11 nick liên tiếp).
+         - Khi tất cả hàng bị skip hoặc gán `follow_button = None` (`missing_button_rows`), `internal_pending` rỗng, bot kích hoạt vòng lặp vuốt `idle_scrolls += 1` lên 25 và thoát an toàn.
+       + **Bẫy `_ensure_anchor_followed` kẹt cửa Profile video (Bằng chứng M8 chạy ~89s):**
+         - Tại dòng 504–575, trước khi vào Following list, bot tìm `video_covers` trên Profile anchor để xem video trước khi follow. Nếu không bắt được cover (`cover`, `tv_play_count`, `exx`, `aweme`), bot coi là `no_video` và safe-skip anchor.
+         - `run_mode2` chỉ lấy tối đa 3 anchor (`uids = uids[:3]`). Nếu cả 3 anchor đều bị skip ở khâu tìm video cover, bot thoát vòng lặp, kết thúc phiên với `status: OK, followed: 0` mà **hoàn toàn chưa từng mở vào tab Following**.
        + **Bẫy telemetry `skipped: []`:** Khi không nhận diện được nick nội bộ (`not internal_pending`), code cuộn tiếp mà không vào vòng `for row in pending`, nên `res.skipped` vẫn là `[]`.
        + **Kẹt trước khi vào list:** Bot chạy ~70-90s có thể do kẹt ở khâu tìm kiếm 2-3 anchor (`_nav_search` timeout 35s/anchor) rồi thoát ra mà chưa từng vào được list Following.
    - **TRƯỜNG HỢP 3: Chưa mở được Anchor hoặc Search không ra (`not_found`):**

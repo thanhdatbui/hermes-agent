@@ -18,6 +18,13 @@ Khi operator thấy nhãn `Feed chưa ổn định` (hoặc các mã kỹ thuậ
 - **`sensitive-skip-failed`:** Phiên feed kết thúc với trạng thái `failed` (ví dụ: mở app thất bại, không focus được TikTok sau launch). Không thể chạy follow trên app đang lỗi ➔ Hủy an toàn.
 - **`sensitive-skip-manual_needed`:** Phiên feed kết thúc với trạng thái `manual-needed` (ví dụ: mất focus app khi vào profile, kẹt splash/ad không thể vuốt thoát, hoặc username trên profile không khớp với tài khoản chỉ định). Hủy follow để tránh thao tác nhầm trên sai tài khoản hoặc bị TikTok gắn cờ bot.
 
+### 0.1. Nhãn "Đã follow sẵn" (Raw: "đã follow sẵn (skip)")
+Khi operator thắc mắc: *"Đã follow sẵn là cái gì thế?"* hoặc thấy `Bỏ qua (...): Đã follow sẵn (N máy)` trên Watchdog:
+- **Bản chất kỹ thuật (`mode1` & `mode2`):** Khi bot mở Profile (Mode 1) hoặc duyệt danh sách Following của Anchor (Mode 2), bot đọc XML giao diện để phân loại nút quan hệ (`_classify_row_button` hoặc `_classify_exact_profile_action`).
+  * Nếu nút hiển thị là **"Đang theo dõi" (Following)** hoặc **"Bạn bè" (Friends)** ➔ Code trả về `outcome: "skipped", reason: "đã follow sẵn (skip)"`.
+  * **Invariant an toàn bắt buộc:** Tuyệt đối KHÔNG tap vào nút này. Nếu tap, TikTok sẽ hiểu là lệnh **Hủy theo dõi (Unfollow)**, làm tụt follow và phá vỡ mạng lưới follow chéo chéo nội bộ farm.
+- **Tại sao nhảy lên mục Bỏ qua của Watchdog:** Trong `feed_session_watchdog.py`, watchdog gom các kết quả follow có lý do chứa `đã follow sẵn` hoặc `already-followed` về nhãn `Đã follow sẵn (N)`. Điều này xảy ra khi tài khoản duyệt qua các mục tiêu nhưng toàn bộ đều đã được nick này follow từ các phiên/ngày trước đó (không còn nick mới để bấm), phiên kết thúc an toàn với `status: OK, followed: 0`.
+
 Do not collapse attempted, successful, released, skipped, and protected into one number. If the report lacks an explicit attempt count, say that the attempt count is not directly shown rather than inventing it.
 
 ## Compact Telegram Circuit Breaker & Released Formatting (User Correction)

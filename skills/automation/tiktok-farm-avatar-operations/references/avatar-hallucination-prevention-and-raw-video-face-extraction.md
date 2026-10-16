@@ -403,6 +403,12 @@ Trước khi soạn bất kỳ tin nhắn nào cho User:
      - *Phong cách 1 (Douyin / Ngọt ngào / Nữ tính)*: Ánh sáng trong nhà sáng mịn, makeup má hồng đào, phấn mắt nhũ sáng, ánh mắt nhìn thẳng camera, nụ cười nhẹ/hé môi tự nhiên (ví dụ trích từ Video 13).
      - *Phong cách 2 (Năng động / Party / Thể thao)*: Bối cảnh tiệc đêm/sự kiện có đèn neon rực rỡ, trang phục áo thun thể thao/jersey, biểu cảm nháy mắt cười tươi tắn tràn đầy năng lượng (ví dụ trích từ Video 18 - clip đạt top view trên lưới).
   3. **Quy tắc Avatar Solo cho kênh cá nhân**: Mặc định 100% chỉ lấy duy nhất chủ kênh trong vòng tròn xanh, loại trừ hoàn toàn người đứng cạnh để đảm bảo bố cục tập trung tuyệt đối vào gương mặt đại diện của kênh.
+  4. **Kỷ luật Device Lock khi máy đang chạy ca nuôi (Active Feed Session Hand-off)**:
+     - Khi kiểm tra máy qua device-lock phát hiện máy đang có active lock chạy ca nuôi (`run_tiktok.py --mode multi-machine-feed-session`), CẤM TUYỆT ĐỐI cố gắng force reboot hoặc kill tiến trình để chen ngang việc đổi avatar.
+     - **Quy trình chuyển giao an toàn 3 bước**:
+       * Bước 1: Ghi đè file `avatar.jpg` đã nghiệm thu vào cả 3 kho dữ liệu (`D:/TIKTOK-videonuoinick/<F_out>/avatar.jpg`, `D:/video goc/<F_src>/avatar.jpg`, `D:/video goc/<F_out>/avatar.jpg`).
+       * Bước 2: Tạo marker vật lý `.manual_avatar_locked` và `.manual_hashtag_locked` tại các folder trên để kích hoạt cờ bảo vệ chống ghi đè vĩnh viễn.
+       * Bước 3: Cập nhật SQLite `avatar_replace_queue` sang trạng thái `PENDING` kèm timestamp mới. Khi ca nuôi hoàn tất, runner tự động nhả device lock và watchdog upload avatar sẽ tự động nạp ảnh lên TikTok an toàn, đúng quy trình.
 
 
 
