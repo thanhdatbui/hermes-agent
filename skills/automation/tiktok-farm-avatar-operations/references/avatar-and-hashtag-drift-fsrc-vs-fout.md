@@ -4,8 +4,10 @@
 Trên farm TikTok (1.280 tài khoản gồm 2 cụm Kibe 1..80 và Admin 201..280):
 - Mỗi tài khoản chạy ở một máy `M` và một slot/Tik `Slot` (1..8).
 - **Folder nguồn gốc ($F_{src}$)**: Thư mục chứa video gốc ban đầu trong `D:/video goc/`, được tính theo công thức cứng:
-  $$F_{src} = (Slot - 1) \times 80 + M$$
-- **Folder render/output ($F_{out}$)**: Thư mục chứa video sau render/dubbing trong `D:/TIKTOK-videonuoinick/` (cột `Folder Video` trong Excel).
+  * Cụm Kibe (Máy 1..80): $$F_{src} = (Slot - 1) \times 80 + M$$
+  * Cụm Admin (Máy 201..280): $$F_{src} = (Slot - 1) \times 80 + (M - 200)$$
+  *(Ví dụ: Máy 201 Slot 2 có $F_{src} = (2 - 1) \times 80 + (201 - 200) = 81$)*
+- **Folder render/output ($F_{out}$)**: Thư mục chứa video sau render/dubbing trong `D:/TIKTOK-videonuoinick/` (Kibe) hoặc `D:/TIKTOK-videonuoinick-admin/` (Admin), tương ứng cột `Folder Video` trong Excel `Tik<Slot>.xlsx`.
 
 ## 2. Bẫy Nguy Hiểm & Dấu Hiệu Nhận Biết
 1. **Lệch Avatar (Avatar Drift)**:
@@ -87,3 +89,34 @@ Trên farm TikTok (1.280 tài khoản gồm 2 cụm Kibe 1..80 và Admin 201..28
      * Phiên này thuộc phân loại `RUNTIME_CONFIG / FARM_OPERATION` (`NO_CODE_CANDIDATE`).
      * CẤM TUYỆT ĐỐI tự ý kéo repo Git ra stage các file dirty lưu cữu từ phiên khác (như `top_left_pencil.py` hay `post_evening_avatar_watchdog.py`) rồi chạy `closeout_gate.py`. Việc này vi phạm ranh giới phiên, gây reject điểm số hoặc timeout giả tạo.
      * Áp dụng `task-scope-and-closeout`: Xuất ngay `SESSION CLOSEOUT RECEIPT` ghi nhận `session_class: RUNTIME_CONFIG`, `commit_required: false`, `gate_status: NOT_APPLICABLE`, chốt phiên an toàn với đầy đủ bằng chứng thị giác `MEDIA:`.
+
+## 6. Quy Trình "Chuẩn Hoá 3 Món" (Ava - Hashtag - Pin) & Thao Tác Cụm Admin Remote
+1. **Tiêu Chí Rà Soát 3 Món Chuẩn Farm**:
+   - **Ghim Video (Pin Top)**:
+     * **Ngưỡng cứng farm:** Chỉ ghim video có lượt xem $\ge 1.000$ views (tối đa 3 video).
+     * Nếu tất cả video trên profile đều $< 1.000$ views (ví dụ: 59, 90, 105, 387): **BẮT BUỘC GIỮ NGUYÊN, KHÔNG GHIM**. Báo cáo rõ số view từng clip cho user.
+   - **Avatar Mới (Ava)**:
+     * Cột `Avatar` trong `Tik<Slot>.xlsx` thường bị ghi nhầm "OK" từ trước dù nick vẫn mang avatar mặc định reg (tranh truyện, sách comic "THE MASK/HERO", hoặc ảnh sàn nhà/sỏi đá do script tự cắt nhầm frame).
+     * Bắt buộc dùng `ag_cli ask` hoặc `browser_vision` soi mắt kiểm chứng thực tế.
+     * Trích xuất frame nhân vật mới từ video nguồn/render, crop chuẩn ngũ quan & headroom 512x512, tạo marker `.manual_avatar_locked` tại cả 2 đầu thư mục.
+   - **Niche & Hashtags**:
+     * Kiểm tra nội dung video đã đăng trên profile và kho video đang chờ render (`F_out`) xem có khớp với `Keyword Video` và `Hashtag Pool` trong `Tik<Slot>.xlsx` hay không.
+     * Nếu lệch (ví dụ kho video là Biệt thự / Kiến trúc nhưng Excel ghi Ẩm thực), bắt buộc chuẩn hóa lại Excel và tạo marker `.manual_hashtag_locked`.
+
+2. **Kỹ Thuật Thao Tác Remote Cụm Admin (Máy 201..280)**:
+   - **Môi trường Python & OpenCV**:
+     * Python mặc định của hệ thống trên Admin (`Python 3.11.9`) không có `cv2` (`ModuleNotFoundError`).
+     * Môi trường Python chuẩn có đầy đủ OpenCV/automation trên Admin:
+       `D:\CodexRuntime\tiktok-video\venv-core024\Scripts\python.exe`.
+   - **Thực thi script Python đa dòng qua SSH Windows**:
+     * Lệnh truyền script Python nhiều dòng qua SSH `-c "..."` dễ bị shell Windows nuốt dấu nháy hoặc ngắt dòng làm lỗi cú pháp.
+     * **Cú pháp chuẩn Base64**:
+       ```python
+       py = r"D:/CodexRuntime/tiktok-video/venv-core024/Scripts/python.exe"
+       cmd = ["ssh", "-o", "BatchMode=yes", "admin-farm", f"{py} -c \"import base64; exec(base64.b64decode('{b64_str}').decode())\""]
+       ```
+   - **Chống Tràn Ngân Sách Ghi T1 Của Coordinator**:
+     * Coordinator có giới hạn ghi cứng (5 files / 200 lines). Không tự ý viết nhiều script dò tìm tạm bợ trong `D:/Taadaa/tmp/`.
+     * Tận dụng các CLI read-only có sẵn (`python D:/Taadaa/tools/inspect_machine.py <M>`, `python D:/Taadaa/tools/remote_admin_adb.py -s <serial> ...`, `python D:/Taadaa/tools/admin_ssh.py "dir ..."`).
+     * Khi cần sửa code tự động hóa phức tạp, bắt buộc lập Patch Contract $O(1)$ và dispatch Worker theo Tiered Workflow.
+
