@@ -34,6 +34,15 @@
 
 ## 3. Kỷ Luật Ngân Sách T1 Coordinator & Cạm Bẫy Tooling
 - **Ngân sách T1 cứng**: Tối đa 5 files, <= 200 dòng cộng dồn cả session. Khi nhận thông báo `[COORDINATOR WRITE DENIED]: Hết ngân sách T1`, Coordinator BẮT BUỘC dừng tự ghi file mà chuyển sang dispatch Worker qua `delegate_task(role='leaf')` hoặc tái sử dụng các tool inspect có sẵn (`inspect_machine.py`, `inspect_user_screenshot.py`).
-- **Bẫy Null Character trong terminal với inline python (`\"`)**: Khi truyền script inline qua `terminal` lệnh `python -c "..."`, việc escape nháy kép `\"` có thể kích hoạt lỗi `ValueError: open: embedded null character in path` trong `lifecycle_guard.py`. Khắc phục: Dùng nháy đơn bọc ngoài `python -c '...'` hoặc lưu script riêng rồi thực thi.
+- **Chốt chặn `[COORDINATOR GUARD - TERMINAL BLOCKED]`**: Lệnh `python -c` của Coordinator trong terminal bị giám sát chặt chẽ: CHỈ ĐƯỢC PHÉP dùng cho kiểm chứng đọc dữ liệu (read-only O(1)). Bất kỳ thao tác ghi file (`open(..., 'w')`, `shutil.copy`), xóa file, hoặc gọi `subprocess` trong `python -c` sẽ bị guard chặn ngay lập tức. Mọi tác vụ ghi/đồng bộ file cấu hình/Excel phải do Worker subagent thực hiện qua script riêng.
+- **Bẫy Newline & Null Character trong terminal với inline python**:
+  * Khi truyền lệnh `python -c "..."` nhiều dòng chứa ký tự xuống dòng (`\n`) trong bash MSYS, bộ lọc `lifecycle_guard.py` sẽ duyệt nhầm đoạn script nhiều dòng thành đường dẫn file và kích hoạt lỗi `ValueError: open: embedded null character in path`.
+  * **Quy tắc**: TUYỆT ĐỐI KHÔNG viết lệnh `python -c` nhiều dòng trong terminal. Bắt buộc gom thành một dòng duy nhất nối bằng dấu chấm phẩy (`;`) hoặc chạy script đã lưu trên đĩa.
+- **Kỹ thuật trích xuất Mascot / Hoạt hình khi Haar Cascade thất bại (Cartoon Face Fallback)**:
+  * Các nhân vật hoạt hình 2D, meme tài chính (như Bò & Gấu, chai tương ớt, linh vật) hoàn toàn KHÔNG có ngũ quan người thật nên `haarcascade_frontalface_default.xml` sẽ trả về 0 khuôn mặt.
+  * **Giải pháp chuẩn**:
+    1. Dùng lọc màu HSV (`cv2.cvtColor(im, cv2.COLOR_BGR2HSV)` + `cv2.inRange`) theo dải màu đặc trưng của nhân vật (ví dụ: da bò vàng/cam `(10, 100, 100)` đến `(30, 255, 255)`) để lấy `cv2.findNonZero(mask)` và tìm `boundingRect`.
+    2. Cắt khung vuông căn tâm nhân vật với khoảng thở an toàn (`side = 750 - 850px`).
+    3. Luôn gọi `browser_navigate` và `browser_vision` kiểm tra thực tế xem hình ảnh nhân vật có nằm trọn vẹn, cân đối trong viền tròn xanh $512 \times 512$ trước khi tạo ảnh so sánh gửi User.
 - **Tái sử dụng file script khi chạm trần ngân sách T1**: Khi ngân sách T1 của Coordinator đã hết (bị khóa quyền tạo file mới `write_file`), Coordinator vẫn ĐƯỢC PHÉP dùng công cụ `patch` trên các file script nghiệp vụ tạm có sẵn (như `inspect_user_screenshot.py`, `query_account.py`) để chuyển đổi mục đích đọc dữ liệu/truy vấn DB/trích xuất frame mà không vi phạm giới hạn tạo mới file.
 
