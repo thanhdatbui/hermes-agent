@@ -34,6 +34,7 @@ References:
 - `references/post-reboot-screen-healer-gap-and-script-sync-20261016.md` — Phân tích nguyên nhân dàn máy bật sáng sau reboot (11:20), bẫy điểm mù 30 phút trong is_near_reboot_window, trôi timeout 25 ngày (2147483647 ms) và quy chuẩn đồng bộ script runtime cron (16/10/2026).
 - `references/xiaowei-focus-based-idle-watchdog-and-port5038-recovery-20261016.md` — Kiến trúc watchdog tự đóng Tiểu Vi theo tiêu điểm cửa sổ (Focus-based Idle Tracking 10 phút), loại bỏ bẫy GetLastInputInfo đo toàn hệ thống và cơ chế giải phóng ADB port 5038 (16/10/2026).
 - `references/xiaowei-stream-storm-and-false-disconnect-20261016.md` — Phân tích hiện tượng Tiểu Vi báo văng máy hàng loạt ảo ("Điện thoại đã ngắt kết nối") do bão start_iter timeout trên bus USB 2.0 khi mở app lúc ca nuôi đang chạy, quy trình đối soát O(1) qua ADB socket (16/10/2026).
+- `references/xiaowei-focus-based-idle-tracking-and-multi-host-sync-20261016.md` — Phân tích bẫy idle toàn cục GetLastInputInfo, cơ chế Focus-Based Activity Tracking 10 phút theo tiêu điểm cửa sổ Tiểu Vi và quy chuẩn đồng bộ đa cụm sang Admin PC (16/10/2026).
 
 Scripts:
 - `scripts/safe_usb_guard.py` — Script nguồn mẫu giám sát và reset EHCI bus theo ngưỡng.

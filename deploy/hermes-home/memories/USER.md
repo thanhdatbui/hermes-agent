@@ -4,7 +4,7 @@ Dọn đĩa: duyệt trước, cấm xóa ngầm. Cấm đẻ script trùng (đ�
 §
 Nuôi 4d 3 ca (bỏ đêm, tắt màn 223). Cuốn chiếu Ava&2FA tới 5h15 (dừng 4h45, né cache 4h, báo 6h). Write-Through Excel cột 3,4,5+G; Starve 96h; mail Graph PC; đổi ava tự làm cấm hỏi.
 §
-Chốt phiên: Tự động hóa dứt điểm, cấm báo BLOCKED/quarantine khóc lóc; Claude CLI sửa+duyệt xong thì push luôn, cấm quay lại Sol loop; Reviewer APPROVED>=85 tự push; user lệnh ép push thì --no-verify.
+User ép push -> safe_push --owner-override.
 §
 Kibe(1-80) & Admin(201-280) cào nguồn & media độc lập 100% (cấm trùng video, cấm sync chéo Niche/Hashtag). TT v47.0.3; Switcher dock; AP 40m.
 §

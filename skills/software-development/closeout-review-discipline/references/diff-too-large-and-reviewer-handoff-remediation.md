@@ -358,16 +358,24 @@
     * Chặn đứng mọi cờ trong `_DANGEROUS` (`--no-verify`, `-n`, `--dry-run`, `--force`, `-f`, `--force-with-lease`, `--delete`, `--mirror`...) và văng `UnsafePushError(BLOCKED_DANGEROUS_FLAG)`.
     * Kiểm tra `remote` và `branch` bằng regex `^[A-Za-z0-9][A-Za-z0-9._/-]*$` để chặn refspecs nguy hiểm như `+master` (force push ngầm).
     * `clean_env()` gạt bỏ cả `GIT_CONFIG_*` và `GIT_EXEC_PATH` chống vô hiệu hóa hooks qua environment variables.
-    * Bộ test bảo mật `test_safe_push_security.py` đảm bảo 5/5 pass, khóa chết mọi nỗ lực bypass.
+- **Quyền Tối Cao Của User (Owner Override Flag `--owner-override`):**
+  - Khóa cứng sinh ra là để chặn bot tự ý đi cửa sau lén lút trốn việc, KHÔNG PHẢI để tước quyền của User (Owner).
+  - Khi User (Owner) phát lệnh trực tiếp dứt khoát ("ép push", "push luôn", "bỏ qua gate"):
+    * Coordinator được quyền sử dụng cờ: `python D:/Taadaa/tools/safe_push.py <repo> origin master --owner-override`.
+    * Cờ `--owner-override` mở khóa riêng cho `--no-verify` (vẫn chặn `--force`, `--delete` phá hủy repo), ghi log kiểm toán: `[OWNER_OVERRIDE] Executing push with gate bypass on explicit owner command.`
+    * Bộ test bảo mật `test_safe_push_security.py` nâng lên 7/7 tests pass, bao phủ cả trường hợp bot tự ý bypass (bị chặn) lẫn user override hợp lệ (được chấp thuận).
 - **Chống Vòng Lặp Đuổi Điểm Sol (Sol Score Chasing Loop) & Nhận Diện Architectural Blocker:**
   - Hiện tượng "bại não/đuổi điểm": Khi Sol trừ điểm nặng ở `Code Architecture` (< 7/10) do duplicate file monolith (vi phạm DRY), Coordinator sa lầy vào micro-fixes (sửa microsecond `999999 -> 0`, viết thêm 15 test helper lặt vặt, thêm comment đối phó) suốt 2 tiếng, điểm kẹt ở plateau 72 -> 52 -> 62 -> 72 -> 82.
   - Quy tắc xử lý gốc rễ:
     * Khi Sol cảnh báo `code_architecture < 7/10` hoặc nhắc đến `DRY`, `duplication`, `copy-paste`, `monolith`: CẤM TUYỆT ĐỐI Coordinator sửa ngọn.
     * BẮT BUỘC nhận diện là Architectural Blocker và Auto-Handoff cho Claude CLI tái cấu trúc dứt điểm (tách module dùng chung vào `scripts/watchdog/`, xóa bỏ hoàn toàn code trùng lặp ở cả hai monolith runner, chạy test pass, lấy APPROVED >= 85).
 - **Kỷ Luật Tự Làm Dứt Điểm (Auto-Resolve) — Cấm Dừng Lại Khóc Lóc Than Vãn Báo User:**
-  - User cần kết quả hoàn tất trên remote, không chấp nhận việc agent dừng lại giữa chừng để "báo cáo khó khăn", "xin duyệt" hay "bắt User unlock thủ công".
-  - Khi kích hoạt Auto-Handoff sang Claude CLI: Tự động tái cấu trúc -> tự test pass -> tự lấy APPROVED >= 85 từ Closeout Gate -> tự động push hợp lệ lên remote -> báo đúng 1 dòng kết quả kèm commit SHA.
-  - Circuit Breaker cho Claude CLI: Tối đa 2 lượt refactor; mỗi lượt bắt buộc tăng >= 3 điểm. Không được tạo vòng lặp ping-pong giữa các agents.
+  - User phản ứng gay gắt khi agent dừng lại: *"Thông báo kết quả thì khác đéo gì dừng lại khóc lóc?"*
+  - Báo "đóng băng / cạn budget" sau 2 lần thử bản chất vẫn là đầu hàng và quăng việc lại cho User.
+  - Khi kích hoạt Auto-Handoff sang Claude CLI: Tự động tái cấu trúc tận gốc -> tự test pass -> tự lấy APPROVED >= 85 từ Closeout Gate -> tự động push hợp lệ lên remote -> báo đúng 1 dòng kết quả kèm commit SHA.
+- **Bảo Vệ Công Sức Session Song Song (Cross-Session Divergence Guard):**
+  - Khi User thông báo session khác đã sửa: CẤM TUYỆT ĐỐI blind reset, force pull hay ghi đè.
+  - Bắt buộc kiểm tra `git status`, `git log --graph HEAD origin/master`, đối soát diff từng file để xác nhận tính độc lập (non-overlap), bảo toàn 100% công sức của session khác trước khi chốt phiên.
 
 
 
