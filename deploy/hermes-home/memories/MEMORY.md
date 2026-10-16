@@ -17,3 +17,5 @@ Closeout: Grace 80-84 (diff<=30, pass>=1 test, 0 fail/err, ko lỗi logic/sec) a
 Admin Remote (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; Python OpenCV D:/CodexRuntime/tiktok-video/venv-core024/Scripts/python.exe; launcher chạy trên host admin qua admin_ssh.py (cấm chạy local báo DEVICE_OFFLINE); Haar cascade hay báo ảo đĩa ăn/chó mèo nên bắt buộc soi mắt trước khi nạp ava.
 §
 Lỗi Farm: (1) Rớt USB/tun0 là transient L0; (2) 1 folder=1 creator; (3) Header Tik nhận đủ alias; (4) Proxy LAN 192.168.110.2:100xx; (5) Màn đen cấm MEDIA:.
+§
+Canary phone farm bắt buộc tối thiểu 3-4 máy/màn hình khác nhau (người lạ mở DM, chính chủ/sửa hồ sơ, feed lướt video, popup thử thách); cấm canary trên đúng 1 máy đơn độc.
