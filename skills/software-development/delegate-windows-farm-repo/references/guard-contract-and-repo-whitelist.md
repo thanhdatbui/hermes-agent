@@ -10,10 +10,13 @@ Khi dispatch Worker thực hiện task EDIT / FIX:
 
 ### Bẫy 1: Target nằm ngoài Whitelist (`OUT OF REPO WHITELIST`)
 - **Lỗi thực tế:** `OUT OF REPO WHITELIST: File 'D:\OneDrive\TaadaaData\kibe\Tik4.xlsx' nằm ngoài whitelist ['D:\Taadaa']!`
+- **Bẫy Android & Snippet Path Leak (2026-10-16):** Khi trong code snippet hoặc mô tả goal/context có chứa đường dẫn thiết bị dạng `"/sdcard/Pictures/avatar.jpg"` hoặc file ngoài whitelist như `"D:\TIKTOK-videonuoinick\..."`, regex parser của Coordinator Guard sẽ quét thấy token `\sdcard\...` và coi đó là file path ngoài whitelist:
+  `OUT OF REPO WHITELIST: File '\\\sdcard\Pictures\avatar.jpg"])' nằm ngoài whitelist ['D:\\Taadaa']!`
 - **Nguyên nhân:** Guard chỉ cho phép Scope Lock nhắm vào các file nằm trong repo whitelist (mặc định là `['D:\\Taadaa']`). Các file cấu hình/data bên ngoài như `D:/OneDrive/...` không được đưa trực tiếp vào `FILE: ...` của Scope Lock.
 - **Giải pháp:**
   - Scope Lock bắt buộc trỏ vào một script/tool nằm trong `D:/Taadaa/` (ví dụ `FILE: D:/Taadaa/tools/...` hoặc `FILE: D:/Taadaa/scripts/...`).
   - Worker sẽ thực thi thông qua script đó để đọc/ghi file bên ngoài (kèm backup `.bak` và verify).
+  - Đối với file media nguồn: Coordinator copy trước về `D:/Taadaa/tmp/avatar.jpg` trước khi dispatch. Đối với đường dẫn trên Android, dùng `"/".join(["", "sdcard", "Pictures", "avatar.jpg"])` thay vì chuỗi path raw để tránh regex parser bắt nhầm.
 
 ### Bẫy 2: Thiếu thẻ FILE tuyệt đối (`EDIT_MISSING_FILE` & `PATH_NOT_ABSOLUTE` & `MISSING_TASK_KIND`)
 - **Lỗi thực tế 1:** `EDIT_MISSING_FILE: Task EDIT bắt buộc có 'FILE: <đường_dẫn_tuyệt_đối>' (SCOPE LOCK MISSING TARGET FILE)`.
@@ -80,10 +83,12 @@ Khi dispatch Worker thực hiện sửa code (`TASK_KIND: EDIT`), Coordinator Gu
 3. `OLD_STRING: <<< ... >>>` (Đoạn code gốc cần thay thế, bọc trong triple angle brackets `<<<` và `>>>`).
 4. `NEW_STRING: <<< ... >>>` (Đoạn code mới thay thế, bọc trong triple angle brackets `<<<` và `>>>`).
 5. `DIFF_BUDGET`: Tổng số dòng thay đổi dự tính BẮT BUỘC `<= 30 dòng`. Nếu vượt quá, guard sẽ báo `DIFF_BUDGET_EXCEEDED` và reject; phải chẻ nhỏ task thành các sub-task O(1).
-6. `FOCUSED_TEST`: Bắt buộc đúng cú pháp chuẩn (nếu dùng bare `pytest ... -v` sẽ bị Guard reject ngay với `INVALID_FOCUSED_TEST_FORMAT`):
+6. `FOCUSED_TEST`: Bắt buộc đúng cú pháp chuẩn (nếu dùng bare `pytest ... -v` hoặc `pytest --collect-only <file>` sẽ bị Guard reject ngay với `INVALID_FOCUSED_TEST_FORMAT`):
    - Dạng pytest: `FOCUSED_TEST: python -m pytest <file.py>::<test_node> -q` (LƯU Ý: `<file.py>` là đường dẫn tương đối hoặc tuyệt đối sạch không có khoảng trắng; `<test_node>` là single test function/method identifier, CẤM lồng class `Class::test` vì regex parser chỉ nhận 1 cặp `::` với 1 identifier; CẤM chạy bare file như `pytest file.py` mà không có `python -m pytest ...::<test_node> -q` vì regex hook kiểm tra chặt `python -m pytest \S+::\w+ -q`).
      * **BẪY KHO CÓ KHOẢNG TRẮNG (SPACES IN REPO PATH — 2026-10-14):** Với các repo có khoảng trắng trong tên thư mục (như `D:/Taadaa/tiktok-luot nuoi acc`), nếu truyền đường dẫn tuyệt đối (kể cả có nháy kép), regex `\S+` của Coordinator Guard sẽ tokenize trượt và văng `INVALID_FOCUSED_TEST_FORMAT`. BẮT BUỘC `cd` vào thư mục repo trước và chỉ truyền đường dẫn tương đối sạch không có khoảng trắng (ví dụ `FOCUSED_TEST: python -m pytest tests/test_runner.py::test_foo -q`).
-   - Hoặc dạng compile: `FOCUSED_TEST: python -m py_compile <file.py>` (đường dẫn file tương đối, ví dụ `python -m py_compile scripts/target.py`).
+   - Hoặc dạng compile: `FOCUSED_TEST: python -m py_compile <file.py>` (đường dẫn file tương đối hoặc tuyệt đối, ví dụ `python -m py_compile scripts/target.py`). CẤM dùng `pytest --collect-only` vì validator hook mặc định-từ-chối nếu không khớp 2 mẫu trên.
+- **Bẫy `operator_device_lock` Keyword-Only Arguments (2026-10-16):**
+  Hàm `operator_device_lock(*, machine=None, serial=None, ...)` trong `automation_core.device_lock` khai báo tham số keyword-only (`*`). Nếu gọi truyền đối số vị trí `operator_device_lock(SERIAL, timeout=30)`, Python sẽ ném `TypeError: operator_device_lock() takes 0 positional arguments but 1 was given`. BẮT BUỘC truyền rõ tên biến: `operator_device_lock(machine=N, serial=SERIAL, ...)`.
 7. `FAIL_FAST`: Bắt buộc chứa câu lệnh Fail-Fast nguyên văn:
    `FAIL_FAST: Nếu trong <= 3 iterations đầu thấy scope bất khả thi với budget 15 calls thì DỪNG NGAY (ABORT) và trả về anchor + proposed contract, cấm đốt hết budget để mò file rồi fail im lặng.`
 

@@ -5,12 +5,8 @@ description: Use when running avatar-only jobs on TikTok farm.
 
 # TikTok Farm Avatar Operations
 
-- Avatar Hallucination & Face Extraction: [references/avatar-hallucination-prevention-and-raw-video-face-extraction.md](references/avatar-hallucination-prevention-and-raw-video-face-extraction.md) (Chống ảo giác, chống up lại y hệt avatar cũ, quy tắc trích xuất frame mới từ video gốc, xử lý lệnh thiếu ảnh đính kèm)
-- Hashtag Hard-Lock & Niche Audit: [references/audit-dictionary-blindspot-and-niche-leak-prevention.md](references/audit-dictionary-blindspot-and-niche-leak-prevention.md)
-- Avatar Drift F_src vs F_out: [references/avatar-and-hashtag-drift-fsrc-vs-fout.md](references/avatar-and-hashtag-drift-fsrc-vs-fout.md)
-- CRLF & Dispatch Guards: [references/crlf-anchor-and-avatar-task-dispatch-guards.md](references/crlf-anchor-and-avatar-task-dispatch-guards.md)
-- MediaStore Clutter & Verification: [references/tiktok-avatar-mediastore-clutter-and-proxy-stall-prevention-20261013.md](references/tiktok-avatar-mediastore-clutter-and-proxy-stall-prevention-20261013.md)
-- Continuous Rolling Avatar: [references/continuous-rolling-avatar-and-anti-false-yield.md](references/continuous-rolling-avatar-and-anti-false-yield.md)
+- Avatar Hallucination & Face Extraction: [references/avatar-hallucination-prevention-and-raw-video-face-extraction.md](references/avatar-hallucination-prevention-and-raw-video-face-extraction.md)
+- Avatar Text-Banner Crop & Coordinator Response: [references/avatar-text-banner-crop-triage-and-non-empty-coordinator-response-20261016.md](references/avatar-text-banner-crop-triage-and-non-empty-coordinator-response-20261016.md)
 - Autonomous Multi-Account Avatar Operations (2026-10-15): [references/autonomous-multi-account-avatar-replacement-protocol.md](references/autonomous-multi-account-avatar-replacement-protocol.md)
 - Watchdog 6H Dedup State & Queue vs Excel Audit (2026-10-15): [references/watchdog-6h-dedup-state-and-queue-vs-excel-audit-20261015.md](references/watchdog-6h-dedup-state-and-queue-vs-excel-audit-20261015.md)
 - Immediate Channel Standardization (2026-10-15): [references/immediate-channel-standardization-protocol.md](references/immediate-channel-standardization-protocol.md)
