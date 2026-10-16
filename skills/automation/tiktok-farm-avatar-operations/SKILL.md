@@ -5,10 +5,11 @@ description: Use when running avatar-only jobs on TikTok farm.
 
 # TikTok Farm Avatar Operations
 
-- Channel Content Grid Audit & Niche Avatar Mismatch: [references/channel-content-grid-audit-and-niche-avatar-mismatch-20261016.md](references/channel-content-grid-audit-and-niche-avatar-mismatch-20261016.md) (Đối soát lưới video profile chống gượng ép avatar người lạ lệch ngách cho kênh shop/sách/sản phẩm)
-- Batch Lock Reservation & Canonical Visual Artifact Capture (2026-10-17): [references/batch-lock-reservation-coexistence-and-visual-artifact-capture.md](references/batch-lock-reservation-coexistence-and-visual-artifact-capture.md)
-- Active Lock Coexistence & Sub-caption Edge Trap: [references/active-device-lock-coexistence-and-protected-folders-type-safety-20261016.md](references/active-device-lock-coexistence-and-protected-folders-type-safety-20261016.md)
-- Stale Stored Avatar Trap & Multi-Option Extraction (2026-10-16): [references/stale-stored-avatar-trap-and-multi-option-extraction-20261016.md](references/stale-stored-avatar-trap-and-multi-option-extraction-20261016.md)
+- Immediate Upload & Switcher Anchor: [references/immediate-avatar-upload-end-to-end-and-switcher-anchor-collision-20261017.md](references/immediate-avatar-upload-end-to-end-and-switcher-anchor-collision-20261017.md)
+- Channel Content Grid Audit: [references/channel-content-grid-audit-and-niche-avatar-mismatch-20261016.md](references/channel-content-grid-audit-and-niche-avatar-mismatch-20261016.md)
+- Batch Lock Reservation: [references/batch-lock-reservation-coexistence-and-visual-artifact-capture.md](references/batch-lock-reservation-coexistence-and-visual-artifact-capture.md)
+- Active Lock Coexistence: [references/active-device-lock-coexistence-and-protected-folders-type-safety-20261016.md](references/active-device-lock-coexistence-and-protected-folders-type-safety-20261016.md)
+- Stale Stored Avatar Trap: [references/stale-stored-avatar-trap-and-multi-option-extraction-20261016.md](references/stale-stored-avatar-trap-and-multi-option-extraction-20261016.md)
 - Avatar Hallucination: [references/avatar-hallucination-prevention-and-raw-video-face-extraction.md](references/avatar-hallucination-prevention-and-raw-video-face-extraction.md)
 - Avatar Text-Banner Crop: [references/avatar-text-banner-crop-triage-and-non-empty-coordinator-response-20261016.md](references/avatar-text-banner-crop-triage-and-non-empty-coordinator-response-20261016.md)
 - Cartoon & Mascot: [references/non-human-cartoon-mascot-avatar-and-empty-turn-prevention-20261016.md](references/non-human-cartoon-mascot-avatar-and-empty-turn-prevention-20261016.md) & [references/cartoon-mascot-avatar-extraction-and-mismatched-source-triage-20261016.md](references/cartoon-mascot-avatar-extraction-and-mismatched-source-triage-20261016.md)
