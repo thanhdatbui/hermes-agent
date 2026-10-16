@@ -1,6 +1,6 @@
 Chu kỳ 4d: Parity 96h (N1 lẻ, N2 chẵn), N3(R7,8), N4(dưỡng 0fl+up). Starve 108h. CẤM xóa cooldown. Dưỡng: healing_selector; S2 bám S1. 3 ca (6,12,18h). Đêm 21h30-5h15 né cache 4h cho 2FA/Ava; báo 6h cấm báo ảo.
 §
-Mode 2: anchor>=150fl; cuộn sâu; video fallback; tele anchor_exhausted. CẤM đoán mò nhả fl R1,2: bóc tách anchor vs nick con; Hồi phục 1,2 chỉ chạy 1 phiên/ngày (P2 cách 2h nhả lượt 2 do cạn trần + Optimistic UI).
+Mode 2: anchor>=150fl; cuộn sâu; video fallback. CẤM đoán mò nhả fl: Shift Cap P1 ăn đủ trần thì P2 safe-skip. Dò trần tăng tiến: CẤM cố định trần 16, tự động thăng bậc lên 20-30fl theo data nick (clean_days, total fl, video). Dashboard :1905.
 §
 Hotmail: CẤM mail cá nhân; sinh @fviainboxes.com đọc OTP API. Write-Through: ghi ngay Excel Cột 3,4,5 & G farm. Dual-farm ~1280 acc.
 §
