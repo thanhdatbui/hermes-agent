@@ -20,3 +20,9 @@ Trong phiên đổi avatar trên farm (TikTok v47), Agent đã mắc các sai l�
 3. **Kỷ luật xử lý khi Switcher thất bại trên máy live**:
    - Không vội sửa code: Kiểm tra xem máy có bị văng về Feed, kẹt popup hay chưa login (`inspect_machine.py`).
    - Nếu layout thay đổi thực sự: Báo cáo bằng chứng ảnh (`account-switcher-profile.png`), hỏi ý kiến hoặc xin chỉ thị cập nhật core, tuyệt đối không hack workaround ở consumer.
+
+4. **Bẫy Header Candidates = 2 (Tên xuất hiện 2 lần trên Profile Header)**:
+   - **Hiện tượng**: `prepare_switcher_anchor` log `[PREPARE_SWITCHER] Header candidates=2 centers=[(277, 298), (504, 483)] limit=672` nhưng không tap, dẫn đến timeout `SWITCHER_NOT_CONFIRMED`.
+   - **Nguyên nhân**: Trên layout Profile TikTok, tên hiển thị xuất hiện cả ở thanh Action Bar trên cùng (`cy=298`) lẫn dưới avatar (`cy=483`). Nếu code kiểm tra cứng nhắc `if len(candidates) == 1:`, nó sẽ từ chối tap khi có 2 candidates hợp lệ trùng tên.
+   - **Quy chuẩn**: Phải sắp xếp theo trục Y tăng dần (`candidates.sort(key=lambda c: c[2])`) và chọn candidate trên cùng `candidates[0]` (`cy` nhỏ nhất) để luôn tap trúng thanh Action Bar đỉnh màn hình mở Switcher.
+

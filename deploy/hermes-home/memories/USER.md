@@ -1,6 +1,6 @@
-Cào/Render: 12 niche hot, min 45, 1 wkr. F_src=(Slot-1)*80+m_idx; Chuẩn hoá 3 món (Ava-Hashtag-Pin); nick sửa tay khóa chống đè.
+Cào/Render: 12 niche, min 45, 1 wkr. F_src=(Slot-1)*80+m_idx. Chuẩn hoá 3 món (Ava-Hashtag-Pin: ava bám sát lưới profile, shop/sách dùng logo/mascot cấm lệch ngách; Tik*.xlsx sheet TaiKhoan). Khóa nick sửa tay.
 §
-Dọn đĩa: duyệt trước, cấm xóa ngầm. Cấm đẻ script trùng (đối soát tools/cron: REUSE>EXTEND>NEW); tách rõ read/mock vs write thật.
+Dọn đĩa: duyệt trước, cấm xóa ngầm. Cấm đẻ script trùng (REUSE>EXTEND>NEW); tách rõ read/mock vs write thật.
 §
 Nuôi 4d 3 ca (bỏ đêm, tắt màn 223). Cuốn chiếu Ava&2FA tới 5h15 (né cache 4h, báo 6h). Write-Through Excel cột 3,4,5+G; Starve 96h; mail Graph PC; đổi ava tự làm.
 §
@@ -16,4 +16,4 @@ Reboot 3 ca (05:20, 11:20, 17:20), né khi ca đang chạy; user lệnh là làm
 §
 Nguồn video: 'Nguồn cũ' là đúng channel/creator gốc (1 folder = 1 kênh, giữ nguyên creator), cấm nhồi clip kênh khác vào folder cũ.
 §
-Báo cáo Telegram: chỉ tóm tắt KPI + exception/lỗi cần xử lý; chi tiết sâu tra cứu qua SQLite DB & Dashboard :1905, cấm xả chi tiết từng máy làm rác chat.
+Báo cáo Telegram: chỉ tóm tắt KPI + exception lỗi; chi tiết tra qua SQLite & Dashboard :1905, cấm xả rác chat.
