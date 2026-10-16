@@ -8,10 +8,12 @@ Proxy: 1-1. Chuẩn hóa 3 món: End-to-End (crop 512x512 -> lock marker/Excel -
 §
 Farm: dispatch_worker O(1) (T1 Haiku single-line prompt, target+unrelated hash gate, exit 125 quota->T2 Agy fix; watchdog 2p).
 §
-GPM: stop API kèm _kill_gpm_chrome (pid cmdline); max 5 wkr; cron-auto-feed nạp pool chatgpt-web 15p/lần (Hotmail ưu tiên). Hotmail: check is_auth, @fviainboxes, ghi Excel (C5,4,3+G).
+GPM: stop API kèm _kill_gpm_chrome; max 5 wkr; cron-auto-feed nạp pool chatgpt-web 15p/lần (Hotmail ưu tiên). Re-login acc văng KHÔNG tính cooldown proxy 24h; chỉ acc mới log lần đầu mới tính 2 acc/port/ngày.
 §
 Stale Upload: xóa sạch draft (_delete_all_profile_drafts). Revert flop: quét ledger lấy video gốc, TikWM tải CDN, xóa render trước làm mới. Cào video: max 60 clip/channel, cấm cào full.
 §
 User ép push -> safe_push --owner-override.
 §
 Admin Remote (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; Python OpenCV D:/CodexRuntime/tiktok-video/venv-core024/Scripts/python.exe; launcher chạy trên host admin qua admin_ssh.py (cấm chạy local báo DEVICE_OFFLINE); Haar cascade hay báo ảo đĩa ăn/chó mèo nên bắt buộc soi mắt trước khi nạp ava.
+§
+Phân loại lỗi Upload farm: (1) Rớt USB EHCI/tun0 timeout lúc cao điểm là transient L0, máy tự online lại cấm reboot/sửa code; (2) POST_RECHECK trễ duyệt TikTok kích hoạt Idempotency Guard cấm ép đăng lại; (3) Hết video do nhảy cóc dãy số (ví dụ có 1-10 và 27-61 thiếu 11) cần render bù start-seq đúng số thiếu; (4) Ảnh screencap màn hình đen do máy ngủ cấm gửi MEDIA: để đối phó.

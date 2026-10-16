@@ -34,6 +34,21 @@ Hậu quả:
 
 ---
 
+## 🔒 QUY TẮC BẢO TOÀN BACKWARD COMPATIBILITY CHO TOÀN BỘ SCRIPT FARM
+Khi chuẩn hóa hoặc can thiệp các file Excel của farm, TUYỆT ĐỐI TUÂN THỦ:
+1. **CẤM ĐỔI TÊN `taikhoan_dat_v2_updated .xlsx` (CÓ DẤU CÁCH THỪA):**
+   - Hơn 42 scripts trên toàn farm (bao gồm cả cron Kibe và Admin) hardcode đường dẫn có đúng 1 dấu cách trước `.xlsx`. Tuyệt đối không xóa dấu cách hay đổi tên file.
+2. **CẤM ĐỔI TÊN `tik3.xlsx` (CHỮ 't' THƯỜNG):**
+   - Các tuple `TIK_FILE_NAMES = ("Tik1.xlsx", "Tik2.xlsx", "tik3.xlsx", ...)` đã ghim tên này. Đổi sang `Tik3.xlsx` sẽ làm các runner và watchdog bỏ sót ca 3.
+3. **BẢO TOÀN TỪ KHÓA ĐẦU CỦA HEADER:**
+   - Trong `taikhoan_dat_v2_updated .xlsx`: Cột 2 chuẩn hóa thành `Folder Video (Slot 1-640)`.
+   - Trong `Tik1..Tik8.xlsx`: Cột 4 chuẩn hóa thành `Folder Video (Render Dich)`, Cột 5 thành `Video Goc (Nguon Cao)`.
+   - Việc giữ nguyên các từ khóa `Folder Video` và `Video Goc` ở đầu giúp 100% regex / `in`-string check của các script cũ chạy bình thường, đồng thời giúp con người và bot mới không bao giờ ghi nhầm.
+4. **DỌN DẸP XUNG ĐỘT ONEDRIVE VÀO ARCHIVE:**
+   - Các file conflict `taikhoan_run_safe-Admin-PC-*.xlsx`, `taikhoan_run_safe-DESKTOP-*.xlsx` và file tạm ẩn `.taikhoan_run_safe.*` phải được chuyển vào `_onedrive_conflicts_archive/` bằng `archive_onedrive_conflicts.py`, không để rác nổi trên thư mục gốc làm agent đọc nhầm dữ liệu stale.
+
+---
+
 ## ✅ CHECKLIST KIỂM CHỨNG BẮT BUỘC SAU MỌI THAO TÁC EXCEL
 Trước khi kết thúc bất kỳ lượt xử lý Excel nào, bắt buộc chạy kiểm chứng 2 lệnh sau:
 ```bash
