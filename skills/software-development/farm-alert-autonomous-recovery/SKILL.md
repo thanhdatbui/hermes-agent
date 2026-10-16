@@ -16,7 +16,7 @@ description: >-
 > Ref: `references/stale-upload-watchdog-and-tracker-db-drift-triage-20261012.md`.
 > Ref: `references/draft-resume-trap-and-false-hardware-offline-triage-20261013.md`.
 > Ref: `references/inter-shift-cron-reboot-avoidance-and-warmup-buffer-20261013.md`.
-> Ref: `references/avatar-edit-layout-detector-and-closeout-contract.md`.
+> Ref: `references/mass-upload-script-failure-and-transient-ehci-triage-20261016.md`.
 
 ## UI evidence: target screen only
 
