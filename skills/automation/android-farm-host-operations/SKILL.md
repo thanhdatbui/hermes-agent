@@ -28,6 +28,7 @@ References:
 - `references/user-directed-reboot-anti-paralysis-and-sentinel-bypass.md` — Kỷ luật chống tê liệt xin phép khi user ra lệnh reboot, cơ chế xóa sentinel flag và bảo toàn session Telegram để tự động chạy tiếp sau boot.
 - `references/host-pc-display-sleep-timeout-and-guard-bypass.md` — Quy trình cấu hình thời gian tắt màn hình Windows PC (Kibe & Admin), kỹ thuật vượt Guard default-deny và đối soát readback index 0x0000012c (15/10/2026).
 - `references/dual-adb-server-device-split-and-port5038-collision-20261015.md` — Phân tích bản chất xung đột 2 Daemon ADB (port 5037 vs 5038), WinUSB endpoint exclusive hijacking chia rẽ 80 máy, quy trình khôi phục phẫu thuật O(1), phân tích dịch ngược nhị phân xiaowei.exe và hệ thống phòng thủ 3 lớp vĩnh viễn (Watchdog 2 phút, Dual-Strike CIM Killer, Runner Preflight Guard) (16/10/2026).
+- `references/in-flight-preflight-healing-vs-post-session-recovery-20261016.md` — Quy chuẩn cứu hộ tự động 2 tầng (In-flight self-healing tại vpn_preflight.py và preflight readiness gate tại tiktok_runner.py), triệt tiêu bẫy "cứu hộ vuốt đuôi" sau khi ca chạy đã kết thúc (16/10/2026).
 
 Scripts:
 - `scripts/safe_usb_guard.py` — Script nguồn mẫu giám sát và reset EHCI bus theo ngưỡng.

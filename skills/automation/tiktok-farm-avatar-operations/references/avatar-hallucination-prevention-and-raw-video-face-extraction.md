@@ -410,6 +410,29 @@ Trước khi soạn bất kỳ tin nhắn nào cho User:
        * Bước 2: Tạo marker vật lý `.manual_avatar_locked` và `.manual_hashtag_locked` tại các folder trên để kích hoạt cờ bảo vệ chống ghi đè vĩnh viễn.
        * Bước 3: Cập nhật SQLite `avatar_replace_queue` sang trạng thái `PENDING` kèm timestamp mới. Khi ca nuôi hoàn tất, runner tự động nhả device lock và watchdog upload avatar sẽ tự động nạp ảnh lên TikTok an toàn, đúng quy trình.
 
+---
+
+## 20. Kỷ Luật Tái Sử Dụng Queue Có Sẵn (Chống Đẻ Watchdog Mới) & Đối Soát Closeout Khi Hoàn Tất Vận Hành Media
+
+- **Bối cảnh & Nghi vấn của User ("Là mày cài watchdog nạp hay đưa vào cron tự nạp có sẵn")**:
+  - Khi Coordinator báo cáo: *"Đã ghi nhận PENDING trong SQLite avatar_replace_queue để tự động nạp lên TikTok"*, User lập tức chất vấn để kiểm tra xem Agent có đang tự ý tạo thêm file script watchdog mới hay không.
+  - Tôn chỉ vận hành Taadaa Farm (Invariants & Memory): **REUSE > EXTEND > NEW — CẤM TUYỆT ĐỐI đẻ script/watchdog trùng lặp**.
+
+- **Cơ chế nạp tự động SSOT của Farm (`avatar_replace_queue`)**:
+  1. **Hàng đợi chuẩn**: Bảng `avatar_replace_queue` trong SQLite `D:/Taadaa/data/tiktok_tracker.db` là SSOT duy nhất quản lý tiến trình đổi avatar cho toàn bộ tài khoản.
+  2. **Cronjob tự nạp có sẵn**: Job `post-evening-avatar-watchdog` (Job ID: `25d6f8ab0264`, lịch chạy `*/5 * * * *`, script `post_evening_avatar_watchdog.py`) liên tục quét các tài khoản có trạng thái `PENDING` trong hàng đợi này.
+  3. **Quy tắc ứng xử khi User chất vấn**:
+     - Báo cáo rõ ràng, trung thực: Khẳng định KHÔNG tạo watchdog mới, mà chỉ cập nhật trạng thái `PENDING` vào bảng SQLite `avatar_replace_queue` có sẵn để cronjob hiện hành xử lý.
+     - Kiểm tra trạng thái máy: Nếu thiết bị rảnh và kết nối ADB thông suốt thì kích hoạt runner đơn máy nạp dứt điểm ngay; nếu thiết bị đang bận ca nuôi hoặc bị nghẽn phần cứng/USB transport (timeout ADB) thì giữ trạng thái `PENDING` an toàn chờ chu kỳ hồi phục.
+
+- **Kỷ luật Closeout ("Done" / "Chốt phiên") Đối Với Phiên Vận Hành Media/Data**:
+  1. Khi User phát lệnh kết thúc phiên bằng từ khóa *"Done"* / *"Chốt phiên"* sau một chuỗi tác vụ chuẩn hóa kênh (Avatar, Hashtag, Pin):
+  2. BẮT BUỘC kiểm tra `git status` tại repo công việc (`D:/Taadaa/tiktok-luot nuoi acc`).
+  3. Nếu phiên làm việc thuần túy là tác vụ vận hành media và cập nhật dữ liệu farm (không có code diff/thay đổi mã nguồn trong Git):
+     - Xác nhận rõ ràng với User: Tác vụ vận hành media/database farm đã hoàn tất và được bảo vệ (marker `.manual_avatar_locked`, `.manual_hashtag_locked`, SQLite queue `PENDING`).
+     - Không phát sinh code diff cần review/commit/push lên remote branch, tránh kích hoạt nhầm vòng lặp remediation code cho diff cũ của các phiên trước.
+
+
 
 
 
