@@ -5,8 +5,8 @@ description: Use when running avatar-only jobs on TikTok farm.
 
 # TikTok Farm Avatar Operations
 
+- Active Lock Coexistence & Sub-caption Edge Trap (2026-10-16): [references/active-device-lock-coexistence-and-protected-folders-type-safety-20261016.md](references/active-device-lock-coexistence-and-protected-folders-type-safety-20261016.md)
 - Avatar Hallucination: [references/avatar-hallucination-prevention-and-raw-video-face-extraction.md](references/avatar-hallucination-prevention-and-raw-video-face-extraction.md) (Chống ảo giác, trích xuất frame, công thức Direct Invocation O(1))
-- Anti-Throwaway Script (2026-10-16): [references/anti-throwaway-script-and-batch-runner-direct-invocation.md](references/anti-throwaway-script-and-batch-runner-direct-invocation.md) (Cấm đẻ script tạm test_runner_*.py khi đã có sẵn runner; cạm bẫy avatar-uploaded-confirmed.png bị đen màn hình)
 - Avatar Text-Banner Crop & Coordinator Response: [references/avatar-text-banner-crop-triage-and-non-empty-coordinator-response-20261016.md](references/avatar-text-banner-crop-triage-and-non-empty-coordinator-response-20261016.md)
 - Cartoon & 3D Animal Mascot: [references/3d-animal-mascot-avatar-and-render-store-reconcile-20261016.md](references/3d-animal-mascot-avatar-and-render-store-reconcile-20261016.md) & [references/cartoon-mascot-avatar-extraction-and-mismatched-source-triage-20261016.md](references/cartoon-mascot-avatar-extraction-and-mismatched-source-triage-20261016.md)
 - Haar Cascade False-Positive: [references/haar-cascade-false-positive-face-and-multi-frame-avatar-verification-20261016.md](references/haar-cascade-false-positive-face-and-multi-frame-avatar-verification-20261016.md)

@@ -29,7 +29,15 @@ Nick **CHƯA follow** (hoặc vừa bấm follow nhưng bị TikTok server drop/
   * **ĐÃ FOLLOW (`followed`):** Nút đỏ `Follow/Follow lại` bắt buộc phải biến mất hoàn toàn, chỉ còn lại:
     - `[Bạn bè]` (Mutual) + `[Nhắn tin]`
     - `[Đang theo dõi]` + `[Nhắn tin]`
-    - Hoặc duy nhất 1 nút lớn `[Nhắn tin]`.
+    - Hoặc duy nhất 1 nút lớn `[Nhắn tin]` (CHỈ KHI `allow_message_alone=True`). Khi `allow_message_alone=False` (mặc định), màn hình chỉ có duy nhất nút `[Nhắn tin]` bắt buộc trả về `unknown` để fail-closed chống false-positive đối với tài khoản mở DM công khai nhưng chưa follow.
+
+---
+
+## 2.1 Cạm bẫy thanh Tab điều hướng Top-Bar (Top-Nav Collision Trap)
+
+Trên màn hình Video Feed hoặc màn hình chính của TikTok/Instagram, đỉnh màn hình ($y_1 < 200$) luôn có thanh chuyển tab điều hướng (`LIVE`, `Bạn bè`, `Đang follow`, `Dành cho bạn`).
+- Nếu hàm phân loại OCR quét từ $y_{min} = 0$, text box `('Ban bé', (333, 141, 461, 175))` sẽ bị bắt và phán nhầm màn hình Feed đang xem video thành `followed`!
+- **Quy tắc bất biến:** BẮT BUỘC đặt mặc định `y_min = 200` khi trích xuất hoặc phân loại nút hành động profile, triệt tiêu hoàn toàn nhiễu từ thanh tab trên cùng.
 
 ---
 
