@@ -18,6 +18,17 @@
 
 ---
 
+## 1.2 Bẫy Lỗi Gõ Phím Telex "acc nacy" & Reverse-Indexing Từ Ảnh Profile
+- **Bẫy gõ Telex**: User gõ nhanh *"Chuẩn hoá acc nacy"* (thực chất là gõ nhầm Telex của *"acc này"* do phím c kề phím x/y).
+- **Hành vi sai lầm**: Đi tìm kiếm chuỗi văn bản `"nacy"` hoặc `"nancy"` khắp các file Excel / SQLite và kết luận không tìm thấy tài khoản.
+- **Hành vi chuẩn mực**:
+  * Khi User gửi kèm ảnh hoặc nói *"Acc này nè"* / *"What do you see in this image?"*: Nhận diện ngay `"nacy"` = `"này"`.
+  * Dùng Ground Truth trên ảnh: Đọc ngay **Tên hiển thị** (ví dụ `Ngô Xuân Vân`) và **Username** (ví dụ `@inhkhoa0211`).
+  * Kiểm tra chéo mức độ lệch của avatar hiện tại so với video đã đăng: Ví dụ avatar là cô gái ngoại quốc nhưng toàn bộ video đăng là chú trung niên mặc áo cổ tàu giảng đạo lý/chia sẻ thói quen sống $\rightarrow$ Khẳng định ngay avatar bị lệch 100% và cần trích xuất nhân vật chính diện từ video gốc.
+  * Tra cứu O(1) theo username trong `taikhoan_run_safe_combined.xlsx` hoặc `Tik<N>.xlsx` để ra ngay số Máy, Tik, $F_{out}$, $F_{src}$ mà không cần quét đĩa.
+
+---
+
 ## 2. Quy Trình Chuẩn Hóa 3 Món (Avatar - Hashtag - Pin)
 
 ### Món 1: Avatar (Thay đổi & Khóa chống ghi đè)
@@ -76,6 +87,20 @@ Khi User duyệt phương án avatar và yêu cầu chuẩn hóa hashtag ("Chọ
     3. Cập nhật `manual_avatar_protected_folders.json` (cả 2 đường dẫn root và `Tiktok-video/data/`) và `manual_hashtag_protected_folders.json`.
     4. Cập nhật workbook `Tik<N>.xlsx` qua `openpyxl`: ghi đè `Keyword Video` và `Hashtag Pool` ở cả sheet `TaiKhoan` (dòng máy) và sheet `Hashtag theo Folder` (dòng folder nguồn).
     5. Kiểm tra compile qua `python -m py_compile` và thực thi script ngay trong phiên làm việc của Worker.
+
+---
+
+## 2.2 Chốt Chặn Guard Khi Dispatch Worker Trích Xuất & Sửa Đổi (Coordinator Guard Contract Invariants)
+Khi Coordinator chạm trần ngân sách T1 (hết hạn ngạch 5 files / 200 dòng trong session), việc trích xuất hay chỉnh sửa bắt buộc chuyển qua `delegate_task`. BẮT BUỘC tuân thủ 5 điều kiện hợp đồng cứng để không bị Coordinator Guard từ chối:
+1. **TASK_KIND**: Khai báo rõ ràng trong context dòng đầu tiên:
+   - `TASK_KIND: INVESTIGATE` (cho task đọc/khảo sát hiện trường).
+   - `TASK_KIND: EDIT` (cho task sửa file có sẵn).
+   - `TASK_KIND: CREATE` (cho task tạo file script mới).
+2. **Budget Khảo sát**: Với `TASK_KIND: INVESTIGATE`, budget tối đa **<= 5 calls** (`INVESTIGATE_BUDGET_EXCEEDED` nếu khai báo > 5).
+3. **Cặp OLD_STRING & NEW_STRING**: Với `TASK_KIND: EDIT`, bắt buộc phải có cả 2 khối:
+   `OLD_STRING: <<< ... >>>` và `NEW_STRING: <<< ... >>>`.
+4. **Ngân sách Diff O(1)**: Dự tính thay đổi code nghiệp vụ bắt buộc **<= 30 dòng** (`DIFF_BUDGET_EXCEEDED` nếu > 30 dòng). Không viết code lan man vào contract; tận dụng helper ngắn gọn, gom vòng lặp.
+5. **Đường dẫn tuyệt đối (Absolute Path Strictness)**: Mọi đường dẫn file trong goal và context phải là đường dẫn tuyệt đối sạch (`D:/Taadaa/...`), cấm định dạng tiền tố bullet `+ D:\...` (`PATH_NOT_ABSOLUTE`).
 
 ---
 

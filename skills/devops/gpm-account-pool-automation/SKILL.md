@@ -8,11 +8,11 @@ version: 1.2.1
 
 ## 1. Khi nào sử dụng
 
-Use for GPM v3 (19995), Gmail/Hotmail lifecycle, proxy-safe accounts, OAuth, ChatGPT/Codex, watchdogs.
+Use for GPM v3 (19995), account lifecycle, proxy pools, OAuth, ChatGPT/Codex, watchdogs.
 - Audit: `references/chatgpt-audit-terminal-background-and-lifecycle-safety.md`, `references/gpm-stop-api-zombie-leak-and-rolling-concurrency.md`.
 - Auth: `references/credential-isolation-policy-hotmail-chatgpt-tiktok.md`, `references/hotmail-password-mapping-and-cookie-consent-pitfalls.md`.
-- Watchdog: `references/omniroute-turnstile-sentinel-gpm-recovery.md`, `references/no-agent-cron-silent-watchdog-and-telegram-chunking.md`.
-- 2FA & Sync: `references/gpm-gmail-2fa-lifecycle-deadlock-and-silent-reporting.md`, `references/gpm-profile-pagination-and-duplicate-spawn-pitfall.md`.
+- Watchdog: `references/omniroute-turnstile-sentinel-gpm-recovery.md`, `references/no-agent-cron-silent-watchdog-and-telegram-chunking.md`, `references/gpm-cron-script-sync-and-delayed-alerts.md`.
+- 2FA/Sync: `references/gpm-gmail-2fa-lifecycle-deadlock-and-silent-reporting.md`, `references/gpm-profile-pagination-and-duplicate-spawn-pitfall.md`.
 - Lifecycle: `references/gpm-supervisor-proxy-port-cooldown-bottleneck-triage.md`, `references/gmail-gpm-relogin-cooldown-exemption-and-rolling-nurture.md`.
 - Observability: `references/gpm-gmail-session-dropout-and-inventory-observability.md`.
 - Browser-core repair: `references/gpm-browser-core-repair-source-integrity.md`.
