@@ -30,8 +30,13 @@ Phân loại bắt buộc trước khi tính budget (`determine_cohort` trong `f
 
 ---
 
-## 4. Rào Chắn Anchor Protection Cho Nick Non (Mode 2)
-- **Bản chất kỹ thuật sự cố Row 2:** Nick non (Following 0–6) search và bấm follow Anchor lớn ($\ge 150$ following) bị TikTok nhận diện bất thường $\rightarrow$ TikTok dùng **Optimistic UI** (app hiện Đang theo dõi nhưng server ngầm drop) $\rightarrow$ Bot vuốt reload kiểm tra thấy bị nhả về nút đỏ `Follow` $\rightarrow$ Kích hoạt `FOLLOW_FAILED` khiến 82.6% máy dính án phạt oan uổng.
-- **Quy tắc bắt buộc:**
-  - Anchor trong Mode 2 chỉ là cửa ngõ để mở danh sách Following công khai của họ, **không bắt buộc phải follow Anchor mới đọc được danh sách**.
-  - Nick thuộc **Cohort Rookie**: Runner tự động bỏ qua bước follow Anchor lớn (`skipped_rookie_anchor_protection`), bấm thẳng vào tab Following để follow các nick con bình thường.
+## 4. Cơ Chế Nhả Follow & Rào Chắn Cho Nick Non (Anti-Action Restriction)
+- **Bản chất kỹ thuật của "Nhả Follow":** Là **Account-Level Action Restriction (Khóa tính năng Follow ở cấp tài khoản)** do TikTok Backend âm thầm từ chối (Silent Drop / Optimistic UI rollback).
+- **CẢNH BÁO / PITFALL CHÍ MẠNG (Bài học Row 2):**
+  - **Sai lầm ngộ nhận:** Tưởng rằng "chỉ có follow Anchor lớn mới bị nhả, né Anchor vào bấm nick con trong Following list sẽ ăn".
+  - **Thực tế chứng minh từ log M27 & M42:** M27 và M42 đã follow Anchor từ trước, bỏ qua Anchor đi thẳng vào bấm nick con đầu tiên $\rightarrow$ **Vẫn bị TikTok nhả 100% ngay tại nick con!**
+  - **Nguyên nhân gốc rễ:** Nick non (Following 0–6) là "tài khoản nguội" (Cold Account). Khi đùng một cái vào tìm kiếm và bấm follow liên tiếp $\rightarrow$ AI TikTok kích hoạt bộ lọc **Velocity Spike trên nick nguội**, khóa cứng toàn bộ quyền follow của nick trong phiên đó. Anchor chẳng qua chỉ là nơi đầu tiên bot chạm vào nút follow!
+- **Quy tắc vận hành chuẩn hóa cho Nick Non (Rookie):**
+  - **Pre-flight Trust Gate:** Nick có Following < 10 và đang dưỡng tuyệt đối không ép chạy cày mỏ follow chéo ngay.
+  - **Dưỡng sinh làm ấm (Feed Nurture):** Bắt buộc chạy Feed Session thuần (lướt For You, xem video đủ dwell time, thả tim tự nhiên) để làm ấm Inbound Trust trước.
+  - **Mồi tự nhiên trước khi cày mỏ:** Nếu muốn kiểm tra tính năng follow, mồi follow tự nhiên 1 tài khoản trên Feed For You; khi TikTok thực sự ghi nhận trên server thì mới đưa nick vào kịch bản follow hàng loạt.

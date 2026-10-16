@@ -1,6 +1,6 @@
 Chu kỳ 4d: Parity 96h (N1 lẻ, N2 chẵn), N3(R7,8), N4(dưỡng 0fl+up). Starve 108h. CẤM xóa cooldown. Dưỡng: healing_selector; S2 bám S1. 3 ca (6,12,18h). Đêm 21h30-5h15 né cache 4h cho 2FA/Ava; báo 6h cấm báo ảo.
 §
-Follow: P1/P2 khóa trần ca (hết quota P2 safe-skip). Nick khỏe dò trần +2/ca (max 30); dính nhả vào tù, ra tù qua Hồi phục 1,2 khôi phục proven_safe_ceiling (lùi 4, sàn 15). T1/T2 học theo cohort (Rookie/Mid/Veteran, P20); nick non <30fl cấm tap anchor >=150. Dashboard :1905.
+Follow: P1/P2 khóa trần ca (hết quota P2 skip). Dò trần +2/ca (max 30); dính nhả vào tù, ra tù qua Hồi phục 1,2 khôi phục proven_safe_ceiling (lùi 4, sàn 15). 3 cohort (Rookie/Mid/Veteran, P20); non <10fl cấm cày follow (dưỡng feed mồi 1); nhả follow là account-level action block (bấm ai cũng nhả, cấm ngộ nhận né anchor). :1905.
 §
 Hotmail: CẤM mail cá nhân; sinh @fviainboxes.com đọc OTP API. Write-Through: ghi ngay Excel Cột 3,4,5 & G farm. Dual-farm ~1280 acc.
 §
@@ -16,4 +16,4 @@ User ép push -> safe_push --owner-override.
 §
 Admin Remote (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; Python OpenCV D:/CodexRuntime/tiktok-video/venv-core024/Scripts/python.exe; launcher chạy trên host admin qua admin_ssh.py (cấm chạy local báo DEVICE_OFFLINE); Haar cascade hay báo ảo đĩa ăn/chó mèo nên bắt buộc soi mắt trước khi nạp ava.
 §
-Phân loại lỗi Upload farm: (1) Rớt USB EHCI/tun0 timeout lúc cao điểm là transient L0, máy tự online lại cấm reboot/sửa code; (2) POST_RECHECK trễ duyệt TikTok kích hoạt Idempotency Guard cấm ép đăng lại; (3) Hết video do nhảy cóc dãy số (ví dụ có 1-10 và 27-61 thiếu 11) cần render bù start-seq đúng số thiếu; (4) Ảnh screencap màn hình đen do máy ngủ cấm gửi MEDIA: để đối phó.
+Lỗi Upload farm: (1) Rớt USB EHCI/tun0 lúc cao điểm là transient L0, cấm reboot; (2) POST_RECHECK trễ kích hoạt Idempotency Guard cấm ép đăng lại; (3) Hết video do nhảy cóc dãy số cần render bù start-seq đúng số thiếu; (4) Ảnh màn hình đen do máy ngủ cấm gửi MEDIA: đối phó.
