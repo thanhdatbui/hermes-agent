@@ -43,11 +43,18 @@ Rất nhiều tài khoản **CHƯA FOLLOW** (hoặc vừa tap nhưng bị server
 2. **Khử bẫy Substring:**
    - `"follower"` chứa `"follow"`, `"127 Đã follow"` / `"0 Đang follow"` chứa `"follow"`. Nếu dùng kiểm tra substring `kw in text` sẽ nhận nhầm cột thống kê thành nút Follow!
    - `"dang theo doi"` chứa `"theo doi"`. `"dang theo doi"` là nhãn đã follow (`followed`), nhưng `"theo doi"` lại là nút chưa follow (`not_followed`). Bắt buộc loại trừ `"dang theo doi"` trước khi kiểm tra `"theo doi"`.
-3. **Loại trừ nhãn đếm (Stat Counters):**
+3. **Loại trừ nhãn đếm (Stat Counters) & Khóa độ dài chữ (Word Length Guard):**
    - Bắt buộc lọc qua regex `r"follower"`, `r"followers"`, `r"dang\s+follow"`, `r"da\s+follow"` và word boundaries `\b`.
+   - **Khóa độ dài nhãn nút bấm:** Nút hành động chuẩn trên TikTok chỉ có từ 1 đến 3 từ (`"Follow"`, `"Follow lại"`, `"Theo dõi"`). Bắt buộc kiểm tra `len(n_txt.split()) <= 3`; nếu vượt quá 3 từ (dù có chứa từ "follow") thì lập tức loại bỏ, tránh tuyệt đối việc câu mô tả trong Bio bị nhận nhầm thành nút bấm.
 4. **Giới hạn dải Action Band ($y < 1200$):**
    - Nút bấm hành động chỉ nằm ở khoảng $y$ từ 450 đến 850 (trên màn hình chuẩn).
    - Giới hạn $y < 1200$ để loại bỏ hoàn toàn phần text mô tả (Bio) bên dưới (tránh dính text Bio như *"Nhắn tin Zalo..."*, *"Follow ủng hộ mình nhé..."*).
+5. **Cầu dao an toàn khi dập Popup (Popup Safety Guard):**
+   - Tuyệt đối không bấm nút đóng popup nếu trên màn hình xuất hiện bất kỳ từ khóa nhạy cảm / bảo mật nào: `mật khẩu`, `captcha`, `otp`, `đăng nhập`, `thanh toán`, `credential`, `payment`.
+6. **Telemetry & Audit Logging:**
+   - Mọi hàm phân loại (`classify_profile_action_ocr`, `find_follow_button_center_ocr`, `find_popup_dismiss_button_ocr`) bắt buộc ghi log rõ ràng `decision=...` và `reason=...` để phục vụ Closeout Review và audit truy vết hành vi farm.
+7. **Modular Hóa Dùng Chung (`automation_core.ocr`):**
+   - Toàn bộ tiện ích WinRT OCR native, fast popup dismissal và profile action classification đã được đóng gói chuẩn tại `from automation_core.ocr import ocr_screen_boxes, find_popup_dismiss_button_ocr, classify_profile_action_ocr, find_follow_button_center_ocr`. Các consumer repo tái sử dụng trực tiếp từ đây, cấm viết lại module rời rạc.
 
 ## 5. Kiến Trúc Phối Hợp Hybrid (XML vs WinRT OCR)
 Tuyệt đối không thay thế toàn bộ XML bằng OCR một cách mù quáng:
@@ -76,3 +83,23 @@ Tuyệt đối không thay thế toàn bộ XML bằng OCR một cách mù quán
   2. **CẤM TUYỆT ĐỐI chạy canary đè lệnh ADB** lên máy đang trong phiên nuôi active (tránh race condition, xung đột socket và vỡ phiên).
   3. **Tận dụng khe rảnh giữa các phiên (Pair Gap):** Chờ phiên hiện tại kết thúc (khoảng nghỉ giữa P1 và P2 thường là 45-60 phút) hoặc bốc các máy đã chạy xong P1 sớm và đã nhả sạch lock thiết bị.
   4. **Quy trình Canary chuẩn:** Acquire device lock (`user_authorized=True`) -> Chạy canary -> Soi mắt kiểm tra ảnh thực tế (`MEDIA:`) -> Nhả lock và báo cáo.
+
+## 8. Ma Trận Canary Đa Dạng Màn Hình (Multi-Scenario Canary Matrix)
+*User directive:* *"Canary nên chạy nhiều trường hợp để nắm đc script có ổn định khi gặp nhiều màn khác nhau k ấy"*. Tuyệt đối không chỉ canary 1 máy hoặc 1 layout đơn điệu rồi kết luận thành công. Khi nghiệm thu bản vá phân loại quan hệ / follow, bắt buộc kiểm thử tối thiểu qua 5 kịch bản thực tế:
+
+1. **Kịch bản 1 — Nick Creator / Công khai (Mở DM):**
+   - *Giao diện:* Cặp nút song song `[Follow]` (Đỏ) + `[Nhắn tin]` (Xám).
+   - *Kỳ vọng:* Nhận diện chuẩn xác `not_followed`, tap trúng nút Follow đỏ. CẤM phán nhầm `followed`.
+2. **Kịch bản 2 — Nick Riêng Tư / Khóa DM:**
+   - *Giao diện:* Chỉ có duy nhất 1 nút lớn `[Follow]` (Đỏ) với các obfuscated ID khác nhau (`id/fds`, `id/fo4`, `id/fmp`).
+   - *Kỳ vọng:* Nhận diện chuẩn `not_followed` qua semantic text khi ID thay đổi.
+3. **Kịch bản 3 — Nick Đã Follow Thành Công:**
+   - *Giao diện:* Sau khi tap & pull-to-refresh: nút đổi thành `[Đang theo dõi]` hoặc `[Bạn bè]`.
+   - *Kỳ vọng:* Nhận diện đúng `followed`, phân biệt rạch ròi với stat counter (số `120 Đang follow`).
+4. **Kịch bản 4 — Bẫy Nhả Follow (Ghost / Shadow Reject):**
+   - *Giao diện:* Vừa tap xong app hiện `Đang theo dõi`, nhưng sau khi vuốt kéo reload (`pull_to_refresh_profile`) thì app giật ngược về nút `[Follow]` đỏ.
+   - *Kỳ vọng:* Bắt sống `FOLLOW_FAILED`, kích hoạt cầu dao an toàn dừng ca, không ghi nhận điểm follow ảo vào database.
+5. **Kịch bản 5 — Giao diện Danh sách Following (Mode 2 Rows):**
+   - *Giao diện:* Danh sách follower cuộn dọc gồm nhiều hàng xen kẽ (Nút `Follow`, `Follow lại`, `Bạn bè`).
+   - *Kỳ vọng:* Nhận diện đúng từng row nội bộ, skip các row đã follow, tap chuẩn xác không lệch tọa độ khi cuộn.
+- **Tiêu chuẩn chọn máy Canary:** Chọn tối thiểu 2-3 máy đại diện các thế hệ ID/layout khác nhau trên farm (ví dụ Máy 1 layout `id/fds`, Máy 2 layout `id/ff8`, Máy 6 layout `id/fij`), kiểm tra trực tiếp qua `with_device_lock.py` và đính kèm ảnh `MEDIA:` soi mắt trước khi báo cáo.

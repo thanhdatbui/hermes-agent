@@ -8,7 +8,7 @@ description: "TikTok follow runner and fail-closed farm ops."
 ## Non-negotiable operating rules
 
 - **Tài liệu tham khảo chuyên sâu (`references/`):**
-    - `references/profile-follow-action-button-classification.md`: Phân loại Follow & Nhắn tin (chống false-positive).
+    - `references/profile-follow-action-button-classification.md`: Phân loại Follow & Nhắn tin (chống false-positive) và ma trận Canary 5 kịch bản.
     - `references/mode2-anchor-selection-and-deep-scroll.md`: Anchor >= 150 fl.
     - `references/follow-report-semantics-and-concise-wording.md`: Success (0) vs Nhả IP.
     - `references/account-replacement-and-backfill-state-reset.md`: Reset state thay nick/bù.

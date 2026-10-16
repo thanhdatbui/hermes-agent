@@ -30,7 +30,10 @@
   2. Đóng trình duyệt (`Context.close()`, `Browser.close()`, GPM stop API).
   3. Kiểm tra dọn dẹp triệt để tiến trình Chrome zombie qua `psutil`.
   4. Ngay lập tức bốc Profile B trong danh sách Group 10 vào thế chỗ.
-- **Độ phủ:** Với 77 profile trong Group 10, chu kỳ 5 workers cuốn chiếu quét sạch toàn bộ kho trong ~45–60 phút, đảm bảo mỗi profile được tương tác đều đặn hàng ngày.
+- **Độ phủ & Nhịp độ chuẩn hóa (User Approved):**
+  * **Chu kỳ giãn cách profile (NURTURE_INTERVAL_SECONDS):** **2 ngày (48 giờ)** thay vì 5 ngày (120h là quá lâu khiến session nguội và Google tự thu hồi cookie; 1 ngày là quá dày gây pattern máy móc và hao data 4G).
+  * **Trần an toàn nuôi hàng ngày (MAX_DAILY_NURTURE):** Giới hạn tối đa **25 – 30 profile / ngày** để bảo vệ băng thông data proxy 4G (tránh nghẽn làm drop điện thoại S7 đang chạy TikTok/Upload) và giải phóng RAM/CPU máy chủ.
+  * Với kho ~77 profile Group 10, nhịp độ 30 acc/ngày sẽ xoay vòng trọn vẹn 100% kho sau đúng 2.5 – 3 ngày.
 
 ---
 
