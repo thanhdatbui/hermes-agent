@@ -13,7 +13,7 @@ Use for GPM v3 (19995), Gmail/Hotmail lifecycle, proxy-safe accounts, OAuth, Cha
 - Credential & Pass: `references/credential-isolation-policy-hotmail-chatgpt-tiktok.md`, `references/hotmail-password-mapping-and-cookie-consent-pitfalls.md`.
 - Turnstile & Watchdog: `references/omniroute-turnstile-sentinel-gpm-recovery.md`, `references/no-agent-cron-silent-watchdog-and-telegram-chunking.md`.
 - 2FA & Pagination: `references/gpm-gmail-2fa-lifecycle-deadlock-and-silent-reporting.md`, `references/gpm-profile-pagination-and-duplicate-spawn-pitfall.md`.
-- Concurrency & Cooldown: `references/gpm-chromium-mute-audio-noise-control.md`, `references/gpm-supervisor-concurrency-cap-and-openai-age-form-trap.md`, `references/gpm-supervisor-proxy-port-cooldown-bottleneck-triage.md`.
+- Lifecycle & Triage: `references/gpm-supervisor-proxy-port-cooldown-bottleneck-triage.md`, `references/hotmail-chatgpt-lifecycle-supervisor-triage-and-stagnation.md`.
 - Browser-core repair: `references/gpm-browser-core-repair-source-integrity.md`.
 - Preflight Liveness: `references/gpm-local-api-liveness-and-autolaunch-pattern.md`.
 - Hook ChatGPT Web/Codex: `references/codex-oauth-phone-verification-5sim-and-sumistore.md`.

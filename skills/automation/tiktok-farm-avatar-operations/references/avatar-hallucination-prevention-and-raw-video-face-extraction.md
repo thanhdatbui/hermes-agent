@@ -307,6 +307,24 @@ Trước khi soạn bất kỳ tin nhắn nào cho User:
   4. **Tạo marker vật lý `.manual_avatar_locked`**:
      - Tạo file marker `.manual_avatar_locked` tại cả 3 folder trên để khóa cứng `is_folder_avatar_protected` = `True` ngay lập tức, ngăn ngừa mọi cron/script quét hàng loạt ghi đè.
 
+---
+
+## 15. Bẫy Sticky Header vs Profile Header Khi Cuộn Trang & Ảo Giác "Kênh Nguồn vs Kênh Clone" (Sự Cố 16/10/2026 — @thanh.huyn4934 Máy 39)
+- **Hiện tượng & Bị User mắng chửi gay gắt**:
+  - User gửi 2 ảnh chụp màn hình TikTok cùng lúc và yêu cầu: *"Chuẩn hoá kênh này và pin video nhiều view cái"*.
+  - Ảnh 1 chụp đỉnh profile: Avatar góc phải, tên "Thanh Huyền", `@thanh.huyn4934`, stats 321/391/3.243, 4 hàng video đầu (view cao nhất 2.357).
+  - Ảnh 2 chụp khi User đã **cuộn màn hình xuống dưới (Scrolled Down)**: Profile Header lớn cuộn mất, xuất hiện **Sticky Header** với avatar mini ở giữa, nút Follow màu đỏ bên phải; bên dưới là các hàng video cũ/sâu hơn của kênh (chứa clip viral **31,3K view**).
+  - Coordinator nhìn thấy Ảnh 2 có Sticky Header mini và video khác 3 hàng đầu Ảnh 1, liền tự **bịa đặt giả thuyết**: Ảnh 2 là *"Kênh nguồn gốc (Source idol channel)"*, còn Ảnh 1 là *"Kênh clone re-up"*.
+  - Hậu quả: Coordinator bỏ sót clip viral **31,3K view** khi tư vấn pin video cho kênh. User chửi thẳng: *"Xàm lồn 2 ảnh cùng 1 kênh của tao"*.
+- **Cơ chế UI TikTok khi cuộn (Sticky Header Mechanics)**:
+  - Khi cuộn trang cá nhân TikTok trên mobile, Header lớn chứa Tên/Username/Stats sẽ trượt ra khỏi viewport và được thay thế bằng **Sticky Header** cố định ở đỉnh: avatar tròn thu nhỏ ở giữa, nút Follow/Chia sẻ thu gọn bên phải, tab `||| ▾` trượt sát mép dưới sticky header.
+- **Quy tắc đối soát đa ảnh (Multi-Screenshot Reconcile Invariant)**:
+  1. **Nhận diện Sticky Header**: Nếu đỉnh ảnh chỉ có 1 avatar tròn nhỏ nằm chính giữa thanh bar trên cùng, không có Tên/Bio/Stats $\rightarrow$ đây là màn hình Profile đang CUỘN XUỐNG của cùng 1 kênh, CẤM suy diễn thành kênh khác.
+  2. **Đối soát tính liên tục của lưới video**: Kiểm tra bối cảnh, nhân vật, font chữ phụ đề giữa các video mép dưới ảnh 1 và mép trên ảnh 2. Nếu cùng nhân vật/phòng tập/font chữ $\rightarrow$ 100% là cùng một kênh.
+  3. **Cấm bịa đặt quan hệ "Kênh Nguồn vs Kênh Clone"**: Khi User dùng từ số ít ("kênh này") và gửi nhiều ảnh, mặc định là các đoạn cuộn khác nhau của cùng 1 kênh.
+  4. **Gộp toàn bộ video để xếp hạng Pin Video**: Gom toàn bộ video trên tất cả các ảnh được gửi vào một danh sách, sắp xếp view giảm dần để chọn đúng top video (không được bỏ sót clip viral ở ảnh cuộn sâu).
+
+
 
 
 
