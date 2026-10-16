@@ -73,3 +73,18 @@ $atomicCmd = "if (-not (Get-Process -Name xiaowei -ErrorAction SilentlyContinue)
 - **Subprocess Execution Latency Telemetry:** Measure elapsed execution time of subprocess calls (`duration_ms = round((time.time() - t0) * 1000, 1)`) and include `duration_ms` in `XIAOWEI_CLOSE_OK` telemetry records to satisfy `telemetry_observability` criteria (14-15/15).
 - **Direct Windows Host Integration Evidence:** Sol High penalizes purely mocked test suites. Include at least one unmocked test (`test_windows_real_integration`) exercising real host status queries (`is_xiaowei_running() in (True, False)`, `is_xiaowei_adb_running() in (True, False)`, and PowerShell process filter parsing) to prove native OS compatibility.
 - **Pre-Push Hook Audit Alignment:** After creating a local git commit, run `closeout_gate.py --repo <path> --base HEAD~1 --files <targets>` so `D:/Taadaa/logs/gate_audit.jsonl` registers an `APPROVED >= 85` audit record matching the new commit SHA before running `safe_push.py`.
+
+---
+
+## 6. High-Latency PowerShell / WMI Pipeline Timeout & Fast Netstat Pre-Check
+- **The 8-10s WMI/NetTCPIP Latency Trap:** On farm hosts with 80+ USB devices and multiple network adapters, executing `$ports = Get-NetTCPConnection -LocalPort 5038 ...; Get-CimInstance Win32_Process ...` in PowerShell takes 7.5–9.0s baseline.
+- **False-Alarm Cron Alert Storm:** In silent cron watchdogs running at high frequency (e.g. every 2m) with a 10s timeout, any minor CPU spike causes `subprocess.TimeoutExpired`, logging `ADB_CHECK_ERROR` to stdout. For `no_agent: true` cronjobs, non-empty stdout triggers Telegram delivery, spamming the user with confusing timeout JSON errors.
+- **Fast Pre-Check Pattern (<200ms):**
+  Instead of executing PowerShell on every tick, run a fast lightweight pre-check via `netstat -ano -p tcp`:
+  ```python
+  # Fast pre-check: if port 5038 is not listening, short-circuit immediately (<200ms)
+  r_ns = subprocess.run(["netstat", "-ano", "-p", "tcp"], capture_output=True, text=True, timeout=3)
+  if not any(f":{XIAOWEI_ADB_PORT}" in l and "LISTENING" in l for l in r_ns.stdout.splitlines()):
+      return False
+  ```
+- **Safe Timeout Floor:** For the actual fallback PowerShell/CIM query when port 5038 is active, ensure `CIM_TIMEOUT_SECONDS` has a safe floor of at least 15s (`max(5, min(60, _raw_t))` with default 15s instead of 10s) to prevent clipping under transient system load.
