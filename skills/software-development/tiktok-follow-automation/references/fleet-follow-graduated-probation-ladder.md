@@ -270,4 +270,24 @@
 - **Ràng buộc an toàn cứng:** Drop rate của cohort phải $\le 8\%$ (T1) và $\le 10\%$ (T2).
 - **Hysteresis chống giật cục:** Chỉ tăng/giảm tối đa 1 bước mỗi chu kỳ đánh giá, tránh dao động đột ngột.
 
+### D. Chi Tiết Thi Công Runner & Pitfall Kiểm Thử (Code Invariants):
+1. **Hàm `determine_cohort` trong `follow_state.py`:**
+   - Input: `video_count: int | None`, `account_age_days: int | None`.
+   - Đọc `tot_fl = len(self._data.get("followed", {}))`.
+   - Phân tầng trả về `"rookie" | "mid" | "veteran"`.
+   - Được gọi ngay đầu `_determine_budget_tier` để nạp bộ trần tương ứng (`t1_cap, t2_cap, core_cap`).
+2. **Pitfall Test Fixture (Cohort Clamping Trap):**
+   - *Hiện tượng:* Viết unit test cho tính năng Dò trần tăng tiến (Adaptive Ceiling 20–30) nhưng test fail ở `assert max(picks) == 20` vì `max(picks)` chỉ đạt `16` (hoặc `15`).
+   - *Nguyên nhân:* Test fixture truyền `video_count=10, account_age_days=35` (thông số mặc định). Hàm `determine_cohort` phân loại nick vào `rookie`, và bộ phận bảo vệ an toàn tự động khóa cứng trần ở mức 16!
+   - *Khắc phục:* Với các test kiểm tra dò trần vượt 16, test fixture BẮT BUỘC phải nạp profile Veteran chuẩn (`followed >= 120`, `video_count = 28`, `account_age_days = 200`).
+3. **Anchor Guard trong `mode2_follow_followers.py`:**
+   - Trong `_ensure_anchor_followed`, kiểm tra:
+     ```python
+     if getattr(engine.state, "determine_cohort", None) and engine.state.determine_cohort() == "rookie":
+         engine._last_anchor_follow_outcome = "skipped_rookie_anchor_protection"
+         return profile_xml
+     ```
+   - Tránh việc nick non bị ép follow các Anchor to ($\ge 150$ following) dẫn tới tỷ lệ nhả 82.6% làm dừng cả ca chạy; nick non vẫn đọc và follow danh sách người dùng con bên trong bình thường.
+
+
 
