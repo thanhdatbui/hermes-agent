@@ -9,10 +9,16 @@ Khi cào dữ liệu profile TikTok qua endpoint web (`https://www.tiktok.com/@u
 ## 2. Tiêu chuẩn phân loại trạng thái (Status Resolution)
 | Trạng thái | Điều kiện xác định | Xử lý |
 |---|---|---|
-| **LIVE** | Trích xuất được JSON `userInfo`, `statusCode == 0` | Lưu snapshot, cập nhật follower/heart |
+| **LIVE** | Trích xuất được JSON `userInfo`, `statusCode == 0` | Lưu snapshot, cập nhật follower/heart (Nếu `followerCount == 0` mà `prev_follower > 0`: CẤM ghi đè 0, phải forward-fill giữ nguyên số cũ) |
 | **NOT_FOUND (Thật)** | JSON có `statusCode == 10221` hoặc HTTP status code 404 | Xác nhận nick DIE / biến mất thật |
 | **BLOCKED / WAF** | HTML chứa `SlardarWAF` và thiếu JSON hydration | **CẤM gán NOT_FOUND/DIE**. Đổi proxy & retry |
 | **ERROR** | Exception `requests.Timeout`, `ConnectionError` | Đổi proxy & retry; cạn retry giữ `ERROR` |
+
+### 2.1. Chốt chặn chống ghi đè 0 khi cào thiếu dữ liệu (Scrape Partial Data Guard)
+Khi crawler bóc tách được HTML và xác định nick `LIVE` nhưng trường `followerCount` hoặc `followingCount` trả về `0` (do TikTok ẩn stats trên Safari mobile hoặc DOM thay đổi):
+- **CẤM TUYỆT ĐỐI** ghi số `0` đè vào database đối với các tài khoản đã có lịch sử `prev_follower > 0`.
+- Bắt buộc **forward-fill**: gán `curr_follower = prev_follower`, `curr_following = prev_following`, và `follower_delta = 0`.
+- Tránh việc dashboard tính sai delta sụt giảm $-100\%$ và kích hoạt cờ đỏ giả `⚠️ TỤT BẤT THƯỜNG`.
 
 ## 3. Cấu hình MobiProxy 32 Ports & Smart Retry
 Dải 32 cổng MobiProxy xoay vòng trên gateway nội bộ farm:
