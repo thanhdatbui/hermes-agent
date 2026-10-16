@@ -163,3 +163,13 @@ def test_telemetry_json_schema(monkeypatch, capsys):
     monkeypatch.setattr(xw, "cleanup_orphan_xiaowei_adb", lambda: True)
     xw.main()
     assert any(r.get("event") == "WATCHDOG_SUMMARY" for r in map(json.loads, capsys.readouterr().out.splitlines()))
+
+
+def test_netstat_powershell_contract():
+    assert "netstat -ano -p tcp" in xw.XIAOWEI_ADB_TARGET_PS
+    assert f":{xw.XIAOWEI_ADB_PORT}\\s+LISTENING" in xw.XIAOWEI_ADB_TARGET_PS
+    assert "Get-CimInstance Win32_Process" in xw.XIAOWEI_ADB_TARGET_PS
+    for count_str, expected in [("1", True), ("0", False), ("3", True), ("", False)]:
+        with patch("subprocess.run", return_value=MagicMock(returncode=0, stdout=count_str)):
+            assert xw.is_xiaowei_adb_running() is expected
+
