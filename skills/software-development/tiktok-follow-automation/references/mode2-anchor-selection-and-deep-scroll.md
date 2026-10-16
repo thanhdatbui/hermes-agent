@@ -29,7 +29,20 @@
        + Nick ca tối (Row 4, Row 5...) là nick non mới nuôi, chỉ mới follow 0-5 người trong toàn bộ vòng đời (còn hơn 170+ nick farm trong list anchor chưa hề follow).
        + **CẤM TUYỆT ĐỐI suy diễn và giải thích nhảm nhí rằng: "Anchor follow người ngoài nhiều" hoặc "Nick non đã follow hết danh sách của anchor"**. Đây là ngụy biện vô căn cứ khiến User phản ứng gay gắt.
      * **NGUYÊN NHÂN GỐC RỄ THỰC TẾ KHI GẶP `idle_scrolls >= 25` TRÊN NICK NON:**
-       + **Bẫy `_classify_row_button` nhận nhầm trạng thái "đã follow sẵn" (Bằng chứng M59/M65):**
+       + **Bẫy `missing_button_rows` khiến Mode 2 văng & Degrade sang Mode 1 báo "Đã follow sẵn":**
+         - *Triệu chứng hiện trường:* Watchdog báo `Bỏ qua: Đã follow sẵn (11)` trên các nick non mới nuôi (M33, M59, M62, M65...).
+         - *Bản chất sự cố:* Trong `follow_result.json`, `mode2_degraded: true` kèm lý do: `MANUAL_REVIEW: follower row không có nút follow semantic`.
+         - *Cơ chế gây lỗi:* 
+           1. Hàm `_cluster_follower_rows` và `_follow_button_for_row` trước đây phụ thuộc vào tuple cứng `FOLLOWER_FOLLOW_BUTTON_RESOURCE_IDS` (`id/u68`, `id/u2f`, `id/tcj`...).
+           2. Khi TikTok đổi layout hoặc obfuscate resource-id của nút bấm, bot không gán được nút vào hàng (`r["follow_button"] = None`).
+           3. `missing_button_rows` phát hiện row của nick farm hiển thị bình thường nhưng không thấy nút semantic nên fail-closed, ngắt Mode 2.
+           4. `follow_engine.py` tự động chuyển sang Mode 1 search bù. Mode 1 tìm các nick farm an toàn, nhưng vì các nick này đã được follow từ các ca trước nên trả về `đã follow sẵn (skip)`. Operator nhìn vào báo cáo Watchdog chỉ thấy "Đã follow sẵn" mà không biết nguyên nhân gốc rễ là Mode 2 bị mù nút follow!
+         - *Bản vá chuẩn hóa (Multi-tier Button Binding Fallback - Commit 8af3bc7):*
+           Xây dựng hàm `_is_follow_button_node(n)` đa tầng:
+           1. **Tầng 1 (Resource-ID):** Kiểm tra `(n.get("resource_id") or "").rstrip("/").endswith(FOLLOWER_FOLLOW_BUTTON_RESOURCE_IDS)`.
+           2. **Tầng 2 (Bounds + Semantic Text Fallback):** Nếu resource-id bị đổi, kiểm tra nút bấm clickable nằm ở nửa phải màn hình (`bounds[0] >= 450`) và `text` hoặc `content_desc` thuộc tập từ khóa quan hệ `_RELATION_BUTTON_TEXTS` (`follow`, `follow lại`, `theo dõi`, `bạn bè`, `đang theo dõi`, `đã follow`, `following`, `friends`, `nhắn tin`...).
+           3. Nhờ đó, mọi nút quan hệ dù mang resource-id mới lạ (`new_unknown_btn`) đều được bind chính xác vào hàng, triệt tiêu 100% lỗi `follower row không có nút follow semantic`.
+       + **Bẫy `_classify_row_button` nhận nhầm trạng thái "đã follow sẵn":**
          - Tại `follow_runner/flows/mode2_follow_followers.py:188`, hàm `_classify_row_button` quét text và `content_desc` của nút qua danh sách `FOLLOWED_TEXT` ("Đã follow", "Following", "Bạn bè", "Nhắn tin"...).
          - Khi TikTok đổi layout hoặc subtext trong hàng/cluster bị overlap, nút quan hệ bị phân loại nhầm thành `followed`, dẫn tới `follow_one_follower` trả về `("skipped", "đã follow sẵn (skip)")` hàng loạt (ví dụ: M59 chưa từng follow ai nhưng bị skip 11 nick liên tiếp).
          - Khi tất cả hàng bị skip hoặc gán `follow_button = None` (`missing_button_rows`), `internal_pending` rỗng, bot kích hoạt vòng lặp vuốt `idle_scrolls += 1` lên 25 và thoát an toàn.

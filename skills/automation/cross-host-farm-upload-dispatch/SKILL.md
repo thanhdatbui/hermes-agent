@@ -63,4 +63,5 @@ For a completed fix, record: target file and exact Gate 5/dispatch delta; compil
 ## Supporting detail
 
 - See `references/cross-host-admin-upload.md` for the Taadaa-specific command contract, observed false-alert chain, and verification matrix.
+- See `references/admin-remote-avatar-and-media-management.md` for Admin Remote ($M \ge 200$) storage formulas ($F_{src}, F_{vid}$), CodexRuntime Python execution via SSH base64, Haar cascade false-positive visual verification, and 2-tier lock enforcement.
 - See `references/cloud-media-decoupling-architecture.md` for decoupling stateless media scrapers and ffmpeg renderers off physical farm hosts onto cloud workers.

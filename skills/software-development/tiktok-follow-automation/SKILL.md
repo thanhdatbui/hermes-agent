@@ -17,10 +17,11 @@ description: "TikTok follow runner and fail-closed farm ops."
     - `references/wave-scheduling-and-multi-farm-unified-governance.md`: Wave 1 -> Cầu dao -> Wave 2.
     - `references/dashboard-follow-reconcile-race-condition.md`: Lệch pha crawler & đối soát.
     - `references/contact-suggestion-popup-follow-lockdown.md`: Khóa popup danh bạ.
-    - `references/burst-follow-hibernation-cadence-gemphone-benchmark.md`: Burst 20-30 fl, ngủ đông 3-4d, cầu dao 40%.
-    - `references/probation-ladder-4day-cycle-adaptation.md`: Thích ứng bậc thang thử thách (1 phiên sạch / nấc) với chu kỳ 4 ngày.
-    - `references/dynamic-healing-row-selection-and-anti-consecutive-cadence.md`: Chọn row dưỡng động, ghép session, chống kẹp ca & cache 60s.
-    - `references/zero-follow-shift-audit-and-fail-closed-breakdown.md`: Đối soát ca 0 follow (dưỡng sinh 1/3, cầu dao 48h, cooldown, nick non).
+    - `references/burst-follow-hibernation-cadence-gemphone-benchmark.md`: Burst 20-30 fl, ngủ đông 3-4d.
+    - `references/probation-ladder-4day-cycle-adaptation.md`: Bậc thang thử thách chu kỳ 4 ngày.
+    - `references/row1-row2-follow-released-investigation-guide.md`: Bóc tách log thật điều tra nhả follow Row 1 & 2.
+    - `references/dynamic-healing-row-selection-and-anti-consecutive-cadence.md`: Chọn row dưỡng động.
+    - `references/zero-follow-shift-audit-and-fail-closed-breakdown.md`: Đối soát ca 0 follow.
     - Case references: `references/case-ui-*.md`, `references/workflow-parity-*.md`, `references/fleet-follow-*.md`.
     - `references/case-ui-89-idempotent-session-actions-and-partial-follow-accounting.md`: Staging.
     - `references/case-ui-96-released-follow-invalidation-regardless-of-count.md`: Khấu trừ nhả follow.
