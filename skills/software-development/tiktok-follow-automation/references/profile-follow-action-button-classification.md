@@ -132,4 +132,24 @@ Tuyệt đối không thay thế toàn bộ XML bằng OCR một cách mù quán
 - **Tiêu chuẩn Unit Test bảo vệ:**
   - Bắt buộc có unit test kiểm thử nhánh `screencap` rỗng, nhánh chuỗi bytes không phải PNG header, nhánh `TimeoutError` giả lập và xác nhận `created_paths[0].exists() == False` sau khi hàm kết thúc.
 
+## 11. Kỷ Luật Reset Trạng Thái Fallback & Chuẩn Mực Canary Đa Máy (Multi-Device Invariant)
+
+### A. Nguyên tắc Pre-Reset Fallback State (`res = "unknown"`):
+- **Cạm bẫy:** Trong `_classify_with_fallback()`, khi UI dump rỗng (`not current_dump`) nhưng biến `res` trước đó đã giữ một giá trị từ custom classifier hoặc mock (ví dụ `followed`), nếu gọi `ocr_screen()` mà OCR văng ngoại lệ (`TimeoutError`, crash) thì hàm sẽ rơi xuống cuối và trả về giá trị `res` cũ đó!
+- **Kỷ luật bắt buộc:** Trước khi thực hiện khối `try...except` gọi OCR fallback, BẮT BUỘC phải gán cứng `res = "unknown"`.
+- **Hành vi nút "Nhắn tin" độc lập:** Khi OCR chỉ nhận diện được duy nhất nhãn `"Nhắn tin"` (trả về `unknown`), `verify_after_tap` BẮT BUỘC trả về status `manual` và TUYỆT ĐỐI KHÔNG gọi `set_follow_failed()`, vì việc không xác định được trạng thái từ nút nhắn tin không đồng nghĩa với việc follow bị server từ chối.
+
+### B. Kỷ luật Bắt Buộc Canary Tối Thiểu 3 Máy Thật (Multi-Device Canary Mandate):
+- *Mệnh lệnh Operator:* *"Sao canary có 1 máy thì lấy gì đảm bảo máy khác k lỗi"*.
+- **Bài học xương máu từ Máy 8 (Feed Screen):**
+  - Khi chỉ chạy canary trên Máy 6 (Profile creator mở DM), script chạy hoàn hảo và tưởng chừng đã sẵn sàng đóng phiên.
+  - Nhưng khi mở rộng kiểm tra sang Máy 8 (đang ở màn hình lướt video Feed), OCR đã quét trúng chữ `Ban bé` (`Bạn bè`) trên thanh tab điều hướng đỉnh màn hình ở $y = 141$ và phán nhầm màn hình Feed là `followed`! Lỗi nghiêm trọng này chỉ có thể phát hiện nhờ việc test trên nhiều máy với nhiều trạng thái màn hình khác nhau.
+- **Quy tắc bắt buộc:**
+  1. TUYỆT ĐỐI CẤM chỉ chạy canary trên 1 máy duy nhất rồi kết luận code ổn định ("bẫy sống le lói").
+  2. BẮT BUỘC chạy kiểm chứng trên **tối thiểu 3 máy thật** đại diện cho ít nhất 3 trạng thái màn hình thực tế:
+     - Màn hình Profile người lạ mở DM (song song nút Follow đỏ và Nhắn tin xám).
+     - Màn hình Profile chính chủ hoặc Profile riêng tư (kiểm tra stat counters và nút Sửa hồ sơ).
+     - Màn hình Video Feed (kiểm tra thanh tab điều hướng $y < 200$) hoặc Màn hình Cài đặt / Chỉnh sửa hồ sơ.
+  3. Mọi bước canary trên từng máy đều bắt buộc chụp ảnh màn hình, gọi vision soi mắt thực tế (`MEDIA:`) và xác nhận không có false-positive trước khi báo cáo hoàn thành.
+
 
