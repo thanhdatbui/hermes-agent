@@ -35,7 +35,20 @@ When automated crawler data is incomplete or suspect:
    When a bad crawler run inserts zero-follower rows:
    ```sql
    UPDATE snapshots
-   SET follower = prev_follower, following = prev_following
+   SET follower = (
+       SELECT prev.follower FROM snapshots prev
+       WHERE prev.username = snapshots.username
+         AND prev.timestamp < :bad_run_start
+         AND prev.follower > 0
+       ORDER BY prev.timestamp DESC LIMIT 1
+   ),
+   following = (
+       SELECT prev.following FROM snapshots prev
+       WHERE prev.username = snapshots.username
+         AND prev.timestamp < :bad_run_start
+         AND prev.follower > 0
+       ORDER BY prev.timestamp DESC LIMIT 1
+   )
    WHERE timestamp >= :bad_run_start
      AND follower = 0
      AND EXISTS (
@@ -45,3 +58,12 @@ When automated crawler data is incomplete or suspect:
            AND prev.follower > 0
      );
    ```
+
+## 4. Real Incident & Verification Recipe (TikTok Farm Account Tracker)
+- **Incident Signature**: Account `@tuantuannguyen56` (245 followers, 36 following on live app) scraped as `follower=0, following=0, heart=4930, video=8`. Dashboard computed $\Delta = -245$ (-100%) and flagged `⚠️ TỤT BẤT THƯỜNG (-245 / 100%)`.
+- **Root Cause in Code**: `record_and_diff()` queried only `(follower, heart, video)` and unconditionally did `curr_follower - (prev_follower or 0)`, then inserted `curr_follower` (0).
+- **Hard Fix Implemented**:
+  1. In `tiktok_account_tracker.py::record_and_diff()`: Query `(follower, following, heart, video)`. If `curr_follower == 0` and `prev_follower > 0`, preserve `curr_follower = prev_follower`, `curr_following = prev_following`, set deltas to 0, and update `item_copy['followerCount']` before database insert.
+  2. Regression unit test: `test_record_and_diff_preserves_followers_on_zero_scrape` in `tests/test_tiktok_account_tracker.py`.
+  3. Live verify: Verify `http://127.0.0.1:1905/api/data` returns `is_anomaly_drop: false` and `browser_vision` shows exact historical followers restored without false alarm.
+

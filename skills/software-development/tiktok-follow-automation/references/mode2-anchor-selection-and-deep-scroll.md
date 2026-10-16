@@ -73,3 +73,9 @@
   * Trong test suite, bắt buộc tạo một thư mục repo cô lập trong `tmp_path`, ghi file `config/priority_targets.txt` rỗng.
   * Sử dụng `monkeypatch.setattr(follow_engine_module, "__file__", str(isolated_repo / "follow_runner" / "flows" / "follow_engine.py"))` để test đọc đúng file rỗng cô lập, bảo toàn thứ tự workbook ban đầu.
 
+## 6. Khắc Phục Bẫy CRLF Explosion Gây `DIFF_TOO_LARGE` (>30,000 bytes) Trong Closeout Gate
+- **Hiện tượng:** Khi sửa test file lớn như `test_mode2_following.py` (886 dòng), nếu file bị lưu ở định dạng Windows CRLF trong khi repo đặt `core.autocrlf = false`, `git diff` sẽ coi toàn bộ 886 dòng là thay đổi, làm dung lượng diff vọt lên 79KB.
+- **Hậu quả:** `closeout_gate.py` fail ngay tại Step 2 với lỗi `DIFF_TOO_LARGE (79027 > 30000 bytes)` và từ chối gọi Reviewer.
+- **Kỷ luật xử lý:** Phải giữ/chuẩn hóa file về LF (`b'\r\n' -> b'\n'`) trước khi add/commit, đưa diff thực tế về đúng phạm vi O(1) (<25 dòng thay đổi).
+
+
