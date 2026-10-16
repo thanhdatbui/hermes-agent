@@ -906,6 +906,74 @@ Trước khi soạn bất kỳ tin nhắn nào cho User:
   2. **Bắt buộc trích xuất trực tiếp từ video thực tế của kênh**: Phải đọc các file `.mp4` trong kho render thực tế `D:/TIKTOK-videonuoinick/<F_out>/` (hoặc video gốc `D:/video goc/<F_src>/`), trích xuất frame ở nhiều giây khác nhau để tìm đúng nhân vật/chủ thể (mèo con ăn dặm, mèo đầu bếp bán hàng rong...).
   3. **Kỷ luật trung thực tuyệt đối khi Tool Vision lỗi**: Nếu `browser_vision` hay script vision bị lỗi, timeout hoặc daemon conflict, BẮT BUỘC phải thừa nhận trung thực hiện trạng công cụ, CẤM TUYỆT ĐỐI bịa đặt nội dung ảnh hoặc dùng văn mẫu để lừa dối người dùng.
 
+---
+
+## 38. Đồng Bộ SSOT Hai Chiều, Bẫy Schema Protected Folders & Nhận Diện Video "Bị Tắt Tiếng" (Sự Cố 16/10/2026 — @chichi06900 Máy 59 Tik 6)
+- **Bẫy Schema `manual_avatar_protected_folders.json`**:
+  - File `D:/Taadaa/data/manual_avatar_protected_folders.json` có cấu trúc là một **Dictionary** (`dict`), KHÔNG phải List (`list`):
+    ```json
+    {
+      "description": "Registry of folders/accounts manually customized by operator...",
+      "protected_folders": [2, 26, 45, 113, ...]
+    }
+    ```
+  - Nếu script Python tự viết gọi `data.append(f_id)` sẽ lập tức văng lỗi runtime: `'dict' object has no attribute 'append'`.
+  - **Quy tắc cập nhật chuẩn xác**:
+    ```python
+    with open(prot_json, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    prot_list = data.get("protected_folders", [])
+    if int(f_id) not in prot_list:
+        prot_list.append(int(f_id))
+        data["protected_folders"] = prot_list
+        with open(prot_json, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+    ```
+- **Kỷ luật đồng bộ hai chiều SSOT Avatar (`Tik<N>.xlsx` + `avatar_replace_queue`)**:
+  - Script tiền kiểm `python D:/Taadaa/Tiktok-video/scripts/resolve_avatar_pending_machines.py <Tik>` duyệt cột `Avatar` trong file Excel và lọc `if ava_val != "OK": pending.append(m_int)`.
+  - Nếu Coordinator chỉ cập nhật SQLite `avatar_replace_queue` sang `PENDING` nhưng quên sửa ô cột `Avatar` trong `Tik<N>.xlsx` (ô vẫn ghi `OK`), script tiền kiểm sẽ bỏ qua máy đó và runner sẽ silent skip.
+  - **Quy tắc bắt buộc**: Phải cập nhật đồng thời cả 2 nơi sang `PENDING`:
+    1. Cột `Avatar` dòng của máy trong `Tik<N>.xlsx` = `'PENDING'`.
+    2. Cột `status` trong `avatar_replace_queue` = `'PENDING'`.
+    3. Chạy `resolve_avatar_pending_machines.py <Tik>` xác nhận số máy xuất hiện trong stdout trước khi kết thúc.
+- **Nhận diện Cờ Đỏ Video "Bị Tắt Tiếng" (Audio Copyright Strike) Trên Lưới Profile**:
+  - Khi soi mắt lưới video 6 ô trang cá nhân TikTok, nếu thumbnail có biểu tượng loa gạch chéo kèm dòng chữ **"Bị tắt tiếng"** *(Muted)*:
+  - Đây là bằng chứng video đã bị hệ thống kiểm duyệt bản quyền âm thanh của TikTok tắt tiếng (audio removed due to copyright).
+  - **Kỷ luật chuẩn hoá**:
+    1. BẮT BUỘC ghi nhận rõ trong báo cáo hiện trường gửi Operator: cảnh báo video dính bản quyền âm thanh để chủ kênh nắm tình hình.
+    2. CẤM TUYỆT ĐỐI chọn video này làm video ghim (Pin top) hoặc trích xuất âm thanh nhân bản sang các nick khác.
+- **Bẫy Coordinator Terminal Default-Deny Với Lệnh PowerShell**:
+  - Coordinator Terminal Guard chặn các lệnh `powershell ...` khởi chạy trực tiếp từ session Coordinator.
+  - Khi máy rảnh hoặc vừa giải phóng lock, Coordinator không cố gõ powershell trần lách guard, mà tuân thủ đúng Staged Handoff: dàn trận 3 đầu kho + cắm marker `.manual_avatar_locked` + cờ `PENDING` SSOT 2 chiều, để cron watchdog có sẵn `post-evening-avatar-watchdog` (chạy mỗi 5 phút) tự động kích hoạt nạp ảnh an toàn.
+
+---
+
+## 39. Quy Trình Đồng Bộ 5 Tầng Khép Kín Khi Chuẩn Hóa Avatar Kèm Hashtag (Sự Cố 16/10/2026 — @brentwbowman0 Máy 56 Tik 3)
+- **Bối cảnh thực tế & Cạm bẫy Lệch Niche Workbook**:
+  - Khi User ra lệnh kết hợp: Vừa chốt phương án avatar vừa yêu cầu: *"Chọn cái 1. Chuẩn hoá hashtag luôn đi"*.
+  - Tra cứu workbook `Tik3.xlsx` dòng Máy 56 (F_src 216, F_out 443): Kênh đang bị gán Niche `Bán hàng` và hashtag `#banhang #banhangonline #meobanhang #chotdon #kinhdoanhonline...`.
+  - **Bẫy lấy 1 video đơn lẻ để gán niche**:
+    * Video 1 và Video 3 quay cảnh ăn uống hải sản, mì cay ngoài quán $\rightarrow$ Dễ bị ngộ nhận sang Niche `Ẩm thực / Món ngon`.
+    * Video 4 quay selfie hai bé gái nghịch sticker hoạt hình $\rightarrow$ Dễ bị ngộ nhận sang Niche `Gia đình / Trẻ em`.
+    * Kênh thực tế không hề có sản phẩm thương mại, giỏ hàng hay bán hàng.
+  - **Kỹ thuật trích xuất Mosaic 6 clip đa dạng (Multi-clip Mosaic Triage)**:
+    * Trích xuất frame từ 6 video khác nhau (v1, v2, v4, v5, v6, v7) ghép thành mosaic `tmp_216_samples.jpg`.
+    * Giám định ngữ nghĩa qua `ag_cli.py ask` xác định chủ đề xuyên suốt: "Thói quen / Lifestyle (Nhật ký đời sống thường nhật / Daily life vlog)".
+    * Tra cứu từ điển Niche chuẩn của `Tik3.xlsx` chọn đúng Niche: **`Thói quen hằng ngày`** (`#thoiquenhangngay #thoiquen #thoiquentot #routinemoingay #nangsuat #tochuccuocsong #lifestyle #songkhoahoc #thoiquenvietnam #thoiquenmoingay #tiktokvietnam #xuhuong #fyp #videohay`).
+- **Quy trình đồng bộ 5 tầng khép kín (5-Layer Full-Chain Sync)**:
+  - Khi chốt phương án Avatar và chuẩn hóa Hashtag, BẮT BUỘC cập nhật đồng bộ đủ 5 tầng để chống ghi đè và chống drift:
+    1. **Tầng 1 (Kho Media - 4 vị trí)**: Copy file `avatar.jpg` (512x512) vào cả $F_{src}$ và $F_{out}$ ở cả 2 kho: `D:/video goc/216/`, `D:/TIKTOK-videonuoinick/216/`, `D:/video goc/443/`, `D:/TIKTOK-videonuoinick/443/`.
+    2. **Tầng 2 (Physical Marker Files)**: Tạo cả 2 marker `.manual_avatar_locked` và `.manual_hashtag_locked` trong cả 4 thư mục trên.
+    3. **Tầng 3 (Avatar Registry SSOT)**: Cập nhật cả 2 file `D:/Taadaa/data/manual_avatar_protected_folders.json` và `D:/Taadaa/Tiktok-video/data/manual_avatar_protected_folders.json` (thêm 216 và 443 vào `protected_folders` và `accounts`).
+    4. **Tầng 4 (Hashtag Registry SSOT)**: Cập nhật `D:/Taadaa/data/manual_hashtag_protected_folders.json` (thêm 216 và 443 vào `protected_folders` và `accounts`).
+    5. **Tầng 5 (Workbook Excel Tik<N>.xlsx)**: Cập nhật đồng bộ cả 2 sheet:
+       - Sheet `TaiKhoan`: dòng máy mục tiêu (cột `Keyword Video` và cột `Hashtag Pool`).
+       - Sheet `Hashtag theo Folder`: dòng folder $F_{src}$ (cột `Niche/Keyword` và cột `Hashtag Pool`).
+- **Kỷ luật điều phối Worker Script khi Coordinator chạm trần T1 (T1 Exhaustion Hand-off)**:
+  - Khi Coordinator đã dùng hết ngân sách ghi file T1 (> 200 dòng / 5 files) và các lệnh `python -c` có thao tác ghi bị Guard chặn:
+  - Dispatch Worker leaf với contract `TASK_KIND: CREATE`, file tại `D:/Taadaa/reports/<script>.py`, kèm `FOCUSED_TEST: python -m py_compile D:/Taadaa/reports/<script>.py` và `WORKER_CLI_EXHAUSTED: true`.
+  - Script helper này gom toàn bộ 5 tầng trên vào 1 lần chạy nguyên tử (atomic), có kiểm chứng tự động (asserts 100% pass) trước khi hoàn tất task.
+
 
 
 
