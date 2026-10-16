@@ -15,18 +15,32 @@ If the recording module blindly inserts `0` into the database:
 
 ## 2. Invariant: Fail-Closed Historical Preservation
 When automated crawler data is incomplete or suspect:
-1. **Never Overwrite with 0 if Historical > 0**:
-   If an account is parsed with `follower == 0` (or `following == 0`) but has a previous historical snapshot with `prev_follower > 0`:
+1. **Never Overwrite with 0 if Historical > 0 (Independent Per-Field Guarding)**:
+   If an account is parsed with `follower == 0` (or `following == 0`) but has a previous historical snapshot with positive historical values:
    - Treat `0` as an extraction failure / missing data signal.
-   - **Forward-fill** the last known good value:
+   - Guard each field **independently** so an isolated following-count scrape failure does not overwrite history while follower is valid.
+   - **Forward-fill** the last known good value and emit structured warning telemetry:
      ```python
-     if curr_follower == 0 and prev_follower and prev_follower > 0:
-         curr_follower = prev_follower
-         if curr_following == 0 and prev_following:
+     curr_following = int(item_copy.get('followingCount') or 0)
+     if prev_row:
+         prev_follower, prev_following, prev_heart, prev_video = prev_row
+         if curr_follower == 0 and prev_follower and prev_follower > 0:
+             curr_follower = prev_follower
+             follower_delta = 0
+             logging.warning("zero-scrape telemetry: follower preserved for %s", username)
+         else:
+             follower_delta = curr_follower - (prev_follower or 0)
+         if curr_following == 0 and prev_following and prev_following > 0:
              curr_following = prev_following
-         follower_delta = 0
-         following_delta = 0
+             following_delta = 0
+             logging.warning("zero-scrape telemetry: following preserved for %s", username)
+         else:
+             following_delta = curr_following - (prev_following or 0)
+         heart_delta = curr_heart - (prev_heart or 0)
+         video_delta = curr_video - (prev_video or 0)
      ```
+   - *Observability requirement*: Always emit a warning log with `zero-scrape telemetry: <field> preserved for <username>` so fleet watchdogs and telemetry pipelines can track scrape degradation.
+   - *Testing requirement*: Unit test suites must assert independent branches (follower-only zero, following-only zero, and both zero) and verify that `caplog` captures the expected warning telemetry without false positives.
 2. **Dashboard Anomaly Detector Guard**:
    In web dashboards (e.g. `get_farm_data` / `tiktok_dashboard.py`):
    - A drop from positive followers to 0 while `heartCount` remains stable or increases (`delta_h >= 0` and `heartCount > 0`) is characteristic of a scraper failure, NOT account shadowban.

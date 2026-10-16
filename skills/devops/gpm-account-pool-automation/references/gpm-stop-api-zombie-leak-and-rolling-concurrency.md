@@ -49,7 +49,8 @@ def _kill_gpm_chrome(host_port=None, profile_id=None):
   * 1 Network Service (`--type=utility --utility-sub-type=network.mojom.NetworkService`)
   * 1 Storage Service (`--type=utility --utility-sub-type=storage.mojom.StorageControl`)
   * Renderer processes cho mỗi Tab / Iframe / Extension.
-- **Quy tắc đếm Profile thực tế:** Khi User hoặc Watchdog kiểm tra số profile đang mở, **CẤM** lấy tổng số tiến trình `chrome.exe` (ví dụ 46 hay 160 tiến trình) để kết luận là có 46 hay 160 profile mở. Muốn đếm số profile thực sự đang chạy, BẮT BUỘC lọc:
+- **Quy tắc giải thích cho người dùng & đếm Profile thực tế:** Khi User thấy Task Manager báo hàng chục/hàng trăm tiến trình (ví dụ "46 profile chrome"), BẮT BUỘC giải thích rõ ràng đây là **tổng số tiến trình con Chromium HĐH** (bao gồm cả Google Chrome cá nhân và GPU/Network sub-processes), KHÔNG PHẢI số lượng profile độc lập đang mở.
+- **Cách đếm Profile thực sự đang chạy qua psutil:**
   ```python
   main_profiles = [
       p for p in psutil.process_iter(['name', 'exe', 'cmdline'])
