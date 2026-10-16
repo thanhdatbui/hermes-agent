@@ -95,5 +95,16 @@
   - Khung giờ trưa/chiều (12:00 → 20:00) watchdog **CHỦ ĐỘNG KHÔNG CHẠY** để bảo vệ ca nuôi và các tác vụ GPM.
 - **Quy tắc điều phối khi User yêu cầu "Làm đi" vào ban ngày:**
   1. Phải giải thích rõ: Giữa ngày đang là Phiên 2 ca nuôi (khóa máy), và watchdog chỉ tự kích hoạt ở khung an toàn tối (sau 20:15).
-  2. Nếu cần làm ngay ban ngày: Phải đợi Phiên 2 kết thúc (~15:30), khi máy rảnh hoàn toàn mới chạy lệnh đơn máy cưỡng chế (`run_tiktok_upload_avatar.ps1` hoặc `pin_top_videos.py`), không được ngồi chờ watchdog tự kích hoạt lúc 14h.
+  2. CẤM NẰM IM CHỜ USER NHẮC ("Tại sao tao phải nhắc mày mới làm"): Khi máy kẹt lock ca nuôi (P1 hoặc P2), Coordinator BẮT BUỘC phải đặt tiến trình background watcher (event-driven wakeup) hoặc hẹn giờ kiểm tra tự động giải phóng lock lúc ~15:20. Ngay khi lock vừa nhả, agent phải tự động kích hoạt làm tiếp dứt điểm ngay lập tức, tuyệt đối không được im lặng để user phải giục.
+  3. Khi máy rảnh hoàn toàn mới chạy lệnh đơn máy cưỡng chế (`run_tiktok_upload_avatar.ps1` hoặc `pin_top_videos.py`), không được ngồi chờ watchdog tự kích hoạt lúc 14h.
+
+## 7. Quy Trình Vượt Layout TikTok v47 Có Bong Bóng Note Đè Avatar & Remote Admin (M >= 200)
+- **Bẫy bong bóng Note ("Thì thầm to nhỏ", "Bạn có nghĩ gì?"):**
+  - Trên TikTok v47, nếu avatar bị gắn bong bóng status Note, bấm vào avatar sẽ mở popup tạo/xem Note chứ KHÔNG mở đổi ảnh đại diện.
+  - Phải vào màn hình "Sửa hồ sơ" (Edit Profile): cuộn trang tìm nút "Sửa hồ sơ" hoặc mở qua menu cài đặt.
+  - Trong "Sửa hồ sơ": Bấm "Thay đổi ảnh" -> Hiện bottom sheet -> Bấm "Tải ảnh lên" (`input tap 540 1616`) -> Vào Gallery Picker -> Chọn ảnh đầu tiên -> Bấm "Tiếp" -> Vào màn Crop -> Bấm "Lưu" (`input tap 900 1800`) -> Hoàn tất.
+- **Bẫy host thực thi Admin Remote (M >= 200):**
+  - Thiết bị M >= 200 cắm USB trực tiếp vào máy Admin (`192.168.110.119`), không cắm vào máy local Kibe.
+  - Chạy launcher local mà không cấu hình đúng ADB host sẽ bị lỗi `[DEVICE_OFFLINE] device not found`.
+  - Phải dùng `python D:/Taadaa/tools/remote_admin_adb.py -s <serial>` hoặc chạy runner trực tiếp trên host Admin qua `admin_ssh.py` với `-HostConfigPath D:\Taadaa\machine-config\admin.yaml`.
 
