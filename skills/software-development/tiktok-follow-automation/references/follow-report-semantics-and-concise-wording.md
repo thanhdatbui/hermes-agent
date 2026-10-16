@@ -19,11 +19,17 @@ Khi operator thấy nhãn `Feed chưa ổn định` (hoặc các mã kỹ thuậ
 - **`sensitive-skip-manual_needed`:** Phiên feed kết thúc với trạng thái `manual-needed` (ví dụ: mất focus app khi vào profile, kẹt splash/ad không thể vuốt thoát, hoặc username trên profile không khớp với tài khoản chỉ định). Hủy follow để tránh thao tác nhầm trên sai tài khoản hoặc bị TikTok gắn cờ bot.
 
 ### 0.1. Nhãn "Đã follow sẵn" (Raw: "đã follow sẵn (skip)")
-Khi operator thắc mắc: *"Đã follow sẵn là cái gì thế?"* hoặc thấy `Bỏ qua (...): Đã follow sẵn (N máy)` trên Watchdog:
-- **Bản chất kỹ thuật (`mode1` & `mode2`):** Khi bot mở Profile (Mode 1) hoặc duyệt danh sách Following của Anchor (Mode 2), bot đọc XML giao diện để phân loại nút quan hệ (`_classify_row_button` hoặc `_classify_exact_profile_action`).
+Khi operator thắc mắc: *"Đã follow sẵn là cái đéo gì thế?"* hoặc *"Nếu anchor đã follow sẵn thì kệ nó chứ vẫn vào following của anchor đi follow bình thường mà?"*:
+- **Cơ chế đối với Anchor đã follow sẵn (Mode 2):**
+  * Bot **TUYỆT ĐỐI KHÔNG BỎ QUA ANCHOR** khi Anchor đã follow từ trước!
+  * Trong `_ensure_anchor_followed()` (`mode2_follow_followers.py` dòng 491), nếu profile Anchor đã ở trạng thái `followed`, bot bỏ qua bước xem video/bấm follow Anchor, giữ nguyên `profile_xml` và gọi ngay `_open_following_tab()` để tap thẳng vào tab "Đang follow" (Following list) của Anchor.
+- **Bản chất kỹ thuật của nhãn "Đã follow sẵn":**
+  * Khi bot mở Profile mục tiêu (Mode 1) hoặc duyệt từng dòng trong list Following của Anchor (Mode 2), bot đọc XML giao diện để phân loại nút quan hệ (`_classify_row_button` hoặc `_classify_exact_profile_action`).
   * Nếu nút hiển thị là **"Đang theo dõi" (Following)** hoặc **"Bạn bè" (Friends)** ➔ Code trả về `outcome: "skipped", reason: "đã follow sẵn (skip)"`.
-  * **Invariant an toàn bắt buộc:** Tuyệt đối KHÔNG tap vào nút này. Nếu tap, TikTok sẽ hiểu là lệnh **Hủy theo dõi (Unfollow)**, làm tụt follow và phá vỡ mạng lưới follow chéo chéo nội bộ farm.
-- **Tại sao nhảy lên mục Bỏ qua của Watchdog:** Trong `feed_session_watchdog.py`, watchdog gom các kết quả follow có lý do chứa `đã follow sẵn` hoặc `already-followed` về nhãn `Đã follow sẵn (N)`. Điều này xảy ra khi tài khoản duyệt qua các mục tiêu nhưng toàn bộ đều đã được nick này follow từ các phiên/ngày trước đó (không còn nick mới để bấm), phiên kết thúc an toàn với `status: OK, followed: 0`.
+  * **Invariant an toàn bắt buộc:** Tuyệt đối KHÔNG tap vào nút này. Nếu tap, TikTok sẽ hiểu là lệnh **Hủy theo dõi (Unfollow)**, làm tụt follow và phá vỡ mạng lưới follow chéo nội bộ farm.
+- **Hai tình huống khiến máy bị Watchdog xếp vào mục `Bỏ qua: Đã follow sẵn (N)`:**
+  1. *Tình huống 1 (Mode 2 thuần):* Bot vào list Following của Anchor, nhưng toàn bộ nick farm ở các trang đầu đã được tài khoản này follow ở các ngày trước, hoặc sau các lần cuộn an toàn chỉ toàn gặp nick đã follow / ngoài farm ➔ Dừng an toàn với `status: OK, followed: 0`.
+  2. *Tình huống 2 (Mode 2 degraded ➔ Fallback Mode 1):* Bot vào list Following nhưng gặp lỗi layout UI không đọc được nút (`MANUAL_REVIEW: follower row không có nút follow semantic`), runner kích hoạt chế độ suy thoái an toàn (`mode2_degraded`) chuyển sang Mode 1 search nick theo workbook. Nếu các nick trong workbook mà máy search ra đều đã được nick này follow từ trước, Mode 1 trả về hàng loạt `đã follow sẵn (skip)` ➔ Watchdog tổng hợp reason và gán nhãn `Đã follow sẵn`.
 
 Do not collapse attempted, successful, released, skipped, and protected into one number. If the report lacks an explicit attempt count, say that the attempt count is not directly shown rather than inventing it.
 
