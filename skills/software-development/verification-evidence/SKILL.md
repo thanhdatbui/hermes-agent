@@ -657,6 +657,15 @@ Treat a requested patch-size ceiling as a verification invariant, not a preferen
   - Never trust a worker subagent's summary or claims of success without independent host-side verification.
   - Immediately run `git status -s` and inspect targeted file timestamps in the parent session before accepting the work or presenting results to the user.
   - If a subagent reports success but `git status` shows 0 files modified on host, classify it as a **Structural Failure** (Gate 3 Circuit Breaker). Do not blindly re-dispatch identical prompts; switch to explicit session-as-worker fallback or escalate to a dedicated execution tool.
+- **Single-Machine Canary Fallacy (Multi-Screen & Multi-Device Canary Matrix Invariant):**
+  Chạy canary trên đúng 1 máy duy nhất KHÔNG THỂ đảm bảo các máy khác không lỗi (*"Sao canary có 1 máy thì lấy gì đảm bảo máy khác k lỗi"*, *"Canary nên chạy nhiều trường hợp để nắm đc script có ổn định khi gặp nhiều màn khác nhau k ấy"*). Trên phone farm, các máy khác nhau có phiên bản app, kích thước màn hình, tài khoản và trạng thái UI hoàn toàn khác nhau.
+  + **BẮT BUỘC ma trận Canary tối thiểu 3-4 màn hình/máy khác nhau** trước khi nghiệm thu:
+    1. *Profile người lạ mở DM*: Cặp nút song song `[Follow]` (đỏ) + `[Nhắn tin]` (xám) để kiểm tra chống nhận nhầm `followed`.
+    2. *Profile chính chủ / Edit Profile*: Màn hình tài khoản cá nhân có số đếm `X Đã follow` hoặc nút `Sửa hồ sơ` để xác nhận không bị đếm ảo.
+    3. *Màn hình Feed / Home*: Đang lướt video với các tab đỉnh (`LIVE`, `Bạn bè`, `Đang follow`, $y_1 < 200$) để kiểm tra bộ lọc header, tránh nhận nhầm tab đỉnh thành trạng thái nút.
+    4. *Màn hình Cài đặt / Popup thử thách*: Đảm bảo trạng thái trả về fail-closed `unknown`, không văng crash.
+  + **Telemetry & Observability Invariant**: Mọi module adapter/OCR khi fallback BẮT BUỘC ghi log có cấu trúc (`reason`, `elapsed`, `error_type`), TUYỆT ĐỐI CẤM nuốt ngoại lệ `except Exception: return []` làm ẩn lỗi hạ tầng/timeout thành trạng thái `unknown`.
+
 - **Declare DONE Early on Code Fixes Without Device Canary Verification (Phone Farm):**
   When fixing automation code that drives Android devices/farm workflows, Unit Test (pytest mock) and git commit are NOT the definition of Done. Devices are the only ground-truth oracle. A task is strictly IN PROGRESS until verified via `python D:/Taadaa/tools/done_gate.py --task-type automation --canary-file <path>` (exit 0). If idle devices exist on fleet, running canary is MANDATORY before reporting to user. Never hallucinate history or fabricate excuses when criticized — use [FAULT-CONFIRMED] protocol.
 - **Declare DONE Early on Browser/GPM Automation Fixes Without Live Profile Canary:**
