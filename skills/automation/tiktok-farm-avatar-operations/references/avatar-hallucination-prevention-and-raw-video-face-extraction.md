@@ -372,6 +372,22 @@ Trước khi soạn bất kỳ tin nhắn nào cho User:
   4. **Kỷ luật Device Lock khi thao tác ADB Farm**:
      - Mọi lệnh ADB kiểm tra hoặc thao tác trên máy thật bắt buộc chạy qua `python D:/Taadaa/tools/with_device_lock.py --machine <N> -- <cmd>` để tránh xung đột với tiến trình nuôi ngầm (`HARD GATE #5 - DEVICE LOCK REQUIRED`). Tuyệt đối không can thiệp trần vào thiết bị.
 
+---
+
+## 18. Tinh Chỉnh Bounding Box Né Phụ Đề Góc Dưới & Bảo Toàn Cằm (Sự Cố 16/10/2026 — @lenhi09116)
+- **Hiện tượng**:
+  - Khi crop avatar bằng Center-based crop (Section 13) từ video clip có phụ đề chữ trắng ở góc dưới (ví dụ video salon tóc có text `Bị nghiện Mullet Layer á @DUNNHAIRSALON` ở $y > 700$):
+  - Khung crop mặc định theo Haar cascade lấy trọn cả vùng text ở đáy, khiến chữ lọt vào bên trong vòng tròn xanh (vị trí 7h-8h), bị viền tròn cắt ngang chân chữ rất mất thẩm mỹ.
+  - Nếu chỉ dịch `y0` lên cao để né chữ mà giữ nguyên `side`, cằm sẽ bị viền tròn xanh cắt ngang sát mép dưới bờ môi (mất cằm hoàn toàn).
+- **Quy tắc điều chỉnh Bounding Box loại bỏ phụ đề & bảo toàn cằm**:
+  1. **Tăng kích thước `side` và hạ nhẹ `y0` có kiểm soát**:
+     - Tăng `side` thêm $10-15\%$ (ví dụ từ 500px lên 540px) để mở rộng đường tròn viền xanh ra xa khuôn mặt hơn.
+     - Dịch `y0` xuống vừa đủ để lấy trọn vẹn cằm tự nhiên và cổ áo, đồng thời chọn góc `x0` dịch sang hướng ngược lại với vị trí đặt text (ví dụ text ở góc trái thì căn lề sang phải hoặc căn `x0` sao cho text lọt vào vùng góc 4 góc vuông sẽ bị làm mờ ngoài bán kính $R=256$).
+  2. **Vòng kiểm định 2 lớp bắt buộc**:
+     - **Lớp 1 (Antigravity CLI headless)**: Chạy `python D:/Taadaa/tools/ag_cli.py ask --file "<preview.jpg>"` chất vấn trực diện 4 điểm: (1) Đủ ngũ quan 100%, (2) Cằm có bị cắt lẹm không, (3) Đỉnh đầu và cằm có cách viền xanh an toàn không, (4) Có dính chữ/phụ đề rác không.
+     - **Lớp 2 (Browser Vision)**: Mở ảnh trực tiếp qua `browser_navigate("file:///<preview.jpg>")` và `browser_vision` xác nhận bằng mắt trước khi đính kèm thẻ `MEDIA:<path>`.
+
+
 
 
 
