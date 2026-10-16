@@ -38,8 +38,9 @@ Rất nhiều tài khoản **CHƯA FOLLOW** (hoặc vừa tap nhưng bị server
 ### B. Trong bộ phân tích OCR (`ocr.py` & `automation_core.ocr`):
 1. **Khử bẫy "Nhắn tin" trong `FOLLOWED_KEYWORDS`:**
    - CẤM TUYỆT ĐỐI đưa `"nhan tin"`, `"message"`, `"gui tin nhan"` vào danh sách `FOLLOWED_KEYWORDS` của OCR.
-   - Khi OCR chỉ thấy duy nhất nút `Nhắn tin` (do camera/OCR bỏ sót nút `Follow` màu đỏ vì tương phản nền), OCR BẮT BUỘC trả về `unknown` (fail-closed), TUYỆT ĐỐI CẤM phán `followed`.
+   - Khi OCR chỉ thấy duy nhất nút `Nhắn tin` (do camera/OCR bỏ sót nút `Follow` màu đỏ vì tương phản nền, hoặc do nick chưa follow mở DM công khai), hàm `classify_profile_action_ocr` BẮT BUỘC có tham số `allow_message_alone=False` mặc định trả về `unknown` (fail-closed), TUYỆT ĐỐI CẤM phán `followed`.
    - `FOLLOWED_KEYWORDS` trong OCR CHỈ chấp nhận: `"dang theo doi"`, `"ban be"`, `"friends"`, `"following"`.
+   - Mặc định `y_min = 200` để triệt tiêu việc OCR đọc nhầm các tab ở đỉnh Feed (`LIVE`, `Bạn bè`, `Dành cho bạn` ở $y \approx 140 - 180$).
 2. **Khử bẫy Substring:**
    - `"follower"` chứa `"follow"`, `"127 Đã follow"` / `"0 Đang follow"` chứa `"follow"`. Nếu dùng kiểm tra substring `kw in text` sẽ nhận nhầm cột thống kê thành nút Follow!
    - `"dang theo doi"` chứa `"theo doi"`. `"dang theo doi"` là nhãn đã follow (`followed`), nhưng `"theo doi"` lại là nút chưa follow (`not_followed`). Bắt buộc loại trừ `"dang theo doi"` trước khi kiểm tra `"theo doi"`.

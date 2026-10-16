@@ -201,3 +201,16 @@ Khi operator thắc mắc: *"Sao trên db báo 1 lượt mà ở đây báo 0?"*
 
 ## Answer style
 Answer the operator's direct question first, in Vietnamese, with no speculative theory. Explain only the distinction needed to prevent the common misread that `Success (0)` equals “no machine ran.”
+
+### 11. Kiến Trúc Giám Sát: Telegram Control Tower vs Database / Dashboard Telemetry
+- **Câu hỏi kiến trúc Operator:** *"H report có nên ghi chi tiết k hay là nên đọc ở db?"*
+- **Nguyên lý phân tầng tối ưu cho Farm quy mô lớn (160 -> 500+ máy):**
+  * **Telegram = Alert + Control Tower (Tháp điều khiển nhanh):**
+    - Chỉ báo cáo **KPI cấp cao và ngoại lệ (Exceptions/Incident)**: ca nào, bao nhiêu máy chạy, tỷ lệ thành công (%), tổng follow sạch thực tế (đối soát web khớp), và danh sách các máy có sự cố cần Operator can thiệp (`Dính nhả / Cooldown`, `Mất kết nối ADB/USB`).
+    - **CẤM TUYỆT ĐỐI biến Telegram thành Database:** Không dump danh sách hàng chục/hàng trăm máy hay UID con vào chat làm trôi tin nhắn cảnh báo khẩn cấp và vỡ giao diện trên điện thoại.
+  * **SQLite DB + Dashboard (`:1905`) = Telemetry + Forensics (Hồ sơ bệnh án chi tiết):**
+    - Mọi dữ liệu chi tiết sâu: UID con đã follow, timestamp, dwell time, lịch sử thăng tiến trần (`proven_safe_ceiling`, `last_failed_ceiling`), fail streak, cohort, state transition... **bắt buộc ghi đầy đủ vào SQLite (`tiktok_tracker.db`) và Dashboard 1905**.
+    - Telegram chỉ gửi tóm tắt và link drill-down (`http://192.168.110.123:1905`). Khi có sự cố, Operator hoặc Agent mở Dashboard để tra cứu "bệnh án" của máy đó theo nhu cầu (Query on demand).
+- **Invariant Kỷ Luật Bảo Vệ Test Suite Của Watchdog:**
+  * Khung định dạng báo cáo của Watchdog (`feed_session_watchdog.py`, `formatters.py`) được đóng băng và bảo vệ chặt chẽ bởi các assertion trong bộ test (`test_feed_session_watchdog.py`, e.g. kiểm tra dòng đối soát web).
+  * CẤM Coordinator/Worker tự ý cắt bỏ các dòng chi tiết của watchdog khi chưa được chỉ đạo và cập nhật đồng bộ bộ test suite, tránh làm gãy regression gate của repo `tiktok-luot nuoi acc`.
