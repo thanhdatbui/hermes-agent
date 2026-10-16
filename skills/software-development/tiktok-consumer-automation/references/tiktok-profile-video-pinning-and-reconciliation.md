@@ -123,4 +123,22 @@ python D:/Taadaa/tools/pin_top_videos.py --machine 28 --min-views 5000 --max-pin
   2. Nếu PID vừa thoát / lock vừa nhả: BẮT BUỘC thực thi hành động ngay trong cùng lượt, không giải thích dông dài.
   3. Nếu tiến trình còn đang chạy thật: Bắt buộc đăng ký watchdog hoặc terminal background kiểm tra, không phát ngôn hứa hẹn khi chưa có cơ chế đánh thức tự động.
 
+## 12. Đổi Avatar TikTok Trực Tiếp Qua Long-Press (Khi Không Có Nút "Sửa Hồ Sơ")
+- **Hiện tượng trên TikTok v47+:** Màn hình Profile cá nhân chỉ có các nút "Thêm tiểu sử" và tab Video, không có nút "Sửa hồ sơ" hay icon bút chì. Tap nhanh vào avatar thì bị vướng popup "Tạo một Nhật ký" (Story).
+- **Quy trình bypass dứt điểm:**
+  1. Giữ lâu (Long-press ~1.000ms) vào avatar tại toạ độ `(800, 350)` (element `com.ss.android.ugc.trill:id/bnr`).
+  2. Menu bottom sheet hiện lên: chọn `com.ss.android.ugc.trill:id/dwc` ("Thay đổi ảnh") tại `(540, 1248)`.
+  3. Thư viện mở ra: chọn ảnh mới nhất tại `(135, 355)` và bấm "Tiếp (1)" (`(924, 1842)`).
+  4. Màn hình Cắt ảnh ("Cắt"): **BẮT BUỘC bỏ tick** "Đăng ảnh này lên Nhật ký" (`com.ss.android.ugc.trill:id/sre` tại `(100, 1590)`), sau đó bấm "Lưu" (`com.ss.android.ugc.trill:id/tv_confirm` tại `(792, 1794)`).
+  5. Bấm `KEYCODE_BACK` đóng popup chia sẻ. Avatar cập nhật thành công 100% không cần màn hình Sửa hồ sơ.
+
+## 13. Cơ Chế Dồn Thứ Tự Ghim (Push Reorder) Để Top 1 Luôn Nằm Bên Trái
+- **Bản chất TikTok:** Mỗi khi ghim 1 video, TikTok đưa video đó vào slot đầu tiên bên trái `[0, 0]` và đẩy các video đã ghim trước đó sang phải.
+- **Thứ tự ghim chuẩn:** Để video view cao nhất (Top 1) nằm ở vị trí đầu tiên bên trái, BẮT BUỘC ghim theo thứ tự **Top 3 -> Top 2 -> Top 1**:
+  - Ghim Top 3 (ví dụ 1.4K) $\to$ Chiếm slot 1.
+  - Ghim Top 2 (ví dụ 2.3K) $\to$ Chiếm slot 1, đẩy Top 3 sang slot 2.
+  - Ghim Top 1 (ví dụ 31.3K) $\to$ Chiếm slot 1, đẩy Top 2 sang slot 2, Top 3 sang slot 3.
+- Sau khi ghim đủ 3 video, hàng đầu tiên hiển thị đẹp mắt theo đúng thứ tự: `[Top 1] [Top 2] [Top 3]`.
+
+
 
