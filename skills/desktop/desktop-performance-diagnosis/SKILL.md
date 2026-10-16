@@ -208,8 +208,11 @@ Do not say "root cause found" when only an idle snapshot or a list of heavy proc
 - `references/ssh-remote-game-config-fix.md` — proven scp+`-File` pattern for applying game config fixes (V-Sync, FullscreenMode, FrameRateLimit) via SSH; overlay file-lock pitfall; Dual Xeon + GTX 1660S VRAM saturation context; nvidia-smi SSH one-liners.
 - `references/legacy-32bit-game-memory-crash.md` — diagnose legacy 32-bit game crashes ("Not enough memory resources", Handle2AgentReg, cmemblock), pure PowerShell PE header LAA (0x0020) checks, and 4GB Patch application.
 - `references/mystery-startup-console-window-diagnosis.md` — diagnose blank/flashing PowerShell or CMD windows appearing on boot; trace caller via PowerShell Event ID 400 HostApplication, ParentProcessId, Startup registry keys, and Electron app.asar child_process calls lacking windowsHide.
+- `references/windows-focus-stealing-and-overlay-diagnosis.md` — diagnose screen monopolization and focus-stealing ("cứ chiếm màn hình hoài") via live `GetForegroundWindow` sampling, `EnumWindows` full-screen overlay detection, and Overwolf/GPM background browser cluster triage.
 
 ## Pitfalls
+
+- Using full-table `tasklist /v /fo csv` without filters on dense multi-worker hosts: querying window titles across hundreds of processes times out (>30s) or hangs. Use filtered queries (`tasklist /fi "IMAGENAME eq Overwolf.exe" /v`) or targeted ctypes `EnumWindows` probes.
 
 - Blaming a familiar app because it consumes RAM/CPU now, despite the user reporting it worked normally before.
 - Overlooking Default Gateway Misrouting in dual-router setups: In environments with two routers on the same subnet (e.g. Ruijie FPT for Host PC + MikroTik Viettel for phone farm proxies), a DHCP race or reservation can silently hijack the host's 0.0.0.0/0 route to the farm router. The host's games then exit via the congested farm ISP instead of direct FPT, while app-specific proxies (like TELEGRAM_PROXY on 192.168.110.2:10001) never needed host-level default routing in the first place.
