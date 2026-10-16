@@ -387,6 +387,23 @@ Trước khi soạn bất kỳ tin nhắn nào cho User:
      - **Lớp 1 (Antigravity CLI headless)**: Chạy `python D:/Taadaa/tools/ag_cli.py ask --file "<preview.jpg>"` chất vấn trực diện 4 điểm: (1) Đủ ngũ quan 100%, (2) Cằm có bị cắt lẹm không, (3) Đỉnh đầu và cằm có cách viền xanh an toàn không, (4) Có dính chữ/phụ đề rác không.
      - **Lớp 2 (Browser Vision)**: Mở ảnh trực tiếp qua `browser_navigate("file:///<preview.jpg>")` và `browser_vision` xác nhận bằng mắt trước khi đính kèm thẻ `MEDIA:<path>`.
 
+---
+
+## 19. Xử Lý Phản Hồi "Ava Khác Đi" & Tiêu Chí Lựa Chọn Frame Solo Thần Thái Creator (Sự Cố 16/10/2026 — @lenhi09116)
+- **Bối cảnh & Phản hồi của User**:
+  - Khi đề xuất 2 phương án avatar đầu tiên cho kênh `@lenhi09116`: Option 1 là góc cắt tiệm tóc mullet layer, Option 2 là góc bạn nữ nằm tựa gối mắt lim dim/nhắm hờ (từ video *"Tôi là cái love xịn nhất của ảnh"*).
+  - User lập tức phản hồi ngắn gọn: *"Ava khác đi"*.
+- **Phân tích nguyên nhân người dùng từ chối đợt 1**:
+  1. **Tư thế thụ động / mắt nhắm / góc nằm**: Khung hình nhân vật đang nằm tựa gối, mắt lim dim hoặc góc máy từ dưới lên (low angle) không tạo được năng lượng tích cực, thiếu tính chuyên nghiệp của một creator TikTok.
+  2. **Bẫy ảnh đôi / ảnh nhóm**: Một số frame nhận diện khuôn mặt bắt trúng ảnh selfie cặp đôi (bạn nữ + bạn nam như clip *"Ảnh đôi ơi :))"*) hoặc chụp chung bạn bè đeo kính râm. Với kênh cá nhân (solo channel), việc đưa 2 người vào vòng tròn avatar sẽ gây rối mắt và bị cắt mép người thứ hai.
+  3. **Giới hạn vật lý khi crop video cận cảnh ($W=640$)**: Nếu video gốc quay quá sát mặt ($fw > 450$px trên khung hình rộng 640px), việc lùi `side` để lấy khoảng đệm headroom/chin clearance sẽ chạm trần biên ảnh độ rộng ($W=640$), dẫn tới avatar bị cảm giác "zoom quá chặt/bức bối".
+- **Chiến lược tuyển chọn ứng viên Avatar thay thế xuất sắc**:
+  1. **Ưu tiên frame cận trung (Medium Close-up) có khoảng thở**: Chọn các video quay bán thân hoặc cận vừa phải (khuôn mặt chiếm khoảng $30-45\%$ chiều rộng khung hình), cho phép thuật toán Center-based Crop lấy trọn vẹn cả mái tóc, đỉnh đầu và phần cổ/áo rất thoáng.
+  2. **Đa dạng hóa phong cách đối lập rõ rệt**:
+     - *Phong cách 1 (Douyin / Ngọt ngào / Nữ tính)*: Ánh sáng trong nhà sáng mịn, makeup má hồng đào, phấn mắt nhũ sáng, ánh mắt nhìn thẳng camera, nụ cười nhẹ/hé môi tự nhiên (ví dụ trích từ Video 13).
+     - *Phong cách 2 (Năng động / Party / Thể thao)*: Bối cảnh tiệc đêm/sự kiện có đèn neon rực rỡ, trang phục áo thun thể thao/jersey, biểu cảm nháy mắt cười tươi tắn tràn đầy năng lượng (ví dụ trích từ Video 18 - clip đạt top view trên lưới).
+  3. **Quy tắc Avatar Solo cho kênh cá nhân**: Mặc định 100% chỉ lấy duy nhất chủ kênh trong vòng tròn xanh, loại trừ hoàn toàn người đứng cạnh để đảm bảo bố cục tập trung tuyệt đối vào gương mặt đại diện của kênh.
+
 
 
 

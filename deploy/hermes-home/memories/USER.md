@@ -10,6 +10,6 @@ Kibe(1-80) & Admin(201-280) cào nguồn & media độc lập 100% (cấm trùng
 §
 Worker: Haiku 5.5 CLI, AG CLI dự phòng (cấm làm reviewer, cấm override quota guard, cấm delegate_task sửa code); trượt 3 lần giao Claude CLI tự sửa; đổi tên farm 25 wkr; hỏi tiến trình nào đáp đúng cái đó.
 §
-Vận hành: tự làm dứt điểm; Canary: bắt buộc gửi ngay ảnh MEDIA: khi báo kết quả, cấm nói mồm; Telegram: auto-resume, cấm báo láo, cấm văng log/spam, soạn tin cực ngắn 1 thông điệp tiếng Việt khi xong.
+Vận hành: tự làm dứt điểm; Canary/Cron: đính kèm ảnh MEDIA:, cấm in text 'Ảnh: D:\...' để user hỏi 'Ảnh đâu'; Telegram: auto-resume, cấm báo láo/spam, soạn tin cực ngắn 1 thông điệp tiếng Việt khi xong.
 §
 Reboot 3 ca (05:20, 11:20, 17:20), né khi ca đang chạy; user lệnh là làm ngay cấm hỏi lại; sentinel chia theo ca.
