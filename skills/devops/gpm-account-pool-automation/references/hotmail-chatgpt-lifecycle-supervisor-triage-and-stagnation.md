@@ -152,3 +152,38 @@ python "D:/OneDrive/Taadaa_Sync_Shared/hermes-cron/scripts/gpm_stale_profile_wat
 ### Bẫy Kẹt Ứng Viên Cũ (Stale Gmail Candidate Starvation)
 - **Bệnh lý:** `get_dynamic_candidates()` chỉ lấy 10 profile đầu tiên trong `profile_data.db`. Nếu 10 profile đầu là các tài khoản Gmail cũ đã hết hạn cookie và kẹt ở màn hình Google OAuth, script sẽ chạy đi chạy lại đúng 10 tài khoản lỗi đó mỗi 15 phút (báo 0/10), không bao giờ chạm tới kho hàng trăm tài khoản Hotmail mới reg.
 - **Biện pháp bắt buộc:** Phân vùng ứng viên (Partitioning), tách riêng `cand_h` (Hotmail) và `cand_g` (Gmail), trả về `(cand_h + cand_g)[:limit]` để Hotmail luôn được ưu tiên nạp pool trước.
+
+---
+
+## 6. Phân Biệt "Số Lượng Tiến Trình Chrome" vs "Số Lượng Profile Trình Duyệt Thực Tế"
+
+### Hiện Tượng Gây Hiểu Lầm Cho User
+- Khi kiểm tra Task Manager hoặc lệnh shell `tasklist | grep chrome | wc -l`, hệ thống báo **46 hay 160 tiến trình `chrome.exe`**.
+- User hoặc Agent chưa có kinh nghiệm dễ hoang mang và lầm tưởng rằng có tận "46 profile GPM" hay "160 profile chrome" đang mở đè lên nhau.
+
+### Bản Chất Kiến Trúc Multi-Process của Chromium
+1. **Một Profile / Cửa Sổ Trình Duyệt = 6 đến 12 Tiến Trình HĐH:**
+   - Khi 1 profile GPM hoặc Google Chrome được mở, Chromium tự động phân bổ:
+     * 1 **Browser Process chính** (quản lý lifecycle, window, session).
+     * 1 **GPU Process** (xử lý phần cứng đồ họa).
+     * 1 **Network Service** (xử lý socket, proxy connection).
+     * 1 **Storage Service** (quản lý IndexedDB, cookies, SQLite).
+     * 1 **Audio/Video Service** và 1 **Crashpad Handler**.
+     * 1 hoặc nhiều **Renderer Processes** cho mỗi Tab, Iframe, hoặc Extension.
+   - Do đó, nếu User chỉ mở **1 cửa sổ Google Chrome cá nhân với 8 tab**, Task Manager đã ghi nhận tới **~30 tiến trình `chrome.exe`**.
+   - Nếu GPM chạy 5 workers đồng thời, số tiến trình tạm thời sẽ tăng thêm $5 \times 8 \approx 40$ tiến trình `chrome.exe`.
+
+### Quy Tắc Giải Thích & Đo Đạc Chuẩn Xác
+- **Khi trả lời User:** Tuyệt đối không dùng cụm từ "46 profile chrome" nếu chưa phân tích `cmdline`. Bắt buộc làm rõ: *"46 là số tiến trình `chrome.exe` cấp hệ điều hành (bao gồm cả Chrome cá nhân và các tiến trình con GPU/Network), thực tế chỉ có X profile đang chạy"*.
+- **Cách đếm chính xác số Profile GPM thực tế đang chạy:**
+  Bắt buộc lọc theo binary GPM và loại bỏ các cờ sub-process `--type=`:
+  ```python
+  import psutil
+  gpm_profiles = [
+      p for p in psutil.process_iter(['name', 'exe', 'cmdline'])
+      if p.info['name'] and 'chrome' in p.info['name'].lower()
+      and 'gpmlogin' in (p.info.get('exe') or '').lower()
+      and not any('--type=' in arg for arg in (p.info.get('cmdline') or []))
+  ]
+  print(f"Số profile GPM thực sự đang mở: {len(gpm_profiles)}")
+  ```

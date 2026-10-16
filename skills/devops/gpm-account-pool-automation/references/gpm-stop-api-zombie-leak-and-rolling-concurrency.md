@@ -8,27 +8,57 @@
 
 ### Quy chuẩn xử lý dứt điểm (Process Termination via psutil)
 Sau khi gọi GPM `/stop` API, bắt buộc phải có bước dọn dẹp cấp hệ điều hành bằng `psutil`:
-1. **Lấy debugging port:** Khi mở profile qua `/start`, GPM trả về CDP address (ví dụ `127.0.0.1:54321`), trích xuất port này.
-2. **Bảo vệ tuyệt đối Chrome cá nhân:** Trước khi kiểm tra hoặc kill, BẮT BUỘC bỏ qua mọi tiến trình có command line chứa `Google\Chrome\User Data` hoặc `google/chrome/user data`.
-3. **Kill theo port và process tree:** Tìm tiến trình Chrome có `--remote-debugging-port=<port>` (hoặc khớp profile-path trong `gpmlogin/profile`), terminate/kill process mẹ và toàn bộ `p.children(recursive=True)`.
+1. **Lấy debugging port hoặc profile_id:** Khi mở profile qua `/start`, GPM trả về CDP address (ví dụ `127.0.0.1:54321`), trích xuất port này hoặc profile_id tương ứng.
+2. **CẢNH BÁO BẪY `p.info['name']`:** Trên Windows, tên tiến trình trong Task Manager / `p.info['name']` luôn là **`chrome.exe`**, TUYỆT ĐỐI KHÔNG kiểm tra `if 'gpm_browser' in p.info['name']` (sẽ không bao giờ match và bỏ sót 100% tiến trình mồ côi!). Chuỗi `gpm_browser` chỉ nằm trong đường dẫn file thực thi `exe` hoặc `cmdline`.
+3. **Bảo vệ tuyệt đối Chrome cá nhân:** Trước khi kiểm tra hoặc kill, BẮT BUỘC bỏ qua mọi tiến trình có command line chứa `Google\Chrome\User Data` hoặc `google/chrome/user data`.
+4. **Kill theo port và process tree:** Tìm tiến trình Chrome có `--remote-debugging-port=<port>` hoặc `--user-data-dir` khớp profile ID/path trong `gpmlogin/profile`, terminate/kill process mẹ và toàn bộ `p.children(recursive=True)`.
 
 ```python
-def _kill_gpm_chrome(host_port):
-    if not host_port or psutil is None:
+def _kill_gpm_chrome(host_port=None, profile_id=None):
+    if psutil is None:
         return
-    port = str(host_port).split(":")[-1]
-    for p in psutil.process_iter(['name', 'cmdline']):
+    port = str(host_port).split(":")[-1] if host_port else None
+    for p in psutil.process_iter(['name', 'cmdline', 'exe']):
         try:
-            cmd = " ".join(p.info.get('cmdline') or []).lower()
-            if "google\\chrome\\user data" in cmd or "google/chrome/user data" in cmd:
+            if 'chrome' not in (p.info.get('name') or '').lower():
                 continue
-            if f"--remote-debugging-port={port}" in cmd:
+            cmd = " ".join(p.info.get('cmdline') or []).lower()
+            norm_cmd = cmd.replace("/", "\\")
+            if "google\\chrome\\user data" in norm_cmd:
+                continue  # Bảo vệ Chrome cá nhân
+            
+            should_kill = False
+            if port and f"--remote-debugging-port={port}" in cmd:
+                should_kill = True
+            elif profile_id and profile_id.lower() in cmd and "gpmlogin" in norm_cmd:
+                should_kill = True
+                
+            if should_kill:
                 for c in p.children(recursive=True):
-                    c.kill()
+                    try: c.kill()
+                    except Exception: pass
                 p.kill()
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             pass
 ```
+
+### 1.1. Phân biệt Số Tiến Trình (Processes) vs Số Cửa Sổ Profile (Main Profiles)
+- **Kiến trúc Multi-Process của Chromium:** Mỗi 1 Profile/cửa sổ GPM khi khởi chạy sẽ spawn từ **6 đến 12 tiến trình con** độc lập trong Windows Task Manager (`chrome.exe`):
+  * 1 Browser Process chính (`--user-data-dir=...`, không có cờ `--type=`)
+  * 1 GPU Process (`--type=gpu-process`)
+  * 1 Network Service (`--type=utility --utility-sub-type=network.mojom.NetworkService`)
+  * 1 Storage Service (`--type=utility --utility-sub-type=storage.mojom.StorageControl`)
+  * Renderer processes cho mỗi Tab / Iframe / Extension.
+- **Quy tắc đếm Profile thực tế:** Khi User hoặc Watchdog kiểm tra số profile đang mở, **CẤM** lấy tổng số tiến trình `chrome.exe` (ví dụ 46 hay 160 tiến trình) để kết luận là có 46 hay 160 profile mở. Muốn đếm số profile thực sự đang chạy, BẮT BUỘC lọc:
+  ```python
+  main_profiles = [
+      p for p in psutil.process_iter(['name', 'exe', 'cmdline'])
+      if p.info['name'] and 'chrome' in p.info['name'].lower()
+      and 'gpmlogin' in (p.info.get('exe') or '').lower()
+      and not any('--type=' in a for a in (p.info.get('cmdline') or []))
+  ]
+  # len(main_profiles) chính là số profile thực tế đang mở!
+  ```
 
 ---
 
