@@ -4,7 +4,7 @@ Follow: P1/P2 khóa trần ca (hết quota P2 skip). Dò trần +2/ca (max 30); 
 §
 Hotmail: CẤM mail cá nhân; sinh @fviainboxes.com đọc OTP API. Write-Through: ghi ngay Excel Cột 3,4,5 & G farm. Dual-farm ~1280 acc.
 §
-Proxy: 1-1. Chuẩn hóa 3 món: End-to-End (crop 512x512 -> lock marker/Excel -> nạp app run_avatar_batch_3accs.py -> MEDIA:avatar-uploaded-confirmed.png); cấm dừng chờ giục; kẹt lock nuôi BẮT BUỘC đặt watcher/cron tự động re-attempt cấm nằm im; TT v47 monkey. Pin >=1000 view. Soi mắt trước gửi.
+Proxy: 1-1. Chuẩn hóa 3 món (crop 512x512 -> lock marker/Excel -> nạp app -> MEDIA:); cấm dùng file avatar.jpg có sẵn khi chưa trích xuất frame video thật; khi tool vision lỗi BẮT BUỘC thừa nhận trung thực cấm bịa văn mẫu; TT v47 monkey. Pin >=1000 view. Soi mắt trước gửi.
 §
 Farm: dispatch_worker O(1) (T1 Haiku single-line prompt, target+unrelated hash gate, exit 125 quota->T2 Agy fix; watchdog 2p).
 §

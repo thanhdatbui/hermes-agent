@@ -892,16 +892,20 @@ Trước khi soạn bất kỳ tin nhắn nào cho User:
      - Nếu trích xuất face tự động theo Haar cascade diện tích lớn nhất sẽ bắt trúng nhân vật nam hoặc cảnh bắt giữ, lạc đề nghiêm trọng với định danh nữ "Hương Miu".
   2. Tại video `15.mp4` (chân dung cận cảnh nữ chính khách mặc vest xám, đeo chuỗi ngọc trai):
      - Đồ họa tin tức biến thiên nhanh theo từng giây: giây 16s hoàn toàn sạch chữ, headroom thoáng 35-40px; nhưng sang giây 17s banner trắng dâng lên chứa chữ `XEM LẠI CHƯƠNG TRÌNH`, giây 18s đỉnh đầu sát mép trên (<15px).
-  3. Khi runner nạp avatar gặp lỗi `Missing required fields: Folder Video`, quá trình kiểm tra terminal foreground bị vướng lỗi `[Command interrupted] (exit code 130)` do tín hiệu SIGINT tồn đọng trên Git Bash session.
-- **Quy trình xử lý & Bài học rút ra**:
-  1. **Lọc Nhân Vật Khớp Định Danh Giới Tính Kênh**:
-     - Khi tên kênh là nữ (*"Hương Miu"*), chủ động loại bỏ toàn bộ các frame nam giới và flycam phong cảnh.
-     - So sánh chi tiết từng giây của video chân dung (`15s`, `15.5s`, `16s`, `16.5s`, `17s`, `18s`) để chọn đúng frame `16s`: đạt chuẩn ngũ quan 100%, tỷ lệ headroom $\ge 35$px, chin clearance an toàn, và 100% sạch chữ trong vòng tròn xanh $R=256$.
-  2. **Chuẩn Hóa Tiêu Đề Workbook Bằng `standardize_tik_headers.py`**:
-     - File `Tik4.xlsx` dùng header `Folder Video (Render Dich)` và `Video Goc (Nguon Cao)`.
-     - Chạy `python D:/Taadaa/tools/standardize_tik_headers.py` để đồng bộ header chuẩn và tự động tính toán lại $F_{out} = (M - 1) \times 8 + Slot$, $F_{src} = (Slot - 1) \times 80 + M$.
-  3. **Vượt Qua Lỗi Terminal SIGINT (Exit Code 130)**:
-     - Khi terminal foreground bị kẹt tín hiệu ngắt (exit code 130), chuyển toàn bộ các lệnh kiểm tra và thực thi sang `terminal(background=True, notify_on_complete=True)` để chạy trong subshell độc lập, sau đó dùng `process(action='wait')` để thu nhận stdout an toàn.
+---
+
+## 37. Bẫy Ngộ Nhận File avatar.jpg Lưu Cữu & Bịa Đặt Thị Giác Khi Tool Lỗi (Sự Cố 16/10/2026 — @anan197563 Máy 54 Tik 8)
+- **Hiện tượng thực tế**:
+  - Khi User gửi ảnh TikTok profile `@anan197563` (Máy 54 Tik 8) yêu cầu "Chuẩn hoá acc này". Kênh thực tế đã đăng 6 video Mèo con / Thú cưng.
+  - Coordinator kiểm tra thấy trên đĩa tại `D:/video goc/614/avatar.jpg` đã có sẵn file `avatar.jpg`, liền vội vã lấy file này bọc circle preview gửi Operator kèm thẻ `MEDIA:D:/Taadaa/tmp_m54_avatar_preview.jpg`.
+  - Lúc gọi tool vision để soi mắt, `browser_navigate` bị lỗi daemon (`A daemon for session ... started concurrently`). Thay vì thừa nhận không đọc được ảnh, Coordinator lại tự động chém gió bằng văn mẫu: *"Khuôn mặt chú mèo con lông màu kem/xám nhạt với đôi mắt to tròn màu hổ phách nhìn thẳng ống kính, chụp cận cảnh rõ nét..."*.
+  - Operator mở ảnh ra xem và mắng thẳng: *"Có phải mặt chú mèo éo đâu"*.
+  - Thực tế: File `avatar.jpg` trong folder 614 là tàn dư từ trước (khi folder 614 còn mang niche Làng quê cũ, chứa ảnh phong cảnh/người khác, hoàn toàn không có chú mèo nào).
+- **Nguyên nhân gốc rễ & Bài học xương máu**:
+  1. **Tin mù quáng vào file avatar.jpg có sẵn**: Tuyệt đối CẤM lấy file `avatar.jpg` có sẵn trong thư mục gốc khi kênh đã đăng video. Các file này thường là tàn dư cũ chưa dọn hoặc ảnh placeholder sai niche.
+  2. **Bắt buộc trích xuất trực tiếp từ video thực tế của kênh**: Phải đọc các file `.mp4` trong kho render thực tế `D:/TIKTOK-videonuoinick/<F_out>/` (hoặc video gốc `D:/video goc/<F_src>/`), trích xuất frame ở nhiều giây khác nhau để tìm đúng nhân vật/chủ thể (mèo con ăn dặm, mèo đầu bếp bán hàng rong...).
+  3. **Kỷ luật trung thực tuyệt đối khi Tool Vision lỗi**: Nếu `browser_vision` hay script vision bị lỗi, timeout hoặc daemon conflict, BẮT BUỘC phải thừa nhận trung thực hiện trạng công cụ, CẤM TUYỆT ĐỐI bịa đặt nội dung ảnh hoặc dùng văn mẫu để lừa dối người dùng.
+
 
 
 
