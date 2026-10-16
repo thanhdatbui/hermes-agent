@@ -13,3 +13,5 @@ Worker: Haiku 5.5 CLI, AG CLI dự phòng (cấm làm reviewer, cấm override q
 Canary: bắt buộc test đa máy (cấm chỉ thử 1 máy) + đa layout màn hình, đính kèm MEDIA:, cấm text 'Ảnh: D:...';
 §
 Reboot 3 ca (05:20, 11:20, 17:20), né khi ca đang chạy; user lệnh là làm ngay cấm hỏi lại; sentinel chia theo ca.
+§
+Nguồn video: User hỏi 'nguồn cũ' là hỏi đúng channel/creator gốc (1 folder = 1 kênh duy nhất, giữ nguyên nhân vật/creator), KHÔNG PHẢI niche cũ; cấm nhồi clip kênh khác vào folder cũ.

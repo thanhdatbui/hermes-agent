@@ -17,6 +17,18 @@ Khi nhận diện một tài khoản cần chuẩn hoá 3 món (Ava - Hashtag - 
 - **Lọc sạch nhân vật phụ (Single Subject Isolation):**
   - Trong các khung hình đối thoại 2 nhân vật (Bò & Gấu, Countryballs), việc crop cận mặt nhân vật chính dễ dính một phần sừng, tai, tay hoặc bóng của nhân vật phụ ở mép.
   - Phải kiểm định qua Vision / OCR để đảm bảo mép ảnh đã sạch hoàn toàn (clean background), không để sót bộ phận cơ thể của nhân vật thứ hai.
+- **Điểm mù của Haar Cascade với nhân vật Hoạt hình / Mascot (Haar Cascade Cartoon Blindspot):**
+  - OpenCV `haarcascade_frontalface_default.xml` chỉ nhận diện ngũ quan người thật; hoàn toàn thất bại (`len(faces) == 0`) trên nhân vật 2D cartoon, meme linh vật (Bò, Gấu, chai tương ớt, xấp tiền).
+  - CẤM chạy vòng lặp quét Haar Cascade vô ích trên video hoạt hình.
+  - BẮT BUỘC dùng cơ chế trích xuất frame tại $1.0s - 3.0s$ (`cap.set(cv2.CAP_PROP_POS_MSEC, 1000)`), sau đó soi tọa độ bounding box qua `browser_navigate` + `browser_vision` (hoặc mô hình VLM cục bộ :20129) để tính $(cx, cy, side)$ chính xác.
+
+## 3. Quy Tắc Định Vị Nhanh & Điều Phối An Toàn
+- **Công thức định vị dòng máy trong Workbook $O(1)$ (`Row = Máy + 1`):**
+  - Trong tất cả các file `Tik<Slot>.xlsx` (sheet `TaiKhoan`), dòng 1 là Header. Dòng chứa cấu hình của Máy $M$ luôn luôn là $M + 1$ (ví dụ: Máy 58 nằm tại dòng 59).
+  - Truy xuất trực tiếp dòng $M + 1$ thay vì quét vòng lặp qua toàn bộ workbook.
+- **Kỷ luật chống Empty Response sau khi Dispatch Worker:**
+  - Sau khi gọi `delegate_task(role='leaf')` cho tác vụ nền, Coordinator BẮT BUỘC phải xuất đầy đủ text phản hồi trong cùng lượt (Định danh O(1), Hiện trạng 3 món Ava - Hashtag - Pin, Tiến trình Worker).
+  - CẤM chạy thêm các lệnh terminal rồi kết thúc lượt trả lời trống khiến harness cảnh báo `empty response`.
 
 ## 3. Coordinator Delegation & Guard Constraints
 - **Ngân sách T1 Guard:**
