@@ -8,17 +8,18 @@ description: "TikTok follow runner and fail-closed farm ops."
 ## Non-negotiable operating rules
 
 - **Tài liệu tham khảo chuyên sâu (`references/`):**
-    - `references/profile-follow-action-button-classification.md`: Phân loại Follow & Nhắn tin (chống false-positive) và ma trận Canary 5 kịch bản.
+    - `references/profile-follow-action-button-classification.md`: Phân loại nút Follow.
     - `references/mode2-anchor-selection-and-deep-scroll.md`: Anchor >= 150 fl.
-    - `references/follow-report-semantics-and-concise-wording.md`: Success (0) vs Nhả IP.
-    - `references/account-replacement-and-backfill-state-reset.md`: Reset state thay nick/bù.
+    - `references/follow-report-semantics-and-concise-wording.md`: Báo cáo follow.
+    - `references/account-replacement-and-backfill-state-reset.md`: Thay nick.
     - `references/fleet-follow-graduated-probation-ladder.md`: Bậc thang 3 nấc & Health.
-    - `references/daily-follow-matrix-and-trust-ceiling-analytics.md`: Heatmap & Trust Ceiling.
-    - `references/shared-ip-proxy-collision-and-canary-ceiling-testing.md`: Trùng IP & CB.
-    - `references/wave-scheduling-and-multi-farm-unified-governance.md`: Wave 1 -> Cầu dao -> Wave 2.
-    - `references/dashboard-follow-reconcile-race-condition.md`: Lệch pha crawler & đối soát.
+    - `references/adaptive-ceiling-and-stratified-cohort-governance.md`: Dò trần (+2 đến 30 fl), khôi phục bộ nhớ & 3 Cohort.
+    - `references/daily-follow-matrix-and-trust-ceiling-analytics.md`: Heatmap & Ceiling.
+    - `references/shared-ip-proxy-collision-and-canary-ceiling-testing.md`: Trùng IP.
+    - `references/wave-scheduling-and-multi-farm-unified-governance.md`: Wave 1 & 2.
+    - `references/dashboard-follow-reconcile-race-condition.md`: Lệch pha crawler.
     - `references/contact-suggestion-popup-follow-lockdown.md`: Khóa popup danh bạ.
-    - `references/burst-follow-hibernation-cadence-gemphone-benchmark.md`: Burst 20-30 fl, ngủ 3-4d.
+    - `references/burst-follow-hibernation-cadence-gemphone-benchmark.md`: Burst 20-30 fl.
     - `references/probation-ladder-4day-cycle-adaptation.md`: Chu kỳ 4 ngày.
     - `references/shift-budget-cap-and-session2-drop-prevention.md`: Khóa trần ca P1/P2 và chống nhả follow Optimistic UI.
     - `references/row1-row2-follow-released-investigation-guide.md`: Bóc tách log thật điều tra nhả follow Row 1 & 2.
