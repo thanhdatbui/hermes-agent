@@ -41,6 +41,11 @@ Khi Coordinator điều phối sửa đổi các file đăng ký bảo vệ avat
    - **Bẫy `lifecycle_guard.py` với lệnh terminal inline**:
      * Lệnh Python inline (`python -c "..."`) nhiều dòng phức tạp chứa escape nháy, ký tự đặc biệt hoặc đường dẫn lồng nhau dễ khiến `lifecycle_guard.py` gặp lỗi `ValueError: open: embedded null character in path` hoặc kích hoạt `GUARD_DANGEROUS_ROOT`.
      * Luôn giữ lệnh terminal ngắn gọn hoặc giao Worker viết file script chuyên dụng để chạy.
+   - **Bẫy đường dẫn Android `/sdcard/...` kích hoạt `OUT OF REPO WHITELIST` trong `delegate_task`**:
+     * Guard kiểm soát contract của Coordinator quét toàn bộ text trong `context` của `delegate_task` để tìm các đường dẫn file.
+     * Khi parser bắt gặp chuỗi đường dẫn Android như `/sdcard/Pictures/...`, trên môi trường Windows nó chuẩn hóa thành `\sdcard\Pictures\...` và đối soát với `whitelist ['D:\Taadaa']`.
+     * Kết quả: Bị chặn đứng với lỗi `[COORDINATOR GUARD - CONTRACT VIOLATION]: OUT OF REPO WHITELIST: File '\sdcard\Pictures\...' nằm ngoài whitelist ['D:\Taadaa']!`.
+     * **Cách khắc phục bắt buộc**: TUYỆT ĐỐI KHÔNG viết các đường dẫn bắt đầu bằng `/sdcard/...` trực tiếp vào context prompt của `delegate_task`. Thay vào đó, hãy mô tả gián tiếp (ví dụ: "đẩy file vào thư mục Pictures trên thiết bị Android") hoặc để Worker subagent tự khai báo biến đường dẫn `/sdcard/...` bên trong mã nguồn script của nó.
 
 ## 2. Quy Trình Chẩn Đoán Lệch Niche & Avatar Từ Ảnh Người Dùng Cung Cấp
 Khi User gửi ảnh chụp màn hình kênh TikTok và yêu cầu "Đổi ava nick này":
@@ -82,3 +87,20 @@ Khi User gửi ảnh/username và yêu cầu "Chuẩn hoá kênh này":
      * `WORKER_CLI_EXHAUSTED: true` (bắt buộc để vượt qua Mechanical Gate #3)
      * `FOCUSED_TEST: python -m py_compile D:/Taadaa/reports/<script>.py` (hoặc test pytest)
    - **Cấm đọc file live transcript log**: Đường dẫn `cache/delegation/live/...` nằm trong danh sách đen bảo vệ hệ thống (`GUARD_SOURCE_BLACKLISTED`). CẤM dùng `read_file` để thăm dò log của subagent; subagent chạy nền và sẽ tự trả về kết quả khi hoàn tất.
+
+## 4. Kỷ Luật "Chuẩn Hoá Hashtag" Đi Kèm Đổi Avatar (Kênh Bị Lệch Niche)
+Khi User ra lệnh đổi avatar kèm yêu cầu: *"Chuẩn hoá hashtag luôn đi"*:
+1. **Kiểm tra đối soát nội dung video thực tế (Niche Audit O(1))**:
+   - Rất nhiều kênh trên farm bị lệch Niche (ví dụ trong `Tik3.xlsx` gán nhãn `Bán hàng`, nhưng thực tế video cào về là `Thói quen hằng ngày` / Lifestyle vlog chia sẻ cuộc sống, ăn uống, dạo biển).
+   - BẮT BUỘC trích xuất 4–6 khung hình mẫu từ các video khác nhau trong kho (`D:/video goc/<F_src>`) và gọi `ag_cli.py ask` để xác định chủ đề xuyên suốt thực tế của kênh.
+   - Đối chiếu với danh mục Niche chuẩn trong sheet `Hashtag theo Folder` của `Tik<Slot>.xlsx` để chọn đúng Niche và Hashtag Pool tương ứng.
+2. **Quy trình đồng bộ 4 bước khép kín**:
+   - **Bước 1 (Kho Media & Marker vật lý)**: Ghi đè file `avatar.jpg` mới và tạo 2 file marker `.manual_avatar_locked` và `.manual_hashtag_locked` trong cả 4 thư mục ($F_{src}$ và $F_{out}$ của cả `video goc` và `TIKTOK-videonuoinick`).
+   - **Bước 2 (Registry SSOT)**: Thêm cả $F_{src}$ và $F_{out}$ vào `protected_folders` và dictionary `accounts` trong:
+     * `D:/Taadaa/data/manual_avatar_protected_folders.json`
+     * `D:/Taadaa/Tiktok-video/data/manual_avatar_protected_folders.json`
+     * `D:/Taadaa/data/manual_hashtag_protected_folders.json`
+   - **Bước 3 (Workbook Excel)**: Dùng script python mở `D:/OneDrive/TaadaaData/kibe/Tik<Slot>.xlsx` cập nhật đồng thời:
+     * Sheet `TaiKhoan` dòng của máy: cột `Keyword Video` và cột `Hashtag Pool`.
+     * Sheet `Hashtag theo Folder` dòng của folder $F_{src}$: cột `Keyword` và `Hashtag Pool`.
+   - **Bước 4 (Nạp thiết bị & Nghiệm thu Gate 6)**: Nạp avatar lên thiết bị thật dưới sự bảo vệ của `operator_device_lock`, chụp ảnh Profile xác nhận trước khi báo cáo User.

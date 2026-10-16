@@ -20,6 +20,15 @@
   - User chửi thẳng: *"Xàm lồn 2 ảnh cùng 1 kênh của tao"*.
   - **Nguyên nhân gốc rễ**: Nhìn thấy thanh sticky bar có nút Follow liền suy diễn sai là kênh của người khác (idol), mà không nhận ra đây là cùng một profile của User khi được cuộn xuống để xem các video cũ nhiều view (clip 31,3K view).
   - **Quy tắc đối soát 2 ảnh profile**: Khi User gửi nhiều ảnh trong một yêu cầu chuẩn hoá/pin video: BẮT BUỘC kiểm tra xem các ảnh có phải là các đoạn cuộn (scroll viewports) của cùng một trang cá nhân hay không (cùng nhân vật, cùng style nội dung, cùng bio/avatar). Tuyệt đối không tự suy diễn ảnh là "kênh nguồn / kênh đối thủ" khi chưa có xác nhận rõ ràng.
+
+- **Sự cố 2.2 (16/10/2026 — @anan197563 M54 Tik 8 — Bẫy Ngộ Nhận File avatar.jpg Tồn Tại Sẵn Trong F_src/F_out & Bịa Đặt Thị Giác Khi Tool Vision Lỗi)**:
+  - User gửi ảnh TikTok profile `@anan197563` (Máy 54 Tik 8) yêu cầu "Chuẩn hoá acc này". Kênh đang đăng 6 video Mèo con / Thú cưng.
+  - Coordinator thấy file `D:/video goc/614/avatar.jpg` có sẵn trên đĩa, tự ngộ nhận đây là avatar chú mèo con, bọc circle preview và gửi User kèm thẻ `MEDIA:D:/Taadaa/tmp_m54_avatar_preview.jpg`.
+  - Coordinator gặp lỗi `browser_navigate` daemon, nhưng thay vì thừa nhận lỗi thị giác thì lại tự hallucinate mô tả: *"Xác nhận qua Vision: Ảnh đại diện được soi mắt kiểm tra trực tiếp. Khuôn mặt chú mèo con lông màu kem/xám nhạt với đôi mắt to tròn màu hổ phách nhìn thẳng ống kính..."*.
+  - User nhìn thấy ảnh gửi đi lập tức mắng thẳng: *"Có phải mặt chú mèo éo đâu"*.
+  - Thực tế: File `avatar.jpg` trong folder 614 là tàn dư từ trước khi đổi niche (thời điểm folder 614 còn là chủ đề Làng quê cũ, ảnh phong cảnh/người khác, không hề có mặt chú mèo nào!).
+  - **Bài học cốt lõi**: File `avatar.jpg` sẵn có trong thư mục thường là tàn dư cũ. BẮT BUỘC trích xuất frame mới trực tiếp từ video `.mp4` của kênh, CẤM dùng lại file có sẵn khi chưa đối soát với lưới video. Khi tool vision gặp lỗi/interrupt, BẮT BUỘC thừa nhận trung thực, CẤM TUYỆT ĐỐI bịa đặt văn mẫu mô tả thị giác.
+
 - **Nguyên nhân gốc rễ**:
   1. **Tin tưởng mù quáng file có sẵn**: Giả định sai lầm rằng cứ file có tên `avatar.jpg` trong thư mục gốc là đã chuẩn người thật. Trong thực tế farm, nhiều folder từng bị crop nhầm vải quần jeans, logo, texture nền hoặc ảnh placeholder.
   2. **Bỏ qua Invariant Soi Mắt (`browser_vision`)**: Không gọi tool vision mở ảnh ra xem trước khi gửi tin nhắn, dẫn tới hallucination mô tả sai hoàn toàn sự thật.
@@ -873,6 +882,27 @@ Trước khi soạn bất kỳ tin nhắn nào cho User:
     * Token xác nhận `AVATAR-SMOKE` được truyền trực tiếp qua stdin pipe.
     * Bỏ qua hoàn toàn tầng trung gian `run_tiktok_upload_avatar.ps1` và `Start-Job` vốn dễ lỗi môi trường trên Windows.
     * Đánh thức thiết bị, khởi chạy TikTok qua `monkey`, tự động điều hướng Sửa hồ sơ $\rightarrow$ Tải ảnh lên $\rightarrow$ Bỏ tick Nhật ký $\rightarrow$ Bấm Lưu và ghi nhận verified success.
+
+---
+
+## 36. Xử Lý Kho Video Thời Sự Đa Nhân Vật, Né Ticker Biến Thiên & Khắc Phục Lỗi Terminal SIGINT (Sự Cố 16/10/2026 — @longtuong10 Máy 58 Tik 4)
+- **Hiện tượng thực tế**:
+  1. Khi User gửi ảnh TikTok profile "Hương Miu" (`@longtuong10` Máy 58 Tik 4, F_src 298, F_out 460) yêu cầu "Đổi ava":
+     - Kho video nguồn `298` là bản tin Thời sự VTV tổng hợp đa chủ đề (vụ bắt giữ Bùi Xuân Huấn, Thủ tướng Israel, cảnh thiên nhiên, BTV Chào Buổi Sáng).
+     - Nếu trích xuất face tự động theo Haar cascade diện tích lớn nhất sẽ bắt trúng nhân vật nam hoặc cảnh bắt giữ, lạc đề nghiêm trọng với định danh nữ "Hương Miu".
+  2. Tại video `15.mp4` (chân dung cận cảnh nữ chính khách mặc vest xám, đeo chuỗi ngọc trai):
+     - Đồ họa tin tức biến thiên nhanh theo từng giây: giây 16s hoàn toàn sạch chữ, headroom thoáng 35-40px; nhưng sang giây 17s banner trắng dâng lên chứa chữ `XEM LẠI CHƯƠNG TRÌNH`, giây 18s đỉnh đầu sát mép trên (<15px).
+  3. Khi runner nạp avatar gặp lỗi `Missing required fields: Folder Video`, quá trình kiểm tra terminal foreground bị vướng lỗi `[Command interrupted] (exit code 130)` do tín hiệu SIGINT tồn đọng trên Git Bash session.
+- **Quy trình xử lý & Bài học rút ra**:
+  1. **Lọc Nhân Vật Khớp Định Danh Giới Tính Kênh**:
+     - Khi tên kênh là nữ (*"Hương Miu"*), chủ động loại bỏ toàn bộ các frame nam giới và flycam phong cảnh.
+     - So sánh chi tiết từng giây của video chân dung (`15s`, `15.5s`, `16s`, `16.5s`, `17s`, `18s`) để chọn đúng frame `16s`: đạt chuẩn ngũ quan 100%, tỷ lệ headroom $\ge 35$px, chin clearance an toàn, và 100% sạch chữ trong vòng tròn xanh $R=256$.
+  2. **Chuẩn Hóa Tiêu Đề Workbook Bằng `standardize_tik_headers.py`**:
+     - File `Tik4.xlsx` dùng header `Folder Video (Render Dich)` và `Video Goc (Nguon Cao)`.
+     - Chạy `python D:/Taadaa/tools/standardize_tik_headers.py` để đồng bộ header chuẩn và tự động tính toán lại $F_{out} = (M - 1) \times 8 + Slot$, $F_{src} = (Slot - 1) \times 80 + M$.
+  3. **Vượt Qua Lỗi Terminal SIGINT (Exit Code 130)**:
+     - Khi terminal foreground bị kẹt tín hiệu ngắt (exit code 130), chuyển toàn bộ các lệnh kiểm tra và thực thi sang `terminal(background=True, notify_on_complete=True)` để chạy trong subshell độc lập, sau đó dùng `process(action='wait')` để thu nhận stdout an toàn.
+
 
 
 
