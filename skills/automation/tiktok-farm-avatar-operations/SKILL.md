@@ -5,6 +5,7 @@ description: Use when running avatar-only jobs on TikTok farm.
 
 # TikTok Farm Avatar Operations
 
+- Channel Content Grid Audit & Niche Avatar Mismatch: [references/channel-content-grid-audit-and-niche-avatar-mismatch-20261016.md](references/channel-content-grid-audit-and-niche-avatar-mismatch-20261016.md) (Đối soát lưới video profile chống gượng ép avatar người lạ lệch ngách cho kênh shop/sách/sản phẩm)
 - Batch Lock Reservation & Canonical Visual Artifact Capture (2026-10-17): [references/batch-lock-reservation-coexistence-and-visual-artifact-capture.md](references/batch-lock-reservation-coexistence-and-visual-artifact-capture.md)
 - Active Lock Coexistence & Sub-caption Edge Trap: [references/active-device-lock-coexistence-and-protected-folders-type-safety-20261016.md](references/active-device-lock-coexistence-and-protected-folders-type-safety-20261016.md)
 - Stale Stored Avatar Trap & Multi-Option Extraction (2026-10-16): [references/stale-stored-avatar-trap-and-multi-option-extraction-20261016.md](references/stale-stored-avatar-trap-and-multi-option-extraction-20261016.md)

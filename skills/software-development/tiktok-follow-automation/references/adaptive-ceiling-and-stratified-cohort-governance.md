@@ -40,3 +40,14 @@ Phân loại bắt buộc trước khi tính budget (`determine_cohort` trong `f
   - **Chưa đủ khỏe = Tuyệt đối CẤM FOLLOW:** Khi nick chưa đủ khỏe / chưa đủ trust (Following < 10, video < 10, đang trong thời gian dưỡng), TikTok kích hoạt Account-level Action Restriction. Lúc này **bấm ai cũng nhả**, kể cả follow tự nhiên trên Feed. CẤM tuyệt đối mọi hình thức follow (chéo mỏ hay tự nhiên) khi nick chưa đủ điều kiện.
   - **Dưỡng sinh thuần (Pure Feed Session):** Nick chưa đủ điều kiện bắt buộc chỉ chạy Feed thuần (lướt For You, xem video đủ dwell time, thả tim tự nhiên, 0 follow) để nuôi trust cho tới khi tài khoản đủ điều kiện.
   - **Không chế luật né Anchor:** Khi nick đã đủ điều kiện vào ca follow thì chạy đúng luồng chuẩn tự nhiên (xem video, like, follow Anchor rồi mở Following). CẤM các chiêu trò lách né như "bỏ qua Anchor lớn để bấm nick con" vì khi đã bị nhả là do nick bị khóa tính năng, không phải do Anchor.
+
+---
+
+## 5. Kiến Trúc Báo Cáo & Giám Sát (Observability Architecture: Telegram vs DB/Dashboard)
+- **Quy tắc phân định cốt lõi:** Tuyệt đối không biến Telegram thành database để xả rác chat. Hệ thống phân chia rạch ròi 2 tầng:
+  - **Telegram Alert = Control Tower (Tháp điều khiển):** Chỉ báo cáo KPI cấp cao và ngoại lệ (Exceptions/Anomalies) trong 1 tin nhắn súc tích để Operator liếc mắt trong 3 giây là nắm tình hình.
+    - Bình thường (Khớp 100%): Chỉ in 1 dòng tóm tắt `+ Đối soát TikTok Web (+X Following thật - Khớp 100% so với script báo)`.
+    - Bất thường (Lệch số / Lỗi): Chỉ in đúng các máy bị lệch hoặc lỗi kèm lý do, không in danh sách các máy chạy bình thường.
+  - **SQLite DB & Dashboard 1905 = Telemetry & Forensics (Hồ sơ bệnh án):** Mọi dữ liệu chi tiết sâu (danh sách từng UID con, thời gian dwell time, lịch sử tăng tiến ceiling, trạng thái fail streak, trace log) được lưu trữ đầy đủ trong SQLite (`tiktok_tracker.db`) và hiển thị trên Dashboard cổng 1905 (`http://192.168.110.123:1905`).
+- **Khả năng mở rộng (Scalability):** Thiết kế này đảm bảo khi farm mở rộng từ 160 lên 500+ máy, chat Telegram vẫn giữ nguyên độ gọn gàng, không bị nghẽn hay trôi tin nhắn cảnh báo quan trọng.
+
