@@ -1,10 +1,10 @@
-Cào/Render: 12 niche hot (xen kẽ máy, cấm trùng phiên), min 45, 1 wkr. F_src=(Slot-1)*80+m_idx; Chuẩn hoá 3 món (Ava-Hashtag-Pin); nick sửa tay khóa chống đè.
+Cào/Render: 12 niche hot, min 45, 1 wkr. F_src=(Slot-1)*80+m_idx; Chuẩn hoá 3 món (Ava-Hashtag-Pin); nick sửa tay khóa chống đè.
 §
 Dọn đĩa: duyệt trước, cấm xóa ngầm. Cấm đẻ script trùng (đối soát tools/cron: REUSE>EXTEND>NEW); tách rõ read/mock vs write thật.
 §
 Nuôi 4d 3 ca (bỏ đêm, tắt màn 223). Cuốn chiếu Ava&2FA tới 5h15 (dừng 4h45, né cache 4h, báo 6h). Write-Through Excel cột 3,4,5+G; Starve 96h; mail Graph PC; đổi ava tự làm cấm hỏi.
 §
-User ép push -> safe_push --owner-override.
+Chốt phiên: Vào main, cấm park WIP/khóc lóc; Grace 80-84 (diff<=30, test pass 100%) auto-push; cấm Sonnet cày điểm; User ép push: safe_push --owner-override.
 §
 Kibe(1-80) & Admin(201-280) cào nguồn & media độc lập 100% (cấm trùng video, cấm sync chéo Niche/Hashtag). TT v47.0.3; Switcher dock; AP 40m.
 §

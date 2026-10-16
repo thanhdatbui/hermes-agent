@@ -1001,6 +1001,42 @@ Trước khi soạn bất kỳ tin nhắn nào cho User:
   4. **Nghiệm thu thị giác trên file xác nhận thực tế**:
      - Soi mắt file `avatar-uploaded-confirmed.png` tại thư mục run qua `ag_cli.py ask` để xác nhận giao diện Sửa hồ sơ hiển thị avatar mới hoàn chỉnh trước khi gửi thẻ `MEDIA:<path>` cho User.
 
+---
+
+## 41. Kỷ Luật "Chuẩn Hóa 3 Món" Khi Nhận Lệnh Đổi Avatar, Bẫy Bỏ Quên Hashtag & Lỗi Header Alias Mismatch (Sự Cố 17/10/2026 — @lamnhu3003 Máy 58)
+- **Bối cảnh & Phản hồi nhắc nhở của User**:
+  - Khi User gửi ảnh profile yêu cầu "Đổi ava", Coordinator hoàn thành nạp avatar và khóa `.manual_avatar_locked`, nhưng **quên kiểm tra và chuẩn hóa Hashtag Pool** cho kênh.
+  - User nhắc nhở: *"Này là khoá luôn hashtag chưa. À quên chưa chuẩn hoá hashtag mà"*.
+  - Kiểm tra thực tế: Kênh là đại lý xe máy Yamaha Vân Hải (nội dung review xe máy Grande, PG-1, NVX), nhưng trên workbook `Tik2.xlsx` cột Keyword vẫn gán nhầm là `Hài hước` và `#haihuoc...` do dữ liệu cũ chưa đối soát.
+- **Quy tắc bất biến: Nhận lệnh "Đổi ava" BẮT BUỘC rà soát toàn diện Chuẩn hóa 3 món (Ava - Hashtag - Pin)**:
+  1. **Luôn đối soát Niche/Hashtag song song với Avatar**:
+     - Khi soi mắt lưới video để tìm nhân vật làm avatar, đồng thời phải đối soát nội dung video với cột `Keyword Video` và `Hashtag Pool` trong workbook `Tik<N>.xlsx`.
+     - Nếu phát hiện nội dung video thực tế (ví dụ: Xe máy) lệch với workbook (ví dụ: Hài hước) $\rightarrow$ **Chuẩn hóa ngay** Keyword sang `Xe máy` và nạp pool hashtag chuẩn (`#xemay #xemayvietnam...`) ở cả 2 sheet (`TaiKhoan` và `Hashtag theo Folder`).
+  2. **Khóa kép 2 lớp bảo vệ Hashtag (Physical Marker & System Registry)**:
+     - *Lớp 1 (Marker vật lý)*: Tạo file `.manual_hashtag_locked` tại các folder liên quan (`D:/video goc/<F_src>`, `D:/TIKTOK-videonuoinick/<F_out>`).
+     - *Lớp 2 (Registry hệ thống)*: Bổ sung folder vào `protected_folders` trong `D:/Taadaa/data/manual_hashtag_protected_folders.json` để cronjob `sync_all_tik_keywords.py` tự động bỏ qua, không bao giờ tự ý ghi đè/hoán đổi lại niche cũ.
+  3. **Bẫy Header Alias Mismatch trong `account_source.py` (`Missing required fields: Folder Video`)**:
+     - Khi chạy standalone avatar runner (`run_tiktok_upload_avatar.ps1` -> `run_tiktok_upload_batch.ps1`), runner gọi `account_source.py` để đọc hàng tài khoản từ workbook.
+     - Các file workbook Tik2, Tik3 thường có tiêu đề cột biến thể: `Folder Video (Render Dich)` hoặc `Video Goc (Nguon Cao)`.
+     - Nếu `CANONICAL_HEADERS` trong `scripts/tiktok_workflow/account_source.py` chỉ định nghĩa `{"folder video", "video folder"}` mà thiếu alias `folder video (render dich)`, runner sẽ crash ngay với lỗi: `Workflow target error: Missing required fields: Folder Video`.
+     - **Giải pháp chuẩn**: `account_source.py` bắt buộc phải bao gồm đầy đủ các alias chuẩn hóa:
+       ```python
+       "Folder Video": {
+           "folder video",
+           "video folder",
+           "folder video (render dich)",
+           "folder video render dich",
+           "sttvideo",
+       },
+       "video gốc": {
+           "video goc",
+           "video source",
+           "source video",
+           "video goc (nguon cao)",
+           "video goc nguon cao",
+       },
+       ```
+
 
 
 
