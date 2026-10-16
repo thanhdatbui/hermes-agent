@@ -489,6 +489,36 @@ Trước khi soạn bất kỳ tin nhắn nào cho User:
      - Sử dụng `D:/OneDrive/TaadaaData/admin/admin_all_640_hot_niches.json` để kiểm tra mapping Niche theo folder.
      - Đối soát nguồn gốc kênh qua `D:/Taadaa/data/admin_real_folders.json` (chứa URL YouTube channel chính thức và số lượng video crawl) để xác định đúng phong cách và hình ảnh đại diện của Creator.
 
+---
+
+## 23. Quy Trình Sàng Lọc Ứng Viên Avatar 2 Tầng (Hierarchical Tiling) & Tinh Chỉnh Headroom (Sự Cố 16/10/2026 — @brentwbowman0 Máy 56 Tik 3)
+- **Bối cảnh thực tế**:
+  - Khi User gửi ảnh TikTok profile yêu cầu ngắn gọn: *"Đổi ava"*.
+  - Kiểm tra kho `D:/video goc/216` và `D:/TIKTOK-videonuoinick/216` đều có sẵn file `avatar.jpg` cũ (ăn mì cay có sticker gấu). Nếu vội vàng up file này sẽ vi phạm lỗi Section 14 (nạp lại avatar cũ).
+  - Kho đã có sẵn thư mục `.avatar_work/representative_frames/` chứa hơn 90 khung hình trích xuất từ trước (`v00_001.jpg` đến `v23_006.jpg`).
+- **Quy trình lọc ứng viên 2 tầng (Hierarchical Frame Selection)**:
+  1. **Tầng 1 (Macro Tiling — Quét diện rộng loại rác)**:
+     - Chọn đại diện 16 khung hình từ các video khác nhau, ghép thành mosaic $4 \times 4$ kích thước $960 \times 1704$ (`tmp_m56_mosaic.jpg`).
+     - Gọi `python D:/Taadaa/tools/ag_cli.py ask --file "<mosaic.jpg>" "Những ô nào là bạn nữ chủ kênh solo, nhìn rõ mặt, không che bởi sticker/kính mát to, biểu cảm tươi sáng?"`.
+     - `ag_cli.py` loại bỏ nhanh các ô tĩnh vật (bàn phím piano, chân đạp xe, đồ ăn), ảnh góc xa, ảnh đeo kính râm to che kín mắt (`v02_001`), và ảnh nhóm đông người (`v07_001`); định vị 2 video tiềm năng nhất: Video 3 (áo đen cổ tim) và Video 6 (áo trễ vai cherry).
+  2. **Tầng 2 (Micro-Expression Grid — So sánh biểu cảm vi mô)**:
+     - Ghép lưới 6 khung hình chi tiết giữa các frame cùng video: `v03_001..003` và `v06_001..003`.
+     - Giám định vi mô qua `ag_cli.py ask` để phát hiện các lỗi biểu cảm: `v03_001` bị chớp mắt dở (mid-blink/sụp mí) và mở khẩu hình phát âm dở; `v06_002` bị há miệng chữ O ngơ ngác.
+     - Chọn ra 2 ứng viên xuất sắc nhất:
+       * **Phương án 1 (`v03_002`)**: Mắt mở to tròn, bắt sáng (catchlight) rõ, nụ cười mỉm tự nhiên, thần thái tự tin, tràn đầy năng lượng.
+       * **Phương án 2 (`v06_001`)**: Góc nhìn trực diện, nét mặt điềm đạm, dịu dàng, nữ tính.
+  3. **Đồng bộ nhận diện với Lưới Video (Grid Identity Consistency)**:
+     - Đối soát với ảnh màn hình profile User gửi: Video 2 trên lưới trang cá nhân (clip đạt 279 view) chính là bạn nữ mặc áo thun đen cổ tim.
+     - Việc chọn `v03_002` giúp đồng bộ nhận diện thương hiệu cá nhân của Creator giữa avatar và bài đăng top view trên kênh.
+  4. **Kỹ thuật tinh chỉnh Headroom sau Crop**:
+     - Khi crop thử nghiệm ban đầu, đỉnh đầu của Phương án 1 hơi sát mép trên viền tròn xanh.
+     - Khắc phục dứt điểm: Hạ nhẹ tâm dọc `cy` xuống $\approx 18$px (`cy = fy + fh * 0.58`) và nới kích thước `side = 580` kết hợp mở rộng canvas (`cv2.BORDER_REPLICATE`).
+     - Kết quả: Đỉnh tóc có khoảng thở an toàn (headroom $\ge 20$px), cằm và cổ áo đen nằm trọn vẹn bên trong đường tròn viền xanh.
+  5. **Tạo bảng so sánh trực quan (Side-by-side Comparison Sheet)**:
+     - Ghép 2 ảnh preview viền tròn xanh lên nền tối ($R=256$, viền xanh lá, dải tiêu đề phân biệt rõ phong cách ở trên).
+     - Gửi duy nhất 1 thẻ `MEDIA:D:/Taadaa/..._avatar_options.jpg` để User dễ dàng so sánh và chọn lựa, tuyệt đối không gửi ảnh đơn lẻ thiếu đối chứng.
+
+
 
 
 
