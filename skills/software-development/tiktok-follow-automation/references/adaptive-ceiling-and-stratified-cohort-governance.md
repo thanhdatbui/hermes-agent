@@ -21,6 +21,13 @@ Phân loại bắt buộc trước khi tính budget (`determine_cohort` trong `f
 - **Quy tắc leo trần (+2):** Sau mỗi ca chạy sạch không nhả, nick Veteran/Mid nâng trần dò:
   $$\text{active\_ceiling} = \min(\text{core\_cap}, \;\text{proven\_safe\_ceiling} + 2)$$
   Trần phân bổ đều qua 2 phiên P1 và P2 (mỗi phiên tối đa 15 lượt) để không kích hoạt Rate Limit giờ của TikTok.
+- **Khóa trần theo ca P1 & P2 (Shift Cap Deduction — Fix lỗi P2 bấm nick thứ 2 bị nhả):**
+  - **Bản chất lỗi cũ:** Runner cấp mới budget ở Phiên 2 mà không trừ budget đã dùng ở Phiên 1 trong cùng một ca. TikTok áp dụng thuật toán Leaky Bucket / Sliding Window; nick Hồi phục T1 vừa ăn 4 follow ở P1, sang P2 lại bị cấp tiếp 4 follow -> nick rướn bấm đến cái thứ 2 là bị TikTok silent-drop ngay lập tức!
+  - **Quy tắc khấu trừ bắt buộc:**
+    $$\text{remaining} = \max(0, \;\text{cap} - \text{budget\_used})$$
+    Nếu $\text{remaining} \le 0 \rightarrow$ Phiên 2 tự động **Safe-Skip (`budget = 0`)**, chỉ lướt feed dưỡng sinh, tuyệt đối không bấm follow để bảo toàn ngày sạch (`probation_clean_days`).
+    - *Tier 1 (Cap 4 lượt/ca):* P1 ăn 4 lượt -> P2 safe-skip 0 lượt. P1 ăn 2 lượt -> P2 cấp tiếp $4 - 2 = 2$ lượt.
+    - *Tier 2 (Cap 8 lượt/ca):* P1 ăn 4 lượt -> P2 ăn tiếp tối đa 4 lượt (tổng ca không quá 8).
 - **Kỷ luật khi ăn nhả (FOLLOW_FAILED):**
   - Chấp hành Cooldown (đi tù 3–5 ngày theo `fail_streak`), thu hồi cờ tốt nghiệp, đi lại Hồi phục 1 $\rightarrow$ Hồi phục 2.
   - **Bộ nhớ bảo toàn:** Ghi nhận `last_failed_ceiling`. Hạ trần tham chiếu:
