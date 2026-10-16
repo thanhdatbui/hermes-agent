@@ -9,7 +9,8 @@ import xiaowei_idle_auto_close_watchdog as xw
 
 
 @pytest.fixture(autouse=True)
-def _clean_state():
+def _clean_state(tmp_path, monkeypatch):
+    monkeypatch.setattr(xw, "STATE_FILE", str(tmp_path / "xiaowei_idle_activity.ts"))
     xw.reset_metrics()
     xw._invalidate_cache()
     yield
@@ -33,9 +34,31 @@ def test_is_running_helpers(capsys):
     with patch.object(xw, "_XIAOWEI_RUNNING_CACHE", True), patch.object(xw, "_CACHE_TS", xw.time.time() - 5.0), \
          patch("subprocess.run", return_value=MagicMock(returncode=0, stdout="")) as run:
         assert xw.is_xiaowei_running(use_cache=True) is False and run.call_count == 1
-    with patch.object(xw.ctypes.windll.user32, 'GetLastInputInfo', return_value=0):
+    with patch.object(xw.ctypes.windll.user32, 'GetLastInputInfo', return_value=0), \
+         patch.object(xw, "is_xiaowei_foreground", return_value=False):
         assert xw.get_idle_seconds() == 0.0
-    assert xw.IDLE_THRESHOLD_SECONDS == 1200
+    assert xw.IDLE_THRESHOLD_SECONDS == 600
+
+
+def test_get_idle_seconds_counts_unfocused_time(monkeypatch):
+    clock = MagicMock()
+    clock.time.return_value = 1000.0
+    monkeypatch.setattr(xw, "time", clock)
+    monkeypatch.setattr(xw, "_system_idle_seconds", lambda: 5.0)
+    monkeypatch.setattr(xw, "is_xiaowei_foreground", lambda: True)
+    assert xw.get_idle_seconds() == 0.0
+    monkeypatch.setattr(xw, "is_xiaowei_foreground", lambda: False)
+    clock.time.return_value = 1000.0 + xw.IDLE_THRESHOLD_SECONDS
+    assert xw.get_idle_seconds() == xw.IDLE_THRESHOLD_SECONDS
+
+
+def test_close_xiaowei_clears_idle_state(monkeypatch):
+    xw._write_last_active(1000.0)
+    monkeypatch.setattr(xw, "cleanup_orphan_xiaowei_adb", lambda: False)
+    monkeypatch.setattr(xw, "is_xiaowei_running", lambda: False)
+    with patch("subprocess.run", return_value=_proc(0, "SUCCESS")):
+        assert xw.close_xiaowei() is True
+    assert not os.path.exists(xw.STATE_FILE)
 
 
 def test_cleanup_orphan_preconditions_and_kill():

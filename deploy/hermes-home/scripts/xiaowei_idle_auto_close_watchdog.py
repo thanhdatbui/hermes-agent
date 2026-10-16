@@ -2,10 +2,10 @@
 """
 xiaowei_idle_auto_close_watchdog.py
 Watchdog tự động đóng Tiểu Vi (xiaowei.exe / 攸卫投屏) khi người dùng không thao tác chuột/phím:
-- Ngưỡng idle mặc định: 20 phút (1200 giây) - cân bằng hoàn hảo giữa xem lâu và bảo vệ bus USB.
+- Ngưỡng idle mặc định: 10 phút (600 giây), tính theo thời gian KHÔNG đụng vào Tiểu Vi (focus-based).
 - Chỉ hành động khi:
   1. Tiến trình xiaowei.exe đang thực sự chạy trên máy tính.
-  2. Thời gian người dùng KHÔNG chạm chuột hoặc bàn phím vượt quá IDLE_THRESHOLD_SECONDS.
+  2. Thời gian không tương tác với Tiểu Vi vượt quá IDLE_THRESHOLD_SECONDS.
 - Cơ chế đóng an toàn:
   1. Gửi lệnh taskkill /IM xiaowei.exe giải phóng ngay 80 I/O pipe truyền màn hình.
   2. Không đụng chạm hay can thiệp vào các tiến trình nuôi nick/post video khác.
@@ -37,7 +37,8 @@ if hasattr(sys.stderr, "reconfigure"):
     except Exception:
         pass
 
-IDLE_THRESHOLD_SECONDS = 1200  # 20 phút (1200 giây)
+IDLE_THRESHOLD_SECONDS = int(os.environ.get('XIAOWEI_IDLE_THRESHOLD', '600'))  # 10 phút (600 giây)
+STATE_FILE = os.path.join(os.environ.get('TEMP', r'C:\Windows\Temp'), 'xiaowei_idle_activity.ts')
 DRY_RUN_MODE = os.environ.get('WATCHDOG_DRY_RUN', '0').lower() in ('1', 'true', 'yes')
 RUN_ID = os.environ.get("WATCHDOG_RUN_ID", hex(int(time.time() * 1000))[2:])
 XIAOWEI_DIR = r"C:\Program Files (x86)\xiaowei"
@@ -97,8 +98,7 @@ class LASTINPUTINFO(ctypes.Structure):
     _fields_ = [("cbSize", ctypes.c_uint), ("dwTime", ctypes.c_uint)]
 
 
-def get_idle_seconds() -> float:
-    """Return user idle seconds via passive Win32 GetLastInputInfo, without hooks or input inspection."""
+def _system_idle_seconds() -> float:
     lii = LASTINPUTINFO()
     lii.cbSize = ctypes.sizeof(LASTINPUTINFO)
     if ctypes.windll.user32.GetLastInputInfo(ctypes.byref(lii)):
@@ -106,6 +106,79 @@ def get_idle_seconds() -> float:
         millis = (tick_count - lii.dwTime) & 0xFFFFFFFF
         return millis / 1000.0
     return 0.0
+
+
+def _foreground_process_name(user32, hwnd) -> str:
+    pid = ctypes.c_ulong()
+    user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+    kernel32 = ctypes.windll.kernel32
+    handle = kernel32.OpenProcess(0x1000, False, pid.value)  # PROCESS_QUERY_LIMITED_INFORMATION
+    if not handle:
+        return ""
+    try:
+        size = ctypes.c_ulong(1024)
+        buf = ctypes.create_unicode_buffer(size.value)
+        if kernel32.QueryFullProcessImageNameW(handle, 0, buf, ctypes.byref(size)):
+            return os.path.basename(buf.value).lower()
+        return ""
+    finally:
+        kernel32.CloseHandle(handle)
+
+
+def is_xiaowei_foreground() -> bool:
+    """Return True when the foreground window title or owning process belongs to Tiểu Vi."""
+    user32 = ctypes.windll.user32
+    hwnd = user32.GetForegroundWindow()
+    if not hwnd:
+        return False
+    length = user32.GetWindowTextLengthW(hwnd)
+    buf = ctypes.create_unicode_buffer(length + 1)
+    user32.GetWindowTextW(hwnd, buf, length + 1)
+    title = buf.value.lower()
+    if any(k in title for k in ('xiaowei', '牧卫', '效卫', '投屏', 'com.xiaowei')):
+        return True
+    proc_name = _foreground_process_name(user32, hwnd)
+    return any(k in proc_name for k in ('xiaowei', 'msedgewebview2'))
+
+
+def _read_last_active() -> float | None:
+    try:
+        with open(STATE_FILE, "r", encoding="utf-8") as f:
+            return float(f.read().strip())
+    except (OSError, ValueError):
+        return None
+
+
+def _write_last_active(ts: float) -> None:
+    try:
+        with open(STATE_FILE, "w", encoding="utf-8") as f:
+            f.write(str(ts))
+    except OSError as e:
+        log_event("IDLE_STATE_ERROR", level="ERROR", action="write", error=str(e))
+
+
+def _clear_idle_state() -> None:
+    try:
+        if os.path.exists(STATE_FILE):
+            os.remove(STATE_FILE)
+    except OSError as e:
+        log_event("IDLE_STATE_ERROR", level="ERROR", action="clear", error=str(e))
+
+
+def get_idle_seconds() -> float:
+    """Return seconds since the user last interacted with Tiểu Vi; 0.0 while it is focused and the user is active."""
+    now = time.time()
+    system_idle = _system_idle_seconds()
+    is_fg = is_xiaowei_foreground()
+    if is_fg and system_idle < 60:
+        _write_last_active(now)
+        return 0.0
+    last_active = _read_last_active()
+    if last_active is None:
+        _write_last_active(now)
+        last_active = now
+    unfocused_idle = now - last_active
+    return max(unfocused_idle, system_idle) if is_fg else unfocused_idle
 
 
 _XIAOWEI_RUNNING_CACHE: bool | None = None
@@ -245,6 +318,7 @@ def close_xiaowei() -> bool:
         is_running = is_xiaowei_running()
         if (r.returncode == 0 or "success" in (r.stdout or "").lower()) and not is_running:
             _invalidate_cache()
+            _clear_idle_state()
             adb_cleaned = cleanup_orphan_xiaowei_adb()
             log_event("XIAOWEI_CLOSE_OK", method="taskkill", adb_cleaned=adb_cleaned, duration_ms=dur_ms)
             _bump_metric("xiaowei_close_successes")
@@ -257,6 +331,7 @@ def close_xiaowei() -> bool:
         adb_cleaned = False
         if r_cim.returncode == 0 and not is_xiaowei_running():
             _invalidate_cache()
+            _clear_idle_state()
             adb_cleaned = cleanup_orphan_xiaowei_adb()
             log_event("XIAOWEI_CLOSE_OK", method="cim-terminate", adb_cleaned=adb_cleaned)
             _bump_metric("xiaowei_close_successes")
@@ -276,6 +351,8 @@ def main():
     _invalidate_cache()
     if not is_xiaowei_running():
         # Tiểu Vi không mở -> Dọn dẹp ADB 5038 mồ côi (nếu có) rồi thoát
+        # Xóa mốc idle cũ để lần mở sau không bị đóng ngay vì thời gian tích lũy trước đó
+        _clear_idle_state()
         cleaned = cleanup_orphan_xiaowei_adb()
         if cleaned:
             log_event("WATCHDOG_SUMMARY", action="orphan_cleanup", metrics=get_metrics())
