@@ -79,12 +79,15 @@ $atomicCmd = "if (-not (Get-Process -Name xiaowei -ErrorAction SilentlyContinue)
 ## 6. High-Latency PowerShell / WMI Pipeline Timeout & Fast Netstat Pre-Check
 - **The 8-10s WMI/NetTCPIP Latency Trap:** On farm hosts with 80+ USB devices and multiple network adapters, executing `$ports = Get-NetTCPConnection -LocalPort 5038 ...; Get-CimInstance Win32_Process ...` in PowerShell takes 7.5–9.0s baseline.
 - **False-Alarm Cron Alert Storm:** In silent cron watchdogs running at high frequency (e.g. every 2m) with a 10s timeout, any minor CPU spike causes `subprocess.TimeoutExpired`, logging `ADB_CHECK_ERROR` to stdout. For `no_agent: true` cronjobs, non-empty stdout triggers Telegram delivery, spamming the user with confusing timeout JSON errors.
-- **Fast Pre-Check Pattern (<200ms):**
-  Instead of executing PowerShell on every tick, run a fast lightweight pre-check via `netstat -ano -p tcp`:
-  ```python
-  # Fast pre-check: if port 5038 is not listening, short-circuit immediately (<200ms)
-  r_ns = subprocess.run(["netstat", "-ano", "-p", "tcp"], capture_output=True, text=True, timeout=3)
-  if not any(f":{XIAOWEI_ADB_PORT}" in l and "LISTENING" in l for l in r_ns.stdout.splitlines()):
-      return False
-  ```
-- **Safe Timeout Floor:** For the actual fallback PowerShell/CIM query when port 5038 is active, ensure `CIM_TIMEOUT_SECONDS` has a safe floor of at least 15s (`max(5, min(60, _raw_t))` with default 15s instead of 10s) to prevent clipping under transient system load.
+- **Fast Pre-Check Pattern (<200ms) & The Unit Test Mock Trap:**
+  - *The Trap of Adding a Separate Python `subprocess.run` Pre-Check:* Adding `subprocess.run(["netstat", "-ano", "-p", "tcp"], ...)` inside Python introduces a second `subprocess.run` call. Any existing unit test that mocks `subprocess.run` with a single return value (e.g. `with patch("subprocess.run", return_value=MagicMock(returncode=rc, stdout=out))` testing `(0, "2", True)`) will feed the mocked PowerShell output to `netstat`. Because `"2"` does not contain `LISTENING`, the function short-circuits to `False`, breaking the test suite!
+  - *The In-Pipeline PowerShell Solution:* Embed the `netstat` pre-filter directly inside the PowerShell target query `XIAOWEI_ADB_TARGET_PS`:
+    ```python
+    XIAOWEI_ADB_TARGET_PS = (
+        f"$ports = (netstat -ano -p tcp | Select-String ':{XIAOWEI_ADB_PORT}\\s+LISTENING') | ForEach-Object {{ ($_ -split '\\s+')[-1] }}; "
+        "if ($ports) { Get-CimInstance Win32_Process -Filter \"Name = 'adb.exe'\" "
+        "| Where-Object { $_.ProcessId -in $ports -and $_.ExecutablePath -like '*\\xiaowei\\*' } }"
+    )
+    ```
+    This maintains exactly ONE `subprocess.run` call in Python (keeping all mock unit tests 100% compatible), while executing in <300ms in real life because `$ports` evaluates to empty when idle, bypassing the expensive WMI `Get-CimInstance` query completely.
+- **Default Timeout Invariant in Unit Tests:** Do not change the default constant fallback value (e.g. `CIM_TIMEOUT_SECONDS = 10`) in code if contract tests assert `assert probe.CIM_TIMEOUT_SECONDS == 10`. Instead, rely on the fast netstat pipeline (<300ms) or configure the environment variable `XIAOWEI_CIM_TIMEOUT=15` in cron job execution environments.
