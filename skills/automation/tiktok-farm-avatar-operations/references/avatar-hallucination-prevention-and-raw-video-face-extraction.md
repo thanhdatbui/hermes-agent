@@ -613,6 +613,43 @@ Trước khi soạn bất kỳ tin nhắn nào cho User:
   4. **Kỹ thuật in-place patch khi Coordinator chạm trần File Write Budget (T1 Budget Defense)**:
      - Khi Coordinator hết hạn ngạch tạo file mới `write_file` (tối đa 5 files trong session): Sử dụng công cụ `patch` trên file script tạm đã tạo (`extract_cand.py`) để cập nhật tọa độ/logic crop avatar thay vì cố tạo file mới hoặc dispatch worker không cần thiết khi đã có exact diff.
 
+---
+
+## 27. Bẫy Lỗi Gõ Telex "Acc Nacy" & Kỷ Luật Missing Target Profile Khi Chuẩn Hoá (Sự Cố 16/10/2026)
+- **Hiện tượng & Bẫy ngộ nhận**:
+  - User gửi lệnh ngắn: *"Chuẩn hoá acc nacy"* dạng text thuần, hoàn toàn không kèm ảnh chụp màn hình hay số máy/username.
+  - Một số agent thiếu kinh nghiệm dễ rơi vào 2 cạm bẫy nghiêm trọng:
+    1. **Bẫy thực thể ảo (Typo Hallucination)**: Ngộ nhận `nacy` là tên riêng của tài khoản TikTok / Hotmail (như `nancy`), tự viết script quét toàn bộ đĩa/database để tìm chuỗi `nacy`/`nancy` trong vô vọng.
+    2. **Bẫy thao tác mù (Blind Execution)**: Tự tiện suy diễn hoặc lấy bừa một tài khoản từ phiên trước để thao tác, can thiệp nhầm nick hoặc làm sai lệch thiết bị đang chạy ca nuôi.
+- **Bản chất thực tế**:
+  1. `"nacy"` thực chất là lỗi gõ phím Telex / phím kề của từ **`"này"`** (*"Chuẩn hoá acc này"*).
+  2. Tin nhắn gửi đến Telegram là text thuần, bị thiếu ảnh đính kèm (User quên đính kèm hoặc Telegram phân mảnh tin nhắn).
+- **Quy tắc ứng xử chuẩn hóa Farm**:
+  1. **Khử typo nhanh bằng Ground Truth**: Nhận diện ngay `nacy` $\rightarrow$ `này`, đối soát nhanh DB SSOT (`tiktok_tracker.db` / `taikhoan_run_safe_combined.xlsx`) để xác nhận không có tài khoản tên `nacy`/`nancy`. Tuyệt đối CẤM quét đĩa diện rộng tìm file log hay file excel không liên quan.
+  2. **Chặn đứng thao tác mù khi thiếu ảnh**: Quy chuẩn "Chuẩn hoá 3 món" (Ava - Hashtag - Pin) bắt buộc phải có ảnh Profile hoặc định danh rõ ràng (Username / Số máy / Slot) để làm cơ sở kiểm tra view và trích xuất nhân vật chuẩn. Nếu thiếu ảnh và thiếu định danh: BẮT BUỘC dừng lại, giải thích rõ `nacy` là lỗi gõ của `này`, khẳng định DB không có nick này, và yêu cầu User cung cấp ảnh chụp Profile hoặc số máy/username, tuyệt đối không tự ý can thiệp vào bất kỳ thiết bị nào.
+
+---
+
+## 28. Sàng Lọc Khử Bẫy Phụ Đề Chạm Viền & Micro Trong Video Creator/Streamer (Sự Cố 16/10/2026 — @carlosfwagne2 Máy 59)
+- **Hiện tượng & Bẫy thực tế**:
+  - Khi xử lý đổi avatar cho kênh `@carlosfwagne2` (Máy 59 Tik 3, Kho 467/219, Niche Sáng tạo/Tiếng Anh):
+  - Kênh dạng creator/streamer ngồi trước micro thu âm HyperX chia sẻ kiến thức, phía trên đầu thường chèn phụ đề từ vựng tiếng Anh/Việt hoặc icon minh họa (như `"A float of crocodiles"`, `"(adj): cực kỳ tuyệt vời"`).
+  - Khi Haar Cascade nhận diện khuôn mặt, các frame thường gặp 3 lỗi nghiêm trọng khi crop:
+    1. **Bẫy chữ chạm viền tròn**: Frame `v17_002` dính chữ phụ đề và hình con cá sấu trên đỉnh đầu; frame `v23_002` dính chân chữ đỏ `(adj): cực kỳ tuyệt vời` bị viền tròn xanh cắt ngang qua, lọt vụn chữ vào avatar.
+    2. **Bẫy zoom cực đại cắt cụt tóc & cằm**: Frame `v02_001` bị zoom quá sát, cắt lẹm đỉnh tóc và cằm, đáy viền tròn dính chữ banner `... ANH THÌ EM ...`.
+    3. **Bẫy micro che ngũ quan**: Micro thu âm góc dưới nếu căn tâm quá thấp sẽ che lấp cằm hoặc bờ môi nhân vật.
+- **Quy trình tinh chỉnh & sàng lọc 4 tầng đạt chuẩn 100%**:
+  1. **Tầng 1 (Haar Cascade & Center-based Crop ban đầu)**:
+     - Quét representative frames, xác định bounding box mặt người thật.
+  2. **Tầng 2 (Giám định ngữ nghĩa qua `ag_cli.py ask`)**:
+     - Chạy lệnh kiểm định 4 tiêu chí bắt buộc: (1) Ngũ quan đầy đủ 100%, (2) Cân đối tâm, (3) Đỉnh đầu và cằm an toàn, (4) Hoàn toàn sạch chữ/phụ đề rác.
+     - Nếu phát hiện chữ chạm viền trên: Hạ nhẹ `cy` (ví dụ `cy = fy + fh * 0.52`) và thu nhỏ `side` (ví dụ từ 520px xuống 480px) để đẩy toàn bộ khối chữ ra ngoài viền tròn hoặc chọn frame có khoảng trống trên đầu sạch hơn (như `v11_003` và `v19_002`).
+  3. **Tầng 3 (Xử lý vị trí Micro thu âm)**:
+     - Micro chỉ được phép xuất hiện ở góc dưới (hướng 7h–8h) ngang tầm ngực/cổ áo; BẮT BUỘC toàn bộ cằm, khóe miệng và đường quai hàm không bị micro che khuất.
+  4. **Tầng 4 (Soi mắt `browser_vision` bắt buộc trước khi gửi)**:
+     - Mở trực tiếp file `optA_circle_preview.jpg` và `optB_circle_preview.jpg` qua `browser_navigate` và gọi `browser_vision` để mắt thật của Coordinator xác nhận đạt chuẩn trước khi đính kèm thẻ `MEDIA:<path>`.
+
+
 
 
 
