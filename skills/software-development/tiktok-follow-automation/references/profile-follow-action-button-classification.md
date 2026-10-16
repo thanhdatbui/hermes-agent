@@ -29,16 +29,23 @@ Rất nhiều tài khoản **CHƯA FOLLOW** (hoặc vừa tap nhưng bị server
 ## 4. Kỷ luật cài đặt mã nguồn (XML & WinRT OCR)
 
 ### A. Trong bộ phân tích XML (`verify_follow.py`):
-- Whitelist đầy đủ các resource ID nút action theo từng phiên bản TikTok (`id/fds`, `id/ff8`, `id/fm9`, `id/fmp`, `id/fo4`...).
+- **Đối xứng Semantic Matcher trong `_is_profile_action_node`:**
+  - Bắt buộc nhận diện các nút `not_followed` (`Follow`, `Follow lại`, `Theo dõi`) bằng semantic text/content-desc (`bounds[1] < 1200`) giống như `message_markers`, KHÔNG ĐƯỢC chỉ phụ thuộc cứng vào danh sách ID cũ `_ACTION_BUTTON_SUFFIXES`.
+  - Nếu chỉ nhận diện `Nhắn tin` theo text còn `Follow` theo resource ID, khi TikTok đổi ID nút Follow (như `id/fo4`, `id/fmp`), nút Follow bị lọt lưới $\rightarrow$ XML chỉ còn nút Nhắn tin $\rightarrow$ phán nhầm `followed`!
 - Khi có đúng 1 nút `not_followed` (`Follow`/`Follow lại`) và 1 nút `Nhắn tin`, bắt buộc phân loại là `not_followed`.
+- Trong các hàm fallback (như `_classify_profile_action` trong Mode 2), danh sách `followed_kw` TUYỆT ĐỐI CẤM chứa `"nhắn tin"`, `"message"`, `"send message"` — chỉ chấp nhận `"đang theo dõi"`, `"following"`, `"friends"`, `"bạn bè"`.
 
 ### B. Trong bộ phân tích OCR (`ocr.py` & `automation_core.ocr`):
-1. **Khử bẫy Substring:**
+1. **Khử bẫy "Nhắn tin" trong `FOLLOWED_KEYWORDS`:**
+   - CẤM TUYỆT ĐỐI đưa `"nhan tin"`, `"message"`, `"gui tin nhan"` vào danh sách `FOLLOWED_KEYWORDS` của OCR.
+   - Khi OCR chỉ thấy duy nhất nút `Nhắn tin` (do camera/OCR bỏ sót nút `Follow` màu đỏ vì tương phản nền), OCR BẮT BUỘC trả về `unknown` (fail-closed), TUYỆT ĐỐI CẤM phán `followed`.
+   - `FOLLOWED_KEYWORDS` trong OCR CHỈ chấp nhận: `"dang theo doi"`, `"ban be"`, `"friends"`, `"following"`.
+2. **Khử bẫy Substring:**
    - `"follower"` chứa `"follow"`, `"127 Đã follow"` / `"0 Đang follow"` chứa `"follow"`. Nếu dùng kiểm tra substring `kw in text` sẽ nhận nhầm cột thống kê thành nút Follow!
    - `"dang theo doi"` chứa `"theo doi"`. `"dang theo doi"` là nhãn đã follow (`followed`), nhưng `"theo doi"` lại là nút chưa follow (`not_followed`). Bắt buộc loại trừ `"dang theo doi"` trước khi kiểm tra `"theo doi"`.
-2. **Loại trừ nhãn đếm (Stat Counters):**
+3. **Loại trừ nhãn đếm (Stat Counters):**
    - Bắt buộc lọc qua regex `r"follower"`, `r"followers"`, `r"dang\s+follow"`, `r"da\s+follow"` và word boundaries `\b`.
-3. **Giới hạn dải Action Band ($y < 1200$):**
+4. **Giới hạn dải Action Band ($y < 1200$):**
    - Nút bấm hành động chỉ nằm ở khoảng $y$ từ 450 đến 850 (trên màn hình chuẩn).
    - Giới hạn $y < 1200$ để loại bỏ hoàn toàn phần text mô tả (Bio) bên dưới (tránh dính text Bio như *"Nhắn tin Zalo..."*, *"Follow ủng hộ mình nhé..."*).
 
