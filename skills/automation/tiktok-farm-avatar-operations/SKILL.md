@@ -5,7 +5,7 @@ description: Use when running avatar-only jobs on TikTok farm.
 
 # TikTok Farm Avatar Operations
 
-- Avatar Hallucination & Face Extraction: [references/avatar-hallucination-prevention-and-raw-video-face-extraction.md](references/avatar-hallucination-prevention-and-raw-video-face-extraction.md)
+- Avatar Hallucination & Face Extraction: [references/avatar-hallucination-prevention-and-raw-video-face-extraction.md](references/avatar-hallucination-prevention-and-raw-video-face-extraction.md) (Chống ảo giác, chống up lại y hệt avatar cũ, trích xuất reviewer showroom, xử lý lỗi workbook header alias Folder Video)
 - Avatar Text-Banner Crop & Coordinator Response: [references/avatar-text-banner-crop-triage-and-non-empty-coordinator-response-20261016.md](references/avatar-text-banner-crop-triage-and-non-empty-coordinator-response-20261016.md)
 - Autonomous Multi-Account Avatar Operations (2026-10-15): [references/autonomous-multi-account-avatar-replacement-protocol.md](references/autonomous-multi-account-avatar-replacement-protocol.md)
 - Watchdog 6H Dedup State & Queue vs Excel Audit (2026-10-15): [references/watchdog-6h-dedup-state-and-queue-vs-excel-audit-20261015.md](references/watchdog-6h-dedup-state-and-queue-vs-excel-audit-20261015.md)

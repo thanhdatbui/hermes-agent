@@ -694,6 +694,89 @@ Trước khi soạn bất kỳ tin nhắn nào cho User:
   4. **Bước 4 — Nghiệm thu & Chuyển sang OK**:
      - Chỉ sau khi runner nạp ảnh thành công (`AVATAR_SMOKE_SUCCESS`) và đã chụp ảnh màn hình trang cá nhân thực tế, soi mắt qua `browser_vision` xác nhận avatar mới hiển thị sắc nét $\rightarrow$ lúc đó mới cập nhật cột `Avatar = OK` và SQLite `status = DONE`.
 
+---
+
+## 31. Bẫy SKIPPED_LOCKED Khi Runner Báo Exit Code 0 & Đối Soát Device Lock Tránh Nạp Hụt (Sự Cố 16/10/2026 — @daunthzrqig Máy 66 Tik 4)
+- **Hiện tượng**:
+  - Khi kích hoạt nạp avatar đơn máy qua `run_avatar_batch_3accs.py` (bọc trong `with_device_lock.py` hoặc PowerShell `run_tiktok_upload_avatar.ps1`):
+  - Tiến trình kết thúc rất nhanh với `ExitCode: 0` và log thông báo: `Batch completed with no systemic errors... Hoàn tất batch: 0/57 target verified-success. Target bị bỏ qua: ..., 66, ...`.
+  - Nếu Coordinator chỉ nhìn vào Exit code 0 mà vội báo cáo DONE thì sẽ bị vi phạm nghiêm trọng: trên thực tế TikTok chưa hề được nạp avatar mới, và trong database bảng `avatar_replace_queue` trạng thái vẫn là `PENDING`!
+- **Nguyên nhân gốc rễ**:
+  1. Trong file báo cáo `summary.csv` của đợt chạy (tại `D:/CodexRuntime/tiktok-video/batch-runs/batch_tik<N>_list_80_<timestamp>/summary.csv`): Máy 66 bị ghi nhận trạng thái:
+     `"66","0","3","SKIPPED_LOCKED","False","device lock active",,,`
+  2. Thiết bị đang bị một tiến trình chạy nền khác (ví dụ: `tiktok-add-bao-mat-f2a` chạy `run_capture_phase_b.py`) giữ lock độc quyền trên file `C:\Users\Kibe\.codex\device-locks\machine_<N>.lock.json`.
+  3. `run_tiktok_upload_batch.ps1` được thiết kế fail-safe: khi thấy máy có active device lock thì tự động skip và exit 0 để không gây crash toàn bộ batch, dẫn tới hiện tượng "exit code 0 giả lập".
+- **Quy tắc đối soát & Khắc phục bắt buộc**:
+  1. **CẤM suy diễn thành công chỉ qua Exit Code 0**:
+     - Luôn đọc file `summary.csv` mới nhất hoặc kiểm tra `avatar_replace_queue`: nếu cột `Status` là `SKIPPED_LOCKED` hoặc queue vẫn là `PENDING` $\rightarrow$ Khẳng định việc nạp avatar CHƯA diễn ra.
+  2. **Tra cứu tiến trình đang giữ lock $O(1)$**:
+     - Gọi `automation_core.device_lock.inspect_device_lock(<N>)` để biết PID và project đang chạy.
+     - Kiểm tra trạng thái của PID đó qua `psutil.Process(pid)`:
+       * Nếu tiến trình đang chạy ca 2FA/nuôi feed thật: Tuyệt đối CẤM force-kill hay reboot máy.
+       * Chờ đợi tiến trình nền hoàn tất một cách tự nhiên (file lock trên đĩa biến mất / `inspect_device_lock` ném `DEVICE_LOCK_INSPECT_PATH_MISSING`).
+  3. **Tái kích hoạt runner khi thiết bị rảnh**:
+     - Ngay khi file lock được giải phóng hoàn toàn và máy về `LauncherActivity`: Khởi chạy lại runner `with_device_lock.py --machine <N> -- python D:/Taadaa/tools/run_avatar_batch_3accs.py --tik <Tik> --machine <N>`.
+     - Chờ runner thực sự tương tác với TikTok app, hoàn tất nạp avatar, và chụp ảnh nghiệm thu màn hình Profile trước khi báo cáo kết quả cho User.
+
+---
+
+## 32. Quy Trình Staged Handoff Khi Máy Đang Giữ Active Device Lock & Xử Lý Lựa Chọn Phương Án 1/2 Từ Operator (Sự Cố 16/10/2026 — @carlosfwagne2 Máy 59)
+- **Hiện tượng & Bối cảnh thực tế**:
+  - Khi User gửi ảnh profile TikTok kênh `@carlosfwagne2` (Máy 59 Tik 3, Kho 467/219, Niche Sáng tạo) yêu cầu ngắn gọn: *"Đổi ava"*.
+  - Coordinator trích xuất ứng viên từ representative frames, kiểm định qua `ag_cli.py ask` và `browser_vision`, tạo 2 phương án viền tròn xanh gửi Operator:
+    * Phương án 1 (`optA`): Trích từ `v11_003.jpg` (nam áo xám nhìn thẳng, nét mặt tự nhiên, sạch chữ hoàn toàn).
+    * Phương án 2 (`optB`): Trích từ `v19_002.jpg` (nam áo xanh rêu nói chuyện cử chỉ, bố cục creator/streamer).
+  - Operator phản hồi ngắn gọn bằng con số: `"1"` (chọn Phương án 1).
+  - Tuy nhiên, khi kiểm tra hiện trường Máy 59 qua `with_device_lock.py`: Lệnh bị timeout do thiết bị đang bị giữ độc quyền bởi Active Device Lock (`PID 28120`, tiến trình `tiktok-add-bao-mat-f2a / run_batch_live_2fa.py`), màn hình đang ngủ (`OFF (Sleep/Dozing)`).
+- **Các cạm bẫy Coordinator rất dễ mắc phải**:
+  1. **Bẫy phá ngang tiến trình farm**: Cố tình kill PID hoặc reboot máy để giành quyền ADB đổi avatar $\rightarrow$ Làm crash ca bảo mật 2FA đang chạy, vi phạm nghiêm trọng Invariant Farm Safety.
+  2. **Bẫy đóng băng / Viện cớ thoái thác**: Thấy máy có lock liền dừng lại hỏi User hoặc báo lỗi không làm được.
+  3. **Bẫy báo DONE giả mạo**: Đánh dấu hoàn tất khi app TikTok trên máy thật chưa hề được nạp avatar mới.
+- **Quy trình Dàn trận sẵn sàng & Bàn giao Watchdog (Staged Handoff Protocol)**:
+  1. **Nhận diện lựa chọn con số**: Khi Operator gửi tin nhắn chỉ có số `"1"` hoặc `"2"`, Coordinator đối soát ngay với 2 phương án đã đề xuất ở lượt trước để chốt ảnh vuông nguồn tương ứng (`optA_square.jpg` hoặc `optB_square.jpg`, $512 \times 512$).
+  2. **Đồng bộ ảnh vào 3 đầu kho**:
+     - Sao chép ảnh vuông nguồn vào cả 3 thư mục:
+       * `D:/TIKTOK-videonuoinick/<F_out>/avatar.jpg`
+       * `D:/video goc/<F_src>/avatar.jpg`
+       * `D:/video goc/<F_out>/avatar.jpg` (nếu khác $F_{src}$)
+  3. **Tạo marker vật lý khóa cứng chống đè**:
+     - Tạo file marker `.manual_avatar_locked` tại cả 3 thư mục trên để kích hoạt `is_folder_avatar_protected = True`, ngăn chặn vĩnh viễn các script/cron quét tự động tạo lại avatar.
+     - Cập nhật bổ sung folder vào `D:/Taadaa/data/manual_avatar_protected_folders.json`.
+  4. **Kích hoạt cờ PENDING trong SSOT**:
+     - Cập nhật dòng của máy trong Excel `Tik<N>.xlsx`: gán cột `Avatar = 'PENDING'`.
+     - Cập nhật SQLite `avatar_replace_queue`: gán `status = 'PENDING'`, `last_error = NULL`, `updated_at = datetime('now','localtime')`.
+  5. **Bàn giao an toàn cho Cron Watchdog có sẵn**:
+     - Tuyệt đối không tranh chấp ADB khi máy đang bận ca 2FA/nuôi feed.
+     - Dữ liệu ở trạng thái `PENDING` sẽ được cronjob chuẩn `post-evening-avatar-watchdog` (chạy mỗi 5 phút) tự động phát hiện và kích hoạt nạp lên TikTok app ngay khi active device lock được nhả tự nhiên.
+     - Báo cáo rõ ràng, trung thực cho Operator: Khẳng định ảnh đã được dàn trận và khóa bảo vệ 100%, trạng thái chuyển sang PENDING chờ watchdog tự nạp an toàn khi máy rảnh.
+
+---
+
+## 33. Xử Lý Bẫy Lỗi "Missing Required Fields: Folder Video" Trong Runner & Chiến Lược Tìm Reviewer Showroom (Sự Cố 16/10/2026 — @lamnhu3003 Máy 58 Tik 2)
+- **Hiện tượng thực tế**:
+  - Khi User gửi ảnh profile TikTok kênh bán xe máy Yamaha Vân Hải (`@lamnhu3003` Máy 58 Tik 2, Kho 458/163) yêu cầu ngắn gọn: *"Đổi ava"*.
+  - Sau khi crop và khóa avatar thành công, Coordinator chạy runner đơn máy `run_avatar_batch_3accs.py --tik 2 --machine 58`.
+  - Runner lập tức văng lỗi tại bước đọc workbook:
+    `Máy 58: LỖI (exit=1, verified=False, reason=Workflow target error: Missing required fields: Folder Video)`
+- **Nguyên nhân gốc rễ**:
+  1. Trong file workbook thực tế `D:/OneDrive/TaadaaData/kibe/Tik2.xlsx`, header cột 4 là **`Folder Video (Render Dich)`** và cột 5 là **`Video Goc (Nguon Cao)`**.
+  2. Module đọc workbook `D:/Taadaa/Tiktok-video/scripts/tiktok_workflow/account_source.py` định nghĩa từ điển `CANONICAL_HEADERS` chỉ chấp nhận các alias cũ: `{"folder video", "video folder"}` và `{"video goc", "video source", "source video"}`.
+  3. Khi hàm `normalize_header` chuẩn hóa header cột 4 thành `"folder video (render dich)"`, nó không khớp với bất kỳ alias nào, khiến row dictionary bị thiếu key `"Folder Video"`. Hàm `validate_row()` văng lỗi `Missing required fields: Folder Video`.
+- **Giải pháp kỹ thuật chuẩn hóa Header Aliases**:
+  - Bổ sung các alias mở rộng vào `CANONICAL_HEADERS` trong `account_source.py`:
+    * `"Folder Video"`: Thêm `"folder video (render dich)"`, `"folder video render dich"`, `"sttvideo"`.
+    * `"video gốc"`: Thêm `"video goc (nguon cao)"`, `"video goc nguon cao"`.
+- **Kỷ luật dispatch Worker sửa code khi Coordinator hết hạn ngạch T1**:
+  - Khi Coordinator đã đạt trần ghi file T1, BẮT BUỘC dispatch Worker leaf qua `delegate_task` với Patch Contract O(1) chuẩn format:
+    * `FOCUSED_TEST: python -m pytest <file.py>::<test_node> -q` (hoặc `python -m py_compile <file.py>`). CẤM dùng `pytest` trần.
+    * Tất cả đường dẫn file trong contract BẮT BUỘC là đường dẫn tuyệt đối (`D:/...`).
+    * Nhận diện hiện tượng line-ending Windows CRLF: Khi Worker patch file trên Windows, git diff có thể hiển thị full file diff (`git diff --numstat` nhảy 700+ dòng). Kiểm tra bằng `git diff --ignore-space-at-eol --numstat` để xác nhận diff thực tế chỉ $\le 16$ dòng.
+- **Kỷ luật chạy runner nạp avatar (Event-Driven Wakeup)**:
+  - Flow upload avatar trên thiết bị thật (mở TikTok, chuyển tab Hồ sơ, Sửa hồ sơ, nạp ảnh từ Pictures, bỏ tick Nhật ký, bấm Lưu) thường mất $90 - 150$s.
+  - Lệnh terminal foreground với timeout 60s chắc chắn sẽ bị kill giữa chừng (Exit 124).
+  - BẮT BUỘC khởi chạy runner bằng `terminal(background=True, notify_on_complete=True, timeout=360)` theo đúng Invariant Event-Driven Wakeup, để harness tự đánh thức khi tiến trình hoàn tất và chụp ảnh màn hình nghiệm thu thực tế.
+
+
 
 
 
