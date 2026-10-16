@@ -152,4 +152,4 @@ Triết lý tối ưu chi phí & tốc độ vận hành quy mô lớn (160+ dev
 - **Thực thi 100% Offline trên CPU**: Vòng lặp tự động hóa chạy ngầm dùng WinRT OCR (`Windows.Media.Ocr` via `ocr_boxes.ps1`) bóc tách text + bounding box (`[x1, y1, x2, y2]`) trong 0.2s - 0.5s, tốn **đúng 0 token LLM, 0 đồng API**, không phụ thuộc mạng và triệt tiêu lỗi treo `uiautomator dump` XML.
 - **Tái cấu trúc workflow**: Mọi quy trình lớn (Reg, Follow, Login, Rename, Nurture) được phân rã thành chuỗi micro-actions: Screencap -> WinRT OCR box -> Tap tâm box / Keyevent cứng -> WinRT OCR readback verification.
 - **Báo cáo Native Media**: Cronjob cấu hình `no_agent=True` và script in `\nMEDIA:{p_posix}` (dùng `/`) để Telegram Gateway tự động upload ảnh photo mà không cần LLM đọc ảnh.
-- Chi tiết kiến trúc & danh mục repo áp dụng: xem `references/zero-token-offline-state-machine-farm-automation.md`.
+- Chi tiết kiến trúc & danh mục repo áp dụng: xem `references/zero-token-farm-watchdog-and-repo-applicability.md` và `references/zero-token-offline-state-machine-farm-automation.md`.

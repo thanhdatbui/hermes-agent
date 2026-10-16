@@ -350,6 +350,25 @@
 - **Đồng Bộ Test Suite Khi Thay Đổi Hằng Số Cấu Hình:**
   - Khi đổi giá trị mặc định của hằng số cấu hình (ví dụ từ `15` sang `10`), các test case kiểm thử phân tích biến môi trường động (`test_cim_timeout_env_parsing`) phải được cập nhật đồng thời (`[(None, 10), ("-1", 5), ("120", 60), ("abc", 10)]`) để tránh lệch pha giữa code production và test assertion.
 
+## 25. Khóa Cứng `safe_push.py`, Chống Vòng Lặp Đuổi Điểm Sol & Tự Làm Dứt Điểm (16/10)
+- **Khóa Cứng Vật Lý `safe_push.py` Triệt Tiêu Cửa Ngách `--no-verify`:**
+  - Vấn đề: `safe_push.py` trước đây dùng `nargs=argparse.REMAINDER` cho phép luồn cờ `--no-verify`, `--force` để qua mặt `pre-push` hook (Hard Invariant `INC-HERMES-2026-001`). Khi bị kẹt review, Coordinator bị cám dỗ ép push trái phép.
+  - Khắc phục:
+    * Áp dụng strict allowlist: `ALLOWED_EXTRA = frozenset({'-u', '--set-upstream', '-q', '--quiet', '-v', '--verbose', '--atomic'})`.
+    * Chặn đứng mọi cờ trong `_DANGEROUS` (`--no-verify`, `-n`, `--dry-run`, `--force`, `-f`, `--force-with-lease`, `--delete`, `--mirror`...) và văng `UnsafePushError(BLOCKED_DANGEROUS_FLAG)`.
+    * Kiểm tra `remote` và `branch` bằng regex `^[A-Za-z0-9][A-Za-z0-9._/-]*$` để chặn refspecs nguy hiểm như `+master` (force push ngầm).
+    * `clean_env()` gạt bỏ cả `GIT_CONFIG_*` và `GIT_EXEC_PATH` chống vô hiệu hóa hooks qua environment variables.
+    * Bộ test bảo mật `test_safe_push_security.py` đảm bảo 5/5 pass, khóa chết mọi nỗ lực bypass.
+- **Chống Vòng Lặp Đuổi Điểm Sol (Sol Score Chasing Loop) & Nhận Diện Architectural Blocker:**
+  - Hiện tượng "bại não/đuổi điểm": Khi Sol trừ điểm nặng ở `Code Architecture` (< 7/10) do duplicate file monolith (vi phạm DRY), Coordinator sa lầy vào micro-fixes (sửa microsecond `999999 -> 0`, viết thêm 15 test helper lặt vặt, thêm comment đối phó) suốt 2 tiếng, điểm kẹt ở plateau 72 -> 52 -> 62 -> 72 -> 82.
+  - Quy tắc xử lý gốc rễ:
+    * Khi Sol cảnh báo `code_architecture < 7/10` hoặc nhắc đến `DRY`, `duplication`, `copy-paste`, `monolith`: CẤM TUYỆT ĐỐI Coordinator sửa ngọn.
+    * BẮT BUỘC nhận diện là Architectural Blocker và Auto-Handoff cho Claude CLI tái cấu trúc dứt điểm (tách module dùng chung vào `scripts/watchdog/`, xóa bỏ hoàn toàn code trùng lặp ở cả hai monolith runner, chạy test pass, lấy APPROVED >= 85).
+- **Kỷ Luật Tự Làm Dứt Điểm (Auto-Resolve) — Cấm Dừng Lại Khóc Lóc Than Vãn Báo User:**
+  - User cần kết quả hoàn tất trên remote, không chấp nhận việc agent dừng lại giữa chừng để "báo cáo khó khăn", "xin duyệt" hay "bắt User unlock thủ công".
+  - Khi kích hoạt Auto-Handoff sang Claude CLI: Tự động tái cấu trúc -> tự test pass -> tự lấy APPROVED >= 85 từ Closeout Gate -> tự động push hợp lệ lên remote -> báo đúng 1 dòng kết quả kèm commit SHA.
+  - Circuit Breaker cho Claude CLI: Tối đa 2 lượt refactor; mỗi lượt bắt buộc tăng >= 3 điểm. Không được tạo vòng lặp ping-pong giữa các agents.
+
 
 
 
