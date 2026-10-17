@@ -304,6 +304,7 @@ Use `references/avatar-only-scope-and-false-policy-refusal.md` for the incident-
 
 ## References
 
+- `references/video-thumbnail-picker-trap-and-winrt-ocr-anti-hallucination-20261017.md` — **[MỚI 17/10/2026]** Bài học bẫy chọn nhầm thumbnail video "20 lần" trên Photo Picker và kỷ luật WinRT OCR chống bịa đặt thị giác: Cấm phớt lờ kết quả OCR để mô tả theo kỳ vọng chủ quan, bắt buộc quét từ khóa bất thường (`20 lần`, `clip`, `video`, watermark) để phát hiện nhầm thumbnail video trước khi bấm Lưu.
 - `references/mediastore-clutter-and-avatar-crop-hallucination-prevention-20261017.md` — **[MỚI 17/10/2026]** Bài học bẫy ảo giác thị giác & MediaStore Clutter khi nạp avatar (User phản ứng gay gắt vì chọn nhầm ảnh mũ bảo hiểm màu hồng thay vì người tập Yoga): Quy tắc dọn sạch MediaStore index trước khi nạp file mới, cấm mô tả dựa trên kỳ vọng chủ quan, và bắt buộc đối soát Mean BGR / OpenCV Face Detection trên vùng crop trước khi bấm Lưu hoặc gửi ảnh nghiệm thu.
 
 - `references/avatar-standardization-device-lock-and-visual-evidence-20261016.md` — **[MỚI 16/10/2026]** Kỷ luật bằng chứng thị giác khi chuẩn hóa 3 món (Ava-Hashtag-Pin): dựng preview khung tròn, soi mắt trước khi gửi thẻ MEDIA, và xử lý an toàn khi runner gặp SKIPPED_LOCKED do tiến trình batch 2FA ban đêm giữ lock (cấm cướp lock, cập nhật Excel PENDING và hàng đợi SQLite bàn giao watchdog).
