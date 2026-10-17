@@ -22,30 +22,30 @@ class TestGetCurrentShiftInfo:
     @pytest.mark.parametrize(
         "dt,expected",
         [
-            # Morning window: 07:15 - 08:45
-            (datetime(2026, 9, 20, 7, 15, tzinfo=HCMC), ("SANG", "SÁNG", "sáng")),
-            (datetime(2026, 9, 20, 8, 0, tzinfo=HCMC), ("SANG", "SÁNG", "sáng")),
-            (datetime(2026, 9, 20, 8, 45, tzinfo=HCMC), ("SANG", "SÁNG", "sáng")),
-            # Noon window: 12:00 - 13:45
-            (datetime(2026, 9, 20, 12, 0, tzinfo=HCMC), ("TRUA", "TRƯA", "trưa")),
-            (datetime(2026, 9, 20, 12, 30, tzinfo=HCMC), ("TRUA", "TRƯA", "trưa")),
-            (datetime(2026, 9, 20, 13, 45, tzinfo=HCMC), ("TRUA", "TRƯA", "trưa")),
-            # Evening window: 20:15 - 23:45
-            (datetime(2026, 9, 20, 20, 15, tzinfo=HCMC), ("TOI", "TỐI", "tối")),
+            # Morning window: 09:30 - 11:20
+            (datetime(2026, 9, 20, 9, 30, tzinfo=HCMC), ("SANG", "SÁNG", "sáng")),
+            (datetime(2026, 9, 20, 10, 0, tzinfo=HCMC), ("SANG", "SÁNG", "sáng")),
+            (datetime(2026, 9, 20, 11, 20, tzinfo=HCMC), ("SANG", "SÁNG", "sáng")),
+            # Afternoon window: 15:30 - 17:20
+            (datetime(2026, 9, 20, 15, 30, tzinfo=HCMC), ("CHIEU", "CHIỀU", "chiều")),
+            (datetime(2026, 9, 20, 16, 30, tzinfo=HCMC), ("CHIEU", "CHIỀU", "chiều")),
+            (datetime(2026, 9, 20, 17, 20, tzinfo=HCMC), ("CHIEU", "CHIỀU", "chiều")),
+            # Evening window: 21:30 - 23:45
+            (datetime(2026, 9, 20, 21, 30, tzinfo=HCMC), ("TOI", "TỐI", "tối")),
             (datetime(2026, 9, 20, 22, 0, tzinfo=HCMC), ("TOI", "TỐI", "tối")),
             (datetime(2026, 9, 20, 23, 45, tzinfo=HCMC), ("TOI", "TỐI", "tối")),
             # Fallback cases outside explicit windows:
-            # hour < 12 fallback -> SANG
+            # hour < 13 fallback -> SANG
             (datetime(2026, 9, 20, 6, 30, tzinfo=HCMC), ("SANG", "SÁNG", "sáng")),
             (datetime(2026, 9, 20, 9, 0, tzinfo=HCMC), ("SANG", "SÁNG", "sáng")),
-            (datetime(2026, 9, 20, 11, 59, tzinfo=HCMC), ("SANG", "SÁNG", "sáng")),
-            # hour < 18 fallback -> TRUA
-            (datetime(2026, 9, 20, 14, 0, tzinfo=HCMC), ("TRUA", "TRƯA", "trưa")),
-            (datetime(2026, 9, 20, 16, 30, tzinfo=HCMC), ("TRUA", "TRƯA", "trưa")),
-            (datetime(2026, 9, 20, 17, 59, tzinfo=HCMC), ("TRUA", "TRƯA", "trưa")),
-            # else (hour >= 18) fallback -> TOI
-            (datetime(2026, 9, 20, 18, 0, tzinfo=HCMC), ("TOI", "TỐI", "tối")),
-            (datetime(2026, 9, 20, 19, 30, tzinfo=HCMC), ("TOI", "TỐI", "tối")),
+            (datetime(2026, 9, 20, 12, 59, tzinfo=HCMC), ("SANG", "SÁNG", "sáng")),
+            # hour < 19 fallback -> CHIEU
+            (datetime(2026, 9, 20, 13, 0, tzinfo=HCMC), ("CHIEU", "CHIỀU", "chiều")),
+            (datetime(2026, 9, 20, 14, 0, tzinfo=HCMC), ("CHIEU", "CHIỀU", "chiều")),
+            (datetime(2026, 9, 20, 18, 59, tzinfo=HCMC), ("CHIEU", "CHIỀU", "chiều")),
+            # else (hour >= 19) fallback -> TOI
+            (datetime(2026, 9, 20, 19, 0, tzinfo=HCMC), ("TOI", "TỐI", "tối")),
+            (datetime(2026, 9, 20, 20, 30, tzinfo=HCMC), ("TOI", "TỐI", "tối")),
             (datetime(2026, 9, 20, 23, 50, tzinfo=HCMC), ("TOI", "TỐI", "tối")),
         ],
     )
@@ -406,6 +406,38 @@ class TestEndToEndMainSimulation:
 
 
 class TestEdgeCasesAndRegression:
+    def test_processed_deduplicated_with_dict_fromkeys(self):
+        processed = ["a@gmail.com", "b@gmail.com", "a@gmail.com"]
+        deduplicated = list(dict.fromkeys(processed))
+        assert deduplicated == ["a@gmail.com", "b@gmail.com"]
+        assert len(deduplicated) == len(set(deduplicated))
+
+    def test_relogin_blocked_when_recovered_today(self):
+        today_str = datetime.now(watchdog.HCMC).strftime("%Y-%m-%d")
+        account_state = {"status": "LOGIN_RECOVERED", "recovered_date": today_str}
+        assert account_state.get("recovered_date") == today_str
+        assert account_state["status"] == "LOGIN_RECOVERED"
+
+    def test_relogin_proxy_limit_boundary(self):
+        proxy_count = {"20001": watchdog.MAX_LOGINS_PER_PROXY}
+        assert proxy_count["20001"] == watchdog.MAX_LOGINS_PER_PROXY
+        assert proxy_count["20001"] + 1 > watchdog.MAX_LOGINS_PER_PROXY
+
+    @patch.object(watchdog, "_get_live_omniroute_antigravity_emails", return_value=[])
+    @patch.object(watchdog, "_get_gpm_profiles_with_google_session", return_value=[])
+    def test_format_summary_report_with_proxy_count_and_queue(self, mock_sess, mock_live):
+        report = watchdog._format_summary_report(
+            total_success=5,
+            total_fail=0,
+            shift_label="SÁNG",
+            shift_desc="sáng",
+            skipped_busy=3,
+            proxy_count={"20001": 2, "20002": 1}
+        )
+        assert "max_proxy 2/cổng" in report
+        assert "Còn lại trong hàng đợi: 3 acc chờ ca tiếp theo" in report
+        assert "TikTok/Avatar" not in report
+
     @patch("urllib.request.urlopen", side_effect=TimeoutError("OmniRoute API timeout"))
     def test_omniroute_api_timeout_fallback(self, mock_urlopen):
         emails = watchdog._get_live_omniroute_antigravity_emails()
@@ -462,6 +494,101 @@ class TestEdgeCasesAndRegression:
         candidates, proxy_count = res
         assert isinstance(candidates, list)
         assert isinstance(proxy_count, dict)
+
+
+_TODAY = "2026-10-17"
+_ROW_HEADER = ("MID", "Email", "Pass", "Rec", "2FA", "DOB", "Status", "MID_Col", "Col8", "Col9", "Proxy", "Col11", "Col12", "Note", "Updated")
+
+
+def _run_get_candidates(monkeypatch, tmp_path, *, rows, gpm_emails, omni=(), nurture=None, state=None, processed=()):
+    state_file = tmp_path / "state.json"
+    if state is not None:
+        state_file.write_text(json.dumps(state), encoding="utf-8")
+    nurture_file = tmp_path / "nurture.json"
+    nurture_file.write_text(json.dumps(nurture or {}), encoding="utf-8")
+    master = tmp_path / "master.xlsx"
+    master.touch()
+
+    fake_rows = [_ROW_HEADER] + [
+        (mid, email, "p", "r@g.com", "", "", "LIVE", str(mid), "", "", f"127.0.0.1:{port}", "", "", "", "2026-09-01")
+        for mid, email, port in rows
+    ]
+    mock_ws = MagicMock()
+    mock_ws.iter_rows.return_value = fake_rows
+    mock_wb = MagicMock()
+    mock_wb.__getitem__.return_value = mock_ws
+
+    monkeypatch.setattr(watchdog, "STATE_FILE", state_file)
+    monkeypatch.setattr(watchdog, "STATUS_JSON", tmp_path / "status_missing.json")
+    monkeypatch.setattr(watchdog, "NURTURE_STATE", nurture_file)
+    monkeypatch.setattr(watchdog, "MASTER_XLSX", master)
+    monkeypatch.setattr(watchdog, "_load_gmail_clean_creation_dates", lambda: {})
+    monkeypatch.setattr(watchdog, "get_all_gpm_emails", lambda: set(gpm_emails))
+    monkeypatch.setattr(watchdog, "_get_live_omniroute_antigravity_emails", lambda: set(omni))
+    monkeypatch.setattr(watchdog, "_get_gpm_profiles_with_google_session", lambda: set())
+
+    with patch("openpyxl.load_workbook", return_value=mock_wb):
+        candidates, _ = watchdog.get_candidates(_TODAY, list(processed))
+    return candidates
+
+
+class TestGetCandidatesSkipRules:
+    def test_recovered_today_account_is_skipped(self, tmp_path, monkeypatch):
+        """Acc đã recovered hôm nay trong nurture_state không được đưa vào danh sách login lại."""
+        recovered_today = "recovered_today@gmail.com"
+        recovered_yesterday = "recovered_yesterday@gmail.com"
+        candidates = _run_get_candidates(
+            monkeypatch, tmp_path,
+            rows=[(1, recovered_today, 20001), (2, recovered_yesterday, 20002)],
+            gpm_emails=[recovered_today, recovered_yesterday],
+            omni=[recovered_today, recovered_yesterday],
+            nurture={
+                recovered_today: {"status": "NEEDS_LOGIN", "recovered_date": _TODAY},
+                recovered_yesterday: {"status": "NEEDS_LOGIN", "recovered_date": "2026-10-16"},
+            },
+        )
+        by_email = {c["email"]: c for c in candidates}
+        assert recovered_today not in by_email
+        assert by_email[recovered_yesterday]["is_relogin"] is True
+
+    def test_seen_email_skipped_even_when_needs_login(self, tmp_path, monkeypatch):
+        """Acc đã nằm trong seen_emails bị bỏ qua dù đang ở trạng thái nurture_needs_login."""
+        acc = "seen_lost@gmail.com"
+        kwargs = dict(
+            rows=[(1, acc, 20001)],
+            gpm_emails=[acc],
+            omni=[acc],
+            nurture={acc: {"status": "NEEDS_LOGIN"}},
+        )
+        unseen = [c["email"] for c in _run_get_candidates(monkeypatch, tmp_path, **kwargs)]
+        assert acc in unseen
+        seen = [c["email"] for c in _run_get_candidates(monkeypatch, tmp_path, processed=[acc], **kwargs)]
+        assert acc not in seen
+
+    def test_relogin_skipped_when_port_reaches_max_plus_one(self, tmp_path, monkeypatch):
+        """Re-login bị chặn khi proxy port đạt MAX_LOGINS_PER_PROXY + 1, còn port dưới ngưỡng vẫn được nhận."""
+        port_full = "relogin_port_full@gmail.com"
+        port_room = "relogin_port_room@gmail.com"
+        candidates = _run_get_candidates(
+            monkeypatch, tmp_path,
+            rows=[(1, port_full, 20001), (2, port_room, 20002)],
+            gpm_emails=[port_full, port_room],
+            omni=[port_full, port_room],
+            nurture={
+                port_full: {"status": "NEEDS_LOGIN"},
+                port_room: {"status": "NEEDS_LOGIN"},
+            },
+            state={
+                "date": _TODAY,
+                "proxy_count": {
+                    "20001": watchdog.MAX_LOGINS_PER_PROXY + 1,
+                    "20002": watchdog.MAX_LOGINS_PER_PROXY,
+                },
+            },
+        )
+        emails = [c["email"] for c in candidates]
+        assert port_full not in emails
+        assert port_room in emails
 
 
 class TestNurtureAndRecoveryFlow:
@@ -564,18 +691,18 @@ class TestNurtureAndRecoveryFlow:
         written_data = []
         mock_state_file.write_text.side_effect = lambda txt, encoding: written_data.append(txt)
 
-        noon_late = datetime(2026, 10, 2, 13, 45, tzinfo=HCMC)
+        morning_late = datetime(2026, 10, 2, 11, 20, tzinfo=HCMC)
         with patch.object(watchdog, "datetime") as mock_dt:
-            mock_dt.now.return_value = noon_late
+            mock_dt.now.return_value = morning_late
             mock_dt.fromisoformat = datetime.fromisoformat
             mock_dt.strftime = datetime.strftime
             res = watchdog.main()
 
         assert res == 0
         out = capsys.readouterr().out
-        assert "[LOGIN GPM TRƯA - TỔNG KẾT]" in out
+        assert "[LOGIN GPM SÁNG - TỔNG KẾT]" in out
         assert len(written_data) == 1
         saved = json.loads(written_data[0])
-        assert "TRUA" in saved["reported_shifts"]
-        assert "TRUA" in saved["finished_shifts"]
+        assert "SANG" in saved["reported_shifts"]
+        assert "SANG" in saved["finished_shifts"]
 

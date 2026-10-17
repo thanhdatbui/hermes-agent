@@ -425,6 +425,8 @@ def get_candidates(today_str: str, processed: list[str]) -> list[dict]:
             nurture_data = json.loads(NURTURE_STATE.read_text(encoding="utf-8"))
             for em, info in nurture_data.items():
                 if isinstance(info, dict) and info.get("status") == "NEEDS_LOGIN":
+                    if info.get("recovered_date") == today_str:
+                        continue
                     nurture_needs_login.add(em.lower())
         except Exception as e:
             log(f"Lỗi đọc gpm_gmail_nurture_state: {e}")
@@ -489,8 +491,8 @@ def get_candidates(today_str: str, processed: list[str]) -> list[dict]:
                             pass
 
                 is_lost_session = (em_l in nurture_needs_login)
-                # Cho phép tài khoản mất session (is_lost_session=True) bypass qua seen_emails để được cứu phiên trong cùng ngày
-                if (em_l in seen_emails and not is_lost_session) or em_l in excluded_emails:
+                # Chốt chặn chống lặp vô tận: Đã xử lý hôm nay hoặc nằm trong excluded thì bỏ qua tuyệt đối
+                if em_l in seen_emails or em_l in excluded_emails:
                     continue
                 if em_l in omniroute_success and not is_lost_session:
                     continue
@@ -528,6 +530,7 @@ def get_candidates(today_str: str, processed: list[str]) -> list[dict]:
                     "port": port,
                     "priority": priority,
                     "reason": reason,
+                    "is_relogin": is_lost_session,
                 })
         except Exception as e:
             log(f"Lỗi đọc XLSX: {e}")
@@ -541,12 +544,19 @@ def get_candidates(today_str: str, processed: list[str]) -> list[dict]:
     for c in candidates:
         port = c.get("port")
         mid  = c.get("mid")
+        is_relogin = c.get("is_relogin", False)
         if mid in seen_mids:
             log(f"[CANDIDATE-FILTER] {c.get('email')} skipped: mid M{mid} already scheduled in this batch")
             continue
-        if port and current_run_proxy_count.get(port, 0) >= MAX_LOGINS_PER_PROXY:
-            log(f"[CANDIDATE-FILTER] {c.get('email')} skipped: proxy port {port} reached daily limit ({MAX_LOGINS_PER_PROXY})")
-            continue
+        if not is_relogin:
+            if port and current_run_proxy_count.get(port, 0) >= MAX_LOGINS_PER_PROXY:
+                log(f"[CANDIDATE-FILTER] {c.get('email')} skipped: proxy port {port} reached daily limit ({MAX_LOGINS_PER_PROXY})")
+                continue
+        else:
+            if port and current_run_proxy_count.get(port, 0) >= MAX_LOGINS_PER_PROXY + 1:
+                log(f"[CANDIDATE-FILTER] {c.get('email')} skipped: re-login proxy port {port} hit max safety cap")
+                continue
+            log(f"[CANDIDATE-FILTER] {c.get('email')}: RE-LOGIN acc bị văng session trên port {port}")
         filtered.append(c)
         seen_mids.add(mid)
         if port:
@@ -673,14 +683,25 @@ def run_login(c: dict) -> dict:
                     if email in nurture_data and nurture_data[email].get("status") == "NEEDS_LOGIN":
                         nurture_data[email]["status"] = "LOGIN_RECOVERED"
                         nurture_data[email]["recovered_at"] = datetime.now().isoformat()
+                        nurture_data[email]["recovered_date"] = datetime.now(HCMC).strftime("%Y-%m-%d")
                         NURTURE_STATE.write_text(json.dumps(nurture_data, ensure_ascii=False, indent=2), encoding="utf-8")
                         log_telemetry_metric("login_recovered", {"email": email, "mid": mid})
                 except Exception as ex_nur:
                     log(f"[M{mid:02d}] Cập nhật nurture state thất bại (bỏ qua): {ex_nur}")
 
-            # HARD GUARD STATE-MACHINE: CẤM gọi Dual OAuth Google SSO ngay sau login để chống reCAPTCHA/SMS checkpoint
-            # Tài khoản chuyển sang trạng thái GPM_SOAKING để cron nuôi lướt web trước.
-            log(f"[M{mid:02d}] Chuyển {email} sang trạng thái GPM_SOAKING chờ cron nuôi tự nhiên.")
+            # HARD GUARD STATE-MACHINE & AUTO-NURTURE TRIGGER
+            log(f"[M{mid:02d}] Chuyển {email} sang trạng thái GPM_SOAKING và nối script nuôi tự nhiên.")
+            nurture_script = Path(r"D:\Taadaa\GPM auto\scripts\cron_gpm_gmail_nurture.py")
+            if nurture_script.exists():
+                log(f"[M{mid:02d}] 🚀 Nối kích hoạt script nuôi tự nhiên cho {email}...")
+                try:
+                    subprocess.Popen(
+                        [PYTHON_EXE, str(nurture_script), "--email", email],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL
+                    )
+                except Exception as e_nur:
+                    log(f"[M{mid:02d}] Lỗi kích hoạt nurture cho {email}: {e_nur}")
         else:
             log(f"[M{mid:02d}] ✗ {email}")
             if "BLOCKED_WRONG_PASSWORD" in combined:
@@ -709,15 +730,16 @@ def run_login(c: dict) -> dict:
     except Exception as ex:
         log(f"[M{mid:02d}] ERR {email}: {ex}")
         return {**c, "status": "FAIL", "fail_type": "SCRIPT", "error": str(ex)}
-def _format_summary_report(total_success: int, total_fail: int, shift_label: str = "TỐI", shift_desc: str = "tối", skipped_busy: int = 0) -> str:
+def _format_summary_report(total_success: int, total_fail: int, shift_label: str = "TỐI", shift_desc: str = "tối", skipped_busy: int = 0, proxy_count: dict | None = None) -> str:
     live_anti_count = len(_get_live_omniroute_antigravity_emails())
     session_count = len(_get_gpm_profiles_with_google_session())
+    max_p = max(proxy_count.values()) if proxy_count else 0
     lines = [
         f"[LOGIN GPM {shift_label} - TỔNG KẾT]",
-        f"• Kết quả ca: ✓ {total_success} | ✗ {total_fail} | proxy_limit 2/port/ngày | Hoàn tất ca {shift_desc}",
+        f"• Kết quả ca: ✓ {total_success} | ✗ {total_fail} | max_proxy {max_p}/cổng | Hoàn tất ca {shift_desc}",
     ]
     if skipped_busy > 0:
-        lines.append(f"• Bỏ qua an toàn: {skipped_busy} acc nhường máy đang bận cron khác (TikTok/Avatar)")
+        lines.append(f"• Còn lại trong hàng đợi: {skipped_busy} acc chờ ca tiếp theo (tối đa {MAX_WORKERS} workers/lần)")
     lines.append(f"• Antigravity Pool: {live_anti_count} accounts LIVE trên OmniRoute (:20129)")
     lines.append(f"• Profile sẵn Google Session chờ OAuth: {session_count} accounts")
     return "\n".join(lines)
@@ -769,7 +791,7 @@ def main():
         if shift_code not in finished_shifts:
             finished_shifts.append(shift_code)
 
-        all_day_finished = (shift_code == "TOI") or ({"SANG", "TRUA", "TOI"}.issubset(set(finished_shifts)))
+        all_day_finished = (shift_code == "TOI") or ({"SANG", "CHIEU", "TOI"}.issubset(set(finished_shifts)))
 
         state.update({
             "date": today_str,
@@ -803,9 +825,9 @@ def main():
     if not ready:
         now_hcm = datetime.now(HCMC)
         is_late = (
-            (shift_code == "SANG" and now_hcm.hour >= 11 and now_hcm.minute >= 15)
-            or (shift_code == "CHIEU" and now_hcm.hour >= 17 and now_hcm.minute >= 15)
-            or (shift_code == "TOI" and now_hcm.hour >= 23 and now_hcm.minute >= 30)
+            (shift_code == "SANG" and (now_hcm.hour > 11 or (now_hcm.hour == 11 and now_hcm.minute >= 15)))
+            or (shift_code == "CHIEU" and (now_hcm.hour > 17 or (now_hcm.hour == 17 and now_hcm.minute >= 15)))
+            or (shift_code == "TOI" and (now_hcm.hour > 23 or (now_hcm.hour == 23 and now_hcm.minute >= 30)))
         )
         if is_late:
             log(f"Hết giờ ca {shift_desc} ({now_hcm.strftime('%H:%M')}) nhưng còn {len(candidates)} candidates chờ máy rảnh. Chốt ca và gửi báo cáo.")
@@ -817,7 +839,7 @@ def main():
             })
             if shift_code not in reported_shifts:
                 if total_success > 0 or total_fail > 0 or len(candidates) > 0:
-                    print(_format_summary_report(total_success, total_fail, shift_label, shift_desc, skipped_busy=len(candidates)))
+                    print(_format_summary_report(total_success, total_fail, shift_label, shift_desc, skipped_busy=len(candidates), proxy_count=proxy_count))
                 reported_shifts.append(shift_code)
             if shift_code not in finished_shifts:
                 finished_shifts.append(shift_code)
@@ -868,9 +890,9 @@ def main():
 
     now_hcm = datetime.now(HCMC)
     is_late = (
-        (shift_code == "SANG" and now_hcm.hour >= 11 and now_hcm.minute >= 15)
-        or (shift_code == "CHIEU" and now_hcm.hour >= 17 and now_hcm.minute >= 15)
-        or (shift_code == "TOI" and now_hcm.hour >= 23 and now_hcm.minute >= 30)
+        (shift_code == "SANG" and (now_hcm.hour > 11 or (now_hcm.hour == 11 and now_hcm.minute >= 15)))
+        or (shift_code == "CHIEU" and (now_hcm.hour > 17 or (now_hcm.hour == 17 and now_hcm.minute >= 15)))
+        or (shift_code == "TOI" and (now_hcm.hour > 23 or (now_hcm.hour == 23 and now_hcm.minute >= 30)))
     )
     all_done = (len(processed) >= len(candidates) + len(batch)) or is_late
 
@@ -879,7 +901,7 @@ def main():
     if all_done:
         if shift_code not in reported_shifts:
             if total_success > 0 or total_fail > 0 or skipped_busy_count > 0:
-                print(_format_summary_report(total_success, total_fail, shift_label, shift_desc, skipped_busy=skipped_busy_count))
+                print(_format_summary_report(total_success, total_fail, shift_label, shift_desc, skipped_busy=skipped_busy_count, proxy_count=proxy_count))
             reported_shifts.append(shift_code)
         if shift_code not in finished_shifts:
             finished_shifts.append(shift_code)
@@ -888,7 +910,7 @@ def main():
 
     state = {
         "date": today_str,
-        "processed": processed,
+        "processed": list(dict.fromkeys(processed)),
         "proxy_count": dict(proxy_count),
         "total_success": total_success,
         "total_fail": total_fail,
