@@ -192,6 +192,15 @@ def run_night_batch(dry_run: bool = False) -> tuple[int, str]:
     kibe_code = EXIT_SUCCESS
     admin_code = EXIT_SUCCESS
 
+    # Hydrate và pin Kibe workbook nếu đang bị OneDrive Files On-Demand giữ offline
+    try:
+        if sys.platform == "win32" and WORKBOOK_PATH.exists():
+            subprocess.run(["attrib", "-u", "+p", str(WORKBOOK_PATH)], capture_output=True, timeout=10)
+            with open(WORKBOOK_PATH, "rb") as f:
+                f.read(10)
+    except Exception as exc:
+        logger.warning("Lỗi hydrate Kibe workbook %s: %s", WORKBOOK_PATH, exc)
+
     # 1. Cluster Kibe (Máy 1 - 80)
     cmd_kibe = [
         PYTHON_EXE,
@@ -232,6 +241,8 @@ def run_night_batch(dry_run: bool = False) -> tuple[int, str]:
         "$env:PYTHONUTF8 = '1'\n"
         f"Set-Location '{_ps_quote(ADMIN_REPO_DIR)}'\n"
         f"$wb = '{_ps_quote(ADMIN_WORKBOOK)}'\n"
+        "attrib -u +p $wb\n"
+        "try { [System.IO.File]::ReadAllBytes($wb) | Out-Null } catch {}\n"
         f"& '{_ps_quote(ADMIN_PYTHON)}' python_runner/run_batch_live_2fa.py "
         "--workbook-path $wb --workbook-sheet 'Tài Khoản' --max-workers 15 --live\n"
         "exit $LASTEXITCODE\n"
