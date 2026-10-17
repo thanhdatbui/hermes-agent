@@ -6,7 +6,7 @@ Hotmail: CẤM mail cá nhân; sinh @fviainboxes.com đọc OTP API. Write-Throu
 §
 Proxy: 1-1. Chuẩn hóa 3 món (crop 512x512 -> chốt PA -> lock/Excel -> run_tiktok_upload_avatar.ps1, CẤM chờ watchdog -> MEDIA:); TT v47 monkey. Pin >=1000 view. Soi mắt trước gửi.
 §
-Farm: O(1). CẤM đẻ script; ava: run_avatar_batch_3accs.py. Lock tên: rename_natural_state.json. Rename TT: bám username, 7d cooldown.
+Farm: O(1). CẤM đẻ script; ava: run_avatar_batch_3accs.py; pin: pin_top_videos.py. Máy đa nick BẮT BUỘC verify username profile khớp target trước thao tác/chụp ảnh. Lock tên: rename_natural_state.json.
 §
 Re-login văng ko chờ 24h nhưng max 1 lần/ngày + write LOGIN_OK; cấm spam nát proxy.
 §

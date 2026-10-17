@@ -457,6 +457,20 @@
     2. Chạy `git checkout HEAD -- <file>` để đưa file về trạng thái sạch của commit HEAD.
     3. Chạy lại suite kiểm thử hồi quy (`tests/test_tiktok_dashboard.py`) để đảm bảo hệ thống xanh sạch 100%.
 
+## 33. Đồng Bộ Ngưỡng Pre-Push Hook (THRESHOLD=80), Khử Nhập Nhằng Đại Từ "T" & Chuẩn Hóa Sol Worker (17/10)
+- **Đồng Bộ Ngưỡng Pre-Push Hook Với Grace Band (80-84):**
+  - **Sự cố lệch pha:** `closeout_gate.py` hỗ trợ Grace Band 80–84 điểm cấp `Verdict: APPROVED`, nhưng file template `hooks/pre-push.sh` và hook cục bộ `.git/hooks/pre-push` trước đây bị ghim cứng `THRESHOLD=85`.
+  - **Hậu quả:** Khi commit đạt 82–83 điểm (đã được Gate duyệt APPROVED), lệnh `git push` vẫn bị Pre-Push Hook chặn đứng vật lý, khiến Coordinator hiểu nhầm là Gate chưa qua và tiếp tục cày điểm lãng phí.
+  - **Khắc phục:** Đồng bộ `THRESHOLD=80` vào cả `hooks/pre-push.sh` và `.git/hooks/pre-push`. Bổ sung test kiểm thử trực tiếp `hooks/pre-push.sh` qua Git Bash với audit log giả lập (`score 79 -> exit 1`, `score 80 -> exit 0`, `score 85 -> exit 0`) và kiểm chứng `_maybe_auto_push` kích hoạt ở score >= 80.
+- **Khử Nhập Nhằng Đại Từ "T" Của User ("T" = "Tao / Owner", Không Phải "Tôi / Tool / Task"):**
+  - Khi User ra chỉ thị: *"T sửa rule clouseout gate r áp dụng đi"*, "T" mang nghĩa là **"Tao" (Chính User/Owner đã sửa rule từ trước, hãy áp dụng kiểm tra lại)**.
+  - Tuyệt đối CẤM hiểu nhầm thành "Tôi (Agent) hãy đi sửa rule Closeout Gate" rồi tự ý chỉnh sửa các file policy/gate. Phải nhận diện đúng đại từ xưng hô của Farm Owner.
+- **Kiến Trúc Fallback Autonomous Worker `sol_worker.py` Qua Sol Web (:20129):**
+  - **ReAct State Machine Local:** Quản lý hội thoại hoàn toàn ở local, độc lập session web, tự động bắt mã lỗi `rc=125` (`QUOTA_BLOCKED`) để chịu lỗi khi proxy router xoay account.
+  - **Line-based Tool DSL:** Dùng các khối phân dòng tường minh (`ACTION: READ_FILE`, `ACTION: PATCH`, `ACTION: COMMAND`, `ACTION: DONE`, `ACTION: BLOCKED`), loại bỏ 100% rủi ro escape string và vỡ cấu trúc JSON khi streaming câu trả lời dài từ ChatGPT Web.
+  - **Cưỡng Chế State Verification Trước Khi DONE:** Bắt buộc duy trì cờ `has_verified = False`. Chỉ bật `True` sau khi lệnh `ACTION: COMMAND` chạy test runner pass; mọi thao tác `PATCH` mới đều tự động reset cờ về `False`. Nếu gọi `DONE` khi chưa verify, worker lập tức từ chối và yêu cầu chạy test kiểm chứng.
+  - **Sandbox Thực Thi & Fail-Closed Proxy:** `shell=False` kết hợp tách token tokenized allowlist (chỉ cho phép `pytest`, `unittest`, `python -m pytest/unittest`, cấm script `.py` tùy ý); ghi file atomic `.tmp.<uuid>` kết hợp rollback an toàn. Tại pool OmniRoute, 100% account ChatGPT Web đều được gán proxy fail-closed, tuyệt đối không chạy bằng IP mạng nhà của máy chủ.
+
 
 
 
