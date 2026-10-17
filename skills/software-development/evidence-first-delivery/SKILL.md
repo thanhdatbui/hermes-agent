@@ -207,6 +207,14 @@ For code changes implementing evidence delivery, run focused offline tests and t
 
 The user prefers direct Vietnamese, concise status, and actual native images rather than folder links or path dumps. Lead with the result, then list only the evidence and blocker that change the decision. Never make the user ask “hình đâu?” after a UI operation.
 
+- **Chống Bẫy Giữ Ảnh Kiểm Tra Ngầm Khiến User Phải Giục ("Sao mày đéo gửi ảnh để tao kiểm tra luôn" - 2026-10-17):**
+  * **Sự cố thực tế**: Sau khi chụp được ảnh màn hình Sửa hồ sơ / Crop thành công (`tmp_inspect_edit_screen_full.png`), Coordinator tiếp tục dispatch thêm subagent nhấn Back để chụp tiếp trang Hồ sơ chính mà không gửi ngay ảnh Sửa hồ sơ đã có cho User. User phải chờ đợi trong bức xúc và giục gay gắt: *"sao mày đéo gửi ảnh đẻ t kiểm tra luôn"*.
+  * **Căn nguyên**: Thói quen ôm giữ ảnh trong máy để chạy tiếp chuỗi kiểm tra nội bộ nhiều vòng mà quên mất nguyên tắc tương tác thời gian thực: Khi một mốc thay đổi giao diện (Crop, Sửa hồ sơ) đã có ảnh bằng chứng rõ ràng, User cần xem ngay để duyệt/thẩm định bằng mắt.
+  * **Quy tắc BẮT BUỘC**:
+    1. **Immediate Delivery Upon Capture**: Ngay khi kéo được ảnh chụp màn hình quan trọng (Crop screen, Sửa hồ sơ với avatar mới) về đĩa cục bộ và chạy nhanh WinRT OCR / Vision xác nhận không có lỗi lạ, BẮT BUỘC phải đính kèm thẻ `MEDIA:<path>` gửi ngay lập tức cho User trong chính lượt phản hồi đó.
+    2. **CẤM TUYỆT ĐỐI** ỉm ảnh lại trong máy để chạy tiếp chuỗi subagents/tool calls ngầm mà không cho User xem ảnh hiện trường đang có.
+    3. Nếu cần kiểm tra thêm màn hình tiếp theo (ví dụ Back về Profile chính), hãy gửi ảnh hiện tại trước kèm thông báo đang chuyển tiếp, hoặc gửi đồng thời.
+
 - **Chống Bẫy Hỏi Xin Phép Rườm Rà Khi Chuẩn Hoá Hồ Sơ / Đổi Avatar (Proactive Delivery vs Rhetorical Inquiry Trap - 2026-10-17):**
   * **Sự cố thực tế**: Khi User gửi ảnh Profile TikTok và ra lệnh *"Chuẩn hoá acc này"*, Coordinator đọc ảnh xong lại dừng lại hỏi xã giao: *"Bạn có muốn tôi trích xuất ngay 2 phương án Avatar từ video gốc để bạn duyệt rồi nạp lên Máy 61 không?"*. User lập tức bức xúc chấn chỉnh: *"Tạo ava đi chứ hỏi chi v"*.
   * **Căn nguyên**: Thói quen thụ động / xin phép thừa thãi của LLM thay vì chủ động tạo kết quả (deliverable artifact) trước khi mở lời.
