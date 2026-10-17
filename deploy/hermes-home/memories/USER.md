@@ -8,7 +8,7 @@ Chốt phiên: Grace 80-84 auto-push khi test xanh; cấm Sonnet cày điểm; S
 §
 Ava/Media: BẮT BUỘC WinRT OCR + soi thật; CẤM bịa mô tả/gửi mù cho có lệ. Menu Ghim/Riêng tư KHÔNG PHẢI publish proof; pHash/crop profile thật cấm báo DONE ảo.
 §
-Worker/Điều phối: 'hỏi Claude'=Sonnet 5.5; Claude thiết kế Coord thi công cấm hỏi lại; Absorption tự động cấm xin phép; sửa rule bắt buộc sửa tới Python guard cấm sửa MD đối phó.
+Worker/Điều phối: 'hỏi Claude'=Sonnet 5.5; 'Tắt' khi game = tắt cửa sổ nháy, cấm tự pause cron; mọi rule phải qua Gate cơ học cấm dặn suông; sửa rule bắt buộc sửa tới Python guard cấm sửa MD đối phó.
 §
 Canary: test đa máy/layout, gửi MEDIA:. Farm 100% Wi-Fi Singbox, CẤM ViChanger/VPN app.
 §
