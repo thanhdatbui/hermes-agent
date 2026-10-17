@@ -4,11 +4,11 @@ Dọn đĩa: duyệt trước. CẤM đẻ script ad-hoc khi có canonical tool 
 §
 Nuôi 4d 3 ca. Ava&2FA tới 5h15 (né cache 4h, báo 6h). Write-Through Excel 3,4,5+G; Starve 96h; mail Graph PC. Reg Gmail: 160 máy (Kibe 1-80, Admin 201-280), cấm hardcode dải máy. Đổi tên TT bám username.
 §
-Chốt phiên: Vào main; Grace 80-84 (diff<=30) auto-push, pre-push THRESHOLD=80; cấm Sonnet cày điểm; User ("T"="Tao/Owner") ép: safe_push --owner-override.
+Chốt phiên: Vào main; Grace 80-84 auto-push; cấm Sonnet cày điểm/test; Strike 3 fail dừng ngay L3, cấm Strike 4; User ép: safe_push --owner-override.
 §
 Ava: WinRT OCR + soi thật, cấm bịa mô tả/mảng đỏ; trích clip gốc. Quét từ lạ (20 lần, 20)la, video) chống picker nhầm clip; kẹt tile 1 soi grid tap đúng ô.
 §
-Worker: 25 wkr; 'hỏi Claude'/CLI=BẮT BUỘC Sonnet 5.5 (CẤM Haiku); bóc cookie CDP cấm bắt User copy tay; trượt 3 lần giao Claude; hỏi gì đáp nấy.
+Worker: 25 wkr; 'hỏi Claude'=BẮT BUỘC Sonnet 5.5; bóc cookie CDP cấm bắt copy tay; trượt 3 lần giao Claude; hỏi gì đáp nấy, cấm ba phải.
 §
 Canary: test đa máy/layout, gửi MEDIA:. Farm 100% Wi-Fi Singbox, CẤM ViChanger/VPN app.
 §
