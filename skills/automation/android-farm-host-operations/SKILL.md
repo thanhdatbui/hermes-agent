@@ -6,6 +6,7 @@ description: "Use when farm devices drop, USB hangs, or entering BIOS."
 # Android Farm Host Operations
 
 References:
+- `references/tft-dual-host-guard-and-reboot-incident-20261017.md` — Bẫy tử huyệt TFT Game Guard chỉ quét máy Kibe và client 3D khiến reboot sập máy Admin trong trận rank (17/10/2026), quy chuẩn quét song song Kibe+Admin và mở rộng toàn bộ họ tiến trình Riot/TFT/Overlay.
 - `references/x99-ehci-usb-reboot-governance-and-adb-auth.md` — Quy chuẩn reboot Farm hàng ngày trước Ca trưa (TFT Game Guard), xử lý dứt điểm lỗi ADB unauthorized sau reboot và khống chế concurrency USB 2.0.
 - `references/x99-ehci-pnp-limit-and-daily-reset-architecture-20261010.md` — Phân tích giới hạn phần cứng Live-Disable PnP trên Intel X99 EHCI (HRESULT 0x8004100c), bằng chứng transport ID liên tiếp, hạ MaxWorkers 25 và kiến trúc Preflight Auto-Reboot định kỳ (10/10/2026).
 - `references/aruba-wifi-recovery-and-anti-drift-incident-20261009.md`
@@ -109,8 +110,10 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
       * Tự động dọn dẹp sentinel flag cũ quá 7 ngày (`cleanup_old_sentinels()`) chống tích tụ rác disk.
     - **Cơ chế hoạt động:**
       * Script `farm_preflight_daily_reset.py` được gọi tại mỗi mốc.
-      * **TFT Game Guard (User Invariant — Chỉ chặn khi đang trong trận đấu thực sự):** Script kiểm tra `League of Legends.exe`. Nếu đang trong trận đấu TFT 3D $\rightarrow$ **HỦY REBOOT NGAY (`ABORT`)** để bảo vệ ván cờ của user, không bị xử thua AFK.
-      * **Cho phép reboot khi ở hàng chờ / sảnh chờ / không chơi:** Nếu chỉ mở `LeagueClient.exe` / Riot Client (lobby / queue) hoặc không mở game $\rightarrow$ **VẪN TIẾN HÀNH REBOOT BÌNH THƯỜNG**.
+      * **TFT Game Guard v2.0 (User Invariant Bất Biến — Quét Song Song Kibe + Admin PC):**
+        - **Bẫy sập ván cờ (Sự cố 17/10/2026):** User chơi TFT trên máy Admin (`D:\x\Riot Games\League of Legends`, `D:\TFTAcademy`). Script cũ chỉ quét local máy Kibe và chỉ bắt duy nhất `league of legends.exe`, bỏ qua máy Admin và bỏ qua client/overlay $\rightarrow$ gửi lệnh reboot làm sập máy Admin khi user đang đánh rank.
+        - **Quy chuẩn bắt buộc:** Script BẮT BUỘC quét song song cả 2 máy (Kibe local + Admin qua SSH). Bắt toàn bộ họ tiến trình: `league of legends.exe`, `tftclient-win64-shipping.exe`, `tftclient.exe`, `leagueclient.exe`, `leagueclientux.exe`, `riotclientservices.exe`, `tftacademy.exe`.
+        - **CẤM phân biệt sảnh chờ vs trong trận:** Chỉ cần BẤT KỲ máy nào có 1 trong các tiến trình trên $\rightarrow$ **HỦY REBOOT NGAY LẬP TỨC (`ABORT`)** để bảo vệ phiên chơi game của User. Nếu SSH sang Admin bị lỗi/timeout $\rightarrow$ Fail-Safe coi như đang chơi game, HỦY REBOOT.
       * Kích hoạt SSH reboot Admin PC, chờ 3s rồi reboot Kibe PC. Cả 2 máy boot vào Desktop với `AutoAdminLogon = 1` trong ~60s, giải phóng sạch sẽ thanh ghi EHCI USB và cấp lại 100% ADB xanh tươi trước mỗi ca chạy.
 - **Tự động phục hồi Cào & Render sau Reboot trên Admin Farm:**
   * Admin PC có `AutoAdminLogon = 1`, Windows tự nạp vào Desktop của user `Admin` sau khởi động lại.
