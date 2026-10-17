@@ -16,6 +16,8 @@ Closeout: Grace 80-84 (diff<=30, pass>=1 test, 0 fail/err, ko lỗi logic/sec) a
 §
 Admin Remote (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; OpenCV venv-core024; launcher host admin qua admin_ssh.py; Haar cascade dễ ảo, soi mắt trước nạp ava.
 §
-Lỗi Farm: (1) Rớt USB/tun0 là L0; (2) 1 folder=1 creator; (3) Header Tik đủ alias ngoặc đơn; (4) Proxy Admin ép LAN 192.168.110.2:100xx (cấm WAN); (5) Màn đen cấm MEDIA:; (6) Popup 'Tổng lượt thích' che switcher tap(540,1400); (7) Watcher kẹt post-reboot do GanProxyWatcherTray Disabled.
+(7) BỎ ViChanger, proxy Wi-Fi Singbox (cấm bật GanProxyWatcherTray).
 §
 Canary phone farm bắt buộc tối thiểu 3-4 máy/màn hình khác nhau (người lạ mở DM, chính chủ/sửa hồ sơ, feed lướt video, popup thử thách); cấm canary trên đúng 1 máy đơn độc.
+§
+Ava: ưu tiên lộ rõ ngũ quan, mắt nhìn thẳng, cấm kính râm to che kín; TopLeftPencil thắt bounds l=10..45 w,h<=130 & né feed (đề xuất/for you); pin video tránh back thừa thoát profile.

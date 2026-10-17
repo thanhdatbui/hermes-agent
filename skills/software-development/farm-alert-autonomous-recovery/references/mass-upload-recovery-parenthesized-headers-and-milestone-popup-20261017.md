@@ -38,14 +38,15 @@
 - **Fix đã áp dụng:**
   Trong `_dismiss_live_surface` (`state_machine.py`), kết hợp tap trực tiếp nút `[X]` đóng camera ở góc trên bên trái `(60, 140)` cùng lệnh `adapter.back()` ở mỗi attempt.
 
-## 4. GanProxyWatcherTray Disabled làm treo Reboot Recovery
-- **Triệu chứng:** Runner gặp lỗi UI/màn hình đen và kích hoạt `SOFT REBOOT RECOVERY`, nhưng sau khi máy boot xong thì dừng ở:
+## 4. 🛑 CẢNH BÁO: BỎ HOÀN TOÀN VICHANGER — CẤM BẬT LẠI WATCHER (USER CORRECTION 2026-10-17)
+- **Triệu chứng nhầm lẫn:** Runner gặp lỗi UI kích hoạt `SOFT REBOOT RECOVERY`, sau reboot dừng ở:
   `Guarded reboot recovery failed: proxy watcher did not publish post-reboot readiness after reboot`
-- **Root cause:** Scheduled Task `GanProxyWatcherTray` trên Windows bị chuyển sang trạng thái `Disabled`. Sau khi thiết bị boot lại, không có watcher tự động kích hoạt ViChanger để cấp VPN `tun0`.
-- **Fix đã áp dụng:**
-  Kích hoạt lại task qua PowerShell:
-  `Enable-ScheduledTask -TaskName GanProxyWatcherTray; Start-ScheduledTask -TaskName GanProxyWatcherTray`
-  Xác nhận 2 process `gan_proxy_fleet.py watch` (PID venv automation + PID Python312 child) chạy bình thường và ghi `WATCH_EVENT_VERIFIED_SUCCESS`.
+  Agent từng nhầm lẫn rằng task `GanProxyWatcherTray` bị tắt là lỗi và tự ý bật lại watcher.
+- **BẢN CHẤT CỐT LÕI (USER INVARIANT):**
+  - **Farm đã BỎ HOÀN TOÀN ViChanger từ tháng 9/2026:** Toàn bộ 80 máy Kibe chạy proxy ở **tầng Wi-Fi / Router MikroTik + Container Singbox** (`192.168.110.2:20001..20080`), gán qua `global http_proxy`. Máy KHÔNG cài/chạy app ViChanger, KHÔNG dùng card mạng `tun0`.
+  - Task `GanProxyWatcherTray` **BẮT BUỘC ĐỂ TRẠNG THÁI DISABLED**. CẤM TUYỆT ĐỐI bật lại task này hay chạy bất kỳ tiến trình `gan_proxy_fleet.py watch` nào trên máy Kibe.
+  - Lỗi `proxy watcher did not publish post-reboot readiness` là do code runner còn sót logic chờ file marker `.codex/device-readiness/<hash>.json` sau soft-reboot.
+  - **Hành động đúng:** KHÔNG cố phục hồi ViChanger; thay vào đó giải quyết dứt điểm các lỗi UI (popup che, nút bấm không ăn) để quy trình đăng bài chạy thẳng mượt mà, không kích hoạt soft-reboot.
 
 ## 5. Downloader Admin kẹt 502 Bad Gateway do WAN loopback
 - **Triệu chứng:** Log cào video `download_admin_p10.log` trên host Admin văng lỗi:

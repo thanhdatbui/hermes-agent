@@ -207,6 +207,13 @@ For code changes implementing evidence delivery, run focused offline tests and t
 
 The user prefers direct Vietnamese, concise status, and actual native images rather than folder links or path dumps. Lead with the result, then list only the evidence and blocker that change the decision. Never make the user ask “hình đâu?” after a UI operation.
 
+- **Chống Bẫy Hỏi Xin Phép Rườm Rà Khi Chuẩn Hoá Hồ Sơ / Đổi Avatar (Proactive Delivery vs Rhetorical Inquiry Trap - 2026-10-17):**
+  * **Sự cố thực tế**: Khi User gửi ảnh Profile TikTok và ra lệnh *"Chuẩn hoá acc này"*, Coordinator đọc ảnh xong lại dừng lại hỏi xã giao: *"Bạn có muốn tôi trích xuất ngay 2 phương án Avatar từ video gốc để bạn duyệt rồi nạp lên Máy 61 không?"*. User lập tức bức xúc chấn chỉnh: *"Tạo ava đi chứ hỏi chi v"*.
+  * **Căn nguyên**: Thói quen thụ động / xin phép thừa thãi của LLM thay vì chủ động tạo kết quả (deliverable artifact) trước khi mở lời.
+  * **Quy tắc BẮT BUỘC**:
+    1. Khi nhận yêu cầu chuẩn hoá hoặc đổi avatar, Coordinator BẮT BUỘC tự động tiến hành trích xuất khung hình ứng viên từ kho video gốc $F_{src}$, crop chuẩn $512 \times 512$ an toàn viền tròn, ghép ảnh so sánh `comparison_preview.jpg` kèm viền tròn mask TikTok.
+    2. Gửi ngay ảnh `MEDIA:<path>` kèm mô tả khách quan 2 phương án (PA1 vs PA2) ngay trong phản hồi phân tích đầu tiên để User chỉ cần gõ `1` hoặc `2` duyệt chọn. CẤM TUYỆT ĐỐI dừng lại ở phân tích suông rồi hỏi thăm dò *"Có muốn làm không"*.
+
 - **Chống Bẫy Báo Cáo Canary No-Op / Skipped (User chất vấn: "Đâu kết quả chạy canary đâu?" - 2026-10-16):**
   * **Sự cố thực tế**: Khi kiểm thử code mới, Coordinator chạy Canary trên máy test. Do tài khoản active không khớp target và không có trong Switcher, runner kích hoạt fail-safe thoát an toàn (`None, False`). Coordinator báo cáo "Đã chạy Canary xong" mà không đính kèm ảnh đổi trạng thái thực tế. User lập tức chất vấn: *"Đâu kết quả chạy canary đâu?"*.
   * **Căn nguyên**: Nhầm lẫn giữa một lượt chạy an toàn (fail-safe no-op) với việc kiểm chứng thành công tính năng (positive verification).
