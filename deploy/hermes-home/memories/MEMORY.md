@@ -8,7 +8,7 @@ Proxy: 1-1. Chuẩn hóa 3 món (crop 512x512 -> chốt PA -> lock/Excel -> run_
 §
 Farm: O(1). CẤM đẻ script (pin: pin_top_videos.py auto-swap; ava: run_avatar_batch_3accs.py). Máy đa nick verify handle bằng media_verify.py trước khi gửi MEDIA:. Lock tên: rename_natural_state.json.
 §
-GPM: max 5 wkr; re-login văng max 1 lần/ngày (max_proxy 3/cổng, ghi recovered_date); nạp pool chatgpt-web 15p/lần.
+GPM: max 5 wkr; nạp pool chatgpt/gemini-web (0đ quota, tự bóc cookie qua CDP GPM); re-login văng max 1 lần/ngày (max_proxy 3/cổng, ghi recovered_date).
 §
 Stale Upload: xóa draft (_delete_all_profile_drafts). Revert flop: TikWM tải CDN, xóa render. Cào: max 60 clip.
 §
