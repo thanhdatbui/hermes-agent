@@ -115,7 +115,19 @@ Systematic approach to diagnose and fix sync client issues on Windows: stuck "Lo
   5. **Coordinator Anti-Lazy Mandate**: Do not offload manual `.bat` runs to the user; automate the execution and verification end-to-end.
   6. See detailed walkthrough in `references/icloud-windows-appx-signin-hang.md`.
 
-## Pitfalls
+### Google Drive Desktop Cache Redirection & Headless Node Setup Pitfall
+- **Problem (C: Drive Exhaustion)**: Google Drive Desktop defaults to `%LOCALAPPDATA%\Google\DriveFS\<account_id>\content_cache` on the Windows system drive (`C:\`). When syncing or uploading large video pools (e.g. 100GB–5TB farm archives), DriveFS downloads/buffers chunk cache locally, rapidly exhausting the C: drive and crashing system services.
+- **Remediation (Relocate Cache & Stream Mode)**:
+  1. **Strictly enforce "Stream files" mode**: Never use "Mirror files" for large multi-terabyte media pools on bounded SSDs.
+  2. **Redirect Content Cache Directory**:
+     - Via Registry (for automated machine provisioning):
+       Set string value `ContentCachePath` under `HKCU\Software\Google\DriveFS` (or `HKLM\Software\Google\DriveFS` for machine-wide) to point to a high-capacity data drive, e.g. `D:\GoogleDriveCache`.
+     - Via UI: Preferences ⚙️ -> Advanced settings -> Local cache files directory.
+- **Headless Node / SSH Provisioning Limitation**:
+  - Installer `GoogleDriveSetup.exe --silent` can install the binary headlessly via SSH/service session.
+  - **OAuth Sign-in Boundary**: Google Drive Desktop authentication relies on local HTTP loopback (`http://localhost:<port>/`) via the default interactive desktop browser. Pure headless SSH cannot complete Google OAuth without interactive desktop access (AnyDesk, RDP, or desktop console session). Always plan interactive browser sign-in for the initial account binding.
+
+### Pitfalls
 - **Don't just dismiss notification** — file remains in cache, notification returns
 - **Don't delete from cloud** — verify cloud copy is intact first
 - **Killing process without cleanup** — orphaned DB locks may persist

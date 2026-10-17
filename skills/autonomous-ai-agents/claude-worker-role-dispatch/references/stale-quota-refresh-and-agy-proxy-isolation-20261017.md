@@ -46,10 +46,24 @@ Tạo cron job chạy mỗi 30 phút (`refresh-claude-quota-watchdog`):
   * `acc_05`: `dinhlan24072000@gmail.com` (GPM M04) -> `test.taadaa.click:5104` (`mobi4`)
   * `acc_06`: `minhan2745@gmail.com` (GPM M08) -> `test.taadaa.click:5108` (`mobi8`)
   * `acc_07`: `dangmy30011996@gmail.com` (GPM M12) -> `test.taadaa.click:5114` (`mobi14`)
-  * `acc_08` .. `acc_21`: 14 tài khoản Pro nạp bổ sung từ OmniRoute, map 1-1 với dải port 5138, 5101, 5102, 5116, 5117, 5118, 5121..5134 theo đúng GPM profile.
+  * `acc_08`: `dangmai31011996@gmail.com` (GPM M13) -> `test.taadaa.click:5115` (`mobi15`)
+  * `acc_09`: `hoangthibaoanh300920023009@gmail.com` (GPM M14) -> `test.taadaa.click:5116` (`mobi16`)
+  * `acc_10`: `bobbyxruizz0s0o@gmail.com` (GPM M15) -> `test.taadaa.click:5117` (`mobi17`)
+  * `acc_11`: `duongkien12022001@gmail.com` (GPM M01) -> `test.taadaa.click:5101` (`mobi1`)
+  * `acc_12`: `phungthibichngoc180920011809@gmail.com` (GPM M06) -> `test.taadaa.click:5106` (`mobi6`)
+  * `acc_13`: `lamngocdiep030420000304@gmail.com` (GPM M07) -> `test.taadaa.click:5107` (`mobi7`)
+  * `acc_14`: `brittanysbarneskn2xa@gmail.com` (GPM M13) -> `test.taadaa.click:5115` (`mobi15`)
+  * `acc_15`: `lelinh09111997@gmail.com` (GPM M09) -> `test.taadaa.click:5111` (`mobi11`)
+  * `acc_16`: `namdung150755@gmail.com` (GPM 55) -> `test.taadaa.click:5121` (`mobi21`)
+  * `acc_17`: `hoangvy27091999@gmail.com` (GPM 27) -> `test.taadaa.click:5133` (`mobi33`)
+  * `acc_18`: `tachau17042004@gmail.com` (GPM 39) -> `test.taadaa.click:5101` (`mobi1`)
+  * `acc_19`: `benghowelltpkf1@gmail.com` (GPM M38) -> `khoalee.duckdns.org:16002`
+  * `acc_20`: `vuthao04122002a@gmail.com` (GPM 50) -> `test.taadaa.click:5114` (`mobi14`)
+  * `acc_21`: `kellynbishopgq63j@gmail.com` (GPM 44) -> `test.taadaa.click:5106` (`mobi6`)
+  * `acc_22`: `alicelmoralesjvcrj@gmail.com` (GPM 11) -> `test.taadaa.click:5113` (`mobi13`)
 
 ## 3. Kiểm tra trạng thái Pool
 ```bash
 python D:/Taadaa/tools/ag_cli.py pool-status
 ```
-Đảm bảo toàn bộ 21 profiles hiển thị trạng thái `READY` và đi qua đúng proxy Mobi đã map theo GPM.
+Đảm bảo toàn bộ 22 profiles hiển thị trạng thái `READY` và đi qua đúng proxy Mobi/Khoalee đã map theo GPM.

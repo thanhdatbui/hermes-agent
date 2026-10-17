@@ -420,6 +420,22 @@
   - Thay vào đó, môi trường kiểm thử phải dùng autouse fixtures để dọn dẹp các biến môi trường tác nhân (`HERMES_SESSION_KEY`, `HERMES_HOME`, `_HERMES_GATEWAY`) một cách tự nhiên.
   - Mọi thao tác ghi log telemetry sự kiện bị chặn (`AGENT_OVERRIDE_BLOCKED`) BẮT BUỘC phải bọc trong `try/except` an toàn: nếu việc ghi log kiểm toán thất bại/ném ngoại lệ, lệnh từ chối quyền truy cập VẪN BẮT BUỘC PHẢI THỰC THI (fail-closed, không bao giờ được fail-open).
 
+## 29. Khóa Cứng `safe_push.py`, Chặn AI Lạm Quyền Owner Override & Chuẩn Hóa Ref Git (17/10)
+- **Chặn Đứng Tác Nhân Tự Động Sử Dụng `--owner-override`:**
+  - Cờ `--owner-override` là quyền hạn độc quyền của con người (Owner). Nếu phát hiện caller mang biến môi trường tác nhân (`HERMES_SESSION_KEY`, `HERMES_HOME`, `_HERMES_GATEWAY`), lệnh push lập tức bị từ chối với lỗi `BLOCKED_AGENT_OVERRIDE`.
+  - Bổ sung ghi log kiểm toán có cấu trúc ra `D:/Taadaa/logs/safe_push_audit.jsonl` cho toàn bộ các sự kiện: `push_attempt`, `push_rejected`, `owner_override`, và `push_result` (kèm mã thoát, kết quả và trích đoạn output).
+- **Chuẩn Hóa Refspec Theo Quy Tắc Git (Git Ref Formatting Enforcement):**
+  - Ngăn chặn refspec dị thường hoặc mang tính tiêm lệnh: cấm các chuỗi chứa `@{`, `//`, `/.`, `.lock/`, kết thúc bằng `.lock` hoặc bắt đầu/kết thúc bằng dấu gạch chéo `/` và dấu chấm `.`.
+
+## 30. Tự Động Hóa UI Thiết Bị: Kiểm Tra Trạng Thái Action Sheet & Fallback Đa Tầng ATX (17/10)
+- **Kiểm Tra Trạng Thái Giao Diện Trước Khi Bấm Phím Hệ Thống (`pin_top_videos.py`):**
+  - Khi thao tác trên ứng dụng di động (TikTok), cấm gửi phím `KEYCODE_BACK` mù quáng sau khi bấm nút chọn.
+  - Phải gọi `parse_action_sheet(dump_profile_ui_atx(serial))` để kiểm tra xem menu lựa chọn (action sheet) có thực sự còn hiển thị hay không; nếu đã tự đóng thì tuyệt đối KHÔNG bấm BACK vì sẽ làm văng khỏi màn hình Profile.
+- **Cơ Chế Dump UI Dự Phòng (Multi-tier ATX Fallback):**
+  - Ưu tiên gọi `/data/local/tmp/atx-agent curl` với port 7912. Nếu lệnh thất bại hoặc không trả về thẻ `<hierarchy`, tự động fallback sang `curl` thông thường.
+  - Toàn bộ các nhánh chuyển đổi fallback phải được ghi nhận vào `metrics['atx_fallback']` và `metrics['atx_all_failed']` để đảm bảo tính quan sát vận hành.
+
+
 
 
 
