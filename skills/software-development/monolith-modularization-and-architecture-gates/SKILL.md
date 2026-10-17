@@ -14,6 +14,7 @@ metadata:
 Use this skill when refactoring monolithic production scripts (> 1.500 lines) into modular subpackages without disrupting active workloads, breaking backward compatibility, or letting subsequent AI agents undo the modularization.
 
 Reference files:
+- `references/thin-slice-javascript-component-extraction-and-fstring-invariants-20261017.md`: Kỹ thuật phân rã lát cắt mỏng 1.570 dòng JavaScript từ Python f-string sang dashboard/static/*.js, khử ngoặc nhọn kép {{}} và nạp động bảo toàn trần 30KB Closeout Gate.
 - `references/frontend-javascript-thin-slice-modularization-and-hybrid-ocr-20261017.md`: Kỹ thuật bóc tách 104KB JavaScript frontend trong Monolith F-string dưới trần diff 30KB Closeout Gate theo 4 lát cắt mỏng (thin-slices) và kiến trúc Hybrid WinRT OCR (primary) vs XML dump (fallback).
 - `references/execution-engine-vs-watchdog-and-ocr-architecture-20261017.md`: Phân định kiến trúc Execution Engine (multi_machine_feed_session) vs Supervisor Watchdog (feed_session_watchdog), 3 cơ chế gác cổng chống monolith khi viết code mới, và quy tắc vàng chuyển dịch UI dump XML sang WinRT OCR offline.
 - `references/runner-vs-watchdog-architecture-and-anti-monolith-gates-20261017.md`: Phân định rạch ròi Execution Runner (multi_machine_feed_session.py) vs Supervisor Watchdog (feed_session_watchdog.py), chuỗi gọi cronjob nuôi acc thực tế và 3 cơ chế kiểm soát bắt buộc bóc tách khi viết script mới.
