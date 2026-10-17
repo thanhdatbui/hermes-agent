@@ -134,11 +134,18 @@ python D:/Taadaa/tools/pin_top_videos.py --machine 28 --min-views 5000 --max-pin
 
 ## 13. Cơ Chế Dồn Thứ Tự Ghim (Push Reorder) Để Top 1 Luôn Nằm Bên Trái
 - **Bản chất TikTok:** Mỗi khi ghim 1 video, TikTok đưa video đó vào slot đầu tiên bên trái `[0, 0]` và đẩy các video đã ghim trước đó sang phải.
-- **Thứ tự ghim chuẩn:** Để video view cao nhất (Top 1) nằm ở vị trí đầu tiên bên trái, BẮT BUỘC ghim theo thứ tự **Top 3 -> Top 2 -> Top 1**:
+- **Thứ tự ghim chuẩn khi bắt đầu ghim từ đầu:** Để video view cao nhất (Top 1) nằm ở vị trí đầu tiên bên trái, BẮT BUỘC ghim theo thứ tự **Top 3 -> Top 2 -> Top 1**:
   - Ghim Top 3 (ví dụ 1.4K) $\to$ Chiếm slot 1.
   - Ghim Top 2 (ví dụ 2.3K) $\to$ Chiếm slot 1, đẩy Top 3 sang slot 2.
   - Ghim Top 1 (ví dụ 31.3K) $\to$ Chiếm slot 1, đẩy Top 2 sang slot 2, Top 3 sang slot 3.
 - Sau khi ghim đủ 3 video, hàng đầu tiên hiển thị đẹp mắt theo đúng thứ tự: `[Top 1] [Top 2] [Top 3]`.
+- **Mẹo Tối Ưu O(1) Khi Đã Ghim Đủ 3 Video (Single Unpin-Repin Shortcut):**
+  - Nếu kênh đã ghim đủ 3/3 video nhưng clip Top 1 (nhiều view nhất, ví dụ 31.3K) đang nằm ở Cột 2 (giữa) hoặc Cột 3 (bên phải):
+  - Tuyệt đối KHÔNG cần phải bỏ ghim toàn bộ cả 3 clip rồi ghim lại từ đầu (tốn 6 thao tác).
+  - Chỉ cần 2 bước O(1):
+    1. Bỏ ghim (Unpin) đúng video Top 1.
+    2. Bấm Ghim lại (Pin) ngay video Top 1 đó.
+  - Cơ chế LIFO của TikTok sẽ lập tức bốc video Top 1 vừa ghim lại đưa lên chiếm vị trí số 1 ngoài cùng bên trái `[0, 0]`, đẩy 2 video còn lại sang phải. Tiết kiệm 70% thời gian và lượt thao tác cảm ứng ADB.
 
 ## 14. Quy Trình Sửa Bio Chọn Lọc Cho Kênh Hot Qua Dòng Tiểu Sử (ADB Flow)
 - **Kỷ luật Farm**: CẤM đổi bio hàng loạt trên toàn farm bằng script tự động (tránh behavioral burst làm tụt trust score kênh mới dẫn đến 0-view). CHỈ tối ưu bio cho các kênh HOT đã có video viral / cắn đề xuất (>10K view, >500 follower).
@@ -150,6 +157,13 @@ python D:/Taadaa/tools/pin_top_videos.py --machine 28 --min-views 5000 --max-pin
   5. **Checkpoint 1 (Pre-submit)**: Chụp màn hình xác nhận text đã điền vào ô input và nút "Lưu" `(990, 138)` sáng đỏ trước khi bấm.
   6. Bấm "Lưu" tại `(990, 138)`, sau đó gửi phím `KEYCODE_BACK (4)` và tap tab Hồ sơ `(972, 1857)` để refresh.
   7. **Checkpoint 2 (Post-submit)**: Chụp màn hình Profile, kiểm tra text Bio mới đã hiển thị công khai dưới header và chạy `media_verify.py` đối soát đúng username.
+
+## 15. Tiêu Chuẩn Soạn Bio Tự Nhiên Theo Ngách Nội Dung (Niche-Specific Persona)
+- **Tránh bẫy văn phong bot chung chung:** CẤM viết các câu sáo rỗng vô thưởng vô phạt như `"Chào mừng đến với kênh của tôi"`, `"Kênh chia sẻ video hay"`, `"Theo dõi tôi nhé"`.
+- **Phương pháp bóc tách Persona từ Thumbnail & Text Overlay:**
+  * **Ngách Gym / Healthy / Nữ:** Soi text trên video (`Đi tập với tuii`, `Gymer ăn gì`, `Độ mông`) $\implies$ Bắt buộc đồng bộ đại từ xưng hô `"Tui"` (tự nhiên, thân mật kiểu Gen Z), kết hợp 2 trụ cột nội dung: tập luyện + ăn uống eat clean, kèm CTA follow nhẹ nhàng (VD: `Đi tập cùng tui & làm đồ ăn healthy mỗi ngày 💪🥗`).
+  * **Ngách Tiểu phẩm Gia đình / Parody / Đời thường:** Soi tuyến nhân vật và bối cảnh (cha con, tiệm tạp hóa, học sinh nghịch ngợm) $\implies$ Đưa chi tiết nhân vật/bối cảnh vào bio tạo nét riêng biệt và tò mò (VD: `Tiểu phẩm cha con và tiệm tạp hóa bất ổn 😂 Bấm follow để cùng cười nha!`).
+- **Độ dài và biểu tượng:** Dưới 80 ký tự, tối đa 1-2 emoji phù hợp ngữ cảnh, câu từ súc tích hiển thị trọn vẹn trong 1-2 dòng không bị nút "...Thêm" che khuất.
 
 
 
