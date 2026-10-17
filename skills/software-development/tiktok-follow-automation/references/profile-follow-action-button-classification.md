@@ -50,9 +50,13 @@ Rất nhiều tài khoản **CHƯA FOLLOW** (hoặc vừa tap nhưng bị server
 4. **Giới hạn dải Action Band ($y < 1200$):**
    - Nút bấm hành động chỉ nằm ở khoảng $y$ từ 450 đến 850 (trên màn hình chuẩn).
    - Giới hạn $y < 1200$ để loại bỏ hoàn toàn phần text mô tả (Bio) bên dưới (tránh dính text Bio như *"Nhắn tin Zalo..."*, *"Follow ủng hộ mình nhé..."*).
-5. **Cầu dao an toàn khi dập Popup (Popup Safety Guard):**
+5. **Cơ chế Fail-Closed khi chỉ có nút "Nhắn tin" (`allow_message_alone=False`):**
+   - Tài khoản chưa follow hoặc bị nhả follow vẫn có thể mở DM công khai.
+   - Do đó, nếu màn hình chỉ nhận diện được duy nhất nhãn `"Nhắn tin"` / `"Message"` mà không có nhãn xác nhận quan hệ tường minh (`"Bạn bè"`, `"Đang theo dõi"`), hàm `classify_profile_action_ocr` BẮT BUỘC trả về `"unknown"` (mặc định `allow_message_alone=False`).
+   - TUYỆT ĐỐI CẤM phán `followed` khi chỉ nhìn thấy duy nhất nút Nhắn tin.
+6. **Cầu dao an toàn khi dập Popup (Popup Safety Guard):**
    - Tuyệt đối không bấm nút đóng popup nếu trên màn hình xuất hiện bất kỳ từ khóa nhạy cảm / bảo mật nào: `mật khẩu`, `captcha`, `otp`, `đăng nhập`, `thanh toán`, `credential`, `payment`.
-6. **Telemetry & Audit Logging:**
+7. **Telemetry & Audit Logging:**
    - Mọi hàm phân loại (`classify_profile_action_ocr`, `find_follow_button_center_ocr`, `find_popup_dismiss_button_ocr`) bắt buộc ghi log rõ ràng `decision=...` và `reason=...` để phục vụ Closeout Review và audit truy vết hành vi farm.
 7. **Modular Hóa Dùng Chung (`automation_core.ocr`):**
    - Toàn bộ tiện ích WinRT OCR native, fast popup dismissal và profile action classification đã được đóng gói chuẩn tại `from automation_core.ocr import ocr_screen_boxes, find_popup_dismiss_button_ocr, classify_profile_action_ocr, find_follow_button_center_ocr`. Các consumer repo tái sử dụng trực tiếp từ đây, cấm viết lại module rời rạc.

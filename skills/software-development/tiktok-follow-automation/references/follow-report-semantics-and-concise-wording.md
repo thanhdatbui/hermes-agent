@@ -213,4 +213,24 @@ Answer the operator's direct question first, in Vietnamese, with no speculative 
     - Telegram chỉ gửi tóm tắt và link drill-down (`http://192.168.110.123:1905`). Khi có sự cố, Operator hoặc Agent mở Dashboard để tra cứu "bệnh án" của máy đó theo nhu cầu (Query on demand).
 - **Invariant Kỷ Luật Bảo Vệ Test Suite Của Watchdog:**
   * Khung định dạng báo cáo của Watchdog (`feed_session_watchdog.py`, `formatters.py`) được đóng băng và bảo vệ chặt chẽ bởi các assertion trong bộ test (`test_feed_session_watchdog.py`, e.g. kiểm tra dòng đối soát web).
-  * CẤM Coordinator/Worker tự ý cắt bỏ các dòng chi tiết của watchdog khi chưa được chỉ đạo và cập nhật đồng bộ bộ test suite, tránh làm gãy regression gate của repo `tiktok-luot nuoi acc`.
+  - CẤM Coordinator/Worker tự ý cắt bỏ các dòng chi tiết của watchdog khi chưa được chỉ đạo và cập nhật đồng bộ bộ test suite, tránh làm gãy regression gate của repo `tiktok-luot nuoi acc`.
+
+  ### 12. Giải Mã Dòng "Đối Soát TikTok Web" (Lệch Âm / Lệch Dương) & Cạm Bẫy Inspect Máy Bằng ADB
+  - **Bản chất dòng đối soát web trên Telegram:**
+    * Watchdog lấy chênh lệch `following` từ profile công khai TikTok cào bởi snapshot crawler đối chiếu trực tiếp với số follow do bot app ghi nhận (`follow_result.json`).
+    * **Lệch âm (`Lệch -N`, ví dụ `M23: script 2 lượt - web 0 lượt - lệch (-2)`):**
+      - Script trên điện thoại đã thực hiện tap nút Follow thành công (2 lượt), nhưng counter công khai trên web không tăng.
+      - Hai nguyên nhân cốt lõi:
+        1. *Shadow-Drop / Silent Un-follow:* Thuật toán TikTok server từ chối ghi nhận hoặc âm thầm hủy follow sau vài phút (thường gặp ở nick non/Rookie như Row 7 khi proxy/IP bị soi).
+        2. *Độ trễ Snapshot Crawler:* Snapshot web cào trước khi CDN cache của TikTok kịp cập nhật counter. Nếu sang Phiên 2 cào lại mà khớp bù thì là do độ trễ; nếu sang Phiên 2 vẫn là 0 thì 100% là shadow-drop.
+    * **Lệch dương (`Lệch +N`):** Web tăng nhiều hơn bot báo, thường do Grace Buffer 10 phút thu nạp follow từ phiên trước hoặc leak bạn bè gợi ý.
+  - **Cạm bẫy Hard Gate #5 khi Inspect Máy sau Báo Cáo Follow:**
+    * Khi thấy máy bị lệch hoặc nghi kẹt, nếu Coordinator chạy trực tiếp `inspect_machine.py <N>` hoặc lệnh raw ADB:
+      - Sẽ bị **Timeout (>15s/30s)** do thiết bị đang bị giữ lock bởi background runner hoặc transport pipe nghẽn.
+      - Sẽ bị **Hard Gate #5 chặn đứng:** `[HARD GATE #5 - DEVICE LOCK REQUIRED] LỆNH ADB BỊ CHẶN... BẮT BUỘC thực hiện qua with_device_lock.py`.
+      - **Cạm bẫy chuỗi substring:** Guard chặn bất kỳ lệnh shell nào chứa chuỗi `adb` không có `-s <serial>` (kể cả lệnh tra cứu như `which adb` cũng bị chặn).
+    * **Quy chuẩn kiểm tra hiện trường an toàn:**
+      1. Kiểm tra bảng `adb devices` (cho phép liệt kê).
+      2. Chạy qua wrapper có lock độc quyền: `python D:/Taadaa/tools/with_device_lock.py --machine <N> -- <command>`.
+      3. Tránh can thiệp trần hoặc phán đoán ẩu khi máy đang trong pha cooldown/dưỡng nick tự động.
+
