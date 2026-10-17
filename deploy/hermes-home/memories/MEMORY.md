@@ -2,9 +2,9 @@ Chu kỳ 4d: Parity 96h (N1 lẻ, N2 chẵn), N3(R7,8), N4(dưỡng 0fl+up). Sta
 §
 Follow: P1/P2 trần ca; dò +2/ca (max 30); dính nhả vào tù, ra lùi 4 sàn 15. 3 cohort; chưa đủ khỏe cấm fl. Nhả là action block. Chi tiết UID & trần xem modal 🔍 trên :1905.
 §
-Hotmail: CẤM mail cá nhân; sinh @fviainboxes.com đọc OTP. Write-Through: ghi ngay Excel Cột 3,4,5 & G farm. Dual-farm ~1280 acc.
+Hotmail: CẤM mail cá nhân; @fviainboxes.com đọc OTP. Write-Through: ghi ngay Excel 3,4,5 & G farm. Dual-farm ~1280 acc.
 §
-Proxy: 1-1. Chuẩn hóa 3 món (crop 512x512 -> chốt PA -> lock/Excel -> run_tiktok_upload_avatar.ps1); TT v47 monkey. Pin >=1000 view. Soi mắt trước gửi.
+Proxy: 1-1. Chuẩn hóa 3 món (crop 512x512 -> chốt PA -> lock/Excel -> run_tiktok_upload_avatar.ps1); TT v47 monkey. Pin >=1000 view.
 §
 Farm: O(1). CẤM đẻ script (pin: pin_top_videos.py auto-swap; ava: run_avatar_batch_3accs.py). Máy đa nick verify handle bằng media_verify.py trước khi gửi MEDIA:. Lock tên: rename_natural_state.json.
 §
@@ -22,4 +22,4 @@ Canary farm: tối thiểu 3-4 màn/máy khác nhau (DM, sửa hồ sơ, feed, p
 §
 Ava: Trích clip gốc. WinRT OCR lọc sạch text/sticker ('20 lần', text vụn); CẤM gửi MEDIA: mù. Dọn .thumbnails+Camera/*; Picker radio ô 0 (215, 276), ô 1 (483, 276). Bấm Lưu crop Profile so BGR/pHash diff > 15 mới nghiệm thu; kéo refresh profile nếu kẹt cache.
 §
-Reboot 3 ca (05:20, 11:20, 17:20), né ca chạy. Game Guard: CẤM reboot khi TFT in-match (LoL/TFTShipping) hoặc War3 mở (War3/w3l) trên Kibe+Admin.
+Reboot 3 ca (05:20, 11:20, 17:20). Game Guard: CẤM reboot khi TFT in-match/War3. MỌI task ngầm BẮT BUỘC CREATE_NO_WINDOW (0x08000000)/Hidden, CẤM pop cmd.exe cướp focus.

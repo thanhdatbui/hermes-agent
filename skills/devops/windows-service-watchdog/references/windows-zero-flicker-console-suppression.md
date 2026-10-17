@@ -203,3 +203,13 @@ res = subprocess.run(cmd, capture_output=True, text=True, timeout=10, **WIN_KWAR
      - Nếu gọi subprocess (rclone, ffmpeg, powershell), bắt buộc truyền `creationflags=subprocess.CREATE_NO_WINDOW` (`0x08000000`).
      - Định tuyến stdout/stderr vào file log hoặc `DEVNULL`, cấm in ra console.
   3. **Cơ chế ngắt khẩn cấp khi người dùng chơi game:** Nếu người dùng đang trong trận căng thẳng, luôn cung cấp phương án dập tắt tạm thời toàn bộ cron/watchdog nền (`tắt cron` / `Stop-Process`) để bảo vệ 100% không gian chơi game.
+
+---
+
+### 6. Kỷ Luật Pre-Deployment "Zero-Console" Cho Code Mới (Anti-Regression Invariant)
+- **Vấn đề cốt lõi:** User nhiều lần phàn nàn: *"sao mỗi lần mày code cái mới mày lại vi phạm v"*. Nguyên nhân do Agent/Worker khi tạo script mới (watchdog, sync, cleanup, runner) chỉ tập trung vào việc code chạy được logic mà bỏ qua kiểm tra phương thức kích hoạt tiến trình trên môi trường Windows.
+- **Quy tắc bắt buộc khi code mới trên Windows:**
+  1. **CẤM `.bat` / `.cmd` gọi ngầm:** Tuyệt đối không tạo file `.bat` để cho cronjob hoặc background task gọi trực tiếp. Luôn bọc qua VBScript `WScript.Shell.Run(..., 0, False)` hoặc gọi trực tiếp binary với cờ ẩn.
+  2. **CẤM `subprocess` trần không cờ:** Mọi lệnh `subprocess.run`, `subprocess.Popen`, `subprocess.check_call` gọi binary console (`adb.exe`, `git.exe`, `python.exe`, `curl.exe`) BẮT BUỘC phải có `creationflags=subprocess.CREATE_NO_WINDOW` (hoặc `0x08000000`).
+  3. **CẤM `os.system()`:** `os.system()` luôn bật `cmd.exe` với console hiển thị trên Windows; thay thế 100% bằng `subprocess.run(..., creationflags=0x08000000)`.
+  4. **Kỷ luật khi User yêu cầu tắt cron:** Lập tức gọi `cronjob(action='pause')` cho tất cả cronjob đang active song song, kiểm tra sạch cửa sổ bằng `computer_use(action='list_windows')`, sau đó mới trả lời ngắn gọn. Tuyệt đối không đôi co, tranh luận hay giải thích dông dài trước khi hành động dập tắt hoàn tất.
