@@ -540,6 +540,24 @@
   - Trong `sol_worker` hay `claude_worker`, 1 turn là **1 lượt trao đổi round-trip (READ, PATCH, COMMAND, DONE)** bên trong 1 tiến trình chạy duy nhất (mất 30–60s). Nó KHÔNG PHẢI là số lần sửa file và KHÔNG PHẢI là số lần chạy lại Closeout Gate.
   - Một chu trình sửa code + test đàng hoàng cần từ 7–10 turns. Nếu đặt trần quá thấp (<= 5 turns) agent sẽ bị đứt gánh giữa chừng (`MAX_TURNS_REACHED`).
 
+## 39. Dual-Host Reboot Preflight & Game Match Protection Rules (TFT & Warcraft 3) (17/10)
+- **Bản Chất Sự Cố Sập Game Khi Tự Động Reboot 3 Ca:**
+  - Lịch reboot định kỳ (05:20, 11:20, 17:20) dọn bus USB & RAM máy farm.
+  - Sự cố: Script reboot chỉ kiểm tra `psutil` trên máy Kibe, mù hoàn toàn máy Admin (`admin-farm`). Hơn nữa chỉ chặn duy nhất chuỗi `league of legends.exe`, bỏ qua các engine mới và game khác.
+  - Hậu quả: Khi User đánh rank trên Admin PC hoặc chơi Warcraft 3, lệnh SSH `shutdown /r` từ Kibe làm sập ván cờ/trận đấu ngay lập tức.
+- **Quy Tắc Phân Loại Tiến Trình Bắt Buộc:**
+  1. *Teamfight Tactics / League of Legends:*
+     - **In-Match (CẤM REBOOT):** `league of legends.exe` (engine 3D cũ), `tftclient-win64-shipping.exe` (engine 3D TFT mới). Khi có tiến trình này -> ABORT reboot ngay lập tức.
+     - **Lobby / Companion (ĐƯỢC PHÉP REBOOT):** `LeagueClient.exe`, `LeagueClientUx.exe`, `RiotClientServices.exe`, `TFTAcademy.exe`, `MetaTFT.exe`. Ở sảnh chờ thì vẫn cho reboot làm sạch.
+  2. *Warcraft 3 (CẤM REBOOT KHI APP ĐANG MỞ):*
+     - Miễn là Warcraft 3 đang mở (`war3.exe`, `w3l.exe`, `warcraft iii.exe`, `frozen throne.exe`), dù ở menu, custom game hay ingame -> CẤM TUYỆT ĐỐI REBOOT.
+- **Kiểm Tra Đa Máy & Fail-Safe Mạng:**
+  - Bắt buộc kiểm tra đồng thời cả 2 máy (Kibe PC và Admin PC qua SSH).
+  - Nếu SSH sang Admin PC timeout hoặc lỗi -> BẮT BUỘC coi như ĐANG CÓ GAME CHẠY (fail-safe True), cấm reboot mù.
+- **Sentinel Transaction:**
+  - Chỉ ghi sentinel flag sau khi lệnh shutdown local thành công để tránh mất ca nếu shutdown bị từ chối.
+
+
 
 
 

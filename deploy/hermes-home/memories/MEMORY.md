@@ -20,6 +20,6 @@ Singbox :200xx, CẤM VPN app. Wi-Fi: 5GHz Aruba, cấm tăng tx-power. 6Mbps id
 §
 Canary farm: tối thiểu 3-4 màn/máy khác nhau (DM, sửa hồ sơ, feed, popup thử thách); cấm canary trên 1 máy đơn độc.
 §
-Ava: ngũ quan rõ, trích clip gốc. WinRT OCR lọc sạch text/sticker, gửi MEDIA:. Dọn .thumbnails+Camera/*; MediaStore 1 ảnh. Picker radio ô 0 (215, 276), ô 1 (483, 276). Lưu crop BGR diff > 15 nghiệm thu. TopLeftPencil l=10..45 w,h<=130.
+Ava: Trích clip gốc. WinRT OCR lọc sạch text/sticker ('20 lần', text vụn); CẤM gửi MEDIA: mù. Dọn .thumbnails+Camera/*; Picker radio ô 0 (215, 276), ô 1 (483, 276). Bấm Lưu crop Profile so BGR/pHash diff > 15 mới nghiệm thu; kéo refresh profile nếu kẹt cache.
 §
 Reboot 3 ca (05:20, 11:20, 17:20), né ca chạy. Game Guard: CẤM reboot khi TFT in-match (LoL/TFTShipping) hoặc War3 mở (War3/w3l) trên Kibe+Admin.
