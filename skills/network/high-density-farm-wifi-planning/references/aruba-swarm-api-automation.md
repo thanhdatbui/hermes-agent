@@ -124,6 +124,32 @@ zonename "zone1"
 zonename "zone2"
 ```
 
+### D. Incremental Per-AP Tx Power & Channel Tuning (`opcode=action`)
+* **Kỷ luật nâng công suất từ từ (Chống phá sóng chéo):** Khi một AP bị yếu sóng (ví dụ M7 yếu sóng do AP chỉ phát 12 dBm trong khi các AP khác phát 15 dBm), CẤM nâng vọt lên 18–20+ dBm. BẮT BUỘC nâng từng nấc (+2 đến +3 dBm, ví dụ từ `12 dBm` lên `14 dBm` hoặc `15 dBm`) và giữ nguyên kênh tách biệt (ví dụ Ch 36+ vs Ch 100E vs Ch 116).
+* **Lệnh gán cứng kênh & công suất cho 1 AP cụ thể (không đụng các AP khác):**
+  Sent qua `opcode=action, ip=<target_ap_ip>` tới Virtual Controller:
+  ```text
+  a-channel 36+ 14
+  ```
+  *(Cú pháp: `a-channel <channel>[+] <power_dbm>`. Thêm dấu `+` để chỉ định channel bonding trên kênh 36).*
+* **Lệnh trả lại quyền điều khiển tự động cho ARM:**
+  ```text
+  a-channel 0 0
+  ```
+* **Lệnh điều chỉnh dải công suất ARM toàn cụm (`opcode=config`):**
+  ```text
+  arm
+    min-tx-power 12
+    max-tx-power 15
+  ```
+  *(Cần gửi thêm `commit apply` và `write memory` sau khi config).*
+
+### E. Client & AP Radio Status Inspection (`opcode=show`)
+* **Kiểm tra công suất thực tế từng AP qua `show aps`:**
+  Tìm cột `radio0 Power (dBm)` và `radio0 Channel`.
+* **Kiểm tra thông tin client kết nối qua `show summary`:**
+  Bảng `Clients` trong `show summary` chứa đầy đủ: `['MAC', 'Name', 'IP Address', 'ESSID', 'Access Point']`. Cho phép đối soát ngay MAC điện thoại (ví dụ `ac:5f:3e:60:59:1b`) đã liên kết với Access Point nào và có đúng IP không mà không cần SSH vào AP.
+
 ## 5. Verification & Inspection Patterns
 
 ### A. Swarm API Inspection (`opcode=show`)
