@@ -22,6 +22,14 @@ Người vận hành quy định rõ ràng:
   - `league of legends.exe` (Engine trận đấu truyền thống qua LeagueClient)
   - `tftclient-win64-shipping.exe` (Engine trận đấu TFT PC Client / PBE)
 
+### B. Warcraft III (Bất Biến: Mở App Là Cấm Reboot)
+Người vận hành chỉ thị tối cao: *"khi tao đang chơi warcraft cũng đéo đc phép reboot máy, miễn là app warcraft3 mở"*.
+- **CẤM TUYỆT ĐỐI REBOOT** bất cứ khi nào ứng dụng Warcraft 3 đang mở (dù ở menu, sảnh, campaign hay custom map) trên bất kỳ máy nào (Kibe hoặc Admin):
+  - `war3.exe`
+  - `w3l.exe`
+  - `warcraft iii.exe`
+  - `frozen throne.exe`
+
 ---
 
 ## Chuẩn Triển Khai Kiểm Tra Kép (Dual-Host Preflight Check)
