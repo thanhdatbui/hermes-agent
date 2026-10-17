@@ -126,3 +126,53 @@ def test_hydrate_workbook(tmp_path, monkeypatch):
     monkeypatch.setattr(builtins, 'open', mock_open_fail)
     assert wd.hydrate_workbook(dummy) is False
 
+
+def test_run_night_batch_hydrate_failure_handled(monkeypatch, tmp_path):
+    import subprocess
+    import cron_night_tiktok_2fa_watchdog as wd
+
+    repo = tmp_path / 'repo'
+    (repo / 'python_runner').mkdir(parents=True)
+    (repo / 'python_runner' / 'run_batch_live_2fa.py').write_text('', encoding='utf-8')
+    workbook = tmp_path / 'kibe.xlsx'
+    workbook.write_bytes(b'PK\x03\x04testdata123')
+    calls = []
+
+    def fake_run(cmd, *a, **kw):
+        calls.append(cmd)
+        return subprocess.CompletedProcess(cmd, 0, '', '')
+
+    monkeypatch.setattr(wd, 'TIKTOK_2FA_REPO_DIR', repo)
+    monkeypatch.setattr(wd, 'WORKBOOK_PATH', workbook)
+    monkeypatch.setattr(wd, 'hydrate_workbook', lambda *a: False)
+    monkeypatch.setattr(wd.subprocess, 'run', fake_run)
+
+    code, out = wd.run_night_batch(dry_run=False)
+    assert code == 5
+    assert 'WORKBOOK_HYDRATION_FAILED' in out
+    assert '=== CLUSTER KIBE (MÁY 1-80) ===' in out
+    counts = wd.parse_summary_counts(out)
+    assert counts['total'] == 0 and counts['failed'] == 0
+    assert calls and all(cmd[0] == 'ssh' for cmd in calls)
+
+
+def test_main_hydrate_failure_blocked(monkeypatch, tmp_path):
+    import sys
+    import cron_night_tiktok_2fa_watchdog as wd
+
+    saved = []
+    monkeypatch.setattr(wd, 'STATE_DIR', tmp_path)
+    monkeypatch.setattr(wd, 'STATE_FILE', tmp_path / 'state.json')
+    monkeypatch.setattr(wd, 'run_night_batch', lambda dry_run=False: (
+        5, '=== CLUSTER KIBE (MÁY 1-80) ===\nBLOCKED: WORKBOOK_HYDRATION_FAILED'))
+    monkeypatch.setattr(wd, 'is_feed_runner_active', lambda: False)
+    monkeypatch.setattr(wd, 'is_clear_cache_active', lambda: False)
+    monkeypatch.setattr(wd, 'save_state', lambda today_str, details: saved.append(details))
+    monkeypatch.setattr(sys, 'argv', ['cron_night_tiktok_2fa_watchdog.py', '--force'])
+
+    ret = wd.main()
+
+    assert ret == 5
+    assert saved and saved[-1]['status'] == 'failed'
+    assert 'non-acceptable return code 5' in saved[-1]['failure_reason']
+

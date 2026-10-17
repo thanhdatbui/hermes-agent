@@ -181,14 +181,17 @@ def _ps_quote(value: str) -> str:
 def hydrate_workbook(path: Path) -> bool:
     """Hydrate và pin workbook nếu đang bị OneDrive Files On-Demand giữ offline."""
     try:
-        if sys.platform == 'win32' and path.exists():
+        if not path.is_file():
+            logger.warning('Workbook không phải file thường: %s', path)
+            return False
+        if sys.platform == 'win32':
             result = subprocess.run(['attrib', '-u', '+p', str(path)], capture_output=True, timeout=10)
             if result.returncode != 0:
                 logger.warning('Attrib hydrate thất bại (code=%d): %s', result.returncode, path)
                 return False
-            with open(path, 'rb') as f:
-                f.read(10)
-            return True
+        with open(path, 'rb') as f:
+            f.read(10)
+        return True
     except Exception as exc:
         logger.warning('Lỗi hydrate workbook %s: %s', path, exc)
     return False
@@ -209,42 +212,44 @@ def run_night_batch(dry_run: bool = False) -> tuple[int, str]:
     admin_code = EXIT_SUCCESS
 
     # Hydrate và pin Kibe workbook nếu đang bị OneDrive Files On-Demand giữ offline
-    if WORKBOOK_PATH.exists() and not hydrate_workbook(WORKBOOK_PATH):
-        logger.warning('Không thể hydrate workbook %s trước khi chạy batch', WORKBOOK_PATH)
-
-    # 1. Cluster Kibe (Máy 1 - 80)
-    cmd_kibe = [
-        PYTHON_EXE,
-        str(runner_script),
-        "--workbook-path", str(WORKBOOK_PATH),
-        "--workbook-sheet", "Tài Khoản",
-        "--adb-path", str(ADB_PATH),
-        "--live",
-        "--max-workers", "15",
-    ]
-    env_kibe = dict(os.environ)
-    env_kibe["PYTHONPATH"] = f"{TIKTOK_2FA_REPO_DIR / 'python_runner'}{os.pathsep}{AUTOMATION_CORE_SRC}"
-    env_kibe["TAADAA_HOST_CONFIG"] = str(HOST_CONFIG)
-    logger.info("Khởi chạy Cluster Kibe: %s", " ".join(cmd_kibe[:3]))
-    try:
-        proc_kibe = subprocess.run(
-            cmd_kibe,
-            cwd=str(TIKTOK_2FA_REPO_DIR),
-            env=env_kibe,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=5400,
-        )
-        outputs.append(f"=== CLUSTER KIBE (MÁY 1-80) ===\n{proc_kibe.stdout}\n{proc_kibe.stderr}")
-        kibe_code = proc_kibe.returncode
-        logger.info("Cluster Kibe hoàn tất với returncode=%d", kibe_code)
-    except Exception as exc:
-        err_str = f"Lỗi chạy Kibe 2FA đêm: {exc}"
-        logger.error(err_str)
-        outputs.append(err_str)
-        kibe_code = 1
+    if not WORKBOOK_PATH.exists() or not hydrate_workbook(WORKBOOK_PATH):
+        logger.error('Workbook %s không tồn tại hoặc không thể hydrate, dừng Cluster Kibe', WORKBOOK_PATH)
+        kibe_code = 5
+        outputs.append('=== CLUSTER KIBE (MÁY 1-80) ===\nBLOCKED: WORKBOOK_HYDRATION_FAILED')
+    else:
+        # 1. Cluster Kibe (Máy 1 - 80)
+        cmd_kibe = [
+            PYTHON_EXE,
+            str(runner_script),
+            "--workbook-path", str(WORKBOOK_PATH),
+            "--workbook-sheet", "Tài Khoản",
+            "--adb-path", str(ADB_PATH),
+            "--live",
+            "--max-workers", "15",
+        ]
+        env_kibe = dict(os.environ)
+        env_kibe["PYTHONPATH"] = f"{TIKTOK_2FA_REPO_DIR / 'python_runner'}{os.pathsep}{AUTOMATION_CORE_SRC}"
+        env_kibe["TAADAA_HOST_CONFIG"] = str(HOST_CONFIG)
+        logger.info("Khởi chạy Cluster Kibe: %s", " ".join(cmd_kibe[:3]))
+        try:
+            proc_kibe = subprocess.run(
+                cmd_kibe,
+                cwd=str(TIKTOK_2FA_REPO_DIR),
+                env=env_kibe,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=5400,
+            )
+            outputs.append(f"=== CLUSTER KIBE (MÁY 1-80) ===\n{proc_kibe.stdout}\n{proc_kibe.stderr}")
+            kibe_code = proc_kibe.returncode
+            logger.info("Cluster Kibe hoàn tất với returncode=%d", kibe_code)
+        except Exception as exc:
+            err_str = f"Lỗi chạy Kibe 2FA đêm: {exc}"
+            logger.error(err_str)
+            outputs.append(err_str)
+            kibe_code = 1
 
     # 2. Cluster Admin (Máy 201 - 280) via SSH admin-farm
     ps_admin_script = (

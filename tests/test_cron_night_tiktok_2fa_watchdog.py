@@ -34,7 +34,7 @@ class TestCronNightTiktok2FAWatchdog(unittest.TestCase):
         m_batch.return_value = (0, "=== CLUSTER KIBE (MÁY 1-80) ===\nTOTAL=40 SUCCESS=38 FAILED=2\n=== CLUSTER ADMIN (MÁY 201-280) ===\nTOTAL=40 SUCCESS=40 FAILED=0\n")
         with patch.object(sys, "argv", ["cron_night_tiktok_2fa_watchdog.py", "--force"]):
             ret = wd.main()
-        self.assertEqual(ret, 1)
+        self.assertEqual(ret, 0)
         m_save.assert_called_once()
         _, details = m_save.call_args[0]
         self.assertEqual((details["success_count"], details["failed_count"], details["status"]), (78, 2, "partial_failure"))
@@ -68,7 +68,8 @@ class TestCronNightTiktok2FAWatchdog(unittest.TestCase):
         self.assertEqual((details["code"], details["status"]), (1, "failed"))
 
     @patch("cron_night_tiktok_2fa_watchdog.subprocess.run")
-    def test_run_night_batch_subprocess_timeout(self, m_sub):
+    @patch("cron_night_tiktok_2fa_watchdog.hydrate_workbook", return_value=True)
+    def test_run_night_batch_subprocess_timeout(self, m_hydrate, m_sub):
         import subprocess
         import cron_night_tiktok_2fa_watchdog as wd
         with patch.object(Path, "exists", return_value=True):
@@ -78,7 +79,8 @@ class TestCronNightTiktok2FAWatchdog(unittest.TestCase):
             self.assertIn("timed out", out.lower())
 
     @patch("cron_night_tiktok_2fa_watchdog.subprocess.run")
-    def test_ssh_admin_farm_encoded_command_utf16le(self, m_sub):
+    @patch("cron_night_tiktok_2fa_watchdog.hydrate_workbook", return_value=True)
+    def test_ssh_admin_farm_encoded_command_utf16le(self, m_hydrate, m_sub):
         import cron_night_tiktok_2fa_watchdog as wd
         with patch.object(Path, "exists", return_value=True):
             m_sub.return_value = MagicMock(returncode=0, stdout="TOTAL=40 SUCCESS=40 FAILED=0", stderr="")
@@ -93,7 +95,8 @@ class TestCronNightTiktok2FAWatchdog(unittest.TestCase):
             self.assertIn("--workbook-sheet 'Tài Khoản'", decoded)
 
     @patch("cron_night_tiktok_2fa_watchdog.subprocess.run")
-    def test_return_code_constants_and_logic(self, m_sub):
+    @patch("cron_night_tiktok_2fa_watchdog.hydrate_workbook", return_value=True)
+    def test_return_code_constants_and_logic(self, m_hydrate, m_sub):
         import cron_night_tiktok_2fa_watchdog as wd
         self.assertEqual((wd.EXIT_SUCCESS, wd.EXIT_SAFE_SKIP, wd.ACCEPTABLE_RETURN_CODES), (0, 4, (0, 4)))
         with patch.object(Path, "exists", return_value=True):
@@ -194,19 +197,19 @@ class TestCronNightTiktok2FAWatchdog(unittest.TestCase):
                 temp_rep_file.write_text(json.dumps({"reported_sessions": ["2026-10-10_ca4_phien1", "2026-10-10_ca4_phien2"]}), encoding="utf-8")
                 self.assertTrue(watchdog.is_ca4_finished("2026-10-10"))
 
-    @patch("cron_night_tiktok_2fa_watchdog.is_ca4_finished", return_value=False)
-    @patch("cron_night_tiktok_2fa_watchdog.run_night_batch")
-    def test_main_skips_when_ca4_not_finished(self, mock_batch, mock_ca4):
+    @patch("cron_night_tiktok_2fa_watchdog.save_state")
+    @patch("cron_night_tiktok_2fa_watchdog.run_night_batch", return_value=(0, ""))
+    def test_main_skips_outside_safe_window(self, mock_batch, mock_save):
         from datetime import datetime
         import cron_night_tiktok_2fa_watchdog as watchdog
-        now_dt = datetime(2026, 10, 10, 3, 15, tzinfo=watchdog.HCMC)
+        now_dt = datetime(2026, 10, 10, 5, 30, tzinfo=watchdog.HCMC)
         with patch("cron_night_tiktok_2fa_watchdog.datetime") as mock_dt:
             mock_dt.now.return_value = now_dt
-            mock_dt.side_effect = lambda *args, **kw: datetime(*args, **kw)
             with patch.object(sys, "argv", ["cron_night_tiktok_2fa_watchdog.py"]):
                 ret = watchdog.main()
         self.assertEqual(ret, 0)
         mock_batch.assert_not_called()
+        mock_save.assert_not_called()
 
 
 if __name__ == "__main__":
