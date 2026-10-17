@@ -14,6 +14,7 @@ metadata:
 Use this skill when refactoring monolithic production scripts (> 1.500 lines) into modular subpackages without disrupting active workloads, breaking backward compatibility, or letting subsequent AI agents undo the modularization.
 
 Reference files:
+- `references/js-thin-slicing-crlf-normalization-and-sonnet-review-20261017.md`: Kỹ thuật bóc tách đa lát cắt JavaScript (1.500+ dòng xuống 612 dòng), chuẩn hóa CRLF/LF chống phình diff ảo, kỷ luật Claude Sonnet 5.5 review và nguyên tắc Anti-Halting không dừng lại hỏi khi đã được lệnh thi công.
 - `references/thin-slice-javascript-component-extraction-and-fstring-invariants-20261017.md`: Kỹ thuật phân rã lát cắt mỏng 1.570 dòng JavaScript từ Python f-string sang dashboard/static/*.js, khử ngoặc nhọn kép {{}} và nạp động bảo toàn trần 30KB Closeout Gate.
 - `references/frontend-javascript-thin-slice-modularization-and-hybrid-ocr-20261017.md`: Kỹ thuật bóc tách 104KB JavaScript frontend trong Monolith F-string dưới trần diff 30KB Closeout Gate theo 4 lát cắt mỏng (thin-slices) và kiến trúc Hybrid WinRT OCR (primary) vs XML dump (fallback).
 - `references/execution-engine-vs-watchdog-and-ocr-architecture-20261017.md`: Phân định kiến trúc Execution Engine (multi_machine_feed_session) vs Supervisor Watchdog (feed_session_watchdog), 3 cơ chế gác cổng chống monolith khi viết code mới, và quy tắc vàng chuyển dịch UI dump XML sang WinRT OCR offline.
@@ -320,3 +321,11 @@ Khi bảo trì hoặc refactor một script watchdog/runner:
   script: ""
   workdir: "D:/Taadaa/.../scripts"
   ```
+
+## 14. Kỷ Luật Phân Vai Claude Sonnet 5.5 & Tinh Thần Thực Thi Tự Động (Anti-Halting)
+1. **Phân vai Model cứng theo chỉ thị User:**
+   - Khi User nói: *"gọi Claude CLI"*, *"hỏi Claude"*, *"kiểm tra thiết kế / review code"*: **BẮT BUỘC 100% là Claude Sonnet 5.5** (`claude_worker.py --role planner` hoặc `--role reviewer`).
+   - CẤM TUYỆT ĐỐI tự tiện gọi Haiku cho tác vụ tư vấn / review vì Haiku thiếu chiều sâu kiến trúc. Haiku CHỈ dành cho worker gõ code cơ học O(1).
+2. **Quy tắc Anti-Halting (Cấm dừng lại hỏi han khi đã được giao việc):**
+   - Khi User đã phê duyệt kế hoạch lớn (*"làm cả A và B"*, *"làm đi"*): Coordinator phải chủ động thực thi liên tục qua từng lát cắt thin-slice (bóc JS $\to$ sửa file $\to$ test $\to$ review $\to$ commit $\to$ push).
+   - CẤM DỪNG LẠI KHÓC HỎI / XIN PHÉP sau mỗi commit nhỏ. Chỉ dừng lại khi toàn bộ task đã hoàn thành hoặc gặp blocker vật lý thực sự.
