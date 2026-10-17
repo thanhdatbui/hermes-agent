@@ -8,12 +8,12 @@ Chốt phiên: Grace 80-84 auto-push khi test xanh; cấm Sonnet cày điểm; S
 §
 Ava/Media: BẮT BUỘC WinRT OCR + soi thật; CẤM bịa mô tả/gửi mù cho có lệ. Menu Ghim/Riêng tư KHÔNG PHẢI publish proof; pHash/crop profile thật cấm báo DONE ảo.
 §
-Worker: 25 wkr; 'hỏi Claude'=BẮT BUỘC Sonnet 5.5; bóc cookie CDP cấm bắt copy tay; trượt 3 lần giao Claude; hỏi gì đáp nấy, cấm ba phải.
+Worker/Điều phối: 'hỏi Claude'=Sonnet 5.5; Claude thiết kế Coord thi công cấm hỏi lại; Absorption tự động cấm xin phép; sửa rule bắt buộc sửa tới Python guard cấm sửa MD đối phó.
 §
 Canary: test đa máy/layout, gửi MEDIA:. Farm 100% Wi-Fi Singbox, CẤM ViChanger/VPN app.
 §
 Reboot: CẤM reboot khi Kibe/Admin in-match TFT (LoL/TFTClient) hoặc mở War3 (war3/w3l); lobby TFT được reboot; né ca chạy.
 §
-Nguồn video: 'Nguồn cũ' là đúng channel/creator gốc (1 folder = 1 kênh, giữ nguyên creator), cấm nhồi clip kênh khác vào folder cũ.
+Nguồn video: 1 folder=1 creator gốc, cấm nhồi clip kênh khác.
 §
 Báo cáo Telegram: tóm tắt KPI + exception; chi tiết sâu xem Dashboard :1905 modal (🔍), cấm xả rác chat.

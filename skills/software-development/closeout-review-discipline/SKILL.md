@@ -17,6 +17,7 @@ metadata:
 - **Ngưỡng phê duyệt (Verdict APPROVED):**
   - Điểm >= 85/100: APPROVED -> Tiến hành Push.
   - Grace Band (80-84 điểm): Diff <= 30 dòng (O(1)), 100% test PASS (>= 1 test, 0 fail/err) -> APPROVED và Auto-Push qua `safe_push.py`.
+  - ĐỒNG BỘ PRE-PUSH HOOK (THRESHOLD=80): File `.git/hooks/pre-push` và script mẫu `hooks/pre-push.sh` ở các repo (tools, hermes, luotnuoi) bắt buộc đồng bộ `THRESHOLD=80` để khớp tuyệt đối với Grace Band của `closeout_gate.py`, cấm để lệch 85 gây lỗi giả `Gate check FAILED` khi push.
   - CẤM TUYỆT ĐỐI tư duy "WIP branch parking": patch không vào `main` nghĩa là farm không có bản vá, task bắt buộc phải thi công dứt điểm vào `main`.
   - ANTI-PHANTOM CLOSEOUT TRAP: Trước khi chạy closeout_gate.py, BẮT BUỘC kiểm tra `git status --short` và `git diff --stat origin/master..HEAD`. Nếu working tree sạch và local khớp remote (ahead 0), task ĐÃ XONG từ trước, CẤM chạy gate review đè lên commit lịch sử cũ!
   - PER-COMMAND TARGET STAGING: CẤM TUYỆT ĐỐI `git commit -a`, `git add .`, `git add -A`. Bắt buộc chỉ định file đích: `git commit -m "..." -- <target_file> <target_test>`.
