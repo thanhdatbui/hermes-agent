@@ -65,6 +65,15 @@ Khi nhận yêu cầu đổi avatar từ ảnh chụp màn hình hoặc username
   - Worker bị giới hạn chỉ truy cập trong `D:\Taadaa` và lệnh terminal chỉ gồm (`git`, `adb devices`, `inspect_machine.py`, `pytest`, `psutil`). Do đó, nếu cần chuẩn bị tích hợp (cập nhật DB, Excel, cắm cờ khóa, khởi chạy PowerShell runner), Coordinator nên viết và kích hoạt trực tiếp wrapper `D:\Taadaa\tmp\prepare_and_launch_avatar_<may>.py` chạy nền thay vì cố ủy quyền các tác vụ ngoài boundary cho Worker.
 
 ## 5. Kích hoạt Runner Avatar chuyên biệt (Avatar-Only Mode)
+- **CẤM TUYỆT ĐỐI TỰ Ý VIẾT SCRIPT AD-HOC THAY THẾ (Strict Anti-Ad-hoc Invariant):**
+  - CẤM viết các file script ad-hoc như `execute_m<N>_avatar.py`, `run_avatar_m<N>.py`... Việc tự viết script tay vừa vi phạm quy tắc an toàn Farm, vừa làm bypass các lớp bảo vệ (MediaStore cleanup, Account Switcher chuẩn của `automation-core`, Device Lock an toàn) và dễ gây lỗi timeout subagent.
+  - CẤM hoảng sợ khi thấy máy đang mở nick khác: Pipeline chuẩn trong `run_tiktok_upload_avatar.ps1` và `state_machine.py` **đã tích hợp sẵn `ACCOUNT_SWITCHER`**, tự động đọc workbook để switch sang đúng nick mục tiêu trước khi mở Sửa hồ sơ.
+- **Lệnh thực thi chuẩn DUY NHẤT O(1):**
+  BẮT BUỘC dùng launcher chuẩn có sẵn trong `D:/Taadaa/tools/run_avatar_batch_3accs.py`:
+  ```bash
+  python D:/Taadaa/tools/run_avatar_batch_3accs.py --tik <Tik> --machine <Máy>
+  ```
+  *(Chạy nền qua `terminal(background=True, notify_on_complete=True, timeout=300)` để harness tự đánh thức khi runner kết thúc; CẤM TUYỆT ĐỐI polling vòng lặp sleep).*
 - **Phân định quyền chạy Terminal (Coordinator vs Worker):**
   - Worker subagent bị Worker Gate chặn chạy script Python ngoài allowlist và chặn PowerShell (`Worker CHỈ ĐƯỢC PHÉP chạy: git status/diff/log, adb devices, inspect_machine.py <N>, pytest, psutil`). Vì vậy, Worker chỉ làm nhiệm vụ chuẩn bị (crop ảnh, dual-sync, update db/workbook).
   - Coordinator terminal chặn gọi trực tiếp `powershell.exe` (DEFAULT-DENY) và chặn `python -c` có thao tác ghi/xóa/subprocess (`[COORDINATOR GUARD - TERMINAL BLOCKED]`). Đồng thời, lệnh terminal foreground bắt buộc phải khai báo `timeout <= 60s` (nếu thiếu sẽ dính `[GUARD_FOREGROUND_TIMEOUT_MISSING]`).

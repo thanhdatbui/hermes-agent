@@ -14,10 +14,10 @@ metadata:
 > **Canonical policy precedence:** For orchestration and closeout precedence, follow `D:\Taadaa\HERMES_SUBAGENT_RULES.md` marker `CANONICAL-POLICY-PRECEDENCE-2026-10-05`; this skill points to it and does not redefine it.
 
 References:
-- `references/sol-high-scoring-rubric-and-diff-budget.md` — **[16/10]** Ngưỡng diff L0 (21.299B), tinh gọn test, rubric >= 85 (fail-closed, backoff, zombie escalation, cyclomatic).
-- `references/diff-too-large-and-reviewer-handoff-remediation.md` — **[16/10]** L0 diff, Strike 3, fail-closed, cyclomatic, use_cache, autouse fixture.
-- `references/gate-scope-matching-and-parity-lessons.md` — **[15/10]** Scope matching, diff ceiling (<30KB), audit binding.
-- `references/closeout-gate-diff-ceiling-and-scope-refusal.md` — **[15/10]** DIFF_TOO_LARGE (>30KB), refusing partial committed scope invariant, Strike 3 Claude CLI hand-off.
+- `references/sol-high-scoring-rubric-and-diff-budget.md` — **[16/10]** Ngưỡng L0 (21KB), tinh gọn test, rubric >= 85.
+- `references/diff-too-large-and-reviewer-handoff-remediation.md` — **[17/10]** L0 ceiling, fix NEED_CONTEXT qua sequential commits, Strike 3 hand-off, sandbox worker & verify trước DONE.
+- `references/gate-scope-matching-and-parity-lessons.md` — **[15/10]** Scope matching, audit binding.
+- `references/closeout-gate-diff-ceiling-and-scope-refusal.md` — **[15/10]** DIFF_TOO_LARGE, refusing partial scope.
 - `references/sync-hermes-cron-block-identity-and-line-budget.md` — Đồng bộ 100% block giữa scripts/ và hermes_cron/ tránh lệch test helper_block, và kiểm soát line budget Architecture Gate.
 - `references/strike-3-reviewer-handoff-claude-cli.md` — **[15/10]** Strike 3 Reviewer Hand-off: gọi Claude CLI (`claude -p`) sau 3 lần REJECTED.
 - `references/msys-git-diff-external-and-multicommit-gate.md` — MSYS git diff.
