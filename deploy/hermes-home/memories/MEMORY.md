@@ -6,7 +6,7 @@ Hotmail: CẤM mail cá nhân; sinh @fviainboxes.com đọc OTP API. Write-Throu
 §
 Proxy: 1-1. Chuẩn hóa 3 món (crop 512x512 -> chốt PA -> lock/Excel -> run_tiktok_upload_avatar.ps1, CẤM chờ watchdog -> MEDIA:); TT v47 monkey. Pin >=1000 view. Soi mắt trước gửi.
 §
-Farm: O(1). CẤM đẻ script (pin/unpin/swap: pin_top_videos.py, cấm do_*.py); ava: run_avatar_batch_3accs.py. Lock tên: rename_natural_state.json. Rename TT: bám username, 7d cooldown.
+Farm: O(1). CẤM đẻ script; ava: run_avatar_batch_3accs.py. Lock tên: rename_natural_state.json. Rename TT: bám username, 7d cooldown.
 §
 GPM: stop kèm _kill_gpm_chrome; max 5 wkr; cron nạp pool chatgpt-web 15p/lần. Re-login acc văng KHÔNG cooldown 24h; chỉ acc mới log lần đầu mới tính 2 acc/port/ngày.
 §
@@ -20,4 +20,4 @@ BỎ HẾT ViChanger, 100% Singbox 192.168.110.2:200xx, CẤM GanProxyWatcherTra
 §
 Canary farm: tối thiểu 3-4 màn/máy khác nhau (DM, sửa hồ sơ, feed, popup thử thách); cấm canary trên 1 máy đơn độc.
 §
-Ava: lộ ngũ quan, mắt thẳng, cấm kính râm/ảnh đỏ nhòe. Dọn .thumbnails + Camera/* trước push; query MediaStore đúng 1 ảnh; WinRT OCR thấy chữ lạ (20 lần, video) cấm Lưu. Trích từ clip gốc nếu Haar ảo. TopLeftPencil bounds l=10..45 w,h<=130 & né feed.
+Ava: lộ ngũ quan, mắt thẳng, cấm kính râm/ảnh đỏ nhòe. Dọn .thumbnails + Camera/*; query MediaStore 1 ảnh. BẮT BUỘC WinRT OCR màn crop trước gửi: thấy chữ lạ ('20 lần', '20)la', video) CẤM Lưu/báo xong vì picker bốc nhầm clip. Trích từ clip gốc nếu Haar ảo. TopLeftPencil l=10..45 w,h<=130.
