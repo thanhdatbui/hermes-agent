@@ -168,7 +168,7 @@ For an authorized incident set containing multiple machine alerts, canary orches
    - **B0 (Coordinator - 90s):** Nhận alert, inspect hiện trường O(1) (`inspect_machine.py`, dump XML, screencap).
    - **B1 (Coordinator - 2 phút):** Dùng `grep -n` định vị hàm/dòng lỗi, trích `old_string` 10-15 dòng. (Nếu sau 2 phút không thể localize được dòng lỗi, chuyển sang Investigation Mode).
    - **B2 (Coordinator - 2 phút):** Soạn `new_string` xử lý bug, kiểm tra tính duy nhất (`grep -c == 1`) và xác định lệnh test.
-   - **B3 (Worker duy nhất - 4 phút):** Dispatch 1 Worker áp patch và chạy unit test. Budget <= 8 calls.
+   - **B3 (Áp patch + unit test):** Nếu patch Coordinator đã soạn xong nằm trong ngưỡng T0 (<= 80 dòng diff, <= 2 files, gồm cả test) -> Coordinator TỰ ÁP DỤNG TRỰC TIẾP và chạy unit test; CẤM bắt Worker làm "người gõ phím" ghi file. Nếu vượt T0 (hoặc đụng watchdog/lock/database schema) -> dispatch 1 Worker duy nhất kèm Context Pack (file target, anchor `grep -c == 1`, đoạn code liên quan, failing evidence, lệnh test), contract mô tả mục tiêu, không dán sẵn patch để ghi. Budget Worker: <= 12 write calls, <= 8 read calls.
    - **B4 (Coordinator - 2 phút):** Chạy Canary live 2 swipes trên máy farm.
    - **B5 (Coordinator - Báo cáo nghiệm thu kèm ảnh):** Chụp screencap hiện trường sau canary/hoàn thành, đính kèm `MEDIA:<path_anh>` ở dòng riêng trong báo cáo gửi User. Báo cáo thiếu `MEDIA:` = VI PHẠM GATE, CHƯA HOÀN THÀNH.
    - **B6 (Rollback khi Canary Fail):** Nếu Canary ở B4 fail, lập tức revert patch (`git checkout`), mở lại alert và lưu artifact hiện trường để phân tích tiếp, không để lại code hỏng trên farm.
@@ -178,7 +178,7 @@ For an authorized incident set containing multiple machine alerts, canary orches
 
 - **Coordinator** owns `ALERT`, `EVIDENCE`, and `CLASSIFY`; it must resolve the exact allowlist and dispatch only the requested lane.
 - **WORKER** applies the exact contract only when explicitly dispatched with `role=worker`; the worker must not become a Coordinator or expand scope.
-- The worker lane is bounded at **15 tool calls** and **120 seconds** wall-clock. No broad discovery, live action, or retry loop is permitted.
+- The worker lane is bounded at **≤ 12 write calls, ≤ 8 read calls** and **240 seconds** wall-clock. No broad discovery, live action, or retry loop is permitted.
 - **VERIFY** is one focused offline acceptance command against the exact allowlist. Evidence must be real; missing or conflicting evidence is `BLOCKED`.
 - **CANARY** runs only for an explicit live target and only after verification. For policy/docs/code-only work with no live target, record `CANARY_NOT_APPLICABLE`. For multi-machine incident sets, canary target scoping follows `CANARY_CLUSTER_FIRST_RULE_2026_09_26` (cluster-first selection; official runner/evidence/safety gates apply per selected representative).
 - Finish only as `DONE` with verification evidence, or `BLOCKED` with the concrete blocker and unchanged out-of-scope files. Use the actual checked-out branch; never assume `origin/main`.
@@ -252,12 +252,12 @@ User directive after a 13-round Coordinator↔Reviewer ping-pong loop on `eviden
 
 ### GATE 4 — WORKER FAIL-FAST PROTOCOL
 - Mọi prompt worker sửa monolith BẮT BUỘC inject clause:
-  'NẾU trong <= 3 iterations đầu nhận thấy scope quá rộng / bất khả thi với budget 15 calls: DỪNG NGAY. Báo cáo anchor tìm được và đề xuất contract thu hẹp. CẤM đốt hết 15 calls để mò file rồi kết thúc 0 files modified.'
+  'NẾU trong <= 3 iterations đầu nhận thấy scope quá rộng / bất khả thi với budget <= 12 write calls, <= 8 read calls (tách riêng ngân sách đọc context): DỪNG NGAY. Báo cáo anchor tìm được và đề xuất contract thu hẹp. CẤM đốt hết budget để mò file rồi kết thúc 0 files modified.'
 
 ### GATE 5 — COORDINATOR 5-QUESTION CHECKLIST (BẮT BUỘC DUYỆT TRƯỚC MỌI DISPATCH)
 1. Task này đã được phân rã tới đơn vị nhỏ nhất chưa?
 2. File target > 1.500 dòng đã có Patch Contract với anchor grep -c == 1 chưa?
-3. Ngân sách 15 iters có đủ khả thi cho scope này không?
+3. Ngân sách (<= 12 write, <= 8 read calls) có đủ khả thi không?
 4. Đây là code-surgery hay batch-job? (Batch-job cấm giao leaf worker ngồi chờ).
 5. Nếu là re-dispatch sau STRUCTURAL fail: contract có KHÁC lần trước không? (Retry TRANSIENT cùng prompt được miễn câu này.)
 *(Bất kỳ câu Chưa/Không -> CẤM DISPATCH; chuẩn hóa contract, hoặc L2 nếu đủ điều kiện, hoặc BLOCKED kèm evidence. KHÔNG đóng băng, KHÔNG clarify.)*
@@ -268,8 +268,8 @@ User directive after a 13-round Coordinator↔Reviewer ping-pong loop on `eviden
 - Báo cáo kết quả task farm mà THIẾU thẻ `MEDIA:` được coi là VI PHẠM GATE NGHIỆM THU, TASK CHƯA HOÀN THÀNH.
 
 ### HARD ENFORCEMENT — WORKER MICRO-TASK / TIMEOUT LANES (2026-09-25)
-- delegate_task does not enforce per-call or per-wall-clock limits; a <=15 calls sentence in a prompt is only a soft instruction.
-- Exact-patch lane: exactly 1 file, 1 unique anchor, 1 acceptance command; wall-clock limit 120 seconds; no discovery, test authoring, build, or runtime work.
+- delegate_task does not enforce per-call or per-wall-clock limits; a ≤ 12 write calls, ≤ 8 read calls sentence in a prompt is only a soft instruction.
+- Exact-patch lane: exactly 1 file, 1 unique anchor, 1 acceptance command; wall-clock limit 240 seconds; no discovery, test authoring, build, or runtime work.
 - Code-surgery lane: exactly 1 component, maximum 240 seconds; source edit, tests, build, restart, and canary are separate lanes.
 - Build, package, and batch jobs must never be dispatched to a code worker; use a separate background launcher and verify the artifact out of band.
 - Restart, deploy, and canary are separate runtime lanes and may start only after the build artifact is verified.
