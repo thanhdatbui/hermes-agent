@@ -55,15 +55,28 @@ Result: Entire fleets (e.g., all 80 machines in the Admin cluster) are silently 
    ```bash
    scp admin-farm:D:/OneDrive/TaadaaData/admin/taikhoan_run_safe.xlsx D:/OneDrive/TaadaaData/admin/taikhoan_run_safe.xlsx
    ```
-3. **Runner Preflight Hydration Check**:
-   Before reading workbooks in cron jobs:
+3. **Runner Preflight Hydration Check & Fail-Closed Pattern**:
+   Before reading workbooks in cron jobs or passing paths to headless batch runners:
    ```python
-   def ensure_file_hydrated(path: Path) -> bool:
+   def hydrate_workbook(path: Path) -> bool:
+       """Hydrate và pin workbook nếu đang bị OneDrive Files On-Demand giữ offline."""
        try:
-           with open(path, "rb") as f:
+           if not path.is_file():
+               return False
+           if sys.platform == 'win32':
+               res = subprocess.run(['attrib', '-u', '+p', str(path)], capture_output=True, timeout=10)
+               if res.returncode != 0:
+                   logger.warning('Attrib hydrate thất bại (code=%d): %s', res.returncode, path)
+                   return False
+           with open(path, 'rb') as f:
                f.read(10)
            return True
-       except OSError:
-           # Attempt hydration via attrib or fallback copy
+       except Exception as exc:
+           logger.warning('Lỗi hydrate workbook %s: %s', path, exc)
            return False
+   ```
+   **Fail-Closed Rule**: Nếu `hydrate_workbook` trả về `False`, BẮT BUỘC dừng cluster đó với mã lỗi rõ ràng (ví dụ: `kibe_code = 5`), xuất marker `BLOCKED: WORKBOOK_HYDRATION_FAILED` và lưu state `failed`. TUYỆT ĐỐI KHÔNG nuốt ngoại lệ hay cho phép runner tiếp tục chạy trên file offline stub. Trên node remote chạy qua SSH PowerShell:
+   ```powershell
+   attrib -u +p $wb
+   try { [System.IO.File]::ReadAllBytes($wb) | Out-Null } catch {}
    ```
