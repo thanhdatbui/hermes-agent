@@ -1,20 +1,20 @@
 Chu kỳ 4d: Parity 96h (N1 lẻ, N2 chẵn), N3(R7,8), N4(dưỡng 0fl+up). Starve 108h. CẤM xóa cooldown. Dưỡng: healing_selector; S2 bám S1. 3 ca (6,12,18h). Đêm 21h30-5h15 né cache 4h cho 2FA/Ava; báo 6h cấm ảo.
 §
-Follow: P1/P2 trần ca; dò +2/ca (max 30); dính nhả vào tù, ra lùi 4 sàn 15. 3 cohort; chưa đủ khỏe cấm fl. Nhả là action block. Chi tiết UID & trần xem modal 🔍 trên :1905.
+Follow: P1/P2 trần ca; dò +2/ca (max 30); dính nhả vào tù, ra lùi 4 sàn 15. 3 cohort; chưa đủ khỏe cấm fl. Nhả là action block. Chi tiết UID xem :1905.
 §
 Hotmail: CẤM mail cá nhân; @fviainboxes.com đọc OTP. Write-Through Excel 3,4,5+G; ~1280 acc. Proxy 1-1. TT v47 monkey. Pin >=1000 view.
 §
-Farm: O(1). CẤM đẻ script (pin: pin_top_videos.py auto-swap; ava: run_avatar_batch_3accs.py). Máy đa nick verify handle bằng media_verify.py trước khi gửi MEDIA:. Lock tên: rename_natural_state.json.
+Farm: O(1). CẤM đẻ script. Máy lẻ mất Wi-Fi: preempt lock sửa ngay; nghiệm thu ping 2 chiều 0% loss; dải 110.x dễ nghẽn ARP pool. Lock tên: rename_natural_state.json.
 §
 GPM: max 5 wkr; nạp pool web (0đ quota); re-login văng max 1 lần/ngày (max_proxy 3/cổng, ghi recovered_date).
 §
-Stale Upload: xóa draft (_delete_all_profile_drafts). Revert flop: TikWM tải CDN. Bẫy receipt cũ idempotency/post-attempts nhảy cóc bỏ MEDIA_PUSH; popup 'Ghim/Riêng tư' KHÔNG PHẢI publish proof. Cào: max 60 clip.
+Stale Upload: xóa draft. Revert flop: TikWM tải CDN. Popup 'Ghim/Riêng tư' KHÔNG PHẢI publish proof. Cào: max 60 clip.
 §
 Closeout: Grace 80-84 auto-push. safe_push check HEAD vs gate_audit.jsonl (TTL 30m, >=80/approved), cấm push lụi. Cấm commit -a, chỉ commit đúng file. Pre-check: clean+ahead 0 -> đã push. Fail -> auto-remediate Strike 1-3, kẹt tự PARK, CẤM khóc lóc/dừng hỏi.
 §
 Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; admin_ssh.py. Cron: phase9-runner nuôi, feed_session_watchdog giám sát 15p.
 §
-Singbox :200xx, CẤM VPN app. Wi-Fi 5GHz Aruba. Cứu máy: operator_device_lock(force_preempt=True). Quên A8: service call wifi 14 i32 <id> && service call wifi 19.
+Singbox :200xx, CẤM VPN app. Wi-Fi 5GHz Aruba. Cứu máy: operator_device_lock(force_preempt=True). Proxy Android BẤT BIẾN: CẤM gán domain (mirotik1/test.taadaa.click) vào Android http_proxy. BẮT BUỘC dùng IP LAN 192.168.110.2:port kèm captive_portal_mode 0. Kibe: 20001..20080; Admin: 10008..10035 / 20201..20280.
 §
 Canary farm: tối thiểu 3-4 màn/máy khác nhau (DM, sửa hồ sơ, feed, popup thử thách); cấm canary trên 1 máy đơn độc.
 §

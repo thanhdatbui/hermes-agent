@@ -49,3 +49,16 @@
      - Chạy `verify_media_target(path, expected_handle)` qua `media_verify.py` đối soát WinRT OCR khớp 100% handle `@huy010822`.
      - Kiểm tra dòng Bio mới đã hiển thị công khai ngay dưới tên kênh.
      - Soi mắt qua `browser_vision` xác nhận không lỗi hiển thị, gửi `MEDIA:`.
+
+---
+
+## 3. Bẫy Nhập Tiếng Việt Có Dấu Qua ADB Shell Trên Samsung S7 Android 8 (Diacritics Dropping & SamsungKeypad Autocomplete Trap)
+- **Bản chất kỹ thuật**:
+  * Binary `/system/bin/input text` trên Android 8 chỉ hỗ trợ tập ký tự **ASCII 7-bit**.
+  * Khi truyền chuỗi tiếng Việt UTF-8 có dấu (ví dụ: `Học sinh ngoan nhưng hơi bất ổn`), nhân Linux shell sẽ nuốt chửng các byte multibyte hoặc drop toàn bộ ký tự mang dấu thanh (`ọ`, `ư`, `ơ`, `ấ`, `ổ`), khiến chuỗi bị cụt ngủn hoặc biến dạng thành rác (`Hoc sinh ngo` / `Hoc ys`).
+  * Việc broadcast qua `com.github.uiautomator/.AdbKeyboard` (`ADB_INPUT_B64` / `ADB_INPUT_TEXT`) thường bị TikTok chặn hoặc không bắt được focus do `ProfileEditActivity` áp dụng cơ chế bảo mật bàn phím hệ thống.
+  * Bộ gõ mặc định `SamsungKeypad` khi nhận chuỗi gõ nhanh qua ADB sẽ tự động kích hoạt gợi ý từ (autocomplete/prediction bar), làm biến dạng chuỗi nếu gõ ngắt quãng.
+- **Quy chuẩn thực thi an toàn trên Farm**:
+  1. Khi tự động hóa cập nhật Bio/Tên qua ADB trên farm S7, **BẮT BUỘC chuẩn hóa chuỗi sang ASCII an toàn (tiếng Việt không dấu)**, thay khoảng trắng bằng `%s`, ví dụ: `input text Hoc%ssinh%sngoan%snhung%shoi%sbat%son%s-%sFollow%stui%snha!`.
+  2. Tuyệt đối không gõ ngắt quãng nhiều đoạn nhỏ liên tiếp khi bàn phím SamsungKeypad đang mở để tránh bị thanh dự đoán thay thế từ.
+  3. Khi người dùng yêu cầu gõ tiếng Việt có dấu, Coordinator phải chủ động giải thích rõ ràng giới hạn kỹ thuật của ADB shell trên Android 8 và đưa ra giải pháp thực tế thay vì cố gắng thử lại nhiều lần trong vòng lặp làm treo máy.

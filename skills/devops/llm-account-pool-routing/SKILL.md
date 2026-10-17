@@ -10,7 +10,7 @@ version: 1.0.0
 - `references/antigravity-cli-profile-sandboxing-and-quota-rotation.md`: AG.
 - `references/cross-instance-token-migration-and-pro-tier-revocation.md`: Pro.
 - `references/antigravity-multi-session-burst-tpm-and-concurrency-limits.md`: TPM/503.
-- `references/omniroute-per-account-proxy-egress-assignment.md`: Proxy.
+- `references/omniroute-per-account-proxy-egress-assignment.md`: Proxy & Gemini Web Argon pool.
 - `references/phone-verified-account-salvage-and-tainted-proxy-rotation.md`: Salvage.
 - `references/codex-oauth-gpm-pool-verification.md`: Codex.
 - `references/watchdog-db-guard-and-sync-contract.md`: Guard.
