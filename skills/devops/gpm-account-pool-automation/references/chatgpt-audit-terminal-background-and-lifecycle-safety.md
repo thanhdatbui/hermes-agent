@@ -20,3 +20,7 @@ Khi vận hành script `login_audit_and_purge_deactivated.py` qua cron job hoặ
 
 4. **Dọn dẹp Zombie Process**:
    - Mỗi chu kỳ audit tài khoản GPM, hàm `_kill_gpm_chrome(host_port)` sử dụng psutil để quét và kill triệt để Chrome headless theo debug port. Đảm bảo không tồn đọng orphan processes làm chiếm dụng port hoặc RAM.
+
+5. **Cơ chế Fallback OTP (Graph API -> Webmail) & Xử lý HTTP 400**:
+   - Khi tài khoản gặp lỗi `HTTP Error 400: Bad Request` từ Graph API (refresh token hết hạn hoặc không khớp client_id), script tự động fallback sang mở Outlook webmail trực tiếp trong browser profile GPM (`[OTP-WEBMAIL] Opening Outlook webmail on ...`).
+   - Nếu proxy/mạng của profile bị nghẽn làm timeout webmail, kết quả trả về là `UNKNOWN`. Đây là lỗi môi trường/mạng, script giữ nguyên tài khoản trong kho và không purge.
