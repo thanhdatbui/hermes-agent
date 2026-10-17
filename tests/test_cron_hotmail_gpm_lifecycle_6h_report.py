@@ -184,6 +184,102 @@ class TestAggregation(ReportTestCase):
         self.assertIn("Tổng số tài khoản trong Queue: 0 (Kibe: 0 | Admin: 0)", text)
         self.assertIn("0/0 (0.0%)", text)
 
+    def test_chatgpt_ok_edge_cases(self):
+        # (fields, expected chatgpt_ok, expected done_without_chatgpt)
+        cases = [
+            ({"stage": "BLOCKED", "status": "DONE", "bucket": "DONE", "has_chatgpt": False}, 0, 1),
+            ({"stage": "HOTMAIL_LOGIN", "status": "PENDING", "bucket": "HOTMAIL_LOGIN", "has_chatgpt": False}, 0, 0),
+            ({"stage": "BLOCKED", "status": "BLOCKED", "bucket": "BLOCKED", "has_chatgpt": True}, 0, 0),
+            ({"stage": "CHATGPT_REG", "status": "RUNNING", "bucket": "CHATGPT_REG", "has_chatgpt": True}, 1, 0),
+            ({"stage": "DONE", "status": "DONE", "bucket": "DONE", "has_chatgpt": False}, 1, 1),
+            ({"stage": "DONE", "status": "DONE", "bucket": "DONE", "has_chatgpt": True}, 1, 0),
+            ({"stage": "CHANGE_INFO", "status": "DONE", "bucket": "DONE", "has_chatgpt": False}, 1, 1),
+        ]
+        records = [{"key": f"k{i}", "status": "PENDING", "has_login": False, **fields}
+                   for i, (fields, _, _) in enumerate(cases)]
+
+        for rec, (_, exp_ok, exp_flag) in zip(records, cases):
+            tel = report_mod.Telemetry(stream=io.StringIO())
+            agg = report_mod.aggregate_records([rec], tel, "kibe")
+            self.assertEqual(agg["chatgpt_ok"], exp_ok, rec)
+            self.assertEqual(agg["done_without_chatgpt"], exp_flag, rec)
+            events = self.find_events(tel.events, "done_without_chatgpt")
+            self.assertEqual(len(events), exp_flag, rec)
+            if exp_flag:
+                self.assertEqual(events[0]["error_class"], "DONE_WITHOUT_CHATGPT_REG")
+                self.assertEqual(events[0]["level"], "warning")
+                self.assertEqual(events[0]["farm"], "kibe")
+                self.assertEqual(events[0]["sample"], [rec["key"]])
+
+        tel = report_mod.Telemetry(stream=io.StringIO())
+        agg = report_mod.aggregate_records(records, tel, "admin")
+        expected_ok = sum(c[1] for c in cases)
+        expected_flag = sum(c[2] for c in cases)
+        expected_keys = [r["key"] for r, c in zip(records, cases) if c[2]]
+        self.assertEqual(agg["total"], len(cases))
+        self.assertEqual(agg["chatgpt_ok"], expected_ok)
+        self.assertEqual(agg["done_without_chatgpt"], expected_flag)
+        self.assertLessEqual(agg["done_without_chatgpt"], agg["done"])
+        self.assertLessEqual(agg["chatgpt_ok"], agg["total"])
+        self.assertEqual(sum(agg["buckets"].values()), agg["total"])
+        events = self.find_events(tel.events, "done_without_chatgpt")
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["count"], expected_flag)
+        self.assertEqual(events[0]["farm"], "admin")
+        self.assertEqual(events[0]["sample"], expected_keys)
+
+        merged = report_mod.merge_metrics(agg, agg)
+        self.assertEqual(merged["chatgpt_ok"], 2 * expected_ok)
+        self.assertEqual(merged["done_without_chatgpt"], 2 * expected_flag)
+
+    def test_chatgpt_ok_consistency_through_normalize(self):
+        profiles = {
+            "E1:done_no_reg": {"stage": "DONE", "status": "DONE"},
+            "E2:change_failed_with_reg": {"stage": "CHANGE_INFO", "status": "FAILED", "chatgpt_registered_at": TS},
+            "E3:blocked_done_status": {"stage": "BLOCKED", "status": "DONE", "chatgpt_registered_at": TS},
+            "E4:failed_stage_with_reg": {"stage": "FAILED", "status": "PENDING", "chatgpt_registered_at": TS},
+            "E5:login_stage_done_status": {"stage": "HOTMAIL_LOGIN", "status": "DONE"},
+            "E6:wait_with_reg": {"stage": "WAIT_7D", "status": "WAITING", "chatgpt_registered_at": TS},
+            "E7:chatgpt_reg_running": {"stage": "CHATGPT_REG", "status": "RUNNING",
+                                       "hotmail_login_at": TS, "chatgpt_registered_at": TS},
+        }
+        # key -> (bucket, chatgpt_ok, done_without_chatgpt)
+        expected = {
+            "E1:done_no_reg": ("DONE", 1, 1),
+            "E2:change_failed_with_reg": ("BLOCKED", 1, 0),
+            "E3:blocked_done_status": ("BLOCKED", 0, 0),
+            "E4:failed_stage_with_reg": ("BLOCKED", 0, 0),
+            "E5:login_stage_done_status": ("DONE", 1, 1),
+            "E6:wait_with_reg": ("WAIT_7D", 1, 0),
+            "E7:chatgpt_reg_running": ("CHATGPT_REG", 1, 0),
+        }
+
+        tel = report_mod.Telemetry(stream=io.StringIO())
+        records = report_mod.normalize_profiles(profiles, tel, "kibe")
+        self.assertEqual(tel.warnings(), [])
+        by_key = {r["key"]: r for r in records}
+        for key, (bucket, exp_ok, exp_flag) in expected.items():
+            self.assertEqual(by_key[key]["bucket"], bucket, key)
+            single = report_mod.aggregate_records([by_key[key]])
+            self.assertEqual(single["chatgpt_ok"], exp_ok, key)
+            self.assertEqual(single["done_without_chatgpt"], exp_flag, key)
+
+        tel = report_mod.Telemetry(stream=io.StringIO())
+        agg = report_mod.aggregate_records(records, tel, "kibe")
+        flagged = [k for k, (_, _, f) in expected.items() if f]
+        self.assertEqual(agg["total"], len(profiles))
+        self.assertEqual(agg["done"], sum(1 for b, _, _ in expected.values() if b == "DONE"))
+        self.assertEqual(agg["chatgpt_ok"], sum(ok for _, ok, _ in expected.values()))
+        self.assertEqual(agg["done_without_chatgpt"], len(flagged))
+        self.assertEqual(sum(agg["buckets"].values()), agg["total"])
+        self.assertLessEqual(agg["done_without_chatgpt"], agg["done"])
+        self.assertLessEqual(agg["done_without_chatgpt"], agg["chatgpt_ok"])
+        events = self.find_events(tel.events, "done_without_chatgpt")
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["count"], len(flagged))
+        self.assertEqual(events[0]["sample"], flagged)
+        self.assertEqual(events[0]["error_class"], "DONE_WITHOUT_CHATGPT_REG")
+
 
 class TestStateRobustness(ReportTestCase):
     def test_corrupted_state_json_fails_safe(self):

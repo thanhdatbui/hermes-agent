@@ -245,10 +245,17 @@ def _has_valid_timestamp(raw: dict[str, Any], field: str, key: str, flag) -> boo
 
 # ── Aggregation ──────────────────────────────────────────────────────────────
 
-def aggregate_records(records: list[dict[str, Any]]) -> dict[str, Any]:
+def _is_chatgpt_registered(rec: dict[str, Any]) -> bool:
+    """Xác định tài khoản đã đăng ký ChatGPT thành công (has_chatgpt hoặc đã hoàn tất chu kỳ DONE)."""
+    return rec.get("stage") not in REGISTRATION_VOID_STAGES and (bool(rec.get("has_chatgpt")) or rec.get("bucket") == STAGE_DONE)
+
+
+def aggregate_records(records: list[dict[str, Any]], telemetry: Telemetry | None = None,
+                      farm: str = "") -> dict[str, Any]:
     """Mỗi profile rơi vào đúng một bucket nên tổng các bucket luôn bằng total."""
     buckets = {name: 0 for name in BUCKETS}
     login_ok = login_pending = login_blocked = chatgpt_ok = 0
+    done_without_chatgpt: list[str] = []
     for rec in records:
         buckets[rec["bucket"]] += 1
         if rec["has_login"] or rec["stage"] in POST_LOGIN_STAGES:
@@ -257,8 +264,14 @@ def aggregate_records(records: list[dict[str, Any]]) -> dict[str, Any]:
             login_pending += 1
         elif rec["bucket"] == STAGE_BLOCKED and rec["stage"] == STAGE_HOTMAIL_LOGIN:
             login_blocked += 1
-        if rec["has_chatgpt"] and rec["stage"] not in REGISTRATION_VOID_STAGES:
+        if rec["bucket"] == STAGE_DONE and not rec.get("has_chatgpt"):
+            done_without_chatgpt.append(rec["key"])
+        if _is_chatgpt_registered(rec):
             chatgpt_ok += 1
+    if done_without_chatgpt and telemetry is not None:
+        telemetry.emit("done_without_chatgpt", level="warning", error_class="DONE_WITHOUT_CHATGPT_REG",
+                       farm=farm, count=len(done_without_chatgpt),
+                       sample=done_without_chatgpt[:SCHEMA_SAMPLE_LIMIT])
     return {
         "total": len(records),
         "buckets": buckets,
@@ -266,6 +279,7 @@ def aggregate_records(records: list[dict[str, Any]]) -> dict[str, Any]:
         "login_pending": login_pending,
         "login_blocked": login_blocked,
         "chatgpt_ok": chatgpt_ok,
+        "done_without_chatgpt": len(done_without_chatgpt),
         "wait_7d": buckets[STAGE_WAIT_7D],
         "change_info": buckets[STAGE_CHANGE_INFO],
         "done": buckets[STAGE_DONE],
@@ -276,7 +290,7 @@ def aggregate_records(records: list[dict[str, Any]]) -> dict[str, Any]:
 def merge_metrics(*farms: dict[str, Any]) -> dict[str, Any]:
     merged: dict[str, Any] = {"buckets": {name: 0 for name in BUCKETS}}
     for key in ("total", "login_ok", "login_pending", "login_blocked", "chatgpt_ok",
-                "wait_7d", "change_info", "done", "blocked"):
+                "done_without_chatgpt", "wait_7d", "change_info", "done", "blocked"):
         merged[key] = sum(f[key] for f in farms)
     for name in BUCKETS:
         merged["buckets"][name] = sum(f["buckets"][name] for f in farms)
@@ -383,7 +397,7 @@ def collect_snapshot(telemetry: Telemetry) -> dict[str, Any]:
     for farm, path in (("kibe", KIBE_STATE_PATH), ("admin", ADMIN_STATE_PATH)):
         raw = load_farm_state(path, telemetry, farm)
         farm_keys[farm] = set(raw)
-        farm_metrics[farm] = aggregate_records(normalize_profiles(raw, telemetry, farm))
+        farm_metrics[farm] = aggregate_records(normalize_profiles(raw, telemetry, farm), telemetry, farm)
 
     overlap = farm_keys["kibe"] & farm_keys["admin"]
     if overlap:
@@ -412,6 +426,7 @@ def collect_snapshot(telemetry: Telemetry) -> dict[str, Any]:
         buckets=totals["buckets"],
         login_ok=totals["login_ok"],
         chatgpt_ok=totals["chatgpt_ok"],
+        done_without_chatgpt=totals["done_without_chatgpt"],
         pool_connections=pool["total"],
         pool_models=pool["models"],
         warning_count=len(warnings),
