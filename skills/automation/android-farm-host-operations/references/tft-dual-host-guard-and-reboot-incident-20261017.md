@@ -47,3 +47,20 @@
   }
   ```
 - **Phạm vi kiểm tra:** Quét song song trên cả Kibe PC (`_running_image_names()`) và Admin PC qua SSH. Nếu phát hiện bất kỳ tiến trình nào trong `WARCRAFT_PROCESSES` trên máy nào $\rightarrow$ lập tức hủy bỏ chuỗi reboot (`ABORT`).
+
+## 5. Kiến Trúc Sentinel Độc Lập Admin/Kibe, Single-Instance Lock & Error Contract Hermes (Closeout Hardening 17/10/2026)
+- **Tách Sentinel độc lập theo từng máy (`reboot_sentinel_{shift}_{machine}.flag`):**
+  * *Bẫy sentinel chung:* Nếu Admin reboot thành công (qua SSH) nhưng Kibe reboot thất bại hoặc abort do lỗi bảo toàn session, sentinel chung bị ghi sẽ khiến Kibe mất lượt reboot; nếu không ghi sentinel thì Admin bị reboot lặp lại ở lần chạy tiếp theo trong ca.
+  * *Giải pháp:* Tách cờ `..._admin.flag` và `..._kibe.flag`. Máy nào dispatch thành công thì ghi cờ máy đó. Lần chạy sau chỉ retry máy chưa reboot.
+- **Khóa Single-Instance OS-Level (`farm_preflight_daily_reset.lock`):**
+  * Dùng `msvcrt.locking` trên Windows (hoặc `fcntl.flock` trên POSIX) khóa file lock nhị phân khi bắt đầu `main()`.
+  * Nếu có tiến trình thứ 2 kích hoạt cùng lúc (do trigger trùng hoặc user chạy tay), tiến trình mới tự thoát mã 0 với cờ `skipped_concurrent_run`, chống xung đột race condition. Khóa tự nhả khi tiến trình kết thúc (kể cả khi crash).
+- **Error Contract Nghiêm Ngặt của `preserve_in_flight_sessions()`:**
+  * CẤM nuốt ngoại lệ âm thầm và trả về 0. Nếu SQLite SessionDB bị lỗi hoặc không thể đọc ghi, hàm BẮT BUỘC raise `RuntimeError` để luồng preflight lập tức **HỦY REBOOT (Fail-Closed, `outcome = 'aborted_preserve_failed'`)**, bảo vệ an toàn tuyệt đối cho các session chat dang dở của user.
+  * Chỉ xóa file marker `.clean_shutdown` khi và chỉ khi `marked > 0` (đã thực sự đánh dấu bảo toàn thành công ít nhất 1 session).
+- **Structured Summary JSON Telemetry:**
+  * Kết thúc mỗi lần chạy (kể cả khi gặp exception trong `try...finally`), script luôn xuất ra 1 dòng log có cấu trúc:
+    `[SUMMARY] {"outcome": "...", "admin": "...", "kibe": "...", "admin_sentinel": "...", "kibe_sentinel": "...", "check_only": bool}` giúp hệ thống giám sát tự động kiểm toán kết quả end-to-end mà không cần parse text tự do.
+- **Triệt tiêu Deprecation Warning Pytest (`asyncio_default_fixture_loop_scope`):**
+  * Cấu hình trong `D:/Taadaa/tools/pytest.ini`: `asyncio_default_fixture_loop_scope = function` để giữ log test suite sạch 100%, không bị Reviewer trừ điểm Observability.
+
