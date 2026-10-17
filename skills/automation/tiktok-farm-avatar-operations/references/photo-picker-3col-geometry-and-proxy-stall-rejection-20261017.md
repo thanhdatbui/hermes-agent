@@ -49,14 +49,17 @@ adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:
 
 ### 3. Nghiệm thu kép bắt buộc (Double Verification Gate)
 - **Gate 1 (Màn hình Crop)**:
+  - BẮT BUỘC assert foreground focus: `mCurrentFocus` phải chứa `CropActivity` trước khi thao tác tiếp. Nếu focus vẫn là Profile hay Picker -> CẤM tap mù các bước Lưu tiếp theo.
   - Chụp màn hình Crop (`screencap`).
   - Chạy WinRT OCR: CẤM có các từ khóa video/rác (`20`, `lần`, `thời lượng`).
   - Dùng `browser_vision` soi trực tiếp: Xác nhận đúng chủ thể mới.
-- **Gate 2 (Màn hình Profile thực tế sau khi Lưu)**:
+- **Gate 2 (Màn hình Profile thực tế sau khi Lưu - Chống Bẫy Kẹt Avatar Cũ Từ Sáng Tới Chiều)**:
   - Cắt vòng tròn avatar tại màn hình Profile:
     - Layout Top-Left Pencil: Avatar nằm ở góc trên bên phải `[756, 324][1044, 612]`.
     - Màn hình Sửa hồ sơ: Avatar nằm ở giữa `[400, 220][680, 500]`.
-  - Tính Mean BGR của vòng tròn avatar trên máy và so sánh với ảnh cũ:
-    - Nếu Mean BGR vẫn trùng hoặc gần giống avatar cũ (`diff < 15`) -> **CHẮC CHẮN UPLOAD THẤT BẠI DO LỖI MẠNG/PROXY**.
-    - Phải force-stop TikTok (`am force-stop com.ss.android.ugc.trill`), làm mới proxy/kết nối rồi thực hiện lại.
-    - TUYỆT ĐỐI CẤM báo DONE khi chưa so sánh Mean BGR xác nhận avatar trên Profile đã đổi thành công.
+  - **So sánh toán học Mean BGR với Avatar Cũ (Bắt buộc)**:
+    - Tính `diff_from_old = abs(current_profile_avatar_bgr - old_avatar_bgr).mean()`.
+    - Tính `diff_from_target = abs(current_profile_avatar_bgr - target_new_avatar_bgr).mean()`.
+    - NẾU `diff_from_old < 20.0`: **100% AVATAR TRÊN MÁY VẪN LÀ ẢNH CŨ** (dù runner báo `verified=True` hay `exit=0`). TUYỆT ĐỐI CẤM báo cáo thành công, CẤM tự huyễn hoặc là đã đổi. Phải báo cáo trung thực hiện trường upload thất bại do đứt socket proxy hoặc kẹt picker selection.
+    - NẾU `diff_from_target > 35.0`: Chưa khớp ảnh mới, bắt buộc kiểm tra lại luồng thao tác.
+    - BẮT BUỘC gửi ảnh `MEDIA:<path>` vòng tròn Profile kèm ảnh toàn màn hình ngay lập tức cho User kiểm tra, cấm ỉm ảnh chạy tiếp chuỗi ngầm.
