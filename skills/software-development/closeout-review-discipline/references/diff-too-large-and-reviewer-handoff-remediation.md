@@ -377,6 +377,16 @@
   - Khi User thông báo session khác đã sửa: CẤM TUYỆT ĐỐI blind reset, force pull hay ghi đè.
   - Bắt buộc kiểm tra `git status`, `git log --graph HEAD origin/master`, đối soát diff từng file để xác nhận tính độc lập (non-overlap), bảo toàn 100% công sức của session khác trước khi chốt phiên.
 
+## 26. Thực Chiến Strike 3 Hand-Off Cho Claude CLI & Chuẩn Hóa Sandbox Worker (17/10)
+- **Thực Thi Tự Động Strike 3 Khi Bị Rejection Lặp Lại:**
+  - Khi Closeout Gate trả về `[REVIEWER_HANDOFF_TRIGGERED: 3 consecutive rejections reached...]`, toàn bộ Coordinator/Worker/Sol Repair PHẢI DỪNG LẠI và tự động gọi Claude CLI qua `claude_worker.py --role worker` với `--max-turns 25 --timeout 300` trong background (`notify_on_complete=True`).
+  - CẤM TUYỆT ĐỐI hỏi lại User ("có muốn gọi Claude CLI không?") — đây là hành động tự động bắt buộc theo Hard Invariant.
+- **Chuẩn Hóa An Toàn Thực Thi Cho Autonomous Worker (`sol_worker.py`):**
+  - *Chống Lỗ Hổng Thực Thi Lệnh:* Tuyệt đối CẤM `shell=True` trong các module worker tự động. Bắt buộc dùng `shlex.split(command, posix=False)` kết hợp `shell=False`, `stdin=subprocess.DEVNULL`, và danh sách allowlist token nhị phân nghiêm ngặt (chỉ cho phép `pytest`, `unittest`, `python -m pytest/unittest`, và read-only git subcommands `status`, `diff`, `log`, `show`).
+  - *Chống Lỗ Hổng Ghi Đè:* Trong thao tác patch file, bắt buộc ghi ra file tạm (`tmp.<uuid>`) với `os.fsync`, `os.replace`, kiểm tra read-back byte-for-byte, và tự động rollback trả lại nội dung gốc nếu phát hiện sai lệch.
+  - *Độ Phủ Kiểm Thử Cho Model Streaming:* Module gọi mô hình qua HTTP streaming (SSE) bắt buộc có unit test giả lập (mock `urlopen`) bao phủ các luồng: chunk keepalive, timeout quá thời gian chờ, HTTP 429 quota exhaustion (ánh xạ mã thoát 125), và kiểm thử đối kháng chống path traversal (`../`, absolute paths).
+
+
 
 
 
