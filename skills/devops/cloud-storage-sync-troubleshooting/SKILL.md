@@ -148,3 +148,4 @@ Systematic approach to diagnose and fix sync client issues on Windows: stuck "Lo
 - `references/google-drive-desktop-debugging.md` — Detailed log analysis, DB schemas, common error codes
 - `references/onedrive-dehydration-automation-failures.md` — Root cause, error signatures (0x8007017A, Errno 22), and remediation for OneDrive dehydrated cloud files breaking automated batch loops
 - `references/icloud-windows-appx-signin-hang.md` — In-depth breakdown of iCloud AppX sign-in freeze, WinINet error 12045, Apple PKI root CA import, and zombie process cleanup
+- `references/hybrid-cloud-storage-video-pipeline.md` — Architecture for cold storage offload of rendered video pools, avoiding C: drive cache exhaustion, and headless remote provisioning via SSH + schtasks /it

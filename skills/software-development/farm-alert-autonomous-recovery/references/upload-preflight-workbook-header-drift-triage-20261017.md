@@ -28,20 +28,33 @@
 
 ---
 
-## 3. Quy chuẩn sửa chữa (Fix Pattern O(1))
+## 3. Quy chuẩn sửa chữa (Fix Pattern O(1)) & Cảnh báo False Positive
 - Chuyển từ exact equality sang substring / keyword matching an toàn:
   ```python
   folder_idx = next(
-      (i for i, h in enumerate(headers) if any(k in h for k in ("folder video", "video folder", "render dich", "tik"))),
+      (i for i, h in enumerate(headers) if any(k in h for k in ("folder video", "video folder", "render dich"))),
       None
   )
   ```
+- **🛑 CẢNH BÁO REVIEWER (PITFALL - KHÔNG DÙNG TỪ KHÓA "tik"):**
+  * TUYỆT ĐỐI KHÔNG đưa từ khóa `"tik"` vào danh sách `any(k in h for k in ...)` khi so khớp chuỗi con (`substring match`).
+  * Lý do: Các file Excel quản lý farm có các cột như `"TikTok ID"`, `"Keyword Video"` đều chứa chuỗi con `"tik"`. Nếu workbook thiếu cột Folder Video hoặc cột bị dịch chuyển, bộ lọc sẽ khớp nhầm vào `"TikTok ID"` hoặc `"Keyword Video"`, dẫn đến truyền nhầm tham số folder video và gây lỗi nghiêm trọng khi tìm đường dẫn media.
+- **Bổ sung Telemetry Logging:**
+  * Thêm warning log tường minh khi không tìm thấy cột folder để telemetry quan sát được:
+    ```python
+    if folder_idx is None:
+        logger.warning("[UPLOAD_HOOK] Workbook %s: no folder video column found in headers %r", workbook_path.name, headers)
+    ```
 - Đảm bảo tương thích ngược 100% với cả schema cũ (`Folder Video`, `video folder`) lẫn schema mới (`Folder Video (Render Dich)`).
 
 ---
 
 ## 4. Kiểm chứng focused & Xác minh thực tế trên Farm
 - Tạo unit test mock/in-memory openpyxl với 2 bảng workbook có cả header cũ và header mới chứa chú thích ngoặc đơn.
+- **Tiêu chuẩn test suite Closeout Gate:**
+  * Bắt buộc có test case chống False Positive: Sheet có các cột `"TikTok ID"`, `"Keyword Video"` nhưng không có cột Folder Video -> xác nhận `res["folder_video"] == ""` chứ không bị khớp nhầm.
+  * Bắt buộc có test case xử lý ngoại lệ: Sheet thiếu cột "Máy", hoặc truy vấn machine không tồn tại -> trả về `None`.
+  * Trong file test độc lập, chèn `sys.path.insert(0, str(REPO_ROOT / "python_runner"))` và hỗ trợ import linh hoạt để `pytest` chạy độc lập từ bất kỳ workdir nào mà không bị ImportError.
 - Xác minh `read_machine_row_from_tik_workbook` trích xuất chính xác `folder_video` và `account_id` trên cả hai định dạng.
 - **Xác minh trực tiếp O(1) trên 8 file workbook thực tế:**
   * Chạy probe đọc `read_machine_row_from_tik_workbook(resolve_tik_workbook(r'D:/OneDrive/TaadaaData/kibe', tik), 1)` cho `tik` từ 1 đến 8.
