@@ -20,4 +20,4 @@ BỎ HẾT ViChanger, 100% Wi-Fi Singbox 192.168.110.2:200xx, CẤM bật GanPro
 §
 Canary farm: tối thiểu 3-4 màn/máy khác nhau (DM, sửa hồ sơ, feed, popup thử thách); cấm canary trên 1 máy đơn độc.
 §
-Ava: lộ ngũ quan, mắt thẳng, cấm kính râm. Mèo/Thú cưng: CẤM frame mờ cảnh động; ưu tiên studio cận cảnh (mắt sáng, mặt 70% tròn), trích kho cùng niche/mosaic 4 opts. TopLeftPencil bounds l=10..45 w,h<=130 & né feed. Pin video tránh back thoát profile.
+Ava: lộ ngũ quan, mắt thẳng, cấm kính râm/ảnh đỏ nhòe. Dọn .thumbnails + Camera/* trước push; query MediaStore đúng 1 ảnh; WinRT OCR thấy chữ lạ (20 lần, video) cấm Lưu. Trích từ clip gốc nếu Haar ảo. TopLeftPencil bounds l=10..45 w,h<=130 & né feed.

@@ -59,6 +59,10 @@ For an advice-intent turn:
 ### Advice-to-Action Transition Flow ("R làm đi" vs "Gọi sol plan")
 
 When an advice-intent turn presents a diagnosis and proposed remediation:
+0. **Anti-Premature Execution Jump ("... đc k?" ≠ "Cài/Làm đi"):**
+   - Khi Operator hỏi tính khả thi (`... đc k?`, `... có nên ... k?`, `... làm thế nào?`), TUYỆT ĐỐI KHÔNG tự suy diễn thành mệnh lệnh thi công ("User chỉ đạo cài đặt X") rồi vội vã tải installer, viết plan cài đặt hay hỏi "Tôi tiến hành cài luôn nhé?".
+   - Khi tham vấn Advisor Sol: Phải giữ nguyên tính chất câu hỏi đánh giá phản biện ("Có nên làm X không? Phân tích I/O, cache, rủi ro..."), CẤM mớm lời Sol bằng prompt ngộ nhận ("User chỉ đạo cài X, hãy cho plan cài silent...").
+   - Trả lời thẳng vào bản chất: Khả thi hay không, lợi & hại, rủi ro thực tế trên hiện trường trước khi bàn tới cách cài.
 1. **User directs execution directly ("R làm đi", "Làm luôn đi", "Triển khai đi", "Fix đi", "Ok duyệt"):**
    - Strictly Imperative: Do NOT call Advisor again; user approved direction.
    - Immediate Tiered Execution: focused test -> O(1) patch -> delegate worker -> verify.
