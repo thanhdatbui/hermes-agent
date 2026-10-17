@@ -97,6 +97,7 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
 
 ## Pitfalls
 
+- **CẤM DÙNG CLAUDE SONNET TRONG VÒNG LẶP REMEDIATION TỰ ĐỘNG (Bảo Vệ Quota Tuyệt Đối 17/10/2026):** Tuyệt đối CẤM mọi tiến trình/script tự động (Closeout Gate, Strike 3 Hand-off, Auto-remediation) tự ý kích hoạt Claude Sonnet 5.5 để "cày 1-2 điểm" cho Sol Auditor. Sonnet là vũ khí chiến lược đắt đỏ, CHỈ ĐƯỢC CHẠY khi có lệnh đích danh trực tiếp từ Operator (User). Mọi vòng lặp sửa lỗi tự động độc quyền giao cho Sol Repair (miễn phí trên :20129) hoặc Haiku 5.5 / Agy CLI (Gemini Pro).
 - **CẤM DÙNG CLAUDE SONNET ĐỌC FILE VẶT (Quota Bleeding Disaster 15/10/2026):** Tuyệt đối không dùng `--role planner` (Sonnet 5.5) cho các tác vụ chỉ đọc vài chục dòng code, kiểm tra diff hoặc tìm kiếm file. Đọc file/diff phải dùng tool local hoặc Python $O(1)$ để bảo vệ quota 5h không bị đốt sạch từ 69% lên 100% trong 15 phút.
 - **CẤM AGENT TỰ Ý OVERRIDE QUOTA GUARD:** Lệnh `claude_quota_guard.py allow <minutes>` là đặc quyền DUY NHẤT của Con người (User). Agent tuyệt đối cấm tự ý gõ lệnh mở rào quota của chính mình khi bị chặn.
 - **CẤM DÙNG AG CLI (GEMINI) LÀM REVIEWER:** AG CLI chỉ là worker sửa code (`fix`) hoặc phân tích logic (`ask`). Tuyệt đối không được gán vai Reviewer cho AG CLI/Gemini để tự phê duyệt `[APPROVED]` thay thế Claude Sonnet / Sol High (vi phạm nghiêm trọng nguyên tắc Cross-Family Review).
