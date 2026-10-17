@@ -97,6 +97,10 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
 
 ## Pitfalls
 
+- **QUY CHUẨN ĐÍCH DANH "HỎI / GỌI CLAUDE CLI" CỦA OPERATOR (Operator Sonnet Mandate 17/10/2026):**
+  Khi Operator (User) ra lệnh *"hỏi Claude"*, *"gọi Claude CLI kiểm tra / đánh giá / tư vấn / review"*, Coordinator BẮT BUỘC dispatch **Claude Sonnet 5.5** (`claude_worker.py --role planner` hoặc `--role reviewer`), TUYỆT ĐỐI CẤM tự ý hạ cấp xuống `haiku_worker.py`!
+  `haiku_worker.py` chỉ là công nhân O(1) thi công sửa code/test cơ học để tiết kiệm quota; khi User cần tư vấn kiến trúc hay thẩm định chất lượng cao thì Sonnet là tiêu chuẩn tối cao duy nhất.
+  *Lưu ý khi gọi Sonnet tư vấn:* Kẹp tham số `--max-turns 6-8` và chỉ thị rõ *"Answer directly without executing bash commands"* trong prompt để tránh Sonnet chạy các tool Bash/Read thăm dò lan man dẫn đến lỗi `Reached max turns`.
 - **BẢO VỆ QUOTA CLAUDE TẠI STRIKE 3 HAND-OFF — TÁCH BẠCH VAI TRÒ HAIKU WORKER VS SONNET REVIEWER (Chống Đốt Quota 17/10/2026):**
   Khi Closeout Gate trượt 3 lần (Strike 3), nguyên nhân đốt cháy quota 5h là do Coordinator lạm dụng Sonnet 5.5 (`--role reviewer`) để viết code và sửa test suite lặp đi lặp lại.
   Quy chuẩn bất biến:
