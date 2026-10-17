@@ -8,15 +8,15 @@ Proxy: 1-1. Chuẩn hóa 3 món (crop 512x512 -> chốt PA -> lock/Excel -> run_
 §
 Farm: O(1). CẤM đẻ script; ava: run_avatar_batch_3accs.py; pin: pin_top_videos.py. Máy đa nick BẮT BUỘC verify username profile khớp target trước thao tác/chụp ảnh. Lock tên: rename_natural_state.json.
 §
-Re-login văng ko chờ 24h nhưng max 1 lần/ngày + write LOGIN_OK; cấm spam nát proxy.
+GPM: max 5 wkr; re-login văng max 1 lần/ngày (cấm bypass seen_emails, max_proxy 3/cổng); cấm văn mẫu nhường máy.
 §
-Stale Upload: xóa draft (_delete_all_profile_drafts). Revert flop: TikWM tải CDN, xóa render trước làm mới. Cào video: max 60 clip/channel.
+Stale Upload: nhận diện header 'render dich' né 'tik'; xóa draft (_delete_all_profile_drafts). Revert flop: TikWM tải CDN, xóa render. Cào video: max 60 clip.
 §
 Closeout: Grace 80-84 (diff<=30, test>=1 pass, 0 fail/err, ko lỗi logic/sec) auto-push; cấm park WIP; Remediation max 3 vòng (Sol 1-2 free -> Haiku/Agy 3, CẤM tự ý gọi Sonnet); User ép: safe_push --owner-override. Win -p: prompt 1 dòng.
 §
 Admin Remote (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; admin_ssh.py.
 §
-BỎ HẾT ViChanger, 100% Singbox 192.168.110.2:200xx, CẤM GanProxyWatcherTray/gan_proxy/VPN app; post-reboot kẹt proxy dùng mark_proxy_state. Lệch/thiếu nick tự gọi tiktok_login_v1.py <STT> --email <ID> --ss nạp bù cấm hỏi thừa; ADB treo 10s: adb kill-server && start-server.
+BỎ HẾT ViChanger, 100% Singbox 192.168.110.2:200xx, CẤM GanProxyWatcherTray/gan_proxy/VPN app; post-reboot kẹt proxy dùng mark_proxy_state; ADB treo 10s: adb kill-server && start-server.
 §
 Canary farm: tối thiểu 3-4 màn/máy khác nhau (DM, sửa hồ sơ, feed, popup thử thách); cấm canary trên 1 máy đơn độc.
 §

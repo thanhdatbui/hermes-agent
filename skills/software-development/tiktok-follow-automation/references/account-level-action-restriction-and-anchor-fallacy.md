@@ -62,11 +62,19 @@ Khi Operator cần kiểm tra sâu về từng nick trên Dashboard (không ph�
     ```
 
 ### B. Kỷ Luật UX Giao Diện (Chống Ép Popup Nhỏ Gây Khó Đọc)
-- **Anti-Pattern (BỊ CẤM):** Nhét thông số bệnh án, thẻ trần quota và bảng lịch sử UID vào modal popup nhỏ hẹp (`max-width: 680px`, khung cuộn mini 300px). Người vận hành phải nheo mắt đọc chữ nhỏ, thao tác cuộn bí bách ("làm nhỏ khó đọc vc").
-- **Chuẩn Thiết Kế Dedicated View / Master-Detail:**
-  1. **Phân nhóm sức khỏe trực quan:** BẮT BUỘC nhóm danh sách tài khoản theo 3 phân tầng rõ rệt:
-     - 🟢 **Khỏe / Nòng Cốt:** Đã tốt nghiệp, chạy full quota theo cohort, streak lỗi = 0.
-     - 🟡 **Hồi phục / Thử thách:** Đang trong giai đoạn dò trần bậc thang (T1: 3-5 lượt, T2: 7-9 lượt).
-     - 🔴 **Yếu / Vào Tù (Cooldown):** Bị nhả follow, đang thụ án kỷ luật, hiển thị rõ thời hạn mãn hạn.
-  2. **Bố cục thoáng đạt:** Ưu tiên bố cục Tab chuyên biệt (`📋 Sổ Tay Bệnh Án`) hoặc bố cục Master/Detail (Danh sách nick bên trái/trên, Bệnh án chi tiết & bảng UID full-width bên phải/dưới) thay cho modal che khuất màn hình.
-  3. **Thông số bệnh án rõ ràng:** 4 thẻ chỉ số Quota (`Nhóm Cohort`, `Trần Đã Chứng Minh`, `Trần Dò Ca Tới`, `Mức Gãy Gần Nhất`), Banner trạng thái kỷ luật, và Bảng UID full-width có ô tìm kiếm/lọc nhanh.
+- **Anti-Pattern (BỊ CẤM TUYỆT ĐỐI):** Nhét thông số bệnh án, thẻ trần quota và bảng lịch sử UID vào modal popup nhỏ hẹp (`max-width: 680px`, khung cuộn mini 300px). Người vận hành phải nheo mắt đọc chữ nhỏ, thao tác cuộn bí bách ("làm nhỏ khó đọc vc").
+- **Chuẩn Thiết Kế Dedicated View / Master-Detail (Bắt Buộc):**
+  1. **Phân nhóm sức khỏe trực quan & Đưa Nick Yếu Lên Đầu:** BẮT BUỘC nhóm danh sách tài khoản theo các phân tầng rõ rệt kèm số lượng đếm tức thì:
+     - 🔴 **Yếu / Vào Tù (Cooldown):** Ưu tiên xếp lên đầu danh sách để can thiệp kịp thời (hiển thị rõ fail streak, lý do dính nhả, ngày mãn hạn).
+     - 🟠 **Hồi Phục 1 (Probation T1):** Dò bậc thang 3-5 lượt/ca.
+     - 🟡 **Hồi Phục 2 (Probation T2):** Dò bậc thang 7-9 lượt/ca.
+     - 🟢 **Khỏe Mạnh / Nòng Cốt (Full Quota):** Đã tốt nghiệp, chạy full quota theo cohort.
+  2. **Bố cục Master-Detail Thoáng Đạt (Toàn Màn Hình):**
+     - **Cột Trái (Danh Sách Tài Khoản - ~350px):** Cuộn dọc danh sách thẻ nick. Mỗi thẻ hiển thị: Máy, Row, Cổng proxy (🔗 đối tác cùng IP), Username, huy hiệu sức khỏe màu sắc, tổng follow, max safe. Bấm vào thẻ thì viền sáng neon và nạp ngay sang Cột Phải.
+     - **Cột Phải (Sổ Bệnh Án Chi Tiết - Full Width):**
+       + Header nick: `@username` (link mở TikTok) • Máy X • Row Y.
+       + 4 Thẻ Quota lớn: Nhóm Cohort (`Veteran / Mid / Rookie`), Trần Đã Chứng Minh (`proven_safe_ceiling`), Trần Dò Ca Tới (`active_ceiling`), Mức Gãy Gần Nhất (`last_failed_ceiling`).
+       + Banner kỷ luật: Lộ trình (`⚡ Ưu tiên / Fast Track` hay `🎯 Tiêu chuẩn / Cautious`), số ca sạch tích lũy, thời hạn cooldown.
+       + Bảng Lịch Sử UID Đã Follow: Rộng rãi, chữ to rõ ràng, link mở profile TikTok `@uid`, ngày giờ chi tiết đến giây và ô lọc nhanh UID con.
+  3. **Tương Thích Mobile (<= 768px):** Không ép 2 cột co cụm trên điện thoại. Hiển thị danh sách nick full-width; khi chạm vào 1 nick thì chuyển sang màn chi tiết toàn màn hình kèm nút `← Quay lại danh sách nick`.
+  4. **Liên Kết Giữa Các Tab (Cross-View Navigation):** Bấm nút kính lúp / sổ tay (`🔍` / `📋`) tại bất kỳ tab nào (Toàn Bộ Farm, BXH Following, Sức Khỏe Máy) phải tự động chuyển ngay sang Tab Bệnh Án và chọn đúng nick đó, không bật modal popup che màn hình.

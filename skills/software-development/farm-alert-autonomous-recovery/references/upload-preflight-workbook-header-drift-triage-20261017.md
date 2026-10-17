@@ -45,6 +45,10 @@
     if folder_idx is None:
         logger.warning("[UPLOAD_HOOK] Workbook %s: no folder video column found in headers %r", workbook_path.name, headers)
     ```
+- **Kỷ luật Closeout Gate khi commit nhiều file (Scope Invariant):**
+  * Script `closeout_gate.py` so sánh exact committed scope với `--files`.
+  * Nếu commit chứa nhiều file hơn danh sách `--files` (ví dụ: commit cả `benign_popup_registry.py` kèm theo), gate sẽ fail với lỗi `refusing partial committed scope`.
+  * Bắt buộc: Hoặc truyền đủ toàn bộ các file đã commit vào `--files`, hoặc chỉ commit đúng các file đã được chỉ định trong Scope Lock.
 - Đảm bảo tương thích ngược 100% với cả schema cũ (`Folder Video`, `video folder`) lẫn schema mới (`Folder Video (Render Dich)`).
 
 ---

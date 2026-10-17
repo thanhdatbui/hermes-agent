@@ -30,6 +30,34 @@
      - Báo cáo chỉ số proxy thực tế (`max_proxy {max_p}/cổng`), cấm in khẩu hiệu tĩnh che mắt.
      - CẤM TUYỆT ĐỐI văn mẫu bịa đặt đổ lỗi cho thiết bị khác ("nhường máy TikTok/Avatar" trong khi GPM chạy PC). Nếu còn acc chờ thì ghi đúng: *"Còn lại trong hàng đợi: X acc chờ ca tiếp theo"*.
 
+### 1.4. Mẫu Code Chuẩn Cho Chốt Chặn Re-login & Báo Cáo Không Bịa Đặt
+```python
+# 1. Chốt chặn candidate: không cho phép bất kỳ email nào chạy lặp lại trong ngày
+if em_l in seen_emails or em_l in excluded_emails:
+    continue
+
+# 2. Hard cap proxy cho re-login (tối đa limit + 1)
+if is_relogin:
+    if port and current_run_proxy_count.get(port, 0) >= MAX_LOGINS_PER_PROXY + 1:
+        continue
+    current_run_proxy_count[port] = current_run_proxy_count.get(port, 0) + 1
+
+# 3. Đánh dấu recovered_date tránh cron nuôi đánh dấu NEEDS_LOGIN lại ngay
+if email in nurture_data and nurture_data[email].get("status") == "NEEDS_LOGIN":
+    nurture_data[email]["status"] = "LOGIN_RECOVERED"
+    nurture_data[email]["recovered_at"] = datetime.now().isoformat()
+    nurture_data[email]["recovered_date"] = datetime.now(HCMC).strftime("%Y-%m-%d")
+
+# 4. Báo cáo trung thực: Distinct accounts, real max proxy, không văn mẫu
+max_p = max(proxy_count.values()) if proxy_count else 0
+lines = [
+    f"[LOGIN GPM {shift_label} - TỔNG KẾT]",
+    f"• Kết quả ca: ✓ {total_success} | ✗ {total_fail} | max_proxy {max_p}/cổng | Hoàn tất ca {shift_desc}",
+]
+if skipped_busy > 0:
+    lines.append(f"• Còn lại trong hàng đợi: {skipped_busy} acc chờ ca tiếp theo (tối đa {MAX_WORKERS} workers/lần)")
+```
+
 ---
 
 ## 2. Kiến Trúc Nuôi Cuốn Chiếu (Rolling Concurrency = 5)
