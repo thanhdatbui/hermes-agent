@@ -149,7 +149,9 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
 43/43 passing across the worker dispatch subsystem:
 - `D:/Taadaa/tools/tests/test_claude_worker.py`: 32/32 tests (role configs, turns clamping, tool lockdown, quota gate, stale cache, session limits, single-line prompt sanitization, `--no-fallback`, `EXIT_QUOTA_BLOCKED = 125`).
 - `D:/Taadaa/tools/tests/test_dispatch_worker.py`: 11/11 tests (CRLF/whitespace normalization, failure hierarchy, snapshot & hash gate, target deletion rejection, unrelated files guard, anchored BLOCKED detection, PermissionError mapping, correlation ID consistency, Haiku/Agy fallback orchestration mocks).
+- `D:/Taadaa/tools/tests/test_sol_worker.py`: 8/8 tests (safe shell command regex, metacharacters injection block, DSL parse, atomic patch lifecycle, AST validation, LF preserve, max_turns validation).
 
+See `references/sol-web-autonomous-fallback-worker-20261017.md` for Sol Web Autonomous Fallback Worker (:20129) architecture, atomic patching, and worker reporting vs session-close boundaries (17/10/2026).
 See `references/strike-3-reviewer-handoff-and-telemetry-remediation-20261017.md` for Strike 3 Reviewer Hand-off protocol and telemetry/error handling remediation to overcome Closeout Gate 84/100 threshold (17/10/2026).
 See `references/strike-3-claude-turns-cap-and-candidate-ranking-20261016.md` for Strike 3 Reviewer Hand-off turns cap allocation (--max-turns 15) and candidate ranking invariants (16/10/2026).
 See `references/mechanical-gate-indentation-and-git-diff-trap-20261015.md` for Mechanical Gate indentation bug, regex boundary decay trap, and GIT_EXTERNAL_DIFF environment variable fix (15/10/2026).
