@@ -10,7 +10,7 @@ GPM: max 5 wkr; nạp pool web (0đ quota); re-login văng max 1 lần/ngày (ma
 §
 Stale Upload: xóa draft (_delete_all_profile_drafts). Revert flop: TikWM tải CDN, xóa render. Cào: max 60 clip.
 §
-Closeout: Grace 80-84 auto-push; safe_push --owner-override. Tiered 3.0: T0 tự sửa <=80 dòng/2 file; T1 Worker <=12 write, <=8 read + Context Pack; Worker fail 1st diff<=80 dòng -> Coordinator TỰ ĐỘNG Absorption, CẤM hỏi User; Time-box T0 8m, T1 18m, breaker 30m; sửa rule MD phải sửa kèm guard Python.
+Closeout: Grace 80-84 auto-push. Pre-closeout: check git status & diff origin/master; clean+ahead 0 -> task đã push xong, cấm chạy gate lại commit cũ. Cấm git commit -a, chỉ commit đích danh file. Cấm ACLs/HMAC over-engineering làm hỏng cronjob farm. Fail -> auto-remediate dứt điểm, cấm khóc lóc dừng giữa chừng.
 §
 Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; admin_ssh.py. Cron: phase9-runner nuôi, feed_session_watchdog giám sát 15p.
 §

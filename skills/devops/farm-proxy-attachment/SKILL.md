@@ -11,6 +11,10 @@ description: Verify or configure per-device proxy attachment for the Taadaa Andr
 # Farm proxy attachment (Taadaa phone farm)
 
 ## 🛑 QUY TẮC CỐT LÕI (2026-09-03 — BỎ HOÀN TOÀN VICHANGER)
+- **CẤM TUYỆT ĐỐI GÁN PROXY DẠNG DOMAIN/FQDN CHO ANDROID (2026-10-17 INVARIANT):**
+  + Tuyệt đối KHÔNG gán proxy dạng tên miền (ví dụ `mirotik1.taadaa.click:1000x` hoặc bất kỳ FQDN nào) vào `settings put global http_proxy` trên thiết bị Android qua ADB.
+  + **Bản chất kỹ thuật:** Trên Android Phone Farm, domain bị phân giải qua DNS ngoài (như 8.8.8.8) ra IP Public WAN của Router, gây dính bẫy Hairpin NAT / Firewall Drop từ Router MikroTik khiến điện thoại báo "Không có Internet" (icon Wi-Fi có dấu chấm than).
+  + **BẮT BUỘC LUÔN GÁN BẰNG IP LAN NỘI BỘ:** `192.168.110.2:200xx` (qua Singbox) hoặc `192.168.110.2:1000x` (trực tiếp PPPoE).
 - **KỶ LUẬT PROXY THEO BẢN CHẤT LỖI (2026-09-30 — USER INVARIANT):**
   + **Lỗi do NỀN TẢNG (Platform Error):** Google Checkpoint, reCAPTCHA, bắt SĐT (`challenge/iap`), sai mật khẩu (`BLOCKED_WRONG_PASSWORD`), rate limit từ server TikTok/Google/Hotmail ➔ **TÍNH 1 LƯỢT DÙNG (TƯƠNG ĐƯƠNG SUCCESS)**, **Khóa IP/Port proxy đó ngay lập tức** đến hết ngày để bảo vệ an toàn tuyệt đối cho dàn nick, cấm nhồi nick khác vào IP đã bị nền tảng gắn cờ nghi vấn.
   + **Lỗi do SCRIPT / NỘI BỘ (Script Error):** GPM API timeout, thiếu mật khẩu trong Excel (`MISSING_PASSWORD`), tự động skip do filter nội bộ (`khoaleemagic`), crash CDP trước khi tải trang ➔ **KHÔNG TÍNH VÀO QUOTA IP**, giữ nguyên IP để thử lại tài khoản khác trong ngày (tài khoản lỗi script đánh dấu riêng tránh loop lặp lại).

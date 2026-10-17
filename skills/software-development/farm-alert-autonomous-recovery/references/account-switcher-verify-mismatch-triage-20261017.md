@@ -13,6 +13,11 @@
   - Runner mở Account Switcher thành công (`[ACCOUNT_SWITCHER] Switcher opened via core ✓`).
   - Runner tìm thấy target account trong danh sách và tap chọn thành công (`[ACCOUNT_SWITCHER] Target account selected via core ✓`).
 - **Nguyên nhân gốc rễ cốt lõi: Rớt mạng Internet / Proxy Egress Drop (Dấu chấm than Wi-Fi trên Status Bar):**
+  - **BẪY FQDN/DOMAIN PROXY TRÊN ANDROID (2026-10-17 ROOT CAUSE):**
+    * Khi proxy trên Android (`settings get global http_proxy`) bị gán dạng domain/FQDN ngoài (ví dụ `mirotik1.taadaa.click:1000x`) thay vì IP LAN nội bộ (`192.168.110.2:200xx` hoặc `192.168.110.2:1000x`):
+    * Điện thoại Android phân giải qua DNS ngoài (như 8.8.8.8) ra **IP Public WAN Viettel** (`116.99.168.85`).
+    * Gói tin từ trong LAN Wi-Fi gửi ra IP Public WAN bị Router MikroTik chặn lại (`DROP_EXTERNAL_PROXY_PORTS` / Hairpin NAT không hỗ trợ proxy ports).
+    * Kết quả: Điện thoại bị cúp mạng Internet 100%, Android gắn cờ `"Không có Internet"`. Dù router MikroTik và PPPoE uptime 7 ngày không rớt mạng, điện thoại vẫn không thể ra được Internet!
   - **Dấu hiệu nhận diện đặc trưng trên UI/XML:**
     * Trên thanh Status bar, icon Wi-Fi xuất hiện **dấu chấm than** (`!`).
     * Node hệ thống trong `popup_before.xml`:

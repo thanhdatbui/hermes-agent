@@ -29,3 +29,4 @@ metadata:
 - Sol High Scoring Rubric & Diff Budget: [`references/sol-high-scoring-rubric-and-diff-budget.md`](references/sol-high-scoring-rubric-and-diff-budget.md)
 - Diff Too Large & Reviewer Handoff: [`references/diff-too-large-and-reviewer-handoff-remediation.md`](references/diff-too-large-and-reviewer-handoff-remediation.md)
 - Strike 3 Failure Protocol: [`references/sol-worker-guardrails-and-strike-3-failure-protocol-20261017.md`](references/sol-worker-guardrails-and-strike-3-failure-protocol-20261017.md)
+- Pragmatic Alignment & Anti-Phantom Closeout: [`references/pragmatic-alignment-and-phantom-closeout-prevention-20261017.md`](references/pragmatic-alignment-and-phantom-closeout-prevention-20261017.md)
