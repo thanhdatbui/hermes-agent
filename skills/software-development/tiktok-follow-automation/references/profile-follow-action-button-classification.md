@@ -79,8 +79,10 @@ Tuyệt đối không thay thế toàn bộ XML bằng OCR một cách mù quán
 
 ### A. Bẫy Bất Đối Xứng (Asymmetric Action Node Matcher):
 - **Hiện tượng:** Trong `_is_profile_action_node`, nút Nhắn tin được nhận diện tự do qua semantic text (`values & message_markers`) cho mọi ID, trong khi nút Follow lại bị ép cứng theo whitelist ID (`_ACTION_BUTTON_SUFFIXES`).
-- **Hậu quả:** Khi TikTok cập nhật obfuscated ID mới cho nút Follow (như `id/fmp`, `id/fo4`), nút Follow bị loại khỏi `action_nodes`, chỉ còn nút Nhắn tin lọt qua $\rightarrow$ `classify_button` tưởng màn hình không còn nút Follow và trả về `followed` khống!
-- **Kỷ luật sửa:** Nhận diện nút hành động bắt buộc đối xứng: mở rộng `action_text_markers` bao gồm cả `FOLLOW_BUTTON_TEXT + FOLLOW_BACK_TEXT + FOLLOWED_TEXT` cho vùng `bounds[1] < 1200` (loại trừ stat counters).
+- **Hậu quả:** Khi TikTok cập nhật obfuscated ID mới cho nút Follow (như `id/fmp`, `id/fo4`), nút Follow bị loại khỏi `action_nodes`, chỉ còn nút Nhắn tin lọt qua ➔ `classify_button` tưởng màn hình không còn nút Follow và trả về `followed` khống!
+- **Kỷ luật sửa chuẩn hóa (Commit d328458):**
+  1. *Khóa chặt Follow Dominance trong `classify_button`:* Tại nhánh `recognized_messages and not recognized_not_followed`, trước khi phán `followed`, bắt buộc duyệt qua tất cả nodes trong header band ($y < 1200$) loại trừ stat counters; nếu còn bất kỳ node nào chứa text/content-desc thuộc `NOT_FOLLOWED_MARKERS` (`"Follow"`, `"Follow lại"`, `"Theo dõi"`) không chứa chữ số, BẮT BUỘC trả về `"not_followed"` ngay lập tức.
+  2. *Live Pull-to-refresh trong `_path_b_verify`:* Trên môi trường thiết bị thật (`not is_mock`), sau khi mở profile cá nhân và trước khi chốt phân loại, bot bắt buộc gọi `pull_to_refresh_profile(adapter, sleep_after=2.5, xml_text=profile_xml)` để ép TikTok client làm mới dữ liệu từ server, triệt tiêu hoàn toàn bẫy cache optimistic.
 
 ### B. Kỷ luật Canary khi Farm đang chạy ca (Active Cohort Isolation):
 - Khi User yêu cầu: *"Làm xong chạy canary vài acc kiểm tra xem lỗi không"*:

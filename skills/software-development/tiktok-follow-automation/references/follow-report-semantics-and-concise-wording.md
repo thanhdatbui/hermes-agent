@@ -215,7 +215,7 @@ Answer the operator's direct question first, in Vietnamese, with no speculative 
   * Khung định dạng báo cáo của Watchdog (`feed_session_watchdog.py`, `formatters.py`) được đóng băng và bảo vệ chặt chẽ bởi các assertion trong bộ test (`test_feed_session_watchdog.py`, e.g. kiểm tra dòng đối soát web).
   - CẤM Coordinator/Worker tự ý cắt bỏ các dòng chi tiết của watchdog khi chưa được chỉ đạo và cập nhật đồng bộ bộ test suite, tránh làm gãy regression gate của repo `tiktok-luot nuoi acc`.
 
-  ### 12. Giải Mã Dòng "Đối Soát TikTok Web" (Lệch Âm / Lệch Dương) & Cạm Bẫy Inspect Máy Bằng ADB
+  ### 12. Giải Mã Dòng "Đối Soát TikTok Web" (Lệch Âm / Lệch Dương) & Kỷ Luật Không Chống Chế Lỗi Cache
   - **Bản chất dòng đối soát web trên Telegram:**
     * Watchdog lấy chênh lệch `following` từ profile công khai TikTok cào bởi snapshot crawler đối chiếu trực tiếp với số follow do bot app ghi nhận (`follow_result.json`).
     * **Lệch âm (`Lệch -N`, ví dụ `M23: script 2 lượt - web 0 lượt - lệch (-2)`, `M45/M59: script 4 - web 0 - lệch (-4)`):**
