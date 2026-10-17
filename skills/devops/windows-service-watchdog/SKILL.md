@@ -352,6 +352,7 @@ return $false  # Timed out
 
 ## References
 
+- `references/windows-console-popup-prevention-and-ast-hook.md` — Ngăn ngừa cửa sổ console CMD khi chạy tác vụ nền trên Windows bằng AST Pre-Tool hook và quy chuẩn pythonw/Hidden.
 - `references/cronjob-window-hidden-ast-gate-and-prompt-pruning.md` — Gate cơ học AST (`guard_cronjob_safety.py`) cưỡng chế ẩn cửa sổ CMD khi tạo cron/task ngầm trên Windows và chiến lược rà soát cắt tỉa prompt rule khi đã có gate.
 - `references/periodic-window-report-dedup-and-state-key-mismatch.md` — Phòng ngừa spam báo cáo định kỳ theo khung giờ (6H) khi chạy trên cronjob tần suất cao (5m/15m) do thiếu dedup hoặc lệch key lưu state.
 - `references/xiaowei-adb-orphan-cleanup-and-fail-closed-watchdog.md` — Xiaowei (玖卫) ADB port 5038 rogue conflict, WinUSB bus separation, fail-closed 3-state logic (True/False/None), in-pipeline atomic race prevention, and avoiding taskkill /T on shared automation hosts.

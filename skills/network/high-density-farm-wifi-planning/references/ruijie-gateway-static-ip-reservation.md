@@ -22,6 +22,12 @@ To prevent DHCP collision, IP pool overlap, and rogue lease timeouts on the phon
 | **AP 3** | AP-325 | `zone1` | `kibe 1` (5GHz) | `b0:b8:67:cd:bf:8a` | `192.168.110.253` | DHCP via Ruijie | Bound |
 
 ## 3. Pitfalls & Invariants
+* **DHCP Pool Exhaustion & 120-Min Lease Trap:**
+  * Ruijie EW3200GX-PRO defaults to a 120-minute lease time. In high-churn phone farm environments (reboots, auto-healer radio cycles), stale dynamic leases exhaust the 254-IP pool.
+  * When the pool hits 250+ allocated entries, newly joined phones (like M7) obtain an IP temporarily, then fail ARP/ACK or lose the lease within minutes.
+  * **Remediation:** Lower `Lease Time(Min)` to `30` in `Basics` ➔ `LAN` ➔ `LAN Settings`. Flush stale/failed ARP table entries on the upstream L2 switch/MikroTik.
+* **Troubleshooting Escalation Order (Gateway First, RF After):**
+  * When user directs "xử lý ở rujie trc đã xem đỡ k r ms xử lý aruba tính sau", prioritize verifying and stabilizing Layer 3 IP assignment / DHCP reservation / ARP clean-up before adjusting physical AP RF, transmit power, or antenna orientation.
 * **AP-315 vs AP-325 Hardware IP Behavior:**
   * AP-315 units often have `ipaddr` hard-stored in `ap-env`, causing them to come up on static IP immediately without waiting for DHCP. If Ruijie has not registered these MACs in the Static IP table, dynamic DHCP pool leases could clash if the pool reaches high octets (`.250`+).
   * Always bind all 4 AP MACs into Ruijie's `Địa chỉ IP tĩnh` table.

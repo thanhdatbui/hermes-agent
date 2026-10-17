@@ -4,9 +4,9 @@ Follow: P1/P2 trần ca; dò +2/ca (max 30); dính nhả vào tù, ra lùi 4 sà
 §
 Hotmail: CẤM mail cá nhân; @fviainboxes.com đọc OTP. Write-Through Excel 3,4,5+G; ~1280 acc. TT v47 monkey. Pin >=1000 view.
 §
-Farm: O(1). CẤM đẻ script. Preempt lock sửa ngay; nghiệm thu ping 0% loss; dải 110.x dễ nghẽn ARP. Lock tên: rename_natural_state.json. Header Excel: đổi header bắt buộc rà soát consumer; cấm fallback điền tuần tự dòng gây đảo lộn slot.
+Farm: O(1). Preempt lock sửa ngay (cấm cớ ca kẹt); nghiệm thu ping 0% loss; dải 110.x dễ nghẽn ARP pool; Ruijie lease 30p. Lock: rename_natural_state.json. Header Excel: đổi header rà soát consumer; cấm fallback điền tuần tự.
 §
-GPM: max 5 wkr; nạp pool web (0đ quota); re-login văng max 1 lần/ngày (max_proxy 3/cổng, ghi recovered_date).
+GPM: max 5 wkr; nạp pool web (0đ); re-login văng max 1 lần/ngày (max_proxy 3/cổng, ghi recovered_date).
 §
 Stale Upload: xóa draft. Revert flop: TikWM tải CDN. Popup 'Ghim/Riêng tư' KHÔNG PHẢI publish proof. Cào: max 60.
 §
