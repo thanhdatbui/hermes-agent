@@ -239,3 +239,28 @@ Answer the operator's direct question first, in Vietnamese, with no speculative 
       2. Chạy qua wrapper có lock độc quyền: `python D:/Taadaa/tools/with_device_lock.py --machine <N> -- <command>`.
       3. Tránh can thiệp trần hoặc phán đoán ẩu khi máy đang trong pha cooldown/dưỡng nick tự động.
 
+### 13. Triage Đối Soát Dashboard: "Sao Hôm Qua Web Tăng Mà Bot Không Tăng / Sao Khóa Tự Nhiên Rồi Mà Web Vẫn Tăng?"
+- **Hiện tượng & Bối cảnh Operator thắc mắc:**
+  * Operator xem Dashboard (`:1905`) thấy thẻ Following hiển thị:
+    `📊 Đối soát hôm qua: Bot +18 ➔ Web 📈 Tổng tăng: +6`
+    `⚡ Tiến độ hôm nay: Bot +0 lượt (Web 📈 Tổng tăng: +6)`
+  * Operator thắc mắc: *"Sao hôm qua web tăng mà bot không tăng? Tao khóa không có fl tự nhiên rồi mà nhỉ?"* (hoặc nghi ngờ khóa tự nhiên bị lọt khiến web tăng khi bot = 0).
+- **3 Nguyên nhân kiến trúc & Vòng đời dữ liệu (Root Causes):**
+  1. **Lệch pha chu kỳ quét toàn Farm (07:00 AM) vs Ca chạy Bot (09h, 14h, 20h):**
+     * Cron cào tổng toàn farm (`daily-tiktok-farm-tracker`) chỉ chạy 1 lần/ngày lúc **07:00 sáng** để tiết kiệm tài nguyên proxy và bảo vệ nick khỏi bị rate-limit.
+     * Các ca nuôi / follow chéo của Bot chạy rải rác trong ngày (Ca 1: ~09:30, Ca 2: ~14:00–16:00, Ca 3: ~20:00).
+     * Do đó, lượt follow Bot bấm trong ngày hôm qua (ví dụ +18 lượt lúc 09h và 14h–16h) **CHƯA ĐƯỢC** đợt quét 07:00 sáng hôm qua ghi nhận. Toàn bộ 18 lượt này phải đợi đến đợt quét 07:00 sáng hôm sau mới được cào về đối soát.
+  2. **Hiệu ứng Partial Scan rạng sáng & Kẹt Delta Hôm Qua trên Dòng Hôm Nay:**
+     * Trước mốc 07:00 sáng (khung 00:00–06:30), các task nền (2FA / Pre-session scrape) chỉ cào một nhóm nhỏ nick (~100/1268 nick).
+     * `max_dt` trên DB chuyển sang ngày mới (`target_date`), nhưng >90% số nick còn lại chưa có snapshot của ngày mới.
+     * Query tính delta (`LatestCurr` trừ `RankedPrev`) đối với 90% nick chưa cào ngày mới vẫn lấy snapshot ngày hôm qua trừ ngày hôm kia (+6) $\rightarrow$ Dashboard cộng dồn và hiển thị `Web Tổng tăng: +6` ở cả 2 dòng (Đối soát hôm qua và Tiến độ hôm nay), trong khi Bot hôm nay chưa chạy (`Bot +0 lượt`).
+     * Khiến Operator tưởng lầm hôm nay Bot không bấm mà Web vẫn tăng +6 do follow tự nhiên.
+  3. **Khóa Follow Tự Nhiên Luôn Giữ Chuẩn:**
+     * Bảng `session_action_stats` ghi nhận `natural_follows = 0`.
+     * Con số `+6` mà Web cào được lúc 07:00 sáng hôm qua thực chất đến từ các nick nội bộ đã bấm ở các ca chiều/tối của ngày hôm kia.
+- **Kỷ luật trả lời Operator:**
+  1. Khẳng định ngay: Khóa tự nhiên hoạt động chuẩn 100%, không có follow tự nhiên (`natural_follows = 0`).
+  2. Nêu rõ mốc thời gian: Đợt quét tổng toàn farm 07:00 sáng chưa chạy, giải thích số `+6` ở dòng hôm nay là số dư ngày hôm qua chưa được refresh do partial scan rạng sáng.
+  3. Giải thích rõ 18 lượt bot bấm hôm qua diễn ra sau mốc 07:00 sáng nên phải đợi đợt quét 07:00 sáng nay mới cào về đối soát.
+
+

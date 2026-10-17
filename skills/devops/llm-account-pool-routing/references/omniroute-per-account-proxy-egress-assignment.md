@@ -209,3 +209,38 @@ In `~/.hermes/config.yaml`:
     models:
       gpt-web-luna: { context_length: 256000 }
   ```
+
+---
+
+## PA1 Native HTTP StreamGenerate Implementation & Runtime Findings (October 2026)
+- **Playwright Elimination in `gemini-web.ts`**:
+  - The native executor was successfully refactored from Playwright Chromium automation to direct HTTP `StreamGenerate` (`+237 / -282` lines).
+  - Uses `globalThis.fetch` to ensure OmniRoute's `runWithProxyContext()` injects the connection's dedicated 1:1 4G Mobi proxy into the request dispatcher.
+  - Kept intact: prompt flattening (`buildGeminiPrompt`), tool emulation (`buildGeminiToolPrompt` / `buildGeminiToolResponse`), pseudo-SSE streaming, cookie rotation (`mergeRotatedGeminiCookies`), and explicit `501` error for unsupported image generation.
+  - Passes core typecheck (`npm run typecheck:core`), and passes live canary probe on `:20129` with ~5-6s latency.
+  - Legacy tests in `tests/unit/gemini-web.test.ts` that mock `playwright.chromium.launch` return 401 instead of 502/503 because the runtime no longer invokes Playwright.
+
+- **Reasoning Effort Capability Matrix: Sol Web vs Gemini Argon**:
+  - **Sol Web (`chatgpt-web` / `gpt-web-sol`)**: Fully supports `thinking_effort` parameter on the wire (`standard`, `extended`, `max`), selected via model slugs:
+    - `gpt-5.6-sol-instant` (effort: null / instant ~2.5s)
+    - `gpt-5.6-sol-medium` (effort: standard)
+    - `gpt-5.6-sol-high` (effort: extended - expert analysis)
+    - `gpt-5.6-sol-xhigh` (effort: max - deep reasoning)
+  - **Gemini Argon Web (`gemini-web-argon-pool`)**: Does **NOT** support `reasoning_effort`.
+    - OmniRoute's `checkGeminiWebUnsupportedControls()` guard rejects requests specifying non-minimal `reasoning_effort` with `400 invalid_request_error: unsupported_control_for_provider`.
+    - Google's `BardFrontendService/StreamGenerate` RPC wire protocol has no parameter for setting thinking budget. Google controls reasoning server-side per model version.
+
+- **Request Limit & Quota Profile for Gemini Web Pro Accounts**:
+  - **Official Stance**: Google does **NOT** publish numerical request limits (RPM/RPD) for Gemini Advanced Web; terms cite only fair use and dynamic demand throttling.
+  - **Empirical Limits**:
+    - Burst: ~5–10 requests/min per account before temporary 429 throttling.
+    - Rolling Window: ~50–100 Pro queries per 3–4 hour window per account.
+    - Daily: ~150–300 Pro queries per account before falling back to Flash.
+  - **5-Account Pool Capacity**:
+    - With 5 accounts in `gemini-web-argon-pool` bound 1:1 to Mobi 4G proxies, total pool throughput is ~250–500 Pro prompts per 3–4h rolling window (~1,000–1,500/day).
+    - Under `cache-optimized` (sticky) strategy, single worker tasks stay on one warm account to preserve prompt cache, while 429/failures trigger circuit-breaker failover to adjacent pool accounts.
+
+- **Worker Dispatch & Naming Convention**:
+  - **Short Alias**: `Argon` or `Argon Pool` (maps to `gemini-web-argon-pool` on `:20129`).
+  - **System Role**: Dedicated heavy-lifting worker/subagent for code refactoring, algorithm debugging, and long-context processing (0đ quota).
+  - **Coordinator Invariant**: Hermes Coordinator remains on official native API (`ag-gemini-pool-3`), as web reverse RPC lacks hardware function calling and is subject to web session safety filter drops.
