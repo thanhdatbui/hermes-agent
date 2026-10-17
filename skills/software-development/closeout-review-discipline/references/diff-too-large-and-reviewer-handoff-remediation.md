@@ -557,6 +557,22 @@
 - **Sentinel Transaction:**
   - Chỉ ghi sentinel flag sau khi lệnh shutdown local thành công để tránh mất ca nếu shutdown bị từ chối.
 
+## 40. Giải Mã Phán Quyết NEED_CONTEXT Từ File Untracked Mới, Dual-Host Game Guard & Preserve-First Sequence (17/10)
+- **Giải Mã Phán Quyết `NEED_CONTEXT` Do File Mới Vượt Ngưỡng Toán Học 21,299 Bytes:**
+  - Khi đưa một file mới (untracked `??`) vào git staged diff, toàn bộ nội dung file là insertions từ `/dev/null`.
+  - Nếu file code lớn (>21,150 bytes), cộng thêm git headers khiến diff vượt trần `SOL_TARGET_BYTES * 0.65 = 21,299 bytes`.
+  - `sol_payload_guard.py` tự động kích hoạt `[TRUNCATION_MANIFEST]`, dẫn tới Sol Auditor lập tức từ chối chấm điểm với phán quyết `NEED_CONTEXT:<file>`.
+  - **Khắc phục:** Tinh gọn các docstrings và comments dài dòng xuống 1-2 dòng súc tích để nén dung lượng file mã nguồn mới dưới 19,500 bytes (tốt nhất ~18,500–19,000 bytes), bảo đảm trạng thái `level=L0` (zero truncation).
+- **Thứ Tự Bất Biến Trong Giao Dịch Reboot Đa Máy (Preserve-First Ordering):**
+  - Trong kịch bản reboot hai máy (Kibe PC và Admin PC), `preserve_in_flight_sessions()` BẮT BUỘC phải thực thi ĐẦU TIÊN trước khi gửi bất kỳ tín hiệu reboot nào ra Admin hay Kibe.
+  - Nếu bảo toàn session gặp lỗi hệ thống (SQLite/Hermes exception), BẮT BUỘC dừng toàn bộ quy trình ngay lập tức (fail-closed, return 1), tuyệt đối không reboot dở dang một máy nào.
+- **Quy Tắc Quét Game Kép Tránh Gián Đoạn Người Dùng (Dual-Host Game Detection):**
+  - Script reboot trên host chính BẮT BUỘC phải gọi SSH `tasklist /FO CSV /NH` sang máy phụ (`admin-farm`) để kiểm tra tiến trình game trên CẢ HAI MÁY trước khi kích hoạt lệnh reboot.
+  - *TFT (Đấu Trường Chân Lý):* Chỉ chặn khi đang trong trận 3D thực sự (`league of legends.exe`, `tftclient-win64-shipping.exe`). Khi ở client/sảnh chờ (`LeagueClient.exe`, `LeagueClientUx.exe`, `RiotClientServices.exe`, `TFTAcademy.exe`) vẫn cho phép reboot làm sạch.
+  - *Warcraft 3:* Bất kỳ khi nào ứng dụng Warcraft 3 mở (`war3.exe`, `w3l.exe`, `warcraft iii.exe`, `frozen throne.exe`), BẮT BUỘC hủy toàn bộ lệnh reboot trên cả hai máy.
+  - *Tách biệt sentinels theo máy:* Lưu cờ `..._admin.flag` và `..._kibe.flag` riêng biệt để nếu một máy reboot thành công còn máy kia lỗi thì lần chạy tiếp theo chỉ retry máy thất bại, không reboot lặp lại máy đã hoàn tất.
+
+
 
 
 
