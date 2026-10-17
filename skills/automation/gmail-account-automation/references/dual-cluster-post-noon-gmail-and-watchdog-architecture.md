@@ -25,7 +25,15 @@
 - **Cơ chế Canonical chuẩn hóa (`sync_to_admin.py`):**
   * Dùng `D:/Taadaa/tools/sync_to_admin.py` chia file cần đẩy thành các chunk Base64 (4000 ký tự).
   * Gọi từ xa qua `admin_ssh.py` thực thi Python ghi file: `python -c "import base64; open(dest, mode).write(base64.b64decode(chunk))"`.
-  * Sau khi chuyển xong, **BẮT BUỘC** đối soát mã băm SHA256 giữa Kibe và Admin để xác nhận khớp bit 100% trước khi nghiệm thu.
+  * **Cấu hình đường dẫn đích linh hoạt:** File thuộc repo khác (như `..\register gmail\gmail_reg_v10.py`) bắt buộc map `dest` đích động: `dest = r"D:\Taadaa\register gmail\gmail_reg_v10.py" if "gmail_reg_v10" in f else f"D:\\\\Taadaa\\\\tools\\\\{f}"`.
+  * **Timeout Guard khi truyền file lớn:** Vì truyền ~80 chunks qua SSH kéo dài ~1.5 - 2 phút (vượt timeout foreground 60s), khi gọi `sync_to_admin.py` **BẮT BUỘC** chạy ở chế độ nền `terminal(background=True, notify_on_complete=True, timeout=300)`.
+  * Sau khi chuyển xong, **BẮT BUỘC** đối soát mã băm SHA256 giữa Kibe và Admin để xác nhận khớp bit 100% trước khi nghiệm thu:
+    `Get-FileHash 'D:\Taadaa\register gmail\gmail_reg_v10.py' -Algorithm SHA256`.
+
+### Kiểm Chứng Đơn Vị (Unit Test Invariant):
+- Khi sửa đổi logic dải máy cooldown trong `gmail_reg_v10.py`, bắt buộc bổ sung/duy trì test trong `tests/test_device_map_workbook.py`:
+  1. Kiểm tra device map chứa máy Admin (`201`, `280`) được nhận diện và tính cooldown đúng.
+  2. Kiểm tra nhánh fallback an toàn khi `load_device_map_from_excel()` trả về rỗng hoặc phát sinh ngoại lệ thì tự động log cảnh báo và fallback về `ACCOUNTS` (chứa đủ 160 máy).
 
 ### Thiết kế điều phối chuẩn hóa (`post_noon_chain_watchdog.py`):
 1. **Cluster Kibe (Máy 1 - 80):**
