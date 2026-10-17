@@ -79,3 +79,50 @@ subprocess.run(["robocopy", src, dst, "/E", "/NP"], capture_output=True, creatio
   ```cmd
   schtasks /change /tn "WakeUpForCron" /tr "powershell.exe -NoProfile -WindowStyle Hidden -Command exit"
   ```
+
+---
+
+## 4. Bẫy Task Scheduler trỏ vào file .bat trung gian (The Batch-Wrapper Task Scheduler Trap)
+- **Sai lầm phổ biến:** Tạo file `.bat` (ví dụ `C:\Taadaa_Service\start_admin_adb.bat`) chứa dòng lệnh:
+  ```cmd
+  @echo off
+  netstat -ano | findstr ":5037" | findstr "LISTENING" >nul 2>&1
+  if %errorlevel% equ 0 exit /b 0
+  wscript.exe "C:\Taadaa_Service\start_adb_hidden.vbs"
+  ```
+  Sau đó đăng ký Scheduled Task trỏ vào file `.bat` này với niềm tin rằng file `.bat` sẽ gọi VBS ẩn.
+- **Hệ quả:** Bản thân Windows Task Scheduler khi chạy file `.bat` bắt buộc phải nạp `cmd.exe` + `conhost.exe` để thông dịch. Dù bên trong có gọi VBS ẩn thì cửa sổ CMD vẫn bung lên desktop trong 0.2 - 0.5 giây!
+- **Khắc phục:** CẤM đăng ký Task Scheduler trỏ vào `.bat`. Phải trỏ THẲNG vào `wscript.exe`:
+  ```cmd
+  schtasks /create /tn "Taadaa_ADB_User_Remote" /tr "wscript.exe //B //Nologo C:\Taadaa_Service\start_adb_hidden.vbs" /sc onlogon /ru Admin /it /f
+  ```
+
+---
+
+## 5. Quy trình Audit Toàn Diện Mọi Cửa Ngõ Khởi Chạy (Full Startup Vector Audit)
+Khi người dùng hỏi "Còn gì nữa không?" hoặc yêu cầu rà soát sạch sẽ các tác vụ có thể gây bung console, bắt buộc audit đủ 4 tầng sau:
+
+### Tầng 1: Task Scheduler non-disabled, non-Microsoft tasks
+```powershell
+Get-ScheduledTask | Where-Object { 
+    $_.State -ne 'Disabled' -and 
+    $_.TaskPath -eq '\' -and 
+    $_.TaskName -notlike 'Microsoft*' 
+} | Select-Object TaskName, State, @{N='Hidden';E={$_.Settings.Hidden}}, @{N='Exec';E={$_.Actions.Execute}}, @{N='Args';E={$_.Actions.Arguments}}
+```
+- Lọc kỹ các task có `Actions.Execute` chứa `cmd`, `bat`, `python.exe` trần (không có VBS ẩn hoặc WindowStyle Hidden).
+
+### Tầng 2: Thư mục Startup (User & Machine)
+```powershell
+Get-ChildItem -Path 'C:\Users\<User>\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup', 'C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Startup' | Select-Object Name, FullName
+```
+- Xác nhận mọi script là `.vbs` gọi `pythonw.exe` với cờ `0, False`.
+
+### Tầng 3: Registry Run Keys (HKCU & HKLM)
+```powershell
+Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run', 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Run' | Format-List
+```
+- Phát hiện các ứng dụng đăng ký khởi chạy kép (vừa có trong Registry `Run`, vừa có Scheduled Task riêng như trường hợp `RunGDrive`). Xóa bỏ task trùng lặp để tránh xung đột instance.
+
+### Tầng 4: Hook toàn cục môi trường Python (sitecustomize.py)
+- Xác nhận đã cài đặt `sitecustomize.py` trong `Lib\site-packages` của toàn bộ Python envs để ép cờ `0x08000000` (`CREATE_NO_WINDOW`) cho mọi lệnh `subprocess.Popen` / `subprocess.run` gọi `robocopy`, `adb`, `git`.
