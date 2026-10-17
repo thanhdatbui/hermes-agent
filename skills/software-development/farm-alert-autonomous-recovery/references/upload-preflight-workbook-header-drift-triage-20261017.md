@@ -58,9 +58,10 @@
 - **Tiêu chuẩn test suite Closeout Gate:**
   * Bắt buộc có test case chống False Positive: Sheet có các cột `"TikTok ID"`, `"Keyword Video"` nhưng không có cột Folder Video -> xác nhận `res["folder_video"] == ""` chứ không bị khớp nhầm.
   * Bắt buộc có test case xử lý ngoại lệ: Sheet thiếu cột "Máy", hoặc truy vấn machine không tồn tại -> trả về `None`.
+  * Bắt buộc có test case telemetry: Bắt log qua `caplog` xác nhận có phát sinh `logger.warning` mang tiền tố `[UPLOAD_HOOK]` khi thiếu cột.
+  * Bắt buộc có test case case & whitespace insensitivity: Headers chứa khoảng trắng thừa (`'  FOLDER VIDEO (RENDER DICH)  '`) vẫn phải nhận diện chính xác.
   * Trong file test độc lập, chèn `sys.path.insert(0, str(REPO_ROOT / "python_runner"))` và hỗ trợ import linh hoạt để `pytest` chạy độc lập từ bất kỳ workdir nào mà không bị ImportError.
 - Xác minh `read_machine_row_from_tik_workbook` trích xuất chính xác `folder_video` và `account_id` trên cả hai định dạng.
 - **Xác minh trực tiếp O(1) trên 8 file workbook thực tế:**
   * Chạy probe đọc `read_machine_row_from_tik_workbook(resolve_tik_workbook(r'D:/OneDrive/TaadaaData/kibe', tik), 1)` cho `tik` từ 1 đến 8.
   * Toàn bộ 8 file `Tik1.xlsx` đến `Tik8.xlsx` đều phải trả về `folder_video` hợp lệ (ví dụ: `Tik1` trả về `'1'`, `Tik7` trả về `'7'`) thay vì chuỗi rỗng `''`.
-

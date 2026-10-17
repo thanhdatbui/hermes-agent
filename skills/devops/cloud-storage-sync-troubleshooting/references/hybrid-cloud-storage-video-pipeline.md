@@ -43,11 +43,8 @@ reg add "HKLM\Software\Google\DriveFS" /v ContentCachePath /t REG_SZ /d "D:\Goog
 mkdir D:\GoogleDriveCache
 ```
 
-### 3. Session 0 to Session 1 Interactive UI Bridge (`/it` Flag)
-- SSH runs under Windows Session 0 (Services). Running `launch.bat` or `GoogleDriveFS.exe` directly from SSH runs headlessly in Session 0 and will **not** show the sign-in dialog or browser OAuth to the user sitting at the console (Session 1).
-- **Solution via Scheduled Tasks with `/it` (Interactive)**:
-  ```cmd
-  schtasks /create /tn RunGDrive /tr "\"C:\Program Files\Google\Drive File Stream\<version>\GoogleDriveFS.exe\"" /sc once /st 00:00 /f /it
-  schtasks /run /tn RunGDrive
-  ```
-  The `/it` switch instructs Windows to execute the task interactively inside the currently logged-on user's console session, displaying the Google sign-in window and system tray icon.
+### 4. Interactive OAuth 2.0 Loopback Limitation (Why CLI cannot auto-login)
+- Google Drive Desktop requires OAuth 2.0 authorization through an interactive browser.
+- The desktop app binds to a random local loopback port (`http://127.0.0.1:<random_port>/`), listens for the authorization code redirect, and requires explicit user consent on the Google Accounts login page (`accounts.google.com`).
+- **Coordinator Mandate**: Do NOT attempt blind CLI script loops, synthetic mouse-click scripts, or keystroke injections across headless SSH sessions to bypass the Google OAuth login window. Inform the operator to perform the 15-second browser consent directly in the console session (via AnyDesk/RDP), ensuring the target profile is selected and "Stream files" mode is confirmed.
+

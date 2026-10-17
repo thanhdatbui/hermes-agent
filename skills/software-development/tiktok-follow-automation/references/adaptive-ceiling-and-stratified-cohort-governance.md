@@ -59,6 +59,8 @@ Phân loại bắt buộc trước khi tính budget (`determine_cohort` trong `f
   - **Cạm bẫy Fallback Mặc Định Trần Modal (Dashboard / Helper Trap):**
     * Khi nick chưa tốt nghiệp (`graduated is False` hoặc `total_followed < 15`), file state chưa có `proven_safe_ceiling`.
     * Helper/Dashboard CẤM fallback `proven_safe_ceiling = 15` và `active_ceiling = 17` cho nick chưa tốt nghiệp/rỗng lịch sử.
-    * Với Tân Binh / Hồi phục, `proven_safe_ceiling` phải là `Chưa có` / `0 lượt`, và `active_ceiling` phải phản ánh đúng quota trần của stage hiện tại theo Cohort (T1: 4 lượt, T2: 6 lượt), tránh làm người dùng ngộ nhận nick chưa từng chạy đã chứng minh được trần 15.
+    * Với Tân Binh / Hồi phục, `proven_safe_ceiling` phải là `Chưa có` / `0 lượt`, và `active_ceiling` phải phản ánh đúng quota trần của stage hiện tại theo Cohort (T1: 4 lượt, T2: 6 lượt, Rookie: 4 lượt), tránh làm người dùng ngộ nhận nick chưa từng chạy đã chứng minh được trần 15.
+    * Khi đồng bộ UI/Backend Dashboard: Nếu modal helper đọc state không thấy file state (do chưa chạy ca nào), BẮT BUỘC fallback `cohort='rookie'`, `proven_safe_ceiling=None` (hiển thị 'Chưa có'), `active_ceiling=4` (thay vì văng 15/17 mặc định).
+
 - **Khả năng mở rộng (Scalability):** Thiết kế này đảm bảo khi farm mở rộng từ 160 lên 500+ máy, chat Telegram vẫn giữ nguyên độ gọn gàng, không bị nghẽn hay trôi tin nhắn cảnh báo quan trọng.
 
