@@ -20,4 +20,4 @@ Canary farm: tối thiểu 3-4 màn/máy khác nhau (DM, sửa hồ sơ, feed, p
 §
 Ava: Trích clip gốc. WinRT OCR lọc sạch text/sticker ('20 lần', text vụn); CẤM gửi MEDIA: mù. Dọn .thumbnails+Camera/*; Picker radio ô 0 (215, 276), ô 1 (483, 276). Bấm Lưu crop Profile so BGR/pHash diff > 15 mới nghiệm thu; kéo refresh profile nếu kẹt cache.
 §
-Reboot 3 ca (05:20, 11:20, 17:20), né khi TFT/War3. Task ngầm BẮT BUỘC CREATE_NO_WINDOW (0x08000000)/Hidden, CẤM pop cmd. 'Tắt' khi game = tắt cửa sổ nháy, cấm tự pause cron. Rule phải qua Gate cơ học, cấm dặn suông.
+Reboot 3 ca (05:20, 11:20, 17:20), né TFT/War3. Task ngầm & Scheduler BẮT BUỘC bọc VBS/wscript Hidden + CREATE_NO_WINDOW (0x08000000), CẤM cmd /c pop console cướp focus game. 'Tắt' khi game = tắt cửa sổ nháy, cấm tự pause cron.

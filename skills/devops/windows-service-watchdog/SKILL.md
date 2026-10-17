@@ -228,6 +228,7 @@ return $false  # Timed out
 | Auto-recovery | `Stop-Process -Id <service-pid> -Force` | Watchdog restarts within threshold |
 | Headless Python service | Launch directly via `pythonw.exe` from VBS `WScript.Shell.Run ..., 0, False` (omit `cmd /c`), entrypoint guards `sys.stdout/stderr is None` | Listening on port, 0 cmd/conhost visible, `curl -i http://127.0.0.1:PORT/` returns HTTP 200 (not `Empty reply`) |
 | OpenSSH to remote Windows host routes commands through cmd.exe (`cat` missing, PowerShell quote unescaping) | When executing commands via `ssh <host> "<cmd>"`, the default shell on Windows OpenSSH is `cmd.exe`. Calling `cat` fails (`'cat' is not recognized`). Using `powershell -Command "..."` with `$var` unescaped gets expanded by client bash before reaching SSH, resulting in syntax errors (`Missing expression after unary operator '++'`). Fix: Use `type` to read files on remote Windows, or escape variables (`\$var`) when invoking PowerShell over SSH |
+| Windows Task Scheduler registered directly with `cmd /c` pops console window on secondary/admin host | Direct execution of `cmd /c` or `python.exe` in Scheduled Tasks allocates a console window that flashes over full-screen apps/games (e.g. TFT/War3). BẮT BUỘC bọc launcher qua VBScript ẩn (`WScript.Shell.Run ..., 0, True`) hoặc `powershell.exe -WindowStyle Hidden`, và bổ sung Game-Guard (`is_game_running()`) để SKIP các tác vụ I/O nặng khi user đang trong trận. |
 
 ---
 
@@ -353,6 +354,7 @@ return $false  # Timed out
 ## References
 
 - `references/windows-console-popup-prevention-and-ast-hook.md` — Ngăn ngừa cửa sổ console CMD khi chạy tác vụ nền trên Windows bằng AST Pre-Tool hook và quy chuẩn pythonw/Hidden.
+- `references/scheduled-task-vbs-hidden-launcher-and-game-guard.md` — Windows Task Scheduler headless execution qua VBScript `wscript.exe` SW_HIDE (0) và Game-Guard né game TFT/War3/LoL trên secondary host (Admin-PC).
 - `references/cronjob-window-hidden-ast-gate-and-prompt-pruning.md` — Gate cơ học AST (`guard_cronjob_safety.py`) cưỡng chế ẩn cửa sổ CMD khi tạo cron/task ngầm trên Windows và chiến lược rà soát cắt tỉa prompt rule khi đã có gate.
 - `references/periodic-window-report-dedup-and-state-key-mismatch.md` — Phòng ngừa spam báo cáo định kỳ theo khung giờ (6H) khi chạy trên cronjob tần suất cao (5m/15m) do thiếu dedup hoặc lệch key lưu state.
 - `references/xiaowei-adb-orphan-cleanup-and-fail-closed-watchdog.md` — Xiaowei (玖卫) ADB port 5038 rogue conflict, WinUSB bus separation, fail-closed 3-state logic (True/False/None), in-pipeline atomic race prevention, and avoiding taskkill /T on shared automation hosts.

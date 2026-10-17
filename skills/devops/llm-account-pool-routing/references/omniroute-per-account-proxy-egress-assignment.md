@@ -151,6 +151,46 @@ Any script registering or syncing sessions to OmniRoute (e.g. `chatgpt_gpm_direc
 
 ---
 
+## Gemini Web 4 Argon Architecture & Direct HTTP StreamGenerate RPC vs Playwright Trap
+- **The Playwright Dependency Trap in `gemini-web.ts`**:
+  - OmniRoute's native `gemini-web.ts` executor relies on Playwright (`chromium.launch({ headless: true })`). On Windows host environments, Playwright expects revision binaries in `~/.cache/ms-playwright` or `AppData/Local/ms-playwright/chromium-XXXX/chrome-win/chrome.exe`. If the binary directory is named `chrome-win64` or Playwright browser is uninstalled, OmniRoute aborts all `gemini-web` requests with HTTP 503 (`Gemini Web requires the Playwright Chromium browser`).
+  - When all accounts in a `gemini-web` Combo fail with 503, OmniRoute marks all 5 connections `exhausted_connection` and falls through to the emergency fallback / auto recovery router.
+- **The Proxy Fast-Fail 2000ms Timeout Trap**:
+  - When OmniRoute falls through to fallback providers (e.g. `openrouter`, `antigravity`), it tests upstream proxy connectivity via `isProxyReachable()` (`src/lib/proxyHealth.ts`).
+  - The health check enforces a strict 2-second timeout: `const FAST_FAIL_TIMEOUT_MS = parseInt(process.env.PROXY_FAST_FAIL_TIMEOUT_MS ?? "2000", 10)`.
+  - If a fallback proxy (e.g. `mirotik1.taadaa.click:10001`) has high initial TCP handshake latency (>2000ms), OmniRoute instantly throws `[Proxy Fast-Fail] Proxy unreachable: http://mirotik1.taadaa.click:10001`.
+  - **Diagnostic Discipline**: Coordinator/Worker MUST NOT conclude the target account's 4G Mobi proxy is dead! Check the actual egress IP and port: the failure is in the secondary fallback chain, triggered because the primary combo targets failed to launch.
+- **Direct HTTP StreamGenerate Protocol (Zero-Playwright, 2.5s Latency)**:
+  - Google Gemini Web interface does not require browser automation for chat inference. It exposes an internal RPC endpoint:
+    `POST https://gemini.google.com/_/BardChatUi/data/assistant.lamda.BardFrontendService/StreamGenerate?bl={build_label}&rt=c`
+  - Authentication requires 3 elements extracted from the Google AI Pro session:
+    1. Cookies: `__Secure-1PSID`, `__Secure-1PSIDTS`, `__Secure-1PSIDCC`.
+    2. Request Token: `SNlM0e` (extracted via regex `\"SNlM0e\":\"([^\"]+)\"` from initial GET `https://gemini.google.com/app`).
+    3. Payload: Form-urlencoded `f.req` containing JSON message structure and `at={SNlM0e}`.
+  - Direct HTTP RPC completes in **~2.59s** (vs 15-20s for Playwright) and consumes 0MB browser RAM.
+
+---
+
+## Gemini Web Multi-Account Rotation Pool & Sticky Cache-Optimized Strategy
+- **Why Free Web Pools Still Require Sticky Prompt Cache (`strategy: cache-optimized`)**:
+  - While web sessions do not incur API token billing, switching accounts across consecutive turns of a multi-turn worker task discards server-side KV cache.
+  - For large multi-turn tasks (8+ turns with code/test logs), re-ingesting 30K+ tokens on a fresh account increases Time-To-First-Token (TTFT) by 3-5 seconds per turn and disrupts conversation continuity.
+  - **Optimal Strategy**: Set Combo `strategy: "cache-optimized"` with `config: { "sticky": true }`.
+  - OmniRoute hashes the session identifier / prompt prefix to pin all turns of a single worker task to the same Google AI Pro account (leveraging warm KV-cache), while distributing concurrent, independent tasks across the remaining pool accounts via Least-Used.
+
+---
+
+## GPM Google AI Pro Cookie Extraction via CDP (Headless O(1))
+To extract clean Google session cookies from GPM profiles without manual browser copying:
+1. Start GPM profile: `GET http://127.0.0.1:19995/api/v3/profiles/start/{profile_id}`.
+2. Query `http://{remote_debugging_address}/json` to obtain `webSocketDebuggerUrl`.
+3. Open WebSocket connection, send `{"id": 1, "method": "Storage.getCookies"}`.
+4. Extract `__Secure-1PSID`, `__Secure-1PSIDTS`, `__Secure-1PSIDCC` for domain `.google.com`.
+5. Stop GPM profile: `GET http://127.0.0.1:19995/api/v3/profiles/stop/{profile_id}` and kill orphan `gpm_browser_chromium_core.exe` processes.
+6. Register connection into OmniRoute (`POST http://127.0.0.1:20129/api/providers`) and bind to the account's dedicated 4G Mobi proxy port in `proxy_assignments`.
+
+---
+
 ## Hermes Fallback & Alias Configuration
 In `~/.hermes/config.yaml`:
 - Evict deprecated `cockpit` from `custom_providers`.
