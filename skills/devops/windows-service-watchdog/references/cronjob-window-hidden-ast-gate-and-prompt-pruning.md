@@ -15,6 +15,7 @@ Instead of relying on prompt instructions that agents repeatedly violate, Claude
 
 ### Verification & Policy Architecture:
 1. **Tool Interception:** Intercepts `cronjob` (action: create/update) and `terminal`/`Bash`/`PowerShell` with `background=True`.
+   - **False Positive Hardening (17/10/2026 Audit by Claude Reviewer):** For `cronjob`, ONLY inspect the `script` parameter (or actual command). DO NOT parse natural-language text in `prompt`, which causes false blocks on apostrophes or words like "Start".
 2. **Top-Level Binary Lockdown:**
    - Denies: bare `python.exe`, `python3.exe`, `cmd.exe`, `start`, `.bat`, `.cmd`.
    - Requires: `pythonw.exe` or `powershell.exe -WindowStyle Hidden`.
@@ -23,6 +24,8 @@ Instead of relying on prompt instructions that agents repeatedly violate, Claude
    - Denies: `os.system()` and `os.popen()` (cannot hide console windows on Windows).
    - Requires: `creationflags` on all calls to `subprocess.run`, `subprocess.Popen`, `subprocess.call` containing `0x08000000` (`CREATE_NO_WINDOW`).
    - If missing: blocks the tool call immediately before execution with exact filename and line number.
+4. **User Directive Parsing Precedence:**
+   - When the user demands "Tắt cho tao" during an active game, distinguish Window Suppression ("tắt cái nháy nháy") from pausing farm business crons ("sao lại tắt cron"). Do not pause background jobs when the requirement is strictly UI window suppression.
 
 ---
 

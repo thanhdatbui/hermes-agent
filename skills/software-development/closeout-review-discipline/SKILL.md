@@ -36,3 +36,4 @@ metadata:
 - Strike 3 Failure Protocol: [`references/sol-worker-guardrails-and-strike-3-failure-protocol-20261017.md`](references/sol-worker-guardrails-and-strike-3-failure-protocol-20261017.md)
 - Pragmatic Alignment & Anti-Phantom Closeout: [`references/pragmatic-alignment-and-phantom-closeout-prevention-20261017.md`](references/pragmatic-alignment-and-phantom-closeout-prevention-20261017.md)
 - Call-Site Safety Helper Enforcement & Negative Test Evidence: [`references/callsite-safety-helper-enforcement-and-test-evidence-20261017.md`](references/callsite-safety-helper-enforcement-and-test-evidence-20261017.md)
+- Header Normalization Consumer Drift & Slot Scrambling: [`references/header-normalization-consumer-drift-and-slot-scrambling-20261017.md`](references/header-normalization-consumer-drift-and-slot-scrambling-20261017.md)
