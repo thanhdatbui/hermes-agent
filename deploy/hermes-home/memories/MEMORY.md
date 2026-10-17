@@ -6,15 +6,15 @@ Hotmail: CẤM mail cá nhân; sinh @fviainboxes.com đọc OTP API. Write-Throu
 §
 Proxy: 1-1. Chuẩn hóa 3 món (crop 512x512 -> chốt PA -> lock/Excel -> run_tiktok_upload_avatar.ps1, CẤM chờ watchdog -> MEDIA:); TT v47 monkey. Pin >=1000 view. Soi mắt trước gửi.
 §
-Farm: O(1). CẤM đẻ script (up ava: run_avatar_batch_3accs.py, có sẵn auto switcher, cấm execute_m*.py); F_vid .bak fallback; protect int; sol_worker.py (:20129).
+Farm: O(1). Up ava: run_avatar_batch_3accs.py, có auto switcher. Rename TT: bám username (35% HọĐệmTên, 35% Tên+Nick, 30% khác); is_target chặn dính số đuôi \d{2,}$; 7d cooldown đổi lại.
 §
 GPM: stop kèm _kill_gpm_chrome; max 5 wkr; cron nạp pool chatgpt-web 15p/lần. Re-login acc văng KHÔNG cooldown 24h; chỉ acc mới log lần đầu mới tính 2 acc/port/ngày.
 §
-Stale Upload: xóa sạch draft (_delete_all_profile_drafts). Revert flop: quét ledger lấy video gốc, TikWM tải CDN, xóa render trước làm mới. Cào video: max 60 clip/channel, cấm cào full.
+Stale Upload: xóa draft (_delete_all_profile_drafts). Revert flop: TikWM tải CDN, xóa render trước làm mới. Cào video: max 60 clip/channel.
 §
 Closeout: Grace 80-84 (diff<=30, pass>=1 test, 0 fail/err, ko lỗi logic/sec) auto-push; cấm park WIP; Remediation max 3 vòng (Sol 1-2, Haiku/Agy 3, CẤM gọi Sonnet); User ép: safe_push --owner-override. Win -p: prompt 1 dòng.
 §
-Admin Remote (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; OpenCV venv-core024; admin_ssh.py; Haar cascade dễ ảo, soi mắt trước nạp ava.
+Admin Remote (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; admin_ssh.py.
 §
 BỎ HẾT ViChanger, 100% Wi-Fi Singbox 192.168.110.2:200xx, CẤM bật GanProxyWatcherTray/gan_proxy; post-reboot kẹt proxy readiness dùng mark_proxy_state; cấm gán VPN app lên farm.
 §
