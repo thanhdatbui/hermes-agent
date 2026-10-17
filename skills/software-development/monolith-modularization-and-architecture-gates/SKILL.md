@@ -14,6 +14,7 @@ metadata:
 Use this skill when refactoring monolithic production scripts (> 1.500 lines) into modular subpackages without disrupting active workloads, breaking backward compatibility, or letting subsequent AI agents undo the modularization.
 
 Reference files:
+- `references/runner-vs-watchdog-architecture-and-anti-monolith-gates-20261017.md`: Phân định rạch ròi Execution Runner (multi_machine_feed_session.py) vs Supervisor Watchdog (feed_session_watchdog.py), chuỗi gọi cronjob nuôi acc thực tế và 3 cơ chế kiểm soát bắt buộc bóc tách khi viết script mới.
 - `references/fstring-template-component-extraction-and-line-budget-20261017.md`: Kỹ thuật tách Component HTML/JS ra file độc lập trong subpackage để chèn vào monolith f-string, tránh lỗi thoát ngoặc nhọn kép {{}} và bảo toàn trần 3.000 dòng Architecture Gate.
 - `references/pre-push-scope-alignment-and-css-extraction-20261017.md`: Quy tắc khớp scope của pre-push hook với diff-tree HEAD, kỹ thuật tách 877 dòng CSS tĩnh dưới trần 30KB và giải pháp Strike 3 Reviewer Hand-off.
 - `references/watchdog-syspath-cron-fallback-and-line-budget-invariants-20261016.md`: Xử lý lỗi cron ModuleNotFoundError khi chạy script ngoài repo root, quy tắc bơm sys.path tối giản, bảo toàn trần 1.450 dòng Architecture Gate, đồng bộ dual-copy hermes_cron và phân lập alert giữa 3 kênh.

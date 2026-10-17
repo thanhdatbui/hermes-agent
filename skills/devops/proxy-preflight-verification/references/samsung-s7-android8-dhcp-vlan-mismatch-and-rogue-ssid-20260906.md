@@ -26,7 +26,15 @@
 2. **Cạm bẫy lệnh `cmd wifi` trên Samsung S7 (Android 8.0.0 Oreo)**:
    - Chạy `cmd wifi forget-network <id>` trên Android 8 trả về `No shell command implementation` (do command framework này chỉ xuất hiện từ Android 9/10+).
    - Tuyệt đối không dùng `cmd wifi` trong script automation cho dàn S7 Android 8.
-3. **Xung đột Rogue SSID ngầm (Background Scan Interference)**:
+   - Để xóa profile cấu hình Wi-Fi sạch trên Android 8 qua shell adb, dùng trực tiếp lệnh IPC binder:
+     ```bash
+     adb -s <serial> shell "service call wifi 14 i32 <net_id>"
+     adb -s <serial> shell "service call wifi 19"  # Save configuration
+     ```
+3. **Phân biệt RF Shadowing vật lý vs Power Save Mode (PSM) hiển thị 6 Mbps**:
+   - Khi chưa có luồng traffic mạng hoặc ở màn hình chờ, Android S7 tự động kích hoạt Power Save Mode hạ link speed xuống 6 Mbps để tiết kiệm pin. Chỉ khi truyền tải dữ liệu hoặc mở app thì link speed mới nhảy lên 300–400+ Mbps.
+   - Luôn kiểm tra `wlan0: state UP` và IP tồn tại trước khi kết luận về chất lượng sóng.
+4. **Xung đột Rogue SSID ngầm (Background Scan Interference)**:
    - Trong `dumpsys wifi`, thiết bị lưu các SSID lạ/cũ (`Dinh Khoi_5G`, `Dat-1`, `BOX 2`).
    - Radio Wi-Fi liên tục quét ngầm và nhận `AUTHENTICATION_FAILURE` từ các SSID này, gây drop gói tin tức thời và làm timeout lệnh probe `atx-agent curl` (vốn có timeout ngắn 3–5s).
 

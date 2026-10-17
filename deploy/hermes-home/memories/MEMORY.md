@@ -14,10 +14,10 @@ Stale Upload: xóa draft (_delete_all_profile_drafts). Revert flop: TikWM tải 
 §
 Closeout: Grace 80-84 (diff<=30, pass>=1 test, 0 fail/err) auto-push; cấm WIP; Remediation max 3 vòng (Sol 1-2 -> Haiku/Agy 3, cấm Sonnet); User ép: safe_push --owner-override.
 §
-Admin Remote (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; admin_ssh.py.
+Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; admin_ssh.py. Cron: phase9-runner chạy multi_machine_feed_session (nuôi); watchdog chạy feed_session_watchdog (giám sát 15p). Monolith mới bị chặn bởi diff<=30KB+gate test.
 §
-BỎ HẾT ViChanger, 100% Singbox 192.168.110.2:200xx, CẤM GanProxyWatcherTray/VPN app; kẹt proxy dùng mark_proxy_state; ADB treo 10s: adb kill-server && start-server.
+Singbox :200xx, CẤM VPN app. Wi-Fi: 5GHz Aruba, cấm tăng tx-power. 6Mbps idle là PSM bth. Cứu máy ca chạy: operator_device_lock(force_preempt=True). Quên A8: service call wifi 14 i32 <id> && service call wifi 19.
 §
 Canary farm: tối thiểu 3-4 màn/máy khác nhau (DM, sửa hồ sơ, feed, popup thử thách); cấm canary trên 1 máy đơn độc.
 §
-Ava: ngũ quan rõ, cấm kính/đỏ nhòe/cụt đầu. Trích clip gốc. Gen ảnh xong BẮT BUỘC chạy WinRT OCR (`ocr_tool.py`) lọc sạch text/sticker ('20 lần', text vụn) và gửi ngay thẻ `MEDIA:` cho User duyệt bằng mắt, CẤM tự ý chạy ngầm nạp. Dọn .thumbnails + Camera/*; MediaStore 1 ảnh. Picker radio ô 0 ở (215, 276), ô 1 ở (483, 276). Bấm Lưu hiện 'Đang tải lên' có thể fail ngầm: bắt buộc crop Profile so Mean BGR diff > 15 với avatar cũ để nghiệm thu. TopLeftPencil l=10..45 w,h<=130.
+Ava: ngũ quan rõ, cấm kính/đỏ/cụt đầu. Trích clip gốc. WinRT OCR lọc sạch text/sticker ('20 lần', text vụn), gửi MEDIA: duyệt mắt. Dọn .thumbnails+Camera/*; MediaStore 1 ảnh. Picker radio ô 0 (215, 276), ô 1 (483, 276). Bấm Lưu crop Profile so BGR diff > 15 nghiệm thu. TopLeftPencil l=10..45 w,h<=130.
