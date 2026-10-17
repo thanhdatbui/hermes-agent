@@ -219,14 +219,15 @@ Answer the operator's direct question first, in Vietnamese, with no speculative 
   - **Bản chất dòng đối soát web trên Telegram:**
     * Watchdog lấy chênh lệch `following` từ profile công khai TikTok cào bởi snapshot crawler đối chiếu trực tiếp với số follow do bot app ghi nhận (`follow_result.json`).
     * **Lệch âm (`Lệch -N`, ví dụ `M23: script 2 lượt - web 0 lượt - lệch (-2)`, `M45/M59: script 4 - web 0 - lệch (-4)`):**
-      - Script trên điện thoại đã thực hiện tap nút Follow thành công (2-4 lượt), nhưng counter công khai trên web không tăng.
-      - **Cách trả lời ngay khi Operator chất vấn ("Cơ chế check nhả đéo hoạt động hả?"):**
-        1. Khẳng định ngay: Cơ chế check nhả VẪN HOẠT ĐỘNG (dẫn chứng các máy bị nhả ở anchor như M51, M63 bị bắt dính ngay ở lượt 0 và kích hoạt cầu dao IP / cooldown phạt).
-        2. Chỉ rõ điểm hở kiến trúc giữa Anchor và Path B nick con: Kiểm tra Anchor có `pull_to_refresh_profile` nên bắt sống nhả 100%; còn `_path_b_verify` khi mở profile nick con chưa có vuốt reload (vướng cạm bẫy Optimistic UI cache hiển thị nút `[Nhắn tin]`).
-        3. Phân biệt với độ trễ CDN Cache TikTok Web: Snapshot web cào qua CDN có thể trễ 15-45 phút ở nick non. Nếu sang Phiên 2 vẫn là 0 thì 100% là do Shadow-drop lọt qua Path B.
-      - Hai nguyên nhân cốt lõi:
-        1. *Shadow-Drop / Silent Un-follow lọt lưới Path B:* Thuật toán TikTok server từ chối ghi nhận hoặc âm thầm hủy follow sau vài phút (thường gặp ở nick non/Rookie như Row 7, 8 khi proxy/IP bị soi). Do `_path_b_verify` không pull-to-refresh, app cache nút `[Nhắn tin]` khiến runner tưởng thành công.
-        2. *Độ trễ Snapshot Crawler:* Snapshot web cào trước khi CDN cache của TikTok kịp cập nhật counter. Nếu sang Phiên 2 cào lại mà khớp bù thì là do độ trễ; nếu sang Phiên 2 vẫn là 0 thì 100% là shadow-drop.
+      - Script trên điện thoại đã báo thành công (2-4 lượt), nhưng counter công khai trên web không tăng (+0).
+      - **CẤM TUYỆT ĐỐI CHỐNG CHẾ / TỰ BỊA ĐỔ LỖI CHO "CACHE CDN TIKTOK" HOẶC "ĐỘ TRỄ CRAWLER":**
+        * User cấm triệt để việc tự sướng chế lỗi cache hay bao biện "chờ phiên sau bù trừ". Lệch âm là bằng chứng chắc chắn của việc **CƠ CHẾ CHECK NHẢ TRÊN THIẾT BỊ BỊ LỌT LƯỚI / TÊ LIỆT**.
+      - **Kỷ luật trả lời khi Operator chất vấn ("Cơ chế check nhả đéo hoạt động hả?"):**
+        1. Khẳng định ngay: Cơ chế check nhả trên Anchor vẫn hoạt động (dẫn chứng các máy bị nhả ở anchor như M51, M63 bị bắt dính ngay ở lượt 0 và kích hoạt cầu dao IP / cooldown phạt).
+        2. Thừa nhận và chỉ rõ ngay 2 lỗ hổng code kiến trúc khiến check nhả bị lọt lưới ở nick con (Mode 2):
+           - *Lỗ hổng 1 — Bỏ qua vuốt reload ở `_path_b_verify` (Bẫy Optimistic UI):* Kiểm tra Anchor có `pull_to_refresh_profile` nên bắt sống nhả; còn `_path_b_verify` khi mở profile nick con không vuốt kéo reload, đọc XML trực tiếp từ cache RAM của app nên bị lừa bởi trạng thái optimistic tạm thời.
+           - *Lỗ hổng 2 — Bẫy nút "Nhắn tin" (Message Marker Trap):* Tài khoản mở DM công khai luôn có nút "Nhắn tin". Nếu nút Follow bị đổi ID hoặc layout khiến XML không đọc được nút Follow, code fallback thấy nút "Nhắn tin" sẽ phán nhầm là `followed` khống.
+        3. Tuyệt đối không vòng vo đổ lỗi cho hạ tầng bên ngoài hay khuyên chờ đợi. Báo cáo thẳng nguyên nhân bug code trên thiết bị.
     * **Lệch dương (`Lệch +N`):** Web tăng nhiều hơn bot báo, thường do Grace Buffer 10 phút thu nạp follow từ phiên trước hoặc leak bạn bè gợi ý.
   - **Cạm bẫy Hard Gate #5 khi Inspect Máy sau Báo Cáo Follow:**
     * Khi thấy máy bị lệch hoặc nghi kẹt, nếu Coordinator chạy trực tiếp `inspect_machine.py <N>` hoặc lệnh raw ADB:

@@ -20,4 +20,4 @@ BỎ HẾT ViChanger, 100% Singbox 192.168.110.2:200xx, CẤM GanProxyWatcherTra
 §
 Canary farm: tối thiểu 3-4 màn/máy khác nhau (DM, sửa hồ sơ, feed, popup thử thách); cấm canary trên 1 máy đơn độc.
 §
-Ava: ngũ quan rõ, cấm kính/đỏ nhòe. Trích clip gốc. Gen ảnh xong BẮT BUỘC chạy WinRT OCR (`ocr_tool.py`) lọc sạch text/sticker ('20 lần', ngày, watermark) và gửi ngay thẻ `MEDIA:` cho User duyệt bằng mắt, CẤM tự ý chạy ngầm nạp. Dọn .thumbnails + Camera/*; MediaStore 1 ảnh. Picker radio ô 0 ở (215, 276), ô 1 ở (483, 276). Bấm Lưu hiện 'Đang tải lên' có thể fail ngầm: bắt buộc crop Profile so Mean BGR với avatar cũ để nghiệm thu. TopLeftPencil l=10..45 w,h<=130.
+Ava: ngũ quan rõ, cấm kính/đỏ nhòe/cụt đầu. Trích clip gốc. Gen ảnh xong BẮT BUỘC chạy WinRT OCR (`ocr_tool.py`) lọc sạch text/sticker ('20 lần', text vụn) và gửi ngay thẻ `MEDIA:` cho User duyệt bằng mắt, CẤM tự ý chạy ngầm nạp. Dọn .thumbnails + Camera/*; MediaStore 1 ảnh. Picker radio ô 0 ở (215, 276), ô 1 ở (483, 276). Bấm Lưu hiện 'Đang tải lên' có thể fail ngầm: bắt buộc crop Profile so Mean BGR diff > 15 với avatar cũ để nghiệm thu. TopLeftPencil l=10..45 w,h<=130.

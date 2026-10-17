@@ -16,6 +16,7 @@ description: >-
 > Ref: `references/stale-upload-watchdog-and-tracker-db-drift-triage-20261012.md`.
 > Ref: `references/mass-upload-recovery-parenthesized-headers-and-milestone-popup-20261017.md`.
 > Ref: `references/upload-preflight-workbook-header-drift-triage-20261017.md`.
+> Ref: `references/account-switcher-verify-mismatch-triage-20261017.md`.
 
 ## UI evidence: target screen only
 

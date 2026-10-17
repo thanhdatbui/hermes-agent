@@ -327,4 +327,24 @@ Khi đưa `ag_cli.py` và các module hỗ trợ vào quy trình kiểm toán t�
   * `GPM_API_URL` & `OMNIROUTE_API_URL`: Cho phép chuyển đổi endpoint khi chạy trên các máy farm khác nhau.
 - Tích hợp lớp kiểm tra hợp lệ (`validate_credentials`) trước khi ghi token và áp dụng cơ chế rollback file tạm (`.tmp` -> `replace`) để tránh hỏng dữ liệu cấu hình khi có sự cố bất ngờ.
 
+---
+
+## 11. Tích Hợp Gemini Web Session & Phân Vai Sol Worker vs Sol Repair
+
+Chi tiết xem tại tài liệu hỗ trợ liên kết:
+`references/gemini-web-session-extraction-and-react-worker-architecture.md`
+
+### 1. Kỷ luật Chủ Động Bóc Cookie Google Web (Anti-Luna Invariant):
+- Tuyệt đối KHÔNG bảo người dùng mở F12 copy cookie hay login thủ công.
+- Tự động dùng GPM CDP (:19995) truy vấn SQLite `Cookies` tìm profile có sẵn `__Secure-1PSID`, kết nối CDP WebSocket (`suppress_origin=True`), gửi `Storage.getCookies` để bóc tách bộ 3 cookies: `__Secure-1PSID`, `__Secure-1PSIDTS`, `__Secure-1PSIDCC`.
+- Nạp connection vào OmniRoute (`provider: gemini-web`), gắn proxy 4G tương ứng vào `proxy_assignments` trong `C:\Users\Kibe\.omniroute\storage.sqlite`, tạo combo `gemini-web-pro` trỏ model `gemini-web/gemini-3.1-pro` (miễn phí 100%, không trừ quota IDE của 22 acc Pro).
+
+### 2. Phân Định Vai Trò: `sol_repair.py` vs `sol_worker.py`:
+- `sol_repair.py`: Strict read-only O(1) patch proposal generator có AST validation (<= 30 dòng diff). Độc quyền cho Strike 1 & 2 khi Closeout Gate bị Rejected.
+- `sol_worker.py`: Multi-turn ReAct autonomous worker (Read -> Patch -> Command -> Done) chạy qua `gpt-web-sol` (:20129). Phục vụ routine tasks và tầng dự phòng thứ 3 khi Claude CLI và Agy CLI cạn quota.
+
+### 3. Claude CLI Quota Stale-Gate Watchdog:
+- File `plan-usage-history.json` quá 2 giờ sẽ kích hoạt stale quota gate từ chối điều phối nhầm.
+- Duy trì Cronjob 30 phút (`refresh-claude-quota-watchdog`) tự động chạy `refresh_claude_quota_file.py` để giữ cache luôn tươi mới.
+
 
