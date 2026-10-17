@@ -68,3 +68,23 @@ mkdir D:\GoogleDriveCache
 - The desktop app binds to a random local loopback port (`http://127.0.0.1:<random_port>/`), listens for the authorization code redirect, and requires explicit user consent on the Google Accounts login page (`accounts.google.com`).
 - **Coordinator Mandate**: Do NOT attempt blind CLI script loops, synthetic mouse-click scripts, or keystroke injections across headless SSH sessions to bypass the Google OAuth login window. Inform the operator to perform the 15-second browser consent directly in the console session (via AnyDesk/RDP), ensuring the target profile is selected and "Stream files" mode is confirmed.
 
+### 5. Windows Task Scheduler & Virtual Drive `G:\` User Token Boundary
+- **Virtual Drive Isolation under SYSTEM**: In Windows, volume mounts created by userland filesystems (DriveFS / Dokan / WinFsp) exist strictly within the interactive logon session of the user who launched them (`Admin`). Scheduled tasks running under `SYSTEM` or non-interactive service accounts will see `G:\` as non-existent (`The device is not ready` or `Path not found`).
+- **Required Task Configuration**:
+  Always register tasks accessing DriveFS virtual drives with `/ru Admin` and `/it` (interactive mode):
+  ```cmd
+  schtasks /create /tn Taadaa_Sync_GDrive_Backup /tr "cmd /c python D:\Taadaa\tools\sync_and_clean_gdrive.py 20" /sc hourly /mo 2 /ru Admin /it /f
+  ```
+- **DriveFS Startup Persistence on Reboot**:
+  To guarantee Google Drive FS launches and remounts `G:\` after scheduled multi-cluster reboots (e.g. 05:20, 11:20, 17:20):
+  ```cmd
+  schtasks /create /tn RunGDrive /tr "\"C:\Program Files\Google\Drive File Stream\132.0.0.0\GoogleDriveFS.exe\"" /sc onlogon /ru Admin /it /f
+  ```
+
+### 6. Incremental Verification & Cleanup Script (`sync_and_clean_gdrive.py`)
+To prevent SSH command timeouts and guard against cache overflow:
+- Structure the batch runner to process folders in bounded chunks (e.g., 10–20 folders per run).
+- Verify file sizes byte-for-byte on `G:\` before unlinking local raw `.mp4` files from `D:\video goc may 2`.
+- Local disk headroom expands immediately with each completed folder (e.g., in practice recovering 28+ GB in minutes while maintaining cloud synchronization).
+
+
