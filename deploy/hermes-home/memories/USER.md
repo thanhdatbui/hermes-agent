@@ -2,9 +2,9 @@ Cào/Render: 12 niche, min 45, 1 wkr. F_src=(Slot-1)*80+m_idx. Chuẩn hoá: ava
 §
 Dọn đĩa: duyệt trước, cấm xóa ngầm. Cấm đẻ script trùng (REUSE>EXTEND>NEW); tách rõ read/mock vs write thật.
 §
-Nuôi 4d 3 ca (bỏ đêm, tắt màn 223). Cuốn chiếu Ava&2FA tới 5h15 (né cache 4h, báo 6h). Write-Through Excel cột 3,4,5+G; Starve 96h; mail Graph PC; đổi ava tự làm. Đổi tên TT: bám sát username (@vothitram -> Võ Thị Trâm / Trâm xxx); random cao; nick lệch chờ 7d đổi lại.
+Nuôi 4d 3 ca (bỏ đêm, tắt màn 223). Cuốn chiếu Ava&2FA tới 5h15 (né cache 4h, báo 6h). Write-Through Excel cột 3,4,5+G; Starve 96h; mail Graph PC; đổi ava tự làm. Đổi tên TT: bám sát username (@vothitram -> Võ Thị Trâm / Trâm xxx); random cao; nick lệch chờ 7d.
 §
-Chốt phiên: Vào main, cấm WIP; Grace 80-84 (diff<=30) auto-push; cấm Sonnet cày điểm; User ép: safe_push --owner-override.
+Chốt phiên: Vào main; Grace 80-84 (diff<=30) auto-push, pre-push THRESHOLD=80; cấm Sonnet cày điểm; User ("T"="Tao/Owner") ép: safe_push --owner-override.
 §
 Ava: WinRT OCR + soi thật, cấm bịa mô tả/chọn mảng đỏ nhòe; trích từ clip gốc. Quét từ khóa lạ né thumbnail video.
 §
