@@ -452,6 +452,19 @@ For remote-admin branches, add an offline mocked subprocess regression that asse
 
 When adding direct helper coverage, call the existing helper rather than reproducing its policy in a test fixture. Cover no-state, inclusive date/streak boundaries, corrupt state (fail-closed), and precedence when row-level and machine-level state coexist. If a broader test exposes stale state from a previous case, reset both precedence sources before boundary assertions; state precedence is itself part of the contract.
 
+## Native HTTP web-provider migration and live-pool canary
+
+When replacing browser automation in a web-session provider with a native HTTP adapter, preserve the existing provider boundary rather than treating the change as a generic fetch rewrite:
+
+1. Keep the OpenAI-facing response contract, tool emulation, abort semantics, cookie-refresh callback, error mapping, and connection-scoped proxy injection unchanged. Never let the new HTTP path bypass the per-connection proxy.
+2. Implement the smallest protocol sequence: authenticated `GET /app` to extract the current anti-CSRF/session token and build label, followed by form-encoded `POST StreamGenerate` with bounded token parsing, browser-like headers, and the current cookie jar. Missing auth must fail closed.
+3. Preserve output semantics: parse the provider envelope through the existing extractor; return ordinary JSON or pseudo-SSE as before; explicitly return an unsupported status for capabilities not implemented instead of claiming success.
+4. Replace browser-launch mocks in focused tests with `globalThis.fetch` mocks and deterministic HTML/RPC fixtures. Otherwise stale Playwright tests can report misleading authentication/status failures after the browser path is intentionally removed.
+5. Separate static verification from activation: run focused tests, typecheck, and scoped diff checks first; reload the actual service; then issue exactly one bounded canary through the production pool. A healthy endpoint is insufficient—require a real model response and record HTTP status, latency, resolved model, and an exact marker.
+6. Treat build/runtime evidence precisely. A generated build artifact is not proof of a successful build if the build exits nonzero later. If a stale service or pre-dispatch filter makes the canary skip all targets, classify it as blocked, reload the service, and rerun one canary rather than claiming success.
+
+The reusable protocol and evidence table are in `references/native-http-web-provider-migration.md`.
+
 ## Checklist
 
 - [ ] Final edit bytes were re-read/re-statted before verification
