@@ -140,5 +140,17 @@ python D:/Taadaa/tools/pin_top_videos.py --machine 28 --min-views 5000 --max-pin
   - Ghim Top 1 (ví dụ 31.3K) $\to$ Chiếm slot 1, đẩy Top 2 sang slot 2, Top 3 sang slot 3.
 - Sau khi ghim đủ 3 video, hàng đầu tiên hiển thị đẹp mắt theo đúng thứ tự: `[Top 1] [Top 2] [Top 3]`.
 
+## 14. Quy Trình Sửa Bio Chọn Lọc Cho Kênh Hot Qua Dòng Tiểu Sử (ADB Flow)
+- **Kỷ luật Farm**: CẤM đổi bio hàng loạt trên toàn farm bằng script tự động (tránh behavioral burst làm tụt trust score kênh mới dẫn đến 0-view). CHỈ tối ưu bio cho các kênh HOT đã có video viral / cắn đề xuất (>10K view, >500 follower).
+- **Thao tác UI qua ADB khi không có nút "Sửa hồ sơ"**:
+  1. Từ Profile, tap trực tiếp vào dòng chữ Bio cũ / "Thêm tiểu sử" tại `(200, 660)` $\to$ TikTok tự động mở `ProfileEditActivity`.
+  2. Tap dòng "Tiểu sử" (`com.ss.android.ugc.trill:id/tvLabel` tại `[84, 1284][414, 1380]`, tâm `(600, 1338)`) để mở ô `EditText`.
+  3. Xóa bio cũ: `input tap 500 600` $\to$ `input keyevent 123` (MOVE_END) $\to$ `input keyevent 67` (DEL) 15 lần.
+  4. Nhập text: `input text <escaped_text>` (thay khoảng trắng bằng `%s`, dùng tiếng Việt không dấu hoặc ASCII an toàn).
+  5. **Checkpoint 1 (Pre-submit)**: Chụp màn hình xác nhận text đã điền vào ô input và nút "Lưu" `(990, 138)` sáng đỏ trước khi bấm.
+  6. Bấm "Lưu" tại `(990, 138)`, sau đó gửi phím `KEYCODE_BACK (4)` và tap tab Hồ sơ `(972, 1857)` để refresh.
+  7. **Checkpoint 2 (Post-submit)**: Chụp màn hình Profile, kiểm tra text Bio mới đã hiển thị công khai dưới header và chạy `media_verify.py` đối soát đúng username.
+
+
 
 

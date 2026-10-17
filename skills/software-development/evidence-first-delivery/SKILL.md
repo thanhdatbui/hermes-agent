@@ -187,6 +187,7 @@ The delivery layer should validate outbound completion claims before the platfor
 For profile/avatar/farm work, verify the semantic content, not just image statistics:
 
 - Profile/Account Switcher/Save Surface must be the target screen.
+- **Chống Bẫy Ảo Giác Thứ Tự Ghim Video (TikTok Pin LIFO Push Reorder):** Trên lưới Profile TikTok, video ghim sau cùng LUÔN LUÔN được đẩy lên ô đầu tiên bên trái [0, 0], đẩy các video cũ sang phải. TUYỆT ĐỐI CẤM suy diễn rằng video view to nhất sẽ tự động đứng đầu. Bắt buộc soi mắt/OCR độc lập từng cột (Trái, Giữa, Phải) để đọc đúng số view thực tế trước khi báo cáo.
 - **Mechanical Pre-Send Target Account Binding (`media_verify.py`):** Before emitting any `MEDIA:<path>` purporting to show an account profile, verify the screenshot using `verify_media_target(image_path, expected_handle)`. The verifier performs strict WinRT OCR token matching and allows only confusable OCR character substitutions (`0o`, `1l`, `1i`) of equal length. Differing digits (`kibe_01` vs `kibe_02`) are strictly rejected. If `ok is False`, suppress `MEDIA:` emission immediately and report the mismatch instead of hallucinating success.
 - The target handle/name and new avatar/content must be visible.
 - Do not accept Home, Settings-only, an unrelated profile, a stale switcher, or a generic launcher image as proof.
@@ -320,6 +321,7 @@ Use `references/avatar-only-scope-and-false-policy-refusal.md` for the incident-
 
 ## References
 
+- `references/tiktok-pin-lifo-order-and-selective-bio-editing-gate-20261017.md` — **[MỚI 17/10/2026]** Sự cố ảo giác thứ tự video ghim (TikTok Pin LIFO Push Reorder Trap) khi phán bừa video 22K đứng đầu thay vì 4.3K được ghim sau cùng nhảy lên đầu, kỷ luật soi mắt độc lập từng cột [Trái | Giữa | Phải], và quy trình 8 bước đổi Bio chọn lọc cho kênh HOT qua ADB (Checkpoint 1 input filled + Checkpoint 2 Profile rendered).
 - `references/headless-crop-and-stale-avatar-verification-gate-20261017.md` — **[MỚI 17/10/2026]** Bài học xương máu sự cố M34 Yoga: Chống cắt cụt đầu (Headless Crop mất đỉnh đầu/mắt mũi chỉ còn cằm cổ), sót vụn chữ đỏ, bẫy ỉm ảnh chạy ngầm khiến User phải giục, và Stale Avatar Diff Gate so sánh Mean BGR chống báo cáo xong khi máy vẫn kẹt ảnh cũ từ sáng đến chiều.
 - `references/ad-hoc-script-ban-and-claude-architect-worker-division-20261017.md` — **[MỚI 17/10/2026]** Kỷ luật cấm đẻ script ad-hoc vụn vặt và phân vai "Claude CLI thiết kế, Worker thi công": Sonnet 5.5 planner ra blueprint kiến trúc, Haiku/Worker thi công code + test, Sonnet reviewer thẩm định nghiêm ngặt; chuẩn hóa logic auto-swap/unpin trong `pin_top_videos.py`.
 - `references/mechanical-send-gate-and-canonical-tool-extension-20261017.md` — **[MỚI 17/10/2026]** Mechanical Send-Gate (`media_verify.py` qua WinRT OCR token match) chặn đứng gửi ảnh sai nick, và mở rộng canonical `pin_top_videos.py` (unpin + auto-swap) triệt tiêu đẻ script ad-hoc theo thiết kế của Claude CLI Sonnet.

@@ -97,6 +97,14 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
 
 ## Pitfalls
 
+- **BẢO VỆ QUOTA CLAUDE TẠI STRIKE 3 HAND-OFF — TÁCH BẠCH VAI TRÒ HAIKU WORKER VS SONNET REVIEWER (Chống Đốt Quota 17/10/2026):**
+  Khi Closeout Gate trượt 3 lần (Strike 3), nguyên nhân đốt cháy quota 5h là do Coordinator lạm dụng Sonnet 5.5 (`--role reviewer`) để viết code và sửa test suite lặp đi lặp lại.
+  Quy chuẩn bất biến:
+  1. *Khái niệm Turn:* 1 turn là 1 bước suy luận/gọi công cụ trong vòng lặp ReAct của agent (Read -> Patch -> Command/Test -> Done), KHÔNG PHẢI là 1 lần chạy sửa toàn cục.
+  2. *Strike 1 & 2 Remediation:* BẮT BUỘC giữ nguyên `sol_repair.py` (:20129) độc quyền làm First Responder O(1) in-memory AST proposal. TUYỆT ĐỐI CẤM thay thế `sol_repair` bằng `sol_worker` trong Closeout Gate để tránh chạy ReAct commands lan man làm phình to diff vượt ngân sách 30 dòng.
+  3. *Strike 3 Code & Test Fix:* BẮT BUỘC dispatch `python D:/Taadaa/tools/claude_worker.py --role worker` (chạy bằng **`claude-haiku-5-5`** cực rẻ, nhẹ quota, 10-15s) hoặc fallback sang `ag_cli.py fix` (22 acc Google Pro 4G miễn phí). CẤM dùng Sonnet 5.5 để viết code hay mò test.
+  4. *Strike 3 Verification Sign-off:* `claude_worker.py --role reviewer` (Sonnet 5.5) CHỈ ĐƯỢC PHÉP dùng cho lượt kiểm tra read-only cuối cùng (1-2 turns) để đọc git diff hoàn chỉnh và in `VERDICT: APPROVED`. Sau khi approved, ghi audit binding và push thẳng qua `safe_push.py`, cấm quay lại Sol cày điểm.
+  (Xem `references/strike-3-quota-preservation-haiku-worker-vs-sonnet-reviewer-20261017.md`).
 - **CẤM DÙNG CLAUDE SONNET TRONG VÒNG LẶP REMEDIATION TỰ ĐỘNG (Bảo Vệ Quota Tuyệt Đối 17/10/2026):** Tuyệt đối CẤM mọi tiến trình/script tự động (Closeout Gate, Strike 3 Hand-off, Auto-remediation) tự ý kích hoạt Claude Sonnet 5.5 để "cày 1-2 điểm" cho Sol Auditor. Sonnet là vũ khí chiến lược đắt đỏ, CHỈ ĐƯỢC CHẠY khi có lệnh đích danh trực tiếp từ Operator (User). Mọi vòng lặp sửa lỗi tự động độc quyền giao cho Sol Repair (miễn phí trên :20129) hoặc Haiku 5.5 / Agy CLI (Gemini Pro).
 - **CẤM DÙNG CLAUDE SONNET ĐỌC FILE VẶT (Quota Bleeding Disaster 15/10/2026):** Tuyệt đối không dùng `--role planner` (Sonnet 5.5) cho các tác vụ chỉ đọc vài chục dòng code, kiểm tra diff hoặc tìm kiếm file. Đọc file/diff phải dùng tool local hoặc Python $O(1)$ để bảo vệ quota 5h không bị đốt sạch từ 69% lên 100% trong 15 phút.
 - **CẤM AGENT TỰ Ý OVERRIDE QUOTA GUARD:** Lệnh `claude_quota_guard.py allow <minutes>` là đặc quyền DUY NHẤT của Con người (User). Agent tuyệt đối cấm tự ý gõ lệnh mở rào quota của chính mình khi bị chặn.
@@ -154,6 +162,7 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
 - `D:/Taadaa/tools/tests/test_dispatch_worker.py`: 11/11 tests (CRLF/whitespace normalization, failure hierarchy, snapshot & hash gate, target deletion rejection, unrelated files guard, anchored BLOCKED detection, PermissionError mapping, correlation ID consistency, Haiku/Agy fallback orchestration mocks).
 - `D:/Taadaa/tools/tests/test_sol_worker.py`: 8/8 tests (safe shell command regex, metacharacters injection block, DSL parse, atomic patch lifecycle, AST validation, LF preserve, max_turns validation).
 
+See `references/strike-3-quota-preservation-haiku-worker-vs-sonnet-reviewer-20261017.md` for Strike 3 Quota Preservation: Haiku Worker vs Sonnet Reviewer role separation and Turn semantics (17/10/2026).
 See `references/prompt-string-adb-guard-trap-and-grace-band-push-20261017.md` for Hard Gate #5 prompt string false-positive on bare ADB tokens, pre-push hook THRESHOLD=85 vs Grace Band, and L0 diff budget sequential commit strategy (17/10/2026).
 See `references/ui-component-delegation-deadlock-and-claude-cli-escape-20261017.md` for the UI delegation deadlock analysis, why delegate_task aborts on 15-call budget, and direct Claude CLI single-shot resolution (17/10/2026).
 See `references/strike-3-reviewer-handoff-direct-push-procedure-20261017.md` for Strike 3 Reviewer Hand-off direct-push procedure, avoiding open-ended worker loops and using targeted --max-turns 6 Claude Reviewer (17/10/2026).

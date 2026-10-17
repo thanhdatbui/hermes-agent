@@ -492,3 +492,10 @@ See `references/adb-disconnect-vs-missing-proxy-preflight-20261009.md` for disti
       * Chỉ can thiệp khi `level < 20%`. Mức bình thường (>=20%) giữ nguyên tự nhiên.
       * Khi thấp, tự động nâng lên `85% (Charging)` để giải phóng Power Saving Mode và giữ Wi-Fi luôn thức.
     - Chi tiết xem `references/watchdog-stop-reason-parsing-and-auto-battery-heal-20261010.md`.
+
+38. **Dấu Chấm Than Wi-Fi ('Không có Internet') & Hiện Tượng Switcher Lỗi Giả Mạo Khi MikroTik Uptime > 7 Ngày (2026-10-17)**:
+    - **Hiện tượng kết hợp**: Farm Alert báo lỗi `[ACCOUNT_SWITCHER_FAILED] ACCOUNT_READY verify failed: ACCOUNT_VERIFY_MISMATCH` hoặc `profile username still mismatched after switch`. Trên thanh status bar có icon Wi-Fi chấm than (`wifi_combo` có `content-desc="...Không có Internet"`), giữa màn hình có vòng xoay `com.ss.android.ugc.trill:id/tux_loading_hud`.
+    - **Nghịch lý Operator thắc mắc**: Web quản trị `kibe:2310` hiển thị interface PPPoE (`pppoe-out17..35`) uptime > 7 ngày (`1w 11h 30m`), tại sao máy lại rớt mạng?
+    - **Bản chất**: Uptime trên MikroTik chỉ đo kết nối Layer 3 ISP Viettel. Cụm 80 máy Kibe chạy qua container Sing-box (`192.168.110.2:20001..20080`) forward ra MobiProxy 4G (`test.taadaa.click:51xx`). Khi batch chạy dồn tải, modem 4G bị crash/502 trong 20–60s khiến Android cắm dấu chấm than. TikTok tap switch account nhưng không lấy được session token mới từ server nên hủy thao tác và giữ nguyên nick cũ, ném lỗi verify mismatch.
+    - **Kỷ luật**: CẤM sửa code UI Switcher khi nguyên nhân là rớt mạng; kiểm tra va chạm lock tiến trình khác trước khi can thiệp thiết bị. Chờ proxy thông lại / recreate modem rồi re-run.
+    - Chi tiết xem `references/wifi-exclamation-mark-and-pppoe-uptime-vs-502-switcher-triage-20261017.md`.
