@@ -10,7 +10,7 @@ GPM: max 5 wkr; nạp pool web (0đ); re-login văng max 1 lần/ngày (max_prox
 §
 Stale Upload: xóa draft. Revert flop: TikWM tải CDN. Popup 'Ghim/Riêng tư' KHÔNG PHẢI publish proof. Cào: max 60.
 §
-Closeout: Grace 80-84. CẤM push trước gate; rớt gate remediate tới xanh. Hook lỗi GIT_EXTERNAL_DIFF -> Staged Gate (git add -> closeout_gate --base HEAD). CẤM xin lỗi suông/văn mẫu; sai là sửa dứt điểm kèm test/evidence. Claude >= 85%: tự sửa O(1). GW chỉ fallback HTTP (:20128/:20129). TikTok: LIFO pin.
+Closeout: Grace 80-84. CẤM push trước gate; rớt gate remediate tới xanh. Hook lỗi GIT_EXTERNAL_DIFF -> Staged Gate (git add -> closeout_gate --base HEAD). CẤM xin lỗi suông/văn mẫu; sai là sửa dứt điểm kèm test/evidence. Cấm tin mù status tool. Claude >= 85%: tự sửa O(1). GW chỉ fallback HTTP (:20128/:20129). TikTok: LIFO pin.
 §
 Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; admin_ssh.py. Cron: phase9-runner nuôi, feed_session_watchdog giám sát 15p.
 §
@@ -18,6 +18,6 @@ Singbox :200xx, CẤM VPN app. Wi-Fi 5GHz Aruba. Cứu máy: operator_device_loc
 §
 Canary farm: tối thiểu 3-4 màn/máy khác nhau (DM, sửa hồ sơ, feed, popup thử thách); cấm canary trên 1 máy đơn độc.
 §
-Ava: Trích clip gốc. WinRT OCR lọc sạch text/sticker ('20 lần', text vụn); CẤM gửi MEDIA: mù. Dọn .thumbnails+Camera/*; Picker radio ô 0 (215, 276), ô 1 (483, 276). Bấm Lưu crop Profile so BGR/pHash diff > 15 mới nghiệm thu; kéo refresh profile nếu kẹt cache.
+Ava: Trích clip gốc. WinRT OCR lọc sạch text/sticker; CẤM gửi MEDIA: mù. Dọn .thumbnails+Camera/*; Picker radio ô 0, ô 1. Bấm Lưu crop Profile so BGR/pHash diff > 15 mới nghiệm thu; kéo refresh nếu kẹt cache; cấm tin mù status/receipt tool.
 §
 Reboot 3 ca (05:20, 11:20, 17:20), né TFT/War3. Task ngầm & Scheduler BẮT BUỘC bọc VBS/wscript Hidden + CREATE_NO_WINDOW (0x08000000), CẤM cmd /c pop console cướp focus game. 'Tắt' khi game = tắt cửa sổ nháy, cấm tự pause cron.

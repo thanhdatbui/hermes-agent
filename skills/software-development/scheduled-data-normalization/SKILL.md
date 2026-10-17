@@ -52,6 +52,7 @@ Run operational parity and exploratory drift scans separately. Uploader/channel-
 - Editing while the scheduler is concurrently writing.
 - Declaring DONE after save without post-cycle verification.
 - **Header Renaming without Consumer Code Alignment (Đổi header Excel làm generator định kỳ ghi đè rác)**: Standardizing or clarifying column headers in authoritative workbooks (e.g., `Folder Video` -> `Folder Video (Slot 1-640)`) without expanding alias lists in generators and consumers. Exact string/tuple checks fail to find the column, causing generators to fall back to sequential row assignment, scramble slot order (e.g. M76 slot 8 -> slot 7), and periodically overwrite runtime safe workbooks on every cron cycle. Generators MUST use multi-alias substring matching and fail-closed instead of falling back to sequential assignment.
+- **Unchecked Row-Append Column Drift (Dời cột khi ghi đè / append dữ liệu mới)**: When scripts append newly registered or modified accounts into authoritative workbooks without strict schema enforcement, misaligned field counts shift columns to the right (e.g., writing timestamp into `device ID` and pushing real serials into nameless column 11). Downstream batch runners (2FA, Avatar, Login) fail preflight check against hardware mapping (`PROXYgandienthoai.xlsx`) and skip accounts massively. Normalization MUST re-align drifted columns against hardware ground truth before running batches.
 
 ## Evidence template
 

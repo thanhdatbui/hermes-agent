@@ -4,7 +4,7 @@
 - **Triệu chứng:** Báo cáo định kỳ 6H của watchdog `night-tiktok-2fa-watchdog` (job `2029d4224662`) ghi nhận số lượng `Bỏ qua` (skip) rất lớn, ví dụ:
   * Farm Kibe: Hoàn tất 21 | Bỏ qua 16 | Lỗi 35
   * Farm Admin: Hoàn tất 0 | Bỏ qua 146 | Lỗi 7
-- **Câu hỏi của Operator:** "Lí do bỏ qua cả đống?"
+- **Câu hỏi của Operator:** "Lí do bỏ qua cả đống?" / "Chuẩn hoá chưa?"
 
 ## 2. Bản Chất Kiến Trúc Khiến Số Lượng Bỏ Qua Lớn
 1. **Thiết kế Deduplication O(1) Bắt Buộc (Mỗi máy tối đa 1 nick / batch):**
@@ -18,14 +18,28 @@
    - Runner kiểm tra `serial_is_mapped_in_workbook(proxy_mapping, target.serial)` và `require_android_vpn(...)`.
    - Nếu thiết bị chưa kết nối VPN hoặc serial chưa có trong mapping `PROXYgandienthoai.xlsx`, runner chủ động skip (`VICHANGER_VPN_NOT_CONNECTED`) để bảo vệ tài khoản khỏi lộ IP gốc.
 
-## 3. Cạm Bẫy Lệch Cột (Column Drift) Trên File Workbook Admin
-- **Hồ sơ sự cố:** Kiểm tra trực tiếp file `D:\OneDrive\TaadaaData\admin\taikhoan_dat_v2_updated .xlsx` phát hiện **167 dòng bị dời cột**:
-  * Chuỗi timestamp tạo nick (dạng `2026-09-25 08:06:55`) bị ghi nhầm vào cột `device ID` (cột thứ 10).
-  * Chuỗi serial thật của máy (ví dụ `988678393355475942` hoặc `ce0516...`) bị đẩy sang cột thứ 11 (`None` header).
-  * Cột `PASS` bị trống (`None`).
+## 3. Cạm Bẫy Lệch Cột (Column Drift) Trên File Workbook Admin & Công Thức Chuẩn Hoá
+- **Hồ sơ sự cố:** Kiểm tra trực tiếp file `D:\OneDrive\TaadaaData\admin\taikhoan_dat_v2_updated .xlsx` phát hiện **171 dòng bị dời cột** chia làm 2 pattern:
+  * **Pattern 1 (167 dòng):** Dữ liệu tuple `(0, 1, 2, 5, 6, 9, 10)` — Chuỗi timestamp tạo nick (dạng `2026-09-25 08:06:55`) bị ghi nhầm vào cột `device ID` (cột thứ 10). Chuỗi serial thật của máy (ví dụ `988678393355475942` hoặc `ce0516...`) bị đẩy sang cột thứ 11 (`None` header). Cột `NGÀY TẠO` (cột 9) bị trống.
+  * **Pattern 2 (4 dòng):** Dữ liệu tuple `(0, 1, 2, 5, 6, 8, 9, 10)` — Cột `NGÀY TẠO` (cột 9) đã có timestamp hợp lệ, nhưng serial bị ghi lặp cả ở cột 10 lẫn cột 11.
 - **Hậu quả:**
   * Runner đọc `serial = _clean(values[serial_col - 1])`, nhận chuỗi `2026-09-25...`.
   * Khi preflight gọi ADB hoặc map proxy với serial dạng ngày tháng này, bước preflight thất bại và runner đánh dấu `skipped` ngay lập tức.
-- **Biện pháp xử lý & Phục hồi:**
-  * Không sửa tay trên file Excel.
-  * Chạy script rà soát và dịch chuyển lại dữ liệu về đúng vị trí: nếu cột 10 có pattern `^\d{4}-\d{2}-\d{2}` và cột 11 chứa serial hợp lệ, swap/shift lại đúng cột `NGÀY TẠO` và `device ID`.
+- **Canonical Normalization Tool (`D:/Taadaa/tools/normalize_admin_workbook_columns.py`):**
+  * Luôn tạo safety backup trước khi ghi đè (`.bak_before_normalize_<timestamp>`).
+  * Nạp `PROXYgandienthoai.xlsx` của Admin làm nguồn đối soát (ground truth mapping máy ↔ serial).
+  * Kiểm tra và chuẩn hoá hai pattern:
+    ```python
+    # Pattern 1
+    if val_dev.startswith("2026-") and val_extra:
+        assert val_extra.casefold() == proxy_map[m_num]
+        c_created.value = c_device_id.value
+        c_device_id.value = c_extra.value
+        c_extra.value = None
+    # Pattern 2
+    elif c_created.value and str(c_created.value).startswith("2026-") and val_extra and val_dev == val_extra:
+        c_extra.value = None
+    ```
+  * Nghiệm thu post-normalization bằng lệnh dry-run của runner:
+    `python python_runner/run_batch_live_2fa.py --workbook-path "D:/OneDrive/TaadaaData/admin/taikhoan_dat_v2_updated .xlsx" --limit 10`
+    Xác nhận 0 dòng bị lệch cột, serial đọc lên đúng chuẩn máy Android (`ce0...`, `988...`).
