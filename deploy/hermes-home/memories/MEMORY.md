@@ -10,7 +10,7 @@ GPM: max 5 wkr; nạp pool web (0đ); re-login văng max 1 lần/ngày (max_prox
 §
 Stale Upload: xóa draft. Revert flop: TikWM tải CDN. Popup 'Ghim/Riêng tư' KHÔNG PHẢI publish proof. Cào: max 60.
 §
-Closeout: CẤM push trước khi closeout_gate đạt >=85; Sol chấm rớt cấm lờ đi báo DONE; Grace 80-84 auto-push khi test xanh; Strike 3 dùng Haiku/Agy sửa, cấm park WIP. Anti-Surrender: CẤM bảo User sửa tay; BẮT BUỘC dùng tool.
+Closeout: CẤM push khi chưa pass closeout_gate; Grace 80-84 auto-push. User 'Done': nhả lock, báo ngắn kết quả, cấm khóc lóc gate cũ. TikTok: LIFO pin (ghim sau lên cột 1); Bio TV có dấu: ADB AdbKeyboard b64.
 §
 Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; admin_ssh.py. Cron: phase9-runner nuôi, feed_session_watchdog giám sát 15p.
 §
