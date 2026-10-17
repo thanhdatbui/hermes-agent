@@ -154,6 +154,7 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
 - `D:/Taadaa/tools/tests/test_sol_worker.py`: 8/8 tests (safe shell command regex, metacharacters injection block, DSL parse, atomic patch lifecycle, AST validation, LF preserve, max_turns validation).
 
 See `references/prompt-string-adb-guard-trap-and-grace-band-push-20261017.md` for Hard Gate #5 prompt string false-positive on bare ADB tokens, pre-push hook THRESHOLD=85 vs Grace Band, and L0 diff budget sequential commit strategy (17/10/2026).
+See `references/strike-3-reviewer-handoff-direct-push-procedure-20261017.md` for Strike 3 Reviewer Hand-off direct-push procedure, avoiding open-ended worker loops and using targeted --max-turns 6 Claude Reviewer (17/10/2026).
 See `references/closeout-scope-isolation-and-pre-push-hook-contract-20261017.md` for Closeout scope contamination prevention (the git commit -a trap), Pre-Push Hook contract reconciliation, and workbook header matching rules (17/10/2026).
 See `references/sol-web-autonomous-fallback-worker-20261017.md` for Sol Web Autonomous Fallback Worker (:20129) architecture, atomic patching, and worker reporting vs session-close boundaries (17/10/2026).
 See `references/strike-3-reviewer-handoff-and-telemetry-remediation-20261017.md` for Strike 3 Reviewer Hand-off protocol and telemetry/error handling remediation to overcome Closeout Gate 84/100 threshold (17/10/2026).
