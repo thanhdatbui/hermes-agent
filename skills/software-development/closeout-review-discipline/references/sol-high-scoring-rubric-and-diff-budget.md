@@ -13,6 +13,8 @@
 ## 2. Các Trụ Cột Đạt Điểm >= 85/100 từ Reviewer Sol High
 
 ### A. Logic Correctness (35 điểm)
+- **Cấm Substring Quá Rộng Trong Column Locator (Chống False Positive):**
+  Khi mở rộng logic nhận diện cột từ exact equality (`if h in (...)`) sang substring search (`any(k in h for k in ...)`), **TUYỆT ĐỐI CẤM** dùng các token ngắn/chung như `"tik"`, `"vid"`, `"id"`. Trong workbook nghiệp vụ của farm, các cột lân cận như `"TikTok ID"`, `"Keyword Video"`, `"Video Goc"` sẽ bị match nhầm gây hoán đổi tham số tai hại. Sol Reviewer sẽ trừ điểm nặng ở Logic Correctness (xuống <=27/35) nếu phát hiện substring quá rộng; bắt buộc dùng cụm từ định danh rõ ràng như `("folder video", "video folder", "render dich")`.
 - **Fail-Closed Semantics:** Khi kiểm tra trạng thái tiến trình gặp lỗi hoặc ngoại lệ, bắt buộc trả về `True` (coi như đang chạy) để tuyệt đối không kill nhầm tiến trình đang hoạt động.
 - **Backoff trên Retry:** Khi retry `_query_*`, thêm backoff tối thiểu (`time.sleep(0.1)`) thay vì retry tức thì.
 - **Tránh Subprocess Redundancy:** Lưu kết quả vào biến cục bộ (ví dụ: `is_running = is_xiaowei_running()`) thay vì gọi lại liên tiếp trong cùng một khối `if/else`.
@@ -30,11 +32,19 @@
 - **Zombie Escalation Delay:** Khi phát hiện zombie (taskkill rc=0 nhưng tiến trình vẫn còn chạy), thêm khoảng chờ ngắn `time.sleep(0.5)` trước khi gọi CIM terminate để tránh race condition với tiến trình đang trong quá trình thoát dở dang.
 
 ### C. Telemetry & Observability (15 điểm)
+- **Cảnh Báo Fallback/Missing Column Tường Minh:**
+  Khi hàm phân tích/đọc file cấu hình hoặc workbook không tìm thấy cột nghiệp vụ thiết yếu (`folder_idx is None`), BẮT BUỘC phát `logger.warning("[UPLOAD_HOOK] Workbook %s: no folder video column found in headers %r", workbook_path.name, headers)`. Việc im lặng trả về `None` hoặc chuỗi rỗng sẽ bị Reviewer trừ nặng điểm Telemetry & Observability (xuống <=7/15).
 - **Đo Lường Độ Trễ Subprocess (`duration_ms` / `latency_ms`):**
   Reviewer Sol High trừ điểm nếu telemetry chỉ có timestamp và status mà thiếu metric đo lường thời gian thực thi của các thao tác hệ thống nặng. Đo `t0 = time.time()` trước các lệnh subprocess `taskkill` hoặc `powershell` và phát `duration_ms = round((time.time() - t0) * 1000, 1)` vào bản ghi `log_event("..._OK", duration_ms=dur_ms)`.
 - **Lifecycle Telemetry:** Phát event `WATCHDOG_START` / `WATCHDOG_SUMMARY` kèm metrics snapshot để log harvester truy vết vòng đời thực thi across invocations.
 
 ### D. Test Evidence & Edge Cases (25 điểm)
+- **Bộ 3 Test Case Chống False Positive & Khuyết Dữ Liệu Cho Parser:**
+  Để đạt điểm tối đa ở Test Evidence khi sửa logic parser/header locator, bắt buộc phải có:
+  1. *Test False-Positive Defense:* Mock sheet chứa các cột có tên gần giống (`"TikTok ID"`, `"Keyword Video"`) nhưng thiếu cột mục tiêu (`Folder Video`) để chứng minh không bị nhận diện nhầm.
+  2. *Test Missing Primary Key:* Mock sheet thiếu cột index chính (`"Máy"`) trả về `None`.
+  3. *Test Non-Existent Target:* Truy vấn ID không có trong sheet trả về `None`.
+  4. *Test Self-Contained Path:* File test độc lập bắt buộc tự chèn `sys.path.insert(0, ...)` và hỗ trợ cả import trực tiếp lẫn import qua package root để pytest chạy được ở mọi working directory.
 - **Double-None Retry:** Bắt buộc có test mock `side_effect=[None, None]` để chứng minh nhánh fail-closed hoạt động đúng khi retry cả 2 lần đều lỗi.
 - **Dynamic Env Parsing Clamp:** Test đầy đủ các ca biên khi đọc biến môi trường: giá trị âm ép về min, giá trị vượt ngưỡng ép về max, chuỗi chữ/rỗng fallback về mặc định.
 - **Cache Expiry Test:** Bắt buộc có test case chứng minh TTL hết hạn: gán `_CACHE_TS = xw.time.time() - 5.0` (> 2s TTL) và kiểm chứng `is_xiaowei_running(use_cache=True)` gọi lại subprocess thay vì trả cache.

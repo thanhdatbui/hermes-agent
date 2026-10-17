@@ -12,7 +12,7 @@ Re-login văng ko chờ 24h nhưng max 1 lần/ngày + write LOGIN_OK; cấm spa
 §
 Stale Upload: xóa draft (_delete_all_profile_drafts). Revert flop: TikWM tải CDN, xóa render trước làm mới. Cào video: max 60 clip/channel.
 §
-Closeout: Grace 80-84 (diff<=30, pass>=1 test, 0 fail/err, ko lỗi logic/sec) auto-push; cấm park WIP; Remediation max 3 vòng (Sol 1-2, Haiku/Agy 3, CẤM gọi Sonnet); User ép: safe_push --owner-override. Win -p: prompt 1 dòng.
+Closeout: Grace 80-84 (diff<=30, test>=1 pass, 0 fail/err, ko lỗi logic/sec) auto-push; cấm park WIP; Remediation max 3 vòng (Sol 1-2 free -> Haiku/Agy 3, CẤM tự ý gọi Sonnet); User ép: safe_push --owner-override. Win -p: prompt 1 dòng.
 §
 Admin Remote (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; admin_ssh.py.
 §
@@ -20,4 +20,4 @@ BỎ HẾT ViChanger, 100% Singbox 192.168.110.2:200xx, CẤM GanProxyWatcherTra
 §
 Canary farm: tối thiểu 3-4 màn/máy khác nhau (DM, sửa hồ sơ, feed, popup thử thách); cấm canary trên 1 máy đơn độc.
 §
-Ava: lộ ngũ quan, mắt thẳng, cấm kính râm/ảnh đỏ nhòe. Dọn .thumbnails + Camera/*; query MediaStore 1 ảnh. BẮT BUỘC WinRT OCR màn crop trước gửi: thấy chữ lạ ('20 lần', '20)la', video) CẤM Lưu/báo xong vì picker bốc nhầm clip. Trích từ clip gốc nếu Haar ảo. TopLeftPencil l=10..45 w,h<=130.
+Ava: lộ ngũ quan, mắt thẳng, cấm kính râm/ảnh đỏ nhòe. Dọn .thumbnails + Camera/*; query MediaStore 1 ảnh. BẮT BUỘC WinRT OCR màn crop/save trước gửi: thấy text lạ ('20 lần', '20)la', video) CẤM Lưu/báo xong vì picker bốc nhầm clip. Trích từ clip gốc nếu Haar ảo. TopLeftPencil l=10..45 w,h<=130.

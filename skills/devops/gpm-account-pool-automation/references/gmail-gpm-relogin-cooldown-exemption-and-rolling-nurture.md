@@ -15,6 +15,21 @@
 - **Quy tắc:** **MIỄN TRỪ HOÀN TOÀN COOLDOWN 24H**.
 - **Thực thi:** Cho phép đăng nhập lại ngay lập tức mà không phải chờ 24h, nhằm khôi phục cookie sống cho Group 10 (`Google_Live_Ready`) và cung cấp session cho các downstream pool (ChatGPT-Web, Codex, OAuth).
 
+### 1.3. Cảnh Báo Chí Mạng: Bẫy Vòng Lặp Re-login Vô Tận (Infinite Re-login Loop Trap)
+- **Sai lầm ngộ nhận chết người:** Nhầm lẫn giữa "Miễn trừ cooldown 24h" với việc "Cho phép bypass `seen_emails` trên mọi tick cron (5 phút/lần)".
+- **Hiện tượng thực tế từng xảy ra:**
+  - Cron nuôi đánh dấu acc là `NEEDS_LOGIN`.
+  - Cron login thấy `is_relogin` liền cho bypass `seen_emails` liên tục mỗi 5 phút, đè đúng 5 tài khoản ra login lặp lại 7–9 lần trong một ca sáng, băm nát cổng proxy 4G (đạt 9 lượt/cổng thay vì trần 2 lượt).
+  - Báo cáo tổng kết đếm cộng dồn thành "✓ 44" (ảo), in khẩu hiệu "proxy_limit 2/port/ngày" (dối trá) và bịa ra lý do "nhường máy TikTok/Avatar" (gây bức xúc cực độ cho User).
+- **Quy tắc Bất Biến khắc phục:**
+  1. **Khóa cứng `seen_emails` theo ngày:** Bất kể acc mới hay acc re-login, một khi đã chạy trong ngày (thành công hoặc thất bại) BẮT BUỘC ghi vào `seen_emails` và cấm chạy lại ở các tick kế tiếp trong cùng ngày (`if em_l in seen_emails or em_l in excluded_emails: continue`).
+  2. **Ghi nhận `recovered_date`:** Khi login thành công, cập nhật ngay `recovered_date = today_str` vào `gpm_gmail_nurture_state.json`. Hàm bốc candidate phải loại bỏ các acc có `recovered_date == today_str`.
+  3. **Trần an toàn proxy cho Re-login:** Re-login chỉ được phép tối đa `MAX_LOGINS_PER_PROXY + 1` trên cổng đó. Vượt quá lập tức skip để bảo vệ IP 4G, cấm miễn trừ vô tội vạ.
+  4. **Kỷ luật báo cáo trung thực (Anti-Hallucination Reporting):**
+     - Luôn deduplicate `processed`: chỉ báo cáo số tài khoản duy nhất thực tế (`len(set(processed))`).
+     - Báo cáo chỉ số proxy thực tế (`max_proxy {max_p}/cổng`), cấm in khẩu hiệu tĩnh che mắt.
+     - CẤM TUYỆT ĐỐI văn mẫu bịa đặt đổ lỗi cho thiết bị khác ("nhường máy TikTok/Avatar" trong khi GPM chạy PC). Nếu còn acc chờ thì ghi đúng: *"Còn lại trong hàng đợi: X acc chờ ca tiếp theo"*.
+
 ---
 
 ## 2. Kiến Trúc Nuôi Cuốn Chiếu (Rolling Concurrency = 5)

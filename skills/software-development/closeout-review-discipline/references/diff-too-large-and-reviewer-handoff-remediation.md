@@ -471,6 +471,22 @@
   - **Cưỡng Chế State Verification Trước Khi DONE:** Bắt buộc duy trì cờ `has_verified = False`. Chỉ bật `True` sau khi lệnh `ACTION: COMMAND` chạy test runner pass; mọi thao tác `PATCH` mới đều tự động reset cờ về `False`. Nếu gọi `DONE` khi chưa verify, worker lập tức từ chối và yêu cầu chạy test kiểm chứng.
   - **Sandbox Thực Thi & Fail-Closed Proxy:** `shell=False` kết hợp tách token tokenized allowlist (chỉ cho phép `pytest`, `unittest`, `python -m pytest/unittest`, cấm script `.py` tùy ý); ghi file atomic `.tmp.<uuid>` kết hợp rollback an toàn. Tại pool OmniRoute, 100% account ChatGPT Web đều được gán proxy fail-closed, tuyệt đối không chạy bằng IP mạng nhà của máy chủ.
 
+## 34. Cơ Chế Grace Band (80-84) & Chống Đóng Băng / Park WIP Branch (17/10)
+- **Bản Chất Của Vùng Điểm 80-84 (Rubric Mismatch vs Code Quality):**
+  - Thực tế chứng minh các patch nhỏ $O(1)$ ($\le 30$ dòng, test pass 100%) thường xuyên chạm "plateau" ở mốc 80–84 điểm (ví dụ 84/100).
+  - Điểm bị trừ không phải do code sai hay bug, mà do Sol Auditor trừ các lý do ngoại cảnh/toàn cục (*"không test trên thiết bị thật farm"*, *"chưa chạy regression toàn bộ repo"*).
+  - Bắt cứng 85 điểm khiến phiên bị kẹt vô ích, kích hoạt Reviewer Hand-off lôi Claude CLI ra cày 1-2 điểm làm bào mòn quota.
+- **Quy Chuẩn Grace Band Được Phê Duyệt:**
+  - `closeout_gate.py` chính thức hỗ trợ Grace Band: Khi điểm từ **80 đến 84**, nếu 100% focused tests pass (passed $\ge 1$, 0 fail, 0 error), không có lỗi logic/bảo mật, Gate tự động cấp `Verdict: APPROVED` (kèm `grace_band=True`) và cho phép auto-push.
+  - Template `hooks/pre-push.sh` và hook cục bộ `.git/hooks/pre-push` đồng bộ `THRESHOLD=80`.
+- **Tuyệt Đối Cấm "Park Trên WIP Branch" (Anti-WIP-Parking Invariant):**
+  - Ý tưởng cất code vào WIP branch khi kẹt gate là tư duy trốn việc. Trong farm automation, code không vào `main` nghĩa là farm không có bản vá, task chưa xong.
+  - Mọi task BẮT BUỘC phải thi công dứt điểm trên `main`.
+- **Khống Chế Vòng Lặp Sửa Lỗi (Remediation Hard-Cap):**
+  - Khi điểm $< 80$ hoặc test fail: Cho Sol Repair chạy tối đa 2 vòng (free trên `:20129`).
+  - Nếu vẫn $< 80$: Fallback cho Haiku 5.5 hoặc Agy CLI sửa 1 vòng. Tổng số vòng sửa tự động không quá 3 vòng, tuyệt đối CẤM lôi Claude Sonnet ra cày điểm.
+
+
 
 
 

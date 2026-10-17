@@ -6,6 +6,7 @@ Khi chạy `closeout_gate.py --repo <path> --base <ref> --files <files...>`:
 - Nếu commit chạm 3 files nhưng `--files` chỉ truyền 2 files: Gate báo lỗi ngay lập tức:
   `refusing partial committed scope: committed [...] != --files targets [...]`
 - **Cách xử lý:** Luôn đồng bộ danh sách file trong commit với danh sách `--files`, hoặc `git reset` commit về working tree và commit chính xác tập files cần audit.
+- **Cô lập Scope Khi Working Tree Bị Dirty:** Nếu repo đang có các file dirty hoặc uncommitted từ task khác (ví dụ: `benign_popup_registry.py`), việc chỉ định rõ ràng `--files <file1> <file2>` giúp gate chỉ trích xuất diff của đúng các file trong scope của task hiện tại, ngăn việc reviewer chấm trượt toàn bộ phiên vì các file lạ thiếu test coverage.
 
 ## 2. DIFF_TOO_LARGE Hard Ceiling (< 30,000 bytes)
 - Gate từ chối thẩm định nếu diff vượt quá 30,000 bytes:
