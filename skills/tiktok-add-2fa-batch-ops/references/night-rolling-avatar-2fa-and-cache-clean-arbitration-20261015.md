@@ -38,3 +38,23 @@
 ## 6. Khóa Trần Concurrency `--max-workers 15` & SSH PowerShell Exit Code
 - **Bắt buộc `--max-workers 15`:** Cả Kibe lẫn Admin đều phải truyền `--max-workers 15` vào `run_batch_live_2fa.py`. Tuyệt đối không dùng `40` để tránh bão tranh chấp lock workbook trên OneDrive.
 - **PowerShell SSH `$LASTEXITCODE`:** Khi dispatch cluster Admin qua `ssh admin-farm powershell -EncodedCommand`, PowerShell script BẮT BUỘC có dòng `exit $LASTEXITCODE` ở cuối. Nếu thiếu, PowerShell sẽ nuốt return code của Python (hoặc trả 1 do stderr) làm watchdog nhận diện sai trạng thái thành công.
+
+## 7. Bẫy OneDrive Files On-Demand Dehydration Khi Chạy Qua SSH Remote Node (17/10/2026)
+- **Triệu chứng:** Watchdog báo lỗi `⚠️ Cron failed: Script exited with code 5`, runner trên Admin-PC trả về `{"status": "blocked", "reason": "[Errno 22] Invalid argument: 'D:\\OneDrive\\TaadaaData\\admin\\taikhoan_dat_v2_updated .xlsx'"}`.
+- **Nguyên nhân:** File workbook trên Admin-PC bị Windows OneDrive đưa về trạng thái offline (`attrib A O` - `FILE_ATTRIBUTE_OFFLINE`). Trình thông dịch Python `openpyxl.load_workbook()` mở file qua phiên SSH nền không kích hoạt được cơ chế hydrate tự động của Windows shell, ném `OSError: [Errno 22]`.
+- **Kỷ luật giải pháp (Preflight Hydration & Pin):**
+  * Trong PowerShell script dispatch qua SSH tới Admin-PC, BẮT BUỘC chèn lệnh pin và hydrate trước khi gọi python runner:
+    ```powershell
+    attrib -u +p $wb
+    try { [System.IO.File]::ReadAllBytes($wb) | Out-Null } catch {}
+    ```
+  * Trên máy cục bộ (Kibe), trước khi gọi runner script cũng phải kiểm tra và hydrate workbook tương tự:
+    ```python
+    try:
+        if sys.platform == "win32" and WORKBOOK_PATH.exists():
+            subprocess.run(["attrib", "-u", "+p", str(WORKBOOK_PATH)], capture_output=True, timeout=10)
+            with open(WORKBOOK_PATH, "rb") as f:
+                f.read(10)
+    except Exception:
+        pass
+    ```
