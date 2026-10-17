@@ -33,8 +33,9 @@
 
 ---
 
-## 4. Đặc Tả Endpoint & Giao Diện Sổ Tay Bệnh Án (Follow Forensics Modal trên Dashboard 1905)
+## 4. Đặc Tả Endpoint & Thiết Kế Giao Diện Sổ Tay Bệnh Án (Follow Forensics trên Dashboard 1905)
 
+### A. API Endpoint
 Khi Operator cần kiểm tra sâu về từng nick trên Dashboard (không phải chỉ xem biểu đồ tăng trưởng số lượng follower/tim):
 - **API Endpoint:** `/api/follow-detail?machine=<M>&row=<R>`
   - Đọc trực tiếp từ file state `runs/state/follow_state_<M>_row_<R>.json` (hoặc `follow_state_<M>.json` nếu row 1).
@@ -59,8 +60,13 @@ Khi Operator cần kiểm tra sâu về từng nick trên Dashboard (không ph�
       ]
     }
     ```
-- **Giao diện Modal Popup (`followDetailModal`):**
-  - Kích hoạt qua nút icon `🔍` (hoặc `📜`) đặt cạnh tên nick trên mỗi thẻ máy (`renderFhCards`) và mỗi dòng bảng ma trận (`renderFhMatrix`).
-  - Gồm 4 thẻ chỉ số Quota: `Nhóm Cohort` (Veteran/Mid/Rookie), `Trần Đã Chứng Minh (proven)`, `Trần Dò Ca Tới (active)`, `Mức Gãy Gần Nhất (last_failed)`.
-  - Banner trạng thái: Thể hiện rõ đang Khỏe, Hồi phục hay Cooldown kèm streak lỗi và ngày giờ mãn hạn.
-  - Bảng cuộn danh sách UID: Có ô tìm kiếm/lọc nhanh UID con đã bấm, hiển thị rõ thời gian thực thi (timestamp) để đối soát khi có sự cố.
+
+### B. Kỷ Luật UX Giao Diện (Chống Ép Popup Nhỏ Gây Khó Đọc)
+- **Anti-Pattern (BỊ CẤM):** Nhét thông số bệnh án, thẻ trần quota và bảng lịch sử UID vào modal popup nhỏ hẹp (`max-width: 680px`, khung cuộn mini 300px). Người vận hành phải nheo mắt đọc chữ nhỏ, thao tác cuộn bí bách ("làm nhỏ khó đọc vc").
+- **Chuẩn Thiết Kế Dedicated View / Master-Detail:**
+  1. **Phân nhóm sức khỏe trực quan:** BẮT BUỘC nhóm danh sách tài khoản theo 3 phân tầng rõ rệt:
+     - 🟢 **Khỏe / Nòng Cốt:** Đã tốt nghiệp, chạy full quota theo cohort, streak lỗi = 0.
+     - 🟡 **Hồi phục / Thử thách:** Đang trong giai đoạn dò trần bậc thang (T1: 3-5 lượt, T2: 7-9 lượt).
+     - 🔴 **Yếu / Vào Tù (Cooldown):** Bị nhả follow, đang thụ án kỷ luật, hiển thị rõ thời hạn mãn hạn.
+  2. **Bố cục thoáng đạt:** Ưu tiên bố cục Tab chuyên biệt (`📋 Sổ Tay Bệnh Án`) hoặc bố cục Master/Detail (Danh sách nick bên trái/trên, Bệnh án chi tiết & bảng UID full-width bên phải/dưới) thay cho modal che khuất màn hình.
+  3. **Thông số bệnh án rõ ràng:** 4 thẻ chỉ số Quota (`Nhóm Cohort`, `Trần Đã Chứng Minh`, `Trần Dò Ca Tới`, `Mức Gãy Gần Nhất`), Banner trạng thái kỷ luật, và Bảng UID full-width có ô tìm kiếm/lọc nhanh.

@@ -635,6 +635,7 @@ VPN fail on a MAPPED machine → (1) GanProxy reassign (`proxy_pending` + wait `
 
 
 ## References
+- `references/zero-vichanger-wifi-singbox-enforcement.md` — **[MỚI 17/10/2026]** Hướng dẫn xử lý timeout readiness sau soft-reboot, giải phóng cờ marker, và cấm tuyệt đối phục hồi ViChanger.
 - `references/anti-vichanger-resurrection-and-wifi-proxy-invariant.md` — **[MỚI 17/10/2026 — USER MANDATE]** Kỷ luật tuyệt đối cấm hồi sinh ViChanger / GanProxyWatcherTray khi thấy log 'proxy watcher readiness timed out', bản chất proxy Wi-Fi Singbox 100%, và cách giải phóng cờ readiness O(1) qua mark_proxy_state.
 - `references/tiktok-upload-milestone-popup-and-camera-live-fix.md` — **[MỚI 17/10/2026]** Khắc phục lỗi popup milestone "Tổng lượt thích" che Switcher profile, thoát màn hình Camera LIVE bằng nút [X] (60, 140) sau khi Post video, và cảnh báo cấm bật lại ViChanger/Watcher khi runner soft-reboot.
 - `references/aruba-iap-40-device-allocation-and-anti-ssid-failover.md` — **[MỚI 09/10/2026 — USER MANDATE]** Kỷ luật cấm tuyệt đối fallback sang SSID ngoài ('Dat') hoặc đảo máy sang AP khác (phá vỡ quy hoạch 40 máy/AP), kiến trúc Aruba IAP Master (.251) vs Slave CLI, xử lý triệt để bẫy Android 8 `NETWORK_SELECTION_DISABLED_ASSOCIATION_REJECTION` qua UI Manage Networks, và bảng chuẩn SSID/Pass farm (kibe 1: 23102025 vs kibe 2: 19051995).
