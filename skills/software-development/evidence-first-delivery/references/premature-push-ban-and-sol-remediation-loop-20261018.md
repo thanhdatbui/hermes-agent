@@ -26,3 +26,5 @@ Khi Reviewer Sol Auditor chấm REJECTED (< 85), Coordinator không được ho�
    - Vòng 2: Xóa `tap(60, 140)`, thêm 2 unit test Switcher $\rightarrow$ Điểm tăng lên **79/100**.
    - Vòng 3: Thêm hậu kiểm tra `verified_dismissed`, telemetry chuẩn hóa, thêm 2 unit test cho StateMachine $\rightarrow$ Điểm đạt **82/100 APPROVED (Grace Band)**.
 4. **Chỉ push khi có Verdict APPROVED**: Chỉ khi `closeout_gate.py` exit code 0 và `logs/gate_audit.jsonl` ghi nhận `verdict: "APPROVED"`, hệ thống mới được phép commit/push chính thức và báo cáo nghiệm thu hoàn tất.
+5. **CẤM XIN LỖI SUÔNG & BÁO CÁO ĐỐI PHÓ**: Khi bị phát hiện vi phạm thứ tự push/test, cấm tuyệt đối lặp lại bài văn mẫu xin lỗi; hành động khắc phục duy nhất được chấp nhận là tập trung vào kỹ thuật, vá lỗi triệt để theo checklist của Reviewer và đưa ra bằng chứng nghiệm thu qua Gate.
+
