@@ -145,6 +145,19 @@ Collision timeline (baseline → foreign mtimes → detection time), what YOU to
 
 When the user explicitly authorizes cleanup of a named repository and says to ask only about important items, treat this as permission to clean disposable repository state—not to touch live devices, unrelated repos, secrets, or remote history without separate authorization. Inspect status, upstream divergence, local-only commits, and dirty diffs first. Classify generated commits by aggregate diff, symbol registration/import/call/test evidence, and duplicate-definition signals; never trust an auto-generated commit message alone. Before destructive cleanup, save status, diffs, commit list, and hashes outside the repo. Restore reviewed tracked noise, remove only reviewed stale plans/backups, and reset to upstream only after local-only commits are proven disposable. Do not push merely because cleanup succeeded. Final acceptance is empty porcelain, no staged diff, diff-check pass, one intended worktree, and 0/0 ahead/behind. See `references/scoped-repository-cleanup.md`.
 
+## Canonical Pool and Generated-Artifact Cleanup
+
+For repository cleanup where the user corrects an operational pool or other source-of-truth list, bind the correction before deleting anything. Do not infer that a larger aggregate file is authoritative merely because a resolver currently prefers it. Read the resolver and the canonical candidate files, count non-empty entries, and record exact paths before editing. When the user identifies the canonical pool (for example, 67/69 direct entries), update the resolver to prefer only the named canonical file(s) and a named canonical fallback; remove references to superseded aggregate pools from the resolver.
+
+For explicitly authorized cleanup of disposable repository artifacts, use this sequence:
+1. Snapshot `git status --short --untracked-files=all` and preserve unrelated tracked, data, manifest, model, and configuration artifacts unless the user explicitly names them.
+2. Backup only the reviewed disposable set outside the repo, preserving relative paths, byte sizes, and SHA-256 in a manifest. Verify each backup before deleting its source.
+3. Remove only reviewed untracked screenshots/crops, XML/UI dumps, temporary scripts, and superseded aggregate pool files. Never use `git clean -f`, broad recursive deletion, or a wildcard that can reach live data; use a bounded manifest-driven action instead.
+4. Verify the canonical pool files still exist and report their actual non-empty line counts. Verify the superseded files are absent, the backup manifest exists, and no disposable extensions remain in the scoped worktree.
+5. Run one focused offline resolver test, `py_compile` for the changed Python module, and `git diff --check`. Leave commit/push to an explicit release request.
+
+Do not delete untracked files merely because they are scripts or JSON: repository data, manifests, model assets, and configuration examples may be operational inputs. If classification is uncertain, preserve the file and report it separately. The reusable cleanup receipt format belongs in `references/scoped-repository-cleanup.md`.
+
 ## Enforce Session Isolation, Not Prompt Scope
 
 Prompt-level allowlists are advisory and do not prevent a later worker from rewriting the same physical file from an older snapshot. If two sessions can reach one working tree, scope must be enforced at write/integration time:
