@@ -1,4 +1,4 @@
-Cào/Render: 12 niche, min 45, 1 wkr. F_src=(Slot-1)*80+m_idx. Chuẩn hoá 3 món: ava bám lưới, tự trích 2 ava kèm preview tròn cấm hỏi thừa ("tạo ava đi chứ hỏi chi"); Tik*.xlsx TaiKhoan. Khóa nick sửa tay.
+Cào/Render: 12 niche, min 45, 1 wkr. F_src=(Slot-1)*80+m_idx. Chuẩn hoá 3 món: ava bám lưới, tự trích 2 ava kèm preview tròn; Tik*.xlsx. Khóa nick sửa tay. CẤM đổi bio hàng loạt.
 §
 Dọn đĩa: duyệt trước, cấm xóa ngầm. Cấm đẻ script trùng (REUSE>EXTEND>NEW); tách rõ read/mock vs write thật.
 §

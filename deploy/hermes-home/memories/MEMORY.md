@@ -6,7 +6,7 @@ Hotmail: CẤM mail cá nhân; sinh @fviainboxes.com đọc OTP API. Write-Throu
 §
 Proxy: 1-1. Chuẩn hóa 3 món (crop 512x512 -> chốt PA -> lock/Excel -> run_tiktok_upload_avatar.ps1, CẤM chờ watchdog -> MEDIA:); TT v47 monkey. Pin >=1000 view. Soi mắt trước gửi.
 §
-Farm: O(1). Up ava: run_avatar_batch_3accs.py, có auto switcher. Rename TT: bám username (35% HọĐệmTên, 35% Tên+Nick, 30% khác); is_target chặn dính số đuôi \d{2,}$; 7d cooldown đổi lại.
+Farm: O(1). CẤM đẻ script (pin/unpin/swap: pin_top_videos.py, cấm do_*.py); ava: run_avatar_batch_3accs.py. Lock tên: rename_natural_state.json. Rename TT: bám username, 7d cooldown.
 §
 GPM: stop kèm _kill_gpm_chrome; max 5 wkr; cron nạp pool chatgpt-web 15p/lần. Re-login acc văng KHÔNG cooldown 24h; chỉ acc mới log lần đầu mới tính 2 acc/port/ngày.
 §
