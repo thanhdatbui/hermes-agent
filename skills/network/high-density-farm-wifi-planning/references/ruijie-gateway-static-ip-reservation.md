@@ -28,6 +28,11 @@ To prevent DHCP collision, IP pool overlap, and rogue lease timeouts on the phon
   * **Remediation:** Lower `Lease Time(Min)` to `30` in `Basics` ➔ `LAN` ➔ `LAN Settings`. Flush stale/failed ARP table entries on the upstream L2 switch/MikroTik.
 * **Troubleshooting Escalation Order (Gateway First, RF After):**
   * When user directs "xử lý ở rujie trc đã xem đỡ k r ms xử lý aruba tính sau", prioritize verifying and stabilizing Layer 3 IP assignment / DHCP reservation / ARP clean-up before adjusting physical AP RF, transmit power, or antenna orientation.
+* **Local Wi-Fi IP (Ruijie DHCP) vs Global HTTP Proxy Independence:**
+  * Setting a static IP reservation on Ruijie (`Basics` ➔ `LAN` ➔ `Static IP Addresses`, e.g. `192.168.110.124` for M7) only anchors the Layer 3 interface IP on `wlan0`.
+  * It is completely decoupled from the Android Global HTTP Proxy (`settings put global http_proxy 192.168.110.2:2000N`).
+  * Assigning a static IP does NOT alter or break device proxy functionality or proxy egress IP; on the contrary, it eliminates DHCP renewal stalls and stabilizes the TCP transport route to the local proxy host (`192.168.110.2`).
+  * When operators ask whether static IP assignment breaks proxy: confirm that local IP and proxy port are separate network layers, and verify proxy socket liveness across ports (`20001..20080` and `10008..10035`) and outbound public IP immediately.
 * **AP-315 vs AP-325 Hardware IP Behavior:**
   * AP-315 units often have `ipaddr` hard-stored in `ap-env`, causing them to come up on static IP immediately without waiting for DHCP. If Ruijie has not registered these MACs in the Static IP table, dynamic DHCP pool leases could clash if the pool reaches high octets (`.250`+).
   * Always bind all 4 AP MACs into Ruijie's `Địa chỉ IP tĩnh` table.
