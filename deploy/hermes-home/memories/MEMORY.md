@@ -10,14 +10,14 @@ GPM: max 5 wkr; nạp pool web (0đ quota); re-login văng max 1 lần/ngày (ma
 §
 Stale Upload: xóa draft. Revert flop: TikWM tải CDN. Popup 'Ghim/Riêng tư' KHÔNG PHẢI publish proof. Cào: max 60 clip.
 §
-Closeout: Grace 80-84 auto-push. Pre-push hook bắt buộc đồng bộ THRESHOLD=80 khớp Gate. Auto-remediate Strike 1-3 (Haiku/Agy, cấm Sonnet), cấm park WIP, CẤM dừng hỏi. Anti-abdication: cấm bắt User sửa tay config.yaml/code khi dính guard; tự đóng gói script O(1) giải quyết dứt điểm.
+Closeout: Grace 80-84 auto-push (THRESHOLD=80). Auto-remediate Strike 1-3 (Haiku/Agy, cấm Sonnet), cấm park WIP, CẤM dừng hỏi. Anti-abdication: cấm bắt User sửa config.yaml/code; tự đóng gói script O(1) giải quyết dứt điểm.
 §
 Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; admin_ssh.py. Cron: phase9-runner nuôi, feed_session_watchdog giám sát 15p.
 §
-Singbox :200xx, CẤM VPN app. Wi-Fi 5GHz Aruba. Cứu máy: operator_device_lock(force_preempt=True). Proxy Android BẤT BIẾN: CẤM gán domain (mirotik1/test.taadaa.click) vào Android http_proxy. BẮT BUỘC dùng IP LAN 192.168.110.2:port kèm captive_portal_mode 0. Kibe: 20001..20080; Admin: 10008..10035 / 20201..20280.
+Singbox :200xx, CẤM VPN app. Wi-Fi 5GHz Aruba. Cứu máy: operator_device_lock(force_preempt=True). Proxy Android: CẤM gán domain; BẮT BUỘC dùng IP LAN 192.168.110.2:port kèm captive_portal_mode 0. Kibe: 20001..20080; Admin: 10008..10035 / 20201..20280.
 §
 Canary farm: tối thiểu 3-4 màn/máy khác nhau (DM, sửa hồ sơ, feed, popup thử thách); cấm canary trên 1 máy đơn độc.
 §
 Ava: Trích clip gốc. WinRT OCR lọc sạch text/sticker ('20 lần', text vụn); CẤM gửi MEDIA: mù. Dọn .thumbnails+Camera/*; Picker radio ô 0 (215, 276), ô 1 (483, 276). Bấm Lưu crop Profile so BGR/pHash diff > 15 mới nghiệm thu; kéo refresh profile nếu kẹt cache.
 §
-Reboot 3 ca (05:20, 11:20, 17:20), né khi TFT/War3. Task ngầm BẮT BUỘC CREATE_NO_WINDOW (0x08000000)/Hidden, CẤM pop cmd.exe.
+Reboot 3 ca (05:20, 11:20, 17:20), né khi TFT/War3. Task ngầm BẮT BUỘC CREATE_NO_WINDOW (0x08000000)/Hidden, CẤM pop cmd. 'Tắt' khi game = tắt cửa sổ nháy, cấm tự pause cron. Rule phải qua Gate cơ học, cấm dặn suông.
