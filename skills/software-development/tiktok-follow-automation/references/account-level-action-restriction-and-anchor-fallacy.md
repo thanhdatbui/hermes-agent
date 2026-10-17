@@ -30,3 +30,37 @@
 3. **PHÂN ĐỊNH OBSERVABILITY (BÁO CÁO TELEGRAM vs DATABASE/DASHBOARD):**
    - **Telegram:** Giữ vai trò Tháp điều khiển (Control Tower), chỉ báo KPI cấp cao và liệt kê danh sách các máy bất thường (dính nhả, mất mạng, máy lệch). Tuyệt đối không biến Telegram thành database xả chi tiết từng UID con làm loãng và trôi tin nhắn.
    - **SQLite & Dashboard (:1905):** Lưu trữ toàn bộ dữ liệu chi tiết sâu (Forensics), từng UID con kèm timestamp, lịch sử thăng tiến trần quota (`proven_safe_ceiling`, `active_ceiling`, `last_failed_ceiling`) để mở ra tra cứu khi cần.
+
+---
+
+## 4. Đặc Tả Endpoint & Giao Diện Sổ Tay Bệnh Án (Follow Forensics Modal trên Dashboard 1905)
+
+Khi Operator cần kiểm tra sâu về từng nick trên Dashboard (không phải chỉ xem biểu đồ tăng trưởng số lượng follower/tim):
+- **API Endpoint:** `/api/follow-detail?machine=<M>&row=<R>`
+  - Đọc trực tiếp từ file state `runs/state/follow_state_<M>_row_<R>.json` (hoặc `follow_state_<M>.json` nếu row 1).
+  - Trả về JSON có cấu trúc:
+    ```json
+    {
+      "machine": 10,
+      "row": 1,
+      "username": "hadang0725",
+      "cohort": "mid",
+      "proven_safe_ceiling": 20,
+      "active_ceiling": 22,
+      "last_failed_ceiling": "-",
+      "fail_streak": 0,
+      "probation_clean_days": 2,
+      "graduated": true,
+      "follow_failed": false,
+      "cooldown_until_date": "-",
+      "total_followed": 93,
+      "followed_list": [
+        {"uid": "tooanh2604", "timestamp": "2026-09-03T02:53:52+00:00"}
+      ]
+    }
+    ```
+- **Giao diện Modal Popup (`followDetailModal`):**
+  - Kích hoạt qua nút icon `📜` đặt cạnh tên nick trên mỗi thẻ máy (`renderFhCards`) và mỗi dòng bảng ma trận (`renderFhMatrix`).
+  - Gồm 4 thẻ chỉ số Quota: `Nhóm Cohort`, `Trần Đã Chứng Minh (proven)`, `Trần Dò Ca Tới (active)`, `Mức Gãy Gần Nhất (last_failed)`.
+  - Banner trạng thái: Thể hiện rõ đang Khỏe, Hồi phục hay Cooldown kèm ngày mãn hạn.
+  - Bảng cuộn danh sách UID: Có ô tìm kiếm/lọc nhanh UID con đã bấm, hiển thị rõ thời gian thực thi (timestamp) để đối soát khi có sự cố.
