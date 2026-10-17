@@ -8,7 +8,7 @@ Chốt phiên: Grace 80-84 auto-push khi test xanh; cấm Sonnet cày điểm; S
 §
 Ava/Media: BẮT BUỘC WinRT OCR + soi thật; CẤM bịa mô tả/gửi mù cho có lệ. Menu Ghim/Riêng tư KHÔNG PHẢI publish proof; pHash/crop profile thật cấm báo DONE ảo.
 §
-Worker: 'hỏi Claude'=Sonnet 5.5; 'Tắt' khi game=tắt cửa sổ nháy, cấm pause cron; rule qua Gate cơ học; sửa rule bắt buộc sửa Python guard.
+Worker: Tier 1 Haiku CLI, Tier 2 Agy CLI fix. CẤM Luna/CẤM delegate_task sửa code. 'hỏi Claude'=Sonnet 5.5; 'Tắt' khi game=tắt nháy console; sửa rule bắt buộc sửa Python guard.
 §
 Canary: test đa máy/layout, MEDIA:. 100% Singbox, cấm VPN. Mạng: Ruijie>Aruba, tăng công suất AP nâng nhẹ từ từ; cấm bao biện khi data plane/ping chưa thông.
 §
