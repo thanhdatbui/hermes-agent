@@ -33,3 +33,17 @@
 3. **Quy tắc phân định Client/Lobby vs In-Match (User Clarified 17/10/2026: "Đang ở client, sảnh chờ thì được reboot"):**
    - Các tiến trình sảnh chờ / client nền / companion (`LeagueClient.exe`, `LeagueClientUx.exe`, `RiotClientServices.exe`, `TFTAcademy.exe`) **KHÔNG CHẶN REBOOT**. Khi sếp chỉ mở client hoặc đang ở sảnh chờ ngoài, máy vẫn được reboot làm sạch RAM/USB trước ca.
    - **CHỈ KHI engine 3D in-match thực sự xuất hiện** (`league of legends.exe` hoặc `tftclient-win64-shipping.exe`) trên **bất kỳ máy nào (Kibe hoặc Admin)** $\rightarrow$ **HỦY REBOOT NGAY LẬP TỨC (`ABORT`)** để không bị AFK / xử thua ván cờ.
+
+## 4. Quy Chuẩn Warcraft 3 Game Guard (User Invariant Bổ Sung 17/10/2026)
+- **Quy tắc người dùng:** *"Khi tao đang chơi warcraft cũng đéo được phép reboot máy, miễn là app warcraft3 mở"*.
+- **Khác biệt quan trọng so với TFT:** Với TFT, ở client/sảnh chờ thì được phép reboot. Với Warcraft 3, **MIỄN LÀ APP ĐANG MỞ** (bất kể ở menu chính, sảnh custom map hay trong ván đấu) $\rightarrow$ **CẤM TUYỆT ĐỐI REBOOT MÁY**.
+- **Bộ tiến trình nhận diện Warcraft 3:**
+  ```python
+  WARCRAFT_PROCESSES = {
+      "war3.exe",
+      "w3l.exe",
+      "warcraft iii.exe",
+      "frozen throne.exe",
+  }
+  ```
+- **Phạm vi kiểm tra:** Quét song song trên cả Kibe PC (`_running_image_names()`) và Admin PC qua SSH. Nếu phát hiện bất kỳ tiến trình nào trong `WARCRAFT_PROCESSES` trên máy nào $\rightarrow$ lập tức hủy bỏ chuỗi reboot (`ABORT`).
