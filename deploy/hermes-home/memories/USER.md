@@ -6,7 +6,7 @@ Nuôi 4d 3 ca (bỏ đêm, tắt màn 223). Cuốn chiếu Ava&2FA tới 5h15 (n
 §
 Chốt phiên: Vào main, cấm WIP; Grace 80-84 (diff<=30) auto-push; cấm Sonnet cày điểm; User ép: safe_push --owner-override.
 §
-Kibe(1-80) & Admin(201-280) độc lập cào/media. TT v47; Switcher dock; AP 40m. Ava: cấm góc nghiêng/gượng, trích mosaic 6 frame trực diện/sáng duyệt trước.
+Kibe(1-80) & Admin(201-280) độc lập. TT v47. Ava: WinRT OCR + soi thật, cấm bịa mô tả/chọn mảng đỏ nhòe; trích từ clip gốc.
 §
 Worker: Haiku/AG/Sol dự phòng (cấm tự commit/closeout, xong chỉ báo diff+test); trượt 3 lần giao Claude; hỏi tiến trình nào đáp đúng cái đó.
 §

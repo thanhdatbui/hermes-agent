@@ -15,7 +15,12 @@ description: Verify or configure per-device proxy attachment for the Taadaa Andr
   + **Lỗi do NỀN TẢNG (Platform Error):** Google Checkpoint, reCAPTCHA, bắt SĐT (`challenge/iap`), sai mật khẩu (`BLOCKED_WRONG_PASSWORD`), rate limit từ server TikTok/Google/Hotmail ➔ **TÍNH 1 LƯỢT DÙNG (TƯƠNG ĐƯƠNG SUCCESS)**, **Khóa IP/Port proxy đó ngay lập tức** đến hết ngày để bảo vệ an toàn tuyệt đối cho dàn nick, cấm nhồi nick khác vào IP đã bị nền tảng gắn cờ nghi vấn.
   + **Lỗi do SCRIPT / NỘI BỘ (Script Error):** GPM API timeout, thiếu mật khẩu trong Excel (`MISSING_PASSWORD`), tự động skip do filter nội bộ (`khoaleemagic`), crash CDP trước khi tải trang ➔ **KHÔNG TÍNH VÀO QUOTA IP**, giữ nguyên IP để thử lại tài khoản khác trong ngày (tài khoản lỗi script đánh dấu riêng tránh loop lặp lại).
   + Áp dụng thống nhất cho toàn bộ các cronjob login, reg, ver, 2fa, và oauth feeder toàn farm.
-- **FARM ĐÃ BỎ HOÀN TOÀN VICHANGER:** Toàn bộ 80 máy Kibe chạy qua router MikroTik RouterOS và Container Singbox Mixed Inbound (`20001..20080` tương ứng máy 1..80 tại `192.168.110.2`).
+- **FARM ĐÃ BỎ HOÀN TOÀN VICHANGER (BẤT BIẾN):** Toàn bộ 80 máy Kibe chạy qua router MikroTik RouterOS và Container Singbox Mixed Inbound (`20001..20080` tương ứng máy 1..80 tại `192.168.110.2`).
+- **CẤM TUYỆT ĐỐI BẬT LẠI GanProxyWatcherTray HOẶC GỌI VICHANGER / gan_proxy_fleet.py (2026-10-17 USER DIRECTIVE):**
+  + Task Windows `GanProxyWatcherTray` PHẢI LUÔN Ở TRẠNG THÁI `Disabled`. CẤM TUYỆT ĐỐI bật lại task này!
+  + **BẪY LỖI "proxy watcher did not publish post-reboot readiness":** Khi workflow (như `state_machine.py`) soft-reboot máy và văng lỗi `RuntimeError: proxy watcher did not publish post-reboot readiness after reboot` hoặc `proxy readiness timed out`, ĐÂY LÀ LỖI TÀN DƯ CỦA CODE GỐC (do `read_readiness(serial)` đọc trúng file json cờ cũ thời xưa còn sót lại trong `~/.codex/device-readiness/<serial>.json`).
+  + **HÀNH ĐỘNG CẤM:** CẤM TUYỆT ĐỐI thấy log đó mà đi bật lại task `GanProxyWatcherTray` hay chạy `gan_proxy_fleet.py watch` / `run`. Việc bật watcher sẽ làm xáo trộn proxy và bị user phạt nghiêm khắc!
+  + **HÀNH ĐỘNG ĐÚNG:** Xóa sạch file cờ cũ trong `C:\Users\Kibe\.codex\device-readiness\` hoặc đảm bảo workflow chạy ở chế độ Wi-Fi router proxy mode (`readiness_marker is None`).
 - **CẤM TUYỆT ĐỐI GỌI VICHANGER / gan_proxy_fleet.py run:** Không bao giờ bật ViChanger app hay gửi broadcast `START_VPN` lên máy. ViChanger đã bị xóa khỏi toàn bộ consumer repos.
 - **🚨 BẪY TÀN DƯ 'proxy watcher did not publish post-reboot readiness' (CẤM BẬT VICHANGER/WATCHER):**
   + Khi runner soft-reboot, `state_machine.py` chờ cờ marker `.codex/device-readiness/<hash>.json`. Nếu không có file này, nó báo lỗi timeout proxy watcher.
@@ -630,6 +635,7 @@ VPN fail on a MAPPED machine → (1) GanProxy reassign (`proxy_pending` + wait `
 
 
 ## References
+- `references/anti-vichanger-resurrection-and-wifi-proxy-invariant.md` — **[MỚI 17/10/2026 — USER MANDATE]** Kỷ luật tuyệt đối cấm hồi sinh ViChanger / GanProxyWatcherTray khi thấy log 'proxy watcher readiness timed out', bản chất proxy Wi-Fi Singbox 100%, và cách giải phóng cờ readiness O(1) qua mark_proxy_state.
 - `references/tiktok-upload-milestone-popup-and-camera-live-fix.md` — **[MỚI 17/10/2026]** Khắc phục lỗi popup milestone "Tổng lượt thích" che Switcher profile, thoát màn hình Camera LIVE bằng nút [X] (60, 140) sau khi Post video, và cảnh báo cấm bật lại ViChanger/Watcher khi runner soft-reboot.
 - `references/aruba-iap-40-device-allocation-and-anti-ssid-failover.md` — **[MỚI 09/10/2026 — USER MANDATE]** Kỷ luật cấm tuyệt đối fallback sang SSID ngoài ('Dat') hoặc đảo máy sang AP khác (phá vỡ quy hoạch 40 máy/AP), kiến trúc Aruba IAP Master (.251) vs Slave CLI, xử lý triệt để bẫy Android 8 `NETWORK_SELECTION_DISABLED_ASSOCIATION_REJECTION` qua UI Manage Networks, và bảng chuẩn SSID/Pass farm (kibe 1: 23102025 vs kibe 2: 19051995).
 - `references/admin-pc-rdp-stall-and-rogue-dhcp-rescue.md` — **[MỚI 09/10/2026]** Cứu hộ lỗi RDP Admin PC treo do Aruba AP cướp DHCP (192.168.10.77), phân tích nghẽn định tuyến bất đối xứng (Asymmetric Routing) với Ruijie, và quy trình zero-touch jump-host tunnel qua MikroTik REST API khóa IP tĩnh bất đồng bộ (wmic non-blocking).
