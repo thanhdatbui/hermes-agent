@@ -37,3 +37,8 @@ Trước khi gửi ảnh crop hoặc tuyên bố avatar đã chọn:
 - Tuyệt đối cấm miêu tả theo kỳ vọng. Nếu ảnh hiển thị chậu cây, đồ vật, mảng màu đỏ/nhòe:
   - BẮT BUỘC thừa nhận ngay: *"Ảnh crop đang hiển thị chậu cây/sticker '20 lần', Photo Picker đã chọn nhầm thumbnail video."*
   - Không được dùng bất kỳ từ ngữ nào ám chỉ "mặt người", "cô gái", "huấn luyện viên".
+
+### Quy Tắc 3: Kiểm Tra Từng Tile Photo Picker Khi Bị Lệch
+1. Screencap màn hình Photo Picker thật trên máy.
+2. Dùng OpenCV cắt từng ô tile (Tile 0 ở $x=0..270$, Tile 1 ở $x=270..540$...).
+3. So sánh `mean BGR` của từng tile với file ảnh chuẩn `avatar.jpg` hoặc dùng vision kiểm tra từng ô để tìm đúng ô chứa avatar thật (ví dụ Tile 1 tại tâm `(405, 335)`), tuyệt đối không tap mù vào ô đầu tiên khi ô đầu tiên đang bị chiếm bởi video cũ.

@@ -40,6 +40,10 @@
 
 ---
 
-## 4. Kiểm chứng focused
+## 4. Kiểm chứng focused & Xác minh thực tế trên Farm
 - Tạo unit test mock/in-memory openpyxl với 2 bảng workbook có cả header cũ và header mới chứa chú thích ngoặc đơn.
 - Xác minh `read_machine_row_from_tik_workbook` trích xuất chính xác `folder_video` và `account_id` trên cả hai định dạng.
+- **Xác minh trực tiếp O(1) trên 8 file workbook thực tế:**
+  * Chạy probe đọc `read_machine_row_from_tik_workbook(resolve_tik_workbook(r'D:/OneDrive/TaadaaData/kibe', tik), 1)` cho `tik` từ 1 đến 8.
+  * Toàn bộ 8 file `Tik1.xlsx` đến `Tik8.xlsx` đều phải trả về `folder_video` hợp lệ (ví dụ: `Tik1` trả về `'1'`, `Tik7` trả về `'7'`) thay vì chuỗi rỗng `''`.
+

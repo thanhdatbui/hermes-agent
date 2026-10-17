@@ -114,12 +114,30 @@ Khi dispatch Worker thực hiện sửa code (`TASK_KIND: EDIT`), Coordinator Gu
 - **Bẫy Điều Kiện Khởi Tạo Task EDIT Trong Coordinator Guard (2026-10-17):**
   Khi Coordinator hết budget T1 (`COORDINATOR WRITE DENIED`) và phát lệnh `delegate_task` cho task EDIT, Guard kiểm tra nghiêm ngặt 4 yếu tố sau, nếu thiếu sẽ văng lỗi ngay:
   1. `MISSING_TASK_KIND`: Bắt buộc có dòng `TASK_KIND: EDIT` ở đầu context.
-  2. `EDIT_MISSING_FILE`: Bắt buộc có dòng `FILE: <đường_dẫn_tuyệt_đối>` chỉ định 1 file mục tiêu duy nhất.
+  2. `EDIT_MISSING_FILE`: Bắt buộc có dòng `FILE: <đường_dẫn_tuyệt_đối>` chỉ định 1 file mục tiêu duy nhất. (CẤM dùng gạch đầu dòng `- FILE: ...` hoặc `- D:/...` vì parser dính token `- `).
   3. `INVALID_FOCUSED_TEST_FORMAT`: Trường `FOCUSED_TEST` bắt buộc khớp chính xác regex:
      - Dạng pytest: `FOCUSED_TEST: python -m pytest <file.py>::<test_node> -q` (CẤM dùng `-k`, cấm bare file).
      - Dạng py_compile: `FOCUSED_TEST: python -m py_compile <file.py>`.
   4. `GATE4_FAIL_FAST_MISSING`: Bắt buộc chứa câu lệnh Fail-Fast nguyên văn:
      `FAIL_FAST: Nếu trong <= 3 iterations đầu thấy scope bất khả thi với budget 15 calls thì DỪNG NGAY (ABORT)...`
+
+- **Bẫy Goal Scope Lock Missing Target File Trong Delegate Task (2026-10-17):**
+  - **Hiện tượng**: Gọi `delegate_task` bị Guard reject ngay với lỗi:
+    `⛔ [COORDINATOR GUARD - CONTRACT VIOLATION]: EDIT_MISSING_FILE: Task EDIT bắt buộc có 'FILE: <đường_dẫn_tuyệt_đối>' (SCOPE LOCK MISSING TARGET FILE)`.
+  - **Nguyên nhân**: Bộ lọc Guard kiểm tra cả trường `goal`. Nếu `goal` không có dòng `FILE: <đường_dẫn_tuyệt_đối>` hoặc chỉ mô tả bằng lời ("Sửa lỗi X trong file Y"), Guard sẽ coi là thiếu target file và reject trước khi đọc context.
+  - **Khắc phục chuẩn hóa**: Luôn đặt dòng `FILE: <đường_dẫn_tuyệt_đối>` ngay ở dòng đầu tiên của `goal`, sau đó mới xuống dòng mô tả mục tiêu:
+    ```python
+    delegate_task(
+        goal="FILE: D:/Taadaa/repo/target_file.py\nMô tả mục tiêu ngắn gọn O(1)...",
+        context="""TASK_KIND: EDIT
+FILE: D:/Taadaa/repo/target_file.py
+OLD_STRING: <<< ... >>>
+NEW_STRING: <<< ... >>>
+FOCUSED_TEST: python -m py_compile target_file.py
+FAIL_FAST: Nếu trong <= 3 iterations đầu thấy scope bất khả thi với budget 15 calls thì DỪNG NGAY (ABORT)...
+"""
+    )
+    ```
 
 - **Bẫy INVESTIGATE Worker Read-Only (2026-10-17):** Khi dispatch worker với `TASK_KIND: INVESTIGATE`, Worker bị khóa ở chế độ `[WORKER GATE - READ-ONLY WORKER]: BỊ CẤM GHI FILE 100%`. Toàn bộ tool `write_file`, `patch` của worker bị chặn. Nếu task cần worker tạo file artifact (ảnh avatar, export báo cáo, script chạy thử), CẤM dùng `INVESTIGATE`. Bắt buộc dùng `TASK_KIND: EDIT` (hoặc `TASK_KIND: CREATE`) kèm `FILE: ...`.
 

@@ -93,3 +93,19 @@ Khi một máy Kibe vật lý đang **ONLINE** nhưng chỉ có 1–2 nick/slot 
     2. Coordinator áp dụng diff Sol, nghiệm thu `git diff --numstat <= 30 dòng`, commit `[L2-surgery]`.
     3. Dispatch Worker bổ sung file test focused (`tests/test_audit_stale_upload_accounts.py`) mock 100% offline bao phủ 8 nhánh: basic metrics, drift mismatch, missing ID, fallback mtime, OSError handling, selected_db telemetry.
     4. Chạy lại `closeout_gate.py` với test suite focused mới để đạt APPROVED.
+
+---
+
+## 5. Quy Chuẩn Giải Mã & Phản Hồi Khi User Thắc Mắc Báo Cáo ("Chưa hiểu cái báo cáo này")
+Khi User nhận báo cáo `daily-stale-upload-accounts-watchdog` trên Telegram và phản hồi chưa hiểu ý nghĩa:
+1. **Giải mã 5 chỉ số cốt lõi bằng ngôn ngữ nghiệp vụ, không dùng thuật ngữ code thuần túy:**
+   - **Tổng nick quản lý:** Toàn bộ slot nick được phân bổ trên 2 cụm máy Kibe (M1–M80) và Admin (M201–M280), mỗi máy 8 slot Tik.
+   - **Đang đăng đều (≤ 7 ngày):** Dàn nick khỏe mạnh, bot vẫn đẩy clip và view tăng đều đặn theo chu kỳ ca.
+   - **Nick mới warm-up (0 video):** Nick mới reg/mới tạo gần đây, đang trong giai đoạn ngâm dưỡng sinh (lướt feed thuần nuôi trust) chưa đăng clip đầu tiên.
+   - **Cảnh báo trễ (7 – 14 ngày):** Nick đã có video nhưng tạm thời không tăng thêm trong 1–2 tuần gần nhất (trúng nhịp hoán vị chu kỳ nuôi 4 ngày N1–N4, hoặc kho video nguồn của slot đó vừa hết đang chờ batch render).
+   - **Nguy cơ đóng băng (> 14 ngày):** Nhóm bị đọng lâu nhất (> 20 ngày). BẮT BUỘC phân định rõ tỷ trọng:
+     - *Nhóm Admin (~75–80%):* Đăng thử 1–2 clip rồi tạm dừng upload để tập trung render kho video gốc, nick đang ngâm dưỡng chờ nguồn, không phải lỗi.
+     - *Nhóm Kibe (~20–25%):* Do phần cứng rớt USB (M10, M30), kẹt draft trap trong app TikTok, hoặc vướng lỗi script upload đã/đang được khắc phục.
+2. **Disambiguation Guard (Phòng ngừa lệch ngữ cảnh):**
+   - Luôn kèm lời nhắc: nếu User đang nhìn báo cáo khác (Sổ tay bệnh án Follow trên Dashboard :1905, Báo cáo Rolling Rename đổi tên, hoặc Farm Alert lỗi script upload), mời User gửi tên báo cáo hoặc ảnh chụp màn hình để giải mã đúng trọng tâm.
+3. **Kích hoạt Advisor Sol:** Tuân thủ `advisor-dual-answer-orchestration` để đính kèm góc nhìn đánh giá độc lập từ Advisor Sol ở cuối phản hồi.

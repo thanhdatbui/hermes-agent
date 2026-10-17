@@ -6,7 +6,7 @@ Nuôi 4d 3 ca (bỏ đêm, tắt màn 223). Cuốn chiếu Ava&2FA tới 5h15 (n
 §
 Chốt phiên: Vào main, cấm WIP; Grace 80-84 (diff<=30) auto-push; cấm Sonnet cày điểm; User ép: safe_push --owner-override.
 §
-Ava: WinRT OCR + soi thật, cấm bịa mô tả/chọn mảng đỏ nhòe; trích từ clip gốc; quét từ khóa lạ né thumbnail video.
+Ava: WinRT OCR + soi thật, cấm bịa mô tả/chọn mảng đỏ nhòe; trích từ clip gốc. Quét từ khóa lạ (20 lần, video, clip) chống picker nhầm thumbnail video.
 §
 Worker: Haiku/AG/Sol (cấm tự commit/push); AG pool: 100% acc Pro, map 1-1 proxy GPM, sandbox cô lập; trượt 3 lần giao Claude; hỏi gì đáp nấy.
 §
