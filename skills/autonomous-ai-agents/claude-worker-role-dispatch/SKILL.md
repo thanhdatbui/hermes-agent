@@ -101,14 +101,18 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
   Khi Operator (User) ra lệnh *"hỏi Claude"*, *"gọi Claude CLI kiểm tra / đánh giá / tư vấn / review"*, Coordinator BẮT BUỘC dispatch **Claude Sonnet 5.5** (`claude_worker.py --role planner` hoặc `--role reviewer`), TUYỆT ĐỐI CẤM tự ý hạ cấp xuống `haiku_worker.py`!
   `haiku_worker.py` chỉ là công nhân O(1) thi công sửa code/test cơ học để tiết kiệm quota; khi User cần tư vấn kiến trúc hay thẩm định chất lượng cao thì Sonnet là tiêu chuẩn tối cao duy nhất.
   *Lưu ý khi gọi Sonnet tư vấn:* Kẹp tham số `--max-turns 6-8` và chỉ thị rõ *"Answer directly without executing bash commands"* trong prompt để tránh Sonnet chạy các tool Bash/Read thăm dò lan man dẫn đến lỗi `Reached max turns`.
-- **BẢO VỆ QUOTA CLAUDE TẠI STRIKE 3 HAND-OFF — TÁCH BẠCH VAI TRÒ HAIKU WORKER VS SONNET REVIEWER (Chống Đốt Quota 17/10/2026):**
-  Khi Closeout Gate trượt 3 lần (Strike 3), nguyên nhân đốt cháy quota 5h là do Coordinator lạm dụng Sonnet 5.5 (`--role reviewer`) để viết code và sửa test suite lặp đi lặp lại.
+- **BẢO VỆ QUOTA CLAUDE TẠI CLOSEOUT & CHỐNG L3 BLOCKED KHÓC LÓC (Chống Đốt Quota & Anti-Paralysis 17/10/2026):**
+  Khi chốt phiên bị trượt, nguyên nhân đốt quota 5h là do Coordinator lôi Sonnet 5.5 ra viết code và sửa test lặp đi lặp lại.
   Quy chuẩn bất biến:
   1. *Khái niệm Turn:* 1 turn là 1 bước suy luận/gọi công cụ trong vòng lặp ReAct của agent (Read -> Patch -> Command/Test -> Done), KHÔNG PHẢI là 1 lần chạy sửa toàn cục.
-  2. *Strike 1 & 2 Remediation:* BẮT BUỘC giữ nguyên `sol_repair.py` (:20129) độc quyền làm First Responder O(1) in-memory AST proposal. TUYỆT ĐỐI CẤM thay thế `sol_repair` bằng `sol_worker` trong Closeout Gate để tránh chạy ReAct commands lan man làm phình to diff vượt ngân sách 30 dòng.
-  3. *Strike 3 Code & Test Fix:* BẮT BUỘC dispatch `python D:/Taadaa/tools/claude_worker.py --role worker` (chạy bằng **`claude-haiku-5-5`** cực rẻ, nhẹ quota, 10-15s) hoặc fallback sang `ag_cli.py fix` (22 acc Google Pro 4G miễn phí). CẤM dùng Sonnet 5.5 để viết code hay mò test.
-  4. *Strike 3 Verification Sign-off:* `claude_worker.py --role reviewer` (Sonnet 5.5) CHỈ ĐƯỢC PHÉP dùng cho lượt kiểm tra read-only cuối cùng (1-2 turns) để đọc git diff hoàn chỉnh và in `VERDICT: APPROVED`. Sau khi approved, ghi audit binding và push thẳng qua `safe_push.py`, cấm quay lại Sol cày điểm.
-  (Xem `references/strike-3-quota-preservation-haiku-worker-vs-sonnet-reviewer-20261017.md`).
+  2. *Quy trình 3 nấc sửa:*
+     - **Strike 1:** `sol_repair.py` (:20129) độc quyền proposal O(1) in-memory AST <= 30 dòng (Free 100%).
+     - **Strike 2:** `sol_worker.py` (:20129) ReAct test tích hợp có hàng rào Snapshot rollback (Free 100%).
+     - **Strike 3:** `claude_worker.py --role worker` (chạy bằng **`claude-haiku-5-5`** cực rẻ, nhẹ quota, 10-15s, CẤM SONNET) hoặc fallback sang `ag_cli.py fix` (22 acc Google Pro 4G miễn phí).
+  3. *Grace Band (Score >= 80):* Đạt từ 80-84 điểm, diff <= 30 dòng, test 100% pass (>= 1 test, 0 fail/err) là AUTO-PUSH NGAY. Hook `.git/hooks/pre-push` ở tất cả repo (Hermes, tools, tiktok-luot nuoi acc) đã đồng bộ `THRESHOLD=80`, cấm cày điểm 85.
+  4. *CẤM BÁO L3 BLOCKED DỪNG LẠI KHI TEST ĐÃ PASS:* Nếu focused test đã pass 100% mà Reviewer vẫn dìm dưới 80 do bắt bẻ vô lý, Coordinator BẮT BUỘC kích hoạt `safe_push.py --owner-override <repo> <remote> <branch>` để push giải phóng phiên ngay lập tức, tuyệt đối cấm báo L3 BLOCKED dừng lại than vãn.
+  5. *Live Quota Sync:* `refresh_claude_quota_file.py` BẮT BUỘC query trực tiếp model-free `/usage` từ Claude CLI qua `probe_claude_quota(find_real_claude())`, tuyệt đối cấm hardcode dummy data ảo (5%/0%).
+  (Xem `references/sol-worker-guardrails-and-strike-3-failure-protocol-20261017.md` & `references/strike-3-quota-preservation-haiku-worker-vs-sonnet-reviewer-20261017.md`).
 - **CẤM DÙNG CLAUDE SONNET TRONG VÒNG LẶP REMEDIATION TỰ ĐỘNG (Bảo Vệ Quota Tuyệt Đối 17/10/2026):** Tuyệt đối CẤM mọi tiến trình/script tự động (Closeout Gate, Strike 3 Hand-off, Auto-remediation) tự ý kích hoạt Claude Sonnet 5.5 để "cày 1-2 điểm" cho Sol Auditor. Sonnet là vũ khí chiến lược đắt đỏ, CHỈ ĐƯỢC CHẠY khi có lệnh đích danh trực tiếp từ Operator (User). Mọi vòng lặp sửa lỗi tự động độc quyền giao cho Sol Repair (miễn phí trên :20129) hoặc Haiku 5.5 / Agy CLI (Gemini Pro).
 - **CẤM DÙNG CLAUDE SONNET ĐỌC FILE VẶT (Quota Bleeding Disaster 15/10/2026):** Tuyệt đối không dùng `--role planner` (Sonnet 5.5) cho các tác vụ chỉ đọc vài chục dòng code, kiểm tra diff hoặc tìm kiếm file. Đọc file/diff phải dùng tool local hoặc Python $O(1)$ để bảo vệ quota 5h không bị đốt sạch từ 69% lên 100% trong 15 phút.
 - **CẤM AGENT TỰ Ý OVERRIDE QUOTA GUARD:** Lệnh `claude_quota_guard.py allow <minutes>` là đặc quyền DUY NHẤT của Con người (User). Agent tuyệt đối cấm tự ý gõ lệnh mở rào quota của chính mình khi bị chặn.

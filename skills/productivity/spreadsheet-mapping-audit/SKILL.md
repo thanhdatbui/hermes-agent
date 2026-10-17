@@ -260,3 +260,4 @@ For fingerprint ledger vs workbook video count drift audit, see `references/fing
 For single-account hashtag drift between `Folder Video` and `video gốc` (e.g. pet videos with automotive hashtags), see `references/hashtag-drift-render-source-reconciliation.md`.
 For niche allocation anti-clustering permutations across 80 machines and two-sheet hashtag synchronization, see `references/niche-allocation-anti-clustering-and-hashtag-sync-20261013.md`.
 For the critical invariant between Folder Video (Render Dich) and Video Goc (Nguon Cao) and how to prevent taikhoan_run_safe corruption, see `references/folder-video-render-vs-source-invariant.md`.
+For header renaming discipline, consumer script auditing, and preventing sequential row fallback order drift in safe workbooks, see `references/excel-header-rename-consumer-audit-and-order-drift.md`.
