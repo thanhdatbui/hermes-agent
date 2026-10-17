@@ -187,6 +187,7 @@ The delivery layer should validate outbound completion claims before the platfor
 For profile/avatar/farm work, verify the semantic content, not just image statistics:
 
 - Profile/Account Switcher/Save Surface must be the target screen.
+- **Mechanical Pre-Send Target Account Binding (`media_verify.py`):** Before emitting any `MEDIA:<path>` purporting to show an account profile, verify the screenshot using `verify_media_target(image_path, expected_handle)`. The verifier performs strict WinRT OCR token matching and allows only confusable OCR character substitutions (`0o`, `1l`, `1i`) of equal length. Differing digits (`kibe_01` vs `kibe_02`) are strictly rejected. If `ok is False`, suppress `MEDIA:` emission immediately and report the mismatch instead of hallucinating success.
 - The target handle/name and new avatar/content must be visible.
 - Do not accept Home, Settings-only, an unrelated profile, a stale switcher, or a generic launcher image as proof.
 - A screenshot that is technically non-black but visually irrelevant is still invalid.

@@ -29,7 +29,7 @@ Khi được triệu tập qua `claude_worker.py --role reviewer/planner`, Claud
 @dataclass
 class MediaVerdict:
     ok: bool
-    reason: str             # "exact_match" | "fuzzy_match" | "handle_not_found" | "image_missing" | "ocr_failed"
+    reason: str             # "exact_match" | "ocr_confusion_match ratio=..." | "handle_not_found" | "image_missing" | "ocr_failed"
     matched_text: Optional[str]
     ocr_text: str
 
@@ -37,14 +37,18 @@ def normalize_handle(s: str) -> str:
     text = unicodedata.normalize("NFKC", s).casefold().strip()
     return "".join(text.split()).lstrip("@")
 
-def verify_media_target(image_path, expected_handle: str, min_ratio: float = 0.85) -> MediaVerdict:
-    # 1. Kiểm tra tồn tại file ảnh
+def verify_media_target(image_path, expected_handle: str, min_ratio: float = 0.80) -> MediaVerdict:
+    # 1. Kiểm tra tồn tại file ảnh, bắt toàn bộ Exception an toàn
     # 2. Chạy WinRT OCR qua ocr_boxes.ps1
     # 3. Chuẩn hóa NFKC + casefold cho cả handle và OCR tokens
-    # 4. Token match chính xác hoặc fuzzy match qua difflib.SequenceMatcher >= min_ratio
-    # 5. Fail-closed nếu handle không tìm thấy trên ảnh!
+    # 4. Token match chính xác (exact_match)
+    # 5. Khớp nhầm lẫn OCR nghiêm ngặt (_strict_ocr_ratio):
+    #    - Bắt buộc bằng độ dài (len(expected) == len(candidate))
+    #    - CẤM TUYỆT ĐỐI khác chữ số (if a.isdigit() and b.isdigit() and a != b: return None) -> Chặn đứng kibe_01 vs kibe_02!
+    #    - Các ký tự khác nhau BẮT BUỘC thuộc tập OCR_CONFUSABLE_PAIRS ('0o', '1l', '1i')
+    # 6. Fail-closed nếu handle không tìm thấy trên ảnh!
 ```
-- **Kiểm chứng độc lập**: Đạt 10/10 test PASS trong `test_media_verify.py`.
+- **Kiểm chứng độc lập**: Đạt 13/13 test PASS trong `test_media_verify.py` (bao gồm các test phủ quyết số đuôi `kibe_01` vs `kibe_02`, `anna.99` vs `anna.98`, `kibe_01` vs `kibe_011`).
 - **Kiểm chứng thực tế trên ảnh lỗi Máy 18 (`m18_profile_current.png`)**:
   - `verify_media_target("m18_profile_current.png", "huy010822")` ➔ `ok=False, reason='handle_not_found'` (Chặn đứng gửi ảnh sai nick!).
   - `verify_media_target("m18_profile_current.png", "hollybsulliv33")` ➔ `ok=True, reason='exact_match'` (Khớp nick thực tế trên màn hình).
@@ -52,6 +56,7 @@ def verify_media_target(image_path, expected_handle: str, min_ratio: float = 0.8
 ### B. Mở Rộng Canonical: `D:/Taadaa/tools/pin_top_videos.py`
 1. `_apply_tile_action(serial, cx, cy, expected_action, metrics=None)`:
    - Dùng chung cho cả `PIN` lẫn `UNPIN`: Tap tile ➔ Tap Share ➔ Đọc action sheet ➔ Assert đúng action (`PIN` hoặc `UNPIN`) ➔ Tap center ➔ Đóng sheet.
+   - *Kiểm soát thoát player*: Kiểm tra `xml_chk = dump_profile_ui_atx(...)`. Nếu action sheet còn mở hoặc không đọc được profile tiles, tự động bấm `KEYCODE_BACK` để trở về Profile an toàn.
 2. `verify_unpin_applied(serial, pinned_before, metrics=None)`:
    - Đọc lại UI XML, assert số video có badge "Đã ghim" giảm đi.
 3. `unpin_video_on_device(serial, account=None, dry_run=False)`:
@@ -61,9 +66,24 @@ def verify_media_target(image_path, expected_handle: str, min_ratio: float = 0.8
    - So sánh view candidate với video ghim thấp nhất: Nếu `candidate['views'] > lowest['views']` ➔ Tự động `Unpin lowest` rồi `Pin candidate` ➔ Trả về `status: "SWAPPED"`.
 5. SplashActivity Warmup Guard:
    - Trong `open_target_profile`: Poll `dump_ui()` tối đa 12s chờ TikTok thoát `SplashActivity` trước khi gọi `open_profile_root`, triệt tiêu lỗi `ATX_SESSION_EMPTY_HIERARCHY`.
-6. CLI Flags:
+6. Fail-Closed Account Switch Assertion:
+   - Trong `open_target_profile`, sau khi chọn nick qua switcher: `if curr.lower() != account.lstrip("@").lower(): raise RuntimeError(f'SWITCH_ACCOUNT_FAILED: expected @{account}, got @{curr or "UNKNOWN"}')`.
+   - CẤM bỏ sót trường hợp `curr == ""` (TikTok chưa load xong profile). Mọi trường hợp không khớp hoặc rỗng đều bị chặn đứng và ném lỗi.
+7. CLI Flags:
    - `--action {pin, unpin, swap}`, `--no-auto-swap`.
-- **Kiểm chứng độc lập**: Đạt 37/37 test PASS trong `test_pin_top_videos.py`.
+- **Kiểm chứng độc lập**: Đạt 39/39 test PASS trong `test_pin_top_videos.py`.
+
+---
+
+## 4. Claude CLI 2-Round Review & Approved Verdict (Sonnet 5.5)
+- **Vòng 1 (VERDICT: REJECTED)**:
+  * Lỗ hổng 1: `SequenceMatcher` lỏng lẻo (`min_ratio=0.85`) cho phép `kibe_01` khớp `kibe_02` (score 0.857) ➔ Lọt ảnh sai nick (vi phạm FARM-ASSET-001).
+  * Lỗ hổng 2: `if curr and curr.lower() != account:` bỏ qua trường hợp `curr == ""` khi switcher load chậm ➔ Thao tác trên profile sai.
+- **Vòng 2 Remediation (VERDICT: APPROVED)**:
+  * Khóa chặt `OCR_CONFUSABLE_PAIRS`, cấm khác chữ số (`a.isdigit() and b.isdigit() and a != b ➔ return None`).
+  * Khóa cứng fail-closed `curr.lower() != account.lower()` với `curr or "UNKNOWN"`.
+  * Bộ test suite 52/52 tests xanh 100% (13 tests `test_media_verify.py` + 39 tests `test_pin_top_videos.py`).
+  * Claude Sonnet 5.5 chính thức phê duyệt `VERDICT: APPROVED`.
 
 ---
 
