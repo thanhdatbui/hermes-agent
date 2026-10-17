@@ -533,9 +533,9 @@
   2. *Strike 2 (Sol Worker - Free 100% qua :20129):* Autonomous ReAct worker chạy `gpt-web-sol`, tự gõ pytest thật và đọc traceback để sửa khi Reviewer chê thiếu test tích hợp/boundary coverage. Bắt buộc có hàng rào an toàn (snapshot git trước khi chạy, hết lượt tự rollback git checkout, trần diff <= 100 dòng, không làm yếu assert cũ).
   3. *Strike 3 (Haiku Worker - Chi Phí Quota Cực Thấp):* Gọi `claude_worker.py --role worker` (chạy Claude Haiku 5.5) để xử lý nốt trong scope đóng băng.
   4. *Khóa Cứng Claude Sonnet 5.5 Khỏi Vòng Lặp Sửa-Test:* Sonnet 5.5 ngốn hạn ngạch 5h rất nặng, TUYỆT ĐỐI CẤM đưa Sonnet vào làm thợ gõ code/test trong Closeout Gate. Sonnet chỉ được kích hoạt khi User trực tiếp ra lệnh hỏi ý kiến kiến trúc cấp cao.
-- **Cấm Dừng Lại Khóc Lóc 'L3 BLOCKED' Khi Strike 3 Thất Bại:**
-  - Nếu test suite đã pass 100%, code chuẩn xác nhưng Reviewer Sol vẫn dìm ở plateau 78–79 điểm do bắt bẻ câu chữ: TUYỆT ĐỐI CẤM dừng lại than thở báo L3 BLOCKED.
-  - Kích hoạt ngay cơ chế giải phóng phiên: `python D:/Taadaa/tools/safe_push.py --owner-override <repo> <remote> <branch>` trên terminal máy host để đẩy code lên GitHub và đóng phiên ngay lập tức.
+- **CẤM BÁO L3 BLOCKED DỪNG LẠI KHÓC LÓC KHI TEST ĐÃ PASS:**
+  - Nếu test suite đã pass 100%, code chuẩn xác nhưng Reviewer Sol vẫn dìm ở plateau 78–79 điểm do bắt bẻ vô lý: TUYỆT ĐỐI CẤM báo L3 BLOCKED buông xuôi.
+  - Kích hoạt ngay cơ chế giải phóng phiên: `python D:/Taadaa/tools/safe_push.py --owner-override <repo> <remote> <branch>` để đẩy code lên remote và đóng phiên ngay lập tức.
 - **Bản Chất Của "Turns" Trong ReAct Agent Loop:**
   - Trong `sol_worker` hay `claude_worker`, 1 turn là **1 lượt trao đổi round-trip (READ, PATCH, COMMAND, DONE)** bên trong 1 tiến trình chạy duy nhất (mất 30–60s). Nó KHÔNG PHẢI là số lần sửa file và KHÔNG PHẢI là số lần chạy lại Closeout Gate.
   - Một chu trình sửa code + test đàng hoàng cần từ 7–10 turns. Nếu đặt trần quá thấp (<= 5 turns) agent sẽ bị đứt gánh giữa chừng (`MAX_TURNS_REACHED`).
