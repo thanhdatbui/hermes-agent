@@ -6,7 +6,10 @@
 - **Bản chất cơ chế TikTok**:
   * TikTok hoạt động theo cơ chế **LIFO (Last-In-First-Out)** đối với các video ghim.
   * **Video nào ghim sau cùng sẽ LUÔN LUÔN nhảy vào ô đầu tiên bên trái `[0, 0]`**, đẩy các video đã ghim trước đó sang phải.
-  * Để video Top 1 view cao nhất đứng ở vị trí số 1 bên trái, quy trình chuẩn bắt buộc phải ghim theo thứ tự ngược: **Top 3 $\to$ Top 2 $\to$ Top 1**.
+  * **Kỹ thuật Đảo Thứ Tự Ghim (LIFO Re-Pin Technique)**: Nếu muốn đưa video Hot nhất (ví dụ 22K) ra vị trí số 1 ngoài cùng bên trái khi nó đang bị đẩy vào giữa:
+    1. Bấm **Bỏ ghim (UNPIN)** video 22K.
+    2. Bấm **Ghim lại (RE-PIN)** ngay lập tức video 22K.
+    👉 Vì 22K được ghim sau cùng, TikTok sẽ giật nó lên vị trí Cột 1 (Top-Left), đẩy các video 4.3K và 5.2K về sau: `[22K] - [4.3K] - [5.2K]`.
 - **Kỷ luật Soi Mắt Độc Lập**:
   * Khi nghiệm thu lưới video ghim, BẮT BUỘC soi mắt hoặc chạy WinRT OCR độc lập từng cột:
     - Cột 1 (Trái, $x \approx 0..360$): Đọc chính xác số view thực tế.

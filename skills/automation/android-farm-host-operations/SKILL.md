@@ -6,7 +6,7 @@ description: "Use when farm devices drop, USB hangs, or entering BIOS."
 # Android Farm Host Operations
 
 References:
-- `references/tft-dual-host-guard-and-reboot-incident-20261017.md` — Bẫy tử huyệt TFT Game Guard chỉ quét máy Kibe và client 3D khiến reboot sập máy Admin trong trận rank (17/10/2026), quy chuẩn quét song song Kibe+Admin và mở rộng toàn bộ họ tiến trình Riot/TFT/Overlay.
+- `references/tft-dual-host-guard-and-reboot-incident-20261017.md` — Bẫy tử huyệt TFT Game Guard chỉ quét máy Kibe và client 3D khiến reboot sập máy Admin trong trận rank (17/10/2026), quy chuẩn quét song song Kibe+Admin và phân định rõ in-match (league of legends.exe, tftclient-win64-shipping.exe) vs client/lobby.
 - `references/x99-ehci-usb-reboot-governance-and-adb-auth.md` — Quy chuẩn reboot Farm hàng ngày trước Ca trưa (TFT Game Guard), xử lý dứt điểm lỗi ADB unauthorized sau reboot và khống chế concurrency USB 2.0.
 - `references/x99-ehci-pnp-limit-and-daily-reset-architecture-20261010.md` — Phân tích giới hạn phần cứng Live-Disable PnP trên Intel X99 EHCI (HRESULT 0x8004100c), bằng chứng transport ID liên tiếp, hạ MaxWorkers 25 và kiến trúc Preflight Auto-Reboot định kỳ (10/10/2026).
 - `references/aruba-wifi-recovery-and-anti-drift-incident-20261009.md`
