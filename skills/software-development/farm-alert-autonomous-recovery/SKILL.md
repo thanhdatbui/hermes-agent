@@ -14,9 +14,8 @@ description: >-
 > Ref: `references/account-switcher-missing-vs-session-lost-triage-20261011.md`.
 > Ref: `references/gemphonefarm-blind-popup-action-miss-triage-20261012.md`.
 > Ref: `references/stale-upload-watchdog-and-tracker-db-drift-triage-20261012.md`.
-> Ref: `references/draft-resume-trap-and-false-hardware-offline-triage-20261013.md`.
-> Ref: `references/inter-shift-cron-reboot-avoidance-and-warmup-buffer-20261013.md`.
 > Ref: `references/mass-upload-script-failure-and-transient-ehci-triage-20261016.md`.
+> Ref: `references/mass-upload-recovery-parenthesized-headers-and-milestone-popup-20261017.md`.
 
 ## UI evidence: target screen only
 
