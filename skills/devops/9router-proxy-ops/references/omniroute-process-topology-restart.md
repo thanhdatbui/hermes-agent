@@ -48,7 +48,8 @@
 
 ## 5. Hermes Client Retry Tuning during Proxy Restarts
 - Default `agent.api_max_retries: 3` only waits ~20–30s before dropping all sessions and aborting turns with errors.
-- Set `agent.api_max_retries: 10` in `~/.hermes/config.yaml` to extend jittered backoff to ~5–6 minutes (delay capped at 60s). Hermes calls `agent._touch_activity()` every 30s during backoff to maintain gateway keep-alive, allowing sessions to seamlessly wait for OmniRoute restart without user re-prompting.
+- Set `agent.api_max_retries: 15` in `~/.hermes/config.yaml` to extend jittered backoff to ~5–6 minutes (delay capped at 60s). Hermes calls `agent._touch_activity()` every 30s during backoff to maintain gateway keep-alive, allowing sessions to seamlessly wait for OmniRoute restart without user re-prompting.
+- **9Router Fallback IP Trap (127.0.0.1 vs LAN)**: In `config.yaml`, `fallback_providers` must use LAN IP `http://192.168.110.123:20128/v1`, NEVER `127.0.0.1`. If set to localhost, fallback connections fail instantly with connection refused, causing `The model provider failed after retries` and forcing the user to manually re-send messages.
 - **9Router Free Fallback Warning**: `9r-free` / `openrouter-free` routes to `cohere/north-mini-code:free` which lacks tool calling support and should NOT be used as an agentic fallback.
 
 ## 6. Local Fallback Architectures: Antigravity IDE vs Cockpit Tools
