@@ -58,3 +58,10 @@ Khi một máy trong farm (như M7) có tín hiệu yếu (-72 dBm), câu hỏi 
   ```
 * **Bản chất:** RSSI -72 dBm trên băng tần 5GHz khiến chip Broadcom tụt link speed xuống **6 Mbps** (mức sàn 802.11a). Tỷ lệ rớt gói tin ARP/DHCP quá cao làm kernel thu hồi IP.
 * **Khắc phục:** Thường do mặt lưng S7 tì sát vào thanh giằng kim loại của khay. Chỉ cần nhấc máy dịch chuyển 2–3 cm ra khỏi góc khuất khung sắt, link speed sẽ vọt lại 300–500 Mbps và giữ IP ổn định 100%.
+
+---
+
+## 6. Kỷ Luật Can Thiệp Máy Đơn Lẻ Mất Mạng Khi Farm Đang Chạy Ca
+* **Không làm tê liệt việc sửa máy lẻ:** Khi một máy đơn lẻ bị rớt mạng Wi-Fi (`IP: none`, `wlan0 state DORMANT`), máy đó không thể chạy automation và không ảnh hưởng đến các máy khác đang hoạt động. CẤM Coordinator vin cớ "ca nuôi đang chạy sợ ảnh hưởng máy khác" để trì hoãn xử lý. Thao tác ADB qua `operator_device_lock(machine=N, force_preempt=True, bypass_proxy_readiness=True)` được thực thi độc lập trên máy đó.
+* **Xử lý triệt để Stale ARP trên Router Gateway (MikroTik):**
+  Khi máy Android đổi dải IP hoặc bị rớt DHCP nhiều lần, MikroTik có thể lưu entry ARP ở trạng thái `failed` hoặc giữ IP cũ dạng `stale`. Cần truy cập MikroTik REST API (`DELETE /rest/ip/arp/<id>`) để xóa bỏ entry stale, giúp việc bắt tay DHCP/ARP giữa Gateway và S7 diễn ra thông suốt ngay khi tín hiệu RF hồi phục.

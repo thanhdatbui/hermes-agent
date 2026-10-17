@@ -113,6 +113,12 @@ Use status values such as `NO_DAT_EVIDENCE`, `CLEAN_AND_ONLINE`, `ONLINE_BUT_ROG
 - **Suy hao vật lý 5GHz & Link Speed tụt sàn 6 Mbps trên kệ sắt:**
   Nếu máy đã xác thực WPA2 (`Supplicant state: COMPLETED`) nhưng bị rớt IP hoặc báo `CMD_IP_REACHABILITY_LOST`: kiểm tra `Link speed` trong `mWifiInfo`. Nếu link speed tụt sàn xuống 6 Mbps (RSSI <= -72 dBm do bị lưng máy tì sát vào thanh sắt kim loại của kệ), gói tin DHCP/ARP sẽ bị drop. Xử lý bằng cách nhấc máy dịch chuyển 2–3 cm ra khỏi góc khuất khung sắt. TUYỆT ĐỐI CẤM tăng công suất AP Aruba lên 12–15 dBm vì sẽ gây bão hòa bộ thu (Receiver Desensitization) và kickout hàng loạt 39 máy xung quanh.
 
+- **Kỷ luật can thiệp máy đơn lẻ mất Wi-Fi khi farm đang chạy ca nuôi:**
+  Khi một máy đơn lẻ bị mất kết nối Wi-Fi (`IP: none`, `wlan0 state DORMANT`), máy đó không thể chạy automation và không gây ảnh hưởng tới các máy khác trên cùng rack. CẤM Coordinator vin cớ "ca nuôi đang chạy sợ ảnh hưởng máy khác" để trì hoãn xử lý. Thao tác ADB qua `operator_device_lock(machine=N, force_preempt=True, bypass_proxy_readiness=True)` diễn ra độc lập trên máy đó.
+
+- **Khôi phục DHCP sau khi dọn sạch cờ phạt và xung đột ARP:**
+  Sau khi dịch chuyển máy cải thiện RF và purge toàn bộ profile lỗi/cờ phạt `ASSOCIATION_REJECTION`/`DHCP_FAILURE` trên Android S7, nếu MikroTik vẫn lưu ARP stale dạng `status: failed` hoặc dải cũ, cần dọn ARP stale trên MikroTik (`DELETE /rest/ip/arp/<id>`) để Gateway và Client bắt tay lại hoàn tất việc cấp phát IP `192.168.110.x`.
+
 ## Production Automation Scripts
 - `D:/Taadaa/tools/scan_rogue_wifi_farm.py`: Fast non-intrusive pre-scan script across both clusters (Dual-Cluster Farm) to audit rogue Wi-Fi networks, active SSIDs, and IP assignment across all attached devices in ~10s without modifying state or blocking on write locks.
 - `D:/Taadaa/tools/batch_clean_farm_wifi.py`: Parallel locked cleanup across Dual-Cluster Farm (M1-80 & M201-280, max_workers=20), removing rogue networks (`Dat`, `Dat-1`, `BOX`, `Green Media 5G`, `admin`, `kibe`) and enforcing pure Aruba SSID binding with DHCP.
