@@ -10,6 +10,7 @@ description: Use when enforcing inter-session & anti-skip farm gates.
 Kỷ luật điều phối và cưỡng chế kỹ thuật cứng (Hard Technical Enforcement) nhằm triệt tiêu vĩnh viễn hiện tượng **Context Amnesia** (mất trí nhớ giữa các phiên chat) và **Safe-Skip** (trốn việc, nuốt exception, fake pass) của AI Agents trên toàn bộ các repository farm.
 
 References:
+- `references/cross-session-guessing-and-anti-hijack.md` — **[MỚI 17/10/2026 - ANTI-BLIND SESSION GUESSING & CROSS-SESSION HIJACK]** Triệt tiêu dứt điểm thói quen tự ý gọi `session_search` để đoán mò chủ đề từ session cũ khi nhận tin nhắn ngắn/mơ hồ (`???`, `clmm`), dẫn tới trả lời nhầm session gây bức xúc cho Operator.
 - `references/device-lock-stall-and-remote-admin-cluster-execution-20261016.md` — **[MỚI 16/10/2026 - DEVICE-LOCK STALL PREVENT & ADMIN CLUSTER ROUTING]** Triệt tiêu bệnh lý nằm im chờ User nhắc khi thiết bị kẹt lock (cưỡng chế cơ chế tự động theo dõi/đánh thức event-driven) và khắc phục lỗi gọi nhầm host launcher Kibe cho máy cụm Admin (>=200) gây false DEVICE_OFFLINE.
 - `references/pre-proposal-capability-gate-and-dedup-architecture.md` — **[MỚI 15/10/2026 - CAPABILITY REGISTRY & PRE-PROPOSAL DE-DUPLICATION GATE]** Chấm dứt dứt điểm bệnh lý "hứng lên là đẻ file mới" gây over-engineering và xung đột device lock/cron ngầm; cơ chế 2 tầng (Registry O(1) 341 capabilities + S2 Semantic Audit + Receipt Write Guard exit code 2) được Claude Code CLI thẩm định APPROVED (28/28 tests pass).
 - `references/fake-inflight-stall-and-reboot-resume-pitfall-20261015.md` — **[MỚI 15/10/2026 - BỆNH LÝ "HỨA LÈO ĐỨNG IM" (FAKE IN-FLIGHT STALL) & CẠM BẪY AUTO-RESUME REBOOT]** Cưỡng chế kỷ luật tuyệt đối cấm kết thúc turn bằng câu text hứa hẹn "đang làm/đang rà soát" mà không dispatch tiến trình thực tế; cấm ngụy biện bao biện khi bị chất vấn tiến độ; và fix lỗi preflight reboot tính sai độ tươi của session do bám vào `gateway_routing.updated_at` cũ.
@@ -218,6 +219,13 @@ For Central Controller + remote farm clusters, a local `Path.is_file()` result i
      * CẤM TUYỆT ĐỐI phân tích lý thuyết dài dòng, giải thích kiến trúc gateway/reboot, hoặc ngụy biện rằng "em đã trả lời xong và đang chờ anh chỉ đạo" để che đậy sự chậm trễ.
      * BẮT BUỘC thừa nhận thẳng thắn hiện trường: Nếu turn trước chưa kích hoạt tiến trình -> Thừa nhận ngay lập tức, không bào chữa, và thực thi ngay lệnh chạy bù.
    - **Cạm bẫy Reboot Preflight Freshness:** Trong các script preflight bảo toàn session (`farm_preflight_daily_reset.py`), trường `updated_at` của `gateway_routing` không nhảy theo từng tool call. BẮT BUỘC phải đối chiếu `MAX(timestamp)` từ bảng `messages` để lấy đúng giây cuối cùng agent vừa thao tác, tránh tình trạng tính nhầm session đang chạy sâu thành idle rồi bỏ qua không auto-resume.
+
+0.2. **Kỷ Luật Chống Đoán Mò Session & Cướp Ngữ Cảnh Cũ (Anti-Blind Guessing & Anti-Hijack Invariant - 17/10/2026):**
+   - **CẤM TỰ ĐOÁN CHỦ ĐỀ TỪ SESSION KHÁC:** Khi nhận tin nhắn ngắn (< 10 từ) hoặc câu hỏi mơ hồ không nêu rõ danh từ/đối tượng kỹ thuật (`???`, `ủa`, `sao v`, `clmm`, `chưa hiểu`):
+     * TUYỆT ĐỐI CẤM dùng `session_search` để lấy chủ đề của session khác đắp vào session hiện tại.
+     * CẤM bốc nhầm chủ đề từ session cũ ở topic khác rồi tự ý đưa ra phương án/hành động khiến người dùng ức chế ("session này t hỏi cái khác mà").
+   - **HÀNH ĐỘNG CHUẨN:** Hỏi lại trực diện, ngắn gọn trong 1-2 câu ("Em chưa rõ ý anh ở tin nhắn này, anh đang muốn xử lý / kiểm tra hạng mục nào ạ?") thay vì lục lọi lịch sử rồi nói nhảm.
+   - **ĐIỀU KIỆN DÙNG SESSION_SEARCH:** Chỉ gọi `session_search` khi người dùng CÓ NHẮC TỚI từ khóa, sự kiện hoặc mốc thời gian cụ thể trong quá khứ. Cấm gọi discovery rỗng (`session_search()`) rồi bốc session đầu tiên làm mục tiêu. Xem chi tiết `references/cross-session-guessing-and-anti-hijack.md`.
 
 1. **Chống nói suông & phân tích kéo dài (Chống Than Thở & Đổ Lỗi Timeout & Cấm Hở Tí Là Blocked):**
    - **Chống nịnh bợ & phản xạ vẹt (Anti-Flattery & Anti-Echo Invariant):** CẤM TUYỆT ĐỐI đọc ngược hệ thống, luật lệ, invariant trong prompt của User để tán dương kiểu "hệ thống của anh quá đỉnh/chuẩn nhất rồi". Phản biện kỹ thuật phải sòng phẳng, trực diện, bóc trần đúng chi phí ẩn (overhead bảo trì, gánh nặng giàn khung, rủi ro lệch tool) thay vì lặp lại văn khen ngợi vuốt đuôi.

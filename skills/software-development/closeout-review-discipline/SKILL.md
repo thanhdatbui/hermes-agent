@@ -15,7 +15,7 @@ metadata:
 
 References:
 - `references/sol-high-scoring-rubric-and-diff-budget.md` — **[16/10]** Ngưỡng L0 (21KB), tinh gọn test, rubric >= 85.
-- `references/diff-too-large-and-reviewer-handoff-remediation.md` — **[17/10]** L0 ceiling, fix NEED_CONTEXT qua sequential commits, Strike 3 hand-off, sandbox worker & verify trước DONE.
+- `references/diff-too-large-and-reviewer-handoff-remediation.md` — **[17/10]** L0 ceiling, fix NEED_CONTEXT qua sequential commits, Strike 3 hand-off, sandbox worker, verify trước DONE, UTF-8 replace telemetry & vượt ngưỡng 86/100.
 - `references/gate-scope-matching-and-parity-lessons.md` — **[15/10]** Scope matching, audit binding.
 - `references/closeout-gate-diff-ceiling-and-scope-refusal.md` — **[15/10]** DIFF_TOO_LARGE, refusing partial scope.
 - `references/sync-hermes-cron-block-identity-and-line-budget.md` — Đồng bộ 100% block giữa scripts/ và hermes_cron/ tránh lệch test helper_block, và kiểm soát line budget Architecture Gate.
