@@ -66,3 +66,10 @@ def test_run_night_batch_dry_run():
     code, out = run_night_batch(dry_run=True)
     assert code == EXIT_SUCCESS
     assert "TOTAL=40 SUCCESS=40 FAILED=0" in out
+
+
+def test_workbook_path_type():
+    from cron_night_tiktok_2fa_watchdog import WORKBOOK_PATH
+
+    assert isinstance(WORKBOOK_PATH, Path)
+
