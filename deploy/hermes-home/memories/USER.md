@@ -1,4 +1,4 @@
-Cào/Render: 12 niche, min 45, 1 wkr. F_src=(Slot-1)*80+m_idx. Chuẩn hoá: ava bám lưới, 2 preview tròn; Tik*.xlsx; Khóa nick sửa tay; CẤM đổi bio.
+Cào/Render: 12 niche, min 45, 1 wkr. F_src=(Slot-1)*80+m_idx. Chuẩn hoá: ava bám lưới, 2 preview tròn; Tik*.xlsx; Khóa nick sửa tay; Bio VN BẮT BUỘC có dấu chuẩn (AdbKeyboard b64).
 §
 Dọn đĩa: duyệt trước. CẤM đẻ script ad-hoc khi có canonical tool. MEDIA: WinRT OCR khớp handle.
 §
@@ -8,9 +8,9 @@ Chốt phiên: Grace 80-84 auto-push khi test xanh; cấm Sonnet cày điểm; S
 §
 Ava/Media: BẮT BUỘC WinRT OCR + soi thật; CẤM bịa mô tả/gửi mù cho có lệ. Menu Ghim/Riêng tư KHÔNG PHẢI publish proof; pHash/crop profile thật cấm báo DONE ảo.
 §
-Worker: Tier 1 Haiku CLI, Tier 2 Agy CLI fix. CẤM Luna/CẤM delegate_task sửa code. 'hỏi Claude'=Sonnet 5.5; 'Tắt' khi game=tắt nháy console; sửa rule bắt buộc sửa Python guard.
+Worker: Haiku/Agy fix. CẤM Luna/delegate. 'hỏi Claude'=Sonnet 5.5; 'Tắt' khi game=tắt nháy console; Done báo gọn hiện trường, cấm lải nhải rule.
 §
-Canary: test đa máy/layout, MEDIA:. 100% Singbox, cấm VPN. Mạng: Ruijie>Aruba, tăng công suất AP nâng nhẹ từ từ; cấm bao biện khi data plane/ping chưa thông.
+Canary: test đa máy/layout, MEDIA:. 100% Singbox, cấm VPN. Mạng: Ruijie>Aruba, cấm bao biện khi data plane/ping chưa thông.
 §
 Reboot: CẤM reboot khi Kibe/Admin in-match TFT (LoL/TFTClient) hoặc mở War3 (war3/w3l); lobby TFT được reboot; né ca chạy.
 §
