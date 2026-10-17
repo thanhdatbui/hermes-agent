@@ -24,6 +24,23 @@ python D:/Taadaa/tools/manage_hermes_config.py get agent.api_max_retries
 # Ghi giá trị an toàn (tự động tạo backup .bak, ghi atomic .tmp và đổi tên)
 python D:/Taadaa/tools/manage_hermes_config.py set agent.api_max_retries 15 --type int
 python D:/Taadaa/tools/manage_hermes_config.py set agent.api_retry_delay 3.0 --type float
+
+# Thao tác với List/Array (hỗ trợ cả dot notation và bracket notation)
+python D:/Taadaa/tools/manage_hermes_config.py get fallback_providers.0.model
+python D:/Taadaa/tools/manage_hermes_config.py get "fallback_providers[1].base_url"
+python D:/Taadaa/tools/manage_hermes_config.py set "fallback_providers[0].model" "gpt-5.6-luna" --dry-run
+```
+
+## Bẫy Lập Trình Với Cấu Trúc List & Allowlist (List/Bracket Traversal Trap)
+1. **Lỗi duyệt List khi split theo dấu chấm:** YAML config thường chứa list (như `fallback_providers`). Nếu chỉ split theo `.` và kiểm tra `isinstance(curr, dict)`, hàm sẽ văng lỗi `KEY_NOT_FOUND` ngay khi chạm list. Bắt buộc phải có parser chuẩn hóa `[index]` và `.index` thành số nguyên để duyệt mảng `list[int]`.
+2. **Lỗi Allowlist chặn cú pháp ngoặc vuông `[0]`:** Nếu allowlist chỉ kiểm tra `key.startswith(p + ".")`, thì `fallback_providers[0]` sẽ bị chặn vì bắt đầu bằng `[` thay vì `.`. Bắt buộc phải chuẩn hóa key (`re.sub(r'\[(\d+)\]', r'.\1', key)`) trước khi đối soát allowlist.
+
+## Kỷ Luật Tự Thẩm Định Khi Claude CLI Chạm Trần Quota (85%+)
+1. **CẤM TUYỆT ĐỐI hỏi xin mở quota Claude CLI:** Khi Claude CLI chạm 85%+ (như 87% trong phiên), CẤM gửi `clarify` xin sếp chạy `claude_quota_guard allow` hoặc nài nỉ xin quota.
+2. **Coordinator BẮT BUỘC Tự Thẩm Định (Self-Review & Direct Hardening):**
+   - Coordinator tự soi từng dòng code, tìm ra các ca biên (edge cases như list traversal, bracket syntax).
+   - Dùng subagent qua `delegate_task` (chạy trên Gemini pool - 0 tốn quota Claude) với hợp đồng O(1) chuẩn chỉ (`TASK_KIND: EDIT`, `OLD_STRING: <<<...>>>`, `NEW_STRING: <<<...>>>`, `FOCUSED_TEST`, `FAIL_FAST`).
+   - Chạy kiểm thử inline hoặc focused test < 30s để nghiệm thu thực tế 100% trước khi báo cáo.
 ```
 
 ## Quy Tắc Bất Biến Cho Coordinator Khi Bị Guard Chặn

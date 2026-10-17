@@ -10,7 +10,7 @@ GPM: max 5 wkr; nạp pool web (0đ); re-login văng max 1 lần/ngày (max_prox
 §
 Stale Upload: xóa draft. Revert flop: TikWM tải CDN. Popup 'Ghim/Riêng tư' KHÔNG PHẢI publish proof. Cào: max 60.
 §
-Closeout: Grace 80-84 (THRESHOLD=80). Auto-remediate 1-3 (Haiku/Agy, cấm Sonnet), cấm park WIP. Anti-Surrender: CẤM bảo User sửa tay config/Notepad; BẮT BUỘC dùng manage_hermes_config.py hoặc script Python atomic D:/Taadaa/tools/.
+Closeout: CẤM push trước khi closeout_gate đạt >=85; Sol chấm rớt cấm lờ đi báo DONE; Grace 80-84 auto-push khi test xanh; Strike 3 dùng Haiku/Agy sửa, cấm park WIP. Anti-Surrender: CẤM bảo User sửa tay; BẮT BUỘC dùng tool.
 §
 Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; admin_ssh.py. Cron: phase9-runner nuôi, feed_session_watchdog giám sát 15p.
 §

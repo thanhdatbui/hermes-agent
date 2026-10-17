@@ -24,6 +24,7 @@ metadata:
   - PER-COMMAND TARGET STAGING: CẤM TUYỆT ĐỐI `git commit -a`, `git add .`, `git add -A`. Bắt buộc chỉ định file đích: `git commit -m "..." -- <target_file> <target_test>`.
   - CHỐNG OVER-ENGINEERING & KHÓC LÓC: CẤM cài Windows ACLs, cấm sửa core.hooksPath toàn cục, cấm HMAC scope lock gây nghẽn runtime/cronjob farm; khi kẹt gate, chạy `git diff --stat` gọt tỉa diff <= 30 dòng để lấy Grace Band auto-push dứt điểm.
   - CẤM TUYỆT ĐỐI BẢO USER SỬA TAY (ANTI-SURRENDER): Khi gặp Guard chặn phương thức thô (như `config.yaml`), CẤM bảo User mở Notepad hay sửa thủ công. BẮT BUỘC dùng công cụ có kiểu chuẩn (`manage_hermes_config.py`) hoặc viết script có validation/atomic-write trong `D:/Taadaa/tools/` để thi công dứt điểm.
+  - TỰ THẨM ĐỊNH KHI CLAUDE QUOTA CẠN (SELF-REVIEW DISCIPLINE): Khi Claude CLI chạm ngưỡng bảo vệ (85%+), CẤM gửi câu hỏi clarify xin mở quota hay ngồi chờ. Coordinator BẮT BUỘC tự đứng ra làm reviewer soi diff, dùng subagent Gemini pool qua `delegate_task` O(1) để sửa, và tự chạy inline test / focused test kiểm chứng xanh 100%.
 
 ## 2. Quy Trình Khắc Phục Khi Trượt (Remediation Protocol)
 - **Strike 1:** `sol_repair.py` (:20129) tạo đề xuất AST O(1) <= 30 dòng (miễn phí 100%).
