@@ -68,8 +68,26 @@ def test_run_night_batch_dry_run():
     assert "TOTAL=40 SUCCESS=40 FAILED=0" in out
 
 
-def test_workbook_path_type():
+def test_workbook_hydration_and_admin_script():
+    import inspect
     from cron_night_tiktok_2fa_watchdog import WORKBOOK_PATH
 
     assert isinstance(WORKBOOK_PATH, Path)
+    src = inspect.getsource(run_night_batch)
+    assert "ps_admin_script" in src and "attrib -u +p" in src
+
+
+def test_run_night_batch_missing_runner(monkeypatch):
+    import cron_night_tiktok_2fa_watchdog as wd
+    monkeypatch.setattr(wd, 'TIKTOK_2FA_REPO_DIR', Path('D:/nonexistent_dir_xyz'))
+    code, out = wd.run_night_batch(dry_run=False)
+    assert code == 1
+    assert 'Không tìm thấy runner script' in out
+
+
+def test_parse_summary_counts_empty_fallback():
+    from cron_night_tiktok_2fa_watchdog import parse_summary_counts
+    res = parse_summary_counts('')
+    assert res['total'] == 0 and res['success'] == 0 and res['failed'] == 0
+
 
