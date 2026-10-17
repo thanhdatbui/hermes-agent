@@ -186,3 +186,20 @@ res = subprocess.run(cmd, capture_output=True, text=True, timeout=10, **WIN_KWAR
   schtasks /change /tn "Taadaa_Safe_USB_Guard_15m" /tr "pythonw.exe C:\Taadaa_Service\safe_usb_guard.py"
   schtasks /change /tn "Taadaa_Safe_USB_Guard_15m" /enable
   ```
+
+---
+
+### 5. Bẫy Tác Vụ Dọn Đĩa & Đồng Bộ Cloud (Disk Janitor / GDrive Sync / f_src Cleanup)
+- **Dấu hiệu nhận biết:**
+  * Bảng `cmd.exe` chớp lên giữa màn hình in dòng thu hồi bộ nhớ / đồng bộ:
+    `f_src-151 -> GDrive & Freed 45 files (190.27 MB)`
+    hoặc các thông điệp `Freed X files`, `Dọn dẹp ổ D`, `Sync cloud hoàn tất` rồi tự tắt sau vài giây.
+- **Tác động:**
+  * Windows cấp phát console window mới ngay trong phiên tương tác (Session 1), kích hoạt `SetForegroundWindow`, giật focus chuột/phím và văng các game toàn màn hình (TFT, LMHT, War3).
+- **Nguyên tắc xử lý:**
+  1. **Triage Action-First:** Ngay lập tức giải thích đúng bản chất kỹ thuật (tác vụ dọn đĩa / đồng bộ cloud vừa chạy xong), xác nhận cửa sổ đã tắt, không tranh cãi hay ngụy biện.
+  2. **Zero-Window Invariant cho Disk Cleanup:** Mọi script dọn dẹp (xóa raw clip, dọn Downloads, đồng bộ Google Drive/OneDrive) khi được gọi tự động (sau render, sau ca nuôi, hoặc qua cron) bắt buộc phải:
+     - Dùng `pythonw.exe` thay vì `python.exe` hoặc `.bat`.
+     - Nếu gọi subprocess (rclone, ffmpeg, powershell), bắt buộc truyền `creationflags=subprocess.CREATE_NO_WINDOW` (`0x08000000`).
+     - Định tuyến stdout/stderr vào file log hoặc `DEVNULL`, cấm in ra console.
+  3. **Cơ chế ngắt khẩn cấp khi người dùng chơi game:** Nếu người dùng đang trong trận căng thẳng, luôn cung cấp phương án dập tắt tạm thời toàn bộ cron/watchdog nền (`tắt cron` / `Stop-Process`) để bảo vệ 100% không gian chơi game.
