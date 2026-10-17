@@ -36,6 +36,8 @@ metadata:
   - SINGLE-COMMIT PRE-PUSH SCOPE MATCHING (SQUASH TRƯỚC GATE KHI CÓ MULTI-COMMIT CHUỖI SỬA): Pre-push hook kiểm tra `diff-tree -r HEAD` của commit HEAD với `audit_binding.scope` và `scope_hash` trong `gate_audit.jsonl`. Khi phiên làm việc qua nhiều commit nhỏ (sửa impl -> sửa test -> gọt tỉa), chạy closeout_gate trên dải `--base <commit_gốc>` sẽ ghi nhận scope của toàn dải, dẫn đến pre-push hook từ chối vì `diff-tree HEAD` của commit con cuối cùng không khớp toàn bộ scope đã thẩm định. BẮT BUỘC dùng `git reset --soft <base_commit>` gom toàn bộ thay đổi hoàn chỉnh (cả implementation và unit tests) vào DUY NHẤT 1 commit trước khi chạy closeout_gate thẩm định cuối; khi đó HEAD commit_sha và diff-tree scope khớp tuyệt đối 100% với audit log, cho phép `safe_push.py` thông qua mượt mà.
 
 ## 2. Quy Trình Khắc Phục Khi Trượt (Remediation Protocol)
+- **Anti-Surrender (Cấm Dừng Lại Khóc Lóc):** Khi Closeout Gate < 85 hoặc exit != 0, CẤM TUYỆT ĐỐI dừng lại hỏi xin phép ("anh muốn phương án 1 hay 2"). Bắt buộc tự động đi tiếp vòng lặp khắc phục cho đến khi APPROVED hoặc Gate tự ghi BLOCKED_BUDGET_EXHAUSTED.
+- **Anti-Fake-DONE Invariant:** CẤM báo DONE, commit hoặc push khi chưa có `Verdict: APPROVED` (12/12 unit test pass không đồng nghĩa với closeout approved).
 - **Strike 1:** `sol_repair.py` (:20129) tạo đề xuất AST O(1) <= 30 dòng (miễn phí 100%).
 - **Strike 2:** `sol_worker.py` (:20129) ReAct test tích hợp kèm rollback snapshot (miễn phí 100%).
 - **Strike 3 Hand-off:** Trượt 3 lần liên tiếp -> Chuyển giao quyền can thiệp cho `claude_worker.py --role worker` (Haiku 5.5) hoặc `ag_cli.py fix`.
@@ -43,6 +45,7 @@ metadata:
 - CẤM TUYỆT ĐỐI gọi Claude Sonnet 5.5 để cày điểm closeout gate hoặc sửa code tự động. Sonnet là vũ khí chiến lược đắt đỏ, chỉ chạy khi Operator (User) ra lệnh đích danh.
 
 ## 3. Tài Liệu Tham Khảo (References)
+- Anti-Surrender Remediation & Fake-DONE Invariant: [`references/anti-surrender-closeout-remediation-and-fake-done-invariant.md`](references/anti-surrender-closeout-remediation-and-fake-done-invariant.md)
 - Single-Commit Pre-Push Scope Matching & Squash Gate: [`references/single-commit-pre-push-scope-matching-and-squash-gate-20261018.md`](references/single-commit-pre-push-scope-matching-and-squash-gate-20261018.md)
 - Target Scope Cohesion & Implementation-Test Pairing: [`references/target-scope-cohesion-and-implementation-test-pairing-20261018.md`](references/target-scope-cohesion-and-implementation-test-pairing-20261018.md)
 - Staged-Gate Fallback & Git External Diff Environment Sanitization: [`references/staged-gate-fallback-and-git-external-diff-crash-20261018.md`](references/staged-gate-fallback-and-git-external-diff-crash-20261018.md)

@@ -73,3 +73,9 @@ The failures in this catch-all category consistently decompose into 4 distinct f
    - **Rolling Healer cứu hộ hàng loạt giữa các phiên:** Dùng `python D:/Taadaa/tools/batch_recover_s7.py --cluster <kibe|admin> --machines <list> --max-workers 8` để giải phóng đồng loạt các máy lỗi trước phiên kế tiếp.
    - Đối với các thiết bị kẹt hardware transport ở trạng thái `offline` liên tục (như sau sụt áp micro-USB), duy trì fail-closed và chờ mốc auto-reboot định kỳ (`05:20, 11:20, 17:20`) để reset phần cứng controller EHCI qua BIOS.
 6. **Transparent Communication:** Explain to the user the breakdown (Popup vs Focus vs ATX vs Switcher vs ADB Timeout) rather than accepting an ambiguous "script is broken" premise.
+
+## Validated Example: Do Not Equate the Telegram Bucket With App Crashes
+
+In the 2026-10-17 Ca 3 / Row 4 run, the Kibe Telegram report labelled 16 machines as `Lỗi App TikTok/Script`. Direct inspection of the active `run_manifest.json` showed that M33–38, M71–72, M75, M77–78, and M80 were actually `manual-needed:network-offline: Wi-Fi has no internet connection`; M68 was a TikTok-focus-after-launch failure; M74 was a swipe-command failure; M76 was a profile/account mismatch; and M48 was only degraded. The Admin bucket likewise mixed screen-capture invalid, swipe-command, focus/package, navigation, login, and profile-verification failures rather than proving crashes.
+
+**Operational rule:** report the catch-all count as `app/script/UI-control bucket` until manifest reasons prove `app_crash`. State the evidence-backed subcounts, and if taxonomy is too coarse, recommend splitting at least into `network_offline`, `adb_offline`, `proxy`, `screen_capture`, `ui_focus`, `swipe_command`, `profile_mismatch`, `navigation/login`, `popup`, and `app_crash`.
