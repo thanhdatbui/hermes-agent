@@ -1,6 +1,6 @@
-Cào/Render: 12 niche, min 45, 1 wkr. F_src=(Slot-1)*80+m_idx. Chuẩn hoá: ava bám lưới, trích 2 preview tròn; Tik*.xlsx. Khóa nick sửa tay. CẤM đổi bio.
+Cào/Render: 12 niche, min 45, 1 wkr. F_src=(Slot-1)*80+m_idx. Chuẩn hoá: ava bám lưới, 2 preview tròn; Tik*.xlsx; Khóa nick sửa tay; CẤM đổi bio.
 §
-Dọn đĩa: duyệt trước, cấm xóa ngầm. Cấm đẻ script trùng (REUSE>EXTEND>NEW); tách rõ read/mock vs write thật.
+Dọn đĩa: duyệt trước. CẤM đẻ script ad-hoc khi có canonical tool (REUSE>EXTEND). MEDIA: WinRT OCR khớp handle.
 §
 Nuôi 4d 3 ca. Ava&2FA tới 5h15 (né cache 4h, báo 6h). Write-Through Excel 3,4,5+G; Starve 96h; mail Graph PC. Reg Gmail: 160 máy (Kibe 1-80, Admin 201-280), cấm hardcode dải máy. Đổi tên TT bám username.
 §
