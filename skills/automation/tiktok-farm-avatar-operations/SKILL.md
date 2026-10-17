@@ -5,7 +5,9 @@ description: Use when running avatar-only jobs on TikTok farm.
 
 # TikTok Farm Avatar Operations
 
-- Photo Picker 3-Col & Proxy Stall: [doc](references/photo-picker-3col-geometry-and-proxy-stall-rejection-20261017.md)
+- **Photo Picker 3-Col & Proxy Stall**: [doc](references/photo-picker-3col-geometry-and-proxy-stall-rejection-20261017.md)
+  - Tọa độ HoughCircles radio picker 3 cột (1080x1920): Ô 0 ở `(215, 276)`, Ô 1 (ảnh mới) ở `(483, 276)`, Ô 2 ở `(752, 276)`. CẤM tap `(660, 260)` hay `(405, 335)`.
+  - Kỷ luật visual evidence: BẮT BUỘC gửi ảnh `MEDIA:` ngay lập tức cho user kiểm tra sau mỗi bước thao tác UI/chụp màn hình, cấm giấu ảnh trong log.
 - Admin Remote & Worker SSH Boundary: [doc](references/admin-remote-avatar-extraction-and-worker-ssh-boundary-20261017.md)
 - Canonical Avatar Launcher: [doc](references/canonical-single-avatar-launcher-and-anti-ad-hoc-script-20261017.md)
 - Immediate Upload & Switcher Anchor: [doc](references/immediate-avatar-upload-end-to-end-and-switcher-anchor-collision-20261017.md)

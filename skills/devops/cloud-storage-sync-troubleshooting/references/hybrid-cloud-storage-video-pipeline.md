@@ -13,13 +13,33 @@ When managing multi-terabyte media pools (e.g. video rendering farms, raw footag
 
 ### 2. Render-Gated Source Offload Workflow
 To free local SSD space safely without disrupting production render pipelines:
-1. **Identify Render Completion ($O(1)$ set intersection)**:
-   - Source directory: `D:\video goc may 2\{folder_id}\{video_id}.mp4`
-   - Render destination: `D:\TIKTOK-videonuoinick-admin\{folder_id}\{video_id}.mp4`
-   - Safe offload candidates: only source files whose corresponding rendered video exists and has non-zero size (`set(src_vids).intersection(ren_vids)`).
-2. **Transfer to Cold Storage**:
-   - Copy rendered source files to `G:\My Drive\Kho_Video_Goc\{folder_id}\`.
-   - Maintain strict 1:1 folder-to-channel structure.
+### 1. Identify Render Completion ($O(1)$ set intersection with Farm Slot Formula)
+- **CRITICAL PITFALL: `f_src` is NOT `f_vid`!**
+  Never assume `D:\video goc may 2\{folder_id}` maps to the same `{folder_id}` in `D:\TIKTOK-videonuoinick-admin`. In the Taadaa farm slot mapping (`clean_farm_disk.py`):
+  ```python
+  MACHINES_PER_SLOT = 80
+  SLOTS_PER_MACHINE = 8
+
+  def f_src_to_f_vid(f_src: int) -> int:
+      slot = (f_src - 1) // MACHINES_PER_SLOT + 1
+      m_idx = (f_src - 1) % MACHINES_PER_SLOT + 1
+      return (m_idx - 1) * SLOTS_PER_MACHINE + slot
+  ```
+  - Example: `f_src=1 -> f_vid=1`, but `f_src=2 -> f_vid=9`, `f_src=3 -> f_vid=17`.
+  - Comparing folder `2` directly to render folder `2` will compare two completely different niches/creators!
+- **Render Completion Gate (`CLIPS_REQUIRED = 30`)**:
+  - Source directory: `D:\video goc may 2\{f_src}\{video_id}.mp4`
+  - Render directory: `D:\TIKTOK-videonuoinick-admin\{f_src_to_f_vid(f_src)}\{video_id}.mp4`
+  - Rendered clips must be completed files (`> 100 * 1024` bytes).
+  - Only offload source files when the rendered folder has at least 30 completed clips (`len(completed) >= 30`).
+
+### 2. Transfer to Cold Storage via Native Robocopy
+- Use Windows built-in `robocopy` for high-throughput transfer into Google Drive Desktop Stream mount (`G:\My Drive`):
+  ```cmd
+  robocopy "D:\video goc may 2\{f_src}" "G:\My Drive\video_goc_backup\{f_src}" /E /NP
+  ```
+  - Performance: transfers 1.3+ GB in ~3–4 seconds across local DriveFS virtual buffer.
+- **Cache Throttling Guard**: Google Drive buffers uploads in `D:\GoogleDriveCache`. If free space on `D:\` falls below safety threshold (e.g. 15GB), pause batch and let DriveFS flush uploads to cloud before copying the next batch.
 3. **Integrity Gate & Purge**:
    - Confirm cloud copy exists and byte count matches local copy.
    - Delete local source file from SSD.

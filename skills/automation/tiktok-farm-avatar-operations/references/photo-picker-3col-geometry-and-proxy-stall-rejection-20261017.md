@@ -8,11 +8,15 @@ Trong phiên xử lý avatar Máy 34 Slot 6 (`@yobi1965`), đã xảy ra chuỗi
      - Ô 0 (cột 0, `x = 0..360, y = 200..560`): Thường là video hoặc thumbnail video gần nhất (`2.mp4` có sticker "20 lần").
      - Ô 1 (cột 1, `x = 360..720, y = 200..560`): File ảnh avatar mới push vào.
      - Ô 2 (cột 2, `x = 720..1080, y = 200..560`): Ảnh khác hoặc screenshot.
-   - Nút radio tròn chọn ảnh (circle checkbox) nằm ở **góc trên bên phải của từng ô**, không phải ở giữa ô:
-     - Checkbox Ô 0: `(300, 260)`
-     - Checkbox Ô 1 (Ảnh mới): `(660, 260)`
-     - Checkbox Ô 2: `(1020, 260)`
-   - **Bẫy tap mù**: Nếu tap vào giữa ô `(405, 335)` hoặc `(140, 360)`, TikTok coi là tap xem trước hoặc chạm trúng ô khác, không kích hoạt radio chọn ảnh của Ô 1. Khi bấm nút Tiếp (`912, 1844`), picker sẽ lấy ô đang được chọn mặc định (Ô 0 - thumbnail video cây kim tiền / sticker "20 lần").
+   - Nút radio tròn chọn ảnh (circle checkbox) nằm ở góc trên của từng ô (được xác thực chuẩn qua HoughCircles trên màn hình 1080x1920):
+     - Checkbox Ô 0: `(215, 276)` (r=36)
+     - Checkbox Ô 1 (Ảnh mới nạp): `(483, 276)` (r=36) - CẤM TAP (660, 260) VÌ (660, 260) SẼ TAP LỆCH SANG Ô 2!
+     - Checkbox Ô 2: `(752, 276)` (r=36)
+   - **Bẫy tap mù & sai tọa độ radio**: 
+     - Nếu tap vào giữa ô `(405, 335)` hoặc tap sai radio ở `(660, 260)`, TikTok sẽ chọn nhầm Ô 2 (ảnh screenshot trình duyệt) hoặc không đổi selection khỏi Ô 0 (video 20 lần).
+     - Khi bấm nút Tiếp (`912, 1844`), màn hình Crop sẽ load sai ảnh (ảnh web hoặc sticker 20 lần).
+   - **Kỷ luật gửi ảnh nghiệm thu ngay (Chống ỉm ảnh)**:
+     - Khi user hỏi hoặc sau mỗi bước thao tác UI/chụp màn hình được kết quả, BẮT BUỘC gửi ngay thẻ `MEDIA:<path>` trong câu trả lời để user soi mắt kiểm tra cùng, CẤM TUYỆT ĐỐI ôm ảnh ngầm trong tool trace rồi chỉ nói suông mà không gửi ảnh.
 
 2. **Ảo giác bỏ qua WinRT OCR**:
    - Khi chạy OCR trên màn hình Cắt ảnh (Crop), kết quả trả về chữ `20)la` (từ sticker "20 lần" của video).
@@ -39,8 +43,9 @@ adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:
 
 ### 2. Tọa độ Tap chuẩn trên Photo Picker (3 cột)
 - Nếu Photo Picker hiển thị nhiều ô:
-  - Chọn Ô 1 (nếu là ảnh mới đẩy vào): tap chính xác vào radio circle tại `(660, 260)`.
+  - Chọn Ô 1 (nếu là ảnh mới đẩy vào): tap chính xác vào radio circle tại `(483, 276)` (r=36). CẤM tap `(660, 260)` vì sẽ dính sang Ô 2.
   - Tap nút **Tiếp** tại `(912, 1844)`.
+- Gửi ảnh MEDIA: ngay sau khi chụp được màn hình Picker/Crop/Profile, không được giấu ảnh trong log.
 
 ### 3. Nghiệm thu kép bắt buộc (Double Verification Gate)
 - **Gate 1 (Màn hình Crop)**:

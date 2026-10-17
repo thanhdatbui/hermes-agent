@@ -60,7 +60,11 @@ Phân loại bắt buộc trước khi tính budget (`determine_cohort` trong `f
     * Khi nick chưa tốt nghiệp (`graduated is False` hoặc `total_followed < 15`), file state chưa có `proven_safe_ceiling`.
     * Helper/Dashboard CẤM fallback `proven_safe_ceiling = 15` và `active_ceiling = 17` cho nick chưa tốt nghiệp/rỗng lịch sử.
     * Với Tân Binh / Hồi phục, `proven_safe_ceiling` phải là `Chưa có` / `0 lượt`, và `active_ceiling` phải phản ánh đúng quota trần của stage hiện tại theo Cohort (T1: 4 lượt, T2: 6 lượt, Rookie: 4 lượt), tránh làm người dùng ngộ nhận nick chưa từng chạy đã chứng minh được trần 15.
-    * Khi đồng bộ UI/Backend Dashboard: Nếu modal helper đọc state không thấy file state (do chưa chạy ca nào), BẮT BUỘC fallback `cohort='rookie'`, `proven_safe_ceiling=None` (hiển thị 'Chưa có'), `active_ceiling=4` (thay vì văng 15/17 mặc định).
+    * Khi đồng bộ UI/Backend Dashboard: Nếu modal helper đọc state không thấy file state (do chưa chạy ca nào) HOẶC gặp lỗi đọc file/JSON hỏng, BẮT BUỘC nhất quán fallback `cohort='rookie'`, `proven_safe_ceiling=None` (hiển thị 'Chưa có'), `active_ceiling=4` (thay vì văng 15/17 mặc định hoặc để trống).
+    * **Lỗi điều kiện Python `if proven:`:** CẤM viết `proven + 2 if proven else 17` vì khi `proven == 0` (số 0 hợp lệ), Python đánh giá `bool(0) == False` và nhảy sang 17! BẮT BUỘC dùng `proven + 2 if proven is not None else 17`.
+    * **Kiến trúc Modal & Endpoint `/api/follow-detail`:**
+      - File HTML Dashboard cần import và nhúng trực tiếp `FOLLOW_DETAIL_MODAL_HTML` và `FOLLOW_DETAIL_MODAL_JS` từ component để tránh lỗi `ReferenceError: openFollowDetailModal is not defined`.
+      - API `/api/follow-detail` bắt buộc validate `machine` (1..280) và `row` (1..8), bọc try/except trả về JSON 400/500 có kiểm soát thay vì để crash handler.
 
 - **Khả năng mở rộng (Scalability):** Thiết kế này đảm bảo khi farm mở rộng từ 160 lên 500+ máy, chat Telegram vẫn giữ nguyên độ gọn gàng, không bị nghẽn hay trôi tin nhắn cảnh báo quan trọng.
 
