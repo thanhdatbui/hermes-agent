@@ -6,7 +6,7 @@ Nuôi 4d 3 ca. Ava&2FA tới 5h15 (né cache 4h, báo 6h). Write-Through Excel 3
 §
 Chốt phiên: Vào main; Grace 80-84 auto-push; cấm Sonnet cày điểm/test; Strike 3 fail dừng ngay L3, cấm Strike 4; User ép: safe_push --owner-override.
 §
-Ava: BẮT BUỘC WinRT OCR TRƯỚC khi gửi MEDIA: (cấm bịa mô tả); gen xong gửi ảnh ngay; pHash/crop profile thật, cấm báo DONE khi máy chưa đổi ảnh.
+Ava/Media: BẮT BUỘC WinRT OCR + soi thật; CẤM bịa mô tả/gửi mù cho có lệ. Menu Ghim/Riêng tư KHÔNG PHẢI publish proof; pHash/crop profile thật cấm báo DONE ảo.
 §
 Worker: 25 wkr; 'hỏi Claude'=BẮT BUỘC Sonnet 5.5; bóc cookie CDP cấm bắt copy tay; trượt 3 lần giao Claude; hỏi gì đáp nấy, cấm ba phải.
 §

@@ -8,7 +8,7 @@ Farm: O(1). CẤM đẻ script (pin: pin_top_videos.py auto-swap; ava: run_avata
 §
 GPM: max 5 wkr; nạp pool web (0đ quota); re-login văng max 1 lần/ngày (max_proxy 3/cổng, ghi recovered_date).
 §
-Stale Upload: xóa draft (_delete_all_profile_drafts). Revert flop: TikWM tải CDN, xóa render. Cào: max 60 clip.
+Stale Upload: xóa draft (_delete_all_profile_drafts). Revert flop: TikWM tải CDN. Bẫy receipt cũ idempotency/post-attempts nhảy cóc bỏ MEDIA_PUSH; popup 'Ghim/Riêng tư' KHÔNG PHẢI publish proof. Cào: max 60 clip.
 §
 Closeout: Grace 80-84 auto-push. Pre-closeout: check git status & diff origin/master; clean+ahead 0 -> task đã push xong, cấm chạy gate lại commit cũ. Cấm git commit -a, chỉ commit đích danh file. Cấm ACLs/HMAC over-engineering làm hỏng cronjob farm. Fail -> auto-remediate dứt điểm, cấm khóc lóc dừng giữa chừng.
 §
