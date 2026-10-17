@@ -111,6 +111,16 @@ Khi dispatch Worker thực hiện sửa code (`TASK_KIND: EDIT`), Coordinator Gu
     - Nếu phát hiện số dòng thay đổi vượt trội bất thường (ví dụ: +1023 / -998 trên một hàm nhỏ), kiểm tra ngay CRLF: `data.count(b'\\r\\n')`.
     - Chạy chuẩn hóa line ending về LF: `content.replace(b'\\r\\n', b'\\n')` trước khi commit hoặc gọi Closeout Gate.
 
+- **Bẫy Điều Kiện Khởi Tạo Task EDIT Trong Coordinator Guard (2026-10-17):**
+  Khi Coordinator hết budget T1 (`COORDINATOR WRITE DENIED`) và phát lệnh `delegate_task` cho task EDIT, Guard kiểm tra nghiêm ngặt 4 yếu tố sau, nếu thiếu sẽ văng lỗi ngay:
+  1. `MISSING_TASK_KIND`: Bắt buộc có dòng `TASK_KIND: EDIT` ở đầu context.
+  2. `EDIT_MISSING_FILE`: Bắt buộc có dòng `FILE: <đường_dẫn_tuyệt_đối>` chỉ định 1 file mục tiêu duy nhất.
+  3. `INVALID_FOCUSED_TEST_FORMAT`: Trường `FOCUSED_TEST` bắt buộc khớp chính xác regex:
+     - Dạng pytest: `FOCUSED_TEST: python -m pytest <file.py>::<test_node> -q` (CẤM dùng `-k`, cấm bare file).
+     - Dạng py_compile: `FOCUSED_TEST: python -m py_compile <file.py>`.
+  4. `GATE4_FAIL_FAST_MISSING`: Bắt buộc chứa câu lệnh Fail-Fast nguyên văn:
+     `FAIL_FAST: Nếu trong <= 3 iterations đầu thấy scope bất khả thi với budget 15 calls thì DỪNG NGAY (ABORT)...`
+
 - **Bẫy INVESTIGATE Worker Read-Only (2026-10-17):** Khi dispatch worker với `TASK_KIND: INVESTIGATE`, Worker bị khóa ở chế độ `[WORKER GATE - READ-ONLY WORKER]: BỊ CẤM GHI FILE 100%`. Toàn bộ tool `write_file`, `patch` của worker bị chặn. Nếu task cần worker tạo file artifact (ảnh avatar, export báo cáo, script chạy thử), CẤM dùng `INVESTIGATE`. Bắt buộc dùng `TASK_KIND: EDIT` (hoặc `TASK_KIND: CREATE`) kèm `FILE: ...`.
 
 - **Bẫy Ngân Sách Dòng Diff Task EDIT (`DIFF_BUDGET_EXCEEDED` - 2026-10-17):**

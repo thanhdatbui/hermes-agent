@@ -174,6 +174,12 @@ Khi cần cào danh sách này:
 
 ---
 
+- **Chiến lược tối ưu Bio & Pin Video trên dàn kênh Phone Farm**:
+  * **Bio**: Với dàn nick farm diện rộng, không cần đổi bio hàng loạt (để trống hoặc giữ mặc định) nhằm hạn chế trigger bot-detection hoặc tốn công vô ích. Chỉ kênh nào có video cắn đề xuất (viral, kéo follow thật) mới cần tối ưu hóa thủ công theo định hướng riêng nếu muốn.
+  * **Ghim video (Pin Video)**:
+    - Khi kênh có video viral cắn đề xuất (ví dụ >20K view, >5K view), luôn ưu tiên ghim top 3 video có lượt view cao nhất và nội dung chuyển đổi tốt nhất để tạo độ uy tín (social proof) khi người xem mới bấm vào profile.
+    - TikTok giới hạn tối đa 3 video ghim. Nếu đã đủ 3 video, bắt buộc phải nhả ghim (unpin) video view thấp nhất qua action sheet chia sẻ trước, sau đó mới ghim (pin) video top view cao hơn lên thay thế.
+
 ## Engagement Benchmarks TikTok VN (<50K followers)
 
 | Metric | Average | Good | Exceptional |
