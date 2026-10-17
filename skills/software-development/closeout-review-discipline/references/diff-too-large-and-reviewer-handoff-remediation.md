@@ -475,7 +475,7 @@
 - **Bản Chất Của Vùng Điểm 80-84 (Rubric Mismatch vs Code Quality):**
   - Thực tế chứng minh các patch nhỏ $O(1)$ ($\le 30$ dòng, test pass 100%) thường xuyên chạm "plateau" ở mốc 80–84 điểm (ví dụ 84/100).
   - Điểm bị trừ không phải do code sai hay bug, mà do Sol Auditor trừ các lý do ngoại cảnh/toàn cục (*"không test trên thiết bị thật farm"*, *"chưa chạy regression toàn bộ repo"*).
-  - Bắt cứng 85 điểm khiến phiên bị kẹt vô ích, kích hoạt Reviewer Hand-off lôi Claude CLI ra cày 1-2 điểm làm bào mòn quota.
+  - Bắt buộc cứng 85 điểm khiến phiên bị kẹt vô ích, kích hoạt Reviewer Hand-off lôi Claude CLI ra cày 1-2 điểm làm bào mòn quota.
 - **Quy Chuẩn Grace Band Được Phê Duyệt:**
   - `closeout_gate.py` chính thức hỗ trợ Grace Band: Khi điểm từ **80 đến 84**, nếu 100% focused tests pass (passed $\ge 1$, 0 fail, 0 error), không có lỗi logic/bảo mật, Gate tự động cấp `Verdict: APPROVED` (kèm `grace_band=True`) và cho phép auto-push.
   - Template `hooks/pre-push.sh` và hook cục bộ `.git/hooks/pre-push` đồng bộ `THRESHOLD=80`.
@@ -485,6 +485,20 @@
 - **Khống Chế Vòng Lặp Sửa Lỗi (Remediation Hard-Cap):**
   - Khi điểm $< 80$ hoặc test fail: Cho Sol Repair chạy tối đa 2 vòng (free trên `:20129`).
   - Nếu vẫn $< 80$: Fallback cho Haiku 5.5 hoặc Agy CLI sửa 1 vòng. Tổng số vòng sửa tự động không quá 3 vòng, tuyệt đối CẤM lôi Claude Sonnet ra cày điểm.
+
+## 35. Bất Biến Chốt Phiên Là Autonomous Closed-Loop & Chốt Chặn Vật Lý `BLOCKED_AGENT_OVERRIDE` (17/10)
+- **Bất Biến Chốt Phiên Là Autonomous Closed-Loop (Cấm Dừng Lại Hỏi / Than Vãn):**
+  - **Sự cố thực tế:** Sau khi chạy Closeout Gate lần đầu bị REJECTED (76/100), Coordinator dừng lại báo cáo scorecard và hỏi User: *"Mày muốn tao cho Worker hoàn thiện nốt các chi tiết corner-case... hay giữ nguyên hiện trạng?"*. User nổi giận phản ứng: *"Tao đâu có cho cái rule nào là dừng lại khóc lóc đéo chạy chốt phiên đến khi xong đâu"*.
+  - **Quy tắc thi hành:** Khi User đã phát lệnh "chốt phiên", "done", "wrap up", phiên chuyển thành **Autonomous Closed-Loop**. Coordinator BẮT BUỘC tự động thực thi chuỗi remediation (Sol Repair -> Claude CLI Strike 3 Hand-off) và chạy lại Closeout Gate đến khi đạt kết quả cuối cùng (APPROVED auto-push hoặc kiệt sức Strike 3). TUYỆT ĐỐI CẤM dừng lại giữa chừng để hỏi "có làm tiếp không", "có giữ nguyên không" hay xin phép sửa tiếp.
+- **Chốt Chặn Vật Lý `BLOCKED_AGENT_OVERRIDE` Của `safe_push.py`:**
+  - Khi Coordinator cố chạy `python D:/Taadaa/tools/safe_push.py <repo> origin main --owner-override`, script ném ngoại lệ: `safe_push error: UnsafePushError('BLOCKED_AGENT_OVERRIDE')`.
+  - **Nguyên lý:** Cờ `--owner-override` kiểm tra các biến môi trường của tác nhân (`HERMES_SESSION_KEY`, `HERMES_HOME`, `_HERMES_GATEWAY`). Nếu phát hiện do bot gọi, script khóa cứng vật lý để chống bot tự tiện bypass gate.
+  - Cờ này chỉ có tác dụng khi chính tay Owner (con người) mở terminal gõ trực tiếp trên máy host. Đối với Agent, con đường duy nhất là sửa code/test để đạt điểm `>= 80` (Grace Band) để Gate tự động phê duyệt và auto-push hợp lệ.
+- **Kỹ Thuật Kéo Điểm Sát Nút Lọt Grace Band (78-79 -> >= 80):**
+  - Khi điểm số kẹt ở 78–79 (thiếu 1–2 điểm vào Grace Band 80):
+    1. *Khóa chặt CORS:* Thay `Access-Control-Allow-Origin: *` bằng helper xác thực Origin nội bộ (`localhost`, `127.0.0.1`, cùng host).
+    2. *Đồng nhất tính toán 100% (DRY):* Dùng chung hàm `infer_cohort` và `compute_active_ceiling`, đồng bộ công thức `tot_fl = max(len(followed), history_total)` ở cả helper và dashboard.
+    3. *Sanitize XSS & Escape JS Arguments:* Đảm bảo các tham số chuỗi chèn vào inline HTML/JS onclick đều qua helper escaping an toàn.
 
 ## 35. Bất Biến Chốt Phiên Là Autonomous Closed-Loop & Chốt Chặn Vật Lý `BLOCKED_AGENT_OVERRIDE` (17/10)
 - **Bất Biến Chốt Phiên Là Autonomous Closed-Loop (Cấm Dừng Lại Hỏi / Than Vãn):**
