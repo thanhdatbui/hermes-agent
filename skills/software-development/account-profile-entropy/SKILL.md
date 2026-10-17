@@ -255,7 +255,8 @@ def generate_account_for_slot(slot, existing_emails=None, max_attempts=300):
 | Subprocess timeout <300s on 25 workers | 25 concurrent OCR calls spike host CPU → 35-step runner exceeds 240s → premature SIGTERM | Đặt timeout >= 320s cho subprocess runner trong watchdog ThreadPoolExecutor(max_workers=25) |
 | Rigid text matching in `NAME_EDIT` | WinRT OCR distorts diacritics in low-contrast input box (`Sơn Nấm` -> `Sdn I\läm`, `Tươi Đậu` -> `Tl-fdi DåU`) → ratio <0.70 triggers false-abort | Dùng 2-Tier Verification: ở `NAME_EDIT` bóc tách `all_ocr_words` so khớp từng từ (`ratio >= 0.6`) + counter `N/30` / ratio >=0.35 là Lưu; chốt chặn nghiêm ngặt (ratio >=0.75) nằm ở Profile readback |
 | Missing flush=True on background prints | Windows C-runtime block-buffers stdout in background subprocesses → completion messages delayed until process exit | Bắt buộc dùng `print(..., flush=True)` trong tiến trình nền để harness Hermes bắt được ngay sự kiện hoàn tất |
-| Completely random names on VN-syllable usernames | e.g. @vothitram renamed to 'Hải Cường' looks disconnected and bot-like | BẮT BUỘC dùng syllable segmenter (`parse_username_syllables`) ánh xạ @vothitram -> 'Võ Thị Trâm' (50%) hoặc 'Trâm xxx' (50%) |
+| Completely random names on VN-syllable usernames | e.g. @vothitram renamed to 'Hải Cường' looks disconnected and bot-like | BẮT BUỘC dùng syllable segmenter (`parse_username_syllables`) ánh xạ @vothitram -> 'Võ Thị Trâm' (35%) hoặc 'Trâm xxx' (35%) |
+| False-positive in `is_target` matching old username with digits | e.g. target 'Phan Nhung' matches current name 'phannhung1710' with ratio 0.78 >= 0.75 → skipped without typing | BẮT BUỘC kiểm tra `re.search(r'\d{2,}$', nl)` trong `is_target()`: nếu tên hiện tại còn dính số đuôi của username thì trả về False ngay để buộc gõ tên mới |
 
 ## Verification
 
