@@ -14,6 +14,7 @@ metadata:
 Use this skill when refactoring monolithic production scripts (> 1.500 lines) into modular subpackages without disrupting active workloads, breaking backward compatibility, or letting subsequent AI agents undo the modularization.
 
 Reference files:
+- `references/fstring-template-component-extraction-and-line-budget-20261017.md`: Kỹ thuật tách Component HTML/JS ra file độc lập trong subpackage để chèn vào monolith f-string, tránh lỗi thoát ngoặc nhọn kép {{}} và bảo toàn trần 3.000 dòng Architecture Gate.
 - `references/watchdog-syspath-cron-fallback-and-line-budget-invariants-20261016.md`: Xử lý lỗi cron ModuleNotFoundError khi chạy script ngoài repo root, quy tắc bơm sys.path tối giản, bảo toàn trần 1.450 dòng Architecture Gate, đồng bộ dual-copy hermes_cron và phân lập alert giữa 3 kênh.
 - `references/80-20-modular-adequacy-and-excel-invariants-20261015.md`: Kỷ luật 80/20 (điểm dừng modular hóa, tránh over-modularization) & quy trình sửa lỗi Invariant Excel Folder Video.
 - `references/line-budget-dual-copy-and-gate-remediation-20261015.md`: Xử lý kẹt line budget trần cứng, dual-copy text sync parity (scripts vs hermes_cron), binding mismatch ở Step 2 Closeout Gate và chuẩn hợp đồng 5 trường delegate_task EDIT.

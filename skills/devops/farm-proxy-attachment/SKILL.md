@@ -17,6 +17,10 @@ description: Verify or configure per-device proxy attachment for the Taadaa Andr
   + Áp dụng thống nhất cho toàn bộ các cronjob login, reg, ver, 2fa, và oauth feeder toàn farm.
 - **FARM ĐÃ BỎ HOÀN TOÀN VICHANGER:** Toàn bộ 80 máy Kibe chạy qua router MikroTik RouterOS và Container Singbox Mixed Inbound (`20001..20080` tương ứng máy 1..80 tại `192.168.110.2`).
 - **CẤM TUYỆT ĐỐI GỌI VICHANGER / gan_proxy_fleet.py run:** Không bao giờ bật ViChanger app hay gửi broadcast `START_VPN` lên máy. ViChanger đã bị xóa khỏi toàn bộ consumer repos.
+- **🚨 BẪY TÀN DƯ 'proxy watcher did not publish post-reboot readiness' (CẤM BẬT VICHANGER/WATCHER):**
+  + Khi runner soft-reboot, `state_machine.py` chờ cờ marker `.codex/device-readiness/<hash>.json`. Nếu không có file này, nó báo lỗi timeout proxy watcher.
+  + **CẤM TUYỆT ĐỐI bật lại `GanProxyWatcherTray` hay chạy `gan_proxy_fleet`:** Bật lại sẽ kích hoạt các worker cũ đọc file Excel gán lại ViChanger làm xáo trộn farm.
+  + **Giải pháp chuẩn:** Farm dùng proxy Wi-Fi tĩnh, không cần watcher. Giải phóng cờ bằng `automation_core.readiness.mark_proxy_state(serial, 'proxy_ready')`, tuyệt đối KHÔNG đụng đến ViChanger hay watcher cũ.
 - **CÔNG CỤ GÁN PROXY CHUẨN DUY NHẤT:** `python D:\Taadaa\AI-Tools\scripts\set_proxy_farm_adb.py --machines <ID>` (gán `http_proxy=192.168.110.2:2000N` và tắt captive portal `captive_portal_mode=0`, `captive_portal_detection_enabled=0`).
 - **Repo gan-proxy:** Chỉ giữ lại nguyên trạng làm tư liệu legacy, KHÔNG chạy trên dàn máy live.
 - **CẢNH BÁO TOOL CẤP MẠNG QUA USB (NETLINK USB PRO / GNIREHTET / USB REVERSE TETHERING):**
