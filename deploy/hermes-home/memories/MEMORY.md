@@ -6,9 +6,9 @@ Hotmail: CẤM mail cá nhân; sinh @fviainboxes.com đọc OTP. Write-Through: 
 §
 Proxy: 1-1. Chuẩn hóa 3 món (crop 512x512 -> chốt PA -> lock/Excel -> run_tiktok_upload_avatar.ps1); TT v47 monkey. Pin >=1000 view. Soi mắt trước gửi.
 §
-Farm: O(1). CẤM đẻ script; ava: run_avatar_batch_3accs.py; pin: pin_top_videos.py. Máy đa nick BẮT BUỘC verify username profile khớp target trước thao tác/chụp ảnh. Lock tên: rename_natural_state.json.
+Farm: O(1). CẤM đẻ script; ava: run_avatar_batch_3accs.py; pin: pin_top_videos.py. Máy đa nick verify username profile trước thao tác/chụp ảnh. Lock tên: rename_natural_state.json.
 §
-GPM: max 5 wkr; re-login văng max 1 lần/ngày (cấm bypass seen_emails, max_proxy 3/cổng, ghi recovered_date chống loop); cấm văn mẫu nhường máy (Chrome PC); nạp pool chatgpt-web 15p/lần.
+GPM: max 5 wkr; re-login văng max 1 lần/ngày (max_proxy 3/cổng, ghi recovered_date); nạp pool chatgpt-web 15p/lần.
 §
 Stale Upload: xóa draft (_delete_all_profile_drafts). Revert flop: TikWM tải CDN, xóa render. Cào: max 60 clip.
 §
@@ -20,4 +20,4 @@ BỎ HẾT ViChanger, 100% Singbox 192.168.110.2:200xx, CẤM GanProxyWatcherTra
 §
 Canary farm: tối thiểu 3-4 màn/máy khác nhau (DM, sửa hồ sơ, feed, popup thử thách); cấm canary trên 1 máy đơn độc.
 §
-Ava: ngũ quan rõ, mắt thẳng, cấm kính râm/đỏ nhòe. Dọn .thumbnails + Camera/*; query MediaStore 1 ảnh. WinRT OCR crop: thấy text lạ ('20 lần', '20)la', video) CẤM Lưu. Trích clip gốc nếu Haar ảo. Picker 3 cột (360px), tick radio góc phải trên (ô2 660,260) né tap tâm. Bấm Lưu hiện 'Đang tải lên' nhưng rớt proxy sẽ fail ngầm: bắt buộc so Mean BGR profile với avatar cũ. Kéo ảnh xong gửi MEDIA: ngay, cấm ỉm. TopLeftPencil l=10..45 w,h<=130.
+Ava: ngũ quan rõ, cấm kính/đỏ nhòe. Trích clip gốc. Gen ảnh xong BẮT BUỘC chạy WinRT OCR (`ocr_tool.py`) lọc sạch text/sticker ('20 lần', ngày, watermark) và gửi ngay thẻ `MEDIA:` cho User duyệt bằng mắt, CẤM tự ý chạy ngầm nạp. Dọn .thumbnails + Camera/*; MediaStore 1 ảnh. Picker radio ô 0 ở (215, 276), ô 1 ở (483, 276). Bấm Lưu hiện 'Đang tải lên' có thể fail ngầm: bắt buộc crop Profile so Mean BGR với avatar cũ để nghiệm thu. TopLeftPencil l=10..45 w,h<=130.

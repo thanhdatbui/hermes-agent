@@ -207,6 +207,13 @@ For code changes implementing evidence delivery, run focused offline tests and t
 
 The user prefers direct Vietnamese, concise status, and actual native images rather than folder links or path dumps. Lead with the result, then list only the evidence and blocker that change the decision. Never make the user ask “hình đâu?” after a UI operation.
 
+- **Chống Bẫy Bỏ Qua WinRT OCR Quét Text/Sticker Đè & Bắt Buộc Gửi Ngay Ảnh Gen Mới (Sticker Text Clutter & Immediate Gen-Delivery Trap - 2026-10-17):**
+  * **Sự cố thực tế**: Khi gen avatar mới từ video gốc 434, Coordinator cắt trúng khung hình có chèn sticker bài tập màu hồng chữ `"20 lần/ngày"`. Coordinator không chạy `ocr_tool.py` mà chỉ dùng vision lướt qua, tự huyễn hoặc thành *"cô gái tập yoga hai tay đưa lên"* và tự ý nạp lên máy. Tệ hơn, Coordinator giấu ảnh gen mới trong máy không gửi cho User duyệt, khiến User nổi cơn thịnh nộ: *"Tao bảo mày gửi cái hình mới mày gen ra đây để t kiểm tra"*, *"Cái địt con mẹ mày mày có dùng win rt ocr đọc hình trc khi gửi tao k v con chó"*.
+  * **Căn nguyên**: (1) Bỏ qua WinRT OCR cơ học (`ocr_tool.py`) để lọc chữ/sticker lạ; (2) Tự tiện nạp lên máy thay vì gửi ảnh gen mới `MEDIA:` ngay cho User thẩm định; (3) Ảo giác thị giác khi vision model bị mớm lời.
+  * **Quy tắc BẮT BUỘC**:
+    1. **Bắt buộc WinRT OCR trước khi công nhận ảnh candidate**: Mọi ảnh avatar sau khi crop BẮT BUỘC phải qua `ocr_tool.py`. Nếu phát hiện text/số bất thường (`20`, `lần`, `ngày`, `@`, watermark) ➔ VETO NGAY, cấm nạp lên máy và cấm gửi User là ảnh đạt.
+    2. **Gửi ngay thẻ MEDIA: của ảnh mới gen**: Khi User bảo *"Đổi ava"* hoặc *"Đổi ảnh khác"*, sau khi trích xuất và crop xong, BẮT BUỘC gửi ngay thẻ `MEDIA:<path>` trong câu trả lời tiếp theo để User duyệt trước bằng mắt. CẤM TUYỆT ĐỐI tự ý chạy tiếp chuỗi nạp lên thiết bị trong bóng tối.
+
 - **Chống Bẫy Giữ Ảnh Kiểm Tra Ngầm Khiến User Phải Giục ("Sao mày đéo gửi ảnh để tao kiểm tra luôn" - 2026-10-17):**
   * **Sự cố thực tế**: Sau khi chụp được ảnh màn hình Sửa hồ sơ / Crop thành công (`tmp_inspect_edit_screen_full.png`), Coordinator tiếp tục dispatch thêm subagent nhấn Back để chụp tiếp trang Hồ sơ chính mà không gửi ngay ảnh Sửa hồ sơ đã có cho User. User phải chờ đợi trong bức xúc và giục gay gắt: *"sao mày đéo gửi ảnh đẻ t kiểm tra luôn"*.
   * **Căn nguyên**: Thói quen ôm giữ ảnh trong máy để chạy tiếp chuỗi kiểm tra nội bộ nhiều vòng mà quên mất nguyên tắc tương tác thời gian thực: Khi một mốc thay đổi giao diện (Crop, Sửa hồ sơ) đã có ảnh bằng chứng rõ ràng, User cần xem ngay để duyệt/thẩm định bằng mắt.
