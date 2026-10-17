@@ -91,3 +91,38 @@ def test_parse_summary_counts_empty_fallback():
     assert res['total'] == 0 and res['success'] == 0 and res['failed'] == 0
 
 
+def test_save_state_telemetry(tmp_path, monkeypatch):
+    import json
+    import cron_night_tiktok_2fa_watchdog as wd
+    test_state_file = tmp_path / 'state.json'
+    monkeypatch.setattr(wd, 'STATE_FILE', test_state_file)
+    monkeypatch.setattr(wd, 'STATE_DIR', tmp_path)
+    wd.save_state('2026-10-18', {'status': 'success', 'code': 0, 'correlation_id': 'cid-123', 'failure_reason': None})
+    assert test_state_file.exists()
+    data = json.loads(test_state_file.read_text(encoding='utf-8'))
+    assert data['correlation_id'] == 'cid-123' and data['details']['code'] == 0
+
+
+def test_hydrate_workbook(tmp_path, monkeypatch):
+    import subprocess
+    import cron_night_tiktok_2fa_watchdog as wd
+
+    dummy = tmp_path / 'dummy.xlsx'
+    dummy.write_bytes(b'PK\x03\x04testdata123')
+    monkeypatch.setattr(wd.sys, 'platform', 'win32')
+    monkeypatch.setattr(wd.subprocess, 'run', lambda *a, **kw: subprocess.CompletedProcess(a[0], 0, b'', b''))
+    assert wd.hydrate_workbook(dummy) is True
+    assert wd.hydrate_workbook(tmp_path / 'nonexistent.xlsx') is False
+
+    monkeypatch.setattr(wd.subprocess, 'run', lambda *a, **kw: subprocess.CompletedProcess(a[0], 1, b'', b'attrib failed'))
+    assert wd.hydrate_workbook(dummy) is False
+
+    monkeypatch.setattr(wd.subprocess, 'run', lambda *a, **kw: subprocess.CompletedProcess(a[0], 0, b'', b''))
+    import builtins
+
+    def mock_open_fail(*a, **kw):
+        raise OSError('open failed')
+
+    monkeypatch.setattr(builtins, 'open', mock_open_fail)
+    assert wd.hydrate_workbook(dummy) is False
+
