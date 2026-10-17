@@ -139,24 +139,30 @@ python D:/Taadaa/tools/pin_top_videos.py --machine 28 --min-views 5000 --max-pin
   - Ghim Top 2 (ví dụ 2.3K) $\to$ Chiếm slot 1, đẩy Top 3 sang slot 2.
   - Ghim Top 1 (ví dụ 31.3K) $\to$ Chiếm slot 1, đẩy Top 2 sang slot 2, Top 3 sang slot 3.
 - Sau khi ghim đủ 3 video, hàng đầu tiên hiển thị đẹp mắt theo đúng thứ tự: `[Top 1] [Top 2] [Top 3]`.
-- **Mẹo Tối Ưu O(1) Khi Đã Ghim Đủ 3 Video (Single Unpin-Repin Shortcut):**
+- **Mẹo Tối Ưu O(1) Khi Đã Ghim Đủ 3 Video (Single Unpin-Repin Shortcut) & Bẫy Rơi Timeline:**
   - Nếu kênh đã ghim đủ 3/3 video nhưng clip Top 1 (nhiều view nhất, ví dụ 31.3K) đang nằm ở Cột 2 (giữa) hoặc Cột 3 (bên phải):
   - Tuyệt đối KHÔNG cần phải bỏ ghim toàn bộ cả 3 clip rồi ghim lại từ đầu (tốn 6 thao tác).
-  - Chỉ cần 2 bước O(1):
-    1. Bỏ ghim (Unpin) đúng video Top 1.
-    2. Bấm Ghim lại (Pin) ngay video Top 1 đó.
-  - Cơ chế LIFO của TikTok sẽ lập tức bốc video Top 1 vừa ghim lại đưa lên chiếm vị trí số 1 ngoài cùng bên trái `[0, 0]`, đẩy 2 video còn lại sang phải. Tiết kiệm 70% thời gian và lượt thao tác cảm ứng ADB.
+  - Quy trình 2 bước:
+    1. Bỏ ghim (Unpin) đúng video Top 1 qua Action Sheet.
+    2. Ghim lại (Pin) ngay video Top 1 đó để cơ chế LIFO của TikTok bốc nó đưa lên chiếm vị trí số 1 ngoài cùng bên trái `[0, 0]`.
+  - **BẪY RƠI TIMELINE KHI UNPIN (CRITICAL PITFALL):**
+    * Khi vừa bấm "Bỏ ghim", video Top 1 **KHÔNG còn ở hàng 1**. Nếu video đó đã đăng cách đây nhiều ngày/tuần (ví dụ clip 31.3K đăng ngày 29/08 trong khi clip mới là tháng 10), nó sẽ **lập tức thụt lùi về đúng vị trí thời gian gốc (chronological order) sâu dưới timeline**, nhường chỗ ở hàng 1 cho clip mới hơn!
+    * Hậu quả nếu không biết: Agent nhìn vào hàng 1 thấy clip 31.3K biến mất sẽ tưởng bị xóa hoặc tap nhầm clip khác để ghim đè.
+    * **Cách xử lý chuẩn xác:**
+      + Cách 1 (Qua Video Player — Khuyên dùng): Tap vào bất kỳ video tile nào trên Profile để mở player toàn màn hình, vuốt lướt theo luồng video (swipe up) tới đúng clip Top 1 theo ngày đăng / số view / caption. Tại video đó, tap nút Chia sẻ `(999, 1556)` $\to$ Action Sheet hiện ra $\to$ Tap "Ghim" `(831, 1776)` $\to$ Bấm Back về Profile.
+      + Cách 2 (Scroll Profile Grid): Cuộn sâu lưới Profile tìm đúng tile của clip đó để mở Action Sheet ghim.
+    * Sau khi ghim lại từ Video Player, TikTok sẽ kéo video đó từ đáy timeline nhảy vọt lên **vị trí số 1 ngoài cùng bên trái [0, 0]** trên trang cá nhân!
 
 ## 14. Quy Trình Sửa Bio Chọn Lọc Cho Kênh Hot Qua Dòng Tiểu Sử (ADB Flow)
 - **Kỷ luật Farm**: CẤM đổi bio hàng loạt trên toàn farm bằng script tự động (tránh behavioral burst làm tụt trust score kênh mới dẫn đến 0-view). CHỈ tối ưu bio cho các kênh HOT đã có video viral / cắn đề xuất (>10K view, >500 follower).
 - **Thao tác UI qua ADB khi không có nút "Sửa hồ sơ"**:
-  1. Từ Profile, tap trực tiếp vào dòng chữ Bio cũ / "Thêm tiểu sử" tại `(200, 660)` $\to$ TikTok tự động mở `ProfileEditActivity`.
-  2. Tap dòng "Tiểu sử" (`com.ss.android.ugc.trill:id/tvLabel` tại `[84, 1284][414, 1380]`, tâm `(600, 1338)`) để mở ô `EditText`.
-  3. Xóa bio cũ: `input tap 500 600` $\to$ `input keyevent 123` (MOVE_END) $\to$ `input keyevent 67` (DEL) 15 lần.
-  4. Nhập text: `input text <escaped_text>` (thay khoảng trắng bằng `%s`, dùng tiếng Việt không dấu hoặc ASCII an toàn).
-  5. **Checkpoint 1 (Pre-submit)**: Chụp màn hình xác nhận text đã điền vào ô input và nút "Lưu" `(990, 138)` sáng đỏ trước khi bấm.
-  6. Bấm "Lưu" tại `(990, 138)`, sau đó gửi phím `KEYCODE_BACK (4)` và tap tab Hồ sơ `(972, 1857)` để refresh.
-  7. **Checkpoint 2 (Post-submit)**: Chụp màn hình Profile, kiểm tra text Bio mới đã hiển thị công khai dưới header và chạy `media_verify.py` đối soát đúng username.
+  1. **Nhánh mở màn hình chỉnh sửa Bio:**
+     - *Trường hợp nick đã có bio cũ:* Tap trực tiếp vào dòng chữ Bio cũ tại `(200, 660)` $\to$ Mở `ProfileEditActivity` $\to$ Tap dòng "Tiểu sử" (`com.ss.android.ugc.trill:id/tvLabel` tại `[84, 1284][414, 1380]`, tâm `(600, 1338)`).
+     - *Trường hợp nick chưa có bio ("No bio yet" / hiện chữ "Thêm tiểu sử"):* Tap trực tiếp vào nút "Thêm tiểu sử" (`com.ss.android.ugc.trill:id/t6g` tại `[36, 618][1016, 702]`, tâm `(526, 660)`) $\to$ TikTok mở thẳng màn hình `EditText` nhập bio.
+  2. **Clear & Type:** Tap vào ô `EditText` tại `(540, 700)` $\to$ Gửi phím `KEYCODE_MOVE_END (123)` $\to$ Gửi phím `KEYCODE_DEL (67)` 10–15 lần để dọn sạch. Sau đó gõ text: `input text <escaped_text>` (khoảng trắng thay bằng `%s`, ký tự đặc biệt escape).
+  3. **Checkpoint 1 (Pre-submit)**: Screencap kiểm tra text hiển thị đúng trong `EditText` và nút "Lưu" tại `[925, 72][1056, 204]` (tâm `(990, 138)`) sáng khả dụng.
+  4. **Submit & Refresh**: Tap "Lưu" tại `(990, 138)` $\to$ `sleep 2.0` $\to$ Bấm `KEYCODE_BACK (4)` hoặc tap tab Hồ sơ `(970, 1850)` để cập nhật màn hình chính của Profile.
+  5. **Checkpoint 2 (Post-submit)**: Screencap Profile mới, verify WinRT OCR hiển thị đầy đủ dòng bio mới dưới tên và đối soát đúng định danh tài khoản (`media_verify.py`).
 
 ## 15. Tiêu Chuẩn Soạn Bio Tự Nhiên Theo Ngách Nội Dung (Niche-Specific Persona)
 - **Tránh bẫy văn phong bot chung chung:** CẤM viết các câu sáo rỗng vô thưởng vô phạt như `"Chào mừng đến với kênh của tôi"`, `"Kênh chia sẻ video hay"`, `"Theo dõi tôi nhé"`.
