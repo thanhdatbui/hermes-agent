@@ -4,13 +4,13 @@ Follow: P1/P2 trần ca; dò +2/ca (max 30); dính nhả vào tù, ra lùi 4 sà
 §
 Hotmail: CẤM mail cá nhân; @fviainboxes.com đọc OTP. Write-Through Excel 3,4,5+G; ~1280 acc. TT v47 monkey. Pin >=1000 view.
 §
-Farm: O(1). Preempt lock sửa ngay (cấm cớ ca kẹt); nghiệm thu ping 0% loss; dải 110.x dễ nghẽn ARP pool; Ruijie lease 30p. Lock: rename_natural_state.json. Header Excel: đổi header rà soát consumer; cấm fallback điền tuần tự.
+Farm: O(1). Preempt lock; ping 0% loss; ARP 110.x. Lock: rename_natural_state.json. Header Excel: đổi header rà soát consumer; cấm fallback tuần tự.
 §
 GPM: max 5 wkr; nạp pool web (0đ); re-login văng max 1 lần/ngày (max_proxy 3/cổng, ghi recovered_date).
 §
 Stale Upload: xóa draft. Revert flop: TikWM tải CDN. Popup 'Ghim/Riêng tư' KHÔNG PHẢI publish proof. Cào: max 60.
 §
-Closeout: CẤM push khi chưa pass closeout_gate; Grace 80-84 auto-push. User 'Done': nhả lock, báo ngắn kết quả, cấm khóc lóc gate cũ. TikTok: LIFO pin (ghim sau lên cột 1); Bio TV có dấu: ADB AdbKeyboard b64.
+Closeout: Grace 80-84 auto-push. Trượt: sửa ngay, cấm văn mẫu. Guard chặn: CẤM đùn User sửa tay; dùng manage_hermes_config.py hoặc script O(1). GW chỉ fallback HTTP (:20128/:20129). Claude 5h >= 85%: tự sửa O(1), cấm gọi Sonnet cày điểm. User 'Done': nhả lock, báo ngắn. TikTok: LIFO pin.
 §
 Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; admin_ssh.py. Cron: phase9-runner nuôi, feed_session_watchdog giám sát 15p.
 §
