@@ -22,3 +22,16 @@ Khi chạy `closeout_gate.py --repo <path> --base <ref> --files <files...>`:
 - Script `safe_push.py <repo> origin master` giải phóng biến môi trường sandbox `GIT_ALLOW_PROTOCOL=file`.
 - Pre-push hook bắt buộc tìm thấy entry `APPROVED` (score >= 85) trong `gate_audit.jsonl` khớp cả `commit_sha` và `scope_hash`.
 - Cấm tự ý `git push` tay bỏ qua `closeout_gate.py` và `safe_push.py`.
+
+## 5. Thứ Tự Audit Binding & Commit SHA Trong Strike 3 Reviewer Hand-off (17/10/2026)
+- **Cạm bẫy lệch Commit SHA (Pre-commit Audit Binding Trap):**
+  - Khi chạy Strike 3 Reviewer Hand-off qua Claude Reviewer (`claude_worker.py --role reviewer`), Reviewer thẩm định working tree và trả về `VERDICT: APPROVED`.
+  - Nếu Coordinator gọi `closeout_gate.build_audit_binding()` và `write_gate_audit()` **TRƯỚC** khi chạy `git commit`: `audit_binding['commit_sha']` sẽ nhận SHA của commit cha (HEAD cũ).
+  - Ngay sau đó, `git commit` tạo ra commit SHA mới. Khi gọi `safe_push.py`, script `.git/hooks/pre-push` duyệt `git rev-parse HEAD` (SHA mới) và đối chiếu với `gate_audit.jsonl` -> **Lập tức bị BLOCKED** với lỗi:
+    `❌ [BLOCKED - PRE-PUSH HOOK]: Không tìm thấy bản ghi Closeout Gate APPROVED >= 85 cho commit hiện tại!`
+- **Quy tắc Bất Biến khắc phục:**
+  1. Thẩm định `VERDICT: APPROVED` và kiểm chứng 4 nấc cơ học (`py_compile`, `pytest 100%`).
+  2. Stage đúng scope (`git add <files>`) và tạo commit (`git commit -m "..."`).
+  3. **Ngay sau commit:** Gọi `closeout_gate.build_audit_binding(repo, scope)` để lấy đúng `commit_sha` vừa sinh, rồi ghi vào audit log qua `closeout_gate.write_gate_audit(..., audit_binding=binding)`.
+  4. Sau đó mới gọi `safe_push.py <repo> <remote> <branch>` để pre-push hook đối soát thành công 100%.
+- **Lưu ý Remote Upstream vs Fork:** Trên các repo clone từ nguồn cộng đồng (như `Hermes` có remote `origin` là `NousResearch/hermes-agent.git` và `fork` là repo cá nhân của User), lệnh push mặc định vào `origin` sẽ dính HTTP 403 Forbidden. Kiểm tra `git remote -v` để push đúng remote `fork`.

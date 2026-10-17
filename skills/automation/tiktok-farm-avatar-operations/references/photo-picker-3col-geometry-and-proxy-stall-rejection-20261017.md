@@ -15,8 +15,17 @@ Trong phiên xử lý avatar Máy 34 Slot 6 (`@yobi1965`), đã xảy ra chuỗi
    - **Bẫy tap mù & sai tọa độ radio**: 
      - Nếu tap vào giữa ô `(405, 335)` hoặc tap sai radio ở `(660, 260)`, TikTok sẽ chọn nhầm Ô 2 (ảnh screenshot trình duyệt) hoặc không đổi selection khỏi Ô 0 (video 20 lần).
      - Khi bấm nút Tiếp (`912, 1844`), màn hình Crop sẽ load sai ảnh (ảnh web hoặc sticker 20 lần).
-   - **Kỷ luật gửi ảnh nghiệm thu ngay (Chống ỉm ảnh)**:
-     - Khi user hỏi hoặc sau mỗi bước thao tác UI/chụp màn hình được kết quả, BẮT BUỘC gửi ngay thẻ `MEDIA:<path>` trong câu trả lời để user soi mắt kiểm tra cùng, CẤM TUYỆT ĐỐI ôm ảnh ngầm trong tool trace rồi chỉ nói suông mà không gửi ảnh.
+   - **Kỷ luật gửi ảnh nghiệm thu ngay (Chống ỉm ảnh & User steering "sao mày đéo gửi ảnh đẻ t kiểm tra luôn")**:
+     - User feedback bức xúc: Coordinator mải mê chạy vòng lặp soi mắt nội bộ 3-5 turns mà không đính kèm ảnh cho User xem, khiến User phải giục.
+     - BẮT BUỘC: Ngay khi chụp được bất kỳ artifact nào (màn Picker, màn Crop, màn Profile), BẮT BUỘC phải đính kèm thẻ `MEDIA:<path>` ngay trong tin nhắn phản hồi lượt đó để User đối soát tận mắt cùng. Tuyệt đối cấm ỉm ảnh trong log/cache rồi chỉ chat mồm.
+
+   - **Bẫy trượt hàng (Grid Row Displacement do Screencap rác vào /sdcard/)**:
+     - Khi chụp ảnh màn hình bằng lệnh `screencap -p /sdcard/xxx.png`, Android MediaStore tự động index file PNG này làm tile mới nhất ở đầu Photo Picker.
+     - Cứ mỗi lần chụp màn hình debug lưu vào `/sdcard/`, ảnh avatar mục tiêu lại bị đẩy lùi 1 ô (từ Row 0 đẩy xuống Row 1, Row 2).
+     - Hậu quả: Tọa độ tĩnh `(483, 276)` ở Row 0 bị lỗi thời ngay lập tức, script tap trúng ảnh screenshot vừa chụp thay vì avatar thật!
+     - **Giải pháp bắt buộc**:
+       1. CẤM chụp screencap lưu vào `/sdcard/` khi đang trong luồng avatar. BẮT BUỘC chụp vào `/data/local/tmp/screencap.png` (nơi MediaStore không quét).
+       2. Trước khi tap, cắt thử từng ô trong picker (`Row 0..2, Col 0..2`) tính Mean BGR so sánh với `avatar.jpg` để xác định chính xác ảnh mục tiêu đang nằm ở hàng nào cột nào, cấm tap mù theo tọa độ tĩnh.
 
 2. **Ảo giác bỏ qua WinRT OCR**:
    - Khi chạy OCR trên màn hình Cắt ảnh (Crop), kết quả trả về chữ `20)la` (từ sticker "20 lần" của video).
