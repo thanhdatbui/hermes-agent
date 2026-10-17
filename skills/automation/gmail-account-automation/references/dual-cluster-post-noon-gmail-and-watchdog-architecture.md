@@ -13,8 +13,19 @@
 
 ### Cảnh báo Tử Huyệt Hardcode Range Máy (Range 1..74 vs Admin 201..280):
 - Trong `gmail_reg_v10.py`, hàm `get_machine_cooldown_statuses(min_days)` tuyệt đối **CẤM hardcode `for stt in range(1, 75):`**.
+- Biến `ACCOUNTS` tuyệt đối **CẤM hardcode `range(1, 81)`**; bắt buộc bao gồm cả 2 dải: `ACCOUNTS = [{"stt": n} for n in (list(range(1, 81)) + list(range(201, 281)))]` (160 máy toàn farm).
 - **Hậu quả nếu hardcode:** Trên Farm Admin (`range(201, 281)`), hàm `get_machines_ready()` chỉ trả về các máy 1..74. Launcher `run_parallel.ps1` lấy giao giữa danh sách máy Admin (`201..280`) và danh sách ready (`1..74`) sẽ ra mảng **RỖNG (0 máy)**, in ra `"Khong co may nao trong danh sach du cooldown (>=5 ngay). Thoat."` và exit 0. Bot watchdog sẽ luôn báo `Hoàn tất 0 máy | Bỏ qua 0 | Lỗi 0` bất kể fix cron bao nhiêu lần!
-- **Chuẩn hóa bắt buộc:** Lấy danh sách máy động từ `load_device_map_from_excel().keys()` hoặc bao quát cả 2 cụm (`range(1, 281)`). Đồng thời trong `_load_last_run_dates()`, chú ý logic lọc `@gmail.com` khi đối soát trên file `gmail_clean_v2.xlsx` của cụm Admin.
+- **Chuẩn hóa bắt buộc:** Lấy danh sách máy động từ `load_device_map_from_excel().keys()` với fallback an toàn về `ACCOUNTS` khi device map rỗng/lỗi kèm log cảnh báo. Đồng thời trong `_load_last_run_dates()`, chú ý logic lọc `@gmail.com` khi đối soát trên file `gmail_clean_v2.xlsx` của cụm Admin.
+
+### Quy Trình Đồng Bộ Code Kibe -> Admin-PC (`admin-farm`):
+- **Tránh các bẫy đồng bộ thất bại:**
+  * `git pull` trên Admin thất bại do lỗi credential manager (`wincredman /dev/tty`).
+  * UNC network share (`\\192.168.110.123\...`) bị tắt/chặn.
+  * Ghi file trung gian vào OneDrive có thể bị sandbox guard của subagent chặn vì ngoài `D:/Taadaa`.
+- **Cơ chế Canonical chuẩn hóa (`sync_to_admin.py`):**
+  * Dùng `D:/Taadaa/tools/sync_to_admin.py` chia file cần đẩy thành các chunk Base64 (4000 ký tự).
+  * Gọi từ xa qua `admin_ssh.py` thực thi Python ghi file: `python -c "import base64; open(dest, mode).write(base64.b64decode(chunk))"`.
+  * Sau khi chuyển xong, **BẮT BUỘC** đối soát mã băm SHA256 giữa Kibe và Admin để xác nhận khớp bit 100% trước khi nghiệm thu.
 
 ### Thiết kế điều phối chuẩn hóa (`post_noon_chain_watchdog.py`):
 1. **Cluster Kibe (Máy 1 - 80):**

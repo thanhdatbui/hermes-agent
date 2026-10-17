@@ -8,7 +8,7 @@ Chốt phiên: Vào main; Grace 80-84 (diff<=30) auto-push, pre-push THRESHOLD=8
 §
 Ava: WinRT OCR + soi thật, cấm bịa mô tả/mảng đỏ; trích clip gốc. Quét từ lạ (20 lần, 20)la, video) chống picker nhầm clip; kẹt tile 1 soi grid tap đúng ô.
 §
-Worker: Haiku/AG/Sol (cấm commit/push); AG: 100% Pro, map 1-1 proxy GPM; trượt 3 lần giao Claude; hỏi gì đáp nấy.
+Worker: siết call chống lan man; 'hỏi Claude' là xin tư vấn cấm tự tiện sửa code; trượt 3 lần giao Claude; cấm tự commit; hỏi gì đáp nấy.
 §
 Canary: test đa máy/layout, gửi MEDIA:. Farm 100% Wi-Fi Singbox, CẤM ViChanger/VPN app.
 §
