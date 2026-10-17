@@ -159,7 +159,19 @@ python D:/Taadaa/tools/pin_top_videos.py --machine 28 --min-views 5000 --max-pin
   1. **Nhánh mở màn hình chỉnh sửa Bio:**
      - *Trường hợp nick đã có bio cũ:* Tap trực tiếp vào dòng chữ Bio cũ tại `(200, 660)` $\to$ Mở `ProfileEditActivity` $\to$ Tap dòng "Tiểu sử" (`com.ss.android.ugc.trill:id/tvLabel` tại `[84, 1284][414, 1380]`, tâm `(600, 1338)`).
      - *Trường hợp nick chưa có bio ("No bio yet" / hiện chữ "Thêm tiểu sử"):* Tap trực tiếp vào nút "Thêm tiểu sử" (`com.ss.android.ugc.trill:id/t6g` tại `[36, 618][1016, 702]`, tâm `(526, 660)`) $\to$ TikTok mở thẳng màn hình `EditText` nhập bio.
-  2. **Clear & Type:** Tap vào ô `EditText` tại `(540, 700)` $\to$ Gửi phím `KEYCODE_MOVE_END (123)` $\to$ Gửi phím `KEYCODE_DEL (67)` 10–15 lần để dọn sạch. Sau đó gõ text: `input text <escaped_text>` (khoảng trắng thay bằng `%s`, ký tự đặc biệt escape).
+  2. **Clear & Type Tiếng Việt CÓ DẤU CHUẨN (BẮT BUỘC AdbKeyboard Base64):**
+     - **CẤM TUYỆT ĐỐI dùng `adb shell input text`:** Lệnh này chỉ hỗ trợ ASCII và sẽ làm rụng hoặc vỡ toàn bộ dấu tiếng Việt (vi phạm trực tiếp yêu cầu user).
+     - **BẮT BUỘC quy trình gõ Tiếng Việt có dấu:**
+       1. Kích hoạt & set bàn phím:
+          `adb shell ime enable com.github.uiautomator/.AdbKeyboard`
+          `adb shell ime set com.github.uiautomator/.AdbKeyboard`
+       2. Focus vào `EditText` tại `(540, 700)`.
+       3. Xóa text cũ:
+          `adb shell am broadcast -a ADB_KEYBOARD_CLEAR_TEXT`
+          (Gửi thêm `input keyevent 67` phòng hờ).
+       4. Bơm text UTF-8 mã hóa Base64:
+          `b64_msg = base64.b64encode(bio_text.encode('utf-8')).decode('ascii')`
+          `adb shell am broadcast -a ADB_KEYBOARD_INPUT_TEXT --es text <b64_msg>`
   3. **Checkpoint 1 (Pre-submit)**: Screencap kiểm tra text hiển thị đúng trong `EditText` và nút "Lưu" tại `[925, 72][1056, 204]` (tâm `(990, 138)`) sáng khả dụng.
   4. **Submit & Refresh**: Tap "Lưu" tại `(990, 138)` $\to$ `sleep 2.0` $\to$ Bấm `KEYCODE_BACK (4)` hoặc tap tab Hồ sơ `(970, 1850)` để cập nhật màn hình chính của Profile.
   5. **Checkpoint 2 (Post-submit)**: Screencap Profile mới, verify WinRT OCR hiển thị đầy đủ dòng bio mới dưới tên và đối soát đúng định danh tài khoản (`media_verify.py`).
@@ -170,6 +182,15 @@ python D:/Taadaa/tools/pin_top_videos.py --machine 28 --min-views 5000 --max-pin
   * **Ngách Gym / Healthy / Nữ:** Soi text trên video (`Đi tập với tuii`, `Gymer ăn gì`, `Độ mông`) $\implies$ Bắt buộc đồng bộ đại từ xưng hô `"Tui"` (tự nhiên, thân mật kiểu Gen Z), kết hợp 2 trụ cột nội dung: tập luyện + ăn uống eat clean, kèm CTA follow nhẹ nhàng (VD: `Đi tập cùng tui & làm đồ ăn healthy mỗi ngày 💪🥗`).
   * **Ngách Tiểu phẩm Gia đình / Parody / Đời thường:** Soi tuyến nhân vật và bối cảnh (cha con, tiệm tạp hóa, học sinh nghịch ngợm) $\implies$ Đưa chi tiết nhân vật/bối cảnh vào bio tạo nét riêng biệt và tò mò (VD: `Tiểu phẩm cha con và tiệm tạp hóa bất ổn 😂 Bấm follow để cùng cười nha!`).
 - **Độ dài và biểu tượng:** Dưới 80 ký tự, tối đa 1-2 emoji phù hợp ngữ cảnh, câu từ súc tích hiển thị trọn vẹn trong 1-2 dòng không bị nút "...Thêm" che khuất.
+
+## 16. Pitfall Màn Hình Ngủ Khi Chụp Ảnh Nghiệm Thu (Black Screen ~12KB Khi Dozing)
+- **Hiện tượng:** Chụp màn hình bằng `screencap -p` tạo file ảnh chỉ ~12KB, WinRT OCR không đọc được text hoặc báo `handle_not_found`.
+- **Nguyên nhân:** Thiết bị Samsung S7 rơi vào trạng thái ngủ / dozing (`Màn hình: OFF`), GPU buffer không render frame mới.
+- **Xử lý:**
+  1. Luôn đánh thức thiết bị trước khi chụp: `input keyevent 224` (WAKEUP) và `input keyevent 82` (UNLOCK).
+  2. Đảm bảo app TikTok đang ở foreground (`dumpsys window windows | grep mCurrentFocus`).
+  3. Chờ tối thiểu 1.5 – 2.0s cho giao diện vẽ xong frame rồi mới kéo ảnh về máy để verify.
+
 
 
 

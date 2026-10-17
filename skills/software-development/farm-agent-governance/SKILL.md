@@ -10,6 +10,7 @@ description: Use when enforcing inter-session & anti-skip farm gates.
 Kỷ luật điều phối và cưỡng chế kỹ thuật cứng (Hard Technical Enforcement) nhằm triệt tiêu vĩnh viễn hiện tượng **Context Amnesia** (mất trí nhớ giữa các phiên chat) và **Safe-Skip** (trốn việc, nuốt exception, fake pass) của AI Agents trên toàn bộ các repository farm.
 
 References:
+- `references/mechanical-guard-mandatory-and-claude-advisor-vs-coordinator-builder-20261018.md` — **[MỚI 18/10/2026 - MỌI RULE BẮT BUỘC GUARD HOOK GATE & CLAUDE ADVISOR VS COORDINATOR BUILDER]** Chấm dứt triệt để thói quen dặn luật bằng Prompt/Memory suông (bị Operator mắng); cưỡng chế chuyển hóa 100% rule thành Gate cơ học (PreToolUse Python Hook + Unit test); phân định rạch ròi Claude Sonnet CLI chỉ đóng vai trò Tư vấn Kiến trúc / Review, còn Hermes Coordinator là người trực tiếp thi công code & test suite.
 - `references/selector-guard-r2-protocol-git-diff-trap-and-anti-halting-20261017.md` — **[MỚI 17/10/2026 - SELECTOR GUARD R2, GIT_EXTERNAL_DIFF TRAP & ANTI-HALTING DISCIPLINE]** Quy chuẩn Rule R2 của `guard_selector_change.py` khi sửa `profile_layouts/` (bắt buộc entry `docs/farm-automation-cases.md` + real golden XML fixture), fix lỗi git diff do `GIT_EXTERNAL_DIFF=''` trên Windows, và kỷ luật Anti-Halting tự động cuộn qua toàn bộ các lát cắt thin-slice khi nhận lệnh "làm đi" (cấm dừng lại hỏi xin phép sau mỗi commit nhỏ).
 - `references/tiered-workflow-3-anti-deadlock-and-automatic-absorption-20261017.md` — **[MỚI 17/10/2026 - TIERED WORKFLOW 3.0: ANTI-DEADLOCK, CONTEXT-PACK & AUTOMATIC ABSORPTION]** Triệt tiêu nghịch lý Coordinator bị cấm sửa >15 dòng trong khi Worker cháy 15 calls đọc file -> bế tắc 2 tiếng; mở rộng T0 (<=2 files, <=80 dòng diff an toàn), T1 Worker tách ngân sách 12 write / 8 read calls kèm Context Pack bắt buộc, cơ chế Automatic Absorption tự làm nốt khi Worker fail lần 1 (CẤM clarify/xin phép), và chuẩn hóa Time-box thực tế (T0 8m, T1 18m, Subagent timeout 240s, Pool Breaker 30m).
 - `references/claude-cli-audit-ad-hoc-script-proliferation-and-mechanical-send-gate-20261017.md` — **[MỚI 17/10/2026 - CLAUDE CLI AUDIT: AD-HOC SCRIPT PROLIFERATION & MECHANICAL SEND-GATE]** Phán quyết kiểm toán độc lập từ Claude Sonnet 5.5: Tại sao prompt dặn dò "cấm đẻ script" và "soi mắt đọc ảnh" luôn bị LLM bypass dưới áp lực hoàn thành task; giải pháp bắt buộc bằng code-level hook: Tool Whitelist Guard (chặn tạo script ngoài canonical allowlist) và Mechanical Send-Gate (WinRT OCR đối soát handle username trước khi cho phép xuất bản thẻ `MEDIA:`).
@@ -42,6 +43,14 @@ References:
 > **"Không bắt AI nhớ. Ép AI không thể chạy nếu không chứng minh đã load đúng state. Muốn triệt tiêu vĩnh viễn context amnesia và safe-skip, không được xây 'AI thông minh hơn' — phải xây 'AI bị kiểm soát chặt hơn'."**
 
 Persistent memory và prompt hướng dẫn là *ràng buộc mềm* (Soft Constraints), không có giá trị cưỡng chế (`Memory ≠ Enforcement`). Nếu hệ thống cho phép Agent tự quyết định "tôi hiểu rồi", "tôi bỏ qua bước này vì an toàn", Agent sẽ liên tục phá vỡ kiến trúc cũ.
+
+### 🛑 BẤT BIẾN: MỌI RULE BẮT BUỘC THI CÔNG GUARD HOOK GATE — CẤM KHÓA BẰNG PROMPT SUÔNG (User Mandate 18/10/2026)
+- **CẤM TUYỆT ĐỐI KHÓA LUẬT BẰNG PROMPT / MEMORY:**
+  Mọi hành vi dặn dò, ghi chú vào `Hermes Memory`, `PROJECT_RULES.md` hay `AGENTS.md` mà không có Gate cơ học đi kèm đều bị coi là **vô giá trị**. Khi phát sinh rule mới hoặc xử lý sự cố vi phạm, BẮT BUỘC phải thi công **Hook / Mechanical Gate bằng mã nguồn Python thật** (tầng PreToolUse hoặc Pre-Commit) với đầy đủ allow/deny vectors và bộ unit test độc lập pass 100%.
+- **PHÂN ĐỊNH VAI TRÒ CHUẨN XÁC: CLAUDE TƯ VẤN — HERMES THI CÔNG:**
+  * **Claude Sonnet 5.5 CLI (`--role planner` / `--role reviewer`):** CHỈ ĐÓNG VAI TRÒ TƯ VẤN (Advisor) & KIỂM TOÁN (Reviewer). Cung cấp bản vẽ kiến trúc, bẫy bypass, edge cases, và review diff. Tuyệt đối CẤM đùn việc viết code hay unit test cơ học cho Claude CLI làm cháy quota 5h.
+  * **Hermes Coordinator:** LÀ NGƯỜI THI CÔNG TRỰC TIẾP (Builder). Tự tay viết code Hook, viết test suite `pytest` và chạy nghiệm thu trước khi chuyển giao Reviewer.
+- **CASE STUDY CHUẨN:** `guard_android_proxy.py` (chặn gán domain ngoài vào Android `http_proxy`, ép dải IP LAN RFC1918 `192.168.110.2`) + `test_guard_android_proxy.py` (6/6 tests pass).
 
 ---
 
