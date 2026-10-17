@@ -62,3 +62,42 @@
   )
   stdout, _ = proc.communicate(input="RUN\n")
   ```
+
+## 4. Bẫy Timeout 300s Của Launcher Wrapper vs Tiến Trình PowerShell Thành Công
+- **Triệu chứng**:
+  Python launcher wrapper báo lỗi:
+  `[ERROR] Command '['powershell.exe', ...]` timed out after 300 seconds` (exit code 1).
+- **Thực tế hiện trường**:
+  Tiến trình PowerShell bên dưới chạy mất ~310s - 320s và đã nạp avatar thành công mỹ mãn!
+  - File `summary.csv` trong `D:/CodexRuntime/tiktok-video/batch-runs/batch_tik<N>_*/summary.csv` ghi nhận:
+    `"Status": "THÀNH CÔNG", "Verified": "True"`.
+  - File `report.json` ghi nhận: `"avatar_status": "FORCED_REPLACED_VERIFIED"`, `"status": "AVATAR_SMOKE_SUCCESS"`.
+  - File `avatar-uploaded-confirmed.png` đã lưu ảnh Profile đổi avatar mới thành công.
+- **Quy tắc điều phối bắt buộc**:
+  1. **Ngân sách Timeout**: Luôn cấu hình timeout cho Python subprocess launcher $\ge 360$s (hoặc 420s) khi gọi `run_tiktok_upload_avatar.ps1`, vì quy trình đầy đủ (khởi động app, đổi switcher, mở gallery, crop, save, verify) mất từ 3.5 đến 5.5 phút.
+  2. **Kiểm Tra Artifact Trước Khi Báo Lỗi**: Khi tiến trình nạp avatar trả về exit 1 do timeout, CẤM vội kết luận thất bại. Coordinator BẮT BUỘC kiểm tra artifact mới nhất tại `D:/CodexRuntime/tiktok-video/batch-runs/` và `runs/run_<serial>_<timestamp>/report.json`. Nếu `avatar_status: FORCED_REPLACED_VERIFIED` thì xác nhận thành công và lấy `avatar-uploaded-confirmed.png` để soi mắt nghiệm thu.
+  3. **Bẫy `>` Redirect Trên `with_device_lock.py`**: Khi gọi `python D:/Taadaa/tools/with_device_lock.py --machine <N> -- adb exec-out screencap -p > file.png`, script `with_device_lock` xuất log text ra stdout làm hỏng byte stream của ảnh PNG. Ưu tiên lấy trực tiếp ảnh `avatar-uploaded-confirmed.png` đã được runner tạo sẵn trong thư mục run.
+
+## 5. Anti-Asking Invariant Khi Nhận Lệnh "Chuẩn hoá acc": Tự Động Trích Xuất & Xuất Preview, CẤM Hỏi Lại
+- **Phản hồi của User**: *"Tạo ava đi chứ hỏi chi v"* (Khi user gửi ảnh profile TikTok yêu cầu chuẩn hoá, Coordinator lại đi hỏi "Bạn có muốn tôi trích xuất 2 phương án avatar... không?").
+- **Nguyên tắc hành động**:
+  1. Khi nhận lệnh "Chuẩn hoá acc này" kèm ảnh: Đây là lệnh thực thi trực tiếp, KHÔNG PHẢI câu hỏi xin tư vấn.
+  2. BẮT BUỘC đi thẳng một mạch:
+     - Định vị tọa độ $O(1)$ (Máy, Slot, Niche, Folder gốc/render).
+     - Kiểm tra Pin Gate ($\ge 1.000$ views) và Hashtag.
+     - **Ngay lập tức** trích xuất 2 phương án Avatar từ video gốc ($512 \times 512$, căn giữa chuẩn ngũ quan, headroom chống lẹm tròn).
+     - Dựng contact sheet so sánh có mask viền tròn (`comparison_preview.jpg`).
+     - Soi mắt kiểm định qua Vision, gửi kèm thẻ `MEDIA:` và hỏi user chọn Option 1 hay 2.
+  3. **CẤM TUYỆT ĐỐI**: Phân tích kênh xong rồi dừng lại hỏi "Bạn có muốn tôi trích xuất avatar không?". Bất kỳ câu hỏi xin phép nào trong phạm vi chuẩn hoá đều bị coi là kéo dài thời gian và vi phạm kỷ luật Coordinator.
+
+## 6. Bẫy Lồng Device Lock Khi Chạy `run_avatar_batch_3accs.py` & Database SQLite SSOT
+- **Bẫy Nested Device Lock**:
+  - `D:/Taadaa/tools/run_avatar_batch_3accs.py` gọi PowerShell `run_tiktok_upload_avatar.ps1` -> `run_tiktok_upload_batch.ps1`.
+  - Bên trong `run_tiktok_upload_batch.ps1` và `automation-core`, runner con đã TỰ ĐỘNG yêu cầu và quản lý `device_lock` cho máy mục tiêu.
+  - **Hậu quả nếu lồng**: Nếu Coordinator chạy `with_device_lock.py --machine N -- python run_avatar_batch_3accs.py --machine N`, chính tiến trình cha giữ lock của máy N, khiến runner con bên trong không thể lấy lock hoặc bị conflict/thoát ngay lập tức (exit code 0 nhưng STDOUT rỗng).
+  - **Quy tắc chuẩn**: Chạy trực tiếp `python D:/Taadaa/tools/run_avatar_batch_3accs.py --tik <tik> --machine <machine>` với `background=True, notify_on_complete=True, timeout=600`. CẤM chạy foreground vì guard giới hạn timeout foreground $\le 60$s (`GUARD_FOREGROUND_TIMEOUT_EXCEEDED`).
+- **Database SQLite SSOT Chuẩn**:
+  - `D:/Taadaa/data/tiktok_tracker.db` là database chính thức chứa bảng `avatar_replace_queue`.
+  - `D:/Taadaa/tiktok_tracker.db` ở thư mục gốc có thể là database trống không có bảng. Script cập nhật trạng thái `PENDING` bắt buộc phải trỏ vào `D:/Taadaa/data/tiktok_tracker.db`.
+
+

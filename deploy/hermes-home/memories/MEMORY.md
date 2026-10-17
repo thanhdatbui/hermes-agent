@@ -6,7 +6,7 @@ Hotmail: CẤM mail cá nhân; sinh @fviainboxes.com đọc OTP API. Write-Throu
 §
 Proxy: 1-1. Chuẩn hóa 3 món (crop 512x512 -> chốt PA -> lock/Excel -> run_tiktok_upload_avatar.ps1, CẤM chờ watchdog -> MEDIA:); TT v47 monkey. Pin >=1000 view. Soi mắt trước gửi.
 §
-Farm: dispatch O(1). CẤM đẻ script mới; lỗi Folder Video do .bak fallback khi xlsx lock; protected folders ép int.
+Farm: dispatch O(1); sol_worker.py (:20129) fallback khi cạn quota. CẤM đẻ script mới; lỗi Folder Video do .bak fallback khi xlsx lock; protected folders ép int.
 §
 GPM: stop API kèm _kill_gpm_chrome; max 5 wkr; cron-auto-feed nạp pool chatgpt-web 15p/lần (Hotmail ưu tiên). Re-login acc văng KHÔNG tính cooldown proxy 24h; chỉ acc mới log lần đầu mới tính 2 acc/port/ngày.
 §

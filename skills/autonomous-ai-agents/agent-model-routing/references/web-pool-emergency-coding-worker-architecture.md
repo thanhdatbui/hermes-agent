@@ -59,3 +59,17 @@ Web-based LLM vốn được tối ưu cho giao diện chat người dùng, khô
 4. **Tier 4 (Emergency Fallback Worker):** **Sol Web Pool Worker (:20129)**.
    - Kích hoạt khi: Claude CLI chạm trần 85% session HOẶC Agy CLI cạn quota / 503 liên tục.
    - Vận hành: Xoay tua qua kho tài khoản ChatGPT-Web, thực thi patch diff có AST verification và focused test khép kín.
+
+## 5. Các Chốt An Toàn Thực Chiến Khi Triển Khai `sol_worker.py` (2026-10-17)
+
+1. **Phòng vệ Shell Metacharacters:**
+   Hàm `is_command_safe` bắt buộc kiểm tra `re.search(r"[;&|`$]", cmd)` để chặn đứng các kỹ thuật ghép lệnh (`pytest && rm ...`, `echo 1 | cat`, subshell `$()`, backticks) khi `execute_command` thực thi lệnh shell.
+2. **Atomic Write Khi Áp Dụng Patch:**
+   Tuyệt đối không ghi đè trực tiếp lên target file bằng `write_bytes` trần. Bắt buộc ghi ra file tạm `.tmp.<uuid>` rồi thực hiện `os.replace` để nguyên tử hóa thao tác ghi, chống rách/hỏng file nếu tiến trình bị ngắt đột ngột.
+3. **Chuẩn Hóa Thông Báo Ngữ Nghĩa AST:**
+   Chỉ bổ sung `AST valid.` khi target file là `.py`. Các file định dạng khác (JSON, YAML, text) không được gán nhãn AST bừa bãi.
+4. **Validation Hợp Đồng Đầu Vào & Telemetry:**
+   Hàm `run_worker_loop` bắt buộc kiểm tra fail-closed `max_turns <= 0` và gắn `correlation_id` ngẫu nhiên cho mỗi phiên làm việc để phục vụ quan sát log có cấu trúc.
+5. **Cạm Bẫy `NEED_CONTEXT` Của Closeout Gate Đối Với File Mới Lớn (>20KB):**
+   Khi diff của file mới tạo quá lớn, `sol_payload_guard` sẽ kích hoạt truncation digest và chèn chỉ thị an toàn khiến Reviewer trả về `NEED_CONTEXT:<path>`. Để xử lý triệt để, Coordinator cần commit cục bộ sạch và chạy Closeout Gate với `--base HEAD~1 --files <targets>` để thẩm định context toàn vẹn trong cây git.
+
