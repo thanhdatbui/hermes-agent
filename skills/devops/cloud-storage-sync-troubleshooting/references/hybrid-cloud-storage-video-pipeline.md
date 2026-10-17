@@ -68,6 +68,16 @@ mkdir D:\GoogleDriveCache
 - The desktop app binds to a random local loopback port (`http://127.0.0.1:<random_port>/`), listens for the authorization code redirect, and requires explicit user consent on the Google Accounts login page (`accounts.google.com`).
 - **Coordinator Mandate**: Do NOT attempt blind CLI script loops, synthetic mouse-click scripts, or keystroke injections across headless SSH sessions to bypass the Google OAuth login window. Inform the operator to perform the 15-second browser consent directly in the console session (via AnyDesk/RDP), ensuring the target profile is selected and "Stream files" mode is confirmed.
 
+### 5. Post-Login Welcome/Tour Wizard Suppression via SSH (WebView2 Dismissal)
+- **Problem**: Immediately after login, Google Drive Desktop presents a modal multi-step tour/onboarding wizard (asking to backup Desktop, Documents, Downloads with "Skip"/"Next", then "Your Drive files are just a click away in File Explorer").
+- **SSH Automation Pitfall**: Attempting to send `{ENTER}` or key events via PowerShell `[System.Windows.Forms.SendKeys]::SendWait` across an SSH session fails with Win32 exception `Access is denied` due to Windows session isolation between SSH/remote tokens and interactive Console session 1.
+- **Clean Headless Solution**:
+  The welcome tour UI is hosted inside an embedded Edge WebView2 process. Terminating `msedgewebview2.exe` cleanly closes the tour modal without affecting the background sync engine:
+  ```powershell
+  Get-Process -Name msedgewebview2 -ErrorAction SilentlyContinue | Stop-Process -Force
+  ```
+  - **Result**: The wizard popup immediately vanishes from the user's desktop, while `GoogleDriveFS.exe` continues running seamlessly with `G:\` remaining fully mounted.
+
 ### 5. Windows Task Scheduler & Virtual Drive `G:\` User Token Boundary
 - **Virtual Drive Isolation under SYSTEM**: In Windows, volume mounts created by userland filesystems (DriveFS / Dokan / WinFsp) exist strictly within the interactive logon session of the user who launched them (`Admin`). Scheduled tasks running under `SYSTEM` or non-interactive service accounts will see `G:\` as non-existent (`The device is not ready` or `Path not found`).
 - **Required Task Configuration**:
