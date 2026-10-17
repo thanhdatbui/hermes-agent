@@ -104,6 +104,15 @@ Use status values such as `NO_DAT_EVIDENCE`, `CLEAN_AND_ONLINE`, `ONLINE_BUT_ROG
   - Profile rác trùng tiền tố (`kibe` vs `kibe 1`): Cấu hình rác open không bảo mật mang tên gốc `kibe` (Net ID 1) sẽ tranh chấp quét mạng với `kibe 1` (Net ID 0), khiến máy dao động liên tục giữa `last="kibe"NONE` và `target="kibe 1"WPA_PSK`. Bắt buộc phải purge dứt điểm bằng `service call wifi 14 i32 <ROGUE_ID>`.
   - Biện pháp khắc phục: (1) Purge triệt để profile rác trùng tiền tố, (2) `am force-stop com.steinwurf.adbjoinwifi`, (3) Toggle radio `svc wifi disable && sleep 1 && svc wifi enable`, (4) Kiểm tra vị trí đặt máy vật lý / ăng-ten để đảm bảo RSSI 5GHz > -70 dBm, hoặc khởi động lại AP Aruba tương ứng nếu AP vẫn lưu cờ blacklist MAC.
 
+- **Bắt buộc có Circuit Breaker cho Auto-Healer (Chống Flapping Loop):**
+  CẤM TUYỆT ĐỐI các script auto-healer chạy chu kỳ ngắn (như 5 phút một lần) liên tục dập nhả `svc wifi disable && svc wifi enable` khi máy chưa có IP. Vòng lặp dập nguồn liên tục sẽ đẩy chip Broadcom PCIe vào trạng thái ngủ sâu (`state DORMANT / NO-CARRIER`, `UNINITIALIZED`), đồng thời kích hoạt Aruba AP từ chối kết nối (`ASSOCIATION_REJECTION counter:8`). Healer bắt buộc có Circuit Breaker: tối đa 2 lần thử trong 30 phút, nếu thất bại phải tạm dừng ít nhất 60 phút để máy tự ổn định stack mạng.
+
+- **Bẫy phân quyền Knox trên ADBJoinWifi với Net ID rác:**
+  Khi thiết bị đã có sẵn profile rác hoặc profile cũ (ví dụ Net ID 0 `kibe` NONE), app `com.steinwurf.adbjoinwifi` chạy dưới UID 10179 sẽ bị Knox chặn cập nhật: `UID 10179 does not have permission to update configuration`. Bắt buộc phải xóa Net ID rác qua `service call wifi 14 i32 <net_id>` từ ADB shell (UID 2000) trước khi nạp intent SSID/WPA chuẩn.
+
+- **Suy hao vật lý 5GHz & Link Speed tụt sàn 6 Mbps trên kệ sắt:**
+  Nếu máy đã xác thực WPA2 (`Supplicant state: COMPLETED`) nhưng bị rớt IP hoặc báo `CMD_IP_REACHABILITY_LOST`: kiểm tra `Link speed` trong `mWifiInfo`. Nếu link speed tụt sàn xuống 6 Mbps (RSSI <= -72 dBm do bị lưng máy tì sát vào thanh sắt kim loại của kệ), gói tin DHCP/ARP sẽ bị drop. Xử lý bằng cách nhấc máy dịch chuyển 2–3 cm ra khỏi góc khuất khung sắt. TUYỆT ĐỐI CẤM tăng công suất AP Aruba lên 12–15 dBm vì sẽ gây bão hòa bộ thu (Receiver Desensitization) và kickout hàng loạt 39 máy xung quanh.
+
 ## Production Automation Scripts
 - `D:/Taadaa/tools/scan_rogue_wifi_farm.py`: Fast non-intrusive pre-scan script across both clusters (Dual-Cluster Farm) to audit rogue Wi-Fi networks, active SSIDs, and IP assignment across all attached devices in ~10s without modifying state or blocking on write locks.
 - `D:/Taadaa/tools/batch_clean_farm_wifi.py`: Parallel locked cleanup across Dual-Cluster Farm (M1-80 & M201-280, max_workers=20), removing rogue networks (`Dat`, `Dat-1`, `BOX`, `Green Media 5G`, `admin`, `kibe`) and enforcing pure Aruba SSID binding with DHCP.
@@ -117,4 +126,5 @@ Use status values such as `NO_DAT_EVIDENCE`, `CLEAN_AND_ONLINE`, `ONLINE_BUT_ROG
 - See `references/runner-preflight-wifi-fallback-and-roam-triage.md` for the feed runner preflight credentials fallback failure (`FARM_WIFI_PROFILES_FILE`) and rogue SSID roam proxy outage root causes.
 - See `references/samsung-korean-rom-wifi-saved-network-ui-trap.md` for Samsung Korean ROM (SM-G930S) Saved Networks UI hiding mechanics, shell permission denial limits, and the `OPERATOR_PREEMPT` lock takeover protocol.
 - See `references/operational-closeout-gate-rubric.md` for the mandatory 4-pillar artifact requirements (raw logcat proof, 100% farm device accounting, automated pytest suite, timeline isolation) to pass `closeout_gate.py --input` with Sol Auditor (>= 85 pts APPROVED).
+- See `references/auto-healer-flapping-and-broadcom-rf-desensitization.md` for Broadcom PCIe sleep loops from flapping auto-healers, Knox adbjoinwifi permission traps with stale Net IDs, physical 6Mbps floor remediation on metal racks, and why increasing Aruba Tx power breaks farm RF.
 - See `references/feed-session-triage-and-liveplay-stuck-recovery.md` for feed-session failures triage, USB transport drops (M10, M30, M50), and stuck `LivePlayActivity` / `SparkActivity` recovery with `recover_stuck_s7.py`.

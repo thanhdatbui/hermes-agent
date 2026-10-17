@@ -5,12 +5,13 @@ description: Use when running avatar-only jobs on TikTok farm.
 
 # TikTok Farm Avatar Operations
 
-- Admin Remote & Worker SSH Boundary: [references/admin-remote-avatar-extraction-and-worker-ssh-boundary-20261017.md](references/admin-remote-avatar-extraction-and-worker-ssh-boundary-20261017.md)
-- Canonical Avatar Launcher: [references/canonical-single-avatar-launcher-and-anti-ad-hoc-script-20261017.md](references/canonical-single-avatar-launcher-and-anti-ad-hoc-script-20261017.md)
-- Immediate Upload & Switcher Anchor: [references/immediate-avatar-upload-end-to-end-and-switcher-anchor-collision-20261017.md](references/immediate-avatar-upload-end-to-end-and-switcher-anchor-collision-20261017.md)
-- Active Lock Coexistence: [references/active-device-lock-coexistence-and-protected-folders-type-safety-20261016.md](references/active-device-lock-coexistence-and-protected-folders-type-safety-20261016.md)
-- Stale Stored Avatar Trap: [references/stale-stored-avatar-trap-and-multi-option-extraction-20261016.md](references/stale-stored-avatar-trap-and-multi-option-extraction-20261016.md)
-- Avatar Hallucination: [references/avatar-hallucination-prevention-and-raw-video-face-extraction.md](references/avatar-hallucination-prevention-and-raw-video-face-extraction.md)
+- Photo Picker 3-Col & Proxy Stall: [doc](references/photo-picker-3col-geometry-and-proxy-stall-rejection-20261017.md)
+- Admin Remote & Worker SSH Boundary: [doc](references/admin-remote-avatar-extraction-and-worker-ssh-boundary-20261017.md)
+- Canonical Avatar Launcher: [doc](references/canonical-single-avatar-launcher-and-anti-ad-hoc-script-20261017.md)
+- Immediate Upload & Switcher Anchor: [doc](references/immediate-avatar-upload-end-to-end-and-switcher-anchor-collision-20261017.md)
+- Active Lock Coexistence: [doc](references/active-device-lock-coexistence-and-protected-folders-type-safety-20261016.md)
+- Stale Stored Avatar Trap: [doc](references/stale-stored-avatar-trap-and-multi-option-extraction-20261016.md)
+- Avatar Hallucination: [doc](references/avatar-hallucination-prevention-and-raw-video-face-extraction.md)
 - Avatar Text-Banner Crop: [references/avatar-text-banner-crop-triage-and-non-empty-coordinator-response-20261016.md](references/avatar-text-banner-crop-triage-and-non-empty-coordinator-response-20261016.md)
 - Cartoon & Mascot: [references/non-human-cartoon-mascot-avatar-and-empty-turn-prevention-20261016.md](references/non-human-cartoon-mascot-avatar-and-empty-turn-prevention-20261016.md) & [references/cartoon-mascot-avatar-extraction-and-mismatched-source-triage-20261016.md](references/cartoon-mascot-avatar-extraction-and-mismatched-source-triage-20261016.md)
 - Haar Cascade False-Positive & Pre-Send Candidate Vision Gate (2026-10-17): [references/haar-cascade-false-positive-and-pre-send-candidate-vision-gate-20261017.md](references/haar-cascade-false-positive-and-pre-send-candidate-vision-gate-20261017.md) & [references/haar-cascade-false-positive-face-and-multi-frame-avatar-verification-20261016.md](references/haar-cascade-false-positive-face-and-multi-frame-avatar-verification-20261016.md)
