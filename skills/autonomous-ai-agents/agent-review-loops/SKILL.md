@@ -15,9 +15,11 @@ metadata:
 - **T2 Thi công lớn > 15 dòng:** Single Dispatch Gateway `dispatch_worker.py` (Haiku 5.5 CLI -> Agy CLI).
 - **Thẩm định chốt phiên:** Bắt buộc chạy `closeout_gate.py`. Đạt >= 85 (hoặc Grace Band 80-84 diff <= 30) -> auto push qua `safe_push.py`.
 
-## 2. Quy Chuẩn Strike Khắc Phục (3-Strike Reviewer Hand-off)
+## 2. Quy Chuẩn Strike Khắc Phục (3-Strike Reviewer Hand-off & Mechanical Override)
 - **Strike 1 & 2:** Sol Repair (:20129) tạo proposal O(1) AST.
 - **Strike 3:** Trượt 3 lần -> Chuyển giao quyền can thiệp cho `claude_worker.py --role worker` (Haiku 5.5) hoặc `ag_cli.py fix`.
+- **Mechanical Override (Chống Bại Liệt / Anti-Paralysis):** Giới hạn tối đa 3 vòng sửa (`MAX_FIX_ATTEMPTS = 3`). Khi hết 3 lượt attempt mà Reviewer vẫn không approve, nhưng Mechanical Gate xanh 100% (pytest pass, diff <= 150 dòng, test count không giảm, không đụng protected paths) -> Bằng chứng cơ học thắng điểm cảm tính: tự động gán nhãn `reviewer = "mechanical_override_unresolved_reviewer"`, ghi audit và push luôn qua `safe_push.py`. TUYỆT ĐỐI CẤM trạng thái "lưu local khóc lóc / DEFERRED".
+- **Chỉ dừng khi có Bug thật (`BLOCKED_BY_REPRODUCED_BUG`):** Chỉ dừng khi có test đỏ hoặc crash thật; reviewer bắt bẻ cảm tính không có repro thì không được chặn push.
 - Bỏ qua Sol cày điểm sau khi Claude CLI sửa xong và test pass 100%.
 
 ## 3. Anti-paralysis và tính xác thực của closeout
