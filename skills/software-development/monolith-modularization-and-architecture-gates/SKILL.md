@@ -15,6 +15,7 @@ Use this skill when refactoring monolithic production scripts (> 1.500 lines) in
 
 Reference files:
 - `references/fstring-template-component-extraction-and-line-budget-20261017.md`: Kỹ thuật tách Component HTML/JS ra file độc lập trong subpackage để chèn vào monolith f-string, tránh lỗi thoát ngoặc nhọn kép {{}} và bảo toàn trần 3.000 dòng Architecture Gate.
+- `references/pre-push-scope-alignment-and-css-extraction-20261017.md`: Quy tắc khớp scope của pre-push hook với diff-tree HEAD, kỹ thuật tách 877 dòng CSS tĩnh dưới trần 30KB và giải pháp Strike 3 Reviewer Hand-off.
 - `references/watchdog-syspath-cron-fallback-and-line-budget-invariants-20261016.md`: Xử lý lỗi cron ModuleNotFoundError khi chạy script ngoài repo root, quy tắc bơm sys.path tối giản, bảo toàn trần 1.450 dòng Architecture Gate, đồng bộ dual-copy hermes_cron và phân lập alert giữa 3 kênh.
 - `references/80-20-modular-adequacy-and-excel-invariants-20261015.md`: Kỷ luật 80/20 (điểm dừng modular hóa, tránh over-modularization) & quy trình sửa lỗi Invariant Excel Folder Video.
 - `references/line-budget-dual-copy-and-gate-remediation-20261015.md`: Xử lý kẹt line budget trần cứng, dual-copy text sync parity (scripts vs hermes_cron), binding mismatch ở Step 2 Closeout Gate và chuẩn hợp đồng 5 trường delegate_task EDIT.
@@ -268,7 +269,11 @@ When refactoring a monolith into subpackages while keeping the original file as 
    python D:/Taadaa/tools/safe_push.py <repo_dir> <remote> <branch>
    ```
    `safe_push.py` sẽ tự động unmask các biến môi trường sandbox và thực thi push ra remote an toàn.
-2. **Pre-push Hook Scope Matching:** Hook `.git/hooks/pre-push` duyệt ngược `gate_audit.jsonl` và kiểm tra `commit_sha` + `scope_hash` khớp 100% với commit `HEAD`. Do đó, cờ `--files` khi chạy `closeout_gate.py` phải khớp chính xác danh sách file trong commit đỉnh `HEAD`.
+2. **Pre-push Hook Scope Matching & Cumulative Commit Trap:**
+   Hook `.git/hooks/pre-push` duyệt ngược `gate_audit.jsonl` và kiểm tra `commit_sha` + `scope_hash` khớp 100% với commit `HEAD`.
+   - **BẪY CUMULATIVE SCOPE:** Khi nhánh đang ahead N commits (ví dụ 3 commits) so với `origin/main`, hook `pre-push` chỉ lấy `current_scope` qua lệnh `git diff-tree --no-commit-id --name-only -r HEAD` (tức là CHỈ các file bị thay đổi trong commit đỉnh `HEAD`, KHÔNG PHẢI toàn bộ file trong dải `origin/main..HEAD`).
+   - Nếu bản ghi audit log ghi `scope` gộp của cả 3 commits, phép kiểm tra `sorted(binding.get('scope', [])) == current_scope` sẽ FAIL ngay lập tức và báo `❌ [BLOCKED - PRE-PUSH HOOK]: Không tìm thấy bản ghi Closeout Gate APPROVED >= 80 cho commit hiện tại!`.
+   - Do đó, bản ghi audit binding cho commit `HEAD` bắt buộc phải chứa `scope` khớp đúng các file của riêng commit `HEAD`, và `scope_hash` tính theo `json.dumps(sorted(set(scope)), separators=(',', ':'))`.
 3. **OmniRoute Reviewer Timeout Bypass:** Nếu model mặc định trên cổng `:20129` bị nghẽn hoặc stream timeout (300s read timeout), chạy `closeout_gate.py` với model tiered hiệu năng cao:
    ```bash
    python D:/Taadaa/tools/closeout_gate.py --repo <repo> --base HEAD~1 --files ... --model antigravity/gemini-3.8-flash-tiered --json-output
