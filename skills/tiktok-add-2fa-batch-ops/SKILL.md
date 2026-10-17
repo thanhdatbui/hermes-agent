@@ -1,15 +1,16 @@
 ---
 name: tiktok-add-2fa-batch-ops
-description: "Chạy batch bật 2FA TikTok bằng repo D:\\Taadaa\\tiktok-add-bao-mat-f2a — preflight chọn máy, lệnh chạy từng máy, quy tắc rotate pass, audit/backfill pass workbook↔artifact, verify sau chạy, pitfalls đã vá (2026-08-25)."
+description: "Use when running batch 2FA on TikTok farm. Chạy batch 2FA repo tiktok-add-bao-mat-f2a, preflight, rotate pass, verify sau chạy."
 ---
 
 # TikTok Add 2FA Batch Ops (repo tiktok-add-bao-mat-f2a)
 
 References:
-- `references/immediate-write-through-retry-and-closeout-discipline-20261015.md` — **[15/10/2026]** Write-through 2FA vào Excel, cấm ngâm journal; retry & drain; Sol Reviewer rubric; cạm bẫy CRLF/LF Windows.
-- `references/night-rolling-avatar-2fa-and-cache-clean-arbitration-20261015.md` — **[15/10/2026]** Cuốn chiếu đêm tới 05:15 sáng, đệm dừng 04:45, no_agent exitcode=0, max-workers=15, né dọn cache 04:00, báo 6H.
-- `references/workbook-lock-contention-and-journal-recovery-20261014.md` — Nghẽn lock workbook 40 workers; cứu hộ journal DPAPI; 2 tầng retry & drain.
-- `references/cross-machine-account-rebalance-preflight-and-2fa.md` — Nick dư trần 8 acc, adapter `swipe()`, bẫy `ACCOUNT_NOT_IN_SWITCHER`.
+- `references/night-2fa-watchdog-skip-reasons-and-column-drift-audit-20261018.md` — **[18/10/2026]** Chẩn đoán watchdog skip (dedup 1 máy & lock) & bẫy lệch cột Admin.
+- `references/immediate-write-through-retry-and-closeout-discipline-20261015.md` — Write-through 2FA Excel, cấm ngâm journal.
+- `references/night-rolling-avatar-2fa-and-cache-clean-arbitration-20261015.md` — Cuốn chiếu đêm tới 05:15, né dọn cache.
+- `references/workbook-lock-contention-and-journal-recovery-20261014.md` — Nghẽn lock workbook; cứu hộ journal DPAPI.
+- `references/cross-machine-account-rebalance-preflight-and-2fa.md` — Nick dư trần 8 acc, adapter `swipe()`.
 - `references/dual-cluster-email-unlink-and-ssh-encoding-pitfalls-20261010.md` — TikTok v46+ chặn gỡ Email, Mojibake SSH PowerShell.
 - `references/auth-blocked-fake-password-reset-and-2fa-proof-discipline-20261010.md` — Cứu nick pass sai (`AUTH_BLOCKED`), nút song ngữ `UI_TARGET_AMBIGUOUS:Next:0`, nghiệm thu 2FA.nh Bảo mật đích (cấm gửi Switcher).
 - `references/night-2fa-ca4-session-interlock-and-schedule-gate.md` — **[MỚI 10/10/2026]** Khắc phục xung đột Device Lock giữa 2FA đêm và Ca 4 Phiên 2 (`is_ca4_finished` qua `feed_session_reported.json` + khung giờ `02:45 - 04:50`).
