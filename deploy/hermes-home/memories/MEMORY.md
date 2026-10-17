@@ -1,6 +1,6 @@
 Chu kỳ 4d: Parity 96h (N1 lẻ, N2 chẵn), N3(R7,8), N4(dưỡng 0fl+up). Starve 108h. CẤM xóa cooldown. Dưỡng: healing_selector; S2 bám S1. 3 ca (6,12,18h). Đêm 21h30-5h15 né cache 4h cho 2FA/Ava; báo 6h cấm báo ảo.
 §
-Follow: P1/P2 trần ca; dò +2/ca (max 30); dính nhả vào tù, ra lùi 4 sàn 15. 3 cohort; non <10fl chỉ dưỡng. Nhả do nick chưa khỏe (Action Block cấp account), CẤM né anchor. Telegram báo KPI+exception; chi tiết UID/quota tra cứu ở DB & Dashboard :1905.
+Follow: P1/P2 trần ca; dò +2/ca (max 30); dính nhả vào tù, ra lùi 4 sàn 15. 3 cohort; non <10fl chỉ dưỡng. Nhả do nick chưa khỏe (Action Block), cấm né anchor. Báo Telegram KPI+exception; tra DB & :1905.
 §
 Hotmail: CẤM mail cá nhân; sinh @fviainboxes.com đọc OTP API. Write-Through: ghi ngay Excel Cột 3,4,5 & G farm. Dual-farm ~1280 acc.
 §
@@ -16,7 +16,7 @@ Closeout: Grace 80-84 (diff<=30, pass>=1 test, 0 fail/err, ko lỗi logic/sec) a
 §
 Admin Remote (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; OpenCV venv-core024; launcher host admin qua admin_ssh.py; Haar cascade dễ ảo, soi mắt trước nạp ava.
 §
-(7) BỎ ViChanger, proxy Wi-Fi Singbox (cấm bật GanProxyWatcherTray).
+BỎ HẾT ViChanger, 100% Wi-Fi Singbox 192.168.110.2:200xx, cấm bật GanProxyWatcherTray; post-reboot kẹt proxy readiness dùng mark_proxy_state.
 §
 Canary phone farm bắt buộc tối thiểu 3-4 máy/màn hình khác nhau (người lạ mở DM, chính chủ/sửa hồ sơ, feed lướt video, popup thử thách); cấm canary trên đúng 1 máy đơn độc.
 §

@@ -630,6 +630,7 @@ VPN fail on a MAPPED machine → (1) GanProxy reassign (`proxy_pending` + wait `
 
 
 ## References
+- `references/tiktok-upload-milestone-popup-and-camera-live-fix.md` — **[MỚI 17/10/2026]** Khắc phục lỗi popup milestone "Tổng lượt thích" che Switcher profile, thoát màn hình Camera LIVE bằng nút [X] (60, 140) sau khi Post video, và cảnh báo cấm bật lại ViChanger/Watcher khi runner soft-reboot.
 - `references/aruba-iap-40-device-allocation-and-anti-ssid-failover.md` — **[MỚI 09/10/2026 — USER MANDATE]** Kỷ luật cấm tuyệt đối fallback sang SSID ngoài ('Dat') hoặc đảo máy sang AP khác (phá vỡ quy hoạch 40 máy/AP), kiến trúc Aruba IAP Master (.251) vs Slave CLI, xử lý triệt để bẫy Android 8 `NETWORK_SELECTION_DISABLED_ASSOCIATION_REJECTION` qua UI Manage Networks, và bảng chuẩn SSID/Pass farm (kibe 1: 23102025 vs kibe 2: 19051995).
 - `references/admin-pc-rdp-stall-and-rogue-dhcp-rescue.md` — **[MỚI 09/10/2026]** Cứu hộ lỗi RDP Admin PC treo do Aruba AP cướp DHCP (192.168.10.77), phân tích nghẽn định tuyến bất đối xứng (Asymmetric Routing) với Ruijie, và quy trình zero-touch jump-host tunnel qua MikroTik REST API khóa IP tĩnh bất đồng bộ (wmic non-blocking).
 - `references/strict-wifi-partitioning-and-association-rejection-heal.md` — **[MỚI 09/10/2026 — USER CORRECTION]** CẤM TUYỆT ĐỐI fallback sang SSID vãng lai ("Dat") tránh lệch subnet và nguy cơ an toàn IP; bảng quy hoạch cứng 4 cụm SSID (kibe 1: 23102025, kibe 2/admin 1/admin 2: 19051995); cơ chế bẻ khóa bẫy ASSOCIATION_REJECTION trên Android 8 qua adb-join-wifi.

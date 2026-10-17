@@ -304,6 +304,8 @@ Use `references/avatar-only-scope-and-false-policy-refusal.md` for the incident-
 
 ## References
 
+- `references/mediastore-clutter-and-avatar-crop-hallucination-prevention-20261017.md` — **[MỚI 17/10/2026]** Bài học bẫy ảo giác thị giác & MediaStore Clutter khi nạp avatar (User phản ứng gay gắt vì chọn nhầm ảnh mũ bảo hiểm màu hồng thay vì người tập Yoga): Quy tắc dọn sạch MediaStore index trước khi nạp file mới, cấm mô tả dựa trên kỳ vọng chủ quan, và bắt buộc đối soát Mean BGR / OpenCV Face Detection trên vùng crop trước khi bấm Lưu hoặc gửi ảnh nghiệm thu.
+
 - `references/avatar-standardization-device-lock-and-visual-evidence-20261016.md` — **[MỚI 16/10/2026]** Kỷ luật bằng chứng thị giác khi chuẩn hóa 3 món (Ava-Hashtag-Pin): dựng preview khung tròn, soi mắt trước khi gửi thẻ MEDIA, và xử lý an toàn khi runner gặp SKIPPED_LOCKED do tiến trình batch 2FA ban đêm giữ lock (cấm cướp lock, cập nhật Excel PENDING và hàng đợi SQLite bàn giao watchdog).
 - `references/multi-machine-canary-matrix-and-feed-top-nav-ocr-trap-20261016.md` — **[MỚI 16/10/2026]** Bài học bẫy Canary đơn máy (User chất vấn *"Sao canary có 1 máy thì lấy gì đảm bảo máy khác k lỗi"*): Nhờ mở rộng Canary đa máy đã phát hiện lỗi OCR nhận nhầm tab bar "Bạn bè" trên màn hình Feed ($y_1=141$) thành followed; quy chuẩn ma trận Canary tối thiểu 4 góc nhìn (Profile mở DM, Profile chính chủ, Feed, Edit profile) và ngưỡng $y_{min}=200$.
 - `references/cronjob-no-agent-media-delivery-and-path-normalization-20261016.md` — **[MỚI 16/10/2026]** Bẫy cronjob no_agent xuất text đường dẫn `Ảnh: D:\...` thay vì thẻ `MEDIA:<posix_path>` khiến Telegram không gửi ảnh native photo, và quy chuẩn chuẩn hóa đường dẫn gạch xuôi POSIX `/`.
