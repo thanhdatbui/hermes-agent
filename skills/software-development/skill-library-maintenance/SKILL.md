@@ -19,6 +19,7 @@ References:
 - `references/pareto-80-20-curation-and-stopping-rules.md` — Nguyên tắc 80/20 trong điều phối và điểm dừng dứt khoát khi hệ thống đã đạt chuẩn kiến trúc & xanh 100%, chống over-engineering.
 - `references/surgery-patterns.md` — Pattern one-shot khôi phục và cắt tỉa file an toàn.
 - `references/runtime-guard-allowlist-edits.md` — Quy trình điều phối sửa guard/allowlist qua Claude CLI: định vị đúng file runtime plugin thay vì hook workspace, hợp đồng 1 file, kiểm chứng độc lập hai chiều (positive/negative), và cảnh báo reload cache.
+- `references/prompt-pruning-and-skill-context-bloat-audit.md` — Ma trận đối soát cắt tỉa prompt Markdown khi đã có Gate cơ học (AST / Pre-Tool hooks) và quy chuẩn dọn dẹp các skill khổng lồ (>100KB) tránh phình context session.
 
 ## Session-derived improvement: runtime guard edits
 
