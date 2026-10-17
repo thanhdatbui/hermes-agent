@@ -49,7 +49,28 @@ Khi Coordinator hết ngân sách ghi file T1 (> 5 files hoặc > 200 dòng) và
 
 ---
 
-## 4. Vá Lỗi Subprocess UnicodeDecodeError Trên Windows (`admin_ssh.py`)
+## 4. Vá Lỗi Subprocess UnicodeDecodeError & UnicodeEncodeError Trên Windows (`admin_ssh.py` & Runner Wrappers)
 - Khi gọi SSH hoặc PowerShell trên Windows qua `subprocess.run(text=True)`, stdout console trả về các ký tự ANSI/CP1252 ngoài bảng mã UTF-8 dẫn đến crash `UnicodeDecodeError: 'utf-8' codec can't decode byte ...`.
 - Luôn chỉ định rõ `encoding="utf-8", errors="replace"` trong `subprocess.run()` để đảm bảo luồng đọc an toàn tuyệt đối.
+- **Bẫy `UnicodeEncodeError` trên console Windows (`cp1252`)**:
+  - Khi script in stdout/stderr chứa ký tự unicode không chuẩn (ký tự `\ufffd` hoặc tiếng Việt có dấu) trên môi trường console Windows cp1252, lệnh `print()` sẽ crash ngay lập tức.
+  - **Khắc phục chuẩn hóa**: Luôn thêm khối reconfigure ở đầu mọi script runner wrapper:
+    ```python
+    import sys
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+    ```
+
+---
+
+## 5. Đồng Bộ Package Phụ Trợ Cho TikTok Workflow Tránh Lỗi Mất Layout
+- **Triệu chứng lỗi**: Runner chạy mở profile thành công nhưng không tìm thấy nút sửa hồ sơ / avatar, log ghi nhận:
+  `[ERROR] tiktok_workflow.state_machine: [PROFILE_EDIT] Layout resolution error: No module named 'tiktok_workflow.profile_layouts'`
+  dẫn đến lỗi chuỗi `[AVATAR_EDIT_OPEN_FAILED] ENSURE_AVATAR: Màn Sửa hồ sơ không mở được`.
+- **Nguyên nhân**: Thư mục `scripts/tiktok_workflow/profile_layouts/` mới được cập nhật trên máy local nhưng chưa được đồng bộ sang máy Admin-PC.
+- **Quy tắc đồng bộ**:
+  - Khi đồng bộ workflow bằng script qua SSH, bắt buộc phải đảm bảo tạo thư mục đích trước (`os.makedirs(os.path.dirname(dst), exist_ok=True)`).
+  - Đồng bộ toàn bộ các profile layouts (`__init__.py`, `base.py`, `classic_text.py`, `right_pencil.py`, `share_profile.py`, `top_left_pencil.py`) sang `D:/Taadaa/Tiktok-video/scripts/tiktok_workflow/profile_layouts/` trên Admin-PC trước khi chạy runner.
+
 

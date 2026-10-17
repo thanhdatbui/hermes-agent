@@ -16,7 +16,7 @@ Closeout: Grace 80-84 (diff<=30, pass>=1 test, 0 fail/err, ko lỗi logic/sec) a
 §
 Admin Remote (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; admin_ssh.py.
 §
-BỎ HẾT ViChanger, 100% Wi-Fi Singbox 192.168.110.2:200xx, CẤM bật GanProxyWatcherTray/gan_proxy; post-reboot kẹt proxy readiness dùng mark_proxy_state; cấm gán VPN app lên farm.
+BỎ HẾT ViChanger, 100% Singbox 192.168.110.2:200xx, CẤM GanProxyWatcherTray/gan_proxy/VPN app; post-reboot kẹt proxy dùng mark_proxy_state. Lệch/thiếu nick tự gọi tiktok_login_v1.py <STT> --email <ID> --ss nạp bù cấm hỏi thừa; ADB treo 10s: adb kill-server && start-server.
 §
 Canary farm: tối thiểu 3-4 màn/máy khác nhau (DM, sửa hồ sơ, feed, popup thử thách); cấm canary trên 1 máy đơn độc.
 §
