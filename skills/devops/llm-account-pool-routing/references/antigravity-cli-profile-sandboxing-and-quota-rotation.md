@@ -209,6 +209,10 @@ Sau khi OmniRoute thực hiện exchange OAuth code và lưu vào `storage.sqlit
      - Ghi `oauth_creds.json` và `google_accounts.json`
      - Sao chép `settings.json`, `state.json`, `projects.json` mẫu từ `acc_01`
      - Ghi nhận `profile_name`, đường dẫn và Proxy 4G vào `profiles_config.json`
+   - **INVARIANT BẮT BUỘC (GPM Proxy 1-1 Alignment):**
+     * Tham số `[raw_proxy]` BẮT BUỘC phải lấy chính xác từ trường `raw_proxy` của profile tương ứng trong GPMLogin (qua GPM API `:19995`).
+     * TUYỆT ĐỐI CẤM gán proxy tuần tự theo số thứ tự (`acc_01 -> mobi1`, `acc_02 -> mobi2`...). Lệch proxy so với GPM làm đổi IP mạng thường dùng của tài khoản, kích hoạt rào cản Google checkpoint `VALIDATION_REQUIRED` / 403.
+     * Quy mô mở rộng: Toàn bộ 21 profile Gemini Pro (`acc_01` .. `acc_21`) được unpack đồng bộ từ OmniRoute database mang đúng proxy 4G Mobi tương ứng của GPM.
 3. **Chỉ định Profile cụ thể khi Kiểm thử (`--profile`):**
    ```bash
    python D:/Taadaa/tools/ag_cli.py ask "Test prompt" --profile acc_02

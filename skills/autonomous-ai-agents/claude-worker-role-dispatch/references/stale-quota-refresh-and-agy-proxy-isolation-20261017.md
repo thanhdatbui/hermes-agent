@@ -29,65 +29,27 @@ Tạo cron job chạy mỗi 30 phút (`refresh-claude-quota-watchdog`):
 
 ---
 
-# Quy chuẩn cấu hình Antigravity Profile Pool (Proxy 4G 1-1 Invariant)
+# Quy chuẩn cấu hình Antigravity Profile Pool (Proxy 4G 1-1 GPM Invariant)
 
 ## 1. Hiện tượng treo socket khi dùng Direct IP (`proxy: null`)
 - Khi profile Antigravity chạy qua IP mạng trực tiếp của host (`"proxy": null`), Google Antigravity áp dụng chính sách kiểm duyệt TLS handshake hoặc bóp băng thông nghiêm ngặt.
 - Điều này khiến kết nối Named Pipe hoặc HTTP socket bị ngâm vô tận (Hang Socket 50s–60s) dẫn tới `[TIMEOUT] Antigravity CLI vượt quá thời gian chờ (60s)`.
 
-## 2. Quy chuẩn gán Proxy 4G độc lập trong `profiles_config.json`
-Toàn bộ các profile trong `D:/Taadaa/agy_profiles/profiles_config.json` **BẮT BUỘC gán Proxy 4G Mobi riêng biệt 1-1**:
-```json
-{
-  "profiles": [
-    {
-      "name": "acc_01",
-      "path": "D:/Taadaa/agy_profiles/acc_01",
-      "proxy": "http://mobi1:TaadaaMobi%232026%21@test.taadaa.click:5101",
-      "enabled": true
-    },
-    {
-      "name": "acc_02",
-      "path": "D:/Taadaa/agy_profiles/acc_02",
-      "proxy": "http://mobi2:TaadaaMobi%232026%21@test.taadaa.click:5102",
-      "enabled": true
-    },
-    {
-      "name": "acc_03",
-      "path": "D:/Taadaa/agy_profiles/acc_03",
-      "proxy": "http://mobi3:TaadaaMobi%232026%21@test.taadaa.click:5103",
-      "enabled": true
-    },
-    {
-      "name": "acc_04",
-      "path": "D:/Taadaa/agy_profiles/acc_04",
-      "proxy": "http://mobi4:TaadaaMobi%232026%21@test.taadaa.click:5104",
-      "enabled": true
-    },
-    {
-      "name": "acc_05",
-      "path": "D:/Taadaa/agy_profiles/acc_05",
-      "proxy": "http://mobi5:TaadaaMobi%232026%21@test.taadaa.click:5105",
-      "enabled": true
-    },
-    {
-      "name": "acc_06",
-      "path": "D:/Taadaa/agy_profiles/acc_06",
-      "proxy": "http://mobi6:TaadaaMobi%232026%21@test.taadaa.click:5106",
-      "enabled": true
-    },
-    {
-      "name": "acc_07",
-      "path": "D:/Taadaa/agy_profiles/acc_07",
-      "proxy": "http://mobi7:TaadaaMobi%232026%21@test.taadaa.click:5107",
-      "enabled": true
-    }
-  ]
-}
-```
+## 2. INVARIANT TỐI CAO: BẮT BUỘC MAP 1-1 PROXY THEO PROFILE GPM (CẤM GÁN TUẦN TỰ MÙ)
+- Mỗi profile Google/Gemini trong sandbox `agy_profiles/acc_XX` BẮT BUỘC phải map đúng 1-1 với proxy của chính profile GPM đó (lấy từ GPM API `http://127.0.0.1:19995/api/v3/profiles` hoặc `master_gmail_manager.xlsx`).
+- **CẤM TUYỆT ĐỐI** tự gán proxy tuần tự theo số thứ tự (như `acc_01 -> mobi1`, `acc_02 -> mobi2`, `acc_03 -> mobi3`...). Lệch proxy so với GPM sẽ phá vỡ dấu vân tay IP mạng của tài khoản, kích hoạt cơ chế phòng vệ của Google (`VALIDATION_REQUIRED` / 403 / verification checkpoint).
+- Toàn bộ 21 profile (`acc_01` .. `acc_21`) được đồng bộ bằng `unpack_omni_connection.py <email> <profile_name> <raw_proxy_từ_GPM>`:
+  * `acc_01`: `jinrakal@gmail.com` -> `test.taadaa.click:5101` (`mobi1`)
+  * `acc_02`: `marcusephillips52sns@gmail.com` (GPM M41) -> `test.taadaa.click:5103` (`mobi3`)
+  * `acc_03`: `ninhvan04061999@gmail.com` (GPM 30) -> `test.taadaa.click:5136` (`mobi36`)
+  * `acc_04`: `dokieu04092004@gmail.com` (GPM 09) -> `test.taadaa.click:5111` (`mobi11`)
+  * `acc_05`: `dinhlan24072000@gmail.com` (GPM M04) -> `test.taadaa.click:5104` (`mobi4`)
+  * `acc_06`: `minhan2745@gmail.com` (GPM M08) -> `test.taadaa.click:5108` (`mobi8`)
+  * `acc_07`: `dangmy30011996@gmail.com` (GPM M12) -> `test.taadaa.click:5114` (`mobi14`)
+  * `acc_08` .. `acc_21`: 14 tài khoản Pro nạp bổ sung từ OmniRoute, map 1-1 với dải port 5138, 5101, 5102, 5116, 5117, 5118, 5121..5134 theo đúng GPM profile.
 
 ## 3. Kiểm tra trạng thái Pool
 ```bash
 python D:/Taadaa/tools/ag_cli.py pool-status
 ```
-Đảm bảo toàn bộ profile hiển thị trạng thái `READY` và đi qua đúng proxy Mobi được phân công.
+Đảm bảo toàn bộ 21 profiles hiển thị trạng thái `READY` và đi qua đúng proxy Mobi đã map theo GPM.
