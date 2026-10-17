@@ -10,7 +10,7 @@ GPM: max 5 wkr; nạp pool web (0đ); re-login văng max 1 lần/ngày (max_prox
 §
 Stale Upload: xóa draft. Revert flop: TikWM tải CDN. Popup 'Ghim/Riêng tư' KHÔNG PHẢI publish proof. Cào: max 60.
 §
-Closeout: Grace 80-84. CẤM push trước gate; rớt gate remediate tới xanh. Hook lỗi GIT_EXTERNAL_DIFF -> Staged Gate (git add -> closeout_gate --base HEAD). CẤM xin lỗi suông/văn mẫu; sai là sửa dứt điểm kèm test/evidence. Cấm tin mù status tool. Claude >= 85%: tự sửa O(1). GW chỉ fallback HTTP (:20128/:20129). TikTok: LIFO pin.
+Closeout: Grace 80-84 auto-push (diff<=30, test xanh). CẤM cày điểm. Pre-closeout: target đã trên origin hoặc clean -> DỪNG (ALREADY_PUSHED), CẤM review HEAD~1 session khác. CẤM commit -a gom rác; CẤM over-engineer (ACL/sys hook); cấm khóc lóc/dừng giữa chừng. TikTok: LIFO pin.
 §
 Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; admin_ssh.py. Cron: phase9-runner nuôi, feed_session_watchdog giám sát 15p.
 §

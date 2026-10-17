@@ -209,6 +209,22 @@ For Central Controller + remote farm clusters, a local `Path.is_file()` result i
    - Hành vi gọi `clarify` để hỏi "chọn phương án nào", "có tiếp tục không", "mapping nào đúng" bị coi là đùn đẩy trách nhiệm và gây lỗi treo cứng phiên (orphan recovery hang) khiến User bức xúc ("Lồn mẹ mày lí do treo").
    - Coordinator có toàn quyền tự chủ theo ngân sách L0 (Retry transient), L1 (Re-dispatch), L2 (Emergency Surgery). Nếu mâu thuẫn dữ liệu không thể xử lý, chuyển thẳng sang L3 BLOCKED kèm bằng chứng thực tế, tuyệt đối KHÔNG gọi `clarify` làm tê liệt quy trình.
 
+## Claude-locked design → implementation → approval loop
+
+When the Operator explicitly orders: “call Claude CLI to discuss and lock the approach; then have it design while you implement until it approves,” use a bounded slice loop rather than treating the instruction as a conversational preference:
+
+1. **Claude planner lock:** obtain a design containing rule IDs, trust boundaries, exact interfaces, positive/negative vectors, state transitions, next actions, and acceptance tests. A prose design without a finite contract is not a build authorization.
+2. **Patch contract:** derive one thin slice with absolute target files, unique anchors/APIs, non-goals, line/file budget, and one focused offline test. Do not start an open-ended “build the whole guard system” worker task.
+3. **Implementation:** use the mandated single worker gateway for code edits; snapshot target hashes and keep the slice isolated. Do not let prompt text be the enforcement layer being built.
+4. **Claude reviewer:** review the actual diff, focused output, and contract. Require an explicit APPROVED/REJECTED result bound to the current target hash. Worker self-report is not acceptance evidence.
+5. **REJECTED path:** classify the finding, create a smaller changed contract, implement, retest, and re-review. Never replay the same prompt. Transient CLI failures get bounded retry; structural failures narrow the slice.
+6. **Anti-paralysis:** a denial must expose a deterministic `next_action` such as `repair`, `retry`, `park_and_release`, or `switch_task`. The coordinator follows reversible next actions automatically. “Ask Operator” is not a runtime state; only real business decisions, missing credentials, paid/destructive actions, or required standing grants go to the Operator.
+7. **Park without freezing:** after the bounded strike ladder is exhausted, release locks, write an evidence ticket, quarantine only the affected lane, and continue independent queued work. Never declare DONE from a prompt, exit code, or worker claim alone.
+
+The durable rule is: **prompts specify intent; guards, wrappers, executors, receipts, hashes, ACLs, and tests enforce behavior**. Every new rule should ship with at least one allow vector, one deny vector, and a deterministic next action.
+
+Reference: `references/claude-design-build-review-loop.md`.
+
 ## Kỷ luật thực thi ("Làm cho tao" — Proactiveness Discipline)
 
 0. **Chống Khai Láo Trạng Thái & Bắt Buộc Await Khi Có Thao Tác Vật Lý (Premature Resolution Trap):**

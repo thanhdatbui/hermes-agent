@@ -1,7 +1,7 @@
 ---
 name: agent-review-loops
 description: "Điều phối coding review đến APPROVED."
-version: 1.2.3
+version: 1.2.4
 metadata:
   hermes:
     tags: [orchestration, codex, claude, opencode, review-loop, preflight, live-validation]
@@ -20,7 +20,17 @@ metadata:
 - **Strike 3:** Trượt 3 lần -> Chuyển giao quyền can thiệp cho `claude_worker.py --role worker` (Haiku 5.5) hoặc `ag_cli.py fix`.
 - Bỏ qua Sol cày điểm sau khi Claude CLI sửa xong và test pass 100%.
 
-## 3. Tài Liệu Tham Khảo (References)
+## 3. Anti-paralysis và tính xác thực của closeout
+
+- Không được coi `exit code 0`, điểm reviewer, receipt, hoặc self-report là bằng chứng độc lập. Chỉ claim `APPROVED`, `PUSHED`, hoặc `DONE` khi artifact hiện tại khớp đúng HEAD/scope và các focused test, canary, evidence gate bắt buộc đều đã được kiểm tra.
+- Không tạo nhánh "giữ local rồi kết thúc" sau khi mechanical gate đã xanh. Quy trình phải có kết thúc hữu hạn: remediation có giới hạn, chạy lại mechanical gate, rồi commit/push qua wrapper đã kiểm soát. Nếu gate đỏ, báo đúng lỗi tái hiện được và đường dẫn bằng chứng; không bịa Grace, không tự hạ ngưỡng, không biến nhận xét reviewer thành lỗi.
+- Grace Band chỉ được dùng khi policy hiện hành và audit artifact trực tiếp cho phép; không suy ra từ biên bản cũ hoặc lời kể trong phiên. Grace không thay thế test, canary, evidence, scope binding, hay P0/P1 gate.
+- Khi user yêu cầu Claude CLI review, gọi đúng wrapper/role, yêu cầu verdict cuối rõ ràng, và đối chiếu verdict với diff hiện tại. Claude trả exit 0 nhưng thiếu verdict hoặc review nhầm scope vẫn là chưa duyệt.
+- Giới hạn review/remediation phải hữu hạn. Sau mỗi lần rớt, phân loại transient/structural/business; chỉ sửa finding có bằng chứng cụ thể, không score-chasing vô hạn. Reviewer chỉ được chặn khi chỉ ra repro/test đỏ/crash hoặc vi phạm gate có artifact, không phải chỉ bằng câu "nên bổ sung".
+- Với UI/farm, receipt phải gắn run hiện tại và ảnh phải được soi/OCR trước claim thành công. Popup hoặc từ khóa âm phải đi qua handler tự phục hồi có giới hạn; không gửi ảnh mù và không chạy vòng lặp UI vô hạn.
+
+## 4. Tài Liệu Tham Khảo (References)
 - Sol Closeout Gate Lifecycle: [`references/sol-closeout-gate-lifecycle.md`](references/sol-closeout-gate-lifecycle.md)
 - Anti-Premature Block: [`references/anti-premature-block-in-closeout.md`](references/anti-premature-block-in-closeout.md)
 - Session Close Remediation Discipline: [`references/session-close-remediation-discipline.md`](references/session-close-remediation-discipline.md)
+- Evidence-first anti-paralysis closeout: [`references/evidence-first-anti-paralysis-closeout.md`](references/evidence-first-anti-paralysis-closeout.md)
