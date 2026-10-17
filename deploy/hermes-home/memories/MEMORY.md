@@ -12,7 +12,7 @@ GPM: max 5 wkr; nạp pool chatgpt/gemini-web (0đ quota, tự bóc cookie qua C
 §
 Stale Upload: xóa draft (_delete_all_profile_drafts). Revert flop: TikWM tải CDN, xóa render. Cào: max 60 clip.
 §
-Closeout: Grace 80-84 (diff<=30, pass>=1 test, 0 fail/err) auto-push (hook THRESHOLD=80). Remediation: Sol Repair(1) -> Sol Worker(2) -> Haiku(3, cấm Sonnet). Test pass mà bị dìm: CẤM L3 BLOCKED, safe_push --owner-override push luôn.
+Closeout: Grace 80-84 (diff<=30, pass>=1 test, 0 fail/err) auto-push. Remediation: Sol Repair(1) -> Sol Worker(2) -> Haiku(3). User ép: safe_push --owner-override.
 §
 Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; admin_ssh.py. Cron: phase9-runner nuôi, feed_session_watchdog giám sát 15p.
 §
@@ -20,4 +20,6 @@ Singbox :200xx, CẤM VPN app. Wi-Fi: 5GHz Aruba, cấm tăng tx-power. 6Mbps id
 §
 Canary farm: tối thiểu 3-4 màn/máy khác nhau (DM, sửa hồ sơ, feed, popup thử thách); cấm canary trên 1 máy đơn độc.
 §
-Ava: ngũ quan rõ, cấm kính/đỏ/cụt đầu. Trích clip gốc. WinRT OCR lọc sạch text/sticker ('20 lần', text vụn), gửi MEDIA: duyệt mắt. Dọn .thumbnails+Camera/*; MediaStore 1 ảnh. Picker radio ô 0 (215, 276), ô 1 (483, 276). Bấm Lưu crop Profile so BGR diff > 15 nghiệm thu. TopLeftPencil l=10..45 w,h<=130.
+Ava: ngũ quan rõ, trích clip gốc. WinRT OCR lọc sạch text/sticker, gửi MEDIA:. Dọn .thumbnails+Camera/*; MediaStore 1 ảnh. Picker radio ô 0 (215, 276), ô 1 (483, 276). Lưu crop BGR diff > 15 nghiệm thu. TopLeftPencil l=10..45 w,h<=130.
+§
+Reboot 3 ca (05:20, 11:20, 17:20), né ca chạy. Game Guard: CẤM reboot khi TFT in-match (LoL/TFTShipping) hoặc War3 mở (War3/w3l) trên Kibe+Admin.
