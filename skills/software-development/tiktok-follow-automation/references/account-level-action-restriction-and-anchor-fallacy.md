@@ -60,7 +60,7 @@ Khi Operator cần kiểm tra sâu về từng nick trên Dashboard (không ph�
     }
     ```
 - **Giao diện Modal Popup (`followDetailModal`):**
-  - Kích hoạt qua nút icon `📜` đặt cạnh tên nick trên mỗi thẻ máy (`renderFhCards`) và mỗi dòng bảng ma trận (`renderFhMatrix`).
-  - Gồm 4 thẻ chỉ số Quota: `Nhóm Cohort`, `Trần Đã Chứng Minh (proven)`, `Trần Dò Ca Tới (active)`, `Mức Gãy Gần Nhất (last_failed)`.
-  - Banner trạng thái: Thể hiện rõ đang Khỏe, Hồi phục hay Cooldown kèm ngày mãn hạn.
+  - Kích hoạt qua nút icon `🔍` (hoặc `📜`) đặt cạnh tên nick trên mỗi thẻ máy (`renderFhCards`) và mỗi dòng bảng ma trận (`renderFhMatrix`).
+  - Gồm 4 thẻ chỉ số Quota: `Nhóm Cohort` (Veteran/Mid/Rookie), `Trần Đã Chứng Minh (proven)`, `Trần Dò Ca Tới (active)`, `Mức Gãy Gần Nhất (last_failed)`.
+  - Banner trạng thái: Thể hiện rõ đang Khỏe, Hồi phục hay Cooldown kèm streak lỗi và ngày giờ mãn hạn.
   - Bảng cuộn danh sách UID: Có ô tìm kiếm/lọc nhanh UID con đã bấm, hiển thị rõ thời gian thực thi (timestamp) để đối soát khi có sự cố.

@@ -18,21 +18,25 @@ Hướng dẫn đối soát và xử lý khi nhận cảnh báo tiến độ upl
 ---
 
 ## 2. Quy trình Đối soát Nhanh O(1) (Instant Sanity Check)
-1. **Kiểm tra mtime và MAX(timestamp) giữa 2 DB:**
+1. **Chạy trực tiếp canonical audit script (CẤM dùng `python -c` subprocess):**
+   * Guard Coordinator chặn `python -c` có subprocess/file cache. Chạy thẳng lệnh CLI có sẵn:
    ```bash
-   python -c "
-   import sqlite3
-   for p, lbl in [('D:/OneDrive/TaadaaData/tiktok_tracker.db', 'OneDrive'), ('D:/Taadaa/data/tiktok_tracker.db', 'Runtime')]:
-       c = sqlite3.connect(p).cursor()
-       c.execute('SELECT MAX(timestamp) FROM snapshots')
-       print(f'{lbl}: {c.fetchone()[0]}')
-   "
+   python D:/Taadaa/tools/audit_stale_upload_accounts.py --days 7 --critical-days 14
    ```
-2. **Chạy audit cưỡng bức qua DB runtime:**
+   *(Lưu ý: Script trả exit code 1 khi phát hiện có tài khoản stale >14d — đây là exit contract cảnh báo hợp lệ, stdout chứa toàn bộ báo cáo tóm tắt sạch sẽ).*
+   * Nếu cần xuất dữ liệu thô:
    ```bash
-   python D:/Taadaa/tools/audit_stale_upload_accounts.py --db D:/Taadaa/data/tiktok_tracker.db --days 7 --critical-days 14
+   python D:/Taadaa/tools/audit_stale_upload_accounts.py --days 7 --critical-days 14 --json
    ```
-   So sánh kết quả để lấy số liệu thực tế ngày hôm nay (Active, Stale, Zero-video).
+2. **Kiểm tra hiện trường phần cứng máy nghi ngờ:**
+   * Dùng lệnh chuyên dụng O(1):
+   ```bash
+   python D:/Taadaa/tools/inspect_machine.py <N>
+   ```
+   * Hoặc kiểm tra danh sách kết nối USB:
+   ```bash
+   adb devices
+   ```
 
 ---
 

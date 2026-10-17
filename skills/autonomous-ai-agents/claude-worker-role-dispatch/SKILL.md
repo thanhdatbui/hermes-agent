@@ -153,6 +153,7 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
 
 See `references/sol-web-autonomous-fallback-worker-20261017.md` for Sol Web Autonomous Fallback Worker (:20129) architecture, atomic patching, and worker reporting vs session-close boundaries (17/10/2026).
 See `references/strike-3-reviewer-handoff-and-telemetry-remediation-20261017.md` for Strike 3 Reviewer Hand-off protocol and telemetry/error handling remediation to overcome Closeout Gate 84/100 threshold (17/10/2026).
+See `references/strike-3-background-dispatch-timeout-invariant-20261017.md` for Strike 3 Reviewer Hand-off background execution and avoiding foreground timeout traps (17/10/2026).
 See `references/strike-3-claude-turns-cap-and-candidate-ranking-20261016.md` for Strike 3 Reviewer Hand-off turns cap allocation (--max-turns 15) and candidate ranking invariants (16/10/2026).
 See `references/mechanical-gate-indentation-and-git-diff-trap-20261015.md` for Mechanical Gate indentation bug, regex boundary decay trap, and GIT_EXTERNAL_DIFF environment variable fix (15/10/2026).
 See `references/mechanical-gate-pitfalls-and-anti-paralysis-discipline-20261015.md` for Mechanical Gate indentation pitfalls, Strike-3 Reviewer Hand-off, and the Anti-Paralysis Protocol (15/10/2026).

@@ -5,9 +5,8 @@ description: Use when running avatar-only jobs on TikTok farm.
 
 # TikTok Farm Avatar Operations
 
+- Canonical Single Avatar Launcher & Anti-Ad-Hoc Script (Claude CLI Approved): [references/canonical-single-avatar-launcher-and-anti-ad-hoc-script-20261017.md](references/canonical-single-avatar-launcher-and-anti-ad-hoc-script-20261017.md)
 - Immediate Upload & Switcher Anchor: [references/immediate-avatar-upload-end-to-end-and-switcher-anchor-collision-20261017.md](references/immediate-avatar-upload-end-to-end-and-switcher-anchor-collision-20261017.md)
-- Channel Content Grid Audit: [references/channel-content-grid-audit-and-niche-avatar-mismatch-20261016.md](references/channel-content-grid-audit-and-niche-avatar-mismatch-20261016.md)
-- Batch Lock Reservation: [references/batch-lock-reservation-coexistence-and-visual-artifact-capture.md](references/batch-lock-reservation-coexistence-and-visual-artifact-capture.md)
 - Active Lock Coexistence: [references/active-device-lock-coexistence-and-protected-folders-type-safety-20261016.md](references/active-device-lock-coexistence-and-protected-folders-type-safety-20261016.md)
 - Stale Stored Avatar Trap: [references/stale-stored-avatar-trap-and-multi-option-extraction-20261016.md](references/stale-stored-avatar-trap-and-multi-option-extraction-20261016.md)
 - Avatar Hallucination: [references/avatar-hallucination-prevention-and-raw-video-face-extraction.md](references/avatar-hallucination-prevention-and-raw-video-face-extraction.md)

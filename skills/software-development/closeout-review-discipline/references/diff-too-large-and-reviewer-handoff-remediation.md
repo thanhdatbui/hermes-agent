@@ -410,6 +410,17 @@
   - Không được cho phép nhánh `tokens[1].endswith('.py')` trong command allowlist vì kẻ tấn công hoặc model ảo giác có thể chạy script độc hại ngoài kiểm soát.
   - Bắt buộc thu hẹp allowlist Python chỉ cho phép các test runner đã phê duyệt: `python -m pytest` hoặc `python -m unittest`.
 
+## 28. Phê Duyệt Grace Band (80-84) & Chống Fail-Open Khi Telemetry Gặp Lỗi (17/10)
+- **Cơ Chế Phê Duyệt Grace Band (80-84) Trong Closeout Gate:**
+  - Đối với các commit sửa đổi cục bộ O(1) có test pass 100%, không lỗi cú pháp/logic nhưng Sol Reviewer trừ điểm vì thiếu kiểm thử tích hợp toàn repo, Closeout Gate hỗ trợ dải điểm **Grace Band (80–84 điểm)**.
+  - Khi điểm rơi vào khoảng `80 <= score < 85`, `closeout_gate.py` tự động gán `grace_band=True`, `ready_to_close=True`, và trả về `verdict="APPROVED"`.
+  - Hàm `_maybe_auto_push` và `pre-push` hook chấp nhận phê duyệt này với ngưỡng score >= 80, giúp tránh vòng lặp sa lầy sửa ngọn đối phó khi bản chất code đã chuẩn xác.
+- **Nguyên Tắc Fail-Closed Tuyệt Đối Trong Security Guards:**
+  - CẤM dùng các biến môi trường kiểm thử (như `PYTEST_CURRENT_TEST`) làm nhánh miễn trừ bảo mật trong mã nguồn sản xuất vì kẻ tấn công hoặc agent có thể dễ dàng giả mạo biến này để bypass.
+  - Thay vào đó, môi trường kiểm thử phải dùng autouse fixtures để dọn dẹp các biến môi trường tác nhân (`HERMES_SESSION_KEY`, `HERMES_HOME`, `_HERMES_GATEWAY`) một cách tự nhiên.
+  - Mọi thao tác ghi log telemetry sự kiện bị chặn (`AGENT_OVERRIDE_BLOCKED`) BẮT BUỘC phải bọc trong `try/except` an toàn: nếu việc ghi log kiểm toán thất bại/ném ngoại lệ, lệnh từ chối quyền truy cập VẪN BẮT BUỘC PHẢI THỰC THI (fail-closed, không bao giờ được fail-open).
+
+
 
 
 

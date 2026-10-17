@@ -1,23 +1,23 @@
-Chu kỳ 4d: Parity 96h (N1 lẻ, N2 chẵn), N3(R7,8), N4(dưỡng 0fl+up). Starve 108h. CẤM xóa cooldown. Dưỡng: healing_selector; S2 bám S1. 3 ca (6,12,18h). Đêm 21h30-5h15 né cache 4h cho 2FA/Ava; báo 6h cấm báo ảo.
+Chu kỳ 4d: Parity 96h (N1 lẻ, N2 chẵn), N3(R7,8), N4(dưỡng 0fl+up). Starve 108h. CẤM xóa cooldown. Dưỡng: healing_selector; S2 bám S1. 3 ca (6,12,18h). Đêm 21h30-5h15 né cache 4h cho 2FA/Ava; báo 6h cấm ảo.
 §
-Follow: P1/P2 trần ca; dò +2/ca (max 30); dính nhả vào tù, ra lùi 4 sàn 15. 3 cohort; non <10fl chỉ dưỡng. Nhả do nick chưa khỏe (Action Block), cấm né anchor. Báo Telegram KPI+exception; tra DB & :1905.
+Follow: P1/P2 trần ca; dò +2/ca (max 30); dính nhả vào tù, ra lùi 4 sàn 15. 3 cohort; chưa đủ khỏe cấm fl (kể cả tự nhiên), dẹp né anchor. Nhả là action block. Chi tiết UID & trần xem modal 🔍 trên :1905.
 §
 Hotmail: CẤM mail cá nhân; sinh @fviainboxes.com đọc OTP API. Write-Through: ghi ngay Excel Cột 3,4,5 & G farm. Dual-farm ~1280 acc.
 §
 Proxy: 1-1. Chuẩn hóa 3 món (crop 512x512 -> chốt PA -> lock/Excel -> run_tiktok_upload_avatar.ps1, CẤM chờ watchdog -> MEDIA:); TT v47 monkey. Pin >=1000 view. Soi mắt trước gửi.
 §
-Farm: dispatch O(1). CẤM đẻ script mới (up ava: run_avatar_batch_3accs.py); lỗi F_vid do .bak fallback; protect ép int; sol_worker.py (:20129) fallback.
+Farm: O(1). CẤM đẻ script (up ava: run_avatar_batch_3accs.py, có sẵn auto switcher, cấm execute_m*.py); F_vid .bak fallback; protect int; sol_worker.py (:20129).
 §
-GPM: stop API kèm _kill_gpm_chrome; max 5 wkr; cron-auto-feed nạp pool chatgpt-web 15p/lần (Hotmail ưu tiên). Re-login acc văng KHÔNG tính cooldown proxy 24h; chỉ acc mới log lần đầu mới tính 2 acc/port/ngày.
+GPM: stop kèm _kill_gpm_chrome; max 5 wkr; cron nạp pool chatgpt-web 15p/lần. Re-login acc văng KHÔNG cooldown 24h; chỉ acc mới log lần đầu mới tính 2 acc/port/ngày.
 §
 Stale Upload: xóa sạch draft (_delete_all_profile_drafts). Revert flop: quét ledger lấy video gốc, TikWM tải CDN, xóa render trước làm mới. Cào video: max 60 clip/channel, cấm cào full.
 §
-Closeout: Grace 80-84 (diff<=30, pass>=1 test, 0 fail/err, ko lỗi logic/sec) auto-push; cấm park WIP; Remediation max 3 vòng (Sol 1-2, Haiku/Agy 3, CẤM Sonnet); User ép: safe_push --owner-override.
+Closeout: Grace 80-84 (diff<=30, pass>=1 test, 0 fail/err, ko lỗi logic/sec) auto-push; cấm park WIP; Remediation max 3 vòng (Sol 1-2, Haiku/Agy 3, CẤM gọi Sonnet); User ép: safe_push --owner-override. Win -p: prompt 1 dòng.
 §
-Admin Remote (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; OpenCV venv-core024; launcher host admin qua admin_ssh.py; Haar cascade dễ ảo, soi mắt trước nạp ava.
+Admin Remote (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; OpenCV venv-core024; admin_ssh.py; Haar cascade dễ ảo, soi mắt trước nạp ava.
 §
-BỎ HẾT ViChanger, 100% Wi-Fi Singbox 192.168.110.2:200xx, cấm bật GanProxyWatcherTray; post-reboot kẹt proxy readiness dùng mark_proxy_state.
+BỎ HẾT ViChanger, 100% Wi-Fi Singbox 192.168.110.2:200xx, CẤM bật GanProxyWatcherTray/gan_proxy; post-reboot kẹt proxy readiness dùng mark_proxy_state; cấm gán VPN app lên farm.
 §
-Canary phone farm bắt buộc tối thiểu 3-4 máy/màn hình khác nhau (người lạ mở DM, chính chủ/sửa hồ sơ, feed lướt video, popup thử thách); cấm canary trên đúng 1 máy đơn độc.
+Canary farm: tối thiểu 3-4 màn/máy khác nhau (DM, sửa hồ sơ, feed, popup thử thách); cấm canary trên 1 máy đơn độc.
 §
-Ava: ưu tiên lộ rõ ngũ quan, mắt nhìn thẳng, cấm kính râm to che kín; TopLeftPencil thắt bounds l=10..45 w,h<=130 & né feed (đề xuất/for you); pin video tránh back thừa thoát profile.
+Ava: lộ ngũ quan, mắt thẳng, cấm kính râm. Mèo/Thú cưng: CẤM frame mờ cảnh động; ưu tiên studio cận cảnh (mắt sáng, mặt 70% tròn), trích kho cùng niche/mosaic 4 opts. TopLeftPencil bounds l=10..45 w,h<=130 & né feed. Pin video tránh back thoát profile.
