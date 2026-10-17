@@ -12,7 +12,7 @@ Worker: 25 wkr; 'hỏi Claude'=BẮT BUỘC Sonnet 5.5; bóc cookie CDP cấm b�
 §
 Canary: test đa máy/layout, gửi MEDIA:. Farm 100% Wi-Fi Singbox, CẤM ViChanger/VPN app.
 §
-Reboot: user lệnh làm ngay; CẤM reboot khi Kibe/Admin in-match TFT hoặc mở War3 (war3/w3l); lobby TFT được reboot; né ca chạy.
+Reboot: CẤM reboot khi Kibe/Admin in-match TFT (LoL/TFTClient) hoặc mở War3 (war3/w3l); lobby TFT được reboot; né ca chạy.
 §
 Nguồn video: 'Nguồn cũ' là đúng channel/creator gốc (1 folder = 1 kênh, giữ nguyên creator), cấm nhồi clip kênh khác vào folder cũ.
 §
