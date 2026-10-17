@@ -146,6 +146,15 @@ FAIL_FAST: Nếu trong <= 3 iterations đầu thấy scope bất khả thi với
   - **Nguyên nhân**: Guard đếm số dòng trong `NEW_STRING`. Nếu vượt quá 30 dòng, lệnh dispatch bị reject ngay lập tức.
   - **Giải pháp**: Tối ưu hóa code trong `NEW_STRING` ngắn gọn, gộp các câu lệnh phụ hoặc chẻ nhỏ task sao cho tổng số dòng `<= 30 dòng`.
 
+- **Bẫy Coordinator T1 Write Budget Denied Khi Viết Component / File Lớn (2026-10-17):**
+  - **Hiện tượng**: Coordinator gọi `write_file` bị chặn: `⛔ [COORDINATOR WRITE DENIED]: Hết ngân sách T1 (tối đa 5 files, <= 200 dòng cộng dồn cả session). Đã dùng: X files, Y dòng. L2 Emergency Surgery chưa đủ điều kiện (cần 2 lần Worker failure liên tiếp trên cùng target). BẮT BUỘC DISPATCH WORKER Luna High qua delegate_task với PATCH CONTRACT O(1)!`.
+  - **Nguyên nhân**: Coordinator Guard giới hạn cứng quyền can thiệp trực tiếp của Coordinator (Gemini) để chống ô nhiễm context và chống Coordinator làm thay việc của Worker.
+  - **Khắc phục**: Với các tính năng / component mới > 200 dòng, Coordinator CẤM cố gắng ghi trực tiếp. BẮT BUỘC soạn thảo sẵn mã nguồn hoàn chỉnh và giao cho Worker qua `delegate_task` để Worker dùng `write_file` trong lồng vô trùng và chạy test nghiệm thu.
+
+- **Bẫy Worker Budget Burnout Khi Giao Task Mở / Thiếu Concrete Patch (Gate 2 & 4 Failure - 2026-10-17):**
+  - **Hiện tượng**: Worker nhận task sửa UI / logic nhưng chỉ được cấp 1 anchor sơ sài trong `OLD_STRING` kèm mô tả dài yêu cầu "tự viết lại". Worker đốt sạch 12-14 tool calls để đọc file, suy luận, thử `patch` từng đoạn nhỏ, dẫn đến chạm trần `WORKER GATE - BUDGET EXHAUSTED` và abort với `files_modified == 0`.
+  - **Khắc phục (L1 Escalation / Concrete Contract)**: Coordinator BẮT BUỘC chuẩn bị sẵn mã nguồn hoàn chỉnh hoặc đoạn patch đóng 100%, chỉ thị Worker gọi `write_file` ghi đè toàn bộ hoặc 1 lệnh `patch` duy nhất ở turn 1, chạy `FOCUSED_TEST` ở turn 2 để hoàn tất nghiệm thu trong <= 3 iterations.
+
 - **Bẫy `python -c` và Quét Đĩa Trong Terminal Coordinator (2026-10-17):**
   - `python -c` của Coordinator chỉ được phép thực hiện các thao tác read-only (in biến, kiểm tra file tồn tại, đọc schema, tính diff ảnh). Nếu phát hiện thao tác ghi/xóa hoặc subprocess, guard sẽ chặn: `COORDINATOR TERMINAL BLOCKED: 'python -c' chỉ dùng để kiểm chứng read-only; phát hiện thao tác ghi/xóa/subprocess!`.
   - CẤM dùng `os.walk` hoặc `glob(..., recursive=True)` trong `python -c` (sẽ kích hoạt chặn: `COORDINATOR TERMINAL BLOCKED: Cấm dùng os.walk hoặc glob recursive quét đĩa diện rộng!`). Luôn dùng `os.listdir()` ở thư mục cụ thể hoặc danh sách đường dẫn trực tiếp $O(1)$.
