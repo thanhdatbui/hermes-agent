@@ -269,6 +269,7 @@ Constants Taadaa farm (đã verify 2026-09-21):
 ---
 
 ## References
+- `references/tiktok-niche-playbooks-and-competitor-reverse-engineering.md` — Bóc tách 3 công thức ngách cày kênh bán điển hình (Xin Vía/Manifest ép cmt, Radio/Confession kéo retention, Pet/Thú cưng kích share), bản chất trò chơi xác suất 1/đàn và forensics định giá acc.
 - `references/farm-vs-competitor-upload-cadence-analysis.md` — Đối soát nhịp đăng farm vs kênh mẫu viral, giải mã cơ chế tier 200-view limbo (ranking signals, 3s retention vs fake likes), quy tắc ngắt upload ngày dưỡng sinh (0 follow, 0 up), và Sol High Plan (download 12-45s sweet spot, like rate 12-15%).
 - `references/competitor-reup-visual-formula-and-benchmarks.md` — Phân tích chi tiết công thức 3 giai đoạn mồi view/viral, tệp follow gái 88.1%, âm thanh gốc và nhịp dưỡng sinh từ case study thực tế
 - `references/tiktok-scraping-techniques-20260921.md` (trong skill `ui-evidence-first`) — code đầy đủ, Snowflake decode, audio pipeline
