@@ -14,6 +14,7 @@ metadata:
 Use this skill when refactoring monolithic production scripts (> 1.500 lines) into modular subpackages without disrupting active workloads, breaking backward compatibility, or letting subsequent AI agents undo the modularization.
 
 Reference files:
+- `references/execution-engine-vs-watchdog-and-ocr-architecture-20261017.md`: Phân định kiến trúc Execution Engine (multi_machine_feed_session) vs Supervisor Watchdog (feed_session_watchdog), 3 cơ chế gác cổng chống monolith khi viết code mới, và quy tắc vàng chuyển dịch UI dump XML sang WinRT OCR offline.
 - `references/runner-vs-watchdog-architecture-and-anti-monolith-gates-20261017.md`: Phân định rạch ròi Execution Runner (multi_machine_feed_session.py) vs Supervisor Watchdog (feed_session_watchdog.py), chuỗi gọi cronjob nuôi acc thực tế và 3 cơ chế kiểm soát bắt buộc bóc tách khi viết script mới.
 - `references/fstring-template-component-extraction-and-line-budget-20261017.md`: Kỹ thuật tách Component HTML/JS ra file độc lập trong subpackage để chèn vào monolith f-string, tránh lỗi thoát ngoặc nhọn kép {{}} và bảo toàn trần 3.000 dòng Architecture Gate.
 - `references/pre-push-scope-alignment-and-css-extraction-20261017.md`: Quy tắc khớp scope của pre-push hook với diff-tree HEAD, kỹ thuật tách 877 dòng CSS tĩnh dưới trần 30KB và giải pháp Strike 3 Reviewer Hand-off.
