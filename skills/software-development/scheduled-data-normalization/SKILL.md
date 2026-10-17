@@ -51,6 +51,7 @@ Run operational parity and exploratory drift scans separately. Uploader/channel-
 - Trusting a worker's success report without coordinator read-back.
 - Editing while the scheduler is concurrently writing.
 - Declaring DONE after save without post-cycle verification.
+- **Header Renaming without Consumer Code Alignment (Đổi header Excel làm generator định kỳ ghi đè rác)**: Standardizing or clarifying column headers in authoritative workbooks (e.g., `Folder Video` -> `Folder Video (Slot 1-640)`) without expanding alias lists in generators and consumers. Exact string/tuple checks fail to find the column, causing generators to fall back to sequential row assignment, scramble slot order (e.g. M76 slot 8 -> slot 7), and periodically overwrite runtime safe workbooks on every cron cycle. Generators MUST use multi-alias substring matching and fail-closed instead of falling back to sequential assignment.
 
 ## Evidence template
 
@@ -60,3 +61,4 @@ Report: authority before/after; mapping before/after; expected/generated files; 
 
 - See `references/cron-overwrite-and-workbook-drift.md` for a concrete dual-cluster workbook incident and verification checklist.
 - See `references/scrape-partial-data-fail-closed-preservation.md` for handling partial scraper extractions, preventing false zero-metric overwrites, and protecting downstream anomaly detectors.
+- See `references/header-renaming-and-scheduled-generator-desync.md` for the header renaming desync failure mode, multi-alias matching rules, and the 5-tier audit protocol.

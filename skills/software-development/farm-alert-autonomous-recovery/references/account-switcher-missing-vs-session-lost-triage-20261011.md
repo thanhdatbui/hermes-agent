@@ -72,10 +72,15 @@
          1. *Bước 1 (11:35 trưa):* Chờ Task `Taadaa_Farm_Daily_Reboot_1135` kích hoạt System Bus Reset từ BIOS (có TFT Game Guard bảo vệ ván cờ) để kéo toàn bộ 80 máy lên xanh.
          2. *Bước 2 (11:36 - Trước ca trưa 12:00):* Ngay khi máy online lại, chủ động chạy inspect O(1) và canary test chuyển tài khoản trực tiếp trên máy; kiểm tra token thực tế của nick trong Switcher: nếu nick còn nguyên vẹn thì thực hiện switch, nếu token thực sự hết hạn thì kích hoạt auto-login recovery từ kho credential, chụp ảnh in-app gửi User nghiệm thu.
      * Lưu ý thẩm định ảnh hiện trường cũ: Khi chạy `evidence_gate_verifier.py` để verify artifact của các run trước đó (>10 phút), bắt buộc thêm cờ `--max-age 86400` để tránh bị chặn bởi `ANTI_REPLAY_VIOLATION: Pre-submit image is stale/replayed`.
-   - **Nhánh D — Dấu Chấm Than Wi-Fi ("Không Có Internet") & Lỗi Switcher Giả Mạo Khi MikroTik Uptime > 7 Ngày (Ref: `references/wifi-exclamation-mark-and-pppoe-uptime-vs-502-switcher-triage-20261017.md`):**
+   - **Nhánh D — Dấu Chấm Than Wi-Fi ("Không Có Internet") & Bẫy Domain Hostname Proxy (Ref: `references/wifi-exclamation-mark-and-pppoe-uptime-vs-502-switcher-triage-20261017.md`):**
      * Hiện tượng: Icon Wi-Fi trên thanh status bar có dấu chấm than (`wifi_combo` có `content-desc="...Không có Internet"`), giữa màn hình có vòng xoay `com.ss.android.ugc.trill:id/tux_loading_hud`. Runner tap chọn nick trong Switcher nhưng TikTok không thể kết nối server để cấp token mới -> tự hủy thao tác chuyển tài khoản, giữ nguyên nick cũ -> Verify ném `ACCOUNT_VERIFY_MISMATCH`.
-     * Triage: Phân biệt Layer 3 PPPoE trên web quản trị `kibe:2310` (Uptime > 7 ngày) với Layer 7 Sing-box container (`192.168.110.2:200xx` -> MobiProxy 4G `51xx`). Khi batch chạy dồn tải, modem 4G bị crash/502 Bad Gateway trong 20-60s khiến Android cắm dấu chấm than.
-     * Kỷ luật: CẤM sửa code UI Switcher khi nguyên nhân là mất mạng; kiểm tra va chạm lock tiến trình khác trước khi can thiệp thiết bị. Chờ proxy hồi phục / chạy auto-healer rồi mới re-run ca chạy.
+     * Triage:
+       1. Phân biệt Layer 3 PPPoE trên web quản trị `kibe:2310` (Uptime > 7 ngày) với Layer 7 Sing-box container (`192.168.110.2:200xx` -> MobiProxy 4G `51xx`).
+       2. Bẫy Tên Miền Hostname (`mirotik1.taadaa.click:1000x`): Kiểm tra `adb shell settings get global http_proxy`. Nếu thấy gán domain ngoài thay vì IP LAN `192.168.110.2`, điện thoại phân giải DNS ra IP WAN và bị firewall MikroTik chặn (Hairpin NAT drop), gây mất mạng hoàn toàn.
+     * Kỷ luật & Khắc phục:
+       1. CẤM gán domain vào Android http_proxy; BẮT BUỘC dùng IP LAN `192.168.110.2:200xx` (Kibe) hoặc `192.168.110.2:100xx` (Admin) kèm `captive_portal_mode 0`.
+       2. Sửa code runner: Kiểm tra UI nếu có "Không có Internet" thì fast-fail ngay, cấm loop tap mù; chờ tối đa 5s cho loading spinner biến mất trước khi đọc Profile.
+       3. Kiểm tra va chạm device lock trước khi can thiệp thiết bị. Sau khi khôi phục IP LAN và hết dấu chấm than mới mở lại fleet.
 
 ---
 

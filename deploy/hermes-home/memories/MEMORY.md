@@ -10,7 +10,7 @@ GPM: max 5 wkr; nạp pool web (0đ quota); re-login văng max 1 lần/ngày (ma
 §
 Stale Upload: xóa draft. Revert flop: TikWM tải CDN. Popup 'Ghim/Riêng tư' KHÔNG PHẢI publish proof. Cào: max 60 clip.
 §
-Closeout: Grace 80-84 auto-push. safe_push check HEAD vs gate_audit.jsonl (TTL 30m, >=80/approved), cấm push lụi. Cấm commit -a, chỉ commit đúng file. Pre-check: clean+ahead 0 -> đã push. Fail -> auto-remediate Strike 1-3, kẹt tự PARK, CẤM khóc lóc/dừng hỏi.
+Fail -> auto-remediate Strike 1-3 (Haiku/Agy, cấm Sonnet), cấm park WIP, CẤM dừng hỏi.
 §
 Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; admin_ssh.py. Cron: phase9-runner nuôi, feed_session_watchdog giám sát 15p.
 §

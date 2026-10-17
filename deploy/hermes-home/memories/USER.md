@@ -4,7 +4,7 @@ Dọn đĩa: duyệt trước. CẤM đẻ script ad-hoc khi có canonical tool 
 §
 Nuôi 4d 3 ca. Ava&2FA tới 5h15 (né cache 4h, báo 6h). Write-Through Excel 3,4,5+G; Starve 96h; mail Graph PC. Reg Gmail: 160 máy (Kibe 1-80, Admin 201-280), cấm hardcode dải máy. Đổi tên TT bám username.
 §
-Chốt phiên: Vào main; Grace 80-84 auto-push; cấm Sonnet cày điểm/test; Strike 3 fail dừng ngay L3, cấm Strike 4; User ép: safe_push --owner-override.
+Chốt phiên: Grace 80-84 auto-push khi test xanh; cấm Sonnet cày điểm; Strike 3 dùng Haiku/Agy sửa, cấm park WIP; User ép: safe_push --owner-override.
 §
 Ava/Media: BẮT BUỘC WinRT OCR + soi thật; CẤM bịa mô tả/gửi mù cho có lệ. Menu Ghim/Riêng tư KHÔNG PHẢI publish proof; pHash/crop profile thật cấm báo DONE ảo.
 §
