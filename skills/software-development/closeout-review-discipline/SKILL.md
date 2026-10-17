@@ -16,14 +16,16 @@ metadata:
   `python D:/Taadaa/tools/closeout_gate.py --repo <đường_dẫn_repo> --base origin/main --json-output`
 - **Ngưỡng phê duyệt (Verdict APPROVED):**
   - Điểm >= 85/100: APPROVED -> Tiến hành Push.
-  - Grace Band (80-84 điểm): Diff <= 30 dòng, 100% test PASS (>= 1 test, 0 fail/err) -> Auto-Push qua `safe_push.py`.
-  - Hook `.git/hooks/pre-push` đã ép cứng chặn đứng mọi commit có điểm < 80 hoặc test trượt.
+  - Grace Band (80-84 điểm): Diff <= 30 dòng (O(1)), 100% test PASS (>= 1 test, 0 fail/err) -> APPROVED và Auto-Push qua `safe_push.py`.
+  - Hook `.git/hooks/pre-push` ở các repo đã đồng bộ `THRESHOLD=80` để khớp với Grace Band; điểm < 80 hoặc test fail bị chặn cứng.
+  - CẤM TUYỆT ĐỐI tư duy "WIP branch parking": patch không vào `main` nghĩa là farm không có bản vá, task bắt buộc phải thi công dứt điểm vào `main`.
 
 ## 2. Quy Trình Khắc Phục Khi Trượt (Remediation Protocol)
 - **Strike 1:** `sol_repair.py` (:20129) tạo đề xuất AST O(1) <= 30 dòng (miễn phí 100%).
-- **Strike 2:** `sol_worker.py` (:20129) ReAct test tích hợp kèm rollback snapshot.
+- **Strike 2:** `sol_worker.py` (:20129) ReAct test tích hợp kèm rollback snapshot (miễn phí 100%).
 - **Strike 3 Hand-off:** Trượt 3 lần liên tiếp -> Chuyển giao quyền can thiệp cho `claude_worker.py --role worker` (Haiku 5.5) hoặc `ag_cli.py fix`.
-- CẤM TUYỆT ĐỐI gọi Claude Sonnet 5.5 để cày điểm closeout gate.
+- Khống chế tối đa 3 vòng sửa; CẤM vòng lặp vô tận ("loop until tests pass").
+- CẤM TUYỆT ĐỐI gọi Claude Sonnet 5.5 để cày điểm closeout gate hoặc sửa code tự động. Sonnet là vũ khí chiến lược đắt đỏ, chỉ chạy khi Operator (User) ra lệnh đích danh.
 
 ## 3. Tài Liệu Tham Khảo (References)
 - Sol High Scoring Rubric & Diff Budget: [`references/sol-high-scoring-rubric-and-diff-budget.md`](references/sol-high-scoring-rubric-and-diff-budget.md)
