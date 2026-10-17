@@ -38,7 +38,14 @@ Trước khi gửi ảnh crop hoặc tuyên bố avatar đã chọn:
   - BẮT BUỘC thừa nhận ngay: *"Ảnh crop đang hiển thị chậu cây/sticker '20 lần', Photo Picker đã chọn nhầm thumbnail video."*
   - Không được dùng bất kỳ từ ngữ nào ám chỉ "mặt người", "cô gái", "huấn luyện viên".
 
-### Quy Tắc 3: Kiểm Tra Từng Tile Photo Picker Khi Bị Lệch
-1. Screencap màn hình Photo Picker thật trên máy.
-2. Dùng OpenCV cắt từng ô tile (Tile 0 ở $x=0..270$, Tile 1 ở $x=270..540$...).
-3. So sánh `mean BGR` của từng tile với file ảnh chuẩn `avatar.jpg` hoặc dùng vision kiểm tra từng ô để tìm đúng ô chứa avatar thật (ví dụ Tile 1 tại tâm `(405, 335)`), tuyệt đối không tap mù vào ô đầu tiên khi ô đầu tiên đang bị chiếm bởi video cũ.
+### Quy Tắc 3: Kiểm Tra Từng Tile & Tọa Độ Radio Checkbox Trên Lưới 3 Cột (Samsung S7 / 1080x1920)
+1. Screencap màn hình Photo Picker thật trên máy (`tmp_m34_picker_live.png`).
+2. **Cấu trúc lưới Photo Picker của TikTok là 3 CỘT (width = 360px/ô), KHÔNG PHẢI 4 CỘT**:
+   - Ô 1 (Col 0): $x = 0..360$ (Chậu cây kim tiền / thumbnail video cũ).
+   - Ô 2 (Col 1): $x = 360..720$ (Ảnh avatar mới nạp).
+   - Ô 3 (Col 2): $x = 720..1080$ (Ảnh screenshot khác).
+3. **Bẫy Tọa Độ Tap Center vs Radio Circle Checkbox**:
+   - **CẤM** tap vào tâm ô ($x=405, y=335$ hay $x=540, y=380$): Việc tap vào giữa ô sẽ mở preview xem trước hoặc trượt chọn nhầm ô bên cạnh (như chụp trúng ảnh trình duyệt "chuyển đổi giữa các tab").
+   - Mỗi tile ảnh có nút tròn radio checkbox chọn ảnh nằm ở **GÓC TRÊN BÊN PHẢI** của ô (kích thước ~80x80px).
+   - Với Ô 2 (Col 1), tọa độ bấm nút tròn radio checkbox chính xác là **`(660, 260)`**.
+   - Bắt buộc tap chính xác vào radio checkbox để hiện dấu tick chọn trước khi bấm nút **Tiếp** (`912, 1844`).

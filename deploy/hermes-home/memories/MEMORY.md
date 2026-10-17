@@ -20,4 +20,4 @@ BỎ HẾT ViChanger, 100% Singbox 192.168.110.2:200xx, CẤM GanProxyWatcherTra
 §
 Canary farm: tối thiểu 3-4 màn/máy khác nhau (DM, sửa hồ sơ, feed, popup thử thách); cấm canary trên 1 máy đơn độc.
 §
-Ava: lộ ngũ quan, mắt thẳng, cấm kính râm/ảnh đỏ nhòe. Dọn .thumbnails + Camera/*; query MediaStore 1 ảnh. BẮT BUỘC WinRT OCR màn crop/save trước gửi: thấy text lạ ('20 lần', '20)la', video) CẤM Lưu/báo xong vì picker bốc nhầm clip. Trích từ clip gốc nếu Haar ảo. TopLeftPencil l=10..45 w,h<=130.
+Ava: lộ ngũ quan, mắt thẳng, cấm kính râm/ảnh đỏ nhòe. Dọn .thumbnails + Camera/*; query MediaStore 1 ảnh. BẮT BUỘC WinRT OCR màn crop/save: thấy text lạ ('20 lần', '20)la', video) CẤM Lưu vì picker nhầm clip. Trích từ clip gốc nếu Haar ảo. Picker 3 cột (360px), tick radio góc phải trên (ô2 660,260) né tap tâm. TopLeftPencil l=10..45 w,h<=130.
