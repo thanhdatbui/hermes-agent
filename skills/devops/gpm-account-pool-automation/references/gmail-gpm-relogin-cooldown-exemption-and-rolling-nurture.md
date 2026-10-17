@@ -58,6 +58,18 @@ if skipped_busy > 0:
     lines.append(f"• Còn lại trong hàng đợi: {skipped_busy} acc chờ ca tiếp theo (tối đa {MAX_WORKERS} workers/lần)")
 ```
 
+### 1.5. Hai Cạm Bẫy Logic Giờ Giấc & Điều Kiện Ca Chạy (Shift & Is_Late Pitfalls)
+1. **Lỗi lọt ranh giới thời gian `is_late` (Compound Hour/Minute Bug):**
+   - *Viết sai:* `hour >= 11 and minute >= 15`. Khi đồng hồ điểm `12:05`, điều kiện này trả về `False` vì `5 < 15`, khiến watchdog tưởng ca sáng chưa hết giờ và tiếp tục chờ!
+   - *Viết đúng:* Bắt buộc dùng `hour > 11 or (hour == 11 and minute >= 15)` cho mốc `11:15` (tương tự cho `17:15` và `23:30`).
+2. **Lỗi lệch tập hợp ca (Set Parity Drift):**
+   - Khi hệ thống đã chuyển từ ca `TRƯA` sang ca `CHIỀU`, toàn bộ các nhánh kiểm tra hoàn tất cả ngày BẮT BUỘC đồng nhất dùng `{"SANG", "CHIEU", "TOI"}`. Nếu sót lại `{"SANG", "TRUA", "TOI"}` thì cờ `all_day_finished` không bao giờ đạt `True`.
+3. **Cạm bẫy Unit Test dữ liệu tĩnh (Synthetic Assertion Trap):**
+   - Đừng chỉ viết test assert trên một dict tự tạo (`{"status": "LOGIN_RECOVERED"}`). Test có giá trị cao nhất phải gọi trực tiếp `get_candidates()` với file state thật/mocked để chứng minh:
+     - Account có `recovered_date == today_str` bị bỏ qua.
+     - Account đã nằm trong `seen_emails` bị bỏ qua 100%.
+     - Account re-login bị chặn khi cổng proxy chạm trần `MAX_LOGINS_PER_PROXY + 1`.
+
 ---
 
 ## 2. Kiến Trúc Nuôi Cuốn Chiếu (Rolling Concurrency = 5)
