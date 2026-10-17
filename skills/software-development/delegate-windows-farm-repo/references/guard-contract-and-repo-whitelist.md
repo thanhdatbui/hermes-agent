@@ -111,6 +111,18 @@ Khi dispatch Worker thực hiện sửa code (`TASK_KIND: EDIT`), Coordinator Gu
     - Nếu phát hiện số dòng thay đổi vượt trội bất thường (ví dụ: +1023 / -998 trên một hàm nhỏ), kiểm tra ngay CRLF: `data.count(b'\\r\\n')`.
     - Chạy chuẩn hóa line ending về LF: `content.replace(b'\\r\\n', b'\\n')` trước khi commit hoặc gọi Closeout Gate.
 
+- **Bẫy INVESTIGATE Worker Read-Only (2026-10-17):** Khi dispatch worker với `TASK_KIND: INVESTIGATE`, Worker bị khóa ở chế độ `[WORKER GATE - READ-ONLY WORKER]: BỊ CẤM GHI FILE 100%`. Toàn bộ tool `write_file`, `patch` của worker bị chặn. Nếu task cần worker tạo file artifact (ảnh avatar, export báo cáo, script chạy thử), CẤM dùng `INVESTIGATE`. Bắt buộc dùng `TASK_KIND: EDIT` (hoặc `TASK_KIND: CREATE`) kèm `FILE: ...`.
+
+- **Bẫy Ngân Sách Dòng Diff Task EDIT (`DIFF_BUDGET_EXCEEDED` - 2026-10-17):**
+  - **Hiện tượng**: `DIFF_BUDGET_EXCEEDED: Dự tính thay đổi 31 dòng code nghiệp vụ (> 30 dòng). Bắt buộc chẻ nhỏ task!`
+  - **Nguyên nhân**: Guard đếm số dòng trong `NEW_STRING`. Nếu vượt quá 30 dòng, lệnh dispatch bị reject ngay lập tức.
+  - **Giải pháp**: Tối ưu hóa code trong `NEW_STRING` ngắn gọn, gộp các câu lệnh phụ hoặc chẻ nhỏ task sao cho tổng số dòng `<= 30 dòng`.
+
+- **Bẫy `python -c` và Quét Đĩa Trong Terminal Coordinator (2026-10-17):**
+  - `python -c` của Coordinator chỉ được phép thực hiện các thao tác read-only (in biến, kiểm tra file tồn tại, đọc schema, tính diff ảnh). Nếu phát hiện thao tác ghi/xóa hoặc subprocess, guard sẽ chặn: `COORDINATOR TERMINAL BLOCKED: 'python -c' chỉ dùng để kiểm chứng read-only; phát hiện thao tác ghi/xóa/subprocess!`.
+  - CẤM dùng `os.walk` hoặc `glob(..., recursive=True)` trong `python -c` (sẽ kích hoạt chặn: `COORDINATOR TERMINAL BLOCKED: Cấm dùng os.walk hoặc glob recursive quét đĩa diện rộng!`). Luôn dùng `os.listdir()` ở thư mục cụ thể hoặc danh sách đường dẫn trực tiếp $O(1)$.
+  - Tránh truyền trực tiếp đường dẫn thư mục bộ nhớ đệm hình ảnh vào tham số lệnh terminal vì sẽ kích hoạt blacklist tự bảo vệ.
+
 - **Bẫy Phân Định Quyền Hạn Worker vs Chốt Phiên (Worker Report-Only Boundary - 2026-10-17):**
   - Worker BẮT BUỘC chỉ dừng ở mức sửa code theo Scope Lock và chạy focused test verification. Worker KHÔNG CÓ QUYỀN tự tiện `git commit` hay chạy closeout gate.
   - Khi code và test xong, Worker CHỈ xuất báo cáo tóm tắt diff và test evidence về cho Coordinator/User.

@@ -5,7 +5,8 @@ description: Use when running avatar-only jobs on TikTok farm.
 
 # TikTok Farm Avatar Operations
 
-- Canonical Single Avatar Launcher & Anti-Ad-Hoc Script (Claude CLI Approved): [references/canonical-single-avatar-launcher-and-anti-ad-hoc-script-20261017.md](references/canonical-single-avatar-launcher-and-anti-ad-hoc-script-20261017.md)
+- Admin Remote & Worker SSH Boundary: [references/admin-remote-avatar-extraction-and-worker-ssh-boundary-20261017.md](references/admin-remote-avatar-extraction-and-worker-ssh-boundary-20261017.md)
+- Canonical Avatar Launcher: [references/canonical-single-avatar-launcher-and-anti-ad-hoc-script-20261017.md](references/canonical-single-avatar-launcher-and-anti-ad-hoc-script-20261017.md)
 - Immediate Upload & Switcher Anchor: [references/immediate-avatar-upload-end-to-end-and-switcher-anchor-collision-20261017.md](references/immediate-avatar-upload-end-to-end-and-switcher-anchor-collision-20261017.md)
 - Active Lock Coexistence: [references/active-device-lock-coexistence-and-protected-folders-type-safety-20261016.md](references/active-device-lock-coexistence-and-protected-folders-type-safety-20261016.md)
 - Stale Stored Avatar Trap: [references/stale-stored-avatar-trap-and-multi-option-extraction-20261016.md](references/stale-stored-avatar-trap-and-multi-option-extraction-20261016.md)
