@@ -184,6 +184,7 @@ def hydrate_workbook(path: Path) -> bool:
         if sys.platform == 'win32' and path.exists():
             result = subprocess.run(['attrib', '-u', '+p', str(path)], capture_output=True, timeout=10)
             if result.returncode != 0:
+                logger.warning('Attrib hydrate thất bại (code=%d): %s', result.returncode, path)
                 return False
             with open(path, 'rb') as f:
                 f.read(10)
@@ -208,7 +209,8 @@ def run_night_batch(dry_run: bool = False) -> tuple[int, str]:
     admin_code = EXIT_SUCCESS
 
     # Hydrate và pin Kibe workbook nếu đang bị OneDrive Files On-Demand giữ offline
-    hydrate_workbook(WORKBOOK_PATH)
+    if WORKBOOK_PATH.exists() and not hydrate_workbook(WORKBOOK_PATH):
+        logger.warning('Không thể hydrate workbook %s trước khi chạy batch', WORKBOOK_PATH)
 
     # 1. Cluster Kibe (Máy 1 - 80)
     cmd_kibe = [
