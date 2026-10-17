@@ -218,10 +218,14 @@ Answer the operator's direct question first, in Vietnamese, with no speculative 
   ### 12. Giải Mã Dòng "Đối Soát TikTok Web" (Lệch Âm / Lệch Dương) & Cạm Bẫy Inspect Máy Bằng ADB
   - **Bản chất dòng đối soát web trên Telegram:**
     * Watchdog lấy chênh lệch `following` từ profile công khai TikTok cào bởi snapshot crawler đối chiếu trực tiếp với số follow do bot app ghi nhận (`follow_result.json`).
-    * **Lệch âm (`Lệch -N`, ví dụ `M23: script 2 lượt - web 0 lượt - lệch (-2)`):**
-      - Script trên điện thoại đã thực hiện tap nút Follow thành công (2 lượt), nhưng counter công khai trên web không tăng.
+    * **Lệch âm (`Lệch -N`, ví dụ `M23: script 2 lượt - web 0 lượt - lệch (-2)`, `M45/M59: script 4 - web 0 - lệch (-4)`):**
+      - Script trên điện thoại đã thực hiện tap nút Follow thành công (2-4 lượt), nhưng counter công khai trên web không tăng.
+      - **Cách trả lời ngay khi Operator chất vấn ("Cơ chế check nhả đéo hoạt động hả?"):**
+        1. Khẳng định ngay: Cơ chế check nhả VẪN HOẠT ĐỘNG (dẫn chứng các máy bị nhả ở anchor như M51, M63 bị bắt dính ngay ở lượt 0 và kích hoạt cầu dao IP / cooldown phạt).
+        2. Chỉ rõ điểm hở kiến trúc giữa Anchor và Path B nick con: Kiểm tra Anchor có `pull_to_refresh_profile` nên bắt sống nhả 100%; còn `_path_b_verify` khi mở profile nick con chưa có vuốt reload (vướng cạm bẫy Optimistic UI cache hiển thị nút `[Nhắn tin]`).
+        3. Phân biệt với độ trễ CDN Cache TikTok Web: Snapshot web cào qua CDN có thể trễ 15-45 phút ở nick non. Nếu sang Phiên 2 vẫn là 0 thì 100% là do Shadow-drop lọt qua Path B.
       - Hai nguyên nhân cốt lõi:
-        1. *Shadow-Drop / Silent Un-follow:* Thuật toán TikTok server từ chối ghi nhận hoặc âm thầm hủy follow sau vài phút (thường gặp ở nick non/Rookie như Row 7 khi proxy/IP bị soi).
+        1. *Shadow-Drop / Silent Un-follow lọt lưới Path B:* Thuật toán TikTok server từ chối ghi nhận hoặc âm thầm hủy follow sau vài phút (thường gặp ở nick non/Rookie như Row 7, 8 khi proxy/IP bị soi). Do `_path_b_verify` không pull-to-refresh, app cache nút `[Nhắn tin]` khiến runner tưởng thành công.
         2. *Độ trễ Snapshot Crawler:* Snapshot web cào trước khi CDN cache của TikTok kịp cập nhật counter. Nếu sang Phiên 2 cào lại mà khớp bù thì là do độ trễ; nếu sang Phiên 2 vẫn là 0 thì 100% là shadow-drop.
     * **Lệch dương (`Lệch +N`):** Web tăng nhiều hơn bot báo, thường do Grace Buffer 10 phút thu nạp follow từ phiên trước hoặc leak bạn bè gợi ý.
   - **Cạm bẫy Hard Gate #5 khi Inspect Máy sau Báo Cáo Follow:**
