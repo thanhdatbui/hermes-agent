@@ -11,6 +11,11 @@
 - Phase 2 (Add 2FA TikTok) đã hỗ trợ phân phối kép: chạy local trên Kibe và gọi từ xa sang `admin-farm` qua SSH.
 - Phase 1 (Reg Gmail) trước đây chỉ gọi cục bộ trên máy Kibe (`D:/Taadaa/register gmail/run_all.ps1`), bỏ trống 80 máy Farm Admin (Máy 201-280).
 
+### Cảnh báo Tử Huyệt Hardcode Range Máy (Range 1..74 vs Admin 201..280):
+- Trong `gmail_reg_v10.py`, hàm `get_machine_cooldown_statuses(min_days)` tuyệt đối **CẤM hardcode `for stt in range(1, 75):`**.
+- **Hậu quả nếu hardcode:** Trên Farm Admin (`range(201, 281)`), hàm `get_machines_ready()` chỉ trả về các máy 1..74. Launcher `run_parallel.ps1` lấy giao giữa danh sách máy Admin (`201..280`) và danh sách ready (`1..74`) sẽ ra mảng **RỖNG (0 máy)**, in ra `"Khong co may nao trong danh sach du cooldown (>=5 ngay). Thoat."` và exit 0. Bot watchdog sẽ luôn báo `Hoàn tất 0 máy | Bỏ qua 0 | Lỗi 0` bất kể fix cron bao nhiêu lần!
+- **Chuẩn hóa bắt buộc:** Lấy danh sách máy động từ `load_device_map_from_excel().keys()` hoặc bao quát cả 2 cụm (`range(1, 281)`). Đồng thời trong `_load_last_run_dates()`, chú ý logic lọc `@gmail.com` khi đối soát trên file `gmail_clean_v2.xlsx` của cụm Admin.
+
 ### Thiết kế điều phối chuẩn hóa (`post_noon_chain_watchdog.py`):
 1. **Cluster Kibe (Máy 1 - 80):**
    - Chạy trực tiếp `powershell.exe -File run_all.ps1`.
