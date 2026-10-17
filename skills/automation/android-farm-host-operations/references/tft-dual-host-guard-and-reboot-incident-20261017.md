@@ -16,26 +16,20 @@
      * `leagueclient.exe` & `leagueclientux.exe` (Client LMHT / sảnh chờ / chọn tướng / màn hình loading).
      * `tftacademy.exe` (Tool overlay phân tích đội hình TFT).
      * `riotclientservices.exe`.
-3. **Lỗ hổng 3 — Ảo tưởng "chỉ chặn khi trong trận 3D, ở sảnh vẫn reboot":**
-   - Tư duy tự ý chia nhỏ "lobby vs in-match" là sai lầm chết người. Game có giai đoạn tìm trận, cấm chọn, loading screen (chưa sinh process 3D) hoặc giữa 2 ván đấu liên tiếp. Bất kỳ tiến trình nào của Riot/TFT đang chạy đều chứng minh User đang trong phiên chơi game (Gaming Session).
+3. **Lỗ hổng 3 — Bỏ sót binary engine match của client TFT mới:**
+   - Client TFT độc lập của Riot khi vào trận thực tế chạy binary `TFTClient-Win64-Shipping.exe`, không phải `League of Legends.exe`. Nếu chỉ kiểm tra `League of Legends.exe` thì game TFT mới vào trận vẫn bị coi là không có match.
 
-## 3. Quy Chuẩn TFT Game Guard Bắt Buộc (Invariant v2.0)
+## 3. Quy Chuẩn TFT Game Guard Bắt Buộc (Invariant v2.0 - Chuẩn hóa 17/10/2026)
 1. **Quét song song 2 máy (Dual-Host Scan):**
-   - Phải kiểm tra danh sách tiến trình trên CẢ Kibe PC VÀ Admin PC (qua SSH PowerShell / tasklist).
+   - Phải kiểm tra danh sách tiến trình trên CẢ Kibe PC VÀ Admin PC (qua SSH `tasklist /FO CSV /NH`).
    - Nếu kết nối SSH sang Admin PC timeout hoặc lỗi -> BẮT BUỘC Fail-Safe: coi như Admin PC đang bận/đang chơi game, HỦY REBOOT NGAY LẬP TỨC.
-2. **Bắt toàn bộ họ tiến trình TFT / League / Riot:**
+2. **Bộ tiến trình in-match chặn reboot:**
    ```python
-   TFT_GAME_PROCESSES = {
+   TFT_ACTIVE_MATCH_PROCESSES = {
        "league of legends.exe",
-       "leagueclient.exe",
-       "leagueclientux.exe",
-       "leagueclientuxrender.exe",
-       "riotclientservices.exe",
-       "tftclient.exe",
        "tftclient-win64-shipping.exe",
-       "tftacademy.exe",
    }
    ```
-3. **Chỉ cần 1 tiến trình tồn tại trên BẤT KỲ máy nào -> HỦY REBOOT NGAY (`ABORT`):**
-   - Tuyệt đối không phân biệt sảnh chờ hay trong trận.
-   - Bảo toàn tuyệt đối trải nghiệm của User là ưu tiên tối cao.
+3. **Quy tắc phân định Client/Lobby vs In-Match (User Clarified 17/10/2026: "Đang ở client, sảnh chờ thì được reboot"):**
+   - Các tiến trình sảnh chờ / client nền / companion (`LeagueClient.exe`, `LeagueClientUx.exe`, `RiotClientServices.exe`, `TFTAcademy.exe`) **KHÔNG CHẶN REBOOT**. Khi sếp chỉ mở client hoặc đang ở sảnh chờ ngoài, máy vẫn được reboot làm sạch RAM/USB trước ca.
+   - **CHỈ KHI engine 3D in-match thực sự xuất hiện** (`league of legends.exe` hoặc `tftclient-win64-shipping.exe`) trên **bất kỳ máy nào (Kibe hoặc Admin)** $\rightarrow$ **HỦY REBOOT NGAY LẬP TỨC (`ABORT`)** để không bị AFK / xử thua ván cờ.

@@ -12,7 +12,7 @@ Worker: 25 wkr; 'hỏi Claude'=BẮT BUỘC Sonnet 5.5; bóc cookie CDP cấm b�
 §
 Canary: test đa máy/layout, gửi MEDIA:. Farm 100% Wi-Fi Singbox, CẤM ViChanger/VPN app.
 §
-Reboot 3 ca (05:20, 11:20, 17:20), né khi ca đang chạy; user lệnh là làm ngay cấm hỏi lại; sentinel chia theo ca.
+Reboot 3 ca (05:20, 11:20, 17:20); user lệnh làm ngay; TFT Guard: quét Kibe+Admin, in-match chặn reboot, sảnh/client được reboot.
 §
 Nguồn video: 'Nguồn cũ' là đúng channel/creator gốc (1 folder = 1 kênh, giữ nguyên creator), cấm nhồi clip kênh khác vào folder cũ.
 §
