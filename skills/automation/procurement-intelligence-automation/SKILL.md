@@ -61,6 +61,18 @@ When clients request to "see data on their own app" or complain that Telegram re
 - **Root Cause:** A standard website is not an MCP (Model Context Protocol) server. ChatGPT expects a valid MCP SSE/JSON-RPC endpoint (e.g., `https://domain.com/mcp`).
 - **Remedy:** Instruct the client to paste the exact MCP endpoint URL or provide a private server link.
 
+### Operator Testing Discipline: Remote URL vs Local stdio Testing Trap
+- **The Core Operator Frustration:** When an operator asks to test the MCP server on their desktop app (Antigravity, Claude Desktop) before delivering to a non-technical client, never force them into local stdio configuration (editing `claude_desktop_config.json`, hunting `python.exe` paths, relative CWD bugs) if their goal is to verify the client-side remote URL experience.
+- **The Reality of Clients:**
+  1. *ChatGPT Mobile / Web (Paid Plus/Team Only):* OpenAI restricts Developer Mode / Custom MCP Connectors to paid subscribers (Plus, Team, Enterprise). Free ChatGPT accounts cannot add custom MCP servers.
+  2. *Testing Remote URLs on Desktop (Zero JSON Editing):* Antigravity CLI natively supports remote HTTP/SSE endpoints:
+     ```bash
+     agy mcp add <server_name> <https://domain.com/mcp>
+     ```
+     This allows the operator to test the exact remote production URL over the internet without running local Python subprocesses or editing JSON configuration files.
+  3. *Claude Desktop:* Natively only supports local `stdio` subprocesses configured via JSON. Do not recommend Claude Desktop for rapid verification of remote HTTPS endpoints.
+- **Verification Workflow:** Deploy to VPS -> verify Nginx reverse proxy and FastMCP DNS rebinding settings -> test remote URL via `agy mcp add <name> <URL>` -> deliver copy-paste instructions to the client.
+
 ### Competitive Intelligence Leaks via 3rd-Party MCP Brokers
 - **Third-Party MCP Risk:** Commercial bidding software vendors (e.g., Anovatech / `dauthau.info`) provide public MCP connectors.
 - **The Intelligence Trap:**

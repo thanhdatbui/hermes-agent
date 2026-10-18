@@ -120,6 +120,8 @@ For older Samsung Android builds (e.g. Galaxy S7 running Android 8):
   Khi thiết bị bị giã lệnh ADB / radio toggle liên tục kết hợp sạc nhanh, Broadcom PMIC/Wi-Fi chip bị quá nhiệt làm rớt kết nối TCP (`ECONNABORTED`). Sử dụng retry loop 3 lần với timeout 6s trong `_nc_probe` và để máy nghỉ ngơi 3–5 phút cho chip tản nhiệt, tuyệt đối không tiếp tục nã lệnh join dồn dập.
 - **Port 5038 WinUSB Exclusive Hijacking (XiaoWei / JiWei Ghost Port):**
   Khi công cụ quản lý farm (như Tiểu Vi / XiaoWei) được bật hoặc crash để lại tiến trình mồ côi `adb.exe` chạy cổng `5038` (`-P 5038`), Windows WinUSB driver sẽ chuyển toàn bộ USB endpoints sang server 5038 theo cơ chế độc quyền. Hậu quả là cổng chính 5037 bị mất sạch máy (`device not found` hoặc `devices: ''`), gây hiểu lầm là rớt cáp hoặc máy sập nguồn. BẮT BUỘC kiểm tra `netstat -ano | findstr :5038` và gửi lệnh phẫu thuật O(1) diệt tiến trình 5038 qua PID hoặc `taskkill /F /PID <pid>` để trả toàn bộ thiết bị về lại cổng 5037 ngay lập tức mà không làm ảnh hưởng phần cứng.
+- **S7 24/7 Idle Governance vs Daily Scheduled PC Reboot:**
+  Dàn S7 farm chạy 24/7 không cần và CẤM reboot định kỳ hàng ngày. Lịch reboot tự động 05:20 sáng CHỈ khởi động lại 2 PC host (Kibe/Admin) để giải phóng thanh ghi USB controller, tuyệt đối không gửi lệnh reboot S7. Ép S7 reboot hàng ngày gây hao mòn chip nhớ eMMC, bão USB/DHCP và rớt atx-agent. Chỉ reboot S7 đơn lẻ khi kẹt shell sâu bằng `recover_stuck_s7.py`.
 
 ## References
 
