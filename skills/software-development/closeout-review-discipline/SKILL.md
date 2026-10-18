@@ -31,13 +31,15 @@ metadata:
 - **Anti-Surrender (CẤM DỪNG LẠI KHÓC LÓC / CẤM ĐƯA MENU PHƯƠNG ÁN 1/2):** Khi Closeout Gate < 85 hoặc exit != 0, CẤM TUYỆT ĐỐI dừng lại hỏi xin phép ("anh muốn phương án 1 hay 2"). Lỗi kỹ thuật chưa đạt là trách nhiệm tự thân của Agent, BẮT BUỘC tự động đi tiếp vòng lặp khắc phục cho đến khi APPROVED hoặc Gate tự ghi `BLOCKED_BUDGET_EXHAUSTED`.
 - **Anti-Fake-DONE Invariant:** CẤM báo DONE, commit hoặc push khi chưa có Token HMAC ký số `Verdict: APPROVED` (12/12 unit test pass không đồng nghĩa với closeout approved).
 - **Quy trình 3 Strike:**
-  - **Strike 1:** `sol_repair.py` (:20129) tạo đề xuất AST O(1) <= 30 dòng (miễn phí 100%).
+  - **Strike 1:** `sol_repair.py` (:20129) tạo đề xuất AST O(1) <= 30 dòng (miễn phí 100%). Bắt buộc truyền cờ `--diff-file` để model có ngữ cảnh diff chính xác, tránh bẫy trả về proposal rỗng (`patches_count: 0`).
   - **Strike 2:** `sol_worker.py` (:20129) ReAct test tích hợp kèm rollback snapshot (miễn phí 100%).
   - **Strike 3 Hand-off:** Trượt 3 lần liên tiếp -> Chuyển giao quyền can thiệp cho `claude_worker.py --role worker` (Haiku 5.5) hoặc `ag_cli.py fix`.
 - Khống chế tối đa 3 vòng sửa; CẤM vòng lặp vô tận.
 - CẤM TUYỆT ĐỐI gọi Claude Sonnet 5.5 để cày điểm closeout gate hoặc sửa code tự động. Sonnet là vũ khí chiến lược đắt đỏ, chỉ chạy khi Operator (User) ra lệnh đích danh.
+- **Anti-Stalling / Anti-Bureaucracy Invariant:** Khi Operator hỏi "xong hết chưa", cấm viện cớ quan liêu về trạng thái dirty hay chưa closeout để thoái thác. Bắt buộc xác nhận ngay code đã active trên đĩa hay chưa, báo cáo kết quả kiểm chứng cụ thể và lập tức kích hoạt Closeout Gate.
 
 ## 3. Tài Liệu Tham Khảo (References)
+- Sol Repair Empty Proposal Pitfall & Pytest PYTHONPATH: [`references/sol-repair-empty-proposal-and-pytest-pythonpath-pitfalls-20261018.md`](references/sol-repair-empty-proposal-and-pytest-pythonpath-pitfalls-20261018.md)
 - Pytest PYTHONPATH & Direct Test Pairing trong Closeout Gate: [`references/closeout-gate-pytest-pythonpath-and-direct-test-pairing-20261018.md`](references/closeout-gate-pytest-pythonpath-and-direct-test-pairing-20261018.md)
 - Xóa Bỏ Grace Band & HMAC Token-Gated Closeout: [`references/grace-band-elimination-and-hmac-token-gated-closeout-20261018.md`](references/grace-band-elimination-and-hmac-token-gated-closeout-20261018.md)
 - Anti-Surrender Remediation & Fake-DONE Invariant: [`references/anti-surrender-closeout-remediation-and-fake-done-invariant.md`](references/anti-surrender-closeout-remediation-and-fake-done-invariant.md)
