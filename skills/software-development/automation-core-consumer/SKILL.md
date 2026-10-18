@@ -23,9 +23,10 @@ metadata:
 # automation-core-consumer
 
 > References quan trọng:
-> - `references/workbook-concurrency-onedrive-resilience.md` (Đồng bộ workbook OneDrive chống race condition).
-> - `references/two-way-device-lock-concurrency-contract.md` (Hợp đồng Device Lock 2 chiều: wait_for_device_lock, Preflight filter).
-> - `references/asymmetric-device-lock-and-healer-collision-prevention.md` (Asymmetric Lock: cấm check lock mà không claim lease gây xung đột force-stop)..
+> - `references/rolling-concurrency-vs-worker-cap-and-device-guard.md` (Rolling concurrency 15-25 workers vs worker cap, AST lock & gate guard).
+> - `references/workbook-concurrency-onedrive-resilience.md` (OneDrive).
+> - `references/two-way-device-lock-concurrency-contract.md` (Device Lock 2 chiều).
+> - `references/asymmetric-device-lock-and-healer-collision-prevention.md` (Asymmetric Lock).
 > - `references/relative-shared-tools-import-standard.md`
 > - `references/bidirectional-device-lock-coordination-and-clean-skip.md` (Kiến trúc điều phối lock 2 chiều giữa script can thiệp của operator và ca nuôi/batch: Clean Skip, wait_for_device_lock, và tránh bẫy _UnlockedDeviceLockLease).
 > - `references/relative-shared-tools-import-standard.md` (Chuẩn hóa import path cho shared tools và cross-repo modules qua PROJECT_ROOT.parent / 'tools' thay vì hardcode tuyệt đối).
