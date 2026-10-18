@@ -681,6 +681,11 @@ Treat a requested patch-size ceiling as a verification invariant, not a preferen
   - Never trust a worker subagent's summary or claims of success without independent host-side verification.
   - Immediately run `git status -s` and inspect targeted file timestamps in the parent session before accepting the work or presenting results to the user.
   - If a subagent reports success but `git status` shows 0 files modified on host, classify it as a **Structural Failure** (Gate 3 Circuit Breaker). Do not blindly re-dispatch identical prompts; switch to explicit session-as-worker fallback or escalate to a dedicated execution tool.
+- **Generic Canned Canary Trap ("Canary Máy Móc" on Phone Farm):**
+  When an agent fixes a specific subsystem (e.g. Account Switcher, 2FA, Login, Upload, Follow, Avatar), running a generic feed swipe test and claiming "Canary PASSED" because the app didn't crash and the screenshot isn't the Home screen is a severe verification fallacy.
+  + A feed swipe test proves ONLY feed swipe. It does NOT prove that Account Switcher opens, that 2FA inputs succeed, or that avatars update.
+  + Canary MUST be targeted to the exact failure domain / subsystem touched in the diff.
+  + Verification screenshots MUST be checked with WinRT OCR against the mandatory keyword whitelist of that specific domain (e.g. `Chuyển tài khoản` / `Thêm tài khoản` for switcher). Generic feed video screenshots are strictly invalid for non-feed fixes.
 - **Single-Machine Canary Fallacy (Multi-Screen & Multi-Device Canary Matrix Invariant):**
   Chạy canary trên đúng 1 máy duy nhất KHÔNG THỂ đảm bảo các máy khác không lỗi (*"Sao canary có 1 máy thì lấy gì đảm bảo máy khác k lỗi"*, *"Canary nên chạy nhiều trường hợp để nắm đc script có ổn định khi gặp nhiều màn khác nhau k ấy"*). Trên phone farm, các máy khác nhau có phiên bản app, kích thước màn hình, tài khoản và trạng thái UI hoàn toàn khác nhau.
   + **BẮT BUỘC ma trận Canary tối thiểu 3-4 màn hình/máy khác nhau** trước khi nghiệm thu:
@@ -738,7 +743,7 @@ Treat a requested patch-size ceiling as a verification invariant, not a preferen
 
 See `references/windows-git-bash-running-tests.md` for invoking the canonical
 See `references/windows-git-bash-running-tests.md` for invoking the canonical command in a Windows/git-bash repo whose working directory path contains
-spaces (e.g. `tiktok-luot nuoi acc`). See `references/worker-material-audit-release.md` for delegated-worker reconciliation and the audit → commit → push gate.
+spaces (e.g. `tiktok-luot nuoi acc`). See `references/targeted-canary-subsystem-matrix.md` for the domain-aware Canary Subsystem Matrix, OCR keyword whitelists, and anti-mechanical canary gate rules. See `references/worker-material-audit-release.md` for delegated-worker reconciliation and the audit → commit → push gate.
 See `references/canonical-watchdog-patch-verification.md` for narrowly scoped watchdog follow-merge fixes and standalone `hermes-verify-*.py` ad-hoc probes.
 See `references/recaptcha-frame-transition-verification.md` for bounded Playwright reCAPTCHA iframe-transition patches and syntax-only verification.
 See `references/commit-push-closeout-checklist.md` for the explicit commit, push, and remote-verification sequence after an approved closeout gate.
