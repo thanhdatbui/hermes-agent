@@ -166,3 +166,29 @@ Khi click mở dropdown chọn model tại góc trên bên trái của `gemini.g
   - `ag_cli.py fix`: 900s (15 phút).
   - `dispatch_worker.py` / `haiku_worker.py`: 180s (3 phút).
 
+---
+
+## 9. Cạm Bẫy Cắt Cụt Token Do Nút Stop Ảo (Phantom Stop Button & Token Stabilization Pattern)
+
+### Hiện tượng & Bản chất lỗi (Bài học thực tế 18/10/2026):
+- **Hiện tượng:** Khi chạy daemon local cào web (`gemini_argon_server.py`), code sinh ra của Argon 4 bị cắt cụt ở độ dài ngắn bất thường (chỉ 3.500 - 5.000 ký tự), thiếu các hàm quan trọng ở cuối file (như `safe_read_json`), hoặc bị dính lỗi `SyntaxError: '(' was never closed` ngay giữa dòng code.
+- **Nguyên nhân cốt lõi:**
+  - Trên phiên bản giao diện mới của Google Gemini Web, Google **không còn hiển thị thẻ `<button>` với text "Ngưng" / "Stop" tĩnh** trong suốt quá trình stream.
+  - Vòng lặp kiểm tra:
+    ```python
+    has_stop = page.locator("button:has-text('Ngưng'), button[aria-label*='Ngưng']").count() > 0
+    if has_stop:
+        continue
+    # Stop button gone! -> Trích xuất DOM ngay lập tức
+    return text
+    ```
+  - Do `has_stop` luôn trả về `0`, server chỉ chờ hết ngưỡng sàn ban đầu (5s + 3s = đúng 8 giây) là lầm tưởng mô hình đã sinh xong! Nó lập tức cướp đoạn code trên DOM để trả về, trong khi **Argon 4 vẫn đang tích cực sinh tiếp hàng chục ngàn ký tự** (thực tế đo được lên tới 33.000 - 52.000 ký tự / 665 dòng code).
+- **Quy chuẩn kỹ thuật bắt buộc (Token Length Stabilization / Delta-Polling):**
+  - **CẤM TUYỆT ĐỐI** chỉ dựa vào locator của nút Stop.
+  - **Cơ chế ổn định độ dài:** Polling độ dài chuỗi ký tự của `<code-block>` hoặc container phản hồi mỗi 1.5s – 2.0s:
+    1. Ghi nhận `current_len`.
+    2. Nếu `current_len > 100` và `current_len == prev_len` liên tục qua 2 chu kỳ kiểm tra (khoảng 3.5s – 4.0s không tăng thêm bất kỳ ký tự nào).
+    3. Kết hợp với việc ô input (`div[contenteditable="true"]`) hoặc nút Send đã trở về trạng thái sẵn sàng nhập liệu.
+    4. Lúc này mới xác nhận 100% mô hình đã kết thúc quá trình stream và tiến hành trích xuất toàn bộ khối code hoàn chỉnh.
+
+
