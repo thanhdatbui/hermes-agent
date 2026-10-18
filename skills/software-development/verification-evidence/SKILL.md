@@ -61,13 +61,14 @@ For device-farm code fixes, keep mocked pytest and live-device canary as separat
 
 ### Targeted Canary Invariant (Anti-Mechanical Generic Canary Gate)
 Canary tests must NEVER be executed "máy móc" (generic canned execution) where an agent fixes feature A (e.g. Account Switcher, 2FA, Avatar, Login) but merely runs a generic feed-swipe smoke to grab an arbitrary non-Home screenshot and declare pass:
-1. **Subsystem-Bound Execution:** The live canary command MUST target the exact flow/hook touched in `git diff` (e.g. for Account Switcher, execute the account selection flow with real workbook rows; for 2FA, trigger the security verification screen; for Avatar, exercise the profile crop/save flow).
-2. **Mechanical WinRT OCR Whitelist by Subsystem:** The verification screencap MUST pass `validate_evidence_screen.py` with required keywords for that specific subsystem:
+1. **Subsystem-Bound Execution:** The live canary command MUST target the exact flow/hook touched in `git diff` via `canary_matrix.json` and `canary_plan.py` (e.g. for Account Switcher, execute the account selection flow with real workbook rows; for 2FA, trigger the security verification screen; for Avatar, exercise the profile crop/save flow).
+2. **Mechanical WinRT OCR Whitelist by Subsystem:** The verification screencap MUST pass `validate_evidence_screen.py --spec-json` (`validate_ocr_spec`) with required keywords for that specific subsystem:
    - `account_switcher`: `Chuyển tài khoản`, `Thêm tài khoản`, `Switch account`, `Add account`.
    - `profile_identity`: `Hồ sơ`, `Sửa hồ sơ`, `Edit profile`, exact target `@username`.
    - `feed_swipe`: `Dành cho bạn`, `Đang follow`, `Bạn bè`, `For You`.
    - `login_2fa`: `Xác minh 2 bước`, `Trình xác thực`, `Mã xác nhận`, `2-step verification`.
 3. **Fail-Closed on Subsystem Mismatch:** If the candidate diff modifies module X but the canary receipt only proves module Y, reject the verification as `CANARY_SUBSYSTEM_MISMATCH`. Generic feed-swiping is strictly forbidden as proof for non-feed bug fixes.
+4. **Autonomous Mechanical Execution Discipline:** When running targeted canaries that follow the verified matrix and fail-closed contracts, execute them mechanically without hesitation, unnecessary confirmation pauses, or complaining ("chạy bình thường, không khóc lóc").
 
 ### Synthetic E2E Canary for Non-Automation Media & Tooling Pipelines
 When implementing or fixing media/video tooling in non-automation repos (e.g. `D:/Taadaa/tools`) where `done_gate.py` reports `GATE-PASS(bypass): Non-automation task, canary not required`, offline mocked unit tests are strictly insufficient when the user asks "run canary chưa":

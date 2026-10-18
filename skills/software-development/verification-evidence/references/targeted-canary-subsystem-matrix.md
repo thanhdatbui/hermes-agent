@@ -1,35 +1,109 @@
 # Targeted Canary Subsystem Matrix & Gate Guard Architecture
 
-## 1. Problem Statement: "Canary Máy Móc"
+## 1. Problem Statement: "Canary Máy Móc" (Generic Canned Canary Trap)
 Agents frequently fall into the trap of running a generic canned test (e.g., swiping 3 videos on TikTok feed or checking that `exit_code == 0` without a Home screen) to claim "Canary Passed", regardless of what was actually modified in `git diff`.
 - A fix in `account_switcher` proved by a video feed swipe is **UNVERIFIED**.
 - A fix in `2fa_login` proved by opening Profile without auth verification is **UNVERIFIED**.
 - A fix in `avatar_upload` proved without profile pHash / crop verification is **UNVERIFIED**.
 
-## 2. Subsystem Mapping & Required Evidence Matrix
+## 2. Tri-Party Architectural Alignment (18/10/2026)
+Following the Tri-Party Consultation Protocol (Sol High Auditor + Claude Planner + Hermes Coordinator):
+- **Sol High Auditor (:20129):** CONDITIONAL APPROVE. Requires strict fail-closed enforcement:
+  1. *No silent bypass:* Unmapped diffs without explicit fallback MUST fail-closed (`BLOCK`), never fall through to generic feed swipe.
+  2. *Mechanical OCR Whitelist:* Must combine required keyword groups (`required_all`) + anti-launcher dominance (`LAUNCHER_DOMINANT` when >= 2 markers or 0 required groups met) + minimum characters (`min_chars >= 20`).
+  3. *O(1) Hook hard deadline:* Timeout = FAIL. Cache bound to `diff_sha256`. No infinite retry converting failures to passes.
+- **Claude Planner:** Designed the 4-stage interface pipeline:
+  `git diff ──▶ canary_plan.py ──▶ canary_runner.py ──▶ validate_evidence_screen.py ──▶ done_gate.py`
+- **Hermes Coordinator:** Implemented Phase 1 (P0: declarative matrix, read-only plan builder, OCR spec validator) and enforces operational discipline: run mechanically without stopping to ask permission or complain ("chạy bình thường, không khóc lóc").
 
-| Subsystem in Git Diff | Candidate Paths / Modules | Mandatory Canary Command / Hook | Mandatory WinRT OCR Keywords (Whitelist) |
-|---|---|---|---|
-| `account_switcher` | `core/account_switcher.py`, `flows/feed_swipe_smoke.py` (`*_switch*`) | `run_tiktok.py` with `--account-workbook` & `--account-row-index` (or `--hook account_switcher`) | `Chuyển tài khoản`, `Thêm tài khoản`, `Switch account`, `Add account` |
-| `profile_identity` | `flows/profile_flow.py`, `_profile_identity*` | `--mode feed-session-smoke --verify-profile` | `Hồ sơ`, `Sửa hồ sơ`, `Edit profile`, exact `@username` target |
-| `feed_swipe` | `flows/swipe_flow.py`, `feed_swipe_smoke.py` (`*_swipe*`) | `--mode feed-swipe-smoke` | `Dành cho bạn`, `Đang follow`, `Bạn bè`, `For You` |
-| `2fa_security` | `tiktok-add-bao-mat-f2a`, `flows/twofa*` | `--mode 2fa-verify` / auth verification flow | `Xác minh 2 bước`, `2-step verification`, `Trình xác thực`, `Mã xác thực` |
-| `follow_target` | `follow_runner/run_follow.py` | `follow_runner` with `--hook follow_target` | `Đang follow`, `Following`, `Bạn bè`, `Friends` |
-| `avatar_upload` | `avatar*`, `upload_preflight*` | `--mode avatar-upload-smoke` | Profile screen + pHash/BGR delta > 15 against baseline |
+## 3. Declarative Matrix Specification (`tools/canary_matrix.json`)
+The matrix decouples mapping rules from runtime code:
+```jsonc
+{
+  "schema_version": 1,
+  "repos": {
+    "tiktok-luot nuoi acc": {
+      "mode": "shadow", // off | shadow | enforce
+      "exempt_globs": ["**/*.md", "**/tests/**", "tests/**", "docs/**", "**/*.example.yaml"],
+      "rules": [
+        {
+          "id": "account-switcher",
+          "path_globs": ["*switcher*", "*profile_switch*", "**/flows/profile*", "*account_switcher*"],
+          "hook": "account_switcher",
+          "scope": "single",
+          "ocr": {
+            "required_all": [["chuyển tài khoản", "thêm tài khoản", "switch account", "add account"]],
+            "forbidden_extra": ["launcher", "màn hình chính"],
+            "min_chars": 20
+          }
+        },
+        {
+          "id": "feed-swipe",
+          "path_globs": ["**/flows/swipe*", "**/flows/feed*", "*feed_swipe*"],
+          "hook": "feed_swipe",
+          "scope": "single",
+          "ocr": {
+            "required_all": [["dành cho bạn", "đang follow", "bạn bè"]],
+            "min_chars": 20
+          }
+        }
+      ],
+      "fallback": {"hook": "full_flow", "scope": "single", "coverage": "generic"}
+    },
+    "tiktok-follow": {
+      "mode": "shadow",
+      "exempt_globs": ["**/*.md", "docs/**", "tests/**", "**/*.example.yaml"],
+      "rules": [
+        {
+          "id": "follow-tab-nav",
+          "path_globs": ["follow_runner/ui/*tab*.py", "follow_runner/flows/following*.py"],
+          "hook": "open_following_tab",
+          "scope": "single",
+          "ocr": {
+            "required_all": [["following", "đang follow", "đã follow"]],
+            "min_chars": 20
+          }
+        },
+        {
+          "id": "follow-core",
+          "path_globs": ["follow_runner/run_follow.py", "follow_runner/core/**"],
+          "hook": "full_flow",
+          "scope": "wide",
+          "ocr": {
+            "required_all": [["follow"]],
+            "min_chars": 20
+          }
+        }
+      ],
+      "fallback": {"hook": "full_flow", "scope": "single", "coverage": "generic"}
+    }
+  }
+}
+```
 
-## 3. Automated Subsystem Extraction from Git Diff
-Before accepting a canary receipt, the verification gate (`canary_runner.py` or `done_gate.py`) must:
-1. Inspect `git diff --name-only HEAD~1..HEAD` (or current worktree diff).
-2. Classify the modified functions/files into one or more `required_subsystems`.
-3. Compare against `canary_receipt.json`:
-   - `subsystem_tested`: Must match the diff's `required_subsystems`.
-   - `ocr_snippet` / `media_path`: Must pass `validate_evidence_screen.py <media_path> <subsystem>`.
-4. If a mismatch is detected (e.g., diff touched `account_switcher` but receipt recorded `feed_swipe`), gate fails with:
-   `[CANARY_FAIL] CANARY_SUBSYSTEM_MISMATCH: Diff requires 'account_switcher', but canary only tested 'feed_swipe'!`
+## 4. Interface Contracts
 
-## 4. O(1) Fast-Canary Rule
-Targeted canaries do NOT need to run full 5-minute sessions. They should execute the minimal focused hook (O(1) execution <= 30s):
-- Open target screen / trigger dialog.
-- Capture screenshot & dump XML.
-- Validate via WinRT OCR.
-- Teardown only AFTER capture is confirmed.
+### 4.1 `canary_plan.py` (Read-Only Diff Analysis)
+- Invokes `git diff --no-ext-diff -U0 --no-color <base> HEAD`.
+- Computes canonical `diff_sha256` by normalizing EOL and whitespace.
+- Filters `exempt_globs` (docs, tests, examples).
+- Matches changed paths to rule `path_globs`. If unmapped, assigns repo fallback or fails.
+- Generates `canary_plan.json` containing:
+  - `diff_sha256`, `base_sha`, `head_sha`, `matrix_sha256`.
+  - `requirements`: list of required rules, hooks, scopes, and OCR specs.
+  - `unmapped` and `exempt` path audits.
+
+### 4.2 `validate_evidence_screen.py` (`validate_ocr_spec`)
+- `validate_ocr_spec(image_path, spec, ocr_fn) -> (bool, status, details)`:
+  1. Checks `image_path` existence and minimum file size (`OCR_MIN_FILE_BYTES = 40000`).
+  2. Runs WinRT OCR (or injected `ocr_fn` for mock tests).
+  3. Checks `len(ocr_text.strip()) >= spec.get('min_chars', 20)`.
+  4. Evaluates `required_all`: Each element is a list of synonymous keywords; at least one keyword in each group must hit.
+  5. Evaluates Launcher Dominance: If $\ge 2$ launcher markers appear, or $\ge 1$ launcher marker appears while 0 required groups are satisfied $\rightarrow$ Returns `(False, "LAUNCHER_DOMINANT", details)`.
+  6. Returns `(True, "VALID", details)` with `ocr_text_sha256` and matched `hits`.
+- CLI flag `--spec-json` allows standalone execution or integration by `canary_runner` and `done_gate`.
+
+## 5. Phased Rollout Discipline
+1. **Phase 0 (P0 - Implemented):** `canary_matrix.json`, `canary_plan.py`, and `validate_ocr_spec()` unit-tested (12/12 pytest pass).
+2. **Phase 1 (P1 - Next):** Runner integration with `--plan <plan.json>` and `done_gate.py --plan-check` running in `shadow` mode (logs `WOULD_FAIL` without blocking).
+3. **Phase 2 (P2):** Switch repo `mode` from `shadow` to `enforce` once seed keywords and hooks are fully verified on real hardware.

@@ -83,11 +83,19 @@ Chi tiết 2 sản phẩm + lập luận: `references/boxtaikhoan-hotmail-2026-0
   - **Thực tế:** Sàn vẫn lưu trữ toàn bộ đơn hàng cũ nhiều tháng qua (166+ kết quả trên 17 trang). Bắt buộc lật qua phân trang các trang sau (page 14, 15, 16...) hoặc tìm theo mã đơn.
   - Chi tiết đơn hàng lưu nguyên bản chuỗi credential gốc bàn giao: `mail|pass|refresh_token|client_id`. Dùng để đối soát pass gốc khi Excel/DB bị ghi đè. Chi tiết quy trình: `references/boxtaikhoan-order-history-retrieval.md`.
 
-## Phân loại tài khoản TikTok trên thị trường MMO (Giỏ hàng vs Live vs 1k Follow)
+## Phân loại tài khoản TikTok trên thị trường MMO (Acc rác/Clone vs Nuôi kênh 1k Follow)
 
-Khi user yêu cầu nghiên cứu/tìm kiếm thực tế các gói bán tài khoản TikTok (trên TaphoaMMO, Telegram Store bot, chợ MMO):
+Khi user yêu cầu nghiên cứu/tìm kiếm thực tế các gói bán tài khoản TikTok (trên TaphoaMMO, Telegram Store bot, clonesieure.pro, chợ MMO):
 - **Quy tắc phản hồi**: BẮT BUỘC tra cứu số liệu/bằng chứng quy trình cụ thể từ app/hệ thống thực tế, không trả lời chung chung lý thuyết suông. Nếu các web tìm kiếm bị bot-block, dùng proxy mobile farm (`mobi1:TaadaaMobi#2026!@test.taadaa.click:5101`) hoặc inspect trực tiếp qua tool để lấy facts.
-- **3 phân loại sản phẩm thực tế trên thị trường**:
+- **Phân biệt rạch ròi 2 phân khúc hoàn toàn khác nhau**:
+  1. **Phân khúc Clone rác / Burner (1.200đ – 3.900đ, vd: `clonesieure.pro`)**:
+     - *Bản chất*: Reg bằng mail fake/temp mail (`vi.emailfake.com`, `api999api.com`) hoặc reg phone xong đá sạch mail chỉ chừa `user|pass|2fa`.
+     - *Mục đích*: Dành cho dân chạy tool spam comment, seeding view/tim, cày ref sự kiện TikTok Lite (như acc Japan 3.900đ) vài hôm lấy thưởng rồi vứt.
+     - *Rủi ro*: Không thể reset pass nếu TikTok bắt checkpoint/đổi pass; thiết bị mới login không thể gắn mail mới ngay do dính cờ Trust Device Lock.
+  2. **Phân khúc Tài khoản Nuôi kênh Farm (150.000đ – 250.000đ)**:
+     - *Bản chất*: Hàng farm nuôi dài hạn qua chu kỳ (dưỡng 4d, up video 3 ca), kéo $\ge 1.000$ follow thật, mở giỏ hàng Creator / TikTok Shop / Live Shopping.
+     - *Bắt buộc giữ Hotmail sạch + 2FA + Change Info*: Giao cho khách full dàn (`user|pass|2fa|mail|pass_mail|token_oauth2|mailkhoiphuc`). Phôi Hotmail bắt buộc phải đổi pass và gán mail khôi phục (`@fviainboxes.com`) để triệt tiêu 100% rủi ro bên bán phôi mail dùng chức năng "Quên mật khẩu" cướp mất kênh 200k.
+- **3 phân loại kênh bán lẻ trên thị trường**:
   1. **Acc Mở Giỏ Hàng - Không Live (~30k - 100k)**: Acc clone 0 follow lách liên kết với TikTok Shop Seller Center. Có tab Giỏ hàng để gắn link sản phẩm video nhưng KHÔNG CÓ NÚT LIVE (vì thiếu 1k follow).
   2. **Acc 1k Follow - Chưa mở Giỏ Hàng (~150k - 250k)**: Đã buff/nuôi đủ 1.000 followers → Đã mở tính năng Live, nhưng chưa đăng ký TikTok Shop Creator (người mua tự thao tác vào Creator Center bấm nhận).
   3. **Acc 1k Follow - Mở sẵn Giỏ hàng + Có Live (~350k - 500k)**: Đã có $\ge 1.000$ follow, đã đăng ký duyệt giỏ hàng Creator và đã được nhả quyền phát Live. Dùng được ngay cho Live Shopping (vừa live vừa ghim giỏ hàng).
@@ -145,6 +153,7 @@ Khi user nhờ tìm kiếm/nghiên cứu sản phẩm trên Shopee / TikTok Shop
 ## References
 
 - `references/boxtaikhoan-hotmail-2026-08-16.md` — dữ liệu 2 tier Hotmail trên boxtaikhoan.com (token Graph API vs mail thường).
+- `references/clonesieure-pro-vs-taikhoan295-pricing-2026-10.md` — khảo sát & đối chiếu giá clonesieure.pro (hàng clone rác đá mail/mail fake 1.2k–3.9k) vs nguồn taikhoan295 (phôi Hotmail OAuth2) vs hàng nuôi kênh Farm (150k–250k).
 - `references/boxtaikhoan-order-history-retrieval.md` — quy trình tra cứu đơn hàng cũ trên boxtaikhoan.com, lật phân trang, đọc credential gốc bàn giao và pitfall cảnh báo tĩnh "chỉ lưu 3 ngày".
 - `references/tiktok-account-reverse-engineering-and-growth-playbook.md` — Playbook bóc tách dữ liệu ngược (Snowflake ID decoding, bypass WAF/Captcha qua yt-dlp) và công thức nuôi kênh TikTok từ thực chiến (Aging 74 ngày, chiến lược bậc thang 20-26s khung 21h, Hook 3s đầu).
 - `references/tiktok-market-accounts-pricing-2026.md` — bảng giá thị trường thực tế các loại acc TikTok (Giỏ hàng 0 follow vs 1k Follow vs Full Combo Live + Giỏ hàng) kèm link khảo sát thực tế (MuaCash, ShopGiangMedia, Taikhoanre) & kỹ thuật fallback tìm kiếm Cốc Cốc qua browser.
