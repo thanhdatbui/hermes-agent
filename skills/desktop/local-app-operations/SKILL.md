@@ -535,6 +535,7 @@ When using a screenshot, verify the address bar port against the live listener; 
 
 ## Supporting detail
 
+- `references/mobile-dashboard-detail-modal-and-runtime-reload.md` — Responsive mobile detail modal layout (near-viewport bounds, mobile stacking, pill filter tabs for large cohorts, auto-focus target, and runtime reload checks).
 - `references/mobile-fleet-dashboard-design-patterns.md` — Responsive mobile layout patterns for local fleet dashboards (safe-area insets, card view toggle, mini timeline pills, sticky multi-column headers).
 - `references/runtime-app-update-and-import.md` — Reusable OmniRoute-style workflow, UI paths, and credential-safe proxy import handling.
 - `references/omniroute-watchdog-resilience-and-fail-closed-runbook.md` — OmniRoute Fail-Closed Proxy & Watchdog Resilient Supervision Runbook: two-tier liveness/health checks, preventing false-positive restarts on pool 401/403 errors, and RAM/repo synchronization.

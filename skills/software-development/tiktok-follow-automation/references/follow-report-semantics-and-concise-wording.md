@@ -220,6 +220,12 @@ Answer the operator's direct question first, in Vietnamese, with no speculative 
     * Watchdog lấy chênh lệch `following` từ profile công khai TikTok cào bởi snapshot crawler đối chiếu trực tiếp với số follow do bot app ghi nhận (`follow_result.json`).
     * **Lệch âm (`Lệch -N`, ví dụ `M23: script 2 lượt - web 0 lượt - lệch (-2)`, `M45/M59: script 4 - web 0 - lệch (-4)`):**
       - Script trên điện thoại đã báo thành công (2-4 lượt), nhưng counter công khai trên web không tăng (+0).
+      - **CẬP NHẬT KIỂM CHỨNG LỊCH SỬ KHI USER HỎI "FIX ĐI / HÌNH NHƯ CÓ SESSION KHÁC FIX RỒI MÀ QUÊN":**
+        * Trước khi vội vàng lao vào code fix đè hoặc dispatch worker vô ích, Coordinator BẮT BUỘC dùng `session_search` và `git log` kiểm tra lịch sử commit gần nhất (`git log -5`).
+        * **Hiện tượng Session Watchdog báo lại ca cũ (Historical Session Backfill / Retention Window):**
+          Watchdog quét lại các ca trong cửa sổ retention 7 ngày. Khi thấy báo cáo ca cũ (ví dụ: Ca 1 Row 7 chạy lúc 06:25 sáng 17/10), mốc thời gian chạy thực tế có thể diễn ra TRƯỚC thời điểm commit bản vá `d328458` (được chốt vào 19:01 tối 17/10).
+          - Do ca đó chạy bằng code cũ (chưa có vuốt reload `pull_to_refresh_profile` ở Path B) nên bị dính lệch -2.
+          - Code trên nhánh `master` hiện tại ĐÃ CÓ bản vá hoàn chỉnh, test suite pass 100%. Tuyệt đối không hoang mang tự viết lại hay xóa bỏ logic đang chạy ổn định.
       - **CẤM TUYỆT ĐỐI CHỐNG CHẾ / TỰ BỊA ĐỔ LỖI CHO "CACHE CDN TIKTOK" HOẶC "ĐỘ TRỄ CRAWLER":**
         * User cấm triệt để việc tự sướng chế lỗi cache hay bao biện "chờ phiên sau bù trừ". Lệch âm là bằng chứng chắc chắn của việc **CƠ CHẾ CHECK NHẢ TRÊN THIẾT BỊ BỊ LỌT LƯỚI / TÊ LIỆT**.
       - **Kỷ luật trả lời khi Operator chất vấn ("Cơ chế check nhả đéo hoạt động hả?"):**

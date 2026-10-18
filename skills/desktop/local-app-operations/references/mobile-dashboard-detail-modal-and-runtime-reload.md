@@ -9,6 +9,10 @@ A local fleet dashboard exposes per-account history, quota, UID lists, or audit 
 2. Make the entity card itself clickable where appropriate. Guard the card handler so clicks on links/buttons keep their original behavior: `if (!event.target.closest('a,button')) openDetail(...)`.
 3. Keep desktop master-detail columns, then add a narrow-width breakpoint that stacks the body, makes the account list full width with a bounded height, removes the desktop right border, and lets the detail pane scroll vertically.
 4. Use a near-viewport modal on mobile: `width:100%`, `height:min(94vh,900px)`, `max-height:94vh`, small backdrop padding, and a reduced header/content padding. Avoid relying on a fixed desktop `88vh` two-column layout.
+5. **Interactive Group Filter Tabs (Pill Buttons) & Auto-Focus**: In master-detail sidebars with large entity pools (hundreds to thousands of accounts), never stack all categories into a single unsegmented vertical scroll list (forcing endless mouse wheeling past 900+ items).
+   - Render horizontal filter pill buttons at the top of the sidebar for each cohort with counts: `[Tất cả (N)]`, `[🔴 Cooldown (N)]`, `[🟡 Hồi phục (N)]`, `[🟢 Khỏe (N)]`.
+   - Toggle visibility to only render the active cohort's items when a pill is selected.
+   - When launching the modal from an entity card, automatically detect the target account's cohort and default `fdFilterGroup` to that cohort so the selected account is immediately visible and isolated without scrolling.
 
 ## Verification recipe
 
