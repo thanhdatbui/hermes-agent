@@ -140,3 +140,29 @@ Khi click mở dropdown chọn model tại góc trên bên trái của `gemini.g
 ### Kỷ luật lựa chọn Reasoning Effort cho tác vụ Lập trình:
 - **Tuyệt đối không dùng `none` hoặc `low` cho bài toán Code:** Mức suy luận thấp khiến mô hình đoán mò theo xác suất bề mặt, dễ sinh code thiếu khối giải phóng tài nguyên (`finally`), quên xử lý race-condition, hoặc xử lý sai offset nhị phân.
 - **Mức `high` (`[[0]]`) là lựa chọn tối ưu:** Trên hạ tầng Google AI Pro, mức `high` không hề chậm (trung bình 15s - 27s), đặc biệt ở các bài toán cấu trúc sâu (nhị phân MP4, xử lý mạng ARP) nó nhanh hơn `medium` gấp 2 - 3 lần nhờ đi thẳng vào giải pháp không bị backtrack. Code sinh ra có đầy đủ type annotations, xử lý toán tử so sánh cho hàng đợi ưu tiên và method stream chuẩn mực.
+
+---
+
+## 8. Cạm Bẫy Benchmark Ảo Trên Web DOM & Quy Chuẩn Đo Đạc Chống Báo Cáo Bịp (Bài Học 18/10/2026)
+
+### Cạm bẫy nhai lại code cũ do không phân lập Turn (DOM Pollution Trap):
+- **Hiện tượng:** Khi chạy nhiều câu hỏi benchmark dồn chung vào một luồng chat web (`/app/<id>`), kết quả trả về siêu tốc (~16s - 18s) và `ast.parse` xanh 100%, nhưng nội dung thực tế là code của... câu hỏi trước đó bị bốc nhầm.
+- **Nguyên nhân:** Hàm extract dùng selector toàn trang `page.locator("pre, code-block")` lấy block cuối cùng. Khi câu hỏi mới vừa gửi đi, câu trả lời mới chưa sinh xong nhưng trên trang đã có sẵn code block của lượt trước $\rightarrow$ Selector bốc luôn code cũ trả về.
+- **Quy chuẩn chống bịp bắt buộc:**
+  1. Phân lập tuyệt đối: Trước khi gửi prompt, đếm số lượt phản hồi (`turns_before`). Bắt buộc đợi `turns_after == turns_before + 1`, nút *Stop* biến mất, và CHỈ trích xuất code block nằm bên trong turn mới nhất (`turns.last`).
+  2. Không tin mù quáng vào `ast.parse`: Code hợp lệ cú pháp không đồng nghĩa với giải đúng bài. Bắt buộc kiểm tra từ khóa nghiệp vụ của đề bài trong nội dung trả về.
+
+### Cạm bẫy nuốt lỗi click chọn model (Silent Fallback to Flash-Lite):
+- **Hiện tượng:** Tài khoản bị Google chạm hạn mức `4 Argon` (hiển thị `"Hạn mức sẽ được đặt lại vào HH:MM"` và menu item có `aria-disabled="true"`). Nút không click được.
+- **Hậu quả:** Nếu script bắt lỗi bằng `except Exception: pass`, trình duyệt sẽ âm thầm giữ nguyên model mặc định là `3.5 Flash-Lite`. Người đo tưởng đang test Argon 4 nhưng thực chất đang chạy Flash-Lite!
+- **Quy chuẩn phòng chống:**
+  - Bắt buộc kiểm tra thuộc tính `aria-disabled` trước khi click.
+  - Sau khi chọn model, BẮT BUỘC verify lại text hiển thị trên nút chọn chế độ `[data-test-id='bard-mode-menu-button']` (ví dụ phải hiển thị `'Argon'`). Nếu không khớp, phải ném `RuntimeError` fail-closed ngay lập tức, cấm nuốt lỗi.
+
+### Quy chuẩn cấu hình AGY CLI & Gateway Timeout:
+- **Model chuẩn:** Khóa cứng `DEFAULT_MODEL = "gemini-3.8-flash-medium"` trong `ag_cli.py` (cấm tự gán `high` làm chậm và nghẽn CoT).
+- **Timeout hệ thống:**
+  - `ag_cli.py ask`: 600s (10 phút) để đảm bảo stream trọn vẹn qua proxy 4G Mobi.
+  - `ag_cli.py fix`: 900s (15 phút).
+  - `dispatch_worker.py` / `haiku_worker.py`: 180s (3 phút).
+
