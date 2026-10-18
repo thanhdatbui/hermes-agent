@@ -21,3 +21,5 @@ Canary: target-bound (matrix+plan map diff->hook; cấm khóc lóc/máy móc); W
 Ava: Trích clip gốc representative_frames. Gate 6 fail-closed: cấm trần thuật/giải thích UI thiếu MEDIA:; file vật lý+SHA256 thật; cấm gửi mù. Dọn .thumbnails+Camera; Picker 0,1.
 §
 Reboot 3 ca (05:20, 11:20, 17:20), né TFT/War3. Task ngầm & Scheduler BẮT BUỘC bọc VBS/wscript Hidden + CREATE_NO_WINDOW (0x08000000), CẤM pop cmd cướp focus. 'Tắt' khi game = tắt cửa sổ nháy, cấm pause cron.
+§
+MCP: agy mcp add <name> <URL> cắm remote trực tiếp ko cần JSON. ChatGPT Dev mode chỉ acc Plus/Team ($20/th).
