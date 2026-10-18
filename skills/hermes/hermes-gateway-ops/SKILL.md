@@ -13,8 +13,9 @@ Trigger: set up or operate the messaging gateway (Telegram first), bind a chat/g
 - `references/prevent-eventloop-freeze-terminal-guard.md` — Chống đơ Event Loop terminal 600s.
 - `references/telegram-webhook-read-timeout-backoff.md` — Webhook Timeout; Polling qua SOCKS5.
 - `references/telegram-media-download-resilience-and-timedout-retry.md` — Vá tải ảnh `TimedOut`.
-- `references/telegram-gateway-ram-desync-and-site-packages-sync.md` — Lệch pha RAM Gateway, bẫy bán đồng bộ site-packages gây crash khi restart, và xử lý kẹt file lock mồ côi.
-- `references/telegram-polling-heartbeat-debounce-anti-flapping.md` — Chẩn đoán & xử lý Telegram Polling Heartbeat Degradation (flapping reconnect 5s-60s), cơ chế Debounce 3 lần thất bại liên tiếp kèm Adaptive Fast-Retry (15s/180s), và mở rộng `httpx.ProxyError` retryable connect error.
+- `references/telegram-gateway-ram-desync-and-site-packages-sync.md` — Lệch pha RAM Gateway, đồng bộ site-packages và dọn file lock mồ côi.
+- `references/telegram-polling-heartbeat-debounce-anti-flapping.md` — Xử lý Telegram Heartbeat Flapping & Adaptive Fast-Retry.
+- `references/llm-cronjob-gateway-queue-saturation-and-prevention.md` — Chẩn đoán & ngăn nghẽn queue Gateway do Cronjob thiếu `no_agent: True`.
 
 ## CLI commands
 

@@ -88,7 +88,16 @@ Wrap high-height analytical cards in `<details>` or toggleable accordions:
 ```
 On desktop, keep `<details open>`; on mobile, default closed to allow direct access to operational accounts.
 
-### 5. Implementation Invariants & Pitfalls
+### 5. Detail modal and runtime freshness pattern
+
+For per-account history/audit/UID detail surfaces on mobile:
+- Expose a readable action label such as `📜 Bệnh án`; optionally make the whole card clickable, but guard the card handler with `event.target.closest('a,button')` so the TikTok link and secondary chart/detail buttons keep their own behavior.
+- Keep desktop master-detail columns, then stack the panes at narrow widths. Use a near-viewport modal (`width:100%`, bounded `max-height`), small mobile backdrop padding, a bounded account-list pane, and a vertically scrollable detail pane. A fixed desktop `88vh` two-column modal is not adequate for a 390px viewport.
+- Verify the rendered browser after a fresh load: readable action label, clickable card, modal title, selected username, and legible detail content without clipping or obstructing popups.
+- Source edits to embedded Python dashboard templates do not hot-reload a running daemon. Restart only the verified target listener or use a fresh isolated port, then hard-reload/navigate and verify the new markup. If the default port still serves old markup, classify it as `source-fixed/runtime-stale`, not DONE.
+- `py_compile` and worker summaries prove syntax/source scope, not browser rendering or runtime freshness; keep those evidence claims separate.
+
+### 6. Implementation Invariants & Pitfalls
 1. **Reverse Chronological Mini-Timeline**:
    - Date arrays from database aggregation are typically sorted ascending (`['2026-09-27', ..., '2026-10-09']`).
    - When rendering inline pill chips on cards, always slice and reverse (`dates.slice(-6).reverse()`) so the most recent run date appears on the far left. Operators can verify today's or yesterday's run status (`10-09: 🛑15` vs `10-09: +14`) instantly.

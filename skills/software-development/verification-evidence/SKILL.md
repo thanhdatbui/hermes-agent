@@ -55,6 +55,10 @@ older pytest result or a planned command. If probe execution fails, report the
 concrete harness/product failure instead of claiming the previous result is
 current evidence.
 
+## Farm Canary Evidence Split
+
+For device-farm code fixes, keep mocked pytest and live-device canary as separate claims. Offline tests prove only the code seam; PASS requires the official runner's fresh machine-scoped manifest, summary, log, matching UI XML, and screenshot. If the official canary is blocked by a guard, report `LIVE_CANARY_BLOCKED` with the literal error and keep the fleet closed; never convert green offline tests into live PASS.
+
 ## Live Batch Evidence
 
 ### Avatar-normalization evidence split
