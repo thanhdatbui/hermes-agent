@@ -9,8 +9,9 @@ description: "TikTok follow runner and fail-closed farm ops."
 
 - Tài liệu chuyên sâu nằm trong `references/`; dùng đúng reference theo tình huống.
 - `references/post-follow-verification-and-reconcile.md`: tách tap, Path-B và web reconciliation; schema bằng chứng per-UID.
-- `references/follow-reconcile-queue-shift-and-gate-timeout-diagnostics.md`: Hiện trường lệch follow do tàn dư ca cũ trước commit, cạm bẫy FakeAdapter tiêu thụ XML dump ngầm làm lệch hàng đợi test, và bẫy timeout 120s trong Closeout Gate.
-- `references/triage-stale-session-and-mock-adapter-pitfalls.md`: Triage đối soát ca cũ watchdog báo lại vs code đã fix (mtime vs commit SHA), cạm bẫy FakeAdapter/Mock fixture và chia nhỏ diff khi bị DIFF_TOO_LARGE tại Closeout Gate.
+- `references/follow-reconcile-queue-shift-and-gate-timeout-diagnostics.md`: Lệch follow do tàn dư ca cũ, cạm bẫy FakeAdapter, timeout 120s Closeout.
+- `references/triage-stale-session-and-mock-adapter-pitfalls.md`: Triage ca cũ watchdog báo vs code đã fix (mtime vs SHA), FakeAdapter fixture và chia nhỏ diff.
+- `references/follow-dashboard-diagnostics-and-ceiling-invariants.md`: Chẩn đoán Sổ Bệnh Án (link TikTok nick chính) và cơ chế tính/hiển thị Gãy Gần Nhất (last_failed_ceiling, probation fallback).
     - `references/winrt-ocr-follow-button-fastpath-and-rescue.md`: WinRT OCR fast-path và fallback cứu hộ khi XML hierarchy rỗng/obfuscated trên nút Follow và verify_after_tap.
     - `references/account-metrics-correlation-and-dual-gate-60d-policy.md`: Tương quan Like/Follower vs Tuổi/Video, Dual Gate 60d/15v, Cầu dao IP, follow tự nhiên 1% Feed.
     - `references/contact-suggestion-popup-follow-lockdown.md`: Khóa popup danh bạ.

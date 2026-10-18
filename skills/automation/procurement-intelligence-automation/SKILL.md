@@ -97,6 +97,9 @@ To minimize token costs and eliminate latency:
      * *Word-boundary checks:* Use `(?<!\d)8\s*mm\b` instead of raw substring to prevent false UNFIT on `18mm` trocars.
      * *Negation clause handling:* Check preceding window for negative phrasing (`không yêu cầu robot`, `không dùng dao`) to avoid reversing legal intent.
      * *No Blind FIT on Missing Sizes:* If document mentions trocar generally without specifying 5/10/12/15mm, return status `NEEDS_REVIEW` (provisional models attached) rather than claiming full compatibility.
+     * *Multi-Lot (Phân Lô) Isolation:* Extract structured `technical_specs` from `raw_json` rather than concatenating full tender blobs, preventing Lot 2/3 disqualifiers (robot, 8mm, blade) from poisoning Lot 1 trocar bids.
+     * *SQLite WAL Production Sync Invariant:* Flush WAL with `PRAGMA wal_checkpoint(TRUNCATE)` locally; stop service and remove companion `-wal`/`-shm` files on VPS before SFTP upload to avoid SQLite serving stale cache pages.
+     * *Null-Safe Ingestion:* Use `data.get("scope") or "Trong nước"` and guard against null/empty `bid_code` to prevent `sqlite3.IntegrityError` during bulk historical syncs.
      * *Date Normalization & Freshness SLA:* Convert all `DD/MM/YYYY` to ISO `YYYY-MM-DD` for SQLite `ORDER BY`, dynamic expiry check (`deadline_date >= date('now')`), and return `data_as_of` / `get_cache_status` for user auditability. (See `references/fastmcp-production-hardening-and-evaluator-audit.md`).
 
 ---

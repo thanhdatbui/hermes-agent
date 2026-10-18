@@ -211,5 +211,41 @@ Khi click mở dropdown chọn model tại góc trên bên trái của `gemini.g
   - Không viện cớ an toàn để đóng băng.
   - Sử dụng bộ giải tự động `solve_recaptcha_audio` qua Playwright CDP (FFmpeg decode MP3 $\rightarrow$ SpeechRecognition) để giải captcha âm thanh và vượt qua màn hình xác minh danh tính.
 
+---
+
+## 11. Cạm Bẫy Bộ Chọn Cấp Độ Tư Duy (Thinking Level) & So Sánh Năng Lực Thực Chiến
+
+### 1. Bẫy chuỗi con Tiếng Việt "Cao" vs "3.1 Pro (Suy luận nâng cao)":
+- **Hiện tượng:** Khi gọi `locator("gem-menu-item:has-text('Cao')")` để bật nấc tư duy `Cao`, mô hình trên web bị chuyển nhầm sang **`3.1 Pro`** thay vì giữ `Argon 4`.
+- **Nguyên nhân:** Mô tả của model `3.1 Pro` trong giao diện tiếng Việt là *"3.1 Pro\nSuy luận nâng cao"*. Từ *"nâng cao"* chứa chuỗi con *"cao"* và xuất hiện ở index [2] (trước index [7] của nấc tư duy Cao) $\rightarrow$ Playwright `.first` bốc trúng `3.1 Pro`.
+- **Quy chuẩn bắt buộc:**
+  - CẤM match chuỗi con ngắn `"Cao"`.
+  - BẮT BUỘC match theo mô tả đặc thù duy nhất:
+    * `Cao` (High): Match text `"Cực kỳ kỹ lưỡng"`
+    * `Trung bình` (Medium): Match text `"Độ sâu cân bằng"`
+    * `Thấp` (Low): Match text `"Nhanh chóng và hiệu quả"`
+
+### 2. Kỹ thuật kích hoạt menu item ẩn của Angular Material:
+- Các phần tử nấc tư duy nằm trong sub-menu có thể bị ẩn (`Locator.click: Element is not visible`), Playwright `force=True` vẫn thất bại do bounding box $0 \times 0$.
+- **Giải pháp chuẩn:** Dùng native DOM event qua `page.evaluate`:
+  ```python
+  page.evaluate(
+      """(level_desc) => {
+          const it = Array.from(document.querySelectorAll('gem-menu-item')).find(el => el.innerText.includes(level_desc));
+          if (it) it.click();
+      }""",
+      level_desc,
+  )
+  ```
+
+### 3. Đối sánh thực tế 3 Cấp độ tư duy của Argon 4 (Thấp vs Trung bình vs Cao):
+- **Thấp (Low - ~37s-47s):** Sinh code giải quyết bài toán ở mức bề mặt (naive solution, ~1.8k chars), bỏ qua xử lý biên và không có cơ chế phòng thủ OS.
+- **Trung bình (Medium - ~45s-58s):** Tách hàm và tối ưu thuật toán ma trận cơ bản, nhưng vẫn còn nhược điểm nạp toàn bộ payload vào RAM chuỗi trước khi ghi file.
+- **Cao (High - ~80s-136s):** Năng lực tư duy tăng vọt rõ rệt: sinh 13k - 16k chars code chuẩn production, dùng stream `json.dump` chống tràn RAM, tương thích đa dạng kiểu đường dẫn `os.fspath`, thuật toán DCT 2D tối ưu phân rã trục tọa độ `_axis_weights`.
+
+### 4. So sánh Argon High vs AGY CLI (Kỷ luật điều phối):
+- **Argon 4 High (Web Pro):** Rất mạnh về thiết kế kiến trúc và giải toán ma trận 1-turn, nhưng có tử huyệt là hạ tầng Google Web dễ trả về `HTTP 500: Internal Server Error` khi nhận liên tiếp các request nặng qua CDP.
+- **AGY CLI (`gemini-3.8-flash-medium`):** Kết nối trực tiếp vào Google Cloud Code IDE engine qua 22 profile, đạt độ ổn định 100% (5/5 hiệp pass, >87k chars code sạch không drop), phù hợp tuyệt đối cho Worker chạy batch thi công và tự động hóa farm.
+
 
 

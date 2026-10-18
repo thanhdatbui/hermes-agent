@@ -139,3 +139,87 @@ When developing rule-based technical evaluators for tender dossiers (e.g. Trocar
       """Kiểm tra tình trạng đồng bộ dữ liệu: tổng số gói thầu trong cache và thời điểm cập nhật mới nhất."""
   ```
   This allows ChatGPT to alert the user if data is stale (> 6-12 hours).
+
+---
+
+## 5. Multi-Lot (Phân Lô) Specification Isolation
+
+### The Hazard
+Vietnamese hospital tenders frequently group multiple procurement lots into a single tender package (TBMT / YCBG):
+- *Lô 1:* Trocar nội soi 5mm, 10mm, 12mm (dùng một lần, thân ren không dao).
+- *Lô 2:* Dụng cụ phẫu thuật Robot / Trocar 8mm chuyên dụng.
+- *Lô 3:* Lưỡi dao mổ / Dao cắt nội soi.
+
+If the MCP evaluator blindly concatenates the entire tender document (`text = " ".join([title, category, raw_json])`), disqualifying keywords (`robot`, `8mm`, `lưỡi dao`) from Lot 2 or Lot 3 will falsely trigger an **UNFIT** verdict for Lot 1.
+
+### The Invariant
+1. Parse the structured JSON payload rather than dumping raw JSON text into the evaluator:
+   ```python
+   raw_str = tender.get("raw_json") or ""
+   specs_text = ""
+   try:
+       raw_obj = json.loads(raw_str)
+       if isinstance(raw_obj, dict):
+           specs_text = str(raw_obj.get("technical_specs") or raw_obj.get("note") or "")
+       else:
+           specs_text = raw_str
+   except Exception:
+       specs_text = raw_str
+
+   text = f"{tender.get('title') or ''} {tender.get('category') or ''} {specs_text}".strip()
+   ```
+2. When parsing multi-lot tenders, isolate per-lot line items so each lot receives an independent compatibility assessment.
+
+---
+
+## 6. SQLite WAL Mode Synchronization Trap (Live Database Upload to VPS)
+
+### The Pitfall
+When synchronizing or updating an SQLite database (`bidding_cache.db`) on a production VPS where the FastMCP service is running with WAL mode enabled (`PRAGMA journal_mode=WAL;`):
+- Active connections maintain uncommitted pages and index shared memory in companion files: `bidding_cache.db-wal` and `bidding_cache.db-shm`.
+- If an agent simply copies the new `bidding_cache.db` file over SFTP without stopping the service or removing `-wal`/`-shm`, SQLite continues serving cached pages from the old `-wal` file!
+- **Symptom:** Local database has 117 records, but querying the VPS database returns `COUNT(*) = 1` or stale records.
+
+### The Invariant: Clean-Cut Sync Protocol
+1. **On Source Machine (Flush WAL):**
+   ```python
+   conn.execute("PRAGMA wal_checkpoint(TRUNCATE);")
+   conn.close()
+   ```
+2. **On VPS (Atomic Swap):**
+   ```bash
+   systemctl stop doravo-mcp
+   rm -f /opt/doravo-mcp/mcp_server/bidding_cache.db*
+   ```
+3. **Upload & Restart:**
+   - Upload fresh `bidding_cache.db`.
+   - Start the service: `systemctl start doravo-mcp`
+   - Immediately verify live count:
+     ```bash
+     /opt/doravo-mcp/venv/bin/python3 -c "import sqlite3; conn=sqlite3.connect('/opt/doravo-mcp/mcp_server/bidding_cache.db'); print('Count:', conn.execute('SELECT COUNT(*) FROM tenders').fetchone()[0])"
+     ```
+
+---
+
+## 7. Null-Safe Ingestion & Resilient Sync Invariants
+
+### A. The `data.get("scope", "")` Null Trap
+In SQLite schemas defining `scope TEXT NOT NULL`, python's `dict.get("scope", "Trong nước")` only provides the default if the key `"scope"` is **missing**. If the scraper produces `{"scope": null}`, `get()` returns `None`, violating the SQLite constraint:
+```text
+sqlite3.IntegrityError: NOT NULL constraint failed: tenders.scope
+```
+- **Rule:** Always use `or` fallback:
+  ```python
+  scope = data.get("scope") or "Trong nước"
+  ```
+
+### B. Missing Primary Key (`bid_code`) Guard
+Never allow records with null or blank primary keys into the upsert pipeline:
+```python
+bid_code = data.get("bid_code")
+if not bid_code or not str(bid_code).strip():
+    return
+```
+
+### C. Fault-Tolerant Bulk Sync
+In `sync_adapter.py`, wrap individual record upserts in `try/except Exception` so that a single corrupted line in a 500-line historical JSONL crawler dump never aborts the remaining 499 records. Log the skipped count and continue.
