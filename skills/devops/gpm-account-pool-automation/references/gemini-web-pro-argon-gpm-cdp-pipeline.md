@@ -114,3 +114,25 @@ Khi click mở dropdown chọn model tại góc trên bên trái của `gemini.g
     * Enum `MODE_CATEGORY` của `StreamGenerate` cũ chỉ hỗ trợ: `1=FAST`, `2=THINKING`, `3=PRO`, `4=AUTO`, `5=FAST_DYNAMIC_THINKING`, `6=FLASH_LITE`. Gán `inner[79] = 3` chỉ kích hoạt **Gemini 3.1 Pro**, hoàn toàn KHÔNG PHẢI 4 Argon.
     * **Hiện trường thực tế qua DevTools CDP:** Khi chọn `4 Argon` trên web UI, Google chuyển sang giao thức WebChannel nhị phân hoàn toàn khác: `POST https://geminiweb-pa.clients6.google.com/v1/processSession` (không dùng `StreamGenerate`).
     * **Giải pháp chuẩn để chạy đúng 4 Argon xịn 100% (Phương án B):** Dựng Daemon local (`gemini_argon_server.py`, port `:20135`) kết nối Playwright CDP vào GPM profile Google AI Pro (`dokieu`), giữ tab web `4 Argon` ngầm (offscreen, zero cướp focus), expose API OpenAI-compatible `/v1/chat/completions`. Đã nghiệm thu bằng WinRT OCR đọc đúng text sinh ra trên màn hình.
+
+---
+
+## 7. Cạm Bẫy Treo Tiến Trình AGY CLI Khi Hết Hạn Token & Kỷ Luật Điều Phối
+
+### Cạm bẫy Silent Timeout của Antigravity CLI (`ag_cli.py` / `agy -p`):
+- **Hiện tượng:** Khi chạy benchmark hoặc dispatch worker qua `ag_cli.py ask --model gemini-3.8-flash-high`, tiến trình bị treo đơ đúng 120 giây rồi văng timeout, trả về 0 ký tự (`output: empty`).
+- **Nguyên nhân gốc rễ (Root Cause):**
+  - Trong chế độ headless (`-p`) trên Windows với `stdin=subprocess.DEVNULL`, khi token OAuth của profile Google trong sandbox bị hết hạn hoặc chưa đăng nhập, binary Go/Electron của Antigravity CLI không thoát ngay (fail-fast) mà đứng im chờ nguồn token hoặc chờ trình duyệt mở popup đăng nhập.
+  - Kiểm tra file log tại `D:/Taadaa/agy_profiles/<profile>/.gemini/antigravity-cli/cli.log` thấy rõ:
+    ```text
+    W1018 17:19:52 cache.go:135] Cache(loadCodeAssistResponse): Singleflight refresh failed: error getting token source: You are not logged into Antigravity.
+    E1018 17:19:52 errorreport.go:224] error getting token source: You are not logged into Antigravity.
+    ```
+- **Biện pháp xử lý & Phòng chống:**
+  1. Khi thấy `ag_cli.py` timeout > 60s trên bất kỳ profile nào, lập tức đọc ngay file `cli.log` trong thư mục `.gemini/antigravity-cli/` của profile đó để xác nhận trạng thái đăng nhập.
+  2. Không để timeout mặc định quá dài (chỉ nên đặt 25s - 30s cho bước ask nhanh).
+  3. Yêu cầu mở Antigravity IDE hoặc copy `oauth_creds.json` mới sang profile sandbox trước khi đưa vào pool chạy batch.
+
+### Kỷ luật lựa chọn Reasoning Effort cho tác vụ Lập trình:
+- **Tuyệt đối không dùng `none` hoặc `low` cho bài toán Code:** Mức suy luận thấp khiến mô hình đoán mò theo xác suất bề mặt, dễ sinh code thiếu khối giải phóng tài nguyên (`finally`), quên xử lý race-condition, hoặc xử lý sai offset nhị phân.
+- **Mức `high` (`[[0]]`) là lựa chọn tối ưu:** Trên hạ tầng Google AI Pro, mức `high` không hề chậm (trung bình 15s - 27s), đặc biệt ở các bài toán cấu trúc sâu (nhị phân MP4, xử lý mạng ARP) nó nhanh hơn `medium` gấp 2 - 3 lần nhờ đi thẳng vào giải pháp không bị backtrack. Code sinh ra có đầy đủ type annotations, xử lý toán tử so sánh cho hàng đợi ưu tiên và method stream chuẩn mực.
