@@ -18,6 +18,6 @@ Singbox :200xx, CẤM VPN. Wi-Fi: M1-40 kibe 1, M41-80 kibe 2, M201-240 admin 1,
 §
 Canary: canary_runner.py (1 máy hotfix, >=3 máy wide); done_gate verify receipt hash+MEDIA+OCR, cấm cờ trơn & cấm ảnh Home; OCR primary.
 §
-Ava: Trích clip folder đang chạy (cấm lệch creator). WinRT OCR lọc sạch text/sticker; CẤM gửi MEDIA: mù; Gate 6 bắt buộc MEDIA: ngay sau đổi tên/bio/ava, cấm báo cáo mồm. Dọn .thumbnails+Camera/*; Picker ô 0,1. Bấm Lưu crop Profile so BGR/pHash > 15 mới nghiệm thu; kéo refresh nếu kẹt cache.
+Ava: Trích clip folder đang render (cấm lệch creator). WinRT OCR lọc sạch text/sticker; CẤM gửi MEDIA: mù. Gate 6 cơ học: Mọi claim đổi tên/bio/ava bắt buộc kèm thẻ MEDIA: dòng riêng, cấm báo cáo mồm. Dọn .thumbnails+Camera/*; Picker ô 0,1. Lưu crop Profile so BGR/pHash > 15; kéo refresh nếu kẹt cache.
 §
 Reboot 3 ca (05:20, 11:20, 17:20), né TFT/War3. Task ngầm & Scheduler BẮT BUỘC bọc VBS/wscript Hidden + CREATE_NO_WINDOW (0x08000000), CẤM cmd /c pop console cướp focus game. 'Tắt' khi game = tắt cửa sổ nháy, cấm tự pause cron.

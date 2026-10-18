@@ -8,7 +8,7 @@ Closeout: Done=chạy gate tự dứt điểm; Grace 80-84 chống Sol bắt b�
 §
 Ava/Media: BẮT BUỘC WinRT OCR; CẤM bịa mô tả/gửi mù; menu Ghim/Riêng tư KHÔNG PHẢI publish proof; pHash/crop thật cấm DONE ảo; cấm tin mù status/receipt tool.
 §
-Worker: Haiku/Agy fix; delegate chỉ đọc. Bị Guard: là vi phạm, CẤM khóc lóc/đùn việc, gọi Claude/Sol cơ giới hóa. CẤM xin lỗi mồm; Done báo gọn.
+Worker: Haiku/Agy fix; delegate chỉ đọc. CẤM bịa DONE; mọi guard change phải có test/diff thật, bị chặn báo BLOCKED rõ. User cấm tự tiện gán Static IP Ruijie cho máy farm: M1–M80 phải DHCP động; guard fail-closed, có test offline.
 §
 Canary: MEDIA: đúng màn đích (CẤM ảnh Home/Launcher đối phó); đa máy/layout; 100% Singbox, cấm VPN.
 §
