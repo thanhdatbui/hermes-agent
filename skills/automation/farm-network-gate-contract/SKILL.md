@@ -110,6 +110,10 @@ For older Samsung Android builds (e.g. Galaxy S7 running Android 8):
   - *Chẩn đoán phân biệt phần cứng vs kẹt driver:* Nếu trước đó máy từng kết nối WPA2 và Ruijie từng cấp lease IP DHCP (`Galaxy-S7` nhận IP và có lưu lượng) thì 100% chip Wi-Fi không hề hỏng phần cứng.
   - *Biện pháp phục hồi dứt điểm:* CẤM tiếp tục spam lệnh join/scan. Thực hiện khởi động lại máy qua script cứu hộ chuẩn: `python D:/Taadaa/tools/recover_stuck_s7.py --machine <N> --reboot` (kèm cooldown an toàn). Sau khi reboot (~35s), firmware Wi-Fi được re-initialize hoàn toàn sạch sẽ, máy lập tức kết nối lại AP và hoàn tất gate `APPLIED` / `NOOP_HEALTHY`.
   - *Giữ nguyên trạng thái khi đã ổn định:* Khi thiết bị vừa reboot xong hoặc đang bắt đầu đàm phán route, tuyệt đối không spam thêm các lệnh `_join_wifi` phá vỡ state. Chạy gate ở chế độ passive check (`NOOP_HEALTHY`) để bảo toàn phiên.
+- **Power Save Mode (PSM) Idle Timeout vs L4 Probe Tuning (Sửa Script, Cấm Báo Ảo):**
+  - *Bẫy timeout 3s trúng chu kỳ PSM:* Khi điện thoại Galaxy S7 ở màn hình Launcher không có traffic video nặng, chip Wi-Fi Broadcom tự động bật IEEE 802.11 Power Save Mode (PSM) để giảm nhiệt. Lệnh probe `toybox nc -w 3 -W 3` quá ngắn sẽ bị timeout giả tạo (`nc: Timeout` / `No route to host`) dù proxy Sing-box vẫn sống tốt.
+  - *Kỷ luật thực thi:* Khi phát hiện timeout do cơ chế sleep/PSM của máy, Coordinator BẮT BUỘC chủ động cập nhật script gate (tăng timeout probe lên 6s `-w 6 -W 6` và retry 3 lần ngắt quãng), TUYỆT ĐỐI KHÔNG giải thích lý do suông rồi để nguyên script cũ gây nghẽn gate liên tục.
+  - *Vị trí ăng-ten vật lý trên Galaxy S7:* Nhìn từ mặt trước (màn hình), ăng-ten Wi-Fi nằm ở góc trên bên TRÁI (phía trên cụm phím Volume, ăn ra viền đỉnh máy). Nếu máy bị kẹt nẹp kim loại hoặc áp sát thanh sắt hộp của box, nhích nhẹ máy ra 2–3 cm để giải phóng vùng thu phát của ăng-ten.
 
 ## References
 

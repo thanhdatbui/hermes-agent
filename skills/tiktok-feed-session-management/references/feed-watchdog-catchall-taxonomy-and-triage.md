@@ -93,3 +93,26 @@ In `D:/Taadaa/tiktok-luot nuoi acc/scripts/watchdog/formatters.py`, the function
   - `login/account screen detected` -> `Văng màn hình Đăng nhập`
   - `unknown tiktok state` -> `Trạng thái TikTok lạ/chưa hỗ trợ`
 Ensuring these tokens exist in `classify_feed_failure` prevents artificial "app crash waves" on Telegram.
+
+## Timestamp Collision Pitfall (`:0`) & Farm 100% Proxy Invariant (2026-10-18 Incident)
+
+### 1. Bare Substring `:0` False-Positive Trap
+In `scripts/watchdog/formatters.py`, the check for unassigned proxy previously used:
+```python
+if any(k in r for k in ("missing or :0", "http_proxy is missing", ":0", "proxy is not set on device", "missing proxy", "no proxy")):
+    return "Chưa gán Proxy / Proxy :0"
+```
+- **Pitfall**: The bare substring `":0"` matches ANY timestamp containing minutes or seconds in range `00`-`09` (e.g. `13:00:30`, `18:02:19`, `20:05:12`).
+- **Real Incident**: 
+  - **M7**: Reason was `device lock active: path=... started_at=2026-10-18T13:00:30` (locked by `farm_network_gate.py`). Because `13:00:30` contains `":0"`, it was misclassified as `"Chưa gán Proxy / Proxy :0"`.
+  - **M69**: Reason was `required router proxy is unreachable ... egress IP verification failed: 2026/10/18 18:02:19`. Because `18:02:19` contains `":0"`, it was also misclassified as `"Chưa gán Proxy / Proxy :0"`.
+- **Resolution**:
+  1. Remove bare `":0"`, use specific tokens: `"empty_or_zero"`, `"empty or zero"`, `"missing or :0"`.
+  2. Add explicit check for device locks before proxy checks:
+     `if any(k in r for k in ('device lock active', 'device-lock', 'skipped-device-locked', 'device lock')): return "Kẹt Device Lock"`
+  3. Include `"egress ip"` in the `"Nghẽn đường truyền Proxy / 4G"` check.
+
+### 2. Invariant: 100% Farm Devices Use Proxy (Never Direct)
+- **Zero Direct Traffic**: All farm devices (M1-M80, M201-M280) strictly route egress traffic through proxies (`192.168.110.2:20001..20080` for Kibe, `10008..10035` for Admin). Direct wlan0 routing is prohibited to prevent IP leaks and trigger fail-closed preflight guards.
+- **Hallucination Prevention**: Never assume or report that a machine is "running direct".
+- **O(1) Verification**: Use `python D:/Taadaa/tools/inspect_machine.py <N>`, which now inspects `settings get global http_proxy` on the device and reports `• Proxy: <host:port>` directly in output.

@@ -1,6 +1,6 @@
 bio VN AdbKeyboard cấm trùng 1 mẫu); Tik*.xlsx; Khóa nick.
 §
-Dọn đĩa: duyệt trước; CẤM xóa cứng, dùng safe_recycle.py. Reboot: CẤM khi in-match TFT/War3; né ca chạy. Nguồn video: 1 folder=1 creator gốc.
+Dọn đĩa: safe_recycle.py. Reboot: né TFT/War3/ca chạy. Nguồn vid: 1 folder=1 creator. S7: Anten Wi-Fi góc trên TRÁI (mặt màn hình). Lỗi timeout/PSM BẮT BUỘC sửa script tăng timeout/retry, cấm lý do suông.
 §
 Nuôi 4d 3 ca. Ava&2FA tới 5h15. Write-Through Excel 3,4,5+G; Starve 96h; mail Graph PC. Reg Gmail: 160 máy. Đổi tên TT bám username.
 §
@@ -12,6 +12,6 @@ Worker: Haiku/Agy fix; delegate chỉ đọc. CẤM bịa DONE; guard change có
 §
 Canary: target-bound đúng lỗi; WinRT OCR -> ATX (cấm uiautomator); Singbox. MỌI rule bắt buộc Guard/Hook cơ học (cấm prompt tiêm, xóa prompt khi có hook); giải pháp cơ học phải do Claude CLI duyệt; cấm khóc lóc đùn việc khi dính guard.
 §
-Báo cáo Telegram: tóm tắt KPI+exception; Dashboard :1905 tab riêng full-page.
+Báo cáo Telegram: tóm tắt KPI+exception; Dashboard :1905 full-page.
 §
-Agy CLI: mặc định gemini-3.8-flash-medium (CẤM đổi high). Timeout AI: ask 300s, fix 600s, worker 180s. CẤM bịa nhận xét benchmark khi chưa đọc kỹ ruột code thật; cấm nhai lại DOM cũ.
+Agy CLI: 3.8-flash-medium. Timeout: ask 300s, fix 600s, wkr 180s. Cấm bịa benchmark; cấm nhai DOM cũ.
