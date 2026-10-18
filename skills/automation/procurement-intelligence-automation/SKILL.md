@@ -93,6 +93,11 @@ To minimize token costs and eliminate latency:
    - When an active package is detected, extract the BoQ / Chapter V specifications.
    - Evaluate against strict company product profiles (e.g. YCCMED Trocar: 100mm length, bladeless, unballooned, threaded body, models 5/10/12/15mm).
    - Flag explicit mismatches immediately (e.g., 8mm robotic trocars required for da Vinci systems vs standard laparoscopic trocars).
+   - **Evaluator Audit Invariants (Claude Review Hardening):**
+     * *Word-boundary checks:* Use `(?<!\d)8\s*mm\b` instead of raw substring to prevent false UNFIT on `18mm` trocars.
+     * *Negation clause handling:* Check preceding window for negative phrasing (`không yêu cầu robot`, `không dùng dao`) to avoid reversing legal intent.
+     * *No Blind FIT on Missing Sizes:* If document mentions trocar generally without specifying 5/10/12/15mm, return status `NEEDS_REVIEW` (provisional models attached) rather than claiming full compatibility.
+     * *Date Normalization & Freshness SLA:* Convert all `DD/MM/YYYY` to ISO `YYYY-MM-DD` for SQLite `ORDER BY`, dynamic expiry check (`deadline_date >= date('now')`), and return `data_as_of` / `get_cache_status` for user auditability. (See `references/fastmcp-production-hardening-and-evaluator-audit.md`).
 
 ---
 
