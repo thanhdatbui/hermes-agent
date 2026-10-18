@@ -1,6 +1,6 @@
 Chu kỳ 4d: Parity 96h (N1 lẻ, N2 chẵn), N3(R7,8), N4(dưỡng 0fl+up). Starve 108h. CẤM xóa cooldown. Dưỡng: healing_selector; S2 bám S1. 3 ca (6,12,18h). Đêm 21h30-5h15 né cache 4h cho 2FA/Ava; báo 6h cấm ảo.
 §
-Follow: P1/P2 trần ca; dò +2/ca (max 30); nhả vào tù, ra lùi 4 sàn 15. 3 cohort. Dual Gate: >=60d+15vid (cấm fl feed toàn farm). Like/Flw k tăng trust (rho~0). Cầu dao IP 48h chỉ trip khi nick nòng cốt (graduated) nhả; nick yếu chỉ phạt local cooldown. Chi tiết UID xem :1905.
+Follow: P1/P2 trần ca; dò +2 (max 30); nhả vào tù, lùi 4 sàn 15. 3 cohort. Fl tự nhiên chỉ mở khi fl chéo mở (bị chặn/tù/cầu dao=tắt). Like/Flw ko tăng trust. Cầu dao IP chỉ trip khi nick nòng cốt (graduated) nhả. Chi tiết UID xem :1905.
 §
 Hotmail: CẤM mail cá nhân; @fviainboxes.com đọc OTP. Excel 3,4,5+G; ~1280 acc. Pin >=1000 view.
 §

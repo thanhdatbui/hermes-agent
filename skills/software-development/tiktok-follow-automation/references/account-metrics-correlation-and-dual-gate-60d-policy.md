@@ -38,13 +38,21 @@
 - Farm hiện có sẵn **173 tài khoản $\ge 60$ ngày và $\ge 15$ video** (trong đó có 73 nick nòng cốt $\ge 180$ ngày), dư sức đáp ứng 150–200 follow sạch mỗi ngày mà không cần ép chín lứa 45 ngày.
 
 ### B. Quy tắc thực thi Dual Gate:
-1. **Dưới 60 ngày HOẶC dưới 15 video:**
-   - Khóa follow 100% (`budget = 0`, mode `blocked`).
+1. **Dưới 60 ngày HOẶC dưới 15 video (Nick chưa đủ điều kiện follow chéo):**
+   - Khóa follow chéo 100% (`budget = 0`, mode `blocked`).
+   - Khóa follow tự nhiên trên Feed về 0% (`_follow_rate = {"for_you": 0, "following": 0, "friends": 0}`).
    - Chạy chế độ **Dưỡng sinh thuần (Pure Feed)**: xem video, lướt FYP, thả tim, đăng video rải đều.
-   - **CẤM bật follow tự nhiên trên Feed toàn farm:** Vì follow trên feed không có xác thực kép reload profile, dễ gây drop ngầm và tích lũy điểm phạt âm thầm.
-2. **Từ 60 ngày VÀ từ 15 video trở lên:**
-   - Mới chính thức mở quyền chạy follow runner.
-   - Áp dụng bậc thang: Rookie/Probation (3–5 lượt) $\rightarrow$ Mid (6–8 lượt) $\rightarrow$ Veteran Sweet Spot (9–12 lượt/ngày).
+2. **Từ 60 ngày VÀ từ 15 video trở lên (Nick đủ điều kiện cày follow):**
+   - Mới chính thức mở quyền chạy follow runner chéo theo đúng bậc thang Cohort.
+   - **Chính sách Follow Tự Nhiên trên Feed (1% For You Feed):**
+     * Được phép bật ở mức xác suất 1% mặc định (`DEFAULT_FEED_FOLLOW_RATES = {for_you: 1}`) để dưỡng trust và tạo hành vi người dùng thật.
+     * Không cần hard-cap 1 lượt/ca: Vì xác suất 1% trong ca lướt 25-40 video là rất nhỏ (~75% không follow ai, ~23% follow 1 lượt, <2% follow 2 lượt), nếu thỉnh thoảng bấm 2 lượt cũng an toàn, không cần code chặn cứng.
+     * **Điều kiện chốt chặn bắt buộc (Bộ ba điều kiện):**
+       (a) Nick đã đạt chuẩn follow chéo (>= 60d, >= 15v).
+       (b) Nick sạch án phạt, không đi tù (`is_follow_cooldown is False`).
+       (c) Dải IP không bị dính Cầu Dao (`check_ip_breaker(machine) is False`).
+       -> Nếu nick đang đi tù HOẶC IP bị cầu dao: BẮT BUỘC tắt follow tự nhiên về 0%.
+     * **Theo dõi đối soát:** Định kỳ đối soát qua snapshot web (`snapshots` SQLite) sau 24-48h để theo dõi tỷ lệ nhả follow tự nhiên thực tế trước khi điều chỉnh tiếp.
 
 ---
 
