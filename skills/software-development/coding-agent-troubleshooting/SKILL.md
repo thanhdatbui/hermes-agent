@@ -607,12 +607,22 @@ When calling `haiku_worker.py` or Claude Code CLI:
   Host terminal enforces `timeout <= 60s`. For tasks taking > 60s, do NOT pass `timeout=120` in foreground (triggers `GUARD_FOREGROUND_TIMEOUT_EXCEEDED`). Always execute via:
   `terminal(command="python D:/Taadaa/tools/ag_cli.py fix ...", background=True, notify_on_complete=True, timeout=300)`
 
-### Claude Code CLI: Model Alias Pitfall ('haiku' vs 'claude-haiku-5-5')
+### Claude Code CLI: Model Name 'claude-haiku-5-5' Catalog Warning vs Windows Subprocess Stdin Trap
 
-When calling Claude Code CLI via `--model`:
-- Passing unaliased/extended model IDs such as `--model claude-haiku-5-5` triggers CLI catalog warnings:
-  `"claude-haiku-5-5" isn't described by this version's model catalog; update Claude Code, or map it with behavesAs on a modelPicker row... Warning: Advisor disabled — base model 'claude-haiku-5-5' has no advisor rank...`
-- **Fix**: Use the standard CLI model alias: `--model haiku` (or `sonnet`, `opus`). It resolves directly to the active version in Claude Code without startup warning or window enforcement fallbacks.
+1. **Model Name 'claude-haiku-5-5' Catalog Warning**:
+   - When calling `--model claude-haiku-5-5`, the CLI may print:
+     `"claude-haiku-5-5" isn't described by this version's model catalog; update Claude Code, or map it with behavesAs on a modelPicker row... Warning: Advisor disabled — base model 'claude-haiku-5-5' has no advisor rank...`
+   - **Crucial Invariant**: This message is **ONLY A WARNING**, NOT A FATAL ERROR. Anthropic API completely recognizes and accepts `claude-haiku-5-5`, and execution succeeds with returncode 0. Never mistake this warning for an unavailable model or downgrade to 3.5.
+
+2. **Windows Subprocess Stdin Pipe Crash (`Error: Input must be provided either through stdin...`)**:
+   - In Python wrappers (`haiku_worker.py`, `claude_worker.py`) on Windows, invoking `claude -p` without an inline prompt argument and trying to pipe the prompt via `subprocess.run(..., input=prompt)` causes Node.js on Windows to fail reading stdin, throwing:
+     `Error: Input must be provided either through stdin or as a prompt argument when using --print`
+   - **Fix**: ALWAYS pass the prompt directly as the argument immediately following `-p` in the argv list:
+     ```python
+     cmd = [claude_bin, "-p", prompt_input, "--model", "claude-haiku-5-5", "--dangerously-skip-permissions", ...]
+     proc = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8")
+     ```
+   - Do NOT pass `-p` bare with `input=prompt_input` on Windows unless using `claude -p -`.
 
 ### Claude Code CLI: Ground-Truth Telemetry & Pro Quota Protection (`plan-usage-history.json`)
 

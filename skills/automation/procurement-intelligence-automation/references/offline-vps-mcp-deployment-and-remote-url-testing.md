@@ -148,3 +148,36 @@ Always insert top-level HTTP endpoints right before `listen 443 ssl;` or immedia
     listen 443 ssl; # managed by Certbot
 ```
 Ensure `proxy_buffering off;` and `chunked_transfer_encoding off;` are enabled so Server-Sent Events (SSE) streams are not delayed by Nginx buffer queues.
+
+---
+
+## 5. FastMCP Host Header Validation (HTTP 421) & Regex Precedence
+
+### 1. HTTP Error 421: Invalid Host header (DNS Rebinding Protection)
+When accessing FastMCP behind a public domain (e.g. `https://doravo.net/mcp`), the official MCP SDK enforces DNS Rebinding protection by checking the incoming `Host` header against `allowed_hosts`. If unconfigured, it rejects the request with:
+```text
+HTTP Error Code: 421 Misdirected Request
+Body: Invalid Host header
+```
+**Fix (Code-Level)**:
+Configure `TransportSecuritySettings` on the FastMCP instance:
+```python
+from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp.server import TransportSecuritySettings
+
+sec = TransportSecuritySettings(enable_dns_rebinding_protection=False)
+mcp = FastMCP('YCCMED Bidding Assistant', transport_security=sec)
+```
+**Fix (Nginx-Level)**:
+Alternatively, instruct Nginx to forward `Host: localhost` to the internal upstream:
+```nginx
+location ^~ /mcp {
+    proxy_pass http://127.0.0.1:8100;
+    proxy_set_header Host localhost;
+    ...
+}
+```
+
+### 2. Regex Override Trap in Nginx (`location /mcp` vs `location ^~ /mcp`)
+If the Nginx configuration contains security regex blocks (e.g. `location ~ /\.(?!well-known).* { deny all; }` or `location ~* \.(...)$ { deny all; }`), standard prefix locations `location /mcp` can be overridden by regex rules, returning `403 Forbidden: access forbidden by rule`.
+**Fix**: ALWAYS use the `^~` modifier (`location ^~ /mcp { ... }`), which instructs Nginx to immediately stop evaluating regular expressions when the prefix matches.
