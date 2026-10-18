@@ -10,7 +10,7 @@ Ava/Media: BẮT BUỘC WinRT OCR; CẤM bịa mô tả/gửi mù; menu Ghim/Ri�
 §
 Worker: Haiku/Agy fix; delegate chỉ đọc. CẤM bịa DONE; mọi guard change có test/diff thật. CẤM phán ẩu/đoán mò cấu hình pool/model; Agy pool 22 acc riêng biệt. Farm M1-M80 100% DHCP.
 §
-Canary: MEDIA: đúng màn đích (CẤM ảnh Home/Launcher đối phó); đa máy/layout; 100% Singbox, cấm VPN.
+Canary: target-bound đúng lỗi sửa (cấm feed đối phó); MEDIA: đúng màn đích; WinRT OCR -> ATX; cấm uiautomator; Singbox, cấm VPN.
 §
 Reboot: CẤM khi in-match TFT (LoL/TFTClient) hoặc mở War3 (war3/w3l); lobby TFT được reboot; né ca chạy.
 §

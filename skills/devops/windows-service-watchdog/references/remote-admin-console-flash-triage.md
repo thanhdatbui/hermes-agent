@@ -68,3 +68,22 @@ Get-ScheduledTask |
 ```
 
 These probes are diagnostic only. Apply a fix only after positive attribution and a focused verification plan.
+
+## Remediation & Hardening Steps
+
+1. **Fix VBScript Launchers Calling `python.exe`**
+   - VBScript launchers (`start_*.vbs`) running under `wscript.exe //B //Nologo` with `SW_HIDE (0)` still allocate a console if the target binary is `python.exe` or `cmd.exe`.
+   - Update every VBScript to call `pythonw.exe` directly:
+     ```vbscript
+     Set WshShell = CreateObject("WScript.Shell")
+     WshShell.Run """C:\Path\To\pythonw.exe"" ""C:\Path\To\script.py""", 0, False
+     Set WshShell = Nothing
+     ```
+   - When deploying VBS edits over constrained SSH allowlists (e.g. `admin_ssh.py`), encode the payload in base64 on the controller and use a small Python script to decode and write the target file atomically to avoid shell escaping / quote unescaping traps.
+
+2. **Clean Deletion of Obsolete Tasks**
+   - When user confirms a hardware guard or obsolete scheduled task is useless, delete it cleanly rather than leaving it in `Disabled` state:
+     ```cmd
+     schtasks /delete /tn "TaskName" /f
+     ```
+   - Verify removal using `Get-ScheduledTask -TaskName 'TaskName' -ErrorAction SilentlyContinue` (which fails with exit code 1 when successfully deleted).
