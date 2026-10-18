@@ -14,4 +14,4 @@ Canary: target-bound đúng lỗi; WinRT OCR -> ATX (cấm uiautomator); Singbox
 §
 Báo cáo Telegram: tóm tắt KPI+exception; Dashboard :1905 full-page.
 §
-Agy CLI: 3.8-flash-medium. Timeout: ask 300s, fix 600s, wkr 180s. Cấm bịa benchmark; cấm nhai DOM cũ.
+User ưu tiên tuyệt đối chất lượng code, độ phủ 100% spec, kiến trúc & xử lý lỗi OS hơn tốc độ; Agy CLI: 3.8-medium (ask>=600s, fix>=900s); cấm bịa benchmark.

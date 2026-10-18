@@ -172,6 +172,13 @@ Trigger: user gửi ảnh Telegram từ kênh "THÔNG BÁO HÀNG TỒN KHO" (ho�
 - **Admin UI form không an toàn để edit**: category-edit & product-edit dropdown không pre-select giá trị hiện tại → save reset `parent_id`/`category_id` về 0 (category biến mất khỏi listing, product biến mất khỏi category). Dùng SQL scoped + backup thay vì UI.
 - Mọi DB write: backup trước (dump rows ảnh hưởng), UPDATE đúng 1 cột, verify sau (đọc lại DB + frontend).
 
+### Coexistence of Sidecar Services (FastMCP / Python Daemons) & Zero-Downtime Nginx Invariant
+- **Filesystem & Process Isolation:** Production PHP site runs at `/var/www/shopclone7/current`. Sidecar services MUST live outside webroot (e.g. `/opt/doravo-mcp/`) under dedicated systemd units (e.g. `doravo-mcp.service`), never sharing PHP-FPM or site directories. MariaDB and PHP-FPM remain untouched.
+- **Nginx Reverse Proxy Placement Pitfall:** Do NOT insert new `location` blocks by searching for generic `location ~ \.php$ {` — in `doravo.net.conf`, that pattern exists nested inside `location ^~ /cron/ { ... }`, causing `nginx: [emerg] location "..." is outside location "/cron/"`. Always place top-level location blocks (`location /mcp { ... }`) right before `listen 443 ssl;` in the primary SSL `server { ... }` block.
+- **Outbound Firewall Trap & Offline Wheel Deployment:** VPS `152.42.187.200` has strict outbound packet filtering (outbound 443/80 drops/timeouts to PyPI). Never run online `pip install` on the VPS. Always download Linux `manylinux2014_x86_64` wheels locally with `--no-deps`, SFTP upload to `/opt/<service>/wheels/`, and run `pip install --no-index --find-links /opt/<service>/wheels/ --no-deps /opt/<service>/wheels/*.whl`.
+- **Fail-Safe Reload Invariant:** Always test `nginx -t` before `systemctl reload nginx`. If syntax test fails, Nginx will not reload and the existing master/worker processes continue serving `doravo.net` with 0 downtime.
+
+
 ## Playbook: hide non-target API products while preserving manual inventory
 
 Trigger: user asks to hide all API products except a named supplier (for example, “chỉ chừa CloneFBIG”), while manual products must remain visible.
