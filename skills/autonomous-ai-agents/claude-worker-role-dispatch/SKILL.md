@@ -109,6 +109,13 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
 
 ## Pitfalls
 
+- **CẤM BÁO BLOCKED THỤ ĐỘNG & TRIỆT TIÊU BỆNH TÊ LIỆT/KHÓC LÓC (Anti-Paralysis Invariant — User Correction 18/10/2026):**
+  Operator đã chấn chỉnh gắt gao: *"TAO CĂM THÙ CHỮ BLOCKED... làm việc mà cứ dừng lại khóc"*.
+  Khi gặp lỗi Gate (ví dụ: `L2_AUTH_FAIL`, `L3_NO_IP`), Coordinator TUYỆT ĐỐI CẤM:
+  1. Chỉ ném ra một dòng `BLOCKED` rồi dừng lại khoanh tay đứng nhìn hoặc than phiền.
+  2. Lấy cớ kẹt slot nuôi / lịch cron để viện cớ không cứu máy đang hỏng.
+  3. BẮT BUỘC HÀNH ĐỘNG: Ngay khi Gate trả về mã lỗi, Coordinator phải lập tức dùng công cụ inspect O(1) kiểm tra hiện trường vật lý (`dumpsys wifi`, `ip addr`, logcat), truy vết chính xác tầng hỏng (L2 do sót profile ID >= 10 hay L3 do DHCP Ruijie chưa nhả), và chủ động đưa ra phương án thi công dứt điểm.
+
 - **CẤM LẶP LẠI 3 LỖI KHI GỌI CLAUDE CLI (Triệt Tiêu Bệnh Xin Lỗi Mồm 18/10/2026):**
   1. *Lỗi Foreground Timeout > 60s:* Host guard chặn cứng mọi lệnh terminal foreground có `timeout > 60s` (`GUARD_FOREGROUND_TIMEOUT_EXCEEDED`). Khi gọi Claude CLI (vốn cần 25–50s để khởi động và hoàn thành), BẮT BUỘC gọi qua `terminal(background=True, notify_on_complete=True, timeout=120)`. CẤM gõ `timeout=75` hay `90` ở foreground dẫn tới bị guard quật lặp đi lặp lại.
   2. *Lỗi Tự Ý Đổi Worker sang Sonnet:* Cảnh báo `[claude-code:unrecognized_model]` cho `claude-haiku-5-5` chỉ là advisory SDK banner; Haiku vẫn chạy bình thường. TUYỆT ĐỐI CẤM tự ý gán `--model claude-sonnet-5-5` khi role là `worker` (đốt sạch quota 5h của Sonnet). Phân vai thép: Worker = Haiku 5.5 / Agy fix; Sonnet = Reviewer / Planner.

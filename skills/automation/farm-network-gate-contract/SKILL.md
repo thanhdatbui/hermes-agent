@@ -92,10 +92,16 @@ Cover overlapping/gapped ranges, unknown machines, duplicate serials, changed pr
 
 ## Android legacy notes
 
-For older Samsung Android builds, prefer the platform-supported/canonical join helper and explicit shell quoting for SSIDs containing spaces. Do not assume modern `cmd wifi` subcommands exist. Any device-specific fallback must remain inside the canonical primitive, be locked, bounded, and followed by independent readback.
+For older Samsung Android builds (e.g. Galaxy S7 running Android 8):
+- **Stale profile sweep beyond ID 10:** Android retains stale Wi-Fi networks with IDs >= 10 (e.g. ID 10, ID 11). If a stale network was marked `blackListed` with `NETWORK_SELECTION_DISABLED_AUTHENTICATION_FAILURE`, hardcoded sweeps like `range(10)` miss it and cause false L2 auth-fail blocks. Always parse all configured IDs from `dumpsys wifi` (`ID: (\d+)`) and sweep `set(range(30)) | ids` via `service call wifi 14 i32 <ID>`.
+- **ICMP ping `-I wlan0` failure on non-root:** On Android 8 non-root, running `ping -c 1 -W 3 -I wlan0 <IP>` fails with `Permission denied` or `connect: Network is unreachable` (returncode 2). Always ping without `-I` and fallback to TCP probes (`toybox nc` to Gateway port 80 or Sing-box proxy port `20000 + machine`) when ICMP is blocked or unsupported by router/OS.
+- **`toybox nc` syntax compatibility:** Android toybox netcat does NOT support `-z` (which BSD nc uses). Use `toybox nc -w 3 -W 3 <host> <port> < /dev/null` or `-w 2 -q 0 <host> <port>`.
+- **Post-association DHCP stall remediation:** In older devices, WPA2 association may complete (`<BROADCAST,MULTICAST,UP,LOWER_UP> state UP`) but Android fails to acquire IPv4 (only link-local IPv6 `fe80::...`). Implement `_renew_dhcp(serial)` (`dhcpcd -n wlan0`, toggle `svc wifi disable` -> `sleep 1` -> `svc wifi enable`), extend polling (`IP_POLL_ATTEMPTS = 10, IP_POLL_INTERVAL = 2.0s`), or fall back to static IP mapping from farm topology.
+- **Anti-Paralysis / Anti-Whining Invariant (User Mandate):** Operator strictly forbids passively stopping at `BLOCKED` and crying/giving up. When a gate layer fails (e.g. `L3_NO_IP`), Coordinator MUST proactively extract physical evidence (`dumpsys wifi`, `ip addr show wlan0`, `logcat`), identify the root physical layer, and propose/execute deterministic remediation.
 
 ## References
 
+- `references/s7-android8-wifi-stack-quirks-and-dhcp-remediation.md` — Samsung S7 Android 8 quirks: stale network IDs >= 10, non-root ping -I socket errors, toybox nc syntax without -z, DHCP renewal, and anti-paralysis protocol.
 - `references/network-gate-contract-and-m7-lesson.md` — the validated design review, failure pattern, and acceptance contract from the M7 incident.
 - `references/two-tier-conflict-protocol-and-anti-silent-loop.md` — two-tier conflict verification protocol, operator invariants, anti-silent-loop control rules, and Advisor Sol streaming TTFT insight.
 - `references/farm-network-gate-production-implementation-and-review-audit.md` — production implementation of farm_network_gate.py, resolution of 3 Claude Reviewer blocking findings, 36/36 tests, and live canary evidence.
