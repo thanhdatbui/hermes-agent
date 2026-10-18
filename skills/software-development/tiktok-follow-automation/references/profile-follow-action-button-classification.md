@@ -79,6 +79,19 @@ Rất nhiều tài khoản **CHƯA FOLLOW** (hoặc vừa tap nhưng bị server
 | **Bấm nút đổi ID (`Follow`, `Tiếp tục`)** | **OCR tìm tâm nút $\rightarrow$ Fallback XML** | Dùng `find_follow_button_center_ocr` tap trực tiếp vào tâm nút `(cx, cy)`, miễn nhiễm khi TikTok đổi ID nút. |
 | **Định danh UID (@handle), Checkbox, Focus** | **100% XML (CẤM DÙNG OCR)** | OCR là ảnh phẳng, không đọc được `selected="true"`, `checked="true"`, ô pass rỗng và dễ nhầm ký tự UID (`0`/`O`, `1`/`l`). |
 
+### C. Kỷ luật cài đặt mã nguồn cho OCR Primary & Chốt chặn Empty Dump:
+1. **Thứ tự thực thi trong `_classify_with_fallback()` (`verify_follow.py`):**
+   - **Nấc 1 (OCR Primary):** Kiểm tra `hasattr(engine.adapter, "ocr_screen")`. Nếu có, gọi `ocr_screen()` và `classify_button_from_ocr(boxes)`.
+     - Nếu trả về `"followed"` hoặc `"not_followed"`, log `follow_verify_ocr_primary_completed` và trả về kết quả ngay, **tuyệt đối không gọi `_dump()`**.
+     - Nếu OCR unclassified hoặc ném ngoại lệ (`TimeoutError`, crash), log warning `follow_verify_ocr_primary_failed` và rơi xuống Nấc 2.
+   - **Nấc 2 (XML Dump Fallback) & Chốt chặn Empty Dump Fail-Closed:**
+     - Gọi `dump_text = _dump()`.
+     - **BẮT BUỘC KIỂM TRA:** `if not dump_text: res = "unknown"`.
+     - Tuyệt đối không chuyển chuỗi rỗng vào `classifier(dump_text)` vì các custom classifier hoặc mock có thể phán nhầm dump rỗng là `followed`. Khi không có UI trên màn hình (app crash, ATX dead), bắt buộc fail-closed về `"unknown"`.
+2. **Thao tác hậu kiểm sau Reload trong `_path_b_verify` (`mode2_follow_followers.py`):**
+   - Sau khi gọi `pull_to_refresh_profile(adapter, sleep_after=2.5)`, ưu tiên gọi `adapter.ocr_screen()` và `classify_button_from_ocr(boxes)` trước.
+   - Chỉ khi OCR không nhận diện được mới gọi `adapter.dump_ui()` để đọc XML dự phòng, đảm bảo S7 không bị giật CPU duyệt DOM sau cú vuốt reload.
+
 ## 6. Cạm bẫy Optimistic UI Cache trong Path B Verify
 - **Nguyên nhân lệch số liệu giữa Runner và Web:** Khi tài khoản bị shadowban hoặc bị TikTok ngắt quyền follow ngầm (silent-drop), cú tap Follow trong danh sách khiến client app TikTok lưu tạm trạng thái optimistic.
 - **Sai lầm chết người:** Mở profile nick vừa follow mà **KHÔNG vuốt kéo reload (`pull_to_refresh_profile`)** vì lầm tưởng việc chuyển màn hình đã tải lại dữ liệu mới. Thực tế app TikTok vẫn hiển thị cache cục bộ (nút "Nhắn tin"), khiến runner ghi nhận thành công trong khi server TikTok thực tế là `0` lượt follow.
