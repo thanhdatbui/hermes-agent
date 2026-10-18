@@ -9,6 +9,7 @@ description: "TikTok follow runner and fail-closed farm ops."
 
 - Tài liệu chuyên sâu nằm trong `references/`; dùng đúng reference theo tình huống.
 - `references/post-follow-verification-and-reconcile.md`: tách tap, Path-B và web reconciliation; schema bằng chứng per-UID.
+    - `references/winrt-ocr-follow-button-fastpath-and-rescue.md`: WinRT OCR fast-path và fallback cứu hộ khi XML hierarchy rỗng/obfuscated trên nút Follow và verify_after_tap.
     - `references/account-metrics-correlation-and-dual-gate-60d-policy.md`: Tương quan Like/Follower vs Tuổi/Video, Dual Gate 60d/15v, Cầu dao IP, follow tự nhiên 1% Feed.
     - `references/contact-suggestion-popup-follow-lockdown.md`: Khóa popup danh bạ.
     - `references/burst-follow-hibernation-cadence-gemphone-benchmark.md`: Burst 20-30 fl.
