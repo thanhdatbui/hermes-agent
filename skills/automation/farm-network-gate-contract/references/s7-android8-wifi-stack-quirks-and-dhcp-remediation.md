@@ -165,6 +165,40 @@ During the deployment of `farm_network_gate.py` on Máy 7 (serial `9885f63030454
 
 ---
 
+### L. Broadcom Power Save Mode (PSM) Idle Timeout & L4 Probe Tuning
+- **Symptom:** `_apply_on_device` returns `L4_PROXY_DOWN` with `ret=1 err=nc: Timeout` or `No route to host` despite proxy port being fully operational and healthy on the host.
+- **Root Cause:** In Android 8 on Galaxy S7, when the device is idle at the Launcher without high-throughput traffic, the Broadcom DHD Wi-Fi chip enters IEEE 802.11 Power Save Mode (PSM) duty cycling. A single-shot 3-second probe (`toybox nc -w 3 -W 3`) times out when landing inside a sleep duty cycle.
+- **User Correction (2026-10-18):** *"Lỗi L4 Timeout thực chất là do cơ chế Ngủ của S7 - ủa chứ sao k sửa script?"* — Coordinator CẤM giải thích lý do suông mà không sửa script. Khi phát hiện timeout do cơ chế sleep/PSM của máy, BẮT BUỘC chủ động cập nhật script gate.
+- **Remediation:**
+  1. Increase probe timeout to 6 seconds: `toybox nc -w 6 -W 6 {host} {port} < /dev/null`.
+  2. Implement a 3-attempt retry loop with 1.0s interval inside `_nc_probe`:
+     ```python
+     def _nc_probe(serial: str, host: str, port: int) -> tuple[bool, str]:
+         for _ in range(3):
+             ok, text = _probe(serial, f"toybox nc -w 6 -W 6 {host} {port} < /dev/null", timeout=15)
+             if ok:
+                 return True, text
+             _sleep(1.0)
+         return False, text
+     ```
+  3. Synchronize unit test assertions in `test_farm_network_gate.py` to expect `toybox nc -w 6 -W 6`.
+  4. Allow 15–30s settling time after reboot / link change before running network gates to let `ConnectivityService` evaluate link properties and install default route.
+
+---
+
+### M. Galaxy S7 Wi-Fi Antenna Geometry & Metal Box RF Shadowing
+- **Symptom:** Intermittent packet loss, `nc: connect: Network is unreachable` or `No route to host`, while neighboring devices (M6, M8) in the same box operate normally.
+- **Physical Antenna Placement (Samsung SM-G930F):**
+  - **Front view (screen facing operator):** Wi-Fi antenna (2.4/5GHz) is located at the **TOP-LEFT corner** (above volume buttons, routed into the top aluminum perimeter frame via spring contacts).
+  - **Rear view (back cover facing operator):** Located at the **TOP-RIGHT corner** (beside rear camera and power button).
+- **Faraday / Metal Box Shadowing:** If the top-left chassis is jammed directly against an iron tray frame or sandwiched too tightly, the phone's low-power TX signal is shielded, creating asymmetric packet loss (phone hears AP beacons, but AP misses phone TCP ACK/SYN packets).
+- **Physical Remediation:**
+  1. Shift device 2–3 cm outward so top-left corner is unobstructed by metal edges.
+  2. Ensure spring-contact pressure by pressing gently near the top rear glass seam.
+  3. Allow 15–30s settling time after repositioning before running network gates.
+
+---
+
 ## 3. Operator Mandate: Anti-Paralysis Protocol (No Passive BLOCKED)
 
 - **User Correction (2026-10-18):** *"TAO CĂM THÙ CHỮ BLOCKED... làm việc mà cứ dừng lại khóc"*.
