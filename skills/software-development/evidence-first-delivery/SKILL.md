@@ -346,6 +346,7 @@ When the requested mutation is only “đổi avatar”, bind the run to an **av
 6. If an unrelated mutation already occurred, disclose it immediately as an out-of-scope side effect; do not bury it in implementation details or imply the avatar task succeeded.
 
 Use `references/avatar-only-scope-and-false-policy-refusal.md` for the incident-derived checklist and evidence matrix.
+Use `references/gate-6-explaining-away-trap-and-egress-hook-rca-20261018.md` for Claude Sonnet 5.5 RCA on the "explaining-away" narrative trap and contextual allowlist enforcement on egress.
 
 - **Chống Bẫy Báo Cáo Xong Bằng Text Suông (Zero-Image Text Report Trap - 2026-10-10):**
   * **CẤM TUYỆT ĐỐI** kết thúc tác vụ, hoàn thành đổi pass/2FA/login hoặc thi công xong mà chỉ trả lời bằng văn bản thuần (text suông) mà KHÔNG đính kèm thẻ `MEDIA:<path>` ngay trong tin nhắn!
