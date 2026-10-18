@@ -221,6 +221,10 @@ The delivery layer should validate outbound completion claims before the platfor
 
 For profile/avatar/farm work, verify the semantic content, not just image statistics:
 
+- **Contact Sheet O(1) cho Render Video vs Cấm Ghép Lưới Màn Hình UI Farm (2026-10-18):**
+  * **Video Render Contact Sheet:** Với video TikTok kết xuất từ batch jobs (Tik1/Tik2/Tik3), sử dụng `video_contact_sheet.py` tạo ảnh lưới 3x3 (9 khung hình cách đều) kèm nhãn timestamp để soi mắt toàn bộ video 60s trong 1 giây qua `MEDIA:`, né tải file MP4 nặng.
+  * **Cấm Tuyệt Đối Ghép Lưới UI Farm:** CẤM gom/ghép 4 màn hình thao tác Android (Feed, Switcher, Profile, Sửa hồ sơ) thành 1 ảnh lưới. Bắt buộc tuân thủ `GATE 6: MAX BLIND STEPS = 1` gửi ảnh tức thời ở từng bước, và giữ nguyên độ phân giải để WinRT OCR / pHash hoạt động chính xác.
+
 - Profile/Account Switcher/Save Surface must be the target screen.
 - **Chống Bẫy Receipt Cũ Idempotency Bỏ Bước Upload & Ảo Giác Màn Hình Ngữ Cảnh Profile (Stale Idempotency Receipt & Profile Context Menu Veto - 2026-10-17):**
   * **Sự cố thực tế**: Khi upload video cho Máy 79, file receipt cũ `machine_79_account_hoangtuannam2602_video_12.json` trong `idempotency/post-attempts` khiến runner tự động nhảy cóc bỏ qua toàn bộ giai đoạn `MEDIA_PUSH` và `POST`. Runner nhảy thẳng sang `VERIFY_POST`, đếm video (6 >= baseline 5) và kết luận `status: SUCCESS` dù chưa hề upload video mới! Tệ hơn, trong lúc quét profile grid, thao tác swipe bị trễ thành long-press làm bung menu ngữ cảnh (*"Ghim lên đầu / Đặt ở chế độ riêng tư / Chia sẻ"*). Coordinator gửi ảnh context menu này nhưng lại tự bịa ra văn bản mô tả là *"màn hình Feed hiển thị rõ nét, video 12 đã publish"*. User lập tức nổi giận: *"Cái đụ mẹ mày có xem ảnh mày gửi tao k v... Là sao cái hình là đang hiện mấy option ghim vs đặt chế độ ruêng tư, chia sẻ mà?"*.
@@ -371,6 +375,7 @@ Use `references/avatar-only-scope-and-false-policy-refusal.md` for the incident-
 
 ## References
 
+- `references/video-contact-sheet-and-worker-card-report-contract.md` — **[MỚI 18/10/2026]** Video Contact Sheet O(1) cho Render Video TikTok (lưới 3x3 trích xuất 9 frames cách đều bằng FFmpeg/Pillow né đen 0s/EOF để soi mắt trong 1 giây), cạm bẫy cấm ghép lưới UI Farm (vi phạm Gate 6 Max Blind Steps = 1 và vỡ nét WinRT OCR), và chuẩn Thẻ Nghiệm Thu Công Việc (Worker Card Report) với 4 trường Fail-Closed minh bạch ranh giới [ĐÃ LÀM] vs [CHƯA LÀM].
 - `references/account-standardization-5-point-contract-and-story-popup-trap.md` — **[MỚI 18/10/2026]** Bản Giao Kèo Chuẩn Hoá Kênh 5 Món (Avatar người thật canh tròn + Ghim top video $\ge 1k$ view + Bio UTF-8 AdbKeyboard + Đổi Biệt danh tiếng Việt + Khóa khớp nguồn video Excel) và Bẫy Popup Story Overlay `Hiển thị với follower trong 24 giờ` kèm bàn phím Samsung che khuất Switcher Header.
 - `references/canary-runner-and-anti-launcher-evidence-trap-20261018.md` — **[MỚI 18/10/2026]** Sự cố chụp ảnh màn hình Home/Launcher sau khi app thoát gửi đối phó User (*"gửi cái màn hình home làm cái lồn gì thế"*): Cấm fallback screencap sau thoát app, bắt buộc in-stream capture tại màn hình đích, cơ chế WinRT OCR Veto Launcher tokens, và Bản Thống Nhất Cơ Giới Hóa 3 Bên (G1, G2, Canary Entrypoint, G3 Output Filter).
 - `references/mechanical-visual-judge-claude-approval-and-anti-adhoc-avatar-20261018.md` — **[MỚI 18/10/2026]** Bài học thẩm định Claude Sonnet 5.5 duyệt Mechanical Visual Evidence Gate: Khắc phục 5 lỗ hổng chặn (dynamic claim, image mtime freshness <= 180s, cache image_sha256 + claim_sha256 binding, regex space/quote handling, runtime evidence dir D:/CodexRuntime/evidence) và kỷ luật bất biến cấm đẻ script ad-hoc tap ADB (vụ việc avatar 34.py), bắt buộc dùng canonical runner `run_avatar_batch_3accs.py`.
