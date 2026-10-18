@@ -50,6 +50,7 @@ When clients request to "see data on their own app" or complain that Telegram re
   - *Query Daemon (VPS FastMCP):* Reads SQLite in <50ms -> returns SSE stream to ChatGPT in <0.2s without timeout risk.
 - **Freshness Cadence:** General queries read from the latest of 3 daily sweeps with timestamp labels; specific bid codes pull on-demand in 3-5 seconds.
 - **Universal vs Tailored Scope:** Any public bid nationwide can be searched/parsed by code; specialized compliance rules (e.g. YCCMED 4 models) apply selectively to core product lines.
+- **Claude CLI Architecture & Plan Gate:** For non-trivial crawler pipelines or data sync modules, user requires Claude CLI (`claude -p "..."`) to author the implementation plan first before coordinator/workers execute code surgery. Always attach Gate 6 visual proof (`MEDIA:<path>`) with `browser_vision` verification for any browser/portal workflow.
 
 ---
 

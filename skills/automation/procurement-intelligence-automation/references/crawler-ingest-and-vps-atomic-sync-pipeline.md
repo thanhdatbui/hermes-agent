@@ -115,8 +115,9 @@ if local_snapshot_count < vps_count:
 
 ---
 
-## 5. Operational Verification via Antigravity CLI
+## 5. Operational Verification via Antigravity CLI & Visual Gate Evidence
 
+### 5.1 Antigravity CLI Remote MCP Verification
 After every pipeline run, verify through external remote MCP call (simulating ChatGPT):
 ```bash
 agy mcp add yccmed_remote https://doravo.net/mcp
@@ -124,3 +125,21 @@ agy mcp add yccmed_remote https://doravo.net/mcp
 Run `get_cache_status` to confirm:
 - `total_tenders` reflects expected row count.
 - `data_as_of` timestamp is updated to current UTC ISO time.
+
+### 5.2 Gate 6 Visual Proof & Minimized CDP Window Pitfall
+- **Invariant:** Even for backend/crawler tasks, whenever a browser or web portal (e.g. Chrome CDP / Mua Sắm Công) is involved, NEVER report "completed" without attaching visual proof `MEDIA:<path>`.
+- **Pre-send Ocular Inspection:** The coordinator MUST inspect the screenshot using `browser_vision` beforehand (confirming no black screen, no popup occlusion, full DOM rendered) and state observed screen details in the reply.
+- **Minimized Chrome CDP Screenshot Trap:** When Chrome runs minimized or backgrounded, `Page.captureScreenshot` may return a collapsed 784x34 empty sliver or blank page.
+- **Remedy:** Before taking the screenshot, restore standard desktop window bounds:
+  ```python
+  browser_window = await cdp_call(ws_url, "Browser.getWindowForTarget")
+  window_id = browser_window.get("result", {}).get("windowId")
+  if window_id:
+      await cdp_call(ws_url, "Browser.setWindowBounds", {
+          "windowId": window_id,
+          "bounds": {"windowState": "normal", "width": 1400, "height": 900}
+      })
+      await asyncio.sleep(1)
+  res = await cdp_call(ws_url, "Page.captureScreenshot", {"format": "png"})
+  ```
+
