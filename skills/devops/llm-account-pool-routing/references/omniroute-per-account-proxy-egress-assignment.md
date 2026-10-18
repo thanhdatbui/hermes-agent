@@ -220,16 +220,38 @@ In `~/.hermes/config.yaml`:
   - Passes core typecheck (`npm run typecheck:core`), and passes live canary probe on `:20129` with ~5-6s latency.
   - Legacy tests in `tests/unit/gemini-web.test.ts` that mock `playwright.chromium.launch` return 401 instead of 502/503 because the runtime no longer invokes Playwright.
 
-- **Reasoning Effort Capability Matrix: Sol Web vs Gemini Argon**:
+- **Reasoning Effort Capability Matrix & Protobuf Slot [17] Implementation**:
   - **Sol Web (`chatgpt-web` / `gpt-web-sol`)**: Fully supports `thinking_effort` parameter on the wire (`standard`, `extended`, `max`), selected via model slugs:
     - `gpt-5.6-sol-instant` (effort: null / instant ~2.5s)
     - `gpt-5.6-sol-medium` (effort: standard)
     - `gpt-5.6-sol-high` (effort: extended - expert analysis)
     - `gpt-5.6-sol-xhigh` (effort: max - deep reasoning)
-  - **Gemini Argon Web (`gemini-web-argon-pool`)**: Does **NOT** support standard client `reasoning_effort` parameter by default.
-    - OmniRoute's `checkGeminiWebUnsupportedControls()` guard rejects requests specifying non-minimal `reasoning_effort` with `400 invalid_request_error: unsupported_control_for_provider`.
+  - **Gemini Argon Web (`gemini-web-argon-pool`)**:
     - *Direct Web & Protobuf Inspection Truth*: Direct inspection of `gemini.google.com/app` confirms Google has no quantitative token budget slider on Web UI. Thinking is governed by internal experiment flags `45757375` (`deep_think_new` vs `deep_think_soft`) and `45734007` (`thinking` vs `fast`).
-    - *Protobuf Slot Wiring*: In the 80-element `StreamGenerate` array, Slot `[17]` is `[[thinkMode]]` (where `0` = deepest thinking), and Slot `[79]` is `modelCategory`. In our refactored `gemini-web.ts`, `inner[17] = [[0]]` is hardcoded as default, ensuring all Argon requests run at maximum deep reasoning depth. To support client `reasoning_effort` gracefully, relax `capabilities.ts` and map `high/medium -> inner[17]=[[0]]` and `none/low -> inner[17]=null`.
+    - *Protobuf Slot Wiring*: In the 80-element `StreamGenerate` array, **Slot `[17]` is `[[thinkMode]]`** (where `0` = deepest thinking). Note: Slot `[41]` is NOT the thinking slot (it remains `[2]`).
+    - *Effort Mapping in `gemini-web.ts`*:
+      - `high` -> `inner[17] = [[0]]` (Deepest thinking for complex architecture / hard bugs).
+      - `medium` (Worker default) -> `inner[17] = [[2]]` (Balanced standard thinking, prevents over-engineering and keeps $O(1)$ diff discipline).
+      - `low` -> `inner[17] = [[4]]` (Fast thinking ~2.4s).
+      - `none` -> `inner[17] = null` (Fastest / no CoT).
+    - *Capabilities Guard*: `open-sse/executors/gemini-web/capabilities.ts` relaxes `SATISFIED_EFFORT_LEVELS` to include `{"none", "minimal", "low", "medium", "high", "default"}`, accepting client `reasoning_effort` without 400 rejection.
+    - *Verified Live Canary Latencies (October 2026)*:
+      - `low`: 2,387 ms (~2.4s)
+      - `medium` (default): 5,200 ms (~5.2s)
+      - `high`: 3,860 ms (~3.8s)
+
+- **Benchmark & Execution Latency: Native AGY CLI vs OmniRoute Pool (5-Round Solo Match)**:
+  - **Native AGY CLI (`ag_cli.py`)**: Google Antigravity Headless Binary (`agy`), model `gemini-3.8-flash-medium`. Latency per prompt: **3.2s – 5.2s**.
+  - **OmniRoute Proxy Pool (`:20129`)**: Next.js router + proxy pool + Google upstream. Latency per prompt: **12.3s – 23.8s**.
+  - *Result*: AGY CLI wins 5 - 0 on latency (4x faster) with identical logic/IQ (both run Gemini 3.8 Flash Medium).
+  - *Worker Routing Rule*:
+    - Quick code-fix loops / test verification: Prioritize **AGY CLI** (Gemini) or **Claude CLI** (Haiku).
+    - Heavy batch jobs / mass background refactor / 0-quota tasks: Prioritize **OmniRoute Pool** (Argon / Sol).
+
+- **Nomenclature & Tool Identity Invariant**:
+  - **Claude CLI**: Anthropic Claude Code CLI (`claude_worker.py`), model `claude-haiku-5-5`.
+  - **AGY CLI**: Google Antigravity Headless CLI (`ag_cli.py`), model `gemini-3.8-flash-high` / `gemini-3.8-flash-medium`.
+  - CẤM TUYỆT ĐỐI viết gộp hoặc nhầm lẫn giữa Claude CLI và AGY CLI!
 
 - **Request Limit & Quota Profile for Gemini Web Pro Accounts**:
   - **Official Stance**: Google does **NOT** publish numerical request limits (RPM/RPD) for Gemini Advanced Web; terms cite only fair use and dynamic demand throttling.
