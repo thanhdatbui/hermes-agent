@@ -11,6 +11,7 @@ description: >-
 > Ref: `references/xiaowei-adb-reset-and-offline-device-triage-20261012.md`.
 > Ref: `references/account-switcher-verify-mismatch-triage-20261017.md`.
 > Ref: `references/batch-alert-canary-selection-and-atx-vs-winrt-ocr-20261018.md` (Dynamic Canary selection khi máy kẹt lock; Invariant ATX-Agent port 7912 & WinRT OCR triệt tiêu uiautomator shell; cấm khóc lóc tool guard / tự kiểm điểm tâm lý; cấm nói vẹt CLI flags).
+> Ref: `references/hard-enforcement-hook-gate-and-winrt-primary-atx-fallback-20261018.md` (Kỷ luật Hard Enforcement Hook Gate thay vì prompt tiêm; WinRT OCR 0-token primary cho screen status, ATX-Agent port 7912 fallback cho UI hierarchy, CẤM uiautomator dump; auto-refresh stale quota cache).
 
 ## UI evidence: target screen only
 
