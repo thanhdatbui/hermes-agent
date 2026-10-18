@@ -211,4 +211,45 @@
   * Cấu hình cronjob: `cronjob(action='update', job_id=..., deliver='origin')`.
   * **Điều kiện tiên quyết bắt buộc:** Job BẮT BUỘC phải có `no_agent=True` để chạy theo mô hình classic script watchdog.
   * **Cơ chế im lặng khi không có việc (Watchdog Silence):** Khi farm đang trong ca nuôi feed (`is_feed_active() == True`) hoặc không có máy rảnh, script gọi `sys.exit(0)` với stdout rỗng. Scheduler Hermes sẽ im lặng hoàn toàn, không spam tin nhắn rác vào chat.
-  * **Cơ chế bắn tin khi có kết quả:** Khi có máy hoàn tất đổi tên, script in kết quả với `print(..., flush=True)` và stdout này sẽ được daemon Cron tự động đẩy thẳng về phiên chat Telegram của User mà không bị timeout 60s như chế độ agent LLM.
+  - **Cơ chế bắn tin khi có kết quả:** Khi có máy hoàn tất đổi tên, script in kết quả với `print(..., flush=True)` và stdout này sẽ được daemon Cron tự động đẩy thẳng về phiên chat Telegram của User mà không bị timeout 60s như chế độ agent LLM.
+
+  ---
+
+  ## 10. Mở Rộng Cập Nhật Tiểu Sử (Bio) Qua OCR State Machine & 4 Cạm Bẫy Tử Huyệt (18/10/2026)
+
+  Khi mở rộng `do_rename_canonical_runner.py` để hỗ trợ cờ cập nhật tiểu sử song song (`--bio "<text>"`), các cạm bẫy sau đây đã xuất hiện trong thực chiến và được chuẩn hóa:
+
+  ### 1. Bẫy Early Return Thoát Sớm Khi Tên Đã Khớp (The Premature Return Trap)
+  - **Hiện tượng:** Nick đã có Tên hiển thị chuẩn từ trước (`is_target(name) == True`). Runner kiểm tra điều kiện thấy tên khớp liền lập tức `return "ALREADY"`, bỏ qua hoàn toàn việc đổi Bio dù có truyền tham số `--bio`!
+  - **Khắc phục:** Bắt buộc kiểm tra đồng thời cả 2 điều kiện trước khi return:
+    ```python
+    if is_target(name):
+        if not TARGET_BIO or bio_saved:
+            return "RENAMED" if saved else "ALREADY"
+        print(f"   Ten da dung ('{name}'), tiep tuc vao man Bio de cap nhat...")
+    ```
+
+  ### 2. Chạm Trực Tiếp Dòng Bio Trên Profile (Direct Bio Row Tap)
+  - **Hiện tượng:** Tại màn hình Profile (`state == "PROFILE"`), nếu cố bấm icon cây bút chì `(870, 558)` hoặc các nút header lệch vị trí, runner dễ bấm hụt hoặc mở nhầm giao diện tìm bạn bè.
+  - **Khắc phục:** Dò tìm trực tiếp box text của tiểu sử hoặc nút `+ Thêm tiểu sử` trên màn hình Profile và tap trực tiếp:
+    ```python
+    bio_box = find_box(boxes, r"tieu su|chia se|goc nho|\+|diem|ke ban")
+    xy = center(bio_box) if (bio_box and bio_box[1] > 750) else (500, 860)
+    tap(xy, 3.5)
+    ```
+    Thao tác này đưa ứng dụng chuyển thẳng vào màn hình `BIO_EDIT` (`0/160` hoặc `EDIT_PROFILE`) mà không cần qua các menu trung gian.
+
+  ### 3. Bẫy Sai Action / Extra Key Của AdbKeyboard (The Silent Broadcast Failure Trap)
+  - **Hiện tượng:** Subagent đoán mò intent broadcast theo tutorial trên mạng: dùng `-a ADB_INPUT_B64 --es msg <base64>` hoặc `ADB_CLEAR_TEXT`. `AdbKeyboard` không hỗ trợ các action này nên **nuốt lệnh trong im lặng (silent no-op)**.
+  - **Hậu quả nghiêm trọng:** Chuỗi bio mới không hề được gõ vào, trong khi lệnh backspace vẫn chạy làm xóa cụt text cũ, lưu lại chuỗi rác cụt lủn (ví dụ chỉ còn chữ *"ngay"*), gây bức xúc tột độ cho Operator (*"Clmm bio mới của mày đây đó hả?"*).
+  - **Quy chuẩn Action & Extra Key bất biến:**
+    * Clear text: `am broadcast -a ADB_KEYBOARD_CLEAR_TEXT` kết hợp vòng lặp backspace `shell("input", "keyevent", " ".join(["67"] * 20))` 5 lần.
+    * Input base64 text: BẮT BUỘC dùng `-a ADB_KEYBOARD_INPUT_TEXT --es text <BASE64_STRING>` (Extra key là `text`, CẤM dùng `msg`).
+
+  ### 4. Bẫy False-Positive SWITCHER Do Phụ Đề Video Feed & Cơ Chế Launcher Recovery
+  - **Hiện tượng:** Video Feed trên TikTok thường có phụ đề / caption chứa các từ *"khoảnh khắc"*, *"chuyện"*, *"thêm"*, *"tài khoản"*. Nếu regex nhận diện `SWITCHER` quá lỏng (như `chuy\w{0,3}n.*kho\w{0,2}n` hoặc `("khoan" in t and "them" in t)`):
+    * State machine sẽ nhận diện nhầm video Feed thành màn hình `SWITCHER`!
+    * Runner thực hiện cuộn sheet và tap phím Back liên tục trên video Feed, khiến TikTok bị đóng và văng ra màn hình Home (Android Launcher).
+  - **Khắc phục:**
+    1. Siết chặt regex `SWITCHER` thành cụm từ nguyên vẹn: `r"chuyen doi tai khoan|switch account|them tai khoan|add account"`.
+    2. Bổ sung cơ chế **Launcher Recovery** trong trạng thái `UNKNOWN`: Nếu các dòng OCR phát hiện đang ở launcher (`photos`, `chrome`, `gmail`, `cai dat`, `launcher`), tự động phát lệnh monkey intent khởi chạy lại TikTok (`shell("monkey", "-p", PKG, "-c", "android.intent.category.LAUNCHER", "1")`) để phục hồi luồng thay vì bấm Back vô ích.
