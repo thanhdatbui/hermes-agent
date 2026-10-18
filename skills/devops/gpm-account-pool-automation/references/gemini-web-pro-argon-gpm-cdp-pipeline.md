@@ -79,7 +79,10 @@ Khi click mở dropdown chọn model tại góc trên bên trái của `gemini.g
   - `inner[17] = null`: None — tắt hẳn CoT.
 - **Hiện thực lịch sử chat trên giao diện Web (Conversation History Isolation):**
   - **Gemini Web StreamGenerate (OmniRoute `:20129`):** Do gửi payload HTTP RPC với `inner[2]` rỗng, máy chủ Google xử lý stateless và **KHÔNG LƯU lịch sử chat vào thanh Recent Chats trên web**.
-  - **Gemini 4 Argon Local CDP Daemon (`:20135`):** Vì tương tác trực tiếp trên DOM của Chromium thật tại `https://gemini.google.com/app`, các câu hỏi **ĐƯỢC LƯU LẠI trong thanh Recent Chats** của tài khoản GPM đó. Tài khoản Pro không bị giới hạn số lượng chat, nhưng cần biết điểm khác biệt này để dọn dẹp định kỳ hoặc mở tab Temporary Chat khi cần giấu dấu vết.
+  - **Gemini 4 Argon Local CDP Daemon (`:20135`):** Vì tương tác trực tiếp trên DOM của Chromium thật tại `https://gemini.google.com/app`, các câu hỏi **ĐƯỢC LƯU LẠI trong thanh Recent Chats** của tài khoản GPM đó khi chạy ở chế độ chat thông thường (đã nghiệm thu bằng WinRT OCR đọc đúng sidebar "Cuộc trò chuyện gần đây" trên profile `dokieu`).
+    * **So sánh Bình thường vs Temporary Chat:**
+      - *Bình thường (Có lưu):* Tiện cho người dùng mở web xem lại lịch sử bằng mắt, nhưng cày batch tự động sẽ làm phình to DOM và tăng rủi ro bị Google quét bot.
+      - *Temporary Chat (Tạm thời):* Không ghi lịch sử trên tài khoản Google, phiên làm việc hoàn toàn stateless, tránh lẫn ngữ cảnh giữa các task và giữ tài khoản sạch bóng 100%. Phù hợp tối đa khi đưa vào automation công nghiệp.
   - **ChatGPT Web (`gpt-web-sol`):** Luôn bật mặc định cờ `history_and_training_disabled: true` (Temporary Chat), **KHÔNG LƯU lịch sử chat trên chatgpt.com**.
 
 ---
