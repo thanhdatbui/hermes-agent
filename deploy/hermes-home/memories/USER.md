@@ -6,7 +6,7 @@ Nuôi 4d 3 ca (bỏ 0h). Cuốn chiếu: nhả lock per-device, cấm bóp wkr (
 §
 Closeout: Grace 80-84 auto-push; CẤM cày 85; cấm khóc lóc/báo BLOCKED khi chưa hết thang fallback (Claude 86% quota -> BẮT BUỘC Agy fix pool 22 acc). Repo dirty bắt buộc --files <file1> <file2> O(1) chống DIFF_TOO_LARGE. Pin TT LIFO.
 §
-Ava/Media: WinRT OCR; CẤM gửi mù; CẤM báo DONE UI thiếu MEDIA: (Gate 6); Ava đúng creator; pHash/crop thật; cấm tin mù receipt.
+Ava/Media: WinRT OCR; CẤM gửi mù; CẤM báo DONE browser/UI thiếu MEDIA: (Gate 6, bắt buộc vision soi mắt); Ava đúng creator; pHash/crop thật.
 §
 Worker: Haiku bắt buộc claude-haiku-5-5, prompt inline -p (cấm stdin pipe); Agy pool 22; Farm DHCP.
 §
@@ -14,4 +14,4 @@ Canary: target-bound đúng lỗi; WinRT OCR -> ATX (cấm uiautomator); Singbox
 §
 Báo cáo Telegram: tóm tắt KPI+exception; Dashboard :1905 full-page.
 §
-User ưu tiên tuyệt đối chất lượng code, độ phủ 100% spec, kiến trúc & xử lý lỗi OS hơn tốc độ (tốc độ ko quan trọng); cấm hỏi login/chế script mò; cấm lấy số giây làm thước đo.
+User ưu tiên kiến trúc, spec, Claude CLI plan trước thi công, tự kiểm nghiệm remote, Claude CLI duyệt. Cấm lấy số giây làm thước đo.
