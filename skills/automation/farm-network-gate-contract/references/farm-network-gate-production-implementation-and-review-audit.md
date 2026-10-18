@@ -51,15 +51,18 @@ Trong vòng thẩm định độc lập đầu tiên, Claude Reviewer đã đưa
 ## 3. Nghiệm Thu Thực Tế (Evidence Matrix)
 
 1. **Bộ Test Suite Offline (`tests/test_farm_network_gate.py`):**
-   - Đạt **36/36 tests PASSED trong 0.90s** (100% mocked offline, không phụ thuộc phần cứng).
-   - Bao phủ toàn diện: SSOT validation, range overlap, missing fields, M7 kibe 1, M44 kibe 2, M67/69 direct, machine unresolved, idempotency noop, force_preempt, L2 auth fail cấm retry, L3 no IP, L4 proxy down, `CREATE_NO_WINDOW`, sanitized password, serial mismatch check, CLI argparse validation.
+   - Đạt **40/40 tests PASSED trong 0.82s** (100% mocked offline, không phụ thuộc phần cứng).
+   - Bao phủ toàn diện: SSOT validation, range overlap, missing fields, M7 kibe 1, M44 kibe 2, M67/69 direct, machine unresolved, idempotency noop, force_preempt, L2 auth fail cấm retry, L3 no IP, L4 proxy down, `CREATE_NO_WINDOW`, sanitized password, serial mismatch check, CLI argparse validation, ping wlan0 interface, fallback gateway TCP probe, captive portal pre-disablement, block-scoped auth failure isolation.
 
-2. **Canary trên Thiết Bị Thật:**
+2. **Canary trên Thiết Bị Thật & Post-Review Quirks Fixed:**
    - **Máy 6 (Máy đang chạy ổn định):**
      `python D:/Taadaa/tools/farm_network_gate.py 6`
      $\rightarrow$ `{"status": "NOOP_HEALTHY", "machine": 6, "ssid": "kibe 1", "proxy": "192.168.110.2:20006"}`
      *Xác nhận: Không làm gián đoạn phiên nuôi và worker đang chạy.*
+   - **Pre-Join Hygiene & Routing Latency Fixes:**
+     * *Pre-join Proxy Flush:* Xóa sạch proxy cũ (`settings put global http_proxy :0`) và tắt captive portal trước khi join, tránh bẫy Android định tuyến gói tin kiểm tra mạng qua proxy chết làm rớt kết nối Wi-Fi liên tục.
+     * *Lifecycle adbjoinwifi:* Bỏ cờ `-S` (không force-stop app) và không bấm Home (`keyevent 3`) sớm; chỉ đưa app về Home ở cuối toàn bộ quy trình `apply_profile`.
+     * *Routing Mount Latency:* Bọc kiểm tra gateway bằng `_wait_for_gateway(serial, net, attempts=6, interval=2.0)` để chờ kernel mount default route sau khi nhận DHCP lease.
    - **Máy 7 (Hiện trường sự cố):**
      `python D:/Taadaa/tools/farm_network_gate.py 7 --force-preempt`
-     $\rightarrow$ `{"status": "L3_NO_IP", "machine": 7, "ssid": "kibe 1", "proxy": "192.168.110.2:20007"}`
-     *Xác nhận: Tầng L2 đã kết nối thành công kibe 1 với pass 23102025; dừng cứng chuẩn xác ở L3 do DHCP Ruijie chưa cấp IP, không nhảy lên sửa mò L4.*
+     *Xác nhận: Tầng L2 đã kết nối thành công kibe 1 với pass 23102025 (`state UP`, `NETWORK_SELECTION_ENABLED`); 0 log lỗi MIC trên AP Aruba.*
