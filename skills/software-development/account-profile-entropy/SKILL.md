@@ -200,6 +200,14 @@ When registering or renaming accounts created from foreign/shop emails (e.g. `fr
 
 When an operator provides a screenshot of a TikTok profile (e.g. `LilyanLederhos64090`, `@lilyanzj8n1`) and requests "Đổi tên nick này":
 
+- **Scope Lockdown: Task Đổi Tên TUYỆT ĐỐI CẤM Can Thiệp Vào Bio (User Correction 2026-10-18)**:
+  * Khi thực hiện đổi biệt danh/tên hiển thị (`do_rename_canonical_runner.py`), runner CHỈ ĐƯỢC PHÉP sửa dòng Tên. CẤM TUYỆT ĐỐI tự ý gõ, sửa hoặc lưu bất kỳ nội dung nào vào Tiểu sử (Bio).
+  * Viết Bio là nghiệp vụ riêng trong quy trình Chuẩn hóa kênh 4 món và **BẮT BUỘC phải viết theo đúng Niche (ngách nội dung video/hashtag từ `Tik<N>.xlsx`) của từng kênh**, TUYỆT ĐỐI CẤM gõ bio chung chung, hardcode một mẫu đại trà hay bốc random lung tung trong task đổi tên.
+  * **Bẫy nút "+ Thêm tiểu sử" `(540, 867)`**: Trên Profile Samsung S7 của acc chưa có bio, TikTok hiện nút `+ Thêm tiểu sử` tại `(540, 867)`. Nếu tap nhầm vào đây hoặc regex tìm `thêm tiểu sử`, app sẽ văng vào màn hình `BIO_EDIT`.
+  * **Khắc phục chuẩn xác**:
+    - Tọa độ bút chì thật mở "Sửa hồ sơ": Nằm ở **`(870, 558)`** (bên phải dòng tên). Regex mở hồ sơ CHỈ match `(sua|chinh sua|edit)\s*(h[o0]|profile)`, tuyệt đối KHÔNG match `tiểu sử`.
+    - **Fail-Safe cho `BIO_EDIT`**: Nếu runner vô tình rơi vào trạng thái `BIO_EDIT`, BẮT BUỘC nhấn phím Back (`keyevent 4, 2`) thoát ra ngay lập tức về Profile, CẤM gõ text hay bấm Lưu.
+
 - **O(1) Account & Hardware Identification**: Query `farm_account_info` and `account_mapping` in `D:/OneDrive/TaadaaData/tiktok_tracker.db` by username (`lilyanzj8n1`) to find device ID, cluster, and slot (e.g. Máy 76, slot 7). Cross-reference with `taikhoan_run_safe.xlsx` (row 608). Never run broad scans across disk.
 - **Device Lock & Process Coexistence Preflight**: Inspect `inspect_machine.py <ID>` and `~/.codex/device-locks/machine_<ID>.lock.json` (Lưu ý: lock file đặt theo ID máy `machine_<ID>.lock.json`, không phải serial). Nếu có ca nuôi hoặc follow session đang giữ lock, KHÔNG vội báo BLOCKED kết thúc task ("Thì canh máy rảnh chạy đi"). Đợi ca nuôi nhả lock (file biến mất và Home screen an toàn), lập tức kích hoạt runner đổi tên ngay.
 - **Fast Scaffolding via Shell `cp` + Targeted `patch`**: Thay vì viết toàn bộ runner từ đầu (dễ chạm trần direct-write T1 > 200 dòng hoặc delegate bị timeout/lỗi contract), copy mẫu chuẩn từ `do_rename_m76.py` và `test_do_rename_m76.py` qua lệnh shell `cp`, sau đó dùng `patch` O(1) cập nhật các hằng số target và chạy `pytest` trước khi kích hoạt trên máy.
@@ -289,7 +297,8 @@ def generate_account_for_slot(slot, existing_emails=None, max_attempts=300):
 | False-positive in `is_target` matching old username with digits | e.g. target 'Phan Nhung' matches current name 'phannhung1710' with ratio 0.78 >= 0.75 → skipped without typing | BẮT BUỘC kiểm tra `re.search(r'\d{2,}$', nl)` trong `is_target()`: nếu tên hiện tại còn dính số đuôi của username thì trả về False ngay để buộc gõ tên mới |
 | Missing surname in HO_MAP causing full syllable drop | e.g. @quachtrang203 misses surname 'quach' in HO_MAP → prefix match fails → returns [] → renamed to unrelated 'Trâm Sữa' | Mở rộng HO_MAP với 24 họ Việt mở rộng + Bổ sung Stage 3 Substring Scan để nhặt các từ tố tên chính (độ dài >= 3) nằm trong username |
 | Untracked subprocess script loss via git clean in `tools/` | Subprocess scripts (`do_rename_canonical_runner.py`) untracked in `tools/` getting wiped on `git clean` → cron silently fails exit 2 | Watchdog auto-restores dependencies from `%LOCALAPPDATA%\hermes\scripts` before spawning workers; track canonical scripts |
-| Hardcoded / identical bio across accounts | Writing identical bio ('Chia sẻ những khoảnh khắc...') across multiple accounts creates an obvious bot footprint | BẮT BUỘC dùng pool bio đa dạng (`natural_bio_pool.py` 80+ mẫu câu), CẤM TUYỆT ĐỐI hardcode 1 mẫu bio |
+| Scope Creep: Tự tiện viết Bio trong task Đổi Tên | Task chỉ yêu cầu đổi biệt danh nhưng runner tự tiện nhồi bước gõ bio (hoặc gõ bio cố định / random) | Task đổi tên TUYỆT ĐỐI CẤM đụng bio. Bio chỉ viết khi có lệnh chuẩn hóa và BẮT BUỘC viết theo Niche kênh (`Tik<N>.xlsx`). Lọt BIO_EDIT phải Back ngay |
+| Bẫy tap nhầm nút '+ Thêm tiểu sử' (540, 867) | Nhầm nút '+ Thêm tiểu sử' là 'Sửa hồ sơ' khiến runner nhảy vào màn BIO_EDIT | Dùng nút bút chì thật ở (870, 558) hoặc nút text 'Sửa hồ sơ'; regex cấm match 'tiểu sử' |
 
 ## Verification
 
