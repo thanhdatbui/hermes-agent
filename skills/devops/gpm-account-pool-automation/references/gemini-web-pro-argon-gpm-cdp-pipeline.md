@@ -66,10 +66,25 @@ Khi click mở dropdown chọn model tại góc trên bên trái của `gemini.g
 - **`4 Argon` (Nhiệm vụ phức tạp - MỚI)**
 - `Cấp độ tư duy` (Thinking Level / Reasoning control)
 
-### Lỗ hổng của `gemini-web.ts` mặc định & Giải pháp:
-- **Lỗ hổng:** `gemini-web.ts` của OmniRoute chỉ vào `gemini.google.com/app` và gõ thẳng vào `.ql-editor`, không chọn model $\rightarrow$ Luôn bị Google mặc định trả lời bằng **Flash**.
-- **Giải pháp gọi đúng 4 Argon:**
-  1. Click nút Model Switcher (`button[aria-haspopup="menu"]` hoặc text chứa `Gemini Flash`).
-  2. Trong menu xổ ra (`div.cdk-overlay-container`), click chọn element chứa text `4 Argon`.
-  3. Gõ prompt vào `.ql-editor` và bắt stream response từ `StreamGenerate`.
-- **Khuyên dùng:** Sử dụng CDP điều khiển trực tiếp profile GPM có sẵn Proxy 4G và cookies để gọi `4 Argon` làm Worker, vừa giữ nguyên vân tay trình duyệt vừa không phụ thuộc cài đặt Playwright Chromium trên máy host.
+### Lỗ hổng của `gemini-web.ts` cũ & Giải pháp Native HTTP StreamGenerate (Đã thi công):
+- **Cơ chế cũ (Playwright):** Cồng kềnh, dễ lỗi thiếu Chromium binary hoặc timeout trên Windows.
+- **Cơ chế mới (Native HTTP StreamGenerate):**
+  1. GET `https://gemini.google.com/app` với Cookie lấy `SNlM0e` (AT token) và build label (`cfb2h`).
+  2. POST trực tiếp `/_/BardChatUi/data/assistant.lamda.BardFrontendService/StreamGenerate` với form payload `f.req` và `at`.
+  3. Phản hồi siêu tốc 2.5s - 5s qua proxy 4G Mobi 1-1, hoàn toàn không cần trình duyệt Playwright.
+- **Điều khiển Reasoning Effort qua Slot [17] Protobuf:**
+  - `inner[17] = [[0]]`: High (Deepest Thinking) — dùng cho bài toán kiến trúc, giải thuật hóc búa.
+  - `inner[17] = [[2]]`: Medium (Mặc định cho Worker thi công) — tư duy sắc sảo nhưng kỷ luật $O(1)$, chống over-engineering.
+  - `inner[17] = [[4]]`: Low — phản xạ nhanh cho tác vụ trích xuất / regex.
+  - `inner[17] = null`: None — tắt hẳn CoT.
+- **Hiện thực lịch sử chat trên giao diện Web (Conversation History Isolation):**
+  - **Gemini Web (`gemini-web-argon-pool`):** Do gửi payload HTTP RPC với `inner[2]` rỗng, máy chủ Google xử lý stateless và **KHÔNG LƯU lịch sử chat vào thanh Recent Chats trên web**.
+  - **ChatGPT Web (`gpt-web-sol`):** Luôn bật mặc định cờ `history_and_training_disabled: true` (Temporary Chat), **KHÔNG LƯU lịch sử chat trên chatgpt.com**.
+
+---
+
+## 5. Phân Định Danh Tính Worker (Tránh Nhầm Lẫn Thuật Ngữ)
+- **AGY CLI (`ag_cli.py`):** Binary CLI chính thức của Google Antigravity, chạy model **Gemini** (`gemini-3.8-flash-high/medium`). Tốc độ cực nhanh 3s - 5s.
+- **Claude CLI (`claude_worker.py`):** CLI chính thức của Anthropic, chạy model **Claude Haiku / Sonnet**.
+- **Sol Web (`sol_worker.py`):** Worker autonomous ReAct chạy **GPT-5.6 Sol** qua OmniRoute `:20129`.
+- **Argon Web Pool (`gemini-web-argon-pool`):** Worker pool 5 accs Google AI Pro chạy **Gemini 4 Argon / 3.1 Pro** qua OmniRoute `:20129`.
