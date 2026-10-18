@@ -95,9 +95,16 @@ Khi click mở dropdown chọn model tại góc trên bên trái của `gemini.g
 - **Temporary Chat / Stateless là Khiên Hộ Mệnh cho Tài Khoản:**
   - Nếu lưu lịch sử: Worker cày 300-500 prompts/ngày sẽ tạo ra hàng ngàn đoạn chat rác 1-turn ngắn ngủn trong Sidebar $\rightarrow$ Hệ thống chống lạm dụng của Google/OpenAI sẽ phát hiện hành vi bot và gắn cờ tài khoản ngay.
   - Chạy ở chế độ Stateless (Gemini RPC) hoặc Temporary Chat (`history_and_training_disabled: true` trên ChatGPT) giúp tài khoản sạch sẽ tuyệt đối, mô phỏng đúng hành vi tra cứu nhanh của người dùng thật, chống checkpoint/ban nick 100%.
-- **Argon Medium vs Argon High:**
-  - `Medium` (Default cho Worker): Né bẫy runtime Python cực tốt (ví dụ: bẫy heapq tuple comparison với dict payload, co biên giữ hình vuông avatar), code tinh gọn chuẩn $O(1)$, chống over-engineering.
-  - `High`: Tầm nhìn hệ thống sâu rộng hơn (tư duy cấp phát IP mạng bảo toàn lease, kiểm tra thứ tự ưu tiên phạt), thích hợp làm cố vấn/thiết kế thuật toán khi Medium bế tắc.
+- **Argon Medium vs Argon High (Tổng kết 10 Hiệp Đấu Thực Chiến 18/10/2026):**
+  - **Tỷ số toàn diện:** High thắng 7, Medium thắng 2, Hòa 1.
+  - **Hiện tượng Tốc độ & Sức mạnh:**
+    - Ở bài toán phức tạp (nhị phân MP4 box, audit ARP subnet), **Argon High phản hồi nhanh gấp 2 đến 3 lần Medium** (H6: 27s vs 51s; H10: 14s vs 48s) nhờ kích hoạt cây tìm kiếm suy luận sâu (Deep Think Tree) đi thẳng vào giải pháp tối ưu, tránh bị backtrack lúng túng.
+    - Thời gian phản hồi trung bình giai đoạn 2: High đạt **27.38s**, nhanh hơn Medium (**36.36s**) gần 9 giây.
+  - **Khả năng phòng thủ hệ thống:**
+    - High tự động bổ sung giao diện chuẩn Python stdlib (`seek`/`read` cho binary stream, cài `__lt__` cho task queue chống lỗi tuple priority, giải thuật DCT 2D tách làm 2 lần 1D $\mathcal{O}(N^3)$).
+  - **Khuyến nghị điều phối:**
+    - **Worker thi công code khó / giải thuật:** Ưu tiên số 1 là **Argon High** (`reasoning_effort: "high"`).
+    - **Tác vụ batch đơn giản / format JSON:** Dùng **Argon Medium** để giữ độ dài output gọn gàng.
 - **AGY CLI vs Argon Web Pool (Nguyên nhân chênh lệch năng lực):**
   - `AGY CLI` (3.5s - 5.5s): Nhanh gấp 4-5 lần. Kết nối trực tiếp vào Google Cloud Code IDE engine (`daily-cloudcode-pa.googleapis.com`), được fine-tune chuyên biệt cho SWE (kỹ sư phần mềm) nên phản xạ phòng thủ OS (file lock mode a+b, fsync, zombie process, cắt bỏ token duration) cực kỳ già dơ. **Ưu tiên số 1 cho Worker thi công sửa code O(1) <= 15 dòng**.
   - `Argon Pool` (11s - 20s): Bền bỉ, miễn phí 100% quota IDE, chuyên trị batch lớn, phân tích dữ liệu và chạy thâu đêm.
