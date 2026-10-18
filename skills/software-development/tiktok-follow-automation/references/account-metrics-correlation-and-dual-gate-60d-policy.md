@@ -62,6 +62,7 @@
 - Không thêm hard-cap 1 lượt/ca chỉ để xử lý xác suất rất thấp; thỉnh thoảng 2 lượt vẫn để tự nhiên.
 - Khi báo cáo, nói ngắn gọn đúng gate; không biến một điều kiện đơn giản thành nhiều tầng thuật ngữ hoặc logic thừa.
 - Gate nghiệm thu: tách rõ `offline verified` (focused test/py_compile/helper check), `canary pending`, và `web reconciliation pending`. Không báo “xong hết” nếu chưa có canary farm, đối soát snapshot web, hoặc closeout/working-tree evidence.
+- Khi User hỏi "xong hết chưa": Tránh giải thích dài dòng kiểu quan liêu hay đổ lỗi cho working tree dirty / thiếu canary làm User ức chế. Báo cáo dứt khoát: "Code đã xong trên đĩa và test xanh, đang chạy Closeout Gate để push", sau đó hành động ngay.
 
 ---
 
