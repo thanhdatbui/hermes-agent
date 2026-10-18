@@ -20,3 +20,4 @@ Trong script báo cáo định kỳ 6h `cron_hotmail_gpm_lifecycle_6h_report.py`
    ```
 3. **Telemetry phát hiện lệch chuẩn `done_without_chatgpt`**:
    - Phát cảnh báo telemetry `DONE_WITHOUT_CHATGPT_REG` khi tài khoản ở `bucket == STAGE_DONE` nhưng không có timestamp `chatgpt_registered_at` để truy nguyên dữ liệu.
+   - **Thực tế vận hành Farm Kibe (2026-10-18)**: Phát hiện 81 tài khoản Kibe (M01-M78) ở `STAGE_DONE` có `has_chatgpt: True` và `chatgpt_password` đầy đủ hợp lệ nhưng thiếu `chatgpt_registered_at` (do hoàn thành trước khi chuẩn hóa schema timestamp). Đây là cảnh báo phân kỳ schema lịch sử (historical schema transition), không phải dữ liệu hỏng hay lỗi đăng ký. Hệ thống an toàn tính đủ vào `chatgpt_ok` thông qua fallback `rec.get("bucket") == STAGE_DONE`.

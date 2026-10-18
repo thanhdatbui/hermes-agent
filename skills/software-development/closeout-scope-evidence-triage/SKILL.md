@@ -24,6 +24,11 @@ Use this skill when a closeout gate rejects a candidate but the rejection may be
 5. Read the audit record. Confirm verdict, score, threshold, scope hash, diff hash, reviewer handoff streak, and token/approval kind. Runtime output and audit metadata outrank memory or prose.
 6. Honor the circuit breaker. When the gate emits `REVIEWER_HANDOFF_TRIGGERED` for one scope, stop speculative score-chasing. Use the mandated handoff; if it times out or returns `valid: false`, report that exact hard-stop evidence and do not dispatch another speculative repair.
 7. Preserve foreign work. Never reset, restore, clean, stash-drop, whole-file overwrite, or edit protected guard sources merely to manufacture a reviewable candidate. Distinguish unrelated dirty paths, overlapping ownership, agent-caused scope drift, mixed committed scope, and tool failure.
+8. Operational / No-Code Audit Package Standards (`--input`): When reviewing operational investigations, telemetry audits, or database state without code diffs, Sol Reviewer requires verbatim raw evidence rather than summary narratives:
+   - Verbatim test outputs showing every test case node, duration, and exit code.
+   - Verbatim Git environment outputs (`rev-parse HEAD`, `diff --exit-code`, and clean `git status`) tying the audit to an exact repository ref.
+   - Mathematical proof of disjoint partition ($Total = \sum Buckets$, $A \cap B = \emptyset$) across all clusters.
+   - Complete census audit (100% check with 0 conflicts) when attributing telemetry warnings to historical schema transitions.
 
 ## Threshold and Grace discipline
 
