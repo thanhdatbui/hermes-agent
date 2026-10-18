@@ -58,6 +58,10 @@
 
 ### C. Kỷ luật giao tiếp & Tránh phức tạp hóa logic (User Correction):
 - "Thì đơn giản là chỉ đc fl tự nhiên khi fl chéo đang cho phép. Chứ mắc gì viết loằng ngoằng v": Tránh phân tích rườm rà, diễn đạt trực diện, bám thẳng vào điều kiện logic cốt lõi. Follow tự nhiên chỉ mở khi tài khoản và IP ở trạng thái cho phép (không đi tù, không dính cầu dao).
+- Quy tắc chốt cho lứa 45–59 ngày: từ 45 ngày và từ 10 video được phép follow tự nhiên 1% trên Feed; không đồng nghĩa được mở follow chéo. Dưới ngưỡng, đang cooldown/đi tù, IP đang bị cầu dao, hoặc ngày dưỡng sinh thì follow tự nhiên về 0%.
+- Không thêm hard-cap 1 lượt/ca chỉ để xử lý xác suất rất thấp; thỉnh thoảng 2 lượt vẫn để tự nhiên.
+- Khi báo cáo, nói ngắn gọn đúng gate; không biến một điều kiện đơn giản thành nhiều tầng thuật ngữ hoặc logic thừa.
+- Gate nghiệm thu: tách rõ `offline verified` (focused test/py_compile/helper check), `canary pending`, và `web reconciliation pending`. Không báo “xong hết” nếu chưa có canary farm, đối soát snapshot web, hoặc closeout/working-tree evidence.
 
 ---
 
