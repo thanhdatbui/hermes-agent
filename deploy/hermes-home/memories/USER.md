@@ -4,11 +4,11 @@ Dọn đĩa: duyệt trước; CẤM xóa cứng (rm/unlink/rmtree), BẮT BUỘ
 §
 Nuôi 4d 3 ca. Ava&2FA tới 5h15 (né cache 4h). Write-Through Excel 3,4,5+G; Starve 96h; mail Graph PC. Reg Gmail: 160 máy (1-80, 201-280). Đổi tên TT bám username.
 §
-Closeout: Done=chạy gate tự dứt điểm; Grace 80-84/test xanh auto-push; cấm khóc/giải trình; cấm Sonnet cày điểm; Strike 3 Haiku/Agy. Pin TikTok LIFO.
+Closeout: Done=chạy gate tự dứt điểm; Grace 80-84 chống Sol bắt bẻ lặt vặt (test xanh+diff O(1) auto-push); CẤM xóa Grace, cấm khóc lóc menu 1/2; Strike 3 Haiku/Agy. Pin TikTok LIFO.
 §
 Ava/Media: BẮT BUỘC WinRT OCR; CẤM bịa mô tả/gửi mù; menu Ghim/Riêng tư KHÔNG PHẢI publish proof; pHash/crop thật cấm DONE ảo; cấm tin mù status/receipt tool.
 §
-Worker: Haiku/Agy fix, CẤM Sonnet làm thợ; Claude=tư vấn/review. Hook mới: đối soát xung đột gate cũ & luật farm. CẤM xin lỗi mồm/lặp lỗi/im lặng >3p; CLI dài bọc background. Done báo gọn.
+Worker: Haiku/Agy fix; delegate chỉ đọc. Bị Guard: cấm khóc/đùn việc; Claude=tư vấn, Sol=chiến lược, Agent thi công. Hook mới: đối soát xung đột gate cũ. CẤM xin lỗi mồm/lặp lỗi; Done báo gọn.
 §
 Canary: đa máy/layout, MEDIA:. 100% Singbox, cấm VPN. Mạng: Ruijie>Aruba, cấm bao biện khi chưa thông ping.
 §

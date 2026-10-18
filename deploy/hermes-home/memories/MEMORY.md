@@ -10,13 +10,13 @@ GPM: max 5 wkr; pool web (0đ); re-login max 1/ngày. Gemini Web: HTTP StreamGen
 §
 Stale Upload: xóa draft. Revert flop: TikWM tải CDN. Popup 'Ghim/Riêng tư' KHÔNG PHẢI publish proof. Cào: max 60.
 §
-Closeout: Grace 80-84 + test xanh = APPROVED auto-push; cấp token HMAC (gate_common). CẤM Sonnet/Sol cày điểm vụn vặt; CẤM dừng lại khóc lóc/kể lể điểm; thiếu điểm tự sửa 3 Strike. Pre-closeout: target trên origin -> DỪNG (ALREADY_PUSHED). CẤM commit -a; CẤM over-engineer.
+Closeout: Grace 80-84 có đ/kiện (test xanh, diff O(1) <=30 dòng, 0 critical) auto-push token grace; >=85 strict; CẤM xóa Grace Band. CẤM dừng lại khóc lóc đưa menu 1/2; thiếu điểm tự sửa 3 Strike. Pre-closeout: target trùng remote -> DỪNG (ALREADY_PUSHED). CẤM commit -a.
 §
 Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot. Cron: 100% no_agent+script thô, cấm LLM<6h nghẽn GW.
 §
 Singbox :200xx, CẤM VPN. Wi-Fi: M1-40 kibe 1, M41-80 kibe 2, M201-240 admin 1, M241-280 admin 2; CẤM đoán pass/đổ lỗi xoay máy cạnh AP. Cứu máy: operator_device_lock(force_preempt=True). Proxy LAN 192.168.110.2:port (Kibe: 20001..20080; Admin: 10008..10035). Proxy 67/69 direct.
 §
-Canary farm: tối thiểu 3-4 màn/máy khác nhau (DM, sửa hồ sơ, feed, popup thử thách); cấm canary trên 1 máy đơn độc.
+Canary: canary_runner.py (1 máy hotfix, >=3 máy wide); done_gate verify receipt hash+MEDIA+OCR, cấm cờ trơn.
 §
 Ava: Trích clip gốc. WinRT OCR lọc sạch text/sticker; CẤM gửi MEDIA: mù. Dọn .thumbnails+Camera/*; Picker radio ô 0,1. Bấm Lưu crop Profile so BGR/pHash diff > 15 mới nghiệm thu; kéo refresh nếu kẹt cache.
 §

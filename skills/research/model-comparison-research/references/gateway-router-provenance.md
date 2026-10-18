@@ -19,6 +19,7 @@ Record four columns before explaining the mechanism:
 - **Alias/remapping:** the displayed model is a local alias that resolves to another upstream ID.
 - **Fallback:** the requested model failed and the gateway silently selected a backup.
 - **Entitlement gap:** an experimental/internal route accepts the request without the normal UI check; availability may be temporary and may violate provider terms if abused.
+- **Protocol/wire mismatch (False Model Identity):** the web UI displays a newer model label (e.g. '4 Argon') running over binary WebChannel (`processSession`), but an internal router/reverse proxy targets a legacy HTTP endpoint (`StreamGenerate`) whose payload enum only supports standard/older models (Flash, Pro). Claiming the router runs the new model without packet-level evidence is deceptive ("giả cầy").
 - **Actual entitlement:** upstream logs and usage show the same account and exact model ID.
 
 Do not choose among these from a 200 response alone.
