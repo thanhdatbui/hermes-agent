@@ -17,6 +17,8 @@ metadata:
 - **Hai mức phê duyệt, không nhập nhằng:**
   - **`STRICT_APPROVED`:** score là `int >= 85`; phát hành strict HMAC token.
   - **`GRACE_APPROVED`:** chỉ cho score `80–84` khi *đồng thời* focused test xanh, diff <= 30 dòng tổng cộng, <= 2 files, không chạm protected path, không có critical finding, không có reviewer handoff/strike lock. Phải phát hành grace token riêng; không được in/diễn giải thành generic `APPROVED`.
+  - **Grace Line Budget Trap (max_lines <= 80):** `gate_common._grace_ok` kiểm tra `diff_lines <= 80` và `diff_files <= 2` theo `closeout_policy.json`. Nếu diff > 80 dòng, dù đạt 80-84 điểm vẫn bị `[CLOSEOUT_TOKEN_SKIPPED: score 82 rejected: grace_conditions_unmet]`. Diff lớn bắt buộc đạt điểm nghiêm ngặt >= 85 mới được closeout.
+  - **Diff Ceiling Fail-Fast (30KB):** `closeout_gate.py` tự động chặn diff candidate > 30,000 bytes (`DIFF_TOO_LARGE`). Bắt buộc dùng `--files <target_impl> <target_test>` để phân rã phạm vi thẩm định dưới 30KB.
   - **`REJECTED`:** score <80 hoặc score 80–84 nhưng thiếu bất kỳ điều kiện Grace nào.
   - `gate_common.strict_passes()` và `gate_common.grace_eligible(evidence)` là hai kiểm tra độc lập. Không để `passes()` mặc định nuốt Grace; token issue/verify phải mang `approval_kind` và kiểm tra đúng policy.
   - Thiếu token hợp lệ hoặc token không khớp `approval_kind`: `safe_push.py` chặn push, output guard chặn claim DONE.
@@ -49,6 +51,7 @@ metadata:
 - **Anti-Stalling / Anti-Bureaucracy Invariant:** Khi Operator hỏi "xong hết chưa", cấm viện cớ quan liêu về trạng thái dirty hay chưa closeout để thoái thác. Bắt buộc xác nhận ngay code đã active trên đĩa hay chưa, báo cáo kết quả kiểm chứng cụ thể và lập tức kích hoạt Closeout Gate.
 
 ## 3. Tài Liệu Tham Khảo (References)
+- Grace Band Diff Budget, Diff Ceiling (30KB) & State Machine Scoring Rubric (2026-10-18): [`references/grace-band-diff-budget-and-diff-too-large-triage-20261018.md`](references/grace-band-diff-budget-and-diff-too-large-triage-20261018.md)
 - Claude Reviewer Approved: gate_common Fail-Closed & ASCII Token Security (2026-10-18): [`references/claude-reviewer-approved-gate-common-and-fail-closed-validation-20261018.md`](references/claude-reviewer-approved-gate-common-and-fail-closed-validation-20261018.md)
 - Data-File Closeout Test Pairing, Telemetry Depth & Untracked Tool Preservation (2026-10-18): [`references/data-file-closeout-test-pairing-and-untracked-tool-preservation-20261018.md`](references/data-file-closeout-test-pairing-and-untracked-tool-preservation-20261018.md)
 - Đồng Thuận 3 Bên: Kiến Trúc Grace Band Không Xung Đột (2026-10-18): [`references/tri-party-consensus-zero-conflict-grace-architecture-20261018.md`](references/tri-party-consensus-zero-conflict-grace-architecture-20261018.md)
