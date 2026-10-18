@@ -57,6 +57,29 @@ Only after L2 and L3 pass, verify the machine's resolved proxy endpoint, TCP con
 - Auth/MIC failures have a bounded attempt policy; after the first confirmed credential failure, preserve evidence and stop rather than retrying a wrong configuration.
 - Do not reboot AP/router, change transmit power, or move a phone between groups as an automatic response.
 
+## Two-tier conflict verification protocol
+
+Before authoring or modifying any gate, guard hook, or network script, verify against both tiers:
+
+1. **Tier 1 — Existing system guards:**
+   - `guard_android_proxy.py`: Android `http_proxy` MUST be RFC1918 LAN IP (`192.168.110.2:<port>`), never domains or public IPs.
+   - `guard_cronjob_safety.py`: Windows subprocesses MUST include `creationflags=0x08000000` (`CREATE_NO_WINDOW`) or `-w hidden`.
+   - `guard_device_bulkhead.py` & Hard Gate #5: ADB commands MUST include explicit `-s <serial>` and run inside `operator_device_lock`.
+   - Codebase safety: strictly forbid broad disk sweeps (`os.walk`, `glob(recursive=True)`, `find`, `grep -r`), never edit protected system hook files.
+2. **Tier 2 — Operator farm invariants:**
+   - Direct exceptions: M67 and M69 are direct (`http_proxy` `:0`, bypass local Sing-box proxy).
+   - Rescue override: allow `force_preempt=True` in `operator_device_lock` during emergency machine rescues.
+   - Nurture protection: return `NOOP_HEALTHY` when current state matches expected to avoid breaking active 25-worker TikTok sessions.
+   - Network hierarchy: Sing-box LAN only, strictly no VPN, Ruijie > Aruba.
+   - Verification suite: 100% offline mocked tests running under 30s.
+
+## Control loop and anti-silent-loop discipline
+
+- **Hard-stop on policy blocks:** When an action trips a guard, bulkhead, or permission check, STOP immediately. Never write ad-hoc scripts to bypass a guard.
+- **Bounded retries (Circuit Breaker):** Max 2 attempts on a structural failure. On the 2nd failure, stop and report `BLOCKED` with evidence.
+- **Mandatory progress reporting:** Never leave the operator in a silent loop exceeding 3 minutes during multi-step background work. Always emit a heartbeat.
+- **Definitive completion:** Every task must terminate in one of four valid states: `SUCCESS`, `FAILED`, `BLOCKED`, or `NEEDS_OPERATOR`. Never allow unbounded or hanging states.
+
 ## Evidence and rollout
 
 Each apply/readback record includes machine, serial, profile ID, profile hash, expected-vs-actual values, timestamp, lock ID, layer verdicts, and sanitized raw output. A screenshot is required for UI evidence and must be visually inspected before delivery.
