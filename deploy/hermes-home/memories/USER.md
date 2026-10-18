@@ -14,4 +14,4 @@ Canary: target-bound đúng lỗi; WinRT OCR -> ATX (cấm uiautomator); Singbox
 §
 Báo cáo Telegram: tóm tắt KPI+exception; Dashboard :1905 full-page.
 §
-User ưu tiên kiến trúc, spec, Claude CLI plan trước thi công, tự kiểm nghiệm remote, Claude CLI duyệt. Cấm lấy số giây làm thước đo.
+User ưu tiên kiến trúc, Claude plan trước thi công, remote test, Claude duyệt. Soạn tin: ngắn gọn, giọng người thật, cấm icon/khóc lóc.
