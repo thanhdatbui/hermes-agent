@@ -8,7 +8,7 @@ Closeout: Grace 80-84 auto-push khi test xanh; cấm Sonnet cày điểm; Strike
 §
 Ava/Media: BẮT BUỘC WinRT OCR + soi thật; CẤM bịa mô tả/gửi mù; menu Ghim/Riêng tư KHÔNG PHẢI publish proof; pHash/crop thật cấm DONE ảo; cấm tin mù status/receipt tool.
 §
-Worker: Haiku/Agy fix. CẤM Luna/delegate. 'hỏi Claude'=Sonnet 5.5; 'Tắt' khi game=tắt nháy console; Done báo gọn hiện trường, cấm lải nhải rule.
+Worker: Haiku/Agy/Argon fix. Argon=gemini-web-argon-pool (:20129, 0đ). CẤM Luna. 'hỏi Claude'=Sonnet 5.5; 'Tắt' khi game=tắt nháy console; Done báo gọn.
 §
 Canary: test đa máy/layout, MEDIA:. 100% Singbox, cấm VPN. Mạng: Ruijie>Aruba, cấm bao biện khi data plane/ping chưa thông.
 §

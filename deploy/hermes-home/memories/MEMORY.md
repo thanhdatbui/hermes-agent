@@ -6,7 +6,7 @@ Hotmail: CẤM mail cá nhân; @fviainboxes.com đọc OTP. Write-Through Excel 
 §
 Farm: O(1). Preempt lock; ping 0% loss; ARP 110.x. Lock: rename_natural_state.json. Header Excel: đổi header rà soát consumer; cấm fallback tuần tự.
 §
-GPM: max 5 wkr; nạp pool web (0đ); re-login văng max 1 lần/ngày (max_proxy 3/cổng, ghi recovered_date).
+GPM: max 5 wkr; pool web (0đ); re-login max 1/ngày. Gemini Web: HTTP StreamGenerate (:20129) 5 accs Mobi 4G, inner[17]=[[0]] deep think.
 §
 Stale Upload: xóa draft. Revert flop: TikWM tải CDN. Popup 'Ghim/Riêng tư' KHÔNG PHẢI publish proof. Cào: max 60.
 §

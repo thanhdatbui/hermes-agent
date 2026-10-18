@@ -226,9 +226,10 @@ In `~/.hermes/config.yaml`:
     - `gpt-5.6-sol-medium` (effort: standard)
     - `gpt-5.6-sol-high` (effort: extended - expert analysis)
     - `gpt-5.6-sol-xhigh` (effort: max - deep reasoning)
-  - **Gemini Argon Web (`gemini-web-argon-pool`)**: Does **NOT** support `reasoning_effort`.
+  - **Gemini Argon Web (`gemini-web-argon-pool`)**: Does **NOT** support standard client `reasoning_effort` parameter by default.
     - OmniRoute's `checkGeminiWebUnsupportedControls()` guard rejects requests specifying non-minimal `reasoning_effort` with `400 invalid_request_error: unsupported_control_for_provider`.
-    - Google's `BardFrontendService/StreamGenerate` RPC wire protocol has no parameter for setting thinking budget. Google controls reasoning server-side per model version.
+    - *Direct Web & Protobuf Inspection Truth*: Direct inspection of `gemini.google.com/app` confirms Google has no quantitative token budget slider on Web UI. Thinking is governed by internal experiment flags `45757375` (`deep_think_new` vs `deep_think_soft`) and `45734007` (`thinking` vs `fast`).
+    - *Protobuf Slot Wiring*: In the 80-element `StreamGenerate` array, Slot `[17]` is `[[thinkMode]]` (where `0` = deepest thinking), and Slot `[79]` is `modelCategory`. In our refactored `gemini-web.ts`, `inner[17] = [[0]]` is hardcoded as default, ensuring all Argon requests run at maximum deep reasoning depth. To support client `reasoning_effort` gracefully, relax `capabilities.ts` and map `high/medium -> inner[17]=[[0]]` and `none/low -> inner[17]=null`.
 
 - **Request Limit & Quota Profile for Gemini Web Pro Accounts**:
   - **Official Stance**: Google does **NOT** publish numerical request limits (RPM/RPD) for Gemini Advanced Web; terms cite only fair use and dynamic demand throttling.
