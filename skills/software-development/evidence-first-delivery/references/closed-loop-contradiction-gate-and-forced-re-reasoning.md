@@ -67,7 +67,32 @@ BẮT BUỘC bạn phải thừa nhận nội dung thực tế trên ảnh ("TR�
 
 ---
 
-## 4. Checklist Thực Thi Chuẩn Hoá Kênh 4 Món (SSOT 2026-10-18)
+## 4. 4 Bài Học Thẩm Định Code Từ Claude Sonnet 5.5 Reviewer
+
+Qua vòng audit độc lập mã nguồn `guard_media_vision_gate.py`, Claude Sonnet 5.5 đã chỉ ra 4 lỗ hổng chí tử và quy chuẩn bắt buộc:
+
+1. **Khóa Bí Mật Động (Fail-Closed Dynamic Secret Key):**
+   - *Cạm bẫy:* Hardcode một chuỗi default secret key trong code Python sẽ làm vô hiệu hóa bảo mật HMAC vì bất kỳ ai đọc source code cũng có thể tự tính hash để forge receipt giả.
+   - *Quy chuẩn:* Đọc từ biến môi trường `HMAC_SECRET_KEY`. Nếu không có, tự động tạo/đọc file key cục bộ bảo vệ tại `D:/Taadaa/runtime/secrets/vision_guard.key` (32 bytes `os.urandom(32)` với quyền `0o600`). Nếu không đọc/ghi được -> ném lỗi `RuntimeError("HMAC_SECRET_KEY is unavailable")` để Fail-Closed tuyệt đối.
+
+2. **Khái Quát Hóa Thuật Toán Contradiction Gate (Generalized Anti-Hallucination):**
+   - *Cạm bẫy:* Hardcode tuple từ khóa cụ thể `("nu mc", "ao do")` vs `("cho", "trom cho")` chỉ bắt được đúng 1 sự cố duy nhất của Máy 243, hoàn toàn mù trước các ca chém gió khác trên farm.
+   - *Quy chuẩn (`UNGROUNDED_OVERRIDE`):*
+     - Khi `ocr_tokens` chứa từ khóa có nghĩa ($\ge 3$ ký tự).
+     - Nếu tin nhắn đưa ra tuyên bố thị giác cụ thể (`anh co`, `hinh co`, `photo shows`...) mà **không có bất kỳ token giao thoa nào (zero token overlap)** với `ocr_tokens`, đồng thời bỏ qua toàn bộ text OCR đọc được ➔ Phán quyết là `UNGROUNDED_OVERRIDE` (Block ngay lập tức).
+     - Phủ nhận bằng chứng (`CONTRADICTION_HARD`): Tuyên bố *"không có chữ / no text"* trong khi OCR đọc được chữ ➔ Block.
+     - Sai lệch thực thể (`ENTITY_MISMATCH`): Tuyên bố thực thể không được bảo chứng bởi evidence ➔ Block.
+
+3. **Hỗ Trợ Đường Dẫn Chứa Khoảng Trắng (Spaced Paths Support):**
+   - *Cạm bẫy:* Regex `MEDIA:(\S+)` hoặc `([^\s]+)` bị ngắt cụt ngay tại dấu cách đầu tiên, làm gãy các thư mục có thật trên farm như `D:\Taadaa\tiktok-luot nuoi acc\...`.
+   - *Quy chuẩn:* Regex `MEDIA:((?:(?!MEDIA:).)+?\.[A-Za-z0-9]{1,5})(?=\s|$|[\"'<>,;)\]}]|[.!?](?:\s|$))` cho phép gom trọn vẹn cả đường dẫn có dấu cách tới đúng đuôi mở rộng file ảnh hợp lệ.
+
+4. **Kiểm Chứng Đa Thẻ MEDIA: Độc Lập:**
+   - Khi tin nhắn chứa nhiều thẻ `MEDIA:`, mỗi đường dẫn ảnh phải được đối soát độc lập với receipt tương ứng của nó. Nếu bất kỳ 1 ảnh nào thiếu receipt hoặc mâu thuẫn bằng chứng ➔ Toàn bộ tin nhắn bị chặn đứng và inject forced re-reasoning prompt.
+
+---
+
+## 5. Checklist Thực Thi Chuẩn Hoá Kênh 4 Món (SSOT 2026-10-18)
 Khi User chỉ đạo *"Chuẩn hoá kênh"*, mặc định là **4 MÓN**:
 1. **Avatar:** Căn chuẩn lưới ngũ quan $512 \times 512$, headroom $\ge 30\text{px}$, không dính chữ rác (WinRT OCR sạch 100%), viền tròn profile ôm trọn tóc, đồng bộ kho `avatar.jpg`, cắm `.manual_avatar_locked`.
 2. **Hashtag:** Khóa hashtag pool chuẩn ngách từ `Tik*.xlsx`, cắm `.manual_hashtag_locked`.

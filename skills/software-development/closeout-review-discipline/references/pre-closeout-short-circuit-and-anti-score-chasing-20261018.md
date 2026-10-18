@@ -40,13 +40,33 @@ Trong phiên làm việc ngày 17-18/10/2026 trên repo `D:/Taadaa/tiktok-luot n
 
 ## 3. Cơ Chế Triển Khai Trong `D:/Taadaa/tools/closeout_gate.py`
 
-Hàm `check_pre_closeout_short_circuit(repo: Path, targets: list[str] | None = None) -> tuple[bool, str]` được cắm vào Bước 2 của `main()` trước khi trích xuất diff:
-```python
-short_circuit, short_circuit_reason = check_pre_closeout_short_circuit(repo_path, targets)
-if short_circuit:
-    ok(f"Pre-closeout short-circuit: {short_circuit_reason}")
-    sys.exit(0)
-```
+Hàm `check_pre_closeout_short_circuit(repo: Path, targets: list[str] | None = None) -> tuple[bool, str]` được cắm vào Bước 2 của `main()` trước khi trích xuất diff.
+
+### 4 Lỗ Hổng Fail-Open & Chốt Chặn Cơ Học Bắt Buộc (Claude Reviewer Findings):
+Khi triển khai hàm short-circuit, Claude Sonnet Reviewer đã chỉ ra các lỗ hổng fail-open nguy hiểm cần phải bọc chặt:
+1. **Lỗ hổng Nonexistent Target (Typo file):**
+   - Nếu người dùng truyền nhầm tên file không tồn tại (`--files typo_nofile.py`), do file không có local diff và remote diff, code ngây thơ sẽ tưởng là "khớp remote" và cho pass!
+   - *Chốt chặn:* Bắt buộc kiểm tra `tracked = set(_z_paths(_git_bytes(repo, "ls-files", "-z", "--", *scope)))`. Bất kỳ target nào không nằm trong `tracked` đều bị từ chối ngay lập tức: `targets not tracked by git: ...`.
+2. **Lỗ hổng Ignored Target (.gitignore):**
+   - Lệnh `ls-files --others --exclude-standard` ẩn các file bị gitignore. Một file rác/local cache nằm trong `.gitignore` nếu truyền vào `--files` sẽ bị lọt qua.
+   - *Chốt chặn:* Bộ lọc `ls-files` ở trên loại bỏ hoàn toàn các file ignored khỏi danh sách tracked, ngăn chặn việc bypass qua file ignored.
+3. **Lỗ hổng Staged-then-reverted Index Drift:**
+   - Nếu file được `git add` vào staging index, sau đó working tree lại được hoàn tác giống upstream, lệnh `git diff <upstream>` thông thường chỉ so sánh working tree mà bỏ sót index.
+   - *Chốt chặn:* Kiểm tra đồng thời cả `staged_drift = git diff --cached <upstream>` VÀ `drift = git diff <upstream>`. Chỉ khi cả hai đều rỗng mới kết luận an toàn.
+4. **Lỗ hổng Thiếu Audit Log Cho Downstream:**
+   - Nếu short-circuit thoát `sys.exit(0)` mà không ghi log, pre-push hook sẽ chặn đứng vì không thấy bản ghi trong `gate_audit.jsonl`.
+   - *Chốt chặn:* Trước khi `sys.exit(0)`, bắt buộc gọi `write_gate_audit(repo=str(repo_path), verdict="APPROVED", score=100, threshold=85, passed=True, details={"short_circuit": True, "reason": short_circuit_reason})`.
+
+---
+
+## 4. Kỷ Luật Phản Ứng: Chống Bẫy Over-Engineering Khi Bị Operator Mắng
+
+Khi Operator bức xúc vì Coordinator phá rule ("fix 3 tiếng đéo xong lí do?", "Mấy cái nó bảo có ảnh hưởng gì đến mọi thứ đang vận hành k v. Hay lại đang làm giữa chừng r báo guard chặn r khóc lóc"):
+- **CẤM TUYỆT ĐỐI nuốt trọn các đề xuất xâm lấn hệ thống:** Khi hỏi ý kiến mô hình lập kế hoạch (như Claude Sonnet Planner), mô hình thường đề xuất các giải pháp bảo mật lý thuyết đồ sộ: đặt Windows ACLs (`icacls /deny`), đổi `core.hooksPath` toàn cục, dựng server ký số HMAC...
+- **Nhận diện nguy cơ phá vỡ vận hành:**
+  * Đổi ACLs trên Windows sẽ làm cronjob và background watchdog bị `PermissionError` hàng loạt.
+  * Đổi `core.hooksPath` hệ thống sẽ ép 15-20 repo farm khác chạy theo hook chưa được kiểm thử, làm gãy tiến trình tự động hóa.
+- **Hành động đúng:** Phản biện và gạn lọc giải pháp — chỉ giữ lại những chốt chặn cục bộ trong mã nguồn tool (`closeout_gate.py`) và kỷ luật per-command (`git commit -m "..." -- <exact_files>`), triệt tiêu 100% rủi ro làm sập môi trường farm.
 
 ### Kết quả nghiệm thu:
 Khi chạy trên repo đã hoàn tất:
