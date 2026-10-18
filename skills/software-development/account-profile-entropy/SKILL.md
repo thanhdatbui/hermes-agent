@@ -134,12 +134,27 @@ Khi tài khoản đã có `@username` (dù tạo từ reg cũ hay mua từ ngu�
 - **Nguyên tắc cốt lõi**: BẮT BUỘC ưu tiên sinh tên hiển thị **gần giống và ăn khớp với username** thay vì bốc tên ngẫu nhiên hoàn toàn (tránh tài khoản `@vothitram` lại mang tên `Hải Cường`).
 - **Bóc tách âm tiết tiếng Việt (`parse_username_syllables`)**:
   * Lọc sạch ký tự số và dấu chấm trong username (`re.sub(r'[^a-zA-Z]', '', u).lower()`).
+  * **2-Stage Syllable Matching Invariant (Chống rơi vào fallback ngẫu nhiên sai lệch)**:
+    - *Stage 1 (Exact Match)*: Tìm phân rã hoàn chỉnh 100% không còn ký tự thừa qua đệ quy `find_segments`. Nếu khớp sạch -> trả về ngay.
+    - *Stage 2 (Prefix Greedy Fallback)*: Khi username dính ký tự rác/noise ngẫu nhiên ở đuôi do tool reg sinh ra (e.g. `@ngohaaenexi` dính `aenexi`, `@thibabppere17` dính `ppere`), hàm đệ quy Stage 1 sẽ trả về rỗng `[]`. Lúc này BẮT BUỘC dùng greedy prefix matching duyệt tuần tự từ đầu chuỗi `text.startswith(w)` để bóc tách toàn bộ cụm Họ - Đệm - Tên ở đầu (`['ngo', 'ha']`) và bỏ qua đuôi rác. TUYỆT ĐỐI CẤM để hàm trả về `[]` khiến hệ thống ngộ nhận là nick nước ngoài rồi gán tên ngẫu nhiên sai lệch (`Hoàng Phước Châu`).
   * Đối chiếu từ điển âm tiết Họ - Đệm - Tên không dấu (`HO_MAP`, `DEM_MAP`, `TEN_MAP`) theo thuật toán greedy matching ưu tiên từ dài nhất.
-- **Phân bổ 50 / 50 theo chuẩn người dùng thật**:
-  * **50% Tên đầy đủ có dấu**: Reconstruct lại Họ + Đệm + Tên tiếng Việt chuẩn (VD: `vothitram` -> **`Võ Thị Trâm`**, `buitruc190` -> **`Bùi Trúc`**, `thiphong960` -> **`Thị Phong`**, `lequynh2043` -> **`Lê Quỳnh`**).
-  * **50% Tên chính + Biệt danh đời thường ("Trâm xxx")**: Bốc từ tố cuối cùng (Tên chính) ghép với hậu tố biệt danh đời thường trong `NICK_SFX` (VD: `vothitram123` -> **`Trâm Mập`**, **`Trâm Bơ`**, **`Trâm Miu`**, **`Trâm Nấm`**; `dokieu203` -> **`Kiều Tít`**).
-- **Với username 1 từ** (VD: `tuan31075` -> từ tố `tuan`): Ghép Đệm + Tên (**`Duy Tuấn`**) hoặc Tên + Nickname (**`Tuấn Miu`**).
+- **Phân bổ Entropy cao theo chuẩn người dùng thật**:
+  * **35% Tên đầy đủ có dấu**: Reconstruct lại Họ + Đệm + Tên tiếng Việt chuẩn (VD: `vothitram` -> **`Võ Thị Trâm`**, `buitruc190` -> **`Bùi Trúc`**, `thiphong960` -> **`Thị Phong`**, `lequynh2043` -> **`Lê Quỳnh`**).
+  * **35% Tên chính + Biệt danh đời thường ("Trâm xxx")**: Bốc từ tố cuối cùng (Tên chính) ghép với hậu tố biệt danh đời thường trong `NICK_SFX` (24+ hậu tố phong phú: *Bơ, Miu, Na, Sóc, Mây, Xù, Dâu, Chanh, Sữa, Tít, Thỏ, Bông, Nhím, Heo, Nấm, Đậu, Kem*...; VD: `vothitram123` -> **`Trâm Mập`**, **`Trâm Bơ`**, **`Trâm Miu`**, **`Trâm Na`**; `dokieu203` -> **`Kiều Tít`**).
+  * **15% Đệm + Tên chính**: `Thị Trâm`, `Ngọc Trâm`, `Minh Trâm`...
+  * **15% Họ + Tên chính**: `Võ Trâm`
+- **Với username 1 từ** (VD: `tuan31075` -> từ tố `tuan`): Ghép Đệm + Tên (**`Duy Tuấn`**) hoặc Tên + Nickname (**`Tuấn Miu`**, **`Tuấn Thỏ`**).
 - **Với username ngẫu nhiên / chữ nước ngoài không nhận diện được âm tiết** (VD: `lilyan...`, `frances...`, `stutectzyes`): Chuyển tự ngữ âm sang stem tiếng Việt gần âm (`Linh Bông`, `Phương Thảo`) hoặc fallback tên đời thường 2-3 từ tự nhiên.
+- **Chốt chặn False-Positive trong `is_target()` khi tên cũ dính số đuôi**:
+  * Bẫy toán học: Khi so khớp giữa tên mục tiêu `Phan Nhung` và tên hiện tại dính số đuôi `phannhung1710`, hàm `difflib.SequenceMatcher.ratio()` cho ra kết quả `0.7826 >= 0.75`! Runner tưởng đã đổi rồi nên bỏ qua không gõ tên mới (`ALREADY`).
+  * BẮT BUỘC kiểm tra chữ số đuôi trong `is_target()`: `if re.search(r"\d{2,}$", nl): return False`. Mọi tên còn dính từ 2 chữ số trở lên ở đuôi (dấu hiệu username) không bao giờ được coi là đã đổi!
+- **Kỷ luật Hàng chờ Cooldown 7 ngày (`rename_natural_state.json`)**:
+  * TikTok giới hạn đổi biệt danh 7 ngày 1 lần. Mọi nick đã lỡ đổi tên không ăn khớp với username trong quá khứ được tự động xếp vào hàng chờ 7 ngày (`COOLDOWN_DAYS = 7`).
+  * Watchdog đối soát qua `is_name_related_to_username()`: Đúng ngày thứ 7 sau lần đổi trước, hệ thống mới bốc ra đổi lại tên chuẩn theo username, tuyệt đối không spam đổi trước hạn gây lỗi popup cản trở.
+- **Cạm bẫy Mất File Cron Do Git Clean / Reset trong `D:/Taadaa/tools`**:
+  * Các runner phụ trợ gọi qua subprocess (`do_rename_canonical_runner.py`, `rename_executor.py`, `ocr_boxes.ps1`) nếu là untracked files trong repo `D:/Taadaa/tools` rất dễ bị xóa khi có thao tác `git clean -fd` hoặc `git reset`.
+  * Hậu quả: Cronjob chạy ngầm văng lỗi exit code 2 (FileNotFoundError) trong im lặng mà không ghi log ra ngoài.
+  * Quy chuẩn: Mọi tool chạy định kỳ BẮT BUỘC lưu trữ song song tại `%LOCALAPPDATA%\hermes\scripts\` và `D:\Taadaa\Hermes\deploy\hermes-home\scripts\`. Watchdog trước khi gọi subprocess bắt buộc tự động kiểm tra và copy bù file nếu thiếu trước khi spawn workers.
 
 When registering or renaming accounts created from foreign/shop emails (e.g. `francesuhunt5@gmail.com`, `LilyanLederhos64090@hotmail.com`):
 

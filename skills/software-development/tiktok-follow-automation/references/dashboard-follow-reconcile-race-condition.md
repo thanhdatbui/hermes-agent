@@ -6,6 +6,7 @@
 3. **Lệch tam giác giữa 3 bảng số liệu (Lịch sử ngày vs Đối soát KPI vs Web):** Ví dụ: Thống kê theo ngày báo `+22 lượt (6/7 nick)`, Thẻ KPI Header báo `Bot +18 lượt`, nhưng Web chỉ ghi nhận `+16 lượt`.
 4. **Quy ước hiển thị Cột Nick (Thống Kê Ngày & Tuần) dạng `Thành công / Tổng chạy`:** Loại bỏ nghịch lý thị giác khi nick bị nhả/0 lượt vẫn tính trong tổng số nick chạy (ví dụ `1/2 nick`, `10/17 nick`).
 5. **Lệch cửa sổ snapshot khi quét bù ca cũ (Backfill uncapped window):** Báo cáo ca cũ nhưng số liệu web bốc trúng snapshot hiện tại sau 7 ngày, tạo lệch ảo khủng (+62).
+6. **Lệch âm độc lập do TikTok Shadow Unfollow / Silent Action Block trên nick non:** Script báo 2 lượt (do Optimistic UI trên danh sách), nhưng cả counter trên UI Profile thiết bị lẫn TikTok Web đều là 0.
 
 ## Các Nguyên Nhân Gốc Rễ
 
@@ -158,6 +159,32 @@ Khi tài khoản **nghỉ follow hoặc chưa đủ video** (`organic-rest-day-p
      SELECT session_key, cluster, internal_follows, created_at FROM session_action_stats WHERE target_date = ?;
      ```
    - Kiểm tra thư mục run thực tế của từng phiên trong `runtime/kibe/live/<YYYY-MM-DD>/` (file `follow_result.json` của máy liên quan) để xác định chính xác phiên nào sinh ra lượt follow và phiên nào bị dừng do `FOLLOW_FAILED`.
+
+### Nguyên nhân 7: Lệch Âm Độc Lập Do TikTok Silent Unfollow / Shadow Action Block Trên Nick Non (Client Optimistic UI vs Server Drop)
+1. **Hiện tượng nhận biết:**
+   - Watchdog báo lệch âm trên 1 máy cụ thể (ví dụ: `M23 (@tranngan8642) : script 2 lượt - web 0 lượt - lệch (-2)`).
+   - Nick này không bị `FOLLOW_FAILED` hay ngắt phiên ngay tại bước follow (script vẫn báo `status: OK, followed: 2`), nhưng web cào trước và sau ca đều ghi nhận 0 lượt tăng (`delta = 0`).
+   - Khác với Nguyên nhân 2 (Race condition P1 âm -> P2 bù dương): Ở trường hợp này, **không hề có độ trễ cào hay bù trừ dương ở P2**.
+2. **Bản chất kỹ thuật (Client Optimistic UI vs Server-Side Action Block):**
+   - **Optimistic UI trên client:** Khi bot tap nút Follow trên danh sách (Mode 2) hoặc trên profile, app TikTok đổi ngay giao diện sang trạng thái `Đang follow` (Following) trên client trước khi server xác nhận. Runner kiểm tra nút sau tap thấy nút đã đổi màu nên ghi nhận thành công (`followed_count = 2`).
+   - **Server TikTok âm thầm loại bỏ (Silent Drop / Shadow Unfollow):** Đối với các nick non (Rookie / Row 7-8 chưa graduate, đang probation) hoặc tài khoản bị chấm điểm trust thấp / IP bị soi:
+     * Server TikTok tiếp nhận request nhưng không tăng trường `following` trên database máy chủ.
+     * Khi nick quay về màn hình Profile cá nhân (`verify_profile`), counter **"Đang follow"** trên giao diện vẫn là **0**!
+     * Web scraper cào dữ liệu từ server TikTok cũng trả về **0**.
+3. **Quy trình kiểm chứng hiện trường O(1) để phân định Race Condition vs Shadow Drop:**
+   - **Bước 1: Đọc XML Profile của nick ở cuối ca chạy:**
+     Kiểm tra `runtime/kibe/live/<YYYY-MM-DD>/<run_id>/machines/machine_<N>/<run_id>/artifacts/.../verify_profile/ui.xml`.
+     Tìm node `resource-id` có nhãn `Đã follow` (hoặc `id/t93`) và node số lượng ngay phía trên (`id/t94`):
+     ```xml
+     <node resource-id="...:id/t94" text="0" bounds="[88,675][388,741]" />
+     <node resource-id="...:id/t93" text="Đã follow" bounds="[88,735][388,783]" />
+     ```
+   - **Bước 2: Đối soát:**
+     * Nếu node `text="0"` ngay trên màn hình thiết bị của máy: **Chứng minh 100% tài khoản bị TikTok server shadow-drop** (server không chấp nhận lượt follow), không phải do scraper cào chậm hay lỗi watchdog.
+     * Nếu node `text="2"` trên thiết bị nhưng Web cào `0`: Là độ trễ cache CDN của TikTok Web hoặc scraper cào trước khi sync server (xem Nguyên nhân 2 & 4).
+   - **Bước 3: Ứng xử vận hành:**
+     * Không can thiệp ADB bấm tay.
+     * Giữ nguyên nick ở chế độ dưỡng sinh / thuần lướt feed để phục hồi trust score, tránh nhồi follow liên tục dẫn tới bị action ban vĩnh viễn.
 
 ## Quy trình chẩn đoán (CẤM đoán mò "follow tự nhiên")
 1. **CẤM TUYỆT ĐỐI phán đoán ẩu "đây là follow tự nhiên / kênh ngoài"** khi user đã cấu hình tắt follow tự nhiên trong feed runner.
