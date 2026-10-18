@@ -14,7 +14,7 @@ Closeout: Grace 80-84 (test xanh) auto-push; BẮT BUỘC --files tránh DIFF_TO
 §
 Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot. Cron: 100% no_agent+script thô, cấm LLM<6h nghẽn GW.
 §
-Singbox :200xx, CẤM VPN. Wi-Fi: M1-40 kibe 1, M41-80 kibe 2, M201-240 admin 1, M241-280 admin 2. CẤM Static IP Ruijie (100% DHCP). Cứu: operator_device_lock(force_preempt=True). Proxy 110.2:port (Kibe: 20001..80; Admin: 10008..35; 67/69 direct).
+Proxy 110.2:port (Kibe: 20001..80; Admin: 10008..35; toàn bộ máy dùng proxy, CẤM direct).
 §
 Canary: target-bound (matrix+plan map diff->hook; cấm khóc lóc/máy móc); WinRT OCR -> ATX -> cấm uiautomator; done_gate verify hash+MEDIA. Claude quota probe >2h.
 §

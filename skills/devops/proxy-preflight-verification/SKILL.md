@@ -500,3 +500,22 @@ See `references/adb-disconnect-vs-missing-proxy-preflight-20261009.md` for disti
     - **Kỷ luật**: CẤM sửa code UI Switcher khi nguyên nhân là rớt mạng; kiểm tra va chạm lock tiến trình khác trước khi can thiệp thiết bị. Chờ proxy thông lại / recreate modem rồi re-run.
     - Chi tiết xem `references/wifi-exclamation-mark-and-pppoe-uptime-vs-502-switcher-triage-20261017.md`.
 - **Cấm gán domain/FQDN proxy cho Android**: Chi tiết xem `references/android-fqdn-proxy-hairpin-drop-and-lan-ip-invariant-20261017.md` (lỗi Hairpin NAT drop và bất biến bắt buộc dùng IP LAN 192.168.110.2).
+
+39. **Bẫy Substring ':0' trong `classify_feed_failure` Gây Báo Sai 'Chưa gán Proxy / Proxy :0' Từ Timestamp & Bổ sung Kẹt Device Lock (2026-10-18)**:
+    - **Hiện tượng & Bẫy logic**:
+      * Báo cáo feed session watchdog hiển thị: `- Chưa gán Proxy / Proxy :0 (2): M7, M69`.
+      * Operator thắc mắc: *"Là sao làm gì có máy nào chạy direct? Lỗi script nào thì fix đi"*.
+      * Kiểm tra thực tế thiết bị (`settings get global http_proxy`): Cả M7 (`192.168.110.2:20007`) và M69 (`192.168.110.2:20069`) đều được gán proxy chuẩn 100%, không hề có máy nào chạy direct.
+    - **Nguyên nhân cốt lõi trong `watchdog/formatters.py`**:
+      * Bộ phân loại `classify_feed_failure(reason)` có điều kiện kiểm tra nhãn "Chưa gán Proxy / Proxy :0" chứa chuỗi trần `":0"`:
+        `if any(k in r for k in ("missing or :0", "http_proxy is missing", ":0", ...)): return "Chưa gán Proxy / Proxy :0"`
+      * Khi kiểm tra `":0" in r`, bất kỳ chuỗi lỗi nào có chứa timestamp định dạng `HH:MM:SS` với phút hoặc giây bắt đầu bằng `0` (ví dụ M7 dính `started_at=2026-10-18T13:00:30` hoặc M69 dính `18:02:19`) đều bị match trúng `":0"`.
+      * Hậu quả:
+        - M7 thực tế bị `device lock active` (Kẹt Device Lock bởi `farm_network_gate.py`) bị gom thành "Chưa gán Proxy / Proxy :0".
+        - M69 thực tế bị `required router proxy is unreachable ... egress IP verification failed` (Nghẽn đường truyền Proxy / 4G) bị gom thành "Chưa gán Proxy / Proxy :0".
+    - **Quy tắc bắt buộc & Khắc phục**:
+      * **Bỏ chuỗi trần `":0"`:** Thay bằng token cụ thể như `"empty_or_zero"`, `"empty or zero"`, `"missing or :0"`, `"proxy is not set on device"`. Tuyệt đối CẤM dùng substring 2 ký tự `":0"` trên chuỗi log có chứa timestamp.
+      * **Đưa nhận diện `device lock` lên trước:** Bổ sung check `if any(k in r for k in ("device lock active", "device-lock", "skipped-device-locked", "device lock")): return "Kẹt Device Lock"` để phân định rạch ròi giữa kẹt lock và lỗi mạng.
+      * **Bổ sung `egress ip` vào nhóm Nghẽn đường truyền:** Đảm bảo `egress IP verification failed` luôn rơi vào nhóm "Nghẽn đường truyền Proxy / 4G".
+      * **Bất biến Farm Direct IP:** Toàn bộ dàn máy Farm Taadaa bắt buộc 100% chạy qua Proxy `192.168.110.2:port`, TUYỆT ĐỐI KHÔNG có máy nào chạy Direct. Mọi kết luận cho rằng máy chạy direct để giải thích cho lỗi proxy đều là sai lầm nghiêm trọng.
+      * Chi tiết xem `references/watchdog-colon-zero-timestamp-false-proxy-missing-and-device-lock-triage-20261018.md`.
