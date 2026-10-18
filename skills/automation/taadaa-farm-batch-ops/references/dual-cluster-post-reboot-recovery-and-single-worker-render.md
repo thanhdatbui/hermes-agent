@@ -149,4 +149,15 @@ Khi User hoặc hệ thống reboot 1 hoặc cả 2 máy, toàn bộ các tiến
      - Xác định rõ tiến trình cha (PID), số clip đã có / tổng clip gốc, và báo cáo tiến độ trực tiếp cho User kèm thời gian dự kiến hoàn tất.
   3. **Chỉ spawn khi probe xác nhận hoàn toàn chết (Dead confirmed)**: Khi không có process nào chạy VÀ số lượng file không đổi sau probe mtime, mới được phép kích hoạt 1 worker đơn luồng duy nhất (`--parallel 1`) với cờ `--resume-verify-existing` để render bù clip còn thiếu.
 
+### Bẫy 12: Tử Huyệt Thư Mục Startup Của Windows Sau Reboot Tự Động & Cháy Watchdog
+- **Hiện tượng**: Trên máy Admin (`admin-farm`), sau ca reboot định kỳ (05:20 hoặc 17:20), cả tiến trình cào (`download_by_niche.py`) và render (`run_admin_render_worker.py`) đều dừng hoàn toàn, không tự động chạy lại dù đã có file `.vbs` trong `shell:startup` (`C:\Users\Admin\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\`).
+- **Nguyên nhân cốt lõi**:
+  1. **Startup Folder chỉ chạy khi có User đăng nhập GUI (Interactive Logon)**: Khi máy reboot tự động lúc rạng sáng, Windows dừng ở Lock Screen. Không có interactive logon thì Startup folder KHÔNG BAO GIỜ được nạp.
+  2. **Watchdog thiết kế chạy 1 lượt (Single-shot exit 0)**: Script `watchdog_admin_downloader.py` và `watchdog_admin_render.py` được viết theo kiểu kiểm tra 1 lần rồi `return 0`, không phải vòng lặp daemon. Nếu không có bộ lập lịch định kỳ (cronjob/Task Scheduler) gọi lặp lại thì sau khi worker bị kill bởi reboot (mã thoát `1073807364`) hoặc timeout (2400s), hệ thống sẽ nằm im vĩnh viễn.
+  3. **Proxy Loopback 502 Bad Gateway trên mạng LAN**: File cấu hình proxy trên Admin (`proxy_pool_69.txt`) nếu trỏ vào domain ngoài `mirotik1.taadaa.click` sẽ bị router từ chối (502) khi gọi từ trong LAN `192.168.110.119`. BẮT BUỘC dùng IP LAN nội bộ `192.168.110.2:10001..10035`.
+- **Kỷ luật khắc phục dứt điểm**:
+  - Không bao giờ dựa duy nhất vào thư mục Startup cho các tác vụ nền quan trọng của Farm.
+  - Phải đăng ký vào **Windows Task Scheduler (Trigger: At Startup / At boot)** chạy ngầm độc lập với user logon, HOẶC duy trì một cron watchdog định kỳ (e.g. `*/15 * * * *`, `deliver: local`) để tự động kiểm tra và hồi sinh worker khi phát hiện chết tiến trình.
+
+
 
