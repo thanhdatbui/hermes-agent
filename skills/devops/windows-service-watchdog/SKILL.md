@@ -112,6 +112,18 @@ If the Startup entry is a `.vbs` launcher but its Python watchdog calls another 
 
 See `references/remote-windows-startup-console-triage.md` for the bounded SSH commands and patch contract.
 
+### 2c. Remote Admin-PC recurring-flash investigation (bounded, evidence-first)
+When the user reports an intermittent console flash on a secondary Windows farm host, investigate the secondary host itself before changing controller-side Hermes jobs. Use the canonical fixed-target SSH wrapper (for example `admin_ssh.py`) and collect only O(1) evidence:
+
+1. Confirm the remote identity with `hostname` and the SSH wrapper's fixed target; record the correlation ID.
+2. Enumerate non-Microsoft scheduled tasks and their actions. Flag any task whose `Execute` is `python.exe`, `cmd.exe`, `powershell.exe`, a `.bat`, or another console-subsystem executable. Treat `wscript.exe //B //Nologo` as headless only after inspecting the script it launches.
+3. Inspect repetition/trigger metadata for suspicious tasks (15-minute hardware guards and 2–5-minute watchdogs are high-priority candidates), but do not disable a task solely from its name.
+4. Capture `Win32_Process` command lines and parent/child relationships at the time of observation. A visible `conhost.exe`/`cmd.exe` proves a console process existed, not which scheduled task created it; correlate by command line and timestamp.
+5. Separate normal browser native-host `cmd.exe` processes from farm launchers. Chrome/Claude native messaging commonly uses `cmd.exe` with named pipes and is not evidence of a farm cron popup.
+6. If the suspected task is already disabled or all registered farm actions are headless, report that as negative evidence and continue with event-history/timestamp correlation rather than claiming a fix. The diagnostic pass is complete only when the triggering task/process is positively correlated or the investigation is explicitly marked blocked with the captured evidence.
+
+Do not pause or remove Hermes cron jobs merely because the remote host has an independent local scheduler. Do not use blind polling loops; use one bounded remote snapshot per evidence checkpoint. See `references/remote-admin-console-flash-triage.md` for the reusable command set and interpretation rules.
+
 ### 3. Streamlined Health Check (Stream-Safe HTTP & Singleton Client)
 Avoid bare `Invoke-WebRequest` in PowerShell 5.1 for long-running watchdogs. While `Invoke-WebRequest -TimeoutSec` tests socket connectivity, in Windows PowerShell 5.1 (`System.Net.HttpWebRequest`), `-TimeoutSec` only sets the initial connection/header timeout; if the TCP connection establishes but the server stalls or keeps the socket open without closing the stream, `Invoke-WebRequest` hangs indefinitely on stream read. This turns the watchdog itself into a zombie process (holding an ESTABLISHED TCP connection for hours without executing subsequent iterations).
 

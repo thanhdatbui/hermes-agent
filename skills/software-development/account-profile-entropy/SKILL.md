@@ -240,6 +240,10 @@ Khi Operator yêu cầu *"Chuẩn hoá kênh này"* hoặc *"Chuẩn hoá acc"*,
 4. **Bio (Tiểu sử có dấu chuẩn tiếng Việt)**: Đề xuất bio phù hợp với ngách kênh; nạp lên Android S7 BẮT BUỘC qua Base64 UTF-8 broadcast `ADB_KEYBOARD_INPUT_TEXT` của `AdbKeyboard` (CẤM gõ `input text` không dấu); xử lý bẫy clear text trước khi commit.
 - Chi tiết quy trình và cạm bẫy: xem `references/tiktok-channel-standardization-4in1-workflow.md`.
 
+## Bio uniqueness and deployment audit
+
+For the failure mode where multiple accounts receive the same bio, follow [`references/bio-uniqueness-and-deployment-audit.md`](references/bio-uniqueness-and-deployment-audit.md). It defines account-scoped generation, active-batch uniqueness enforcement, deployed-copy auditing, independent BIO/NAME acceptance, and the required offline/live evidence split.
+
 ## Integration Point
 
 ```python
