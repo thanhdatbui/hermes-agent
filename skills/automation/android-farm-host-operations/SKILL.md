@@ -6,6 +6,7 @@ description: "Use when farm devices drop, USB hangs, or entering BIOS."
 # Android Farm Host Operations
 
 References:
+- `references/host-power-cycling-reboot-vs-shutdown-and-electricity-economics-20261018.md` — Phân tích kỹ thuật Reboot xả USB vs Shutdown PC ban đêm, bẫy lý thuyết sáo rỗng "thermal cycling/inrush current", và bóc tách bài toán kinh tế điện năng Farm (~3 triệu/tháng) (18/10/2026).
 - `references/tft-dual-host-guard-and-reboot-incident-20261017.md` — Bẫy tử huyệt TFT Game Guard chỉ quét máy Kibe và client 3D khiến reboot sập máy Admin trong trận rank (17/10/2026), quy chuẩn quét song song Kibe+Admin, ranh giới in-match vs client/lobby, cấm reboot khi app Warcraft 3 mở, tách sentinel độc lập từng máy, khóa single-instance và error contract bảo toàn session Hermes.
 - `references/session-db-schema-drift-and-preflight-reboot-abort-20261018.md` — Phân tích sự cố lệch schema SessionDB (`gateway_routing` thiếu key/value -> đổi sang session_key/entry_json) trong `preserve_in_flight_sessions` khiến hủy reboot tự động 05:20, dẫn đến nghẽn bus USB 2.0 EHCI tích tụ >20h và gây bão lỗi spinner/account-switcher diện rộng tại Phiên 1 (18/10/2026).
 - `references/classify-feed-failure-false-positive-zero-and-mobiproxy-healer-20261018.md` — Phân tích bẫy substring trần ":0" trong classify_feed_failure bắt dính timestamp gây false-positive "Chưa gán Proxy / Proxy :0" cho Máy 7 & 69, quy chuẩn 100% farm proxy (cấm direct), quy trình auto-heal cụm 4G MobiProxy và ranh giới PnP OK vs kẹt pipe EHCI USB 2.0 (18/10/2026).

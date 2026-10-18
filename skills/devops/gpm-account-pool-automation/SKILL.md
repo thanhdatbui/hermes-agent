@@ -20,3 +20,4 @@ version: 1.2.1
 
 ## 3. Tài Liệu Tham Khảo (References)
 - Chi tiết API và các case watchdog: xem danh mục tài liệu trong thư mục `references/` của skill.
+- Triage cảnh báo telemetry `DONE_WITHOUT_CHATGPT_REG` trong báo cáo 6h: xem [`references/done-without-chatgpt-telemetry-triage.md`](references/done-without-chatgpt-telemetry-triage.md).
