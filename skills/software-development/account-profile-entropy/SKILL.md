@@ -152,6 +152,11 @@ Khi tài khoản đã có `@username` (dù tạo từ reg cũ hay mua từ ngu�
 - **Kỷ luật Hàng chờ Cooldown 7 ngày (`rename_natural_state.json`)**:
   * TikTok giới hạn đổi biệt danh 7 ngày 1 lần. Mọi nick đã lỡ đổi tên không ăn khớp với username trong quá khứ được tự động xếp vào hàng chờ 7 ngày (`COOLDOWN_DAYS = 7`).
   * Watchdog đối soát qua `is_name_related_to_username()`: Đúng ngày thứ 7 sau lần đổi trước, hệ thống mới bốc ra đổi lại tên chuẩn theo username, tuyệt đối không spam đổi trước hạn gây lỗi popup cản trở.
+- **Acc Đã Có Tên Chuẩn (ALREADY) vs Lỗi In Nhầm Tên Đề Xuất (User Correction 2026-10-18)**:
+  * Khi tài khoản trên thiết bị đã mang tên tiếng Việt chuẩn ăn khớp với username (VD: `@huynhdiem0806` đã có tên `Huỳnh Diễm` trên Profile), runner nhận diện `is_name_related_to_username() == True` hoặc `ALREADY` -> BỎ QUA KHÔNG ĐỔI (`saved_at: null`).
+  * **Cạm bẫy Watchdog Logging**: Watchdog nếu chỉ lấy biến tên đề xuất `n` (VD: `Huỳnh Bé`) để in ra Telegram sẽ gây hoang mang tột độ cho Operator ("nó tên huỳnh diễm thì đúng rồi còn đòi đổi clg nữa").
+  * **Quy chuẩn**: Runner ghi `actual_name = final_name_ocr` vào file `.json`. Watchdog khi thấy trạng thái `is_already` BẮT BUỘC lấy đúng `actual_name` từ màn hình và in rõ:
+    `ℹ️ [ROLLING RENAME] Máy <M>: @<user> đã có tên chuẩn '<actual_name>' (giữ nguyên)`. CẤM TUYỆT ĐỐI in tên random đè lên acc đã chuẩn!
 - **Cạm bẫy Mất File Cron Do Git Clean / Reset trong `D:/Taadaa/tools`**:
   * Các runner phụ trợ gọi qua subprocess (`do_rename_canonical_runner.py`, `rename_executor.py`, `ocr_boxes.ps1`) nếu là untracked files trong repo `D:/Taadaa/tools` rất dễ bị xóa khi có thao tác `git clean -fd` hoặc `git reset`.
   * Hậu quả: Cronjob chạy ngầm văng lỗi exit code 2 (FileNotFoundError) trong im lặng mà không ghi log ra ngoài.
@@ -299,6 +304,7 @@ def generate_account_for_slot(slot, existing_emails=None, max_attempts=300):
 | Untracked subprocess script loss via git clean in `tools/` | Subprocess scripts (`do_rename_canonical_runner.py`) untracked in `tools/` getting wiped on `git clean` → cron silently fails exit 2 | Watchdog auto-restores dependencies from `%LOCALAPPDATA%\hermes\scripts` before spawning workers; track canonical scripts |
 | Scope Creep: Tự tiện viết Bio trong task Đổi Tên | Task chỉ yêu cầu đổi biệt danh nhưng runner tự tiện nhồi bước gõ bio (hoặc gõ bio cố định / random) | Task đổi tên TUYỆT ĐỐI CẤM đụng bio. Bio chỉ viết khi có lệnh chuẩn hóa và BẮT BUỘC viết theo Niche kênh (`Tik<N>.xlsx`). Lọt BIO_EDIT phải Back ngay |
 | Bẫy tap nhầm nút '+ Thêm tiểu sử' (540, 867) | Nhầm nút '+ Thêm tiểu sử' là 'Sửa hồ sơ' khiến runner nhảy vào màn BIO_EDIT | Dùng nút bút chì thật ở (870, 558) hoặc nút text 'Sửa hồ sơ'; regex cấm match 'tiểu sử' |
+| Watchdog in tên đề xuất khi acc đã ALREADY có tên chuẩn | Acc đã có tên chuẩn (@huynhdiem0806 đã có tên 'Huỳnh Diễm') nhưng watchdog in đề xuất 'Huỳnh Bé' gây tưởng nhầm là bot đi đổi bậy | Runner ghi `actual_name` từ OCR vào json; watchdog đọc `actual_name` và log `đã có tên chuẩn (giữ nguyên)` |
 
 ## Verification
 

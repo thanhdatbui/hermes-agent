@@ -44,8 +44,11 @@
   - Nạp avatar lên thiết bị bằng launcher chuẩn:
     `python D:/Taadaa/tools/run_avatar_batch_3accs.py --tik <Tik> --machine <May>`.
 
-### Bước 5: Món 4 — Bio (Tiểu sử tiếng Việt có dấu chuẩn)
-- Đề xuất 2-3 mẫu tiểu sử ngắn gọn, phù hợp với ngách nội dung của kênh (thời sự, hài hước, nấu ăn, thú cưng, gym...).
+### Bước 5: Món 4 — Bio (Tiểu sử tiếng Việt có dấu chuẩn theo Niche)
+- **Phong cách Bio (Chỉ thị Operator 2026-10-18)**: *"Viết bio kiểu hài hước nhé"*.
+  - BẮT BUỘC viết theo đúng **Niche kênh** (`Keyword Video` từ `Tik<N>.xlsx`).
+  - Ưu tiên phong cách **Hài hước, dí dỏm, Gen Z đời thường**, có emoji sinh động (VD: Nấu ăn -> *"Nấu ăn thì ngon, mỗi tội rửa bát thì lười 🍳"*; Thể thao -> *"Tập gym để ăn nhiều hơn mà không cảm thấy tội lỗi 🏋️"*; Sức khỏe -> *"Quyết tâm sống healthy, nhưng đồ ăn vặt không cho phép 🍟"*).
+  - CẤM TUYỆT ĐỐI viết bio văn mẫu khô khan, cấm viết trùng một câu bio cho nhiều tài khoản (dấu hiệu bot lộ liễu).
 - Kỹ thuật nạp Bio lên Android S7:
   - **BẮT BUỘC dùng AdbKeyboard UTF-8 Base64 Broadcast**:
     `am broadcast -a ADB_KEYBOARD_INPUT_TEXT --es text <BASE64_UTF8_STRING>`.
