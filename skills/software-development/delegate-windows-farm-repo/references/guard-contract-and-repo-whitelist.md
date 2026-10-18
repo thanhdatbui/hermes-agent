@@ -21,6 +21,10 @@ Khi dispatch Worker thực hiện task EDIT / FIX:
 ### Bẫy 2: Thiếu thẻ FILE tuyệt đối (`EDIT_MISSING_FILE` & `PATH_NOT_ABSOLUTE` & `MISSING_TASK_KIND`)
 - **Lỗi thực tế 1:** `EDIT_MISSING_FILE: Task EDIT bắt buộc có 'FILE: <đường_dẫn_tuyệt_đối>' (SCOPE LOCK MISSING TARGET FILE)`.
 - **Lỗi thực tế 2:** `PATH_NOT_ABSOLUTE: '- D:\OneDrive\TaadaaData\kibe\Tik4.xlsx' không phải đường dẫn tuyệt đối`.
+- **Bẫy Bullet `+ ` & Dấu Gạch Đang Gắn Vào Path (2026-10-18):**
+  * `PATH_NOT_ABSOLUTE: '+ D:\Taadaa\...' không phải đường dẫn tuyệt đối`: Khi dùng danh sách dấu cộng `+ ` hoặc dấu gạch ngang `- ` trước đường dẫn tuyệt đối, bộ bóc tách regex nuốt luôn ký tự `+ ` hoặc `- ` vào đầu path, khiến `os.path.isabs()` trả về `False`.
+  * `PATH_NOT_ABSOLUTE: 'scripts\watchdog\... và ...' không phải đường dẫn tuyệt đối`: Bộ lọc regex quét MỌI token có chứa slash `/` hoặc `\` trong context (kể cả trong câu văn mô tả hoặc bọc trong backticks). Nếu nhắc đến đường dẫn tương đối (như `scripts/foo.py`), guard sẽ bắt lỗi vì không phải đường dẫn tuyệt đối.
+  * **Khắc phục:** Mọi file trong context BẮT BUỘC ghi bằng đường dẫn tuyệt đối sạch sẽ (`D:/Taadaa/...`), đứng riêng trên 1 dòng hoặc bọc trong `<<< ... >>>`, KHÔNG gắn kèm bullet point `+ ` hay `- `, và không dùng đường dẫn tương đối trong câu văn.
 - `MISSING_TASK_KIND: Bắt buộc khai báo 'TASK_KIND: EDIT' hoặc 'TASK_KIND: INVESTIGATE' trong context (SCOPE LOCK MISSING TARGET FILE)`.
 - *Lưu ý về TASK_KIND:* Có 3 task kinds hợp lệ:
   * `TASK_KIND: EDIT` (bắt buộc kèm `FILE: ...`, `OLD_STRING: <<< ... >>>`, `NEW_STRING: <<< ... >>>`).

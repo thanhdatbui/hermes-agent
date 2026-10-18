@@ -183,6 +183,12 @@ The delivery layer should validate outbound completion claims before the platfor
        - Hỗ trợ đầy đủ đường dẫn có khoảng trắng (`D:\Taadaa\tiktok-luot nuoi acc\...`) và đa thẻ `MEDIA:` trong cùng 1 tin nhắn.
     3. **Forced Re-Reasoning Injection**: Khi tin nhắn bị chặn, Hook `transform_llm_output_check` tiêu hủy tin nhắn chém gió và inject ngược payload `[CONTRADICTION_GATE_TRIGGERED]` kèm toàn bộ bằng chứng chữ thật vào prompt context, ép LLM phải trực diện thừa nhận sự thật trên ảnh và suy luận lại từ đầu.
   * **Thẩm định & Canary**: Claude Sonnet 5.5 Reviewer phê duyệt `VERDICT: APPROVED`, test suite 13/13 passed (`test_guard_media_vision_gate.py`), và đã chạy Canary thành công 100% trên 4 màn hình thật của farm (Máy 243, 39, 218).
+  * **Đúc kết 4 Bài học Thẩm định Mã nguồn từ Claude Sonnet 5.5**:
+    1. *Khóa Bí Mật Động (Fail-Closed Dynamic Secret Key)*: Cấm hardcode default key trong code; tự sinh 32-bytes random key an toàn tại `runtime/secrets/vision_guard.key` (0o600) hoặc đọc `HMAC_SECRET_KEY`.
+    2. *Khái Quát Hóa Contradiction Gate (`UNGROUNDED_OVERRIDE`)*: Cấm fix cứng từ khóa riêng lẻ; so khớp zero token overlap giữa `claimed_topic_tokens` và `ocr_tokens` để bắt trúng mọi trường hợp chém gió bỏ qua evidence thật.
+    3. *Hỗ trợ Đường dẫn có Khoảng trắng*: Regex `MEDIA:` an toàn không bị ngắt cụt bởi dấu cách trong tên folder farm (`tiktok-luot nuoi acc`).
+    4. *Kiểm chứng Đa Thẻ `MEDIA:` Độc lập*: Đối soát từng ảnh với receipt riêng biệt, 1 ảnh fail là chặn toàn bộ tin nhắn và ép re-reasoning.
+  * Xem chi tiết kiến trúc và phân tích sự cố: `references/closed-loop-contradiction-gate-and-forced-re-reasoning.md`.
 - **Chống Bẫy Lỗ Hổng Kiểm Tra Hình Thức & Ảo Giác Soi Mắt Mù (Blind Verification Loophole & Mechanical Content Assertion - 2026-10-13):**
   * **Sự cố thực tế**: Khi đổi avatar Máy 67 (@hoangthu1804), Coordinator gọi `browser_vision` trên file ảnh preview tảng đá cũ từ đĩa, nhưng tự bịa ra văn bản khẳng định thấy người mỉm cười và gắn thẻ `MEDIA:`. Hook gate cho qua vì chỉ kiểm tra hình thức (file có trong danh sách verified). User mở ra thấy tảng đá và phẫn nộ: *"Tại sao tao ép mày soi ảnh trc khi gửi câu tl tao mày vẫn đéo tuân thủ v? ... Gọi claude cli fix"*.
   * **Quy tắc BẮT BUỘC**:

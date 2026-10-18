@@ -79,3 +79,17 @@ The failures in this catch-all category consistently decompose into 4 distinct f
 In the 2026-10-17 Ca 3 / Row 4 run, the Kibe Telegram report labelled 16 machines as `Lỗi App TikTok/Script`. Direct inspection of the active `run_manifest.json` showed that M33–38, M71–72, M75, M77–78, and M80 were actually `manual-needed:network-offline: Wi-Fi has no internet connection`; M68 was a TikTok-focus-after-launch failure; M74 was a swipe-command failure; M76 was a profile/account mismatch; and M48 was only degraded. The Admin bucket likewise mixed screen-capture invalid, swipe-command, focus/package, navigation, login, and profile-verification failures rather than proving crashes.
 
 **Operational rule:** report the catch-all count as `app/script/UI-control bucket` until manifest reasons prove `app_crash`. State the evidence-backed subcounts, and if taxonomy is too coarse, recommend splitting at least into `network_offline`, `adb_offline`, `proxy`, `screen_capture`, `ui_focus`, `swipe_command`, `profile_mismatch`, `navigation/login`, `popup`, and `app_crash`.
+
+## Specific Token Omissions in `classify_feed_failure` (2026-10-18 Incident)
+
+In `D:/Taadaa/tiktok-luot nuoi acc/scripts/watchdog/formatters.py`, the function `classify_feed_failure(reason)` suffered from missing keyword tokens that caused batch Wi-Fi failures to collapse into `Lỗi App TikTok/Script`:
+- **Wi-Fi False App Crash**: `manual-needed:network-offline: Wi-Fi has no internet connection (wifi_combo status)` was not caught because the Wi-Fi matcher lacked `network-offline`, `no internet connection`, and `wifi_combo`.
+- **Egress Network Unreachable**: Proxy errors like `dial tcp ... connect: network is unreachable` lacked `network is unreachable` and collapsed into App error.
+- **Granular UI Sub-Buckets**:
+  - `failed to focus tiktok`, `prepare-tiktok failed to focus`, `focused package unavailable` -> `Lỗi mở/focus App TikTok`
+  - `swipe command failed` -> `Lỗi thao tác vuốt (Swipe)`
+  - `screen capture invalid`, `feed not confirmed` -> `Lỗi chụp màn hình Feed`
+  - `profile account mismatch`, `navigation target profile not found` -> `Lệch Profile/Nick TikTok`
+  - `login/account screen detected` -> `Văng màn hình Đăng nhập`
+  - `unknown tiktok state` -> `Trạng thái TikTok lạ/chưa hỗ trợ`
+Ensuring these tokens exist in `classify_feed_failure` prevents artificial "app crash waves" on Telegram.
