@@ -111,6 +111,12 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
 
 ## Pitfalls
 
+- **THE DISCONNECTED GUARD ILLUSION & RUNTIME ATTACHMENT INVARIANT (User Audit 19/10/2026):**
+  Unit test cho một hook mới (như guard dispatch contract) đạt 7/7 passed KHÔNG ĐỒNG NGHĨA hệ thống production đang được bảo vệ.
+  1. *Nguyên nhân cốt lõi:* Hermes runtime chỉ kích hoạt hook khi: (a) Khai báo trong file config gateway tại hooks.pre_tool_call kèm matcher chính xác (ví dụ matcher: delegate_task), HOẶC (b) Được import và thực thi trực tiếp bên trong callback của plugin pluggy runtime.
+  2. *Hậu quả thả rông:* Nếu thiếu đăng ký ở 1 trong 2 nơi trên, hook hoàn toàn disconnected ở runtime thực tế. Coordinator vẫn tự ý gọi delegate_task spawn subagent Gemini qua OmniRoute bình thường mà không bị chặn, trong khi unit test vẫn báo xanh tạo ra ảo giác an toàn giả mạo (False Sense of Security).
+  3. *Quy tắc nghiệm thu 3 điểm:* Khi thi công bất kỳ guard/hook mới, BẮT BUỘC: (1) Kiểm tra đăng ký vật lý qua config helper, (2) Kiểm tra mã nguồn plugin active có gọi hook hay không, (3) Kiểm chứng đầu cuối bằng việc đối soát log telemetry thực tế từ live session.
+
 - **CẤM BÁO BLOCKED THỤ ĐỘNG & TRIỆT TIÊU BỆNH TÊ LIỆT/KHÓC LÓC (Anti-Paralysis Invariant — User Correction 18/10/2026):**
   Operator đã chấn chỉnh gắt gao: *"TAO CĂM THÙ CHỮ BLOCKED... làm việc mà cứ dừng lại khóc"*.
   Khi gặp lỗi Gate (ví dụ: `L2_AUTH_FAIL`, `L3_NO_IP`, `DIFF_TOO_LARGE`, hay `CLAUDE_QUOTA_GUARD_BLOCKED`), Coordinator TUYỆT ĐỐI CẤM:
@@ -236,6 +242,7 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
 - `D:/Taadaa/tools/tests/test_dispatch_worker.py`: 11/11 tests (CRLF/whitespace normalization, failure hierarchy, snapshot & hash gate, target deletion rejection, unrelated files guard, anchored BLOCKED detection, PermissionError mapping, correlation ID consistency, Haiku/Agy fallback orchestration mocks).
 - `D:/Taadaa/tools/tests/test_sol_worker.py`: 8/8 tests (safe shell command regex, metacharacters injection block, DSL parse, atomic patch lifecycle, AST validation, LF preserve, max_turns validation).
 
+- `references/disconnected-guard-illusion-and-runtime-attachment-audit-20261019.md` — **[MỚI 19/10/2026 - DISCONNECTED GUARD ILLUSION & RUNTIME ATTACHMENT INVARIANT]** Bài học từ câu hỏi đối soát của Operator: Unit test 7/7 pass không đồng nghĩa hook đang bảo vệ production; nếu hook thiếu khai báo trong cấu hình gateway (hooks.pre_tool_call matcher) và không được nối vào plugin runtime thì guard hoàn toàn vô hiệu; 3 bước kiểm chứng bắt buộc: Physical Registration, Lifecycle Handshake, và Live Audit Probe.
 - `references/cron-device-lock-gate-guard-and-5-round-reviewer-approved-20261019.md` — **[MỚI 19/10/2026]** Kiến trúc Gate Guard Khóa Thiết Bị (Device Lock) cho Cronjob, chuẩn hóa `farm_contract` cuốn chiếu (rolling mode <= 5 workers), giải quyết root cause va chạm giữa watchdog dọn dẹp và cron đổi tên (25 workers burst), và quy trình review đối kháng 5 vòng với Claude Sonnet 5.5 đạt `VERDICT: APPROVED`.
 - `references/closeout-gate-four-contradictions-and-anti-paralysis-rfc-20261018.md` — **[MỚI 18/10/2026]** Hậu kiểm & RFC xử lý 4 mâu thuẫn Gate gây tê liệt (RFC-1 numstat diff_lines; RFC-2 hóa giải lock trói buộc claude_cli mở rộng Agy pool; RFC-3 fail-closed SCOPE_NOT_DECLARED khi thiếu --files; RFC-4 giải quyết lệch commit SHA trong safe_push pre-commit matching).
 - `references/closeout-gate-auto-scoping-and-anti-whining-audit-20261018.md` — **[MỚI 18/10/2026]** Hậu kiểm bài học Closeout Gate: bẫy quên `--files` gây DIFF_TOO_LARGE giả trên repo farm dirty, mâu thuẫn Grace Band 80 điểm và token gate_common max_lines=80, bẫy tê liệt không kích hoạt Tier 2 Agy CLI khi Claude chạm trần 85%, và bẫy timeout 60s di căn.
