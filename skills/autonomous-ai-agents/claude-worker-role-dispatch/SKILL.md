@@ -93,6 +93,18 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
 2. **Sol High is free:** 115 ChatGPT Web accounts on `:20129`, zero Claude quota consumed.
 3. **Closeout Gate enforces physically:** diff budget ≤ 30KB, pytest in isolation, ≥ 85/100 rubric to push.
 
+## Mechanical Gate Hook Enforcement & Division of Labor (User Mandate 2026-10-18)
+
+- **CẤM KHÓA LUẬT BẰNG PROMPT MỀM / MEMORY**: Mọi rule an toàn mới phát sinh trên farm BẮT BUỘC thi công thành **PreToolUse Guard Hook / Gate cơ học** bằng code Python fail-closed (chặn ở tầng OS/runtime trước khi tool thực thi), TUYỆT ĐỐI CẤM chỉ dặn dò trong prompt, markdown hay bộ nhớ Hermes.
+- **PHÂN VAI RÕ RÀNG: CLAUDE CLI LÀ KIẾN TRÚC SƯ / REVIEWER, COORDINATOR LÀ THI CÔNG**:
+  - Claude Sonnet 5.5 (`--role planner` / `--role reviewer`) ĐỘC QUYỀN tư vấn kiến trúc an toàn, bóc tách edge-case và thẩm định duyệt code (Reviewer).
+  - Coordinator / Worker (`haiku_worker.py` / Coordinator) trực tiếp viết code và unit test suite theo thiết kế của Claude.
+  - Vòng lặp review bắt buộc lặp lại cho đến khi Claude Reviewer trả về **VERDICT: APPROVED**.
+- **KỶ LUẬT SQUASH SINGLE-COMMIT CHO CLOSEOUT GATE & PRE-PUSH HOOK**:
+  - Khi trải qua nhiều vòng review remediation sửa code và test, các commit trung gian sẽ làm lệch phạm vi của single-commit HEAD (`diff-tree` trên HEAD chỉ thấy file của commit cuối cùng), gây lỗi `[BLOCKED - PRE-PUSH HOOK]: Không tìm thấy bản ghi Closeout Gate khớp scope`.
+  - BẮT BUỘC gộp toàn bộ các commit trung gian thành **1 commit duy nhất** (`git reset --soft origin/main && git commit`) trước khi chạy `closeout_gate.py --push` để đảm bảo `diff-tree HEAD` khớp 100% với scope trong `gate_audit.jsonl`.
+  (Xem chi tiết: `references/claude-cli-advisor-reviewer-vs-coordinator-worker-workflow-20261018.md`).
+
 ---
 
 ## Pitfalls
@@ -193,6 +205,7 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
 - `D:/Taadaa/tools/tests/test_dispatch_worker.py`: 11/11 tests (CRLF/whitespace normalization, failure hierarchy, snapshot & hash gate, target deletion rejection, unrelated files guard, anchored BLOCKED detection, PermissionError mapping, correlation ID consistency, Haiku/Agy fallback orchestration mocks).
 - `D:/Taadaa/tools/tests/test_sol_worker.py`: 8/8 tests (safe shell command regex, metacharacters injection block, DSL parse, atomic patch lifecycle, AST validation, LF preserve, max_turns validation).
 
+- `references/claude-cli-advisor-reviewer-vs-coordinator-worker-workflow-20261018.md` — **[MỚI 18/10/2026]** Quy chuẩn phân vai Claude Sonnet 5.5 (Advisor/Reviewer) vs Hermes Builder (thi công), quy trình review đối kháng 5 vòng đến APPROVED cho hook `guard_android_proxy.py` (từ 6 lên 48 unit tests), và giải pháp squash single-commit trước closeout gate chống lỗi lệch scope trên pre-push hook.
 - `references/mechanical-rule-to-guard-gate-architecture-and-anti-paralysis-20261018.md` — **[MỚI 18/10/2026]** Kiến trúc Chuyển Hóa Mọi Rule Thành Mechanical Guard Gate (Spec v2.0 của Claude Sonnet 5.5 Planner + Reviewer APPROVED): Triệt tiêu hoàn toàn prompt-based compliance và trạng thái tê liệt/khóc lóc hỏi Operator; 5 nguyên lý fail-closed, FSM 3-strike khép kín tự bốc task kế (no WAITING_OPERATOR), khóa push vật lý trong safe_push.py kiểm tra gate_audit.jsonl TTL 30m, và bộ lõi guardgate/engine.py 30/30 unit tests.
 - `references/claude-reviewer-anti-paralysis-unified-protocol-20261018.md` — **[MỚI 18/10/2026]** Bản Thỏa Thuận Đồng Thuận Cuối Cùng (Final Unified Protocol) giữa Claude Sonnet 5.5 Reviewer và Coordinator: phân tích 3 sai phạm nghiêm trọng (push sớm, gửi ảnh mù, stale receipt); thiết lập 3 cơ chế kiểm soát cơ học chống gian dối nhưng KHÔNG gây bại liệt (Grace Band 80-84 + 3-Strike, Evidence Gate tự phục hồi <= 3 lần chống false-positive, và Action-Scoped Sanction Ledger).
 See `references/system-prompt-purge-and-json-config-update-20261018.md` for purging legacy Luna & delegate_task prompts from agent.system_prompt and atomic config update via manage_hermes_config.py --type json (18/10/2026).

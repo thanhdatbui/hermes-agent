@@ -25,7 +25,25 @@ Khi dispatch Worker thực hiện task EDIT / FIX:
 - *Lưu ý về TASK_KIND:* Có 3 task kinds hợp lệ:
   * `TASK_KIND: EDIT` (bắt buộc kèm `FILE: ...`, `OLD_STRING: <<< ... >>>`, `NEW_STRING: <<< ... >>>`).
   * `TASK_KIND: CREATE` (dùng khi tạo file mới hoàn toàn, KHÔNG yêu cầu `OLD_STRING`/`NEW_STRING`, nhưng vẫn bắt buộc có `FILE: <<< <đường_dẫn_tuyệt_đối> >>>` và `FOCUSED_TEST: ...`).
-  * `TASK_KIND: INVESTIGATE` (dùng cho task chỉ đọc/khảo sát, cấm sửa code).
+  * `TASK_KIND: INVESTIGATE` (dùng cho task chỉ đọc/khảo sát, cấm sửa code; bắt buộc có `TARGET_FILES: ...` và `FAIL_FAST: ...`).
+
+### Bẫy Cho Task INVESTIGATE (`TASK_KIND: INVESTIGATE` Contract - 2026-10-18):
+1. **Bắt buộc `TARGET_FILES` và `FAIL_FAST`:**
+   - Lỗi thực tế 1: `MISSING_TASK_KIND: Bắt buộc khai báo 'TASK_KIND: EDIT' hoặc 'TASK_KIND: INVESTIGATE' trong context (SCOPE LOCK MISSING TARGET FILE)`.
+   - Lỗi thực tế 2: `INVESTIGATE_MISSING_FAIL_FAST: Task điều tra bắt buộc có 'FAIL_FAST: ...'`.
+   - **Quy tắc cứng:** Task điều tra bắt buộc khai báo rõ:
+     ```markdown
+     TASK_KIND: INVESTIGATE
+     TARGET_FILES: D:/Taadaa/data/file1.db, D:/Taadaa/data/file2.xlsx
+     FAIL_FAST: Nếu trong <= 3 iterations đầu nhận thấy thiếu file hoặc dữ liệu không đủ để phân tích với budget 15 calls thì phải dừng ngay (ABORT) và báo cáo lý do.
+     ```
+2. **Bẫy Biểu Thức Code Trong Backticks Gây Nhận Nhầm Path (`PATH_NOT_ABSOLUTE`):**
+   - **Hiện tượng**: `⛔ [COORDINATOR GUARD - CONTRACT VIOLATION]: PATH_NOT_ABSOLUTE: ... không phải đường dẫn tuyệt đối`.
+   - **Nguyên nhân**: Parser regex của guard quét toàn bộ context tìm token có chứa dấu chấm `.` hoặc dấu gạch chéo `/`. Nếu trong context viết biểu thức Python dạng gọi method (ví dụ `d.get(...).get(...)`) bọc trong dấu backticks, parser sẽ tưởng nhầm đó là một relative path và ném lỗi `PATH_NOT_ABSOLUTE`.
+   - **Khắc phục**: Tuyệt đối không để code syntax dính dấu `.` trong backticks trong context. Hãy mô tả bằng lời ("trường followed", "trường account_age_days") hoặc nếu cần trích xuất code thì không dùng backticks dính dấu chấm lồng nhau.
+3. **Bẫy Đọc Live Transcript Subagent Bị Chặn (`GUARD SELF-PROTECTION`):**
+   - **Hiện tượng**: Coordinator cố tình mở file live transcript của subagent đang chạy bị từ chối do chạm cơ chế tự bảo vệ của guard.
+   - **Quy tắc cứng**: CẤM Coordinator chủ động mở đọc file log live transcript của delegation. Tuân thủ tuyệt đối nguyên tắc Event-Driven Wakeup: dispatch xong thì kết thúc lượt trả lời để harness tự đánh thức khi subagent hoàn tất và bơm kết quả vào phiên.
 - **Lỗi thực tế 4:** `PATH_NOT_ABSOLUTE: '- Goal: Ghi đè toàn bộ nội dung file D:\Taadaa\tools\...' không phải đường dẫn tuyệt đối`.
 - **Nguyên nhân:**
   - Mọi task dispatch bắt buộc khai báo rõ ràng `TASK_KIND: EDIT` hoặc `TASK_KIND: INVESTIGATE` ngay đầu context.

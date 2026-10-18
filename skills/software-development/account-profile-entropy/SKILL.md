@@ -215,6 +215,15 @@ When an operator provides a screenshot of a TikTok profile (e.g. `LilyanLederhos
 - **Background Execution**: Launch via `terminal(command="python D:/Taadaa/tools/do_rename_m<ID>.py", background=True, notify_on_complete=True, timeout=300)` adhering to event-driven wakeup.
 - **Decoupled Subprocess Architecture for 25-Worker Watchdogs**: CẤM gộp inline toàn bộ State-Machine OCR và ADB threading vào trong 1 tiến trình duy nhất (dễ gây tranh chấp PowerShell WinRT OCR và crash pool). BẮT BUỘC phân tách thành module CLI runner độc lập (`do_rename_canonical_runner.py` với argparse) và gọi qua `subprocess.run(timeout=320)` từ watchdog `ThreadPoolExecutor(max_workers=25)` để cách ly lỗi hoàn hảo giữa 25 máy (nâng timeout lên 320s giúp các máy có danh sách tài khoản dài kịp cuộn sheet Switcher và tải OCR hoàn chỉnh).
 
+### 11. Full 4-in-1 TikTok Channel Standardization Workflow (User Directive 2026-10-18)
+
+Khi Operator yêu cầu *"Chuẩn hoá kênh này"* hoặc *"Chuẩn hoá acc"*, quy chuẩn farm BẮT BUỘC thực thi trọn gói **4 món**:
+1. **Avatar (Ảnh đại diện)**: Bám sát nhân vật/chủ thể video gốc $F_{src}$ hoặc video render $F_{vid}$, crop chuẩn ngũ quan $512 \times 512$, tạo 2 preview (ảnh vuông + viền tròn Profile), soi mắt qua `browser_vision`/WinRT OCR trước khi gửi duyệt; dual-sync kho và cắm marker `.manual_avatar_locked`.
+2. **Hashtag & Niche**: Khớp ngách và pool hashtag từ `Tik<N>.xlsx`, cắm marker bảo vệ `.manual_hashtag_locked` trong kho video render.
+3. **Bài pin (Pin Top Gate $\ge 1.000$ views)**: Tra cứu lượt view qua `snapshots` hoặc profile grid. Chỉ ghim khi có clip $\ge 1.000$ views; clip $< 1.000$ views giữ nguyên thứ tự tự nhiên. Dùng canonical tool `python D:/Taadaa/tools/pin_top_videos.py --machine <May> --account <username>`.
+4. **Bio (Tiểu sử có dấu chuẩn tiếng Việt)**: Đề xuất bio phù hợp với ngách kênh; nạp lên Android S7 BẮT BUỘC qua Base64 UTF-8 broadcast `ADB_KEYBOARD_INPUT_TEXT` của `AdbKeyboard` (CẤM gõ `input text` không dấu); xử lý bẫy clear text trước khi commit.
+- Chi tiết quy trình và cạm bẫy: xem `references/tiktok-channel-standardization-4in1-workflow.md`.
+
 ## Integration Point
 
 ```python
@@ -275,3 +284,4 @@ def generate_account_for_slot(slot, existing_emails=None, max_attempts=300):
 - `references/dual-farm-rolling-rename-and-admin-dispatch.md` — Kiến trúc đổi tên cuốn chiếu liên farm Kibe (1–80) và Admin (201–280), chuyển file mã hóa base64 phân đoạn (chống tràn giới hạn CLI 8191 ký tự), xử lý bẫy OneDrive dehydrated files (`OSError 22`), và 2-tier WinRT OCR verification.
 - `references/username-derived-smart-rename-and-7d-reconciliation.md` — Quy chuẩn bắt buộc sinh biệt danh bắt nguồn từ username (`smart_name_generator`), thuật toán bóc tách âm tiết tiếng Việt, phân bổ entropy cao (Tên có dấu / Tên + Nickname đời thường / Đệm + Tên) và hàng chờ 7 ngày (`COOLDOWN_DAYS = 7`) tự động đối soát đổi lại các nick lỡ đổi sai.
 - `references/on-device-tiktok-bio-vietnamese-accent-broadcast.md` — Quy chuẩn bắt buộc viết Bio tiếng Việt có dấu đầy đủ qua Base64 UTF-8 broadcast (`ADB_KEYBOARD_INPUT_TEXT`), xử lý bẫy clear text trong `ProfileEditActivity`, và nghiệm thu qua Send-Gate + `browser_vision`.
+- `references/tiktok-channel-standardization-4in1-workflow.md` — Quy chuẩn Chuẩn hoá kênh TikTok toàn diện 4 món (Avatar – Hashtag/Niche – Bài Pin >=1.000 views – Bio tiếng Việt có dấu chuẩn qua AdbKeyboard). User directive 2026-10-18.
