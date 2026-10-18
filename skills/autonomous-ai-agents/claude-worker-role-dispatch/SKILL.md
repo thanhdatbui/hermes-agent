@@ -123,7 +123,10 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
   Khi Operator (User) ra lệnh *"hỏi Claude"*, *"gọi Claude CLI kiểm tra / đánh giá / tư vấn / review"*, Coordinator BẮT BUỘC dispatch **Claude Sonnet 5.5** (`claude_worker.py --role planner` hoặc `--role reviewer`), TUYỆT ĐỐI CẤM tự ý hạ cấp xuống `haiku_worker.py`!
   CẤM TUYỆT ĐỐI đề cập hay gọi nhầm thành Claude 3.5 Sonnet (User dùng độc quyền thế hệ 5.5).
   `haiku_worker.py` chỉ là công nhân O(1) thi công sửa code/test cơ học để tiết kiệm quota; khi User cần tư vấn kiến trúc hay thẩm định chất lượng cao thì Sonnet là tiêu chuẩn tối cao duy nhất.
-  *Lưu ý khi gọi Sonnet tư vấn:* Kẹp tham số `--max-turns 6-8` và chỉ thị rõ *"Answer directly without executing bash commands"* trong prompt để tránh Sonnet chạy các tool Bash/Read thăm dò lan man dẫn đến lỗi `Reached max turns`.
+  *Lưu ý khi gọi Sonnet tư vấn kiến trúc / review thuần văn bản:* 
+  1. Luôn kẹp chỉ thị rõ trong prompt: `"[Yêu cầu: Viết text thẩm định kiến trúc súc tích, KHÔNG chạy công cụ Bash hay Read nào]"` để tránh Claude CLI tự tiện gọi công cụ đọc file hoặc bash thăm dò lan man dẫn đến timeout 60-100s.
+  2. Đặt timeout tối thiểu `--timeout 80` (hoặc chạy qua `terminal(background=True)`) vì quá trình reasoning của Sonnet 5.5 cần 30-50s để nhả kết quả đầy đủ.
+  3. Khi gặp cảnh báo catalog `[claude-code:unrecognized_model]` với `claude-sonnet-5-5` trên Claude Code v2.1.281, truyền tham số `--model sonnet` để CLI ánh xạ trực tiếp và tức thì vào model Sonnet chuẩn của hệ thống.
 - **BẢO VỆ QUOTA CLAUDE TẠI CLOSEOUT & CHỐNG L3 BLOCKED KHÓC LÓC (Chống Đốt Quota & Anti-Paralysis 17/10/2026):**
   Khi chốt phiên bị trượt, nguyên nhân đốt quota 5h là do Coordinator lôi Sonnet 5.5 ra viết code và sửa test lặp đi lặp lại.
   Quy chuẩn bất biến:
