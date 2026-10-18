@@ -39,3 +39,17 @@ During network gate deployment on Máy 7 (serial `9885f63030454d3055`), the devi
   1. Kiểm tra tiến trình chiếm cổng 5038: `netstat -ano | findstr :5038`.
   2. Diệt dứt điểm tiến trình ADB 5038 mồ côi: `taskkill /F /PID <pid>`.
   3. Cổng 5037 lập tức nhận lại đủ 77 máy bình thường trong 1 giây.
+
+---
+
+### E. Box 1 Physical Proximity & Near-Field Antenna Orientation
+- **Context:** Box 1 (chứa Máy 1–20) được đặt sát Access Point Aruba `kibe 1`.
+- **Physical Antenna Placement:** Trên Samsung Galaxy S7 (SM-G930F), ăng-ten Wi-Fi nằm ở góc trên cùng bên TRÁI (khi nhìn từ màn hình) hoặc bên PHẢI (khi nhìn từ nắp lưng).
+- **Physical Pitfall:** Khi máy bị áp sát khung sắt/thanh kim loại của Box 1, lồng Faraday và phản xạ kim loại cục bộ gây suy hao tín hiệu phát (TX attenuation), dẫn đến packet loss và timeout khi bắt tay TCP tới proxy LAN dù cường độ sóng thu (RX beacon) vẫn mạnh. Kéo máy nhích ra khỏi khung sắt 2–3 cm và bóp nhẹ nắp lưng để chân lẫy tiếp xúc đồng ăn chặt vào bo mạch sẽ giải phóng hoàn toàn góc bức xạ của ăng-ten.
+
+---
+
+### F. Cron & Watchdog Protection for Resting / Recovering Devices
+- Khi một máy farm đang trong giai đoạn nghỉ ngơi hoặc phục hồi nhiệt độ chip Wi-Fi, BẮT BUỘC kiểm tra các cronjob tự động:
+  * Cron `farm-wifi-auto-healer`: Bắt buộc ở trạng thái `paused`, cấm tự động dập nhả `svc wifi disable/enable` ngầm mỗi 5 phút.
+  * Các runner ca nuôi: Bắt buộc fail-closed qua preflight (`vpn_preflight.py` / `blocked-proxy-vpn`), tự động bỏ qua (skip) máy chưa sẵn sàng, tuyệt đối không can thiệp phá vỡ trạng thái máy đang nghỉ.

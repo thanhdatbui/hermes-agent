@@ -1,6 +1,6 @@
 bio VN AdbKeyboard cấm trùng 1 mẫu); Tik*.xlsx; Khóa nick.
 §
-Dọn đĩa: safe_recycle.py. Reboot: né TFT/War3/ca chạy. Nguồn vid: 1 folder=1 creator. S7: Anten Wi-Fi góc trên TRÁI (mặt màn hình). Lỗi timeout/PSM BẮT BUỘC sửa script tăng timeout/retry, cấm lý do suông.
+Dọn đĩa: safe_recycle.py. Reboot: né TFT/War3/ca chạy. Box 1 (M1-20) sát AP kibe 1. S7: Anten Wi-Fi góc trên TRÁI. Lỗi timeout/PSM BẮT BUỘC sửa script; cấm cron quấy rầy máy nghỉ.
 §
 Nuôi 4d 3 ca. Ava&2FA tới 5h15. Write-Through Excel 3,4,5+G; Starve 96h; mail Graph PC. Reg Gmail: 160 máy. Đổi tên TT bám username.
 §
