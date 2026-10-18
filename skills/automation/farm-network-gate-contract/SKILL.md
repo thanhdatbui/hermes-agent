@@ -118,9 +118,12 @@ For older Samsung Android builds (e.g. Galaxy S7 running Android 8):
   - *Vị trí ăng-ten vật lý trên Galaxy S7:* Nhìn từ mặt trước (màn hình), ăng-ten Wi-Fi nằm ở góc trên bên TRÁI (phía trên cụm phím Volume, ăn ra viền đỉnh máy). Nếu máy bị kẹt nẹp kim loại hoặc áp sát thanh sắt hộp của box, nhích nhẹ máy ra 2–3 cm để giải phóng vùng thu phát của ăng-ten.
 - **`ECONNABORTED` ("Software caused connection abort") & Thermal Radio Throttling:**
   Khi thiết bị bị giã lệnh ADB / radio toggle liên tục kết hợp sạc nhanh, Broadcom PMIC/Wi-Fi chip bị quá nhiệt làm rớt kết nối TCP (`ECONNABORTED`). Sử dụng retry loop 3 lần với timeout 6s trong `_nc_probe` và để máy nghỉ ngơi 3–5 phút cho chip tản nhiệt, tuyệt đối không tiếp tục nã lệnh join dồn dập.
+- **Port 5038 WinUSB Exclusive Hijacking (XiaoWei / JiWei Ghost Port):**
+  Khi công cụ quản lý farm (như Tiểu Vi / XiaoWei) được bật hoặc crash để lại tiến trình mồ côi `adb.exe` chạy cổng `5038` (`-P 5038`), Windows WinUSB driver sẽ chuyển toàn bộ USB endpoints sang server 5038 theo cơ chế độc quyền. Hậu quả là cổng chính 5037 bị mất sạch máy (`device not found` hoặc `devices: ''`), gây hiểu lầm là rớt cáp hoặc máy sập nguồn. BẮT BUỘC kiểm tra `netstat -ano | findstr :5038` và gửi lệnh phẫu thuật O(1) diệt tiến trình 5038 qua PID hoặc `taskkill /F /PID <pid>` để trả toàn bộ thiết bị về lại cổng 5037 ngay lập tức mà không làm ảnh hưởng phần cứng.
 
 ## References
 
+- `references/s7-wifi-proxy-psm-and-port5038-incident.md` — Samsung S7 Wi-Fi/Proxy probe flapping, Power Save Mode (PSM) tuning, adbjoinwifi timer suppression, thermal throttling, and Port 5038 WinUSB exclusive hijacking runbook.
 - `references/ruijie-static-ip-dhcp-conflict-and-enforcement.md` — Ruijie Gateway Static IP conflict on farm devices (M1-M80), lease stall ("Converted to Static IP"), DHCP starvation incident on M7, mechanical guard enforcement via validate_dynamic_dhcp_policy, and cleanup runbook.
 - `references/s7-wifi-radio-throttle-and-reboot-protocol.md` — Samsung S7 Wi-Fi radio driver throttle vs hardware failure diagnosis, false-positive RSSI -127 panic, and deterministic reboot recovery protocol.
 - `references/s7-android8-wifi-stack-quirks-and-dhcp-remediation.md` — Samsung S7 Android 8 quirks: stale network IDs >= 10, non-root ping -I socket errors, toybox nc syntax without -z, DHCP renewal, and anti-paralysis protocol.
