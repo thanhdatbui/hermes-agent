@@ -18,6 +18,7 @@ Use this class-level workflow whenever a task produces visual/UI/farm/browser ev
 ## Core contract
 
 1. **Do not claim success from summaries alone.** Runner exit code, `verified=True`, worker self-report, a database flag, or a path printed in a log is not visual proof.
+2. **Deliverable vs upstream source distinction.** When proving that a service, server, API, or transformation pipeline works, the visual artifact MUST capture the DELIVERABLE itself (the API response, the rendered app, the consumer UI). NEVER substitute a screenshot of an upstream data source (e.g. a website being scraped, a database file on disk, or a raw log directory) as proof of the downstream deliverable.
 2. **Read before sending.** Before emitting any `MEDIA:<absolute_path>` token, open the exact image with `browser_vision` (or use WinRT OCR when vision is unavailable) and inspect it. Confirm:
    - the correct app/screen/action;
    - the correct account, device, or target;

@@ -223,3 +223,43 @@ if not bid_code or not str(bid_code).strip():
 
 ### C. Fault-Tolerant Bulk Sync
 In `sync_adapter.py`, wrap individual record upserts in `try/except Exception` so that a single corrupted line in a 500-line historical JSONL crawler dump never aborts the remaining 499 records. Log the skipped count and continue.
+
+---
+
+## 8. FastMCP Streamable HTTP / SSE Client Testing Invariants (The 406 Trap & Session ID)
+
+When testing a remote FastMCP endpoint (`https://domain/mcp`) via Python scripts or command-line clients (outside Claude Desktop):
+
+### A. The 406 Not Acceptable Trap
+- Sending standard `GET /mcp` or `POST` without explicit Accept headers results in:
+  ```http
+  HTTP/1.1 406 Not Acceptable
+  ```
+- FastMCP streamable HTTP transport requires both:
+  ```python
+  headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json, text/event-stream',
+      'User-Agent': 'Mozilla/5.0'
+  }
+  ```
+
+### B. Session ID Propagation (`mcp-session-id`)
+- The `initialize` JSON-RPC handshake returns an active session token in the response HTTP headers:
+  ```http
+  mcp-session-id: 2365bd841d7b496199d07e19c3f4f6ca
+  ```
+- All subsequent calls (`tools/list`, `tools/call`) MUST attach this exact session ID header:
+  ```python
+  headers['mcp-session-id'] = session_id
+  ```
+  Failing to pass `mcp-session-id` causes FastMCP to reject subsequent tool calls as uninitialized.
+
+### C. Visual Evidence Distinction (Deliverable vs Upstream Source)
+- **User Frustration Signal:** *"Này là dữ liệu cào mà? T cần hỏi cái mcp work chưa"*.
+- **The Pitfall:** When an operator or user asks for visual evidence (Gate 6) that an MCP server or API integration works, taking a screenshot of the source portal (e.g. Mua Sắm Công website) is a catastrophic category error. That only proves the scraper's browser is open, not that the MCP server is operational.
+- **The Rule:** The visual evidence MUST directly capture the deliverable:
+  1. The MCP handshake returning `HTTP 200 text/event-stream`.
+  2. Live tool execution output (`get_cache_status`, `search_medical_tenders`, `evaluate_tender_yccmed`).
+  3. A rendered diagnostic dashboard or client chat interface executing the tools against the remote endpoint.
+
