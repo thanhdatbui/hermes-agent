@@ -6,7 +6,7 @@ Hotmail: CẤM mail cá nhân; @fviainboxes.com đọc OTP. Excel 3,4,5+G. Pin >
 §
 Preempt lock; ping 0% loss; ARP 110.x. Lock: rename_natural_state.json. Terminal: foreground max 60s; CLI dài/nặng BẮT BUỘC background=True + notify_on_complete=True.
 §
-GPM: max 5 wkr; pool web (0đ); re-login max 1/ngày. Gemini Web: HTTP StreamGenerate (:20129) 5 accs Mobi 4G, inner[17]=[[0]] deep think.
+GPM: max 5 wkr; pool web; re-login 1/d. Gemini: :20129=Pro (slot 79=3); 4 Argon xịn chạy GPM CDP :20135 (WebChannel, cấm nhận vơ slot 79).
 §
 Stale Up: xóa draft. Revert flop: TikWM tải CDN. Popup 'Ghim/Riêng tư' ko phải proof. Cào: max 60.
 §

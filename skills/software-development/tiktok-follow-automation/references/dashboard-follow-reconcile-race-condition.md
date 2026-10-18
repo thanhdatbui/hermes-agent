@@ -201,6 +201,47 @@ Khi tài khoản **nghỉ follow hoặc chưa đủ video** (`organic-rest-day-p
    - **Bước 2: Kiểm tra Working Tree hiện tại (`git diff` / `git status`):**
      * Trước khi sửa thêm bất kỳ tính năng nào mới (như nâng cấp WinRT OCR Primary), phải kiểm tra xem code sửa mới có kế thừa hay vô tình ghi đè lên các chốt chặn của commit trước hay không (ví dụ: `pull_to_refresh_profile` trong `_path_b_verify` và Follow Dominance trong `classify_button`).
 
+### Nguyên nhân 7: Lệch Âm Độc Lập Do TikTok Silent Unfollow / Shadow Action Block Trên Nick Non (Client Optimistic UI vs Server Drop)
+1. **Hiện tượng nhận biết:**
+   - Watchdog báo lệch âm trên 1 máy cụ thể (ví dụ: `M23 (@tranngan8642) : script 2 lượt - web 0 lượt - lệch (-2)`).
+   - Nick này không bị `FOLLOW_FAILED` hay ngắt phiên ngay tại bước follow (script vẫn báo `status: OK, followed: 2`), nhưng web cào trước và sau ca đều ghi nhận 0 lượt tăng (`delta = 0`).
+   - Khác với Nguyên nhân 2 (Race condition P1 âm -> P2 bù dương): Ở trường hợp này, **không hề có độ trễ cào hay bù trừ dương ở P2**.
+2. **Bản chất kỹ thuật (Client Optimistic UI vs Server-Side Action Block):**
+   - **Optimistic UI trên client:** Khi bot tap nút Follow trên danh sách (Mode 2) hoặc trên profile, app TikTok đổi ngay giao diện sang trạng thái `Đang follow` (Following) trên client trước khi server xác nhận. Runner kiểm tra nút sau tap thấy nút đã đổi màu nên ghi nhận thành công (`followed_count = 2`).
+   - **Server TikTok âm thầm loại bỏ (Silent Drop / Shadow Unfollow):** Đối với các nick non (Rookie / Row 7-8 chưa graduate, đang probation) hoặc tài khoản bị chấm điểm trust thấp / IP bị soi:
+     * Server TikTok tiếp nhận request nhưng không tăng trường `following` trên database máy chủ.
+     * Khi nick quay về màn hình Profile cá nhân (`verify_profile`), counter **"Đang follow"** trên giao diện vẫn là **0**!
+     * Web scraper cào dữ liệu từ server TikTok cũng trả về **0**.
+3. **Quy trình kiểm chứng hiện trường O(1) để phân định Race Condition vs Shadow Drop:**
+   - **Bước 1: Đọc XML Profile của nick ở cuối ca chạy:**
+     Kiểm tra `runtime/kibe/live/<YYYY-MM-DD>/<run_id>/machines/machine_<N>/<run_id>/artifacts/.../verify_profile/ui.xml`.
+     Tìm node `resource-id` có nhãn `Đã follow` (hoặc `id/t93`) và node số lượng ngay phía trên (`id/t94`):
+     ```xml
+     <node resource-id="...:id/t94" text="0" bounds="[88,675][388,741]" />
+     <node resource-id="...:id/t93" text="Đã follow" bounds="[88,735][388,783]" />
+     ```
+   - **Bước 2: Đối soát:**
+     * Nếu node `text="0"` ngay trên màn hình thiết bị của máy: **Chứng minh 100% tài khoản bị TikTok server shadow-drop** (server không chấp nhận lượt follow), không phải do scraper cào chậm hay lỗi watchdog.
+     * Nếu node `text="2"` trên thiết bị nhưng Web cào `0`: Là độ trễ cache CDN của TikTok Web hoặc scraper cào trước khi sync server (xem Nguyên nhân 2 & 4).
+   - **Bước 3: Ứng xử vận hành:**
+     * Không can thiệp ADB bấm tay.
+     * Giữ nguyên nick ở chế độ dưỡng sinh / thuần lướt feed để phục hồi trust score, tránh nhồi follow liên tục dẫn tới bị action ban vĩnh viễn.
+
+### Nguyên nhân 8: Bẫy Báo Cáo Ca Lịch Sử Chạy Trước Thời Điểm Commit Bản Vá (Historical Stale-Run Watchdog Trap)
+1. **Hiện tượng nhận biết:**
+   - Người vận hành nhận được báo cáo watchdog báo lỗi (ví dụ: máy dính nhả follow lọt lưới, lệch âm -2, không bắt được `FOLLOW_FAILED`), thắc mắc: *"Ủa script đã có bước check nhả/vuốt reload rồi mà sao vẫn bị?"* hoặc *"Ủa lỗi này tưởng hôm qua fix rồi?"*.
+2. **Cơ chế gốc rễ:**
+   - Watchdog quét trong cửa sổ retention 7 ngày theo danh sách `reported_sessions` trong `follow_session_reported.json`.
+   - Một số ca chạy cũ của các ngày/phiên trước (ví dụ ca `2026-10-17_ca1_phien1` chạy lúc 06:25 sáng 17/10) hoàn tất hoặc được watchdog kích hoạt backfill báo cáo sau.
+   - Tại thời điểm ca đó thực sự chạy trên điện thoại (06:25 ngày 17/10), **bản vá sửa lỗi (ví dụ commit `d328458` chốt lúc 19:01 tối 17/10) HOÀN TOÀN CHƯA RA ĐỜI**. Máy đang chạy trên commit cũ hơn nên dĩ nhiên vẫn dính lỗi chưa có vuốt reload Path B.
+3. **Kỷ luật điều phối & Kiểm chứng O(1) trước khi vội vàng sửa code:**
+   - **Bước 1: So sánh Timestamp ca chạy vs Git Log:**
+     * Đọc `start_time` trong `run_manifest.json` hoặc timestamp trong `log.jsonl` của ca bị báo cáo.
+     * Chạy `git log -1 --format="%ci %h %s" <commit_hash>` của commit đã vá lỗi liên quan.
+     * **Quy tắc phán đoán:** Nếu `run_timestamp < commit_timestamp` $\rightarrow$ Khẳng định ngay với người vận hành: **Ca này chạy trên code cũ trước thời điểm commit bản vá**, không phải bản vá bị lỗi hay bị hỏng, tuyệt đối CẤM sửa đè code đang chạy ổn định.
+   - **Bước 2: Kiểm tra Working Tree hiện tại (`git diff` / `git status`):**
+     * Trước khi sửa thêm bất kỳ tính năng nào mới (như nâng cấp WinRT OCR Primary), phải kiểm tra xem code sửa mới có kế thừa hay vô tình ghi đè lên các chốt chặn của commit trước hay không (ví dụ: `pull_to_refresh_profile` trong `_path_b_verify` và Follow Dominance trong `classify_button`).
+
 ## Quy trình chẩn đoán (CẤM đoán mò "follow tự nhiên")
 1. **CẤM TUYỆT ĐỐI phán đoán ẩu "đây là follow tự nhiên / kênh ngoài"** khi user đã cấu hình tắt follow tự nhiên trong feed runner.
 2. **Kiểm tra thời điểm:**
