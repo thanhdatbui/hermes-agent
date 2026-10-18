@@ -8,7 +8,7 @@ Closeout: Grace 80-84/test xanh auto-push, cấm lưu local khóc; cấm Sonnet 
 §
 Ava/Media: BẮT BUỘC WinRT OCR; CẤM bịa mô tả/gửi mù; menu Ghim/Riêng tư KHÔNG PHẢI publish proof; pHash/crop thật cấm DONE ảo; cấm tin mù status/receipt tool.
 §
-Worker: Haiku/Agy fix. CẤM gọi Claude làm task chính (chỉ tư vấn/review/sửa guard). CẤM khóa luật bằng prompt, BẮT BUỘC sửa guard hook. Worker gãy diff nhỏ tự làm nốt, CẤM hỏi User. 'Tắt' khi game=tắt nháy console; Done báo gọn.
+Worker: Haiku/Agy/Argon fix. Claude=review, Agent thi công. Done/Status: báo dứt khoát code đã active chưa, cấm viện cớ dirty/closeout trì hoãn. 'Tắt' khi game=tắt nháy console; Done báo gọn.
 §
 Canary: đa máy/layout, MEDIA:. 100% Singbox, cấm VPN. Mạng: Ruijie>Aruba, cấm bao biện khi chưa thông ping.
 §

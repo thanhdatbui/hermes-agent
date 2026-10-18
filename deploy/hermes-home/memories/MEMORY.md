@@ -1,6 +1,6 @@
 Chu kỳ 4d: Parity 96h (N1 lẻ, N2 chẵn), N3(R7,8), N4(dưỡng 0fl+up). Starve 108h. CẤM xóa cooldown. Dưỡng: healing_selector; S2 bám S1. 3 ca (6,12,18h). Đêm 21h30-5h15 né cache 4h cho 2FA/Ava; báo 6h cấm ảo.
 §
-Follow: P1/P2 trần ca; dò +2 (max 30); nhả vào tù, lùi 4 sàn 15. 3 cohort. Fl tự nhiên chỉ mở khi fl chéo mở (bị chặn/tù/cầu dao=tắt). Like/Flw ko tăng trust. Cầu dao IP chỉ trip khi nick nòng cốt (graduated) nhả. Chi tiết UID xem :1905.
+Follow: P1/P2 trần ca; dò +2 (max 30); nhả vào tù, lùi 4 sàn 15. Fl tự nhiên 1% feed: chỉ mở khi nick>=45d, vid>=10, không tù, IP không cầu dao; cấm hardcap. Like/Flw ko tăng trust. Cầu dao IP chỉ trip khi nick nòng cốt nhả. UID :1905.
 §
 Hotmail: CẤM mail cá nhân; @fviainboxes.com đọc OTP. Excel 3,4,5+G. Pin >=1000 view.
 §
@@ -10,7 +10,7 @@ GPM: max 5 wkr; pool web (0đ); re-login max 1/ngày. Gemini Web: HTTP StreamGen
 §
 Stale Upload: xóa draft. Revert flop: TikWM tải CDN. Popup 'Ghim/Riêng tư' KHÔNG PHẢI publish proof. Cào: max 60.
 §
-Closeout: Strict >=85 (XÓA BỎ Grace Band), cấp token HMAC patch-id. CẤM báo DONE/push khi thiếu token. Thiếu điểm BẮT BUỘC tự sửa 3 Strike, CẤM đưa menu P/án 1/2. Pre-closeout: target trên origin -> DỪNG (ALREADY_PUSHED). CẤM commit -a; CẤM over-engineer.
+Closeout: Grace 80-84 + test xanh = APPROVED auto-push; cấp token HMAC (gate_common). CẤM Sonnet/Sol cày điểm vụn vặt; CẤM dừng lại khóc lóc/kể lể điểm; thiếu điểm tự sửa 3 Strike. Pre-closeout: target trên origin -> DỪNG (ALREADY_PUSHED). CẤM commit -a; CẤM over-engineer.
 §
 Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot. Cron: 100% no_agent+script thô, cấm LLM<6h nghẽn GW.
 §
