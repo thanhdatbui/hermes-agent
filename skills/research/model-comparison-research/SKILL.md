@@ -53,6 +53,7 @@ Use when a user asks whether two AI models are equivalent, requests benchmark-ba
 - Presenting a table without benchmark version or harness details.
 - Claiming “equal” from one benchmark or from qualitative anecdotes.
 - Fabricating evaluation commentary or scoring from `ast.parse`/exit codes alone without reading and verifying actual response code and prompt-specific keyword alignment.
+- Silent model fallback when automating Web UI: ignoring disabled switcher items (`aria-disabled="true"`) when a premium model hits its quota limit, causing all subsequent prompts to run against a lower-tier model (e.g. Flash-Lite) while falsely reporting it as the flagship model.
 - Reusing dirty Web UI chat threads during live head-to-head benchmarks (picks up stale DOM from prior turns, producing false identical outputs and fake runtimes).
 - Scraping only outer text containers (`.model-response-text`) while target code resides in modular web components (`<code-block>`).
 - Overexplaining the research process when the user only wants the verdict; lead with the verdict, then show the minimum evidence needed.

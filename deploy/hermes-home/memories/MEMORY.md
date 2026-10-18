@@ -6,7 +6,7 @@ Hotmail: CẤM mail cá nhân; @fviainboxes.com đọc OTP. Excel 3,4,5+G. Pin >
 §
 Preempt lock; ping 0% loss; ARP 110.x. Lock: rename_natural_state.json. Terminal: foreground max 60s; CLI dài/nặng BẮT BUỘC background=True + notify_on_complete=True.
 §
-GPM: max 5 wkr. 4 Argon=GPM CDP :20135; :20129=Pro. Agy CLI bắt buộc 3.8-flash-medium (cấm tự gán high), timeout ask>=300s, fix>=600s, dispatch>=180s; timeout tự cooldown 300s & rotate 22 acc. Benchmark: CẤM bịa khi chưa đọc raw; cấm bốc DOM cũ Web.
+Agy CLI bắt buộc 3.8-flash-medium (cấm tự gán high), timeout ask>=600s, fix>=900s, dispatch>=180s; timeout tự cooldown 300s & rotate 22 acc. Benchmark: CẤM bịa khi chưa đọc raw; cấm bốc DOM cũ; check aria-disabled chống rơi về Flash-Lite.
 §
 Stale Up: xóa draft. Revert flop: TikWM tải CDN. Popup 'Ghim/Riêng tư' ko phải proof. Cào: max 60.
 §
