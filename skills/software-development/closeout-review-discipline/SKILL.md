@@ -69,6 +69,7 @@ metadata:
 Reference: [`references/worker-timeout-quota-and-closeout-scope-20261018.md`](references/worker-timeout-quota-and-closeout-scope-20261018.md)
 
 ## 3. Tài Liệu Tham Khảo (References)
+- Diff Budgeting & Truncation Elimination Case Study (2026-10-19): [`references/diff-budgeting-and-truncation-elimination-case-study-20261019.md`](references/diff-budgeting-and-truncation-elimination-case-study-20261019.md)
 - Mock Call Substring Trap & Pre-Push Commit Re-Audit Protocol (2026-10-19): [`references/mock-call-substring-trap-and-head-base-prepush-20261019.md`](references/mock-call-substring-trap-and-head-base-prepush-20261019.md)
 - Truncation Manifest, Staged SHA Binding & Fallback Governance (2026-10-18): [`references/closeout-gate-truncation-manifest-and-staged-sha-binding-20261018.md`](references/closeout-gate-truncation-manifest-and-staged-sha-binding-20261018.md)
 - Numstat Diff Counting, Pre-Commit Audit Binding & Short-Circuit Invariants (2026-10-18): [`references/numstat-diff-counting-and-precommit-safe-push-binding-20261018.md`](references/numstat-diff-counting-and-precommit-safe-push-binding-20261018.md)
