@@ -4,7 +4,7 @@ Dọn đĩa: duyệt trước; CẤM xóa cứng, dùng safe_recycle.py. Reboot:
 §
 Nuôi 4d 3 ca. Ava&2FA tới 5h15. Write-Through Excel 3,4,5+G; Starve 96h; mail Graph PC. Reg Gmail: 160 máy. Đổi tên TT bám username.
 §
-Closeout: Done=chạy gate tự dứt điểm; Grace 80-84 chống Sol bắt bẻ lặt vặt (test xanh+diff O(1) auto-push); CẤM xóa Grace, cấm khóc lóc menu 1/2; Strike 3 Haiku/Agy. Pin TikTok LIFO.
+Closeout: Grace 80-84 auto-push; CẤM cày 85; cấm khóc lóc/báo BLOCKED khi chưa hết thang fallback (Claude 86% quota -> BẮT BUỘC Agy fix pool 22 acc). Repo dirty bắt buộc --files <file1> <file2> O(1) chống DIFF_TOO_LARGE. Pin TT LIFO.
 §
 Ava/Media: WinRT OCR; CẤM gửi mù; CẤM báo DONE UI thiếu MEDIA: (Gate 6); Ava đúng creator; pHash/crop thật; cấm tin mù receipt.
 §
