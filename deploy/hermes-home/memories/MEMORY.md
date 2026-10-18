@@ -14,7 +14,7 @@ Closeout: Grace 80-84 (test xanh, diff O(1) <=30 dòng, 0 crit) auto-push; >=85 
 §
 Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot. Cron: 100% no_agent+script thô, cấm LLM<6h nghẽn GW.
 §
-Singbox :200xx, CẤM VPN. Wi-Fi: M1-40 kibe 1, M41-80 kibe 2, M201-240 admin 1, M241-280 admin 2; CẤM đoán pass/đổ lỗi xoay máy cạnh AP. Cứu máy: operator_device_lock(force_preempt=True). Proxy LAN 192.168.110.2:port (Kibe: 20001..20080; Admin: 10008..10035). Proxy 67/69 direct.
+Singbox :200xx, CẤM VPN. Wi-Fi: M1-40 kibe 1, M41-80 kibe 2, M201-240 admin 1, M241-280 admin 2. CẤM gán Static IP Ruijie cho máy farm (100% DHCP động). Cứu máy: operator_device_lock(force_preempt=True). Proxy 192.168.110.2:port (Kibe: 20001..20080; Admin: 10008..10035; 67/69 direct).
 §
 Canary: đổi máy rảnh cùng cụm khi kẹt lock; cấm khóc/nói vẹt CLI; ATX :7912 & WinRT OCR thay uiautomator; gate verify MEDIA+OCR.
 §
