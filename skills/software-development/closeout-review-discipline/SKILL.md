@@ -33,6 +33,8 @@ metadata:
   - BEHAVIORAL & TELEMETRY TEST CONTRACT (ĐIỀU KIỆN ĐẠT ĐIỂM >= 85): Reviewer trừ điểm gắt (78đ REJECT) nếu test chỉ assert tĩnh dữ liệu nằm trong dict/set. Bắt buộc test hành vi thực tế: (1) chặn ghi tiêu cực khi thiếu grant, (2) telemetry log xác nhận (`assert event=... in caplog.text`), (3) ghi thành công kèm backup khi có grant.
   - ANTI-EMPTY-PROMISE INVARIANT (PHẢN XẠ THỰC THI TRƯỚC LỜI NÓI): Tuyệt đối cấm kết thúc lượt thoại bằng lời hứa hẹn suông ("Em sẽ commit ngay...", dẫn đến phản ứng '?' của Operator). BẮT BUỘC gọi tool thực thi ngay trong lượt hiện tại, thu thập bằng chứng hoàn tất rồi mới báo cáo.
   - CẤM PUSH TRƯỚC GATE (ANTI-PRE-GATE-PUSH): Tuyệt đối cấm commit & push code lên remote trước khi chạy closeout_gate.py đạt APPROVED.
+  - PRE-PUSH AUDIT BINDING TRÊN BASE HEAD~1: Pre-push hook đối soát SHA commit thật trong `gate_audit.jsonl`. Nếu chạy gate trên uncommitted diff rồi mới commit, pre-push hook sẽ từ chối vì thiếu bản ghi của commit SHA mới. BẮT BUỘC chạy `closeout_gate.py --base HEAD~1 --files <files...>` sau khi commit để phát hành token gắn đúng commit SHA trước khi gọi `safe_push.py`.
+  - MOCK CALL SUBSTRING TRAP TRONG TEST ASSERTION: CẤM dùng `"subcommand" in str(mock_call)` khi kiểm tra các lệnh subprocess/CLI (như `assert "am" not in str(c)`). Trên Windows, đường dẫn `"C:\Program Files (x86)\..."` chứa chuỗi con `"am"` trong `"Program"`, gây fail test giả tạo. BẮT BUỘC bóc tách token argv: `cmds = [call_args[0][0][-1] for call_args in mock_run.call_args_list]`.
 
 ## 2. Quy Trình Khắc Phục Khi Trượt (Remediation Protocol)
 - **Anti-Surrender (CẤM DỪNG LẠI KHÓC LÓC / CẤM ĐƯA MENU PHƯƠNG ÁN 1/2):** Khi Closeout Gate < 85 hoặc exit != 0, CẤM TUYỆT ĐỐI dừng lại hỏi xin phép ("anh muốn phương án 1 hay 2"). Lỗi kỹ thuật chưa đạt là trách nhiệm tự thân của Agent, BẮT BUỘC tự động đi tiếp vòng lặp khắc phục cho đến khi APPROVED hoặc Gate tự ghi `BLOCKED_BUDGET_EXHAUSTED`.
@@ -67,6 +69,7 @@ metadata:
 Reference: [`references/worker-timeout-quota-and-closeout-scope-20261018.md`](references/worker-timeout-quota-and-closeout-scope-20261018.md)
 
 ## 3. Tài Liệu Tham Khảo (References)
+- Mock Call Substring Trap & Pre-Push Commit Re-Audit Protocol (2026-10-19): [`references/mock-call-substring-trap-and-head-base-prepush-20261019.md`](references/mock-call-substring-trap-and-head-base-prepush-20261019.md)
 - Truncation Manifest, Staged SHA Binding & Fallback Governance (2026-10-18): [`references/closeout-gate-truncation-manifest-and-staged-sha-binding-20261018.md`](references/closeout-gate-truncation-manifest-and-staged-sha-binding-20261018.md)
 - Numstat Diff Counting, Pre-Commit Audit Binding & Short-Circuit Invariants (2026-10-18): [`references/numstat-diff-counting-and-precommit-safe-push-binding-20261018.md`](references/numstat-diff-counting-and-precommit-safe-push-binding-20261018.md)
 - Grace Line Budget Reconciliation & Auto-Push Case Study (2026-10-18): [`references/grace-line-budget-reconciliation-and-auto-push-case-study-20261018.md`](references/grace-line-budget-reconciliation-and-auto-push-case-study-20261018.md)
