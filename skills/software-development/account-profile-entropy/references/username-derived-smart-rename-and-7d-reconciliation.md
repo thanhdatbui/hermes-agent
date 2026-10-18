@@ -116,6 +116,37 @@ TikTok giới hạn nghiêm ngặt: Mỗi tài khoản chỉ được đổi bi�
 
 ---
 
+## 8. Cạm Bẫy Thiếu Họ Trong `HO_MAP` & Giải Pháp 3-Stage Substring Scan Fallback
+
+- **Sự cố thực tế**: Tại Máy 26, username là `quachtrang203`. Hệ thống lại đổi thành `Trâm Sữa`.
+- **Triệu chứng & User Feedback**: Gửi ảnh màn hình Profile và phản hồi: *"ủa t nhớ update hàm đặt tên gần giống userID + random thêm biệt danh r, tên ID là quangtrack tại sao đi đặt trâm sữa?"*.
+- **Root Cause**:
+  1. *Thiếu từ điển họ*: `HO_MAP` ban đầu chỉ có 24 họ phổ biến (`nguyen`, `tran`, `le`, `pham`...), hoàn toàn thiếu các họ như `quach` (Quách), `chu` (Chu), `cao` (Cao), `thai` (Thái), `doan` (Đoàn), `phung` (Phùng)...
+  2. *Thiếu bước quét substring*: Khi `quach` không có trong `HO_MAP`, cả Exact Match (Stage 1) và Prefix Greedy (Stage 2) đều đứt ngay từ ký tự đầu tiên, dẫn đến bỏ sót luôn âm tiết tên chính cực kỳ rõ ràng ở phía sau là `trang` (Trang).
+  3. Kết quả: Hàm trả về `[]` và rơi vào nhánh fallback ngẫu nhiên hoàn toàn, bốc trúng `Trâm Sữa`.
+- **Giải pháp chuẩn hóa**:
+  1. **Mở rộng `HO_MAP` toàn diện**: Bổ sung thêm 24 họ Việt: `quach`, `chu`, `cu`, `cao`, `thai`, `lam`, `ta`, `to`, `tu`, `trieu`, `doan`, `phung`, `nghiem`, `luc`, `giap`, `phi`, `ton`, `tang`, `ma`, `lieu`, `thach`, `khuu`, `bach`, `la`. Bổ sung `TEN_MAP`: `oanh`, `quyen`, `sen`, `tra`, `sang`, `phat`, `tri`, `khoi`.
+  2. **Thêm Stage 3 (Substring Scan Fallback)**: Nếu Stage 1 & 2 không tìm thấy tiền tố, duyệt trượt cửa sổ tìm các từ tố tiếng Việt có độ dài $\ge 3$ ký tự nằm bất kỳ đâu trong chuỗi username:
+  ```python
+  found = []
+  i = 0
+  while i < len(raw):
+      matched_w = None
+      for w in words_sorted:
+          if len(w) >= 3 and raw[i:].startswith(w):
+              matched_w = w
+              break
+      if matched_w:
+          found.append(matched_w)
+          i += len(matched_w)
+      else:
+          i += 1
+  return found
+  ```
+  - **Hiệu quả**: Kể cả khi họ bị viết thiếu hoặc username dính tiền tố lạ (`quachtrang203`), Stage 1 nhận diện được ngay `['quach', 'trang']` sinh ra `Quách Trang` / `Trang Bơ` / `Trang Na`. Nếu username dính ký tự lạ phía trước (e.g. `somerandomtrang`), Stage 3 vẫn nhặt được `['trang']` để đặt thành `Trang Bơ` thay vì sinh bừa tên không liên quan.
+
+---
+
 ## 7. Cạm Bẫy False-Positive Trong `is_target()` Khi Tên Cũ Dính Số Đuôi Username
 
 - **Sự cố thực tế**: Tại Máy 63, username là `phannhung1710`. Runner báo kết quả `"ALREADY"` (đã đổi) nhưng ảnh thực tế trên Profile vẫn là `phannhung1710`.
