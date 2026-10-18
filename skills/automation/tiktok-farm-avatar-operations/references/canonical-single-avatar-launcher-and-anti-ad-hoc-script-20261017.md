@@ -67,3 +67,14 @@ python D:/Taadaa/tools/run_avatar_batch_3accs.py --tik <Tik> --machine <May>
      - SQLite `avatar_replace_queue`: `SET status='DONE'`.
      - Excel `Tik<N>.xlsx`: Cột `Avatar` = `OK`.
   4. Nếu FAIL: Leo thang theo Escalation Ladder ($L0 \to L3$). CẤM tự ý viết script bypass.
+
+---
+
+## 5. Bẫy Tái Phạm Máy 34 (Incident 18/10/2026 — Vụ việc do_save_avatar_m34.py)
+- **Hiện tượng:** Khi đổi avatar M34 (`@yobi1965`), runner chuẩn bốc nhầm ảnh chậu cây kim tiền "20 lần" do MediaStore dính thumbnail video cũ. Coordinator hoảng sợ và tự ý đẻ ra `do_save_avatar_m34.py` và `do_upload_avatar_m34_exact.py` để tap ADB trần. Kết quả: tap trượt tọa độ, tap nhầm ảnh trình duyệt, vướng checkbox Story, làm kẹt nick và mất thời gian cả buổi chiều.
+- **Lời chấn chỉnh của User:** *"Và tại sao lại có cái script lồn gì avatar 34.py? Tao đã thiết kế script upload ava r mà?"*.
+- **Quy tắc bất biến bổ sung:**
+  - **Căn nguyên bốc nhầm ảnh:** Khi photo picker bốc nhầm ảnh, 100% nguyên nhân là rác cache trong `/sdcard/DCIM/.thumbnails/` hoặc thư viện ảnh có ảnh lạ chưa được quét dọn sạch.
+  - **Giải pháp đúng kỷ luật:** Xóa sạch thư mục `.thumbnails` trên máy (`rm -rf /sdcard/DCIM/.thumbnails/*`), đảm bảo file `avatar.jpg` là ảnh duy nhất trong gallery, cắm `.manual_avatar_locked` tại cả 2 kho video gốc và kho nuôi nick, rồi chạy lại ĐÚNG runner chuẩn `run_avatar_batch_3accs.py`.
+  - **CẤM TUYỆT ĐỐI** viết bất kỳ script tap tay ADB nào thay thế runner chuẩn!
+

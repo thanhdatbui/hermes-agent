@@ -14,10 +14,13 @@ metadata:
 ## 1. Cơ Chế Thẩm Định & Ngưỡng Điểm
 - **Lệnh thực thi duy nhất:**
   `python D:/Taadaa/tools/closeout_gate.py --repo <đường_dẫn_repo> --base origin/main --json-output`
-- **Ngưỡng phê duyệt (Verdict APPROVED - Strict >= 85):**
-  - **XÓA BỎ HOÀN TOÀN GRACE BAND 80-84 (2026-10-18):** Thống nhất 1 nguồn chân lý duy nhất qua `closeout_policy.json` (`threshold: 85`). CẤM TUYỆT ĐỐI vin vào điểm 80-84 để tự nhận "Grace Band APPROVED" rồi báo DONE hoặc đẩy push.
-  - Điểm bắt buộc là số nguyên `int >= 85`. Khi đạt chuẩn, `gate_common.py` phát hành Token HMAC-SHA256 ký số gắn chặt với `git patch-id --stable`.
-  - Thiếu `CLOSEOUT_TOKEN` hợp lệ: `safe_push.py` chặn đứng lệnh push, output guard chặn đứng chữ "DONE".
+- **Hai mức phê duyệt, không nhập nhằng:**
+  - **`STRICT_APPROVED`:** score là `int >= 85`; phát hành strict HMAC token.
+  - **`GRACE_APPROVED`:** chỉ cho score `80–84` khi *đồng thời* focused test xanh, diff <= 30 dòng tổng cộng, <= 2 files, không chạm protected path, không có critical finding, không có reviewer handoff/strike lock. Phải phát hành grace token riêng; không được in/diễn giải thành generic `APPROVED`.
+  - **`REJECTED`:** score <80 hoặc score 80–84 nhưng thiếu bất kỳ điều kiện Grace nào.
+  - `gate_common.strict_passes()` và `gate_common.grace_eligible(evidence)` là hai kiểm tra độc lập. Không để `passes()` mặc định nuốt Grace; token issue/verify phải mang `approval_kind` và kiểm tra đúng policy.
+  - Thiếu token hợp lệ hoặc token không khớp `approval_kind`: `safe_push.py` chặn push, output guard chặn claim DONE.
+  - Mục tiêu của Grace là tránh Sol bắt bẻ lặt vặt gây vòng lặp vô hạn, không phải hạ chuẩn an toàn: Grace chỉ là closeout có điều kiện và vẫn phải có evidence đầy đủ.
   - ANTI-PHANTOM CLOSEOUT TRAP: Trước khi chạy closeout_gate.py, BẮT BUỘC kiểm tra `git status --short` và `git diff --stat origin/main..HEAD`. Nếu working tree sạch và local khớp remote (ahead 0), task ĐÃ XONG từ trước, CẤM chạy gate review đè lên commit lịch sử cũ.
   - PRE-CLOSEOUT SHORT-CIRCUIT INVARIANT: `check_pre_closeout_short_circuit(repo, targets)` tự động exit 0 với `[ALREADY_PUSHED]` khi target files đã khớp 100% remote upstream (`@{u}`).
   - PER-COMMAND TARGET STAGING: CẤM TUYỆT ĐỐI `git commit -a`, `git add .`, `git add -A`. Bắt buộc chỉ định file đích: `git commit -m "..." -- <target_file> <target_test>`.
