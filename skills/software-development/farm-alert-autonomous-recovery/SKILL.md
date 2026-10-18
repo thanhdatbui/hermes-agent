@@ -9,14 +9,8 @@ description: >-
 
 > Ref: `references/benny-triage-device-lock-and-feature-map-protocol-20261015.md`.
 > Ref: `references/xiaowei-adb-reset-and-offline-device-triage-20261012.md`.
-> Ref: `references/friends-feed-contact-suggestion-false-positive-triage-20261013.md`.
-> Ref: `references/account-switcher-mapping-drift-vs-anchor-failure-20261011.md`.
-> Ref: `references/account-switcher-missing-vs-session-lost-triage-20261011.md`.
-> Ref: `references/gemphonefarm-blind-popup-action-miss-triage-20261012.md`.
-> Ref: `references/stale-upload-watchdog-and-tracker-db-drift-triage-20261012.md`.
-> Ref: `references/mass-upload-recovery-parenthesized-headers-and-milestone-popup-20261017.md`.
-> Ref: `references/upload-preflight-workbook-header-drift-triage-20261017.md`.
 > Ref: `references/account-switcher-verify-mismatch-triage-20261017.md`.
+> Ref: `references/batch-alert-canary-selection-and-atx-vs-winrt-ocr-20261018.md` (Dynamic Canary selection khi máy kẹt lock; Invariant ATX-Agent port 7912 & WinRT OCR triệt tiêu uiautomator shell; cấm khóc lóc tool guard / tự kiểm điểm tâm lý; cấm nói vẹt CLI flags).
 
 ## UI evidence: target screen only
 
