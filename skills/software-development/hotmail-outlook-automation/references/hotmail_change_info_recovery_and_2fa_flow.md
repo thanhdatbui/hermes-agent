@@ -1,5 +1,11 @@
 # Hotmail Change Info: Recovery Email & 2FA Flow (2026-10-12)
 
+## 0. Phân định mục đích: Hàng Nuôi Kênh Farm (150k–250k) vs Hàng Clone Rác (1.2k–3.9k)
+- **Hàng clone rác (clonesieure.pro, chợ MMO)**: 1.2k – 3.9k dùng chạy spam/tool 1 lần rồi bỏ, họ đá mail hoặc dùng temp mail để tối ưu chi phí reg. Nếu TikTok quét checkpoint/đổi pass là vứt, thiết bị mới login không add mail mới ngay được do dính `Trust Device Lock`.
+- **Hàng Nuôi Kênh Farm (150k–250k)**: Phục vụ khách xây kênh, gắn giỏ hàng TikTok Shop / Creator / Live Shopping. BẮT BUỘC giữ Hotmail và change info (Đổi pass + Add 2FA TOTP + Mail khôi phục `@fviainboxes.com` + Sign out everywhere) để:
+  1. Bảo hiểm mạng sống của acc khi TikTok bắt checkpoint / đổi pass (tool tự bóc OTP/magic link qua Graph API cứu nick).
+  2. Triệt tiêu 100% rủi ro bên bán phôi mail 200đ dùng Quên mật khẩu để cướp mất kênh 200k.
+
 ## 1. Kết quả kiểm chứng thực tế live (2026-10-13): Microsoft BẮT BUỘC có Mail khôi phục mới cho bật 2FA
 - **Sự thật kỹ thuật được kiểm chứng qua Canary:**
   - Trên nick Zin trắng chỉ có mật khẩu (`AlyceBroberg15774@hotmail.com`):

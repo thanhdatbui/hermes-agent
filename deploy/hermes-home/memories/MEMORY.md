@@ -16,7 +16,7 @@ Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot. Cron: 100% 
 §
 Singbox :200xx, CẤM VPN. Wi-Fi: M1-40 kibe 1, M41-80 kibe 2, M201-240 admin 1, M241-280 admin 2. CẤM gán Static IP Ruijie cho máy farm (100% DHCP động). Cứu máy: operator_device_lock(force_preempt=True). Proxy 192.168.110.2:port (Kibe: 20001..20080; Admin: 10008..10035; 67/69 direct).
 §
-Canary: target-bound đúng lỗi; WinRT OCR -> ATX fallback -> cấm uiautomator (khóa cứng Git hook, cấm prompt mềm); done_gate verify hash+MEDIA. Claude auto-probe quota stale >2h.
+Canary: target-bound (matrix+plan map diff->hook; cấm khóc lóc/máy móc); WinRT OCR -> ATX -> cấm uiautomator; done_gate verify hash+MEDIA. Claude quota probe >2h.
 §
 Ava: Trích clip folder gốc representative_frames (cấm lệch persona). Gate 6: chặn runtime nếu claim UI done mà thiếu MEDIA:; WinRT OCR sạch text; CẤM gửi MEDIA: mù. Dọn .thumbnails+Camera/*; Picker ô 0,1.
 §
