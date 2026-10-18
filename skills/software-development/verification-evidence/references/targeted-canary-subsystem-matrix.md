@@ -107,9 +107,11 @@ The matrix decouples mapping rules from runtime code:
 - Supports `--plan <plan.json>` CLI argument: automatically resolves `repo`, `target_machines`, and `diff_sha256`.
 - Emits **Receipt v2** (`schema: 2`): includes `diff_sha256`, `plan_sha256`, and per-requirement evidence while maintaining backward compatibility with Receipt v1 fields (`media_path`, `media_sha256`, `commit_sha`).
 
-### 4.4 `done_gate.py` (Plan-Check & Shadow Verification)
+### 4.4 `done_gate.py` (Delegated Check & Single Source of Truth)
+- `done_gate.py` is refactored from a standalone ad-hoc script into a lightweight delegation wrapper around `canary_runner.check_canary_status()`.
+- Single Source of Truth: All canary status verification (TTL 2h, Receipt v2 schema, `diff_sha256` binding, `plan_sha256`, media file existence >= 40KB, media SHA256 integrity, single/wide scope matching) is implemented once in `canary_runner.py` and invoked via `canary_runner.py --check` or imported by `done_gate.py`.
 - Recognizes Receipt v2 and inspects `plan_sha256` / `diff_sha256` binding against repo working tree.
-- Operates in `shadow` mode (verifying plan integrity and logging status without breaking legacy workflows) before upgrading to `enforce`.
+- Operates in `shadow` mode before upgrading to `enforce`. In `enforce` mode, mismatch between git diff and receipt diff immediately fails closed.
 
 ## 5. Phased Rollout Discipline
 1. **Phase 0 (P0 - Completed):** `canary_matrix.json`, `canary_plan.py`, and `validate_ocr_spec()` unit-tested (12/12 pytest pass).
