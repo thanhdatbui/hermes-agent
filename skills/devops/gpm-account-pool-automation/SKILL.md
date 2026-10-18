@@ -15,8 +15,8 @@ version: 1.2.1
 - **Đăng ký ChatGPT:** 100% Direct Email + OTP (cấm Google SSO).
 - **Nuôi Gmail:** Lướt Web/YouTube tự động so le, giãn cách cooldown an toàn.
 - **Bóc Cookie/Token qua CDP:** Kết nối qua Playwright CDP để trích xuất cookie tự động, không yêu cầu thao tác tay.
-- **Gemini 4 Argon Local CDP Daemon:** Khi cần gọi model 4 Argon thực thụ (gói Google AI Pro), không dùng HTTP StreamGenerate (chỉ hỗ trợ Gemini 3.1 Pro qua slot 79). Dùng Playwright CDP kết nối ngầm vào GPM profile (offscreen), giữ trang `gemini.google.com/app` chọn 4 Argon và expose API OpenAI-compatible (`:20135`). Chi tiết xem `references/gemini-web-pro-argon-gpm-cdp-pipeline.md`.
-- **Cạm bẫy AGY CLI Silent Timeout do hết hạn token:** Khi `ag_cli.py` bị treo 120s, kiểm tra ngay `cli.log` của profile (`You are not logged into Antigravity`) thay vì để timeout lặp lại; re-auth qua IDE trước khi dispatch batch. Chi tiết xem mục 7 trong reference.
+- **Gemini 4 Argon Local CDP Daemon & Web History:** Khi cần gọi model 4 Argon thực thụ (gói Google AI Pro), không dùng HTTP StreamGenerate (chỉ hỗ trợ Gemini 3.1 Pro qua slot 79). Dùng Playwright CDP kết nối ngầm vào GPM profile (offscreen), giữ trang `gemini.google.com/app` chọn 4 Argon và expose API OpenAI-compatible (`:20135`). Tuyệt đối KHÔNG lưu lịch sử chat trên web (dùng Temporary Chat / New Thread) để tránh lẫn ngữ cảnh giữa các task và tránh rủi ro bot abuse.
+- **Cạm bẫy AGY CLI LRU Starvation:** 22 profile trong `agy_profiles` là 22 account độc lập (`google_accounts.json`). Khi 1 profile dính timeout (120s) do proxy lag mà không được gán cooldown hay cập nhật `last_used`, thuật toán LRU sẽ lặp lại liên tục trên profile lỗi đó làm tắc cả pool. Phải bắt timeout để cooldown profile tạm thời. Chi tiết xem `references/gemini-web-pro-argon-gpm-cdp-pipeline.md`.
 
 ## 3. Tài Liệu Tham Khảo (References)
 - Chi tiết API và các case watchdog: xem danh mục tài liệu trong thư mục `references/` của skill.

@@ -121,17 +121,18 @@ Khi click mở dropdown chọn model tại góc trên bên trái của `gemini.g
 
 ### Cạm bẫy Silent Timeout của Antigravity CLI (`ag_cli.py` / `agy -p`):
 - **Hiện tượng:** Khi chạy benchmark hoặc dispatch worker qua `ag_cli.py ask --model gemini-3.8-flash-high`, tiến trình bị treo đơ đúng 120 giây rồi văng timeout, trả về 0 ký tự (`output: empty`).
-- **Nguyên nhân gốc rễ (Root Cause):**
-  - Trong chế độ headless (`-p`) trên Windows với `stdin=subprocess.DEVNULL`, khi token OAuth của profile Google trong sandbox bị hết hạn hoặc chưa đăng nhập, binary Go/Electron của Antigravity CLI không thoát ngay (fail-fast) mà đứng im chờ nguồn token hoặc chờ trình duyệt mở popup đăng nhập.
-  - Kiểm tra file log tại `D:/Taadaa/agy_profiles/<profile>/.gemini/antigravity-cli/cli.log` thấy rõ:
+- **Nguyên nhân gốc rễ & Bẫy đói LRU (The LRU Starvation Trap):**
+  - **Tài khoản là độc lập 100%:** 22 profile trong `D:/Taadaa/agy_profiles/` chứa 22 tài khoản Gmail khác nhau (`google_accounts.json`) và 22 bộ OAuth Refresh Token (103 chars) riêng biệt, không phải dùng chung 1 acc.
+  - **Bẫy điều phối LRU trong `ag_cli.py`:** Thuật toán chọn profile ưu tiên acc có `last_used` nhỏ nhất. Profile lỗi/chậm (ví dụ `acc_16` gắn proxy Mobi `5121`) có `last_used = 0` nên luôn được xếp lên đầu. Khi bị Timeout (120s), `ag_cli.py` văng ngoại lệ mà KHÔNG cập nhật `last_used` và KHÔNG đưa vào cooldown. Kết quả: các lượt gọi tiếp theo tiếp tục chọn lại đúng profile lỗi đó, gây nghẽn toàn bộ pool khiến tưởng nhầm cả 22 profile đều hỏng.
+  - **Khởi động ngầm:** Khi proxy bị chậm hoặc token cần refresh, trong chế độ headless (`-p`) trên Windows với `stdin=subprocess.DEVNULL`, binary Go của Antigravity CLI có thể mất hơn 30s-45s qua proxy 4G. Kiểm tra `cli.log`:
     ```text
     W1018 17:19:52 cache.go:135] Cache(loadCodeAssistResponse): Singleflight refresh failed: error getting token source: You are not logged into Antigravity.
-    E1018 17:19:52 errorreport.go:224] error getting token source: You are not logged into Antigravity.
     ```
+    (Lưu ý: Dòng "not logged into" ở đầu log là probe ban đầu, sau đó nó tự đọc `oauth_creds.json` và log `Starting experiment refresh after login` -> nếu proxy thông thì vẫn gọi được `streamGenerateContent`).
 - **Biện pháp xử lý & Phòng chống:**
-  1. Khi thấy `ag_cli.py` timeout > 60s trên bất kỳ profile nào, lập tức đọc ngay file `cli.log` trong thư mục `.gemini/antigravity-cli/` của profile đó để xác nhận trạng thái đăng nhập.
-  2. Không để timeout mặc định quá dài (chỉ nên đặt 25s - 30s cho bước ask nhanh).
-  3. Yêu cầu mở Antigravity IDE hoặc copy `oauth_creds.json` mới sang profile sandbox trước khi đưa vào pool chạy batch.
+  1. **Failover trên Timeout:** Bắt buộc bắt ngoại lệ `subprocess.TimeoutExpired` trong `ag_cli.py` để đánh dấu cooldown tạm thời (ví dụ 300s) cho profile vừa bị timeout, tránh tình trạng LRU starvation kẹt cứng vào 1 acc.
+  2. Không để timeout mặc định quá dài (chỉ nên đặt 25s - 35s cho bước ask nhanh).
+  3. Khi cần chẩn đoán, đọc trực tiếp `cli.log` và `telemetry.jsonl` để kiểm tra event `dispatch_success` vs `profile_dispatched`.
 
 ### Kỷ luật lựa chọn Reasoning Effort cho tác vụ Lập trình:
 - **Tuyệt đối không dùng `none` hoặc `low` cho bài toán Code:** Mức suy luận thấp khiến mô hình đoán mò theo xác suất bề mặt, dễ sinh code thiếu khối giải phóng tài nguyên (`finally`), quên xử lý race-condition, hoặc xử lý sai offset nhị phân.
