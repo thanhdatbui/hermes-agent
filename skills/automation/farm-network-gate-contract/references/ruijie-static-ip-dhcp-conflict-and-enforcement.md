@@ -6,27 +6,28 @@
 - **Nguyên nhân gốc rễ:** Trên router Ruijie Gateway (`EW3200GX-PRO`), Máy 7 đã bị gán IP tĩnh thủ công `192.168.110.124` trong mục **Static IP Addresses**. Trong bảng **DHCP Clients**, Ruijie chuyển trạng thái lease của thiết bị sang **`Converted to Static IP`** và ngậm chặt bản ghi. Khi thiết bị Android 8 reset stack mạng hoặc xin lease mới, DHCP server của Ruijie không cấp phát động IP mới từ pool, dẫn đến tình trạng treo DHCP vô thời hạn.
 
 ## 2. Kỷ luật nghiêm cấm (Operator Mandate)
-- **User chỉ thị dứt khoát:** *"Cập nhất vào guard gate gì đó lỗi này luôn sau đừng có tự tiện vào gán bậy"*.
+- **User chỉ thị dứt khoát:** *"Cập nhất vào guard gate gì đó lỗi này luôn sau đừng có tự tiện vào gán bậy"* và *"Ủa cơ chế chốt chặn sao k làm cho farm admin"*.
 - **Quy tắc tuyệt đối:**
-  * Toàn bộ 80 máy farm client (`1 <= machine_id <= 80`) BẮT BUỘC hoạt động 100% trên cơ chế **DHCP động** (Dynamic DHCP Pool).
-  * Mục Static IP trên Ruijie CHỈ dành riêng cho thiết bị hạ tầng: 4 AP Aruba (`192.168.110.250-253`) và Admin PC (`192.168.110.119`).
-  * CẤM TUYỆT ĐỐI agent hoặc operator tự tiện gán Static IP trên Ruijie hoặc viết code fallback gán tĩnh IP cho bất kỳ máy farm nào (M1-M80).
+  * Toàn bộ 160 máy farm client trên cả 2 cụm: Kibe Local (`1 <= machine_id <= 80`) và Admin Remote (`201 <= machine_id <= 280`) BẮT BUỘC hoạt động 100% trên cơ chế **DHCP động** (Dynamic DHCP Pool). Cả 2 cụm đều ăn chung hạ tầng router Ruijie Gateway `192.168.110.1` nên gán tĩnh cho máy Admin cũng gây kẹt lease `Converted to Static IP` tương tự.
+  * Mục Static IP trên Ruijie CHỈ dành riêng cho thiết bị hạ tầng: 4 AP Aruba (`192.168.110.250-253`) và Host PC (`192.168.110.119` Admin, `192.168.110.123` Kibe).
+  * CẤM TUYỆT ĐỐI agent hoặc operator tự tiện gán Static IP trên Ruijie hoặc viết code fallback gán tĩnh IP cho bất kỳ máy farm nào thuộc cả 2 dải (M1-M80 và M201-M280).
 
 ## 3. Cơ chế chốt chặn bằng Code (Gate Enforcement)
-Module `D:/Taadaa/tools/farm_network_gate.py` đã được chốt chặn cơ học:
+Module `D:/Taadaa/tools/farm_network_gate.py` đã được chốt chặn cơ học bao phủ toàn diện 160 máy:
 ```python
 FARM_DHCP_MACHINE_MAX = 80
+FARM_DHCP_RANGES = ((1, 80), (201, 280))
 STATIC_IP_POLICY_ERROR = "STATIC_IP_RESERVATION_FORBIDDEN"
 
 def validate_dynamic_dhcp_policy(machine_id: int, static_ip: str | None = None) -> None:
-    """Farm phones M1-M80 must remain on dynamic DHCP; reject static reservations."""
+    """Farm phones (M1-M80 & M201-M280) must remain on dynamic DHCP; reject static reservations."""
     if static_ip is not None and isinstance(machine_id, int) and not isinstance(machine_id, bool):
-        if 1 <= machine_id <= FARM_DHCP_MACHINE_MAX:
+        if any(lo <= machine_id <= hi for lo, hi in FARM_DHCP_RANGES):
             raise ValueError(STATIC_IP_POLICY_ERROR)
 ```
-- **Hành vi:** Bất kỳ yêu cầu nào cố tình truyền `static_ip` hoặc fallback IP tĩnh cho các máy `1 <= machine_id <= 80` đều lập tức bị quăng lỗi `STATIC_IP_RESERVATION_FORBIDDEN` (fail-closed).
-- **Ngoại lệ an toàn:** Các máy ngoài dải farm (như Admin 201) hoặc máy chạy direct proxy (M67, M69) khi không có `static_ip` vẫn hoạt động bình thường.
-- **Kiểm thử hồi quy:** Được bảo vệ bởi unit test `test_static_ip_reservation_policy()` trong `D:/Taadaa/tools/tests/test_farm_network_gate.py` (41/41 tests pass).
+- **Hành vi:** Bất kỳ yêu cầu nào cố tình truyền `static_ip` hoặc fallback IP tĩnh cho các máy thuộc dải `1 <= machine_id <= 80` hoặc `201 <= machine_id <= 280` đều lập tức bị quăng lỗi `STATIC_IP_RESERVATION_FORBIDDEN` (fail-closed).
+- **Ngoại lệ an toàn:** Các thiết bị hạ tầng ngoài dải farm (như server IP tĩnh 999) hoặc máy chạy direct proxy (M67, M69) khi không có `static_ip` vẫn hoạt động bình thường.
+- **Kiểm thử hồi quy:** Được bảo vệ bởi unit test `test_static_ip_reservation_policy()` trong `D:/Taadaa/tools/tests/test_farm_network_gate.py` (kiểm tra cả M1, M7, M80, M201, M240, M280; 41/41 tests pass).
 
 ## 4. Quy trình xử lý dọn dẹp khi bị kẹt lease Static IP
 Nếu một máy farm bị lỡ gán tĩnh trên Ruijie:

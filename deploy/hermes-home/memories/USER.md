@@ -8,10 +8,10 @@ Closeout: Grace 80-84 auto-push; CẤM cày 85; cấm khóc lóc/báo BLOCKED kh
 §
 Ava/Media: WinRT OCR; CẤM gửi mù; CẤM báo DONE UI thiếu MEDIA: (Gate 6); Ava đúng creator; pHash/crop thật; cấm tin mù receipt.
 §
-Worker: Haiku/Agy fix; delegate chỉ đọc. CẤM bịa DONE; guard change có test/diff thật; Agy pool 22 acc. Farm M1-M80 100% DHCP.
+Worker: Haiku bắt buộc claude-haiku-5-5, prompt inline -p (cấm stdin pipe); Agy pool 22; Farm DHCP.
 §
 Canary: target-bound đúng lỗi; WinRT OCR -> ATX (cấm uiautomator); Singbox. MỌI rule bắt buộc Guard/Hook cơ học (cấm prompt tiêm, xóa prompt khi có hook); giải pháp cơ học phải do Claude CLI duyệt; cấm khóc lóc đùn việc khi dính guard.
 §
 Báo cáo Telegram: tóm tắt KPI+exception; Dashboard :1905 full-page.
 §
-User ưu tiên tuyệt đối chất lượng code, độ phủ 100% spec, kiến trúc & xử lý lỗi OS hơn tốc độ; Agy CLI: 3.8-medium (ask>=600s, fix>=900s); cấm bịa benchmark.
+User ưu tiên chất lượng kiến trúc; bắt buộc tự kiểm nghiệm remote trước bàn giao; Claude CLI review duyệt.
