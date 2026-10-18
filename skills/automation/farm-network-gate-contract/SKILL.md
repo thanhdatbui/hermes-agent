@@ -105,10 +105,16 @@ For older Samsung Android builds (e.g. Galaxy S7 running Android 8):
 - **Kích hoạt DHCP bằng WifiSettingsActivity:** Khi Android 8 (Galaxy S7) kết nối WPA2 thành công nhưng daemon `DhcpClient` chạy nền không nhận DHCP Offer, mở nhanh `am start -a android.settings.WIFI_SETTINGS` trong vòng lặp poll để kích thích framework Wi-Fi state machine xử lý và nhận lease IP động ngay lập tức.
 - **`/proc/net/arp` Bypass ICMP Non-Root:** Non-root Android thiếu `CAP_NET_RAW` làm lệnh ping gateway thất bại. Đọc trực tiếp `/proc/net/arp` để kiểm tra gateway IP có cờ hợp lệ (`flags != 0x0`) và MAC khác all-zero trên `wlan0`.
 - **Anti-Paralysis / Anti-Whining Invariant (User Mandate):** Operator strictly forbids passively stopping at `BLOCKED` and crying/giving up. When a gate layer fails (e.g. `L3_NO_IP`), Coordinator MUST proactively extract physical evidence (`dumpsys wifi`, `ip addr show wlan0`, `logcat`), identify the root physical layer, and propose/execute deterministic remediation.
+- **Wi-Fi Driver Throttle do Tắt/Bật Dồn Dập vs Phục Hồi Bằng Reboot:**
+  - *Hiện tượng lừa:* Khi chạy loop thử lại gate liên tục, các lệnh `svc wifi disable -> svc wifi enable -> scan` dồn dập khiến kernel/firmware radio của Galaxy S7 bị throttle hoặc kẹt driver (`Supplicant state: DISCONNECTED, RSSI: -127`), trông như hỏng chip Wi-Fi phần cứng hoặc rụng sóng.
+  - *Chẩn đoán phân biệt phần cứng vs kẹt driver:* Nếu trước đó máy từng kết nối WPA2 và Ruijie từng cấp lease IP DHCP (`Galaxy-S7` nhận IP và có lưu lượng) thì 100% chip Wi-Fi không hề hỏng phần cứng.
+  - *Biện pháp phục hồi dứt điểm:* CẤM tiếp tục spam lệnh join/scan. Thực hiện khởi động lại máy qua script cứu hộ chuẩn: `python D:/Taadaa/tools/recover_stuck_s7.py --machine <N> --reboot` (kèm cooldown an toàn). Sau khi reboot (~35s), firmware Wi-Fi được re-initialize hoàn toàn sạch sẽ, máy lập tức kết nối lại AP và hoàn tất gate `APPLIED` / `NOOP_HEALTHY`.
+  - *Giữ nguyên trạng thái khi đã ổn định:* Khi thiết bị vừa reboot xong hoặc đang bắt đầu đàm phán route, tuyệt đối không spam thêm các lệnh `_join_wifi` phá vỡ state. Chạy gate ở chế độ passive check (`NOOP_HEALTHY`) để bảo toàn phiên.
 
 ## References
 
 - `references/ruijie-static-ip-dhcp-conflict-and-enforcement.md` — Ruijie Gateway Static IP conflict on farm devices (M1-M80), lease stall ("Converted to Static IP"), DHCP starvation incident on M7, mechanical guard enforcement via validate_dynamic_dhcp_policy, and cleanup runbook.
+- `references/s7-wifi-radio-throttle-and-reboot-protocol.md` — Samsung S7 Wi-Fi radio driver throttle vs hardware failure diagnosis, false-positive RSSI -127 panic, and deterministic reboot recovery protocol.
 - `references/s7-android8-wifi-stack-quirks-and-dhcp-remediation.md` — Samsung S7 Android 8 quirks: stale network IDs >= 10, non-root ping -I socket errors, toybox nc syntax without -z, DHCP renewal, and anti-paralysis protocol.
 - `references/network-gate-contract-and-m7-lesson.md` — the validated design review, failure pattern, and acceptance contract from the M7 incident.
 - `references/two-tier-conflict-protocol-and-anti-silent-loop.md` — two-tier conflict verification protocol, operator invariants, anti-silent-loop control rules, and Advisor Sol streaming TTFT insight.
