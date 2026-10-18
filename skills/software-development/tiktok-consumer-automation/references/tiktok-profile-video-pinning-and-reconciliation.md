@@ -4,10 +4,14 @@
 - **Thao tác tối ưu:** Mở video player rồi bấm nút Share/Options, không đè cảm ứng profile tránh lỗi gesture trên một số phiên bản TikTok.
 - **Thao tác qua Video Player (Đã kiểm chứng Canary 100%):**
   1. Từ lưới Profile, tap vào ô video top view (`center` của tile).
-  2. Bấm nút Chia sẻ/Khác ở cột action bên phải (`x=1000, y=1556` trên màn 1080x1920).
-  3. Bottom sheet hiện ra: Tìm node có text/desc `"Ghim"` / `"Pin"` (bounds chuẩn `[747, 1656][915, 1896]`).
-  4. Tap vào nút Ghim $\to$ Bấm `KEYCODE_BACK` quay về Profile.
-  5. Kiểm chứng hiện trường: Video xuất hiện nhãn chữ nổi màu đỏ **"Đã ghim"** (Verified qua WinRT OCR: `"Dä ghim"`).
+  2. Bấm nút Chia sẻ/Khác ở cột action bên phải (`x=1000, y=1556` hoặc `(1000, 1580)` trên màn 1080x1920).
+  3. Bottom sheet Chia sẻ hiện ra: Cấu trúc 3 hàng icon:
+     - Hàng 1 (Gửi bạn bè): $Y \approx 1200 - 1280$.
+     - Hàng 2 (Chia sẻ MXH - SMS, Facebook, Direct): $Y \approx 1530 - 1580$.
+     - Hàng 3 (Tác vụ video): Nút **`Ghim`** (Pin) nằm ở vị trí thứ 3 từ trái sang tại tọa độ tâm icon `(472, 1750)` (text label bounds `[431, 1820, 512, 1846]`, center `(472, 1833)`).
+     - **BẪY LỆCH TỌA ĐỘ ACTION SHEET:** CẤM TUYỆT ĐỐI tap `(180, 1750)` vì đó là nút "Tải về" hoặc "Tăng lượt xem" (`Tăng lượt xem` ở `x=291`). Tap lệch sẽ không ghim được video.
+  4. Tap vào nút Ghim `(472, 1750)` $\to$ Bấm `KEYCODE_BACK (4)` quay về Profile.
+  5. **BẮT BUỘC NGHIỆM THU OCR TRƯỚC KHI BÁO DONE:** Video xuất hiện nhãn chữ nổi màu đỏ **"Đã ghim"** (Verified qua WinRT OCR: `"Dä ghim"` tại bounds `[34, 1095, 181, 1131]`). TUYỆT ĐỐI CẤM báo "đã ghim" nếu ảnh chụp Profile Grid chưa có OCR chữ `"Dä ghim"` / `"Đã ghim"` (tránh bị user bắt lỗi "Mày bảo ghim đâu?").
 - **Giới hạn TikTok:** Mỗi tài khoản ghim tối đa 3 video.
 
 ## 2. Ảnh hưởng đối với quy trình đối soát & Upload
@@ -157,24 +161,30 @@ python D:/Taadaa/tools/pin_top_videos.py --machine 28 --min-views 5000 --max-pin
 - **Kỷ luật Farm**: CẤM đổi bio hàng loạt trên toàn farm bằng script tự động (tránh behavioral burst làm tụt trust score kênh mới dẫn đến 0-view). CHỈ tối ưu bio cho các kênh HOT đã có video viral / cắn đề xuất (>10K view, >500 follower).
 - **Thao tác UI qua ADB khi không có nút "Sửa hồ sơ"**:
   1. **Nhánh mở màn hình chỉnh sửa Bio:**
-     - *Trường hợp nick đã có bio cũ:* Tap trực tiếp vào dòng chữ Bio cũ tại `(200, 660)` $\to$ Mở `ProfileEditActivity` $\to$ Tap dòng "Tiểu sử" (`com.ss.android.ugc.trill:id/tvLabel` tại `[84, 1284][414, 1380]`, tâm `(600, 1338)`).
-     - *Trường hợp nick chưa có bio ("No bio yet" / hiện chữ "Thêm tiểu sử"):* Tap trực tiếp vào nút "Thêm tiểu sử" (`com.ss.android.ugc.trill:id/t6g` tại `[36, 618][1016, 702]`, tâm `(526, 660)`) $\to$ TikTok mở thẳng màn hình `EditText` nhập bio.
-  2. **Clear & Type Tiếng Việt CÓ DẤU CHUẨN (BẮT BUỘC AdbKeyboard Base64):**
+     - *Trường hợp nick đã có bio cũ:* Tap trực tiếp vào dòng chữ Bio cũ tại `(200, 660)` hoặc icon bút chì sửa hồ sơ bên cạnh tên hiển thị `(849, 558)` $\to$ Mở `ProfileEditActivity` $\to$ Tap dòng "Tiểu sử" (`com.ss.android.ugc.trill:id/tvLabel` tại `[84, 1284][414, 1380]`, tâm `(540, 1340)`).
+     - *Trường hợp nick chưa có bio hoặc vừa xóa trắng ("No bio yet" / hiện nút "+ Thêm tiểu sử"):* Nút `+ Thêm tiểu sử` (`+ Thém tidU sd`) nằm ở trung tâm dưới follower, bounds `[383, 845, 685, 882]`, tâm `(534, 864)`. Tap thẳng vào `(534, 864)` sẽ mở trực tiếp màn hình `EditText` nhập bio mà không cần qua Sửa hồ sơ.
+  2. **BẪY STORY POPUP TRÊN PROFILE ("Bạn có tin vui?"):**
+     - Khi tài khoản có gợi ý Story (`Bạn có tin vui?` / `Thì thầm to nhỏ`), vô tình tap vào vùng trên đỉnh (Y ≈ 100-250) sẽ làm bật popup "Tạo một Nhật ký" với thông báo *"Hiển thị với follower trong 24 giờ"*.
+     - Popup này kích hoạt bàn phím ảo che nửa dưới màn hình và chặn toàn bộ các nút điều hướng.
+     - **Cách giải phóng:** Tap nút `x` đóng popup tại `(996, 270)` hoặc gửi `input keyevent 4` (Back), sau đó mới tap lại tab Hồ sơ `(972, 1882)`. Tuyệt đối không thao tác đổi tài khoản hay ghim video khi popup Story đang mở vì sẽ tap nhầm vào form story.
+  3. **Clear & Type Tiếng Việt CÓ DẤU CHUẨN (BẮT BUỘC AdbKeyboard Base64):**
      - **CẤM TUYỆT ĐỐI dùng `adb shell input text`:** Lệnh này chỉ hỗ trợ ASCII và sẽ làm rụng hoặc vỡ toàn bộ dấu tiếng Việt (vi phạm trực tiếp yêu cầu user).
      - **BẮT BUỘC quy trình gõ Tiếng Việt có dấu:**
        1. Kích hoạt & set bàn phím:
           `adb shell ime enable com.github.uiautomator/.AdbKeyboard`
           `adb shell ime set com.github.uiautomator/.AdbKeyboard`
-       2. Focus vào `EditText` tại `(540, 700)`.
+       2. Focus vào `EditText` tại `(536, 650)`.
        3. Xóa text cũ:
-          `adb shell am broadcast -a ADB_KEYBOARD_CLEAR_TEXT`
-          (Gửi thêm `input keyevent 67` phòng hờ).
+          `adb shell am broadcast -a ADB_CLEAR_TEXT`
+          (Gửi thêm `input keyevent 123` rồi gửi chuỗi `input keyevent 67` x50 để đảm bảo sạch ký tự).
        4. Bơm text UTF-8 mã hóa Base64:
           `b64_msg = base64.b64encode(bio_text.encode('utf-8')).decode('ascii')`
-          `adb shell am broadcast -a ADB_KEYBOARD_INPUT_TEXT --es text <b64_msg>`
-  3. **Checkpoint 1 (Pre-submit)**: Screencap kiểm tra text hiển thị đúng trong `EditText` và nút "Lưu" tại `[925, 72][1056, 204]` (tâm `(990, 138)`) sáng khả dụng.
-  4. **Submit & Refresh**: Tap "Lưu" tại `(990, 138)` $\to$ `sleep 2.0` $\to$ Bấm `KEYCODE_BACK (4)` hoặc tap tab Hồ sơ `(970, 1850)` để cập nhật màn hình chính của Profile.
-  5. **Checkpoint 2 (Post-submit)**: Screencap Profile mới, verify WinRT OCR hiển thị đầy đủ dòng bio mới dưới tên và đối soát đúng định danh tài khoản (`media_verify.py`).
+          `adb shell am broadcast -a ADB_INPUT_B64 --es msg <b64_msg>`
+          *(hoặc broadcast `ADB_KEYBOARD_INPUT_TEXT --es text <b64_msg>` tùy phiên bản AdbKeyboard).*
+       5. Quan sát bộ đếm ký tự góc dưới: `x/80` hoặc `x/160` (bounds `[899, 1036, 1028, 1069]`) để đảm bảo text đã vào form.
+  4. **Checkpoint 1 (Pre-submit)**: Screencap kiểm tra text hiển thị đúng trong `EditText` và nút "Lưu" tại top-right `(980, 140)` / `(991, 150)` sáng khả dụng.
+  5. **Submit & Refresh**: Tap "Lưu" tại `(980, 140)` $\to$ `sleep 2.5` $\to$ Bấm `KEYCODE_BACK (4)` hoặc tap tab Hồ sơ `(972, 1882)` để quay lại Profile grid.
+  6. **Checkpoint 2 (Post-submit)**: Screencap Profile mới, verify WinRT OCR hiển thị đầy đủ dòng bio mới dưới tên và đối soát đúng định danh tài khoản (`media_verify.py`).
 
 ## 15. Tiêu Chuẩn Soạn Bio Tự Nhiên Theo Ngách Nội Dung (Niche-Specific Persona)
 - **Tránh bẫy văn phong bot chung chung:** CẤM viết các câu sáo rỗng vô thưởng vô phạt như `"Chào mừng đến với kênh của tôi"`, `"Kênh chia sẻ video hay"`, `"Theo dõi tôi nhé"`.
