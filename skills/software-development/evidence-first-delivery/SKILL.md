@@ -181,9 +181,13 @@ The delivery layer should validate outbound completion claims before the platfor
 - Completion claims must carry valid `MEDIA:` evidence.
 - **Closed-Loop Contradiction Gate & Forced Re-Reasoning Engine (`guard_media_vision_gate.py` - 2026-10-18):**
   * **Bản chất**: Proof-of-Execution (chỉ kiểm tra "đã chạy tool chưa") không thể ngăn được model phớt lờ evidence để chém gió. Cần có Proof-of-Semantic-Alignment kiểm tra đối chiếu nội dung claim với evidence thật.
-  * **Cơ chế 3 lớp bảo vệ cơ học**:
+  * **Cơ chế 4 lớp bảo vệ cơ học**:
     1. **HMAC-SHA256 Vision Receipt**: Mọi lượt chạy WinRT OCR (`tmp_winrt_ocr.py`) hoặc LLM Vision tự động ký và ghi receipt (`image_path`, `sha256`, `mtime`, `timestamp`, `evidence_tokens`). Key được quản lý an toàn bằng file secret động 32-bytes (`os.urandom(32)`) tại `D:/Taadaa/runtime/secrets/vision_guard.key` (0o600) hoặc biến môi trường `HMAC_SECRET_KEY`, tuyệt đối không hardcode secret.
-    2. **Contradiction Gate Tổng Quát**:
+    2. **Chặn Đứng Tin Nhắn Hoàn Tất Thiếu Ảnh (`MISSING_MEDIA_EVIDENCE` - 2026-10-18)**:
+       - Bổ sung bộ lọc kép trong `transform_llm_output_check()`: `ACTION_COMPLETION_PATTERNS` (`da doi`, `doi thanh`, `thanh cong`, `hoan tat`, `renamed`, `da sua`, `da nap`, `da cap nhat`, `chuan hoa`) $\cap$ `SUBJECT_PATTERNS` (`ten`, `biet danh`, `avatar`, `ava`, `anh dai dien`, `tieu su`, `bio`, `profile`, `ho so`).
+       - NẾU tin nhắn chứa claim hoàn thành tác vụ UI/thiết bị mà KHÔNG CÓ THẺ `MEDIA:` HỢP LỆ ➔ Gate chặn ngay lập tức ở runtime, trả về verdict `MISSING_MEDIA_EVIDENCE` ép LLM phải chụp ảnh gửi kèm.
+       - *Bài học tinh chỉnh tránh False-Positive*: Loại trừ các từ khóa phần cứng/hệ thống như `may`, `account`, `nick`, `kenh` khỏi `SUBJECT_PATTERNS` để không chặn nhầm câu thông báo hạ tầng (ví dụ: *"Đã đổi thiết bị sang máy mới"*). Suite kiểm thử 33/33 tests pass tuyệt đối (`test_guard_media_vision_gate.py`).
+    3. **Contradiction Gate Tổng Quát**:
        - Bóc tách `VISUAL_CLAIM_MARKERS` và lọc `CLAIM_STOPWORDS` để lấy các token chủ đề (`claimed_topic_tokens`).
        - Nếu ảnh có OCR tokens mà tin nhắn đưa ra tuyên bố thị giác có zero token overlap với OCR (`UNGROUNDED_OVERRIDE`) ➔ VETO chặn ngay lập tức.
        - Nếu ảnh có OCR mà tin nhắn khẳng định "không có chữ" (`CONTRADICTION_HARD`) ➔ VETO chặn ngay.
