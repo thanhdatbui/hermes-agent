@@ -17,20 +17,39 @@
 ## 3. Kiến trúc Phòng thủ 2 Lớp (Defense-in-Depth Gate Guard)
 Được đồng thuận bởi cả 3 bên: **Advisor Sol (`gpt-web-sol` :20129)**, **Claude Code CLI**, và **Hermes Coordinator**:
 
-### Lớp 1: PreToolUse Contract Hook (`guard_cronjob_contract.py`)
-- **Vị trí:** Đăng ký PreToolUse hook trên tool `cronjob` (matcher: `cronjob|CronCreate|mcp__.*cron.*`).
-- **Phạm vi kiểm tra:** Chỉ chặn các thao tác `action in ('create', 'update')`; cho qua `list`, `pause`, `remove`, `run` để không cản trở cứu hộ sự cố.
+### Lớp 1: PreToolUse Contract Hook (Tích hợp trực tiếp vào `guard_cronjob_safety.py`)
+- **Tránh xung đột & Phân mảnh hook:** Không tạo thêm file hook mới để tránh spawn 2 tiến trình hook lồng nhau. Mở rộng trực tiếp `D:/Taadaa/tools/guard_cronjob_safety.py` với hàm `check_cron_policy(ti)` chạy trước vòng quét console window `check_segment()`.
+- **Phạm vi kiểm tra:** Chỉ chặn các thao tác `action in ('create', 'update')`; cho qua `list`, `pause`, `resume`, `remove`, `run` để không cản trở cứu hộ sự cố.
 - **Rule Contract nghiêm ngặt:**
-  1. `no_agent is True`: Bắt buộc kiểu `bool` chuẩn trong Python (`type(val) is bool and val is True`). Chặn đứng chuỗi lách luật `"true"` hay `None`.
-  2. Bắt buộc có trường `script: <file.py>` và file đó phải tồn tại trên đĩa cứng trong thư mục quy chuẩn (`~/.hermes/scripts/` hoặc `D:/Taadaa/**`).
-  3. Cấm tuyệt đối cronjob LLM-driven (`no_agent: False`) chạy tần suất dày đặc (< 6 giờ, như `*/5`, `*/15`, `*/30`, `every 15m`).
-  4. Nếu có cronjob LLM hợp lệ (>= 6 giờ), bắt buộc phải có hard-cap `max_turns <= 5` và `timeout <= 120s` để triệt tiêu vĩnh viễn bẫy lặp 86 turns.
+  1. `no_agent is True`: Bắt buộc kiểu `bool` chuẩn trong Python (`type(val) is bool and val is True`). Chặn đứng số `1`, mảng `[]`, chuỗi lách luật `"true"` hay `"True"`.
+  2. Bắt buộc có trường `script: <file.py>` và file đó phải tồn tại trên đĩa cứng trong thư mục quy chuẩn (`%LOCALAPPDATA%\hermes\scripts\<script>` hoặc `D:/Taadaa/**`).
+  3. **Chống Path Traversal:** Cấm tuyệt đối `..` và symlink trỏ ra ngoài allowed roots; bắt buộc resolve canonical path trước khi kiểm tra tồn tại.
+  4. **Chống Update Bypass & Chặn oan Update một phần:**
+     - Khi `action == 'create'`: Bắt buộc 100% phải có `no_agent: True` và `script`.
+     - Khi `action == 'update'`: Chặn nếu cố tình set `no_agent=False` hoặc xóa `script` (`""` hoặc `None`); cho phép nếu chỉ update `schedule` hoặc metadata.
+  5. Cấm tuyệt đối cronjob LLM-driven (`no_agent: False`) chạy tần suất dày đặc (< 6 giờ, như `*/5`, `*/15`, `*/30`, `every 15m`).
+  6. Nếu có cronjob LLM hợp lệ (>= 6 giờ), bắt buộc phải có hard-cap `max_turns <= 5` và `timeout <= 120s` để triệt tiêu vĩnh viễn bẫy lặp 86 turns.
+- **Tách biệt Telemetry Audit:** Tham số hóa `log_block()` để ghi nhận event riêng `cron_policy_block` / `cron_policy_allow` với tag `[CRON_AGENT_POLICY_BLOCKED]`, tách rời khỏi `console_window_*`.
 
 ### Lớp 2: Storage Reconciler Scanner (`reconcile_cronjobs.py`)
-- Script chạy ngầm độc lập mỗi 5 phút (bản thân nó chạy bằng `no_agent: True`).
+- Script chạy ngầm độc lập (bản thân nó chạy bằng `no_agent: True`).
 - Đọc trực tiếp `jobs.json`, quét toàn bộ các job đang `enabled: True`.
 - Nếu phát hiện bất kỳ job nào vi phạm schema, thiếu `no_agent: True` hoặc là LLM agent tần suất cao:
   * Tự động set `enabled: False`, chuyển `state: 'paused'`.
-  * Ghi lý do cách ly vào audit log.
+  * **CẤM XÓA JOB:** Không bao giờ xóa job hoặc sửa schedule để bảo toàn lịch sử cấu hình của Operator.
+  * Ghi lý do cách ly vào audit log `cron_reconcile_audit.jsonl`.
   * Gửi đúng 1 cảnh báo Telegram dedup cho Operator.
-  * Ghi file nguyên tử (Atomic write qua temp file + rename) dưới lock để chống race-condition.
+  * **Atomic Write & Lock:** Ghi file nguyên tử (Atomic write qua temp file cùng thư mục rồi `os.replace`) dưới lock để chống race-condition với Scheduler.
+  * **Chế độ Dry-Run an toàn:** Mặc định chạy `--dry-run` chỉ in danh sách job sẽ pause để Operator duyệt; CHỈ áp dụng ghi khi có cờ tường minh `--apply` (tuân thủ luật farm: cấm tự ý pause cron nuôi acc/reg).
+
+## 4. Bảo toàn Test Suite & Hồi quy
+- Cập nhật helper `scan()` trong `tests/test_guard_cronjob_safety.py` luôn kèm `"no_agent": True` để bảo toàn 35 tests kiểm tra console window cũ không bị fail.
+- Bổ sung nhóm tests mới:
+  * Block thiếu `no_agent` lúc `create`.
+  * Block `no_agent: False` lúc `create` và `update`.
+  * Block `no_agent: 1`, `"true"`, `"True"`.
+  * Block path traversal (`..`), script không tồn tại.
+  * Block update xóa `script`.
+  * Allow `create` chuẩn `no_agent: True` + valid script.
+  * Allow `update` chỉ đổi `schedule`.
+  * Allow `list`, `pause`, `remove`.

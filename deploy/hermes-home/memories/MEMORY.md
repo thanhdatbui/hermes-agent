@@ -4,7 +4,7 @@ Follow: P1/P2 trần ca; dò +2 (max 30); nhả vào tù, lùi 4 sàn 15. Fl t�
 §
 Hotmail: CẤM mail cá nhân; @fviainboxes.com đọc OTP. Excel 3,4,5+G. Pin >=1000 view.
 §
-Farm: O(1). Preempt lock; ping 0% loss; ARP 110.x. Lock: rename_natural_state.json. Header Excel: đổi header rà soát consumer; cấm fallback tuần tự.
+Preempt lock; ping 0% loss; ARP 110.x. Lock: rename_natural_state.json. Terminal: foreground max 60s; CLI dài/nặng BẮT BUỘC background=True + notify_on_complete=True.
 §
 GPM: max 5 wkr; pool web (0đ); re-login max 1/ngày. Gemini Web: HTTP StreamGenerate (:20129) 5 accs Mobi 4G, inner[17]=[[0]] deep think.
 §

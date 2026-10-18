@@ -19,6 +19,10 @@ tags: [tiktok, farm, batch, render, upload, resume, kibe]
   `python D:/Taadaa/tools/run_avatar_batch_3accs.py --tik <Tik> --machine <May>`
 - **Đổi Biệt Danh Rolling:**
   `python D:/Taadaa/tools/tiktok_rename_rolling_watchdog.py`
+- **Cào Tải Video Gốc Admin (40 Workers song song qua 69 Proxy MikroTik LAN):**
+  `python C:/Users/Admin/run_admin_downloader_service.py` (launcher headless: `python C:/Users/Admin/launch_detached_admin_downloader.py`). Log: `D:/CodexRuntime/tiktok-video-machine2/download_admin_p10.log`.
+- **Render Worker Chuẩn Mapping 8 Tik trên Admin (1 Worker tuần tự chống nghẽn GPU):**
+  `python C:/Users/Admin/run_admin_render_worker.py` (launcher headless: `python C:/Users/Admin/launch_detached_admin_render.py`). Log: `C:/Users/Admin/admin_render_worker.log`.
 - **Tra cứu máy N O(1):**
   `python D:/Taadaa/tools/inspect_machine.py <N>`
 

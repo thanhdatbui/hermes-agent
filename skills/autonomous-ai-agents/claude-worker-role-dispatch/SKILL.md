@@ -109,6 +109,11 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
 
 ## Pitfalls
 
+- **CẤM LẶP LẠI 3 LỖI KHI GỌI CLAUDE CLI (Triệt Tiêu Bệnh Xin Lỗi Mồm 18/10/2026):**
+  1. *Lỗi Foreground Timeout > 60s:* Host guard chặn cứng mọi lệnh terminal foreground có `timeout > 60s` (`GUARD_FOREGROUND_TIMEOUT_EXCEEDED`). Khi gọi Claude CLI (vốn cần 25–50s để khởi động và hoàn thành), BẮT BUỘC gọi qua `terminal(background=True, notify_on_complete=True, timeout=120)`. CẤM gõ `timeout=75` hay `90` ở foreground dẫn tới bị guard quật lặp đi lặp lại.
+  2. *Lỗi Tự Ý Đổi Worker sang Sonnet:* Cảnh báo `[claude-code:unrecognized_model]` cho `claude-haiku-5-5` chỉ là advisory SDK banner; Haiku vẫn chạy bình thường. TUYỆT ĐỐI CẤM tự ý gán `--model claude-sonnet-5-5` khi role là `worker` (đốt sạch quota 5h của Sonnet). Phân vai thép: Worker = Haiku 5.5 / Agy fix; Sonnet = Reviewer / Planner.
+  3. *Cơ chế thay lời xin lỗi:* Mọi phản xạ "xin lỗi hứa hẹn" đều bị cấm; phải khóa chết bằng cơ chế cơ học, tuân thủ đúng timeout và background flags.
+
 - **KỶ LUẬT "THI CÔNG ĐẾN KHI CLAUDE CLI DUYỆT" & PHÂN VAI ARCHITECT VS BUILDER (User Mandate 18/10/2026):**
   Khi Operator (User) ra lệnh *"Thi công đến khi Claude CLI duyệt"*, Coordinator BẮT BUỘC tuân thủ:
   1. *Phân vai bất biến:* Claude Sonnet 5.5 (`--role planner` / `--role reviewer`) CHỈ LÀM TƯ VẤN KIẾN TRÚC & REVIEWER THẨM ĐỊNH. Tuyệt đối CẤM đùn việc viết code hoặc viết unit test cho Claude CLI làm cháy quota 5h. Coordinator và Worker Haiku O(1) là người trực tiếp thi công code & test suite.
