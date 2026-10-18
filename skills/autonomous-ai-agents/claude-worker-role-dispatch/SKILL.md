@@ -65,8 +65,8 @@ else:
 - `planner` và `reviewer` → `ag_cli.py **ask**` (read-only analysis).
 - `worker` → `ag_cli.py **fix**` (code repair allowed).
 
-### 4. Stale Quota Detection & Auto-Refresh
-`MAX_QUOTA_STALE_HOURS = 2.0`. Khi phát hiện cache `plan-usage-history.json` bị cũ (> 2 giờ), `claude_worker.py` tự động kích hoạt `try_refresh_claude_quota()` thăm dò trực tiếp `/usage` từ Claude CLI qua `claude_quota_guard.py` để kéo quota live về máy và cập nhật cache, loại bỏ hoàn toàn lỗi gate kích hoạt nhầm khi tài khoản còn nguyên quota.
+### 4. Stale Quota Detection & Active Auto-Refresh
+`MAX_QUOTA_STALE_HOURS = 2.0`. File cache `plan-usage-history.json` bình thường chỉ được ghi khi mở Claude Desktop hoặc gõ tay `/usage`. Khi phát hiện cache bị cũ (> 2 giờ), `claude_worker.py` **không được vội vàng kích hoạt Quota Gate chặn nhầm**, mà tự động gọi `try_refresh_claude_quota()` thăm dò trực tiếp `/usage` từ Claude CLI qua `claude_quota_guard.py` để kéo quota live về máy và ghi mẫu mới vào cache. Chỉ khi probe thất bại hoặc quota live thực sự chạm trần mới kích hoạt fallback sang Antigravity. Đồng thời nâng `default_turns` từ 4 lên 8 (hard cap 15) cho role `reviewer` để tránh bị ngắt nửa chừng khi audit diff/codebase lớn.
 
 ### 5. Narrow Limit Markers (no false positives):
 - `"hit your session limit"`
@@ -97,6 +97,7 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
 ## Mechanical Gate Hook Enforcement & Division of Labor (User Mandate 2026-10-18)
 
 - **CẤM KHÓA LUẬT BẰNG PROMPT MỀM / MEMORY**: Mọi rule an toàn mới phát sinh trên farm BẮT BUỘC thi công thành **PreToolUse Guard Hook / Gate cơ học** bằng code Python fail-closed (chặn ở tầng OS/runtime trước khi tool thực thi), TUYỆT ĐỐI CẤM chỉ dặn dò trong prompt, markdown hay bộ nhớ Hermes.
+- **XÓA BỎ FILE PROMPT TIÊM / SKILL RÁC KHI ĐÃ CƠ GIỚI HÓA**: Khi một quy chuẩn đã được chuyển hóa thành hook cơ học vật lý (`pre-commit`, `pre-push`), BẮT BUỘC xóa bỏ các file skill/prompt tiêm mềm thừa thãi để tránh gây loãng context và xung đột chỉ thị.
 - **PHÂN VAI RÕ RÀNG: CLAUDE CLI LÀ KIẾN TRÚC SƯ / REVIEWER, COORDINATOR LÀ THI CÔNG**:
   - Claude Sonnet 5.5 (`--role planner` / `--role reviewer`) ĐỘC QUYỀN tư vấn kiến trúc an toàn, bóc tách edge-case và thẩm định duyệt code (Reviewer).
   - Coordinator / Worker (`haiku_worker.py` / Coordinator) trực tiếp viết code và unit test suite theo thiết kế của Claude.
