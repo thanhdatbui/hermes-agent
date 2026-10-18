@@ -11,6 +11,7 @@ description: Verify or configure per-device proxy attachment for the Taadaa Andr
 # Farm proxy attachment (Taadaa phone farm)
 
 ## 🛑 QUY TẮC CỐT LÕI (2026-09-03 — BỎ HOÀN TOÀN VICHANGER)
+- **MobiProxy Port Outage & Auto-Healing Runbook (2026-10-18):** see [references/mobiproxy-port-outage-and-auto-heal-runbook.md](references/mobiproxy-port-outage-and-auto-heal-runbook.md) for recovering dead 4G ports via `/proxy_recreat` and diagnosing Singbox 10054/502 errors.
 - **CẤM TUYỆT ĐỐI COI MÁY NÀO LÀ DIRECT (2026-10-18 INVARIANT):**
   + 100% thiết bị farm (M1-M80, M201-M280) BẮT BUỘC dùng proxy qua `192.168.110.2:port` (gán qua `settings put global http_proxy`). Tuyệt đối KHÔNG CÓ máy nào chạy direct ra internet. Mọi traffic không qua proxy sẽ bị preflight ngắt phiên (fail-closed) để chống lộ IP nhà mạng.
   + Kiểm chứng O(1): Lệnh `python D:/Taadaa/tools/inspect_machine.py <N>` luôn xuất trường `• Proxy: <host:port>` đọc trực tiếp từ `settings get global http_proxy`.
