@@ -282,6 +282,7 @@ def generate_account_for_slot(slot, existing_emails=None, max_attempts=300):
 | Completely random names on VN-syllable usernames | e.g. @vothitram renamed to 'Hải Cường' looks disconnected and bot-like | BẮT BUỘC dùng syllable segmenter (`parse_username_syllables`) ánh xạ @vothitram -> 'Võ Thị Trâm' (35%) hoặc 'Trâm xxx' (35%) |
 | Exact-only syllable segmentation on usernames with random suffixes | e.g. @ngohaaenexi has prefix 'ngoha' + suffix 'aenexi' -> full decomposition fails -> returns [] -> falls back to unrelated random name ('Hoàng Phước Châu') | Áp dụng 2-stage segmenter: thử exact match trước, nếu fail thì dùng greedy prefix segmenter nhặt tiền tố Họ-Tên ('ngo', 'ha') và bỏ qua ký tự rác/số ở đuôi |
 | False-positive in `is_target` matching old username with digits | e.g. target 'Phan Nhung' matches current name 'phannhung1710' with ratio 0.78 >= 0.75 → skipped without typing | BẮT BUỘC kiểm tra `re.search(r'\d{2,}$', nl)` trong `is_target()`: nếu tên hiện tại còn dính số đuôi của username thì trả về False ngay để buộc gõ tên mới |
+| Untracked subprocess script loss via git clean in `tools/` | Subprocess scripts (`do_rename_canonical_runner.py`) untracked in `tools/` getting wiped on `git clean` → cron silently fails exit 2 | Watchdog auto-restores dependencies from `%LOCALAPPDATA%\hermes\scripts` before spawning workers; track canonical scripts |
 
 ## Verification
 

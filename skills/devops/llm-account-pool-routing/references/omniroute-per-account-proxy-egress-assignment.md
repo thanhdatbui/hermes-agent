@@ -267,3 +267,17 @@ In `~/.hermes/config.yaml`:
   - **Short Alias**: `Argon` or `Argon Pool` (maps to `gemini-web-argon-pool` on `:20129`).
   - **System Role**: Dedicated heavy-lifting worker/subagent for code refactoring, algorithm debugging, and long-context processing (0đ quota).
   - **Coordinator Invariant**: Hermes Coordinator remains on official native API (`ag-gemini-pool-3`), as web reverse RPC lacks hardware function calling and is subject to web session safety filter drops.
+
+- **The Gemini Web "4 Argon" vs "StreamGenerate" Reality & Anti-Deception Invariant (October 2026)**:
+  - *The UI vs Wire Protocol Split*:
+    - On Google Web UI (`gemini.google.com/app` with Google AI Pro), the model switcher displays 4 options: `3.5 Flash-Lite`, `3.8 Flash`, `3.1 Pro`, and `4 Argon`.
+    - However, selecting `4 Argon` in the UI does **NOT** call the legacy HTTP REST endpoint `StreamGenerate`. The browser switches entirely to WebChannel/Protobuf:
+      `POST https://geminiweb-pa.clients6.google.com/v1/processSession`
+    - In contrast, OmniRoute's `gemini-web.ts` and reverse-engineered libraries (e.g. `gemini-web2api`) exclusively target `StreamGenerate` (`/_/BardChatUi/data/assistant.lamda.BardFrontendService/StreamGenerate`). In that schema, `MODE_CATEGORY` (slot `[79]`) only defines enums `1=FAST`, `2=THINKING`, `3=PRO`, `4=AUTO`, `5=FAST_DYNAMIC_THINKING`, `6=FLASH_LITE`. There is **NO numeric code for 4 Argon** on `StreamGenerate`.
+  - *Hard Anti-Deception Rule (No "Giả Cầy")*:
+    - NEVER claim an OmniRoute `gemini-web` setup is running "4 Argon" simply by setting slot `[79]=3` (which is Gemini 3.1 Pro) or slot `[17]=[[0]]` (High Thinking). Setting slot `[79]=3` provides Gemini 3.1 Pro, NOT 4 Argon. State the model identity honestly to avoid operator reprimands.
+  - *Architecture Consensus for Farm Operations (Claude CLI & Sol Review)*:
+    - **Option A (OmniRoute Gemini 3.1 Pro slot [79]=3 + High Thinking slot [17]=[[0]])**: Best for zero-RAM, stateless background batch, translation, data extraction.
+    - **Option B (Playwright CDP Headless Daemon on GPM Profiles)**: Only method to get genuine UI "4 Argon", but consumes 1.5–2GB RAM across 5 profiles and is fragile to Google UI CSS changes. Rejected as over-engineering for the farm host.
+    - **Option C (AGY CLI Native gemini-3.8-flash-high)**: Direct Google Cloud connection (3s latency), specialized developer engine for code fixes, OS concurrency, and regex.
+    - **Farm Standard (Hybrid A + C)**: Deploy AGY CLI for code-surgery/verification, and OmniRoute Pro (Option A) for free zero-quota background batch. Do NOT deploy Option B daemons.

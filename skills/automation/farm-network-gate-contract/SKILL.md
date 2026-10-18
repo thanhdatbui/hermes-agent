@@ -98,3 +98,4 @@ For older Samsung Android builds, prefer the platform-supported/canonical join h
 
 - `references/network-gate-contract-and-m7-lesson.md` — the validated design review, failure pattern, and acceptance contract from the M7 incident.
 - `references/two-tier-conflict-protocol-and-anti-silent-loop.md` — two-tier conflict verification protocol, operator invariants, anti-silent-loop control rules, and Advisor Sol streaming TTFT insight.
+- `references/farm-network-gate-production-implementation-and-review-audit.md` — production implementation of farm_network_gate.py, resolution of 3 Claude Reviewer blocking findings, 36/36 tests, and live canary evidence.
