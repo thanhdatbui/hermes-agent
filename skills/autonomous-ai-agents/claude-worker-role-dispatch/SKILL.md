@@ -25,7 +25,7 @@ When a Coordinator bypassed the Guard by running `claude -p "..." --dangerously-
 |------|-------|--------------|----------------|-------|---------|
 | `worker` | claude-haiku-5-5 | 8 | **15** | Read,Edit,Write,Bash | `ag_cli.py fix` |
 | `planner` | claude-sonnet-5-5 | 6 | **10** | Read,Bash | `ag_cli.py ask` |
-| `reviewer` | claude-sonnet-5-5 | 4 | **8** | Read,Bash | `ag_cli.py ask` |
+| `reviewer` | claude-sonnet-5-5 | 8 | **15** | Read,Bash | `ag_cli.py ask` |
 
 ## Usage
 
@@ -65,7 +65,8 @@ else:
 - `planner` và `reviewer` → `ag_cli.py **ask**` (read-only analysis).
 - `worker` → `ag_cli.py **fix**` (code repair allowed).
 
-### 4. Stale Quota Detection: `MAX_QUOTA_STALE_HOURS = 2.0`.
+### 4. Stale Quota Detection & Auto-Refresh
+`MAX_QUOTA_STALE_HOURS = 2.0`. Khi phát hiện cache `plan-usage-history.json` bị cũ (> 2 giờ), `claude_worker.py` tự động kích hoạt `try_refresh_claude_quota()` thăm dò trực tiếp `/usage` từ Claude CLI qua `claude_quota_guard.py` để kéo quota live về máy và cập nhật cache, loại bỏ hoàn toàn lỗi gate kích hoạt nhầm khi tài khoản còn nguyên quota.
 
 ### 5. Narrow Limit Markers (no false positives):
 - `"hit your session limit"`
@@ -227,6 +228,7 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
 - `D:/Taadaa/tools/tests/test_sol_worker.py`: 8/8 tests (safe shell command regex, metacharacters injection block, DSL parse, atomic patch lifecycle, AST validation, LF preserve, max_turns validation).
 
 - `references/canonical-dispatch-gateway-mandate-and-mechanical-gate-upgrades-20261018.md` — **[MỚI 18/10/2026]** Hậu kiểm bài học phá rule vượt cấp gateway (bypassing dispatch_worker.py) rồi hallucinate model role/3.5, chuẩn hóa Worker độc quyền Haiku 5.5, và phân tích các chốt chặn cơ học mới (guard_dispatch_contract, done_gate, guard_cronjob_safety).
+- `references/winrt-ocr-primary-and-git-hook-enforcement-20261018.md` — **[MỚI 18/10/2026]** Quy chuẩn kiểm tra UI Farm: WinRT OCR Primary 0-token -> ATX-Agent Fallback (port 7912), chốt chặn cơ học pre-commit / pre-push triệt tiêu uiautomator dump, và nguyên tắc xóa prompt tiêm khi đã có hook cơ học do Claude CLI duyệt.
 - `references/subprocess-timeout-nerf-trap-and-grace-band-reconciliation-20261018.md` — **[MỚI 18/10/2026]** Bẫy ngầm timeout 60s di căn từ thời worker không chạy test sang worker ReAct + Pytest và Sol Deep Think, đối soát Grace Band (>=80 điểm) chống cày điểm 85, và giải pháp triệt tiêu timeout hàng loạt.
 - `references/hook-vs-guard-vs-gate-triad-and-two-tier-conflict-audit-20261018.md` — **[MỚI 18/10/2026]** Thế kiềng 3 chân cơ học Hook vs Guard vs Gate, đối soát xung đột 2 tầng, và triệt tiêu lỗi lặp lại khi gọi Claude CLI.
 - `references/claude-cli-repeated-foreground-timeout-and-role-violation-fix-20261018.md` — **[MỚI 18/10/2026]** Khóa cơ học claude_worker.py: cấm override Sonnet cho vai worker, bắt buộc background=True cho các lệnh dài, và triệt tiêu vòng lặp xin lỗi suông.

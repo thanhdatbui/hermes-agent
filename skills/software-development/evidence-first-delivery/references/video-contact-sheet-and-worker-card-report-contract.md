@@ -40,6 +40,16 @@
 ### Cấu trúc Thẻ Bắt Buộc (Card Schema)
 Công cụ chuẩn: `D:/Taadaa/tools/worker_card_report.py` (hoặc module `WorkerCard`).
 
+#### 1. Định dạng Card Rút Gọn 4 Dòng Trên Telegram (User Standard — Chống Dài Dòng):
+Khi báo cáo trên Telegram cho User, CẤM TUYỆT ĐỐI in toàn bộ khung viền 20 dòng gây rác chat (User chấn chỉnh: *"Sao cứ thẻ nghiệm thu này dài dònh v"*). BẮT BUỘC dùng format 4 dòng cô đọng:
+```text
+✅ XONG: <tên task / artifact>
+📦 MEDIA:<đường_dẫn_ảnh>
+🔍 Test: <kết quả test/evidence ngắn gọn>
+⛔ Ranh giới: ĐÃ LÀM: <việc chính>, CHƯA LÀM: <ranh giới fail-closed>
+```
+
+#### 2. Định dạng Chi tiết (Dùng ghi file log hoặc khi audit sâu):
 ```text
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📋 THẺ NGHIỆM THU CÔNG VIỆC — ✅ [HOÀN THÀNH / READY]
@@ -66,6 +76,17 @@ Công cụ chuẩn: `D:/Taadaa/tools/worker_card_report.py` (hoặc module `Work
     - CHƯA upload lên TikTok
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+---
+
+## 3. Phân Định Phạm Vi Sử Dụng: Bulk Farm vs Content Video Tương Lai
+
+### Cạm bẫy Bắn Ảnh Hàng Loạt Khi Render Bulk (Spam Alert Trap):
+- Khi render nuôi nick hàng loạt (50–80 clip/ngày), nếu clip nào cũng tạo Contact Sheet và bắn về Telegram sẽ gây **ngập lụt tin nhắn và tê liệt trải nghiệm của User** (User phản ứng: *"Thôi đm render hàng loạt đi bắn về ngáo mẹ luôn"*).
+- **Quy tắc Vận Hành Chuẩn**:
+  1. **Bulk Farm Nuôi Nick**: Chạy ngầm 100% bằng FFmpeg/Python độc lập (0 token, 0 spam tin nhắn). BẮT BUỘC áp dụng cơ chế **Exception-Only Reporting**: Chỉ tạo ảnh và bắn cảnh báo về Telegram khi phát hiện clip dị thường/bị lỗi (đen màn hình > 3s, lệch tỷ lệ dọc 9:16, mất tiếng hoặc dung lượng < 100KB).
+  2. **Dàn Sản Xuất Video Content / Faceless / Bán Hàng (Tương lai)**: Đây mới là đất diễn thực sự của Contact Sheet và Card nghiệm thu: Sản xuất 1–2 video/ngày, mỗi clip cần thẩm định kỹ phụ đề, bố cục và kịch bản. Khi đó mới bắn ảnh Contact Sheet 3x3 để duyệt trước trong 1 giây trước khi publish.
+  3. **Không Quét Đĩa Diện Rộng**: Không tự ý viết script quét lại toàn bộ kho video. Bộ công cụ `video_contact_sheet.py` và `worker_card_report.py` được lưu sẵn tại `D:/Taadaa/tools/` để sẵn sàng tích hợp khi mở rộng sản xuất content trong tương lai.
 
 ### Quy tắc Thẩm định Fail-Closed của Card:
 1. `worker`, `task`, `artifacts`, `verification`, `done_actions`, `not_done_boundaries` bắt buộc không được rỗng.

@@ -230,6 +230,14 @@ For profile/avatar/farm work, verify the semantic content, not just image statis
   * **Video Render Contact Sheet:** Với video TikTok kết xuất từ batch jobs (Tik1/Tik2/Tik3), sử dụng `video_contact_sheet.py` tạo ảnh lưới 3x3 (9 khung hình cách đều) kèm nhãn timestamp để soi mắt toàn bộ video 60s trong 1 giây qua `MEDIA:`, né tải file MP4 nặng.
   * **Chống Bẫy Gửi Ảnh Test Pattern Kỹ Thuật (Testsrc) Khiến User Hoang Mang ("Clgt" - 2026-10-18):** Khi nghiệm thu tính năng media/video, BẮT BUỘC bốc video thật từ kho dữ liệu (`D:/TIKTOK-videonuoinick/...`) để sinh Contact Sheet trực quan. CẤM gửi ảnh synthetic testsrc vạch màu đài truyền hình cộc lốc khiến User giật mình tưởng màn hình bị sọc/lỗi hệ thống (User chất vấn: *"Clgt"*). Nếu bắt buộc dùng video giả lập để test offline, phải ghi rõ cảnh báo: `[CANARY MOCK PATTERN - KIỂM THỬ TÍNH NĂNG]`.
   * **Cấm Tuyệt Đối Ghép Lưới UI Farm:** CẤM gom/ghép 4 màn hình thao tác Android (Feed, Switcher, Profile, Sửa hồ sơ) thành 1 ảnh lưới. Bắt buộc tuân thủ `GATE 6: MAX BLIND STEPS = 1` gửi ảnh tức thời ở từng bước, và giữ nguyên độ phân giải để WinRT OCR / pHash hoạt động chính xác.
+  * **Kỷ Luật Báo Cáo Khi Render Bulk vs Sản Xuất Content (Chống Spam Ngập Chat - 2026-10-18):** CẤM TUYỆT ĐỐI bắn ảnh Contact Sheet từng clip khi render nuôi nick hàng loạt 50–80 clip (User chấn chỉnh: *"Thôi đm render hàng loạt đi bắn về ngáo mẹ luôn"*). Bulk farm bắt buộc áp dụng cơ chế **Exception-Only Reporting**: Chạy ngầm 100%, chỉ bắn cảnh báo khi clip hỏng (đen >3s, lệch tỷ lệ 9:16, mất tiếng). Dành riêng Contact Sheet và Card nghiệm thu cho các luồng sản xuất video Content/Faceless đơn lẻ chất lượng cao trong tương lai.
+  * **Chuẩn Thẻ Nghiệm Thu Rút Gọn 4 Dòng Trên Telegram (User Standard - 2026-10-18):** CẤM in khung viền 20 dòng gây rác màn hình chat (User chất vấn: *"Sao cứ thẻ nghiệm thu này dài dònh v"*). BẮT BUỘC dùng format 4 dòng cô đọng:
+    ```text
+    ✅ XONG: <tên task / artifact>
+    📦 MEDIA:<đường_dẫn_ảnh>
+    🔍 Test: <kết quả test/evidence ngắn gọn>
+    ⛔ Ranh giới: ĐÃ LÀM: <việc chính>, CHƯA LÀM: <ranh giới fail-closed>
+    ```
 
 - Profile/Account Switcher/Save Surface must be the target screen.
 - **Chống Bẫy Receipt Cũ Idempotency Bỏ Bước Upload & Ảo Giác Màn Hình Ngữ Cảnh Profile (Stale Idempotency Receipt & Profile Context Menu Veto - 2026-10-17):**
