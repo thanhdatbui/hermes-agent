@@ -49,6 +49,7 @@ metadata:
 - **Anti-Stalling / Anti-Bureaucracy Invariant:** Khi Operator hỏi "xong hết chưa", cấm viện cớ quan liêu về trạng thái dirty hay chưa closeout để thoái thác. Bắt buộc xác nhận ngay code đã active trên đĩa hay chưa, báo cáo kết quả kiểm chứng cụ thể và lập tức kích hoạt Closeout Gate.
 
 ## 3. Tài Liệu Tham Khảo (References)
+- Claude Reviewer Approved: gate_common Fail-Closed & ASCII Token Security (2026-10-18): [`references/claude-reviewer-approved-gate-common-and-fail-closed-validation-20261018.md`](references/claude-reviewer-approved-gate-common-and-fail-closed-validation-20261018.md)
 - Data-File Closeout Test Pairing, Telemetry Depth & Untracked Tool Preservation (2026-10-18): [`references/data-file-closeout-test-pairing-and-untracked-tool-preservation-20261018.md`](references/data-file-closeout-test-pairing-and-untracked-tool-preservation-20261018.md)
 - Đồng Thuận 3 Bên: Kiến Trúc Grace Band Không Xung Đột (2026-10-18): [`references/tri-party-consensus-zero-conflict-grace-architecture-20261018.md`](references/tri-party-consensus-zero-conflict-grace-architecture-20261018.md)
 - Closeout Gate Handoff Lock, Scope Bleed & Grace Band Discipline (2026-10-18): [`references/closeout-gate-handoff-lock-and-scope-bleed-discipline-20261018.md`](references/closeout-gate-handoff-lock-and-scope-bleed-discipline-20261018.md)
