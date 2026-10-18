@@ -4,13 +4,13 @@ Dọn đĩa: duyệt trước. CẤM đẻ script ad-hoc khi có canonical tool.
 §
 Nuôi 4d 3 ca. Ava&2FA tới 5h15 (né cache 4h). Write-Through Excel 3,4,5+G; Starve 96h; mail Graph PC. Reg Gmail: 160 máy (1-80, 201-280). Đổi tên TT bám username.
 §
-Closeout: Grace 80-84 auto-push khi test xanh; cấm Sonnet cày điểm; Strike 3 dùng Haiku/Agy; CẤM push trước khi Closeout Gate APPROVED; User ép: safe_push --owner-override.
+Closeout: Grace 80-84 auto-push; cấm Sonnet cày điểm; Strike 3 dùng Haiku/Agy; CẤM push trước khi Gate APPROVED; User ép: safe_push --owner-override.
 §
-Ava/Media: BẮT BUỘC WinRT OCR + soi thật; CẤM bịa mô tả/gửi mù; menu Ghim/Riêng tư KHÔNG PHẢI publish proof; pHash/crop thật cấm DONE ảo; cấm tin mù status/receipt tool.
+Ava/Media: BẮT BUỘC WinRT OCR; CẤM bịa mô tả/gửi mù; menu Ghim/Riêng tư KHÔNG PHẢI publish proof; pHash/crop thật cấm DONE ảo; cấm tin mù status/receipt tool.
 §
-Worker: Haiku/Agy/Argon fix. Argon=gemini-web-argon-pool (:20129, 0đ). CẤM Luna. 'hỏi Claude'=Sonnet 5.5; 'Tắt' khi game=tắt nháy console; Done báo gọn.
+Worker: Haiku/Agy/Argon fix. CẤM Luna/delegate. CẤM khóa luật bằng prompt, BẮT BUỘC lập guard hook gate; Claude=tư vấn/review, Agent thi công đến khi duyệt. 'Tắt' khi game=tắt nháy console; Done báo gọn.
 §
-Canary: test đa máy/layout, MEDIA:. 100% Singbox, cấm VPN. Mạng: Ruijie>Aruba, cấm bao biện khi data plane/ping chưa thông.
+Canary: đa máy/layout, MEDIA:. 100% Singbox, cấm VPN. Mạng: Ruijie>Aruba, cấm bao biện khi chưa thông ping.
 §
 Reboot: CẤM khi in-match TFT (LoL/TFTClient) hoặc mở War3 (war3/w3l); lobby TFT được reboot; né ca chạy.
 §
