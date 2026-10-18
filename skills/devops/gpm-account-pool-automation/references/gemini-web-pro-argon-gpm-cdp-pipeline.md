@@ -98,6 +98,7 @@ Khi click mở dropdown chọn model tại góc trên bên trái của `gemini.g
 - **Argon Medium vs Argon High:**
   - `Medium` (Default cho Worker): Né bẫy runtime Python cực tốt (ví dụ: bẫy heapq tuple comparison với dict payload, co biên giữ hình vuông avatar), code tinh gọn chuẩn $O(1)$, chống over-engineering.
   - `High`: Tầm nhìn hệ thống sâu rộng hơn (tư duy cấp phát IP mạng bảo toàn lease, kiểm tra thứ tự ưu tiên phạt), thích hợp làm cố vấn/thiết kế thuật toán khi Medium bế tắc.
-- **AGY CLI vs Argon Web Pool:**
-  - `AGY CLI` (3.5s - 5.5s): Nhanh gấp 4-5 lần, phản xạ phòng thủ OS (file lock, fsync, zombie process, cắt bỏ token duration) cực kỳ già dơ. **Ưu tiên số 1 cho Worker thi công sửa code O(1) <= 15 dòng**.
+- **AGY CLI vs Argon Web Pool (Nguyên nhân chênh lệch năng lực):**
+  - `AGY CLI` (3.5s - 5.5s): Nhanh gấp 4-5 lần. Kết nối trực tiếp vào Google Cloud Code IDE engine (`daily-cloudcode-pa.googleapis.com`), được fine-tune chuyên biệt cho SWE (kỹ sư phần mềm) nên phản xạ phòng thủ OS (file lock mode a+b, fsync, zombie process, cắt bỏ token duration) cực kỳ già dơ. **Ưu tiên số 1 cho Worker thi công sửa code O(1) <= 15 dòng**.
   - `Argon Pool` (11s - 20s): Bền bỉ, miễn phí 100% quota IDE, chuyên trị batch lớn, phân tích dữ liệu và chạy thâu đêm.
+  - **Lưu ý kỹ thuật về Slot [79] (modelCategory):** Hiện tại trong `gemini-web.ts`, slot `inner[79]` đang để trống (`null`) nên máy chủ Google tự fallback về mô hình Consumer Chatbot mặc định chứ **chưa kích hoạt trọng số của model 4 Argon thực thụ**. Để gọi đúng 4 Argon, cần map mã `MODE_CATEGORY` vào `inner[79]` (tương tự như `gemini-business.ts`).

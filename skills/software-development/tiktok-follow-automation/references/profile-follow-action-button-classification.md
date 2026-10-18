@@ -61,13 +61,22 @@ Rất nhiều tài khoản **CHƯA FOLLOW** (hoặc vừa tap nhưng bị server
 7. **Modular Hóa Dùng Chung (`automation_core.ocr`):**
    - Toàn bộ tiện ích WinRT OCR native, fast popup dismissal và profile action classification đã được đóng gói chuẩn tại `from automation_core.ocr import ocr_screen_boxes, find_popup_dismiss_button_ocr, classify_profile_action_ocr, find_follow_button_center_ocr`. Các consumer repo tái sử dụng trực tiếp từ đây, cấm viết lại module rời rạc.
 
-## 5. Kiến Trúc Phối Hợp Hybrid (XML vs WinRT OCR)
-Tuyệt đối không thay thế toàn bộ XML bằng OCR một cách mù quáng:
+## 5. Kiến Trúc Phối Hợp Hybrid: Đưa WinRT OCR Lên Làm Primary & Giảm Tải Phần Cứng Cho S7
+
+### A. Vì sao WinRT OCR bắt buộc ưu tiên chạy trước (Primary), XML lui về làm Fallback?
+- **Khắc phục triệt để bẫy Obfuscated ID:** TikTok thường xuyên đổi các class name và resource ID (`id/fds` $\to$ `id/fmp` $\to$ `id/fo4`). Nếu để XML chạy trước, khi selector trượt nhưng bắt được chữ `Nhắn tin` bên cạnh, XML sẽ vội vã phán nhầm `followed`, khiến OCR ở nhánh sau không bao giờ có cơ hội cứu nguy.
+- **Giải phóng 100% tải CPU & RAM cho dàn Samsung S7:**
+  - *Khi dump XML (`dump_ui`):* Android phải kích hoạt `UiAutomation / AccessibilityService`, chạy đệ quy qua toàn bộ cây View Hierarchy khổng lồ của TikTok (hàng nghìn node RecyclerView, custom layout). Việc này tiêu tốn nhiều RAM, gây CPU spike lên 80%–100% trên chip Exynos 8890, dẫn tới lỗi kinh điển trên farm: **`atx-agent / uiautomator bị Android ép tắt (OOM / Exit 137)`**, treo Accessibility hoặc làm app TikTok đứng hình (ANR).
+  - *Khi dùng WinRT OCR:* S7 chỉ chạy đúng 1 lệnh phần cứng `screencap -p` đọc trực tiếp từ framebuffer của SurfaceFlinger (mất ~100ms–150ms), hoàn toàn KHÔNG duyệt DOM, không tốn RAM. Toàn bộ gánh nặng nhận diện chữ được "đẩy tạ" sang PC Host (Core i7 / Ryzen) xử lý bằng WinRT C++ native chỉ trong 150ms–250ms.
+  - *Tốc độ tổng thể:* Screencap + OCR PC chỉ tốn ~0.4s–0.5s, nhanh hơn đáng kể so với việc chờ S7 "thở dốc" để nhả ra cục XML 300KB–500KB (thường mất 1s–2.5s trên máy cũ).
+
+### B. Ma trận điều phối sau khi chuẩn hóa:
 
 | Tác vụ | Mô hình tối ưu | Lý do kỹ thuật |
 | :--- | :--- | :--- |
-| **Dập Popup đè màn hình (`benign_popup`)** | **OCR First-Line (0.3s)** $\rightarrow$ Fallback XML | 90% popup là từ khóa quen thuộc (`"để sau"`, `"không phải bây giờ"`, `"hủy"`, `"đóng"`). OCR quét dập ngay trong 0.3s, không làm đứt nhịp nuôi video. |
-| **Bấm nút đổi ID (`Follow`, `Tiếp tục`)** | **XML trước $\rightarrow$ OCR Fallback** | Đọc XML theo selector. Nếu TikTok đổi obfuscated ID (`id/fds` $\to$ `id/fmp` $\to$ `id/fo4`) khiến XML ra `unknown` $\rightarrow$ OCR nhìn chữ để tap cứu nguy, chống timeout. |
+| **Xác thực sau tap (`verify_after_tap`)** | **WinRT OCR Primary $\rightarrow$ Fallback XML** | Chụp màn hình $\rightarrow$ OCR đọc trước theo Follow Dominance. Nếu ra `followed` hoặc `not_followed` thì trả về ngay, **bỏ qua hoàn toàn `dump_ui()`**, giúp S7 mát máy. Chỉ khi OCR timeout/lỗi mới dump XML dự phòng. |
+| **Dập Popup đè màn hình (`benign_popup`)** | **OCR First-Line (0.3s) $\rightarrow$ Fallback XML** | 90% popup là từ khóa quen thuộc (`"để sau"`, `"không phải bây giờ"`, `"hủy"`, `"đóng"`). OCR quét dập ngay trong 0.3s, không làm đứt nhịp nuôi video. |
+| **Bấm nút đổi ID (`Follow`, `Tiếp tục`)** | **OCR tìm tâm nút $\rightarrow$ Fallback XML** | Dùng `find_follow_button_center_ocr` tap trực tiếp vào tâm nút `(cx, cy)`, miễn nhiễm khi TikTok đổi ID nút. |
 | **Định danh UID (@handle), Checkbox, Focus** | **100% XML (CẤM DÙNG OCR)** | OCR là ảnh phẳng, không đọc được `selected="true"`, `checked="true"`, ô pass rỗng và dễ nhầm ký tự UID (`0`/`O`, `1`/`l`). |
 
 ## 6. Cạm bẫy Optimistic UI Cache trong Path B Verify
