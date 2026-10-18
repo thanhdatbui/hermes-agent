@@ -157,7 +157,21 @@ Khi User hoặc hệ thống reboot 1 hoặc cả 2 máy, toàn bộ các tiến
   3. **Proxy Loopback 502 Bad Gateway trên mạng LAN**: File cấu hình proxy trên Admin (`proxy_pool_69.txt`) nếu trỏ vào domain ngoài `mirotik1.taadaa.click` sẽ bị router từ chối (502) khi gọi từ trong LAN `192.168.110.119`. BẮT BUỘC dùng IP LAN nội bộ `192.168.110.2:10001..10035`.
 - **Kỷ luật khắc phục dứt điểm**:
   - Không bao giờ dựa duy nhất vào thư mục Startup cho các tác vụ nền quan trọng của Farm.
-  - Phải đăng ký vào **Windows Task Scheduler (Trigger: At Startup / At boot)** chạy ngầm độc lập với user logon, HOẶC duy trì một cron watchdog định kỳ (e.g. `*/15 * * * *`, `deliver: local`) để tự động kiểm tra và hồi sinh worker khi phát hiện chết tiến trình.
+  - Phải đăng ký vào **Windows Task Scheduler cấp hệ thống (Trigger: At Startup / `/sc onstart`)** chạy ngầm độc lập với user logon, HOẶC duy trì một cron watchdog định kỳ (e.g. `*/15 * * * *`, `deliver: local`) để tự động kiểm tra và hồi sinh worker khi phát hiện chết tiến trình.
+
+### Bẫy 13: Tắt Nhầm Watchdog Khi Chống Giật Màn Hình Game Làm Tê Liệt Khởi Động Sau Reboot
+- **Hiện tượng**: Khi User đang chơi game (Warcraft 3, TFT borderless), các tiến trình console ngầm cấp phát `conhost.exe` làm DWM giật/nháy khung hình. Một số session xử lý cẩu thả bằng cách chạy lệnh `Disable-ScheduledTask -TaskName 'Hermes_Gateway_Watchdog'`.
+- **Hậu quả dây chuyền**:
+  - Task `Hermes_Gateway` trên Windows chỉ có `LogonTrigger` (chờ User đăng nhập desktop). Việc vô hiệu hóa watchdog bên ngoài khiến sau khi máy reboot theo ca (05:20 / 17:20), Hermes Gateway không bao giờ được kích hoạt lại.
+  - Toàn bộ 20 cronjob nội bộ của Hermes trên Admin bị tê liệt theo, kéo theo cào và render chết ngắc suốt hàng chục tiếng.
+- **Kỷ luật điều phối & Khắc phục chuẩn**:
+  - **CẤM TUYỆT ĐỐI** dùng `Disable-ScheduledTask` để chữa cháy hiện tượng nháy màn hình.
+  - **Bọc VBScript ẩn (WindowStyle 0)**: Mọi task scheduler và cronjob chạy ngầm bắt buộc bọc qua `wscript.exe //B //Nologo <file.vbs>` với cờ cửa sổ ẩn (`0, False`) để Windows không cấp phát console context.
+  - **Đăng ký Task Scheduler On-Boot độc lập**: Cài đặt trực tiếp 5 Task Scheduler trên Admin qua `schtasks /create` với trigger `/sc onstart` (chạy ngay khi boot) và lặp lại định kỳ `/sc minute /mo 15`:
+    1. `Taadaa_Admin_Downloader_Boot` & `Taadaa_Admin_Downloader_15m`
+    2. `Taadaa_Admin_Render_Boot` & `Taadaa_Admin_Render_15m`
+    3. `Taadaa_Admin_Hermes_Boot` (Đảm bảo Hermes Gateway tự thức tỉnh sau reboot).
+
 
 
 

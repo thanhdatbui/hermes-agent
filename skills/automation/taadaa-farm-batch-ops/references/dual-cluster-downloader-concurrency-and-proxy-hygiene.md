@@ -23,6 +23,11 @@
 
 ## 2. Proxy Hygiene & Pool Drift giữa 2 máy
 - File pool proxy tiêu chuẩn: `D:\Taadaa\Tiktok-video\proxy_pool_69.txt` (35 cổng MikroTik + 32 cổng Mobi 4G + 2 cổng DuckDNS).
+- **Cảnh báo UTF-8 BOM từ PowerShell 5.1 (`Set-Content -Encoding UTF8`)**:
+  - Khi dùng PowerShell 5.1 ghi file proxy với cờ `-Encoding UTF8`, PowerShell tự động chèn **3 byte BOM (`\xef\xbb\xbf`)** vào đầu file.
+  - Khi script Python / `yt-dlp` đọc dòng 1, chuỗi bị biến thành `\ufeff192.168.110.2:10001`, ném lỗi crash toàn bộ worker:
+    `ERROR: Failed to parse: http://admin%401:admin%401@\ufeff192.168.110.2:10001`!
+  - **Kỷ luật**: Tuyệt đối KHÔNG dùng PowerShell để sửa file proxy. Bắt buộc dùng Python ghi file (`open(path, 'w', encoding='utf-8')` không BOM) và kiểm chứng 5 byte đầu tiên qua binary probe (`read(5) == b'192.1'`).
 - **Nguy cơ Drift**: Máy Admin và Kibe có thể bị lệch file proxy cục bộ (ví dụ: dòng 69 trên Admin bị ghi đè IP tĩnh cũ thay vì domain DuckDNS động). Khi IP cũ đổi hoặc hết hạn, yt-dlp sẽ liên tục gặp `ConnectTimeoutError`.
 - **Rà soát**:
   - So sánh hash file giữa 2 máy:
