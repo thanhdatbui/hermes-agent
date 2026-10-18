@@ -368,5 +368,15 @@ Chi tiết xem tại tài liệu hỗ trợ liên kết:
 ### 3. Kỷ Luật Chat Stateless Trên Gemini Web (Anti-Context Contamination & Anti-Ban):
 - **CẤM TUYỆT ĐỐI lưu lịch sử chat dồn cục:** Khi điều khiển trình duyệt Web AI Pro làm API worker, cấm chat tiếp trên cùng 1 phiên cũ để tránh nhiễm bẩn ngữ cảnh (context contamination).
 - **Bắt buộc Reset New Chat:** Trước mỗi lượt gửi prompt mới, script bắt buộc phải kích hoạt "Cuộc trò chuyện mới" (New Chat) hoặc Temporary Chat. Vừa bảo vệ tài khoản tránh bị Google quét hành vi bot, vừa giúp mỗi task được xử lý tinh khiết 100%.
+- **Hiện tượng ẩn lịch sử trên giao diện Web (Sidebar Icon-Only):** Khi Gemini Web ở chế độ thu nhỏ sidebar (chỉ hiện 6 icon), danh sách cuộc trò chuyện gần đây bị ẩn chữ hoàn toàn. Muốn kiểm tra lịch sử chat thực tế trên profile GPM: click icon Kính lúp (Tìm kiếm cuộc trò chuyện) hoặc truy cập `https://myactivity.google.com/product/gemini` (mục Hoạt động trên Các ứng dụng Gemini) để đối soát.
+
+### 4. Bẫy Suy Đoán Vội Vàng Về Nguồn Gốc Profile (False Single-Account Claim):
+- **Bẫy nhận thức của Agent:** Nhìn thấy cờ mẫu `--copy-current` trong lệnh tạo profile mẫu của `ag_cli.py` rồi vội vàng quy chụp cả 22 profile dùng chung 1 tài khoản.
+- **Quy tắc kiểm chứng thực địa (Evidence-First):** BẮT BUỘC đọc trực tiếp `google_accounts.json` và `oauth_creds.json` tại từng thư mục `D:/Taadaa/agy_profiles/<name>/.gemini/` để xác nhận email và tiền tố refresh token thực tế trước khi đưa ra bất kỳ kết luận nào về cấu hình tài khoản.
+
+### 5. Căn Nguyên Timeout Thật Sự Của `gemini-3.8-flash-high` Trên Task Code Lớn:
+- **Hiện tượng:** Antigravity CLI bị kill ở 120s, trả về 0 chars, dễ bị nghi ngờ do proxy Mobi chết hoặc tài khoản bị chặn.
+- **Sự thật kỹ thuật:** Model `gemini-3.8-flash-high` với Deep Think khi giải quyết bài toán module lớn (>150 dòng) mất từ 105s đến 130s để hoàn tất toàn bộ luồng suy nghĩ và stream mã nguồn.
+- **Khắc phục:** Khi giao task code kiến trúc sâu cho model `*-high`, caller bắt buộc phải nâng `timeout` lên tối thiểu **180s - 240s**; chỉ dùng timeout 60s - 120s cho model `*-medium` hoặc các bài toán script ngắn gọn.
 
 
