@@ -25,6 +25,9 @@ metadata:
   - PRE-CLOSEOUT SHORT-CIRCUIT INVARIANT: `check_pre_closeout_short_circuit(repo, targets)` tự động exit 0 với `[ALREADY_PUSHED]` khi target files đã khớp 100% remote upstream (`@{u}`).
   - PER-COMMAND TARGET STAGING: CẤM TUYỆT ĐỐI `git commit -a`, `git add .`, `git add -A`. Bắt buộc chỉ định file đích: `git commit -m "..." -- <target_file> <target_test>`.
   - IMPLEMENTATION-TEST PAIRING: Khi chạy `closeout_gate.py --target-file`, BẮT BUỘC truyền đồng thời cả file triển khai logic và file unit test tương ứng.
+  - DATA-FILE CLOSEOUT TEST PAIRING (BẪY TIMEOUT TOÀN BỘ REPO): Khi commit file dữ liệu/cấu hình (`.json`, `.yaml`, `.txt`), `closeout_gate.py` không tự tìm được test focused nên mặc định chạy cả repo (`pytest tests` -> 767 tests gây timeout 120s). BẮT BUỘC commit kèm file test `.py` hành vi tương ứng (ví dụ `data/...json` đi kèm `tests/test_...guard.py`).
+  - BEHAVIORAL & TELEMETRY TEST CONTRACT (ĐIỀU KIỆN ĐẠT ĐIỂM >= 85): Reviewer trừ điểm gắt (78đ REJECT) nếu test chỉ assert tĩnh dữ liệu nằm trong dict/set. Bắt buộc test hành vi thực tế: (1) chặn ghi tiêu cực khi thiếu grant, (2) telemetry log xác nhận (`assert event=... in caplog.text`), (3) ghi thành công kèm backup khi có grant.
+  - ANTI-EMPTY-PROMISE INVARIANT (PHẢN XẠ THỰC THI TRƯỚC LỜI NÓI): Tuyệt đối cấm kết thúc lượt thoại bằng lời hứa hẹn suông ("Em sẽ commit ngay...", dẫn đến phản ứng '?' của Operator). BẮT BUỘC gọi tool thực thi ngay trong lượt hiện tại, thu thập bằng chứng hoàn tất rồi mới báo cáo.
   - CẤM PUSH TRƯỚC GATE (ANTI-PRE-GATE-PUSH): Tuyệt đối cấm commit & push code lên remote trước khi chạy closeout_gate.py đạt APPROVED.
 
 ## 2. Quy Trình Khắc Phục Khi Trượt (Remediation Protocol)
@@ -46,6 +49,7 @@ metadata:
 - **Anti-Stalling / Anti-Bureaucracy Invariant:** Khi Operator hỏi "xong hết chưa", cấm viện cớ quan liêu về trạng thái dirty hay chưa closeout để thoái thác. Bắt buộc xác nhận ngay code đã active trên đĩa hay chưa, báo cáo kết quả kiểm chứng cụ thể và lập tức kích hoạt Closeout Gate.
 
 ## 3. Tài Liệu Tham Khảo (References)
+- Data-File Closeout Test Pairing, Telemetry Depth & Untracked Tool Preservation (2026-10-18): [`references/data-file-closeout-test-pairing-and-untracked-tool-preservation-20261018.md`](references/data-file-closeout-test-pairing-and-untracked-tool-preservation-20261018.md)
 - Đồng Thuận 3 Bên: Kiến Trúc Grace Band Không Xung Đột (2026-10-18): [`references/tri-party-consensus-zero-conflict-grace-architecture-20261018.md`](references/tri-party-consensus-zero-conflict-grace-architecture-20261018.md)
 - Closeout Gate Handoff Lock, Scope Bleed & Grace Band Discipline (2026-10-18): [`references/closeout-gate-handoff-lock-and-scope-bleed-discipline-20261018.md`](references/closeout-gate-handoff-lock-and-scope-bleed-discipline-20261018.md)
 - Bẫy lstrip("./") Gọt Cụt Dấu Chấm File Ẩn & Kỷ Luật Model Remediation (2026-10-18): [`references/lstrip-hidden-file-truncation-and-sol-monopoly-discipline-20261018.md`](references/lstrip-hidden-file-truncation-and-sol-monopoly-discipline-20261018.md)
