@@ -113,6 +113,58 @@ During the deployment of `farm_network_gate.py` on Máy 7 (serial `9885f63030454
 
 ---
 
+### H. `am start -e password` Argument Quoting Trap
+- **Symptom:** WPA2 4-way handshake repeatedly fails with `L2_AUTH_FAIL` or `TIMEOUT` even when the plaintext password in config is correct (e.g. `23102025`).
+- **Root Cause:** Passing `shlex.quote(password)` to `am start -e password ...` injects literal single quotes (`'23102025'`). Android `Activity` intent parser does NOT strip shell quotes from extra string arguments, passing `'23102025'` as the 10-character Wi-Fi password instead of the actual 8-character numeric string.
+- **Remediation:** Pass the raw password string directly without single quotes:
+  ```python
+  cmd = " ".join([
+      "am", "start", "-n", JOIN_ACTIVITY,
+      "-e", "ssid", f'"{net["ssid"]}"',
+      "-e", "password_type", "WPA",
+      "-e", "password", net["password"],
+  ])
+  ```
+
+---
+
+### I. Waking Android 8 DHCP Client via `WifiSettingsActivity`
+- **Symptom:** L2 Wi-Fi associations succeed immediately (`COMPLETED`), but `DhcpClient` stays dormant and fails to obtain an IPv4 address within the poll window (`L3_NO_IP`, `raw_wlan0: `).
+- **Root Cause:** On Samsung Galaxy S7 (Android 8), background broadcast receivers occasionally miss the DHCP Offer when joining programmatically via background activity.
+- **Remediation:** Launch the native Wi-Fi settings activity during the polling window:
+  ```python
+  _adb_shell(serial, "am start -a android.settings.WIFI_SETTINGS")
+  ```
+  Opening the foreground settings UI forces the Samsung framework Wi-Fi state machine to poll and process pending DHCP lease transactions immediately.
+
+---
+
+### J. `/proc/net/arp` Inspection for Non-Root Gateway Verification
+- **Symptom:** Non-root Android 8 devices fail ICMP ping (`connect: Network is unreachable` or `socket: Permission denied`), falsely flagging gateway unreachable.
+- **Root Cause:** `ping` requires `CAP_NET_RAW` which non-root shells on Samsung stock firmware may lack.
+- **Remediation:** Read `/proc/net/arp` directly to verify whether the gateway's MAC address is resolved and valid on `wlan0`:
+  ```python
+  arp_out = _adb_shell(serial, "cat /proc/net/arp").stdout or ""
+  for ln in arp_out.splitlines():
+      if GATEWAY in ln and "wlan0" in ln and "00:00:00:00:00:00" not in ln:
+          parts = ln.split()
+          if len(parts) >= 4 and parts[2] != "0x0":
+              return True
+  ```
+
+---
+
+### K. Idempotent Join Bypass When Already Associated
+- **Symptom:** Gate runs repeatedly reconnect and drop existing IP leases when checking an already-healthy or partially joined device.
+- **Root Cause:** Unconditionally invoking `_join_wifi` flushes supplicant networks and resets radio state, destroying an active dynamic DHCP lease.
+- **Remediation:** Wrap join invocation with an association check:
+  ```python
+  if not (_ssid_connected(serial, net["ssid"]) and _has_subnet_ip(serial)):
+      outcome, detail = _join_wifi(serial, net)
+  ```
+
+---
+
 ## 3. Operator Mandate: Anti-Paralysis Protocol (No Passive BLOCKED)
 
 - **User Correction (2026-10-18):** *"TAO CĂM THÙ CHỮ BLOCKED... làm việc mà cứ dừng lại khóc"*.
