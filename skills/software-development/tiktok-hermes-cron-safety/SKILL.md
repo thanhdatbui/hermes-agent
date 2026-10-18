@@ -6,6 +6,7 @@ description: Phase 9A.x → 9C.x production-safety work in the Taadaa Hermes-cro
 # TikTok Hermes-Cron Production-Safety Remediation (Phase 9A.x → 9B.x)
 
 - **Troubleshooting Reference**: [references/manifest-identity-mismatch-troubleshooting.md](references/manifest-identity-mismatch-troubleshooting.md)
+- **Cron Safety & Queue Starvation**: [references/cron-llm-agent-loop-starvation-and-guard-enforcement.md](references/cron-llm-agent-loop-starvation-and-guard-enforcement.md) — PreToolUse guard & auto-quarantine for `no_agent: True`.
 - **Healing Selector Loader Troubleshooting**: [references/cron-dynamic-healing-selector-loader.md](references/cron-dynamic-healing-selector-loader.md)
 - **Cohort Validation & Block Index Troubleshooting**: [references/cohort-validation-and-block-index-troubleshooting.md](references/cohort-validation-and-block-index-troubleshooting.md)
 - **4 Ca x 2 Phiên Invariants**: [references/manifest-4-block-2-session-invariants.md](references/manifest-4-block-2-session-invariants.md)
