@@ -8,16 +8,17 @@ description: "TikTok follow runner and fail-closed farm ops."
 ## Non-negotiable operating rules
 
 - **Tài liệu tham khảo chuyên sâu (`references/`):**
-    - `references/profile-follow-action-button-classification.md`: Phân loại nút Follow.
-    - `references/scrape-cycle-cadence-and-dashboard-reconciliation.md`: Lệch pha chu kỳ quét 07h vs ca bot & đối soát Dashboard 1905.
+    - `references/profile-follow-action-button-classification.md`: Nút Follow.
+    - `references/scrape-cycle-cadence-and-dashboard-reconciliation.md`: Quét 07h & Dashboard 1905.
     - `references/mode2-anchor-selection-and-deep-scroll.md`: Anchor >= 150 fl.
     - `references/follow-report-semantics-and-concise-wording.md`: Báo cáo follow.
     - `references/account-replacement-and-backfill-state-reset.md`: Thay nick.
-    - `references/fleet-follow-graduated-probation-ladder.md`: Bậc thang 3 nấc & Health.
-    - `references/adaptive-ceiling-and-stratified-cohort-governance.md`: Dò trần (+2 đến 30 fl), khôi phục bộ nhớ & 3 Cohort.
+    - `references/fleet-follow-graduated-probation-ladder.md`: Bậc 3 nấc & Health.
+    - `references/adaptive-ceiling-and-stratified-cohort-governance.md`: Dò trần (+2 đến 30), 3 Cohort.
     - `references/daily-follow-matrix-and-trust-ceiling-analytics.md`: Heatmap & Ceiling.
     - `references/shared-ip-proxy-collision-and-canary-ceiling-testing.md`: Trùng IP.
-    - `references/account-level-action-restriction-and-anchor-fallacy.md`: Lỗi nhả cấp tài khoản vs ngộ nhận Anchor.
+    - `references/account-level-action-restriction-and-anchor-fallacy.md`: Lỗi nhả nick vs Anchor.
+    - `references/account-maturity-trust-factors-and-natural-feed-transition.md`: Vanity Metrics vs Behavioral Trust, 45-59d Feed-Follow tự nhiên, Cầu dao IP nick yếu vs khỏe.
     - `references/contact-suggestion-popup-follow-lockdown.md`: Khóa popup danh bạ.
     - `references/burst-follow-hibernation-cadence-gemphone-benchmark.md`: Burst 20-30 fl.
     - `references/probation-ladder-4day-cycle-adaptation.md`: Chu kỳ 4 ngày.
