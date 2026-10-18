@@ -201,9 +201,19 @@ def classify_advice_intent(message: str) -> bool:
     return False
 
 
-def _call_stream_chat(url: str, headers: dict[str, str], payload: dict[str, Any], timeout_sec: float) -> Tuple[bool, str]:
-    """Gọi endpoint chat completion có hỗ trợ SSE streaming với wall-clock deadline nghiêm ngặt."""
+def _call_stream_chat(
+    url: str,
+    headers: dict[str, str],
+    payload: dict[str, Any],
+    first_token_timeout: float = 45.0,
+    idle_token_timeout: float = 15.0,
+    max_total_timeout: float = 90.0,
+) -> Tuple[bool, str]:
+    """Gọi endpoint chat completion có hỗ trợ SSE streaming với Idle Streaming Timeout."""
     t_start = time.time()
+    t_last_activity = t_start
+    has_started_streaming = False
+
     payload["stream"] = True
     payload["tools"] = []
     payload["tool_choice"] = "none"
@@ -214,10 +224,20 @@ def _call_stream_chat(url: str, headers: dict[str, str], payload: dict[str, Any]
     completed_cleanly = False
 
     try:
-        with urllib.request.urlopen(req, timeout=timeout_sec) as resp:
+        # Socket timeout ban đầu chờ token đầu tiên
+        with urllib.request.urlopen(req, timeout=first_token_timeout) as resp:
             for line in resp:
-                if time.time() - t_start > timeout_sec:
-                    return False, f"Wall-clock deadline exceeded ({timeout_sec}s)"
+                now = time.time()
+                if not has_started_streaming:
+                    if now - t_start > first_token_timeout:
+                        return False, f"First token deadline exceeded ({first_token_timeout}s)"
+                else:
+                    if now - t_last_activity > idle_token_timeout:
+                        return False, f"Stream idle timeout exceeded ({idle_token_timeout}s)"
+
+                if now - t_start > max_total_timeout:
+                    return False, f"Total stream timeout exceeded ({max_total_timeout}s)"
+
                 line_str = line.decode("utf-8", errors="replace").strip()
                 if line_str == "data: [DONE]":
                     completed_cleanly = True
@@ -228,6 +248,8 @@ def _call_stream_chat(url: str, headers: dict[str, str], payload: dict[str, Any]
                         delta = chunk["choices"][0].get("delta", {}).get("content", "")
                         if delta:
                             text_chunks.append(delta)
+                            has_started_streaming = True
+                            t_last_activity = now
                     except Exception:
                         pass
         full_text = "".join(text_chunks).strip()
@@ -269,7 +291,14 @@ def _consult_inner(prompt: str, context: str = "") -> dict[str, Any]:
 
     for target_model in ["gpt-web-sol", "review"]:
         payload = {"model": target_model, "messages": messages}
-        ok, text_resp = _call_stream_chat(omni_url, omni_headers, payload, timeout_sec=25.0)
+        ok, text_resp = _call_stream_chat(
+            omni_url,
+            omni_headers,
+            payload,
+            first_token_timeout=45.0,
+            idle_token_timeout=15.0,
+            max_total_timeout=90.0,
+        )
         if ok and len(text_resp) > 20:
             return {
                 "status": "success",
@@ -289,8 +318,8 @@ def _consult_inner(prompt: str, context: str = "") -> dict[str, Any]:
     }
 
 
-def consult_advisor(prompt: str, context: str = "", timeout_sec: float = 45.0) -> dict[str, Any]:
-    """Truy vấn trực tiếp Advisor Sol (:20129 review) với DEADLINE CỨNG WALL-CLOCK <= 45s (wait=False)."""
+def consult_advisor(prompt: str, context: str = "", timeout_sec: float = 95.0) -> dict[str, Any]:
+    """Truy vấn trực tiếp Advisor Sol (:20129 review) với Idle Streaming Timeout (wait=False)."""
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
     future = executor.submit(_consult_inner, prompt, context)
     try:
