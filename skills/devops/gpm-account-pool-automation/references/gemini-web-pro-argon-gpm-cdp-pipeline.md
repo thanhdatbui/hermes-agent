@@ -78,7 +78,8 @@ Khi click mở dropdown chọn model tại góc trên bên trái của `gemini.g
   - `inner[17] = [[4]]`: Low — phản xạ nhanh cho tác vụ trích xuất / regex.
   - `inner[17] = null`: None — tắt hẳn CoT.
 - **Hiện thực lịch sử chat trên giao diện Web (Conversation History Isolation):**
-  - **Gemini Web (`gemini-web-argon-pool`):** Do gửi payload HTTP RPC với `inner[2]` rỗng, máy chủ Google xử lý stateless và **KHÔNG LƯU lịch sử chat vào thanh Recent Chats trên web**.
+  - **Gemini Web StreamGenerate (OmniRoute `:20129`):** Do gửi payload HTTP RPC với `inner[2]` rỗng, máy chủ Google xử lý stateless và **KHÔNG LƯU lịch sử chat vào thanh Recent Chats trên web**.
+  - **Gemini 4 Argon Local CDP Daemon (`:20135`):** Vì tương tác trực tiếp trên DOM của Chromium thật tại `https://gemini.google.com/app`, các câu hỏi **ĐƯỢC LƯU LẠI trong thanh Recent Chats** của tài khoản GPM đó. Tài khoản Pro không bị giới hạn số lượng chat, nhưng cần biết điểm khác biệt này để dọn dẹp định kỳ hoặc mở tab Temporary Chat khi cần giấu dấu vết.
   - **ChatGPT Web (`gpt-web-sol`):** Luôn bật mặc định cờ `history_and_training_disabled: true` (Temporary Chat), **KHÔNG LƯU lịch sử chat trên chatgpt.com**.
 
 ---
