@@ -285,6 +285,7 @@ def generate_account_for_slot(slot, existing_emails=None, max_attempts=300):
 | False-positive in `is_target` matching old username with digits | e.g. target 'Phan Nhung' matches current name 'phannhung1710' with ratio 0.78 >= 0.75 → skipped without typing | BẮT BUỘC kiểm tra `re.search(r'\d{2,}$', nl)` trong `is_target()`: nếu tên hiện tại còn dính số đuôi của username thì trả về False ngay để buộc gõ tên mới |
 | Missing surname in HO_MAP causing full syllable drop | e.g. @quachtrang203 misses surname 'quach' in HO_MAP → prefix match fails → returns [] → renamed to unrelated 'Trâm Sữa' | Mở rộng HO_MAP với 24 họ Việt mở rộng + Bổ sung Stage 3 Substring Scan để nhặt các từ tố tên chính (độ dài >= 3) nằm trong username |
 | Untracked subprocess script loss via git clean in `tools/` | Subprocess scripts (`do_rename_canonical_runner.py`) untracked in `tools/` getting wiped on `git clean` → cron silently fails exit 2 | Watchdog auto-restores dependencies from `%LOCALAPPDATA%\hermes\scripts` before spawning workers; track canonical scripts |
+| Hardcoded / identical bio across accounts | Writing identical bio ('Chia sẻ những khoảnh khắc...') across multiple accounts creates an obvious bot footprint | BẮT BUỘC dùng pool bio đa dạng (`natural_bio_pool.py` 80+ mẫu câu), CẤM TUYỆT ĐỐI hardcode 1 mẫu bio |
 
 ## Verification
 

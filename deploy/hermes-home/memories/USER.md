@@ -1,4 +1,4 @@
-Chuẩn hoá: 4 món (ava lưới 2 preview tròn, hashtag, pin >=1k view, bio VN AdbKeyboard); Tik*.xlsx; Khóa nick sửa tay.
+bio VN AdbKeyboard cấm trùng 1 mẫu); Tik*.xlsx; Khóa nick.
 §
 Dọn đĩa: duyệt trước; CẤM xóa cứng (rm/unlink/rmtree), BẮT BUỘC safe_recycle.py Fail-Closed; CẤM xóa backup/đẻ script ad-hoc. MEDIA: WinRT OCR.
 §
@@ -8,9 +8,9 @@ Closeout: Done=chạy gate tự dứt điểm; Grace 80-84 chống Sol bắt b�
 §
 Ava/Media: BẮT BUỘC WinRT OCR; CẤM bịa mô tả/gửi mù; menu Ghim/Riêng tư KHÔNG PHẢI publish proof; pHash/crop thật cấm DONE ảo; cấm tin mù status/receipt tool.
 §
-Worker: Haiku/Agy fix; delegate chỉ đọc. Bị Guard: cấm khóc/đùn việc; Claude=tư vấn, Sol=chiến lược, Agent thi công. Hook mới: đối soát xung đột gate cũ. CẤM xin lỗi mồm/lặp lỗi; Done báo gọn.
+Worker: Haiku/Agy fix; delegate chỉ đọc. Bị Guard: là vi phạm, CẤM khóc lóc/đùn việc, gọi Claude/Sol cơ giới hóa. CẤM xin lỗi mồm; Done báo gọn.
 §
-Canary: đa máy/layout, MEDIA:. 100% Singbox, cấm VPN. Mạng: Ruijie>Aruba, cấm bao biện khi chưa thông ping.
+Canary: MEDIA: đúng màn đích (CẤM ảnh Home/Launcher đối phó); đa máy/layout; 100% Singbox, cấm VPN.
 §
 Reboot: CẤM khi in-match TFT (LoL/TFTClient) hoặc mở War3 (war3/w3l); lobby TFT được reboot; né ca chạy.
 §

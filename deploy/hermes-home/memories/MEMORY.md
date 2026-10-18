@@ -16,7 +16,7 @@ Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot. Cron: 100% 
 §
 Singbox :200xx, CẤM VPN. Wi-Fi: M1-40 kibe 1, M41-80 kibe 2, M201-240 admin 1, M241-280 admin 2. CẤM gán Static IP Ruijie cho máy farm (100% DHCP động). Cứu máy: operator_device_lock(force_preempt=True). Proxy 192.168.110.2:port (Kibe: 20001..20080; Admin: 10008..10035; 67/69 direct).
 §
-Canary: đổi máy rảnh cùng cụm khi kẹt lock; cấm khóc/nói vẹt CLI; ATX :7912 & WinRT OCR thay uiautomator; gate verify MEDIA+OCR.
+Canary: canary_runner.py (1 máy hotfix, >=3 máy wide); done_gate verify receipt hash+MEDIA+OCR, cấm cờ trơn & cấm ảnh Home; OCR primary.
 §
 Ava: Trích clip folder đang chạy (cấm lệch creator). WinRT OCR lọc sạch text/sticker; CẤM gửi MEDIA: mù; Gate 6 bắt buộc MEDIA: ngay sau đổi tên/bio/ava, cấm báo cáo mồm. Dọn .thumbnails+Camera/*; Picker ô 0,1. Bấm Lưu crop Profile so BGR/pHash > 15 mới nghiệm thu; kéo refresh nếu kẹt cache.
 §

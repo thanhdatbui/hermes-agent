@@ -35,6 +35,7 @@ Claude Sonnet 5.5 đã phân tích tận gốc 2 căn nguyên:
 - **Giải pháp cơ học:**
   - **Chặn phát ngôn không bằng chứng:** Mọi câu trả lời chứa từ khóa kết quả (`hoàn tất`, `đã đổi`, `thành công`, `xong`) đối với tác vụ UI BẮT BUỘC phải đi kèm thẻ `MEDIA:<posix_path>` trên một dòng độc lập.
   - **Tách rời ngân sách Evidence:** Lượt chụp ảnh và gửi `MEDIA:` là chi phí cố định bắt buộc, không được vì áp lực hết tool call mà cắt xén.
+  - **Cơ chế Hook Chặn Cứng (Runtime Output Gate):** Bổ sung bộ lọc cơ học trong `guard_media_vision_gate.py` (`transform_llm_output_check`), tự động chặn tin nhắn mang claim hoàn thành UI mà không có thẻ `MEDIA:`, ném mã lỗi `MISSING_MEDIA_EVIDENCE` ép LLM phải đính kèm ảnh trước khi xuất bản.
 
 ---
 
