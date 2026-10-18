@@ -104,6 +104,18 @@ Use status values such as `NO_DAT_EVIDENCE`, `CLEAN_AND_ONLINE`, `ONLINE_BUT_ROG
   - Profile rác trùng tiền tố (`kibe` vs `kibe 1`): Cấu hình rác open không bảo mật mang tên gốc `kibe` (Net ID 1) sẽ tranh chấp quét mạng với `kibe 1` (Net ID 0), khiến máy dao động liên tục giữa `last="kibe"NONE` và `target="kibe 1"WPA_PSK`. Bắt buộc phải purge dứt điểm bằng `service call wifi 14 i32 <ROGUE_ID>`.
   - Biện pháp khắc phục: (1) Purge triệt để profile rác trùng tiền tố, (2) `am force-stop com.steinwurf.adbjoinwifi`, (3) Toggle radio `svc wifi disable && sleep 1 && svc wifi enable`, (4) Kiểm tra vị trí đặt máy vật lý / ăng-ten để đảm bảo RSSI 5GHz > -70 dBm, hoặc khởi động lại AP Aruba tương ứng nếu AP vẫn lưu cờ blacklist MAC.
 
+- **Bẫy Sai Mật Khẩu Wi-Fi Theo Nhóm Máy & Triệu Chứng Aruba MIC Failure (2026-10-18)**:
+  - CẤM TUYỆT ĐỐI agent phản xạ dùng mật khẩu `19051995` cho toàn bộ các AP trên farm. Nguồn chân lý duy nhất (Single Source of Truth) là `D:/Taadaa/machine-config/farm_wifi_profiles.json`:
+    * M1–M40 (`kibe 1`): Mật khẩu bắt buộc là **`23102025`**.
+    * M41–M80 (`kibe 2`): Mật khẩu là **`19051995`**.
+    * M201–M240 (`admin 1`): Mật khẩu là **`19051995`**.
+    * M241–M280 (`admin 2`): Mật khẩu là **`19051995`**.
+  - **Triệu chứng nhận diện sai mật khẩu:**
+    * Aruba AP Controller log (`show log system`): `AP ...: Client <MAC>: authenticate fail because integrity check failure in encrypted message` (Lỗi Message Integrity Check - MIC trong bắt tay 4 bước WPA2).
+    * Android logcat (`wpa_supplicant` / `WifiStateMachine`): `CTRL-EVENT-ASSOC-REJECT status_code=1` kèm `DISABLED_BY_WRONG_PASSWORD` -> đẩy supplicant về `UNINITIALIZED` / `DISCONNECTED`.
+  - **Cạm bẫy Android 8 Samsung S7 (SM-G930F):** Lệnh `cmd wifi` không tồn tại trên Android 8. BẮT BUỘC dùng `com.steinwurf.adbjoinwifi/.MainActivity` với tham số `--es ssid "<SSID>" --es password_type WPA --es password "<PASS>"` (sau khi đã purge Net ID sai cũ bằng `service call wifi 14 i32 <ID>`).
+  - **Module Path của `operator_device_lock`:** Nằm trong `automation_core.device_lock` (`D:/Taadaa/automation-core/src`). Mọi thao tác can thiệp thiết bị bắt buộc bọc trong `operator_device_lock(machine=N, serial="<SERIAL>")` và kèm cờ `-s <serial>` trong mọi lệnh ADB.
+
 - **Bắt buộc có Circuit Breaker cho Auto-Healer (Chống Flapping Loop):**
   CẤM TUYỆT ĐỐI các script auto-healer chạy chu kỳ ngắn (như 5 phút một lần) liên tục dập nhả `svc wifi disable && svc wifi enable` khi máy chưa có IP. Vòng lặp dập nguồn liên tục sẽ đẩy chip Broadcom PCIe vào trạng thái ngủ sâu (`state DORMANT / NO-CARRIER`, `UNINITIALIZED`), đồng thời kích hoạt Aruba AP từ chối kết nối (`ASSOCIATION_REJECTION counter:8`). Healer bắt buộc có Circuit Breaker: tối đa 2 lần thử trong 30 phút, nếu thất bại phải tạm dừng ít nhất 60 phút để máy tự ổn định stack mạng.
 
@@ -129,6 +141,7 @@ Use status values such as `NO_DAT_EVIDENCE`, `CLEAN_AND_ONLINE`, `ONLINE_BUT_ROG
 
 ## Reference
 
+- See `references/wifi-wrong-password-aruba-mic-failure-and-farm-profiles-20261018.md` for WPA2 integrity check failure (MIC failure), farm wifi profiles password mapping (23102025 vs 19051995), Android 8 adbjoinwifi vs cmd wifi limits, and operator_device_lock module path.
 - See `references/aruba-integrity-check-failure-and-cluster-password-desync.md` for WPA2 integrity check failure (MIC failure), cluster password desync between AP groups, and clean Net ID re-binding.
 - See `references/korean-firmware-binder-permission-and-static-ip-trap.md` for firmware variant differences (G930F vs G930S), SecurityException mechanics, and Static IP remediation.
 - See `references/validated-rogue-ssid-canary.md` for the Android 8 binder transaction and read-back evidence pattern from the validated canary. This reference deliberately omits credentials and machine-specific secrets.
