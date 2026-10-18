@@ -21,6 +21,7 @@ metadata:
   - **Diff Ceiling Fail-Fast (30KB):** `closeout_gate.py` tự động chặn diff candidate > 30,000 bytes (`DIFF_TOO_LARGE`). Bắt buộc dùng `--files <target_impl> <target_test>` để phân rã phạm vi thẩm định dưới 30KB.
   - **`REJECTED`:** score <80 hoặc score 80–84 nhưng thiếu bất kỳ điều kiện Grace nào.
   - `gate_common.strict_passes()` và `gate_common.grace_eligible(evidence)` là hai kiểm tra độc lập. Không để `passes()` mặc định nuốt Grace; token issue/verify phải mang `approval_kind` và kiểm tra đúng policy.
+  - **Kiến Trúc Đơn Nguồn Chân Lý & Token Fail-Closed (gate_common.py):** Mọi script downstream (`safe_push.py`, `pre-push.sh`, `guard_closeout_discipline.py`) CẤM tự regex/so sánh điểm 85 hay 80. Bắt buộc gọi `gate_common.verify()` nhận phán quyết nhị phân. Hàm `verify()` cấm tự tạo key khi thiếu key (`key_missing`), kiểm tra nghiêm ngặt token ASCII, `0 <= score <= 100`, `iat <= exp`, và từ chối fail-open nếu `grace_evidence is None`.
   - Thiếu token hợp lệ hoặc token không khớp `approval_kind`: `safe_push.py` chặn push, output guard chặn claim DONE.
   - Mục tiêu của Grace là tránh Sol bắt bẻ lặt vặt gây vòng lặp vô hạn, không phải hạ chuẩn an toàn: Grace chỉ là closeout có điều kiện và vẫn phải có evidence đầy đủ.
   - ANTI-PHANTOM CLOSEOUT TRAP: Trước khi chạy closeout_gate.py, BẮT BUỘC kiểm tra `git status --short` và `git diff --stat origin/main..HEAD`. Nếu working tree sạch và local khớp remote (ahead 0), task ĐÃ XONG từ trước, CẤM chạy gate review đè lên commit lịch sử cũ.
@@ -60,6 +61,7 @@ metadata:
 Reference: [`references/worker-timeout-quota-and-closeout-scope-20261018.md`](references/worker-timeout-quota-and-closeout-scope-20261018.md)
 
 ## 3. Tài Liệu Tham Khảo (References)
+- Zero-Conflict Gate Common & Fail-Closed Token Architecture (2026-10-18): [`references/zero-conflict-gate-common-and-fail-closed-token-architecture-20261018.md`](references/zero-conflict-gate-common-and-fail-closed-token-architecture-20261018.md)
 - Grace Band Diff Budget, Diff Ceiling (30KB) & State Machine Scoring Rubric (2026-10-18): [`references/grace-band-diff-budget-and-diff-too-large-triage-20261018.md`](references/grace-band-diff-budget-and-diff-too-large-triage-20261018.md)
 - Claude Reviewer Approved: gate_common Fail-Closed & ASCII Token Security (2026-10-18): [`references/claude-reviewer-approved-gate-common-and-fail-closed-validation-20261018.md`](references/claude-reviewer-approved-gate-common-and-fail-closed-validation-20261018.md)
 - Data-File Closeout Test Pairing, Telemetry Depth & Untracked Tool Preservation (2026-10-18): [`references/data-file-closeout-test-pairing-and-untracked-tool-preservation-20261018.md`](references/data-file-closeout-test-pairing-and-untracked-tool-preservation-20261018.md)
