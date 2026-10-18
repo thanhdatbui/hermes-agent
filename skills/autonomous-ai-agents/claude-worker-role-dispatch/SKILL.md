@@ -97,6 +97,16 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
 
 ## Pitfalls
 
+- **KỶ LUẬT "THI CÔNG ĐẾN KHI CLAUDE CLI DUYỆT" & PHÂN VAI ARCHITECT VS BUILDER (User Mandate 18/10/2026):**
+  Khi Operator (User) ra lệnh *"Thi công đến khi Claude CLI duyệt"*, Coordinator BẮT BUỘC tuân thủ:
+  1. *Phân vai bất biến:* Claude Sonnet 5.5 (`--role planner` / `--role reviewer`) CHỈ LÀM TƯ VẤN KIẾN TRÚC & REVIEWER THẨM ĐỊNH. Tuyệt đối CẤM đùn việc viết code hoặc viết unit test cho Claude CLI làm cháy quota 5h. Coordinator và Worker Haiku O(1) là người trực tiếp thi công code & test suite.
+  2. *Quy trình lặp đối kháng đến APPROVED:*
+     - Bước 1: Thi công code & test suite.
+     - Bước 2: Dispatch Claude Reviewer (`python D:/Taadaa/tools/claude_worker.py --role reviewer --max-turns 4 ...`).
+     - Bước 3: Nếu phán quyết là `VERDICT: REJECTED`, đọc kỹ từng finding (P1/P2), bóc tách root cause và sửa code, đồng thời bổ sung regression test cho từng finding.
+     - Bước 4: Chạy lại pytest xác nhận pass 100%, nộp lại bài cho Claude Reviewer.
+     - Lặp lại cho đến khi Claude Reviewer trả về `VERDICT: APPROVED` (như case study `guard_android_proxy.py` trải qua 5 vòng review gắt gao từ 6 test lên 48 tests mới được duyệt). CẤM dừng lại bỏ cuộc hoặc thỏa hiệp khi Reviewer còn từ chối.
+  (Xem `farm-agent-governance` reference `references/mechanical-guard-mandatory-and-claude-advisor-vs-coordinator-builder-20261018.md`).
 - **QUY CHUẨN ĐÍCH DANH "HỎI / GỌI CLAUDE CLI" CỦA OPERATOR (Operator Sonnet Mandate 17/10/2026):**
   Khi Operator (User) ra lệnh *"hỏi Claude"*, *"gọi Claude CLI kiểm tra / đánh giá / tư vấn / review"*, Coordinator BẮT BUỘC dispatch **Claude Sonnet 5.5** (`claude_worker.py --role planner` hoặc `--role reviewer`), TUYỆT ĐỐI CẤM tự ý hạ cấp xuống `haiku_worker.py`!
   CẤM TUYỆT ĐỐI đề cập hay gọi nhầm thành Claude 3.5 Sonnet (User dùng độc quyền thế hệ 5.5).
