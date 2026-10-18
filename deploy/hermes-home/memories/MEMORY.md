@@ -10,7 +10,7 @@ GPM: max 5 wkr. 4 Argon=GPM CDP :20135; :20129=Pro. Agy CLI bắt buộc 3.8-fla
 §
 Stale Up: xóa draft. Revert flop: TikWM tải CDN. Popup 'Ghim/Riêng tư' ko phải proof. Cào: max 60.
 §
-Closeout: Grace 80-84 (test xanh, diff O(1) <=30 dòng, 0 crit) auto-push; >=85 strict; CẤM xóa Grace. CẤM đưa menu 1/2; thiếu điểm tự sửa 3 Strike. Target trùng remote -> DỪNG. CẤM commit -a.
+Closeout: Grace 80-84 (test xanh) auto-push; BẮT BUỘC --files tránh DIFF_TOO_LARGE; Claude chạm 85% -> Agy CLI fix (22 pool ready), CẤM báo BLOCKED; CẤM commit -a; 3 Strike tự sửa.
 §
 Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot. Cron: 100% no_agent+script thô, cấm LLM<6h nghẽn GW.
 §

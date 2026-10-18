@@ -113,10 +113,12 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
 
 - **CẤM BÁO BLOCKED THỤ ĐỘNG & TRIỆT TIÊU BỆNH TÊ LIỆT/KHÓC LÓC (Anti-Paralysis Invariant — User Correction 18/10/2026):**
   Operator đã chấn chỉnh gắt gao: *"TAO CĂM THÙ CHỮ BLOCKED... làm việc mà cứ dừng lại khóc"*.
-  Khi gặp lỗi Gate (ví dụ: `L2_AUTH_FAIL`, `L3_NO_IP`), Coordinator TUYỆT ĐỐI CẤM:
+  Khi gặp lỗi Gate (ví dụ: `L2_AUTH_FAIL`, `L3_NO_IP`, `DIFF_TOO_LARGE`, hay `CLAUDE_QUOTA_GUARD_BLOCKED`), Coordinator TUYỆT ĐỐI CẤM:
   1. Chỉ ném ra một dòng `BLOCKED` rồi dừng lại khoanh tay đứng nhìn hoặc than phiền.
-  2. Lấy cớ kẹt slot nuôi / lịch cron để viện cớ không cứu máy đang hỏng.
-  3. BẮT BUỘC HÀNH ĐỘNG: Ngay khi Gate trả về mã lỗi, Coordinator phải lập tức dùng công cụ inspect O(1) kiểm tra hiện trường vật lý (`dumpsys wifi`, `ip addr`, logcat), truy vết chính xác tầng hỏng (L2 do sót profile ID >= 10 hay L3 do DHCP Ruijie chưa nhả), và chủ động đưa ra phương án thi công dứt điểm.
+  2. Bỏ cuộc khi Claude CLI chạm trần 85%: BẮT BUỘC tự động chuyển ngay sang Tier 2 Fallback `python D:/Taadaa/tools/ag_cli.py fix` (22 profiles Pro pool luôn sẵn sàng). Báo BLOCKED vì quota khi Antigravity pool còn profile READY bị coi là THẤT BẠI NGHIÊM TRỌNG.
+  3. Quên cờ `--files` khi chạy `closeout_gate.py`: Repo farm luôn có nhiều file dirty từ cron/task khác; chạy gate không có `--files` sẽ kích hoạt `DIFF_TOO_LARGE` (>30KB). Đây là lỗi thiếu cờ của người gọi, KHÔNG PHẢI lỗi code hay blocker thật; phải truyền đúng `--files <f1> <f2>` để khóa chặt scope O(1).
+  4. Bẫy `git commit -a`: CẤM TUYỆT ĐỐI dùng `git commit -a` vì sẽ stage cả 16 files dirty khác trên máy vào HEAD commit. Luôn `git add <file1> <file2>` tường minh.
+  5. BẮT BUỘC HÀNH ĐỘNG: Ngay khi Gate trả về mã lỗi, Coordinator phải lập tức dùng công cụ inspect O(1) kiểm tra hiện trường vật lý (`dumpsys wifi`, `ip addr`, logcat), truy vết chính xác tầng hỏng (L2 do sót profile ID >= 10 hay L3 do DHCP Ruijie chưa nhả), và chủ động đưa ra phương án thi công dứt điểm.
 
 - **CẤM LẶP LẠI 3 LỖI KHI GỌI CLAUDE CLI (Triệt Tiêu Bệnh Xin Lỗi Mồm 18/10/2026):**
   1. *Lỗi Foreground Timeout > 60s:* Host guard chặn cứng mọi lệnh terminal foreground có `timeout > 60s` (`GUARD_FOREGROUND_TIMEOUT_EXCEEDED`). Khi gọi Claude CLI (vốn cần 25–50s để khởi động và hoàn thành), BẮT BUỘC gọi qua `terminal(background=True, notify_on_complete=True, timeout=120)`. CẤM gõ `timeout=75` hay `90` ở foreground dẫn tới bị guard quật lặp đi lặp lại.
@@ -228,6 +230,7 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
 - `D:/Taadaa/tools/tests/test_dispatch_worker.py`: 11/11 tests (CRLF/whitespace normalization, failure hierarchy, snapshot & hash gate, target deletion rejection, unrelated files guard, anchored BLOCKED detection, PermissionError mapping, correlation ID consistency, Haiku/Agy fallback orchestration mocks).
 - `D:/Taadaa/tools/tests/test_sol_worker.py`: 8/8 tests (safe shell command regex, metacharacters injection block, DSL parse, atomic patch lifecycle, AST validation, LF preserve, max_turns validation).
 
+- `references/closeout-gate-auto-scoping-and-anti-whining-audit-20261018.md` — **[MỚI 18/10/2026]** Hậu kiểm bài học Closeout Gate: bẫy quên `--files` gây DIFF_TOO_LARGE giả trên repo farm dirty, mâu thuẫn Grace Band 80 điểm và token gate_common max_lines=80, bẫy tê liệt không kích hoạt Tier 2 Agy CLI khi Claude chạm trần 85%, và bẫy timeout 60s di căn.
 - `references/claude-sonnet-anti-paralysis-and-scope-lockdown-spec-20261018.md` — **[MỚI 18/10/2026]** Tư vấn kiến trúc Claude Sonnet 5.5: Mổ xẻ gốc rễ bệnh tê liệt / khóc lóc báo BLOCKED khi Claude hết quota 86%, thiết lập 4 lớp bảo vệ cơ học (L1 Scope Guard/Auto-Scope ở closeout_gate.py; L2 Single Pipeline remediation_dispatcher tự nhảy Agy CLI; L3 Speech Gate cấm nói BLOCKED thiếu ladder_exhausted.receipt; L4 ag_cli pool-status --json).
 - `references/canonical-dispatch-gateway-mandate-and-mechanical-gate-upgrades-20261018.md` — **[MỚI 18/10/2026]** Hậu kiểm bài học phá rule vượt cấp gateway (bypassing dispatch_worker.py) rồi hallucinate model role/3.5, chuẩn hóa Worker độc quyền Haiku 5.5, và phân tích các chốt chặn cơ học mới (guard_dispatch_contract, done_gate, guard_cronjob_safety).
 - `references/winrt-ocr-primary-and-git-hook-enforcement-20261018.md` — **[MỚI 18/10/2026]** Quy chuẩn kiểm tra UI Farm: WinRT OCR Primary 0-token -> ATX-Agent Fallback (port 7912), chốt chặn cơ học pre-commit / pre-push triệt tiêu uiautomator dump, và nguyên tắc xóa prompt tiêm khi đã có hook cơ học do Claude CLI duyệt.
