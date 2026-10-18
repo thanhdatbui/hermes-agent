@@ -41,6 +41,7 @@ metadata:
 - **Anti-Stalling / Anti-Bureaucracy Invariant:** Khi Operator hỏi "xong hết chưa", cấm viện cớ quan liêu về trạng thái dirty hay chưa closeout để thoái thác. Bắt buộc xác nhận ngay code đã active trên đĩa hay chưa, báo cáo kết quả kiểm chứng cụ thể và lập tức kích hoạt Closeout Gate.
 
 ## 3. Tài Liệu Tham Khảo (References)
+- Anti-Stalling & Grace Band 80 Clarification (2026-10-18): [`references/anti-stalling-and-grace-80-clarification-20261018.md`](references/anti-stalling-and-grace-80-clarification-20261018.md)
 - Grace Band (80-84) & Chống Cày Điểm Vụn Vặt (2026-10-18): [`references/grace-band-80-84-and-anti-score-chasing-20261018.md`](references/grace-band-80-84-and-anti-score-chasing-20261018.md)
 - Sol Repair Empty Proposal & Closing Tag Invariant (2026-10-18): [`references/sol-repair-empty-proposal-and-closing-tag-patch-20261018.md`](references/sol-repair-empty-proposal-and-closing-tag-patch-20261018.md)
 - Sol Repair Empty Proposal Pitfall & Pytest PYTHONPATH: [`references/sol-repair-empty-proposal-and-pytest-pythonpath-pitfalls-20261018.md`](references/sol-repair-empty-proposal-and-pytest-pythonpath-pitfalls-20261018.md)
