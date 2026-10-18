@@ -75,6 +75,44 @@ During the deployment of `farm_network_gate.py` on Máy 7 (serial `9885f63030454
 
 ---
 
+### E. Ruijie Static IP Reservation Conflict (`Converted to Static IP` Stalling)
+- **Symptom:** In Ruijie Gateway (`EW3200GX-PRO`), the device MAC is visible in "DHCP Clients" marked as `Converted to Static IP` (remaining lease e.g. 23 min), and appears in "Static IP Addresses" table (e.g. `192.168.110.124`), but the phone's `wlan0` interface remains completely devoid of an IPv4 address. Host ARP table reports `192.168.110.124 -> 00:00:00:00:00:00` (Incomplete).
+- **Root Cause:** Farm phones (M1–M80) are designed to operate purely on dynamic DHCP. Only the 4 Aruba APs (`.250`–`.253`) and Admin PC (`.119`) belong in the Static IP table. When a farm phone MAC is manually bound in Ruijie's Static IP table, Ruijie locks the lease state. If the phone subsequently forgets the network or resets Wi-Fi, Android's `DhcpClient` sends fresh DHCP Discover broadcasts with new transaction IDs that Ruijie fails to bind dynamically, resulting in an indefinite DHCP starvation loop.
+- **Remediation:**
+  1. Access Ruijie Gateway via Web UI (`http://192.168.110.1/cgi-bin/luci/`) -> More -> Basics -> LAN -> "Static IP Addresses".
+  2. Delete the farm phone's MAC/IP entry from the static table.
+  3. Allow Ruijie to manage the device via normal dynamic DHCP pool, matching the rest of the farm fleet (M1, M2, M6, M8...).
+
+---
+
+### F. `adbjoinwifi` Foreground Lifecycle & Pre-Join Proxy Cleansing
+- **Symptom:** Immediate association drops, captive portal popup loops, or DHCP negotiation failing before an IP can be assigned.
+- **Root Cause:**
+  1. If `am start -S` is used, `-S` force-stops `com.steinwurf.adbjoinwifi`, destabilizing the Wi-Fi service.
+  2. If `input keyevent 3` (HOME) is sent immediately after association, the join activity is minimized before Android completes DHCP exchange.
+  3. If a stale `http_proxy` (`192.168.110.2:200xx`) remains configured on the device, Android attempts to route initial DNS and captive portal checks through the proxy before gaining network connectivity.
+- **Remediation:**
+  1. Pre-join hygiene: `settings put global http_proxy :0` and disable captive portal detection (`captive_portal_mode 0`, `captive_portal_detection_enabled 0`).
+  2. Omit `-S` when launching `com.steinwurf.adbjoinwifi/.MainActivity`.
+  3. Defer sending `KEYCODE_HOME` until after L2->L3->L4 verification is fully completed.
+
+---
+
+### G. Default Route Installation Latency (`_wait_for_gateway`)
+- **Symptom:** `_gateway_reachable` fails with `Network is unreachable` immediately after `_has_subnet_ip` returns `True`.
+- **Root Cause:** Android `ConnectivityService` takes 2–5 seconds after IP lease acquisition to evaluate link properties and install the default route (`default via 192.168.110.1 dev wlan0`).
+- **Remediation:** Implement bounded polling:
+  ```python
+  def _wait_for_gateway(serial: str, net: dict, attempts: int = 6, interval: float = 2.0) -> bool:
+      for _ in range(attempts):
+          if _gateway_reachable(serial, net):
+              return True
+          time.sleep(interval)
+      return False
+  ```
+
+---
+
 ## 3. Operator Mandate: Anti-Paralysis Protocol (No Passive BLOCKED)
 
 - **User Correction (2026-10-18):** *"TAO CĂM THÙ CHỮ BLOCKED... làm việc mà cứ dừng lại khóc"*.

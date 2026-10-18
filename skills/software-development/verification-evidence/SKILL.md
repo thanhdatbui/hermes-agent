@@ -59,6 +59,16 @@ current evidence.
 
 For device-farm code fixes, keep mocked pytest and live-device canary as separate claims. Offline tests prove only the code seam; PASS requires the official runner's fresh machine-scoped manifest, summary, log, matching UI XML, and screenshot. If the official canary is blocked by a guard, report `LIVE_CANARY_BLOCKED` with the literal error and keep the fleet closed; never convert green offline tests into live PASS.
 
+### Synthetic E2E Canary for Non-Automation Media & Tooling Pipelines
+When implementing or fixing media/video tooling in non-automation repos (e.g. `D:/Taadaa/tools`) where `done_gate.py` reports `GATE-PASS(bypass): Non-automation task, canary not required`, offline mocked unit tests are strictly insufficient when the user asks "run canary chưa":
+1. **Never hide behind the bypass gate:** A non-automation bypass in `done_gate.py` only means Android phone hardware / ADB locks are not required. It is NOT permission to skip end-to-end execution verification.
+2. **Synthetic E2E Pipeline:**
+   - Generate synthetic fixture media (e.g. 6s MP4 via `ffmpeg -f lavfi -i testsrc=duration=6:size=360x640:rate=30`);
+   - Run the production tool end-to-end to create real output artifacts (e.g. `video_contact_sheet.py` -> `*_contact_sheet.jpg`);
+   - Execute mechanical verification (`WinRT OCR` via `ocr_boxes.ps1` or LLM Vision) on the resulting image to assert visual markers (timestamps, labels, dimensions);
+   - Deliver `MEDIA:<path>` with an honest visual readback sentence.
+3. **Card-Format Delivery:** Package the result in a structured Worker Card (`worker_card_report.py`) with explicit Fail-Closed boundaries ([ĐÃ LÀM] vs [CHƯA LÀM]).
+
 ## Live Batch Evidence
 
 ### Avatar-normalization evidence split
@@ -672,6 +682,8 @@ Treat a requested patch-size ceiling as a verification invariant, not a preferen
 
 - **Declare DONE Early on Code Fixes Without Device Canary Verification (Phone Farm):**
   When fixing automation code that drives Android devices/farm workflows, Unit Test (pytest mock) and git commit are NOT the definition of Done. Devices are the only ground-truth oracle. A task is strictly IN PROGRESS until verified via `python D:/Taadaa/tools/done_gate.py --task-type automation --canary-file <path>` (exit 0). If idle devices exist on fleet, running canary is MANDATORY before reporting to user. Never hallucinate history or fabricate excuses when criticized — use [FAULT-CONFIRMED] protocol.
+- **Bypass Gate Fallacy vs Synthetic Canary Requirement (Tooling & Media Pipelines):**
+  When `done_gate.py` returns `GATE-PASS(bypass): Non-automation task, canary not required`, this indicates that Android ADB phone hardware locks are not required. It is NOT permission to skip real-world verification or claim completion from mocked tests alone. When asked "run canary chưa", run a Synthetic E2E Canary (e.g. generate a short fixture via FFmpeg `testsrc`, execute the tool, run WinRT OCR on output, and emit `MEDIA:<path>`). Mock tests prove the seam; synthetic canary proves the execution pipeline on the actual Windows host.
 - **Idempotency Receipt Trap & Visual Verification Discipline (Phone Farm Uploads):**
   Khi chạy lại / rerun bù cho máy lỗi trong `tiktok-video`, receipt treo từ ca trước trong `idempotency/post-attempts/` sẽ kích hoạt nhánh `[POST_RECEIPT] ... chuyển thẳng VERIFY_POST`, bỏ qua `MEDIA_PUSH` và nút Post, dẫn tới báo DONE ảo và tăng số clip trong Excel dù chưa hề đăng. BẮT BUỘC xóa receipt cũ và dọn Camera trước khi rerun. Menu ngữ cảnh Profile ("Ghim lên đầu / Đặt chế độ riêng tư / Chia sẻ") do swipe nhầm long-press KHÔNG PHẢI là bằng chứng xuất bản. BẮT BUỘC soi mắt đọc thời gian đăng (`• 2 giây trước`) hoặc tăng trưởng tile Profile thật. Chi tiết: `references/idempotency-receipt-trap-and-visual-verification-discipline-20261017.md`.
 - **Declare DONE Early on Browser/GPM Automation Fixes Without Live Profile Canary:**
