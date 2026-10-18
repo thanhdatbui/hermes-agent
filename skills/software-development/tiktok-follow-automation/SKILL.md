@@ -7,17 +7,8 @@ description: "TikTok follow runner and fail-closed farm ops."
 
 ## Non-negotiable operating rules
 
-- **Tài liệu tham khảo chuyên sâu (`references/`):**
-    - `references/profile-follow-action-button-classification.md`: Nút Follow.
-    - `references/scrape-cycle-cadence-and-dashboard-reconciliation.md`: Quét 07h & Dashboard 1905.
-    - `references/mode2-anchor-selection-and-deep-scroll.md`: Anchor >= 150 fl.
-    - `references/follow-report-semantics-and-concise-wording.md`: Báo cáo follow.
-    - `references/account-replacement-and-backfill-state-reset.md`: Thay nick.
-    - `references/fleet-follow-graduated-probation-ladder.md`: Bậc 3 nấc & Health.
-    - `references/adaptive-ceiling-and-stratified-cohort-governance.md`: Dò trần (+2 đến 30), 3 Cohort.
-    - `references/daily-follow-matrix-and-trust-ceiling-analytics.md`: Heatmap & Ceiling.
-    - `references/shared-ip-proxy-collision-and-canary-ceiling-testing.md`: Trùng IP.
-    - `references/account-level-action-restriction-and-anchor-fallacy.md`: Lỗi nhả nick vs Anchor.
+- Tài liệu chuyên sâu nằm trong `references/`; dùng đúng reference theo tình huống.
+- `references/post-follow-verification-and-reconcile.md`: tách tap, Path-B và web reconciliation; schema bằng chứng per-UID.
     - `references/account-metrics-correlation-and-dual-gate-60d-policy.md`: Tương quan Like/Follower vs Tuổi/Video, Dual Gate 60d/15v, Cầu dao IP, follow tự nhiên 1% Feed.
     - `references/contact-suggestion-popup-follow-lockdown.md`: Khóa popup danh bạ.
     - `references/burst-follow-hibernation-cadence-gemphone-benchmark.md`: Burst 20-30 fl.
