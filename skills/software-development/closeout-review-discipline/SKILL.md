@@ -63,6 +63,7 @@ metadata:
 Reference: [`references/worker-timeout-quota-and-closeout-scope-20261018.md`](references/worker-timeout-quota-and-closeout-scope-20261018.md)
 
 ## 3. Tài Liệu Tham Khảo (References)
+- Numstat Diff Counting, Pre-Commit Audit Binding & Short-Circuit Invariants (2026-10-18): [`references/numstat-diff-counting-and-precommit-safe-push-binding-20261018.md`](references/numstat-diff-counting-and-precommit-safe-push-binding-20261018.md)
 - Grace Line Budget Reconciliation & Auto-Push Case Study (2026-10-18): [`references/grace-line-budget-reconciliation-and-auto-push-case-study-20261018.md`](references/grace-line-budget-reconciliation-and-auto-push-case-study-20261018.md)
 - Zero-Conflict Gate Common & Fail-Closed Token Architecture (2026-10-18): [`references/zero-conflict-gate-common-and-fail-closed-token-architecture-20261018.md`](references/zero-conflict-gate-common-and-fail-closed-token-architecture-20261018.md)
 - Grace Band Diff Budget, Diff Ceiling (30KB) & State Machine Scoring Rubric (2026-10-18): [`references/grace-band-diff-budget-and-diff-too-large-triage-20261018.md`](references/grace-band-diff-budget-and-diff-too-large-triage-20261018.md)
