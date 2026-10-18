@@ -200,6 +200,15 @@ During the deployment of `farm_network_gate.py` on Máy 7 (serial `9885f63030454
 
 ---
 
+### N. `ECONNABORTED` ("Software caused connection abort") & Thermal Radio Throttling
+- **Symptom:** L4 proxy probe fails with `ret=1 out= err=nc: connect: Software caused connection abort` immediately after an association was reported as `APPLIED`.
+- **Root Cause:** When an older device like Galaxy S7 undergoes continuous ADB join commands, radio cycling (`svc wifi disable/enable`), and high-current USB fast charging simultaneously, the Broadcom Wi-Fi chip and PMIC overheat. The Linux kernel drops the active TCP socket or momentarily resets the PCIe radio link during data transmission (`ECONNABORTED`).
+- **Remediation:**
+  1. Use the 3-attempt retry loop with 6-second timeout (`toybox nc -w 6 -W 6`) in `_nc_probe` to tolerate transient radio link drops.
+  2. CẤM tiếp tục spam lệnh gate/join. Khi gặp `Software caused connection abort`, Coordinator phải để yên thiết bị nghỉ ngơi từ 3–5 phút để chip và pin hạ nhiệt, giúp stack mạng tự ổn định.
+
+---
+
 ## 3. Operator Mandate: Anti-Paralysis Protocol (No Passive BLOCKED)
 
 - **User Correction (2026-10-18):** *"TAO CĂM THÙ CHỮ BLOCKED... làm việc mà cứ dừng lại khóc"*.

@@ -116,6 +116,8 @@ For older Samsung Android builds (e.g. Galaxy S7 running Android 8):
   - *Bẫy timeout 3s trúng chu kỳ PSM:* Khi điện thoại Galaxy S7 ở màn hình Launcher không có traffic video nặng, chip Wi-Fi Broadcom tự động bật IEEE 802.11 Power Save Mode (PSM) để giảm nhiệt. Lệnh probe `toybox nc -w 3 -W 3` quá ngắn sẽ bị timeout giả tạo (`nc: Timeout` / `No route to host`) dù proxy Sing-box vẫn sống tốt.
   - *Kỷ luật thực thi:* Khi phát hiện timeout do cơ chế sleep/PSM của máy, Coordinator BẮT BUỘC chủ động cập nhật script gate (tăng timeout probe lên 6s `-w 6 -W 6` và retry 3 lần ngắt quãng), TUYỆT ĐỐI KHÔNG giải thích lý do suông rồi để nguyên script cũ gây nghẽn gate liên tục.
   - *Vị trí ăng-ten vật lý trên Galaxy S7:* Nhìn từ mặt trước (màn hình), ăng-ten Wi-Fi nằm ở góc trên bên TRÁI (phía trên cụm phím Volume, ăn ra viền đỉnh máy). Nếu máy bị kẹt nẹp kim loại hoặc áp sát thanh sắt hộp của box, nhích nhẹ máy ra 2–3 cm để giải phóng vùng thu phát của ăng-ten.
+- **`ECONNABORTED` ("Software caused connection abort") & Thermal Radio Throttling:**
+  Khi thiết bị bị giã lệnh ADB / radio toggle liên tục kết hợp sạc nhanh, Broadcom PMIC/Wi-Fi chip bị quá nhiệt làm rớt kết nối TCP (`ECONNABORTED`). Sử dụng retry loop 3 lần với timeout 6s trong `_nc_probe` và để máy nghỉ ngơi 3–5 phút cho chip tản nhiệt, tuyệt đối không tiếp tục nã lệnh join dồn dập.
 
 ## References
 
