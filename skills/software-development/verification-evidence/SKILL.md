@@ -68,7 +68,7 @@ Canary tests must NEVER be executed "máy móc" (generic canned execution) where
    - `feed_swipe`: `Dành cho bạn`, `Đang follow`, `Bạn bè`, `For You`.
    - `login_2fa`: `Xác minh 2 bước`, `Trình xác thực`, `Mã xác nhận`, `2-step verification`.
 3. **Fail-Closed on Subsystem Mismatch:** If the candidate diff modifies module X but the canary receipt only proves module Y, reject the verification as `CANARY_SUBSYSTEM_MISMATCH`. Generic feed-swiping is strictly forbidden as proof for non-feed bug fixes.
-4. **Autonomous Mechanical Execution Discipline:** When running targeted canaries that follow the verified matrix and fail-closed contracts, execute them mechanically without hesitation, unnecessary confirmation pauses, or complaining ("chạy bình thường, không khóc lóc").
+4. **Autonomous Mechanical Execution & Anti-Halting Discipline:** When running targeted canaries or implementing approved architecture, execute mechanically through to completion without hesitation, confirmation pauses, or complaining ("chạy bình thường, không khóc lóc", "làm đi đừng có dừng lại hỏi"). CẤM dừng lại xin phép giữa chừng khi Operator đã phê duyệt chủ trương; tự động decompose, thi công, chạy focused test, và chỉ báo cáo khi đã có bằng chứng nghiệm thu thực tế.
 
 ### Synthetic E2E Canary for Non-Automation Media & Tooling Pipelines
 When implementing or fixing media/video tooling in non-automation repos (e.g. `D:/Taadaa/tools`) where `done_gate.py` reports `GATE-PASS(bypass): Non-automation task, canary not required`, offline mocked unit tests are strictly insufficient when the user asks "run canary chưa":

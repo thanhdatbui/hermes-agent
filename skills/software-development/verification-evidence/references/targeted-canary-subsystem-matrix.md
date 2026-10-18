@@ -103,7 +103,19 @@ The matrix decouples mapping rules from runtime code:
   6. Returns `(True, "VALID", details)` with `ocr_text_sha256` and matched `hits`.
 - CLI flag `--spec-json` allows standalone execution or integration by `canary_runner` and `done_gate`.
 
+### 4.3 `canary_runner.py` (Receipt v2 Execution)
+- Supports `--plan <plan.json>` CLI argument: automatically resolves `repo`, `target_machines`, and `diff_sha256`.
+- Emits **Receipt v2** (`schema: 2`): includes `diff_sha256`, `plan_sha256`, and per-requirement evidence while maintaining backward compatibility with Receipt v1 fields (`media_path`, `media_sha256`, `commit_sha`).
+
+### 4.4 `done_gate.py` (Plan-Check & Shadow Verification)
+- Recognizes Receipt v2 and inspects `plan_sha256` / `diff_sha256` binding against repo working tree.
+- Operates in `shadow` mode (verifying plan integrity and logging status without breaking legacy workflows) before upgrading to `enforce`.
+
 ## 5. Phased Rollout Discipline
-1. **Phase 0 (P0 - Implemented):** `canary_matrix.json`, `canary_plan.py`, and `validate_ocr_spec()` unit-tested (12/12 pytest pass).
-2. **Phase 1 (P1 - Next):** Runner integration with `--plan <plan.json>` and `done_gate.py --plan-check` running in `shadow` mode (logs `WOULD_FAIL` without blocking).
-3. **Phase 2 (P2):** Switch repo `mode` from `shadow` to `enforce` once seed keywords and hooks are fully verified on real hardware.
+1. **Phase 0 (P0 - Completed):** `canary_matrix.json`, `canary_plan.py`, and `validate_ocr_spec()` unit-tested (12/12 pytest pass).
+2. **Phase 1 (P1 - Completed):** Runner integration with `--plan <plan.json>`, Receipt v2 generation, `done_gate.py` shadow alignment, and full test suite verification (16/16 pytest pass in 0.24s).
+3. **Phase 2 (P2 - Next):** Switch repo `mode` from `shadow` to `enforce` once seed keywords and hooks are fully verified on real hardware.
+
+## 6. Anti-Halting Discipline ("Làm đi đừng có dừng lại hỏi")
+- **Core Operator Invariant:** When the operator directs execution ("R triển khai đi", "Làm luôn đi", "Fix đi"), the agent must execute continuously through to completion without pausing at every intermediate step to ask rhetorical permission ("Sếp có đồng ý không?", "Em bắt đầu làm nhé?").
+- **No Complaining / No Whining:** If a worker reaches maximum turns or a command fails, do not throw hands up, do not produce psychological self-blame essays, and do not freeze. Immediately inspect the diff, salvage working code, write focused unit tests, patch defects, and verify until the job is DONE with concrete proof.

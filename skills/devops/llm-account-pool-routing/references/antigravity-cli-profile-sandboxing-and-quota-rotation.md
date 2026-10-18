@@ -377,6 +377,18 @@ Chi tiết xem tại tài liệu hỗ trợ liên kết:
 ### 5. Căn Nguyên Timeout Thật Sự Của `gemini-3.8-flash-high` Trên Task Code Lớn:
 - **Hiện tượng:** Antigravity CLI bị kill ở 120s, trả về 0 chars, dễ bị nghi ngờ do proxy Mobi chết hoặc tài khoản bị chặn.
 - **Sự thật kỹ thuật:** Model `gemini-3.8-flash-high` với Deep Think khi giải quyết bài toán module lớn (>150 dòng) mất từ 105s đến 130s để hoàn tất toàn bộ luồng suy nghĩ và stream mã nguồn.
-- **Khắc phục:** Khi giao task code kiến trúc sâu cho model `*-high`, caller bắt buộc phải nâng `timeout` lên tối thiểu **180s - 240s**; chỉ dùng timeout 60s - 120s cho model `*-medium` hoặc các bài toán script ngắn gọn.
+
+### 6. Kỷ Luật Model Mặc Định Cho AGY CLI (`gemini-3.8-flash-medium`):
+- **Quy chuẩn Người dùng (User Preference Invariant):** Antigravity CLI khi thi công nhiệm vụ code hàng ngày hoặc phân tích BẮT BUỘC đặt mặc định là `gemini-3.8-flash-medium`.
+- **CẤM:** Tự ý gán ngầm `gemini-3.8-flash-high` làm `DEFAULT_MODEL` trong `ag_cli.py` hoặc các benchmark/task thông thường vì `high` kích hoạt Deep Think quá sâu, làm phình thời gian phản hồi lên 2-3 phút và dễ chạm trần timeout. Mức `high` chỉ dùng khi có chỉ đạo rõ ràng cho bài toán toán học/kiến trúc đặc biệt.
+
+### 7. Quy Chuẩn Timeout Toàn Hệ Thống Cho Các Bộ Cầu Nối AI (AI Bridge Timeouts):
+- **Bãi bỏ hoàn toàn các mốc timeout hẹp:** Các mốc timeout 60s hoặc 120s là "bẫy chết người" đối với các tác vụ viết code hoàn chỉnh (>150 dòng) hoặc khi mạng di động 4G bị jitter.
+- **Bảng quy chuẩn timeout tối thiểu bắt buộc:**
+  * `D:/Taadaa/tools/ag_cli.py ask`: Tối thiểu **300s (5 phút)**.
+  * `D:/Taadaa/tools/ag_cli.py fix`: Tối thiểu **600s (10 phút)** (do `agy.exe` cần thời gian đọc file, AST rewrite và self-test).
+  * `D:/Taadaa/tools/dispatch_worker.py`: Tối thiểu **180s (3 phút)** per worker.
+  * `D:/Taadaa/benchmark_arena/gemini_argon_server.py`: `STOP_TIMEOUT_S` = **300s**, `REQUEST_TIMEOUT_S` = **360s**.
+  * Bất kỳ script caller nào bọc `subprocess.run` gọi AI CLI đều phải set timeout $\ge 180s$.
 
 
