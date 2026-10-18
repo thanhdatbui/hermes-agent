@@ -347,4 +347,26 @@ Chi tiết xem tại tài liệu hỗ trợ liên kết:
 - File `plan-usage-history.json` quá 2 giờ sẽ kích hoạt stale quota gate từ chối điều phối nhầm.
 - Duy trì Cronjob 30 phút (`refresh-claude-quota-watchdog`) tự động chạy `refresh_claude_quota_file.py` để giữ cache luôn tươi mới.
 
+---
+
+## 12. Bài Học Vận Hành Thực Chiến: Timeout Failover, Gemini 4 Argon Wire & Web Stateless
+
+### 1. Cạm Bẫy LRU Kẹt Timeout Trong `ag_cli.py` (Deadlock Loop):
+- **Hiện tượng:** Toàn bộ pool 22 profile bị treo hàng loạt (tưởng như chết token / văng login).
+- **Căn nguyên:** Thuật toán Least-Recently-Used (LRU) ưu tiên profile có `last_used` nhỏ nhất (hoặc = 0). Nếu profile đó bị mạng/proxy Mobi lag dẫn tới `subprocess.TimeoutExpired` mà script văng thẳng lỗi ra ngoài mà KHÔNG ghi nhận `last_used` và KHÔNG set cooldown, profile đó vẫn giữ `last_used = 0`.
+- **Hậu quả:** Ở mọi lượt gọi sau, script lại tiếp tục bốc đúng profile bị lag đó -> Kẹt vô tận (Deadlock loop).
+- **Quy tắc bắt buộc:** Trong khối `except subprocess.TimeoutExpired`, BẮT BUỘC phải:
+  1. Đặt cooldown ngắn (300s): `set_profile_cooldown(name, duration=300, reason="TimeoutExpired")`
+  2. Ghi nhận `record_profile_usage(name)` để đẩy profile xuống cuối hàng đợi.
+  3. Kích hoạt `continue` để tự động failover ngay sang profile sẵn sàng kế tiếp, cấm dừng script.
+
+### 2. Sự Thật Giao Thức Wire Của Model "4 Argon":
+- **Giao thức WebChannel vs StreamGenerate:** Trên UI Gemini Advanced có nút chọn `4 Argon` (Nhiệm vụ phức tạp). Tuy nhiên tầng mạng của nó chạy nhị phân WebChannel qua `POST https://geminiweb-pa.clients6.google.com/v1/processSession`, hoàn toàn KHÔNG gọi HTTP REST endpoint cũ `StreamGenerate` (`inner[79]` chỉ có Flash, Thinking, Pro).
+- **Triển khai chuẩn:** Để kích hoạt đúng trọng số 4 Argon, bắt buộc dùng Chromium CDP (Playwright off-screen / daemon `:20135`) kết nối vào profile GPM có gói Google AI Pro. Không thể giả lập qua HTTP REST cũ.
+- **Kỷ luật Reasoning:** Đối với các tác vụ viết code, sửa bug và thuật toán Farm, BẮT BUỘC chốt mức `reasoning_effort: "high"` (`[[0]]`). Mức `none` và `low` tắt cây suy luận ngầm nên sinh code hời hợt, dễ bỏ sót edge case hệ thống.
+
+### 3. Kỷ Luật Chat Stateless Trên Gemini Web (Anti-Context Contamination & Anti-Ban):
+- **CẤM TUYỆT ĐỐI lưu lịch sử chat dồn cục:** Khi điều khiển trình duyệt Web AI Pro làm API worker, cấm chat tiếp trên cùng 1 phiên cũ để tránh nhiễm bẩn ngữ cảnh (context contamination).
+- **Bắt buộc Reset New Chat:** Trước mỗi lượt gửi prompt mới, script bắt buộc phải kích hoạt "Cuộc trò chuyện mới" (New Chat) hoặc Temporary Chat. Vừa bảo vệ tài khoản tránh bị Google quét hành vi bot, vừa giúp mỗi task được xử lý tinh khiết 100%.
+
 
