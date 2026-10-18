@@ -18,7 +18,7 @@ description: "TikTok follow runner and fail-closed farm ops."
     - `references/daily-follow-matrix-and-trust-ceiling-analytics.md`: Heatmap & Ceiling.
     - `references/shared-ip-proxy-collision-and-canary-ceiling-testing.md`: Trùng IP.
     - `references/account-level-action-restriction-and-anchor-fallacy.md`: Lỗi nhả nick vs Anchor.
-    - `references/account-maturity-trust-factors-and-natural-feed-transition.md`: Vanity Metrics vs Behavioral Trust, 45-59d Feed-Follow tự nhiên, Cầu dao IP nick yếu vs khỏe.
+    - `references/account-metrics-correlation-and-dual-gate-60d-policy.md`: Tương quan Like/Follower vs Tuổi/Video, Dual Gate 60d/15v, Cầu dao IP nick khỏe vs yếu, cấm bật follow Feed.
     - `references/contact-suggestion-popup-follow-lockdown.md`: Khóa popup danh bạ.
     - `references/burst-follow-hibernation-cadence-gemphone-benchmark.md`: Burst 20-30 fl.
     - `references/probation-ladder-4day-cycle-adaptation.md`: Chu kỳ 4 ngày.

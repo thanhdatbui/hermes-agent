@@ -50,6 +50,7 @@ Theo biên bản thống nhất 100% giữa Coordinator, Advisor Sol (:20129) v�
 1. **File Lock (WinError 32):** Nếu file đang bị tiến trình khác (adb, python daemon, excel) khóa handle, **CẤM ép đóng handle bằng tool bạo lực**. Thử lại tối đa 2 lần với backoff 1s; nếu vẫn khóa thì bỏ qua file đó, ghi warning và báo cáo.
 2. **Symlink / Reparse Point:** Tuyệt đối không xóa đệ quy xuyên qua symlink/junction trỏ ra ngoài repo. Chỉ xóa chính junction entry đó.
 3. **Hiểu nhầm ý định Operator về Backup:** Khi người dùng bảo "backup xong dọn hết đi", ý là **di chuyển/gom các tệp rác vào thư mục lưu trữ backup để giải phóng repo**, TUYỆT ĐỐI KHÔNG ĐƯỢC XÓA BẢN BACKUP.
+4. **Pytest Verification Vacuous Passing Pitfall:** Tuyệt đối không dùng `if p.exists(): assert ...` trong integration test cho file cấu hình/proxy. Nếu file thiếu, test sẽ bỏ qua assertion và pass ảo (vacuous truth), bị Closeout Auditor từ chối. Bắt buộc dùng `assert p.exists()`.
 
 ## 4. Canonical Tool: `D:/Taadaa/tools/safe_recycle.py`
 Đã thi công và nghiệm thu 9/9 unit tests (`D:/Taadaa/tools/tests/test_safe_recycle.py`):
@@ -64,3 +65,4 @@ Theo biên bản thống nhất 100% giữa Coordinator, Advisor Sol (:20129) v�
 ## 5. References & Chi Tiết Kiến Trúc
 - Phản biện kiến trúc chuyên sâu từ Advisor Sol: [`references/advisor-sol-critique-and-zero-hard-delete-architecture.md`](references/advisor-sol-critique-and-zero-hard-delete-architecture.md)
 - Biên bản đồng thuận 3 bên (Coordinator + Advisor Sol + Reviewer Claude Sonnet 5.5): [`references/three-party-consensus-zero-hard-delete-20261018.md`](references/three-party-consensus-zero-hard-delete-20261018.md)
+- Bẫy Closeout Scope Binding & Downstream Integration: [`references/closeout-scope-and-downstream-integration-pitfalls.md`](references/closeout-scope-and-downstream-integration-pitfalls.md)
