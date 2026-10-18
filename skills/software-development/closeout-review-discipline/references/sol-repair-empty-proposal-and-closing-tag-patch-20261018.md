@@ -21,3 +21,8 @@ Trong nhiều session (`20261012_111302_8b9ed930`, `20261014_222847_b55a7842`, `
 
 ### c) Tự Động Khôi Phục Findings Từ Scorecard Gần Nhất
 - Nếu thiếu `--scorecard-json` và `--findings`, script tự động bốc scorecard từ `D:/Taadaa/logs/latest_closeout_scorecard.json` hoặc dòng cuối cùng bị `REJECTED` trong `D:/Taadaa/logs/gate_audit.jsonl`.
+
+### d) AST Parse Validation Cần Textwrap / Indentation Isolation
+- Đoạn code thay thế `<<<NEW>>>` do Sol High sinh ra thường là một khối code thụt lề (ví dụ bên trong một hàm hoặc khối `with closing(...) as conn:`).
+- Khi gọi `ast.parse(new_snippet)`, nếu `new_snippet` bắt đầu bằng thụt lề hoặc có dòng unindent lệch cấp, `ast.parse` sẽ văng `SyntaxError: unindent does not match any outer indentation level`.
+- **Giải pháp:** Khi validate cú pháp một snippet Python độc lập, cần bọc thử trong một hàm dummy hoặc `textwrap.dedent` trước khi parse AST, tránh đánh rớt oan các patch có logic đúng nhưng mang thụt lề ngữ cảnh.

@@ -7,27 +7,33 @@
 ## 1. Bẫy Kỹ Thuật: `lstrip("./")` Gọt Cụt Dấu Chấm Của File Ẩn (`.gitignore`, `.env`)
 
 ### Hiện Tượng:
-Trong `closeout_gate.py:238`:
+1. **Trong `closeout_gate.py:238`:**
 ```python
 normalized = sorted(set(str(p).replace("\\", "/").lstrip("./") for p in scope))
+```
+2. **Trong hook `.git/hooks/pre-push` (Chí mạng khi `safe_push.py`):**
+```python
+current_scope = sorted(set(p.replace('\\\\', '/').lstrip('./') for p in raw_scope.splitlines() if p.strip()))
 ```
 Khi scope có chứa file ẩn như `.gitignore`, `.env`, `.gitattributes`:
 - Python coi `lstrip(chars)` là tập hợp các ký tự cần lột bỏ ở đầu chuỗi.
 - Ký tự `.` và `/` bị lột sạch ở đầu chuỗi, dẫn đến:
   - `".gitignore".lstrip("./")` ➔ `"gitignore"`
   - `".env".lstrip("./")` ➔ `"env"`
-- Khi đối chiếu với `diff-tree -z --name-only HEAD` (vốn trả về nguyên bản `.gitignore`), Gate báo lỗi:
+- Khi đối chiếu với `diff-tree -z --name-only HEAD` hoặc `gate_audit.jsonl` (vốn ghi nhận file gốc `.gitignore`), so sánh scope hash hoặc scope list bị lệch:
   ```text
-  ✘ binding mismatch: committed scope mismatch with git state: expected ['gitignore', 'scripts/...'], got ['.gitignore', 'scripts/...']
+  ❌ [BLOCKED - PRE-PUSH HOOK]: Gate check FAILED — Không tìm thấy bản ghi Closeout Gate APPROVED >= 80 cho commit hiện tại!
   ```
-- Lỗi này xảy ra ở Bước 2 (Extract Diff), làm fail gate ngay trên máy local trước khi kịp gọi LLM, gây lãng phí 2 vòng chạy vô ích và làm gián đoạn pipeline.
+- Kết quả là `closeout_gate.py` đã chấm APPROVED (ví dụ 84đ) nhưng `safe_push.py` vẫn bị hook pre-push chặn cứng, gây hiểu lầm là audit record bị thiếu.
 
 ### Khắc Phục Chuẩn Xác:
-Tuyệt đối không dùng `lstrip("./")` để chuẩn hóa đường dẫn. Dùng `removeprefix` hoặc cắt chuỗi có điều kiện:
+Tuyệt đối không dùng `lstrip("./")` để chuẩn hóa đường dẫn ở cả `closeout_gate.py` lẫn `.git/hooks/pre-push`. Dùng `removeprefix` hoặc cắt chuỗi có điều kiện:
 ```python
-p_str = str(p).replace("\\", "/")
-if p_str.startswith("./"):
-    p_str = p_str[2:]
+def _norm(p: str) -> str:
+    p = p.replace("\\", "/")
+    if p.startswith("./"):
+        p = p[2:]
+    return p
 ```
 
 ---
