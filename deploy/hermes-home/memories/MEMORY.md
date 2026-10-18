@@ -23,3 +23,5 @@ Ava: Trích clip gốc representative_frames. Gate 6 fail-closed: cấm trần t
 Reboot 3 ca (05:20, 11:20, 17:20), né TFT/War3. Task ngầm & Scheduler BẮT BUỘC bọc VBS/wscript Hidden + CREATE_NO_WINDOW (0x08000000), CẤM pop cmd cướp focus. 'Tắt' khi game = tắt cửa sổ nháy, cấm pause cron.
 §
 MCP: agy mcp add <name> <URL> cắm remote trực tiếp ko cần JSON. ChatGPT Dev mode chỉ acc Plus/Team ($20/th).
+§
+Cron thiết bị: farm_contract bắt buộc device_lock+rolling<=5, cấm burst; Ca 0h đã bỏ hoàn toàn.
