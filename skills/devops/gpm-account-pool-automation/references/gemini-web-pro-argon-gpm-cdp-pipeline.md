@@ -191,4 +191,25 @@ Khi click mở dropdown chọn model tại góc trên bên trái của `gemini.g
     3. Kết hợp với việc ô input (`div[contenteditable="true"]`) hoặc nút Send đã trở về trạng thái sẵn sàng nhập liệu.
     4. Lúc này mới xác nhận 100% mô hình đã kết thúc quá trình stream và tiến hành trích xuất toàn bộ khối code hoàn chỉnh.
 
+---
+
+## 10. Kỷ Luật So Sánh Chất Lượng Code & Quy Trình Đăng Nhập GPM Account Pool (Bài Học Thực Chiến 18/10/2026)
+
+### Kỷ luật đánh giá chất lượng Code (Anti-Shallow Benchmark Invariant):
+- **CẤM TUYỆT ĐỐI chỉ so sánh thời gian chạy (latency) và cú pháp hợp lệ (`ast.parse`):**
+  - Thời gian nhanh mà code cụt ngủn hoặc thiếu tính năng là vô nghĩa.
+  - Cú pháp xanh (`valid: True`) không đồng nghĩa với code chạy được hay đúng yêu cầu.
+- **4 Tiêu chí nghiệm thu chất lượng code thực tế:**
+  1. **Spec Coverage (Bao phủ yêu cầu):** Kiểm tra từng phần tử bắt buộc trong prompt. Ví dụ: đề bài yêu cầu "Atomic JSON Writer kèm Matching Safe Reader" $\rightarrow$ Bắt buộc code phải chứa cả hàm ghi `atomic_write_json` và hàm đọc `safe_read_json`. Thiếu một trong hai bị coi là FAIL SPEC.
+  2. **OS & Production Robustness (Độ an toàn hệ thống):** Kiểm tra cách xử lý lỗi đặc thù của hệ điều hành. Ví dụ trên Windows: bắt đúng `PermissionError` và `[WinError 32]` (Sharing Violation), dùng jitter backoff ngẫu nhiên, ghi file tạm cùng thư mục để đảm bảo tính nguyên tử khi `os.replace`.
+  3. **Algorithmic Efficiency (Hiệu năng thuật toán):** Không chấp nhận cài đặt thô sơ $O(N^4)$ cho các bài toán xử lý ảnh/ma trận. Bắt buộc kiểm tra xem mô hình có tối ưu thuật toán (như tách biến đổi DCT 2D thành 2 lần 1D $O(N^3)$) hay không.
+  4. **Self-Contained Test Suite:** Code đạt chuẩn công nghiệp phải có khối `if __name__ == "__main__":` hoàn chỉnh, kiểm thử đa luồng (stress-test concurrency), có assertion logic rõ ràng thay vì chỉ `print("Done")`.
+
+### Quy chuẩn xử lý Đăng nhập Google trên GPM Profiles:
+- **Tra cứu Credentials tập trung:** Tuyệt đối không hỏi user cách đăng nhập hay mật khẩu. Đọc trực tiếp từ file tổng `D:\OneDrive\TaadaaData\kibe\master_gmail_manager.xlsx` (Sheet `Master_All`) để lấy Email, Password và TOTP Secret (dùng `pyotp.TOTP`).
+- **Xử lý reCAPTCHA Challenge:** Khi điền email và chuyển sang `challenge/recaptcha`:
+  - Không viện cớ an toàn để đóng băng.
+  - Sử dụng bộ giải tự động `solve_recaptcha_audio` qua Playwright CDP (FFmpeg decode MP3 $\rightarrow$ SpeechRecognition) để giải captcha âm thanh và vượt qua màn hình xác minh danh tính.
+
+
 
