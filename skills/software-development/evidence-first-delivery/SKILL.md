@@ -223,6 +223,7 @@ For profile/avatar/farm work, verify the semantic content, not just image statis
 
 - **Contact Sheet O(1) cho Render Video vs Cấm Ghép Lưới Màn Hình UI Farm (2026-10-18):**
   * **Video Render Contact Sheet:** Với video TikTok kết xuất từ batch jobs (Tik1/Tik2/Tik3), sử dụng `video_contact_sheet.py` tạo ảnh lưới 3x3 (9 khung hình cách đều) kèm nhãn timestamp để soi mắt toàn bộ video 60s trong 1 giây qua `MEDIA:`, né tải file MP4 nặng.
+  * **Chống Bẫy Gửi Ảnh Test Pattern Kỹ Thuật (Testsrc) Khiến User Hoang Mang ("Clgt" - 2026-10-18):** Khi nghiệm thu tính năng media/video, BẮT BUỘC bốc video thật từ kho dữ liệu (`D:/TIKTOK-videonuoinick/...`) để sinh Contact Sheet trực quan. CẤM gửi ảnh synthetic testsrc vạch màu đài truyền hình cộc lốc khiến User giật mình tưởng màn hình bị sọc/lỗi hệ thống (User chất vấn: *"Clgt"*). Nếu bắt buộc dùng video giả lập để test offline, phải ghi rõ cảnh báo: `[CANARY MOCK PATTERN - KIỂM THỬ TÍNH NĂNG]`.
   * **Cấm Tuyệt Đối Ghép Lưới UI Farm:** CẤM gom/ghép 4 màn hình thao tác Android (Feed, Switcher, Profile, Sửa hồ sơ) thành 1 ảnh lưới. Bắt buộc tuân thủ `GATE 6: MAX BLIND STEPS = 1` gửi ảnh tức thời ở từng bước, và giữ nguyên độ phân giải để WinRT OCR / pHash hoạt động chính xác.
 
 - Profile/Account Switcher/Save Surface must be the target screen.
@@ -375,6 +376,7 @@ Use `references/avatar-only-scope-and-false-policy-refusal.md` for the incident-
 
 ## References
 
+- `references/creator-persona-avatar-and-gate6-media-omission-trap-20261018.md` — **[MỚI 18/10/2026]** Bài học sự cố chuẩn hoá kênh `@huynhdiem0806`: Bẫy sai lệch Creator Persona khi lấy nhầm avatar folder 183 thay vì trích xuất từ video folder 179 ("Ava kiểu gì v"), căn nguyên vi phạm Gate 6 quên đính kèm `MEDIA:` sau khi đổi tên xong do thiên kiến Budget Panic/báo cáo mồm, và thẩm định giải pháp cơ học từ Claude Sonnet 5.5 CLI.
 - `references/video-contact-sheet-and-worker-card-report-contract.md` — **[MỚI 18/10/2026]** Video Contact Sheet O(1) cho Render Video TikTok (lưới 3x3 trích xuất 9 frames cách đều bằng FFmpeg/Pillow né đen 0s/EOF để soi mắt trong 1 giây), cạm bẫy cấm ghép lưới UI Farm (vi phạm Gate 6 Max Blind Steps = 1 và vỡ nét WinRT OCR), và chuẩn Thẻ Nghiệm Thu Công Việc (Worker Card Report) với 4 trường Fail-Closed minh bạch ranh giới [ĐÃ LÀM] vs [CHƯA LÀM].
 - `references/account-standardization-5-point-contract-and-story-popup-trap.md` — **[MỚI 18/10/2026]** Bản Giao Kèo Chuẩn Hoá Kênh 5 Món (Avatar người thật canh tròn + Ghim top video $\ge 1k$ view + Bio UTF-8 AdbKeyboard + Đổi Biệt danh tiếng Việt + Khóa khớp nguồn video Excel) và Bẫy Popup Story Overlay `Hiển thị với follower trong 24 giờ` kèm bàn phím Samsung che khuất Switcher Header.
 - `references/canary-runner-and-anti-launcher-evidence-trap-20261018.md` — **[MỚI 18/10/2026]** Sự cố chụp ảnh màn hình Home/Launcher sau khi app thoát gửi đối phó User (*"gửi cái màn hình home làm cái lồn gì thế"*): Cấm fallback screencap sau thoát app, bắt buộc in-stream capture tại màn hình đích, cơ chế WinRT OCR Veto Launcher tokens, và Bản Thống Nhất Cơ Giới Hóa 3 Bên (G1, G2, Canary Entrypoint, G3 Output Filter).

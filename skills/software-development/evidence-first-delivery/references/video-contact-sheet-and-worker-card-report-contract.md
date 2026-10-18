@@ -18,11 +18,15 @@
   5. Dùng Pillow ghép thành 1 ảnh lưới JPEG duy nhất ($1080 \times 1920$).
 - Gửi qua `MEDIA:<path_to_contact_sheet.jpg>`: User và Bot chỉ cần liếc mắt 1 giây là thẩm định trọn vẹn toàn bộ clip 60s.
 
-### Cạm bẫy chí tử: CẤM áp dụng Contact Sheet cho UI Farm
-- **BẪY GHÉP MÀN HÌNH UI (UI Screen-Stitching Trap):** Tuyệt đối CẤM ghép các màn hình thao tác Android (Feed, Switcher, Profile, Sửa hồ sơ) thành 1 ảnh lưới gửi 1 lần.
-- **Lý do vi phạm:**
-  1. Vi phạm nghiêm ngặt `GATE 6: MAX BLIND STEPS = 1` (Mọi thao tác thay đổi giao diện bắt buộc phải chụp và gửi ảnh ngay lập tức).
-  2. Thu nhỏ ảnh màn hình làm vỡ nét chữ, khiến `WinRT OCR` đọc sai và làm hỏng so khớp thuật toán `pHash diff > 15`.
+### Cạm bẫy thực chiến khi nghiệm thu:
+1. **BẪY GỬI ẢNH TEST PATTERN VẠCH MÀU ("Clgt" - 2026-10-18):**
+   - Khi nghiệm thu canary cho pipeline contact sheet, nếu dùng video giả lập `testsrc` của FFmpeg (vạch màu SMPTE color bars), ảnh gửi lên Telegram trông giống như màn hình sọc hoặc glitch hỏng card đồ họa, khiến User giật mình chất vấn gắt: *"Clgt"*.
+   - **Quy tắc**: Nghiệm thu công cụ media BẮT BUỘC bốc video thật từ kho (`D:/TIKTOK-videonuoinick/...`) để sinh Contact Sheet có hình ảnh thực tế (người, vật, cảnh). Nếu buộc phải dùng synthetic video trong unit test, tuyệt đối không gửi ảnh vạch màu trơn lên chat chính nếu không có nhãn chú thích to rõ ràng.
+2. **CẤM ÁP DỤNG CONTACT SHEET CHO UI FARM:**
+   - **BẪY GHÉP MÀN HÌNH UI (UI Screen-Stitching Trap):** Tuyệt đối CẤM ghép các màn hình thao tác Android (Feed, Switcher, Profile, Sửa hồ sơ) thành 1 ảnh lưới gửi 1 lần.
+   - **Lý do vi phạm:**
+     1. Vi phạm nghiêm ngặt `GATE 6: MAX BLIND STEPS = 1` (Mọi thao tác thay đổi giao diện bắt buộc phải chụp và gửi ảnh ngay lập tức).
+     2. Thu nhỏ ảnh màn hình làm vỡ nét chữ, khiến `WinRT OCR` đọc sai và làm hỏng so khớp thuật toán `pHash diff > 15`.
 
 ---
 
