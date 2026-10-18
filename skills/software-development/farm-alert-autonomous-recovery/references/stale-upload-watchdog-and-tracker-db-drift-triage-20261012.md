@@ -19,23 +19,40 @@ Hướng dẫn đối soát và xử lý khi nhận cảnh báo tiến độ upl
 
 ## 2. Quy trình Đối soát Nhanh O(1) (Instant Sanity Check)
 1. **Chạy trực tiếp canonical audit script (CẤM dùng `python -c` subprocess):**
-   * Guard Coordinator chặn `python -c` có subprocess/file cache. Chạy thẳng lệnh CLI có sẵn:
+   * Guard Coordinator chặn `python -c` có subprocess/file cache hoặc scan đệ quy `Path()`. Chạy thẳng lệnh CLI có sẵn:
    ```bash
    python D:/Taadaa/tools/audit_stale_upload_accounts.py --days 7 --critical-days 14
    ```
    *(Lưu ý: Script trả exit code 1 khi phát hiện có tài khoản stale >14d — đây là exit contract cảnh báo hợp lệ, stdout chứa toàn bộ báo cáo tóm tắt sạch sẽ).*
-   * Nếu cần xuất dữ liệu thô:
+   * Nếu cần trích xuất và phân tích JSON mà không bị Guard chặn subprocess/scan:
    ```bash
-   python D:/Taadaa/tools/audit_stale_upload_accounts.py --days 7 --critical-days 14 --json
+   python D:/Taadaa/tools/audit_stale_upload_accounts.py --days 7 --critical-days 14 --json > %TEMP%/stale_audit.json
    ```
-2. **Kiểm tra hiện trường phần cứng máy nghi ngờ:**
+   Sau đó đọc file bằng `python -c "import json; ..."` thuần túy (không gọi subprocess hay quét đĩa).
+2. **Đối soát DB SQLite thời gian thực (`D:/Taadaa/data/tiktok_tracker.db`):**
+   * Schema: Bảng `farm_account_info` (`username`, `may`, `tik`, `host_id`) map với bảng `snapshots` (`username`, `video`, `timestamp`).
+   * Truy vấn O(1) nhanh kiểm tra 8 slot của máy:
+   ```sql
+   SELECT f.tik, f.username, s.video, s.timestamp
+   FROM farm_account_info f
+   LEFT JOIN (
+       SELECT username, video, timestamp, MAX(timestamp)
+       FROM snapshots GROUP BY username
+   ) s ON f.username = s.username
+   WHERE f.may = ? AND f.host_id = 'kibe'
+   ORDER BY f.tik;
+   ```
+3. **Kiểm tra hiện trường phần cứng máy nghi ngờ:**
    * Dùng lệnh chuyên dụng O(1):
    ```bash
    python D:/Taadaa/tools/inspect_machine.py <N>
    ```
-   * Hoặc kiểm tra danh sách kết nối USB:
+   * Nếu ADB báo `device '<serial>' not found`: thiết bị đã rớt cáp USB / mất nguồn vật lý dài ngày (như M10, M30), cần cắm lại phần cứng, không phải lỗi runner.
+4. **Kỷ luật dọn file tạm (Safe Cleanup Invariant):**
+   * Coordinator bị chặn lệnh `rm` bởi Default-Deny Guard.
+   * Mọi file debug tạm thời tạo trong `D:/Taadaa/tools/` BẮT BUỘC dọn qua:
    ```bash
-   adb devices
+   python D:/Taadaa/tools/safe_recycle.py <path_to_temp_file>
    ```
 
 ---
