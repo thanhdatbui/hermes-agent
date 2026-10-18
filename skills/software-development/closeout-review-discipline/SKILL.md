@@ -38,6 +38,7 @@ metadata:
 - CẤM TUYỆT ĐỐI gọi Claude Sonnet 5.5 để cày điểm closeout gate hoặc sửa code tự động. Sonnet là vũ khí chiến lược đắt đỏ, chỉ chạy khi Operator (User) ra lệnh đích danh.
 
 ## 3. Tài Liệu Tham Khảo (References)
+- Pytest PYTHONPATH & Direct Test Pairing trong Closeout Gate: [`references/closeout-gate-pytest-pythonpath-and-direct-test-pairing-20261018.md`](references/closeout-gate-pytest-pythonpath-and-direct-test-pairing-20261018.md)
 - Xóa Bỏ Grace Band & HMAC Token-Gated Closeout: [`references/grace-band-elimination-and-hmac-token-gated-closeout-20261018.md`](references/grace-band-elimination-and-hmac-token-gated-closeout-20261018.md)
 - Anti-Surrender Remediation & Fake-DONE Invariant: [`references/anti-surrender-closeout-remediation-and-fake-done-invariant.md`](references/anti-surrender-closeout-remediation-and-fake-done-invariant.md)
 - Pre-Closeout Short-Circuit & Chống Cày Điểm Commit Session Khác: [`references/pre-closeout-short-circuit-and-anti-score-chasing-20261018.md`](references/pre-closeout-short-circuit-and-anti-score-chasing-20261018.md)
