@@ -56,6 +56,12 @@ Use this reference when the user explicitly authorizes cleanup of a named reposi
 
    If production code was retained or changed rather than restored to upstream, run the focused test and compile gates before reporting success.
 
+## Quarantine / Backup preservation invariant (Chống hiểu nhầm và cấm xóa thư mục backup)
+
+- **Thư mục backup là chốt an toàn bất khả xâm phạm:** Khi dọn dẹp các tệp untracked/rác trong repo và gom vào thư mục archive/backup ngoài repo (ví dụ `D:/Taadaa/archive/backup_*`), thư mục backup này tồn tại để bảo đảm an toàn dữ liệu và cho phép khôi phục nếu cần.
+- **CẤM TUYỆT ĐỐI suy diễn câu hỏi tu từ thành lệnh xóa backup:** Khi người dùng nói *"Rác thì dọn luôn đi chứ? Ném vào backup?"* hoặc các câu tương tự, từ "dọn" trong ngữ cảnh dọn repo tiếng Việt là **dọn dẹp/gom sạch rác khỏi working tree vào thư mục backup**, hoàn toàn KHÔNG PHẢI là lệnh xóa sổ thư mục backup vừa tạo!
+- **Kỷ luật xóa vĩnh viễn (Purge):** Thao tác xóa vĩnh viễn thư mục backup (`shutil.rmtree`, `rm -rf`) là thao tác không thể đảo ngược. CẤM TUYỆT ĐỐI tự ý xóa thư mục backup trong cùng session dọn dẹp trừ khi người dùng phát lệnh dứt khoát bằng văn bản rõ ràng ("xóa vĩnh viễn thư mục backup X", "purge hẳn thư mục backup X"), không có yếu tố tu từ hoặc mơ hồ.
+
 ## Reporting
 
 Report briefly: repository, clean/dirty result, local/remote relationship, what was discarded by category, what was preserved, external backup path, and whether anything was pushed. Do not claim that remote history changed unless `git ls-remote` verifies it.

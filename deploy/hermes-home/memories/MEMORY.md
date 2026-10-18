@@ -14,7 +14,7 @@ Closeout: Grace 80-84 auto-push (diff<=30, test xanh). CẤM cày điểm. Pre-c
 §
 Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; admin_ssh.py. Cron: phase9-runner nuôi, feed_session_watchdog giám sát 15p.
 §
-Singbox :200xx, CẤM VPN app. Wi-Fi 5GHz Aruba. Cứu máy: operator_device_lock(force_preempt=True). Proxy Android: CẤM gán domain; BẮT BUỘC dùng IP LAN 192.168.110.2:port kèm captive_portal_mode 0. Kibe: 20001..20080; Admin: 10008..10035 / 20201..20280.
+Singbox :200xx, CẤM VPN app. Wi-Fi 5GHz Aruba. Cứu máy: operator_device_lock(force_preempt=True). Proxy Android: IP LAN 192.168.110.2:port kèm captive_portal_mode 0. Kibe: 20001..20080; Admin: 10008..10035 / 20201..20280. Proxy chuẩn: 67/69 direct, cấm pool 126.
 §
 Canary farm: tối thiểu 3-4 màn/máy khác nhau (DM, sửa hồ sơ, feed, popup thử thách); cấm canary trên 1 máy đơn độc.
 §

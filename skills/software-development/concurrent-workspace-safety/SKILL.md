@@ -149,6 +149,8 @@ When the user explicitly authorizes cleanup of a named repository and says to as
 
 For repository cleanup where the user corrects an operational pool or other source-of-truth list, bind the correction before deleting anything. Do not infer that a larger aggregate file is authoritative merely because a resolver currently prefers it. Read the resolver and the canonical candidate files, count non-empty entries, and record exact paths before editing. When the user identifies the canonical pool (for example, 67/69 direct entries), update the resolver to prefer only the named canonical file(s) and a named canonical fallback; remove references to superseded aggregate pools from the resolver.
 
+**Quarantine/Backup Preservation Rule:** Thư mục backup/archive ngoài repo sinh ra trong lúc dọn dẹp làm nhiệm vụ vùng đệm an toàn. CẤM TUYỆT ĐỐI tự ý xóa sổ thư mục backup này dựa trên suy diễn từ câu nói mơ hồ hay câu hỏi tu từ của người dùng (ví dụ: *"Rác thì dọn luôn đi chứ? Ném vào backup?"* nghĩa là gom rác vào backup chứ không phải xóa backup). Thao tác xóa vĩnh viễn backup là bất khả nghịch, chỉ được thực hiện khi có lệnh rõ ràng không có yếu tố tu từ.
+
 For explicitly authorized cleanup of disposable repository artifacts, use this sequence:
 1. Snapshot `git status --short --untracked-files=all` and preserve unrelated tracked, data, manifest, model, and configuration artifacts unless the user explicitly names them.
 2. Backup only the reviewed disposable set outside the repo, preserving relative paths, byte sizes, and SHA-256 in a manifest. Verify each backup before deleting its source.

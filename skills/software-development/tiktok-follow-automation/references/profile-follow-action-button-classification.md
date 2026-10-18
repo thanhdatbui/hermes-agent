@@ -158,4 +158,17 @@ Tuyệt đối không thay thế toàn bộ XML bằng OCR một cách mù quán
      - Màn hình Video Feed (kiểm tra thanh tab điều hướng $y < 200$) hoặc Màn hình Cài đặt / Chỉnh sửa hồ sơ.
   3. Mọi bước canary trên từng máy đều bắt buộc chụp ảnh màn hình, gọi vision soi mắt thực tế (`MEDIA:`) và xác nhận không có false-positive trước khi báo cáo hoàn thành.
 
+## 12. Kỷ Luật Điều Tra Nghi Vấn Lỗi Do Module Mới (OCR vs XML Forensics)
+- **Tình huống thực tế:** Khi hệ thống ghi nhận ca chạy bị lệch đối soát hoặc bắt hụt lỗi nhả follow (ví dụ: Runner báo +4 lượt nhưng Web TikTok thực tế là 0 lượt), Operator thường đặt nghi vấn: *"Script lỗi do đợt update qua xài module winrt ocr gây lỗi à?"*.
+- **Quy tắc điều tra bằng chứng (Forensic Triaging):**
+  1. **Kiểm tra Telemetry kích hoạt trước khi kết luận:**
+     - Module OCR chỉ là cơ chế **dự phòng cuối cùng (Fallback)** khi `dump_ui()` của ATX/ADB trả về XML rỗng hoặc XML parse ra kết quả `unknown` (dòng 272 `verify_follow.py`).
+     - Đọc file `log.jsonl` hoặc `summary.txt` của các máy trong ca bị lỗi: Nếu số lần gọi `ocr_screen` hoặc `classify_button_from_ocr` bằng 0 (do ATX dump XML thành công 100%), thì khẳng định dứt khoát module OCR không tham gia vào ca chạy đó và không phải nguồn gốc lỗi.
+  2. **Bóc tách nguyên nhân thực sự trong luồng XML chính (Primary Path):**
+     - **Bẫy nút "Nhắn tin":** Kiểm tra xem nút "Nhắn tin" có bị xếp nhầm vào nhóm `followed` khi selector nút Follow đỏ bị trượt do TikTok đổi ID (`id/fmp`, `id/fo4`).
+     - **Bẫy Optimistic UI ở Path B:** Kiểm tra xem bước mở profile nick con đã có thao tác `pull_to_refresh_profile` hay chưa. Nếu thiếu, client app TikTok sẽ hiển thị cache cục bộ của cú tap trước đó khiến runner tưởng nhầm là đã follow thành công trong khi server đã silent-drop.
+  3. **Phản hồi Operator minh bạch & chuẩn mực:**
+     - Xác nhận ngay qua telemetry: OCR được gọi bao nhiêu lần (thường là 0 lần).
+     - Chỉ rõ vị trí lỗi trong code XML và trạng thái bản vá (đã commit và push ở SHA nào, kết quả test suite ra sao).
+
 

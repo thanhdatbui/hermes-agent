@@ -1,4 +1,4 @@
-Cào/Render: 12 niche, min 45, 1 wkr. F_src=(Slot-1)*80+m_idx. Chuẩn hoá: ava bám lưới, 2 preview tròn; Tik*.xlsx; Khóa nick sửa tay; Bio VN BẮT BUỘC có dấu chuẩn (AdbKeyboard b64).
+Chuẩn hoá: 4 món (ava bám lưới 2 preview tròn, hashtag, bài pin >=1000view, bio VN có dấu AdbKeyboard); Tik*.xlsx; Khóa nick sửa tay.
 §
 Dọn đĩa: duyệt trước. CẤM đẻ script ad-hoc khi có canonical tool. MEDIA: WinRT OCR khớp handle.
 §

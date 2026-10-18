@@ -9,6 +9,7 @@ description: "TikTok follow runner and fail-closed farm ops."
 
 - **Tài liệu tham khảo chuyên sâu (`references/`):**
     - `references/profile-follow-action-button-classification.md`: Phân loại nút Follow.
+    - `references/scrape-cycle-cadence-and-dashboard-reconciliation.md`: Lệch pha chu kỳ quét 07h vs ca bot & đối soát Dashboard 1905.
     - `references/mode2-anchor-selection-and-deep-scroll.md`: Anchor >= 150 fl.
     - `references/follow-report-semantics-and-concise-wording.md`: Báo cáo follow.
     - `references/account-replacement-and-backfill-state-reset.md`: Thay nick.
@@ -16,7 +17,7 @@ description: "TikTok follow runner and fail-closed farm ops."
     - `references/adaptive-ceiling-and-stratified-cohort-governance.md`: Dò trần (+2 đến 30 fl), khôi phục bộ nhớ & 3 Cohort.
     - `references/daily-follow-matrix-and-trust-ceiling-analytics.md`: Heatmap & Ceiling.
     - `references/shared-ip-proxy-collision-and-canary-ceiling-testing.md`: Trùng IP.
-    - `references/account-level-action-restriction-and-anchor-fallacy.md`: Phân tích lỗi nhả do nick chưa đủ khỏe vs ngộ nhận do Anchor; phân định Telegram vs Dashboard.
+    - `references/account-level-action-restriction-and-anchor-fallacy.md`: Lỗi nhả cấp tài khoản vs ngộ nhận Anchor.
     - `references/contact-suggestion-popup-follow-lockdown.md`: Khóa popup danh bạ.
     - `references/burst-follow-hibernation-cadence-gemphone-benchmark.md`: Burst 20-30 fl.
     - `references/probation-ladder-4day-cycle-adaptation.md`: Chu kỳ 4 ngày.
@@ -25,8 +26,6 @@ description: "TikTok follow runner and fail-closed farm ops."
     - `references/dynamic-healing-row-selection-and-anti-consecutive-cadence.md`: Chọn row dưỡng động.
     - `references/zero-follow-shift-audit-and-fail-closed-breakdown.md`: Đối soát ca 0 follow.
     - Case references: `references/case-ui-*.md`, `references/workflow-parity-*.md`, `references/fleet-follow-*.md`.
-    - `references/case-ui-89-idempotent-session-actions-and-partial-follow-accounting.md`: Staging.
-    - `references/case-ui-96-released-follow-invalidation-regardless-of-count.md`: Khấu trừ nhả follow.
     - `references/post-cooldown-warmup-leak-and-unfilled-budget-audit.md`: Triage lỗi warmup leak (acc ra tù chạy quá budget) & acc khỏe underfilled do soft-deadline/mode2.
     - `references/case-ui-87-natural-video-browsing-mode1-mode2-telemetry.md`: Dwell M1/M2 12-20s.
     - `case-ui-78`: Pool 2 cụm & 4 preflight gates (2026-09-30).

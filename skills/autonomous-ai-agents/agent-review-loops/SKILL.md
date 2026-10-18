@@ -1,7 +1,7 @@
 ---
 name: agent-review-loops
 description: "Điều phối coding review đến APPROVED."
-version: 1.2.4
+version: 1.2.5
 metadata:
   hermes:
     tags: [orchestration, codex, claude, opencode, review-loop, preflight, live-validation]
@@ -32,6 +32,7 @@ metadata:
 - Với UI/farm, receipt phải gắn run hiện tại và ảnh phải được soi/OCR trước claim thành công. Popup hoặc từ khóa âm phải đi qua handler tự phục hồi có giới hạn; không gửi ảnh mù và không chạy vòng lặp UI vô hạn.
 
 ## 4. Tài Liệu Tham Khảo (References)
+- Anti-Paralysis Mechanical Override & Zero-Local-Deferred: [`references/anti-paralysis-mechanical-override-and-zero-local-deferred-20261018.md`](references/anti-paralysis-mechanical-override-and-zero-local-deferred-20261018.md)
 - Sol Closeout Gate Lifecycle: [`references/sol-closeout-gate-lifecycle.md`](references/sol-closeout-gate-lifecycle.md)
 - Anti-Premature Block: [`references/anti-premature-block-in-closeout.md`](references/anti-premature-block-in-closeout.md)
 - Session Close Remediation Discipline: [`references/session-close-remediation-discipline.md`](references/session-close-remediation-discipline.md)
