@@ -15,8 +15,8 @@
 | **Cuộn Header Hồ sơ** | `(540, 1100)` → `(540, 600)` | Vuốt nhẹ để ghim username lên sticky header |
 | **Ghim ID / Mở Switcher** | `(500, 140)` | Tap username trên header mở sheet 'Chuyển đổi tài khoản' |
 | **Cuộn Sheet Switcher** | `(540, 1500)` → `(540, 900)` | Khi máy có 8 acc, cuộn lên để thấy 4 acc phía dưới |
-| **Nút Sửa hồ sơ** | `find_box("sua ho s")` hoặc `(360, 730)` | Nút chữ nhật 'Sửa hồ sơ' giữa màn hình (dưới Follower). CẤM tap `(72, 148)`! |
-| **BẪY TỬ HUYỆT (75, 150)** | `CẤM TAP (75, 150)` | Trên TikTok v47.x, góc trên trái là icon "Tìm bạn bè". Tap vào đây sẽ mở màn Search và gõ nhầm tên vào ô tìm kiếm ("Không tìm thấy kết quả")! |
+| **Nút Sửa hồ sơ** | `find_box("sua ho s")` hoặc `(300, 800)` | Nút chữ nhật 'Sửa hồ sơ' giữa màn hình (dưới Follower). CẤM tap `(75, 150)`! |
+| **BẪY TỬ HUYỆT (75, 150) & BẪY OCR "i ijä"** | `CẤM TAP (75, 150)` | Trên Samsung S7 khi nick chưa có Bio, chữ "Sửa hồ sơ" thường bị WinRT OCR nhận diện sai thành `"i ijä"`. Nếu fallback về `(75, 150)` sẽ tap trúng icon "Tìm bạn bè" (`FindFriendsPageActivity`), gây kẹt vòng lặp `UNKNOWN -> Back` cho tới khi abort! Tọa độ fallback an toàn BẮT BUỘC là `(300, 800)`. |
 | **Thao tác Quay lại (Back)** | `input keyevent 4` | Luôn dùng KEYCODE_BACK phần cứng để lùi trang, TUYỆT ĐỐI CẤM tap tọa độ góc trên trái! |
 | **Hàng 'Tên' (Nickname)** | `(600, 752)` | Hàng đầu tiên trong 'Sửa hồ sơ', nằm trên 'Tên người dùng' |
 | **Nút Xóa tên cũ (X)** | `(960, 576)` | Nút clear trong ô nhập Tên |
@@ -129,6 +129,10 @@
 - **Canary Gate & Vision Inspection:** Trước khi kích hoạt hàng loạt trên 25 máy, BẮT BUỘC chạy Canary trên 1 máy thật (`test_canary_safe_rename.py`), dùng `browser_vision` soi mắt đọc ảnh `MEDIA:<path>` xác nhận nickname hiển thị đúng trên Profile, không che popup, không kẹt phím.
 - **Tiêu Chuẩn Báo Cáo Canary (Chống Báo Canary No-op):** CẤM TUYỆT ĐỐI báo cáo "Đã chạy Canary xong" khi kết quả runner thực chất chỉ là Skipped/No-op (ví dụ: máy test có active account không khớp target username và Switcher không có nick đó -> runner tự lùi ra an toàn trả về `(None, False)`). Trường hợp máy test không đủ điều kiện thi công, Coordinator phải lập tức bốc ngay máy khác có target account sẵn sàng để chạy thực nghiệm đầy đủ đến khi ra ảnh Profile nghiệm thu tên mới thành công.
 - **Bẫy Layout Profile Mới & Thoát Bằng Keyevent Back:** Trên một số tài khoản/phiên bản TikTok mới, layout Profile không còn nút 'Sửa hồ sơ' to giữa màn hình mà icon cây bút chì chỉnh sửa nằm ở góc trên bên trái `(75, 150)`. BẮT BUỘC chỉ được tương tác với tọa độ này khi State Machine xác nhận chắc chắn 100% đang ở `PROFILE`. Tuyệt đối CẤM tap `(75, 150)` để lùi trang sau khi Lưu, vì nếu app đã tự lùi về Profile rồi mà lại bấm tiếp `(75, 150)` thì sẽ mở màn hình Tìm kiếm bạn bè và AdbKeyboard gõ nhầm text vào ô Search! Luôn dùng `input keyevent 4` (KEYCODE_BACK phần cứng) để lùi trang an toàn.
+- **Bẫy OCR "i ijä" trên tài khoản chưa có Bio (Samsung S7 Pitfall 18/10/2026):**
+  * Trên các kênh chưa nạp Bio (trống trơn), nút 'Sửa hồ sơ' nằm ở vị trí `y ≈ 780–840`. WinRT OCR tiếng Việt trên font in hoa nhỏ của TikTok thường làm rớt nét và đọc nhầm `"Sửa hồ sơ"` thành `"i ijä"`.
+  * Nếu regex tìm kiếm chỉ tìm `r"(sua|chinh sua|edit)\s*h[o0]"`, match sẽ trả về `None`, kích hoạt fallback `XY_EDIT_PENCIL = (75, 150)` và tap trúng icon Tìm bạn bè (`FindFriendsPageActivity`).
+  * **Giải pháp khắc phục:** Bổ sung regex nhận diện biến thể méo dấu của nút này: `r"(sua|chinh sua|edit)\s*h[o0]|i\s*ij[aä]"` và luôn đặt toạ độ fallback mặc định tại vùng giữa màn hình `(300, 800)` thay vì góc trên trái `(75, 150)`.
 - **Chiến Lược Tách Runner Độc Lập Cho Watchdog 25 Workers:** Khi chạy cuốn chiếu 25 workers song song, tách toàn bộ State Machine OCR 35 bước thành CLI độc lập `do_rename_canonical_runner.py` và gọi qua `subprocess.run(timeout=320)`. Cách ly triệt để bộ nhớ, chống tắc nghẽn thread pool khi nhiều máy cùng gọi WinRT OCR `ocr_boxes.ps1`, giúp farm cuốn chiếu ổn định vượt mốc hàng chục nick/phiên.
 
 ---

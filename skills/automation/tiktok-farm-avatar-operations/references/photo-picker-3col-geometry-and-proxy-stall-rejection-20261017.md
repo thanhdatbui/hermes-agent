@@ -55,6 +55,10 @@ adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:
   - Chọn Ô 1 (nếu là ảnh mới đẩy vào): tap chính xác vào radio circle tại `(483, 276)` (r=36). CẤM tap `(660, 260)` vì sẽ dính sang Ô 2.
   - Tap nút **Tiếp** tại `(912, 1844)`.
 - Gửi ảnh MEDIA: ngay sau khi chụp được màn hình Picker/Crop/Profile, không được giấu ảnh trong log.
+- **Tiêu chuẩn kiểm tra ảnh Avatar trước khi gửi (Gate 6 & HMAC Receipt)**:
+  - Khi trích xuất và crop avatar từ video gốc (`avatar.jpg`), BẮT BUỘC tạo ảnh preview tròn so sánh (`huynhdiem0806_avatar_preview.jpg`), dùng `browser_vision` soi mắt kiểm tra (mặt nhân vật rõ nét, ở chính giữa khung tròn, không text/sticker/watermark, không viền đen méo).
+  - Đăng ký receipt có chữ ký HMAC (`guard_media_vision_gate.py --register-receipt ...`) trước khi gửi thẻ `MEDIA:` cho User.
+  - Khi kênh bị lệch nguồn giữa `Folder Video` và `Video Goc`, bắt buộc đồng bộ lại về 1 creator duy nhất và cắm cờ khóa `.manual_avatar_locked` + cập nhật `manual_avatar_protected_folders.json`.
 
 ### 3. Nghiệm thu kép bắt buộc (Double Verification Gate)
 - **Gate 1 (Màn hình Crop)**:
