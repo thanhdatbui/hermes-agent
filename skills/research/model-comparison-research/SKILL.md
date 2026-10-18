@@ -52,6 +52,9 @@ Use when a user asks whether two AI models are equivalent, requests benchmark-ba
 - Using a nearby model’s score as the target model’s score.
 - Presenting a table without benchmark version or harness details.
 - Claiming “equal” from one benchmark or from qualitative anecdotes.
+- Fabricating evaluation commentary or scoring from `ast.parse`/exit codes alone without reading and verifying actual response code and prompt-specific keyword alignment.
+- Reusing dirty Web UI chat threads during live head-to-head benchmarks (picks up stale DOM from prior turns, producing false identical outputs and fake runtimes).
+- Scraping only outer text containers (`.model-response-text`) while target code resides in modular web components (`<code-block>`).
 - Overexplaining the research process when the user only wants the verdict; lead with the verdict, then show the minimum evidence needed.
 
 ## First-party product-surface verification

@@ -12,6 +12,6 @@ Worker: Haiku/Agy fix; delegate chỉ đọc. CẤM bịa DONE; guard change có
 §
 Canary: target-bound đúng lỗi; WinRT OCR -> ATX (cấm uiautomator); Singbox. MỌI rule bắt buộc Guard/Hook cơ học (cấm prompt tiêm, xóa prompt khi có hook); giải pháp cơ học phải do Claude CLI duyệt; cấm khóc lóc đùn việc khi dính guard.
 §
-Báo cáo Telegram: tóm tắt KPI+exception; Dashboard :1905 tab riêng full-page (cấm modal bé/cuộn mò; Hồi phục tách 2 nhóm).
+Báo cáo Telegram: tóm tắt KPI+exception; Dashboard :1905 tab riêng full-page.
 §
-Agy CLI: BẮT BUỘC mặc định gemini-3.8-flash-medium (CẤM tự đổi sang high). Timeout AI: cấm để thấp (<180s/300s); ask 300s, fix 600s, worker 180s.
+Agy CLI: mặc định gemini-3.8-flash-medium (CẤM đổi high). Timeout AI: ask 300s, fix 600s, worker 180s. CẤM bịa nhận xét benchmark khi chưa đọc kỹ ruột code thật; cấm nhai lại DOM cũ.

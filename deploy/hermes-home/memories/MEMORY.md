@@ -18,6 +18,6 @@ Singbox :200xx, CẤM VPN. Wi-Fi: M1-40 kibe 1, M41-80 kibe 2, M201-240 admin 1,
 §
 Canary: target-bound (matrix+plan map diff->hook; cấm khóc lóc/máy móc); WinRT OCR -> ATX -> cấm uiautomator; done_gate verify hash+MEDIA. Claude quota probe >2h.
 §
-Ava: Trích clip folder gốc representative_frames (cấm lệch persona). Gate 6: chặn runtime nếu claim UI done mà thiếu MEDIA:; WinRT OCR sạch text; CẤM gửi MEDIA: mù. Dọn .thumbnails+Camera/*; Picker ô 0,1.
+Ava: Trích clip gốc representative_frames. Gate 6 fail-closed: cấm trần thuật/giải thích UI thiếu MEDIA:; file vật lý+SHA256 thật; cấm gửi mù. Dọn .thumbnails+Camera; Picker 0,1.
 §
 Reboot 3 ca (05:20, 11:20, 17:20), né TFT/War3. Task ngầm & Scheduler BẮT BUỘC bọc VBS/wscript Hidden + CREATE_NO_WINDOW (0x08000000), CẤM pop cmd cướp focus. 'Tắt' khi game = tắt cửa sổ nháy, cấm pause cron.
