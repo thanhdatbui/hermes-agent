@@ -37,22 +37,27 @@
 - Lứa 45 ngày vào cày follow sẽ dính lỗi "Velocity Spike trên tài khoản nguội", bấm phát thứ 2 là bị drop ngay.
 - Farm hiện có sẵn **173 tài khoản $\ge 60$ ngày và $\ge 15$ video** (trong đó có 73 nick nòng cốt $\ge 180$ ngày), dư sức đáp ứng 150–200 follow sạch mỗi ngày mà không cần ép chín lứa 45 ngày.
 
-### B. Quy tắc thực thi Dual Gate:
-1. **Dưới 60 ngày HOẶC dưới 15 video (Nick chưa đủ điều kiện follow chéo):**
+### B. Quy tắc thực thi Phân tầng 2 Cửa (Dual Gate 60d cày chéo vs 45d Follow Tự Nhiên):
+1. **Dưới 45 ngày HOẶC dưới 10 video (Trứng nước / Warm-up sơ khởi):**
    - Khóa follow chéo 100% (`budget = 0`, mode `blocked`).
    - Khóa follow tự nhiên trên Feed về 0% (`_follow_rate = {"for_you": 0, "following": 0, "friends": 0}`).
    - Chạy chế độ **Dưỡng sinh thuần (Pure Feed)**: xem video, lướt FYP, thả tim, đăng video rải đều.
-2. **Từ 60 ngày VÀ từ 15 video trở lên (Nick đủ điều kiện cày follow):**
-   - Mới chính thức mở quyền chạy follow runner chéo theo đúng bậc thang Cohort.
-   - **Chính sách Follow Tự Nhiên trên Feed (1% For You Feed):**
-     * Được phép bật ở mức xác suất 1% mặc định (`DEFAULT_FEED_FOLLOW_RATES = {for_you: 1}`) để dưỡng trust và tạo hành vi người dùng thật.
-     * Không cần hard-cap 1 lượt/ca: Vì xác suất 1% trong ca lướt 25-40 video là rất nhỏ (~75% không follow ai, ~23% follow 1 lượt, <2% follow 2 lượt), nếu thỉnh thoảng bấm 2 lượt cũng an toàn, không cần code chặn cứng.
-     * **Điều kiện chốt chặn bắt buộc (Bộ ba điều kiện):**
-       (a) Nick đã đạt chuẩn follow chéo (>= 60d, >= 15v).
-       (b) Nick sạch án phạt, không đi tù (`is_follow_cooldown is False`).
-       (c) Dải IP không bị dính Cầu Dao (`check_ip_breaker(machine) is False`).
-       -> Nếu nick đang đi tù HOẶC IP bị cầu dao: BẮT BUỘC tắt follow tự nhiên về 0%.
-     * **Theo dõi đối soát:** Định kỳ đối soát qua snapshot web (`snapshots` SQLite) sau 24-48h để theo dõi tỷ lệ nhả follow tự nhiên thực tế trước khi điều chỉnh tiếp.
+2. **Lứa 45 – 59 ngày VÀ từ 10 video trở lên (Giai đoạn ấm nick / Nuôi trust tự nhiên):**
+   - **Follow chéo (Runner):** Tiếp tục **KHÓA CỨNG (0 lượt)** để tránh bị sốc nhiệt/velocity spike dồn dập làm nát nick.
+   - **Follow tự nhiên trên Feed (1% For You Feed):** **ĐƯỢC PHÉP BẬT** để nick thỉnh thoảng bấm nhẹ 1 người trong ca lướt, tích lũy 10-15 following tự nhiên trước khi bước sang ngày thứ 60, giải quyết dứt điểm hiện tượng 39.5% nick 0 following.
+   - **Điều kiện chốt chặn an toàn (Chỉ được follow tự nhiên khi không bị cấm):**
+     * Nick không bị Cooldown (`is_follow_cooldown is False`).
+     * Dải IP không bị dính Cầu Dao (`check_ip_breaker(machine) is False`).
+     * Không phải ngày dưỡng sinh (`is_organic is False`, `TAADAA_REST_DAY_NO_FOLLOW != '1'`).
+     * Bất kỳ điều kiện nào vi phạm -> Tắt follow tự nhiên về 0%.
+3. **Từ 60 ngày VÀ từ 15 video trở lên (Nick trưởng thành / Đủ điều kiện cày chéo):**
+   - Mới chính thức mở quyền chạy follow runner chéo theo đúng bậc thang Cohort (Sweet Spot 9-12 fl/ngày cho Veteran).
+   - Vẫn duy trì follow tự nhiên 1% trên Feed (nếu không dính Cooldown và IP không trip).
+   - **Không cần hard-cap 1 lượt/ca cho follow tự nhiên:** Với xác suất 1% trên 25-40 video, xác suất bấm >= 2 lượt là <2% (cực hiếm), không cần thêm code phức tạp; thỉnh thoảng bấm 2 lượt vẫn an toàn.
+   - **Theo dõi đối soát:** Định kỳ đối soát qua snapshot web (`snapshots` SQLite) sau 24-48h để theo dõi tỷ lệ nhả follow tự nhiên thực tế trước khi điều chỉnh tiếp.
+
+### C. Kỷ luật giao tiếp & Tránh phức tạp hóa logic (User Correction):
+- "Thì đơn giản là chỉ đc fl tự nhiên khi fl chéo đang cho phép. Chứ mắc gì viết loằng ngoằng v": Tránh phân tích rườm rà, diễn đạt trực diện, bám thẳng vào điều kiện logic cốt lõi. Follow tự nhiên chỉ mở khi tài khoản và IP ở trạng thái cho phép (không đi tù, không dính cầu dao).
 
 ---
 
