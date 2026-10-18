@@ -51,6 +51,7 @@ Theo biên bản thống nhất 100% giữa Coordinator, Advisor Sol (:20129) v�
 2. **Symlink / Reparse Point:** Tuyệt đối không xóa đệ quy xuyên qua symlink/junction trỏ ra ngoài repo. Chỉ xóa chính junction entry đó.
 3. **Hiểu nhầm ý định Operator về Backup:** Khi người dùng bảo "backup xong dọn hết đi", ý là **di chuyển/gom các tệp rác vào thư mục lưu trữ backup để giải phóng repo**, TUYỆT ĐỐI KHÔNG ĐƯỢC XÓA BẢN BACKUP.
 4. **Pytest Verification Vacuous Passing Pitfall:** Tuyệt đối không dùng `if p.exists(): assert ...` trong integration test cho file cấu hình/proxy. Nếu file thiếu, test sẽ bỏ qua assertion và pass ảo (vacuous truth), bị Closeout Auditor từ chối. Bắt buộc dùng `assert p.exists()`.
+5. **Bẫy Un-staged Tool Bị Xóa Khi Dọn Rác Untracked:** Khi một script tool cốt lõi (`sol_repair.py`, `canary_runner.py`...) bị un-stage ra khỏi commit để thu hẹp diff byte (`git restore --staged <file>`), file đó rơi vào trạng thái untracked (`??`). Khi chạy script dọn dẹp file untracked, nếu không có allowlist bảo vệ, các file tool này sẽ bị xóa nhầm gây tê liệt hệ thống (ví dụ `sol_worker.py` crash do mất `sol_repair.py`). Mọi thao tác dọn dẹp bắt buộc dùng `safe_recycle.py`, cấm quét đĩa diện rộng để xóa mù các file `.py` untracked, và bắt buộc commit các tool canonical vào Git.
 
 ## 4. Canonical Tool: `D:/Taadaa/tools/safe_recycle.py`
 Đã thi công và nghiệm thu 9/9 unit tests (`D:/Taadaa/tools/tests/test_safe_recycle.py`):

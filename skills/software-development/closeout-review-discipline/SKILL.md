@@ -34,13 +34,19 @@ metadata:
   - **Strike 1:** `sol_repair.py` (:20129) tạo đề xuất AST O(1) <= 30 dòng (miễn phí 100%).
     * *Cơ chế tự động phòng vệ Proposal rỗng (`patches_count: 0`):* Parser `sol_repair.py` đã được vá chấp nhận cả thẻ đóng `<</FILE>>` (2 dấu `>`) lẫn `<</FILE>>>` (3 dấu `>`), tự động trích xuất git diff thật qua `git diff origin/master` nếu thiếu `--diff-file`, và tự nạp snippet file mục tiêu khi diff rỗng để Sol High không bị "mù code".
     * *Tự động nạp Scorecard:* Nếu thiếu `--scorecard-json`, script tự động bốc scorecard gần nhất từ `gate_audit.jsonl` hoặc `latest_closeout_scorecard.json`.
+    * *First-Responder Monopoly của Sol High & Chống Nhảy Cóc:* Strike 1 & 2 ĐỘC QUYỀN thuộc về Sol High (`sol_repair.py` / `sol_worker.py`). Nếu `sol_repair.py` bị thiếu trên đĩa hoặc lỗi import: BẮT BUỘC DỪNG LẠI & BÁO CÁO NGAY để khôi phục công cụ; CẤM TUYỆT ĐỐI tự ý nhảy cóc sang Haiku Worker để sửa code đối phó nhằm che giấu công cụ hỏng.
+    * *Kỷ luật Model Farm Danh Chính Ngôn Thuận:* Farm Taadaa 100% CHỈ CÓ Claude Sonnet 5.5 cho Reviewer/Planner và Haiku 5.5 cho Worker; CẤM TUYỆT ĐỐI bịa đặt hay gọi tên các model không tồn tại như Sonnet 3.5 hay Sonnet 3.7.
+    * *Bẫy lstrip("./") của file ẩn:* CẤM TUYỆT ĐỐI dùng `.lstrip("./")` để chuẩn hóa đường dẫn file trong gate/hook vì sẽ gọt cụt dấu chấm đầu (`.gitignore` -> `gitignore`), gây lỗi `binding mismatch` và chặn push sai. Bắt buộc dùng `.removeprefix("./")`.
   - **Strike 2:** `sol_worker.py` (:20129) ReAct test tích hợp kèm rollback snapshot (miễn phí 100%).
   - **Strike 3 Hand-off:** Trượt 3 lần liên tiếp -> Chuyển giao quyền can thiệp cho `claude_worker.py --role worker` (Haiku 5.5) hoặc `ag_cli.py fix`.
 - Khống chế tối đa 3 vòng sửa; CẤM vòng lặp vô tận.
 - CẤM TUYỆT ĐỐI gọi Claude Sonnet 5.5 để cày điểm closeout gate hoặc sửa code tự động. Sonnet là vũ khí chiến lược đắt đỏ, chỉ chạy khi Operator (User) ra lệnh đích danh.
+- **Bảo Vệ Tool Cốt Lõi Khỏi Nguy Cơ Bị Dọn Rác (Anti-Untracked-Tool-Purge):** Khi un-stage file để gọt diff (`git restore --staged <file>`), file đó trở thành untracked (`??`). Dọn rác untracked bắt buộc qua `safe_recycle.py` và có allowlist bảo vệ các tool canonical (`sol_*.py`, `gate_*.py`, `safe_recycle.py`, `inspect_machine.py`, `canary_runner.py`...), cấm xóa mù làm mất tool hệ thống.
+- **Tách Lượt Cập Nhật Tiến Trình Trên Telegram (Anti-Silent Remediation Lag):** Khi remediation kéo dài qua nhiều vòng (Vòng 1 reject -> Vòng 2 sửa -> Vòng 3 chấm lại), CẤM gom toàn bộ vào 1 turn duy nhất khiến User tưởng bị treo. Phải tách turn hoặc gửi cập nhật ngắn gọn điểm số từng vòng để User theo dõi theo thời gian thực.
 - **Anti-Stalling / Anti-Bureaucracy Invariant:** Khi Operator hỏi "xong hết chưa", cấm viện cớ quan liêu về trạng thái dirty hay chưa closeout để thoái thác. Bắt buộc xác nhận ngay code đã active trên đĩa hay chưa, báo cáo kết quả kiểm chứng cụ thể và lập tức kích hoạt Closeout Gate.
 
 ## 3. Tài Liệu Tham Khảo (References)
+- Bẫy lstrip("./") Gọt Cụt Dấu Chấm File Ẩn & Kỷ Luật Model Remediation (2026-10-18): [`references/lstrip-hidden-file-truncation-and-sol-monopoly-discipline-20261018.md`](references/lstrip-hidden-file-truncation-and-sol-monopoly-discipline-20261018.md)
 - Kiến Trúc Thống Nhất Grace Band 80-84 & Hóa Giải Xung Đột (2026-10-18): [`references/unified-grace-band-and-token-gate-architecture-20261018.md`](references/unified-grace-band-and-token-gate-architecture-20261018.md)
 - Anti-Stalling & Grace Band 80 Clarification (2026-10-18): [`references/anti-stalling-and-grace-80-clarification-20261018.md`](references/anti-stalling-and-grace-80-clarification-20261018.md)
 - Grace Band (80-84) & Chống Cày Điểm Vụn Vặt (2026-10-18): [`references/grace-band-80-84-and-anti-score-chasing-20261018.md`](references/grace-band-80-84-and-anti-score-chasing-20261018.md)
