@@ -96,7 +96,7 @@ To minimize token costs and eliminate latency:
 ## References
 
 - `references/decoupled-cqrs-bidding-mcp-and-freshness-strategy.md` — Decoupled CQRS architecture (residential IP crawler vs cloud VPS FastMCP query daemon), why VPS must not scrape government portals directly (WAF/SSL/RAM/timeout limits), dual-cadence data freshness (3 golden batch sweeps at 08:00, 13:30, 17:00 + 3-5s on-demand fetch), and universal vs tailored scope.
-- `references/desktop-gui-mcp-integration-and-cwd-pitfall.md` — Desktop GUI MCP integration (Antigravity IDE & Claude Desktop), stdio CWD relative path trap (preventing agentic runaway recursive disk searches), and per-project permission allowlist vs global server registry.
+- `references/desktop-gui-mcp-integration-and-cwd-pitfall.md` — Desktop GUI MCP integration (Antigravity IDE & Claude Desktop), stdio CWD relative path trap (preventing agentic runaway recursive disk searches), per-project permission allowlist vs global server registry, and ChatGPT Free vs Plus tier gating for MCP testing.
 - `references/mcp-configuration-and-intelligence-security.md` — Diagnostics for ChatGPT plugin/MCP URL errors, competitive intelligence security analysis (3rd-party vs private MCP), and partner messaging templates.
 - `references/private-mcp-server-architecture-and-sse-specs.md` — Reverse-engineered ChatGPT MCP SSE/HTTP transport specifications, FastMCP streamable_http_app lifespan pattern (mcp v1.28+), dual stdio/HTTP transport, Antigravity CLI end-to-end verification, OAuth discovery metadata, Nginx zero-buffering stream proxy rules, and FastMCP SQLite decoupling architecture.
 

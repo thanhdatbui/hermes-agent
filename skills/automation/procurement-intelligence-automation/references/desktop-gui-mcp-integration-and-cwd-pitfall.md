@@ -92,3 +92,20 @@ To integrate a local Python FastMCP server into Claude Desktop on Windows:
    ```
 2. **Critical Rule for Python Binary:** Always use the full absolute path to the Python interpreter inside the virtual environment where `fastapi`, `mcp`, and dependencies are installed. Windows desktop apps do not activate virtual environments by default; using bare `"python"` often launches system Python or Windows Store stubs, failing with `ModuleNotFoundError: No module named 'mcp'`.
 3. Restart Claude Desktop completely. The tools will appear under the hammer/tools icon in every new chat.
+
+---
+
+## 4. Platform Tier Invariants: ChatGPT Free vs Plus vs Local Desktop Testing
+
+When operators or clients ask why they cannot find Developer Mode or test an MCP server themselves:
+
+### ChatGPT Subscription Gating
+- **OpenAI Gating Policy:** Custom MCP connectors / Developer Mode is strictly locked behind paid tiers (**ChatGPT Plus $20/month, Team, Enterprise, Edu**).
+- **Free Account Limitation:** Free accounts do **not** have the Developer Mode toggle under `Settings -> Security and login`, and cannot add or test remote MCP servers (`https://.../mcp`).
+- **Partner Consultation:** If an operator wants to test the setup before sending instructions to a client, confirm their ChatGPT tier first. If the operator has a Free account, do not instruct them to find Developer Mode in ChatGPT.
+
+### Zero-Cost Local Testing Alternatives
+If the operator does not have ChatGPT Plus, they can test the exact same MCP tool schemas locally at zero cost:
+1. **Claude Desktop (Zero Cost):** Free on Windows/macOS. Supports local stdio MCP servers via `%APPDATA%\Claude\claude_desktop_config.json`. Displays the hammer icon with tools visible on screen.
+2. **Antigravity CLI / IDE (Zero Cost):** Supports local stdio MCP servers via `agy mcp add <name> <command> [args...]` or `~/.gemini/config/mcp_config.json`.
+3. **Antigravity GUI UI Trap:** Clarify to the operator that Antigravity's `Settings -> Projects -> <Project> -> MCP Tools` is solely an **Allow/Deny permission filter** (`permissionGrants`) for already-registered tools, not an "Add Server" form. Server definitions must be registered via CLI or global config first.

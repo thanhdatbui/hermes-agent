@@ -95,6 +95,7 @@ During the deployment of `farm_network_gate.py` on Máy 7 (serial `9885f63030454
   1. Pre-join hygiene: `settings put global http_proxy :0` and disable captive portal detection (`captive_portal_mode 0`, `captive_portal_detection_enabled 0`).
   2. Omit `-S` when launching `com.steinwurf.adbjoinwifi/.MainActivity`.
   3. Defer sending `KEYCODE_HOME` until after L2->L3->L4 verification is fully completed.
+  4. Force-stop `adbjoinwifi` post-join: Run `_adb_shell(serial, "am force-stop com.steinwurf.adbjoinwifi")` immediately upon `_join_wifi` completion (on `OK`, `TIMEOUT`, and `AUTH_FAIL`) to terminate its internal 4-5s background timer which otherwise fires continuous `CMD_ENABLE_NETWORK <net_id> true` loops, tearing down active Wi-Fi connections and interrupting Android DHCP/route negotiation.
 
 ---
 
