@@ -51,6 +51,16 @@ Theo biên bản thống nhất 100% giữa Coordinator, Advisor Sol (:20129) v�
 2. **Symlink / Reparse Point:** Tuyệt đối không xóa đệ quy xuyên qua symlink/junction trỏ ra ngoài repo. Chỉ xóa chính junction entry đó.
 3. **Hiểu nhầm ý định Operator về Backup:** Khi người dùng bảo "backup xong dọn hết đi", ý là **di chuyển/gom các tệp rác vào thư mục lưu trữ backup để giải phóng repo**, TUYỆT ĐỐI KHÔNG ĐƯỢC XÓA BẢN BACKUP.
 
-## 4. References & Chi Tiết Kiến Trúc
+## 4. Canonical Tool: `D:/Taadaa/tools/safe_recycle.py`
+Đã thi công và nghiệm thu 9/9 unit tests (`D:/Taadaa/tools/tests/test_safe_recycle.py`):
+- **CLI:** `python D:/Taadaa/tools/safe_recycle.py <file|dir> [<file|dir> ...]`
+- **Python API:**
+  ```python
+  from safe_recycle import safe_recycle, SafeRecycleError
+  records = safe_recycle(["path/to/file1.png", "path/to/folder"])
+  ```
+- **Hành vi:** Tự động đưa vào `<volume>/.quarantine/YYYY-MM-DD/<HHMMSS>_<uuid8>_<name>`, ghi WAL `manifest.jsonl`, atomic move `os.replace`, và post-verification (khớp size, đích tồn tại, nguồn biến mất).
+
+## 5. References & Chi Tiết Kiến Trúc
 - Phản biện kiến trúc chuyên sâu từ Advisor Sol: [`references/advisor-sol-critique-and-zero-hard-delete-architecture.md`](references/advisor-sol-critique-and-zero-hard-delete-architecture.md)
 - Biên bản đồng thuận 3 bên (Coordinator + Advisor Sol + Reviewer Claude Sonnet 5.5): [`references/three-party-consensus-zero-hard-delete-20261018.md`](references/three-party-consensus-zero-hard-delete-20261018.md)

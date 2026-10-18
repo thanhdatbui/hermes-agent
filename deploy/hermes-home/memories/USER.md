@@ -1,6 +1,6 @@
 Chuẩn hoá: 4 món (ava bám lưới 2 preview tròn, hashtag, bài pin >=1000view, bio VN có dấu AdbKeyboard); Tik*.xlsx; Khóa nick sửa tay.
 §
-Dọn đĩa: duyệt trước; BẮT BUỘC Recycle Bin, CẤM xóa backup/hard-delete. CẤM đẻ script ad-hoc khi có canonical tool. MEDIA: WinRT OCR khớp handle.
+Dọn đĩa: duyệt trước; CẤM xóa cứng (rm/unlink/rmtree), BẮT BUỘC safe_recycle.py/.quarantine Fail-Closed; CẤM xóa backup. CẤM đẻ script ad-hoc. MEDIA: WinRT OCR.
 §
 Nuôi 4d 3 ca. Ava&2FA tới 5h15 (né cache 4h). Write-Through Excel 3,4,5+G; Starve 96h; mail Graph PC. Reg Gmail: 160 máy (1-80, 201-280). Đổi tên TT bám username.
 §
