@@ -12,9 +12,9 @@ Stale Upload: xóa draft. Revert flop: TikWM tải CDN. Popup 'Ghim/Riêng tư' 
 §
 Closeout: Strict >=85 (XÓA BỎ Grace Band), cấp token HMAC patch-id. CẤM báo DONE/push khi thiếu token. Thiếu điểm BẮT BUỘC tự sửa 3 Strike, CẤM đưa menu P/án 1/2. Pre-closeout: target trên origin -> DỪNG (ALREADY_PUSHED). CẤM commit -a; CẤM over-engineer.
 §
-Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot. Cron: phase9-runner nuôi, watchdog 15p.
+Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot. Cron: 100% no_agent+script thô, cấm LLM<6h nghẽn GW.
 §
-Singbox :200xx, CẤM VPN. Wi-Fi: M1-40 kibe 1 (pass 23102025), M41-80 kibe 2 (19051995), M201-240 admin 1, M241-280 admin 2 (19051995); CẤM đoán pass/đổ lỗi xoay máy khi cạnh AP. Cứu máy: operator_device_lock(force_preempt=True). Proxy LAN 192.168.110.2:port (Kibe: 20001..20080; Admin: 10008..10035). Proxy 67/69 direct.
+Singbox :200xx, CẤM VPN. Wi-Fi: M1-40 kibe 1, M41-80 kibe 2, M201-240 admin 1, M241-280 admin 2; CẤM đoán pass/đổ lỗi xoay máy cạnh AP. Cứu máy: operator_device_lock(force_preempt=True). Proxy LAN 192.168.110.2:port (Kibe: 20001..20080; Admin: 10008..10035). Proxy 67/69 direct.
 §
 Canary farm: tối thiểu 3-4 màn/máy khác nhau (DM, sửa hồ sơ, feed, popup thử thách); cấm canary trên 1 máy đơn độc.
 §
