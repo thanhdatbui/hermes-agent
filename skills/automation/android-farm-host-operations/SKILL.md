@@ -6,6 +6,7 @@ description: "Use when farm devices drop, USB hangs, or entering BIOS."
 # Android Farm Host Operations
 
 References:
+- `references/m7-wifi-5ghz-vs-24ghz-and-pnp-triage-20261019.md` — Chẩn đoán lệch băng tần 5GHz vs 2.4GHz (tại sao vào Dat được nhưng kibe 1 tạch), ngưỡng client Aruba (khuyến nghị 40 vs trần 64) và kỷ luật đối soát PnP USB chống phán bừa rút cáp khi mất ADB (19/10/2026).
 - `references/scheduled-reboot-freeze-illusion-and-uptime-triage-20261019.md` — Chẩn đoán cảm giác "treo máy" lúc reboot 3 ca định kỳ (05:20, 11:20, 17:20), bản chất Windows broadcast WM_ENDSESSION force-kill socket Chromium/ADB, và quy trình đối soát Uptime O(1) qua GetTickCount64 + System Event ID 1074/6005/6006 (19/10/2026).
 - `references/host-power-cycling-reboot-vs-shutdown-and-electricity-economics-20261018.md` — Phân tích kỹ thuật Reboot xả USB vs Shutdown PC ban đêm, bẫy lý thuyết sáo rỗng "thermal cycling/inrush current", và bóc tách bài toán kinh tế điện năng Farm (~3 triệu/tháng) (18/10/2026).
 - `references/tft-dual-host-guard-and-reboot-incident-20261017.md` — Bẫy tử huyệt TFT Game Guard chỉ quét máy Kibe và client 3D khiến reboot sập máy Admin trong trận rank (17/10/2026), quy chuẩn quét song song Kibe+Admin, ranh giới in-match vs client/lobby, cấm reboot khi app Warcraft 3 mở, tách sentinel độc lập từng máy, khóa single-instance và error contract bảo toàn session Hermes.
@@ -447,7 +448,8 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
   2. **Mất hẳn khỏi ADB nhưng vẫn cắm vật lý (Hardware Connected, ADB Vanished):**
      * Windows PnP vẫn nhận diện thiết bị composite (`USB\VID_04E8&PID_6860\<SERIAL>` với `Status: OK`, `Present: true`).
      * `adb devices` hoàn toàn không có serial này (không xuất hiện cả ở dạng `offline`).
-     * *Nguyên nhân:* Interface con ADB (`...&ADB\...`) bị lỗi driver/driver stack treo, hoặc tiến trình daemon `adbd` trên Android bị crash/kill ngầm mà không nhả VBUS.
+     * *Nguyên nhân:* Màn hình khóa chưa chấp nhận popup "Cho phép gỡ lỗi USB", thiết bị chuyển sang chế độ MTP/Chỉ sạc, interface con ADB (`...&ADB\...`) bị lỗi driver/driver stack treo, hoặc tiến trình daemon `adbd` trên Android bị crash/kill ngầm mà không nhả VBUS.
+     * **KỶ LUẬT CHẨN ĐOÁN (CẤM PHÁN ẨU RÚT CÁP):** Khi `adb devices` mất máy, CẤM TUYỆT ĐỐI phán bừa là người dùng rút cáp hay máy sập nguồn. BẮT BUỘC kiểm tra PnP USB (`Get-PnpDevice -PresentOnly`) để xác nhận kết nối vật lý trước khi kết luận.
   3. **ADB `offline`:**
      * `adb devices` vẫn liệt kê serial nhưng ở trạng thái `offline`.
      * Windows PnP `Present: true`.

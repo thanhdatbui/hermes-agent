@@ -1,6 +1,6 @@
 bio VN AdbKeyboard cấm trùng 1 mẫu); Tik*.xlsx; Khóa nick.
 §
-Dọn đĩa: safe_recycle.py. Reboot: né TFT/War3/ca chạy. Box 1 (M1-20) sát AP kibe 1. S7: Anten Wi-Fi góc trên TRÁI. Lỗi timeout/PSM BẮT BUỘC sửa script; cấm cron quấy rầy máy nghỉ.
+Dọn đĩa: safe_recycle.py. Reboot né TFT/War3. Box 1 sát AP kibe 1. S7: anten Wi-Fi góc trên TRÁI. Lỗi timeout/PSM BẮT BUỘC sửa script; cấm cron quấy rầy máy nghỉ.
 §
 Nuôi 4d 3 ca (bỏ 0h). Nhả lock per-device (Rollname 15, pool 25-40). Ava&2FA tới 5h15. Excel 3,4,5+G; Starve 96h; Gmail GPM chỉ login rồi nuôi, cấm OAuth AG.
 §
@@ -14,4 +14,4 @@ Canary: target-bound đúng lỗi; WinRT OCR -> ATX (cấm uiautomator); Singbox
 §
 Báo cáo Telegram: tóm tắt KPI+exception; Dashboard :1905 full-page.
 §
-User: ưu tiên kiến trúc, Claude plan, remote test; giọng người thật, cấm icon/khóc lóc/ngụy biện chưa feed/đóng băng nick farm. Sol timeout >=80s (cấm 45s).
+User: ưu tiên kiến trúc, Claude plan; cấm phán bừa rút cáp khi chưa check PnP USB; trần 40 máy là khuyến nghị airtime (trần AP 64); cấm khóc lóc/ngụy biện; Sol >=80s.

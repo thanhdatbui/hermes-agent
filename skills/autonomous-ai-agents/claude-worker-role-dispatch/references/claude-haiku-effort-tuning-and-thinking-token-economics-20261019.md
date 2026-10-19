@@ -52,3 +52,16 @@ Khi gọi Claude CLI để review/chấm điểm đối chiếu 2 đoạn code l
   - Bắt lỗi lãng phí I/O: Chỉ trích việc retry lại toàn bộ vòng ghi đĩa file tạm, yêu cầu chỉ retry đúng lệnh `os.replace`.
   - Đòi hỏi Unit test phải có Mocking phá hoại (mock `os.replace` ném lỗi 3 lần liên tiếp để thử thách thuật toán backoff).
 - 👉 **Công thức chuẩn cho Farm:** Gemini làm thợ thi công nhanh (O(1) builder), Claude CLI làm người gác cổng chất lượng (Closeout Reviewer).
+
+---
+
+## 6. Quyết Định Thiết Kế Lock Cứng Vào Hệ Thống (Production Standards)
+Sau khi cân nhắc giữa Thinking Token Economics và độ tin cậy thực chiến:
+1. **Tier 1 Worker (`claude_worker.py` / `haiku_worker.py`):**
+   - **Khóa cứng:** `--effort high`.
+   - **Lý do:** Chấp nhận tốn thêm ~150-200 thinking tokens để đổi lấy **First-Shot Success (10/10 pass)**, triệt tiêu 100% việc nói nhảm xin quyền tool dẫn đến phải retry đốt lại 80.000 input tokens.
+   - **Van an toàn:** `CLAUDE_QUOTA_GUARD` kẹp trần 85%; chạm trần tự động chuyển Tier 2.
+2. **Tier 2 Worker & 24/7 Workhorse (`ag_cli.py`):**
+   - **Khóa cứng:** `DEFAULT_MODEL = "gemini-3.8-flash-medium"`.
+   - **Nâng trần timeout:** `ask` = 1200s, `fix` = 1500s.
+   - **Lý do:** Tuyệt đối không dùng High để tránh bẫy suy nghĩ lan man ngâm stream 10 phút và đứt đuôi code do chạm trần token của 1 turn. Medium đạt tỷ lệ sống sót 100% tuyệt đối trên toàn bộ 22 profiles.

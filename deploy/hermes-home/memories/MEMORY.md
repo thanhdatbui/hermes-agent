@@ -6,7 +6,7 @@ Hotmail: CẤM mail cá nhân; @fviainboxes.com đọc OTP. Excel 3,4,5+G. Pin >
 §
 Preempt lock; ping 0% loss; ARP 110.x. Lock: rename_natural_state.json. Terminal: foreground max 60s; CLI dài/nặng BẮT BUỘC background=True + notify_on_complete=True.
 §
-Argon=:20135. Agy CLI: 3.8-med Worker (10/10 pass, 15k chars, cấm tràn token); 3.8-high Architect (timeout>=1200s, Gate 1 phân rã); Claude CLI Planner. Benchmark: bắt buộc đối soát spec.
+Argon=:20135 (token stable 4s). Claude CLI làm Planner.
 §
 Stale Up: xóa draft. Revert: TikWM. Ghim/Riêng tư ko proof. Cào: max 60. Cron TB: device_lock+rolling<=5; bỏ ca 0h.
 §
