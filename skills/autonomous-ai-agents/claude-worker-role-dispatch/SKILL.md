@@ -97,6 +97,9 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
 ## Mechanical Gate Hook Enforcement & Division of Labor (User Mandate 2026-10-18)
 
 - **CẤM KHÓA LUẬT BẰNG PROMPT MỀM / MEMORY**: Mọi rule an toàn mới phát sinh trên farm BẮT BUỘC thi công thành **PreToolUse Guard Hook / Gate cơ học** bằng code Python fail-closed (chặn ở tầng OS/runtime trước khi tool thực thi), TUYỆT ĐỐI CẤM chỉ dặn dò trong prompt, markdown hay bộ nhớ Hermes.
+- **CẤM LƯU CONFIG/RULE CƠ HỌC VÀO PERSISTENT MEMORY / PROMPT KHI ĐÃ CÓ GATE CƠ HỌC (User Correction 19/10/2026)**:
+  Operator đã chấn chỉnh: *"Là sao có gate cơ học r cứ dùng memory chi v"*.
+  Khi một cấu hình hay quy tắc đã được cơ giới hóa cứng vào mã nguồn (`claude_worker.py --effort high`, `ag_cli.py DEFAULT_MODEL = "gemini-3.8-flash-medium"`, `guard_dispatch_contract.py`), và có bộ test pytest kiểm chứng tự động, TUYỆT ĐỐI CẤM ghi chép lại vào Persistent Memory (`memory.md`) hay tiêm vào prompt của agent. Việc tiêm prompt thừa thãi khi đã có gate cơ học gây lãng phí context tokens, tạo nguy cơ drift chỉ thị và vi phạm trực tiếp nguyên tắc "Code & Hook cơ học thắng mọi prompt mềm".
 - **XÓA BỎ FILE PROMPT TIÊM / SKILL RÁC KHI ĐÃ CƠ GIỚI HÓA**: Khi một quy chuẩn đã được chuyển hóa thành hook cơ học vật lý (`pre-commit`, `pre-push`), BẮT BUỘC xóa bỏ các file skill/prompt tiêm mềm thừa thãi để tránh gây loãng context và xung đột chỉ thị.
 - **PHÂN VAI RÕ RÀNG: CLAUDE CLI LÀ KIẾN TRÚC SƯ / REVIEWER, COORDINATOR LÀ THI CÔNG**:
   - Claude Sonnet 5.5 (`--role planner` / `--role reviewer`) ĐỘC QUYỀN tư vấn kiến trúc an toàn, bóc tách edge-case và thẩm định duyệt code (Reviewer).
