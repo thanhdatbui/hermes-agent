@@ -178,5 +178,15 @@ Trong `follow_state.py`, runner tự động điều chỉnh trần follow cho c
 - **Điều phối qua Manifest**: Mỗi máy bốc độc lập 1 slot có điểm yếu cao nhất trên máy đó để dưỡng sinh (0-follow, lướt feed + up video), không cào bằng theo cờ `-Row`.
 - **Bảo toàn tài sản Farm**: Acc đã có tuổi, có video, vẫn đang live và cày view là tài sản quý giá của farm; tuyệt đối cấm tư duy "đóng băng vĩnh viễn" hay quy chụp acc chưa xem feed khi acc đã hoàn thành feed session đầy đủ trước đó.
 
+## 15. Chốt Chặn Anchor (Gatekeeper Invariant) & Xóa Bỏ Tư Duy "Bị Nhả Oan"
+- **Bản chất của việc follow Anchor**: Tài khoản Anchor là chốt chặn kiểm tra đầu tiên (Gatekeeper Test) của toàn bộ phiên follow. Khi nick vừa vào follow nick Anchor mà nút bị nhả (hoặc không ăn), điều đó chứng minh 100% tài khoản đó đang bị TikTok kích hoạt cờ Action Block / Shadow Restriction trên tính năng Follow. Khi tài khoản đã bị Action Block, dù đổi sang bất kỳ nick mục tiêu nào khác thì nút bấm vẫn sẽ bị nhả.
+- **Hành động xử lý bắt buộc**:
+  * Ngay khi phát hiện nhả nút ở nick Anchor, runner BẮT BUỘC phải hủy toàn bộ phiên follow ngay lập tức (fail-closed, `followed_count = 0`, đánh dấu `failed = True`).
+  * Ghi nhận lỗi và đưa tài khoản vào chu kỳ Cooldown theo số lần tái phạm (`fail_streak`).
+- **Mục tiêu an toàn**: Đây là cơ chế bảo vệ tối quan trọng của farm, ngăn chặn việc máy tiếp tục cày nát nút trên các nick khác làm cháy IP proxy, làm hỏng tệp target nội bộ, hoặc khiến TikTok trừng phạt nặng hơn (checkpoint/ban nick).
+- **Kỷ luật tư duy & Cấm ngụy biện**:
+  * TUYỆT ĐỐI CẤM tư duy máy móc coi việc "nick bị nhả Anchor rồi bị hủy phiên và tống vào diện Cooldown là oan".
+  * Việc hủy phiên và Cooldown ngay lập tức là HOÀN TOÀN ĐÚNG ĐẮN, HỢP LỆ VÀ BẮT BUỘC. Bất kỳ phân tích hay báo cáo nào cố tình biện minh rằng nick "bị phạt oan" khi nhả Anchor đều bị coi là ngụy biện và vi phạm kỷ luật vận hành farm.
+
 
 
