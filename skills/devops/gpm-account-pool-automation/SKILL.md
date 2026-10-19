@@ -26,3 +26,4 @@ version: 1.3.0
 - Chuẩn hóa báo cáo 6H Group 10 fail-closed và cooldown 24h cho `NEEDS_LOGIN`: xem [`references/gpm-6h-nurture-report-group-filter-and-fail-closed-telemetry.md`](references/gpm-6h-nurture-report-group-filter-and-fail-closed-telemetry.md).
 - Chống báo cáo ảo văng cookie và bẫy nghẽn nuôi vĩnh viễn (Selection Choke): xem [`references/gpm-gmail-nurture-6h-report-telemetry-and-choke-prevention.md`](references/gpm-gmail-nurture-6h-report-telemetry-and-choke-prevention.md).
 - Khắc phục báo cáo ảo 6H Group 10 và cooldown 24h cho `NEEDS_LOGIN`: xem [`references/gmail-6h-report-group10-filter-and-anti-false-alert.md`](references/gmail-6h-report-group10-filter-and-anti-false-alert.md).
+- Chuẩn hóa thuật ngữ và đo lường fail-closed cho báo cáo 6H: xem [`references/gpm-6h-nurture-report-terminology-and-fail-closed-metrics.md`](references/gpm-6h-nurture-report-terminology-and-fail-closed-metrics.md).
