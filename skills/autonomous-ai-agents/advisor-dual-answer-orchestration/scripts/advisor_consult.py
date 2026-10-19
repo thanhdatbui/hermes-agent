@@ -208,9 +208,9 @@ def _call_stream_chat(
     url: str,
     headers: dict[str, str],
     payload: dict[str, Any],
-    first_token_timeout: float = 45.0,
-    idle_token_timeout: float = 15.0,
-    max_total_timeout: float = 90.0,
+    first_token_timeout: float = 80.0,
+    idle_token_timeout: float = 20.0,
+    max_total_timeout: float = 140.0,
 ) -> Tuple[bool, str]:
     """Gọi endpoint chat completion có hỗ trợ SSE streaming với Idle Streaming Timeout."""
     t_start = time.time()
@@ -298,9 +298,9 @@ def _consult_inner(prompt: str, context: str = "") -> dict[str, Any]:
             omni_url,
             omni_headers,
             payload,
-            first_token_timeout=45.0,
-            idle_token_timeout=15.0,
-            max_total_timeout=90.0,
+            first_token_timeout=80.0,
+            idle_token_timeout=20.0,
+            max_total_timeout=140.0,
         )
         if ok and len(text_resp) > 20:
             return {
@@ -321,7 +321,7 @@ def _consult_inner(prompt: str, context: str = "") -> dict[str, Any]:
     }
 
 
-def consult_advisor(prompt: str, context: str = "", timeout_sec: float = 95.0) -> dict[str, Any]:
+def consult_advisor(prompt: str, context: str = "", timeout_sec: float = 150.0) -> dict[str, Any]:
     """Truy vấn trực tiếp Advisor Sol (:20129 review) với Idle Streaming Timeout (wait=False)."""
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
     future = executor.submit(_consult_inner, prompt, context)

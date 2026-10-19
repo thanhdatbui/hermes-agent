@@ -107,6 +107,7 @@ A valid acceptance sequence is:
 5. Do not report `DONE` from adapter status alone. If only the adapter canary passes, report `adapter PASS; orchestration canary pending`.
 
 ## References
+- Chẩn Đoán & Khắc Phục Nút Thắt Timeout 45s Đa Tầng Của Advisor Sol (2026-10-19): [`references/multi-layer-timeout-bottleneck-diagnosis-20261019.md`](references/multi-layer-timeout-bottleneck-diagnosis-20261019.md)
 - Cải Tiến Idle Streaming Timeout & Hóa Giải Cắt Ngang Dòng Stream Sol Advisor (2026-10-18): [`references/advisor-idle-streaming-timeout-resolution-20261018.md`](references/advisor-idle-streaming-timeout-resolution-20261018.md)
 - Quy Trình Hội Chẩn 3 Bên Giải Quyết Xung Đột Chính Sách (2026-10-18): [`references/tri-party-architectural-alignment-protocol-20261018.md`](references/tri-party-architectural-alignment-protocol-20261018.md)
 - `references/claude-cli-4round-review-approved-20261015.md` for the Claude CLI 4-round review progression leading to official APPROVED verdict, `_is_secret_key` false-positive avoidance on `tokens_used`, redact-before-truncate boundary safety, alphanumeric serial lookahead, and Telegram communication discipline.
@@ -134,6 +135,10 @@ See `references/advisor-context-starvation-and-session-briefing-20261015.md` for
 - **claude_worker.py — Cổng Điều Phối Role-Based Thế Hệ Mới (15/10/2026):** Để tránh lặp lại sự cố bypass 72 turns (2.1M tokens Sonnet), toàn bộ lệnh gọi Claude CLI trên Farm BẮT BUỘC đi qua `python D:/Taadaa/tools/claude_worker.py --role [worker|planner|reviewer]`. Wrapper này cưỡng chế tự động: hard-cap `max_turns` theo role (reviewer: 4 mặc định/8 tối đa, planner: 6/10, worker: 8/15), chọn đúng model mặc định (Sonnet cho planner/reviewer, Haiku cho worker), khóa cứng `--disallowedTools Edit,Write,NotebookEdit` cho planner/reviewer, và tự động fallback sang `ag_cli.py ask` (không phải `fix`) khi Quota chạm ngưỡng 85%/90%. Quota stale threshold hạ xuống 2.0h. CẤM gọi `claude -p` thô trong terminal mà không qua wrapper.
 
 ## Common failure modes
+
+- **Bẫy Nghẽn Timeout Đa Tầng Của Advisor Sol (Tăng Timeout Script Vẫn Dính 45s - 19/10/2026):**
+  * *Nguyên nhân:* Tăng timeout ở client script (`consult_advisor.py`) không đủ nếu các tầng trung gian chưa đồng bộ: (1) OmniRoute `.env` có `ACCOUNT_SEMAPHORE_TIMEOUT_MS=45000` (hàng đợi slot pool ném lỗi sau 45s) và `STREAM_READINESS_TIMEOUT_MS=40000` (OmniRoute tự hủy socket trả 499 nếu first byte chậm quá 40s); (2) Bản lưu trong skill `scripts/advisor_consult.py` bị kẹt `first_token_timeout=45.0s`; (3) `advisor_tool.py` trong Hermes có `DEFAULT_TIMEOUT=55s`; (4) Host terminal guard ngắt lệnh foreground ở 60s.
+  * *Khắc phục:* Phải đồng bộ cả 4 tầng: Nâng OmniRoute semaphore/readiness lên 80s–90s; đồng bộ `scripts/advisor_consult.py` lên 80s/140s/150s; khi gọi CLI foreground bắt buộc prompt cô đọng (<150 từ, 3 gạch đầu dòng) để Sol nhả token trong 15s–30s không chạm trần 60s của Host Guard. (Chi tiết: `references/multi-layer-timeout-bottleneck-diagnosis-20261019.md`).
 
 - **Advisor Sol Web Context Starvation & Tái cấu trúc Ngữ cảnh Phiên (15/10/2026):**
   * *Vấn đề cốt lõi:* ChatGPT-Web pool (:20129 `gpt-web-sol`) là API stateless. Nếu chỉ truyền tin nhắn gần nhất (`original_user_message`), Advisor hoàn toàn mù ngữ cảnh phiên (máy mấy, nick nào, lỗi trước đó là gì), dẫn tới câu trả lời cụt lủn, ngây ngô và lạc đề.

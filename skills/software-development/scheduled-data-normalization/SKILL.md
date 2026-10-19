@@ -52,6 +52,7 @@ Run operational parity and exploratory drift scans separately. Uploader/channel-
 - Editing while the scheduler is concurrently writing.
 - Declaring DONE after save without post-cycle verification.
 - **Header Renaming without Consumer Code Alignment (Đổi header Excel làm generator định kỳ ghi đè rác)**: Standardizing or clarifying column headers in authoritative workbooks (e.g., `Folder Video` -> `Folder Video (Slot 1-640)`) without expanding alias lists in generators and consumers. Exact string/tuple checks fail to find the column, causing generators to fall back to sequential row assignment, scramble slot order (e.g. M76 slot 8 -> slot 7), and periodically overwrite runtime safe workbooks on every cron cycle. Generators MUST use multi-alias substring matching and fail-closed instead of falling back to sequential assignment.
+- **Hashtag Reversion & Multi-Cluster Authority Desync (Hashtag bị lộn hoài do cron đè CSDL gốc)**: Editing keywords/hashtags in workbooks without updating the upstream authority database causes periodic cron watchdogs (e.g. 15m sync) to silently overwrite workbooks back to stale scraped categories. Sync scripts omitting secondary clusters (e.g. Admin) or ignoring manual lock markers (`.manual_hashtag_locked`) perpetuate category drift across the farm.
 - **Unchecked Row-Append Column Drift (Dời cột khi ghi đè / append dữ liệu mới)**: When scripts append newly registered or modified accounts into authoritative workbooks without strict schema enforcement, misaligned field counts shift columns to the right (e.g., writing timestamp into `device ID` and pushing real serials into nameless column 11). Downstream batch runners (2FA, Avatar, Login) fail preflight check against hardware mapping (`PROXYgandienthoai.xlsx`) and skip accounts massively. Normalization MUST re-align drifted columns against hardware ground truth before running batches.
 
 ## Evidence template
@@ -61,5 +62,6 @@ Report: authority before/after; mapping before/after; expected/generated files; 
 ## Reference
 
 - See `references/cron-overwrite-and-workbook-drift.md` for a concrete dual-cluster workbook incident and verification checklist.
+- See `references/hashtag-reversion-and-cron-source-of-truth-trap.md` for the 3 root causes of periodic keyword/hashtag clobbering, multi-cluster desync, and the 4-step immutable lock protocol.
 - See `references/scrape-partial-data-fail-closed-preservation.md` for handling partial scraper extractions, preventing false zero-metric overwrites, and protecting downstream anomaly detectors.
 - See `references/header-renaming-and-scheduled-generator-desync.md` for the header renaming desync failure mode, multi-alias matching rules, and the 5-tier audit protocol.
