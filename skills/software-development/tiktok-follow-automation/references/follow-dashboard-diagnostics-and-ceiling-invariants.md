@@ -133,3 +133,19 @@ Trong `follow_state.py`, runner tự động điều chỉnh trần follow cho c
   - Script không chia tỷ lệ % cố định trước, mà chạy theo cơ chế "nuốt trần ngày": P1 cấp `random_target` từ `t2_range`. Nếu P1 bốc trúng số thấp (ví dụ 4-5), `budget_used = 4-5`, dẫn tới `remaining = cap - budget_used > 0` ➔ P2 bị ép lôi nick ra bấm nốt phần dư 1 lượt.
   - **Quy chuẩn Single-Session Lock**: Nếu `budget_used > 0` (P1 đã chạy có follow), hàm `_probation_budget()` tại P2 bắt buộc trả về `budget = 0`. Toàn bộ ngân sách Tier 1 (3–4 lượt) và Tier 2 (5–6 lượt) được dồn chạy 1 cữ duy nhất trong Phiên 1, sau đó cho nick nghỉ ngơi làm nguội, triệt tiêu hoàn toàn rủi ro bị nhả ở P2. P2 chỉ đóng vai trò dự phòng khi P1 bị offline hoặc lỗi mạng (`budget_used == 0`).
 
+## 11. Cơ Chế Tính Toán Động Cho Tier 1 & Tier 2 (Né Mốc Gãy Cũ & Bóp Trần Theo Án Tích)
+- **Vấn đề**: Trước đây Tier 1 (2–4 follow) và Tier 2 (5–6 follow) cấp theo dải ngẫu nhiên tĩnh, chưa bám sát lịch sử thất bại cá nhân của từng nick. Nếu một nick từng bị gãy ở mốc 3 lượt mà hệ thống random cấp 4 lượt, nick sẽ chạm trần cũ và bị phạt tù tiếp.
+- **Giải pháp cơ giới hóa trong `_probation_budget()` (`follow_state.py`)**:
+  1. *Ghi nhận `last_failed_ceiling` toàn diện*: Khi `set_follow_failed()` kích hoạt, lưu `failed_ceiling = attempted or (used + 1)` cho 100% tài khoản (thay vì chỉ lưu cho nick graduated bị thu hồi cờ như trước).
+  2. *Né mốc gãy cũ (`last_failed_ceiling >= 2`)*:
+     $$cap = \min(cap, \max(1, last\_failed\_ceiling - 1))$$
+     Nick từng gãy ở mốc $N$ thì khi ra cữ hồi phục tối đa chỉ được chạy $N - 1$ lượt, hoàn toàn không chạm vào ngưỡng nguy hiểm.
+  3. *Bóp trần theo án tích nặng (`fail_streak >= 3`)*:
+     $$cap = \max(1, cap - 1)$$
+     Nick tái phạm nhiều lần bị ép bóp thêm 1 lượt để chỉ chạy 1–2 lượt dò đường.
+  4. *Tính toán dải random an toàn*:
+     $$lo = \max(1, \min(r[0], cap)), \quad hi = \max(lo, cap)$$
+     $$target = \_random.randint(lo, hi)$$
+     Đảm bảo luôn cấp tối thiểu $\ge 1$ follow dò đường, không bao giờ rơi vào tình trạng budget = 0 gây liệt cữ chạy.
+
+

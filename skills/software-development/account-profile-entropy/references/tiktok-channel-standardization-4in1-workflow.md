@@ -59,7 +59,8 @@
       ```
     * **Xử lý xung đột Device Lock khi máy đang trong ca nuôi (`multi-machine-feed-session`)**:
       - Nếu máy đang bị chiếm lock bởi ca nuôi định kỳ (VD: ca 12:00 hoặc 18:00, `project: tiktok-luot nuoi acc`), TUYỆT ĐỐI CẤM force-kill tiến trình hay can thiệp ADB làm gãy luồng lướt feed và trust của dàn nick.
-      - BẮT BUỘC canh trạng thái lock: ngay khi tiến trình feed session nhả lock (file `.lock.json` biến mất và màn hình về Launcher Home an toàn), lập tức kích hoạt `run_tiktok_upload_avatar.ps1` đẩy avatar lên ngay.
+      - **Cơ chế Bật Canh Lock Tự Động (`--wait-lock`)**: Sử dụng runner `run_upload_avatar.py --tik <Tik> --machine <May> --wait-lock` kích hoạt qua `terminal(background=True, notify_on_complete=True, timeout=1200)`.
+      - Script ngầm sẽ theo dõi `C:\Users\Kibe\.codex\device-locks\machine_<May>.lock.json` (thăm dò mỗi 5s, timeout 900s). Ngay khi feed session kết thúc và file lock biến mất, script tự động gọi `run_tiktok_upload_avatar.ps1` đẩy avatar lên thiết bị mà không làm đóng băng hay chiếm giữ session của Coordinator.
     * Chỉ được báo hoàn tất món Avatar khi đã chụp ảnh Profile xác nhận vòng tròn avatar trên app TikTok của máy thật đã thực sự đổi sang ảnh mới!
 
 ### Bước 4.1: Quy Tắc Giữ Nguyên Tên Tiếng Việt Hợp Lệ (ALREADY)
