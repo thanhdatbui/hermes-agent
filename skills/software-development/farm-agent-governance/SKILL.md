@@ -282,5 +282,10 @@ Reference: `references/claude-design-build-review-loop.md`.
      ```bash
      python -m pytest tests/test_profile_golden.py -o pythonpath="scripts;tools" -q
      ```
-3. **Canary Verification trước khi báo cáo:**
-   - Không được tuyên bố hoàn thành nếu chưa chạy kiểm chứng trên ít nhất 1 thiết bị thật (có log `[METRIC] event=layout_resolved` và ảnh đối soát `MEDIA:`).
+3. **Canary Verification & Triệt Tiêu Bệnh Tự Mãn Với Mock Test (20/10/2026):**
+   - **Bệnh tự mãn với Mock Test (Mock-Unit-Test False Complacency):** Vượt qua 100% unit test mock chỉ là điều kiện CẦN, hoàn toàn KHÔNG PHẢI điều kiện ĐỦ. Với logic tương tác màn hình (tap nút, OCR, swipe), mock test chỉ mã hóa lại giả định của chính agent. CẤM TUYỆT ĐỐI declare DONE, commit hay push nếu chưa chạy kiểm chứng trên thiết bị vật lý thật.
+   - **Quy chuẩn Zero-Waiting-State & Anti-Paralysis cho Canary Gate:**
+     * *Cấm TTY Waiver:* Không bao giờ đọc `stdin` hay chờ Operator gõ waiver; rủi ro SOFT (máy bận/cooldown) tự chuyển `DEFERRED_NEEDS_CANARY` vào digest hàng đợi, rủi ro HARD fail-closed.
+     * *Hợp đồng `next_action` máy tự chạy:* Mọi phản hồi từ chối của Gate bắt buộc trả về trường `next_action.argv` (ví dụ `python D:/Taadaa/tools/canary_runner.py --target-mode POOL ...`) để Coordinator tự gọi thực thi ngay, cấm dừng lại hỏi "em nên chạy máy nào?".
+     * *Chế độ PINNED vs POOL:* Khi không chỉ định máy đích (`POOL`), runner tự động quét chọn thiết bị online, không kẹt lock, không nằm trong cooldown, lấy atomic lock, chạy script, kéo ảnh `MEDIA:` và sinh `canary_receipt.json`. Nếu máy chỉ định kẹt (`PINNED`), hoãn an toàn với `not_before`, cấm cướp phiên farm đang chạy.
+   - **Nghiệm thu trực quan:** Bắt buộc có ảnh đối soát `MEDIA:` được `browser_vision` kiểm tra thực tế (nút đổi màu/chữ), log telemetry khớp phương thức (`method=winrt_ocr`), và receipt gắn `scope_tree_hash` toàn vẹn.
