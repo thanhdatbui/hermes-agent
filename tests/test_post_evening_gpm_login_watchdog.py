@@ -64,8 +64,9 @@ class TestFormatSummaryReport:
         assert "[LOGIN GPM TỐI - TỔNG KẾT]" in report
         assert "✓ 5 | ✗ 1" in report
         assert "Hoàn tất ca tối" in report
-        assert "2 accounts LIVE trên OmniRoute (:20129)" in report
-        assert "3 accounts" in report
+        assert "Profile sẵn Google Session : 3 accounts" in report
+        assert "Antigravity Pool" not in report
+        assert "chờ OAuth" not in report
 
     @patch.object(watchdog, "_get_live_omniroute_antigravity_emails", return_value=[])
     @patch.object(watchdog, "_get_gpm_profiles_with_google_session", return_value=["prof1"])
@@ -658,6 +659,23 @@ class TestNurtureAndRecoveryFlow:
         updated = json.loads(saved_text[0])
         assert updated["test_rec@gmail.com"]["status"] == "LOGIN_RECOVERED"
         assert "recovered_at" in updated["test_rec@gmail.com"]
+        assert "--login-only" in mock_subproc.call_args[0][0]
+
+    @patch("post_evening_gpm_login_watchdog.subprocess.run")
+    @patch("post_evening_gpm_login_watchdog.sqlite3.connect")
+    def test_run_login_invokes_gpm_script_with_login_only_flag(self, mock_sqlite, mock_subproc):
+        mock_proc = MagicMock()
+        mock_proc.stdout = "SUCCESS"
+        mock_proc.stderr = ""
+        mock_subproc.return_value = mock_proc
+
+        c = {"email": "pure_login@gmail.com", "mid": 12, "port": "20012", "reason": "turn2"}
+        res = watchdog.run_login(c)
+
+        assert res["status"] == "SUCCESS"
+        cmd = mock_subproc.call_args[0][0]
+        assert "--login-only" in cmd
+        assert "pure_login@gmail.com" in cmd
 
     def test_log_telemetry_metric(self, capsys):
         watchdog.log_telemetry_metric("test_event", {"key": "val"})

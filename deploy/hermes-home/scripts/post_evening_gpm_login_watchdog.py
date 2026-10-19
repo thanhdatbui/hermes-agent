@@ -659,7 +659,7 @@ def run_login(c: dict) -> dict:
     log(f"[M{mid:02d}] {c['reason']} → {email}")
     try:
         proc = subprocess.run(
-            [PYTHON_EXE, str(GPM_SCRIPT), email],
+            [PYTHON_EXE, str(GPM_SCRIPT), email, "--login-only"],
             capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=600,
         )
         combined = (proc.stdout or "") + "\n" + (proc.stderr or "")
@@ -731,7 +731,6 @@ def run_login(c: dict) -> dict:
         log(f"[M{mid:02d}] ERR {email}: {ex}")
         return {**c, "status": "FAIL", "fail_type": "SCRIPT", "error": str(ex)}
 def _format_summary_report(total_success: int, total_fail: int, shift_label: str = "TỐI", shift_desc: str = "tối", skipped_busy: int = 0, proxy_count: dict | None = None) -> str:
-    live_anti_count = len(_get_live_omniroute_antigravity_emails())
     session_count = len(_get_gpm_profiles_with_google_session())
     max_p = max(proxy_count.values()) if proxy_count else 0
     lines = [
@@ -740,8 +739,7 @@ def _format_summary_report(total_success: int, total_fail: int, shift_label: str
     ]
     if skipped_busy > 0:
         lines.append(f"• Còn lại trong hàng đợi: {skipped_busy} acc chờ ca tiếp theo (tối đa {MAX_WORKERS} workers/lần)")
-    lines.append(f"• Antigravity Pool: {live_anti_count} accounts LIVE trên OmniRoute (:20129)")
-    lines.append(f"• Profile sẵn Google Session chờ OAuth: {session_count} accounts")
+    lines.append(f"• Profile sẵn Google Session : {session_count} accounts")
     return "\n".join(lines)
 
 def main():
