@@ -57,10 +57,15 @@ send_telegram_report("-5468653590", tiktok_2fa_report_text)
 
 ---
 
-## 3. Kỷ Luật Crash Safety & Bắt Ngoại Lệ Trong Điều Phối Đa Phase
+## 3. Kỷ Luật Crash Safety, Bắt Ngoại Lệ & Concurrency State
 Trong các watchdog chạy liên hoàn tuần tự nhiều phase nghiệp vụ (`run_gmail_phase` -> `run_tiktok_phase`):
 - **Bẫy Unhandled Exception Ở Phase Sau:** Nếu phase 2 bị lỗi unhandled exception (lỗi cú pháp lệnh SSH, timeout bất ngờ, lỗi đọc workbook), tiến trình có thể crash trực tiếp từ `main()` mà không kịp lưu state hoặc dispatch thông báo lỗi ra Telegram.
 - **Mô Thức Crash Handler Bắt Buộc (`_handle_phase_crash`):**
   - Bọc từng phase trong khối `try/except Exception` riêng biệt tại `main()`.
   - Khi phase sau gặp ngoại lệ, gọi crash handler ghi nhận state `status="failed"`, `failure_reason=...` và dispatch alert cảnh báo khẩn cấp về đúng nhóm Telegram của nghiệp vụ đó trước khi trả mã lỗi.
   - Đảm bảo tính độc lập: Phase 1 lỗi không được làm chết Phase 2, và Phase 2 lỗi phải để lại audit trail đầy đủ.
+- **Khóa State Liên Tiến Trình Chống Race Condition:**
+  - Khi chạy cuốn chiếu đa phase hoặc nhiều worker có thể đọc/ghi cùng file state (ví dụ `night_tiktok_2fa_state.json`), BẮT BUỘC dùng file lock (`_state_lock` qua `msvcrt.locking` trên Windows hoặc `fcntl.flock` trên POSIX) kết hợp ghi nguyên tử (`_atomic_replace`).
+  - Đọc lại state mới nhất từ đĩa ngay bên trong context lock trước khi merge payload nhằm tránh ghi đè làm mất state của phase kia.
+- **Idempotency Kiểm Soát Rerun Sau Crash:**
+  - Kiểm tra `already_ran_tiktok_today` và `already_ran_gmail_tonight` dựa trên ngày thực thi, ngăn chặn việc cron 15 phút kích hoạt vòng lặp rerun mất kiểm soát khi xảy ra lỗi. Chỉ cho phép chạy bù khi có cờ tường minh `--force`.

@@ -589,16 +589,16 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
   2. *Tầng 2 (Pre-Session Readiness Gate tại `tiktok_runner.py`):*
      * Trước khi phát lệnh spawn `run-feed-session.ps1` (hoặc trước mỗi batch máy), launcher bắt buộc chạy quét nhanh `batch_recover_s7.py` (Level 1 soft recovery) trong 10–15s để giải phóng socket và đưa các máy bị kẹt shell/treo focus về trạng thái sẵn sàng trước khi đổ tải đồng loạt.
 
-## 27. Bẫy Regex Netstat Làm Tê Liệt Watchdog Dọn Cổng 5038 Của XiaoWei (19/10/2026)
-- **Hiện tượng:** Watchdog `xiaowei_idle_auto_close_watchdog.py` chạy định kỳ nhưng tiến trình mồ côi trên cổng 5038 vẫn không bị hạ, giam giữ 20-30 thiết bị khiến cổng chuẩn 5037 bị thiếu máy.
-- **Nguyên nhân cốt lõi (Lỗi Regex trong `XIAOWEI_ADB_TARGET_PS`):**
-  * Trong script, kiểm tra cổng 5038 dùng: `Select-String ':{XIAOWEI_ADB_PORT}\s+LISTENING'`
-  * Định dạng `netstat -ano -p tcp` trên Windows có cột Foreign Address (`0.0.0.0:0`) nằm giữa Local Address (`:5038`) và State (`LISTENING`).
-  * Do đó regex không bao giờ match, hàm `is_xiaowei_adb_running()` luôn trả về False, khiến watchdog bỏ qua bước dọn dẹp.
+## 27. Bẫy Regex Netstat & Trailing Newline Làm Tê Liệt Watchdog Dọn Cổng 5038 Của XiaoWei (19/10/2026)
+- **Hiện tượng:** Watchdog `xiaowei_idle_auto_close_watchdog.py` chạy định kỳ nhưng tiến trình mồ côi trên cổng 5038 vẫn không bị hạ, giam giữ 20-30 thiết bị khiến cổng chuẩn 5037 bị thiếu máy (chỉ thấy 40 máy thay vì 65-78 máy).
+- **Nguyên nhân cốt lõi (Lỗi Regex & Bẫy Cắt Chuỗi PowerShell):**
+  * *Lỗi 1 (Regex thiếu Foreign Address):* Trong script, kiểm tra cổng 5038 dùng: `Select-String ':{XIAOWEI_ADB_PORT}\s+LISTENING'`. Định dạng `netstat -ano -p tcp` trên Windows luôn có cột Foreign Address (`0.0.0.0:0`) nằm giữa Local Address (`:5038`) và State (`LISTENING`) -> regex không bao giờ match.
+  * *Lỗi 2 (Bẫy Newline `\r\n` làm rỗng PID `[-1]`):* Lệnh `($_ -split '\s+')[-1]` trả về chuỗi rỗng `""` do cuối dòng netstat có `\r\n`. Phải dùng `($_.Line.Trim() -split '\s+')[-1]` và ép kiểu `[int]`.
+  * *Lỗi 3 (WMI Process Filter):* Lọc WMI `Where-Object { $_.ExecutablePath -like '*\xiaowei\*' }` có thể trả về null nếu quyền hạn caller bị hạn chế. Cần nới rộng điều kiện kết hợp: `Where-Object { $_.ProcessId -in $ports -and ($_.CommandLine -like "*-P 5038*" -or $_.ExecutablePath -like "*\xiaowei\*") }`.
 - **Chuẩn hóa giải pháp:**
-  * Dùng trực tiếp PowerShell cmdlet `Get-NetTCPConnection -LocalPort 5038 -State Listen` để trích xuất OwningProcess.
-  * Hoặc regex netstat có Foreign Address: `:{XIAOWEI_ADB_PORT}\s+\S+\s+LISTENING`.
-  * Trên Python: dùng `psutil.net_connections(kind='tcp')` kiểm tra tức thời trong 2ms.
+  * **Tối ưu nhất (Native Cmdlet):** Dùng trực tiếp `Get-NetTCPConnection -LocalPort 5038 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { [int]$_.OwningProcess }` để lấy PID nguyên tử, không phụ thuộc text parsing.
+  * **Fallback Netstat Regex Chuẩn:** `:{XIAOWEI_ADB_PORT}\s+\S+\s+LISTENING` kết hợp `.Line.Trim()`.
+  * **Kiểm tra trực tiếp từ Python (O(1)):** Dùng `psutil.net_connections(kind='tcp')` kiểm tra tức thời trong < 2ms mà không cần gọi PowerShell.
 
 ## 28. Bẫy Drift Dữ Liệu Hashtag 3 Tầng & Quy Chuẩn Khóa Cứng
 - **Hiện tượng:** Sửa hashtag trên Excel nhưng định kỳ bị cron ghi đè lại nhãn cũ (ví dụ Khoa học bị đổi thành Thú cưng).

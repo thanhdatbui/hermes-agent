@@ -20,7 +20,16 @@ Khi vận hành supervisor đa giai đoạn (`HOTMAIL_LOGIN` -> `CHATGPT_REG` ->
 
 ## 3. Tiêu chuẩn Báo cáo Vòng đời (6H Lifecycle Report Discipline)
 User không thể nắm bắt được tiến độ nếu báo cáo nhảy cóc chỉ nói về ngọn mà bỏ quên gốc:
-- **Đầy đủ phễu từ Gốc đến Ngọn:** Bảng tổng quan bắt buộc có đủ:
+- **Chống Báo Cáo Tích Lũy Tù Mù (Time-Window Delta vs Cumulative Snapshot Invariant):**
+  + Báo cáo định kỳ (6H / 12H / 24H) TUYỆT ĐỐI CẤM chỉ xuất số tổng tích lũy (Cumulative Lifetime Snapshot như `676/1037 login`, `155/1037 done`). Nếu chỉ có số tổng, User hoàn toàn không biết trong 6h qua farm có chuyển động hay không, tốc độ xử lý ra sao, hay đang bị đóng băng.
+  + BẮT BUỘC có khối **⚡ BIẾN ĐỘNG & TIẾN ĐỘ 6H QUA (Time-Window Activity & Throughput)** đặt ở vị trí nổi bật:
+    * Lọc theo timestamp sự kiện: `cutoff = now - timedelta(hours=6)` dựa trên `last_result.at`, `hotmail_login_at`, `chatgpt_registered_at`.
+    * Tổng lượt xử lý trong 6h: `N` accounts (bóc tách rõ từng Farm: Kibe: `k` | Admin: `a`).
+    * Tăng trưởng delta dương: `+X` Login Hotmail mới, `+Y` Reg ChatGPT mới, `+Z` Đổi pass DONE mới.
+    * Thất bại / Cooldown mới trong 6h: `+W` accounts (ghi rõ lý do chính).
+    * Bằng chứng máy/acc vừa hoàn tất: Liệt kê các máy tiêu biểu vừa finish (ví dụ: `Admin: M218, M220, M226...`).
+    * Cảnh báo trạng thái ca: Cảnh báo ngay nếu 1 farm có 0 hoạt động (ví dụ: "Kibe tạm dừng xử lý do 47 port đang ngâm cooldown IP 24h").
+- **Đầy đủ phễu từ Gốc đến Ngọn:** Bảng tổng quan tích lũy bắt buộc có đủ:
   + Hotmail Login (Thành công / Tổng, Kẹt / Thất bại).
   + ChatGPT Reg (Thành công / Tổng).
   + Codex OAuth (Thành công / Tổng, Tỉ lệ thành công 6h).

@@ -10,7 +10,7 @@ Argon=:20135 (token stable 4s). Claude CLI làm Planner.
 §
 Stale Up: xóa draft. Revert: TikWM. Ghim/Riêng tư ko proof. Cào: max 60. Cron TB: device_lock+rolling<=5; bỏ ca 0h.
 §
-Closeout: Grace 80-84 auto-push; Sol budget 80% diff/10% log; Claude 85%->Agy fix; Strike 3 handoff cấm clarify (guard chặn cứng), Reviewer tự sửa.
+Closeout: Grace 80-84 auto-push; Sol 80% diff/10% log; Claude 85%->Agy fix; Strike 3 handoff cấm clarify, Reviewer tự sửa. Night Chain 0h: P1 Gmail->-5139245637, P2 2FA->-5468653590; cron local, bỏ bẫy 6h; unhandled crash handler; state lock.
 §
 Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; Lock reaper Kibe auto-reap Admin qua SSH. Pre-push: BẮT BUỘC 1 commit duy nhất (squash/reset) khớp scope_hash gate_audit. Cron: 100% no_agent+script thô.
 §
@@ -20,6 +20,6 @@ Canary: target-bound (matrix+plan map diff->hook; cấm khóc lóc/máy móc); W
 §
 Ava: Trích clip gốc representative_frames. Gate 6 fail-closed: cấm trần thuật/giải thích UI thiếu MEDIA:; file vật lý+SHA256 thật; cấm gửi mù. Dọn .thumbnails+Camera; Picker 0,1.
 §
-Reboot 3 ca (05:20, 11:20, 17:20), né TFT/War3. Task ngầm BẮT BUỘC VBS/wscript Hidden + CREATE_NO_WINDOW (0x08000000), cấm pop cmd. 'Tắt' khi game = tắt cửa sổ nháy, cấm pause cron.
+Reboot 3 ca (05:20, 11:20, 17:20), né TFT/War3. Task ngầm VBS/wscript Hidden+CREATE_NO_WINDOW. 'Tắt' khi game = tắt cửa sổ nháy, cấm pause cron.
 §
 MCP: agy cắm remote URL thẳng. FastMCP domain ngoài: enable_dns_rebinding_protection=False chống 421. Claude Win: claude-haiku-5-5 chuẩn, prompt phải sau -p (cấm stdin).
