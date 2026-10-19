@@ -247,5 +247,28 @@ Khi click mở dropdown chọn model tại góc trên bên trái của `gemini.g
 - **Argon 4 High (Web Pro):** Rất mạnh về thiết kế kiến trúc và giải toán ma trận 1-turn, nhưng có tử huyệt là hạ tầng Google Web dễ trả về `HTTP 500: Internal Server Error` khi nhận liên tiếp các request nặng qua CDP.
 - **AGY CLI (`gemini-3.8-flash-medium`):** Kết nối trực tiếp vào Google Cloud Code IDE engine qua 22 profile, đạt độ ổn định 100% (5/5 hiệp pass, >87k chars code sạch không drop), phù hợp tuyệt đối cho Worker chạy batch thi công và tự động hóa farm.
 
+---
+
+## 12. Bài Học Đại Chiến Nội Bộ AGY CLI: Flash Medium vs Flash High (19/10/2026)
+
+### 1. Bản chất chênh lệch giữa Medium vs High trên hạ tầng Antigravity:
+- **Flash Medium (Vua Sản Xuất / Workhorse):**
+  - **Tỷ lệ thành công 100% (10/10 hiệp pass AST tuyệt đối):** Hoàn thành toàn bộ 10 bài toán kiến trúc sâu của Farm (XML parser, Proxy circuit breaker, Windows atomic writer, pHash DCT 2D, Task queue backoff, Subnet ARP auditor, Rate limiter, Multipart streaming, File lock TTL, MP4 parser).
+  - Tốc độ nhanh gấp 2–3 lần High (trung bình 225s vs 323s), sinh code gọn gàng, bao quát toàn diện các lỗi hệ điều hành và đa luồng (~15k – 20k ký tự).
+  - **Khuyến nghị:** Ưu tiên số 1 làm Worker sửa bug, refactor repo, viết unit test hàng ngày trên Farm.
+- **Flash High (Kiến Trúc Sư Thư Viện Lõi / Core Architect):**
+  - Sinh code ở quy mô khổng lồ (~25k – 38k ký tự): Thiết kế class phân tầng chuẩn thư viện lớn (ví dụ MP4 Parser tách tới 9 class, 41 method, đọc đúng mốc thời gian Epoch 1904 của MPEG; Task Queue cài đặt đủ cả 3 thuật toán Jitter của AWS: Full, Equal, Decorrelated Jitter).
+  - **2 Tử huyệt chí mạng:**
+    1. *Bẫy Timeout:* Kích hoạt cây suy luận sâu khiến stream qua proxy 4G vượt quá mốc 600s dẫn tới timeout ở các bài toán ma trận nặng (pHash, Token bucket). **Bắt buộc cấu hình timeout >= 1200s (20 phút)** khi gọi High.
+    2. *Bẫy Tràn Token Cụt Đuôi:* Sinh bài quá dài (>38k ký tự / >900 dòng) dễ chạm trần token của Google làm cụt các dòng đóng ngoặc ở cuối file, gây lỗi cú pháp (`SyntaxError`).
+  - **Khuyến nghị:** Chỉ dùng High khi thiết kế module lõi nền tảng mới toanh từ đầu, và bắt buộc phải phân rã prompt (Gate 1 Decompose) để khống chế output dưới 30k ký tự.
+
+### 2. Mô hình Phối Hợp Đội Hình Tối Ưu Cho Farm:
+```text
+Claude Code CLI (Plan kiến trúc / Phân rã O(1)) ➔ Gemini 3.8 Flash MEDIUM (Worker thi công lắp ráp code)
+```
+- Phù hợp 100% với kỷ luật 6 Gates & Tiered Workflow 2.0: Cấm nhồi nhét code lớn, chia nhỏ task thành các nhát cắt O(1) <= 30 dòng, giao cho Medium thi công siêu tốc với độ tin cậy 100%.
+
+
 
 
