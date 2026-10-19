@@ -40,6 +40,15 @@ When clients request to "see data on their own app" or complain that Telegram re
 | **Automation** | Hands-free background cronjob at fixed hours | On-demand whenever user opens the ChatGPT mobile app |
 | **Best Use Case** | Daily early-warning sentinel for new tenders | Ad-hoc technical dossier evaluation, BoQ breakdown |
 
+### Transitioning from Push Bot (Telegram) to Private MCP (ChatGPT)
+- **Shared Bot Identity Pitfall (Doravo Bot / `doravo_stock_alert_bot`):**
+  - In this infrastructure, the Telegram bot identity (`doravo_stock_alert_bot`, config `doravo_bot_config.json`) was historically shared across two distinct domains:
+    1. *Tender Watchdog:* `muasamcong-daily-tender-watchdog` (cron `84cc7515bb88`, 08:00 daily), pushing medical tender alerts to partner chat `-1004418200690`.
+    2. *Webshop Stock Checklive:* `daily-manual-stock-checklive` (cron `1cb63d617582`, 07:00 daily), reporting manual inventory on `doravo.net`.
+- **Lifecycle Transition Rule:**
+  - When the partner/client migrates to the Private MCP Server on ChatGPT (`https://doravo.net/mcp`), the daily Telegram push bot (`muasamcong-daily-tender-watchdog`) should be paused via `cronjob(action='pause', job_id='84cc7515bb88')` to prevent notification clutter in the group.
+  - **Fail-Safe Disambiguation:** When requested to "tạm dừng bot doravo ở tele", pause the tender watchdog (`muasamcong-daily-tender-watchdog`) first, but verify before touching `daily-manual-stock-checklive` to keep ecommerce inventory operations intact.
+
 ### Decoupled CQRS Architecture & Dual-Cadence Data Freshness
 - **Why VPS Must NOT Scrape Directly:**
   1. *WAF & SSL Blockade:* Portals block cloud datacenter IP ranges and trigger cipher negotiation issues (e.g. `SSL: DH_KEY_TOO_SMALL`); residential home connections browse cleanly.
