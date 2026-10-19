@@ -16,8 +16,10 @@
    `Proto   Local Address          Foreign Address        State           PID`
    `TCP     127.0.0.1:5038         0.0.0.0:0              LISTENING       10084`
    Nằm giữa Local Address (`:5038`) và State (`LISTENING`) luôn là Foreign Address (`0.0.0.0:0`).
-3. **Lỗi Regex:**
-   Chuỗi `':{XIAOWEI_ADB_PORT}\s+LISTENING'` chỉ cho phép ký tự khoảng trắng giữa `:5038` và `LISTENING`. Do có `0.0.0.0:0` ở giữa, regex không bao giờ match.
+3. **Lỗi Kép: Regex Thiếu Foreign Address & Trailing Newline Làm Rỗng Index `[-1]`:**
+   - Chuỗi `':{XIAOWEI_ADB_PORT}\s+LISTENING'` chỉ cho phép ký tự khoảng trắng giữa `:5038` và `LISTENING`. Do có `0.0.0.0:0` ở giữa, regex không bao giờ match.
+   - Ngay cả khi sửa regex thành `:{XIAOWEI_ADB_PORT}\s+\S+\s+LISTENING`, lệnh PowerShell `($_ -split '\s+')[-1]` vẫn bị rỗng (`""`): Dòng text của netstat kết thúc bằng `\r\n`, việc split theo `\s+` sinh ra phần tử cuối cùng rỗng ở `[-1]` (PID thực tế nằm ở `[-2]` nếu không Trim). Bắt buộc dùng `($_.Line.Trim() -split '\s+')[-1]`.
+   - Bẫy WMI Integrity Level: Biểu thức `Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -like '*\xiaowei\*' }` có thể trả về `$null` cho `ExecutablePath`/`CommandLine` nếu caller không chạy quyền Administrator, dẫn đến lọc nhầm thành 0 process. Khi `$ports` đã được trích xuất từ cổng 5038, chỉ cần đối soát `Where-Object { $_.ProcessId -in $ports }`.
 4. **Hậu quả:**
    `$ports` luôn rỗng -> `is_xiaowei_adb_running()` luôn trả về `False`.
    Hàm `cleanup_orphan_xiaowei_adb()` có điều kiện guard:

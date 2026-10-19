@@ -18,3 +18,8 @@ Whenever an agent produces visual media (screenshots, UI mockups, proposal canva
 3. **Evidence-Grounded Response**:
    - In the text accompanying `MEDIA:<path>`, explicitly state the key details seen with the model's own eyes (e.g., specific titles, views, button states, bounding box highlights).
    - Never drop a bare `MEDIA:` tag without confirming the visual content.
+
+4. **Unicode & Vietnamese Diacritics on Proposal Canvases & Mockups**:
+   - **Bẫy OpenCV `cv2.putText` lột dấu**: Thư viện OpenCV chỉ hỗ trợ bảng mã ASCII. Khi vẽ tiếng Việt có dấu, OpenCV xuất hiện `???` hoặc ký tự rác, dẫn đến việc lột dấu (`unidecode`) để né lỗi. Điều này gây hiểu lầm nghiêm trọng cho người dùng rằng hệ thống sẽ nạp dữ liệu không dấu lên thiết bị ("Ủa bio t ép ghi tiếng việt có dấu r mà?").
+   - **Quy chuẩn bắt buộc**: Khi vẽ văn bản tiếng Việt lên canvas / preview ảnh, BẮT BUỘC dùng PIL/Pillow với TrueType Font (Arial, Tahoma, DejaVuSans) để bảo toàn 100% dấu tiếng Việt và emoji. Trong tin nhắn đính kèm ảnh, BẮT BUỘC xác nhận rõ: dữ liệu nạp lên thiết bị là tiếng Việt có dấu chuẩn UTF-8 Base64.
+
