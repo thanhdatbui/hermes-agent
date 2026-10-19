@@ -126,3 +126,10 @@ Trong `follow_state.py`, runner tự động điều chỉnh trần follow cho c
 - **Quy tắc**: Cầu dao IP (`trip_ip_breaker()`) CHỈ kích hoạt khi nick **ĐÃ TỐT NGHIỆP (Graduated / Cựu binh, `was_graduated == True`)** bị nhả follow.
 - **Nick Probation bị nhả**: Bỏ qua cầu dao IP, chỉ phạt Cooldown tầng account (3–15 ngày).
 - **Trạng thái Dashboard**: Dashboard báo `🛡️ IP Circuit Breaker: Active 100% - Tất cả các cổng proxy đều sạch sẽ` là hoàn toàn chính xác khi các nick bị nhả đều là probation/tân binh, đảm bảo không ngắt proxy oan làm giam nick khỏe 48 tiếng.
+
+## 10. Quy Tắc Khóa Độc Quyền Phiên 1 Cho Hạng Hồi Phục (Probation Single-Session Cap Invariant)
+- **Nghịch lý chia phiên**: Tổng daily quota của nick Tier 1 (3–4 follow) và Tier 2 (5–6 follow) thậm chí còn ít hơn một nửa của một phiên đơn lẻ của nick cựu binh (10–15 follow/phiên). Việc chia mỏng 5–6 follow thành 2 phiên (cách nhau 2 tiếng lúc 06:00 và 08:00) tạo ra pattern spammer nhân tạo: vừa bấm 4–5 follow lúc 06:00 lại thức giấc bấm tiếp 1 follow lúc 08:00, kích hoạt bot detection rate-limit của TikTok.
+- **Cơ chế phân bổ Greedy Daily Quota (`budget_used`)**:
+  - Script không chia tỷ lệ % cố định trước, mà chạy theo cơ chế "nuốt trần ngày": P1 cấp `random_target` từ `t2_range`. Nếu P1 bốc trúng số thấp (ví dụ 4-5), `budget_used = 4-5`, dẫn tới `remaining = cap - budget_used > 0` ➔ P2 bị ép lôi nick ra bấm nốt phần dư 1 lượt.
+  - **Quy chuẩn Single-Session Lock**: Nếu `budget_used > 0` (P1 đã chạy có follow), hàm `_probation_budget()` tại P2 bắt buộc trả về `budget = 0`. Toàn bộ ngân sách Tier 1 (3–4 lượt) và Tier 2 (5–6 lượt) được dồn chạy 1 cữ duy nhất trong Phiên 1, sau đó cho nick nghỉ ngơi làm nguội, triệt tiêu hoàn toàn rủi ro bị nhả ở P2. P2 chỉ đóng vai trò dự phòng khi P1 bị offline hoặc lỗi mạng (`budget_used == 0`).
+
