@@ -10,7 +10,7 @@ Argon=:20135 (token stable 4s). Claude CLI làm Planner.
 §
 Stale Up: xóa draft. Revert: TikWM. Ghim/Riêng tư ko proof. Cào: max 60. Cron TB: device_lock+rolling<=5; bỏ ca 0h.
 §
-Closeout: Grace 80-84 (test xanh) auto-push; BẮT BUỘC --files tránh DIFF_TOO_LARGE; Claude chạm 85% -> Agy CLI fix (22 pool ready), CẤM báo BLOCKED; CẤM commit -a; 3 Strike tự sửa.
+Closeout: Grace 80-84 auto-push; --files tránh DIFF_TOO_LARGE; Sol diff budget <=20KB né truncation; Claude 85%->Agy fix (pool 22), cấm BLOCKED; 3 Strike tự sửa.
 §
 Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; Lock reaper Kibe auto-reap Admin qua SSH. Pre-push: BẮT BUỘC 1 commit duy nhất (squash/reset) khớp scope_hash gate_audit. Cron: 100% no_agent+script thô.
 §
