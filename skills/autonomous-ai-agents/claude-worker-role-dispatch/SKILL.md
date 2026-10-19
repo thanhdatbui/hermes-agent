@@ -114,6 +114,11 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
 
 ## Pitfalls
 
+- **KỶ LUẬT CÔ LẬP CHO HAIKU WORKER CHỐNG FAIL HÀNG LOẠT (User Mandate & Audit 19/10/2026):**
+  Phân tích log `dispatch.jsonl` cho thấy Haiku fail 95% do vi phạm hợp đồng O(1) chứ không phải do hết quota. Để Haiku bớt lỗi tối đa, Coordinator BẮT BUỘC tuân thủ:
+  1. *Nguyên tắc 1 Target - 1 Dispatch (Chống `unrelated_files_changed`):* Tuyệt đối CẤM yêu cầu vừa sửa code vừa sửa test trong 1 prompt. Khi cần sửa cả 2, phải tách làm 2 turn dispatch riêng biệt. Khi target file đã tồn tại trên đĩa, tước quyền `Write` để ngăn chặn vật lý việc tạo file rác/cache.
+  2. *Cung cấp Patch Contract O(1) (Chống `NO_DIFF` & `MAX_TURNS`):* CẤM giao goal mở trên file lớn. Luôn cấp sẵn anchor duy nhất (`old_string` -> `new_string`).
+  3. *Bảo toàn 0% Quota khi dính Gate:* Mọi pre-tool hook chạy local Python <50ms. Khi Coordinator bị gate chặn, lệnh bị hủy trước khi bật binary `claude`, tiêu hao quota là 0%.
 - **THE DISCONNECTED GUARD ILLUSION & RUNTIME ATTACHMENT INVARIANT (User Audit 19/10/2026):**
   Unit test cho một hook mới (như guard dispatch contract) đạt 7/7 passed KHÔNG ĐỒNG NGHĨA hệ thống production đang được bảo vệ.
   1. *Nguyên nhân cốt lõi:* Hermes runtime chỉ kích hoạt hook khi: (a) Khai báo trong file config gateway tại hooks.pre_tool_call kèm matcher chính xác (ví dụ matcher: delegate_task), HOẶC (b) Được import và thực thi trực tiếp bên trong callback của plugin pluggy runtime.
@@ -256,6 +261,7 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
 - `D:/Taadaa/tools/tests/test_dispatch_worker.py`: 11/11 tests (CRLF/whitespace normalization, failure hierarchy, snapshot & hash gate, target deletion rejection, unrelated files guard, anchored BLOCKED detection, PermissionError mapping, correlation ID consistency, Haiku/Agy fallback orchestration mocks).
 - `D:/Taadaa/tools/tests/test_sol_worker.py`: 8/8 tests (safe shell command regex, metacharacters injection block, DSL parse, atomic patch lifecycle, AST validation, LF preserve, max_turns validation).
 
+- `references/haiku-worker-failure-modes-and-isolation-discipline-20261019.md` — **[MỚI 19/10/2026 - HAIKU FAILURE MODES & ISOLATION DISCIPLINE]** Phân tích 3 nguyên nhân cốt lõi khiến Haiku fail trong dispatch log (`unrelated_files_changed`, `NO_DIFF` do hết turns/goal mở, và cơ chế bảo toàn 0% quota khi dính gate chặn), kèm 3 nguyên tắc cô lập: 1 target per dispatch, tước quyền Write khi file đã tồn tại, và cấp sẵn Patch Contract O(1).
 - `references/claude-haiku-effort-tuning-and-thinking-token-economics-20261019.md` — **[MỚI 19/10/2026 - HAIKU EFFORT TUNING & THINKING TOKEN ECONOMICS]** Hạch toán chi phí thinking tokens (High ngốn gấp 3 lần Medium ở task ngắn), bẫy hội thoại làm hỏng AST của Medium, giải pháp vượt giới hạn chiều dài dòng lệnh Windows (CreateProcess lpCommandLine 32k chars), và đối chiếu góc nhìn 2 trọng tài Hermes (Gemini) vs Claude Sonnet CLI.
 - `references/terminal-guard-blacklist-evasion-and-fail-closed-dispatch-20261019.md` — **[MỚI 19/10/2026 - TERMINAL GUARD BLACKLIST EVASION & FAIL-CLOSED REMEDIATION]** Khắc phục lỗi blacklist false-positive khi prompt/command chứa đường dẫn nhạy cảm, kỹ thuật cắt ghép đường dẫn động, và bài học Closeout Remediation (budget fail-closed & config fault-injection testing).
 - `references/windows-cmd-ampersand-unicode-cli-mangling-20261019.md` — **[MỚI 19/10/2026 - WINDOWS CMD.EXE AMPERSAND & UNICODE MANGLING]** Khắc phục lỗi cmd.exe bóc tách ký tự `&` trong URL query string và ký tự Unicode (✓, ✗, •) gây cắt cụt prompt và báo ENV error giả trong Single Dispatch Gateway.
