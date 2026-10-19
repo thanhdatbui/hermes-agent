@@ -42,6 +42,23 @@ Never claim that 80–84 is approved merely because a source branch or memory no
 - Do not create a new closeout runner or change a guard before existing gate, scope, ownership, and token contracts are reconciled.
 - If a candidate cannot be safely isolated, report BLOCKED with the command, error, hashes, and ownership evidence; never fabricate approval.
 
+## Background Cron Commit Collision & Scope Reconciliation (Hermes / Auto-Sync Repos)
+
+In repositories where recurring background crons periodically auto-commit (e.g., `sync-hermes-skills-and-brain-to-git` committing skills/memories every 5 minutes in `D:/Taadaa/Hermes`):
+1. **Collision Mechanism:** Chore commits land on top of HEAD while an agent is developing, testing, or waiting for review. The task commit becomes buried several commits deep.
+2. **Gate Rejection:** `closeout_gate.py` runs `_committed_scope` against `<base>..HEAD`. Because HEAD now includes chore commits touching extra files (`skills/**`, `memories/**`), `set(targets) != committed_scope`, throwing:
+   `ValueError: committed <base>..HEAD scope [...] != --files targets [...]; refusing partial committed scope`.
+3. **Reconciliation Protocol:**
+   - **Tạm dừng Cron:** Gọi `cronjob action=pause job_id=<id>` (ví dụ `7e576815788f`) để đóng băng auto-commit trong pha Closeout.
+   - **Đưa Target Commit lên Đỉnh HEAD:** Đảm bảo commit của task là `HEAD` duy nhất so với `HEAD~1`:
+     * Chạy mixed reset về commit trước task: `git reset <pre_task_commit>`.
+     * Commit toàn bộ các file chore trước: `git add deploy/hermes-home/memories skills && git commit -m "chore: sync skills and brain memories"`.
+     * Commit đúng các file mục tiêu của task sau cùng để làm HEAD: `git add <target_files> && git commit -m "feat(...): ... [gate-approved]"`.
+     * Kiểm tra `git diff --name-only HEAD~1..HEAD` đảm bảo trùng khớp 100% với danh sách `--files targets`.
+   - **Thẩm định Closeout Gate:** Chạy `closeout_gate.py --repo ... --base HEAD~1 --files <target_files> --json-output`.
+   - **Mở lại Cron:** Sau khi gate hoàn tất, gọi `cronjob action=resume job_id=<id>`.
+   - Chi tiết ca xử lý xem `references/cron-sync-commit-collision-and-closeout-scope-reconciliation-20261019.md`.
+
 ## Reporting format
 
 - `Candidate:` exact base, HEAD, target paths, staged/unstaged state.
