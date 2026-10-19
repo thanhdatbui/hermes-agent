@@ -71,6 +71,7 @@ metadata:
 Reference: [`references/worker-timeout-quota-and-closeout-scope-20261018.md`](references/worker-timeout-quota-and-closeout-scope-20261018.md)
 
 ## 3. Tài Liệu Tham Khảo (References)
+- Fail-Closed Budget Parsing & Config Fault-Injection Remediation (2026-10-19): [`references/fail-closed-budget-and-config-fault-injection-remediation-20261019.md`](references/fail-closed-budget-and-config-fault-injection-remediation-20261019.md)
 - Breaking 78 Plateau: Standalone Production Helpers, Bounded Timestamps & Delivery Transparency (2026-10-19): [`references/breaking-78-plateau-production-helper-and-timestamp-bounds-20261019.md`](references/breaking-78-plateau-production-helper-and-timestamp-bounds-20261019.md)
 - Kỷ Luật Tránh Thổi Phồng Tuyên Bố Telemetry & Bài Học Tránh Truncation Diff (2026-10-19): [`references/anti-inflationary-report-claims-and-diff-truncation-lessons-20261019.md`](references/anti-inflationary-report-claims-and-diff-truncation-lessons-20261019.md)
 - Diff Budgeting & Truncation Elimination Case Study (2026-10-19): [`references/diff-budgeting-and-truncation-elimination-case-study-20261019.md`](references/diff-budgeting-and-truncation-elimination-case-study-20261019.md)
