@@ -190,9 +190,71 @@ def test_telemetry_json_schema(monkeypatch, capsys):
 
 def test_netstat_powershell_contract():
     assert "netstat -ano -p tcp" in xw.XIAOWEI_ADB_TARGET_PS
-    assert f":{xw.XIAOWEI_ADB_PORT}\\s+LISTENING" in xw.XIAOWEI_ADB_TARGET_PS
+    assert f":{xw.XIAOWEI_ADB_PORT}\\s+\\S+\\s+LISTENING" in xw.XIAOWEI_ADB_TARGET_PS
     assert "Get-CimInstance Win32_Process" in xw.XIAOWEI_ADB_TARGET_PS
     for count_str, expected in [("1", True), ("0", False), ("3", True), ("", False)]:
         with patch("subprocess.run", return_value=MagicMock(returncode=0, stdout=count_str)):
             assert xw.is_xiaowei_adb_running() is expected
+
+
+def test_powershell_target_string_contract():
+    ps = xw.XIAOWEI_ADB_TARGET_PS
+    assert "Get-NetTCPConnection" in ps
+    assert "netstat -ano -p tcp" in ps
+    assert "if (-not $ports)" in ps
+    assert "$_.ProcessId -in $ports" in ps
+    assert "*-P 5038*" in ps
+
+
+def test_is_xiaowei_adb_running_branches(capsys):
+    with patch("subprocess.run", return_value=_proc(0, "3\n")) as run:
+        assert xw.is_xiaowei_adb_running() is True
+    cmd = run.call_args.args[0][-1]
+    assert cmd.startswith(xw.XIAOWEI_ADB_TARGET_PS) and "Get-NetTCPConnection" in cmd
+
+    with patch("subprocess.run", return_value=_proc(0, "  1 \r\n")) as run:
+        assert xw.is_xiaowei_adb_running() is True
+    assert "netstat -ano -p tcp" in run.call_args.args[0][-1]
+
+    with patch("subprocess.run", return_value=_proc(0, "0\n")):
+        assert xw.is_xiaowei_adb_running() is False
+    with patch("subprocess.run", return_value=_proc(0, "   \n")):
+        assert xw.is_xiaowei_adb_running() is False
+    assert '"event": "ADB_CHECK_ERROR"' not in capsys.readouterr().out
+
+    with patch("subprocess.run", return_value=_proc(1, "", "powershell failed")):
+        assert xw.is_xiaowei_adb_running() is None
+    assert '"event": "ADB_CHECK_ERROR"' in capsys.readouterr().out
+
+    with patch("subprocess.run", side_effect=subprocess.TimeoutExpired(cmd="powershell", timeout=10)):
+        assert xw.is_xiaowei_adb_running() is None
+    assert '"event": "ADB_CHECK_ERROR"' in capsys.readouterr().out
+
+
+def test_is_xiaowei_adb_negative_and_adversarial(monkeypatch, capsys):
+    for out in ["0", "0\n", "  0 \r\n"]:
+        with patch("subprocess.run", return_value=_proc(0, out)):
+            assert xw.is_xiaowei_adb_running() is False
+    assert '"event": "ADB_CHECK_ERROR"' not in capsys.readouterr().out
+
+    monkeypatch.setattr(xw, "DRY_RUN_MODE", False)
+    monkeypatch.setattr(xw, "is_xiaowei_running", lambda use_cache=False: False)
+    with patch("subprocess.run", return_value=_proc(0, "0\n")) as run:
+        assert xw.cleanup_orphan_xiaowei_adb() is False
+    assert run.call_count == 1 and xw.get_metrics()["adb_cleanup_attempts"] == 0
+    assert capsys.readouterr().out == ""
+
+    with patch("subprocess.run", return_value=_proc(1, "", "powershell failed")):
+        assert xw.is_xiaowei_adb_running() is None
+    with patch("subprocess.run", side_effect=subprocess.TimeoutExpired(cmd="powershell", timeout=10)):
+        assert xw.is_xiaowei_adb_running() is None
+    errors = [r for r in map(json.loads, capsys.readouterr().out.splitlines()) if r.get("event") == "ADB_CHECK_ERROR"]
+    assert [r["level"] for r in errors] == ["ERROR", "ERROR"]
+    assert all(r["method"] == "powershell" for r in errors)
+    assert errors[0]["returncode"] == 1 and errors[0]["error"] == "powershell failed"
+    assert "timed out" in errors[1]["error"]
+
+    with patch("subprocess.run", side_effect=subprocess.TimeoutExpired(cmd="powershell", timeout=10)) as run:
+        assert xw.cleanup_orphan_xiaowei_adb() is False
+    assert run.call_count == 1 and xw.get_metrics()["adb_cleanup_attempts"] == 0
 

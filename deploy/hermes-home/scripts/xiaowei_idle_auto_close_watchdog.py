@@ -45,9 +45,10 @@ XIAOWEI_DIR = r"C:\Program Files (x86)\xiaowei"
 XIAOWEI_ADB_BIN = os.path.join(XIAOWEI_DIR, "tools", "adb.exe")
 XIAOWEI_ADB_PORT = 5038
 XIAOWEI_ADB_TARGET_PS = (
-    f"& {{ $ports = (netstat -ano -p tcp | Select-String ':{XIAOWEI_ADB_PORT}\\s+LISTENING') | ForEach-Object {{ ($_ -split '\\s+')[-1] }}; "
+    f"& {{ $ports = @(Get-NetTCPConnection -LocalPort {XIAOWEI_ADB_PORT} -State Listen -ErrorAction SilentlyContinue | ForEach-Object {{ [int]$_.OwningProcess }}); "
+    f"if (-not $ports) {{ $ports = @(netstat -ano -p tcp | Select-String ':{XIAOWEI_ADB_PORT}\\s+\\S+\\s+LISTENING' | ForEach-Object {{ [int]($_.Line.Trim() -split '\\s+')[-1] }}) }}; "
     "if ($ports) { Get-CimInstance Win32_Process -Filter \"Name = 'adb.exe'\" "
-    "| Where-Object { $_.ProcessId -in $ports -and $_.ExecutablePath -like '*\\xiaowei\\*' } } }"
+    "| Where-Object { $_.ProcessId -in $ports -and ($_.CommandLine -like \"*-P 5038*\" -or $_.ExecutablePath -like \"*\\xiaowei\\*\") } } }"
 )
 WATCHDOG_METRICS = {
     "adb_cleanup_attempts": 0,
