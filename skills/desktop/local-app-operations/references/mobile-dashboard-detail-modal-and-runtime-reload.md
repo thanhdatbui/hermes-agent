@@ -33,6 +33,17 @@ A local fleet dashboard exposes per-account history, quota, UID lists, or audit 
    - Toggle visibility to only render the active cohort's items when a pill is selected.
    - When navigating to the tab or selecting an account, automatically detect the target account's cohort and default `fdFilterGroup` to that cohort so the selected account is immediately visible and isolated without scrolling.
 
+5. **Dual-Action Master-Detail Item Pattern & Entity ID Link Invariant:**
+   - **The Header-Only Link Blindspot:** When operators ask "bấm vào ID mở trang X (TikTok / profile)", never assume they only mean the header/title of the detail pane. Operators triage entities directly within the master list and expect the ID in each list item to be directly actionable.
+   - **Direct External Link on Listed IDs:** In `renderAccountList()`, render every account/entity username as an explicit link with visual affordances:
+     ```javascript
+     const userLink = (a.username && a.username !== '-')
+         ? `<a href="https://www.tiktok.com/@${encodeURIComponent(a.username)}" target="_blank" rel="noopener" onclick="event.stopPropagation();" style="color:#38bdf8;font-size:13px;font-weight:600;text-decoration:none;" title="Mở trang cá nhân TikTok">@${fdEsc(a.username)} <span style="font-size:11px;">↗</span></a>`
+         : `<span style="color:#94a3b8;font-size:12px;">(chưa gán username)</span>`;
+     ```
+   - **`event.stopPropagation()` Invariant:** Tapping `@username ↗` must stop event bubbling so the browser immediately opens the external tab without triggering the parent item's `onclick="selectAccount()"` handler. Tapping anywhere else on the card (machine badge, status/streak text, background) selects the account and loads the detail pane.
+   - **Header Title Parity:** Also ensure the detail pane header displays the link with clear affordances (`@username <span style="font-size:13px;">↗</span>` with underline) so both touch points open the external profile seamlessly.
+
 ## Verification recipe
 
 - Read the exact source diff and confirm only the intended component/static asset files changed.
@@ -49,3 +60,4 @@ A local fleet dashboard exposes per-account history, quota, UID lists, or audit 
 - A browser snapshot can prove DOM labels but not visual legibility; pair it with a fresh visual inspection via vision.
 - A card-level click handler can hijack the TikTok link or secondary chart/detail buttons unless it excludes `a,button` targets.
 - Stacking 1,000+ accounts in a single scroll container without cohort tabs triggers immediate operator frustration ("r sao k chia từng nhóm mà bắt tao kéo chuột tìm"). Always provide pill filters.
+- **The Master-Detail Header-Only Link Trap**: Only linking the username in the modal/card header (`fdModalTitleHtml`) while leaving the master list items as unclickable text triggers immediate operator frustration ("T bảo sổ bệnh án bấm vào id phải bung ra trang tiktok r mà? Sao éo đc v"). Operators triage accounts in the list and expect the ID in every card to open TikTok directly. Always link the ID in both the list items (with `event.stopPropagation()`) and the detail header.
