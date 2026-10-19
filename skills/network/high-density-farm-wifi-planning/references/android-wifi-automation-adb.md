@@ -143,6 +143,9 @@ Trong tình huống này, lệnh `svc wifi disable/enable` hay `reboot` có th�
 ### F. Chuẩn Hóa Phân Loại Lỗi Báo Cáo Farm (Error Classification Hierarchy)
 Tuyệt đối không gom chung lỗi mạng vào một nhãn mơ hồ `Mất Wi-Fi/Proxy`. Bắt buộc phân tách thành 5 nhánh độc lập:
 1. **`Mất kết nối ADB/USB`:** Cáp lỏng, offline, unauthorized, không thấy serial trong `adb devices`.
+   * **🛑 BẪY PHÁN ẨU "RÚT CÁP" & KIỂM TRA MULTI-PORT ADB (5037 vs 5038):** Khi `adb devices` thiếu thiết bị, CẤM vội kết luận là cáp USB bị rút. BẮT BUỘC:
+     (a) Kiểm tra Windows PnP xem thiết bị còn cắm không: `powershell -Command "Get-PnpDevice -PresentOnly | Where-Object { $_.InstanceId -like '*<SERIAL>*' }"`. Nếu `Status: OK` và `Class: USB` thì cáp vẫn cắm chặt 100%.
+     (b) Kiểm tra daemon ADB thứ 2: Phần mềm quản lý farm (như Xiaowei, Total Control) có thể chiếm port 5037 hoặc tạo daemon chạy ngầm ở port 5038 (`netstat -ano | findstr "5037 5038"`). Kiểm tra thiết bị qua port 5038 bằng cách gán `ADB_SERVER_SOCKET=tcp:127.0.0.1:5038`.
 2. **`Mất kết nối Wi-Fi (AP)`:** Mất link layer vật lý (`wlan0` down, `NO-CARRIER`, `ASSOCIATION_REJECTION`, Wi-Fi disconnected).
 3. **`Chưa gán Proxy / Proxy :0`:** Cơ chế Fail-Closed Shield kích hoạt (`settings global http_proxy` thiếu hoặc rớt về `:0`). Máy vẫn có Wi-Fi nhưng bị chặn khẩn cấp để chống lộ IP FPT.
 4. **`Nghẽn đường truyền Proxy / 4G`:** Cổng proxy Singbox / MikroTik bị timeout, connection refused lúc preflight test ra internet.
