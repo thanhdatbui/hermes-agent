@@ -23,13 +23,17 @@ Mỗi AP Aruba IAP được tính toán để gánh tối đa **40 máy** để 
 
 ## 2. Các Cạm Bẫy Thực Tế & Cách Xử Lý (Pitfalls & Fixes)
 
-### Pitfall 1: Cắt chuỗi SSID có khoảng trắng khi gọi `adb-join-wifi` qua shell
-* **Hiện tượng:** Chạy lệnh `am start -n com.steinwurf.adbjoinwifi/.MainActivity -e ssid 'kibe 1'` thì Android shell cắt chuỗi tại dấu cách, app nhận SSID là `"kibe"`. Máy nhảy sang quét SSID rác không tồn tại, rơi vào vòng lặp `Supplicant state: SCANNING / DISCONNECTED`, mất sạch Wi-Fi toàn dàn.
+### Pitfall 1: Cắt chuỗi SSID có khoảng trắng & Kẹt timer ngầm khi gọi `adb-join-wifi`
+* **Hiện tượng:** 
+  1. Chạy lệnh `am start -n com.steinwurf.adbjoinwifi/.MainActivity -e ssid 'kibe 1'` thì Android shell cắt chuỗi tại dấu cách, app nhận SSID là `"kibe"`. Máy nhảy sang quét SSID rác không tồn tại, rơi vào vòng lặp `Supplicant state: SCANNING / DISCONNECTED`, mất sạch Wi-Fi toàn dàn.
+  2. Nếu không có cờ `-S`, activity cũ của app vẫn sống và timer ngầm 4s liên tục gọi `CMD_ENABLE_NETWORK <net_id> true`, ngắt giữa chừng quá trình DHCP cấp IP.
+  3. Mở giao diện `android.settings.WIFI_SETTINGS` lúc đang chờ IP sẽ cướp focus và làm gián đoạn chu kỳ DHCP handshake ngầm.
 * **Cách khắc phục:**
-  - BẮT BUỘC dùng tham số kiểu string tường minh `--es` và escape dấu ngoặc kép cẩn thận:
+  - BẮT BUỘC dùng cờ `-S` (force-stop trước khi start) và tham số kiểu string tường minh `--es` kèm escape dấu ngoặc kép:
     ```bash
-    am start -n com.steinwurf.adbjoinwifi/.MainActivity --es ssid "kibe 1" --es password_type WPA --es password "23102025"
+    am start -S -n com.steinwurf.adbjoinwifi/.MainActivity --es ssid "kibe 1" --es password_type WPA --es password "23102025"
     ```
+  - Trong logic chờ cấp IP DHCP (`_wait_for_subnet_ip`), TUYỆT ĐỐI KHÔNG mở `android.settings.WIFI_SETTINGS` chèn ngang.
 
 ### Pitfall 2: Xung đột Rogue DHCP trên AP Aruba Master
 * **Hiện tượng:** Sau khi reload AP slave (`.253`), các máy gửi DHCP Request thì bị AP Master (`.251`) cướp quyền cấp phát IP dải `192.168.10.x` do còn cấu hình cục bộ `ip dhcp kibe_dhcp`. Hậu quả là máy nhận IP dải 10.x, gateway `192.168.10.254`, không thể ping tới router MikroTik `192.168.110.2`.
@@ -66,3 +70,24 @@ Mỗi AP Aruba IAP được tính toán để gánh tối đa **40 máy** để 
 * **Cách khắc phục:**
   - Giới hạn concurrency kiểm tra mạng qua USB ở mức an toàn: `max_workers = 6` đến `10`.
   - Stagger hoặc chia batch nhỏ để bảo vệ USB bus controller.
+
+### Pitfall 5: Bẫy Báo Giả "Sai Mật Khẩu" (False Wrong Password Trap) vs Rớt Gói Uplink EAPOL Key 2 do Ăng-ten S7
+* **Hiện tượng:**
+  - Client Samsung S7 Android 8 logcat wpa_supplicant báo lỗi:
+    `wlan0: WPA: 4-Way Handshake failed - pre-shared key may be incorrect id=0`
+    kèm cờ `updateNetworkSelectionStatusForWrongPassword` và chữ đỏ *"Đã xảy ra lỗi xác thực"* trên UI Cài đặt.
+  - Tuy nhiên kiểm tra `show ap debug auth-trace-buf` trên AP Aruba thấy:
+    ```text
+    station-up * | <client_mac> | <ap_bssid> | wpa2 psk aes
+    wpa2-key1 <- | <client_mac> | <ap_bssid> | 117 | None
+    wpa2-key1 <- | <client_mac> | <ap_bssid> | 117 | None
+    wpa2-key1 <- | <client_mac> | <ap_bssid> | 117 | None
+    ```
+    AP retransmit Message 1 (`wpa2-key1`) liên tiếp 3 lần nhưng KHÔNG BAO GIỜ nhận được Message 2 (`wpa2-key2 ->`) từ điện thoại.
+* **Nguyên nhân gốc rễ:**
+  - `wpa_supplicant` khởi động timer 10s sau khi gửi Message 2. Nếu không nhận được Message 3 từ AP (do gói Message 2 bị drop trên đường truyền hoặc AP gửi Message 3 bị drop), nó tự động suy đoán sai là do mật khẩu PSK không đúng.
+  - Trên điện thoại Samsung Galaxy S7 (`SM-G930F`), ăng-ten Wi-Fi 5GHz nằm ở **GÓC TRÊN CÙNG BÊN TRÁI** (nhìn từ màn hình trước, ngay trên nút Volume). Nếu lưng máy áp sát thanh sắt hộp của kệ kim loại hoặc chân lò xo (spring contacts) tiếp xúc nắp lưng bị lỏng/hở mép, tín hiệu phát ngược Uplink TX của điện thoại bị suy hao tới 10-15 dBm so với các máy lân cận (RSSI -70 dBm vs -55 dBm). Gói EAPOL Key 2 bị drop hoàn toàn.
+* **Cách khắc phục:**
+  1. TUYỆT ĐỐI KHÔNG vội vàng đổi mật khẩu hay nghi ngờ cấu hình farm khi thấy dòng `pre-shared key may be incorrect`.
+  2. Đối soát `auth-trace-buf` trên AP: nếu có `wpa2-key1 <-` mà thiếu `wpa2-key2 ->`, nguyên nhân 100% là do Uplink RF Drop.
+  3. Xử lý vật lý tại khay farm: Dịch chuyển điện thoại ra xa thanh sắt hộp 2-3 cm và dùng tay bóp nhẹ mép trên bên trái nắp lưng để 2 chân lò xo ăng-ten tiếp xúc chặt với khung sườn. Máy sẽ handshake thành công ngay tức khắc.
