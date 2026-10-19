@@ -43,6 +43,18 @@ Khi xuất hiện marker `[REVIEWER_HANDOFF_TRIGGERED: ...]`:
 
 ---
 
+## 2.1. Chốt Chặn Cơ Học: Hook `guard_closeout_discipline.py` Cho `clarify`
+
+Để loại bỏ hoàn toàn khả năng Coordinator "quên luật" hoặc bị tâm lý sợ sai mà gọi `clarify`, hệ thống đã triển khai chốt chặn cơ học:
+- **Hook file:** `hooks/guard_closeout_discipline.py` được nạp vào `hooks.pre_tool_call` trong `config.yaml` của Hermes qua `manage_hermes_config.py wire-closeout-hook` với matcher `terminal|clarify`.
+- **Cơ chế hoạt động:**
+  1. Khi Coordinator gọi `clarify`: Hook kiểm tra xem `D:/Taadaa/runtime/handoff_lock_active.json` có đang tồn tại không. Nếu có, lập tức trả về `action="block"` với `rule_id="GUARD_CLOSEOUT_DISCIPLINE_CLARIFY_HANDOFF"`.
+  2. Đồng thời quét nội dung câu hỏi/lựa chọn xem có chứa từ khóa né tránh (`tiếp tục`, `closeout`, `chốt phiên`, `chấm điểm`, `điểm`, `score`, `grace band`, `remediate`, `remediation`, `reviewer`, `gate_audit`, `sol repair`, `handoff`, `giữ commit`) khi Gate gần nhất chưa APPROVED không. Nếu có, chặn với `rule_id="GUARD_CLOSEOUT_DISCIPLINE_CLARIFY_EVASION"`.
+  3. Khi bị chặn, tin nhắn không bao giờ đến Telegram của User; Coordinator nhận lại lỗi kèm lệnh CLI bắt buộc phải chạy.
+- **Kiểm chứng:** Bộ unit test trong `tests/test_guard_closeout_discipline.py` đạt 10/10 tests PASSED (100%).
+
+---
+
 ## 3. Bài Học Payload Budget: Tỷ Lệ 80% Diff Trong `sol_payload_guard.py`
 
 ### Vấn đề
