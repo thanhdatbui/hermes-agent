@@ -247,10 +247,10 @@ When an operator provides a screenshot of a TikTok profile (e.g. `LilyanLederhos
 ### 11. Full 4-in-1 TikTok Channel Standardization Workflow (User Directive 2026-10-18)
 
 Khi Operator yêu cầu *"Chuẩn hoá kênh này"* hoặc *"Chuẩn hoá acc"*, quy chuẩn farm BẮT BUỘC thực thi trọn gói **4 món**:
-1. **Avatar (Ảnh đại diện)**: Bám sát nhân vật/chủ thể video gốc $F_{src}$ hoặc video render $F_{vid}$, crop chuẩn ngũ quan $512 \times 512$, tạo 2 preview (ảnh vuông + viền tròn Profile), soi mắt qua `browser_vision`/WinRT OCR trước khi gửi duyệt; dual-sync kho và cắm marker `.manual_avatar_locked`.
-2. **Hashtag & Niche**: Khớp ngách và pool hashtag từ `Tik<N>.xlsx`, cắm marker bảo vệ `.manual_hashtag_locked` trong kho video render.
+1. **Avatar (Ảnh đại diện)**: Bám sát nhân vật/chủ thể video gốc $F_{src}$ hoặc video render $F_{vid}$, crop chuẩn ngũ quan $512 \times 512$, tạo 2 preview (ảnh vuông + viền tròn Profile). Nếu Haar cascade trả về 0 face trên clip kịch/tiểu phẩm, fallback trích xuất sample frames theo giây (`dump_sample_frames`) và crop tâm chủ thể. Ghép mosaic tổng hợp đa kênh, mở qua `browser_navigate("file:///...")` và soi mắt bằng `browser_vision` xác nhận không lỗi hiển thị/cắt lẹm trước khi gửi `MEDIA:<path>` duyệt; dual-sync kho và cắm marker `.manual_avatar_locked`.
+2. **Hashtag & Niche**: BẮT BUỘC đối soát trực tiếp hình ảnh clip trên grid Profile của kênh với `Tik<N>.xlsx` để phát hiện desync (sổ cái ghi `Thú vị`/`Nhảy` nhưng video thực tế là Gym hoặc Học đường); cập nhật đúng ngách thực tế và pool hashtag, cắm marker bảo vệ `.manual_hashtag_locked` trong kho video render.
 3. **Bài pin (Pin Top Gate $\ge 1.000$ views)**: Tra cứu lượt view qua `snapshots` hoặc profile grid. Chỉ ghim khi có clip $\ge 1.000$ views; clip $< 1.000$ views giữ nguyên thứ tự tự nhiên. Dùng canonical tool `python D:/Taadaa/tools/pin_top_videos.py --machine <May> --account <username>`.
-4. **Bio (Tiểu sử có dấu chuẩn tiếng Việt)**: Đề xuất bio phù hợp với ngách kênh; nạp lên Android S7 BẮT BUỘC qua Base64 UTF-8 broadcast `ADB_KEYBOARD_INPUT_TEXT` của `AdbKeyboard` (CẤM gõ `input text` không dấu); xử lý bẫy clear text trước khi commit.
+4. **Bio (Tiểu sử có dấu chuẩn tiếng Việt)**: Đề xuất bio phù hợp với ngách kênh theo phong cách hài hước, dí dỏm, Gen Z đời thường có emoji; nạp lên Android S7 BẮT BUỘC qua Base64 UTF-8 broadcast `ADB_KEYBOARD_INPUT_TEXT` của `AdbKeyboard` (CẤM gõ `input text` không dấu); xử lý bẫy clear text trước khi commit.
 - Chi tiết quy trình và cạm bẫy: xem `references/tiktok-channel-standardization-4in1-workflow.md`.
 
 ## Bio uniqueness and deployment audit

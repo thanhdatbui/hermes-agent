@@ -28,16 +28,17 @@
   - Nếu đã đủ 3 bài ghim, tool tự động swap bài view cao hơn thay thế bài pin view thấp nhất.
 
 ### Bước 3: Món 2 — Hashtag & Niche
-- Đối soát nội dung clip thực tế trên kênh với cột `Keyword Video` và `Hashtag Pool` trong `Tik<N>.xlsx`.
-- Đồng bộ marker bảo vệ:
+- **Bẫy Niche Desync giữa Sổ Cái và Video Thực Tế**: Cột `Keyword Video` trong `Tik<N>.xlsx` thường bị lưu vết cũ hoặc generic (VD: `Thú vị`, `Nhảy` nhưng video thực tế là Gym hoặc Phim ngắn học đường). BẮT BUỘC đối soát trực tiếp hình ảnh clip trên grid Profile của kênh trước khi chốt ngách; TUYỆT ĐỐI CẤM tin mù quáng vào cột Keyword trong Excel.
+- Đối soát nội dung clip thực tế trên kênh để cập nhật đúng ngách và pool hashtag chuẩn:
   - Cắm marker `.manual_hashtag_locked` trong thư mục video render $F_{vid}$ (`D:/TIKTOK-videonuoinick/<F>/` hoặc `D:/TIKTOK-videonuoinick-admin/<F>/`).
   - Ghi nhận vào `manual_hashtag_protected_folders.json`.
 
 ### Bước 4: Món 3 — Avatar Bám Lưới & Cận Cảnh Ngũ Quan
 - Trích xuất 2 phương án từ video kho nguồn $F_{src}$ / kho render $F_{vid}$:
   - Chuẩn kích thước: Vuông $512 \times 512$.
-  - Cung cấp ảnh đối sánh gồm cả ảnh vuông và mô phỏng viền tròn Profile (`make_circle_preview`).
-  - Soi mắt kiểm định qua `browser_vision` / WinRT OCR trước khi gửi `MEDIA:<path>` cho Operator duyệt.
+  - **Kỹ thuật trích xuất & Fallback khi Haar Cascade miss (0 face)**: Với các video tiểu phẩm/kịch hoặc hoạt hình/học đường, Haar Cascade thường trả về 0 face $\rightarrow$ BẮT BUỘC fallback sang trích xuất khung hình theo mốc thời gian (`dump_sample_frames` tại giây 2, 5, 8, 12) rồi crop tâm chủ thể (`crop_head_square`), không để quy trình bị treo.
+  - Cung cấp ảnh đối sánh gồm cả ảnh vuông và mô phỏng viền tròn Profile (`make_circle_preview` với viền xanh lá).
+  - **Ghép Mosaic Đa Kênh & Invariant Soi Mắt Trước Khi Gửi**: Khi chuẩn hoá $\ge 1$ kênh cùng lúc, ghép thành 1 ảnh mosaic tổng hợp (`avatar_standardization_proposals.jpg`) chia hàng theo máy, cột theo phương án. Dùng `browser_navigate("file:///...")` kết hợp `browser_vision` mở ảnh local để soi mắt kiểm tra (xác nhận đúng chủ thể, không lẹm cằm/đỉnh đầu, không lỗi hiển thị đen/méo) TRƯỚC KHI gửi thẻ `MEDIA:<path>` cho Operator duyệt.
 - Sau khi Operator chốt phương án:
   - Đồng bộ file `avatar.jpg` vào kho nguồn và kho render.
   - Cắm marker `.manual_avatar_locked` và đăng ký vào `manual_avatar_protected_folders.json`.
