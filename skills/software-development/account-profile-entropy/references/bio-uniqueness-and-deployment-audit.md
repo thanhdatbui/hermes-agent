@@ -83,3 +83,32 @@ When two fresh profiles show the exact same sentence, inspect the runner's bio-g
 ## Đầy Đủ Dữ Liệu Từ Điển Âm Tiết Tiếng Việt trong `smart_name_generator.py`
 - Bổ sung toàn diện các âm tiết và thanh điệu phổ biến: `diem` (Diễm), `nhu` (Như), `nguyet` (Nguyệt), `khuong` (Khương), `thuan` (Thuận), `hiep` (Hiệp), `dieu` (Diệu)... vào `TEN_MAP`.
 - Thiếu các từ tố này sẽ khiến `parse_username_syllables()` bóc tách thiếu âm tiết trên các username có Họ-Tên hợp lệ (như `huynhdiem0806`), dẫn đến việc hàm đối soát `is_stereotyped()` nhận định sai là nick chưa chuẩn hóa và bốc ra xử lý không cần thiết.
+
+---
+
+## Batch Wiper Architecture: Per-Machine Sequential vs Fleet Parallel (User Directive 2026-10-20)
+- **Cạm bẫy SAFE_SKIP Device Lock khi gom Batch**:
+  * Khi nhiều tài khoản thuộc cùng 1 thiết bị vật lý (ví dụ Máy 44 có 2 nick, Máy 51 có 4 nick, Máy 57 có 2 nick), nếu đưa phẳng (flat list) toàn bộ danh sách vào `ThreadPoolExecutor(max_workers=5)`:
+  * Các luồng worker sẽ tranh chấp `device_lock` trên cùng một máy Android, dẫn đến hiện tượng cascade `SAFE_SKIP` ("May 51 dang co tien trinh khac giu lock..."), khiến các slot sau bị bỏ qua hàng loạt.
+  * **Giải pháp kiến trúc chuẩn (`build_machine_queues`)**:
+    Gom nhóm tài khoản theo từng `machine_id`:
+    ```python
+    queues = {}
+    for acc in accounts:
+        queues.setdefault(acc["machine"], []).append(acc)
+    ```
+    `ThreadPoolExecutor(max_workers=4)` xử lý song song **giữa các máy khác nhau**, nhưng bên trong mỗi máy, worker chạy **tuần tự (sequentially)** từng tài khoản. Điều này bảo đảm zero-conflict trên `device_lock`, không bị nghẽn CPU host và hoàn thành sạch sẽ 100% tài khoản trên mỗi thiết bị.
+
+---
+
+## Điều Hướng Mở Sửa Bio & Bẫy False-Positive OCR Tiêu Đề Video (User Directive 2026-10-20)
+- **Cơ chế mở Sửa Bio tin cậy trên TikTok v47 S7**:
+  * Khi tài khoản đã có bio dài, nút text *"Sửa hồ sơ"* thường bị co lại hoặc OCR không nhận dạng được chữ.
+  * Thay vì tap mù vào tọa độ chung chung, trên Profile TikTok, chạm trực tiếp vào dòng chữ Bio hiện tại (`center(bio_box)` hoặc `(473, 703)`) sẽ kích hoạt mở thẳng màn hình `EDIT_PROFILE` hoặc `BIO_EDIT`.
+  * Từ `EDIT_PROFILE`, tap dòng Tiểu sử tại `(162, 1332)` $\rightarrow$ vào `BIO_EDIT` gửi `ADB_KEYBOARD_CLEAR_TEXT` + `keyevent 67` (DEL) $\times 100$ + `ADB_KEYBOARD_CLEAR_TEXT` $\rightarrow$ bấm Lưu `(980, 140)`.
+  * Trở về Profile, OCR xác nhận dòng bio cũ đã biến mất hoàn toàn và xuất hiện nút nguyên bản **`+ Thêm tiểu sử`** (`+ Thém tidU sd` ở `[69, 716]`).
+- **Cạm bẫy False-Positive từ Grid Tiêu Đề Video ở đáy màn hình**:
+  * WinRT OCR quét toàn bộ màn hình Profile bao gồm cả lưới video đã đăng ở nửa dưới màn hình ($y > 1000$).
+  * Nếu một video có tiêu đề chứa từ nhạy cảm (ví dụ clip tên *"TRAI CHIA SẺ..."* ở tọa độ `(852, 1769)`), script kiểm tra nếu dùng `any("chia se" in t for t, _ in boxes)` sẽ báo sai rằng nick "vẫn còn dính bio rác"!
+  * **Quy chuẩn**: Giới hạn vùng quét kiểm tra Bio ở $y < 850$ (phía trên danh mục video), hoặc chỉ kiểm tra các text box nằm giữa hàng thống kê Follower và hàng video.
+
