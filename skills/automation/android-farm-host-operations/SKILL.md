@@ -6,6 +6,7 @@ description: "Use when farm devices drop, USB hangs, or entering BIOS."
 # Android Farm Host Operations
 
 References:
+- `references/xiaowei-netstat-regex-port5038-triage-20261019.md` — Phân tích lỗi regex netstat thiếu Foreign Address trong watchdog dọn cổng 5038 khiến tiến trình mồ côi không bị hạ và giam giữ 25 máy trên Kibe (19/10/2026).
 - `references/admin-vs-kibe-dual-xeon-disconnection-and-post-watchdog-triage-20261019.md` — Chẩn đoán nghịch lý Kibe vs Admin cùng Dual Xeon nhưng Admin rớt kết nối S7 nhiều hơn sau 2 phiên chạy: giới hạn của watchdog dọn port 5038, tích tụ tràn đệm EHCI X99 (8D26/8D2D), độ trễ ngắt DPC từ FFmpeg render ngầm và sụt áp cáp Box 4 do nhiệt (19/10/2026).
 - `references/m7-dat-5ghz-vs-aruba-and-dual-adb-port5038-triage.md` — Bóc tách hiện trường M7 ăn mạng Dat (5GHz Kênh 100 -50dBm từ router ngoài nối cùng subnet 192.168.110.x) vs kẹt kibe 1 (AP .253 Kênh 36/149/52), ngưỡng client Aruba (khuyến nghị 40 vs trần 64) và bẫy XiaoWei chiếm ADB port 5038 làm ẩn máy trên port 5037 (19/10/2026).
 - `references/m7-wifi-5ghz-vs-24ghz-and-pnp-triage-20261019.md` — Chẩn đoán lệch băng tần 5GHz vs 2.4GHz (tại sao vào Dat được nhưng kibe 1 tạch), ngưỡng client Aruba (khuyến nghị 40 vs trần 64) và kỷ luật đối soát PnP USB chống phán bừa rút cáp khi mất ADB (19/10/2026).
@@ -587,6 +588,26 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
      * Chỉ được phép raise `ConsumerPreflightError` (chuyển `blocked-proxy-vpn`) khi và chỉ khi đã thực hiện reconnect mà thiết bị vẫn không phản hồi.
   2. *Tầng 2 (Pre-Session Readiness Gate tại `tiktok_runner.py`):*
      * Trước khi phát lệnh spawn `run-feed-session.ps1` (hoặc trước mỗi batch máy), launcher bắt buộc chạy quét nhanh `batch_recover_s7.py` (Level 1 soft recovery) trong 10–15s để giải phóng socket và đưa các máy bị kẹt shell/treo focus về trạng thái sẵn sàng trước khi đổ tải đồng loạt.
+
+## 27. Bẫy Regex Netstat Làm Tê Liệt Watchdog Dọn Cổng 5038 Của XiaoWei (19/10/2026)
+- **Hiện tượng:** Watchdog `xiaowei_idle_auto_close_watchdog.py` chạy định kỳ nhưng tiến trình mồ côi trên cổng 5038 vẫn không bị hạ, giam giữ 20-30 thiết bị khiến cổng chuẩn 5037 bị thiếu máy.
+- **Nguyên nhân cốt lõi (Lỗi Regex trong `XIAOWEI_ADB_TARGET_PS`):**
+  * Trong script, kiểm tra cổng 5038 dùng: `Select-String ':{XIAOWEI_ADB_PORT}\s+LISTENING'`
+  * Định dạng `netstat -ano -p tcp` trên Windows có cột Foreign Address (`0.0.0.0:0`) nằm giữa Local Address (`:5038`) và State (`LISTENING`).
+  * Do đó regex không bao giờ match, hàm `is_xiaowei_adb_running()` luôn trả về False, khiến watchdog bỏ qua bước dọn dẹp.
+- **Chuẩn hóa giải pháp:**
+  * Dùng trực tiếp PowerShell cmdlet `Get-NetTCPConnection -LocalPort 5038 -State Listen` để trích xuất OwningProcess.
+  * Hoặc regex netstat có Foreign Address: `:{XIAOWEI_ADB_PORT}\s+\S+\s+LISTENING`.
+  * Trên Python: dùng `psutil.net_connections(kind='tcp')` kiểm tra tức thời trong 2ms.
+
+## 28. Bẫy Drift Dữ Liệu Hashtag 3 Tầng & Quy Chuẩn Khóa Cứng
+- **Hiện tượng:** Sửa hashtag trên Excel nhưng định kỳ bị cron ghi đè lại nhãn cũ (ví dụ Khoa học bị đổi thành Thú cưng).
+- **Nguyên nhân:**
+  1. Bảng `folders` trong CSDL video runtime bị gán sai nhãn từ lúc cào video.
+  2. Script đồng bộ định kỳ đọc từ CSDL runtime làm nguồn chân lý và ghi đè lại file Excel.
+  3. Cache hashtag pool quét các sheet cũ bị nhiễm chéo giữa các ngách.
+- **Giải pháp dứt điểm:** Bắt buộc đồng bộ đồng thời 3 tầng: CSDL video runtime `folders` -> Bảng tính Excel cả 2 cụm Kibe & Admin -> Cắm cờ khóa cứng `.manual_hashtag_locked` trong thư mục video. Hậu kiểm bằng lệnh sync 2 lần liên tiếp.
+
 
 
 

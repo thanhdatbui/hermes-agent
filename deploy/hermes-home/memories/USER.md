@@ -1,4 +1,4 @@
-Bio: CẤM trùng mẫu/CẤM tự tiện sửa khi đổi tên (phải theo niche Tik*.xlsx hoặc để trống); Khóa nick tay.
+Bio: 100% tiếng Việt có dấu (AdbKeyboard UTF-8 Base64), cấm lột dấu kể cả mockup; CẤM trùng mẫu/sửa bừa khi đổi tên; Khóa nick tay.
 §
 Dọn đĩa: safe_recycle.py. Reboot né TFT/War3. Box 1 sát AP kibe 1. S7: anten Wi-Fi góc trên TRÁI. Lỗi timeout/PSM BẮT BUỘC sửa script; cấm cron quấy rầy máy nghỉ.
 §
