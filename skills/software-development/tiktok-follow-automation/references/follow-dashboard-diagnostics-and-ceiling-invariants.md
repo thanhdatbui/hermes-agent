@@ -88,16 +88,30 @@ Khi User yêu cầu báo cáo tình hình follow của một Row (ví dụ Row 1
 ## 6. Cơ Chế Dò Trần Động (Adaptive Probing Ceiling) & Bảo Hiểm Lùi 4 Sàn 15
 Trong `follow_state.py`, runner tự động điều chỉnh trần follow cho các nick cựu binh khỏe theo thuật toán thích ứng:
 - **Ngưỡng Trần Tuyệt Đối (`core_cap`) theo Cohort**:
-  * `veteran` (Following > 100, Video > 25, Tuổi > 180 ngày): trần tối đa = **30 follow/ngày**.
+  * `veteran` (Following > 100, Video > 25, Tuổi > 180 ngày): trần tối đa = **40 follow/ngày** (nâng từ 30 lên 40 theo lệnh Operator ngày 19/10/2026).
   * `mid`: trần tối đa = **22 follow/ngày**.
   * `rookie` (Following < 30 hoặc Video < 15 hoặc Tuổi < 60 ngày): trần tối đa = **16 follow/ngày**.
 - **Cơ chế Dò Trần Tăng Động (`_roll_day()`)**:
   * Khi nick `graduated` hoàn thành cữ chạy sạch sẽ (`last_session_clean == True`, `follow_failed == False`) và số follow đạt $\ge base\_max$ (mặc định 15):
-    $$proven\_safe\_ceiling = \min(30, \max(curr\_proven, prev\_used))$$
+    $$proven\_safe\_ceiling = \min(40, \max(curr\_proven, prev\_used))$$
     $$active\_ceiling = \min(core\_cap, \max(0, proven\_safe\_ceiling + 2))$$
-  * *Ví dụ thực tế*: Nick M37 đạt 25 follow sạch hôm nay $\rightarrow$ Mốc chứng minh `proven` nâng lên 25 $\rightarrow$ Kỳ tiếp theo tự động mở trần `active_ceiling` lên **27 follow** (`min(30, 25 + 2)`). Nếu tiếp tục sạch sẽ dò lên kịch trần **30 follow**.
+  * *Ví dụ thực tế*: Nick M37 đạt 25 follow sạch hôm nay $\rightarrow$ Mốc chứng minh `proven` nâng lên 25 $\rightarrow$ Kỳ tiếp theo tự động mở trần `active_ceiling` lên **27 follow** (`min(40, 25 + 2)`). Nếu tiếp tục sạch sẽ dò tiếp +2 mỗi kỳ lên kịch trần **40 follow**.
 - **Cơ chế Bảo Hiểm Gãy (Lùi 4 Sàn 15)**:
   * Khi đang dò trần mà bị TikTok nhả nút:
-    $$proven\_safe\_ceiling = \min(30, \max(0, \max(base\_max, curr\_proven - 4)))$$
+    $$proven\_safe\_ceiling = \min(40, \max(0, \max(base\_max, curr\_proven - 4)))$$
   * Lùi ngay 4 nấc an toàn nhưng **khóa sàn không dưới 15**, thu hồi cờ `graduated`, đưa vào cooldown dưỡng sinh theo số lần tái phạm (Streak 1: 3 ngày, Streak 2: 5 ngày, Streak 3: 7 ngày, Streak $\ge 4$: 15 ngày).
+
+## 7. Cơ Chế Hồi Phục 1 (Tier 1) vs Hồi Phục 2 (Tier 2) & Hiện Tượng Nhả Ở Lượt 7-8
+- **Hồi phục 1 (Probation Tier 1 - `clean_days = 0`)**:
+  * Áp dụng khi nick vừa hết hạn cooldown ra chạy cữ đầu tiên (chưa có ngày sạch nào tích lũy).
+  * Ngân sách bị bóp nghẹt nghiêm ngặt: **2 – 5 follow/ngày** (Rookie/Mid trần 4, Veteran trần 5).
+- **Hồi phục 2 (Probation Tier 2 - `clean_days = 1`)**:
+  * Áp dụng khi nick ở cữ trước đã chạy follow sạch sẽ không bị nhả, qua ngày `_roll_day()` tự động tăng `probation_clean_days = 1`.
+  * Ngân sách được nới rộng: **6 – 8 follow/ngày** (Veteran trần 9).
+- **Tại sao nick hồi phục có nick follow được tới 8 lượt rồi mới bị nhả**:
+  * Các nick như M29, M38, M39, M71, M16 đã có 1 ngày sạch từ kỳ trước (15/10) nên hôm nay (19/10) chạy ở **Tier 2**.
+  * Ở **Phiên 1 (06:00)**: Nick chạy hoàn thành 6–7 follow sạch sẽ.
+  * Ở **Phiên 2 (08:00)**: Hệ thống tính ngân sách còn lại trong ngày (`cap 8 - used 7 = 1 follow`), nick tiếp tục follow thêm 1 lượt nữa ➔ Đạt tổng **8 follow**.
+  * Đến lượt tiếp theo (hoặc kiểm tra post-follow sau vuốt), nick chạm ngưỡng trần chịu đựng của tài khoản đang trong diện bị TikTok gắn cờ theo dõi ➔ TikTok kích hoạt Action Block (`TikTok không nhận follow` hoặc `nhả sau vuốt`).
+  * Script phát hiện nhả nút lập tức ngắt phiên an toàn (`FOLLOW_FAILED`), thu hồi trạng thái thử thách và đưa nick vào chu kỳ cooldown tiếp theo.
 
