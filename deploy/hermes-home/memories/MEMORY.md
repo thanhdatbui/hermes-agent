@@ -1,6 +1,6 @@
 Chu kỳ 4d: Parity 96h (N1 lẻ, N2 chẵn), N3(R7,8), N4(dưỡng 0fl+up). Dưỡng N3 tối+N4: per-device slot động theo streak (cấm full row). S2 bám S1. Starve 108h. Đêm 21h30-5h15 né cache 4h cho 2FA/Ava; báo 6h cấm ảo.
 §
-Follow: dò +2 (max 40); lùi 4 sàn 15. Probation: 1 cữ P1 (T1: 3-4, T2: 5-6), P2 khóa; né mốc gãy (last_failed-1), streak>=3 bóp -1. Dọn phantom follow <01/10. IP breaker chỉ trip khi cựu binh nhả.
+Follow: dò +2 (max 40); lùi 4 sàn 15. Probation: P1 (T1: 3-4, T2: 5-6), P2 khóa; né mốc gãy (last_failed-1), streak>=3 bóp -1. Dọn phantom <01/10. Anchor nhả = block, bắt buộc hủy phiên+cooldown (cấm bao biện oan). WinRT OCR Primary, XML fallback.
 §
 Hotmail: CẤM mail cá nhân; @fviainboxes.com đọc OTP. Excel 3,4,5+G. Pin >=1000 view.
 §

@@ -6,9 +6,9 @@ Trên TikTok Android (đặc biệt các phiên bản 46.x/47.x), giao diện li
 - `uiautomator dump` XML trên Samsung S7 thường có độ trễ lớn (5s – 15s), dễ văng lỗi timeout hoặc trả về hierarchy rỗng `""` khi giao diện đang render hiệu ứng.
 - Khi XML trả về rỗng hoặc không parse được nút bấm, hệ thống cũ thường retry mù quáng, gây nghẽn hàng đợi hoặc abort oan.
 
-Để giải quyết triệt để, hệ thống tích hợp **WinRT OCR Offline native** (tốc độ 0.2s – 0.5s/ảnh) làm tầng bảo vệ kép (dual-layer):
-1. **Lớp 1 (Primary Semantic XML)**: Vẫn ưu tiên tìm nút và phân loại theo node bounds chuẩn của XML hierarchy.
-2. **Lớp 2 (Fast OCR Fallback)**: Khi XML rỗng, lỗi parse, hoặc trả về `"unknown"`, tự động chụp ảnh màn hình và đọc trực tiếp bằng WinRT OCR Windows để cứu nguy.
+Để giải quyết triệt để, hệ thống tích hợp **WinRT OCR Offline native** (tốc độ 0.2s – 0.5s/ảnh) làm phương thức chính:
+1. **Lớp 1 (Primary WinRT OCR)**: BẮT BUỘC ưu tiên chụp màn hình và đọc trực tiếp bằng WinRT OCR để tìm tâm nút hoặc phân loại nút bấm. Tốc độ cao, không bị ảnh hưởng bởi obfuscation hay layout động.
+2. **Lớp 2 (Fallback XML Hierarchy)**: Chỉ khi adapter không hỗ trợ OCR, OCR ném exception, hoặc OCR trả về None/không nhận diện được nút, mới rơi xuống `dump_ui()` XML để parse và tap.
 
 ---
 
@@ -101,32 +101,50 @@ def ocr_screen(self, timeout: float = 30.0) -> list[tuple[str, tuple[int, int, i
 
 ---
 
-## 4. Fallback Points in Flows
+## 4. Primary & Fallback Flow Standards
 
 ### 4.1 Bấm Nút Follow (`mode1_search_follow.py` / `_tap_follow_button`)
-Khi XML hierarchy không tìm được đúng 1 nút bấm (do TikTok đổi selector hoặc DOM bị chia cắt):
+BẮT BUỘC ưu tiên WinRT OCR trước, XML chỉ là fallback:
 ```python
-if len(matches) == 1:
-    tap_center(adapter, matches[0])
-    time.sleep(random.uniform(2.5, 5.0))
-    return True
-
-# OCR Fallback
-if hasattr(adapter, "ocr_screen"):
+# 1. OCR Primary
+if callable(getattr(adapter, "ocr_screen", None)):
     try:
         from ..core.ocr import find_follow_button_center_ocr
         boxes = adapter.ocr_screen()
         center = find_follow_button_center_ocr(boxes, y_max=1200)
         if center is not None:
-            adapter.tap(center[0], center[1])
-            time.sleep(random.uniform(2.5, 5.0))
-            return True
-    except Exception:
-        pass
+            x, y = center
+            if isinstance(x, (int, float)) and not isinstance(x, bool) and isinstance(y, (int, float)) and not isinstance(y, bool) and 0 <= x < 1080 and 0 <= y < 1200:
+                adapter.tap(int(x), int(y))
+                logger.info("[OCR_TAP_SUCCESS] center=(%d, %d)", int(x), int(y))
+                time.sleep(random.uniform(2.5, 5.0))
+                return True
+        logger.info("[OCR_TAP_MISS]")
+    except Exception as exc:
+        logger.warning("[OCR_TAP_ERROR] %s", exc)
+
+# 2. XML Fallback
+logger.info("[XML_FALLBACK] Attempting XML tap")
+try:
+    xml_text = xml_text if xml_text is not None else adapter.dump_ui()
+except FollowAdapterError:
+    return False
+
+# Parse XML nodes and tap matching follow target...
+if len(matches) == 1:
+    tap_center(adapter, matches[0])
+    time.sleep(random.uniform(2.5, 5.0))
+    return True
 return False
 ```
 
-### 4.2 Nghiệm Thu Sau Tap (`verify_follow.py` / `verify_after_tap`)
+### 4.2 Anchor Follow Gatekeeper Invariant (CẤM Bao Biện Oan)
+- **Anchor là chốt chặn an toàn đầu tiên**: Khi nick bắt đầu phiên follow, việc follow nick Anchor đóng vai trò là Gatekeeper kiểm tra tài khoản có bị Action Block từ TikTok hay không.
+- **Quy tắc tuyệt đối**: Nếu nút follow Anchor bị nhả (không giữ trạng thái following sau pull-to-refresh), tài khoản đó CHẮC CHẮN ĐANG BỊ TIKTOK CHẶN NÚT.
+- **Hành động bắt buộc**: Hủy ngay lập tức toàn bộ phiên chạy và tống nick vào diện Cooldown + tăng `fail_streak` để bảo vệ nick và tránh đốt sạch tệp target/IP.
+- **CẤM TUYỆT ĐỐI**: Cấm Agent tự suy diễn/ngụy biện là "phạt oan", "shadow drop tạm thời" hay viện cớ acc đã coi feed đầy đủ mà không chịu phạt. Follow Anchor nhả = Action Block = Abort & Cooldown.
+
+### 4.3 Nghiệm Thu Sau Tap (`verify_follow.py` / `verify_after_tap`)
 Khi nghiệm thu sau khi tap, nếu `_dump()` rỗng hoặc classifier XML trả về `"unknown"`:
 ```python
 def _classify_with_fallback() -> str:
