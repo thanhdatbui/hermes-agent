@@ -21,3 +21,24 @@ Report name, bio, and avatar as independent statuses. Use `BLOCKED/UNPROVEN` whe
 ## Session reproduction clues
 
 When two fresh profiles show the exact same sentence, inspect the runner's bio-generation lines, deployed copies, and per-account reports. The presence of `BIO_EDIT` followed by the identical final OCR text is proof of a bio-generation/deployment defect, not proof that TikTok ignored input. A later module timestamp does not establish that the earlier batch used that module.
+
+---
+
+## Unexecuted Remediation & Stale On-Device Artifact Trap (User Directive 2026-10-19)
+
+### Bối cảnh & Cạm bẫy "Bị chửi oan do không nạp đè thiết bị thật":
+- Khi Operator phát hiện bot viết bio đại trà/rác và yêu cầu: *"Sửa lại các acc đã viết bio linh tinh cho tao"* / *"Viết bio kiểu hài hước nhé"*.
+- **Lỗi chí tử của Agent**: Agent bóc tách danh sách acc bị ảnh hưởng, map Niche từ `Tik<N>.xlsx`, soạn 20 câu bio hài hước chuẩn vào file JSON (`humorous_niche_bios.json`), chạy unit test passed... **nhưng KHÔNG chạy tool nạp đè thực tế lên 20 điện thoại Android S7** (do vướng ca feed hoặc vội vàng chốt phiên khi nghe lệnh "Done").
+- **Hậu quả bùng nổ**: Ngày hôm sau, khi watchdog đổi tên (`tiktok-rolling-rename-watchdog`) bốc trúng 1 trong 20 acc này (ví dụ Máy 35 `@martinbwahb`) để đổi tên hiển thị sang `Tiến Mã`, runner chụp ảnh Profile gửi về Telegram.
+- Dòng bio rác cũ từ hôm trước (`Chia sẻ những khoảnh khắc đời thường...`) vẫn còn nguyên vẹn trên màn hình.
+- Operator nhìn thấy ảnh chụp mới toanh kèm bio rác cũ và nổi giận lôi đình: *"Ai cho phép mày đi đặt bio v hqua t đã fix r mà???? Đụ mẹ lì thế"*.
+
+### Quy chuẩn Thực thi Bắt buộc (Durable Remediation Invariant):
+1. **Soạn JSON $\ne$ Hoàn thành**: Việc tạo file mapping / proposals JSON chỉ là 10% công việc chuẩn bị. Task sửa dữ liệu bậy CHỈ ĐƯỢC COI LÀ HOÀN TẤT khi đã chạy script nạp đè (hoặc xóa trắng) thành công trên 100% thiết bị vật lý thật và có ảnh chụp nghiệm thu sạch sẽ.
+2. **Đối soát Dấu vết Hiện trường khi bị khiếu nại (Trace Audit O(1))**:
+   - Khi Operator phản ánh *"Sao mày lại đi đặt bio đó nữa"*, KHÔNG được cãi mồm hay xin lỗi chung chung.
+   - BẮT BUỘC mở ngay file JSON report của lần chạy vừa rồi (ví dụ `m35_martinbwahb_rename_confirmed.json`).
+   - Kiểm tra bước `s10` (ảnh Profile lúc vừa mở app, TRƯỚC khi thực hiện bất kỳ lệnh sửa nào). Nếu bio rác đã xuất hiện ở `s10`, chứng minh bằng log: dòng bio đó là vết tích cũ còn tồn đọng do đợt trước chưa kịp nạp đè, hoàn toàn không phải do runner hiện tại vừa gõ vào.
+   - Lập tức kích hoạt runner chuyên dụng nạp đè / xóa sạch bio trên máy đó ngay lập tức.
+3. **Tuyệt đối tách rời Scope Đổi Tên vs Viết Bio**:
+   - Task đổi tên CHỈ ĐƯỢC chạm vào Tên. Nếu runner lọt vào `BIO_EDIT`, BẮT BUỘC bấm Back `keyevent 4` thoát ra ngay lập tức, cấm lưu bất kỳ ký tự nào.

@@ -84,6 +84,25 @@ Tách thành 2 tầng độc lập:
      - Sau khi Lưu, quay về màn hình Profile root. Tại đây tên hiển thị font in đậm lớn, tương phản cao, WinRT OCR đạt độ chính xác cao.
      - Áp dụng kiểm tra nghiêm ngặt `ratio >= 0.75` và `is_target_user(final_user)` để chốt `verified = True`.
 
+### D. Bẫy Mất Ký Tự `@` Trên Profile Gây Kẹt Vòng Lặp FEED (Error Spam `exit_2` trên M3, M28):
+- **Hiện tượng**:
+  * Trong hàm phân loại màn hình `classify(lines)`, điều kiện nhận diện `PROFILE` yêu cầu cứng:
+    `profile_has_user = any(l.startswith("@") for l in lines)`
+    `profile_markers = any(k in t for k in ("follower", "da follow", "daf", "thich"))`
+    `if profile_has_user and profile_markers: return "PROFILE"`
+  * Font chữ hoặc chất lượng ảnh chụp Samsung S7 khiến WinRT OCR thường xuyên đánh rơi hoặc méo ký tự `@` đầu username (ví dụ: `@kamilhhs0tk` đọc thành `kamiIhhsOtk`, hoặc username bị nhận diện thành text thường).
+  * Khi thiếu `@`, `profile_has_user` trả về `False`. Script rơi xuống dòng kiểm tra navigation bar:
+    `if re.search(r"de xu|danh cho ban|for you|trang ch|hop th|cua hang", t): return "FEED"`
+    vì dưới đáy màn hình Profile luôn có nút thanh điều hướng *"Trang chủ"* (`Trang chi`).
+- **Hậu quả**:
+  * Runner ngộ nhận màn hình Profile là màn hình `FEED`!
+  * Tại `state == "FEED"`, runner thực hiện lệnh: tap tab Hồ sơ `XY_PROFILE_TAB (972, 1857)`.
+  * Do máy THỰC TẾ ĐANG Ở PROFILE, việc tap tab Hồ sơ chỉ làm app reload lại đúng trang Profile.
+  * Lần quan sát tiếp theo lại nhận diện là `FEED` $\rightarrow$ lặp lại 5 lần liên tiếp $\rightarrow$ kích hoạt `MAX_SAME_STATE = 4` abort: `ket o trang thai FEED 5 lan lien tiep` (`exit_2`), gây lỗi hàng loạt trên các máy rớt dấu `@`.
+- **Quy chuẩn sửa đổi**:
+  * Nới lỏng kiểm tra `PROFILE`: Nhận diện qua profile markers (`follower`, `follow`, `thich`, `luot xem`, `nghi gi`, `tieu su`) kết hợp với thanh điều hướng dưới đáy (`Hồ sơ` / `H6 sd` ở $y > 1800$).
+  * Nếu màn hình đã có thanh điều hướng Hồ sơ ở đáy và có các chỉ số tương tác, BẮT BUỘC phân loại là `PROFILE`, tuyệt đối không để rơi xuống `FEED`.
+
 ---
 
 ## 4. Kỷ Luật Vận Hành Hermes Cron, Stdout Flush & Canary Testing
