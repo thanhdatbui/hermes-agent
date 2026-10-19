@@ -167,4 +167,16 @@ Trong `follow_state.py`, runner tự động điều chỉnh trần follow cho c
   * CẤM hardcode 35s–45s cắt ngang dòng suy luận reasoning của Sol Web Pool.
   * Chuẩn hóa: `first_token_timeout = 80.0s`, `idle_token_timeout = 20.0s`, `max_total_timeout = 140.0s`, `timeout_sec = 150.0s`.
 
+## 13. Xử Lý Follow Ảo (Phantom Followed Reconcile) Do Lỗi Verify Cũ Trước 01/10
+- **Hiện tượng**: Trước 01/10, script bấm nút follow không có bước hậu kiểm (pull-to-refresh Path B) nên ghi nhận `followed` vào state JSON ngay cả khi TikTok đã âm thầm nhả nút.
+- **Hậu quả**: State ghi nhận đã follow 115-140 nick trong khi thực tế trên web chỉ có 30-43 nick (ví dụ M27 ghi 115 follow trong khi web thật chỉ có 43, dư 72 follow ảo). Khi chạy lại, bộ lọc `is_followed(uid)` loại bỏ toàn bộ danh sách farm vì tưởng đã follow rồi, dẫn tới cháy tệp target.
+- **Quy tắc xử lý**: Đối soát với snapshot web thực tế, chỉ giữ lại các UID thực sự đang follow; dọn dẹp các bản ghi phantom ghi nhận trước 01/10 để giải phóng tệp target nội bộ cho nick tiếp tục chạy.
+
+## 14. Nguyên Tắc Điều Phối Ca Dưỡng Sinh N3 Tối & N4 (Bỏ Thiên Kiến Row — Per-Device Dynamic Slot)
+- **Bản chất ca dưỡng sinh**: Là phân bổ động theo từng thiết bị (Per-Device Dynamic Slot), **tuyệt đối KHÔNG chạy đồng loạt cả Row**.
+- **Không phân biệt Row**: Nick có `fail_streak` dài ở Row 1, Row 2 vẫn là đối tượng ưu tiên cấp cứu cao nhất trong ca tối N3 và 3 ca N4 để lướt feed xả tải.
+- **Điều phối qua Manifest**: Mỗi máy bốc độc lập 1 slot có điểm yếu cao nhất trên máy đó để dưỡng sinh (0-follow, lướt feed + up video), không cào bằng theo cờ `-Row`.
+- **Bảo toàn tài sản Farm**: Acc đã có tuổi, có video, vẫn đang live và cày view là tài sản quý giá của farm; tuyệt đối cấm tư duy "đóng băng vĩnh viễn" hay quy chụp acc chưa xem feed khi acc đã hoàn thành feed session đầy đủ trước đó.
+
+
 
