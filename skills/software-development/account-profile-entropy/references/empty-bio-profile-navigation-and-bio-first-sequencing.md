@@ -49,3 +49,22 @@ Khi thực hiện đổi tên và nạp bio trên tài khoản chưa có Bio:
 | **Chip `+ Thêm tiểu sử`** | `[75, 667][381, 705]` | `(228, 686)` | **Dùng để vào `BIO_EDIT` khi chưa có bio** |
 | **Nút "Sửa hồ sơ" (khi có bio)** | `[36, 825][520, 909]` | `(278, 867)` | Hiện ra sau khi đã lưu Bio |
 | **Vùng Avatar (bên phải)** | `[780, 260][1020, 500]` | `(900, 380)` | CẤM tap vì mở popup "Thêm vào Nhật ký" |
+
+---
+
+## 4. Kỷ Luật Giữ Nguyên Tên Tiếng Việt Chuẩn & Cờ `--bio-only` (User Correction 19/10/2026)
+- **Lời chấn chỉnh của Operator**: *"Kênh 2 tên tiếng việt r sửa gì nữa"*.
+- Khi chuẩn hóa kênh hoặc đổi bio: nếu tài khoản đã có tên tiếng Việt hợp lệ (VD: `Vũ Thị Nam`, `Ngọc Mai`, `Huỳnh Diễm`), **tuyệt đối CẤM đổi sang tên khác**.
+- **Chế độ `--bio-only` trong `do_rename_canonical_runner.py`**:
+  * Khi cờ `--bio-only` được kích hoạt: biến `is_target(name)` luôn trả về `True`.
+  * Script hoàn toàn bỏ qua nhánh sửa Tên, chỉ định vị và nạp Bio bám sát Niche kênh rồi thoát an toàn.
+
+---
+
+## 5. Bẻ Khóa OCR Lệch Dấu Tiêu Đề Switcher
+- Trên một số màn hình Switcher, WinRT OCR đọc `Chuyển đổi tài khoản` thành `Chuydn ddi täi khoån` (ký tự `ddi` thay cho `doi`).
+- **Khắc phục**: Regex phân loại trạng thái `SWITCHER` BẮT BUỘC dùng regex mềm:
+  ```python
+  re.search(r"chuy\w{0,4}n\s*d\w{0,4}i|switch account|them tai khoan|add account", t)
+  ```
+  Tuyệt đối không dùng chuỗi cố định `r"chuyen doi tai khoan"` làm script nhận nhầm thành `UNKNOWN` và bấm phím Back đóng mất popup.

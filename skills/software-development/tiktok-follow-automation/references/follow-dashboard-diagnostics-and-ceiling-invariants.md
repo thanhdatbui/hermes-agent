@@ -115,3 +115,14 @@ Trong `follow_state.py`, runner tự động điều chỉnh trần follow cho c
   * Đến lượt tiếp theo (hoặc kiểm tra post-follow sau vuốt), nick chạm ngưỡng trần chịu đựng của tài khoản đang trong diện bị TikTok gắn cờ theo dõi ➔ TikTok kích hoạt Action Block (`TikTok không nhận follow` hoặc `nhả sau vuốt`).
   * Script phát hiện nhả nút lập tức ngắt phiên an toàn (`FOLLOW_FAILED`), thu hồi trạng thái thử thách và đưa nick vào chu kỳ cooldown tiếp theo.
 
+## 8. Tử Huyệt Phiên 2 của Probation Tier 2 (Velocity Window & Quota Exhaustion)
+- **Hiện tượng**: Nick M29, M38, M39 ở P1 chạy 6–7 follow sạch sẽ 100%. Sang P2 (cách 2h), nick vẫn bấm thành công 1 người, nhưng do script cấp `budget = 2, 3` để vét trần ngày 8–9 follow, nick bấm tiếp người thứ 2 thì chạm trần Quota tổng / Rate-limit của TikTok ➔ dính `FOLLOW_FAILED`, mất sạch `clean_days` và bị giam 3 ngày oan.
+- **Nguyên nhân cốt lõi**: TikTok tính Quota trong cửa sổ trượt 24h kết hợp velocity. Khoảng nghỉ 2h giữa P1 (06:00) và P2 (08:00) quá ngắn. Với nick probation, quota TikTok cấp chỉ khoảng 7–8 follow/ngày. Sau P1, dư địa chỉ còn đúng 1 follow; nếu ráng vét lượt thứ 2 chắc chắn bị chặn.
+- **Nguyên tắc bảo vệ**:
+  * Mọi nick đang probation (Tier 1 và Tier 2) chỉ nên chạy ở Phiên 1 (06:00) với budget 5-6 follow rồi dừng luôn.
+  * Nếu chạy P2, bắt buộc clamp `budget = min(remaining, 1)`, tuyệt đối không cấp `budget >= 2` ở P2.
+
+## 9. Nguyên Lý Phân Tầng Cầu Dao IP (Tier-Aware Circuit Breaker)
+- **Quy tắc**: Cầu dao IP (`trip_ip_breaker()`) CHỈ kích hoạt khi nick **ĐÃ TỐT NGHIỆP (Graduated / Cựu binh, `was_graduated == True`)** bị nhả follow.
+- **Nick Probation bị nhả**: Bỏ qua cầu dao IP, chỉ phạt Cooldown tầng account (3–15 ngày).
+- **Trạng thái Dashboard**: Dashboard báo `🛡️ IP Circuit Breaker: Active 100% - Tất cả các cổng proxy đều sạch sẽ` là hoàn toàn chính xác khi các nick bị nhả đều là probation/tân binh, đảm bảo không ngắt proxy oan làm giam nick khỏe 48 tiếng.

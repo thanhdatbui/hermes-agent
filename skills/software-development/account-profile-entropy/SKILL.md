@@ -152,8 +152,10 @@ Khi tài khoản đã có `@username` (dù tạo từ reg cũ hay mua từ ngu�
 - **Kỷ luật Hàng chờ Cooldown 7 ngày (`rename_natural_state.json`)**:
   * TikTok giới hạn đổi biệt danh 7 ngày 1 lần. Mọi nick đã lỡ đổi tên không ăn khớp với username trong quá khứ được tự động xếp vào hàng chờ 7 ngày (`COOLDOWN_DAYS = 7`).
   * Watchdog đối soát qua `is_name_related_to_username()`: Đúng ngày thứ 7 sau lần đổi trước, hệ thống mới bốc ra đổi lại tên chuẩn theo username, tuyệt đối không spam đổi trước hạn gây lỗi popup cản trở.
-- **Acc Đã Có Tên Chuẩn (ALREADY) vs Lỗi In Nhầm Tên Đề Xuất (User Correction 2026-10-18)**:
-  * Khi tài khoản trên thiết bị đã mang tên tiếng Việt chuẩn ăn khớp với username (VD: `@huynhdiem0806` đã có tên `Huỳnh Diễm` trên Profile), runner nhận diện `is_name_related_to_username() == True` hoặc `ALREADY` -> BỎ QUA KHÔNG ĐỔI (`saved_at: null`).
+- **Acc Đã Có Tên Chuẩn (ALREADY) vs Lỗi In Nhầm Tên Đề Xuất (User Correction 2026-10-18 & 2026-10-19)**:
+  * Khi tài khoản trên thiết bị đã mang tên tiếng Việt chuẩn ăn khớp với username (VD: `@huynhdiem0806` đã có tên `Huỳnh Diễm`, `@twohavqyd8g` đã có tên `Vũ Thị Nam`), runner nhận diện `is_name_related_to_username() == True` hoặc `ALREADY` -> BỎ QUA KHÔNG ĐỔI (`saved_at: null`).
+  * **Chỉ thị đanh thép của Operator (User Correction 2026-10-19)**: *"Kênh 2 tên tiếng việt r sửa gì nữa"*. Khi chuẩn hóa kênh, TUYỆT ĐỐI CẤM đổi tên các kênh đã có tên tiếng Việt hợp lệ!
+  * **Chế độ `--bio-only` bắt buộc**: Runner `do_rename_canonical_runner.py` BẮT BUỘC hỗ trợ cờ `--bio-only` để khi tài khoản đã có tên tiếng Việt chuẩn, script bỏ qua hoàn toàn các bước chạm vào Tên, chỉ vào nạp Bio bám sát Niche và lưu lại.
   * **Cạm bẫy Watchdog Logging**: Watchdog nếu chỉ lấy biến tên đề xuất `n` (VD: `Huỳnh Bé`) để in ra Telegram sẽ gây hoang mang tột độ cho Operator ("nó tên huỳnh diễm thì đúng rồi còn đòi đổi clg nữa").
   * **Quy chuẩn**: Runner ghi `actual_name = final_name_ocr` vào file `.json`. Watchdog khi thấy trạng thái `is_already` BẮT BUỘC lấy đúng `actual_name` từ màn hình và in rõ:
     `ℹ️ [ROLLING RENAME] Máy <M>: @<user> đã có tên chuẩn '<actual_name>' (giữ nguyên)`. CẤM TUYỆT ĐỐI in tên random đè lên acc đã chuẩn!
