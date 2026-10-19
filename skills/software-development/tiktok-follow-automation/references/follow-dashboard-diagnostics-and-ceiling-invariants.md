@@ -70,3 +70,34 @@
   3. Kiểm chứng live:
      - `http://localhost:1905/api/follow-detail?machine=12&row=1`
      - Kiểm tra string `fdModalTitleHtml` và `lastFailedText` trong HTML root `/`.
+
+## 5. Chuẩn Báo Cáo Tỷ Lệ Follow Theo Row (Recovered vs Healthy Cohort Triage)
+Khi User yêu cầu báo cáo tình hình follow của một Row (ví dụ Row 1 theo chu kỳ Parity 4 ngày), **TUYỆT ĐỐI KHÔNG chỉ báo cáo số tổng follow macro** (như "127 follow, tăng 4%"). Bắt buộc phải phân tách 3 nhóm và trả về đúng tỷ lệ thực chiến:
+1. **Nhóm Đang Trong Tù (Still in Jail Cooldown)**:
+   - Các nick có `cooldown_until_date >= today` từ các đợt trước. Runner tự động skip, không phát sinh lệnh ADB.
+2. **Nhóm Nick Phục Hồi (Recovered / Post-Cooldown Probation)**:
+   - Các nick mãn hạn cooldown hoặc đang có `fail_streak > 0` quay lại cữ chạy.
+   - Bắt buộc phân tích 3 kịch bản:
+     * *Phục hồi sạch (Clean Success)*: Follow đủ quota warm-up (3-9 follow), không bị nhả, không tái phạm.
+     * *Chạm trần nhả (Partial Follow then Released)*: Follow được 1-8 nick rồi bị TikTok chặn (`TikTok không nhận follow` hoặc `nhả sau vuốt`). Script dừng an toàn.
+     * *Tái phạm nhả liền (Immediate Release - 0 follow)*: Bị TikTok nhả ngay nick đầu tiên. Chiếm tỷ lệ lớn ở nick trust yếu vừa ra tù.
+3. **Nhóm Nick Khỏe Cựu Binh (Graduated Core Fleet)**:
+   - Nick đã tốt nghiệp (`graduated == True`, `fail_streak == 0`), không dính án tích gần đây (như M12, M37).
+   - Tỷ lệ thành công (thường đạt 100%), đóng vai trò đầu tàu gánh 30-50% tổng sản lượng cả Row.
+
+## 6. Cơ Chế Dò Trần Động (Adaptive Probing Ceiling) & Bảo Hiểm Lùi 4 Sàn 15
+Trong `follow_state.py`, runner tự động điều chỉnh trần follow cho các nick cựu binh khỏe theo thuật toán thích ứng:
+- **Ngưỡng Trần Tuyệt Đối (`core_cap`) theo Cohort**:
+  * `veteran` (Following > 100, Video > 25, Tuổi > 180 ngày): trần tối đa = **30 follow/ngày**.
+  * `mid`: trần tối đa = **22 follow/ngày**.
+  * `rookie` (Following < 30 hoặc Video < 15 hoặc Tuổi < 60 ngày): trần tối đa = **16 follow/ngày**.
+- **Cơ chế Dò Trần Tăng Động (`_roll_day()`)**:
+  * Khi nick `graduated` hoàn thành cữ chạy sạch sẽ (`last_session_clean == True`, `follow_failed == False`) và số follow đạt $\ge base\_max$ (mặc định 15):
+    $$proven\_safe\_ceiling = \min(30, \max(curr\_proven, prev\_used))$$
+    $$active\_ceiling = \min(core\_cap, \max(0, proven\_safe\_ceiling + 2))$$
+  * *Ví dụ thực tế*: Nick M37 đạt 25 follow sạch hôm nay $\rightarrow$ Mốc chứng minh `proven` nâng lên 25 $\rightarrow$ Kỳ tiếp theo tự động mở trần `active_ceiling` lên **27 follow** (`min(30, 25 + 2)`). Nếu tiếp tục sạch sẽ dò lên kịch trần **30 follow**.
+- **Cơ chế Bảo Hiểm Gãy (Lùi 4 Sàn 15)**:
+  * Khi đang dò trần mà bị TikTok nhả nút:
+    $$proven\_safe\_ceiling = \min(30, \max(0, \max(base\_max, curr\_proven - 4)))$$
+  * Lùi ngay 4 nấc an toàn nhưng **khóa sàn không dưới 15**, thu hồi cờ `graduated`, đưa vào cooldown dưỡng sinh theo số lần tái phạm (Streak 1: 3 ngày, Streak 2: 5 ngày, Streak 3: 7 ngày, Streak $\ge 4$: 15 ngày).
+
