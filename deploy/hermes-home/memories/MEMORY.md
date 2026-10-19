@@ -4,7 +4,7 @@ Follow: dò +2 (max 40); lùi 4 sàn 15. Probation: P1 (T1: 3-4, T2: 5-6), P2 kh
 §
 Hotmail: CẤM mail cá nhân; @fviainboxes.com đọc OTP. Excel 3,4,5+G. Pin >=1000 view.
 §
-Preempt lock; ping 0% loss; ARP 110.x. Lock: rename_natural_state.json. Terminal: foreground max 60s; CLI dài/nặng BẮT BUỘC background=True + notify_on_complete=True.
+Preempt lock; ping 0% loss; ARP 110.x. Lock: rename_natural_state.json. Host Kibe: ADB 5037 (Xiaowei) & 5038 (M7/18/30); Terminal: foreground max 60s; CLI dài/nặng BẮT BUỘC background=True + notify_on_complete=True. Ruijie 3200 tắt Wi-Fi.
 §
 Argon=:20135 (token stable 4s). Claude CLI làm Planner.
 §

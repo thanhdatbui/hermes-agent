@@ -50,6 +50,36 @@ When two fresh profiles show the exact same sentence, inspect the runner's bio-g
      * Đây là phương án an toàn nhất và triệt để nhất khi phát hiện acc bị dính bio rác/trùng lặp.
      * Runner chạy với cờ `--clear-bio`: Focus ô tiểu sử, gửi `ADB_KEYBOARD_CLEAR_TEXT` + `keyevent 123` (MOVE_END) + `keyevent 67` (DEL) $\times 80$ + `ADB_KEYBOARD_CLEAR_TEXT`, không gõ bất kỳ ký tự nào, bấm Lưu.
      * Nghiệm thu qua WinRT OCR: Xác nhận dòng bio rác đã biến mất 100%, nút trên Profile quay về trạng thái sạch sẽ ban đầu `+ Thêm tiểu sử` (`[69, 716]`). Zero-Fingerprint an toàn tuyệt đối.
+     * **Kiến trúc Batch Wiper đa luồng (`batch_clear_bios.py`)**:
+       - Đọc danh sách acc bị dính bio rác từ file json.
+       - Ánh xạ serial từ `taikhoan_run_safe.xlsx`, kiểm tra online qua `get_online_serials()`.
+       - Đối soát an toàn qua `get_locked_machines()`, tự động bỏ qua các máy đang bận nuôi feed.
+       - Dùng `ThreadPoolExecutor(max_workers=5)` gọi runner canonical với cờ `--clear-bio --name <name>` (timeout 240s) để dọn sạch song song an toàn, không làm nghẽn máy khác.
    - **Phương án 2: Chế Bio Hài Hước Độc Bản theo Niche**:
      * CHỈ ĐƯỢC PHÉP LÀM KHI: Mỗi nick có một câu bio độc nhất vô nhị (Unique Constraint), tuyệt đối không trùng với bất kỳ tài khoản nào khác trong toàn bộ database `Tik<N>.xlsx`.
      * Bám sát Niche nội dung video và mang văn phong dí dỏm, Gen Z, đời thường của người dùng thật.
+
+---
+
+## Phân Loại Profile An Toàn Khi OCR Rớt Ký Tự '@' (User Directive 2026-10-19)
+- **Cạm bẫy**: Font chữ trên Android 8 và độ tương phản thấp khiến WinRT OCR thường đọc mất ký tự `@` trên username (ví dụ `@kamilhhs0tk` thành `kamiIhhsOtk`, `@martinbwahb` thành `marti n bwahb`).
+- **Hậu quả**: Hàm `classify(lines)` nếu đặt điều kiện cứng `profile_has_user = any(l.startswith("@") for l in lines)` sẽ trả về `False`. App tiếp tục rơi xuống nhánh kiểm tra từ khóa thanh điều hướng đáy (*Trang chủ*, *Cửa hàng*, *Hộp thư*) và ngộ nhận Profile là `FEED`!
+- Runner tưởng đang ở Feed nên liên tục tap vào tab Hồ sơ `(972, 1857)`, gây ra vòng lặp lặp lại 5 lần và abort với lỗi `ket o trang thai FEED 5 lan lien tiep` (`exit_2`).
+- **Quy chuẩn phân loại Profile bền vững**:
+  ```python
+  def classify(lines):
+      t = norm(" | ".join(lines))
+      profile_has_user = any(l.startswith("@") for l in lines) or any(k in t for k in ("luot xem ho so", "ban dang nghi", "ban dang"))
+      profile_markers = any(k in t for k in ("follower", "da follow", "daf", "thich", "dang follow"))
+      if (profile_has_user and profile_markers) or (profile_markers and any(k in t for k in ("sua ho so", "them tieu su", "ban dang"))):
+          return "PROFILE"
+      if profile_markers and not any(k in t for k in ("danh cho ban", "de xuat", "for you")):
+          return "PROFILE"
+      # ... các kiểm tra EDIT_PROFILE, BIO_EDIT, NAME_EDIT, SWITCHER ...
+  ```
+
+---
+
+## Đầy Đủ Dữ Liệu Từ Điển Âm Tiết Tiếng Việt trong `smart_name_generator.py`
+- Bổ sung toàn diện các âm tiết và thanh điệu phổ biến: `diem` (Diễm), `nhu` (Như), `nguyet` (Nguyệt), `khuong` (Khương), `thuan` (Thuận), `hiep` (Hiệp), `dieu` (Diệu)... vào `TEN_MAP`.
+- Thiếu các từ tố này sẽ khiến `parse_username_syllables()` bóc tách thiếu âm tiết trên các username có Họ-Tên hợp lệ (như `huynhdiem0806`), dẫn đến việc hàm đối soát `is_stereotyped()` nhận định sai là nick chưa chuẩn hóa và bốc ra xử lý không cần thiết.
