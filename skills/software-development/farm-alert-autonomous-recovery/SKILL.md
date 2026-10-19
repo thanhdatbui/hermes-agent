@@ -10,10 +10,11 @@ description: >-
 > Ref: `references/benny-triage-device-lock-and-feature-map-protocol-20261015.md`.
 > Ref: `references/xiaowei-adb-reset-and-offline-device-triage-20261012.md`.
 > Ref: `references/account-switcher-verify-mismatch-triage-20261017.md`.
-> Ref: `references/batch-alert-canary-selection-and-atx-vs-winrt-ocr-20261018.md` (Dynamic Canary; ATX port 7912 & WinRT OCR).
-> Ref: `references/hard-enforcement-hook-gate-and-winrt-primary-atx-fallback-20261018.md` (Hook Gate; WinRT OCR primary).
-> Ref: `references/feed-watchdog-2am-delayed-report-triage.md` (Triage feed_watchdog delayed report).
-> Ref: `references/inspect-machine-terminal-guard-and-socket-hang-handling.md` (Inspect Machine O(1), Terminal Guard & socket hang).
+> Ref: `references/batch-alert-canary-selection-and-atx-vs-winrt-ocr-20261018.md`.
+> Ref: `references/hard-enforcement-hook-gate-and-winrt-primary-atx-fallback-20261018.md`.
+> Ref: `references/feed-watchdog-2am-delayed-report-triage.md`.
+> Ref: `references/inspect-machine-terminal-guard-and-socket-hang-handling.md`.
+> Ref: `references/dual-cluster-device-locks-and-subprocess-stderr-unmasking-20261019.md` (Dual-cluster lock reaper & benign stderr unmasking).
 
 ## UI evidence: target screen only
 
