@@ -6,6 +6,7 @@ description: "Use when running batch 2FA on TikTok farm. Chạy batch 2FA repo t
 # TikTok Add 2FA Batch Ops (repo tiktok-add-bao-mat-f2a)
 
 References:
+- `references/night-chain-reg-gmail-2fa-and-per-phase-telegram-routing-20261020.md` — **[20/10/2026]** Night Chain (Reg Gmail -> Add 2FA TikTok), tách báo cáo Telegram per-phase và fix bẫy 6H câm báo cáo.
 - `references/night-2fa-watchdog-skip-reasons-and-column-drift-audit-20261018.md` — **[18/10/2026]** Chẩn đoán watchdog skip (dedup 1 máy & lock) & bẫy lệch cột Admin.
 - `references/immediate-write-through-retry-and-closeout-discipline-20261015.md` — Write-through 2FA Excel, cấm ngâm journal.
 - `references/night-rolling-avatar-2fa-and-cache-clean-arbitration-20261015.md` — Cuốn chiếu đêm tới 05:15, né dọn cache.
