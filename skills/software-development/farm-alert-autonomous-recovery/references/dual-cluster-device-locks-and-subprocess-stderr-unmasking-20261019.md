@@ -48,15 +48,58 @@ Hàng loạt máy cụm Admin (M201-280) đồng loạt thất bại ở bước
 Trong `reap-dead-owner-locks.py`:
 - Sau khi quét sạch đĩa local (Kibe), nếu phát hiện đang ở host Kibe, tự động kích hoạt remote sweep trên Admin-PC qua `admin_ssh.py`:
   ```python
-  if "admin" not in str(Path.home()).lower():
-      admin_ssh_tool = Path(r"D:\Taadaa\tools\admin_ssh.py")
-      if admin_ssh_tool.exists():
-          subprocess.run([
-              sys.executable,
-              str(admin_ssh_tool),
-              "--powershell",
-              "python 'D:/Taadaa/tiktok-luot nuoi acc/scripts/reap-dead-owner-locks.py'"
-          ], timeout=30)
+  home = str(Path.home()).replace("\\", "/").lower()
+  host_id = os.environ.get("HOST_ID", "").strip().lower()
+  machine_id = os.environ.get("MACHINE_ID", "").strip().lower()
+
+  if "admin" in home or host_id.startswith("admin") or machine_id.startswith("admin"):
+      return
+
+  admin_ssh_tool = Path(r"D:\Taadaa\tools\admin_ssh.py")
+  if not admin_ssh_tool.exists():
+      return
+
+  try:
+      remote_script = "D:/Taadaa/tiktok-luot nuoi acc/scripts/reap-dead-owner-locks.py"
+      cmd = [
+          sys.executable,
+          str(admin_ssh_tool),
+          "--powershell",
+          f"python '{remote_script}'",
+      ]
+      res = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+      if res.returncode == 0:
+          for line in res.stdout.splitlines():
+              if line.startswith("REAPED") or line.startswith("  m"):
+                  print(f"[ADMIN-PC] {line}")
+      else:
+          print(f"[ADMIN-PC-WARN] reap exit={res.returncode}: {res.stderr.strip()[:100]}")
+  except subprocess.TimeoutExpired:
+      print("[ADMIN-PC-ERR] remote reap timed out after 30 seconds")
+  except Exception as e:
+      print(f"[ADMIN-PC-ERR] {e}")
   ```
-- Trên máy Admin-PC, khi script chạy sẽ phát hiện `Path.home()` chứa "admin" và chỉ dọn local `C:\Users\Admin`, tránh đệ quy vòng lặp.
-- Đảm bảo toàn bộ 2 cụm (M1-80 và M201-280) đều được quét dọn sạch sẽ trong mỗi chu kỳ cron 5 phút.
+
+---
+
+## 3. Các cạm bẫy kỹ thuật (Pitfalls & Invariants)
+
+1. **Cạm bẫy `sys.path.insert(0, site-packages)` gây shadowing namespace:**
+   - Khi script chèn `sys.path.insert(0, r"D:\Taadaa\python-envs\automation\Lib\site-packages")`, thư mục `site-packages` chiếm ưu tiên cao nhất trong namespace Python.
+   - Nếu trong `site-packages` có package tên `core` (từ thư viện ngoài), bất kỳ test hoặc code nào trong repo gọi `from core.account_config import ...` sẽ bị crash: `ModuleNotFoundError: No module named 'core.account_config'`.
+   - **Quy tắc bắt buộc:** Luôn dùng `sys.path.append(...)` thay vì `sys.path.insert(0, ...)` khi nạp đường dẫn phụ của virtualenv ngoài repo.
+
+2. **Quoting đường dẫn có khoảng trắng qua PowerShell SSH:**
+   - Đường dẫn như `D:\Taadaa\tiktok-luot nuoi acc\...` có khoảng trắng. Khi gọi qua `admin_ssh.py --powershell`, bắt buộc bọc trong nháy đơn `f"python '{remote_script}'"`.
+   - Lệnh PowerShell sẽ giải mã Base64 và thực thi chính xác chuỗi có nháy đơn mà không bị vỡ argument.
+
+3. **Heuristic nhận diện Host chống vòng lặp vô tận (Infinite Loop Prevention):**
+   - Không chỉ dựa vào `Path.home()`, kết hợp thêm `HOST_ID` và `MACHINE_ID` từ môi trường để xác định chính xác máy Admin-PC, bảo đảm không gọi đệ quy SSH về chính nó hoặc bị bypass khi cấu hình profile người dùng thay đổi.
+
+4. **Bộ test suite bắt buộc khi triển khai remote wrapper:**
+   - Test bỏ qua khi đang ở Admin host (`monkeypatch.setattr(Path, "home", ...)`).
+   - Test bỏ qua an toàn khi tool SSH không tồn tại trên đĩa.
+   - Test chuyển tiếp stdout `[ADMIN-PC]` khi `returncode == 0` kèm telemetry `duration_s`.
+   - Test xử lý gracefully khi SSH trả về `returncode != 0`.
+   - Test bắt ngoại lệ timeout (`subprocess.TimeoutExpired`) và lỗi mạng generic mà không làm crash tiến trình reaper chính.
+   - Test tích hợp lock thật: dead owner -> quarantine, live owner -> kept, out of range -> untouched.

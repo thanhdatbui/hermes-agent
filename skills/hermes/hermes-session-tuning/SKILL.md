@@ -494,3 +494,4 @@ Khi user chat hàng loạt session song song và thấy phản hồi chậm (h�
 - `references/lag-diagnosis.md` — lệnh chẩn đoán + parser python per-session stats.
 - `references/reasoning-effort-wire-path.md` — source-map file:line đã verify (Hermes + 9router JS) cho toàn bộ đường reasoning.
 - `references/telegram-send-failover-and-omniroute-sqlite-tuning.md` — Chi tiết kiến trúc Multi-ISP Send Failover (WARP/Viettel Proxy ↔ FPT Direct), quy trình dọn dẹp SQLite/WAL định kỳ chống treo luồng Node.js và bảng phân giải context_length/ngưỡng nén thực tế (01/10/2026).
+- `references/scheduled-reboot-and-session-preservation-triage.md` — Quy trình triage Auto-Reboot 3 ca (05:20, 11:20, 17:20), cơ chế bảo toàn session in-flight và phân biệt hiện tượng khựng shutdown sạch vs crash sập nguồn (19/10/2026).

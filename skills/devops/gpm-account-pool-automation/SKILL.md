@@ -25,6 +25,7 @@ version: 1.3.0
 ## 3. Tài Liệu Tham Khảo (References)
 - Chi tiết API và các case watchdog: xem danh mục tài liệu trong thư mục `references/` của skill.
 - Pure Google Sign-in vs OAuth Antigravity Decoupling (2026-10-19): xem [`references/gpm-login-pure-google-signin-and-antigravity-decoupling-20261019.md`](references/gpm-login-pure-google-signin-and-antigravity-decoupling-20261019.md).
+- Thẩm định Closeout Gate cho luồng pure login (Double verification & Structured telemetry): xem mục 6 trong [`references/gpm-login-pure-google-signin-and-antigravity-decoupling-20261019.md`](references/gpm-login-pure-google-signin-and-antigravity-decoupling-20261019.md).
 - Gmail GPM Re-Login Failure Triage & S7 Co-op Safety (2026-10-19): xem [`references/gmail-gpm-relogin-failure-triage-and-s7-coop-safety-20261019.md`](references/gmail-gpm-relogin-failure-triage-and-s7-coop-safety-20261019.md).
 - Triage cảnh báo telemetry `DONE_WITHOUT_CHATGPT_REG` trong báo cáo 6h: xem [`references/done-without-chatgpt-telemetry-triage.md`](references/done-without-chatgpt-telemetry-triage.md).
 - GPM 6H Report Phantom Dropout & Fail-Closed Observability Protocol: xem [`references/gpm-6h-report-phantom-dropout-and-fail-closed-observability-20261019.md`](references/gpm-6h-report-phantom-dropout-and-fail-closed-observability-20261019.md).

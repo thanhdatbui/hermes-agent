@@ -2,9 +2,9 @@ bio VN AdbKeyboard cấm trùng 1 mẫu); Tik*.xlsx; Khóa nick.
 §
 Dọn đĩa: safe_recycle.py. Reboot: né TFT/War3/ca chạy. Box 1 (M1-20) sát AP kibe 1. S7: Anten Wi-Fi góc trên TRÁI. Lỗi timeout/PSM BẮT BUỘC sửa script; cấm cron quấy rầy máy nghỉ.
 §
-Nuôi 4d 3 ca (bỏ 0h). Cuốn chiếu: nhả lock per-device, cấm bóp wkr (Rollname 15, pool 25-40). Ava&2FA tới 5h15. Excel 3,4,5+G; Starve 96h; mail Graph PC; Reg Gmail 160m.
+Nuôi 4d 3 ca (bỏ 0h). Nhả lock per-device (Rollname 15, pool 25-40). Ava&2FA tới 5h15. Excel 3,4,5+G; Starve 96h; Gmail GPM chỉ login rồi nuôi, cấm OAuth AG.
 §
-Closeout: Grace 80-84 auto-push; CẤM cày 85; cấm khóc lóc/báo BLOCKED khi chưa hết thang fallback (Claude 86% quota -> BẮT BUỘC Agy fix pool 22 acc). Repo dirty bắt buộc --files <file1> <file2> O(1) chống DIFF_TOO_LARGE. Pin TT LIFO.
+Closeout: Grace 80-84 auto-push; CẤM cày 85; cấm khóc lóc/báo BLOCKED khi chưa hết thang fallback (Claude 86% quota -> BẮT BUỘC Agy fix pool 22 acc). Repo dirty bắt buộc --files O(1); pre-push cần 1 commit (squash trước closeout --push). Pin TT LIFO.
 §
 Ava/Media: WinRT OCR; CẤM gửi mù; CẤM báo DONE browser/UI thiếu MEDIA: (Gate 6, bắt buộc vision soi mắt); Ava đúng creator; pHash/crop thật.
 §

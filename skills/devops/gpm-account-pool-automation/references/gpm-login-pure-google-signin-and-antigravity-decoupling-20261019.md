@@ -59,3 +59,27 @@ Quy trình Login chuẩn cho mọi script GPM:
 3. **Vô hiệu hóa nhánh hồi sinh Antigravity trong `cron_chatgpt_web_pool_watchdog.py`:**
    - Đặt `ag_broken = []` để triệt tiêu việc tự động mở GPM profile hồi sinh OAuth Antigravity định kỳ mỗi 6 giờ.
 
+## 6. Tiêu Chuẩn Thẩm Định Closeout Gate & Khắc Phục Khiếm Khuyết Test (Reviewer Sol High Feedback)
+Khi nghiệm thu luồng Pure Login qua `closeout_gate.py`, Reviewer độc lập (Sol High) đòi hỏi các tiêu chí khắt khe sau để đạt điểm $\ge 85$:
+1. **Xác nhận thành công bằng Cơ chế Kép (Double Verification) & Chống False Positive:**
+   - Không chỉ dựa vào URL `myaccount.google.com` (dễ dính false positive từ redirect dở dang).
+   - Kết hợp kiểm tra phần tử DOM định danh người dùng:
+     ```python
+     avatar_selectors = '[aria-label*="Google Account"], [aria-label*="Tài khoản Google"]'
+     ```
+   - **Bắt buộc kiểm tra hiển thị thực tế:** Phần tử avatar phải tồn tại và `is_visible() == True` (`count > 0 and loc.is_visible()`). Tuyệt đối không chỉ kiểm tra `count > 0` vì avatar có thể tồn tại ở trạng thái ẩn/DOM rác trên form đăng nhập chưa hoàn tất.
+2. **Telemetry có cấu trúc Đầy Đủ Cả Success & Failure (Structured Telemetry):**
+   - Sự kiện thành công: `log_telemetry_metric("login_only_success", {"mid": mid, "email": email, "url": cur_url})`
+   - Sự kiện thất bại / timeout: `log_telemetry_metric("login_only_failed", {"mid": mid, "email": email, "reason": "timeout"})` kèm log `[TELEMETRY] correlation_id={cid} event=login_only_failed reason=timeout` ra stderr để observability giám sát tỷ lệ rớt login mà không làm rò rỉ cookie hay credentials.
+3. **Bộ Negative Unit Tests Bắt Buộc (Chống Ảo Giác Code Coverage):**
+   - Test case 1: Điều hướng vào landing URL `myaccount.google.com` ➔ thành công, không gọi API OmniRoute authorize/exchange.
+   - Test case 2: Điều hướng vào challenge URL nhưng xuất hiện Avatar hiển thị (`count == 1, is_visible == True`) ➔ thành công, ghi nhận metric telemetry `login_only_success`.
+   - Test case 3 (Negative - Avatar ẩn): Avatar có trong DOM nhưng `is_visible() == False` ➔ không được nhận diện thành công, loop chạy đến khi timeout và phát telemetry `login_only_failed`.
+   - Test case 4 (Negative - Không có Avatar): `count == 0` trên challenge URL ➔ timeout và phát telemetry `login_only_failed`.
+   - Test case 5 (Negative - Lỗi DOM): `loc.is_visible()` văng ngoại lệ `RuntimeError("DOM disconnected")` ➔ xử lý an toàn không crash script, timeout và phát telemetry `login_only_failed`.
+4. **Hạ Tầng Điều Phối Khi Chạm Claude Quota Guard:**
+   - Khi Claude Quota 5 giờ $\ge 85\%$ (ví dụ 88%), `claude_quota_guard.py` tự động chặn.
+   - Dispatch Worker tự động kích hoạt Tier 2 Fallback: Antigravity CLI (`gemini-3.8-flash-medium` trên pool 22 accounts xoay vòng).
+   - Nếu Agy CLI timeout hoặc kẹt mà Coordinator đã có exact diff O(1) chuẩn hóa (<= 2 files, <= 30 dòng, 1 focused test), Coordinator được kích hoạt quyền L2 Emergency Surgery commit tiền tố `[L2-surgery]` và nghiệm thu qua test suite cục bộ.
+
+

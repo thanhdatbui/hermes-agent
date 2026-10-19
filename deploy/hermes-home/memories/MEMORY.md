@@ -6,13 +6,13 @@ Hotmail: CẤM mail cá nhân; @fviainboxes.com đọc OTP. Excel 3,4,5+G. Pin >
 §
 Preempt lock; ping 0% loss; ARP 110.x. Lock: rename_natural_state.json. Terminal: foreground max 60s; CLI dài/nặng BẮT BUỘC background=True + notify_on_complete=True.
 §
-Argon=:20135 (token stable 4s). Agy CLI: 3.8-medium làm Worker tối thượng (10/10 pass, 15k chars, cấm tràn token); 3.8-high làm Core Architect (timeout>=1200s, Gate 1 phân rã); Claude CLI làm Planner. Benchmark: cấm chỉ đo giây/AST, bắt buộc đối soát spec.
+Argon=:20135. Agy CLI: 3.8-med Worker (10/10 pass, 15k chars, cấm tràn token); 3.8-high Architect (timeout>=1200s, Gate 1 phân rã); Claude CLI Planner. Benchmark: bắt buộc đối soát spec.
 §
-Stale Up: xóa draft. Revert flop: TikWM tải CDN. Popup 'Ghim/Riêng tư' ko phải proof. Cào: max 60. Cron thiết bị: device_lock+rolling<=5, cấm burst; bỏ ca 0h.
+Stale Up: xóa draft. Revert: TikWM. Ghim/Riêng tư ko proof. Cào: max 60. Cron TB: device_lock+rolling<=5; bỏ ca 0h.
 §
 Closeout: Grace 80-84 (test xanh) auto-push; BẮT BUỘC --files tránh DIFF_TOO_LARGE; Claude chạm 85% -> Agy CLI fix (22 pool ready), CẤM báo BLOCKED; CẤM commit -a; 3 Strike tự sửa.
 §
-Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot. Cron: 100% no_agent+script thô, cấm LLM<6h nghẽn GW.
+Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; Lock reaper Kibe auto-reap Admin qua SSH. Pre-push: BẮT BUỘC 1 commit duy nhất (squash/reset) khớp scope_hash gate_audit. Cron: 100% no_agent+script thô.
 §
 Proxy 110.2:port (Kibe: 20001..80; Admin: 10008..35; toàn bộ máy dùng proxy, CẤM direct).
 §

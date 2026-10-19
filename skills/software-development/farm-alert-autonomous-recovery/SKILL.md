@@ -14,7 +14,7 @@ description: >-
 > Ref: `references/hard-enforcement-hook-gate-and-winrt-primary-atx-fallback-20261018.md`.
 > Ref: `references/feed-watchdog-2am-delayed-report-triage.md`.
 > Ref: `references/inspect-machine-terminal-guard-and-socket-hang-handling.md`.
-> Ref: `references/dual-cluster-device-locks-and-subprocess-stderr-unmasking-20261019.md` (Dual-cluster lock reaper & benign stderr unmasking).
+> Ref: `references/dual-cluster-reap-and-pre-push-squash-binding-20261019.md` (Dual-cluster lock reaper, subprocess stderr unmasking & pre-push single-commit binding).
 
 ## UI evidence: target screen only
 
