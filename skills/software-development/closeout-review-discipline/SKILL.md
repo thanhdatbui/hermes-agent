@@ -73,6 +73,7 @@ metadata:
 Reference: [`references/worker-timeout-quota-and-closeout-scope-20261018.md`](references/worker-timeout-quota-and-closeout-scope-20261018.md)
 
 ## 3. Tài Liệu Tham Khảo (References)
+- Frontend Component Review Scoring, Sol Repair Syntax Invalidation & Worker Fallback (2026-10-19): [`references/frontend-component-review-scoring-and-syntax-repair-fallback-20261019.md`](references/frontend-component-review-scoring-and-syntax-repair-fallback-20261019.md)
 - Auto-Sync Cron Race & Committed Scope Refusal Triage (2026-10-19): [`references/hermes-repo-sync-cron-race-and-committed-scope-triage-20261019.md`](references/hermes-repo-sync-cron-race-and-committed-scope-triage-20261019.md)
 - Fail-Closed Budget Parsing & Config Fault-Injection Remediation (2026-10-19): [`references/fail-closed-budget-and-config-fault-injection-remediation-20261019.md`](references/fail-closed-budget-and-config-fault-injection-remediation-20261019.md)
 - Breaking 78 Plateau: Standalone Production Helpers, Bounded Timestamps & Delivery Transparency (2026-10-19): [`references/breaking-78-plateau-production-helper-and-timestamp-bounds-20261019.md`](references/breaking-78-plateau-production-helper-and-timestamp-bounds-20261019.md)
