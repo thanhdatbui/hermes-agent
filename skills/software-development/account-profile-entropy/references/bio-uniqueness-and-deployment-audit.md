@@ -42,3 +42,14 @@ When two fresh profiles show the exact same sentence, inspect the runner's bio-g
    - Lập tức kích hoạt runner chuyên dụng nạp đè / xóa sạch bio trên máy đó ngay lập tức.
 3. **Tuyệt đối tách rời Scope Đổi Tên vs Viết Bio**:
    - Task đổi tên CHỈ ĐƯỢC chạm vào Tên. Nếu runner lọt vào `BIO_EDIT`, BẮT BUỘC bấm Back `keyevent 4` thoát ra ngay lập tức, cấm lưu bất kỳ ký tự nào.
+
+4. **Kỷ luật Xóa Trắng Bio Về Rỗng (`--clear-bio`) vs Chế Bio Hài Hước Độc Bản (User Directive 2026-10-19)**:
+   - **Chỉ thị đanh thép của Operator**: *"Cái 2 của mày acc khác đã xài r. Đm t k biết mày nghĩ gì đồ dùng bio giống acc khác. Còn nếu mày chế ra bio hài hước khác acc khác đc thì t cho phép làm"*.
+   - **CẤM TUYỆT ĐỐI DÙNG CHUNG BIO**: Một câu bio xuất hiện trên $\ge 2$ nick trong farm là dấu vết bot cực kỳ lộ liễu, có thể dẫn đến shadow-ban toàn cụm kênh.
+   - **Phương án Ưu Tiên 1: Xóa trắng toàn bộ Bio về rỗng (`--clear-bio`)**:
+     * Đây là phương án an toàn nhất và triệt để nhất khi phát hiện acc bị dính bio rác/trùng lặp.
+     * Runner chạy với cờ `--clear-bio`: Focus ô tiểu sử, gửi `ADB_KEYBOARD_CLEAR_TEXT` + `keyevent 123` (MOVE_END) + `keyevent 67` (DEL) $\times 80$ + `ADB_KEYBOARD_CLEAR_TEXT`, không gõ bất kỳ ký tự nào, bấm Lưu.
+     * Nghiệm thu qua WinRT OCR: Xác nhận dòng bio rác đã biến mất 100%, nút trên Profile quay về trạng thái sạch sẽ ban đầu `+ Thêm tiểu sử` (`[69, 716]`). Zero-Fingerprint an toàn tuyệt đối.
+   - **Phương án 2: Chế Bio Hài Hước Độc Bản theo Niche**:
+     * CHỈ ĐƯỢC PHÉP LÀM KHI: Mỗi nick có một câu bio độc nhất vô nhị (Unique Constraint), tuyệt đối không trùng với bất kỳ tài khoản nào khác trong toàn bộ database `Tik<N>.xlsx`.
+     * Bám sát Niche nội dung video và mang văn phong dí dỏm, Gen Z, đời thường của người dùng thật.
