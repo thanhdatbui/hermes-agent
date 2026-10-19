@@ -10,6 +10,15 @@ Tuy nhiên, quy hoạch Wi-Fi Farm quy định mật khẩu phân tầng riêng 
 Nguồn chân lý duy nhất (Single Source of Truth): `D:/Taadaa/machine-config/farm_wifi_profiles.json`.
 
 ## 2. Dấu Hiệu Nhận Biết Trên Log Aruba AP & Android
+- **Log Aruba Virtual Controller (`show ap debug auth-trace-buf`):**
+  Khi máy gửi EAPOL Message 2 nhưng AP từ chối tiếp nhận (do MIC mismatch - sai pass):
+  ```text
+  station-up        * | <MAC> | <BSSID> | - | - | wpa2 psk aes
+  wpa2-key1        <- | <MAC> | <BSSID> | - | 117 | None
+  wpa2-key1        <- | <MAC> | <BSSID> | - | 117 | None
+  wpa2-key1        <- | <MAC> | <BSSID> | - | 117 | None
+  ```
+  AP liên tục retransmit `wpa2-key1` (Message 1) vì không chấp nhận Message 2 từ máy, sau đó ngắt kết nối.
 - **Log Aruba Virtual Controller (`show log system`):**
   `cli: AP 192.168.110.253: Client <MAC>: authenticate fail because integrity check failure in encrypted message`
   Đây là lỗi Message Integrity Check (MIC) trong quá trình bắt tay 4 bước WPA2 (4-way handshake), chứng minh 100% là do **sai mật khẩu Wi-Fi**.
@@ -18,6 +27,8 @@ Nguồn chân lý duy nhất (Single Source of Truth): `D:/Taadaa/machine-config
   `wlan0: CTRL-EVENT-SSID-TEMP-DISABLED id=... ssid="kibe 1" auth_failures=1`
   `updateNetworkSelectionStatusForWrongPassword: configKey="kibe 1"WPA_PSK networkStatus=NETWORK_SELECTION_DISABLED_BY_WRONG_PASSWORD`
   Khi gặp cờ này, Android tự động cấm kết nối vào SSID mục tiêu và đẩy supplicant về trạng thái `UNINITIALIZED` hoặc `DISCONNECTED`.
+- **Màn hình Cài đặt Wi-Fi (WinRT OCR / Visual Evidence):**
+  Dưới tên SSID xuất hiện dòng chữ cảnh báo màu đỏ: **"Đã xảy ra lỗi xác thực"** (Authentication error occurred). CỜ NÀY LÀ KHÓA CỨNG, OS SẼ KHÔNG BAO GIỜ TỰ KẾT NỐI LẠI NẾU KHÔNG PURGE PROFILE VÀ NẠP LẠI MẬT KHẨU ĐÚNG. CẤM BẢO USER CHỜ SÁNG HÔM SAU TỰ KHỎI.
 
 ## 3. Cạm Bẫy Android 8 Samsung S7 (SM-G930F/S)
 - **Lệnh `cmd wifi` không tồn tại:** Android 8.0 không hỗ trợ service command `cmd wifi connect-network` hay `cmd wifi set-wifi-enabled` (sẽ báo lỗi hoặc exit 1).
