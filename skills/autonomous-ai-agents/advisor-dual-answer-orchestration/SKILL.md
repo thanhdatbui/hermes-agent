@@ -34,7 +34,7 @@ For an advice-intent turn:
    - Use `python D:/Taadaa/tools/consult_advisor.py --query "<prompt>"` (hoặc `ensure_dual_answer`) để gọi trực tiếp Advisor Sol-WebPool (bắt buộc cờ `--query` hoặc `-q`), cấm truyền positional argument trần hay tự viết code gọi HTTP trần.
 2. Direct Sol Route with Increased Wait Time & Terra Codex Fallback:
    - Call directly to OmniRoute :20129 `gpt-web-sol` (ChatGPT-Web Pool 115 accounts). CẤM gọi `gpt-5.6-sol` (trỏ nhầm OpenAI API lỗi 402).
-   - Timeout raised to 35-45s to allow reasoning models sufficient TTFT and token completion.
+   - Timeout raised to 80s first-token (20s idle, 140s max total, 150s wall-clock in consult_advisor.py) to allow reasoning models sufficient TTFT and token completion, eliminating premature 35-45s connection cutoffs.
    - User Invariant Fallback (10/10/2026): Khi Sol-WebPool bị timeout hoặc lỗi pool, `consult_advisor.py` tự động fallback sang `codex/gpt-5.6-terra-high` (:20129) để bảo đảm phản hồi liên tục cho Operator. Tuyệt đối KHÔNG fallback sang Gemini (`ag-gemini-pool-3`). Nếu cả hai cùng lỗi mới báo `Advisor: unavailable`.
 3. Strict Safety & Comprehensive Redaction:
    - Payload includes `tools: []` and `tool_choice: "none"`.

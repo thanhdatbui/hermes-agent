@@ -148,4 +148,23 @@ Trong `follow_state.py`, runner tự động điều chỉnh trần follow cho c
      $$target = \_random.randint(lo, hi)$$
      Đảm bảo luôn cấp tối thiểu $\ge 1$ follow dò đường, không bao giờ rơi vào tình trạng budget = 0 gây liệt cữ chạy.
 
+## 12. Bẫy Kẹt Một Chiều (Ratchet Trap) & Thảm Họa Tù Chung Thân (Audit 122 Nick Streak >= 3 Có 0 Nick Thoát)
+- **Bẫy Ratchet của `last_failed_ceiling`**:
+  * Nếu lưu cứng `last_failed_ceiling` vào state mà không giải phóng sau cữ sạch, nick từng gãy ở mốc 2 sẽ bị đè trần $\le 1$ follow vĩnh viễn, triệt tiêu hoàn toàn khả năng tích lũy ngày sạch để tốt nghiệp.
+  * *Quy chuẩn One-Shot Probing Barrier*: `last_failed_ceiling` chỉ được dùng làm rào chắn dò đường cho đúng 1 cữ đầu tiên sau khi ra tù. Khi nick hoàn thành cữ đó an toàn và qua ngày `_roll_day()` ghi nhận clean day, bắt buộc phải giải phóng mốc cũ (`pop("last_failed_ceiling", None)`) để nick tự do tiến lên dải chuẩn của Tier 1 và Tier 2.
+- **Thảm họa Tù Chung Thân từ Cooldown Lũy Tiến 15 Ngày (Audit 122 / 122 nick kẹt vĩnh viễn)**:
+  * Thống kê thực tế toàn farm: có 122 nick có `fail_streak >= 3`, nhưng tỷ lệ thoát tù / tốt nghiệp đạt **đúng 0% (0 / 122 nick)**.
+  * *Nguyên nhân cốt lõi*: Giam nick 15 ngày không làm tăng trust của TikTok. Khi ra tù sau 15 ngày, nick bị mất nhịp tương tác, vừa bấm 1 follow là TikTok nhả tiếp ➔ streak nhảy lên 4, 5, 6 ➔ giam tiếp 15 ngày thành án chung thân.
+  * *Quy chuẩn Cải cách Cooldown & Streak Decay*:
+    1. Khóa trần cooldown tối đa **7 ngày**, xóa bỏ mốc 15 ngày phản tác dụng.
+    2. Cơ chế Xá Tội / Giảm Án (Streak Decay): Nếu nick đã ngâm lướt feed qua 7 ngày không vi phạm follow, `fail_streak` phải tự động giảm dần (`streak = max(1, streak - 2)`) để nick có cơ hội tái hòa nhập từ Tier 1 thay vì bị đè án tích cũ.
+- **Khung Phân Bổ 80/20 Hybrid (Macro Fleet-Level Governor + Micro Per-Nick)**:
+  * *80% Fleet-Level Quota*: 20% nick cựu binh (Core Fleet) gánh 80% tổng sản lượng follow cả hàng (trần 20–40 follow). 80% nick non/dưỡng chỉ chiếm 20% quota (trần 2–6 follow, mục tiêu giữ mạng).
+  * *Micro Per-Nick*: Vi điều khiển số bấm của từng nick theo `fail_streak`, `last_failed_ceiling` và `clean_days`.
+- **Nâng Trần Kịch Kim Cho Nhóm Veteran (30 ➔ 40 follow/ngày)**:
+  * Đã nâng `core_cap` của nhóm cựu binh `veteran` từ 30 lên 40 trong `follow_state.py`. Mốc chứng minh an toàn `proven_safe_ceiling` và trần động `active_ceiling` tự động tăng dò +2 mỗi kỳ sạch lên kịch trần 40.
+- **Khóa Chuẩn Timeout Cho Sol Advisor (`consult_advisor.py`)**:
+  * CẤM hardcode 35s–45s cắt ngang dòng suy luận reasoning của Sol Web Pool.
+  * Chuẩn hóa: `first_token_timeout = 80.0s`, `idle_token_timeout = 20.0s`, `max_total_timeout = 140.0s`, `timeout_sec = 150.0s`.
+
 
