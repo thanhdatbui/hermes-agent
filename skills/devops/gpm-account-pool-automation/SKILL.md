@@ -1,7 +1,7 @@
 ---
 name: gpm-account-pool-automation
 description: "GPMLogin v3 + Playwright/CDP account-pool operations: proxy-safe Gmail lifecycle, nurture, OAuth, and ChatGPT direct registration."
-version: 1.2.1
+version: 1.3.0
 ---
 
 # GPMLogin Local API & Account Pool Automation
@@ -22,6 +22,7 @@ version: 1.2.1
 ## 3. Tài Liệu Tham Khảo (References)
 - Chi tiết API và các case watchdog: xem danh mục tài liệu trong thư mục `references/` của skill.
 - Triage cảnh báo telemetry `DONE_WITHOUT_CHATGPT_REG` trong báo cáo 6h: xem [`references/done-without-chatgpt-telemetry-triage.md`](references/done-without-chatgpt-telemetry-triage.md).
+- GPM 6H Report Phantom Dropout & Fail-Closed Observability Protocol: xem [`references/gpm-6h-report-phantom-dropout-and-fail-closed-observability-20261019.md`](references/gpm-6h-report-phantom-dropout-and-fail-closed-observability-20261019.md).
 - Chuẩn hóa báo cáo 6H Group 10 fail-closed và cooldown 24h cho `NEEDS_LOGIN`: xem [`references/gpm-6h-nurture-report-group-filter-and-fail-closed-telemetry.md`](references/gpm-6h-nurture-report-group-filter-and-fail-closed-telemetry.md).
 - Chống báo cáo ảo văng cookie và bẫy nghẽn nuôi vĩnh viễn (Selection Choke): xem [`references/gpm-gmail-nurture-6h-report-telemetry-and-choke-prevention.md`](references/gpm-gmail-nurture-6h-report-telemetry-and-choke-prevention.md).
 - Khắc phục báo cáo ảo 6H Group 10 và cooldown 24h cho `NEEDS_LOGIN`: xem [`references/gmail-6h-report-group10-filter-and-anti-false-alert.md`](references/gmail-6h-report-group10-filter-and-anti-false-alert.md).
