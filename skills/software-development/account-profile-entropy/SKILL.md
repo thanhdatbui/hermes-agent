@@ -314,6 +314,8 @@ def generate_account_for_slot(slot, existing_emails=None, max_attempts=300):
 | Bỏ sót kiểm tra Auto-Reboot 3 ca khi user hỏi | Không nhớ vị trí log khiến việc trả lời 'Nãy có reboot trước ca không' bị lúng túng | Đọc 40-50 dòng cuối `C:\Taadaa_Service\daily_reset.log` O(1) kiểm tra mốc 05:20, 11:20, 17:20 |
 | Worker loop đọc file khi tạo script phụ trợ | Dispatch worker sinh code nhưng để worker tự đọc/rà soát file lung tung $\rightarrow$ chạm trần 8 read calls `READ BUDGET EXHAUSTED` | Chỉ định `TASK_KIND: WRITE_SCRIPT` budget $\le 3$ calls; worker chỉ dùng đúng 1 lệnh `write_file` rồi trả về Coordinator thực thi |
 | Bẫy ẩn nút 'Sửa hồ sơ' trên Profile trống Bio | Profile chưa có bio ẩn nút 'Sửa hồ sơ' bên dưới stats; tap (870, 558) chạm trúng vùng Avatar bung popup 'Thêm vào Nhật ký' | Kiểm tra nút 'Sửa hồ sơ', nếu thiếu thì tap chip `+ Thêm tiểu sử` `(228, 686)` vào `BIO_EDIT` lưu Bio trước; khi đã có Bio, nút 'Sửa hồ sơ' sẽ chính thức xuất hiện để đổi Tên |
+| Sửa hashtag chỉ trên file Excel | Cron sync-all-tik-keywords-cron chạy mỗi 15 phút đọc CSDL nguồn trung tâm và ghi đè lại nhãn cũ vào Tik*.xlsx làm hashtag bị lộn hoài | Bắt buộc sửa CSDL video trung tâm trước, cập nhật đồng bộ cả Kibe & Admin, cắm cờ `.manual_hashtag_locked` |
+| Lột dấu tiếng Việt trong proposal Bio do lỗi OpenCV | Dùng cv2.putText không hỗ trợ Unicode nên lột dấu tiếng Việt làm User tưởng bot chuẩn bị gõ bio không dấu | 100% Bio bắt buộc tiếng Việt có dấu đầy đủ; trong chat ghi rõ văn bản có dấu; trên ảnh proposal dùng PIL ImageFont TTF |
 
 ## Verification
 

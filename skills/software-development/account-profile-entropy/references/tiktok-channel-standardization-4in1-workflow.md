@@ -27,8 +27,15 @@
   - Dùng canonical tool `python D:/Taadaa/tools/pin_top_videos.py --machine <May> --account <username>`.
   - Nếu đã đủ 3 bài ghim, tool tự động swap bài view cao hơn thay thế bài pin view thấp nhất.
 
-### Bước 3: Món 2 — Hashtag & Niche
+### Bước 3: Món 2 — Hashtag & Niche (Khắc Phục Tận Gốc Lỗi Bị Lộn Ngược Sau 15 Phút)
 - **Bẫy Niche Desync giữa Sổ Cái và Video Thực Tế**: Cột `Keyword Video` trong `Tik<N>.xlsx` thường bị lưu vết cũ hoặc generic (VD: `Thú vị`, `Nhảy` nhưng video thực tế là Gym hoặc Phim ngắn học đường). BẮT BUỘC đối soát trực tiếp hình ảnh clip trên grid Profile của kênh trước khi chốt ngách; TUYỆT ĐỐI CẤM tin mù quáng vào cột Keyword trong Excel.
+- **Gốc Rễ Lỗi Hashtag Cứ Bị Lộn Hoài (User Phản Ứng: 'tại sao hashtag cứ bị lộn hoài bực quá đi')**:
+  * Hệ thống có tiến trình cron ngầm chạy mỗi 15 phút (`sync_all_tik_keywords.py`) để đồng bộ Niche và Hashtag từ CSDL video trung tâm (bảng `folders`) vào các file Excel `Tik*.xlsx`.
+  * Nếu Coordinator chỉ mở file Excel ra sửa (sửa ngọn), thì chỉ sau 15 phút, con cron này lại đọc CSDL nguồn trung tâm và **TỰ ĐỘNG GHI ĐÈ LẠI** nhãn cũ vào Excel!
+  * **Quy tắc sửa dứt điểm 3 bước**:
+    1. Cập nhật CSDL video nguồn trung tâm trước (sửa cột `niche` của folder nguồn $F_{src}$ và folder render $F_{vid}$).
+    2. Cập nhật đồng bộ cả 2 file Excel (`kibe/Tik<N>.xlsx` VÀ `admin/Tik<N>.xlsx`).
+    3. Cắm cờ khóa cứng `.manual_hashtag_locked` trong cả 2 thư mục (kho nguồn $F_{src}$ và kho render $F_{vid}$).
 - Đối soát nội dung clip thực tế trên kênh để cập nhật đúng ngách và pool hashtag chuẩn:
   - Cắm marker `.manual_hashtag_locked` trong thư mục video render $F_{vid}$ (`D:/TIKTOK-videonuoinick/<F>/` hoặc `D:/TIKTOK-videonuoinick-admin/<F>/`).
   - Ghi nhận vào `manual_hashtag_protected_folders.json`.
@@ -86,6 +93,12 @@
   - BẮT BUỘC viết theo đúng **Niche kênh** (`Keyword Video` từ `Tik<N>.xlsx`).
   - Ưu tiên phong cách **Hài hước, dí dỏm, Gen Z đời thường**, có emoji sinh động (VD: Nấu ăn -> *"Nấu ăn thì ngon, mỗi tội rửa bát thì lười 🍳"*; Thể thao -> *"Tập gym để ăn nhiều hơn mà không cảm thấy tội lỗi 🏋️"*; Sức khỏe -> *"Quyết tâm sống healthy, nhưng đồ ăn vặt không cho phép 🍟"*).
   - CẤM TUYỆT ĐỐI viết bio văn mẫu khô khan, cấm viết trùng một câu bio cho nhiều tài khoản (dấu hiệu bot lộ liễu).
+- **Invariant Bio Tiếng Việt Có Dấu & Cạm Bẫy Font OpenCV (User Phản Ứng: 'Ủa bio t ép ghi tiếng việt có dấu r mà?')**:
+  * 100% Bio nạp lên thiết bị hoặc đề xuất cho Operator BẮT BUỘC là **TIẾNG VIỆT CÓ DẤU ĐẦY ĐỦ**, có emoji sinh động.
+  * **Cạm bẫy OpenCV (`cv2.putText`)**: Hàm vẽ chữ của OpenCV chỉ hỗ trợ bảng mã ASCII. Khi vẽ proposal canvas tóm tắt, nếu lột dấu tiếng Việt (`Tu hao su thi...`) sẽ khiến Operator hiểu lầm là bot gõ không dấu lên máy!
+  * **Kỷ luật trình bày**:
+    1. Trong văn bản báo cáo chat: BẮT BUỘC ghi rõ nguyên văn Bio tiếng Việt có dấu chuẩn.
+    2. Trong ảnh proposal nếu có chữ tiếng Việt: BẮT BUỘC dùng thư viện `PIL` (`ImageDraw` + `ImageFont.truetype`) với font Unicode hệ thống (Arial, Tahoma, Roboto), CẤM dùng `cv2.putText` lột dấu.
 - Kỹ thuật nạp Bio lên Android S7 & Cạm bẫy Tọa độ Bút chì:
   - **Bẫy Tọa độ Bút chì trên TikTok v47 (Layout trống Bio)**: Trên các tài khoản chưa có Bio, TikTok ẩn nút "Sửa hồ sơ" bên dưới stats và chỉ hiện nút `+ Thêm tiểu sử` ở giữa. Điểm chạm duy nhất để mở trang Sửa hồ sơ là icon cây bút chì bên phải dòng Tên tại tọa độ **`(870, 558)`** (bounds `[798, 516][942, 600]`). CẤM TUYỆT ĐỐI dùng tọa độ cũ `(700, 558)` vì sẽ tap trượt vào khoảng trắng giữa tên và bút chì, dẫn đến kẹt loop PROFILE 5 lần và abort!
   - **BẮT BUỘC dùng AdbKeyboard UTF-8 Base64 Broadcast**:
