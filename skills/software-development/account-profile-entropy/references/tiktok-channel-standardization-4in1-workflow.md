@@ -57,6 +57,9 @@
       ```powershell
       echo RUN | powershell.exe -NoProfile -ExecutionPolicy Bypass -File D:\Taadaa\Tiktok-video\run_tiktok_upload_avatar.ps1 -Tik <Tik> -ForceAvatarMachineList "<May>" -MaxParallel 1
       ```
+    * **Xử lý xung đột Device Lock khi máy đang trong ca nuôi (`multi-machine-feed-session`)**:
+      - Nếu máy đang bị chiếm lock bởi ca nuôi định kỳ (VD: ca 12:00 hoặc 18:00, `project: tiktok-luot nuoi acc`), TUYỆT ĐỐI CẤM force-kill tiến trình hay can thiệp ADB làm gãy luồng lướt feed và trust của dàn nick.
+      - BẮT BUỘC canh trạng thái lock: ngay khi tiến trình feed session nhả lock (file `.lock.json` biến mất và màn hình về Launcher Home an toàn), lập tức kích hoạt `run_tiktok_upload_avatar.ps1` đẩy avatar lên ngay.
     * Chỉ được báo hoàn tất món Avatar khi đã chụp ảnh Profile xác nhận vòng tròn avatar trên app TikTok của máy thật đã thực sự đổi sang ảnh mới!
 
 ### Bước 4.1: Quy Tắc Giữ Nguyên Tên Tiếng Việt Hợp Lệ (ALREADY)
