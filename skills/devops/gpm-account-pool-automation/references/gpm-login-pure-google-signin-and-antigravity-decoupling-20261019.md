@@ -45,3 +45,17 @@ Quy trình Login chuẩn cho mọi script GPM:
    - Đóng profile sạch sẽ.
 4. **Bàn giao sang Nurture:**
    - Kích hoạt hoặc để cron định kỳ `cron_gpm_gmail_nurture.py` tiếp quản nuôi tài khoản theo tỷ lệ 50% YouTube, 30% News/Search, 20% hỗn hợp.
+
+## 5. Thực Thi Cụ Thể Trong Mã Nguồn (--login-only & Watchdog Decoupling)
+1. **Tích hợp cờ `--login-only` trong `scripts/run_oauth_s7_pipeline.py`:**
+   - Bắt tham số qua `acc.get("login_only")` hoặc `--login-only` trong `sys.argv`.
+   - `auth_url` chuyển hướng thẳng về `https://accounts.google.com/ServiceLogin?hl=vi`.
+   - Vòng lặp quan sát tự động break ngay khi URL đạt `myaccount.google.com` (đánh dấu `captured_code = "LOGIN_ONLY_SUCCESS"`).
+   - Thoát hàm và trả về `status: SUCCESS`, hoàn toàn bỏ qua bước gọi API OmniRoute `/api/oauth/antigravity/exchange`, không gán proxy vào connection Antigravity và không sync models.
+2. **Cập nhật Watchdog `post_evening_gpm_login_watchdog.py`:**
+   - Hàm `run_login()` truyền tường minh `"--login-only"` vào tham số dòng lệnh của `GPM_SCRIPT`.
+   - Gỡ bỏ dòng đếm `Antigravity Pool: ... accounts LIVE trên OmniRoute (:20129)` và sửa nhãn `chờ OAuth` thành `Profile sẵn Google Session` trong `_format_summary_report()`.
+   - Các profile đã có sẵn session cookie Google (`session_emails`) và không bị báo `NEEDS_LOGIN` được giữ nguyên trong Group 10 để cron nuôi định kỳ tiếp quản, không cố mở lại để đi OAuth.
+3. **Vô hiệu hóa nhánh hồi sinh Antigravity trong `cron_chatgpt_web_pool_watchdog.py`:**
+   - Đặt `ag_broken = []` để triệt tiêu việc tự động mở GPM profile hồi sinh OAuth Antigravity định kỳ mỗi 6 giờ.
+
