@@ -28,9 +28,28 @@ Qua phân tích các ca thất bại của `claude-haiku-5-5` trong `dispatch_wo
   2. Chạm trần số lượt trao đổi (`MAX_TURNS = 8`): Haiku mất 4-6 turns đọc file và tra cứu liên kết, hết ngân sách turns trước khi kịp gọi lệnh `Edit`.
 - **Kỷ luật cô lập:**
   1. *Cung cấp Patch Contract O(1):* Coordinator phải đọc file trước, định vị anchor duy nhất và cấp sẵn `old_string` $\rightarrow$ `new_string`. Haiku chỉ mất đúng 1 turn để áp dụng.
-  2. *Nâng ngân sách turns đệm:* Nâng `default_turns` từ 8 lên 12 để worker có đủ lượt thực thi sau khi đọc file.
+  2. *Nâng ngân sách turns lên kịch trần an toàn (Triệt tiêu bệnh khóc lóc `MAX_TURNS`):* Nâng `default_turns` từ 8 lên **15** (khớp với `hard_cap_turns` = 15). Việc bóp hẹp 6-8 turns khiến Haiku chưa sửa xong đã bị ngắt giữa chừng và nhả ra văn than vãn phân trần "reached max turns". Khi nâng lên 15 và **cắt quyền Bash**, Haiku chỉ mất đúng 2 nhịp (Read -> Edit) là xong việc ở turn 2-3, trần 15 turns là lưới an toàn để không bao giờ bị cắt ngang.
 
-### C. Cơ chế tiêu hao Quota khi Gate chặn
+### C. Triệt tiêu 100% bệnh phân trần / khóc lóc của Haiku Worker (Claude Reviewer APPROVED)
+Bản review từ Claude Sonnet Principal Architect đã chốt cơ chế 4 tầng bảo vệ:
+1. *Khóa cứng quyền Tool phân tầng theo file thực tế:*
+   - **Khi sửa file đã có:** Cấp `--allowedTools Read,Edit` và chặn triệt để:
+     `--disallowedTools Write,Bash,NotebookEdit,WebFetch,WebSearch,Agent,Task`
+     *(Về mặt vật lý không thể tạo file rác, không thể gõ shell, không thể sửa lan sang file khác).*
+   - **Khi tạo file mới:** Cấp `--allowedTools Read,Edit,Write` và chặn toàn bộ:
+     `--disallowedTools Bash,NotebookEdit,WebFetch,WebSearch,Agent,Task`.
+2. *Chỉ thị cưỡng chế không thể chối cãi (WORKER_DIRECTIVE):*
+   - Nhánh sửa: *"Apply the edit to the target file with the Edit tool now. Touch ONLY the target file named in the task. Never touch or create any other files."*
+   - Nhánh tạo mới: *"Create the target file with the Write tool now."*
+3. *Chống lỗi xin quyền ngầm (Silent Permission Denial):*
+   - Cấp `--dangerously-skip-permissions` và `--strict-mcp-config` (cắt bỏ MCP rác gây nhiễu tool schema).
+4. *Phán quyết bằng code, cấm đọc văn xuôi:*
+   - Gateway chỉ phán xét dựa trên `git diff --numstat` và focused test, tuyệt đối không đọc văn xuôi xã giao của Haiku để suy diễn xem nó có đang than vãn hay không.
+
+### D. Cơ chế tiêu hao Quota khi Gate chặn & Kỷ luật Mechanical Gate vs Memory
 - **Đặc tính cơ học:** Tất cả các gate/hook (`guard_dispatch_contract.py`, `guard_terminal_policy.py`, `claude_quota_guard.py`) đều là script Python thuần chạy offline cục bộ (<50ms).
 - Khi Coordinator gọi sai lệnh và bị Gate chặn (`action: block`): Tool call bị hủy trước khi process con được sinh ra. **Chi phí token và quota Claude là 0%.**
 - Quota chỉ bị tiêu hao khi process `claude -p` thực sự vượt qua mọi gate và kết nối tới API server.
+- **Kỷ luật cơ học vs Memory (User Correction 19/10/2026):**
+  *"Là sao có gate cơ học r cứ dùng memory chi v"*.
+  Khi quy chuẩn đã được cơ giới hóa thành code và có test suite bảo vệ (129/129 tests pass), TUYỆT ĐỐI CẤM ghi lại cấu hình vào Persistent Memory hay tiêm prompt mềm thừa thãi. Code và test là chân lý duy nhất.

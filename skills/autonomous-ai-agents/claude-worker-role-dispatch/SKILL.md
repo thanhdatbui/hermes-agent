@@ -23,7 +23,7 @@ When a Coordinator bypassed the Guard by running `claude -p "..." --dangerously-
 
 | Role | Model | Default Turns | Hard Cap Turns | Tools | Fallback |
 |------|-------|--------------|----------------|-------|---------|
-| `worker` | claude-haiku-5-5 | 8 | **15** | Read,Edit,Write,Bash | `ag_cli.py fix` |
+| `worker` | claude-haiku-5-5 | **15** | **15** | File có sẵn: Read,Edit (chặn Bash,Write,Web,Agent,Task)<br>File mới: Read,Edit,Write (chặn Bash,Web,Agent,Task) | `ag_cli.py fix` (gemini-3.8-flash-medium) |
 | `planner` | claude-sonnet-5-5 | 6 | **10** | Read,Bash | `ag_cli.py ask` |
 | `reviewer` | claude-sonnet-5-5 | 8 | **15** | Read,Bash | `ag_cli.py ask` |
 
@@ -114,11 +114,22 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
 
 ## Pitfalls
 
-- **KỶ LUẬT CÔ LẬP CHO HAIKU WORKER CHỐNG FAIL HÀNG LOẠT (User Mandate & Audit 19/10/2026):**
-  Phân tích log `dispatch.jsonl` cho thấy Haiku fail 95% do vi phạm hợp đồng O(1) chứ không phải do hết quota. Để Haiku bớt lỗi tối đa, Coordinator BẮT BUỘC tuân thủ:
-  1. *Nguyên tắc 1 Target - 1 Dispatch (Chống `unrelated_files_changed`):* Tuyệt đối CẤM yêu cầu vừa sửa code vừa sửa test trong 1 prompt. Khi cần sửa cả 2, phải tách làm 2 turn dispatch riêng biệt. Khi target file đã tồn tại trên đĩa, tước quyền `Write` để ngăn chặn vật lý việc tạo file rác/cache.
-  2. *Cung cấp Patch Contract O(1) (Chống `NO_DIFF` & `MAX_TURNS`):* CẤM giao goal mở trên file lớn. Luôn cấp sẵn anchor duy nhất (`old_string` -> `new_string`).
-  3. *Bảo toàn 0% Quota khi dính Gate:* Mọi pre-tool hook chạy local Python <50ms. Khi Coordinator bị gate chặn, lệnh bị hủy trước khi bật binary `claude`, tiêu hao quota là 0%.
+- **KỶ LUẬT CÔ LẬP CHO HAIKU WORKER CHỐNG FAIL HÀNG LOẠT (User Mandate & Claude Reviewer APPROVED 19/10/2026):**
+  Phân tích log `dispatch.jsonl` cho thấy Haiku fail 95% do vi phạm hợp đồng O(1) chứ không phải do hết quota. Để Haiku bớt lỗi tối đa và triệt tiêu 100% bệnh phân trần / khóc lóc, Coordinator BẮT BUỘC tuân thủ:
+  1. *Nguyên tắc 1 Target - 1 Dispatch (Chống `unrelated_files_changed`):* Tuyệt đối CẤM yêu cầu vừa sửa code vừa sửa test trong 1 prompt. Khi cần sửa cả 2, phải tách làm 2 turn dispatch riêng biệt.
+  2. *Khóa cứng Tool phân tầng (Triệt tiêu sửa lan sang file khác):*
+     - Khi file mục tiêu đã tồn tại trên đĩa: Cấp `--allowedTools Read,Edit` và chặn triệt để:
+       `--disallowedTools Write,Bash,NotebookEdit,WebFetch,WebSearch,Agent,Task`
+       (Về mặt vật lý không thể tạo file rác, không thể gõ shell, không thể sửa lan sang file khác).
+     - Khi tạo file mới: Cấp `--allowedTools Read,Edit,Write` và chặn `Bash,NotebookEdit,WebFetch,WebSearch,Agent,Task`.
+  3. *Nâng trần 15 turns nhưng khóa chân khóa tay (Triệt tiêu bệnh khóc lóc `MAX_TURNS`):* Nâng `default_turns` lên hẳn **15** (khớp với `hard_cap_turns` = 15). Việc bóp hẹp 6-8 turns khiến Haiku chưa sửa xong đã bị ngắt giữa chừng và nhả ra văn than vãn phân trần "reached max turns". Khi nâng lên 15 và cắt quyền Bash, Haiku chỉ mất đúng 2 nhịp (Read -> Edit) là xong việc ở turn 2-3, trần 15 turns là lưới an toàn để không bao giờ bị cắt ngang.
+  4. *Củng cố System Directive cưỡng chế:*
+     - Khi sửa: Lệnh rõ ràng *"Apply the edit to the target file with the Edit tool now. Touch ONLY the target file named in the task. Never touch or create any other files."*
+     - Khi tạo: Lệnh *"Create the target file with the Write tool now."*
+  5. *Cờ an toàn chống xin quyền & ô nhiễm:* Cấp `--effort high`, `--strict-mcp-config` (chống MCP rác), `--dangerously-skip-permissions` (chống xin quyền ngầm).
+  6. *Cung cấp Patch Contract O(1) (Chống `NO_DIFF`):* CẤM giao goal mở trên file lớn. Luôn cấp sẵn anchor duy nhất (`old_string` -> `new_string`).
+  7. *Bảo toàn 0% Quota khi dính Gate:* Mọi pre-tool hook chạy local Python <50ms. Khi Coordinator bị gate chặn, lệnh bị hủy trước khi bật binary `claude`, tiêu hao quota là 0%.
+  8. *Kỷ luật cơ học vs Memory (User Correction 19/10/2026):* Operator đã chấn chỉnh: *"Là sao có gate cơ học r cứ dùng memory chi v"*. Khi quy chuẩn đã được cơ giới hóa thành code và có test suite bảo vệ (129/129 tests pass), TUYỆT ĐỐI CẤM ghi lại cấu hình vào Persistent Memory hay tiêm prompt mềm thừa thãi. Code và test là chân lý duy nhất.
 - **THE DISCONNECTED GUARD ILLUSION & RUNTIME ATTACHMENT INVARIANT (User Audit 19/10/2026):**
   Unit test cho một hook mới (như guard dispatch contract) đạt 7/7 passed KHÔNG ĐỒNG NGHĨA hệ thống production đang được bảo vệ.
   1. *Nguyên nhân cốt lõi:* Hermes runtime chỉ kích hoạt hook khi: (a) Khai báo trong file config gateway tại hooks.pre_tool_call kèm matcher chính xác (ví dụ matcher: delegate_task), HOẶC (b) Được import và thực thi trực tiếp bên trong callback của plugin pluggy runtime.
