@@ -1,10 +1,10 @@
-bio VN AdbKeyboard cấm trùng 1 mẫu); Tik*.xlsx; Khóa nick.
+Bio: CẤM trùng mẫu/CẤM tự tiện sửa khi đổi tên (phải theo niche Tik*.xlsx hoặc để trống); Khóa nick tay.
 §
 Dọn đĩa: safe_recycle.py. Reboot né TFT/War3. Box 1 sát AP kibe 1. S7: anten Wi-Fi góc trên TRÁI. Lỗi timeout/PSM BẮT BUỘC sửa script; cấm cron quấy rầy máy nghỉ.
 §
 Nuôi 4d 3 ca (bỏ 0h). Nhả lock per-device (Rollname 15, pool 25-40). Ava&2FA tới 5h15. Excel 3,4,5+G; Starve 96h; Gmail GPM chỉ login rồi nuôi, cấm OAuth AG.
 §
-Closeout: Grace 80-84 auto-push; CẤM cày 85; cấm khóc lóc/báo BLOCKED khi chưa hết thang fallback (Claude 86% quota -> BẮT BUỘC Agy fix pool 22 acc). Repo dirty bắt buộc --files O(1); pre-push cần 1 commit (squash trước closeout --push). Pin TT LIFO.
+cấm khóc khi chưa hết fallback (Claude 86% -> Agy pool 22). Repo dirty bắt buộc --files O(1); pre-push 1 commit. Pin TT LIFO.
 §
 Ava/Media: WinRT OCR; CẤM gửi mù; CẤM báo DONE browser/UI thiếu MEDIA: (Gate 6, bắt buộc vision soi mắt); Ava đúng creator; pHash/crop thật.
 §
