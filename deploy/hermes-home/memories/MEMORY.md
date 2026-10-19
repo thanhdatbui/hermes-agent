@@ -6,9 +6,9 @@ Hotmail: CẤM mail cá nhân; @fviainboxes.com đọc OTP. Excel 3,4,5+G. Pin >
 §
 Preempt lock; ping 0% loss; ARP 110.x. Lock: rename_natural_state.json. Terminal: foreground max 60s; CLI dài/nặng BẮT BUỘC background=True + notify_on_complete=True.
 §
-Argon=:20135 (token stable 4s, fail-closed). Agy CLI 3.8-medium (ask>=600s, fix>=900s, rotate 22 acc). Benchmark: cấm chỉ đo giây/AST, bắt buộc đối soát spec.
+Argon=:20135 (token stable 4s). Agy CLI: 3.8-medium làm Worker tối thượng (10/10 pass, 15k chars, cấm tràn token); 3.8-high làm Core Architect (timeout>=1200s, Gate 1 phân rã); Claude CLI làm Planner. Benchmark: cấm chỉ đo giây/AST, bắt buộc đối soát spec.
 §
-Stale Up: xóa draft. Revert flop: TikWM tải CDN. Popup 'Ghim/Riêng tư' ko phải proof. Cào: max 60.
+Stale Up: xóa draft. Revert flop: TikWM tải CDN. Popup 'Ghim/Riêng tư' ko phải proof. Cào: max 60. Cron thiết bị: device_lock+rolling<=5, cấm burst; bỏ ca 0h.
 §
 Closeout: Grace 80-84 (test xanh) auto-push; BẮT BUỘC --files tránh DIFF_TOO_LARGE; Claude chạm 85% -> Agy CLI fix (22 pool ready), CẤM báo BLOCKED; CẤM commit -a; 3 Strike tự sửa.
 §
@@ -20,8 +20,6 @@ Canary: target-bound (matrix+plan map diff->hook; cấm khóc lóc/máy móc); W
 §
 Ava: Trích clip gốc representative_frames. Gate 6 fail-closed: cấm trần thuật/giải thích UI thiếu MEDIA:; file vật lý+SHA256 thật; cấm gửi mù. Dọn .thumbnails+Camera; Picker 0,1.
 §
-Reboot 3 ca (05:20, 11:20, 17:20), né TFT/War3. Task ngầm & Scheduler BẮT BUỘC bọc VBS/wscript Hidden + CREATE_NO_WINDOW (0x08000000), CẤM pop cmd cướp focus. 'Tắt' khi game = tắt cửa sổ nháy, cấm pause cron.
+Reboot 3 ca (05:20, 11:20, 17:20), né TFT/War3. Task ngầm BẮT BUỘC VBS/wscript Hidden + CREATE_NO_WINDOW (0x08000000), cấm pop cmd. 'Tắt' khi game = tắt cửa sổ nháy, cấm pause cron.
 §
 MCP: agy cắm remote URL thẳng. FastMCP domain ngoài: enable_dns_rebinding_protection=False chống 421. Claude Win: claude-haiku-5-5 chuẩn, prompt phải sau -p (cấm stdin).
-§
-Cron thiết bị: farm_contract bắt buộc device_lock+rolling<=5, cấm burst; Ca 0h đã bỏ hoàn toàn.
