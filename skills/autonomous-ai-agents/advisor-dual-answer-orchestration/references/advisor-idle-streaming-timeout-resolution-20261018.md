@@ -61,8 +61,8 @@ def _call_stream_chat(
                 t_last_activity = now
 ```
 
-### Các thông số chuẩn hóa:
-1. **`first_token_timeout = 45.0s` (Thinking Allowance):** Cho phép Sol Web trọn vẹn 45s để suy luận ngầm và sinh token đầu tiên.
-2. **`idle_token_timeout = 15.0s` (Chunk Keepalive):** Một khi đã bắt đầu stream chữ, đồng hồ đếm ngược được **reset liên tục sau mỗi chunk**. Miễn là model vẫn đang nhả chữ, stream sẽ không bao giờ bị cắt ngang câu. Chỉ khi đường truyền im lặng hoàn toàn quá 15s mới tính là rớt mạng.
-3. **`max_total_timeout = 90.0s`:** Trần bảo vệ toàn cục chống treo socket vô hạn.
-4. **`consult_advisor(timeout_sec=95.0)`:** Khống chế luồng ThreadPool với `wait=False, cancel_futures=True` đồng bộ với trần 90s của stream.
+### Các thông số chuẩn hóa (Cập nhật 19/10/2026 theo lệnh Operator):
+1. **`first_token_timeout = 80.0s` (Thinking Allowance):** Cho phép Sol Web trọn vẹn 80s để suy luận ngầm và sinh token đầu tiên mà không bị chém ngang khi pool xoay vòng.
+2. **`idle_token_timeout = 20.0s` (Chunk Keepalive):** Một khi đã bắt đầu stream chữ, đồng hồ đếm ngược được **reset liên tục sau mỗi chunk**. Miễn là model vẫn đang nhả chữ, stream sẽ không bao giờ bị cắt ngang câu. Chỉ khi đường truyền im lặng hoàn toàn quá 20s mới tính là rớt mạng.
+3. **`max_total_timeout = 140.0s`:** Trần bảo vệ toàn cục chống treo socket vô hạn.
+4. **`consult_advisor(timeout_sec=150.0)`:** Khống chế luồng ThreadPool với `wait=False, cancel_futures=True` đồng bộ với trần 140s của stream. CẤM quay lại mốc 35s–45s làm cụt luồng reasoning của Sol.
