@@ -151,7 +151,23 @@ def load_accounts_credentials():
         log(f"Lỗi đọc credentials từ Excel: {type(e).__name__}")
     return creds
 
-def get_connections_by_provider(provider_name: str):
+def is_pro_antigravity(c: dict) -> bool:
+    """Chỉ chấp nhận tài khoản Antigravity thuộc Pool Pro (g1-pro-tier), bỏ qua tài khoản Free/Farm.
+    Áp dụng chính sách Fail-Closed an toàn: thiếu metadata hoặc tier không rõ ràng -> lập tức loại bỏ."""
+    if not isinstance(c, dict):
+        return False
+    email = str(c.get('name') or c.get('email') or '').strip().lower()
+    if not email:
+        return False
+    excluded = {'thanhdatbui19951@gmail.com', 'jinrakal@gmail.com'}
+    if email in excluded:
+        return False
+    psd = c.get('providerSpecificData')
+    if isinstance(psd, dict):
+        return psd.get('tier') == 'g1-pro-tier'
+    return False
+
+def get_connections_by_provider(provider_name: str) -> list:
     try:
         req = urllib.request.Request(f"{OMNI_API}/api/providers")
         with urllib.request.urlopen(req, timeout=8) as r:
@@ -1422,15 +1438,15 @@ def main():
                 except Exception as ex:
                     log(f"Worker exception: {ex}")
                 
-    # 2. Quét Antigravity OAuth
+    # 2. Quét Antigravity OAuth: CHỈ KIỂM TRA POOL PRO (g1-pro-tier)
     ag_conns = get_connections_by_provider('antigravity')
-    # Tôn trọng trạng thái người dùng/router chủ động tắt (Standby) - CẤM tự ý bật lại is_active=1!
-    ag_broken = [c for c in ag_conns if c.get('testStatus') != 'active']
+    ag_pro_conns = [c for c in ag_conns if is_pro_antigravity(c) and c.get('isActive')]
+    ag_broken = [c for c in ag_pro_conns if c.get('testStatus') != 'active']
     recovered_ag = []
     failed_ag = []
     
     if ag_broken:
-        log(f"Phát hiện {len(ag_broken)} tài khoản Antigravity cần OAuth hồi sinh...")
+        log(f"Phát hiện {len(ag_broken)} tài khoản Antigravity PRO cần OAuth hồi sinh...")
         for c in ag_broken:
             email = c.get('name', '').lower()
             if "@gmail.com" not in email:
@@ -1501,8 +1517,8 @@ def main():
     chatgpt_after = get_connections_by_provider('chatgpt-web')
     chatgpt_active_cnt = sum(1 for c in chatgpt_after if c.get('isActive') and c.get('testStatus') == 'active')
     
-    ag_after = get_connections_by_provider('antigravity')
-    ag_active_cnt = sum(1 for c in ag_after if c.get('isActive') and c.get('testStatus') == 'active')
+    ag_after = [c for c in get_connections_by_provider('antigravity') if is_pro_antigravity(c) and c.get('isActive')]
+    ag_active_cnt = sum(1 for c in ag_after if c.get('testStatus') == 'active')
 
     codex_after = get_connections_by_provider('codex')
     codex_active_cnt = sum(1 for c in codex_after if c.get('isActive') and c.get('testStatus') == 'active')
