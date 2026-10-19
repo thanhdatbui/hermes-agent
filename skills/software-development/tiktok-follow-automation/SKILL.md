@@ -9,7 +9,7 @@ description: "TikTok follow runner and fail-closed farm ops."
 
 - Tài liệu chuyên sâu nằm trong `references/`; dùng đúng reference theo tình huống.
 - `references/post-follow-verification-and-reconcile.md`: tách tap, Path-B và web reconciliation; schema bằng chứng per-UID.
-- `references/follow-reconcile-queue-shift-and-gate-timeout-diagnostics.md`: Lệch follow do tàn dư ca cũ, cạm bẫy FakeAdapter, timeout 120s Closeout.
+- `references/follow-reconcile-queue-shift-and-gate-timeout-diagnostics.md`: Lệch follow do tàn dư ca cũ / bù trừ âm dương snapshot window cutoff, cạm bẫy FakeAdapter, timeout 120s Closeout.
 - `references/triage-stale-session-and-mock-adapter-pitfalls.md`: Triage ca cũ watchdog báo vs code đã fix (mtime vs SHA), FakeAdapter fixture và chia nhỏ diff.
 - `references/follow-dashboard-diagnostics-and-ceiling-invariants.md`: Sổ Bệnh Án, Gãy Gần Nhất, triage Row, Dò Trần Động (+2, max 40, Lùi 4 Sàn 15), Hồi phục Tier 1/2, Khóa Single-Session P1 cho Probation, Né Mốc Gãy & Bóp Trần Theo Streak.
     - `references/winrt-ocr-follow-button-fastpath-and-rescue.md`: WinRT OCR fast-path và fallback cứu hộ khi XML hierarchy rỗng/obfuscated trên nút Follow và verify_after_tap.

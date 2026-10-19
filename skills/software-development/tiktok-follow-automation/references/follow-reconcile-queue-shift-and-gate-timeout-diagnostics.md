@@ -24,6 +24,48 @@ Người vận hành thắc mắc: *"Tại sao lại lệch? Script có bước 
 
 ---
 
+## 2. Hiện Tượng Lệch Âm Dương Bù Trừ Do Lệch Mốc Snapshot Watchdog (Snapshot Window Cutoff Misalignment)
+
+### A. Triệu chứng
+Người vận hành thấy báo cáo 2 phiên liên tiếp trong cùng một ca bị lệch cực lớn theo kiểu "bù trừ âm dương":
+```text
+Ca 2 Phiên 1: +0 Following thật | Lệch -29 so với script báo 29 (Web 0 lượt)
+Ca 2 Phiên 2: +34 Following thật | Lệch +22 so với script báo 12 (Web 34 lượt)
+```
+Người vận hành hoang mang: *"Clgt lệch kinh khủng v? Bị TikTok bão nhả acc à?"*
+
+### B. Cơ chế gốc rễ (Root Cause)
+1. **Ca chạy trễ hoặc watchdog cào trễ:**
+   - Ví dụ Phiên 1 quy ước `12:00 - 14:00`, nhưng ca thực tế chạy tới 14:30 hoặc watchdog đến 16:01 mới cào snapshot web (`timestamp = 16:01:21`).
+2. **Kẹp cứng mốc SQL `query_end_iso`:**
+   - Trong `reconcile_cluster_following`: `query_end_iso = session_end_iso + 10m` (`14:10:00`).
+   - Query SQL tìm snapshot: `WHERE LOWER(username) = LOWER(?) AND timestamp <= '14:10:00'`.
+   - Vì snapshot vừa cào là `16:01:21` > `14:10:00`, SQL **bỏ qua hoàn toàn snapshot mới** và lùi về snapshot sáng sớm (ví dụ `07:04:13`).
+   - Cả `latest_row` lẫn `baseline_row` đều lấy snapshot `07:04:13` $\rightarrow$ `web_delta = 0` $\rightarrow$ **Báo lệch âm nặng (-29)**.
+3. **Hiệu ứng cộng dồn sang Phiên 2:**
+   - Đến Phiên 2 (`14:00 - 18:00`), `query_end_iso` là `18:10:00` nên nhận được snapshot mới nhất.
+   - Nhưng khi tìm `baseline_row` (`timestamp <= 14:10:00`), do giữa `07:04` và `14:10` không có snapshot nào, SQL lại lùi về `07:04:13`.
+   - Kết quả: Web delta của Phiên 2 tính gộp cả lượng follow của Phiên 1 + Phiên 2 $\rightarrow$ **Báo lệch dương nặng (+22)**.
+4. **Đối chiếu thực tế:**
+   - Tổng script 2 phiên: $29 + 12 = 41$.
+   - Tổng web tăng từ sáng đến cuối ca: $41$.
+   - **Tỷ lệ khớp thực tế: 100% (41/41)**, acc ăn follow sạch, không bị nhả một lượt nào.
+
+### C. Quy trình kiểm chứng nhanh O(1)
+Chạy script kiểm tra trực tiếp bảng `snapshots` trong `D:/Taadaa/data/tiktok_tracker.db`:
+```python
+import sqlite3
+conn = sqlite3.connect("file:D:/Taadaa/data/tiktok_tracker.db?mode=ro", uri=True)
+cur = conn.cursor()
+# Lấy snapshot sáng sớm và snapshot sau ca chạy của nick
+for u in target_usernames:
+    cur.execute("SELECT timestamp, following FROM snapshots WHERE LOWER(username) = LOWER(?) ORDER BY id DESC LIMIT 5", (u,))
+    print(u, cur.fetchall())
+```
+Nếu `following` cuối ca trừ sáng sớm khớp đúng tổng script của cả 2 phiên $\rightarrow$ Đây là lệch ảo do window cutoff, acc an toàn 100%.
+
+---
+
 ## 2. Cạm Bẫy Tiêu Thụ Queue XML Dump Của FakeAdapter Trong Unit Tests
 
 ### A. Cơ chế gây lỗi (Queue Shifting Bug)
