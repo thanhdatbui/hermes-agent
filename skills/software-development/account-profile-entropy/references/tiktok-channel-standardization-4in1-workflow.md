@@ -39,10 +39,13 @@
   - **Kỹ thuật trích xuất & Fallback khi Haar Cascade miss (0 face)**: Với các video tiểu phẩm/kịch hoặc hoạt hình/học đường, Haar Cascade thường trả về 0 face $\rightarrow$ BẮT BUỘC fallback sang trích xuất khung hình theo mốc thời gian (`dump_sample_frames` tại giây 2, 5, 8, 12) rồi crop tâm chủ thể (`crop_head_square`), không để quy trình bị treo.
   - Cung cấp ảnh đối sánh gồm cả ảnh vuông và mô phỏng viền tròn Profile (`make_circle_preview` với viền xanh lá).
   - **Ghép Mosaic Đa Kênh & Invariant Soi Mắt Trước Khi Gửi**: Khi chuẩn hoá $\ge 1$ kênh cùng lúc, ghép thành 1 ảnh mosaic tổng hợp (`avatar_standardization_proposals.jpg`) chia hàng theo máy, cột theo phương án. Dùng `browser_navigate("file:///...")` kết hợp `browser_vision` mở ảnh local để soi mắt kiểm tra (xác nhận đúng chủ thể, không lẹm cằm/đỉnh đầu, không lỗi hiển thị đen/méo) TRƯỚC KHI gửi thẻ `MEDIA:<path>` cho Operator duyệt.
-- **Quy Chuẩn Khi Operator Yêu Cầu "Gen Ava Khác" (Re-generation Multi-Video Sweep)**:
-  * Khi Operator yêu cầu *"gen ava khác cho tao"*: Tuyệt đối CẤM chỉ trích xuất các giây khác trong cùng 1 video cũ (time jittering hẹp).
-  * BẮT BUỘC quét rộng qua nhiều video khác nhau trong kho ($F_{src}$ / $F_{vid}$ từ clip 1 đến 10) để bắt trúng ít nhất 3 phong cách / góc quay / nhân vật / bối cảnh hoàn toàn khác biệt (VD: nhân vật học sinh đồng phục vs nhân vật tiểu phẩm vs biểu cảm kịch tính/hài hước).
-  * Ghép thành 1 mosaic hàng ngang 3 cột (`m<May>_new_avatar_proposals.jpg`), ghi rõ nhãn PA 1, PA 2, PA 3 và chú thích ngắn gọn, soi mắt qua vision kiểm chứng trước khi gửi duyệt.
+- **Quy Chuẩn Khi Operator Yêu Cầu "Gen Ava Khác" (Multi-Round Diversity Escalation)**:
+  * Khi Operator yêu cầu *"gen ava khác cho tao"* hoặc tiếp tục từ chối phương án vòng 2:
+    - **CẤM TUYỆT ĐỐI** chỉ nhích thêm vài giây hoặc lấy khung hình tương tự từ cùng 1-2 video cũ (time jittering hẹp).
+    - **BẮT BUỘC** quét sâu mở rộng qua hàng loạt video trong kho ($F_{src}$ / $F_{vid}$ từ clip 1 đến 9+).
+    - **Thuật toán xếp hạng khung hình tối ưu**: Tính diện tích khuôn mặt kết hợp độ nét qua phương sai Laplacian: `score = area * sqrt(max(sharpness, 1.0))` trên ROI khuôn mặt. Tự động bốc frame nét nhất, góc chụp chính diện/bán diện đẹp nhất của từng video.
+    - **Đa dạng hóa phong cách (Archetypes)**: Bắt buộc chọn các nhân vật mang phong cách hoàn toàn khác biệt (ví dụ: PA1 Soái ca sơ mi đen lịch lãm, PA2 Nữ chính biểu cảm tự nhiên, PA3 Nam diễn viên sành điệu, PA4 Nữ sinh nụ cười sáng).
+    - Ghép thành 1 mosaic 3-4 cột (`m<May>_round<N>_proposals.jpg`), ghi rõ nhãn PA 1, PA 2, PA 3, PA 4 và mô tả phong cách ngắn gọn, soi mắt qua vision/OCR kiểm chứng trước khi gửi duyệt để Operator có thể chốt nhanh gọn bằng 1 chữ số (`1`, `2`, `3`, `4`).
 - **Sau khi Operator chốt phương án (Đồng bộ kho kép & Khóa bảo vệ)**:
   - **Đồng bộ kho kép (Dual-Destination Sync)**: Copy file vuông `avatar.jpg` vào CẢ HAI kho: kho render (`D:/TIKTOK-videonuoinick/<F>/avatar.jpg`) và kho gốc (`D:/video goc/<F>/avatar.jpg`).
   - **Cắm marker bảo vệ kép**: Cắm đồng thời `.manual_avatar_locked` và `.manual_hashtag_locked` ở cả 2 thư mục để ngăn cron / scheduled generator định kỳ ghi đè rác.
@@ -50,18 +53,19 @@
   - Nạp avatar lên thiết bị bằng launcher chuẩn:
     `python D:/Taadaa/tools/run_avatar_batch_3accs.py --tik <Tik> --machine <May>`.
 
-### Bước 4.1: Kỷ Luật Điều Phối Worker Tạo Script Phụ Trợ (Zero-Read Script Generation)
-- Khi Coordinator chạm trần direct-write T1 (10 files / 500 lines) và cần dispatch subagent tạo script phụ trợ:
-  * BẮT BUỘC cấp chỉ thị `TASK_KIND: WRITE_SCRIPT` kèm budget $\le 3$ calls.
-  * CẤM subagent gọi `read_file` rà soát lung tung vì sẽ chạm trần `WORKER GATE - READ BUDGET EXHAUSTED` (tối đa 8 read calls).
-  * Subagent chỉ thực hiện đúng 1 thao tác `write_file` để ghi code trọn gói, sau đó trả về ngay để Coordinator gọi thực thi trong môi trường có đủ dependencies.
+### Bước 4.1: Kỷ Luật Điều Phối Worker & Chốt Chặn Cơ Học Sửa Code
+- Khi Coordinator chạm trần direct-write T1 (10 files / 500 lines):
+  * Nếu cần tạo script phụ trợ: BẮT BUỘC cấp chỉ thị `TASK_KIND: WRITE_SCRIPT` kèm budget $\le 3$ calls. CẤM subagent gọi `read_file` rà soát lung tung vì sẽ chạm trần `WORKER GATE - READ BUDGET EXHAUSTED`.
+  * Nếu cần sửa code / patch file: `delegate_task` bị chốt chặn cơ học khóa cứng (`BLOCKED_BY_DISPATCH_GATE`). BẮT BUỘC dispatch qua Single Dispatch Gateway:
+    `python D:/Taadaa/tools/dispatch_worker.py --workdir <repo> --file <target_file> "<prompt 1 dòng>"`. Haiku 5.5 CLI sẽ thực hiện patch chính xác trong 15-30s.
 
 ### Bước 5: Món 4 — Bio (Tiểu sử tiếng Việt có dấu chuẩn theo Niche)
 - **Phong cách Bio (Chỉ thị Operator 2026-10-18)**: *"Viết bio kiểu hài hước nhé"*.
   - BẮT BUỘC viết theo đúng **Niche kênh** (`Keyword Video` từ `Tik<N>.xlsx`).
   - Ưu tiên phong cách **Hài hước, dí dỏm, Gen Z đời thường**, có emoji sinh động (VD: Nấu ăn -> *"Nấu ăn thì ngon, mỗi tội rửa bát thì lười 🍳"*; Thể thao -> *"Tập gym để ăn nhiều hơn mà không cảm thấy tội lỗi 🏋️"*; Sức khỏe -> *"Quyết tâm sống healthy, nhưng đồ ăn vặt không cho phép 🍟"*).
   - CẤM TUYỆT ĐỐI viết bio văn mẫu khô khan, cấm viết trùng một câu bio cho nhiều tài khoản (dấu hiệu bot lộ liễu).
-- Kỹ thuật nạp Bio lên Android S7:
+- Kỹ thuật nạp Bio lên Android S7 & Cạm bẫy Tọa độ Bút chì:
+  - **Bẫy Tọa độ Bút chì trên TikTok v47 (Layout trống Bio)**: Trên các tài khoản chưa có Bio, TikTok ẩn nút "Sửa hồ sơ" bên dưới stats và chỉ hiện nút `+ Thêm tiểu sử` ở giữa. Điểm chạm duy nhất để mở trang Sửa hồ sơ là icon cây bút chì bên phải dòng Tên tại tọa độ **`(870, 558)`** (bounds `[798, 516][942, 600]`). CẤM TUYỆT ĐỐI dùng tọa độ cũ `(700, 558)` vì sẽ tap trượt vào khoảng trắng giữa tên và bút chì, dẫn đến kẹt loop PROFILE 5 lần và abort!
   - **BẮT BUỘC dùng AdbKeyboard UTF-8 Base64 Broadcast**:
     `am broadcast -a ADB_KEYBOARD_INPUT_TEXT --es text <BASE64_UTF8_STRING>`.
   - CẤM dùng `adb shell input text` vì sẽ rớt dấu thanh hoặc gõ không dấu.
