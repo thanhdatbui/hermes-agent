@@ -50,10 +50,28 @@
   - **Đồng bộ kho kép (Dual-Destination Sync)**: Copy file vuông `avatar.jpg` vào CẢ HAI kho: kho render (`D:/TIKTOK-videonuoinick/<F>/avatar.jpg`) và kho gốc (`D:/video goc/<F>/avatar.jpg`).
   - **Cắm marker bảo vệ kép**: Cắm đồng thời `.manual_avatar_locked` và `.manual_hashtag_locked` ở cả 2 thư mục để ngăn cron / scheduled generator định kỳ ghi đè rác.
   - **Cập nhật sổ cái**: Cập nhật đồng bộ các cột `Keyword Video` và `Hashtag Pool` trong `Tik<N>.xlsx`.
-  - Nạp avatar lên thiết bị bằng launcher chuẩn:
-    `python D:/Taadaa/tools/run_avatar_batch_3accs.py --tik <Tik> --machine <May>`.
+  - **BẮT BUỘC NẠP LÊN THIẾT BỊ THẬT NGAY (CẤM CHỈ LƯU Ổ ĐĨA RỒI BÁO XONG)**:
+    * Việc lưu file vào `video goc` và `TIKTOK-videonuoinick` chỉ là bước chuẩn bị dữ liệu kho, **CHƯA PHẢI là đã đổi avatar**.
+    * User phản ứng gắt gao: *"? Cả 2 acc mày đã đổi avatar lồn đâu"* khi thấy ảnh Profile chụp từ máy thật vẫn mang avatar cũ.
+    * BẮT BUỘC chạy launcher nạp avatar chính thức lên máy thật:
+      ```powershell
+      echo RUN | powershell.exe -NoProfile -ExecutionPolicy Bypass -File D:\Taadaa\Tiktok-video\run_tiktok_upload_avatar.ps1 -Tik <Tik> -ForceAvatarMachineList "<May>" -MaxParallel 1
+      ```
+    * Chỉ được báo hoàn tất món Avatar khi đã chụp ảnh Profile xác nhận vòng tròn avatar trên app TikTok của máy thật đã thực sự đổi sang ảnh mới!
 
-### Bước 4.1: Kỷ Luật Điều Phối Worker & Chốt Chặn Cơ Học Sửa Code
+### Bước 4.1: Quy Tắc Giữ Nguyên Tên Tiếng Việt Hợp Lệ (ALREADY)
+- Khi chuẩn hóa kênh, kiểm tra Tên hiển thị hiện tại trên Profile:
+  * Nếu tài khoản **đã có tên tiếng Việt chuẩn người dùng thật** (ví dụ: `Vũ Thị Nam`, `Huỳnh Diễm`): **TUYỆT ĐỐI CẤM TỰ Ý ĐỔI TÊN KHÁC** (*"Kênh 2 tên tiếng việt r sửa gì nữa"*). Giữ nguyên tên, dùng cờ `--bio-only` để chỉ nạp Bio mà không đụng vào Tên.
+  * Chỉ đổi tên khi tên hiện tại là tên bot cụt lủn tiếng Anh/nước ngoài (`Cleora`, `Lilyan...`) hoặc tên cụt 1 từ (`Mai`, `Thảo`, `Linh`).
+
+### Bước 4.2: Xử Lý Profile Trống Bio & Bẫy Story Picker Trên S7
+- Trên tài khoản chưa từng cài Bio (bio rỗng), TikTok ẩn nút "Sửa hồ sơ" bên dưới stats:
+  * **Cạm bẫy Tọa độ `(870, 558)`**: Trên layout căn trái (avatar nằm bên phải), tọa độ `(870, 558)` chạm vào vùng avatar/balloon mở popup *"Thêm vào Nhật ký"* (Story picker `UNKNOWN`), CẤM bấm vào!
+  * **Giải pháp chuẩn xác**: Bấm trực tiếp vào chip `+ Thêm tiểu sử` tại tọa độ tâm `(220, 686)` (nhận diện qua regex `tieu\s*su|tid\w{0,2}\s*s\w{0,2}|\+\s*them`).
+  * Mở màn hình `BIO_EDIT`, gõ Bio qua AdbKeyboard Base64 UTF-8 và bấm Lưu.
+  * Sau khi có Bio, TikTok tự động kích hoạt hiển thị nút "Sửa hồ sơ" (`(210, 686)` hoặc `(300, 985)`), từ đó runner vào đổi Tên mượt mà.
+
+### Bước 4.3: Kỷ Luật Điều Phối Worker & Chốt Chặn Cơ Học Sửa Code
 - Khi Coordinator chạm trần direct-write T1 (10 files / 500 lines):
   * Nếu cần tạo script phụ trợ: BẮT BUỘC cấp chỉ thị `TASK_KIND: WRITE_SCRIPT` kèm budget $\le 3$ calls. CẤM subagent gọi `read_file` rà soát lung tung vì sẽ chạm trần `WORKER GATE - READ BUDGET EXHAUSTED`.
   * Nếu cần sửa code / patch file: `delegate_task` bị chốt chặn cơ học khóa cứng (`BLOCKED_BY_DISPATCH_GATE`). BẮT BUỘC dispatch qua Single Dispatch Gateway:
