@@ -54,3 +54,13 @@ send_telegram_report("-5468653590", tiktok_2fa_report_text)
 ### C. Xóa bỏ bẫy kiểm tra 6H gây câm báo cáo
 - Xóa bỏ điều kiện `is_6h_window` xung đột với `is_safe_rolling_window`.
 - Mỗi khi một đợt chạy ban đêm hoàn tất (hoặc có kết quả máy thành công/thất bại thực tế), lập tức gửi báo cáo về nhóm tương ứng để người vận hành nắm bắt hiện trường realtime.
+
+---
+
+## 3. Kỷ Luật Crash Safety & Bắt Ngoại Lệ Trong Điều Phối Đa Phase
+Trong các watchdog chạy liên hoàn tuần tự nhiều phase nghiệp vụ (`run_gmail_phase` -> `run_tiktok_phase`):
+- **Bẫy Unhandled Exception Ở Phase Sau:** Nếu phase 2 bị lỗi unhandled exception (lỗi cú pháp lệnh SSH, timeout bất ngờ, lỗi đọc workbook), tiến trình có thể crash trực tiếp từ `main()` mà không kịp lưu state hoặc dispatch thông báo lỗi ra Telegram.
+- **Mô Thức Crash Handler Bắt Buộc (`_handle_phase_crash`):**
+  - Bọc từng phase trong khối `try/except Exception` riêng biệt tại `main()`.
+  - Khi phase sau gặp ngoại lệ, gọi crash handler ghi nhận state `status="failed"`, `failure_reason=...` và dispatch alert cảnh báo khẩn cấp về đúng nhóm Telegram của nghiệp vụ đó trước khi trả mã lỗi.
+  - Đảm bảo tính độc lập: Phase 1 lỗi không được làm chết Phase 2, và Phase 2 lỗi phải để lại audit trail đầy đủ.
