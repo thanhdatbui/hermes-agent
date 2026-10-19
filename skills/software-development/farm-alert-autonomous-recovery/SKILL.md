@@ -10,9 +10,10 @@ description: >-
 > Ref: `references/benny-triage-device-lock-and-feature-map-protocol-20261015.md`.
 > Ref: `references/xiaowei-adb-reset-and-offline-device-triage-20261012.md`.
 > Ref: `references/account-switcher-verify-mismatch-triage-20261017.md`.
-> Ref: `references/batch-alert-canary-selection-and-atx-vs-winrt-ocr-20261018.md` (Dynamic Canary khi kẹt lock; ATX-Agent port 7912 & WinRT OCR triệt tiêu uiautomator).
-> Ref: `references/hard-enforcement-hook-gate-and-winrt-primary-atx-fallback-20261018.md` (Hard Enforcement Hook Gate; WinRT OCR primary, ATX-Agent fallback).
-> Ref: `references/feed-watchdog-2am-delayed-report-triage.md` (Chẩn đoán feed_watchdog 02:00 AM do kẹt device lock hoãn ca tối, không phải ca 0h).
+> Ref: `references/batch-alert-canary-selection-and-atx-vs-winrt-ocr-20261018.md` (Dynamic Canary; ATX port 7912 & WinRT OCR).
+> Ref: `references/hard-enforcement-hook-gate-and-winrt-primary-atx-fallback-20261018.md` (Hook Gate; WinRT OCR primary).
+> Ref: `references/feed-watchdog-2am-delayed-report-triage.md` (Triage feed_watchdog delayed report).
+> Ref: `references/inspect-machine-terminal-guard-and-socket-hang-handling.md` (Inspect Machine O(1), Terminal Guard & socket hang).
 
 ## UI evidence: target screen only
 
