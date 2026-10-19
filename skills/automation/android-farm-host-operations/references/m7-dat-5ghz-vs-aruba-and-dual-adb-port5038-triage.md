@@ -7,9 +7,16 @@
   * `wlan0 inet: 192.168.110.40/24`
   * `ping 192.168.110.2: 0% packet loss (7.3 ms)`
 - **Nguyên nhân kỹ thuật sâu:**
-  * SSID `Dat` được phát từ Router Xiaomi R3G (BSSID `28:d0:f5:...`) cắm cùng subnet switch farm `192.168.110.x`, đồng thời cũng có profile `Dat` cấu hình trên cả 4 AP Aruba (`Zone: zone1,zone2,zone3,zone4`, `Band: all`).
-  * Router Xiaomi phát 5GHz ở Kênh 100 (5500MHz) với công suất mạnh (-49 dBm) thẳng vào vị trí M7, card 5GHz của M7 bắt tay hoàn hảo với tốc độ 351 Mbps.
+  * SSID `Dat` được phát từ Router Gateway chính của phòng (`192.168.110.1`, MAC `28:d0:f5:...`) cắm cùng subnet switch farm `192.168.110.x`, đồng thời cũng có profile `Dat` cấu hình trên cả 4 AP Aruba (`Zone: zone1,zone2,zone3,zone4`, `Band: all`).
+  * Router Gateway phát 5GHz ở Kênh 100 (5500MHz) với công suất mạnh (-49 dBm) thẳng vào vị trí M7, card 5GHz của M7 bắt tay hoàn hảo với tốc độ 351 Mbps.
+  * CẤM tra cứu tiền tố MAC OUI rồi tự ý gán nhãn thương hiệu lạ ngoài farm (như suy diễn thành "router Xiaomi" khi farm không hề có thiết bị đó).
   * Trong khi đó, AP Aruba `.253` (`kibe 1`) dù thử đổi sang Kênh 36, 149 hay 52, M7 vẫn gặp hiện tượng kén búp sóng hoặc suy hao ăng-ten đặc thù với AP Aruba này, khiến handshake bị reject.
+
+## 2. Kiểm Tra Proxy Bằng Shell Trên Android 8 / Samsung S7
+- Samsung S7 (Android 8) KHÔNG có sẵn binary `curl` hay `nc` chuẩn trong `/system/bin`.
+- Kiểm tra proxy trực tiếp từ shell Android BẮT BUỘC dùng:
+  `echo -e "CONNECT httpbin.org:80 HTTP/1.1\r\nHost: httpbin.org:80\r\n\r\n" | toybox nc -w 3 192.168.110.2 20007`
+- Nhận phản hồi `HTTP/1.1 200 Connection established` xác nhận thông suốt 100%. CẤM gọi `curl` rồi thấy rỗng suy diễn đứt mạng.
 
 ## 2. Nguy Cơ Nghẽn Sóng Khi Bật Băng Tần 2.4 GHz Trên SSID Farm (RF Planning)
 - **Quy tắc bắt buộc:** Toàn bộ 4 SSID vận hành farm (`admin 1`, `admin 2`, `kibe 1`, `kibe 2`) BẮT BUỘC giữ cấu hình **`Band: 5.0` (5GHz Only)**. TUYỆT ĐỐI KHÔNG mở `Band: all` (2.4GHz + 5GHz).

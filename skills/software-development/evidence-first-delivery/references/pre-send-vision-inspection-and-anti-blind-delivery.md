@@ -1,0 +1,20 @@
+# Pre-send Vision Inspection and Anti-Blind Delivery Invariant
+
+## Overview
+Whenever an agent produces visual media (screenshots, UI mockups, proposal canvases, or camera crops) and delivers it to the user via `MEDIA:<path>`, there is a strict invariant:
+**CẤM TUYỆT ĐỐI gửi ảnh mù / gửi đối phó.**
+
+## The Invariant Checklist
+1. **Physical & Hash Verification**:
+   - Ensure the image exists at an absolute path and has non-zero size.
+   - Verify the image content is fresh, not an old artifact from a previous run or cache.
+2. **Visual Inspection Before Sending (`browser_vision` or WinRT OCR)**:
+   - Before emitting any `MEDIA:<path>` tag in the final user response, the agent MUST inspect the rendered image using `browser_vision` (navigate to `file:///...`) or WinRT OCR.
+   - Confirm:
+     * Target screen matches the goal (e.g., Profile, Switcher, Comparison Mosaic).
+     * Text elements, metrics, and captions are legible, correctly positioned, and not overlapping.
+     * Subject is centered in circles/crops, headroom is balanced (~15–20%), no chopped chins or distorted borders.
+     * No black screen, modal popups obscuring content, or rendering glitches.
+3. **Evidence-Grounded Response**:
+   - In the text accompanying `MEDIA:<path>`, explicitly state the key details seen with the model's own eyes (e.g., specific titles, views, button states, bounding box highlights).
+   - Never drop a bare `MEDIA:` tag without confirming the visual content.
