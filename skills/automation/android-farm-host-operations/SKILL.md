@@ -6,6 +6,7 @@ description: "Use when farm devices drop, USB hangs, or entering BIOS."
 # Android Farm Host Operations
 
 References:
+- `references/m7-dat-5ghz-vs-aruba-and-dual-adb-port5038-triage.md` — Bóc tách hiện trường M7 ăn mạng Dat (5GHz Kênh 100 -50dBm từ router ngoài nối cùng subnet 192.168.110.x) vs kẹt kibe 1 (AP .253 Kênh 36 -70dBm), ngưỡng client Aruba (khuyến nghị 40 vs trần 64) và bẫy XiaoWei chiếm ADB port 5038 làm ẩn máy trên port 5037 (19/10/2026).
 - `references/m7-wifi-5ghz-vs-24ghz-and-pnp-triage-20261019.md` — Chẩn đoán lệch băng tần 5GHz vs 2.4GHz (tại sao vào Dat được nhưng kibe 1 tạch), ngưỡng client Aruba (khuyến nghị 40 vs trần 64) và kỷ luật đối soát PnP USB chống phán bừa rút cáp khi mất ADB (19/10/2026).
 - `references/scheduled-reboot-freeze-illusion-and-uptime-triage-20261019.md` — Chẩn đoán cảm giác "treo máy" lúc reboot 3 ca định kỳ (05:20, 11:20, 17:20), bản chất Windows broadcast WM_ENDSESSION force-kill socket Chromium/ADB, và quy trình đối soát Uptime O(1) qua GetTickCount64 + System Event ID 1074/6005/6006 (19/10/2026).
 - `references/host-power-cycling-reboot-vs-shutdown-and-electricity-economics-20261018.md` — Phân tích kỹ thuật Reboot xả USB vs Shutdown PC ban đêm, bẫy lý thuyết sáo rỗng "thermal cycling/inrush current", và bóc tách bài toán kinh tế điện năng Farm (~3 triệu/tháng) (18/10/2026).
@@ -354,7 +355,7 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
 
 ## 17. Bẫy Lệch Subnet Wi-Fi & Quy Trình Khôi Phục Wi-Fi 2 Cấp (09/10/2026)
 - **Tai nạn fallback SSID bậy:** Khi máy mất Wi-Fi, CẤM TUYỆT ĐỐI cho nhảy sang SSID ngoài farm (`Dat`, `Dat-1`, `BOX 2`...). Nhảy SSID lạ sẽ bị cấp dải IP `192.168.10.x` thay vì dải chuẩn Farm `192.168.110.x`, gây đứt socket tới Singbox/3proxy trên MikroTik và nguy cơ lộ IP Direct FPT.
-- **Cố định quy hoạch 40 máy/AP:** M01–M40 (`kibe 1` - pass `23102025` - AP .253), M41–M80 (`kibe 2` - pass `19051995` - AP .252), M201–M240 (`admin 1` - pass `19051995` - AP .251), M241–M280 (`admin 2` - pass `19051995` - AP .250). CẤM dồn máy sang AP khác.
+- **Quy hoạch phân bổ 40 máy/AP (Khuyến nghị cân bằng tải, không phải trần cứng ngắt kết nối):** M01–M40 (`kibe 1` - pass `23102025` - AP .253), M41–M80 (`kibe 2` - pass `19051995` - AP .252), M201–M240 (`admin 1` - pass `19051995` - AP .251), M241–M280 (`admin 2` - pass `19051995` - AP .250). Lưu ý: Cấu hình `Max Clients Threshold` trên Aruba Virtual Controller là 64 máy; 40 máy là mốc khuyến nghị tối ưu hóa airtime khi lướt video farm, CẤM ngụy biện coi 40 là trần cứng ngắt kết nối của AP. CẤM tự ý dồn tải lệch giữa các AP.
 - **Bẫy chuỗi ADB-Join-Wifi & Lifecycle Activity:**
   * Lệnh `am start` trên Android shell BẮT BUỘC dùng `--es ssid "<SSID>"` hoặc nháy đơn bọc chuỗi (ví dụ: `am start ... -e ssid 'admin 1'`). Nếu không bọc nháy, Android shell sẽ cắt mất số sau dấu cách khiến máy nhảy vào SSID rác `admin` / `kibe` gây mất mạng cả cụm.
   * `MainActivity` của `adb-join-wifi` chỉ nhận extras khi `onCreate()` (không có `onNewIntent`). Khi đã có tiến trình chạy ngầm, BẮT BUỘC chạy `am force-stop com.steinwurf.adbjoinwifi` và `pkill -f steinwurf` trước khi gọi lệnh join mới.
@@ -448,8 +449,10 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
   2. **Mất hẳn khỏi ADB nhưng vẫn cắm vật lý (Hardware Connected, ADB Vanished):**
      * Windows PnP vẫn nhận diện thiết bị composite (`USB\VID_04E8&PID_6860\<SERIAL>` với `Status: OK`, `Present: true`).
      * `adb devices` hoàn toàn không có serial này (không xuất hiện cả ở dạng `offline`).
-     * *Nguyên nhân:* Màn hình khóa chưa chấp nhận popup "Cho phép gỡ lỗi USB", thiết bị chuyển sang chế độ MTP/Chỉ sạc, interface con ADB (`...&ADB\...`) bị lỗi driver/driver stack treo, hoặc tiến trình daemon `adbd` trên Android bị crash/kill ngầm mà không nhả VBUS.
-     * **KỶ LUẬT CHẨN ĐOÁN (CẤM PHÁN ẨU RÚT CÁP):** Khi `adb devices` mất máy, CẤM TUYỆT ĐỐI phán bừa là người dùng rút cáp hay máy sập nguồn. BẮT BUỘC kiểm tra PnP USB (`Get-PnpDevice -PresentOnly`) để xác nhận kết nối vật lý trước khi kết luận.
+     * *Nguyên nhân:* 
+       - Màn hình khóa chưa chấp nhận popup "Cho phép gỡ lỗi USB", thiết bị chuyển sang chế độ MTP/Chỉ sạc, hoặc interface con ADB bị lỗi driver stack.
+       - **Bẫy 2 Daemon ADB (Port 5037 vs 5038 / XiaoWei):** Khi XiaoWei đang chạy, máy có thể bị gắn độc quyền vào daemon ADB thứ hai (Port 5038). Phải kiểm tra ngay: `netstat -ano | findstr "5038"` và gọi với biến môi trường `ADB_SERVER_SOCKET=tcp:127.0.0.1:5038 adb devices`.
+     * **KỶ LUẬT CHẨN ĐOÁN (CẤM PHÁN ẨU RÚT CÁP):** Khi `adb devices` mất máy, CẤM TUYỆT ĐỐI phán bừa là người dùng rút cáp hay máy sập nguồn. BẮT BUỘC kiểm tra PnP USB (`Get-PnpDevice -PresentOnly`) và kiểm tra Port 5038 trước khi kết luận.
   3. **ADB `offline`:**
      * `adb devices` vẫn liệt kê serial nhưng ở trạng thái `offline`.
      * Windows PnP `Present: true`.
