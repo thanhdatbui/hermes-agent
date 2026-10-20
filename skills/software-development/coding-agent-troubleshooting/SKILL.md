@@ -399,8 +399,7 @@ In `ag_cli.py`, the CLI parser defines subcommands (`ask`, `fix`, `models`, `poo
   `ag_cli.py: error: unrecognized arguments: --profile`.
   **Fix**: When calling `fix`, omit `--profile`. The `fix` runner automatically coordinates and selects an available, non-cooldown profile via LRU / pool rotation.
 - **Task Scope & Timeout Sizing**:
-  Requesting an entire multi-file module (5+ files, full SQLite schema, FastMCP server, and test suite) in a single `ag_cli.py fix` call exceeds the typical 180s timeout.
-  **Fix**: Decompose into bite-sized 1-to-2 file tasks with focused prompts, or raise timeout to 240s-300s in background execution (`terminal(background=True, notify_on_complete=True)`).
+  Standard timeout across all dispatchers is 1200s (20m) for workers and 1500s (25m) for `ag_cli.py fix`. Never clamp `--timeout 180` in caller scripts. Cutting off runs at 180s triggers false `TimeoutExpired`, causing a cascading cooldown that locks all 22 pool profiles.
 
 
 ## OpenCode CLI — Windows Timeout, Encoding & Workspace Traps

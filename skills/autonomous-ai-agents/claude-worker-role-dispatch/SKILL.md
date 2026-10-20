@@ -21,23 +21,23 @@ When a Coordinator bypassed the Guard by running `claude -p "..." --dangerously-
 
 ## Role Configurations
 
-| Role | Model | Default Turns | Hard Cap Turns | Tools | Fallback |
-|------|-------|--------------|----------------|-------|---------|
-| `worker` | claude-haiku-5-5 | **15** | **15** | File có sẵn: Read,Edit (chặn Bash,Write,Web,Agent,Task)<br>File mới: Read,Edit,Write (chặn Bash,Web,Agent,Task) | `ag_cli.py fix` (gemini-3.8-flash-medium) |
-| `planner` | claude-sonnet-5-5 | 6 | **10** | Read,Bash | `ag_cli.py ask` |
-| `reviewer` | claude-sonnet-5-5 | 8 | **15** | Read,Bash | `ag_cli.py ask` |
+| Role | Model | Default Turns | Hard Cap Turns | Default Timeout | Tools | Fallback |
+|------|-------|--------------|----------------|-----------------|-------|---------|
+| `worker` | claude-haiku-5-5 | **15** | **15** | **1200s** (20m) | File có sẵn: Read,Edit (chặn Bash,Write,Web,Agent,Task)<br>File mới: Read,Edit,Write (chặn Bash,Web,Agent,Task) | `ag_cli.py fix` (gemini-3.8-flash-medium) |
+| `planner` | claude-sonnet-5-5 | 6 | **10** | **1200s** (20m) | Read,Bash | `ag_cli.py ask` |
+| `reviewer` | claude-sonnet-5-5 | 8 | **15** | **1200s** (20m) | Read,Bash | `ag_cli.py ask` |
 
 ## Usage
 
 ```bash
-# Worker (Haiku, max 15 turns)
-python D:/Taadaa/tools/claude_worker.py --role worker --timeout 55 "Fix the logic in..."
+# Worker (Haiku, max 15 turns, timeout 1200s)
+python D:/Taadaa/tools/claude_worker.py --role worker "Fix the logic in..."
 
 # Planner (Sonnet, max 10 turns, read-only)
-python D:/Taadaa/tools/claude_worker.py --role planner --timeout 75 "Design the interface..."
+python D:/Taadaa/tools/claude_worker.py --role planner "Design the interface..."
 
 # Reviewer (Sonnet, max 8 turns, read-only)
-python D:/Taadaa/tools/claude_worker.py --role reviewer --max-turns 6 --timeout 55 "Review: ..."
+python D:/Taadaa/tools/claude_worker.py --role reviewer --max-turns 8 "Review: ..."
 
 # Quota check
 python D:/Taadaa/tools/claude_worker.py --check-quota
@@ -114,6 +114,16 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
 
 ## Pitfalls
 
+- **BẪY HẠ TIMEOUT WORKER 180S & BẪY ĐỔ LỖI FILE AGENT (Timeout Governance & False Diagnosis Invariant 20/10/2026):**
+  1. *Gốc rễ sự cố:* Operator đã chấn chỉnh gay gắt: *"File agent lớn là sao, làm gì có chuyện do file agent mà làm lâu timeout. Ai cho phép mày để timeout 180s t nhớ hqua benchmark t đã tăng timeout r mà"*. Khi điều phối worker (Haiku, Claude, hay Agy CLI), Coordinator tự ý áp cờ `--timeout 180` (hoặc để mặc định 180s cũ) thay vì tôn trọng mức benchmark chuẩn của Operator (1200s–1500s).
+  2. *Bẫy chẩn đoán sai (False Diagnosis):* Khi tiến trình `agy` bị ngắt ở giây 180 và toàn bộ 22 profiles rơi vào cooldown, Coordinator nhìn vào dòng log `Rule file AGENTS.md truncated by 118233 bytes` rồi phán bừa là do file agent lớn làm đơ. Trong thực tế, mô hình vẫn stream token bình thường (`streamGenerateContent`) và chỉ đơn giản là bị caller kill sớm do timeout 180s quá ngắn.
+  3. *Quy chuẩn Timeout toàn Farm (1200s Standard):*
+     - `dispatch_worker.py`: mặc định `--timeout 1200`.
+     - `claude_worker.py`: `default_timeout = 1200` cho tất cả role (worker, planner, reviewer).
+     - `haiku_worker.py`: `DEFAULT_TIMEOUT = 1200`.
+     - `sol_worker.py`: `DEFAULT_TIMEOUT_PER_TURN = 300`.
+     - `ag_cli.py`: `ask` 1200s, `fix` 1500s.
+     Tuyệt đối CẤM hạ timeout của worker xuống 180s hay 60s gây timeout giả và làm tê liệt pool.
 - **KỶ LUẬT CÔ LẬP CHO HAIKU WORKER CHỐNG FAIL HÀNG LOẠT (User Mandate & Claude Reviewer APPROVED 19/10/2026):**
   Phân tích log `dispatch.jsonl` cho thấy Haiku fail 95% do vi phạm hợp đồng O(1) chứ không phải do hết quota. Để Haiku bớt lỗi tối đa và triệt tiêu 100% bệnh phân trần / khóc lóc, Coordinator BẮT BUỘC tuân thủ:
   1. *Nguyên tắc 1 Target - 1 Dispatch (Chống `unrelated_files_changed`):* Tuyệt đối CẤM yêu cầu vừa sửa code vừa sửa test trong 1 prompt. Khi cần sửa cả 2, phải tách làm 2 turn dispatch riêng biệt.
