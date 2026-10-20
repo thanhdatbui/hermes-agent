@@ -117,3 +117,51 @@ if any(k in r for k in ("missing or :0", "http_proxy is missing", ":0", "proxy i
 - **Zero Direct Traffic**: All farm devices (M1-M80, M201-M280) strictly route egress traffic through proxies (`192.168.110.2:20001..20080` for Kibe, `10008..10035` for Admin). Direct wlan0 routing is prohibited to prevent IP leaks and trigger fail-closed preflight guards.
 - **Hallucination Prevention**: Never assume or report that a machine is "running direct".
 - **O(1) Verification**: Use `python D:/Taadaa/tools/inspect_machine.py <N>`, which now inspects `settings get global http_proxy` on the device and reports `• Proxy: <host:port>` directly in output.
+
+---
+
+## Timeout & Switcher Token Omissions in `classify_feed_failure` (2026-10-20 Incident)
+
+### 1. Breakdown of the 18 False "Lỗi App TikTok/Script" Failures
+In 2026-10-20 Ca 3 (Phiên 1, Row 6), the Telegram watchdog reported 18 machines as `Lỗi App TikTok/Script`. Telemetry extraction from `run_manifest.json` showed:
+- **15 machines**: Session & plan deadline timeouts (`hard outer watchdog deadline expired`, `run plan max_duration_seconds exceeded before capture profile_preflight_navigation_blocker_recovery`).
+- **2 machines**: App focus loss (`TikTok focus lost`, `TikTok focus lost after navigation tap: unknown`).
+- **1 machine**: Drawer account switcher stall (`manual-needed:account-switcher-not-open: profile screen remained after switch-anchor tap`).
+- **0 machines**: Actual script crashes or code defects.
+
+### 2. Resolution in `formatters.py`
+In `D:/Taadaa/tiktok-luot nuoi acc/scripts/watchdog/formatters.py`:
+- Added `"tiktok focus lost"` to `"Lỗi mở/focus App TikTok"`.
+- Added `"account-switcher-not-open"`, `"account switcher"` -> `"Kẹt Account Switcher"`.
+- Added `"hard outer watchdog deadline expired"`, `"max_duration_seconds exceeded"`, `"deadline expired"` -> `"Hết thời gian phiên (Timeout)"`.
+After this fix, the ambiguous catch-all dropped to 0 on the same manifest dataset.
+
+---
+
+## Admin Farm Silent Zero-Run Root Cause: Missing `taikhoan_run_safe.xlsx` & Orphaned Dot-files
+
+### 1. Symptom & Silent Skip Mechanism
+Watchdog reports: `【FARM ADMIN - MÁY 201-280】: Không có lượt chạy nào trong phiên (Chưa chạy / Bị skip)`.
+In `tiktok_runner.py`:
+```python
+valid_count = _count_valid_accounts_for_row(row, workbook_path=cluster_wb)
+if valid_count == 0:
+    sys.stdout.write(f"tiktok_runner [{cluster_name}]: Row {row} co 0 account hop le trong {cluster_wb}, skipping current tick...\n")
+    continue
+```
+When `D:/OneDrive/TaadaaData/admin/taikhoan_run_safe.xlsx` is missing, `valid_count` returns `0`, and runner silently skips every 15-minute tick without raising a fatal exception or Telegram alert.
+
+### 2. Root Cause: Broken Atomic Publish Leaving Orphaned Dot-files
+During previous sync attempts by `sync-safe-workbook.py`, temporary workbooks are written as `.taikhoan_run_safe.<random>.xlsx`. If OneDrive file lock or Excel process blocks the final atomic rename (`os.replace`), the dot-file remains on disk (e.g. `.taikhoan_run_safe.rpqriyjb.xlsx`) while `taikhoan_run_safe.xlsx` is completely absent.
+
+### 3. Triage & Rapid Recovery Procedure
+1. Check file existence: `ls -la D:/OneDrive/TaadaaData/admin/taikhoan_run_safe.xlsx`.
+2. If missing, regenerate immediately via canonical sync:
+   ```bash
+   python "D:/Taadaa/tiktok-luot nuoi acc/scripts/sync-safe-workbook.py" \
+     --source "D:/OneDrive/TaadaaData/admin/taikhoan_dat_v2_updated .xlsx" \
+     --output "D:/OneDrive/TaadaaData/admin/taikhoan_run_safe.xlsx" \
+     --tik-dir "D:/OneDrive/TaadaaData/admin"
+   ```
+3. Verify account counts: verify `_count_valid_accounts_for_row(r, workbook_path="...")` returns ~80 valid accounts per row.
+4. Clean up stale dot-files (`.taikhoan_run_safe.*.xlsx`) using `safe_recycle.py`.
