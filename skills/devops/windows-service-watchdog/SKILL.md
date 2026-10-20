@@ -376,6 +376,7 @@ return $false  # Timed out
 
 ## References
 
+- `references/reboot-blackout-window-and-powershell-focus-stealing.md` — Reboot Blackout Window buffer phòng chống batch runner tranh chấp device lock với Windows Task Scheduler reboot (05:20, 11:20, 17:20), và giải pháp triệt tiêu cướp focus game của PowerShell qua .NET ProcessStartInfo CreateNoWindow cùng xử lý overlay CUA.
 - `references/periodic-window-report-activity-delta-standard.md` — Quy chuẩn báo cáo định kỳ theo cửa sổ thời gian (6h/12h/24h): chống bẫy báo cáo mù thời gian (Time-Blind Snapshot Trap), bóc tách khối biến động (Throughput/Velocity) lên đầu báo cáo, và phân loại trạng thái hoạt động theo từng cụm.
 - `references/silent-watchdog-safe-window-vs-reporting-gate-deadlock.md` — Silent watchdog safe rolling window vs periodic reporting gate contradiction (deadlock cửa sổ báo cáo), time skew after long batches, and composite multi-repo alert routing.
 
