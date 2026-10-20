@@ -7,13 +7,14 @@ description: >-
 
 # Farm Alert Autonomous Recovery
 
-> Ref: `references/focus-device-issue-cold-start-and-systemui-relaunch-20261020.md` (S7 cold-start delay, SystemUI occlusion & Intent relaunch).
+> Ref: `references/focus-device-issue-cold-start-and-systemui-relaunch-20261020.md`.
 > Ref: `references/account-switcher-verify-mismatch-triage-20261017.md`.
 > Ref: `references/batch-alert-canary-selection-and-atx-vs-winrt-ocr-20261018.md`.
 > Ref: `references/hard-enforcement-hook-gate-and-winrt-primary-atx-fallback-20261018.md`.
 > Ref: `references/feed-watchdog-2am-delayed-report-triage.md`.
 > Ref: `references/inspect-machine-terminal-guard-and-socket-hang-handling.md`.
-> Ref: `references/dual-cluster-reap-and-pre-push-squash-binding-20261019.md` (Dual-cluster lock reaper, subprocess stderr unmasking & pre-push single-commit binding).
+> Ref: `references/dual-cluster-reap-and-pre-push-squash-binding-20261019.md`.
+> Ref: `references/canary-receipt-expiry-and-safe-push-pre-commit.md`.
 
 ## UI evidence: target screen only
 
