@@ -25,9 +25,17 @@ Khi người vận hành hoặc agent sửa Keyword Video và Hashtag Pool trong
   * Sau đó, script tra Folder 20 vào CSDL thẩm quyền (đang lưu nhãn cào cũ như `noithat`), rồi ghi đè Keyword thành `Nội thất` và Hashtag thành `#noithat ...`, phá nát kênh thể thao / gym của người vận hành.
 - **Quy tắc vàng Dual-Folder Lock**: Khi chuẩn hoá tài khoản có $F_{vid} \neq F_{src}$, bắt buộc đăng ký **CẢ HAI FOLDER** ($F_{src}$ và $F_{vid}$) vào `manual_hashtag_protected_folders.json` và cập nhật cùng niche trong CSDL thẩm quyền. Script đồng bộ phải kiểm tra `is_folder_hashtag_protected(f_src) or is_folder_hashtag_protected(curr_vg)` *trước khi* thực hiện bất kỳ phép gán ô nào.
 
-## Quy Trình Xử Lý Triệt Để (4 Chốt Chặn Bắt Buộc)
+## Quy Trình Xử Lý Triệt Để (Quy Chuẩn Đối Soát 4 Chiều)
 
-1. **Khóa cứng Authority Database:** Cập nhật trường `niche` của folder nguồn trong cơ sở dữ liệu thẩm quyền trước khi sửa bảng tính.
-2. **Cập nhật đồng thời toàn bộ các cụm:** Cập nhật cả 2 sheet (TaiKhoan và Hashtag theo Folder) trên mọi cụm máy (Kibe, Admin).
-3. **Cắm cờ khóa cứng vật lý trong cả 2 kho (render & gốc):** Tạo file rỗng `.manual_hashtag_locked` và `.manual_avatar_locked` trong thư mục video render và video gốc.
-4. **Bảo vệ chống ghi đè:** Kiểm tra sự tồn tại của marker `.manual_hashtag_locked` trước khi thực hiện bất kỳ lệnh đồng bộ tự động nào.
+1. **Đối soát 4 chiều bắt buộc:**
+   $$\text{Tracker DB} \longleftrightarrow \text{16 Workbooks } (Tik1\text{..}8) \longleftrightarrow \text{Authority DB} \longleftrightarrow \text{Registry Khóa}$$
+   - Xác nhận username thật đang LIVE trên máy từ database tracker dashboard (loại trừ nick DIE/văng hoặc lệch mapping).
+   - Kiểm tra xem $F_{src}$ và $F_{vid}$ có bị phân kỳ không.
+2. **Khóa cứng Authority Database:** Cập nhật trường `niche` của CẢ folder nguồn ($F_{src}$) và folder render ($F_{vid}$) trong CSDL thẩm quyền để dù cron có tra folder nào cũng ra đúng niche.
+3. **Đăng ký bảo vệ kép vào Registry Khóa:** Thêm cả $F_{src}$ và $F_{vid}$ vào danh sách bảo vệ trong file cấu hình registry bảo vệ hashtag kèm metadata chi tiết (`username`, `machine`, `tik`, `niche`, `hashtag_pool`).
+4. **Cập nhật đồng thời toàn bộ các cụm:** Cập nhật cả 2 sheet (`TaiKhoan` và `Hashtag theo Folder`) trên mọi cụm máy (Kibe, Admin, Tiktok).
+5. **Cắm cờ khóa cứng vật lý trong cả 3 kho:** Tạo file rỗng `.manual_hashtag_locked` trong:
+   - Kho video gốc $F_{src}$ (`D:/video goc/<F_src>`)
+   - Kho video gốc $F_{vid}$ (`D:/video goc/<F_vid>`)
+   - Kho video render $F_{vid}$ (`D:/TIKTOK-videonuoinick/<F_vid>`)
+6. **Bảo vệ chống ghi đè:** Chạy thử `sync_all_tik_keywords.py` xác nhận 0 updates / không bị đè lại.
