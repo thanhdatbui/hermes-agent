@@ -8,6 +8,7 @@ description: "TikTok login automation via ADB — inventory, login, 2FA, UI hand
 ## 1. Nguyên Tắc Cốt Lõi
 - **Tài sản doanh nghiệp (FARM-ASSET-001):** Cấm tự ý logout tài khoản trên máy farm trừ trường hợp xác nhận là nick ký sinh qua `do_logout_account.py`.
 - **Pass ảo / Passwordless:** Khi cột Mật khẩu trong Excel rỗng, đăng nhập qua OTP email hoặc 2FA TOTP (`--otp-only`).
+- **Bắt Buộc Dùng Canonical Account Switcher Trong automation-core (FARM-SWITCHER-001):** CẤM TUYỆT ĐỐI tự viết ad-hoc switcher bằng OCR hoặc tap tọa độ mù. Mọi script/runner chuyển acc trên farm BẮT BUỘC dùng `automation_core.tiktok.account_switcher` (qua `FollowAdapter`). Chi tiết xem tại [`references/canonical-account-switcher-automation-core-mandate.md`](references/canonical-account-switcher-automation-core-mandate.md).
 - **Tra cứu O(1):** Dùng `python D:/Taadaa/tools/inspect_machine.py <N>`.
 
 ## 2. Quy Trình Vận Hành Đăng Nhập

@@ -42,3 +42,4 @@ version: 1.3.0
 - Chuẩn hóa thuật ngữ và đo lường fail-closed cho báo cáo 6H: xem [`references/gpm-6h-nurture-report-terminology-and-fail-closed-metrics.md`](references/gpm-6h-nurture-report-terminology-and-fail-closed-metrics.md).
 - Quy trình lấy Google AI Studio API Key trên tài khoản farm/mới (GCP ToS + Import Project): xem [`references/google-ai-studio-api-key-provisioning-flow.md`](references/google-ai-studio-api-key-provisioning-flow.md).
 - Google AI Studio API Key Provisioning via GPM & GCP Project Import (Zero-Human Flow): xem [`references/google-ai-studio-api-key-provisioning-and-gcp-import.md`](references/google-ai-studio-api-key-provisioning-and-gcp-import.md).
+- GPM Gmail Login Shifts Watchdog Multi-Shift Triage & Burst Execution: xem [`references/gpm-gmail-login-shifts-watchdog-triage-and-burst-execution.md`](references/gpm-gmail-login-shifts-watchdog-triage-and-burst-execution.md).

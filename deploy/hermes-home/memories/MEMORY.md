@@ -4,7 +4,7 @@ Follow: dò +2 (max 40); lùi 4 sàn 15. Probation: P1 (T1: 3-4, T2: 5-6), P2 kh
 §
 Hotmail: CẤM mail cá nhân; @fviainboxes.com đọc OTP. Excel 3,4,5+G. Pin >=1000 view.
 §
-Preempt lock; ping 0% loss; ARP 110.x. Host Kibe: ADB 5037/5038; Term fg max 60s; CLI nặng background=True+notify. Ruijie tắt Wi-Fi. Rename: tap bio (473,703); --clear-bio; bút chì (x_name+50); văng->login_v1; tên 1 từ bỏ qua.
+Rename: tap bio (473,703); --clear-bio; bút chì (x_name+50); core switcher; văng->login_v1; tên 1 từ bỏ.
 §
 Argon=:20135 (token 4s). Claude CLI Planner. Timeout: worker 1200s, sol 300s/turn, agy 1500s. Omni: sửa .env phải restart nạp RAM (psutil đối soát). Sol: consult_advisor độc đạo CLI; advisor_tool core auto-append (cấm xóa).
 §
