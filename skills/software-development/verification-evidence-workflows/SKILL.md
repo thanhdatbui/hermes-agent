@@ -163,6 +163,14 @@ Gated tasks needing AG Opus exact-byte approval + exact-allowlist commit
 (delegate-crash fallback, pre-commit audit invocation, commit guard rails,
 Windows spawn shim, fake clock): `references/exact-byte-gate-execution.md`.
 
+## Interrupted-command and worker no-op evidence gate
+
+A normal worker exit code is not proof that the requested change was applied. Before reporting completion, independently verify `target_changed`, the exact target diff, and the focused command's real output. If the worker reports `BLOCKED`, `target_changed: false`, provider/model mismatch, or a test contradiction, classify that result explicitly and do not paraphrase it as a successful implementation.
+
+Treat an interrupted, orphan-recovered, or unknown-effect test command as **no evidence** until the command is rerun or the exact effect is otherwise inspected. Do not report a historical test count from a worker summary, a truncated transcript, or a command whose process boundary was interrupted. After the final edit, rerun the focused test against the final bytes, then separately verify runtime/deployment copies when the task has a source copy and a live service copy. A source diff alone does not prove the service is using it.
+
+For recovery/state-machine fixes, verify the full path rather than only the first predicate: pre-reboot eligibility, persisted resume marker/reason, and post-start consumer behavior. If existing tests encode the old policy, update the contract and focused regression fixture together only when that test file is inside the explicit allowlist; otherwise stop with the contradiction instead of silently weakening production behavior or claiming the fix is done.
+
 ## Dirty-tree scope classification before evidence
 
 A dirty repository is not automatically a conflict and must not widen the
