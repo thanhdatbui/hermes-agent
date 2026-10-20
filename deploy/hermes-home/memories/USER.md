@@ -8,7 +8,7 @@ cấm khóc khi chưa hết fallback (Claude->Agy). Repo dirty bắt buộc --fi
 §
 Ava/Media: WinRT OCR; CẤM gửi mù; CẤM báo DONE browser/UI thiếu MEDIA: (Gate 6, bắt buộc vision soi mắt); Ava đúng creator; pHash/crop thật.
 §
-Worker: Haiku bắt buộc claude-haiku-5-5, prompt inline -p (cấm stdin pipe); Agy pool 22; Farm DHCP.
+Worker: Haiku claude-haiku-5-5, prompt inline -p; Agy pool 22; Timeout chuẩn 1200s-1500s (đã benchmark), cấm hạ 180s hay đổ lỗi file agent.
 §
 Canary: target-bound; WinRT OCR->ATX (cấm uiautomator); Singbox. MỌI rule bắt buộc Guard cơ học (cấm prompt tiêm); Claude duyệt; cấm đùn việc khi dính guard.
 §

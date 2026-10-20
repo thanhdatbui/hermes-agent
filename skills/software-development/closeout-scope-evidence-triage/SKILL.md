@@ -42,6 +42,27 @@ Never claim that 80–84 is approved merely because a source branch or memory no
 - Do not create a new closeout runner or change a guard before existing gate, scope, ownership, and token contracts are reconciled.
 - If a candidate cannot be safely isolated, report BLOCKED with the command, error, hashes, and ownership evidence; never fabricate approval.
 
+## Diff Budget Sizing & Combined Test-Diff Invariant (30KB Gate Limit 20/10/2026)
+
+`closeout_gate.py` enforces a hard physical cap: `MAX_DIFF_BYTES_GATE = 30_000` (30 KB). Exceeding this triggers instant fail-fast:
+`GATE-FAIL(diff-too-large): targeted diff quá lớn (> 30000 bytes). Vi phạm quy chuẩn phân rã task O(1).`
+
+1. **The Test-Exclusion Reviewer Penalty Trap**:
+   When the combined diff of `impl.py` + `test_impl.py` exceeds 30KB, Coordinators often make the mistake of submitting ONLY `impl.py` in `--files` to squeeze under 30KB.
+   - **Consequence**: Sol Reviewer penalizes `test_evidence` heavily (capping score at 73–78/100, below 85), repeatedly citing: *"Điểm test_evidence bị giới hạn; việc thay đổi logic mà không cung cấp diff của test khiến chưa thể xác nhận an toàn."*
+2. **The Dirty Monolith Contamination**:
+   Unrelated dirty files (such as `jobs.json` with 600+ lines diff from cron updates) staged or passed to `--files` consume 50KB+ instantly, blowing the budget.
+3. **Combined Budget Protocol (≤ 29,500 bytes for Impl + Test)**:
+   - **Unstage Dirty Non-Targets**: Run `git status` and ensure only the exact target implementation and test files are staged/targeted.
+   - **Surgical Diff on Impl**: Retain existing function signatures and helpers untouched. Avoid formatting refactors or gratuitous rewrites of untouched functions (e.g. `run_night_batch`).
+   - **Surgical Test Assertions**: Extend existing test suites minimally using parameterized cases or compact mock helpers instead of copying large boilerplate fixtures.
+   - **Pre-Flight Diff Byte Check**:
+     Always run before invoking `closeout_gate.py`:
+     ```bash
+     git diff HEAD -- <target_impl.py> <target_test.py> | wc -c
+     ```
+     Ensure the output is strictly **<= 29,500 bytes**, allowing BOTH implementation and test diffs to enter the Reviewer's payload together.
+
 ## Background Cron Commit Collision & Scope Reconciliation (Hermes / Auto-Sync Repos)
 
 In repositories where recurring background crons periodically auto-commit (e.g., `sync-hermes-skills-and-brain-to-git` committing skills/memories every 5 minutes in `D:/Taadaa/Hermes`):
