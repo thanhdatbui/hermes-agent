@@ -14,7 +14,7 @@ Closeout: Grace 80-84 auto-push; Sol 80% diff/10% log; Claude 85%->Agy; Strike 3
 §
 Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; Lock reaper Kibe auto-reap Admin qua SSH. Pre-push: BẮT BUỘC 1 commit duy nhất (squash/reset) khớp scope_hash gate_audit. Cron: 100% no_agent+script thô.
 §
-Proxy 110.2:port (Kibe: 20001..80; Admin: 10008..35; toàn bộ máy dùng proxy, CẤM direct). M7 ngoại lệ phần cứng: bắt sóng 'Dat' (pass 19051995), cấm ép kibe 1.
+M7 ngoại lệ: bắt 'Dat_2.4G' (thuần 2.4G né bẫy +40 bonus 5G), cấm kibe 1.
 §
 Canary: target-bound; WinRT OCR -> ATX (cấm uiautomator); done_gate verify hash+MEDIA. Claude quota probe >2h.
 §

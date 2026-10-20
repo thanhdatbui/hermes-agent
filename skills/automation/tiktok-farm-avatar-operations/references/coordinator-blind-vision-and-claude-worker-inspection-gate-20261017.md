@@ -7,13 +7,35 @@ Trong quá trình vận hành chuẩn hóa avatar TikTok (ví dụ: nick `@anan1
   * User nổi giận phản hồi: *"Có phải mặt chú mèo éo đâu"*, *"K cái nào ổn cả đổi cái khác"*, và chất vấn: *"Đéo cái nào đc. Mày có thật sự dùng llm đọc ảnh trc khi gửi k v... ảo giác bố láo nữa"*.
   * Khi gọi Claude Worker mở ảnh thật ra soi mắt, kết quả kinh hoàng: `cat_4options_preview.jpg` 100% KHÔNG CÓ CON MÈO NÀO, mà là các khuôn mặt đàn ông diễn thuyết đeo micro headset với phụ đề gay gắt: *"...U MÀ BẠN NGU MÀ BẠN ĐÒI CHIẾN THẮNG"*; còn `cat_batch2_preview.jpg` là phụ nữ đứng trong showroom cửa nhựa *"CỬA SLIM BENLUXURY"*, phụ nữ đeo kính và vệt màu neon, chỉ có duy nhất 1 góc chân mèo!
 
-## 2. Nguyên Nhân Gốc Rễ (Root Cause)
-1. **Coordinator Bị Mù Ảnh Native (Blind Vision)**:
-   - Model điều phối chính (`omni-worker`) là mô hình thuần text hoặc kênh truyền tải multimodal của harness bị nghẽn/lỗi socket daemon `agent-browser` (`daemon started concurrently with different daemon configuration`, `Interrupted`).
-   - Mặc dù Coordinator đã gọi `browser_navigate` và `browser_vision`, kết quả trả về không nạp được tensor pixel ảnh vào context của mô hình.
-2. **Cạm Bẫy Hallucination Theo Tên File & Giả Định (Preconception Trap)**:
+## 2. Nguyên Nhân Gốc Rễ Kỹ Thuật (Hermes Wire Stripping & Config Trap)
+Khi user chất vấn: *"Liên quan omni worker chạy gemini có đọc ảnh mà??? Gọi claude cli vào điều tra"*, cuộc điều tra mã nguồn Hermes (`agent/tool_executor.py`, `agent/image_routing.py`, `run_agent.py`) đã làm rõ 100% cơ chế:
+1. **Gemini hoàn toàn có Vision, nhưng bị Hermes lột sạch pixel trước khi gửi wire**:
+   - `browser_vision` chụp ảnh thành công và tạo dict multimodal chứa `image_url` (base64 data).
+   - Tuy nhiên, trước khi đưa kết quả tool vào tin nhắn gọi API, hàm `_tool_result_content_for_active_model` trong `run_agent.py` kiểm tra:
+     ```python
+     if not self._model_supports_vision():
+         return _multimodal_text_summary(result)  # Lột sạch ảnh, chỉ gửi text summary!
+     ```
+   - Hàm `_model_supports_vision()` gọi `_lookup_supports_vision(provider, model, cfg)`. Do `omni` là custom provider nội bộ (không có trong catalog `models.dev`), và trong `config.yaml` chưa khai báo cờ `supports_vision: true`, hàm tra cứu trả về `None`.
+   - Vì `_lookup_supports_vision(...) is True` thất bại, Hermes coi `omni-worker` là **mô hình non-vision thuần text**.
+   - Hermes **lột bỏ hoàn toàn mảng `image_url`** và thay thế bằng chuỗi text:
+     > `"Image attached natively for the main model (500.6 KB). Answer using built-in vision."`
+   - Gemini ở phía backend nhận được câu lệnh khẳng định ảnh đã vào context nhưng trên thực tế payload hoàn toàn không có pixel nào, dẫn đến việc Gemini buộc phải "chém gió" dựa trên tên file và prompt!
+
+2. **Cách khắc phục triệt để trong `config.yaml`**:
+   - Thêm cờ `supports_vision: true` (hoặc alias `vision: true`) vào model tương ứng:
+     ```yaml
+     providers:
+       omni:
+         models:
+           omni-worker:
+             supports_vision: true  # Bắt buộc để Hermes không lột bỏ image_url
+     ```
+
+3. **Cạm Bẫy Hallucination Theo Tên File & Giả Định (Preconception Trap)**:
    - Khi không có mắt nhìn thật, LLM tự động "chém gió" dựa vào tên file (`cat_opt...`, `sunflower`, `4.mp4`) và nội dung giả định trong prompt, tự vẽ ra chi tiết sống động (màu mắt, bộ lông, hoa hướng dương) để đối phó với Invariant Soi Mắt.
-3. **Lỗ Hổng Vision Gate Cũ**:
+
+4. **Lỗ Hổng Vision Gate Cũ**:
    - Hook `media_vision_gate.py` chỉ nằm trong `.claude/hooks/`, không bảo vệ tầng ngoài của Hermes Coordinator, dẫn đến việc thẻ `MEDIA:` bị gửi đi tùy tiện mà không qua kiểm chứng thị giác thực tế.
 
 ## 3. Quy Trình Khắc Phục Triệt Để & Bắt Buộc (Invariant Claude Worker Vision Gate)
