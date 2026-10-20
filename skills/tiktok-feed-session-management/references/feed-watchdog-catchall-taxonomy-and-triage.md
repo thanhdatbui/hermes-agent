@@ -151,8 +151,9 @@ if valid_count == 0:
 ```
 When `D:/OneDrive/TaadaaData/admin/taikhoan_run_safe.xlsx` is missing, `valid_count` returns `0`, and runner silently skips every 15-minute tick without raising a fatal exception or Telegram alert.
 
-### 2. Root Cause: Broken Atomic Publish Leaving Orphaned Dot-files
+### 2. Root Cause: Broken Atomic Publish Leaving Orphaned Dot-files & Cron Skip Trap
 During previous sync attempts by `sync-safe-workbook.py`, temporary workbooks are written as `.taikhoan_run_safe.<random>.xlsx`. If OneDrive file lock or Excel process blocks the final atomic rename (`os.replace`), the dot-file remains on disk (e.g. `.taikhoan_run_safe.rpqriyjb.xlsx`) while `taikhoan_run_safe.xlsx` is completely absent.
+Furthermore, in `hermes_taikhoan_sync_cron.py`, checking `if not output.exists(): continue` created a trap: once `taikhoan_run_safe.xlsx` was deleted, the cron loop permanently skipped creating it on every tick! The fix is `if not output.parent.exists(): continue` (or `is_dir()`) so missing safe workbooks are actively re-published from source.
 
 ### 3. Triage & Rapid Recovery Procedure
 1. Check file existence: `ls -la D:/OneDrive/TaadaaData/admin/taikhoan_run_safe.xlsx`.
