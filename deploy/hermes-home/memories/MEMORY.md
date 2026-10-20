@@ -4,11 +4,11 @@ Follow: dò +2 (max 40); lùi 4 sàn 15. Probation: P1 (T1: 3-4, T2: 5-6), P2 kh
 §
 Hotmail: CẤM mail cá nhân; @fviainboxes.com đọc OTP. Excel 3,4,5+G. Pin >=1000 view.
 §
-Preempt lock; ping 0% loss; ARP 110.x. Host Kibe: ADB 5037/5038; Term fg max 60s; CLI nặng background=True+notify. Ruijie tắt Wi-Fi. Rename: tap bio (473,703); --clear-bio; bút chì (x_name+50); văng->login_v1; Switcher loop->Back; tên 1 từ bỏ qua.
+Preempt lock; ping 0% loss; ARP 110.x. Host Kibe: ADB 5037/5038; Term fg max 60s; CLI nặng background=True+notify. Ruijie tắt Wi-Fi. Rename: tap bio (473,703); --clear-bio; bút chì (x_name+50); văng->login_v1; tên 1 từ bỏ qua.
 §
-Argon=:20135 (token 4s). Claude CLI Planner. Timeout worker farm chuẩn 1200s (dispatch/claude/haiku), sol 300s/turn, agy fix 1500s; cấm đè 180s gây cascade lock 22 agy profile.
+Argon=:20135 (token 4s). Claude CLI Planner. Timeout: worker 1200s, sol 300s/turn, agy 1500s. Omni: sửa .env phải restart nạp RAM (psutil đối soát). Sol: consult_advisor độc đạo CLI; advisor_tool core auto-append (cấm xóa).
 §
-Stale Up: xóa draft. Revert: TikWM. Ghim/Riêng tư ko proof. Cào: max 60. Cron TB: device_lock+rolling<=5; bỏ ca 0h.
+Stale Up: xóa draft. Revert: TikWM. Cào: max 60. Cron TB: device_lock+rolling<=5; bỏ ca 0h.
 §
 Closeout: Grace 80-84 auto-push; Sol 80% diff/10% log; Claude 85%->Agy; Strike 3 handoff cấm clarify, Reviewer tự sửa. Night Chain 0h: P1 Gmail, P2 2FA; cron local; state lock.
 §
@@ -20,6 +20,6 @@ Canary: target-bound; WinRT OCR -> ATX (cấm uiautomator); done_gate verify has
 §
 Ava: Trích clip gốc representative_frames; Vision LLM quét DB lọc ava rác/lệch. Gate 6 fail-closed: cấm trần thuật UI thiếu MEDIA:; SHA256 thật; cấm gửi mù. Dọn .thumbnails+Camera; Picker 0,1. Đối soát 4 chiều F_src!=F_vid khóa kép 2 folder.
 §
-Reboot 3 ca (05:20, 11:20, 17:20), né TFT/War3. Task ngầm VBS/wscript Hidden+CREATE_NO_WINDOW. 'Tắt' khi game = tắt cửa sổ nháy, cấm pause cron.
+Reboot 3 ca (05:20, 11:20, 17:20), né TFT/War3. Task ngầm VBS/wscript Hidden+CREATE_NO_WINDOW. Game = tắt nháy, cấm pause cron.
 §
 MCP: agy cắm remote URL thẳng. FastMCP domain ngoài: enable_dns_rebinding_protection=False chống 421. Claude Win: claude-haiku-5-5 chuẩn, prompt phải sau -p (cấm stdin).
