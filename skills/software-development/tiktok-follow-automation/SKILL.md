@@ -8,6 +8,7 @@ description: "TikTok follow runner and fail-closed farm ops."
 ## Non-negotiable operating rules
 
 - Tài liệu chuyên sâu nằm trong `references/`; dùng đúng reference theo tình huống.
+- `references/dual-cluster-follow-watchdog-omission-and-safe-sync-desync.md`: Khắc phục lỗi Watchdog Follow/Video nuốt chửng khối Farm Admin khi không có lượt chạy (`• Trạng thái: Chưa chạy / Bị skip`), và cơ chế phục hồi khi mất file `taikhoan_run_safe.xlsx` Admin khiến runner silent skip.
 - `references/post-follow-verification-and-reconcile.md`: tách tap, Path-B và web reconciliation; schema bằng chứng per-UID.
 - `references/follow-reconcile-queue-shift-and-gate-timeout-diagnostics.md`: Lệch follow do tàn dư ca cũ / bù trừ âm dương snapshot window cutoff, cạm bẫy quy chụp nuốt mốc ngày cũ khi ca chạy sớm 06:00 trước snapshot 07:00, lọc sạch spam acc 0 lượt (zero-delta clean reconcile invariant), cạm bẫy FakeAdapter, timeout 120s Closeout.
 - `references/triage-stale-session-and-mock-adapter-pitfalls.md`: Triage ca cũ watchdog báo vs code đã fix (mtime vs SHA), FakeAdapter fixture và chia nhỏ diff.
