@@ -167,3 +167,36 @@ Invoke `omp` directly using the mapped model:
 omp --model omniroute/antigravity/gemini-3.8-flash-tiered -p "<task>"
 ```
 This bypasses both browser OAuth and quota limits, achieving benchmark latency under 150s with 100% test pass rate.
+
+---
+
+## 6. Multi-Profile Pool Architecture (`OMP_PROFILE`) & Fair Native Benchmark vs `agy cli`
+
+### Why OmniRoute is Unfair for Pure Harness Benchmarks
+Routing `omp` through OmniRoute (`http://127.0.0.1:20129/v1`) introduces a proxy layer:
+1. `omp` converts internal prompt/context into OpenAI Chat Completions payload format.
+2. OmniRoute parses the payload, selects an account from the pool, and transforms it into Google Antigravity SSE format.
+3. Google responds via SSE stream -> OmniRoute parses and re-streams as OpenAI chunk format -> `omp` renders.
+This adds HTTP hop latency, JSON serialization overhead, and does not test `omp`'s native Google Antigravity client logic.
+
+### Native Multi-Profile Support (`OMP_PROFILE`)
+`omp` has built-in first-class multi-profile support implemented in `@oh-my-pi/pi-utils/src/dirs.ts`:
+- Controlled via flag `--profile <name>` or environment variable `OMP_PROFILE=<name>`.
+- Storage layout:
+  * Default profile: `~/.omp/agent/agent.db` and `~/.omp/agent/models.yml`.
+  * Named profile: `~/.omp/profiles/<name>/agent/agent.db` and `~/.omp/profiles/<name>/agent/models.yml`.
+- Profiles are completely isolated (separate auth credentials, conversations, SQLite DBs, and custom models).
+
+### The Fair Benchmark Recipe: Native Multi-Profile Pool
+To set up a 1-to-1 fair benchmark against `agy cli`:
+1. Open a real user terminal (CMD or PowerShell) on Windows (avoid automated background subshells that trigger `stdin closed`).
+2. Run login for each profile:
+   ```cmd
+   omp --profile acc_01 login google-antigravity
+   omp --profile acc_02 login google-antigravity
+   ```
+3. Run native benchmark requests directly without any proxy:
+   ```cmd
+   omp --profile acc_01 --model google-antigravity/gemini-3.8-flash -p "<benchmark_prompt>"
+   ```
+4. Build a lightweight rotation runner (`omp_pool_runner.py`) using `OMP_PROFILE=acc_XX` to rotate profiles on HTTP 429/ResourceExhausted, identical to `ag_cli.py`.

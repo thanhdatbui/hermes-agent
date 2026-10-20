@@ -693,5 +693,15 @@ For full details on `omp` installation, Bun runtime resolution, and Google AI St
 ### 4. `omp login` Non-Interactive Pipe Trap & Browser VPN Conflict
 - `omp login` aborts with `Login cancelled: stdin closed` when run from scripts where stdin is not an open stream. Keep stdin open via `subprocess.Popen(..., stdin=subprocess.PIPE)` or run interactively in a PTY.
 - Active browser VPN extensions block loopback redirects to `127.0.0.1:51121` (`ERR_CONNECTION_REFUSED`).
-- **Account Boundary & Token Mismatch**: CẤM chiếm dụng Chrome cá nhân của user. Tokens từ pool `agy_profiles` không thể inject trực tiếp vào `agent.db` của `omp` do khác OAuth Client ID (bị lỗi 401 UNAUTHENTICATED). Luôn dùng đường OmniRoute port 20129.
+- **Account Boundary & Token Mismatch**: CẤM chiếm dụng Chrome cá nhân của user. Tokens từ pool `agy_profiles` không thể inject trực tiếp vào `agent.db` của `omp` do khác OAuth Client ID (bị lỗi 401 UNAUTHENTICATED). Luôn dùng đường OmniRoute port 20129 khi chạy tự động headless.
+
+### 5. Multi-Profile Isolation (`OMP_PROFILE` & `--profile`) & Fair Native Benchmark
+- `omp` hỗ trợ cô lập đa profile native 100% qua cờ `--profile <name>` hoặc biến môi trường `OMP_PROFILE=<name>`.
+- **Cấu trúc lưu trữ sandbox**: Mỗi profile lưu độc lập tại `~/.omp/profiles/<name>/agent/` (gồm `agent.db`, `models.yml`, session cache).
+- **Benchmark công bằng với `agy cli`**: Để đo hiệu năng nguyên bản 1-1 giữa `omp` và `agy cli` mà không qua proxy OmniRoute (:20129), bắt buộc đăng nhập native OAuth bằng terminal thật (không dùng script ngầm bị nuốt stdin):
+  ```bash
+  omp --profile acc_01 login google-antigravity
+  omp --profile acc_01 --model google-antigravity/gemini-3.8-flash -p "<task>"
+  ```
+  Token được lưu vào `~/.omp/profiles/acc_01/agent/agent.db` và gửi request trực tiếp lên backend Google Cloud Antigravity.
 
