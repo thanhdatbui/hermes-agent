@@ -68,6 +68,7 @@ Before authoring or modifying any gate, guard hook, or network script, verify ag
    - Codebase safety: strictly forbid broad disk sweeps (`os.walk`, `glob(recursive=True)`, `find`, `grep -r`), never edit protected system hook files.
 2. **Tier 2 — Operator farm invariants:**
    - Direct exceptions: M67 and M69 are direct (`http_proxy` `:0`, bypass local Sing-box proxy).
+   - SSID exception: M7 is permanently authorized to connect to SSID `Dat` (pass `19051995`) via Aruba; exempt from fleet `kibe 1` rule due to 5GHz hardware defect.
    - Rescue override: allow `force_preempt=True` in `operator_device_lock` during emergency machine rescues.
    - Nurture protection: return `NOOP_HEALTHY` when current state matches expected to avoid breaking active 25-worker TikTok sessions.
    - Network hierarchy: Sing-box LAN only, strictly no VPN, Ruijie > Aruba.

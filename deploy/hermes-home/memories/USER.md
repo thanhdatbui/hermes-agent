@@ -14,4 +14,4 @@ Canary: target-bound; WinRT OCR->ATX (cấm uiautomator); Singbox. MỌI rule b�
 §
 Báo cáo Telegram: tóm tắt KPI+exception; Dashboard :1905 full-page.
 §
-User: ưu tiên kiến trúc, Claude plan; cấm phán rút cáp chưa check PnP/ADB 5038; cấm sai bảo user; trần 40 airtime (AP 64); mạng Dat 4 Aruba; Ruijie tắt Wi-Fi.
+User: ưu tiên kiến trúc, Claude plan; cấm phán rút cáp chưa check PnP; cấm sai bảo user (rút nguồn AP/router); trần 40 airtime; M7 chốt bắt Dat (19051995); Ruijie tắt Wi-Fi.
