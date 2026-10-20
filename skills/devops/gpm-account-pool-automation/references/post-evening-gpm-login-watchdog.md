@@ -1,18 +1,30 @@
 # Post-Evening GPM Login Watchdog & Proxy Quota Guard
 
-## 1. Mục đích & Cơ chế hoạt động
-Watchdog `post-evening-gpm-login-watchdog` (chạy script `post_evening_gpm_login_watchdog.py`) vận hành trong khung giờ tối (20:15 - 23:45 HCM) để tự động đăng nhập các tài khoản Gmail lên GPMLogin:
-- **Tập ứng viên**: Gmail hết hạn `cooldown_7days` hoặc tài khoản `LIVE` trên sheet `Kibe_Farm_S7` đã tạo profile GPM nhưng chưa nạp `omniroute_success`.
-- **An toàn mạng (Proxy Quota)**: Giới hạn cứng `MAX_LOGINS_PER_PROXY = 2` (tối đa 2 lần login/cổng proxy/ngày). Mỗi thiết bị (`mid`) tối đa 1 lần login/ngày.
+## 1. Mục đích & Cơ chế hoạt động 3 Ca (Shifts)
+Watchdog `gpm-gmail-login-shifts-watchdog` (chạy script `post_evening_gpm_login_watchdog.py`) tự động đăng nhập các tài khoản Gmail lên GPMLogin trong 3 khung giờ rảnh an toàn giữa các ca nuôi feed của Phone Farm:
+- **Khung giờ 3 ca**:
+  + **Ca Sáng**: 09:30 – 11:20 (sau Ca 1 nuôi feed kết thúc lúc 09:25).
+  + **Ca Chiều**: 15:30 – 17:20 (sau Ca 2 nuôi feed kết thúc lúc 15:25).
+  + **Ca Tối**: 21:30 – 23:45 (sau Ca 3 & avatar cron kết thúc).
+- **Cơ chế nhịp chạy**: Cron gọi mỗi 5 phút (`*/5 9,10,11,15,16,17,21,22,23 * * *`). Mỗi tick chạy 1 batch tối đa `MAX_WORKERS = 5` tài khoản song song (stagger 5s).
+- **Tập ứng viên**: Gmail hết hạn `cooldown_7days` trong `oauth_pipeline_status.json`, hoặc tài khoản `LIVE` trên sheet `Kibe_Farm_S7` đã tạo profile GPM nhưng chưa nạp `omniroute_success`, hoặc tài khoản bị văng session từ cron nuôi (`NEEDS_LOGIN`).
+- **An toàn mạng & Máy (Proxy & Device Quota Guard)**:
+  + Giới hạn cứng `MAX_LOGINS_PER_PROXY = 2` (tối đa 2 lần login/cổng proxy/ngày).
+  + Mỗi máy (`mid`) tối đa 1 lần login/ngày.
+  + **Gate máy rảnh & online ADB**: Máy bắt buộc phải `is_machine_idle == True` (không dính lock, cách slot manifest kế tiếp >= 10m) VÀ serial phải đang online ADB (`get_online_adb_serials()`) để sẵn sàng phối hợp giải prompt/TOTP/settings.
 
-## 2. Ý nghĩa thông báo tổng kết ca tối
-Khi watchdog báo về:
+## 2. Ý nghĩa thông báo tổng kết ca & Chốt ca sớm (Forced Close)
+Khi watchdog gửi thông báo tổng kết ca về Telegram:
 ```
-[LOGIN GPM ĐÊM - TỔNG KẾT] ✓ <success> | ✗ <fail> | proxy_limit 2/port/ngày | Hoàn tất ca tối
+[LOGIN GPM <SÁNG/CHIỀU/TỐI> - TỔNG KẾT]
+• Kết quả ca: ✓ <success> | ✗ <fail> | max_proxy 2/cổng | Hoàn tất ca <sáng/chiều/tối>
+• Còn lại trong hàng đợi: <skipped_busy> acc chờ ca tiếp theo (tối đa 5 workers/lần)
+• Profile sẵn Google Session : <count> accounts
 ```
-Điều này mang ý nghĩa:
-1. **Hoàn tất ca an toàn**: Không còn tài khoản nào hợp lệ hoặc toàn bộ các cổng proxy tương ứng đã chạm trần `2/port/ngày`. Trạng thái `finished: true` được ghi vào `post_evening_gpm_login_state.json`.
-2. **Không phải lỗi crash**: Đây là chốt chặn an toàn (Circuit Breaker) ngăn chặn việc spam login gây cháy dải proxy di động 4G hoặc làm Google cắm cờ (flag/checkpoint) tài khoản farm.
+**Bản chất vận hành & Cách đọc số liệu**:
+1. **Thời gian chạy thực tế vs Toàn ca**: Watchdog chỉ chạy cuốn chiếu các batch khi có máy rảnh thỏa mãn. Ví dụ ca sáng từ 09:30, chỉ mất ~26 phút (09:30 - 09:56) để xử lý xong 30 acc (6 batch × 5 workers).
+2. **Tại sao dừng khi còn acc trong hàng đợi?**: Các acc còn lại trong queue không chạy tiếp được vì máy tương ứng đang bận (`idle=False` do dính device lock hoặc chạm buffer 10 phút trước ca nuôi tiếp theo). Watchdog không cố đè task farm.
+3. **Chốt ca khi hết khung giờ (`is_late`)**: Đến mốc 11:15 (Sáng), 17:15 (Chiều), hoặc 23:30 (Tối), nếu vẫn còn candidates chờ máy rảnh, script tự động kích hoạt `is_late = True`, chốt ca, gửi báo cáo tổng kết và ghi `finished_shifts` vào `post_evening_gpm_login_state.json` để nhường máy cho ca nuôi feed tiếp theo. Các acc chờ sẽ tự động chạy tiếp vào ca sau.
 
 ## 3. Các dạng thất bại phổ biến & Cách đối soát
 Khi `fail > 0` (hoặc `✓ 0 | ✗ N | proxy_limit 2/port/ngày`):

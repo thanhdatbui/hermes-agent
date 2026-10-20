@@ -188,5 +188,27 @@ Trong `follow_state.py`, runner tự động điều chỉnh trần follow cho c
   * TUYỆT ĐỐI CẤM tư duy máy móc coi việc "nick bị nhả Anchor rồi bị hủy phiên và tống vào diện Cooldown là oan".
   * Việc hủy phiên và Cooldown ngay lập tức là HOÀN TOÀN ĐÚNG ĐẮN, HỢP LỆ VÀ BẮT BUỘC. Bất kỳ phân tích hay báo cáo nào cố tình biện minh rằng nick "bị phạt oan" khi nhả Anchor đều bị coi là ngụy biện và vi phạm kỷ luật vận hành farm.
 
+## 16. Chẩn Đoán Lệch Số Liệu Dashboard: Bot Ghi Nhận vs Web Delta (Tự Nhiên & Mốc Snapshot SQL RankedPrev)
+- **Hiện tượng**: Dashboard hiển thị chênh lệch giữa `Bot +X lượt` và `Web +Y lượt` trong card `👥 TỔNG ĐÃ FOLLOW (FOLLOWING)` (ví dụ: `⚡ Tiến độ hôm nay: Bot +35 lượt (Web 📈 Tổng tăng: +54)`).
+- **Cơ chế tính toán của Dashboard (`tools/dashboard/queries.py` -> `get_farm_data`)**:
+  1. `Bot lượt`: lấy trực tiếp từ bảng `session_action_stats` qua `SUM(internal_follows)` của ngày `max_dt` (các action follow thành công mà bot ghi nhận trong các phiên của ngày).
+  2. `Web Delta`: tính toán từ bảng `snapshots` cho các account có `internal_followed > 0` trong ngày hôm nay:
+     $$\Delta_{\text{web}} = \sum (\text{following}_{\text{latest}} - \text{following}_{\text{prev}})$$
+     Trong đó `following_prev` được lấy từ CTE `RankedPrev`:
+     ```sql
+     WHERE substr(s.timestamp, 1, 10) < substr(c.timestamp, 1, 10) AND s.status != 'ERROR'
+     ```
+- **2 nguyên nhân gốc rễ gây lệch (Không phải lỗi runner hay bão nhả)**:
+  1. *Lệch mốc Snapshot ngày cũ (RankedPrev Window Lag)*:
+     - `RankedPrev` bắt buộc tìm snapshot có `date < today`.
+     - Nếu một nick đã tăng follow trong ngày hôm qua (sau cữ quét sáng sớm 07:04) nhưng tối hôm qua không có snapshot trung gian để chốt ngày $\rightarrow$ snapshot cuối cùng trước `today` vẫn là snapshot sáng sớm hôm qua.
+     - Khi bot chạy hôm nay và snapshot mới được ghi, SQL lấy số follow mới nhất trừ đi snapshot sáng hôm qua $\rightarrow$ nuốt trọn cả lượng follow tăng từ ngày hôm trước vào delta hôm nay (ví dụ: `.thanh.trc.ng` từ 81 lên 87 ngày hôm qua, hôm nay lên 99 $\rightarrow$ Web báo tăng +18 dù bot hôm nay chỉ bấm +4).
+  2. *Follow tự nhiên / Feed lướt tự do / TikTok cập nhật trễ*:
+     - Các lượt follow tự nhiên phát sinh ngoài flow nội bộ (ví dụ khi xem For You tab, hoặc TikTok nhả chậm rồi sau đó tự khôi phục sau vài tiếng) làm số web tăng cao hơn số bot ghi nhận (ví dụ `hadang0725` bot ghi nhận 15, nhưng web tăng 20 $\rightarrow$ +5 follow tự nhiên/hồi phục).
+- **Quy trình triage nhanh O(1) khi User hỏi**:
+  - Chạy query SQL bảng `snapshots` và `daily_account_actions`:
+    Đối chiếu `following` sáng sớm hôm nay (mốc 07:04:xx) với `following` sau ca chạy. Nếu `following_sau - following_sáng` khớp với số bot ghi nhận $\rightarrow$ khẳng định 100% tài khoản ăn follow chuẩn, chênh lệch do mốc SQL so sánh với ngày hôm trước.
+
+
 
 
