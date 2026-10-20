@@ -37,3 +37,25 @@ User không thể nắm bắt được tiến độ nếu báo cáo nhảy cóc 
   + Change Info & Hoàn thành (DONE).
 - **Minh bạch trạng thái Cooldown:** Báo cáo rõ số lượng tài khoản đang ngâm cooldown chờ thử lại của từng giai đoạn (ví dụ: "Đang cooldown chờ thử lại OAuth: 214", "Đang cooldown chờ thử lại Login: 17").
 - **Chi tiết lỗi rõ ràng:** Không dùng text fallback chung chung kiểu "Login / Auth thất bại". Phải ghi rõ nguyên nhân (sai pass, thiếu token, khóa bảo mật, hết số 5SIM, connection refused).
+
+## 4. Kiến trúc Kỹ thuật & Implementation Pattern (42 Tests Verified 2026-10-20)
+Khi triển khai tính năng Time-Window Delta vào `cron_hotmail_gpm_lifecycle_6h_report.py`:
+1. **Schema Dữ liệu & Quy tắc Đếm Không Trùng:**
+   - `history`: Chỉ ghi nhận các bước thực thi thành công (`status: COMPLETED`).
+   - `last_result`: Ghi nhận kết quả lần chạy gần nhất. Chỉ đếm vào `failed_login` khi `status in FAILED_RESULT_STATUSES` (`FAILED`, `ERROR`, `BLOCKED`, `QUARANTINE`) và `at >= cutoff`. Do `last_result` lỗi không được ghi vào `history` nên phép đếm giữa 2 nguồn này độc lập và không bao giờ bị đếm trùng (zero double-counting).
+2. **Hàm bóc tách hoạt động gần nhất (`aggregate_recent_activity`):**
+   ```python
+   RECENT_KEYS = ("total_processed", "new_done", "new_chatgpt", "new_login", "failed_login", "ready_change")
+   RECENT_EVENT_BY_STAGE = {
+       STAGE_HOTMAIL_LOGIN: "new_login",
+       STAGE_CHATGPT_REG: "new_chatgpt",
+       STAGE_WAIT_7D: "ready_change",
+       STAGE_CHANGE_INFO: "new_done",
+   }
+   ```
+   Lọc mốc thời gian `_parse_time(ts) >= cutoff` (`cutoff = now - timedelta(hours=window_hours)`).
+3. **Mở rộng `collect_snapshot` & `render_report`:**
+   - `collect_snapshot(telemetry, now=None, window_hours=6.0)`: Cho phép tiêm `now` và `window_hours` phục vụ kiểm thử đơn vị độc lập không phụ thuộc thời gian thực.
+   - `render_report(snapshot)`: Hiển thị khối `⚡ BIẾN ĐỘNG TRONG 6H QUA:` ngay sau khối tổng quan bảo mật và trước ChatGPT Web Pool. Khi `total_processed == 0`, xuất thông báo rõ ràng `• Không có biến động nào trong 6h qua (farm idle).` để User không phải đoán trạng thái farm.
+4. **Bộ Test Suite Nghiệm Thu (42/42 tests pass):**
+   - Đảm bảo đầy đủ test cases cho `TestRecentActivity`: lọc cutoff bao gồm mốc (inclusive), xử lý schema hỏng/thiếu timestamp, ánh xạ đúng stage-to-counter, đếm failed login từ last_result lỗi duy nhất, và render đúng văn bản cho cả farm active lẫn idle.
