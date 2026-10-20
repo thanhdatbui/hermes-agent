@@ -1648,7 +1648,11 @@ def _detect_completion_claims(text: str) -> Tuple[bool, Set[str]]:
         if "?" in c_str or re.search(r"\b(?:có\s+.*không|sao\s+lại|tại\s+sao|thế\s+nào|được\s+chưa)\b", c_str, re.IGNORECASE):
             continue
         # Tác vụ web/browser (GPM, ChatGPT, mail...) không phải UI điện thoại farm -> không đòi ảnh máy.
-        if re.search(r"\b(?:chatgpt|openai|gpm|gmail|hotmail|outlook|browser|trình\s+duyệt|excel|sổ\s+sách|totp|cli|terminal|kịch\s+bản|tới\s+ca|lúc\s+nãy|trước\s+đó|nhắc\s+lại|thu\s+dọn|closeout|kết\s+thúc\s+phiên|tổng\s+kết|bảng\s+điểm|phiên\s+làm\s+việc)\b", c_str, re.IGNORECASE):
+        if re.search(r"\b(?:chatgpt|openai|gpm|gmail|hotmail|outlook|browser|trình\s+duyệt|excel|sổ\s+sách|cookie|session|watchdog|cron|script|sqlite|database|kết\s+quả\s+ca|hàng\s+đợi|totp|cli|terminal|kịch\s+bản|tới\s+ca|lúc\s+nãy|trước\s+đó|nhắc\s+lại|thu\s+dọn|closeout|kết\s+thúc\s+phiên|tổng\s+kết|bảng\s+điểm|phiên\s+làm\s+việc)\b", c_str, re.IGNORECASE):
+            continue
+        # Cả dòng chứa mệnh đề thuộc ngữ cảnh web/browser/hệ thống -> bỏ qua.
+        full_line = next((ln for ln in text.splitlines() if c_str in ln), "")
+        if full_line and re.search(r"\b(?:chatgpt|openai|gpm|gmail|hotmail|outlook|browser|trình\s+duyệt|excel|sổ\s+sách|cookie|session|watchdog|cron|script|sqlite|database|tổng\s+kết|kết\s+quả\s+ca|hàng\s+đợi)\b", full_line, re.IGNORECASE):
             continue
         # Mô tả gate/guard/code/rule chứ không phải báo cáo kết quả tác vụ.
         if re.search(r"\b(?:gate|guard|plugin|hook|regex|false\s+positive|detector|__init__)\b", c_str, re.IGNORECASE):
