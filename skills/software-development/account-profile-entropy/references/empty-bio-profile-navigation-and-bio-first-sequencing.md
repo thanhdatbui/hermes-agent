@@ -20,9 +20,15 @@ Khi thực hiện đổi tên và nạp bio trên tài khoản chưa có Bio:
 2. **Nếu CÓ `btn`**: Tap `center(btn)` để vào thẳng `EDIT_PROFILE`.
 3. **Nếu KHÔNG CÓ `btn` (Profile trống Bio)**:
    - **BƯỚC 1: Nạp Bio trước qua chip `+ Thêm tiểu sử`**:
+     * Lưu ý cạm bẫy OCR: WinRT OCR trên Android S7 thường nhận diện `+ Thêm tiểu sử` thành `+ Thém tidU sd` (`tidu` có chữ `d`, không phải `e`).
+     * Regex BẮT BUỘC dùng đa biến thể:
+       ```python
+       btn = find_box(boxes, r"\+\s*th[eé]m|tid\w{0,2}\s*s|th[eé]m\s*ti|tieu\s*su")
+       ```
+     * Nếu OCR không tìm thấy box, fallback BẮT BUỘC tap thẳng tọa độ tâm chip `(220, 686)`, TUYỆT ĐỐI CẤM fallback sang `(870, 558)` vì sẽ kích hoạt popup Story ("Thêm vào Nhật ký").
      ```python
      elif TARGET_BIO and not bio_saved:
-         tieu_su = find_box(boxes, r"tieu su|them tieu su|\+ them")
+         tieu_su = find_box(boxes, r"\+\s*th[eé]m|tid\w{0,2}\s*s|th[eé]m\s*ti|tieu\s*su")
          if tieu_su:
              xy = center(tieu_su) # Tọa độ thực tế ~(228, 686)
              print(f"Chưa có 'Sửa hồ sơ', tap '+ Thêm tiểu sử' tại {xy} để mở Bio")
