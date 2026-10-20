@@ -57,6 +57,7 @@ Use when a user asks whether two AI models are equivalent, requests benchmark-ba
 - Reusing dirty Web UI chat threads during live head-to-head benchmarks (picks up stale DOM from prior turns, producing false identical outputs and fake runtimes).
 - Scraping only outer text containers (`.model-response-text`) while target code resides in modular web components (`<code-block>`).
 - Overexplaining the research process when the user only wants the verdict; lead with the verdict, then show the minimum evidence needed.
+- Conflating Free Tier API quotas with Subscription IDE/Companion limits: preview models (e.g. Gemini 3.8 Flash) often have a strict 20 RPD cap on AI Studio Free Tier, breaking large-context CLI harnesses (like omp) while companion IDE pools (agy) run unrestricted.
 
 ## First-party product-surface verification
 

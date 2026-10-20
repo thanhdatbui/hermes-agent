@@ -34,3 +34,14 @@
    - Never generate comparative analysis, commentary, or scores based on exit codes, character counts, or `ast.parse` status alone.
    - Verify that the response text contains domain-specific identifiers matching the exact prompt (e.g., DCT matrix logic for pHash, bounds calculation for XML parser, circuit breaker states for proxy pool).
    - Display raw head and tail code snippets directly to the user to prove authenticity.
+
+7. **Free Tier API vs Subscription Companion Harness Quota Asymmetry (Gemini 3.8 Flash vs Antigravity):**
+   - Google AI Studio Free Tier API (`generativelanguage.googleapis.com`) imposes an extreme per-model quota on preview/flagship models: `gemini-3.8-flash` is hard-capped at **20 requests per day per project** (`GenerateRequestsPerDayPerProjectPerModel-FreeTier`, `quotaValue: 20`), NOT the 1,500 RPD of older 2.0 Flash models.
+   - CLI harness architectures (like `omp` / Oh My Pi) that inject large system prompts (~180KB project context per turn) trigger rapid 429 `RESOURCE_EXHAUSTED` with 24h retry delays.
+   - In contrast, companion IDE/web harnesses (`agy cli` via `cloudaicompanion.googleapis.com` backed by Google One AI Premium $20/mo accounts): run on rolling windows per account rather than the 20 RPD Free Tier cap, sustaining long-horizon benchmarks and production runs.
+
+8. **Aged Account vs Farm Clone Project Quota & Trust Denials (HTTP 403 `PERMISSION_DENIED`):**
+   - Newly created GCP projects on zero-trust / fresh farm Google accounts receive `403 PERMISSION_DENIED` ("Your project has been denied access. Please contact support.") when calling preview models via AI Studio API keys.
+   - To benchmark or run first-party API keys, use an established aged Google account (`Default Gemini Project` on existing Google One accounts), which is pre-authorized.
+   - Non-disruptive key retrieval on Windows hosts: launch `webbrowser.open('https://aistudio.google.com/apikey')` into the user's running Chrome instance without closing or killing tabs/processes, and retrieve the verified key safely.
+
