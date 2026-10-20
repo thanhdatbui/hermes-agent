@@ -224,6 +224,28 @@ Trong `follow_state.py`, runner tự động điều chỉnh trần follow cho c
      - CẤM võ đoán đổ lỗi cho "lỗi script", "timeout rớt log", hay "bot chạy ẩu" khi chưa kiểm tra hiện trường.
      - Khẳng định rõ: Runner đã xử lý hoàn toàn chuẩn xác theo Invariant Chốt Chặn Anchor (ngắt phiên ngay lập tức để bảo vệ tài khoản và proxy). Lượt tăng trên Web là biến động tự nhiên ngoài flow hoặc TikTok sync trễ từ phiên cũ trước mốc snapshot, không liên quan đến lỗi bot.
 
+## 18. Tiêu Chí Phân Hạng "Nick Khỏe" (🟢 Khỏe / Healthy) & Triage Hiện Tượng Fl Đủ Budget Chưa Lên Khỏe
+- **Tiêu chuẩn vào nhóm 🟢 Khỏe (`tier == 'healthy'`) trong `follow_health_helper.py`**:
+  1. `is_in_cooldown == False`: Không có cờ `follow_failed: True` và không trong thời hạn Cooldown (`cooldown_until_date` / `cooldown_until_at`).
+  2. **`fail_streak == 0`**: Bắt buộc sạch hoàn toàn án tích. Nếu `fail_streak > 0`, nick lập tức bị xếp vào diện Hồi phục (`probation_tier1` nếu `clean_days < 1`, `probation_tier2` nếu `clean_days >= 1`).
+  3. **`is_graduated == True`**: Đã tốt nghiệp thử thách (hoặc acc cũ có bề dày $\ge 15$ follow an toàn và chưa từng có án tích).
+- **Tại sao toàn farm chỉ có rất ít nick Khỏe (ví dụ 4 nick: M37 R1, M12 R1, M10 R1, M21 R3)**:
+  * Qua các đợt quét và siết thuật toán của TikTok, phần lớn các tài khoản trong farm (>420/437 state files) đều từng có ít nhất 1 lần bị nhả follow dẫn tới `fail_streak > 0`. Do đó chỉ những nick cựu binh chưa từng gãy hoặc đã hoàn tất trọn vẹn chu trình tốt nghiệp mới nằm ở nhóm Khỏe.
+- **Tại sao có nick follow đủ budget gần đây nhưng KHÔNG được vào nhóm Khỏe**:
+  * **Trường hợp A: Follow đủ budget nhưng CUỐI PHIÊN dính Nhả Follow (Release / Action Block)**:
+    - *Hiện trường thực tế*: `hadang0725` (M17 R2) và `.thanh.trc.ng` (M23 R2) ngày 20/10.
+    - Cả 2 đều được cấp budget 13 và đã bấm thành công 14–15 lượt. Tuy nhiên, ở bước kiểm tra anchor hoặc post-follow sau vuốt của UID cuối, phát hiện bị nhả ➔ kích hoạt `set_follow_failed()`.
+    - *Hậu quả cơ chế an toàn*: Ngay lập tức thu hồi cờ tốt nghiệp (`pop("graduated")`), tăng `fail_streak = 1`, phạt cách ly Cooldown 3 ngày. Dù số lượt follow tích lũy cao, nick rơi thẳng vào **🔴 Cooldown (Streak 1)**, không thể là Khỏe.
+  * **Trường hợp B: Follow đủ budget và sạch sẽ 100%, nhưng ĐANG TRONG THỜI GIAN THỬ THÁCH (Probation Clean Days < 2)**:
+    - *Hiện trường thực tế*: `thy.dung4581` (M33 R2, fl 6/6), `vantieu11` (M59 R4, fl 5/5), `minhan2473` (M8 R2, fl 3/3), `trinh.trinh.dinh` (M18 R2, fl 2/2).
+    - Các nick này từng bị nhả trước đó nên đang mang `fail_streak > 0`. Sau khi hết Cooldown và chạy cữ đầu tiên sạch sẽ, hệ thống ghi nhận `recovered_date`.
+    - Sau khi qua ngày (`_roll_day()`), nick mới chỉ tích lũy được **`probation_clean_days = 1`** ➔ xếp vào **🟡 Hồi phục 2** (chưa đủ điều kiện reset streak).
+    - **Quy tắc 2 Ca Sạch Tốt Nghiệp (`probation_graduation_clean_days = 2`)**: Chỉ khi nick chạy tiếp **ca thứ 2 sạch sẽ** và qua ngày đạt `clean_days >= 2`, hệ thống mới:
+      1. Reset `fail_streak = 0`.
+      2. Cấp lại `graduated = True`.
+      3. Giải phóng hoàn toàn probation và chính thức đưa nick trở lại nhóm **🟢 Khỏe (Full Quota)**.
+
+
 
 
 
