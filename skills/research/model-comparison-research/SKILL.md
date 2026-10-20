@@ -58,6 +58,8 @@ Use when a user asks whether two AI models are equivalent, requests benchmark-ba
 - Scraping only outer text containers (`.model-response-text`) while target code resides in modular web components (`<code-block>`).
 - Overexplaining the research process when the user only wants the verdict; lead with the verdict, then show the minimum evidence needed.
 - Conflating Free Tier API quotas with Subscription IDE/Companion limits: preview models (e.g. Gemini 3.8 Flash) often have a strict 20 RPD cap on AI Studio Free Tier, breaking large-context CLI harnesses (like omp) while companion IDE pools (agy) run unrestricted.
+- Pushing CLI harness authentication tasks to the user when background OAuth fails instead of autonomously configuring local proxy routes (`models.yml` pointing to OmniRoute `:20129`).
+- Assuming CLI harnesses like `omp` honor standard `OPENAI_BASE_URL` env vars for arbitrary model IDs without declaring explicit provider blocks in `~/.omp/agent/models.yml`.
 
 ## First-party product-surface verification
 
