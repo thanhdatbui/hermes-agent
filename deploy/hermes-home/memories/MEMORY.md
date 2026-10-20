@@ -6,7 +6,7 @@ Hotmail: CẤM mail cá nhân; @fviainboxes.com đọc OTP. Excel 3,4,5+G. Pin >
 §
 Rename: tap bio (473,703); --clear-bio; bút chì (x_name+50); core switcher; văng->login_v1; tên 1 từ bỏ.
 §
-Argon=:20135 (token 4s). Claude CLI Planner. Timeout: worker 1200s, sol 300s/turn, agy 1500s. Omni: sửa .env phải restart nạp RAM (psutil đối soát). Sol: consult_advisor độc đạo CLI; advisor_tool core auto-append (cấm xóa).
+Sol: On-Demand (gọi advisor/hỏi sol); streaming SSE 140s; context 4000 chars; consult_advisor độc đạo CLI; advisor_tool lõi stream.
 §
 Stale Up: xóa draft. Revert: TikWM. Cào: max 60. Cron TB: device_lock+rolling<=5; bỏ ca 0h.
 §

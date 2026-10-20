@@ -94,3 +94,39 @@ $atomicCmd = "if (-not (Get-Process -Name xiaowei -ErrorAction SilentlyContinue)
 - **Git Commit Hard Gate #5 ADB Keyword False Positive:** When committing changes on farm repositories guarded by `guard_dispatch_contract` / Hard Gate #5, any commit message containing the bare string `adb` (e.g. `git commit -m "fix: optimize xiaowei adb port"`) triggers `[HARD GATE #5 - AMBIGUOUS ADB DEVICE COMMAND]` because the regex matches `adb` without `-s <serial>`. Use descriptive neutral terms like `port 5038` or `android-bridge` in commit messages.
 - **Strike 3 Plateau & Direct Push Protocol:** When Closeout Gate plateaus at Strike 3 (e.g. scores 78 -> 79 -> 72), Reviewer hand-off is triggered. When the operator signals completion ("Done") or forces push, use `python D:/Taadaa/tools/safe_push.py <repo> <remote> <branch> -- --no-verify` to safely bypass the pre-push hook audit requirement.
 - **Default Timeout Invariant in Unit Tests:** Do not change the default constant fallback value (e.g. `CIM_TIMEOUT_SECONDS = 10`) in code if contract tests assert `assert probe.CIM_TIMEOUT_SECONDS == 10`. Instead, rely on the fast netstat pipeline (<300ms) or configure the environment variable `XIAOWEI_CIM_TIMEOUT=15` in cron job execution environments.
+
+---
+
+## 7. The Focus-Based Idle Tracking Fallacy & Global System Input Invariant (Anti-False-Close)
+- **The Fatal Flaw of Focus-Based Tracking on Companion/Mirror Apps:**
+  Attempting to track idle time via per-window foreground focus (`is_target_foreground()` using `GetForegroundWindow()` or checking window titles/processes like `xiaowei` / `msedgewebview2`) is fundamentally broken for companion, monitoring, or stream-mirroring applications.
+  - Users frequently keep mirror/dashboard windows visible on a secondary screen or in the background while actively typing, coding, or chatting in another window (Telegram, Chrome, Zalo, VS Code).
+  - Calculating `unfocused_idle = now - last_active` and returning `unfocused_idle` when the app is not in the foreground treats normal multi-tasking as "idle". Even though the user is actively using the mouse and keyboard on the PC (`system_idle == 0`), the timer keeps accumulating.
+- **The Accumulation and Sudden Kill Bug:**
+  - If the script gates `last_active` updates on `if is_fg and system_idle < 60:`, pausing hand movement for >60s while looking at the screen or clicking on stream sub-windows (where `GetForegroundWindow()` returns 0 or a device serial title like `SM-G930F` that does not match the app title keyword) prevents `last_active` from refreshing.
+  - When the user subsequently Alt-Tabs out for merely 2–3 minutes, the accumulated `now - last_active` already exceeds the threshold (e.g. 600s / 10m), triggering an immediate `taskkill /F /IM target.exe` and terminating the app while the user is actively working.
+- **Global System Input Invariant (`GetLastInputInfo`):**
+  - **Rule:** If the business requirement is "auto-close idle app when user is away from machine (AFK) to release USB/CPU/GPU resources", **ALWAYS use Global OS Input Idle (`GetLastInputInfo` in Windows user32.dll)**.
+  - **Zero False-Positive Invariant:** If `system_idle < IDLE_THRESHOLD_SECONDS` (user touched mouse or keyboard anywhere on the OS within the threshold, e.g. 1200s = 20m), the machine is ACTIVE. The watchdog MUST NOT terminate the application under any circumstances.
+  - **Correct Python Pattern:**
+    ```python
+    import ctypes
+
+    class LASTINPUTINFO(ctypes.Structure):
+        _fields_ = [("cbSize", ctypes.c_uint), ("dwTime", ctypes.c_uint)]
+
+    def get_system_idle_seconds() -> float:
+        lii = LASTINPUTINFO()
+        lii.cbSize = ctypes.sizeof(LASTINPUTINFO)
+        if ctypes.windll.user32.GetLastInputInfo(ctypes.byref(lii)):
+            tick_count = ctypes.windll.kernel32.GetTickCount()
+            millis = (tick_count - lii.dwTime) & 0xFFFFFFFF
+            return millis / 1000.0
+        return 0.0
+
+    # In watchdog tick:
+    system_idle = get_system_idle_seconds()
+    if system_idle < IDLE_THRESHOLD_SECONDS:
+        return  # User is active at PC — strictly forbid closing!
+    ```
+

@@ -18,16 +18,21 @@ Khi User gửi ảnh màn hình trang cá nhân TikTok và phát lệnh "Chuẩn
    - Thêm folder vào registry `D:/Taadaa/data/manual_hashtag_protected_folders.json`.
 
 4. **Món 3 — Avatar chuẩn từ Video gốc ($F_{src}$):**
-   - Trích xuất 2 phương án ảnh $512 \times 512$:
-     * **Phương án 1 (Khuyên dùng):** Nhân vật/chủ đề từ video gốc $F_{src}$, ngũ quan chính diện, ánh sáng tự nhiên.
-     * **Phương án 2:** Ảnh từ kho render $F_{out}$.
+   - **Quy tắc trích xuất chống ảo giác & chống nhặt rác:**
+     * BẮT BUỘC crop avatar hiện tại trên kênh (`tmp_user_current_ava.png`) để đối soát: xác định kênh là NAM, NỮ, hay TRẺ EM.
+     * CẤM lấy mù file `avatar.jpg` trong kho render $F_{out}$ làm Phương án 2 nếu chưa đối soát (kho $F_{out}$ thường chứa avatar rác từ các batch render cũ không liên quan đến kênh).
+     * Nếu video gốc $F_{src}$ có nhiều nhân vật (ví dụ Bố bỉm và Em bé): Trích xuất 2 phương án đúng các nhân vật thật trong video gốc (Phương án 1: Em bé / Phương án 2: Bố bỉm rõ mặt).
+     * BẮT BUỘC soi mắt bằng Vision và mô tả TRUNG THỰC 100% nội dung ảnh. CẤM TUYỆT ĐỐI bịa đặt/hallucinate (ví dụ ảnh em bé bú bình sữa nhưng lại mô tả là "nhân vật nam chính ngũ quan cân đối").
    - Ghép ảnh so sánh có vòng tròn định vị viền avatar màu xanh và banner độ tương phản cao để WinRT OCR đọc được nhãn.
    - Soi mắt kiểm định qua OCR/Vision trước khi đính kèm `MEDIA:D:/Taadaa/reports/...` để User chọn.
-   - Khi User duyệt phương án (ví dụ chọn "1"):
+   - **Kỷ luật thực thi End-to-End khi User duyệt phương án (CẤM TREO PENDING BÁO DONE):**
      * Copy ảnh vào `D:/TIKTOK-videonuoinick/<F_out>/avatar.jpg`.
      * Tạo marker `.manual_avatar_locked` tại cả 2 đầu kho $F_{out}$ và $F_{src}$.
      * Thêm folder vào `D:/Taadaa/data/manual_avatar_protected_folders.json`.
      * Cập nhật cột `Avatar = 'PENDING'` trong `Tik<N>.xlsx` và `avatar_replace_queue` trong `D:/Taadaa/data/tiktok_tracker.db`.
+     * **BẮT BUỘC KÍCH HOẠT NGAY LẬP TỨC runner upload avatar**:
+       `python D:/Taadaa/tools/run_upload_avatar.py --tik <N> --machine <M>` (chạy nền `background=True, notify_on_complete=True, timeout=360`).
+     * **CẤM TUYỆT ĐỐI**: Chụp ảnh profile TikTok khi avatar trên app chưa đổi rồi báo cáo "ĐÃ HOÀN TẤT chuẩn hoá avatar" (dẫn đến lỗi phản ánh: *"nãy tao bảo chọn 1 mà sao trên profile không thấy đổi / ava này có đúng của kênh không"*). Phải đợi runner nạp xong, chụp lại ảnh profile TikTok đã đổi avatar thực tế, soi mắt qua Vision rồi mới được báo cáo hoàn tất!
 
 ---
 
@@ -77,4 +82,16 @@ Khi User gửi chỉ dẫn nhanh dạng `"máy <M>, acc row <S>"` (hoặc khi OC
   * **Trích xuất hiện trường T0 (O(1)):** Luôn dùng `python D:/Taadaa/tools/inspect_machine.py <N>` — script này đã được whitelist trong allowlist của Coordinator và tự xử lý ADB an toàn không kích hoạt Hard Gate #5.
   * **Can thiệp lệnh ADB shell:** Bắt buộc bọc qua `python D:/Taadaa/tools/with_device_lock.py --machine <N> -- <command...>` hoặc gọi qua script Python có bọc `operator_device_lock(serial=..., force_preempt=True)`.
   * **Bypass lệnh cấm `execute_code`:** Coordinator Guard chặn `execute_code` để chống bypass. Mọi tra cứu dữ liệu Excel/DB/file phải tận dụng `read_file` (vốn tự động trích xuất `.xlsx` thành bảng text có đánh số dòng).
+
+---
+
+## 4. Bài học xương máu: Bẫy lệch nhân vật chủ kênh & Báo DONE khi Avatar trên App chưa đổi (Case Bảo Thịnh @lethanh14375 - 2026-10-20)
+- **Sự cố thực tế:**
+  User phát lệnh *"Chuẩn hoá kênh này"* kèm ảnh kênh TikTok `@lethanh14375` (tên hiển thị `Bảo Thịnh`, bio `bỉm ngủ 3h/ngày`, ngách `Chăm sóc bé`).
+  Agent mắc 2 sai phạm nghiêm trọng khiến User bức xúc phản hồi: *"mà ava này có đúng ava của kênh k v? nãy tao bảo chọn 1 mà??????????????????địt mẹ mày"*:
+  1. **Ảo giác nhận diện & nhặt nhầm avatar rác:** Thư mục render `268` chứa avatar rác cũ của một phụ nữ quấn khăn hồng (không liên quan đến kênh). Thư mục gốc `274` chứa video bố bỉm và em bé, file `274/avatar.jpg` là ảnh em bé bú bình sữa. Agent đưa ra 2 lựa chọn (Option 1: Em bé bú bình, Option 2: Phụ nữ quấn khăn hồng) nhưng lại mô tả Option 1 là "nhân vật nam chính ngũ quan cân đối". User thấy ảnh preview một đằng mô tả một nẻo và Option 2 hoàn toàn lạc quẻ.
+  2. **Báo "ĐÃ HOÀN TẤT" khi avatar trên thiết bị chưa cập nhật (False Done):** Sau khi User chọn "1", Agent chỉ copy file vào folder trên ổ đĩa và set `Tik4.xlsx` thành `PENDING`, nhưng KHÔNG chạy runner nạp avatar lên app TikTok trên Máy 34. Sau đó Agent ghim video xong thì chụp ảnh profile TikTok gửi nghiệm thu báo "ĐÃ HOÀN TẤT". User nhìn ảnh profile thấy avatar trên TikTok vẫn y nguyên là avatar cũ của bố bỉm, tưởng Agent bỏ qua lựa chọn của mình.
+- **Kỷ luật chuẩn hoá dứt điểm:**
+  1. **Đối soát đối tượng trước khi xuất phương án:** Luôn crop avatar hiện tại trên kênh (`tmp_user_current_ava.png`), dùng Haar/Vision nhận diện rõ đối tượng chủ kênh là ai để trích xuất frame khớp danh tính.
+  2. **CẤM báo DONE khi chưa nạp:** Khi user chọn xong phương án, BẮT BUỘC gọi ngay launcher upload (`run_upload_avatar.py --tik <N> --machine <M>`), chờ kết quả thành công và chụp màn hình profile đã THỰC SỰ THAY ĐỔI AVATAR thì mới được thông báo hoàn tất nhiệm vụ chuẩn hoá.
 

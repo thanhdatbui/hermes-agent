@@ -111,6 +111,7 @@ A valid acceptance sequence is:
 5. Do not report `DONE` from adapter status alone. If only the adapter canary passes, report `adapter PASS; orchestration canary pending`.
 
 ## References
+- Chuyển Đổi Advisor Sang Cơ Chế On-Demand & Nâng Cấp Streaming Đa Tầng (2026-10-20): [`references/advisor-on-demand-and-streaming-upgrade-20261020.md`](references/advisor-on-demand-and-streaming-upgrade-20261020.md)
 - On-demand routing and timeout layering learned from the 2026-10-20 implementation discussion: [`references/on-demand-routing-and-timeout-layering-20261020.md`](references/on-demand-routing-and-timeout-layering-20261020.md)
 - Bẫy Cắt Xén Ngữ Cảnh Tự Động & Chuyển Đổi Sang On-Demand Cho Advisor Sol (2026-10-20): [`references/advisor-auto-append-context-clipping-and-on-demand-shift-20261020.md`](references/advisor-auto-append-context-clipping-and-on-demand-shift-20261020.md)
 - Độc Đạo Điều Phối Advisor Sol & Vòng Đời Biến Môi Trường (2026-10-20): [`references/single-authoritative-pathway-and-env-lifecycle-20261020.md`](references/single-authoritative-pathway-and-env-lifecycle-20261020.md)
