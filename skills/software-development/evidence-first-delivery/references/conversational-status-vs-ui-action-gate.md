@@ -26,3 +26,11 @@ BẮT BUỘC phân biệt rạch ròi 2 dạng tương tác:
 ## 4. Kỷ luật loại bỏ can thiệp chuỗi thô
 - Nghiêm cấm mọi cơ chế tự động sửa đổi hoặc chèn tiền tố/hậu tố vào câu trả lời của Agent dựa trên việc quét regex từ khóa hoàn thành.
 - Mọi ràng buộc về bằng chứng hình ảnh phải được thực thi ở tầng công cụ thông qua cơ chế kiểm tra tính hợp lệ của token và chữ ký ảnh, yêu cầu Agent điều chỉnh nội bộ thay vì tự tiện thay đổi giao diện trao đổi với User.
+
+## 5. Giải pháp Kỹ thuật Chuẩn hóa cho Bộ lọc Output (Full-Line Context Scan)
+Để triệt tiêu triệt để false positive khi bóc tách mệnh đề (clause split theo dấu phẩy `,` hoặc chấm `:` khiến các cụm từ như `Đăng nhập thành công 100%` bị tách rời khỏi ngữ cảnh `cookie Google session...` phía sau):
+1. **Quét Ngữ Cảnh Cấp Dòng (Full-line Context Matching):**
+   Khi kiểm tra từng mệnh đề `c_str`, bắt buộc truy vết dòng đầy đủ chứa nó trong văn bản (`full_line = next((ln for ln in text.splitlines() if c_str in ln), "")`).
+   Nếu `full_line` khớp với regex từ khóa hệ thống/cron/web (`cookie|session|watchdog|cron|script|sqlite|database|gpm|gmail|kết quả ca|hàng đợi...`), mệnh đề lập tức được bỏ qua, không bao giờ đòi hỏi ảnh màn hình điện thoại farm.
+2. **Mở rộng Từ khóa Miễn trừ Web/Cron:**
+   Bổ sung đầy đủ các thực thể phi-farm vào bộ lọc loại trừ ở cả cấp mệnh đề và cấp dòng để đảm bảo các báo cáo số liệu, đối soát dữ liệu và phân tích sự cố diễn ra mượt mà.

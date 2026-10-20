@@ -670,3 +670,18 @@ When the primary coding agent is blocked by infrastructure issues (sandbox, auth
 3. **Both blocked** → report to user with diagnostic output from both `doctor` commands
 
 This pattern is especially relevant for `hermes-orchestration-dispatcher` workflows where Codex is the primary implementer and Claude is the reviewer.
+
+## Oh My Pi (`omp`) CLI — Setup, Bun Runtime & Google Gemini Routing
+
+For full details on `omp` installation, Bun runtime resolution, and Google AI Studio API access, see `references/omp-cli-setup-and-coordinator-guard-escalation.md`.
+
+### 1. Installation & Bun Native Binary Trap
+`npm install -g @oh-my-pi/pi-coding-agent` installs `omp.ps1` and `omp.cmd`, which directly require `bun.exe`.
+- Installing Bun via `npm install -g bun` places the binary in `...\npm\node_modules\bun\bin\bun.exe`.
+- **Fix**: Copy `bun.exe` into `C:\Users\<user>\AppData\Roaming\npm\bun.exe` or append the bun bin directory to the User PATH in `HKCU\Environment`.
+
+### 2. Configuration & Google Gemini Models
+- Configure keys in `~/.config/omp/keys.json`: `{"google": "<key>", "gemini": "<key>"}`.
+- Model `gemini-2.5-flash` is deprecated (HTTP 404). Always target `google/gemini-3.8-flash` (`--thinking medium`).
+- Fresh/unverified accounts yield HTTP 403 `PERMISSION_DENIED` on Google Cloud. Obtain API keys from an established Google account via Google AI Studio (`https://aistudio.google.com/apikey`).
+

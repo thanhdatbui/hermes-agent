@@ -14,6 +14,9 @@ User reports an application, desktop, or game repeatedly losing focus, stutterin
    - Transparent fullscreen click-through windows (`WS_EX_TOPMOST` or `Cua.AgentCursorOverlay.default` at `1920x1080`).
 4. **Hanging Helper Processes (`Not Responding`):**
    - Stalled companion processes (e.g. `TFTAcademy.exe`, `OverwolfBrowser.exe`) consuming CPU or stuck in OleMainThreadWndName message loops.
+5. **High-Concurrency Fleet Runners Missing Headless Flags (PowerShell `-WindowStyle Hidden` & Subprocess `CREATE_NO_WINDOW`):**
+   - Background runners (e.g. `run-feed-session.ps1` or multi-device ADB loops) launched via PowerShell without `-WindowStyle Hidden` allocate a visible or focus-grabbing console window.
+   - When scripts spawn hundreds of CLI subprocesses (e.g. `adb.exe shell dumpsys ...`, `omp.cmd`, `cmd.exe`) without `creationflags=subprocess.CREATE_NO_WINDOW` (`0x08000000`), Windows constantly spawns and destroys `conhost.exe` instances, causing rapid micro-flickers, DWM composite hiccups, and focus stealing from fullscreen DirectX games (TFT, LoL, War3).
 
 ## Diagnostic Protocol
 
@@ -104,8 +107,39 @@ WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_int, ctypes.c_int)
 user32.EnumWindows(WNDENUMPROC(enum_windows_proc), 0)
 ```
 
+### 4. Correlate Running Processes with Hermes Cron Jobs
+
+Identify which active cron job or background fleet runner is spawning the focus-stealing process tree:
+
+```python
+import psutil, os
+
+# Filter out current python process
+my_pid = os.getpid()
+active_crons = []
+for p in psutil.process_iter(['pid', 'name', 'cmdline', 'ppid']):
+    if p.info['pid'] == my_pid: continue
+    cmd = ' '.join(p.info['cmdline'] or []).lower()
+    if any(k in cmd for k in ['.ps1', 'runner', 'watchdog', 'supervisor', 'workflow']):
+        try:
+            parent = psutil.Process(p.info['ppid'])
+            pname = f'{parent.name()}:{parent.pid}'
+        except Exception:
+            pname = 'unknown'
+        active_crons.append((p.info['pid'], p.info['name'], pname, cmd[:120]))
+
+for pid, name, parent, cmd in active_crons:
+    print(f'[{pid:5}] {name:15} (PPID {parent:18}): {cmd}')
+```
+
 ## Remediation Guidance
 
 - **Overwolf / MetaTFT:** If playing TFT or League in borderless window, close Overwolf (`Stop-Process -Name Overwolf, OverwolfBrowser, OverwolfHelper -Force`) or disable auto-launch overlay hooks in MetaTFT settings.
-- **Background Automation:** Pause high-frequency GPM cron supervisors (`cronjob(action='pause')`) while gaming or working interactively on the primary desktop.
+- **Background Automation (User Rule: 'Game = tắt nháy, CẤM pause cron'):**
+  - **DO NOT pause cron jobs** to solve game stutters or focus stealing unless explicitly ordered by user.
+  - Fix the root cause of console flashing:
+    1. Ensure all background PowerShell launchers specify `-WindowStyle Hidden` (e.g. `powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File ...`).
+    2. In Python scripts spawning CLI tools (`adb.exe`, `ffmpeg.exe`, `omp.cmd`, `cmd.exe`), enforce `creationflags=subprocess.CREATE_NO_WINDOW` (`0x08000000`) on all `subprocess.Popen` / `subprocess.run` calls.
+    3. For running unhidden consoles, hide them dynamically using Win32 `ShowWindow(hwnd, 0 /* SW_HIDE */)`.
+  - For ghost overlays (`cua-driver.exe` with `Cua.AgentCursorOverlay.default` 1920x1080): terminate idle/stale driver instances (`Stop-Process -Name cua-driver -Force`).
 - **Stuck Helpers:** Terminate `Not Responding` Electron sub-processes.
