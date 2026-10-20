@@ -391,4 +391,30 @@ Chi tiết xem tại tài liệu hỗ trợ liên kết:
   * `D:/Taadaa/benchmark_arena/gemini_argon_server.py`: `STOP_TIMEOUT_S` = **300s**, `REQUEST_TIMEOUT_S` = **360s**.
   * Bất kỳ script caller nào bọc `subprocess.run` gọi AI CLI đều phải set timeout $\ge 180s$.
 
+---
+
+## 13. OMP (Oh My Pi) Multi-Profile Harness, Google AI Studio 20 RPD Trap & Security Review P0
+
+### 1. Cái Bẫy Google AI Studio Free Tier (20 Requests/Ngày):
+- **Hiện tượng:** `omp` chạy `gemini-3.8-flash` bằng API Key Free Tier bị Google chặn ngay sau vài turn: `limit: 20, quotaId: GenerateRequestsPerDayPerProjectPerModel-FreeTier`.
+- **Căn nguyên:** Google áp trần cứng đúng 20 request/ngày/project cho model 3.8 Flash Free Tier. System prompt của coding agent nặng (~180KB) khiến quota cạn kiệt chỉ sau 2-3 tác vụ. Không thể dùng API Key Free Tier cho coding harness.
+
+### 2. Kiến Trúc OMP CLI (`D:/Taadaa/tools/omp_cli.py`):
+- `omp` hỗ trợ cờ native `--profile <name>` hoặc biến môi trường `OMP_PROFILE`, cô lập database và models tại `~/.omp/profiles/<name>/agent/`.
+- Cầu nối `omp_cli.py` được thiết kế tương thích 1:1 với `ag_cli.py`:
+  * Quản trị 22 profile `acc_01` ➔ `acc_22`.
+  * Dual-Route: Ưu tiên `google-antigravity/<model>` nếu profile đã OAuth trực tiếp; tự động fallback qua `:20129` (`omniroute/antigravity/...`) nếu chưa có OAuth native.
+  * Tích hợp Lease Lock và Auto-rotate khi chạm HTTP 429.
+
+### 3. Lỗ Hổng Fingerprint Trong Mã Nguồn OMP Gốc (`dirs.ts`):
+- File `~/.omp/install-id` trong lõi OMP (`@oh-my-pi/pi-utils/dirs.ts:1223`) mặc định dùng chung UUID cho mọi profile.
+- **Biện pháp cô lập bắt buộc:** Phải gán `USERPROFILE` và `HOME` trỏ riêng vào từng thư mục profile sandbox trước khi spawn `omp.cmd`, buộc OMP sinh 22 file `install-id` riêng biệt, tránh Google correlator phát hiện dùng chung máy vật lý.
+
+### 4. Kết Quả Thẩm Định Bảo Mật Claude Sonnet 5.5 Reviewer (P0/P1 Checklist):
+- **P0 - Bypass Ngầm Làm Lộ IP Thật (Silent Default Fallback):** Nhánh fallback `run_default` khi toàn bộ pool bận/cooldown sẽ chạy bằng tài khoản chính của host và KHÔNG qua proxy. BẮT BUỘC bỏ fallback ngầm, chuyển sang fail-closed (`POOL_BUSY` / `POOL_EXHAUSTED`).
+- **P0 - Hết Hạn Lease Sớm (Lock Stale Steal):** `LEASE_TIMEOUT = 300s` nhưng task `fix` chạy tới 1200s-1500s. Không có heartbeat dẫn tới tiến trình thứ 2 tưởng profile rảnh và cướp lock. Cần nâng TTL hoặc giữ OS file lock (`msvcrt.locking`).
+- **P1 - Race Condition Trên File State (`pool_state.json`):** Read-modify-write không có mutex toàn cục và dùng file `.tmp` tĩnh làm mất trạng thái cooldown khi nhiều worker chạy đồng thời.
+- **P1 - Rò Rỉ Biến Môi Trường Host:** `os.environ.copy()` kế thừa toàn bộ secret/proxy của máy cha. Cần lọc env theo allowlist trước khi truyền cho subprocess worker.
+
+
 
