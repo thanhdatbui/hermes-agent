@@ -6,7 +6,7 @@ Nuôi 4d 3 ca (bỏ 0h). Nhả lock device. Ava&2FA tới 5h15. Excel 3,4,5+G; S
 §
 Fallback Claude->Agy; Repo dirty --files O(1); pre-push 1 commit. Pin TT LIFO. CẤM đụng Chrome host, dùng GPM/agy_profiles.
 §
-Ava/Media: CẤM gửi mù; BẮT BUỘC Claude worker soi mắt trước khi đính kèm MEDIA:; CẤM báo DONE thiếu MEDIA:; Ava đúng creator; pHash/crop thật.
+Ava/Media: Duyệt ava là up thẳng máy (run_upload_avatar.py), CẤM chỉ ghi PENDING vào Excel; CẤM gửi mù, BẮT BUỘC soi mắt trước khi đính kèm MEDIA:; CẤM báo DONE thiếu MEDIA:; Ava đúng creator.
 §
 Worker: Haiku claude-haiku-5-5, inline -p; Agy pool 22; Timeout 1200s-1500s, cấm hạ 180s.
 §
