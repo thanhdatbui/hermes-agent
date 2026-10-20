@@ -129,6 +129,7 @@ For older Samsung Android builds (e.g. Galaxy S7 running Android 8):
 
 ## References
 
+- `references/m7-hardware-exception-and-alert-triage.md` — Machine 7 hardware exception (SSID Dat WPA2 passphrase, 5GHz association rejection on kibe 1), watchdog alert timestamp disambiguation, and anti-premature-rescue runbook.
 - `references/s7-wifi-proxy-psm-and-port5038-incident.md` — Samsung S7 Wi-Fi/Proxy probe flapping, Power Save Mode (PSM) tuning, adbjoinwifi timer suppression, thermal throttling, and Port 5038 WinUSB exclusive hijacking runbook.
 - `references/ruijie-static-ip-dhcp-conflict-and-enforcement.md` — Ruijie Gateway Static IP conflict on farm devices (M1-M80), lease stall ("Converted to Static IP"), DHCP starvation incident on M7, mechanical guard enforcement via validate_dynamic_dhcp_policy, and cleanup runbook.
 - `references/s7-wifi-radio-throttle-and-reboot-protocol.md` — Samsung S7 Wi-Fi radio driver throttle vs hardware failure diagnosis, false-positive RSSI -127 panic, and deterministic reboot recovery protocol.

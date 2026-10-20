@@ -95,7 +95,33 @@ Trong các test suite offline (như `test_mode1_search_follow.py`):
 
 ---
 
-## 3. Cạm Bẫy Timeout 120s Trong Closeout Gate Với Test Suite Dài
+## 4. Cạm Bẫy Quy Chụp "Nuốt Mốc Ngày Cũ" Khi Ca Chạy Sớm Trước Snapshot Sáng (Ca 06:00 vs Snapshot 07:00)
+
+### A. Hiện tượng và Cạm bẫy chẩn đoán sai
+- Dashboard hiển thị: `⚡ Tiến độ hôm nay: Bot +35 lượt (Web 📈 Tổng tăng: +54)`.
+- Agent vội vàng kết luận: "Query SQL của Dashboard so với hôm qua nên nuốt trọn số lượng của ngày hôm trước, cần fix SQL".
+- **Hậu quả nếu sửa query theo snapshot sáng sớm (07:04):** Toàn bộ các nick chạy Ca 1 Phiên 1 lúc 06:00 sáng sẽ bị tính Web Delta = 0, xóa sổ thành tích ca sớm của toàn farm!
+
+### B. Cơ chế thực tế
+1. **Lịch chạy farm lệch với mốc snapshot sáng:**
+   - Ca 1 Phiên 1 chạy từ **06:00 - 07:00**.
+   - Snapshot watchdog toàn farm cào lúc **07:04**.
+   - Ca 1 Phiên 2 chạy từ **08:00 - 09:30**.
+   - Tại mốc 07:04, các máy chạy Phiên 1 đã hoàn thành và số following đã tăng thật trên TikTok.
+   - Do đó, mốc so sánh với ngày hôm trước (`timestamp < max_dt`) trên Dashboard là **hoàn toàn chính xác** để gom trọn thành quả cả ngày (từ 00:00 đến 23:59).
+2. **Nguyên nhân thật sự khiến Tool < Web (+35 vs +54):**
+   - **Runner Timeout:** Khi `run_follow` bị timeout ở bước follow-hook, watchdog ghi nhận `status: 'timeout', followed_count: 0`. Máy thực tế đã bấm và TikTok đã nhận follow trước khi timeout, nhưng DB không được cộng (ví dụ M23 ở P1).
+   - **Follow tự nhiên trong Feed:** Các lượt follow khi lướt video For-You / Friends của feed-session không được tính vào `internal_follows` nếu watchdog chỉ đếm follow chéo.
+   - **TikTok Web trễ / dồn số:** TikTok đồng bộ lượt follow từ phiên trước hoặc nhả/bù lượt.
+
+### C. Quy trình Triage chuẩn
+1. Kiểm tra timestamp ca chạy trong `runtime/kibe/live/<date>/`: xác định ca chạy trước hay sau 07:00 sáng.
+2. Kiểm tra XML dump thật trên máy (`verify_profile/ui.xml`) tại thời điểm sau phiên để đối chiếu số `Đã follow` trực tiếp trên app với số Web cào.
+3. Tuyệt đối KHÔNG sửa mốc query SQL của Dashboard khi chưa kiểm chứng lịch ca 06:00.
+
+---
+
+## 5. Cạm Bẫy Timeout 120s Trong Closeout Gate Với Test Suite Dài
 
 ### A. Triệu chứng
 Khi chạy `closeout_gate.py --repo ... --files ...`:
