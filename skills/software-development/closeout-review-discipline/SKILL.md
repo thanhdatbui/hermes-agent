@@ -132,3 +132,4 @@ Reference: [`references/worker-timeout-quota-and-closeout-scope-20261018.md`](re
 - Sol High Scoring Rubric & Diff Budget: [`references/sol-high-scoring-rubric-and-diff-budget.md`](references/sol-high-scoring-rubric-and-diff-budget.md)
 - Strike 3 Failure Protocol: [`references/sol-worker-guardrails-and-strike-3-failure-protocol-20261017.md`](references/sol-worker-guardrails-and-strike-3-failure-protocol-20261017.md)
 - Sol Reviewer Time-Window Telemetry, Boundary Testing & Repo Skip-Test Trap (2026-10-21): [`references/sol-reviewer-time-window-telemetry-and-repo-skip-test-20261021.md`](references/sol-reviewer-time-window-telemetry-and-repo-skip-test-20261021.md)
+- Safe Push Approval Audit TTL (1800s) & Worker Single-File Lock Enforcement (2026-10-21): [`references/safe-push-approval-ttl-and-worker-file-lock-20261021.md`](references/safe-push-approval-ttl-and-worker-file-lock-20261021.md)
