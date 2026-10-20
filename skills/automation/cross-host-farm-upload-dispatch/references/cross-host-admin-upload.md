@@ -83,8 +83,23 @@ Farm hosts (Admin-PC `admin-farm` and Kibe host) frequently undergo scheduled re
 ## 7. Lifecycle & Completion Semantics: Worker Auto-Exit vs Scheduler Smart Idle
 When all video folders (640/640) reach target quota (>= 45 clips):
 - **Heavy Workers (ffmpeg / downloader):** MUST self-terminate (`sys.exit(0)`) when `len(tasks) == 0`. Frees 100% CPU, GPU, and RAM. Never leave dead while-true sleep loops running.
-- **Schedulers (Cron Watchdogs):** Do NOT pause or delete the cron schedule. Instead, implement **Smart Idle**:
+- Schedulers (Cron Watchdogs): Do NOT pause or delete the cron schedule. Instead, implement **Smart Idle**:
   - Watchdog performs a lightweight preflight scan (< 0.05s) across the 8 Tik workbooks.
   - If `0` tasks are pending: exit immediately with code 0 (consumes 0% CPU, 0% RAM).
   - If video depletion occurs later (from regular farm upload shifts or new account provisioning): the watchdog immediately detects the deficit and respawns the worker automatically without user intervention.
+
+## 8. Standalone Avatar-Upload Launcher Pitfall (`run_upload_avatar.py` & `run_tiktok_upload_avatar.ps1`)
+When running standalone avatar upload for Admin machines ($M \ge 200$):
+1. **Config Path Drift (`kibe.yaml` vs `admin.yaml`):**
+   - The launcher `run_upload_avatar.py` defaults to `kibe.yaml` if not passed `--host-config`. For $M \ge 200$, using `kibe.yaml` causes `run_tiktok_upload_batch.ps1` to search `D:\OneDrive\TaadaaData\kibe\Tik{slot}.xlsx` (which only contains machines 1–80), failing with: `Workbook Tik{slot} không có máy hợp lệ để chạy.`
+   - `run_upload_avatar.py` must dynamically select `admin.yaml` when `machine >= 200`.
+2. **Local ADB vs Remote ADB Trap (`[DEVICE_OFFLINE] device not found`):**
+   - Even with `admin.yaml`, running `run_upload_avatar.py` locally on Kibe host fails because USB devices for $M \ge 200$ are physically connected to Admin-PC (`192.168.110.119`). Kibe's local ADB daemon cannot communicate with them.
+   - For $M \ge 200$, the avatar upload must be executed directly on Admin-PC via `admin_ssh.py --powershell --timeout 1200`:
+     ```powershell
+     Set-Location D:\Taadaa\Tiktok-video; echo RUN | powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\run_tiktok_upload_avatar.ps1 -Tik <slot> -MaxParallel 1 -ForceAvatarMachineList <M> -HostConfigPath D:\Taadaa\machine-config\admin.yaml
+     ```
+3. **Remote Media Pre-staging & Artifact Verification:**
+   - Before executing the remote avatar upload, push `avatar.jpg` to `D:\TIKTOK-videonuoinick-admin\<folder>\avatar.jpg` and touch `.manual_avatar_locked` using Base64 chunks $\le 1200$ chars (avoiding Windows CLI 8191 limit).
+   - After upload exits with `verified=True`, pull `avatar-uploaded-confirmed.png` back to Kibe in 15KB chunks and inspect via `browser_vision` before marking the task DONE.
 

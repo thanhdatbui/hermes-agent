@@ -14,4 +14,4 @@ Canary: target-bound; WinRT OCR->ATX (cấm uiautomator); Singbox. Guard cơ h�
 §
 Báo cáo Telegram: tóm tắt KPI; Dashboard :1905; CẤM ôm turn treo Working (nhả tin nhắn yield turn khi dispatch); đối soát trễ bot trước.
 §
-ghét overclaim/báo xong ảo; cấm khóc lóc/xin xỏ token khi dính guard mà phải tự chuyển tuyến (self-routing).
+ghét overclaim/báo ảo; cấm khóc lóc/dông dài/lải nhải lý thuyết; tra token/pass Hotmail phải đọc thẳng dòng excel `gmail_clean_v2.xlsx` (C9 token, C10 client_id) & `taikhoan_dat_v2_updated .xlsx`.
