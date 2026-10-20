@@ -27,7 +27,10 @@ For a small targeted fix, constrain the edit to the existing safe-window functio
 - Never move a daytime watchdog to a night-only schedule without an explicit business decision.
 - Never use device taps, force-stops, or lock deletion to work around a scheduler collision.
 - Do not report deployment as complete until source, runtime copy, focused test result, and schedule are all verified.
+- Daily host reboot preflight (`farm_preflight_daily_reset.py`) must preserve in-flight Telegram sessions with `lookback_minutes >= 60` (not 20m) and include sessions with recent `tool` activity even if `last_role == 'assistant'`, preventing post-reboot session drop and multi-hour coordinator stalls.
+- Never report test suite counts (e.g. 131 passed) or declare a fix complete before the command has actually exited 0 with inspectable stdout. Background tests that time out in foreground must be waited/polled to real completion before any status claim.
 
 ## References
 
 - `references/reboot-blackout-guard-and-all-day-cron.md` — validated window math, evidence checklist, and common collision pitfalls.
+- `references/reboot-session-preservation-and-anti-silent-drop.md` — 60m lookback window, assistant-last tool activity detection, and anti-confabulation testing rules.
