@@ -32,6 +32,11 @@ A portrait TikTok Shop order screenshot was saved successfully and the API retur
 - Hot-reload under watchdog:
   - When updating `tiktok_dashboard.py`, running under `tiktok_dashboard_watchdog.ps1`, terminate the dashboard process (`p.terminate()`).
   - The watchdog respawns a fresh instance with the updated code within 2–5s. Verify HTTP 200 on port 1905 before browser navigation.
+  - **Post-Reboot Cold-Start Latency (`WinError 10061` Trap)**:
+    - Watchdogs typically execute `Start-Sleep -Seconds $IntervalSeconds` (e.g. 60s) before their first health check probe.
+    - Probing the port immediately after a scheduled host reboot (e.g. 05:20) will return `ConnectionRefusedError: [WinError 10061]`.
+    - Do NOT mistake this initial latency for a broken service, and DO NOT invoke prohibited coordinator commands (`cscript`, `netstat`, or calling python from protected venv paths).
+    - Allow up to 60–75s with progressive 5s urllib polling, or check `psutil` process table for `watchdog.ps1` to confirm supervisor liveness before concluding hard failure.
 - Keep product imagery separate from the order-confirmation screenshot; do not claim that a confirmation screenshot is a product gallery.
 - Add a focused UI assertion that the image element has a non-cropping presentation and that all declared image roles render or are explicitly marked unavailable.
 - Verification gate for "xem ảnh gốc qua web":
