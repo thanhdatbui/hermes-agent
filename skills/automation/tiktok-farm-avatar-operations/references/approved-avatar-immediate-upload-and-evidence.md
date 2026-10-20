@@ -27,5 +27,7 @@ An operator-approved avatar is an execution request, not a request to stage meta
 
 - Treating a source image plus a lock marker as a device upload.
 - Treating Excel/DB `PENDING` or `OK` as device evidence.
+- Stopping at staging: NEVER stop after setting `PENDING` in Excel/DB and claim completion. When an avatar is approved, immediately invoke the upload runner on all online devices. Staging without immediate execution on online machines is a severe operational failure.
 - Treating `exit=0` without a confirmation artifact as success.
 - Claiming all targets are complete when some devices are offline.
+- `[AVATAR_PICKER_NO_MATCH]` MediaStore indexing race: On Samsung devices (e.g., S7 Android 8), an `adb push` + media scan intent can take 3–5 seconds to asynchronously index into the MediaStore. If TikTok's picker opens before indexing completes, it displays "Không có ảnh hoặc video nào" and fails with `[AVATAR_PICKER_NO_MATCH]`. Do NOT assume broken UI or resort to manual taps; a prompt re-dispatch succeeds because the media scanner finishes indexing the pushed image in the background.
