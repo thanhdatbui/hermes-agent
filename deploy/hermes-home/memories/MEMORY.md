@@ -22,7 +22,7 @@ Ava: Trích clip gốc; Vision LLM lọc ava rác. Gate 6: cấm trần thuật 
 §
 Reboot 3 ca (05:20, 11:20, 17:20): lookback 60m. 2FA né đệm reboot (ROLLING_BLOCK_WINDOWS). Safe sync check output.parent.exists. Né TFT/War3. Task ngầm Hidden+CREATE_NO_WINDOW. Game=tắt nháy, cấm pause cron.
 §
-OMP: omp_cli.py quản lý 22 profile (OMP_PROFILE), install-id chung ~/.omp/install-id cần cô lập USERPROFILE né link chùm; dual-route native OAuth / :20129.
+OMP/AGY: 21 profile (acc_02-22) proxy 4G; jinrakal chỉ fallback direct host. Cô lập USERPROFILE né link chùm install-id; dual-route OAuth/:20129.
 §
 Xiaowei: auto-close 20m qua sampler 1Hz PID.
 §
