@@ -107,6 +107,7 @@ A valid acceptance sequence is:
 5. Do not report `DONE` from adapter status alone. If only the adapter canary passes, report `adapter PASS; orchestration canary pending`.
 
 ## References
+- Bẫy Cắt Xén Ngữ Cảnh Tự Động & Chuyển Đổi Sang On-Demand Cho Advisor Sol (2026-10-20): [`references/advisor-auto-append-context-clipping-and-on-demand-shift-20261020.md`](references/advisor-auto-append-context-clipping-and-on-demand-shift-20261020.md)
 - Độc Đạo Điều Phối Advisor Sol & Vòng Đời Biến Môi Trường (2026-10-20): [`references/single-authoritative-pathway-and-env-lifecycle-20261020.md`](references/single-authoritative-pathway-and-env-lifecycle-20261020.md)
 - Chẩn Đoán & Khắc Phục Nút Thắt Timeout 45s Đa Tầng Của Advisor Sol (2026-10-19): [`references/multi-layer-timeout-bottleneck-diagnosis-20261019.md`](references/multi-layer-timeout-bottleneck-diagnosis-20261019.md)
 - Cải Tiến Idle Streaming Timeout & Hóa Giải Cắt Ngang Dòng Stream Sol Advisor (2026-10-18): [`references/advisor-idle-streaming-timeout-resolution-20261018.md`](references/advisor-idle-streaming-timeout-resolution-20261018.md)
@@ -137,7 +138,10 @@ See `references/advisor-context-starvation-and-session-briefing-20261015.md` for
 
 ## Common failure modes
 
-- **Bẫy Nghẽn Timeout Đa Tầng Của Advisor Sol (Tăng Timeout Script Vẫn Dính 45s - 19/10/2026 & 20/10/2026):**
+- **Bẫy Cắt Cụt Ngữ Cảnh Tự Động (`_clip_text`) & Nghịch Lý Auto-Append Khiến Sol Ngáo (20/10/2026):**
+  * *Nguyên nhân ngộ nhận:* Tưởng rằng đã có module `advisor_context.py` tự động đóng gói 3–5 turn gần nhất thì Sol sẽ luôn hiểu phiên.
+  * *Bản chất gãy hiện trường:* Hàm `_clip_text` chém cứng mỗi tin nhắn còn 280 ký tự (`head_len=180`, `tail_len=97`, ở giữa `...`) và tổng briefing còn 1.500 ký tự. Khi phiên thảo luận nhắc tới việc "thống nhất với Claude" hoặc các chi tiết kỹ thuật sâu, nội dung ruột bị cắt rách tơi tả. Sol chỉ nhận được vỏn vẹn mẩu tin nhắc tới "thỏa thuận với Claude" nhưng không có nội dung, dẫn tới phản xạ đòi Operator: *"Gửi đoạn chat giữa mày và Claude qua đây tao mới chốt"*. Đồng thời `advisor_tool.py` nhồi bối cảnh qua JSON thô kèm chỉ thị tiếng Anh *"Return JSON when possible"*, khiến Sol chuyển sang chế độ bắt bẻ form thay vì phản biện tự nhiên.
+  * *Khắc phục:* Chuyển sang cơ chế **On-Demand** (chỉ gọi khi Operator yêu cầu hoặc khi chạm ngã ba đường kiến trúc lớn). Khi gọi On-Demand, Coordinator chủ động gom 1 Briefing Pack tập trung, nguyên vẹn, không qua các hàm cắt xén mù để Sol nắm trọn vẹn đề bài. (Chi tiết: `references/advisor-auto-append-context-clipping-and-on-demand-shift-20261020.md`).
   * *Nguyên nhân:* Tăng timeout ở client script (`consult_advisor.py`) không đủ nếu các tầng trung gian chưa đồng bộ hoặc chưa có hiệu lực thực tế:
     (1) **Bẫy In-Memory / Hot-Reload của Node.js:** OmniRoute chạy nền qua `node scripts/dev/run-next.mjs`. Node.js chỉ đọc `.env` một lần duy nhất lúc khởi động. Sửa `.env` thành 90s/80s mà KHÔNG restart tiến trình OmniRoute (:20129) thì RAM vẫn chạy giá trị cũ 45s.
     (2) **Fallback Hardcode trong code OmniRoute:** `open-sse/services/accountSemaphore.ts` có dòng fallback cứng `Number(process.env.ACCOUNT_SEMAPHORE_TIMEOUT_MS) || 45_000`. Nếu env không nạp được, nó lập tức dùng lại 45s.
