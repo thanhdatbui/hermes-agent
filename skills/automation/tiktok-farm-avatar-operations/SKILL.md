@@ -5,8 +5,9 @@ description: Use when running avatar-only jobs on TikTok farm.
 
 # TikTok Farm Avatar Operations
 
+- **Blind Vision & Claude Worker Gate**: [doc](references/coordinator-blind-vision-and-claude-worker-inspection-gate-20261017.md)
 - **Photo Picker 3-Col & Proxy Stall**: [doc](references/photo-picker-3col-geometry-and-proxy-stall-rejection-20261017.md)
-- **Bulk Database Avatar Audit & Auto-Healing Pipeline**: Quét database thẩm định chất lượng toàn bộ avatar offline bằng HaarCascade/Laplacian, tự động đào clip gốc .mp4 bóc mặt creator HD 512x512 thay thế avatar rác/tranh chữ/đồ vật, cắm cờ khóa cứng 4 lớp và đồng bộ hàng đợi PENDING cho watchdog ca tối nạp lên máy.
+- **Bulk DB Audit**: Thẩm định avatar offline, trích HD 512x512.
 - **Admin Remote & Worker SSH Boundary**: [doc](references/admin-remote-avatar-extraction-and-worker-ssh-boundary-20261017.md)
 - Canonical Avatar Launcher: [doc](references/canonical-single-avatar-launcher-and-anti-ad-hoc-script-20261017.md)
 - Immediate Upload & Switcher Anchor: [doc](references/immediate-avatar-upload-end-to-end-and-switcher-anchor-collision-20261017.md)

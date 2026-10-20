@@ -2,15 +2,15 @@ Bio: CẤM TRÙNG BIO giữa các acc (ưu tiên xóa trắng về +Thêm tiểu
 §
 Dọn đĩa: safe_recycle.py. Reboot né TFT/War3. Box 1 sát AP kibe 1. S7: anten Wi-Fi góc trên TRÁI. Lỗi timeout/PSM BẮT BUỘC sửa script; cấm cron quấy rầy máy nghỉ.
 §
-Nuôi 4d 3 ca (bỏ 0h). Nhả lock per-device. Ava&2FA tới 5h15. Excel 3,4,5+G; Starve 96h. Dùng DB/OpenCV quét ava rác toàn farm, tự bóc clip gốc HD.
+Nuôi 4d 3 ca (bỏ 0h). Nhả lock device. Ava&2FA tới 5h15. Excel 3,4,5+G; Starve 96h. DB/OpenCV quét ava rác, bóc clip gốc HD.
 §
 Fallback Claude->Agy; Repo dirty --files O(1); pre-push 1 commit. Pin TT LIFO.
 §
-Ava/Media: WinRT OCR; CẤM gửi mù; CẤM báo DONE browser/UI thiếu MEDIA: (Gate 6, bắt buộc vision soi mắt); Ava đúng creator; pHash/crop thật.
+Ava/Media: CẤM gửi mù/ảo giác đoán mò; BẮT BUỘC Claude worker soi mắt thật 100% trước khi đính kèm MEDIA:; CẤM báo DONE thiếu MEDIA:; Ava đúng creator; pHash/crop thật.
 §
 Worker: Haiku claude-haiku-5-5, inline -p; Agy pool 22; Timeout 1200s-1500s, cấm hạ 180s.
 §
-Canary: target-bound; WinRT OCR->ATX (cấm uiautomator); Singbox. MỌI rule bắt buộc Guard cơ học (cấm prompt tiêm); Claude duyệt; cấm đùn việc khi dính guard (bị chặn terminal cài tool/setup BẮT BUỘC tự chạy qua unscoped worker CLI, cấm bảo user gõ tay).
+Canary: target-bound; WinRT OCR->ATX (cấm uiautomator); Singbox. Rule bắt buộc Guard cơ học; Claude duyệt; cấm đùn việc khi dính guard (bị chặn terminal BẮT BUỘC chạy qua unscoped worker CLI, cấm bảo user gõ tay).
 §
 Báo cáo Telegram: tóm tắt KPI+exception; Dashboard :1905 full-page.
 §

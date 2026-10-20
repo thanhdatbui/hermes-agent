@@ -100,6 +100,12 @@
   - BẮT BUỘC viết theo đúng **Niche kênh** (`Keyword Video` từ `Tik<N>.xlsx`).
   - Ưu tiên phong cách **Hài hước, dí dỏm, Gen Z đời thường**, có emoji sinh động (VD: Nấu ăn -> *"Nấu ăn thì ngon, mỗi tội rửa bát thì lười 🍳"*; Thể thao -> *"Tập gym để ăn nhiều hơn mà không cảm thấy tội lỗi 🏋️"*; Sức khỏe -> *"Quyết tâm sống healthy, nhưng đồ ăn vặt không cho phép 🍟"*).
   - CẤM TUYỆT ĐỐI viết bio văn mẫu khô khan, cấm viết trùng một câu bio cho nhiều tài khoản (dấu hiệu bot lộ liễu).
+  - **Lệnh "Tự chọn bio" & Cơ chế Proactive Bio Selection (Operator Directive)**: Khi Operator chỉ thị *"Tự chọn bio"*, Coordinator tự động bốc phương án bio tối ưu nhất (bám sát ngách nhất, dí dỏm, có emoji, zero-overlap với kho bio farm), lập tức kích hoạt runner nạp thẳng lên thiết bị qua `--bio-only --bio "<text>"` mà không cần hỏi lại hay bắt Operator phải chọn thêm một vòng nữa.
+  - **Lệnh thực thi canonical runner cho kênh ALREADY**:
+    ```bash
+    python D:/Taadaa/tools/do_rename_canonical_runner.py --machine <M> --serial <SERIAL> --username <USER> --bio-only --bio "<BIO_TEXT>"
+    ```
+    Cờ `--bio-only` bảo đảm runner bỏ qua hoàn toàn các bước chạm vào dòng Tên (giữ nguyên 100% tên tiếng Việt hợp lệ ban đầu), chỉ vào Tiểu sử nạp text Base64 qua AdbKeyboard rồi Lưu.
 - **Invariant Bio Tiếng Việt Có Dấu & Cạm Bẫy Font OpenCV (User Phản Ứng: 'Ủa bio t ép ghi tiếng việt có dấu r mà?')**:
   * 100% Bio nạp lên thiết bị hoặc đề xuất cho Operator BẮT BUỘC là **TIẾNG VIỆT CÓ DẤU ĐẦY ĐỦ**, có emoji sinh động.
   * **Cạm bẫy OpenCV (`cv2.putText`)**: Hàm vẽ chữ của OpenCV chỉ hỗ trợ bảng mã ASCII. Khi vẽ proposal canvas tóm tắt, nếu lột dấu tiếng Việt (`Tu hao su thi...`) sẽ khiến Operator hiểu lầm là bot gõ không dấu lên máy!
