@@ -112,7 +112,7 @@ Interactive TUI mode:
 
 ---
 
-## 5. Google AI Studio API vs OmniRoute Pool & OAuth Traps
+### 5. Google AI Studio API vs OmniRoute Pool & OAuth Traps
 
 ### The 20 Requests/Day Free Tier Trap (gemini-3.8-flash)
 Google AI Studio enforces a hard cap of **20 requests/day per project/model** on `gemini-3.8-flash`:
@@ -123,6 +123,19 @@ Google AI Studio enforces a hard cap of **20 requests/day per project/model** on
 ```
 Because agent harnesses inject large system prompts and burn multiple turns per task (read -> patch -> test), Free Tier API keys run out within 2–3 turns and lock the project for 24 hours. The direct AI Studio API key route is not viable for continuous coding agent workflows without a paid billing account.
 
+### Account Boundary Invariant: CẤM Động Vào Host Chrome Cá Nhân
+- **User Rule**: Tuyệt đối không tự ý dùng Computer Use để click chiếm dụng cửa sổ Google Chrome cá nhân của user nhằm lấy token hay thực hiện OAuth flow khi user chưa chỉ định.
+- Khi cần tài khoản Google / Gemini, **bắt buộc** ưu tiên khai thác pool tài khoản chuyên dụng trong GPM (`http://127.0.0.1:19995`) hoặc pool `agy_profiles` (`D:\Taadaa\agy_profiles`).
+
+### OAuth Client ID Audience Mismatch Trap (Token Transplantation Failure)
+- `omp` hardcodes OAuth client ID cho provider `google-antigravity` (`1071006060591-tmhssin2h21lcre235vtolojh4g403ep...`).
+- Token OAuth lưu trong `D:\Taadaa\agy_profiles\acc_XX\.gemini\oauth_creds.json` được cấp phát từ OAuth client ID riêng của Antigravity CLI.
+- **Bẫy kỹ thuật**: Nếu cố tình inject token từ `agy_profiles` trực tiếp vào bảng `auth_credentials` của SQLite DB `~/.omp/agent/agent.db`, Google Cloud backend sẽ lập tức trả về lỗi:
+  ```json
+  Cloud Code Assist API error (401): Request had invalid authentication credentials. Expected OAuth 2 access token, login cookie or other valid authentication credential. (status: UNAUTHENTICATED)
+  ```
+  bởi vì token Google OAuth bị ràng buộc mã hóa (cryptographically bound) theo đúng Client ID và Audience đã cấp phát, không thể bê ngang giữa hai harness khác client ID.
+
 ### The `omp login` Non-Interactive Pipe Trap (`stdin closed`)
 `omp login` initializes Node's `readline.createInterface({ input: process.stdin, output: process.stdout })`.
 - When invoked from automated scripts or non-interactive background processes without an open input stream, `readline` triggers `EOF` immediately and aborts with:
@@ -132,11 +145,11 @@ Because agent harnesses inject large system prompts and burn multiple turns per 
 ### Loopback OAuth vs Host Browser VPN Trap (`ERR_CONNECTION_REFUSED`)
 During `omp login google-antigravity`:
 - `omp` starts an ephemeral callback server on `http://127.0.0.1:51121/oauth-callback`.
-- If the user's host browser has active VPN/proxy extensions (e.g. Urban VPN) capturing loopback requests, navigating to `127.0.0.1` will be refused by the browser's proxy routing (`ERR_CONNECTION_REFUSED`).
+- If the user's host browser has active VPN/proxy extensions capturing loopback requests, navigating to `127.0.0.1` will be refused by the browser's proxy routing (`ERR_CONNECTION_REFUSED`).
 - Short runner timeouts (<300s) kill the callback listener before the user completes multi-step consent, producing subsequent connection refusals on redirect.
 
 ### Production Solution: OmniRoute / 9Router Local Provider Mapping
-To leverage an existing multi-account pool (e.g. 22 Google Pro accounts on port `20129`) without browser OAuth or 20 req/day API key limits, configure `~/.omp/agent/models.yml`:
+To leverage an existing multi-account pool (e.g. 22 Google Pro accounts on port `20129`) without browser OAuth, client ID mismatch, or 20 req/day API key limits, configure `~/.omp/agent/models.yml`:
 ```yaml
 providers:
   omniroute:

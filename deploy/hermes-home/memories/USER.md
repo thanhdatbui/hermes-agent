@@ -4,7 +4,7 @@ Dọn đĩa: safe_recycle.py. Reboot né TFT/War3. Box 1 sát AP kibe 1. S7: ant
 §
 Nuôi 4d 3 ca (bỏ 0h). Nhả lock device. Ava&2FA tới 5h15. Excel 3,4,5+G; Starve 96h. DB/OpenCV quét ava rác, bóc clip gốc HD.
 §
-Fallback Claude->Agy; Repo dirty --files O(1); pre-push 1 commit. Pin TT LIFO.
+Fallback Claude->Agy; Repo dirty --files O(1); pre-push 1 commit. Pin TT LIFO. CẤM đụng Chrome host lấy acc/OAuth, dùng GPM/agy_profiles.
 §
 Ava/Media: CẤM gửi mù/ảo giác đoán mò; BẮT BUỘC Claude worker soi mắt thật 100% trước khi đính kèm MEDIA:; CẤM báo DONE thiếu MEDIA:; Ava đúng creator; pHash/crop thật.
 §
@@ -14,4 +14,4 @@ Canary: target-bound; WinRT OCR->ATX (cấm uiautomator); Singbox. Rule bắt bu
 §
 Báo cáo Telegram: tóm tắt KPI+exception; Dashboard :1905 full-page.
 §
-User ưu tiên kiến trúc/Claude plan; không muốn bị bảo rút cáp hay thao tác tay. Báo farm phải có PID/giờ/log, phân biệt runner với worker, và chỉ báo xử lý sau verify runtime.
+User ghét đùn đẩy/bắt thao tác tay khi agent tự làm được; cấm đụng Chrome cá nhân (dùng GPM/agy_profiles). Báo farm có PID/giờ/log, verify runtime trước khi báo.

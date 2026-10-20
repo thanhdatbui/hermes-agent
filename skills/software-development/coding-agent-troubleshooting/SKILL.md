@@ -692,5 +692,6 @@ For full details on `omp` installation, Bun runtime resolution, and Google AI St
 
 ### 4. `omp login` Non-Interactive Pipe Trap & Browser VPN Conflict
 - `omp login` aborts with `Login cancelled: stdin closed` when run from scripts where stdin is not an open stream. Keep stdin open via `subprocess.Popen(..., stdin=subprocess.PIPE)` or run interactively in a PTY.
-- Active browser VPN extensions (e.g. Urban VPN) block loopback redirects to `127.0.0.1:51121` (`ERR_CONNECTION_REFUSED`). Use the OmniRoute local provider mapping above to avoid browser loopback OAuth entirely.
+- Active browser VPN extensions block loopback redirects to `127.0.0.1:51121` (`ERR_CONNECTION_REFUSED`).
+- **Account Boundary & Token Mismatch**: CẤM chiếm dụng Chrome cá nhân của user. Tokens từ pool `agy_profiles` không thể inject trực tiếp vào `agent.db` của `omp` do khác OAuth Client ID (bị lỗi 401 UNAUTHENTICATED). Luôn dùng đường OmniRoute port 20129.
 
