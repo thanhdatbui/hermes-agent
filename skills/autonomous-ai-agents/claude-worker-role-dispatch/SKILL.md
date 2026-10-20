@@ -114,13 +114,14 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
 
 ## Pitfalls
 
-- **BẪY LỆCH PHA DUAL CACHE QUOTA VÀ NGỘ ĐỘC CACHE 45S (Probe Timeout Poisoning Trap 20/10/2026):**
+- **BẪY LỆCH PHA DUAL CACHE QUOTA VÀ NGỘ ĐỘC CACHE 45S (Probe Timeout Poisoning Trap 20/10/2026 - Updated 21/10/2026):**
   Operator đã chấn chỉnh: *"Tại sao cứ lỗi cache quota hoài thế t đã ép phải cập nhật quota mới r mà? Fix đi"*.
   1. *Nguyên nhân cốt lõi:* Hệ thống tồn tại 2 tầng cache độc lập: Tầng 1 (`plan-usage-history.json` TTL 2h) dùng cho `claude_worker.py` và `refresh_claude_quota_file.py`; Tầng 2 (`claude_quota_cache.json` TTL 45s) dùng cho `claude_quota_guard.py`. Khi ép refresh, Tầng 1 nhận quota mới (21%/6%) nhưng Tầng 2 không được cập nhật. Khi Tầng 2 hết hạn 45s, Guard tự gọi probe live `claude -p /usage`. Khi probe bị timeout (20s), Guard ghi đè `BLOCK_PROBE_FAILED (exit 21)` vào cache 45s, làm tê liệt toàn bộ các lệnh chạy sau dù quota thực tế an toàn.
-  2. *Quy chuẩn 3 lớp khắc phục:*
-     - Lớp 1: Fallback sang `plan-usage-history.json` (< 2 giờ) khi live probe timeout trước khi phán quyết `BLOCK_PROBE_FAILED`.
-     - Lớp 2: CẤM TUYỆT ĐỐI ghi đè trạng thái lỗi `BLOCK_PROBE_FAILED` vào file cache để không đầu độc các lệnh kế tiếp.
-     - Lớp 3: Nâng `CACHE_TTL_SECONDS` lên 180s để giảm tải tần suất probe dồn dập.
+  2. *Quy chuẩn 4 lớp khắc phục triệt để:*
+     - Lớp 1: Fallback sang `read_history_quota(max_age_seconds=7200.0)` đọc `plan-usage-history.json` (< 2 giờ) khi live probe timeout trước khi phán quyết `BLOCK_PROBE_FAILED`.
+     - Lớp 2: Kiểm soát biên nghiêm ngặt: loại bỏ mẫu có `ts <= 0` hoặc `ts > now + 60.0`, kiểm tra `math.isfinite` và `0.0 <= u <= 100.0` cho cả 5h lẫn tuần, bắt lỗi cụ thể `(OSError, json.JSONDecodeError, TypeError, ValueError, OverflowError)`.
+     - Lớp 3: CẤM TUYỆT ĐỐI ghi đè trạng thái lỗi `BLOCK_PROBE_FAILED` vào file cache để không đầu độc các lệnh kế tiếp.
+     - Lớp 4: Nâng `CACHE_TTL_SECONDS` từ 45s lên 180s và bổ sung telemetry `quota_history_fallback` ghi nhận `age_seconds`. Nghiệm thu 23/23 tests và Closeout Gate commit `e05a052`.
 - **BẪY TOKEN BLEEDING KHI CỐ ĐẤM ĂN XÔI QUA GUARD BỊ CHẶN 9 LẦN (1-Strike Guard Circuit Breaker 20/10/2026):**
   Operator đã chấn chỉnh gay gắt: *"Vấn đề 9 lần bị chặn vẫn tốn quota coordinator?"*.
   1. *Gốc rễ sự cố:* Dù Pre-Tool Guard (`guard_dispatch_contract.py`) chặn ở máy cục bộ (<50ms) không tiêu tốn quota Claude CLI của User, NHƯNG mỗi lần bị chặn thì lỗi Guard lại được nạp ngược vào context của Coordinator. Với session context dài ~60k–80k tokens, Coordinator nuốt lại 9 lần liên tiếp $\approx$ **nướng hơn 500.000 – 700.000 input tokens** vô ích trên pool Antigravity/Gemini (:20129) và giam lỏng phiên chat suốt hơn 1 giờ.

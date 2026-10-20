@@ -7,6 +7,7 @@ description: Use when running avatar-only jobs on TikTok farm.
 
 - Core avatar workflow references: semantic audit/lock preflight, picker geometry, canonical launcher, switcher anchor, stale-source and hallucination prevention.
 - Immediate approved-avatar upload and evidence gate: [references/approved-avatar-immediate-upload-and-evidence.md](references/approved-avatar-immediate-upload-and-evidence.md). Metadata staging is not upload; require device verification and vision-checked confirmation before reporting DONE.
+- Double-lock & cross-host upload: [references/avatar-lock-verification-and-cross-host-upload.md](references/avatar-lock-verification-and-cross-host-upload.md). Up xong khóa cờ `.manual_avatar_locked` cả 3 kho + set `Avatar = OK`; quy trình SSH Admin-PC cho máy >= 200.
 - New correction-loop checklist: [avatar-change-correction-loop-20261020.md](references/avatar-change-correction-loop-20261020.md).
 - Avatar Text-Banner Crop: [references/avatar-text-banner-crop-triage-and-non-empty-coordinator-response-20261016.md](references/avatar-text-banner-crop-triage-and-non-empty-coordinator-response-20261016.md)
 - Cartoon & Mascot: [references/non-human-cartoon-mascot-avatar-and-empty-turn-prevention-20261016.md](references/non-human-cartoon-mascot-avatar-and-empty-turn-prevention-20261016.md) & [references/cartoon-mascot-avatar-extraction-and-mismatched-source-triage-20261016.md](references/cartoon-mascot-avatar-extraction-and-mismatched-source-triage-20261016.md)
