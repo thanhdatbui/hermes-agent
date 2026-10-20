@@ -12,9 +12,9 @@ Stale Up: xóa draft. Revert: TikWM. Cào: max 60. Cron TB: device_lock+rolling<
 §
 Closeout: Grace 80-84 auto-push; Sol 80% diff/10% log; Claude 85%->Agy; Strike 3 handoff cấm clarify, Reviewer tự sửa. Night Chain 0h: P1 Gmail, P2 2FA; cron local; state lock.
 §
-Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; Lock reaper Kibe auto-reap Admin qua SSH. Pre-push: BẮT BUỘC 1 commit duy nhất (squash/reset) khớp scope_hash gate_audit. Cron: 100% no_agent+script thô.
+Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; Reaper Kibe auto-reap Admin qua SSH. Pre-push: 1 commit (squash) khớp scope_hash gate_audit. Cron: no_agent; safe_sync cấm check output.exists (dùng parent.exists).
 §
-M7 ngoại lệ: bắt 'Dat_2.4G' (thuần 2.4G né bẫy +40 bonus 5G), cấm kibe 1.
+M7: bắt 'Dat_2.4G' né +40 5G S7. Aruba VC tạo SSID: vlan 1 + access-rule permit (né L3_NO_IP); wrap ADB qua with_device_lock.py né guard screencap.
 §
 Canary: target-bound; WinRT OCR -> ATX (cấm uiautomator); done_gate verify hash+MEDIA. Claude quota probe >2h.
 §
@@ -24,4 +24,4 @@ Reboot 3 ca (05:20, 11:20, 17:20), né TFT/War3. Task ngầm VBS/wscript Hidden+
 §
 OMP: omp_cli.py quản lý 22 profile (OMP_PROFILE), install-id chung ~/.omp/install-id cần cô lập USERPROFILE né link chùm; dual-route native OAuth / :20129.
 §
-Xiaowei auto-close: chuẩn 20m tính từ mốc Alt-Tab rời app qua sampler 1Hz cây PID; cấm polling thưa hay ép system-idle toàn máy.
+Xiaowei: auto-close 20m sau khi rời app qua sampler 1Hz PID; cấm polling thưa/system-idle.

@@ -14,4 +14,4 @@ Canary: target-bound; WinRT OCR->ATX (cấm uiautomator); Singbox. Guard cơ h�
 §
 Báo cáo Telegram: tóm tắt KPI; Dashboard :1905; CẤM ôm turn treo Working... (nhả tin nhắn yield turn ngay khi dispatch); User hỏi "sao treo/k tl" = đối soát trễ bot trước, cấm đổ farm.
 §
-User: ghét đùn đẩy; Advisor On-Demand; cấm đụng Chrome cá nhân; cron 24/7 phải né 3 ca reboot (15p buffer); verify runtime trước khi báo.
+User: ghét cãi/đùn đẩy; cấm viện cớ gate này chặn gate kia mà phải chủ động fix thông luồng ngay; Advisor On-Demand; cấm đụng Chrome cá nhân; né 3 ca reboot (15p buffer); verify runtime.

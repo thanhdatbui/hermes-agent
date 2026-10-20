@@ -5,17 +5,8 @@ description: Use when running avatar-only jobs on TikTok farm.
 
 # TikTok Farm Avatar Operations
 
-- **Chuẩn Hoá Kênh 3 Món**: [doc](references/chuan-hoa-kenh-3-mon-va-pin-top-device-lock-20261020.md)
-- **Avatar Semantic Audit & Lock Preflight**: [doc](references/avatar-semantic-audit-and-lock-preflight-invariants-20261020.md)
-- **Blind Vision Gate**: [doc](references/coordinator-blind-vision-and-claude-worker-inspection-gate-20261017.md)
-- **Picker Geometry**: [doc](references/photo-picker-3col-geometry-and-proxy-stall-rejection-20261017.md)
-- **Bulk DB Audit**: Thẩm định avatar offline, trích HD.
-- **Admin Remote Boundary**: [doc](references/admin-remote-avatar-extraction-and-worker-ssh-boundary-20261017.md)
-- Canonical Launcher: [doc](references/canonical-single-avatar-launcher-and-anti-ad-hoc-script-20261017.md)
-- Switcher Anchor: [doc](references/immediate-avatar-upload-end-to-end-and-switcher-anchor-collision-20261017.md)
-- Active Lock Coexistence: [doc](references/active-device-lock-coexistence-and-protected-folders-type-safety-20261016.md)
-- Stale Trap: [doc](references/stale-stored-avatar-trap-and-multi-option-extraction-20261016.md)
-- Hallucination: [doc](references/avatar-hallucination-prevention-and-raw-video-face-extraction.md)
+- Core avatar workflow references: semantic audit/lock preflight, picker geometry, canonical launcher, switcher anchor, stale-source and hallucination prevention.
+- New correction-loop checklist: [avatar-change-correction-loop-20261020.md](references/avatar-change-correction-loop-20261020.md).
 - Avatar Text-Banner Crop: [references/avatar-text-banner-crop-triage-and-non-empty-coordinator-response-20261016.md](references/avatar-text-banner-crop-triage-and-non-empty-coordinator-response-20261016.md)
 - Cartoon & Mascot: [references/non-human-cartoon-mascot-avatar-and-empty-turn-prevention-20261016.md](references/non-human-cartoon-mascot-avatar-and-empty-turn-prevention-20261016.md) & [references/cartoon-mascot-avatar-extraction-and-mismatched-source-triage-20261016.md](references/cartoon-mascot-avatar-extraction-and-mismatched-source-triage-20261016.md)
 - Haar Cascade False-Positive & Pre-Send Candidate Vision Gate (2026-10-17): [references/haar-cascade-false-positive-and-pre-send-candidate-vision-gate-20261017.md](references/haar-cascade-false-positive-and-pre-send-candidate-vision-gate-20261017.md) & [references/haar-cascade-false-positive-face-and-multi-frame-avatar-verification-20261016.md](references/haar-cascade-false-positive-face-and-multi-frame-avatar-verification-20261016.md)
