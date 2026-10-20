@@ -7,8 +7,7 @@ description: >-
 
 # Farm Alert Autonomous Recovery
 
-> Ref: `references/benny-triage-device-lock-and-feature-map-protocol-20261015.md`.
-> Ref: `references/xiaowei-adb-reset-and-offline-device-triage-20261012.md`.
+> Ref: `references/focus-device-issue-cold-start-and-systemui-relaunch-20261020.md` (S7 cold-start delay, SystemUI occlusion & Intent relaunch).
 > Ref: `references/account-switcher-verify-mismatch-triage-20261017.md`.
 > Ref: `references/batch-alert-canary-selection-and-atx-vs-winrt-ocr-20261018.md`.
 > Ref: `references/hard-enforcement-hook-gate-and-winrt-primary-atx-fallback-20261018.md`.
