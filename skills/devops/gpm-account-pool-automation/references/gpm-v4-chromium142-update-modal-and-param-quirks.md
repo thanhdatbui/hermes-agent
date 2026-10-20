@@ -23,3 +23,20 @@ Khi GPM tự động cập nhật hoặc người dùng tải gói tài nguyên 
 - Chromium 142 kiểm tra chặt chẽ WebSocket `Origin` header.
 - Playwright kết nối CDP qua `pw.chromium.connect_over_cdp(f"http://{remote_debugging_address}")` sẽ gửi `Origin: http://127.0.0.1:...`.
 - Nếu profile khởi động bình thường trên GPM, Playwright kết nối mượt mà vào port debug được cấp. Tuy nhiên, nếu GPM đang bị modal che hoặc core chưa tải xong, connection sẽ timeout 180s.
+
+## 5. Cạm bẫy Crash Playwright `launch_persistent_context` Trên Core 142 (Exit Code 3221225477)
+- **Hiện tượng:** Khi một script cố khởi chạy `chrome.exe` của core 142 trực tiếp qua Playwright:
+  ```python
+  ctx = p.chromium.launch_persistent_context(
+      user_data_dir=prof_dir,
+      executable_path=CHROME_EXE,
+      ignore_default_args=["--disable-save-password-bubble"]
+  )
+  ```
+  Chromium crash ngay khi bật với exit code `3221225477` kèm log:
+  `--variations-state-file can not work with other field-trial related flags: --force-fieldtrials, --force-fieldtrial-params, --enable-features, --disable-features`
+- **Nguyên nhân cốt lõi:** Bản build Chromium 142 của GPM nhúng sẵn cờ `--variations-state-file`. Trong khi đó, Playwright mặc định tự động tiêm `--enable-features=...`, `--disable-features=...` và `--disable-field-trial-config`. Sự xung đột giữa variations state và field-trial flags làm Chromium abort ngay lập tức.
+- **Quy chuẩn khắc phục:**
+  1. *Khởi chạy qua GPM Local API (Khuyên dùng):* Luôn gọi `GET /api/v3/profiles/start/{id}` lấy `remote_debugging_address`, sau đó kết nối qua `p.chromium.connect_over_cdp(f"http://{addr}")`. GPM tự quản lý proxy authentication và các flags an toàn.
+  2. *Nếu bắt buộc dùng `launch_persistent_context`:* BẮT BUỘC đặt boolean `ignore_default_args=True` (thay vì list các cờ riêng lẻ) để Playwright loại bỏ hoàn toàn các cờ features/field-trial mặc định xung đột.
+
