@@ -80,6 +80,7 @@ Reference: [`references/worker-timeout-quota-and-closeout-scope-20261018.md`](re
 
 ## 3. Tài Liệu Tham Khảo (References)
 - Jobs.json Diff Inflation & Targeted Scope Hygiene in Closeout Gate (2026-10-20): [`references/jobs-json-diff-inflation-and-targeted-scope-hygiene-20261020.md`](references/jobs-json-diff-inflation-and-targeted-scope-hygiene-20261020.md)
+- Antigravity CLI Pool Timeout Cascade & Closeout Test Pairing (2026-10-20): [`references/agy-cli-pool-timeout-cascade-and-closeout-test-pairing-20261020.md`](references/agy-cli-pool-timeout-cascade-and-closeout-test-pairing-20261020.md)
 - Strike 3 Reviewer Handoff: Anti-Clarify Trap & Payload Budget Ratio (2026-10-20): [`references/strike-3-reviewer-handoff-anti-clarify-trap-and-diff-budget-20261020.md`](references/strike-3-reviewer-handoff-anti-clarify-trap-and-diff-budget-20261020.md)
 - Breaking 79 Plateau: Diff Budget Ratio, State Merge, Proof Magic Bytes & Anti-Clarify Discipline (2026-10-19): [`references/breaking-79-plateau-diff-budget-ratio-and-anti-clarify-surrender-20261019.md`](references/breaking-79-plateau-diff-budget-ratio-and-anti-clarify-surrender-20261019.md)
 - Frontend Component Review Scoring, Sol Repair Syntax Invalidation & Worker Fallback (2026-10-19): [`references/frontend-component-review-scoring-and-syntax-repair-fallback-20261019.md`](references/frontend-component-review-scoring-and-syntax-repair-fallback-20261019.md)
