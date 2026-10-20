@@ -6,6 +6,7 @@ description: Use when running avatar-only jobs on TikTok farm.
 # TikTok Farm Avatar Operations
 
 - Core avatar workflow references: semantic audit/lock preflight, picker geometry, canonical launcher, switcher anchor, stale-source and hallucination prevention.
+- Immediate approved-avatar upload and evidence gate: [references/approved-avatar-immediate-upload-and-evidence.md](references/approved-avatar-immediate-upload-and-evidence.md). Metadata staging is not upload; require device verification and vision-checked confirmation before reporting DONE.
 - New correction-loop checklist: [avatar-change-correction-loop-20261020.md](references/avatar-change-correction-loop-20261020.md).
 - Avatar Text-Banner Crop: [references/avatar-text-banner-crop-triage-and-non-empty-coordinator-response-20261016.md](references/avatar-text-banner-crop-triage-and-non-empty-coordinator-response-20261016.md)
 - Cartoon & Mascot: [references/non-human-cartoon-mascot-avatar-and-empty-turn-prevention-20261016.md](references/non-human-cartoon-mascot-avatar-and-empty-turn-prevention-20261016.md) & [references/cartoon-mascot-avatar-extraction-and-mismatched-source-triage-20261016.md](references/cartoon-mascot-avatar-extraction-and-mismatched-source-triage-20261016.md)
