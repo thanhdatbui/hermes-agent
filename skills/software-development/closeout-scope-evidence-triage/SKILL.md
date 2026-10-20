@@ -80,6 +80,18 @@ In repositories where recurring background crons periodically auto-commit (e.g.,
    - **Mở lại Cron:** Sau khi gate hoàn tất, gọi `cronjob action=resume job_id=<id>`.
    - Chi tiết ca xử lý xem `references/cron-sync-commit-collision-and-closeout-scope-reconciliation-20261019.md`.
 
+## Unrelated Regression Test Timeout Trap & Direct Test Binding
+
+In `closeout_gate.py`, test discovery follows a strict priority:
+1. **Direct Test Priority (`if direct_tests:`):**
+   If `--files` targets include AT LEAST ONE test file (matching `test_*.py`, `*_test.py`, or under `tests/`), gate sets `focused = direct_tests` and executes ONLY those tests, skipping any fallback suites.
+2. **The Missing-Test Fallback Trap (`elif staged_files:`):**
+   If `--files` contains only business implementation files without an accompanying test file, gate falls back to heuristic mappings and automatically appends heavy regression test suites (e.g. `tests/test_tiktok_runner_preflight.py`). If those suites contain un-mocked disk scans, long loops, or pre-existing failures on `main`, execution exceeds the 120s gate timeout cap, causing an immediate `TEST_FAILED` rejection.
+3. **Mandatory Pairing Rule:**
+   Always declare BOTH the implementation file and its focused test file in `--files` (e.g. `--files <impl.py> <test_impl.py>`). This binds execution strictly to `< 5s` focused tests and isolates closeout verification from repository-wide regression noise.
+4. **Fail-Closed Gate Discipline:**
+   When `closeout_gate.py` exits non-zero, NEVER push to remote. Keep local commits intact as audit evidence and report BLOCKED with exact command and error details.
+
 ## Reporting format
 
 - `Candidate:` exact base, HEAD, target paths, staged/unstaged state.
@@ -89,4 +101,4 @@ In repositories where recurring background crons periodically auto-commit (e.g.,
 - `Action:` remediation, handoff, or blocked reason.
 - `Not done:` commit, push, token, or approval claims lacking evidence.
 
-Detailed incident evidence belongs in `references/closeout-payload-scope-and-handoff-incident-20261018.md`.
+Detailed incident evidence belongs in `references/closeout-payload-scope-and-handoff-incident-20261018.md` and `references/unrelated-regression-test-timeout-trap-20261020.md`.
