@@ -200,3 +200,22 @@ To set up a 1-to-1 fair benchmark against `agy cli`:
    omp --profile acc_01 --model google-antigravity/gemini-3.8-flash -p "<benchmark_prompt>"
    ```
 4. Build a lightweight rotation runner (`omp_pool_runner.py`) using `OMP_PROFILE=acc_XX` to rotate profiles on HTTP 429/ResourceExhausted, identical to `ag_cli.py`.
+
+---
+
+## 7. Production Multi-Profile Pool Bridge (`D:\Taadaa\tools\omp_cli.py`)
+
+A full production bridge has been implemented at `D:\Taadaa\tools\omp_cli.py` mirroring `ag_cli.py`:
+- **Subcommands**:
+  * `ask`: Read-only queries / code analysis.
+  * `fix`: Code modification with `--file` targeting.
+  * `models`: Shows current route and model resolution.
+  * `pool-status`: Displays the status of all 22 accounts (READY / COOLDOWN, Lease status, Proxy endpoint, and effective Route).
+- **Dual Routing**:
+  * Prioritizes native `google-antigravity/gemini-3.8-flash` if `~/.omp/profiles/<name>/agent/agent.db` contains OAuth credentials.
+  * Gracefully falls back to `omniroute/antigravity/gemini-3.8-flash-tiered` (port 20129) if native credentials are missing.
+- **Concurrency & Lease Locks**:
+  * Manages atomic lease locks under `D:\Taadaa\agy_profiles\omp_leases\<name>.lock`.
+  * Detects dead PIDs and stale locks automatically (timeout 1800s).
+- **Synchronized Profile Configs**:
+  * All 22 profiles (`C:\Users\Kibe\.omp\profiles\acc_01` to `acc_22`) have synchronized `agent/models.yml` definitions for seamless zero-config fallback.

@@ -705,3 +705,9 @@ For full details on `omp` installation, Bun runtime resolution, and Google AI St
   ```
   Token được lưu vào `~/.omp/profiles/acc_01/agent/agent.db` và gửi request trực tiếp lên backend Google Cloud Antigravity.
 
+### 6. Production Multi-Profile Pool Bridge (`omp_cli.py`)
+Taadaa farm bridge: `python D:/Taadaa/tools/omp_cli.py {ask,fix,models,pool-status}` (tương thích hoàn toàn kiến trúc của `ag_cli.py`):
+- **Pool 22 accounts**: Đọc từ `D:/Taadaa/agy_profiles/profiles_config.json`.
+- **Dual Routing tự động**: Kiểm tra `agent.db` của từng profile; nếu có credential native `google-antigravity` thì bắn trực tiếp lên Google Cloud; nếu chưa có thì fallback tự động sang `omniroute/antigravity/gemini-3.8-flash-tiered` (port 20129).
+- **Lease Lock & Quota Failover**: Sử dụng file lock tại `D:/Taadaa/agy_profiles/omp_leases/<profile>.lock` để chống xung đột nhiều tiến trình và tự động xoay profile sang tài khoản khác khi gặp HTTP 429 hoặc quota limit.
+
