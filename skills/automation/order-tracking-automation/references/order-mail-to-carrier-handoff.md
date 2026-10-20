@@ -13,9 +13,13 @@ A TikTok Shop order may be represented in local JSON while it is still `Đã đ�
 - Store dedup state by `order_id|tracking_code`; no new code should produce empty stdout.
 - Session/auth errors should identify the recovery action but never include password, token, cookie, or full message content.
 
-### Graph API
+### Graph API & Canonical Inventory Verification
 
 Graph is optional, not assumed. A mailbox address, password, or existing GPM profile does not prove a usable Graph token. Accept a caller-supplied token/refresh flow from a secret manager or environment and report `UNVERIFIED` when no live token evidence exists.
+
+When verifying whether an account has a live Token API:
+- Do NOT theorize about Graph endpoints or guess whether the password changed.
+- Inspect the canonical inventory directly (O(1) lookup in `D:/OneDrive/TaadaaData/kibe/gmail_clean_v2.xlsx`, Sheet `Gmail Accounts`): check col 2 (email), col 9 (`token`), col 10 (`client_id`). If col 9/10 are `None` or blank, report definitively that the account has NO Token API provisioned and fall back directly to the GPM web session (`<machine> - <email> - <port>`). Never give rambling speculative explanations.
 
 ### Carrier handoff
 

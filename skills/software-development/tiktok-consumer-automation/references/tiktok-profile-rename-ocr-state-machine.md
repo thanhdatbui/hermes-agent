@@ -148,6 +148,24 @@
     ```
     tuyệt đối không dùng tọa độ ma `(870, 558)` hoặc cấm tap mù cứng nhắc khiến máy tự abort vô cớ.
 
+---
+
+## 11. Regression Gate Đa Giao Diện Cho Runner Đổi Tên (Multi-Layout Regression Gate)
+
+### 3 Biến Thể Giao Diện Profile Cần Tương Thích Đồng Thời (Không Hardcode 1 Kiểu):
+1. **Biến thể A (Giao diện nút to trung tâm):** Có text button rõ ràng `"Sửa hồ sơ"` / `"Edit profile"` ở giữa màn hình (dưới chỉ số Follower). Cơ chế: Quét OCR regex `r"(sua|chinh sua|edit)\s*(h[o0]|profile)"` và tap tâm box (`center(btn)`).
+2. **Biến thể B (Giao diện thanh Header S7):** Không có text button ở giữa, nút mở màn Sửa hồ sơ là **icon cây bút chì màu trắng góc trên bên trái** header `(72, 148)`. Cơ chế: Fallback tự động khi `btn is None` -> tap `(72, 148)`.
+3. **Biến thể C (Vào từ Chip / Nút Bio):** Tài khoản chưa có Bio hiển thị chip `+ Thêm tiểu sử` (`+ Thém tidU sd`) hoặc nút sửa cạnh bio. Cơ chế: Regex `r'\+\s*th[eé]m|tid\w{0,2}\s*s|th[eé]m\s*ti|tieu\s*su'` để vào thẳng màn sửa.
+
+### Biến Thiên Tọa Độ Trong Màn Sửa Hồ Sơ (`EDIT_PROFILE`):
+- Vị trí dòng `Tên` (Nickname) dao động giữa các bản TikTok: có máy ở `Y ≈ 680`, máy ở `Y ≈ 730–770`.
+- **CẤM hardcode tọa độ Y cố định:** Dùng hàm ghép đôi hàng ngang `edit_rows(boxes)`: tìm box nhãn `norm(t) == "ten"` bên trái (`x < 400`), sau đó lấy `cy = center(ten_box)[1]` để tìm giá trị text hoặc tap vào tọa độ `(XY_NAME_ROW[0], cy)` để khớp đúng ô nhập tên của từng máy.
+
+### Quy Trình Kiểm Thử Hồi Quy Trước Khi Rollout (Regression Verification Checklist):
+1. **Chạy test suite logic offline:** `pytest tools/tests/test_do_rename_m8.py` (48 tests) bảo đảm các hàm `norm`, `compact`, `classify`, `nickname_on_profile`, `edit_rows` pass 100% trên toàn bộ các sample OCR từ nhiều máy khác nhau.
+2. **Kiểm tra cú pháp:** `python -m py_compile D:/Taadaa/tools/do_rename_canonical_runner.py`.
+3. **Canary 1 máy thật rảnh:** Chạy thử trên 1 target thật, trích xuất screenshot `MEDIA:<path>.png` và dùng `browser_vision` soi mắt kiểm tra đúng tên mới trước khi kích hoạt watchdog hàng loạt.
+
 
 ---
 
