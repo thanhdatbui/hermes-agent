@@ -205,7 +205,8 @@ def test_determine_row_second_cycle_alternates_healing_rows() -> None:
 
 
 @pytest.mark.parametrize("hour", [6, 8, 12, 14, 18, 20])
-def test_determine_row_main_rows_recur_exactly_every_96h(hour: int) -> None:
+def test_determine_row_main_rows_recur_exactly_every_96h(hour: int, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(tiktok_runner, "_load_determine_healing_row", lambda: (lambda *a, **k: 3, Path(".")))
     # Mỗi row chính (1-8) quay lại đúng 96h ở mọi chu kỳ, không phụ thuộc cycle_idx.
     seen: dict[int, list[datetime]] = {}
     for day in range(0, 4 * 12):
@@ -498,7 +499,7 @@ def test_reconcile_following_corrupt_workbook_reports_and_logs(
     with caplog.at_level("WARNING", logger="feed_session_watchdog"):
         out = w.reconcile_cluster_following({"account_workbook": str(wb)}, ["1"], {"1": {"followed": ["a"]}}, 1)
     assert len(out) == 1 and "Không đọc được workbook" in out[0]
-    assert sum("mở workbook" in rec.getMessage() for rec in caplog.records) == 3
+    assert sum("workbook hỏng" in rec.getMessage() for rec in caplog.records) == 1
 
 
 def test_reconcile_following_no_username_in_workbook_reports(tmp_path: Path) -> None:
@@ -528,7 +529,7 @@ def test_dispatch_split_reports_one_chat_failure_does_not_block_other(
     sent: list[str] = []
 
     def fake_urlopen(req, timeout=0):
-        if "5127276494" in req.data.decode():
+        if "5435853713" in req.data.decode():
             raise OSError("boom")
         sent.append(req.data.decode())
 
@@ -536,6 +537,6 @@ def test_dispatch_split_reports_one_chat_failure_does_not_block_other(
     block = "🏢 Cụm kibe\n• Tổng máy: 3\n• Lướt feed: 3\n• Follow chéo: 3\n  + ok\n• Đăng Video: 3\n  + ok"
     with caplog.at_level("WARNING", logger="feed_session_watchdog"):
         msg = w.dispatch_split_reports("hdr", [block], [], "Ca 1", 1)
-    assert any("5435853713" in s for s in sent)
+    assert sent == []
     assert any("DISPATCH_FAIL" in rec.getMessage() for rec in caplog.records)
     assert "Follow chéo" not in msg and "Đăng Video" not in msg

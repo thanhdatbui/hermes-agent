@@ -30,6 +30,7 @@ class TestCronNightTiktok2FAWatchdog(unittest.TestCase):
             "already_ran_gmail_tonight": {"return_value": already_ran},
             "is_safe_rolling_window": {"return_value": True}, "is_feed_runner_active": {"return_value": False},
             "is_clear_cache_active": {"return_value": False},
+            "claim_lane": {"return_value": True}, "release_lane": {},
         }
         mocks = {k: patch.object(wd, k, **v).start() for k, v in targets.items()}
         for k in targets:
@@ -52,7 +53,8 @@ class TestCronNightTiktok2FAWatchdog(unittest.TestCase):
     @patch("cron_night_tiktok_2fa_watchdog.run_night_batch")
     @patch("cron_night_tiktok_2fa_watchdog.is_feed_runner_active", return_value=False)
     @patch("cron_night_tiktok_2fa_watchdog.already_ran_today", return_value=False)
-    def test_main_dual_cluster_suc_fail_defined(self, m_ran, m_feed, m_batch, m_save):
+    @patch("cron_night_tiktok_2fa_watchdog.claim_lane", return_value=True)
+    def test_main_dual_cluster_suc_fail_defined(self, m_claim, m_ran, m_feed, m_batch, m_save):
         import cron_night_tiktok_2fa_watchdog as wd
         m_batch.return_value = (0, "=== CLUSTER KIBE (MÁY 1-80) ===\nTOTAL=40 SUCCESS=38 FAILED=2\n=== CLUSTER ADMIN (MÁY 201-280) ===\nTOTAL=40 SUCCESS=40 FAILED=0\n")
         with patch.object(sys, "argv", ["cron_night_tiktok_2fa_watchdog.py", "--force", "--lane", "tiktok"]):
@@ -66,7 +68,8 @@ class TestCronNightTiktok2FAWatchdog(unittest.TestCase):
     @patch("cron_night_tiktok_2fa_watchdog.run_night_batch")
     @patch("cron_night_tiktok_2fa_watchdog.is_feed_runner_active", return_value=False)
     @patch("cron_night_tiktok_2fa_watchdog.already_ran_today", return_value=False)
-    def test_main_success_zero_failed(self, m_ran, m_feed, m_batch, m_save):
+    @patch("cron_night_tiktok_2fa_watchdog.claim_lane", return_value=True)
+    def test_main_success_zero_failed(self, m_claim, m_ran, m_feed, m_batch, m_save):
         import cron_night_tiktok_2fa_watchdog as wd
         m_batch.return_value = (0, "=== CLUSTER KIBE (MÁY 1-80) ===\nTOTAL=40 SUCCESS=40 FAILED=0\n=== CLUSTER ADMIN (MÁY 201-280) ===\nTOTAL=40 SUCCESS=40 FAILED=0\n")
         with patch.object(sys, "argv", ["cron_night_tiktok_2fa_watchdog.py", "--force", "--lane", "tiktok"]):
@@ -80,7 +83,8 @@ class TestCronNightTiktok2FAWatchdog(unittest.TestCase):
     @patch("cron_night_tiktok_2fa_watchdog.run_night_batch")
     @patch("cron_night_tiktok_2fa_watchdog.is_feed_runner_active", return_value=False)
     @patch("cron_night_tiktok_2fa_watchdog.already_ran_today", return_value=False)
-    def test_main_runner_error_exit_code(self, m_ran, m_feed, m_batch, m_save):
+    @patch("cron_night_tiktok_2fa_watchdog.claim_lane", return_value=True)
+    def test_main_runner_error_exit_code(self, m_claim, m_ran, m_feed, m_batch, m_save):
         import cron_night_tiktok_2fa_watchdog as wd
         m_batch.return_value = (1, "Runner crashed")
         with patch.object(sys, "argv", ["cron_night_tiktok_2fa_watchdog.py", "--force", "--lane", "tiktok"]):
@@ -160,7 +164,8 @@ class TestCronNightTiktok2FAWatchdog(unittest.TestCase):
     @patch("cron_night_tiktok_2fa_watchdog.run_night_batch")
     @patch("cron_night_tiktok_2fa_watchdog.is_feed_runner_active", return_value=False)
     @patch("cron_night_tiktok_2fa_watchdog.already_ran_today", return_value=False)
-    def test_main_generates_unique_correlation_id_per_run(self, m_ran, m_feed, m_batch, m_save):
+    @patch("cron_night_tiktok_2fa_watchdog.claim_lane", return_value=True)
+    def test_main_generates_unique_correlation_id_per_run(self, m_claim, m_ran, m_feed, m_batch, m_save):
         import cron_night_tiktok_2fa_watchdog as wd
         m_batch.return_value = (0, "TOTAL=2 SUCCESS=2 FAILED=0")
         ids = []
