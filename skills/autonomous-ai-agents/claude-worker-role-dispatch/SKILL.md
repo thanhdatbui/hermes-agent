@@ -114,6 +114,20 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
 
 ## Pitfalls
 
+- **BẪY NHỒI BATCH NHIỀU TASK VÀO 1 PROMPT CHO HAIKU & ESCALATE OAN SANG AGY CLI (Multi-Task Prompt Overload Trap 20/10/2026):**
+  Operator đã chấn chỉnh: *"Mà sao k gọi haiku mà phải gọi agy cli?"*.
+  1. *Nguyên nhân cốt lõi:* Haiku 5.5 là worker O(1) siêu tốc (10–15s). Khi Coordinator gom 5 yêu cầu refactor phức tạp ở 5 vị trí khác nhau trên file monolith 500 dòng vào một prompt duy nhất, Haiku bị quá tải nhận thức hoặc sửa sót, dẫn đến `TASK_FAIL / unrelated_files_changed` ở cả 2 attempt.
+  2. *Hậu quả:* `dispatch_worker.py` theo đúng fail-safe ladder tự động escalate sang Agy CLI (`gemini-3.8-flash`), dẫn đến nguy cơ ngâm tiến trình 1200s (20 phút) và timeout.
+  3. *Quy tắc thép:* MỌI prompt giao cho Haiku BẮT BUỘC chỉ chứa 1–2 sửa đổi nguyên tử (atomic O(1)) trên 1–2 hàm. Tuyệt đối CẤM gom toàn bộ danh sách Reviewer findings vào 1 prompt; BẮT BUỘC chẻ nhỏ thành các nhát dispatch O(1) tuần tự để Haiku giải quyết dứt điểm trong 15s.
+
+- **ZERO-WHINING BẰNG CẤU TRÚC (STRUCTURAL TEMPLATE) THAY VÌ REGEX VĂN XUÔI (Zero-Whining by Structure Invariant 20/10/2026):**
+  Khi thiết kế các chốt chặn Gate (Gate 6, Canary Gate, Egress Filter):
+  1. *Bẫy regex lọc từ than thở:* Dùng regex chặn các từ "bất lực", "không thể", "xin lỗi" vừa dễ bắt nhầm câu chat thường của Operator, vừa bị LLM lách luật bằng cách đổi từ đồng nghĩa.
+  2. *Giải pháp triệt để:* Ở nhánh lỗi / degraded, hệ thống **tước quyền sinh văn xuôi của LLM**. Runtime tự động render câu trả lời từ **template máy sinh cố định**:
+     `Trạng thái: DEGRADED | Mã: <code> | Thiết bị: <id> | Bằng chứng cuối: <receipt_id> | Việc tiếp theo: <action>`.
+     Không có ô văn xuôi cho LLM viết -> 0% khả năng khóc lóc hay xin xỏ Operator.
+  3. *Shift-Left Tool Wrapper:* Mọi bằng chứng (screenshot + OCR receipt) phải sinh ngay trong tool wrapper (ngân sách <= 15s, max 1 retry). Egress chỉ là scope-guard kiểm tra receipt, retry = 0, loại bỏ hoàn toàn bẫy ngâm trễ 3–5 phút.
+
 - **BẪY HẠ TIMEOUT WORKER 180S & BẪY ĐỔ LỖI FILE AGENT (Timeout Governance & False Diagnosis Invariant 20/10/2026):**
   1. *Gốc rễ sự cố:* Operator đã chấn chỉnh gay gắt: *"File agent lớn là sao, làm gì có chuyện do file agent mà làm lâu timeout. Ai cho phép mày để timeout 180s t nhớ hqua benchmark t đã tăng timeout r mà"*. Khi điều phối worker (Haiku, Claude, hay Agy CLI), Coordinator tự ý áp cờ `--timeout 180` (hoặc để mặc định 180s cũ) thay vì tôn trọng mức benchmark chuẩn của Operator (1200s–1500s).
   2. *Bẫy chẩn đoán sai (False Diagnosis):* Khi tiến trình `agy` bị ngắt ở giây 180 và toàn bộ 22 profiles rơi vào cooldown, Coordinator nhìn vào dòng log `Rule file AGENTS.md truncated by 118233 bytes` rồi phán bừa là do file agent lớn làm đơ. Trong thực tế, mô hình vẫn stream token bình thường (`streamGenerateContent`) và chỉ đơn giản là bị caller kill sớm do timeout 180s quá ngắn.
