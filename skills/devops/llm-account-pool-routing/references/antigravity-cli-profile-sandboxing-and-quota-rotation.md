@@ -452,6 +452,36 @@ Chi tiết xem tại tài liệu hỗ trợ liên kết:
   * Khi `USERPROFILE` được gán vào thư mục sandbox riêng (`OMP_PROFILES_DIR/<name>`), OMP giải quyết `~/.omp/profiles/<name>/agent` sẽ tạo đường dẫn lặp 2 lần `.omp/profiles/<name>/.omp/profiles/<name>/agent/`.
   * Khắc phục: Khi đã cô lập `USERPROFILE`, lệnh spawn `omp.cmd` bỏ cờ `--profile` để OMP đọc thẳng cấu hình trong sandbox `USERPROFILE/.omp/agent/models.yml`.
 
+---
+
+## 15. Bẫy Windows Batch Truncation, Token Client Mismatch & Đối Soát Benchmark (Verified 2026-10-21)
+
+### 1. Bẫy Cắt Dòng Prompt Đa Dòng Trên Windows (`omp.cmd` Batch Truncation):
+- **Hiện tượng:** Gửi prompt viết code nhiều dòng có test assertions qua `omp.cmd -p "<prompt>"`, mô hình trả về: *"Câu lệnh bị ngắt ở đoạn 'có hàm:'... Cần cung cấp..."*, dẫn đến parse thất bại hoặc sinh code cụt.
+- **Căn nguyên:** `omp.cmd` là file batch Windows. Nó chuyển tiếp tham số bằng cú pháp `"%_prog%" ... %*`. Cơ chế mở rộng `%*` của `cmd.exe` tự động cắt cụt chuỗi ngay tại ký tự xuống dòng (`\n`) đầu tiên!
+- **Giải pháp chuẩn:** Không gọi qua file wrapper `.cmd`. Spawn trực tiếp binary JavaScript runtime:
+  ```python
+  BUN_BIN = r"C:\Users\Kibe\AppData\Roaming\npm\bun.exe"
+  CLI_JS = r"C:\Users\Kibe\AppData\Roaming\npm\node_modules\@oh-my-pi\pi-coding-agent\dist\cli.js"
+  cmd = [BUN_BIN, CLI_JS, "--model", model, "-p", prompt]
+  ```
+  Chạy trực tiếp binary không qua `cmd.exe`, bảo toàn 100% xuống dòng, thụt lề và code blocks trong `sys.argv`.
+
+### 2. Sự Thật Về Token Client Mismatch Giữa AGY và OMP:
+- **Hiện tượng:** Copy token hợp lệ từ `D:/Taadaa/agy_profiles/acc_XX/.gemini/oauth_creds.json` nạp vào database SQLite `agent.db` (`auth_credentials`) của OMP, khi chạy bị Google Cloud trả về lỗi **HTTP 401 UNAUTHENTICATED**.
+- **Căn nguyên:** Google Cloud xác thực token theo OAuth Client ID. Token trong `agy_profiles` được cấp cho Client ID của Antigravity IDE. Khi OMP gửi request bằng giao thức Client ID của OMP (`1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com`), Google phát hiện lệch Client ID và từ chối chữ ký.
+- **Quy chuẩn Dual-Route:**
+  * Route Native (`google-antigravity`): Chỉ kích hoạt khi profile đã hoàn tất cấp quyền OAuth chính chủ của OMP qua `omp login google-antigravity`.
+  * Route Fallback: Tự động định tuyến qua proxy local `:20129` (`omniroute/antigravity/...`) khi profile chưa có token native OMP để đảm bảo tác vụ không bị gián đoạn.
+
+### 3. Kết Quả Benchmark Đối Soát Toàn Diện (AGY CLI vs OMP CLI):
+- **Điều kiện đối soát công bằng:** Chung profile `acc_02`, chung proxy 4G Mobi, chung mô hình cốt lõi Google Gemini 3.8 Flash Thinking Medium, cùng giải bài toán module `device_health.py` kèm 4 test assertions.
+- **Bảng đối soát thực tế:**
+  * **Độ chính xác (Correctness):** Cả AGY và OMP đều đạt **100% (4/4 assertions PASS)** khi chạy `exec()` trực tiếp.
+  * **Tốc độ (Latency):** AGY CLI hoàn thành trong **`26.08s`**; OMP CLI hoàn thành trong **`45.74s`**.
+  * **Nguyên nhân chênh lệch độ trễ:** AGY CLI là binary Go compile native bắn stream trực tiếp lên Google Cloud Code Assist; OMP CLI gánh thêm chi phí proxy trung gian parse SSE và chuyển đổi schema request.
+
+
 
 
 

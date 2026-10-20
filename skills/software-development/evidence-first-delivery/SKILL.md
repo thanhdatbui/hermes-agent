@@ -18,6 +18,7 @@ Use this class-level workflow whenever a task produces visual/UI/farm/browser ev
 ## Core contract
 
 - **Pre-send Vision Inspection**: See `references/pre-send-vision-inspection-and-anti-blind-delivery.md` for mandatory inspection via `browser_vision` or WinRT OCR prior to sending `MEDIA:<path>`.
+- **Multi-Machine Gate 6 & Anti-Cheating**: See `references/multi-machine-gate-6-media-completeness-and-anti-cheating-20261021.md` for N-of-N media completeness in batch operations, per-machine serial binding, dual hash (SHA-256/pHash) anti-cheating, and zero-whining by structure.
 - **Gate Conflict Resolution (Anti-Deadlock)**: See `references/gate-conflict-resolution-and-device-lock-screencap-wrapper-20261020.md` for resolving conflicts between Gate 6 (Media required) and Guard Device Bulkhead via `with_device_lock.py` instead of explaining away.
 - **Anti-Context Inertia & Proactive Tool Delivery**: When user sends direct instructions with media (e.g. order management), prioritize literal prompt over conversational inertia; never substitute theoretical prose ("nói mõm") for working scripts and artifacts. See `references/tiktok-shop-farm-order-management-and-hub-pickup-tracking.md`.
 - **Browser Vision Failure & Claude Vision Fallback**: See `references/browser-vision-daemon-failure-and-claude-worker-fallback.md` when `browser_vision` hits daemon conflict/interrupted errors — fallback to `claude_worker.py --role reviewer` with `[MANDATORY SIGHT]` prompt and strict anti-paralysis timeout rules.
