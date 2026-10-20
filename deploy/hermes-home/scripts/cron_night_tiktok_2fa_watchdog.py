@@ -55,13 +55,26 @@ CODEX_LOCK_DIR = Path(r"C:\Users\Kibe\.codex\device-locks")
 LANE_CLAIM_TTL_SECONDS = 5400
 
 
+ROLLING_BLOCK_WINDOWS = (
+    ("dọn cache", (4, 0), (4, 30)),
+    ("ca nuôi sáng", (5, 5), (9, 30)),
+    ("đệm ca trưa", (11, 5), (11, 35)),
+    ("ca nuôi trưa", (11, 45), (15, 30)),
+    ("đệm ca chiều", (17, 5), (17, 35)),
+    ("ca nuôi chiều", (17, 45), (21, 30)),
+)
+
+
+def rolling_block_reason(now_dt: datetime) -> str | None:
+    hm = (now_dt.hour, now_dt.minute)
+    for label, start, end in ROLLING_BLOCK_WINDOWS:
+        if start <= hm < end:
+            return label
+    return None
+
+
 def is_safe_rolling_window(now_dt: datetime) -> bool:
-    """Né 3 ca nuôi: 05:15-09:30, 11:45-15:30, 17:45-21:30, và né dọn cache 04:00-04:30."""
-    h, m = now_dt.hour, now_dt.minute
-    if (h == 5 and m >= 15) or h in (6, 7, 8) or (h == 9 and m < 30): return False
-    if (h == 11 and m >= 45) or h in (12, 13, 14) or (h == 15 and m < 30): return False
-    if (h == 17 and m >= 45) or h in (18, 19, 20) or (h == 21 and m < 30): return False
-    return not (h == 4 and m < 30)
+    return rolling_block_reason(now_dt) is None
 
 
 def is_clear_cache_active() -> bool:
@@ -645,7 +658,7 @@ def main() -> int:
     today_str = now.strftime("%Y-%m-%d")
 
     if not is_safe_rolling_window(now) and not args.force and not args.dry_run:
-        logger.info("Ngoài khung giờ an toàn (đang trong ca nuôi hoặc dọn cache): %s", now.strftime("%H:%M"))
+        logger.info("Ngoài khung giờ an toàn (%s): %s", rolling_block_reason(now), now.strftime("%H:%M"))
         return 0
 
     if is_feed_runner_active() and not args.dry_run:

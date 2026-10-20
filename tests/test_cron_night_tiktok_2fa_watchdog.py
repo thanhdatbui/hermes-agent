@@ -239,6 +239,15 @@ class TestCronNightTiktok2FAWatchdog(unittest.TestCase):
         mock_batch.assert_not_called()
         mock_save.assert_not_called()
 
+    def test_is_safe_rolling_window_reboot_blackouts(self):
+        import cron_night_tiktok_2fa_watchdog as watchdog
+        for hour, minute in [(5, 20), (11, 20), (17, 20), (11, 15), (17, 15)]:
+            with self.subTest(hour=hour, minute=minute):
+                now_dt = datetime(2026, 10, 20, hour, minute, tzinfo=watchdog.HCMC)
+                self.assertFalse(watchdog.is_safe_rolling_window(now_dt))
+        now_dt = datetime(2026, 10, 20, 16, 50, tzinfo=watchdog.HCMC)
+        self.assertTrue(watchdog.is_safe_rolling_window(now_dt))
+
     def test_gmail_phase_reports_to_gmail_chat(self):
         ret, m = self._run_main(["--lane", "gmail", "--force"], gmail_result=(0, self.TOTAL_OUT))
         self.assertEqual(ret, 0)
