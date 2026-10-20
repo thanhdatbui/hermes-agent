@@ -1,22 +1,22 @@
-Chu kỳ 4d: Parity 96h (N1 lẻ, N2 chẵn), N3(R7,8), N4(dưỡng 0fl+up). Dưỡng N3 tối+N4: per-device slot động theo streak (cấm full row). S2 bám S1. Starve 108h. Đêm 21h30-5h15 né cache 4h cho 2FA/Ava; báo 6h cấm ảo.
+Chu kỳ 4d: Parity 96h (N1 lẻ, N2 chẵn), N3(R7,8), N4(dưỡng 0fl+up). Dưỡng N3 tối+N4 per-device slot động theo streak. S2 bám S1. Starve 108h. Đêm né cache 4h cho 2FA/Ava.
 §
-Follow: dò +2 (max 40); lùi 4 sàn 15. Probation: P1 (T1: 3-4, T2: 5-6), P2 khóa; né mốc gãy (last_failed-1), streak>=3 bóp -1. Dọn phantom <01/10. Anchor nhả = block, bắt buộc hủy phiên+cooldown (cấm bao biện oan). WinRT OCR Primary, XML fallback.
+Follow: dò +2 (max 40); lùi 4 sàn 15. Probation: P1 (T1: 3-4, T2: 5-6), P2 khóa; né mốc gãy (last_failed-1), streak>=3 bóp -1. Dọn phantom <01/10. Anchor nhả=block, hủy phiên+cooldown. WinRT OCR Primary, XML fallback.
 §
 Hotmail: CẤM mail cá nhân; @fviainboxes.com đọc OTP. Excel 3,4,5+G. Pin >=1000 view.
 §
-Preempt lock; ping 0% loss; ARP 110.x. Lock: rename_natural_state.json. Host Kibe: ADB 5037 (Xiaowei) & 5038 (M7/18/30); Terminal: foreground max 60s; CLI dài/nặng BẮT BUỘC background=True + notify_on_complete=True. Ruijie 3200 tắt Wi-Fi.
+Preempt lock; ping 0% loss; ARP 110.x. Lock: rename_natural_state.json. Host Kibe: ADB 5037 (Xiaowei) & 5038 (M7/18/30); Terminal: fg max 60s; CLI nặng BẮT BUỘC background=True+notify. Ruijie tắt Wi-Fi. Rename/Bio: tap bio (473,703) mở Sửa hồ sơ; --clear-bio xóa trắng về +Thêm tiểu sử; cấm in tên random khi ALREADY.
 §
 Argon=:20135 (token stable 4s). Claude CLI làm Planner.
 §
 Stale Up: xóa draft. Revert: TikWM. Ghim/Riêng tư ko proof. Cào: max 60. Cron TB: device_lock+rolling<=5; bỏ ca 0h.
 §
-Closeout: Grace 80-84 auto-push; Sol 80% diff/10% log; Claude 85%->Agy fix; Strike 3 handoff cấm clarify, Reviewer tự sửa. Night Chain 0h: P1 Gmail->-5139245637, P2 2FA->-5468653590; cron local, bỏ bẫy 6h; unhandled crash handler; state lock.
+Closeout: Grace 80-84 auto-push; Sol 80% diff/10% log; Claude 85%->Agy; Strike 3 handoff cấm clarify, Reviewer tự sửa. Night Chain 0h: P1 Gmail, P2 2FA; cron local; state lock.
 §
 Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; Lock reaper Kibe auto-reap Admin qua SSH. Pre-push: BẮT BUỘC 1 commit duy nhất (squash/reset) khớp scope_hash gate_audit. Cron: 100% no_agent+script thô.
 §
 Proxy 110.2:port (Kibe: 20001..80; Admin: 10008..35; toàn bộ máy dùng proxy, CẤM direct).
 §
-Canary: target-bound (matrix+plan map diff->hook; cấm khóc lóc/máy móc); WinRT OCR -> ATX -> cấm uiautomator; done_gate verify hash+MEDIA. Claude quota probe >2h.
+Canary: target-bound; WinRT OCR -> ATX (cấm uiautomator); done_gate verify hash+MEDIA. Claude quota probe >2h.
 §
 Ava: Trích clip gốc representative_frames. Gate 6 fail-closed: cấm trần thuật/giải thích UI thiếu MEDIA:; file vật lý+SHA256 thật; cấm gửi mù. Dọn .thumbnails+Camera; Picker 0,1.
 §
