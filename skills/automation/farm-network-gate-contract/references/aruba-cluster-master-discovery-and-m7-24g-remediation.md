@@ -44,8 +44,14 @@ In a multi-AP Aruba Instant cluster (`192.168.110.250`–`253`), the Virtual Con
 
 ---
 
-## 3. Creating Pure 2.4GHz SSID Profile on Aruba
-Send the configuration payload directly to the active VC Master:
+## 3. Creating Pure 2.4GHz SSID Profile on Aruba (VLAN 1 & Access Rule Invariant)
+Send the configuration payload directly to the active VC Master.
+
+> **CRITICAL PITFALL — L3_NO_IP TRAP:**
+> By default, newly created SSID profiles on Aruba Instant have no VLAN assignment (`Default VLAN` / NULL) and their access-rule defaults to `DENY ALL` (`rule any any match any any any deny`).
+> If `vlan 1` and `permit` access-rule are omitted, the phone successfully associates at L2 (WPA2 handshake OK), but Aruba drops all DHCP Discover packets, causing `L3_NO_IP` (`raw_wlan0: `).
+> You MUST configure both `vlan 1` and `rule any any match any any any permit` in the config script:
+
 ```text
 wlan ssid-profile Dat_2.4G
 enable
@@ -53,11 +59,17 @@ essid "Dat_2.4G"
 wpa-passphrase 19051995
 opmode wpa2-psk-aes
 rf-band 2.4
+vlan 1
 broadcast-filter arp
 zone zone1,zone2,zone3,zone4
 exit
+wlan access-rule Dat_2.4G
+rule any any match any any any permit
+exit
 ```
 - `rf-band 2.4`: Ensures the SSID is broadcast ONLY on 2.4GHz radios. Phones cannot see or attempt 5GHz connections, eliminating the `+40` bonus trap.
+- `vlan 1`: Bridges Wi-Fi client traffic directly to Farm LAN / Ruijie Gateway DHCP pool (`192.168.110.0/24`).
+- `wlan access-rule ... permit`: Replaces default ACL `deny` with unrestricted LAN/WAN traffic forwarding.
 - `broadcast-filter arp`: Prevents ARP broadcast storms across the farm.
 - `zone zone1,zone2,zone3,zone4`: Allows all 4 APs across the room to broadcast the recovery SSID.
 
@@ -65,7 +77,7 @@ Verify profile creation with:
 ```python
 p = {'opcode': 'show', 'sid': sid, 'cmd': 'show network Dat_2.4G', 'nocache': str(random.random())}
 ```
-Expect: `Status: Enabled`, `Band: 2.4`, `Active: Yes`.
+Expect: `Status: Enabled`, `Band: 2.4`, `VLAN: 1`, `Active: Yes`, `Access Rules: any any permit`.
 
 ---
 
@@ -90,3 +102,22 @@ Expect: `Status: Enabled`, `Band: 2.4`, `Active: Yes`.
 ## 5. Coordinator vs Worker CLI Role Boundary (Anti-Disruption Rule)
 - **Code-Fix Worker CLI (`dispatch_worker.py`):** Runs under strict tool lock (`allowedTools: Read,Edit`). It rejects operational runbooks that touch live network APIs, device locks, or system commands (`BLOCKED: operational runbook not permitted`).
 - **Rule:** Never delegate live farm operational runbooks (Aruba API, device locks, Wi-Fi joins) to Code-Fix Worker CLI. Execute directly via Coordinator tools or canonical gate scripts.
+
+---
+
+## 6. Device Bulkhead vs Screencap Evidence Pitfall (`GUARD_DEVICE_LOCK_REQUIRED`)
+- **Symptom:** Running raw ADB commands such as `adb -s <serial> exec-out screencap -p > screen.png` from terminal is immediately blocked by `COORDINATOR TERMINAL BLOCKED (DEFAULT-DENY)` with rule `GUARD_DEVICE_LOCK_REQUIRED`.
+- **Underlying Mechanism:** `guard_device_bulkhead.py` intercepts any terminal command touching an Android device if the caller does not hold an active `operator_device_lock` lease file.
+- **Evidence Verification Domain Distinction:**
+  * **Gate 6 (UI Visual Screenshot Invariant):** Strictly applies to user-facing or app automation (TikTok app, GPM browser, Settings UI interactions, Form filling, Click actions) where visual layout state must be verified via screenshot prior to claiming success.
+  * **Network Infrastructure Domain (L2-L4 Gates):** For Wi-Fi profile provisioning, AP configuration, IP allocation, and proxy attachment, proof of record is established via:
+    1. L2: Virtual Controller association table (`show clients` on active VC Master proving BSSID, band, signal).
+    2. L3: `ip addr show wlan0` confirming subnet IP via `farm_network_gate.py` (which internally manages the device lock).
+    3. L4: TCP socket probe (`toybox nc` to proxy host/port).
+  * If a screenshot is truly required, it must be captured *inside* the script holding the `operator_device_lock`, never via naked terminal ADB commands.
+
+---
+
+## 7. Anti-Freezing & Heartbeat Invariant (Anti-Silent-Wait)
+- **Rule:** Never leave the operator in a silent loop or uncommunicative state while waiting for a background process (e.g. `dispatch_worker`, `farm_network_gate`).
+- If a background worker terminates or fails, Coordinator must immediately react in the very next turn, inspect the failure, and pivot directly rather than leaving the session appearing frozen or hanging for extended intervals.
