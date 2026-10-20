@@ -4,7 +4,7 @@ Follow: dò +2 (max 40); lùi 4 sàn 15. Probation: P1 (T1: 3-4, T2: 5-6), P2 kh
 §
 Hotmail: CẤM mail cá nhân; @fviainboxes.com đọc OTP. Excel 3,4,5+G. Pin >=1000 view.
 §
-Rename: tap bio (473,703); --clear-bio; bút chì (x_name+50); core switcher; văng->login_v1; tên 1 từ bỏ.
+Rename: tap bio (473,703); --clear-bio; bút chì header (72,148); core switcher; văng->login_v1; tên 1 từ bỏ.
 §
 Sol: On-Demand (gọi advisor/hỏi sol); streaming SSE 140s; context 4000 chars; consult_advisor độc đạo CLI; advisor_tool lõi stream.
 §

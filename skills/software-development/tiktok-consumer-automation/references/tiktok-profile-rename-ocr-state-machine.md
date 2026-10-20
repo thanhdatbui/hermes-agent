@@ -15,8 +15,8 @@
 | **Cuộn Header Hồ sơ** | `(540, 1100)` → `(540, 600)` | Vuốt nhẹ để ghim username lên sticky header |
 | **Ghim ID / Mở Switcher** | `(500, 140)` | Tap username trên header mở sheet 'Chuyển đổi tài khoản' |
 | **Cuộn Sheet Switcher** | `(540, 1500)` → `(540, 900)` | Khi máy có 8 acc, cuộn lên để thấy 4 acc phía dưới |
-| **Nút Sửa hồ sơ** | `find_box("sua ho s")` hoặc `(300, 800)` | Nút chữ nhật 'Sửa hồ sơ' giữa màn hình (dưới Follower). CẤM tap `(75, 150)`! |
-| **BẪY TỬ HUYỆT (75, 150) & BẪY OCR "i ijä"** | `CẤM TAP (75, 150)` | Trên Samsung S7 khi nick chưa có Bio, chữ "Sửa hồ sơ" thường bị WinRT OCR nhận diện sai thành `"i ijä"`. Nếu fallback về `(75, 150)` sẽ tap trúng icon "Tìm bạn bè" (`FindFriendsPageActivity`), gây kẹt vòng lặp `UNKNOWN -> Back` cho tới khi abort! Tọa độ fallback an toàn BẮT BUỘC là `(300, 800)`. |
+| **Nút Sửa hồ sơ** | `find_box("sua ho s")` hoặc `(72, 148)` | Nút chữ nhật 'Sửa hồ sơ' giữa màn hình (dưới Follower). Nếu không có text thì fallback về icon bút chì góc trên bên trái `(72, 148)`. CẤM tap tọa độ ma `(870, 558)`! |
+| **BẪY TỬ HUYỆT (75, 150) & BẪY OCR "i ijä"** | `CẤM TAP (75, 150) SAU KHI LƯU` | Tuyệt đối CẤM tap `(72, 148)` hay `(75, 150)` để lùi trang sau khi Lưu (bắt buộc dùng keyevent 4 Back). Tại màn hình PROFILE khi chưa có text nút, bắt buộc fallback về icon bút chì `(72, 148)` để vào `EDIT_PROFILE`. |
 | **Thao tác Quay lại (Back)** | `input keyevent 4` | Luôn dùng KEYCODE_BACK phần cứng để lùi trang, TUYỆT ĐỐI CẤM tap tọa độ góc trên trái! |
 | **Hàng 'Tên' (Nickname)** | `(600, 752)` | Hàng đầu tiên trong 'Sửa hồ sơ', nằm trên 'Tên người dùng' |
 | **Nút Xóa tên cũ (X)** | `(960, 576)` | Nút clear trong ô nhập Tên |
@@ -137,6 +137,17 @@
     2. Thêm state `BIO_EDIT` trong state machine: Khi bấm vào `+ Thêm tiểu sử`, TikTok sẽ nhảy thẳng vào màn hình nhập tiểu sử (`0/160`). Script phải nhận diện state này, gõ Bio tiếng Việt (nếu có), bấm `Lưu` (hoặc Back) để quay lại màn hình `Sửa hồ sơ` tiếp tục đổi Tên.
     3. Đổi vĩnh viễn toạ độ fallback `XY_EDIT_PENCIL` từ `(75, 150)` sang khối giữa màn hình `(300, 985)` hoặc `(540, 867)`, tuyệt đối CẤM tap `(75, 150)`.
 - **Chiến Lược Tách Runner Độc Lập Cho Watchdog 25 Workers:** Khi chạy cuốn chiếu 25 workers song song, tách toàn bộ State Machine OCR 35 bước thành CLI độc lập `do_rename_canonical_runner.py` và gọi qua `subprocess.run(timeout=320)`. Cách ly triệt để bộ nhớ, chống tắc nghẽn thread pool khi nhiều máy cùng gọi WinRT OCR `ocr_boxes.ps1`, giúp farm cuốn chiếu ổn định vượt mốc hàng chục nick/phiên.
+- **Bẫy Tọa Độ Ma (870, 558) vs Icon Bút Chì Header (72, 148) (Sự cố 20/10/2026):**
+  * Trong runner đổi tên, nếu đặt tọa độ fallback `XY_EDIT_PENCIL = (870, 558)` (khoảng trống bên phải màn hình) và cài điều kiện `b[1] >= 680` để Abort vì "sợ tap mù", khi gặp giao diện TikTok không có text button "Sửa hồ sơ", runner sẽ tap vào khoảng trống, màn hình giữ nguyên ở `PROFILE`. Sau 5 lần lặp cùng trạng thái, runner kích hoạt `same > MAX_SAME_STATE` và văng `exit_2` trên hàng loạt máy.
+  * Tọa độ icon bút chì mở màn hình Sửa hồ sơ ở góc trên bên trái trên giao diện chuẩn Samsung S7 là `(72, 148)` (đã được kiểm chứng thực tế và soi mắt qua vision). BẮT BUỘC dùng:
+    ```python
+    XY_EDIT_PENCIL = (72, 148)
+    btn = find_box(boxes, r"(sua|chinh sua|edit)\s*(h[o0]|profile)")
+    xy = center(btn) if btn else XY_EDIT_PENCIL
+    tap(xy, 4)
+    ```
+    tuyệt đối không dùng tọa độ ma `(870, 558)` hoặc cấm tap mù cứng nhắc khiến máy tự abort vô cớ.
+
 
 ---
 
