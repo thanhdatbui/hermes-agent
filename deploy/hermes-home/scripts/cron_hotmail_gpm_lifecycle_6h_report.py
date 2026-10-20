@@ -179,8 +179,10 @@ def load_farm_state(path: Path, telemetry: Telemetry, farm: str = "") -> dict[st
     return profiles
 
 
-def normalize_profiles(raw_profiles: dict[str, Any], telemetry: Telemetry, farm: str = "") -> list[dict[str, Any]]:
+def normalize_profiles(raw_profiles: dict[str, Any], telemetry: Telemetry, farm: str = "",
+                       now: datetime | None = None) -> list[dict[str, Any]]:
     """Chuẩn hoá từng profile; profile hỏng vẫn được đếm (bucket UNKNOWN) thay vì bị bỏ qua."""
+    now = now or datetime.now(timezone.utc)
     records: list[dict[str, Any]] = []
     issues: Counter[str] = Counter()
     samples: dict[str, list[str]] = {}
@@ -205,7 +207,15 @@ def normalize_profiles(raw_profiles: dict[str, Any], telemetry: Telemetry, farm:
             _flag("invalid_status_type", key)
 
         has_login = _has_valid_timestamp(raw, "hotmail_login_at", key, _flag)
-        has_chatgpt = _has_valid_timestamp(raw, "chatgpt_registered_at", key, _flag)
+        reg_ok = _has_valid_timestamp(raw, "chatgpt_registered_at", key, _flag)
+        has_chatgpt = raw.get("has_chatgpt") is True or reg_ok
+        has_tiktok = bool(raw.get("has_tiktok") or (raw.get("username") and raw.get("password")))
+        anchor = _parse_time(raw.get("hotmail_login_at") or raw.get("codex_oauth_at") or raw.get("chatgpt_registered_at"))
+        matured_7d = anchor is not None and now - anchor >= timedelta(days=7)
+        retry_count = raw.get("login_retry_count")
+        quarantine = status == "QUARANTINE" or (
+            isinstance(retry_count, int) and not isinstance(retry_count, bool) and retry_count >= 3
+        )
 
         failed = status in FAILURE_STATES or stage in FAILURE_STATES
         if failed:
@@ -226,6 +236,9 @@ def normalize_profiles(raw_profiles: dict[str, Any], telemetry: Telemetry, farm:
             "bucket": bucket,
             "has_login": has_login,
             "has_chatgpt": has_chatgpt,
+            "has_tiktok": has_tiktok,
+            "matured_7d": matured_7d,
+            "quarantine": quarantine,
         })
 
     if issues:
@@ -256,9 +269,17 @@ def aggregate_records(records: list[dict[str, Any]], telemetry: Telemetry | None
     """Mỗi profile rơi vào đúng một bucket nên tổng các bucket luôn bằng total."""
     buckets = {name: 0 for name in BUCKETS}
     login_ok = login_pending = login_blocked = chatgpt_ok = 0
+    login_quarantine = matured_7d = missing_tiktok = 0
     done_without_chatgpt: list[str] = []
     for rec in records:
         buckets[rec["bucket"]] += 1
+        if rec.get("quarantine"):
+            login_quarantine += 1
+        if rec["bucket"] == STAGE_WAIT_7D:
+            if rec.get("matured_7d"):
+                matured_7d += 1
+            if not rec.get("has_tiktok"):
+                missing_tiktok += 1
         if rec["has_login"] or rec["stage"] in POST_LOGIN_STAGES:
             login_ok += 1
         elif rec["bucket"] == STAGE_HOTMAIL_LOGIN:
@@ -285,15 +306,19 @@ def aggregate_records(records: list[dict[str, Any]], telemetry: Telemetry | None
         "change_info": buckets[STAGE_CHANGE_INFO],
         "done": buckets[STAGE_DONE],
         "blocked": buckets[STAGE_BLOCKED],
+        "login_quarantine": login_quarantine,
+        "matured_7d": matured_7d,
+        "missing_tiktok": missing_tiktok,
     }
 
 
 METRIC_KEYS = ("total", "login_ok", "login_pending", "login_blocked", "chatgpt_ok", "done_without_chatgpt", "wait_7d", "change_info", "done", "blocked")
+EXTRA_COUNT_KEYS = ("login_quarantine", "matured_7d", "missing_tiktok")
 
 
 def merge_metrics(*farms: dict[str, Any]) -> dict[str, Any]:
     merged: dict[str, Any] = {"buckets": {name: 0 for name in BUCKETS}}
-    for key in METRIC_KEYS:
+    for key in METRIC_KEYS + EXTRA_COUNT_KEYS:
         merged[key] = sum(f[key] for f in farms)
     for name in BUCKETS:
         merged["buckets"][name] = sum(f["buckets"][name] for f in farms)
@@ -450,7 +475,7 @@ def collect_snapshot(telemetry: Telemetry, now: datetime | None = None, window_h
     for farm, path in (("kibe", KIBE_STATE_PATH), ("admin", ADMIN_STATE_PATH)):
         raw = load_farm_state(path, telemetry, farm)
         farm_keys[farm] = set(raw)
-        farm_metrics[farm] = aggregate_records(normalize_profiles(raw, telemetry, farm), telemetry, farm)
+        farm_metrics[farm] = aggregate_records(normalize_profiles(raw, telemetry, farm, now), telemetry, farm)
         farm_recent[farm] = aggregate_recent_activity(raw, cutoff, now)
 
     overlap = farm_keys["kibe"] & farm_keys["admin"]
@@ -494,7 +519,7 @@ def collect_snapshot(telemetry: Telemetry, now: datetime | None = None, window_h
 
 
 def _fmt_delta(curr: int, prev: Any) -> str:
-    if isinstance(prev, int) and not isinstance(prev, bool):
+    if isinstance(prev, int) and not isinstance(prev, bool) and prev > 0:
         return f' [{curr - prev:+d}]'
     return ''
 
@@ -503,6 +528,13 @@ def _has_metric_ints(metrics: Any) -> bool:
     return isinstance(metrics, dict) and all(
         isinstance(metrics.get(k), int) and not isinstance(metrics.get(k), bool) for k in METRIC_KEYS
     )
+
+
+def _is_valid_snapshot_metrics(data: dict[str, Any]) -> bool:
+    if not _has_metric_ints(data.get("totals")):
+        return False
+    farms = data.get("farms")
+    return isinstance(farms, dict) and all(_has_metric_ints(farms.get(farm)) for farm in FARM_LABELS)
 
 
 def load_previous_snapshot(path: Path) -> dict[str, Any] | None:
@@ -515,10 +547,7 @@ def load_previous_snapshot(path: Path) -> dict[str, Any] | None:
     timestamp = _parse_time(data.get("timestamp"))
     if timestamp is None or timestamp > datetime.now(timezone.utc):
         return None
-    if not _has_metric_ints(data.get("totals")):
-        return None
-    farms = data.get("farms")
-    if not isinstance(farms, dict) or not all(_has_metric_ints(farms.get(farm)) for farm in FARM_LABELS):
+    if not _is_valid_snapshot_metrics(data):
         return None
     return data
 
@@ -546,6 +575,8 @@ def render_report(snapshot: dict[str, Any], prev_snapshot: dict[str, Any] | None
     kibe, admin, t = snapshot["farms"]["kibe"], snapshot["farms"]["admin"], snapshot["totals"]
     pool = snapshot["pool"]
     total = t["total"]
+    if not (prev_snapshot and _is_valid_snapshot_metrics(prev_snapshot)):
+        prev_snapshot = None
     prev = prev_snapshot or {}
     pt = prev.get("totals", {})
     pk = prev.get("farms", {}).get("kibe", {})
@@ -573,11 +604,16 @@ def render_report(snapshot: dict[str, Any], prev_snapshot: dict[str, Any] | None
         f"    - Farm Admin (M201-280)    : {admin['done']}/{admin['total']}{_fmt_delta(admin['done'], pa.get('done'))}",
         f"  • Hàng đợi đổi pass (CHANGE_INFO): {t['change_info']} (Kibe: {kibe['change_info']} | Admin: {admin['change_info']})",
         f"  • Đang ngâm 7 ngày chờ đổi (WAIT_7D): {t['wait_7d']}{_fmt_delta(t['wait_7d'], pt.get('wait_7d'))} (Kibe: {kibe['wait_7d']} | Admin: {admin['wait_7d']})",
+        f"    - Đã đủ 7 ngày ngâm: {t['matured_7d']} (Kibe: {kibe['matured_7d']} | Admin: {admin['matured_7d']})",
+        f"    - Thiếu thông tin TikTok: {t['missing_tiktok']} (Kibe: {kibe['missing_tiktok']} | Admin: {admin['missing_tiktok']})",
     ]
     if prev_snapshot:
         lines.insert(2, f"• So sánh với lần trước: {prev_snapshot.get('timestamp', 'không rõ')}")
     if t["blocked"] > 0:
         lines.append(f"  ⚠️ Lỗi / Kẹt cần cứu (BLOCKED): {t['blocked']} (Kibe: {kibe['blocked']} | Admin: {admin['blocked']})")
+    if t["login_quarantine"] > 0:
+        lines.append(f"    - Trong đó QUARANTINE (chết cứng >= 3 lần): {t['login_quarantine']} nick "
+                     f"(Kibe: {kibe['login_quarantine']}, Admin: {admin['login_quarantine']})")
     unknown = t["buckets"][STAGE_UNKNOWN]
     if unknown > 0:
         lines.append(f"  ⚠️ Stage không nhận diện (UNKNOWN): {unknown} (Kibe: {kibe['buckets'][STAGE_UNKNOWN]} | Admin: {admin['buckets'][STAGE_UNKNOWN]})")

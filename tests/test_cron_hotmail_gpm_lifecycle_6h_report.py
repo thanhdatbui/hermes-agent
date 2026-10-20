@@ -726,7 +726,7 @@ class TestRecentActivity(ReportTestCase):
     def test_render_includes_delta_when_prev_snapshot_provided(self):
         rz = {k: 0 for k in report_mod.RECENT_KEYS}
         def _snap(**kwargs):
-            m: dict = {k: 0 for k in report_mod.METRIC_KEYS}
+            m: dict = {k: 0 for k in report_mod.METRIC_KEYS + report_mod.EXTRA_COUNT_KEYS}
             m["buckets"] = {s: 0 for s in report_mod.BUCKETS}
             m.update(kwargs)
             return {"farms": {"kibe": dict(m), "admin": dict(m)}, "totals": dict(m), "recent": dict(rz),
@@ -754,9 +754,19 @@ class TestRecentActivity(ReportTestCase):
         self.prev_snapshot_path.write_text(json.dumps({"timestamp": "2026-10-20T00:00:55Z", "farms": {"kibe": dict(m), "admin": dict(m)}, "totals": dict(m)}), encoding="utf-8")
         rc, text, _ = self.run_report()
         self.assertEqual(rc, 0)
-        self.assertIn("Đã Hoàn Tất Đổi Pass (DONE) : 1/1 (100.0%) [+1]", text)
+        self.assertIn("Đã Hoàn Tất Đổi Pass (DONE) : 1/1 (100.0%)", text)
+        self.assertNotIn("[+1]", text)
         saved = json.loads(self.prev_snapshot_path.read_text(encoding="utf-8"))
         self.assertEqual(saved["totals"]["done"], 1)
+
+    def test_main_shows_delta_against_nonzero_previous(self):
+        self.write_state(self.kibe_path, {"M01:a": _profile("DONE", "DONE", login=TS, reg=TS)})
+        self.make_default_db()
+        m = {k: 0 for k in report_mod.METRIC_KEYS}
+        m["done"] = 3
+        self.prev_snapshot_path.write_text(json.dumps({"timestamp": "2026-10-01T00:00:00Z", "farms": {"kibe": dict(m), "admin": dict(m)}, "totals": dict(m)}), encoding="utf-8")
+        _, text, _ = self.run_report()
+        self.assertIn("Đã Hoàn Tất Đổi Pass (DONE) : 1/1 (100.0%) [-2]", text)
 
     def test_main_handles_corrupt_prev_snapshot(self):
         self.write_state(self.kibe_path, {"M01:a": _profile("DONE", "DONE", login=TS, reg=TS)})
@@ -811,6 +821,85 @@ class TestRecentActivity(ReportTestCase):
             importlib.reload(report_mod)
             self.assertEqual(report_mod.PREV_SNAPSHOT_PATH, custom)
         importlib.reload(report_mod)
+
+
+class TestReportRefinements(ReportTestCase):
+    NOW = "2026-10-20T12:00:00Z"
+
+    def _snapshot_at(self, now):
+        tel = report_mod.Telemetry(stream=io.StringIO())
+        with patch.object(report_mod, "KIBE_STATE_PATH", self.kibe_path), \
+             patch.object(report_mod, "ADMIN_STATE_PATH", self.admin_path), \
+             patch.object(report_mod, "DB_PATH", self.db_path):
+            return report_mod.collect_snapshot(tel, now=report_mod._parse_time(now)), tel
+
+    def test_done_with_chatgpt_flag_is_not_flagged_as_phantom(self):
+        self.write_state(self.kibe_path, {
+            "M01:a": {"stage": "DONE", "status": "DONE", "has_chatgpt": True},
+            "M02:b": {"stage": "DONE", "status": "DONE"},
+        })
+        snap, tel = self._snapshot_at(self.NOW)
+        kibe = snap["farms"]["kibe"]
+        self.assertEqual(kibe["done"], 2)
+        self.assertEqual(kibe["done_without_chatgpt"], 1)
+        self.assertEqual(kibe["chatgpt_ok"], 2)
+        flagged = self.find_events(tel.events, "done_without_chatgpt")
+        self.assertEqual(len(flagged), 1)
+        self.assertEqual(flagged[0]["sample"], ["M02:b"])
+
+    def test_quarantine_counts_status_or_three_retries(self):
+        self.write_state(self.kibe_path, {
+            "M01:a": {"stage": "CHATGPT_REG", "status": "QUARANTINE", "hotmail_login_at": TS},
+            "M02:b": {"stage": "HOTMAIL_LOGIN", "status": "PENDING", "login_retry_count": 3},
+            "M03:c": {"stage": "HOTMAIL_LOGIN", "status": "PENDING", "login_retry_count": 2},
+        })
+        self.write_state(self.admin_path, {
+            "M201:d": {"stage": "HOTMAIL_LOGIN", "status": "PENDING", "login_retry_count": 5},
+        })
+        self.make_default_db()
+        snap, _ = self._snapshot_at(self.NOW)
+        self.assertEqual(
+            (snap["farms"]["kibe"]["login_quarantine"], snap["farms"]["admin"]["login_quarantine"], snap["totals"]["login_quarantine"]),
+            (2, 1, 3),
+        )
+        text = "\n".join(report_mod.render_report(snap))
+        self.assertIn("    - Trong đó QUARANTINE (chết cứng >= 3 lần): 3 nick (Kibe: 2, Admin: 1)", text)
+        blocked_idx = text.index("Lỗi / Kẹt cần cứu (BLOCKED)")
+        self.assertLess(blocked_idx, text.index("Trong đó QUARANTINE"))
+
+    def test_wait_7d_matured_and_missing_tiktok_breakdown(self):
+        self.write_state(self.kibe_path, {
+            "M01:a": {"stage": "WAIT_7D", "status": "WAITING", "hotmail_login_at": "2026-10-01T00:00:00Z",
+                      "has_tiktok": True, "chatgpt_registered_at": TS},
+            "M02:b": {"stage": "WAIT_7D", "status": "WAITING", "hotmail_login_at": "2026-10-18T00:00:00Z",
+                      "username": "u", "password": "p", "chatgpt_registered_at": TS},
+            "M03:c": {"stage": "WAIT_7D", "status": "WAITING", "hotmail_login_at": "2026-10-01T00:00:00Z",
+                      "chatgpt_registered_at": TS},
+        })
+        snap, _ = self._snapshot_at(self.NOW)
+        kibe = snap["farms"]["kibe"]
+        self.assertEqual((kibe["matured_7d"], kibe["missing_tiktok"]), (2, 1))
+        self.assertEqual((snap["totals"]["matured_7d"], snap["totals"]["missing_tiktok"]), (2, 1))
+        text = "\n".join(report_mod.render_report(snap))
+        self.assertIn("    - Đã đủ 7 ngày ngâm: 2 (Kibe: 2 | Admin: 0)", text)
+        self.assertIn("    - Thiếu thông tin TikTok: 1 (Kibe: 1 | Admin: 0)", text)
+
+    def test_zero_previous_value_does_not_render_phantom_delta(self):
+        self.write_state(self.kibe_path, {"M01:a": _profile("DONE", "DONE", login=TS, reg=TS)})
+        snap, _ = self._snapshot_at(self.NOW)
+        prev = {"timestamp": "2026-10-01T00:00:00Z", "totals": {k: 0 for k in report_mod.METRIC_KEYS},
+                "farms": {"kibe": {k: 0 for k in report_mod.METRIC_KEYS}, "admin": {k: 0 for k in report_mod.METRIC_KEYS}}}
+        text = "\n".join(report_mod.render_report(snap, prev))
+        self.assertIn("Đã Hoàn Tất Đổi Pass (DONE) : 1/1 (100.0%)", text)
+        self.assertNotRegex(text, r"\[[+-]\d+\]")
+
+    def test_render_ignores_invalid_previous_snapshot(self):
+        self.write_state(self.kibe_path, {"M01:a": _profile("DONE", "DONE", login=TS, reg=TS)})
+        snap, _ = self._snapshot_at(self.NOW)
+        invalid_prev = {"timestamp": "2026-10-01T00:00:00Z", "totals": {"done": 5}, "farms": {}}
+        text = "\n".join(report_mod.render_report(snap, invalid_prev))
+        self.assertNotIn("So sánh với lần trước", text)
+        self.assertNotRegex(text, r"\[[+-]\d+\]")
 
 
 if __name__ == "__main__":
