@@ -31,8 +31,9 @@ The failures in this catch-all category consistently decompose into 4 distinct f
   - `startup ad/splash marker detected`
   - `screen capture invalid; feed not confirmed`
   - `feed swipe command failed`
-* **Root Cause:** TikTok pushes dialogs (TikTok Shop coupons, phone binding prompts, ad surveys) that cover the video surface. Fail-closed safety terminates the session with `manual-needed` to avoid unintended clicks.
-* **Remediation:** Enhance `benign_popup.py` or `feed_swipe_smoke.py` with dismiss bounds / close selectors for the newly observed popup marker.
+  - `unknown TikTok state` (e.g. `detector-miss` caused by "Follow bạn bè của bạn" / friend suggestion sheet covering Profile tab during preflight)
+* **Root Cause:** TikTok pushes dialogs (TikTok Shop coupons, phone binding prompts, ad surveys, or "Follow bạn bè của bạn" friend suggestions on Profile) that cover the video or profile surface. Fail-closed safety terminates the session with `manual-needed` or `detector-miss` to avoid unintended clicks.
+* **Remediation:** Enhance `benign_popup.py` or `feed_swipe_smoke.py` with dismiss bounds / close selectors for the newly observed popup marker (for "Follow bạn bè của bạn", add dismiss/back handler during profile preflight).
 
 ### Group 2: TikTok Launch Timeout / Focus Lost (~30% of occurrences)
 * **Markers & Reasons in Manifest:**
