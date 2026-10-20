@@ -25,6 +25,8 @@ tags: [tiktok, farm, batch, render, upload, resume, kibe]
   `python C:/Users/Admin/run_admin_render_worker.py` (launcher headless: `python C:/Users/Admin/launch_detached_admin_render.py`). Log: `C:/Users/Admin/admin_render_worker.log`.
 - **Tra cứu máy N O(1):**
   `python D:/Taadaa/tools/inspect_machine.py <N>`
+- **Chẩn đoán Nhanh Admin Dừng Down / Dừng Render O(1):**
+  Đọc `D:\OneDrive\TaadaaData\admin\last_render_stats.json` thay vì gọi SSH. Phân biệt: (1) Render dừng do đã vét hết nguồn $\ge 30$ clip (Tik6..Tik8 thiếu raw); (2) Downloader dừng do chạy hết pass và/hoặc bị ngắt bởi ca reboot 05:20/11:20/17:20 dừng ở Windows Lock Screen.
 
 ## 3. Danh Mục Tham Khảo Chi Tiết
 - Toàn bộ tài liệu quy trình cũ: [`references/historical-batch-ops-archive.md`](references/historical-batch-ops-archive.md)

@@ -28,3 +28,12 @@ Do cả Coordinator và Worker Gate đều áp dụng strict allowlist hạn ch�
    - Nếu `is_rd == false`: Phải giải thích mạch lạc ngay:
      *"Cấu hình launcher đã được chuyển về 1 worker (--parallel 1) cho các đợt chạy tới. Hiện tại đợt render trước đó đã kết thúc / đang dừng, máy Admin đang rảnh hoàn toàn."*
    - Tuyệt đối không báo mâu thuẫn: vừa bảo chuyển về worker 1 lại vừa bảo "0 tiến trình chạy" mà không giải thích rõ là đợt cũ đã hoàn tất từ trước.
+
+## 4. Chẩn Đoán Khi Cả Download Và Render Dừng Đồng Thời (⚪ Đang dừng)
+- **Render dừng**: Do đã render hết các folder video gốc đạt chuẩn ($\ge 30$ clip), thường là Tik1..Tik5 đã cơ bản hoàn thành. Đến Tik6..Tik8, video gốc chưa tải đủ 30 clip nên launcher PowerShell (`if ($sourceMp4.Count -lt 30) { SKIP }`) bỏ qua an toàn và thoát exit 0.
+- **Download dừng**:
+  1. Tiến trình cào hoàn thành 1 pass toàn bộ 640 folder và thoát bình thường (các folder thiếu là do kênh auto-discovery không đủ clip chuẩn hoặc lỗi stream ffmpeg, đã dọn sạch theo invariant).
+  2. Bị ngắt bởi ca Reboot định kỳ (05:20, 11:20, 17:20): Windows dừng ở Lock Screen, không nạp `shell:startup` nếu không có Interactive Logon.
+- **Kế hoạch xử lý tức thì**:
+  1. Khởi động lại downloader cào bù dải folder 401..640 (nguồn Tik 6..8) qua 69 proxy MikroTik LAN `192.168.110.2:10001..10035` theo 12 Cụm Niche Hot (`admin_all_640_hot_niches.json`).
+  2. Chạy chuỗi render cuốn chiếu: `admin_render_chain.py --start-from 6` với `--parallel 1` ngay khi kho gốc có folder $\ge 35$ clip.
