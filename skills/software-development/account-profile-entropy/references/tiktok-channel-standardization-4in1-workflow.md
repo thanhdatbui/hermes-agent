@@ -85,7 +85,11 @@
 ### Bước 4.2: Xử Lý Profile Trống Bio & Bẫy Story Picker Trên S7
 - Trên tài khoản chưa từng cài Bio (bio rỗng), TikTok ẩn nút "Sửa hồ sơ" bên dưới stats:
   * **Cạm bẫy Tọa độ `(870, 558)`**: Trên layout căn trái (avatar nằm bên phải), tọa độ `(870, 558)` chạm vào vùng avatar/balloon mở popup *"Thêm vào Nhật ký"* (Story picker `UNKNOWN`), CẤM bấm vào!
-  * **Giải pháp chuẩn xác**: Bấm trực tiếp vào chip `+ Thêm tiểu sử` tại tọa độ tâm `(220, 686)` (nhận diện qua regex `tieu\s*su|tid\w{0,2}\s*s\w{0,2}|\+\s*them`).
+  * **Cạm bẫy WinRT OCR méo chữ `+ Thém tidU sd`**: WinRT OCR trên Android S7 thường đọc chữ "tiểu sử" thành `tidU sd` (ký tự `d` thay cho `e`). Nếu dùng regex hẹp `th[eé]m\s*ti[eé]u\s*s|tieu\s*su`, hàm `find_box` sẽ trả về `None`. Khi đó script nếu fallback tap `(870, 558)` sẽ rơi vào vòng lặp mở Story picker -> Back -> mở Story 35 lần abort!
+  * **Giải pháp chuẩn xác**:
+    1. Bắt buộc regex đa biến thể: `r'\+\s*th[eé]m|tid\w{0,2}\s*s|th[eé]m\s*ti|tieu\s*su'`.
+    2. Bấm trực tiếp vào chip `+ Thêm tiểu sử` tại tọa độ tâm `(220, 686)`.
+    3. Khi OCR không tìm thấy box, fallback tap BẮT BUỘC là `(220, 686)`, CẤM TUYỆT ĐỐI fallback sang `(870, 558)`.
   * Mở màn hình `BIO_EDIT`, gõ Bio qua AdbKeyboard Base64 UTF-8 và bấm Lưu.
   * Sau khi có Bio, TikTok tự động kích hoạt hiển thị nút "Sửa hồ sơ" (`(210, 686)` hoặc `(300, 985)`), từ đó runner vào đổi Tên mượt mà.
 

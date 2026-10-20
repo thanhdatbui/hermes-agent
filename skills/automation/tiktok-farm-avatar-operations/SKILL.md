@@ -5,6 +5,7 @@ description: Use when running avatar-only jobs on TikTok farm.
 
 # TikTok Farm Avatar Operations
 
+- **Chuẩn Hoá Kênh 3 Món & Pin Top Device Lock**: [doc](references/chuan-hoa-kenh-3-mon-va-pin-top-device-lock-20261020.md)
 - **Blind Vision & Claude Worker Gate**: [doc](references/coordinator-blind-vision-and-claude-worker-inspection-gate-20261017.md)
 - **Photo Picker 3-Col & Proxy Stall**: [doc](references/photo-picker-3col-geometry-and-proxy-stall-rejection-20261017.md)
 - **Bulk DB Audit**: Thẩm định avatar offline, trích HD 512x512.
