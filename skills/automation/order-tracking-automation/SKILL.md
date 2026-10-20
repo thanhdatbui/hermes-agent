@@ -44,10 +44,11 @@ Do not describe mailbox polling as real-time shipment tracking. Mail is a discov
 When an order dashboard displays screenshots or product photos, preserve the source artifact instead of treating a single thumbnail as the complete order evidence:
 
 1. Store image assets as an explicit list with roles such as `order_confirmation`, `product`, `shipping_address`, and `tracking_event`; keep the original files immutable.
-2. Render portrait screenshots with their native aspect ratio (`height:auto` / `object-fit:contain`), not a forced 4:3 crop with `object-fit:cover`. A card thumbnail may be cropped only as a deliberate preview, and it must open the uncropped original on click.
-3. Verify the image route and the actual browser rendering separately. A valid JSON `image_path` proves storage, not that the UI shows the full image.
-4. Treat a card that shows only order metadata or a cropped screenshot as incomplete evidence; report the missing image role explicitly rather than claiming the order gallery is complete.
-5. Keep the canonical order record, image manifest, and dashboard response aligned. If the schema supports only one `image_path`, add a backward-compatible `images` list rather than silently overwriting the existing asset.
+2. Render portrait screenshots with their native aspect ratio (`height:auto` / `object-fit:contain`), not a forced 4:3 crop with `object-fit:cover`. A card thumbnail must wrap in an anchor link (`target="_blank"`, `cursor:zoom-in`) directly opening the raw uncropped image endpoint (e.g. `/orders/images/<filename>`) on click.
+3. Verify the image route and the actual browser rendering separately. A valid JSON `image_path` proves storage, not that the UI shows the full image. When the user asks to view the raw image on web, navigate to `/orders/images/<filename>` and verify via vision that all critical segments (status, recipient, address, item details) are intact without cut borders.
+4. Hot-reload dashboard behind watchdog: when modifying dashboard code (e.g. `tiktok_dashboard.py`), terminating the running process allows the supervisor watchdog (`tiktok_dashboard_watchdog.ps1`) to respawn a clean instance with the updated code within seconds.
+5. Treat a card that shows only order metadata or a cropped screenshot as incomplete evidence; report the missing image role explicitly rather than claiming the order gallery is complete.
+6. Keep the canonical order record, image manifest, and dashboard response aligned. If the schema supports only one `image_path`, add a backward-compatible `images` list rather than silently overwriting the existing asset.
 
 Session detail and reproduction notes: `references/order-card-image-integrity.md`.
 

@@ -437,6 +437,22 @@ Chi tiết xem tại tài liệu hỗ trợ liên kết:
     3. *Concurrency & Lock Safety:* Phân tích nguy cơ Race condition trên file lock `.lock` và file trạng thái `pool_state.json` khi nhiều tiến trình chạy đồng thời.
   * Cách tiếp cận này giúp Claude CLI bỏ qua cờ bot-evasion và tập trung bóc tách chính xác các lỗi nghiêm trọng (P0/P1 concurrency, lease stale, process lock).
 
+### 3. Bộ Vá Chuẩn Hóa Lỗi Tương Tranh P0/P1 & Bảo Mật Mạng (Verified 2026-10-21):
+- **Vá P0 Lease Stale & Lock Ownership:**
+  * Nâng `PROFILE_LEASE_TIMEOUT = 1800` (30 phút) bao trùm trần task timeout 1500s.
+  * Trong `is_profile_locked`: Kiểm tra `time.time() - ts > PROFILE_LEASE_TIMEOUT` trước, sau đó nếu trong thời hạn lease mà `pid` có và `is_pid_alive(pid) is False` thì giải phóng sớm để crash recovery.
+  * Trong `release_profile_lock`: Đọc file lock và chỉ `os.remove` khi `owner == os.getpid()`, chống xóa nhầm lock của process khác khi task bị chạy lâu.
+- **Vá P1 State Race Condition:**
+  * Thay thế file `.tmp` tĩnh bằng `unique_temp_path(path)` sinh theo mẫu `{path}.{os.getpid()}.{time.time_ns()}.tmp` trước khi gọi `os.replace`, chống đè mất cooldown giữa các worker.
+- **Bảo Vệ Quyền Riêng Tư Proxy:**
+  * Tích hợp `mask_proxy_credentials` dùng regex `re.compile(r"(://)[^/\s:@]+:[^/\s@]+@")` tự động che password thành `user:***@host` trong `pool-status`.
+- **Lọc Sạch Environment Host:**
+  * Xóa các biến nhạy cảm `SENSITIVE_ENV_VARS = ("GOOGLE_API_KEY", "GEMINI_API_KEY", "ANTHROPIC_API_KEY")` khỏi subprocess env.
+- **Bẫy Double Nesting Trong OMP (`omp_cli.py`):**
+  * Khi `USERPROFILE` được gán vào thư mục sandbox riêng (`OMP_PROFILES_DIR/<name>`), OMP giải quyết `~/.omp/profiles/<name>/agent` sẽ tạo đường dẫn lặp 2 lần `.omp/profiles/<name>/.omp/profiles/<name>/agent/`.
+  * Khắc phục: Khi đã cô lập `USERPROFILE`, lệnh spawn `omp.cmd` bỏ cờ `--profile` để OMP đọc thẳng cấu hình trong sandbox `USERPROFILE/.omp/agent/models.yml`.
+
+
 
 
 

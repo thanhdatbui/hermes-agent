@@ -15,9 +15,29 @@ A portrait TikTok Shop order screenshot was saved successfully and the API retur
 ## Corrective design
 
 - Keep a backward-compatible `image_path` for the primary artifact, but add `images: [{role, path, caption, captured_at}]` for multiple evidence images.
-- Use a contain/native-ratio preview for portrait evidence and provide a click-through to the original.
+- Use a contain/native-ratio preview for portrait evidence and provide a click-through to the original:
+  - CSS:
+    ```css
+    .order-thumb-wrap { position: relative; width: 100%; max-height: 480px; background: #0b0f19; display: flex; align-items: center; justify-content: center; }
+    .order-thumb-link { display: block; width: 100%; text-align: center; }
+    .order-thumb { width: 100%; max-height: 480px; object-fit: contain; display: block; cursor: zoom-in; }
+    ```
+  - Markup:
+    ```html
+    <a class="order-thumb-link" href="/orders/images/${encodeURIComponent(imgName)}" target="_blank" title="Bấm để xem ảnh gốc kích thước đầy đủ">
+        <img class="order-thumb" loading="lazy" src="/orders/images/${encodeURIComponent(imgName)}" alt="Ảnh đơn ${ordersEsc(order.order_id)}"
+             onerror="this.closest('.order-thumb-link').style.display='none';this.closest('.order-thumb-wrap').querySelector('.order-thumb-fallback').style.display='flex'">
+    </a>
+    ```
+- Hot-reload under watchdog:
+  - When updating `tiktok_dashboard.py`, running under `tiktok_dashboard_watchdog.ps1`, terminate the dashboard process (`p.terminate()`).
+  - The watchdog respawns a fresh instance with the updated code within 2–5s. Verify HTTP 200 on port 1905 before browser navigation.
 - Keep product imagery separate from the order-confirmation screenshot; do not claim that a confirmation screenshot is a product gallery.
 - Add a focused UI assertion that the image element has a non-cropping presentation and that all declared image roles render or are explicitly marked unavailable.
+- Verification gate for "xem ảnh gốc qua web":
+  - Navigate directly to `http://localhost:1905/orders/images/<filename>` in browser / `browser_vision`.
+  - Validate all 4 critical sectors: Status & Stepper (Đã đặt hàng/Chờ chuyển phát), Recipient & Address, Product details, and Email notification toggle.
+  - Verify edge fidelity (no cut text, no missing headers/footers).
 
 ## Reporting rule
 
