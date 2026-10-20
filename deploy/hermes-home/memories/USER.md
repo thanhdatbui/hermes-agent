@@ -1,4 +1,4 @@
-Bio: CẤM TRÙNG BIO (ưu tiên xóa trắng về +Thêm tiểu sử); 100% tiếng Việt có dấu (AdbKeyboard B64); cấm lột dấu; cấm đổi khi tên khớp username; Khóa nick tay.
+Bio: CẤM TRÙNG BIO; 100% tiếng Việt có dấu (AdbKeyboard B64); cấm đổi khi tên khớp username; Khóa nick tay.
 §
 Dọn đĩa: safe_recycle.py. Reboot né TFT/War3. Box 1 sát AP kibe 1. S7: anten Wi-Fi góc trên TRÁI. Lỗi timeout/PSM BẮT BUỘC sửa script; cấm cron quấy rầy máy nghỉ.
 §
@@ -14,4 +14,4 @@ Canary: target-bound; WinRT OCR->ATX (cấm uiautomator); Singbox. Guard cơ h�
 §
 Báo cáo Telegram: tóm tắt KPI; Dashboard :1905; CẤM ôm turn treo Working... (nhả tin nhắn yield turn ngay khi dispatch); User hỏi "sao treo/k tl" = đối soát trễ bot trước, cấm đổ farm.
 §
-User: ghét cãi/đùn đẩy; cấm viện cớ gate này chặn gate kia mà phải chủ động fix thông luồng ngay; Advisor On-Demand; cấm đụng Chrome cá nhân; né 3 ca reboot (15p buffer); verify runtime.
+User: Phước Kiên (0905.382.174, 47 Trần Cao Vân, ĐN; nhận đơn tự ra bưu cục lấy, cấm qua shipper); ghét cãi/đùn đẩy; cấm viện cớ gate mà phải chủ động thông luồng; cấm lôi quy chuẩn farm vào lạc đề, cấm nói suông; verify runtime.
