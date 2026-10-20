@@ -22,4 +22,4 @@ Ava: Trích clip gốc representative_frames; Vision LLM quét DB lọc ava rác
 §
 Reboot 3 ca (05:20, 11:20, 17:20), né TFT/War3. Task ngầm VBS/wscript Hidden+CREATE_NO_WINDOW. Game = tắt nháy, cấm pause cron.
 §
-MCP: agy cắm remote URL thẳng. FastMCP domain ngoài: enable_dns_rebinding_protection=False chống 421. Claude Win: claude-haiku-5-5 chuẩn, prompt phải sau -p (cấm stdin).
+MCP: agy cắm URL thẳng. FastMCP: enable_dns_rebinding_protection=False. Claude: claude-haiku-5-5 prompt sau -p. omp: OAuth google-antigravity / :20129 né 20 RPD AI Studio.
