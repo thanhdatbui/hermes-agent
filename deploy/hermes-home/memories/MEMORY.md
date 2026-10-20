@@ -20,7 +20,7 @@ Canary: target-bound; WinRT OCR -> ATX (cấm uiautomator); done_gate verify has
 §
 Ava: Trích clip gốc; Vision LLM lọc ava rác. Gate 6: cấm trần thuật UI thiếu MEDIA; SHA256 thật; cấm gửi mù. Dọn .thumbnails+Camera. F_src!=F_vid khóa kép 2 folder.
 §
-Reboot 3 ca (05:20, 11:20, 17:20): lookback 60m. 2FA né đệm reboot (ROLLING_BLOCK_WINDOWS). Safe sync check output.parent.exists. Né TFT/War3. Task ngầm Hidden+CREATE_NO_WINDOW. Game=tắt nháy, cấm pause cron.
+Reboot 3 ca (05:20, 11:20, 17:20): lookback 60m. 2FA né đệm reboot. Safe sync resync khi out mất; WD cấm nuốt cụm rỗng. Né TFT/War3. Task ngầm Hidden+CREATE_NO_WINDOW. Game=tắt nháy, cấm pause cron.
 §
 OMP/AGY: 21 profile (acc_02-22) proxy 4G; jinrakal chỉ fallback direct host. Cô lập USERPROFILE né link chùm install-id; dual-route OAuth/:20129.
 §
