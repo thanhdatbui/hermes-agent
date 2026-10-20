@@ -121,16 +121,33 @@ Trong các test suite offline (như `test_mode1_search_follow.py`):
 3. Tuyệt đối KHÔNG sửa mốc query SQL của Dashboard khi chưa kiểm chứng lịch ca 06:00.
 
 ### D. Bản vá Watchdog chống drop số khi Runner Timeout (`feed_session_watchdog.py`)
-1. **Cơ chế gây lỗi (Dead Code Guard):**
+1. **Cơ chế gây lỗi (Dead Code Guard & Data Schema Mismatch):**
    - Trước bản vá: `target_machines` chỉ gom các máy có `fl_success` hoặc `len(fd.get("followed")) > 0`.
    - Vòng lặp chứa guard: `if cnt <= 0 and natural_cnt <= 0: continue`.
    - Khi runner dính timeout hoặc error (`status in ('timeout', 'failed', 'launch_error')` và `cnt == 0`), lệnh `continue` lập tức bỏ qua máy, khiến đoạn code xử lý bên dưới `if failed and cnt == 0:` trở thành dead code.
    - Hậu quả: Máy timeout không được cào đối soát Web, không được ghi nhận vào `session_account_actions`, dẫn tới Dashboard hiển thị thiếu hoàn toàn số lượt đã follow.
+   - Ngoài ra, việc tra cứu `all_follows` có thể bị lỗi khi khóa chuỗi `'23'` mang giá trị `None` (nhưng khóa số nguyên `23` có dữ liệu), hoặc runner báo lỗi dưới dạng số nguyên (`failed: 1`) thay vì boolean (`follow_failed: True`).
 2. **Giải pháp chuẩn mực:**
    - Mở rộng `target_machines = ... | {str(m) for m in all_follows.keys()}` để không bỏ sót máy nào có chạy follow-hook.
-   - Bắt trạng thái: `is_timeout_or_err = status_str in {"timeout", "failed", "launch_error", "config_error", "manual_review"}`.
-   - Sửa điều kiện guard: `if cnt <= 0 and natural_cnt <= 0 and not (failed or is_timeout_or_err): continue`.
-   - Giúp máy timeout vẫn đi tiếp xuống dưới, cào Web snapshot để phát hiện chênh lệch thật (`script 0 lượt - web N lượt - lệch (+N)`), và ghi nhận telemetry đầy đủ vào DB.
+   - Chuẩn hóa đọc `follow_data`:
+     ```python
+     follow_data = all_follows.get(m)
+     if not isinstance(follow_data, dict) and str(m).isdigit():
+         follow_data = all_follows.get(int(m))
+     if not isinstance(follow_data, dict):
+         follow_data = {}
+     ```
+   - Nhận diện lỗi toàn diện (cả status chuỗi và indicator số):
+     ```python
+     failed = bool(follow_data.get('follow_failed'))
+     raw_failed = follow_data.get('failed')
+     has_fail_num = (type(raw_failed) is int and raw_failed > 0) or bool(raw_failed is True)
+     status_str = str(follow_data.get('status') or '').lower()
+     is_timeout_or_err = status_str in {'timeout', 'failed', 'launch_error', 'config_error', 'manual_review'} or has_fail_num
+     if cnt <= 0 and natural_cnt <= 0 and not (failed or is_timeout_or_err):
+         continue
+     ```
+   - Giúp máy timeout vẫn đi tiếp xuống dưới, cào Web snapshot để phát hiện chênh lệch thật (`script 0 lượt - web N lượt - lệch (+N)`), và ghi nhận telemetry đầy đủ vào DB SQLite `session_account_actions`.
 
 ---
 
