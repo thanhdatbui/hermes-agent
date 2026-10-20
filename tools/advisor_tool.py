@@ -9,18 +9,29 @@ DEFAULT_TIMEOUT = 55
 MAX_PAYLOAD_BYTES = 16000
 _SECRET_KEYS = {"password", "apikey", "accesstoken", "refreshtoken", "sessiontoken", "cookie", "authorization", "authheader", "secret", "token", "privatekey", "clientsecret"}
 _BEARER_RE = re.compile(r"(?i)\bbearer\s+[A-Za-z0-9._~+/=-]+")
-_PAIR_RE = re.compile(r"(?i)\b(?:password|api[_-]?key|access[_-]?token|refresh[_-]?token|session[_-]?token|cookie|authorization|auth[_-]?header|secret|token|private[_-]?key|client[_-]?secret)(?P<separator>\s*[=:]\s*)[^\s,;]+")
-_QUOTED_PAIR_RE = re.compile(r"(?i)([\"']?)(?:password|api[_-]?key|access[_-]?token|refresh[_-]?token|session[_-]?token|private[_-]?key|client[_-]?secret)\1\s*:\s*([\"']?)[^\"'\s,;}]+\2")
-_COMMON_TOKEN_RE = re.compile(r"(?i)\b(?:sk|ghp|xox)-[A-Za-z0-9][A-Za-z0-9_-]*")
+_AUTH_HEADER_RE = re.compile(r"(?i)\bauthorization\s*:\s*[^\r\n,;]+")
+_COOKIE_RE = re.compile(r"(?i)\bcookie\s*[:=]\s*[^\r\n]+")
+_PAIR_RE = re.compile(r"(?i)(?:[\w_-]*(?:password|api[_-]?key|access[_-]?token|refresh[_-]?token|session[_-]?token|cookie|authorization|auth[_-]?header|secret|token|private[_-]?key|client[_-]?secret))(?P<separator>\s*[=:]\s*)[^\s,;]+")
+_QUOTED_PAIR_RE = re.compile(r"(?i)([\"']?)(?:[\w_-]*(?:password|api[_-]?key|access[_-]?token|refresh[_-]?token|session[_-]?token|cookie|authorization|auth[_-]?header|secret|private[_-]?key|client[_-]?secret|token))\1\s*:\s*([\"']?)[^\"'\r\n,;}]+\2")
+_COMMON_TOKEN_RE = re.compile(r"(?i)\b(?:sk-[A-Za-z0-9_\-]{16,}|gh[pousr]_[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|(?:sk|ghp|xox|akia)[-_][A-Za-z0-9][A-Za-z0-9_-]*)")
 _JWT_RE = re.compile(r"\beyJ[A-Za-z0-9_-]{8,}(?:\.[A-Za-z0-9_-]+){2}\b")
+
+
+def _is_secret_key(k):
+    norm = re.sub(r"[-_]", "", str(k).lower())
+    if any(sk in norm for sk in _SECRET_KEYS if sk != "token"):
+        return True
+    return norm == "token" or (norm.endswith("token") and not norm.endswith("tokens"))
 
 
 def _redact(v):
     if isinstance(v, dict):
-        return {k: "[REDACTED]" if re.sub(r"[-_]", "", str(k).lower()) in _SECRET_KEYS else _redact(item) for k, item in v.items()}
+        return {k: "[REDACTED]" if _is_secret_key(k) else _redact(item) for k, item in v.items()}
     if isinstance(v, list):
         return [_redact(x) for x in v]
     if isinstance(v, str):
+        v = _AUTH_HEADER_RE.sub("Authorization: [REDACTED]", v)
+        v = _COOKIE_RE.sub("cookie: [REDACTED]", v)
         v = _BEARER_RE.sub("Bearer [REDACTED]", v)
         v = _PAIR_RE.sub(lambda m: m.group(0)[: m.start("separator") - m.start()] + m.group("separator") + "[REDACTED]", v)
         v = _QUOTED_PAIR_RE.sub("[REDACTED]", v)
@@ -30,8 +41,12 @@ def _redact(v):
     return v
 
 
-def _request_payload(cls, q, state, evid, acts, constr, rid):
+def _request_payload(cls, q, state, evid, acts, constr, rid, briefing=None, field=None):
     env = {"decision_class": _redact(cls), "question": _redact(q), "current_state": _redact(state), "evidence": _redact(evid), "candidate_actions": _redact(acts), "constraints": _redact(constr), "request_id": rid}
+    if briefing:
+        env["session_briefing"] = _redact(briefing)
+    if field:
+        env["field_context"] = _redact(field)
     payload = {"model": ADVISOR_MODEL, "messages": [{"role": "system", "content": "You are a read-only planner/advisor. Do not use tools, cause side effects, or approve actions. Return JSON when possible."}, {"role": "user", "content": json.dumps(env, ensure_ascii=False)}], "tools": [], "tool_choice": "none", "stream": False, "max_tokens": 1200}
 
     def shrink(v):
@@ -96,7 +111,7 @@ def _telemetry(rid, lat_ms, ep=ADVISOR_ENDPOINT):
     return {"request_id": rid, "model": ADVISOR_MODEL, "endpoint": ep, "latency_ms": lat_ms}
 
 
-def advisor_consult(decision_class, question, current_state=None, evidence=None, candidate_actions=None, constraints=None, request_id=None, timeout=DEFAULT_TIMEOUT):
+def advisor_consult(decision_class, question, current_state=None, evidence=None, candidate_actions=None, constraints=None, request_id=None, timeout=DEFAULT_TIMEOUT, session_briefing=None, field_context=None):
     rid, t0, ep = request_id or str(uuid.uuid4()), time.monotonic(), os.getenv("HERMES_ADVISOR_ENDPOINT", ADVISOR_ENDPOINT)
     def _unavail(err): return {"status": "unavailable", "advice": None, "raw_advice": "", "error": str(err), "telemetry": _telemetry(rid, int((time.monotonic() - t0) * 1000), ep)}
     if not _loopback_endpoint(ep): return _unavail("Endpoint not loopback")
@@ -105,7 +120,7 @@ def advisor_consult(decision_class, question, current_state=None, evidence=None,
         if not math.isfinite(b_to): raise ValueError("timeout must be finite")
     except (TypeError, ValueError, OverflowError) as exc: return _unavail(f"Invalid timeout: {exc}")
     try:
-        payload = _request_payload(decision_class, question, current_state, evidence, candidate_actions, constraints, rid)
+        payload = _request_payload(decision_class, question, current_state, evidence, candidate_actions, constraints, rid, briefing=session_briefing, field=field_context)
         if payload is None: raise ValueError("payload exceeds maximum size or is not serializable")
         req_body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         if len(req_body) > MAX_PAYLOAD_BYTES: raise ValueError("payload exceeds maximum size")

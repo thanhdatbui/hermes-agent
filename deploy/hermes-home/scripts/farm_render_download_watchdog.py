@@ -51,7 +51,7 @@ def detect_host():
 
 def is_download_running():
     try:
-        out = subprocess.check_output('wmic process where "name=\'python.exe\'" get commandline', shell=True, text=True, timeout=5)
+        out = subprocess.check_output('wmic process where "name=\'python.exe\'" get commandline', shell=True, text=True, errors="replace", timeout=5)
         out_lower = out.lower()
         if "download_by_niche.py" in out_lower or "download_all_sources.py" in out_lower or "auto_rescan_loop.py" in out_lower or "smart_gaixinh" in out_lower or "distribute_exclusive" in out_lower or "clean_vn" in out_lower or "run_admin_clean_vn" in out_lower or "run_admin_downloader" in out_lower:
             return True
@@ -62,7 +62,7 @@ def is_download_running():
 
 def is_render_running():
     try:
-        out = subprocess.check_output('wmic process where "name=\'python.exe\' or name=\'ffmpeg.exe\'" get commandline', shell=True, text=True, timeout=5)
+        out = subprocess.check_output('wmic process where "name=\'python.exe\' or name=\'ffmpeg.exe\'" get commandline', shell=True, text=True, errors="replace", timeout=5)
         out_lower = out.lower()
         if "random_batch_render.py" in out_lower or "run_render" in out_lower or "ffmpeg" in out_lower or "admin_render_chain" in out_lower:
             return True
@@ -168,7 +168,7 @@ def get_render_stats(host_info):
     return tik_stats, total_rendered
 
 
-def format_cluster_section(label, render_root, video_goc, is_running, sf, s30, s45, smp4, is_rd, tik_stats, total_rendered):
+def format_cluster_section(label, render_root, video_goc, is_running, sf, s30, s45, smp4, is_rd, tik_stats, total_rendered, prev_tik=None, prev_total=None):
     rd_icon = "🟢" if is_rd else "⚪"
     rd_text = "Đang chạy" if is_rd else "Đang dừng"
     dl_icon = "🟢" if is_running else "⚪"
@@ -180,13 +180,14 @@ def format_cluster_section(label, render_root, video_goc, is_running, sf, s30, s
         ge45 = st.get("ge45", st.get("ge30", 0))
         pct = st.get("pct", 0.0)
         clips = st.get("total_clips", 0)
+        prev_clips = prev_tik.get(str(slot)) if prev_tik else None
         if ge45 >= 80:
             icon = "✅"
         elif ge45 > 0:
             icon = "🟡"
         else:
             icon = "⚪"
-        tik_lines.append(f"{icon} Tik{slot}: <b>{ge45}/80</b> folder (≥45 clip) [{pct:.1f}%] | <b>{clips:,}</b> clip")
+        tik_lines.append(f"{icon} Tik{slot}: <b>{ge45}/80</b> folder (≥45 clip) [{pct:.1f}%] | <b>{clips:,}</b> clip{_fmt_delta(clips, prev_clips)}")
     tik_output = "\n".join(tik_lines)
 
     show_download = is_running or s45 < 640
@@ -200,16 +201,17 @@ def format_cluster_section(label, render_root, video_goc, is_running, sf, s30, s
     return f"""🏢 <b>{label} (<code>{render_root}</code>):</b>
 {dl_part}• Trạng thái render: {rd_icon} <b>{rd_text}</b>
 {tik_output}
-👉 Đã render cụm: <b>{total_rendered:,}</b> clip"""
+👉 Đã render cụm: <b>{total_rendered:,}</b> clip{_fmt_delta(total_rendered, prev_total)}"""
 
 
 ADMIN_CACHE_PATH = r"D:\OneDrive\TaadaaData\admin\last_render_stats.json"
+PREV_SNAPSHOT_PATH = r"D:\Taadaa\runtime\kibe\cron-state\farm_render_download_last_snapshot.json"
 
 
 def fetch_admin_stats_remote():
     try:
         cmd = ['ssh', '-o', 'ConnectTimeout=3', 'admin-farm', 'python -c "import sys; sys.path.append(r\'%LOCALAPPDATA%\\hermes\\scripts\'); import farm_render_download_watchdog as f, json; h = f.detect_host(); is_dl = f.is_download_running(); sf, s30, s45, smp4 = f.get_source_video_stats(h); is_rd = f.is_render_running(); tst, trd = f.get_render_stats(h); print(json.dumps({\'name\': h[\'name\'], \'video_goc\': h[\'video_goc\'], \'render_root\': h[\'render_root\'], \'is_dl\': is_dl, \'src_folders\': sf, \'src_ge30\': s30, \'src_ge45\': s45, \'src_mp4\': smp4, \'is_rd\': is_rd, \'tik_stats\': tst, \'total_rendered\': trd}))"']
-        res = subprocess.run(cmd, capture_output=True, text=True, errors="replace", timeout=8)
+        res = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=8)
         if res.returncode == 0:
             for line in res.stdout.splitlines():
                 line = line.strip()
@@ -233,6 +235,33 @@ def fetch_admin_stats_remote():
             pass
 
     return None, "OFFLINE"
+
+
+def _fmt_delta(curr: int, prev: int | None) -> str:
+    if prev is not None and curr >= prev:
+        return f' [+{curr - prev:,}]'
+    return f' [{curr - prev:,}]' if prev is not None else ''
+
+
+def load_prev_snapshot():
+    if not os.path.exists(PREV_SNAPSHOT_PATH):
+        return None
+    try:
+        with open(PREV_SNAPSHOT_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
+def save_snapshot(snapshot):
+    try:
+        os.makedirs(os.path.dirname(PREV_SNAPSHOT_PATH), exist_ok=True)
+        tmp_path = PREV_SNAPSHOT_PATH + ".tmp"
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            json.dump(snapshot, f, ensure_ascii=False, indent=2)
+        os.replace(tmp_path, PREV_SNAPSHOT_PATH)
+    except Exception:
+        pass
 
 
 def main():
@@ -281,6 +310,14 @@ def main():
         return
 
     # Running on KIBE: generate unified report for BOTH KIBE and ADMIN
+    prev = load_prev_snapshot() or {}
+    prev_ts = prev.get("timestamp")
+    prev_kibe_total = prev.get("kibe_total")
+    prev_kibe_tik = prev.get("kibe_tik_clips") or {}
+    prev_admin_total = prev.get("admin_total")
+    prev_admin_tik = prev.get("admin_tik_clips") or {}
+    prev_grand = prev.get("grand_total")
+
     kibe_sec = format_cluster_section(
         "FARM KIBE (MÁY 1-80)",
         host_info["render_root"],
@@ -293,10 +330,15 @@ def main():
         is_render,
         tik_stats,
         total_rendered,
+        prev_tik=prev_kibe_tik,
+        prev_total=prev_kibe_total,
     )
+    kibe_tik_clips = {str(slot): st["total_clips"] for slot, st in tik_stats.items()}
 
     admin_data, admin_mode = fetch_admin_stats_remote()
     if admin_data:
+        admin_total = admin_data.get("total_rendered", 0)
+        admin_tik_clips = {str(slot): st.get("total_clips", 0) for slot, st in admin_data.get("tik_stats", {}).items()}
         admin_sec = format_cluster_section(
             "FARM ADMIN (MÁY 201-280)",
             admin_data["render_root"],
@@ -308,25 +350,41 @@ def main():
             admin_data.get("src_mp4", 0),
             admin_data.get("is_rd", False),
             admin_data.get("tik_stats", {}),
-            admin_data.get("total_rendered", 0),
+            admin_total,
+            prev_tik=prev_admin_tik,
+            prev_total=prev_admin_total,
         )
-        grand_total = total_rendered + admin_data.get("total_rendered", 0)
+        grand_total = total_rendered + admin_total
+        compare_line = ""
+        if prev_grand is not None:
+            compare_line = f"\n\n🕒 So với lần trước ({prev_ts}): <b>{prev_grand:,}</b> → <b>{grand_total:,}</b> video"
         msg = f"""📊 <b>BÁO CÁO TIẾN ĐỘ RENDER TOÀN FARM</b> - {now_str}
 
 {kibe_sec}
 
 {admin_sec}
 
-🔥 <b>TỔNG CLIP RENDER TOÀN BỘ 2 FARM:</b> <b>{grand_total:,}</b> video"""
+🔥 <b>TỔNG CLIP RENDER TOÀN BỘ 2 FARM:</b> <b>{grand_total:,}</b> video{_fmt_delta(grand_total, prev_grand)}{compare_line}"""
     else:
+        admin_total = prev_admin_total
+        admin_tik_clips = prev_admin_tik
+        grand_total = (total_rendered + admin_total) if admin_total is not None else None
         msg = f"""📊 <b>BÁO CÁO TIẾN ĐỘ RENDER TOÀN FARM</b> - {now_str}
 
 {kibe_sec}
 
 ⚠️ <i>Farm Admin (M201-280): Không kết nối được qua mạng LAN</i>
 
-🔥 <b>Tổng clip render Farm Kibe:</b> <b>{total_rendered:,}</b> video"""
+🔥 <b>Tổng clip render Farm Kibe:</b> <b>{total_rendered:,}</b> video{_fmt_delta(total_rendered, prev_kibe_total)}"""
 
+    save_snapshot({
+        "timestamp": now_str,
+        "kibe_total": total_rendered,
+        "admin_total": admin_total,
+        "grand_total": grand_total,
+        "kibe_tik_clips": kibe_tik_clips,
+        "admin_tik_clips": admin_tik_clips,
+    })
     print(msg)
 
 

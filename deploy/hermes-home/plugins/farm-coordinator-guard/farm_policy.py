@@ -38,8 +38,11 @@ if "PYTEST_CURRENT_TEST" in os.environ or "pytest" in sys.modules:
     COORD_ALLOWED_ROOTS.append(os.path.realpath(tempfile.gettempdir()))
 
 # Ngân sách routine edit của Coordinator (user mở khóa 2026-10-05; chỉnh qua env khi cần)
-COORD_T1_MAX_FILES = int(os.environ.get("COORD_T1_MAX_FILES", 5))
-COORD_T1_MAX_LINES = int(os.environ.get("COORD_T1_MAX_LINES", 200))
+# COORD_T1_MAX_* là TRẦN TÍCH LŨY CẢ SESSION (write ledger), KHÔNG phải ngưỡng T0 per-task.
+# Ngưỡng T0 per-task (AGENTS.md Rule 6): <= 2 files, <= 80 dòng diff cho MỘT task; ledger này chặn tổng cộng dồn.
+# USER_EXPLICIT_OVERRIDE 2026-10-17: T1 ceiling raised 5->10 files, 200->500 lines (user order "lam di")
+COORD_T1_MAX_FILES = int(os.environ.get("COORD_T1_MAX_FILES", 10))
+COORD_T1_MAX_LINES = int(os.environ.get("COORD_T1_MAX_LINES", 500))
 
 GUARD_SOURCE_DIR = os.path.realpath(str(HERMES_ROOT / "plugins" / "farm-coordinator-guard"))
 HOOKS_DIR_HERMES = os.path.realpath(str(HERMES_ROOT / "hooks"))
@@ -307,11 +310,15 @@ def validate_dispatch(task: dict, inherited: Optional[dict] = None) -> Dict[str,
                 f"CẤM ngụy trang task sửa code thành investigate! Bắt buộc dùng 'TASK_KIND: EDIT' kèm Patch Contract O(1)."
             )
 
-        # Budget calls cho investigate <= 5
-        budget_match = re.search(r"\bBUDGET(?:_CALLS)?:\s*(?:<=\s*)?(\d+)", combined, re.IGNORECASE)
-        budget = int(budget_match.group(1)) if budget_match else None
-        if budget is not None and budget > 5:
-            raise ContractError(f"INVESTIGATE_BUDGET_EXCEEDED: Budget điều tra ({budget} calls) > 5. Task đọc tối đa 5 calls.")
+        # Budget calls cho investigate <= 8 (split 'N write / M read' -> chỉ tính phần read)
+        split = parse_split_budget(combined)
+        if split is not None:
+            budget = split[1]
+        else:
+            budget_match = re.search(r"\bBUDGET(?:_CALLS)?:\s*(?:<=\s*)?(\d+)", combined, re.IGNORECASE)
+            budget = int(budget_match.group(1)) if budget_match else None
+        if budget is not None and budget > INVESTIGATE_MAX_CALLS:
+            raise ContractError(f"INVESTIGATE_BUDGET_EXCEEDED: Budget điều tra ({budget} calls) > {INVESTIGATE_MAX_CALLS}. Task đọc tối đa {INVESTIGATE_MAX_CALLS} calls.")
 
         # Fail-fast check
         if not re.search(r"(?:fail[_-]?fast|abort|dừng|thoát|<=?\s*\d|tối đa\s*\d|budget)", combined, re.IGNORECASE):
@@ -320,7 +327,7 @@ def validate_dispatch(task: dict, inherited: Optional[dict] = None) -> Dict[str,
         return {
             "task_kind": "INVESTIGATE",
             "target_files": [],  # Strictly read-only: Worker không có quyền ghi bất kỳ file nào!
-            "budget": budget or 5,
+            "budget": budget or INVESTIGATE_MAX_CALLS,
         }
 
     # ----------------------------------------------------
@@ -482,16 +489,28 @@ def validate_dispatch(task: dict, inherited: Optional[dict] = None) -> Dict[str,
                 "'FAIL_FAST: Nếu trong <= 3 iterations đầu thấy scope bất khả thi với budget 15 calls thì DỪNG NGAY (ABORT)...'"
             )
 
-    # Thẩm định Budget
-    budget_match = re.search(r"\bBUDGET(?:_CALLS)?:\s*(\d+)", combined, re.IGNORECASE)
-    budget = int(budget_match.group(1)) if budget_match else 15
-    if budget > 15:
-        raise ContractError(f"WORKER_BUDGET_TOO_HIGH: Budget {budget} calls > 15 calls!")
+    # Thẩm định Budget: split 'N write / M read' (12/8) hoặc legacy 'BUDGET: N' (N <= 15)
+    split = parse_split_budget(combined)
+    if split is not None:
+        budget_write, budget_read = split
+        if budget_write > WORKER_MAX_WRITE_CALLS:
+            raise ContractError(f"WORKER_BUDGET_TOO_HIGH: Budget write {budget_write} calls > {WORKER_MAX_WRITE_CALLS} calls!")
+        if budget_read > WORKER_MAX_READ_CALLS:
+            raise ContractError(f"WORKER_BUDGET_TOO_HIGH: Budget read {budget_read} calls > {WORKER_MAX_READ_CALLS} calls!")
+        budget = budget_write + budget_read
+    else:
+        budget_match = re.search(r"\bBUDGET(?:_CALLS)?:\s*(?:<=\s*)?(\d+)", combined, re.IGNORECASE)
+        budget = int(budget_match.group(1)) if budget_match else 15
+        if budget > 15:
+            raise ContractError(f"WORKER_BUDGET_TOO_HIGH: Budget {budget} calls > 15 calls!")
+        budget_write = budget_read = None
 
     return {
         "task_kind": "EDIT",
         "target_files": total_files,
         "budget": budget,
+        "budget_write": budget_write,
+        "budget_read": budget_read,
         "diff_lines": total_diff_lines,
         "focused_test": focused_test_cmd,
     }
@@ -772,6 +791,23 @@ def _coord_redirect_violation(seg: str) -> str:
 
 
 _GATE_AUDIT_LOG = Path("D:/Taadaa/logs/gate_audit.jsonl")
+
+INVESTIGATE_MAX_CALLS = 8
+WORKER_MAX_WRITE_CALLS = 12
+WORKER_MAX_READ_CALLS = 8
+
+
+def parse_split_budget(text: str) -> Optional[Tuple[int, int]]:
+    """Parse 'BUDGET: 12 write / 8 read' (hoặc 'write<=12, read<=8') -> (write, read); None nếu không có split."""
+    line = re.search(r"\bBUDGET(?:_CALLS)?:([^\r\n]*)", text, re.IGNORECASE)
+    if not line:
+        return None
+    body = line.group(1)
+    w = re.search(r"(\d+)\s*writes?\b", body, re.IGNORECASE) or re.search(r"\bwrites?\s*(?:<=|=|:)?\s*(\d+)", body, re.IGNORECASE)
+    r = re.search(r"(\d+)\s*reads?\b", body, re.IGNORECASE) or re.search(r"\breads?\s*(?:<=|=|:)?\s*(\d+)", body, re.IGNORECASE)
+    if not (w and r):
+        return None
+    return int(w.group(1)), int(r.group(1))
 
 
 def _closeout_approved_in_audit() -> bool:

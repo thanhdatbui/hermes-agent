@@ -220,7 +220,7 @@ def test_worker_hard_budget_exceeded():
 # 5. COORDINATOR WRITE LEDGER & T1 / L2 (P0 Item 6 & 7)
 # ========================================================
 def test_coordinator_t1_budget_cumulative(monkeypatch):
-    """Ngân sách T1 cộng dồn theo COORD_T1_MAX_FILES/LINES (mặc định 5 files / 200 dòng); vượt trần -> chặn."""
+    """Ngân sách T1 cộng dồn theo COORD_T1_MAX_FILES/LINES (mặc định 10 files / 500 dòng); vượt trần -> chặn."""
     import farm_policy
     assert farm_policy.COORD_T1_MAX_FILES >= 2 and farm_policy.COORD_T1_MAX_LINES >= 100
     monkeypatch.setattr(farm_policy, "COORD_T1_MAX_FILES", 1)
@@ -297,8 +297,10 @@ def test_audit_event_schema_for_blocked_terminal_and_allowlisted_tool():
     assert allowed_reason == ""
 
 
-def test_coordinator_dangerous_terminal_commands_blocked():
+def test_coordinator_dangerous_terminal_commands_blocked(monkeypatch):
     """Coordinator chạy các lệnh ghi mã gián tiếp hoặc quét đĩa đều bị chặn."""
+    import farm_policy
+    monkeypatch.setattr(farm_policy, "_closeout_approved_in_audit", lambda: False)
     state = {"closeout_passed": False}
 
     # 1. python -c open write

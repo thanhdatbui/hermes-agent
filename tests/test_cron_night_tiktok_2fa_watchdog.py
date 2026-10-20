@@ -14,6 +14,29 @@ sys.path.insert(0, str(Path("D:/Taadaa/Hermes/deploy/hermes-home/scripts")))
 
 
 class TestCronNightTiktok2FAWatchdog(unittest.TestCase):
+    TOTAL_OUT = "=== CLUSTER KIBE (MÁY 1-80) ===\nTOTAL=40 SUCCESS=40 FAILED=0\n=== CLUSTER ADMIN (MÁY 201-280) ===\nTOTAL=40 SUCCESS=40 FAILED=0"
+
+    def setUp(self):
+        import cron_night_tiktok_2fa_watchdog as wd
+        p = patch.object(wd, "send_telegram_report")
+        p.start()
+        self.addCleanup(p.stop)
+
+    def _run_main(self, argv_extra, gmail_result=(0, ""), batch_result=(0, ""), already_ran=False):
+        import cron_night_tiktok_2fa_watchdog as wd
+        targets = {
+            "run_gmail_batch": {"return_value": gmail_result}, "run_night_batch": {"return_value": batch_result},
+            "save_state": {}, "save_gmail_state": {}, "send_telegram_report": {},
+            "already_ran_gmail_tonight": {"return_value": already_ran},
+            "is_safe_rolling_window": {"return_value": True}, "is_feed_runner_active": {"return_value": False},
+            "is_clear_cache_active": {"return_value": False},
+        }
+        mocks = {k: patch.object(wd, k, **v).start() for k, v in targets.items()}
+        for k in targets:
+            self.addCleanup(patch.stopall)
+        with patch.object(sys, "argv", ["cron_night_tiktok_2fa_watchdog.py", *argv_extra]):
+            return wd.main(), mocks
+
     def test_parse_summary_counts_table(self):
         import cron_night_tiktok_2fa_watchdog as wd
         out = "machine | source_row | username | status\n12 | 96 | u1 | success\n75 | 596 | u2 | failed\n3 | 25 | u3 | skip"
@@ -32,7 +55,7 @@ class TestCronNightTiktok2FAWatchdog(unittest.TestCase):
     def test_main_dual_cluster_suc_fail_defined(self, m_ran, m_feed, m_batch, m_save):
         import cron_night_tiktok_2fa_watchdog as wd
         m_batch.return_value = (0, "=== CLUSTER KIBE (MÁY 1-80) ===\nTOTAL=40 SUCCESS=38 FAILED=2\n=== CLUSTER ADMIN (MÁY 201-280) ===\nTOTAL=40 SUCCESS=40 FAILED=0\n")
-        with patch.object(sys, "argv", ["cron_night_tiktok_2fa_watchdog.py", "--force"]):
+        with patch.object(sys, "argv", ["cron_night_tiktok_2fa_watchdog.py", "--force", "--lane", "tiktok"]):
             ret = wd.main()
         self.assertEqual(ret, 0)
         m_save.assert_called_once()
@@ -46,7 +69,7 @@ class TestCronNightTiktok2FAWatchdog(unittest.TestCase):
     def test_main_success_zero_failed(self, m_ran, m_feed, m_batch, m_save):
         import cron_night_tiktok_2fa_watchdog as wd
         m_batch.return_value = (0, "=== CLUSTER KIBE (MÁY 1-80) ===\nTOTAL=40 SUCCESS=40 FAILED=0\n=== CLUSTER ADMIN (MÁY 201-280) ===\nTOTAL=40 SUCCESS=40 FAILED=0\n")
-        with patch.object(sys, "argv", ["cron_night_tiktok_2fa_watchdog.py", "--force"]):
+        with patch.object(sys, "argv", ["cron_night_tiktok_2fa_watchdog.py", "--force", "--lane", "tiktok"]):
             ret = wd.main()
         self.assertEqual(ret, 0)
         m_save.assert_called_once()
@@ -60,7 +83,7 @@ class TestCronNightTiktok2FAWatchdog(unittest.TestCase):
     def test_main_runner_error_exit_code(self, m_ran, m_feed, m_batch, m_save):
         import cron_night_tiktok_2fa_watchdog as wd
         m_batch.return_value = (1, "Runner crashed")
-        with patch.object(sys, "argv", ["cron_night_tiktok_2fa_watchdog.py", "--force"]):
+        with patch.object(sys, "argv", ["cron_night_tiktok_2fa_watchdog.py", "--force", "--lane", "tiktok"]):
             ret = wd.main()
         self.assertEqual(ret, 1)
         m_save.assert_called_once()
@@ -130,7 +153,7 @@ class TestCronNightTiktok2FAWatchdog(unittest.TestCase):
                 payload = {"status": "failed", "code": 1, "failure_reason": "Err", "clusters": {"admin": {"failed": 5}}}
                 wd.save_state("2026-10-10", payload)
                 saved = json.loads(tmp_f.read_text(encoding="utf-8"))
-                self.assertIsNone(saved["last_success_date"])
+                self.assertIsNone(saved.get("last_success_date"))
                 self.assertEqual(saved["details"]["failure_reason"], "Err")
 
     @patch("cron_night_tiktok_2fa_watchdog.save_state")
@@ -142,7 +165,7 @@ class TestCronNightTiktok2FAWatchdog(unittest.TestCase):
         m_batch.return_value = (0, "TOTAL=2 SUCCESS=2 FAILED=0")
         ids = []
         for _ in range(2):
-            with patch.object(sys, "argv", ["cron_night_tiktok_2fa_watchdog.py", "--force"]):
+            with patch.object(sys, "argv", ["cron_night_tiktok_2fa_watchdog.py", "--force", "--lane", "tiktok"]):
                 wd.main()
             ids.append(m_save.call_args[0][1]["correlation_id"])
         self.assertRegex(ids[0], r"^[0-9a-f]{12}$")
@@ -211,6 +234,131 @@ class TestCronNightTiktok2FAWatchdog(unittest.TestCase):
         mock_batch.assert_not_called()
         mock_save.assert_not_called()
 
+    def test_gmail_phase_reports_to_gmail_chat(self):
+        ret, m = self._run_main(["--lane", "gmail", "--force"], gmail_result=(0, self.TOTAL_OUT))
+        self.assertEqual(ret, 0)
+        m["run_night_batch"].assert_not_called()
+        self.assertEqual(m["send_telegram_report"].call_args[0][0], "-5139245637")
+        self.assertIn("BÁO CÁO REG GMAIL BAN ĐÊM", m["send_telegram_report"].call_args[0][1])
+        m["save_gmail_state"].assert_called_once()
+
+    def test_2fa_phase_reports_to_tiktok_chat(self):
+        ret, m = self._run_main(["--lane", "tiktok", "--force"], batch_result=(0, self.TOTAL_OUT))
+        self.assertEqual(ret, 0)
+        m["run_gmail_batch"].assert_not_called()
+        self.assertEqual(m["send_telegram_report"].call_args[0][0], "-5468653590")
+        self.assertIn("BÁO CÁO 2FA TIKTOK BAN ĐÊM", m["send_telegram_report"].call_args[0][1])
+
+    def test_gmail_failure_does_not_block_2fa(self):
+        ret, m = self._run_main(["--force"], gmail_result=(1, ""), batch_result=(0, self.TOTAL_OUT))
+        self.assertEqual(ret, 1)
+        m["run_night_batch"].assert_called_once()
+        self.assertEqual([c[0][0] for c in m["send_telegram_report"].call_args_list], ["-5139245637", "-5468653590"])
+
+    def test_lane_selects_phases(self):
+        for lane, (gc, bc) in {"gmail": (1, 0), "tiktok": (0, 1), "all": (1, 1)}.items():
+            _, m = self._run_main(["--lane", lane, "--force"], gmail_result=(0, self.TOTAL_OUT), batch_result=(0, self.TOTAL_OUT))
+            self.assertEqual((m["run_gmail_batch"].call_count, m["run_night_batch"].call_count), (gc, bc))
+
+    def test_gmail_skipped_when_already_ran_tonight(self):
+        ret, m = self._run_main(["--lane", "gmail"], gmail_result=(0, self.TOTAL_OUT), already_ran=True)
+        self.assertEqual(ret, 0)
+        m["run_gmail_batch"].assert_not_called()
+        m["send_telegram_report"].assert_not_called()
+
+    def test_state_file_records_both_lanes(self):
+        import cron_night_tiktok_2fa_watchdog as wd
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_f = Path(tmp_dir) / "night_tiktok_2fa_state.json"
+            with patch.object(wd, "STATE_FILE", tmp_f), patch.object(wd, "STATE_DIR", Path(tmp_dir)):
+                wd.save_gmail_state("2026-10-20", {"status": "success", "code": 0})
+                wd.save_state("2026-10-20", {"status": "partial_failure", "code": 0})
+                saved = json.loads(tmp_f.read_text(encoding="utf-8"))
+        self.assertEqual((saved["last_gmail_date"], saved["last_gmail_success"]), ("2026-10-20", True))
+        self.assertEqual((saved["last_2fa_date"], saved["last_2fa_success"]), ("2026-10-20", False))
+        self.assertEqual(saved["details"]["gmail"]["code"], 0)
+        self.assertEqual(saved["details"]["2fa"]["status"], "partial_failure")
+
+
+class TestSendTelegramReport(unittest.TestCase):
+    @patch("cron_night_tiktok_2fa_watchdog._load_telegram_token", return_value="fake_tok")
+    def test_send_telegram_report_paths(self, m_tok):
+        import cron_night_tiktok_2fa_watchdog as wd
+        with patch("automation_core.alerts._send_telegram_text", return_value=True) as m_send:
+            self.assertTrue(wd.send_telegram_report("-5139245637", "Test msg"))
+            m_send.assert_called_once_with("fake_tok", "-5139245637", "Test msg")
+
+        with patch("automation_core.alerts._send_telegram_text", side_effect=Exception("net err")), patch("urllib.request.urlopen") as m_url:
+            m_url.return_value.__enter__.return_value.status = 200
+            self.assertTrue(wd.send_telegram_report("-5468653590", "Fallback"))
+            self.assertIn(b"chat_id=-5468653590", m_url.call_args[0][0].data)
+
+        with patch("cron_night_tiktok_2fa_watchdog._load_telegram_token", return_value=None), patch("urllib.request.urlopen") as m_url:
+            self.assertFalse(wd.send_telegram_report("-5139245637", "No token"))
+            m_url.assert_not_called()
+
+        with patch("automation_core.alerts._send_telegram_text", return_value=False), patch("urllib.request.urlopen", side_effect=Exception("fatal")):
+            self.assertFalse(wd.send_telegram_report("-5139245637", "Err"))
+
+    def test_dispatch_report_success(self):
+        import cron_night_tiktok_2fa_watchdog as wd
+        with patch.object(wd, "send_telegram_report", return_value=True) as m_send:
+            res = wd.dispatch_report("-5468653590", "ok message", dry_run=False)
+            self.assertTrue(res)
+            m_send.assert_called_once_with("-5468653590", "ok message")
+
+    def test_dispatch_report_failure_logs_error_and_returns_false(self):
+        import cron_night_tiktok_2fa_watchdog as wd
+        with patch.object(wd, "send_telegram_report", return_value=False), patch.object(wd.logger, "error") as m_err:
+            res = wd.dispatch_report("-5468653590", "fail message", dry_run=False)
+            self.assertFalse(res)
+            m_err.assert_called_once()
+            self.assertIn("-5468653590", m_err.call_args[0][1])
+
+    def test_dispatch_report_dry_run_returns_true_without_sending(self):
+        import cron_night_tiktok_2fa_watchdog as wd
+        with patch.object(wd, "send_telegram_report") as m_send:
+            res = wd.dispatch_report("-5468653590", "dry run message", dry_run=True)
+            self.assertTrue(res)
+            m_send.assert_not_called()
+
+
+class TestAtomicPhaseClaim(unittest.TestCase):
+    def test_claim_lane_skips_when_active_and_reclaims_when_stale(self):
+        import cron_night_tiktok_2fa_watchdog as wd
+        import time
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_f = Path(tmp_dir) / "night_tiktok_2fa_state.json"
+            with patch.object(wd, "STATE_FILE", tmp_f), patch.object(wd, "STATE_DIR", Path(tmp_dir)):
+                # Initially not active, can claim
+                self.assertTrue(wd.claim_lane("gmail", "2026-10-20"))
+                saved = json.loads(tmp_f.read_text(encoding="utf-8"))
+                self.assertIn("gmail_running_since", saved)
+
+                # Active (< 5400s), second claim should skip
+                self.assertFalse(wd.claim_lane("gmail", "2026-10-20"))
+
+                # Release lane clears running_since
+                wd.release_lane("gmail")
+                saved_after_release = json.loads(tmp_f.read_text(encoding="utf-8"))
+                self.assertNotIn("gmail_running_since", saved_after_release)
+
+                # Stale claim (> 5400s) should reclaim
+                tmp_f.write_text(json.dumps({"gmail_running_since": time.time() - 6000}), encoding="utf-8")
+                self.assertTrue(wd.claim_lane("gmail", "2026-10-20"))
+
+    def test_claim_lane_skips_when_already_ran_without_force(self):
+        import cron_night_tiktok_2fa_watchdog as wd
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_f = Path(tmp_dir) / "night_tiktok_2fa_state.json"
+            with patch.object(wd, "STATE_FILE", tmp_f), patch.object(wd, "STATE_DIR", Path(tmp_dir)):
+                # Already ran gmail tonight
+                tmp_f.write_text(json.dumps({"last_gmail_date": "2026-10-20", "last_gmail_success": True}), encoding="utf-8")
+                self.assertFalse(wd.claim_lane("gmail", "2026-10-20", force=False))
+                self.assertTrue(wd.claim_lane("gmail", "2026-10-20", force=True))
+
 
 if __name__ == "__main__":
     unittest.main()
+
+

@@ -90,7 +90,7 @@ def test_hole_4_path_with_spaces_supported(setup_session):
         res = _on_pre_tool_call(
             tool_name="delegate_task",
             args={
-                "goal": "fix bug và sửa code",
+                "goal": "fix bug và sửa code ALLOW_SUBAGENT_CODE_EDIT",
                 "context": f'screencap inspect_machine đã có. TARGET_FILE: "{real_path_with_space}"',
             },
             session_id=sess_id,
@@ -106,10 +106,28 @@ def test_valid_structured_target_files_allowed(setup_session):
         res = _on_pre_tool_call(
             tool_name="delegate_task",
             args={
-                "goal": "fix bug và sửa code",
+                "goal": "fix bug và sửa code ALLOW_SUBAGENT_CODE_EDIT",
                 "context": "screencap inspect_machine đã có.",
                 "target_files": [real_file],
             },
             session_id=sess_id,
         )
         assert res is None  # Cho qua!
+
+
+def test_delegate_code_edit_without_override_blocked_by_dispatch_gate(setup_session):
+    """Sửa code qua delegate_task không có override -> BLOCKED_BY_DISPATCH_GATE."""
+    sess_id = setup_session
+    real_file = r"D:/Taadaa/automation-core/src/automation_core/startup.py"
+    res = _on_pre_tool_call(
+        tool_name="delegate_task",
+        args={
+            "goal": "fix bug và sửa code",
+            "context": "screencap inspect_machine đã có.",
+            "target_files": [real_file],
+        },
+        session_id=sess_id,
+    )
+    assert res is not None
+    assert res.get("action") == "block"
+    assert res.get("error_code") == "BLOCKED_BY_DISPATCH_GATE"

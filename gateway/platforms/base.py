@@ -1352,12 +1352,19 @@ def validate_media_delivery_path(path: str) -> Optional[str]:
         return None
 
     try:
-        expanded = Path(os.path.expanduser(candidate))
+        expanded = os.path.expanduser(candidate)
     except (OSError, RuntimeError, ValueError):
         # expanduser raises ValueError("embedded null byte") for a ~\x00 path.
         return None
-    if not expanded.is_absolute():
+    # Use os.path.isabs(), not Path.is_absolute(): a MEDIA:/tmp/x.png tag
+    # (POSIX-style, no drive letter) is a real rooted path on Windows too —
+    # ntpath.isabs() accepts it and Path.resolve() correctly anchors it to
+    # the current drive — but PureWindowsPath.is_absolute() requires both a
+    # drive *and* a root, so it would wrongly reject the tag and silently
+    # drop delivery.
+    if not os.path.isabs(expanded):
         return None
+    expanded = Path(expanded)
 
     try:
         resolved = expanded.resolve(strict=True)

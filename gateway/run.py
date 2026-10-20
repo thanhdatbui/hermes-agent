@@ -15811,6 +15811,11 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
                     _pr.completion_queue.put(evt)
                 for evt in async_events:
                     self._enrich_async_delegation_routing(evt)
+                    bg_mode = self._load_background_notifications_mode()
+                    if bg_mode == "off":
+                        continue
+                    if bg_mode == "error" and evt.get("status") in ("completed", "success"):
+                        continue
                     synth_text = _format_gateway_process_notification(evt)
                     if not synth_text:
                         continue
@@ -19060,30 +19065,64 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
                     if _reason == "restart_timeout"
                     else "a gateway shutdown"
                     if _reason == "shutdown_timeout"
+                    else "a PC reboot or unexpected gateway exit"
+                    if _reason == "restart_interrupted"
                     else "a gateway interruption"
+                )
+                logger.info(
+                    "Auto-continue triggered for session %s (reason: %s)",
+                    session_id, _reason_phrase,
                 )
                 _persist_user_message_override = message
                 # The empty-message case is the auto-resume startup turn
                 # synthesized by _schedule_resume_pending_sessions — there is
                 # no NEW user message to address, so tell the model to report
                 # recovery instead of the (nonexistent) "new message".
+                _auto_continue_task = (not message) and _reason == "restart_interrupted"
                 if message:
                     _resume_guidance = (
                         "Address the user's NEW message below FIRST and focus "
                         "on what the user is asking now."
+                    )
+                elif _auto_continue_task:
+                    _resume_guidance = (
+                        "Kiểm tra lại hiện trường môi trường/thiết bị sau khi "
+                        "reboot và chủ động tiếp tục thực thi để hoàn thành "
+                        "dứt điểm task đang dở về DONE hoặc BLOCKED kèm bằng "
+                        "chứng thực tế."
                     )
                 else:
                     _resume_guidance = (
                         "Report to the user that the session was restored "
                         "successfully and ask what they would like to do next."
                     )
+                if _auto_continue_task:
+                    # Re-verify live state with FRESH tool calls, never replay
+                    # history; reboot/restart commands stay forbidden so the
+                    # resume cannot re-trigger the interruption.
+                    _replay_guard = (
+                        "Do NOT replay old tool calls from the history — "
+                        "re-check the real current state first and issue fresh "
+                        "calls only for what is still unfinished. NEVER "
+                        "re-run any reboot/shutdown/restart command. Respect "
+                        "device locks and any scope limits from the original "
+                        "task; if state cannot be verified, finish as BLOCKED. "
+                        "Do NOT take irreversible actions on accounts/devices "
+                        "until the device lock is verified; prefer inspecting "
+                        "the live state, collecting evidence, and reporting "
+                        "the current status."
+                    )
+                else:
+                    _replay_guard = (
+                        "Do NOT re-execute old tool calls — skip any "
+                        "unfinished work from the conversation history."
+                    )
                 message = (
                     f"[System note: The previous turn was interrupted by "
                     f"{_reason_phrase}; the gateway is now back online. "
                     f"Any restart/shutdown command in the history has already "
                     f"run — do NOT re-execute or verify it. {_resume_guidance} "
-                    f"Do NOT re-execute old tool calls — skip any unfinished "
-                    f"work from the conversation history.]"
+                    f"{_replay_guard}]"
                     + (f"\n\n{message}" if message else "")
                 )
             elif _has_fresh_tool_tail:
@@ -20371,14 +20410,21 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
                 response["already_sent"] = True
             elif not _is_empty_sentinel and _transformed and _sc is not None:
                 # Plugin hooks transformed the response after streaming — edit the
-                # existing streamed message instead of sending a duplicate.
+                # existing streamed message instead of sending a duplicate. The
+                # transformed text may still carry raw MEDIA:<path> directives
+                # (e.g. appended by transform_llm_output) — strip them here so
+                # they never leak into the visible Telegram message (#media-leak).
+                from gateway.stream_consumer import GatewayStreamConsumer
+
                 _sc_msg_id = _sc.message_id
                 if _sc_msg_id:
                     try:
                         await _sc.adapter.edit_message(
                             chat_id=source.chat_id,
                             message_id=_sc_msg_id,
-                            content=response["final_response"],
+                            content=GatewayStreamConsumer._clean_for_display(
+                                response["final_response"]
+                            ),
                             finalize=True,
                         )
                         response["already_sent"] = True

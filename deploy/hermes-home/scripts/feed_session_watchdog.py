@@ -7,21 +7,7 @@ os.environ.setdefault("OMP_NUM_THREADS", "1")
 os.environ.setdefault("NUMEXPR_NUM_THREADS", "1")
 
 import subprocess
-"""Watchdog báo cáo kết quả nuôi TikTok theo từng CA (1 spawn per Ca).
-
-Một ngày có 4 Ca, runner spawn MỘT LẦN duy nhất tại giờ bắt đầu Ca:
-- Ca 1 (Sáng): 06:00 - 12:00 -> Row 1/2, artifact row-X-0600XX
-- Ca 2 (Trưa): 12:00 - 18:00 -> Row 3/4, artifact row-X-1200XX
-- Ca 3 (Tối): 18:00 - 00:00 -> Row 5/6, artifact row-X-1800XX
-- Ca 4 (Đêm): 00:00 - 06:00 -> Row 7/8, artifact row-X-0000XX
-
-Cơ chế thông minh:
-- Đọc danh sách target machines theo Row từ config (hoặc số máy dự kiến).
-- Theo dõi tiến trình máy thật: Khi runner đã dừng và TẤT CẢ máy trong Ca đã hoàn tất (hoặc Ca hết giờ):
-  -> Gửi đúng 1 BÁO CÁO TỔNG KẾT CA đầy đủ: gộp LƯỚT FEED, FOLLOW HOOK, UPLOAD HOOK.
-  -> Nếu tỷ lệ lỗi > 30% (manual + blocked-proxy + failed / total) -> gửi RED ALERT.
-"""
-import os
+"""Watchdog báo cáo kết quả nuôi TikTok theo từng CA (1 spawn per Ca)."""
 import glob
 import json
 import re
@@ -32,6 +18,40 @@ import threading
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Set, Tuple, Any, List
 from zoneinfo import ZoneInfo
+_curr_dir = os.path.dirname(os.path.abspath(__file__))
+_repo_scripts = os.environ.get("TAADAA_SCRIPTS_DIR")
+_candidates = [_curr_dir, _repo_scripts, os.path.normpath(os.path.join(_curr_dir, "..", "scripts")), os.path.normpath(os.path.join(os.environ.get("TAADAA_ROOT", "D:/Taadaa"), "tiktok-luot nuoi acc", "scripts"))]
+for _cand in _candidates:
+    if _cand and os.path.isdir(os.path.join(_cand, "watchdog")) and _cand not in sys.path:
+        sys.path.insert(0, _cand)
+        print(f"[WATCHDOG_PATH_TELEMETRY] injected_sys_path={_cand}", file=sys.stderr)
+        break
+try:
+    from watchdog.lock import ProcessLock, is_feed_runner_active, is_pid_alive
+    from watchdog.merger import is_device_locked_skip, merge_machine_result, merge_follow_result, merge_upload_result
+    from watchdog.alerts import DEFAULT_FARM_ALERT_THRESHOLD, NURTURE_CYCLE_H, STARVATION_THRESHOLD_H, should_trigger_farm_alert, get_row_nurture_summary, normalize_machine_key, get_expected_machines_for_cluster
+    from watchdog.formatters import (
+        classify_machine_follow_result,
+        format_success_follows,
+        format_released_follows,
+        format_ip_circuit_breaker_report,
+        classify_feed_failure,
+        classify_error_reason,
+    )
+    from watchdog.parser import parse_run_all, parse_run_machines, parse_follow_results, parse_upload_results
+except ImportError:
+    from scripts.watchdog.lock import ProcessLock, is_feed_runner_active, is_pid_alive
+    from scripts.watchdog.merger import is_device_locked_skip, merge_machine_result, merge_follow_result, merge_upload_result
+    from scripts.watchdog.alerts import DEFAULT_FARM_ALERT_THRESHOLD, NURTURE_CYCLE_H, STARVATION_THRESHOLD_H, should_trigger_farm_alert, get_row_nurture_summary, normalize_machine_key, get_expected_machines_for_cluster
+    from scripts.watchdog.formatters import (
+        classify_machine_follow_result,
+        format_success_follows,
+        format_released_follows,
+        format_ip_circuit_breaker_report,
+        classify_feed_failure,
+        classify_error_reason,
+    )
+    from scripts.watchdog.parser import parse_run_all, parse_run_machines, parse_follow_results, parse_upload_results
 
 logger = logging.getLogger("feed_session_watchdog")
 HCMC = ZoneInfo("Asia/Ho_Chi_Minh")
@@ -56,68 +76,6 @@ FOLLOW_STATE_FILE = os.path.join(_RT_ROOT, "cron-state", "follow_session_reporte
 SOURCE_CONFIG = os.path.join(_RT_ROOT, "cron-source", "hermes_cron_source_config.json")
 SHIFT_UPLOAD_LEDGER_PATH = r"C:\ProgramData\Taadaa\tiktok-upload-concurrency-v1\shift_upload_history.json"
 
-# Ngưỡng kích hoạt Farm Alert khi có lỗi script hàng loạt (mặc định 8 máy ~ 10% quy mô cụm 80 máy)
-DEFAULT_FARM_ALERT_THRESHOLD = 8
-
-
-def should_trigger_farm_alert(
-    fl_errors: int,
-    up_errors: int,
-    threshold: int = DEFAULT_FARM_ALERT_THRESHOLD,
-) -> tuple[bool, list[str]]:
-    """Đánh giá xem tổng số lỗi follow/upload có vượt ngưỡng cảnh báo hàng loạt (Farm Alert) hay không.
-    
-    Trả về (has_alert, alert_reasons).
-    """
-    has_alert = False
-    reasons: list[str] = []
-    if fl_errors >= threshold:
-        has_alert = True
-        reasons.append(f"{fl_errors} máy lỗi script Follow")
-    if up_errors >= threshold:
-        has_alert = True
-        reasons.append(f"{up_errors} máy lỗi script Upload")
-    return has_alert, reasons
-
-
-# Chu kỳ nuôi cố định 96h + 12h dung sai (cron trễ/retry). Đồng bộ với tools/nurture_health_helper.py.
-NURTURE_CYCLE_H = 96.0
-STARVATION_THRESHOLD_H = NURTURE_CYCLE_H + 12.0
-
-
-def get_row_nurture_summary(live_root: str = LIVE_ROOT, threshold_h: float = STARVATION_THRESHOLD_H) -> tuple[str, list[int]]:
-    from pathlib import Path
-    now = datetime.now(HCMC)
-    last_runs: dict[int, Any] = {r: None for r in range(1, 9)}
-    lr = Path(live_root)
-    day_dirs = [d for d in lr.glob("????-??-??") if d.is_dir() and re.match(r"^\d{4}-\d{2}-\d{2}$", d.name)]
-    for d_dir in sorted(day_dirs, key=lambda d: d.name)[-7:]:
-        for r_dir in d_dir.glob("row-*"):
-            m = re.match(r"^row-(\d+)-(\d{2})(\d{2})", r_dir.name)
-            if m:
-                r = int(m.group(1))
-                try:
-                    dt = datetime.strptime(f"{d_dir.name} {m.group(2)}:{m.group(3)}", "%Y-%m-%d %H:%M").replace(tzinfo=HCMC)
-                    if 1 <= r <= 8 and (last_runs[r] is None or dt > last_runs[r]): last_runs[r] = dt
-                except ValueError as exc:
-                    logger.warning("get_row_nurture_summary: bỏ qua thư mục không hợp lệ %s: %s", r_dir, exc)
-    starved, parts = [], []
-    for r in range(1, 9):
-        dt = last_runs[r]
-        h = round((now - dt).total_seconds() / 3600.0, 1) if dt else 999.0
-        if h > threshold_h: starved.append(r)
-        st = "🔴" if h > threshold_h else ("🟡" if h > NURTURE_CYCLE_H else "🟢")
-        parts.append(f"R{r}:{st}{int(h)}h" if h < 900 else f"R{r}:🔴--")
-    return " | ".join(parts), starved
-
-
-def normalize_machine_key(m: Any) -> str:
-    """Chuẩn hóa khóa định danh máy về chuỗi số duy nhất (ví dụ: '1', 'M1', 1 -> '1')."""
-    s = str(m).strip()
-    if s.upper().startswith("M") and s[1:].isdigit():
-        return s[1:]
-    return s
-
 CLUSTERS: list[dict[str, Any]] = [
     {
         "name": "kibe",
@@ -139,41 +97,8 @@ CLUSTERS: list[dict[str, Any]] = [
     },
 ]
 
-
-def get_expected_machines_for_cluster(cluster: dict[str, Any], row_num: Any) -> set[str]:
-    wb_path = cluster.get("account_workbook")
-    fleet = {str(i) for i in range(cluster["fleet_min"], cluster["fleet_max"] + 1)}
-    if not wb_path or not os.path.exists(wb_path):
-        return fleet
-    try:
-        import openpyxl
-        wb = openpyxl.load_workbook(wb_path, read_only=True)
-        ws = wb.active
-        machine_slots: dict[str, list[Any]] = {}
-        for r in ws.iter_rows(min_row=2, values_only=True):
-            if not r or r[0] is None:
-                continue
-            try:
-                m_str = str(int(str(r[0]).strip()))
-            except (ValueError, TypeError):
-                continue
-            machine_slots.setdefault(m_str, []).append(r[2] if len(r) > 2 else None)
-        slot_idx = int(row_num) - 1
-        expected = set()
-        for m_str in fleet:
-            slots = machine_slots.get(m_str, [])
-            if slot_idx < len(slots):
-                val = slots[slot_idx]
-                if val and str(val).strip() and str(val).strip().lower() != "none":
-                    expected.add(m_str)
-        return expected if expected else fleet
-    except Exception as exc:
-        logger.warning("Error reading safe workbook for %s: %s", cluster["name"], exc)
-        return fleet
-
 DEFAULT_ROW1_MACHINES_COUNT = 74
 DEFAULT_ROW2_MACHINES_COUNT = 72
-
 _LEDGER_LOCK = threading.Lock()
 _LEDGER_CACHE: Optional[Dict[str, Any]] = None
 _LEDGER_SUCCESS_SET: frozenset = frozenset()
@@ -201,86 +126,11 @@ def _load_reported_sessions(path: str) -> set:
         pass
     return set()
 
-
-def is_pid_alive(pid: int) -> bool:
-    """Check if process with pid is still running."""
-    if pid <= 0:
-        return False
-    try:
-        import psutil
-        return psutil.pid_exists(pid)
-    except Exception:
-        pass
-    try:
-        os.kill(pid, 0)
-        return True
-    except OSError:
-        return False
-
-
-class ProcessLock:
-    """Inter-process lock using OS file locking (msvcrt on Windows, fcntl on POSIX)."""
-
-    def __init__(self, lock_path: str):
-        self.lock_path = lock_path
-        self._file = None
-        self.acquired = False
-
-    def acquire(self) -> bool:
-        if self.acquired:
-            return False
-        handle = None
-        try:
-            lock_dir = os.path.dirname(self.lock_path)
-            if lock_dir:
-                os.makedirs(lock_dir, exist_ok=True)
-            handle = open(self.lock_path, "a+b")
-            if os.name == "nt":
-                import msvcrt
-                handle.seek(0)
-                msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
-            else:
-                import fcntl
-                fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-            self._file = handle
-            self.acquired = True
-            return True
-        except (OSError, IOError):
-            if handle:
-                try:
-                    handle.close()
-                except Exception:
-                    pass
-            return False
-
-    def release(self):
-        if not self.acquired or not self._file:
-            return
-        try:
-            if os.name == "nt":
-                import msvcrt
-                self._file.seek(0)
-                msvcrt.locking(self._file.fileno(), msvcrt.LK_UNLCK, 1)
-            else:
-                import fcntl
-                fcntl.flock(self._file.fileno(), fcntl.LOCK_UN)
-        except Exception:
-            pass
-        finally:
-            try:
-                self._file.close()
-            except Exception:
-                pass
-            self._file = None
-            self.acquired = False
-
-
 # Định nghĩa các khung Ca chuẩn, mỗi Ca chia 2 Phiên, bao phủ liên tục 24h
 SESSION_WINDOWS = [
     # Ca 1 (Sáng) - Row 1 ngày lẻ, Row 2 ngày chẵn
     {"ca": 1, "phien": 1, "name": "Ca 1 - Phiên 1/2 (Sáng)", "start": "06:00", "end": "08:00"},
     {"ca": 1, "phien": 2, "name": "Ca 1 - Phiên 2/2 (Sáng)", "start": "08:00", "end": "12:00"},
-
     {"ca": 2, "phien": 1, "name": "Ca 2 - Phiên 1/2 (Chiều)", "start": "12:00", "end": "14:00"},
     {"ca": 2, "phien": 2, "name": "Ca 2 - Phiên 2/2 (Chiều)", "start": "14:00", "end": "18:00"},
 
@@ -290,48 +140,6 @@ SESSION_WINDOWS = [
     {"ca": 4, "phien": 1, "name": "Ca 4 - Phiên 1/2 (Đêm)", "start": "00:00", "end": "01:30"},
     {"ca": 4, "phien": 2, "name": "Ca 4 - Phiên 2/2 (Đêm)", "start": "01:30", "end": "06:00"},
 ]
-
-
-def is_feed_runner_active() -> bool:
-    """Kiểm tra có process feed runner hay powershell feed nào đang chạy không."""
-    try:
-        import psutil
-        my_pid = os.getpid()
-        runner_patterns = (
-            "multi_machine_feed_session",
-            "multi-machine-feed-session",
-            "run-feed-session.ps1",
-            "run_follow",
-            "run_tiktok.py",
-            "hermes_cron_runner.py",
-            "tiktok_runner.py",
-            "run_post.py",
-            "tiktok_workflow",
-            "tiktok_upload",
-        )
-        now_ts = time.time()
-        for p in psutil.process_iter(['name', 'cmdline', 'create_time']):
-            try:
-                if p.pid == my_pid:
-                    continue
-                name = (p.info.get('name') or '').lower()
-                if not name.startswith(('python', 'powershell', 'pwsh')):
-                    continue
-                cmd = " ".join(p.info.get('cmdline') or []).lower()
-                if any(pat in cmd for pat in runner_patterns):
-                    try:
-                        ctime = p.info.get('create_time') or p.create_time()
-                        if ctime and (now_ts - ctime) > 9000:
-                            logger.warning("Bỏ qua runner zombie PID %s chạy quá 2.5h (%.1fh)", p.pid, (now_ts - ctime)/3600)
-                            continue
-                    except Exception:
-                        pass
-                    return True
-            except Exception:
-                pass
-    except Exception:
-        pass
-    return False
 
 
 def get_expected_machines_for_row(row_num: Any) -> set:
@@ -436,339 +244,6 @@ def is_machine_upload_successful_in_shift(target_date: str, machine: Any, row: A
     return (m_str, r_str, date_str) in success_set
 
 
-def is_device_locked_skip(data: Optional[Dict[str, Any]]) -> bool:
-    if not data:
-        return False
-    status = str(data.get("status") or "").strip().lower()
-    reason = str(data.get("reason") or "").strip().lower()
-    return status == "skipped-device-locked" or "device-lock" in reason or "device lock active" in reason
-
-
-def merge_machine_result(prev: Optional[Dict[str, Any]], new: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
-    if not prev:
-        return new
-    if not new:
-        return prev
-
-    res = dict(new)
-    # Merge likes and swipes accumulated across runs
-    p_likes = prev.get("likes") or {}
-    n_likes = new.get("likes") or {}
-    all_like_keys = set(p_likes.keys()) | set(n_likes.keys())
-    if all_like_keys:
-        merged_likes = {}
-        for k in all_like_keys:
-            merged_likes[k] = max(p_likes.get(k, 0), n_likes.get(k, 0))
-        res["likes"] = merged_likes
-    p_nf = prev.get("natural_follows") or {}
-    n_nf = new.get("natural_follows") or {}
-    all_nf_keys = set(p_nf.keys()) | set(n_nf.keys())
-    if all_nf_keys:
-        merged_nf = {}
-        for k in all_nf_keys:
-            merged_nf[k] = max(p_nf.get(k, 0), n_nf.get(k, 0))
-        res["natural_follows"] = merged_nf
-    p_fc = prev.get("feed_counts") or {}
-    n_fc = new.get("feed_counts") or {}
-    all_fc_keys = set(p_fc.keys()) | set(n_fc.keys())
-    if all_fc_keys:
-        merged_fc = {}
-        for k in all_fc_keys:
-            merged_fc[k] = max(p_fc.get(k, 0), n_fc.get(k, 0))
-        res["feed_counts"] = merged_fc
-    if "swipes" in prev or "swipes" in new:
-        res["swipes"] = max(prev.get("swipes", 0), new.get("swipes", 0))
-
-    if prev.get("status") == "success":
-        res["status"] = prev.get("status")
-        res["reason"] = prev.get("reason", "")
-        return res
-    if new.get("status") == "success":
-        return res
-    # Nếu prev là skipped-device-locked còn new là kết quả chạy thật (không phải lock), ưu tiên new
-    if is_device_locked_skip(prev) and not is_device_locked_skip(new):
-        return res
-    if is_device_locked_skip(new) and not is_device_locked_skip(prev):
-        res["status"] = prev.get("status")
-        res["reason"] = prev.get("reason", "")
-        return res
-    return res
-
-
-def merge_follow_result(prev: Optional[Dict[str, Any]], new: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
-    if not prev:
-        return new
-    if not new:
-        return prev
-    prev_raw = prev.get("followed", []) if isinstance(prev.get("followed"), list) else []
-    new_raw = new.get("followed", []) if isinstance(new.get("followed"), list) else []
-    prev_flist = [str(x) for x in prev_raw if isinstance(x, (str, int, float))]
-    new_flist = [str(x) for x in new_raw if isinstance(x, (str, int, float))]
-    combined_flist = list(dict.fromkeys(prev_flist + new_flist))
-
-    m1_cnt = max(int(prev.get("mode1_followed_count", 0) or 0), int(new.get("mode1_followed_count", 0) or 0))
-    m2_cnt = max(int(prev.get("mode2_followed_count", 0) or 0), int(new.get("mode2_followed_count", 0) or 0))
-
-    prev_released = (str(prev.get("status") or "").upper() == "FOLLOW_FAILED" and prev.get("follow_failed") is True)
-    new_released = (str(new.get("status") or "").upper() == "FOLLOW_FAILED" and new.get("follow_failed") is True)
-
-    if prev_released or new_released:
-        res = dict(new if new_released else prev)
-        res["status"] = "FOLLOW_FAILED"
-        res["follow_failed"] = True
-        res["followed"] = []
-        res["followed_count"] = 0
-        res["mode1_followed_count"] = 0
-        res["mode2_followed_count"] = 0
-        return res
-
-    prev_ok = (str(prev.get("status") or "").upper() in {"OK", "SUCCESS"} and len(prev_flist) > 0)
-    new_ok = (str(new.get("status") or "").upper() in {"OK", "SUCCESS"} and len(new_flist) > 0)
-
-    if new_ok:
-        res = dict(new)
-        res["followed"] = combined_flist
-        res["mode1_followed_count"] = m1_cnt
-        res["mode2_followed_count"] = m2_cnt
-        return res
-    if prev_ok and str(new.get("status") or "").upper() in {"SKIPPED", "MANUAL_REVIEW"}:
-        res = dict(prev)
-        res["followed"] = combined_flist
-        res["mode1_followed_count"] = m1_cnt
-        res["mode2_followed_count"] = m2_cnt
-        return res
-
-    res = dict(new)
-    res["followed"] = combined_flist
-    res["mode1_followed_count"] = m1_cnt
-    res["mode2_followed_count"] = m2_cnt
-    return res
-
-
-def merge_upload_result(prev: Optional[Dict[str, Any]], new: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
-    if not prev:
-        return new
-    if not new:
-        return prev
-    prev_success = (str(prev.get("status") or "").lower() == "success" and int(prev.get("exit_code", 0) or 0) == 0)
-    new_success = (str(new.get("status") or "").lower() == "success" and int(new.get("exit_code", 0) or 0) == 0)
-    if prev_success and not new_success:
-        return prev
-    if new_success:
-        return new
-
-    # If prev had an active attempt with failure detail and new is just a generic skip, preserve failure detail
-    if str(prev.get("status") or "").lower() in {"failed", "error"} and str(new.get("status") or "").lower() == "skipped":
-        return prev
-    return new
-
-
-def parse_run_all(run_dir: str) -> tuple:
-    """Parse toàn bộ summary, follow_result, upload_result trong 1 lần duyệt đệ quy duy nhất (tốc độ cao)."""
-    res_m: dict = {}
-    res_f: dict = {}
-    res_u: dict = {}
-
-    if not os.path.isdir(run_dir):
-        return res_m, res_f, res_u
-
-    try:
-        for root, _, files in os.walk(run_dir):
-            parts = os.path.normpath(root).split(os.sep)
-            m_str = ""
-            for p_idx, seg in enumerate(parts):
-                if seg == "machines" and p_idx + 1 < len(parts):
-                    raw_segment = parts[p_idx + 1]
-                    if raw_segment.startswith("machine_"):
-                        m_str = raw_segment[8:]
-                        break
-
-            # Parse run_manifest.json at run root to capture all machines (including skipped-empty)
-            if "run_manifest.json" in files and not m_str:
-                m_path = os.path.join(root, "run_manifest.json")
-                try:
-                    with open(m_path, "r", encoding="utf-8", errors="ignore") as f:
-                        m_data = json.load(f)
-                    mms = m_data.get("multi_machine_summary") if isinstance(m_data, dict) else None
-                    if isinstance(mms, list):
-                        for item in mms:
-                            if not isinstance(item, dict) or "machine" not in item:
-                                continue
-                            m_num = str(item["machine"])
-                            exp_u = str(item.get("expected_username", "")).strip()
-                            s_reason = str(item.get("stop_reason", "")).strip()
-                            f_status = str(item.get("final_status", "")).strip().lower()
-                            if exp_u == "account:empty" or "is empty (no username)" in s_reason.lower() or "does not have valid row" in s_reason.lower():
-                                m_st = "skipped-empty"
-                            elif f_status == "success":
-                                m_st = "success"
-                            else:
-                                m_st = "fail"
-                            payload = {
-                                "status": m_st,
-                                "reason": s_reason,
-                                "likes": {},
-                                "feed_counts": {},
-                                "swipes": int(item.get("swipes_completed", 0) or 0),
-                                "comment_peeks": 0,
-                            }
-                            res_m[m_num] = merge_machine_result(res_m.get(m_num), payload)
-                except Exception:
-                    pass
-
-            # Fallback parse batched summary.txt at run root
-            if "summary.txt" in files and not m_str:
-                s_path = os.path.join(root, "summary.txt")
-                try:
-                    with open(s_path, "r", encoding="utf-8", errors="ignore") as f:
-                        c = f.read()
-                    import re
-                    failed_m = re.findall(r"machine_(\d+)", c)
-                    for m_num in set(failed_m):
-                        if m_num not in res_m:
-                            res_m[m_num] = {"status": "fail", "reason": "batch-config-error"}
-                except Exception:
-                    pass
-            if "summary.txt" in files and m_str:
-                s_path = os.path.join(root, "summary.txt")
-                try:
-                    with open(s_path, "r", encoding="utf-8", errors="ignore") as f:
-                        c = f.read()
-                    st = "success" if "final_status: success" in c else "fail"
-                    r_map = {l.split(":", 1)[0].strip(): l.split(":", 1)[1].strip() for l in c.splitlines() if ":" in l}
-                    stop_r = r_map.get("stop_reason", "")
-                    reason = stop_r if (stop_r and stop_r != "None") else (r_map.get("reason") or r_map.get("final_status", ""))
-                    if any(k in reason.lower() for k in ("is empty (no username)", "does not have valid row")):
-                        st = "skipped-empty"
-
-                    # Extract likes and swipes from per-machine summary
-                    likes_map = {}
-                    feed_counts_map = {}
-                    swipes_cnt = 0
-                    try:
-                        import re
-                        m_sw = re.search(r'["\']?total_swipes_completed["\']?:\s*(\d+)', c)
-                        if m_sw:
-                            swipes_cnt = int(m_sw.group(1))
-                        idx_lc = c.find('"like_counts":')
-                        if idx_lc != -1:
-                            chunk_lc = c[idx_lc:idx_lc + 150]
-                            for ft in ("for-you", "following", "friends"):
-                                m_ft = re.search(rf'["\']?{ft}["\']?:\s*(\d+)', chunk_lc)
-                                if m_ft:
-                                    likes_map[ft] = int(m_ft.group(1))
-                        follow_counts_map = {}
-                        idx_foc = c.find('"follow_counts":')
-                        if idx_foc != -1:
-                            chunk_foc = c[idx_foc:idx_foc + 150]
-                            for ft in ("for-you", "following", "friends"):
-                                m_ft = re.search(rf'["\']?{ft}["\']?:\s*(\d+)', chunk_foc)
-                                if m_ft:
-                                    follow_counts_map[ft] = int(m_ft.group(1))
-                        idx_fc = c.find('"feed_counts":')
-                        if idx_fc != -1:
-                            chunk_fc = c[idx_fc:idx_fc + 150]
-                            for ft in ("for-you", "following", "friends"):
-                                m_ft = re.search(rf'["\']?{ft}["\']?:\s*(\d+)', chunk_fc)
-                                if m_ft:
-                                    feed_counts_map[ft] = int(m_ft.group(1))
-                    except Exception:
-                        pass
-
-                    comment_peeks_cnt = 0
-                    try:
-                        m_cp = re.search(r'["\']?comment_peeks["\']?:\s*(\d+)', c)
-                        if m_cp:
-                            comment_peeks_cnt = int(m_cp.group(1))
-                    except Exception:
-                        pass
-                    m_payload = {"status": st, "reason": reason, "likes": likes_map, "feed_counts": feed_counts_map, "swipes": swipes_cnt, "comment_peeks": comment_peeks_cnt, "natural_follows": follow_counts_map}
-                    res_m[m_str] = merge_machine_result(res_m.get(m_str), m_payload)
-                except Exception:
-                    pass
-
-            if "follow_result.json" in files:
-                f_path = os.path.join(root, "follow_result.json")
-                try:
-                    with open(f_path, "r", encoding="utf-8") as fp:
-                        d = json.load(fp)
-                    if isinstance(d, dict):
-                        payload_m = str(d.get("machine", "")).strip()
-                        target_m = payload_m if payload_m else m_str
-                        if target_m:
-                            flist_raw = d.get("followed")
-                            flist = [str(x) for x in flist_raw if isinstance(x, (str, int, float))] if isinstance(flist_raw, list) else []
-                            raw_status = str(d.get("status") or "").strip()
-                            raw_ff = d.get("follow_failed")
-                            raw_failed = d.get("failed")
-                            is_strict_zero_failed = (raw_failed is False) or (type(raw_failed) is int and raw_failed == 0)
-                            is_clean_ff = (raw_status == "FOLLOW_FAILED" and raw_ff is True and type(raw_ff) is bool and is_strict_zero_failed)
-                            details = d.get("details") if isinstance(d.get("details"), dict) else {}
-                            m1_cnt = details.get("mode1_followed_count")
-                            m2_cnt = details.get("mode2_followed_count")
-                            try:
-                                m1_cnt = int(m1_cnt) if m1_cnt is not None else 0
-                            except (ValueError, TypeError):
-                                m1_cnt = 0
-                            try:
-                                m2_cnt = int(m2_cnt) if m2_cnt is not None else 0
-                            except (ValueError, TypeError):
-                                m2_cnt = 0
-                            f_item = {
-                                "status": raw_status,
-                                "followed": flist,
-                                "follow_failed": is_clean_ff,
-                                "failed": raw_failed,
-                                "reason": str(d.get("reason") or ""),
-                                "mode1_followed_count": m1_cnt,
-                                "mode2_followed_count": m2_cnt,
-                            }
-                            res_f[target_m] = merge_follow_result(res_f.get(target_m), f_item)
-                except Exception:
-                    pass
-
-            if "upload_result.json" in files:
-                u_path = os.path.join(root, "upload_result.json")
-                try:
-                    with open(u_path, "r", encoding="utf-8") as fp:
-                        d = json.load(fp)
-                    if isinstance(d, dict):
-                        payload_m = str(d.get("machine", "")).strip()
-                        target_m = payload_m if payload_m else m_str
-                        if target_m:
-                            raw_code = d.get("exit_code", d.get("returncode", 0))
-                            try:
-                                exit_code = int(raw_code)
-                            except (ValueError, TypeError):
-                                exit_code = 1 if str(d.get("status", "")).lower() != "success" else 0
-                            u_item = {
-                                "status": str(d.get("status") or "").lower(),
-                                "exit_code": exit_code,
-                                "reason": str(d.get("reason") or ""),
-                            }
-                            res_u[target_m] = merge_upload_result(res_u.get(target_m), u_item)
-                except Exception:
-                    pass
-    except Exception as e:
-        logger.warning("Error during single-pass walk of %s: %s", run_dir, e)
-
-    return res_m, res_f, res_u
-
-
-def parse_run_machines(run_dir: str) -> dict:
-    """Lấy map machine -> final_status từ 1 run dir (chỉ dùng cho tests / CLI riêng lẻ)."""
-    return parse_run_all(run_dir)[0]
-
-
-def parse_follow_results(run_dir: str) -> dict:
-    """Lấy kết quả follow hook từ 1 run dir (chỉ dùng cho tests / CLI riêng lẻ)."""
-    return parse_run_all(run_dir)[1]
-
-
-def parse_upload_results(run_dir: str) -> dict:
-    """Lấy kết quả upload hook từ 1 run dir (chỉ dùng cho tests / CLI riêng lẻ)."""
-    return parse_run_all(run_dir)[2]
-
 
 def _add_minutes_to_hm(hm_str: str, minutes: int) -> str:
     h, m = map(int, hm_str.split(":"))
@@ -842,40 +317,6 @@ def calculate_session_natural_follows(
     return valid_tot, valid_fy, valid_fl, valid_fr, dropped_tot
 
 
-def classify_machine_follow_result(fd: dict[str, Any] | None) -> tuple[str, str]:
-    """Phân loại kết quả follow của 1 máy một cách thuần túy, an toàn và có kiểu dữ liệu rõ ràng.
-    
-    Trả về: (category, reason)
-    - category in {"released", "success", "rest", "under_video_gate", "other_skipped", "error"}
-    """
-    if not fd or not isinstance(fd, dict):
-        return "error", "missing_or_invalid_payload"
-
-    flist = fd.get("followed", [])
-    if not isinstance(flist, list):
-        flist = []
-    status = str(fd.get("status") or "").strip().upper()
-    f_reason = str(fd.get("reason") or "").strip().lower()
-
-    if status == "FOLLOW_FAILED" and fd.get("follow_failed") is True:
-        return "released", f_reason
-    if status == "CIRCUIT_BREAKER_SKIPPED" or f_reason in {"ip_circuit_breaker", "circuit_breaker_skipped", "circuit_breaker_tripped"}:
-        return "breaker_skipped", f_reason
-    if str(status).upper() in {"OK", "SUCCESS", "COMPLETED"} and len(flist) > 0:
-        return "success", f_reason
-    if status == "SKIPPED" or (status in {"OK", "SUCCESS"} and len(flist) == 0):
-        if "organic-rest-day" in f_reason or "rest-day" in f_reason:
-            return "rest", f_reason
-        if any(token in f_reason for token in ("under-6-videos", "under_6_videos", "under-10-videos", "under_10_videos", "under-21-days", "under_21_days", "under-age", "under_age")):
-            return "under_video_gate", f_reason
-        if "đã follow sẵn" in f_reason or "follow-released" in f_reason:
-            return "other_skipped", f_reason
-        if bool(fd.get("details", {}).get("mode2_degraded")) or status in {"FAILED", "ERROR", "TIMEOUT", "LAUNCH_ERROR"}:
-            return "error", f_reason
-        return "other_skipped", f_reason
-    return "error", f_reason
-
-
 def save_session_action_stats(
     db_path: str,
     session_key: str,
@@ -924,20 +365,88 @@ def save_session_action_stats(
         logger.warning("save_session_action_stats error: %s", exc)
 
 
+RECONCILE_METRICS: dict[str, int] = {"buffer_applied": 0, "buffer_capped": 0, "subsecond_capped": 0, "guard_triggered": 0, "parse_fallback": 0}
+_METRICS_LOCK: threading.Lock = threading.Lock()
+
+
+def reset_reconcile_metrics() -> None:
+    """Reset các counters đo đạc về 0 giữa các sessions/test cases."""
+    with _METRICS_LOCK:
+        RECONCILE_METRICS.update({k: 0 for k in RECONCILE_METRICS})
+
+
+def get_reconcile_metrics() -> dict[str, int]:
+    """Lấy bản sao thread-safe của RECONCILE_METRICS dưới bảo vệ của lock."""
+    with _METRICS_LOCK:
+        return dict(RECONCILE_METRICS)
+
+
+def buffer_reconcile_iso(iso_val: Optional[str], minutes: int = 10) -> Optional[str]:
+    """Mở rộng window ISO một khoảng thời gian (phút) để bắt kịp các snapshot cào trễ."""
+    if not iso_val: return iso_val
+    clean_val = iso_val.strip()
+    if clean_val.endswith("23:59:59"):
+        if minutes > 0:
+            with _METRICS_LOCK: RECONCILE_METRICS["buffer_capped"] += 1
+        return clean_val
+    try:
+        raw_dt = clean_val.replace("T", " ").split("+")[0].split("Z")[0].strip()
+        dt = datetime.strptime(raw_dt, "%Y-%m-%d %H:%M:%S.%f" if "." in raw_dt else "%Y-%m-%d %H:%M:%S")
+        buffered_dt = dt + timedelta(minutes=minutes)
+        # Cap về 23:59:59 (microsecond=0) khớp định dạng SQLite; lệch <1s khi buffered_dt trong (23:59:59, 23:59:59.999999].
+        end_of_day = dt.replace(hour=23, minute=59, second=59, microsecond=0)
+        start_of_day = dt.replace(hour=0, minute=0, second=0, microsecond=0)
+        was_capped = was_subsecond_capped = False
+        if minutes > 0 and buffered_dt > end_of_day:
+            was_subsecond_capped = buffered_dt <= end_of_day.replace(microsecond=999999)
+            buffered_dt, was_capped = end_of_day, True
+        elif minutes < 0 and buffered_dt < start_of_day:
+            buffered_dt = start_of_day
+            was_capped = True
+        with _METRICS_LOCK:
+            if was_capped:
+                RECONCILE_METRICS["buffer_capped"] += 1
+                if was_subsecond_capped:
+                    RECONCILE_METRICS["subsecond_capped"] += 1
+            elif minutes != 0:
+                RECONCILE_METRICS["buffer_applied"] += 1
+        res = buffered_dt.strftime("%Y-%m-%d %H:%M:%S")
+        if minutes != 0:
+            logger.info("[RECONCILE_BUFFER_TELEMETRY] iso=%s -> %s (minutes=%d, capped=%s, subsecond_capped=%s)", iso_val, res, minutes, was_capped, was_subsecond_capped)
+        return res
+    except Exception as exc:
+        with _METRICS_LOCK: RECONCILE_METRICS["parse_fallback"] += 1
+        logger.debug("buffer_reconcile_iso: cannot parse '%s': %s", iso_val, exc)
+        return iso_val
+
+
+def parse_reconcile_iso_dt(iso_val: Optional[str]) -> Optional[datetime]:
+    """Parse an toàn ISO datetime string sang datetime object."""
+    if not iso_val: return None
+    try:
+        raw = iso_val.strip().replace("T", " ").split("+")[0].split("Z")[0].strip()
+        return datetime.strptime(raw, "%Y-%m-%d %H:%M:%S.%f" if "." in raw else "%Y-%m-%d %H:%M:%S")
+    except Exception: return None
+
+
+def is_session_key_p1_or_unknown(session_key: Optional[str]) -> bool:
+    """Unknown/empty keys default to Phiên 1 (fail-safe); p10/phien12 are later; explicit p1 wins over p2+."""
+    if not session_key: return True
+    s_lower = session_key.lower()
+    has_p1 = bool(re.search(r"(?<![a-z0-9])(?:phien|session|p)[\s_.-]*1(?![0-9])", s_lower))
+    has_later = bool(re.search(r"(?<![a-z0-9])(?:phien|session|p)[\s_.-]*([2-9]|\d{2,})", s_lower))
+    return not (has_later and not has_p1)
+
+
 def reconcile_cluster_following(
-    cluster: dict[str, Any],
-    fl_success: list,
-    all_follows: dict,
-    active_row: int,
-    session_start_iso: Optional[str] = None,
-    session_end_iso: Optional[str] = None,
-    db_path: str = r"D:/Taadaa/data/tiktok_tracker.db",
-    python_exe: str = r"D:/Taadaa/python-envs/automation/Scripts/python.exe",
-    tracker_script: str = r"D:/Taadaa/tools/tiktok_account_tracker.py",
-    all_machines: Optional[dict] = None,
-    session_key: Optional[str] = None,
+    cluster: dict[str, Any], fl_success: list, all_follows: dict, active_row: int,
+    session_start_iso: Optional[str] = None, session_end_iso: Optional[str] = None,
+    db_path: str = r"D:/Taadaa/data/tiktok_tracker.db", python_exe: str = r"D:/Taadaa/python-envs/automation/Scripts/python.exe",
+    tracker_script: str = r"D:/Taadaa/tools/tiktok_account_tracker.py", all_machines: Optional[dict] = None,
+    session_key: Optional[str] = None, auto_reset_metrics: bool = True,
 ) -> list[str]:
     """Cào và đối soát số lượng following tăng thật trên TikTok Web so với script báo cáo."""
+    if auto_reset_metrics: reset_reconcile_metrics()
     wb_path = cluster.get("account_workbook")
     if not wb_path or not os.path.exists(wb_path):
         return []
@@ -1076,6 +585,23 @@ def reconcile_cluster_following(
             nums = re.findall(r"\d+", str(x))
             return int(nums[0]) if nums else 0
 
+        is_p1_or_unknown = is_session_key_p1_or_unknown(session_key)
+        query_start_iso = session_start_iso if is_p1_or_unknown else buffer_reconcile_iso(session_start_iso, 10)
+
+        # Guard an toàn: Parse datetime chuẩn xác, tuyệt đối không để query_start_iso vượt qua session_end_iso gốc
+        start_dt = parse_reconcile_iso_dt(query_start_iso)
+        end_dt = parse_reconcile_iso_dt(session_end_iso)
+        if start_dt and end_dt and start_dt >= end_dt:
+            query_start_iso = session_start_iso
+            with _METRICS_LOCK:
+                RECONCILE_METRICS["guard_triggered"] += 1
+
+        query_end_iso = buffer_reconcile_iso(session_end_iso, 10)
+        logger.info(
+            "[FOLLOW_RECONCILE_WINDOW] key=%s raw_window=[%s, %s] query_window=[%s, %s]",
+            session_key, session_start_iso, session_end_iso, query_start_iso, query_end_iso
+        )
+
         for m in sorted(m_to_user.keys(), key=_num_m):
             u = m_to_user[m]
             cross_cnt = m_to_cross[m]
@@ -1083,14 +609,14 @@ def reconcile_cluster_following(
             expected_delta = m_to_reported[m]
             report_label = f"script báo {expected_delta} (chéo {cross_cnt}, tự nhiên {natural_cnt})"
             try:
-                if session_end_iso:
+                if query_end_iso:
                     cur.execute("""
                         SELECT following, timestamp
                         FROM snapshots
                         WHERE LOWER(username) = LOWER(?) AND timestamp <= ?
                         ORDER BY timestamp DESC, id DESC
                         LIMIT 1
-                    """, (u, session_end_iso))
+                    """, (u, query_end_iso))
                     l_rows = cur.fetchall()
                     latest_row = l_rows[0] if l_rows else None
                 else:
@@ -1105,14 +631,14 @@ def reconcile_cluster_following(
                     latest_row = pair[0] if len(pair) >= 1 else None
 
                 baseline_row = None
-                if latest_row and session_start_iso:
+                if latest_row and query_start_iso:
                     cur.execute("""
                         SELECT following, timestamp
                         FROM snapshots
                         WHERE LOWER(username) = LOWER(?) AND timestamp <= ?
                         ORDER BY timestamp DESC, id DESC
                         LIMIT 1
-                    """, (u, session_start_iso))
+                    """, (u, query_start_iso))
                     b_rows = cur.fetchall()
                     if b_rows:
                         baseline_row = b_rows[0]
@@ -1228,130 +754,6 @@ def reconcile_cluster_following(
         return [f"  + Đối soát TikTok Web: Lỗi truy vấn snapshot: {exc}"]
 
 
-def format_success_follows(fl_success: list, all_follows: dict, total_attempt: int = 0) -> list:
-    """Phân nhóm và format danh sách các máy follow thành công kèm % (chỉ hiện tên máy, không ghi chi tiết lượt)."""
-    if not fl_success:
-        return ["  + Thành công (0 máy | 0.0%): Không có"]
-
-    succ_1_4 = []
-    succ_5_9 = []
-    succ_10_plus = []
-
-    for m in fl_success:
-        cnt = len(all_follows.get(m, {}).get("followed", []))
-        if 1 <= cnt <= 4:
-            succ_1_4.append(m)
-        elif 5 <= cnt <= 9:
-            succ_5_9.append(m)
-        else:
-            succ_10_plus.append(m)
-
-    def _format_m(m) -> str:
-        s = str(m).strip()
-        if s.upper().startswith("M"):
-            return f"M{s[1:]}"
-        return f"M{s}"
-
-    tot = len(fl_success)
-    att = total_attempt if total_attempt > 0 else tot
-    succ_pct = (tot / att * 100.0) if att > 0 else 100.0
-
-    lines = [f"  + Thành công ({tot} máy | {succ_pct:.1f}%):"]
-    if succ_10_plus:
-        pct = len(succ_10_plus) / tot * 100.0
-        lines.append(f"    💪 Nhóm Khỏe (10+ lượt | {pct:.1f}%): ({', '.join(_format_m(m) for m in succ_10_plus)})")
-    if succ_5_9:
-        pct = len(succ_5_9) / tot * 100.0
-        lines.append(f"    🌱 Hồi phục 2 (5 - 9 lượt | {pct:.1f}%): ({', '.join(_format_m(m) for m in succ_5_9)})")
-    if succ_1_4:
-        pct = len(succ_1_4) / tot * 100.0
-        lines.append(f"    🌱 Hồi phục 1 (1 - 4 lượt | {pct:.1f}%): ({', '.join(_format_m(m) for m in succ_1_4)})")
-    return lines
-
-
-def format_released_follows(fl_released: list, all_follows: dict, total_attempt: int = 0) -> list:
-    """Phân nhóm và format danh sách các máy bị nhả follow kèm % (chỉ hiện tên máy trong ngoặc, không ghi chi tiết lượt)."""
-    tot = len(fl_released)
-    att = total_attempt if total_attempt > 0 else tot
-    rel_pct = (tot / att * 100.0) if att > 0 else 0.0
-
-    if not fl_released:
-        return [f"  + Nhả follow (0 máy | 0.0%): Không có"]
-
-    rel_0 = []
-    rel_1_4 = []
-    rel_5_9 = []
-    rel_10_plus = []
-
-    for m in fl_released:
-        cnt = len(all_follows.get(m, {}).get("followed", []))
-        if cnt == 0:
-            rel_0.append(m)
-        elif 1 <= cnt <= 4:
-            rel_1_4.append((m, cnt))
-        elif 5 <= cnt <= 9:
-            rel_5_9.append((m, cnt))
-        else:
-            rel_10_plus.append((m, cnt))
-
-    def _format_m(m: Any, cnt: int = 0) -> str:
-        s = str(m).strip()
-        m_lbl = f"M{s[1:]}" if s.upper().startswith("M") else f"M{s}"
-        if cnt > 0:
-            return f"{m_lbl}: {cnt} lượt"
-        return m_lbl
-
-    lines = [f"  + Nhả follow ({tot} máy | {rel_pct:.1f}%):"]
-    if rel_0:
-        pct = len(rel_0) / tot * 100.0
-        lines.append(f"    - Nhả liền (0 lượt | {pct:.1f}%): ({', '.join(_format_m(m) for m in rel_0)})")
-    if rel_1_4:
-        pct = len(rel_1_4) / tot * 100.0
-        lines.append(f"    - Nhả ở Hồi phục 1 (1 - 4 lượt | {pct:.1f}%): ({', '.join(_format_m(m, c) for m, c in rel_1_4)})")
-    if rel_5_9:
-        pct = len(rel_5_9) / tot * 100.0
-        lines.append(f"    - Nhả ở Hồi phục 2 (5 - 9 lượt | {pct:.1f}%): ({', '.join(_format_m(m, c) for m, c in rel_5_9)})")
-    if rel_10_plus:
-        pct = len(rel_10_plus) / tot * 100.0
-        lines.append(f"    - Nhả ở Cấp Khỏe (10+ lượt | {pct:.1f}%): ({', '.join(_format_m(m, c) for m, c in rel_10_plus)})")
-    return lines
-
-
-def format_ip_circuit_breaker_report(db_path: str = r"D:/Taadaa/data/tiktok_tracker.db", target_date: str = "") -> list:
-    """Format danh sách các cổng proxy bị ngắt do máy dính nhả và các máy anh em được khóa cứu."""
-    if not os.path.exists(db_path):
-        return []
-    try:
-        import sqlite3
-        conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
-        cur = conn.cursor()
-        cur.execute("""
-            SELECT proxy_key, tripped_by_machine, tripped_at, saved_machines
-            FROM ip_circuit_breaker
-            WHERE status = 'TRIPPED' AND target_date = ?
-            ORDER BY tripped_at ASC
-        """, (target_date,))
-        rows = cur.fetchall()
-        conn.close()
-        if not rows:
-            return []
-
-        saved_ms_list = []
-        for proxy_key, tripped_m, tripped_at, saved_ms in rows:
-            if saved_ms:
-                for sm in str(saved_ms).split(","):
-                    sm = sm.strip()
-                    if sm and sm not in saved_ms_list:
-                        saved_ms_list.append(sm)
-
-        if saved_ms_list:
-            return [f"  ⚡ Cầu dao tự ngắt IP ({len(rows)} proxy đã khóa): Khóa cứu {len(saved_ms_list)} máy ({', '.join(saved_ms_list)})"]
-        return [f"  ⚡ Cầu dao tự ngắt IP ({len(rows)} proxy đã khóa)"]
-    except Exception as exc:
-        logger.warning("format_ip_circuit_breaker_report error: %s", exc)
-        return []
-
-
 def _is_session_manifest_completed(date_live: str, run_name: str, win_end_hm: str) -> bool:
     """Kiểm tra run_manifest của lượt chạy đã hoàn thành và đạt mốc kết thúc phiên chưa."""
     latest_outer = os.path.join(date_live, run_name)
@@ -1373,7 +775,13 @@ def _is_session_manifest_completed(date_live: str, run_name: str, win_end_hm: st
                 continue
             if win_end_hm in {"24:00", "00:00"}:
                 return True
-            end_hm = end_time.replace("T", " ").split(" ", 1)[-1][:5]
+            try:
+                dt = datetime.fromisoformat(end_time.replace("Z", "+00:00"))
+                if dt.tzinfo is not None:
+                    dt = dt.astimezone(HCMC)
+                end_hm = dt.strftime("%H:%M")
+            except Exception:
+                end_hm = end_time.replace("T", " ").split(" ", 1)[-1][:5]
             if end_hm >= win_end_hm:
                 return True
         except (OSError, ValueError, TypeError):
@@ -1474,47 +882,6 @@ def can_report_session(
 
     # Khi runner không bận (đã xong hoàn toàn batch): BẮT BUỘC chốt báo cáo
     return True
-
-
-def classify_feed_failure(reason: Any) -> str:
-    r = str(reason or "").lower()
-    if any(k in r for k in ("device not found", "device offline", "not found in adb", "no-run-recorded", "unauthorized", "transport", "adb/usb")):
-        return "Mất kết nối ADB/USB"
-    if any(k in r for k in ("wi-fi not connected", "wifi not connected", "association_rejection", "no-carrier", "dormant", "wlan0 down", "network disconnected")):
-        return "Mất kết nối Wi-Fi (AP)"
-    if any(k in r for k in ("missing or :0", "http_proxy is missing", ":0", "proxy is not set on device", "missing proxy", "no proxy")):
-        return "Chưa gán Proxy / Proxy :0"
-    if any(k in r for k in ("proxy is unreachable", "proxy readiness timed out", "connection refused", "context deadline exceeded", "proxy timeout")):
-        return "Nghẽn đường truyền Proxy / 4G"
-    if any(k in r for k in ("proxy", "vpn")):
-        return "Lỗi cấu hình Proxy"
-    return "Lỗi App TikTok/Script"
-
-
-def classify_error_reason(reason: Any) -> str:
-    """Làm sạch và phân loại chuỗi lỗi kỹ thuật thô thành nhãn 1 dòng ngắn gọn cho báo cáo."""
-    r = str(reason or "").strip()
-    if not r:
-        return "Lỗi không xác định"
-    r_lower = r.lower()
-    if any(k in r_lower for k in ("device not found", "device offline", "not found in adb", "transport", "adb/usb", "adb.exe", "adb command timed out")):
-        return "Mất kết nối ADB/USB"
-    if any(k in r_lower for k in ("wi-fi", "wifi", "wlan0 down", "no-carrier", "association_rejection")):
-        return "Mất kết nối Wi-Fi (AP)"
-    if any(k in r_lower for k in ("ifconfig", "egress ip", "context deadline", "awaiting headers", "deadline exceeded", "proxy timeout", "proxy is unreachable")):
-        return "Nghẽn đường truyền Proxy / 4G"
-    if any(k in r_lower for k in ("vpn", "proxy")):
-        return "Lỗi kết nối VPN/Proxy"
-    if "unexpected popup" in r_lower or "dialog" in r_lower:
-        return "Popup/Dialog bất thường"
-    if "device-lock" in r_lower or "lock" in r_lower:
-        return "Kẹt Device Lock"
-    first = r.splitlines()[0].strip()
-    if ":" in first:
-        first = first.split(":")[-1].strip() or first.split(":")[0].strip()
-    first = re.sub(r"[A-Za-z]:\\[^\s]+", "", first)
-    first = re.sub(r"\s+", " ", first).strip()
-    return first[:60] if first else "Lỗi script/xác minh"
 
 
 def dispatch_split_reports(header: str, cluster_blocks: list[str], cluster_stats: list[dict] | None = None, win_name: str = "", active_row: Any = "") -> str:

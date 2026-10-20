@@ -136,9 +136,14 @@ See `references/advisor-context-starvation-and-session-briefing-20261015.md` for
 
 ## Common failure modes
 
-- **Bẫy Nghẽn Timeout Đa Tầng Của Advisor Sol (Tăng Timeout Script Vẫn Dính 45s - 19/10/2026):**
-  * *Nguyên nhân:* Tăng timeout ở client script (`consult_advisor.py`) không đủ nếu các tầng trung gian chưa đồng bộ: (1) OmniRoute `.env` có `ACCOUNT_SEMAPHORE_TIMEOUT_MS=45000` (hàng đợi slot pool ném lỗi sau 45s) và `STREAM_READINESS_TIMEOUT_MS=40000` (OmniRoute tự hủy socket trả 499 nếu first byte chậm quá 40s); (2) Bản lưu trong skill `scripts/advisor_consult.py` bị kẹt `first_token_timeout=45.0s`; (3) `advisor_tool.py` trong Hermes có `DEFAULT_TIMEOUT=55s`; (4) Host terminal guard ngắt lệnh foreground ở 60s.
-  * *Khắc phục:* Phải đồng bộ cả 4 tầng: Nâng OmniRoute semaphore/readiness lên 80s–90s; đồng bộ `scripts/advisor_consult.py` lên 80s/140s/150s; khi gọi CLI foreground bắt buộc prompt cô đọng (<150 từ, 3 gạch đầu dòng) để Sol nhả token trong 15s–30s không chạm trần 60s của Host Guard. (Chi tiết: `references/multi-layer-timeout-bottleneck-diagnosis-20261019.md`).
+- **Bẫy Nghẽn Timeout Đa Tầng Của Advisor Sol (Tăng Timeout Script Vẫn Dính 45s - 19/10/2026 & 20/10/2026):**
+  * *Nguyên nhân:* Tăng timeout ở client script (`consult_advisor.py`) không đủ nếu các tầng trung gian chưa đồng bộ hoặc chưa có hiệu lực thực tế:
+    (1) **Bẫy In-Memory / Hot-Reload của Node.js:** OmniRoute chạy nền qua `node scripts/dev/run-next.mjs`. Node.js chỉ đọc `.env` một lần duy nhất lúc khởi động. Sửa `.env` thành 90s/80s mà KHÔNG restart tiến trình OmniRoute (:20129) thì RAM vẫn chạy giá trị cũ 45s.
+    (2) **Fallback Hardcode trong code OmniRoute:** `open-sse/services/accountSemaphore.ts` có dòng fallback cứng `Number(process.env.ACCOUNT_SEMAPHORE_TIMEOUT_MS) || 45_000`. Nếu env không nạp được, nó lập tức dùng lại 45s.
+    (3) **Bẫy `advisor_tool.py` trong lõi Hermes:** File `D:/Taadaa/Hermes/tools/advisor_tool.py` có `DEFAULT_TIMEOUT = 55` và `stream: False` (không stream keepalive).
+    (4) **Bản lưu trong skill:** `scripts/advisor_consult.py` trước đây bị kẹt `first_token_timeout=45.0s`.
+    (5) **Bản chất nghẽn pool (Waterfall):** Khi nhiều tài khoản dính limit 3h của ChatGPT, mỗi tài khoản ngâm 15s–20s để xoay tua; quay qua 2 tài khoản dính lỗi ($20s \times 2 = 40s$) là chạm trần ngắt hàng đợi.
+  * *Khắc phục:* BẮT BUỘC restart OmniRoute sau khi sửa `.env`; đồng bộ `consult_advisor.py` lên 80s/140s/150s có streaming keepalive; kiểm tra log và trạng thái tài khoản pool thay vì chỉ nhìn file config tĩnh. Khi User chất vấn "đã tăng timeout ở session khác rồi mà", trả lời thẳng vào tiến trình RAM/restart và waterfall pool, cấm giải thích lại lý thuyết chung chung. (Chi tiết: `references/multi-layer-timeout-bottleneck-diagnosis-20261019.md`).
 
 - **Advisor Sol Web Context Starvation & Tái cấu trúc Ngữ cảnh Phiên (15/10/2026):**
   * *Vấn đề cốt lõi:* ChatGPT-Web pool (:20129 `gpt-web-sol`) là API stateless. Nếu chỉ truyền tin nhắn gần nhất (`original_user_message`), Advisor hoàn toàn mù ngữ cảnh phiên (máy mấy, nick nào, lỗi trước đó là gì), dẫn tới câu trả lời cụt lủn, ngây ngô và lạc đề.

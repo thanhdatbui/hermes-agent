@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Watchdog tự động bật 2FA TikTok ban đêm cho tài khoản thiếu 2FA sau Ca 4."""
+"""Night Chain: Reg Gmail ban đêm -> Add 2FA TikTok, mỗi phase báo cáo Telegram riêng."""
 from __future__ import annotations
 
 import argparse
 import base64
+import contextlib
 import json
 import logging
 import os
 import re
 import subprocess
 import sys
+import time
+import urllib.parse
+import urllib.request
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -35,12 +39,20 @@ ADMIN_SSH_HOST = os.getenv("TAADAA_ADMIN_SSH", "admin-farm")
 ADMIN_REPO_DIR = os.getenv("TAADAA_ADMIN_REPO", "D:/Taadaa/tiktok-add-bao-mat-f2a")
 ADMIN_WORKBOOK = os.getenv("TAADAA_ADMIN_WORKBOOK", r"D:\OneDrive\TaadaaData\admin\taikhoan_dat_v2_updated .xlsx")
 ADMIN_PYTHON = os.getenv("TAADAA_ADMIN_PYTHON", r"D:\Taadaa\python-envs\automation\Scripts\python.exe")
+GMAIL_REPO_DIR = Path(os.getenv("TAADAA_GMAIL_REPO", "D:/Taadaa/register gmail"))
+GMAIL_LOG_DIR = Path("D:/CodexRuntime/codex_gmail_debug-register-gmail")
+GMAIL_EXCEL_FILE = r"D:\OneDrive\TaadaaData\admin\gmail_clean_v2.xlsx"
+PROXY_DIENTHOAI_PATH = r"D:\OneDrive\TaadaaData\admin\PROXYgandienthoai.xlsx"
+POWERSHELL_EXE = r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+GMAIL_REPORT_CHAT_ID = "-5139245637"
+TIKTOK_REPORT_CHAT_ID = "-5468653590"
 
 STATE_DIR = Path(os.getenv("TAADAA_CRON_STATE_DIR", "D:/Taadaa/runtime/kibe/cron-state"))
 STATE_FILE = STATE_DIR / "night_tiktok_2fa_state.json"
 REPORTED_FILE = Path(os.getenv("TAADAA_REPORTED_FILE", "D:/Taadaa/runtime/kibe/cron-state/feed_session_reported.json"))
 LOCK_DIR = Path(r"C:\Users\Kibe\AppData\Local\automation-core\device-locks")
 CODEX_LOCK_DIR = Path(r"C:\Users\Kibe\.codex\device-locks")
+LANE_CLAIM_TTL_SECONDS = 5400
 
 
 def is_safe_rolling_window(now_dt: datetime) -> bool:
@@ -128,31 +140,137 @@ def is_feed_runner_active() -> bool:
     return False
 
 
-def already_ran_today(today_str: str) -> bool:
+def load_state() -> dict:
     if not STATE_FILE.is_file():
-        return False
+        return {}
     try:
-        data = json.loads(STATE_FILE.read_text(encoding="utf-8"))
-        return data.get("last_success_date") == today_str
+        return json.loads(STATE_FILE.read_text(encoding="utf-8"))
     except Exception as exc:
         logger.warning("Lỗi đọc state file: %s", exc)
-        return False
+        return {}
+
+
+@contextlib.contextmanager
+def _state_lock(timeout: float = 30.0):
+    """Khóa liên-tiến-trình quanh read-modify-write state để các lane không ghi đè nhau."""
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    win = sys.platform == "win32"
+    if win:
+        import msvcrt as lk
+    else:
+        import fcntl as lk
+    deadline = time.monotonic() + timeout
+    with open(STATE_DIR / ".night_tiktok_2fa_state.lock", "a+b") as fh:
+        while True:
+            try:
+                fh.seek(0)
+                lk.locking(fh.fileno(), lk.LK_NBLCK, 1) if win else lk.flock(fh.fileno(), lk.LOCK_EX | lk.LOCK_NB)
+                break
+            except OSError:
+                if time.monotonic() >= deadline:
+                    raise TimeoutError(f"Không lấy được khóa state sau {timeout}s")
+                time.sleep(0.1)
+        try:
+            yield
+        finally:
+            fh.seek(0)
+            with contextlib.suppress(OSError):
+                lk.locking(fh.fileno(), lk.LK_UNLCK, 1) if win else lk.flock(fh.fileno(), lk.LOCK_UN)
+
+
+def already_ran_gmail_tonight(today_str: str) -> bool:
+    state = load_state()
+    return state.get("last_gmail_date") == today_str and state.get("last_gmail_success") is True
+
+
+def already_ran_today(today_str: str) -> bool:
+    state = load_state()
+    is_success = state.get("last_2fa_success") is True or state.get("last_success_date") == today_str
+    return bool((state.get("last_2fa_date") == today_str or state.get("last_success_date") == today_str) and is_success)
+
+
+already_ran_tiktok_today = already_ran_today
+
+
+def _write_state(payload: dict) -> None:
+    tmp = STATE_DIR / f".night_tiktok_2fa_state.{os.getpid()}.{uuid.uuid4().hex}.tmp"
+    try:
+        tmp.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+        for i in range(10):
+            try:
+                os.replace(tmp, STATE_FILE)
+                break
+            except PermissionError:
+                if i == 9:
+                    raise
+                time.sleep(0.05)
+    finally:
+        tmp.unlink(missing_ok=True)
+
+
+def _record_lane_state(lane: str, today_str: str, details: dict) -> None:
+    with _state_lock():
+        payload = load_state()
+        is_succ = details.get("status") == "success"
+        prev_details = payload.get("details", {}) if isinstance(payload.get("details"), dict) else {}
+        payload.update({
+            f"last_{lane}_date": today_str,
+            f"last_{lane}_success": is_succ,
+            f"last_{lane}_run_at": datetime.now(HCMC).isoformat(),
+            "correlation_id": details.get("correlation_id", CORRELATION_ID),
+            "details": {**prev_details, lane: details, **(details if lane == "2fa" else {})},
+        })
+        if lane == "2fa":
+            payload["last_success_date"] = today_str if is_succ else None
+        payload.pop(f"{lane}_running_since", None)
+        if lane == "2fa":
+            payload.pop("tiktok_running_since", None)
+        elif lane == "tiktok":
+            payload.pop("2fa_running_since", None)
+        _write_state(payload)
+    logger.info("Đã lưu state %s: status=%s, code=%s", lane, details.get("status"), details.get("code"))
+
+
+def claim_lane(lane: str, today_str: str, force: bool = False) -> bool:
+    with _state_lock():
+        done = already_ran_gmail_tonight(today_str) if lane == "gmail" else already_ran_today(today_str)
+        if done and not force:
+            return False
+        payload = load_state()
+        started = payload.get(f"{lane}_running_since")
+        if started is None:
+            if lane == "2fa":
+                started = payload.get("tiktok_running_since")
+            elif lane == "tiktok":
+                started = payload.get("2fa_running_since")
+        now = time.time()
+        if isinstance(started, (int, float)) and (now - started) < LANE_CLAIM_TTL_SECONDS:
+            return False
+        payload[f"{lane}_running_since"] = now
+        _write_state(payload)
+    return True
+
+
+def release_lane(lane: str) -> None:
+    try:
+        with _state_lock():
+            payload = load_state()
+            payload.pop(f"{lane}_running_since", None)
+            if lane == "2fa":
+                payload.pop("tiktok_running_since", None)
+            elif lane == "tiktok":
+                payload.pop("2fa_running_since", None)
+            _write_state(payload)
+    except Exception as exc:
+        logger.error("Không xóa được claim lane %s: %s", lane, exc)
+
+
+def save_gmail_state(today_str: str, details: dict) -> None:
+    _record_lane_state("gmail", today_str, details)
 
 
 def save_state(today_str: str, details: dict) -> None:
-    STATE_DIR.mkdir(parents=True, exist_ok=True)
-    payload = {
-        "last_success_date": today_str if details.get("status") == "success" else None,
-        "last_run_at": datetime.now(HCMC).isoformat(),
-        "last_reported_6h": details.get("last_reported_6h"),
-        "correlation_id": details.get("correlation_id", CORRELATION_ID),
-        "details": details,
-    }
-    tmp = STATE_FILE.parent / f".night_tiktok_2fa_state.{os.getpid()}.tmp"
-    tmp.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
-    os.replace(str(tmp), str(STATE_FILE))
-    logger.info("Đã lưu state: status=%s, code=%s, failure_reason=%s",
-                details.get("status"), details.get("code"), details.get("failure_reason"))
+    _record_lane_state("2fa", today_str, details)
 
 
 def parse_summary_counts(output: str) -> dict:
@@ -174,7 +292,7 @@ def parse_summary_counts(output: str) -> dict:
     return {"total": succs + fails, "success": succs, "failed": fails, "skip_safe": 0}
 
 
-def _ps_quote(value: str) -> str:
+def _ps_quote(value: object) -> str:
     return str(value).replace("'", "''")
 
 
@@ -297,10 +415,227 @@ def run_night_batch(dry_run: bool = False) -> tuple[int, str]:
     return combined_code, "\n".join(outputs)
 
 
+def _admin_ssh_command(script_body: str) -> list[str]:
+    encoded = base64.b64encode(script_body.encode("utf-16le")).decode("ascii")
+    return ["ssh", "-o", "ConnectTimeout=10", ADMIN_SSH_HOST, f"powershell -NoProfile -EncodedCommand {encoded}"]
+
+
+def _split_cluster_output(out: str) -> tuple[str, str]:
+    parts = re.split(r"===\s*CLUSTER\s+ADMIN\b", out, maxsplit=1, flags=re.I)
+    if len(parts) == 1:
+        return out, ""
+    return parts[0], "=== CLUSTER ADMIN" + parts[1]
+
+
+def _run_cmd(label: str, cmd: list[str], **kw) -> tuple[int, str]:
+    try:
+        p = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5400, **kw)
+        return p.returncode, f"=== {label} ===\n{p.stdout}\n{p.stderr}"
+    except Exception as exc:
+        return 2, f"=== {label} ===\nRUNNER_ERROR: {exc}"
+
+
+def run_gmail_batch(dry_run: bool = False) -> tuple[int, str]:
+    if dry_run:
+        return run_night_batch(dry_run=True)
+    ps_script = GMAIL_REPO_DIR / "run_all.ps1"
+    if not ps_script.exists():
+        return 1, f"Không tìm thấy {ps_script}"
+    env = {**os.environ, "PYTHONPATH": f"{GMAIL_REPO_DIR}{os.pathsep}{AUTOMATION_CORE_SRC}", "GMAIL_REG_PYTHON_EXE": PYTHON_EXE}
+    cmd = [POWERSHELL_EXE, "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", str(ps_script)]
+    kibe_code, kibe_out = _run_cmd("CLUSTER KIBE (MÁY 1-80)", cmd, cwd=str(GMAIL_REPO_DIR), env=env)
+    ps_admin_script = (
+        "$env:PYTHONIOENCODING='utf-8'; $env:PYTHONUTF8='1'; "
+        f"Set-Location '{_ps_quote(GMAIL_REPO_DIR)}'; "
+        f"$env:PROXY_DIENTHOAI_PATH='{_ps_quote(PROXY_DIENTHOAI_PATH)}'; "
+        f"$env:GMAIL_EXCEL_FILE='{_ps_quote(GMAIL_EXCEL_FILE)}'; "
+        f"$env:PYTHONPATH='{_ps_quote(GMAIL_REPO_DIR)};{_ps_quote(AUTOMATION_CORE_SRC)}'; "
+        f"$env:GMAIL_REG_PYTHON_EXE='{_ps_quote(PYTHON_EXE)}'; "
+        "& powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ./run_all.ps1; "
+        "exit $LASTEXITCODE"
+    )
+    admin_code, admin_out = _run_cmd("CLUSTER ADMIN (MÁY 201-280)", _admin_ssh_command(ps_admin_script))
+    return max(kibe_code, admin_code), f"{kibe_out}\n{admin_out}"
+
+
+def _load_telegram_token() -> str | None:
+    try:
+        if str(AUTOMATION_CORE_SRC) not in sys.path:
+            sys.path.append(str(AUTOMATION_CORE_SRC))
+        from automation_core.alerts import _load_bot_token
+        token = _load_bot_token()
+    except Exception as exc:
+        logger.warning("Không đọc được Telegram bot token từ automation_core: %s", exc)
+        token = None
+    return token or os.getenv("TELEGRAM_BOT_TOKEN")
+
+
+def send_telegram_report(chat_id: str, text: str) -> bool:
+    token = _load_telegram_token()
+    if not token:
+        logger.warning("Không có Telegram bot token, bỏ qua báo cáo tới chat %s", chat_id)
+        return False
+    try:
+        from automation_core.alerts import _send_telegram_text
+        if _send_telegram_text(token, chat_id, text):
+            return True
+        logger.warning("automation_core _send_telegram_text thất bại, fallback urllib (chat %s)", chat_id)
+    except Exception as exc:
+        logger.warning("automation_core _send_telegram_text lỗi, fallback urllib: %s", exc)
+    payload = urllib.parse.urlencode({"chat_id": chat_id, "text": text}).encode("utf-8")
+    request = urllib.request.Request(f"https://api.telegram.org/bot{token}/sendMessage", data=payload)
+    try:
+        with urllib.request.urlopen(request, timeout=15) as resp:
+            status = resp.status
+    except Exception as exc:
+        logger.error("Gửi báo cáo Telegram tới chat %s thất bại: %s", chat_id, exc)
+        return False
+    if status != 200:
+        logger.error("Telegram sendMessage tới chat %s trả HTTP %s", chat_id, status)
+    return status == 200
+
+
+def dispatch_report(chat_id: str, text: str, dry_run: bool) -> bool:
+    if dry_run:
+        print(text)
+        return True
+    if send_telegram_report(chat_id, text):
+        return True
+    logger.error("Gửi báo cáo tới chat %s thất bại, phase không được xác nhận đã báo cáo", chat_id)
+    return False
+
+
+def read_gmail_summary_json(min_mtime: float) -> dict | None:
+    candidates = [p for p in GMAIL_LOG_DIR.glob("logs_parallel_*/summary.json") if p.stat().st_mtime >= min_mtime]
+    if not candidates:
+        return None
+    newest = max(candidates, key=lambda p: p.stat().st_mtime)
+    try:
+        return json.loads(newest.read_text(encoding="utf-8-sig"))
+    except Exception as exc:
+        logger.warning("Lỗi đọc summary Reg Gmail %s: %s", newest, exc)
+        return None
+
+
+def summarize_gmail(out: str, min_mtime: float) -> dict:
+    kibe_text, admin_text = _split_cluster_output(out)
+    data = read_gmail_summary_json(min_mtime) if GMAIL_LOG_DIR.is_dir() else None
+    if data is not None:
+        kibe = {k: int(data.get(k, 0) or 0) for k in ("total", "success", "failed", "skip_safe")}
+    else:
+        kibe = parse_summary_counts(kibe_text)
+    admin = parse_summary_counts(admin_text)
+    total = {k: kibe.get(k, 0) + admin.get(k, 0) for k in ("total", "success", "failed", "skip_safe")}
+    return {**total, "failure_breakdown": (data or {}).get("failure_breakdown") or {}}
+
+
+def _error_groups(breakdown: dict) -> tuple[dict, dict]:
+    p = breakdown.get("platform_errors") or {k: breakdown.get(k, 0) for k in ("phone_verify", "account_creation_error")}
+    s = breakdown.get("script_errors") or {k: breakdown.get(k, 0) for k in ("failed_cleanup", "failed_other")}
+    return ({k: v for k, v in p.items() if v > 0}, {k: v for k, v in s.items() if v > 0})
+
+
+def _format_error_group(group: dict) -> str:
+    return f"{sum(group.values())} ({', '.join(f'{k}: {v}' for k, v in group.items())})" if group else "0"
+
+
+def build_gmail_report(summary: dict, code: int) -> str:
+    p, s = _error_groups(summary.get("failure_breakdown") or {})
+    lines = [
+        "⏰ [FARM REPORT][TOÀN FARM] BÁO CÁO REG GMAIL BAN ĐÊM:",
+        f"• Đã hoàn tất: {summary['success']} máy", f"• Bỏ qua an toàn: {summary['skip_safe']} máy",
+        f"• Lỗi nền tảng: {_format_error_group(p)}", f"• Lỗi script: {_format_error_group(s)}",
+    ]
+    if code != 0 and summary["total"] == 0: lines.append(f"• Lỗi runner: mã thoát {code}")
+    return "\n".join(lines)
+
+
+def build_2fa_report(kibe: dict, admin: dict, code: int) -> str:
+    lines = [
+        "⏰ [FARM REPORT][TOÀN FARM] BÁO CÁO 2FA TIKTOK BAN ĐÊM:",
+        f"• Farm Kibe (Máy 1-80): Hoàn tất {kibe['success']} | Bỏ qua {kibe.get('skip_safe', 0)} | Lỗi {kibe['failed']}",
+        f"• Farm Admin (Máy 201-280): Hoàn tất {admin['success']} | Bỏ qua {admin.get('skip_safe', 0)} | Lỗi {admin['failed']}",
+    ]
+    if code not in ACCEPTABLE_RETURN_CODES: lines.append(f"• Lỗi runner: mã thoát {code}")
+    return "\n".join(lines)
+
+
+def run_gmail_phase(today_str: str, dry_run: bool, force: bool) -> int:
+    if not dry_run and not force and already_ran_gmail_tonight(today_str):
+        logger.info("Reg Gmail đã hoàn tất hôm nay, bỏ qua")
+        return 0
+    start_epoch = datetime.now(HCMC).timestamp()
+    code, out = run_gmail_batch(dry_run=dry_run)
+    summary = summarize_gmail(out, min_mtime=start_epoch)
+    if code != 0 or summary["failed"] > 0:
+        status = "partial_failure" if (code in ACCEPTABLE_RETURN_CODES and summary["success"] > 0) else "failed"
+    elif summary["success"] > 0 or summary["skip_safe"] > 0:
+        status = "success"
+    else:
+        status = "failed"
+    dispatch_report(GMAIL_REPORT_CHAT_ID, build_gmail_report(summary, code), dry_run)
+    if not dry_run:
+        save_gmail_state(today_str, {
+            "correlation_id": CORRELATION_ID,
+            "code": code,
+            "status": status,
+            "success_count": summary["success"],
+            "failed_count": summary["failed"],
+            "skip_count": summary["skip_safe"],
+            "failure_breakdown": summary["failure_breakdown"],
+        })
+    return 0 if status == "success" else (code or 1)
+
+
+def run_tiktok_phase(today_str: str, dry_run: bool, force: bool = False) -> int:
+    if not dry_run and not force and already_ran_tiktok_today(today_str):
+        logger.info("2FA TikTok đã chạy hôm nay (%s), bỏ qua; dùng --force để chạy lại", today_str)
+        return 0
+    code, out = run_night_batch(dry_run=dry_run)
+    kibe_text, admin_text = _split_cluster_output(out)
+    kibe, admin = parse_summary_counts(kibe_text), parse_summary_counts(admin_text)
+    failed = kibe["failed"] + admin["failed"]
+    acceptable = code in ACCEPTABLE_RETURN_CODES
+    status = "failed" if not acceptable else ("partial_failure" if failed > 0 else "success")
+    reason = None if status == "success" else (
+        f"Runner exited with non-acceptable return code {code}" if not acceptable
+        else f"{failed} target machines failed during 2FA execution"
+    )
+    dispatch_report(TIKTOK_REPORT_CHAT_ID, build_2fa_report(kibe, admin, code), dry_run)
+    if not dry_run:
+        save_state(today_str, {
+            "correlation_id": CORRELATION_ID,
+            "code": code,
+            "status": status,
+            "success_count": kibe["success"] + admin["success"],
+            "failed_count": failed,
+            "skip_count": kibe.get("skip_safe", 0) + admin.get("skip_safe", 0),
+            "failure_reason": reason,
+            "clusters": {"kibe": kibe, "admin": admin},
+        })
+    if not acceptable:
+        logger.error("Ca 2FA ban đêm thất bại với code=%s", code)
+        return code or 1
+    if failed > 0:
+        logger.warning("Ca 2FA ban đêm hoàn tất nhưng có %d máy lỗi", failed)
+    return 0
+
+
+def _handle_phase_crash(save, chat_id: str, title: str, today_str: str, dry_run: bool, exc: Exception) -> None:
+    reason = f"Unhandled exception: {type(exc).__name__}: {exc}"
+    try:
+        if not dry_run:
+            save(today_str, {"correlation_id": CORRELATION_ID, "code": 1, "status": "failed", "failure_reason": reason})
+        dispatch_report(chat_id, f"⏰ [FARM REPORT][TOÀN FARM] BÁO CÁO {title} BAN ĐÊM:\n• Lỗi runner: {reason}", dry_run)
+    except Exception as inner:
+        logger.error("Không xử lý được lỗi phase %s: %s", title, inner)
+
+
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Night TikTok 2FA Watchdog")
+    parser = argparse.ArgumentParser(description="Night Chain Watchdog (Reg Gmail -> Add 2FA TikTok)")
     parser.add_argument("--dry-run", action="store_true", help="Run in dry-run mode")
-    parser.add_argument("--force", action="store_true", help="Bypass time window and session checks")
+    parser.add_argument("--force", action="store_true", help="Bypass time window, idempotency and session checks")
+    parser.add_argument("--lane", choices=("gmail", "tiktok", "all"), default="all", help="Run only the selected phase (default: all)")
     args = parser.parse_args()
 
     global CORRELATION_ID
@@ -309,7 +644,6 @@ def main() -> int:
     now = datetime.now(HCMC)
     today_str = now.strftime("%Y-%m-%d")
 
-    # Khung giờ chạy an toàn
     if not is_safe_rolling_window(now) and not args.force and not args.dry_run:
         logger.info("Ngoài khung giờ an toàn (đang trong ca nuôi hoặc dọn cache): %s", now.strftime("%H:%M"))
         return 0
@@ -321,92 +655,36 @@ def main() -> int:
     if is_clear_cache_active() and not args.dry_run:
         return 0
 
-    start_dt = datetime.now(HCMC)
-    logger.info("=== KÍCH HOẠT 2FA TIKTOK BAN ĐÊM LÚC %s ===", start_dt.strftime("%H:%M:%S %d/%m/%Y"))
+    logger.info("=== KÍCH HOẠT NIGHT CHAIN LÚC %s (lane=%s) ===", now.strftime("%H:%M:%S %d/%m/%Y"), args.lane)
 
-    code, out = run_night_batch(dry_run=args.dry_run)
-
-    end_dt = datetime.now(HCMC)
-    duration_min = max(1, int((end_dt - start_dt).total_seconds() // 60))
-
-    slot_6h = (now.hour // 6) * 6
-    sess_key = f"{today_str}_{slot_6h:02d}"
-    is_6h_window = (now.hour in (0, 6, 12, 18) and now.minute < 30) or args.force or args.dry_run
-
-    state_prev = {}
-    if STATE_FILE.is_file():
+    phases = (
+        ("gmail", run_gmail_phase, save_gmail_state, GMAIL_REPORT_CHAT_ID, "REG GMAIL"),
+        ("tiktok", run_tiktok_phase, save_state, TIKTOK_REPORT_CHAT_ID, "2FA TIKTOK"),
+    )
+    rcs = [0]
+    for lane, run, save, chat_id, title in phases:
+        if args.lane not in (lane, "all"):
+            continue
+        if not args.dry_run:
+            try:
+                claimed = claim_lane(lane, today_str, args.force)
+            except Exception as exc:
+                logger.error("Không claim được phase %s: %s", title, exc)
+                rcs.append(1)
+                continue
+            if not claimed:
+                logger.info("Phase %s đã hoàn tất hoặc đang chạy ở tiến trình khác, bỏ qua", title)
+                continue
         try:
-            state_prev = json.loads(STATE_FILE.read_text(encoding="utf-8"))
-        except Exception:
-            pass
-    already_reported_6h = (state_prev.get("last_reported_6h") == sess_key)
-    should_report = (is_6h_window and not already_reported_6h) or args.force or args.dry_run
-    header = f"⏰ [FARM REPORT][TOÀN FARM] BÁO CÁO 2FA TIKTOK ĐỊNH KỲ (6H):" if code in ACCEPTABLE_RETURN_CODES else f"⚠️ [FARM REPORT][TOÀN FARM] BÁO CÁO 2FA TIKTOK - LỖI RUNNER (Code {code}):"
-    report_lines = [
-        header,
-        f"- Correlation ID: {CORRELATION_ID}",
-        f"- Thời gian: {start_dt.strftime('%H:%M')} -> {end_dt.strftime('%H:%M')} ({duration_min} phút)",
-        f"- Trạng thái: Đang chạy cuốn chiếu né giờ nuôi",
-    ]
-
-    cluster_details = {}
-    if "=== CLUSTER ADMIN" in out:
-        parts = out.split("=== CLUSTER ADMIN")
-        kibe_text = parts[0]
-        admin_text = "=== CLUSTER ADMIN" + parts[1]
-        k_res = parse_summary_counts(kibe_text)
-        a_res = parse_summary_counts(admin_text)
-        suc = k_res["success"] + a_res["success"]
-        fail = k_res["failed"] + a_res["failed"]
-        skip = k_res.get("skip_safe", 0) + a_res.get("skip_safe", 0)
-        cluster_details = {
-            "kibe": k_res,
-            "admin": a_res,
-        }
-        report_lines.extend([
-            f"- Farm Kibe (Máy 1-80): Hoàn tất {k_res['success']} máy | Bỏ qua {k_res.get('skip_safe', 0)} | Lỗi {k_res['failed']}",
-            f"- Farm Admin (Máy 201-280): Hoàn tất {a_res['success']} máy | Bỏ qua {a_res.get('skip_safe', 0)} | Lỗi {a_res['failed']}",
-        ])
-    else:
-        res = parse_summary_counts(out)
-        tot, suc, fail = res["total"], res["success"], res["failed"]
-        skip = res.get("skip_safe", 0)
-        cluster_details = {"single": res}
-        report_lines.append(f"- Đã hoàn tất: {suc} máy")
-        if skip > 0:
-            report_lines.append(f"- Bỏ qua an toàn: {skip} máy (đã có 2FA / chờ lượt)")
-        report_lines.append(f"- Lỗi ({fail})" if fail > 0 else "- Lỗi: 0")
-
-    if should_report:
-        print("\n".join(report_lines))
-    else:
-        logger.info("Batch 2FA hoàn tất im lặng ngoài mốc 6H (suc=%d, fail=%d, skip=%d)", suc, fail, skip)
-
-    failure_reason = None
-    if code not in ACCEPTABLE_RETURN_CODES:
-        failure_reason = f"Runner exited with non-acceptable return code {code}"
-    elif fail > 0:
-        failure_reason = f"{fail} target machines failed during 2FA execution"
-
-    if not args.dry_run:
-        save_state(today_str, {
-            "correlation_id": CORRELATION_ID,
-            "code": code,
-            "status": "success" if (code in ACCEPTABLE_RETURN_CODES and fail == 0) else ("partial_failure" if code in ACCEPTABLE_RETURN_CODES else "failed"),
-            "success_count": suc,
-            "failed_count": fail,
-            "skip_count": skip,
-            "last_reported_6h": sess_key if should_report else state_prev.get("last_reported_6h"),
-            "failure_reason": failure_reason,
-            "clusters": cluster_details,
-        })
-
-    if code not in ACCEPTABLE_RETURN_CODES:
-        logger.error("Ca 2FA ban đêm thất bại với code=%s", code)
-        return code if code != 0 else 1
-    if fail > 0:
-        logger.warning("Ca 2FA ban đêm hoàn tất nhưng có %d máy lỗi", fail)
-    return 0
+            rcs.append(run(today_str, dry_run=args.dry_run, force=args.force))
+        except Exception as exc:
+            logger.exception("Phase %s lỗi ngoài dự kiến: %s", title, exc)
+            _handle_phase_crash(save, chat_id, title, today_str, args.dry_run, exc)
+            rcs.append(1)
+        finally:
+            if not args.dry_run:
+                release_lane(lane)
+    return max(rcs)
 
 
 if __name__ == "__main__":

@@ -912,6 +912,29 @@ class TestMediaDeliveryPathValidation:
         out = BasePlatformAdapter.filter_local_delivery_paths([str(fresh)])
         assert out == [str(fresh.resolve())]
 
+    @pytest.mark.skipif(os.name != "nt", reason="drive-less rooted paths are a Windows-only quirk")
+    def test_posix_style_rooted_path_resolves_on_windows(self, tmp_path, monkeypatch):
+        """A MEDIA:/path/x.png tag (no drive letter) must not be rejected on Windows.
+
+        ``PureWindowsPath.is_absolute()`` requires both a drive and a root, so
+        it returns False for a POSIX-style tag like ``/tmp/x.png`` even though
+        Windows itself treats it as rooted on the current drive (``os.path.isabs``
+        agrees, and ``Path.resolve()`` anchors it there). Using ``is_absolute()``
+        as the gate silently dropped delivery of any such tag; ``os.path.isabs()``
+        is the correct check.
+        """
+        root = tmp_path / "media-cache"
+        media_file = root / "photo.png"
+        media_file.parent.mkdir(parents=True)
+        media_file.write_bytes(b"\x89PNG")
+        self._patch_roots(monkeypatch, root)
+
+        # A drive-less path resolves against the *current* drive, so put the
+        # process on the same drive as tmp_path before stripping it.
+        monkeypatch.chdir(root)
+        _drive, tail = os.path.splitdrive(str(media_file.resolve()))
+        assert BasePlatformAdapter.validate_media_delivery_path(tail) == str(media_file.resolve())
+
 
 class TestMediaDeliveryDefaultMode:
     """Default (non-strict) mode — denylist gates delivery, nothing else.

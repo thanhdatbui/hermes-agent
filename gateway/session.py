@@ -2197,7 +2197,59 @@ class SessionStore:
             )
         return len(removed_keys)
 
-    def suspend_recently_active(self, max_age_seconds: int = 120) -> int:
+    def _last_turn_was_interrupted(self, session_id: str) -> bool:
+        """True only if the session's last active message shows a turn cut mid-run."""
+        db = getattr(self, "_db", None)
+        conn = getattr(db, "_conn", None)
+        if conn is None or not session_id:
+            return False
+        try:
+            with db._lock:
+                row = conn.execute(
+                    "SELECT role, tool_calls FROM messages "
+                    "WHERE session_id = ? AND active = 1 ORDER BY id DESC LIMIT 1",
+                    (session_id,),
+                ).fetchone()
+        except Exception as exc:
+            logger.warning("last-message lookup failed for %s: %s", session_id, exc)
+            return False
+        if row is None:
+            return False
+        role, tool_calls = row[0], row[1]
+        if role in ("user", "tool"):
+            return True
+        if role != "assistant" or not tool_calls:
+            return False
+        if isinstance(tool_calls, str):
+            try:
+                tool_calls = json.loads(tool_calls)
+            except (ValueError, TypeError):
+                return False
+        return isinstance(tool_calls, list) and len(tool_calls) > 0
+
+    def _last_message_at(self, session_id: str) -> Optional[datetime]:
+        """Local-time timestamp of the session's newest active message, if readable.
+
+        ``entry.updated_at`` only moves on inbound user messages, so a long
+        tool/subagent chain leaves it stale; messages.timestamp tracks real activity.
+        """
+        db = getattr(self, "_db", None)
+        conn = getattr(db, "_conn", None)
+        if conn is None or not session_id:
+            return None
+        try:
+            with db._lock:
+                row = conn.execute(
+                    "SELECT MAX(timestamp) FROM messages WHERE session_id = ? AND active = 1",
+                    (session_id,),
+                ).fetchone()
+            if row and row[0]:
+                return datetime.fromtimestamp(float(row[0]))
+        except Exception as exc:
+            logger.warning("last-activity lookup failed for %s: %s", session_id, exc)
+        return None
+
+    def suspend_recently_active(self, max_age_seconds: int = 3600) -> int:
         """Mark recently-active sessions as resumable after an unexpected exit.
 
         Called on gateway startup after a crash or fast restart to preserve
@@ -2213,6 +2265,12 @@ class SessionStore:
         is still handled by the existing ``.restart_failure_counts`` counter
         (threshold 3), which runs after this method and sets ``suspended=True``.
 
+        Only sessions whose last persisted message is still mid-turn are
+        marked: role ``user``/``tool``, or an ``assistant`` message that
+        issued ``tool_calls`` without a following result.  A session whose
+        last message is a finished ``assistant`` reply is waiting on the user
+        and is skipped; so is a session whose last message cannot be read.
+
         Returns the number of sessions marked resumable.
         """
         from datetime import timedelta
@@ -2224,12 +2282,22 @@ class SessionStore:
             for entry in self._entries.values():
                 if entry.resume_pending:
                     continue
-                if not entry.suspended and entry.updated_at >= cutoff:
+                if entry.suspended:
+                    continue
+                last_msg_at = self._last_message_at(entry.session_id)
+                if entry.updated_at >= cutoff or (last_msg_at is not None and last_msg_at >= cutoff):
+                    if not self._last_turn_was_interrupted(entry.session_id):
+                        continue
                     entry.resume_pending = True
                     entry.resume_reason = "restart_interrupted"
                     entry.last_resume_marked_at = _now()
                     count += 1
             if count:
+                logger.info(
+                    "[TELEMETRY] auto_resume_marked count=%d sessions=%s",
+                    count,
+                    [e.session_id for e in self._entries.values() if e.resume_pending],
+                )
                 self._save()
         return count
 

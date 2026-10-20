@@ -96,7 +96,7 @@ def test_hole_d_create_new_file_with_valid_parent():
     res = _on_pre_tool_call(
         tool_name="delegate_task",
         args={
-            "goal": "tạo module mới",
+            "goal": "tạo module mới ALLOW_SUBAGENT_CODE_EDIT",
             "target_files": [new_file],
         },
         session_id=sess_id,

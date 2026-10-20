@@ -6,6 +6,14 @@ traceback is surfaced by the cron runner; empty stdout stays silent.
 import subprocess
 import sys
 
+if sys.platform == "win32":
+    _orig_subp_run = subprocess.run
+    def _silent_subp_run(*args, **kwargs):
+        if "creationflags" not in kwargs:
+            kwargs["creationflags"] = 0x08000000
+        return _orig_subp_run(*args, **kwargs)
+    subprocess.run = _silent_subp_run
+
 PY = r"D:\Taadaa\python-envs\automation\Scripts\python.exe"
 SCRIPT = r"D:\Taadaa\tiktok-luot nuoi acc\scripts\reap-dead-owner-locks.py"
 

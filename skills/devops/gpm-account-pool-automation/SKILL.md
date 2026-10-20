@@ -27,6 +27,7 @@ version: 1.3.0
 
 ## 3. Tài Liệu Tham Khảo (References)
 - Chi tiết API và các case watchdog: xem danh mục tài liệu trong thư mục `references/` của skill.
+- Google AI Studio API Key Provisioning and GCP Project Import Runbook: xem [`references/google-ai-studio-api-key-provisioning-and-gcp-project-import.md`](references/google-ai-studio-api-key-provisioning-and-gcp-project-import.md).
 - Google AI Studio API Key Provisioning & Quota Pitfalls on GPM Farm Profiles: xem [`references/google-ai-studio-gpm-key-provisioning-pitfalls.md`](references/google-ai-studio-gpm-key-provisioning-pitfalls.md).
 - Pure Google Sign-in vs OAuth Antigravity Decoupling (2026-10-19): xem [`references/gpm-login-pure-google-signin-and-antigravity-decoupling-20261019.md`](references/gpm-login-pure-google-signin-and-antigravity-decoupling-20261019.md).
 - Google AI Studio API Key Provisioning & GCP Project Creation: xem [`references/google-ai-studio-api-key-provisioning-and-gcp-project-creation.md`](references/google-ai-studio-api-key-provisioning-and-gcp-project-creation.md).
@@ -39,3 +40,5 @@ version: 1.3.0
 - Chống báo cáo ảo văng cookie và bẫy nghẽn nuôi vĩnh viễn (Selection Choke): xem [`references/gpm-gmail-nurture-6h-report-telemetry-and-choke-prevention.md`](references/gpm-gmail-nurture-6h-report-telemetry-and-choke-prevention.md).
 - Khắc phục báo cáo ảo 6H Group 10 và cooldown 24h cho `NEEDS_LOGIN`: xem [`references/gmail-6h-report-group10-filter-and-anti-false-alert.md`](references/gmail-6h-report-group10-filter-and-anti-false-alert.md).
 - Chuẩn hóa thuật ngữ và đo lường fail-closed cho báo cáo 6H: xem [`references/gpm-6h-nurture-report-terminology-and-fail-closed-metrics.md`](references/gpm-6h-nurture-report-terminology-and-fail-closed-metrics.md).
+- Quy trình lấy Google AI Studio API Key trên tài khoản farm/mới (GCP ToS + Import Project): xem [`references/google-ai-studio-api-key-provisioning-flow.md`](references/google-ai-studio-api-key-provisioning-flow.md).
+- Google AI Studio API Key Provisioning via GPM & GCP Project Import (Zero-Human Flow): xem [`references/google-ai-studio-api-key-provisioning-and-gcp-import.md`](references/google-ai-studio-api-key-provisioning-and-gcp-import.md).

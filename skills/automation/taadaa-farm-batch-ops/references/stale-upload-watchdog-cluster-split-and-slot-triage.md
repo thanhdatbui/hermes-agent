@@ -29,6 +29,20 @@ Thực tế kiểm tra hiện trường:
   - Khi kho video Admin chưa render đủ 45 clip (mới đạt ~30% folder, Tik6–8 đạt 0%), các nick Admin bắt buộc phải "ngâm dưỡng" chờ video. Đây là **kế hoạch chủ động**, không phải lỗi.
 - **Kỷ luật điều phối:** Báo cáo watchdog bắt buộc phân tách rành mạch: `Số nick kẹt Kibe` vs `Số nick kẹt Admin (chờ render)`, cấm gộp chung làm biến dạng bức tranh vận hành.
 
+### Tầng 1.5: Phân Loại & Truy Vết Các Acc Lẻ Tẻ (Isolated Stale Accounts Triage)
+Khi bóc tách các nick kẹt còn lại trên cụm Kibe, tuyệt đối không kết luận vội vã là "lỗi hệ thống", mà truy vết 3 nhóm nguyên nhân kỹ thuật:
+1. **Nhóm Slot 7 & Slot 8 (Chiếm đa số, ~60% acc lẻ):**
+   - Phân bổ theo chu kỳ 4 ngày (96h): Day 0 (Row 1,3,5), Day 1 (Row 2,4,6), Day 2 (Row 7,8), Day 3 (Dưỡng sinh xả tải).
+   - Nếu ngày hiện tại là Day 0 hoặc Day 1, các nick Slot 7 & 8 hiển nhiên chưa đến lượt chạy. Kiểm tra kho media `D:\TIKTOK-videonuoinick\<folder>` thấy đủ 45-65 clip `.mp4` thì khẳng định đây là tiến độ bình thường theo nhịp chu kỳ.
+2. **Nhóm trượt nhịp tại các Chốt An Toàn (Fail-Closed Safety Gates):**
+   - `[POST_SUBMISSION_UNKNOWN]`: TikTok không trả về popup xác nhận bài đăng thành công kịp trong deadline $\rightarrow$ runner fail-closed, không tự ý ghi tăng video vào workbook/tracker.
+   - `Editor Next tapped but caption composer did not open`: TikTok bị lag ở editor khi bấm "Tiếp", không mở được màn hình viết caption $\rightarrow$ thử 3 lần rồi dừng ở `MANUAL_REVIEW`.
+   - `prepare-tiktok failed to focus TikTok`: App TikTok bị crash/rớt focus về Launcher (`com.sec.android.app.launcher`) lúc khởi động $\rightarrow$ dừng phiên an toàn trước hook upload.
+3. **Quy trình truy vết O(1) nguyên nhân trượt ca:**
+   - Tra cứu `C:\ProgramData\Taadaa\tiktok-upload-concurrency-v1\shift_upload_history.json`: xem `status` ca gần nhất (`success` vs `launched` vs `failed`).
+   - Đọc trực tiếp `upload_result.json` và `report.json` tại `D:\Taadaa\runtime\kibe\live\<date>\<session>\machine_<N>\<run_id>\`: lấy chuỗi `reason` và `stdout_tail` cụ thể.
+   - Với máy bị treo lệnh `inspect_machine.py` do socket transport hang (như case M74): Gửi lệnh `host-serial:<serial>:reconnect` qua socket ADB port 5037 để gỡ kẹt tức thì thay vì phán rút cáp.
+
 ### Tầng 2: Độc Lập Giữa Các Slot (Per-Machine Multi-Slot Independence)
 - Mỗi máy vật lý quản lý **8 slot tài khoản** (Tik 1 đến Tik 8).
 - **Hiện tượng đánh lừa:** Máy 13 vừa đăng thành công Tik 7 (@ngohuong3008) sáng nay lúc 06:11, nhưng Tik 1 (@m.my7409) lại dừng ở 9 clip từ 17/09. Máy 19 vừa đăng Tik 7 (@makkocuo162) lúc 06:23, nhưng Tik 1 (@hoanghan27093) dừng ở 27 clip từ 23/09.

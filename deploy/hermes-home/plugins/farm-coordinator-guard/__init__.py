@@ -767,16 +767,30 @@ def check_worker_tool_gate(tool_name: str, session_id: str, args: Any = None) ->
             "reason": f"⛔ [WORKER GATE - TOOL DEFAULT-DENY / ACTION LOCK / EXECUTE CODE FILE WRITE BLOCKED]: Worker chỉ được dùng {WORKER_ALLOWED_TOOLS}. Tool '{tool_name}' bị cấm!",
         }
 
-    # 2. WORKER HARD BUDGET ENFORCEMENT (GATE 4 HARD CEILING: <= 15 CALLS)
+    # 2. WORKER HARD BUDGET ENFORCEMENT (SPLIT CEILING: <= 12 WRITE, <= 8 READ)
     is_pytest = "PYTEST_CURRENT_TEST" in os.environ
     if not is_pytest:
-        w_calls = _get_session_state(session_id).get("worker_call_count", 0) + 1
-        _update_session_state(session_id, {"worker_call_count": w_calls})
-        if w_calls > 15:
+        w_state = _get_session_state(session_id)
+        is_write_call = tool_name in ("write_file", "patch")
+        w_updates = {"worker_call_count": w_state.get("worker_call_count", 0) + 1}
+        if is_write_call:
+            w_updates["worker_write_calls"] = w_state.get("worker_write_calls", 0) + 1
+        else:
+            w_updates["worker_read_calls"] = w_state.get("worker_read_calls", 0) + 1
+        _update_session_state(session_id, w_updates)
+        if is_write_call and w_updates["worker_write_calls"] > 12:
             return {
                 "action": "block",
                 "reason": (
-                    f"⛔ [WORKER GATE - BUDGET EXHAUSTED]: Đã chạm trần 15 tool calls (call #{w_calls})! "
+                    f"⛔ [WORKER GATE - WRITE BUDGET EXHAUSTED]: Đã chạm trần 12 write calls (call #{w_updates['worker_write_calls']})! "
+                    f"Bắt buộc dừng ngay và trả STATUS: ABORT_SCOPE kèm báo cáo hiện trạng."
+                ),
+            }
+        if not is_write_call and w_updates["worker_read_calls"] > 8:
+            return {
+                "action": "block",
+                "reason": (
+                    f"⛔ [WORKER GATE - READ BUDGET EXHAUSTED]: Đã chạm trần 8 read calls (call #{w_updates['worker_read_calls']})! "
                     f"Bắt buộc dừng ngay và trả STATUS: ABORT_SCOPE kèm báo cáo hiện trạng."
                 ),
             }
@@ -1038,6 +1052,24 @@ def _on_pre_tool_call(
 
         # CIRCUIT BREAKER: >= 3 lần thất bại liên tiếp trên cùng target -> mở L2, chặn dispatch lặp
         if not is_inspect_task:
+            has_override = bool(re.search(
+                r"ALLOW_SUBAGENT_CODE_EDIT|OVERRIDE_SUBAGENT_DISPATCH|WORKER_CLI_EXHAUSTED|HAIKU_AND_AGY_FAILED",
+                goal_text,
+            ))
+            if not has_override:
+                return {
+                    "action": "block",
+                    "error_code": "BLOCKED_BY_DISPATCH_GATE",
+                    "reason": (
+                        "⛔ [DISPATCH GATE - BLOCKED_BY_DISPATCH_GATE]: delegate_task bị cấm cho tác vụ sửa code. "
+                        "Phải dispatch qua worker CLI."
+                    ),
+                    "required_route": "python D:/Taadaa/tools/dispatch_worker.py",
+                    "next_action": (
+                        "Chuyển task sang worker CLI: python D:/Taadaa/tools/dispatch_worker.py. "
+                        "Không gọi delegate_task cho sửa code trừ khi operator cấp token override hợp lệ."
+                    ),
+                }
             consecutive_failures = sess_state.get("consecutive_failures", 0)
             last_failed_target = sess_state.get("last_failed_target")
             cur_target = (normalized_targets or [None])[0]

@@ -28,10 +28,7 @@ import re
 import socket
 import argparse
 import logging
-import threading
 import urllib.parse
-import sqlite3
-from pathlib import Path
 from typing import Optional, Dict, Any, List, Tuple
 from datetime import datetime
 import requests
@@ -48,7 +45,8 @@ LOG_FILE = os.path.join(LOG_DIR, "cron_gpm_gmail_nurture.log")
 GPM_API_BASE = "http://127.0.0.1:19995/api/v3"
 STATE_FILE = r"D:\Taadaa\runtime\kibe\cron-state\gpm_gmail_nurture_state.json"
 SCREENSHOT_DIR = r"D:\Taadaa\GPM auto\debug_screenshots"
-NURTURE_INTERVAL_SECONDS = 5 * 86400  # 5 ngày mới lặp lại nuôi profile
+NURTURE_INTERVAL_SECONDS = 2 * 86400  # 2 ngày (48 giờ) - giữ warm session chống văng cookie
+MAX_DAILY_NURTURE = 30  # Trần an toàn 30 profile / ngày bảo vệ data 4G & RAM
 
 # Nhóm GPM Profile đã đăng nhập Google sống thành công (Google_Live_Ready)
 DEFAULT_NURTURE_GROUP_ID = 10
@@ -70,59 +68,21 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[
-        RotatingFileHandler(LOG_FILE, maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8"),
-        logging.StreamHandler(sys.stderr)
+        RotatingFileHandler(LOG_FILE, maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8")
     ]
 )
 logger = logging.getLogger("gpm_gmail_nurture")
 
-TELEMETRY_LOG = Path(r"D:\Taadaa\GPM auto\logs\batch_gpm_supervisor_telemetry.jsonl")
-_telemetry_lock = threading.Lock()
-
 def log_telemetry_metric(event_type: str, data: dict):
-    """Ghi nhận telemetry metric có cấu trúc JSON và lưu logfile phục vụ giám sát hệ thống."""
+    """Ghi nhận telemetry metric có cấu trúc JSON để phục vụ quan sát hệ thống & watchdog."""
     metric = {
         "timestamp": datetime.now().isoformat(),
         "event": event_type,
         "pid": os.getpid(),
-        "correlation_id": data.get("correlation_id", f"gpm_{os.getpid()}"),
         "data": data
     }
     logger.info(f"[TELEMETRY_METRIC] {json.dumps(metric, ensure_ascii=False)}")
-    try:
-        TELEMETRY_LOG.parent.mkdir(parents=True, exist_ok=True)
-        with _telemetry_lock:
-            if TELEMETRY_LOG.exists() and TELEMETRY_LOG.stat().st_size > 10 * 1024 * 1024:
-                try:
-                    rotated = TELEMETRY_LOG.with_name(f"{TELEMETRY_LOG.name}.1")
-                    TELEMETRY_LOG.replace(rotated)
-                except Exception:
-                    pass
-            with open(TELEMETRY_LOG, "a", encoding="utf-8") as f:
-                f.write(json.dumps(metric, ensure_ascii=False) + "\n")
-    except Exception:
-        pass
     return metric
-
-GPM_PROFILE_BASE = Path(r"C:\Users\Kibe\AppData\Local\Programs\GPMLogin\profile")
-
-def has_google_session(profile_path: Optional[str]) -> bool:
-    """Preflight check O(1) kiểm tra file SQLite cookies của profile trên đĩa."""
-    if not profile_path:
-        return False
-    base = GPM_PROFILE_BASE / profile_path
-    for cp in (base / "Default" / "Network" / "Cookies", base / "Default" / "Cookies"):
-        if cp.exists():
-            try:
-                conn = sqlite3.connect(f"file:{cp}?mode=ro", uri=True)
-                cur = conn.cursor()
-                cur.execute("SELECT count(*) FROM cookies WHERE host_key LIKE '%google.com' AND name IN ('SID', 'SSID', 'HSID', 'SAPISID')")
-                cnt = cur.fetchone()[0]
-                conn.close()
-                return cnt >= 2
-            except Exception:
-                pass
-    return False
 
 def filter_nurture_candidates(
     all_profiles: List[Dict[str, Any]],
@@ -187,6 +147,8 @@ SEARCH_QUERIES = [
     "kinh te viet nam nam nay", "xe dien vinfast moi"
 ]
 
+import threading
+
 _STATE_LOCK = threading.Lock()
 
 def load_state() -> dict:
@@ -209,6 +171,23 @@ def save_state(state: dict):
         except Exception as e:
             logger.error(f"Lỗi lưu state file: {e}")
 
+def count_nurtured_today(state: dict, now_ts: Optional[float] = None) -> int:
+    """Đếm số profile đã nuôi thành công TRONG NGÀY HÔM NAY (dựa vào last_nurtured timestamp)."""
+    if now_ts is None:
+        now_ts = time.time()
+    today = datetime.fromtimestamp(now_ts).date()
+    count = 0
+    for info in state.values():
+        last_nurtured = info.get("last_nurtured")
+        if not last_nurtured:
+            continue
+        try:
+            if datetime.fromtimestamp(last_nurtured).date() == today:
+                count += 1
+        except Exception:
+            continue
+    return count
+
 def update_profile_state(email: str, entry: dict):
     """Atomic update: đọc-sửa-ghi được bảo vệ trọn vẹn trong lock chống race condition."""
     with _STATE_LOCK:
@@ -230,107 +209,62 @@ def update_profile_state(email: str, entry: dict):
         except Exception as e:
             logger.error(f"Lỗi lưu state atomic: {e}")
 
-def is_gpm_api_live() -> bool:
-    try:
-        return requests.get(f"{GPM_API_BASE}/profiles?page=1&per_page=1", timeout=3).status_code == 200
-    except Exception:
-        return False
+GPM_MAX_PROFILE_PAGES = 50
+GPM_PROFILES_PER_PAGE = 300
 
-def is_gpm_process_running() -> bool:
-    """Kiểm tra GPMLogin.exe đã có tiến trình chạy hoặc đang khởi động (chống spawn trùng)."""
-    if psutil is None:
-        return False
-    for p in psutil.process_iter(['name']):
+def get_all_gpm_profiles(return_meta: bool = False):
+    profiles, page, pages_fetched, complete = [], 1, 0, False
+    seen_ids, duplicates_detected = set(), 0
+    while page <= GPM_MAX_PROFILE_PAGES:
         try:
-            if (p.info.get('name') or '').lower() == 'gpmlogin.exe':
-                return True
-        except (psutil.NoSuchProcess, psutil.AccessDenied):
-            continue
-    return False
-
-def auto_heal_gpm_if_offline() -> bool:
-    if is_gpm_api_live():
-        return True
-    heal_start = time.time()
-    if is_gpm_process_running():
-        logger.info("GPMLogin.exe đã có tiến trình chạy/đang khởi động, bỏ qua spawn trùng, chỉ chờ API sẵn sàng...")
-        for attempt in range(1, 6):
-            time.sleep(2)
-            if is_gpm_api_live():
-                log_telemetry_metric("gpm_auto_heal_success", {
-                    "mode": "wait_existing_process",
-                    "retry_attempts": attempt,
-                    "recovery_duration_s": round(time.time() - heal_start, 2),
-                })
-                return True
-        log_telemetry_metric("gpm_auto_heal_failure", {
-            "mode": "wait_existing_process",
-            "retry_attempts": 5,
-            "recovery_duration_s": round(time.time() - heal_start, 2),
-            "error": "GPM_API_NOT_READY_AFTER_WAIT",
-        })
-        return is_gpm_api_live()
-
-    exe = Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "GPMLogin" / "GPMLogin.exe"
-    if exe.exists():
-        logger.info(f"Đang kích hoạt auto-heal GPM: {exe}")
-        try:
-            import subprocess
-            subprocess.Popen([str(exe)])
-            for attempt in range(1, 6):
-                time.sleep(2)
-                if is_gpm_api_live():
-                    log_telemetry_metric("gpm_auto_heal_success", {
-                        "mode": "spawn_process",
-                        "exe": str(exe),
-                        "retry_attempts": attempt,
-                        "recovery_duration_s": round(time.time() - heal_start, 2),
-                    })
-                    return True
-            log_telemetry_metric("gpm_auto_heal_failure", {
-                "mode": "spawn_process",
-                "exe": str(exe),
-                "retry_attempts": 5,
-                "recovery_duration_s": round(time.time() - heal_start, 2),
-                "error": "GPM_API_NOT_READY_AFTER_SPAWN",
-            })
-        except Exception as e:
-            logger.warning(f"Lỗi auto-heal GPM: {e}")
-            log_telemetry_metric("gpm_auto_heal_failure", {
-                "mode": "spawn_process",
-                "exe": str(exe),
-                "retry_attempts": 0,
-                "recovery_duration_s": round(time.time() - heal_start, 2),
-                "error": str(e),
-            })
-    else:
-        log_telemetry_metric("gpm_auto_heal_failure", {
-            "mode": "no_executable",
-            "exe": str(exe),
-            "retry_attempts": 0,
-            "recovery_duration_s": round(time.time() - heal_start, 2),
-            "error": "GPM_EXE_NOT_FOUND",
-        })
-    return is_gpm_api_live()
-
-def get_all_gpm_profiles() -> list:
-    all_profiles = []
-    page = 1
-    while True:
-        try:
-            res = requests.get(f"{GPM_API_BASE}/profiles?page={page}&per_page=300", timeout=15).json()
+            resp = requests.get(f"{GPM_API_BASE}/profiles?page={page}&per_page={GPM_PROFILES_PER_PAGE}", timeout=15)
+            if resp.status_code != 200:
+                raise RuntimeError(f"HTTP {resp.status_code}")
+            res = resp.json()
             data = res.get("data")
-            items = data if isinstance(data, list) else (data or {}).get("list", [])
+            if isinstance(data, list):
+                items = data
+            elif isinstance(data, dict) and isinstance(data.get("list") or [], list):
+                items = data.get("list") or []
+            else:
+                raise ValueError(f"Unexpected GPM profiles schema: data={type(data).__name__}")
+            try:
+                total_page = int((res.get("pagination") or {})["total_page"])
+            except (KeyError, TypeError, ValueError):
+                total_page = None
             if not items:
+                # Empty page before declared total_page => API truncated; total_page==0 on page 1 => valid empty DB
+                complete = not (total_page is not None and page <= total_page)
                 break
-            all_profiles.extend(items)
-            if page >= (res.get("pagination") or {}).get("total_page", 1):
+            for item in items:
+                pid = item.get("id") if isinstance(item, dict) else None
+                if pid is not None:
+                    if pid in seen_ids:
+                        duplicates_detected += 1
+                        continue
+                    seen_ids.add(pid)
+                profiles.append(item)
+            pages_fetched += 1
+            if total_page is not None and total_page <= 0:
+                total_page = None
+            if total_page is not None:
+                if page >= total_page:
+                    complete = True
+                    break
+            elif len(items) < GPM_PROFILES_PER_PAGE:
+                complete = True
                 break
             page += 1
         except Exception as e:
-            logger.error(f"Lỗi kết nối GPM API: {e}")
+            logger.error(f"Lỗi lấy GPM profiles trang {page}: {e} — danh sách THIẾU ({len(profiles)} profile đã lấy)")
             break
-    return all_profiles
+    else:
+        logger.error(f"Đạt giới hạn {GPM_MAX_PROFILE_PAGES} trang GPM profiles — danh sách THIẾU")
+    logger.info(f"GPM profiles: pages_fetched={pages_fetched}, total={len(profiles)}, complete={complete}")
+    if duplicates_detected:
+        logger.info(f"Đã loại {duplicates_detected} profile trùng ID giữa các trang GPM")
+    log_telemetry_metric("gpm_profiles_fetch", {"pages_fetched": pages_fetched, "total": len(profiles), "complete": complete, "duplicates_detected": duplicates_detected})
+    return (profiles, complete) if return_meta else profiles
 
 def start_gpm_profile(profile_id: str) -> Optional[str]:
     # Vendor contract: GPMLogin Local REST API v3 C# backend requires `addination_args`.
@@ -598,43 +532,39 @@ def task_youtube(context, page, email: str, ss_path: str):
 
         time.sleep(4)
         try:
-            page.evaluate("() => { const v = document.querySelector('video'); if (v && v.paused) { v.play(); } }")
+            page.keyboard.press("k")
         except Exception:
             pass
 
         # Chụp screenshot nghiệm thu lúc đang phát video
         take_proof_screenshot(context, page, ss_path, email)
 
-        watch_duration = random.randint(300, 360)
+        watch_duration = random.randint(90, 120)
         logger.info(f"[{email}] Đang xem YouTube video trong {watch_duration}s (Smart Ad Skip & Like/Scroll Simulation)...")
-        ad_selector = (
-            "button.ytp-skip-ad-button, .ytp-ad-skip-button, button.ytp-ad-skip-button-modern, "
-            "[class*='ytp-ad-skip-button'], .ytp-ad-skip-button-slot button, "
-            "button:has-text('Bỏ qua'), button:has-text('Skip')"
-        )
+        ad_selector = "button.ytp-skip-ad-button, .ytp-ad-skip-button, button.ytp-ad-skip-button-modern, [class*='ytp-ad-skip-button']"
         start_watch = time.time()
-        ad_notified = False
+        ad_ignored = False
         liked = False
         while time.time() - start_watch < watch_duration:
             try:
-                # Xử lý quảng cáo: ưu tiên bấm Bỏ qua ngay khi xuất hiện
+                # Xử lý quảng cáo thông minh
                 skip_btn = page.locator(ad_selector).first
                 if skip_btn.is_visible():
-                    time.sleep(round(random.uniform(1.2, 2.5), 2))
-                    try:
-                        skip_btn.hover(timeout=2000)
-                    except Exception:
-                        pass
-                    skip_btn.click(force=True, timeout=2000)
-                    logger.info(f"[{email}] ✓ Đã bấm Bỏ qua quảng cáo YouTube thành công")
-                    time.sleep(2)
-                    take_proof_screenshot(context, page, ss_path, email)
-                elif page.locator(".ad-showing, .ad-interrupting").count() > 0:
-                    if not ad_notified:
-                        logger.info(f"[{email}] Phát hiện quảng cáo đang phát, chờ nút Bỏ qua...")
-                        ad_notified = True
+                    if not ad_ignored:
+                        if random.random() < 0.70:
+                            delay = round(random.uniform(2.0, 4.5), 2)
+                            time.sleep(delay)
+                            try:
+                                skip_btn.hover(timeout=2000)
+                            except Exception:
+                                pass
+                            skip_btn.click(force=True, timeout=2000)
+                            logger.info(f"[{email}] Đã bấm Bỏ qua quảng cáo YouTube")
+                        else:
+                            logger.info(f"[{email}] Giữ nguyên cho quảng cáo chạy tự nhiên")
+                            ad_ignored = True
                 else:
-                    ad_notified = False
+                    ad_ignored = False
 
                 # Like và cuộn nhẹ ngẫu nhiên mô phỏng người thật
                 elapsed = time.time() - start_watch
@@ -764,12 +694,8 @@ def task_google_search(context, page, email: str, ss_path: str):
 # HÀM ĐIỀU PHỐI NUÔI 1 PROFILE
 # ==============================================================================
 
-def choose_behavior_tasks(rnd: Optional[float] = None, task_override: str = "") -> Tuple[str, List[str]]:
+def choose_behavior_tasks(rnd: Optional[float] = None) -> Tuple[str, List[str]]:
     """Phân bổ tỷ lệ hành vi: 50% chỉ YouTube, 30% Google News + Search, 20% Hỗn hợp."""
-    if task_override == "youtube":
-        return "100% Chỉ YouTube (Canary Override)", ["youtube"]
-    if task_override == "news":
-        return "100% Đọc tin tức (Canary Override)", ["news", "search"]
     if rnd is None:
         rnd = random.random()
     if rnd < 0.50:
@@ -781,7 +707,7 @@ def choose_behavior_tasks(rnd: Optional[float] = None, task_override: str = "") 
         random.shuffle(mixed_sub)
         return "20% Hỗn hợp (YouTube + News/Search)", mixed_sub
 
-def nurture_profile(p: dict, task_override: str = "") -> Tuple[bool, str]:
+def nurture_profile(p: dict) -> Tuple[bool, str]:
     p_id = p["id"]
     email = p["email"]
     p_name = p.get("name", "")
@@ -791,7 +717,6 @@ def nurture_profile(p: dict, task_override: str = "") -> Tuple[bool, str]:
     addr = start_gpm_profile(p_id)
     if not addr:
         logger.error(f"[{email}] Không thể khởi động profile GPM!")
-        log_telemetry_metric("profile_start_failed", {"email": email, "profile_id": p_id})
         return False, "START_FAILED"
 
     remote_port = None
@@ -838,7 +763,6 @@ def nurture_profile(p: dict, task_override: str = "") -> Tuple[bool, str]:
                 found_session = {c.get("name") for c in live_cookies if c.get("name") in ("SID", "SSID", "HSID", "SAPISID")}
                 if len(found_session) < 2:
                     logger.warning(f"[{email}] CẢNH BÁO: Profile chưa có acc Google hoặc mất session (chỉ thấy {len(found_session)} token). Dừng nuôi để tránh lãng phí!")
-                    log_telemetry_metric("profile_session_lost", {"email": email, "status": "NEEDS_LOGIN", "tokens_found": len(found_session)})
                     update_profile_state(email, {
                         "last_checked": time.time(),
                         "last_checked_iso": datetime.now().isoformat(),
@@ -850,7 +774,7 @@ def nurture_profile(p: dict, task_override: str = "") -> Tuple[bool, str]:
                 logger.warning(f"[{email}] Lỗi kiểm tra cookie (bỏ qua guard): {e_ck}")
 
             # 1. PHÂN BỔ TỶ LỆ HÀNH VI (Task Distribution):
-            behavior_type, tasks = choose_behavior_tasks(task_override=task_override)
+            behavior_type, tasks = choose_behavior_tasks()
             logger.info(f"[{email}] Phân bổ hành vi: [{behavior_type}] -> Tác vụ: {' -> '.join(t.upper() for t in tasks)}")
 
             for idx, task_name in enumerate(tasks, 1):
@@ -908,17 +832,23 @@ def nurture_profile(p: dict, task_override: str = "") -> Tuple[bool, str]:
         else:
             logger.info(f"[{email}] ✓ Profile {p_id} đã đóng sạch sẽ khỏi hệ thống.")
 
-def main():
+def build_cli_parser() -> argparse.ArgumentParser:
+    """Khởi tạo CLI parser độc lập, tái dùng được trực tiếp trong test lẫn main()."""
     parser = argparse.ArgumentParser(description="Chương trình nuôi định kỳ Gmail trên GPMLogin")
     parser.add_argument("--email", type=str, default="", help="Chỉ định email cần nuôi (chạy canary đơn lẻ)")
     parser.add_argument("--limit", type=int, default=5, help="Số lượng profile nuôi trong mỗi tick (mặc định 5)")
     parser.add_argument("--concurrency", type=int, default=5, help="Số worker chạy song song so le (mặc định 5)")
-    parser.add_argument("--stagger", type=int, default=45, help="Độ trễ giãn cách khởi động so le giữa các profile (giây)")
+    parser.add_argument("--stagger", type=int, default=30, help="Độ trễ giãn cách khởi động so le giữa các profile (giây)")
+    parser.add_argument("--silent", dest="silent", action="store_true", default=True, help="Chế độ Silent Watchdog (chỉ alert khi lỗi/văng login)")
+    parser.add_argument("--no-silent", dest="silent", action="store_false", help="In đầy đủ log/báo cáo ra stdout")
     parser.add_argument("--group-id", type=int, default=DEFAULT_NURTURE_GROUP_ID, help="GroupId GPM cần nuôi (mặc định 10: Google_Live_Ready)")
     parser.add_argument("--all-groups", action="store_true", help="Bỏ qua lọc GroupId, quét tất cả profile")
     parser.add_argument("--confirm-all-groups", action="store_true", help="Xác nhận chạy trên tất cả groups (bắt buộc khi dùng --all-groups để tránh cấu hình nhầm)")
     parser.add_argument("--exclude-keywords", nargs="*", default=list(EXCLUDED_EMAIL_KEYWORDS), help="Danh sách từ khóa email loại trừ")
-    parser.add_argument("--task", type=str, default="", help="Chỉ định tác vụ cụ thể (vd: youtube, news, search)")
+    return parser
+
+def main():
+    parser = build_cli_parser()
     args = parser.parse_args()
 
     if args.all_groups and not args.confirm_all_groups:
@@ -928,13 +858,15 @@ def main():
     state = load_state()
     now_ts = time.time()
 
-    # Thử auto-heal nếu GPM offline; nếu vẫn thất bại thì báo lỗi để kích hoạt alert
-    all_profiles = get_all_gpm_profiles()
-    if not all_profiles and not is_gpm_api_live() and auto_heal_gpm_if_offline():
-        all_profiles = get_all_gpm_profiles()
+    all_profiles, is_complete = get_all_gpm_profiles(return_meta=True)
     if not all_profiles:
+        if is_complete:
+            logger.info("GPMLogin không có profile nào (cơ sở dữ liệu rỗng). Hoàn thành.")
+            return
         logger.error("Không lấy được danh sách profile từ GPM API! Hãy kiểm tra GPMLogin đang chạy.")
         sys.exit(1)
+    if not is_complete:
+        logger.warning(f"Danh sách profile GPM chỉ là một phần ({len(all_profiles)} profile) — có thể thiếu profile.")
 
     # Lọc danh sách profile hợp lệ theo chính sách GroupId và Exclusion Keywords
     target_group_id = args.group_id
@@ -972,10 +904,6 @@ def main():
         if not matched:
             logger.error(f"Không tìm thấy profile có email '{target_email}' trong GPM!")
             sys.exit(1)
-        if not has_google_session(matched[0].get("profile_path")):
-            logger.error(f"[{target_email}] Preflight Cookie: Profile không có session Google trên đĩa! Dừng nuôi.")
-            update_profile_state(target_email, {"status": "NEEDS_LOGIN", "profile_id": matched[0].get("id"), "last_checked": now_ts})
-            sys.exit(1)
         target_profiles = matched[:1]
     else:
         # Lọc profile chưa nuôi hoặc đã nuôi > 5 ngày
@@ -985,18 +913,28 @@ def main():
             info = state.get(em, {})
             if info.get("status") == "NEEDS_LOGIN":
                 continue
-            if not has_google_session(p.get("profile_path")):
-                logger.warning(f"[{em}] Preflight Cookie: Profile thiếu cookie Google session trên đĩa -> set NEEDS_LOGIN")
-                log_telemetry_metric("preflight_cookie_rejected", {"email": em, "profile_id": p.get("id"), "status": "NEEDS_LOGIN"})
-                update_profile_state(em, {"status": "NEEDS_LOGIN", "profile_id": p.get("id"), "last_checked": now_ts})
-                continue
             last_nurtured = info.get("last_nurtured", 0)
             if (now_ts - last_nurtured) >= NURTURE_INTERVAL_SECONDS:
                 due_profiles.append((last_nurtured, p))
 
         # Ưu tiên nuôi những profile lâu chưa nuôi nhất
         due_profiles.sort(key=lambda x: x[0])
-        target_profiles = [p for _, p in due_profiles[:args.limit]]
+
+        # Trần an toàn MAX_DAILY_NURTURE: bảo vệ data 4G & RAM, không chọn thêm profile
+        # nếu đã đạt/vượt giới hạn nuôi trong ngày hôm nay.
+        nurtured_today = count_nurtured_today(state, now_ts)
+        remaining_quota = max(0, MAX_DAILY_NURTURE - nurtured_today)
+        if remaining_quota <= 0:
+            logger.info(
+                f"[MAX_DAILY_NURTURE] Đã đạt giới hạn {MAX_DAILY_NURTURE} profile/ngày "
+                f"(đã nuôi hôm nay: {nurtured_today}). Dừng phiên nuôi để bảo vệ data 4G & RAM."
+            )
+            log_telemetry_metric("daily_nurture_limit_reached", {
+                "today_count": nurtured_today,
+                "max_limit": MAX_DAILY_NURTURE
+            })
+            return
+        target_profiles = [p for _, p in due_profiles[:min(args.limit, remaining_quota)]]
 
     if not target_profiles:
         logger.info("Không có profile nào cần nuôi trong tick này (tất cả đều nuôi < 5 ngày trước). Hoàn thành.")
@@ -1023,7 +961,7 @@ def main():
             
         logger.info(f"\n--- Tiến hành nuôi [{idx}/{len(target_profiles)}]: {em} ---")
         t_start = time.time()
-        ok, reason = nurture_profile(p, task_override=args.task)
+        ok, reason = nurture_profile(p)
         dur = round(time.time() - t_start, 1)
         if ok:
             update_profile_state(em, {
@@ -1069,18 +1007,36 @@ def main():
     success_count = sum(1 for r in results if r["ok"])
     total_count = len(results)
 
+    final_nurtured_today = count_nurtured_today(load_state(), time.time())
+
     log_telemetry_metric("batch_nurture_summary", {
         "success_count": success_count,
         "total_count": total_count,
-        "success_rate": round(success_count / total_count, 2) if total_count > 0 else 0
+        "success_rate": round(success_count / total_count, 2) if total_count > 0 else 0,
+        "today_nurtured": final_nurtured_today,
+        "daily_limit": MAX_DAILY_NURTURE,
+        "silent_mode": bool(args.silent)
     })
 
-    if success_count < total_count:
-        failed_items = [f"{r['email']}: {r['status']}" for r in results if not r.get("ok")]
-        err_detail = "; ".join(failed_items)[:100]
-        print(f"❌ [GPM Nurture Alert] Lỗi {total_count - success_count}/{total_count} profile: {err_detail}", flush=True)
+    report_lines = [
+        f"✓ [GPM Nurture] Hoàn tất nuôi {success_count}/{total_count} profile Gmail:"
+    ]
+    for r in results:
+        report_lines.append(f"- {r['email']}: {r['status']}")
+
+    if args.silent:
+        alerts = []
+        for r in results:
+            if not r["ok"] or "NEEDS_LOGIN" in r.get("status", ""):
+                alerts.append(f"- {r['email']}: {r['status']}")
+        if alerts:
+            alert_msg = f"[GPM NURTURE ALERT] Phát hiện {len(alerts)}/{total_count} profile lỗi hoặc văng login:\n" + "\n".join(alerts)
+            print(alert_msg, flush=True)
+            logger.warning(alert_msg)
+        else:
+            logger.info("Silent Watchdog: 100% profile nuôi thành công, không xuất alert ra stdout.")
     else:
-        logger.info(f"✓ Hoàn tất nuôi toàn bộ {success_count}/{total_count} profile thành công (Silent Watchdog).")
+        print("\n".join(report_lines), flush=True)
 
 if __name__ == "__main__":
     main()

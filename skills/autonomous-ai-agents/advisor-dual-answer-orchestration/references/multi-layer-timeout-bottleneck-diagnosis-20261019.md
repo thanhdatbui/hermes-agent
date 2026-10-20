@@ -59,8 +59,12 @@ Nếu gọi script Sol qua terminal foreground, Windows Host Guard cưỡng ch�
    - `idle_token_timeout = 20.0s`
    - `max_total_timeout = 140.0s`
    - `timeout_sec = 150.0s`
-2. **Nâng cấu hình OmniRoute (`C:/Users/Kibe/OmniRoute/.env`):**
+2. **Nâng cấu hình OmniRoute (`C:/Users/Kibe/OmniRoute/.env`) & BẮT BUỘC RESTART SERVICE:**
    - Đặt `ACCOUNT_SEMAPHORE_TIMEOUT_MS=90000` (90s).
    - Đặt `STREAM_READINESS_TIMEOUT_MS=80000` (80s).
+   - **LƯU Ý BẮT BUỘC:** Node.js / Next.js chỉ nạp `.env` một lần khi khởi động. Sửa file `.env` mà KHÔNG restart tiến trình OmniRoute (`scripts/dev/run-next.mjs`) thì bộ nhớ RAM vẫn lưu số cũ 45s. Đồng thời mã nguồn `open-sse/services/accountSemaphore.ts` có hardcode fallback `|| 45_000`.
 3. **Kỷ luật gọi qua Terminal CLI:**
    - Khi gọi qua terminal foreground, luôn kèm yêu cầu prompt cô đọng (<150 từ, yêu cầu trả lời thẳng 3 gạch đầu dòng không dẫn nhập) để Sol hoàn thành suy luận trong 15s–30s, không đụng trần 60s của Host Guard.
+4. **Phản hồi khi Operator chất vấn ("Đã tăng timeout ở session khác rồi mà"):**
+   - Không lặp lại lý thuyết chung chung ("do chưa tăng timeout").
+   - Kiểm tra ngay: (1) Tiến trình OmniRoute Node.js đã được restart sau khi sửa `.env` chưa? (2) Có đang bị gọi nhầm qua `advisor_tool.py` (stream=False) thay vì `consult_advisor.py`? (3) Web pool có đang bị rate limit dồn dập khiến waterfall timeout không?

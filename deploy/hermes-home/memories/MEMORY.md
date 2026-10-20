@@ -4,7 +4,7 @@ Follow: dò +2 (max 40); lùi 4 sàn 15. Probation: P1 (T1: 3-4, T2: 5-6), P2 kh
 §
 Hotmail: CẤM mail cá nhân; @fviainboxes.com đọc OTP. Excel 3,4,5+G. Pin >=1000 view.
 §
-Preempt lock; ping 0% loss; ARP 110.x. Host Kibe: ADB 5037 & 5038; Terminal: fg max 60s; CLI nặng BẮT BUỘC background=True+notify. Ruijie tắt Wi-Fi. Rename: tap bio (473,703); --clear-bio xóa trắng.
+Preempt lock; ping 0% loss; ARP 110.x. Host Kibe: ADB 5037/5038; Term fg max 60s; CLI nặng background=True+notify. Ruijie tắt Wi-Fi. Rename: tap bio (473,703); --clear-bio; bút chì (x_name+50); văng->login_v1; tên 1 từ bỏ qua.
 §
 Argon=:20135 (token 4s). Claude CLI Planner. Timeout worker farm chuẩn 1200s (dispatch/claude/haiku), sol 300s/turn, agy fix 1500s; cấm đè 180s gây cascade lock 22 agy profile.
 §
@@ -18,7 +18,7 @@ Proxy 110.2:port (Kibe: 20001..80; Admin: 10008..35; toàn bộ máy dùng proxy
 §
 Canary: target-bound; WinRT OCR -> ATX (cấm uiautomator); done_gate verify hash+MEDIA. Claude quota probe >2h.
 §
-Ava: Trích clip gốc representative_frames. Gate 6 fail-closed: cấm trần thuật/giải thích UI thiếu MEDIA:; file vật lý+SHA256 thật; cấm gửi mù. Dọn .thumbnails+Camera; Picker 0,1.
+Ava: Trích clip gốc representative_frames; Vision LLM quét DB lọc ava rác/lệch. Gate 6 fail-closed: cấm trần thuật UI thiếu MEDIA:; SHA256 thật; cấm gửi mù. Dọn .thumbnails+Camera; Picker 0,1. Đối soát 4 chiều F_src!=F_vid khóa kép 2 folder.
 §
 Reboot 3 ca (05:20, 11:20, 17:20), né TFT/War3. Task ngầm VBS/wscript Hidden+CREATE_NO_WINDOW. 'Tắt' khi game = tắt cửa sổ nháy, cấm pause cron.
 §

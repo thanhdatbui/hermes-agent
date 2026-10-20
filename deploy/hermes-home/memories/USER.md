@@ -2,7 +2,7 @@ Bio: CẤM TRÙNG BIO giữa các acc (ưu tiên xóa trắng về +Thêm tiểu
 §
 Dọn đĩa: safe_recycle.py. Reboot né TFT/War3. Box 1 sát AP kibe 1. S7: anten Wi-Fi góc trên TRÁI. Lỗi timeout/PSM BẮT BUỘC sửa script; cấm cron quấy rầy máy nghỉ.
 §
-Nuôi 4d 3 ca (bỏ 0h). Nhả lock per-device. Ava&2FA tới 5h15. Excel 3,4,5+G; Starve 96h; Gmail GPM cấm OAuth AG.
+Nuôi 4d 3 ca (bỏ 0h). Nhả lock per-device. Ava&2FA tới 5h15. Excel 3,4,5+G; Starve 96h. Dùng DB/OpenCV quét ava rác toàn farm, tự bóc clip gốc HD.
 §
 cấm khóc khi chưa hết fallback (Claude->Agy). Repo dirty bắt buộc --files O(1); pre-push 1 commit. Pin TT LIFO.
 §
@@ -14,4 +14,4 @@ Canary: target-bound; WinRT OCR->ATX (cấm uiautomator); Singbox. MỌI rule b�
 §
 Báo cáo Telegram: tóm tắt KPI+exception; Dashboard :1905 full-page.
 §
-User: ưu tiên kiến trúc, Claude plan; cấm phán rút cáp chưa check PnP/ADB 5038; cấm sai bảo user làm thay; trần 40 là airtime (AP 64); ko bịa thiết bị ngoài; mạng Dat do 4 Aruba phát; Ruijie tắt sạch Wi-Fi.
+User: ưu tiên kiến trúc, Claude plan; cấm phán rút cáp chưa check PnP/ADB 5038; cấm sai bảo user; trần 40 airtime (AP 64); mạng Dat 4 Aruba; Ruijie tắt Wi-Fi.

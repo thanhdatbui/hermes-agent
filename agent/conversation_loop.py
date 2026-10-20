@@ -233,21 +233,33 @@ def _compose_advisor_response(primary_answer: str, advisor_result: Any) -> str:
     return primary + "\n\n--- Advisor (Sol / review) ---\n" + rendered
 
 
-def _consult_advisor_once(handler, *, original_user_message: str, primary_answer: str, session_id: Optional[str], turn_id: Optional[str], consulted: bool):
+def _consult_advisor_once(handler, *, original_user_message: str, primary_answer: str, session_id: Optional[str], turn_id: Optional[str], consulted: bool, messages: Optional[List[Dict[str, Any]]] = None):
     if consulted:
-        ADVISOR_METRICS["skipped"] += 1
+        _advisor_metric_inc("skipped")
         logger.info("advisor_telemetry elapsed_ms=0 reason=already_consulted request_id=none")
         return primary_answer, consulted
     if not _is_advice_request(original_user_message):
-        ADVISOR_METRICS["skipped"] += 1
+        _advisor_metric_inc("skipped")
         logger.info("advisor_skipped decision_class=USER_ADVICE_REQUEST reason=not_advice")
         logger.info("advisor_telemetry elapsed_ms=0 reason=not_advice request_id=none")
         return primary_answer, consulted
 
     _ensure_advisor_registered()
-    ADVISOR_METRICS["triggered"] += 1
+    _advisor_metric_inc("triggered")
     rid = f"{session_id or 'session'}:{turn_id or 'turn'}:advisor"
-    f_args = {"decision_class": "USER_ADVICE_REQUEST", "question": original_user_message, "current_state": (primary_answer or "")[:4000], "evidence": (original_user_message or "")[:4000], "candidate_actions": [], "constraints": ["read-only advice", "do not approve or execute actions"], "request_id": rid}
+    briefing = ""
+    f_ctx = {}
+    clean_q = original_user_message
+    clean_state = primary_answer or ""
+    try:
+        from agent.advisor_context import build_session_briefing, redact_secrets
+        clean_q = redact_secrets(original_user_message)
+        clean_state = redact_secrets(primary_answer or "")
+        if messages:
+            f_ctx, briefing = build_session_briefing(messages)
+    except Exception:
+        pass
+    f_args = {"decision_class": "USER_ADVICE_REQUEST", "question": clean_q, "current_state": clean_state[:4000], "evidence": clean_q[:4000], "candidate_actions": [], "constraints": ["read-only advice", "do not approve or execute actions"], "request_id": rid, "session_briefing": briefing, "field_context": f_ctx}
     t0 = time.monotonic()
     try:
         res = handler("advisor_consult", f_args, session_id=session_id, turn_id=turn_id, request_id=rid, user_task=original_user_message)
@@ -255,14 +267,14 @@ def _consult_advisor_once(handler, *, original_user_message: str, primary_answer
         res = {"status": "unavailable"}
     _, rsn = _normalize_advisor_advice(res)
     st = "ok" if rsn == "ok" else "unavailable"
-    ADVISOR_METRICS[st] += 1
+    _advisor_metric_inc(st)
     logger.info("advisor_triggered decision_class=USER_ADVICE_REQUEST status=%s request_id=%s", st, rid)
     logger.info("advisor_telemetry elapsed_ms=%d reason=%s request_id=%s", int((time.monotonic() - t0) * 1000), rsn, rid)
     return _compose_advisor_response(primary_answer, res), True
 
 
-def _maybe_append_advisor_for_final_response(handler, *, original_user_message: str, primary_answer: str, session_id: Optional[str], turn_id: Optional[str], consulted: bool):
-    return _consult_advisor_once(handler, original_user_message=original_user_message, primary_answer=primary_answer, session_id=session_id, turn_id=turn_id, consulted=consulted)
+def _maybe_append_advisor_for_final_response(handler, *, original_user_message: str, primary_answer: str, session_id: Optional[str], turn_id: Optional[str], consulted: bool, messages: Optional[List[Dict[str, Any]]] = None):
+    return _consult_advisor_once(handler, original_user_message=original_user_message, primary_answer=primary_answer, session_id=session_id, turn_id=turn_id, consulted=consulted, messages=messages)
 
 
 def _ra():
@@ -5389,6 +5401,7 @@ def run_conversation(
                     session_id=getattr(agent, "session_id", None),
                     turn_id=effective_task_id or str(api_call_count),
                     consulted=advisor_consulted,
+                    messages=messages,
                 )
                 
                 final_msg = agent._build_assistant_message(assistant_message, finish_reason)
