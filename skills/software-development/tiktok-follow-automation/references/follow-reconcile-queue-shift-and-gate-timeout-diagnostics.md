@@ -148,6 +148,10 @@ Trong các test suite offline (như `test_mode1_search_follow.py`):
          continue
      ```
    - Giúp máy timeout vẫn đi tiếp xuống dưới, cào Web snapshot để phát hiện chênh lệch thật (`script 0 lượt - web N lượt - lệch (+N)`), và ghi nhận telemetry đầy đủ vào DB SQLite `session_account_actions`.
+   - *Chuẩn hóa nhận diện `failed` đa dạng kiểu dữ liệu:* Ngoài `int` dương và `bool True`, runner có thể trả về chuỗi số như `"1"`, `"3"`. Bắt buộc kiểm tra an toàn:
+     ```python
+     has_fail_num = (type(raw_failed) is int and raw_failed > 0) or bool(raw_failed is True) or (isinstance(raw_failed, str) and raw_failed.isdigit() and int(raw_failed) > 0)
+     ```
 3. **Cạm bẫy Spam 0 lượt (Zero-Delta Clean Reconcile Spam Invariant):**
    - *Hiện tượng:* Sau khi mở rộng `all_follows.keys()`, tất cả các máy dính `FOLLOW_FAILED` (như 53 máy bị nhả Anchor dừng phiên an toàn với 0 follow) đều đi vào vòng lặp đối soát. Khi web delta cũng bằng 0, code in ra hàng loạt:
      `- M{m} (@user) : script 0 lượt - web 0 lượt - khớp`
@@ -158,6 +162,9 @@ Trong các test suite offline (như `test_mode1_search_follow.py`):
          details.append(f"    - M{m}{u_str} : script {expected_delta} lượt{sub_info} - web {web_delta} lượt - {match_str}")
      ```
      Tuyệt đối cấm in các máy mà cả `expected_delta == 0` và `web_delta == 0` (không có follow nào phát sinh từ cả 2 phía). Ghi nhận DB telemetry ngầm vẫn thực hiện đầy đủ cho tất cả máy, nhưng danh sách chi tiết báo cáo Telegram phải tuyệt đối sạch rác.
+4. **Cạm bẫy Ghost Diff & Pre-Push Audit Binding khi Closeout Watchdog:**
+   - *Ghost Diff giữa root và mirror:* Trong repo `tiktok-luot nuoi acc`, thư mục `scripts/hermes_cron/` chứa bản mirror của `feed_session_watchdog.py`. Tuyệt đối không sao chép mù quáng cả file nếu mirror đang lệch commit cũ từ các session trước, vì Reviewer AI sẽ thấy diff phình to chứa các thay đổi chính sách chốt phiên (`can_report_session`) và reject phiên ngay lập tức (điểm rớt xuống 76).
+   - *Pre-Push Hook Audit Binding:* Hook `.git/hooks/pre-push` yêu cầu bản ghi trong `gate_audit.jsonl` phải khớp đúng `commit_sha == HEAD` và `scope_hash`. Do đó, sau khi commit bản vá O(1), bắt buộc chạy `closeout_gate.py --repo ... --base HEAD~1` để ghi nhận commit SHA vào audit log trước khi `git push`.
 
 ---
 

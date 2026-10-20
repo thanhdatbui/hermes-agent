@@ -212,6 +212,14 @@ When an operator provides a screenshot of a TikTok profile (e.g. `LilyanLederhos
   * Viết Bio là nghiệp vụ riêng trong quy trình Chuẩn hóa kênh 4 món và **BẮT BUỘC phải viết theo đúng Niche (ngách nội dung video/hashtag từ `Tik<N>.xlsx`) của từng kênh**, TUYỆT ĐỐI CẤM gõ bio chung chung, hardcode một mẫu đại trà hay bốc random lung tung trong task đổi tên.
   * **Chỉ thị dứt khoát của Operator (User Directive 2026-10-19)**: *"Cái 2 của mày acc khác đã xài r. Đm t k biết mày nghĩ gì đồ dùng bio giống acc khác. Còn nếu mày chế ra bio hài hước khác acc khác đc thì t cho phép làm"*.
   * **Quy chuẩn Xóa Trắng Bio Về Rỗng (`--clear-bio`)**: Khi phát hiện acc dính bio rác/trùng lặp, giải pháp ưu tiên số 1 là xóa sạch trắng 100% về trạng thái rỗng ban đầu (`+ Thêm tiểu sử`, Zero-Fingerprint). Runner mở màn Sửa hồ sơ $\rightarrow$ chọn dòng Tiểu sử $\rightarrow$ AdbKeyboard gửi `CLEAR_TEXT` + `MOVE_END` + chuỗi `DEL` xóa sạch chữ $\rightarrow$ bấm Lưu (không gõ thêm chữ nào) $\rightarrow$ xác nhận trên Profile quay về nút `+ Thêm tiểu sử`.
+  * **Quy tắc "Tự chọn bio" (Operator Directive 2026-10-20)**: Khi Operator phản hồi *"Tự chọn bio"*, Coordinator chủ động chọn ngay câu bio dí dỏm nhất bám sát Niche kênh từ catalog (`humorous_niche_bios.json`) và kích hoạt nạp ngay lên máy, không hỏi lại hay bắt User duyệt nhiều lần làm chậm trễ tiến độ.
+  * **Bẫy OCR méo dấu trên chip '+ Thêm tiểu sử' & Cạm bẫy Story Picker (870, 558)**:
+    - Trên tài khoản chưa từng cài Bio (bio rỗng), TikTok ẩn nút "Sửa hồ sơ" và chỉ hiện chip `+ Thêm tiểu sử`.
+    - WinRT OCR trên Samsung S7 thường nhận diện méo dấu thành `+ Thém tidU sd` (`tidu` có chữ `d`, không phải `e`). Regex hẹp `th[eé]m\s*ti[eé]u\s*s|tieu\s*su` sẽ không khớp!
+    - Khi regex không khớp, script nếu fallback tap tọa độ bút chì cũ `(870, 558)` sẽ chạm trúng vùng Avatar / Bong bóng ghi chú, làm bung popup *"Thêm vào Nhật ký"* (`STORY` picker), kẹt vòng lặp Back $\leftrightarrow$ Story 35 bước rồi abort `exit_2`!
+    - **Khắc phục chuẩn hóa**:
+      1. Bắt buộc regex đa biến thể: `r'\+\s*th[eé]m|tid\w{0,2}\s*s|th[eé]m\s*ti|tieu\s*su'`.
+      2. Fallback tap khi không tìm thấy box OCR tuyệt đối CẤM tap `(870, 558)`, mà BẮT BUỘC tap thẳng vào chip `+ Thêm tiểu sử` tại tọa độ tâm **`(220, 686)`**.
   * **Xử lý Acc Văng Khi Đổi Tên (Missing Account Auto-Recovery)**: Khi cuộn Switcher không thấy tài khoản, BẮT BUỘC tự động gọi `tiktok_login_v1.py <STT> --email <TARGET_USER> --ss --allow-parent-lock` để đăng nhập lại thay vì dừng lỗi (`exit_2`).
   * **Độ trễ Switcher (Race Condition)**: Sau khi tap chọn tài khoản trong Switcher, tăng thời gian chờ nạp phiên lên 10s (`tap(xy, 10)`), bảo đảm cache app TikTok trên Android S7 cập nhật 100% dữ liệu Profile của tài khoản mới trước khi mở tab Hồ sơ.
   * **Cây Bút Chì Trên Giao Diện Canh Giữa**: Trên layout canh giữa không có nút text Sửa hồ sơ, BẮT BUỘC định vị box chữ Tên và tap cây bút chì bên phải tên (`name_hit[1][2] + 50`).
