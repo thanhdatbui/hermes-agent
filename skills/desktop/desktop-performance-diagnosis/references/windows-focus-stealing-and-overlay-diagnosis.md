@@ -139,7 +139,16 @@ for pid, name, parent, cmd in active_crons:
   - **DO NOT pause cron jobs** to solve game stutters or focus stealing unless explicitly ordered by user.
   - Fix the root cause of console flashing:
     1. Ensure all background PowerShell launchers specify `-WindowStyle Hidden` (e.g. `powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File ...`).
-    2. In Python scripts spawning CLI tools (`adb.exe`, `ffmpeg.exe`, `omp.cmd`, `cmd.exe`), enforce `creationflags=subprocess.CREATE_NO_WINDOW` (`0x08000000`) on all `subprocess.Popen` / `subprocess.run` calls.
-    3. For running unhidden consoles, hide them dynamically using Win32 `ShowWindow(hwnd, 0 /* SW_HIDE */)`.
-  - For ghost overlays (`cua-driver.exe` with `Cua.AgentCursorOverlay.default` 1920x1080): terminate idle/stale driver instances (`Stop-Process -Name cua-driver -Force`).
+    2. In Python scripts spawning CLI tools (`adb.exe`, `ffmpeg.exe`, `omp.cmd`, `cmd.exe`, or `powershell.exe`), enforce `creationflags=subprocess.CREATE_NO_WINDOW` (`0x08000000`) on all `subprocess.Popen` / `subprocess.run` calls.
+    3. In PowerShell batch dispatchers (e.g. `run_parallel.ps1` spawning 15-40 workers), **DO NOT use bare `Start-Process cmd.exe -WindowStyle Hidden`** because Windows still creates and attaches a transient `conhost.exe` before hiding, triggering DWM focus drops in DirectX games. Instead, use pure .NET `ProcessStartInfo`:
+       ```powershell
+       $psi = New-Object System.Diagnostics.ProcessStartInfo
+       $psi.FileName = "cmd.exe"
+       $psi.Arguments = $cmd
+       $psi.CreateNoWindow = $true
+       $psi.UseShellExecute = $false
+       $p = [System.Diagnostics.Process]::Start($psi)
+       ```
+    4. For running unhidden consoles or ghost overlays (`cua-driver.exe` with `Cua.AgentCursorOverlay.default` 1920x1080), hide them dynamically using Win32 `ShowWindow(hwnd, 0 /* SW_HIDE */)` without terminating the background driver service.
+  - For ghost overlays (`cua-driver.exe` with `Cua.AgentCursorOverlay.default` 1920x1080): if stale MCP instances linger, hide their HWND or terminate idle instances (`Stop-Process -Name cua-driver -Force`).
 - **Stuck Helpers:** Terminate `Not Responding` Electron sub-processes.
