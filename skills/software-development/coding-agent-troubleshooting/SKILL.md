@@ -685,3 +685,12 @@ For full details on `omp` installation, Bun runtime resolution, and Google AI St
 - Model `gemini-2.5-flash` is deprecated (HTTP 404). Always target `google/gemini-3.8-flash` (`--thinking medium`).
 - Fresh/unverified accounts yield HTTP 403 `PERMISSION_DENIED` on Google Cloud. Obtain API keys from an established Google account via Google AI Studio (`https://aistudio.google.com/apikey`).
 
+### 3. Google AI Studio 20 req/day Limit & OmniRoute Pool Integration (`~/.omp/agent/models.yml`)
+- Google enforces a hard 20 request/day cap on `gemini-3.8-flash` Free Tier API keys, exhausting quota in 2–3 agent turns.
+- **Production Routing via OmniRoute**: Configure `~/.omp/agent/models.yml` to map `omniroute` as an `openai-completions` provider pointing to `http://127.0.0.1:20129/v1` with model `antigravity/gemini-3.8-flash-tiered`.
+- Run: `omp --model omniroute/antigravity/gemini-3.8-flash-tiered -p "<task>"`.
+
+### 4. `omp login` Non-Interactive Pipe Trap & Browser VPN Conflict
+- `omp login` aborts with `Login cancelled: stdin closed` when run from scripts where stdin is not an open stream. Keep stdin open via `subprocess.Popen(..., stdin=subprocess.PIPE)` or run interactively in a PTY.
+- Active browser VPN extensions (e.g. Urban VPN) block loopback redirects to `127.0.0.1:51121` (`ERR_CONNECTION_REFUSED`). Use the OmniRoute local provider mapping above to avoid browser loopback OAuth entirely.
+

@@ -1,6 +1,6 @@
 ---
 name: advisor-dual-answer-orchestration
-description: "Use when user asks Hermes for advice to get dual answers."
+description: "Use when the operator explicitly requests Advisor Sol review or an architecture second opinion."
 version: 1.0.0
 platforms: [windows, linux, macos]
 metadata:
@@ -11,15 +11,19 @@ metadata:
 
 # Advisor Dual-Answer Orchestration
 
-Use this skill when the user distinguishes **asking Hermes for advice** from issuing an imperative command. The required behavior is not merely exposing an `advisor_consult` tool: Hermes must automatically return the primary model's answer together with a read-only Advisor answer in the same response.
+Use this skill when the operator explicitly asks for Advisor Sol review, a second opinion, or an architecture plan. The required behavior is not merely exposing an `advisor_consult` tool: preserve a read-only Advisor path with explicit operator control and a focused context briefing.
 
 ## Core contract
+
+### Routing mode
+
+**Default: on-demand.** Do not auto-append Sol merely because a message contains `nên`, `được không`, `phân tích`, or a question mark. Ordinary advice questions stay Coordinator-only. Trigger Sol only on explicit operator wording such as `gọi advisor`, `hỏi sol`, `gọi sol`, `sol thấy sao`, `nhờ sol review`, or `sol lên plan`, or when the operator explicitly asks for an architecture second opinion before implementation. Keep the existing context-briefing and redaction path for those explicit calls.
 
 ### Advice intent
 
 Classify the original user message conservatively and deterministically:
 
-- Advice/question intent: a question mark or explicit advice markers such as `tư vấn`, `lời khuyên`, `nên`, `có nên`, `theo mày`, `đánh giá`, `phân tích giúp`, `what should`, `should I`, `advise me`, or colloquial evaluative questions asking for comparison/cause/feasibility/strategy (e.g., `sao nhìn ...`, `tại sao ...`, `sao lại ...`, `sao thế ...`, `nhìn thế nào`, `sao ... lỏ/phèn thế`, `... đc k nhỉ`, `... có nên ... k`, `... đúng k?`, `... hay là do ...`, `... hay như v lâu quá`, `tại sao k có ... nhỉ`, `sao k có cơ chế ...`, `sao k làm ...`, `sao k tự tính ...`). When user questions system architecture, feature absence, algorithm behavior, or farm strategy rather than giving an execution command, treat strictly as advice intent and proactively provide the Advisor Sol dual-answer without waiting for user reprimand ('Gọi advisor trc').
+- Advice/question intent: classify these markers for analysis, but do **not** auto-call Sol. They become an Advisor trigger only when paired with an explicit request to call/review Sol; otherwise answer as Coordinator-only.
 - Imperative/work intent: `chạy`, `sửa`, `kiểm tra`, `đăng ký`, `upload`, `restart`, `làm đi`, or equivalent execution requests without a genuine decision question.
 - Empty, synthetic continuation, and intermediate tool-loop messages are never advice intent.
 
@@ -27,10 +31,10 @@ Do not infer advice intent only because a task is technically difficult. The tri
 
 ### Response behavior
 
-For an advice-intent turn:
+For an explicitly requested Advisor turn:
 
 1. **Mandatory Execution & Mechanical Enforcement:** 
-   - The Coordinator must never emit a solo answer on advice intent.
+   - The Coordinator must call the read-only Advisor once and compose its result after the primary answer. For ordinary advice intent without an explicit Sol request, do not call Advisor and do not append an Advisor block.
    - Use `python D:/Taadaa/tools/consult_advisor.py --query "<prompt>"` (hoặc `ensure_dual_answer`) để gọi trực tiếp Advisor Sol-WebPool (bắt buộc cờ `--query` hoặc `-q`), cấm truyền positional argument trần hay tự viết code gọi HTTP trần.
 2. Direct Sol Route with Increased Wait Time & Terra Codex Fallback:
    - Call directly to OmniRoute :20129 `gpt-web-sol` (ChatGPT-Web Pool 115 accounts). CẤM gọi `gpt-5.6-sol` (trỏ nhầm OpenAI API lỗi 402).
@@ -107,6 +111,7 @@ A valid acceptance sequence is:
 5. Do not report `DONE` from adapter status alone. If only the adapter canary passes, report `adapter PASS; orchestration canary pending`.
 
 ## References
+- On-demand routing and timeout layering learned from the 2026-10-20 implementation discussion: [`references/on-demand-routing-and-timeout-layering-20261020.md`](references/on-demand-routing-and-timeout-layering-20261020.md)
 - Bẫy Cắt Xén Ngữ Cảnh Tự Động & Chuyển Đổi Sang On-Demand Cho Advisor Sol (2026-10-20): [`references/advisor-auto-append-context-clipping-and-on-demand-shift-20261020.md`](references/advisor-auto-append-context-clipping-and-on-demand-shift-20261020.md)
 - Độc Đạo Điều Phối Advisor Sol & Vòng Đời Biến Môi Trường (2026-10-20): [`references/single-authoritative-pathway-and-env-lifecycle-20261020.md`](references/single-authoritative-pathway-and-env-lifecycle-20261020.md)
 - Chẩn Đoán & Khắc Phục Nút Thắt Timeout 45s Đa Tầng Của Advisor Sol (2026-10-19): [`references/multi-layer-timeout-bottleneck-diagnosis-20261019.md`](references/multi-layer-timeout-bottleneck-diagnosis-20261019.md)
@@ -193,7 +198,7 @@ See `references/advisor-context-starvation-and-session-briefing-20261015.md` for
   * *Nguyên nhân gây bức xúc:* Một số agent vô tình sửa `consult_advisor.py` ép `first_token_timeout = 35s/45s` hoặc `timeout_sec = 70s`. Khi ChatGPT-Web pool xoay vòng account hoặc reasoning sâu, mốc 35s–45s làm script chém ngang stream và ném lỗi timeout giả.
   * *Chuẩn hóa bất biến trong `consult_advisor.py`:* `first_token_timeout = 80.0s`, `idle_token_timeout = 20.0s`, `max_total_timeout = 140.0s`, và ThreadPool wall-clock `timeout_sec = 150.0s`. Tuyệt đối CẤM hạ các ngưỡng này về 45s.
 - **CẤM TUYỆT ĐỐI FALLBACK LAI TẠP HOẶC MẠO DANH KHI ADVISOR LỖI:** Khi gọi Advisor Sol, nếu `gpt-web-sol` qua `consult_advisor.py` ném lỗi hoặc timeout (>45s), BẮT BUỘC FAIL CLEANLY và báo nguyên văn `ADVISOR_UNAVAILABLE: <reason> :: <detail>`. CẤM TUYỆT ĐỐI tự ý fallback sang `ag-gemini-pool-3` hay 9Router rồi gán ghép mạo danh danh xưng Advisor ("Advisor Sol"). Tuyệt đối trung thực, tuân thủ Invariant 9 trong `AGENTS.md`.
-- **Trôi dạt thói quen tự trả lời một mình & Lệnh 'gọi advisor plan trc' (Operator Chấn Chỉnh):** Khi User hỏi câu hỏi phân tích nguyên nhân/hệ thống ('là sao cứ lệch hoài thế', 'tại sao ...'), Coordinator rất dễ bị quán tính trả lời solo bằng primary voice. User bức xúc nhắc nhở: 'sao bữa nay t đéo hề thấy mày gọi advisor nữa?' và 'gọi advisor plan trc'. BẮT BUỘC: Mọi câu hỏi thắc mắc nguyên nhân lỗi hệ thống/niche/farm đều phải trigger Advisor dual-answer, và khi chuyển sang giải pháp kiến trúc phải lấy blueprint từ Advisor Sol trước khi đụng code.
+- **Phân biệt hỏi ý kiến với yêu cầu gọi Sol:** Không được auto-trigger Advisor chỉ vì câu hỏi hỏi nguyên nhân/hệ thống/niche/farm có chữ `nên`, `tại sao`, `phân tích`, hoặc `được không`. Mặc định trả lời Coordinator-only. Chỉ gọi Sol khi Operator nói rõ `gọi advisor`, `hỏi sol`, `gọi sol`, `sol thấy sao`, `nhờ sol review`, `sol lên plan`, hoặc yêu cầu second opinion trước khi thi công.
 - **Answering deep strategy/algorithm questions solo without Advisor:** When user asks evaluative questions about farm mechanics, algorithm causes, schedule design, policy adjustments, or feature absence (e.g., 'tại sao nghỉ 7 ngày vẫn bị cấm', 'có nên nâng cooldown lên 15d k', 'có phải do bug verify cũ k', 'đc k nhỉ', 'có nên lặp lại k', 'ngày nghỉ không đăng video có đúng không', 'tại sao k có cơ chế tự tính toán acc nào yếu trên mỗi máy để nuôi nhỉ'), Coordinator often falls into answering purely in primary model voice and forgets to trigger Advisor Sol until user explicitly complains or reprimands ('sao nãy h t hỏi mày mà mày k đưa góc nhìn advisor v', 'sao mày vẫn k tuân thủ gọi advisor mỗi khi t hỏi', 'Gọi advisor trc'). Always trigger Advisor Sol automatically for evaluative strategy, architecture, and feature questions without waiting for user reprimand.
 - **Tách biệt rõ ràng Follow Cooldown vs Ngày Dưỡng Sinh khi tư vấn & sửa code:** Khi nick bị nhả follow (Follow Cooldown), nick chỉ bị khóa thao tác follow (`_follow_rate = 0`) để tránh spam; nick VẪN ĐƯỢC PHÉP UPLOAD VIDEO (1 video/ngày) nếu chưa đăng. Tương tự, "Ngày dưỡng sinh / Ca dưỡng sinh" là ngày xả tải follow trên toàn farm (0 follow), tuyệt đối không tự ý gắn cờ tắt upload (`if not is_rest_day`) khiến nick mất nhịp tích lũy video. Upload video tuân theo cơ chế Idempotent (1 video/ngày) của Sổ cái, độc lập hoàn toàn với trạng thái follow.
 - **Lập Cycle Plan bất biến (`cycle_plan.json`) cho chu kỳ hoán vị 4 ngày:** Khi triển khai scheduler hoán vị (Day 1 chọn Row 1 hoặc 2, Day 2 chạy bù trừ), TUYỆT ĐỐI KHÔNG để worker tự chọn ngẫu nhiên trong bộ nhớ RAM mỗi ngày vì khi restart hệ thống sẽ mất dấu ngày trước đã chạy row nào. Bắt buộc scheduler phải sinh file kế hoạch bất biến `cycle_plan.json` cho cả chu kỳ 4 ngày trên đĩa, Day 2 đọc trực tiếp plan bù trừ để đảm bảo tính tất định 100%.

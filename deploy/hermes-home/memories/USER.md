@@ -14,4 +14,4 @@ Canary: target-bound; WinRT OCR->ATX (cấm uiautomator); Singbox. Rule bắt bu
 §
 Báo cáo Telegram: tóm tắt KPI+exception; Dashboard :1905 full-page.
 §
-User: ưu tiên kiến trúc, Claude plan; cấm phán rút cáp; cấm sai bảo user; trần 40 airtime; M7 bắt Dat; Ruijie tắt Wi-Fi. CẤM đổ lỗi lệch follow cho follow tự nhiên (do timeout drop log/sync trễ).
+User ưu tiên kiến trúc/Claude plan; không muốn bị bảo rút cáp hay thao tác tay. Báo farm phải có PID/giờ/log, phân biệt runner với worker, và chỉ báo xử lý sau verify runtime.
