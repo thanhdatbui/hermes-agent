@@ -14,4 +14,4 @@ Canary: target-bound; WinRT OCR->ATX (cấm uiautomator); Singbox. Guard cơ h�
 §
 Báo cáo Telegram: tóm tắt KPI; Dashboard :1905; CẤM ôm turn treo Working (nhả tin nhắn yield turn khi dispatch); đối soát trễ bot trước.
 §
-User: Phước Kiên (0905.382.174, 47 Trần Cao Vân, ĐN; nhận đơn tự ra bưu cục lấy); ghét cãi/đùn đẩy; tự động gọi Claude CLI khi vướng; cần app-idle chuẩn (Tiểu Vi), cấm đổ sang system-idle; verify runtime.
+User: Phước Kiên (0905.382.174, 47 Trần Cao Vân, ĐN); ghét cãi/đùn đẩy; khi kẹt gọi Claude CLI; app-idle Tiểu Vi phải đo chuẩn trong-app (sampler 1Hz PID-tree + Alt-Tab anchor), cấm đóng ẩu sau 3ph hay đổi sang system-idle; verify runtime.
