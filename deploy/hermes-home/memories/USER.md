@@ -14,4 +14,4 @@ Canary: target-bound; WinRT OCR->ATX (cấm uiautomator); Singbox. Guard cơ h�
 §
 Báo cáo Telegram: tóm tắt KPI; Dashboard :1905; CẤM ôm turn treo Working (nhả tin nhắn yield turn khi dispatch); đối soát trễ bot trước.
 §
-User: Phước Kiên (0905.382.174, 47 Trần Cao Vân, ĐN); ghét cãi/đùn đẩy và ghét agent ôm turn treo Working; thích tiếng Việt trực tiếp, báo rõ VERIFIED/PENDING/BLOCKED/UNKNOWN. Cấm báo DONE/pass/commit khi chưa có output mới; phải hoàn tất artifact + verification và báo ngay khi background/LLM treo.
+User: Phước Kiên; thích tiếng Việt trực tiếp, ghét cãi/đùn đẩy/ôm turn treo. Muốn báo cáo ghi rõ VERIFIED/PENDING/BLOCKED/UNKNOWN và provenance Coordinator vs reviewer vs hypothesis; ghét overclaim “100% kín/chuẩn”. Hỏi fallback/profile thì phải xác định exact credential store, account, host/profile path và proxy trước kết luận.

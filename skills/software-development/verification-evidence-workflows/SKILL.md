@@ -163,6 +163,16 @@ Gated tasks needing AG Opus exact-byte approval + exact-allowlist commit
 (delegate-crash fallback, pre-commit audit invocation, commit guard rails,
 Windows spawn shim, fake clock): `references/exact-byte-gate-execution.md`.
 
+## Long-Running Stream / Silent-Turn Incident Gate
+
+When the user reports that a model turn has shown `Working` for a long time, or the stream reports zero chunks, treat it as an incident—not normal progress:
+
+1. Report the stall immediately with elapsed time, iteration/turn if available, and the last observed output; do not leave the user waiting silently until completion.
+2. Use a bounded diagnostic window and inspect the process/worker result. Classify the outcome as `COMPLETED`, `TRANSIENT_TIMEOUT`, `PROVIDER_STREAM_STALL`, `WORKER_NOOP`, or `UNKNOWN_EFFECT`; a normal exit code alone is not completion proof.
+3. If the command/test was interrupted, orphan-recovered, or timed out, its output is not evidence. Re-run the exact focused command from a fresh process before reporting a pass. Preserve the first timeout as a timing incident, not as a product failure unless reproduced.
+4. For foreground tests, a caller timeout is not the test result. If the same command later passes quickly in a fresh bounded run, report both facts: first invocation timed out at the caller boundary; fresh rerun passed with its real duration. Do not invent a root cause such as DB lock or provider failure without logs.
+5. Yield the turn after dispatching a genuinely long task and return a concise status update; do not keep a chat turn open as `Working` while merely waiting.
+
 ## Interrupted-command and worker no-op evidence gate
 
 A normal worker exit code is not proof that the requested change was applied. Before reporting completion, independently verify `target_changed`, the exact target diff, and the focused command's real output. If the worker reports `BLOCKED`, `target_changed: false`, provider/model mismatch, or a test contradiction, classify that result explicitly and do not paraphrase it as a successful implementation.
