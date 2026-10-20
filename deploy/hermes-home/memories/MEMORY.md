@@ -6,7 +6,7 @@ Hotmail: CẤM mail cá nhân; @fviainboxes.com đọc OTP. Excel 3,4,5+G. Pin >
 §
 Rename: tap bio (473,703); --clear-bio; bút chì header (72,148); core switcher; văng->login_v1; tên 1 từ bỏ.
 §
-Sol: On-Demand (gọi advisor/hỏi sol); streaming SSE 140s; context 4000 chars; consult_advisor độc đạo CLI; advisor_tool lõi stream.
+Sol: 100% On-Demand ('gọi advisor','hỏi sol'...), cấm auto-append ngắt lời; advisor_tool 140s, briefing 4k ký tự; Sol Reviewer độc lập closeout (diff 40KB).
 §
 Stale Up: xóa draft. Revert: TikWM. Cào: max 60. Cron TB: device_lock+rolling<=5; bỏ ca 0h.
 §

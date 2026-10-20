@@ -111,6 +111,7 @@ A valid acceptance sequence is:
 5. Do not report `DONE` from adapter status alone. If only the adapter canary passes, report `adapter PASS; orchestration canary pending`.
 
 ## References
+- Bẫy Timeout Ảo 45s Do Parse JSON & Hoàn Thiện Cơ Chế On-Demand (2026-10-20): [`references/on-demand-advisor-and-json-parse-timeout-resolution-20261020.md`](references/on-demand-advisor-and-json-parse-timeout-resolution-20261020.md)
 - Chuyển Đổi Sang On-Demand & Phân Định Rạch Ròi Sol Advisor vs. Sol Reviewer (2026-10-20): [`references/on-demand-transition-and-advisor-vs-reviewer-separation-20261020.md`](references/on-demand-transition-and-advisor-vs-reviewer-separation-20261020.md)
 - Chuyển Đổi Advisor Sol Sang Cơ Chế On-Demand & Nâng Cấp Streaming SSE (2026-10-20): [`references/on-demand-advisor-transition-and-sse-streaming-20261020.md`](references/on-demand-advisor-transition-and-sse-streaming-20261020.md)
 - Chuyển Đổi Advisor Sang Cơ Chế On-Demand & Nâng Cấp Streaming Đa Tầng (2026-10-20): [`references/advisor-on-demand-and-streaming-upgrade-20261020.md`](references/advisor-on-demand-and-streaming-upgrade-20261020.md)

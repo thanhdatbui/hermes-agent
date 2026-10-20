@@ -14,4 +14,4 @@ Canary: target-bound; WinRT OCR->ATX (cấm uiautomator); Singbox. Rule bắt bu
 §
 Báo cáo Telegram: tóm tắt KPI+exception; Dashboard :1905 full-page.
 §
-User ghét đùn đẩy/bắt thao tác tay khi agent tự làm được; cấm đụng Chrome cá nhân (dùng GPM/agy_profiles). Báo farm có PID/giờ/log, verify runtime trước khi báo.
+User: ghét đùn đẩy; Advisor 100% On-Demand (chỉ gọi khi user yêu cầu 'gọi sol/advisor', cấm auto-append); cấm đụng Chrome cá nhân; verify runtime trước khi báo.
