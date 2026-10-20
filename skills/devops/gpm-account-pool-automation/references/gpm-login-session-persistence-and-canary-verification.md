@@ -36,6 +36,25 @@ Reject these as unauthenticated evidence:
 
 An account label is useful only when it is account-specific: it should contain the target email or an account-specific label containing an `@` address. Always inspect the body and URL as well; do not accept a single generic aria-label.
 
+## Google 2FA TOTP Form UI Drift & Challenge Disambiguation
+
+In modern Google login flows (particularly Vietnamese `vi-VN` locale):
+1. **TOTP Input Field Selector:** Google renders "Ứng dụng Google Authenticator: Nhận mã xác minh..." with an `<input type="tel">` instead of `#totpPin` or `input[name="totpPin"]`.
+   - Selector must cover: `input#totpPin, input[name="totpPin"], input[type="tel"]`.
+   - **Collision Guard:** You MUST guard against typing the 6-digit TOTP into phone confirmation inputs (`input#phoneNumberId, input[name="phoneNumber"]`). Only treat `input[type="tel"]` as TOTP if phone-number confirmation attributes are absent and the challenge context indicates Authenticator/TOTP.
+2. **Recovery Email False-Trigger Isolation:**
+   - Broad selectors such as `input[type="email"]:not(#identifierId)` when `challenge` is in the URL will falsely match during a TOTP challenge.
+   - Strictly require that `#knowledge-preregistered-email-response` exists in the DOM or the page text contains `"email khôi phục"` before executing recovery email submission.
+
+## Offline Test Suite & IPC Decoupling
+
+1. **Unit Test Fallback for GPM Launchers:**
+   - In production, pure login (`--login-only`) resolves GPM profile IDs and connects via CDP.
+   - In unit tests with mock profiles (`C:\fake`) and mocked environments, wrap the GPM API resolution/start in a try-except. If `acc` does not specify an explicit `gpm_profile_id` and GPM API fails or is offline, gracefully fall back to `p.chromium.launch_persistent_context` when `prof_dir` is present.
+2. **Library Decoupling (`urllib.request` vs `requests`):**
+   - If tests mock `requests` to assert that zero external HTTP calls occurred (e.g. asserting `mock_req.get.call_count == 0`), helper calls to GPM Local API via `requests.get` will fail the assertion.
+   - Use `urllib.request.urlopen` for internal GPM Local API calls (`gpm_get`) to decouple antidetect IPC from application-level `requests` mocking.
+
 ## Canary closeout
 
 Before accepting a GPM code change:
