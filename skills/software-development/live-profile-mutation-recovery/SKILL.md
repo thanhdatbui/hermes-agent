@@ -46,6 +46,13 @@ If any identity or read-back gate is missing, report `BLOCKED` with the actual e
 - Never change account/workbook/queue state to `DONE` before real-device read-back.
 - Do not write a skill entry describing an unvalidated worker patch as a reliable fix.
 
+## Avatar-specific semantic gate
+
+Mechanical upload success is not semantic asset success. Before changing an avatar, open and inspect the exact resolved source file used by the runner; never trust a proposal canvas label, filename, folder number, or prior description. Bind `target account -> source folder -> exact avatar path` before upload, then bind the same account to a fresh Profile screenshot after upload. A successful push, crop-save, `exit=0`, `verified=True`, `FORCED_REPLACED_VERIFIED`, or workbook `Avatar = OK` proves only the mechanical flow. It does not prove that the intended image was selected.
+
+Verify profile fields independently: a Bio can be confirmed while the Avatar is wrong or unproven. Report `Bio: confirmed` and `Avatar: incorrect/unproven` separately. If source and post-action semantics disagree, report `BLOCKED` or `UNPROVEN` and do not treat the workbook flag as final. See `references/avatar-source-semantic-verification-20261020.md`.
+
 ## Supporting detail
 
 See `references/live-profile-mutation-atx-recovery-20261020.md` for the validated ATX-vs-direct-`/dumpUI` observation, evidence sequence, and exact failed-live-run signature from a real machine.
+See `references/avatar-source-semantic-verification-20261020.md` for the avatar-specific source-asset gate and the false-success pattern where the runner uploaded a canopy image while the proposal described a cat.
