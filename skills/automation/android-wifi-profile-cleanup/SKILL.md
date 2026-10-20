@@ -133,12 +133,20 @@ Use status values such as `NO_DAT_EVIDENCE`, `CLEAN_AND_ONLINE`, `ONLINE_BUT_ROG
 
 - **Khôi phục DHCP sau khi dọn sạch cờ phạt và xung đột ARP:**
   Sau khi dịch chuyển máy cải thiện RF và purge toàn bộ profile lỗi/cờ phạt `ASSOCIATION_REJECTION`/`DHCP_FAILURE` trên Android S7, nếu MikroTik vẫn lưu ARP stale dạng `status: failed` hoặc dải cũ, cần dọn ARP stale trên MikroTik (`DELETE /rest/ip/arp/<id>`) để Gateway và Client bắt tay lại hoàn tất việc cấp phát IP `192.168.110.x`.
+- **Broadcom PCIe wlan0 DORMANT / NO-CARRIER sau Association Rejection & Level 2 Reboot (2026-10-20):**
+  Khi máy đã purge sạch profile rác (`service call wifi 14`), nạp lại SSID chuẩn và hoàn tất bắt tay 4 bước (`Key negotiation completed`, `CTRL-EVENT-CONNECTED`), nhưng `ip addr show wlan0` vẫn kẹt cứng ở `<NO-CARRIER, ... state DORMANT>` và không nhận DHCP IP: Radio toggle mềm (`svc wifi disable/enable`) không thể đánh thức PCIe bus. CẤM loop reconnect làm tăng counter association rejection phía AP. BẮT BUỘC kích hoạt Level 2 hardware-bypass reboot:
+  ```bash
+  python D:/Taadaa/tools/recover_stuck_s7.py --machine <N> --reboot
+  ```
+  Lệnh này reset cứng Broadcom chip, xóa sạch cờ phạt in-memory và cho phép supplicant + DHCP client bắt tay hoàn chỉnh khi khởi động lại. Cần lưu ý các watchdog nền (như rolling rename) có thể cạnh tranh lock; kiểm tra liveness PID trước khi xử lý lock.
 
 ## Production Automation Scripts
 - `D:/Taadaa/tools/scan_rogue_wifi_farm.py`: Fast non-intrusive pre-scan script across both clusters (Dual-Cluster Farm) to audit rogue Wi-Fi networks, active SSIDs, and IP assignment across all attached devices in ~10s without modifying state or blocking on write locks.
 - `D:/Taadaa/tools/batch_clean_farm_wifi.py`: Parallel locked cleanup across Dual-Cluster Farm (M1-80 & M201-280, max_workers=20), removing rogue networks (`Dat`, `Dat-1`, `BOX`, `Green Media 5G`, `admin`, `kibe`) and enforcing pure Aruba SSID binding with DHCP.
 - **ADB Binary Path Invariant**: Always prefer `C:\Users\Kibe\.GemPhoneFarm\app\adb-tool\adb.exe`. Avoid paths containing parentheses such as `C:\Program Files (x86)\...` which trigger Hermetic Shell Guard false-positives on subshell parenthesis syntax `(...)`.
 - **Subagent Delegation Contract**: When delegating Wi-Fi rescue or device cleanup to subagents, avoid `TASK_KIND: INVESTIGATE` if device mutation or script execution is expected (as `INVESTIGATE` enforces strict `[READ-ONLY WORKER]` guards). Launch `batch_clean_farm_wifi.py` directly via `terminal(background=True, notify_on_complete=True)` from Coordinator.
+- **`farm_network_gate.py` Execution Timeout Window (60–90s)**: Applying profile via `farm_network_gate.py <N> --force-preempt` executes APK verification/installation, intent re-join, DHCP lease polling (up to 30s) and proxy reachability probing. The full execution lifecycle routinely takes 70–90s. Coordinator MUST NOT run `farm_network_gate.py` in foreground with default `timeout <= 60s` (which triggers exit code 124 timeout kill); ALWAYS launch via `terminal(background=True, notify_on_complete=True, timeout=180)`.
+- **False 'Wi-Fi Fixed' Trap via Poison SSID `Dat`**: Connecting a farm device (e.g. M7) to a non-farm network (`Dat` broadcast by Ruijie gateway) creates an illusion of recovery (good RSSI, temporary IP). Once Ruijie Wi-Fi is disabled per RF governance, the phone is left stranded with `NO-CARRIER / DORMANT`, re-triggering `ASSOCIATION_REJECTION` on `kibe 1` because conflicting Net IDs were left in `Configured networks`. Remediation MUST purge all rogue Net IDs via `service call wifi 14 i32 <id>` and strictly bind to the canonical Aruba SSID (`kibe 1` with password `23102025` for M1–M40).
 
 ## Reference
 
@@ -151,3 +159,5 @@ Use status values such as `NO_DAT_EVIDENCE`, `CLEAN_AND_ONLINE`, `ONLINE_BUT_ROG
 - See `references/operational-closeout-gate-rubric.md` for the mandatory 4-pillar artifact requirements (raw logcat proof, 100% farm device accounting, automated pytest suite, timeline isolation) to pass `closeout_gate.py --input` with Sol Auditor (>= 85 pts APPROVED).
 - See `references/auto-healer-flapping-and-broadcom-rf-desensitization.md` for Broadcom PCIe sleep loops from flapping auto-healers, Knox adbjoinwifi permission traps with stale Net IDs, physical 6Mbps floor remediation on metal racks, and why increasing Aruba Tx power breaks farm RF.
 - See `references/feed-session-triage-and-liveplay-stuck-recovery.md` for feed-session failures triage, USB transport drops (M10, M30, M50), and stuck `LivePlayActivity` / `SparkActivity` recovery with `recover_stuck_s7.py`.
+- See `references/wlan0-dormant-no-carrier-and-broadcom-reboot-triage-20261020.md` for wlan0 stuck in NO-CARRIER / DORMANT state after association rejection purge, Broadcom PCIe driver recovery, and escalating to Level 2 `recover_stuck_s7.py --reboot`.
+- See `references/aruba-ap-zombie-session-assoc-reject-and-watchdog-delay-20261020.md` for Aruba AP zombie client session (`0.0.0.0 NOFP`), association rejection `status_code=1` triage on AP vs phone, and watchdog ca timing delay mechanics.

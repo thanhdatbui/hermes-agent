@@ -39,7 +39,8 @@ tags: [tiktok, farm, batch, render, upload, resume, kibe]
   Khi cần kích hoạt render: `python D:/Taadaa/tools/admin_ssh.py "python C:/Users/Admin/launch_detached_admin_render.py"`.
 
 ## 4. Danh Mục Tham Khảo Chi Tiết
-- Chuẩn hóa watchdog upload & sửa script thay vì ghi memory: [`references/stale-upload-watchdog-cadence-and-script-fix-discipline.md`](references/stale-upload-watchdog-cadence-and-script-fix-discipline.md)
+- Chuẩn hóa watchdog upload & sửa script thay vì ghi memory: [`references/stale-upload-cadence-threshold-and-script-first-discipline.md`](references/stale-upload-cadence-threshold-and-script-first-discipline.md)
+- Phân tách cụm Kibe vs Admin & độc lập slot: [`references/stale-upload-watchdog-cluster-split-and-slot-triage.md`](references/stale-upload-watchdog-cluster-split-and-slot-triage.md)
 - Khởi động sau reboot & Task Scheduler Admin: [`references/admin-post-reboot-startup-and-task-scheduler-triage.md`](references/admin-post-reboot-startup-and-task-scheduler-triage.md)
 - Toàn bộ tài liệu quy trình cũ: [`references/historical-batch-ops-archive.md`](references/historical-batch-ops-archive.md)
 - Downloader & Concurrency: [`references/dual-cluster-downloader-concurrency-and-proxy-hygiene.md`](references/dual-cluster-downloader-concurrency-and-proxy-hygiene.md)

@@ -107,6 +107,7 @@ A valid acceptance sequence is:
 5. Do not report `DONE` from adapter status alone. If only the adapter canary passes, report `adapter PASS; orchestration canary pending`.
 
 ## References
+- Độc Đạo Điều Phối Advisor Sol & Vòng Đời Biến Môi Trường (2026-10-20): [`references/single-authoritative-pathway-and-env-lifecycle-20261020.md`](references/single-authoritative-pathway-and-env-lifecycle-20261020.md)
 - Chẩn Đoán & Khắc Phục Nút Thắt Timeout 45s Đa Tầng Của Advisor Sol (2026-10-19): [`references/multi-layer-timeout-bottleneck-diagnosis-20261019.md`](references/multi-layer-timeout-bottleneck-diagnosis-20261019.md)
 - Cải Tiến Idle Streaming Timeout & Hóa Giải Cắt Ngang Dòng Stream Sol Advisor (2026-10-18): [`references/advisor-idle-streaming-timeout-resolution-20261018.md`](references/advisor-idle-streaming-timeout-resolution-20261018.md)
 - Quy Trình Hội Chẩn 3 Bên Giải Quyết Xung Đột Chính Sách (2026-10-18): [`references/tri-party-architectural-alignment-protocol-20261018.md`](references/tri-party-architectural-alignment-protocol-20261018.md)
@@ -140,10 +141,14 @@ See `references/advisor-context-starvation-and-session-briefing-20261015.md` for
   * *Nguyên nhân:* Tăng timeout ở client script (`consult_advisor.py`) không đủ nếu các tầng trung gian chưa đồng bộ hoặc chưa có hiệu lực thực tế:
     (1) **Bẫy In-Memory / Hot-Reload của Node.js:** OmniRoute chạy nền qua `node scripts/dev/run-next.mjs`. Node.js chỉ đọc `.env` một lần duy nhất lúc khởi động. Sửa `.env` thành 90s/80s mà KHÔNG restart tiến trình OmniRoute (:20129) thì RAM vẫn chạy giá trị cũ 45s.
     (2) **Fallback Hardcode trong code OmniRoute:** `open-sse/services/accountSemaphore.ts` có dòng fallback cứng `Number(process.env.ACCOUNT_SEMAPHORE_TIMEOUT_MS) || 45_000`. Nếu env không nạp được, nó lập tức dùng lại 45s.
-    (3) **Bẫy `advisor_tool.py` trong lõi Hermes:** File `D:/Taadaa/Hermes/tools/advisor_tool.py` có `DEFAULT_TIMEOUT = 55` và `stream: False` (không stream keepalive).
+    (3) **Bẫy `advisor_tool.py` trong lõi Hermes:** File `D:/Taadaa/Hermes/tools/advisor_tool.py` có `DEFAULT_TIMEOUT = 55` (đã nâng lên 85s ngày 20/10/2026) và `stream: False` (không stream keepalive).
     (4) **Bản lưu trong skill:** `scripts/advisor_consult.py` trước đây bị kẹt `first_token_timeout=45.0s`.
     (5) **Bản chất nghẽn pool (Waterfall):** Khi nhiều tài khoản dính limit 3h của ChatGPT, mỗi tài khoản ngâm 15s–20s để xoay tua; quay qua 2 tài khoản dính lỗi ($20s \times 2 = 40s$) là chạm trần ngắt hàng đợi.
-  * *Khắc phục:* BẮT BUỘC restart OmniRoute sau khi sửa `.env`; đồng bộ `consult_advisor.py` lên 80s/140s/150s có streaming keepalive; kiểm tra log và trạng thái tài khoản pool thay vì chỉ nhìn file config tĩnh. Khi User chất vấn "đã tăng timeout ở session khác rồi mà", trả lời thẳng vào tiến trình RAM/restart và waterfall pool, cấm giải thích lại lý thuyết chung chung. (Chi tiết: `references/multi-layer-timeout-bottleneck-diagnosis-20261019.md`).
+  * *Khắc phục:* BẮT BUỘC restart OmniRoute sau khi sửa `.env`; nâng `DEFAULT_TIMEOUT = 85` trong `advisor_tool.py`; đồng bộ `consult_advisor.py` lên 80s/140s/150s có streaming keepalive; kiểm tra log và trạng thái tài khoản pool thay vì chỉ nhìn file config tĩnh. Khi User chất vấn "đã tăng timeout ở session khác rồi mà", trả lời thẳng vào tiến trình RAM/restart và waterfall pool, cấm giải thích lại lý thuyết chung chung. (Chi tiết: `references/multi-layer-timeout-bottleneck-diagnosis-20261019.md`).
+
+- **Bẫy Hiểu Lầm "Available but not exposed" của `advisor_tool.py` (`check_fn=lambda: False`):**
+  * *Nguyên nhân ngộ nhận:* Thấy file `Hermes/tools/advisor_tool.py` đăng ký với `check_fn=lambda: False` và không xuất hiện trong danh sách tools của Coordinator, dẫn đến tưởng nhầm là file tàn dư/bị vô hiệu hóa và đòi xóa bỏ.
+  * *Bản chất kiến trúc:* Cờ `check_fn=lambda: False` là thiết kế có chủ đích: **không phơi tool ra catalog để LLM tự ý gọi lung tung khi đang suy nghĩ**, nhưng Hermes Core `agent/conversation_loop.py` (`_maybe_append_advisor_for_final_response`) vẫn bắt buộc nạp và gọi ngầm `advisor_consult` ở cuối mỗi turn có Advice Intent để sinh khối `--- Advisor (Sol / review) ---`. Tuyệt đối CẤM xóa file này vì sẽ làm gãy cơ chế dual-answer tự động của toàn bộ hệ thống Hermes.
 
 - **Advisor Sol Web Context Starvation & Tái cấu trúc Ngữ cảnh Phiên (15/10/2026):**
   * *Vấn đề cốt lõi:* ChatGPT-Web pool (:20129 `gpt-web-sol`) là API stateless. Nếu chỉ truyền tin nhắn gần nhất (`original_user_message`), Advisor hoàn toàn mù ngữ cảnh phiên (máy mấy, nick nào, lỗi trước đó là gì), dẫn tới câu trả lời cụt lủn, ngây ngô và lạc đề.
