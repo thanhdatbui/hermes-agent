@@ -39,6 +39,18 @@ Do not describe mailbox polling as real-time shipment tracking. Mail is a discov
 9. **Schedule at a practical cadence.** While waiting for a dispatch code, 15–30 minutes is appropriate for a time-sensitive pickup goal; 12 hours is too coarse. Use script-only/no-agent cron where supported. Keep the script one-shot; do not create an invisible infinite loop.
 10. **Verify before reporting DONE.** Run offline parser self-test, one live read when session/credentials are available, inspect JSON state, read the dashboard endpoint back, and report separately: mail session, tracking code, carrier tracking, dashboard, and schedule. Cron status `ok` alone is not proof the script read mail or updated an order.
 
+## Dashboard image integrity
+
+When an order dashboard displays screenshots or product photos, preserve the source artifact instead of treating a single thumbnail as the complete order evidence:
+
+1. Store image assets as an explicit list with roles such as `order_confirmation`, `product`, `shipping_address`, and `tracking_event`; keep the original files immutable.
+2. Render portrait screenshots with their native aspect ratio (`height:auto` / `object-fit:contain`), not a forced 4:3 crop with `object-fit:cover`. A card thumbnail may be cropped only as a deliberate preview, and it must open the uncropped original on click.
+3. Verify the image route and the actual browser rendering separately. A valid JSON `image_path` proves storage, not that the UI shows the full image.
+4. Treat a card that shows only order metadata or a cropped screenshot as incomplete evidence; report the missing image role explicitly rather than claiming the order gallery is complete.
+5. Keep the canonical order record, image manifest, and dashboard response aligned. If the schema supports only one `image_path`, add a backward-compatible `images` list rather than silently overwriting the existing asset.
+
+Session detail and reproduction notes: `references/order-card-image-integrity.md`.
+
 ## Safety and privacy
 
 - Do not put passwords, refresh tokens, access tokens, cookies, or full email bodies in logs, dashboard payloads, cron prompts, or Telegram messages.
