@@ -4,9 +4,9 @@ Follow: dò +2 (max 40); lùi 4 sàn 15. Probation: P1 (T1: 3-4, T2: 5-6), P2 kh
 §
 Hotmail: CẤM mail cá nhân; @fviainboxes.com đọc OTP. Excel 3,4,5+G. Pin >=1000 view.
 §
-Preempt lock; ping 0% loss; ARP 110.x. Lock: rename_natural_state.json. Host Kibe: ADB 5037 (Xiaowei) & 5038 (M7/18/30); Terminal: fg max 60s; CLI nặng BẮT BUỘC background=True+notify. Ruijie tắt Wi-Fi. Rename/Bio: tap bio (473,703) mở Sửa hồ sơ; --clear-bio xóa trắng về +Thêm tiểu sử; cấm in tên random khi ALREADY.
+Preempt lock; ping 0% loss; ARP 110.x. Host Kibe: ADB 5037 & 5038; Terminal: fg max 60s; CLI nặng BẮT BUỘC background=True+notify. Ruijie tắt Wi-Fi. Rename: tap bio (473,703); --clear-bio xóa trắng.
 §
-Argon=:20135 (token stable 4s). Claude CLI làm Planner.
+Argon=:20135 (token 4s). Claude CLI Planner. Timeout worker farm chuẩn 1200s (dispatch/claude/haiku), sol 300s/turn, agy fix 1500s; cấm đè 180s gây cascade lock 22 agy profile.
 §
 Stale Up: xóa draft. Revert: TikWM. Ghim/Riêng tư ko proof. Cào: max 60. Cron TB: device_lock+rolling<=5; bỏ ca 0h.
 §
