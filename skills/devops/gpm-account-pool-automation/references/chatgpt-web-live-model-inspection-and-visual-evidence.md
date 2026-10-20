@@ -2,9 +2,14 @@
 
 ## 1. Vấn đề cốt lõi & Các cạm bẫy thực tế
 
-### Cạm bẫy 1: Suy diễn model từ code router / proxy mapping tĩnh (Proxy-Inference Fallacy)
-- Khi operator yêu cầu "mở profile GPM vào ChatGPT Web xem model mới nhất", agent thường có xu hướng tìm đường tắt: đọc file mapping `open-sse/executors/chatgpt-web/models.ts` hoặc query API `/v1/models` của OmniRoute/9Router rồi kết luận.
-- **Hậu quả**: Proxy router thường giữ các định danh alias hoặc map cũ/nội bộ (`gpt-5.6-sol-pro`, `gpt-5.5`). Trong khi đó, OpenAI cập nhật giao diện web trực tiếp và độc lập (thực tế đã hiển thị tính năng mới và tiêu đề **`GPT-6 with Intelligent UI`** với các demo cards như "3D Periodic Table", "Galaxy Map"). Việc phán đoán qua code tĩnh là sai lệch hoàn toàn so với hiện trường web.
+### Cạm bẫy 1: Suy diễn model từ code router / proxy mapping tĩnh & Bẫy nhầm thẻ Demo H1 (Header Hallucination)
+- **Bẫy proxy-inference**: Đọc file mapping `open-sse/executors/chatgpt-web/models.ts` hoặc query API `/v1/models` của OmniRoute/9Router rồi kết luận. Proxy router giữ alias cũ/nội bộ (`gpt-5.6-sol-pro`, `gpt-5.5`) hoặc tên mapping quy ước.
+- **Bẫy thẻ demo / header H1**: Nhìn thấy tiêu đề chat hay project card demo như **`GPT-6 with Intelligent UI`** đã vội vàng phán bừa là model selector.
+- **Sự thật thực tế trên ChatGPT Web**:
+  - Giao diện Free hiện tại không có dropdown model selector trên đầu; nó chỉ có nút bật suy luận **`Think`** (`reason`) và thanh toggle **`Chat / Work`**.
+  - **Nguồn chứng thực tối cao (Ground Truth)**: Bắt buộc gọi `fetch('/backend-api/models')` ngay trong context trang authenticated để lấy danh sách model thực tế OpenAI cấp cho tài khoản:
+    * Tài khoản Free: `gpt-5-6` (`GPT-5.6 Luna`), `gpt-6` (`GPT-6` / nhãn hiển thị `Latest • 6` / `6 Instant`).
+    * Tài khoản Plus/Pro/Team: Hạ tầng Sol 6 (`gpt-5-6`, `gpt-5-6-thinking`, `gpt-5-6-pro`) với các mức suy luận Instant, Medium, High, Pro.
 
 ### Cạm bẫy 2: Bẫy Profile Guest / Chưa đăng nhập (Unauthenticated Popup Choke)
 - Khi mở profile GPM chưa có session ChatGPT hoặc cookie bị hết hạn, giao diện ChatGPT chỉ ở chế độ Guest.
@@ -43,8 +48,11 @@
    ```
 
 3. **Tương tác bóc tách Model & Chụp ảnh Evidence:**
-   - Đọc các nút bấm model, nhãn H1/H2 trên giao diện (`Try GPT-6`, `GPT-6 with Intelligent UI`).
-   - Thiết lập viewport chuẩn (`1280x800`) và chụp ảnh màn hình ra đường dẫn vật lý:
+   - Lấy danh mục model chuẩn xác qua API nội bộ của trang web:
+     ```python
+     models_data = page.evaluate("() => fetch('/backend-api/models').then(r => r.json())")
+     ```
+   - Chụp ảnh màn hình giao diện thực tế (xác nhận nút `Think`, menu tài khoản Free/Plus) ra đường dẫn vật lý:
      ```python
      page.set_viewport_size({"width": 1280, "height": 800})
      page.screenshot(path=r"C:/Users/Kibe/chatgpt_model_evidence.png")
