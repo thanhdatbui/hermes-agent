@@ -138,6 +138,19 @@ Systematic approach to diagnose and fix sync client issues on Windows: stuck "Lo
 - **Localized Root Folder Names in Google Drive FS**: Google Drive desktop virtual drive can use `G:\My Drive` (English) or `G:\Drive của tôi` (Vietnamese) depending on the account or OS language setting. Custom sync scripts must check `os.path.exists()` against both candidates dynamically rather than hardcoding one.
 - **Transient / Hidden Files during File Sync**: Concurrent processes (Excel, sync engines) generate temporary dot-files or lock files (e.g., `.~...`, `.taikhoan_run_safe.*.xlsx`, `.849C...`). File sync workers must explicitly exclude files beginning with `.` or temporary prefixes to prevent `[Errno 2] No such file` (deleted while scanning) and `[Errno 13] Permission denied` (locked by OS).
 - **Google Drive Onboarding / Tour Wizard Suppression over SSH**: After initial login, DriveFS pops up a modal tour wizard ("Skip/Next" for backing up Desktop/Docs/Downloads, "Your Drive files are just a click away..."). Keystroke injection (`SendKeys::SendWait`) over SSH fails with `Access is denied` due to Windows session token isolation. The modal is hosted by `msedgewebview2.exe`; executing `Get-Process -Name msedgewebview2 | Stop-Process -Force` closes the popup cleanly without terminating the background `GoogleDriveFS.exe` sync daemon or dropping `G:\`.
+- **Google Drive Taskbar Clutter upon Machine Restart (Autostart Suppression)**:
+  - **Symptom**: After Windows boots or after scheduled farm host reboots (e.g., 05:20, 11:20, 17:20), Google Drive icon sits on the Windows Taskbar (not just in the System Tray), cluttering the UI alongside games (TFT, LoL) or primary apps.
+  - **Root Cause**: `GoogleDriveFS.exe --startup_mode` launches from `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`. On startup, before account credentials finalize (`no_user`), DriveFS attempts to initialize WebView2 (`native_window_win.cc::WindowsNativeWindow::SetBorderColor`) to display onboarding/sign-in promotions. A top-level window causes Windows Explorer to allocate a Taskbar button.
+  - **Remediation**:
+    1. **Registry Policy Hardening** (under `HKCU\Software\Policies\Google\DriveFS` or fallback `HKCU\Software\Google\DriveFS`):
+       - `DisableOnboardingDialog` (DWORD = `1`): Suppresses startup onboarding/tour popups.
+       - `DoNotShowDialogs` (DWORD = `1`): Suppresses modal dialogs.
+       - `AutoStartOnLogin` (DWORD = `0`): Tells DriveFS not to auto-launch on login and not to re-register the Run key.
+    2. **Disable Startup Run Entry**:
+       In `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, rename `GoogleDriveFS` to `__disabled_GoogleDriveFS` (matching Task Manager disabled convention).
+    3. **Background Auto-Mount for Scheduled Sync Jobs**:
+       If automated scripts (`sync_and_clean_gdrive.py`, `sync_onedrive_multicloud.py`) require `G:\`, do not rely on user-session boot startup. Check if drive `G:\` is mounted; if absent, spawn `GoogleDriveFS.exe --startup_mode` with `creationflags=0x08000000` (`CREATE_NO_WINDOW`), wait up to 10s for mount, and proceed silently in the background without taskbar presence.
+    4. Canonical maintenance script deployed at `D:\Taadaa\tools\configure_gdrive_startup.py` (executes locally and across nodes via `admin_ssh.py`).
 
 ## Verification Checklist
 - [ ] Lost & Found cache empty
