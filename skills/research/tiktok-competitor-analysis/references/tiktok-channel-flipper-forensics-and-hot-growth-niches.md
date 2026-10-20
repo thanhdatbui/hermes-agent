@@ -51,11 +51,14 @@ Các ngách Edu/How-to hoặc visual đại trà (gái xinh nhảy, nấu ăn, c
 
 ---
 
-## 4. Quy trình thu thập dữ liệu nhóm Zalo buôn nick an toàn
+## 4. Quy trình thu thập dữ liệu nhóm Zalo buôn nick an toàn & Tự động
 
 * **Cảnh báo API:** Zalo không mở API đọc tin nhắn cá nhân/group cho bên thứ 3. Tuyệt đối KHÔNG dùng script reverse cookie/token gọi private API để tránh bị Zalo khóa vĩnh viễn tài khoản.
-* **Quy trình chuẩn qua Zalo PC:**
-  1. Mở nhóm Zalo trên Zalo PC.
-  2. Bấm cột bên phải: **"Kho lưu trữ" $\rightarrow$ "Ảnh / Video"** (Zalo đã gom toàn bộ ảnh rao bán vào Grid Gallery theo ngày/tháng).
-  3. Chọn hàng loạt ảnh tải về thư mục máy (`Downloads/zalo_accs/`).
-  4. Chạy script OCR batch đọc sạch `@username`, sau đó nạp `tiktok_account_tracker.py` + proxy pool của farm để quét Snowflake UID, video count thật và metrics trong vài phút.
+* **CẤM bắt user tải ảnh thủ công:** Tuyệt đối không yêu cầu user phải bấm tải về hàng chục hay hàng trăm ảnh vào máy.
+* **Quy trình chuẩn qua Computer Use & OCR tự động:**
+  1. User mở sẵn nhóm Zalo trên Zalo PC, click mở 1 ảnh bất kỳ trong kho lưu trữ Media để vào chế độ Fullscreen Preview.
+  2. Agent dùng `computer_use` chụp ảnh cửa sổ Zalo (`action='capture', app='Zalo'`).
+  3. Quét nhanh OCR tại các vùng hiển thị ID TikTok (`@username`) hoặc tiêu đề bài rao.
+  4. Gửi phím mũi tên phải (`Right Arrow`) để Zalo tự chuyển sang ảnh kế tiếp trong album.
+  5. Lặp lại tự động cho đến khi hết album, gom toàn bộ handle vào danh sách.
+  6. Nạp danh sách handle vào `tiktok_account_tracker.py` kết hợp `proxy_pool_67.txt` của farm để trích xuất sạch toàn bộ Snowflake UID, số video thật (bao gồm video ẩn), tổng view và trạng thái kênh.
