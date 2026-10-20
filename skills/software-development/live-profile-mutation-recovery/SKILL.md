@@ -25,8 +25,10 @@ If any identity or read-back gate is missing, report `BLOCKED` with the actual e
 2. **Inspect O(1).** For machine `N`, run `python D:/Taadaa/tools/inspect_machine.py N`. Record serial, focus, screen state, battery, Wi-Fi and proxy. Do not broad-scan the farm.
 3. **Capture before cleanup or retry.** Acquire the device lock, capture the current screen, run WinRT OCR, and inspect the screenshot visually. If focus is `SplashActivity`, feed, a public profile, another account, or an unknown surface, do not tap through it.
 4. **Use ATX session capture as the primary UI XML route.** Construct `AdbClient(adb_path=ADB_BIN, serial=serial)` and call `capture_atx_session_ui(...)`. The persistent ATX session route can return `VERIFIED_XML` even when direct device-local `/dumpUI` returns 404. Do not silently downgrade to shell UiAutomator dumping on S7/Android 7/8.
-5. **Bound recovery.** If the exact target can still be safely re-verified, allow one code-level recovery such as ATX session rediscovery/reset, then one bounded retry. Recovery must be implemented in the runner, not by manual `adb input tap`, `keyevent`, or `swipe` from the coordinator.
-6. **Fail closed.** If XML remains invalid, account identity is unknown, or the runner reaches its retry bound, stop the mutation and preserve the failure screenshot/OCR/log.
+- Bound recovery. If the exact target can still be safely re-verified, allow one code-level recovery such as ATX session rediscovery/reset or adapter settling retry (up to 3 attempts with 1.0s delay checking `xml.lstrip().startswith(("<", "<?xml"))`), then one bounded retry.
+- Preempt stale device locks safely. For operator-driven CLI mutations on single machines, use `operator_device_lock(machine=N, serial=serial, force_preempt=True, timeout=30.0)` to reclaim orphaned locks left by timed-out or aborted runs.
+- Continuous user transparency during background runs. When dispatching workers or running bounded live interactions (>30s) in the background, send an immediate checkpoint status message before handing control to the background runner so the user is never left wondering if the coordinator is frozen.
+- Fail closed. If XML remains invalid, account identity is unknown, or the runner reaches its retry bound, stop the mutation and preserve the failure screenshot/OCR/log.
 7. **Verify post-action.** Re-dump the profile through ATX, parse the exact target account, verify the mutation marker/state, and capture a fresh screenshot for vision inspection. Only then report success.
 
 ## Evidence rules
