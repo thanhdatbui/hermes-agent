@@ -23,3 +23,11 @@ Whenever an agent produces visual media (screenshots, UI mockups, proposal canva
    - **Bẫy OpenCV `cv2.putText` lột dấu**: Thư viện OpenCV chỉ hỗ trợ bảng mã ASCII. Khi vẽ tiếng Việt có dấu, OpenCV xuất hiện `???` hoặc ký tự rác, dẫn đến việc lột dấu (`unidecode`) để né lỗi. Điều này gây hiểu lầm nghiêm trọng cho người dùng rằng hệ thống sẽ nạp dữ liệu không dấu lên thiết bị ("Ủa bio t ép ghi tiếng việt có dấu r mà?").
    - **Quy chuẩn bắt buộc**: Khi vẽ văn bản tiếng Việt lên canvas / preview ảnh, BẮT BUỘC dùng PIL/Pillow với TrueType Font (Arial, Tahoma, DejaVuSans) để bảo toàn 100% dấu tiếng Việt và emoji. Trong tin nhắn đính kèm ảnh, BẮT BUỘC xác nhận rõ: dữ liệu nạp lên thiết bị là tiếng Việt có dấu chuẩn UTF-8 Base64.
 
+5. **Cạm bẫy Full-page Screenshot biến thành ảnh que tăm (Aspect Ratio Noodle Bomb)**:
+   - **Hiện tượng**: Khi gọi `browser_vision` hoặc chụp màn hình trang web dài (như Farm Dashboard với 500+ dòng nick), tool tự động chụp full scroll page tạo ra ảnh cao hàng chục nghìn pixel (ví dụ `1264 x 77930`, tỉ lệ 1:62, gần 100M pixels). Khi gửi qua chat Telegram/mobile, ảnh bị co lại thành một sợi chỉ dọc mỏng dính hoặc crash bộ giải mã (`DecompressionBombWarning`, request timed out), người dùng không thể đọc được ("clgt", "What do you see in this image?").
+   - **Kỷ luật bắt buộc**:
+     * Trước khi gửi bất kỳ ảnh chụp trang web / Dashboard nào qua `MEDIA:<path>`, BẮT BUỘC kiểm tra kích thước ảnh (`Image.open(path).size`).
+     * Chiều cao tối đa an toàn để hiển thị trên chat: **<= 1.500px** (tỉ lệ khung hình nằm trong khoảng `1:1` đến `16:9` hoặc `9:16`).
+     * Nếu trang dài > 1.500px: BẮT BUỘC crop vùng trọng tâm (ví dụ Header + Thẻ KPI `0, 0, width, 650`) rồi mới gửi. CẤM gửi nguyên ảnh full-page dài ngoằng.
+
+

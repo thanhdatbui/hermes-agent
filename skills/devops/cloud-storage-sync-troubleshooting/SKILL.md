@@ -146,6 +146,7 @@ Systematic approach to diagnose and fix sync client issues on Windows: stuck "Lo
        - `DisableOnboardingDialog` (DWORD = `1`): Suppresses startup onboarding/tour popups.
        - `DoNotShowDialogs` (DWORD = `1`): Suppresses modal dialogs.
        - `AutoStartOnLogin` (DWORD = `0`): Tells DriveFS not to auto-launch on login and not to re-register the Run key.
+       - *Permission Quirk*: Never request `winreg.KEY_ALL_ACCESS` when creating/opening `HKCU\Software\Policies` (triggers `PermissionError: [WinError 5] Access is denied` under standard user token). Always use `KEY_SET_VALUE | KEY_CREATE_SUB_KEY` and fallback to `HKCU\Software\Google\DriveFS`.
     2. **Disable Startup Run Entry**:
        In `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, rename `GoogleDriveFS` to `__disabled_GoogleDriveFS` (matching Task Manager disabled convention).
     3. **Background Auto-Mount for Scheduled Sync Jobs**:
