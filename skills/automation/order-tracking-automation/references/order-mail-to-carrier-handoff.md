@@ -20,6 +20,8 @@ Graph is optional, not assumed. A mailbox address, password, or existing GPM pro
 When verifying whether an account has a live Token API:
 - Do NOT theorize about Graph endpoints or guess whether the password changed.
 - Inspect the canonical inventory directly (O(1) lookup in `D:/OneDrive/TaadaaData/kibe/gmail_clean_v2.xlsx`, Sheet `Gmail Accounts`): check col 2 (email), col 9 (`token`), col 10 (`client_id`). If col 9/10 are `None` or blank, report definitively that the account has NO Token API provisioned and fall back directly to the GPM web session (`<machine> - <email> - <port>`). Never give rambling speculative explanations.
+- Account Origin Triage: When asked about account origin/vendor, check Col 5 (`mail khôi phục`). An `@fviainboxes.com` recovery domain with `None` in Cols 9-10 indicates a basic via/reg credential purchase with temporary web OTP recovery, NOT an OAuth product (which carries `M.C5...` token and `9e5f94bc...` client ID).
+- GPM Security Change-Info Queue: If asked why an account on GPM has not had its password/security changed yet, inspect `D:\Taadaa\runtime\kibe\cron-state\hotmail_changed_tracker.json`. Explain clearly: change-info watchdog runs in small batches (1-3 accounts/night) after night feed, requires account age >= 7 days, TikTok + ChatGPT registered, and GPM profile must match the target machine's active proxy (e.g. port `20038`, not legacy `10006`).
 
 ### Carrier handoff
 

@@ -245,6 +245,36 @@ Trong `follow_state.py`, runner tự động điều chỉnh trần follow cho c
       2. Cấp lại `graduated = True`.
       3. Giải phóng hoàn toàn probation và chính thức đưa nick trở lại nhóm **🟢 Khỏe (Full Quota)**.
 
+## 19. Tương Quan Trần An Toàn & Tỉ Lệ Ăn Nhả Giữa Các Cohort (Thực Chiến Chu Kỳ 19–20/10)
+- **Dữ liệu thực nghiệm trên 245 tài khoản tham gia**:
+  * **🔴 Rookie (< 30 fl)**: Tỷ lệ ăn nhả **97.9% (190 / 194 nick)**.
+    - Điểm gãy tức thì: 98.9% ăn nhả ngay mốc 0–1 lượt (`last_failed_ceiling = 1`), vừa bấm nick đầu tiên hoặc kiểm tra Anchor là bị TikTok nhả ngay.
+    - Chỉ 4 nick sống sót sạch nhờ đang ở chế độ dưỡng bóp trần (2–5 fl).
+    - *Trần an toàn thực tế*: Cực thấp, chỉ **1 – 3 follow/ca**. Cấp budget $\ge 4$ cho Rookie ở giai đoạn này kích hoạt bot detection 98% gãy.
+  * **🟡 Mid (30 – 99 fl)**: Tỷ lệ ăn nhả **84.2% (16 / 19 nick)**.
+    - Điểm gãy (Cliff Drop): Xuất hiện rõ rệt ở mốc **12 – 15 follow** (`M23 R2` gãy ở 15, `M16 R3` gãy ở 13).
+    - *Trần an toàn tối ưu*: **5 – 6 follow/ca** (duy trì sạch 100% khi ở Hồi phục 2).
+  * **🟢 Veteran ($\ge 100$ fl)**: Tỷ lệ ăn nhả **71.9% (23 / 32 nick)**.
+    - Điểm gãy: Ngưỡng đỏ farm ở **$\ge 15$ follow** (`M17 R2` fl 15 lượt thì dính nhả lượt 15, `last_failed_ceiling = 16`).
+    - *Trần an toàn*: Chỉ top 3 cựu binh cứng (`M37 R1`, `M12 R1`, `M10 R1`) duy trì được **10 – 14 follow/ca**. Veteran đang dưỡng trần an toàn là **3 – 5 follow/ca**.
+- **Diễn biến tỷ lệ nhả qua các chu kỳ 4 ngày**:
+  * Chu kỳ 11–12/10 (cũ): 18 nick chạy, 7 ăn nhả (**38.9%**), thu 58 follow.
+  * Chu kỳ 15–16/10 (trước 4 ngày): 123 nick chạy, 84 ăn nhả (**68.3%**), thu 183 follow.
+  * Chu kỳ 19–20/10 (hiện tại): 245 nick chạy, 228 ăn nhả (**93.1%**), thu 219 follow.
+  * *Nguyên nhân nhảy vọt*: Dàn Rookie tham gia ồ ạt (194 nick, chiếm 79.2% fleet) đúng đợt TikTok siết mạnh + nhóm Mid/Veteran được cấp budget cao chạm ngưỡng đỏ 13–15 fl.
+
+## 20. Phân Tích Cơ Chế Hồi Phục Ra Tù: Bài Toán 15 Fl vs Phễu S1/S2 & Fast-Track Veteran
+- **Nguy cơ nếu thả ra tù nã ngay 15 fl**:
+  * Khi nick bị nhả ở lượt 15, TikTok đưa tài khoản vào diện theo dõi đặc biệt (High-Risk Watchlist). Mãn hạn cooldown chỉ là mở khóa tạm thời.
+  * Vừa ra tù mà bot nã ngay 15 fl dồn dập $\rightarrow$ AI TikTok kích hoạt Action Block lập tức do trùng pattern spammer cũ.
+  * Tái phạm sẽ tăng `fail_streak` lên 2 (giam 5 ngày) hoặc 3 (giam 7 ngày) $\rightarrow$ Nick bị đóng băng dài hạn, sản lượng cả tuần = 0.
+- **Bài toán sản lượng**:
+  * Đi qua phễu S1 (4 fl) $\rightarrow$ S2 (6 fl) $\rightarrow$ Tốt nghiệp (12–14 fl) thu về tổng **24 follow thật**, giữ an toàn cho nick.
+- **Quy chuẩn kiến nghị Veteran Fast-Track (Chống cào bằng với Rookie)**:
+  * Không cào bằng Veteran với Rookie: Veteran có điểm gãy 15–16, trust cao.
+  * Khi ra tù: Cho Veteran chạy Fast-Track **8 – 10 fl** (nằm an toàn dưới mốc gãy 15, đạt 60–70% sản lượng).
+  * Chỉ cần hoàn thành 1 ca sạch 8–10 fl là tốt nghiệp thẳng lên mốc 12–14 fl, không cần ngâm 2 ngày S1/S2 như Tân binh.
+
 
 
 
