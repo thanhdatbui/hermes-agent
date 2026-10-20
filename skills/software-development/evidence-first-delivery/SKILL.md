@@ -18,6 +18,7 @@ Use this class-level workflow whenever a task produces visual/UI/farm/browser ev
 ## Core contract
 
 - **Pre-send Vision Inspection**: See `references/pre-send-vision-inspection-and-anti-blind-delivery.md` for mandatory inspection via `browser_vision` or WinRT OCR prior to sending `MEDIA:<path>`.
+- **Browser Vision Failure & Claude Vision Fallback**: See `references/browser-vision-daemon-failure-and-claude-worker-fallback.md` when `browser_vision` hits daemon conflict/interrupted errors — fallback to `claude_worker.py` native vision.
 - **Informational Triage vs UI Mutation**: See `references/conversational-status-vs-ui-action-gate.md`. Gate 6 media verification applies strictly to UI/device mutation actions. Read-only explanation, log analysis, and database triage turns are exempt from media-attachment requirements and must not trigger output interception blocks.
 - **Physical Canary Gate & Dual-Checkpoint Visual Evidence**: See `references/physical-canary-gate-and-dual-checkpoint-visual-evidence.md` for mandatory device-locked live canary on physical devices, avoiding the "mock test passed = done" trap, and dual pre/post vision verification.
 1. **Do not claim success from summaries alone.** Runner exit code, `verified=True`, worker self-report, a database flag, or a path printed in a log is not visual proof.

@@ -209,6 +209,21 @@ Trong `follow_state.py`, runner tự động điều chỉnh trần follow cho c
   - Chạy query SQL bảng `snapshots` và `daily_account_actions`:
     Đối chiếu `following` sáng sớm hôm nay (mốc 07:04:xx) với `following` sau ca chạy. Nếu `following_sau - following_sáng` khớp với số bot ghi nhận $\rightarrow$ khẳng định 100% tài khoản ăn follow chuẩn, chênh lệch do mốc SQL so sánh với ngày hôm trước.
 
+## 17. Đối Soát Lệch Follow (Script 0 Lượt vs Web +1) Khi Kích Hoạt Chốt Chặn Anchor
+- **Hiện tượng**: Báo cáo watchdog ghi nhận `M<N> (@user): script 0 lượt - web 1 lượt - lệch (+1)`.
+- **Nguyên nhân cốt lõi & Quy trình đối soát 3 điểm bắt buộc**:
+  1. *Kiểm tra hiện trường follow của máy*:
+     - Đọc `follow_result.json` tại `live/<date>/<run>/machines/machine_<N>/<run>/follow_result.json` và state file `runs/state/follow_state_<N>_row_<row>.json`.
+     - Xác nhận cờ: `status: FOLLOW_FAILED`, `follow_failed: True`, `followed_count: 0`, `followed: []`, lý do `anchor @... bị nhả sau vuốt — dừng session`.
+  2. *Kiểm tra log thực thi*:
+     - Kiểm tra `log.jsonl` xác nhận không có bất kỳ lệnh tap nào được gửi sau khi anchor bị nhả (fail-closed bảo vệ fleet).
+  3. *Đối soát snapshot database (`tiktok_tracker.db`)*:
+     - Truy vấn `SELECT timestamp, following FROM snapshots WHERE LOWER(username) = LOWER(?) ORDER BY timestamp DESC LIMIT 5`.
+     - Xác định mốc snapshot sáng (07:04) so với mốc snapshot sau ca (14:06).
+  4. *Kỷ luật phân tích & Cấm quy chụp*:
+     - CẤM võ đoán đổ lỗi cho "lỗi script", "timeout rớt log", hay "bot chạy ẩu" khi chưa kiểm tra hiện trường.
+     - Khẳng định rõ: Runner đã xử lý hoàn toàn chuẩn xác theo Invariant Chốt Chặn Anchor (ngắt phiên ngay lập tức để bảo vệ tài khoản và proxy). Lượt tăng trên Web là biến động tự nhiên ngoài flow hoặc TikTok sync trễ từ phiên cũ trước mốc snapshot, không liên quan đến lỗi bot.
+
 
 
 

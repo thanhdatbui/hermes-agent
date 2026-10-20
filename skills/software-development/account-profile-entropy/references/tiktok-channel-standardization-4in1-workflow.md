@@ -45,7 +45,14 @@
   - Chuẩn kích thước: Vuông $512 \times 512$.
   - **Kỹ thuật trích xuất & Fallback khi Haar Cascade miss (0 face)**: Với các video tiểu phẩm/kịch hoặc hoạt hình/học đường, Haar Cascade thường trả về 0 face $\rightarrow$ BẮT BUỘC fallback sang trích xuất khung hình theo mốc thời gian (`dump_sample_frames` tại giây 2, 5, 8, 12) rồi crop tâm chủ thể (`crop_head_square`), không để quy trình bị treo.
   - Cung cấp ảnh đối sánh gồm cả ảnh vuông và mô phỏng viền tròn Profile (`make_circle_preview` với viền xanh lá).
-  - **Ghép Mosaic Đa Kênh & Invariant Soi Mắt Trước Khi Gửi**: Khi chuẩn hoá $\ge 1$ kênh cùng lúc, ghép thành 1 ảnh mosaic tổng hợp (`avatar_standardization_proposals.jpg`) chia hàng theo máy, cột theo phương án. Dùng `browser_navigate("file:///...")` kết hợp `browser_vision` mở ảnh local để soi mắt kiểm tra (xác nhận đúng chủ thể, không lẹm cằm/đỉnh đầu, không lỗi hiển thị đen/méo) TRƯỚC KHI gửi thẻ `MEDIA:<path>` cho Operator duyệt.
+  - **Ghép Mosaic Đa Kênh & Invariant Soi Mắt Trước Khi Gửi**: Khi chuẩn hoá $\ge 1$ kênh cùng lúc, ghép thành 1 ảnh proposal tổng hợp (`m<May>_standardization_proposals.jpg`) bằng thư viện `PIL` (`ImageDraw` + `ImageFont.truetype` dùng font Unicode Arial/Tahoma để giữ 100% tiếng Việt có dấu chuẩn, cấm `cv2.putText` lột dấu).
+    - Cấu trúc layout proposal chuẩn:
+      * **Header**: Máy <M>, Slot <N>, Username `@handle`, Tên hiển thị (`actual_name` - Giữ nguyên chuẩn người dùng thật hoặc đổi mới), Niche.
+      * **Avatar Columns**: Mỗi phương án đặt cạnh nhau gồm cả Ảnh vuông $512 \times 512$ và Mô phỏng viền tròn Profile (`make_circle_preview` viền xanh, lưu ý màu vẽ mask dùng tuple `(255,)` để tương thích type strict của OpenCV 4.x) để Operator thấy trước vết crop thực tế.
+      * **Bottom Checklist**: Tóm tắt hiện trạng 4 món (Tên, Bài pin <1.000 view không ghim / >=1.000 view ghim, Hashtag/Niche khóa cứng, 3 phương án Bio tiếng Việt có dấu hài hước).
+    - **Cơ chế soi mắt ảnh local qua Browser Vision**:
+      * Mở ảnh bằng `browser_navigate("file:///...")`. Khi mở file ảnh trực tiếp trên Chromium, `browser_snapshot` sẽ trả về `(empty page)` do trình duyệt chỉ render thẻ `<img>` đơn độc không có accessibility DOM tree.
+      * Kiểm chứng trạng thái nạp qua `browser_console(expression="document.body.innerHTML")` và gọi ngay `browser_vision` để chụp viewport soi mắt kiểm tra (xác nhận đúng chủ thể, không lẹm cằm/đỉnh đầu, không lỗi hiển thị đen/méo) TRƯỚC KHI gửi thẻ `MEDIA:<path>` cho Operator duyệt.
 - **Quy Chuẩn Khi Operator Yêu Cầu "Gen Ava Khác" (Multi-Round Diversity Escalation)**:
   * Khi Operator yêu cầu *"gen ava khác cho tao"* hoặc tiếp tục từ chối phương án vòng 2:
     - **CẤM TUYỆT ĐỐI** chỉ nhích thêm vài giây hoặc lấy khung hình tương tự từ cùng 1-2 video cũ (time jittering hẹp).

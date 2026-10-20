@@ -49,8 +49,10 @@ python D:/Taadaa/tools/pin_top_videos.py --serial ce12160cf82a303b0c --min-views
 python D:/Taadaa/tools/pin_top_videos.py --machine 28 --min-views 5000 --max-pins 3
 ```
 
-### C. Kỷ Luật An Toàn Thiết Bị (Device Invariants)
-- **100% ATX-agent (port 7912):** Đọc UI XML qua `capture_atx_session_ui` hoặc curl direct port 7912, tuyệt đối cấm shell uiautomator dump tránh crash thiết bị yếu (S7 Android 7).
+### C. Kỷ Luật An Toàn Thiết Bị (Device Invariants & Tool Fixes)
+- **Device Lock Bắt Buộc Khi Gọi Standalone:** Lệnh chạy trực tiếp `pin_top_videos.py --machine <N> ...` can thiệp thiết bị live BẮT BUỘC bọc qua `operator_device_lock(machine=args.machine, serial=serial)` từ `automation_core.device_lock` để không bị chặn bởi Hard Gate #5 (Device Lock Required).
+- **AdbClient adb_path Invariant:** Khi gọi `capture_atx_session_ui(dev)` từ `pin_top_videos.py`, `AdbClient` BẮT BUỘC khởi tạo với `adb_path=ADB_BIN` (ví dụ `C:\Program Files (x86)\xiaowei\tools\adb.exe`), tránh dùng adb mặc định rỗng/lệch PATH dẫn đến `UI_DUMP_INVALID`.
+- **Cơ chế đọc UI XML ATX-agent (port 7912):** Endpoint `/dumpUI` trực tiếp qua curl trên S7 trả về 404. Hệ thống BẮT BUỘC đọc qua `automation_core.persistent_ui.capture_atx_session_ui` (kết nối endpoint JSON-RPC `/session/<pid>:com.github.uiautomator/jsonrpc/0` qua forward port nội bộ), tuyệt đối cấm fallback shell uiautomator dump tránh OOM crash `EXIT=137`.
 - **Hồi phục an toàn:** Nếu sau khi mở video mà Share Sheet không hiển thị nút Ghim (hoặc video đã được ghim từ trước), tool tự động gửi phím `KEYCODE_BACK` để giải phóng màn hình Profile về trạng thái sạch.
 
 ### D. Kiểm Chứng Độc Lập

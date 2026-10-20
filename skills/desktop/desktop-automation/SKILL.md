@@ -213,17 +213,37 @@ See `references/unexpected-privileged-window.md` for the concise evidence recipe
   - If the requested surface returns an empty/0×0 capture, missing window, WAF page, or incomplete UI, preserve state and report the blocker. Do not claim the search or click succeeded and do not switch surfaces without authorization.
   - When CDP is the authorized surface, launch Chrome in the background with remote debugging: `chrome.exe --remote-debugging-port=9222 --user-data-dir="<profile_path>"` (always launched detached or via `background=True`) and verify the target/page before acting.
 - **Launching GUI Apps from Terminal:** Never run interactive GUI apps (Chrome, Notepad) as foreground terminal commands — they hold the shell pipeline and freeze the agent session. Always launch detached or backgrounded.
-- **Preventing Flickering Console Windows (`conhost.exe` / `cmd.exe` nháy màn hình) in Background Scripts:**
-  - *Symptom:* Cửa sổ console đen hoặc cmd nháy chớp tắt liên tục trên màn hình khi máy đang chạy ngầm batch rendering, download, video pipeline hoặc cron watchdog.
-  - *Root Cause:* Trên Windows, các script Python/PowerShell nền khi gọi các CLI console subsystem (`ffmpeg`, `ffprobe`, `adb`, `git`, `ssh`) bằng `subprocess.run(...)` hay `subprocess.Popen(...)` mà thiếu cờ ẩn cửa sổ sẽ khiến Windows Console Subsystem tự động sinh ra một console window (`conhost.exe`) trong tích tắc rồi đóng lại.
-  - *Fix for Python:* Luôn chêm `creationflags=subprocess.CREATE_NO_WINDOW` (`0x08000000`) trên Windows:
+- **Preventing Flickering Console Windows & Focus Stealing (`conhost.exe` / `cmd.exe` nháy màn hình & cướp focus game) in Background Scripts:**
+  - *Symptom:* Cửa sổ console đen hoặc cmd nháy chớp tắt liên tục trên màn hình khi máy đang chạy ngầm batch rendering, download, video pipeline, hoặc cron watchdog. Trong các game toàn màn hình (TFT, LoL, War3), hiện tượng này làm drop FPS, giật alt-tab, hoặc cướp focus chuột.
+  - *Root Cause:* Trên Windows, các script Python/PowerShell nền khi gọi các CLI console subsystem (`ffmpeg`, `adb`, `git`, `ssh`, `cmd.exe`) mà thiếu cờ `CREATE_NO_WINDOW` sẽ khiến Windows Console Subsystem tự động cấp phát console (`conhost.exe`) trên desktop station `WinSta0\Default`.
+  - *Pitfall with PowerShell `Start-Process -WindowStyle Hidden`:* Naive `Start-Process -FilePath "cmd.exe" ... -WindowStyle Hidden` chỉ áp dụng `SW_HIDE` sau khi console đã được tạo. Trong các batch chạy hàng chục worker song song, conhost vẫn chớp nháy và cướp focus của ứng dụng đồ họa/game đang chạy.
+  - *Fix for Python:* Luôn truyền `creationflags=subprocess.CREATE_NO_WINDOW` (`0x08000000`) trên Windows:
     ```python
     import sys, subprocess
 
     popen_kwargs = {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {}
     subprocess.run(cmd, capture_output=True, text=True, **popen_kwargs)
     ```
-  - *Fix for PowerShell:* Dùng `Start-Process -FilePath ... -ArgumentList ... -WindowStyle Hidden` thay vì gọi bare binary trực tiếp.
+  - *Fix for PowerShell:* Sử dụng trực tiếp .NET `System.Diagnostics.ProcessStartInfo` để bật `CreateNoWindow`:
+    ```powershell
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = "cmd.exe"
+    $psi.Arguments = $cmd
+    $psi.CreateNoWindow = $true
+    $psi.UseShellExecute = $false
+    $psi.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
+    $p = [System.Diagnostics.Process]::Start($psi)
+    ```
+- **Triaging & Hiding Lingering CUA Cursor Overlays (`Cua.AgentCursorOverlay.default`):**
+  - *Symptom:* Cửa sổ toàn màn hình 1920x1080 mang tiêu đề `Cua.AgentCursorOverlay.default` thuộc `cua-driver.exe` hiển thị đè lên desktop sau các tác vụ `computer_use`.
+  - *Root Cause:* Mỗi phiên CUA khởi tạo một lớp overlay trong suốt (`WS_EX_LAYERED | WS_EX_TRANSPARENT`) để hiển thị con trỏ ảo. Khi có nhiều phiên CUA MCP chạy hoặc sau khi hoàn tất tác vụ, overlay có thể vẫn còn hiển thị trên Z-order.
+  - *Remediation (Zero-Kill):* Dùng Win32 `user32.ShowWindow(hwnd, SW_HIDE)` (với `SW_HIDE = 0`) để ẩn lập tức lớp overlay mà không cần tắt daemon `cua-driver` chính.
+- **Game-Safe Automation & Scheduled Reboot Preflight Contract (TFT / War3 Guard):**
+  - *Symptom:* Người dùng lo lắng việc thoát trận game hoặc máy rảnh sẽ bất ngờ kích hoạt reboot tự động.
+  - *Contract:*
+    1. Reboot máy KHÔNG BAO GIỜ tự kích hoạt động theo sự kiện tắt game. Hệ thống chỉ chạy vào các mốc cố định qua Windows Task Scheduler (chuẩn farm: `05:20`, `11:20`, `17:20`).
+    2. Tại thời điểm kích hoạt mốc reboot, script preflight (`farm_preflight_daily_reset.py`) bắt buộc kiểm tra các tiến trình trận đấu (`tftclient-win64-shipping.exe`, `league of legends.exe`, `war3.exe`). Nếu phát hiện đang trong trận đấu, script lập tức `[ABORT]` hủy hoàn toàn lượt reboot ca đó để tránh xử thua AFK.
+    3. Trạng thái chỉ ở sảnh (lobby / client ngoài sảnh) hoặc đã thoát trận hoàn toàn mới được coi là an toàn nếu không có active device lock.
 - **Windows Network Adapter & Default Gateway Reconfiguration (Headless Elevation):**
   - Git-bash runs under standard unelevated user tokens. Network adapter configuration, gateway changes, and route table adjustments require Administrator elevation.
   - When `ConsentPromptBehaviorAdmin` is `0`, `Start-Process powershell.exe -Verb RunAs -Wait -ArgumentList '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', 'script.ps1'` elevates silently without modal UAC dialogs.

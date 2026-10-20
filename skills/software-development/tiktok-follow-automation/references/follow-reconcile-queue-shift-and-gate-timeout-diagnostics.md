@@ -148,6 +148,16 @@ Trong các test suite offline (như `test_mode1_search_follow.py`):
          continue
      ```
    - Giúp máy timeout vẫn đi tiếp xuống dưới, cào Web snapshot để phát hiện chênh lệch thật (`script 0 lượt - web N lượt - lệch (+N)`), và ghi nhận telemetry đầy đủ vào DB SQLite `session_account_actions`.
+3. **Cạm bẫy Spam 0 lượt (Zero-Delta Clean Reconcile Spam Invariant):**
+   - *Hiện tượng:* Sau khi mở rộng `all_follows.keys()`, tất cả các máy dính `FOLLOW_FAILED` (như 53 máy bị nhả Anchor dừng phiên an toàn với 0 follow) đều đi vào vòng lặp đối soát. Khi web delta cũng bằng 0, code in ra hàng loạt:
+     `- M{m} (@user) : script 0 lượt - web 0 lượt - khớp`
+     làm phình tin nhắn, tràn màn hình và chẻ đôi tin Telegram `(1/2)`.
+   - *Nguyên tắc bắt buộc:* **CHỈ IN CHI TIẾT KHI CÓ PHÁT SINH FOLLOW HOẶC LỆCH:**
+     ```python
+     if expected_delta > 0 or web_delta > 0 or diff != 0:
+         details.append(f"    - M{m}{u_str} : script {expected_delta} lượt{sub_info} - web {web_delta} lượt - {match_str}")
+     ```
+     Tuyệt đối cấm in các máy mà cả `expected_delta == 0` và `web_delta == 0` (không có follow nào phát sinh từ cả 2 phía). Ghi nhận DB telemetry ngầm vẫn thực hiện đầy đủ cho tất cả máy, nhưng danh sách chi tiết báo cáo Telegram phải tuyệt đối sạch rác.
 
 ---
 

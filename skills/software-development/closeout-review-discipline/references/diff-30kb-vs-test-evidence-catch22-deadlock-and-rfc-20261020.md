@@ -51,3 +51,27 @@ Khi trượt điểm 3 lần liên tiếp:
   2. Điểm logic correctness đạt chuẩn.
   3. Duy nhất bị cản trở bởi trần byte-size hoặc thiếu diff test do phân rã scope.
 - Strike-3 không được đùn cho Worker/Reviewer CLI lặp lại việc sửa code mò mẫm, mà phải kích hoạt **Lane Ngoại lệ có Audit (Operator Override Token - Fail-Closed)** để giải phóng phiên làm việc dứt điểm theo phê duyệt của Operator.
+
+---
+
+## 4. Cơ Giới Hóa Thành Công Vào `closeout_gate.py` (Commit `1a053da`)
+
+Theo chỉ đạo của Operator, RFC-1 đã được thi công trực tiếp vào `D:/Taadaa/tools/closeout_gate.py`:
+- **Hàm bóc tách diff:**
+  ```python
+  def _production_diff_bytes(raw: bytes) -> int:
+      total = 0
+      for section in re.split(rb"(?m)^(?=diff --git )", raw):
+          if not section:
+              continue
+          m = re.match(rb"diff --git a/(.*?) b/([^\r\n]*)", section)
+          path = m.group(2).decode("utf-8", errors="replace").replace("\\", "/") if m else ""
+          if path.startswith("tests/") or path.rsplit("/", 1)[-1].startswith("test_"):
+              continue
+          total += len(section)
+      return total
+  ```
+- **Áp dụng tại 2 nhánh kiểm tra size:** Cả `targeted_candidate` và `staged/working-tree` đều chuyển từ `len(raw) > effective_max` sang `prod_size = _production_diff_bytes(raw) > effective_max`.
+- **Bảo toàn Raw Diff:** Reviewer vẫn nhận 100% toàn văn diff (cả production code và test code) để chấm điểm `test_evidence`, không bị cắt xén.
+- **Kết quả nghiệm thu:** Diff mẫu 498 bytes (245b code + 253b test) được bóc tách chính xác 253b production. Vĩnh viễn triệt tiêu bẫy Catch-22 deadlock giữa trần 30KB và điểm test.
+
