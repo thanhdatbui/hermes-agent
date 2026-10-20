@@ -26,6 +26,7 @@ version: 1.3.0
 
 ## 3. Tài Liệu Tham Khảo (References)
 - Chi tiết API và các case watchdog: xem danh mục tài liệu trong thư mục `references/` của skill.
+- Google AI Studio API Key Provisioning & Quota Pitfalls on GPM Farm Profiles: xem [`references/google-ai-studio-gpm-key-provisioning-pitfalls.md`](references/google-ai-studio-gpm-key-provisioning-pitfalls.md).
 - Pure Google Sign-in vs OAuth Antigravity Decoupling (2026-10-19): xem [`references/gpm-login-pure-google-signin-and-antigravity-decoupling-20261019.md`](references/gpm-login-pure-google-signin-and-antigravity-decoupling-20261019.md).
 - Pro Pool Token Isolation & Pure Login Nurture Protocol (2026-10-19): xem [`references/gpm-pro-pool-token-isolation-and-pure-login-nurture-20261019.md`](references/gpm-pro-pool-token-isolation-and-pure-login-nurture-20261019.md).
 - Thẩm định Closeout Gate cho luồng pure login (Double verification & Structured telemetry): xem mục 6 trong [`references/gpm-login-pure-google-signin-and-antigravity-decoupling-20261019.md`](references/gpm-login-pure-google-signin-and-antigravity-decoupling-20261019.md).
