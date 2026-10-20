@@ -43,3 +43,4 @@ version: 1.3.0
 - Quy trình lấy Google AI Studio API Key trên tài khoản farm/mới (GCP ToS + Import Project): xem [`references/google-ai-studio-api-key-provisioning-flow.md`](references/google-ai-studio-api-key-provisioning-flow.md).
 - Google AI Studio API Key Provisioning via GPM & GCP Project Import (Zero-Human Flow): xem [`references/google-ai-studio-api-key-provisioning-and-gcp-import.md`](references/google-ai-studio-api-key-provisioning-and-gcp-import.md).
 - GPM Gmail Login Shifts Watchdog Multi-Shift Triage & Burst Execution: xem [`references/gpm-gmail-login-shifts-watchdog-triage-and-burst-execution.md`](references/gpm-gmail-login-shifts-watchdog-triage-and-burst-execution.md).
+- Thời gian chạy ca đăng nhập GPM, quy tắc máy bận & đối soát lỗi nghiệp vụ: xem [`references/gpm-login-shifts-timing-and-triage-guide.md`](references/gpm-login-shifts-timing-and-triage-guide.md).
