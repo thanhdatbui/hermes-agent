@@ -22,4 +22,4 @@ Ava: Trích clip gốc representative_frames; Vision LLM quét DB lọc ava rác
 §
 Reboot 3 ca (05:20, 11:20, 17:20), né TFT/War3. Task ngầm VBS/wscript Hidden+CREATE_NO_WINDOW. Game = tắt nháy, cấm pause cron.
 §
-omp: OAuth google-antigravity / :20129 né 20 RPD AI Studio; multi-profile OMP_PROFILE / --profile lưu ~/.omp/profiles/<name>/agent/agent.db.
+OMP: omp_cli.py quản lý 22 profile (OMP_PROFILE), install-id chung ~/.omp/install-id cần cô lập USERPROFILE né link chùm; dual-route native OAuth / :20129.
