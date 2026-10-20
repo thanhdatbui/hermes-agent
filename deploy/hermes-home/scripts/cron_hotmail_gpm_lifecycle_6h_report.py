@@ -24,12 +24,13 @@ import time
 import uuid
 from collections import Counter
 from contextlib import closing
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 KIBE_STATE_PATH = Path("D:/Taadaa/runtime/kibe/cron-state/batch_gpm_5profiles_supervisor_state.json")
 ADMIN_STATE_PATH = Path("D:/Taadaa/runtime/admin/cron-state/batch_gpm_5profiles_supervisor_state.json")
+PREV_SNAPSHOT_PATH = Path(os.environ.get('HOTMAIL_LIFECYCLE_PREV_SNAPSHOT', r'D:\Taadaa\runtime\kibe\cron-state\hotmail_gpm_lifecycle_last_snapshot.json'))
 DB_PATH = Path(os.environ.get("OMNI_DB_PATH", "C:/Users/Kibe/.omniroute/storage.sqlite"))
 ROUTER9_DB_PATH = Path(os.environ.get("ROUTER9_DB_PATH", r"C:\Users\Kibe\AppData\Roaming\9router\db\data.sqlite"))
 
@@ -233,7 +234,7 @@ def normalize_profiles(raw_profiles: dict[str, Any], telemetry: Telemetry, farm:
     return records
 
 
-def _has_valid_timestamp(raw: dict[str, Any], field: str, key: str, flag) -> bool:
+def _has_valid_timestamp(raw: dict[str, Any], field: str, key: str, flag: Callable[[str, str], None]) -> bool:
     value = raw.get(field)
     if not value:
         return False
@@ -287,17 +288,67 @@ def aggregate_records(records: list[dict[str, Any]], telemetry: Telemetry | None
     }
 
 
+METRIC_KEYS = ("total", "login_ok", "login_pending", "login_blocked", "chatgpt_ok", "done_without_chatgpt", "wait_7d", "change_info", "done", "blocked")
+
+
 def merge_metrics(*farms: dict[str, Any]) -> dict[str, Any]:
     merged: dict[str, Any] = {"buckets": {name: 0 for name in BUCKETS}}
-    for key in ("total", "login_ok", "login_pending", "login_blocked", "chatgpt_ok",
-                "done_without_chatgpt", "wait_7d", "change_info", "done", "blocked"):
+    for key in METRIC_KEYS:
         merged[key] = sum(f[key] for f in farms)
     for name in BUCKETS:
         merged["buckets"][name] = sum(f["buckets"][name] for f in farms)
     return merged
 
 
-# ── OmniRoute pool (SQLite) ──────────────────────────────────────────────────
+RECENT_KEYS = ("total_processed", "new_done", "new_chatgpt", "new_login", "failed_login", "ready_change")
+RECENT_EVENT_BY_STAGE = {STAGE_HOTMAIL_LOGIN: "new_login", STAGE_CHATGPT_REG: "new_chatgpt",
+                         STAGE_WAIT_7D: "ready_change", STAGE_CHANGE_INFO: "new_done", STAGE_DONE: "new_done"}
+FAILED_RESULT_STATUSES = frozenset({"FAILED", "ERROR", "BLOCKED", "QUARANTINE"})
+
+
+def aggregate_recent_activity(raw_profiles: dict[str, Any], cutoff: datetime,
+                              now: datetime | None = None) -> dict[str, Any]:
+    now = now or datetime.now(timezone.utc)
+    recent = {key: 0 for key in RECENT_KEYS}
+    for raw in raw_profiles.values():
+        if not isinstance(raw, dict):
+            continue
+        history = raw.get("history")
+        hist_timestamps: set[str] = set()
+        for entry in history if isinstance(history, list) else []:
+            if not isinstance(entry, dict):
+                continue
+            at_raw = entry.get("at")
+            at = _parse_time(at_raw)
+            if at is None or at < cutoff or at > now:
+                continue
+            if isinstance(at_raw, str):
+                hist_timestamps.add(at_raw)
+            recent["total_processed"] += 1
+            event = RECENT_EVENT_BY_STAGE.get(_token(entry.get("stage"))[0])
+            if event:
+                recent[event] += 1
+        last = raw.get("last_result")
+        if not isinstance(last, dict):
+            continue
+        last_at_raw = last.get("at")
+        if isinstance(last_at_raw, str) and last_at_raw in hist_timestamps:
+            continue
+        at = _parse_time(last_at_raw)
+        status = _token(last.get("status"))[0]
+        if at is None or at < cutoff or at > now or status not in FAILED_RESULT_STATUSES:
+            continue
+        recent["total_processed"] += 1
+        if _token(last.get("stage"))[0] == STAGE_HOTMAIL_LOGIN:
+            recent["failed_login"] += 1
+    return recent
+
+
+def merge_recent_activity(*farms: dict[str, Any]) -> dict[str, Any]:
+    return {key: sum(int(f.get(key, 0)) for f in farms if isinstance(f, dict)) for key in RECENT_KEYS}
+
+
+# ── OmniRoute pool (SQLite)────────────────────────────────────────────────
 
 def _coerce_active(value: Any) -> int | None:
     if isinstance(value, bool):
@@ -388,16 +439,19 @@ def collect_omni_pool(db_path: Path, telemetry: Telemetry) -> dict[str, Any]:
 
 # ── Snapshot & rendering ─────────────────────────────────────────────────────
 
-def collect_snapshot(telemetry: Telemetry) -> dict[str, Any]:
+def collect_snapshot(telemetry: Telemetry, now: datetime | None = None, window_hours: float = 6.0) -> dict[str, Any]:
     started = time.perf_counter()
-    now = datetime.now(timezone.utc)
+    now = now or datetime.now(timezone.utc)
+    cutoff = now - timedelta(hours=window_hours)
 
     farm_metrics: dict[str, dict[str, Any]] = {}
+    farm_recent: dict[str, dict[str, Any]] = {}
     farm_keys: dict[str, set[str]] = {}
     for farm, path in (("kibe", KIBE_STATE_PATH), ("admin", ADMIN_STATE_PATH)):
         raw = load_farm_state(path, telemetry, farm)
         farm_keys[farm] = set(raw)
         farm_metrics[farm] = aggregate_records(normalize_profiles(raw, telemetry, farm), telemetry, farm)
+        farm_recent[farm] = aggregate_recent_activity(raw, cutoff, now)
 
     overlap = farm_keys["kibe"] & farm_keys["admin"]
     if overlap:
@@ -405,6 +459,7 @@ def collect_snapshot(telemetry: Telemetry) -> dict[str, Any]:
                        count=len(overlap), sample=sorted(overlap)[:SCHEMA_SAMPLE_LIMIT])
 
     totals = merge_metrics(farm_metrics["kibe"], farm_metrics["admin"])
+    recent = merge_recent_activity(farm_recent["kibe"], farm_recent["admin"])
     pool = collect_omni_pool(DB_PATH, telemetry)
 
     warnings = telemetry.warnings()
@@ -412,6 +467,8 @@ def collect_snapshot(telemetry: Telemetry) -> dict[str, Any]:
         "correlation_id": telemetry.correlation_id,
         "timestamp": now.isoformat(),
         "farms": farm_metrics,
+        "farm_recent": farm_recent,
+        "recent": recent,
         "totals": totals,
         "pool": pool,
         "warning_count": len(warnings),
@@ -436,39 +493,109 @@ def collect_snapshot(telemetry: Telemetry) -> dict[str, Any]:
     return snapshot
 
 
-def render_report(snapshot: dict[str, Any]) -> list[str]:
+def _fmt_delta(curr: int, prev: Any) -> str:
+    if isinstance(prev, int) and not isinstance(prev, bool):
+        return f' [{curr - prev:+d}]'
+    return ''
+
+
+def _has_metric_ints(metrics: Any) -> bool:
+    return isinstance(metrics, dict) and all(
+        isinstance(metrics.get(k), int) and not isinstance(metrics.get(k), bool) for k in METRIC_KEYS
+    )
+
+
+def load_previous_snapshot(path: Path) -> dict[str, Any] | None:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    timestamp = _parse_time(data.get("timestamp"))
+    if timestamp is None or timestamp > datetime.now(timezone.utc):
+        return None
+    if not _has_metric_ints(data.get("totals")):
+        return None
+    farms = data.get("farms")
+    if not isinstance(farms, dict) or not all(_has_metric_ints(farms.get(farm)) for farm in FARM_LABELS):
+        return None
+    return data
+
+
+def save_current_snapshot(path: Path, snapshot: dict[str, Any], telemetry: Telemetry | None = None) -> None:
+    tmp: Path | None = None
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_name(f"{path.name}.{os.getpid()}.{time.time_ns()}.tmp")
+        tmp.write_text(json.dumps(snapshot, ensure_ascii=False, default=str), encoding="utf-8")
+        os.replace(tmp, path)
+    except Exception as exc:
+        if tmp is not None and tmp.exists():
+            try:
+                tmp.unlink()
+            except OSError:
+                pass
+        if telemetry is None:
+            raise
+        telemetry.emit("snapshot_save_error", level="warning", error_class="SNAPSHOT_IO_ERROR",
+                       path=str(path), error=str(exc))
+
+
+def render_report(snapshot: dict[str, Any], prev_snapshot: dict[str, Any] | None = None) -> list[str]:
     kibe, admin, t = snapshot["farms"]["kibe"], snapshot["farms"]["admin"], snapshot["totals"]
     pool = snapshot["pool"]
     total = t["total"]
+    prev = prev_snapshot or {}
+    pt = prev.get("totals", {})
+    pk = prev.get("farms", {}).get("kibe", {})
+    pa = prev.get("farms", {}).get("admin", {})
 
     lines = [
         "📊 [BÁO CÁO 6H: VÒNG ĐỜI HOTMAIL -> GPM -> CHATGPT TOÀN FARM]",
         f"• Tổng số tài khoản trong Queue: {total} (Kibe: {kibe['total']} | Admin: {admin['total']})",
         "",
         "🔑 TIẾN ĐỘ HOTMAIL LOGIN:",
-        f"  • Toàn Farm Đã Login Hotmail : {t['login_ok']}/{total} ({_pct(t['login_ok'], total):.1f}%)",
-        f"    - Farm Kibe (M1-80)        : {kibe['login_ok']}/{kibe['total']}",
-        f"    - Farm Admin (M201-280)    : {admin['login_ok']}/{admin['total']}",
-        f"  • Đang Chờ Login (PENDING)   : {t['login_pending']} (Kibe: {kibe['login_pending']} | Admin: {admin['login_pending']})",
-        f"  • Đang Cooldown 48h (BLOCKED): {t['login_blocked']} (Kibe: {kibe['login_blocked']} | Admin: {admin['login_blocked']})",
+        f"  • Toàn Farm Đã Login Hotmail : {t['login_ok']}/{total} ({_pct(t['login_ok'], total):.1f}%){_fmt_delta(t['login_ok'], pt.get('login_ok'))}",
+        f"    - Farm Kibe (M1-80)        : {kibe['login_ok']}/{kibe['total']}{_fmt_delta(kibe['login_ok'], pk.get('login_ok'))}",
+        f"    - Farm Admin (M201-280)    : {admin['login_ok']}/{admin['total']}{_fmt_delta(admin['login_ok'], pa.get('login_ok'))}",
+        f"  • Đang Chờ Login (PENDING)   : {t['login_pending']}{_fmt_delta(t['login_pending'], pt.get('login_pending'))} (Kibe: {kibe['login_pending']} | Admin: {admin['login_pending']})",
+        f"  • Đang Cooldown 48h (BLOCKED): {t['login_blocked']}{_fmt_delta(t['login_blocked'], pt.get('login_blocked'))} (Kibe: {kibe['login_blocked']} | Admin: {admin['login_blocked']})",
         "",
         "🤖 TIẾN ĐỘ CHATGPT REG:",
-        f"  • Toàn Farm Đã Reg Thành Công : {t['chatgpt_ok']}/{total} ({_pct(t['chatgpt_ok'], total):.1f}%)",
-        f"    - Farm Kibe (M1-80)        : {kibe['chatgpt_ok']}/{kibe['total']}",
-        f"    - Farm Admin (M201-280)    : {admin['chatgpt_ok']}/{admin['total']}",
+        f"  • Toàn Farm Đã Reg Thành Công : {t['chatgpt_ok']}/{total} ({_pct(t['chatgpt_ok'], total):.1f}%){_fmt_delta(t['chatgpt_ok'], pt.get('chatgpt_ok'))}",
+        f"    - Farm Kibe (M1-80)        : {kibe['chatgpt_ok']}/{kibe['total']}{_fmt_delta(kibe['chatgpt_ok'], pk.get('chatgpt_ok'))}",
+        f"    - Farm Admin (M201-280)    : {admin['chatgpt_ok']}/{admin['total']}{_fmt_delta(admin['chatgpt_ok'], pa.get('chatgpt_ok'))}",
         "",
         "🔐 TIẾN ĐỘ CHANGE HOTMAIL & BẢO MẬT:",
-        f"  • Đã Hoàn Tất Đổi Pass (DONE) : {t['done']}/{total} ({_pct(t['done'], total):.1f}%)",
-        f"    - Farm Kibe (M1-80)        : {kibe['done']}/{kibe['total']}",
-        f"    - Farm Admin (M201-280)    : {admin['done']}/{admin['total']}",
+        f"  • Đã Hoàn Tất Đổi Pass (DONE) : {t['done']}/{total} ({_pct(t['done'], total):.1f}%){_fmt_delta(t['done'], pt.get('done'))}",
+        f"    - Farm Kibe (M1-80)        : {kibe['done']}/{kibe['total']}{_fmt_delta(kibe['done'], pk.get('done'))}",
+        f"    - Farm Admin (M201-280)    : {admin['done']}/{admin['total']}{_fmt_delta(admin['done'], pa.get('done'))}",
         f"  • Hàng đợi đổi pass (CHANGE_INFO): {t['change_info']} (Kibe: {kibe['change_info']} | Admin: {admin['change_info']})",
-        f"  • Đang ngâm 7 ngày chờ đổi (WAIT_7D): {t['wait_7d']} (Kibe: {kibe['wait_7d']} | Admin: {admin['wait_7d']})",
+        f"  • Đang ngâm 7 ngày chờ đổi (WAIT_7D): {t['wait_7d']}{_fmt_delta(t['wait_7d'], pt.get('wait_7d'))} (Kibe: {kibe['wait_7d']} | Admin: {admin['wait_7d']})",
     ]
+    if prev_snapshot:
+        lines.insert(2, f"• So sánh với lần trước: {prev_snapshot.get('timestamp', 'không rõ')}")
     if t["blocked"] > 0:
         lines.append(f"  ⚠️ Lỗi / Kẹt cần cứu (BLOCKED): {t['blocked']} (Kibe: {kibe['blocked']} | Admin: {admin['blocked']})")
     unknown = t["buckets"][STAGE_UNKNOWN]
     if unknown > 0:
         lines.append(f"  ⚠️ Stage không nhận diện (UNKNOWN): {unknown} (Kibe: {kibe['buckets'][STAGE_UNKNOWN]} | Admin: {admin['buckets'][STAGE_UNKNOWN]})")
+
+    lines += ["", "⚡ BIẾN ĐỘNG TRONG 6H QUA:"]
+    recent = snapshot["recent"]
+    if recent["total_processed"] == 0:
+        lines.append("  • Không có biến động nào trong 6h qua (farm idle).")
+    else:
+        kibe_recent, admin_recent = snapshot["farm_recent"]["kibe"], snapshot["farm_recent"]["admin"]
+        lines += [
+            f"  • Tổng số tài khoản xử lý : {recent['total_processed']} (Kibe: {kibe_recent['total_processed']} | Admin: {admin_recent['total_processed']})",
+            f"  • Login Hotmail thành công: {recent['new_login']}",
+            f"  • Login Hotmail lỗi       : {recent['failed_login']}",
+            f"  • Reg ChatGPT thành công  : {recent['new_chatgpt']}",
+            f"  • Sẵn sàng đổi info (WAIT_7D -> CHANGE_INFO): {recent['ready_change']}",
+            f"  • Hoàn tất DONE mới       : {recent['new_done']}",
+        ]
 
     lines += ["", "🌐 CHATGPT WEB POOL (OMNIRoute :20129):"]
     if pool["connections_ok"]:
@@ -490,8 +617,10 @@ def render_report(snapshot: dict[str, Any]) -> list[str]:
 def main() -> int:
     telemetry = Telemetry()
     snapshot = collect_snapshot(telemetry)
-    for line in render_report(snapshot):
+    prev_snapshot = load_previous_snapshot(PREV_SNAPSHOT_PATH)
+    for line in render_report(snapshot, prev_snapshot):
         print(line)
+    save_current_snapshot(PREV_SNAPSHOT_PATH, snapshot, telemetry)
     return 0
 
 

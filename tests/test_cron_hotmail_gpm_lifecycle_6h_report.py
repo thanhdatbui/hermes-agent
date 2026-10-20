@@ -1,5 +1,6 @@
 import io
 import json
+import os
 import sqlite3
 import sys
 import tempfile
@@ -35,6 +36,7 @@ class ReportTestCase(unittest.TestCase):
         self.tmp = Path(tmp.name)
         self.kibe_path = self.tmp / "kibe.json"
         self.admin_path = self.tmp / "admin.json"
+        self.prev_snapshot_path = self.tmp / "prev.json"
         self.db_path = self.tmp / "omni.sqlite"
         self.write_state(self.kibe_path, {})
         self.write_state(self.admin_path, {})
@@ -69,6 +71,7 @@ class ReportTestCase(unittest.TestCase):
         with patch.object(report_mod, "KIBE_STATE_PATH", self.kibe_path), \
              patch.object(report_mod, "ADMIN_STATE_PATH", self.admin_path), \
              patch.object(report_mod, "DB_PATH", self.db_path), \
+             patch.object(report_mod, "PREV_SNAPSHOT_PATH", self.prev_snapshot_path), \
              redirect_stdout(out), \
              redirect_stderr(err):
             rc = report_mod.main()
@@ -643,6 +646,171 @@ class TestHelpers(unittest.TestCase):
         merged = report_mod.merge_metrics(a, b)
         self.assertEqual((merged["total"], merged["done"], merged["blocked"]), (2, 1, 1))
         self.assertEqual(sum(merged["buckets"].values()), 2)
+
+
+def _hist(at, stage, status="COMPLETED"):
+    return {"at": at, "stage": stage, "status": status}
+
+
+class TestRecentActivity(ReportTestCase):
+    NOW = "2026-10-20T12:00:00Z"
+    CUTOFF = "2026-10-20T06:00:00Z"
+    INSIDE = "2026-10-20T09:00:00Z"
+
+    def setUp(self):
+        super().setUp()
+        self.cutoff = report_mod._parse_time(self.CUTOFF)
+
+    def _recent(self, profiles):
+        return report_mod.aggregate_recent_activity(profiles, self.cutoff, report_mod._parse_time(self.NOW))
+
+    def _render_at(self, now):
+        tel = report_mod.Telemetry(stream=io.StringIO())
+        with patch.object(report_mod, "KIBE_STATE_PATH", self.kibe_path), \
+             patch.object(report_mod, "ADMIN_STATE_PATH", self.admin_path), \
+             patch.object(report_mod, "DB_PATH", self.db_path):
+            snap = report_mod.collect_snapshot(tel, now=report_mod._parse_time(now))
+        return report_mod.render_report(snap)
+
+    def test_history_is_filtered_by_cutoff_inclusive(self):
+        profiles = {"M01:a": {"history": [_hist("2026-10-20T05:59:59Z", "HOTMAIL_LOGIN"), _hist(self.CUTOFF, "HOTMAIL_LOGIN"), _hist(self.INSIDE, "HOTMAIL_LOGIN")]}}
+        res = self._recent(profiles)
+        self.assertEqual((res["total_processed"], res["new_login"]), (2, 2))
+
+    def test_history_without_valid_timestamp_or_shape_is_ignored(self):
+        profiles = {
+            "M01:a": {"history": [{"stage": "HOTMAIL_LOGIN", "status": "COMPLETED"}, {"at": "garbage", "stage": "HOTMAIL_LOGIN"}, "not-a-dict"]},
+            "M02:b": {"history": "not-a-list"}, "M03:c": "not-a-dict",
+        }
+        self.assertEqual(self._recent(profiles)["total_processed"], 0)
+
+    def test_history_stages_map_to_recent_counters(self):
+        profiles = {f"M0{i}:{k}": {"history": [_hist(self.INSIDE, s)]}
+                    for i, (k, s) in enumerate([("a", "HOTMAIL_LOGIN"), ("b", " chatgpt_reg "),
+                                                ("c", "WAIT_7D"), ("d", "CHANGE_INFO"), ("e", "DONE")], 1)}
+        recent = self._recent(profiles)
+        self.assertEqual((recent["total_processed"], recent["new_login"], recent["new_chatgpt"], recent["ready_change"], recent["new_done"]), (5, 1, 1, 1, 2))
+
+    def test_failed_login_counts_recent_failed_last_result_only(self):
+        profiles = {
+            "M01:a": {"last_result": {"at": self.INSIDE, "stage": "HOTMAIL_LOGIN", "status": "FAILED"}},
+            "M02:b": {"last_result": {"at": self.INSIDE, "stage": "HOTMAIL_LOGIN", "status": "blocked"}},
+            "M03:c": {"last_result": {"at": self.INSIDE, "stage": "CHATGPT_REG", "status": "FAILED"}},
+            "M04:d": {"last_result": {"at": self.INSIDE, "stage": "HOTMAIL_LOGIN", "status": "SUCCESS"}},
+            "M05:e": {"last_result": {"at": "2026-10-20T05:00:00Z", "stage": "HOTMAIL_LOGIN", "status": "FAILED"}},
+            "M06:f": {"history": [_hist(self.INSIDE, "HOTMAIL_LOGIN")], "last_result": {"at": self.INSIDE, "stage": "HOTMAIL_LOGIN", "status": "FAILED"}},
+        }
+        recent = self._recent(profiles)
+        self.assertEqual((recent["failed_login"], recent["total_processed"]), (2, 4))
+
+    def test_render_includes_recent_section_for_active_farm(self):
+        self.write_state(self.kibe_path, {
+            "M01:a": {"stage": "CHANGE_INFO", "status": "PENDING",
+                      "history": [_hist(self.INSIDE, "HOTMAIL_LOGIN"), _hist(self.INSIDE, "DONE")]},
+        })
+        text = "\n".join(self._render_at(self.NOW))
+        self.assertIn("BIẾN ĐỘNG TRONG 6H QUA", text)
+        self.assertIn("Tổng số tài khoản xử lý : 2 (Kibe: 2 | Admin: 0)", text)
+        self.assertIn("Login Hotmail thành công: 1", text)
+
+    def test_render_reports_idle_when_both_farms_quiet(self):
+        self.write_state(self.kibe_path, {
+            "M01:a": {"stage": "WAIT_7D", "status": "WAITING",
+                      "history": [_hist("2026-10-19T00:00:00Z", "WAIT_7D")]},
+        })
+        self.write_state(self.admin_path, {"M201:b": _profile("DONE", "DONE", login=TS, reg=TS)})
+        text = "\n".join(self._render_at(self.NOW))
+        self.assertIn("BIẾN ĐỘNG TRONG 6H QUA", text)
+        self.assertIn("farm idle", text)
+
+    def test_render_includes_delta_when_prev_snapshot_provided(self):
+        rz = {k: 0 for k in report_mod.RECENT_KEYS}
+        def _snap(**kwargs):
+            m: dict = {k: 0 for k in report_mod.METRIC_KEYS}
+            m["buckets"] = {s: 0 for s in report_mod.BUCKETS}
+            m.update(kwargs)
+            return {"farms": {"kibe": dict(m), "admin": dict(m)}, "totals": dict(m), "recent": dict(rz),
+                    "farm_recent": {"kibe": dict(rz), "admin": dict(rz)},
+                    "pool": {"connections_ok": True, "combo_ok": True, "total": 0, "active": 0, "soaking": 0, "unknown": 0, "models": 0},
+                    "warning_count": 0}
+        snap = _snap(total=1037, done=163, wait_7d=513)
+        snap["farms"]["kibe"].update({"total": 409, "done": 81, "wait_7d": 42})
+        snap["farms"]["admin"].update({"total": 628, "done": 82, "wait_7d": 471})
+        prev = _snap(timestamp="2026-10-20T00:00:55Z", total=1037, done=155, wait_7d=521)
+        prev["timestamp"] = "2026-10-20T00:00:55Z"
+        prev["farms"]["kibe"].update({"done": 81})
+        prev["farms"]["admin"].update({"done": 74})
+        text = "\n".join(report_mod.render_report(snap, prev))
+        for expected in ["Đã Hoàn Tất Đổi Pass (DONE) : 163/1037 (15.7%) [+8]",
+                         "Farm Admin (M201-280)    : 82/628 [+8]",
+                         "Farm Kibe (M1-80)        : 81/409 [+0]",
+                         "Đang ngâm 7 ngày chờ đổi (WAIT_7D): 513 [-8]"]:
+            self.assertIn(expected, text)
+
+    def test_main_snapshot_lifecycle(self):
+        self.write_state(self.kibe_path, {"M01:a": _profile("DONE", "DONE", login=TS, reg=TS)})
+        self.make_default_db()
+        m = {k: 0 for k in report_mod.METRIC_KEYS}
+        self.prev_snapshot_path.write_text(json.dumps({"timestamp": "2026-10-20T00:00:55Z", "farms": {"kibe": dict(m), "admin": dict(m)}, "totals": dict(m)}), encoding="utf-8")
+        rc, text, _ = self.run_report()
+        self.assertEqual(rc, 0)
+        self.assertIn("Đã Hoàn Tất Đổi Pass (DONE) : 1/1 (100.0%) [+1]", text)
+        saved = json.loads(self.prev_snapshot_path.read_text(encoding="utf-8"))
+        self.assertEqual(saved["totals"]["done"], 1)
+
+    def test_main_handles_corrupt_prev_snapshot(self):
+        self.write_state(self.kibe_path, {"M01:a": _profile("DONE", "DONE", login=TS, reg=TS)})
+        self.make_default_db()
+        self.prev_snapshot_path.write_text("{corrupt", encoding="utf-8")
+        rc, text, _ = self.run_report()
+        self.assertEqual(rc, 0)
+        self.assertNotIn("So sánh với lần trước", text)
+        saved = json.loads(self.prev_snapshot_path.read_text(encoding="utf-8"))
+        self.assertEqual(saved["totals"]["done"], 1)
+        self.assertIsNotNone(report_mod.load_previous_snapshot(self.prev_snapshot_path))
+
+    def test_future_timestamp_in_history_and_last_result_is_ignored(self):
+        future = "2026-10-20T13:00:00Z"
+        profiles = {
+            "M01:a": {"history": [_hist(future, "HOTMAIL_LOGIN")]},
+            "M02:b": {"last_result": {"at": future, "stage": "HOTMAIL_LOGIN", "status": "FAILED"}},
+        }
+        recent = self._recent(profiles)
+        self.assertEqual((recent["total_processed"], recent["new_login"], recent["failed_login"]), (0, 0, 0))
+
+    def test_load_previous_snapshot_rejects_future_timestamp_and_invalid_schema(self):
+        m = {k: 0 for k in report_mod.METRIC_KEYS}
+        self.prev_snapshot_path.write_text(json.dumps({"timestamp": "2099-01-01T00:00:00Z", "farms": {"kibe": m, "admin": m}, "totals": m}), encoding="utf-8")
+        self.assertIsNone(report_mod.load_previous_snapshot(self.prev_snapshot_path))
+        self.prev_snapshot_path.write_text(json.dumps({"timestamp": "2026-10-20T00:00:00Z", "farms": {"kibe": {}, "admin": {}}, "totals": {"login_ok": 1}}), encoding="utf-8")
+        self.assertIsNone(report_mod.load_previous_snapshot(self.prev_snapshot_path))
+
+    def test_save_current_snapshot_emits_telemetry_on_io_error(self):
+        tel = report_mod.Telemetry(stream=io.StringIO())
+        with patch.object(Path, "mkdir", side_effect=OSError("disk full")):
+            report_mod.save_current_snapshot(self.prev_snapshot_path, {"test": 1}, telemetry=tel)
+        warnings = tel.warnings()
+        self.assertEqual(len(warnings), 1)
+        self.assertEqual(warnings[0]["error_class"], "SNAPSHOT_IO_ERROR")
+
+    def test_save_current_snapshot_cleans_up_tmp_on_replace_error(self):
+        tel = report_mod.Telemetry(stream=io.StringIO())
+        with patch.object(os, "replace", side_effect=OSError("replace fail")):
+            report_mod.save_current_snapshot(self.prev_snapshot_path, {"test": 1}, telemetry=tel)
+        self.assertEqual(list(self.prev_snapshot_path.parent.glob("*.tmp")), [])
+
+    def test_merge_recent_activity_handles_missing_keys_and_non_dict(self):
+        res = report_mod.merge_recent_activity({"new_login": 2}, {}, None, {"new_login": 1, "failed_login": 3})
+        self.assertEqual(res["new_login"], 3)
+        self.assertEqual(res["failed_login"], 3)
+
+    def test_env_var_override_prev_snapshot_path(self):
+        custom = self.tmp / "custom_snap.json"
+        with patch.dict(os.environ, {"HOTMAIL_LIFECYCLE_PREV_SNAPSHOT": str(custom)}):
+            import importlib
+            importlib.reload(report_mod)
+            self.assertEqual(report_mod.PREV_SNAPSHOT_PATH, custom)
+        importlib.reload(report_mod)
 
 
 if __name__ == "__main__":
