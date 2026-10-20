@@ -68,7 +68,7 @@ Before authoring or modifying any gate, guard hook, or network script, verify ag
    - Codebase safety: strictly forbid broad disk sweeps (`os.walk`, `glob(recursive=True)`, `find`, `grep -r`), never edit protected system hook files.
 2. **Tier 2 — Operator farm invariants:**
    - Direct exceptions: M67 and M69 are direct (`http_proxy` `:0`, bypass local Sing-box proxy).
-   - SSID exception: M7 is permanently authorized to connect to SSID `Dat` (pass `19051995`) via Aruba; exempt from fleet `kibe 1` rule due to 5GHz hardware defect.
+   - SSID exception: M7 is permanently authorized to connect to pure 2.4GHz SSID `Dat_2.4G` (pass `19051995`) via Aruba; exempt from fleet `kibe 1` rule due to 5GHz hardware defect. Dual-band `Dat` is strictly forbidden to prevent the +40 bonus association rejection loop.
    - Rescue override: allow `force_preempt=True` in `operator_device_lock` during emergency machine rescues.
    - Nurture protection: return `NOOP_HEALTHY` when current state matches expected to avoid breaking active 25-worker TikTok sessions.
    - Network hierarchy: Sing-box LAN only, strictly no VPN, Ruijie > Aruba.
@@ -132,6 +132,7 @@ For older Samsung Android builds (e.g. Galaxy S7 running Android 8):
 
 ## References
 
+- `references/aruba-cluster-master-discovery-and-m7-24g-remediation.md` — Aruba Instant cluster VC Master discovery protocol (`Invalid Session ID` troubleshooting), dedicated pure 2.4GHz `Dat_2.4G` profile provisioning, M7 dual-band blacklist remediation, and Coordinator vs Worker CLI operational boundary.
 - `references/m7-hardware-exception-and-alert-triage.md` — Machine 7 hardware exception (SSID Dat WPA2 passphrase, 5GHz association rejection on kibe 1), watchdog alert timestamp disambiguation, and anti-premature-rescue runbook.
 - `references/s7-wifi-proxy-psm-and-port5038-incident.md` — Samsung S7 Wi-Fi/Proxy probe flapping, Power Save Mode (PSM) tuning, adbjoinwifi timer suppression, thermal throttling, and Port 5038 WinUSB exclusive hijacking runbook.
 - `references/ruijie-static-ip-dhcp-conflict-and-enforcement.md` — Ruijie Gateway Static IP conflict on farm devices (M1-M80), lease stall ("Converted to Static IP"), DHCP starvation incident on M7, mechanical guard enforcement via validate_dynamic_dhcp_policy, and cleanup runbook.

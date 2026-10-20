@@ -29,3 +29,18 @@
     > 🚨 **HÀNG ĐÃ VỀ KHO BƯU CỤC - ĐI LẤY NGAY!**
     > Cung cấp Mã vận đơn, Tên người nhận, SĐT và Địa chỉ bưu cục để user ra lấy tại quầy, chặn trước khi bưu tá xếp hàng vào giỏ mang đi giao ngoài đường.
   - Phân biệt với mốc `SHIPPER ĐANG ĐI GIAO` (`out for delivery`) để user kịp gọi điện thoại giữ hàng tại quầy nếu shipper đã bắt đầu di chuyển.
+
+## 4. Kỷ Luật Điều Phối Worker Viết Script Khi Hết Ngân Sách T1
+- **Cạm bẫy Coordinator Write Denied & Dispatch Gate:**
+  * Khi Coordinator viết vượt ngân sách T1 (tối đa 10 files, <= 500 dòng), hook `guard_write_ownership` sẽ chặn ghi (`COORDINATOR WRITE DENIED`).
+  * Gọi `delegate_task` cho việc sửa/tạo code sẽ bị chặn bởi Dispatch Gate (`BLOCKED_BY_DISPATCH_GATE`).
+  * Chạy `dispatch_worker.py` ở chế độ foreground với timeout > 60s sẽ bị chặn bởi Foreground Guard (`GUARD_FOREGROUND_TIMEOUT_EXCEEDED`).
+- **Quy trình chuẩn khi Coordinator hết budget:**
+  * Khởi chạy worker bằng lệnh nền: `terminal(background=True, notify_on_complete=True, timeout=180)` gọi `python D:/Taadaa/tools/dispatch_worker.py "<contract>" --file "<target_file>" --workdir "<repo>" --timeout 150`.
+  * Sau khi kích hoạt, kết thúc lượt trả lời để harness tự đánh thức khi worker xong (event-driven wakeup).
+- **Kỷ luật soạn Contract chống Worker kẹt "BLOCKED: NEEDS_INPUT":**
+  * Worker CLI chạy trong môi trường sandbox khóa chặt file (`tool_lock: locked`). Do đó CẤM giao task bắt tạo/sửa nhiều file nếu chỉ truyền 1 file qua `--file`.
+  * BẮT BUỘC cung cấp sẵn cấu trúc JSON cụ thể (ví dụ: `order['customer']['name']`, `phone`, `address`, `tracking_code`).
+  * BẮT BUỘC cung cấp URL endpoint API mẫu (ví dụ: `https://spx.vn/api/v2/fleet_order/tracking/search?sls_tracking_number={code}`).
+  * Cung cấp tiêu chí nghiệm thu tự túc (self-contained verification): `python <script> --poll` trả về exit code 0. Thiếu các thông số này, worker sẽ từ chối suy đoán và dừng lại vì thiếu input.
+
