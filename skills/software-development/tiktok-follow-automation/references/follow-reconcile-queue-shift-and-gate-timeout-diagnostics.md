@@ -110,14 +110,27 @@ Trong các test suite offline (như `test_mode1_search_follow.py`):
    - Tại mốc 07:04, các máy chạy Phiên 1 đã hoàn thành và số following đã tăng thật trên TikTok.
    - Do đó, mốc so sánh với ngày hôm trước (`timestamp < max_dt`) trên Dashboard là **hoàn toàn chính xác** để gom trọn thành quả cả ngày (từ 00:00 đến 23:59).
 2. **Nguyên nhân thật sự khiến Tool < Web (+35 vs +54):**
-   - **Runner Timeout:** Khi `run_follow` bị timeout ở bước follow-hook, watchdog ghi nhận `status: 'timeout', followed_count: 0`. Máy thực tế đã bấm và TikTok đã nhận follow trước khi timeout, nhưng DB không được cộng (ví dụ M23 ở P1).
-   - **Follow tự nhiên trong Feed:** Các lượt follow khi lướt video For-You / Friends của feed-session không được tính vào `internal_follows` nếu watchdog chỉ đếm follow chéo.
-   - **TikTok Web trễ / dồn số:** TikTok đồng bộ lượt follow từ phiên trước hoặc nhả/bù lượt.
+   - **Runner Timeout & Bug Dead Code Watchdog:** Khi `run_follow` bị timeout ở bước follow-hook, watchdog trước đây có guard `if cnt <= 0 and natural_cnt <= 0: continue` làm bỏ qua hoàn toàn các máy timeout khỏi `target_machines`. Máy thực tế đã bấm và TikTok đã nhận follow trước khi timeout (như M23 ở P1 follow được 6 lượt từ 81 lên 87), nhưng watchdog drop sạch về 0 và không ghi vào `session_account_actions`.
+   - **TikTok Web trễ / dồn số (Delayed Sync & Private Accept):** TikTok đồng bộ lượt follow từ phiên trước hoặc các tài khoản riêng tư (Private Account) chấp nhận follow trễ sau nhiều giờ khiến following tăng nhảy vọt trên Web.
+   - **CẢNH BÁO / INVARIANT: CẤM BAO BIỆN "FOLLOW TỰ NHIÊN":**
+     Tỉ lệ follow tự nhiên trong feed runner được thiết lập cực thấp (`follow_rate_percent = 1%`, trung bình chỉ 0-1 lượt / session). **TUYỆT ĐỐI KHÔNG BAO GIỜ có chuyện follow tự nhiên dôi dư 5-15 lượt.** Mọi lập luận đổ lỗi cho follow tự nhiên khi thấy chênh lệch lớn là SAI LẦM NGHIÊM TRỌNG và che giấu nguyên nhân thật (timeout mất log hoặc TikTok sync trễ).
 
 ### C. Quy trình Triage chuẩn
 1. Kiểm tra timestamp ca chạy trong `runtime/kibe/live/<date>/`: xác định ca chạy trước hay sau 07:00 sáng.
 2. Kiểm tra XML dump thật trên máy (`verify_profile/ui.xml`) tại thời điểm sau phiên để đối chiếu số `Đã follow` trực tiếp trên app với số Web cào.
 3. Tuyệt đối KHÔNG sửa mốc query SQL của Dashboard khi chưa kiểm chứng lịch ca 06:00.
+
+### D. Bản vá Watchdog chống drop số khi Runner Timeout (`feed_session_watchdog.py`)
+1. **Cơ chế gây lỗi (Dead Code Guard):**
+   - Trước bản vá: `target_machines` chỉ gom các máy có `fl_success` hoặc `len(fd.get("followed")) > 0`.
+   - Vòng lặp chứa guard: `if cnt <= 0 and natural_cnt <= 0: continue`.
+   - Khi runner dính timeout hoặc error (`status in ('timeout', 'failed', 'launch_error')` và `cnt == 0`), lệnh `continue` lập tức bỏ qua máy, khiến đoạn code xử lý bên dưới `if failed and cnt == 0:` trở thành dead code.
+   - Hậu quả: Máy timeout không được cào đối soát Web, không được ghi nhận vào `session_account_actions`, dẫn tới Dashboard hiển thị thiếu hoàn toàn số lượt đã follow.
+2. **Giải pháp chuẩn mực:**
+   - Mở rộng `target_machines = ... | {str(m) for m in all_follows.keys()}` để không bỏ sót máy nào có chạy follow-hook.
+   - Bắt trạng thái: `is_timeout_or_err = status_str in {"timeout", "failed", "launch_error", "config_error", "manual_review"}`.
+   - Sửa điều kiện guard: `if cnt <= 0 and natural_cnt <= 0 and not (failed or is_timeout_or_err): continue`.
+   - Giúp máy timeout vẫn đi tiếp xuống dưới, cào Web snapshot để phát hiện chênh lệch thật (`script 0 lượt - web N lượt - lệch (+N)`), và ghi nhận telemetry đầy đủ vào DB.
 
 ---
 
