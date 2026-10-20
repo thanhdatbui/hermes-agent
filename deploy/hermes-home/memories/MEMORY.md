@@ -23,3 +23,5 @@ Ava: Trích clip gốc representative_frames; Vision LLM quét DB lọc ava rác
 Reboot 3 ca (05:20, 11:20, 17:20), né TFT/War3. Task ngầm VBS/wscript Hidden+CREATE_NO_WINDOW. Game = tắt nháy, cấm pause cron.
 §
 OMP: omp_cli.py quản lý 22 profile (OMP_PROFILE), install-id chung ~/.omp/install-id cần cô lập USERPROFILE né link chùm; dual-route native OAuth / :20129.
+§
+Xiaowei auto-close: chuẩn 20m tính từ mốc Alt-Tab rời app qua sampler 1Hz cây PID; cấm polling thưa hay ép system-idle toàn máy.

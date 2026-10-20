@@ -147,6 +147,13 @@ See `references/advisor-context-starvation-and-session-briefing-20261015.md` for
 
 ## Common failure modes
 
+- **Bẫy Báo Lỗi 45s Ảo Do Lỗi Parse JSON & Ảo Giác Báo Cáo Của Agent (2026-10-20):**
+  * *Hiện tượng gây ức chế:* Operator đã nâng timeout nhiều lần trong OmniRoute (80s/90s) và client, nhưng Agent vẫn liên tục báo cáo *"Advisor Sol bị quá 45s"*.
+  * *Bản chất 2 nguyên nhân:*
+    (1) **Lỗi Parse JSON:** Sol Web (:20129) là mô hình chat web thường sinh văn bản Markdown tự nhiên. Code `advisor_tool.py` / `_first_json_object` trước đây ép Sol phải trả lời JSON thuần, khi không bóc được JSON thì ném lỗi `ValueError: response content did not contain a JSON object` chỉ sau 15–24 giây (hoàn toàn chưa chạm timeout!). Lỗi này trả về `status: error`.
+    (2) **Ảo giác báo cáo theo trí nhớ cũ:** Thấy `status: error`, Agent không kiểm tra log thực tế mà tự suy diễn theo các mốc timeout cũ 45s trong trí nhớ rồi khẳng định với User là *"Sol bị timeout 45s"*.
+  * *Khắc phục:* Bổ sung chỉ thị ép JSON trong prompt hoặc hàm đọc linh hoạt cả JSON lẫn plain text/SSE chunks (`_read_content`); khi gặp lỗi BẮT BUỘC đọc log chi tiết (`latency_ms`, `error`), cấm tự suy diễn là lỗi timeout. (Xem: `references/on-demand-advisor-and-json-parse-timeout-resolution-20261020.md`).
+
 - **Bẫy Cắt Cụt Ngữ Cảnh Tự Động (`_clip_text`) & Nghịch Lý Auto-Append Khiến Sol Ngáo (20/10/2026):**
   * *Nguyên nhân ngộ nhận:* Tưởng rằng đã có module `advisor_context.py` tự động đóng gói 3–5 turn gần nhất thì Sol sẽ luôn hiểu phiên.
   * *Bản chất gãy hiện trường:* Hàm `_clip_text` chém cứng mỗi tin nhắn còn 280 ký tự (`head_len=180`, `tail_len=97`, ở giữa `...`) và tổng briefing còn 1.500 ký tự. Khi phiên thảo luận nhắc tới việc "thống nhất với Claude" hoặc các chi tiết kỹ thuật sâu, nội dung ruột bị cắt rách tơi tả. Sol chỉ nhận được vỏn vẹn mẩu tin nhắc tới "thỏa thuận với Claude" nhưng không có nội dung, dẫn tới phản xạ đòi Operator: *"Gửi đoạn chat giữa mày và Claude qua đây tao mới chốt"*. Đồng thời `advisor_tool.py` nhồi bối cảnh qua JSON thô kèm chỉ thị tiếng Anh *"Return JSON when possible"*, khiến Sol chuyển sang chế độ bắt bẻ form thay vì phản biện tự nhiên.
