@@ -111,6 +111,7 @@ A valid acceptance sequence is:
 5. Do not report `DONE` from adapter status alone. If only the adapter canary passes, report `adapter PASS; orchestration canary pending`.
 
 ## References
+- Đồng Bộ Timeout Advisor Sol Đa Tầng & Khởi Động Lại Daemon (2026-10-21): [`references/advisor-timeout-deploy-sync-20261021.md`](references/advisor-timeout-deploy-sync-20261021.md)
 - Bẫy Timeout Ảo 45s Do Parse JSON & Hoàn Thiện Cơ Chế On-Demand (2026-10-20): [`references/on-demand-advisor-and-json-parse-timeout-resolution-20261020.md`](references/on-demand-advisor-and-json-parse-timeout-resolution-20261020.md)
 - Chuyển Đổi Sang On-Demand & Phân Định Rạch Ròi Sol Advisor vs. Sol Reviewer (2026-10-20): [`references/on-demand-transition-and-advisor-vs-reviewer-separation-20261020.md`](references/on-demand-transition-and-advisor-vs-reviewer-separation-20261020.md)
 - Chuyển Đổi Advisor Sol Sang Cơ Chế On-Demand & Nâng Cấp Streaming SSE (2026-10-20): [`references/on-demand-advisor-transition-and-sse-streaming-20261020.md`](references/on-demand-advisor-transition-and-sse-streaming-20261020.md)
@@ -146,6 +147,12 @@ See `references/advisor-context-starvation-and-session-briefing-20261015.md` for
 - **claude_worker.py — Cổng Điều Phối Role-Based Thế Hệ Mới (15/10/2026):** Để tránh lặp lại sự cố bypass 72 turns (2.1M tokens Sonnet), toàn bộ lệnh gọi Claude CLI trên Farm BẮT BUỘC đi qua `python D:/Taadaa/tools/claude_worker.py --role [worker|planner|reviewer]`. Wrapper này cưỡng chế tự động: hard-cap `max_turns` theo role (reviewer: 4 mặc định/8 tối đa, planner: 6/10, worker: 8/15), chọn đúng model mặc định (Sonnet cho planner/reviewer, Haiku cho worker), khóa cứng `--disallowedTools Edit,Write,NotebookEdit` cho planner/reviewer, và tự động fallback sang `ag_cli.py ask` (không phải `fix`) khi Quota chạm ngưỡng 85%/90%. Quota stale threshold hạ xuống 2.0h. CẤM gọi `claude -p` thô trong terminal mà không qua wrapper.
 
 ## Common failure modes
+
+- **Bẫy Đa Bản Sao Script Deploy & Cache RAM Daemon Gateway (2026-10-21):**
+  * *Hiện tượng:* Operator đã nâng timeout cho Advisor Sol lên 150s (first-token 80s, idle 20s), nhưng mở phiên mới trên Telegram vẫn bị ném thông báo: `Advisor: unavailable (Sol / review wall-clock deadline exceeded >45.0s; chỉ hiển thị câu trả lời Coordinator)`.
+  * *Nguyên nhân 1 (Đa bản sao script):* Hệ thống có tới 4 bản sao độc lập của `advisor_consult.py` (AppData skills, `D:/Taadaa/Hermes/skills`, `D:/Taadaa/Hermes/deploy/hermes-home/skills`, và `D:/Taadaa/tools/consult_advisor.py`). Cơ chế import ưu tiên thư mục deploy; các phiên trước chỉ vá 3 nơi, bỏ quên thư mục deploy khiến hệ thống luôn nạp trúng bản 45s cũ kèm bytecode `.pyc` cũ.
+  * *Nguyên nhân 2 (RAM Cache của Daemon):* Tiến trình daemon Gateway chạy ngầm lâu dài từ 05:30 sáng giữ nguyên module cũ trong RAM (`sys.modules`). Sửa file trên đĩa không có tác dụng ngay nếu chưa restart daemon.
+  * *Khắc phục:* BẮT BUỘC đồng bộ cả 4 vị trí trên đĩa; xóa file cache `.pyc` trong `__pycache__`; và kích hoạt restart Gateway an toàn qua watcher khi farm nhàn rỗi. (Chi tiết: `references/advisor-timeout-deploy-sync-20261021.md`).
 
 - **Bẫy Báo Lỗi 45s Ảo Do Lỗi Parse JSON & Ảo Giác Báo Cáo Của Agent (2026-10-20):**
   * *Hiện tượng gây ức chế:* Operator đã nâng timeout nhiều lần trong OmniRoute (80s/90s) và client, nhưng Agent vẫn liên tục báo cáo *"Advisor Sol bị quá 45s"*.
