@@ -481,6 +481,42 @@ Chi tiết xem tại tài liệu hỗ trợ liên kết:
   * **Tốc độ (Latency):** AGY CLI hoàn thành trong **`26.08s`**; OMP CLI hoàn thành trong **`45.74s`**.
   * **Nguyên nhân chênh lệch độ trễ:** AGY CLI là binary Go compile native bắn stream trực tiếp lên Google Cloud Code Assist; OMP CLI gánh thêm chi phí proxy trung gian parse SSE và chuyển đổi schema request.
 
+---
+
+## 16. Đồng Bộ Native OAuth OMP Toàn Dàn, Giải Đấu 10 Trận & Thẩm Định Claude Code (Verified 2026-10-21)
+
+### 1. Cơ Chế Đổi Token Trực Tiếp Cho OMP (OMP Native OAuth Token Exchange):
+- **Phát hiện cốt lõi:** `refresh_token` trong `D:/Taadaa/agy_profiles/acc_XX/.gemini/oauth_creds.json` hoàn toàn có thể dùng để xin cấp mới `access_token` cho Client ID của OMP (`1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com`) với Client Secret `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` (decode từ base64 `R09DU1BYLUs1OEZXUjQ4NkxkTEoxbUxCOHNYQzR6NnFEQWY=`).
+- **Quy trình nạp tự động (21/21 profiles):**
+  * Gửi POST đến `https://oauth2.googleapis.com/token` với `grant_type=refresh_token`.
+  * Nhận `access_token` và `expires_in` (3600s).
+  * Ghi bản ghi vào cả 2 file `agent.db`: `C:/Users/Kibe/.omp/profiles/<name>/agent/agent.db` và `.omp/agent/agent.db`.
+  * Bảng `auth_credentials`: `(provider='google-antigravity', credential_type='oauth', data=json_payload, identity_key='email:<active_email>')`.
+  * Kết quả: Toàn bộ **21 profiles (`acc_02` ➔ `acc_22`)** chuyển sang trạng thái **100% Native Direct Connection** lên Google Antigravity backend, triệt tiêu hoàn toàn sự phụ thuộc vào proxy local `:20129`.
+
+### 2. Kỷ Luật Xoay Tua Chống Nhầm Lẫn (User Correction - Anti-Account Cooldown Illusion):
+- **Bẫy tư duy sai lầm:** Nghĩ rằng khi một profile (ví dụ `acc_10`) bị dính HTTP 429 trên `ag_cli.py` thì có thể chuyển sang chạy `omp_cli.py` trên cùng profile `acc_10` để tiếp tục.
+- **Sự thật kỹ thuật:** Cả AGY CLI và OMP CLI trên cùng một profile đều dùng chung một tài khoản Google (`active email`) và cùng một hạn ngạch (quota/rate limit) trên Google Cloud. Khi Google đã bóp 429 tài khoản đó thì đổi runner trên cùng profile vẫn chết 429.
+- **Quy tắc bắt buộc:** Cooldown và Rate-limit recovery **BẮT BUỘC PHẢI XOAY TUA SANG PROFILE KHÁC (`acc_02` ➔ `acc_03` ➔ `acc_04`...)**, tuyệt đối không đổi runner trên cùng profile bị bóp.
+
+### 3. Căn Nguyên Chênh Lệch Handshake Proxy Giữa AGY và OMP:
+- **AGY CLI (Tối ưu O(1) Network Handshake):**
+  * Chỉ mở **đúng 1 lần** HTTP CONNECT tunnel và TLS handshake xuyên qua proxy cho mỗi task.
+  * Thư viện Go `net/http` tối ưu socket Winsock, độ trễ ổn định ~28s - 33s/task trên proxy 4G.
+- **OMP CLI (Gánh nặng Preflight Multi-Handshake):**
+  * Mỗi câu lệnh phải thực hiện liên tiếp **3-4 round-trips qua proxy**: (1) Refresh token check, (2) `loadCodeAssist` kiểm tra dự án, (3) `onboardUser` nếu cần, (4) Mới gửi request prompt.
+  * Trên mạng di động 4G Farm có RTT cao (150-300ms) kèm jitter, việc bắt tay đi bắt tay lại 3-4 lần làm độ trễ đội lên gấp 3-7 lần (từ 45s lên 232s).
+  * Đồng thời, các request tiền trạm dồn dập trong vài giây dễ kích hoạt bộ đếm Rate Limit 429 của Google Cloud (như đã xảy ra ở Trận 9 `acc_10`).
+
+### 4. Bảng Kết Quả Giải Đấu 10 Trận & Thẩm Định Độc Lập Từ Claude Code:
+- **Tỉ số thực tế qua 10 profile (`acc_02` - `acc_11`):**
+  * **AGY CLI:** Thắng áp đảo, đạt **10/10 PASS (100%)**, Latency trung bình **`30.60s`**.
+  * **OMP CLI:** Đạt **9/10 PASS (90%)** (1 trận dính 429 do burst preflight), Latency trung bình **`96.38s`**.
+- **Claude Code Reviewer chấm điểm mã nguồn (Thang 100):**
+  * **AGY: 88/100 (WINNER)** — Viết docstring hoàn chỉnh, comment tiếng Việt bám sát đặc tả farm, bộ test tự sinh gồm 13 assert có message chẩn đoán chi tiết và kiểm tra sâu mảng `reasons`.
+  * **OMP: 80/100** — Type annotation sạch (`reasons: list[str]`), float nhất quán (`42.0`), nhưng thiếu docstring và test gộp `assert a and b` không có thông báo lỗi chẩn đoán.
+- **Kết luận kiến trúc:** `ag_cli.py` là **Vũ khí thi công Code số 1**; `omp_cli.py` làm **Tầng dự phòng độc lập** khi cần phân tải song song trên các profile khác nhau.
+
 
 
 

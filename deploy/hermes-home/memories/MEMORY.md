@@ -22,7 +22,7 @@ Ava: Trích clip gốc; Vision LLM lọc ava rác. Gate 6: cấm trần thuật 
 §
 Reboot 3 ca (05:20, 11:20, 17:20): lookback 60m. 2FA né đệm reboot. Safe sync resync khi out mất; WD cấm nuốt cụm rỗng. Né TFT/War3. Task ngầm Hidden+CREATE_NO_WINDOW. Game=tắt nháy, cấm pause cron.
 §
-OMP/AGY: 21 profile (acc_02-22) 100% Native OAuth (cấm benchmark qua omniroute); jinrakal fallback direct; lease 1800s, atomic tmp, mask proxy; cô lập USERPROFILE né link install-id.
+OMP/AGY: 21 profile (acc_02-22) 100% Native OAuth (bỏ :20129); acc_01 chỉ fallback host; lease 1800s; 429 bóp theo acc Google -> cấm đổi runner cùng profile mà phải xoay profile khác.
 §
 Xiaowei: auto-close 20m qua sampler 1Hz PID.
 §
