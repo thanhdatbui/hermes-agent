@@ -59,6 +59,10 @@ metadata:
   - STRIKE 1 REMEDIATION RUBRIC & QUOTA GUARD VALIDATION (2026-10-21): Khi Reviewer Sol High chấm 76/100 (REJECTED) cho module quản lý quota/thời gian, Sol trừ điểm gắt nếu: (1) Thiếu chặn timestamp tương lai (`ts > now + 60s`), (2) Thiếu kiểm tra validation `math.isfinite` và dải phần trăm `0.0 <= u <= 100.0`, (3) Thiếu telemetry ghi nhận tuổi dữ liệu fallback `age_seconds`. Bắt buộc dùng `sol_repair.py` tạo proposal O(1), giao Haiku áp dụng kèm unit tests bao phủ 100% các nhánh biên để nâng điểm từ 76 lên 82 (Grace Band).
   - REVIEWER SOL TIME-WINDOW OVERLAP & TELEMETRY OBSERVABILITY RUBRIC (2026-10-21): Sol Reviewer trừ điểm gắt (70-75 REJECT) đối với logic khung giờ an toàn nếu: (1) Các khoảng thời gian chồng lấn ranh giới nhau, (2) Log bỏ qua không ghi rõ lý do/nhãn chặn, (3) Thiếu test từng mốc biên. Bắt buộc gom hằng số `ROLLING_BLOCK_WINDOWS` rõ ràng, có helper `rolling_block_reason(now_dt)` trả về nhãn cụ thể và log chi tiết. Chi tiết xem `references/sol-reviewer-time-window-telemetry-and-repo-skip-test-20261021.md`.
 
+## Dual-Cluster Workbook Remediation Evidence
+
+For a central Kibe coordinator with a separate Admin thin-worker cluster, do not infer parity from identical hardware or code. Treat storage topology, process ownership, environment overrides, and workbook paths as separate evidence surfaces. Keep per-cluster workbooks/state isolated; for Admin OneDrive output, verify a real local-cache write, readable workbook structure, runner primary/fallback precedence, and telemetry before claiming resilience. A focused path-selection test is not enough: add an integration-style mocked sync test proving both outputs are written, plus missing/corrupt primary and fallback cases. Preserve explicit no-run/skip status in cross-farm reports. See `references/dual-cluster-workbook-resilience.md`.
+
 ## 2. Quy Trình Khắc Phục Khi Trượt (Remediation Protocol)
 
 ### Long-lived desktop watchdog remediation

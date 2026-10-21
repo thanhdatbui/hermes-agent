@@ -11,7 +11,3 @@ Ava/Media: Duyệt ava up thẳng máy (run_upload_avatar.py), CẤM chỉ ghi P
 Worker: Haiku claude-haiku-5-5, inline -p; Agy pool 22; Timeout 1200s-1500s, cấm hạ 180s.
 §
 Canary: target-bound; WinRT OCR->ATX (cấm uiautomator); Singbox. Guard cơ học; Claude duyệt; dính guard chạy unscoped worker CLI, cấm bảo user gõ tay.
-§
-Báo cáo Telegram: tóm tắt KPI; Dashboard :1905; CẤM ôm turn treo Working (nhả tin nhắn yield turn khi dispatch); đối soát trễ bot trước.
-§
-ghét overclaim/báo ảo; cấm khóc lóc/dông dài/lải nhải lý thuyết; tra token/pass Hotmail phải đọc thẳng dòng excel `gmail_clean_v2.xlsx` (C9 token, C10 client_id) & `taikhoan_dat_v2_updated .xlsx`.
