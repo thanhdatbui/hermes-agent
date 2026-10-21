@@ -369,6 +369,15 @@ Launcher, Dozing, blank, or trivially small screenshots as evidence. Keep a
 helper-only pass, a hook-only pass, and a full-flow canary as separate evidence
 classes; only the last can prove the changed orchestration.
 
+## Telegram outbound legibility and provider-layer separation
+
+When the user reports that arrows or other formatting still look wrong in Telegram, distinguish two independent layers:
+
+1. **Provider dispatch layer:** `ALL_TARGETS_SKIPPED`, quota exhaustion, and unavailable-provider errors happen before a model response exists. They do not exercise the Telegram formatter and must not be misdiagnosed as an arrow-rendering bug.
+2. **Outbound rendering layer:** normalize common LaTeX arrows (`$\\rightarrow$`, `\\rightarrow`, `$\\Rightarrow$`, `\\Rightarrow`) immediately before Telegram delivery at the final adapter boundary, not only in prompts or memory. This must apply regardless of the model/provider.
+
+Do not claim the sanitizer is fixed from a source diff alone. Add an adapter-level regression covering every supported spelling, ordinary prose pass-through, idempotence, and absence of banned LaTeX tokens in the final payload; then inspect one successfully delivered message for end-to-end proof. If provider dispatch fails, state that the message never reached the formatter and mark end-to-end sanitization as unverified. Coordinator replies to Telegram should themselves use literal `→` or `->`, never `\\rightarrow`.
+
 ## Reviewer latency and honest status reporting
 
 A passing focused test suite does not establish that an external reviewer is healthy, finished, or approved. If a reviewer command runs asynchronously, report the process ID and actual elapsed/exit state; do not infer “not hung” from a configured timeout or from the fact that the local tests already passed. When the user provides elapsed-time or screenshot evidence of a stall, acknowledge it, stop speculative explanations, and separate three states explicitly: local verification passed, reviewer still running/failed, and closeout approved. Use a tracked background run with completion notification for long reviewer calls, and only report approval after the real verdict and exit code are available.
