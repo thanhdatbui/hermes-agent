@@ -42,3 +42,11 @@ Trong quy trình Strike 1 Remediation (`sol_repair.py`):
 - **Hậu quả:** `closeout_gate.py` hàm `targeted_candidate()` so sánh chuỗi literal với danh sách tệp commit thật (`committed_scope`), phát hiện không khớp và ném lỗi fail-fast:
   `Failed to extract diff: committed ... scope [...] != --files targets [...]; refusing partial committed scope`
 - **Khắc phục:** BẮT BUỘC chỉ định `workdir=<repo_root>` cho lệnh terminal hoặc `cd /d <repo_root>` trước khi chạy gate để bash tự động mở rộng glob thành đường dẫn tuyệt đối/chuẩn hóa khớp byte-exact với `committed_scope`.
+
+## 5. Bài Học 4: Vượt Mốc 78 Lên >= 85 — Wiring Gate Cơ Học & Bằng Chứng Thực Thi Chủ Động
+- **Hiện tượng khựng ở 78/100:** Khi đã thêm telemetry và test suppression, Reviewer nâng điểm từ 68 lên 78 nhưng vẫn từ chối (REJECT) vì cho rằng việc log suppression chưa chứng minh gate cơ học thay thế (`guard_media_vision_gate`) thực sự được gọi và có thẩm quyền chặn đầu ra.
+- **Giải pháp dứt điểm:**
+  1. **Wire trực tiếp gate cơ học tại callsite:** Thay vì chỉ log và bỏ qua, gọi thẳng `guard_media_vision_gate.transform_llm_output_check(response_text)` ngay sau legacy gate. Nếu gate cơ học trả về `not ok`, chặn và trả về kết quả kiểm định của gate cơ học.
+  2. **Bổ sung Unit Test chứng minh quyền lực chặn của Gate mới:** Thêm test mock `guard_media_vision_gate.transform_llm_output_check` trả về `(False, "🛑 [MECHANICAL BLOCKED]")` và assert `transform_hook` trả về đúng chuỗi chặn đó.
+  3. **Assert Telemetry Event trong Test Suite:** Dùng `with self.assertLogs(...) as cm:` để assert sự kiện telemetry `evidence_gate_banner_suppressed` thực sự được emit ra logger khi gặp legacy violation.
+
