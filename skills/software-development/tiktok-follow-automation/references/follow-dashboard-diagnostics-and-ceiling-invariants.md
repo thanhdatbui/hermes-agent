@@ -365,6 +365,47 @@ Trong `follow_state.py`, runner tự động điều chỉnh trần follow cho c
     1. **Tuyệt đối cấm ngắt cầu dao IP khi `used > 0`**: Đã follow được $\ge 1$ lượt thì 100% IP sạch, chỉ phạt cooldown 1 ngày trên cá nhân nick đó để xả cache phiên, giữ nguyên proxy cho các máy partner sản xuất.
     2. **Chỉ ngắt cầu dao 48h khi có bằng chứng bẩn IP diện rộng**: Bắt buộc thỏa mãn điều kiện kép: **$\ge 2$ nick Cựu Binh (hoặc 2 máy độc lập dùng chung proxy) cùng bị nhả ngay phát bấm đầu tiên (`used == 0`) trong cùng một ngày**. Khi đó 99.9% là do IP bị gắn cờ, ngắt 48h để bảo vệ dàn nick còn lại là hoàn toàn chính xác.
 
+## 27. Chế Độ Quan Sát Tích Lũy Báo Cáo Đối Soát IP (Accumulated IP Risk Audit Log & Verification Protocol)
+- **Bối cảnh & Nhu cầu Operator**:
+  * Khi đứng trước quyết định kỹ thuật nhạy cảm (như giữ nguyên không ngắt vs nâng cấp tự động ngắt khi $\ge 2$ cựu binh $fl=0$), Operator chọn giữ nguyên theo dõi (Phương án 1) nhưng **yêu cầu bắt buộc phải có cơ chế tích lũy report qua từng chu kỳ để sau này nhớ nhắc kiểm tra đối soát trước khi chốt nâng cấp**.
+  * Nếu không lưu vết tích lũy, sau vài chu kỳ cả Operator và AI đều sẽ quên bối cảnh hiện trường, mất đi dữ liệu thực chứng để đánh giá an toàn.
+- **Cơ chế Tích Lũy Báo Cáo Lịch Sử (`data/ip_risk_audit_log.json` / SQLite `ip_risk_audit_log`)**:
+  * Mỗi khi kết thúc một chu kỳ 4 ngày (hoặc phiên quét ca ngày N4), hệ thống tự động trích xuất và lưu vết 1 bản ghi:
+    ```json
+    {
+      "cycle": "19-20/10/2026",
+      "total_runs": 245,
+      "eligible_runs": 32,
+      "isolated_tail_drops": 15,
+      "immediate_drops_total": 213,
+      "suspicious_ip_clusters": [
+        {
+          "proxy": "5125",
+          "machines": ["M21", "M59"],
+          "veteran_fl0_count": 0,
+          "rookie_fl0_count": 2,
+          "verdict": "SAFE_ISOLATED"
+        }
+      ],
+      "would_trip_under_opt2": false
+    }
+    ```
+- **3 Điểm Chạm Hiển Thị Trên Dashboard & Report**:
+  1. *Dòng Cảm Biến Cụm IP Trong Bảng So Sánh Chu Kỳ 4 Ngày*:
+     - Thêm dòng: `📡 Cụm IP nghi vấn (≥2 cựu binh fl=0 cùng IP)` ngay dưới các chỉ số follow.
+     - Hiển thị: `🟢 0 cụm (100% Sạch)` khi an toàn, hoặc `🟡 X cụm nghi vấn` khi có biến động.
+  2. *Thẻ Radar Giám Sát IP (Observation Mode) Trên Sổ Bệnh Án*:
+     - Phân loại trực quan: 🟢 Xanh (Sạch) / 🟡 Vàng (Theo dõi 1 nick $fl=0$) / 🔴 Đỏ (Nghi vấn $\ge 2$ nick $fl=0$).
+     - Ghi chú minh bạch: "Chế độ Quan Sát Tích Lũy: Không tự động ngắt proxy. Dữ liệu được lưu vết để đối soát và xác nhận thủ công."
+  3. *Quy Trình Nhắc Nhở & Lệnh Đối Soát Nhanh Cho Operator*:
+     - **Khẩu lệnh đối soát**: Khi Operator hỏi `"kiểm tra report ip"` hoặc `"đối soát ip"`, Coordinator lập tức đọc bảng Audit Log tích lũy, tổng hợp qua các chu kỳ:
+       + Số cụm proxy nghi vấn xuất hiện.
+       + Có trường hợp nào $\ge 2$ Cựu Binh cùng bị nhả phát đầu trên 1 proxy không?
+       + Đánh giá xem đã đủ cơ sở thực tế tin cậy để chính thức kích hoạt Phương án 2 (tự động ngắt khi $\ge 2$ cựu binh $fl=0$) hay chưa.
+     - **Tự động báo cáo cuối chu kỳ 4 ngày (N4)**: Trong bản tin chốt ca N4, Coordinator bắt buộc đính kèm 1 dòng đối soát:
+       `📡 Đối soát IP chu kỳ này: X cụm nghi vấn / Y cựu binh dính chùm (Đã ghi nhận vào Sổ Audit Log).`
+
+
 
 
 

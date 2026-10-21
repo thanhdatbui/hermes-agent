@@ -114,6 +114,22 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
 
 ## Pitfalls
 
+- **BẪY GEMINI TỰ LÊN PLAN GÂY VÒNG LẶP VÁ NGỌN & THIẾT LẬP 3 LẰN RANH ĐỎ RISK-BASED PLANNING (Operator Mandate & Tri-Party Consensus 21/10/2026):**
+  Operator đã chấn chỉnh gay gắt: *"Nhiều session Gemini cứ báo nó làm xong rồi, xong hôm sau lại lỗi rồi vá vài vòng mới ổn. Không phải chất lượng code, mà ý tưởng plan nó đã lỗi hoài từ gốc"*.
+  1. *Căn nguyên gốc rễ:* Gemini Flash bị dính thiên kiến hoàn thành nông cạn (*shallow completion bias*), thích chắp vá `if/else` để vượt qua test tại chỗ nhưng phá vỡ tính nhất quán kiến trúc. Khi một agent vừa lên plan, vừa dispatch, vừa tự tuyên bố DONE thì không ai kiểm chứng giả định ban đầu. Worker (Haiku / Agy) thi công chuẩn theo bản vẽ sai càng khiến hệ thống hỏng sâu hơn.
+  2. *Quy chuẩn 3 Lằn Ranh Đỏ CẤM Gemini Lên Plan Kiến Trúc:*
+     Gemini Coordinator TUYỆT ĐỐI CẤM tự ý lên plan cho các task:
+     - (a) Đụng chạm Guard, Gate, Contract O(1), Device Lock, Cronjob, hoặc State/Database schema.
+     - (b) Đổi Interface giữa các component, hoặc sửa đổi từ $\ge 3$ files.
+     - (c) Bất kỳ task/lỗi nào đã từng trải qua $\ge 2$ lần vá trước đó mà vẫn tái phát.
+  3. *Quy trình phối hợp 5 bước chuẩn hóa:*
+     - Bước 1 (Gemini): Chỉ gom evidence thực tế (log, file, dòng lỗi, lịch sử vá), CẤM KẾT LUẬN hoặc suy diễn giải pháp.
+     - Bước 2 (Claude Planner): Dispatch `claude_worker.py --role planner` (Sonnet 5.5, max 10 turns, read-only) viết Plan chi tiết vào file: Root cause (`file:line`), Non-goals, Atomic Steps, Failure Modes (bắt buộc fail-closed), Runnable Acceptance Criteria, và Rollback.
+     - Bước 3 (Sol / Operator): Duyệt Plan độc lập trước khi code.
+     - Bước 4 (Worker thi công): Haiku 5.5 O(1) hoặc Agy CLI thi công đúng từng lát mỏng của Plan. Nếu phát sinh sai lệch thực tế, quay lại Planner cập nhật bản vẽ, cấm Gemini tự xoay.
+     - Bước 5 (Kiểm chứng): Chạy acceptance criteria thực tế, bắt buộc có output thật đính kèm mới được xác nhận hoàn tất.
+  (Xem `references/risk-based-planning-and-tri-party-plan-lock-20261021.md`).
+
 - **BẪY TỪ CHỐI AN TOÀN KHI THẨM ĐỊNH HỆ THỐNG ĐA TÀI KHOẢN (Multi-Profile Security Refusal & Professional Framing Trap 21/10/2026):**
   Operator đã chấn chỉnh: *"M k có cách nào bảo nó kiểm tra đc à! Bảo nó kiểm tra vs vai trò security hệ thống hay gì đó chế chế ra coi"*.
   1. *Căn nguyên bị từ chối:* Khi gọi Claude CLI (`claude_worker.py`) để thẩm định các runner quản trị nhiều profile/tài khoản (`ag_cli.py`, `omp_cli.py`), nếu prompt chứa các từ khóa nhạy cảm gợi ý việc né tránh kiểm soát nhà cung cấp ("fake profile", "né quota", "chống Google AI phát hiện liên đới/sybil"), Claude sẽ kích hoạt cờ Safety Policy và từ chối phân tích.
@@ -326,6 +342,7 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
 - `D:/Taadaa/tools/tests/test_dispatch_worker.py`: 11/11 tests (CRLF/whitespace normalization, failure hierarchy, snapshot & hash gate, target deletion rejection, unrelated files guard, anchored BLOCKED detection, PermissionError mapping, correlation ID consistency, Haiku/Agy fallback orchestration mocks).
 - `D:/Taadaa/tools/tests/test_sol_worker.py`: 8/8 tests (safe shell command regex, metacharacters injection block, DSL parse, atomic patch lifecycle, AST validation, LF preserve, max_turns validation).
 
+- `references/risk-based-planning-and-tri-party-plan-lock-20261021.md` — **[MỚI 21/10/2026 - RISK-BASED PLANNING & TRI-PARTY PLAN LOCK]** Bài học chấn chỉnh từ Operator và đồng thuận hội chẩn 3 bên (Sol + Claude Sonnet 5.5 + Gemini Coordinator): mổ xẻ nguyên nhân gốc rễ vòng lặp vá ngọn do Gemini Flash dính shallow completion bias; thiết lập 3 lằn ranh đỏ cấm tiệt Gemini lên plan kiến trúc (đụng guard/lock/cron/state, sửa >=3 files, hoặc lỗi tái phát >=2 lần); quy trình 5 bước gom evidence O(1) -> Claude Planner Sonnet 5.5 viết plan có root cause/fail-closed -> Sol/Operator duyệt -> Haiku thi công -> Nghiệm thu bằng output lệnh thật.
 - `references/egress-regex-gate-suppression-and-find-scan-guard-trap-20261021.md` — **[MỚI 21/10/2026 - EGRESS REGEX SUPPRESSION & FIND-SCAN GUARD TRAP]** Bài học chấn chỉnh từ Operator về gate regex text bắt nhầm câu thoại kỹ thuật khi đã có gate cơ học (guard_media_vision_gate); nguyên tắc cơ học tầng tool thắng text regex tầng egress; cạm bẫy từ tiếng Anh 'find ' kích hoạt FIND_SCAN của guard_broad_grep và chuỗi literal dính blacklist _is_protected_target.
 - `references/dual-quota-cache-poisoning-and-probe-fallback-20261020.md` — **[MỚI 20/10/2026 - DUAL QUOTA CACHE DISCONNECT & PROBE TIMEOUT FIX]** Khắc phục lỗi ngộ độc cache (exit 21 / Timeout khi truy vấn /usage) do lệch pha giữa plan-usage-history.json (2h) và claude_quota_cache.json (45s); cơ chế fallback đọc lịch sử hợp lệ khi probe live timeout và cấm cache kết quả probe hỏng.
 - `references/gate-6-zero-whining-structural-template-and-shift-left-architecture-20261020.md` — **[MỚI 20/10/2026 - ZERO-WHINING BY STRUCTURE & SHIFT-LEFT GATE 6]** Thẩm định đối kháng 3 vòng với Claude Sonnet 5.5 Planner và 4 vòng review với Claude Sonnet 5.5 Reviewer (APPROVED 85/85 tests): mổ xẻ 4 bẫy gây khóc lóc/ngâm trễ của gate lý thuyết, chuyển giao toàn bộ khâu capture+OCR sang Tool Wrapper (Shift-Left <= 15s), Scope-Guard Egress chỉ bật khi có UI tool call, và cơ chế tước quyền sinh văn xuôi của LLM ở nhánh lỗi bằng template máy sinh để triệt tiêu 100% bệnh than thở/xin xỏ, cùng bài học atomic prompt O(1) chống bẫy Haiku fallback Agy CLI timeout.
