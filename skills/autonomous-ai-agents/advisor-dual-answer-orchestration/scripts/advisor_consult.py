@@ -211,8 +211,13 @@ def _call_stream_chat(
     first_token_timeout: float = 80.0,
     idle_token_timeout: float = 20.0,
     max_total_timeout: float = 140.0,
+    timeout_sec: float | None = None,
 ) -> Tuple[bool, str]:
     """Gọi endpoint chat completion có hỗ trợ SSE streaming với Idle Streaming Timeout."""
+    if timeout_sec is not None:
+        first_token_timeout = timeout_sec
+        max_total_timeout = timeout_sec
+
     t_start = time.time()
     t_last_activity = t_start
     has_started_streaming = False
@@ -239,7 +244,7 @@ def _call_stream_chat(
                         return False, f"Stream idle timeout exceeded ({idle_token_timeout}s)"
 
                 if now - t_start > max_total_timeout:
-                    return False, f"Total stream timeout exceeded ({max_total_timeout}s)"
+                    return False, f"Total stream deadline exceeded ({max_total_timeout}s)"
 
                 line_str = line.decode("utf-8", errors="replace").strip()
                 if line_str == "data: [DONE]":
