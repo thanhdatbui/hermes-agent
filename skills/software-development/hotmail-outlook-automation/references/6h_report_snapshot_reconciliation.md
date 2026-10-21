@@ -51,8 +51,14 @@ A report showing 51 Kibe BLOCKED was followed by a live state showing 53: the ca
 ## Common Root Causes for 6H Report Login Failures & Zero Throughput (Updated 2026-10-21)
 1. **Recovery Mail Challenge on Password Login (`@fviainboxes.com`)**:
    - Symptom: OCR shows *"Almost there / Sắp hoàn thành / Xác minh email của bạn: Gửi mã đến ...@fviainboxes.com"*.
-   - Root cause: Microsoft flags proxy IP and prompts for OTP sent to recovery mail. `batch_gpm_hotmail_password_login.py` historically only fetched OTP via Graph API, missing the temporary inbox API (`@fviainboxes.com`). Matching *"xác minh email của bạn"* triggers hard security block.
-   - Quarantine trigger: If retried 3 times without solving the recovery mail challenge, account transitions to `QUARANTINE` (deadlock 3/3). Do NOT reset blindly without recovery inbox automation.
+   - Root cause: Microsoft flags proxy IP and prompts for OTP sent to recovery mail. `batch_gpm_hotmail_password_login.py` historically only fetched OTP via Graph API, missing the temporary inbox API (`@fviainboxes.com`). Matching *"xác minh email của bạn"* in `hard_block_keywords` triggered an immediate abort (`SECURITY_BLOCK`).
+   - Remediation pattern:
+     * Lookup recovery email from `gmail_clean_v2.xlsx` (Col 5) for both Kibe and Admin.
+     * Remove `"verify your email"` / `"xác minh email của bạn"` from `hard_block_keywords` to allow the challenge step to execute.
+     * At identity challenge screen, fill recovery email, click "Send code / Gửi mã", and invoke `fetch_recovery_email_otp(rec_email, timeout_seconds=45)` from `mail_domain_otp_helper.py`.
+     * Fill the 6-digit code into `#codeEntry-0..5` or `#iOttText` and submit.
+     * Full implementation spec and selector mappings: see `references/hotmail_password_login_verification_and_recovery_otp.md`.
+   - Quarantine trigger: If retried 3 times without solving the recovery mail challenge, account transitions to `QUARANTINE` (deadlock 3/3). Do NOT reset blindly without recovery inbox automation verified.
 2. **Cookie Banner Overlay False-Positive**:
    - Symptom: Screenshot shows browser successfully reached `account.microsoft.com` / `account.live.com`, but full-page cookie consent banner (*"Chúng tôi dùng cookie tùy chọn... Chấp nhận / Từ chối"*) covers the viewport.
    - Root cause: If consent banner isn't dismissed (`button:has-text('Chấp nhận')` / `#acceptButton`), subsequent auth check elements may fail to resolve or time out, misclassifying a successful login as `BLOCKED` with a 48h penalty.
