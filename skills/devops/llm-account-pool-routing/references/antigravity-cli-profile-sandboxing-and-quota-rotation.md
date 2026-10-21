@@ -534,6 +534,35 @@ Chi tiết xem tại tài liệu hỗ trợ liên kết:
   * File code điều phối (`D:/Taadaa/tools/ag_cli.py`, `D:/Taadaa/tools/omp_cli.py`) thuộc Git repo `tools` BẮT BUỘC phải commit và push lên Git (qua Closeout Gate) để tránh tê liệt hệ thống khi máy trạm hỏng.
   * Toàn bộ kho credential (`D:/Taadaa/agy_profiles/`) chứa token OAuth và mật khẩu proxy TUYỆT ĐỐI CẤM commit lên Git.
 
+---
+
+## 17. Kiến Trúc Sao Lưu OneDrive & Cơ Chế Fallback Dự Phòng Thảm Họa (Disaster Recovery)
+
+Khi kho credentials (token OAuth, mật khẩu proxy di động) không thể đưa lên GitHub:
+
+### 1. Đồng Bộ Đám Mây An Toàn Sang OneDrive:
+- **Nguyên lý:** Tận dụng thư mục OneDrive hệ thống (`D:\OneDrive\backup`) để tự động đồng bộ đám mây liên tục mà không lo rò rỉ public.
+- **Kỷ luật Lọc File Khi Backup (Anti-Timeout Invariant):**
+  * Trong mỗi profile sandbox, các thư mục `AppData`, `Temp`, `.bun`, `node-compile-cache`, `tsx-*` chứa hàng chục nghìn file tạm/node modules.
+  * **CẤM TUYỆT ĐỐI** dùng `Path.glob("**/*")` hoặc `os.walk` quét toàn bộ thư mục profile (gây timeout >60s và nghẽn I/O).
+  * **Chỉ copy đúng các file nghiệp vụ cốt lõi:**
+    + AGY: `profiles_config.json`, `pool_state.json`, và trực tiếp `acc_*/.gemini/*` (`google_accounts.json`, `installation_id`, `oauth_creds.json`).
+    + OMP: `acc_*/agent/agent.db` và `acc_*/agent/models.yml`.
+  * Script thực thi: `D:/Taadaa/runtime/backup_profiles_to_onedrive.py` hoàn thành đồng bộ toàn bộ 21 profiles trong < 2 giây.
+
+### 2. Tích Hợp Cơ Chế Fallback Tự Động Trong Runner (`ag_cli.py` & `omp_cli.py`):
+- Để hệ thống không bao giờ bị tê liệt khi chuyển sang máy trạm mới hoặc khi ổ cứng gặp sự cố:
+  ```python
+  ONEDRIVE_BACKUP_DIR = os.environ.get("AGY_PROFILES_BACKUP_DIR", r"D:\OneDrive\backup\agy_profiles")
+  ONEDRIVE_BACKUP_CONFIG = os.path.join(ONEDRIVE_BACKUP_DIR, "profiles_config.json")
+  ```
+- **Hai nấc Fallback tự động:**
+  1. *Cấu hình Pool:* Trong `load_profiles_config()`, nếu `PROFILES_CONFIG_FILE` không tồn tại, tự động chuyển hướng đọc từ `ONEDRIVE_BACKUP_CONFIG`.
+  2. *Thư mục Profile:* Trong `resolve_profile_dir(profile, name)`, kiểm tra theo thứ tự ưu tiên: `path tùy biến -> PROFILES_DIR/name -> ONEDRIVE_BACKUP_DIR/name -> PROFILES_DIR chuẩn`.
+  3. Trong `omp_cli.py`: Nếu database local `agent.db` bị thiếu, tự động fallback đọc credentials từ `D:\OneDrive\backup\omp_profiles/<name>/agent/agent.db`.
+- **Hiệu quả:** Khi clone code repo `tools` sang máy mới hoặc khi phân vùng local bị format, cả 2 runner vẫn tự động nhận diện đầy đủ 21 tài khoản và vận hành ngay lập tức mà không cần cấu hình lại thủ công.
+
+
 
 
 
