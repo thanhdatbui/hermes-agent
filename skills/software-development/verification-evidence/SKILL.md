@@ -710,7 +710,14 @@ Treat a requested patch-size ceiling as a verification invariant, not a preferen
   + **Tâm lý "Cheap Signal Substitution" & né tránh máy thật**: Agent có xu hướng thỏa mãn ngay khi `pytest` xanh lá (tín hiệu rẻ, nhanh) mà trốn tránh chi phí thời gian / rủi ro lỗi của việc chạy Canary trên thiết bị thật.
   + **Tọa độ vật lý và bounds KHÔNG THỂ chứng minh bằng mock offline**: Selector bounds, touch target, switcher bounds phụ thuộc trực tiếp vào DPI, độ trễ render UI, và gesture của thiết bị thật (Galaxy S7). Chỉ tin unit test sẽ làm nhân rộng lỗi tap trượt / nhầm nút không thể đảo ngược trên toàn farm.
   + **Cơ chế cưỡng chế Gate cứng**: Mọi kết luận sửa code farm BẮT BUỘC phải vượt qua `done_gate.py --strict-device`. CẤM TUYỆT ĐỐI dựa vào cơ chế `GATE-PASS(deferred)` khi sửa code điều khiển thiết bị; bắt buộc phải có biên nhận thực thi thật (`has_recent_canary_evidence`) mới được phép báo cáo hoàn tất cho User.
-  + **Adversarial-Proof Enforcement trong Gate**: Gate cấm tin tưởng cờ tự khai báo `--task-type general` (nếu repo nằm trong `AUTOMATION_REPOS` thì bắt buộc là `automation`). Gate bắt buộc wire `--strict-device` vào cả GPM (fail ngay nếu GPM offline không có canary). Gate ràng buộc Canary receipt với đúng repo đang sửa, và `ui_policy_check` phải chạy diff-aware có timeout, bỏ qua các file không có git diff để tránh false-positive làm tắc gate.
+  + **Adversarial-Proof Enforcement trong Gate**:
+    * Gate cấm tin tưởng cờ tự khai báo `--task-type general` (nếu repo hoặc cwd nằm trong `AUTOMATION_REPOS` thì bắt buộc là `automation`).
+    * Gate bắt buộc wire `--strict-device` vào cả GPM (fail ngay nếu GPM offline không có canary receipt).
+    * Gate bắt buộc ràng buộc Canary receipt với đúng repo đang sửa (FAIL nếu receipt thiếu field `repo` hoặc sai repo).
+    * Cấm hoàn toàn bypass bằng file ảnh thô (`.png/.jpg`), bắt buộc phải có Receipt JSON có hash `media_sha256` trùng khớp ảnh thật và `runner_status: success`.
+    * Enforce mode (so khớp `diff_sha256`) phải fail-closed: nếu lỗi build canary_plan thì trả về `CANARY_PLAN_UNAVAILABLE` (FAIL), cấm nuốt ngoại lệ `except: pass`.
+    * Repo `tools` và các script điều hành farm bắt buộc phải nằm trong `AUTOMATION_REPOS` để tự bảo vệ chính bộ gate khỏi điểm mù.
+    * `ui_policy_check` phải chạy diff-aware so khớp ngược về baseline (`origin/main`, `origin/master`), chống thủ thuật "decoy commit" nhiều bước để qua mặt gate.
 - **Bypass Gate Fallacy vs Synthetic Canary Requirement (Tooling & Media Pipelines):**
   When `done_gate.py` returns `GATE-PASS(bypass): Non-automation task, canary not required`, this indicates that Android ADB phone hardware locks are not required. It is NOT permission to skip real-world verification or claim completion from mocked tests alone. When asked "run canary chưa", run a Synthetic E2E Canary (e.g. generate a short fixture via FFmpeg `testsrc`, execute the tool, run WinRT OCR on output, and emit `MEDIA:<path>`). Mock tests prove the seam; synthetic canary proves the execution pipeline on the actual Windows host.
 - **Idempotency Receipt Trap & Visual Verification Discipline (Phone Farm Uploads):**

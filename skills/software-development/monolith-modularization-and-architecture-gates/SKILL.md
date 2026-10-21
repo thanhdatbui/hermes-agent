@@ -14,6 +14,7 @@ metadata:
 Use this skill when refactoring monolithic production scripts (> 1.500 lines) into modular subpackages without disrupting active workloads, breaking backward compatibility, or letting subsequent AI agents undo the modularization.
 
 Reference files:
+- `references/action-catalog-guard-and-anti-paralysis-design-20261022.md`: Kiến trúc Action Catalog Guard 3 tầng phòng chống chế bánh xe, giải pháp chống tê liệt phòng vệ (Luna syndrome / False Rejects), và phân định ranh giới WinRT OCR (WebView/Shop) vs Canonical XML (Native Shell/Switcher).
 - `references/watchdog-formatters-modularization-and-dual-copy-sync-20261022.md`: Quy tắc module hóa watchdog formatters (dispatch_split_reports, format_follow_report_from_blocks), bảo toàn trần 1.450 dòng Architecture Gate và kỷ luật đối soát đồng bộ byte-for-byte dual-copy mirror (scripts vs hermes_cron).
 - `references/js-thin-slicing-crlf-normalization-and-sonnet-review-20261017.md`: Kỹ thuật bóc tách đa lát cắt JavaScript (1.500+ dòng xuống 612 dòng), chuẩn hóa CRLF/LF chống phình diff ảo, kỷ luật Claude Sonnet 5.5 review và nguyên tắc Anti-Halting không dừng lại hỏi khi đã được lệnh thi công.
 - `references/thin-slice-javascript-component-extraction-and-fstring-invariants-20261017.md`: Kỹ thuật phân rã lát cắt mỏng 1.570 dòng JavaScript từ Python f-string sang dashboard/static/*.js, khử ngoặc nhọn kép {{}} và nạp động bảo toàn trần 30KB Closeout Gate.
