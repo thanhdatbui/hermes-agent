@@ -19,6 +19,22 @@ A dry-run, worker exit code, queue state, workbook flag, or local asset marker i
 
 If any identity or read-back gate is missing, report `BLOCKED` with the actual error and evidence path. Never infer success.
 
+## Runner lifecycle and exact-account closeout contract
+
+The canonical runner must capture its own post-mutation evidence **before** force-stop/HOME/teardown and must carry the target identity through that capture. A later ad-hoc verifier that relaunches TikTok, guesses a profile tab, or uses an unbound account switcher can land on another farm account and create a false failure or false success. Therefore:
+
+1. Bind `machine -> serial -> workbook row/slot -> target username -> source asset` in the run artifact before launch.
+2. Confirm the target identity on the live Profile immediately before mutation.
+3. Perform the mutation, then capture fresh UI XML and screenshot on that same target surface before cleanup. Persist both under the same attempt/run ID.
+4. Verify exact username/display identity and expected avatar/pin marker from those fresh artifacts. Only after this gate may the runner update workbook state or teardown.
+5. If the runner's current lifecycle tears down first, classify the result as `UNPROVEN`; the durable fix belongs in the canonical runner's closeout hook, not in a one-off script that taps guessed coordinates after the fact.
+
+`exit=0`, `verified=True`, `FORCED_REPLACED_VERIFIED`, `Avatar=OK`, or a successful crop/save log are mechanical receipts only. They cannot override `post_verified=false`, a black/Home/Splash screenshot, or a screenshot showing another account. See `references/avatar-runner-lifecycle-and-identity-binding-20261021.md`.
+
+## Operator communication after a failed closeout
+
+When the operator asks why work stopped or expresses frustration, do not re-explain the whole history or ask the already-settled choice again. State the exact design failure in one sentence, distinguish mechanical action from semantic closeout, and continue the bounded canonical recovery. Return only `DONE` with fresh exact-account evidence or `BLOCKED` with the literal artifact/error; do not stop merely because the first verification path failed.
+
 ## Recovery sequence
 
 1. **Classify the failure.** Separate transient transport/ATX/session errors from identity or UI-state errors. `UI_DUMP_INVALID` during profile navigation is not proof of a safe target; treat it as a blocked mutation until the screen is captured and inspected.
