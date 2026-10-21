@@ -111,6 +111,7 @@ A valid acceptance sequence is:
 5. Do not report `DONE` from adapter status alone. If only the adapter canary passes, report `adapter PASS; orchestration canary pending`.
 
 ## References
+- Kỹ Thuật Đóng Khung Targeted Test Cho Closeout Gate & Đồng Bộ Consult Advisor (2026-10-21): [`references/closeout-gate-targeted-tests-and-consult-advisor-sync-20261021.md`](references/closeout-gate-targeted-tests-and-consult-advisor-sync-20261021.md)
 - Đồng Bộ Timeout Advisor Sol Đa Tầng & Khởi Động Lại Daemon (2026-10-21): [`references/advisor-timeout-deploy-sync-20261021.md`](references/advisor-timeout-deploy-sync-20261021.md)
 - Bẫy Timeout Ảo 45s Do Parse JSON & Hoàn Thiện Cơ Chế On-Demand (2026-10-20): [`references/on-demand-advisor-and-json-parse-timeout-resolution-20261020.md`](references/on-demand-advisor-and-json-parse-timeout-resolution-20261020.md)
 - Chuyển Đổi Sang On-Demand & Phân Định Rạch Ròi Sol Advisor vs. Sol Reviewer (2026-10-20): [`references/on-demand-transition-and-advisor-vs-reviewer-separation-20261020.md`](references/on-demand-transition-and-advisor-vs-reviewer-separation-20261020.md)
@@ -147,6 +148,14 @@ See `references/advisor-context-starvation-and-session-briefing-20261015.md` for
 - **claude_worker.py — Cổng Điều Phối Role-Based Thế Hệ Mới (15/10/2026):** Để tránh lặp lại sự cố bypass 72 turns (2.1M tokens Sonnet), toàn bộ lệnh gọi Claude CLI trên Farm BẮT BUỘC đi qua `python D:/Taadaa/tools/claude_worker.py --role [worker|planner|reviewer]`. Wrapper này cưỡng chế tự động: hard-cap `max_turns` theo role (reviewer: 4 mặc định/8 tối đa, planner: 6/10, worker: 8/15), chọn đúng model mặc định (Sonnet cho planner/reviewer, Haiku cho worker), khóa cứng `--disallowedTools Edit,Write,NotebookEdit` cho planner/reviewer, và tự động fallback sang `ag_cli.py ask` (không phải `fix`) khi Quota chạm ngưỡng 85%/90%. Quota stale threshold hạ xuống 2.0h. CẤM gọi `claude -p` thô trong terminal mà không qua wrapper.
 
 ## Common failure modes
+
+- **Bẫy Timeout 120s Khi Chạy Closeout Gate Với `--files` Không Kẹp File Test (2026-10-21):**
+  * *Hiện tượng:* Khi chạy `closeout_gate.py` với cờ `--files` trên repo lớn như `D:/Taadaa/Hermes`, nếu chỉ liệt kê các file source code đã sửa mà không truyền kèm file test, hệ thống sẽ fallback chạy toàn bộ thư mục `tests/` (`pytest tests --tb=short -q`), dẫn tới vượt ngưỡng `PYTEST_TIMEOUT = 120s` và fail gate ngay lập tức (trong khi cờ `--skip-test` bị gate cấm tuyệt đối ở chế độ repo).
+  * *Khắc phục:* Luôn đính kèm file test focused vào danh sách `--files` (ví dụ: `--files agent/conversation_loop.py tools/advisor_tool.py tests/agent/test_advisor_context.py`). Khi thấy có file test trong `--files`, `closeout_gate.py` sẽ chỉ chạy đúng file test đó (< 3 giây).
+
+- **Đồng Bộ Hàm `build_advisor_prompt` trong `D:/Taadaa/tools/consult_advisor.py` (2026-10-21):**
+  * *Hiện tượng:* Bộ test `test_advisor_context.py` import `consult_advisor` và gọi hàm `build_advisor_prompt(...)`. Nếu file `D:/Taadaa/tools/consult_advisor.py` thiếu hàm này, test sẽ sập với lỗi `AttributeError: module 'consult_advisor' has no attribute 'build_advisor_prompt'`.
+  * *Khắc phục:* File `consult_advisor.py` trên đĩa bắt buộc phải chứa đầy đủ hàm `build_advisor_prompt` đóng gói 5 tầng bối cảnh (hiện trường, diễn biến, trạng thái, câu hỏi, yêu cầu) kèm bộ lọc bảo mật `redact_secrets`.
 
 - **Bẫy Đa Bản Sao Script Deploy & Cache RAM Daemon Gateway (2026-10-21):**
   * *Hiện tượng:* Operator đã nâng timeout cho Advisor Sol lên 150s (first-token 80s, idle 20s), nhưng mở phiên mới trên Telegram vẫn bị ném thông báo: `Advisor: unavailable (Sol / review wall-clock deadline exceeded >45.0s; chỉ hiển thị câu trả lời Coordinator)`.
