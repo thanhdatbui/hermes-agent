@@ -25,6 +25,16 @@ Anything else is `MANUAL_REVIEW` / unknown. In particular, do not call `set_foll
 - Preserve the distinction between a clean business outcome (`FOLLOW_FAILED` with account cooldown) and a dirty technical failure (`MANUAL_REVIEW`, reload failure, identity mismatch, persistence failure). The latter must remain fail-closed and must not silently punish the account.
 - Only a fresh, identity-bound `not_followed` result after a real tap/reload may increment failure state.
 
+## Tail-drop reporting: accepted follows are not jail
+
+When a machine has `followed_count > 0` or a non-empty `followed` list but ends with `status=FOLLOW_FAILED`, classify it as **tail-drop / account ceiling**, not as a zero-success failure or persistent jail. The runner may fail-closed after a later profile verification rejects the next follow even though earlier follows were accepted.
+
+Required report semantics:
+- `used > 0`: accepted follows are real; report the accepted count and the terminal rejection separately. Do not increment `fail_streak`; apply only the short cooldown defined by the state machine; do not trip the IP breaker from this event alone.
+- `used == 0`: only the zero-follow path may advance `fail_streak`; persistent-jail classification requires the configured repeated zero-follow threshold, not one `FOLLOW_FAILED` status.
+- Never classify from `FOLLOW_FAILED` alone. Inspect `follow_result.json` and the matching `log.jsonl` event, including `followed`, `followed_count`, `failed`, `follow_failed`, `reason`, `fail_streak`, and cooldown fields.
+- Prevent contradictory output such as `Follow chéo (N lượt)` together with `Thành công (0 máy)` unless the report explicitly names the tail-drop machine and accepted count. The accepted machine should appear in a dedicated tail-drop/ceiling subsection, or in success-with-tail-drop if that is the report vocabulary.
+
 ## Review procedure
 1. Trace every `set_follow_failed()` caller and classify its evidence contract.
 2. Check whether a reload return value is ignored or whether a loop `break` falls through to failure mutation.
@@ -33,6 +43,7 @@ Anything else is `MANUAL_REVIEW` / unknown. In particular, do not call `set_foll
 5. Verify the active-cooldown guard precedes legacy migration, graduation, ceiling, timestamp, and `_save()` operations.
 6. Verify no account state mutation imports or invokes IP-breaker code.
 7. Add focused mocked regressions for each false-positive path; do not run the full farm suite during debugging.
+8. For report discrepancies, compare the machine-scoped result artifact with the watchdog classifier input. Do not rely on the human-facing summary alone.
 
 ## Regression matrix
 - State: second `set_follow_failed()` while cooldown active leaves state file bytes unchanged.
@@ -40,6 +51,22 @@ Anything else is `MANUAL_REVIEW` / unknown. In particular, do not call `set_foll
 - Verify: reload returns false -> `VerifyResult("manual")`, zero failure callbacks.
 - Mode 2: missing Follow tap or unbound identity -> manual outcome, zero failure callbacks.
 - Mode 2: identity-bound fresh `not_followed` -> the only path that may produce `FOLLOW_FAILED`.
+- Reporting: `FOLLOW_FAILED` with `followed_count=3` is rendered as tail-drop/account-ceiling with 3 accepted follows, not as `success=0` or zero-follow jail.
+- Reporting: `FOLLOW_FAILED` with `followed_count=0` remains eligible for zero-follow streak accounting, subject to the configured streak threshold.
 
 ## Evidence/reporting
 Separate `tap_attempted`, `runner_verified`, and later web/snapshot reconciliation. Never infer a dead external priority target from HTTP 200 or an anti-bot placeholder. If the account is absent from the tracking DB, report that as “not present in tracker”; do not delete or disable the configured target without direct profile evidence and user authorization.
+
+## Operator handoff discipline (Anti-hedging)
+- Khi code và focused tests đã pass (ví dụ 357/357 passed), CẤM kết thúc bằng tràng phân trần rào đón ("chưa chạy canary vì máy ngủ, chưa dám báo DONE, chưa commit...") khiến Operator thấy do dự, đứng im than khóc ("Là h sao cứ dừng lại khóc thế").
+- Cấu trúc bàn giao dứt khoát 3 phần:
+  1. **Khẳng định kết quả:** Liệt kê các điểm lỗi đã bẻ lại và số test focused pass.
+  2. **Hiện trạng môi trường ngắn gọn:** Nêu sự thật khách quan (ví dụ: máy đang sleep, không chạy mù).
+  3. **Hành động tiếp theo rõ ràng:** Đưa ra lựa chọn dứt khoát: (a) commit git đợt fix, hay (b) chạy closeout gate cho Sol chấm điểm để chốt phiên.
+
+## Git line-ending hygiene in follow repo
+- Repo `tiktok-follow` có file dùng LF và file dùng CRLF ở HEAD (ví dụ `test_follow_state.py` ở HEAD là CRLF 100%, trong khi các flow modules là LF).
+- Chuyển sai line ending sẽ làm `git diff --numstat` nhảy thành toàn bộ file hoặc `git diff --check` báo lỗi trailing whitespace trên hàng nghìn dòng.
+- BẮT BUỘC kiểm tra format của HEAD trước khi lưu hoặc convert:
+  `git show HEAD:<file> | python -c "import sys; b=sys.stdin.buffer.read(); print(b.count(b'\r\n'), b.count(b'\n'))"`
+- File đang dùng CRLF ở HEAD thì giữ đúng CRLF; file dùng LF thì giữ đúng LF.
