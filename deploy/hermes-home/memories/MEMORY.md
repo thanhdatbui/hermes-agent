@@ -4,7 +4,7 @@ Follow: dò +2 (max 40); lùi 4 sàn 15. Streak chỉ tăng khi fl=0; fl>=1 gi�
 §
 Hotmail: CẤM mail cá nhân; @fviainboxes.com đọc OTP. Pin >=1000 view.
 §
-Rename: tap bio (473,703); --clear-bio; bút chì (72,148); splash 4G 8 step (~35s); acc lỗi tự re-queue 15m (chỉ acc verified ghi state); name regex ASCII giữ tên tiếng Việt có dấu/1 từ; core switcher; văng->login_v1.
+Rename: bút chì (72,148) là fallback duy nhất (cấm tap bio khi đổi tên); splash 4G 8 step (~35s); acc lỗi tự re-queue 15m; BIO_EDIT classify trước PROFILE; name regex giữ tên Việt có dấu/1 từ; core switcher.
 §
 Sol: 100% On-Demand ('gọi advisor','hỏi sol'...), cấm auto-append ngắt lời; advisor_tool 140s, briefing 4k ký tự; Sol Reviewer độc lập closeout (diff 40KB).
 §

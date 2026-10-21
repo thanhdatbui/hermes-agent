@@ -150,6 +150,36 @@
     ```
     tuyệt đối không dùng tọa độ ma `(870, 558)` hoặc cấm tap mù cứng nhắc khiến máy tự abort vô cớ.
 
+- **Bẫy Tử Huyệt Vòng Lặp Ping-Pong `PROFILE` ↔ `BIO_EDIT` Do Tap Nhầm `+ Thêm tiểu sử` (Sự cố 21/10/2026):**
+  * **Hiện tượng kẹt hàng loạt:** Hàng loạt máy (M44, M50, M28, M13, M7, M64, M18, M66, M63, M43, M4) đồng loạt văng `exit_2` với lỗi `vuot qua 35 buoc`.
+  * **Căn nguyên tử huyệt:** Khi đổi Tên Nick (`--name` mà KHÔNG có `--bio`), nếu trên `PROFILE` không có text "Sửa hồ sơ", nhưng runner tìm cả regex `+ thém | tieu su` hoặc fallback vào chip `(315, 865)`:
+    - Runner sẽ tap trúng nút `+ Thêm tiểu sử` giữa màn hình.
+    - Nút này **KHÔNG MỞ MÀN SỬA HỒ SƠ** mà mở ra màn hình Sửa tiểu sử (`BIO_EDIT`).
+    - Trong `BIO_EDIT`, vì `BIO_REQUESTED == False`, runner bấm phím `Back` (keyevent 4) để quay về Profile.
+    - Vừa về Profile, runner thấy tên chưa đổi xong, lại quét nút, lại tap `+ Thêm tiểu sử` ➔ mở `BIO_EDIT` ➔ bấm `Back` ➔ về `PROFILE`... lặp vô tận 35 bước rồi Abort!
+  * **Quy tắc bất biến (Canonical Invariant):**
+    - Khi đổi tên (`--name`), runner BẮT BUỘC CHỈ tìm text button `"Sửa hồ sơ"`: `find_box(boxes, r"(sua|chinh sua|edit)\s*(h[o0]|profile)")`.
+    - Nếu không thấy chữ "Sửa hồ sơ", **fallback DUY NHẤT và an toàn tuyệt đối trên Galaxy S7 là tap icon cây bút chì ở góc trên bên trái `XY_EDIT_PENCIL = (72, 148)`**!
+    - Tuyệt đối CẤM fallback sang tap `+ Thêm tiểu sử` hay chip tiểu sử `(315, 865)` trong luồng đổi tên!
+
+- **Thứ Tự Phân Loại `BIO_EDIT` Trước `PROFILE` Do Nút `@ Nhắc đến` (Sự cố M64):**
+  * Màn hình `BIO_EDIT` của TikTok có nút tiện ích `@ Nhắc đến` (`@ nhac den`).
+  * Nếu trong `classify()`, điều kiện `PROFILE` kiểm tra `any(l.startswith("@") for l in lines)` trước `BIO_EDIT`, dòng `@ Nhắc đến` sẽ khiến màn hình Sửa tiểu sử bị nhận diện NHẦM thành `PROFILE`!
+  * Runner tưởng đang ở `PROFILE` nên không bấm Back để thoát, mà tiếp tục tìm nút để tap ➔ Kẹt 5 lần liên tiếp ở `PROFILE` (`Abort("ket o trang thai PROFILE 5 lan lien tiep")`).
+  * **Quy tắc:** Bắt buộc kiểm tra nhận diện `BIO_EDIT` (dấu hiệu `@ nhac den`, `tieu su` / `tieu sd` kèm hướng dẫn `chinh sta tieu`) TRƯỚC điều kiện `PROFILE`.
+
+- **Khắc Phục OCR Rớt Ký Tự `@` Trên Dòng Username (Sự cố M15, M43):**
+  * WinRT OCR trên Galaxy S7 đôi khi quét rớt ký tự `@` (thành `rtisdi an ar1` hoặc `mthinh2415`).
+  * Nếu `nickname_on_profile()` chỉ kiểm tra cứng `t.startswith("@")` sẽ trả về `user = None`, dẫn đến runner tưởng acc lạ, mở Switcher 3 lần rồi văng lỗi `acc active van la @None`.
+  * **Khắc phục:** Mở rộng điều kiện dòng username: `is_user_line = (t.startswith("@") or is_target_user(t)) and b[1] < 750`.
+
+- **Xóa Bỏ Heuristic Nhận Vơ `has_vietnamese` Trong `is_target()` (Sự cố M52):**
+  * Điều kiện cũ `has_vietnamese and not re.search(r"\d") -> return True` khiến chip gợi ý "Bạn có tin vui?" (OCR đọc là `"Ban cé"`) bị coi là tên tiếng Việt chuẩn và báo `ALREADY` ảo.
+  * Phải xóa bỏ heuristic lỏng lẻo này. Tên chỉ được xem là `is_target` nếu thực sự khớp với `NEW_NAME` hoặc generator xác nhận liên quan trực tiếp tới username.
+
+- **Định Danh Telegram Delivery Bền Vững Xuyên Suốt Lệnh `/new`:**
+  * Khi cronjob watchdog cần gửi thông báo tiến độ về đúng topic Telegram mà không bị mất dấu khi user mở phiên mới (`/new`), thuộc tính `deliver` trên cronjob BẮT BUỘC chỉ định định dạng cụ thể: `telegram:<chat_id>:<thread_id>` (ví dụ `telegram:1076231895:296400`), không dùng `deliver: 'origin'` nếu muốn bảo đảm 100% không bị lệch kênh khi session context thay đổi.
+
 ---
 
 ## 11. Regression Gate Đa Giao Diện Cho Runner Đổi Tên (Multi-Layout Regression Gate)
