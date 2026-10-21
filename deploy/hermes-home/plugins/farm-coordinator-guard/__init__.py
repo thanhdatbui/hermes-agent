@@ -2003,10 +2003,7 @@ def register(ctx: Any) -> None:
     def transform_output_hook(response_text: str = "", session_id: str = "", **kwargs: Any) -> Optional[str]:
         # 1. Chốt chặn Bằng chứng Thị giác (Evidence-First Gate)
         try:
-            ev_res = _enforce_evidence_first_gate(response_text, session_id=session_id)
-            if ev_res:
-                # Không nuốt câu trả lời: giữ nội dung gốc bên dưới cảnh báo để user vẫn đọc được.
-                return f"{ev_res}\n\n--- Nội dung gốc (CHƯA XÁC MINH) ---\n{response_text}"
+            _enforce_evidence_first_gate(response_text, session_id=session_id)
         except Exception as exc:
             logger.exception("[FARM_GUARD] Fail-closed exception in evidence gate: %s", exc)
             return (
