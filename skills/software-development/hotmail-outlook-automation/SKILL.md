@@ -11,10 +11,11 @@ description: Hotmail automation.
 # Hotmail/Outlook Automation
 
 - **BoxTaiKhoan API**: Buy OAuth2 product 60 via `POST /ajaxs/client/product.php`, one account per request (`amount=1`) to receive complete `data`; format `mail|pass|refresh_token|client_id`.
-- **Change-pass eligibility (2026-10-10)**: Require TikTok ID+pass & ChatGPT PASS (Col 12), clear Col 9 after success, keep explicit BLOCKED reporting.
-- **6H lifecycle report reconciliation**: Cron output is snapshot; re-read canonical state before determining causes, never bulk-reset. See `references/6h_report_snapshot_reconciliation.md`.
-- **Bắt buộc có Mail khôi phục trước khi bật 2FA TOTP (2026-10-13)**: Microsoft BẮT BUỘC tài khoản phải có ít nhất 2 phương thức xác minh (Mật khẩu + Mail khôi phục) thì mới cho phép bật 2FA Authenticator TOTP. Không cần ngâm thêm sau khi add mail kp, chạy tuần tự 5 bước trong cùng phiên. CẤM mail cá nhân `thanhdatbui`, 100% dùng domain tạm `@fviainboxes.com`. Xem `references/hotmail_change_info_recovery_and_2fa_flow.md`.
-- **Phạm vi Dual-Farm (Kibe + Admin)**: Toàn bộ 2 farm gồm ~1.280 tài khoản (Kibe 1-80: 640 accounts, Admin 201-280: ~640 accounts). Cấm đếm thiếu cụm Admin khi đối soát số lượng.
+- **Change-pass eligibility (2026-10-10)**: Cần TikTok ID+pass & ChatGPT PASS (Col 12), xóa Col 9 sau khi thành công.
+- **6H report reconciliation**: Đọc state canonical trước khi xác định nguyên nhân. Xem `references/6h_report_snapshot_reconciliation.md`.
+- **GPM login verification & skip-link pitfalls (2026-10-21)**: Dùng endpoint đích có wreply `account.live.com/proofs/manage/additional`, cấm selector `a:has-text('Bỏ qua')` (tránh bấm nhầm uhf-skip-link), chống false positive trang promo landing. Xem `references/microsoft_gpm_login_verification_pitfalls.md`.
+- **Bắt buộc có Mail khôi phục trước khi bật 2FA TOTP (2026-10-13)**: Cần 2 phương thức xác minh (Pass + Mail khôi phục) trước khi bật 2FA. Dùng domain tạm `@fviainboxes.com`. Xem `references/hotmail_change_info_recovery_and_2fa_flow.md`.
+- **Phạm vi Dual-Farm (Kibe + Admin)**: Toàn bộ 2 farm ~1.280 tài khoản (Kibe 1-80: 640, Admin 201-280: ~640). Không đếm thiếu cụm Admin.
 - **Kiến trúc kho Gmail Clean V2 & 2 Cột Trạng Thái (2026-08-25)**:
   - `gmail_clean_v2.xlsx` là **Single Source of Truth** chứa cả Gmail và Hotmail của farm.
   - Cột 11: `info_changed` (đánh dấu `1` khi đã đổi info/pass bảo mật Hotmail).

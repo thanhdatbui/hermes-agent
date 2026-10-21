@@ -33,19 +33,37 @@ STOPPED: [06] Không thấy màn chọn phương thức đăng nhập
 - Điều kiện `sum(1 for k in _home_markers if k in flat_0) >= 2` bị kích hoạt sai (True). Script tự động bấm vào tab `Hồ sơ` (972, 1857).
 - Vì đang ở sẵn màn hình Profile, việc bấm tab Hồ sơ không làm thay đổi giao diện. Script chờ 20s không thấy nút "Đăng nhập" / "Dùng SĐT/Email" và văng lỗi `[06]`.
 
-## 3. Bản Vá Kỹ Thuật (Remediation)
+## 3. Bản Vá Kỹ Thuật (Remediation) & Bẫy Infinite Swipe Loop
 
-1. **Auto-Scroll Khay Switcher Khi Nút Bị Cắt Mép (`tap_add_account`):**
+### Bẫy ngầm khi đặt ngưỡng cuộn quá nhạy (Infinite Swipe Loop Trap):
+- Khi `swipe(540, 1600, 540, 1100, 300)` thành công, hàng "Thêm tài khoản" trượt lên và dừng lại ở vị trí hiển thị tối đa: `bounds=[0,1680][1080,1896]` (chiều cao chuẩn 216px, TextView chữ tại `[252,1758][614,1818]`).
+- Nếu đặt điều kiện `if y1 > 1650 or y2 >= 1880:`, do `1680 > 1650` nên script sẽ tiếp tục cuộn tiếp 2 lần nữa mà **không bao giờ bấm nút**, dẫn tới việc cạn 3 attempt và văng lỗi `STOPPED: [04_add_account] Không tìm thấy nút`.
+
+### Quy chuẩn xử lý chuẩn xác:
+1. **Chỉ cuộn 1 lần duy nhất khi nút thực sự bị che mép đáy:**
    ```python
-   if y1 > 1650 or y2 >= 1880:
+   if attempt == 0 and (y2 >= 1915 or (y2 - y1) < 180):
        log(f"   [add-account] Nút ở sát mép dưới ({y1}-{y2}), cuộn lên trước khi tap")
        swipe(device_id, 540, 1600, 540, 1100, 300)
        time.sleep(1.0)
        continue
    ```
-2. **Kiểm Chứng Hậu Điều Kiện Tap Modal:**
+2. **Ưu tiên Click trực tiếp vào tâm TextView bên trong thay vì tính tọa độ đệm:**
+   ```python
+   safe_x = (x1 + x2) // 2
+   safe_y = (y1 + y2) // 2
+   text_node = find_node_in_xml(
+       get_ui_xml(device_id),
+       "Thêm tài khoản", "Add account", "Thêm tài khoản khác",
+       package=APP_PACKAGE,
+   )
+   if text_node and text_node.get("coord"):
+       safe_x, safe_y = text_node["coord"]
+   tap(device_id, safe_x, safe_y, wait=D_MEDIUM)
+   ```
+3. **Kiểm Chứng Hậu Điều Kiện Tap Modal:**
    Sau khi tap tọa độ an toàn, không return ngay mà kiểm tra `_tiktok_login_modal_present` hoặc màn auth landing. Nếu sau 3 nhịp vẫn chưa mở thì tiếp tục vòng lặp retry.
-3. **Loại Trừ Profile Đã Login Trong `choose_email_login`:**
+4. **Loại Trừ Profile Đã Login Trong `choose_email_login`:**
    ```python
    _home_markers = ["cong dong", "ban be", "trang chu", "de xuat", "ho so"]
    _is_logged_in_prof = any(k in flat_0 for k in ["follower", "dang follow", "da follow", "sua ho so", "them tieu su"])
