@@ -239,6 +239,16 @@ transactional replacement recipe.
 - When adding hermetic tests for fallback/default contracts (telemetry, fallback IDs, unset-env branches), verify whether shared test runner helpers seed or inherit ambient environment variables (such as `env.setdefault(...)`). Explicitly clear those variables (for example, with `monkeypatch.delenv(..., raising=False)`) in the test body so ambient or fixture-provided values do not flip `is_fallback` assertions or mask default behavior.
 - **Hermetic mocking of alert/notification dispatch:** Any test exercising functions that send external alerts, Telegram messages, or webhooks (e.g., `dispatch_split_reports`, `send_alert`) MUST hermetically mock BOTH credential/token loading (`automation_core.alerts._load_bot_token` -> `"fake_token"`) and transport (`urllib.request.urlopen` -> `MagicMock(status=200)`). Unmocked tests read live credentials from `.env` and broadcast dummy/malformed test reports to production chat channels every time `pytest` or `closeout_gate.py` runs, triggering severe spam.
 - **Coordinator delegation contract for test repairs:** Under farm guards, EDIT delegation contracts require `TASK_KIND: EDIT`, `FILE: <absolute_path>`, `OLD_STRING: <<< ... >>>`, `NEW_STRING: <<< ... >>>`, and `FOCUSED_TEST: python -m pytest <file.py>::<test_node> -q` (single `::` delimiter, mandatory `-q` flag, no unquoted spaces in paths).
+- **CLI scripts with top-level `argparse.parse_args()` crashing pytest collection:** When writing unit tests for standalone CLI scripts (e.g. `do_rename_canonical_runner.py`), the script executes `parser.parse_args()` at import time. Pytest passes its own CLI flags in `sys.argv`, causing `argparse` to raise `SystemExit: 2: the following arguments are required` during test collection. Fix: in the test file, mock `sys.argv` before importing the module:
+  ```python
+  _orig_argv = list(sys.argv)
+  sys.argv = ["runner", "--machine", "1", "--serial", "dummy", "--username", "testuser", "--name", "Test"]
+  try:
+      import script_under_test as runner
+  finally:
+      sys.argv = _orig_argv
+  ```
+- **State machine launch delays causing test timeouts:** State machine runners often contain physical delays (e.g., `time.sleep(8)` after launching an Android app). When writing unit tests that exercise `run()`, ALWAYS mock `time.sleep` (`patch.object(runner.time, "sleep")`). Without this patch, each test case incurs a multi-second delay, easily causing the test runner or the closeout gate's focused test step to hit its timeout (10s-30s).
 
 ## Verification
 

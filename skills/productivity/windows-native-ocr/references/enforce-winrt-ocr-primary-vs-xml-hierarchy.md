@@ -9,56 +9,54 @@ Khi tự động hóa các tác vụ đọc thông tin trên Android Phone Farm 
   3. Trong khi đó, Host PC chạy Windows 10 đã có sẵn **WinRT OCR (`Windows.Media.Ocr`)**, xử lý trên CPU/GPU máy tính cực nhanh (<0.3s), trích xuất 100% tiếng Việt có dấu chuẩn xác từ ảnh chụp màn hình (`screencap`), giải phóng hoàn toàn tải cho điện thoại.
 
 ## Quy Tắc Bắt Buộc (INVARIANT UI-OCR-1)
-Từ nay về sau, mọi script automation bóc tách dữ liệu UI trên Farm phải tuân thủ nghiêm ngặt:
+Từ nay về sau, mọi script automation bóc tách dữ liệu UI trên Farm phải tuân thủ nghiêm ngặt 3 tầng cưỡng chế:
 
-1. **Thứ tự thực thi cứng (Strict Execution Hierarchy):**
-   ```text
-   Screencap thiết bị -> Lưu ảnh hiện trường -> WinRT OCR (Primary) -> Kiểm tra kết quả
-     ├── Đủ trường dữ liệu -> Commit kết quả & hoàn thành
-     └── Thiếu trường / Mờ ảnh -> Fallback sang ATX/XML Hierarchy (hoặc Native Profile Bounds)
-   ```
-2. **Cấm đoán trực tiếp (Banned Direct XML Dumps):**
-   - CẤM các script automation coi XML là nguồn chính để đọc text/trạng thái.
-   - CẤM gọi shell `uiautomator dump` (bị Android kill).
-3. **Phân vai rõ ràng giữa OCR và XML:**
-   - **WinRT OCR:** Đảm nhận toàn bộ việc ĐỌC HIỂU và TRÍCH XUẤT (Text, Mã đơn, Trạng thái, Cảnh báo lỗi, Tên shop, Mã tracking, Phát hiện popup che).
-   - **XML Hierarchy:** CHỈ dùng khi cần đọc thuộc tính widget native ngầm (`checked`, `focused`, `scrollable`) hoặc lấy tọa độ `bounds` của các form native trong Cài đặt Android.
+### 1. Cổng Duy Nhất: `automation_core.ui_extract.extract_ui`
+Mọi script đọc/bóc tách UI điện thoại BẮT BUỘC gọi qua `automation_core.ui_extract.extract_ui(serial, query, mode=...)`.
 
-## Mẫu Triển Khai Chuẩn (Reference Implementation)
+### 2. Pre-fallback Hardening Layer (Không đầu hàng sớm)
+Thay vì OCR không thấy là vội vã nhảy sang dump XML, `ui_extract` áp dụng 4 lớp gia cố:
+- **Dynamic Upscaling (2x-3x):** Tự động resize ảnh bằng thuật toán PIL LANCZOS trước khi nạp vào WinRT OCR để đọc rõ các chuỗi chữ/số nhỏ (mã vận đơn, serial, OTP).
+- **Chuẩn hóa ký tự tương đồng thị giác (Confusables):** Chuẩn hóa `O -> 0`, `l/I -> 1`, `S -> 5`, `B -> 8` cho các trường chuỗi mã (như tiền tố `SPXVN...`).
+- **Fuzzy Matching:** So khớp Levenshtein distance <= 2 cho các từ có độ dài >= 4 ký tự.
+- **Audit Logging:** Ghi log JSONL vào `D:/Taadaa/logs/ui_extract_audit.jsonl` ghi lại `source` ('winrt_ocr' vs 'xml'), `shot_sha`, và `confidence`.
+
+### 3. Phân Loại Màn Hình Fail-Closed (Context-Aware Fallback)
+- **Màn hình WebView/Shop/H5/Canvas (`mode='webview'`, `mode='shop'`):** CẤM TUYỆT ĐỐI XML FALLBACK. Nếu cố tình bật `allow_xml_fallback=True`, `extract_ui` lập tức ném lỗi `WebViewXmlFallbackBannedError`. Không dump XML trên webview vì XML rỗng và gây đơ S7.
+- **Màn hình Native Form/Settings (`mode='native'`):** Mới được phép fallback sang XML sau khi WinRT OCR đã miss trên cùng ảnh chụp màn hình.
+
+### 4. Hard Gate Linter & Done Gate Chặn Đứng Tự Động
+- **Linter `tools/ui_policy_check.py`:** Quét toàn bộ file thay đổi từ git status. Banned tokens gồm:
+  `['uiautomator dump', 'dumpWindowHierarchy', 'atx-agent', ':7912', 'import uiautomator2', 'from uiautomator2', 'window_dump.xml', 'dump_hierarchy']`.
+  Allowlist duy nhất: `ui_extract.py` và thư mục `tests/`. Phát hiện vi phạm -> Trả về Exit 1 `[REJECTED]`.
+- **Done Gate `tools/done_gate.py`:** Tự động gọi `ui_policy_check.py` đối soát trước khi cho phép báo DONE. Bất kỳ script nào vi phạm sẽ bị chặn đứng tại gate `[GATE-FAIL]`.
+
+## Mẫu Triển Khai Chuẩn (Canonical Usage)
 
 ```python
-from pathlib import Path
-from dataclasses import dataclass
-import xml.etree.ElementTree as ET
+from automation_core.ui_extract import extract_ui, UIHit, UIExtractError
 
-@dataclass(frozen=True)
-class UIInfo:
-    tracking_code: str | None
-    carrier: str | None
-    status: str | None
+# 1. Đọc màn hình TikTok Shop / Đơn hàng (Cấm XML fallback)
+hit = extract_ui(
+    serial="ce06160685310f1c04",
+    query="SPXVN",
+    mode="shop",
+    screenshot_path="D:/OneDrive/TaadaaData/kibe/orders/images/order.jpg",
+    allow_xml_fallback=False,  # Bắt buộc False trên WebView/Shop
+    upscale=2,
+    lang="vi-VN"
+)
+print("Hit source:", hit.source)        # 'winrt_ocr' hoặc 'ocr_fuzzy'
+print("Found text:", hit.text)
+print("Center bounds:", hit.center)
 
-def parse_ui_data(image_path: Path, xml_hierarchy: str = None) -> UIInfo:
-    ocr_info = None
-    
-    # 1. PRIMARY: WinRT OCR quét ảnh trực tiếp
-    if image_path and image_path.exists():
-        from winrt_ocr_util import winrt_ocr
-        ocr_text = winrt_ocr(str(image_path))
-        if ocr_text:
-            ocr_info = extract_fields_from_text(ocr_text)
-            # Nếu OCR đã bóc đủ các trường trọng yếu, return ngay lập tức
-            if ocr_info.tracking_code and ocr_info.carrier:
-                return ocr_info
-
-    # 2. FALLBACK: Chỉ đọc XML khi OCR thiếu trường
-    xml_info = None
-    if xml_hierarchy:
-        xml_info = extract_fields_from_xml(xml_hierarchy)
-
-    # 3. Hợp nhất dữ liệu ưu tiên OCR
-    return UIInfo(
-        tracking_code=(ocr_info.tracking_code if ocr_info else None) or (xml_info.tracking_code if xml_info else None),
-        carrier=(ocr_info.carrier if ocr_info else None) or (xml_info.carrier if xml_info else None),
-        status=(ocr_info.status if ocr_info else None) or (xml_info.status if xml_info else None)
-    )
+# 2. Đọc màn hình Native Settings / Form Android (Được phép XML fallback khi OCR miss)
+hit_native = extract_ui(
+    serial="ce06160685310f1c04",
+    query="Cài đặt bổ sung",
+    mode="native",
+    screenshot_path="D:/Taadaa/screencap.png",
+    allow_xml_fallback=True,
+    xml_provider=lambda s: get_native_xml_boxes(s)
+)
 ```
