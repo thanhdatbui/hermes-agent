@@ -52,3 +52,16 @@
 - **Kỷ luật vận hành:**
   - Khi rà soát nick tù nặng `lifetime_follows == 0`, không kết luận ngay là nick chết hay proxy hỏng.
   - Cần kiểm tra log `_ensure_anchor_followed` để tách biệt giữa: (1) Nick bị hạn chế tương tác thật vs (2) Vấp bẫy Anchor đối chứng bị TikTok ghim cờ.
+  - **Sự thật về `failed: {}` rỗng:** Hầu hết nick Streak 6 có dict `failed: {}` rỗng 100% (chưa từng bấm trượt follow ai ngoài đời). Nguyên nhân thực sự gồm: (a) Kẹt nick ma trong `priority_targets.txt` (`bangtam2311` không tồn tại), (b) Đứt mạng/sập proxy giữa chừng (như M4 ngày 10/10), (c) Bị gọi dậy khi chưa hết hạn cooldown.
+  - **Bác bỏ ngụy biện "Follow làm ấm tự nhiên":** Khi tài khoản đã bị TikTok silent-drop nút follow, bấm follow chéo hay follow tự nhiên ngoài feed đều bật ngược lại y hệt nhau. Không đưa ra giải pháp "làm ấm bằng follow tự nhiên" viển vông.
+
+## 5. Quy trình Đối Soát & Tích Lũy Báo Cáo IP Risk (Audit Workflow)
+
+- **Nguyên tắc tích lũy:** Giữ nguyên Phương án 1 (không tự động ngắt IP Breaker để tránh sập máy partner), nhưng âm thầm tích lũy số liệu vào `D:/Taadaa/data/ip_risk_audit_log.json` qua `D:/Taadaa/tools/ip_risk_audit.py`.
+- **Kích hoạt theo yêu cầu người vận hành:**
+  - Khi User nhắn: `"kiểm tra report ip"` hoặc `"đối soát ip"`.
+  - Chạy `python D:/Taadaa/tools/ip_risk_audit.py` trích xuất báo cáo:
+    1. Kiểm tra bao nhiêu cụm proxy đạt mức `CRITICAL` (≥2 cựu binh cùng `fl=0`).
+    2. Bóc tách tỷ lệ ăn nhả đuôi cá nhân (`used > 0`, IP sạch) vs bẩn IP thực sự.
+    3. Đưa ra khuyến nghị dựa trên số liệu lịch sử tích lũy để User xác nhận trước khi chuyển đổi chính sách.
+

@@ -1,6 +1,6 @@
 Bio: CẤM TRÙNG BIO; 100% tiếng Việt có dấu (AdbKeyboard B64); cấm đổi khi tên khớp username; Khóa nick tay.
 §
-Dọn đĩa: safe_recycle.py. Reboot né TFT/War3. Box 1 sát AP kibe 1. S7: anten TRÁI. CẤM trần thuật báo lỗi xuông, BẮT BUỘC tự điều tra script, fix tận gốc & canary; cấm quấy rầy máy nghỉ.
+Dọn đĩa: safe_recycle.py. Reboot né TFT/War3. Box 1 sát AP kibe 1. S7: anten TRÁI. Tự điều tra script, fix tận gốc & canary; cấm quấy rầy máy nghỉ.
 §
 Nuôi 4d 3 ca (bỏ 0h). Cấm pause cron/kill tool khác khi kẹt lock, canh xong mới làm. Ava&2FA tới 5h15. Starve 96h.
 §
@@ -12,4 +12,4 @@ Worker: Haiku claude-haiku-5-5; Agy pool 21; Timeout 1200s-1500s; Model gắn ha
 §
 Canary: target-bound; WinRT OCR->ATX (cấm uiautomator); Singbox. Guard cơ học; Claude duyệt; dính guard chạy unscoped worker CLI, cấm bảo user gõ tay.
 §
-Đối soát Follow: Bắt buộc so sánh >=3-4 chu kỳ 4d + bóc tách theo Cohort (Cựu binh/Mid/Rookie); tách riêng nick thực chiến (fl>=1) vs nhả phát đầu (fl=0). Ăn nhả đuôi (used>0) là Account Limit cô lập trên nick, cấm ngắt IP breaker.
+Đối soát Follow: So sánh >=3-4 chu kỳ 4d + Cohort (Veteran/Mid/Rookie). Tù nặng = fl=0 liên tiếp streak>=2; Cooldown = fl=0 (streak 1); cấm vẽ nhóm con hay bịa 'follow làm ấm'. Ăn nhả đuôi (used>0) là Account Limit cô lập, cấm ngắt IP. Tích lũy audit log chờ user nhắc đối soát xác nhận.
