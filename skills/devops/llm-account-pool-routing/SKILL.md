@@ -9,7 +9,7 @@ version: 1.0.0
 ## References
 - `references/antigravity-cli-profile-sandboxing-and-quota-rotation.md`
 - `references/cross-instance-token-migration-and-pro-tier-revocation.md`
-- `references/omniroute-false-full-quota-and-antigravity-oauth-warning.md`: False full quota illusion, invalid_grant pitfall & Antigravity OAuth warning bypass.
+- `references/omniroute-false-full-quota-and-antigravity-oauth-warning.md`: False full quota illusion, web session vs OAuth API disconnect, invalid_grant pitfall & Antigravity OAuth warning bypass.
 - `references/omniroute-per-account-proxy-egress-assignment.md`
 - `references/omniroute-omni-agy-admission-gates.md`
 - `references/phone-verified-account-salvage-and-tainted-proxy-rotation.md`

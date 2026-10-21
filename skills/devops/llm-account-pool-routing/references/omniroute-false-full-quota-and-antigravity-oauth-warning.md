@@ -90,3 +90,44 @@ After token exchange succeeds (`HTTP 200`):
      python D:/Taadaa/tools/ag_cli.py ask --profile <profile_name> --model gemini-3.8-flash-medium "Reply with exact word LIVE_CONFIRMED"
      ```
    - Verify stdout returns `LIVE_CONFIRMED`. Never declare DONE without verified probe output.
+
+---
+
+## 4. Web Session Cookie vs OAuth API Token Disconnect
+
+### The Fallacy
+"The account has an active session in GPM, and Google One Pro was successfully activated on the web, so why did the API request fail?"
+
+### The Reality
+- **Web Cookie Session** (`accounts.google.com`, `one.google.com`):
+  - Manages browser-based access and Google One plan entitlement.
+  - Clicking "Kích hoạt gói" on `one.google.com` upgrades the account to Google AI Pro 5TB on the web.
+- **OAuth API Token** (`oauth2.googleapis.com`, Antigravity `cloud-platform` scopes):
+  - Completely separate from web cookies.
+  - Requires explicit consent grant via OAuth 2.0 flow.
+  - Google Cloud Platform scopes (`https://www.googleapis.com/auth/cloud-platform`) enforce high-security verification: even with an active web session, Google prompts for 2FA TOTP and displays the third-party warning screen.
+  - Activating a Google One Pro package on the web **DOES NOT** update, refresh, or resurrect an expired/revoked OAuth refresh token in OmniRoute.
+- **Rule**: Whenever an account is upgraded to Pro via GPM web session, the agent **MUST IMMEDIATELY** execute the OAuth Antigravity flow in the same GPM profile to mint fresh tokens. Never assume a live web session translates to live API tokens.
+
+---
+
+## 5. End-to-End Autonomous Pipeline Pattern (Sniper → GPM Activate → OAuth → Dual Pool)
+
+When autonomously acquiring and onboarding Google Gemini Pro accounts:
+1. **Stock Polling & HMAC Buy**:
+   - Poll product API every ~700ms with HMAC-SHA256 signature (`X-Tele-API-ID`, `X-Timestamp`, `X-Nonce`, `X-Signature`).
+   - Immediately capture activation link on HTTP 200.
+2. **GPM Profile Activation via CDP**:
+   - Connect Playwright to GPM remote debugging address.
+   - Navigate to activation URL, dismiss popups, and click `Kích hoạt gói`.
+   - Take Gate 6 screenshot verifying celebration page (`Bạn là thành viên gói Google AI Pro`).
+3. **Sequential OAuth Antigravity Authorization**:
+   - Immediately navigate to OmniRoute `/api/oauth/antigravity/authorize`.
+   - Select account -> Fill 2FA TOTP -> Click "Đăng nhập" on Antigravity security warning -> Grant consent -> Capture Authorization Code.
+   - Send code to `/api/oauth/antigravity/exchange`.
+4. **Dual-Pool Ingestion**:
+   - **OmniRoute**: Update `provider_connections` (`tier: "g1-pro-tier"`, `plan: "Pro"`), assign 1:1 mobile proxy port in `proxy_assignments`, add to combo `ag-gemini-pool-3`.
+   - **AGY CLI**: Initialize profile (`init-profile <name> --proxy <proxy_url>`), copy sandbox configs (`settings.json`, `projects.json`, `state.json`), run `setup_agy_profile_creds.py`, reset cooldown to 0 in `pool_state.json`.
+5. **Live Verification Gate**:
+   - Run focused inference probe: `python D:/Taadaa/tools/ag_cli.py ask --profile <profile> --model gemini-3.8-flash-medium "Reply with exact word PRO_CONFIRMED"`.
+   - Only advance to the next account after receiving exact confirmation string.
