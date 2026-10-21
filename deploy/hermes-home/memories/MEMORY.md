@@ -4,7 +4,7 @@ Follow: dò +2 (max 40); lùi 4 sàn 15. Streak chỉ tăng khi fl=0; fl>=1 gi�
 §
 Hotmail: CẤM mail cá nhân; @fviainboxes.com đọc OTP. Pin >=1000 view.
 §
-Rename: bút chì (72,148) fallback né loop exit_2 (cấm tap chip '+ Thêm tiểu sử'); 7d cd là policy; BIO_EDIT trước PROFILE; tên Việt có dấu/1 từ; core switcher; Smart name đa dạng (Bé/Út, 31 sfx, vibe).
+Rename: bút chì (72,148) fallback né loop; 7d cd là policy; BIO_EDIT trước PROFILE; tên Việt 1 từ/có dấu; core switcher; Smart name đa dạng (Bé/Út, 31 sfx).
 §
 Sol: 100% On-Demand, cấm auto-append; advisor_tool 55s/consult 140s; briefing 4k ký tự; Sol Reviewer độc lập closeout (diff 40KB).
 §
@@ -18,9 +18,9 @@ M7: bắt 'Dat_2.4G' né +40 5G S7. Aruba VC tạo SSID: vlan 1 + access-rule pe
 §
 Ava: Trích clip gốc; Vision LLM lọc ava rác. Gate 6: cấm trần thuật thiếu MEDIA; SHA256 thật; cấm gửi mù. Dọn .thumbnails+Camera. F_src!=F_vid khóa 2 folder.
 §
-Reboot 3 ca (05:20, 11:20, 17:20): lookback 60m. 2FA né đệm reboot. Safe sync resync khi out mất; WD cấm nuốt cụm rỗng. Né TFT/War3. Task ngầm Hidden+CREATE_NO_WINDOW. Game=tắt nháy, cấm pause cron.
+Reboot 3 ca (05:20, 11:20, 17:20): lookback 60m; 2FA né đệm. Safe sync resync khi out mất. Né TFT/War3. Task ngầm Hidden+CREATE_NO_WINDOW. Game=tắt nháy, cấm pause cron.
 §
-OMP/AGY: 25 acc OAuth; lease 1800s; 429 xoay profile. Coord eval: coordinator_eval.py >=85.
+OMP/AGY: 25 acc OAuth; lease 1800s. CẤM Luna làm Coord/fallback (bệnh bại liệt phòng vệ); Coord mới bắt buộc qua coordinator_eval.py >=85đ.
 §
 Đơn TT Shop: Mail báo mã 1 lần; bám sát qua API hãng (SPX/J&T/Ninja); bắt mốc về Hub Thanh Khê để lấy trực tiếp. Dashboard :1905 tab Đơn hàng (/api/orders).
 §
