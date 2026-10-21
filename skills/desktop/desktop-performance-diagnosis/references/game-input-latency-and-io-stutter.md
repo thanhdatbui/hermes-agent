@@ -109,7 +109,9 @@
      - Provide a canonical resume script (e.g. `resume_admin_render.py`) that re-enables `schtasks /change /tn ... /enable` and triggers `start_render_watchdog.vbs` once gaming is complete.
   5. Automated Game-Blackout Guard (Watchdog Pattern):
      - Rather than manual disable/enable cycles, embed an active game-blackout predicate into the 15-minute watchdog script itself (e.g. `watchdog_admin_render.py`).
-     - Inspect active process names for gaming binaries: `war3.exe`, `tftclient.exe`, `tftclient-win64-shipping.exe`, `leagueclient.exe`, `league of legends.exe`, `overwolf.exe`, `overwolfbrowser.exe`.
+     - **Game vs Companion App Exclusion Rule ("war3 vs tft thôi")**: Inspect active process names ONLY for active match/render binaries: `war3.exe`, `tftclient.exe`, `tftclient-win64-shipping.exe`, `league of legends.exe`.
+     - **CRITICAL PITFALL - Permanent Starvation via Companion Apps**: NEVER include companion/overlay tray apps (`TFTAcademy.exe`, `Overwolf.exe`, `OverwolfBrowser.exe`, `LeagueClientUx.exe`) in the active-game list. Companion apps run in the system tray 24/7; checking for them causes permanent starvation/deadlock where background batch tasks never resume even after the user exits the game.
+     - **Windows OpenSSH Console Codepage Pitfall**: Watchdog scripts on Windows executed via SSH or Task Scheduler must handle console encoding defensively (`if hasattr(sys.stdout, "reconfigure"): getattr(sys.stdout, "reconfigure")(encoding="utf-8")`) or use pure ASCII in log/print statements to prevent fatal `UnicodeEncodeError: 'charmap' codec can't encode character` crashes under default `cp1252`/`cp437` console environments.
      - When gaming is detected: kill any in-flight render supervisor and `ffmpeg.exe` instances immediately and exit silently (`[STANDBY]`), yielding 100% CPU/RAM to the game.
      - When gaming processes exit: the next watchdog cycle detects an idle system and automatically spawns the detached render worker (`launch_detached_admin_render.py`) without user intervention.
 
