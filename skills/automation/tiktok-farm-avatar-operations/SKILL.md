@@ -5,7 +5,8 @@ description: Use when running avatar-only jobs on TikTok farm.
 
 # TikTok Farm Avatar Operations
 
-- Crop timeout & zero-empty-promise: [references/avatar-crop-open-timeout-and-screen-sleep-trap-20261020.md](references/avatar-crop-open-timeout-and-screen-sleep-trap-20261020.md). S7 `AVATAR_CROP_OPEN_FAILED` / screen sleep; zero empty promises; SSoT protected_folders registry update.
+- Crop timeout & screen sleep: [references/avatar-crop-open-timeout-and-screen-sleep-trap-20261020.md](references/avatar-crop-open-timeout-and-screen-sleep-trap-20261020.md).
+- Right-side avatar layout trap: [references/tiktok-profile-right-side-avatar-layout-trap.md](references/tiktok-profile-right-side-avatar-layout-trap.md). Inspect header (y: 200..600) before crop.
 - Approved-avatar upload & evidence: [references/approved-avatar-immediate-upload-and-evidence.md](references/approved-avatar-immediate-upload-and-evidence.md).
 - Double-lock & cross-host: [references/avatar-lock-verification-and-cross-host-upload.md](references/avatar-lock-verification-and-cross-host-upload.md). Khóa `.manual_avatar_locked` 3 kho, `Avatar = OK`, SSH máy >= 200.
 - New correction-loop checklist: [avatar-change-correction-loop-20261020.md](references/avatar-change-correction-loop-20261020.md).
