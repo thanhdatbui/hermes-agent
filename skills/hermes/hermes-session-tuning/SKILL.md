@@ -55,6 +55,13 @@ Nguyên nhân lag chính: **context tokens khổng lồ mỗi API call**. Deepse
 
 Fix:
 - `hermes config set compression.threshold 0.3` — nén sớm (~314K cho ctx 1M), giữ call ~200-250K. Trade-off: nén nhiều lần hơn, mất chi tiết sớm hơn.
+- **Dynamic Skill & Rule Retrieval O(1) chống Context Bloat (2026-10-22)**:
+  Thay vì nạp đồng thời toàn bộ 190+ skills vào context window khi mở session (tốn 60k-100k tokens baseline, làm sớm chạm ngưỡng nén và gây lỗi `[SKILL_PRUNED]`), áp dụng bộ ba công cụ O(1) tại `D:/Taadaa/tools/`:
+  1. `build_skill_index.py`: Trích xuất front-matter của 190 skills thành `skills_index.json` (<0.5s).
+  2. `skill_lookup.py --query "<intent>"`: Tra cứu từ khóa O(1), tự động luôn đính kèm Pinned Core Invariants (`taadaa-farm-ops-rules`, `farm-anti-overengineering`, `session-close-protocol`, `evidence-first-delivery`, `agent-verification-loop`).
+  3. `load_selected_skills.py`: Nạp chọn lọc đúng N skills khớp vào context làm việc.
+  4. Fail-closed: Khi không tìm thấy skill khớp, chỉ trả về Pinned Core Invariants kèm nhãn `[NO_MATCH_FALLBACK]`, tuyệt đối cấm nạp toàn bộ 190 skills tái tạo lại context bloat.
+  5. Đã nghiệm thu 19/19 tests pass 100% trong 0.73s. Xem `skills/hermes/hermes-dynamic-skill-routing/SKILL.md`.
 - 🚨 **CẤM TUYỆT ĐỐI HẠ THRESHOLD DƯỚI 0.3 (User Correction 03/10/2026)**: Cấm hạ threshold xuống 0.12 hay 0.2 với lý do "giảm tải proxy". Ở context window 120k tokens, threshold 0.12 sẽ ép nén liên tục ngay từ 14.4k tokens ("120k context thì nén liên tục"), phá vỡ trải nghiệm người dùng. BẮT BUỘC duy trì `compression.threshold: 0.3`.
 - **Cơ chế Retry Overload (503) & OmniRoute Recovery**: Khi gặp lỗi 503 Overloaded, `agent/conversation_loop.py` tự động nâng `base_delay = 10.0s`, khóa sàn `Retry-After >= 10s`, và `_emit_status` tức thì để trải dài chuỗi retry ~85s (đủ thời gian cho watchdog OmniRoute tự restart ~24s). Chi tiết xem `references/omniroute-heap-pressure-and-retry-backoff.md`.
 - **Config chỉ áp cho session MỚI** — session cũ đã phình phải `/new` mới hết lag.

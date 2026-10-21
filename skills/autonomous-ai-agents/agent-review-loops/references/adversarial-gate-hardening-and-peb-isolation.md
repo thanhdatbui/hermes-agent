@@ -96,3 +96,16 @@ Khi xây dựng hệ thống Gate cơ học 3 bước (Gate A: Evidence -> Gate 
   - **Bản chất Gate:** Là cơ chế bảo đảm kỷ luật kỹ thuật (mechanical development guardrails) chống worker sửa sai scope, commit bừa bãi, skip test, hoặc vô tình/cố ý tamper file receipts.
   - **Ranh giới OS Sandbox:** Hai tiến trình chạy dưới cùng một Windows User Account không bao giờ tạo thành một hypervisor sandbox tuyệt đối. Việc cách ly hoàn toàn mã độc thù địch (hostile adversary isolation) bắt buộc phải do môi trường host đảm nhiệm (Job Object Low Integrity, AppContainer, hoặc User riêng).
   - Phải ghi rõ Threat Model trong docstring của Gate để tránh rơi vào vòng lặp review tranh cãi vô hạn về quyền hạn cùng user.
+
+---
+
+## 6. Xử Lý Phán Quyết APPROVED_WITH_CONDITIONS & Kỹ Thuật Đóng Review Loop (Round 10-11 Lessons)
+* **Quy tắc phân tách ranh giới kiểm thử (Cooperative vs Hostile):**
+  - Không được đặt tên test gây ngộ nhận về khả năng chống lại tấn công cùng quyền user (ví dụ: đổi `test_deletion_attack_to_reset_chain_blocked` thành `test_cooperative_deletion_attack_to_reset_chain_blocked`).
+  - Sử dụng `@pytest.mark.xfail(strict=True, reason="...")` để minh chứng ranh giới kiến trúc đã biết (known architectural boundary) ngay trong test suite mà không làm gãy pipeline kiểm thử (giữ 100% test green).
+* **Gộp Ledger Đa Nguồn (Ledger Union Pattern):**
+  - Trong `read_gate_ledger`, không chỉ dùng fallback khi file local mất (vì file local có thể bị cắt về rỗng `0 bytes`). Bắt buộc đọc và gộp (union) toàn bộ bản ghi hợp lệ từ cả local ledger và coordinator anchor ledger ngoài repo, xác thực canonical HMAC trên từng dòng.
+* **Fail-Closed Sớm Tại Gate Đầu (Gate A Ref Anchoring):**
+  - Kiểm tra giá trị trả về của `set_gate_a_git_ref`. Nếu không ghi được ref vào `.git/refs/gates/<task_id>/a`, Gate A phải lập tức trả về `(False, ...)` thay vì trả PASS rồi để Gate B fail muộn.
+* **Kỷ luật "Cấm khóc lóc blocked khi làm việc":**
+  - Khi Reviewer đưa ra các phát hiện về ranh giới kiến trúc hệ thống (như same-user process isolation), Coordinator không tranh cãi hay viện cớ để đóng băng task. Ngay lập tức chuẩn hóa docstring Security Architecture & Threat Model, cập nhật test suite khớp đúng phạm vi thực tế để đưa Reviewer từ `APPROVED_WITH_CONDITIONS` lên `APPROVED` trọn vẹn.

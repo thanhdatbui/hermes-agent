@@ -4,7 +4,7 @@ Dọn đĩa: safe_recycle.py. Reboot né TFT/War3. Box 1 sát AP kibe 1. S7: ant
 §
 Nuôi 4d 3 ca (bỏ 0h). Cấm pause cron/kill tool khác khi kẹt lock, canh xong mới làm. Ava&2FA tới 5h15. Starve 96h.
 §
-No verbal DONE; user requires real tests/reviewer evidence. User prefers direct Vietnamese; frustration means execute, not ask.
+No verbal DONE; cần test/reviewer thật. User thích nói thẳng; bực mình=làm ngay, cấm hỏi/khóc lóc blocked; đưa task về đích.
 §
 Ava/Media: Duyệt ava up thẳng máy; khóa cờ .manual_avatar_locked & Avatar=OK; soi mắt trước MEDIA:; Batch N máy gửi đủ N MEDIA: riêng; Ava đúng creator.
 §
