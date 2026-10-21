@@ -36,10 +36,10 @@
 - **Lỗ hổng URL-only**: Kiểm tra `"proofs/manage" in page.url` tự nó không chứng minh phiên đã đăng nhập thành công. Nếu người dùng chưa đăng nhập, Microsoft vẫn giữ nguyên `wreply=https%3A%2F%2Faccount.live.com%2Fproofs%2Fmanage...` trên thanh địa chỉ của form đăng nhập.
 - **Tiêu chuẩn kiểm tra 2 lớp**:
   1. **Thẻ quản trị thực tế (Authenticated Cards)**: Phải xuất hiện ít nhất một nội dung chỉ có sau đăng nhập: `"thay đổi mật khẩu"`, `"tuỳ chọn bảo mật"`, `"cách để chứng minh bạn là ai"`, `"additional security options"`.
-  2. **Vắng bóng form đăng nhập (No Visible Login Form)**: Kiểm tra trực tiếp xem có ô nhập liệu nào đang hiển thị hay không (`is_visible()`):
+  2. **Vắng bóng form đăng nhập (No Visible Login Form)**: Kiểm tra trực tiếp xem có ô nhập liệu nào đang hiển thị hay không (`is_visible()`) thay vì dùng `.count() > 0` (vì `.count() > 0` có thể bắt trúng các input ẩn hoặc modal nền):
      ```python
      has_login_form = any(
-         page.locator(sel).first.is_visible(timeout=500)
+         page.locator(sel).first.is_visible(timeout=300)
          for sel in ['input[type="password"]', '#passwordEntry', '#i0118', 'input[name="passwd"]',
                      'input[type="email"]', '#usernameEntry', '#i0116']
      )
@@ -66,5 +66,18 @@
   3. Bấm chọn phương thức gửi mã, điền email khôi phục và bấm *Gửi mã* (`Send code`).
   4. Gọi `fetch_recovery_email_otp(rec_email, timeout_seconds=45)` từ `mail_domain_otp_helper.py` để lấy mã OTP 6–7 số.
   5. Điền mã vào các ô `#codeEntry-0..5` hoặc `#iOttText` và submit.
-  6. Sau khi cập nhật code fix, bắt buộc chạy script reset danh sách `quarantine_profiles` trong state JSON của supervisor (`reset_admin_quarantine.py`) để các nick bị kẹt được chạy lại tự động.
+  6. **Xác minh hậu điều kiện OTP (OTP Postcondition Verification)**: CẤM TUYỆT ĐỐI gán cờ thành công ngay sau khi bấm submit. Bắt buộc kiểm tra chuyển hướng URL trong vòng 8-10 giây để xác nhận Microsoft đã chấp thuận OTP và rời khỏi màn hình challenge:
+     ```python
+     submit_btn.click()
+     time.sleep(3)
+     for post_i in range(8):
+         post_u = page.url
+         if "proofs/manage" in post_u or "account.microsoft.com" in post_u:
+             logger.info(f"OTP resolved! Landed on: {post_u}")
+             otp_handled = True
+             break
+         time.sleep(1)
+     ```
+  7. **Tối ưu tra cứu Excel qua In-Memory Cache**: Dùng dict `_RECOVERY_CACHE` để lưu kết quả tra cứu `(recovery_email, refresh_token, client_id)` sau lần đọc đầu tiên, tránh đọc lại file workbook lớn từ ổ đĩa trong mỗi vòng lặp tài khoản.
+  8. Sau khi cập nhật code fix, bắt buộc chạy script reset danh sách `quarantine_profiles` trong state JSON của supervisor (`reset_admin_quarantine.py`) để các nick bị kẹt được chạy lại tự động.
 

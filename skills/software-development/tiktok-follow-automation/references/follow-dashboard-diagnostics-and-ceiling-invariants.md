@@ -398,8 +398,13 @@ Trong `follow_state.py`, runner tự động điều chỉnh trần follow cho c
      - Phân loại trực quan: 🟢 Xanh (Sạch) / 🟡 Vàng (Theo dõi 1 nick $fl=0$) / 🔴 Đỏ (Nghi vấn $\ge 2$ nick $fl=0$).
      - Ghi chú minh bạch: "Chế độ Quan Sát Tích Lũy: Không tự động ngắt proxy. Dữ liệu được lưu vết để đối soát và xác nhận thủ công."
   3. *Quy Trình Nhắc Nhở & Lệnh Đối Soát Nhanh Cho Operator*:
-     - **Khẩu lệnh đối soát**: Khi Operator hỏi `"kiểm tra report ip"` hoặc `"đối soát ip"`, Coordinator lập tức đọc bảng Audit Log tích lũy, tổng hợp qua các chu kỳ:
-       + Số cụm proxy nghi vấn xuất hiện.
+     - **Khẩu lệnh đối soát**: Khi Operator hỏi `"kiểm tra report ip"` hoặc `"đối soát ip"`, Coordinator lập tức chạy công cụ đối soát:
+       ```bash
+       python D:/Taadaa/tools/ip_risk_audit.py
+       ```
+       Công cụ tự động đọc mapping `PROXYgandienthoai.xlsx`, truy vấn `daily_account_actions` + state files, phân loại 3 cấp độ (SAFE / WARNING / CRITICAL), nạp vào `D:/Taadaa/data/ip_risk_audit_log.json` và in báo cáo từng chu kỳ ra màn hình.
+     - **Tiêu chuẩn nghiệm thu đối soát**:
+       + Số cụm proxy nghi vấn xuất hiện (CRITICAL: $\ge 2$ cựu binh $fl=0$ cùng IP).
        + Có trường hợp nào $\ge 2$ Cựu Binh cùng bị nhả phát đầu trên 1 proxy không?
        + Đánh giá xem đã đủ cơ sở thực tế tin cậy để chính thức kích hoạt Phương án 2 (tự động ngắt khi $\ge 2$ cựu binh $fl=0$) hay chưa.
      - **Tự động báo cáo cuối chu kỳ 4 ngày (N4)**: Trong bản tin chốt ca N4, Coordinator bắt buộc đính kèm 1 dòng đối soát:

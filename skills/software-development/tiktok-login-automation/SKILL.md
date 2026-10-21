@@ -26,6 +26,14 @@ description: "TikTok login automation via ADB — inventory, login, 2FA, UI hand
   * **Tự Động Phục Hồi Trong Runner Đổi Tên & Bẫy Kẹt Loop Switcher:** Xem chi tiết tại [`references/tiktok-switcher-active-account-loop-and-login-recovery-20261020.md`](references/tiktok-switcher-active-account-loop-and-login-recovery-20261020.md) (xử lý văng nick, tránh loop tap vào acc đang active trên Profile, và nhận diện cây bút chì layout canh giữa).
   * **Xử lý kẹt ADB Daemon trên máy S7 (ADB Socket Hang Trap):** Nếu lệnh ADB bị timeout ở các lệnh shell cơ bản (`settings put system accelerometer_rotation 0`, `getprop sys.boot_completed`), đó là do ADB daemon socket bị kẹt. BẮT BUỘC chạy `adb kill-server && adb start-server` để thông đường truyền trước khi retry login.
   * **Bẫy Nút Thêm Tài Khoản Kẹt Mép Đáy & Va Chạm Profile vs Home Feed (2026-10-21):** Khi máy đã có 7 nick, nút `Thêm tài khoản` bị dồn xuống đáy `bounds=[0,1788][1080,1920]`. Tapping trực tiếp không scroll sẽ bị nuốt cảm ứng và return mù, dẫn tới `choose_email_login` nhầm màn Profile thành Home feed rồi crash `STOPPED: [06]`. Bắt buộc auto-swipe lên trước khi tap và loại trừ marker profile đã login. Xem chi tiết tại [`references/account-switcher-bottom-cutoff-and-login-profile-feed-collision-20261021.md`](references/account-switcher-bottom-cutoff-and-login-profile-feed-collision-20261021.md).
+  * **Bẫy Nhận Nhầm Đĩa Nhạc Feed Thành Tab Hồ Sơ, Trễ Mạng 4G Proxy & Timeout Chờ Login (2026-10-21):**
+    - Icon đĩa nhạc quay trên feed TikTok nằm ở `(999, 1712)` lọt vào bộ lọc đáy cũ (`cy >= 1700`), dẫn tới việc tap nhầm vào trang chi tiết âm thanh thay vì tab Hồ sơ (`bounds=[864,1794][1080,1920]`). Bắt buộc siết ngưỡng nhận diện tab đáy `cy >= 1780` và `y1 >= 1750`.
+    - Xác thực mật khẩu qua proxy 4G có độ trễ 3-8s: cấm phán quyết sai mật khẩu tức thì ở nhịp kế tiếp; bắt buộc cấp đệm chờ `password_submitted_rounds >= 3`.
+    - Timeout `wait_login_success` nâng lên 75s bù trừ độ trễ dump của ATX-agent; bọc try/except an toàn ở bước đọc profile sau khi đã có home feed UI proof.
+    - Xem chi tiết tại [`references/login-flow-feed-disc-misdetection-and-network-auth-buffer-20261021.md`](references/login-flow-feed-disc-misdetection-and-network-auth-buffer-20261021.md).
+  * **Kỷ Luật Điều Tra Root Cause Script Chống Báo Cáo Suông (User Correction 21/10/2026):**
+    - Khi nhận cảnh báo farm fail từ Watchdog, CẤM Coordinator chỉ inspect hiện trường rồi phát thông báo suông cho User.
+    - BẮT BUỘC lần theo `log.jsonl`, đối chiếu `fail_*.xml` và mở mã nguồn script để định vị chính xác bug, sửa trực tiếp và xác minh bằng chứng chạy thật.
 
 ## 3. Tài Liệu Tham Khảo (References)
 - Chi tiết các case study đăng nhập và xử lý UI: xem danh mục trong thư mục `references/` của skill.
