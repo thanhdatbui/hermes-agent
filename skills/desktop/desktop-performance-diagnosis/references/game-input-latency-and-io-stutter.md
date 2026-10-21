@@ -105,7 +105,13 @@
   3. **Verification**:
      - Confirm CPU drops immediately (e.g. from 94% down to <10%).
      - Confirm `ffmpeg.exe` returns exit code 1 (no instances found).
-  4. **Resume Mechanism**:
+  4. Resume Mechanism:
      - Provide a canonical resume script (e.g. `resume_admin_render.py`) that re-enables `schtasks /change /tn ... /enable` and triggers `start_render_watchdog.vbs` once gaming is complete.
+  5. Automated Game-Blackout Guard (Watchdog Pattern):
+     - Rather than manual disable/enable cycles, embed an active game-blackout predicate into the 15-minute watchdog script itself (e.g. `watchdog_admin_render.py`).
+     - Inspect active process names for gaming binaries: `war3.exe`, `tftclient.exe`, `tftclient-win64-shipping.exe`, `leagueclient.exe`, `league of legends.exe`, `overwolf.exe`, `overwolfbrowser.exe`.
+     - When gaming is detected: kill any in-flight render supervisor and `ffmpeg.exe` instances immediately and exit silently (`[STANDBY]`), yielding 100% CPU/RAM to the game.
+     - When gaming processes exit: the next watchdog cycle detects an idle system and automatically spawns the detached render worker (`launch_detached_admin_render.py`) without user intervention.
+
 
 
