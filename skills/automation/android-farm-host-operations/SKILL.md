@@ -626,6 +626,17 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
     2. *Lock-safety non-blocking retry:* Thử 3 lần x 500ms khi gặp `PermissionError` (chống race condition khi runner đang ghi).
     3. *Silent Watchdog Cron (`hourly-stale-post-receipts-reconcile`):* Chạy mỗi giờ (phút 20), stdout rỗng khi không có gì để dọn (im lặng 100%), chỉ báo cáo khi có receipts được giải phóng.
 
+## 30. Bẫy WMI Integrity Level Cổng 5038 & Vùng Đệm 20 Phút Chống Chặn Reboot (21/10/2026)
+- **Bẫy WMI Integrity Level làm mù watchdog dọn cổng 5038:**
+  * Khi XiaoWei chạy ở mức quyền Elevated / Administrator, daemon con `adb.exe -P 5038` mang mức High Integrity Level.
+  * PowerShell WMI `Get-CimInstance Win32_Process` chạy dưới cron non-elevated bị Windows bảo mật chặn đọc `CommandLine` và `ExecutablePath` (trả về `$null`). Lọc `-like '*-P 5038*'` trả về false, khiến watchdog tưởng không có tiến trình mồ côi và bỏ qua `kill-server`.
+  * **Giải pháp chuẩn hóa O(1):** Quét socket TCP trực tiếp qua `psutil.net_connections(kind="tcp")` trong Python. Nếu port 5038 đang ở trạng thái `LISTEN`, kích hoạt ngay `[XIAOWEI_ADB_BIN, "-P", "5038", "kill-server"]`. Triệt tiêu hoàn toàn độ trễ và bypass rào cản phân quyền WMI.
+- **Quy chuẩn đệm 20 phút Safe Window cho cron xen ca (Reboot Collision Buffer):**
+  * Các mốc reboot máy chủ (05:20, 11:20, 17:20) tự động kiểm tra `has_active_device_locks()` và thoát ngay (`[SKIP]`) nếu có dù chỉ 1 máy đang giữ device lock.
+  * Mọi cron xen ca (như đổi tên nick, kiểm tra liveness, tải avatar) BẮT BUỘC kết thúc Safe Window trước mốc reboot ít nhất **20 phút** (ví dụ khung sáng dừng ở `11:00`, khung chiều dừng ở `17:00`). CẤM cấu hình window rướn tới sát `11:20` hoặc `17:20` vì các batch chạy 15 phút sẽ đè qua giờ reboot và làm mất chu kỳ reset EHCI USB.
+  * Chi tiết: `references/xiaowei-port5038-wmi-integrity-blindness-and-reboot-window-buffer-20261021.md`.
+
+
 
 
 
