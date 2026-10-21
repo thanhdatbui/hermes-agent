@@ -25,11 +25,18 @@ Thay vì OCR không thấy là vội vã nhảy sang dump XML, `ui_extract` áp 
 - **Màn hình WebView/Shop/H5/Canvas (`mode='webview'`, `mode='shop'`):** CẤM TUYỆT ĐỐI XML FALLBACK. Nếu cố tình bật `allow_xml_fallback=True`, `extract_ui` lập tức ném lỗi `WebViewXmlFallbackBannedError`. Không dump XML trên webview vì XML rỗng và gây đơ S7.
 - **Màn hình Native Form/Settings (`mode='native'`):** Mới được phép fallback sang XML sau khi WinRT OCR đã miss trên cùng ảnh chụp màn hình.
 
-### 4. Hard Gate Linter & Done Gate Chặn Đứng Tự Động
-- **Linter `tools/ui_policy_check.py`:** Quét toàn bộ file thay đổi từ git status. Banned tokens gồm:
-  `['uiautomator dump', 'dumpWindowHierarchy', 'atx-agent', ':7912', 'import uiautomator2', 'from uiautomator2', 'window_dump.xml', 'dump_hierarchy']`.
-  Allowlist duy nhất: `ui_extract.py` và thư mục `tests/`. Phát hiện vi phạm -> Trả về Exit 1 `[REJECTED]`.
-- **Done Gate `tools/done_gate.py`:** Tự động gọi `ui_policy_check.py` đối soát trước khi cho phép báo DONE. Bất kỳ script nào vi phạm sẽ bị chặn đứng tại gate `[GATE-FAIL]`.
+### 4. Hard Gate Linter & Done Gate Chặn Đứng Tự Động (Chống Khóc Lóc & False Reject)
+- **Linter `tools/ui_policy_check.py`:**
+  - Banned tokens: `['uiautomator dump', 'dumpWindowHierarchy', 'atx-agent', ':7912', 'import uiautomator2', 'from uiautomator2', 'window_dump.xml', 'dump_hierarchy']`.
+  - Allowlist: `ui_extract.py` và thư mục `tests/`.
+  - **Chống Chặn Oan (Zero False Positive):**
+    * Hỗ trợ cờ `--files [FILES ...]`: Cho phép chỉ định danh sách file thuộc phạm vi task hiện tại.
+    * Bỏ qua hoàn toàn thư mục rác: `__pycache__`, `.git`, `cache`, `.venv`, `venv`, `.quarantine`, `.tmp`, `.bak`.
+    * Chỉ quét file script (`.py`, `.ps1`, `.sh`, `.bat`).
+    * `changed_files_from_git()` chỉ lấy file staged (`git diff --cached`) hoặc file modified trong task, KHÔNG quét lan sang file dirty cũ của repo.
+- **Done Gate `tools/done_gate.py`:** Tự động gọi `ui_policy_check.py` với tham số `--files` đối soát trước khi cho phép báo DONE. Bất kỳ script nào vi phạm sẽ bị chặn đứng tại gate `[GATE-FAIL]`.
+- **Chống Rò Rỉ Đĩa (Disk Leak):** Khi dùng `upscale_screenshot()`, bắt buộc bọc trong `try ... finally` để gọi `ocr_image.unlink(missing_ok=True)`, giải phóng file tạm `_x2.jpg` ngay lập tức, không để đầy đĩa SSD farm.
+- **Kỷ Luật Cơ Giới Hóa Thay Vì Memory:** Mọi quy tắc code bắt buộc phải cưỡng chế bằng code (Hard Gate / Linter / Gate check), CẤM nhồi nhét quy tắc code vào persistent memory gây nghẽn context và spam memory.
 
 ## Mẫu Triển Khai Chuẩn (Canonical Usage)
 

@@ -1,0 +1,40 @@
+# Follow Cycle Audit, Jail Classification, and IP Breaker Invariants
+
+## 1. Định nghĩa chuẩn xác: Tù Nặng vs Cooldown (User Correction Invariant)
+
+- **🔴 Tù nặng (fl=0 liên tiếp streak ≥ 2):**
+  - Chỉ tính những nick tham gia ca chạy trong chu kỳ nhưng **hoàn toàn không follow được lượt nào (`follows == 0`) VÀ đã có án tích tích lũy liên tiếp (`fail_streak >= 2`)**.
+  - Đây là nhóm tài khoản bị TikTok gắn cờ hạn chế hành vi (Action Blocked) kinh niên, cần thời gian cooldown dài hoặc quy trình nuôi dưỡng/phục hồi đặc biệt.
+- **🟡 Cooldown (fl=0, streak = 1):**
+  - Là những nick tham gia ca nhưng bị nhả ngay phát đầu (`follows == 0`), tuy nhiên **mới chỉ vấp lần đầu trong kỳ hiện tại (`fail_streak <= 1`)**.
+  - Đây là hiện tượng vấp phiên bình thường, chỉ cần nghỉ cooldown ngắn 1-3 ngày để xả cache/reset phiên.
+- **CẤM TUYỆT ĐỐI GỘP CHUNG:**
+  - Tuyệt đối cấm gộp 2 nhóm này thành các nhãn lai căng như "Số nick tù nặng / non bị nhả ngay lần đầu".
+  - Việc gộp chung làm sai lệch bản chất số liệu (ví dụ 213 nick fl=0 thực chất chỉ có 95 nick tù nặng và 118 nick cooldown thông thường), khiến người vận hành đánh giá sai mức độ tê liệt của farm.
+  - Trên Dashboard (`follow_detail_component.py`) và mọi báo cáo bắt buộc tách thành 2 chỉ số độc lập:
+    1. `🔴 Tù nặng (fl=0 liên tiếp streak ≥2)`
+    2. `🟡 Cooldown (fl=0)`
+
+## 2. Phân định bản chất: Account Ceiling vs IP Subnet Block
+
+- **Hiện tượng Ăn Nhả Đuôi (`used > 0`):**
+  - Nick đã follow thành công $\ge 1$ lượt (ví dụ 5, 8, 12 lượt) rồi mới bị nhả ở lượt cuối.
+  - **Bản chất kỹ thuật:** 100% là do **Account Session Rolling Limit (Trần bảo vệ phiên của TikTok áp lên cá nhân tài khoản)** khi bot ép budget vượt quá độ ấm của nick.
+  - **Trạng thái IP:** Đường truyền IP Proxy bên dưới **hoàn toàn SẠCH 100%**. Dữ liệu đối soát chứng minh các nick khác trên cùng máy hoặc máy partner dùng chung proxy vẫn follow thành công 15-33 lượt bình thường.
+  - **Kỷ luật xử lý:**
+    - Tuyệt đối **KHÔNG tăng `fail_streak`** lũy tiến.
+    - Chỉ gán cooldown ngắn **1 ngày** xả cache.
+    - Ghi nhận `last_failed_ceiling = max(1, used + 1)` để phiên sau bóp trần an toàn né mốc gãy.
+    - **TUYỆT ĐỐI CẤM NGẮT CẦU DAO IP BREAKER:** Việc giật sập IP 48h khi nick ăn nhả đuôi là sai lầm nghiêm trọng, kéo sập các máy anh em (partner machines) dùng chung proxy (bài học lịch sử M18 làm sập M56, M17 làm sập M55).
+
+## 3. Chính sách Cầu Dao IP Breaker: Chế độ Quan sát Tích lũy (Phương Án 1)
+
+- **Nguyên tắc vận hành (Phương án 1):**
+  - Không tự động ngắt IP Breaker khi có lỗi follow đơn lẻ.
+  - Chuyển sang chế độ **Monitor-Only (Quan sát tích lũy)** để bảo vệ tuyệt đối sự liên tục của các máy partner.
+- **Công cụ đối soát & Kho dữ liệu tích lũy:**
+  - Script: `D:/Taadaa/tools/ip_risk_audit.py`
+  - Kho dữ liệu: `D:/Taadaa/data/ip_risk_audit_log.json`
+- **Tiêu chuẩn phát hiện IP bẩn thực sự (Khi nào mới nghi vấn):**
+  - Chỉ khi có **$\ge 2$ tài khoản Cựu Binh (Veteran)** trên cùng một cổng proxy bị **nhả ngay phát đầu tiên (`fl = 0`) trong cùng một ngày**, hệ thống mới đánh dấu proxy đó là `CRITICAL`.
+  - Khi người vận hành yêu cầu `"kiểm tra report ip"` hoặc `"đối soát ip"`, chạy `python D:/Taadaa/tools/ip_risk_audit.py` để trích xuất báo cáo đối soát nhiều chu kỳ.
