@@ -48,8 +48,12 @@ Gemini Coordinator TUYỆT ĐỐI CẤM tự ý lên plan cho các task thỏa m
    - Tập hợp log thực tế, mã lỗi, đường dẫn file cụ thể, số dòng nghi vấn, và lịch sử các lần vá trước.
    - Tuyệt đối CẤM suy diễn nguyên nhân hay đề xuất cách sửa ngọn.
 2. **Bước 2 — Dispatch Claude Planner (`claude_worker.py --role planner`):**
-   - Chạy Sonnet 5.5 (max 10 turns, read-only: `disallowedTools Edit,Write,NotebookEdit`).
-   - Yêu cầu xuất Plan vào file markdown với đầy đủ 6 thành phần bắt buộc:
+   - Chạy Sonnet 5.5 (`--model sonnet`, max 10 turns, read-only: `disallowedTools Edit,Write,NotebookEdit`).
+   - **BẪY ĐỐT 10 TURNS DO TOOL BLEEDING & QUY CHUẨN ZERO-TOOL DIRECT STREAM (Incident 21/10/2026):**
+     Khi role là `planner`, quyền `Edit` và `Write` bị khóa cứng. Nếu prompt bảo Sonnet "đọc file X và ghi file Y", Sonnet sẽ đốt sạch 10 turns để gọi tool `Read` các file liên quan và gọi `Bash` (`cat << 'EOF'`) để ghi file tạm, dẫn đến `Error: Reached max turns (10)` và exit 1.
+     *Quy chuẩn bắt buộc:* Nạp sẵn evidence text vào prompt (hoặc file context), và kẹp chỉ thị cưỡng chế:
+     `"[YÊU CẦU: Xuất trực tiếp toàn văn bản kế hoạch kiến trúc ra output (stdout), TUYỆT ĐỐI KHÔNG chạy bất kỳ công cụ Bash hay Read nào]"`. Caller (script/terminal) bắt stdout và ghi thẳng vào `.hermes/plans/<name>.md`. Sonnet giải quyết trong đúng 1 turn reasoning thuần túy.
+   - Yêu cầu xuất Plan với đầy đủ 6 thành phần bắt buộc:
      * *Root cause:* Dẫn chứng chính xác `file:line`.
      * *Non-goals:* Những thứ cấm đụng tới để tránh phình scope.
      * *Atomic Steps:* Từng bước nhỏ, độc lập kiểm chứng được.

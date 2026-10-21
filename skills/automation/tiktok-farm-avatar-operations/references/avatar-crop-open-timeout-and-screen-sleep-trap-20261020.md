@@ -43,3 +43,18 @@
 - **Hành động bắt buộc**:
   * Nếu nói sẽ chạy lại: BẮT BUỘC gọi ngay tool `terminal(command="python D:/Taadaa/tools/run_upload_avatar.py ...", background=True, notify_on_complete=True)` NGAY TRONG TURN ĐÓ.
   * Tin nhắn gửi Operator phải trả về `pid` hoặc `session_id` của tiến trình nền đang thực sự chạy, chứng minh hành động cụ thể đã được kích hoạt.
+
+---
+
+## 3. Hoàn Tất Chuẩn Hoá: Khóa Kép Registry Tập Trung (SSoT Protection Registry)
+
+Khi người dùng hỏi "Còn gì nữa không?" hoặc hoàn tất một kênh:
+- Cắm file marker `.manual_avatar_locked` và `.manual_hashtag_locked` trong các thư mục kho (`F_vid` và `F_src`) là **chưa đủ**.
+- BẮT BUỘC phải đăng ký bổ sung ID thư mục và thông tin account vào 2 file JSON quản trị tập trung của Farm:
+  1. `D:\Taadaa\data\manual_avatar_protected_folders.json`:
+     - Thêm folder ID vào mảng `protected_folders`.
+     - Thêm record vào dict `accounts[str(folder)]`: `username`, `machine`, `tik`, `video_goc`, `description`, `updated_at`.
+  2. `D:\Taadaa\data\manual_hashtag_protected_folders.json`:
+     - Thêm folder ID vào mảng `protected_folders`.
+     - Thêm record vào dict `accounts[str(folder)]`: `username`, `machine`, `tik`, `video_goc`, `description`.
+- **Mục đích sống còn**: Các script tự động chạy nền (như `post_evening_avatar_watchdog.py`, `regenerate_unique_avatars.py`, `sync_all_tik_keywords.py`) kiểm tra trực tiếp 2 file registry này để loại trừ (whitelist) các folder đã chuẩn hoá tay, ngăn chặn triệt để việc bị ghi đè ngách/avatar/hashtag trong tương lai.
