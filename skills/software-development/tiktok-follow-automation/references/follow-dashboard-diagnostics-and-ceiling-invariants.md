@@ -323,6 +323,35 @@ Trong `follow_state.py`, runner tự động điều chỉnh trần follow cho c
   * Supervisor `tiktok_dashboard_watchdog.ps1` (PID kiểm tra mỗi 60s qua `/api/data`).
   * Khi tiến trình cũ trên cổng 1905 bị tắt, Watchdog tự động kích hoạt `start_tiktok_dashboard_hidden.vbs` để dựng lại server trong vòng <=60s với mã nguồn mới nhất.
 
+## 24. Bản Chất Ăn Nhả Đuôi (Account Ceiling) vs Cháy Proxy (IP Circuit Breaker 48h) & Thảm Họa Tê Liệt Máy Partner Cùng IP
+- **Hiện tượng**: Nick chạy được 5–15 follow rồi mới bị nhả ở lượt cuối (ăn nhả đuôi). Operator đặt câu hỏi: *Tại sao ăn nhả nhiều mà cầu dao IP 48h không kích hoạt, và trong lịch sử có nick nào bị nhả đuôi xong nick khác cùng IP bị phạt oan theo không?*
+- **Bản chất kỹ thuật**:
+  * Ăn nhả đuôi (`used > 0`): Nick đã follow thành công 5–15 người liên tục chứng minh **100% IP proxy hoàn toàn sạch và thông suốt**. Việc bị nhả ở lượt cuối là do **tài khoản chạm trần bảo vệ phiên (Account-level Rate Limit)** của riêng nick đó trên TikTok, hoàn toàn không phải do proxy bị chết hay IP bị dơ.
+  * Cháy proxy / IP bẩn thật sự: Nick bị chặn ngay từ phát bấm đầu tiên (`fl = 0`) và các nick khác trên cùng proxy đều bị chặn đồng loạt.
+- **Bài học từ 2 sự cố lịch sử có thật (Tê liệt máy Partner 48h)**:
+  * *Sự cố ngày 10/10 (M18 kéo sập Top 3 toàn farm M56)*: M18 R1 chạy mượt 12 lượt (`internal_follows = 12`), đến lượt 13 bị nhả. Do nick mang cờ `was_graduated = True`, hệ thống gọi `trip_ip_breaker(18)` ➔ Khóa cứng proxy 5122 trong 48h. Hậu quả: Máy partner **M56** (chứa nick cựu binh 🥉 **#3 toàn farm `@tuantuannguyen56`** 247 fl / gần 5.000 tim) **bị treo giò hoàn toàn 48 tiếng**, mất sạch ca chạy ngày 10 và 11/10.
+  * *Sự cố ngày 15/10 (M17 làm khóa Cựu binh M55)*: M17 R1 chạy được 5 follow rồi nhả ➔ kích hoạt `trip_ip_breaker(17)` lúc 06:51 ➔ Cựu binh **`anh.le0052` (M55 R1, 106 follow)** ở máy partner bị dừng chạy trọn vẹn 2 ngày 15 và 16/10.
+- **Tác hại của việc giật cầu dao IP sai đối tượng**:
+  * Dù `run_follow.py` trả về `CIRCUIT_BREAKER_SKIPPED` với `failed: False` (không bị tăng `fail_streak`), nhưng nick ở máy partner bị:
+    1. Đứt chuỗi dưỡng ấm (streak warming broken).
+    2. Nguội cache tài khoản sau 48h ngừng chạy.
+    3. Mất sản lượng follow của cả cụm máy.
+- **Quy chuẩn bảo vệ**:
+  * Cầu dao IP (`trip_ip_breaker()`) TUYỆT ĐỐI KHÔNG được kích hoạt khi nick ăn nhả đuôi (`used > 0`). Khi `used > 0`, chỉ phạt cooldown riêng nick đó 1 ngày xả cache, giữ nguyên proxy cho các máy partner chạy bình thường.
+  * Cầu dao IP chỉ kích hoạt khi có dấu hiệu bẩn IP thực sự từ nick Khỏe (`used == 0` và `was_graduated is True`).
+
+## 25. Nâng Cấp Báo Cáo 4 Chu Kỳ & Bóc Tách Theo Từng Nhóm Cohort Trên Sổ Bệnh Án
+- **Mở rộng 4 chu kỳ liên tiếp**: 19–20/10 (Hiện tại), 15–16/10 (Kỳ trước), 11–12/10 (Kỳ cũ), 07–08/10 (Kỳ xưa).
+- **Phân tách 3 nhóm Cohort bắt buộc (Cohort Breakdown)**:
+  * 🟢 **Cựu binh (Veteran)**: Thực chiến | Sạch % | Nhả đuôi % | Follows.
+  * 🟡 **Trung cấp (Mid)**: Thực chiến | Sạch % | Nhả đuôi % | Follows.
+  * 🔴 **Tân binh (Rookie)**: Thực chiến | Sạch % | Nhả đuôi % | Follows.
+- **Cạm bẫy tính toán lịch sử `has_drop` khi nick đã được giải cứu**:
+  * *Lỗi*: Nếu dùng `has_drop = is_in_cooldown and (drop_day in c_dates)`, khi chạy script giải cứu (`reconcile_unfair_streaks.py`) xóa cờ `is_in_cooldown`, hệ thống sẽ tính nhầm là chu kỳ quá khứ có 0% nhả đuôi (sai lệch hoàn toàn với thực tế).
+  * *Chuẩn hóa*: Tính drop lịch sử phải độc lập với cờ cooldown hiện tại:
+    `has_drop = (a.get("last_failed_date") in c_dates) or (a.get("drop_day") in c_dates)`
+    đảm bảo sau khi giải cứu tài khoản, số liệu đối soát chu kỳ lịch sử trên Dashboard vẫn bảo toàn chính xác 100%.
+
 
 
 
