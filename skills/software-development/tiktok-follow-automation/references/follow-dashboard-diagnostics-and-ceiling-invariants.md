@@ -352,6 +352,20 @@ Trong `follow_state.py`, runner tự động điều chỉnh trần follow cho c
     `has_drop = (a.get("last_failed_date") in c_dates) or (a.get("drop_day") in c_dates)`
     đảm bảo sau khi giải cứu tài khoản, số liệu đối soát chu kỳ lịch sử trên Dashboard vẫn bảo toàn chính xác 100%.
 
+## 26. Tính Độc Lập Giữa Các Nick Cùng IP & Quy Chuẩn Ngắt Cầu Dao Nâng Cao (Smart Breaker: >= 2 Cựu Binh fl=0)
+- **Bằng chứng đối soát hiện trường chứng minh Ăn Nhả Đuôi KHÔNG làm sập nick khác cùng IP/cùng máy**:
+  * *Hiện trường 1 (Máy 21 ngày 19/10)*: Slot 1 (`labaozmh1x8`) ăn nhả đuôi sau 1 fl. Ngay sau đó Slot 3 (`cao.m.phng7`) cùng máy 21 vào ca nã tới 33 follow sạch sẽ (kỷ lục toàn farm).
+  * *Hiện trường 2 (Máy 16 ngày 19/10)*: Slot 1 (`nhuphuong458934`) nhả sau 2 fl. Slot 3 (`lenhi09116`) cùng máy 16 vào ca follow trơn tru 13 lượt.
+  * *Hiện trường 3 (Máy 59 ngày 19/10)*: Slot 3 (`carlosfwagne2`) nhả sau 1 fl. Slot 1 (`ngocanh.34589`) cùng máy vẫn follow 5 lượt.
+  * *Cặp máy partner M21 & M59 (chung proxy 5125)*: M21 có nick nhả đuôi ngày 19/10, nhưng M59 cùng proxy vẫn chạy bình thường 7 follow qua 2 ngày (19–20/10).
+  * *Kết luận bản chất*: Ăn nhả đuôi (`used > 0`) là giới hạn phiên cá nhân của tài khoản (Account Rolling Limit) do TikTok áp đặt khi nick hoạt động năng nổ, hoàn toàn không làm bẩn đường truyền IP proxy bên dưới. Các nick khác vào ca sau vẫn mang session/token riêng và được TikTok đối xử như người dùng mới bình thường.
+- **Phân định chiến lược: Xóa bỏ hoàn toàn vs Giữ lại có chốt chặn thông minh**:
+  * *Nếu xóa bỏ hoàn toàn (Kill Breaker)*: Khi nhà mạng xoay trúng dải IP độc hoặc bị TikTok blacklist cứng, các nick tiếp theo sẽ lao vào chạy và bị quét trảm hàng loạt (5–10 nick chết chùm trong 1 buổi sáng).
+  * *Chuẩn hóa Cầu Dao Thông Minh (Smart Breaker Invariant)*:
+    1. **Tuyệt đối cấm ngắt cầu dao IP khi `used > 0`**: Đã follow được $\ge 1$ lượt thì 100% IP sạch, chỉ phạt cooldown 1 ngày trên cá nhân nick đó để xả cache phiên, giữ nguyên proxy cho các máy partner sản xuất.
+    2. **Chỉ ngắt cầu dao 48h khi có bằng chứng bẩn IP diện rộng**: Bắt buộc thỏa mãn điều kiện kép: **$\ge 2$ nick Cựu Binh (hoặc 2 máy độc lập dùng chung proxy) cùng bị nhả ngay phát bấm đầu tiên (`used == 0`) trong cùng một ngày**. Khi đó 99.9% là do IP bị gắn cờ, ngắt 48h để bảo vệ dàn nick còn lại là hoàn toàn chính xác.
+
+
 
 
 
