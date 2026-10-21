@@ -1,6 +1,6 @@
 Bio: CẤM TRÙNG BIO; 100% tiếng Việt có dấu (AdbKeyboard B64); cấm đổi khi tên khớp username; Khóa nick tay.
 §
-Dọn đĩa: safe_recycle.py. Reboot né TFT/War3. Box 1 sát AP kibe 1. S7: anten góc TRÁI. Lỗi timeout/PSM sửa script; cấm cron quấy rầy máy nghỉ.
+Dọn đĩa: safe_recycle.py. Reboot né TFT/War3. Box 1 sát AP kibe 1. S7: anten TRÁI. CẤM trần thuật báo lỗi xuông, BẮT BUỘC tự điều tra script, fix tận gốc & canary; cấm quấy rầy máy nghỉ.
 §
 Nuôi 4d 3 ca (bỏ 0h). Cấm pause cron/kill tool khác khi kẹt lock, canh xong mới làm. Ava&2FA tới 5h15. Starve 96h.
 §
