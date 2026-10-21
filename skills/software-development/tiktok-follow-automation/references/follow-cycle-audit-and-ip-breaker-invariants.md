@@ -38,3 +38,17 @@
 - **Tiêu chuẩn phát hiện IP bẩn thực sự (Khi nào mới nghi vấn):**
   - Chỉ khi có **$\ge 2$ tài khoản Cựu Binh (Veteran)** trên cùng một cổng proxy bị **nhả ngay phát đầu tiên (`fl = 0`) trong cùng một ngày**, hệ thống mới đánh dấu proxy đó là `CRITICAL`.
   - Khi người vận hành yêu cầu `"kiểm tra report ip"` hoặc `"đối soát ip"`, chạy `python D:/Taadaa/tools/ip_risk_audit.py` để trích xuất báo cáo đối soát nhiều chu kỳ.
+
+## 4. Giải mã Hiện tượng 176 Nick Tù Nặng: Bẫy "Anchor Check" ở Slot phụ (Row 2 & Row 4)
+
+- **Đặc điểm chung của 176 nick tù nặng (Streak ≥ 2, max Streak 6):**
+  - **Số lượng video & tuổi nick:** 100% nick ĐÃ ĐẠT CHUẨN Dual Gate (trung bình 15.6 video, min 11, max 20; 80% tạo tháng 7–9/2026, tuổi 60–90 ngày). Không phải do thiếu video hay nick quá non.
+  - **Phân bổ vị trí:** ~57% tập trung ở **Row 4 (56 nick)** và **Row 2 (44 nick)** — các slot phụ thường chạy ở ca trưa/tối sau khi Row 1 (Cựu Binh) đã chạy xong.
+  - **Thống kê follow lịch sử:** 80% (140/176 nick) có `lifetime_follows == 0` (chưa từng follow thành công được 1 ai trong đời).
+- **Căn nguyên kỹ thuật (The Anchor Check Trap):**
+  - Trong `mode2_follow_followers.py` (`_ensure_anchor_followed`), trước khi bot vào danh sách cào follow, bot kiểm tra tài khoản mồi (Anchor).
+  - Nếu nút follow trên profile Anchor bị TikTok silent-drop (bật ngược lại về `not_followed`), hàm lập tức kích hoạt `engine.state.set_follow_failed()` và **dừng toàn bộ session ngay tại giây thứ 30**.
+  - **Hệ quả dây chuyền:** Tài khoản chưa hề được thử follow danh sách thật, nhưng đã bị tính là 1 lần thất bại. Cứ mỗi chu kỳ 4 ngày bot gọi lại, nick lại vấp đúng bẫy Anchor này $\rightarrow$ Streak bị cộng dồn liên tiếp từ 1 lên 2, 3, 4, 6, kéo theo cooldown 15 ngày liên tục!
+- **Kỷ luật vận hành:**
+  - Khi rà soát nick tù nặng `lifetime_follows == 0`, không kết luận ngay là nick chết hay proxy hỏng.
+  - Cần kiểm tra log `_ensure_anchor_followed` để tách biệt giữa: (1) Nick bị hạn chế tương tác thật vs (2) Vấp bẫy Anchor đối chứng bị TikTok ghim cờ.
