@@ -16,10 +16,10 @@ version: 1.0.0
 - `references/watchdog-db-guard-and-sync-contract.md`: Guard.
 - `references/business-restricted-recovery.md`: AG Restricted.
 - `references/omniroute-429-watchdog-thinking-discipline.md`: 429.
-- `references/omniroute-global-cooldown-zombie-proxy-and-eventloop-choke.md`: Cooldown.
 - `references/shared-gemini-flash-pro-quota-routing.md`: Quota.
 - `references/pro-account-canary-and-semaphore-diagnosis.md`: Canary.
 - `references/semaphore-vs-pre-cascade-queue-and-strategy-tradeoffs.md`: Queue.
+- `references/gpm-omni-oauth-admission-gate.md`: GPM pagination, ownership locks, and Omni-before-AGY sequencing.
 - `references/lifecycle-reserve-inventory-vs-router-execution-pool.md`: Kho GPM vs OmniRoute.
 - `references/omniroute-combo-routing-pathology.md`: Combo modes.
 - `references/omniroute-v38-live-log-triage-and-pool-leakage.md`: Triage call-logs.I Quota đỏ.
