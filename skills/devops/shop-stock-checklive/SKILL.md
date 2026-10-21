@@ -170,4 +170,4 @@ with sync_playwright() as p:
 - `references/checklive-runner-failure-isolation.md` — Quy tắc bọc try/except độc lập cho từng SP trong runner tổng hợp, chống crash lan sang các bên còn lại khi 1 site timeout (2026-08-28).
 - `references/silent-watchdog-pattern-shop-stock.md` — Quy chuẩn Silent Watchdog cho kho hàng (im lặng hoàn toàn khi không biến động) & kỷ luật cấm lưu quy tắc vào Memory gây nặng bot.
 - `references/mobiproxy-panel-api.md` — panel MobiProxy (test.taadaa.click): login riêng, API proxy_check/getlist/getip, api.php actions.
-- `references/sumistore-reseller-api-integration.md` — Kiến trúc đấu nối API kho hàng sumistore.me (HMAC-SHA256, Idempotency, async queue và Telegram bot API ID).
+- `references/sumistore-reseller-api-integration.md` — Kiến trúc đấu nối API kho hàng sumistore.me (HMAC-SHA256, Idempotency, async queue, product_key & sniper stock polling pattern).

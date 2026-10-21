@@ -14,12 +14,18 @@
 ## 3. Các Endpoint nghiệp vụ chính
 | Method | Endpoint | Chức năng |
 | :--- | :--- | :--- |
-| `GET` | `/api/tele-products` | Lấy danh sách sản phẩm mở bán |
-| `GET` | `/api/tele-products/{id}` | Chi tiết giá và tồn kho sản phẩm (vd: `SP-EJT5X2D7`) |
-| `GET` | `/api/tele-balance` | Kiểm tra số dư Telegram hiện tại |
+| `GET` | `/api/tele-products` | Lấy danh sách sản phẩm mở bán (chứa `products[].product_key`, `stock`, `available`) |
+| `GET` | `/api/tele-products/{product_key}` | Chi tiết giá và tồn kho sản phẩm (vd: `p_9XGh048dZmiOkW0ppDKtwMgU` hoặc `SP-EJT5X2D7`) |
+| `GET` | `/api/tele-balance` | Kiểm tra số dư Telegram hiện tại (`owner.balance`) |
 | `GET` | `/api/tele-orders` | Lịch sử các đơn đã mua |
 | `POST` | `/api/tele-product/buy` | Đặt mua hàng (bắt buộc ký HMAC-SHA256) |
 | `GET` | `/api/tele-purchases/{job_id}` | Kiểm tra trạng thái đơn mua async |
+
+### Lưu ý định dạng Product Key & Stock Monitor (Cập nhật 2026-10-21):
+- Sản phẩm trên hệ thống dùng trường `product_key` (dạng chuỗi `p_<hash>`, ví dụ `p_9XGh048dZmiOkW0ppDKtwMgU`).
+- Kiểm tra tồn kho thời gian thực: Polling `GET /api/tele-products/{product_key}` kiểm tra điều kiện `available == True` và `stock > 0`.
+- Tần suất poll an toàn: 0.8s - 1.0s/lần (server phản hồi trung bình ~300ms; poll quá nhanh <0.3s dễ kích hoạt Cloudflare WAF/Challenge).
+- Tiền điều kiện nạp số dư: Gọi `GET /api/tele-balance` xác nhận số dư Telegram `owner.balance >= price` trước khi bật sniper; mua hàng trừ tiền thẳng từ số dư Telegram bot.
 
 ## 4. Cơ chế ký bảo mật mua hàng (HMAC-SHA256 & Idempotency)
 - **Công thức ký:**
