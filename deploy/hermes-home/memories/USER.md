@@ -10,7 +10,7 @@ Ava/Media: Duyệt ava up thẳng máy; khóa cờ .manual_avatar_locked & Avata
 §
 Worker: Haiku; Agy 21; Gemini→AGY, Claude→Claude Code, OMP; 429 xoay profile. CẤM Luna làm Coordinator.
 §
-Canary: target-bound; BẮT BUỘC máy thật (cấm chỉ dựa pytest); WinRT OCR->ATX (cấm uiautomator); Singbox. Guard cơ học; Claude duyệt; dính guard chạy unscoped worker CLI.
+Canary: target-bound; BẮT BUỘC máy thật qua `done_gate.py --strict-device`; WinRT OCR->ATX; Singbox. Guard cơ học; Claude duyệt; dính guard chạy unscoped worker CLI.
 §
 Follow audit: >=3-4 chu kỳ 4d + Cohort Veteran/Mid/Rookie; tách fl=0 và used>0; Account Limit cô lập nick, cấm ngắt IP.
 §

@@ -65,3 +65,20 @@
 5. **Phản hồi User kèm Evidence & Dọn dẹp Profile:**
    - Trong phản hồi, gửi kèm thẻ `MEDIA:C:/Users/Kibe/chatgpt_model_evidence.png` cùng nội dung xác nhận ngắn gọn các chi tiết đã thấy tận mắt qua Vision.
    - Luôn đóng profile trong `finally` qua GPM stop API (`/api/v3/profiles/stop/{profile_id}`).
+
+---
+
+## 3. Cạm bẫy suy diễn Sol vs Luna khi ép slug Backend API (Black-Box Backend Routing Pitfall)
+
+- **Bản chất tên gọi:**
+  - `GPT-5.6 Sol`: Là nhãn hiển thị thực tế trên bộ chọn model (v2 picker) của tài khoản trả phí (**Plus / Pro**), phân tầng 5 lane suy luận (`instant`, `medium`, `high`, `xhigh`, `pro`) tương ứng các backend slug `gpt-5-6`, `gpt-5-6-thinking` (với các mức effort `standard`, `extended`, `max`), và `gpt-5-6-pro`.
+  - `GPT-5.6 Luna`: Là nhãn hiển thị trong metadata `/backend-api/models` của tài khoản **Free** (gắn với slug `gpt-5-6` và `gpt-5-6-mini`).
+- **Bẫy suy diễn khi ép slug:**
+  - Khi client hoặc proxy (OmniRoute) gửi request ép thẳng slug `model: "gpt-5-6-thinking"` kèm `thinking_effort: "extended"` trên một **tài khoản Free**: Server OpenAI vẫn chấp nhận (`HTTP 200 OK`) và sinh chuỗi suy luận CoT dài.
+  - Tuy nhiên, cụm máy chủ OpenAI thực tế xử lý request đó trên cluster compute nào (cấp nguyên vẹn compute của Sol hay ngầm downscale về compute của Luna CoT) là **hộp đen hoàn toàn (server-side black-box)**.
+- **Kỷ luật phát ngôn & Báo cáo:**
+  - Tuyệt đối CẤM khẳng định chắc nịch *"5.6 thinking chắc chắn là Luna"* hoặc *"chắc chắn là Sol"* khi chưa có telemetry máy chủ nội bộ của OpenAI.
+  - Luôn bóc tách rõ 3 tầng độc lập:
+    1. **Tầng Client Payload:** Model slug gửi đi (`gpt-5-6-thinking`, `gpt-5-6-pro`, `auto`).
+    2. **Tầng UI / Plan Naming:** Nhãn hiển thị theo gói (`GPT-5.6 Sol` trên Plus/Pro picker vs `GPT-5.6 Luna` trên Free API).
+    3. **Tầng Server Execution:** Hộp đen phân bổ tài nguyên của OpenAI — thừa nhận tính bất định khi không có bằng chứng nội bộ.
