@@ -78,3 +78,7 @@ A report showing 51 Kibe BLOCKED was followed by a live state showing 53: the ca
 6. **Verified QUARANTINE Reset Protocol**:
    - Accounts entering `QUARANTINE` (3/3 retries) due to a known, resolved challenge type (e.g. recovery OTP) must NOT be reset blindly.
    - First verify recovery email exists in `gmail_clean_v2.xlsx` (Col 5). Once verified and code is patched, execute `python D:/Taadaa/tools/reset_admin_quarantine.py` to safely reset status to `PENDING` and `login_retry_count = 0`.
+7. **Mandatory Canary Gate After Automation / GPM Fixes**:
+   - Sau bất kỳ code fix nào trên automation script (bao gồm GPM login/security), Coordinator BẮT BUỘC phải chạy Canary trên 1 profile/thiết bị thật trước khi báo cáo hoàn thành cho user.
+   - Đối với GPM script: chạy trực tiếp trên 1 profile thật (vd: `python3 D:/Taadaa/Hotmail/scripts/batch_gpm_hotmail_password_login.py --email <acc> --machine <M> --proxy-port <P> ...`).
+   - BẮT BUỘC kiểm chứng bằng mắt (WinRT OCR hoặc `browser_vision`) đối với ảnh `post_login` screenshot, xác nhận không trắng/đen/lỗi hiển thị và có element auth rõ ràng mới được thông báo DONE. Báo DONE khi chưa chạy Canary thật là vi phạm Gate nghiêm trọng.

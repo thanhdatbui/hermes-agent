@@ -18,8 +18,13 @@ When tracing account purchase sources, batch origins, or looking up transaction 
   - When hosted behind Cloudflare or custom Apache `.htaccess` error handling, the HTTP 404 status triggers the site's full HTML 404 error page (`<title>404 — Không tìm thấy trang</title>`).
   - **Do not misinterpret this as a missing API file**: the API script exists and executes; the 404 simply denotes record not found for that specific query.
 
-### 3. Host Chrome Session Expiration & Google OAuth Iframe
-- BoxTaiKhoan requires an authenticated session for `/product-orders`, `/client/logs`, `/document-api`.
-- When accessing via user's Chrome (`Profile 4`), expired cookies trigger a 302 redirect to `/client/login`.
-- The Google Sign-In button is rendered inside a cross-origin iframe (`Sign In - Google Accounts`). Synthetic background clicks or coordinates will not pass browser security to trigger Google SSO.
-- **Action:** Notify the user cleanly that the session expired on their open tab so they can complete the single login click, then resume automated scraping.
+### 3. Host Chrome Profile Disambiguation & Session Expiration
+- **Profile Disambiguation:**
+  - `Profile 3` (Username: đạt, Email: `thanhdatbui1995@gmail.com`): Contains saved credentials and Google OAuth for `boxtaikhoan.com` (account `thanhdatbui1995`).
+  - `Profile 4` (Username: Kal, Email: `jinrakal@gmail.com`): Personal profile.
+  - To open or inspect BoxTaiKhoan via Chrome, always explicitly target `--profile-directory="Profile 3"`.
+- **Session Expiration & Google OAuth Iframe:**
+  - BoxTaiKhoan requires an authenticated session for `/product-orders`, `/client/logs`, `/document-api`.
+  - When accessing via Chrome, expired cookies trigger a 302 redirect to `/client/login`.
+  - The Google Sign-In button on the web page is rendered inside a cross-origin iframe (`Sign In - Google Accounts`). Synthetic background events cannot penetrate the cross-origin iframe sandbox.
+  - **Resolution:** Launching `chrome.exe --profile-directory="Profile 3" https://boxtaikhoan.com/product-orders` opens the Google Account Chooser popup, where clicking the top account (`thanhdatbui1995@gmail.com`) automatically restores the session.

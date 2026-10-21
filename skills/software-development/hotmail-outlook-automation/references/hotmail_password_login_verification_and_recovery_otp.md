@@ -57,8 +57,14 @@ Khi đăng nhập Hotmail/Outlook qua trình duyệt (GPM Login + Playwright):
 - BẮT BUỘC:
   - Bổ sung selector: `button:has-text('Chấp nhận')`, `button:has-text('Accept')`, `#acceptButton`, `button:has-text('Đồng ý')`, `button:has-text('Từ chối')`, `button:has-text('Reject')`.
   - Click dứt điểm banner cả trong vòng lặp chuyển tiếp và sau khi landing vào trang cuối cùng trước khi screenshot và xác nhận auth.
+  - Sau khi click đóng Cookie banner, BẮT BUỘC chờ dashboard render tối thiểu 3-4s (chờ selector `header, nav, main, #mectrl_headerPicture, h1...`) rồi mới chụp ảnh `post_login`, tránh chụp lúc trang đang redirect gây ra ảnh trắng tinh (file size 2–4 KB) làm sai lệch kết quả OCR.
 
 ## 5. Kinh Nghiệm Điều Phối Worker Cho Repo Hotmail
 - Repo `D:/Taadaa/Hotmail` có `AGENTS.md` yêu cầu chạy `bootstrap.ps1` kiểm tra môi trường trước khi ghi file.
 - Khi điều phối Worker qua `claude_worker.py --role worker`, tool `Bash` bị cấm mặc định (`--disallowedTools Bash`), dẫn đến Worker Haiku không thể chạy script ps1 và tự động báo `BLOCKED: AGENTS.md requires bootstrap.ps1...`.
 - Khi gặp lỗi này trên Tier 1 Haiku, Gateway phân loại là `NEEDS_INPUT` và dừng lại. Để vượt qua, Coordinator cần leo thang sang **Tier 2 (Antigravity CLI: `python D:/Taadaa/tools/ag_cli.py fix ...`)** để thực thi patch trực tiếp.
+
+## 6. Bắt Buộc Chạy Canary Thực Tế Trước Khi Declare Done
+- Khi hoàn tất sửa đổi code trên `batch_gpm_hotmail_password_login.py` hoặc các automation scripts khác, Coordinator TUYỆT ĐỐI CẤM báo DONE chỉ dựa trên `py_compile` hay unit test giả lập.
+- BẮT BUỘC chạy Canary trực tiếp trên 1 profile thật đang bị lỗi hoặc trong queue (ví dụ: `python3 D:/Taadaa/Hotmail/scripts/batch_gpm_hotmail_password_login.py --email vjorandrea1961@hotmail.com --proxy-port 5102 --raw-proxy ... --machine 2`).
+- Chờ tiến trình nền kết thúc (exit code 0), sau đó bắt buộc mở ảnh screenshot `post_login` bằng WinRT OCR hoặc `browser_vision` để soi mắt xác nhận: có header Microsoft, avatar hoặc chữ 'Tài khoản Microsoft' hiển thị rõ ràng, không bị màn hình trắng/đen hay popup che khuất. Báo DONE khi chưa chạy Canary thật là vi phạm Gate nghiêm trọng.

@@ -16,15 +16,18 @@ metadata:
 
 Use this class skill for order-management workflows where an order begins inside a shopping app/account, a mailbox may reveal the carrier tracking code, carrier systems provide route events, and a local dashboard presents canonical state.
 
-The central design rule is a two-stage pipeline:
+The central design rule is a multi-channel discovery and tracking pipeline:
 
 ```text
-Shop/app or mailbox -> discover tracking code + carrier
-Carrier API/page -> monitor shipment scans and local-hub arrival
-Dashboard/JSON/Excel -> display the same canonical order state
+[Discovery Channel A (Passive)] Webmail (Outlook GPM) -> parse dispatch email
+[Discovery Channel B (Active)]   TikTok App (Farm Device) -> in-app order detail via atx-agent JSONRPC
+                                     │ (tracking code + carrier)
+                                     ▼
+Carrier API/page (SPX/J&T/Ninja) -> monitor shipment scans and local-hub arrival
+Dashboard/JSON/Excel             -> display the same canonical order state
 ```
 
-Do not describe mailbox polling as real-time shipment tracking. Mail is a discovery source for the dispatch message and tracking code; carrier tracking is the source for transit and hub events.
+Do not rely solely on mailbox polling as tracking code discovery. TikTok Shop and sellers frequently omit or delay tracking emails until after delivery; in-app order inspection on the farm device is the authoritative zero-delay source of truth. Carrier tracking remains the sole source for transit and hub events.
 
 ## Workflow
 
