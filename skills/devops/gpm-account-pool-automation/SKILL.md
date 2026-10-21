@@ -40,6 +40,7 @@ version: 1.3.0
 
 ## 3. Tài Liệu Tham Khảo (References)
 - Chi tiết API và các case watchdog: xem danh mục tài liệu trong thư mục `references/` của skill.
+- Quy trình preflight và chạy OAuth OmniRoute một profile: xem [`references/omniroute-oauth-single-profile-preflight.md`](references/omniroute-oauth-single-profile-preflight.md).
 - Google AI Studio API Key Provisioning and GCP Project Import Runbook: xem [`references/google-ai-studio-api-key-provisioning-and-gcp-project-import.md`](references/google-ai-studio-api-key-provisioning-and-gcp-project-import.md).
 - Google AI Studio API Key Provisioning & Quota Pitfalls on GPM Farm Profiles: xem [`references/google-ai-studio-gpm-key-provisioning-pitfalls.md`](references/google-ai-studio-gpm-key-provisioning-pitfalls.md).
 - Pure Google Sign-in vs OAuth Antigravity Decoupling (2026-10-19): xem [`references/gpm-login-pure-google-signin-and-antigravity-decoupling-20261019.md`](references/gpm-login-pure-google-signin-and-antigravity-decoupling-20261019.md).
