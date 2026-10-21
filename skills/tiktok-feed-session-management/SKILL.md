@@ -8,11 +8,12 @@ author: Hermes Agent
 ---
 
 ## References & Invariants
-- Watchdog timezone deadlock & concurrency starvation: see [references/watchdog-timezone-deadlock-and-concurrency-starvation.md](references/watchdog-timezone-deadlock-and-concurrency-starvation.md).
-- Split dispatch & OneDrive rules: see [references/telegram-split-dispatch-and-onedrive-conflict-invariants.md](references/telegram-split-dispatch-and-onedrive-conflict-invariants.md).
-- Watchdog taxonomy & triage: see [references/feed-watchdog-catchall-taxonomy-and-triage.md](references/feed-watchdog-catchall-taxonomy-and-triage.md).
-- Row starvation: see [references/row-nurture-starvation-and-cycle-monitoring.md](references/row-nurture-starvation-and-cycle-monitoring.md).
-- Dashboard health implementation lessons: see [references/dashboard-nurture-health-implementation.md](references/dashboard-nurture-health-implementation.md).
+- Dual-cluster cache: [references/dual-cluster-local-cache-and-remote-lock-resilience.md](references/dual-cluster-local-cache-and-remote-lock-resilience.md)
+- Deadlock: [references/watchdog-timezone-deadlock-and-concurrency-starvation.md](references/watchdog-timezone-deadlock-and-concurrency-starvation.md)
+- OneDrive: [references/telegram-split-dispatch-and-onedrive-conflict-invariants.md](references/telegram-split-dispatch-and-onedrive-conflict-invariants.md)
+- Triage: [references/feed-watchdog-catchall-taxonomy-and-triage.md](references/feed-watchdog-catchall-taxonomy-and-triage.md)
+- Starvation: [references/row-nurture-starvation-and-cycle-monitoring.md](references/row-nurture-starvation-and-cycle-monitoring.md)
+- Dashboard: [references/dashboard-nurture-health-implementation.md](references/dashboard-nurture-health-implementation.md)
 
 ## Watchdog Upload Status Taxonomy & Triage
 See detailed taxonomy and field breakdown in [references/feed-watchdog-catchall-taxonomy-and-triage.md](references/feed-watchdog-catchall-taxonomy-and-triage.md). If one cluster (for example Admin) has a materially higher proxy-failure share than another cluster (for example Kibe), prioritize proxy/egress triage there before editing feed logic. Record representative probe outputs and distinguish confirmed causes from hypotheses; if no code change was performed, say so explicitly and avoid claiming remediation.
