@@ -455,8 +455,25 @@ class TestEvidenceFirstGateV43(unittest.TestCase):
         assert transform_hook is not None
 
         with patch("__init__._enforce_evidence_first_gate", return_value="🛑 [VIOLATION]"):
-            res = transform_hook(response_text="Phan tich ky thuat", session_id="c_ok")
-            self.assertIsNone(res)
+            with self.assertLogs(guard_plugin.logger, level="INFO") as cm:
+                res = transform_hook(response_text="Phan tich ky thuat", session_id="c_ok")
+                self.assertIsNone(res)
+                self.assertTrue(any("evidence_gate_banner_suppressed" in log or "superseded" in log for log in cm.output))
+
+    def test_transform_output_hook_invokes_mechanical_vision_gate(self):
+        mock_ctx = MagicMock()
+        guard_plugin.register(mock_ctx)
+        hooks = {call[0][0]: call[0][1] for call in mock_ctx.register_hook.call_args_list}
+        transform_hook = hooks.get("transform_llm_output")
+        self.assertIsNotNone(transform_hook)
+        assert transform_hook is not None
+
+        mock_mv = MagicMock()
+        mock_mv.transform_llm_output_check.return_value = (False, "🛑 [MECHANICAL BLOCKED]")
+        with patch.dict(sys.modules, {"guard_media_vision_gate": mock_mv}):
+            res = transform_hook(response_text="Phan tich", session_id="c_mech")
+            self.assertEqual(res, "🛑 [MECHANICAL BLOCKED]")
+            mock_mv.transform_llm_output_check.assert_called_once_with("Phan tich")
 
 
 if __name__ == "__main__":

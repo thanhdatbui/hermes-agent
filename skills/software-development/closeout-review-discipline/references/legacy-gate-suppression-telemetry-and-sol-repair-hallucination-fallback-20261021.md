@@ -36,3 +36,9 @@ Trong quy trình Strike 1 Remediation (`sol_repair.py`):
 2. **Hậu quả:** Patch nếu áp dụng mù quáng sẽ ném `NameError` khi chạy test.
 3. **Quy tắc kích hoạt Worker Fallback:**
    Theo invariant điều phối, khi patch của Sol Repair không khớp signature thật hoặc gây lỗi syntax/test, Coordinator **ĐƯỢC PHÉP NGAY LẬP TỨC kích hoạt Fallback sang Worker CLI** (`dispatch_worker.py` - Haiku 5.5 / Agy pool) để thi công patch chuẩn xác O(1) theo đúng AST hiện hữu của file. Cấm cố chấp nhồi lại prompt cũ cho Sol.
+
+## 4. Bài Học 3: Bẫy Glob Đường Dẫn Trong `--files` Khi Chạy Ngoài Repo Root
+- **Hiện tượng:** Khi chạy `python D:/Taadaa/tools/closeout_gate.py --repo <repo> --base HEAD~1 --files <glob>` với `workdir` nằm ngoài repository (ví dụ ở `C:\Users\Kibe`), bash không tìm thấy pattern tương ứng ở cwd nên giữ nguyên chuỗi glob (ví dụ `deploy/.../*guard*/...`).
+- **Hậu quả:** `closeout_gate.py` hàm `targeted_candidate()` so sánh chuỗi literal với danh sách tệp commit thật (`committed_scope`), phát hiện không khớp và ném lỗi fail-fast:
+  `Failed to extract diff: committed ... scope [...] != --files targets [...]; refusing partial committed scope`
+- **Khắc phục:** BẮT BUỘC chỉ định `workdir=<repo_root>` cho lệnh terminal hoặc `cd /d <repo_root>` trước khi chạy gate để bash tự động mở rộng glob thành đường dẫn tuyệt đối/chuẩn hóa khớp byte-exact với `committed_scope`.

@@ -2010,6 +2010,13 @@ def register(ctx: Any) -> None:
                     ev_res[:80],
                     extra={"event": "evidence_gate_banner_suppressed", "session_id": session_id},
                 )
+            try:
+                import guard_media_vision_gate
+                ok, guarded_text = guard_media_vision_gate.transform_llm_output_check(response_text)
+                if not ok:
+                    return guarded_text
+            except ImportError:
+                pass
         except Exception as exc:
             logger.exception("[FARM_GUARD] Fail-closed exception in evidence gate: %s", exc)
             return (
