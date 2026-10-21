@@ -14,6 +14,6 @@ Canary: target-bound; WinRT OCR->ATX (cấm uiautomator); Singbox. Guard cơ h�
 §
 Follow audit: >=3-4 chu kỳ 4d + Cohort Veteran/Mid/Rookie; tách fl=0 và used>0; Account Limit cô lập nick, cấm ngắt IP.
 §
-Auto-link/claim: tự động kích hoạt end-to-end trên profile GPM (click nút xác nhận qua CDP), cấm chỉ mở tab rồi để user bấm tay.
+Gemini Pro/Claim: Tự kích hoạt trọn gói trên GPM qua CDP (cấm để user ấn tay); mua xong nạp đủ cả 2 pool OmniRoute & AGY CLI; proxy map 1:1 cổng S7.
 §
 Benchmark phải cùng model + cùng thinking effort; không báo DONE/push khi reviewer dưới ngưỡng; báo rõ REJECTED/BLOCKED kèm evidence.
