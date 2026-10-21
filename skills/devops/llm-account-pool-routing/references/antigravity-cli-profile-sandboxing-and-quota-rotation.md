@@ -515,7 +515,24 @@ Chi tiết xem tại tài liệu hỗ trợ liên kết:
 - **Claude Code Reviewer chấm điểm mã nguồn (Thang 100):**
   * **AGY: 88/100 (WINNER)** — Viết docstring hoàn chỉnh, comment tiếng Việt bám sát đặc tả farm, bộ test tự sinh gồm 13 assert có message chẩn đoán chi tiết và kiểm tra sâu mảng `reasons`.
   * **OMP: 80/100** — Type annotation sạch (`reasons: list[str]`), float nhất quán (`42.0`), nhưng thiếu docstring và test gộp `assert a and b` không có thông báo lỗi chẩn đoán.
-- **Kết luận kiến trúc:** `ag_cli.py` là **Vũ khí thi công Code số 1**; `omp_cli.py` làm **Tầng dự phòng độc lập** khi cần phân tải song song trên các profile khác nhau.
+### 5. Nguyên Tắc Cốt Lõi: Model Gắn Liền Với Harness Chính Chủ (Producer Harness Invariant)
+- **Nguyên lý:** Không có harness đa năng (universal) nào tối ưu cho model bằng chính harness do nhà sản xuất model đó tạo ra.
+  * **Google Gemini ➔ Bắt buộc đi với Antigravity CLI (`agy.exe`):** Google tự viết bằng Go native, nắm trọn header nội bộ, token streaming nhị phân và stream direct 1 round-trip (~30s, pass 10/10, Claude chấm 88/100).
+  * **Anthropic Claude ➔ Bắt buộc đi với Claude Code CLI (`claude_worker.py`):** Tận dụng tối đa Prompt Caching (giảm 90% chi phí), Tool Use streaming và thinking budget.
+  * **OMP CLI (`omp_cli.py`):** Giữ đúng vị trí là **"Harness dự phòng đa năng / Universal Sandbox"** (hỗ trợ 50+ provider: DeepSeek, Grok, Qwen, Ollama local) khi cần test model lạ hoặc phân tải ngoài band, không dùng làm runner thay thế cho Gemini chính quy.
+
+### 6. Bẫy Thinking Effort Khác Biệt Khi Đối Soát Hai Runner
+- **Hiện tượng:** Cùng gọi Gemini 3.8 Flash nhưng AGY sinh code có docstring, comment phân tích và 13 assert có message (88 điểm), còn OMP sinh code cộc lốc, không docstring, gộp assert (80 điểm).
+- **Căn nguyên:** 
+  * `ag_cli.py` mặc định gọi `gemini-3.8-flash-medium` -> Ép backend chạy **Thinking Effort: Medium**.
+  * `omp_cli.py` nếu chỉ gọi `--model google-antigravity/gemini-3.8-flash` mà thiếu cờ `--thinking=medium` sẽ chạy ở mức **Thinking mặc định (`auto`/`minimal`)** của OMP.
+- **Quy chuẩn đối soát:** Khi benchmark giữa các runner, BẮT BUỘC phải đồng bộ cả **Model, Account, Proxy và Thinking Effort** thì mới đảm bảo tính công bằng 100%.
+
+### 7. Kỷ Luật Xoay Tua & Bảo Mật Git Repository
+- **Chống ảo tưởng Cooldown cùng Account:** Cùng 1 profile (`acc_XX`) là cùng 1 tài khoản Google. Dính 429 trên AGY thì chuyển sang OMP trên cùng profile đó vẫn dính 429. Cooldown/Rate-limit recovery BẮT BUỘC PHẢI XOAY TUA SANG PROFILE KHÁC (`acc_02` ➔ `acc_03` ➔ `acc_04`...).
+- **Phân tách Mã Nguồn Runner vs Credential Store trên Git:**
+  * File code điều phối (`D:/Taadaa/tools/ag_cli.py`, `D:/Taadaa/tools/omp_cli.py`) thuộc Git repo `tools` BẮT BUỘC phải commit và push lên Git (qua Closeout Gate) để tránh tê liệt hệ thống khi máy trạm hỏng.
+  * Toàn bộ kho credential (`D:/Taadaa/agy_profiles/`) chứa token OAuth và mật khẩu proxy TUYỆT ĐỐI CẤM commit lên Git.
 
 
 

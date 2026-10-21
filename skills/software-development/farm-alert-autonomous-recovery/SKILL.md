@@ -15,6 +15,7 @@ description: >-
 > Ref: `references/inspect-machine-terminal-guard-and-socket-hang-handling.md`.
 > Ref: `references/dual-cluster-reap-and-pre-push-squash-binding-20261019.md`.
 > Ref: `references/canary-receipt-expiry-and-safe-push-pre-commit.md`.
+> Ref: `references/recovery-proof-and-operator-closeout.md`.
 
 ## UI evidence: target screen only
 
