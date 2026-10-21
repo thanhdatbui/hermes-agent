@@ -125,6 +125,20 @@ When a review fix adds an optional keyword (for example `hard_deadline`) to a wo
 
 ## Review-remediation gate for staged candidates in a shared worktree
 
+### Broad model-generated dirt: quarantine before remediation
+
+If a model or worker has already touched a shared checkout outside the requested fix, do not let a follow-up worker keep editing that checkout merely because focused tests are green. Capture staged/unstaged path sets, classify the requested hunk as owned or foreign, and create an isolated candidate from the exact review base (normally `origin/main`). Reconstruct only the intended production/test delta there, then run focused tests, `py_compile`, `git diff --check`, and the closeout gate against that candidate. Preserve the original dirty checkout as forensic evidence; never reset, clean, or whole-file overwrite it.
+
+A green suite does not prove that an agent did not introduce unrelated behavior. Audit the candidate diff against the task contract, including removed lines and API return semantics. If the payload is near the reviewer truncation ceiling, reduce scope or compact tests before another review; do not append more tests or rerun the same oversized candidate.
+
+If a repair worker reports an unrecognized model alias, classify it as a routing/configuration failure, not code success or quota exhaustion. Verify changed paths and rerun independently before choosing another backend.
+
+### Filesystem-lock review boundary
+
+For lock remediation, distinguish “narrowed the race” from “proved compare-and-swap.” A re-read followed by `os.replace` or `os.remove` is not a CAS proof. Require an explicit serialized operation boundary, ownership/fencing identity, stale-owner policy, and multiprocess contention tests. If the reviewer still identifies a residual interleaving, keep the candidate rejected; do not claim atomicity from unit mocks alone.
+
+When a closeout reviewer rejects a candidate because its diff is truncated or contaminated by unrelated model changes, do not patch the contaminated shared tree to chase points. Start a clean worktree from the review base and review only the minimal lock/test pair.
+
 When a user asks to fix findings against an exact staged candidate, treat the index and worktree as two independently owned byte sets. A file can be `MM`: the staged candidate may be the review subject while an unstaged writer is changing the same source or tests. Before patching, capture both `git diff --cached` and `git diff`, then re-stat and re-read the complete affected files immediately before the first write. If an active process or a mtime/content change touches the requested hunk after the baseline, stop with `SCOPE_CONFLICT`; do not replay the finding onto newer bytes, repair test signatures, or use `git checkout`, `reset`, stash, or whole-file replacement to recover the candidate. A rejected patch that reports “no files were modified” is a safe stop, not evidence that the candidate is fixed.
 
 A same-file dirty state is separable only when all three are true: (1) the requested hunk and foreign hunk are independently locator-identifiable, (2) no active writer owns the requested region, and (3) a fresh complete-file read confirms the bytes have not drifted since the ownership check. If any condition is false, preserve staged/unstaged bytes and hand off the exact conflict evidence. Focused tests, compile checks, and diff checks may still be run read-only, but label their results as evidence about the concurrent current tree—not proof that the requested remediation was completed. Reconcile mtimes/status again after every long test run because a concurrent commit or rewrite can invalidate a green result.
