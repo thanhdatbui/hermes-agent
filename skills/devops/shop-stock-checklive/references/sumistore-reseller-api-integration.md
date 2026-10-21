@@ -78,3 +78,14 @@ def buy_product(api_id: str, product_id: str, quantity: int = 1):
     else:
         raise RuntimeError(data.get("message", "Mua chưa thành công"))
 ```
+
+## 6. End-to-End Auto-Claim Workflow via GPM CDP & Cross-Host Alarm (Cập nhật 2026-10-21)
+- **Quy chuẩn Auto-Claim trọn gói (Chống bẫy dừng nửa chừng):**
+  - Đối với các sản phẩm giao link kích hoạt bảo hành siêu ngắn (5–10 phút như Gemini Pro 18M / Google One 5TB qua Jio): CẤM TUYỆT ĐỐI dừng lại ở việc khởi động browser rồi ném link cho User tự bấm tay. User yêu cầu tự động kích hoạt end-to-end 100%.
+  - Luồng chuẩn: Bóc tách `activation_link` từ JSON response mua hàng -> Khởi chạy Profile GPM có Session Google Cookies sống qua Local API (`/api/v3/profiles/start/{id}?skip_proxy_check=true`) -> Lấy `data.remote_debugging_address` -> Kết nối Playwright qua CDP (`connect_over_cdp`) -> Mở URL đích.
+- **Cạm bẫy Modal che nút kích hoạt Google One ("Nhận bộ nhớ" vs "Kích hoạt gói"):**
+  - Trên trang đích `one.google.com/activate-plan/...`, các dòng mô tả lợi ích như *"Nhận tổng bộ nhớ 5 TB dùng chung..."* có gắn sự kiện click mở dialog giải thích. Nếu selector click nhầm vào text này, một modal xuất hiện kèm nút *"Đóng"*, vô hiệu hóa và che phủ nút hành động chính bên dưới.
+  - **Khắc phục:** Bắt buộc đóng mọi modal dialog đang mở (`page.locator('button:has-text("Đóng")').click()`), sau đó click chính xác vào nút hành động `page.locator('button:has-text("Kích hoạt gói")')` (hoặc `button:has-text("Tham gia")` / `button:has-text("Chấp nhận")`). Hậu kiểm điều hướng thành công tại URL chứa `/celebration` với title `Google One Confirmation Page` và body *"Bạn là thành viên gói Google AI Pro"*.
+- **Còi báo động liên tục xuyên máy (Cross-Host Continuous Alarm):**
+  - Để báo hiệu khẩn cấp khi User rời máy tính: Điều phối qua `admin_ssh.py` bắn lệnh sang Admin-PC (`admin-farm` `192.168.110.119`) khởi chạy tiến trình nền `admin_alarm.py` (`winsound.Beep(1200, 250)` + `winsound.Beep(1800, 300)`).
+  - Vòng lặp hú còi vô tận cho đến khi nhận được cờ dừng (`stop_admin_alarm.py` tạo file `stop_alarm.flag` hoặc gọi `pkill -f admin_alarm.py`), đảm bảo User không bị bỏ lỡ thông báo.
