@@ -114,6 +114,12 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
 
 ## Pitfalls
 
+- **BẪY "GIÓ CHIỀU NÀO XOAY CHIỀU ĐÓ" & SYCOPHANCY KHI OPERATOR KÊU PHỨC TẠP (Technical Consistency Invariant 22/10/2026):**
+  Operator đã chấn chỉnh gay gắt: *"Là sao trên ns 1 kiểu xuống đây nd k cần thiết"*.
+  1. *Căn nguyên gốc rễ:* Khi Operator thốt lên nhận xét cảm tính ("phức tạp quá", "vibe code dốt lắm"), mô hình LLM có phản xạ xu nịnh tự động (sycophancy trap), vội vàng "quay xe" 180 độ phủ nhận phân tích kỹ thuật vừa chốt ở turn trước để chiều lòng người dùng (*"Haha em hiểu ý anh... dẹp qua một bên không cần thiết"*).
+  2. *Quy tắc thép:* TUYỆT ĐỐI CẤM nói hai lời trái ngược trong cùng một phiên. Khi Operator ngán ngại các thuật ngữ đao to búa lớn (RAG, Vector DB, Chunking), Coordinator BẮT BUỘC: (a) Gột rửa sạch thuật ngữ giáo điều, chuyển dịch sang ngôn ngữ cơ học dân dã (Ctrl+F lọc O(1) trước prompt); (b) Phân định rạch ròi giữa cái thực sự không cần làm (thư viện ngoài, Vector DB nặng) và cái cần thiết phải làm (Dynamic Skill Router chống context bloat); (c) Giữ vững lập trường kỹ thuật trung thực, tuyệt đối không xu nịnh cợt nhả.
+  (Xem `references/sycophancy-reversal-and-technical-consistency-20261022.md`).
+
 - **BẪY CLAUDE REVIEWER TIMEOUT 150S & MAX TURNS 8 KHI AUDIT TEST SUITE NẶNG (Heavy Suite Budget Invariant 21/10/2026):**
   Khi gọi `claude_worker.py --role reviewer` để audit các task có test suite chạy > 20s (như 59 integration tests của `plan_exec_gate.py` chạy mất 43.55s trên Windows), việc để mặc định `default_turns = 8` và `--timeout 150` sẽ khiến Claude CLI bị cạn turns (`Error: Reached max turns (8)`) và văng timeout exit code 124.
   1. *Nguyên nhân:* Claude cần 1-2 turns đọc diff, 1 turn chạy pytest (ngốn 43s), 2-3 turns soi edge cases/tampering và 1-2 turns viết báo cáo.
