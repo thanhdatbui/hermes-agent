@@ -8,7 +8,7 @@ No verbal DONE; user requires real tests/reviewer evidence. User prefers direct 
 §
 Ava/Media: Duyệt ava up thẳng máy; khóa cờ .manual_avatar_locked & Avatar=OK; soi mắt trước MEDIA:; Batch N máy gửi đủ N MEDIA: riêng; Ava đúng creator.
 §
-Worker: Haiku; Agy pool 21; Gemini→AGY, Claude→Claude Code, OMP fallback; 429 xoay profile, cấm đổi runner cùng acc.
+Worker: Haiku; Agy pool 21; Gemini→AGY, Claude→Claude Code, OMP fallback; 429 xoay profile. CẤM Luna làm Coordinator/fallback (chỉ làm worker vô trùng).
 §
 Canary: target-bound; WinRT OCR->ATX (cấm uiautomator); Singbox. Guard cơ học; Claude duyệt; dính guard chạy unscoped worker CLI, cấm bảo user gõ tay.
 §

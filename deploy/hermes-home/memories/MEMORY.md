@@ -20,7 +20,7 @@ Ava: Trích clip gốc; Vision LLM lọc ava rác. Gate 6: cấm trần thuật 
 §
 Reboot 3 ca (05:20, 11:20, 17:20): lookback 60m. 2FA né đệm reboot. Safe sync resync khi out mất; WD cấm nuốt cụm rỗng. Né TFT/War3. Task ngầm Hidden+CREATE_NO_WINDOW. Game=tắt nháy, cấm pause cron.
 §
-OMP/AGY: 25 profile OAuth, acc_01 fallback; lease 1800s; 429 xoay profile; Model gắn harness chính chủ.
+OMP/AGY: 25 acc OAuth; lease 1800s; 429 xoay profile. Coord eval: coordinator_eval.py >=85.
 §
 Đơn TT Shop: Mail báo mã 1 lần; bám sát qua API hãng (SPX/J&T/Ninja); bắt mốc về Hub Thanh Khê để lấy trực tiếp. Dashboard :1905 tab Đơn hàng (/api/orders).
 §
