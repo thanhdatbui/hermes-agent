@@ -22,6 +22,16 @@ If any identity or read-back gate is missing, report `BLOCKED` with the actual e
 ## Recovery sequence
 
 1. **Classify the failure.** Separate transient transport/ATX/session errors from identity or UI-state errors. `UI_DUMP_INVALID` during profile navigation is not proof of a safe target; treat it as a blocked mutation until the screen is captured and inspected.
+
+### User-confirmed target and no-repeat discipline
+
+When the user has already selected an option (for example, avatar option 1), bind that choice to the exact source asset and proceed without asking the same question again. Keep status messages short while a bounded live run is active; report only the state, evidence, blocker, and next action.
+
+### Exact-account post-upload gate
+
+Runner claims such as `exit=0`, `verified=True`, `FORCED_REPLACED_VERIFIED`, `Avatar=OK`, or `post_verified` from a batch report are mechanical evidence only. They do not prove that the correct account is visible or that the intended image is displayed. After any profile mutation, the verifier must independently confirm the exact machine/serial and target username/display name on a fresh profile screenshot. A screenshot of another account, SplashActivity, Launcher, a black frame, or an unconfirmed switcher is invalid evidence and must produce `UNVERIFIED`/`FINAL_BLOCKED`, even if the runner succeeded. Do not attach or present such an image as completion proof.
+
+See `references/avatar-exact-account-closeout-20261021.md` for the failure pattern and the required evidence fields.
 2. **Inspect O(1).** For machine `N`, run `python D:/Taadaa/tools/inspect_machine.py N`. Record serial, focus, screen state, battery, Wi-Fi and proxy. Do not broad-scan the farm.
 3. **Capture before cleanup or retry.** Acquire the device lock, capture the current screen, run WinRT OCR, and inspect the screenshot visually. If focus is `SplashActivity`, feed, a public profile, another account, or an unknown surface, do not tap through it.
 4. **Use ATX session capture as the primary UI XML route.** Construct `AdbClient(adb_path=ADB_BIN, serial=serial)` and call `capture_atx_session_ui(...)`. The persistent ATX session route can return `VERIFIED_XML` even when direct device-local `/dumpUI` returns 404. Do not silently downgrade to shell UiAutomator dumping on S7/Android 7/8.
