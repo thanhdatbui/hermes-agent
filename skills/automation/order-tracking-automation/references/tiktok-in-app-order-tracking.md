@@ -44,10 +44,11 @@ When mailbox polling yields no tracking code within the dispatch window, invoke 
 
 4. **Visual Evidence & OCR Extraction:**
    - Capture evidence screenshot to `D:/OneDrive/TaadaaData/kibe/orders/images/<order_id>_shipping.jpg` and `D:/Taadaa/orders/images/`.
-   - Run WinRT OCR (`run_winrt_ocr.py`) or ATX UI dump to extract:
+   - Run WinRT OCR Primary (`automation_core.ui_extract` / `ocr_boxes.ps1`) to extract:
      - Shipping status (e.g., "Đã giao cho đơn vị vận chuyển", "Đang vận chuyển").
      - Carrier name (`Shopee Xpress`, `J&T Express`, `Ninja Van`, `GHTK`, `Viettel Post`).
      - Tracking number (`SPXVN...`, `JNT...`).
+   - CẤM TUYỆT ĐỐI dump XML trực tiếp (`uiautomator dump`, `dumpWindowHierarchy`, port 7912) trên màn hình đơn hàng WebView theo Hard Gate `tools/ui_policy_check.py`.
 
 5. **Handoff & Cleanup:**
    - Update canonical records: `orders.json` and `QuanLyDonHang_TikTokShop.xlsx`.
