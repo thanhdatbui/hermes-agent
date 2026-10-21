@@ -21,11 +21,14 @@ During rolling TikTok rename operations (`tiktok-rolling-rename-watchdog`), two 
   - Surnames: `vuong` (Vương), `tong` (Tống), `dam` (Đàm), `ung` (Ứng).
 - **The Substring Drop**: For username `huehoafi23`, the parser did not recognize `hue`. Greedy fallback skipped to `hoa` (from `h-o-a-f-i`), extracting only `['hoa']`.
 
-### B. The `NICK_SFX` Forced Appending Trap
-- When only 1 syllable was parsed, `make_smart_name_from_username` had a 60% probability branch forcing a suffix from `NICK_SFX`:
-  `["Bông", "Miu", "Bơ", "Gạo", "Nhím", "Heo", "Cún", "Nấm", "Đậu", "Kem", "Sóc", "Còi", "Bé", "Mập", "Tít", "Thỏ", "Xù", "Su", "Dâu", "Mây", "Chanh", "Na", "Bi", "Sữa"]`
-- Forcing terms like *Mập, Còi, Heo, Sữa, Chanh, Đậu* on adult Vietnamese users looks fake, juvenile, and bot-like.
-- **Quy tắc chuẩn người dùng thật**: Real adult Vietnamese TikTok users use authentic 2-3 word full names (`Hoài Huệ`, `Bảo Tâm`, `Nguyễn Trâm`, `Thạch Khánh Trâm`). Suffixes should be eliminated or restricted to <= 5% for single-syllable handles with only gentle terms (*Bé, Miu, Bông*).
+### B. The `NICK_SFX` Forced Appending Trap & Diversity Overhaul (User Directive 2026-10-21)
+- When only 1 syllable was parsed, `make_smart_name_from_username` had a 60% probability branch forcing a suffix from a small, repetitive `NICK_SFX` pool, repeatedly generating awkward pairings like *Hoa Sữa, Huy Sữa, Mai Chanh*.
+- User correction & directive: *"Ý là gắn tên biệt danh cx đc nhưng tăng tính ngẫu nhiên lên"*. Nicknames are acceptable and authentic on TikTok, but they MUST have high entropy and varied styles instead of monotonous repetitions.
+- **4-Style High Entropy Distribution**:
+  1. *Real Name Combinations*: `" ".join(accented)` (e.g. `Huệ Hoa`, `Quách Trang`, `Võ Thị Trâm`, `Mai Kim Huy`).
+  2. *Prefix Titles* (`PREFIX_TITLES`): Friendly Vietnamese prefixes (`Bé`, `Em`, `Út`, `Anh`, `Chị`, `Tiểu`, `Cô`, `Nhà`) + given name (e.g. `Bé Trang`, `Út Trâm`, `Anh Tuấn`, `Cô Mai`, `Em Linh`).
+  3. *Expanded Cute Nicknames* (`NICK_SFX` - 31+ diverse items): `Bông`, `Miu`, `Dâu`, `Mây`, `Kem`, `Nấm`, `Thỏ`, `Xù`, `Su`, `Bơ`, `Nhím`, `Na`, `Bi`, `Tít`, `Sóc`, `Gạo`, `Hạt Dẻ`, `Kẹo`, `Bắp`, `Mochi`, `Xuka`, `Sushi`, `Mimi`, `Chipi`, `Pudding`, `Trà`, `Cam`, `Xoài`, `Ổi`... (e.g. `Trâm Miu`, `Trang Dâu`, `Huy Sóc`, `Tuấn Kẹo`, `Trâm Nấm`).
+  4. *Lifestyle & Vibe Tags* (`VIBE_SFX`): `Chill`, `Daily`, `Vlog`, `Nhỏ`, `Cute`, `Life`, `Story`, `Ngoan`, `Day`, `Xinh` (e.g. `Trang Chill`, `Tuấn Daily`, `Huy Life`, `Trâm Xinh`).
 
 ### C. Relation Checker Substring Flaw (`is_name_related_to_username`)
 - The checker tested `seg_norm in name_norm`. Because `"hoa"` is inside `"hoa sua"`, the check returned `True` for `Hoa Sữa` vs `huehoafi23`.

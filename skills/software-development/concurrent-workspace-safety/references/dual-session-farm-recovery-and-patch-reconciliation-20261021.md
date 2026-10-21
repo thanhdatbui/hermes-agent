@@ -63,3 +63,13 @@ Chạy trực tiếp 1 phiên canary test ngắn (ví dụ: 2 swipes) trên đú
 ## 4. Bài Học Điều Phối Chống Trùng Lặp Lãng Phí (Lessons Learned)
 1. **Phòng ngừa:** Khi nhận thông báo batch alert hoặc cronjob report, Coordinator cần chạy `session_search(query='<machine_id_or_script>', sort='newest')` để xác định xem đang có session nào khác xử lý máy đó không trước khi spawn tiến trình mới.
 2. **Nếu đã xảy ra:** Không vội vàng revert hay reset working tree làm hỏng checkpoint của session kia. Hãy bình tĩnh phân loại diff, hợp nhất các điểm bổ trợ tốt nhất của cả 2 bên và kiểm chứng bằng test/canary thực tế.
+
+---
+
+## 5. Sự Cố Sibling Session Chạy 'git checkout' Xóa Sạch Uncommitted Code (Incident 2026-10-21)
+- **Hiện tượng:** Trong khi Session 1 vừa sửa xong 8 files và test pass 354/354, Session 2 (chạy song song từ broadcast prompt của User) mở closeout gate hoặc kiểm tra git thấy có file uncommitted nên tự ý chạy:
+  `git checkout follow_runner/flows/verify_follow.py follow_runner/tests/test_verify_follow.py docs/farm-automation-cases.md ...`
+  làm bốc hơi toàn bộ công sức và code đã test của Session 1.
+- **Kỷ luật phòng ngự bắt buộc:**
+  1. **Immediate Commit Invariant (Khóa commit ngay khi test pass):** Ngay khi code và focused test hồi quy đã pass 100% (`exit 0`), Coordinator BẮT BUỘC tạo commit Git ngay lập tức (`git commit -m "..."`). Tuyệt đối không để code nằm lơ lửng ở dạng uncommitted qua nhiều turns hỏi đáp/canary; chỉ khi đã vào commit history thì code mới an toàn trước các lệnh `checkout` của session khác.
+  2. **Anti-Clobber Invariant:** CẤM TUYỆT ĐỐI mọi session chạy `git checkout -- <files>`, `git restore`, hay `git reset --hard` trên các file mình không trực tiếp tạo ra. Unrelated dirty files bắt buộc phải để nguyên hoặc cô lập qua git worktree riêng (`.worktrees/`).
