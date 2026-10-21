@@ -60,6 +60,8 @@ Trong quá trình chạy Closeout Gate cho các bản vá đăng nhập và qu�
 ### C. Triển khai Call Evidence trực tiếp vào Production Function
 - Thay vì test công thức toán học rời rạc, hãy gọi trực tiếp hàm production với monkeypatching tối thiểu:
   1. `social.tap_add_account(device_id)`: Monkeypatch `get_ui_xml` và `tap`, assert tọa độ thực tế được truyền vào hàm `tap`.
-  2. `social.fill_password_and_login(...)`: Giả lập `wait_for_edittext` timeout (trả về `[]`) để kích hoạt đường fallback duyệt XML.
+  2. `social.fill_password_and_login(...)`: Giả lập `wait_for_edittext` timeout (trả về `[]`) để kích hoạt đường fallback duyệt XML. Bổ sung trích xuất trường `"hint"` trong `list_edittext_nodes` và dùng `strip_accents((n.get("hint") or n.get("text") or "")).lower()` để nhận diện các hint tiếng Việt có dấu (`"Nhập mật khẩu"`).
   3. `social._is_profile_screen_xml(...)` & `social._profile_tab_node(...)`: Truyền trực tiếp các mẫu XML thực tế để kiểm tra ngưỡng lọc tọa độ và bài trừ overlay.
-- Kết quả thực tế: Chuyển sang gọi trực tiếp production function đã nâng điểm Sol Reviewer từ 72 lên 78/100 ngay trong lượt kế tiếp.
+  4. `social.wait_login_success(...)`: BẮT BUỘC mock `shell` để trả về package name TikTok (`"com.ss.android.ugc.trill"`), tránh việc hàm cố gọi ADB `dumpsys activity activities` gây treo/timeout trong môi trường test offline. Giả lập clock qua monkeypatch `time.time` và `time.sleep` để kiểm chứng cả 2 nhánh (immediate success khi có UI proof và timeout expiry 75s khi UI không xuất hiện success hint).
+  5. `upsert_tracking_account` re-read contract: Lưu ý rằng khi mật khẩu đích để trống/None, mã nguồn production bảo toàn mật khẩu cũ thay vì ném exception. Test phải phản ánh đúng hành vi này (`assert row == target_row`).
+- Kết quả thực tế: Chuyển sang gọi trực tiếp production function đã nâng điểm Sol Reviewer từ 72 lên 78/100 ở Strike 1 và mở rộng đầy đủ các nhánh biên ở Strike 2.

@@ -31,6 +31,10 @@ description: "TikTok login automation via ADB — inventory, login, 2FA, UI hand
     - Xác thực mật khẩu qua proxy 4G có độ trễ 3-8s: cấm phán quyết sai mật khẩu tức thì ở nhịp kế tiếp; bắt buộc cấp đệm chờ `password_submitted_rounds >= 3`.
     - Timeout `wait_login_success` nâng lên 75s bù trừ độ trễ dump của ATX-agent; bọc try/except an toàn ở bước đọc profile sau khi đã có home feed UI proof.
     - Xem chi tiết tại [`references/login-flow-feed-disc-misdetection-and-network-auth-buffer-20261021.md`](references/login-flow-feed-disc-misdetection-and-network-auth-buffer-20261021.md).
+  * **Va Chạm 2 Session Song Song Xử Lý 1 Máy & Kỷ Luật Viết Test Production (2026-10-21):**
+    - Khi 2 session cùng nhận alert (Batch Alert P0 vs Watchdog ca) và cùng vào sửa máy, xảy ra tranh chấp device lock và phân mảnh commit. Không được revert hoảng loạn; đối soát `git diff origin/main..HEAD -w` để hợp nhất các bản vá bổ trợ.
+    - Để vượt qua Closeout Gate (Sol Reviewer Strike 1-2): CẤM test mô phỏng công thức; bắt buộc test gọi trực tiếp hàm production (`tap_add_account`, `fill_password_and_login`, `upsert_tracking_account`, `wait_login_success`). Cung cấp file nhị phân thật `open(..., 'r+b')` có `fileno()` cho `os.fsync`, mock `shell` tránh ADB hang khi test `wait_login_success`, và dùng `strip_accents` cho hint tiếng Việt.
+    - Xem chi tiết tại [`references/dual-session-collision-and-production-test-contracts-20261021.md`](references/dual-session-collision-and-production-test-contracts-20261021.md).
   * **Kỷ Luật Điều Tra Root Cause Script Chống Báo Cáo Suông (User Correction 21/10/2026):**
     - Khi nhận cảnh báo farm fail từ Watchdog, CẤM Coordinator chỉ inspect hiện trường rồi phát thông báo suông cho User.
     - BẮT BUỘC lần theo `log.jsonl`, đối chiếu `fail_*.xml` và mở mã nguồn script để định vị chính xác bug, sửa trực tiếp và xác minh bằng chứng chạy thật.

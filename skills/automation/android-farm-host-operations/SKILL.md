@@ -6,6 +6,7 @@ description: "Use when farm devices drop, USB hangs, or entering BIOS."
 # Android Farm Host Operations
 
 References:
+- `references/pre-session-device-readiness-gate-and-receipt-lifecycle-20261021.md` — Kiến trúc Pre-Session Device Readiness Gate (56 tests) tự động fast probe O(1) cứu máy treo ADB trước ca chạy và cơ chế Auto-Archive dọn dẹp bẫy Stale Post Receipts > 24h giải phóng deadlock đăng bài (21/10/2026).
 - `references/xiaowei-netstat-regex-port5038-triage-20261019.md` — Phân tích lỗi regex netstat thiếu Foreign Address trong watchdog dọn cổng 5038 khiến tiến trình mồ côi không bị hạ và giam giữ 25 máy trên Kibe (19/10/2026).
 - `references/admin-vs-kibe-dual-xeon-disconnection-and-post-watchdog-triage-20261019.md` — Chẩn đoán nghịch lý Kibe vs Admin cùng Dual Xeon nhưng Admin rớt kết nối S7 nhiều hơn sau 2 phiên chạy: giới hạn của watchdog dọn port 5038, tích tụ tràn đệm EHCI X99 (8D26/8D2D), độ trễ ngắt DPC từ FFmpeg render ngầm và sụt áp cáp Box 4 do nhiệt (19/10/2026).
 - `references/m7-dat-5ghz-vs-aruba-and-dual-adb-port5038-triage.md` — Bóc tách hiện trường M7 ăn mạng Dat (5GHz Kênh 100 -50dBm từ router ngoài nối cùng subnet 192.168.110.x) vs kẹt kibe 1 (AP .253 Kênh 36/149/52), ngưỡng client Aruba (khuyến nghị 40 vs trần 64) và bẫy XiaoWei chiếm ADB port 5038 làm ẩn máy trên port 5037 (19/10/2026).
@@ -607,6 +608,22 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
   2. Script đồng bộ định kỳ đọc từ CSDL runtime làm nguồn chân lý và ghi đè lại file Excel.
   3. Cache hashtag pool quét các sheet cũ bị nhiễm chéo giữa các ngách.
 - **Giải pháp dứt điểm:** Bắt buộc đồng bộ đồng thời 3 tầng: CSDL video runtime `folders` -> Bảng tính Excel cả 2 cụm Kibe & Admin -> Cắm cờ khóa cứng `.manual_hashtag_locked` trong thư mục video. Hậu kiểm bằng lệnh sync 2 lần liên tiếp.
+
+## 29. Pre-Session Device Readiness Gate & Tự Động Hóa Vòng Đời Stale Receipts (21/10/2026)
+- **Bẫy Máy Treo ADB Kéo Dài 3 Tuần (Sự cố Máy 74):**
+  * Khi daemon `adbd` trên điện thoại rơi vào `CLOSE_WAIT` hoặc kẹt transport, các lệnh ADB trước đó bị block cứng. Runner `tiktok_runner.py` thiếu bước fast-probe trước ca chạy nên giao việc mù cho toàn bộ Row, khiến 5 nick kẹt suốt nhiều tuần.
+  * **Giải pháp chuẩn hóa (`D:/Taadaa/tools/pre_session_device_gate.py` - 56 tests passed):**
+    1. *Fast-Probe O(1):* Chạy `adb -s <serial> get-state` với timeout cứng 3.0s bọc cờ `CREATE_NO_WINDOW` chống nháy console desktop.
+    2. *Auto-Recovery phân tầng:* Nếu probe hỏng, kiểm tra `is_reboot_blackout()` (né cửa sổ reboot `05:10-05:35`, `11:10-11:45`, `17:10-17:35` $\rightarrow$ `recovery_deferred`). Ngoài blackout, tự động kích hoạt `recover_device()` từ `recover_stuck_s7.py` (Level 1 Soft $\rightarrow$ Level 3 USB hub reset) rồi re-probe.
+    3. *Lọc máy khỏe mạnh (`filter_healthy_machines`):* Tách các máy chết vật lý/tuột cáp (`recovery_failed`) ra khỏi batch, chỉ dispatch máy `ready`/`recovered` để không nghẽn các máy khỏe khác trong Row.
+    4. *Kill-Switch:* `AUTO_RECOVERY_ENABLED=0` vô hiệu hóa tức thời logic cứu hộ khi cần.
+- **Bẫy Idempotency Receipt Trap (Sự cố Máy 4 kẹt 16-20 ngày):**
+  * File receipt dở dang (`intent_pending` / `post_submission_state: UNKNOWN`) không có TTL. Khi `pending_video >= cursor`, state machine ép sang `VERIFY_POST`, bị rule `COMPAT-POST-VERIFY-004` chặn ở `MANUAL_REVIEW` nhưng không dọn file, gây deadlock qua 40 ca chạy.
+  * **Giải pháp chuẩn hóa (`D:/Taadaa/tools/reconcile_stale_post_receipts.py`):**
+    1. *Điều kiện kép an toàn:* Chỉ dọn các file có `mtime >= 24.0h` VÀ status $\in$ {`intent_pending`, `verification_pending`, `retry_intent_pending`} hoặc `submission_state == "UNKNOWN"`. Di chuyển vào `archived_stale/`, giữ nguyên file $< 24$h.
+    2. *Lock-safety non-blocking retry:* Thử 3 lần x 500ms khi gặp `PermissionError` (chống race condition khi runner đang ghi).
+    3. *Silent Watchdog Cron (`hourly-stale-post-receipts-reconcile`):* Chạy mỗi giờ (phút 20), stdout rỗng khi không có gì để dọn (im lặng 100%), chỉ báo cáo khi có receipts được giải phóng.
+
 
 
 
