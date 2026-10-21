@@ -56,3 +56,43 @@ Khi xây dựng hệ thống Gate cơ học 3 bước (Gate A: Evidence -> Gate 
   - 100% dùng ký tự Unicode chuẩn: `→`, `←`, `⇒`, `⇔`.
   - Hoặc dùng dấu text thuần: `->`, `<-`, `=>`.
   - Tuyệt đối không bọc công thức luồng trong thẻ toán học `$$` hoặc `$`.
+
+---
+
+## 4. Quét RAM Tiến Trình Cha & Khắc Phục Bằng Windows Process DACL
+* **Cơ chế tấn công:**
+  Dù đã dùng `SetEnvironmentVariableW(..., None)` xóa sạch biến môi trường khỏi PEB, chuỗi secret vẫn có thể còn nằm trong vùng nhớ heap/cache của Python runtime ở tiến trình cha (Gate).
+  Tiến trình con (worker script được gọi trong cmd claim / acceptance test) chạy cùng Windows User có thể dùng `OpenProcess(0x0410, False, parent_pid)` (với cờ `PROCESS_QUERY_INFORMATION | PROCESS_VM_READ`) và dùng `ReadProcessMemory` quét toàn bộ trang nhớ heap của cha để bóc tách secret.
+* **Biện pháp khắc phục qua Process DACL:**
+  Ngay khi tiến trình Gate khởi động, áp dụng DACL hạn chế quyền truy cập lên chính process handle:
+  ```python
+  import win32api, win32security
+  h_proc = win32api.GetCurrentProcess()
+  token = win32security.OpenProcessToken(h_proc, win32security.TOKEN_QUERY)
+  user_sid = win32security.GetTokenInformation(token, win32security.TokenUser)[0]
+
+  new_dacl = win32security.ACL()
+  # Chặn đọc/ghi bộ nhớ và chặn thay đổi DACL từ tiến trình cùng user:
+  deny_mask = 0x0010 | 0x0020 | 0x0008 | 0x00040000 | 0x00080000
+  new_dacl.AddAccessDeniedAce(win32security.ACL_REVISION, deny_mask, user_sid)
+  allow_mask = 0x13FFEF # Loại bỏ hoàn toàn WRITE_DAC và WRITE_OWNER
+  new_dacl.AddAccessAllowedAce(win32security.ACL_REVISION, allow_mask, user_sid)
+
+  win32security.SetSecurityInfo(
+      h_proc, win32security.SE_KERNEL_OBJECT, win32security.DACL_SECURITY_INFORMATION,
+      None, None, new_dacl, None
+  )
+  ```
+  Khi đó, mọi lệnh `OpenProcess(PROCESS_VM_READ)` từ con đều bị kernel Windows trả về `ERROR_ACCESS_DENIED (5)`.
+
+---
+
+## 5. Tấn Công Xóa Git Ref & Phân Định Ranh Giới Tin Cậy (Trust Boundary Scope)
+* **Kỹ thuật tấn công xóa ref:**
+  Nếu anchor duy nhất lưu ở `refs/gates/<task_id>/a`, worker trong repo có thể chạy `git update-ref -d refs/gates/<task_id>/a` kết hợp xóa file receipts/ledger để reset chuỗi.
+* **Phòng thủ sâu (Defense in Depth):**
+  Lưu bản sao ledger tại thư mục an toàn ngoài working tree của repository (`%TEMP%/.hermes_gates_coord/` hoặc `COORDINATOR_STATE_DIR`). Khi đọc ledger, gate đối soát song song cả local ledger và coordinator anchor ledger.
+* **Đặc tả ranh giới tin cậy (Security Model Invariant):**
+  - **Bản chất Gate:** Là cơ chế bảo đảm kỷ luật kỹ thuật (mechanical development guardrails) chống worker sửa sai scope, commit bừa bãi, skip test, hoặc vô tình/cố ý tamper file receipts.
+  - **Ranh giới OS Sandbox:** Hai tiến trình chạy dưới cùng một Windows User Account không bao giờ tạo thành một hypervisor sandbox tuyệt đối. Việc cách ly hoàn toàn mã độc thù địch (hostile adversary isolation) bắt buộc phải do môi trường host đảm nhiệm (Job Object Low Integrity, AppContainer, hoặc User riêng).
+  - Phải ghi rõ Threat Model trong docstring của Gate để tránh rơi vào vòng lặp review tranh cãi vô hạn về quyền hạn cùng user.
