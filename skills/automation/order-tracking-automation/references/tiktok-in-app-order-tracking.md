@@ -37,10 +37,13 @@ When mailbox polling yields no tracking code within the dispatch window, invoke 
    - If TikTok is on a different account than the ordering account, use the canonical account switcher flow to switch to the target handle (e.g., Row 4 / `@augustusdant7`).
    - Do NOT attempt to place orders or read orders under the wrong logged-in identity.
 
-3. **Navigate to Order Details:**
+3. **Navigate to Order Details & Bypass System Traps:**
+   - **Keyguard / Scrim Trap:** Dismiss lockscreen via `wm dismiss-keyguard` and `input keyevent 82`. Do not use blind upward swipes for unlocking if the app might already be running, as that scrolls the view down.
+   - **Foreground Focus Check:** Do not rely on `pidof <package>`. Verify `mCurrentFocus` in `dumpsys window windows`. If not focused, bring to front via `am start -n <package>/<splash_activity>`.
+   - **Profile Scroll Recovery:** If on profile but the header/shortcuts are scrolled off, swipe down `(540, 400) -> (540, 1600)` to bring "Đơn hàng của bạn" back into view.
    - Go to Profile -> Menu / Order Center -> "Đơn hàng của tôi" (My Orders) or invoke the TikTok Shop order deeplink.
    - Locate the target order ID (e.g., `DH-20261020-001`).
-   - Open order details.
+   - Tap tracking banner / product item to open full delivery details.
 
 4. **Visual Evidence & OCR Extraction:**
    - Capture evidence screenshot to `D:/OneDrive/TaadaaData/kibe/orders/images/<order_id>_shipping.jpg` and `D:/Taadaa/orders/images/`.

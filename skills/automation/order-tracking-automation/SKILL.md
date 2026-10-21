@@ -44,6 +44,17 @@ Do not rely solely on mailbox polling as tracking code discovery. TikTok Shop an
      * Tapping username text (`@username`) merely copies to clipboard. To open switcher, tap display name or dropdown area `(w/2, h * 0.08)`, or long-press Profile tab at bottom right.
      * When the switcher bottom sheet opens, detect target handle directly (`_find_handle_center`) and tap it.
      * On the target profile, tap "Đơn hàng của bạn" or "Cửa hàng" tab (`w ≈ 320, y ≈ 1885`) to navigate to TikTok Shop orders.
+   - **Keyguard / Scrim Silent Touch Absorption (`Bouncer` / `ContainerKeyguardScrim`):**
+     * On Samsung/Android farm devices, `dumpsys window windows` can reveal `Window{... Bouncer}` or `Window{... ContainerKeyguardScrim}`. Even though screen capture displays the underlying app, touch events (`input tap`) are silently absorbed by the lockscreen scrim (ADB exits 0 with zero effect).
+     * Fix: Always issue `wm dismiss-keyguard` and `input keyevent 82` before UI interaction. Avoid using blind `input swipe` to unlock when the app might already be running, as the swipe will scroll the underlying page down.
+   - **Foreground Focus vs Background Process (`pidof` Trap):**
+     * Never use `pidof <package>` to decide whether an app is visible. When waking from sleep or background cron, the process may exist in memory while the foreground window (`mCurrentFocus`) is Samsung Launcher (`com.sec.android.app.launcher`).
+     * Fix: Check `dumpsys window windows | grep mCurrentFocus` or proactively issue `am start -n <package>/<splash_activity>` whenever the package is not the active focus.
+   - **Scrolled Profile Navigation Recovery:**
+     * When a profile page is scrolled down, header handles (`@username`) and shortcut buttons ("Đơn hàng của bạn") scroll off-screen.
+     * Fix: Detect profile presence via metrics (`follower`, `thích`, `bài đăng`), and if header shortcuts are missing, swipe down (`swipe 540 400 540 1600 300`) to scroll back up and reveal the shortcuts.
+   - **Order List vs Detail Screen Tracking Extraction:**
+     * The order list card shows high-level status ("Đang trung chuyển"), item, and price. Tapping the tracking timeline banner or the product item navigates into the detailed Delivery Status screen to uncover the full carrier name and tracking number.
    - **Physical vs ADB Triage:** When a farm device goes missing during or before in-app order inspection, inspect `Get-PnpDevice` (`Present: True` vs `False`). If Windows PnP reports `Present: False` AND Wi-Fi drops concurrently at the same timestamp, classify as hardware power loss or physical cable disconnect rather than a soft ADB transport hang.
 4. **Prefer an already-authenticated Outlook web session.** Resolve the GPM profile by exact mailbox plus machine/proxy identity when duplicates exist. Never select an arbitrary duplicate when the account/device binding matters.
 4. **Verify token API in canonical inventory; keep Graph optional.** When checking if an account has an API token or changed password, do not speculate or give rambling explanations: inspect `gmail_clean_v2.xlsx` directly (Sheet `Gmail Accounts`). Col 9 (`token`) and Col 10 (`client_id`) show whether an OAuth token was provisioned (if `None`, definitively report NO token API and fall back directly to GPM web session). Compare Col 3 (`pass mail`) with `taikhoan_dat_v2_updated .xlsx` Col 7 (`PASS MAIL`) to verify password consistency. Never print credentials, tokens, or complete mail bodies.
