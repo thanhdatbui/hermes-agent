@@ -168,10 +168,19 @@
   * Runner tưởng đang ở `PROFILE` nên không bấm Back để thoát, mà tiếp tục tìm nút để tap ➔ Kẹt 5 lần liên tiếp ở `PROFILE` (`Abort("ket o trang thai PROFILE 5 lan lien tiep")`).
   * **Quy tắc:** Bắt buộc kiểm tra nhận diện `BIO_EDIT` (dấu hiệu `@ nhac den`, `tieu su` / `tieu sd` kèm hướng dẫn `chinh sta tieu`) TRƯỚC điều kiện `PROFILE`.
 
-- **Khắc Phục OCR Rớt Ký Tự `@` Trên Dòng Username (Sự cố M15, M43):**
-  * WinRT OCR trên Galaxy S7 đôi khi quét rớt ký tự `@` (thành `rtisdi an ar1` hoặc `mthinh2415`).
-  * Nếu `nickname_on_profile()` chỉ kiểm tra cứng `t.startswith("@")` sẽ trả về `user = None`, dẫn đến runner tưởng acc lạ, mở Switcher 3 lần rồi văng lỗi `acc active van la @None`.
-  * **Khắc phục:** Mở rộng điều kiện dòng username: `is_user_line = (t.startswith("@") or is_target_user(t)) and b[1] < 750`.
+- **Bẫy Tử Huyệt `is_target_user` Trong `nickname_on_profile` Làm Báo Lỗi Oan Rename (Sự cố 21/10/2026):**
+  * **Hiện tượng:** Nick đã đổi tên thành công trên TikTok (ví dụ M50 đổi thành `'Thạch Tâm'`, M43 đổi thành `'Kim Thịnh'`, M18 đổi thành `'Từ Ngô'`), nhưng runner kết luận `FAIL: da Luu nhung Ten tren Ho so (OCR) = None, khong phai...`.
+  * **Căn nguyên:** Điều kiện cũ cho phép `is_target_user(t)` tham gia nhận diện dòng username: `is_user_line = (t.startswith("@") or is_target_user(t)) and b[1] < 750`. Khi tên hiển thị (như `'Thach Täm'`) có độ tương đồng fuzzy cao (~0.78) với username (`'thachtam02'`), hàm ngộ nhận dòng tên là dòng username, rồi tìm ngược lên trên để trích xuất nickname. Vì phía trên không có text, nó trả về `name = None` ➔ đối chiếu `None` với tên mới bị sai và văng lỗi oan!
+  * **Quy tắc bất biến:** Dòng username BẮT BUỘC CHỈ nhận diện bằng tiền tố `@` (`is_user_line = t.startswith("@") and b[1] < 750`). Tuyệt đối CẤM dùng `is_target_user(t)` để đoán dòng username.
+
+- **Bẫy Cooldown 7 Ngày Trong `NAME_EDIT` (Sự cố M13 21/10/2026):**
+  * **Hiện tượng:** Máy 13 bị kẹt lặp lại ở màn `NAME_EDIT` 5 lần liên tiếp và văng `exit_2`.
+  * **Căn nguyên:** TikTok giới hạn đổi biệt danh 1 lần mỗi 7 ngày. Khi bị cooldown, TikTok hiển thị thông báo dưới input: *"Bạn chỉ có thể thay đổi biệt danh 7 ngày một lần. Bạn có thể tiếp tục thay đổi biệt danh sau ngày..."*. Runner không nhận diện thông báo này nên tiếp tục bấm Lưu vô vọng.
+  * **Khắc phục:** Quét regex nhận diện chuỗi báo lỗi 7 ngày: `any(k in norm(" ".join(lines)) for k in ("tiep tuc thay doi", "tiep tvc thay ddi", "sau ngay"))`. Khi phát hiện, tap nút Hủy (`XY_NAME_CANCEL`), gán `ctx["rename_result"] = "COOLDOWN_7D"` và Abort ngay lập tức.
+
+- **Kỷ Luật Dữ Liệu: CẤM Tự Động Ghi Bio Để Mở Khóa Đổi Tên:**
+  * Trên tài khoản chưa có Bio, TikTok chỉ hiển thị `+ Thêm tiểu sử`.
+  * CẤM TUYỆT ĐỐI tự ý sinh câu bio ngẫu nhiên và bấm Lưu để ép TikTok hiện nút `Sửa hồ sơ` trong một tác vụ đổi tên thuần túy (`--name` không có `--bio`). Tự ý sửa bio vi phạm ranh giới dữ liệu tài khoản và bị Sol Auditor đánh trượt Gate. Khi gặp tình huống này, runner phải back out an toàn hoặc yêu cầu cấp cờ bio tường minh.
 
 - **Xóa Bỏ Heuristic Nhận Vơ `has_vietnamese` Trong `is_target()` (Sự cố M52):**
   * Điều kiện cũ `has_vietnamese and not re.search(r"\d") -> return True` khiến chip gợi ý "Bạn có tin vui?" (OCR đọc là `"Ban cé"`) bị coi là tên tiếng Việt chuẩn và báo `ALREADY` ảo.

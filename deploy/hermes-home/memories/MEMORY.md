@@ -16,7 +16,7 @@ Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; Reaper SSH.
 §
 M7: bắt 'Dat_2.4G' né +40 5G S7. Aruba VC tạo SSID: vlan 1 + access-rule permit (né L3_NO_IP); wrap ADB qua with_device_lock.py né guard screencap.
 §
-Canary: target-bound; WinRT OCR->ATX; done_gate verify. Claude quota: TTL 180s, fallback history <=2h, cấm cache probe fail.
+UI: WinRT OCR Primary (automation_core.ui_extract); cấm dump XML direct (ui_policy_check gác gate); webview cấm fallback XML. Canary target-bound; Claude quota TTL 180s.
 §
 Ava: Trích clip gốc; Vision LLM lọc ava rác. Gate 6: cấm trần thuật thiếu MEDIA; SHA256 thật; cấm gửi mù. Dọn .thumbnails+Camera. F_src!=F_vid khóa 2 folder.
 §
