@@ -4,7 +4,7 @@ Follow: dò +2 (max 40); lùi 4 sàn 15. Streak chỉ tăng khi fl=0; fl>=1 ch�
 §
 Hotmail: CẤM mail cá nhân; @fviainboxes.com đọc OTP. Pin >=1000 view.
 §
-Rename: tap bio (473,703); --clear-bio; bút chì header (72,148), cấm ma (870,558); splash 4G nới 8 step (~35s) né exit_2; core switcher; văng->login_v1; tên 1 từ bỏ.
+Rename: tap bio (473,703); --clear-bio; bút chì (72,148); splash 4G 8 step (~35s); core switcher; văng->login_v1; tên 1 từ bỏ.
 §
 Sol: 100% On-Demand ('gọi advisor','hỏi sol'...), cấm auto-append ngắt lời; advisor_tool 140s, briefing 4k ký tự; Sol Reviewer độc lập closeout (diff 40KB).
 §
@@ -18,11 +18,11 @@ M7: bắt 'Dat_2.4G' né +40 5G S7. Aruba VC tạo SSID: vlan 1 + access-rule pe
 §
 Canary: target-bound; WinRT OCR->ATX; done_gate verify. Claude quota: TTL 180s, fallback history <=2h, cấm cache probe fail.
 §
-Ava: Trích clip gốc; Vision LLM lọc ava rác. Gate 6: cấm trần thuật UI thiếu MEDIA; SHA256 thật; cấm gửi mù. Dọn .thumbnails+Camera. F_src!=F_vid khóa kép 2 folder.
+Ava: Trích clip gốc; Vision LLM lọc ava rác. Gate 6: cấm trần thuật thiếu MEDIA; SHA256 thật; cấm gửi mù. Dọn .thumbnails+Camera. F_src!=F_vid khóa 2 folder.
 §
 Reboot 3 ca (05:20, 11:20, 17:20): lookback 60m. 2FA né đệm reboot. Safe sync resync khi out mất; WD cấm nuốt cụm rỗng. Né TFT/War3. Task ngầm Hidden+CREATE_NO_WINDOW. Game=tắt nháy, cấm pause cron.
 §
-OMP/AGY: 21 profile (acc_02-22) 100% Native OAuth (bỏ :20129); acc_01 chỉ fallback host; lease 1800s; 429 bóp theo acc Google -> cấm đổi runner cùng profile mà phải xoay profile khác.
+OMP/AGY: 21 profile Native OAuth, acc_01 host fallback; lease 1800s; 429 theo acc Google->xoay profile; Model gắn harness chính chủ (Gemini->AGY, Claude->Claude Code, OMP đa model); Benchmark cùng direct/thinking.
 §
 Xiaowei: auto-close 20m qua sampler 1Hz PID.
 §

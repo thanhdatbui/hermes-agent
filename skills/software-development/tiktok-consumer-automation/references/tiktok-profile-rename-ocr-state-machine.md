@@ -112,7 +112,7 @@
 - **Xử lý trễ Splash Screen trên Samsung S7 qua mạng 4G Proxy (Cạm bẫy abort sớm UNKNOWN):**
   * App TikTok khởi động cold-boot (`am force-stop` rồi launcher monkey) qua proxy 4G mất từ 25–30s để vượt qua màn hình Splash (logo TikTok / màn đen).
   * Nếu cài cứng `MAX_SAME_STATE = 4`, script kiểm tra mỗi 5–6s sẽ chạm mốc 5 lần liên tiếp ở step 5 (giây 25) và văng `Abort("ket o trang thai UNKNOWN 5 lan lien tiep")`, ngay trước khi app kịp vào Feed ở giây thứ 29.
-  * **Giải pháp chuẩn hóa:** Bổ sung bộ đếm đệm `unknown_splash_count`: khi `state == "UNKNOWN"` và `len(lines) <= 3 and not errors_in(lines)`, cho phép splash tải tối đa 8 step (~35–40s) bằng cách reset `same = 1` trong thời gian splash, tránh abort oan khi app chỉ đang load chậm. Tuyệt đối không bấm phím `Back` trong thời gian này.
+  * **Giải pháp chuẩn hóa:** Bổ sung bộ đếm đệm `unknown_splash_count`: khi `state == "UNKNOWN"` và `len(lines) <= 3 and not errors_in(lines)`, cho phép splash tải tối đa 8 step (~35–40s) bằng cách reset `same = 1` trong thời gian splash, tránh abort oan khi app chỉ đang load chậm qua proxy. Tuyệt đối không bấm phím `Back` trong thời gian này.
 - **Fail-Safe chống đơ ADB Transport:**
   * Lệnh gọi ADB bắt buộc có `timeout=15` bọc `try...except Exception: return ""` để khi 1 máy bị đơ kết nối USB không làm treo toàn bộ batch.
   * Vòng lặp `as_completed` bọc `try...except` cho từng future (`fut.result()`).
