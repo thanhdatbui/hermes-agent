@@ -46,6 +46,7 @@ If any identity or read-back gate is missing, report `BLOCKED` with the actual e
 - Never change account/workbook/queue state to `DONE` before real-device read-back.
 - Do not write a skill entry describing an unvalidated worker patch as a reliable fix.
 - S7 Profile Screen Edit Entrypoint: Never tap imaginary coordinates (e.g. `(870, 558)`) or abort when text button 'Sửa hồ sơ' is absent in OCR; on Samsung S7 (1080x1920) newer TikTok UI, the canonical entrypoint to enter `EDIT_PROFILE` is the toolbar pencil icon at `(72, 148)` (x: 50–90, y: 130–170).
+- Cold-boot Splash Tolerance: Never trip `MAX_SAME_STATE` aborts on `SplashActivity` / minimal text (`len(lines) <= 3`) during app launch; 4G proxies take 25–35s to load. Expand splash tolerance to 8 steps (~35–40s) and avoid pressing `BACK` during splash.
 
 ## Avatar-specific semantic gate
 
@@ -58,3 +59,4 @@ Verify profile fields independently: a Bio can be confirmed while the Avatar is 
 See `references/live-profile-mutation-atx-recovery-20261020.md` for the validated ATX-vs-direct-`/dumpUI` observation, evidence sequence, and exact failed-live-run signature from a real machine.
 See `references/avatar-source-semantic-verification-20261020.md` for the avatar-specific source-asset gate and the false-success pattern where the runner uploaded a canopy image while the proposal described a cat.
 See `references/tiktok-s7-profile-edit-pencil-coordinates-20261020.md` for the Samsung S7 Profile toolbar pencil icon coordinate invariant `(72, 148)` and root-cause analysis of the 5-step PROFILE loop abort.
+See `references/cold-boot-splash-loading-tolerance-20261021.md` for the 4G proxy cold-boot splash loading tolerance invariant and prevention of premature UNKNOWN exit_2 aborts.
