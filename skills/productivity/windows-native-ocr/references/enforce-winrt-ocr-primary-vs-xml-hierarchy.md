@@ -9,7 +9,7 @@ Khi tự động hóa các tác vụ đọc thông tin trên Android Phone Farm 
   3. Trong khi đó, Host PC chạy Windows 10 đã có sẵn **WinRT OCR (`Windows.Media.Ocr`)**, xử lý trên CPU/GPU máy tính cực nhanh (<0.3s), trích xuất 100% tiếng Việt có dấu chuẩn xác từ ảnh chụp màn hình (`screencap`), giải phóng hoàn toàn tải cho điện thoại.
 
 ## Quy Tắc Bắt Buộc (INVARIANT UI-OCR-1)
-Từ nay về sau, mọi script automation bóc tách dữ liệu UI trên Farm phải tuân thủ nghiêm ngặt 4 tầng cưỡng chế:
+Từ nay về sau, mọi script automation bóc tách dữ liệu UI trên Farm phải tuân thủ nghiêm ngặt các tầng cưỡng chế:
 
 ### 1. Cổng Duy Nhất: `automation_core.ui_extract.extract_ui`
 Mọi script đọc/bóc tách UI điện thoại BẮT BUỘC gọi qua `automation_core.ui_extract.extract_ui(serial, query, mode=...)`.
@@ -38,6 +38,11 @@ Thay vì OCR không thấy là vội vã nhảy sang dump XML, `ui_extract` áp 
     * `changed_files_from_git()` chỉ lấy file staged (`git diff --cached`) hoặc file modified trong task, KHÔNG quét lan sang file dirty cũ của repo.
 - **Done Gate `tools/done_gate.py`:** Tự động gọi `ui_policy_check.py` với tham số `--files` đối soát trước khi cho phép báo DONE. Bất kỳ script nào vi phạm sẽ bị chặn đứng tại gate `[GATE-FAIL]`.
 - **Kỷ Luật Cơ Giới Hóa Thay Vì Memory:** Mọi quy tắc code bắt buộc phải cưỡng chế bằng code (Hard Gate / Linter / Gate check), CẤM nhồi nhét quy tắc code vào persistent memory gây nghẽn context và spam memory.
+
+### 5. Cạm Bẫy Màn Hình Đen Khi Thiết Bị Ngủ (Sleep/Dozing Blackout vs Device Disconnect Trap)
+Khi chụp ảnh màn hình bằng ADB screencap trên các máy farm (S7) đang ở trạng thái nghỉ (`mWakefulness=Dozing` hoặc `Asleep`), framebuffer của Android trả về ảnh đen hoàn toàn (`extrema ((0, 0), (0, 0), (0, 0))`), dẫn tới WinRT OCR trả về 0 boxes.
+- **CẤM:** Không được phán đoán vội vã là máy bị rớt mạng, rút cáp USB hay hỏng hóc phần cứng.
+- **BẮT BUỘC:** Kiểm tra `dumpsys power | grep mWakefulness=`. Nếu Dozing/Asleep, máy vẫn kết nối bình thường, chỉ cần gọi lệnh đánh thức (`KEYCODE_WAKEUP` + `82`) dưới `operator_device_lock` trước khi screencap.
 
 ## Mẫu Triển Khai Chuẩn (Canonical Usage)
 
