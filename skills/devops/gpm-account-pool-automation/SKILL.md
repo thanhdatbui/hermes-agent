@@ -64,3 +64,4 @@ version: 1.3.0
 - GPM Gmail Login Shifts Watchdog Multi-Shift Triage & Burst Execution: xem [`references/gpm-gmail-login-shifts-watchdog-triage-and-burst-execution.md`](references/gpm-gmail-login-shifts-watchdog-triage-and-burst-execution.md).
 - Thời gian chạy ca đăng nhập GPM, quy tắc máy bận & đối soát lỗi nghiệp vụ: xem [`references/gpm-login-shifts-timing-and-triage-guide.md`](references/gpm-login-shifts-timing-and-triage-guide.md).
 - Cạm bẫy OAuth silent redirect & nhận diện đăng nhập ảo trên Microsoft Hotmail (2026-10-21): xem [`references/gpm-hotmail-oauth-silent-redirect-and-unauth-landing-trap-20261021.md`](references/gpm-hotmail-oauth-silent-redirect-and-unauth-landing-trap-20261021.md).
+- Quy trình giải quyết link kích hoạt ngắn hạn (5-10 phút) & lọc Gmail sống khỏe trong GPM pool: xem [`references/gpm-instant-claim-short-ttl-activation-flow.md`](references/gpm-instant-claim-short-ttl-activation-flow.md).
