@@ -4,7 +4,7 @@ Follow: dò +2 (max 40); lùi 4 sàn 15. Streak chỉ tăng khi fl=0; fl>=1 gi�
 §
 Hotmail: CẤM mail cá nhân; @fviainboxes.com đọc OTP. Pin >=1000 view.
 §
-Rename: bút chì (72,148) fallback; splash 4G 8 step (~35s); re-queue 15m; BIO_EDIT trước PROFILE; tên Việt có dấu/1 từ; core switcher.
+Rename: bút chì (72,148) fallback né loop exit_2 (cấm tap chip '+ Thêm tiểu sử'); 7d cd là policy; BIO_EDIT trước PROFILE; tên Việt có dấu/1 từ; core switcher; Smart name đa dạng (Bé/Út, 31 sfx, vibe).
 §
 Sol: 100% On-Demand, cấm auto-append; advisor_tool 55s/consult 140s; briefing 4k ký tự; Sol Reviewer độc lập closeout (diff 40KB).
 §
@@ -12,7 +12,7 @@ Stale Up: xóa draft. Revert: TikWM. Cào: max 60. Cron TB: device_lock+rolling<
 §
 Closeout: Grace 80-84; Sol 80% diff/10% log; Claude 85%->Agy; Strike 3 cấm clarify, Reviewer tự sửa. Night Chain: P1 Gmail, P2 2FA; cron local; state lock.
 §
-Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; Reaper SSH. Pre-push: 1 commit khớp scope_hash. Cron: no_agent.
+Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; Reaper SSH. Pre-push: 1 commit khớp scope_hash.
 §
 M7: bắt 'Dat_2.4G' né +40 5G S7. Aruba VC tạo SSID: vlan 1 + access-rule permit (né L3_NO_IP); wrap ADB qua with_device_lock.py né guard screencap.
 §

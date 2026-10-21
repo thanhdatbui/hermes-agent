@@ -46,7 +46,14 @@ while simultaneously reporting `Follow chéo (3 lượt)` and `Nhả follow: M59
 - `used > 0`: accepted follows are real; report the accepted count and the terminal rejection separately. Do not increment `fail_streak`; apply only the short cooldown defined by the state machine; do not trip the IP breaker from this event alone.
 - `used == 0`: only the zero-follow path may advance `fail_streak`; persistent-jail classification requires the configured repeated zero-follow threshold, not one `FOLLOW_FAILED` status.
 - Never classify from `FOLLOW_FAILED` alone. Inspect `follow_result.json` and the matching `log.jsonl` event, including `followed`, `followed_count`, `failed`, `follow_failed`, `reason`, `fail_streak`, and cooldown fields.
-- Prevent contradictory output such as `Follow chéo (N lượt)` together with `Thành công (0 máy)` unless the report explicitly names the tail-drop machine and accepted count. The accepted machine should appear in a dedicated tail-drop/ceiling subsection, or in success-with-tail-drop if that is the report vocabulary.
+- Prevent contradictory output such as `Follow chéo (N lượt)` together with `Thành công (0 máy)`:
+  Trong `feed_session_watchdog.py`, khi `category == "released"`, BẮT BUỘC kiểm tra `if len(flist) > 0: fl_success.append(m)`. Máy ăn nhả đuôi vẫn phải có mặt trong `fl_success` để ghi nhận số lượt follow thành công vào nhóm tương ứng (Hồi phục 1/2, Cấp Khỏe), đồng thời vẫn xuất hiện ở `fl_released` kèm số lượt `(M59: 3 lượt)`.
+  Mẫu số tổng máy chạy BẮT BUỘC dùng tập hợp hợp: `total_fl_candidates = len(set(fl_success) | set(fl_released))` để tỷ lệ % không bị nhân đôi.
+
+## Concurrent Multi-Session Workspace Hazard (Anti-Blind Checkout)
+- Khi user gửi lệnh đồng loạt trên nhiều session/tab chat khác nhau, các agent chạy ngầm (đặc biệt là model worker như Luna) có xu hướng quét thấy file dirty thì chạy `git checkout -- <files>` bừa bãi để dọn dẹp, gây xóa mất mã nguồn vừa vá.
+- **Quy tắc bảo vệ mã nguồn:** Ngay khi patch của Worker hoặc Coordinator chạy qua focused tests (`pass 100%`) và xác nhận diff chuẩn O(1), BẮT BUỘC tạo commit git cục bộ ngay (`git commit -m "..."`).
+- TUYỆT ĐỐI KHÔNG để uncommitted changes treo lơ lửng qua nhiều lượt hội thoại khi đang có nhiều session cùng trỏ vào một workspace vật lý.
 
 ## Review procedure
 1. Trace every `set_follow_failed()` caller and classify its evidence contract.
