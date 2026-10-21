@@ -560,6 +560,19 @@ In print mode (`-p`), Claude CLI will silently refuse file writes or edits witho
   claude --dangerously-skip-permissions -p "Sửa file X..."
   ```
 
+### Claude Code CLI on Windows: Batch File Wrapper (`claude.cmd`) Pipe `|` Shell Trap
+
+- **Symptom**: Invoking `claude -p "<prompt>"` or calling `dispatch_worker.py` on Windows fails instantly with exit code 255. The console shows:
+  `'<word>' is not recognized as an internal or external command, operable program or batch file.`
+  (e.g., `'chinh' is not recognized as an internal or external command`).
+  `dispatch_worker.py` classifies this as an `ENV error` (`is not recognized as an internal` matches `ENV_MARKERS`) and aborts immediately without attempting retry or Antigravity fallback!
+- **Root Cause**:
+  On Windows, `shutil.which("claude")` frequently resolves to `claude.cmd` (npm/batch wrapper).
+  When `subprocess.run([claude_cmd, "-p", prompt, ...])` runs, Windows invokes `cmd.exe`. If the prompt contains unescaped vertical pipes `|` (e.g. regex patterns like `r"(sua|chinh sua|edit)"`), `cmd.exe` interprets `|` as a shell command pipe! It truncates the argument and executes the word following the pipe (e.g. `chinh sua`) as a shell command.
+- **Fix**:
+  1. **Prompt Sanitization**: In dispatch prompts and contracts, NEVER include raw `|` characters in shell arguments. Use descriptive text (e.g. "matching either A or B") or avoid bare regex pipes in the CLI arguments.
+  2. **Native Executable Resolution**: In runner scripts, resolve native `claude.exe` (e.g. from WinGet directory) before falling back to `claude.cmd`, or pipe large/regex-laden prompts via stdin (`claude -p -`) to completely bypass `cmd.exe` command-line tokenization.
+
 ### Claude Code CLI: Backgrounding Subprocess Trap (`run_in_background=True` & Premature Exit)
 
 When delegating long-running CLI or shell commands (e.g. farm runners, PowerShell batch scripts, compilation, test suites) via `claude -p`, if the prompt asks to "stream output" or leaves execution mode unspecified, Claude Code's model may invoke its `Bash` tool with `run_in_background: true`.

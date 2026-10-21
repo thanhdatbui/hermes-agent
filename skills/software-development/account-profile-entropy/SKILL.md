@@ -129,6 +129,17 @@ When automating account creation on phone farms (Samsung S7 / Android):
 
 ### 8. TikTok Display Name & Foreign Email Adaptation (`make_tiktok_name()`)
 
+- **Ping-Pong Loop giữa PROFILE $\leftrightarrow$ BIO_EDIT (exit_2 / Vượt quá 35 bước)**:
+  * Khi đổi tên trên profile nuôi mới / ít tương tác, TikTok ẩn nút chữ "Sửa hồ sơ" và chỉ hiện chip `+ Thêm tiểu sử` (`tidU sd`) cùng icon bút chì góc trên `(72, 148)`.
+  * **Cạm bẫy Regex Gộp**: Nếu runner tìm nút sửa hồ sơ bằng regex gộp `find_box(boxes, r"sua.*profile") or find_box(boxes, r"tieu\s*su")`, nó sẽ tap nhầm vào chip tiểu sử và vào màn `BIO_EDIT`.
+  * Tại `BIO_EDIT`, vì không có yêu cầu sửa bio, runner bấm phím Back về lại `PROFILE`. Vừa về Hồ sơ, runner thấy tên chưa đổi $\rightarrow$ lại tap tiếp `+ Thêm tiểu sử` $\rightarrow$ lại vào `BIO_EDIT` $\rightarrow$ lại Back. Vòng lặp bóng bàn này lặp đúng 35 lần cho tới khi chạm trần `MAX_STEPS = 35` và abort với `exit_2`.
+  * **Quy chuẩn Khắc phục**: Khi đổi tên, nút trên Profile CHỈ ĐƯỢC PHÉP match nhãn sửa hồ sơ: `btn = find_box(boxes, r"(sua|chinh sua|edit)\s*(h[o0]|profile)")`. Nếu `btn is None`, BẮT BUỘC fallback bấm icon bút chì `XY_EDIT_PENCIL = (72, 148)` (chuẩn S7) để mở thẳng `EDIT_PROFILE`. Tuyệt đối CẤM match `tieu su` trong task đổi tên.
+
+- **Bổ Sung Âm Tiết Tiếng Việt Thiếu Trong `smart_name_generator` (User Correction 2026-10-21)**:
+  * Bảng âm tiết `TEN_MAP` / `ALL_WORDS` nếu thiếu các âm tiết phổ biến như `hue` (Huệ), `hoai` (Hoài), `khue` (Khuê), `hau` (Hậu), thuật toán `parse_username_syllables` sẽ rơi vào bẫy substring matching.
+  * **Hiện tượng**: Nick `@huehoafi23` (tên thật theo sổ cái là Huệ Hoài, mail `huehoa2302fi@gmail.com`) vì thiếu `hue` và `hoai` nên chỉ tìm thấy chuỗi con `hoa` (từ `h-o-a`), gán tên chính là Hoa và ghép hậu tố thành **"Hoa Sữa"** $\rightarrow$ User phản ánh *"nick này tên huệ hoài mà"*.
+  * **Khắc phục**: Luôn bảo đảm `smart_name_generator.py` có đầy đủ các âm tiết `hue`, `hoai`, `khue`, `hau` trong `TEN_MAP` để bóc tách chính xác 100% tên gốc từ username.
+
 #### Handle-Derived Name Generation & Syllable Extraction (User Directive 2026-10-16)
 Khi tài khoản đã có `@username` (dù tạo từ reg cũ hay mua từ nguồn ngoài):
 - **Nguyên tắc cốt lõi**: BẮT BUỘC ưu tiên sinh tên hiển thị **gần giống và ăn khớp với username** thay vì bốc tên ngẫu nhiên hoàn toàn (tránh tài khoản `@vothitram` lại mang tên `Hải Cường`).
