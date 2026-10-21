@@ -29,6 +29,7 @@ For a small targeted fix, constrain the edit to the existing safe-window functio
 - Do not report deployment as complete until source, runtime copy, focused test result, and schedule are all verified.
 - Daily host reboot preflight (`farm_preflight_daily_reset.py`) must preserve in-flight Telegram sessions with `lookback_minutes >= 60` (not 20m) and include sessions with recent `tool` activity even if `last_role == 'assistant'`, preventing post-reboot session drop and multi-hour coordinator stalls.
 - Never report test suite counts (e.g. 131 passed) or declare a fix complete before the command has actually exited 0 with inspectable stdout. Background tests that time out in foreground must be waited/polled to real completion before any status claim.
+- Bẫy Safe Window không đệm làm trôi ca Reboot: Các cron xen ca (như `tiktok_rename_rolling_watchdog.py`) có Safe Window kết thúc sát giờ reboot (`hm < 680` cho 11:20, `hm < 1040` cho 17:20) sẽ nhận batch lúc 11:15 hoặc 17:15 và giữ active device lock đúng lúc Task Scheduler kích hoạt one-shot trigger, làm hủy reboot cả ca. Safe Window của cron xen ca BẮT BUỘC đóng trước mốc reboot tối thiểu 20 phút (11:00, 17:00), và Task Scheduler/preflight script cần có cơ chế retry 5 phút trong khung 20 phút (11:20-11:40, 17:20-17:40) chờ lock nhả thay vì skip bỏ luôn cả ca.
 
 ## References
 

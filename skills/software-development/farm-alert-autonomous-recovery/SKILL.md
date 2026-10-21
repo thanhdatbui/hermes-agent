@@ -7,7 +7,7 @@ description: >-
 
 # Farm Alert Autonomous Recovery
 
-> Ref: `references/watchdog-manifest-and-detector-replay.md` (manifest authority, offline XML replay, and completion discipline).
+> Ref: `references/watchdog-manifest-and-detector-replay.md`.
 > Ref: `references/focus-device-issue-cold-start-and-systemui-relaunch-20261020.md`.
 > Ref: `references/account-switcher-verify-mismatch-triage-20261017.md`.
 > Ref: `references/batch-alert-canary-selection-and-atx-vs-winrt-ocr-20261018.md`.
@@ -17,6 +17,7 @@ description: >-
 > Ref: `references/dual-cluster-reap-and-pre-push-squash-binding-20261019.md`.
 > Ref: `references/canary-receipt-expiry-and-safe-push-pre-commit.md`.
 > Ref: `references/recovery-proof-and-operator-closeout.md`.
+> Ref: `references/session-recovery-patterns-2026-10-21.md`.
 
 ## UI evidence: target screen only
 
