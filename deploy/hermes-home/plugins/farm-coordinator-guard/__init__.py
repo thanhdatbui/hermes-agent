@@ -2003,7 +2003,13 @@ def register(ctx: Any) -> None:
     def transform_output_hook(response_text: str = "", session_id: str = "", **kwargs: Any) -> Optional[str]:
         # 1. Chốt chặn Bằng chứng Thị giác (Evidence-First Gate)
         try:
-            _enforce_evidence_first_gate(response_text, session_id=session_id)
+            ev_res = _enforce_evidence_first_gate(response_text, session_id=session_id)
+            if ev_res:
+                logger.info(
+                    "[FARM_GUARD] Evidence-first text warning bypassed (superseded by guard_media_vision_gate): %s",
+                    ev_res[:80],
+                    extra={"event": "evidence_gate_banner_suppressed", "session_id": session_id},
+                )
         except Exception as exc:
             logger.exception("[FARM_GUARD] Fail-closed exception in evidence gate: %s", exc)
             return (

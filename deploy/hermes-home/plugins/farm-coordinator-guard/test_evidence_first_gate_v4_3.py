@@ -446,6 +446,18 @@ class TestEvidenceFirstGateV43(unittest.TestCase):
             assert res is not None
             self.assertIn("EVIDENCE FIRST GATE — FAIL-CLOSED", res)
 
+    def test_transform_output_hook_bypasses_text_warning_banner(self):
+        mock_ctx = MagicMock()
+        guard_plugin.register(mock_ctx)
+        hooks = {call[0][0]: call[0][1] for call in mock_ctx.register_hook.call_args_list}
+        transform_hook = hooks.get("transform_llm_output")
+        self.assertIsNotNone(transform_hook)
+        assert transform_hook is not None
+
+        with patch("__init__._enforce_evidence_first_gate", return_value="🛑 [VIOLATION]"):
+            res = transform_hook(response_text="Phan tich ky thuat", session_id="c_ok")
+            self.assertIsNone(res)
+
 
 if __name__ == "__main__":
     unittest.main()
