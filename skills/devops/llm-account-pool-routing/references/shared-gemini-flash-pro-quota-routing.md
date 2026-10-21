@@ -16,6 +16,12 @@ Use this reference when Gemini Flash and Gemini Pro intentionally share one Goog
 4. Inspect the multi-account pool config. Set a short queue timeout (about 1 second), fail over before retry, and prevent a full account from falling into the semaphore's 30-second default.
 5. Keep exhaustion scoped to the Gemini family/model bucket. Claude exhaustion must not poison Gemini eligibility; an internal semaphore timeout must not trigger a one-hour quota cooldown.
 
+## Verifying Pool Quota Availability ("Gemini có quota lại chưa?")
+- **Avoid false-negative raw chat endpoints:** Do not probe quota via `POST :20128/v1/chat/completions` without an API key (returns 401) or `POST :20129/v1/chat/completions` with un-prefixed models (defaults to OpenRouter, returning 402 Insufficient credits).
+- **Inspect live provider inventory:** Query `GET http://127.0.0.1:20129/api/providers`, filter `provider == 'antigravity'`, and compute `testStatus` counts (`active` vs `expired`).
+- **Target connection verification:** Check `isActive: true`, `testStatus: active`, `providerSpecificData.tier == 'g1-pro-tier'`, and `expiresIn` (seconds remaining; auto-refreshed).
+- **Active probe trigger:** Execute `POST http://127.0.0.1:20129/api/providers/{id}/test` (returns HTTP 200 with `valid: true`) or `/sync-models` to verify live upstream connection rather than guessing.
+
 ## UI/telemetry contract
 If Flash/Pro share one upstream window, improve the label and telemetry instead of splitting the data. Prefer:
 
