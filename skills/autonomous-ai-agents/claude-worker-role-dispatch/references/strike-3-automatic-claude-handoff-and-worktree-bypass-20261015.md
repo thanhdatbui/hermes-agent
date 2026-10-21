@@ -57,8 +57,22 @@ Vì Claude CLI chạy qua subprocess/background với cờ non-interactive (`--p
 [Claude CLI: Tự sửa code / Tự viết unit tests / Pass test 100%]
           │
           ▼
-[Coordinator: Kiểm tra git diff + chạy lại closeout_gate.py lấy APPROVED >= 85]
+[Coordinator: Kiểm tra git diff + chạy lại closeout_gate.py lấy APPROVED >= 85 hoặc Grace Band 80-84]
           │
           ▼
 [Auto-push qua safe_push.py / Hoàn tất phiên]
 ```
+
+---
+
+## 5. Case Study Thực Chiến (21/10/2026) — Mở Rộng 50 Unit Tests & Pass Grace Band 82/100
+- **Bối cảnh:** Sau khi Strike 1 và 2 dùng `sol_repair.py` chỉ nâng điểm từ 72 lên 78/79 điểm (Sol Reviewer chê test mock công thức và thiếu kiểm chứng production), Closeout Gate kích hoạt `[REVIEWER_HANDOFF_TRIGGERED]` cho scope `social_reg_v1.py` và `tests/test_tap_add_account_safe_point.py`.
+- **Thực thi Strike 3 Hand-off:**
+  ```bash
+  python D:/Taadaa/tools/claude_worker.py --role worker --workdir D:/Taadaa/Tiktok_Reg --file tests/test_tap_add_account_safe_point.py "Expand and strengthen unit test suite in tests/test_tap_add_account_safe_point.py to verify social_reg_v1.py production functions directly. Ensure all tests in tests/test_tap_add_account_safe_point.py pass with pytest. Directly edit in place in the current repository without creating any worktrees. Do not touch other uncommitted files."
+  ```
+- **Kỹ thuật Claude Worker thi công:**
+  1. *Autouse Side-Effect Isolation Fixture:* Mock ADB shell, hide keyboard, redirect `PROJECT_ROOT` sang `tmp_path` để tránh test ghi bẩn file `tracking_pending.csv` vào working tree.
+  2. *Bao phủ trực tiếp hàm production:* Xóa bỏ các test sao chép công thức toán học (`safe_y`), thay bằng việc gọi trực tiếp `social.tap_add_account`, `social.fill_password_and_login`, `social.wait_login_success`, và `social.upsert_tracking_account` với workbook thật mở bằng `open(..., 'r+b')` (có `fileno()` cho `os.fsync`).
+  3. *Mở rộng quy mô:* Nâng từ 10 tests lên 50 unit tests kiểm chứng mọi trường hợp biên (password hint tiếng Việt, 6 trạng thái manual auth, duplicate ID rejection, empty slot reuse, 8-slot ceiling).
+- **Kết quả:** `50 passed in 2.0s`. Closeout Gate phê duyệt **82/100 (APPROVED - Grace Band)**, `safe_push.py` push thành công lên GitHub remote.

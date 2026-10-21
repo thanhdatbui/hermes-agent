@@ -89,3 +89,14 @@ Before accepting a GPM code change:
    - Các danh sách tĩnh hardcoded trong script cũ (mảng `ACCOUNTS`) thường bị lỗi gõ thêm số đuôi máy vào email (ví dụ: `annhi2207200059@gmail.com` thay vì `annhi22072000@gmail.com`), dẫn đến `match count=0`.
    - BẮT BUỘC sử dụng hàm `get_account_for_email` đối soát trực tiếp từ Master Excel (`taikhoan_dat_v2_updated .xlsx` / `master_gmail_manager.xlsx`) để lấy đúng email gốc chuẩn và map chính xác profile trong GPM.
 
+5. **Đối Soát Tài Khoản Chết (`Gmail_DIE_Archive`) & Xác Thực Session Sống 3 Tầng (3-Tier Session Liveness Audit):**
+   - Khi tài khoản farm bị DIE:
+     a) Master Excel (`master_gmail_manager.xlsx`) chuyển sang sheet `Gmail_DIE_Archive` với `Trạng Thái: DIE`.
+     b) Thư mục profile vật lý tương ứng (`GPMLogin/profile/<ProfilePath>/Default/Network/Cookies`) bị thu hồi / dọn dẹp khỏi ổ cứng (`Exists: False`).
+     c) Cổng proxy và số máy S7 được gán sang profile tài khoản mới (ví dụ Máy 59 được gán profile mới).
+   - **Quy trình 3 bước xác thực session sống thật (Live Session Audit):**
+     - **Tầng 1 (Master SSOT):** Kiểm tra email nằm ở sheet `Master_All` (hoạt động) hay `Gmail_DIE_Archive` (chết).
+     - **Tầng 2 (Physical Storage):** Kiểm tra folder `ProfilePath` có tồn tại trên đĩa và SQLite `Cookies` có chứa bộ cookie phiên Google (`SID`, `HSID`, `SSID`, `SAPISID`) chưa hết hạn không.
+     - **Tầng 3 (GPM API Cloud & Port Binding):** Kiểm tra GPM API có profile khớp email và cổng proxy tương ứng đang gắn với máy hay đã chuyển giao cho tài khoản thay thế.
+   - Tuyệt đối không suy đoán session còn sống dựa trên việc email xuất hiện trong mảng mẫu `ACCOUNTS` hardcoded của script cũ.
+

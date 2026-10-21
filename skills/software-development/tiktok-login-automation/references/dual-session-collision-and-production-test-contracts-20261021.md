@@ -41,3 +41,19 @@ Reviewer Sol High chấm điểm rất khắt khe về **Test Evidence**. Dướ
 - **Khắc phục:** BẮT BUỘC monkeypatch `social.shell = lambda *a, **k: "com.ss.android.ugc.trill"`, `save_ui_xml`, `screenshot` và time-generator trước khi gọi `wait_login_success`. Kiểm tra đủ cả 2 nhánh:
   1. Nhánh thành công ngay khi UI có marker Home Feed (`_is_home_feed_xml(xml) is True`).
   2. Nhánh hết hạn timeout 75s trả về `False` khi UI không xuất hiện success hint.
+
+---
+
+## 3. Strike 3 Reviewer Hand-Off & 50-Test Production Expansion (Grace Band 82 APPROVED)
+
+Khi Closeout Gate trượt 3 lần liên tiếp trên cùng một `scope_hash` (Strike 1 & Strike 2 Sol Repair tạo patch chưa đủ điểm, ví dụ 78 và 79/100):
+- **Cơ chế kích hoạt:** Closeout Gate phát cờ `[REVIEWER_HANDOFF_TRIGGERED]`. Coordinator và Sol Repair BẮT BUỘC dừng việc đoán mò/tự sửa và chuyển giao ngay cho Reviewer CLI (`claude_worker.py --role worker` với `claude-haiku-5-5`, hoặc fallback `ag_cli.py fix`).
+- **Nâng cấp Test Suite toàn diện (50 Tests):**
+  Claude Worker mở rộng file test từ 10 tests đơn vị lên 50 tests tích hợp đầy đủ:
+  1. *Cô lập side effect (Autouse Fixture):* Redirect `PROJECT_ROOT` sang `tmp_path`, mock logging, `hide_keyboard`, backup tracking để không làm vấy bẩn file `tracking_pending.csv` trong working tree.
+  2. *Kiểm tra các biến thể tham số (Parametrize):* Test `fill_password_retypes_only_when_revealed_value_mismatches` với chuỗi mật khẩu thật, mask bullet `•••••••••••••`, chuỗi rỗng và chuỗi sai; test `wait_login_success` với 6 trạng thái manual auth (`captcha`, `google_relogin`, `identity_verification`, `terms_consent`, `account_not_found`, `rate_limited`).
+  3. *Kiểm chứng các bất biến của Tracking Workbook:* Insert slot mới sau block máy, tái sử dụng slot trống (empty slot reuse), cập nhật hàng cũ với so khớp email không phân biệt hoa thường, từ chối duplicate TikTok ID và từ chối slot thứ 9 vượt trần 8 nick.
+- **Kết quả nghiệm thu:**
+  - `50 passed in 2.0s`.
+  - Sol Reviewer chấm **82/100 (APPROVED)** trong khung Grace Band 80–84 điểm.
+  - Lệnh `python D:/Taadaa/tools/safe_push.py D:/Taadaa/Tiktok_Reg origin main` xác nhận bản ghi audit trong `gate_audit.jsonl` và push thành công lên GitHub remote.
