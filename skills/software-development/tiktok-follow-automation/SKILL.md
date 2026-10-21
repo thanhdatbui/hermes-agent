@@ -8,9 +8,10 @@ description: "TikTok follow runner and fail-closed farm ops."
 ## Non-negotiable operating rules
 
 - Tài liệu chuyên sâu nằm trong `references/`; dùng đúng reference theo tình huống.
-- `references/dual-cluster-follow-watchdog-omission-and-safe-sync-desync.md`: Khắc phục lỗi Watchdog Follow/Video nuốt chửng khối Farm Admin khi không có lượt chạy (`• Trạng thái: Chưa chạy / Bị skip`), và cơ chế phục hồi khi mất file `taikhoan_run_safe.xlsx` Admin khiến runner silent skip.
+- `references/dual-cluster-follow-watchdog-omission-and-safe-sync-desync.md`: Khắc phục lỗi Watchdog Follow/Video bỏ sót Farm Admin, phục hồi khi mất `taikhoan_run_safe.xlsx` Admin.
+- `references/follow-cycle-audit-and-ip-breaker-invariants.md`: Chuẩn phân định Tù Nặng (streak >= 2) vs Cooldown (fl=0 streak 1); bản chất Account Ceiling vs IP Subnet Block; quy chuẩn Cầu Dao IP Breaker chế độ quan sát tích lũy (ip_risk_audit.py -> ip_risk_audit_log.json).
 - `references/post-follow-verification-and-reconcile.md`: tách tap, Path-B và web reconciliation; schema bằng chứng per-UID.
-- `references/follow-reconcile-queue-shift-and-gate-timeout-diagnostics.md`: Lệch follow do tàn dư ca cũ / bù trừ âm dương snapshot window cutoff, cạm bẫy quy chụp nuốt mốc ngày cũ khi ca chạy sớm 06:00 trước snapshot 07:00, lọc sạch spam acc 0 lượt (zero-delta clean reconcile invariant), cạm bẫy FakeAdapter, timeout 120s Closeout.
+- `references/follow-reconcile-queue-shift-and-gate-timeout-diagnostics.md`: Lệch follow do tàn dư ca cũ, cạm bẫy FakeAdapter, timeout 120s Closeout.
 - `references/triage-stale-session-and-mock-adapter-pitfalls.md`: Triage ca cũ watchdog báo vs code đã fix (mtime vs SHA), FakeAdapter fixture và chia nhỏ diff.
 - `references/follow-dashboard-diagnostics-and-ceiling-invariants.md`: Sổ Bệnh Án, Gãy Gần Nhất, triage Row, Dò Trần Động (+2, max 40, Lùi 4 Sàn 15), Hồi phục 1 vs 2, Tương quan trần an toàn & tỷ lệ ăn nhả theo Cohort (Rookie 97.9%, Mid 84.2%, Veteran 71.9%), đối soát liên chu kỳ 4 ngày, bài toán ra tù 15 fl vs phễu S1/S2 & Veteran Fast-Track. Tier 1/2, Khóa Single-Session P1 cho Probation, Né Mốc Gãy & Bóp Trần Theo Streak, Chẩn đoán lệch Web vs Bot Delta do RankedPrev Snapshot Lag, Tiêu chí Phân hạng Nick Khỏe (Healthy) vs Triage acc fl đủ budget chưa lên Khỏe (thu hồi cờ do nhả cuối phiên vs chưa đủ 2 ca sạch tốt nghiệp).
     - `references/winrt-ocr-follow-button-fastpath-and-rescue.md`: WinRT OCR Primary (tìm nút và verify_after_tap) + Fallback XML; Anchor Gatekeeper Invariant (follow nhả = abort+cooldown, cấm bao biện oan).

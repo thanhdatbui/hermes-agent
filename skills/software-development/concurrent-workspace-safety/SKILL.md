@@ -52,7 +52,7 @@ When a parent task gives a hard inspection/iteration/tool-call budget, budget th
 
 When coordinating in a multi-session / multi-topic environment (such as Telegram topics or concurrent CLI sessions) where users dispatch related requests across sessions:
 - Before modifying shared automation runners, singletons, or pipeline scripts, run `session_search(query='<target_script_or_pipeline>', sort='newest')` to detect whether another active session is concurrently investigating, patching, or running canary on the exact same task.
-- If a sibling session is already actively modifying the files or waiting on a background process (`proc_*`), DO NOT dispatch competing patches or overwrite their unstaged working tree. Reconcile by inspecting `git diff`, verify what the sibling session completed, and report the shared progress rather than racing to duplicate execution.
+- If a sibling session is already actively modifying the files or waiting on a background process (`proc_*`), DO NOT dispatch competing patches or overwrite their unstaged working tree. Reconcile by inspecting `git diff`, verify what the sibling session completed, and report the shared progress rather than racing to duplicate execution. See `references/dual-session-farm-recovery-and-patch-reconciliation-20261021.md` for hunk classification and non-conflict verification patterns.
 
 ### 1. Baseline snapshot at session start (mandatory)
 
@@ -474,6 +474,7 @@ See `references/closeout-ownership-and-claude-review.md` for the collision timel
 
 ## References
 
+- `references/dual-session-farm-recovery-and-patch-reconciliation-20261021.md` — Dual-session farm alert collision triage, hunk ownership mapping, non-conflict technical verification, and canary evidence proof when multiple autonomous sessions patch the same codebase/machine concurrently.
 - `references/parallel-feed-alert-fix-contract.md` — split watchdog taxonomy and popup-handler fixes into bounded parallel branches with closed anchors, offline focused tests, and evidence requirements.
 - `references/canonical-workspace-preflight.md` — prove the coordinator-supplied absolute path is the intended Git checkout before source reads, tests, or writes; fail closed on missing/non-Git paths or cwd/repository drift.
 - `references/two-tier-gate-architecture-and-anti-paralysis.md` — Two-Tier Gate Separation (PA3): Tier 1 hardware/asset hard fail-closed vs Tier 2 advisory audit logging; telegram chunking invariant; git push subshell protocol handling.
