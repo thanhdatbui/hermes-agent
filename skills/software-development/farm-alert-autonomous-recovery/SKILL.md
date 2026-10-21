@@ -7,7 +7,7 @@ description: >-
 
 # Farm Alert Autonomous Recovery
 
-> Ref: `references/coordinator-completion-discipline-and-tiktok-detector-triage-20261021.md`.
+> Ref: `references/watchdog-manifest-and-detector-replay.md` (manifest authority, offline XML replay, and completion discipline).
 > Ref: `references/focus-device-issue-cold-start-and-systemui-relaunch-20261020.md`.
 > Ref: `references/account-switcher-verify-mismatch-triage-20261017.md`.
 > Ref: `references/batch-alert-canary-selection-and-atx-vs-winrt-ocr-20261018.md`.

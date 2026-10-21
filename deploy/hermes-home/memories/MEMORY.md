@@ -22,8 +22,6 @@ Reboot 3 ca (05:20, 11:20, 17:20): lookback 60m. 2FA né đệm reboot. Safe syn
 §
 OMP/AGY: 21 profile Native OAuth, acc_01 fallback; lease 1800s; 429 Google->xoay profile; Model gắn harness chính chủ; Benchmark cùng direct/thinking; Creds backup OneDrive, runner auto-fallback.
 §
-Xiaowei: auto-close 20m qua sampler 1Hz PID.
-§
 Đơn TT Shop: Mail báo mã 1 lần; bám sát qua API hãng (SPX/J&T/Ninja); bắt mốc về Hub Thanh Khê để lấy trực tiếp. Dashboard :1905 tab Đơn hàng (/api/orders).
 §
 Planner: 100% Claude Sonnet 5.5, cấm Gemini/AGY tự lên plan khi user gọi planner; cấm giao tool ghi file tránh đốt turns.
