@@ -23,6 +23,11 @@ Khi chạy thẩm định `closeout_gate.py` cho các repository của Phone Far
 - **Tốc độ:** Cực nhanh (5s - 15s), không bao giờ bị nghẽn cookie hay lỗi 404/502.
 - **Mức điểm thường thấy:** **95 – 97 điểm (APPROVED)** khi code có đầy đủ unit tests và xử lý lỗi chặt chẽ.
 
+### D. Claude Sonnet Pool (`ag-sonnet` qua Antigravity :20129) — [CHUẨN MỰC REVIEW CHẤT LƯỢNG CAO & ĐỘC LẬP]
+- **Tư duy:** Cân bằng hoàn hảo giữa tính nghiêm ngặt logic (bắt race-condition, boundary contract, typing) và tính thực dụng (không bị bệnh over-engineering đòi hỏi cloud metrics như Opus).
+- **Khắc phục triệt để bẫy Web Cookie / Free Luna:** Khác với `chatgpt-web-pool` (thực chất chạy `chatgpt-web/auto` trên pool tài khoản Free dễ bị OpenAI route ngầm về cụm Luna Free và hay dính lỗi cookie/cloudflare/sentinel), `ag-sonnet` chạy qua 78+ tài khoản Antigravity với kết nối API trực tiếp siêu nhanh (~500ms).
+- **Cách dùng:** Truyền cờ `--model ag-sonnet` vào `closeout_gate.py` hoặc đưa `ag-sonnet` lên làm Tier 0 trong combo `review` của OmniRoute.
+
 ## 2. Quy tắc lựa chọn Reviewer chuẩn mực
 1. **Mặc định Closeout Farm:** Ưu tiên **Sol High (`review`)**.
 2. **Khi Sol High bị nghẽn cookie / timeout:** Sử dụng ngay `--model omni-worker` để thẩm định thực tế nhanh gọn và an toàn.

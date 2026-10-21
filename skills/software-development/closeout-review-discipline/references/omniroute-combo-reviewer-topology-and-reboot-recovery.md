@@ -20,7 +20,7 @@ User explicitly corrected (07/10/2026):
 
 ---
 
-## 2. OmniRoute Combo Reviewer Architecture
+## 2. OmniRoute Combo Reviewer Architecture & The ChatGPT Web Free Trap
 
 In OmniRoute (`http://127.0.0.1:20129/v1`), the model specified in `closeout_gate.py` (`model: "review"`) is NOT a single model. It is an **active Priority Fallback Combo** configured in `~/.omniroute/storage.sqlite`:
 
@@ -29,8 +29,9 @@ In OmniRoute (`http://127.0.0.1:20129/v1`), the model specified in `closeout_gat
                     │
                     ▼
   ┌─────────────────────────────────────────────────────────────┐
-  │ [Tier 0] ChatGPT Web Pool (12 Live Accounts)                │
-  │ Model: GPT-5.6 Sol High (Primary Reviewer)                  │
+  │ [Tier 0] ChatGPT Web Pool (39 Live Accounts)                │
+  │ Model: chatgpt-web/auto (Cảnh báo: Auto-router trên acc     │
+  │ Free ngầm phân bổ về cụm Luna Free!)                        │
   └──────────────────────────────┬──────────────────────────────┘
                                  │ Failover on 429/timeout/error
                                  ▼
@@ -51,6 +52,13 @@ In OmniRoute (`http://127.0.0.1:20129/v1`), the model specified in `closeout_gat
   │ Model: Free High-Capacity Fallbacks                         │
   └─────────────────────────────────────────────────────────────┘
 ```
+
+### Cạm Bẫy Thực Tế Tại Tier 0 (ChatGPT Web Pool):
+- Trong SQLite của OmniRoute, 39 connection trong `chatgpt-web-pool` cấu hình `model: "chatgpt-web/auto"`.
+- Vì đây là pool tài khoản Free, khi gửi `auto`, OpenAI tự động phân luồng về **Luna Free**. Kể cả khi client ép slug `gpt-5-6-thinking`, việc server OpenAI có thực sự cấp compute của Sol hay downscale về Luna CoT là một hộp đen không thể kiểm chứng.
+- **Giải Pháp Khuyên Dùng (Claude Sonnet Promotion):**
+  - Sử dụng `--model ag-sonnet` trực tiếp khi chạy `closeout_gate.py`, hoặc đưa combo `ag-sonnet` (78+ tài khoản Antigravity chạy Claude Sonnet 4.6/3.7) lên làm Tier 0 của combo `review`.
+  - Sonnet phản hồi tức thì (~500ms), kết nối API trực tiếp không qua cookie web, và là model review code khắt khe chuẩn mực nhất hiện nay.
 
 Because of this multi-tier combo:
 1. **Model failure NEVER kills the review gate:** If Sol Web accounts are rate-limited, OmniRoute transparently fails over to Codex Terra, then to Claude Opus 4.6 (`ag-opus-pool`), then to Nemotron.

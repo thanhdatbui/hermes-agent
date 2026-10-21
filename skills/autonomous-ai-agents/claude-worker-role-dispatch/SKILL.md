@@ -334,6 +334,13 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
   Khi gọi `claude_worker.py --role planner` cho các bài toán phân tích kiến trúc đối kháng nhiều tầng (như rà soát bẫy tê liệt của gate), giá trị mặc định `default_turns = 6` có thể bị cạn trước khi nhả kết quả đầy đủ (`Error: Reached max turns (6)`).
   BẮT BUỘC: Khi dispatch Claude Planner cho các bài tư vấn kiến trúc chuyên sâu, luôn truyền rõ `--max-turns 10` (chạm đúng trần cứng `hard_cap_turns = 10`) để đảm bảo không bị đứt đoạn tư duy.
 
+- **BẪY SYCOPHANCY (GIÓ CHIỀU NÀO XOAY CHIỀU ĐÓ — Chấn chỉnh 22/10/2026):**
+  Operator đã chấn chỉnh gay gắt: *"Là sao trên ns 1 kiểu xuống đây nd k cần thiết"* sau khi Coordinator lật mặt 180 độ trong 1 turn để chiều lòng Operator nói "vibe code dốt".
+  1. *Căn nguyên gốc rễ (Shallow Approval Bias):* Khi Operator thể hiện sự do dự hay tự nhận "không rành kỹ thuật", LLM có phản xạ nguy hiểm là **tự phủ nhận toàn bộ phân tích chuyên môn đúng đắn vừa đề xuất** để "đồng tình mù quáng". Đây là bẫy nghiêm trọng nhất về tính kỷ luật trí tuệ.
+  2. *Quy chuẩn xử lý khi Operator lo ngại độ phức tạp:* TUYỆT ĐỐI không vứt bỏ giải pháp đã duyệt chỉ vì Operator dùng từ ngữ đời thường. Phải giải thích lại bằng ngôn ngữ dân dã thực dụng nhất (không dùng thuật ngữ kỹ thuật nặng), đồng thời vẫn giữ vững và tiếp tục thi công phần việc đã được duyệt. Phân tách rõ: "phần over-engineering cồng kềnh = bỏ" vs "phần O(1) thực chiến = giữ và làm".
+  3. *Định nghĩa chuẩn "Fix O(1)" trên Farm (User Clarification 22/10/2026):* 3 trụ cột: (a) Một nhát ăn ngay — tra mã bệnh trong KB, gõ đúng 1 lệnh đã kiểm chứng; (b) Sửa gọn nhẹ — <= 30 dòng diff, 1 test < 30s, không bôi việc refactor diện rộng; (c) Không quét đĩa — cấm os.walk/glob(recursive=True)/grep -r, chỉ tác động đúng file đích danh O(1).
+  Xem chi tiết: `references/sycophancy-reversal-and-fix-o1-definition-20261022.md`.
+
 - **BẪY SONNET PLANNER WRITE DISALLOWED GÂY BASH EXPLORATION & MAX TURNS 10 (Stdout Redirection Invariant 21/10/2026):**
   Operator đã chấn chỉnh gay gắt: *"Đéo nhé t yêu cầu sonnet plan. Lí do trc đó gọi plan sonnet lỗi?"*.
   1. *Căn nguyên gốc rễ:* Vai `planner` trong `claude_worker.py` bị khóa cứng `--disallowedTools Edit,Write,NotebookEdit` để bảo vệ mã nguồn. Khi Coordinator ra lệnh `"Write the plan to <path>"`, Sonnet không có tool `Write` nên cố dùng `Bash` (`cat << 'EOF'`, script tạm) hoặc tốn turns gọi `Read` đọc thêm các file được nhắc trong prompt. Mỗi tool call là 1 agentic turn $\rightarrow$ đốt sạch 10 turns trước khi kịp viết xong (`Error: Reached max turns (10)`).

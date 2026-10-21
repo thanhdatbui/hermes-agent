@@ -14,6 +14,7 @@ metadata:
 Use this skill when refactoring monolithic production scripts (> 1.500 lines) into modular subpackages without disrupting active workloads, breaking backward compatibility, or letting subsequent AI agents undo the modularization.
 
 Reference files:
+- `references/watchdog-formatters-modularization-and-dual-copy-sync-20261022.md`: Quy tắc module hóa watchdog formatters (dispatch_split_reports, format_follow_report_from_blocks), bảo toàn trần 1.450 dòng Architecture Gate và kỷ luật đối soát đồng bộ byte-for-byte dual-copy mirror (scripts vs hermes_cron).
 - `references/js-thin-slicing-crlf-normalization-and-sonnet-review-20261017.md`: Kỹ thuật bóc tách đa lát cắt JavaScript (1.500+ dòng xuống 612 dòng), chuẩn hóa CRLF/LF chống phình diff ảo, kỷ luật Claude Sonnet 5.5 review và nguyên tắc Anti-Halting không dừng lại hỏi khi đã được lệnh thi công.
 - `references/thin-slice-javascript-component-extraction-and-fstring-invariants-20261017.md`: Kỹ thuật phân rã lát cắt mỏng 1.570 dòng JavaScript từ Python f-string sang dashboard/static/*.js, khử ngoặc nhọn kép {{}} và nạp động bảo toàn trần 30KB Closeout Gate.
 - `references/frontend-javascript-thin-slice-modularization-and-hybrid-ocr-20261017.md`: Kỹ thuật bóc tách 104KB JavaScript frontend trong Monolith F-string dưới trần diff 30KB Closeout Gate theo 4 lát cắt mỏng (thin-slices) và kiến trúc Hybrid WinRT OCR (primary) vs XML dump (fallback).
@@ -313,6 +314,8 @@ Quy trình xử lý ĐÚNG:
 
 ## 13. Cross-Script Import Cascade & Hermes Cron Invocation Hygiene
 Khi bảo trì hoặc refactor một script watchdog/runner:
+- **Dual-Copy Mirror Byte-for-Byte Sync:** Trong các repo có mirror giữa `scripts/` và `scripts/hermes_cron/` (như `feed_session_watchdog.py`), bất kỳ sửa đổi nào phải đồng bộ tuyệt đối từng byte (`f1.read() == f2.read()`). Không bao giờ sửa lệch một file bỏ quên file kia.
+- **Architecture Line Budget Shielding:** Khi thêm logic báo cáo/format, tuyệt đối không chèn trực tiếp làm vượt ngưỡng dòng (ví dụ $\le 1.450$ dòng). Bắt buộc đưa vào subpackage (ví dụ `scripts/watchdog/formatters.py`) và import ngược lại với fallback import đầy đủ (`DEFAULT_FARM_ALERT_THRESHOLD`).
 - **Rà soát quan hệ phụ thuộc chéo (Cross-Dependencies):** Kiểm tra xem có script nào khác trong repo import trực tiếp từ file này không (ví dụ `follow_session_watchdog.py` import `feed_session_watchdog as fsw`). Bất kỳ lỗi import/signature ở script gốc sẽ kéo sập toàn bộ các cronjob phụ thuộc.
 - **Quy tắc cấu hình Cronjob (Explicit Invocation):** Với các repo có package con (`scripts/watchdog/`), không dùng tham số `script:` (khiến Hermes copy lẻ file sang `%LOCALAPPDATA%\hermes\scripts` làm mất submodule context). Bắt buộc dùng `prompt:` gọi trực tiếp file trong repo:
   ```yaml
