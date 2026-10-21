@@ -67,3 +67,14 @@ A report showing 51 Kibe BLOCKED was followed by a live state showing 53: the ca
    - Root cause: Proxy connection timed out during navigation between `login.live.com` and credentials form.
 4. **24h Per-IP Cooldown Throttling (Zero Throughput Window)**:
    - When report shows e.g. 196 PENDING accounts but 0 processed in 6h, inspect `ip_action_history[port]['HOTMAIL_LOGIN']`. If all distinct proxy ports ran in the preceding shift, supervisor correctly enforces 24h cooldown to prevent subnet blacklisting. Accounts are healthy and waiting.
+5. **Cross-venv `PYTHONPATH` Contamination (`greenlet._greenlet` Crash)**:
+   - Symptom: Every login fails instantly within 1 second with `Hotmail login that bai`. No browser window opens, no CDP endpoint is contacted.
+   - Root cause: If parent environment exports `PYTHONPATH` pointing to Hermes Agent venv (Python 3.11), host Python 3.12 attempts to load `greenlet` C-extension compiled for 3.11 (`cp311-win_amd64.pyd`) and raises `ModuleNotFoundError: No module named 'greenlet._greenlet'`.
+   - Fix: Sanitize `sys.path` at top of Playwright scripts:
+     ```python
+     import sys
+     sys.path = [p for p in sys.path if not ("hermes" in p.lower() and "site-packages" in p.lower())]
+     ```
+6. **Verified QUARANTINE Reset Protocol**:
+   - Accounts entering `QUARANTINE` (3/3 retries) due to a known, resolved challenge type (e.g. recovery OTP) must NOT be reset blindly.
+   - First verify recovery email exists in `gmail_clean_v2.xlsx` (Col 5). Once verified and code is patched, execute `python D:/Taadaa/tools/reset_admin_quarantine.py` to safely reset status to `PENDING` and `login_retry_count = 0`.
