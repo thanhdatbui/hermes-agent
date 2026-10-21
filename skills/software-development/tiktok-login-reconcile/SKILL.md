@@ -18,6 +18,8 @@ description: >
 
 # TikTok Login Reconcile — Debug & Fix Patterns
 
+- **Cứu Hộ Nick Thiếu Pass/Mail Từ Deferred Result JSON, Bẫy Đè Mất 2FA Secret & Kỷ Luật Guard Điều Phối (2026-10-21)**: Khi máy báo `ACCOUNT_SWITCHER_FAILED` / `ACCOUNT_MISSING` nhưng Switcher có 7 nick + nút "Thêm tài khoản", đây là lỗi Slot-Fill nạp thiếu nick do Excel trống pass/mail (`missing_tiktok_pass,missing_mail_pass,missing_email`). Truy xuất pass/mail gốc từ `tracking_result_stt<STT>_*.json` và `social_reg_log.txt`. Cảnh giác bẫy `deferred_tracking_writer.py` (Line 273 chặn overwrite khi mail rỗng & Line 288 ghi đè `twofa or None` xóa sạch cột 2FA Secret đã bật). Bắt buộc giữ nguyên cột E (2FA), backup Excel, verify `excel_preflight_validator.py` PASS 100%, và khởi chạy `tiktok_login_v1.py` qua `terminal(background=True, notify_on_complete=True)` né guard foreground 60s và né tiền tố `env -u`. Chi tiết: `references/deferred-result-backfill-and-2fa-preservation-20261021.md`.
+
 - **CẤM DỪNG MÁY BÁO CÁO SUÔNG KHI LỆCH / THIẾU NICK & RESET ADB BRIDGE KHI RECONCILE TIMEOUT (User Correction 2026-10-17)**:
   1. *CẤM "Khóc" / Đứng Hình Khi Thiếu Nick*: Khi runner upload hay feed dừng vì `ACCOUNT_VERIFY_MISMATCH` hoặc `account-switcher-missing-expected` do nick mục tiêu chưa có trong Switcher, Coordinator TUYỆT ĐỐI CẤM dừng phiên báo cáo suông để hỏi User "có cần đăng nhập không" hay coi là blocker. Hệ thống ĐÃ CÓ SẴN bộ công cụ login tự động. BẮT BUỘC kích hoạt ngay tiến trình nạp bù nick mục tiêu:
      `python D:/Taadaa/Tiktok_Reg/tiktok_login_v1.py <STT> --email <TARGET_ID> --ss` (với `--allow-parent-lock` nếu trong parent context), ưu tiên ID + Pass + 2FA TOTP trong tracking.
