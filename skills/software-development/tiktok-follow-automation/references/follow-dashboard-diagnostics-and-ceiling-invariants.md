@@ -295,6 +295,34 @@ Trong `follow_state.py`, runner tự động điều chỉnh trần follow cho c
     - Chu kỳ 15–16/10: Nhả phát đầu 84 nick; Nhóm thực chiến 39 nick (100% sạch, 0% ăn nhả đuôi) do trần an toàn thấp (bình quân 4.7 fl/ca).
     - Chu kỳ 19–20/10: Nhả phát đầu 213 nick; Nhóm thực chiến 32 nick (17 sạch 53.1%, 15 ăn nhả đuôi 46.9%) do mở trần 12–15 fl va phải ngưỡng đỏ TikTok.
 
+## 22. Quy Trình Giải Cứu & Đối Soát Nick Bị Giam Oan Toàn Farm (`reconcile_unfair_streaks.py`)
+- **Nguyên nhân phát sinh 90 nick bị giam oan**: Do cơ chế cũ tự động cộng dồn `fail_streak` mỗi lần chạm trần cuối phiên, 90 nick cựu binh/nòng cốt (tích lũy từ 50 đến 254 follow) bị tích tụ streak 3-6 và dính cooldown dài hạn tới cuối tháng 10 hoặc tháng 11 dù hoàn toàn đủ sức cày tiếp.
+- **Bộ tiêu chí 2 lớp để phân loại nick được giải cứu**:
+  * *Nhánh A (`A_CEILING_DROP`)*: Có $\ge 1$ follow vào ngày báo lỗi (`fl_on_fail_day >= 1` hoặc `budget_used >= 1`).
+  * *Nhánh B (`B_TRAPPED_HIGH_TRUST`)*: Đã tích lũy $\ge 10$ follow thực tế (`total_followed >= 10`) và đang kẹt `fail_streak >= 2` hoặc có `cooldown_until_date > today`.
+- **Đơn thuốc phục hồi chuẩn hóa**:
+  1. Đặt lại `fail_streak = 1`.
+  2. Xóa bỏ cờ giam giữ: `cooldown_until_date = None`, `cooldown_until_at = None`, `follow_failed = False`.
+  3. Cấp cờ thăng hạng: `probation_clean_days = 1` $\rightarrow$ Đưa thẳng lên nhóm **🟡 Hồi phục 2 (0/1 ca)**, chỉ cần chạy sạch đúng 1 ca tiếp theo là lập tức tốt nghiệp lên **🟢 Khỏe**.
+  4. Khóa mốc gãy bảo vệ: `last_failed_ceiling = max(1, fl_on_fail_day + 1)` để phiên sau tự động chạy trần an toàn thấp hơn điểm gãy.
+- **Kết quả nghiệm thu**: 90 nick được giải thoát ngay lập tức; nhóm Hồi phục 2 nhảy vọt từ 4 lên 94 nick; số nick Cooldown toàn farm giảm mạnh từ 358 xuống 272 nick.
+
+## 23. Tích Hợp Báo Cáo Chu Kỳ 4 Ngày Lên Dashboard Sổ Bệnh Án (`:1905`)
+- **Backend Metric Layer (`follow_health_helper.py`)**:
+  * Hàm `get_follow_health_data()` trả về cấu trúc `cycle_comparison`:
+    - `current_cycle` (19–20/10) vs `previous_cycle` (15–16/10) vs `old_cycle` (11–12/10).
+    - Tính toán: `total_active`, `immediate_drop` (`fl = 0`), `eligible_accounts` (`fl >= 1`), `clean_accounts` (không lỗi), `clean_pct`, `drop_after_fl` (chạm trần), `drop_pct`, `total_follows`, và `by_cohort` (veteran/mid/rookie).
+- **Frontend Visualization Layer (`dashboard/follow_detail_component.py`)**:
+  * Thêm khối container `#fdCycleComparisonContainer` ngay trên 4 card trần động.
+  * Render card so sánh song song với màu sắc chuẩn mực:
+    - Xanh lá (`#4ade80`): Tỉ lệ chạy SẠCH 100%.
+    - Vàng hổ phách (`#fbbf24`): Tỉ lệ ăn nhả đuôi (chạm trần phiên).
+    - Đỏ nhạt (`#fca5a5`): Số nick tù nặng / Rookie non bị nhả ngay phát đầu.
+- **Kỷ Luật Nạp Lại RAM Dashboard & Tự Phục Hồi Qua Watchdog**:
+  * Sửa code Python/JS không tự nạp vào tiến trình đang chạy do `sys.modules` cache.
+  * Supervisor `tiktok_dashboard_watchdog.ps1` (PID kiểm tra mỗi 60s qua `/api/data`).
+  * Khi tiến trình cũ trên cổng 1905 bị tắt, Watchdog tự động kích hoạt `start_tiktok_dashboard_hidden.vbs` để dựng lại server trong vòng <=60s với mã nguồn mới nhất.
+
 
 
 
