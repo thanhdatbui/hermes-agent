@@ -6,7 +6,7 @@ Hotmail: CẤM mail cá nhân; @fviainboxes.com đọc OTP. Pin >=1000 view.
 §
 Rename: bút chì (72,148) fallback; splash 4G 8 step (~35s); re-queue 15m; BIO_EDIT trước PROFILE; tên Việt có dấu/1 từ; core switcher.
 §
-Sol: 100% On-Demand ('gọi advisor','hỏi sol'...), cấm auto-append ngắt lời; advisor_tool 140s, briefing 4k ký tự; Sol Reviewer độc lập closeout (diff 40KB).
+Sol: 100% On-Demand ('gọi advisor','hỏi sol'...), cấm auto-append ngắt lời; advisor_tool 55s (core)/consult 140s, briefing 4k ký tự; Sol Reviewer độc lập closeout (diff 40KB).
 §
 Stale Up: xóa draft. Revert: TikWM. Cào: max 60. Cron TB: device_lock+rolling<=5; bỏ ca 0h.
 §

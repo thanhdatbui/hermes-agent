@@ -4,9 +4,9 @@ Dọn đĩa: safe_recycle.py. Reboot né TFT/War3. Box 1 sát AP kibe 1. S7: ant
 §
 Nuôi 4d 3 ca (bỏ 0h). Cấm pause cron/kill tool khác khi kẹt lock, canh xong mới làm. Ava&2FA tới 5h15. Starve 96h.
 §
-Fallback Claude->Agy; Repo dirty --files O(1); pre-push 1 commit. Pin TT LIFO. CẤM đụng Chrome host, dùng GPM/agy_profiles.
+Fallback Claude->Agy; Repo dirty --files O(1); pre-push 1 commit. Pin TT LIFO. CẤM đụng Chrome host. GPM: 100% profile '<mid> - <email> - <port>' có raw_proxy riêng, cấm Playwright đè proxy, Excel là SSOT.
 §
-Ava/Media: Duyệt ava up thẳng máy (run_upload_avatar.py), CẤM chỉ ghi PENDING; khóa cờ .manual_avatar_locked (3 kho) & Avatar=OK; soi mắt trước khi MEDIA:; Batch N máy BẮT BUỘC gửi đủ N MEDIA: riêng, cấm gửi 1 ảnh đại diện/trùng hash; Ava đúng creator.
+Ava/Media: Duyệt ava up thẳng máy; khóa cờ .manual_avatar_locked & Avatar=OK; soi mắt trước MEDIA:; Batch N máy gửi đủ N MEDIA: riêng; Ava đúng creator.
 §
 Worker: Haiku claude-haiku-5-5; Agy pool 21; Timeout 1200s-1500s; Model gắn harness chính chủ (Gemini->AGY, Claude->Claude Code, OMP fallback); 429 xoay profile khác, cấm đổi runner cùng acc.
 §

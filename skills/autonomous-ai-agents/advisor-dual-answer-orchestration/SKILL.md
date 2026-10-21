@@ -111,6 +111,7 @@ A valid acceptance sequence is:
 5. Do not report `DONE` from adapter status alone. If only the adapter canary passes, report `adapter PASS; orchestration canary pending`.
 
 ## References
+- Hiệu Chuẩn Timeout & Schema Remediation Cho Advisor Sol Khi Chốt Phiên (2026-10-21): [`references/advisor-closeout-gate-remediation-and-timeout-calibration-20261021.md`](references/advisor-closeout-gate-remediation-and-timeout-calibration-20261021.md)
 - Kỹ Thuật Đóng Khung Targeted Test Cho Closeout Gate & Đồng Bộ Consult Advisor (2026-10-21): [`references/closeout-gate-targeted-tests-and-consult-advisor-sync-20261021.md`](references/closeout-gate-targeted-tests-and-consult-advisor-sync-20261021.md)
 - Đồng Bộ Timeout Advisor Sol Đa Tầng & Khởi Động Lại Daemon (2026-10-21): [`references/advisor-timeout-deploy-sync-20261021.md`](references/advisor-timeout-deploy-sync-20261021.md)
 - Bẫy Timeout Ảo 45s Do Parse JSON & Hoàn Thiện Cơ Chế On-Demand (2026-10-20): [`references/on-demand-advisor-and-json-parse-timeout-resolution-20261020.md`](references/on-demand-advisor-and-json-parse-timeout-resolution-20261020.md)
@@ -148,6 +149,10 @@ See `references/advisor-context-starvation-and-session-briefing-20261015.md` for
 - **claude_worker.py — Cổng Điều Phối Role-Based Thế Hệ Mới (15/10/2026):** Để tránh lặp lại sự cố bypass 72 turns (2.1M tokens Sonnet), toàn bộ lệnh gọi Claude CLI trên Farm BẮT BUỘC đi qua `python D:/Taadaa/tools/claude_worker.py --role [worker|planner|reviewer]`. Wrapper này cưỡng chế tự động: hard-cap `max_turns` theo role (reviewer: 4 mặc định/8 tối đa, planner: 6/10, worker: 8/15), chọn đúng model mặc định (Sonnet cho planner/reviewer, Haiku cho worker), khóa cứng `--disallowedTools Edit,Write,NotebookEdit` cho planner/reviewer, và tự động fallback sang `ag_cli.py ask` (không phải `fix`) khi Quota chạm ngưỡng 85%/90%. Quota stale threshold hạ xuống 2.0h. CẤM gọi `claude -p` thô trong terminal mà không qua wrapper.
 
 ## Common failure modes
+
+- **Bẫy Nâng DEFAULT_TIMEOUT Trong Core Tool Làm Trượt Closeout Gate (2026-10-21):**
+  * *Hiện tượng:* Tăng `DEFAULT_TIMEOUT` từ 55 lên 140 giây trong `tools/advisor_tool.py` khiến Reviewer trong `closeout_gate.py` phạt điểm nặng (chỉ đạt 65–78/100) vì lo ngại làm đóng băng conversation loop của Hermes.
+  * *Khắc phục:* Phân định ranh giới timeout rõ ràng: CLI độc lập (`consult_advisor.py`) dùng timeout 140s–150s cho reasoning model; còn `advisor_tool.py` trong core loop giữ `DEFAULT_TIMEOUT = 55s` và kiểm tra deadline ngay sau khi đọc buffer (`_read_content`). Kết hợp fallback key linh hoạt (`advice`, `plan`, `review`) và schema validation cho `reasoning`/`plan`, giúp gate đạt 82/100 APPROVED (Grace Band).
 
 - **Bẫy Timeout 120s Khi Chạy Closeout Gate Với `--files` Không Kẹp File Test (2026-10-21):**
   * *Hiện tượng:* Khi chạy `closeout_gate.py` với cờ `--files` trên repo lớn như `D:/Taadaa/Hermes`, nếu chỉ liệt kê các file source code đã sửa mà không truyền kèm file test, hệ thống sẽ fallback chạy toàn bộ thư mục `tests/` (`pytest tests --tb=short -q`), dẫn tới vượt ngưỡng `PYTEST_TIMEOUT = 120s` và fail gate ngay lập tức (trong khi cờ `--skip-test` bị gate cấm tuyệt đối ở chế độ repo).
