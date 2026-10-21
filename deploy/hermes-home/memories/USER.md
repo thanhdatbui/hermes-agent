@@ -4,16 +4,16 @@ Dọn đĩa: safe_recycle.py. Reboot né TFT/War3. Box 1 sát AP kibe 1. S7: ant
 §
 Nuôi 4d 3 ca (bỏ 0h). Cấm pause cron/kill tool khác khi kẹt lock, canh xong mới làm. Ava&2FA tới 5h15. Starve 96h.
 §
-No verbal DONE; cần test/reviewer thật. User thích nói thẳng; bực mình=làm ngay, cấm hỏi/khóc lóc blocked; đưa task về đích.
+No verbal DONE; reviewer thật. Nói thẳng, bực mình=làm ngay. Cấm nịnh bợ/flip-flop (trên nói 1 kiểu dưới quay xe). Vibe thực dụng, cấm buzzword RAG hàn lâm; giải thích dân dã O(1) 1 nhát ăn ngay.
 §
-Ava/Media: Duyệt ava up thẳng máy; khóa cờ .manual_avatar_locked & Avatar=OK; soi mắt trước MEDIA:; Batch N máy gửi đủ N MEDIA: riêng; Ava đúng creator.
+Ava/Media: Up thẳng máy; khóa cờ .manual_avatar_locked & Avatar=OK; soi mắt trước MEDIA:; N máy gửi đủ N MEDIA: riêng; Ava đúng creator.
 §
 Worker: Agy CLI (Tier 1 Primary), Haiku fallback (Tier 2); Planner: Sonnet 5.5 (Gate B); 429 xoay profile. CẤM Luna làm Coordinator.
 §
-Canary: target-bound; BẮT BUỘC máy thật qua `done_gate.py --strict-device`; WinRT OCR->ATX; Singbox. Guard cơ học; Claude duyệt; dính guard chạy unscoped worker CLI.
+Canary: target-bound; máy thật qua `done_gate.py --strict-device`; WinRT OCR->ATX; Singbox. Guard cơ học; Claude duyệt; dính guard chạy unscoped worker CLI.
 §
 Follow audit: >=3-4 chu kỳ 4d + Cohort Veteran/Mid/Rookie; tách fl=0 và used>0; Account Limit cô lập nick, cấm ngắt IP.
 §
-Gemini Pro/Claim: Tự kích hoạt trọn gói trên GPM qua CDP (cấm để user ấn tay); mua xong nạp đủ cả 2 pool OmniRoute & AGY CLI; proxy map 1:1 cổng S7.
+Gemini Claim: GPM qua CDP (cấm user ấn tay); nạp đủ 2 pool OmniRoute & AGY CLI; proxy map 1:1 cổng S7.
 §
 Benchmark phải cùng model + cùng thinking effort; không báo DONE/push khi reviewer dưới ngưỡng; báo rõ REJECTED/BLOCKED kèm evidence.
