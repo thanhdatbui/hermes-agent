@@ -87,3 +87,25 @@
      $p = Get-CimInstance Win32_Process -Filter "ProcessId = <PID>"; $p.CommandLine; (Get-CimInstance Win32_Process -Filter "ProcessId = $($p.ParentProcessId)").CommandLine
      ```
 
+## 9. Background Video Rendering (FFmpeg) CPU Saturation & Two-Stage Pause/Resume
+- **Symptom**: User complains of catastrophic desktop/game lag ("giật lag kinh khủng", CPU > 90%) while running games (Warcraft III, LoL, TFT) on the host or secondary admin machine.
+- **Root Cause & Mechanism**:
+  - Background video rendering workers (e.g. `run_admin_render_worker.py` calling `random_batch_render.py` -> `ffmpeg.exe` with filter complexes) consume 70–80%+ CPU and ~2 GB RAM per instance, pushing host CPU to 90–95%+.
+  - **The Resurrecting Supervisor Trap**: Killing only `ffmpeg.exe` is completely ineffective. The parent Python supervisor loop catches child completion/exit and immediately spawns the next video chunk in milliseconds.
+  - **The Task Scheduler Watchdog Trap**: Even if the Python supervisor is terminated, Windows Task Scheduler entries configured with 15-minute intervals (e.g. `Taadaa_Admin_Render_15m` running `start_render_watchdog.vbs`) will resurrect the entire render chain shortly.
+- **Two-Stage Remediation Protocol**:
+  1. **Disable High-Frequency Schedulers**:
+     ```powershell
+     schtasks /change /tn "Taadaa_Admin_Render_15m" /disable
+     schtasks /change /tn "Taadaa_Admin_Render_Boot" /disable
+     ```
+  2. **Terminate the Entire Process Hierarchy**:
+     - Query all processes and kill `ffmpeg.exe` as well as any Python processes whose command line contains `render`, `random_batch_render`, or `run_admin_render_worker`.
+     - DO NOT kill unrelated automation (e.g. `download_by_niche.py` or proxy watchers) unless they are also thrashing resources.
+  3. **Verification**:
+     - Confirm CPU drops immediately (e.g. from 94% down to <10%).
+     - Confirm `ffmpeg.exe` returns exit code 1 (no instances found).
+  4. **Resume Mechanism**:
+     - Provide a canonical resume script (e.g. `resume_admin_render.py`) that re-enables `schtasks /change /tn ... /enable` and triggers `start_render_watchdog.vbs` once gaming is complete.
+
+
