@@ -20,6 +20,7 @@ metadata:
 - **Strike 3:** Trượt 3 lần -> Chuyển giao quyền can thiệp cho `claude_worker.py --role worker` (Haiku 5.5) hoặc `ag_cli.py fix`.
 - **Mechanical Override (Chống Bại Liệt / Anti-Paralysis):** Giới hạn tối đa 3 vòng sửa (`MAX_FIX_ATTEMPTS = 3`). Khi hết 3 lượt attempt mà Reviewer vẫn không approve, nhưng Mechanical Gate xanh 100% (pytest pass, diff <= 150 dòng, test count không giảm, không đụng protected paths) -> Bằng chứng cơ học thắng điểm cảm tính: tự động gán nhãn `reviewer = "mechanical_override_unresolved_reviewer"`, ghi audit và push luôn qua `safe_push.py`. TUYỆT ĐỐI CẤM trạng thái "lưu local khóc lóc / DEFERRED".
 - **Chỉ dừng khi có Bug thật (`BLOCKED_BY_REPRODUCED_BUG`):** Chỉ dừng khi có test đỏ hoặc crash thật; reviewer bắt bẻ cảm tính không có repro thì không được chặn push.
+- **Kỷ Luật "Cấm Khóc Lóc Blocked Khi Làm Việc":** Không được lấy lý do "reviewer chưa approve" hoặc tranh cãi ranh giới kiến trúc cấp hệ điều hành (user-space permissions) để đóng băng phiên hay than phiền blocked. Khi Mechanical Gate và test suite xanh 100%, Coordinator chủ động đặc tả rõ Threat Model Scope, thực thi dứt điểm và đưa task về đích.
 - Bỏ qua Sol cày điểm sau khi Claude CLI sửa xong và test pass 100%.
 
 ## 3. Anti-paralysis và tính xác thực của closeout
