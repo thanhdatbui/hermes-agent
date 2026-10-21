@@ -47,3 +47,17 @@ Lead with deltas and actions, not a verbatim restatement of every metric. Explic
 
 ## Evidence pattern from the lifecycle farm
 A report showing 51 Kibe BLOCKED was followed by a live state showing 53: the canonical state had 52 `CHANGE_INFO` BLOCKED and 1 `HOTMAIL_LOGIN` QUARANTINE, with two profiles' `updated_at` values after the report snapshot. This is the expected way to explain a stale report without rewriting historical telemetry.
+
+## Common Root Causes for 6H Report Login Failures & Zero Throughput (Updated 2026-10-21)
+1. **Recovery Mail Challenge on Password Login (`@fviainboxes.com`)**:
+   - Symptom: OCR shows *"Almost there / Sắp hoàn thành / Xác minh email của bạn: Gửi mã đến ...@fviainboxes.com"*.
+   - Root cause: Microsoft flags proxy IP and prompts for OTP sent to recovery mail. `batch_gpm_hotmail_password_login.py` historically only fetched OTP via Graph API, missing the temporary inbox API (`@fviainboxes.com`). Matching *"xác minh email của bạn"* triggers hard security block.
+   - Quarantine trigger: If retried 3 times without solving the recovery mail challenge, account transitions to `QUARANTINE` (deadlock 3/3). Do NOT reset blindly without recovery inbox automation.
+2. **Cookie Banner Overlay False-Positive**:
+   - Symptom: Screenshot shows browser successfully reached `account.microsoft.com` / `account.live.com`, but full-page cookie consent banner (*"Chúng tôi dùng cookie tùy chọn... Chấp nhận / Từ chối"*) covers the viewport.
+   - Root cause: If consent banner isn't dismissed (`button:has-text('Chấp nhận')` / `#acceptButton`), subsequent auth check elements may fail to resolve or time out, misclassifying a successful login as `BLOCKED` with a 48h penalty.
+3. **MobiProxy Network Lag / Blank Canvas**:
+   - Symptom: `post_login` screenshot file size is very small (2–4 KB) with empty/white canvas.
+   - Root cause: Proxy connection timed out during navigation between `login.live.com` and credentials form.
+4. **24h Per-IP Cooldown Throttling (Zero Throughput Window)**:
+   - When report shows e.g. 196 PENDING accounts but 0 processed in 6h, inspect `ip_action_history[port]['HOTMAIL_LOGIN']`. If all distinct proxy ports ran in the preceding shift, supervisor correctly enforces 24h cooldown to prevent subnet blacklisting. Accounts are healthy and waiting.
