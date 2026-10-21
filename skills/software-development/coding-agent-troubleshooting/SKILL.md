@@ -373,6 +373,7 @@ Antigravity CLI (`ag_cli.py`) subcommand flag schemas (`--profile` trap on `fix`
 Antigravity CLI pool timeout cascade trap, timeout governance across all dispatchers (1200s standard), and pool-state recovery: `references/antigravity-pool-timeout-cascade-and-worker-governance.md`.
 Monolith thin-slice refactoring pattern & Claude CLI model alias resolution (`--model haiku`): `references/monolith-thin-slice-surgery-and-haiku-alias.md`.
 Claude CLI quota telemetry, Windows Startup background sync, and Antigravity pool failover: `references/claude-cli-quota-telemetry-and-antigravity-fallback.md`.
+Model fallback triage, defensive agent paralysis vs codebase damage audit, and infrastructure decoupling: `references/model-fallback-triage-and-damage-audit.md`.
 
 ## Antigravity CLI (`agy`) — Headless Subagent vs IDE GUI Wrapper Trap
 
