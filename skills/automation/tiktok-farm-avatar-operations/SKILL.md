@@ -5,9 +5,9 @@ description: Use when running avatar-only jobs on TikTok farm.
 
 # TikTok Farm Avatar Operations
 
-- Core avatar workflow references: semantic audit/lock preflight, picker geometry, canonical launcher, switcher anchor, stale-source and hallucination prevention.
-- Immediate approved-avatar upload and evidence gate: [references/approved-avatar-immediate-upload-and-evidence.md](references/approved-avatar-immediate-upload-and-evidence.md). Metadata staging is not upload; require device verification and vision-checked confirmation before reporting DONE.
-- Double-lock & cross-host upload: [references/avatar-lock-verification-and-cross-host-upload.md](references/avatar-lock-verification-and-cross-host-upload.md). Up xong khóa cờ `.manual_avatar_locked` cả 3 kho + set `Avatar = OK`; quy trình SSH Admin-PC cho máy >= 200.
+- Crop timeout & zero-empty-promise: [references/avatar-crop-open-timeout-and-screen-sleep-trap-20261020.md](references/avatar-crop-open-timeout-and-screen-sleep-trap-20261020.md). S7 `AVATAR_CROP_OPEN_FAILED` / screen sleep; zero empty promises.
+- Approved-avatar upload & evidence: [references/approved-avatar-immediate-upload-and-evidence.md](references/approved-avatar-immediate-upload-and-evidence.md).
+- Double-lock & cross-host: [references/avatar-lock-verification-and-cross-host-upload.md](references/avatar-lock-verification-and-cross-host-upload.md). Khóa `.manual_avatar_locked` 3 kho, `Avatar = OK`, SSH máy >= 200.
 - New correction-loop checklist: [avatar-change-correction-loop-20261020.md](references/avatar-change-correction-loop-20261020.md).
 - Account-bound evidence and runner contradiction: [references/account-bound-avatar-evidence-and-runner-contradiction.md](references/account-bound-avatar-evidence-and-runner-contradiction.md). Require exact-account visual proof; runner success/workbook updates alone are intermediate evidence.
 - Avatar Text-Banner Crop: [references/avatar-text-banner-crop-triage-and-non-empty-coordinator-response-20261016.md](references/avatar-text-banner-crop-triage-and-non-empty-coordinator-response-20261016.md)

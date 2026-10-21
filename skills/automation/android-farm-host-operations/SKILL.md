@@ -6,6 +6,7 @@ description: "Use when farm devices drop, USB hangs, or entering BIOS."
 # Android Farm Host Operations
 
 References:
+- `references/inter-shift-lock-reboot-skip-and-port5038-split-triage-20261021.md` — Phân tích sự cố bỏ qua reboot 2 ca liên tiếp (11:20 & 17:20) do active device lock kết hợp với xung đột daemon ADB cổng 5038 của Tiểu Vi khiến văng 35 máy trên Kibe tại Ca 3 Phiên 2 (21/10/2026).
 - `references/pre-session-device-readiness-gate-and-receipt-lifecycle-20261021.md` — Kiến trúc Pre-Session Device Readiness Gate (56 tests) tự động fast probe O(1) cứu máy treo ADB trước ca chạy và cơ chế Auto-Archive dọn dẹp bẫy Stale Post Receipts > 24h giải phóng deadlock đăng bài (21/10/2026).
 - `references/xiaowei-netstat-regex-port5038-triage-20261019.md` — Phân tích lỗi regex netstat thiếu Foreign Address trong watchdog dọn cổng 5038 khiến tiến trình mồ côi không bị hạ và giam giữ 25 máy trên Kibe (19/10/2026).
 - `references/admin-vs-kibe-dual-xeon-disconnection-and-post-watchdog-triage-20261019.md` — Chẩn đoán nghịch lý Kibe vs Admin cùng Dual Xeon nhưng Admin rớt kết nối S7 nhiều hơn sau 2 phiên chạy: giới hạn của watchdog dọn port 5038, tích tụ tràn đệm EHCI X99 (8D26/8D2D), độ trễ ngắt DPC từ FFmpeg render ngầm và sụt áp cáp Box 4 do nhiệt (19/10/2026).

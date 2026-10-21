@@ -114,7 +114,17 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
 
 ## Pitfalls
 
-- **CẤM GHI NHỚ MÕM KHI ĐÃ CÓ GATE CƠ HỌC & KIẾN TRÚC 3 GATE FAIL-CLOSED PLAN_EXEC_GATE (Operator Mandate 21/10/2026):**
+- **BẪY CLAUDE REVIEWER TIMEOUT 150S & MAX TURNS 8 KHI AUDIT TEST SUITE NẶNG (Heavy Suite Budget Invariant 21/10/2026):**
+  Khi gọi `claude_worker.py --role reviewer` để audit các task có test suite chạy > 20s (như 59 integration tests của `plan_exec_gate.py` chạy mất 43.55s trên Windows), việc để mặc định `default_turns = 8` và `--timeout 150` sẽ khiến Claude CLI bị cạn turns (`Error: Reached max turns (8)`) và văng timeout exit code 124.
+  1. *Nguyên nhân:* Claude cần 1-2 turns đọc diff, 1 turn chạy pytest (ngốn 43s), 2-3 turns soi edge cases/tampering và 1-2 turns viết báo cáo.
+  2. *Quy chuẩn cấp ngân sách:* Khi test suite > 20s hoặc > 30 test cases, BẮT BUỘC truyền `--max-turns 15` (chạm hard cap của reviewer) và `--timeout 300` (ở background terminal timeout 360). Chỉ định rõ lệnh test focused trong prompt để Claude không thăm dò lan man.
+  (Xem `references/claude-reviewer-heavy-suite-timeout-and-turns-budget-20261021.md`).
+
+- **CẤM DÙNG KÝ PHÁP LATEX MATH GỬI MŨI TÊN TRÊN TELEGRAM (User Correction 21/10/2026):**
+  Operator đã chấn chỉnh: *"T fix vụ gửi mũi tên r mà sao vẫn bị v"*.
+  Khi trình bày các luồng quy trình (workflow), tuyệt đối CẤM dùng cú pháp LaTeX math block `$$\text{A} \longrightarrow \text{B}$$` hoặc inline `$\rightarrow$`. Telegram không hỗ trợ render MathJax/KaTeX nên sẽ phơi bày toàn bộ chuỗi code LaTeX thô kệch, gây ức chế cho người đọc. Luôn dùng ký tự Unicode thật (`→`) hoặc text thuần (`->`).
+
+- **BẪY GHI NHỚ MÕM KHI ĐÃ CÓ GATE CƠ HỌC & KIẾN TRÚC 3 GATE FAIL-CLOSED PLAN_EXEC_GATE (Operator Mandate 21/10/2026):**
   Operator đã chấn chỉnh gay gắt: *"Gọi 3 bên vào thống nhất r thiết kế gate cơ học. Chứ đéo phải mày ghi nhớ mõm. Vẫn yêu cầu cấm khóc lóc block dừng lại"*.
   1. *Căn nguyên sai lầm:* Khi đạt được đồng thuận về quy trình phối hợp (Gemini gom Evidence -> Sonnet lập Plan -> Agy CLI thi công), Coordinator có phản xạ "tôi xin ghi nhớ điều này" hoặc chỉ tiêm vào prompt/memory. Đây là bẫy nguy hiểm vì không có cơ chế vật lý nào ngăn chặn việc Gemini bịa ra evidence ảo, Sonnet nhả plan lý thuyết suông không có lệnh test thật, hoặc Agy CLI tiện tay sửa lan man ngoài scope.
   2. *Cơ chế 3 Gate Cơ Học Fail-Closed (`plan_exec_gate.py`):*

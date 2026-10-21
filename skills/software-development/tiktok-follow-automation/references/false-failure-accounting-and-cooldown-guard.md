@@ -29,7 +29,20 @@ Anything else is `MANUAL_REVIEW` / unknown. In particular, do not call `set_foll
 
 When a machine has `followed_count > 0` or a non-empty `followed` list but ends with `status=FOLLOW_FAILED`, classify it as **tail-drop / account ceiling**, not as a zero-success failure or persistent jail. The runner may fail-closed after a later profile verification rejects the next follow even though earlier follows were accepted.
 
-Required report semantics:
+### Root cause of "Thành công (0 máy)" contradiction in watchdog
+In `watchdog/formatters.py` (`classify_machine_follow_result`), checking status before `len(flist)` causes machines that achieved successful follows before a terminal drop to be misclassified:
+```python
+# ❌ Anti-pattern: Status check takes precedence over actual work delivered
+if status == "FOLLOW_FAILED" and fd.get("follow_failed") is True:
+    return "released", f_reason
+if str(status).upper() in {"OK", "SUCCESS", "COMPLETED"} and len(flist) > 0:
+    return "success", f_reason
+```
+If a machine followed 3 UIDs and hits a drop on the 4th, `status` is `FOLLOW_FAILED` with `follow_failed=True`. The classifier puts it into `fl_released` and leaves `fl_success` empty (0 machines), outputting:
+`  + Thành công (0 máy | 0.0%): Không có`
+while simultaneously reporting `Follow chéo (3 lượt)` and `Nhả follow: M59: 3 lượt`.
+
+### Required report semantics:
 - `used > 0`: accepted follows are real; report the accepted count and the terminal rejection separately. Do not increment `fail_streak`; apply only the short cooldown defined by the state machine; do not trip the IP breaker from this event alone.
 - `used == 0`: only the zero-follow path may advance `fail_streak`; persistent-jail classification requires the configured repeated zero-follow threshold, not one `FOLLOW_FAILED` status.
 - Never classify from `FOLLOW_FAILED` alone. Inspect `follow_result.json` and the matching `log.jsonl` event, including `followed`, `followed_count`, `failed`, `follow_failed`, `reason`, `fail_streak`, and cooldown fields.
