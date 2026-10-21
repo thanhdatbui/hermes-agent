@@ -60,6 +60,8 @@ Use when a user asks whether two AI models are equivalent, requests benchmark-ba
 - Conflating Free Tier API quotas with Subscription IDE/Companion limits: preview models (e.g. Gemini 3.8 Flash) often have a strict 20 RPD cap on AI Studio Free Tier, breaking large-context CLI harnesses (like omp) while companion IDE pools (agy) run unrestricted.
 - Pushing CLI harness authentication tasks to the user when background OAuth fails instead of autonomously configuring local proxy routes (`models.yml` pointing to OmniRoute `:20129`).
 - Assuming CLI harnesses like `omp` honor standard `OPENAI_BASE_URL` env vars for arbitrary model IDs without declaring explicit provider blocks in `~/.omp/agent/models.yml`.
+- Benchmarking CLI harnesses across asymmetric network routes: pitting a native direct-binary harness (`agy.exe` direct to Google Cloud) against a proxied harness (`omp` via local OmniRoute port 20129) skews latency measurements by 15-20s due to local SSE re-serialization; fair head-to-head benchmarking requires identical egress architecture (both direct native OAuth or both through the identical proxy pipeline).
+- Missing OMP `install-id` isolation across multi-profile pools: `getInstallId()` in `dirs.ts` defaults to reading `~/.omp/install-id` across all profiles unless `USERPROFILE`/`HOME` is explicitly sandboxed per profile directory, creating a machine-level sybil correlation leak across accounts.
 
 ## First-party product-surface verification
 
