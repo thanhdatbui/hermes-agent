@@ -16,12 +16,13 @@
       "disablePromptCacheAffinity": false,
       "stickyRoundRobinLimit": 8,
       "queueTimeoutMs": 3000,
-      "targetTimeoutMs": 30000,
+      "targetTimeoutMs": 60000,
       "failoverBeforeRetry": true,
       "maxRetries": 1
     }
     ```
   - `stickyRoundRobinLimit: 8` giữ nguyên prompt cache trong 8 turns của cùng 1 task, sau 8 turns tự nhả để xoay sang acc rảnh khác.
+  - **Bẫy `targetTimeoutMs` quá ngắn (30s) gây bão 499 (Domino Abort):** Các request Vision (base64 image) hoặc prompt nặng cần 35-50s để Google xử lý. Nếu để `targetTimeoutMs: 30000`, `targetTimeoutRunner` sẽ chém đứt request ở đúng mốc 30.000ms (`timeoutController.abort()`), biến thành lỗi **HTTP 499 (Request aborted)**. Sau đó combo tiếp tục ném payload đó sang các acc tiếp theo trong pool, gây chuỗi domino 499 trên hàng loạt acc và kết thúc bằng 503 `ALL_TARGETS_SKIPPED`. Do đó, `targetTimeoutMs` bắt buộc phải để tối thiểu **60000** (60s) cho cả pool con (`ag-gemini-pool-3`) lẫn combo cha (`omni-worker`).
 
 ### B. Pool Free Codex & Claude AG (`codex-terra`, `codex-luna`, `ag-opus`, `ag-sonnet`, `ag-gemini-free-pool`)
 - **Vấn đề với `cache-optimized`:** Khi cache hit, code `targetResolution.ts` vô tình set `disableSessionStickiness = true`, dẫn đến hệ thống chỉ dí liên tục vào 1-2 acc có cache cho đến khi cạn quota / rate-limit trong khi các acc free khác rảnh rỗi.

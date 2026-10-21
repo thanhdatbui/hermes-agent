@@ -16,6 +16,11 @@ When multiple agent/worker sessions run concurrently (e.g. 10–17 parallel sess
      - `recordModelLockoutFailure`
      - `recordProviderCooldown` (Global Cooldown on provider `antigravity`)
    - Pre-dispatch filter skips 100% of targets -> Instant **HTTP 503 ALL_TARGETS_SKIPPED**.
+3. **The False 499 Domino Abort (Per-Target Timeout Trap):**
+   - Không phải mọi đợt bão lỗi 503 / cạn pool đều do 429 hết quota thật.
+   - Nếu `targetTimeoutMs` của combo cấu hình quá thấp (ví dụ 30s), các request Vision (base64 image) hoặc prompt nặng cần 35-50s sẽ bị OmniRoute tự hủy giữa chừng (`timeoutController.abort()`), ghi nhận mã **HTTP 499 (`Request aborted`)** ở mốc ~30.000ms.
+   - Combo ném tiếp cùng request nặng đó qua lần lượt các acc còn lại trong pool, tạo chuỗi domino 499 hàng loạt (`failed · 5 at...`) và cuối cùng ngắt bằng 503 dù các acc Pro còn nguyên 100% quota.
+   - Khắc phục: Nâng `targetTimeoutMs` tối thiểu **60000** (60s) cho cả pool con (`ag-gemini-pool-3`) lẫn combo cha (`omni-worker`) qua `PUT /api/combos/[id]`.
 
 ## Critical Pitfall: Why Raising `max_concurrent` Does NOT Fix 429
 - **Question:** "Should we increase `max_concurrent` (currently set to 5 for Pro accounts) so more requests can run?"

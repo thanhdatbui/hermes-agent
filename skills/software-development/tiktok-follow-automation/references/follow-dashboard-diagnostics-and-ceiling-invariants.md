@@ -275,6 +275,27 @@ Trong `follow_state.py`, runner tự động điều chỉnh trần follow cho c
   * Khi ra tù: Cho Veteran chạy Fast-Track **8 – 10 fl** (nằm an toàn dưới mốc gãy 15, đạt 60–70% sản lượng).
   * Chỉ cần hoàn thành 1 ca sạch 8–10 fl là tốt nghiệp thẳng lên mốc 12–14 fl, không cần ngâm 2 ngày S1/S2 như Tân binh.
 
+## 21. Cải Cách Cơ Chế Fail Streak (Chống Phạt Oan Nick Đã Follow Được) & Chuẩn Thống Kê Chu Kỳ
+- **Sai lầm thiết kế cũ của `fail_streak`**:
+  * Mọi trường hợp `set_follow_failed()` đều tăng `fail_streak = curr_streak + 1` bất kể nick follow được 0 hay 15 lượt.
+  * Hậu quả: Nick hoàn toàn khỏe mạnh, follow được 14–15 lượt (như M17 R2, M23 R2) chỉ bị chạm rate limit cuối phiên lại bị đối xử như nick tù nặng, bị tăng streak lên 2, 3, 4, 5, 6 và bị giam 5–15 ngày oan.
+- **Chuẩn hóa Logic Fail Streak mới (`follow_state.py`)**:
+  1. **Chỉ tăng `fail_streak` khi `budget_used == 0`**:
+     * Bị nhả ngay phát đầu tiên (không follow được cái nào) $\rightarrow$ Chứng tỏ tài khoản đang bị cấm/IP dơ thật sự $\rightarrow$ Tăng progressive streak (Streak 1: 3 ngày, Streak 2: 5 ngày, Streak 3: 7 ngày, Streak $\ge 4$: 15 ngày).
+  2. **KHÔNG tăng `fail_streak` khi `budget_used > 0`**:
+     * Nick đã bấm được $\ge 1$ UID thành công rồi mới dính nhả (chạm trần phiên):
+     * Giữ nguyên `fail_streak = max(1, curr_streak)`, tuyệt đối không tăng lũy tiến ngày tù.
+     * Chỉ cách ly ngắn **1 ngày** (`today + timedelta(days=1)`) để xả cache phiên của TikTok.
+     * Ghi nhận `last_failed_ceiling = max(1, min(40, att if att >= 0 else max(1, used + 1)))` để cơ chế trần động phiên sau tự động khóa cap an toàn dưới ngưỡng này.
+- **Quy tắc Thống Kê Chu Kỳ 4 Ngày (Loại Trừ Nhiễu Bị Nhả Ngay Phát Đầu)**:
+  * Khi báo cáo đối soát tỷ lệ ăn nhả giữa các chu kỳ 4 ngày, **bắt buộc bóc tách 2 nhóm**:
+    1. *Nhóm Bị Nhả Ngay Phát Đầu (`fl = 0`)*: Đa phần là Rookie non hoặc nick đang bị tù nặng, không phản ánh năng lực thực chiến của farm.
+    2. *Nhóm Nick Thực Chiến (`fl >= 1`)*: Chỉ tính tỷ lệ Sạch vs Ăn Nhả Đuôi trên tập tài khoản này.
+  * *Số liệu đối soát mẫu*:
+    - Chu kỳ 15–16/10: Nhả phát đầu 84 nick; Nhóm thực chiến 39 nick (100% sạch, 0% ăn nhả đuôi) do trần an toàn thấp (bình quân 4.7 fl/ca).
+    - Chu kỳ 19–20/10: Nhả phát đầu 213 nick; Nhóm thực chiến 32 nick (17 sạch 53.1%, 15 ăn nhả đuôi 46.9%) do mở trần 12–15 fl va phải ngưỡng đỏ TikTok.
+
+
 
 
 
