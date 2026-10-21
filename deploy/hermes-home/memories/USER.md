@@ -2,7 +2,7 @@ Bio: CẤM TRÙNG BIO; 100% tiếng Việt có dấu (AdbKeyboard B64); cấm đ
 §
 Dọn đĩa: safe_recycle.py. Reboot né TFT/War3. Box 1 sát AP kibe 1. S7: anten góc TRÁI. Lỗi timeout/PSM sửa script; cấm cron quấy rầy máy nghỉ.
 §
-Nuôi 4d 3 ca (bỏ 0h). Nhả lock device. Ava&2FA tới 5h15. Excel 3,4,5+G; Starve 96h. DB/OpenCV quét ava rác, bóc clip gốc HD.
+Nuôi 4d 3 ca (bỏ 0h). Cấm pause cron/kill tool khác khi kẹt lock, canh xong mới làm. Ava&2FA tới 5h15. Starve 96h.
 §
 Fallback Claude->Agy; Repo dirty --files O(1); pre-push 1 commit. Pin TT LIFO. CẤM đụng Chrome host, dùng GPM/agy_profiles.
 §

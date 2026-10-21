@@ -31,3 +31,40 @@
 ## 4. Kỷ Luật Canary Bắt Buộc Trước Khi Báo DONE
 - Mọi thay đổi code tự động hóa GPM/Hotmail BẮT BUỘC phải chạy Canary trên ít nhất 1 profile GPM thật (`done_gate.py`).
 - Coordinator BẮT BUỘC soi mắt kiểm tra OCR / Vision ảnh chụp màn hình sau Canary để xác nhận màn hình đích thực sự đã đăng nhập trước khi báo cáo kết quả.
+
+## 5. Chống URL-only False Positive & Kiểm Tra Login Form Hiển Thị
+- **Lỗ hổng URL-only**: Kiểm tra `"proofs/manage" in page.url` tự nó không chứng minh phiên đã đăng nhập thành công. Nếu người dùng chưa đăng nhập, Microsoft vẫn giữ nguyên `wreply=https%3A%2F%2Faccount.live.com%2Fproofs%2Fmanage...` trên thanh địa chỉ của form đăng nhập.
+- **Tiêu chuẩn kiểm tra 2 lớp**:
+  1. **Thẻ quản trị thực tế (Authenticated Cards)**: Phải xuất hiện ít nhất một nội dung chỉ có sau đăng nhập: `"thay đổi mật khẩu"`, `"tuỳ chọn bảo mật"`, `"cách để chứng minh bạn là ai"`, `"additional security options"`.
+  2. **Vắng bóng form đăng nhập (No Visible Login Form)**: Kiểm tra trực tiếp xem có ô nhập liệu nào đang hiển thị hay không (`is_visible()`):
+     ```python
+     has_login_form = any(
+         page.locator(sel).first.is_visible(timeout=500)
+         for sel in ['input[type="password"]', '#passwordEntry', '#i0118', 'input[name="passwd"]',
+                     'input[type="email"]', '#usernameEntry', '#i0116']
+     )
+     if has_login_form:
+         logged_in = False
+     ```
+  Nếu còn login form đang hiển thị, kết luận `logged_in` BẮT BUỘC là `False`, bất kể URL đang là gì.
+
+## 6. Xung Đột Nhị Phân C-Extension (`greenlet._greenlet`) & Python Version Mismatch
+- **Hiện tượng**: Script Playwright crash ngay tại dòng `import playwright` hoặc `from playwright.sync_api import sync_playwright` với lỗi `ImportError: cannot import name '_greenlet' from 'greenlet'`.
+- **Nguyên nhân**: Quá trình chạy kế thừa biến môi trường `PYTHONPATH` từ virtualenv (ví dụ Python 3.11 của Hermes), trong khi script được gọi bằng Python hệ thống (Python 3.12). File nhị phân biên dịch sẵn `.pyd` của 3.11 không tương thích với 3.12.
+- **Cách khắc phục**: Thêm bộ lọc `sys.path` ngay tại đầu file thực thi trước khi import Playwright:
+  ```python
+  import sys
+  sys.path = [p for p in sys.path if not ("hermes" in p.lower() and "site-packages" in p.lower())]
+  ```
+
+## 7. Xử Lý Thử Thách OTP Mail Khôi Phục (`@fviainboxes.com`) & Thoát Quarantine
+- **Hiện tượng**: Khi đăng nhập trên proxy mới, Microsoft hiển thị màn hình thử thách danh tính (*"Sắp hoàn thành / Almost there"*, *"Gửi mã đến ke*...@fviainboxes.com"*).
+- **Cạm bẫy**: Đưa cụm từ *"xác minh email"* vào `hard_block_keywords` sẽ làm script ngắt sớm, sau 3 chu kỳ lặp lại supervisor sẽ đẩy tài khoản vào `QUARANTINE`.
+- **Giải pháp**:
+  1. Loại bỏ các từ khóa thử thách danh tính khỏi `hard_block_keywords`.
+  2. Tra cứu email khôi phục tương ứng từ `gmail_clean_v2.xlsx`.
+  3. Bấm chọn phương thức gửi mã, điền email khôi phục và bấm *Gửi mã* (`Send code`).
+  4. Gọi `fetch_recovery_email_otp(rec_email, timeout_seconds=45)` từ `mail_domain_otp_helper.py` để lấy mã OTP 6–7 số.
+  5. Điền mã vào các ô `#codeEntry-0..5` hoặc `#iOttText` và submit.
+  6. Sau khi cập nhật code fix, bắt buộc chạy script reset danh sách `quarantine_profiles` trong state JSON của supervisor (`reset_admin_quarantine.py`) để các nick bị kẹt được chạy lại tự động.
+
