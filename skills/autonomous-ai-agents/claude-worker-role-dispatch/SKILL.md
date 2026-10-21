@@ -337,7 +337,15 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
      - Kẹp chỉ thị zero-tool: `"[Yêu cầu: Xuất trực tiếp toàn văn bản kế hoạch ra stdout, KHÔNG gọi bất kỳ tool Read hay Bash nào]"`.
      - Chuyển hướng stdout ở shell ngoài: `python D:/Taadaa/tools/claude_worker.py --role planner --model sonnet ... > <target_file>.md`.
      Sonnet nhận 100% context ngay Turn 1 và nhả toàn bộ bản vẽ thiết kế chỉ trong đúng 1 turn duy nhất mà không tốn tool call nào.
-  (Xem `references/sonnet-planner-write-disallowed-and-stdout-redirection-20261021.md`).
+- **CRONJOB DELIVERY ROUTING & SUB-SYSTEM CHANNEL HYGIENE (Chống Spam Chat 21/10/2026):**
+  Operator đã chấn chỉnh: *"ủa r mắc gì báo về nhóm này. Nếu lỗi thì báo về đúng nhóm của repo nó chứ"*.
+  Khi tạo hoặc cấu hình Cronjob/Watchdog, TUYỆT ĐỐI CẤM để `deliver='origin'` làm spam luồng chat đàm thoại của Operator!
+  - Watchdog dọn dẹp, auto-healer ngầm: `deliver='local'`.
+  - Watchdog báo cáo kết quả / alert theo phân hệ: BẮT BUỘC định tuyến về đúng Telegram channel của repo đó:
+    * TikTok Video Upload / Stale Accounts / Render (`Tiktok-video`): `telegram:-5435853713` (Farm Upload / Admin group).
+    * GPMLogin / Gmail / 2FA (`GPM auto`, `register gmail`): `telegram:-5256944036` (GPM Farm group).
+    * TikTok Follow Sessions (`tiktok-follow`): `telegram:-5127276494`.
+    * Sự cố phần cứng / kết nối chung toàn farm (`farm_alert`): `telegram:-5373649734`.
 - **NEVER** run `claude -p "..." --dangerously-skip-permissions` raw in terminal.
 - **NEVER** increase `--max-turns` above role's `hard_cap_turns`; split the task instead.
 - **NEVER** use `worker` role for planning/reviewing just to get write access.

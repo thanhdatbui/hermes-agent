@@ -1,4 +1,4 @@
-Bio: CẤM TRÙNG BIO; 100% tiếng Việt có dấu (AdbKeyboard B64); cấm đổi khi tên khớp username; Khóa nick tay.
+Bio: CẤM TRÙNG; 100% TV có dấu. Tên TikTok: họ tên thật, CẤM hậu tố rác (Sữa/Chanh/Heo/Cún); khóa tay.
 §
 Dọn đĩa: safe_recycle.py. Reboot né TFT/War3. Box 1 sát AP kibe 1. S7: anten TRÁI. Tự điều tra script, fix tận gốc & canary; cấm quấy rầy máy nghỉ.
 §
