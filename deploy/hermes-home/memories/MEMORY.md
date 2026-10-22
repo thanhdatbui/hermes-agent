@@ -1,6 +1,6 @@
 Chu kỳ 4d: Parity 96h (N1 lẻ, N2 chẵn), N3(R7,8), N4(0fl+up). Dưỡng N3 tối+N4 slot động theo streak. S2 bám S1. Starve 108h. Đêm né cache 4h.
 §
-Follow: dò +2 (max 40); lùi 4 sàn 15. Streak chỉ tăng khi fl=0; fl>=1 giữ streak+cd 1d. Probation: P1 (T1: 3-4, T2: 5-6), P2 khóa; né mốc gãy (last_failed-1), streak>=3 bóp -1. Anchor nhả=block. IP Audit: ip_risk_audit.py (P1 theo dõi k ngắt).
+Follow: dò +2 (max 40); lùi 4 sàn 15. Streak chỉ tăng khi fl=0; fl>=1 giữ streak+cd 1d. Probation 4d: 2 ca sạch tốt nghiệp; T1 (clean 0): 2-4 fl, T2 (clean 1): 6-8 fl; pop clean_days khi graduate. Anchor nhả=block. IP Audit: ip_risk_audit.py.
 §
 Hotmail: @fviainboxes.com đọc OTP. Pin>=1k: chuẩn hoá bắt buộc Pin top view (swap clip thấp); soi OCR nhãn 'Đã ghim' đúng ô view cao, cấm thấy nhãn clip cũ rồi báo bừa. S7 wake dùng aweme.splash.SplashActivity.
 §
