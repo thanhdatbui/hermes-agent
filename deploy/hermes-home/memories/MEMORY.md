@@ -10,7 +10,7 @@ Sol: On-Demand, cấm auto-append; advisor_tool 55s/consult 140s; briefing 4k k�
 §
 Stale Up: xóa draft. Revert: TikWM. Cào: max 60. Cron TB: device_lock+rolling<=5; bỏ ca 0h.
 §
-Closeout: Tier 0 Sonnet CLI (--model claude-sonnet), fallback Sol (:20129); Grace 80-84; CẤM raw git push lách safe_push; Strike 3 Reviewer tự sửa. Night: P1 Gmail, P2 2FA.
+Closeout: Tier 0 Sonnet CLI, fallback Sol (:20129); Grace 80-84; CẤM raw git push; Strike 3 Reviewer tự sửa. Night: P1 Gmail, P2 2FA. pre_session_gate: get-state+service check settings; FRAMEWORK_CHECK_ENABLED=0 bypass tầng 2.
 §
 Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; Reaper SSH. Pre-push: 1 commit khớp scope_hash.
 §
@@ -20,7 +20,7 @@ Ava: Trích clip gốc; Vision LLM lọc ava rác. Gate 6: cấm trần thuật 
 §
 Reboot 3 ca (05:20, 11:20, 17:20): lookback 60m; 2FA né đệm. Né TFT/War3. Task ngầm Hidden+CREATE_NO_WINDOW. Game=tắt nháy.
 §
-OMP/AGY: 28 acc Pro; nạp đủ 3 pool (ag-gemini-pool-3, ag-sonnet, ag-opus); lease 1800s; QR validation Google: tab GPM desktop phải giữ mở trực chiến (WebSocket sync); link 9k quá 8p Google One báo 'đã sử dụng', đối soát 0GB/5GB vs 5TB trên one.google.com/home.
+OMP/AGY: 28 acc Pro; lease 1800s; QR Google: tab GPM giữ mở; link 9k quá 8p báo 'đã sử dụng', đối soát one.google.com/home.
 §
 Đơn TT Shop: Mail báo 1 lần; API SPX/J&T/Ninja; Hub Thanh Khê. Dashboard :1905 /api/orders.
 §

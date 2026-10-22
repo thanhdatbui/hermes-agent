@@ -13,6 +13,20 @@ metadata:
 
 Use this skill when calling Claude Code CLI for any task on the Taadaa Farm. All Claude CLI invocations MUST go through `D:/Taadaa/tools/claude_worker.py`, never via raw `claude -p` in terminal.
 
+## CRITICAL: Correct Model Aliases
+
+| Intent | Alias đúng | WRONG (exit 1) |
+|--------|-----------|----------------|
+| Sonnet | `sonnet` | `claude-sonnet`, `claude-sonnet-5-5` |
+| Haiku | `haiku` | `claude-haiku` |
+| Opus | `opus` | `claude-opus` |
+
+Alias sai → error "isn't described by this version's model catalog" → exit 1.
+
+**Gate ABC Incident (2026-10-22):** Coordinator bỏ qua Gate A+B sau T0, tự viết >100 dòng và deploy. Post-mortem: `references/gate-abc-enforcement-gap-incident-20261022.md`.
+
+---
+
 ## Context: The 72-Turn Disaster (15/10/2026)
 
 When a Coordinator bypassed the Guard by running `claude -p "..." --dangerously-skip-permissions > log.txt 2>&1` without `--model` or `--max-turns`, Claude Sonnet 5.5 ran **72 agentic turns** freely in a 112K-token workspace, consuming **2.117.100 tokens** and pushing quota from 5% to 98% in 20 minutes.

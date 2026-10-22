@@ -16,6 +16,7 @@ description: >-
 > Ref: `references/recovery-proof-and-operator-closeout.md`.
 > Ref: `references/session-recovery-patterns-2026-10-21.md`.
 > Ref: `references/batch-alert-upload-hook-post-verification-false-positive-triage.md`.
+> Ref: `references/rolling-rename-exit2-splashactivity-triage.md`.
 > Ref: `references/strike-3-reviewer-handoff-and-claude-quota-collision.md`.
 
 ## UI evidence: target screen only
