@@ -44,12 +44,43 @@ def test_get_idle_seconds_counts_unfocused_time(monkeypatch):
     clock = MagicMock()
     clock.time.return_value = 1000.0
     monkeypatch.setattr(xw, "time", clock)
-    monkeypatch.setattr(xw, "_system_idle_seconds", lambda: 5.0)
+    monkeypatch.setattr(xw, "_system_idle_seconds", lambda: 0.0)
     monkeypatch.setattr(xw, "is_xiaowei_foreground", lambda: True)
     assert xw.get_idle_seconds() == 0.0
     monkeypatch.setattr(xw, "is_xiaowei_foreground", lambda: False)
     clock.time.return_value = 1000.0 + xw.IDLE_THRESHOLD_SECONDS
     assert xw.get_idle_seconds() == xw.IDLE_THRESHOLD_SECONDS
+
+
+def test_is_xiaowei_foreground_precision(monkeypatch):
+    user32 = xw.ctypes.windll.user32
+    def _set_text(h, b, l, text):
+        b.value = text[:l-1]
+        return len(b.value)
+
+    with patch.object(user32, "GetForegroundWindow", return_value=123), \
+         patch.object(user32, "GetWindowTextLengthW", return_value=30), \
+         patch.object(user32, "GetWindowTextW", side_effect=lambda h, b, l: _set_text(h, b, l, "Some Title")), \
+         patch.object(xw, "_foreground_process_name", return_value="xiaowei.exe"):
+        assert xw.is_xiaowei_foreground() is True
+
+    with patch.object(user32, "GetForegroundWindow", return_value=123), \
+         patch.object(user32, "GetWindowTextLengthW", return_value=30), \
+         patch.object(user32, "GetWindowTextW", side_effect=lambda h, b, l: _set_text(h, b, l, "chrome window")), \
+         patch.object(xw, "_foreground_process_name", return_value="chrome.exe"):
+        assert xw.is_xiaowei_foreground() is False
+
+    with patch.object(user32, "GetForegroundWindow", return_value=123), \
+         patch.object(user32, "GetWindowTextLengthW", return_value=30), \
+         patch.object(user32, "GetWindowTextW", side_effect=lambda h, b, l: _set_text(h, b, l, "投屏助手")), \
+         patch.object(xw, "_foreground_process_name", return_value="msedgewebview2.exe"):
+        assert xw.is_xiaowei_foreground() is True
+
+    with patch.object(user32, "GetForegroundWindow", return_value=123), \
+         patch.object(user32, "GetWindowTextLengthW", return_value=30), \
+         patch.object(user32, "GetWindowTextW", side_effect=lambda h, b, l: _set_text(h, b, l, "other app")), \
+         patch.object(xw, "_foreground_process_name", return_value="msedgewebview2.exe"):
+        assert xw.is_xiaowei_foreground() is False
 
 
 def test_close_xiaowei_clears_idle_state(monkeypatch):

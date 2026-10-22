@@ -136,10 +136,14 @@ def is_xiaowei_foreground() -> bool:
     buf = ctypes.create_unicode_buffer(length + 1)
     user32.GetWindowTextW(hwnd, buf, length + 1)
     title = buf.value.lower()
-    if any(k in title for k in ('xiaowei', '牧卫', '效卫', '投屏', 'com.xiaowei')):
+    if any(k in title for k in ('xiaowei', '牧卫', '效卫', 'com.xiaowei')):
         return True
     proc_name = _foreground_process_name(user32, hwnd)
-    return any(k in proc_name for k in ('xiaowei', 'msedgewebview2'))
+    if proc_name == 'xiaowei.exe':
+        return True
+    if proc_name == 'msedgewebview2.exe' and any(k in title for k in ('投屏', 'xiaowei')):
+        return True
+    return False
 
 
 def _read_last_active() -> float | None:
@@ -167,19 +171,18 @@ def _clear_idle_state() -> None:
 
 
 def get_idle_seconds() -> float:
-    """Return seconds since the user last interacted with Tiểu Vi; 0.0 while it is focused and the user is active."""
+    """Return seconds since the user last interacted with Tiểu Vi."""
     now = time.time()
     system_idle = _system_idle_seconds()
     is_fg = is_xiaowei_foreground()
-    if is_fg and system_idle < 60:
-        _write_last_active(now)
-        return 0.0
+    if is_fg:
+        _write_last_active(now - system_idle)
+        return system_idle
     last_active = _read_last_active()
     if last_active is None:
         _write_last_active(now)
         last_active = now
-    unfocused_idle = now - last_active
-    return max(unfocused_idle, system_idle) if is_fg else unfocused_idle
+    return max(0.0, now - last_active)
 
 
 _XIAOWEI_RUNNING_CACHE: bool | None = None
@@ -362,15 +365,27 @@ def main():
     idle_sec = get_idle_seconds()
     if idle_sec >= IDLE_THRESHOLD_SECONDS:
         mins = idle_sec / 60.0
+        is_fg = is_xiaowei_foreground()
+        reason = "foreground_idle" if is_fg else "unfocused_background_idle"
         if close_xiaowei():
             log_event(
                 "XIAOWEI_CLOSE_TRIGGERED",
                 idle_seconds=idle_sec,
                 idle_minutes=round(mins, 1),
+                reason=reason,
+                is_foreground=is_fg,
                 metrics=get_metrics(),
             )
         else:
-            log_event("XIAOWEI_CLOSE_FAILED_SUMMARY", level="ERROR", idle_seconds=idle_sec, idle_minutes=round(mins, 1), metrics=get_metrics())
+            log_event(
+                "XIAOWEI_CLOSE_FAILED_SUMMARY",
+                level="ERROR",
+                idle_seconds=idle_sec,
+                idle_minutes=round(mins, 1),
+                reason=reason,
+                is_foreground=is_fg,
+                metrics=get_metrics(),
+            )
 
 
 if __name__ == "__main__":
