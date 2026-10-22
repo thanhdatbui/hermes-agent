@@ -164,6 +164,7 @@ If the process is still running, report `RUNNING` with the exact log path and do
      - Quét danh sách cố định 16 workbooks `D:/OneDrive/TaadaaData/{kibe,admin}/Tik{1..8}.xlsx` (CẤM dùng glob recursive/os.walk).
      - Đối chiếu frame count (`cv2.VideoCapture`) giữa `TIKTOK-videonuoinick/<F_vid>/1.mp4` với `video goc/<F_src>` và `video goc/<F_vid>`. Nếu frame count khớp với `video goc/<F_vid>` thay vì `F_src`, chứng minh 100% folder render bị stale chưa được cập nhật. Chi tiết xem `references/unrendered-source-drift-and-cross-tik-collision-triage.md`.
 
+See `references/duplicate-source-collision-and-render-folder-stale-drift-20261023.md` for duplicate source collision triage, cross-account numeric overlap, and O(1) frame-count verification.
 See `references/unrendered-source-drift-and-cross-tik-collision-triage.md` for unrendered source drift triage, bounded 16-workbook audit, and frame-count verification.
 See `references/traffic-niche-reversion-and-youtube-shorts-bypass-20261014.md` for the traffic niche reversion case study, ledger retrieval, and YouTube Shorts Android player API bot-check bypass in the swap pipeline.
 See `references/content-dna-story-retention-vs-hot-niche-curation-20261013.md` for empirical farm evidence on story/curiosity retention loops vs visual niches and hybrid allocation rules.
