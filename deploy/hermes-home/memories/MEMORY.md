@@ -6,11 +6,11 @@ Hotmail: @fviainboxes.com đọc OTP. Pin>=1k: chuẩn hoá bắt buộc Pin top
 §
 Rename: bút chì (72,148) né loop; 7d cd; BIO_EDIT trước PROFILE; tên Việt có dấu; core switcher; Smart name đa dạng.
 §
-Sol: 100% On-Demand, cấm auto-append; advisor_tool 55s/consult 140s; briefing 4k ký tự; Sol Reviewer độc lập closeout (diff 40KB).
+Sol: On-Demand, cấm auto-append; advisor_tool 55s/consult 140s; briefing 4k ký tự.
 §
 Stale Up: xóa draft. Revert: TikWM. Cào: max 60. Cron TB: device_lock+rolling<=5; bỏ ca 0h.
 §
-Closeout: Grace 80-84; Sol 80% diff/10% log; Claude 85%->Agy; Strike 3 cấm clarify, Reviewer tự sửa. Night Chain: P1 Gmail, P2 2FA; cron local; state lock.
+Closeout: Tier 0 Sonnet CLI, fallback Sol (:20129); Grace 80-84; CẤM raw git push lách safe_push; Strike 3 Reviewer tự sửa. Night: P1 Gmail, P2 2FA.
 §
 Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; Reaper SSH. Pre-push: 1 commit khớp scope_hash.
 §
