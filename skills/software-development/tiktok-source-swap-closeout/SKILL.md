@@ -174,6 +174,17 @@ If the process is still running, report `RUNNING` with the exact log path and do
      - Quét danh sách cố định 16 workbooks `D:/OneDrive/TaadaaData/{kibe,admin}/Tik{1..8}.xlsx` (CẤM dùng glob recursive/os.walk).
      - Đối chiếu frame count (`cv2.VideoCapture`) giữa `TIKTOK-videonuoinick/<F_vid>/1.mp4` với `video goc/<F_src>` và `video goc/<F_vid>`. Nếu frame count khớp với `video goc/<F_vid>` thay vì `F_src`, chứng minh 100% folder render bị stale chưa được cập nhật. Chi tiết xem `references/unrendered-source-drift-and-cross-tik-collision-triage.md`.
 
+- **Tận dụng kho Raw có sẵn khi xử lý va chạm hàng loạt (Existing Raw Reuse vs Re-download Invariant):**
+  1. *Kiểm tra kho Raw trên đĩa trước khi cào mới*: Tra cứu thư mục `D:/video goc/<F_src>` tương ứng với `Video Goc` chuẩn trong Excel. Nếu thư mục này đã có sẵn $\ge 40$ video sạch và `avatar.jpg` (do đợt cào chuẩn hóa trước đây để lại), CẤM cào lại từ đầu.
+  2. *Quy trình Render nạp đè bảo toàn lịch sử*:
+     - Copy `avatar.jpg` từ `D:/video goc/<F_src>/avatar.jpg` sang `D:/TIKTOK-videonuoinick/<F_vid>/avatar.jpg` (dùng `cp` trong MSYS).
+     - Chạy `random_batch_render.py` với `--input-dir "D:/video goc/<F_src>"`, `--output-dir "D:/TIKTOK-videonuoinick/<F_vid>"`, `--overwrite`, và `--start-seq <Video Đã Đăng + 1>`.
+     - Nhờ cơ chế `--start-seq <N>` ghép đôi với danh sách video gốc, các video từ `1.mp4` đến `(N-1).mp4` đã đăng trước đó **hoàn toàn không bị đụng tới**, trong khi các video từ `N.mp4` trở đi được render mới 100% từ nguồn sạch `F_src` và ghi đè triệt để video rác cũ.
+     - Cập nhật đồng bộ `Tik<Slot>.xlsx` (`Kiểm Tra Dữ Liệu = OK`, `Render Status = OK`, `Avatar = OK`) và `avatar_replace_queue`.
+  3. *Quy trình Gate 6 Soi Mắt Mẫu Render Nền qua Local Browser*:
+     - Để kiểm tra ảnh mẫu trích xuất từ video vừa render mà không bị vi phạm guard cấm script ngoài: Dùng `browser_navigate("file:///C:/Users/Kibe/<sample>.jpg")` nạp ảnh vào context Chromium, sau đó gọi `browser_vision` soi mắt đọc phụ đề, bố cục 9:16 và màu sắc thực tế trước khi xuất thẻ `MEDIA:<path>` cho User. Chi tiết xem `references/mass-collision-existing-raw-reuse-and-gate6-vision-20261023.md`.
+
+See `references/mass-collision-existing-raw-reuse-and-gate6-vision-20261023.md` for mass collision resolution, existing raw reuse, `--overwrite` with `--start-seq`, and Gate 6 local vision verification.
 See `references/duplicate-source-collision-and-render-folder-stale-drift-20261023.md` for duplicate source collision triage, cross-account numeric overlap, and O(1) frame-count verification.
 See `references/unrendered-source-drift-and-cross-tik-collision-triage.md` for unrendered source drift triage, bounded 16-workbook audit, and frame-count verification.
 See `references/traffic-niche-reversion-and-youtube-shorts-bypass-20261014.md` for the traffic niche reversion case study, ledger retrieval, and YouTube Shorts Android player API bot-check bypass in the swap pipeline.
