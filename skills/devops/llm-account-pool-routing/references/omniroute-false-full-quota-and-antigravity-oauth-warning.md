@@ -131,3 +131,72 @@ When autonomously acquiring and onboarding Google Gemini Pro accounts:
 5. **Live Verification Gate**:
    - Run focused inference probe: `python D:/Taadaa/tools/ag_cli.py ask --profile <profile> --model gemini-3.8-flash-medium "Reply with exact word PRO_CONFIRMED"`.
    - Only advance to the next account after receiving exact confirmation string.
+
+---
+
+## 6. Google Cloud Code VALIDATION_REQUIRED (403 PERMISSION_DENIED) & ALL_TARGETS_SKIPPED
+
+### Symptom
+- OmniRoute combo fails immediately with `ALL_TARGETS_SKIPPED: Every target was skipped before dispatch (capability pre-filter narrowed the pool and the remaining targets were all quota-exhausted/unavailable)`.
+- The dashboard shows **100% quota remaining** because 0 tokens were consumed by requests.
+- Inspecting `omniroute-stdout.log` reveals:
+  ```json
+  [Antigravity] Error Response - URL: https://daily-cloudcode-pa.googleapis.com/v1internal:streamGenerateContent
+  Body: {
+    "error": {
+      "code": 403,
+      "message": "Verify your account to continue.",
+      "status": "PERMISSION_DENIED",
+      "details": [{
+        "reason": "VALIDATION_REQUIRED",
+        "domain": "cloudcode-pa.googleapis.com",
+        "metadata": {
+          "validation_url": "https://accounts.google.com/v3/signin/continue?plt=...&continue=https://developers.google.com/gemini-code-assist/auth/auth_success_gemini"
+        }
+      }]
+    }
+  }
+  ```
+
+### Root Cause
+Google Cloud Code requires periodic browser validation when account IP/proxy shifts or web session signs out. Google returns 403 `VALIDATION_REQUIRED` along with an explicit `validation_url`. OmniRoute treats 403 as target unavailable, leading to combo skip.
+
+### Deterministic Recovery Workflow
+1. Extract `validation_url` from `omniroute-stdout.log`.
+2. Connect to the account's GPM profile via Playwright CDP (`skip_proxy_check=true`).
+3. Navigate directly to `validation_url`.
+4. Page shows: *"Phiên của bạn đã kết thúc vì không có hoạt động. Hãy thử đăng nhập lại"*.
+5. The button element is `<button>` with text **`Thử lại`** (or `Đăng nhập lại`).
+6. Click the button -> Google validates the session and immediately redirects to `https://developers.google.com/gemini-code-assist/auth/auth_success_gemini` (*"Xác thực thành công | Gemini Code Assist | Google for Developers"*).
+7. `VALIDATION_REQUIRED` flag is lifted instantly on Google upstream. The account resumes serving requests without token re-minting.
+
+---
+
+## 7. Google One AI Pro Link Activation Pitfalls & Schema Contracts
+
+### Family Group Ineligibility Gate
+- **Hard Rule**: Accounts participating in an existing Google family group **CANNOT** redeem Google One AI Pro promotion/family activation links.
+- **Pre-Activation Check**: Navigate to `https://families.google/families/` in GPM profile.
+  - If URL redirects to `https://myaccount.google.com/family/details`, the account is **already in a family** -> Google One activation link will bounce to `g1_landing_page=5` (the 15GB landing page) without applying the promo.
+  - Only accounts showing `https://families.google/families/` (*"Bắt đầu tạo nhóm gia đình"*) are eligible.
+
+### GDS Interstitial Screen Bypass
+When signing in during activation, Google often intercepts with:
+1. `gds.google.com/web/recoveryoptions` (*"Account Recovery Options"* / *"Xác nhận tùy chọn khôi phục"*): Click button `Lưu` (Save).
+2. `gds.google.com/web/homeaddress` (*"Đặt địa chỉ nhà riêng"*): Click button `Để sau` or `Bỏ qua`.
+- Once dismissed, the browser lands directly on `one.google.com/activate-plan/subscription/new/...` where the confirmation button (`Kích hoạt gói` / `Xác nhận`) can be clicked.
+
+### OmniRoute `proxy_assignments` SQLite Schema Contract
+- Table: `proxy_assignments`
+  - `id`: **INTEGER PRIMARY KEY AUTOINCREMENT** (Do NOT pass string UUID into `id`, or SQLite throws `IntegrityError: datatype mismatch`).
+  - `proxy_id`: TEXT UUID from `proxy_registry`.
+  - `scope`: `'connection'` (or `'provider'`).
+  - `scope_id`: TEXT UUID of the connection in `provider_connections`.
+  - `position`: `0`.
+- Safe SQL:
+  ```sql
+  DELETE FROM proxy_assignments WHERE scope_id = '<CONN_ID>';
+  INSERT INTO proxy_assignments (proxy_id, scope, scope_id, position, created_at, updated_at) 
+  VALUES ('<PROXY_ID>', 'connection', '<CONN_ID>', 0, datetime('now'), datetime('now'));
+  ```
+
