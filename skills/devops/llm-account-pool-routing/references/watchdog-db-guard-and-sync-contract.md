@@ -204,6 +204,34 @@ Khi mock workbook cho `load_accounts_credentials`:
   * Job `chatgpt-account-lifecycle-healer` (chuyên trách hồi sinh cuốn chiếu qua GPM) thường bị tạm dừng (`paused`) sau các đợt dọn tiến trình.
   * **Giải pháp**: Cần bảo đảm watchdog hoặc job lifecycle healer luôn quét cả các nick `test_status = 'banned'` có lỗi Sentinel để tự động điền `PASS CHATGPT` hồi sinh pool.
 
+## 14. Bẫy Regex Domain Hotmail & Độ Trễ Chuyển Form Password Trên Proxy Mobile (Watchdog Recovery Traps)
+- **Bẫy 1: Regex Domain Hardcode `@gmail.com` Bỏ Quên Kho Hotmail**:
+  * *Triệu chứng*: Các tài khoản Hotmail (ví dụ `lemmondmicha1595@hotmail.com`, `debidenbesten20198@hotmail.com`, `conchatansky20218@hotmail.com`) bị lỗi `token_revoked` hoặc `banned` nhưng watchdog không bao giờ hồi sinh, liên tục báo `No email match` hoặc không tìm thấy profile GPM.
+  * *Nguyên nhân*: Cả hai vị trí trong `cron_chatgpt_web_pool_watchdog.py` đều hardcode regex domain:
+    1. Hàm `get_gpm_profiles_map()`: `re.search(r'([a-zA-Z0-9_.+-]+@gmail\.com)', pname)` $\rightarrow$ Danh sách `gpm_map` chứa 0 profile Hotmail.
+    2. Hàm `_worker_task()`: `re.search(r'([a-zA-Z0-9_.+-]+@gmail\.com)', cname)` $\rightarrow$ Trả về `None, False, "No email match"`.
+  * *Quy tắc chuẩn hóa*: Bắt buộc mở rộng regex hỗ trợ cả Hotmail:
+    ```python
+    re.search(r'([a-zA-Z0-9_.+-]+@(gmail|hotmail)\.com)', target_str, re.IGNORECASE)
+    ```
+- **Bẫy 2: Độ Trễ Chuyển Form Mật Khẩu Trên Proxy Mobile (Form Transition Latency)**:
+  * *Triệu chứng*: Watchdog mở profile GPM, điền email xong bấm "Tiếp tục", nhưng script lập tức báo lỗi `EMPTY_SESSION_TOKEN` và không điền mật khẩu dù trong Excel có đầy đủ `PASS CHATGPT`.
+  * *Nguyên nhân*: Khi chạy qua proxy di động Mobi (cổng `5101..5138`), độ trễ mạng khiến Next.js/React trên `chatgpt.com/auth/login` mất 4–8 giây để chuyển từ form nhập email sang form nhập mật khẩu.
+  * Blind wait `page.wait_for_timeout(3000)` là quá ngắn; khi script kiểm tra `pwd_inp.is_visible()`, form mật khẩu chưa kịp render xong. Script bỏ qua bước điền mật khẩu và kết thúc sớm.
+  * *Quy tắc chuẩn hóa*: Bắt buộc bọc bước chờ trong explicit selector wait:
+    ```python
+    submit_btn.click(force=True)
+    try:
+        page.wait_for_selector('input#password, input[name="password"], input[type="password"]', timeout=8000)
+    except Exception:
+        page.wait_for_timeout(3000)
+    ```
+- **Bẫy 3: Banned Connections Tồn Đọng Trong Combos Gây Treo Cầu Dao 30 Phút**:
+  * *Triệu chứng*: Khi 8–11 connection bị gán nhãn `test_status = 'banned'`, chúng vẫn nằm nguyên trong mảng `models` của combo `chatgpt-web-pool` và `gpt-web-sol`.
+  * Khi các request đến, router xoay vòng (round-robin) gọi trúng liên tiếp các connection này, gây lỗi 401 lặp lại và kích hoạt `Circuit breaker tripped for chatgpt-web: 5 consecutive failures. Blocked for 30min.`
+  * *Quy tắc dọn dẹp*: Ngay khi connection dính `token_revoked`, bắt buộc phải đồng thời lọc bỏ `connectionId` khỏi `models` trong `combos`, sau đó gọi `PUT /api/combos/{id}` để đồng bộ in-memory.
+
+
 
 
 
