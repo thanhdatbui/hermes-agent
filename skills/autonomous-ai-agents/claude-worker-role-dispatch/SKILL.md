@@ -27,6 +27,13 @@ When a Coordinator bypassed the Guard by running `claude -p "..." --dangerously-
 | `planner` | claude-sonnet-5-5 | 6 | **10** | **1200s** (20m) | Read,Bash | `ag_cli.py ask` |
 | `reviewer` | claude-sonnet-5-5 | 8 | **15** | **1200s** (20m) | Read,Bash | `ag_cli.py ask` |
 
+> **Single Dispatch Gateway Routing (Chốt 22/10/2026):**
+> Trong quy trình điều phối routine fix (`dispatch_worker.py`):
+> - **Tier 1 (Primary mặc định):** **Agy CLI (`ag_cli.py fix`)** thực thi chỉnh sửa code chính.
+> - **Tier 2 (Fallback):** **Haiku CLI (`claude_worker.py --role worker`)** chỉ kích hoạt khi Agy CLI thất bại hoặc kẹt quota.
+> - **Planner Gate B:** Độc quyền giao cho **Claude Sonnet 5.5 (`claude_worker.py --role planner`)** trong hệ thống 3 cổng cơ học `plan_exec_gate.py`.
+> - **Nguyên tắc chống ghi chép thừa:** Những gì đã được cổng cơ học / code Python khóa cứng (default arg trong CLI) thì để code tự thực thi, tuyệt đối không spam vào memory gây phình context.
+
 ## Usage
 
 ```bash
@@ -403,6 +410,7 @@ Both `--role reviewer` (Sonnet/Anthropic) AND Closeout Gate (Sol High/OpenAI) ar
 - `D:/Taadaa/tools/tests/test_dispatch_worker.py`: 11/11 tests (CRLF/whitespace normalization, failure hierarchy, snapshot & hash gate, target deletion rejection, unrelated files guard, anchored BLOCKED detection, PermissionError mapping, correlation ID consistency, Haiku/Agy fallback orchestration mocks).
 - `D:/Taadaa/tools/tests/test_sol_worker.py`: 8/8 tests (safe shell command regex, metacharacters injection block, DSL parse, atomic patch lifecycle, AST validation, LF preserve, max_turns validation).
 
+- `references/mechanical-3-gate-and-worker-hierarchy-20261022.md` — **[MỚI 22/10/2026 - 3 CỔNG CƠ HỌC & ĐIỀU PHỐI WORKER AGY/HAIKU]** Quy chuẩn hệ thống 3 cổng Gate A/B/C (`plan_exec_gate.py`), định vị ranh giới tin cậy (Trust Boundary), phân vai Sonnet 5.5 (Planner Gate B), đảo chiều ưu tiên Agy CLI (Tier 1 Primary) và Haiku CLI (Tier 2 Fallback), cùng kỷ luật chống ghi chép thừa vào memory khi đã có gate cơ học khóa cứng.
 - `references/anti-sycophancy-and-technical-consistency-under-hesitation-20261022.md` — **[MỚI 22/10/2026 - ANTI-SYCOPHANCY & TECHNICAL CONSISTENCY UNDER OPERATOR HESITATION]** Bài học Operator chấn chỉnh về tật xấu gió chiều nào xoay chiều đó: mổ xẻ bẫy LLM Sycophancy khi thấy user than "phức tạp/code dốt" liền vội vàng quay xe 180 độ phủ nhận phân tích kỹ thuật vừa chốt ở turn trước; quy chuẩn phân tách 2 tầng giữa "khái niệm học thuật cồng kềnh (Vector DB/Framework RAG)" vs "giải pháp tối giản O(1) thực tế (Python Router/find_existing_logic)", và quy trình điều động Claude Sonnet Planner thiết kế bản vẽ kỹ thuật.
 - `references/sycophancy-flip-flop-and-guard-keyword-prompt-trap-20261021.md` — **[MỚI 21/10/2026 - SYCOPHANCY FLIP-FLOP, GUARD KEYWORD PROMPT TRAP & AGY 429 FAIL-SAFE]** Bài học Operator chấn chỉnh về tật phản xạ nịnh bợ/lật mặt khi user bảo vibe code dốt; cạm bẫy đưa từ khóa cấm (walk, glob, find) vào prompt phủ định khiến PreToolUse Guard chặn lệnh dispatch; và quy trình chuyển tầng tức thì sang Haiku 5.5 khi 24/25 profiles của Agy CLI dính cooldown 429.
 - `references/sol-need-context-and-multi-scope-decomposition-20261022.md` — **[MỚI 22/10/2026 - SOL NEED_CONTEXT & SCOPE DECOMPOSITION]** Xử lý khi Sol Reviewer từ chối chấm điểm trả về NEED_CONTEXT:<file> do diff nhiều file vượt 36KB khiến sol_payload_guard cắt cụt file lõi thành (partial); quy chuẩn Gate 1 phân rã task độc lập thành các scope nhỏ đạt Level L0 không bị cắt xén.
