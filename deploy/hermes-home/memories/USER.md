@@ -15,3 +15,5 @@ Follow audit: >=3-4 chu kỳ 4d + Cohort Veteran/Mid/Rookie; tách fl=0 và used
 Gemini/GPM: CDP, 2 pool OmniRoute+AGY, proxy 1:1 S7. PREFLIGHT sniper: GPM session live (one.google.com/home + families), link TTL 5ph.
 §
 Benchmark phải cùng model + cùng thinking effort; không báo DONE/push khi reviewer dưới ngưỡng; báo rõ REJECTED/BLOCKED kèm evidence.
+§
+Reviewer closeout bắt buộc Sonnet CLI (`--model claude-sonnet`); Worker thi công code bắt buộc Agy CLI (`ag_cli.py fix`).
