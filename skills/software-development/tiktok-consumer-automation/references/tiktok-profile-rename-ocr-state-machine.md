@@ -15,8 +15,8 @@
 | **Cuộn Header Hồ sơ** | `(540, 1100)` → `(540, 600)` | Vuốt nhẹ để ghim username lên sticky header |
 | **Ghim ID / Mở Switcher** | `(500, 140)` | Tap username trên header mở sheet 'Chuyển đổi tài khoản' |
 | **Cuộn Sheet Switcher** | `(540, 1500)` → `(540, 900)` | Khi máy có 8 acc, cuộn lên để thấy 4 acc phía dưới |
-| **Nút Sửa hồ sơ** | `find_box("sua ho s")` hoặc `(72, 148)` | Nút chữ nhật 'Sửa hồ sơ' giữa màn hình (dưới Follower). Nếu không có text thì fallback về icon bút chì góc trên bên trái `(72, 148)`. CẤM tap tọa độ ma `(870, 558)`! |
-| **BẪY TỬ HUYỆT (75, 150) & BẪY OCR "i ijä"** | `CẤM TAP (75, 150) SAU KHI LƯU` | Tuyệt đối CẤM tap `(72, 148)` hay `(75, 150)` để lùi trang sau khi Lưu (bắt buộc dùng keyevent 4 Back). Tại màn hình PROFILE khi chưa có text nút, bắt buộc fallback về icon bút chì `(72, 148)` để vào `EDIT_PROFILE`. |
+| **Nút Sửa hồ sơ** | `find_box("sua ho s")` hoặc `(315, 660)` | Nút chữ nhật 'Sửa hồ sơ' giữa màn hình (dưới Follower). Nếu không có text (do OCR méo thành "Ill") thì fallback về tâm nút `(315, 660)`. TUYỆT ĐỐI CẤM fallback về `(72, 148)` vì trên TikTok mới đây là nút "Tìm bạn bè / Mời bạn"! |
+| **BẪY TỬ HUYỆT (72, 148) - NÚT TÌM BẠN BÈ** | `CẤM TAP (72, 148) TRÊN PROFILE` | Trên giao diện mới, icon góc trên bên trái `(72, 148)` là icon hình người dấu `+` (Tìm bạn bè / `FindFriendsPageActivity`). Tap vào đây sẽ bị kẹt loop 35 bước. Phải nhận diện state `FIND_FRIENDS` và bấm Back thoát ngay. |
 | **Thao tác Quay lại (Back)** | `input keyevent 4` | Luôn dùng KEYCODE_BACK phần cứng để lùi trang, TUYỆT ĐỐI CẤM tap tọa độ góc trên trái! |
 | **Hàng 'Tên' (Nickname)** | `(600, 752)` | Hàng đầu tiên trong 'Sửa hồ sơ', nằm trên 'Tên người dùng' |
 | **Nút Xóa tên cũ (X)** | `(960, 576)` | Nút clear trong ô nhập Tên |
@@ -334,3 +334,18 @@
   - **Khắc phục:**
     1. Siết chặt regex `SWITCHER` thành cụm từ nguyên vẹn: `r"chuyen doi tai khoan|switch account|them tai khoan|add account"`.
     2. Bổ sung cơ chế **Launcher Recovery** trong trạng thái `UNKNOWN`: Nếu các dòng OCR phát hiện đang ở launcher (`photos`, `chrome`, `gmail`, `cai dat`, `launcher`), tự động phát lệnh monkey intent khởi chạy lại TikTok (`shell("monkey", "-p", PKG, "-c", "android.intent.category.LAUNCHER", "1")`) để phục hồi luồng thay vì bấm Back vô ích.
+
+  ### 5. Bẫy Tọa Độ Cũ (72, 148) Biến Thành "Tìm Bạn Bè" (Find Friends) & Bẫy Suggestion Bio '@ Tài khoản...' (Sự Cố 22/10/2026)
+  - **Hiện tượng 1 - Ping-pong 35 bước kẹt `FindFriendsPageActivity` (M4, M44, M69, M64):**
+    * Khi OCR quét Profile không thấy chữ "Sửa hồ sơ" (do font chữ hoặc WinRT OCR lẹm thành `"Ill"`), code fallback bấm mù vào `XY_EDIT_PENCIL = (72, 148)`.
+    * Trên bản TikTok mới, `(72, 148)` ở góc trên bên trái không còn là bút chì mà là **icon hình người dấu `+` (Tìm bạn bè / Mời bạn)**.
+    * Thao tác tap `(72, 148)` làm bung màn hình `FindFriendsPageActivity` ("Tìm mọi người"). State machine coi là `UNKNOWN`, bấm Back về Profile. Vừa về Profile lại không thấy chữ "Sửa hồ sơ" nên lại bấm `(72, 148)` $\rightarrow$ Ping-pong đúng 35 bước rồi văng `exit_2`!
+    * **Khắc phục:**
+      1. Đổi fallback sang tâm nút "Sửa hồ sơ" thực tế trên Samsung S7 là `XY_EDIT_PROFILE_BUTTON = (315, 660)` (vùng giữa màn hình dưới chỉ số Follower).
+      2. Bổ sung nhận diện state `FIND_FRIENDS` trong `classify()`: khi phát hiện các marker `tim moi nguoi`, `tim ban be`, `find friends`, `moi ban be`, `danh ba` $\rightarrow$ bấm ngay phím `Back` (keyevent 4) để về lại Profile, chặn đứng vòng lặp 35 bước.
+  - **Hiện tượng 2 - Bẫy Suggestion Bio '@ Tài khoản của tôi...' Nhận Nhầm Thành Username (M43):**
+    * Trên các nick chưa có bio, TikTok chèn gợi ý placeholder: `"@ Tài khoản của tôi nói về..."` tại tọa độ `y < 750`.
+    * Hàm `nickname_on_profile()` cũ chỉ kiểm tra `t.startswith("@") and b[1] < 750` nên nuốt luôn chuỗi này và parse thành username `@taikhoancuatoin6ive`.
+    * Runner ngộ nhận máy đang mở nhầm nick khác dù Profile đang mở đúng 100% `@kimthinh2415`, cố mở Switcher 3 lần không thấy rồi văng `exit_2` với lý do *"mo Switcher 3 lan, acc active van la..."*.
+    * **Khắc phục:** Siết chặt nhận diện username trên Profile: bắt buộc `t.startswith("@") and b[1] < 750 and " " not in t.strip()[:10] and not any(k in norm(t) for k in ("tai khoan", "nhac den", "noi ve", "chia se"))`.
+
