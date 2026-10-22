@@ -392,7 +392,7 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
     - Bình thường không mở Tiểu Vi thì farm chạy auto rất êm; chỉ mở khi cần soi và watchdog Tầng 3 sẽ tự tắt sau 20 phút.
 - **Tầng 3: Giải phóng Bus USB từ Tiểu Vi (`xiaowei-idle-auto-close-kibe`):**
   * Chạy trên Kibe PC qua cronjob `0a4a81f4f164` mỗi 2 phút (`*/2 * * * *`).
-  * Theo dõi tiêu điểm cửa sổ (Focus-based Tracking qua `GetForegroundWindow`): nếu người dùng không tương tác trực tiếp trên cửa sổ Tiểu Vi quá 10 phút (kể cả khi đang gõ phím/chơi game ở app khác như TFT) hoặc để Tiểu Vi trên cùng nhưng rời máy quá 10 phút $\rightarrow$ tự động đóng `xiaowei.exe` và bắn `adb -P 5038 kill-server` dọn sạch tiến trình mồ côi, trả 100% thiết bị về lại cổng 5037 (chi tiết: `references/xiaowei-focus-based-idle-watchdog-and-port5038-recovery-20261016.md`).
+  * Theo dõi tiêu điểm cửa sổ (Focus-based Tracking qua `GetForegroundWindow`): nếu người dùng không tương tác trực tiếp trên cửa sổ Tiểu Vi quá 10 phút (kể cả khi đang gõ phím/chơi game ở app khác như TFT) hoặc để Tiểu Vi trên cùng nhưng rời máy quá 10 phút $\rightarrow$ tự động đóng `xiaowei.exe` và bắn `adb -P 5038 kill-server` dọn sạch tiến trình mồ côi, trả 100% thiết bị về lại cổng 5037 (chi tiết: `references/xiaowei-focus-based-idle-and-port5038-lifecycle-20261022.md`).
 - **Tầng 4: Khống chế I/O Script Automation (`_HeavyIoGate`):**
   * Bounded Semaphore 8 tokens trong `automation_core.adb` bảo vệ bus USB 2.0 khi các script chạy auto chụp màn hình / kéo file.
   * Lưu ý: Semaphore này chỉ quản lý code Python nội bộ, KHÔNG khống chế được luồng stream của app bên thứ ba như Tiểu Vi (cần giảm trực tiếp trên UI XiaoWei: 720p/480p, 15 FPS).
