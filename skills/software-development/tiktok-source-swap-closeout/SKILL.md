@@ -156,6 +156,15 @@ If the process is still running, report `RUNNING` with the exact log path and do
   3. *Bẫy chuyển 100% sang cào Kênh Hot*: Cấm chuyển mù toàn bộ sang cào kênh hot vì 3 rủi ro: (a) Kênh lớn bị TikTok quét multimodal duplicate/bản quyền, (b) Các máy farm tự dẫm chân nhau, (c) Cạn pool video.
   4. *Chiến lược phân bổ Hybrid*: Duy trì 40% Story Engine, 30% Hot Niche (story hóa có voice/kịch bản), 20% Channel Mining (micro-creators 50k-300k fl), 10% Experiment. Chi tiết xem `references/content-dna-story-retention-vs-hot-niche-curation-20261013.md`.
 
+- **Bẫy Unrendered Source Drift & Cross-Tik Video Collision (2026-10-23):**
+  1. *Hiện tượng*: Khi kênh bị bóp reach (0 view, 80-110 view test đáy liên tục), nguyên nhân thường do cấu hình `Tik<N>.xlsx` đã cập nhật `Video Goc (Nguon Cao) = B` nhưng thư mục render `D:/TIKTOK-videonuoinick/<A>/` chưa được render lại, vẫn giữ nguyên video cũ từ nguồn `A`.
+  2. *Hậu quả*: Kênh khác trên farm (ví dụ máy khác ở slot Tik 1) đã cào và đăng 30 video từ nguồn `A` trước đó. Runner cứ bốc clip cũ đăng lên nick mới, làm dính thuật toán phát hiện video trùng lặp 100% với kênh farm kia.
+  3. *Quy trình đối soát O(1)*:
+     - Tra cứu username qua Dashboard API `:1905/api/data` để định vị `may`, `tik`, `cluster`.
+     - Quét danh sách cố định 16 workbooks `D:/OneDrive/TaadaaData/{kibe,admin}/Tik{1..8}.xlsx` (CẤM dùng glob recursive/os.walk).
+     - Đối chiếu frame count (`cv2.VideoCapture`) giữa `TIKTOK-videonuoinick/<F_vid>/1.mp4` với `video goc/<F_src>` và `video goc/<F_vid>`. Nếu frame count khớp với `video goc/<F_vid>` thay vì `F_src`, chứng minh 100% folder render bị stale chưa được cập nhật. Chi tiết xem `references/unrendered-source-drift-and-cross-tik-collision-triage.md`.
+
+See `references/unrendered-source-drift-and-cross-tik-collision-triage.md` for unrendered source drift triage, bounded 16-workbook audit, and frame-count verification.
 See `references/traffic-niche-reversion-and-youtube-shorts-bypass-20261014.md` for the traffic niche reversion case study, ledger retrieval, and YouTube Shorts Android player API bot-check bypass in the swap pipeline.
 See `references/content-dna-story-retention-vs-hot-niche-curation-20261013.md` for empirical farm evidence on story/curiosity retention loops vs visual niches and hybrid allocation rules.
 See `references/source-swap-closeout-evidence.md` for reusable query patterns and an evidence template.

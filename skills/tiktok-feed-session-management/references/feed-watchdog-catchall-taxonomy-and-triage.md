@@ -238,3 +238,16 @@ Furthermore, in `hermes_taikhoan_sync_cron.py`, checking `if not output.exists()
   Khi 80 máy chạy đồng thời, ADB daemon bị socket contention thoáng qua, `settings get global http_proxy` trả về `returncode=1` kèm stderr `adb.exe: device '...' not found`. Do `check=False`, code không bắn Exception mà nhảy luôn vào `break` ở `attempt 0`. Sau vòng lặp, đoạn `if is_connection_lost(p_err): raise ConsumerPreflightError(...)` đá văng máy ra ngay lập tức với nhãn `blocked-proxy-vpn`, triệt tiêu hoàn toàn cơ chế auto-reconnect retry!
 - **Khắc phục**: Nếu `p_res` trả về returncode != 0 hoặc `is_connection_lost(p_err)` thì KHÔNG được `break`; phải chạy nhánh reconnect và thử lại ở `attempt 1`.
 
+### 3. Mid-run USB Disconnect Cascade & 50-Minute Timeout Hang
+- **Hiện tượng**: 6 máy (M2, M57, M59, M61, M62, M76) bị watchdog gán nhãn `Hết thời gian phiên (Timeout)`.
+- **Cơ chế**: Khi USB bị ngắt giữa chừng (lúc đang chạy `tap_profile` hoặc `profile_preflight_navigation_blocker`), các hàm `get_focused_activity`, `capture_screenshot` gọi ADB. Do `AdbClient` mặc định `connection_wait_timeout = 20.0s` và `connection_retry_attempts = 3`, mỗi lệnh ADB chết ngốn hơn 1 phút. Chuỗi 8 lệnh dumpsys ngốn đúng 16 phút, lặp lại cho đến khi cạn `DEFAULT_DEVICE_TIMEOUT_SECONDS = 3000.0s (50 phút)`.
+- **Khắc phục (Commit e2e7c06)**: Trong `flows/multi_machine_feed_session.py`, khởi tạo `child_adb` với `connection_retry_attempts=2, connection_wait_timeout=4.0, connection_retry_delay=1.0` $\rightarrow$ fail-fast nhả thread trong vòng 1-2 phút thay vì ngâm 50 phút.
+
+### 4. Kẹt Màn Hình "Edit Name" Do Thiếu Nhãn Đa Ngôn Ngữ (M213)
+- **Hiện tượng**: M213 dừng với lỗi `unknown TikTok state` khi bấm `profile_switch_anchor`.
+- **Cơ chế**: Tọa độ tap chạm trúng trường đổi tên làm bung màn hình "Edit Name" tiếng Anh (*"Add your preferred name"*, *"Your name can only be changed once every 7 days"*). Hàm `detect_edit_name_subpage` trong `core/benign_popup.py` chỉ quét từ khóa tiếng Việt (*"thêm tên bạn mong muốn"*), khiến `classify_tiktok_screen` trả về `unknown` $\rightarrow$ fail-closed.
+- **Khắc phục (Commit 8f2c32c)**: Thêm bộ từ khóa tiếng Anh/Đức vào `detect_edit_name_subpage` $\rightarrow$ nhận diện thành công `manual-needed:popup` để kích hoạt dismisser bấm `Cancel`/Back thoát ra.
+
+### 5. Bổ Sung Run ID Vào Báo Cáo Watchdog (Commit bed22fa)
+- Thêm `(Run: <run_id>)` vào header cụm trong `scripts/feed_session_watchdog.py` giúp Coordinator truy vết O(1) trực tiếp vào thư mục run manifest thay vì phải tìm kiếm.
+
