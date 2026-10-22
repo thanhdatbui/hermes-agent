@@ -1,60 +1,66 @@
-# J&T Express Vietnam Tracking & Local Hub Pickup Strategy
+# J&T Express Vietnam Tracking & Local Hub Pickup Automation Strategy
 
-## 1. J&T Express Vietnam Tracking Endpoint & Phone Verification
+## 1. J&T Express Tracking Endpoint & Anti-Scraping Bypass
 
-J&T Express Vietnam deprecated legacy tracking endpoints (`/api/tracker` returns 404). Furthermore, querying `jtexpress.vn/vi/tracking?type=track&billcode={code}` opens an anti-scraping / privacy modal requesting the last 4 digits of the recipient's phone number (`cellphone`).
+### 1.1 Direct Endpoint via Tracking URL
+- **Deprecated / Dead Endpoint:** `https://jtexpress.vn/api/tracker?billcode={code}` returns HTTP 404.
+- **Client-Side Privacy Modal:** When navigating to `https://jtexpress.vn/vi/tracking?type=track&billcode={code}`, J&T prompts for the last 4 digits of the recipient's phone number before displaying the timeline.
+- **Canonical Bypass Query:** Passing the query parameter `cellphone={phone_last4}` directly in the URL:
+  ```http
+  GET https://jtexpress.vn/vi/tracking?type=track&billcode={billcode}&cellphone={phone_last4}
+  ```
+  bypasses the interactive phone-number challenge and renders the tracking timeline directly in the HTML response.
 
-### Working Direct URL
-Pass the 4 digits directly in query parameters to bypass the modal and receive full HTML tracking timeline:
-```text
-https://jtexpress.vn/vi/tracking?type=track&billcode={BILLCODE}&cellphone={PHONE_LAST_4}
-```
-
-### HTML Parsing Pattern
-Locate the container `id="chck-{BILLCODE}"`:
-- Timestamps appear as separate tokens: `HH:MM:SS` followed by `YYYY-MM-DD`.
-- Event descriptions contain location brackets: `Hàng đã được chuyển đến【TTKT ĐÀ NẴNG】`, `Bưu cục【...】đang chuyển hàng đến【...】`.
-- Courier assignment: `Nhân viên【Tên】của bưu cục【...】đang giao hàng. SĐT shipper【...】`.
-
----
-
-## 2. Operator / Proxy Receiver Pitfalls (Anti-App Recommendation)
-
-When managing orders placed via farm accounts, burner accounts, or on behalf of third parties:
-- **NEVER advise downloading the carrier mobile app** (e.g. "Tải app J&T và đăng nhập bằng số điện thoại người nhận"):
-  * Farm accounts / proxy orders use burner phone numbers or customer numbers whose physical SIM is not in the operator's personal phone.
-  * Carrier apps require SMS OTP for login; telling the user to log into the app is impossible and creates severe frustration.
-- **Dedicated Watchdog instead of App:**
-  Use a headless Python watchdog querying the carrier tracking URL directly with the last 4 phone digits, persisting state to a local JSON file (`last_known_time`, `last_known_desc`), and remaining completely silent unless a new event fires.
+### 1.2 HTML Parsing Selectors
+- Locate container: `<section id="chck-{billcode}">` or class `.timeline`.
+- Each event row provides:
+  - Timestamp: `HH:MM:SS`, `YYYY-MM-DD`
+  - Event status & Location: e.g. `Hàng đã được chuyển đến【TTKT ĐÀ NẴNG】`, `Bưu cục【...】đang chuyển hàng đến【...】`.
+- Watchdog change detection: Store `last_known_time` and `last_known_desc` in a persistent JSON state file. The cron watchdog must stay completely silent (`no stdout`) when no new events have occurred, and only alert when a new milestone or `Bưu cục phát` arrival is detected.
 
 ---
 
-## 3. Local Pickup Protocol (Chặn Shipper & Tự Ra Bưu Cục Lấy Hàng)
+## 2. The "Proxy / Farm Receiver" Operational Invariant
 
-### SOC (Trung tâm phân loại / khai thác) vs Bưu cục phát
-- **SOC / TTKT (Trung tâm khai thác tự động):** Do NOT attempt pickup at SOC (e.g. TTKT Liên Chiểu). It is an automated transit facility handling cross-provincial freight; retail customer pickup is strictly refused.
-- **Bưu cục phát (Local Delivery Hub):** Freight moves from SOC to the local delivery hub via linehaul trucks between 04:00 - 06:30 AM.
-
-### The Golden Window to Call (07:15 - 08:00 AM)
-- **Too early (the night before):** The local hub has not received the physical cargo manifest; staff cannot flag or hold the item.
-- **Too late (after 08:30 AM):** Couriers (shippers) have already sorted parcels into delivery bags, loaded them onto motorcycles, and departed for daily routes.
-- **Golden window (07:15 - 08:00 AM):** Parcels have just been unloaded and inbound-scanned at the hub. Call the hub or carrier hotline immediately with the bill code and recipient name to request holding at counter:
-  *"Khách tự đến bưu cục lấy và thanh toán COD, vui lòng giữ lại tại quầy, không xuất cho bưu tá đi phát."*
-
-### The Order Note Fallacy ("Ghi chú nhận tại bưu cục")
-- **Order notes on TikTok Shop are for merchants, not logistics:** Merchants print automated thermal labels where notes are either truncated or absent.
-- **Automated courier sorting:** Logistics routing algorithms map the structured address string directly to a delivery route. Couriers are evaluated on delivery completion rates and will attempt delivery to the street address regardless of merchant notes.
-- **Guaranteed Counter Pickup Method for Future Orders:**
-  In the shipping address field, format explicitly:
-  `Tên: [Tên người nhận] | SĐT: [SĐT nhận OTP/gọi]`
-  `Địa chỉ: (Khách nhận tại quầy) - Bưu cục [Hãng VC] [Tên bưu cục], [Địa chỉ bưu cục], [Quận/Huyện], [Tỉnh/TP]`
+### 2.1 The Carrier App Anti-Pattern
+- **Anti-Pattern:** Advising a farm operator or proxy recipient to *"Download the J&T/Shopee/TikTok app and log in with the account phone number"*.
+- **Why It Fails:** In farm operations and bulk account management, accounts are registered with virtual, rented, or inactive SIMs that are not physically present in the operator's smartphone. The operator cannot receive SMS OTP to log into carrier apps.
+- **Rule:** Never advise downloading carrier mobile apps for proxy pickups. All tracking must be resolved via web endpoints, direct shipper communication, or local bưu cục contacts.
 
 ---
 
-## 4. Telegram Notification Flood Mitigation
+## 3. Local Hub (Bưu cục phát) Pickup Strategy
 
-Farm operators often have dozens of Telegram groups with continuous alert traffic. General Telegram notifications get muted or drowned out.
-To ensure high-priority order arrival alerts are never missed:
-1. **Direct DM Only:** Route cron alert strictly to `deliver: origin` (the user DM), never to farm alert groups.
-2. **Pinned Chat & Distinct Ringtone:** Guide user to customize notification sound for the bot DM and pin the conversation.
-3. **Local PC Sound Alarm / TTS:** For 24/7 host machines, configure the watchdog script to trigger Windows native sound / TTS when the local hub arrival event is detected.
+### 3.1 Sorting Center (SOC) vs. Delivery Hub (Bưu cục phát)
+- **SOC / TTKT (Trung tâm khai thác / phân loại, e.g., TTKT Liên Chiểu, SOC Củ Chi):**
+  - Strictly closed logistics hubs. They DO NOT service retail walk-ins or hold parcels for customer pickup.
+  - Calling or visiting an SOC is futile and disrupts warehouse operations.
+- **Bưu cục phát (Local Delivery Hub):**
+  - The neighborhood station responsible for last-mile delivery to the street address.
+  - Parcels arrive here via overnight linehaul transfer trucks between 04:00 AM and 07:00 AM.
+  - Retail customers CAN pick up directly at the counter if intercepted before the courier departs.
+
+### 3.2 The Golden Interception Window (07:15 - 08:00 AM)
+- **Too Early (Before 07:00 AM):** Parcel is still in transit from SOC or being unloaded from linehaul trucks. Bưu cục staff cannot locate specific bags.
+- **Golden Window (07:15 - 08:00 AM):** Inbound scan at Bưu cục phát is completed (`Đã đến bưu cục phát`). Shipper has not yet loaded parcels onto delivery bikes.
+  - Action: Call the bưu cục hotline or delivery supervisor immediately with the bill code.
+  - Instruction: *"Giữ lại tại quầy bưu cục, khách sẽ tự ra quầy lấy, không phát cho shipper đi giao"*.
+- **Too Late (After 08:30 AM):** Shipper has completed outbound loading and is en route. The customer must then chase down the courier on the road or wait for normal delivery.
+
+### 3.3 Addressing Strategy for 100% Guaranteed Hub Pickup
+- **TikTok Shop / E-commerce Note Failure:** Putting *"Khách nhận tại bưu cục"* in the order note / seller note is ineffective because shipping labels are generated automatically by API; couriers only read the structured recipient address.
+- **Guaranteed Fix for Future Orders:** Put the hub destination directly into the structured Address Line:
+  ```text
+  Người nhận: [Tên người nhận]
+  SĐT: [SĐT nhận SMS/Call]
+  Địa chỉ: (Khách nhận tại quầy bưu cục) - Bưu cục J&T [Tên bưu cục], [Số nhà, Tên đường bưu cục], Phường [X], Quận [Y], TP [Z]
+  ```
+  When the parcel reaches that specific bưu cục, the system recognizes it as counter pickup, preventing shipper dispatch.
+
+---
+
+## 4. Telegram Alert Noise & Notification Governance
+- **Problem:** Operators managing large device farms receive hundreds of Telegram alerts daily across multiple group chats (`Nuôi`, `Up`, `Farm Alert`). Critical delivery alerts get drowned out.
+- **Solution:**
+  - Route delivery/parcel critical alerts to a dedicated priority channel or 1-on-1 DM with pinned notification and custom sound.
+  - Alternatively, trigger a local desktop TTS chime or system notification on the operator's PC when the tracking status changes to `Đã đến bưu cục phát`.
