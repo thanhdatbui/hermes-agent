@@ -8,8 +8,6 @@ No verbal DONE; reviewer thật. Nói thẳng, bực mình=làm ngay. Cấm nị
 §
 Ava/Media: Up thẳng máy; khóa cờ .manual_avatar_locked & Avatar=OK; soi mắt trước MEDIA:; N máy gửi đủ N MEDIA: riêng; Ava đúng creator.
 §
-Worker: Haiku CLI primary, Agy CLI fallback
-§
 Canary: target-bound; máy thật qua `done_gate.py --strict-device`; WinRT OCR->ATX; Singbox. Guard cơ học; Claude duyệt; dính guard chạy unscoped worker CLI.
 §
 Follow audit: >=3-4 chu kỳ 4d + Cohort Veteran/Mid/Rookie; tách fl=0 và used>0; Account Limit cô lập nick, cấm ngắt IP.
