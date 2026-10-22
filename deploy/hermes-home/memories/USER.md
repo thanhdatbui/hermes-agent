@@ -4,7 +4,7 @@ Dọn đĩa: safe_recycle.py. Reboot né TFT/War3. Box 1 sát AP kibe 1. S7: ant
 §
 Nuôi 4d 3 ca (bỏ 0h). Cấm pause cron/kill tool khác khi kẹt lock, canh xong mới làm. Ava&2FA tới 5h15. Starve 96h.
 §
-No verbal DONE; reviewer thật. Nói thẳng, bực=làm ngay. Cấm nịnh/flip-flop. Vibe thực dụng O(1). Bắt buộc Claude Plan chống tự fix nông.
+Vibe O(1), bực=làm ngay. Report ném vào chat = LỆNH ĐIỀU TRA NGAY: CẤM giải thích lại chữ. Tra manifest/log O(1) + inspect máy thật; thấy bug tự L2 sửa, thấy vật lý chỉ đúng máy.
 §
 Ava/Media: Up thẳng máy; khóa cờ .manual_avatar_locked & Avatar=OK; soi mắt trước MEDIA:; N máy gửi đủ N MEDIA: riêng; Ava đúng creator.
 §
@@ -14,6 +14,6 @@ Follow audit: >=3-4 chu kỳ 4d + Cohort Veteran/Mid/Rookie; tách fl=0 và used
 §
 Gemini/GPM: CDP, 2 pool OmniRoute+AGY, proxy 1:1 S7. PREFLIGHT sniper: GPM session live (one.google.com/home + families), link TTL 5ph.
 §
-Benchmark phải cùng model + cùng thinking effort; không báo DONE/push khi reviewer dưới ngưỡng; báo rõ REJECTED/BLOCKED kèm evidence.
+Benchmark cùng model+thinking; không DONE/push khi reviewer dưới ngưỡng; báo REJECTED kèm evidence.
 §
-Reviewer closeout: Sonnet CLI. Worker: Agy CLI primary (100% Pro `g1-pro-tier`, cấm free-tier). Bắt buộc Gate ABC (Sonnet plan), cấm tự dán [L2-surgery] lách gate.
+Reviewer: Sonnet CLI. Worker: Agy CLI (g1-pro); fallback Haiku. Cấm [L2] lách gate. Pool tra OmniRoute SQLite: is_active=1 AND rate_limited_until<=NOW.

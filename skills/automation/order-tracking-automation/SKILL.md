@@ -72,6 +72,7 @@ Do not rely solely on mailbox polling as tracking code discovery. TikTok Shop an
    - **Anti-App Login Recommendation (Cấm xui tải app khi nhận dùm):** Khi operator/user đi nhận hàng thay cho nick farm hoặc tài khoản proxy, CẤM TUYỆT ĐỐI bảo người dùng "tải app nhà xe và đăng nhập bằng SĐT người nhận". Họ không giữ SIM vật lý để nhận OTP đăng nhập app. Mọi việc theo dõi phải thực hiện qua headless script watchdog hoặc link tra cứu trực tiếp.
    - **Khung giờ vàng gọi bưu cục giữ hàng (07:15 - 08:00 AM):** Không gọi từ đêm hôm trước (hàng còn ở kho tổng SOC/TTKT, bưu cục phát chưa có hàng). Không gọi sau 08:30 AM (shipper đã bốc hàng lên xe máy đi giao). Khung giờ chuẩn để gọi bưu cục dặn giữ hàng là 07:15 - 08:00 AM ngay sau khi bưu kiện được bắn barcode nhập kho phát.
    - **Bẫy ghi chú đơn hàng ("Nhận tại bưu cục"):** Dòng "Ghi chú" trên TikTok Shop là cho người bán, shipper không đọc và hệ thống giao hàng tự động vẫn điều phối về địa chỉ nhà. Để chắc chắn 100% giữ hàng tại bưu cục cho các đơn sau, người đặt phải điền thẳng địa chỉ nhận hàng là địa chỉ bưu cục kèm tiền tố `(Khách nhận tại quầy bưu cục)`.
+   - **Host Audio Alarms & Telegram DM Routing (Chống loãng thông báo):** Trong môi trường Farm nơi các group Telegram Alert nhận hàng trăm notification mỗi ngày, alert đơn hàng về bưu cục phát BẮT BUỘC gửi qua Telegram DM riêng (`deliver: origin`) và kích hoạt còi báo động / đọc loa máy tính (`winsound.Beep` + Windows `SAPI.SpVoice`) trên máy chủ 24/7 để đánh thức/báo động tức thì cho operator trước ca giao sáng.
    - For local pickup, alert on a destination-hub scan with code, carrier, latest location, and time. Advise contacting the hub to hold the parcel; do not claim the script can prevent courier dispatch unless a hold request is confirmed.
 9. **Integrate the dashboard only after the data path works.** Add an orders tab, `/api/orders` endpoint, and image route only after verifying the endpoint returns the canonical record. A rendered card proves UI integration, not live mail or carrier connectivity.
 10. **Schedule at a practical cadence.** While waiting for a dispatch code, 15–30 minutes is appropriate for a time-sensitive pickup goal; 12 hours is too coarse. Use script-only/no-agent cron where supported. Keep the script one-shot; do not create an invisible infinite loop.
@@ -111,7 +112,7 @@ Do not say “real-time” when polling. State the interval and likely detection
 
 ## References
 
-- `references/jt-express-carrier-tracking-and-pickup-watchdog.md` — J&T web tracking privacy gate (`cellphone`), hub topology (SOC vs local delivery hub), and autonomous watchdog alert implementation.
+- `references/farm-voucher-order-logistics-and-jt-tracking.md` — J&T web tracking 4-digit phone validation trick, farm voucher anti-app-download rule, multi-shipper route coordination, secret keyword convention, and host audio alarm pattern.
 - `references/order-mail-to-carrier-handoff.md` — mailbox discovery, profile disambiguation, dedup state, carrier handoff, and evidence labels.
 - `references/order-card-image-integrity.md` — preserve raw image aspect ratio and zoom links on order dashboards.
 - `references/shopclone7-boxtaikhoan-order-audit.md` — ShopClone7/BoxTaiKhoan order retention reality vs 3-day UI warning, API 404 behavior, and host Chrome login session.

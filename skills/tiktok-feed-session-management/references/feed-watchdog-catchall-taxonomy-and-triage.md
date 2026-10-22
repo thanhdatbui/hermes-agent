@@ -166,3 +166,36 @@ Furthermore, in `hermes_taikhoan_sync_cron.py`, checking `if not output.exists()
    ```
 3. Verify account counts: verify `_count_valid_accounts_for_row(r, workbook_path="...")` returns ~80 valid accounts per row.
 4. Clean up stale dot-files (`.taikhoan_run_safe.*.xlsx`) using `safe_recycle.py`.
+
+---
+
+## False ADB/USB Disconnect vs Hardware Offline & Preflight Retry Bug (2026-10-22 Incident)
+
+### 1. Phản Ứng Điều Tra Bắt Buộc (Chống Giải Thích Lại Alert)
+- **Tình huống**: User forward báo cáo watchdog hoặc phàn nàn tỷ lệ fail ("Điều tra cho tao chứ sao lại ngồi giải thích alert?").
+- **Kỷ luật cốt lõi**: CẤM paraphrase hay tóm tắt lại các con số từ bản tin Telegram. BẮT BUỘC:
+  1. Vào thẳng `D:/Taadaa/runtime/<cluster>/live/<YYYY-MM-DD>/row-<row>-<HHMMSS>/<subrun>/run_manifest.json`.
+  2. Bóc `multi_machine_summary` để lấy chính xác `stop_reason` kỹ thuật của từng máy.
+  3. Đối soát tức thời với danh sách `adb devices` online trên host để tách máy offline thật vs máy bị script loại oan.
+
+### 2. Sự Cố 2026-10-22 (Ca 3, Row 5): 13 Máy Bị Loại Oan Bởi Bug Retry Preflight
+- **Hiện tượng trên Telegram**: Kibe báo 50 fail, trong đó 34 máy gán nhãn `Mất kết nối ADB/USB`.
+- **Thực tế hiện trường**:
+  - **21 máy rớt thật**: M4, M10, M12, M13, M16, M18, M19, M24, M25, M28, M30, M33, M35, M39, M63, M67, M68, M72, M74, M78, M80 biến mất khỏi `adb devices` (lỗi cáp/hub/nguồn vật lý).
+  - **13 máy rớt giả (M41-M46, M48, M49, M51, M53-M56)**: Vẫn ONLINE 100% trên ADB host, pin 63-78%, Launcher bình thường.
+- **Bug Root Cause trong `core/vpn_preflight.py`**:
+  ```python
+  for _attempt in range(2):
+      try:
+          p_res = adb.shell(["settings", "get", "global", "http_proxy"], timeout=15.0, check=False)
+          p_err = f"{getattr(p_res, 'stderr', '')}\n{getattr(p_res, 'stdout', '')}".strip()
+          val = str(getattr(p_res, "stdout", "") or "").strip()
+          if val and val not in ("null", ":0", "none"):
+              device_proxy = val
+          break  # <- BUG: Khi check=False, lệnh thất bại vẫn trả AdbResult, không raise Exception!
+      except Exception as exc:
+          ...
+  ```
+  Khi 80 máy chạy đồng thời, ADB daemon bị socket contention thoáng qua, `settings get global http_proxy` trả về `returncode=1` kèm stderr `adb.exe: device '...' not found`. Do `check=False`, code không bắn Exception mà nhảy luôn vào `break` ở `attempt 0`. Sau vòng lặp, đoạn `if is_connection_lost(p_err): raise ConsumerPreflightError(...)` đá văng máy ra ngay lập tức với nhãn `blocked-proxy-vpn`, triệt tiêu hoàn toàn cơ chế auto-reconnect retry!
+- **Khắc phục**: Nếu `p_res` trả về returncode != 0 hoặc `is_connection_lost(p_err)` thì KHÔNG được `break`; phải chạy nhánh reconnect và thử lại ở `attempt 1`.
+
