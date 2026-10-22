@@ -44,6 +44,16 @@ python D:/Taadaa/tools/admin_ssh.py --powershell "Disable-ScheduledTask -TaskNam
 
 Đây là hành động SysAdmin O(1), không phải sửa code — hoàn toàn thuộc phạm vi T0.
 
+## Căn Nguyên Tại Sao Bắt Buộc Phải Có Claude Plan (User Insight)
+
+> *"Tóm lại mày fix liền cũng được. Nhưng cái vấn đề lần nào mày fix cũng ngu, fix xong hôm sau lỗi lại nên tao mới cần Claude plan là vì thế."*
+
+- **Vá nhanh bỏ sót các điểm chết kiến trúc:**
+  1. *Tiến trình cha tự sinh lại con:* Watchdog bên ngoài kill `ffmpeg`, nhưng vòng lặp `while True:` của worker cha lập tức bắt lỗi và spawn task mới ngay cùng giây đó.
+  2. *Khoảng trống nhịp tim:* Watchdog quét mỗi 15 phút là quá thưa cho trải nghiệm chơi game (chỉ cần 2 giây giật lag là hỏng trận đấu).
+  3. *Thiếu In-flight Monitor:* Worker phải tự theo dõi tiến trình game mỗi 2 giây và tự vào trạng thái `STANDBY (0% CPU)`, không được dựa dẫm vào cron ngoài.
+- **Kết luận:** Bước a (Claude Plan) là **bắt buộc để rà soát toàn bộ failure modes và edge cases**, bảo đảm code sửa xong bền vững qua reboot và không tái diễn vào ngày hôm sau.
+
 ## Model aliases đúng cho Claude CLI
 
 | Intent | Alias đúng | WRONG |
