@@ -52,6 +52,9 @@
       * **Bottom Checklist**: Tóm tắt hiện trạng 4 món (Tên, Bài pin <1.000 view không ghim / >=1.000 view ghim, Hashtag/Niche khóa cứng, 3 phương án Bio tiếng Việt có dấu hài hước).
     - **Cơ chế soi mắt ảnh local qua Browser Vision**:
       * Mở ảnh bằng `browser_navigate("file:///...")`. Khi mở file ảnh trực tiếp trên Chromium, `browser_snapshot` sẽ trả về `(empty page)` do trình duyệt chỉ render thẻ `<img>` đơn độc không có accessibility DOM tree.
+      * **Trích xuất ảnh chat & Encoding OCR PowerShell**:
+        - Khi ảnh nằm trong cache người dùng, dùng lệnh bash `cp` sao chép sang `D:/tmp/user_img.jpg` trước khi điều hướng `browser_navigate("file:///D:/tmp/...")` để tránh va chạm bảo vệ đường dẫn hệ thống.
+        - Khi gọi WinRT OCR từ Python bọc PowerShell, bắt buộc thêm `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8` và `encoding="utf-8", errors="replace"` trong `subprocess.run()` để triệt tiêu lỗi `UnicodeDecodeError` do codepage OEM.
       * Kiểm chứng trạng thái nạp qua `browser_console(expression="document.body.innerHTML")` và gọi ngay `browser_vision` để chụp viewport soi mắt kiểm tra (xác nhận đúng chủ thể, không lẹm cằm/đỉnh đầu, không lỗi hiển thị đen/méo) TRƯỚC KHI gửi thẻ `MEDIA:<path>` cho Operator duyệt.
 - **Quy Chuẩn Khi Operator Yêu Cầu "Gen Ava Khác" (Multi-Round Diversity Escalation)**:
   * Khi Operator yêu cầu *"gen ava khác cho tao"* hoặc tiếp tục từ chối phương án vòng 2:

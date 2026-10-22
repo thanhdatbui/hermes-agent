@@ -15,8 +15,9 @@
 - Parse lines matching time regex `^\d{2}:\d{2}:\d{2}$` immediately followed by date regex `^\d{4}-\d{2}-\d{2}$`.
 - Extract event descriptions up to the next timestamp, normalizing bracketed facility names (`【...】`).
 - Key milestone markers:
-  - Transit Hub / SOC: `Hàng đã được chuyển đến【TTKT ĐÀ NẴNG】` (Sorting center, no retail pickup).
-  - Destination Delivery Hub: `Bưu cục【...】đang chuyển hàng đến【Bưu cục...】` / `Đã đến bưu cục...`.
+  - Transit Hub / SOC Arrival: `Hàng đã được chuyển đến【TTKT ĐÀ NẴNG】` (Sorting center, no retail pickup).
+  - Inter-Facility Dispatch (In Transit): `Bưu cục【...】đang chuyển hàng đến【...】` (Đang luân chuyển xe tải giữa các kho/bưu cục, CHƯA đến đích; TUYỆT ĐỐI không coi đây là đã đến bưu cục phát hay kích hoạt báo động).
+  - Destination Delivery Hub Arrival: `Hàng đã được chuyển đến【Bưu cục...】` / `Đã đến bưu cục...` (Đã quét barcode nhập kho bưu cục phát, bắt đầu khung giờ vàng liên hệ giữ hàng 07:15 - 08:00).
   - Out for Delivery: `Nhân viên【...】đang giao hàng. SĐT shipper【...】`.
 
 ---
