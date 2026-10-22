@@ -1,0 +1,136 @@
+---
+name: closeout-gate-dispatch-worker-patterns
+description: Use when closeout_gate rejects dispatch_worker changes.
+version: 1.0.0
+---
+
+# Closeout Gate Patterns for `dispatch_worker.py`
+
+## Trigger
+Use when running `closeout_gate.py` on `D:/Taadaa/tools/dispatch_worker.py` or when a remediation loop struggles to reach 85/100.
+
+---
+
+## 1. Sol Auditor Scoring Model (100 pts)
+
+| Category | Weight | What it checks |
+|---|---|---|
+| Logic Correctness | 35 | Tier ordering, fallback ladders, snapshot baseline ownership |
+| Test Evidence | 25 | Actual pytest log, not mocks alone |
+| Telemetry & Obs | 15 | Per-tier, per-attempt audit() calls; JSONL coverage |
+| Farm Safety | 15 | Worst-case chain latency, no unbounded timeout |
+| Code Architecture | 10 | No duplicate code paths; helpers extracted |
+
+**Threshold:** >= 85 to pass; 80–84 is Grace Band (passes if tests verified).
+
+---
+
+## 2. Known Patterns That Score >= 85
+
+### 2.1 Tier Ordering: Agy Primary → Haiku Fallback
+```python
+# Tier 1: Agy CLI (ag_cli.py)
+snap1 = take_snapshot(workdir, args.file)
+rc, output = run_tool([AG_CLI, "fix", ...], cwd=workdir, timeout=args.timeout)
+has_changes, diff_reason = verify_changes(snap1, workdir, args.file, output)
+
+if rc == 0 and has_changes:
+    audit("agy", 1, "OK", "success", ...)
+    return 0
+
+cat = classify_failure(rc, output, diff_reason)
+if cat in ("NEEDS_INPUT", "ENV"):
+    audit("agy", 1, cat, f"agy_{cat.lower()}", ...)
+    return rc or 1
+
+# Tier 2: Haiku fallback — use snap1 (not a new snapshot)
+audit("agy", 1, cat, "fallback_to_haiku", ...)
+rc_h, out_h = run_tool(haiku_cmd(args.prompt), ...)
+has_changes_h, _ = verify_changes(snap1, workdir, args.file, out_h)   # KEY: same snap1
+```
+
+**Critical pitfall:** Taking a NEW snapshot (`snap_haiku = take_snapshot(...)`) after Agy runs allows Agy's partial changes to be counted as Haiku's contribution. Always reuse `snap1`.
+
+### 2.2 Haiku Retry Ladder (Quota Fast-Path)
+```python
+cat_h = classify_failure(rc_h, out_h, diff_reason_h)
+
+if cat_h == "QUOTA":
+    audit("haiku", 1, cat_h, "quota_exhausted", ...)
+    return rc_h or rc or 1  # DO NOT retry Haiku on QUOTA — hard stop
+
+if cat_h in ("NEEDS_INPUT", "ENV"):
+    audit("haiku", 1, cat_h, f"haiku_{cat_h.lower()}", ...)
+    return rc_h or 1
+
+# Audit attempt 1 before retrying
+audit("haiku", 1, cat_h, "retry_needed", ...)
+
+# Attempt 2
+prompt2 = RETRY_PREFIX + args.prompt
+rc2, out2 = run_tool(haiku_cmd(prompt2), ...)
+has_changes2, _ = verify_changes(snap1, workdir, args.file, out2)  # Still snap1
+```
+
+### 2.3 Audit Coverage Requirements (Telemetry Score)
+Every outcome MUST emit an `audit()` call with:
+- `tier`: "agy" or "haiku"
+- `attempt`: 1 or 2
+- `category`: OK / NEEDS_INPUT / ENV / QUOTA / NO_DIFF / etc.
+- `reason`: descriptive string ("success", "fallback_to_haiku", "retry_needed", "quota_exhausted", "retry_failed")
+- `correlation_id`: same UUID across all attempts in one dispatch
+
+### 2.4 Timeout: 60s Default is Correct
+- Default of 60s per worker is well-calibrated for the farm.
+- Raising to 1200s causes worst-case chain (Agy + 2×Haiku) to reach ~540s → approaches the 600s threshold of the historical "Hermes gateway freeze incident".
+
+---
+
+## 3. Common Rejection Reasons & Fixes
+
+| Rejection Reason | Sol Score Impact | Fix |
+|---|---|---|
+| New snapshot before Haiku | −8 Logic | Delete `snap_haiku`; pass `snap1` to `verify_changes` |
+| Haiku retried on QUOTA | −5 Logic, −4 Farm Safety | Add `if cat_h == "QUOTA": return rc_h or 1` before retry |
+| Attempt 1 not audited before attempt 2 | −6 Telemetry | Add `audit("haiku", 1, cat_h, "retry_needed", ...)` before `RETRY_PREFIX` |
+| Dead code: unused declarations | −3 Architecture | Remove unused imports and constants |
+| Timeout raised to 1200s without benchmark | −4 Farm Safety | Keep 60s default |
+| Missing test for early exit (NEEDS_INPUT) | −4 Test Evidence | Add test asserting `len(calls) == 1` |
+
+---
+
+## 4. Minimal Focused Test Suite (12 tests)
+
+```python
+test_normalize_content_crlf()
+test_classify_failure_hierarchy()
+test_take_snapshot_and_verify_changes()
+test_verify_changes_rejects_unrelated_file_edit_in_git_repo()
+test_verify_changes_accepts_target_only_edit_in_git_repo()
+test_has_blocked_marker()
+test_main_agy_success()                            # Agy succeeds on first try
+test_main_blocked_stops_immediately()              # NEEDS_INPUT → 1 call only
+test_main_audit_correlation_id_consistent()        # UUID in audit records
+test_main_agy_fails_falls_back_to_haiku()          # Agy → Haiku success
+test_main_haiku_retry_ladder_success()             # Agy → Haiku att1 → Haiku att2 success
+test_run_tool_permission_error()
+```
+
+---
+
+## 5. Closeout Gate Invocation Pattern
+
+```bash
+# Stage specific target files only
+git -C "D:/Taadaa/tools" add dispatch_worker.py tests/test_dispatch_worker.py
+
+# Unstage any extra files (avoid "staged files mismatch" rejection)
+git -C "D:/Taadaa/tools" restore --staged ag_cli.py tests/test_ag_cli.py
+
+# Run targeted closeout review
+python D:/Taadaa/tools/closeout_gate.py \
+    --repo "D:/Taadaa/tools" \
+    --base HEAD \
+    --files dispatch_worker.py tests/test_dispatch_worker.py \
+    --json-output
+```

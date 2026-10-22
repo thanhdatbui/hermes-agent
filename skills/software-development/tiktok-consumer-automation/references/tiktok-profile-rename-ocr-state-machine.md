@@ -176,7 +176,18 @@
 - **Bẫy Cooldown 7 Ngày Trong `NAME_EDIT` (Sự cố M13 21/10/2026):**
   * **Hiện tượng:** Máy 13 bị kẹt lặp lại ở màn `NAME_EDIT` 5 lần liên tiếp và văng `exit_2`.
   * **Căn nguyên:** TikTok giới hạn đổi biệt danh 1 lần mỗi 7 ngày. Khi bị cooldown, TikTok hiển thị thông báo dưới input: *"Bạn chỉ có thể thay đổi biệt danh 7 ngày một lần. Bạn có thể tiếp tục thay đổi biệt danh sau ngày..."*. Runner không nhận diện thông báo này nên tiếp tục bấm Lưu vô vọng.
-  * **Khắc phục:** Quét regex nhận diện chuỗi báo lỗi 7 ngày: `any(k in norm(" ".join(lines)) for k in ("tiep tuc thay doi", "tiep tvc thay ddi", "sau ngay"))`. Khi phát hiện, tap nút Hủy (`XY_NAME_CANCEL`), gán `ctx["rename_result"] = "COOLDOWN_7D"` và Abort ngay lập tức.
+  - Khắc phục: Quét regex nhận diện chuỗi báo lỗi 7 ngày: `any(k in norm(" ".join(lines)) for k in ("tiep tuc thay doi", "tiep tvc thay ddi", "sau ngay"))`. Khi phát hiện, tap nút Hủy (`XY_NAME_CANCEL`), gán `ctx["rename_result"] = "COOLDOWN_7D"` và Abort ngay lập tức. Đây là cơ chế fail-soft bình thường của TikTok phía server, watchdog sẽ tự động retry sau khi hết chu kỳ 7 ngày.
+
+- **Bẫy Unhandled `subprocess.TimeoutExpired` Do Stale ADB Bridge Socket Gây Crash Exit 1 Toàn Bộ Batch (Sự cố 22/10/2026):**
+  * **Hiện tượng:** Watchdog báo lỗi hàng loạt máy (M74, M4, M44, M64) với lý do `reason=exit_1`, hoàn toàn không có file JSON report hay ảnh nghiệm thu `_rename_confirmed.json`.
+  * **Căn nguyên:** Trong `do_rename_canonical_runner.py`, dòng lệnh `old_ime = shell("settings", "get", "secure", "default_input_method")` nằm ngoài khối `try...except`. Khi ADB daemon trên host Windows bị kẹt kết nối (stale bridge socket) với thiết bị S7, lệnh ADB shell bị treo quá timeout 30s, ném ra lỗi `subprocess.TimeoutExpired` không được bắt, làm tiến trình Python crash ngay lập tức (`exit_1`).
+  * **Xử lý nóng O(1):** Chạy `adb kill-server && adb start-server` để reset ADB daemon trên host. Ngay sau khi reset, các máy phản hồi lại trong 1-2s.
+  * **Kỷ luật code runner:** Mọi lệnh ADB tiền trạm (`settings get`, `dumpsys`) bắt buộc phải bọc trong `try...except (subprocess.TimeoutExpired, Exception)` với fallback fail-safe, tuyệt đối không gọi trần ngoài khối try-except chính.
+
+- **Bẫy Màn Hình "Tìm Mọi Người" (`FindFriendsPageActivity`) Gây Vượt Quá 35 Bước Exit 2 (Sự cố M69 22/10/2026):**
+  * **Hiện tượng:** Máy 69 văng `exit_2` với lý do `vuot qua 35 buoc`, màn hình nghiệm thu dừng ở giao diện "Tìm mọi người" / "Tìm bạn bè" (`FindFriendsPageActivity`).
+  * **Căn nguyên:** Khi TikTok mở lên bị chuyển hướng vào trang gợi ý kết bạn, giao diện chứa các khối "Tìm kiếm theo tên", "Sử dụng mã QR", "Mời bạn bè", "Danh bạ". State machine không nhận diện màn hình này mà coi là `UNKNOWN`, chỉ bấm 1 phím Back không đủ để thoát hoàn toàn về Feed/Profile.
+  * **Khắc phục:** Nhận diện các marker `tim moi nguoi`, `find friends`, `ma qr`, `danh ba` trong `classify()`. Khi phát hiện, bấm phím Back 2 lần liên tiếp (`keyevent 4` cách nhau 1s) hoặc phát lệnh monkey intent đưa app về LauncherActivity/Feed.
 
 - **Kỷ Luật Dữ Liệu: CẤM Tự Động Ghi Bio Để Mở Khóa Đổi Tên:**
   * Trên tài khoản chưa có Bio, TikTok chỉ hiển thị `+ Thêm tiểu sử`.

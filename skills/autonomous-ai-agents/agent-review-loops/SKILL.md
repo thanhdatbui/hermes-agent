@@ -1,7 +1,7 @@
 ---
 name: agent-review-loops
 description: "Điều phối coding review đến APPROVED."
-version: 1.2.5
+version: 1.2.6
 metadata:
   hermes:
     tags: [orchestration, codex, claude, opencode, review-loop, preflight, live-validation]
@@ -47,3 +47,5 @@ metadata:
 - Session Close Remediation Discipline: [`references/session-close-remediation-discipline.md`](references/session-close-remediation-discipline.md)
 - Evidence-first anti-paralysis closeout: [`references/evidence-first-anti-paralysis-closeout.md`](references/evidence-first-anti-paralysis-closeout.md)
 - Multi-Round Adversarial Gate Hardening & Fail-Closed Review: [`references/multi-round-adversarial-gate-hardening-lessons-20261022.md`](references/multi-round-adversarial-gate-hardening-lessons-20261022.md)
+- Claude Quota Silent Fallback & Safe Push Invariants: [`references/claude-quota-silent-fallback-and-safe-push-invariants.md`](references/claude-quota-silent-fallback-and-safe-push-invariants.md)
+- GPM CDP Login-Only Closeout Recipe: [`references/gpm-cdp-login-only-closeout-recipe-20261022.md`](references/gpm-cdp-login-only-closeout-recipe-20261022.md)
