@@ -146,8 +146,20 @@ Khi mock workbook cho `load_accounts_credentials`:
   Vì 32 acc có `is_active = 0` và 8 acc có `test_status = 'unavailable'`, số tài khoản thực chiến rơi về 0.
 - **Nguyên nhân gốc rễ (Mass Session Flush)**:
   Khi GPM profile restart hàng loạt, đổi IP proxy cụm hoặc OpenAI xoay chu kỳ cookie, toàn bộ token `__Secure-next-auth.session-token` bị invalidate cùng một thời điểm.
-- **Quy trình phục hồi & Giải thích cho User**:
+- Quy trình phục hồi & Giải thích cho User:
   1. Không hoang mang hay can thiệp tay sửa bừa DB.
   2. Cronjob `gpm-5profiles-lifecycle-supervisor` đang chạy nền cuốn chiếu 5 profile mỗi 5 phút để đăng nhập lại và lấy cookie mới. Cần thời gian cuốn chiếu (~40–60 phút cho 40 acc).
   3. Antigravity pool (Gemini/Google Code) và Codex pool độc lập hoàn toàn, vẫn giữ quota vận hành cho hệ thống và farm.
+
+## 11. Phân Tách Scope Báo Cáo Watchdog vs Inventory Thực Tế (Bẫy Hiểu Lầm Số Lượng Pool)
+- **Hiện tượng 1: Antigravity chỉ báo 25/25 ACTIVE (trong khi DB có 120+ connections)**:
+  * *Thắc mắc*: User/Admin thấy watchdog báo `• Antigravity: 25/25 ACTIVE` và nghi ngờ rớt mất ~100 tài khoản.
+  * *Bản chất kỹ thuật*: Hàm `is_pro_antigravity(c)` trong watchdog áp dụng bộ lọc fail-closed: **CHỈ kiểm tra và báo cáo các tài khoản thuộc Pool Pro (`tier: 'g1-pro-tier'`)**, bỏ qua tài khoản Free/Farm để tránh spam alert và tránh chạy headless OAuth bừa bãi.
+  * *Đối soát thực tế*: Bảng `provider_connections` trong `storage.sqlite` vẫn lưu đủ ~123 tài khoản (trong đó ~94 tài khoản đang `is_active = 1`). 25 tài khoản được báo cáo là 27 acc Pro trừ 2 acc excluded (`thanhdatbui19951`, `jinrakal`).
+- **Hiện tượng 2: ChatGPT-Web sụt giảm từ 111-114 xuống còn 43-47 connections**:
+  * *Thắc mắc*: *"Pool gpt web sao mất đống tài khoản vậy?"*
+  * *Bản chất kỹ thuật*: Đây là kết quả của chiến dịch thanh lọc định kỳ (`clean_omniroute_pools.py`, `login_audit_and_purge_deactivated.py`). Các tài khoản bị OpenAI khóa vĩnh viễn (`AccountDeactivated`), lỗi Cloudflare Turnstile/Sentinel 403 không gỡ được, hoặc token rác đã bị xóa dứt điểm khỏi `provider_connections` và các combo routing (`chatgpt-web-pool`, `gpt-web-sol`).
+  * *Lý do thanh lọc*: Nếu giữ 100+ connection mà một nửa là cookie die, OmniRoute sẽ rơi vào vòng xoáy retry cascade (mỗi request ngâm 45s-75s) và làm nghẽn Event Loop của NodeJS, khiến `/v1/models` timeout và sập proxy.
+  * *Nguyên tắc giải trình*: Kho tài khoản gốc (credentials, recovery mail, profile GPM) vẫn được lưu trữ đầy đủ trong file Excel (`taikhoan_dat_v2_updated.xlsx`) và GPMLogin. Chỉ những tài khoản có session cookie sống và hợp lệ mới được nạp vào OmniRoute để phục vụ routing.
+
 
