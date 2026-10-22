@@ -47,3 +47,46 @@ Do not tell the operator to manually refresh a carrier tracking link or call hot
    - Check for keywords: `bưu cục`, `đến bưu cục`, `đang giao`, `shipper`, `phát hàng`.
    - Output a high-priority alert (`🚨 BÁO ĐỘNG KHẨN CẤP`) with recipient name, phone, COD cash amount, latest hub name, and the direct tracking URL.
    - Update canonical `orders.json` status to `Đã đến bưu cục phát` or `Đang giao hàng (Shipper đang đi phát)`.
+
+---
+
+## 4. Zero-Prompt Telegram Group Discovery via `channel_directory.json`
+
+- **The Problem:** In farm setups, existing Telegram groups receive hundreds of automated farm alerts daily, causing operators to mute Telegram or miss order milestones. Creating a separate group (e.g., "Đơn hàng tiktok") is essential.
+- **The Pitfall:** Asking the user to run `/status` or manually copy their new group's Chat ID is an unnecessary round-trip that frustrates the user.
+- **Canonical Solution:** Hermes automatically registers all connected chats in `channel_directory.json` located at `$LOCALAPPDATA/hermes/channel_directory.json`.
+  1. Inspect `channel_directory.json` (under `platforms.telegram`).
+  2. Locate the newly created group by name (e.g., `{'id': '-5316882628', 'name': 'Đơn hàng tiktok', 'type': 'group'}`).
+  3. Update the cronjob delivery target directly: `deliver: "telegram:-5316882628"` in $O(1)$ without prompting the user.
+
+---
+
+## 5. Continuous Admin Host Siren & Chat-Driven Stop Gate
+
+To alert operators across physical rooms before couriers dispatch morning routes:
+
+1. **Continuous Looping Siren on Admin (`192.168.110.119`):**
+   - When the delivery watchdog detects arrival at the local destination hub or courier assignment, trigger an infinite audio siren on the physical Admin host.
+   - Run via `admin_ssh.py` with detached execution:
+     `start cmd /c python D:\OneDrive\Taadaa_Sync_Shared\tools\admin_alarm.py D:\OneDrive\Taadaa_Sync_Shared\tools\stop_jt_{billcode}.flag`
+   - `admin_alarm.py` loops `winsound.Beep(1200, 250)` and `winsound.Beep(1800, 300)` continuously until the specified flag file exists.
+2. **Instant Chat-Driven Stop Mechanism:**
+   - The siren must continue until the operator acknowledges it.
+   - When the user sends any stop intent ("dừng", "tắt loa", "stop", "đã lấy hàng"), Hermes creates the flag file via SSH:
+     `python D:/Taadaa/tools/admin_ssh.py "echo stop > D:\OneDrive\Taadaa_Sync_Shared\tools\stop_jt_{billcode}.flag"`
+   - The looping process detects file existence (`os.path.exists`) and exits in $< 1$ second.
+
+---
+
+## 6. Farm Voucher Multi-Account Courier Coordination & Secret Keyword Convention
+
+1. **The Anti-Fraud Clustering Requirement:**
+   Bao voucher farming requires each purchase to use distinct, randomized recipient names, dummy phone numbers, and varied street numbers/alleys to bypass platform fraud detection (anti-clustering).
+2. **The Courier Failure Mode:**
+   Couriers finding invalid street addresses and unreachable dummy phone numbers will mark orders as "Khách không nghe máy" and initiate return-to-sender (RTS), causing lost vouchers and failed orders.
+3. **Establishing a Mutual Benefit Courier Agreement:**
+   - Couriers earn commissions per delivered parcel and are penalized for returns. A consolidated delivery of multiple parcels with instant cash COD payment is highly desirable for them.
+   - **Secret Keyword / Marker Protocol:**
+     * Agree on a fixed keyword on the printed waybill (e.g., fixed surname prefix in Recipient Name or note substring in Address).
+     * The courier inspects parcels at the local hub floor during morning sort (07:15 - 08:00 AM).
+     * Any parcel bearing the secret keyword is automatically bundled and delivered directly to the physical farm headquarters (e.g., 47 Tran Cao Van) for bulk cash settlement, without calling the dummy numbers.
