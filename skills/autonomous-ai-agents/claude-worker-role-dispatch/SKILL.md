@@ -23,9 +23,13 @@ When a Coordinator bypassed the Guard by running `claude -p "..." --dangerously-
 
 | Role | Model | Default Turns | Hard Cap Turns | Default Timeout | Tools | Fallback |
 |------|-------|--------------|----------------|-----------------|-------|---------|
-| `worker` | claude-haiku-5-5 | **15** | **15** | **1200s** (20m) | File có sẵn: Read,Edit (chặn Bash,Write,Web,Agent,Task)<br>File mới: Read,Edit,Write (chặn Bash,Web,Agent,Task) | `ag_cli.py fix` (gemini-3.8-flash-medium) |
-| `planner` | claude-sonnet-5-5 | 6 | **10** | **1200s** (20m) | Read,Bash | `ag_cli.py ask` |
-| `reviewer` | claude-sonnet-5-5 | 8 | **15** | **1200s** (20m) | Read,Bash | `ag_cli.py ask` |
+| `worker` | haiku (claude-haiku-5-5) | **15** | **15** | **1200s** (20m) | File có sẵn: Read,Edit (chặn Bash,Write,Web,Agent,Task)<br>File mới: Read,Edit,Write (chặn Bash,Web,Agent,Task) | `ag_cli.py fix` (gemini-3.8-flash-medium) |
+| `planner` | sonnet (claude-sonnet-5-5) | 6 | **10** | **1200s** (20m) | Read,Bash | `ag_cli.py ask` |
+| `reviewer` | sonnet (claude-sonnet-5-5) | 8 | **15** | **1200s** (20m) | Read,Bash | `ag_cli.py ask` |
+
+> **QUIRK MODEL CLI & CONVERSATIONAL REFUSAL (2026-10-22):**
+> 1. Claude Code CLI yêu cầu model alias chuẩn: `--model sonnet` hoặc `--model haiku`. Nếu truyền `--model claude-sonnet-5-5` hoặc `--model claude-sonnet` thì Claude CLI báo lỗi `unrecognized_model` và exit code 1.
+> 2. Worker prompt phải chứa lệnh hành động cụ thể và contract rõ ràng. Nếu prompt mơ hồ hoặc chỉ đưa file target mà không mô tả rõ hành động cần sửa, Claude Worker sẽ trả về "conversational refusal" (*"What do you want me to do with it?"*) mà không chỉnh sửa file (`files_modified == 0`).
 
 > **Single Dispatch Gateway Routing (Chốt 22/10/2026):**
 > Trong quy trình điều phối routine fix (`dispatch_worker.py`):

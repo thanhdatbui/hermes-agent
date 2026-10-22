@@ -10,9 +10,11 @@ Trong môi trường điều phối Taadaa Phone Farm, Coordinator hoạt độn
 1. **`GUARD_FOREGROUND_TIMEOUT_MISSING`:**
    - Mọi lệnh `terminal` foreground bắt buộc phải khai báo tham số `timeout` rõ ràng (tối đa 60s cho foreground). Nếu thiếu `timeout`, lệnh bị từ chối ngay lập tức:
      `[GUARD_FOREGROUND_TIMEOUT_MISSING] Lệnh terminal foreground thiếu timeout! Bắt buộc timeout <= 60s hoặc chạy background=True.`
-2. **`COORDINATOR TERMINAL BLOCKED (DEFAULT-DENY)`:**
-   - Lệnh ADB gọi trực tiếp các lệnh shell tùy ý (như `adb -s <serial> shell ip ...`) bị chặn hoàn toàn bởi allowlist để chống can thiệp bấm tay hoặc quét bừa bãi.
+2. **`COORDINATOR TERMINAL BLOCKED (DEFAULT-DENY)` & `GUARD SELF-PROTECTION`:**
+   - Lệnh `powershell.exe` bị chặn hoàn toàn bởi allowlist default-deny (không dùng PowerShell để check Get-PnpDevice từ Coordinator).
+   - Lệnh ADB raw chứa `screencap` hoặc shell tùy ý bị chặn bởi guard tự vệ (`GUARD SELF-PROTECTION / GUARD SOURCE BLACKLISTED`).
    - **Công cụ chuẩn tắc duy nhất:** BẮT BUỘC gọi `python D:/Taadaa/tools/inspect_machine.py <N>` (đã nằm trong allowlist).
+   - **Chẩn đoán Mass USB Disconnect O(1):** Chạy `python D:/Taadaa/tools/inspect_machine.py` (không tham số) để đếm số máy online trên từng cluster (Kibe vs Admin). Nếu Kibe tụt từ 80 xuống 45 máy và máy lẻ trả về `device '<serial>' not found`, kết luận ngay lỗi sụt nguồn Hub USB/cáp uplink vật lý, cấm cố sửa code.
 
 ---
 

@@ -610,6 +610,34 @@ Khi kho credentials (token OAuth, mật khẩu proxy di động) không thể đ
   3. *Native Go BoringSSL Transport:* Chạy binary `agy.exe` gốc, tránh giả lập qua Node.js/undici để giữ nguyên chữ ký bắt tay TLS và HTTP/2 của Google.
   4. *Proxy 1-1 Mapping & Direct Separation:* Tài khoản host máy chính (`thanhdatbui`, `jinrakal`) đặt `proxy: None` (Direct), các tài khoản farm còn lại gán 1:1 đúng proxy di động tương ứng của GPM profile, cấm gán bừa theo số thứ tự.
 
+---
+
+## 19. Đồng Bộ Quota Real-Time Từ OmniRoute SQLite Vào Agy CLI Pool Selector (User Invariant 2026-10-22)
+
+### Bối cảnh & Căn nguyên Lãng phí Jitter:
+- `ag_cli.py` trước đây quản lý cooldown độc lập bằng `pool_state.json`. Khi xoay vòng qua 28 profile, nếu gặp acc dính 429 thì sleep jitter 5–10s rồi thử profile kế tiếp. Khi hàng loạt acc bị 429, script tốn tới 60–90s sleep vô ích rồi mới failover sang Haiku.
+- Trong khi đó, **OmniRoute (`9router`)** duy trì trạng thái quota và cooldown thời gian thực tại `C:\Users\Kibe\AppData\Roaming\9router\db\data.sqlite` (`providerConnections` where `provider='antigravity'`). Trường `priorityCooldownUntil` và `isActive` phản ánh chính xác 100% tài khoản nào đang bị khóa và khi nào hết hạn.
+
+### Nguyên tắc Điều phối Tối ưu:
+- **Đọc trực tiếp SoT từ 9Router SQLite trước khi chọn profile:**
+  ```python
+  import sqlite3, datetime
+  c = sqlite3.connect(r'C:\Users\Kibe\AppData\Roaming\9router\db\data.sqlite')
+  now = datetime.datetime.now(datetime.timezone.utc)
+  # Lọc danh sách email thực sự sẵn sàng
+  ready_emails = set()
+  for email, prio, active, data_json in c.execute("SELECT email, priority, isActive, data FROM providerConnections WHERE provider='antigravity'"):
+      if not active: continue
+      d = json.loads(data_json or '{}')
+      cooldown = d.get('priorityCooldownUntil')
+      if not cooldown or datetime.datetime.fromisoformat(cooldown.replace('Z', '+00:00')) <= now:
+          ready_emails.add(email.lower())
+  ```
+- **Chỉ dispatch vào profile có email nằm trong `ready_emails`:**
+  - Bỏ qua toàn bộ các profile đang dính `priorityCooldownUntil` trên OmniRoute.
+  - Triệt tiêu 100% việc thử mù các profile đã cạn quota, xóa bỏ chuỗi chờ jitter 5–10s lặp lại.
+  - Nếu tất cả profile Pro đều đang cooling theo 9Router DB $\rightarrow$ Fast Failover ngay lập tức sang Tier 2 (Haiku CLI) mà không làm trễ thời gian phản hồi của task.
+
 
 
 

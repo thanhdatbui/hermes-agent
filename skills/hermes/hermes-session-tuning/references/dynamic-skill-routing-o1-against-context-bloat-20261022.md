@@ -48,3 +48,36 @@ Khi đưa bộ ba công cụ vào thẩm định qua `closeout_gate.py`, Reviewe
   - Tự động bốc top 1–2 matched skills + 5 Pinned Core Invariants nạp vào đầu prompt.
   - Áp ngân sách cứng `MAX_CONTEXT_CHARS = 15000`: Nếu vượt, graceful degradation về `DEGRADED_TOP2`.
   - **Graceful Fail-Closed**: Nếu index bị stale hoặc lỗi, trả về rỗng và tiếp tục dispatch với prompt gốc, tuyệt đối không để lỗi phụ trợ làm chặn đứng luồng dispatch chính.
+
+---
+
+## 6. Tử Huyệt Pinned References 100k Chars & Giải Pháp `clean_skill_content`
+- **Sự cố phát hiện trong quá trình test**: Hai file pinned skills cốt lõi là `session-close-protocol` và `evidence-first-delivery` có phần `## References` dài tới ~100.000 ký tự (chứa hàng chục case study lịch sử).
+- **Hậu quả nếu nạp thô**: Riêng 2 file pinned này đã ngốn >200.000 ký tự, ngay lập tức làm nổ tung ngân sách 15k ký tự và khiến injector không thể nạp thêm bất kỳ matched skill nào.
+- **Biện pháp xử lý cơ học (`clean_skill_content`)**:
+  1. Cắt bỏ toàn bộ phần `## References` phía dưới (`content[:ref_idx] + "\n\n... [TRUNCATED REFERENCES FOR CONTEXT BUDGET]"`), chỉ giữ lại phần nguyên tắc cốt lõi phía trên.
+  2. Khóa trần cứng nội dung mỗi skill ở mức 3000 ký tự (`max_chars = 3000`).
+  3. Áp dụng cơ chế phân bổ 2 tầng ngân sách: `max_pinned_budget = 10000` ký tự cho nhóm Pinned Invariants, để dành tối thiểu 5000 ký tự cho các Matched Skills nghiệp vụ.
+  4. Đảm bảo tổng context block gửi sang Worker **luôn luôn $\le 15.000$ ký tự**.
+
+---
+
+## 7. Quy Chuẩn Tích Hợp Code Vào `dispatch_worker.py`
+- Bổ sung tham số CLI: `--no-skill-injection` (mặc định: `enable_skill_injection=True`).
+- Điểm chèn trong `main()`:
+  ```python
+  effective_prompt = args.prompt
+  if getattr(args, "enable_skill_injection", True):
+      try:
+          from skill_injector import inject_skill_context
+          inj = inject_skill_context(args.prompt, tier="T1", max_context_chars=15000)
+          if inj.context_block:
+              effective_prompt = f"{inj.context_block}\n\n---\n[TASK CONTRACT]\n{args.prompt}"
+              _log(f"Skill injection: {inj.status} ({len(inj.injected_skill_ids)} skills, {inj.used_chars} chars)")
+      except Exception as exc:
+          _log(f"Skill injection failed (fallback to raw prompt): {exc}")
+  ```
+- Biến `effective_prompt` được truyền đồng bộ cho cả Tier 1 (Agy CLI) và Tier 2 (Haiku Attempt 1 & 2 retry).
+- Bộ test bao phủ hoàn chỉnh:
+  - `tests/test_skill_injector.py` (6 unit tests kiểm thử budget, freshness, truncation, custom ceiling).
+  - `tests/test_dispatch_worker_skill_injection.py` (3 integration tests kiểm thử prompt injection, mock failure fallback, cờ bypass).
