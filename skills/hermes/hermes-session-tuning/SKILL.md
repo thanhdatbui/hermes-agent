@@ -61,7 +61,12 @@ Fix:
   2. `skill_lookup.py --query "<intent>"`: Tra cứu từ khóa O(1), tự động luôn đính kèm Pinned Core Invariants (`taadaa-farm-ops-rules`, `farm-anti-overengineering`, `session-close-protocol`, `evidence-first-delivery`, `agent-verification-loop`).
   3. `load_selected_skills.py`: Nạp chọn lọc đúng N skills khớp vào context làm việc, chặn Path Traversal và escape HTML comments.
   4. **Cơ giới hóa (Mechanical Wiring)**: Không để ở mức CLI On-Demand (dễ bị quên). Tích hợp Pre-dispatch Hook qua `skill_injector.py` vào `dispatch_worker.py` để tự động bốc skill nạp cho Worker với trần 15k ký tự (graceful fail-closed, tự cắt `## References` dài >100k của pinned skills để tránh nổ trần).
-  5. Đã nghiệm thu Sol Reviewer 85/100 (APPROVED) và phủ 43 unit/integration tests xanh 100%. Xem chi tiết tại `references/dynamic-skill-routing-o1-against-context-bloat-20261022.md`.
+  5. **Chốt chặn an toàn khi cơ giới hóa**:
+     - *Safe Boundary Clamping*: Khi cắt tỉa context để fit budget, lùi về ranh giới `<!-- END SKILL: ... -->` của block trước đó, không cắt ngang xương giữa tag.
+     - *Audit Telemetry RC Integrity*: Ghi audit log với `correlation_id` đồng nhất; truyền `rc=1` khi trạng thái là `FAIL_CLOSED_*`, truyền `0` khi `OK`/`NO_MATCH`.
+     - *Hermetic Test Fixtures*: Test cho injector bắt buộc dùng `tmp_path` hermetic fixture, không phụ thuộc vào live `DEFAULT_INDEX` trên farm để tránh flake do mtime drift.
+     - *Windows 8191 CLI Length Cap*: Windows CreateProcess giới hạn 8191 ký tự command line; khi truyền qua argument dòng lệnh của wrapper, clamp trần an toàn `max_context_chars=2500` hoặc dùng file/env.
+  6. Đã nghiệm thu Sol Reviewer 85/100 (APPROVED) và phủ 43 unit/integration tests xanh 100%. Xem chi tiết tại `references/dynamic-skill-routing-o1-against-context-bloat-20261022.md`.
 - 🚨 **CẤM TUYỆT ĐỐI HẠ THRESHOLD DƯỚI 0.3 (User Correction 03/10/2026)**: Cấm hạ threshold xuống 0.12 hay 0.2 với lý do "giảm tải proxy". Ở context window 120k tokens, threshold 0.12 sẽ ép nén liên tục ngay từ 14.4k tokens ("120k context thì nén liên tục"), phá vỡ trải nghiệm người dùng. BẮT BUỘC duy trì `compression.threshold: 0.3`.
 - **Cơ chế Retry Overload (503) & OmniRoute Recovery**: Khi gặp lỗi 503 Overloaded, `agent/conversation_loop.py` tự động nâng `base_delay = 10.0s`, khóa sàn `Retry-After >= 10s`, và `_emit_status` tức thì để trải dài chuỗi retry ~85s (đủ thời gian cho watchdog OmniRoute tự restart ~24s). Chi tiết xem `references/omniroute-heap-pressure-and-retry-backoff.md`.
 - **Config chỉ áp cho session MỚI** — session cũ đã phình phải `/new` mới hết lag.

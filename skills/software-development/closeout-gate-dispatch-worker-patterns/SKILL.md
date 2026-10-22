@@ -174,6 +174,9 @@ python D:/Taadaa/tools/closeout_gate.py \
   - **Windows 8191-Char CLI Cap Pitfall (`The command line is too long`)**: Trên Windows, API `CreateProcessW` giới hạn toàn bộ command line ở **8.191 ký tự**. Nếu `inject_skill_context` dùng `max_context_chars=15000` nhồi vào CLI argument của `claude_worker.py` hoặc `ag_cli.py`, tiến trình sẽ văng lỗi `The command line is too long` ngay lập tức! Khắc phục:
     + Cố định trần `max_context_chars=2500` trong `dispatch_worker.py` khi truyền qua argument dòng lệnh.
     + Hỗ trợ cờ `--no-skill-injection` cho các lần gọi từ test runner hoặc pipeline nội bộ (`gate_pipeline.py`).
+  - **Audit Telemetry RC Integrity (Chống Silent Success)**: Khi ghi `audit("skill_injection", ...)`, BẮT BUỘC truyền `rc=1` khi trạng thái là `FAIL_CLOSED_*`, chỉ truyền `0` khi `OK` hoặc `NO_MATCH`. Tuyệt đối cấm hardcode `rc=0` gây sai lệch bằng chứng audit.
+  - **Safe Block-Boundary Clamping**: Khi cắt tỉa context để fit budget, BẮT BUỘC lùi về ranh giới `<!-- END SKILL: ... -->` của block trước đó, cấm cắt ngang xương ở giữa tag làm hỏng cấu trúc prompt.
+  - **Hermetic Test Fixtures (Chống Môi Trường Ô Nhiễm)**: Unit tests cho `skill_injector` BẮT BUỘC dùng fixture `hermetic_env` tạo skills_dir và index_path trong `tmp_path`, cấm chạy trực tiếp trên `DEFAULT_INDEX` thật của farm vì chỉ cần 1 skill live bị touch là `check_index_freshness` fail-closed làm rớt test ngẫu nhiên.
 
 ---
 
