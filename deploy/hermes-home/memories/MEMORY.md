@@ -20,7 +20,7 @@ Ava: Trích clip gốc; Vision LLM lọc ava rác. Gate 6: cấm trần thuật 
 §
 Reboot 3 ca (05:20, 11:20, 17:20): lookback 60m; 2FA né đệm. Né TFT/War3. Task ngầm Hidden+CREATE_NO_WINDOW. Game=tắt nháy.
 §
-OMP/AGY: 28 acc OAuth (27 Pro); lease 1800s. CẤM Luna làm Coord.
+OMP/AGY: 28 acc OAuth (28 Pro); lease 1800s; QR validation Google: tab GPM desktop phải giữ mở trực chiến (WebSocket sync), đóng trước khi quét sẽ lỗi 500 & kẹt 403; link shop 9k quá 8p Google One báo 'đã sử dụng', đối soát 0GB/5GB vs 5TB trên one.google.com/home.
 §
 Đơn TT Shop: Mail báo 1 lần; API SPX/J&T/Ninja; Hub Thanh Khê. Dashboard :1905 /api/orders.
 §

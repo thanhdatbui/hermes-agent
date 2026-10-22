@@ -55,4 +55,9 @@
    - Chụp toàn màn hình hoặc crop vùng mã QR.
    - Soi mắt kiểm tra trước khi gửi: Đảm bảo mã QR không bị lẹm góc, không bị popup che, đủ độ tương phản để camera quét được.
    - Đính kèm thẻ `MEDIA:<path>` gửi sang Telegram cho User quét camera trên điện thoại xác thực thiết bị.
-4. **Hậu kiểm:** Sau khi User quét xong trên điện thoại, trang Google trên GPM tự động redirect về `auth_success_gemini` $\rightarrow$ Thử lại request qua OmniRoute/AGY CLI để nghiệm thu thông mạch.
+4. **Kỷ Luật Giữ Trình Duyệt Mở Trực Chiến (Live QR Handshake Invariant):**
+   - Tab QR trên desktop mở một kết nối thời gian thực (long-poll / WebSocket) với server Google.
+   - Khi User quét mã QR trên điện thoại và bấm xác nhận, server Google push tín hiệu về tab desktop để hoàn tất xác thực thiết bị và giải phóng token.
+   - **Cạm bẫy đứt luồng:** Nếu profile GPM bị tắt hoặc đóng tab QR trước/trong khi người dùng quét, kênh kết nối bị ngắt. Điện thoại quét xong sẽ nhận lỗi `500 That's an error` và server Google không ghi nhận xác thực desktop $\rightarrow$ Tài khoản tiếp tục bị kẹt 403.
+   - **Bắt buộc:** TUYỆT ĐỐI GIỮ TRÌNH DUYỆT MỞ NGUYÊN TRẠNG CHO ĐẾN KHI USER BÁO QUÉT XONG.
+5. **Hậu kiểm:** Sau khi User quét xong trên điện thoại, trang Google trên GPM tự động redirect về `auth_success_gemini` $\rightarrow$ Thử lại request qua OmniRoute/AGY CLI để nghiệm thu thông mạch.
