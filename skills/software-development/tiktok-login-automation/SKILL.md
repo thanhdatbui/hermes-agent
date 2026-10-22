@@ -38,6 +38,9 @@ description: "TikTok login automation via ADB — inventory, login, 2FA, UI hand
   * **Kỷ Luật Điều Tra Root Cause Script Chống Báo Cáo Suông (User Correction 21/10/2026):**
     - Khi nhận cảnh báo farm fail từ Watchdog, CẤM Coordinator chỉ inspect hiện trường rồi phát thông báo suông cho User.
     - BẮT BUỘC lần theo `log.jsonl`, đối chiếu `fail_*.xml` và mở mã nguồn script để định vị chính xác bug, sửa trực tiếp và xác minh bằng chứng chạy thật.
+  * **Bẫy OCR Chèn Khoảng Trắng Username & Thoát Subscreen Profile (2026-10-23):**
+    - WinRT OCR trên Samsung S7 dễ chèn khoảng trắng nội bộ vào username (`@ngotran g7771`). Bẫy `\" \" not in text` gây false-negative khiến runner báo `exit_2` sau khi đã đổi tên thành công. Xử lý an toàn: nới lỏng khoảng trắng KHI VÀ CHỈ KHI `is_target_user(compact(text))` khớp target_user; kèm telemetry `[OCR-SPACE]` và test negative chống caption/mention.
+    - Khi Profile bị kẹt ở subscreen "Video riêng tư" (mất nút Sửa hồ sơ), phải bấm icon Back `<` góc trên bên trái (`o` tại x~55, y~117) hoặc `SWIPE_PROFILE_TOP`, cấm tap mù fallback tọa độ. Chi tiết xem [`references/ocr-username-space-artifact-and-profile-subscreen-recovery-20261023.md`](references/ocr-username-space-artifact-and-profile-subscreen-recovery-20261023.md).
 
 ## 3. Tài Liệu Tham Khảo (References)
 - Chi tiết các case study đăng nhập và xử lý UI: xem danh mục trong thư mục `references/` của skill.
