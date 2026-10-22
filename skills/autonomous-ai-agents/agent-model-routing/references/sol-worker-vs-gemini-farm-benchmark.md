@@ -84,3 +84,34 @@ Khi Claude CLI chạm ngưỡng bảo vệ quota 85% hoặc Agy CLI pool dính r
 3. **Tích Hợp Quota Real-Time Cho Dàn Agy CLI:**
    - OmniRoute `:20129/api/usage/provider-limits` chứa cache live của toàn bộ pool. Key `gemini-3.1-flash-lite` hoặc `gemini-3.7-flash-tiered` dùng chung family bucket với `gemini-3.8-flash-high`.
    - Controller `ag_cli.py` bắt buộc đọc cache này để lọc bỏ acc `remainingPercentage <= 0.0` và ưu tiên acc còn nhiều quota nhất lên đầu, triệt tiêu 100% tình trạng duyệt mù dính 429.
+
+---
+
+## 5. Trận Chiến Agent Tự Trị Thực Tế: Sol Worker (`sol_worker.py`) vs Claude Haiku Worker (`haiku_worker.py`)
+
+### 1. Thể Thức Thi Đấu (Autonomous Coding Agent Showdown):
+- **Bối cảnh:** Không còn là câu hỏi/đáp văn bản (completion prompt), mà là **Worker Agent tự động đọc file và sửa code thực tế trên workspace**.
+- **Đề bài thật:** Cải tiến script `watchdog_admin_render_smart.py` trên máy Admin để chống lag War3/TFT:
+  1. Thêm `suspend_process_tree(pid)` và `resume_process_tree(pid)` dùng `psutil` đóng băng/rã đông cây tiến trình thay vì kill thô bạo.
+  2. Thêm `sweep_orphan_ffmpeg()` dọn sạch tiến trình ffmpeg mồ côi (`parent is None`).
+  3. Thêm `check_heartbeat_stale()` kiểm tra file heartbeat quá 30s.
+  4. Cập nhật `main()` điều phối luồng: Sweep khi bật -> Suspend khi chơi game -> Resume khi hết game.
+- **Môi trường:** Mỗi bên nhận 1 bản sao sạch giống nhau (`watchdog_smart_sol.py` vs `watchdog_smart_haiku.py`).
+
+### 2. Kết Quả Đối Đầu Thực Tế:
+- **Claude Haiku Worker (`haiku_worker.py --model haiku`):**
+  * *Thời gian:* 12.5s.
+  * *Kết quả:* `target_changed: false` (THẤT BẠI - 0 dòng code được sửa).
+  * *Hành vi:* Đọc file xong nhưng không hề gọi tool `Edit`, mà quay sang chat giải thích và hỏi lại: *"Tôi đã đọc file... Bạn muốn làm gì với file này? Ví dụ: sửa một lỗi cụ thể..."*. Bị rơi vào trạng thái thụ động "Chat Assistant".
+- **Sol Worker (`sol_worker.py` - GPT-5.6 Sol via OmniRoute `:20129`):**
+  * *Thời gian:* 239s.
+  * *Kết quả:* `target_changed: true`, `exit_code: 0` (THẮNG ÁP ĐẢO).
+  * *Hành vi ReAct 7 turns:*
+    - Turn 1 (`READ_FILE`): Đọc toàn bộ file để xác định vị trí hàm.
+    - Turn 2–4 (`PATCH`): Áp dụng 3 bản vá liên tiếp bổ sung đầy đủ 4 hàm và cập nhật hàm `main()`.
+    - Turn 5–6 (`COMMAND`): Tự động phát lệnh terminal `python -m py_compile watchdog_smart_sol.py` để tự nghiệm thu cú pháp.
+    - Turn 7 (`DONE`): Báo cáo hoàn tất với +105 dòng code chuẩn Python, xử lý triệt để ngoại lệ `NoSuchProcess` và `AccessDenied`.
+
+### 3. Kết Luận Kiến Trúc Cho Taadaa Farm:
+- `sol_worker.py` hoàn toàn đủ năng lực gánh vác vai trò **Tier 1 Autonomous Coding Worker độc lập**.
+- Khi Claude CLI chạm trần Quota (hoặc rơi vào bẫy thụ động) và Agy CLI bị kẹt 429 Google Desktop, Sol Worker là giải pháp cứu cánh số 1 cho các tác vụ code surgery và bảo trì hệ thống.

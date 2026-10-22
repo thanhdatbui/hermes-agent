@@ -184,5 +184,26 @@ Khi mock workbook cho `load_accounts_credentials`:
     2. Xóa các connection dead khỏi `provider_connections` (hoặc đánh dấu `is_active = 0, test_status = 'revoked'`).
     3. Giữ nguyên 100% profile trên GPMLogin để khi cần có thể đăng nhập lại cấp session token mới.
 
+## 13. Quy Trình Canary & Tự Động Phục Hồi Nick 'banned' Qua Mật Khẩu Chính Chủ (Gate 6 Verification & Watchdog Gap)
+- **Triệu chứng & Thực nghiệm Canary**:
+  * Khi connection bị OmniRoute gán nhãn `banned` do `token_revoked`, câu hỏi cốt lõi là: *Tài khoản đã bị xóa vĩnh viễn (`AccountDeactivated`) hay chỉ bị văng session?*
+  * **Quy trình kiểm chứng Canary (Gate 6 Invariant)**:
+    1. Bật GPM profile tương ứng qua CDP API (`/api/v3/profiles/start/{pid}`).
+    2. Điều hướng thẳng tới `https://chatgpt.com/auth/login`.
+    3. Điền email vào `input#email-input` $\rightarrow$ Chụp ảnh Checkpoint 1 (Pre-submit).
+    4. Bấm nút `Tiếp tục` (`button[type="submit"]`) $\rightarrow$ Chụp ảnh Checkpoint 2 (Post-submit Response).
+    5. Soi mắt qua vision / OCR:
+       - Nếu màn hình trả về lỗi: `error_code: account_deactivated` hoặc URL có `payload=...` $\rightarrow$ Tài khoản BỊ XÓA THẬT. Áp dụng luật "xóa DB giữ GPM".
+       - Nếu màn hình chuyển sang: "Chào mừng bạn trở lại", hiển thị đúng email và ô nhập "Mật khẩu*" $\rightarrow$ Tài khoản SỐNG 100%, chỉ bị văng session.
+- **Bóc mật khẩu & Tự động nạp session mới**:
+  * Tra cứu Cột L (`PASS CHATGPT`) trong workbook `taikhoan_dat_v2_updated .xlsx` qua `get_chatgpt_password_from_workbook(email)`.
+  * Điền mật khẩu vào `input#password` và submit.
+  * Trích xuất toàn bộ cookie (`__Secure-next-auth.session-token`, `cf_clearance`, `oai-did`, `oai-sc`), cập nhật vào `provider_connections` với `is_active = 1, test_status = 'active'`.
+- **Lỗ hổng Watchdog (Recovery Gap)**:
+  * `cron_chatgpt_web_pool_watchdog.py` chỉ chạy kiểm tra token cũ hoặc cố lấy lại cookie đang ngậm trong trình duyệt. Khi cookie trong GPM profile đã bị wipe sạch, watchdog không tự động kích hoạt flow điền `PASS CHATGPT` để đăng nhập lại cho các nick có `test_status = 'banned'`.
+  * Job `chatgpt-account-lifecycle-healer` (chuyên trách hồi sinh cuốn chiếu qua GPM) thường bị tạm dừng (`paused`) sau các đợt dọn tiến trình.
+  * **Giải pháp**: Cần bảo đảm watchdog hoặc job lifecycle healer luôn quét cả các nick `test_status = 'banned'` có lỗi Sentinel để tự động điền `PASS CHATGPT` hồi sinh pool.
+
+
 
 

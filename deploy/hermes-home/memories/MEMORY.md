@@ -2,7 +2,7 @@ Chu kỳ 4d: Parity 96h (N1 lẻ, N2 chẵn), N3(R7,8), N4(0fl+up). Dưỡng N3 
 §
 Follow: dò +2 (max 40); lùi 4 sàn 15. Streak chỉ tăng khi fl=0; fl>=1 giữ streak+cd 1d. Probation 4d: 2 ca sạch; T1: 2-4 fl, T2: 6-8 fl. Anchor nhả=block. IP Audit: ip_risk_audit.py.
 §
-Hotmail: @fviainboxes.com đọc OTP. Pin>=1k: chuẩn hoá bắt buộc Pin top view (swap clip thấp); soi OCR nhãn 'Đã ghim' đúng ô view cao, cấm thấy nhãn clip cũ rồi báo bừa. S7 wake dùng aweme.splash.SplashActivity.
+Pin>=1k: LIFO ghim tăng dần (top view ghim cuối để vào Slot 1 góc trái; sai thì unpin+repin); soi OCR nhãn 'Đã ghim' đúng ô view cao. S7 wake SplashActivity.
 §
 Rename: tâm nút Sửa hồ sơ (315,865) né khe 540, compact @ OCR; cấm tap (72,148) Tìm bạn bè; thoát FIND_FRIENDS; lọc @ bio suggestion; 7d cd; BIO_EDIT trước PROFILE; tên Việt có dấu; core switcher; Smart name đa dạng.
 §
@@ -24,6 +24,6 @@ OMP/AGY: 28 acc Pro; lease 1800s; QR Google: tab GPM giữ mở; link 9k quá 8p
 §
 Đơn TT Shop: Mail báo 1 lần; API SPX/J&T/Ninja; Hub Thanh Khê. Dashboard :1905 /api/orders.
 §
-Worker: Agy CLI (Omni :20129 live quota, gemini-3.1-pro & 3.8-flash chung pool), Haiku fallback. Game guard: in-flight 2s suspend/resume né đẻ ffmpeg.
+Worker: Agy CLI (Omni :20129 quota), Haiku/Sol Worker ReAct fallback. Game guard: in-flight 2s suspend/resume né đẻ ffmpeg.
 §
 Cron/Alert: Gửi đúng Telegram group của repo (-5435853713 Video/Up, -5377611430 Nuôi, -5373649734 Alert), cấm spam DM.
