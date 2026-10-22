@@ -6,6 +6,7 @@ description: "Use when farm devices drop, USB hangs, or entering BIOS."
 # Android Farm Host Operations
 
 References:
+- `references/framework-crash-settings-service-blind-spot-and-pre-session-gate-20261022.md` — Phân tích điểm mù get-state 'device' vs crash Android framework (Can't find service: settings) trên M213, lý do in-flight cấm reboot S7 trong ca và quy chuẩn nâng cấp Pre-Session Gate (22/10/2026).
 - `references/wifi-vs-adb-disconnect-triage-and-settings-service-crash-20261022.md` — Phân biệt mất kết nối ADB/USB vs Wi-Fi (AP), giải đáp hiểu lầm cron Wi-Fi không cứu được máy rớt USB, bẫy false-positive crash `system_server` (`cmd: Can't find service: settings`) và quy trình Level 2 bypass-shell reboot (22/10/2026).
 - `references/xiaowei-focus-based-idle-and-closeout-gate-audit-20261022.md` — Phân tích bẫy nhàn rỗi OS-wide GetLastInputInfo vs focus-based tracking riêng cho Tiểu Vi (ngưỡng 10 phút), cơ chế tự dọn port 5038 khi bấm X, throttling ghi đĩa và quy chuẩn vượt Closeout Gate (22/10/2026).
 - `references/xiaowei-wmi-elevation-filter-and-reboot-lock-collision-20261021.md` — Chẩn đoán bẫy WMI Integrity Level trả về $null khiến watchdog 5038 bỏ qua tiến trình XiaoWei elevated và xung đột unbuffered Safe Window của cron xen ca làm trôi lịch reboot 3 ca (21/10/2026).
@@ -643,6 +644,17 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
   * Các mốc reboot máy chủ (05:20, 11:20, 17:20) tự động kiểm tra `has_active_device_locks()` và thoát ngay (`[SKIP]`) nếu có dù chỉ 1 máy đang giữ device lock.
   * Mọi cron xen ca (như đổi tên nick, kiểm tra liveness, tải avatar) BẮT BUỘC kết thúc Safe Window trước mốc reboot ít nhất **20 phút** (ví dụ khung sáng dừng ở `11:00`, khung chiều dừng ở `17:00`). CẤM cấu hình window rướn tới sát `11:20` hoặc `17:20` vì các batch chạy 15 phút sẽ đè qua giờ reboot và làm mất chu kỳ reset EHCI USB.
   * Chi tiết: `references/xiaowei-port5038-wmi-integrity-blindness-and-reboot-window-buffer-20261021.md`.
+
+## 31. Bẫy Điểm Mù get-state 'device' vs Crash Android Framework (`cmd: Can't find service: settings`) (22/10/2026)
+- **Hiện tượng:** Máy M213 (Admin) báo "Mất kết nối Wi-Fi (AP)", nhưng thực tế Wi-Fi có IP (`192.168.110.87`), lỗi thật là `cmd: Can't find service: settings` do `system_server` / Android Framework crash ngầm.
+- **Điểm mù Pre-Session Gate:** `pre_session_device_gate.py` chỉ chạy `adb get-state` (timeout 3.0s). Do daemon `adbd` ở tầng Linux kernel vẫn sống nên trả về `device` (máy xanh giả), đánh lừa gate bỏ qua cứu hộ và cho máy vào ca nuôi.
+- **Tại sao không cứu được trong ca (In-Flight):**
+  1. In-flight self-healing (`vpn_preflight.py`) chỉ được phép gọi `adb reconnect` (reset socket USB), không thể hồi sinh Android framework.
+  2. Cứu framework bắt buộc phải Level 2 reboot S7 (mất 45-60s). Nhưng trong ca nuôi, tự ý reboot S7 bị cấm vì làm nghẽn worker thread, timeout dây chuyền và bão DHCP/USB. Runner buộc phải Fail-Fast bỏ qua máy lỗi để bảo vệ tiến độ ca.
+- **Quy trình cứu hộ phân tầng O(1):**
+  - Chạy `python D:/Taadaa/tools/recover_stuck_s7.py -m <N>`: Level 1 soft recovery fail -> tự động nhảy Level 2 bypass-shell direct reboot (`reboot:`) phục hồi thiết bị trong ~25-40s.
+  - Kiến trúc khắc phục triệt để: Bổ sung 1 ping nhẹ tầng framework (`service check settings` hoặc `shell echo 1` timeout 2.0s) vào `probe_device` của `pre_session_device_gate.py` để phát hiện và Level 2 reboot máy NGAY TRƯỚC CA thay vì để lọt vào ca nuôi.
+  - Chi tiết: `references/framework-crash-settings-service-blind-spot-and-pre-session-gate-20261022.md`.
 
 ## 31. Bẫy Phân Biệt Mất Kết Nối ADB/USB vs Wi-Fi & False-Positive Crash Android Settings Service (22/10/2026)
 - **Hiểu lầm vận hành phổ biến ("Có cron ép Wi-Fi rồi sao máy vẫn mất kết nối"):**
