@@ -14,6 +14,6 @@ Follow audit: >=3-4 chu kỳ 4d + Cohort Veteran/Mid/Rookie; tách fl=0 và used
 §
 Gemini/GPM: CDP, 2 pool OmniRoute+AGY, proxy 1:1 S7. PREFLIGHT sniper: GPM session live (one.google.com/home + families), link TTL 5ph.
 §
-Reviewer: Sonnet CLI; benchmark cùng model; cấm DONE dưới ngưỡng. Worker: Agy CLI (g1-pro), fallback Haiku. Pool tra OmniRoute SQLite: is_active=1.
+Reviewer: Mặc định Sol (:20129, 0% quota Claude); bật Sonnet CLI khi cần refactor lớn. Worker: Agy CLI, fallback Haiku. Chống lặp 3-strike khóc lóc.
 §
 Đơn farm: Bào voucher fake tên/SĐT/địa chỉ né quét; cấm bảo tải app/đọc OTP; shipper gom theo ghi chú mật mã về 47 TCV; alert đơn tách nhóm riêng né loãng.

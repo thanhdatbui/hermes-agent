@@ -10,7 +10,7 @@ Sol: On-Demand, cấm auto-append; advisor_tool 55s/consult 140s; briefing 4k k�
 §
 Stale Up: xóa draft. Revert: TikWM. Cào: max 60. Cron TB: device_lock+rolling<=5; bỏ ca 0h.
 §
-Closeout: Tier 0 Sonnet CLI, fallback Sol (:20129); Grace 80-84; CẤM raw git push; Strike 3 Reviewer tự sửa. Night: P1 Gmail, P2 2FA. pre_session_gate: get-state+service check settings; FRAMEWORK_CHECK_ENABLED=0 bypass tầng 2.
+Closeout: Mặc định Sol (:20129, 0% quota Claude), Sonnet CLI chỉ khi yêu cầu; Grace 80-84; CẤM raw git push; Strike 3 chống khóc. Night: P1 Gmail, P2 2FA. pre_session_gate: check settings.
 §
 Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; Reaper SSH. Pre-push: 1 commit khớp scope_hash.
 §
