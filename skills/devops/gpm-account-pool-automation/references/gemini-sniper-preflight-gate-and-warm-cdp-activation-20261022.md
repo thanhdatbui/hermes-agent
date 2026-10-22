@@ -70,3 +70,14 @@ def run_preflight():
    - `SID`, `HSID`, `SSID` của host `google.com`.
    - Bắt buộc `expires_utc == 0` hoặc `expires_utc > now_chrome`.
    - Hồ sơ chỉ được chọn khi thỏa mãn đồng thời cả 3 tầng.
+
+---
+
+## 5. Giải Phẫu Lỗi "Link Đã Sử Dụng" vs Phản Ứng Của Shop (Seller False-Claim Trap)
+- **Hiện tượng thực tế**: Đơn mua link Gemini Pro 18M lúc 8h sáng (`API-TELE-5NORQ6Q4GYWM6XDO`), khi mở lại link lúc 10h thì Google One hiện trang cảnh báo: *"Gói thuê bao này đã được sử dụng. Đường liên kết của gói thuê bao này đã được sử dụng."*
+- **Nguyên nhân gốc rễ**: Profile GPM lúc 8h sáng bị văng phiên Google và dính màn hình bảo mật *"Đảm bảo rằng bạn luôn có thể đăng nhập - Thêm SĐT / Email khôi phục"*, khiến link kích hoạt bị treo quá thời hạn bảo hành 5-8 phút của shop. Khi quá hạn, link bị Google vô hiệu hóa hoặc bị claim.
+- **Cạm bẫy từ chối bảo hành của Shop**:
+  - Người bán nhìn vào thông báo *"Gói thuê bao này đã được sử dụng"* sẽ lập tức quy kết là *"Tài khoản đã lên Pro rồi kìa"* (cho rằng người mua đã nhận gói thành công).
+  - Kết hợp với việc người mua phản hồi sau 8 phút, shop vin vào cớ này để từ chối bảo hành hoàn toàn, trong khi thực tế tài khoản đích vẫn là `free-tier` (Starter Quota) và người mua chịu mất trắng tiền đơn hàng.
+- **Quy tắc bắt buộc**: Preflight kiểm tra không chỉ URL `one.google.com/home` mà bắt buộc phải vào `myaccount.google.com/family/details` để chắc chắn không dính form khôi phục hay giới hạn nhóm gia đình; tab được giữ warm và kích hoạt trong vòng $\le 2$ giây kể từ khi API trả link.
+

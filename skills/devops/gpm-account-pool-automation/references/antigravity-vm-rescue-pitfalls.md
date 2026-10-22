@@ -48,3 +48,18 @@ Kinh nghiệm xử lý tài khoản Antigravity Pro dính Google 403 `VALIDATION
 - **Khắc phục**:
   - Kiểm tra `GET /api/usage/provider-limits` mục `caches[<connectionId>].quotas` để xem tỷ lệ quota còn lại của tài khoản (`remainingPercentage`).
   - Nếu quota vẫn còn (ví dụ `gemini-3.7-flash-tiered` còn > 10%) mà test 3.8 bị cooldown, test chéo ngay với model `antigravity/gemini-3.7-flash-high` để bóc trần lỗi 403 `Verify your account to continue` thật sự từ Google upstream.
+
+---
+
+## 4. Tự Động Hóa 2FA TOTP & Thử Thách Quét Mã QR Bằng Điện Thoại Trong Guest VM
+- **Hiện tượng**: Khi cứu tài khoản Antigravity Pro dính 403 `VALIDATION_REQUIRED` trong VMware Workstation, sau khi nhập password và tự động điền mã TOTP qua PyOTP + `[System.Windows.Forms.SendKeys]`, Google có thể đưa ra thử thách xác minh thứ hai: *"Xác minh thông tin để tiếp tục - Quét mã QR bằng điện thoại"*.
+- **Cạm bẫy màn hình đen (Screen Sleep Trap)**: Nếu trong quá trình tự động hóa gửi phím hoặc minimize cửa sổ VM, màn hình guest có thể bị tắt/đen khiến việc quan sát và chụp ảnh bị gián đoạn. Không được gửi lệnh minimize; dùng click chuột giữ focus ở vùng hiển thị an toàn.
+- **Quy trình xử lý chuẩn**:
+  1. Crop tọa độ vùng mã QR (khoảng `X: 1050-1350, Y: 270-570`) thành file ảnh `qr_exact.png`.
+  2. BẮT BUỘC gọi `browser_vision` soi mắt kiểm tra mã QR rõ nét, không bị lẹm góc/che khuất trước khi gửi `MEDIA:` cho người dùng quét bằng ứng dụng Camera điện thoại (không dùng Zalo quét để tránh lỗi link).
+  3. Sau khi người dùng quét và xác nhận trên điện thoại, chạy `verify_and_finalize.py <email>` để thực hiện `isolated_chat_test` độc lập:
+     - Nếu Google trả về `HTTP 200 OK` (hoặc 429 quota thông thường), bức tường xác minh đã được gỡ bỏ.
+     - Script tự động kích hoạt `is_active = 1` trong OmniRoute và lưu snapshot `<email>-verified`.
+  4. Chạy `setup_agy_profile_creds.py` để đồng bộ lại access_token, refresh_token vào sandbox AGY CLI (`acc_<N>/.gemini/`).
+  5. Đóng tiến trình máy ảo VMware (`vmrun stop soft` hoặc tắt qua process) để giải phóng RAM.
+
