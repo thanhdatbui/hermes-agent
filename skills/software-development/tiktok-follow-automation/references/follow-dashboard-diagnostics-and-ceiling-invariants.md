@@ -410,6 +410,48 @@ Trong `follow_state.py`, runner tự động điều chỉnh trần follow cho c
      - **Tự động báo cáo cuối chu kỳ 4 ngày (N4)**: Trong bản tin chốt ca N4, Coordinator bắt buộc đính kèm 1 dòng đối soát:
        `📡 Đối soát IP chu kỳ này: X cụm nghi vấn / Y cựu binh dính chùm (Đã ghi nhận vào Sổ Audit Log).`
 
+## 28. Bẫy Đóng Băng Mãn Hạn Cooldown (Stale `follow_failed: True`) & Công Cụ Reconcile O(1) (`reconcile_expired_cooldowns.py`)
+- **Nghịch lý "Tù chung thân trên giấy tờ"**:
+  * File state JSON trên đĩa (`runs/state/follow_state_*.json`) là dữ liệu tĩnh. Khi mốc thời gian `cooldown_until_at` đã trôi qua (`cooldown_until_at <= now_utc`), file trên đĩa **KHÔNG tự động biến `follow_failed: True` thành `False`**.
+  * Nếu tài khoản chưa được cron bốc trúng để chạy ca follow mới (để runner gọi `_roll_day()` / `_check_and_sync_cooldown_expiry()`), cờ `follow_failed: True` vẫn nằm im vĩnh viễn trên đĩa.
+  * Hậu quả: Dashboard / Sổ bệnh án đọc `is_failed = bool(d.get("follow_failed"))` sẽ tiếp tục xếp tài khoản vào **🔴 Cooldown**, khiến Operator nhìn vào tưởng tài khoản bị giam mãi mãi dù thực tế đã mãn hạn từ nhiều ngày trước (thực tế kiểm tra farm có tới 48 tài khoản kẹt tình trạng này).
+- **Cấm tư duy "chờ cron quét tới mới mở"**:
+  * Tuyệt đối không trả lời Operator là "phải chờ cron chạy qua từng máy mới hạ cờ".
+  * BẮT BUỘC dùng công cụ giải phóng hàng loạt O(1):
+    ```bash
+    python D:/Taadaa/tools/reconcile_expired_cooldowns.py
+    ```
+  * **Cơ chế an toàn của `reconcile_expired_cooldowns.py`**:
+    1. Quét toàn bộ `runs/state/follow_state_*.json`.
+    2. Chỉ can thiệp các file có `follow_failed == True` VÀ `cooldown_until_at <= now_utc` (hoặc `cooldown_until_date < today_str`).
+    3. Đặt lại `follow_failed = False`, xóa bỏ `follow_failed_date`, `cooldown_until_at`, `cooldown_until_date`.
+    4. **BẢO TOÀN NGUYÊN VẸN**: `fail_streak`, `history`, `proven_safe_ceiling`, `last_failed_ceiling` để khi vào ca mới, tài khoản bước vào đúng chu trình thử thách Hồi phục 1 / Hồi phục 2 (Probation Clean Days) chứ không bị mất dấu vết lịch sử.
+  * Sau khi chạy, 48 tài khoản lập tức thoát khỏi nhóm Cooldown và chuyển sang **🟠 Hồi phục 1 (Sẵn sàng chạy)** trên Dashboard ngay trong 1 giây.
+
+## 29. Cạm Bẫy Phán Đoán Khống Nick Ngoại Farm (`priority_targets.txt` vs 0 Snapshot DB)
+- **Hiện tượng**: Agent / Sub-agent khi điều tra nguyên nhân fail streak cao thấy nick ngoài farm (như `@bangtam2311`) trong `config/priority_targets.txt` truy vấn `tiktok_tracker.db` ra 0 dòng snapshots ➔ Vội vàng kết luận: *"Nick bangtam không tồn tại / chết làm bot search không ra ➔ coi là lỗi phiên rồi phạt streak dồn toa"*.
+- **Bản chất kỹ thuật**:
+  * Nick cá nhân ngoài farm được đưa vào để buff chéo, hệ thống tracker nội bộ KHÔNG crawl định kỳ nên đương nhiên bảng `snapshots` không có dữ liệu.
+  * Trong Mode 1 (`mode1_search_follow.py`): Khi tìm kiếm nick không thấy hoặc TikTok trả anti-bot, kết quả trả về là `skipped` với lý do `ID không khớp` hoặc `không tìm thấy`.
+  * Luồng `skipped` chỉ tăng `consecutive_not_found` và thêm vào `res.failed_ids` để báo cáo; **TUYỆT ĐỐI KHÔNG GỌI `set_follow_failed()`, KHÔNG PHẠT STREAK, KHÔNG GÂY COOLDOWN**.
+  * Bằng chứng đối soát: Kiểm tra 450 state files, số file bị `failed` do nick ngoài farm là **đúng 0 file**; chỉ có 3 file ghi nhận `skipped`.
+- **Quy tắc kỷ luật**: CẤM quy chụp lỗi cho nick trong `priority_targets.txt` nếu không tìm thấy key username đó trong `failed: {}` của file state.
+
+## 30. Chuẩn Remediation Vượt Closeout Gate Cho Follow Runner (Sol Auditor >= 85 Scorecard)
+- **Bối cảnh**: Khi sửa follow logic (gỡ IP breaker khỏi account mutation, chặn duplicate streak), Sol Auditor có thể từ chối ở Strike 1 & 2 (điểm 70–76) do các thiếu sót về regression coverage.
+- **Checklist 5 điểm bắt buộc để đạt APPROVED (>= 85/100)**:
+  1. *Giữ nguyên chốt chặn an toàn tại CLI Startup*:
+     Gỡ `trip_ip_breaker()` khỏi mutation của từng nick, nhưng BẮT BUỘC giữ lại `check_ip_breaker()` ở đầu `run_follow.py`. Nếu proxy máy đã bị ngắt từ trước, runner phải chủ động bỏ qua an toàn với status `CIRCUIT_BREAKER_SKIPPED`, `failed = False`.
+  2. *Hợp đồng Exit Code của `CIRCUIT_BREAKER_SKIPPED`*:
+     Trong `_result_exit_code()` và `_result_payload()`, khi `status == "CIRCUIT_BREAKER_SKIPPED"` và `failed == False`, exit code BẮT BUỘC trả về `0` (không coi là crash/lỗi hệ thống để orchestrator không kích hoạt retry vòng lặp).
+  3. *Test CLI hồi quy cho Breaker Skipping*:
+     Trong `test_cli.py`, khôi phục test `test_live_path_circuit_breaker_tripped_skips` mock `check_ip_breaker` trả về `(True, "msg")` và assert exit code == 0, `failed: false`.
+  4. *Test Phủ Định Cho Account Mutation*:
+     Trong `test_follow_state.py`, thêm test `test_set_follow_failed_never_calls_trip_ip_breaker` assert rằng `set_follow_failed()` không bao giờ gọi `trip_ip_breaker`.
+  5. *Mock `time.sleep` khi test Mode 2 Anchor Follow*:
+     Trong `test_mode2_follow_followers.py`, khi viết test cho `_ensure_anchor_followed`, BẮT BUỘC monkeypatch `flow.time.sleep` thành no-op. Nếu không mock, các đoạn sleep random (2–4s) và pull-to-refresh (3.5s) sẽ làm test runner chạm timeout 35s của test suite.
+
+
 
 
 
