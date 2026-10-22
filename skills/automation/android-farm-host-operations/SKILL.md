@@ -6,6 +6,7 @@ description: "Use when farm devices drop, USB hangs, or entering BIOS."
 # Android Farm Host Operations
 
 References:
+- `references/wifi-vs-adb-disconnect-triage-and-settings-service-crash-20261022.md` — Phân biệt mất kết nối ADB/USB vs Wi-Fi (AP), giải đáp hiểu lầm cron Wi-Fi không cứu được máy rớt USB, bẫy false-positive crash `system_server` (`cmd: Can't find service: settings`) và quy trình Level 2 bypass-shell reboot (22/10/2026).
 - `references/xiaowei-focus-based-idle-and-closeout-gate-audit-20261022.md` — Phân tích bẫy nhàn rỗi OS-wide GetLastInputInfo vs focus-based tracking riêng cho Tiểu Vi (ngưỡng 10 phút), cơ chế tự dọn port 5038 khi bấm X, throttling ghi đĩa và quy chuẩn vượt Closeout Gate (22/10/2026).
 - `references/xiaowei-wmi-elevation-filter-and-reboot-lock-collision-20261021.md` — Chẩn đoán bẫy WMI Integrity Level trả về $null khiến watchdog 5038 bỏ qua tiến trình XiaoWei elevated và xung đột unbuffered Safe Window của cron xen ca làm trôi lịch reboot 3 ca (21/10/2026).
 - `references/inter-shift-lock-reboot-skip-and-port5038-split-triage-20261021.md` — Phân tích sự cố bỏ qua reboot 2 ca liên tiếp (11:20 & 17:20) do active device lock kết hợp với xung đột daemon ADB cổng 5038 của Tiểu Vi khiến văng 35 máy trên Kibe tại Ca 3 Phiên 2 (21/10/2026).
@@ -642,6 +643,22 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
   * Các mốc reboot máy chủ (05:20, 11:20, 17:20) tự động kiểm tra `has_active_device_locks()` và thoát ngay (`[SKIP]`) nếu có dù chỉ 1 máy đang giữ device lock.
   * Mọi cron xen ca (như đổi tên nick, kiểm tra liveness, tải avatar) BẮT BUỘC kết thúc Safe Window trước mốc reboot ít nhất **20 phút** (ví dụ khung sáng dừng ở `11:00`, khung chiều dừng ở `17:00`). CẤM cấu hình window rướn tới sát `11:20` hoặc `17:20` vì các batch chạy 15 phút sẽ đè qua giờ reboot và làm mất chu kỳ reset EHCI USB.
   * Chi tiết: `references/xiaowei-port5038-wmi-integrity-blindness-and-reboot-window-buffer-20261021.md`.
+
+## 31. Bẫy Phân Biệt Mất Kết Nối ADB/USB vs Wi-Fi & False-Positive Crash Android Settings Service (22/10/2026)
+- **Hiểu lầm vận hành phổ biến ("Có cron ép Wi-Fi rồi sao máy vẫn mất kết nối"):**
+  * Báo cáo watchdog chia rõ: "Mất kết nối ADB/USB" vs "Mất kết nối Wi-Fi (AP)".
+  * Toàn bộ script ép Wi-Fi (`adb-join-wifi`, check Wi-Fi/Proxy) chạy từ Host PC và **bắt buộc truyền lệnh qua cáp USB thông qua ADB daemon (`adb shell`)**.
+  * Khi máy báo "Mất kết nối ADB/USB" (`device not found` / `offline`): Transport USB đã đứt hoặc daemon ADB mất liên lạc. PC hoàn toàn mất kênh điều khiển, không thể gửi bất kỳ lệnh shell nào vào máy (cả lệnh ép Wi-Fi lẫn mở app). Cron Wi-Fi chỉ hoạt động khi kết nối ADB/USB còn sống.
+- **Bẫy False-Positive: "Mất kết nối Wi-Fi (AP)" do crash `system_server` (`cmd: Can't find service: settings`):**
+  * Khi Android `system_server` hoặc `settings provider` trên Samsung S7 bị deadlock/crash (như sự cố M213):
+    - Máy thực tế **vẫn có IP Wi-Fi hợp lệ** từ DHCP MikroTik (`192.168.110.87`).
+    - Runner chạy `settings get global http_proxy` bị trả về `cmd: Can't find service: settings` và focus `None`.
+    - Watchdog phân loại nhầm thành "Mất kết nối Wi-Fi (AP)" do không đọc được proxy.
+- **Quy trình cứu hộ phân tầng O(1) qua `recover_stuck_s7.py`:**
+  * Lệnh soft recovery Level 1 (`am force-stop`, keyevent) sẽ thất bại do Android shell không phản hồi.
+  * Chạy `python D:/Taadaa/tools/recover_stuck_s7.py -m <N>`: Script tự động phát hiện Level 1 fail và leo thang sang Level 2 direct reboot (`adb -s <serial> reboot`).
+  * Bypass hoàn toàn shell và `system_server` đang đơ qua service `reboot:` độc lập của daemon `adbd`. Máy reboot xong trong 20-30s, `system_server` tái tạo sạch, nhận đủ IP Wi-Fi, Proxy và launcher focus 100%.
+  * Chi tiết: `references/wifi-vs-adb-disconnect-triage-and-settings-service-crash-20261022.md`.
 
 
 
