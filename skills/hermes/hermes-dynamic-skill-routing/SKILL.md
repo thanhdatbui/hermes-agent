@@ -134,9 +134,13 @@ When Closeout Gate triggers `[REVIEWER_HANDOFF_TRIGGERED: 3 consecutive rejectio
 - Solution: Generate patch proposal using `python D:/Taadaa/tools/sol_repair.py` (which runs via OmniRoute :20129) and apply safely using `python D:/Taadaa/tools/apply_patch.py patch.json` (which runs focused test verification and auto-rollback).
 
 ### 8. Agy CLI Quota Pool vs OmniRoute Quota Desync
+- `gemini-3.1-pro` and `gemini-3.8-flash` **share the exact same quota pool** in Antigravity / OmniRoute; `omni-worker` also runs on this pool.
 - `ag_cli.py` may check `gemini-3.1-flash-lite` quota in OmniRoute, which can report 100% while Pro/Flash-High or Claude models are completely exhausted (`RESOURCE_EXHAUSTED` 429).
 - `pool_state.json` cooldowns (1800s–7200s) are checked before OmniRoute live sorting, locking out accounts even if OmniRoute quota has reset.
 - Always check the specific target model's quota in OmniRoute and inspect `pool_state.json` cooldown timers when diagnosing Agy CLI dispatch failures.
+
+### 9. Map in injected_skill_ids Must Check by Path, Not Bare Name
+In `skill_injector.py`, checking `if sid in full_context` where `sid` is the skill's name (e.g. `taadaa-farm-ops-rules`) can desync from the actual injected content when skill name differs from directory structure (e.g. `category/folder-name/SKILL.md`). Always map `(name, path)` tuples and check `f": {path} -->" in full_context` to verify true retention after truncation.
 
 ## Closeout Gate Notes
 
@@ -148,13 +152,13 @@ When Closeout Gate triggers `[REVIEWER_HANDOFF_TRIGGERED: 3 consecutive rejectio
 
 ```
 D:/Taadaa/tools/tests/
-├── test_build_skill_index.py          # Index building
-├── test_skill_lookup.py               # Keyword matching, pinned guarantee
-├── test_pinned_always_returned.py     # Core invariant: pinned always returned
-├── test_load_selected_skills.py       # Path traversal guard, HTML escape
-├── test_index_staleness_warning.py    # Freshness check (hermetic fixture)
-├── test_skill_injector.py             # Budget, fail-closed, hermetic_env
-└── test_dispatch_worker_skill_injection.py  # Wiring, audit rc, disable flag
+├── test_build_skill_index.py                # Index building (3 tests)
+├── test_skill_lookup.py                     # Keyword matching, pinned guarantee (5 tests)
+├── test_pinned_always_returned.py           # Core invariant: pinned always returned (2 tests)
+├── test_load_selected_skills.py             # Path traversal guard, HTML escape (2 tests)
+├── test_index_staleness_warning.py          # Freshness check (hermetic fixture) (2 tests)
+├── test_skill_injector.py                   # Budget, fail-closed, safe boundary, smoke (11 tests)
+└── test_dispatch_worker_skill_injection.py  # Wiring, audit rc, disable flag (4 tests)
 ```
 
-All tests: `python3 -m pytest tests/test_build_skill_index.py tests/test_skill_lookup.py tests/test_pinned_always_returned.py tests/test_load_selected_skills.py tests/test_index_staleness_warning.py tests/test_skill_injector.py tests/test_dispatch_worker_skill_injection.py -q`
+All 35 tests pass in ~9.1s: `python3 -m pytest tests/test_dispatch_worker.py tests/test_skill_injector.py tests/test_dispatch_worker_skill_injection.py -v`

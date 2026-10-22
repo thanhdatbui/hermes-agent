@@ -50,3 +50,11 @@ Across the Closeout Gate review loops (scores: 72 -> 74 -> 77 -> 85):
 - **Issue**: A worker patching `dispatch_worker.py` hardcoded `max_context_chars=2500` instead of `15000`
 - **Consequence**: Decoupled budget caused matched skills to never be included while pinned skills took the entire allowance
 - **Fix**: Always pass `max_context_chars=15000, max_pinned_budget=10000` explicitly
+
+### Finding 8: Name vs Path Mismatch in Injected Skills Tracking
+- **Issue**: Checking `if sid in full_context` where `sid` is the bare skill name can fail or false-positive if the name differs from directory structure
+- **Fix**: Map `(name, path)` tuples and check `f": {path} -->" in full_context` to reliably detect which skills survived truncation
+
+### Finding 9: OmniRoute vs Antigravity Shared Gemini Quota Pool
+- **Insight**: `gemini-3.1-pro` and `gemini-3.8-flash` share the exact same quota pool in Antigravity / OmniRoute
+- **Context**: `omni-worker` runs on this pool; checking only `gemini-3.1-flash-lite` in quota status creates a false indication of exhaustion or availability
