@@ -39,3 +39,4 @@ metadata:
 - Anti-Premature Block: [`references/anti-premature-block-in-closeout.md`](references/anti-premature-block-in-closeout.md)
 - Session Close Remediation Discipline: [`references/session-close-remediation-discipline.md`](references/session-close-remediation-discipline.md)
 - Evidence-first anti-paralysis closeout: [`references/evidence-first-anti-paralysis-closeout.md`](references/evidence-first-anti-paralysis-closeout.md)
+- Multi-Round Adversarial Gate Hardening & Fail-Closed Review: [`references/multi-round-adversarial-gate-hardening-lessons-20261022.md`](references/multi-round-adversarial-gate-hardening-lessons-20261022.md)

@@ -24,6 +24,6 @@ OMP/AGY: 25 acc OAuth; lease 1800s. CẤM Luna làm Coord. § Canary Strict: C�
 §
 Đơn TT Shop: Mail báo mã 1 lần; bám sát qua API hãng (SPX/J&T/Ninja); bắt mốc về Hub Thanh Khê để lấy trực tiếp. Dashboard :1905 tab Đơn hàng (/api/orders).
 §
-Planner: 100% Sonnet 5.5 (Gate B plan); Worker: Agy CLI primary (Gate C), Haiku fallback; Reviewer: Claude Sonnet độc lập.
+Worker: Haiku CLI primary, Agy CLI fallback
 §
 Cron/Alert: Gửi đúng Telegram group của repo (-5435853713 Video/Up, -5377611430 Nuôi, -5373649734 Alert), cấm spam DM.

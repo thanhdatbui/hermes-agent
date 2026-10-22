@@ -8,7 +8,7 @@ No verbal DONE; reviewer thật. Nói thẳng, bực mình=làm ngay. Cấm nị
 §
 Ava/Media: Up thẳng máy; khóa cờ .manual_avatar_locked & Avatar=OK; soi mắt trước MEDIA:; N máy gửi đủ N MEDIA: riêng; Ava đúng creator.
 §
-Worker: Agy CLI (Tier 1 Primary), Haiku fallback (Tier 2); Planner: Sonnet 5.5 (Gate B); 429 xoay profile. CẤM Luna làm Coordinator.
+Worker: Haiku CLI primary, Agy CLI fallback
 §
 Canary: target-bound; máy thật qua `done_gate.py --strict-device`; WinRT OCR->ATX; Singbox. Guard cơ học; Claude duyệt; dính guard chạy unscoped worker CLI.
 §
