@@ -113,3 +113,4 @@ Do not say “real-time” when polling. State the interval and likely detection
 - `references/order-card-image-integrity.md` — preserve raw image aspect ratio and zoom links on order dashboards.
 - `references/shopclone7-boxtaikhoan-order-audit.md` — ShopClone7/BoxTaiKhoan order retention reality vs 3-day UI warning, API 404 behavior, and host Chrome login session.
 - `references/tiktok-in-app-order-tracking.md` — In-app order inspection protocol, device locking, account verification, and carrier handoff.
+- `references/tiktok-shop-order-creation-and-cross-reference-audit.md` — Creation of canonical order records from user farm desktop screenshots, device and account cross-referencing, image cropping, and multi-store atomic synchronization.
