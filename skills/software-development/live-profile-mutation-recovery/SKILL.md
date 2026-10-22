@@ -108,4 +108,6 @@ See `references/tiktok-profile-rename-cooldown-and-bio-unlock-20261021.md` for t
 See `references/tiktok-rename-profile-bio-edit-pingpong-loop-20261021.md` for the root-cause analysis and fix of the 35-step PROFILE-to-BIO_EDIT ping-pong loop caused by matching bio chips during rename-only runs.
 See `references/rename-watchdog-adb-bridge-hang-and-find-friends-trap-20261022.md` for ADB bridge stale socket `exit_1` triage, the `FindFriendsPageActivity` loop trap, and the realist multi-class failure reporting contract.
 See `references/rename-profile-geometry-portable-flags-and-bio-edit-safety-20261022.md` for Samsung S7 profile button row geometry (y=865 below followers y=744), BIO_EDIT scope safety (cấm ghi đè bio ngoài yêu cầu), strict username whitespace rejection, and platform-portable `getattr(subprocess, "CREATE_NO_WINDOW", 0)`.
+See `references/rename-bio-unlock-scope-guard-and-safe-push-override-20261022.md` for the bio-less Profile "Sửa hồ sơ" unlock scope guard (`needs_bio_unlock` preventing unrequested bio overwrites), unified `name_above_user_box` refactoring, and `safe_push.py` agent override prohibition (`BLOCKED_AGENT_OVERRIDE`).
+
 

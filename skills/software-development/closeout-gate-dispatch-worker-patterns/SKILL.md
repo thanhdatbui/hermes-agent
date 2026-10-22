@@ -144,3 +144,20 @@ python D:/Taadaa/tools/closeout_gate.py \
 - `safe_push.py` checks `detect_task_type(repo)` via `done_gate.py`.
 - If a repo is categorized as `'automation'`, `safe_push.py` requires a verified Android Canary Receipt (`.canary_passed`).
 - **CRITICAL INVARIANT:** Developer tooling repos (như `D:/Taadaa/tools`) không chạy trên thiết bị Android thật, TUYỆT ĐỐI CẤM khai báo `"tools"` vào `AUTOMATION_REPOS` trong `done_gate.py`. Nếu bị khai báo nhầm, `canary_runner.py` sẽ báo lỗi `Chưa đăng ký cooldown state cho repo: tools` và chặn `safe_push` vĩnh viễn. Đảm bảo `detect_task_type("D:/Taadaa/tools")` luôn trả về `"general"` để bypass Canary phần cứng an toàn.
+
+---
+
+## 7. Architectural Roles Invariant (Reviewer vs Worker)
+
+- **Reviewer:** BẮT BUỘC định tuyến vào **Claude Sonnet CLI** (`--model claude-sonnet` qua pipe `claude -p - --model sonnet`). Không để drift sang model khác hoặc fallback khi chưa được cấu hình.
+- **Worker:** BẮT BUỘC **Agy CLI (`ag_cli.py fix`) làm Primary (Tier 1)** với **Claude Haiku CLI làm Fallback (Tier 2)**.
+- **Coordinator:** Chỉ thực hiện Emergency Surgery (L2) trong phạm vi O(1) nghiêm ngặt (<= 30 dòng, 1 file, focused test < 30s) khi worker kẹt/timeout.
+
+---
+
+## 8. Safe Push Agent Override Prohibition (`BLOCKED_AGENT_OVERRIDE`)
+
+- `safe_push.py` kiểm tra `AGENT_SESSION_VARS` (`HERMES_SESSION_KEY`, `HERMES_HOME`, `_HERMES_GATEWAY`).
+- Nếu phát hiện bất kỳ biến môi trường nào của agent, cờ `--owner-override` sẽ kích hoạt ngoại lệ `BLOCKED_AGENT_OVERRIDE` (exit code 2) để ngăn AI agent tự tiện bypass Closeout Gate.
+- Cờ `--owner-override` là cơ chế cơ học ĐỘC QUYỀN dành cho người vận hành (human operator) thực thi thủ công trên terminal sạch bên ngoài Hermes khi cần ghi đè khẩn cấp.
+
