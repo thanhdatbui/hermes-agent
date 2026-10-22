@@ -4,7 +4,7 @@ Dọn đĩa: safe_recycle.py. Reboot né TFT/War3. Box 1 sát AP kibe 1. S7: ant
 §
 Nuôi 4d 3 ca (bỏ 0h). Cấm pause cron/kill tool khác khi kẹt lock, canh xong mới làm. Ava&2FA tới 5h15. Starve 96h.
 §
-No verbal DONE; reviewer thật. Nói thẳng, bực mình=làm ngay. Cấm nịnh bợ/flip-flop (trên nói 1 kiểu dưới quay xe). Vibe thực dụng, cấm buzzword RAG hàn lâm; giải thích dân dã O(1) 1 nhát ăn ngay; định danh quy trình chuẩn (Routing O(1)) kèm checklist đối chiếu.
+No verbal DONE; reviewer thật. Nói thẳng, bực=làm ngay. Cấm nịnh/flip-flop. Vibe thực dụng O(1); định danh quy trình chuẩn kèm checklist.
 §
 Ava/Media: Up thẳng máy; khóa cờ .manual_avatar_locked & Avatar=OK; soi mắt trước MEDIA:; N máy gửi đủ N MEDIA: riêng; Ava đúng creator.
 §
@@ -12,6 +12,6 @@ Canary: target-bound; máy thật qua `done_gate.py --strict-device`; WinRT OCR-
 §
 Follow audit: >=3-4 chu kỳ 4d + Cohort Veteran/Mid/Rookie; tách fl=0 và used>0; Account Limit cô lập nick, cấm ngắt IP.
 §
-Gemini Claim: GPM qua CDP (cấm user ấn tay); nạp đủ 2 pool OmniRoute & AGY CLI; proxy map 1:1 cổng S7.
+Gemini/GPM: CDP, 2 pool OmniRoute+AGY, proxy 1:1 S7. PREFLIGHT sniper: GPM session live (one.google.com/home + families), link TTL 5ph.
 §
 Benchmark phải cùng model + cùng thinking effort; không báo DONE/push khi reviewer dưới ngưỡng; báo rõ REJECTED/BLOCKED kèm evidence.
