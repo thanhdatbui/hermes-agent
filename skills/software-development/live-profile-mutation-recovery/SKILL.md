@@ -92,6 +92,7 @@ See `references/avatar-exact-account-closeout-20261021.md` for the failure patte
 - Watchdog Static Workbook vs Confirmed Report Candidate Trap ("Ủa đổi r mắc gì cứ đè ra chạy?"): Candidate generators that load from static Excel workbooks (`tiktok_stats_farm.xlsx`) will repeatedly reschedule accounts whose display names have not yet synced to the sheet. The watchdog MUST inspect on-disk verified report files (`m{M}_{u}_rename_confirmed.json`) at candidate selection time (`load_candidates`), skipping any account with an active report < 7 days old having result in `("RENAMED", "ALREADY")` or reason containing `"gioi han 7 ngay"`.
 - Operational Topic Context Isolation ("Mày bị ngáo hả đang ở topic up ava mà"): Farm operations run across isolated topics and group chats (Nuôi, Up video, Up avatar / Rename, Farm Alert). Never pollute the active topic with memory or skills from unrelated domains (e.g. order tracking, carrier scraping). If user steers, immediately purge the stray artifact and realign with the active topic.
 - Night Shift 2FA Priority: After 22:30, farm shifts to `tiktok-add-bao-mat-f2a`. Rename runners must gracefully `SAFE_SKIP` when encountering active 2FA device locks without killing or pre-empting the security process.
+- TikTok Profile Pin LIFO Queue & Slot 1 Invariant: TikTok profile pins behave as a LIFO queue inserting new pins into Slot 1 (top-left, x < 360) and shifting existing pins right. When pinning multiple candidates, runner MUST pin in ASCENDING order of views (lowest view first, highest view last) so the top-view video lands in Slot 1. If post-verification finds the highest-view pinned video at center_x >= 360, runner must unpin and immediately re-pin it to enforce Slot 1 placement.
 
 ## Avatar-specific semantic gate
 
@@ -117,6 +118,7 @@ See `references/rename-profile-geometry-portable-flags-and-bio-edit-safety-20261
 See `references/rename-bio-unlock-scope-guard-and-safe-push-override-20261022.md` for the bio-less Profile "Sửa hồ sơ" unlock scope guard (`needs_bio_unlock` preventing unrequested bio overwrites), unified `name_above_user_box` refactoring, and `safe_push.py` agent override prohibition (`BLOCKED_AGENT_OVERRIDE`).
 See `references/ocr-bounding-box-overlap-and-watchdog-cooldown-sync-20261022.md` for WinRT OCR bounding box vertical overlap geometry on Samsung S7 and the watchdog 7-day cooldown state synchronization contract.
 See `references/watchdog-candidate-disk-dedup-and-topic-context-boundary-20261022.md` for the watchdog confirmed-report pre-flight disk gate (eliminating 15-minute retry storms on already-renamed accounts) and operational topic context isolation rules.
+See `references/tiktok-pin-lifo-queue-and-slot1-enforcement-20261023.md` for the TikTok Pin LIFO queue mechanics, ascending pin ordering, and automated Slot 1 head-alignment enforcement.
 
 
 
