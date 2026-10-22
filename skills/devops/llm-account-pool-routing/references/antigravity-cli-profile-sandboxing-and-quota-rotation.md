@@ -601,6 +601,15 @@ Khi kho credentials (token OAuth, mật khẩu proxy di động) không thể đ
 - **Nguyên tắc:** Những gì đã được khóa cứng bằng mã nguồn hoặc cổng kiểm thử cơ học (như `dispatch_worker.py` set cứng `default="agy"`, hay `plan_exec_gate.py` khóa HMAC receipt) thì để code tự động thực thi.
 - **CẤM:** Tự ý ghi chép dài dòng vào persistent memory (`memory add/replace`) về các quy tắc điều phối kỹ thuật đã có tool cơ học đảm trách. Ghi chép thừa vừa gây lãng phí ngân sách ký tự memory, vừa gây loãng context khiến Coordinator dễ mắc bệnh hành chính rườm rà thay vì hành động dứt điểm.
 
+### 5. Cạm Bẫy Nạp Nhầm Free-Tier & Kỷ Luật Kiểm Soát 4 Lớp Fake Fingerprint:
+- **Bẫy Nạp Nhầm Free-Tier (`nguyenkhoi14031998`):** Trong `storage.sqlite`, tài khoản `nguyenkhoi14031998@gmail.com` thuộc `free-tier`, không phải `g1-pro-tier`. Trước khi nạp bất kỳ account nào vào pool Pro của Agy CLI, BẮT BUỘC query `SELECT provider_specific_data FROM provider_connections WHERE email = ?` và assert `tier == 'g1-pro-tier'`. Tuyệt đối cấm nạp acc Free vào dàn Worker làm loãng pool và gây kẹt rate limit.
+- **Quy Trình Cách Ly Acc Rác Bằng Safe Recycle:** Khi phát hiện profile rác/free nạp nhầm vào pool, dùng ngay `python D:/Taadaa/tools/safe_recycle.py D:/Taadaa/agy_profiles/<name>` để đưa vào quarantine, không xóa ẩu bằng `rmdir /s /q` hay `os.remove`.
+- **Checklist 4 Lớp Cấu Hình Fake Chuẩn Cho Antigravity CLI:**
+  1. *Hardware ID (`installation_id`):* Mỗi profile có UUID riêng biệt trong `.gemini/installation_id` (100% Unique qua UUID4), cấm dùng chung UUID.
+  2. *Windows Cache Sandbox:* Cô lập hoàn toàn `AppData/Roaming`, `AppData/Local`, `Temp` và inject 6 biến môi trường `USERPROFILE`, `HOME`, `APPDATA`, `LOCALAPPDATA`, `TEMP`, `TMP`.
+  3. *Native Go BoringSSL Transport:* Chạy binary `agy.exe` gốc, tránh giả lập qua Node.js/undici để giữ nguyên chữ ký bắt tay TLS và HTTP/2 của Google.
+  4. *Proxy 1-1 Mapping & Direct Separation:* Tài khoản host máy chính (`thanhdatbui`, `jinrakal`) đặt `proxy: None` (Direct), các tài khoản farm còn lại gán 1:1 đúng proxy di động tương ứng của GPM profile, cấm gán bừa theo số thứ tự.
+
 
 
 
