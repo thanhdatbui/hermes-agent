@@ -47,9 +47,15 @@ def test_get_idle_seconds_counts_unfocused_time(monkeypatch):
     monkeypatch.setattr(xw, "_system_idle_seconds", lambda: 0.0)
     monkeypatch.setattr(xw, "is_xiaowei_foreground", lambda: True)
     assert xw.get_idle_seconds() == 0.0
+
+    # Khi đang focus nhưng người dùng buông tay 15s (system_idle=15.0) -> trả về đúng 15.0
+    monkeypatch.setattr(xw, "_system_idle_seconds", lambda: 15.0)
+    assert xw.get_idle_seconds() == 15.0
+
+    # Khi mất focus (ra app khác), thời gian được cộng dồn theo clock từ mốc cuối
     monkeypatch.setattr(xw, "is_xiaowei_foreground", lambda: False)
     clock.time.return_value = 1000.0 + xw.IDLE_THRESHOLD_SECONDS
-    assert xw.get_idle_seconds() == xw.IDLE_THRESHOLD_SECONDS
+    assert xw.get_idle_seconds() == xw.IDLE_THRESHOLD_SECONDS + 15.0
 
 
 def test_is_xiaowei_foreground_precision(monkeypatch):
@@ -165,8 +171,12 @@ def test_main(monkeypatch, capsys):
     close.assert_not_called()
     idle.return_value = 1350.5
     close.return_value = True
+    monkeypatch.setattr(xw, "is_xiaowei_foreground", lambda: False)
     xw.main()
-    assert "XIAOWEI_CLOSE_TRIGGERED" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "XIAOWEI_CLOSE_TRIGGERED" in out
+    assert '"reason": "unfocused_background_idle"' in out
+    assert '"is_foreground": false' in out
     assert xw._XIAOWEI_RUNNING_CACHE is None
 
     monkeypatch.setattr(xw, "DRY_RUN_MODE", True)
