@@ -35,6 +35,31 @@ This skill captures learnings and pitfalls for driving the user's desktop via to
     Then invoke `vmrun copyFileFromHostToGuest`.
 
 - **VMware Guest Interactive GUI Automation via `vmrun` (Mouse & Keyboard):**
+  - *Host UIPI Barrier & CUA Failure:* On Windows host, VMware Workstation (`vmware.exe`) runs at High/System integrity. `computer_use` (cua-driver at Medium integrity) will fail in `background` mode (UIPI: target hwnd is at System integrity; cua-driver is at Medium integrity -> escalate) and in `foreground` mode (`SendInput inserted fewer modifier or mouse events than expected`). CUA cannot inject mouse/keyboard into VMware Workstation from the host. All guest interactions (clicking, typing, app launches) MUST be executed through VMware Tools via `vmrun -T ws -gu <user> -gp <pass> runProgramInGuest <vmx> -interactive` under the guest user session.
+  - *VMware Host Modal Dialogs Pausing Guest:* When VMware Workstation on host shows modal update dialogs ("Software Updates"), it can pause/freeze the guest VM (toolbar pause icon highlighted orange, screen captures return pitch black ~5KB). Unpause immediately via `vmrun -T ws unpause <vmx>` (exit code 0) before running guest scripts.
+  - *Guest User Profile / Shortcut Path Mismatch Trap:* In baseline VM templates, do not assume host user names (e.g. `thanh` vs `tada`). `GUEST_USER` is `tada` (`C:\Users\tada\Desktop\...` or `C:\Users\Public\Desktop\...`). Hardcoding a mismatched username in `explorer.exe` or `WScript.Shell.CreateShortcut` fails silently without opening the target app. To launch desktop shortcuts deterministically regardless of username, use WinRT OCR to locate the desktop icon bounding box (e.g. `Bounds: [9, 453, 67, 465] | Center: (38, 459)`) and trigger synthetic double-click in guest PowerShell.
+  - *Reliable Synthetic Double-Clicks in Guest:*
+    ```powershell
+    Add-Type -TypeDefinition @"
+    using System;
+    using System.Runtime.InteropServices;
+    public class Input {
+        [DllImport("user32.dll")] public static extern bool SetCursorPos(int X, int Y);
+        [DllImport("user32.dll")] public static extern void mouse_event(uint dwFlags, uint dx, uint dy, uint dwData, int dwExtraInfo);
+        public static void DoubleClick(int x, int y) {
+            SetCursorPos(x, y);
+            System.Threading.Thread.Sleep(150);
+            mouse_event(0x02, 0, 0, 0, 0);
+            mouse_event(0x04, 0, 0, 0, 0);
+            System.Threading.Thread.Sleep(100);
+            mouse_event(0x02, 0, 0, 0, 0);
+            mouse_event(0x04, 0, 0, 0, 0);
+        }
+    }
+    "@
+    [Input]::DoubleClick($x, $y)
+    ```
+  - *Google OAuth Risk Challenge (QR Scan Gate):* When signing in to Google accounts in guest VMs through residential/mobile proxies, Google often halts automation with `Quét mã QR bằng điện thoại`. Do not attempt blind OCR input loops. Capture the screen via `vmrun captureScreen`, crop the QR area, and deliver the screenshot to the user to scan with a physical phone Camera app (Zalo fails on Google authentication intents).
   - *Pitfall with `typeKeystrokesInGuest`:* Often fails on host with exit code `4294967295` (`Error: Insufficient permissions in the host operating system`) unless running with specific host OS elevation/hook privileges.
   - *Pitfall with Screen Blanking/Screensaver in Guest:* When guest displays all black (PNG size ~5KB, single color `(0,0,0)`), the guest screen is asleep/locked. Wake it by running `[System.Windows.Forms.SendKeys]::SendWait("{ESC}")` with `runProgramInGuest -interactive`.
   - *Reliable Synthetic Mouse Clicks in Guest:* Use PowerShell with P/Invoke `user32.dll` (`SetCursorPos` + `mouse_event`) executed via `vmrun runProgramInGuest -interactive` under the guest user session:
