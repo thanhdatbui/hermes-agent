@@ -6,6 +6,7 @@ description: "Use when farm devices drop, USB hangs, or entering BIOS."
 # Android Farm Host Operations
 
 References:
+- `references/android-framework-hang-vs-adb-get-state-gate-triage-20261022.md` — Phân tích điểm mù get-state 'device' vs crash Android framework (Can't find service: settings) trên M213, lý do in-flight cấm reboot S7 trong ca, quy chuẩn nâng cấp Pre-Session Gate qua service check settings và bẫy ambiguous adb terminal guard khi dispatch worker (22/10/2026).
 - `references/framework-crash-settings-service-blind-spot-and-pre-session-gate-20261022.md` — Phân tích điểm mù get-state 'device' vs crash Android framework (Can't find service: settings) trên M213, lý do in-flight cấm reboot S7 trong ca và quy chuẩn nâng cấp Pre-Session Gate (22/10/2026).
 - `references/wifi-vs-adb-disconnect-triage-and-settings-service-crash-20261022.md` — Phân biệt mất kết nối ADB/USB vs Wi-Fi (AP), giải đáp hiểu lầm cron Wi-Fi không cứu được máy rớt USB, bẫy false-positive crash `system_server` (`cmd: Can't find service: settings`) và quy trình Level 2 bypass-shell reboot (22/10/2026).
 - `references/xiaowei-focus-based-idle-and-closeout-gate-audit-20261022.md` — Phân tích bẫy nhàn rỗi OS-wide GetLastInputInfo vs focus-based tracking riêng cho Tiểu Vi (ngưỡng 10 phút), cơ chế tự dọn port 5038 khi bấm X, throttling ghi đĩa và quy chuẩn vượt Closeout Gate (22/10/2026).
