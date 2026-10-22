@@ -24,6 +24,6 @@ OMP/AGY: 28 acc Pro; lease 1800s; QR Google: tab GPM giữ mở; link 9k quá 8p
 §
 Đơn TT Shop: Mail báo 1 lần; API SPX/J&T/Ninja; Hub Thanh Khê. Dashboard :1905 /api/orders.
 §
-Worker: Agy CLI primary, Haiku fallback.
+Worker: Agy CLI (Omni :20129 live quota), Haiku fallback. Game guard: in-flight 2s suspend/resume né đẻ ffmpeg.
 §
 Cron/Alert: Gửi đúng Telegram group của repo (-5435853713 Video/Up, -5377611430 Nuôi, -5373649734 Alert), cấm spam DM.
