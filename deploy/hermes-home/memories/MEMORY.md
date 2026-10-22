@@ -1,6 +1,6 @@
 Chu kỳ 4d: Parity 96h (N1 lẻ, N2 chẵn), N3(R7,8), N4(0fl+up). Dưỡng N3 tối+N4 slot động theo streak. S2 bám S1. Starve 108h. Đêm né cache 4h.
 §
-Follow: dò +2 (max 40); lùi 4 sàn 15. Streak chỉ tăng khi fl=0; fl>=1 giữ streak+cd 1d. Probation 4d: 2 ca sạch tốt nghiệp; T1 (clean 0): 2-4 fl, T2 (clean 1): 6-8 fl; pop clean_days khi graduate. Anchor nhả=block. IP Audit: ip_risk_audit.py.
+Follow: dò +2 (max 40); lùi 4 sàn 15. Streak chỉ tăng khi fl=0; fl>=1 giữ streak+cd 1d. Probation 4d: 2 ca sạch; T1: 2-4 fl, T2: 6-8 fl. Anchor nhả=block. IP Audit: ip_risk_audit.py.
 §
 Hotmail: @fviainboxes.com đọc OTP. Pin>=1k: chuẩn hoá bắt buộc Pin top view (swap clip thấp); soi OCR nhãn 'Đã ghim' đúng ô view cao, cấm thấy nhãn clip cũ rồi báo bừa. S7 wake dùng aweme.splash.SplashActivity.
 §
@@ -20,7 +20,7 @@ Ava: Trích clip gốc; Vision LLM lọc ava rác. Gate 6: cấm trần thuật 
 §
 Reboot 3 ca (05:20, 11:20, 17:20): lookback 60m; 2FA né đệm. Né TFT/War3. Task ngầm Hidden+CREATE_NO_WINDOW. Game=tắt nháy.
 §
-OMP/AGY: 25 acc OAuth; lease 1800s. CẤM Luna làm Coord. § Canary Strict: Cấm báo DONE sửa code farm khi chưa pass `done_gate.py --repo <repo> --strict-device` (exit 0); receipt bắt buộc khớp HEAD commit_sha và sha256 ảnh thật; cấm dùng pytest offline thay Canary.
+OMP/AGY: 25 acc OAuth; lease 1800s. CẤM Luna làm Coord. § Canary Strict: Cấm báo DONE code farm khi chưa pass `done_gate.py --repo <repo> --strict-device` (exit 0); receipt bắt buộc khớp HEAD commit_sha, tree_diff_sha256 (hash cả content untracked) và sha256 ảnh thật; cấm dùng pytest offline thay Canary. Git toplevel fail-closed.
 §
 Đơn TT Shop: Mail báo 1 lần; API SPX/J&T/Ninja; Hub Thanh Khê. Dashboard :1905 /api/orders.
 §

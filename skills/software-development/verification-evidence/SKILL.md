@@ -767,5 +767,6 @@ See `references/windows-git-bash-running-tests.md` for invoking the canonical co
 spaces (e.g. `tiktok-luot nuoi acc`). See `references/targeted-canary-subsystem-matrix.md` for the domain-aware Canary Subsystem Matrix, OCR keyword whitelists, and anti-mechanical canary gate rules. See `references/worker-material-audit-release.md` for delegated-worker reconciliation and the audit → commit → push gate.
 See `references/canonical-watchdog-patch-verification.md` for narrowly scoped watchdog follow-merge fixes and standalone `hermes-verify-*.py` ad-hoc probes.
 See `references/recaptcha-frame-transition-verification.md` for bounded Playwright reCAPTCHA iframe-transition patches and syntax-only verification.
+See `references/hardened-canary-and-gate-protocol.md` for the hardened Done Gate & Canary Protocol (strict device enforcement, git toplevel validation, untracked content binding, fail-closed UI policy).
 See `references/commit-push-closeout-checklist.md` for the explicit commit, push, and remote-verification sequence after an approved closeout gate.
 See `references/advisor-boundary-safety-remediation.md` for strict advisor schema, Unicode-normalized dangerous-content rejection, final serialized payload bounds, and offline fail-open seam tests.
