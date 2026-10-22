@@ -161,3 +161,15 @@ python D:/Taadaa/tools/closeout_gate.py \
 - Nếu phát hiện bất kỳ biến môi trường nào của agent, cờ `--owner-override` sẽ kích hoạt ngoại lệ `BLOCKED_AGENT_OVERRIDE` (exit code 2) để ngăn AI agent tự tiện bypass Closeout Gate.
 - Cờ `--owner-override` là cơ chế cơ học ĐỘC QUYỀN dành cho người vận hành (human operator) thực thi thủ công trên terminal sạch bên ngoài Hermes khi cần ghi đè khẩn cấp.
 
+---
+
+## 9. Automatic Dynamic Skill Injection (Pre-dispatch Hook)
+
+- **Mục tiêu**: Tự động inject context kỹ năng phù hợp vào prompt trước khi gửi cho Worker (Agy / Haiku), khắc phục triệt để tình trạng Coordinator quên nạp skill hoặc Worker tự ý chế lại bánh xe.
+- **Kiến trúc Adapter Layer**: Tách riêng `tools/skill_injector.py` thay vì nhồi code vào `dispatch_worker.py`:
+  - Trước khi dispatch: gọi `inject_skill_context(args.prompt, max_context_chars=15000)`.
+  - Luôn nạp 5 Pinned Core Invariants + top 1–2 matched skills.
+  - **Clean References Guard**: Tự động gọt bỏ phần lịch sử `## References` dài hàng chục KB của các skill (như `session-close-protocol`), giữ lại phần cốt lõi và quy tắc bắt buộc $\le 3000$ ký tự/skill để không bao giờ vượt trần 15k ký tự.
+  - **Graceful Fail-Closed**: Nếu index thiếu/stale hoặc gặp exception, injector trả về rỗng và dispatch worker vẫn tiếp tục chạy với prompt gốc, TUYỆT ĐỐI không để bước phụ trợ làm nghẽn luồng dispatch chính.
+
+
