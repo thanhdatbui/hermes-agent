@@ -122,6 +122,22 @@ audit("skill_injection", 1, inj.status, inj.reason, workdir, args.file, _rc_inj,
 ```
 Hardcoding `rc=0` for all outcomes is a silent-success anti-pattern and will cause Reviewer to dock points.
 
+### 6. Windows Subprocess Command Line Length Limit
+Injecting 14KB+ into prompt text passed via command-line arguments (e.g. `python worker.py -- <prompt>`) can exceed Windows `CreateProcess` / CMD limits (8,191 to 32,767 chars), resulting in `The command line is too long`.
+- Keep worker dispatch prompts budgeted appropriately.
+- For raw worker debugging, use `--no-skill-injection` to bypass injection.
+- Prefer piping prompts via stdin (`-p -`) in subagent wrappers.
+
+### 7. Strike 3 Hand-Off when Claude Quota Guard is Blocked
+When Closeout Gate triggers `[REVIEWER_HANDOFF_TRIGGERED: 3 consecutive rejections]`, write authority falls to Claude CLI. But if Claude CLI 5h quota is ≥ 85%, `claude_quota_guard.py` rejects invocation.
+- Do NOT violate coordinator T1/T2 write constraints.
+- Solution: Generate patch proposal using `python D:/Taadaa/tools/sol_repair.py` (which runs via OmniRoute :20129) and apply safely using `python D:/Taadaa/tools/apply_patch.py patch.json` (which runs focused test verification and auto-rollback).
+
+### 8. Agy CLI Quota Pool vs OmniRoute Quota Desync
+- `ag_cli.py` may check `gemini-3.1-flash-lite` quota in OmniRoute, which can report 100% while Pro/Flash-High or Claude models are completely exhausted (`RESOURCE_EXHAUSTED` 429).
+- `pool_state.json` cooldowns (1800s–7200s) are checked before OmniRoute live sorting, locking out accounts even if OmniRoute quota has reset.
+- Always check the specific target model's quota in OmniRoute and inspect `pool_state.json` cooldown timers when diagnosing Agy CLI dispatch failures.
+
 ## Closeout Gate Notes
 
 - The 3 new files (`skill_injector.py`, tests) + modified `dispatch_worker.py` together exceed 22KB diff
