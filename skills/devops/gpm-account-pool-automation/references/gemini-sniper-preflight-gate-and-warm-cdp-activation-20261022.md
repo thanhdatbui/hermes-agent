@@ -81,3 +81,32 @@ def run_preflight():
   - Kết hợp với việc người mua phản hồi sau 8 phút, shop vin vào cớ này để từ chối bảo hành hoàn toàn, trong khi thực tế tài khoản đích vẫn là `free-tier` (Starter Quota) và người mua chịu mất trắng tiền đơn hàng.
 - **Quy tắc bắt buộc**: Preflight kiểm tra không chỉ URL `one.google.com/home` mà bắt buộc phải vào `myaccount.google.com/family/details` để chắc chắn không dính form khôi phục hay giới hạn nhóm gia đình; tab được giữ warm và kích hoạt trong vòng $\le 2$ giây kể từ khi API trả link.
 
+---
+
+## 6. Luồng Kích Hoạt 2 Chặng (Landing Page ➔ Nút "Kích Hoạt Gói" ➔ Celebration Page)
+- **Cạm bẫy tưởng lầm đã kích hoạt (Landing Trap)**:
+  - Link mua từ shop (`https://gemini-activation.st-editvision.workers.dev/subscription/new/...`) là link Cloudflare Worker chuyển hướng sang `https://one.google.com/activate-plan/subscription/new/<token>?g1_landing_page=5` (Title: *"Trang đích Google One"*).
+  - **LƯU Ý CỐT LÕI:** Việc mở đến URL này **CHƯA ĐỒNG NGHĨA** với tài khoản đã được nâng cấp! Nếu chỉ mở tab rồi thoát tool, link vẫn ở trạng thái chờ và sẽ hết hạn trong 5 phút.
+  - BẮT BUỘC script hoặc operator phải click nút `button:has-text("Kích hoạt gói")`.
+  - **Dấu hiệu thành công duy nhất:** Trình duyệt chuyển hướng sang URL chúc mừng:
+    `https://one.google.com/celebration?from=/activate-plan/subscription/entitle/ai&g1_landing_page=5` (Title: *"Google One Confirmation Page"*), với tiêu đề lớn: **"Bạn là thành viên gói Google AI Pro"** kèm quyền lợi 5 TB bộ nhớ và nút *"Chuyển đến Gemini"*.
+  - Mọi báo cáo hoàn tất bắt buộc chụp ảnh màn hình trang Celebration này và soi mắt qua `browser_vision` trước khi kết luận.
+
+---
+
+## 7. Cạm Bẫy Nhận Diện Avatar Google Tiếng Việt (Tên Thay Vì Họ)
+- **Thực tế giao diện**: Trong vòng tròn avatar Google ở góc trên bên phải, Google hiển thị chữ cái đầu tiên của **Tên chính (First Name)**, KHÔNG hiển thị chữ cái của Họ hay Tên đệm.
+- **Ví dụ**:
+  - `quyphuoc090565@gmail.com` (Tên: Quy Phước $\rightarrow$ Tên gọi là Phước) $\rightarrow$ Avatar hiển thị chữ **"P"** màu xanh.
+  - `nguyenkhoi14031998@gmail.com` (Tên: Khôi) $\rightarrow$ Avatar hiển thị chữ **"K"**.
+  - `taquynh06011998@gmail.com` (Tên: Quỳnh) $\rightarrow$ Avatar hiển thị chữ **"Q"**.
+- Khi operator hoặc reviewer nhìn thấy avatar chữ "P" thường nghi ngờ bị nhầm profile (`quyphuoc` tưởng phải chữ "Q" hay "N"). BẮT BUỘC kiểm tra thuộc tính `aria-label` của nút tài khoản qua DOM (`document.querySelector('a[aria-label*="Google Account"]')`) hoặc nội dung trang `myaccount.google.com/family/details` để xác nhận chuẩn xác 100% email đang đăng nhập.
+
+---
+
+## 8. Bẫy EPIPE Playwright Node Driver & Cơ Chế Khôi Phục Nút Bấm Qua CDP
+- Khi chạy script Python Playwright kết nối CDP trong tiến trình ngầm lâu (polling kéo dài nhiều chục phút), các thao tác gọi subprocess bên ngoài (như còi báo `admin_ssh.py` hoặc ngắt pipe) có thể gây ra lỗi `EPIPE: broken pipe, write` trên Node driver của Playwright.
+- Nếu Playwright crash trước khi click được nút "Kích hoạt gói", tab trình duyệt GPM vẫn được CDP mở sẵn ở trang landing.
+- **Hành động phục hồi tức thì:** Coordinator ngay lập tức kết nối lại cổng CDP (`127.0.0.1:<port>`), tìm tab chứa `activate-plan`, click nút `button:has-text("Kích hoạt gói")`, đợi chuyển sang `celebration` rồi mới dập còi Admin qua `python D:/Taadaa/tools/stop_admin_alarm.py`.
+
+
