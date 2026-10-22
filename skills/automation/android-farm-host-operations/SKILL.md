@@ -6,6 +6,7 @@ description: "Use when farm devices drop, USB hangs, or entering BIOS."
 # Android Farm Host Operations
 
 References:
+- `references/xiaowei-focus-based-idle-and-closeout-gate-audit-20261022.md` — Phân tích bẫy nhàn rỗi OS-wide GetLastInputInfo vs focus-based tracking riêng cho Tiểu Vi (ngưỡng 10 phút), cơ chế tự dọn port 5038 khi bấm X, throttling ghi đĩa và quy chuẩn vượt Closeout Gate (22/10/2026).
 - `references/xiaowei-wmi-elevation-filter-and-reboot-lock-collision-20261021.md` — Chẩn đoán bẫy WMI Integrity Level trả về $null khiến watchdog 5038 bỏ qua tiến trình XiaoWei elevated và xung đột unbuffered Safe Window của cron xen ca làm trôi lịch reboot 3 ca (21/10/2026).
 - `references/inter-shift-lock-reboot-skip-and-port5038-split-triage-20261021.md` — Phân tích sự cố bỏ qua reboot 2 ca liên tiếp (11:20 & 17:20) do active device lock kết hợp với xung đột daemon ADB cổng 5038 của Tiểu Vi khiến văng 35 máy trên Kibe tại Ca 3 Phiên 2 (21/10/2026).
 - `references/pre-session-device-readiness-gate-and-receipt-lifecycle-20261021.md` — Kiến trúc Pre-Session Device Readiness Gate (56 tests) tự động fast probe O(1) cứu máy treo ADB trước ca chạy và cơ chế Auto-Archive dọn dẹp bẫy Stale Post Receipts > 24h giải phóng deadlock đăng bài (21/10/2026).
@@ -392,11 +393,12 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
     - **Trường hợp 2 (Ảo giác Bão Khởi Tạo Stream khi vừa mở app trong ca nuôi):** Khi vừa bật Tiểu Vi lúc ca nuôi đang chạy, 80 lệnh `start_iter` dồn dập bị timeout (`deadline has elapsed`, `os error 10060`). Tiểu Vi lập tức đánh dấu 20–30 ô màu cam ("Điện thoại đã ngắt kết nối") DÙ thiết bị và ADB 5037 VẪN 100% ONLINE (`device`). Bắt buộc đối soát socket O(1) và kiểm tra log `app_rCURRENT.log` trước khi kết luận (chi tiết: `references/xiaowei-stream-storm-and-false-disconnect-20261016.md`).
     - Bình thường không mở Tiểu Vi thì farm chạy auto rất êm; chỉ mở khi cần soi và watchdog Tầng 3 sẽ tự tắt sau 20 phút.
 - **Tầng 3: Giải phóng Bus USB từ Tiểu Vi (`xiaowei-idle-auto-close-kibe`):**
-  * Chạy trên Kibe PC qua cronjob `0a4a81f4f164` mỗi 2 phút (`*/2 * * * *`).
+  * Chạy trên Kibe PC qua cronjob `0a4a81f4f164` mỗi 2 phút (`*/2 * * * *`), và Admin PC qua cronjob `164300fc5547`.
   * Theo dõi tiêu điểm cửa sổ (Focus-based Tracking qua `GetForegroundWindow`): nếu người dùng không tương tác trực tiếp trên cửa sổ Tiểu Vi quá 10 phút (kể cả khi đang gõ phím/chơi game ở app khác như TFT) hoặc để Tiểu Vi trên cùng nhưng rời máy quá 10 phút $\rightarrow$ tự động đóng `xiaowei.exe` và bắn `adb -P 5038 kill-server` dọn sạch tiến trình mồ côi, trả 100% thiết bị về lại cổng 5037.
   * **Kỷ luật Implementation & Đồng bộ Đa Cụm:**
     - Khử Race Condition: Lấy `is_fg` duy nhất 1 lần trong `main()` và truyền vào hàm tính idle; bắt buộc có disk write throttling (`abs(delta) >= 1.0s`) chống spam ghi đĩa; telemetry bắt buộc ghi nhận `reason` và `is_foreground`.
-    - Đồng bộ bắt buộc sang Admin PC: Cập nhật logic watchdog trên Kibe BẮT BUỘC đẩy đồng bộ sang Admin PC qua SSH (`deploy_xiaowei_admin.py`) và đối soát hash SHA256 khớp tuyệt đối (chi tiết: `references/xiaowei-focus-based-idle-and-port5038-lifecycle-20261022.md`).
+    - Chống False-Positive: '投屏' đơn lẻ trong tiêu đề trên các process lạ (`chrome.exe`, `notepad.exe`) bắt buộc trả về `False`, chỉ match khi process name là `msedgewebview2` hoặc chứa `xiaowei`.
+    - Đồng bộ bắt buộc sang Admin PC: Cập nhật logic watchdog trên Kibe BẮT BUỘC đẩy đồng bộ sang Admin PC qua SSH (`deploy_xiaowei_admin.py`) và đối soát hash SHA256 khớp tuyệt đối (chi tiết: `references/xiaowei-focus-based-idle-and-closeout-gate-audit-20261022.md`).
 - **Tầng 4: Khống chế I/O Script Automation (`_HeavyIoGate`):**
   * Bounded Semaphore 8 tokens trong `automation_core.adb` bảo vệ bus USB 2.0 khi các script chạy auto chụp màn hình / kéo file.
   * Lưu ý: Semaphore này chỉ quản lý code Python nội bộ, KHÔNG khống chế được luồng stream của app bên thứ ba như Tiểu Vi (cần giảm trực tiếp trên UI XiaoWei: 720p/480p, 15 FPS).
