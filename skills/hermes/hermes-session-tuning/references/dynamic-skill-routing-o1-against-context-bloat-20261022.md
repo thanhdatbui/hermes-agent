@@ -29,3 +29,22 @@ Thay vì nạp toàn bộ 190 skills tĩnh:
   1. Phân định rõ ràng: Từ chối các framework RAG cồng kềnh ngoài luồng (Vector DB, Langchain, embedding nặng), NHƯNG giữ vững giải pháp kiến trúc cốt lõi đã đề xuất (Index JSON nhẹ + tra cứu O(1)).
   2. Tuyệt đối CẤM nịnh bợ, gió chiều nào theo chiều đó, trên nói cần dưới quay xe gạt phăng đi.
   3. Giải thích dân dã, thực dụng, đúng bản chất: *"O(1) là một nhát ăn ngay, đúng bệnh đúng thuốc, sửa <=30 dòng diff, 1 focused test, không thử sai mò mẫm"*.
+
+---
+
+## 4. Kinh Nghiệm Thực Chiến Qua Reviewer Closeout Gate (Sol High 85/100)
+Khi đưa bộ ba công cụ vào thẩm định qua `closeout_gate.py`, Reviewer phát hiện các lỗ hổng cần khắc phục:
+1. **Chống Path Traversal**: `load_selected_skills.py` phải `.resolve()` cả `skills_root` và `skill_file`, kiểm tra `skill_file.is_relative_to(skills_root)`. Đồng thời escape thẻ HTML comment `-->` thành `--&gt;` để nội dung skill không làm vỡ cấu trúc block.
+2. **Freshness Check Chuẩn Xác**: Không chỉ so sánh `mtime` của thư mục category cấp 1; bắt buộc phải quét sâu vào `s_dir / 'SKILL.md'` trong từng category vì việc sửa `SKILL.md` bên trong không làm đổi `mtime` của thư mục cha.
+3. **Đồng Bộ Cấu Hình Đường Dẫn**: Thống nhất `DEFAULT_SKILLS_DIR = Path("D:/Taadaa/Hermes/skills")` giữa tất cả module, tránh lệch môi trường.
+4. **Bằng Chứng Kiểm Thử Tích Hợp Thật**: Bên cạnh mock tests, phải có test tích hợp đối chiếu trực tiếp với thư mục production thật (>=180 skills tồn tại và resolve được).
+
+---
+
+## 5. Bắt Buộc Cơ Giới Hóa (Mechanical Wiring Vào Single Dispatch Gateway)
+- **Bài học xương máu**: Nếu chỉ dừng lại ở công cụ CLI On-Demand (`skill_lookup.py`), các phiên làm việc tiếp theo của Coordinator sẽ hoàn toàn KHÔNG sử dụng (bằng chứng đối soát session history xác nhận 0 session nào tự gọi).
+- **Giải pháp Cơ Giới Hóa**: Tích hợp tầng adapter mỏng `tools/skill_injector.py` làm Pre-dispatch Hook trong `tools/dispatch_worker.py`:
+  - Trước khi gửi prompt cho Worker (Agy / Haiku), tự động kích hoạt `inject_skill_context(prompt)`.
+  - Tự động bốc top 1–2 matched skills + 5 Pinned Core Invariants nạp vào đầu prompt.
+  - Áp ngân sách cứng `MAX_CONTEXT_CHARS = 15000`: Nếu vượt, graceful degradation về `DEGRADED_TOP2`.
+  - **Graceful Fail-Closed**: Nếu index bị stale hoặc lỗi, trả về rỗng và tiếp tục dispatch với prompt gốc, tuyệt đối không để lỗi phụ trợ làm chặn đứng luồng dispatch chính.

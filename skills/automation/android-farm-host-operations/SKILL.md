@@ -646,6 +646,27 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
   * Mọi cron xen ca (như đổi tên nick, kiểm tra liveness, tải avatar) BẮT BUỘC kết thúc Safe Window trước mốc reboot ít nhất **20 phút** (ví dụ khung sáng dừng ở `11:00`, khung chiều dừng ở `17:00`). CẤM cấu hình window rướn tới sát `11:20` hoặc `17:20` vì các batch chạy 15 phút sẽ đè qua giờ reboot và làm mất chu kỳ reset EHCI USB.
   * Chi tiết: `references/xiaowei-port5038-wmi-integrity-blindness-and-reboot-window-buffer-20261021.md`.
 
+## 31. Bẫy Thăm Dò `adb get-state` Mù Tầng Android Framework & Bẫy Terminal Guard Khi Dispatch Worker (22/10/2026)
+- **Điểm mù tầng `adbd` vs Android Framework (`system_server` / `ServiceManager`):**
+  * `adb -s <serial> get-state` chỉ kiểm tra socket giữa host PC và tiến trình native `adbd` (Linux userspace).
+  * Khi Android Java framework gặp sự cố (tiến trình `system_server` bị crash/deadlock dẫn đến `cmd: Can't find service: settings`), `adbd` vẫn phản hồi `device` với exit code 0.
+  * Hậu quả: `pre_session_device_gate.py` bị đánh lừa là thiết bị khỏe mạnh (`status: ready`), không kích hoạt cứu hộ trước ca và bàn giao máy lỗi vào batch nuôi acc.
+- **Kỷ luật In-Flight Anti-Reboot vs Fail-Fast:**
+  * Runner trong lúc chạy chỉ thực hiện Level 3 soft reconnect (`adb reconnect`), tuyệt đối không được phép reboot máy điện thoại S7 giữa ca (Level 2 reboot tốn 45-60s làm block worker thread, vỡ stagger và bão DHCP).
+  * Do đó, máy lỗi framework bắt buộc phải được phát hiện và cứu hộ dứt điểm tại tầng **Pre-Session Device Readiness Gate** trước khi ca chạy bắt đầu.
+- **Giải pháp nâng cấp Pre-Session Gate O(1):**
+  * Sau khi `adb get-state` trả về `device`, thực hiện thêm 1 lệnh binder probe siêu nhẹ:
+    `adb -s <serial> shell service check settings` (timeout <= 2.0s).
+  * Lệnh kiểm tra binder trực tiếp qua C/C++ `servicemanager` (<0.2s latency, không tốn tài nguyên).
+  * Nếu trả về `Service settings: found` -> hợp lệ (`True, 'device'`).
+  * Nếu trả về `not found`, timeout hoặc non-zero -> xác định `framework_unresponsive`, lập tức kích hoạt `recover_device()` (Level 2 bypass-shell direct reboot) giải cứu máy trước khi giao việc cho runner.
+- **Bẫy false-positive AMBIGUOUS ADB DEVICE COMMAND khi dispatch worker:**
+  * Khi truyền prompt contract vào CLI `dispatch_worker.py`, nếu prompt chứa chuỗi `adb <command>` (như `adb get-state`), regex guard của terminal sẽ bắt dính token `adb` thiếu `-s <serial>` và chặn thực thi:
+    `[HARD GATE #5 - AMBIGUOUS ADB DEVICE COMMAND] LỆNH ADB BỊ CHẶN`.
+  * **Quy tắc khắc phục:** Ghi prompt ra file tạm `D:/Taadaa/tools/task_prompt.txt` rồi truyền qua `$(cat ...)` hoặc diễn đạt trừu tượng ("lệnh get-state", "shell service check"), tuyệt đối không để token `adb` trần trong chuỗi lệnh terminal.
+  * Chi tiết: `references/android-framework-hang-vs-adb-get-state-gate-triage-20261022.md`.
+
+
 ## 31. Bẫy Điểm Mù get-state 'device' vs Crash Android Framework (`cmd: Can't find service: settings`) (22/10/2026)
 - **Hiện tượng:** Máy M213 (Admin) báo "Mất kết nối Wi-Fi (AP)", nhưng thực tế Wi-Fi có IP (`192.168.110.87`), lỗi thật là `cmd: Can't find service: settings` do `system_server` / Android Framework crash ngầm.
 - **Điểm mù Pre-Session Gate:** `pre_session_device_gate.py` chỉ chạy `adb get-state` (timeout 3.0s). Do daemon `adbd` ở tầng Linux kernel vẫn sống nên trả về `device` (máy xanh giả), đánh lừa gate bỏ qua cứu hộ và cho máy vào ca nuôi.

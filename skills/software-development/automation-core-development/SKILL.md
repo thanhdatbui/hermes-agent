@@ -2,7 +2,7 @@
 
 name: automation-core-development
 
-description: "Develop the shared automation-core control plane (D:\\Taadaa\\automation-core) itself — plan-phase builds touching recovery/device_lock/batch_aggregator/scheduler. Covers worktree rules, PYTHONPATH=src testing (see references/batch-aggregator-session-lost-vs-challenge.md & references/stale-site-packages-shadowing-reconciliation.md; references/device-lock-lease-is-still-held-and-reaper-mutex.md, references/wait-for-device-lock-and-operator-lock.md, references/pinned-user-lock-and-device-context.md, references/adb-remote-host-routing-and-port-invariants.md, references/adb-remote-host-persistent-ui-invariants.md, references/account-switcher-swipe-tuning-and-mock-tests.md), full-suite collection blocker, CRLF-safe editing (patch-tool fuzzy matcher mangling), recovery-contract invariants incl. FAILED_LOCKED, the Phase 3 user-explicit lock open (cli.py lock list/inspect/open), and RED/GREEN verification evidence."
+description: "Develop the shared automation-core control plane (D:\\Taadaa\\automation-core) itself — plan-phase builds touching recovery/device_lock/batch_aggregator/scheduler. Covers worktree rules, PYTHONPATH=src testing (see references/batch-aggregator-post-verification-exclusion.md, references/batch-aggregator-session-lost-vs-challenge.md & references/stale-site-packages-shadowing-reconciliation.md), full-suite collection blocker, CRLF-safe editing (patch-tool fuzzy matcher mangling), recovery-contract invariants incl. FAILED_LOCKED, the Phase 3 user-explicit lock open (cli.py lock list/inspect/open), and RED/GREEN verification evidence."
 
 version: 1.0.0
 
