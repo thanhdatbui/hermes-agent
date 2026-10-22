@@ -112,6 +112,28 @@ def test_is_xiaowei_foreground_precision(monkeypatch):
          patch.object(xw, "_foreground_process_name", return_value="msedgewebview2.exe"):
         assert xw.is_xiaowei_foreground() is False
 
+    # Regression: Tiêu đề chứa '投屏' nhưng tiến trình lạ (như chrome.exe) bắt buộc trả về False để chống false-positive
+    with patch.object(user32, "GetForegroundWindow", return_value=123), \
+         patch.object(user32, "GetWindowTextLengthW", return_value=30), \
+         patch.object(user32, "GetWindowTextW", side_effect=lambda h, b, l: _set_text(h, b, l, "Chrome - 投屏 video")), \
+         patch.object(xw, "_foreground_process_name", return_value="chrome.exe"):
+        assert xw.is_xiaowei_foreground() is False
+
+
+def test_title_touping_unrelated_process_regression():
+    user32 = xw.ctypes.windll.user32
+    def _set_text(h, b, l, text):
+        b.value = text[:l-1]
+        return len(b.value)
+
+    # Đảm bảo '投屏' trong title của process khác (Edge, Chrome, Notepad, Explorer) KHÔNG bị nhận nhầm là Tiểu Vi
+    for foreign_proc in ("chrome.exe", "msedge.exe", "notepad.exe", "explorer.exe"):
+        with patch.object(user32, "GetForegroundWindow", return_value=999), \
+             patch.object(user32, "GetWindowTextLengthW", return_value=40), \
+             patch.object(user32, "GetWindowTextW", side_effect=lambda h, b, l: _set_text(h, b, l, "Tài liệu 投屏")), \
+             patch.object(xw, "_foreground_process_name", return_value=foreign_proc):
+            assert xw.is_xiaowei_foreground() is False
+
 
 def test_close_xiaowei_clears_idle_state(monkeypatch):
     xw._write_last_active(1000.0)
