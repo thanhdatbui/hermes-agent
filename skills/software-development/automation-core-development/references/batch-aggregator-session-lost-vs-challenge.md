@@ -240,6 +240,38 @@ A single device socket may hang, causing `inspect_machine.py` or `adb shell` to 
      ```
   3. This preserves individual failure counting in `report.failed_count` while preventing false-positive systemic alerts that would panic operators and freeze automation batches.
 
+## Telegram Alert Routing & Safe Resolver Fallback in batch_aggregator (2026-10-22)
+- **Background**: `batch_aggregator` supports `--telegram` CLI flag to send aggregated systemic failure alerts. Previously, all 3 dispatch blocks (Case 1: multi-path, Case 2: sibling merge, Case 3: standalone) hardcoded `chat_id = DEFAULT_ALERT_CHAT_ID` (`-5373649734` Farm Alerts).
+- **Problem**: Systemic alerts for specialized workflows (e.g. `register-gmail`, `tiktok-add-2fa`) were sent to the generic Farm Alerts group instead of dedicated repo groups (`-5139245637` for Gmail reg, `-5468653590` for 2FA TikTok), causing notification noise and missing repo-specific alerting.
+- **Rule & Invariants**:
+  1. Centralize chat ID resolution in helper `_get_target_chat_id(script_name: str | None) -> str`.
+  2. Guard the call to `_resolve_script_chat_id(script_name)` with `try / except Exception` so resolver errors (e.g. malformed metadata/workbook read issues) NEVER crash the alert pipeline and always fall back safely to `DEFAULT_ALERT_CHAT_ID`:
+     ```python
+     def _get_target_chat_id(script_name: str | None) -> str:
+         from automation_core.alerts import DEFAULT_ALERT_CHAT_ID, _resolve_script_chat_id
+         if not script_name:
+             logger.info("No script name provided; routing alert to default chat ID %s", DEFAULT_ALERT_CHAT_ID)
+             return DEFAULT_ALERT_CHAT_ID
+         try:
+             resolved_chat_id = _resolve_script_chat_id(script_name)
+         except Exception:
+             logger.warning(
+                 "Failed to resolve alert chat ID for script %s; falling back to default chat ID %s",
+                 script_name, DEFAULT_ALERT_CHAT_ID, exc_info=True
+             )
+             resolved_chat_id = None
+         chat_id = resolved_chat_id or DEFAULT_ALERT_CHAT_ID
+         logger.info("Routing alert for script %s to chat ID %s", script_name, chat_id)
+         return chat_id
+     ```
+  3. Replace `chat_id = DEFAULT_ALERT_CHAT_ID` across all 3 dispatch blocks with `chat_id = _get_target_chat_id(script_name)`.
+  4. Ensure unit tests cover:
+     - `test_get_target_chat_id_uses_resolved_script_chat_id`
+     - `test_get_target_chat_id_falls_back_to_default_when_script_name_is_empty` (`""` and `None`)
+     - `test_get_target_chat_id_falls_back_to_default_when_resolver_returns_none`
+     - `test_get_target_chat_id_falls_back_to_default_when_resolver_raises_exception`
+
+
 
 
 
