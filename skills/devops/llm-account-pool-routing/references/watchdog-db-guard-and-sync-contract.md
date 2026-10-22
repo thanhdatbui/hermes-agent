@@ -231,6 +231,24 @@ Khi mock workbook cho `load_accounts_credentials`:
   * Khi các request đến, router xoay vòng (round-robin) gọi trúng liên tiếp các connection này, gây lỗi 401 lặp lại và kích hoạt `Circuit breaker tripped for chatgpt-web: 5 consecutive failures. Blocked for 30min.`
   * *Quy tắc dọn dẹp*: Ngay khi connection dính `token_revoked`, bắt buộc phải đồng thời lọc bỏ `connectionId` khỏi `models` trong `combos`, sau đó gọi `PUT /api/combos/{id}` để đồng bộ in-memory.
 
+## 15. Bẫy Google SSO Identifier Trap Khi Tái Đăng Nhập ChatGPT (`accounts.google.com/v3/signin/identifier`)
+- **Triệu chứng & Hiện trường Canary**:
+  * Khi watchdog hoặc script tự động phục hồi mở `https://chatgpt.com/auth/login`, điền email và click "Tiếp tục" (`button[type="submit"]`), OpenAI không mở form mật khẩu OpenAI mà tự động chuyển hướng sang:
+    `https://accounts.google.com/v3/signin/identifier?...client_id=799222349882...`
+  * Trên trình duyệt hiện form đăng nhập Google với ô `input#identifierId` và nút `Tiếp theo`.
+  * Script watchdog cũ sau khi chờ form mật khẩu không thấy xuất hiện thì rơi vào vòng lặp chờ hết 20 bước (40 giây) rồi kết thúc và báo lỗi: `Validate fail: EMPTY_SESSION_TOKEN`.
+- **Nguyên nhân cốt lõi**:
+  * Tài khoản được đăng ký ban đầu thông qua Google SSO (Sign in with Google).
+  * Trong profile GPM, phiên đăng nhập Google bị đăng xuất (sign-out) hoặc hết hạn, khiến Google không hiển thị danh sách chọn tài khoản (Account Chooser với selector `div[data-identifier]`) mà rơi về form đăng nhập ban đầu `identifierId`.
+- **Quy tắc xử lý tự động chuẩn hóa**:
+  * Khi phát hiện URL chứa `accounts.google.com` và xuất hiện `input#identifierId`:
+    1. Điền lại `email` vào `input#identifierId` và click `#identifierNext`.
+    2. Chờ form mật khẩu Google xuất hiện (`input[type="password"]` hoặc `input[name="Passwd"]`).
+    3. Tra cứu mật khẩu Gmail từ Cột C workbook `taikhoan_dat_v2_updated .xlsx` qua `creds[email]['password']`, điền mật khẩu và click `#passwordNext`.
+    4. Xử lý màn hình xác minh 2FA / TOTP (nếu có) bằng `pyotp.TOTP(creds[email]['totp']).now()`.
+    5. Sau khi Google hoàn tất OAuth callback về `https://auth.openai.com/api/accounts/callback/google` và chuyển về `https://chatgpt.com/`, trích xuất chuỗi cookies đầy đủ và cập nhật vào `storage.sqlite`.
+
+
 
 
 
