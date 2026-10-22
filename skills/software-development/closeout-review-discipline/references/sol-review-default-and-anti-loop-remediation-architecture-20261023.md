@@ -37,3 +37,9 @@
   * Ném thẳng review feedback cho Sonnet sửa ngay trong 1 phiên mới.
   * Chấm lại 1 phiên độc lập.
   * Tổng cộng tối đa 2 lần gọi Sonnet (tiết kiệm >60% quota so với cách cũ 4-5 lần).
+
+## 3. Các Bẫy Kỹ Thuật Đã Xử Lý Khi Thi Công Gate (Implementation Pitfalls)
+- **Bẫy Quote Argument `--tools ""` trong Subprocess (2026-10-23)**: Khi gọi `claude -p` qua `subprocess.run(cmd, ...)` trong Python, danh sách `cmd` không qua shell (`shell=False`). Nếu truyền `"--tools", "\"\""`, Python gửi nguyên chuỗi literal gồm 2 ký tự nháy kép `""` sang binary, khiến Claude CLI cố tìm tool tên `""` và báo lỗi cú pháp CLI. BẮT BUỘC truyền `"--tools", ""` (chuỗi rỗng thực tế) để tắt hoàn toàn tools cho phiên review.
+- **Bẫy Cache Quota 2 Giờ & Probe Cưỡng Chế Sau Reset**: `claude_worker.py` cache mẫu quota trong `plan-usage-history.json` với `MAX_QUOTA_STALE_HOURS = 2.0`. Khi qua mốc reset (ví dụ 3:49am), mẫu cũ (100%) vẫn chưa đủ 2 giờ nên guard vẫn chặn. Bắt buộc kích hoạt probe làm mới: `python -c "import sys; sys.path.insert(0, 'D:/Taadaa/tools'); from claude_worker import try_refresh_claude_quota; try_refresh_claude_quota()"` để cập nhật ngay mẫu mới 0% vào JSON.
+- **Bẫy Snippet First-Line Strip Indentation trong AST Validation**: Khi LLM sinh patch mà dòng đầu bị strip leading whitespace so với thân hàm (`x = 1\n    y = 2`), `textwrap.dedent()` thông thường sẽ thất bại. Trong `sol_repair._validate_python_patch()`, đo số space thụt lề ở dòng 2 (`len(l) - len(l.lstrip())`), tái tạo khoảng trắng cho dòng 1 rồi mới dedent và bọc vào `def _dummy():\n...`.
+- **Fence Nonce & NEED_CONTEXT Trong Claude Review Pipe**: Khi tích hợp Claude Sonnet CLI (`run_claude_review_pipe`), bắt buộc sinh `nonce = secrets.token_hex(6)` cho mọi thẻ fence (`<<<GIT_DIFF nonce=...>>>`), kiểm tra chuỗi `NEED_CONTEXT:` trong phản hồi để set verdict tương ứng, và đếm dòng thay đổi thật từ unified diff (+/-) cho fast-path O(1).

@@ -23,6 +23,16 @@ Use this skill when calling Claude Code CLI for any task on the Taadaa Farm. All
 
 Alias sai → error "isn't described by this version's model catalog" → exit 1.
 
+### Bẫy Disabling Tools `--tools ""` trong Python Subprocess (2026-10-23)
+Khi cần tắt hoàn toàn công cụ khi gọi `claude -p` (ví dụ chạy review chỉ đọc code), bắt buộc truyền `cmd = [..., "--tools", ""]` (chuỗi rỗng).
+CẤM truyền `"--tools", "\"\""` vì Python `subprocess.run(shell=False)` sẽ gửi nguyên vẹn 2 ký tự nháy kép `""` sang binary, khiến Claude CLI phân tích thành tên công cụ rác và báo lỗi cú pháp.
+
+### Bẫy Quota Reset-Hint & Cache 2 Giờ (2026-10-23)
+Khi qua giờ reset quota 5h của Claude (ví dụ 3:49am), cache `plan-usage-history.json` vẫn chưa đủ 2 giờ để xem là stale (`MAX_QUOTA_STALE_HOURS = 2.0`), khiến `claude_worker.py` tiếp tục chặn `QUOTA_GATE` với mẫu cũ 100%.
+Khắc phục: Ép làm mới ngay qua lệnh:
+`python -c "import sys; sys.path.insert(0, 'D:/Taadaa/tools'); from claude_worker import try_refresh_claude_quota; try_refresh_claude_quota()"`
+để lấy mẫu quota mới (0%) từ `claude -p /usage` cập nhật vào cache.
+
 **Gate ABC Incident (2026-10-22):** Coordinator bỏ qua Gate A+B sau T0, tự viết >100 dòng và deploy. Post-mortem: `references/gate-abc-enforcement-gap-incident-20261022.md`.
 
 ---

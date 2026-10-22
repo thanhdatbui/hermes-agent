@@ -53,6 +53,16 @@ If the process is still running, report `RUNNING` with the exact log path and do
 - Duplicate source-channel claims do not by themselves prove duplicate video posts; compare recorded video IDs and live posted counts.
 - Do not swap to another famous/watermarked creator merely because the channel is unclaimed; dedup safety and rights/algorithm safety are different gates.
 - Do not send a tiny, stale, or cropped screenshot as UI evidence; inspect the actual full-screen artifact first.
+- **Quy tắc giải quyết va chạm trùng nguồn trên Farm (Fewer-Posted Swap Priority):**
+  - Khi phát hiện 2 hay nhiều tài khoản đăng trùng một nguồn video gốc (trực tiếp qua `Video Goc` hoặc gián tiếp qua lệch `Folder Video` tàn dư cũ):
+  - BẮT BUỘC so sánh số lượng video đã đăng (`Video Đã Đăng`): **Kênh nào đã đăng ÍT video hơn thì BẮT BUỘC phải hoán đổi sang nguồn mới**. Kênh đã đăng nhiều hơn được giữ nguyên để bảo toàn tệp khán giả và phân phối của thuật toán.
+- **Bẫy URL YouTube Shorts trong Pipeline (`@channel` vs `@channel/shorts`):**
+  - Khi swap sang nguồn YouTube Shorts, CẤM truyền URL dạng `https://www.youtube.com/@channel` vì yt-dlp ở chế độ flat extraction sẽ chỉ bốc các tab mặc định/bị fallback nhầm sang placeholder TikTok (`https://www.tiktok.com/@placeholder/video/...`).
+  - BẮT BUỘC truyền URL tường minh tab Shorts: `https://www.youtube.com/@channel/shorts` để yt-dlp nhận diện đúng 100% danh sách Shorts của kênh.
+- **Bẫy va chạm chéo `Folder Video` tàn dư cũ (`F_vid == F_src` Cross-Collision):**
+  - Mặc dù mỗi hàng trong Excel đều có `Video Goc` riêng biệt (không trùng chuỗi trong cột `F_src`), va chạm nội dung vẫn xảy ra do tàn dư lịch sử: Thư mục render `D:/TIKTOK-videonuoinick/<X>/` chứa video được render từ `D:/video goc/<X>/` cũ, trong khi một nick khác lại đang sở hữu `Video Goc = X`.
+  - Hậu quả: Hai nick lấy video từ hai thư mục render khác nhau nhưng ruột video giống hệt nhau từng frame (`cv2.VideoCapture frame_count` trùng 100%), dẫn đến nick đăng sau bị TikTok bóp reach về 0–100 view do quét multimodal duplicate.
+  - Khắc phục: Khi audit toàn farm, đối soát chéo `Folder Video` của nick A với `Video Goc` của nick B, đồng thời verify frame count trên đĩa để lập danh sách kênh yếu thế cần swap dứt điểm.
 - **Quy tắc giới hạn trần 60 video mỗi channel (Hard Cap 60 Videos Per Channel):**
   - CẤM cào full toàn bộ hàng trăm video của kênh lớn (tránh nghẽn băng thông, đầy đĩa và dồn rủi ro thuật toán vào 1 creator).
   - Chuẩn quy hoạch mới của farm: Mỗi channel cào tối đa đúng **60 video** rồi dừng lại (`TARGET_COUNT = 60`).
