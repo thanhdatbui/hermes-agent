@@ -612,31 +612,31 @@ Khi kho credentials (token OAuth, mật khẩu proxy di động) không thể đ
 
 ---
 
-## 19. Đồng Bộ Quota Real-Time Từ OmniRoute SQLite Vào Agy CLI Pool Selector (User Invariant 2026-10-22)
+## 19. Đồng Bộ Quota Real-Time Từ OmniRoute Live API (:20129) Vào Agy CLI (User Correction 2026-10-23)
 
-### Bối cảnh & Căn nguyên Lãng phí Jitter:
-- `ag_cli.py` trước đây quản lý cooldown độc lập bằng `pool_state.json`. Khi xoay vòng qua 28 profile, nếu gặp acc dính 429 thì sleep jitter 5–10s rồi thử profile kế tiếp. Khi hàng loạt acc bị 429, script tốn tới 60–90s sleep vô ích rồi mới failover sang Haiku.
-- Trong khi đó, **OmniRoute (`9router`)** duy trì trạng thái quota và cooldown thời gian thực tại `C:\Users\Kibe\AppData\Roaming\9router\db\data.sqlite` (`providerConnections` where `provider='antigravity'`). Trường `priorityCooldownUntil` và `isActive` phản ánh chính xác 100% tài khoản nào đang bị khóa và khi nào hết hạn.
+### 1. Bối Cảnh & Đính Chính Kỹ Thuật (OmniRoute Live API vs 9Router SQLite):
+- **Phân định rõ ràng:** KHÔNG nhầm lẫn giữa 9Router (`data.sqlite`) và **OmniRoute (`http://127.0.0.1:20129`)**. OmniRoute duy trì bộ nhớ đệm quota live và thông tin trạng thái provider connection chuẩn xác nhất.
+- **Sự thật về Gemini Family Pool (3.7 vs 3.8):** Gemini 3.7 và 3.8 Flash **dùng chung một quota bucket** trong hệ thống Google (`family:gemini`). Trong OmniRoute, key đại diện cho bucket này là `gemini-3.1-flash-lite` hoặc `gemini-3.7-flash-tiered`. Do đó, kiểm tra quota của key này phản ánh đúng 100% hạn mức khả dụng của cả `gemini-3.8-flash-high`.
+- **Căn nguyên lãng phí Jitter cũ:** `ag_cli.py` trước đây chỉ dựa vào `pool_state.json` cục bộ và duyệt mù từ `acc_01` -> `acc_28`. Khi gặp acc dính 429 thì sleep jitter 5–10s rồi thử acc kế tiếp, gây nghẽn 60–90s vô ích.
 
-### Nguyên tắc Điều phối Tối ưu:
-- **Đọc trực tiếp SoT từ 9Router SQLite trước khi chọn profile:**
-  ```python
-  import sqlite3, datetime
-  c = sqlite3.connect(r'C:\Users\Kibe\AppData\Roaming\9router\db\data.sqlite')
-  now = datetime.datetime.now(datetime.timezone.utc)
-  # Lọc danh sách email thực sự sẵn sàng
-  ready_emails = set()
-  for email, prio, active, data_json in c.execute("SELECT email, priority, isActive, data FROM providerConnections WHERE provider='antigravity'"):
-      if not active: continue
-      d = json.loads(data_json or '{}')
-      cooldown = d.get('priorityCooldownUntil')
-      if not cooldown or datetime.datetime.fromisoformat(cooldown.replace('Z', '+00:00')) <= now:
-          ready_emails.add(email.lower())
-  ```
-- **Chỉ dispatch vào profile có email nằm trong `ready_emails`:**
-  - Bỏ qua toàn bộ các profile đang dính `priorityCooldownUntil` trên OmniRoute.
-  - Triệt tiêu 100% việc thử mù các profile đã cạn quota, xóa bỏ chuỗi chờ jitter 5–10s lặp lại.
-  - Nếu tất cả profile Pro đều đang cooling theo 9Router DB $\rightarrow$ Fast Failover ngay lập tức sang Tier 2 (Haiku CLI) mà không làm trễ thời gian phản hồi của task.
+### 2. Kiến Trúc Đồng Bộ Live Quota Mới Trong `ag_cli.py`:
+Controller `ag_cli.py` truy vấn trực tiếp 2 API endpoints từ OmniRoute `:20129`:
+1. **Endpoint `GET http://127.0.0.1:20129/api/providers`:**
+   - Trích xuất toàn bộ danh sách kết nối của provider `antigravity`, tạo ánh xạ `connection_id -> email`.
+2. **Endpoint `GET http://127.0.0.1:20129/api/usage/provider-limits`:**
+   - Đọc trường `caches[cid]['quotas']`.
+   - Lấy `gemini-3.1-flash-lite` (hoặc `gemini-3.7-flash-tiered`) để trích xuất `remainingPercentage` và cờ `is_exhausted`.
+   - Trả về mapping: `{email: {"remaining": float, "is_exhausted": bool}}`.
+3. **Ánh Xạ Email từ Sandbox Profiles (`get_profile_email`):**
+   - Đọc trực tiếp từ file `D:/Taadaa/agy_profiles/<name>/.gemini/google_accounts.json` qua key `"active"`. Khớp chính xác 100% (28/28 profiles).
+
+### 3. Quy Tắc Lọc và Sắp Xếp Ưu Tiên (Selection Strategy):
+- **Loại bỏ tự động:** Bỏ qua tất cả các profile có email mà OmniRoute báo `remaining <= 0.0` hoặc `is_exhausted = True`.
+- **Sắp xếp theo Quota Giảm Dần (`remainingPercentage DESC`):**
+  - Profile có % quota OmniRoute cao nhất (ví dụ acc còn 100%, 60%) luôn được gắp chạy trước.
+  - Nếu % quota bằng nhau thì mới xét đến Least-Recently-Used (LRU).
+- **Trực quan hóa qua `ag_cli.py pool-status`:**
+  - Tự động hiển thị cột `Omni Quota: {pct}%` bên cạnh trạng thái cục bộ, gắn nhãn rõ `(EXHAUSTED)` cho các nick hết hạn mức để người vận hành kiểm soát tức thì.
 
 
 
