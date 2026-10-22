@@ -170,13 +170,17 @@ def _clear_idle_state() -> None:
         log_event("IDLE_STATE_ERROR", level="ERROR", action="clear", error=str(e))
 
 
-def get_idle_seconds() -> float:
+def get_idle_seconds(is_fg: bool | None = None) -> float:
     """Return seconds since the user last interacted with Tiểu Vi."""
     now = time.time()
     system_idle = _system_idle_seconds()
-    is_fg = is_xiaowei_foreground()
+    if is_fg is None:
+        is_fg = is_xiaowei_foreground()
     if is_fg:
-        _write_last_active(now - system_idle)
+        last_active = _read_last_active()
+        active_at = now - system_idle
+        if last_active is None or abs(last_active - active_at) >= 1.0:
+            _write_last_active(active_at)
         return system_idle
     last_active = _read_last_active()
     if last_active is None:
@@ -362,10 +366,10 @@ def main():
             log_event("WATCHDOG_SUMMARY", action="orphan_cleanup", metrics=get_metrics())
         return
 
-    idle_sec = get_idle_seconds()
+    is_fg = is_xiaowei_foreground()
+    idle_sec = get_idle_seconds(is_fg=is_fg)
     if idle_sec >= IDLE_THRESHOLD_SECONDS:
         mins = idle_sec / 60.0
-        is_fg = is_xiaowei_foreground()
         reason = "foreground_idle" if is_fg else "unfocused_background_idle"
         if close_xiaowei():
             log_event(

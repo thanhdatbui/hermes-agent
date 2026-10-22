@@ -58,6 +58,30 @@ def test_get_idle_seconds_counts_unfocused_time(monkeypatch):
     assert xw.get_idle_seconds() == xw.IDLE_THRESHOLD_SECONDS + 15.0
 
 
+def test_get_idle_seconds_throttles_disk_write(monkeypatch):
+    clock = MagicMock()
+    clock.time.return_value = 1000.0
+    monkeypatch.setattr(xw, "time", clock)
+    monkeypatch.setattr(xw, "_system_idle_seconds", lambda: 0.0)
+    monkeypatch.setattr(xw, "is_xiaowei_foreground", lambda: True)
+
+    real_write = xw._write_last_active
+    call_counts = []
+    def spy_write(ts):
+        call_counts.append(ts)
+        real_write(ts)
+
+    monkeypatch.setattr(xw, "_write_last_active", spy_write)
+    xw.get_idle_seconds(is_fg=True)
+    assert len(call_counts) == 1
+    clock.time.return_value = 1000.5
+    xw.get_idle_seconds(is_fg=True)
+    assert len(call_counts) == 1
+    clock.time.return_value = 1003.0
+    xw.get_idle_seconds(is_fg=True)
+    assert len(call_counts) == 2
+
+
 def test_is_xiaowei_foreground_precision(monkeypatch):
     user32 = xw.ctypes.windll.user32
     def _set_text(h, b, l, text):
@@ -173,20 +197,38 @@ def test_main(monkeypatch, capsys):
     close.return_value = True
     monkeypatch.setattr(xw, "is_xiaowei_foreground", lambda: False)
     xw.main()
-    out = capsys.readouterr().out
-    assert "XIAOWEI_CLOSE_TRIGGERED" in out
-    assert '"reason": "unfocused_background_idle"' in out
-    assert '"is_foreground": false' in out
+    records = [json.loads(line) for line in capsys.readouterr().out.splitlines() if line.lstrip().startswith("{")]
+    close_event = next(r for r in records if r.get("event") == "XIAOWEI_CLOSE_TRIGGERED")
+    assert close_event["reason"] == "unfocused_background_idle"
+    assert close_event["is_foreground"] is False
     assert xw._XIAOWEI_RUNNING_CACHE is None
 
     monkeypatch.setattr(xw, "DRY_RUN_MODE", True)
     xw.main()
     assert '"event": "DRY_RUN_ENABLED"' in capsys.readouterr().out
     monkeypatch.setattr(xw, 'DRY_RUN_MODE', False)
-    monkeypatch.setattr(xw, 'get_idle_seconds', lambda: 1200.0)
+    monkeypatch.setattr(xw, 'get_idle_seconds', lambda is_fg=None: 1200.0)
     with patch.object(xw, 'close_xiaowei', return_value=True):
         xw.main()
     assert 'XIAOWEI_CLOSE_TRIGGERED' in capsys.readouterr().out
+
+
+def test_main_closes_foreground_idle_end_to_end(monkeypatch, capsys):
+    close = MagicMock(return_value=True)
+    foreground = MagicMock(return_value=True)
+    monkeypatch.setattr(xw, "is_xiaowei_running", lambda: True)
+    monkeypatch.setattr(xw, "get_idle_seconds", lambda is_fg=None: xw.IDLE_THRESHOLD_SECONDS + 10)
+    monkeypatch.setattr(xw, "close_xiaowei", close)
+    monkeypatch.setattr(xw, "is_xiaowei_foreground", foreground)
+    monkeypatch.setattr(xw, "DRY_RUN_MODE", False)
+    xw._XIAOWEI_RUNNING_CACHE = None
+
+    xw.main()
+    close.assert_called_once()
+    records = [json.loads(line) for line in capsys.readouterr().out.splitlines() if line.lstrip().startswith("{")]
+    close_event = next(r for r in records if r.get("event") == "XIAOWEI_CLOSE_TRIGGERED")
+    assert close_event["reason"] == "foreground_idle"
+    assert close_event["is_foreground"] is True
 
 
 def test_cim_timeout_env_parsing(monkeypatch):
