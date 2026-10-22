@@ -70,6 +70,9 @@
 - **Chỉ Số & Sắp Xếp Theo Lượng Follow Gần Đây (Recent Follows Sorting Invariant):**
   - Ngoài `Tổng`, `TB/Ca`, `Max Safe`, trên mỗi Thẻ và Bảng Ma Trận BẮT BUỘC hiển thị chỉ số **`Gần đây (+X)`** (tổng số follow thực tế tích lũy trong phạm vi các ngày ma trận gần nhất, ví dụ 12 ngày gần nhất).
   - Bổ sung nút / tiêu đề cột sắp xếp **`Gần đây ↕`** để người vận hành có thể 1 chạm đưa ngay toàn bộ các nick đang cày follow tốt nhất gần đây lên đầu danh sách, thay vì chỉ thấy các nick nòng cốt cũ đang trong chu kỳ nghỉ giãn cách.
+- **Kiến Trúc File Frontend Dashboard (Modularization Pitfall):**
+  - Toàn bộ template HTML/JS cho tab `🩺 Sức Khỏe Follow` (thẻ máy, bảng ma trận, thanh filter `btn-matrix-*`) hiện tại nằm độc quyền trong file **`D:/Taadaa/tools/dashboard/static/follow_health_render.js`**.
+  - **CẢNH BÁO:** Tuyệt đối không can thiệp mò mẫm vào các chuỗi string JS legacy trong `tiktok_dashboard.py` hay `dashboard/render.py` vì các file này đã được modularize ra thư mục `dashboard/static/`. Mọi cập nhật giao diện ma trận BẮT BUỘC sửa trực tiếp trong `follow_health_render.js` và backend `follow_health_helper.py`.
 - **Thứ tự sắp xếp mặc định theo độ khỏe (Health-Descending Sort Invariant):** Danh sách máy BẮT BUỘC sắp xếp mặc định theo **độ khỏe giảm dần (`health_score` descending)** thay vì theo số thứ tự máy tăng dần (`M1, M2...`):
   1. **Nhóm Khỏe / Nòng Cốt đứng đầu:** Sắp xếp theo `Tổng đã follow (total_followed)` hoặc `Max Safe` giảm dần (ví dụ `M28 R1` 214 fl, `M50 R1` 213 fl lên trên cùng; nick ít follow xuống dưới).
   2. **Tiếp theo là Nhóm Hồi Phục:** Sắp xếp theo số ngày sạch (`clean_days`) và follow tích lũy.

@@ -94,6 +94,7 @@ Verify profile fields independently: a Bio can be confirmed while the Avatar is 
 
 See `references/live-profile-mutation-atx-recovery-20261020.md` for the validated ATX-vs-direct-`/dumpUI` observation, evidence sequence, and exact failed-live-run signature from a real machine.
 See `references/avatar-source-semantic-verification-20261020.md` for the avatar-specific source-asset gate and the false-success pattern where the runner uploaded a canopy image while the proposal described a cat.
+See `references/profile-standardization-top-video-pin-and-activity-wake-trap-20261022.md` for the mandatory top-view video pinning contract in channel standardization ("chuẩn hoá kênh"), the False-Positive Pinned Badge trap, and the TikTok SplashActivity launch package invariant.
 See `references/tiktok-s7-profile-edit-pencil-coordinates-20261020.md` for the Samsung S7 Profile toolbar pencil icon coordinate invariant `(72, 148)` and root-cause analysis of the 5-step PROFILE loop abort.
 See `references/tiktok-profile-no-bio-add-bio-button-variant-20261021.md` for the bio-less Profile variant (`+ Thêm tiểu sử` vs Find Friends trap) and dynamic button resolution.
 See `references/cold-boot-splash-loading-tolerance-20261021.md` for the 4G proxy cold-boot splash loading tolerance invariant and prevention of premature UNKNOWN exit_2 aborts.

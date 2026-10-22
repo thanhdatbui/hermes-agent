@@ -2,7 +2,7 @@ Chu kỳ 4d: Parity 96h (N1 lẻ, N2 chẵn), N3(R7,8), N4(0fl+up). Dưỡng N3 
 §
 Follow: dò +2 (max 40); lùi 4 sàn 15. Streak chỉ tăng khi fl=0; fl>=1 giữ streak+cd 1d. Probation: P1 (T1: 3-4, T2: 5-6), P2 khóa; né mốc gãy (last_failed-1), streak>=3 bóp -1. Anchor nhả=block. IP Audit: ip_risk_audit.py (P1 theo dõi k ngắt).
 §
-Hotmail: CẤM mail cá nhân; @fviainboxes.com đọc OTP. Pin >=1000 view.
+Hotmail: @fviainboxes.com đọc OTP. Pin>=1k: chuẩn hoá bắt buộc Pin top view (swap clip thấp); soi OCR nhãn 'Đã ghim' đúng ô view cao, cấm thấy nhãn clip cũ rồi báo bừa. S7 wake dùng aweme.splash.SplashActivity.
 §
 Rename: bút chì (72,148) né loop; 7d cd; BIO_EDIT trước PROFILE; tên Việt có dấu; core switcher; Smart name đa dạng.
 §
@@ -22,7 +22,7 @@ Reboot 3 ca (05:20, 11:20, 17:20): lookback 60m; 2FA né đệm. Né TFT/War3. T
 §
 OMP/AGY: 25 acc OAuth; lease 1800s. CẤM Luna làm Coord. § Canary Strict: Cấm báo DONE sửa code farm khi chưa pass `done_gate.py --repo <repo> --strict-device` (exit 0); cấm tự khai general né gate.
 §
-Đơn TT Shop: Mail báo mã 1 lần; bám sát qua API hãng (SPX/J&T/Ninja); bắt mốc về Hub Thanh Khê để lấy trực tiếp. Dashboard :1905 tab Đơn hàng (/api/orders).
+Đơn TT Shop: Mail báo 1 lần; API SPX/J&T/Ninja; Hub Thanh Khê. Dashboard :1905 /api/orders.
 §
 Worker: Haiku CLI primary, Agy CLI fallback
 §
