@@ -12,15 +12,18 @@
 - **Quy trình chuẩn hóa:**
   1. **Nhận diện chính xác Foreground Tiểu Vi (`is_xiaowei_foreground()`):**
      * Lấy `hwnd = GetForegroundWindow()` và `GetWindowThreadProcessId(hwnd)`.
-     * Kiểm tra `proc_name == 'xiaowei.exe'`: Chắc chắn là Tiểu Vi.
+     * Kiểm tra `'xiaowei' in proc_name`: Dùng so khớp substring an toàn để bao phủ các biến thể nhị phân (`xiaowei.exe`, `xiaowei_updater.exe`) mà không phụ thuộc tên tuyệt đối.
      * Kiểm tra tiêu đề cửa sổ chứa các định danh duy nhất: `'xiaowei'`, `'牧卫'`, `'效卫'`, `'com.xiaowei'`.
      * Với tiến trình con WebView2 (`msedgewebview2.exe`): BẮT BUỘC kết hợp điều kiện tiêu đề chứa `'投屏'` hoặc `'xiaowei'` để tránh false-positive với các app dùng WebView2 khác.
-  2. **Trạng thái hoạt động (`get_idle_seconds()`):**
+  2. **Trạng thái hoạt động & Giảm tải I/O Ghi đĩa (`get_idle_seconds()`):**
+     * **Khử Race Condition:** Lấy `is_fg = is_xiaowei_foreground()` đúng 1 lần duy nhất trong `main()` và truyền vào `get_idle_seconds(is_fg=is_fg)`. Tuyệt đối không gọi riêng biệt ở 2 hàm tránh lệch nhãn telemetry `reason`.
+     * **Disk Write Throttling:** Khi ở Foreground, chỉ ghi đĩa `_write_last_active(active_at)` khi timestamp thay đổi `>= 1.0s` (`abs(last_active - active_at) >= 1.0`), triệt tiêu hoàn toàn bão I/O ghi file không cần thiết trong các chu kỳ polling ngắn.
      * Khi Tiểu Vi đang ở Foreground: Trả về thời gian system idle thuần túy, ghi nhận mốc `last_active = now - system_idle`.
      * Khi Tiểu Vi chìm xuống nền (Unfocused): Bộ đếm unfocused idle bắt đầu tích lũy `unfocused_idle = now - last_active`.
-  3. **Ngưỡng hành động chuẩn hóa:**
+  3. **Ngưỡng hành động & Telemetry Forensic:**
      * Ngưỡng mặc định: **10 phút (600 giây)**.
      * Khi Tiểu Vi bị bỏ rơi ở background > 10 phút: Watchdog tự động kích hoạt `close_xiaowei()` và dọn sạch cổng 5038.
+     * Structured Telemetry Bắt Buộc: Cả `XIAOWEI_CLOSE_TRIGGERED` và `XIAOWEI_CLOSE_FAILED_SUMMARY` bắt buộc đính kèm `reason` (`"foreground_idle"` hoặc `"unfocused_background_idle"`) và `is_foreground` để phục vụ forensic vận hành chính xác.
      * Dọn sạch cờ state khi app đã đóng để lần mở kế tiếp không bị đóng oan.
 
 ## 3. Quy Trình Giải Phóng Port 5038 Khi Người Dùng Bấm Nút X
