@@ -562,6 +562,24 @@ Khi kho credentials (token OAuth, mật khẩu proxy di động) không thể đ
   3. Trong `omp_cli.py`: Nếu database local `agent.db` bị thiếu, tự động fallback đọc credentials từ `D:\OneDrive\backup\omp_profiles/<name>/agent/agent.db`.
 - **Hiệu quả:** Khi clone code repo `tools` sang máy mới hoặc khi phân vùng local bị format, cả 2 runner vẫn tự động nhận diện đầy đủ 21 tài khoản và vận hành ngay lập tức mà không cần cấu hình lại thủ công.
 
+---
+
+## 18. Đối Chiếu Kênh Tiêu Thụ: OmniRoute Upstream Pool vs Agy CLI Local Sandboxes & 1800s Cooldown State
+
+### 1. Phân Tách Hai Kênh Tiêu Thụ Độc Lập:
+- **Kênh Coordinator (OmniRoute `:20129`):**
+  * Quản lý **128 kết nối Google/Gemini** (26 acc Google One Pro `g1-pro-tier`, 71 `free-tier`, 26 `standard-tier`, 5 `gemini-web`).
+  * Phục vụ Coordinator chat, ReAct loops và các task nhẹ. Được cân bằng tải trên diện rộng nên hiếm khi bị cạn kiệt toàn cục.
+- **Kênh Worker CLI (`D:/Taadaa/tools/ag_cli.py`):**
+  * Quản lý **23 profile sandbox cục bộ** (`acc_01` .. `acc_22`, `acc_26`) tại `D:/Taadaa/agy_profiles/`.
+  * Đúng 22 profile (`acc_01` .. `acc_22`) được ánh xạ 1-1 từ 22 trong số 26 tài khoản `g1-pro-tier` của OmniRoute.
+  * Chỉ dùng cho các tác vụ thi công nặng (đọc AST, sửa code, self-test).
+
+### 2. Bản Chất Cooldown 1.800s Trong `pool_state.json` & Bẫy Nhận Thức:
+- **Cơ chế:** Khi một profile của `ag_cli.py` gặp lỗi `RESOURCE_EXHAUSTED` (429), controller ghi `cooldown_until = time.time() + 1800` vào `pool_state.json`.
+- **Bẫy nhận thức "Hết Quota / Hết Acc":** Khi thấy `ag_cli.py pool-status` báo các profile bị COOLDOWN, đó KHÔNG phải là tài khoản bị Google khóa chết, mất gói Pro hay hỏng token. Đó là cơ chế bảo vệ cục bộ đang tạm chặn phát request trong 30 phút để Google reset hạn mức.
+- **Tính độc lập trạng thái:** OmniRoute không đọc file `pool_state.json` của `ag_cli.py`, do đó trong cùng một thời điểm, OmniRoute vẫn báo 26/26 acc Pro `active` và Coordinator vẫn có thể chat bình thường qua kênh OmniRoute dù dàn `ag_cli.py` đang trong thời gian nghỉ. Khi hết 1.800s, toàn bộ pool `ag_cli.py` tự động hồi phục về trạng thái `READY`.
+
 
 
 
