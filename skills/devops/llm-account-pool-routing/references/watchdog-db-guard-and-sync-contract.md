@@ -162,4 +162,27 @@ Khi mock workbook cho `load_accounts_credentials`:
   * *Lý do thanh lọc*: Nếu giữ 100+ connection mà một nửa là cookie die, OmniRoute sẽ rơi vào vòng xoáy retry cascade (mỗi request ngâm 45s-75s) và làm nghẽn Event Loop của NodeJS, khiến `/v1/models` timeout và sập proxy.
   * *Nguyên tắc giải trình*: Kho tài khoản gốc (credentials, recovery mail, profile GPM) vẫn được lưu trữ đầy đủ trong file Excel (`taikhoan_dat_v2_updated.xlsx`) và GPMLogin. Chỉ những tài khoản có session cookie sống và hợp lệ mới được nạp vào OmniRoute để phục vụ routing.
 
+## 12. Bóc Tách Bản Chất 'test_status = banned' vs 'Sentinel/Turnstile required' & Kỹ Thuật Probe 2 Tầng (/session vs /prepare)
+- **Triệu chứng & Cảnh báo**:
+  OmniRoute hiển thị tài khoản ChatGPT-Web ở trạng thái `test_status = 'banned'` kèm `last_error`:
+  `ChatGPT blocked the request (Sentinel/Turnstile required). Try again later or open chatgpt.com in a browser to refresh state.`
+  User hoang mang hỏi: *"tk bị ban là ms bị ban hay sao?"*.
+- **Bản chất cơ chế**:
+  * Trong `chatgpt-web.ts`, OmniRoute bắt mọi lỗi `HTTP 401` hoặc `HTTP 403` khi gọi endpoint `/backend-api/sentinel/chat-requirements/prepare` rồi tự động gán nhãn `banned` kèm chuỗi lỗi `(Sentinel/Turnstile required)`.
+  * **Thực tế**: Đa số các lỗi này KHÔNG PHẢI do kẹt nút Cloudflare Turnstile trên trình duyệt, mà do OpenAI trả về mã lỗi cụ thể: `{"error": {"code": "token_revoked", "message": "Encountered invalidated oauth token for user, failing request"}}`.
+- **Kỹ thuật chẩn đoán Probe 2 tầng độc lập**:
+  1. *Tầng 1 (Session Probe)*: `GET https://chatgpt.com/api/auth/session` với headers `Cookie: <decrypted_cookie>`.
+     - Nếu `HTTP 403 HTML`: IP proxy bị Cloudflare chặn challenge hoặc proxy lỗi xác thực (407).
+     - Nếu `HTTP 200`: Trích xuất `accessToken` thành công, cookie phiên vẫn sống.
+  2. *Tầng 2 (Prepare Probe)*: `POST https://chatgpt.com/backend-api/sentinel/chat-requirements/prepare` với `Authorization: Bearer <accessToken>` và `json={"p": ""}`.
+     - Nếu `HTTP 401` kèm `code: "token_revoked"`: OpenAI đã thu hồi phiên OAuth / session token phía máy chủ. Tài khoản DIE thật.
+     - Nếu `HTTP 200`: Tài khoản LIVE 100%, có thể trả về `is_active = 1` an toàn.
+- **Bẫy Cầu Dao Combos (30-min Circuit Breaker Hazard)**:
+  * Nếu các tài khoản bị `token_revoked` vẫn nằm lại trong mảng `models` của các combo (`chatgpt-web-pool`, `gpt-web-sol`), router xoay vòng gặp 5 request lỗi liên tiếp sẽ kích hoạt cơ chế `Circuit breaker tripped for chatgpt-web: 5 consecutive failures. Blocked for 30min.` làm đóng băng toàn bộ pool.
+  * **Kỷ luật xử lý ("Ban xóa DB giữ GPM")**:
+    1. Lọc bỏ các connection ID bị `token_revoked` ra khỏi mảng `models` của các combo trong bảng `combos`.
+    2. Xóa các connection dead khỏi `provider_connections` (hoặc đánh dấu `is_active = 0, test_status = 'revoked'`).
+    3. Giữ nguyên 100% profile trên GPMLogin để khi cần có thể đăng nhập lại cấp session token mới.
+
+
 

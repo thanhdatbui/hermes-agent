@@ -20,7 +20,7 @@ Use this skill when one agent coordinates work while another model or coding CLI
 
 
 ### Wrapper bắt buộc: `claude_worker.py` (Kẹp turns & Quota gate)
-- Chi tiết đối soát thực chiến 10 trận Sol vs Gemini: xem `references/sol-worker-vs-gemini-farm-benchmark.md`.
+- Chi tiết đối soát thực chiến Sol vs Gemini vs Codex Luna: xem `references/sol-worker-vs-gemini-farm-benchmark.md`.
 Mọi lượt gọi Claude CLI bắt buộc đi qua `D:/Taadaa/tools/claude_worker.py` (hoặc `haiku_worker.py` tương thích ngược):
 - `--role worker` (Haiku 5.5, max 15 turns): Thợ gõ code O(1),
 

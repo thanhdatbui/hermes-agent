@@ -1,12 +1,12 @@
-# Sol Worker (GPT-5.6 Sol) vs Gemini Flash: 10-Round Farm Benchmark & Routing Matrix (2026-10-23)
+# Sol Worker (GPT-5.6 Sol) vs Gemini Flash vs Codex Luna: Farm Benchmark & Routing Matrix (2026-10-23)
 
 ## Bối Cảnh Thực Nghiệm
 
-Khi Claude CLI chạm ngưỡng bảo vệ quota 85% hoặc Agy CLI pool dính rate limit, hệ thống cần một Worker thay thế độc lập. Cuộc đối đầu 10 trận thực chiến giữa **GPT-5.6 Sol Web (`gpt-web-sol` qua OmniRoute `:20129`)** và **Google Gemini Flash (`gemini-3.8-flash-tiered`)** được thực hiện trên các bài toán thực tế của Taadaa Phone Farm (theo chuẩn `benchmark_sol_spec.md` và `claude_bench_spec.json`).
+Khi Claude CLI chạm ngưỡng bảo vệ quota 85% hoặc Agy CLI pool dính rate limit, hệ thống cần một Worker thay thế độc lập. Cuộc đối đầu đa trận thực chiến giữa **GPT-5.6 Sol Web (`gpt-web-sol` qua OmniRoute `:20129`)**, **Google Gemini Flash (`gemini-3.8-flash-tiered`)**, và **Codex Luna (`codex-luna`)** được thực hiện trên các bài toán thực tế của Taadaa Phone Farm (theo chuẩn `benchmark_sol_spec.md` và `claude_bench_spec.json`).
 
 ---
 
-## Kết Quả 10 Trận Đối Đầu Chi Tiết
+## 1. Kết Quả 10 Trận Đối Đầu: GPT-5.6 Sol vs Gemini Flash
 
 | Trận | Đề bài / Trọng tâm | Điểm Sol | Điểm Gemini | Winner | Nhận xét mấu chốt |
 | :---: | :--- | :---: | :---: | :---: | :--- |
@@ -27,15 +27,31 @@ Khi Claude CLI chạm ngưỡng bảo vệ quota 85% hoặc Agy CLI pool dính r
 
 ---
 
-## Ma Trận Điều Phối (Routing Decision Matrix)
+## 2. Kết Quả 6 Trận Đối Đầu Trực Diện: GPT-5.6 Sol vs Codex Luna
+
+| Trận | Bài toán / Trọng tâm | Sol (`gpt-web-sol`) | Codex Luna (`codex-luna`) | Winner | Chi tiết kỹ thuật |
+| :---: | :--- | :---: | :---: | :---: | :--- |
+| **1** | **TikTok UI Drift Surgery** (v46+ mất resource-id) | **19.0 / 20** (15.0s) | **19.0 / 20** (12.7s) | 🤝 **Hòa** | Cả hai đều bỏ ID rỗng và fallback sang text `("Đang theo dõi", "Đang follow")` sạch sẽ. |
+| **2** | **Device Lock Race Condition** (Lost update) | **24.0 / 25** (18.5s) | **23.5 / 25** (14.2s) | 🥇 **Sol** | Cả 2 đều dùng `fcntl.flock` bọc critical section, nhưng code của Sol ngắn hơn và ít phụ thuộc class. |
+| **3** | **Anti-Overengineering** (Bug follower == 1) | **20.0 / 20** (16.0s) | **10.0 / 20** (11.0s) | 🥇 **Sol** | **Luna dính bẫy ngớ ngẩn:** Đổi thành `if c > 1: return True` và giữ `c == 1: return False` $\rightarrow$ Ngược 100% đề bài! Sol nhận ra `c > 0` đã bao hàm `c == 1`, chỉ cần xóa nhánh dead-code thừa. |
+| **4** | **Farm Invariant Review** (Review an toàn) | **19.0 / 20** (26.8s) | **19.0 / 20** (15.6s) | 🤝 **Hòa** | Cả hai đều bắt chuẩn: BLOCK DEPLOY, cảnh báo mất fingerprint device, kẹt I/O và tap tọa độ mù. |
+| **5** | **JSON Corrupt Recovery** (File lock rách) | 18.5 / 20 (16.9s) | **19.5 / 20** (49.5s) | 🥇 **Luna** | **Luna xử lý rất bản lĩnh:** Thay vì trả `{}` rỗng (dễ bị hiểu lầm là máy chưa có ai chiếm $\rightarrow$ cấp nhầm lock), Luna retry 3 lần và raise `LockFileUnavailable` (chuẩn fail-closed). |
+| **6** | **High-Concurrency Lock** (70 Devices) | **19.0 / 20** (15.0s) | **0.0 / 20** (75.0s) | 🥇 **Sol** | Sol hoàn thành trong 15s với cơ chế lockfile + atomic replace. **Luna bị timeout rớt kết nối sau 75 giây.** |
+
+- **Tỉ số trận:** **Sol thắng 3 — Luna thắng 1 — Hòa 2**
+- **Tổng điểm (thang 125đ):** **GPT-5.6 Sol 119.5 / 125 (95.6%)** vs **Codex Luna 91.0 / 125 (72.8%)**.
+
+---
+
+## 3. Ma Trận Điều Phối Tam Giác (Triad Routing Decision Matrix)
 
 ### 1. Khi Nào Điều Phối Cho Sol (`gpt-web-sol` / `sol_worker.py`):
 1. **Lỗi Concurrency, Race Condition, Deadlock:**
    - Tranh chấp file lock JSON, token lease, process synchronization giữa nhiều worker.
-   - Sol có tư duy của Senior Systems Architect, luôn nhận diện chuẩn các bẫy Lost Update, Atomic Read-Modify-Write và Mutex Scope.
+   - Sol có tư duy của Senior Systems Architect, luôn nhận diện chuẩn các bẫy Lost Update, Atomic Read-Modify-Write và Mutex Scope (thắng cả Gemini và Luna).
 2. **Code Surgery & Logic Patch Tối Giản ($O(1)$):**
    - Cần sửa lỗi logic thuần túy với yêu cầu nghiêm ngặt: diff nhỏ nhất, cấm refactor, cấm thêm dependency.
-   - Sol tuân thủ prompt contract cực kỳ kỷ luật, không bao giờ "ngứa tay" viết thêm class thừa.
+   - Sol tuân thủ prompt contract cực kỳ kỷ luật, không bị bẫy đề bài (như trận follower count Luna bị đảo ngược logic).
 3. **Phân Tích Kiến Trúc An Toàn & Invariant Review:**
    - Đánh giá thiết kế hệ thống, phân tích rủi ro P0/P1 trước khi triển khai.
 
@@ -49,9 +65,14 @@ Khi Claude CLI chạm ngưỡng bảo vệ quota 85% hoặc Agy CLI pool dính r
 3. **Mã Nguồn Đa Nền Tảng (Windows + Linux):**
    - Tự động nhận diện host OS (`sys.platform == 'win32'`) để dùng `msvcrt` thay vì chỉ phụ thuộc `fcntl` của Unix.
 
+### 3. Khi Nào Điều Phối Cho Codex Luna (`codex-luna`):
+1. **Thiết Kế Kiến Trúc Bảo Mật Khắt Khe & Fail-Closed Exceptions:**
+   - Luna có phản xạ tuyệt vời về thiết kế Exception có ngữ nghĩa (như `LockFileUnavailable`), retry exponential có chặn trên, và cấm trả dữ liệu giả định rỗng.
+   - Dùng cho các bài toán bảo mật dữ liệu nhạy cảm hoặc auditing tầng sâu khi latency không phải yếu tố then chốt.
+
 ---
 
-## Cạm Bẫy Vận Hành & Khắc Phục Đối Với Sol Worker (`sol_worker.py`)
+## 4. Cạm Bẫy Vận Hành & Khắc Phục Đối Với Sol Worker (`sol_worker.py`)
 
 1. **Bẫy Cạn `max_turns` (Lỗi Exit 124):**
    - *Hiện tượng:* `MAX_TURNS_REACHED: Task did not complete within 6 turns`.
