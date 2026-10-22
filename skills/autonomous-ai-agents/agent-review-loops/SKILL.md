@@ -49,3 +49,4 @@ metadata:
 - Multi-Round Adversarial Gate Hardening & Fail-Closed Review: [`references/multi-round-adversarial-gate-hardening-lessons-20261022.md`](references/multi-round-adversarial-gate-hardening-lessons-20261022.md)
 - Claude Quota Silent Fallback & Safe Push Invariants: [`references/claude-quota-silent-fallback-and-safe-push-invariants.md`](references/claude-quota-silent-fallback-and-safe-push-invariants.md)
 - GPM CDP Login-Only Closeout Recipe: [`references/gpm-cdp-login-only-closeout-recipe-20261022.md`](references/gpm-cdp-login-only-closeout-recipe-20261022.md)
+- Claude Quota Cache Invalidation & Sonnet Review Timeout: [`references/claude-quota-cache-invalidation-and-sonnet-review-timeout.md`](references/claude-quota-cache-invalidation-and-sonnet-review-timeout.md)
