@@ -6,6 +6,7 @@ description: "Use when farm devices drop, USB hangs, or entering BIOS."
 # Android Farm Host Operations
 
 References:
+- `references/pre-session-framework-check-and-kill-switch-governance-20261022.md` — Bóc tách điểm mù adb get-state xanh nhưng Android framework (settings service) crash trên M213, kiến trúc probe 2 tầng (kernel + framework), structured telemetry và kill-switch FRAMEWORK_CHECK_ENABLED (22/10/2026).
 - `references/android-framework-settings-service-probe-and-closeout-30kb-triage-20261022.md` — Phân tích điểm mù adb get-state tầng kernel vs Android Java Framework (Can't find service: settings) trên M213, quy chuẩn kiểm tra 2 tầng (service check settings), telemetry có cấu trúc và quy trình quản lý 30KB diff budget khi đưa tool mới qua Closeout Gate (22/10/2026).
 - `references/xiaowei-focus-based-idle-and-closeout-gate-audit-20261022.md` — Phân tích bẫy nhàn rỗi OS-wide GetLastInputInfo vs focus-based tracking riêng cho Tiểu Vi (ngưỡng 10 phút), cơ chế tự dọn port 5038 khi bấm X, throttling ghi đĩa và quy chuẩn vượt Closeout Gate (22/10/2026).
 - `references/xiaowei-wmi-elevation-filter-and-reboot-lock-collision-20261021.md` — Chẩn đoán bẫy WMI Integrity Level trả về $null khiến watchdog 5038 bỏ qua tiến trình XiaoWei elevated và xung đột unbuffered Safe Window của cron xen ca làm trôi lịch reboot 3 ca (21/10/2026).
