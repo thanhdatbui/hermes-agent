@@ -109,4 +109,55 @@ def run_preflight():
 - Nếu Playwright crash trước khi click được nút "Kích hoạt gói", tab trình duyệt GPM vẫn được CDP mở sẵn ở trang landing.
 - **Hành động phục hồi tức thì:** Coordinator ngay lập tức kết nối lại cổng CDP (`127.0.0.1:<port>`), tìm tab chứa `activate-plan`, click nút `button:has-text("Kích hoạt gói")`, đợi chuyển sang `celebration` rồi mới dập còi Admin qua `python D:/Taadaa/tools/stop_admin_alarm.py`.
 
+---
+
+## 9. Giám Định Bằng Chứng Thực Tế: Google One Pro vs Free / Starter (Anti-False-Pro Triage)
+- Khi bên bán vin vào thông báo quá hạn link để tuyên bố *"tài khoản pro rồi kìa"* nhằm chối bỏ trách nhiệm, hoặc khi operator muốn kiểm tra lại nick cũ (ví dụ `nguyenkhoi14031998@gmail.com`):
+- BẮT BUỘC mở profile GPM vào `https://one.google.com/home` và `https://one.google.com/storage`, kiểm tra 3 dấu hiệu phân định ranh giới:
+  1. **Dung lượng hiển thị**: Nick Free chỉ có `0 GB / 5 GB` hoặc `0 GB / 15 GB`. Nick Pro 18M bắt buộc hiển thị `5 TB` (hoặc 2 TB).
+  2. **Nút Nâng cấp / Mua thêm**: Nick Free vẫn hiện các nút xanh `Nâng cấp` và `Mua thêm bộ nhớ`. Nick Pro không có các nút này.
+  3. **Thẻ GOOGLE AI PRO**: Nick Free hiện biểu tượng ổ khóa `lock` và nút `ĐĂNG KÝ GÓI GOOGLE AI PRO`. Nick Pro hiện thông báo `Bạn là thành viên gói Google AI Pro` kèm nút `Chuyển đến Gemini`.
+- Chụp ảnh màn hình, soi mắt qua `browser_vision` xác nhận cả 3 điểm trước khi đối soát hoặc báo cáo user.
+
+---
+
+## 10. Quy Trình Onboarding Tài Khoản Pro Mới Vào Dual-Pool (OmniRoute + AGY CLI)
+Ngay sau khi tài khoản hiển thị trang Celebration thành công:
+1. **OmniRoute DB (`storage.sqlite`)**:
+   - `UPDATE provider_connections SET is_active = 1, priority = 100, rate_limit_protection = 1, max_concurrent = 8, project_id = 'aicode-consumers', provider_specific_data = '{"clientProfile":"ide","projectId":"aicode-consumers","tier":"g1-pro-tier","apiKeyHealth":{},"subscriptionTier":"Google AI Pro","plan":"Pro"}' WHERE id = '<CONN_ID>'`
+2. **Gán Proxy 1:1 Chuẩn Connection Scope**:
+   - Xóa mapping cũ: `DELETE FROM proxy_assignments WHERE scope_id = '<CONN_ID>'`
+   - Gán mới: `INSERT INTO proxy_assignments (proxy_id, scope, scope_id, position, created_at, updated_at) VALUES ('<PROXY_REGISTRY_ID>', 'connection', '<CONN_ID>', 0, datetime('now'), datetime('now'))`
+3. **Thêm Vào Combo Pool (`ag-gemini-pool-3`)**:
+   - Đọc JSON từ `combos WHERE name = 'ag-gemini-pool-3'`, chèn phần tử mới vào mảng `models`:
+     ```json
+     {
+       "id": "ag-gemini-pool-3-model-<N>-antigravity-gemini-3-8-flash-tiered-<CONN_ID>",
+       "kind": "model",
+       "model": "antigravity/gemini-3.8-flash-tiered",
+       "providerId": "antigravity",
+       "connectionId": "<CONN_ID>",
+       "weight": 0,
+       "label": "<EMAIL>",
+       "name": null
+     }
+     ```
+4. **Khởi Tạo AGY CLI Sandbox (`D:\Taadaa\agy_profiles\acc_<N>`)**:
+   - Tạo thư mục `.gemini/`
+   - Xuất `oauth_creds.json`: bóc `access_token`, `refresh_token`, `scope` từ DB kèm `expiry_date` hợp lệ.
+   - Xuất `settings.json`: `{"security": {"auth": {"selectedType": "oauth-personal"}}}`
+   - Xuất `projects.json`: trỏ các project mapping `taadaa`, `kibe`, `automation-core`.
+5. **Cập Nhật Registry AGY CLI (`profiles_config.json`)**:
+   - Thêm entry vào list `profiles`:
+     ```json
+     {
+       "name": "acc_<N>",
+       "path": "D:/Taadaa/agy_profiles/acc_<N>",
+       "proxy": "http://mobi<port-num>:TaadaaMobi%232026%21@test.taadaa.click:<port>",
+       "enabled": true
+     }
+     ```
+6. **Thử Thách Google Bot Verification (403 VALIDATION_REQUIRED)**:
+   - Nếu upstream Antigravity trả lỗi 403 `VALIDATION_REQUIRED` kèm `validation_url`: Với các account farm nằm trên thiết bị S7 (`dumpsys account` có `com.google`), Google Play Services của máy S7 đã lưu trữ chứng chỉ thiết bị; mở URL xác minh trên GPM profile hoặc trên trình duyệt máy S7 để hoàn tất IAP validation một lần duy nhất.
+
 
