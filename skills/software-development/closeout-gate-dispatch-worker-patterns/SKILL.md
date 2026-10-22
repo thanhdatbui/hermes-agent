@@ -43,13 +43,14 @@ if cat in ("NEEDS_INPUT", "ENV"):
     audit("agy", 1, cat, f"agy_{cat.lower()}", ...)
     return rc or 1
 
-# Tier 2: Haiku fallback — use snap1 (not a new snapshot)
+# Tier 2: Haiku fallback — take fresh snapshot to isolate from Agy's partial edits
 audit("agy", 1, cat, "fallback_to_haiku", ...)
+snap_haiku = take_snapshot(workdir, args.file)   # KEY: isolate from Agy partial edits
 rc_h, out_h = run_tool(haiku_cmd(args.prompt), ...)
-has_changes_h, _ = verify_changes(snap1, workdir, args.file, out_h)   # KEY: same snap1
+has_changes_h, _ = verify_changes(snap_haiku, workdir, args.file, out_h)
 ```
 
-**Critical pitfall:** Taking a NEW snapshot (`snap_haiku = take_snapshot(...)`) after Agy runs allows Agy's partial changes to be counted as Haiku's contribution. Always reuse `snap1`.
+**Critical Invariant (Snapshot Isolation):** Reusing `snap1` across attempts allows Agy's partial/failed edits to be falsely counted as Haiku's contribution. BẮT BUỘC chụp snapshot mới trước mỗi attempt (`snap_haiku = take_snapshot(...)` trước Haiku 1, `snap_attempt2 = take_snapshot(...)` trước Haiku 2) để từng worker/attempt chỉ được nghiệm thu dựa trên đúng diff do chính nó tạo ra.
 
 ### 2.2 Haiku Retry Ladder (Quota Fast-Path)
 ```python
@@ -66,10 +67,11 @@ if cat_h in ("NEEDS_INPUT", "ENV"):
 # Audit attempt 1 before retrying
 audit("haiku", 1, cat_h, "retry_needed", ...)
 
-# Attempt 2
+# Attempt 2: isolate snapshot from Attempt 1 partial edits
+snap_attempt2 = take_snapshot(workdir, args.file)
 prompt2 = RETRY_PREFIX + args.prompt
 rc2, out2 = run_tool(haiku_cmd(prompt2), ...)
-has_changes2, _ = verify_changes(snap1, workdir, args.file, out2)  # Still snap1
+has_changes2, _ = verify_changes(snap_attempt2, workdir, args.file, out2)
 ```
 
 ### 2.3 Audit Coverage Requirements (Telemetry Score)
@@ -134,3 +136,11 @@ python D:/Taadaa/tools/closeout_gate.py \
     --files dispatch_worker.py tests/test_dispatch_worker.py \
     --json-output
 ```
+
+---
+
+## 6. Safe Push & Canary Pitfall (Developer Tooling Repos)
+
+- `safe_push.py` checks `detect_task_type(repo)` via `done_gate.py`.
+- If a repo is categorized as `'automation'`, `safe_push.py` requires a verified Android Canary Receipt (`.canary_passed`).
+- **CRITICAL INVARIANT:** Developer tooling repos (như `D:/Taadaa/tools`) không chạy trên thiết bị Android thật, TUYỆT ĐỐI CẤM khai báo `"tools"` vào `AUTOMATION_REPOS` trong `done_gate.py`. Nếu bị khai báo nhầm, `canary_runner.py` sẽ báo lỗi `Chưa đăng ký cooldown state cho repo: tools` và chặn `safe_push` vĩnh viễn. Đảm bảo `detect_task_type("D:/Taadaa/tools")` luôn trả về `"general"` để bypass Canary phần cứng an toàn.
