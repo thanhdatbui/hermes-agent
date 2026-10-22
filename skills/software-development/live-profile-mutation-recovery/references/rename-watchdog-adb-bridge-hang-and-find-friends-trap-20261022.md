@@ -89,3 +89,44 @@ When the operator challenges a coordinator claim (`"- là có cứu đc k"`):
    - **Saved / Verified:** Show exact visual proof via `browser_vision` (e.g. M74 `Trang Xù`).
    - **Connectivity Unblocked but Secondary UI Blocker Pending:** Explain that ADB was resolved, but the runner hit the `FindFriendsPageActivity` UI trap (e.g. M4, M44, M69).
    - **Immutable Server Blocker:** Explain that tool recovery is impossible due to TikTok 7-day cooldown (e.g. M13).
+
+---
+
+## 5. Samsung S7 Profile Button Geometry (`y ≈ 865`) & Bio-less `+ Thêm tiểu sử` Unlock Flow
+
+### Symptom
+- Runner identifies state as `PROFILE`, tries to tap edit button, but remains in `PROFILE` for 5 consecutive steps, aborting with `ABORT: ket o trang thai PROFILE 5 lan lien tiep`.
+- Or runner falls back to `(72, 148)` and enters the `FindFriendsPageActivity` loop.
+
+### Coordinate Geometry on Samsung S7 (1080x1920)
+- Display name: `y ≈ 539–587`
+- Username `@user`: `y ≈ 606–644`
+- Follower stats row (`Đã follow | Follower | Thích`): `y ≈ 689–774` (center: `y=744`)
+- **Button row:** Sits strictly **BELOW** follower stats, at `y ≈ 845–882` (center: `y ≈ 865`)!
+- **Fatal Trap at `y ≈ 660`:** Tapping `y ≈ 660` taps the empty white space between username and followers row. No action is triggered, causing a 5-step PROFILE stall.
+
+### Bio-less Account Behavior
+- When an account has no bio, TikTok suppresses the "Sửa hồ sơ" button entirely. It displays ONLY a single centered pill button `+ Thêm tiểu sử` at `(540, 865)` (`x: 383–685, y: 845–882`).
+- **Required Handling:**
+  1. Profile button matcher must match both `(sua|chinh sua|edit)\s*(h[o0]|profile)` AND `\+\s*th[eé]m|tid\w{0,2}\s*s|th[eé]m\s*ti|tieu\s*su`.
+  2. Fallback coordinate must be `(540, 865)`, never `(72, 148)` or `(315, 660)`.
+  3. When entering `BIO_EDIT`, if `not bio_saved`, the runner must write and save a simple bio (`TARGET_BIO or "Xin chao"`) via AdbKeyboard Base64.
+  4. Saving the bio transforms the TikTok profile layout to reveal the full "Sửa hồ sơ" button upon returning to `PROFILE`.
+
+---
+
+## 6. Bio Placeholder `@` OCR Misidentification Trap (Case M43)
+
+### Symptom
+- Runner enters `PROFILE`, but logs `mo Switcher 3 lan, acc active van la @taikhoancuatoin6ive`, then aborts with `exit_2`.
+- Real target account (e.g. `@kimthinh2415`) was already active on screen.
+
+### Root Cause
+- Below the profile buttons, TikTok displays placeholder prompt text starting with `@`: e.g. `@ Tài khoản của tôi nói về...`.
+- `nickname_on_profile()` checked `t.startswith("@") and b[1] < 750`. Because the prompt was at `y < 750` and started with `@`, `compact(t)` parsed `@taikhoancuatoin6ive` as the account username.
+- The runner misidentified the current account as wrong, tried opening Switcher 3 times to find `@kimthinh2415`, and failed.
+
+### Remediation
+- Require username candidates to have no spaces in the handle: `" " not in t.strip()[:10]`.
+- Exclude common placeholder keywords: `not any(k in norm(t) for k in ("tai khoan", "nhac den", "noi ve", "chia se"))`.
+

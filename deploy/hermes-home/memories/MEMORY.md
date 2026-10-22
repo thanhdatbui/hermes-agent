@@ -4,7 +4,7 @@ Follow: dò +2 (max 40); lùi 4 sàn 15. Streak chỉ tăng khi fl=0; fl>=1 gi�
 §
 Hotmail: @fviainboxes.com đọc OTP. Pin>=1k: chuẩn hoá bắt buộc Pin top view (swap clip thấp); soi OCR nhãn 'Đã ghim' đúng ô view cao, cấm thấy nhãn clip cũ rồi báo bừa. S7 wake dùng aweme.splash.SplashActivity.
 §
-Rename: tâm nút Sửa hồ sơ (315,660), cấm tap (72,148) Tìm bạn bè; thoát FIND_FRIENDS; lọc @ bio suggestion; 7d cd; BIO_EDIT trước PROFILE; tên Việt có dấu; core switcher; Smart name đa dạng.
+Rename: tâm nút Sửa hồ sơ (315,865)/(540,865), cấm tap (72,148) Tìm bạn bè; thoát FIND_FRIENDS; lọc @ bio suggestion; 7d cd; BIO_EDIT trước PROFILE; tên Việt có dấu; core switcher; Smart name đa dạng.
 §
 Sol: On-Demand, cấm auto-append; advisor_tool 55s/consult 140s; briefing 4k ký tự.
 §
