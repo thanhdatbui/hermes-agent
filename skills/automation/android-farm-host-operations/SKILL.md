@@ -6,11 +6,7 @@ description: "Use when farm devices drop, USB hangs, or entering BIOS."
 # Android Farm Host Operations
 
 References:
-- `references/pre-session-gate-framework-blindspot-and-service-check-20261022.md` — Phân tích điểm mù get-state trong Pre-Session Gate khiến bỏ sót crash system_server (Can't find service: settings) và quy chuẩn kiểm thử 2 tầng kernel+framework (22/10/2026).
-- `references/android-framework-hang-vs-adb-get-state-gate-triage-20261022.md` — Phân tích điểm mù get-state 'device' vs crash Android framework (Can't find service: settings) trên M213, lý do in-flight cấm reboot S7 trong ca, quy chuẩn nâng cấp Pre-Session Gate qua service check settings và bẫy ambiguous adb terminal guard khi dispatch worker (22/10/2026).
-- `references/framework-crash-settings-service-blind-spot-and-pre-session-gate-20261022.md` — Phân tích điểm mù get-state 'device' vs crash Android framework (Can't find service: settings) trên M213, lý do in-flight cấm reboot S7 trong ca, quy chuẩn nâng cấp Pre-Session Gate qua service check settings và bẫy ambiguous adb terminal guard khi dispatch worker (22/10/2026).
-- `references/framework-crash-settings-service-blind-spot-and-pre-session-gate-20261022.md` — Phân tích điểm mù get-state 'device' vs crash Android framework (Can't find service: settings) trên M213, lý do in-flight cấm reboot S7 trong ca và quy chuẩn nâng cấp Pre-Session Gate (22/10/2026).
-- `references/wifi-vs-adb-disconnect-triage-and-settings-service-crash-20261022.md` — Phân biệt mất kết nối ADB/USB vs Wi-Fi (AP), giải đáp hiểu lầm cron Wi-Fi không cứu được máy rớt USB, bẫy false-positive crash `system_server` (`cmd: Can't find service: settings`) và quy trình Level 2 bypass-shell reboot (22/10/2026).
+- `references/android-framework-settings-service-probe-and-closeout-30kb-triage-20261022.md` — Phân tích điểm mù adb get-state tầng kernel vs Android Java Framework (Can't find service: settings) trên M213, quy chuẩn kiểm tra 2 tầng (service check settings), telemetry có cấu trúc và quy trình quản lý 30KB diff budget khi đưa tool mới qua Closeout Gate (22/10/2026).
 - `references/xiaowei-focus-based-idle-and-closeout-gate-audit-20261022.md` — Phân tích bẫy nhàn rỗi OS-wide GetLastInputInfo vs focus-based tracking riêng cho Tiểu Vi (ngưỡng 10 phút), cơ chế tự dọn port 5038 khi bấm X, throttling ghi đĩa và quy chuẩn vượt Closeout Gate (22/10/2026).
 - `references/xiaowei-wmi-elevation-filter-and-reboot-lock-collision-20261021.md` — Chẩn đoán bẫy WMI Integrity Level trả về $null khiến watchdog 5038 bỏ qua tiến trình XiaoWei elevated và xung đột unbuffered Safe Window của cron xen ca làm trôi lịch reboot 3 ca (21/10/2026).
 - `references/inter-shift-lock-reboot-skip-and-port5038-split-triage-20261021.md` — Phân tích sự cố bỏ qua reboot 2 ca liên tiếp (11:20 & 17:20) do active device lock kết hợp với xung đột daemon ADB cổng 5038 của Tiểu Vi khiến văng 35 máy trên Kibe tại Ca 3 Phiên 2 (21/10/2026).
@@ -647,6 +643,16 @@ Use when phone farm devices drop from ADB/PC, USB controllers hang, entering UEF
   * Các mốc reboot máy chủ (05:20, 11:20, 17:20) tự động kiểm tra `has_active_device_locks()` và thoát ngay (`[SKIP]`) nếu có dù chỉ 1 máy đang giữ device lock.
   * Mọi cron xen ca (như đổi tên nick, kiểm tra liveness, tải avatar) BẮT BUỘC kết thúc Safe Window trước mốc reboot ít nhất **20 phút** (ví dụ khung sáng dừng ở `11:00`, khung chiều dừng ở `17:00`). CẤM cấu hình window rướn tới sát `11:20` hoặc `17:20` vì các batch chạy 15 phút sẽ đè qua giờ reboot và làm mất chu kỳ reset EHCI USB.
   * Chi tiết: `references/xiaowei-port5038-wmi-integrity-blindness-and-reboot-window-buffer-20261021.md`.
+
+## 31. Bẫy Điểm Mù ADB `get-state` (Kernel vs Java Framework) & Cơ Chế Thăm Dò 2 Tầng Trước Ca
+- **Hiện tượng:** M213 (Admin) báo "Mất kết nối Wi-Fi (AP)" trên Feed Watchdog, nhưng thực tế Wi-Fi có IP bình thường; lỗi do `system_server` / `settings` service bị crash (`cmd: Can't find service: settings`).
+- **Bản chất điểm mù `get-state`:** Lệnh `adb get-state` chỉ hỏi daemon native C (`adbd`) ở kernel Linux. Khi Android Java Framework crash, `get-state` vẫn trả về `device` làm Pre-Session Gate báo ảo là máy sẵn sàng. Trong ca, runner fail-fast do cấm reboot S7 in-flight (mất 45-60s gây nghẽn batch).
+- **Quy chuẩn thăm dò 2 tầng O(1) trong `pre_session_device_gate.py`:**
+  * Tầng 1: `adb get-state` (timeout 3.0s).
+  * Tầng 2: `adb shell service check settings` (timeout 2.0s). Tiêu chuẩn: `returncode == 0`, stdout chứa `"found"` và KHÔNG chứa `"not found"`.
+  * Telemetry có cấu trúc: `emit_telemetry('framework_check', ...)` với `serial`, `machine_id`, `status`, `latency_sec`.
+  * Cứu hộ tự động trước ca: Nếu framework hỏng, tự kích hoạt Level 2 bypass-shell direct reboot cứu máy trước ca.
+- **Kỷ luật Diff Budget 30KB cho tool mới qua Closeout Gate:** Tool mới + test (>30KB) bắt buộc commit baseline trước (`feat: ...`), sau đó commit bản vá phẫu thuật làm `HEAD` (`fix: ... [gate-approved]`). `closeout_gate.py --base HEAD~1` sẽ chỉ trích xuất diff phẫu thuật (<12KB), tránh lỗi `NEED_CONTEXT`. Chi tiết: `references/android-framework-settings-service-probe-and-closeout-30kb-triage-20261022.md`.
 
 ## 31. Bẫy Thăm Dò `adb get-state` Mù Tầng Android Framework & Bẫy Terminal Guard Khi Dispatch Worker (22/10/2026)
 - **Điểm mù tầng `adbd` vs Android Framework (`system_server` / `ServiceManager`):**

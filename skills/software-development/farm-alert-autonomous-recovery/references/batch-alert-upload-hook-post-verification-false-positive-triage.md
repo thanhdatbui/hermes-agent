@@ -15,7 +15,7 @@ Khi nhận được cảnh báo batch trên Farm:
   `Post verification inconclusive/failed: TIMEOUT`
   và chuyển sang `_recheck_ambiguous_post()`. Khi không thể xác nhận 100% video đã hiển thị, script chọn dừng an toàn (fail-closed) để không spam đăng trùng lặp, sau đó dọn dẹp và đưa máy về màn hình Home (`LauncherActivity`).
 - Tuy nhiên, trong `automation_core/batch_aggregator.py`, danh sách `CHALLENGE_KEYWORDS` có chứa từ khóa `"verification"`.
-- Do thiếu `"post verification"` trong `CHALLENGE_EXCLUSIONS`, `batch_aggregator` đã quét trúng từ `"verification"` trong chuỗi lỗi và xếp nhầm thành lỗi Captcha / Thử thách danh tính (`challenge_failure`).
+- Do bộ lọc chỉ quét chuỗi con (`in`), `"verification"` trong chuỗi lỗi đã bị xếp nhầm thành lỗi Captcha / Thử thách danh tính (`challenge_failure`).
 
 ## 3. Quy Trình Kiểm Chứng Hiện Trường O(1)
 1. Chạy inspect O(1) kiểm tra trạng thái các máy bị cảnh báo:
@@ -32,11 +32,15 @@ Khi nhận được cảnh báo batch trên Farm:
 - **Trả lời trực diện ngay câu đầu tiên:** Khẳng định ngay là BÁO ĐỘNG GIẢ do watchdog bắt nhầm từ khóa, tài khoản và máy móc an toàn 100%. CẤM tuôn một tràng số liệu kỹ thuật (pin, nhiệt độ, IP) trước khi trả lời câu hỏi "Lỗi gì".
 - **Hành động ngay lập tức:** Khi Operator yêu cầu fix, không chần chừ hay giải thích lan man, tiến hành sửa code O(1) ngay.
 
-## 5. Phương Án Xử Lý & Worker Dispatch
-- **Bổ sung loại trừ:** Thêm `"post verification"` vào `CHALLENGE_EXCLUSIONS` trong `src/automation_core/batch_aggregator.py`.
-- **Thêm unit test:** Thêm test case vào `tests/test_batch_aggregator.py` kiểm chứng `MachineResult` với chuỗi lỗi `UploadHook: Post verification inconclusive/failed: TIMEOUT` có `challenge_count == 0` và `should_alert is False`.
-- **Dispatch Worker qua Single Dispatch Gateway:**
-  ```bash
-  python D:/Taadaa/tools/dispatch_worker.py --workdir "D:/Taadaa/automation-core" --timeout 180 "<Patch Contract O(1)>"
-  ```
-- **Lưu ý Fallback:** Nếu Agy CLI gặp sự cố model config, Single Dispatch Gateway sẽ tự động failover sang Haiku Tier-2 trong vòng < 30s.
+## 5. Quy Chuẩn Kiến Trúc Sửa Code & Closeout Gate
+- **CẤM sửa theo kiểu thêm thô vào exclusion blacklist:**
+  Việc nhét `"post verification"` vào `CHALLENGE_EXCLUSIONS` tạo ra bẫy adversarial (nếu chuỗi lỗi thực tế là `"post verification: captcha required"`, toàn bộ thông báo sẽ bị nuốt chửng).
+- **Quy chuẩn Prefix-Stripping:**
+  Định nghĩa `_CHALLENGE_STRIP_PREFIXES` và dùng `_strip_challenge_prefixes(text)` để gọt bỏ các tiền tố không phải challenge (`"profile verification"`, `"post verification"`) trước khi đối soát từ khóa (`CHALLENGE_KEYWORDS`).
+- **3 Lớp Test Bắt Buộc (Negative & Adversarial):**
+  1. Test triệt tiêu báo động giả: `UploadHook: Post verification inconclusive/failed: TIMEOUT` -> 0 challenge.
+  2. Test không bỏ sót challenge thật: `Verification challenge required: please complete the CAPTCHA` -> 1 challenge.
+  3. Test kịch bản lai (Adversarial): `post verification inconclusive: captcha required` -> 1 challenge.
+  4. Test telemetry logging: kiểm tra `[CHALLENGE_EXCLUSION]` emit đúng log.
+- **Quy trình Closeout Remediation:**
+  `closeout_gate.py` (Sonnet) -> nếu `REJECTED`, dùng `sol_repair.py` (Sol High) làm First Responder đề xuất patch O(1) -> áp dụng và chạy focused test -> rerun `closeout_gate.py`.
