@@ -231,6 +231,36 @@ def test_main_closes_foreground_idle_end_to_end(monkeypatch, capsys):
     assert close_event["is_foreground"] is True
 
 
+def test_main_close_failed_summary_telemetry(monkeypatch, capsys):
+    close = MagicMock(return_value=False)
+    foreground = MagicMock(return_value=False)
+    monkeypatch.setattr(xw, "is_xiaowei_running", lambda: True)
+    monkeypatch.setattr(xw, "get_idle_seconds", lambda is_fg=None: xw.IDLE_THRESHOLD_SECONDS + 10)
+    monkeypatch.setattr(xw, "close_xiaowei", close)
+    monkeypatch.setattr(xw, "is_xiaowei_foreground", foreground)
+    monkeypatch.setattr(xw, "DRY_RUN_MODE", False)
+    xw._XIAOWEI_RUNNING_CACHE = None
+
+    xw.main()
+    close.assert_called_once()
+    records = [json.loads(line) for line in capsys.readouterr().out.splitlines() if line.lstrip().startswith("{")]
+    failed_event = next(r for r in records if r.get("event") == "XIAOWEI_CLOSE_FAILED_SUMMARY")
+    assert failed_event["reason"] == "unfocused_background_idle"
+    assert failed_event["is_foreground"] is False
+
+
+def test_state_file_backward_compatibility(monkeypatch, tmp_path):
+    state_file = str(tmp_path / "xiaowei_idle_activity.ts")
+    monkeypatch.setattr(xw, "STATE_FILE", state_file)
+    with open(state_file, "w", encoding="utf-8") as f:
+        f.write("1792132000.5\n")
+    assert xw._read_last_active() == 1792132000.5
+
+    with open(state_file, "w", encoding="utf-8") as f:
+        f.write("corrupted string\n")
+    assert xw._read_last_active() is None
+
+
 def test_cim_timeout_env_parsing(monkeypatch):
     for value, expected in [(None, 10), ("-1", 5), ("120", 60), ("abc", 10)]:
         monkeypatch.delenv("XIAOWEI_CIM_TIMEOUT", raising=False)

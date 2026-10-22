@@ -139,9 +139,9 @@ def is_xiaowei_foreground() -> bool:
     if any(k in title for k in ('xiaowei', '牧卫', '效卫', 'com.xiaowei')):
         return True
     proc_name = _foreground_process_name(user32, hwnd)
-    if proc_name == 'xiaowei.exe':
+    if 'xiaowei' in proc_name:
         return True
-    if proc_name == 'msedgewebview2.exe' and any(k in title for k in ('投屏', 'xiaowei')):
+    if 'msedgewebview2' in proc_name and any(k in title for k in ('投屏', 'xiaowei')):
         return True
     return False
 
