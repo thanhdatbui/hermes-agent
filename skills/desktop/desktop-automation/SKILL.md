@@ -59,6 +59,36 @@ This skill captures learnings and pitfalls for driving the user's desktop via to
     "@
     [Input]::DoubleClick($x, $y)
     ```
+  - *End-to-End Automation Expectation vs. Premature Handoff (The Antigravity/OAuth Trap):*
+    When running guest VM onboarding or rescue automation (e.g. Antigravity Pro rescue), DO NOT halt at the landing screen (such as "Continue with Google" or the initial email form) and ask the user to take over manually. The automated tool suite (`ag-onboard-kit` / guest PowerShell scripts) is built to execute the entire sequence autonomously:
+    1. Click "Continue with Google" in Antigravity (`Bounds: [871, 349, 1033, 365]`, Center `[952, 357]` when top-anchored or `[960, 540]` when centered).
+    2. Overcome Electron app topmost occlusion (see below).
+    3. Type email -> Enter -> solve/tick reCAPTCHA -> type password -> generate and enter TOTP 2FA (`pyotp.TOTP(secret).now()`).
+    4. Authorize consent ("Allow" / "Đăng nhập") and return to Antigravity.
+    5. Send test chat prompt in Antigravity to trigger the backend verification challenge.
+    6. Stop and hand off to the user ONLY when the physical barrier is reached: the Google Device Verification QR Code screen (which requires a physical phone camera scan) or an un-automatable image puzzle. Stopping earlier is an operational failure.
+
+  - *Electron Topmost Occlusion Trap (Antigravity occluding Chrome OAuth Card):*
+    When Antigravity opens Chrome for Google OAuth, the Antigravity window often retains topmost focus or displays a "context deadline exceeded" dialog in the center (`X ~ 720..1200, Y ~ 350..500`). In maximized Chrome at 1920x1080, Google's Sign-In card is also centered at `X ~ 960, Y ~ 300..600`. Clicks intended for the Google login input field (`Email or phone` at `X ~ 1000..1050, Y ~ 400`) land on Antigravity instead.
+    *Fix:* Explicitly minimize Antigravity and maximize + foreground Chrome via PowerShell P/Invoke:
+    ```powershell
+    Add-Type @'
+    using System;
+    using System.Runtime.InteropServices;
+    public class WindowHelper {
+        [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
+        [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+    }
+    '@
+    $ag = Get-Process -Name Antigravity -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1
+    if ($ag) { [WindowHelper]::ShowWindow($ag.MainWindowHandle, 6) } # 6 = SW_MINIMIZE
+    $chrome = Get-Process -Name chrome -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1
+    if ($chrome) {
+        [WindowHelper]::ShowWindow($chrome.MainWindowHandle, 3) # 3 = SW_MAXIMIZE
+        [WindowHelper]::SetForegroundWindow($chrome.MainWindowHandle)
+    }
+    ```
+
   - *Google OAuth Risk Challenge (QR Scan Gate):* When signing in to Google accounts in guest VMs through residential/mobile proxies, Google often halts automation with `Quét mã QR bằng điện thoại`. Do not attempt blind OCR input loops. Capture the screen via `vmrun captureScreen`, crop the QR area, and deliver the screenshot to the user to scan with a physical phone Camera app (Zalo fails on Google authentication intents).
   - *Pitfall with `typeKeystrokesInGuest`:* Often fails on host with exit code `4294967295` (`Error: Insufficient permissions in the host operating system`) unless running with specific host OS elevation/hook privileges.
   - *Pitfall with Screen Blanking/Screensaver in Guest:* When guest displays all black (PNG size ~5KB, single color `(0,0,0)`), the guest screen is asleep/locked. Wake it by running `[System.Windows.Forms.SendKeys]::SendWait("{ESC}")` with `runProgramInGuest -interactive`.
@@ -217,7 +247,7 @@ This skill captures learnings and pitfalls for driving the user's desktop via to
 - For a repo-backed dev instance, separate the gates: (1) identify/update the source revision, (2) install dependencies, (3) run the build, (4) start/reload the app, (5) verify the live health endpoint. Report each gate in Vietnamese and do not call the app updated until the live endpoint answers.
 - If the upstream revision contains a reproducible build-breaking defect, make the smallest source correction needed for the requested app update, record the exact file/line and build result, and keep unrelated user changes backed up rather than silently merging them.
 
-See `references/gdrive-taskbar-suppression-and-headless-mount-20261020.md` for the registry policy hardening, zlib payload compression for remote SSH cmdline limits, atomic script patching, and headless on-demand mounting pattern. See `references/google-drive-startup-taskbar-suppression.md` for the original taskbar suppression pattern. See `references/application-vs-repository-update.md` for the checklist and evidence pattern for distinguishing an installed/running app update from a source-repository update. See `references/omniroute-update-lessons.md` for the OmniRoute-specific update/build/health sequence and failure patterns. See `references/gpmlogin-local-api-cdp.md` for the GPMLogin Local API + Playwright CDP background automation recipe. See `references/background-browser-download-and-save-as-workflow.md` for background browser control, SweetAlert modals, and Windows "Save As" file download automation via `computer_use`. See `references/windows-icloud-photos-storage-relocation.md` for redirecting locked Windows iCloud Photos sync storage to secondary drives via Shell Known Folders (`SHSetKnownFolderPath`) and handling flat UUID photo naming vs. Apple Album selection in Windows file pickers. See `references/windows-hevc-mov-thumbnail-icaros-repair.md` for resolving missing Windows Explorer thumbnails for iPhone HEVC `.MOV` and `.HEIC` media via unelevated `HKCU` Icaros shell extension registration and `SHChangeNotify`. See `references/capcut-qt6-desktop-automation-and-photo-timeline.md` for CapCut Desktop (Qt6) background canvas capture, WinRT OCR coordinate targeting, chronological EXIF photo milestone extraction, and critical template replacement pitfalls (timeline duration stretching, compound clip navigation traps, and mobile vs PC batch selection workflows). See `references/chrome-uia-hang-printwindow-winrt-postmessage.md` for zero-focus background automation bypassing unresponsive Chrome/Electron UIA accessibility trees via direct GDI `PrintWindow`, WinRT OCR coordinate extraction, and synthetic `PostMessage` clicks.
+See `references/vm-antigravity-onboard-rescue-pipeline.md` for the full step-by-step guest VM automation pipeline (Antigravity launch geometry, Chrome de-occlusion, OAuth form targeting, and QR handoff). See `references/gdrive-taskbar-suppression-and-headless-mount-20261020.md` for the registry policy hardening, zlib payload compression for remote SSH cmdline limits, atomic script patching, and headless on-demand mounting pattern. See `references/google-drive-startup-taskbar-suppression.md` for the original taskbar suppression pattern. See `references/application-vs-repository-update.md` for the checklist and evidence pattern for distinguishing an installed/running app update from a source-repository update. See `references/omniroute-update-lessons.md` for the OmniRoute-specific update/build/health sequence and failure patterns. See `references/gpmlogin-local-api-cdp.md` for the GPMLogin Local API + Playwright CDP background automation recipe. See `references/background-browser-download-and-save-as-workflow.md` for background browser control, SweetAlert modals, and Windows "Save As" file download automation via `computer_use`. See `references/windows-icloud-photos-storage-relocation.md` for redirecting locked Windows iCloud Photos sync storage to secondary drives via Shell Known Folders (`SHSetKnownFolderPath`) and handling flat UUID photo naming vs. Apple Album selection in Windows file pickers. See `references/windows-hevc-mov-thumbnail-icaros-repair.md` for resolving missing Windows Explorer thumbnails for iPhone HEVC `.MOV` and `.HEIC` media via unelevated `HKCU` Icaros shell extension registration and `SHChangeNotify`. See `references/capcut-qt6-desktop-automation-and-photo-timeline.md` for CapCut Desktop (Qt6) background canvas capture, WinRT OCR coordinate targeting, chronological EXIF photo milestone extraction, and critical template replacement pitfalls (timeline duration stretching, compound clip navigation traps, and mobile vs PC batch selection workflows). See `references/chrome-uia-hang-printwindow-winrt-postmessage.md` for zero-focus background automation bypassing unresponsive Chrome/Electron UIA accessibility trees via direct GDI `PrintWindow`, WinRT OCR coordinate extraction, and synthetic `PostMessage` clicks.
 
 ## Unexpected privileged windows and cross-machine attribution
 - Trigger: the user sees an unexpected Administrator terminal, firewall help/error output, or says the command was typed on another machine.
