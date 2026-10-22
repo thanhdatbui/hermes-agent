@@ -20,7 +20,7 @@ Ava: Trích clip gốc; Vision LLM lọc ava rác. Gate 6: cấm trần thuật 
 §
 Reboot 3 ca (05:20, 11:20, 17:20): lookback 60m; 2FA né đệm. Né TFT/War3. Task ngầm Hidden+CREATE_NO_WINDOW. Game=tắt nháy.
 §
-OMP/AGY: 25 acc OAuth; lease 1800s. CẤM Luna làm Coord. § Canary Strict: Cấm báo DONE sửa code farm khi chưa pass `done_gate.py --repo <repo> --strict-device` (exit 0); cấm tự khai general né gate.
+OMP/AGY: 25 acc OAuth; lease 1800s. CẤM Luna làm Coord. § Canary Strict: Cấm báo DONE sửa code farm khi chưa pass `done_gate.py --repo <repo> --strict-device` (exit 0); receipt bắt buộc khớp HEAD commit_sha và sha256 ảnh thật; cấm dùng pytest offline thay Canary.
 §
 Đơn TT Shop: Mail báo 1 lần; API SPX/J&T/Ninja; Hub Thanh Khê. Dashboard :1905 /api/orders.
 §
