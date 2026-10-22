@@ -209,17 +209,62 @@ When signing in during activation, Google often intercepts with:
 2. `gds.google.com/web/homeaddress` (*"Đặt địa chỉ nhà riêng"*): Click button `Để sau` or `Bỏ qua`.
 - Once dismissed, the browser lands directly on `one.google.com/activate-plan/subscription/new/...` where the confirmation button (`Kích hoạt gói` / `Xác nhận`) can be clicked.
 
-### OmniRoute `proxy_assignments` SQLite Schema Contract
-- Table: `proxy_assignments`
-  - `id`: **INTEGER PRIMARY KEY AUTOINCREMENT** (Do NOT pass string UUID into `id`, or SQLite throws `IntegrityError: datatype mismatch`).
-  - `proxy_id`: TEXT UUID from `proxy_registry`.
-  - `scope`: `'connection'` (or `'provider'`).
-  - `scope_id`: TEXT UUID of the connection in `provider_connections`.
-  - `position`: `0`.
-- Safe SQL:
-  ```sql
-  DELETE FROM proxy_assignments WHERE scope_id = '<CONN_ID>';
-  INSERT INTO proxy_assignments (proxy_id, scope, scope_id, position, created_at, updated_at) 
-  VALUES ('<PROXY_ID>', 'connection', '<CONN_ID>', 0, datetime('now'), datetime('now'));
-  ```
+---
+
+## 8. The "model_cooldown" False Quota-Exhausted Illusion vs Upstream 403
+
+### The False Quota Exhausted Trap
+When an account hits upstream 403 `VALIDATION_REQUIRED` repeatedly, OmniRoute caches an internal `model_cooldown` on `gemini-3.8-flash-tiered`.
+Subsequent requests or automated scanner probes (such as `scan_pro_accounts.py`) receive:
+```json
+{
+  "error": {
+    "message": "All credentials for model gemini-3.8-flash-tiered are cooling down",
+    "type": "rate_limit_error",
+    "code": "model_cooldown",
+    "reset_seconds": 120
+  }
+}
+```
+**CRITICAL PITFALL**: If an automated scanner simply checks `if "cooling down" in err: return "QUOTA_EXHAUSTED"`, it will falsely classify brand-new, newly-upgraded Pro accounts as "out of quota"!
+- **The Reality**: The account was just upgraded to Pro, has `used: 0, total: 1000` (100% quota remaining in `/api/usage/provider-limits`). It has never chatted a single token.
+- **The Cause**: The account is actually stuck on Google Cloud Code's security validation (`VALIDATION_REQUIRED` 403). OmniRoute failed earlier, cooling it down locally, so OmniRoute refuses to even contact Google upstream and replies with a local rate-limit cooldown message.
+
+---
+
+## 9. Antigravity Pro VMware Rescue Pipeline (`antigravity_rescue`)
+
+When Google Cloud Code sets the account-level `403 VALIDATION_REQUIRED` flag, standard OAuth web re-auth in GPM or browser does **NOT** clear it because Google binds the challenge to device fingerprint + proxy IP history.
+
+### Recovery Workflow Architecture (`D:\Taadaa\GPM auto\scripts\antigravity_rescue`)
+
+1. **Only Rescue Pro Accounts**:
+   Check `providerSpecificData.tier == "g1-pro-tier"` in OmniRoute before spending phone-scan effort. Standard/free tier accounts are not worth it.
+2. **Dedicated VMware Virtual Machine**:
+   - VM Path: `D:\VM\ag-onboard\ag-onboard.vmx`
+   - Canonical snapshot: `baseline-v2.17` (Antigravity 2.17.0 installed, Chrome AG as OS default, kit at `C:\ag-kit`, guest account `tada` / `Ag123456`).
+3. **Exact S7 1:1 Mobile Proxy TUN**:
+   - Resolve the account's assigned mobile proxy from `master_gmail_manager.xlsx` (column 10/11: `test.taadaa.click:<port>`).
+   - Start sing-box TUN inside the VM so 100% of the VM's egress traffic routes through that exact mobile IP.
+4. **Real Antigravity Desktop App Execution**:
+   - Launch the real Electron desktop client (`Antigravity.exe`) inside the VM under interactive Session 1 (`-interactive`). Desktop icon is located at (X=38, Y=459).
+   - Sign in with Google as `<email>` inside the VM.
+5. **Google QR Code Challenge Resolution**:
+   - Trigger a chat request. Antigravity displays `Error Verification Required`.
+   - Click `Complete verification` -> Chrome AG opens `accounts.google.com/...` with **"Xác minh thông tin để tiếp tục"** and an official Google QR code.
+   - Scan the QR code using a **real physical phone's native Camera app** (NOT Zalo, which fails silently on this specific Google challenge).
+6. **Isolated Live Verification**:
+   - Run `python verify_and_finalize.py <email>`:
+     - Disables all other active connections in OmniRoute.
+     - Tests the rescued account in complete isolation (preventing OmniRoute silent fallback to another account).
+     - Upon HTTP 200, re-enables the account and snapshots the VM as `<local-part>-verified`.
+
+### VMware Workstation Automation Pitfalls
+
+| Pitfall | Cause | Recovery / Prevention |
+|---|---|---|
+| `captureScreen` vs `captureScreenInGuest` | `vmrun` command syntax error. | Use `vmrun -T ws -gu tada -gp Ag123456 captureScreen <vmx> <host_dest_path>`. |
+| Black screen capture (5KB image) | (a) VMware modal dialog on host (e.g. `Software Updates`) pauses the VM; or (b) Guest Windows display sleeps after ~10m idle. | (a) Unpause VM with `vmrun unpause <vmx>` and dismiss host dialogs via `computer_use`; (b) Wake guest display by running an interactive PowerShell script that sends mouse click + `{ESC}`. Normal awake screenshot is ~180KB+. |
+| Antigravity launches in Session 0 | `vmrun runProgramInGuest` runs in background Session 0 by default. | Must always supply `-interactive` to `vmrun runProgramInGuest` so UI windows appear on the visible desktop in Session 1. |
+| `subprocess.run` hang on `vmrun` | VMware child processes leave pipe open when using `capture_output=True`. | Discard stdout/stderr using `stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL` with a strict timeout (150s). |
 

@@ -580,6 +580,28 @@ Khi kho credentials (token OAuth, mật khẩu proxy di động) không thể đ
 - **Bẫy nhận thức "Hết Quota / Hết Acc":** Khi thấy `ag_cli.py pool-status` báo các profile bị COOLDOWN, đó KHÔNG phải là tài khoản bị Google khóa chết, mất gói Pro hay hỏng token. Đó là cơ chế bảo vệ cục bộ đang tạm chặn phát request trong 30 phút để Google reset hạn mức.
 - **Tính độc lập trạng thái:** OmniRoute không đọc file `pool_state.json` của `ag_cli.py`, do đó trong cùng một thời điểm, OmniRoute vẫn báo 26/26 acc Pro `active` và Coordinator vẫn có thể chat bình thường qua kênh OmniRoute dù dàn `ag_cli.py` đang trong thời gian nghỉ. Khi hết 1.800s, toàn bộ pool `ag_cli.py` tự động hồi phục về trạng thái `READY`.
 
+### 3. Quy Trình Chuẩn Hóa Nạp Bổ Sung Tài Khoản Pro Từ OmniRoute Sang Agy CLI:
+- **Bối cảnh:** Khi OmniRoute sở hữu thêm các tài khoản Google One Pro (`g1-pro-tier`) nhưng trong `D:/Taadaa/agy_profiles/profiles_config.json` chưa được khai báo.
+- **Quy trình 2 bước chuẩn hóa O(1):**
+  1. *Bước 1 (Scaffold sandbox & gán proxy):*
+     Chạy lệnh native:
+     ```bash
+     python D:/Taadaa/tools/ag_cli.py init-profile <name> --proxy "<proxy_url>"
+     ```
+     Lệnh này tự động tạo cấu trúc sandbox (`AppData/Roaming`, `AppData/Local`, `Temp`, `.gemini`), sinh UUID `installation_id` riêng biệt, và an toàn append cấu hình vào `profiles_config.json`.
+  2. *Bước 2 (Trích xuất token & đồng bộ credentials):*
+     Đăng ký mapping `name -> email` trong `D:/Taadaa/tools/setup_agy_profile_creds.py`, sau đó chạy:
+     ```bash
+     python D:/Taadaa/tools/setup_agy_profile_creds.py
+     ```
+     Script sẽ tự động đọc token OAuth (`access_token`, `refresh_token`, `scope`) từ SQLite OmniRoute (`C:/Users/Kibe/.omniroute/storage.sqlite`) và ghi đồng bộ bộ 5 file: `google_accounts.json`, `oauth_creds.json`, `settings.json`, `projects.json`, `state.json`.
+- **Kết quả nghiệm thu:** Toàn bộ 26/26 tài khoản Google One Pro (`g1-pro-tier`) từ OmniRoute đã được phủ kín vào dàn 27 profiles (`acc_01` .. `acc_26` và `acc_thanhdatbui`), 100% có proxy di động riêng và sandbox cô lập hoàn toàn.
+
+### 4. Kỷ Luật Điều Phối Cơ Học & Chống Ghi Chép Thừa (Anti-Bookkeeping Invariant):
+- **Nguyên tắc:** Những gì đã được khóa cứng bằng mã nguồn hoặc cổng kiểm thử cơ học (như `dispatch_worker.py` set cứng `default="agy"`, hay `plan_exec_gate.py` khóa HMAC receipt) thì để code tự động thực thi.
+- **CẤM:** Tự ý ghi chép dài dòng vào persistent memory (`memory add/replace`) về các quy tắc điều phối kỹ thuật đã có tool cơ học đảm trách. Ghi chép thừa vừa gây lãng phí ngân sách ký tự memory, vừa gây loãng context khiến Coordinator dễ mắc bệnh hành chính rườm rà thay vì hành động dứt điểm.
+
+
 
 
 
