@@ -169,10 +169,33 @@ Google Cloud Code requires periodic browser validation when account IP/proxy shi
 5. The button element is `<button>` with text **`Thử lại`** (or `Đăng nhập lại`).
 6. Click the button -> Google validates the session and immediately redirects to `https://developers.google.com/gemini-code-assist/auth/auth_success_gemini` (*"Xác thực thành công | Gemini Code Assist | Google for Developers"*).
 7. `VALIDATION_REQUIRED` flag is lifted instantly on Google upstream. The account resumes serving requests without token re-minting.
+8. **QR Code Fallback for Mobile Verification**:
+   If the operator needs to verify the account on their phone or if headless browser prompt hangs, generate a QR code image of `validation_url`:
+   ```python
+   import qrcode
+   qr = qrcode.QRCode(version=1, box_size=10, border=4)
+   qr.add_data(validation_url)
+   qr.make(fit=True)
+   img = qr.make_image(fill_color="black", back_color="white")
+   img.save(r"D:\Taadaa\logs\verify_qr.png")
+   ```
+   Provide the QR code image via `MEDIA:` so the operator can scan it directly with the mobile device holding the account.
 
 ---
 
 ## 7. Google One AI Pro Link Activation Pitfalls & Schema Contracts
+
+### 5-Minute Link Warranty & Mandatory GPM Preflight Gate (CRITICAL)
+- **Hard Reality**: Promo/activation links from third-party shops (e.g. SumiStore) have an aggressive warranty window (typically **5 minutes** from timestamp of purchase).
+- **The Stale Purchase Pitfall**: If an agent purchases a link before verifying that the target GPM profile is logged in and ready:
+  1. Profile opens to `accounts.google.com/signin` (logged out).
+  2. Entering email, password, and 2FA TOTP takes 2-5 minutes or gets interrupted.
+  3. The activation link expires or gets invalidated past the 5-minute window. Google One permanently rejects the token, redirecting to `g1_landing_page=5` (the 15GB landing page), and the purchase is wasted with no shop warranty.
+- **MANDATORY PREFLIGHT INVARIANT**:
+  Before triggering `execute_buy()`, the script MUST launch the target GPM profile and verify:
+  1. `one.google.com/home` loads with an active Google session (URL does not contain `signin` or `about`).
+  2. `families.google/families/` loads cleanly without redirecting to `family/details`.
+  If ANY check fails: **DO NOT BUY**. Abort or switch to a verified live profile immediately.
 
 ### Family Group Ineligibility Gate
 - **Hard Rule**: Accounts participating in an existing Google family group **CANNOT** redeem Google One AI Pro promotion/family activation links.
