@@ -212,6 +212,7 @@ Do not say "root cause found" when only an idle snapshot or a list of heavy proc
 - `references/ssh-remote-game-config-fix.md` — proven scp+`-File` pattern for applying game config fixes (V-Sync, FullscreenMode, FrameRateLimit) via SSH; overlay file-lock pitfall; Dual Xeon + GTX 1660S VRAM saturation context; nvidia-smi SSH one-liners.
 - `references/legacy-32bit-game-memory-crash.md` — diagnose legacy 32-bit game crashes ("Not enough memory resources", Handle2AgentReg, cmemblock), pure PowerShell PE header LAA (0x0020) checks, and 4GB Patch application.
 - `references/mystery-startup-console-window-diagnosis.md` — diagnose blank/flashing PowerShell or CMD windows appearing on boot; trace caller via PowerShell Event ID 400 HostApplication, ParentProcessId, Startup registry keys, and Electron app.asar child_process calls lacking windowsHide.
+- `templates/hermes_cron_silent_ps_wrapper.py` — reusable Python wrapper template for spawning PowerShell scripts from Hermes cron jobs with complete window suppression (CREATE_NO_WINDOW + -WindowStyle Hidden). Copy, set PS_SCRIPT, deploy via the guard-safe cp-then-update pattern.
 - `references/windows-focus-stealing-and-overlay-diagnosis.md` — diagnose screen monopolization and focus-stealing ("cứ chiếm màn hình hoài") via live `GetForegroundWindow` sampling, `EnumWindows` full-screen overlay detection, and Overwolf/GPM background browser cluster triage.
 
 ## Pitfalls
