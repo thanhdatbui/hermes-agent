@@ -2,7 +2,7 @@ Chu kỳ 4d: Parity 96h (N1 lẻ, N2 chẵn), N3(R7,8), N4(0fl+up). Dưỡng N3 
 §
 Follow: dò +2 (max 40); lùi 4 sàn 15. Streak chỉ tăng khi fl=0; fl>=1 giữ streak+cd 1d. Probation 4d: 2 ca sạch; T1: 2-4 fl, T2: 6-8 fl. Anchor nhả=block. IP Audit: ip_risk_audit.py.
 §
-Pin>=1k: LIFO ghim tăng dần (top view ghim cuối để vào Slot 1 góc trái; sai thì unpin+repin); soi OCR nhãn 'Đã ghim' đúng ô view cao. S7 wake SplashActivity.
+Pin>=1k: pin_top_videos.py tự sort giảm dần+swap top 3. Treo lock: with_device_lock.py --force-preempt; ATX empty: chạy lại /data/local/tmp/atx-agent server -d. Soi OCR nhãn 'Đã ghim' đúng ô view cao. S7 wake SplashActivity.
 §
 Rename: tâm nút Sửa hồ sơ (315,865) né khe 540, compact @ OCR; cấm tap (72,148) Tìm bạn bè; thoát FIND_FRIENDS; lọc @ bio suggestion; 7d cd; BIO_EDIT trước PROFILE; tên Việt có dấu; core switcher; Smart name đa dạng.
 §

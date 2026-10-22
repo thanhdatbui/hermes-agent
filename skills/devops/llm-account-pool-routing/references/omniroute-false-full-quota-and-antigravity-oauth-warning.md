@@ -5,10 +5,10 @@
 ### Symptom
 - OmniRoute / 9Router web dashboard shows a green indicator:
   - `Antigravity • Pro`
-  - `Token expires in 0h 53m`
-  - `Gemini 3.1 Flash Lite: 100% left`
-  - `Claude Opus 4 6 Thinking: 100% left`
-  - `Claude Sonnet 4 6: 100% left`
+  - `Token expires in 0h 53m` (or active)
+  - `Gemini 3.1 Flash Lite: 100% left` (with a **slashed-eye icon** / disabled toggle)
+  - `Claude Opus 4 6 Thinking: 100% left` (with a **slashed-eye icon** / disabled toggle)
+  - `Claude Sonnet 4 6: 100% left` (with a **slashed-eye icon** / disabled toggle)
 - BUT actual requests to the model fail with:
   ```json
   [403]: Antigravity upstream error (403)
@@ -20,23 +20,32 @@
   ```
 
 ### Root Cause
-1. **Local Quota Accounting**: OmniRoute/9Router UI calculates "100% left" by measuring tokens consumed in `call_logs` against plan limit. If an account is newly provisioned or has 0 successful calls, it calculates 0 usage -> displays 100% remaining regardless of whether the OAuth credentials are alive or dead!
-2. **Local Token Expiry Calculation**: "Token expires in Xm" is calculated against `token_expires_at` column in SQLite `provider_connections`, not a live heartbeat to Google.
-3. **Stale Refresh Token (`invalid_grant`)**: When an account was activated on Google One Pro, but the coordinator copied an old connection ID or token from 1+ months ago without running fresh OAuth:
+1. **Zero-Token Consumption Freeze**: When Google blocks requests with `403 PERMISSION_DENIED` (`reason: VALIDATION_REQUIRED`), Google terminates the stream before any tokens are generated. Since 0 tokens were consumed, OmniRoute's quota snapshot never decrements and remains frozen at "100% left".
+2. **Slashed-Eye Icon on UI**: The slashed-eye icon next to the models signals that OmniRoute's router has excluded / locked out these models on this specific connection due to the repeated upstream 403 errors, despite the displayed 100% quota.
+3. **Local Quota Accounting**: OmniRoute/9Router UI calculates "100% left" by measuring tokens consumed in `call_logs` against plan limit. If an account is newly provisioned or has 0 successful calls, it calculates 0 usage -> displays 100% remaining regardless of whether the OAuth credentials are alive or dead!
+4. **Local Token Expiry Calculation**: "Token expires in Xm" is calculated against `token_expires_at` column in SQLite `provider_connections`, not a live heartbeat to Google.
+5. **Stale Refresh Token (`invalid_grant`)**: When an account was activated on Google One Pro, but the coordinator copied an old connection ID or token from 1+ months ago without running fresh OAuth:
    - Google Cloud Code rejects expired access token with 401.
    - OmniRoute calls `https://oauth2.googleapis.com/token` to refresh.
    - Google rejects refresh token with `HTTP 400: {"error": "invalid_grant", "error_description": "Bad Request"}`.
    - OmniRoute classifies upstream 401/403 as `project_route_error`.
    - AGY CLI throws the dead account into a 30m-2h 429 cooldown.
 
-### Diagnostic Rule
-- **NEVER trust dashboard 100% quota bar** when investigating failures.
-- Check SQLite `provider_connections`:
-  ```sql
-  SELECT id, email, created_at, updated_at, token_expires_at, last_error_type
-  FROM provider_connections WHERE email = '...';
+### Diagnostic Rule & Fast Extraction
+- **NEVER trust dashboard 100% quota bar** when investigating failures. Look for the slashed-eye icon as the visual confirmation of upstream lockout.
+- Check SQLite `call_logs` for `status = 403` and `error_type = 'project_route_error'`.
+- Fast extraction of the latest Google `validation_url` directly from `omniroute-stdout.log`:
+  ```python
+  import re
+  log_path = r'C:\Users\Kibe\AppData\Roaming\omniroute\logs\omniroute-stdout.log'
+  with open(log_path, 'r', encoding='utf-8', errors='ignore') as f:
+      for line in reversed(f.readlines()):
+          if 'VALIDATION_REQUIRED' in line and '<email_or_conn_id>' in line:
+              m = re.search(r'https://accounts\.google\.com[^\s",}]+', line)
+              if m:
+                  print("Validation URL:", m.group(0))
+                  break
   ```
-- Test Google refresh token directly via Python/curl to check for `invalid_grant`.
 
 ---
 
