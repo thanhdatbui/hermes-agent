@@ -4,7 +4,7 @@ Dọn đĩa: safe_recycle.py. Reboot né TFT/War3. Box 1 sát AP kibe 1. S7: ant
 §
 Nuôi 4d 3 ca (bỏ 0h). Cấm pause cron/kill tool khác khi kẹt lock, canh xong mới làm. Ava&2FA tới 5h15. Starve 96h.
 §
-No verbal DONE; reviewer thật. Nói thẳng, bực=làm ngay. Cấm nịnh/flip-flop. Vibe thực dụng O(1). Bắt buộc Claude Plan vì Coordinator tự fix nông dễ tái phát hôm sau.
+No verbal DONE; reviewer thật. Nói thẳng, bực=làm ngay. Cấm nịnh/flip-flop. Vibe thực dụng O(1). Bắt buộc Claude Plan chống tự fix nông.
 §
 Ava/Media: Up thẳng máy; khóa cờ .manual_avatar_locked & Avatar=OK; soi mắt trước MEDIA:; N máy gửi đủ N MEDIA: riêng; Ava đúng creator.
 §
@@ -16,4 +16,4 @@ Gemini/GPM: CDP, 2 pool OmniRoute+AGY, proxy 1:1 S7. PREFLIGHT sniper: GPM sessi
 §
 Benchmark phải cùng model + cùng thinking effort; không báo DONE/push khi reviewer dưới ngưỡng; báo rõ REJECTED/BLOCKED kèm evidence.
 §
-Reviewer closeout bắt buộc Sonnet CLI (`--model claude-sonnet`); Worker thi công code bắt buộc Agy CLI (`ag_cli.py fix`).
+Reviewer closeout: Sonnet CLI. Worker: Agy CLI primary (100% Pro `g1-pro-tier`, cấm free-tier). Bắt buộc Gate ABC (Sonnet plan), cấm tự dán [L2-surgery] lách gate.

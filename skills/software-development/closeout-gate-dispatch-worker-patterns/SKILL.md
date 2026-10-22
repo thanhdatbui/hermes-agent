@@ -92,7 +92,7 @@ Every outcome MUST emit an `audit()` call with:
 
 | Rejection Reason | Sol Score Impact | Fix |
 |---|---|---|
-| New snapshot before Haiku | −8 Logic | Delete `snap_haiku`; pass `snap1` to `verify_changes` |
+| Reusing snapshot across attempts | −8 Logic | Isolate snapshots: `snap_haiku` before Haiku 1, `snap_attempt2` before Haiku 2 |
 | Haiku retried on QUOTA | −5 Logic, −4 Farm Safety | Add `if cat_h == "QUOTA": return rc_h or 1` before retry |
 | Attempt 1 not audited before attempt 2 | −6 Telemetry | Add `audit("haiku", 1, cat_h, "retry_needed", ...)` before `RETRY_PREFIX` |
 | Dead code: unused declarations | −3 Architecture | Remove unused imports and constants |
