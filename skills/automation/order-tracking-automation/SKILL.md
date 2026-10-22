@@ -111,7 +111,6 @@ Do not say “real-time” when polling. State the interval and likely detection
 
 ## References
 
-- `references/carrier-jt-tracking-and-local-pickup-strategy.md` — J&T Express Vietnam direct tracking (`cellphone` privacy gate), anti-app login pitfall when picking up on behalf of farm/proxy accounts, golden window for hub pickup (07:15 - 08:00 AM), order note vs address counter-pickup method, and Telegram alert flood mitigation.
 - `references/jt-express-carrier-tracking-and-pickup-watchdog.md` — J&T web tracking privacy gate (`cellphone`), hub topology (SOC vs local delivery hub), and autonomous watchdog alert implementation.
 - `references/order-mail-to-carrier-handoff.md` — mailbox discovery, profile disambiguation, dedup state, carrier handoff, and evidence labels.
 - `references/order-card-image-integrity.md` — preserve raw image aspect ratio and zoom links on order dashboards.
