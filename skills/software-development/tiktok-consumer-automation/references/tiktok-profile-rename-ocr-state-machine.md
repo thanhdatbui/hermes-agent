@@ -349,3 +349,25 @@
     * Runner ngộ nhận máy đang mở nhầm nick khác dù Profile đang mở đúng 100% `@kimthinh2415`, cố mở Switcher 3 lần không thấy rồi văng `exit_2` với lý do *"mo Switcher 3 lan, acc active van la..."*.
     * **Khắc phục:** Siết chặt nhận diện username trên Profile: bắt buộc `t.startswith("@") and b[1] < 750 and " " not in t.strip()[:10] and not any(k in norm(t) for k in ("tai khoan", "nhac den", "noi ve", "chia se"))`.
 
+  ### 6. Bẫy Tử Huyệt "Đã Đổi Tên Rồi Mà Watchdog Cứ Đè Ra Chạy" (Sự Cố 22/10/2026)
+  - **Hiện tượng:** Máy đã đổi tên thành công (như M44 sang `Dương Nấm`, M69 sang `Thị Xù`, M64 sang `Xuân Toàn`), nhưng cứ mỗi chu kỳ cron (15 phút), watchdog lại bốc lên chạy lại, dẫn đến TikTok chặn server cooldown: *"Bạn chỉ có thể đổi biệt danh 7 ngày 1 lần"* và watchdog bắn alert fail `reason=exit_2` liên tục.
+  - **Căn nguyên gốc rễ:**
+    1. Watchdog lấy ứng viên từ file Excel tĩnh (`tiktok_stats_farm.xlsx`). File này không được cập nhật real-time khi runner đổi tên trên điện thoại.
+    2. Runner đổi tên độc lập (`do_rename_canonical_runner.py`) ghi nhận báo cáo vào `REPORT_DIR/m{m}_{u}_rename_confirmed.json`, nhưng không cập nhật file state của watchdog (`rename_natural_state.json`).
+    3. Bộ lọc `load_candidates()` chỉ đọc Excel và state cache, không kiểm tra file nghiệm thu thực tế trên đĩa $\rightarrow$ ngộ nhận nick chưa đổi và tiếp tục bốc chạy.
+  - **Giải pháp 2 lớp dứt điểm:**
+    1. **Kiểm tra file nghiệm thu đĩa tại `load_candidates`:** Quét trực tiếp `REPORT_DIR / f"m{may}_{u}_rename_confirmed.json"`. Nếu file tồn tại trong vòng 7 ngày và có kết quả `result in ("RENAMED", "ALREADY")` hoặc `reason` chứa `"gioi han 7 ngay"` $\rightarrow$ LOẠI BỎ NGAY LẬP TỨC từ vòng nạp ứng viên, loại bỏ hoàn toàn việc quét lặp.
+    2. **Xử lý `COOLDOWN_7D` trong Runner:** Khi gặp thông báo *"Bạn chỉ có thể đổi biệt danh 7 ngày 1 lần"*, runner không được coi là lỗi (`FAIL`) mà gán `result = "ALREADY"` và `verified = True`, trả về `exit code 0`. Nick đã đổi tên gần đây là thành công, không phải sự cố cần báo động.
+
+  ### 7. Bẫy Đè Mép Hộp OCR Giữa Nickname & Username Theo Chiều Dọc (Sự Cố M64 22/10/2026)
+  - **Hiện tượng:** Máy đã đổi tên và hiển thị chuẩn trên Profile (ví dụ M64 hiện `"Xuan Toän"`), nhưng runner báo lỗi `da Luu nhung Ten tren Ho so (OCR) = None, khong phai 'Xuân Toàn'`.
+  - **Căn nguyên:** WinRT OCR sinh bounding box của dòng Tên (`y=539..607`) và dòng Username (`y=588..667`) đè mép nhau 19 pixel theo chiều dọc. Điều kiện tìm tên cũ `b2[3] <= user_box[1] + 5` (đáy dòng tên phải nằm trên đỉnh dòng username) bị trượt khi có overlap $\rightarrow$ hàm `name_above_user_box` trả về `None`.
+  - **Khắc phục:** So khớp theo đỉnh hộp: `b2[1] < user_box[1] and user_box[1] - b2[1] < 120 and b2[0] < user_box[2]`. Vì đỉnh dòng Tên luôn nằm trên đỉnh dòng Username, cơ chế này xử lý mượt mà mọi trường hợp OCR sinh box đè mép.
+
+  ### 8. Cơ Chế `needs_bio_unlock` Cho Nick Trắng Chưa Có Bio
+  - **Bối cảnh:** Nick mới chưa có bio thì Profile không hiển thị nút `"Sửa hồ sơ"`, chỉ hiển thị `+ Thêm tiểu sử` tại `(540, 865)`.
+  - **Quy tắc an toàn:**
+    * Tại `PROFILE`: Nếu chỉ thấy `+ Thêm tiểu sử` (không có nút Sửa hồ sơ), bật cờ `ctx["needs_bio_unlock"] = True` và tap vào nút này.
+    * Tại `BIO_EDIT`: CHỈ lưu bio ngắn (ví dụ `"Xin chao"`) khi `needs_bio_unlock == True` (để TikTok bung nút Sửa hồ sơ). Nếu `needs_bio_unlock == False` và không có yêu cầu `--bio`, runner lập tức bấm `Back` (keyevent 4), tuyệt đối không tự ý ghi đè bio của tài khoản đã có sẵn.
+
+
