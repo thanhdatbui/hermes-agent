@@ -171,5 +171,29 @@ python D:/Taadaa/tools/closeout_gate.py \
   - Luôn nạp 5 Pinned Core Invariants + top 1–2 matched skills.
   - **Clean References Guard**: Tự động gọt bỏ phần lịch sử `## References` dài hàng chục KB của các skill (như `session-close-protocol`), giữ lại phần cốt lõi và quy tắc bắt buộc $\le 3000$ ký tự/skill để không bao giờ vượt trần 15k ký tự.
   - **Graceful Fail-Closed**: Nếu index thiếu/stale hoặc gặp exception, injector trả về rỗng và dispatch worker vẫn tiếp tục chạy với prompt gốc, TUYỆT ĐỐI không để bước phụ trợ làm nghẽn luồng dispatch chính.
+  - **Windows 8191-Char CLI Cap Pitfall (`The command line is too long`)**: Trên Windows, API `CreateProcessW` giới hạn toàn bộ command line ở **8.191 ký tự**. Nếu `inject_skill_context` dùng `max_context_chars=15000` nhồi vào CLI argument của `claude_worker.py` hoặc `ag_cli.py`, tiến trình sẽ văng lỗi `The command line is too long` ngay lập tức! Khắc phục:
+    + Cố định trần `max_context_chars=2500` trong `dispatch_worker.py` khi truyền qua argument dòng lệnh.
+    + Hỗ trợ cờ `--no-skill-injection` cho các lần gọi từ test runner hoặc pipeline nội bộ (`gate_pipeline.py`).
+
+---
+
+## 10. Unified Gate Pipeline (`gate_pipeline.py`) & Kỷ Luật "Không Khóc Lóc"
+
+- **Mục tiêu**: Gom toàn bộ chuỗi 3 cổng Gate A (chốt hiện trường) $\rightarrow$ Gate B (Claude Sonnet lập plan.json + HMAC) $\rightarrow$ Gate C (`dispatch_worker.py` thi công + nghiệm thu test) thành 1 lệnh cơ học duy nhất:
+  ```bash
+  python D:/Taadaa/tools/gate_pipeline.py \
+    --file <target_file> \
+    --goal "<goal>" \
+    --evidence-source <evidence_file_or_cmd> \
+    --acceptance-cmd "pytest tests/<focused_test>.py"
+  ```
+- **Triệt tiêu bẫy lách luật**:
+  + Chặn đứng tình trạng Coordinator tự ý sửa code rồi dán nhãn `[L2-surgery]` giả tạo cho commit $> 30$ dòng (như vụ TikTok rename 395 dòng).
+  + Chặn đứng việc Coordinator copy markdown plan từ Claude rồi nhồi thô vào `ag_cli.py` mà không có HMAC hash của Gate B (như vụ Warcraft).
+- **Kỷ Luật "Không Khóc Lóc" (Fail-fast Zero Whining)**:
+  + Khi bất kỳ Gate nào thất bại, script trả về JSON 1 dòng có cấu trúc xác định:
+    `{"status": "FAIL", "failed_gate": "A"|"B"|"C", "error": "...", "next_action": "..."}`.
+  + CẤM TUYỆT ĐỐI Coordinator sinh văn mẫu than phiền, xin xỏ clarify vô căn cứ hay đóng băng phiên làm việc. Next action luôn rõ ràng và xác định để khắc phục tức thì.
+
 
 
