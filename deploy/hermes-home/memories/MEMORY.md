@@ -6,7 +6,7 @@ Pin>=1k: LIFO TikTok->ghim tăng dần để top view ở ô 1 (re-pin enforce).
 §
 Rename: tâm Sửa hồ sơ (315,865) né khe 540; cấm tap (72,148); thoát FIND_FRIENDS; lọc @ bio; 7d cd; BIO_EDIT trước PROFILE; tên Việt có dấu; switcher; Smart name đa dạng.
 §
-Sol: On-Demand, cấm auto-append; advisor_tool 55s/consult 140s; briefing 4k ký tự.
+Sol: 100% On-Demand, CẤM auto-append; chỉ gọi khi gõ đích danh (gọi sol/advisor); briefing 4k.
 §
 Stale Up: xóa draft. Revert: TikWM. Cào: max 60. Cron TB: device_lock+rolling<=5; bỏ ca 0h.
 §
