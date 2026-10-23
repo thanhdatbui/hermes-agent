@@ -50,6 +50,19 @@ while simultaneously reporting `Follow chéo (3 lượt)` and `Nhả follow: M59
   Trong `feed_session_watchdog.py`, khi `category == "released"`, BẮT BUỘC kiểm tra `if len(flist) > 0: fl_success.append(m)`. Máy ăn nhả đuôi vẫn phải có mặt trong `fl_success` để ghi nhận số lượt follow thành công vào nhóm tương ứng (Hồi phục 1/2, Cấp Khỏe), đồng thời vẫn xuất hiện ở `fl_released` kèm số lượt `(M59: 3 lượt)`.
   Mẫu số tổng máy chạy BẮT BUỘC dùng tập hợp hợp: `total_fl_candidates = len(set(fl_success) | set(fl_released))` để tỷ lệ % không bị nhân đôi.
 
+### Bẫy ngộ nhận "Nhả liền cả đống (0 lượt)" trong Watchdog (Anchor Drop vs Daily Cooldown Skip)
+Khi Watchdog báo danh sách dài các máy bị "Nhả liền (0 lượt | 100.0%)" (ví dụ 49 máy fl=0), Operator thường nghi ngờ "script báo láo" hoặc "TikTok quét sập toàn bộ farm". Cần nắm vững bản chất kỹ thuật để đối soát và giải trình:
+
+1. **Căn nguyên cấu thành số liệu trong Watchdog (`watchdog/formatters.py`):**
+   - `format_released_follows` gom toàn bộ máy có `status == "FOLLOW_FAILED"` và `followed_count == 0` vào nhóm `rel_0` ("Nhả liền (0 lượt)").
+   - Thực chất con số này gồm 2 nhóm hoàn toàn khác nhau:
+     * **Live Anchor Drop (Nhả Anchor thật tại trận):** Bot vào video của Anchor, bấm follow, back ra profile rồi pull-to-refresh. Server TikTok silent-drop (nút đỏ Follow bật lại, không lên Nhắn tin). Theo invariant "Anchor nhả = block", bot ngắt phiên ngay tại giây thứ 30 để cứu nick (`status: FOLLOW_FAILED, reason: anchor @... bị nhả sau vuốt — dừng session`).
+     * **Daily Cooldown Skip (Kế thừa án phạt từ ca trước trong ngày):** Nick đã bị dính `follow_failed: True` ở ca sáng. Khi ca chiều/tối chạy, `run_session` fail-closed ngay lập tức trước khi đụng vào app (`reason: follow trước đó không lên (TikTok không nhận) — dừng session, cooldown trong ngày`), trả về payload `FOLLOW_FAILED` với 0 lượt follow.
+2. **Quy trình đối soát nhanh O(1) giải trình cho Operator:**
+   - **Đối soát tính chuẩn xác:** Xem dòng `Đối soát TikTok Web (+N Following thật - Khớp 100% so với script báo)`. Nếu các máy thành công (như M5, M17, M21) khớp 100% với Web cào $\rightarrow$ khẳng định script đếm thật, Web cào thật, không báo ảo.
+   - **Bóc tách 2 nhóm từ artifacts:** Quét nhanh `follow_result.json` của phiên gom theo `(status, reason, follow_failed, count)` để phân định chính xác số lượng máy Live Anchor Drop vs Cooldown Skip ca trước.
+   - **Đối soát IP Proxy:** Chạy `python D:/Taadaa/tools/ip_risk_audit.py` kiểm tra chu kỳ ngày chạy. Nếu có nhiều proxy CRITICAL (≥2 cựu binh fl=0), hiện tượng nhả anchor ở các slot phụ (Row 2, Row 3, Row 4) là hệ quả tự nhiên của IP bẩn bị TikTok thắt chặt tương tác.
+
 ## Concurrent Multi-Session Workspace Hazard (Anti-Blind Checkout)
 - Khi user gửi lệnh đồng loạt trên nhiều session/tab chat khác nhau, các agent chạy ngầm (đặc biệt là model worker như Luna) có xu hướng quét thấy file dirty thì chạy `git checkout -- <files>` bừa bãi để dọn dẹp, gây xóa mất mã nguồn vừa vá.
 - **Quy tắc bảo vệ mã nguồn:** Ngay khi patch của Worker hoặc Coordinator chạy qua focused tests (`pass 100%`) và xác nhận diff chuẩn O(1), BẮT BUỘC tạo commit git cục bộ ngay (`git commit -m "..."`).
