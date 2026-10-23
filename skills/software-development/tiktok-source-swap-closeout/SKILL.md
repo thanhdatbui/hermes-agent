@@ -174,6 +174,15 @@ If the process is still running, report `RUNNING` with the exact log path and do
      - Quét danh sách cố định 16 workbooks `D:/OneDrive/TaadaaData/{kibe,admin}/Tik{1..8}.xlsx` (CẤM dùng glob recursive/os.walk).
      - Đối chiếu frame count (`cv2.VideoCapture`) giữa `TIKTOK-videonuoinick/<F_vid>/1.mp4` với `video goc/<F_src>` và `video goc/<F_vid>`. Nếu frame count khớp với `video goc/<F_vid>` thay vì `F_src`, chứng minh 100% folder render bị stale chưa được cập nhật. Chi tiết xem `references/unrendered-source-drift-and-cross-tik-collision-triage.md`.
 
+- **Kỷ luật tài nguyên: Cào Worker 40 & Render Worker 1 (Worker Allocation Invariant):**
+  - Khi cào video mới từ YouTube Shorts/TikTok cho kênh cần hoán đổi: Đặt mục tiêu cào đúng **40 video Shorts** (`target_count = 40` / `min_videos = 40`).
+  - Khi render phái sinh hàng loạt bằng `random_batch_render.py`: BẮT BUỘC đặt `--parallel 1` (**Worker = 1**). Tuyệt đối cấm nâng parallel lên cao (> 1) để tránh làm nghẽn CPU/GPU, tranh chấp tài nguyên NVENC/FFmpeg và gây giật lag ảnh hưởng đến các tiến trình farm khác đang chạy.
+  - Khi xử lý chuỗi va chạm đa kênh: Chạy tuần tự từng máy qua runner nền (`terminal(background=True, notify_on_complete=True)`), không chạy song song nhiều tiến trình render cùng lúc.
+
+- **Kỷ luật phát ngôn Coordinator khi điều phối Batch (No Thought Leakage Invariant):**
+  - Trong quá trình gọi tool kiểm tra dữ liệu, đối soát CSDL, chạy lệnh render/tải video, CẤM TUYỆT ĐỐI rò rỉ các đoạn độc thoại nội tâm, suy luận nháp, cảm thán tự phát (ví dụ: `LOOK AT THAT`, `BINGO`, `QUÁ CHUẨN XÁC`, đối soát dòng này dòng kia) vào nội dung tin nhắn gửi User.
+  - Nếu turn có gọi tool_calls: `content` BẮT BUỘC để rỗng hoặc chỉ thông báo một dòng trạng thái ngắn gọn, rõ ràng, không spam khung chat.
+
 - **Tận dụng kho Raw có sẵn khi xử lý va chạm hàng loạt (Existing Raw Reuse vs Re-download Invariant):**
   1. *Kiểm tra kho Raw trên đĩa trước khi cào mới*: Tra cứu thư mục `D:/video goc/<F_src>` tương ứng với `Video Goc` chuẩn trong Excel. Nếu thư mục này đã có sẵn $\ge 40$ video sạch và `avatar.jpg` (do đợt cào chuẩn hóa trước đây để lại), CẤM cào lại từ đầu.
   2. *Quy trình Render nạp đè bảo toàn lịch sử*:
@@ -184,6 +193,7 @@ If the process is still running, report `RUNNING` with the exact log path and do
   3. *Quy trình Gate 6 Soi Mắt Mẫu Render Nền qua Local Browser*:
      - Để kiểm tra ảnh mẫu trích xuất từ video vừa render mà không bị vi phạm guard cấm script ngoài: Dùng `browser_navigate("file:///C:/Users/Kibe/<sample>.jpg")` nạp ảnh vào context Chromium, sau đó gọi `browser_vision` soi mắt đọc phụ đề, bố cục 9:16 và màu sắc thực tế trước khi xuất thẻ `MEDIA:<path>` cho User. Chi tiết xem `references/mass-collision-existing-raw-reuse-and-gate6-vision-20261023.md`.
 
+See `references/worker-allocation-and-chat-leakage-discipline-20261023.md` for worker allocation invariants (download 40 vs render worker 1) and coordinator chat output discipline.
 See `references/mass-collision-existing-raw-reuse-and-gate6-vision-20261023.md` for mass collision resolution, existing raw reuse, `--overwrite` with `--start-seq`, and Gate 6 local vision verification.
 See `references/duplicate-source-collision-and-render-folder-stale-drift-20261023.md` for duplicate source collision triage, cross-account numeric overlap, and O(1) frame-count verification.
 See `references/unrendered-source-drift-and-cross-tik-collision-triage.md` for unrendered source drift triage, bounded 16-workbook audit, and frame-count verification.

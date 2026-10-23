@@ -34,5 +34,19 @@ If Flash/Pro share one upstream window, improve the label and telemetry instead 
 }
 ```
 
+## UI Quota Visibility & Multi-Window Operations
+- **Hide non-relevant model rows:** In OmniRoute Provider Limits dashboard, click the `visibility_off` (eye with slash) icon on unwanted rows (e.g., Claude Opus/Sonnet on Antigravity cards) to hide them. State is persisted server-side in `settings.quotaVisibility[provider].hidden` via `PATCH /api/settings`.
+- **5h vs Weekly Window Tracking:**
+  - 5h rolling window is fetched per-model via `retrieveUserQuota` (`% left` on model row).
+  - Weekly quota is reported upstream per model family via `v1internal:retrieveUserQuotaSummary` under `Gemini Models` (shared for Flash and Pro). When weekly quota hits low/zero, countdown shifts to `Resets in Xd Yh`.
+  - **Edit Cutoffs:** Use the `Edit cutoffs` button on the account card to set minimum remaining quota thresholds (`QuotaCutoffModal`), routing traffic to healthy sibling accounts before total exhaustion.
+
+## Proactive Token Healthcheck Deactivation & Prevention
+- **Root cause of unexpected deactivation (`toggle_off` + `Token expired`):** OmniRoute runs a background sweep every 60s (`src/lib/tokenHealthCheck.ts`). When Google OAuth refresh fails with unrecoverable errors (e.g. `invalid_grant` from revoked session, dead proxy, or IP block), `isUnrecoverableRefreshError()` automatically sets `isActive: false` and `testStatus: "expired"` to protect upstream routing.
+- **Prevent automated deactivation:**
+  - Skip proactive health check sweeps for Antigravity: set `OMNIROUTE_HEALTHCHECK_SKIP_PROVIDERS=antigravity,agy` in `.env`. Tokens will then only be refreshed reactively when real requests arrive.
+  - Or disable background token health check globally: `OMNIROUTE_DISABLE_TOKEN_HEALTHCHECK=1`.
+- **Restoration workflow:** Verify proxy liveness, re-authenticate or refresh token, then toggle the card switch back to active (`toggle_on`).
+
 ## Reporting style
 Be concise and evidence-led. State account health, distinguish internal from upstream failure, and name the exact routing/config issue. Never treat a stale quota card as proof of exhaustion or account death.
