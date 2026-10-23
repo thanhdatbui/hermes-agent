@@ -115,3 +115,40 @@ Khi Claude CLI chạm ngưỡng bảo vệ quota 85% hoặc Agy CLI pool dính r
 ### 3. Kết Luận Kiến Trúc Cho Taadaa Farm:
 - `sol_worker.py` hoàn toàn đủ năng lực gánh vác vai trò **Tier 1 Autonomous Coding Worker độc lập**.
 - Khi Claude CLI chạm trần Quota (hoặc rơi vào bẫy thụ động) và Agy CLI bị kẹt 429 Google Desktop, Sol Worker là giải pháp cứu cánh số 1 cho các tác vụ code surgery và bảo trì hệ thống.
+
+---
+
+## 6. Kiến Trúc Phân Tầng 3-Tier Hierarchy Trong Single Dispatch Gateway (`dispatch_worker.py` - 2026-10-23)
+
+Để kết hợp ưu thế của cả ba hệ thống và tối ưu chi phí vận hành (0 token Anthropic cho các ca sửa lỗi thông thường), `D:/Taadaa/tools/dispatch_worker.py` được chuẩn hóa thành Single Dispatch Gateway 3 tầng:
+
+```text
+┌────────────────────────────────────────────────────────┐
+│ SINGLE DISPATCH GATEWAY                                │
+└──────────────────────────┬─────────────────────────────┘
+                           │
+             ┌─────────────▼─────────────┐
+             │ TIER 1: SOL WORKER        │ ➔ 0% Quota Claude, Free 100%
+             │ (gpt-web-sol qua :20129)  │   ReAct autonomous agent
+             └─────────────┬─────────────┘
+                           │ Thất bại / NO_DIFF / Quota
+             ┌─────────────▼─────────────┐
+             │ TIER 2: AGY CLI           │ ➔ Google AI Pro Desktop Quota
+             │ (ag_cli.py fix)           │   Live quota check qua :20129
+             └─────────────┬─────────────┘
+                           │ Thất bại / Cạn quota
+             ┌─────────────▼─────────────┐
+             │ TIER 3: CLAUDE HAIKU CLI  │ ➔ Fallback cuối cùng
+             │ (haiku_worker.py 5.5)     │   Cờ --allow-bash, newline safe
+             └───────────────────────────┘
+```
+
+### Các Bất Biến & Cơ Chế Bảo Vệ Được Cài Đặt:
+1. **Hậu Kiểm Cú Pháp Tự Động (`_verify_python_syntax`):**
+   - Sau khi worker trả về mã thoát 0 và xác nhận có thay đổi file (`verify_changes == True`), Gateway tự động chạy `py_compile.compile` trên target file `.py`.
+   - Nếu phát hiện `SyntaxError` $\rightarrow$ Đánh dấu thất bại và kích hoạt fallback ngay lập tức sang Tier tiếp theo thay vì báo cáo thành công giả mạo.
+2. **Khóa Dừng Khẩn Cấp (Hard-Stop Non-Fallback):**
+   - Khi Tier 1 (Sol) trả về `NEEDS_INPUT` (chứa marker `BLOCKED:`) hoặc lỗi môi trường / phân quyền (`RC_PERMISSION` / 126), Gateway dừng lại ngay lập tức và trả mã lỗi 1, tuyệt đối không trôi luồng sang Agy hay Haiku.
+3. **Cấu Hình Đường Dẫn Linh Hoạt:**
+   - Toàn bộ đường dẫn worker (`SOL_WORKER_PATH`, `AG_CLI_PATH`, `CLAUDE_WORKER_PATH`) đọc từ biến môi trường với giá trị mặc định là các file canonical trong `D:/Taadaa/tools/`.
+
