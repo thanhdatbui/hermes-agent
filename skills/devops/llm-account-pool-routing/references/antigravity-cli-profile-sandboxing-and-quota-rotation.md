@@ -662,6 +662,8 @@ Controller `ag_cli.py` truy vấn trực tiếp 2 API endpoints từ OmniRoute `
      plaintext = AESGCM(derived_key).decrypt(iv, ciphertext + tag, None).decode("utf-8")
      ```
   4. Sau khi giải mã `refresh_token` (`1//0e...`), gọi trực tiếp Google OAuth2 endpoint (`https://oauth2.googleapis.com/token`) để lấy `access_token` sống (`ya29...`) kèm `expiry_date` và ghi vào `oauth_creds.json`.
+     - **BẮT BUỘC Refresh Qua Đúng Proxy Của Profile:** Hàm `refresh_access_token(refresh_token, proxy_url=None)` bắt buộc truyền proxy tương ứng từ `profiles_config.json`. Nếu refresh bằng IP direct máy chủ, Google phát hiện lệch vị trí địa lý của tài khoản farm và cấp token bị cấm quyền truy cập Google Cloud Code (`HTTP 401 Unauthorized` / `403 Forbidden`).
+     - **Chuẩn Hóa Format `expiry_date`:** Bắt buộc lưu `expiry_date` dưới dạng số nguyên mili-giây epoch (`int(time.time() * 1000) + expires_in * 1000`), không lưu chuỗi ISO để tránh crash bộ phân tích của binary Antigravity.
 
 ### 2. Sự Thật Quota 2 Phân Lớp Của Google Antigravity & Bẫy "Omni Chạy Được nhưng AGY Báo Hết":
 - **Trích xuất từ Google API (`v1internal:retrieveUserQuotaSummary`):**
