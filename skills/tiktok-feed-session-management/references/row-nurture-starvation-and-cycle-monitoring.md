@@ -173,4 +173,33 @@ $$\text{Score} = 100.0 \times p_{\text{fail}} + 20.0 \times p_{\text{young}}$$
   3. Trong `env.json` của cron: BẮT BUỘC khai báo rõ ràng `"HERMES_CRON_TOOLS_DIR": "D:/Taadaa/tools"`.
   4. Cảnh báo lỗi: Tuyệt đối không nuốt im lặng `ImportError` trong khối `except` mà phải phát cảnh báo hoặc fallback có nhật ký rõ ràng.
 
+---
+
+## 7. Động Lực Video (Viral Momentum) vs Kỷ Luật Ca 0h Đêm
+
+### A. Nghịch lý Tần suất Đăng Video trong Chu kỳ 4 Ngày (96h):
+- **Vấn đề cốt lõi:**
+  * Chu kỳ 4 ngày (Parity 96h) là tỷ lệ vàng để nuôi trust và bảo vệ nick non tránh bị TikTok quét spam.
+  * Tuy nhiên, với nick **đang cắn đề xuất (Viral / Trending)**, tệp khán giả (Audience Pool) được TikTok mở rộng mạnh nhất trong vòng **24h – 48h**.
+  * Nếu ngâm nick đến 96 tiếng mới đăng video tiếp theo, "sóng" đề xuất đã nguội lạnh, video mới lại bị AI đối xử như cold-start $\rightarrow$ **Mất đà tăng trưởng**.
+
+### B. Kỷ luật Bỏ Ca 0h Đêm (Dead Zone 21:30 – 05:59):
+- **CẤM TUYỆT ĐỐI mở lại Ca 0h đêm để cày đăng video vì 4 rủi ro:**
+  1. **Khung giờ chết của phân phối (Initial Test Pool Flop):** Đăng video lúc 00:00 – 02:00 sáng tại VN thiếu tương tác tức thời (completion rate, tim, comment chậm) $\rightarrow$ Video dễ bị AI gán nhãn tương tác thấp và kẹt view ngay từ đầu.
+  2. **Bảo vệ phần cứng Samsung S7:** 160 máy cõng 8 acc/máy cần tản nhiệt, chống phồng pin, tránh drop kết nối USB/ADB do quá nhiệt khi cày 24/7.
+  3. **Cửa sổ bảo trì ngầm độc quyền:** Khung giờ đêm dành trọn cho reboot định kỳ (05:20), dọn dẹp cache TikTok (`end-of-day-clear-tiktok-cache`), backup SQLite, dọn dẹp adb dead-lock, tránh giờ chơi game/giải trí (TFT/War3) gây nghẽn mạng.
+  4. **Device Fingerprint Anomaly:** Tránh tạo dấu vết bot cày cuốc thâu đêm suốt sáng trên cùng thiết bị và dải IP.
+
+### C. Giải pháp Kiến trúc: Dynamic Momentum (Bonus Upload Slot ở Ngày 3 & Ngày 4):
+Thay vì mở Ca 0h cào bằng, tận dụng tài nguyên nhàn rỗi ở **Ca 3 Ngày 2 (Tối)** và **Ngày 3 (Cả 3 ca)** bằng cơ chế phân tầng theo phong độ kênh:
+1. **Nhóm Nick Yếu / Dính Nhả / Đi Tù:**
+   - Ưu tiên lướt feed dưỡng sinh thuần túy qua `healing_selector.py` để rửa trust và xóa cờ phạt.
+2. **Nhóm Nick Đang Cắn Đề Xuất (Viral Momentum):**
+   - Dựa vào dữ liệu từ `tiktok_tracker.db` (ví dụ: view 24h qua $\ge 2.000$ view hoặc video đang tăng tốc).
+   - Cấp **Bonus Upload Slot** ngay trong Ngày 3 hoặc Ngày 4: Mở app lướt nhẹ 5–10 phút rồi đăng ngay 1 video mới để đón sóng (đưa tần suất lên **2 ngày/video** trong giai đoạn viral).
+   - **BẮT BUỘC:** Ở ca bonus này **CẤM ĐI FOLLOW** (`taadaa_rest_day_no_follow = 1`), chỉ đăng video để tránh rủi ro nhả follow làm ảnh hưởng đến đà phân phối của video.
+3. **Nhóm Nick Bình Thường:**
+   - Giữ nguyên nhịp an toàn 4 ngày/video.
+
+
 
