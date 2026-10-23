@@ -170,6 +170,11 @@ When autonomously acquiring and onboarding Google Gemini Pro accounts:
 ### Root Cause
 Google Cloud Code requires periodic browser validation when account IP/proxy shifts or web session signs out. Google returns 403 `VALIDATION_REQUIRED` along with an explicit `validation_url`. OmniRoute treats 403 as target unavailable, leading to combo skip.
 
+### CRITICAL DISTINCTION: OAuth Re-Auth vs Validation Recovery
+- **OAuth Flow (`/api/oauth/antigravity/authorize`) IS NOT Validation Fix**: Re-running the OAuth consent screen and exchanging code for token only refreshes the OAuth access/refresh token in OmniRoute. It DOES NOT lift Google's `VALIDATION_REQUIRED` block on the Google Cloud Code backend.
+- **The False-Live Verification Trap**: Sending a test request to OmniRoute with `forcedConnectionId` can silently fallback to another working account in the pool (e.g., returning HTTP 200 with another account). Never trust `forcedConnectionId` without verifying `call_logs` in `storage.sqlite` to prove the target `connection_id` actually served the request.
+- **Why GPM Profile Fails on Deep Validation**: While simple session expiries can be clicked through with "Thử lại", true device-verification challenges hang on `uplevelingstep/selection` in a standard browser. Clearing these requires the full Antigravity desktop client under the matching S7 proxy/TUN (Section 9 VMware Rescue Pipeline) to trigger the native device QR code challenge.
+
 ### Deterministic Recovery Workflow
 1. Extract `validation_url` from `omniroute-stdout.log`.
 2. Connect to the account's GPM profile via Playwright CDP (`skip_proxy_check=true`).
