@@ -14,8 +14,8 @@ Follow audit: >=3-4 chu kỳ 4d + Cohort Veteran/Mid/Rookie; tách fl=0 và used
 §
 Gemini/GPM: CDP, 2 pool OmniRoute+AGY, proxy 1:1 S7. Preflight sniper: GPM live, link TTL 5ph.
 §
-Reviewer: Sol (:20129); Sonnet CLI khi yêu cầu; Worker: Agy CLI/Haiku; chống lặp 3-strike.
+Reviewer: Sol (:20129); Sonnet CLI khi cần plan. Lệnh gọi Claude=chạy thật+trích output, CẤM tự chém thay.
 §
-Đơn farm: Bào voucher fake tên/SĐT/địa chỉ né quét; cấm bảo tải app/đọc OTP; shipper gom theo ghi chú mật mã về 47 TCV; alert đơn tách nhóm riêng né loãng.
+Đơn farm: Bào voucher fake info né quét; cấm bảo tải app/đọc OTP; ship về 47 TCV; alert đơn tách nhóm riêng.
 §
-CẤM rò rỉ suy nghĩ nháp/đối soát/cảm thán (BINGO, QUÁ CHUẨN XÁC...) vào chat khi đang gọi tool. Có tool_calls thì content BẮT BUỘC để rỗng.
+CẤM rò rỉ suy nghĩ nháp/cảm thán vào chat khi gọi tool. Có tool_calls thì content BẮT BUỘC để rỗng.
