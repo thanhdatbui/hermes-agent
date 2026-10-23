@@ -38,6 +38,7 @@
 - **Tiêu chuẩn phát hiện IP bẩn thực sự (Khi nào mới nghi vấn):**
   - Chỉ khi có **$\ge 2$ tài khoản Cựu Binh (Veteran)** trên cùng một cổng proxy bị **nhả ngay phát đầu tiên (`fl = 0`) trong cùng một ngày**, hệ thống mới đánh dấu proxy đó là `CRITICAL`.
   - Khi người vận hành yêu cầu `"kiểm tra report ip"` hoặc `"đối soát ip"`, chạy `python D:/Taadaa/tools/ip_risk_audit.py` để trích xuất báo cáo đối soát nhiều chu kỳ.
+  - **CẢNH BÁO BẪY DIỄN GIẢI KHI MÁY LỖI CHƯA CHẠY:** `ip_risk_audit.py` chỉ query `internal_follows == 0` từ `daily_account_actions`. Nếu ca trước đó (như Ca 1 sáng) bị lỗi máy/feed runner khiến máy fail hàng loạt không chạy đến hook follow, `internal_follows` cũng bằng 0. Script sẽ tự động dán nhãn proxy là `[CRITICAL]`. **CẤM TUYỆT ĐỐI Coordinator nhìn nhãn này kết luận bừa "TikTok ban hàng loạt IP" khi máy còn chưa chạy follow thực tế!** Bắt buộc đối soát `run_manifest.json` và log feed session trước.
 
 ## 4. Giải mã Hiện tượng 176 Nick Tù Nặng: Bẫy "Anchor Check" ở Slot phụ (Row 2 & Row 4)
 

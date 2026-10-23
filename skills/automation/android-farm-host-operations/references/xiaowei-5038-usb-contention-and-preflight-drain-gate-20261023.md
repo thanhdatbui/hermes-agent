@@ -49,21 +49,38 @@ Khi phát hiện nghi vấn mất kết nối hàng loạt nhưng máy vẫn có
 Mọi runner ca nuôi (`run-feed-session.ps1` hoặc wrapper Python) bắt buộc chèn block Preflight kiểm tra trước khi spawn bất kỳ worker nào:
 ```powershell
 # Pre-flight: Giai phong cong 5038 / XiaoWei de tranh chia re USB va gay mat ket noi ADB
-if (Get-Process -Name "xiaowei" -ErrorAction SilentlyContinue) {
-    Write-Host "[PRE-FLIGHT] Phat hien XiaoWei dang chay, tien hanh dong de giai phong USB bus..."
-    Stop-Process -Name "xiaowei" -Force -ErrorAction SilentlyContinue
-    Start-Sleep -Seconds 1
-}
-$xwPorts = @(Get-NetTCPConnection -LocalPort 5038 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { [int]$_.OwningProcess })
-if ($xwPorts) {
-    Write-Host "[PRE-FLIGHT] Phat hien cong ADB 5038 dang mo (PID: $($xwPorts -join ',')), tien hanh kill-server..."
-    $xwAdb = "C:\Program Files (x86)\xiaowei\tools\adb.exe"
-    if (Test-Path -LiteralPath $xwAdb) {
-        & $xwAdb -P 5038 kill-server 2>&1 | Out-Null
+try {
+    $xw = Get-Process -Name "xiaowei" -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "*xiaowei*" }
+    if ($xw) { Stop-Process -InputObject $xw -Force -ErrorAction SilentlyContinue }
+    $xwPorts = @(Get-NetTCPConnection -LocalPort 5038 -State Listen -ErrorAction SilentlyContinue | ForEach-Object {
+        $proc = Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue
+        if ($proc -and ($proc.Path -like "*xiaowei*" -or $proc.Name -eq "adb")) { $proc.Id }
+    } | Where-Object { $_ })
+    if ($xwPorts) {
+        $xwAdb = "C:\Program Files (x86)\xiaowei\tools\adb.exe"
+        if (Test-Path -LiteralPath $xwAdb) { & $xwAdb -P 5038 kill-server 2>&1 | Out-Null }
+        foreach ($pidToKill in $xwPorts) { Stop-Process -Id $pidToKill -Force -ErrorAction SilentlyContinue }
+        Start-Sleep -Seconds 2
     }
-    foreach ($p in $xwPorts) {
-        Stop-Process -Id $p -Force -ErrorAction SilentlyContinue
-    }
-    Start-Sleep -Seconds 2
+    $p5038 = Get-NetTCPConnection -LocalPort 5038 -State Listen -ErrorAction SilentlyContinue
+    if ($p5038) { Write-Warning "[PRE-FLIGHT] Port 5038 still in LISTEN state" }
+} catch {
+    Write-Warning "[PRE-FLIGHT] XiaoWei/port 5038 cleanup warning: $($_.Exception.Message)"
 }
 ```
+
+---
+
+## 5. Bẫy Thẩm Định Closeout Gate & Chuẩn Hóa An Toàn Farm
+Khi đưa bản vá Preflight Drain Gate vào review chấm điểm Closeout Gate:
+1. **Xác minh định danh tiến trình (Process Identity):**
+   - Tuyệt đối CẤM dừng mù quáng mọi PID nghe trên cổng 5038.
+   - Bắt buộc kiểm tra `($proc.Path -like "*xiaowei*" -or $proc.Name -eq "adb")` để tránh dừng nhầm các dịch vụ hệ thống khác.
+2. **Kiểm tra hậu điều kiện (Post-condition Verification):**
+   - Phải có bước đọc lại `Get-NetTCPConnection -LocalPort 5038 -State Listen` sau khi kill server để xác nhận cổng đã thực sự đóng.
+3. **Bẫy Telemetry va chạm Launcher Contract:**
+   - Trong `run-feed-session.ps1`, test launcher (`test_run_feed_session_config.py`) parse dòng `[TELEMETRY_METRIC]` đầu tiên để lấy payload `feed_session_launch`.
+   - CẤM tự ý phát dòng `[TELEMETRY_METRIC]` trong preflight cleanup khi không có sự cố, vì sẽ làm gãy các test contract phụ thuộc phía sau.
+   - Chỉ dùng `Write-Warning` hoặc `Write-Host "[PRE-FLIGHT] ..."` cho nhánh thông tin tiền trạm.
+4. **Ngân sách O(1) <= 30 dòng:**
+   - Logic cleanup trong PowerShell phải súc tích, gói gọn trong 18-20 dòng để cùng với file test không vượt quá trần 30 dòng git diff numstat.
