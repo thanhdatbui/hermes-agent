@@ -17,7 +17,11 @@ Use this skill when the operator explicitly asks for Advisor Sol review, a secon
 
 ### Routing mode
 
-**Default: on-demand.** Do not auto-append Sol merely because a message contains `nên`, `được không`, `phân tích`, or a question mark. Ordinary advice questions stay Coordinator-only. Trigger Sol only on explicit operator wording such as `gọi advisor`, `hỏi sol`, `gọi sol`, `sol thấy sao`, `nhờ sol review`, or `sol lên plan`, or when the operator explicitly asks for an architecture second opinion before implementation. Keep the existing context-briefing and redaction path for those explicit calls.
+**Default: 100% on-demand. BẮT BUỘC KHÓA CỨNG DANH SÁCH LỆNH ĐÍCH DANH.**
+- CẤM TUYỆT ĐỐI auto-append hoặc kích hoạt ngầm Advisor Sol khi tin nhắn chứa `?`, `nên`, `được không`, `phân tích`, `đánh giá`, `tư vấn`, `theo mày`, `có nên`. Mọi câu hỏi thông thường của Operator phải do Coordinator trả lời trực tiếp.
+- CHỈ KÍCH HOẠT Advisor Sol khi Operator sử dụng ĐÍCH DANH các từ khóa chỉ định rõ ràng:
+  `gọi advisor`, `hỏi sol`, `gọi sol`, `sol thấy sao`, `nhờ sol review`, `sol lên plan`.
+- Pitfall chí mạng: Trong `conversation_loop.py`, hàm `_is_advice_request` nếu còn chứa các từ suy đoán (`tư vấn`, `lời khuyên`, `có nên`, `theo mày`, `đánh giá`) hoặc nhánh regex `if has_phrase("nên") and "?" in text` sẽ liên tục bắt nhầm các câu hỏi kỹ thuật thông thường (ví dụ: *"canary xem cron có fix đc k ?"*), tự tiện gọi Sol làm loãng hội thoại và gây bức xúc cho Operator. Bắt buộc thanh trừng triệt để toàn bộ từ suy đoán, chỉ giữ 6 lệnh đích danh trên.
 
 ### Advice intent
 
