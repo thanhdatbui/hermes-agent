@@ -67,4 +67,16 @@ The rescue harness lives under:
     4. Base32 TOTP Secret (so the operator can import it into Authenticator / 2FAS)
     5. Live TOTP code (current, +30s, +60s) with remaining seconds.
 - **Chrome Path Discovery in Guest:**
-  - Do not hardcode `C:\Program Files (x86)\Google\Chrome\Application\chrome.exe` in guest scripts. On 64-bit Windows guests, Chrome is frequently installed under `C:\Program Files\Google\Chrome\Application\chrome.exe`. Always check both paths or invoke via `explorer.exe <url>`.
+  - Do not assume Chrome is at `C:\Program Files (x86)\...` or `C:\Program Files\...`. In the `ag-onboard` VM (`baseline-v2.17`), Chrome is a **portable binary** located at:
+    `C:\ag-kit\chrome\chrome.exe` with user profile `C:\ag-kit\chrome-profile`.
+  - When opening URLs in Chrome from host, the most reliable invocation is via the Windows shell to launch in user `thanh`'s desktop:
+    ```bash
+    vmrun -T ws -gu tada -gp Ag123456 runProgramInGuest "D:\VM\ag-onboard\ag-onboard.vmx" -noWait "C:\Windows\explorer.exe" "https://accounts.google.com/signin"
+    ```
+
+### 7. Limitations of In-Guest UI Automation & SendKeys / Playwright
+- **Cross-Session -interactive Failure:** `vmrun runProgramInGuest -interactive` with user `tada` fails (exit code 1 / 4294967295) if user `thanh` is the active desktop console user. Windows security disallows cross-user interactive session injection.
+- **Why Guest Playwright / SendKeys Fails:**
+  - Python inside the guest does NOT have `playwright` pre-installed, and `pip install playwright` fails/hangs behind sing-box without browser binaries.
+  - PowerShell `[System.Windows.Forms.SendKeys]` executed via `vmrun` runs in Session 0 / background session, unable to target or send keystrokes to Chrome on the interactive desktop.
+- **Standard Protocol:** Do NOT attempt brittle in-guest UI/CDP script injection for the initial Google account sign-in. Open Google sign-in via `explorer.exe` in the guest, hand off to the operator with the full credential set (Email, Pass, Recovery, Secret, Live TOTP), and let the operator paste it directly into the VM window. Once signed in, resume automated validation testing via `verify_and_finalize.py`.
