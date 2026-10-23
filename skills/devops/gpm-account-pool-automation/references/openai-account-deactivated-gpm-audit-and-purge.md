@@ -39,6 +39,11 @@
 
 ### Bước 3: Điền OTP & Xác định trạng thái tài khoản
 - Điền OTP vào ô `input[type="text"], input[name="code"], input` và click submit.
+- **Cạm bẫy Post-Submit Latency, Redirect Pending & Onboarding Interstitial (False-UNKNOWN Trap):**
+  * Sau khi bấm submit OTP, OpenAI thường mất 8–15 giây để xác thực và chuyển hướng từ `auth.openai.com` về `chatgpt.com`.
+  * Nếu chỉ chờ 5 giây rồi kiểm tra `document.body.innerText` một lần duy nhất, script sẽ đọc trúng lúc trang đang loading hoặc chưa load xong dashboard, dẫn đến kết luận nhầm `UNKNOWN`.
+  * Ngoài ra, các tài khoản gặp màn hình Onboarding ("Tell us about you", chọn ngày sinh), popup điều khoản, hoặc banner tính năng mới sẽ không hiển thị ngay các marker thông thường (`New chat`, `Cuộc trò chuyện mới`).
+  * **Giải pháp chuẩn hóa:** Bắt buộc polling kiểm tra URL chuyển sang `chatgpt.com` (tối đa 15–20s). Nếu URL đã là `chatgpt.com` và không dính `account_deactivated`, kiểm tra sự xuất hiện của cookie `__Secure-next-auth.session-token` hoặc các phần tử dashboard để xác định `LIVE`. Tuyệt đối fail-closed: `UNKNOWN` không được ngộ nhận là `DEAD` và cấm purge.
 - Đọc text trên trang phản hồi:
   * **Trường hợp DIE (Bị vô hiệu hóa):**
     Màn hình ném ra tiêu đề **"Lỗi xác thực - OpenAI"** kèm text:
