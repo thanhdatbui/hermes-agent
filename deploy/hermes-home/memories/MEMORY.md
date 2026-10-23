@@ -24,6 +24,6 @@ OMP/AGY: 29 acc Pro; lease 1800s. agy.exe ưu tiên wincred hơn oauth_creds; c�
 §
 Đơn TT Shop: Mail báo 1 lần; API SPX/J&T/Ninja; Hub Thanh Khê. Dashboard :1905 /api/orders.
 §
-Worker: Sol (:20129), Agy CLI (gemini-3.8-flash-medium, cấm high), Haiku. OmniRoute proxy: bắt buộc scope='account' (proxy_enabled=1 alone=lộ IP direct).
+Worker: Sol (:20129), Agy CLI (gemini-3.8-flash-medium, cấm high), Haiku. Claude 85% guard: cấm tự allow -> fallback Agy CLI. OmniRoute: scope='account'.
 §
 Cron/Alert: Gửi đúng Telegram group của repo (-5435853713 Video/Up, -5377611430 Nuôi, -5373649734 Alert), cấm spam DM.
