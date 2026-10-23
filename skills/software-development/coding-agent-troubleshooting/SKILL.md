@@ -371,6 +371,7 @@ Claude CLI quota exhaustion, worker subagent delegation & Windows directory junc
 Antigravity CLI (`agy`) vs IDE GUI launcher trap (`antigravity-ide.cmd chat`), missing binary diagnostics, and headless worker patterns: `references/antigravity-cli-agy-vs-ide-wrapper.md`.
 Antigravity CLI (`ag_cli.py`) subcommand flag schemas (`--profile` trap on `fix`), task scope sizing, and timeout management: `references/ag-cli-argument-and-timeout-traps.md`.
 Antigravity CLI pool timeout cascade trap, timeout governance across all dispatchers (1200s standard), and pool-state recovery: `references/antigravity-pool-timeout-cascade-and-worker-governance.md`.
+Antigravity CLI native agent capabilities, project ID enforcement (`--project aicode-consumers`), Google Cloud Code quota boundaries & proxy token refresh: `references/antigravity-cli-native-agent-and-quota-boundaries.md`.
 Monolith thin-slice refactoring pattern & Claude CLI model alias resolution (`--model haiku`): `references/monolith-thin-slice-surgery-and-haiku-alias.md`.
 Claude CLI quota telemetry, Windows Startup background sync, and Antigravity pool failover: `references/claude-cli-quota-telemetry-and-antigravity-fallback.md`.
 Model fallback triage, defensive agent paralysis vs codebase damage audit, and infrastructure decoupling: `references/model-fallback-triage-and-damage-audit.md`.
