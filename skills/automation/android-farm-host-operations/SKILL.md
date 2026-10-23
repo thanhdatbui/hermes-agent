@@ -6,7 +6,7 @@ description: "Use when farm devices drop, USB hangs, or entering BIOS."
 # Android Farm Host Operations
 
 References:
-- `references/xiaowei-5038-usb-contention-and-preflight-drain-gate-20261023.md` — Chẩn đoán bẫy tranh chấp cổng ADB 5038 của Tiểu Vi gây rớt kết nối giả 41 máy trên cổng 5037, quy trình dọn sạch O(1) T0 tại hiện trường và chuẩn hóa Preflight Drain Gate cho runner ca nuôi (23/10/2026).
+- `references/xiaowei-port-5038-preflight-gate-and-false-usb-disconnect-20261023.md` — Cấm báo cáo mù "Mất kết nối ADB/USB" khi chưa đối soát socket 5038; chuẩn hóa Preflight Port 5038 Gate fail-closed bằng `adb kill-server` sạch, không dùng `Stop-Process -Force` bừa bãi (23/10/2026).
 - `references/pre-session-framework-check-and-kill-switch-governance-20261022.md` — Bóc tách điểm mù adb get-state xanh nhưng Android framework (settings service) crash trên M213, kiến trúc probe 2 tầng (kernel + framework), structured telemetry và kill-switch FRAMEWORK_CHECK_ENABLED (22/10/2026).
 - `references/android-framework-settings-service-probe-and-closeout-30kb-triage-20261022.md` — Phân tích điểm mù adb get-state tầng kernel vs Android Java Framework (Can't find service: settings) trên M213, quy chuẩn kiểm tra 2 tầng (service check settings), telemetry có cấu trúc và quy trình quản lý 30KB diff budget khi đưa tool mới qua Closeout Gate (22/10/2026).
 - `references/xiaowei-focus-based-idle-and-closeout-gate-audit-20261022.md` — Phân tích bẫy nhàn rỗi OS-wide GetLastInputInfo vs focus-based tracking riêng cho Tiểu Vi (ngưỡng 10 phút), cơ chế tự dọn port 5038 khi bấm X, throttling ghi đĩa và quy chuẩn vượt Closeout Gate (22/10/2026).
