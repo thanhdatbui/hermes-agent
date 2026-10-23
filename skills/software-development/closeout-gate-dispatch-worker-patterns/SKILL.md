@@ -27,30 +27,54 @@ Use when running `closeout_gate.py` on `D:/Taadaa/tools/dispatch_worker.py` or w
 
 ## 2. Known Patterns That Score >= 85
 
-### 2.1 Tier Ordering: Agy Primary → Haiku Fallback
+### 2.1 Tier Ordering: 3-Tier Hierarchy (Sol Primary → Agy Fallback 1 → Haiku Fallback 2)
 ```python
-# Tier 1: Agy CLI (ag_cli.py)
+# Tier 1 (Primary): Sol Web Worker via sol_worker.py (Free 100% via OmniRoute :20129)
+snap_sol = take_snapshot(workdir, args.file)
+sol_cmd = [sys.executable, SOL_WORKER, "--workdir", workdir, "--max-turns", str(args.max_turns), "--timeout", str(args.timeout)]
+if args.file:
+    sol_cmd += ["--file", args.file]
+sol_cmd += [effective_prompt]
+
+rc_sol, out_sol = run_tool(sol_cmd, cwd=workdir, timeout=args.timeout)
+has_changes_sol, diff_reason_sol = verify_changes(snap_sol, workdir, args.file, out_sol)
+
+# KEY INVARIANT: Syntax verification on .py files prevents accepting broken code
+if rc_sol == 0 and has_changes_sol and _verify_python_syntax(workdir, args.file):
+    audit("sol", 1, "OK", "success", workdir, args.file, rc_sol, correlation_id)
+    return 0
+
+cat_sol = classify_failure(rc_sol, out_sol, diff_reason_sol)
+if cat_sol in ("NEEDS_INPUT", "ENV"):
+    audit("sol", 1, cat_sol, f"sol_{cat_sol.lower()}", workdir, args.file, rc_sol or 1, correlation_id)
+    return rc_sol or 1
+
+# Tier 2 (Fallback 1): Agy CLI (ag_cli.py fix) — fresh snapshot isolation
+audit("sol", 1, cat_sol, "fallback_to_agy", workdir, args.file, rc_sol or 1, correlation_id)
 snap1 = take_snapshot(workdir, args.file)
-rc, output = run_tool([AG_CLI, "fix", ...], cwd=workdir, timeout=args.timeout)
+rc, output = run_tool([sys.executable, AG_CLI, "fix", ...], cwd=workdir, timeout=args.timeout)
 has_changes, diff_reason = verify_changes(snap1, workdir, args.file, output)
 
-if rc == 0 and has_changes:
-    audit("agy", 1, "OK", "success", ...)
+if rc == 0 and has_changes and _verify_python_syntax(workdir, args.file):
+    audit("agy", 1, "OK", "success", workdir, args.file, rc, correlation_id)
     return 0
 
 cat = classify_failure(rc, output, diff_reason)
 if cat in ("NEEDS_INPUT", "ENV"):
-    audit("agy", 1, cat, f"agy_{cat.lower()}", ...)
+    audit("agy", 1, cat, f"agy_{cat.lower()}", workdir, args.file, rc or 1, correlation_id)
     return rc or 1
 
-# Tier 2: Haiku fallback — take fresh snapshot to isolate from Agy's partial edits
-audit("agy", 1, cat, "fallback_to_haiku", ...)
-snap_haiku = take_snapshot(workdir, args.file)   # KEY: isolate from Agy partial edits
-rc_h, out_h = run_tool(haiku_cmd(args.prompt), ...)
+# Tier 3 (Fallback 2): Haiku CLI (claude_worker.py --role worker) — fresh snapshot isolation
+audit("agy", 1, cat, "fallback_to_haiku", workdir, args.file, rc or 1, correlation_id)
+snap_haiku = take_snapshot(workdir, args.file)
+rc_h, out_h = run_tool(haiku_cmd(effective_prompt), cwd=None, timeout=args.timeout)
 has_changes_h, _ = verify_changes(snap_haiku, workdir, args.file, out_h)
 ```
 
-**Critical Invariant (Snapshot Isolation):** Reusing `snap1` across attempts allows Agy's partial/failed edits to be falsely counted as Haiku's contribution. BẮT BUỘC chụp snapshot mới trước mỗi attempt (`snap_haiku = take_snapshot(...)` trước Haiku 1, `snap_attempt2 = take_snapshot(...)` trước Haiku 2) để từng worker/attempt chỉ được nghiệm thu dựa trên đúng diff do chính nó tạo ra.
+**Critical Invariants:**
+1. **Snapshot Isolation:** Chụp snapshot mới trước mỗi tier/attempt (`snap_sol`, `snap1`, `snap_haiku`, `snap_attempt2`) để worker sau không bị tính oan hoặc nhận vơ diff của worker trước.
+2. **Syntax Verification Gate (`_verify_python_syntax`):** Khi worker sửa file `.py`, bắt buộc chạy `py_compile` xác minh cú pháp trước khi chấp nhận `OK`. Nếu cú pháp hỏng, lập tức phân loại failure và kích hoạt fallback tầng tiếp theo.
+3. **Environment Configurable Worker Paths:** Khai báo qua `os.environ.get("SOL_WORKER_PATH", ...)` để tránh hardcoded cứng đường dẫn tuyệt đối khi kiểm thử hoặc deploy môi trường khác.
 
 ### 2.2 Haiku Retry Ladder (Quota Fast-Path)
 ```python
@@ -92,12 +116,17 @@ Every outcome MUST emit an `audit()` call with:
 
 | Rejection Reason | Sol Score Impact | Fix |
 |---|---|---|
-| Reusing snapshot across attempts | −8 Logic | Isolate snapshots: `snap_haiku` before Haiku 1, `snap_attempt2` before Haiku 2 |
+| Reusing snapshot across attempts | −8 Logic | Isolate snapshots: `snap_sol`, `snap1`, `snap_haiku`, `snap_attempt2` |
+| Worker accepted diff without syntax check | −7 Logic | Add `_verify_python_syntax(workdir, args.file)` to gate `OK` verdict |
+| Worker paths rigid hardcoded | −4 Architecture | Add `os.environ.get("SOL_WORKER_PATH", ...)` overrides |
+| Sol success test doesn't assert absence of fallbacks | −5 Test Evidence | Assert `len(calls) == 1` and `not any("ag_cli.py" in c[1]...)` |
+| Missing test for Sol syntax failure fallback | −6 Test Evidence | Add `test_main_sol_syntax_error_falls_back_to_agy` asserting syntax fallback |
+| Missing test for full sequence on exit 0 no-diff | −4 Test Evidence | Assert exact 4-call sequence (`calls[0]` sol, `calls[1]` agy, `calls[2]` haiku 1, `calls[3]` haiku 2) |
 | Haiku retried on QUOTA | −5 Logic, −4 Farm Safety | Add `if cat_h == "QUOTA": return rc_h or 1` before retry |
 | Attempt 1 not audited before attempt 2 | −6 Telemetry | Add `audit("haiku", 1, cat_h, "retry_needed", ...)` before `RETRY_PREFIX` |
 | Dead code: unused declarations | −3 Architecture | Remove unused imports and constants |
 | Timeout raised to 1200s without benchmark | −4 Farm Safety | Keep 60s default |
-| Missing test for early exit (NEEDS_INPUT) | −4 Test Evidence | Add test asserting `len(calls) == 1` |
+| Missing test for early exit (NEEDS_INPUT / ENV) | −4 Test Evidence | Add test asserting `len(calls) == 1` for Sol and Agy hard stops |
 
 ---
 
@@ -149,8 +178,11 @@ python D:/Taadaa/tools/closeout_gate.py \
 
 ## 7. Architectural Roles Invariant (Reviewer vs Worker)
 
-- **Reviewer:** BẮT BUỘC định tuyến vào **Claude Sonnet CLI** (`--model claude-sonnet` qua pipe `claude -p - --model sonnet`). Không để drift sang model khác hoặc fallback khi chưa được cấu hình.
-- **Worker:** BẮT BUỘC **Agy CLI (`ag_cli.py fix`) làm Primary (Tier 1)** với **Claude Haiku CLI làm Fallback (Tier 2)**.
+- **Reviewer:** Mặc định **Sol Reviewer** (`gpt-web-sol` qua OmniRoute `:20129`, 0% quota Claude). Claude Sonnet CLI chỉ dùng khi có yêu cầu lập plan phức tạp hoặc Reviewer chuyên sâu.
+- **Worker (3-Tier Hierarchy):**
+  + **Tier 1 (Primary - Free 100%):** **Sol Worker (`sol_worker.py`)** qua OmniRoute `:20129` (ChatGPT Web session, 0 token Anthropic, ReAct loop).
+  + **Tier 2 (Fallback 1):** **Agy CLI (`ag_cli.py fix`)** (Multi-account Google Antigravity pool, lọc live quota).
+  + **Tier 3 (Fallback 2):** **Claude Haiku CLI (`claude_worker.py --role worker` / `haiku_worker.py`)** (Phẫu thuật O(1) nhanh < 50s với cờ `--allow-bash` và prompt 1 dòng).
 - **Coordinator:** Chỉ thực hiện Emergency Surgery (L2) trong phạm vi O(1) nghiêm ngặt (<= 30 dòng, 1 file, focused test < 30s) khi worker kẹt/timeout.
 
 ---
