@@ -182,7 +182,13 @@ python D:/Taadaa/tools/closeout_gate.py \
 - **Worker (3-Tier Hierarchy):**
   + **Tier 1 (Primary - Free 100%):** **Sol Worker (`sol_worker.py`)** qua OmniRoute `:20129` (ChatGPT Web session, 0 token Anthropic, ReAct loop).
   + **Tier 2 (Fallback 1):** **Agy CLI (`ag_cli.py fix`)** (Multi-account Google Antigravity pool, lọc live quota).
+    * *Model Invariant:* Khóa cứng `DEFAULT_MODEL = "gemini-3.8-flash-medium"`. CẤM TUYỆT ĐỐI gán `high` (vừa làm phình thời gian suy luận lên 2-3 phút, vừa nuốt cạn quota rolling 5h của Google).
+    * *Seamless OmniRoute Fallback:* Khi các profile sandbox của `agy.exe` chạm giới hạn quota ngày của Free Tier cá nhân (429 `RESOURCE_EXHAUSTED`), `ag_cli.py` tự động chuyển sang `run_omniroute_fallback` gọi `:20129` (`antigravity/gemini-3.8-flash-tiered`) với cờ `GOOGLE_ONE_AI` credits và system prompt chuyên dụng ép trả về markdown code block.
+    * *Attempt Cap & Failover Jitter:* Giới hạn `max_attempts = 2` profiles và jitter `0.5s - 1.5s`, chuyển thẳng sang OmniRoute fallback mà không chạy qua `run_default` (tránh lãng phí 15s trên môi trường host vốn cũng chạm trần).
   + **Tier 3 (Fallback 2):** **Claude Haiku CLI (`claude_worker.py --role worker` / `haiku_worker.py`)** (Phẫu thuật O(1) nhanh < 50s với cờ `--allow-bash` và prompt 1 dòng).
+- **Coordinator Discipline (Anti-Deflection & Action Over Narration):**
+  + *Anti-Deflection:* Khi người dùng hỏi/điều tra về quota của model/runner nào (ví dụ: Gemini / Agy CLI), BẮT BUỘC tập trung trả lời đúng model đó. CẤM TUYỆT ĐỐI lải nhải sang quota của model không liên quan (như Claude 3P quota).
+  + *Action Over Narration:* Khi phát hiện khác biệt giữa các runner (như `agy.exe` dính 429 nhưng OmniRoute chạy được 200 OK), CẤM dừng lại ở việc giải thích phân trần rồi để ngỏ lỗi ("vẫn còn lỗi"). Phải chủ động thiết kế cơ chế fallback/adapter ngay lập tức để công cụ hoạt động thông suốt.
 - **Coordinator:** Chỉ thực hiện Emergency Surgery (L2) trong phạm vi O(1) nghiêm ngặt (<= 30 dòng, 1 file, focused test < 30s) khi worker kẹt/timeout.
 
 ---
