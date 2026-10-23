@@ -15,6 +15,10 @@ metadata:
 
 Use this skill when calling Claude Code CLI for any task on the Taadaa Farm. All Claude CLI invocations MUST go through `D:/Taadaa/tools/claude_worker.py`, never via raw `claude -p` in terminal.
 
+## Architecture Gate: Bắt Buộc Claude Sonnet Plan Khi Can Thiệp Kiến Trúc / Auth
+- **Quy tắc Gate bất biến:** Khi phát hiện thay đổi cơ chế xác thực hoặc kiến trúc hệ thống cốt lõi (như thay đổi cơ chế lưu/đọc token, can thiệp Windows Credential Manager `wincred`, đổi protocol hoặc luồng dữ liệu tiến trình), Coordinator **BẮT BUỘC PHẢI GỌI CLAUDE SONNET LÊN PLAN TRƯỚC** (`--role planner` hoặc Sonnet CLI).
+- **CẤM NHẢY CÓC:** Tuyệt đối cấm Coordinator tự ý chốt giải pháp kiến trúc rồi gọi thẳng Haiku Worker thi công code mà bỏ qua bước lập plan của Claude Sonnet.
+
 ## CRITICAL: Correct Model Aliases
 
 | Intent | Alias đúng | WRONG (exit 1) |
