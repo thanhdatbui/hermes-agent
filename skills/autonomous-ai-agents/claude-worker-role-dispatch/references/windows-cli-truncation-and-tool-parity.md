@@ -30,17 +30,33 @@
 
 ### 2. Tháo Gỡ Điểm Nghẽn (Deadlock) Khi Claude Quota 5h >= 85%:
 - **Tình huống xung đột:** `claude_quota_guard.py` chặn cứng lệnh gọi Claude CLI khi Quota 5h >= 85% (kể cả role `planner`).
-- **Thứ tự Fallback Planner Hợp Lệ (Cấm Tự Phẫu Thuật Mò):**
-  1. *Ưu tiên 1:* Gọi **Claude Sonnet CLI** (`claude_worker.py --role planner`).
-  2. *Fallback khi Claude Quota >= 85%:* Chuyển bước lập Plan sang **Sol Planner** (`:20129` qua `sol_consult` / `gpt-web-sol`). Sol Planner hoàn toàn miễn phí và không tốn quota Anthropic.
-  3. Chỉ sau khi đã có Plan được duyệt từ Sonnet hoặc Sol Planner, Coordinator mới trích xuất Patch Contract O(1) để bàn giao cho Worker thi công.
+- **Thứ tự Fallback Planner Hợp Lệ Cưỡng Chế Bằng Code (Cấm Dùng Prompt Mềm):**
+  1. *Tier 1 (Ưu tiên 1):* Gọi **Claude Sonnet CLI** (`claude_worker.py --role planner`, timeout >= 300s).
+  2. *Tier 2 (Fallback 1 khi Claude Quota >= 85% hoặc Sonnet lỗi):* Tự động chuyển bước lập Plan sang **Sol Planner** (`D:/Taadaa/tools/sol_planner.py` qua `:20129`, timeout >= 300s).
+  3. *Tier 3 (Fallback 2 - Cứu sinh):* **Coordinator trong session hiện tại**. Nếu cả Sonnet lẫn Sol Planner đều fail/timeout, script in cờ `[PLANNER_FALLBACK_COORDINATOR]` và trả mã `exit 100`. Khi đó Coordinator chính thức nhận quyền tự lập Plan / chốt Patch Contract O(1) để đi tiếp, tuyệt đối cấm viện cớ thiếu plan để đóng băng task.
 
-## 6. Thứ Tự Phân Tầng Chuẩn 3-Tier Trong Single Dispatch Gateway (`dispatch_worker.py`)
-- **Quy chuẩn bất biến:**
-  1. **Tier 1 (Primary - Free 100%):** Sol Web Worker (`sol_worker.py` qua `:20129`) — Không tốn token Anthropic hay Google Pro.
-  2. **Tier 2 (Fallback 1 - Native Pool):** Agy CLI (`ag_cli.py fix`) — Chạy native binary `agy.exe` qua 29 tài khoản Google One Pro cục bộ (đồng bộ token qua Windows Keyring `wincred`).
-  3. **Tier 3 (Fallback 2 - An Toàn Cuối):** Claude Haiku CLI (`claude_worker.py --role worker` / `haiku_worker.py`) — Phẫu thuật O(1) tốc độ cao khi cả Sol và Agy đều cạn quota hoặc timeout.
-- **Khắc phục mâu thuẫn tài liệu:** Bất kỳ docstring, prompt template hay file markdown nào ghi `Tier 1: Haiku` hoặc `Tier 1: Agy` (bỏ sót Sol) đều là tài liệu cũ lạc hậu và phải được chuẩn hóa về đúng thứ tự 3-Tier trên.
+## 6. Thứ Tự Phân Tầng Chuẩn 4-Tier Trong Single Dispatch Gateway (`dispatch_worker.py`)
+- **Quy chuẩn bất biến (Cưỡng chế 100% cơ học, dẹp prompt):**
+  1. **Tier 1 (Primary - Free 100%):** Sol Web Worker (`sol_worker.py` qua `:20129`, timeout >= 180s) — Không tốn token Anthropic hay Google Pro.
+  2. **Tier 2 (Fallback 1 - Native Pool):** Agy CLI (`ag_cli.py fix`, timeout >= 180s) — Chạy native binary `agy.exe` qua 29 tài khoản Google One Pro cục bộ (đồng bộ token qua Windows Keyring `wincred`).
+  3. **Tier 3 (Fallback 2 - An Toàn Cuối):** Claude Haiku CLI (`claude_worker.py --role worker`, timeout >= 180s) — Phẫu thuật O(1) tốc độ cao khi cả Sol và Agy đều cạn quota hoặc timeout.
+  4. **Tier 4 (Fallback cuối cùng):** Coordinator kích hoạt quyền Emergency Surgery (T1/L2) vá O(1) dứt điểm task khi bắt được cờ `[WORKER_FALLBACK_COORDINATOR]`.
+
+## 7. Thiết Quân Luật Về Timeout Cơ Học (Cấm Tuyệt Đối Set Ngắn)
+- **Bản chất kỹ thuật:** Reasoning model (Sonnet, Sol Web High) và multi-turn CLI agents (`agy.exe`) cần từ 20s đến 45s chỉ để suy luận (TTFT), đọc context và lập luận. Đặt timeout ngắn 25s, 45s, 60s sẽ làm chém ngang lưng tiến trình đang xử lý bình thường, gây lỗi 429 giả hoặc timeout giả.
+- **Quy chuẩn bắt buộc:**
+  * Planner Timeout: Cố định mặc định >= 300s (5 phút).
+  * Worker Timeout: Cố định mặc định >= 180s - 300s (3 - 5 phút).
+  * Cơ chế Idle Streaming Timeout: Chỉ ngắt khi socket câm lặng hoàn toàn > 20s không nhả token; tuyệt đối cấm dùng trần cứng wall-clock ngắn để kill tiến trình đang stream dữ liệu.
+
+## 8. Nguyên Lý Cưỡng Chế Tầng Cơ Học Thay Cho Prompt (Anti-Overengineering)
+- **Dẹp bỏ tầng prompt mềm:** Không dùng prompt để nhắc nhở quy tắc phân tầng, vì context phình to sẽ gây attention drift và ảo giác. Mọi luồng fallback và quota check phải được code hóa cứng trong `dispatch_planner.py`, `claude_worker.py`, và `dispatch_worker.py`.
+- **Chống bẫy Over-engineering của Sol:** Không chế thêm các lớp gate rườm rà (assert schema, blocking daemons, approval tokens) gây nguy cơ tê liệt và khóc lóc đóng băng hệ thống. Hệ thống đã có sẵn các gate cơ học, chỉ cần bổ sung đúng 1 lớp fallback an toàn về Coordinator (Hermes session model) khi các lựa chọn primary thất bại.
+
+## 9. Kỹ Thuật Chạy Native Antigravity CLI (`agy.exe`) Trên Windows Sandbox Profiles
+- **Cơ chế xác thực Windows Credential Manager (`wincred`):** Binary `agy.exe` trên Windows đọc token từ Windows Keyring qua `TargetName: gemini:antigravity` với `auth_method: consumer`, `token_type: Bearer`, KHÔNG đọc từ `.gemini/oauth_creds.json` trong sandbox profile.
+- **Cơ chế nạp token profile động:** Trước khi spawn `agy.exe`, wrapper `ag_cli.py` bắt buộc phải gọi hàm `sync_profile_to_wincred(profile_dir)` sử dụng Win32 API `CredWriteW` để ghi đè token của profile tương ứng vào `gemini:antigravity`.
+- **Quy tắc cờ `--project`:** Cờ `--project` của `agy.exe` là local workspace conversation ID (như `default-cli-project`), TUYỆT ĐỐI CẤM truyền GCP Cloud Project ID (`aicode-consumers`) vào tham số dòng lệnh vì sẽ làm hỏng parser và mất context.
 
 ## 6. Cơ Chế Hard Guard Của `claude_quota_guard.py` & Kỷ Luật Không Bỏ Cuộc Giữa Chừng
 - **Bảo vệ vật lý khi Quota 5h >= 85%:** Lệnh gọi `claude` CLI bị chặn vật lý ở tầng OS (exit 20). `claude_quota_guard.py` tự động phát hiện caller là AI tự động (`is_automated_agent_caller()`) để từ chối các cờ bypass ngầm (`--force-claude`).
