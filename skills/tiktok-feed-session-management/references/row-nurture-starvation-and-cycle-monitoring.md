@@ -201,5 +201,33 @@ Thay vì mở Ca 0h cào bằng, tận dụng tài nguyên nhàn rỗi ở **Ca 
 3. **Nhóm Nick Bình Thường:**
    - Giữ nguyên nhịp an toàn 4 ngày/video.
 
+---
+
+## 8. Kiến Trúc Per-Machine Dynamic 3-Tier Selector (Mỗi Máy Tự Chọn Slot Độc Lập)
+
+### A. Phê Phán Tư Duy "Cào Bằng Toàn Farm Chọn 1 Row Chung" (Anti-Pattern):
+- **Sai lầm chết người:** Tính điểm trung bình cộng toàn farm để chọn ra 1 Row duy nhất (ví dụ Row 3) rồi ép toàn bộ 160 máy cùng chạy Row 3 trong ca dưỡng sinh.
+- **Thực tế hiện trường:** 
+  - Nick cắn đề xuất hay nick dính án nhả follow phân bổ ngẫu nhiên rải rác: Máy 5 cắn ở Tik 2, nhưng Máy 18 lại cắn ở Tik 5, Máy 40 dính án ở Tik 7.
+  - Ép cả farm chạy chung 1 Row khiến máy có nick viral không được up video để đón sóng, trong khi máy không có nick bệnh lại bị lôi ra chạy dưỡng sinh vô ích.
+
+### B. Cơ Chế Phân Tầng 3 Lớp Phễu Tại Từng Máy (`row_index = 0`):
+Vào **Ca 3 Ngày 2 (Tối)** và **Ngày 3 (Cả 3 ca Ngày 4 - Rest Day)**, hệ thống kích hoạt chế độ **Dynamic Per-Machine (`row_index = 0`)**:
+- `tiktok_runner.py` gán `row = 0` khi `target_row is None`.
+- `run-feed-session.ps1` hỗ trợ `[ValidateRange(0, 8)]`, truyền `--account-row-index 0` vào Python runner.
+- Tại `select_feed_session_accounts()`, với mỗi máy, hàm `resolve_dynamic_account_for_machine(machine, rows)` duyệt qua 8 slot của chính máy đó và lọc qua 3 tầng phễu:
+  1. **Lớp 1 (Ưu tiên 1 - Đón Sóng Đề Xuất):**
+     * Kiểm tra `is_account_boosted(machine, row, username)` từ SQLite `tiktok_tracker.db`.
+     * Nếu có slot đang tăng view/tim/fl đột biến $\rightarrow$ Bốc ngay slot đó để lướt nhẹ + **ĐĂNG VIDEO NGAY (Bypass Rest Day)** để giữ đà. Tuyệt đối 0 follow.
+  2. **Lớp 2 (Ưu tiên 2 - Cứu Chữa Nick Đi Tù):**
+     * (Khi máy không có nick cắn đề xuất) Kiểm tra `_is_account_follow_cooldown(machine, row)`.
+     * Nếu có slot đang dính án nhả follow hoặc cooldown $\rightarrow$ Bốc slot đi tù để **Lướt feed thuần túy xả phạt (0 follow, 0 upload)**.
+  3. **Lớp 3 (Ưu tiên 3 - Nuôi Dày Nick Non):**
+     * (Khi máy hoàn toàn sạch, không có viral, không có đi tù) $\rightarrow$ Chọn slot có `video_count` ít nhất ($< 10$ video) để tích lũy tài sản kênh.
+
+### C. Hiệu Quả Thực Tế:
+- Tại cùng 1 ca: Máy A chạy Tik 2 (đang viral để đăng video), Máy B chạy Tik 5 (đang đi tù để lướt xả án), Máy C chạy Tik 8 (nick non để nuôi).
+- Toàn bộ nick cắn đề xuất trên toàn farm đều được bơm video với nhịp **2 ngày/video** mà không cần mở Ca 0h đêm, bảo vệ trọn vẹn phần cứng và khung giờ bảo trì đêm.
+
 
 

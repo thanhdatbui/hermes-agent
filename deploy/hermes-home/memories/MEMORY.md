@@ -1,4 +1,4 @@
-Chu kỳ 4d: Parity 96h (N1 lẻ, N2 chẵn), N3(R7,8), N4(0fl+up). Dưỡng N3 tối+N4 slot động theo streak. S2 bám S1. Starve 108h. Đêm né cache 4h.
+Dưỡng N3 tối+N4 dynamic mỗi máy 3 lớp phễu (1.Đề xuất up, 2.Đi tù xả phạt, 3.Nick non).
 §
 Follow: dò +2 (max 40); lùi 4 sàn 15. Streak chỉ tăng khi fl=0; fl>=1 giữ streak+cd 1d. Probation 4d: 2 ca sạch; T1: 2-4 fl, T2: 6-8 fl. Anchor nhả=block. IP Audit: ip_risk_audit.py.
 §
