@@ -4,7 +4,8 @@
 - On Windows startup or login, a blank or flashing PowerShell / CMD console window pops up on the desktop (e.g. title: `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe`).
 - The window interior may be completely empty / transparent / clear, or flash repeatedly every few seconds.
 - User question: *"máy mới bật lên nó nhảy cái này là gì vậy?"* (When machine boots, this window pops up, what is it?).
-- **In-Game Micro-Stutter / Cursor Desync:** During active fullscreen or borderless gameplay (e.g. TFT, League of Legends), the user experiences periodic 2–3s display micro-flickers or sudden mouse cursor dropouts ("nháy màn chuột văng"). Users often blame visible heavy overlays (MetaTFT/Overwolf), but the true root cause is background console storm context-switches from tray companion apps.
+- **In-Game Micro-Stutter / Cursor Desync & Cross-Game Collision:** During active fullscreen or borderless gameplay (e.g. Warcraft III, TFT, League of Legends), the user experiences periodic 2–5s display micro-flickers or sudden mouse cursor dropouts ("cái gì cứ chớp chớp trên máy admin v", "nháy màn chuột văng"). Users often blame farm cron watchdogs or heavy overlays, but the true culprit is often a dormant tray companion app (e.g. TFTAcademy polling for `LeagueClientUx*` every 4s while user is playing Warcraft III).
+- **Remote Host Diagnostic Bridge (Taadaa Guard):** On Taadaa Coordinator, direct `ssh` is blocked by default-deny guard. Always use the canonical runner: `python D:/Taadaa/tools/admin_ssh.py --powershell "<cmd>"` (with `timeout <= 60s`).
 
 ## Root Causes
 1. **Third-Party Background/Companion Apps (e.g. Electron overlays, game aids, hardware utilities):**
@@ -45,6 +46,15 @@ Get-WinEvent -FilterHashtable @{LogName='Windows PowerShell'; StartTime=(Get-Dat
     } | Select-Object -First 10 | Format-List
 ```
 *Look for recurrent commands executed right around boot/logon time.*
+
+#### One-Liner via `admin_ssh.py` Bridge (Fast Remote Triage):
+```bash
+python D:/Taadaa/tools/admin_ssh.py --powershell "Get-WinEvent -FilterHashtable @{LogName='Windows PowerShell'; Id=400; StartTime=(Get-Date).AddMinutes(-30)} -ErrorAction SilentlyContinue | Select-Object -First 10 TimeCreated, Message | Format-List"
+```
+And correlate immediately with running game vs companion processes:
+```bash
+python D:/Taadaa/tools/admin_ssh.py --powershell "Get-Process | Where-Object { \$_.ProcessName -match 'war3|frozen|league|tft|overwolf|electron' } | Select-Object Id, ProcessName, Path"
+```
 
 ### 4. Trace the Parent Process PID
 If the process is currently running or recurring:
