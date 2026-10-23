@@ -383,17 +383,35 @@ When attempting to hook Antigravity as an external CLI worker for Hermes, Claude
 ### 2. The Headless Antigravity CLI (`agy`)
 The actual headless coding agent CLI provided by Google is `agy`. If `which agy` fails, download the Windows native binary (`cli_windows_x64.exe`) from Google's manifest (`https://antigravity-cli-auto-updater-974169037036.us-central1.run.app/manifests/windows_amd64.json`) and save as `agy.exe` in a PATH directory (e.g. `C:\Users\Kibe\AppData\Local\Programs\Antigravity IDE\bin\agy.exe`). Existing IDE/Google Cloud Code auth is inherited automatically.
 
-⚠️ **Flag-Ordering Trap**: Always place `--dangerously-skip-permissions` and `--model` BEFORE `-p`:
-```bash
-agy --dangerously-skip-permissions --model "gemini-3.8-flash-high" -p "<task>"
-```
-Taadaa farm production bridge: `python D:/Taadaa/tools/ag_cli.py {ask,fix,models,pool-status,init-profile}`.
-Auth/Quota source lives under `~/.gemini/` (`google_accounts.json` & `oauth_creds.json`), consuming that specific Google account's quota directly (completely independent of OmniRoute/GPM pools).
-Supports hidden native env knob `AGY_ACCOUNT=<email>` for in-session account switching.
-For running multi-account pools (10–20+ Pro accounts) safely without Sybil ban risk, each account requires full sandbox virtualization (`USERPROFILE`, `HOME`, `APPDATA`, `LOCALAPPDATA`, `TEMP`, `TMP`), an isolated `installation_id` UUID, a dedicated residential/4G mobile proxy, `.profile.lock` concurrency protection, and failover jitter (5–10s).
+⚠️ **Model & Reasoning Setting**:
+- Worker standard: `DEFAULT_MODEL = "gemini-3.8-flash-medium"` (chốt reasoning medium, cấm tự ý nâng lên `high`).
+- Model catalog hỗ trợ trong `agy.exe`: `gemini-3.8-flash-high`, `gemini-3.8-flash-medium`, `gemini-3.8-flash-low`, `claude-sonnet-4-6-thinking`, `claude-opus-4-6-thinking`, `gpt-oss-120b-medium`.
 
-### 4. CLI Argument Ordering & Subcommand Flag Traps (`ag_cli.py`)
-In `ag_cli.py`, the CLI parser defines subcommands (`ask`, `fix`, `models`, `pool-status`, `init-profile`).
+⚠️ **Flag-Ordering & Project Trap**: Always place `--dangerously-skip-permissions`, `--model`, and `--project` BEFORE `-p`:
+```bash
+agy --dangerously-skip-permissions --model "gemini-3.8-flash-medium" --project "aicode-consumers" -p "<task>"
+```
+- **Project ID Invariant**: `--project aicode-consumers` là bắt buộc. Nếu bỏ trống, `agy.exe` fallback về `default-cli-project` hoặc đọc folder name trong `projects.json` (vd `"taadaa"`). Google Cloud Code API sẽ trả về lỗi delayed 429 `RESOURCE_EXHAUSTED` vì project ID không hợp lệ.
+- Đồng thời map `"d:\\taadaa": "aicode-consumers"` trong `.gemini/projects.json` và ghi `aicode-consumers` vào `.gemini/antigravity-cli/cache/default_project_id.txt`.
+
+### 3. Native Agent Capabilities vs OmniRoute Proxy Trap
+⚠️ **INVARIANT (User Directed): CẤM TUYỆT ĐỐI bọc OmniRoute vào `ag_cli.py`!**
+- `ag_cli.py` sinh ra là để chạy **Native Antigravity Agent CLI (`agy.exe`)**, tận dụng đầy đủ năng lực native của Google Antigravity Agent (workspace inspection, multi-turn reasoning, file edit, tool execution trong sandbox).
+- Tuyệt đối không được "chữa cháy" bằng cách biến `ag_cli.py` thành wrapper gọi OmniRoute REST API (`:20129`) làm mất năng lực agent của `agy`.
+- Nếu `agy.exe` gặp lỗi 429 quota do Google áp trần hạn mức ngày của CLI:
+  - Để `ag_cli.py` trả về mã lỗi quota chuẩn (`RC_QUOTA_BLOCKED` / exit code 3).
+  - Tầng điều phối cấp cao (`dispatch_worker.py`) sẽ tự động bắt cờ và failover sang **Tier 2: Claude Haiku CLI (`claude_worker.py`)**. Không bao giờ bẻ cong kiến trúc Agy CLI.
+
+### 4. Google Code Assist Quota Separation & Proxy Token Refresh
+- **Phân tách 2 hệ thống Quota Google**:
+  1. Quota 5-hour rolling window (`gemini-5h` / `retrieveUserQuotaSummary`): Cho API stream trực tiếp (thường còn 80-100%).
+  2. Quota Agent Mode Daily Limit (`loadCodeAssist`): Nếu tài khoản có Google AI Pro (`paidTier = g1-pro-tier`) nhưng ở CLI vẫn báo `"currentTier": "free-tier"`, Google áp trần hạn mức ngày (~50 request/ngày), văng lỗi `RESOURCE_EXHAUSTED (code 429): Individual quota reached. Resets in XhYm` (reset lúc 06:36 AM). Kích hoạt Pro qua: `https://accounts.google.com/AccountChooser?Email=<email>&continue=https://one.google.com/ai`.
+- **Token Refresh qua đúng Proxy Farm**:
+  - Google sẽ invalidate hoặc cấp token bị hạn chế (gây HTTP 401 trên Cloud Code) nếu `refresh_token` được gửi từ host IP trực tiếp thay vì qua Farm Proxy của tài khoản đó.
+  - Script quản lý token (`setup_agy_profile_creds.py`) BẮT BUỘC định tuyến request OAuth refresh qua đúng proxy của từng profile trong `profiles_config.json`.
+
+### 5. CLI Argument Ordering, Subcommand Flag & Pool Behaviour (`ag_cli.py`)
+In `ag_cli.py`, the CLI parser defines subcommands (`ask`, `fix`, `models`, `pool-status`, `init-profile`, `agy-help`).
 - **The `--profile` Argument Trap**:
   In `ag_cli.py`, `--profile` is defined ONLY under the `ask` subcommand parser, NOT under `fix`.
   Passing `python ag_cli.py fix --profile acc_01 "..."` causes `argparse` to fail immediately with:
@@ -401,6 +419,9 @@ In `ag_cli.py`, the CLI parser defines subcommands (`ask`, `fix`, `models`, `poo
   **Fix**: When calling `fix`, omit `--profile`. The `fix` runner automatically coordinates and selects an available, non-cooldown profile via LRU / pool rotation.
 - **Task Scope & Timeout Sizing**:
   Standard timeout across all dispatchers is 1200s (20m) for workers and 1500s (25m) for `ag_cli.py fix`. Never clamp `--timeout 180` in caller scripts. Cutting off runs at 180s triggers false `TimeoutExpired`, causing a cascading cooldown that locks all 22 pool profiles.
+- **Pool `max_attempts` Trap (429 cascade)**: Mặc định script thử `max_attempts=2` profile rồi chuyển sang `run_default()`. Nếu `run_default()` cũng hết quota (giống nhau), không được lặp lại toàn bộ pool (sẽ gây cascade 429 + cooldown lock). Phải dừng lại ngay với mã lỗi 3.
+- **Failover Jitter Configuration**: `FAILOVER_JITTER_MIN` / `FAILOVER_JITTER_MAX` cần đặt thấp (0.5–1.5s) thay vì 5–10s. Jitter cao làm Gateway timeout sớm và gây cascade.
+- **CoolDown Reset**: Phải xóa cooldown trong `pool_state.json` thủ công sau khi Google refresh quota (06:36 sáng hoặc sau timeout reset). Sử dụng `patch()` vào đúng entry `"cooldown_until": 0`; không xóa trắng cả file.
 
 
 ## OpenCode CLI — Windows Timeout, Encoding & Workspace Traps
