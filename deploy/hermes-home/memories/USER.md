@@ -14,7 +14,7 @@ Follow audit: >=3-4 chu kỳ 4d + Cohort Veteran/Mid/Rookie; tách fl=0 và used
 §
 Gemini/GPM: CDP, 2 pool OmniRoute+AGY, proxy 1:1 S7. Preflight sniper: GPM live, link TTL 5ph.
 §
-Reviewer: Sol (:20129); Sonnet CLI khi cần plan. Lệnh gọi Claude=chạy thật+trích output, CẤM tự chém thay.
+Reviewer: Sol (:20129); Sonnet lập plan (quota>=85% Sol). Lệnh Claude=chạy thật+trích output. Mọi gate: cưỡng chế cơ học, cấm fix tầng prompt.
 §
 Đơn farm: Bào voucher fake info né quét; cấm bảo tải app/đọc OTP; ship về 47 TCV; alert đơn tách nhóm riêng.
 §

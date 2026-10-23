@@ -129,6 +129,7 @@ Do not say “real-time” when polling. State the interval and likely detection
 
 ## References
 
+- `references/multi-carrier-ghn-spx-jt-api-and-lifecycle-routing.md` — Multi-carrier reverse-engineering (GHN public API with phone_verify, J&T Express cellphone validation, SPX/Ninja Van APIs), normalized status milestones, and zero-ADB handoff.
 - `references/in-app-tracking-extraction-and-switcher-disambiguation.md` — Profile handle ambiguity vs switcher sheet trap, J&T 12-digit numeric billcode pattern, double device-lock deadlock avoidance, and terminal retirement protocol.
 - `references/order-lifecycle-state-machine-and-auto-retire.md` — 3-phase state machine (In-app discovery -> Zero-ADB web tracking -> Terminal retirement), pure script watchdog pattern (`no_agent: true`), and native vs webview boundary rules.
 - `references/farm-voucher-order-logistics-and-jt-tracking.md` — J&T web tracking 4-digit phone validation trick, farm voucher anti-app-download rule, multi-shipper route coordination, secret keyword convention, and host audio alarm pattern.

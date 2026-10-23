@@ -24,6 +24,6 @@ OMP/AGY: 29 acc Pro; lease 1800s. agy.exe: wincred > oauth_creds; user_tier=g1-p
 §
 Đơn TT Shop: Mail báo 1 lần; API SPX/J&T/Ninja; Hub Thanh Khê. Dashboard :1905 /api/orders.
 §
-Worker: Sol Worker (:20129, Tier 1 qua dispatch_worker), Agy CLI (gemini-3.8-flash-medium, Tier 2), Haiku (Tier 3; Quota Guard 85% cấm tự allow). OmniRoute: scope='account'.
+Worker 3-Tier: T1 Sol Web (:20129), T2 Agy CLI, T3 Haiku. Arch/Auth change: BẮT BUỘC Claude Sonnet Plan (fallback Sol Planner khi quota>=85%). Cưỡng chế tầng cơ học (guard/script), cấm chỉ fix prompt.
 §
 Cron/Alert: Gửi đúng Telegram group của repo (-5435853713 Video/Up, -5377611430 Nuôi, -5373649734 Alert), cấm spam DM.

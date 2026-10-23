@@ -22,12 +22,25 @@
 - Để lấy live quota chính xác theo từng tài khoản, cần gọi endpoint on-demand: `GET /api/usage/[connectionId]`.
 - Desktop client `agy.exe` kiểm tra quota cá nhân trực tiếp với Google (`RESOURCE_EXHAUSTED 429: Individual quota reached`).
 
-## 5. Phân Định Ranh Giới: Bắt Buộc Sonnet Plan vs Đi Thẳng Haiku Worker T2 (Chống Nhầm Rule Lên Plan)
-- **Căn bệnh "Nhầm rule lên plan":** Khi user hỏi *"mày sửa có gọi claude cli lên plan không?"*, Coordinator không được luống cuống nhận vơ là vi phạm gate nếu task đó vốn dĩ là T2 fix code thông thường.
-- **Quy tắc phân định 2 trường hợp:**
-  1. **BẮT BUỘC Claude Sonnet Plan (`--role planner`):** CHỈ áp dụng khi có **thay đổi kiến trúc hệ thống / đổi cơ chế auth / refactor đa module** mà chưa có diff rõ ràng (ví dụ: thiết kế cơ chế bypass keyring, đổi giao thức lưu token trên OS, tái cấu trúc pipeline nhiều repo).
-  2. **ĐI THẲNG Haiku Worker T2 (`--role worker`):** Khi bài toán đã được xác định nguyên nhân cơ học và Coordinator đã có **exact diff O(1)** (Patch Contract cụ thể, <= 2 files, có lệnh verify focused test < 30s). Ở trường hợp này, việc gọi Sonnet lập plan là **thừa thãi, sai quy trình và đốt sạch quota Sonnet vô ích**.
-- **Kỷ luật trả lời:** Hiểu bản chất câu hỏi của user là đang chất vấn logic phân loại task, không tự nhận tội hoang tưởng làm rối loạn quy trình điều phối.
+## 5. Kỷ Luật Gate Lập Kế Hoạch (Plan Gate) & Giải Quyết Xung Đột Quota Guard
+
+### 1. Quy Tắc Bất Biến Về Gate Lập Plan:
+- **Người Dùng Đã Chốt:** Trước khi thi công các ca can thiệp thay đổi cơ chế xác thực (auth), sửa kiến trúc core, hoặc refactor đa module, **COORDINATOR BẮT BUỘC PHẢI GỌI CLAUDE SONNET LÊN PLAN TRƯỚC** (`claude_worker.py --role planner`).
+- **CẤM NHẢY CÓC LÀM TẮT:** Coordinator TUYỆT ĐỐI CẤM tự ý phân tích rồi vội vã cấp Patch Contract gọi thẳng Haiku Worker thi công mà bỏ qua bước lập plan của Sonnet. Việc tự làm tắt bị coi là vi phạm nghiêm trọng Gate điều phối.
+
+### 2. Tháo Gỡ Điểm Nghẽn (Deadlock) Khi Claude Quota 5h >= 85%:
+- **Tình huống xung đột:** `claude_quota_guard.py` chặn cứng lệnh gọi Claude CLI khi Quota 5h >= 85% (kể cả role `planner`).
+- **Thứ tự Fallback Planner Hợp Lệ (Cấm Tự Phẫu Thuật Mò):**
+  1. *Ưu tiên 1:* Gọi **Claude Sonnet CLI** (`claude_worker.py --role planner`).
+  2. *Fallback khi Claude Quota >= 85%:* Chuyển bước lập Plan sang **Sol Planner** (`:20129` qua `sol_consult` / `gpt-web-sol`). Sol Planner hoàn toàn miễn phí và không tốn quota Anthropic.
+  3. Chỉ sau khi đã có Plan được duyệt từ Sonnet hoặc Sol Planner, Coordinator mới trích xuất Patch Contract O(1) để bàn giao cho Worker thi công.
+
+## 6. Thứ Tự Phân Tầng Chuẩn 3-Tier Trong Single Dispatch Gateway (`dispatch_worker.py`)
+- **Quy chuẩn bất biến:**
+  1. **Tier 1 (Primary - Free 100%):** Sol Web Worker (`sol_worker.py` qua `:20129`) — Không tốn token Anthropic hay Google Pro.
+  2. **Tier 2 (Fallback 1 - Native Pool):** Agy CLI (`ag_cli.py fix`) — Chạy native binary `agy.exe` qua 29 tài khoản Google One Pro cục bộ (đồng bộ token qua Windows Keyring `wincred`).
+  3. **Tier 3 (Fallback 2 - An Toàn Cuối):** Claude Haiku CLI (`claude_worker.py --role worker` / `haiku_worker.py`) — Phẫu thuật O(1) tốc độ cao khi cả Sol và Agy đều cạn quota hoặc timeout.
+- **Khắc phục mâu thuẫn tài liệu:** Bất kỳ docstring, prompt template hay file markdown nào ghi `Tier 1: Haiku` hoặc `Tier 1: Agy` (bỏ sót Sol) đều là tài liệu cũ lạc hậu và phải được chuẩn hóa về đúng thứ tự 3-Tier trên.
 
 ## 6. Cơ Chế Hard Guard Của `claude_quota_guard.py` & Kỷ Luật Không Bỏ Cuộc Giữa Chừng
 - **Bảo vệ vật lý khi Quota 5h >= 85%:** Lệnh gọi `claude` CLI bị chặn vật lý ở tầng OS (exit 20). `claude_quota_guard.py` tự động phát hiện caller là AI tự động (`is_automated_agent_caller()`) để từ chối các cờ bypass ngầm (`--force-claude`).
