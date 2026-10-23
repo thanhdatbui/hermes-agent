@@ -20,7 +20,7 @@ Ava: Trích clip gốc; WinRT OCR lines==0 lọc chữ rác. Top-row grid: audit
 §
 Reboot 3 ca (05:20, 11:20, 17:20): lookback 60m; 2FA né đệm. Né TFT/War3. Task ngầm Hidden. Game=tắt nháy. Tiểu Vi 5038: cấm báo rớt 40 máy khi chưa kill 5038; preflight bắt buộc dọn 5038 trước ca feed.
 §
-OMP/AGY: 28 acc Pro; lease 1800s; link 9k quá 8p check one.google.com/home.
+OMP/AGY: 29 acc Pro; lease 1800s; link 9k quá 8p check one.google.com/home.
 §
 Đơn TT Shop: Mail báo 1 lần; API SPX/J&T/Ninja; Hub Thanh Khê. Dashboard :1905 /api/orders.
 §
