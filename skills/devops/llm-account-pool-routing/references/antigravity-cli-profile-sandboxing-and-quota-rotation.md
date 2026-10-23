@@ -677,7 +677,9 @@ Controller `ag_cli.py` truy vấn trực tiếp 2 API endpoints từ OmniRoute `
   2. *Bẫy High Thinking của CLI:* `ag_cli.py` mặc định gọi `gemini-3.8-flash-high`. Mức `high` yêu cầu Google cấp phát hạn ngạch tư duy tối đa, vượt quá số lượng token khả dụng còn lại trong cửa sổ 5 giờ -> Google từ chối và nhả lỗi:
      `RESOURCE_EXHAUSTED (code 429): Individual quota reached. Resets in 14h47m`
   3. *Hiệu ứng domino Cooldown 1800s:* Khi dính 429, `ag_cli.py` tự động phạt cooldown 30 phút vào `pool_state.json`. Các lệnh gọi tiếp theo nhìn thấy cooldown sẽ bỏ qua profile và báo toàn pool cạn kiệt.
-- **Kỷ luật điều phối:**
+- **Kỷ luật điều phối & Tương tác:**
+  - **Khóa cứng Model Mặc định:** `DEFAULT_MODEL` trong `ag_cli.py` BẮT BUỘC phải là `gemini-3.8-flash-medium` (Medium Reasoning). Tuyệt đối cấm gán `gemini-3.8-flash-high` vì sẽ nuốt sạch token thinking budget, dẫn đến 429 giả và kích hoạt cooldown 1800s làm tê liệt pool.
+  - **Kỷ luật Báo cáo Trực diện (Anti-Deflection Invariant):** Khi người dùng hỏi về quota của tài khoản/runner nào (ví dụ: `quyphuoc` trên AGY CLI), BẮT BUỘC trả lời thẳng vào tài khoản và model đó (Gemini). CẤM TUYỆT ĐỐI lôi quota của các model không liên quan (như Claude Sonnet/Opus) vào giải thích gây loãng và làm phiền người dùng.
   - Khi một tài khoản Pro báo hết quota trên model Claude Sonnet/Opus hoặc Gemini Flash High, KHÔNG vội kết luận tài khoản bị lỗi hay mất gói Pro.
   - Gọi endpoint `retrieveUserQuotaSummary` để kiểm tra chính xác thời gian hồi phục của cửa sổ 5 giờ.
   - Hạ model xuống `gemini-3.8-flash-medium` hoặc định tuyến tác vụ qua OmniRoute combo `ag-gemini-pool-3` để tận dụng hạn ngạch còn lại của nhóm Gemini.
