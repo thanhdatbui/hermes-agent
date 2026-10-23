@@ -8,7 +8,7 @@ Rename: tâm Sửa hồ sơ (315,865) né khe 540; cấm tap (72,148); thoát FI
 §
 Sol: 100% On-Demand, cấm đoán ý (?); chỉ gọi khi đích danh. CGPT-Web: test qua /api/providers/{cid}/test, cấm validate masked key.
 §
-Stale Up: xóa draft. Revert: TikWM. Cào: max 60. Cron TB: device_lock+rolling<=5; bỏ ca 0h.
+Stale Up: xóa draft. Revert: TikWM. Cào: max 60. Cron TB: device_lock+rolling<=5; bỏ 0h.
 §
 Closeout: Sol (:20129, 0% Claude); Anti-Goalposts; Grace 80-84; CẤM raw push; cấm BLOCKED (vẫn là khóc); DENY=pivot sửa gốc. P1 Gmail, P2 2FA. pre_session_gate.
 §
@@ -16,7 +16,7 @@ Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; Reaper SSH.
 §
 M7: SSID 'Dat_2.4G'; Aruba VC vlan 1+permit; wrap ADB qua with_device_lock.py.
 §
-Ava: Trích clip gốc; WinRT OCR lines==0 lọc chữ rác. Top-row grid: audit kỹ né sót clip khủng (8k8 view). Gate 6: cấm gửi mù, SHA256 thật. F_src!=F_vid khóa 2 folder.
+Ava: Trích clip gốc; OCR lines==0. Top-row audit né sót view cao. Gate 6: cấm gửi mù. F_src!=F_vid khóa 2 folder. Chuẩn hoá 4 món: Hashtag (.manual_hashtag_locked), Pin>=1k, Ava (.manual_avatar_locked), Tên+Bio.
 §
 Reboot 3 ca: retry :20-:50, cutoff :51 (<10p ca); lb 60m; 2FA né đệm; né TFT/War3. Task ngầm Hidden. Game=tắt nháy. Tiểu Vi 5038: cấm báo rớt 40 máy khi chưa kill 5038; preflight bắt buộc dọn 5038 trước ca feed.
 §
