@@ -106,12 +106,16 @@ Dùng trước khi khởi chạy bất kỳ batch tác vụ nào (Reg TikTok, Ho
   - **Kỷ luật Tách Biệt Báo Cáo Kibe vs Admin:** Các tác vụ farm dùng chung gửi về Farm Alert (`telegram:-5373649734`) bắt buộc có prefix `[FARM REPORT][KIBE]` hoặc `[FARM REPORT][ADMIN]`. Các tác vụ giám sát nội bộ (stale watchdog, trim files) gửi về kênh riêng của từng host (`origin` trên Kibe, `telegram:-5188753741` trên Admin).
   - **Kỷ luật Đồng Bộ Cron Toàn Farm Tự Động:** Cron `cron-sync-watchdog` chạy mỗi 15p tự động đồng bộ `jobs.json` từ Kibe sang Git Deploy và `OneDrive_Shared/hermes-cron/`. Trên bot Admin chỉ cần chạy lệnh 1 chạm: `python D:\OneDrive\Taadaa_Sync_Shared\tools\setup_admin_cron.py`.
   - **Kỷ luật Supervisor OmniRoute Watchdog (:20129):** File supervisor `omniroute_watchdog.ps1` tuyệt đối CẤM dùng `$pId` (PowerShell không phân biệt hoa thường sẽ đè biến hệ thống `$PID` read-only gây crash), tăng timeout health probe lên 15s và grace period lên 90s để chống tự kill nhầm khi subagents tạo tải song song.
-  - **Lịch nuôi acc chính thức 4 Ca x 2 Phiên / ngày (Cập nhật chuẩn xác 2026-09-13):**
-  - **Ca 4 (Đêm):** Phiên 1 lúc `00:00` (Feed only), Phiên 2 lúc `01:30` (Feed + Upload). Chạy Row 8 (ngày chẵn) / Row 7 (ngày lẻ).
-  - **Ca 1 (Sáng):** Phiên 1 lúc `06:00` (Feed only), Phiên 2 lúc `08:00` (Feed + Upload). Chạy Row 2 (ngày chẵn) / Row 1 (ngày lẻ).
-  - **Ca 2 (Trưa):** Phiên 1 lúc `11:35` (Feed only), Phiên 2 lúc `13:30 - 14:05` (Feed + Upload). Chạy Row 4 (ngày chẵn) / Row 3 (ngày lẻ). Xong toàn bộ ca trưa trước `15:05`.
-  - **Ca 3 (Tối):** Phiên 1 lúc `17:45` (Feed only), Phiên 2 lúc `19:35 - 20:10` (Feed + Upload). Chạy Row 6 (ngày chẵn) / Row 5 (ngày lẻ). Xong toàn bộ ca tối trước `21:10`.
-  - **Dead Zone:** Từ `03:00` đến `05:59` sáng: Toàn bộ 80 máy nghỉ lướt feed, làm mát thiết bị, dọn cache (`end-of-day-clear-tiktok-cache` chạy 04:00).
+  - **Lịch nuôi acc chuẩn hóa Chu kỳ 4 ngày x 3 Ca x 2 Phiên / ngày (Cập nhật chuẩn xác 2026-10-11, BỎ HOÀN TOÀN CA 0H ĐÊM):**
+  - **Ca 1 (Sáng):** Phiên 1 lúc `06:00` (Feed only), Phiên 2 lúc `08:00` (+ Upload/Follow).
+  - **Ca 2 (Trưa):** Phiên 1 lúc `12:00` (Feed only), Phiên 2 lúc `14:00` (+ Upload/Follow).
+  - **Ca 3 (Tối):** Phiên 1 lúc `18:00` (Feed only), Phiên 2 lúc `20:00` (+ Upload/Follow).
+  - **Phân bổ Chu kỳ 4 ngày (Base date 11/10/2026, Parity cố định 96h):**
+    * **Day 0 (Ngày 1):** Ca 1 (Row 1) - Ca 2 (Row 3) - Ca 3 (Row 5).
+    * **Day 1 (Ngày 2):** Ca 1 (Row 2) - Ca 2 (Row 4) - Ca 3 (Row 6).
+    * **Day 2 (Ngày 3):** Ca 1 (Row 7) - Ca 2 (Row 8) - Ca 3 (Dưỡng sinh Row 3/4 pure feed).
+    * **Day 3 (Ngày 4):** Dưỡng sinh xả tải toàn farm (pure feed / nghỉ ngơi).
+  - **Toàn bộ đêm từ 21:00 đến 05:59 sáng:** Toàn bộ 80 máy nghỉ ngơi hoàn toàn, làm mát pin S7 và chạy `end-of-day-clear-tiktok-cache` (03:00 - 04:30). TUYỆT ĐỐI KHÔNG CÓ CA NUÔI NÀO LÚC 00:00 HAY 01:30.
   - **Quy tắc Upload Hook:** Phiên 1 CẤM upload. Phiên 2 lướt feed xong tự động đăng video nếu máy có video theo Row trong ca đó.
 
 - **Bản Đồ Phân Bổ Các Watchdog / Cron Sau Từng Ca:**
