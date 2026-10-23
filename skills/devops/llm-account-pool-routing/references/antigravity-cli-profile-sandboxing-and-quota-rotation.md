@@ -854,10 +854,63 @@ if os.path.exists(accounts_file):
 - Struct `StoredToken` Go JSON tags: `user_tier,omitempty` | `client_id,omitempty` | `token_url,omitempty`
 - Source files trong binary xác nhận file auth đọc: `code_assist_client/token_storage.go`, `code_assist_client/composite_token_storage.go`
 
-### 8. BLOCKED Item — Cần Điều Tra Thêm:
-- Xác định convention đặt tên Keyring credential của `agy.exe` (cần Procmon trace hoặc thêm Go debug build).
-- Test thử đặt `ANTIGRAVITY_VSCODE_HOST=1` + xóa sạch Windows Credential Manager entries của `jinrakal@gmail.com` xem `agy.exe` có fallback về file không.
-- Test `AGY_LLM_GATEWAY_URL=http://127.0.0.1:20129/v1` nhưng CẤM dùng trong sản xuất (vi phạm quy tắc OmniRoute-free của ag_cli).
+### 8. Giải Pháp Triệt Để: Đồng Bộ Token Vào Windows Keyring (`gemini:antigravity`) Trước Khi Spawn `agy.exe` (Verified 2026-10-23)
+
+Bằng cách dùng ctypes Win32 API `CredReadW` đọc trực tiếp credential `gemini:antigravity` trên máy host, ta phát hiện cấu trúc chuẩn xác 100% mà `agy.exe` đọc từ Windows Credential Manager:
+- **TargetName**: `"gemini:antigravity"`
+- **UserName**: `"antigravity"`
+- **Type**: `1` (`CRED_TYPE_GENERIC`)
+- **Persist**: `2` (`CRED_PERSIST_LOCAL_MACHINE`)
+- **JSON Payload Trong `CredentialBlob`**:
+  ```json
+  {
+    "token": {
+      "access_token": "ya29...",
+      "token_type": "Bearer",
+      "refresh_token": "1//0e...",
+      "expiry": "2026-10-23T23:25:40.5171141+07:00",
+      "expires_in": 3599
+    },
+    "auth_method": "consumer",
+    "id_token_email": "<email_hien_tai>"
+  }
+  ```
+
+#### Cơ chế `sync_profile_to_wincred(profile_dir)` trong `D:/Taadaa/tools/ag_cli.py`:
+Trước khi gọi `subprocess.Popen(cmd)` cho bất kỳ profile nào, `ag_cli.py` thực hiện:
+```python
+def sync_profile_to_wincred(profile_dir: str) -> bool:
+    '''Sync profile OAuth credentials to Windows Credential Manager (target: gemini:antigravity).
+    Antigravity CLI (agy.exe) on Windows reads its authentication from wincred.
+    '''
+    if sys.platform != 'win32':
+        return True
+    # Đọc access_token, refresh_token từ profile_dir/.gemini/oauth_creds.json
+    # Đọc active email từ profile_dir/.gemini/google_accounts.json
+    # Build payload JSON với 'token', 'auth_method': 'consumer', 'id_token_email'
+    # Ghi đè vào Windows Credential Manager qua ctypes.windll.Advapi32.CredWriteW
+```
+
+#### Kết Quả Thực Nghiệm Nghiệm Thu (Live Verification 100% PASS):
+1. **Direct Ask (`ag_cli.py ask` profile `acc_27` - `quyphuoc090565@gmail.com`):**
+   - Trả lời thành công: `HELLO_FROM_WINCRED_SUCCESS` (Exit code 0).
+2. **Code Surgery (`ag_cli.py fix`):**
+   - File `D:/Taadaa/benchmark_arena/hello.py` được `agy.exe` tự động đọc AST và patch:
+     `x = 999  # verified_by_native_agy_cli` (Exit code 0).
+3. **Gateway Dispatch (`dispatch_worker.py`):**
+   - Sol Web timeout tự động rơi về Agy CLI, profile `acc_28` nhận task và sửa:
+     `x = 888  # verified_by_dispatch_worker` (Exit code 0).
+4. **Pytest Suite:** `pytest D:/Taadaa/tools/tests/test_ag_cli.py` -> 45/45 passed (100% Green).
+
+---
+
+## 25. Kỷ Luật Vận Hành & Tác Phong Điều Phối: Cấm Bỏ Cuộc Hoặc Thoái Thác Sang Phiên Mới (Anti-Deflection Discipline)
+
+- **Căn bệnh thoái thác:** Khi gặp bài toán hóc búa (như `agy.exe` dính 429 bí ẩn), Coordinator dễ có xu hướng "xin thêm session mới" hoặc dừng lại giữa chừng để trốn tránh trách nhiệm.
+- **Quy tắc bất biến:**
+  1. Nếu công cụ chẩn đoán (`terminal`, `read_file`, `python -c`, `ctypes`) vẫn hoạt động, **BẮT BUỘC ĐIỀU TRA ĐẾN CÙNG NGAY TRONG PHIÊN HIỆN TẠI**.
+  2. Tuyệt đối cấm kết luận tài khoản hết quota khi chưa gửi request độc lập kiểm chứng token thực tế.
+  3. Mọi bài toán đều có nguyên nhân cơ học ở tầng OS/Process/Storage. Đào sâu binary strings và Win32 API luôn tìm ra giải pháp O(1).
 
 
 
