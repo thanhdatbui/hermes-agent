@@ -236,5 +236,41 @@ python D:/Taadaa/tools/closeout_gate.py \
     `{"status": "FAIL", "failed_gate": "A"|"B"|"C", "error": "...", "next_action": "..."}`.
   + CẤM TUYỆT ĐỐI Coordinator sinh văn mẫu than phiền, xin xỏ clarify vô căn cứ hay đóng băng phiên làm việc. Next action luôn rõ ràng và xác định để khắc phục tức thì.
 
+---
+
+## 11. Sol Web Worker (`sol_worker.py`) Dispatch & Prompt Discipline
+
+- **Primary Worker Invariant**: Mọi tác vụ code/fix thường quy BẮT BUỘC đi qua `dispatch_worker.py` hoặc gọi trực tiếp `sol_worker.py` (Tier 1 Primary qua OmniRoute `:20129`, 0% quota Claude, 0% quota Agy). CẤM Coordinator nhảy cóc gọi thẳng `haiku_worker.py` khi chưa qua Sol Worker.
+- **Fail-Fast Open Prompt Pitfall**: Sol Worker chạy vòng lặp ReAct (`READ_FILE` → `PATCH` → `COMMAND` → `DONE`). Khi nhận prompt mở ("tự thiết kế A, B, C từ đầu và viết cả test"), Sol Worker dễ bị kẹt đọc file lặp lại và chạm trần `MAX_TURNS_REACHED` (exit 124).
+- **Exact Contract Pattern**: Luôn cung cấp Patch Contract O(1) định hình sẵn (`--- RUNNER_CODE ---` / `--- TEST_CODE ---` hoặc diff anchors cụ thể). Khi có contract rõ ràng, Sol Worker hoàn thành xuất sắc trong 4–6 turns với exit code 0.
+
+---
+
+## 12. Protected Invariant Regression Gate (`guardgate`) & 3 Chốt Chống Khóc Lóc
+
+- **Vị trí**: `D:/Taadaa/tools/guardgate` (`rules.json`, `predicates.py`, `runner.py`).
+- **Mục tiêu**: Chặn đứng hiện tượng "Session-to-Session Amnesia / Flip-Flop Loop" (session trước nâng timeout Case 162 USB chống sập, session sau táy máy hạ timeout xóa thành quả).
+- **3 Chốt Giảm Xóc Cơ Học (Anti-Whining Shock Absorbers)**:
+  1. *Chốt 1 — Enum Mandate Đóng & Lệnh Điền Sẵn O(1)*: Khi diff vi phạm bị `DENY`, in ngay block mệnh lệnh xác định với đường dẫn file thực tế:
+     ```text
+     [GuardEngine DENY] rule=<rule_id>
+     VIOLATION: <reason>
+     REQUIRED_NEXT_ACTION (chọn đúng 1, không có lựa chọn thứ 3):
+       (a) REVERT_EXACT   -> git checkout -- "<file>"
+       (b) JUSTIFIED_BYPASS -> gọi sol_repair với evidence_bundle={'rule_id': '...', 'reason': '...'}
+     NO_OTHER_ACTION_VALID. Không có hành động thứ 3 (phân trần, xin lỗi, dừng).
+     ```
+  2. *Chốt 2 — Auto-Quarantine O(1)*: Tự động chạy `git stash` cách ly hunk vi phạm vào `guardgate-quarantine-<rule_id>-<timestamp>`, đưa file về trạng thái sạch để không làm bẩn working tree.
+  3. *Chốt 3 — Strike 3 Handoff*: Đếm số lần vi phạm cùng rule qua `ledger.jsonl`. Đến lần thứ 3, tự động mở ticket vào `sol_repair_queue.jsonl` và khóa phát ngôn: chỉ được báo `"Đã mở sol_repair #<id> cho rule <rule_id>, chờ review"`.
+
+---
+
+## 13. Submodule Test Isolation & Reviewer Hygiene
+
+- **Path Resolution trong Test**: Khi pytest chạy từ repo root (`pytest guardgate/...`), các test file trong submodule BẮT BUỘC chèn `BASE_DIR = Path(__file__).resolve().parent` vào `sys.path` và đọc file dữ liệu bằng `BASE_DIR / "rules.json"`, TUYỆT ĐỐI CẤM dùng `open("rules.json")` tương đối gây `FileNotFoundError`.
+- **Tempfile Cleanup Hygiene**: Mọi test case tạo file tạm bằng `NamedTemporaryFile(delete=False)` BẮT BUỘC bọc trong khối `try...finally: os.unlink(temp_path)` để dọn dẹp sạch sẽ, tránh bị Reviewer Sol trừ điểm Test Hygiene.
+- **Decoupling Classifier & Flows**: Giữ tầng phân loại màn hình (`classifier.py`) độc lập với tầng kịch bản (`flows/`), cấm import động các hàm nội bộ có dấu gạch dưới (`_find_...`) từ flows vào classifier để không bị Reviewer Sol đánh tụt điểm Architecture.
+
+
 
 
