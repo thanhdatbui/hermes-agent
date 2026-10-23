@@ -9,7 +9,7 @@ description: "TikTok follow runner and fail-closed farm ops."
 
 - Tài liệu chuyên sâu nằm trong `references/`; dùng đúng reference theo tình huống.
 - Follow false-failure/cooldown guard: xem `references/false-failure-accounting-and-cooldown-guard.md`.
-- `references/unjust-streak-inflation-and-cooldown-reconciliation.md`: Nguyên tắc phạt fail streak (fl=0 nhiều kỳ), bẫy tù treo trên dashboard và reconcile O(1).
+- `references/unjust-streak-inflation-and-cooldown-reconciliation.md`: Nguyên tắc phạt fail streak (fl=0 nhiều kỳ), bẫy tù treo trên dashboard, bẫy cooldown_until_at null và theo dõi nhả follow theo Row.
 - `references/dual-cluster-follow-watchdog-omission-and-safe-sync-desync.md`: Watchdog omission and safe-sync desync.
 - `references/follow-cycle-audit-and-ip-breaker-invariants.md`: Phân định Tù Nặng vs Cooldown, Account Ceiling vs IP Subnet Block, Cầu Dao IP Breaker.
 - `references/post-follow-verification-and-reconcile.md`: Tách tap, Path-B và web reconciliation.

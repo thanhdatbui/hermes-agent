@@ -18,4 +18,4 @@ Reviewer: Sol (:20129); Sonnet CLI khi cần plan. Lệnh gọi Claude=chạy th
 §
 Đơn farm: Bào voucher fake info né quét; cấm bảo tải app/đọc OTP; ship về 47 TCV; alert đơn tách nhóm riêng.
 §
-Hand-off acc: đưa đủ Email, Pass, Recovery, Secret 2FA & mã TOTP live.
+Hand-off acc: đưa đủ Email, Pass, Recovery, Secret 2FA & mã TOTP live; hỏi quota acc nào trả lời đúng acc đó, cấm lải nhải sang model khác.

@@ -24,6 +24,6 @@ OMP/AGY: 28 acc Pro; lease 1800s; link 9k quá 8p check one.google.com/home.
 §
 Đơn TT Shop: Mail báo 1 lần; API SPX/J&T/Ninja; Hub Thanh Khê. Dashboard :1905 /api/orders.
 §
-Worker 3-Tier: Sol (:20129 free), Agy CLI, Haiku (--allow-bash). Quota live Omni. Game guard: suspend/resume.
+Worker: Sol (:20129), Agy CLI (gemini-3.8-flash-medium, cấm high), Haiku. OmniRoute proxy: bắt buộc scope='account' (proxy_enabled=1 alone=lộ IP direct).
 §
 Cron/Alert: Gửi đúng Telegram group của repo (-5435853713 Video/Up, -5377611430 Nuôi, -5373649734 Alert), cấm spam DM.
