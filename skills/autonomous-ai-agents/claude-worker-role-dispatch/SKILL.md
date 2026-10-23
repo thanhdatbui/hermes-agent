@@ -12,6 +12,7 @@ metadata:
 # Claude Worker Role-Based Dispatch
 
 - `references/windows-cli-truncation-and-tool-parity.md`: Windows `\n` truncation, tool parity & 3-Tier worker gateway.
+- `references/mechanical-gate-planning-and-timeout-discipline-20261024.md`: Dẹp prompt sang gate cơ học (Planner: Sonnet -> Sol -> Coordinator; Worker: Sol -> Agy -> Haiku -> Coordinator), thiết quân luật timeout >= 180s-300s, wincred sync cho agy.exe.
 
 Use this skill when calling Claude Code CLI for any task on the Taadaa Farm. All Claude CLI invocations MUST go through `D:/Taadaa/tools/claude_worker.py`, never via raw `claude -p` in terminal.
 

@@ -192,6 +192,15 @@ When an operator requests a local dashboard or utility script to auto-start sile
   - Full-page browser snapshots on large tables (e.g. 1.000+ rows) can generate massive images (>80-90 Megapixels).
   - Attempting to convert or save such raw PNGs directly with PIL can trigger `DecompressionBombWarning: Image size exceeds limit...` or `OSError: broken data stream when writing image file` (exceeding maximum JPEG dimensions of 65,500 pixels).
   - *Solution*: Set `Image.MAX_IMAGE_PIXELS = None` and crop to the visible header/KPI area (`top_part = im.crop((0, 0, im.width, min(im.height, 1600)))`) before converting to JPEG for compact `MEDIA:` delivery.
+- **Cold-Query Latency vs "Dashboard Sập" False Alarms (Monolithic HTML Payload Bloat)**:
+  - When single-file embedded dashboards embed full fleet/account states (e.g. 1,200+ accounts) directly into initial HTML templates (`const initialData = {initial_json}`), the HTML document payload swells to >1.3–2.0 MB.
+  - When the in-memory cache (e.g. 15s TTL) expires, cold queries scanning SQLite snapshots and serializing large JSON structures take 4–5+ seconds to complete before transmitting the first byte.
+  - *Symptom / False Alarm*: Mobile browsers (iOS Safari / Chrome over 4G or Tailscale VPN) with strict connection timeouts or brief network drops abort the request (`ERR_CONNECTION_TIMED_OUT` / blank screen), leading operators to believe the server has crashed ("sập") even though the daemon is running.
+  - *Diagnostic & Verification Protocol*:
+    1. Verify listener PID, uptime, and port state via `psutil.net_connections(kind='tcp')`.
+    2. Probe HTTP GET with a generous probe timeout (`timeout >= 15s`): measure both cold latency (>4.0s) and subsequent warm cache hits (<0.05s).
+    3. Probe each listening interface independently (`127.0.0.1`, LAN `192.168.110.x`, Tailscale `100.88.x.x`) to distinguish interface-specific firewall/MagicDNS drops from daemon crashes.
+    4. Provide operators with direct IP fallback (`http://<tailscale_ip>:<port>/` or `http://<lan_ip>:<port>/`) when single-label hostname resolution (`http://kibe:<port>`) fails on mobile devices.
 - **On-Demand Dashboard vs Push Notification Fatigue**:
   When monitoring farm or fleet metrics (e.g. TikTok Farm account status, device states), operators prefer viewing live data on-demand via the web dashboard over daily report spam.
   - Cronjobs scanning fleet metrics should use `deliver: "local"` to silently update the local SQLite database in the background without blasting daily messages to Telegram.
