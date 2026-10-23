@@ -638,6 +638,50 @@ Controller `ag_cli.py` truy vấn trực tiếp 2 API endpoints từ OmniRoute `
 - **Trực quan hóa qua `ag_cli.py pool-status`:**
   - Tự động hiển thị cột `Omni Quota: {pct}%` bên cạnh trạng thái cục bộ, gắn nhãn rõ `(EXHAUSTED)` cho các nick hết hạn mức để người vận hành kiểm soát tức thì.
 
+---
+
+## 20. Token Decryption & Antigravity Dual-Bucket Quota Pathology (Verified 2026-10-23)
+
+### 1. Giải Mã Token Khi Nạp Profile Từ OmniRoute SQLite (`setup_agy_profile_creds.py`):
+- **Căn nguyên lỗi ngầm:** Trong OmniRoute (`storage.sqlite`), các trường `access_token` và `refresh_token` được mã hóa cấp trường (Field-Level Encryption) theo định dạng:
+  `enc:v1:<iv_hex>:<ciphertext_hex>:<authTag_hex>`
+  Nếu script setup chỉ select chuỗi này và ghi thẳng vào `oauth_creds.json`, binary `agy.exe` sẽ gửi token rác lên Google Cloud Code API, dẫn đến lỗi xác thực hoặc âm thầm rơi về tài khoản mặc định của host.
+- **Thuật toán giải mã chuẩn xác (AES-256-GCM + Scrypt):**
+  1. Đọc `STORAGE_ENCRYPTION_KEY` từ file cấu hình OmniRoute: `C:/Users/Kibe/AppData/Roaming/omniroute/server.env`.
+  2. Dùng Scrypt KDF với salt cố định:
+     ```python
+     kdf = Scrypt(salt=b"omniroute-field-encryption-v1", length=32, n=16384, r=8, p=1)
+     derived_key = kdf.derive(key_secret.encode("utf-8"))
+     ```
+  3. Tách chuỗi theo dấu hai chấm `:`:
+     ```python
+     parts = enc_token[7:].split(":")
+     iv = bytes.fromhex(parts[0])
+     ciphertext = bytes.fromhex(parts[1])
+     tag = bytes.fromhex(parts[2])
+     plaintext = AESGCM(derived_key).decrypt(iv, ciphertext + tag, None).decode("utf-8")
+     ```
+  4. Sau khi giải mã `refresh_token` (`1//0e...`), gọi trực tiếp Google OAuth2 endpoint (`https://oauth2.googleapis.com/token`) để lấy `access_token` sống (`ya29...`) kèm `expiry_date` và ghi vào `oauth_creds.json`.
+
+### 2. Sự Thật Quota 2 Phân Lớp Của Google Antigravity & Bẫy "Omni Chạy Được nhưng AGY Báo Hết":
+- **Trích xuất từ Google API (`v1internal:retrieveUserQuotaSummary`):**
+  Google phân chia hạn ngạch tài khoản Antigravity Pro thành **2 nhóm độc lập**, mỗi nhóm có 2 đồng hồ đo: **Hạn ngạch Tuần (Weekly)** và **Cửa sổ trượt 5 giờ (5-Hour Window)**:
+  1. *Nhóm 1: "Gemini Models" (Gemini Flash, Gemini Pro)*:
+     - `gemini-weekly`: Thường còn dồi dào (ví dụ 73.4%).
+     - `gemini-5h`: Cửa sổ giới hạn 5 giờ (ví dụ còn 9.3%, refresh sau ~1.5 giờ).
+  2. *Nhóm 2: "Claude and GPT models" (Claude Opus, Claude Sonnet, GPT-OSS)*:
+     - `3p-weekly`: Hạn mức tuần cho models bên thứ ba (ví dụ còn 41.8%).
+     - `3p-5h`: Cửa sổ trượt 5 giờ (khi đã cạn thì `remainingFraction = 0`, báo: *"You have hit your 5-hour limit, it will refresh in 4 hours, 15 minutes"*).
+- **Tại sao cùng 1 tài khoản, OmniRoute chat được mà AGY CLI lại báo 429 RESOURCE_EXHAUSTED?**
+  1. *Mức tiêu hao Thinking Budget:* OmniRoute gọi `gemini-3.8-flash-tiered` theo luồng chat thông thường, lượng token dự trù nhỏ hơn phần 9.3% còn lại trong cửa sổ 5 giờ -> Google cho qua (`HTTP 200 OK`).
+  2. *Bẫy High Thinking của CLI:* `ag_cli.py` mặc định gọi `gemini-3.8-flash-high`. Mức `high` yêu cầu Google cấp phát hạn ngạch tư duy tối đa, vượt quá số lượng token khả dụng còn lại trong cửa sổ 5 giờ -> Google từ chối và nhả lỗi:
+     `RESOURCE_EXHAUSTED (code 429): Individual quota reached. Resets in 14h47m`
+  3. *Hiệu ứng domino Cooldown 1800s:* Khi dính 429, `ag_cli.py` tự động phạt cooldown 30 phút vào `pool_state.json`. Các lệnh gọi tiếp theo nhìn thấy cooldown sẽ bỏ qua profile và báo toàn pool cạn kiệt.
+- **Kỷ luật điều phối:**
+  - Khi một tài khoản Pro báo hết quota trên model Claude Sonnet/Opus hoặc Gemini Flash High, KHÔNG vội kết luận tài khoản bị lỗi hay mất gói Pro.
+  - Gọi endpoint `retrieveUserQuotaSummary` để kiểm tra chính xác thời gian hồi phục của cửa sổ 5 giờ.
+  - Hạ model xuống `gemini-3.8-flash-medium` hoặc định tuyến tác vụ qua OmniRoute combo `ag-gemini-pool-3` để tận dụng hạn ngạch còn lại của nhóm Gemini.
+
 
 
 

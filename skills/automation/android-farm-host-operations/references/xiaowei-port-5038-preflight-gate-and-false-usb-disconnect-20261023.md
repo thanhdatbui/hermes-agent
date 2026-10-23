@@ -18,17 +18,53 @@
    * Trong mọi launcher điều phối feed (`run-feed-session.ps1` và `pre_session_device_gate.py`), bắt buộc kiểm tra trạng thái cổng 5038 trước khi spawn luồng nuôi:
    ```powershell
    # Pre-flight: Giai phong cong 5038 / XiaoWei ADB
-   $xwConn = Get-NetTCPConnection -LocalPort 5038 -State Listen -ErrorAction SilentlyContinue
-   if ($xwConn) {
-       Write-Host "[PRE-FLIGHT] Port 5038 occupied (PID $($xwConn[0].OwningProcess)), running kill-server..."
-       $xw = "C:\Program Files (x86)\xiaowei\tools\adb.exe"
-       if (-not (Test-Path -LiteralPath $xw)) { $xw = (Get-Command adb -ErrorAction SilentlyContinue).Source }
-       if ($xw) { try { & $xw -P 5038 kill-server *>$null } catch {} }
-       Start-Sleep -Seconds 1
-       if (Get-NetTCPConnection -LocalPort 5038 -State Listen -ErrorAction SilentlyContinue) {
-           throw "PREFLIGHT_PORT_5038_BLOCKED: Port 5038 remains occupied after kill-server attempt."
+   $xwListeners = @(Get-NetTCPConnection -LocalPort 5038 -State Listen -ErrorAction SilentlyContinue | Where-Object { $_ })
+   if ($xwListeners.Count -gt 0) {
+       $targetPid = $xwListeners[0].OwningProcess
+       $xwAdb = "C:\Program Files (x86)\xiaowei\tools\adb.exe"
+       $killAttempted = $false
+       if (Test-Path -LiteralPath $xwAdb) {
+           $killAttempted = $true
+           try { & $xwAdb -P 5038 kill-server *>$null } catch {}
+           Start-Sleep -Seconds 1
+       }
+       $rem = @(Get-NetTCPConnection -LocalPort 5038 -State Listen -ErrorAction SilentlyContinue | Where-Object { $_ })
+       $clean = ($rem.Count -eq 0)
+       Write-Host "[PREFLIGHT_DIAGNOSTIC] $(ConvertTo-Json @{ event='preflight_port_5038'; initial_pid=$targetPid; kill_attempted=$killAttempted; released=$clean } -Compress)"
+       if (-not $clean) {
+           throw "PREFLIGHT_PORT_5038_BLOCKED: Port 5038 is occupied (PID: $targetPid). XiaoWei ADB must be stopped before starting feed session."
        }
    }
    ```
-   * **Nguyên tắc an toàn Farm:** CẤM dùng `Stop-Process -Force` quét PID tùy tiện vì có thể giết nhầm tiến trình ngoài ý muốn và trượt Closeout Gate. CHỈ dùng lệnh chính thống `adb -P 5038 kill-server` thông qua binary của XiaoWei hoặc fallback `(Get-Command adb).Source`.
+   * **Nguyên tắc an toàn Farm:** CẤM dùng `Stop-Process -Force` quét PID tùy tiện vì có thể giết nhầm tiến trình ngoài ý muốn và trượt Closeout Gate. CHỈ dùng lệnh chính thống `adb -P 5038 kill-server` thông qua binary của XiaoWei.
    * **Fail-Closed:** Nếu sau khi kill-server mà cổng 5038 vẫn ở trạng thái LISTEN, script BẮT BUỘC throw lỗi `PREFLIGHT_PORT_5038_BLOCKED` để dừng toàn bộ ca, bảo vệ bus USB và không để 80 workers đâm đầu vào thất bại.
+
+---
+
+## 3. Bẫy Kỹ Thuật Khi Triển Khai Trên Windows & PowerShell
+1. **Bẫy mảng `$null` trong PowerShell (`@($null).Count == 1`):**
+   - Trong PowerShell, cú pháp `@(Get-NetTCPConnection ...)` khi không có kết nối nào sẽ trả về `$null`.
+   - Khi bọc `@($null)`, PowerShell tạo ra một mảng có 1 phần tử là `$null`, khiến `$rem.Count` trả về `1` thay vì `0`!
+   - Hậu quả: `$clean = ($rem.Count -eq 0)` luôn bị đánh giá thành `False`, làm script luôn ném lỗi `PREFLIGHT_PORT_5038_BLOCKED` ngay cả khi cổng 5038 hoàn toàn sạch sẽ.
+   - **Cách khắc phục chuẩn:** Bắt buộc pipe qua `Where-Object { $_ }` để lọc bỏ phần tử rỗng:
+     ```powershell
+     $rem = @(Get-NetTCPConnection -LocalPort 5038 -State Listen -ErrorAction SilentlyContinue | Where-Object { $_ })
+     ```
+2. **Tránh rò rỉ NativeCommandError từ tiến trình con:**
+   - Trong PowerShell, khi chạy lệnh CLI (`& $xw -P 5038 kill-server`) nếu ADB trả về stderr (ví dụ: daemon not running), PowerShell có thể kích hoạt `NativeCommandError` làm gián đoạn script nếu dùng `2>&1 | Out-Null`.
+   - **Cách khắc phục chuẩn:** Dùng chuyển hướng toàn bộ stream: `*>$null` bọc trong khối `try/catch`.
+
+---
+
+## 4. Quy Chuẩn Vượt Closeout Gate & Thẩm Định Sol High
+Khi đưa thay đổi tiền kiểm cổng vào Closeout Gate để đạt điểm >= 85:
+1. **Structured Telemetry bắt buộc:**
+   - Reviewer Sol High trừ nặng điểm Telemetry & Observability nếu chỉ ghi log dạng chuỗi không định dạng `Write-Host`.
+   - Bắt buộc ghi log JSON nén qua thẻ chẩn đoán:
+     `[PREFLIGHT_DIAGNOSTIC] {"event": "preflight_port_5038", "initial_pid": <PID>, "kill_attempted": <bool>, "released": <bool>}`.
+2. **Behavioral Contract Test (Không dùng Static String Assert):**
+   - CẤM chỉ kiểm tra chuỗi `assert "5038" in content` vì Sol coi đây là test dương tính giả (false positive).
+   - Test trong `test_run_feed_session_config.py` bắt buộc phải là test hành vi (behavioral), thực thi PowerShell với hàm mock `Get-NetTCPConnection` kiểm chứng cả 3 nhánh:
+     * **Nhánh 1 (Clean):** Cổng rảnh -> script chạy qua an toàn, exit code 0.
+     * **Nhánh 2 (Recovered):** Cổng ban đầu có kết nối nhưng sau kill-server được giải phóng -> `released: true`.
+     * **Nhánh 3 (Blocked):** Cổng bị chiếm dai dẳng không nhả -> script ném đúng mã `PREFLIGHT_PORT_5038_BLOCKED`, exit code != 0 và `released: false`.

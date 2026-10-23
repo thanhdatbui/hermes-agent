@@ -448,8 +448,31 @@ Trong `follow_state.py`, runner tự động điều chỉnh trần follow cho c
      Trong `test_cli.py`, khôi phục test `test_live_path_circuit_breaker_tripped_skips` mock `check_ip_breaker` trả về `(True, "msg")` và assert exit code == 0, `failed: false`.
   4. *Test Phủ Định Cho Account Mutation*:
      Trong `test_follow_state.py`, thêm test `test_set_follow_failed_never_calls_trip_ip_breaker` assert rằng `set_follow_failed()` không bao giờ gọi `trip_ip_breaker`.
-  5. *Mock `time.sleep` khi test Mode 2 Anchor Follow*:
+  5. Mock `time.sleep` khi test Mode 2 Anchor Follow:
      Trong `test_mode2_follow_followers.py`, khi viết test cho `_ensure_anchor_followed`, BẮT BUỘC monkeypatch `flow.time.sleep` thành no-op. Nếu không mock, các đoạn sleep random (2–4s) và pull-to-refresh (3.5s) sẽ làm test runner chạm timeout 35s của test suite.
+
+## 31. Tích Hợp Theo Dõi Bị Nhả Hôm Nay (Anchor Check) & Phân Nhóm Theo Hàng (Row) Trên Dashboard
+- **Hiện tượng & Nhu cầu Operator**:
+  * Khi ca chạy follow (đặc biệt Row 3 / Row 4) kích hoạt chốt chặn Anchor Check đồng loạt, các nick bị ngắt phiên sớm và rơi vào trạng thái nhả (`followed_count = 0`, `follow_failed = True`).
+  * Giao diện cũ của Dashboard chỉ gom nhóm theo 3 bậc sức khỏe cố định (`🟢 Khỏe`, `🌱 Hồi phục 1/2`, `🔴 Cooldown`) mà không phân biệt được: (a) Nick nào mới bị nhả ngay trong ngày hôm nay do vấp bẫy Anchor vs nick đang ngâm án tích cũ; (b) Toàn bộ dàn tài khoản theo từng Hàng (Row 1 - Row 4) có tương quan số lượng follower, following, video ra sao.
+- **Giải pháp 2 tầng (Dual-Layer Dashboard Integration)**:
+  1. *Tầng Bảng Tổng Farm (`table_view.js` & `queries.py`)*:
+     - Tạo hàm lookup nhanh O(1) từ `runs/state/follow_state_*.json`: map `(may, tik)` sang `{follow_tier, is_dropped_today, last_fail_reason, fail_streak}`.
+     - Thêm thanh lọc Hàng: `Hàng Acc (Row): 📋 Tất cả Row | Row 1 (Tik 1) | Row 2 (Tik 2) | Row 3 (Tik 3) | Row 4 (Tik 4) | Row 5+`.
+     - Thêm huy hiệu trạng thái follow ngay cạnh Username:
+       * Nick bị nhả hôm nay: Hiện thẻ đỏ rực `🛑 Nhả Hôm Nay`, tooltip hiển thị chi tiết lý do gãy (ví dụ: `FOLLOW_FAILED: anchor @luunhu290719 bị nhả sau vuốt — dừng session`).
+       * Nick bình thường: Hiện badge nhóm (`🟢 Khỏe`, `🟡 Hồi phục 2`, `🔴 Cooldown (S1-4)`).
+  2. *Tầng Sức Khỏe Follow (`follow_health_helper.py`, `follow_health_render.js`, `health_views.js`)*:
+     - Đọc snapshot mới nhất từ SQLite `snapshots` để nạp đủ 4 chỉ số: `follower`, `following`, `heart`, `video`.
+     - Phân loại cờ `is_dropped_today` và `drop_type`: bóc tách rõ `anchor_drop` (bị nhả sau vuốt kiểm tra anchor) vs `cooldown` vs `follow_drop`.
+     - Bổ sung nhóm KPI + nút lọc riêng: `🛑 Bị Nhả Hôm Nay (N máy)` (nền đỏ nhẹ, click lọc ra ngay danh sách các máy vừa fail trong ngày).
+     - Bổ sung cụm nút lọc theo Hàng: `Hàng: Tất cả | R1 | R2 | R3 | R4` kết hợp linh hoạt với bộ lọc Cụm (`Toàn Farm | Kibe | Admin`).
+     - Hiển thị trên từng Card: Thêm dòng hiện trường đỏ `🛑 Bị nhả hôm nay: <last_fail_reason>` giúp Operator đọc ngay nick mồi Anchor nào gây lỗi mà không cần lục log đĩa.
+     - Nâng cấp Bảng Ma Trận: Thêm các cột `Hàng`, `Flws`, `Vids` có hỗ trợ sort trực tiếp.
+- **Bẫy Logic Cooldown Null (`cooldown_until_at: null`) trong `FollowState`**:
+  * *Vấn đề*: Khi file state có trường `"cooldown_until_at": null`, kiểm tra `if "cooldown_until_at" in self._data:` trả về True dù giá trị là `null`.
+  * Khi `_parse_utc_iso(None)` trả về `None`, đoạn `if until_dt is None: return True` sẽ kích hoạt fail-closed, biến nick thành đang bị Cooldown vĩnh viễn dù không có ngày hết hạn.
+  * *Quy chuẩn*: Phải kiểm tra `if self._data.get("cooldown_until_at") is not None:` trước khi parse timestamp ISO.
 
 
 
