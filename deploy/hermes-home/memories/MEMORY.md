@@ -18,7 +18,7 @@ M7: SSID 'Dat_2.4G'; Aruba VC vlan 1+permit; wrap ADB qua with_device_lock.py.
 §
 Ava: Trích clip gốc; WinRT OCR lines==0 lọc chữ rác. Top-row grid: audit kỹ né sót clip khủng (8k8 view). Gate 6: cấm gửi mù, SHA256 thật. F_src!=F_vid khóa 2 folder.
 §
-Reboot 3 ca (05:20, 11:20, 17:20): lookback 60m; 2FA né đệm. Né TFT/War3. Task ngầm Hidden. Game=tắt nháy. Tiểu Vi 5038: cấm báo rớt 40 máy khi chưa kill 5038; preflight bắt buộc dọn 5038 trước ca feed.
+Reboot 3 ca: retry :20-:50, cutoff :51 (<10p ca); lb 60m; 2FA né đệm; né TFT/War3. Task ngầm Hidden. Game=tắt nháy. Tiểu Vi 5038: cấm báo rớt 40 máy khi chưa kill 5038; preflight bắt buộc dọn 5038 trước ca feed.
 §
 OMP/AGY: 29 acc Pro; lease 1800s. agy.exe: wincred > oauth_creds; user_tier=g1-pro-tier; --project=local ws.
 §
