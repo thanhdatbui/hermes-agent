@@ -684,6 +684,33 @@ Controller `ag_cli.py` truy vấn trực tiếp 2 API endpoints từ OmniRoute `
   - Gọi endpoint `retrieveUserQuotaSummary` để kiểm tra chính xác thời gian hồi phục của cửa sổ 5 giờ.
   - Hạ model xuống `gemini-3.8-flash-medium` hoặc định tuyến tác vụ qua OmniRoute combo `ag-gemini-pool-3` để tận dụng hạn ngạch còn lại của nhóm Gemini.
 
+---
+
+## 21. Upstream Model Mapping, Google One AI Credits & Target-Aware Quota Matching (Verified 2026-10-23)
+
+### 1. Phân Tách Model Name: CLI Alias vs Upstream Google Cloud Code Wire Name:
+- **Upstream Model Name Chuẩn:** Tại endpoint Google Cloud Code (`v1internal:streamGenerateContent`), các model name thực tế là:
+  - `gemini-3.8-flash-tiered` (đây là Gemini 3.8 Flash wire model, trả về HTTP 200).
+  - `gemini-3.7-flash-tiered`
+  - `gemini-3.1-flash-lite`
+  - `claude-sonnet-4-6`, `claude-opus-4-6-thinking`, `gpt-oss-120b-medium`.
+- **Cạm bẫy 404 Entity Not Found:** Các tên `gemini-3.8-flash-medium`, `gemini-3.8-flash-high`, `gemini-3.8-flash` **KHÔNG TỒN TẠI** trực tiếp trên Google Cloud Code API (gửi lên bị 404). Chúng là **alias nội bộ của `agy.exe` binary** để ánh xạ mức `thinking_budget` tương ứng.
+- **Quy chuẩn Model Worker:** Worker lập trình cho hệ thống farm BẮT BUỘC dùng `gemini-3.8-flash-medium`. Cấm để sót `high` trong `ag_cli.py` vì `high` làm phình thời gian suy nghĩ và cạn kiệt rolling window 5h.
+
+### 2. Bản Chất Google One AI Credits (`enabledCreditTypes: ["GOOGLE_ONE_AI"]`):
+- Khi tài khoản Google One Pro (`g1-pro-tier`) tiêu thụ hết hạn mức tiêu chuẩn trong ngày, Google yêu cầu client gửi trường `enabledCreditTypes: ["GOOGLE_ONE_AI"]` cùng `project: "aicode-consumers"` trong request envelope để kích hoạt quota phụ từ gói Pro.
+- **Tại sao OmniRoute gọi được mà AGY CLI độc lập lại báo `RESOURCE_EXHAUSTED`?**
+  - **OmniRoute:** Bộ điều phối `antigravity.ts` tích hợp sẵn cơ chế auto-retry `tryCreditsRetry` tự động inject `enabledCreditTypes: ["GOOGLE_ONE_AI"]` và project `aicode-consumers` khi dính 429 quota $\to$ request thành công 100%.
+  - **AGY CLI (`agy.exe`):** Nếu profile chưa hoàn tất consumer onboarding hoặc trỏ vào `default-cli-project`, binary không gửi `GOOGLE_ONE_AI` credits $\to$ Google xếp vào luồng Free Tier và trả lỗi `RESOURCE_EXHAUSTED` (kèm thời gian reset chu kỳ ngày).
+
+### 3. Sửa Lỗi Lọc Quota Tránh False-Positive Trong `ag_cli.py`:
+- **Lỗ hổng cũ:** Hàm `fetch_omniroute_quota_map` chỉ kiểm tra cứng `gemini-3.1-flash-lite`. Khi model preview này hiển thị 0% trong OmniRoute, script đánh dấu cả tài khoản là `is_exhausted = True` và chặn không cho chạy `gemini-3.8-flash-medium`.
+- **Giải pháp đã chuẩn hóa:**
+  1. `fetch_omniroute_quota_map(target_model=None)`: Nhận diện model mục tiêu (mặc định `DEFAULT_MODEL`), tìm quota theo đúng tiền tố họ model (`gemini-3.8` $\to$ `gemini-3.8-flash-tiered`).
+  2. Chỉ đánh dấu `is_exhausted = True` khi toàn bộ các model Gemini của tài khoản đó thực sự cạn kiệt (`<= 0.0`).
+  3. Khi cờ `--profile` được chỉ định đích danh từ dòng lệnh hoặc worker dispatch, script chỉ ghi log cảnh báo và **không bao giờ hard-block** (không `return 1` ép buộc), tôn trọng quyền điều khiển của người vận hành.
+
+
 
 
 
