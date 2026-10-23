@@ -20,10 +20,10 @@ Ava: Trích clip gốc; WinRT OCR lines==0 lọc chữ rác. Top-row grid: audit
 §
 Reboot 3 ca (05:20, 11:20, 17:20): lookback 60m; 2FA né đệm. Né TFT/War3. Task ngầm Hidden. Game=tắt nháy. Tiểu Vi 5038: cấm báo rớt 40 máy khi chưa kill 5038; preflight bắt buộc dọn 5038 trước ca feed.
 §
-OMP/AGY: 29 acc Pro; lease 1800s. agy.exe ưu tiên wincred hơn oauth_creds; cần user_tier=g1-pro-tier+client_id; --project là local ws không phải GCP.
+OMP/AGY: 29 acc Pro; lease 1800s. agy.exe: wincred > oauth_creds; user_tier=g1-pro-tier; --project=local ws.
 §
 Đơn TT Shop: Mail báo 1 lần; API SPX/J&T/Ninja; Hub Thanh Khê. Dashboard :1905 /api/orders.
 §
-Worker: Sol (:20129), Agy CLI (gemini-3.8-flash-medium, cấm high), Haiku. Claude 85% guard: cấm tự allow -> fallback Agy CLI. OmniRoute: scope='account'.
+Worker: Sol Worker (:20129, Tier 1 qua dispatch_worker), Agy CLI (gemini-3.8-flash-medium, Tier 2), Haiku (Tier 3; Quota Guard 85% cấm tự allow). OmniRoute: scope='account'.
 §
 Cron/Alert: Gửi đúng Telegram group của repo (-5435853713 Video/Up, -5377611430 Nuôi, -5373649734 Alert), cấm spam DM.
