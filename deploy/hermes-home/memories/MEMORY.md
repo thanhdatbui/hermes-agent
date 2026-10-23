@@ -14,13 +14,13 @@ Closeout: Mặc định Sol (:20129, 0% quota Claude), Sonnet CLI chỉ khi yêu
 §
 Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; Reaper SSH. Pre-push: 1 commit khớp scope_hash.
 §
-M7: bắt 'Dat_2.4G' né +40 5G S7. Aruba VC tạo SSID: vlan 1 + access-rule permit (né L3_NO_IP); wrap ADB qua with_device_lock.py né guard screencap.
+M7: SSID 'Dat_2.4G'; Aruba VC vlan 1+permit; wrap ADB qua with_device_lock.py.
 §
 Ava: Trích clip gốc; WinRT OCR lines==0 lọc chữ rác. Top-row grid: audit kỹ né sót clip khủng (8k8 view). Gate 6: cấm gửi mù, SHA256 thật. F_src!=F_vid khóa 2 folder.
 §
-Reboot 3 ca (05:20, 11:20, 17:20): lookback 60m; 2FA né đệm. Né TFT/War3. Task ngầm Hidden+CREATE_NO_WINDOW. Game=tắt nháy.
+Reboot 3 ca (05:20, 11:20, 17:20): lookback 60m; 2FA né đệm. Né TFT/War3. Task ngầm Hidden. Game=tắt nháy. Tiểu Vi 5038: cấm báo rớt 40 máy khi chưa kill 5038; preflight bắt buộc dọn 5038 trước ca feed.
 §
-OMP/AGY: 28 acc Pro; lease 1800s; Omni proxy scope='account', soi proxy_logs; AGY giải mã enc:v1: qua server.env; link 9k check one.google.com/home.
+OMP/AGY: 28 acc Pro; lease 1800s; link 9k quá 8p check one.google.com/home.
 §
 Đơn TT Shop: Mail báo 1 lần; API SPX/J&T/Ninja; Hub Thanh Khê. Dashboard :1905 /api/orders.
 §
