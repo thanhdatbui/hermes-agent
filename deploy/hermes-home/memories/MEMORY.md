@@ -10,7 +10,7 @@ Sol: 100% On-Demand, CẤM auto-append; chỉ gọi khi gõ đích danh (gọi s
 §
 Stale Up: xóa draft. Revert: TikWM. Cào: max 60. Cron TB: device_lock+rolling<=5; bỏ ca 0h.
 §
-Closeout: Sol (:20129, 0% Claude); Anti-Goalposts digest; Sol dry-run scratch; Grace 80-84; CẤM raw push; Strike 3 chống khóc. P1 Gmail, P2 2FA. pre_session_gate.
+Closeout: Sol (:20129, 0% Claude); Anti-Goalposts; Grace 80-84; CẤM raw push; cấm BLOCKED (vẫn là khóc); DENY=pivot sửa gốc. P1 Gmail, P2 2FA. pre_session_gate.
 §
 Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; Reaper SSH. Pre-push: 1 commit khớp scope_hash.
 §

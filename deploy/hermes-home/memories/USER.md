@@ -4,7 +4,7 @@ Dọn đĩa: safe_recycle.py. Reboot né TFT/War3. Box 1 sát AP 1; S7: anten TR
 §
 Nuôi 4d 3 ca (bỏ 0h). Cấm pause cron/kill tool khác khi kẹt lock, canh xong mới làm. Ava&2FA tới 5h15. Starve 96h.
 §
-Vibe O(1), bực=làm ngay. Report=LỆNH ĐIỀU TRA: Cấm nhai chữ; tra log/inspect; tự sửa L2; CẤM phá case cũ.
+Vibe O(1), bực=làm ngay. CẤM BLOCKED/ticket dừng (vẫn là khóc); Gate DENY=pivot sửa gốc; cấm phá case.
 §
 Ava/Media: Up thẳng máy; khóa cờ .manual_avatar_locked & Avatar=OK; soi mắt trước MEDIA:; N máy gửi đủ N MEDIA: riêng; Ava đúng creator.
 §

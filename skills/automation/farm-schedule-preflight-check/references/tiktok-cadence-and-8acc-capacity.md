@@ -48,19 +48,22 @@ $\rightarrow$ Thiết bị đã hoạt động **13 - 14 tiếng/ngày**.
 
 ---
 
-## 3. Giải Pháp Kiến Trúc Quy Hoạch 8 Acc/Máy (Row 1 - Row 8)
+## 3. Quy Hoạch Chuẩn Hóa Chu Kỳ 4 Ngày (96h Parity, Bỏ Ca 0h Đêm)
 
-Để đạt mục tiêu tối đa hóa công suất 8 acc/máy (Ngày lẻ: Row 1, 3, 5, 7; Ngày chẵn: Row 2, 4, 6, 8) mà không phá nát máy và không xung đột job đêm:
+Hệ thống đã chuẩn hóa sang **Chu kỳ cố định 4 ngày x 3 Ca x 2 Phiên / ngày** (áp dụng từ 11/10/2026, loại bỏ hoàn toàn ca đêm 00:00/01:30):
 
-### Giải pháp Khuyên dùng: Tối ưu Rút gọn Phiên (2 Phiên / Ca)
-* Thay vì chạy 3 phiên/ca (105p feed), rút xuống **2 phiên / ca** (mỗi phiên 30 - 35p).
-* Tổng thời gian 1 ca rút từ ~5 tiếng xuống còn **~2 tiếng - 2.5 tiếng** (bao gồm 1 pair gap 45p).
-* **Lịch trình 4 ca trong ngày:**
-  * **Ca 1 (Row 1/2):** `06:00` – `08:30`
-  * **Ca 2 (Row 3/4):** `10:00` – `12:30`
-  * **Ca 3 (Row 5/6):** `14:30` – `17:00`
-  * **Ca 4 (Row 7/8):** `18:30` – `21:00`
+### 3.1. Cấu trúc 3 Ca x 2 Phiên / ngày:
+* **Ca 1 (Sáng):** Phiên 1 lúc `06:00` (Feed only), Phiên 2 lúc `08:00` (Feed + Upload/Follow).
+* **Ca 2 (Trưa):** Phiên 1 lúc `12:00` (Feed only), Phiên 2 lúc `14:00` (Feed + Upload/Follow).
+* **Ca 3 (Tối):**  Phiên 1 lúc `18:00` (Feed only), Phiên 2 lúc `20:00` (Feed + Upload/Follow).
+* **Dead Zone (21:30 - 05:59):** Đêm nghỉ hoàn toàn, bỏ ca 0h đêm. Dàn S7 làm mát và chạy `end-of-day-clear-tiktok-cache` (03:00 - 04:30).
+
+### 3.2. Phân bổ Chu kỳ 4 ngày (Base date 11/10/2026, Parity 96h):
+* **Day 0 (Ngày 1):** Ca 1 (Row 1) - Ca 2 (Row 3) - Ca 3 (Row 5).
+* **Day 1 (Ngày 2):** Ca 1 (Row 2) - Ca 2 (Row 4) - Ca 3 (Row 6).
+* **Day 2 (Ngày 3):** Ca 1 (Row 7) - Ca 2 (Row 8) - Ca 3 (Dưỡng sinh Row 3/4 pure feed).
+* **Day 3 (Ngày 4):** Dưỡng sinh xả tải toàn farm (pure feed).
+
 * **Lợi ích toàn diện:**
-  * Toàn bộ khung giờ đêm từ **21:30 đến 05:30 sáng hoàn toàn giải phóng**.
-  * Chạy mượt mà: Up Avatar (22:00), Reg Chuỗi đêm (01:00), Clear Cache (04:00).
-  * Thiết bị có 8 tiếng nghỉ ngơi, nguội máy, duy trì tuổi thọ pin và ổn định ADB.
+  * Mỗi Row quay lại đúng sau 96h (4 ngày x 24h, cùng slot giờ), triệt tiêu hoàn toàn hiện tượng lệch starve 120h.
+  * Toàn bộ đêm từ **21:30 đến 05:59 sáng hoàn toàn giải phóng** cho thiết bị làm mát, bảo vệ pin và duy trì kết nối USB/ADB ổn định.
