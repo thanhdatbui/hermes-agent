@@ -109,7 +109,7 @@ References:
 - `references/tiktok-feed-and-upload-hook-pitfalls.md` — Cạm bẫy argparse conflicting option string, in-memory raw_xml drop, và bóc tách skip reason trên watchdog.
 - `references/watchdog-duplicate-and-merged-session-pitfalls.md` — Cạm bẫy báo cáo sớm khi chưa đủ 80 máy, gửi lặp phiên do chưa claim state, và lỗi gộp nhiều phiên vào 1 payload text làm trôi mất header phiên sau.
 - `references/cross-workflow-empty-row-and-stale-lock-triage.md` — Quy trình điều tra O(1) lỗi lướt feed diện rộng: Hiệu ứng dây chuyền hàng trống (Empty Row Config-Error), kẹt trần 8 nick Switcher và stale device locks.
-- `references/cache-cleanup-cron-feed-conflict-triage.md` — Xung đột chí mạng giữa Cron dọn cache (end-of-day-clear-tiktok-cache) bắn phá toàn farm và ca nuôi feed ban đêm (Ca 4).
+test — Xung đột chí mạng giữa Cron dọn cache (end-of-day-clear-tiktok-cache) bắn phá toàn farm và ca nuôi feed ban đêm (Ca 4).
 - `references/watchdog-upload-progress-and-skip-breakdown-standard.md` — Tiêu chuẩn báo cáo tiến độ Upload trên Watchdog: mẫu số máy đủ điều kiện, video number lũy kế M<M>(v<N>), và bóc tách 100% danh sách máy bỏ qua (chống gom cục nhãn Khác).
 - `references/session-aware-runner-busy-and-single-delivery-gate.md` — Khắc phục lỗi watchdog gom gộp 2 phiên vào 1 tin nhắn Telegram và không báo ngay: cơ chế session-aware runner busy & ngắt vòng lặp bảo đảm mỗi tick chỉ gửi 1 phiên.
 - `references/case178-fast-swipe-multi-tab-and-calibrated-like-rates.md` — Case 178: Mở Fast Swipe cho cả tab Bạn bè & Following, cân chỉnh tỉ lệ like bù trừ và fix Dead-man hook cho delegate_task.

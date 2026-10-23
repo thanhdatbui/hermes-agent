@@ -6,13 +6,13 @@ Pin>=1k: LIFO TikTok->ghim tăng dần để top view ở ô 1 (re-pin enforce).
 §
 Rename: tâm Sửa hồ sơ (315,865) né khe 540; cấm tap (72,148); thoát FIND_FRIENDS; lọc @ bio; 7d cd; BIO_EDIT trước PROFILE; tên Việt có dấu; switcher; Smart name đa dạng.
 §
-Sol: 100% On-Demand, CẤM auto-append; chỉ gọi khi gõ đích danh (gọi sol/advisor); briefing 4k.
+Sol: 100% On-Demand, cấm đoán ý (?); chỉ gọi khi đích danh. CGPT-Web: test qua /api/providers/{cid}/test, cấm validate masked key.
 §
 Stale Up: xóa draft. Revert: TikWM. Cào: max 60. Cron TB: device_lock+rolling<=5; bỏ ca 0h.
 §
 Closeout: Sol (:20129, 0% Claude); Anti-Goalposts; Grace 80-84; CẤM raw push; cấm BLOCKED (vẫn là khóc); DENY=pivot sửa gốc. P1 Gmail, P2 2FA. pre_session_gate.
 §
-Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; Reaper SSH. Pre-push: 1 commit khớp scope_hash.
+Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; Reaper SSH.
 §
 M7: SSID 'Dat_2.4G'; Aruba VC vlan 1+permit; wrap ADB qua with_device_lock.py.
 §

@@ -179,6 +179,14 @@ Reviewing 13+ files simultaneously (5 engine files + 8 tests) causes Sol Auditor
   * Delete `.skills_prompt_snapshot.json` to force snapshot regeneration.
   * Clear `agent.system_prompt` in `config.yaml` to prevent duplicating invariants already present in `SOUL.md`.
 
+### 14. Telegram Platform Inclusion & Focus-Mode Demotion (`agent/coding_context.py`)
+- **Upstream Trap:** In `agent/coding_context.py`, `INTERACTIVE_CODING_PLATFORMS = {"cli", "tui", "acp", "desktop", ""}` excludes Telegram by design. This causes `_detect_profile_name` to return `general`, disabling `coding_compact_skill_categories` so Telegram sessions always receive full multi-line descriptions for every skill!
+- **Fix:**
+  * Add `"telegram"` to `INTERACTIVE_CODING_PLATFORMS`.
+  * Add heavy coding categories (`software-development`, `devops`, `github`, `desktop`, `network`, `autonomous-ai-agents`) to `_NON_CODING_SKILL_CATEGORIES` in `agent/coding_context.py` so they are demoted to `[names only]`.
+  * In `config.yaml`, set `agent.coding_context: focus`.
+  * Result: Cuts prompt overhead from >30KB down to ~8.2KB (~2,000 tokens) while preserving 100% skill discoverability (all names stay visible and loadable via `skill_view`).
+
 ## Closeout Gate Notes
 
 - The 3 new files (`skill_injector.py`, tests) + modified `dispatch_worker.py` together exceed 22KB diff
