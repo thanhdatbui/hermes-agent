@@ -30,4 +30,15 @@ Whenever an agent produces visual media (screenshots, UI mockups, proposal canva
      * Chiều cao tối đa an toàn để hiển thị trên chat: **<= 1.500px** (tỉ lệ khung hình nằm trong khoảng `1:1` đến `16:9` hoặc `9:16`).
      * Nếu trang dài > 1.500px: BẮT BUỘC crop vùng trọng tâm (ví dụ Header + Thẻ KPI `0, 0, width, 650`) rồi mới gửi. CẤM gửi nguyên ảnh full-page dài ngoằng.
 
+6. **Bẫy "Soi Mắt Nội Bộ Nhưng Quên Gửi Ảnh" (Internal Inspection Sinecure & Omission of `MEDIA:` Tag - 2026-10-23)**:
+   - **Hiện tượng**: Agent thực hiện đầy đủ quy trình kỹ thuật: chạy tool pin/thao tác UI, chụp screencap ra file ảnh, gọi `browser_vision` để soi mắt kiểm tra nội bộ thấy kết quả thành công (ví dụ clip 8.856 view đã ghim lên đầu). TUY NHIÊN, khi xuất tin nhắn trả lời User, Agent lại **quên dán thẻ `MEDIA:<path>`** vào text mà chỉ viết một đoạn văn bản mô tả "đã kiểm tra thấy thành công... clip 8.856 view đã nằm đầu tiên".
+   - **Hậu quả & Phản ứng của User**: Phía User chỉ nhận được tin nhắn toàn chữ ("báo mồm / báo chay"), không có ảnh nghiệm thu trực quan -> User bức xúc bắt bẻ vi phạm rule cơ học ("Màn hình gửi ảnh nghiệm thu cho tao đâu?", "Là mày vi phạm rule cơ học hay sao?").
+   - **Nguyên nhân kiến trúc (Từ kết quả điều tra của Claude Reviewer)**:
+     * Toàn bộ hệ thống guard hiện tại là **PreToolUse hooks** (chặn tool trước khi gọi).
+     * Bộ validator `guard_media_vision_gate.py` (`transform_llm_output_check`) đã được code sẵn nhưng CHƯA ĐƯỢC WIRE vào Stop hook / output filter. Do đó, việc gửi thẻ `MEDIA:` ở output cuối hiện tại **100% phụ thuộc vào kỷ luật prompt của LLM**, chưa có chốt chặn cơ học tự động tại Stop event.
+   - **Kỷ luật bắt buộc**:
+     * **Điều kiện cần vs Điều kiện đủ**: Soi mắt bằng `browser_vision` / OCR chỉ là ĐIỀU KIỆN CẦN. Đính kèm thẻ `MEDIA:<path>` vào tin nhắn gửi User mới là ĐIỀU KIỆN ĐỦ.
+     * **Atomic Output Invariant**: Khi kết luận một tác vụ UI/màn hình ("đã ghim", "đã hoàn tất", "thành công"), tin nhắn BẮT BUỘC phải chứa thẻ `MEDIA:<path_anh>`. Tuyệt đối không gửi tin nhắn kết luận thao tác giao diện mà thiếu thẻ `MEDIA:`.
+
+
 

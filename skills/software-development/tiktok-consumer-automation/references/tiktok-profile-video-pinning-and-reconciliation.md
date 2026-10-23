@@ -203,6 +203,32 @@ python D:/Taadaa/tools/pin_top_videos.py --machine 28 --min-views 5000 --max-pin
   2. Đảm bảo app TikTok đang ở foreground (`dumpsys window windows | grep mCurrentFocus`).
   3. Chờ tối thiểu 1.5 – 2.0s cho giao diện vẽ xong frame rồi mới kéo ảnh về máy để verify.
 
+## 17. Cơ Chế Ghim Lũy Tiến Tự Động (LIFO Ascending Sort) Để Top 1 Luôn Ở Ô 1
+- **Bản chất LIFO:** TikTok chèn mỗi video mới được ghim vào Ô số 1 (trên cùng bên trái) và đẩy các video ghim trước đó sang phải.
+- **Quy tắc sắp xếp trong code automation (`pin_top_videos.py`):**
+  - Khi ghim batch nhiều video còn trống (`slots_free = max_pins - pinned_before`):
+    * BẮT BUỘC sắp xếp danh sách ứng viên theo **view TĂNG DẦN**: `to_pin = sorted(cands[:slots_free], key=lambda t: t['views'])`.
+    * Clip view thấp hơn được bấm Ghim trước $\to$ vào Ô 1.
+    * Clip view cao hơn bấm Ghim tiếp $\to$ vào Ô 1, đẩy clip trước sang Ô 2.
+    * **Clip view cao nhất được bấm Ghim SAU CÙNG** $\to$ Chiếm trọn Ô số 1, đẩy các clip còn lại sang phải theo đúng thứ tự giảm dần từ trái qua phải `[Top 1] | [Top 2] | [Top 3]`.
+    * CẤM ghim theo thứ tự giảm dần (view cao trước) vì sẽ làm clip cao nhất bị đẩy dạt sang Ô 3 ngoài cùng bên phải.
+  - Sau mỗi thao tác ghim, script BẮT BUỘC re-dump UI XML để refresh tọa độ của clip tiếp theo, tránh tap lệch do hiệu ứng dồn lưới.
+
+## 18. Kỷ Luật Tự Động Đánh Thức Máy & Switch Account (Chống Bao Biện Màn Hình Tắt)
+- **Kỷ luật thái độ (Anti-excuses):** Khi nhận lệnh chạy automation hoặc ghim video, nếu thiết bị đang ngủ màn hình (`Sleep/Dozing`), script BẮT BUỘC phải tự động đánh thức màn hình và mở khóa, CẤM TUYỆT ĐỐI dừng lại báo cáo bao biện với User *"máy đang tắt màn hình nên timeout/cần mở màn hình trước"*.
+- **Quy chuẩn đánh thức trong `open_target_profile()`:**
+  1. `input keyevent 224` (KEYCODE_WAKEUP).
+  2. `input keyevent 82` (KEYCODE_MENU để mở khóa keyguard).
+  3. Khởi chạy trực tiếp: `am start -n com.ss.android.ugc.trill/com.ss.android.ugc.aweme.splash.SplashActivity` (fallback `monkey -p com.ss.android.ugc.trill -c android.intent.category.LAUNCHER 1`).
+  4. Chờ 3.0s cho app nạp xong Splash.
+- **Đồng bộ `automation-core/src`:** `pin_top_videos.py` BẮT BUỘC có `_AC_SRC = r"D:\Taadaa\automation-core\src"` chèn vào đầu `sys.path` để không bị bóng mờ bởi bản `automation_core` cũ trong site-packages (vốn thiếu `reset_atx_agent`).
+- **ProfileAdapter Contract cho Switcher v46.x:**
+  - `ProfileAdapter` trong script automation BẮT BUỘC triển khai:
+    * `screen_size()` trả về `(1080, 1920)`.
+    * `prepare_switcher_anchor()`: thực hiện `swipe(540, 1248, 540, 806, 200)` để đẩy tên tài khoản vào sticky header ở giữa trên cùng.
+    * `profile_identity()`: bóc tách `display_name` và `username` từ XML.
+  - Thiếu 3 hàm này sẽ khiến `open_switcher()` trong `account_switcher` không thể tìm thấy anchor tài khoản và bị treo vĩnh viễn khi chuyển nick.
+
 
 
 
