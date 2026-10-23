@@ -24,6 +24,6 @@ OMP/AGY: 28 acc Pro; lease 1800s; QR Google: tab GPM giữ mở; link 9k quá 8p
 §
 Đơn TT Shop: Mail báo 1 lần; API SPX/J&T/Ninja; Hub Thanh Khê. Dashboard :1905 /api/orders.
 §
-Worker: Agy CLI (Omni :20129 quota); Haiku O(1) cần `claude_worker.py --role worker` (có Bash, benchmark fair vs Sol); Sol ReAct goal mở; ag_cli lọc quota live OmniRoute, sort rem%. Game guard: suspend/resume né đẻ ffmpeg.
+Worker Hierarchy 3-Tier: Sol Worker (Tier 1 Primary via Omni :20129, free 100%), Agy CLI (Tier 2 fallback), Haiku (Tier 3 fallback). Haiku O(1) có --allow-bash; ag_cli lọc quota live OmniRoute. Game guard: suspend/resume né đẻ ffmpeg.
 §
 Cron/Alert: Gửi đúng Telegram group của repo (-5435853713 Video/Up, -5377611430 Nuôi, -5373649734 Alert), cấm spam DM.
