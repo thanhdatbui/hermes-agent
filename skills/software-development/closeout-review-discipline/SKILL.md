@@ -134,6 +134,7 @@ Session-specific watchdog evidence is recorded in `references/xiaowei-watchdog-c
 Reference: [`references/worker-timeout-quota-and-closeout-scope-20261018.md`](references/worker-timeout-quota-and-closeout-scope-20261018.md)
 
 ## 3. Tài Liệu Tham Khảo (References)
+- Closeout Reviewer Model Routing & Mock Tautology Triage (2026-10-23): [`references/closeout-reviewer-model-routing-and-mock-tautology-20261023.md`](references/closeout-reviewer-model-routing-and-mock-tautology-20261023.md)
 - Cron Alert Immediate Investigation & Anti-Regression Invariants (2026-10-23): [`references/cron-alert-immediate-investigation-and-anti-regression-invariants.md`](references/cron-alert-immediate-investigation-and-anti-regression-invariants.md)
 - Injected Regression Test Timeout & Grace Budget Files Triage (2026-10-20): [`references/injected-regression-test-timeout-and-grace-budget-files-20261020.md`](references/injected-regression-test-timeout-and-grace-budget-files-20261020.md)
 - Sol Payload Diff-Share Truncation, Grace Budget Reconciliation & Safe Push (2026-10-20): [`references/sol-payload-diff-share-truncation-and-grace-budget-reconciliation-20261020.md`](references/sol-payload-diff-share-truncation-and-grace-budget-reconciliation-20261020.md)
