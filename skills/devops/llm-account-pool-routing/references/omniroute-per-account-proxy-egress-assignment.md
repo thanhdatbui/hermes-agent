@@ -71,9 +71,15 @@ To protect against unassigned or newly added connections silently leaking host I
 
 ## Sync Script Auto-Assignment & Fail-Closed Activation Invariant
 Any script registering or syncing sessions to OmniRoute (e.g. `chatgpt_gpm_direct_reg.py`, `feed_one_acc_per_ip_omniroute.py`, `add_oauth_omniroute.py`):
-- **Antigravity Pro Dual-Scope Assignment Trap (`account` vs `connection`)**:
-  - In OmniRoute, `proxy_assignments` table evaluates both `scope = 'account'` and `scope = 'connection'` for connection ID `scope_id = <cid>`.
-  - When an account only has `scope = 'connection'` but lacks `scope = 'account'` (hit on `taquynh06011998`), OmniRoute's core proxy resolver and web dashboard fail to bind the proxy, treating the connection as unproxied.
+- **Antigravity Pro Dual-Scope Assignment Trap (`account` vs `connection`) & Confabulation Pathology**:
+  - In OmniRoute, `proxy_assignments` table evaluates `scope = 'account'` with `scope_id = <cid>`.
+  - **The "proxyEnabled = True" Confabulation Trap**:
+    - Coordinator/worker seeing `proxyEnabled: true` in `GET /api/providers` or in `provider_connections` table falsely concludes the account is proxied. In reality, `proxyEnabled` is only a feature toggle; if `proxy_assignments` lacks a record with `scope = 'account'` matching `scope_id = <connectionId>`, OmniRoute sends requests **DIRECTLY** from the host IP (`proxy: None` in `.omniroute/call_logs`), triggering instant Google `403 VALIDATION_REQUIRED` bans (as happened to `quyphuoc` and `taquynh`).
+  - **The "scope = 'connection'" vs "scope = 'account'" Schema Trap**:
+    - Ad-hoc onboarding scripts (e.g. `onboard_taquynh.py`) wrote `INSERT INTO proxy_assignments (..., scope, ...) VALUES (..., 'connection', ...)` instead of `'account'`. OmniRoute's upstream routing dispatcher strictly queries `scope = 'account'` for Antigravity connections. Records with `scope = 'connection'` are ignored by the router, causing requests to be sent direct.
+  - **Verification & Audit Tooling**:
+    - Never rely on memory or verbal assertions. Run `python D:/Taadaa/tools/audit_and_fix_omniroute_proxies.py` to audit all Antigravity connections against `master_gmail_manager.xlsx`, verify `proxy_assignments` has `scope = 'account'`, and auto-repair via `PUT /api/settings/proxies/assignments`.
+    - Always verify in `.omniroute/call_logs` that `summary.proxy != null` and `summary.proxy != 'None'`.
   - To assign via OmniRoute HTTP API:
     ```bash
     PUT /api/settings/proxies/assignments
