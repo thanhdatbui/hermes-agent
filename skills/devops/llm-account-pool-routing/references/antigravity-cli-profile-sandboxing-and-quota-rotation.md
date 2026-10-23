@@ -774,6 +774,91 @@ Hệ thống điều phối worker tuân thủ nghiêm ngặt 3 tầng:
 - **Tier 2 (Fallback 1):** `Agy CLI Native` (`ag_cli.py fix` gọi trực tiếp `agy.exe` với sandbox chuẩn hóa `user_tier: "g1-pro-tier"`).
 - **Tier 3 (Fallback 2):** `Claude Haiku 5.5 CLI` (`claude_worker.py --role worker`).
 
+---
+
+## 24. Khám Phá Quan Trọng: `agy.exe` Ưu Tiên Windows Keyring (`wincred`) Chứ Không Phải `oauth_creds.json` (Root Cause 2 — 2026-10-23)
+
+### 1. Phát Hiện Cốt Lõi — Luồng Đọc Token Của `agy.exe`:
+Bằng cách soi nhị phân binary Go của `agy.exe`, xác định được luồng xác thực thực sự:
+- `agy.exe` sử dụng **`compositeTokenStorage`** = hợp thể của `KeyringTokenStorage` (Windows Credential Manager, thư viện `danieljoos/wincred`) **ưu tiên hơn** `fileTokenStorage` (đọc file `oauth_creds.json`).
+- Khi chạy headless trong sandbox cô lập (`USERPROFILE = D:/Taadaa/agy_profiles/acc_27`), `agy.exe` vẫn tìm token từ Windows Credential Manager của **hệ thống host** (user `Kibe`), không phải từ file sandbox.
+- Nếu Windows Credential Manager trả về token của `jinrakal@gmail.com` (tài khoản host), `agy.exe` sử dụng chính xác token đó — **bỏ qua hoàn toàn `oauth_creds.json`** trong sandbox.
+- Kết quả: Tài khoản host dùng chung quota với toàn bộ dàn worker → bị 429 rất nhanh.
+
+### 2. Hàm `DefaultKeyringMarkerPath` & Cơ Chế Bypass Keyring:
+- `agy.exe` kiểm tra hàm `shouldBypassKeyring()` qua các detector: `containerDetector`, `sshDetector`, `wslDetector`.
+- Trên môi trường Windows native (không phải Docker/SSH/WSL), `shouldBypassKeyring()` trả về `False` → `KeyringTokenStorage` được ưu tiên.
+- **Quan trọng:** Biến môi trường `ANTIGRAVITY_GEMINI_DIR` (đã được inject trong `ag_cli.py`) chỉ ảnh hưởng đến nơi `agy.exe` tìm file cấu hình `.gemini/`, nhưng KHÔNG override cơ chế Keyring.
+
+### 3. Hai Hướng Giải Quyết Khả Thi:
+**Hướng A — Inject Token Thực Vào Windows Keyring Per-Profile:**
+- Dùng `wincred` Python binding để write credential vào Windows Credential Store với target name theo convention của `agy.exe`.
+- Cần reverse engineering convention đặt tên credential trong Keyring của `agy.exe` (dạng `antigravity-<email>` hoặc `google-<client_id>`).
+- Phức tạp, dễ xung đột nếu nhiều profile chạy song song.
+
+**Hướng B — Force File-Only Storage (Khuyến nghị):**
+- Trong môi trường headless sandbox, cần kích hoạt `shouldBypassKeyring() = True` để `agy.exe` fallback về `fileTokenStorage` đọc `oauth_creds.json`.
+- Thực nghiệm: Dùng env var `ANTIGRAVITY_VSCODE_HOST=1` (đã inject) có thể đủ để kích hoạt nhánh `IDEAuthProvider` thay vì `CLIAuthProvider`, vì IDE auth không sử dụng Keyring.
+- Thêm bằng chứng từ binary: Tìm thấy `AGY_BROWSER_ACTIVE_PORT_FILE` và `AGY_BROWSER_WS_URL` trong binary, gợi ý có thể ép `agy.exe` chạy theo mode IDE headless.
+
+### 4. Chuẩn Hóa `setup_agy_profile_creds.py` (Fix Đã Áp Dụng 2026-10-23):
+Dù root cause Keyring chưa giải quyết hoàn toàn, đã chuẩn hóa script để nếu hướng B chạy đúng thì file sẵn sàng:
+```python
+# Trong oauth_creds.json — PHẢI có đủ 3 trường này ngoài access/refresh token:
+creds_data = {
+    "access_token": access_token,
+    "refresh_token": refresh_token,
+    "token_type": "Bearer",
+    "scope": "...",
+    "user_tier": "g1-pro-tier",            # BẮT BUỘC — thiếu → agy.exe gán free-tier
+    "client_id": "1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com"
+}
+
+# Trong cache/default_project_id.txt — PHẢI là "default-cli-project" không phải "aicode-consumers"
+# "aicode-consumers" là GCP Cloud Project, --project của agy.exe là Local Workspace Project
+```
+
+### 5. Các Fix Đã Áp Dụng Cho `ag_cli.py` (2026-10-23):
+```python
+# ĐÃ XÓA: --project aicode-consumers khỏi cmd (nhầm ngữ nghĩa local project vs cloud project)
+# Trước:
+cmd = [AGY_BIN, "--dangerously-skip-permissions", "--model", args.model, "--project", "aicode-consumers"]
+# Sau:
+cmd = [AGY_BIN, "--dangerously-skip-permissions", "--model", args.model]
+
+# ĐÃ THÊM: env AGY_ACCOUNT từ google_accounts.json để agy.exe chọn đúng account
+accounts_file = os.path.join(profile_dir, ".gemini", "google_accounts.json")
+if os.path.exists(accounts_file):
+    with open(accounts_file, "r", encoding="utf-8") as af:
+        acc_data = json.load(af)
+        if acc_data.get("active"):
+            env["AGY_ACCOUNT"] = acc_data["active"]
+
+# ĐÃ XÓA: env ANTIGRAVITY_PROJECT_ID = "aicode-consumers" (không có tác dụng, gây nhầm)
+```
+
+### 6. Chuẩn Hóa `projects.json` (Không Dùng `aicode-consumers` Làm Project Mapping):
+```json
+// SAI: projects.json dùng "aicode-consumers" làm value
+{ "projects": { "d:\\taadaa": "aicode-consumers" } }
+
+// ĐÚNG: value là project display name / workspace label (tùy chọn)
+{ "projects": { "d:\\taadaa": "taadaa" } }
+```
+`projects.json` trong `.gemini/` là metadata để `agy.exe` hiển thị tên project trên UI, không phải GCP Cloud Project ID.
+
+### 7. Bằng Chứng Binary Bổ Sung:
+- Client ID nhúng trong `agy.exe`: `1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com`
+- API Endpoint nội bộ: `daily-cloudcode-pa.googleapis.com/v1internal:streamGenerateContent`
+- Cờ env quan trọng trong binary: `AGY_ACCOUNT` (chọn account), `ANTIGRAVITY_GEMINI_DIR` (thư mục .gemini), `AGY_LLM_GATEWAY_URL` (bypass sang gateway tùy chỉnh)
+- Struct `StoredToken` Go JSON tags: `user_tier,omitempty` | `client_id,omitempty` | `token_url,omitempty`
+- Source files trong binary xác nhận file auth đọc: `code_assist_client/token_storage.go`, `code_assist_client/composite_token_storage.go`
+
+### 8. BLOCKED Item — Cần Điều Tra Thêm:
+- Xác định convention đặt tên Keyring credential của `agy.exe` (cần Procmon trace hoặc thêm Go debug build).
+- Test thử đặt `ANTIGRAVITY_VSCODE_HOST=1` + xóa sạch Windows Credential Manager entries của `jinrakal@gmail.com` xem `agy.exe` có fallback về file không.
+- Test `AGY_LLM_GATEWAY_URL=http://127.0.0.1:20129/v1` nhưng CẤM dùng trong sản xuất (vi phạm quy tắc OmniRoute-free của ag_cli).
+
 
 
 
