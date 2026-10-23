@@ -52,3 +52,19 @@ The rescue harness lives under:
 - **Rule:** When the Google device verification screen (`Xác minh thông tin để tiếp tục`) appears in Antigravity/Chrome, crop the QR code and send `MEDIA:<path>` to the operator.
 - The operator MUST scan the QR using the native camera app on a real mobile device (iPhone/Samsung).
 - **CẤM:** Do not scan via third-party in-app scanners (like Zalo), as Zalo strips session headers and breaks the Google TL verification token.
+
+### 6. Chrome Pre-Login Sequence & Full 2FA Credential Discipline
+- **Sequence Invariant (Chrome First, Antigravity OAuth Second):**
+  - Always sign in to the Google account in Chrome inside the VM *first* before opening Antigravity to do OAuth.
+  - When Chrome already holds active Google cookies, clicking "Continue with Google" in Antigravity either authorizes immediately or cleanly triggers the device verification challenge without getting stuck in blank loading or unhandled onboarding dialogues.
+  - Open Chrome directly on the interactive desktop via `explorer.exe "https://accounts.google.com/signin"` rather than relying on brittle Playwright installations in the guest.
+- **Credential Hand-off Invariant (Anti-Lazy 2FA Reporting):**
+  - If a step cannot be 100% automated or is handed off to the operator, NEVER lazily report that "2FA will be generated when needed".
+  - **BẮT BUỘC** must provide the full credential set:
+    1. Email
+    2. Password
+    3. Recovery Email
+    4. Base32 TOTP Secret (so the operator can import it into Authenticator / 2FAS)
+    5. Live TOTP code (current, +30s, +60s) with remaining seconds.
+- **Chrome Path Discovery in Guest:**
+  - Do not hardcode `C:\Program Files (x86)\Google\Chrome\Application\chrome.exe` in guest scripts. On 64-bit Windows guests, Chrome is frequently installed under `C:\Program Files\Google\Chrome\Application\chrome.exe`. Always check both paths or invoke via `explorer.exe <url>`.
