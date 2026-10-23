@@ -70,7 +70,22 @@ To protect against unassigned or newly added connections silently leaking host I
 ---
 
 ## Sync Script Auto-Assignment & Fail-Closed Activation Invariant
-Any script registering or syncing sessions to OmniRoute (e.g. `chatgpt_gpm_direct_reg.py`, `feed_one_acc_per_ip_omniroute.py`):
+Any script registering or syncing sessions to OmniRoute (e.g. `chatgpt_gpm_direct_reg.py`, `feed_one_acc_per_ip_omniroute.py`, `add_oauth_omniroute.py`):
+- **Antigravity Pro Dual-Scope Assignment Trap (`account` vs `connection`)**:
+  - In OmniRoute, `proxy_assignments` table evaluates both `scope = 'account'` and `scope = 'connection'` for connection ID `scope_id = <cid>`.
+  - When an account only has `scope = 'connection'` but lacks `scope = 'account'` (hit on `taquynh06011998`), OmniRoute's core proxy resolver and web dashboard fail to bind the proxy, treating the connection as unproxied.
+  - To assign via OmniRoute HTTP API:
+    ```bash
+    PUT /api/settings/proxies/assignments
+    {"scope": "account", "scopeId": "<cid>", "proxyId": "<proxy_id>"}
+    ```
+  - **Full Pool Synchronization Audit Gate**: When an Antigravity Pro account is activated or rescued, Coordinator MUST audit and sync it across ALL relevant Pro combos:
+    1. `ag-gemini-pool-3` (ID `22975610-b162-41b9-b6b3-30be076265bd`)
+    2. `ag-sonnet` (ID `d8d1affe-94a6-4fa5-ab53-ff5e5ce6adea`)
+    3. `ag-opus` (ID `308174c9-2821-4ac3-ae93-1c487364d830`)
+    4. `ag-opus-pool` (ID `combo-ag-opus-pool`)
+    5. `ag-opus-78` (ID `71aec43b-3ae9-46c9-bac4-a86f9dafec1a`)
+    Never leave an account in `pool-3` while missing from `ag-opus-pool` / `ag-opus-78`.
 - **MUST** enforce the **Atomic 3-Step Fail-Closed Sequence** to prevent the mass ban catastrophe ("Cấm lặp lại lỗi làm ban 1 mớ acc của tao"):
   1. **Step 1 (Safe Staging):** Insert/Update `provider_connections` with `is_active = 0` (inactive by default).
   2. **Step 2 (Deterministic Proxy Assignment):** Query `proxy_registry` by exact `(host, port)` extracted from GPM profile / SoT. Insert into `proxy_assignments` (`scope='account'`, `scope_id=cid`).
