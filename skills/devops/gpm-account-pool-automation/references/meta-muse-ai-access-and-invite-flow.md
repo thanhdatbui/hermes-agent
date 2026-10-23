@@ -6,22 +6,44 @@ Muse AI (`muse.ai`) là sản phẩm AI agent của Meta, yêu cầu:
 - Tài khoản Meta hợp lệ (login qua Facebook/Instagram OAuth hoặc đăng ký email).
 - **IP US hợp lệ:** Muse chỉ available ở Hoa Kỳ và một số khu vực. Dùng IP VPN Extension Datacenter (TouchVPN, SetupVPN...) bị phát hiện và bị kẹt ở màn hình Waitlist.
 
-## 2. Luồng đăng ký tài khoản Meta mới bằng temp-email (đã kiểm chứng)
+## 2. Luồng đăng ký tài khoản Meta mới bằng temp-email (Cập nhật 2026-10-23)
+
+### Bước 0: Tránh bẫy chuyển hướng Instagram SSO / Facebook Redirect Cycle
+- Nếu profile có session/cookie cũ, truy cập `https://muse.ai/` sẽ bị redirect 307 `auth.muse.ai/aymh/` -> `facebook.com/aymh/redirect-cycle/` -> `instagram.com/#`.
+- **Xử lý:** Bắt buộc gọi `context.clear_cookies()` trước khi `page.goto('https://muse.ai/', wait_until='networkidle')` để tải trang chủ sạch của Muse AI.
 
 ### Bước 1: Điền email, nhận OTP
-- Mở `https://muse.ai/` trên trình duyệt đang kết nối IP US Residential.
-- Điền email, bấm **Tiếp tục** → Meta gửi OTP về email dạng `Mã xác nhận XXXXXX`.
-- Đọc OTP từ API TempMail.Plus:
+- Mở `https://muse.ai/` trên trình duyệt antidetect (GPM/Chromium).
+- Điền email vào ô `input` (placeholder *"Số di động hoặc email bắt buộc"*), bấm **Tiếp tục** (`div[role="button"]:has-text("Tiếp tục")`).
+- Meta gửi mã xác nhận 6 chữ số từ `support@meta.com` (tiêu đề *"Xác nhận email cho Tài khoản Meta mới"*).
+- Bóc OTP 6 số từ API TempMail.Plus:
   ```bash
-  curl "https://tempmail.plus/api/mails?email=<user>@fextemp.com&limit=10"
+  curl "https://tempmail.plus/api/mails?email=<user>@fextemp.com&limit=5"
   curl "https://tempmail.plus/api/mails/<mail_id>?email=<user>@fextemp.com"
-  # Trích mã trong body: "Mã xác nhận 680556"
+  # Trích chuỗi regex r'\b(\d{6})\b': "Mã xác nhận 460215"
   ```
-- **Lưu ý `fextemp.com`:** Domain trỏ về `tempmail.plus` backend; API TempMail.Plus nhận mail OK.
 
-### Bước 2: Điền OTP, thiết lập profile
-- Form đăng ký tiếp theo yêu cầu: **Tên + Họ** (bắt buộc) và **Ngày sinh** (dropdown Ngày/Tháng/Năm — year mặc định là 2026 nên nút Xác nhận bị disabled). Cần chọn năm sinh < 2008 để nút kích hoạt.
-- Sau khi submit, Meta OIDC trả về callback `auth.meta.com/oidc/callback` → redirect vào `https://muse.ai/access`.
+### Bước 2: Điền OTP và bẫy nút "Xác nhận"
+- Điền OTP 6 số vào ô input `muse.ai`.
+- Bấm nút **Xác nhận** (`button[type="submit"]:has-text("Xác nhận")`).
+- API `POST https://muse.ai/api/auth/native/confirm-otp` trả về `HTTP 200 OK`:
+  `{"registration_state":"completion_required","tos":...}`.
+
+### Bước 3: Khai báo ngày sinh & Cạm bẫy Modal Picker "OK"
+- Giao diện chuyển sang *"Ngày sinh của bạn là khi nào?"* với 3 dropdown: Ngày, Tháng, Năm.
+- **Bẫy UI 1 - Năm mặc định:** Mặc định năm là `2026` (chưa đủ 18 tuổi) nên nút Xác nhận bị mờ (disabled). Bắt buộc `select_option('1997')` hoặc năm sinh < 2008.
+- **Bẫy UI 2 - Overlay Picker:** Khi click dropdown trên Chromium, xuất hiện modal/overlay nút `OK` (`button:has-text("OK")`) che khuất form submit. Bắt buộc click nút `OK` này để đóng picker trước khi bấm nút `Xác nhận` submit ngày sinh.
+
+### Bước 4: Chặn IP Datacenter tại `register-completion` (Lỗi 403 csrfFailed)
+- Khi submit ngày sinh, client gửi request:
+  `POST https://muse.ai/api/auth/native/register-completion`
+  Payload: `{"date_of_birth":"1997-10-23","tos_content_version":"ntm_create_account:default_v1_meta_account_v2+docs_v1","remember_device":true}`
+- **Bản chất lỗi "Phiên đăng nhập của bạn đã hết hạn":**
+  Nếu dùng IP Datacenter (như Webshare ASN 36352 Colocrossing), Meta Risk Engine trả về:
+  `HTTP 403 Forbidden`
+  `{"type":"csrfFailed","title":"Request blocked","detail":"Refresh the page and try again.","status":403}`
+  Và giao diện frontend ngụy trang lỗi thành dòng đỏ: *"Phiên đăng nhập của bạn đã hết hạn. Hãy thử lại."*
+- Đây KHÔNG phải lỗi hết hạn session thực tế, mà là cờ chặn IP Datacenter của Meta. Bắt buộc phải dùng IP US Residential sạch (AT&T, Verizon Business) hoặc Cloud Browser thật như Lexmount.
 
 ### Bước 3: Màn hình /access — hai trạng thái
 
