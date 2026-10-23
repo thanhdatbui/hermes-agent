@@ -170,6 +170,15 @@ Reviewing 13+ files simultaneously (5 engine files + 8 tests) causes Sol Auditor
   2. Commit 2: Injection Adapter & Gateway Wiring (`skill_injector.py`, `dispatch_worker.py` + tests).
 - Pass `--system-prompt` with domain constraint context if Reviewer treats intentional graceful fallback as a fail-closed violation.
 
+### 13. Coordinator Session Prompt vs Worker Prompt Desync (Skill Bloat at Gateway)
+- **Problem:** Dynamic skill routing (`skill_injector.py`) only optimizes Worker subagents spawned by `dispatch_worker.py`. The Coordinator's main session on Telegram uses Hermes Core's `build_skills_system_prompt()` (`agent/prompt_builder.py`), which scans `~/.hermes/skills/` directly from disk on startup and dumps every un-archived category into `<available_skills>` (>180 skills, ~30KB prompt bloat).
+- **Solution & Archiving Pattern:**
+  * Move irrelevant/bloat categories (`apple`, `creative`, `data-science`, `email`, `media`, `smart-home`, `social-media`, `note-taking`, `research`, `productivity`) into `~/.hermes/skills/.archive/`.
+  * `.archive` is recognized by `EXCLUDED_SKILL_DIRS` in `agent/skill_utils.py` and is completely skipped by Hermes Core during system prompt assembly.
+  * Always preserve critical tools like `windows-native-ocr` (move to `desktop/` before archiving `productivity/`).
+  * Delete `.skills_prompt_snapshot.json` to force snapshot regeneration.
+  * Clear `agent.system_prompt` in `config.yaml` to prevent duplicating invariants already present in `SOUL.md`.
+
 ## Closeout Gate Notes
 
 - The 3 new files (`skill_injector.py`, tests) + modified `dispatch_worker.py` together exceed 22KB diff
