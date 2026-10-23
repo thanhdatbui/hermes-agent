@@ -912,6 +912,27 @@ def sync_profile_to_wincred(profile_dir: str) -> bool:
   2. Tuyệt đối cấm kết luận tài khoản hết quota khi chưa gửi request độc lập kiểm chứng token thực tế.
   3. Mọi bài toán đều có nguyên nhân cơ học ở tầng OS/Process/Storage. Đào sâu binary strings và Win32 API luôn tìm ra giải pháp O(1).
 
+---
+
+## 26. Kỷ Luật Gate Lập Kế Hoạch Claude Sonnet Khi Đổi Cơ Chế Kiến Trúc & Cờ `--profile` Cho Lệnh `fix`
+
+### 1. Kỷ Luật Bắt Buộc Claude Sonnet Plan Khi Can Thiệp Kiến Trúc / Auth (Gate Invariant):
+- **Quy tắc:** Khi phát hiện thay đổi cơ chế xác thực hoặc luồng lưu trữ cốt lõi của hệ thống (ví dụ: phát hiện `agy.exe` đọc auth từ Windows Credential Manager `wincred` thay vì file `.gemini/`, đòi hỏi phải inject API `CredWriteW` vào tiến trình trước khi spawn), đây là **thay đổi kiến trúc điều phối hệ thống quan trọng**.
+- **CẤM NHẢY CÓC:** Coordinator TUYỆT ĐỐI CẤM tự ý soạn patch contract rồi gọi thẳng Haiku Worker thi công code mà bỏ qua bước **Claude Sonnet Planning** (`claude -p --model sonnet` / `--role planner`).
+- **Quy trình chuẩn khi thay đổi cơ chế auth/architecture:**
+  1. *Điều tra & Trích xuất bằng chứng:* Dùng read-only inspection để xác nhận chính xác cơ chế của binary/hệ điều hành.
+  2. *Triệu hồi Claude Sonnet lập Plan:* Giao đề bài chi tiết để Claude Sonnet đánh giá rủi ro tương tranh (race condition), tính tương thích ngược, và phác thảo architecture plan.
+  3. *Review & Ký duyệt Plan:* Coordinator đối soát plan, chuyển thành Patch Contract O(1) cụ thể.
+  4. *Dispatch Haiku Worker thi công:* Chỉ khi đã có plan mới chuyển cho Worker thi công, nghiệm thu qua focused test suite.
+
+### 2. Hỗ Trợ Đích Danh `--profile` Cho Cả Lệnh `ask` Lẫn `fix` Trong `ag_cli.py`:
+- Trước đây, lệnh `fix` chỉ có cờ `--file`, `--model`, `--workdir`, `--timeout` mà thiếu `--profile`, khiến việc kiểm thử sửa code trên tài khoản cụ thể (như `acc_27` - `quyphuoc`) bị báo lỗi `unrecognized arguments: --profile`.
+- Đã bổ sung chính thức:
+  ```bash
+  python D:/Taadaa/tools/ag_cli.py fix "Nội dung task sửa..." --file "<file_path>" --profile acc_27 --timeout 60
+  ```
+  Cho phép người vận hành và các worker chỉ định đích danh tài khoản thi công khi cần debug hoặc ưu tiên tài khoản có quota Pro dồi dào.
+
 
 
 
