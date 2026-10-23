@@ -20,10 +20,10 @@ Ava: Trích clip gốc; WinRT OCR lines==0 lọc chữ rác. Top-row grid: audit
 §
 Reboot 3 ca (05:20, 11:20, 17:20): lookback 60m; 2FA né đệm. Né TFT/War3. Task ngầm Hidden+CREATE_NO_WINDOW. Game=tắt nháy.
 §
-OMP/AGY: 28 acc Pro; lease 1800s; QR Google: tab GPM giữ mở; link 9k quá 8p báo 'đã sử dụng', đối soát one.google.com/home.
+OMP/AGY: 28 acc Pro; lease 1800s; Omni proxy scope='account', soi proxy_logs; AGY giải mã enc:v1: qua server.env; link 9k check one.google.com/home.
 §
 Đơn TT Shop: Mail báo 1 lần; API SPX/J&T/Ninja; Hub Thanh Khê. Dashboard :1905 /api/orders.
 §
-Worker 3-Tier: Sol (:20129 100% free), Agy CLI fallback, Haiku fallback (--allow-bash). Quota live OmniRoute. Game guard: suspend/resume né đẻ ffmpeg.
+Worker 3-Tier: Sol (:20129 free), Agy CLI, Haiku (--allow-bash). Quota live Omni. Game guard: suspend/resume.
 §
 Cron/Alert: Gửi đúng Telegram group của repo (-5435853713 Video/Up, -5377611430 Nuôi, -5373649734 Alert), cấm spam DM.
