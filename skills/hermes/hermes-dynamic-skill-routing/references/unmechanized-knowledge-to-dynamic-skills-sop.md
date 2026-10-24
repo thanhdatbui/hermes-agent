@@ -12,21 +12,21 @@
    - **Quy tắc:** CẤM TUYỆT ĐỐI lưu vào `memory`, cấm viết thêm text thừa vào prompt. Chốt chặn cơ học (exit code != 0) tự đảm bảo an toàn.
 2. **Cửa 2 — Tri Thức Chưa Cơ Giới Hoá (Quy trình thao tác, cạm bẫy, SOP, thứ tự fallback, bài học vận hành):**
    - **Quy tắc:** BẮT BUỘC lưu vào Thư viện Skill (`D:/Taadaa/Hermes/skills/`).
-   - Tự động tra cứu O(1) qua `skill_lookup.py` và nhúng vào prompt qua `skill_injector.py` khi Worker làm việc.
+   - Sử dụng tool 1 chạm `D:/Taadaa/tools/record_skill_knowledge.py` để ghi vào `SKILL.md` hoặc `references/`.
+   - Tự động tra cứu O(1) qua `skill_lookup.py` và nhúng vào prompt qua `skill_injector.py` (với cơ chế auto_heal) khi Worker làm việc.
 3. **Cửa 3 — Persistent Memory (`MEMORY.md`):**
    - **Quy tắc:** CHỈ dùng cho thông tin cá nhân của User (User Profile, địa chỉ giao hàng, liên hệ, sở thích phong cách) hoặc đặc thù môi trường Windows mà không thuộc về quy trình nào.
 
-## 3. Các Bước Thao Tác Khi Có Tri Thức Mới
+## 3. Thao Tác 1 Chạm Với `record_skill_knowledge.py`
 Khi phát hiện bài học / quy trình mới chưa có code:
-1. **Chọn đúng Skill:**
-   - Tra cứu qua `python D:/Taadaa/tools/skill_lookup.py --query "<từ_khóa>"` để tìm skill tương ứng.
-   - Nếu là chi tiết bổ trợ: Ghi vào `references/<chủ_đề>.md` của skill đó.
-   - Nếu là quy tắc bất biến: Patch trực tiếp vào `SKILL.md`.
-2. **BẮT BUỘC Tái Lập Chỉ Mục (Rebuild Index):**
-   - Sau khi cập nhật bất kỳ file `SKILL.md` hoặc `references/*.md`:
-     ```bash
-     python D:/Taadaa/tools/build_skill_index.py
-     ```
-   - Thao tác này mất ~15ms, làm mới `skills_index.json` để tránh rơi vào bẫy `[INDEX_STALE]` hoặc `FAIL_CLOSED_STALE_INDEX` của `skill_injector.py`.
-3. **Kiểm Chứng Lập Tức:**
-   - Chạy `python D:/Taadaa/tools/skill_lookup.py --query "<từ_khóa>"` để xác nhận skill mới đã xuất hiện trong danh sách matched O(1).
+```bash
+python D:/Taadaa/tools/record_skill_knowledge.py \
+  --skill "<tên_skill>" \
+  --content "<nội_dung_quy_trình>" \
+  [--kind body|reference] \
+  [--ref-name "<tên_file>.md"]
+```
+- Tự động tìm đúng thư mục skill.
+- Tự động ghi nguyên tử (atomic), chống trùng lặp, bảo toàn YAML frontmatter.
+- Tự động rebuild `skills_index.json` tại chỗ.
+- `skill_injector.py` có cờ `auto_heal=True` sẽ tự động làm mới index nếu có bất kỳ file skill nào bị stale.

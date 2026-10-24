@@ -22,7 +22,7 @@ Cron/Alert: Gửi đúng Telegram group của repo (-5435853713 Video/Up, -53776
 §
 403 VALIDATION: CẤM nhầm OAuth. Bóc validation_url tươi, mở GPM quét QR camera thật (cấm Zalo). Quota full 100% ảo do 403 chặn từ cổng. Test qua isolated_chat_test.
 §
-Guard Strike-3: Cấm báo BLOCKED; báo Guidance Gap chờ lệnh; auto-quarantine sạch repo.
+Guard Strike-3: Cấm BLOCKED/chờ duyệt (bại liệt); auto-quarantine + tự nạp guidance qua update_guidance.py + pivot sửa tiếp.
 §
 CẤM delegate_task sửa code. Worker dispatch qua D:/Taadaa/tools/sol_worker.py (hoặc claude_worker.py / dispatch_worker.py).
 §

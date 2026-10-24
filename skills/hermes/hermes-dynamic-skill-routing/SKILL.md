@@ -42,7 +42,8 @@ dispatch_worker.py → Agy CLI (Tier 1) / Haiku fallback (Tier 2)
 | `skills_index.json` | `D:/Taadaa/tools/` | Lightweight index (name, category, description, path, tokens_est) |
 | `skill_lookup.py` | `D:/Taadaa/tools/` | Keyword bucket lookup, always returns 5 Pinned Core Skills |
 | `load_selected_skills.py` | `D:/Taadaa/tools/` | Loads selected skills with path traversal guard |
-| `skill_injector.py` | `D:/Taadaa/tools/` | Adapter: orchestrates lookup → load → budget → inject |
+| `skill_injector.py` | `D:/Taadaa/tools/` | Adapter: orchestrates lookup → load → budget → inject (auto_heal supported) |
+| `record_skill_knowledge.py` | `D:/Taadaa/tools/` | Canonical 1-touch tool: resolve skill, atomic write, auto rebuild index |
 | `preview_skill_injection.py` | `D:/Taadaa/tools/` | CLI preview without side effects |
 
 ## Pinned Core Skills (Always Injected)
