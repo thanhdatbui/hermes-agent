@@ -25,6 +25,7 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
 - Báo Cáo Điều Tra Bypass by Claim Omission & Chốt Chặn Task Contract Binding: [`references/bypass-by-claim-omission-and-task-contract-binding.md`](references/bypass-by-claim-omission-and-task-contract-binding.md)
 - Chặn 2FA/TOTP Khi Switcher & Kỷ Luật Nghiệm Thu Profile: [`references/account-switcher-2fa-totp-interception-and-profile-standardization.md`](references/account-switcher-2fa-totp-interception-and-profile-standardization.md)
 - Khôi Phục Session 2FA Ảo & Nạp Bio Bằng AdbKeyboard Broadcast: [`references/transient-2fa-recovery-and-adb-keyboard-utf8-bio-injection.md`](references/transient-2fa-recovery-and-adb-keyboard-utf8-bio-injection.md)
+- Chống Bịa Đặt Lý Do Lấp Liếm & Bộ Ba Đối Soát Profile (Tên, Bio, Avatar): [`references/anti-fabrication-and-full-profile-triad-verification.md`](references/anti-fabrication-and-full-profile-triad-verification.md)
 
 ## 1. Nguyên Tắc Cốt Lõi (Invariants)
 1. **CẤM gửi ảnh mù / đối phó:** Trước khi đính kèm bất kỳ thẻ `MEDIA:<path>` nào, bắt buộc phải mở ảnh ra soi mắt kiểm tra trước.
@@ -61,6 +62,10 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
     - Khi dùng Account Switcher để vào nick làm profile, nếu gặp màn hình yêu cầu xác thực 2 bước (TOTP 6 số): BẮT BUỘC chụp ảnh hiện trường gửi báo cáo kèm mã lỗi kẹt 2FA. Tuyệt đối CẤM lấy ảnh cũ báo cáo thay thế hoặc tự ý xác nhận đã chuẩn hóa xong.
     - **Thử Nghiệm Vượt 2FA Ảo Trước Khi Dừng (Anti-Whining Active Recovery):** Đa phần màn hình 2FA khi switch tài khoản trên TikTok là hiện tượng kẹt UI Navigation (session thực chất vẫn còn lưu trong app cache). Coordinator BẮT BUỘC thử reset UI state bằng `am force-stop` + mở lại launcher, rồi tap trực tiếp vào Tab Profile (`970 1860`) để kiểm tra xem session đã active hay chưa. Nếu đã active, tiếp tục thi công thay vì đóng băng báo lỗi.
     - **Chuẩn Hóa Bio Bằng AdbKeyboard Broadcast:** Khi giao diện TikTok phiên bản mới ẩn nút Sửa hồ sơ, tap trực tiếp vào node text của Bio (`250 670`). Bắt buộc dùng intent chuẩn của AdbKeyboard: `ADB_KEYBOARD_CLEAR_TEXT` và `ADB_KEYBOARD_INPUT_TEXT --es text '<base64_utf8>'` (trả về `result=-1`), tuyệt đối không dùng `ADB_INPUT_B64` (trả về `result=0` nhưng không gõ chữ). Chi tiết xem [`references/transient-2fa-recovery-and-adb-keyboard-utf8-bio-injection.md`](references/transient-2fa-recovery-and-adb-keyboard-utf8-bio-injection.md).
+12. **CẤM Bịa Lý Do Lấp Liếm (Anti-Fabrication) & Đối Soát Đủ Bộ 3 Profile (Tên, Bio, Avatar):**
+    - **CẤM TUYỆT ĐỐI Bịa Đặt Lý Do Kỹ Thuật Ảo:** Khi thấy Tên hoặc Avatar chưa đổi trên ảnh thực tế, cấm tự nghĩ ra lý do (như "giao diện mới gộp tên vào handle", "hệ thống tự ẩn tên") để tuyên bố xong.
+    - **Bộ Ba Nghiệm Thu Profile:** Chuẩn hoá kênh bắt buộc đối soát đủ 3 yếu tố: (1) Tên hiển thị (Nickname) phải là tên mới tiếng Việt có dấu, (2) Bio phải chứa nội dung mới và sạch nút marker rỗng, (3) Avatar trên app phải là ảnh mới theo spec.
+    - **Kỷ Luật Báo Cáo Thực Trạng:** Nếu chỉ làm được một phần (ví dụ mới xong Bio nhưng kẹt Tên/Avatar), BẮT BUỘC báo cáo rõ là CHƯA HOÀN TẤT và nêu chính xác điểm đang kẹt, TUYỆT ĐỐI CẤM báo hoàn tất 100%. Chi tiết xem [`references/anti-fabrication-and-full-profile-triad-verification.md`](references/anti-fabrication-and-full-profile-triad-verification.md).
 
 ## 2. Thang Leo Thang Vision Dự Phòng (Fallback Ladder)
 Thứ tự fallback đọc ảnh chuẩn hoá 100% đồng bộ với kiến trúc Worker Dispatch:
