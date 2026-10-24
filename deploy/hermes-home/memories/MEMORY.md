@@ -1,4 +1,4 @@
-Dưỡng N3 tối+N4 dynamic mỗi máy 3 lớp phễu (1.Đề xuất up, 2.Đi tù xả phạt, 3.Nick non).
+Shift Pool Dynamic 4d: Ca 1 {1,2,7}, Ca 2 {3,4,8}, Ca 3 {5,6}; D0 rank 1 khỏe, D1 rank 2, D2 rank 3; S2 bám S1; N3 tối+N4 DS 3 phễu (1.Đề xuất up, 2.Đi tù xả phạt, 3.Nick non); Zero Starvation 100%.
 §
 Follow: dò +2 (max 40), lùi 4 sàn 15; probation 4d: T1 2-4, T2 6-8 fl; audit >=3-4 chu kỳ Veteran/Mid/Rookie, tách fl=0 & used>0; account limit cô lập nick, cấm ngắt IP.
 §
