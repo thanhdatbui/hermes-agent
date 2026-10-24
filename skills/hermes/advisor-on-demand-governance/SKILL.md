@@ -8,6 +8,7 @@ description: Use when configuring Advisor Sol. Enforces on-demand only.
 ## Core Principle
 - **100% STRICTLY ON-DEMAND**: Never guess user intent. Never auto-append Advisor (Sol) responses to chat messages based on heuristic words (e.g., "tư vấn", "lời khuyên", "có nên", "theo mày", "đánh giá", "phân tích giúp") or sentence endings with question marks `?`.
 - The user must explicitly summon Advisor Sol by name.
+- **CẤM LỌC TỪNG TỪ (ERADICATE HEURISTIC GATES, DO NOT CHERRY-PICK WORDS)**: Tuyệt đối không tiếp cận theo hướng "xóa từng từ nghi vấn". Tiếng Việt đa dạng, xóa từ này thì câu hỏi kỹ thuật thông thường (ví dụ: *"canary xem cron có fix đc k ?"*) vẫn bị dính do dấu hỏi `?` hoặc cấu trúc nghi vấn. BẮT BUỘC xóa sạch 100% nhánh suy đoán cảm tính trong `_is_advice_request()` và `classify_advice_intent()`, chuyển thành công tắc so khớp cơ học: Chỉ kích hoạt khi chứa đích danh các từ khóa triệu hồi.
 
 ## Strict Triggers Allowlist
 In `agent/conversation_loop.py`, `_is_advice_request()` MUST only return `True` for explicit trigger phrases:
@@ -37,6 +38,10 @@ _ADVISOR_EXPLICIT_TRIGGERS = (
 
   {"isActive": true, "testStatus": "active"}
   ```
+- **ChatGPT Account Deactivation vs. Gmail Liveness**:
+  Khi tài khoản ChatGPT-Web báo lỗi `ChatGPT session expired — log into chatgpt.com and copy a fresh cookie`:
+  * Tuyệt đối không phán đoán bừa rằng Gmail bị DIE. Phải kiểm tra độc lập qua `checkmail.live` và đăng nhập Google Account.
+  * Nếu Google đăng nhập thành công nhưng khi Google SSO vào ChatGPT bị báo `Lỗi xác thực: account_deactivated` ("Bạn không còn tài khoản vì tài khoản đã xóa hoặc vô hiệu hóa"), điều này khẳng định Gmail hoàn toàn LIVE nhưng tài khoản dịch vụ ChatGPT đã bị OpenAI trảm. Không tiếp tục giải Captcha hay ép login lại tốn tài nguyên; đánh dấu loại khỏi pool ChatGPT và thay thế bằng tài khoản khác.
 
 ## Worker & Subagent Dispatch Protocol (Coordinator vs Worker)
 - **CẤM TUYỆT ĐỐI Hermes Native Delegation (`delegate_task`)**:

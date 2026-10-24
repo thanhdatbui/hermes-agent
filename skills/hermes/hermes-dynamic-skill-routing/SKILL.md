@@ -36,6 +36,8 @@ dispatch_worker.py → Agy CLI (Tier 1) / Haiku fallback (Tier 2)
 
 ## Core Files
 
+> Architecture Reference: [`references/mechanical-planner-and-worker-gateways-architecture.md`](references/mechanical-planner-and-worker-gateways-architecture.md) (Claude CLI Approved)
+
 | File | Path | Purpose |
 |------|------|---------|
 | `build_skill_index.py` | `D:/Taadaa/tools/` | Scans 190+ SKILL.md files, outputs `skills_index.json` |
@@ -43,6 +45,8 @@ dispatch_worker.py → Agy CLI (Tier 1) / Haiku fallback (Tier 2)
 | `skill_lookup.py` | `D:/Taadaa/tools/` | Keyword bucket lookup, always returns 5 Pinned Core Skills |
 | `load_selected_skills.py` | `D:/Taadaa/tools/` | Loads selected skills with path traversal guard |
 | `skill_injector.py` | `D:/Taadaa/tools/` | Adapter: orchestrates lookup → load → budget → inject (auto_heal supported) |
+| `dispatch_planner.py` | `D:/Taadaa/tools/` | Single Dispatch Gateway for planning: Sonnet -> Sol -> Coordinator |
+| `dispatch_worker.py` | `D:/Taadaa/tools/` | Single Dispatch Gateway for code fixes: Sol -> Agy -> Haiku -> Coordinator |
 | `record_skill_knowledge.py` | `D:/Taadaa/tools/` | Canonical 1-touch tool: resolve skill, atomic write, auto rebuild index |
 | `preview_skill_injection.py` | `D:/Taadaa/tools/` | CLI preview without side effects |
 
