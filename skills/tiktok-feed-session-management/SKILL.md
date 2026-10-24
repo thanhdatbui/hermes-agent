@@ -12,7 +12,7 @@ author: Hermes Agent
 
 ## References & Invariants
 - Starvation: [references/row-nurture-starvation-and-cycle-monitoring.md](references/row-nurture-starvation-and-cycle-monitoring.md)
-- Dynamic Selection: [references/per-machine-dynamic-3tier-account-selection.md](references/per-machine-dynamic-3tier-account-selection.md)
+- Dynamic Selection & Shift Pools: [references/per-machine-dynamic-3tier-account-selection.md](references/per-machine-dynamic-3tier-account-selection.md)
 - Dashboard: [references/dashboard-nurture-health-implementation.md](references/dashboard-nurture-health-implementation.md)
 
 ## Watchdog Upload Status Taxonomy & Triage

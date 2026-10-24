@@ -65,3 +65,50 @@ When `resolve_dynamic_account_for_machine(machine, rows)` executes:
   - Nếu máy có nick cắn đề xuất (`is_account_boosted=True`), log phải ghi: `tier=1_boosted`.
   - Nếu không, máy có nick dính cooldown nhả follow, log ghi: `tier=2_jailed`.
   - Nếu không, log ghi: `tier=3_youngest` (chọn nick có `video_count` thấp nhất).
+
+---
+
+## 5. Shift-Pool Architecture for Regular Shifts (`shift_pool_selector.py`)
+
+To achieve biological diversity on regular shift days (D0, D1, D2) while avoiding starvation, accounts are partitioned into 3 fixed pools:
+- **Ca 1 (Sáng 06:00 & 08:00):** Pool `{1, 2, 7}`
+- **Ca 2 (Trưa 12:00 & 14:00):** Pool `{3, 4, 8}`
+- **Ca 3 (Tối 18:00 & 20:00):** Pool `{5, 6}`
+
+### Operational Cadence (4-Day / 96h biological cycle anchored to 2026-10-11):
+- **Day 0 (D0):** Ca 1 pick Row 1, Ca 2 pick Row 3, Ca 3 pick Row 5.
+- **Day 1 (D1):** Ca 1 pick Row 2, Ca 2 pick Row 4, Ca 3 pick Row 6.
+- **Day 2 (D2):** Ca 1 pick Row 7, Ca 2 pick Row 8. **Ca 3 tối: Pool {5, 6} hết nick -> BẮT BUỘC fallback sang 3 Phễu Dưỡng Sinh (`resolve_dynamic_account_for_machine`)**.
+- **Day 3 (D3 - Rest Day):** **Toàn bộ 3 Ca là Dưỡng sinh -> BẮT BUỘC chạy 3 Phễu Dưỡng Sinh**.
+- **Session 2 Sticky Rule:** Session 2 (08h, 14h, 20h) BẮT BUỘC bám đúng row mà Session 1 (06h, 12h, 18h) đã chạy trong ngày cho từng máy.
+
+---
+
+## 6. Critical Pipeline Traps Across the Python / PowerShell / Cron Stack
+
+When implementing end-to-end dynamic account selection across monolithic farm repos, beware of these 5 failure modes:
+
+1. **Python Truthiness Coercion Bug (`args.row or 1`):**
+   - *Symptom:* Calling `run_tiktok.py --account-row-index 0` silently runs Row 1.
+   - *Root cause:* `config["_account_row_index"] = int(args.account_row_index or 1)`. In Python, `0 or 1` evaluates to `1`.
+   - *Fix:* Bắt buộc dùng `int(args.account_row_index) if args.account_row_index is not None else 1`.
+
+2. **Bridge Argument Omission Across Stack Layers:**
+   - *Symptom:* `_shift_ca` remains `None` inside `prepare_multi_machine_feed_session()`, falling back to error.
+   - *Root cause:* Parameter added in core logic but omitted in CLI wrappers.
+   - *Fix:* Bắt buộc kiểm tra đủ 4 mắt xích:
+     `tiktok_runner.py` (`-ShiftCa $ca`) -> `run-feed-session.ps1` (`param([int]$ShiftCa)`) -> `run_tiktok.py` (`--shift-ca`) -> `config["_shift_ca"]`.
+
+3. **Pool Cycle Desynchronization vs 4-Day Cadence:**
+   - *Symptom:* Shift pool loops independently per pool length (`cycle_day // len(pool)`), causing Ca 3 (length 2) to desync from the 4-day farm rhythm and never yield to dynamic rest.
+   - *Fix:* Khóa chu kỳ chuẩn theo modulo 4: `cycle_day = (today.toordinal() - _ANCHOR_ORDINAL) % 4`. Khi rơi vào Ca 3 Ngày 2 hoặc bất kỳ ca nào Ngày 3, hàm pool selector phải trả về None hoặc raise để nhường quyền cho 3 phễu dynamic.
+
+4. **Empty / Corrupted State File Crash:**
+   - *Symptom:* `json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)` on empty state files.
+   - *Fix:* `_load_state()` phải kiểm tra `state_file.stat().st_size > 0` và bọc `try...except (OSError, json.JSONDecodeError): return {}`.
+
+5. **Watchdog Dynamic Label & Tik Index Formatting:**
+   - *Symptom:* Watchdog reports show confusing `Row 0` and cannot reconcile follow deltas.
+   - *Fix:* Trong `feed_session_watchdog.py`:
+     - Header: ánh xạ tên ca sang nhãn Pool (`Pool {1, 2, 7}`, `Pool {3, 4, 8}`, `Pool {5, 6}`) qua `_row_or_pool_label()`.
+     - Reconciliation: khi `active_row <= 0`, tra cứu `account` thực tế trong `all_machines` để map ngược lại index `[Tik X]` cho từng máy.
