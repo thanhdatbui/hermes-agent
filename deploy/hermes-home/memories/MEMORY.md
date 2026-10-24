@@ -2,7 +2,7 @@ Dưỡng N3 tối+N4 dynamic mỗi máy 3 lớp phễu (1.Đề xuất up, 2.Đi
 §
 Follow: dò +2 (max 40), lùi 4 sàn 15; probation 4d: T1 2-4, T2 6-8 fl; audit >=3-4 chu kỳ Veteran/Mid/Rookie, tách fl=0 & used>0; account limit cô lập nick, cấm ngắt IP.
 §
-Pin>=1k: LIFO TikTok->ghim tăng dần để top view ở ô 1 (re-pin enforce). S7 wake: 224+82+SplashActivity; CẤM viện cớ 'màn hình tắt'. Soi OCR 'Đã ghim' đúng ô view cao. Treo lock: with_device_lock.py --force-preempt.
+Pin>=1k: LIFO TikTok->ghim tăng dần để top view ở ô 1 (re-pin enforce); <1k/0 view CẤM ghim tránh lộ nick yếu. S7 wake: 224+82+SplashActivity; CẤM viện cớ 'màn hình tắt'. Soi OCR 'Đã ghim' đúng ô view cao. Treo lock: with_device_lock.py --force-preempt.
 §
 Rename/Bio: 100% TV có dấu; cấm adb input text thô; chỉ gõ AdbKeyboard Base64 UTF-8; pre-submit check 0 ký tự; tâm Sửa hồ sơ (315,865) né khe 540; cấm tap (72,148); thoát FIND_FRIENDS; 7d cd; switcher.
 §
