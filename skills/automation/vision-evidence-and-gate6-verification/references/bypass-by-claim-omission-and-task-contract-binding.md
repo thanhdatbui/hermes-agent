@@ -42,3 +42,38 @@
 3. **Step 3 (Report with Grounded Claims):**
    - Chỉ gửi kèm thẻ `MEDIA:<path_anh>` khi Step 2 đạt 100%.
    - Nếu Step 2 fail, lập tức chuyển L1/Worker hoặc thực thi tiếp trên ADB, không được gửi ảnh mù hay lách chữ để đối phó.
+
+---
+
+## 4. Hiện Thực Hóa Cơ Học Trong `guard_media_vision_gate.py` (Commit `5cb4ee4`)
+
+Để loại bỏ hoàn toàn sự phụ thuộc vào sự tự giác của Agent, chốt chặn đã được mã hóa trực tiếp thành luật vật lý tại hàm `check_contradiction`:
+
+```python
+REQUIRED_ACTION_COMPLETE_TASK = "COMPLETE_UNFINISHED_TASK"
+UNFINISHED_PROFILE_MARKERS = (
+    re.compile(r"\b(?:them\s*(?:tieu\s*su|tidu\s*sd|bio)|no\s*bio\s*yet|add\s*bio|chua\s*co\s*tieu\s*su)\b"),
+)
+PROFILE_REPORT_TRIGGER_REGEX = re.compile(
+    r"\b(?:chuan\s*hoa|nghiem\s*thu|ho\s*so|profile|kenh|tai\s*khoan)\b"
+)
+
+# Trong check_contradiction (chạy trước khi kiểm tra no_text_claims):
+if PROFILE_REPORT_TRIGGER_REGEX.search(message):
+    for pattern in UNFINISHED_PROFILE_MARKERS:
+        m = pattern.search(evidence_text)
+        if m:
+            return _verdict(
+                "INCOMPLETE_PROFILE_EVIDENCE",
+                f"profile image visibly contains unfinished bio marker ('{m.group(0)}')",
+                [m.group(0)],
+                receipt_id=receipt.get("receipt_id", ""),
+            )
+```
+
+### Cơ chế hoạt động:
+- Khi tin nhắn có các từ khóa nghiệm thu (`chuan hoa`, `nghiem thu`, `ho so`, `profile`, `kenh`, `tai khoan`):
+  Gate tự động quét `evidence_text` (kết hợp OCR + detected entities).
+- Nếu phát hiện các marker chưa hoàn thành (kể cả OCR méo font tiếng Việt như `them tidu sd`, `no bio yet`, `add bio`):
+  Gate lập tức trả mã lỗi **`INCOMPLETE_PROFILE_EVIDENCE`** và kích hoạt Action-Forcing FSM.
+- Bất kể Agent có cố tình gọt sạch từ "bio" hay "đổi tên" ra khỏi tin nhắn, chỉ cần bức ảnh chụp thực tế vẫn còn nút `+ Thêm tiểu sử`, Gate sẽ **FAIL-CLOSED** và chặn đứng tin nhắn ngay tại cửa kiểm duyệt!
