@@ -92,8 +92,16 @@ python D:/Taadaa/tools/closeout_gate.py --repo D:/Taadaa/tools --base HEAD --fil
   3. Kiểm tra xem Reviewer prompt đã được nạp Scope Discipline chưa; nếu chưa, sửa ngay tầng gate cơ học thay vì ngồi than thở.
 
 ## 6. Commit Binding & Safe Push Execution
-- **Hiện tượng lỗi:** Khi đã có commit ở local, nếu chạy `closeout_gate.py --base HEAD --files ...`, audit log chỉ ghi nhận hash của worktree diff mà không bind commit hash của `HEAD`. Khi chạy `safe_push.py`, wrapper ném lỗi `UnsafePushError('BLOCKED_GATE_NOT_APPROVED: Repository has no valid APPROVED closeout audit for HEAD')`.
-- **Cách chốt phiên chuẩn:**
-  1. Chạy thẩm định commit: `python D:/Taadaa/tools/closeout_gate.py --repo <repo> --base HEAD~1 --json-output` (hoặc `--base origin/main`).
-  2. Gate chạy test, gọi Reviewer, trả về `APPROVED` và ghi nhận `"commit": "<HEAD_SHA>"` vào `gate_audit.jsonl`.
-  3. Đẩy code an toàn: `python D:/Taadaa/tools/safe_push.py <repo> origin <branch>`. Pre-push hook xác nhận commit đã được duyệt và giải phóng lệnh push.
+- **Hiện tượng lỗi 1 (Worktree Hash Binding):** Khi đã có commit ở local, nếu chạy `closeout_gate.py --base HEAD --files ...`, audit log chỉ ghi nhận hash của worktree diff mà không bind commit hash của `HEAD`. Khi chạy `safe_push.py`, wrapper ném lỗi `UnsafePushError('BLOCKED_GATE_NOT_APPROVED: Repository has no valid APPROVED closeout audit for HEAD')`.
+- **Hiện tượng lỗi 2 (Committed Scope Mismatch Trap):** Khi chạy `closeout_gate.py --base HEAD~1 --files ...`, hàm `targeted_candidate()` trong `closeout_gate.py` cưỡng chế điều kiện khắt khe: `set(targets) == committed_scope`. Nếu truyền sai danh sách file (ví dụ: file của commit cũ, hoặc chỉ truyền một phần file đã commit của HEAD), gate lập tức ném lỗi:
+  `ValueError: committed <base>..HEAD scope [...] != --files targets [...]; refusing partial committed scope`.
+- **Hiện tượng lỗi 3 (Scope Not Declared khi working tree có file khác):** Nếu bỏ qua `--files` khi repo có các file untracked/modified chưa commit, gate sẽ fail-fast:
+  `[Gate Fail-Fast: SCOPE_NOT_DECLARED] N changed files without --files allowlist; pass --files <targets>`.
+- **Quy trình chốt phiên chuẩn 4 bước:**
+  1. **Trích xuất chính xác danh sách file của HEAD:**
+     `git show --stat --oneline HEAD`
+  2. **Chạy thẩm định commit với đúng danh sách file đó:**
+     `python D:/Taadaa/tools/closeout_gate.py --repo <repo> --base HEAD~1 --files <file1> <file2> ... --json-output`
+  3. **Gate tự động verify:** Gate trích xuất `committed_targeted` diff, chạy test, gọi Reviewer, trả về `APPROVED` ($\ge 85$ hoặc $\ge 80$ Grace Band) và ghi nhận `"commit": "<HEAD_SHA>"` vào `gate_audit.jsonl`.
+  4. **Đẩy code an toàn:**
+     `python D:/Taadaa/tools/safe_push.py <repo> origin <branch>`. Pre-push hook đối soát audit entry `APPROVED` khớp đúng `HEAD` commit SHA và giải phóng lệnh push.

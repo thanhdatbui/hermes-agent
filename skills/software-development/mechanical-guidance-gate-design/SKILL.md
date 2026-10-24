@@ -114,13 +114,15 @@ Use when creating, modifying, or reviewing mechanical enforcement gates (pre-too
   4. **Fast-Path O(1) Excludes Test Files:** Hàm `_compute_diff_is_o1()` bắt buộc lọc bỏ toàn bộ file test (`tests/*`, `test_*`), chỉ đếm số dòng thay đổi của production code ($\le 60$ dòng) để không trừng phạt kỹ sư viết test bao phủ cao.
   - Sửa cơ học trực tiếp trong mã nguồn `closeout_gate.py` (`DEFAULT_SYSTEM_PROMPT` và `_compute_diff_is_o1`), cấm dựa vào cờ phụ `--system-prompt` tạm thời và tuyệt đối cấm dừng lại viết sớ phân trần. Chi tiết xem: [`references/closeout-gate-reviewer-scope-discipline.md`](references/closeout-gate-reviewer-scope-discipline.md).
 
-### Rule 19: Closeout Gate Commit Binding & Safe Push Parity (Chống Lỗi Bị Chặn Push Dù Gate Đã Pass)
-- **Bối cảnh:** Khi repository đã có các commit cục bộ trước đó (nhánh ahead of origin), nếu Coordinator chạy `closeout_gate.py --repo <repo> --base HEAD --files ...`, gate chỉ trích xuất working tree diff và ghi nhận hash của candidate diff, KHÔNG gắn kết với commit hash của `HEAD`. Khi đó, lệnh `safe_push.py` kiểm tra `gate_audit.jsonl` đối chiếu với `HEAD` sẽ báo lỗi: `BLOCKED_GATE_NOT_APPROVED: Repository has no valid APPROVED closeout audit for HEAD (<hash>)`.
-- **Yêu cầu Chuẩn Hóa Chốt Phiên:**
-  1. **Commit-Targeted Closeout:** Khi chốt phiên cho các commit đã tạo, bắt buộc chạy `closeout_gate.py --repo <repo> --base HEAD~1 --json-output` (hoặc `--base origin/main`) để diff được trích xuất từ commit thật và `write_gate_audit` ghi nhận chính xác `"commit": "<HEAD_SHA>"` vào chuỗi audit.
-  2. **Safe Push Execution:** Chỉ thực thi push qua wrapper chuẩn: `python D:/Taadaa/tools/safe_push.py <repo> origin <branch>`. Pre-push hook sẽ tự động đối soát audit entry `APPROVED` của commit `HEAD` và cho phép đẩy code an toàn lên remote.
+### Rule 12: Closeout Gate Commit Binding & Committed-Scope Parity (Chống Lỗi Bị Chặn Push Dù Gate Đã Pass)
+- **Bối cảnh 1 (Worktree Hash Binding):** Khi repository đã có các commit cục bộ trước đó (nhánh ahead of origin), nếu Coordinator chạy `closeout_gate.py --repo <repo> --base HEAD --files ...`, gate chỉ trích xuất working tree diff và ghi nhận hash của candidate diff, KHÔNG gắn kết với commit hash của `HEAD`. Khi đó, lệnh `safe_push.py` kiểm tra `gate_audit.jsonl` đối chiếu với `HEAD` sẽ báo lỗi: `BLOCKED_GATE_NOT_APPROVED: Repository has no valid APPROVED closeout audit for HEAD (<hash>)`.
+- **Bối cảnh 2 (Committed-Scope Exact-Match Trap):** Khi chạy `closeout_gate.py --repo <repo> --base HEAD~1 --files ...`, hàm `targeted_candidate()` kiểm tra nghiêm ngặt `set(targets) == committed_scope`. Nếu truyền sai file (ví dụ file của commit cũ hoặc thiếu file trong commit của HEAD), gate ném `ValueError: committed scope [...] != --files targets [...]; refusing partial committed scope`. Nếu bỏ qua `--files` khi working tree có file khác, gate fail-fast `[Gate Fail-Fast: SCOPE_NOT_DECLARED]`.
+- **Yêu cầu Chuẩn Hóa Chốt Phiên 3 Bước:**
+  1. **Lấy danh sách file chính xác của HEAD:** Bắt buộc chạy `git show --stat --oneline HEAD` để lấy đúng các file vừa được commit.
+  2. **Thẩm định commit đúng scope:** Chạy `python D:/Taadaa/tools/closeout_gate.py --repo <repo> --base HEAD~1 --files <file1> <file2> ... --json-output` để gate trích xuất `committed_targeted` diff và `write_gate_audit` ghi nhận chính xác `"commit": "<HEAD_SHA>"` vào chuỗi audit.
+  3. **Safe Push Execution:** Chỉ thực thi push qua wrapper chuẩn: `python D:/Taadaa/tools/safe_push.py <repo> origin <branch>`. Pre-push hook sẽ tự động đối soát audit entry `APPROVED` của commit `HEAD` và cho phép đẩy code an toàn lên remote.
 
-### Rule 12: Generic Declarative Predicates & Safe Invariant Onboarding (`add_rule.py`)
+### Rule 13: Generic Declarative Predicates & Safe Invariant Onboarding (`add_rule.py`)
 - **Bối cảnh:** Trước đây khi có sự cố mới (Case 161 popup, Case 162 USB, Worker timeout floor), kỹ sư phải sửa tay 3 file (`predicates.py`, `rules.json`, `runner.py`), dễ gây sót case sau khi fix hoặc dính Rule Shadowing do stopping-at-first-match.
 - **Yêu cầu 3 Chốt Chặn Cơ Giới Hóa:**
   1. **Generic Declarative Templates:** Thay vì viết code Python rời, chuẩn hóa 4 template trong `predicates.py`: `numeric_floor`, `numeric_ceiling`, `prohibited_pattern`, `required_pattern`. Engine tự động bind động theo `rule.params`.
