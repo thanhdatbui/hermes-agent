@@ -84,3 +84,15 @@ Thay vì để LLM tự do sửa code hoặc sửa trong luồng chính của se
 - Mặc định (`base_dir=None`) trỏ về `INCIDENTS_BASE = Path("D:/Taadaa/runtime/incidents")`.
 - Trong unit test/sandbox: Truyền `base_dir=tmp_path` để cô lập 100% dữ liệu test, triệt tiêu nguy cơ để lại file sự cố giả trong thư mục `pending/` thật của hệ thống.
 
+## 7. Pitfalls Thực Chiến: Closeout Binding Mismatch & Console Window Guard
+- **Closeout Gate Binding Mismatch (`staged/working-tree candidate overlaps committed HEAD`):**
+  - **Triệu chứng:** Khi chạy `closeout_gate.py --repo <path> --base HEAD~1`, Bước 2 thất bại với `✘ binding mismatch: staged/working-tree candidate overlaps committed HEAD`.
+  - **Nguyên nhân:** Working tree có thay đổi chưa commit (unstaged hoặc staged) trùng lặp với commit vừa tạo ở `HEAD`.
+  - **Khắc phục:** Bắt buộc đồng bộ working copy sạch hoàn toàn với `HEAD` (`git diff HEAD` phải rỗng, unstage bằng `git restore --staged <file>` nếu cần) trước khi chạy `closeout_gate.py`.
+- **Console Window Guard trên Windows & Thang Leo Thang Coordinator:**
+  - Khi chạy background process (`background=True`), lệnh `python` trần bị chặn bởi `[CONSOLE_WINDOW_BLOCKED]`.
+  - Nếu `pythonw` hoặc `powershell -WindowStyle Hidden` không nằm trong allowlist của Coordinator, không được thử lại mù quáng; lập tức chuyển sang L2 Emergency Surgery (nếu đã có exact diff O(1) <= 2 files, <= 30 dòng) hoặc chạy foreground với timeout <= 60s.
+- **Hành vi Phản Hồi Khi Nhận Lệnh "Fix đi":**
+  - Khi user báo lỗi ("Clgt", "Fix đi", "Fix đi gemini"), CẤM TUYỆT ĐỐI trả lời bằng văn bản hứa hẹn, giải thích triết lý hay trình bày kế hoạch ("Tôi sẽ xử lý...", "Bước tiếp theo cần...").
+  - Phải lập tức gọi tool để truy vết hiện trường, phân tích queue/log, sửa code, chạy test focused và chỉ trả lời kèm bằng chứng thực tế khi đã hoàn tất.
+

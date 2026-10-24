@@ -220,6 +220,45 @@ Use when creating, modifying, or reviewing mechanical enforcement gates (pre-too
   3. **Absolute Path Synchronization:** Candidate file trích xuất trong hook bắt buộc resolve thành đường dẫn tuyệt đối `Path(file).resolve()` để đồng bộ tuyệt đối với `--workdir` (git root).
   4. **Decoupled Mandate Schema:** Phân định rạch ròi giữa `command` (lệnh shell chạy được) và `instruction` (chỉ dẫn văn bản cho con người/agent). `emit_block` bắt buộc `strip()` mọi chuỗi và chấp nhận `command: ""` khi đã có `instruction`. Chi tiết: [`references/bash-shell-immunity-native-binary-and-decoupled-mandate.md`](references/bash-shell-immunity-native-binary-and-decoupled-mandate.md).
 
+### Rule 25: Positive Verifier Pin Marker Tightening vs OCR Diacritic Fail-Open Trap
+- **Bối cảnh:** Trong bộ thẩm định `verify_profile_positive.py`, khi nới lỏng regex nhận diện nhãn ghim ("Đã ghim") để bao quát lỗi OCR cắt chữ bằng cách cho phép chữ `m` là tùy chọn (`d[aä]\s*ghi\s*m?|da\s*ghim?`), regex sẽ lập tức rơi vào bẫy fail-open chết người: các cụm từ phổ biến như `da ghi chu noi dung`, `da ghi nho`, `video da ghi hinh`, hoặc thậm chí cụm `da ghi` đơn lẻ đều bị nhận diện nhầm thành "Đã ghim"! Hậu quả: Nick chưa ghim video vẫn được báo PASS dương tính giả.
+- **Yêu cầu 3 Chốt Chặn Bắt Buộc:**
+  1. **Mandatory Trailing 'm' Boundary:** Chữ cái `m` trong `ghim` BẮT BUỘC là ký tự kết thúc cứng:
+     ```python
+     pin_markers = [
+         re.compile(r"\b(?:d[aä]\s*ghi\s*m|da\s*ghim|pin(?:ned)?)\b", re.IGNORECASE),
+     ]
+     ```
+     Tuyệt đối CẤM dùng `m?` biến chữ `ghi` thành marker ghim.
+  2. **Dedicated Positive/Negative Test Suite:** Bắt buộc duy trì test suite độc lập (`tests/test_verify_profile_positive.py`) bao phủ cả 2 chiều: (a) match đúng các biến thể hợp lệ (`Đã ghim`, `da ghim`, `da ghi m`, `Pinned`, `DA GHIM`, `PINNED`), (b) từ chối dứt khoát 100% các false positives chứa `da ghi ...`.
+  3. **Docstring & Regex Commentary Parity:** Trong mã nguồn regex, bắt buộc ghi chú rõ ràng nguyên tắc chống fail-open để kỹ sư sau không tiện tay nới lỏng làm hỏng hàng rào bảo vệ.
+
+### Rule 26: Action Mandate Null & Whitespace-Sanitization Invariant (`emit_block`)
+- **Bối cảnh:** Khi hàm `emit_block` nhận tham số `command` và `instruction` với type hint `Optional[str] = None`, nếu gọi `.strip()` trực tiếp trên biến mang giá trị `None` sẽ gây `AttributeError: 'NoneType' object has no attribute 'strip'`. Ngược lại, nếu chỉ kiểm tra `if command:` mà không strip, chuỗi toàn khoảng trắng (`"   "`) vẫn được coi là truthy, khiến mandate sinh ra trường `command: ""` rỗng làm bên nhận hiển thị thông báo lỗi trống rỗng.
+- **Yêu cầu 3 Chuẩn Bắt Buộc:**
+  1. **Universal Coalescing & Stripping:** Bắt buộc sanitize toàn bộ tham số chuỗi ngay tại đầu hàm trước khi kiểm tra logic:
+     ```python
+     r_id = (rule_id or "").strip()
+     rsn = (reason or "").strip()
+     gd = (guidance or "").strip()
+     cmd_str = (command or "").strip()
+     inst_str = (instruction or "").strip()
+     if not r_id or not rsn or not gd or (not cmd_str and not inst_str):
+         raise ValueError("rule_id, reason, guidance, and at least one non-whitespace (command, instruction) are mandatory...")
+     ```
+  2. **Pythonic Type Hints & Defaults:** Khai báo chuẩn `command: Optional[str] = None` kèm `from typing import Optional` để tương thích Python 3.8+ và tránh mâu thuẫn type checker giữa `str | None` và default `""`.
+  3. **Payload Semantic Isolation:** Chỉ đính kèm trường `instruction` khi `inst_str` thực sự có nội dung; nếu `cmd_str` có mặt thì in `LỆNH THOÁT O(1): ...`, nếu chỉ có `inst_str` thì in `CHỈ DẪN: ...`, tuyệt đối không in lệnh rỗng.
+
+### Rule 27: Autonomous Incident Harness Queue Quarantine & Retry Governance
+- **Bối cảnh:** Trong vòng lặp tự động hóa khắc phục sự cố (`incident_auto_harness.py:process_queue`), nếu mọi sự cố thất bại đều bị ném chung vào một rổ hoặc giữ nguyên trong `pending/`, hàng đợi sẽ bị nghẽn (Queue Deadlock): một task lỗi cú pháp hoặc hỏng vĩnh viễn sẽ bị lôi ra chạy lại liên tục ở mọi tick cronjob. Ngược lại, nếu lỗi tạm thời (hết quota Claude) bị dán nhãn thất bại vĩnh viễn và cách ly ngay lập tức, task sẽ bị bỏ rơi oan uổng.
+- **Yêu cầu 3 Chốt Chặn Bắt Buộc:**
+  1. **Tri-State Exit Code Routing:**
+     - `rc == 0` (Thành công): Di chuyển item sang `resolved/` và tăng `summary['resolved']`.
+     - `rc == 20` (Claude Quota Guard Blocked tạm thời): GIỮ NGUYÊN item trong `pending/`, chỉ tăng `summary['failed']` để chờ tick sau khi quota hồi phục sẽ tự động retry.
+     - `rc != 0 and rc != 20` (Lỗi logic / Gate fail): BẮT BUỘC cách ly di chuyển sang `blocked/` để giải phóng hàng đợi, chống kẹt vô tận.
+  2. **Defensive Filesystem Move (`try/except OSError`):** Mọi thao tác `os.replace` di chuyển item hàng đợi BẮT BUỘC bọc trong `try/except OSError` để phòng ngừa file lock trên Windows hoặc va chạm tên file, ghi log rõ ràng và tăng `summary['failed']` thay vì để exception làm sập cả batch.
+  3. **End-to-End Test Verification:** Có unit test bao phủ toàn bộ 3 nhánh return code và kiểm thử khả năng chịu lỗi khi `os.replace` ném `OSError`. Chi tiết: [`references/pin-marker-regex-hardening-and-harness-queue-quarantine.md`](references/pin-marker-regex-hardening-and-harness-queue-quarantine.md).
+
 ## 3. Pitfalls & Anti-Paralysis Principles (Chống Khóc Lóc Bại Liệt)
 - **Deadlock 5 Cửa Bắt Buộc Tạo Ra Hành Vi Biến Thái (Catch-22 Paradox):** Khi Coordinator bị cấm sửa trực tiếp (hết quota T1), cấm delegate_task sửa code, cấm chạy foreground > 60s, cấm chạy background bằng pythonw, và cấm clarify hỏi ý kiến $\to$ Agent rơi vào bế tắc hoàn toàn. Phản xạ sinh tồn của LLM lúc này là lách luật tìm công cụ duy nhất chạy được (Claude Sonnet background), nói dối rằng "phiên đã hoàn tất" để thoát kẹt, hoặc tệ hại nhất là khóc lóc giơ tay đầu hàng bảo Operator tự mở terminal ngoài gõ lệnh hộ. Thiết kế hook BẮT BUỘC phải đảm bảo Zero-Deadlock Parity (Allowlist phải có `pythonw`, foreground phải có whitelist tool hệ thống $\le 360$s) để không bao giờ biến Operator thành bảo mẫu chạy lệnh thủ công.
 - **Lầm Tưởng Timeout 60s Của Worker Do Thiếu Provenance Tagging (Và Bệnh Đổ Lỗi Cho Worker):** Khi lệnh foreground bị harness cắt ở giây thứ 60, Coordinator thường tự tiện suy diễn và cãi "Worker bị set 60s" trong khi thực tế worker được set 300s và bị harness bên ngoài bóp nghẹt. Bắt buộc gắn nhãn `[HARNESS_TIMEOUT: 60s]` để phân biệt rạch ròi với worker timeout thật. Tuyệt đối cấm Coordinator phát biểu hồ đồ "worker bị set 60s" khi chưa đối soát cấu hình gốc của worker.
@@ -261,4 +300,5 @@ Use when creating, modifying, or reviewing mechanical enforcement gates (pre-too
 - Positive Contract Verifier & Anti-Paralysis Counter-Balance: [`references/positive-contract-verifier-and-anti-paralysis.md`](references/positive-contract-verifier-and-anti-paralysis.md)
 - Windows Subprocess Execution & Action Mandate Completeness: [`references/windows-subprocess-execution-and-action-mandate-completeness.md`](references/windows-subprocess-execution-and-action-mandate-completeness.md)
 - Bash Shell Immunity, Native Binary Resolution & Decoupled Mandate Schema: [`references/bash-shell-immunity-native-binary-and-decoupled-mandate.md`](references/bash-shell-immunity-native-binary-and-decoupled-mandate.md)
+- Pin Marker Regex Hardening & Harness Queue Quarantine: [`references/pin-marker-regex-hardening-and-harness-queue-quarantine.md`](references/pin-marker-regex-hardening-and-harness-queue-quarantine.md)
 - Ground-Truth Video Content Audit Before Profile Renaming: [`references/ground-truth-video-content-audit-before-renaming.md`](../../automation/tiktok-farm-avatar-operations/references/ground-truth-video-content-audit-before-renaming.md)
