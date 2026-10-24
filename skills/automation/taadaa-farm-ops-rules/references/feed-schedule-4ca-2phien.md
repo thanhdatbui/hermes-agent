@@ -1,6 +1,16 @@
-# Feed Schedule: 4 Ca × 2 Phiên (Migrated 11/09/2026)
+# [DEPRECATED / SUPERSEDED] Feed Schedule: 4 Ca × 2 Phiên (Lịch cũ 11/09/2026 - ĐÃ THAY THẾ BỞI CHU KỲ 4 NGÀY X 3 CA TỪ 11/10/2026)
 
-## Lịch trình chính xác
+> ⚠️ **CẢNH BÁO LỊCH CŨ ĐÃ HẾT HIỆU LỰC:** Lịch 4 Ca (có Ca 4 lúc 00:00 - 01:30 đêm) đã bị bãi bỏ hoàn toàn từ ngày 11/10/2026.
+> **Lịch chuẩn hiện tại là Chu kỳ 4 ngày x 3 Ca / ngày (BỎ HOÀN TOÀN CA 0H ĐÊM):**
+> - Ca 1 (Sáng): 06:00 (P1) & 08:00 (P2)
+> - Ca 2 (Trưa): 12:00 (P1) & 14:00 (P2)
+> - Ca 3 (Tối):  18:00 (P1) & 20:00 (P2)
+> - Dead Zone: 21:30 - 05:59 sáng (nghỉ hoàn toàn, hạ nhiệt S7, dọn cache 03:00 - 04:30).
+> Xem chi tiết tại `tiktok-feed-session-management` -> `references/row-nurture-starvation-and-cycle-monitoring.md`.
+
+---
+
+## (Tài liệu lưu trữ lịch cũ bên dưới)
 
 | Ca | Phiên | Giờ bắt đầu | Row (Chẵn / Lẻ) | Nội dung |
 |----|----|----|----|----|
