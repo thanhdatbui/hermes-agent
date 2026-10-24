@@ -19,107 +19,10 @@ import urllib.request
 from typing import Any, Tuple
 
 
-# Regex nhận diện câu hỏi tư vấn / kiến trúc / phân tích nguyên nhân
-ADVICE_PATTERNS = [
-    r"\btại sao\b",
-    r"\bvì sao\b",
-    r"\bthấy sao\b",
-    r"\bnghĩ sao\b",
-    r"\bmày nghĩ\b",
-    r"\blà sao\b",
-    r"\bhợp lý\b",
-    r"\bhợp lí\b",
-    r"\bđúng không\b",
-    r"\bđúng ko\b",
-    r"\bđúng k\b",
-    r"\bhay không\b",
-    r"\bhay ko\b",
-    r"\bhay k\b",
-    r"\bthì sao\b",
-    r"\bchứ hay\b",
-    r"\bcó nên\b",
-    r"\bk nên\b",
-    r"\bkhông nên\b",
-    r"\bnên dùng\b.*(?:hay|hoặc)\b",
-    r"\bnên chọn\b.*(?:hay|hoặc)\b",
-    r"\bnên làm\b.*(?:hay|hoặc)\b",
-    r"\bnên\b.*\b(?:cách nào|phương án nào|hướng nào)\b",
-    r"\bmua loại nào\b",
-    r"\bnên mua\b",
-    r"\bchọn loại nào\b",
-    r"\bổn không\b",
-    r"\bổn ko\b",
-    r"\bổn k\b",
-    r"\bđánh giá\b",
-    r"\bkiến trúc\b",
-    r"\bplan\b.*\bthế nào\b",
-    r"\blên plan\b",
-    r"\bxin plan\b",
-    r"\bnhờ plan\b",
-    r"\btư vấn\b",
-    r"\blời khuyên\b",
-    r"\breview giúp\b",
-    r"\breview cho\b",
-    r"\bphân tích\b",
-    r"\btheo mày\b",
-    r"\b(nhìn|thấy|đánh giá|xử lý)\b.*\bthế nào\b",
-    r"\bthế nào để\b",
-    r"\bcó hợp không\b",
-    r"\bcó ổn không\b",
-    r"\bđc k nhỉ\b",
-    r"\bđc ko nhỉ\b",
-    r"\bko nhỉ\b",
-    r"\bk nhỉ\b",
-    r"\bliệu\b",
-    r"\bhay là do\b",
-    r"\bnguyên nhân\b",
-    r"\bcăn nguyên\b",
-    r"\bhướng giải quyết\b",
-    r"\bnên làm gì\b",
-    r"\bnên xử lý thế nào\b",
-    r"\bphải làm sao\b",
-    r"\bxem có gì lạ\b",
-    r"\bcó bất thường không\b",
-    r"\bsao lại\b",
-    r"\bsao thế\b",
-    r"\bsao bữa nay\b",
-    r"\bsao dạo này\b",
-    r"\bsao cứ\b",
-    r"\bsao không\b",
-    r"\bsao k\b",
-    r"\bsao chưa\b",
-    r"\bsao nhìn\b",
-    r"\bsao\b.*(?:\bv\b|\bvậy\b|\bthế\b|\bấy\b|\bhả\b)",
-    r"\bsao\b.*\b(cứ|lại|bị|được|mất|rớt|lỗi)\b",
-    r"\bk ổn định\b",
-    r"\bkhông ổn định\b",
-    r"\bchập chờn\b",
-]
-
-EXCLUDE_ADVICE_PHRASES = [
-    r"^\s*(?:xem|kiểm tra|check|đọc|báo cáo|gửi)\s+(?:lại\s+)?(?:trạng thái|tiến độ|status|review|plan)\b.*$",
-    r"\b(kiểm tra|check|xem|đọc|báo cáo|gửi)\s+(?:lại\s+)?(?:tiến độ|trạng thái|status|plan|kế hoạch)\b",
-    r"\b(trạng thái|status|tiến độ)\b.*\b(thế nào|ra sao|sao rồi|sao r)\b",
-    r"\bsao rồi\b",
-    r"\bsao r\b",
-    r"\bnhư thế nào rồi\b",
-    r"\bra sao rồi\b",
-    r"\bsao cho\b",
-]
-
-IMPERATIVE_STARTS = [
-    r"^\s*chạy\b",
-    r"^\s*sửa\b",
-    r"^\s*fix\b",
-    r"^\s*làm đi\b",
-    r"^\s*làm luôn\b",
-    r"^\s*triển khai\b",
-    r"^\s*restart\b",
-    r"^\s*upload\b",
-    r"^\s*adb\b",
-    r"^\s*git\b",
-    r"^\s*xem\b",
-    r"^\s*kiểm tra\b",
+# Chỉ kích hoạt khi user gọi tên trực tiếp Advisor/Sol (on-demand)
+SUMMON_PATTERNS = [
+    r"\b(?:gọi|hỏi|nhờ)\s+(?:sol|advisor)\b",
+    r"\bsol\s+(?:thấy sao|nghĩ sao|lên plan)\b",
 ]
 
 
@@ -155,53 +58,9 @@ def redact_secrets(text: str) -> str:
 
 
 def classify_advice_intent(message: str) -> bool:
-    """
-    Xác định tin nhắn có chứa ý định hỏi ý kiến / tư vấn / phân tích nguyên nhân hay không.
-    Hỗ trợ chuẩn xác các câu hỗn hợp (mệnh lệnh + câu hỏi) và loại trừ phó từ / hỏi tiến độ / lệnh chạy combo.
-    """
-    if not message or not message.strip():
-        return False
-
-    msg_lower = message.lower().strip()
-
-    # 1. Kiểm tra các câu hỗn hợp có chứa ý định hỏi tư vấn rõ ràng (Compound Intent)
-    for p in [r"\bnên làm gì\b", r"\bnên xử lý thế nào\b", r"\bphải làm sao\b", r"\bxem có gì lạ\b", r"\bcó bất thường không\b"]:
-        if re.search(p, msg_lower):
-            return True
-
-    # 2. Loại trừ false-positive khi "review" hoặc "plan" là đối tượng của động từ mệnh lệnh/thao tác
-    # ("chạy review combo", "chạy lại review combo", "lập plan", "lên plan cho phase 2", "tạo plan")
-    msg_cleaned = re.sub(r"\b(chạy|chạy lại|run|tạo|lập|lên|thực thi|viết)\s+(?:lại\s+)?(review(\s+combo)?|plan(\s+cho\s+\S+)?)\b", " ", msg_lower)
-
-    # 3. Loại trừ các cụm từ phó từ hoặc hỏi trạng thái tiến độ ("sao rồi", "sao cho")
-    # Đảm bảo không đè các từ hỏi tư vấn như "vì sao", "thấy sao"
-    # Đồng thời loại trừ false-positive từ các danh từ chứa "liệu": "dữ liệu", "tài liệu" (tránh dính r"\bliệu\b")
-    msg_cleaned = re.sub(r"\b(dữ liệu|tài liệu|vật liệu|nguyên liệu)\b", " ", msg_cleaned)
-    for exc in EXCLUDE_ADVICE_PHRASES:
-        msg_cleaned = re.sub(exc, " ", msg_cleaned)
-
-    # 4. Loại trừ các câu hỏi xin phép / xác nhận mệnh lệnh đơn thuần ("Đăng ký bù, được không?")
-    if re.search(r"^\s*(đăng ký|chạy|sửa|upload|restart)\b.*(được không|đc ko|đc k)\??$", msg_lower):
-        return False
-
-    # 5. Nếu là câu lệnh mệnh lệnh thuần túy ở đầu câu mà không có dấu hỏi hoặc ý định hỏi
-    for imp in IMPERATIVE_STARTS:
-        if re.search(imp, msg_cleaned) and "?" not in msg_cleaned and not any(re.search(p, msg_cleaned) for p in ADVICE_PATTERNS):
-            return False
-
-    # 6. Kiểm tra toàn bộ danh mục Advice Patterns trên câu đã chuẩn hóa
-    for p in ADVICE_PATTERNS:
-        if re.search(p, msg_cleaned):
-            return True
-
-    # 7. Kiểm tra cấu trúc câu hỏi đánh giá / nguyên nhân với từ để hỏi và dấu '?'
-    if "?" in msg_cleaned:
-        if re.search(r"\b(tại sao|vì sao|lý do gì|nguyên nhân gì|thế nào|ra sao|có nên|thấy sao|hợp lý|hợp lí|đúng không|đúng ko|đúng k|ổn không|ổn ko|ổn k|được không|đc ko|đc k|hay không|hay ko|hay k|thì sao)\b", msg_cleaned):
-            return True
-        if re.search(r"\bsao\b", msg_cleaned) and not re.search(r"\bsao (rồi|r|cho)\b", message.lower()):
-            return True
-
-    return False
+    """Chỉ trả True khi tin nhắn gọi tên trực tiếp Advisor/Sol; câu hỏi chung và từ khóa heuristic trả False."""
+    msg_lower = (message or "").lower()
+    return any(re.search(p, msg_lower) for p in SUMMON_PATTERNS)
 
 
 def _call_stream_chat(

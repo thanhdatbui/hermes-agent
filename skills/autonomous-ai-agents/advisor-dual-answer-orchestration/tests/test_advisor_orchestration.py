@@ -31,27 +31,19 @@ class TestAdvisorIntentClassification(unittest.TestCase):
 
     def test_positives_advice_intent(self):
         advice_cases = [
-            # Câu hỏi nguyên nhân / đánh giá thuần túy
-            "sao nhìn lệch v",
-            "tại sao không chạy ca tối",
-            "vì sao lại bị lỗi",
-            "thấy sao về phương án này",
-            "là sao cứ lệch hoài thế",
-            "có nên đổi proxy cho máy 62 không",
-            "đánh giá kiến trúc này giúp tao",
-            "plan thế nào để xử lý triệt để",
-            "mày nghĩ sao về cách này",
-            "nên dùng cách A hay B",
-            "Ngày nghỉ ổng nói có hợp lý không?",
-            "sao bữa nay t đéo hề thấy mày gọi advisor nữa?",
-            "theo mày nên dùng cách nào",
-            "nhìn avatar thế nào có hợp không",
-            "liệu làm vậy có bị ban nick ko nhỉ?",
-            "hay là do MikroTik bị rớt mạng?",
-            # Câu hỗn hợp (Mệnh lệnh + Hỏi tư vấn / nguyên nhân)
-            "chạy batch rồi cho tao biết nên làm gì",
-            "git log xem có gì lạ không",
-            "kiểm tra log và phân tích xem nguyên nhân là do đâu",
+            # Lệnh triệu hồi đích danh (Explicit summons)
+            "gọi sol",
+            "hỏi sol",
+            "nhờ advisor",
+            "sol thấy sao",
+            "gọi advisor",
+            "nhờ sol",
+            "hỏi advisor",
+            "sol nghĩ sao",
+            "sol lên plan",
+            "Hỏi sol: tại sao lại bị lệch avatar?",
+            "nhờ advisor review kiến trúc này giúp",
+            "gọi sol xem thử phương án này",
         ]
         for msg in advice_cases:
             with self.subTest(msg=msg):
@@ -90,6 +82,26 @@ class TestAdvisorIntentClassification(unittest.TestCase):
             "sửa cái này sao cho nhanh",
             # Câu xin phép mệnh lệnh
             "Đăng ký bù, được không?",
+            # Generic questions / câu hỏi chung (100% on-demand: phải trả về False)
+            "sao nhìn lệch v",
+            "tại sao không chạy ca tối",
+            "vì sao lại bị lỗi",
+            "có nên đổi proxy cho máy 62 không",
+            "Phần nhả liền, sao k có thống kê số máy",
+            "thấy sao về phương án này",
+            "mày nghĩ sao về cách này",
+            "đánh giá kiến trúc này giúp tao",
+            "liệu làm vậy có bị ban nick ko nhỉ?",
+            "hay là do MikroTik bị rớt mạng?",
+            "chạy batch rồi cho tao biết nên làm gì",
+            "git log xem có gì lạ không",
+            "kiểm tra log và phân tích xem nguyên nhân là do đâu",
+            # Phàn nàn / than phiền về advisor (không phải lệnh triệu hồi)
+            "sao advisor trả lời ngáo thế",
+            "tắt advisor đi",
+            "advisor lại bị timeout à",
+            "sol nói linh tinh gì vậy",
+            "sao dạo này advisor hay bị lỗi thế",
         ]
         for msg in imperative_cases:
             with self.subTest(msg=msg):
@@ -224,14 +236,14 @@ class TestMechanicalEnforcement(unittest.TestCase):
             "status": "success",
             "formatted": "--- Advisor (Sol / review) ---\nLời khuyên từ Advisor."
         }
-        msg = "Tại sao lại bị lệch avatar?"
+        msg = "Hỏi sol: tại sao lại bị lệch avatar?"
         primary = "Do công thức toán học bị sai."
         enforced = ensure_dual_answer(msg, primary)
         self.assertIn("--- Advisor (Sol / review) ---", enforced)
         self.assertIn("Do công thức toán học bị sai.", enforced)
 
     def test_skips_when_advisor_already_present(self):
-        msg = "Tại sao lại bị lệch avatar?"
+        msg = "Hỏi sol: tại sao lại bị lệch avatar?"
         primary = "Câu trả lời chính.\n\n--- Advisor (Sol / review) ---\nÝ kiến độc lập."
         enforced = ensure_dual_answer(msg, primary)
         self.assertEqual(enforced, primary)
