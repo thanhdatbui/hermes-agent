@@ -22,6 +22,14 @@ In automated farm management (e.g. TikTok profile standardization: Name, Bio, Av
 - **Harness Screencap:** The test harness captures the device screen via ADB independently; it never accepts images submitted by the agent.
 - **Extract-Only:** OCR or vision tools only extract raw text/features. The pass/fail decision is strictly deterministic Python code, never delegated to LLM judgement.
 - **Text-Blind Verifier:** The verifier does not read agent chat or free-text claims.
+- **Whole-Word Matching Invariant (Anti-Substring Trap):**
+  - Name tokens MUST be matched as whole words (`t in cand_words`), NEVER as substrings (`t in w`). Otherwise, a name like "Thanh Khoa" will falsely match inside the alphanumeric username `@angthanhkhoa5528`.
+  - Name candidate lines MUST be restricted to the nickname line adjacent to `@handle`, excluding the Bio line and bottom navigation bar (so tokens like "piano" in the Bio are not counted towards the name).
+- **Canonical Tool Implementation (`verify_profile_positive.py`):**
+  - Exit 0: `ALL_VERIFIED` (Positive proof for 100% required fields).
+  - Exit 1: `REJECTED` (Returns JSON with `missing_fields` and concrete `next_action`).
+  - Exit 2: `BLOCKED` (Recognized objective reason: `NAME_CHANGE_COOLDOWN_7D`, `DEVICE_OFFLINE`, `SESSION_LOGGED_OUT`).
+  - Exit 3: `ERROR` (ADB / OCR execution failure).
 
 ---
 

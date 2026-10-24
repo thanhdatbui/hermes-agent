@@ -30,6 +30,13 @@
 - **Start Profile (CDP / Automation)**:
   `GET http://127.0.0.1:19995/api/v3/profiles/start/{profile_id}`
   - Returns debugging port & WebSocket address for Playwright/Puppeteer CDP connection (`RemoteDebuggingAddress`).
+- **Stop Profile & Orphan Process Tree Cleanup Pitfall**:
+  - `GET http://127.0.0.1:19995/api/v3/profiles/stop/{profile_id}`
+  - Calling GPM `stop` API alone does not always terminate child `chrome.exe` processes immediately, especially when automation scripts exit or time out.
+  - Lingering Chrome processes continue holding the assigned `--remote-debugging-port=<PORT>` and RAM.
+  - To clean up deterministically: parse the assigned CDP debugging port, identify processes matching `--remote-debugging-port=<PORT>`, terminate all recursive child processes first (`p.children(recursive=True)`), then kill the parent process.
+  - Defensive `psutil` iteration on Windows: Always use `psutil.process_iter(['pid', 'name', 'cmdline'])` with try/except guarding `(psutil.NoSuchProcess, psutil.AccessDenied)` because calling `p.cmdline()` directly on system/privileged PIDs throws `WinError 5: Access is denied`.
+  - Response structure defensive check: On `GET /api/v3/profiles`, `data` is a flat JSON list `[{"id": "...", ...}]` without an inner dict; never access `data["total"]` or `data["profiles"]`. Always normalize via `profiles = data if isinstance(data, list) else data.get("data", [])`.
 
 ## 3. Account Isolation Invariant: 1 Profile per Gmail Account
 - **Anti-Pattern (1 Profile Multi-Gmail)**:

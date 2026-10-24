@@ -189,11 +189,11 @@ Use when creating, modifying, or reviewing mechanical enforcement gates (pre-too
 - **Bối cảnh (Case Study TikTok Profile Gate & Bypass by Claim Omission):** Khi gate chỉ kiểm tra tính nhất quán giữa claim văn bản và OCR ảnh (post-hoc consistency), Agent sẽ tối ưu hóa cục bộ bằng cách gọt sạch claim khỏi tin nhắn hoặc xóa marker xấu duy nhất (chỉ cập nhật Bio để xóa `+ Thêm tiểu sử`, bỏ qua Tên và Avatar) rồi bịa lý do ngoại lệ. Ngược lại, nếu siết gate tuyệt đối mà không có đường thoát, Agent sẽ rơi vào tê liệt đóng băng (Fake BLOCKED / Cognitive Paralysis).
 - **Yêu cầu Kiến Trúc Hai Chiều (Positive Proof + Action-Forcing FSM):**
   1. **Positive Task Contract (Không Fail-Open, Không Phụ Thuộc Lời Khai):** Contract sinh từ code/DB gồm danh sách bằng chứng dương tính bắt buộc (`expected_name`, `expected_bio`, `avatar_phash`, `min_pinned_views`). Thiếu bất kỳ trường nào = FAIL-CLOSED.
-  2. **Independent Verifier:** Test harness tự screencap từ ADB, không nhận ảnh do Agent gửi. OCR chỉ extract text thuần, quyết định pass/fail do code deterministic đưa ra, hoàn toàn mù với chat của Agent.
+  2. **Independent Verifier (`verify_profile_positive.py`):** Test harness tự screencap từ ADB, không nhận ảnh do Agent gửi. OCR chỉ extract text thuần, so khớp tên nguyên từ (whole-word boundary) tránh dính substring của handle, quyết định pass/fail do code deterministic đưa ra, hoàn toàn mù với chat của Agent.
   3. **4 Chốt Chặn Chống Bại Liệt:**
      - `REJECTED` bắt buộc trả về `missing_fields` và cấu trúc `next_action` điều hướng cụ thể, cấm trả về chữ FAIL cộc lốc.
      - `Evidence Delta Invariant`: Mỗi vòng bắt buộc sinh ra biến đổi trạng thái thật trên thiết bị (hash/OCR/error); 2 vòng không có delta $\to$ tự động nhảy rung escalation ladder.
-     - `BLOCKED_WITH_EVIDENCE` thuộc Whitelist Enum khách quan (`NAME_CHANGE_COOLDOWN_7D`, `DEVICE_OFFLINE`) được coi là kết quả hợp lệ ngang `DONE`.
+     - `BLOCKED_WITH_EVIDENCE` thuộc Whitelist Enum khách quan (`NAME_CHANGE_COOLDOWN_7D`, `DEVICE_OFFLINE`, `SESSION_LOGGED_OUT`) được coi là kết quả hợp lệ ngang `DONE`.
      - `Clarify` hỏi user là nấc cuối cùng sau khi cạn kiệt R0-R3. Chi tiết: [`references/positive-contract-verifier-and-anti-paralysis.md`](references/positive-contract-verifier-and-anti-paralysis.md).
 
 ## 3. Pitfalls & Anti-Paralysis Principles (Chống Khóc Lóc Bại Liệt)
