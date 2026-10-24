@@ -49,19 +49,29 @@ Sau khi điều tra trực tiếp mã nguồn `D:/Taadaa/tools/guard_media_visio
    - Chỉ được báo "Đã ghim" khi WinRT OCR hoặc Vision đọc ra được text `Đã ghim` / `Pinned`.
    - Tuyệt đối không suy diễn "video đầu tiên có view cao là đã ghim".
 
-### B. Patch cơ học cần áp dụng cho `guard_media_vision_gate.py`:
-1. **Khóa whitelist Producer (`TRUSTED_PRODUCERS`):**
-   - `TRUSTED_PRODUCERS = frozenset({"winrt_ocr", "browser_vision", "ag_cli_vision", "claude_worker"})`.
-   - Từ chối `manual_cli` khi đăng ký receipt phục vụ production.
-2. **Bắt buộc số lượng evidence tokens tối thiểu:**
-   - Trong `create_vision_receipt`: Nếu `ocr_status == "OK"` nhưng `not evidence_tokens` $\rightarrow$ gán `ocr_status = "EMPTY"`, `reason_code = "NO_EVIDENCE"`.
-   - Trong `_verify_receipt`: Từ chối các receipt có `len(evidence_tokens) < 3`.
-3. **Bổ sung `CLAIM_GROUNDING` dictionary:**
-   ```python
-   CLAIM_GROUNDING = {
-       "da ghim": ("da ghim", "pinned"),
-       "da tat": ("da tat",),
-       "thanh cong": ("thanh cong", "success"),
-   }
-   ```
-   Nếu tin nhắn chứa claim trong dictionary mà evidence không có token tương ứng $\rightarrow$ trả về `UNGROUNDED_CLAIM` và BLOCKED.
+### B. Patch cơ học chuẩn hoá (Chống Bypass & Chống Tê Liệt / Khóc Lóc):
+Claude Sonnet và Operator đã thống nhất bộ 3 nguyên tắc chống khóc lóc (Anti-Whining / Anti-Paralysis):
+
+1. **Phân loại 2 nhóm Claim (Domain-Aware Grounding — không khóa cứng `tokens >= 3`):**
+   - **Nhóm 1 (Claim text nghiệp vụ: ghim, đổi tên, bio):** Bắt buộc đối soát qua fuzzy regex chống nhiễu OCR Android:
+     * Regex ghim phía OCR: `\b(?:da\s?g?\s*(?:gh?[i1l]m|[i1l]m)|pinn?ed)\b` (khớp cả `Däg 1m`, `Dä ghim`, `Đã ghim`, `Pinned`; cấm bắt `1m` trần).
+     * Claim tên/bio: So khớp difflib >= 0.8 và >= 60% tokens.
+     * Claim nhóm 1 bắt buộc receipt phải có `trust == "PRODUCER"`.
+   - **Nhóm 2 (Ảnh Avatar / Crop / Đồ họa không claim text):**
+     * Cho phép trạng thái hợp lệ **`ocr_status = "OK_EMPTY"`** (giải phóng nghẽn luồng gửi avatar).
+     * Chỉ kiểm tra file ảnh tồn tại, `bytes > 0` và kích thước tối thiểu `min(w, h) >= 32px`. Tuyệt đối không đòi hỏi `len(evidence_tokens) >= 3`.
+
+2. **Cơ chế cấp Receipt cơ học độc quyền (Triệt tiêu manual_cli & backdoor):**
+   - **Vô hiệu hóa `--register-receipt` từ CLI gõ tay:** Coordinator không được tự ký receipt cho mình; lệnh bị chặn và trả về hướng dẫn chạy tool thật.
+   - **Producer thật tự cấp Receipt:** Nhúng `create_vision_receipt` trực tiếp vào `run_winrt_ocr.py` khi đọc ảnh thành công (gán `trust: "PRODUCER"`).
+   - **Đóng backdoor `vision_fallback_reader.py`:** Đổi mode `register_coordinator` sang `trust: "UNTRUSTED"` + `evidence_class: "IMAGE_ONLY"`, chặn việc lấy prompt câu hỏi làm bằng chứng OCR.
+
+3. **Thông báo DENY bắt buộc là Contract Hành Động (Action-Forcing FSM — CẤM KHÓC LÓC):**
+   - Triệt tiêu lỗi tường thuật cụt đường (nguyên nhân kích hoạt phản xạ xin lỗi/phân trần).
+   - Mọi trường hợp Gate chặn bắt buộc in ra khuôn mẫu hành động enum đóng kèm lệnh chạy được ngay:
+     ```text
+     REQUIRED_NEXT_ACTION: chon DUNG 1 trong 2, khong co lua chon thu 3
+       (A) DROP_CLAIM: gui lai tin nhan, bo cac claim: [da ghim]
+       (B) RUN_COMMAND: python D:/Taadaa/tools/run_winrt_ocr.py "<duong_dan_anh>"
+     FORBIDDEN_OUTPUT: xin loi, giai thich, phan tich nguyen nhan, hoac ket thuc luot ma khong thuc hien (A) hoac (B).
+     ```
