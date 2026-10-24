@@ -1,4 +1,4 @@
-Bio: CẤM TRÙNG; 100% TV có dấu. Tên TikTok: họ tên thật, cấm hậu tố rác; khóa tay.
+Bio: CẤM TRÙNG, cấm văn mẫu "Chia sẻ [X] mỗi ngày"; 100% TV có dấu tự nhiên/hài hước bám clip thật. Tên TikTok: họ tên thật, cấm hậu tố rác; khóa tay.
 §
 Dọn đĩa: safe_recycle.py; chơi cả LoL/TFT Live & PBE ở Kibe (C:) & Admin (Live C:, PBE D:), CẤM xóa folder game kể cả khi user duyệt tắt. Reboot né TFT/War3.
 §
