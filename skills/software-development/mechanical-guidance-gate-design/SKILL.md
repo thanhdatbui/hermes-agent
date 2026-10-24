@@ -90,6 +90,7 @@ Use when creating, modifying, or reviewing mechanical enforcement gates (pre-too
 - **Bi Kịch Kẹt 9–10 Vòng Của Silent Veto (Cognitive Void Escalation):** Khi bị khóa vật lý không có hướng dẫn, Agent trải qua 4 giai đoạn suy thoái: (1) Đoán mò sửa vụn vặt vòng 1-3, (2) Tìm cách lách luật vòng 4-6, (3) Phân trần than vãn vòng 7-8, (4) Bại liệt dán nhãn BLOCKED vòng 9-10. BẮT BUỘC thay thế bằng Gate Chỉ Dẫn có Action Mandate O(1) và Auto-Quarantine để Agent bật lại thi công ngay ở turn kế tiếp.
 
 ## 4. References
+- Bản Đồ 8 Gate Cơ Giới Hóa Toàn Diện & Chuẩn Giám Sát 6 Giờ: [`references/farm-full-spectrum-mechanized-gates-and-6h-observability.md`](references/farm-full-spectrum-mechanized-gates-and-6h-observability.md)
 - Bi Kịch 37 Tool Calls & Tiêu Chuẩn Action Mandate O(1): [`references/anti-whining-guidance-gate-and-o1-lookup.md`](references/anti-whining-guidance-gate-and-o1-lookup.md)
 - Case Study GuardGate Step 2.5 Hook & Worker Keepalive Triage: [`references/guardgate-closeout-step25-and-worker-keepalive-triage.md`](references/guardgate-closeout-step25-and-worker-keepalive-triage.md)
 - Case Study Chốt Chặn Validator Tiếng Việt & Cấm AdbKeyboard Fallback: [`references/vietnamese-accent-validator-and-adb-keyboard-gate.md`](references/vietnamese-accent-validator-and-adb-keyboard-gate.md)
