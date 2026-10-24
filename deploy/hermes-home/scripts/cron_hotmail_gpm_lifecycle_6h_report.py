@@ -209,7 +209,7 @@ def normalize_profiles(raw_profiles: dict[str, Any], telemetry: Telemetry, farm:
         has_login = _has_valid_timestamp(raw, "hotmail_login_at", key, _flag)
         reg_ok = _has_valid_timestamp(raw, "chatgpt_registered_at", key, _flag)
         has_chatgpt = raw.get("has_chatgpt") is True or reg_ok
-        has_tiktok = bool(raw.get("has_tiktok") or (raw.get("username") and raw.get("password")))
+        has_tiktok = bool(raw.get("has_tiktok") or raw.get("username"))
         anchor = _parse_time(raw.get("hotmail_login_at") or raw.get("codex_oauth_at") or raw.get("chatgpt_registered_at"))
         matured_7d = anchor is not None and now - anchor >= timedelta(days=7)
         retry_count = raw.get("login_retry_count")
