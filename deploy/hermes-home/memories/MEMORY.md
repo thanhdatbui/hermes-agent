@@ -22,6 +22,8 @@ Cron/Alert: Gửi đúng Telegram group của repo (-5435853713 Video/Up, -53776
 §
 403 VALIDATION: CẤM nhầm OAuth. Bóc validation_url tươi, mở GPM quét QR camera thật (cấm Zalo). Quota full 100% ảo do 403 chặn từ cổng. Test qua isolated_chat_test.
 §
-Guard Strike-3: Chặn 3 lần cấm mở ticket ngồi chờ/báo BLOCKED (vẫn là khóc). Báo User do Guard thiếu chỉ dẫn (Guidance Gap) để User ra lệnh bẻ lái hoặc chỉ thị Agent sửa/bổ sung Guard. Auto-quarantine sạch repo chờ lệnh.
+Guard Strike-3: Cấm báo BLOCKED; báo Guidance Gap chờ lệnh; auto-quarantine sạch repo.
 §
-CẤM TUYỆT ĐỐI dùng `delegate_task`. Khi cần worker thi công hoặc điều tra sâu ngoài ngân sách, BẮT BUỘC dispatch qua `python D:/Taadaa/tools/sol_worker.py` (hoặc `claude_worker.py` / `haiku_worker.py` / `dispatch_worker.py`).
+CẤM delegate_task sửa code. Worker dispatch qua D:/Taadaa/tools/sol_worker.py (hoặc claude_worker.py / dispatch_worker.py).
+§
+Hotmail/GPM: has_tiktok chỉ xét bool(username) né kẹt OTP rỗng pass; gpm_change exit 1 nếu 0 target chỉ định.

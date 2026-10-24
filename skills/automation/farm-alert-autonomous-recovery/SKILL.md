@@ -14,7 +14,7 @@ description: >-
 > Ref: `references/inspect-machine-terminal-guard-and-socket-hang-handling.md`.
 > Ref: `references/canary-receipt-expiry-and-safe-push-pre-commit.md`.
 > Ref: `references/recovery-proof-and-operator-closeout.md`.
-> Ref: `references/session-recovery-patterns-2026-10-21.md`.
+> Ref: `references/anti-performative-alert-handling-and-immediate-code-fix.md`.
 > Ref: `references/batch-alert-upload-hook-post-verification-false-positive-triage.md`.
 > Ref: `references/rolling-rename-exit2-splashactivity-triage.md`.
 > Ref: `references/strike-3-reviewer-handoff-and-claude-quota-collision.md`.
