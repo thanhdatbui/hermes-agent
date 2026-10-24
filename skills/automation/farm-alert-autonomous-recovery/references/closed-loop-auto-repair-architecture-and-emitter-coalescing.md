@@ -40,3 +40,47 @@ Thay vì để LLM tự do sửa code hoặc sửa trong luồng chính của se
   - Bắt buộc ghi lại mốc thời gian bắt đầu `t_start = time.time()` trước khi gọi runner.
   - Kiểm tra `receipt_file.stat().st_mtime >= (t_start - 2.0)` và xác thực schema `runner_status in ('success', 'failed')` kèm file media tồn tại thật.
   - CẤM gọi `receipt_file.unlink()` vì đây là file dùng chung của toàn farm, xóa nó sẽ làm đứt luồng của các tiến trình giám sát khác.
+
+## 5. Chống Rò Rỉ Môi Trường Test & Vòng Lặp Kẹt Hàng Đợi (Queue Jam)
+- **Bẫy Rò Rỉ Test Vào Hàng Đợi Production (Test Isolation Leak):**
+  - **Triệu chứng:** Khi chạy unit test / CI (`pytest test_incident_envelope_and_lock.py`), nếu `emit_if_needed` dùng biến toàn cục `INCIDENTS_BASE` thay vì dependency injection, test sẽ âm thầm tạo các ticket giả lập (`RuntimeError`, `test.py`, telemetry rỗng) vào thư mục sản xuất thật `D:/Taadaa/runtime/incidents/pending`.
+  - **Khắc phục:** `emit_if_needed(..., base_dir: Optional[Path] = None)` bắt buộc nhận `base_dir`. Mọi thao tác `collect_telemetry(..., base_dir=base)`, `marker`, và `envelope.save_pending(base_dir=base)` phải bám theo `base = base_dir or INCIDENTS_BASE`. Mọi test case bắt buộc truyền `base_dir=tmp_dir`.
+- **Cơ Chế Cách Ly Tránh Spam Lặp (Queue Jam & Quarantining):**
+  - **Nguyên tắc:** Mỗi sự cố chỉ được báo cáo 1 lần khi chuyển trạng thái cuối (Done hoặc Blocked). CẤM để sự cố lỗi nằm vĩnh viễn ở `pending/`.
+  - **State Machine trong `process_queue()`:**
+    - `rc == 0`: Vá thành công -> Chuyển sang `base_dir / 'resolved'`.
+    - `rc == 20`: Kẹt khóa scope (`LOCK BUSY`) -> Giữ lại ở `pending/` để thử lại ca sau.
+    - `rc != 0` và `rc != 20` (`BLOCKED_PENDING_TELEMETRY`, `PLANNER_FAILED`, `WORKER_FAILED`, `CLOSEOUT_REJECTED`): Đã notify 1 lần -> BẮT BUỘC di chuyển file vé sang `base_dir / 'blocked'` ngay lập tức. Triệt tiêu hoàn toàn nguy cơ cron 15 phút quét lại và spam Telegram bão thông báo lặp vô tận.
+- **Kỷ Luật Ứng Xử Điều Phối (Anti-Paralysis):**
+  - Khi User báo alert dispatcher lỗi/spam ("Clgt", "Fix đi"): CẤM TUYỆT ĐỐI dừng lại phân trần triết lý hay tường trình suông khi chưa chạm code.
+  - Phải lập tức truy vết hàng đợi thật (`runtime/incidents/pending`), kiểm tra schema/diff của emitter & harness, cô lập nguồn sinh rác và verify bằng focused test trước khi báo cáo.
+
+
+## 5. Bẫy Notification Flood Trong Queue Processing & Anti-Spam
+- **Vấn đề vỡ trận spam Telegram:**
+  - Trong `incident_auto_harness.py`, hàm `notify()` được gọi trực tiếp bên trong `run()` mỗi khi 1 sự cố fail cổng (đặc biệt là Cổng 0 `BLOCKED_PENDING_TELEMETRY`).
+  - Khi cronjob `incident-auto-heal-dispatcher` chạy `process_queue()` duyệt qua các vé tồn đọng trong `pending/`, vòng lặp đã bắn liên thanh các tin nhắn `[AUTO-HEAL REPORT]` riêng lẻ vào channel Telegram gây bão tin nhắn (bị user phản ứng gắt gao).
+- **Quy tắc cơ giới hóa:**
+  - **CẤM notify lẻ trong loop:** Vòng lặp `process_queue()` tuyệt đối KHÔNG được gửi tin Telegram riêng lẻ cho từng incident bị fail Cổng 0 / telemetry thiếu.
+  - **Chỉ gửi 1 tin Digest tổng kết:** Dispatcher chỉ được gửi đúng 1 bản tin tóm tắt duy nhất sau khi duyệt xong toàn bộ queue: `[INCIDENT AUTO-HEAL DISPATCHER] Đã vá: X, Thất bại / L3: Y`.
+  - **Xử lý nhanh khi bị spam:** Nếu phát hiện dispatcher bắn lặp tin, Coordinator lập tức dùng `cronjob(action='pause', job_id='...')` ngắt ngay tiến trình lập lịch trước khi can thiệp điều tra hoặc sửa code.
+
+## 6. Bẫy Mapping ADB Serial Trong Thu Thập Telemetry
+- **Lỗi `serial = serial or machine_id`:**
+  - `machine_id` trên farm thường là số thứ tự (`1`, `2`, `38`...), trong khi ADB yêu cầu hardware serial thật (chuỗi hex hoặc IP:port).
+  - Nếu `serial` nhận giá trị thô từ `machine_id` mà không qua hàm tra cứu map serial (`get_serial_by_machine(m)`), lệnh `adb -s <serial> screencap` sẽ timeout/fail 100%.
+  - Hậu quả: Toàn bộ ảnh và XML đều rỗng (0 bytes) $\to$ rớt 100% Cổng 0 `BLOCKED_PENDING_TELEMETRY`, biến lỗi phần mềm thành lỗi thiếu telemetry giả tạo.
+
+
+## 5. Hook Emitter Thực Chiến Vào Watchdog Nuôi (`feed_session_watchdog.py`)
+- **Vị trí cắm hook mỏng:** Trong `feed_session_watchdog.py`, tại khối tổng hợp lỗi ca nuôi `fail_groups.items()`, chỉ kích hoạt khi `cat == "Lỗi App TikTok/Script"`.
+- **Nguyên tắc không phá vỡ Watchdog:**
+  - Bọc trong `try/except` độc lập với `logger.warning("[INCIDENT_EMITTER_WARNING] %s", exc)`. Nếu emitter gặp lỗi runtime, watchdog vẫn tiếp tục in báo cáo và hoàn thành phiên bình thường.
+  - Chuẩn hóa label máy: `m_lbl[1:] if m_lbl.startswith("M") else m_lbl` trước khi truyền vào `machine_id` và `serial`.
+  - Chỉ định rõ `target_file="python_runner/flows/multi_machine_feed_session.py"` để Harness tính đúng `scope_hash` cho `IncidentLock`.
+
+## 6. Dependency Injection `base_dir` Cho Phép Cô Lập Test
+- Trong `incident_emitter.py`, hàm `emit_if_needed` nhận thêm `base_dir: Optional[Path] = None`.
+- Mặc định (`base_dir=None`) trỏ về `INCIDENTS_BASE = Path("D:/Taadaa/runtime/incidents")`.
+- Trong unit test/sandbox: Truyền `base_dir=tmp_path` để cô lập 100% dữ liệu test, triệt tiêu nguy cơ để lại file sự cố giả trong thư mục `pending/` thật của hệ thống.
+
