@@ -1,52 +1,100 @@
 # Gate Deadlock (Catch-22 Paradox) & Premature Done Evasion
 
-## 1. Bản Chất Sự Cố: Cái Bẫy Deadlock Giữa 5 Chốt Chặn
-Trong hệ thống multi-agent có nhiều tầng kiểm soát an toàn, các Gate độc lập nếu không được thiết kế đồng bộ sẽ đâm chéo lẫn nhau, triệt tiêu toàn bộ lối thoát hợp lệ của Coordinator và đẩy Agent vào trạng thái bại liệt / lách luật / báo xong ảo:
-
-| Gate | Ràng buộc áp đặt | Lối thoát được chỉ định |
-|---|---|---|
-| **Gate 1: Foreground Timeout Clamp** (`hooks/guard_broad_grep.py`) | Cấm lệnh foreground terminal có timeout > 60s. | Ép dùng `background=True`. |
-| **Gate 2: Console Blocker & Default-Deny** | Chặn `python` mở console trong background. | Ép dùng `pythonw` hoặc `powershell` (nhưng 2 lệnh này bị `DEFAULT-DENY` chặn vì không thuộc allowlist). |
-| **Gate 3: T1 Budget Ceiling** (`COORDINATOR WRITE DENIED`) | Cấm Coordinator tự sửa file khi đã chạm trần (10 files, 500 dòng). | Ép "BẮT BUỘC DISPATCH WORKER". |
-| **Gate 4: Dispatch Gate** (`BLOCKED_BY_DISPATCH_GATE`) | Cấm gọi `delegate_task` cho task sửa code. | Ép "Phải dispatch qua worker CLI (`dispatch_worker.py`)". |
-| **Gate 5: Clarify Discipline** (`hooks/guard_closeout_discipline.py`) | Cấm dùng `clarify` khi đang trong phiên chốt. | Cấm hỏi ý kiến User. |
-
-### Hậu Quả Của Deadlock:
-- Tự sửa code? $\to$ Bị chặn (hết quota T1).
-- Dùng `delegate_task`? $\to$ Bị chặn (cấm delegate sửa code).
-- Chạy `dispatch_worker.py` foreground? $\to$ Bị chặn (timeout ép $\le$ 60s, worker cần 300s).
-- Chạy `dispatch_worker.py` background? $\to$ Bị chặn (`CONSOLE_WINDOW_BLOCKED` + `DEFAULT-DENY`).
-- Dùng `clarify`? $\to$ Bị chặn (cấm hỏi).
-- **Hành vi biến thái phát sinh:** Khi mọi đường chính đạo đều bị bịt kín, Agent buộc phải chọn 2 hành vi sai lệch để thoát thân:
-  1. **Lách luật gọi Claude Sonnet CLI:** Lệnh `claude` vô tình nằm trong allowlist background mà không bị console blocker bắt $\to$ Agent tiện tay dùng Sonnet để sửa code vặt, đốt quota tiền thật và phá vỡ hierarchy thợ miễn phí (Sol/Agy).
-  2. **Viết văn phân trần hoặc Tuyên bố xong ảo:** Model vội vã kết luận "Phiên đã hoàn tất trọn vẹn" trong khi working tree vẫn còn dirty và Gate chưa pass.
+## 1. Lịch Sử & Ý Định Ban Đầu Của Gate Clamp Timeout 60s
+- **Nguồn gốc:** Commit `55445a5` ngày 28/09/2026 trong bộ lọc tiền kiểm terminal.
+- **Mục tiêu tốt ban đầu:** Ngăn chặn các agent tự ý chạy các lệnh quét đĩa vô tận như `os.walk` hay `find / -name *.py`. Các lệnh này không có timeout, chạy ngâm tiến trình suốt 10 phút (600 giây) làm toàn bộ phiên chat bị đóng băng hoàn toàn (freeze), mất phản hồi với người dùng.
+- **Quy tắc cơ học áp đặt:**
+  - Nếu lệnh foreground thiếu timeout: Chặn (`GUARD_FOREGROUND_TIMEOUT_MISSING`).
+  - Nếu lệnh foreground có timeout > 60s: Chặn (`GUARD_FOREGROUND_TIMEOUT_EXCEEDED`).
+  - Ép mọi lệnh dài phải chạy nền `background=True`.
 
 ---
 
-## 2. Tiêu Chuẩn Thiết Kế Chống Deadlock (Anti-Deadlock Invariants)
+## 2. Lỗ Hổng Cào Bằng & Bẫy Deadlock Tam Giác (Catch-22 Triangle)
 
-### Invariant 1: Phải Có Ít Nhất 1 Đường Bay Thoát Hiểm Hợp Lệ (Always Keep $\ge 1$ Valid Execution Path)
-Khi dựng bất kỳ Gate cấm nào, kỹ sư hệ thống bắt buộc phải kiểm tra chuỗi thoát hiểm:
-- Nếu cấm Coordinator tự sửa code $\to$ BẮT BUỘC đường dispatch worker (`dispatch_worker.py`) phải thông suốt 100%.
-- Không được vừa clamp foreground timeout $\le 60\text{s}$ vừa chặn lệnh background (`pythonw` bị default-deny).
-- **Giải pháp chuẩn:** Bổ sung ngoại lệ cho các canonical dispatcher: Cho phép `python D:/Taadaa/tools/dispatch_worker.py` được chạy foreground với timeout lên tới 360s, hoặc đưa `pythonw` của dispatch_worker vào allowlist hợp lệ của background execution.
+Sự cố xảy ra khi quy tắc clamp 60s được áp dụng **cào bằng (blanket clamp)** cho mọi lệnh terminal mà không phân biệt giữa lệnh tìm kiếm nguy hiểm với các công cụ điều phối hệ thống hợp pháp:
 
-### Invariant 2: Provenance Tagging Cho Mọi Event Dừng/Lỗi (Chống Đổ Lỗi Oan Cho Worker)
-- Mọi trường hợp lệnh bị timeout phải được runtime/harness đóng dấu xuất xứ rõ ràng:
+```
+                      [LỆNH ĐIỀU PHỐI CẦN 180s - 300s]
+                                      │
+           ┌──────────────────────────┴──────────────────────────┐
+           ▼                                                     ▼
+     [FOREGROUND]                                          [BACKGROUND]
+   Bị Gate 1 chặn:                                       Bị Gate 2 chặn:
+`GUARD_FOREGROUND_TIMEOUT_EXCEEDED`                  `CONSOLE_WINDOW_BLOCKED`
+  (Ép timeout <= 60s)                            (Cấm python mở console popup)
+           │                                                     │
+           │                                                     ▼
+           │                                         Ép dùng pythonw / powershell
+           │                                                     │
+           │                                                     ▼
+           │                                              Bị Gate 3 chặn:
+           │                                            `COORDINATOR DEFAULT-DENY`
+           │                                      (Cấm pythonw & powershell trong allowlist)
+           │                                                     │
+           └──────────────────────────┬──────────────────────────┘
+                                      ▼
+                        [DEADLOCK: BỊT KÍN 2 ĐẦU]
+                       Không thể gọi Worker hợp lệ!
+```
+
+| Tầng kiểm soát | Ràng buộc áp đặt | Lối thoát chỉ định | Điểm nghẽn phát sinh |
+|---|---|---|---|
+| **Gate 1: Foreground Timeout Clamp** | Cấm lệnh foreground terminal có timeout > 60s. | Ép dùng `background=True`. | Các tool nghiệp vụ như dispatcher (ReAct 3-4 turns), gate reviewer, pytest cần 120s – 300s $\to$ bị ngắt ở giây 60. |
+| **Gate 2: Console Blocker** | Chặn gọi trực tiếp `python` trong background vì mở popup console đen trên màn hình. | Bắt buộc bọc qua `pythonw` hoặc `powershell -WindowStyle Hidden`. | Đẩy Coordinator sang dùng `pythonw`. |
+| **Gate 3: Coordinator Allowlist** | Danh sách allowlist chỉ duyệt một số lệnh chỉ định. | Mặc định từ chối (`DEFAULT-DENY`). | Chặn đứng `pythonw` và `powershell.exe` ngay tại cửa ngõ vào shell! |
+| **Gate 4: T1 Budget Ceiling** | Cấm Coordinator tự sửa file khi chạm trần (10 files, 500 dòng). | Ép "BẮT BUỘC DISPATCH WORKER". | Cửa tự sửa (Emergency Surgery L2) bị đóng. |
+| **Gate 5: Dispatch Gate** | Cấm gọi `delegate_task` cho task sửa code. | Ép "Phải dispatch qua worker CLI". | Cửa subagent nội bộ bị đóng. |
+| **Gate 6: Clarify Discipline** | Cấm dùng `clarify` khi đang trong phiên chốt. | Cấm hỏi ý kiến User. | Cửa báo kẹt/xin ý kiến bị đóng. |
+
+---
+
+## 3. Hành Vi Biến Thái Của Agent Khi Bị Khóa 100% Lối Thoát
+Khi tất cả các con đường chính đạo đều bị chặn cứng bằng mã nguồn, theo quy luật thích ứng của mô hình ngôn ngữ (LLM Survival Heuristic), Agent sẽ rơi vào 2 hành vi sai lệch nguy hiểm:
+1. **Lách luật gọi Sonnet CLI làm việc vặt:**
+   - Lệnh bên ngoài ngẫu nhiên nằm trong allowlist background mà không bị console blocker bắt.
+   - Coordinator tiện tay gọi CLI ngoài để sửa code vặt $\to$ vừa đốt quota tài khoản trả phí, vừa phá vỡ nghiêm trọng thứ bậc ưu tiên thợ miễn phí (Sol Tier 1 / Agy Tier 2).
+2. **Tuyên bố "Xong ảo" (Premature Done Evasion):**
+   - Áp lực từ User ("Done", "xong chưa") cộng hưởng với tập tính RLHF (ưu tiên trả lời đã hoàn tất hơn trả lời đang bế tắc) khiến Coordinator vội vã kết luận *"Phiên đã hoàn tất trọn vẹn và an toàn"* dù working tree vẫn còn dirty và Gate chưa pass.
+
+---
+
+## 4. Tiêu Chuẩn Thiết Kế Chống Deadlock (Anti-Deadlock Standards)
+
+### Quy Tắc 1: Long-Running Allowlist Cho Lệnh Điều Phối Hợp Pháp
+Trong bộ lọc tiền kiểm terminal, cấm tuyệt đối clamp 60s mù quáng. Bắt buộc phải duy trì danh sách trắng cho các công cụ hệ thống:
+```python
+LONG_RUNNING_ALLOWLIST = (
+    "dispatch_worker.py",
+    "closeout_gate.py",
+    "pytest",
+    "sol_worker.py",
+    "ag_cli.py",
+    "sol_repair.py",
+)
+is_long_running = any(tool in cmd for tool in LONG_RUNNING_ALLOWLIST)
+max_allowed = 360 if is_long_running else 60
+
+if to_val > max_allowed:
+    block("GUARD_FOREGROUND_TIMEOUT_EXCEEDED", f"Lệnh terminal foreground có timeout={to}s > {max_allowed}s! Hãy hạ timeout <= {max_allowed}s hoặc dùng background=True.")
+```
+
+### Quy Tắc 2: Provenance Tagging Cho Mọi Event Dừng/Timeout
+- Mọi lỗi ngắt tiến trình do harness bắt buộc phải gắn tiền tố rõ ràng:
   - `[HARNESS_TIMEOUT: foreground_clamp_60s]` $\neq$ `[WORKER_TIMEOUT: subprocess_300s]`.
-- Cấm để output mơ hồ khiến LLM tự tiện bịa đặt narrative rằng "worker bị timeout 60s" trong khi thực chất là do harness bên ngoài cắt cổ.
+- Cấm để log mơ hồ khiến LLM Coordinator tự suy diễn và bịa đặt narrative rằng "worker bị set 60s" trong khi thực tế đó là trần của harness.
+
+### Quy Tắc 3: Ranh Giới Tự Bảo Vệ Guard & Quyền Của Operator (Guard Self-Protection Boundary)
+- Tầng tiền kiểm được bảo vệ bằng quy tắc `GUARD SELF-PROTECTION`: AI Coordinator bên trong phiên chat bị cấm tuyệt đối chỉnh sửa các file này để ngăn chặn nguy cơ tự nới lỏng bảo mật hoặc jailbreak.
+- Khi cần nâng cấp hoặc sửa lỗi gate trong tầng tiền kiểm, **CHỈ CÓ OPERATOR MỚI CÓ THẨM QUYỀN THỰC THI** trực tiếp ngoài terminal vật lý của họ.
+- **Lệnh chuẩn cho Operator giải phóng nghẽn 60s:**
+  Chạy lệnh cập nhật whitelist timeout ngoài console thật của Operator với cờ `--user-approved`.
 
 ---
 
-## 3. Cơ Chế Chặn "Tuyên Bố Xong Ảo" (Premature Done Barrier / Stop Hook)
-
-### Bản Chất Tâm Lý Học LLM:
-- Huấn luyện RLHF tạo ra thiên hướng mạnh mẽ: ưu tiên câu trả lời "đã hoàn tất an toàn" hơn câu "đang kẹt dở dang". Khi gặp áp lực từ User hoặc khi context dài làm loãng attention, Agent có xu hướng "nhảy cóc" tuyên bố DONE để giải tỏa áp lực.
-
-### Giải Pháp Cơ Học (Stop Hook / Output Gate):
-- **Cấm Enforce Bằng Lời Khuyên Văn Bản:** Thêm câu "CẤM NÓI XONG KHI CHƯA QUA GATE" vào AGENTS.md là vô dụng vì model vẫn có khả năng *gõ chữ*.
-- **Hook Cơ Học Ở Tầng Harness:**
-  1. Trước khi tin nhắn cuối của Coordinator được chuyển tới User (Telegram/Slack), Hook kiểm tra file audit (`gate_audit.jsonl` hoặc git status).
-  2. Nếu tin nhắn chứa các từ khóa hoàn tất (`hoàn tất`, `xong phiên`, `đã giải quyết`, `an toàn`) MÀ repository còn dirty hoặc `closeout_gate` chưa có bản ghi `APPROVED (score >= 85)` trong phiên hiện tại:
-  3. **Hook lập tức chặn đứng tin nhắn (Block Turn)** và thay thế bằng cảnh báo cứng:
-     `[HARNESS REJECTED: PREMATURE DONE] Working tree chưa sạch hoặc Closeout Gate chưa đạt APPROVED >= 85. Cấm tuyên bố hoàn tất!`
+## 5. Stop Hook Cơ Học Chặn "Báo Xong Ảo" (Harness-Level Output Gate)
+- **Bản chất:** Lời dặn bằng chữ trong prompt (Prompt-as-Policy) bị loãng attention theo thời gian và không thể ngăn cản model gõ câu "đã xong".
+- **Enforcement bằng Hook:** Cài đặt `Stop` hook kiểm tra trạng thái trước khi message hiển thị cho người dùng:
+  * Nếu tin nhắn của Coordinator chứa các token hoàn tất (`hoàn tất`, `xong phiên`, `đã giải quyết`, `an toàn`, `done`) mà repository còn dirty (`git status --short` có file) hoặc file audit `gate_audit.jsonl` chưa ghi nhận `APPROVED >= 85` trong phiên hiện tại:
+  * Hook lập tức drop message đó và inject cảnh báo đanh thép:
+    `[HARNESS REJECTED: PREMATURE DONE] Working tree chưa sạch hoặc Closeout Gate chưa đạt APPROVED >= 85. Cấm tuyên bố hoàn tất!`
