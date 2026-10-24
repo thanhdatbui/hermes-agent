@@ -50,3 +50,56 @@ except ImportError:
 - **Khắc phục đồng bộ:** Nâng default `--timeout` của `dispatch_worker.py` và `sol_repair.py` lên 300s.
 - **Khóa cơ học chống hạ ngược:** Thêm rule `dispatch_worker_timeout_floor` và predicate `check_dispatch_timeout_floor` vào `guardgate` để cấm bất kỳ session nào táy máy hạ timeout dưới 300s.
 - **Quy tắc thiết kế Predicate đa Invariant trong GuardEngine:** Khi nhiều luật cùng áp dụng cho một `tool_class="code_edit", op="commit"`, bắt buộc phải gộp tất cả các invariant predicates vào danh sách `require_all` của master commit rule (ví dụ `["check_case_162_timeout_floor", "check_dispatch_timeout_floor"]`) để tránh việc rule đầu tiên che khuất (shadowing) các rule sau.
+
+## 6. Kiến Trúc Multi-Rule Matching Trong GuardEngine (Tránh Rule Shadowing)
+- **Vấn đề:** Thiết kế ban đầu của `GuardEngine._match_rule(action)` chỉ lặp qua `self._rules` và trả về rule đầu tiên khớp `(tool_class, op)`. Khi hệ thống có nhiều rule cùng áp dụng cho `(code_edit, commit)` (`case_162_usb_micro_drop_timeout_floor`, `case_161_natural_follow_limit_ceiling`, `dispatch_worker_timeout_floor`), chỉ rule đầu tiên được chạy; các rule sau bị che khuất (shadowed) hoàn toàn, khiến diff vi phạm rule sau vẫn được ALLOW!
+- **Giải pháp:** Cải tiến sang `_match_rules(action)` trả về danh sách toàn bộ rules khớp `(tool_class, op)`:
+  ```python
+  def _decide(self, action: Mapping[str, Any]) -> Decision:
+      matching_rules = self._match_rules(action)
+      if not matching_rules:
+          return Decision(status=DENY, reason="no_matching_rule", next_action="classify_action")
+
+      for rule in matching_rules:
+          failed = self._failed_predicate(rule, action)
+          if failed is not None:
+              on_deny = rule["on_deny"]
+              return Decision(
+                  status=DENY,
+                  rule_id=rule["id"],
+                  reason=f"predicate_failed:{failed}",
+                  next_action=on_deny["redirect"],
+                  strike_class=on_deny.get("strike_class"),
+              )
+      return Decision(status=ALLOW, rule_id=matching_rules[0]["id"], reason="all_predicates_true")
+  ```
+  Nhờ đó, mỗi rule giữ trọn vẹn `rule_id`, `on_deny.redirect`, và `guidance` riêng biệt mà không cần gộp chung vào 1 rule khổng lồ.
+
+## 7. Cách Ly File Test Khỏi Predicate Code Edit (Test False-Positive Isolation)
+- **Vấn đề:** Khi viết unit test đối kháng (adversarial test) kiểm chứng predicate, test fixture bắt buộc phải chứa diff mẫu vi phạm (ví dụ: `+ parser.add_argument("--timeout", default=180)`). Nếu predicate quét toàn bộ diff mà không nhận diện header file, nó sẽ soi trúng chính đoạn code vi phạm trong file test (`test_*.py`) và ra quyết định DENY ngược lại commit hợp lệ!
+- **Giải pháp:** Trong mọi predicate kiểm tra git diff, bắt buộc phải theo dõi header file `+++ b/<path>` và bỏ qua các hunk thuộc file test:
+  ```python
+  for line in diff.splitlines():
+      if line.startswith("+++ b/"):
+          curr = line[6:].strip()
+          base = os.path.basename(curr)
+          is_target_file = (not base.startswith("test_")) and any(curr.endswith(tf) for tf in TARGET_MODULES)
+          continue
+      if not is_target_file or not line.startswith("+") or line.startswith("+++"):
+          continue
+      # Soi nội dung vi phạm
+  ```
+
+## 8. Chống Lệch Ngưỡng Policy-Implementation (Dynamic Threshold Injection)
+- **Vấn đề:** Khai báo `params: {"variable": "timeout", "min_value": 300.0}` trong `rules.json` nhưng trong hàm Python predicate lại hardcode `if val < 300.0: return False`. Khi Operator sửa ngưỡng trong file cấu hình JSON, logic Python không đổi, tạo ra lỗ hổng lệch pha giữa Policy và Thực thi.
+- **Giải pháp:** Predicate phải đọc ngưỡng động từ payload rule:
+  ```python
+  min_val = float(action.get("rule", {}).get("params", {}).get("min_value", 300.0))
+  if val < min_val:
+      return False
+  ```
+
+## 9. Regex Kháng Thứ Tự Tham Số (Order-Insensitive CLI Parsing)
+- Khai báo CLI argument trong Python cho phép hoán đổi vị trí thoải mái: `parser.add_argument("--timeout", type=int, default=180)` hoặc `parser.add_argument("--timeout", default=180, type=int)`.
+- Regex đơn thuần yêu cầu `--timeout` trước `default` sẽ bị vượt qua dễ dàng khi hoán đổi thứ tự. Bắt buộc kết hợp regex đa mẫu (`p1 | p2`) hoặc tokenization để đảm bảo tính kháng né tránh (adversarial resilience).
+
