@@ -17,6 +17,7 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
 - Phân bậc Receipt T0/T1/T2/T3 & chống bẫy im lặng Gate 6: [`references/tiered-verifier-and-gate6-incentive-alignment.md`](references/tiered-verifier-and-gate6-incentive-alignment.md)
 - Gate cơ học có chỉ dẫn (Action-Forcing Guidance) & Invariant Tiếng Việt có dấu: [`references/vietnamese-diacritics-profile-and-action-forcing-guidance-gates.md`](references/vietnamese-diacritics-profile-and-action-forcing-guidance-gates.md)
 - Chống Chụp Mù Launcher & Cuộn Lưới Video Below-the-fold: [`references/pre-capture-focus-guard-and-anti-launcher-hallucination.md`](references/pre-capture-focus-guard-and-anti-launcher-hallucination.md)
+- SOP Thẩm Định Thị Giác Đa Tầng Cơ Học (Sol -> Agy -> Claude): [`references/tiered-vision-fallback-mechanical-sop.md`](references/tiered-vision-fallback-mechanical-sop.md)
 
 ## 1. Nguyên Tắc Cốt Lõi (Invariants)
 1. **CẤM gửi ảnh mù / đối phó:** Trước khi đính kèm bất kỳ thẻ `MEDIA:<path>` nào, bắt buộc phải mở ảnh ra soi mắt kiểm tra trước.
@@ -30,6 +31,10 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
 5. **Pre-Capture Focus & Anti-Launcher Semantic Gate:** Trước khi screencap, BẮT BUỘC kiểm tra focus máy (`inspect_machine.py <N>`); nếu đang ở Launcher/Splash, phải khôi phục app vào foreground và điều hướng đúng tab. Nếu nghiệm thu lưới video bài đăng (Pin Top), phải vuốt nhẹ (`input swipe 540 1300 540 700 300`) kéo nội dung below-the-fold lên màn hình. Sau khi pull ảnh về, BẮT BUỘC chạy WinRT OCR đối soát: nếu ảnh chứa từ khóa Launcher (Chrome, Photos, Cài đặt, Laban Key...) hoặc Splash đen $\rightarrow$ FAIL-CLOSED, CẤM ký receipt và CẤM gửi thẻ `MEDIA:`. CẤM TUYỆT ĐỐI ảo giác nhìn thấy nội dung khi ảnh thực tế là Launcher.
 
 ## 2. Thang Leo Thang Vision Dự Phòng (Fallback Ladder)
-1. **Kênh 1 (Claude Worker Reviewer):** Chạy `python D:/Taadaa/tools/claude_worker.py --role reviewer --timeout 300 "<prompt kiểm tra ảnh>"`. Claude CLI chạy bằng Anthropic API độc lập, có native vision đọc ảnh trực tiếp.
-2. **Kênh 2 (Direct 9Router `:20128`):** Gọi endpoint `:20128` trực tiếp với model vision cụ thể (gpt-4o, claude-3-5-sonnet).
-3. **Kênh 3 (User Clarify):** Nếu toàn bộ kênh vision đều chết, báo cáo sự cố hạ tầng trung thực, giữ `UNVERIFIED`, xin ý kiến User trước khi gửi ảnh thô (mặc định là KHÔNG gửi).
+Thứ tự fallback đọc ảnh chuẩn hoá 100% đồng bộ với kiến trúc Worker Dispatch:
+- **Tier 0 (Primary - Coordinator):** Mặc định Coordinator tự soi mắt bằng `browser_vision` / native vision trong phiên.
+- **Tier 1 (Fallback 1): Sol Web Vision** (`:20129` qua OmniRoute) — 100% Free, endpoint `auto/best-vision` (qua `_ask_sol_web_vision`).
+- **Tier 2 (Fallback 2): Agy CLI Vision** (`agy vision` / `ag_cli.py ask` qua pool 29 tài khoản Google One Pro).
+- **Tier 3 (Fallback 3): Claude Worker CLI** (`claude_worker.py --role reviewer`).
+- **Công cụ cơ học chuẩn:** Sử dụng trực tiếp `python D:/Taadaa/tools/vision_fallback_reader.py --image "<path>" --question "<nội dung>" --mode auto_fallback`. Script tự động điều phối qua Sol Web -> Agy CLI -> Claude Worker, tự động ký HMAC receipt vào `vision_receipts.jsonl`.
+- **Fail-Closed:** Nếu cả 3 tier fallback đều thất bại (503, timeout, cạn quota): CẤM gửi ảnh mù, CẤM hạ cấp sang OCR text thô để báo cáo, bắt buộc giữ trạng thái `UNVERIFIED / BLOCKED_VISION_UNAVAILABLE`. CẤM lưu memory thủ công khi đã có tầng cơ học đảm nhiệm.
