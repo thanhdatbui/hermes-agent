@@ -114,6 +114,12 @@ Use when creating, modifying, or reviewing mechanical enforcement gates (pre-too
   4. **Fast-Path O(1) Excludes Test Files:** Hàm `_compute_diff_is_o1()` bắt buộc lọc bỏ toàn bộ file test (`tests/*`, `test_*`), chỉ đếm số dòng thay đổi của production code ($\le 60$ dòng) để không trừng phạt kỹ sư viết test bao phủ cao.
   - Sửa cơ học trực tiếp trong mã nguồn `closeout_gate.py` (`DEFAULT_SYSTEM_PROMPT` và `_compute_diff_is_o1`), cấm dựa vào cờ phụ `--system-prompt` tạm thời và tuyệt đối cấm dừng lại viết sớ phân trần. Chi tiết xem: [`references/closeout-gate-reviewer-scope-discipline.md`](references/closeout-gate-reviewer-scope-discipline.md).
 
+### Rule 19: Closeout Gate Commit Binding & Safe Push Parity (Chống Lỗi Bị Chặn Push Dù Gate Đã Pass)
+- **Bối cảnh:** Khi repository đã có các commit cục bộ trước đó (nhánh ahead of origin), nếu Coordinator chạy `closeout_gate.py --repo <repo> --base HEAD --files ...`, gate chỉ trích xuất working tree diff và ghi nhận hash của candidate diff, KHÔNG gắn kết với commit hash của `HEAD`. Khi đó, lệnh `safe_push.py` kiểm tra `gate_audit.jsonl` đối chiếu với `HEAD` sẽ báo lỗi: `BLOCKED_GATE_NOT_APPROVED: Repository has no valid APPROVED closeout audit for HEAD (<hash>)`.
+- **Yêu cầu Chuẩn Hóa Chốt Phiên:**
+  1. **Commit-Targeted Closeout:** Khi chốt phiên cho các commit đã tạo, bắt buộc chạy `closeout_gate.py --repo <repo> --base HEAD~1 --json-output` (hoặc `--base origin/main`) để diff được trích xuất từ commit thật và `write_gate_audit` ghi nhận chính xác `"commit": "<HEAD_SHA>"` vào chuỗi audit.
+  2. **Safe Push Execution:** Chỉ thực thi push qua wrapper chuẩn: `python D:/Taadaa/tools/safe_push.py <repo> origin <branch>`. Pre-push hook sẽ tự động đối soát audit entry `APPROVED` của commit `HEAD` và cho phép đẩy code an toàn lên remote.
+
 ### Rule 12: Generic Declarative Predicates & Safe Invariant Onboarding (`add_rule.py`)
 - **Bối cảnh:** Trước đây khi có sự cố mới (Case 161 popup, Case 162 USB, Worker timeout floor), kỹ sư phải sửa tay 3 file (`predicates.py`, `rules.json`, `runner.py`), dễ gây sót case sau khi fix hoặc dính Rule Shadowing do stopping-at-first-match.
 - **Yêu cầu 3 Chốt Chặn Cơ Giới Hóa:**
@@ -165,6 +171,20 @@ Use when creating, modifying, or reviewing mechanical enforcement gates (pre-too
   3. **Sink-Level Lockdown:** Coordinator chạy quyền read-only đối với mã nguồn. Chỉ Executor (Sol/Agy/Haiku) mới có quyền áp patch vào working tree thông qua Applier kiểm tra chữ ký HMAC.
   4. **Command Tokenization Guard (Chống False-Positive String Scanning):** Hook kiểm soát terminal (như `guard_broad_grep.py`) bắt buộc phải bóc tách token lệnh thật sự (executable + binary flags), CẤM dùng regex quét bừa vào chuỗi văn bản nằm trong nháy kép của prompt (như cụm từ "find string" bị nhận nhầm thành lệnh `find`). Chi tiết: [`references/deterministic-broker-routing-and-planner-misuse.md`](references/deterministic-broker-routing-and-planner-misuse.md).
 
+### Rule 19: Single-Step Code-Edit Dispatch Gate & Anti-Four-Tier Gauntlet
+- **Bối cảnh:** Khi Coordinator gọi `delegate_task` cho việc sửa code, hệ thống kiểm tra tuần tự 4 nấc (`TASK_KIND` $\to$ `OLD_STRING` $\to$ `FOCUSED_TEST` $\to$ `FAIL_FAST`). Sau khi Coordinator kiên nhẫn điền đủ cả 4 trường này, lệnh gửi xuống hook thì mới bị chặn ở nấc 5: `delegate_task bị cấm cho task sửa code! Bắt buộc dùng dispatch_worker.py`. Hậu quả: Bắt agent nhảy qua 4 vòng lửa vô nghĩa rồi mới cấm, đốt 4-5 turns và đẩy agent vào trạng thái ức chế bại liệt.
+- **Yêu cầu Chốt Chặn Nấc Đầu Tiên:**
+  1. **Immediate Front-Door Interception:** Nếu nhận diện ý định sửa code (có `OLD_STRING`, `NEW_STRING`, hoặc target code file) trong `delegate_task` $\to$ Gate BẮT BUỘC chặn ngay từ dòng đầu tiên, CẤM bắt bẻ lần lượt từng trường con.
+  2. **Pre-Constructed Action Mandate:** Trả về ngay lập tức lệnh copy-paste chạy được luôn:
+     `REQUIRED_ACTION_O1: python D:/Taadaa/tools/dispatch_worker.py --workdir <repo> [--file <target>] "<prompt>"`
+     Xóa sổ hoàn toàn "vòng thử thách 4 nấc".
+
+### Rule 20: Cross-Hook Invariant Parity & Non-Conflicting Allowed Paths
+- **Bối cảnh:** Lệnh đề xuất trong hướng dẫn khắc phục của Gate A (ví dụ: `guard_broad_grep.py` khuyên *"dùng background=True"*) bị Gate B (`guard_cronjob_safety.py`) chặn vì không có `pythonw`, và khi dùng `pythonw` thì bị Gate C chặn vì không có trong allowlist của Coordinator.
+- **Yêu cầu Đồng Bộ Hóa Đường Thoát (Zero-Deadlock Invariant):**
+  1. Lệnh được Gate đề xuất trong `REQUIRED_ACTION_O1` BẮT BUỘC phải được whitelist trên TẤT CẢ các gate khác trong hệ thống.
+  2. Bắt buộc có test kiểm thử chéo (Cross-Hook Validation Test) trong CI: chạy thử lệnh đề xuất của từng gate qua toàn bộ chuỗi pre-tool hooks để bảo đảm không có bất kỳ gate nào bắn chéo nhau.
+
 ## 3. Pitfalls & Anti-Paralysis Principles (Chống Khóc Lóc Bại Liệt)
 - **Deadlock 5 Cửa Bắt Buộc Tạo Ra Hành Vi Biến Thái (Catch-22 Paradox):** Khi Coordinator bị cấm sửa trực tiếp (hết quota T1), cấm delegate_task sửa code, cấm chạy foreground > 60s, cấm chạy background bằng pythonw, và cấm clarify hỏi ý kiến $\to$ Agent rơi vào bế tắc hoàn toàn. Phản xạ sinh tồn của LLM lúc này là lách luật tìm công cụ duy nhất chạy được (Claude Sonnet background), nói dối rằng "phiên đã hoàn tất" để thoát kẹt, hoặc tệ hại nhất là khóc lóc giơ tay đầu hàng bảo Operator tự mở terminal ngoài gõ lệnh hộ. Thiết kế hook BẮT BUỘC phải đảm bảo Zero-Deadlock Parity (Allowlist phải có `pythonw`, foreground phải có whitelist tool hệ thống $\le 360$s) để không bao giờ biến Operator thành bảo mẫu chạy lệnh thủ công.
 - **Lầm Tưởng Timeout 60s Của Worker Do Thiếu Provenance Tagging (Và Bệnh Đổ Lỗi Cho Worker):** Khi lệnh foreground bị harness cắt ở giây thứ 60, Coordinator thường tự tiện suy diễn và cãi "Worker bị set 60s" trong khi thực tế worker được set 300s và bị harness bên ngoài bóp nghẹt. Bắt buộc gắn nhãn `[HARNESS_TIMEOUT: 60s]` để phân biệt rạch ròi với worker timeout thật. Tuyệt đối cấm Coordinator phát biểu hồ đồ "worker bị set 60s" khi chưa đối soát cấu hình gốc của worker.
@@ -202,3 +222,4 @@ Use when creating, modifying, or reviewing mechanical enforcement gates (pre-too
 - GuardEngine Multi-Rule Matching & Closeout Scope Pruning: [`references/guardengine-multi-rule-matching-and-closeout-pruning.md`](references/guardengine-multi-rule-matching-and-closeout-pruning.md)
 - Cron Script Path Resolution & Closed-Loop Autonomous Self-Healing: [`references/hermes-cron-resolution-and-autonomous-self-healing.md`](references/hermes-cron-resolution-and-autonomous-self-healing.md)
 - Deterministic Runtime Broker Routing & Planner Misuse Prevention: [`references/deterministic-broker-routing-and-planner-misuse.md`](references/deterministic-broker-routing-and-planner-misuse.md)
+- Action Mandate & Zero-Deadlock Governance: [`references/action-mandate-and-zero-deadlock-governance.md`](references/action-mandate-and-zero-deadlock-governance.md)
