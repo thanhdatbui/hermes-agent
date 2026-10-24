@@ -21,6 +21,7 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
 - SOP Thẩm Định Thị Giác Đa Tầng Cơ Học (Sol -> Agy -> Claude): [`references/tiered-vision-fallback-mechanical-sop.md`](references/tiered-vision-fallback-mechanical-sop.md)
 - Phân Tầng Reviewer & Chốt Chặn Cơ Học Chống Vượt Mặt Gate 6 (Verdict APPROVED): [`references/media-gate-bypass-investigation-and-grounding-fix.md`](references/media-gate-bypass-investigation-and-grounding-fix.md)
 - Bài Học Thực Chiến Hardening Media Gate & Bắt Buộc Ảnh Chốt Phiên: [`references/closeout-visual-evidence-and-gate-hardening-lessons.md`](references/closeout-visual-evidence-and-gate-hardening-lessons.md)
+- Xác Minh Fresh Screencap & Đối Soát Account Switcher: [`references/fresh-screencap-and-account-switcher-verification.md`](references/fresh-screencap-and-account-switcher-verification.md)
 
 ## 1. Nguyên Tắc Cốt Lõi (Invariants)
 1. **CẤM gửi ảnh mù / đối phó:** Trước khi đính kèm bất kỳ thẻ `MEDIA:<path>` nào, bắt buộc phải mở ảnh ra soi mắt kiểm tra trước.
@@ -44,6 +45,10 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
    - **Cấm Báo Cáo Chay Khi Done:** Khi kết thúc phiên (User gõ "Done" / "Chốt phiên"), báo cáo nghiệm thu BẮT BUỘC phải đính kèm đầy đủ các thẻ `MEDIA:<path>` cho mọi thiết bị vừa thao tác. Tuyệt đối không được gửi tóm tắt chay mà thiếu ảnh thực tế.
    - **Kỷ Luật Trung Thực Nhãn Ghim:** Nếu thumbnail trên máy Farm không có chữ đỏ "Đã ghim" (hoặc OCR không đọc ra `Däg 1m`/`Đã ghim`), CẤM TUYỆT ĐỐI dùng từ "đã ghim" trong câu báo cáo. Chỉ báo cáo trung thực vị trí video và số lượt xem thực tế để tránh bị Gate chặn `UNGROUNDED_TEXT_CLAIM`.
    - **Chốt Chặn Receipt Hợp Lệ:** Mọi ảnh `MEDIA:` gửi đi phải được quét qua `run_winrt_ocr.py` để lấy receipt hợp lệ (Producer-signed), không dùng lệnh tay `--register-receipt`.
+9. **CẤM Dùng Ảnh Cũ / Cached Photo & Bắt Buộc Đối Soát Account Switcher:**
+   - **Fresh Screencap Invariant:** Mọi bằng chứng nghiệm thu BẮT BUỘC phải là ảnh chụp mới (fresh screencap) được pull trực tiếp từ thiết bị ngay tại thời điểm thao tác. CẤM TUYỆT ĐỐI lục lại ảnh cũ trong thư mục tạm (`tmp/`, `image_cache/`, `user_img*.jpg`) để gửi đối phó.
+   - **Account Switcher Verification:** Trên các máy nuôi nhiều tài khoản (multi-slot), trước khi chụp ảnh nghiệm thu, BẮT BUỘC đối soát handle `@...` trên màn hình Profile. Nếu đang ở nick khác (do phiên nuôi trước hoặc ca khác), BẮT BUỘC phải vào Account Switcher chuyển đúng sang nick mục tiêu rồi mới chụp.
+   - **Anti-Context-Hallucination:** CẤM tin vào tóm tắt (summary) hay tự huyễn hoặc rằng nick đã chuẩn hoá. BẮT BUỘC đọc trực tiếp text OCR của ảnh tươi: nếu tên vẫn là username thô và bio vẫn hiện `+ Thêm tiểu sử`, BẮT BUỘC xác định là CHƯA LÀM, cấm báo cáo hoàn tất.
 
 ## 2. Thang Leo Thang Vision Dự Phòng (Fallback Ladder)
 Thứ tự fallback đọc ảnh chuẩn hoá 100% đồng bộ với kiến trúc Worker Dispatch:

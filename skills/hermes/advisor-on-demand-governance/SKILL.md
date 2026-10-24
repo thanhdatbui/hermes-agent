@@ -74,6 +74,11 @@ Trong hệ thống Taadaa Farm, vai trò Reviewer được phân định rạch 
 
 ### 1. Kịch bản A: Thẩm Định Chốt Phiên (Closeout Gate Pipeline)
 - **Tier 1 (Độc quyền xử lý đầu tiên — First-Responder Monopoly):** Sol High (`:20129` qua `sol_repair.py`). Khi Reviewer chấm điểm trượt (Strike 1 & Strike 2), Sol High độc quyền tạo bản vá O(1) <= 30 dòng. Cấm tự ý dispatch Worker mò mẫm khi Sol chưa hỏng.
+- **Kỷ Luật Auto-Remediation (Cấm khóc lóc / phân trần / hỏi User khi Gate DENY):**
+  * Khi `closeout_gate.py` trả về `REJECTED` (score < 80/85): **TUYỆT ĐỐI CẤM** dừng lại, khóc lóc, phân trần hoặc hỏi User "có nên tiếp tục / override không".
+  * Gate DENY là **Action-Forcing Pivot**: Bắt buộc đọc ngay `key_findings` và `judge_notes` của Reviewer scorecard.
+  * Tự động sửa dứt điểm các lỗi Reviewer chỉ ra (logic bounds, thứ tự check fallback, structured telemetry logging, caplog tests).
+  * Chạy test focused verify $\to$ commit $\to$ chạy lại `closeout_gate.py` lặp lại vòng lặp cho đến khi đạt `APPROVED` (>= 80/85, Grace band 80-84 được duyệt).
 - **Tier 2 (Fallback tự động):** Worker Gateway (`dispatch_worker.py` điều phối Agy CLI / Claude Haiku). Chỉ kích hoạt khi Sol Repair exit != 0, crash, timeout hoặc diff > 30 dòng.
 - **Tier 3 (Strike 3 Hand-off):** Claude CLI (`claude_worker.py --role reviewer` / Claude Sonnet). Nếu trượt 3 lần liên tiếp trên cùng scope_hash, toàn bộ hệ thống dừng lại và chuyển giao quyền can thiệp cho Claude Sonnet.
 
