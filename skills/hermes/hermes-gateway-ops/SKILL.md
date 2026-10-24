@@ -7,13 +7,14 @@ description: Configure, run, verify, and extend the Hermes messaging gateway (Te
 
 Trigger: set up or operate the messaging gateway (Telegram first), bind a chat/group to a repo via `channel_overrides`, explain multi-session on Telegram, verify a bot is online, or debug gateway config.
 
-- `references/telegram-cold-boot-drop-pending-updates-semantics.md` — Xóa queue Telegram khi Cold Boot (`drop_pending_updates=not is_reconnect`).
-- `references/telegram-multi-isp-send-failover.md` — Sửa lỗi bot im lặng do failover; 2 transport độc lập.
+- `references/telegram-cold-boot-drop-pending-updates-semantics.md` — Xóa queue Telegram Cold Boot (`drop_pending_updates`).
+- `references/telegram-multi-isp-send-failover.md` — Sửa lỗi bot im lặng failover; 2 transport.
 - `references/windows-winerror-32-sessions-json-locking.md` — Lỗi `[WinError 32]` ghi `sessions.json`.
 - `references/prevent-eventloop-freeze-terminal-guard.md` — Chống đơ Event Loop terminal 600s.
 - `references/telegram-webhook-read-timeout-backoff.md` — Webhook Timeout; Polling qua SOCKS5.
 - `references/telegram-media-download-resilience-and-timedout-retry.md` — Vá tải ảnh `TimedOut`.
-- `references/telegram-gateway-ram-desync-and-site-packages-sync.md` — Lệch pha RAM Gateway, đồng bộ site-packages và dọn file lock mồ côi.
+- `references/telegram-gateway-ram-desync-and-site-packages-sync.md` — Lệch pha RAM Gateway, sync site-packages.
+- `references/telegram-latex-math-and-raw-syntax-pitfalls.md` — Cấm LaTeX math trên Telegram, sơ đồ Unicode.
 - `references/telegram-polling-heartbeat-debounce-anti-flapping.md` — Xử lý Telegram Heartbeat Flapping & Adaptive Fast-Retry.
 - `references/llm-cronjob-gateway-queue-saturation-and-prevention.md` — Chẩn đoán & ngăn nghẽn queue Gateway do Cronjob thiếu `no_agent: True`.
 

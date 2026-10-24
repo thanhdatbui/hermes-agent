@@ -26,6 +26,7 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
 - Chặn 2FA/TOTP Khi Switcher & Kỷ Luật Nghiệm Thu Profile: [`references/account-switcher-2fa-totp-interception-and-profile-standardization.md`](references/account-switcher-2fa-totp-interception-and-profile-standardization.md)
 - Khôi Phục Session 2FA Ảo & Nạp Bio Bằng AdbKeyboard Broadcast: [`references/transient-2fa-recovery-and-adb-keyboard-utf8-bio-injection.md`](references/transient-2fa-recovery-and-adb-keyboard-utf8-bio-injection.md)
 - Chống Bịa Đặt Lý Do Lấp Liếm & Bộ Ba Đối Soát Profile (Tên, Bio, Avatar): [`references/anti-fabrication-and-full-profile-triad-verification.md`](references/anti-fabrication-and-full-profile-triad-verification.md)
+- Chống Báo Xong Mù, Chống Văn Mẫu Bio & Positive Contract Verifier: [`references/anti-blind-completion-and-positive-contract-verifier.md`](references/anti-blind-completion-and-positive-contract-verifier.md)
 
 ## 1. Nguyên Tắc Cốt Lõi (Invariants)
 1. **CẤM gửi ảnh mù / đối phó:** Trước khi đính kèm bất kỳ thẻ `MEDIA:<path>` nào, bắt buộc phải mở ảnh ra soi mắt kiểm tra trước.
@@ -76,6 +77,17 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
 15. **Dung Sai Rơi Dấu & Cắt Đuôi Cho Nhãn Ghim (Pin Diacritic & Truncation Tolerance):**
     - Huy hiệu "Đã ghim" trên thumbnail video thường bị OCR cắt cụt đuôi hoặc rơi rụng dấu thành `Dä ghi`, `Đã ghi`, `däg 1m`.
     - Regex trong verifier và gate bắt buộc dùng mẫu dung sai: `re.compile(r"\b(?:d[aä]g?\s*(?:1m|im|ghim?|ghi)|ghim?|pinned?)\b", re.IGNORECASE)` để tránh reject nhầm video đã ghim thành công.
+16. **CẤM Báo Xong Mù Khi Chưa Pull Ảnh Về & Cấm Bịa Lý Do Ngoại Cảnh:**
+    - Gửi lệnh tap hoặc broadcast input vào thiết bị chỉ là thao tác gửi tín hiệu (Input Injected), KHÔNG PHẢI là bằng chứng hoàn thành (Execution Evidence).
+    - Tuyệt đối CẤM kết luận "đã làm xong / bấm thành công" khi chưa kéo được ảnh tươi về máy Kibe để soi mắt đọc OCR. Nếu đứt kết nối giữa chừng, trạng thái bắt buộc báo là `UNVERIFIED_ACTION` hoặc `PENDING_VERIFICATION`.
+    - Tuyệt đối CẤM suy đoán mò mẫm rồi đổ lỗi cho các phần mềm khác (như Tiểu Vi, ViChanger...) khi telemetry không cho thấy tiến trình đang chạy.
+17. **Chống Văn Mẫu Rập Khuôn Khi Đặt Bio (Anti-Cookie-Cutter Bio Formula):**
+    - CẤM lặp lại công thức văn mẫu sáo rỗng `"Chia sẻ [X] và [Y] mỗi ngày"`.
+    - Bio phải sáng tạo, tự nhiên, đúng chất kênh mạng xã hội (hài hước, tếu táo, lầy lội hoặc chuyên môn tùy video thực tế), 100% tiếng Việt có dấu, unique tuyệt đối không trùng lặp giữa các nick trong farm.
+18. **Kiến Trúc Positive Contract Verifier Độc Lập (`verify_profile_positive.py`):**
+    - Thẩm định độc lập 5 trường dương tính `{HANDLE, NAME, BIO, AVATAR, PIN}` qua WinRT OCR, không phụ thuộc vào lời khai tự do của Agent.
+    - So khớp Tên bằng word-level match (`\b...\b`) để tránh dính từ trong handle.
+    - Tích hợp Action-Forcing FSM: Khi REJECTED, bắt buộc trả về `missing_fields`, `next_action` và `recommended_tool` để Agent lập tức hành động, triệt tiêu nguy cơ bại liệt hay than khóc.
 
 ## 2. Thang Leo Thang Vision Dự Phòng (Fallback Ladder)
 Thứ tự fallback đọc ảnh chuẩn hoá 100% đồng bộ với kiến trúc Worker Dispatch:

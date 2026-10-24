@@ -59,3 +59,16 @@ Khi rơi vào ca/ngày dưỡng sinh, `resolve_shift_pool_account` raise `ValueE
 4. **Validation Bounds:**
    - `record_shift_session_account` kiểm tra chặt `1 <= row <= 8` và `ca in (1, 2, 3)`.
    - `_load_state` bọc `try-catch` kiểm tra chuỗi rỗng để chống crash `JSONDecodeError` khi state file bị 0 bytes.
+5. **Cạm Bẫy Deploy Drift Giữa Dev Repo (`tiktok-luot nuoi acc`) và Cron Runtime (`Hermes/deploy`):**
+   - **Hiện tượng:** Code dynamic `Row 0` đã commit trong `tiktok-luot nuoi acc`, nhưng hôm sau cron vẫn chạy nhặt fixed row cũ (Row 2, 4, 6...).
+   - **Nguyên nhân:** Hermes cronjob (`phase9-runner-tiktok-feed`, `tiktok-feed-session-watchdog`) thực thi scripts từ `%LOCALAPPDATA%\hermes\scripts\`, vốn được đồng bộ định kỳ bởi `cron_sync_watchdog.py` từ repo `D:\Taadaa\Hermes\deploy\hermes-home\scripts\`.
+   - **Quy trình Deploy bắt buộc sau khi sửa `scripts/hermes_cron/`:**
+     1. Đồng bộ file sang deploy repo:
+        `cp "D:/Taadaa/tiktok-luot nuoi acc/scripts/hermes_cron/tiktok_runner.py" "D:/Taadaa/Hermes/deploy/hermes-home/scripts/tiktok_runner.py"`
+        `cp "D:/Taadaa/tiktok-luot nuoi acc/scripts/hermes_cron/tiktok_picker.py" "D:/Taadaa/Hermes/deploy/hermes-home/scripts/tiktok_picker.py"`
+        `cp "D:/Taadaa/tiktok-luot nuoi acc/scripts/feed_session_watchdog.py" "D:/Taadaa/Hermes/deploy/hermes-home/scripts/feed_session_watchdog.py"`
+        `cp "D:/Taadaa/tiktok-luot nuoi acc/scripts/feed_session_watchdog.py" "D:/Taadaa/tiktok-luot nuoi acc/scripts/hermes_cron/feed_session_watchdog.py"`
+     2. Commit thay đổi vào cả 2 repo (`tiktok-luot nuoi acc` và `Hermes`).
+     3. Kích hoạt đồng bộ runtime ngay lập tức:
+        `python "D:/Taadaa/Hermes/deploy/hermes-home/scripts/cron_sync_watchdog.py" --force`
+     4. Chạy kiểm chứng dry-run/simulation `_determine_row()` và `_get_machines_for_row(0)` để đảm bảo `effective_feed_row == 0` được kích hoạt.
