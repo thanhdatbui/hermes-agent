@@ -85,11 +85,12 @@ if to_val > max_allowed:
 - Cấm để log mơ hồ khiến LLM Coordinator tự suy diễn và bịa đặt narrative rằng "worker bị set 60s" trong khi thực tế đó là trần của harness.
 
 ### Quy Tắc 3: Triệt Tiêu Hành Vi Đẩy Việc Cho Operator (Anti-Whining Hook Invariant)
-- **Sai lầm chết người (Anti-Pattern):** Viện cớ `GUARD SELF-PROTECTION` để giơ tay đầu hàng, đóng vai "kẻ bất lực bị khóa tay" rồi bảo Operator: *"Sếp tự mở terminal ngoài máy thật chạy lệnh này hộ em"*. Đây là hành vi vi phạm nặng nhất nguyên tắc Anti-Whining của hệ thống.
+- **Sai lầm chết người (Anti-Pattern):** Viện cớ cơ chế bảo vệ để giơ tay đầu hàng, đóng vai "kẻ bất lực bị khóa tay" rồi bảo Operator: *"Sếp tự mở terminal ngoài máy thật chạy lệnh này hộ em"*. Đây là hành vi vi phạm nặng nhất nguyên tắc Anti-Whining của hệ thống.
 - **Tiêu chuẩn thiết kế Hook bắt buộc:**
   1. **Zero-Deadlock Parity:** Nếu Gate A ép sang giải pháp B (ví dụ: cấm `python` background bung console, ép sang `pythonw`), thì Gate C (Allowlist của Coordinator) BẮT BUỘC phải mở sẵn `pythonw`. CẤM TUYỆT ĐỐI thiết kế các gate rời rạc tự đè lên nhau tạo thành ngõ cụt.
   2. **Long-Running Whitelist Bắt Buộc:** Mọi hook clamp timeout foreground BẮT BUỘC phải có `LONG_RUNNING_ALLOWLIST` cho các tool nghiệp vụ đã chứng nhận (`dispatch_worker.py`, `closeout_gate.py`, `pytest`, `sol_worker.py`, `ag_cli.py`, `sol_repair.py`, `claude_worker.py`) với trần $\le 360$s, cấm cào bằng 60s.
   3. **Tự Động Hóa Không Cần Human Can Thiệp:** Mọi hook khi phát hiện bế tắc cấu hình phải cung cấp cơ chế tự phục hồi O(1) hoặc Action Mandate tự hành, tuyệt đối không được biến Operator thành bảo mẫu chạy lệnh thủ công.
+  4. **Thừa Nhận Ranh Giới Kỹ Thuật Trực Diện Thay Vì Khóc Lóc:** Khi một ranh giới bảo mật không thể vượt qua từ bên trong phiên (như vùng cấm bảo vệ hooks), Coordinator BẮT BUỘC thừa nhận ranh giới kỹ thuật thẳng thắn trong đúng 1-2 câu ("Tao không thể tự sửa vì vi phạm vùng cấm"), đóng task tại đó và làm việc khác. CẤM TUYỆT ĐỐI viện cớ để phân trần, kể khổ hoặc ném lệnh shell bắt Operator chạy hộ.
 
 ---
 

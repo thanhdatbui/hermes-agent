@@ -22,8 +22,10 @@ tags: [tiktok, farm, batch, render, upload, resume, kibe]
   `python D:/Taadaa/tools/tiktok_rename_rolling_watchdog.py`
 - **Cào Tải Video Gốc Admin (40 Workers song song qua 69 Proxy MikroTik LAN):**
   `python C:/Users/Admin/run_admin_downloader_service.py` (launcher headless: `python C:/Users/Admin/launch_detached_admin_downloader.py`). Log: `D:/CodexRuntime/tiktok-video-machine2/download_admin_p10.log`.
-- **Render Worker Chuẩn Mapping 8 Tik trên Admin (1 Worker tuần tự chống nghẽn GPU):**
+- Render Worker Chuẩn Mapping 8 Tik trên Admin (1 Worker tuần tự chống nghẽn GPU):
   `python C:/Users/Admin/run_admin_render_worker.py` (launcher headless: `python C:/Users/Admin/launch_detached_admin_render.py`). Log: `C:/Users/Admin/admin_render_worker.log`.
+- **ChatGPT GPM Audit & Lifecycle Execution Safety:**
+  Khi audit sức khỏe tài khoản ChatGPT trên GPM (`login_audit_and_purge_deactivated.py`), do lệnh batch `--limit 5` chạy mất 100–125s sẽ đụng trần foreground timeout 60s và background terminal bị chặn bởi `guard_cronjob_safety.py` (`[CONSOLE_WINDOW_BLOCKED]`), giải pháp chuẩn là phân rã chạy tuần tự từng tài khoản O(1) qua `--email <email>` với timeout 60s. Phân biệt tuyệt đối `UNKNOWN` vs `DEAD_DEACTIVATED` (chỉ purge khi có marker và visual screenshot proof). Chi tiết xem [`references/chatgpt-gpm-audit-foreground-execution-and-lifecycle-safety.md`](references/chatgpt-gpm-audit-foreground-execution-and-lifecycle-safety.md).
 - Tra cứu máy N O(1) & Fastpath Batch Triage:
   `python D:/Taadaa/tools/inspect_machine.py <N>` (tra cứu máy đơn lẻ). Khi nhận alert batch nhiều máy lỗi: BẮT BUỘC chạy `python D:/Taadaa/tools/inspect_machine.py` (không tham số) để dump snapshot attached toàn dàn <2s, đối soát nhanh thiết bị rớt USB / offline trước khi gọi inspect từng máy, chống timeout ADB daemon. Chi tiết xem [`references/dual-cluster-batch-triage-fastpath.md`](references/dual-cluster-batch-triage-fastpath.md).
 - **Quy trình truy vết O(1) khi kênh dừng đăng video lâu ngày:**
