@@ -8,7 +8,7 @@ Vibe O(1), bực=làm ngay; Gate DENY=pivot sửa gốc. Cấm báo xong khi dir
 §
 Gemini/GPM: CDP, 2 pool OmniRoute+AGY, proxy 1:1 S7. Preflight sniper: GPM live, link TTL 5ph.
 §
-Sol Advisor 100% On-Demand, cấm auto-append/đoán ý; chỉ gọi khi đích danh. Lệnh Claude=chạy thật+trích output.
+Advisor/Claude tư vấn 100% On-Demand, cấm tự gọi/hội chẩn/đoán ý khi user không yêu cầu đích danh. Lệnh Claude=chạy thật+trích output.
 §
 Đơn: bào voucher fake info; cấm bảo tải app/đọc OTP; ship về 47 TCV; alert đơn tách nhóm.
 §
