@@ -28,10 +28,11 @@ SUMMON_PATTERNS = [
 ]
 
 EXCLUDE_PATTERNS = [
-    r"\b(?:tắt|dừng|stop|disable|hủy|bỏ|ngắt)\s+(?:advisor|sol)\b",
-    r"\b(?:đừng|không|k|chớ)\s+(?:gọi|dùng|bật|kêu|hỏi|cần)\s+(?:advisor|sol)\b",
+    r"\b(?:tắt|dừng|stop|disable|hủy|bỏ|ngắt|cấm|đừng|không|k|chớ)\b.*?\b(?:advisor|sol)\b",
+    r"\b(?:spam|lải\s+nhải|nói\s+nhiều)\b.*?\b(?:advisor|sol)\b",
+    r"\b(?:advisor|sol)\b.*?\b(?:spam|lải\s+nhải|nhảm|lồn|cặc)\b",
     r"\b(?:advisor\s+sol|advisor|sol)\b.*?\b(?:t|tao|tôi|mình)\s+sửa\b",
-    r"\b(?:tại\s+sao|vì\s+sao|sao|sao\s+k|sao\s+không)\b.*?\b(?:gọi|kêu|hỏi|dùng)\s+(?:sol|advisor)\b",
+    r"\b(?:tại\s+sao|vì\s+sao|sao|sao\s+k|sao\s+không)\b.*?\b(?:gọi|kêu|hỏi|dùng|có)\s+(?:sol|advisor)\b",
     r"\b(?:đéo|không|chẳng|chưa|k)\b.*?\b(?:thấy|muốn)\b.*?\b(?:gọi|kêu|hỏi)\s+(?:advisor|sol)\b",
 ]
 
