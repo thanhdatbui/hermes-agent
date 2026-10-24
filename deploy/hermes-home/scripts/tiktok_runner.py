@@ -170,6 +170,8 @@ def _determine_row(now: datetime) -> tuple[int, int, str, bool] | None:
 
     target_row = slots[effective_day]
     is_rest_day = False
+    dynamic_shift_pools = os.environ.get("TAADAA_DYNAMIC_SHIFT_POOLS", "").strip().lower() in ("1", "true", "yes")
+
     if target_row is None:
         # Dynamic Per-Machine Mode: Mỗi máy tự soi 8 slot của chính nó theo 3 lớp phễu:
         # 1. Đề xuất -> 2. Đi tù nhả follow -> 3. Nick non
@@ -183,6 +185,9 @@ def _determine_row(now: datetime) -> tuple[int, int, str, bool] | None:
             "cycle_idx": cycle_idx,
         }, sort_keys=True) + "\n")
         is_rest_day = True
+    elif dynamic_shift_pools:
+        row = 0
+        is_rest_day = False
     else:
         row = target_row
 
@@ -452,6 +457,13 @@ def _spawn_feed_session(
         "-Python", target_python(),
         "-Row", str(row),
         "-SessionIndex", str(session_index),
+    ]
+
+    ca = 1 if now.hour in (6, 8) else (2 if now.hour in (12, 14) else 3)
+    if row == 0 and not is_rest_day:
+        argv += ["-ShiftCa", str(ca)]
+
+    argv += [
         # Cơ chế cơ hội (Opportunistic Upload): Cho phép upload ở cả Phiên 1 & Phiên 2.
         # Hệ thống có sổ cái shift_upload_history.json tự động chặn nếu phiên trước đã đăng thành công.
         "-AllowUploadHook",
