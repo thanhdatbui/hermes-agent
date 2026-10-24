@@ -6,8 +6,6 @@ Pin>=1k: LIFO TikTok->ghim tăng dần để top view ở ô 1 (re-pin enforce);
 §
 Rename/Bio: 100% TV có dấu; cấm adb input text thô; chỉ gõ AdbKeyboard Base64 UTF-8; pre-submit check 0 ký tự; tâm Sửa hồ sơ (315,865) né khe 540; cấm tap (72,148); thoát FIND_FRIENDS; 7d cd; switcher.
 §
-CGPT: test qua /api/providers/{cid}/test.
-§
 Stale Up: xóa draft. Revert: TikWM. Cào: max 60. Cron TB: device_lock+rolling<=5; bỏ 0h.
 §
 Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; Reaper SSH. M7: SSID Dat_2.4G.
@@ -16,7 +14,7 @@ Ava: Trích clip gốc; OCR lines==0; top-row audit né sót view cao; F_src!=F_
 §
 Reboot 3 ca: retry :20-:50, cutoff :51 (<10p ca); lb 60m; 2FA né đệm; né TFT/War3. Task ngầm Hidden. Game=tắt nháy. Tiểu Vi 5038: dọn trước ca feed.
 §
-Đơn TT Shop: Mail báo 1 lần; API SPX/J&T/Ninja; Hub Thanh Khê. Dashboard :1905 /api/orders.
+Đơn TT: Hub Thanh Khê; J&T/SPX. Ký nhận=prune cron; đang chuyển=silent, chỉ báo khi đến kho ĐN. Dashboard :1905.
 §
 Cron/Alert: Gửi đúng Telegram group của repo (-5435853713 Video/Up, -5377611430 Nuôi, -5373649734 Alert), cấm spam DM.
 §
