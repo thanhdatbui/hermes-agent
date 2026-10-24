@@ -79,17 +79,29 @@
   `"Mật khẩu mới không thể giống mật khẩu cũ"` (hoặc `"New password cannot be the same as old password"`).
 - **Lỗ hổng logic cũ:** Hàm `_complete_password_setup` chỉ `_wait_for` kiểm tra không có chữ `"tạo mật khẩu"` / `"create password"`. Vì tiêu đề màn hình là `"Thay đổi mật khẩu"`, điều kiện này thỏa mãn ngay lập tức, khiến runner tưởng đã lưu thành công và gọi callback ghi pass vào Excel trong khi mật khẩu chưa hề được TikTok cập nhật!
 
-### 5.2. Giải pháp cơ giới hóa bất biến
-1. **Bắt buộc kiểm chứng Toast thành công:**
-   - Sau khi bấm "Tiếp tục", TikTok hiển thị toast xác nhận màu đen:
-     `"Mật khẩu đã được thay đổi"` (hoặc `"Password has been changed"`).
-   - Form đổi mật khẩu phải tự đóng và chuyển về màn hình `Tài khoản` (`com.ss.android.ugc.trill:id/yvg`).
-2. **Xử lý va chạm mật khẩu cũ (Collision Handling):**
-   - Nếu xuất hiện chuỗi `"không thể giống mật khẩu cũ"` hoặc `"cannot be the same"`:
-     + Coi là submit thất bại.
-     + Nhấn nút "Xóa văn bản" (`x`) trên trường EditText.
-     + Sinh mật khẩu mới với biến thể salt khác biệt (đảm bảo đủ 8-20 ký tự, hoa, thường, số, ký tự đặc biệt `@#!?`).
-     + Nhập lại và bấm Submit lần 2.
+### 5.2. Giải pháp cơ giới hóa bất biến ở tầng Script (`live_phase_b_adapter.py`)
+1. **Quy tắc vàng của User về thông báo "Mật khẩu mới không thể giống mật khẩu cũ":**
+   - Khi điền mật khẩu và bấm "Tiếp tục", nếu TikTok bắn ra dòng chữ đỏ:
+     `"Mật khẩu mới không thể giống mật khẩu cũ"` (hoặc `"New password cannot be the same as old password"`).
+   - **BẢN CHẤT:** Dòng này chứng minh 100% mật khẩu vừa nhập vào **chính là mật khẩu hiện tại đang hoạt động của nick**!
+   - **XỬ LÝ:** Tuyệt đối không xóa đi đổi tiếp hay sinh pass khác. Coi như đã xác minh mật khẩu thành công (`return True`), lưu luôn chuỗi mật khẩu đó vào Excel và kết thúc phiên đổi pass.
+2. **Cơ chế bắt điều kiện kép trong `_complete_password_setup()`:**
+   - Script không chỉ chờ form đóng mà định nghĩa hàm vị ngữ `_pw_confirmed_or_same(xml)`:
+     ```python
+     def _pw_confirmed_or_same(xml: str) -> bool:
+         low = xml.casefold()
+         # Case 1: TikTok báo trùng pass cũ -> Pass đã đúng, lưu luôn pass đó
+         if "mật khẩu mới không thể giống mật khẩu cũ" in low or "new password cannot be the same" in low:
+             return True
+         # Case 2: Đã đổi thành công và form đổi/tạo pass đã biến mất
+         return (
+             "tạo mật khẩu" not in low
+             and "create password" not in low
+             and "thay đổi mật khẩu" not in low
+             and "change password" not in low
+         )
+     ```
+   - Sau đó `on_password_created(self.account_password)` được kích hoạt để ghi nhận ngay vào workbook.
 
 ## 6. Kỷ luật ứng xử với User: Hành động trước, chứng minh bằng dữ liệu
 - Khi phát hiện trục trặc hoặc kẹt máy: **TUYỆT ĐỐI CẤM** trả lời bằng những đoạn văn dài phân trần, giải thích hay than thở khiến User bức xúc ("sao cứ khóc lóc mệt thế").
