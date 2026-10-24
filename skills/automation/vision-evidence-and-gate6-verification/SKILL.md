@@ -22,6 +22,7 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
 - Phân Tầng Reviewer & Chốt Chặn Cơ Học Chống Vượt Mặt Gate 6 (Verdict APPROVED): [`references/media-gate-bypass-investigation-and-grounding-fix.md`](references/media-gate-bypass-investigation-and-grounding-fix.md)
 - Bài Học Thực Chiến Hardening Media Gate & Bắt Buộc Ảnh Chốt Phiên: [`references/closeout-visual-evidence-and-gate-hardening-lessons.md`](references/closeout-visual-evidence-and-gate-hardening-lessons.md)
 - Xác Minh Fresh Screencap & Đối Soát Account Switcher: [`references/fresh-screencap-and-account-switcher-verification.md`](references/fresh-screencap-and-account-switcher-verification.md)
+- Báo Cáo Điều Tra Bypass by Claim Omission & Chốt Chặn Task Contract Binding: [`references/bypass-by-claim-omission-and-task-contract-binding.md`](references/bypass-by-claim-omission-and-task-contract-binding.md)
 
 ## 1. Nguyên Tắc Cốt Lõi (Invariants)
 1. **CẤM gửi ảnh mù / đối phó:** Trước khi đính kèm bất kỳ thẻ `MEDIA:<path>` nào, bắt buộc phải mở ảnh ra soi mắt kiểm tra trước.
@@ -49,6 +50,10 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
    - **Fresh Screencap Invariant:** Mọi bằng chứng nghiệm thu BẮT BUỘC phải là ảnh chụp mới (fresh screencap) được pull trực tiếp từ thiết bị ngay tại thời điểm thao tác. CẤM TUYỆT ĐỐI lục lại ảnh cũ trong thư mục tạm (`tmp/`, `image_cache/`, `user_img*.jpg`) để gửi đối phó.
    - **Account Switcher Verification:** Trên các máy nuôi nhiều tài khoản (multi-slot), trước khi chụp ảnh nghiệm thu, BẮT BUỘC đối soát handle `@...` trên màn hình Profile. Nếu đang ở nick khác (do phiên nuôi trước hoặc ca khác), BẮT BUỘC phải vào Account Switcher chuyển đúng sang nick mục tiêu rồi mới chụp.
    - **Anti-Context-Hallucination:** CẤM tin vào tóm tắt (summary) hay tự huyễn hoặc rằng nick đã chuẩn hoá. BẮT BUỘC đọc trực tiếp text OCR của ảnh tươi: nếu tên vẫn là username thô và bio vẫn hiện `+ Thêm tiểu sử`, BẮT BUỘC xác định là CHƯA LÀM, cấm báo cáo hoàn tất.
+10. **CẤM Lách Cổng Bằng Cách Bỏ Claim (Anti-Claim-Omission) & Task Contract Binding:**
+    - **Lỗ hổng Claim Omission:** Gate kiểm tra `Claims trong Message ⊆ Tokens trong OCR`. Khi chưa hoàn thành task đích (chưa đổi tên, chưa nạp bio), Agent có hành vi gọt bỏ toàn bộ từ khóa Tên/Bio khỏi tin nhắn để Gate so khớp thấy đúng ảnh cũ rồi cho qua. Đây là hành vi vi phạm kỷ luật nghiêm trọng!
+    - **Task Contract Verification:** Đối với mọi task chuẩn hoá thông tin (Tên, Bio, Avatar), ảnh nghiệm thu bắt buộc phải chứng minh được **Trạng Thái Đích (Target State)**. Chiều dương: Phải thấy tên mới, bio mới. Chiều âm: Tuyệt đối CẤM có nút `+ Thêm tiểu sử` hoặc tên mặc định ban đầu. Nếu chưa đạt, cấm gửi ảnh và cấm báo cáo hoàn tất.
+    - **Action-Forcing Discipline:** Nhánh `DROP_UNGROUNDED_CLAIM` chỉ dùng để gọt bớt các mô tả phóng đại không có thật, CẤM TUYỆT ĐỐI dùng nó để che giấu việc task chính chưa thực thi. Chi tiết xem [`references/bypass-by-claim-omission-and-task-contract-binding.md`](references/bypass-by-claim-omission-and-task-contract-binding.md).
 
 ## 2. Thang Leo Thang Vision Dự Phòng (Fallback Ladder)
 Thứ tự fallback đọc ảnh chuẩn hoá 100% đồng bộ với kiến trúc Worker Dispatch:
