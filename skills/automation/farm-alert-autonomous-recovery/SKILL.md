@@ -7,7 +7,7 @@ description: >-
 
 # Farm Alert Autonomous Recovery
 
-> Core Refs: `references/omniroute-connection-pin-and-anti-finally-bypass.md`, `references/watchdog-manifest-and-detector-replay.md`, `references/focus-device-issue-cold-start-and-systemui-relaunch-20261020.md`, `references/hard-enforcement-hook-gate-and-winrt-primary-atx-fallback-20261018.md`, `references/feed-watchdog-2am-delayed-report-triage.md`, `references/inspect-machine-terminal-guard-and-socket-hang-handling.md`, `references/canary-receipt-expiry-and-safe-push-pre-commit.md`, `references/recovery-proof-and-operator-closeout.md`, `references/anti-performative-alert-handling-and-immediate-code-fix.md`, `references/batch-alert-upload-hook-post-verification-false-positive-triage.md`, `references/rolling-rename-exit2-splashactivity-triage.md`, `references/strike-3-reviewer-handoff-and-claude-quota-collision.md`.
+> Core Refs: `references/closed-loop-auto-repair-architecture-and-emitter-coalescing.md`, `references/omniroute-connection-pin-and-anti-finally-bypass.md`, `references/watchdog-manifest-and-detector-replay.md`, `references/focus-device-issue-cold-start-and-systemui-relaunch-20261020.md`, `references/canary-receipt-expiry-and-safe-push-pre-commit.md`, `references/recovery-proof-and-operator-closeout.md`, `references/anti-performative-alert-handling-and-immediate-code-fix.md`, `references/batch-alert-upload-hook-post-verification-false-positive-triage.md`, `references/strike-3-reviewer-handoff-and-claude-quota-collision.md`.
 
 ## UI evidence: target screen only
 
