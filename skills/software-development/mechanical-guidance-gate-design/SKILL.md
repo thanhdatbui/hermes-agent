@@ -252,3 +252,4 @@ Use when creating, modifying, or reviewing mechanical enforcement gates (pre-too
 - Action Mandate & Zero-Deadlock Governance: [`references/action-mandate-and-zero-deadlock-governance.md`](references/action-mandate-and-zero-deadlock-governance.md)
 - Positive Contract Verifier & Anti-Paralysis Counter-Balance: [`references/positive-contract-verifier-and-anti-paralysis.md`](references/positive-contract-verifier-and-anti-paralysis.md)
 - Windows Subprocess Execution & Action Mandate Completeness: [`references/windows-subprocess-execution-and-action-mandate-completeness.md`](references/windows-subprocess-execution-and-action-mandate-completeness.md)
+- Ground-Truth Video Content Audit Before Profile Renaming: [`references/ground-truth-video-content-audit-before-renaming.md`](../../automation/tiktok-farm-avatar-operations/references/ground-truth-video-content-audit-before-renaming.md)
