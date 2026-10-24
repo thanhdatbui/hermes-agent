@@ -66,7 +66,11 @@ Use when creating, modifying, or reviewing mechanical enforcement gates (pre-too
   2. `VIOLATION`: Nêu đích danh trường dữ liệu và giá trị sai phạm cụ thể.
   3. `HƯỚNG DẪN KIẾN TRÚC / GUIDANCE`: Giải thích tại sao cấm, nguyên tắc hệ thống và tác hại của hành vi đó.
   4. `REQUIRED_NEXT_ACTION`: Cung cấp sẵn câu lệnh mẫu $O(1)$ copy-paste chạy được ngay ở turn tiếp theo.
-- **Tiêu chuẩn kiểm tra tiếng Việt:** Sử dụng regex đối chiếu nguyên âm có dấu `[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđĐ]`. Nếu text không chứa ký tự nào thuộc tập này $\rightarrow$ DENY ngay lập tức trước khi chạm vào thiết bị.
+- **Tiêu chuẩn kiểm tra tiếng Việt cấp từ (Word-Level Diacritics Ratio Validator):**
+  - **Cấm regex tìm 1 ký tự dấu đơn độc:** Chỉ kiểm tra sự hiện diện của 1 ký tự dấu dễ bị qua mặt bởi chuỗi rác lai tạp như `hello á` hoặc `hello đ`.
+  - **Chuẩn hóa NFC trước:** Bắt buộc `unicodedata.normalize("NFC", text)` trước khi tách từ `re.findall(r"\w+", text)` để các dấu tổ hợp (NFD) gộp lại thành single code point, tránh bị xé nhỏ thành các token 1 chữ cái.
+  - **Kiểm tra tỷ lệ từ có dấu:** Đếm các từ có độ dài $\ge 2$ ký tự chứa dấu tiếng Việt (`_has_vi_accent`). Yêu cầu tối thiểu $\ge 1$ từ có dấu nếu chuỗi có $\le 2$ từ, và $\ge \max(2, \lceil 0.3 \times N \rceil)$ từ có dấu nếu chuỗi có $> 2$ từ.
+  - **Telemetry có cấu trúc:** Bắt buộc ghi nhận event telemetry JSON (`event: validate_vietnamese_accent`, `field`, `valid`, `accented_words`, `needed_words`, `total_words`) để phục vụ quan sát vận hành. Cấm log nguyên văn dữ liệu nhạy cảm.
 
 ### Rule 7: Gate Observability & Telemetry Rollup (Chống Chặn Thầm Lặng / Quên Giám Sát)
 - **Bối cảnh:** Khi hệ thống có nhiều gate cơ học phân tán (GuardGate Invariants, Closeout Gate, Pre-push Hook, Dispatch Floor, Media Vision Gate), các lần chặn hoặc vi phạm thường nằm im trong các file log JSONL (`ledger.jsonl`, `gate_audit.jsonl`, `safe_push_audit.jsonl`, `dispatch.jsonl`). Operator không thể biết nếu không tự tay lục lọi ("lâu lâu mới nhớ phát hiện ra").
