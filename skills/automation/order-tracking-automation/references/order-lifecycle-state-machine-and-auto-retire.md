@@ -61,7 +61,14 @@ Taadaa Phone Farm manages real TikTok Shop merchandise orders placed across farm
 ## Critical Invariants
 
 1. **Terminal Auto-Retire:** Any order whose status matches `TERMINAL_STATUSES` must be ignored unconditionally in subsequent execution cycles. Never poll carriers for already-delivered parcels.
-2. **Pure Script Watchdog (`no_agent: true`):** Never configure order tracking cron jobs as LLM agents. An LLM agent consumes API quota, introduces model latency, and fails loudly with HTTP 503 errors when local proxies (9Router/OmniRoute) face pre-dispatch filter spikes. Deploy watchdogs with `no_agent: true` running deterministic Python that stays completely silent when no state change occurs.
+2. **Pure Script Watchdog (`no_agent: true`) & Anti-Premature Deletion Trap:**
+   - **Never delete active watchdogs on error:** When a watchdog cron job fails with HTTP 503 or proxy timeout (usually because it was misconfigured as an LLM agent), NEVER delete the cron job if active orders remain in transit (`NEED_APP_SYNC` or `ACTIVE_WEB_TRACKING`). Convert it to a zero-token pure script instead.
+   - **Zero LLM Token Bloat:** Never configure order tracking cron jobs as LLM agents (`no_agent: false`). An LLM agent consumes 8k–43k context tokens per run, introduces model latency, and fails loudly with HTTP 503 errors when local proxies (9Router/OmniRoute) face pre-dispatch filter spikes. Deploy watchdogs with `no_agent: true` running deterministic Python that stays completely silent when no state change occurs.
+   - **Hermes Cron Path Requirement:** Hermes cron enforces that `script` must be relative to `~/.hermes/scripts/`. To run scripts from repository locations (e.g. `D:/Taadaa/orders/`):
+     1. Place canonical wrapper in `D:\Taadaa\Hermes\deploy\hermes-home\scripts\<name>.py`.
+     2. Run `python D:/Taadaa/Hermes/deploy/hermes-home/scripts/cron_sync_watchdog.py` to sync to `%LOCALAPPDATA%\hermes\scripts\`.
+     3. Register the cron job with `script="<name>.py"`, `no_agent=True`, and `workdir="D:/Taadaa/orders"`.
+
 3. **UI Boundary Enforcement:**
    - **Native Shell (Account Switcher):** Always use Canonical XML module (`automation_core.tiktok.account_switcher`) to ensure 100% exact handle matching (`@tooanh2604`, `@augustusdant7`).
    - **WebViews / Shop / Detail Screens:** Always use WinRT OCR Primary (`automation_core.ocr` / `ui_extract`) to reliably extract tracking codes and carrier labels from rendered pixels.

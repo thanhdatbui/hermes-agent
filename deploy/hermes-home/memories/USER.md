@@ -4,7 +4,7 @@ Dọn đĩa: safe_recycle.py. Reboot né TFT/War3. Box 1 sát AP 1; S7: anten TR
 §
 Nuôi 4d 3 ca (bỏ 0h). Cấm pause cron/kill tool khác khi kẹt lock, canh xong mới làm. Ava&2FA tới 5h15. Starve 96h.
 §
-Vibe O(1), bực=làm ngay; cấm BLOCKED; Gate DENY=pivot sửa gốc; cấm phá case.
+Vibe O(1), bực=làm ngay; cấm BLOCKED; Gate DENY=pivot sửa gốc; cấm phá case. 100% Gate cơ học (script/code), dẹp prompt; cấm timeout ngắn (<180s). Đã có cơ học thì cấm nhồi prompt/memory.
 §
 Ava/Media: Up thẳng máy; cờ .manual_avatar_locked & Avatar=OK; N máy gửi đủ N MEDIA: riêng; đúng creator.
 §

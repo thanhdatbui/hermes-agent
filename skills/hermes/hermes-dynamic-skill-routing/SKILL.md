@@ -187,6 +187,15 @@ Reviewing 13+ files simultaneously (5 engine files + 8 tests) causes Sol Auditor
   * In `config.yaml`, set `agent.coding_context: focus`.
   * Result: Cuts prompt overhead from >30KB down to ~8.2KB (~2,000 tokens) while preserving 100% skill discoverability (all names stay visible and loadable via `skill_view`).
 
+### 15. Mechanical Gating Invariant vs Soft Prompt Drift (Hard Gate Monopolies)
+- **Problem:** Attempting to enforce agent discipline (worker tiers, planner delegation, quota limits, file access) via soft system prompts leads to drift, hallucination, and prompt-bloat during context compaction.
+- **Rule:** Anything enforced mechanically MUST be eliminated from soft prompts/memory.
+- **Planner Gateway (`dispatch_planner.py`):**
+  * `Sonnet CLI` $\xrightarrow{\ge 85\% \text{ Quota}}$ `Sol Planner (:20129)` $\xrightarrow{\text{Fail / Timeout}}$ `Coordinator Fallback` (exit 100, `[PLANNER_FALLBACK_COORDINATOR]`).
+- **Worker Gateway (`dispatch_worker.py`):**
+  * `Sol Web Worker (:20129)` $\rightarrow$ `Agy CLI` (29 Pro native with `sync_profile_to_wincred`) $\rightarrow$ `Haiku CLI` $\rightarrow$ `Coordinator Fallback` (`[WORKER_FALLBACK_COORDINATOR]`).
+- **Timeout Invariant:** Reasoning models (Sonnet, Sol Web High, Agy CLI Agent) require 20s-45s TTFT. All worker/planner timeouts MUST be set $\ge 180s - 300s$. Never set short timeouts (<60s) which prematurely kill healthy model inference.
+
 ## Closeout Gate Notes
 
 - The 3 new files (`skill_injector.py`, tests) + modified `dispatch_worker.py` together exceed 22KB diff
