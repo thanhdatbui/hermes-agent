@@ -44,3 +44,24 @@ When `resolve_dynamic_account_for_machine(machine, rows)` executes:
 4. **Telemetry & Audit:**
    - Logs `[DYNAMIC_SELECT] machine=<M> tier=<1_boosted|2_jailed|3_youngest> row=<R> user=<U>`.
    - Never fails silently: exception in detector logs warning and falls back to subsequent tier.
+
+---
+
+## 4. Scheduler Bridge Pitfall (`tiktok_runner.py` vs `healing_selector.py`)
+
+- **Bẫy Nghẽn Tầng Scheduler:**
+  Sau khi hoàn tất logic 3 lớp phễu (`row_index = 0`) tại `feed_session_workbook.py` và cho phép `-Row 0` trong `run-feed-session.ps1`, một cạm bẫy thường gặp là **tầng wrapper cron (`tiktok_runner.py`) vẫn chưa chuyển giao sang `row = 0`**.
+- **Cơ chế cũ:**
+  Trong `_SCHEDULE` của `tiktok_runner.py`:
+  - Ngày 3 (cycle_day 2) Ca 3 (18:00 / 20:00): gán `{2: None}`.
+  - Ngày 4 (cycle_day 3) Toàn bộ các ca: gán `{3: None}`.
+  Khi gặp `target_row is None`, script cũ mặc định gọi `determine_healing_row()` từ `tools/healing_selector.py`. Hàm này tính điểm trên quy mô toàn farm và trả về 1 row số duy nhất ($1 \dots 8$), khiến runner truyền `-Row <1..8>` vào PowerShell thay vì `-Row 0`.
+- **Yêu cầu kết nối đồng bộ:**
+  Để kích hoạt đúng thiết kế Dynamic Per-Machine trong các ca dưỡng sinh (Ca 3 Ngày 3 và toàn bộ Ngày 4):
+  `tiktok_runner.py` bắt buộc phải gán `row = 0` cho các slot `None` (hoặc cấu hình `determine_healing_row` trả về `0`), đảm bảo tham số truyền vào PS1 luôn là:
+  `powershell ... -File run-feed-session.ps1 ... -Row 0` -> `--account-row-index 0`.
+- **Kiểm chứng O(1):**
+  Chạy thử `select_feed_session_accounts(workbook, [machine], row_index=0)`:
+  - Nếu máy có nick cắn đề xuất (`is_account_boosted=True`), log phải ghi: `tier=1_boosted`.
+  - Nếu không, máy có nick dính cooldown nhả follow, log ghi: `tier=2_jailed`.
+  - Nếu không, log ghi: `tier=3_youngest` (chọn nick có `video_count` thấp nhất).
