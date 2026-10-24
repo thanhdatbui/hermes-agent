@@ -1,10 +1,37 @@
 # OmniRoute Provider Bulk-Toggle Incident & Cluster 503 Upstream Diagnosis
 
-## 1. Incident Signature & Root Cause
+## 1. Incident Signatures: UI Bulk-Toggle vs Automation Test Isolation Timeout (Dual Causality)
 
 When multiple LLM accounts in a provider pool (e.g. Antigravity Pro accounts in `ag-gemini-pool-3`) suddenly become inactive simultaneously, causing widespread `HTTP 503` upstream failures:
 
-- **Root Cause (UI Master Toggle)**: On the OmniRoute `/dashboard/providers` page, each provider group card (such as the Antigravity IDE / OAuth card rendered by `HighlightableProviderCard`) has a master toggle switch.
+There are TWO distinct mechanisms that produce identical audit log footprints (20–30 simultaneous deactivations from `127.0.0.1`):
+
+### Mechanism A: Automation Shell Timeout in `isolated_chat_test` (CRITICAL ROOT CAUSE)
+- **The Code**: Scripts designed to test a single account in isolation (e.g. `isolated_chat_test` in `vm_rescue_lib.py`) iterate over all active connections, set them `isActive: False`, enable only the target account, and attempt to restore them in a `try...finally` block:
+  ```python
+  active_before = [c["id"] for c in conns if c.get("isActive")]
+  try:
+      for cid in active_before:
+          set_active(cid, False)
+      set_active(connection_id, True)
+      # perform test HTTP call...
+  finally:
+      set_active(connection_id, False)
+      for cid in active_before:
+          set_active(cid, True)
+  ```
+- **The Fatal Flaw (Subprocess Hard-Kill / SIGKILL)**: When an agent or operator runs this script inside a shell/terminal with an execution timeout (e.g. `terminal(timeout=35)`):
+  1. The script deactivates all 30 active accounts via `PUT /api/providers/<id> { isActive: false }`.
+  2. If the upstream provider request stalls or times out (e.g. Google Cloud Code API latency), the outer terminal runner forcibly terminates the process (`exit code 124` / `taskkill /F`).
+  3. **Python's `finally:` block NEVER executes on SIGKILL**.
+  4. The target account or the entire fleet remains permanently trapped in `isActive: False` in the database!
+- **Signature of `isolated_chat_test`**:
+  * First wave (e.g. 08:24:40 `True -> False` followed by 08:25:01 `False -> True`): a successful test run that restored state.
+  * Second wave (e.g. 08:25:30 `True -> False` with NO restore): a second test run that stalled and was killed by timeout, leaving the pool dead.
+  * Recent terminal history contains calls to `isolated_chat_test` or rescue scripts that exited with `code 124`.
+
+### Mechanism B: UI Master Toggle / Touch Collision on `/dashboard/providers`
+- **Root Cause**: On the OmniRoute `/dashboard/providers` page, each provider group card (such as the Antigravity IDE / OAuth card rendered by `HighlightableProviderCard`) has a master toggle switch.
 - **Mechanism**: Toggling this master switch triggers `handleToggleProvider(providerId, toggleAuthType, active)` in `src/app/(dashboard)/dashboard/providers/page.tsx`:
   ```typescript
   const providerConns = connections.filter(matchesToggle);
@@ -21,10 +48,9 @@ When multiple LLM accounts in a provider pool (e.g. Antigravity Pro accounts in 
   This fires parallel `PUT /api/providers/<id>` updates across **all** connections for that provider, flipping 20–30 accounts in under 1 second.
 - **Accidental Trigger / Touch Target Hazard**:
   * In `ProviderCard.tsx`, the entire card is wrapped in `<Link href="/dashboard/providers/${providerId}">`. Inside the card, the master toggle is nested directly in `<div onClick={handleToggle}><Toggle size="xs" checked={!allDisabled} /></div>`.
-  * **Zero Confirmation Modal**: Unlike destructive actions, bulk toggling has no confirmation prompt ("Are you sure you want to deactivate all 28 accounts?").
-  * **Touch/Click Target Collision**: On mobile devices (iOS Safari, Android Chrome) or desktop viewports, when an operator taps or scrolls over the card to view details, touches can easily hit the `size="xs"` toggle hit-box or trigger touch event bubbling.
-  * **Operator Perceptions**: Operators will firmly state *"I never touched or disabled those accounts!"* because they only tapped the card to open it or scrolled past.
-  * **Footprint of Rapid Re-toggling**: Audit log showing accounts toggled `True -> False` at 08:24:40, then `False -> True` at 08:25:01, then `True -> False` at 08:25:30 is the hallmark of touch target confusion / accidental double-taps on mobile. (A similar event was recorded on 2026-10-23 at 14:22:01 where 112 accounts were simultaneously deactivated).
+  * **Zero Confirmation Modal**: Unlike destructive actions, bulk toggling has no confirmation prompt.
+  * **Touch/Click Target Collision**: On mobile devices (iOS Safari, Android Chrome) or desktop viewports, touches can easily hit the `size="xs"` toggle hit-box or trigger touch event bubbling.
+  * **Operator Perceptions**: Operators will firmly state *"I never touched or disabled those accounts!"* — verify whether Mechanism A (subagent/script timeout) occurred in the session before accusing operator touch errors!
 
 ---
 
@@ -54,12 +80,13 @@ conn.close()
 ```
 
 ### Forensic Signatures
-| Signature | Cause |
-|---|---|
-| 20-30 rows within 1-2 seconds, `actor: "admin"`, `changedFields: ["isActive"]`, IP `127.0.0.1` or LAN | **UI Master Toggle on `/dashboard/providers`** |
-| Single row, `action: "provider.credentials.updated"`, IP from specific tool | Targeted script or single card toggle |
-| `testStatus: "expired"`, `lastErrorType: "unrecoverable_refresh_error"` | True OAuth token revocation by Google upstream |
-| `actor: "system"`, `action: "provider.warning"` | Runtime health check / admission error |
+| Signature | Cause | How to Distinguish |
+|---|---|---|
+| 20-30 rows within 1-2s, `actor: "admin"`, `changedFields: ["isActive"]`, IP `127.0.0.1` | **Automation Test Isolation Timeout (`isolated_chat_test`)** | Check recent terminal/session logs for `isolated_chat_test` or rescue scripts that exited with `code 124` (SIGKILL). Script disabled fleet and died before `finally:` ran. |
+| 20-30 rows within 1-2s, `actor: "admin"`, `changedFields: ["isActive"]`, IP LAN/mobile | **UI Master Toggle on `/dashboard/providers`** | Check client IP (e.g. `192.168.110.25`), no terminal test scripts active at that timestamp. Accidental touch/tap on card toggle. |
+| Single row, `action: "provider.credentials.updated"`, IP from specific tool | Targeted script or single card toggle | Normal per-account toggle |
+| `testStatus: "expired"`, `lastErrorType: "unrecoverable_refresh_error"` | True OAuth token revocation by Google upstream | Upstream token revoked, needs re-auth |
+| `actor: "system"`, `action: "provider.warning"` | Runtime health check / admission error | Internal proxy warning |
 
 ---
 
