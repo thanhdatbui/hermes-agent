@@ -32,6 +32,16 @@ Khi rơi vào ca/ngày dưỡng sinh, `resolve_shift_pool_account` raise `ValueE
 - **Lưu vết:** `record_shift_session_account(machine, row, ca, today_date)` ghi nhận vào `today_shift_sessions[ca][machine] = row`.
 - **Đồng bộ Dưỡng Sinh:** Khi Phiên 1 rơi vào nhánh 3 phễu, `feed_session_workbook.py` BẮT BUỘC gọi `record_shift_session_account` ngay khi chọn được nick. Phiên 2 chỉ đọc lại vết này mà không tính lại phễu, chống việc cooldown thay đổi giữa 2 phiên làm lệch nick.
 - **Thứ tự kiểm tra Fallback (Crucial Pitfall):** Trong `resolve_shift_pool_account`, điều kiện fallback `cycle_day == 3 or (cycle_day == 2 and ca == 3)` PHẢI ĐẶT TRƯỚC `if machine_key in today_sessions` ở Session 1. Nếu đặt sau, Session 1 của ngày dưỡng sinh có nguy cơ đọc trúng bản ghi cũ từ pool thay vì kích hoạt 3 phễu.
+- **Tách bạch Session 2 vs Fallback:**
+  * Session 2 LUÔN LUÔN đọc từ `today_sessions[ca_key][machine_key]`. Nếu tìm thấy: log `[SHIFT_POOL_SELECT] ... source=session1_sync` và return ngay. Nếu thiếu: log `[SHIFT_POOL_SYNC_ERROR]` và raise `ValueError`.
+  * Khối Fallback chỉ áp dụng cho Session 1: khi thỏa mãn điều kiện fallback, log `[SHIFT_POOL_FALLBACK_TRIGGER]` và raise `ValueError` để chuyển sang 3 phễu.
+- **Hệ Thống Structured Telemetry Logging:**
+  * `[SHIFT_POOL_SELECT]` kèm các nguồn: `source=session1_sync`, `source=today_cache`, `source=pool_rotation`.
+  * `[SHIFT_POOL_FALLBACK_TRIGGER]`: Ghi nhận máy, ca, ngày chu kỳ khi kích hoạt 3 phễu.
+  * `[SHIFT_POOL_EXHAUSTED]`: Cảnh báo khi hết nick khả dụng trong pool.
+  * `[DYNAMIC_SESSION_SYNC]` & `[DYNAMIC_SESSION_SYNC_ERR]`: Ghi nhận đồng bộ phiên dưỡng sinh trong `feed_session_workbook.py`.
+  * Thu hẹp ngoại lệ: Chỉ bắt `(ValueError, KeyError)` khi gọi `resolve_shift_pool_account` thay vì bắt broad `Exception`.
+  * Kiểm thử bắt log: Dùng fixture `caplog` với `caplog.at_level(logging.INFO)` để assert bắt đúng chuỗi telemetry trong unit test.
 
 ---
 

@@ -4,7 +4,7 @@ Dọn đĩa: safe_recycle.py; chơi cả LoL/TFT Live & PBE ở Kibe (C:) & Admi
 §
 Nuôi 4d 3 ca (bỏ 0h): Base 11/10/26 theo Shift Pool (Ca 1 {1,2,7}, Ca 2 {3,4,8}, Ca 3 {5,6}, D3 DS). Cấm bịa Ca 4 đêm. Kẹt lock: chờ, cấm kill. Ava/2FA tới 5h15. Starve 108h.
 §
-Vibe O(1), bực=làm ngay; cấm BLOCKED/khóc lóc/phân trần/đóng băng; cấm sửa ngược case cũ (flip-flop); Gate DENY=pivot sửa gốc; worker sàn 300s; 8 Gate cơ giới hoá + Watchdog 6h; Claude: chạy thật, max-turns>=15.
+Vibe O(1), bực=làm ngay; cấm BLOCKED/khóc lóc; Gate DENY=pivot sửa gốc. Cấm báo xong khi tree dirty/chưa qua gate; cấm tiện tay gọi Sonnet sửa code vặt. Worker timeout sàn 300s cấm hạ. Claude max-turns>=15, né dirty git.
 §
 Gemini/GPM: CDP, 2 pool OmniRoute+AGY, proxy 1:1 S7. Preflight sniper: GPM live, link TTL 5ph.
 §
