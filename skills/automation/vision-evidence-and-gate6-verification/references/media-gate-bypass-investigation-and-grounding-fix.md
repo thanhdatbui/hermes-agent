@@ -75,3 +75,32 @@ Claude Sonnet và Operator đã thống nhất bộ 3 nguyên tắc chống khó
        (B) RUN_COMMAND: python D:/Taadaa/tools/run_winrt_ocr.py "<duong_dan_anh>"
      FORBIDDEN_OUTPUT: xin loi, giai thich, phan tich nguyen nhan, hoac ket thuc luot ma khong thuc hien (A) hoac (B).
      ```
+
+---
+
+## 4. Nghiệm thu thi công & Thẩm định độc lập từ Claude Sonnet (APPROVED)
+- **Files thi công:**
+  1. `D:/Taadaa/tools/guard_media_vision_gate.py`:
+     - Nhận diện `VALID_OCR_STATUSES = {"OK", "OK_EMPTY"}`.
+     - Hàm `create_vision_receipt` gán `OK_EMPTY` khi ảnh không có text (giải phóng ảnh avatar).
+     - Bổ sung regex fuzzy `TEXT_CLAIM_RULES`: `\b(?:d[a]g?\s*(?:1m|im|ghim)|ghim|pinned?)\b` đối soát chuẩn xác các biến thể méo font WinRT OCR (`Däg 1m`, `Dä ghim`, `Đã ghim`, `Pinned`).
+     - Tích hợp `REQUIRED_NEXT_ACTION` Action-Forcing FSM: khi chặn, in ra rõ lệnh (a) `DROP_UNGROUNDED_CLAIM` hoặc (b) `RECAPTURE_EVIDENCE`.
+     - Vô hiệu hóa `--register-receipt` CLI gõ tay; bảo vệ fail-closed bắt sạch `(JSONDecodeError, ValueError)` và non-ASCII signature.
+  2. `D:/Taadaa/tools/run_winrt_ocr.py`:
+     - Tự động bóc tách text và cấp receipt có chữ ký (`tool_called = "run_winrt_ocr"`).
+     - Thêm `timeout=30` bắt `TimeoutExpired` (`status = "TIMEOUT"`). Thoát exit 1 khi OCR không đạt.
+- **Kết quả kiểm thử:**
+  - `pytest tests/test_guard_media_vision_gate.py`: **90 / 90 tests PASSED 100%** (bao gồm 5 tests mới kiểm thử corrupt bytes, non-ascii signature, ungrounded pin, fuzzy pin và ok_empty avatar).
+- **Thẩm định độc lập:**
+  - Claude Sonnet (Principal Architect) đã review lại toàn bộ code và chính thức cấp **Verdict: APPROVED**.
+
+---
+
+## 5. Thứ tự phân tầng Reviewer trên Taadaa Farm
+1. **Kịch bản Thẩm Định Chốt Phiên (Closeout Gate):**
+   - **Tier 1 (First-Responder Monopoly):** Sol High (`:20129` qua `sol_repair.py`) — độc quyền chấm điểm và tạo patch proposal O(1) cho Strike 1 & 2.
+   - **Tier 2 (Worker Fallback):** Worker Gateway (Agy CLI / Claude Haiku qua `dispatch_worker.py`) khi Sol Repair timeout/crash.
+   - **Tier 3 (Strike 3 Hand-off):** Claude Sonnet CLI (`claude_worker.py --role reviewer`) tiếp quản khi trượt 3 lần liên tiếp.
+2. **Kịch bản Tư Vấn & Review On-Demand:**
+   - **Tier 1 (Fast & Free):** Sol Advisor (`consult_advisor.py -q "..."` qua `:20129`) — 100% on-demand cho farm logic, an toàn thiết bị và chống over-engineering.
+   - **Tier 2 (Deep Architecture Audit):** Claude Sonnet Reviewer (`claude -p` / `claude_worker.py --role reviewer`) — cho các ca hóc búa, forensic sự cố hệ thống và audit bảo mật (tuân thủ quota 5h < 85%).

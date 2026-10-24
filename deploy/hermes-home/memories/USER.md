@@ -1,6 +1,6 @@
 Bio: CẤM TRÙNG; 100% TV có dấu. Tên TikTok: họ tên thật, cấm hậu tố rác; khóa tay.
 §
-Dọn đĩa: safe_recycle.py. Reboot né TFT/War3. Box 1 sát AP 1; S7: anten TRÁI. Tự tra script, fix & canary; cấm quấy rầy máy nghỉ.
+Dọn đĩa: safe_recycle.py; CẤM xóa folder game (LoL/TFT/War3). Reboot né TFT/War3.
 §
 Nuôi 4d 3 ca (bỏ 0h): Base 11/10/26 theo Shift Pool (Ca 1 {1,2,7}, Ca 2 {3,4,8}, Ca 3 {5,6}, D3 DS). Cấm bịa Ca 4 đêm. Kẹt lock: chờ, cấm kill. Ava/2FA tới 5h15. Starve 108h.
 §
