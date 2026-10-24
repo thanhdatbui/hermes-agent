@@ -34,3 +34,18 @@
 ### 3.3. Phòng chống va chạm lịch nuôi acc (Active Feed Session Check)
 - Trước khi kích hoạt bất kỳ lệnh canary hay batch live nào trên thiết bị: BẮT BUỘC kiểm tra tiến trình `run_tiktok.py --mode multi-machine-feed-session`.
 - Nếu ca nuôi (Feed + Upload Hook) đang chạy trên dải máy đó: **TUYỆT ĐỐI CẤM** can thiệp, cấm kill process, cấm force-preempt lock. Báo cáo rõ máy đang trong phiên nuôi chính và chờ nhả máy an toàn.
+
+## 4. Các cạm bẫy thực thi Remote Node Admin-PC & CLI Encoding
+
+### 4.1. Lệch môi trường Python trên Admin-PC (`automation_core`)
+- Lệnh `python` mặc định trong PATH của Admin-PC trỏ về `Python311\python.exe` (không cài `automation_core`), gọi trực tiếp sẽ văng `ModuleNotFoundError: No module named 'automation_core'`.
+- **Quy chuẩn:** BẮT BUỘC dùng đúng `D:\Taadaa\python-envs\automation\Scripts\python.exe` hoặc nạp `PYTHONPATH`:
+  `$env:PYTHONPATH="D:\Taadaa\automation-core\src;D:\Taadaa\tiktok-add-bao-mat-f2a\python_runner"`
+
+### 4.2. Tránh truyền tham số có dấu tiếng Việt qua SSH Windows (`--workbook-sheet`)
+- Khi gọi qua SSH / cmd.exe / PowerShell, chuỗi `"Tài Khoản"` bị lỗi bảng mã ANSI thành `"Ti Kho?n"`.
+- Vì `run_batch_live_2fa.py` đã mặc định `--workbook-sheet` là `"Tài Khoản"` và có fuzzy resolver, **tốt nhất bỏ qua tham số `--workbook-sheet`** khi gọi từ CLI để tránh lỗi encoding.
+
+### 4.3. Kỷ luật đồng bộ code 2 node (Kibe ➔ Admin-PC)
+- Code sửa ở `D:/Taadaa/Hotmail` trên Kibe không tự chạy trên Admin-PC.
+- Sửa xong BẮT BUỘC copy file sang `D:/OneDrive/TaadaaData/admin/` và kích hoạt script `copy_to_admin.py` trên Admin-PC trước khi chạy batch hoặc canary, tránh trường hợp runner Admin chạy code cũ nuốt lỗi âm thầm.
