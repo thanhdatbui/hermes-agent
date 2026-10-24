@@ -1,10 +1,10 @@
-Bio: CẤM TRÙNG; 100% TV có dấu. Tên TikTok: họ tên thật, CẤM hậu tố rác (Sữa/Chanh/Heo/Cún); khóa tay.
+Bio: CẤM TRÙNG; 100% TV có dấu. Tên TikTok: họ tên thật, cấm hậu tố rác; khóa tay.
 §
 Dọn đĩa: safe_recycle.py. Reboot né TFT/War3. Box 1 sát AP 1; S7: anten TRÁI. Tự tra script, fix & canary; cấm quấy rầy máy nghỉ.
 §
-Nuôi 4d 3 ca (bỏ 0h). Cấm pause cron/kill tool khác khi kẹt lock, canh xong mới làm. Ava&2FA tới 5h15. Starve 96h.
+Nuôi 4d 3 ca (bỏ 0h): Base 11/10/26 (D0:R1,3,5 | D1:R2,4,6 | D2:R7,8,DS | D3:DS). Cấm bịa Ca 4 đêm. Kẹt lock: chờ, cấm kill. Ava/2FA tới 5h15. Starve 108h.
 §
-Vibe O(1), bực=làm ngay; cấm BLOCKED; Gate DENY=pivot sửa gốc; cấm phá case. 100% Gate cơ học. Report=ĐIỀU TRA O(1), cấm giải thích. Claude: max-turns>=15, né dirty git, cấm bịa output.
+Vibe O(1), bực=làm ngay; cấm BLOCKED; Gate DENY=pivot sửa gốc; cấm phá case. Gate cơ học. Report=ĐIỀU TRA O(1). Claude: max-turns>=15, né dirty git, cấm bịa output.
 §
 Ava/Media: Up thẳng máy; cờ .manual_avatar_locked & Avatar=OK; N máy gửi đủ N MEDIA: riêng; đúng creator.
 §
