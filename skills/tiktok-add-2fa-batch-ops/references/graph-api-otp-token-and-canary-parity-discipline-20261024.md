@@ -71,7 +71,27 @@
   Ngay cả khi terminal foreground timeout, tiến trình trên Admin-PC vẫn tiếp tục chạy độc lập đến khi hoàn tất và ghi toàn bộ `STDOUT`, `STDERR`, `EXIT_CODE` vào `result.txt`.
 - **Cảnh báo Windows FD:** Trên Windows, `subprocess.Popen` nếu đặt `close_fds=True` sẽ chặn kế thừa file descriptor mở qua Python, làm mất output hoặc kết thúc tiến trình con sớm. Phải mở file unbuffered/append và không đóng handle khi Popen chưa xong.
 
-## 5. Kỷ luật ứng xử với User: Hành động trước, chứng minh bằng dữ liệu
+## 5. Bẫy kiểm chứng Form Thay đổi Mật khẩu & Va chạm Mật khẩu cũ (Password Collision & Toast Check)
+
+### 5.1. Triệu chứng & Nguyên nhân
+- Khi tài khoản chuyển sang nhánh màn hình **"Thay đổi mật khẩu"**, runner sinh mật khẩu ngẫu nhiên, gõ vào trường `EditText` và bấm nút **"Tiếp tục"**.
+- Nếu mật khẩu vừa sinh vô tình trùng với mật khẩu cũ của tài khoản, TikTok từ chối lưu và hiện toast cảnh báo màu đỏ:
+  `"Mật khẩu mới không thể giống mật khẩu cũ"` (hoặc `"New password cannot be the same as old password"`).
+- **Lỗ hổng logic cũ:** Hàm `_complete_password_setup` chỉ `_wait_for` kiểm tra không có chữ `"tạo mật khẩu"` / `"create password"`. Vì tiêu đề màn hình là `"Thay đổi mật khẩu"`, điều kiện này thỏa mãn ngay lập tức, khiến runner tưởng đã lưu thành công và gọi callback ghi pass vào Excel trong khi mật khẩu chưa hề được TikTok cập nhật!
+
+### 5.2. Giải pháp cơ giới hóa bất biến
+1. **Bắt buộc kiểm chứng Toast thành công:**
+   - Sau khi bấm "Tiếp tục", TikTok hiển thị toast xác nhận màu đen:
+     `"Mật khẩu đã được thay đổi"` (hoặc `"Password has been changed"`).
+   - Form đổi mật khẩu phải tự đóng và chuyển về màn hình `Tài khoản` (`com.ss.android.ugc.trill:id/yvg`).
+2. **Xử lý va chạm mật khẩu cũ (Collision Handling):**
+   - Nếu xuất hiện chuỗi `"không thể giống mật khẩu cũ"` hoặc `"cannot be the same"`:
+     + Coi là submit thất bại.
+     + Nhấn nút "Xóa văn bản" (`x`) trên trường EditText.
+     + Sinh mật khẩu mới với biến thể salt khác biệt (đảm bảo đủ 8-20 ký tự, hoa, thường, số, ký tự đặc biệt `@#!?`).
+     + Nhập lại và bấm Submit lần 2.
+
+## 6. Kỷ luật ứng xử với User: Hành động trước, chứng minh bằng dữ liệu
 - Khi phát hiện trục trặc hoặc kẹt máy: **TUYỆT ĐỐI CẤM** trả lời bằng những đoạn văn dài phân trần, giải thích hay than thở khiến User bức xúc ("sao cứ khóc lóc mệt thế").
 - **Kỷ luật chuẩn:**
   1. Kiểm tra trạng thái máy qua ADB (`inspect_machine.py`) ngay lập tức.
