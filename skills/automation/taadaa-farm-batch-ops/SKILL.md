@@ -23,8 +23,8 @@ tags: [tiktok, farm, batch, render, upload, resume, kibe]
   `python C:/Users/Admin/run_admin_downloader_service.py` (launcher headless: `python C:/Users/Admin/launch_detached_admin_downloader.py`). Log: `D:/CodexRuntime/tiktok-video-machine2/download_admin_p10.log`.
 - **Render Worker Chuẩn Mapping 8 Tik trên Admin (1 Worker tuần tự chống nghẽn GPU):**
   `python C:/Users/Admin/run_admin_render_worker.py` (launcher headless: `python C:/Users/Admin/launch_detached_admin_render.py`). Log: `C:/Users/Admin/admin_render_worker.log`.
-- **Tra cứu máy N O(1):**
-  `python D:/Taadaa/tools/inspect_machine.py <N>`
+- **Tra cứu máy N O(1) & Fastpath Batch Triage:**
+  `python D:/Taadaa/tools/inspect_machine.py <N>` (tra cứu máy đơn lẻ). Khi nhận alert batch nhiều máy lỗi: BẮT BUỘC chạy `python D:/Taadaa/tools/inspect_machine.py` (không tham số) để dump snapshot attached toàn dàn <2s, đối soát nhanh thiết bị rớt USB / offline trước khi gọi inspect từng máy, chống timeout ADB daemon. Chi tiết xem [`references/dual-cluster-batch-triage-fastpath.md`](references/dual-cluster-batch-triage-fastpath.md).
 - **Chẩn đoán Nhanh Admin Dừng Down / Dừng Render O(1):**
   Đọc `D:\OneDrive\TaadaaData\admin\last_render_stats.json` thay vì gọi SSH. Phân biệt: (1) Render dừng do đã vét hết nguồn $\ge 30$ clip (Tik6..Tik8 thiếu raw); (2) Downloader dừng do chạy hết pass và/hoặc bị ngắt bởi ca reboot 05:20/11:20/17:20 dừng ở Windows Lock Screen (do Task Scheduler kẹt `LogonType: Interactive` hoặc Startup VBS không kích hoạt khi chưa login console).
 - **Quy Tắc Cô Lập Tác Vụ Thiết Bị vs Tác Vụ PC Media (INVARIANT: CẤM ĐỔ LỖI 2FA CHO DOWNLOAD):**
@@ -51,6 +51,7 @@ tags: [tiktok, farm, batch, render, upload, resume, kibe]
   Khi cần kích hoạt render: `python D:/Taadaa/tools/admin_ssh.py "python C:/Users/Admin/launch_detached_admin_render.py"`.
 
 ## 4. Danh Mục Tham Khảo Chi Tiết
+- Fastpath triage batch alert 2 cụm Kibe & Admin: [`references/dual-cluster-batch-triage-fastpath.md`](references/dual-cluster-batch-triage-fastpath.md)
 - In-Flight Game Guard & Auto-Pause khi chơi War3/TFT trên Admin: [`references/admin-render-in-flight-game-guard-and-auto-pause.md`](references/admin-render-in-flight-game-guard-and-auto-pause.md)
 - Bẫy SYSTEM Task Scheduler, thiếu PATH FFmpeg & nghiệm thu End-to-End: [`references/admin-task-scheduler-system-path-ffmpeg-and-multiloop-triage.md`](references/admin-task-scheduler-system-path-ffmpeg-and-multiloop-triage.md)
 - Chuẩn hóa watchdog upload & sửa script thay vì ghi memory: [`references/stale-upload-cadence-threshold-and-script-first-discipline.md`](references/stale-upload-cadence-threshold-and-script-first-discipline.md)

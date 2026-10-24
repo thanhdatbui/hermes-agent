@@ -13,11 +13,13 @@ metadata:
 Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visual Evidence trên Taadaa Farm.
 
 - Chi tiết SOP đầy đủ: [`references/vision-down-fail-closed-and-claude-cli-fallback-sop.md`](references/vision-down-fail-closed-and-claude-cli-fallback-sop.md)
+- Đăng ký Receipt Media Gate & xử lý chặn clarify: [`references/media-gate-receipt-registration-and-clarify-lockout.md`](references/media-gate-receipt-registration-and-clarify-lockout.md)
 
 ## 1. Nguyên Tắc Cốt Lõi (Invariants)
 1. **CẤM gửi ảnh mù / đối phó:** Trước khi đính kèm bất kỳ thẻ `MEDIA:<path>` nào, bắt buộc phải mở ảnh ra soi mắt kiểm tra trước.
 2. **CẤM hạ cấp bằng chứng sang OCR text thô:** Text OCR chỉ dùng để hỗ trợ tọa độ/phân loại sơ bộ, KHÔNG thay thế được Vision để chứng minh giao diện. Khi tool Vision chết (503/Quota 429), CẤM dùng OCR text để báo cáo hoàn thành.
 3. **Fail-Closed khi Vision Tool gặp sự cố:** Nếu `browser_vision` hoặc `ag_cli.py` bị lỗi 503 / 429, bước hiện tại BẮT BUỘC giữ trạng thái `UNVERIFIED / BLOCKED_VISION_UNAVAILABLE`.
+4. **Cơ chế Hook HMAC-SHA256 Media Gate (`guard_media_vision_gate.py`):** Mọi ảnh `MEDIA:<path>` gửi qua Telegram bắt buộc phải có receipt hợp lệ (TTL <= 300s, ký bằng sha256 và mtime). Đăng ký receipt bằng lệnh `python D:/Taadaa/tools/guard_media_vision_gate.py --register-receipt "<path>" --ocr "<tokens>"` trước khi xuất thẻ `MEDIA:`. Khi Hand-off Lock Active (`handoff_lock_active.json`), công cụ `clarify` bị chặn tự động — Coordinator phải trình bày các phương án đề xuất trực tiếp trên chat thay vì gọi `clarify`.
 
 ## 2. Thang Leo Thang Vision Dự Phòng (Fallback Ladder)
 1. **Kênh 1 (Claude Worker Reviewer):** Chạy `python D:/Taadaa/tools/claude_worker.py --role reviewer --timeout 300 "<prompt kiểm tra ảnh>"`. Claude CLI chạy bằng Anthropic API độc lập, có native vision đọc ảnh trực tiếp.
