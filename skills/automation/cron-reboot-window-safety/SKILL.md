@@ -48,6 +48,7 @@ For a small targeted fix, constrain the edit to the existing safe-window functio
 
 ## References
 
+- `references/watchdog-anti-spam-and-no-evidence-discipline.md` — Anti-spam discipline: ban `cronjob run` on live channels, and collapse `NO_EVIDENCE` periodic reports to 1 line or silence.
 - `references/reboot-preflight-retry-and-10m-cutoff-protocol.md` — 5-minute preflight retry cadence, sentinel idempotency, and 10-minute session deadline cutoff.
 - `references/reboot-blackout-guard-and-all-day-cron.md` — validated window math, evidence checklist, and common collision pitfalls.
 - `references/reboot-session-preservation-and-anti-silent-drop.md` — 60m lookback window, assistant-last tool activity detection, and anti-confabulation testing rules.

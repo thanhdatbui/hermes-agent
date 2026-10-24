@@ -103,6 +103,15 @@
      ```
    - Sau đó `on_password_created(self.account_password)` được kích hoạt để ghi nhận ngay vào workbook.
 
+### 5.3. Kỷ luật lưu trữ quy tắc logic: Lưu ở tầng Script, cấm đẩy vào Persistent Memory
+- **Chỉ thị của User (24/10/2026):** Mọi logic xử lý nghiệp vụ TikTok (như bắt thông báo trùng mật khẩu cũ, định danh writer lock, timeout) BẮT BUỘC phải cài đặt cơ giới hóa bằng code trong runner (`live_phase_b_adapter.py`, `run_batch_live_2fa.py`), TUYỆT ĐỐI KHÔNG lưu tạm bợ vào Persistent Memory (`memory`).
+- Persistent Memory chỉ dành cho thông tin định danh/sở thích của User; đẩy code rules vào memory sẽ làm context bloat và không tự động hoá được cho các worker khác.
+
+### 5.4. Giải thích hiện tượng lệch pha dữ liệu (Data Drift: Excel trống nhưng TikTok có pass)
+- **Bản chất:** Các nick Admin được đăng ký qua OTP Email không tạo pass, nên trong Excel ban đầu là `None`.
+- Khi runner chạy canary hoặc batch: Nếu TikTok đã đổi pass thành công ở bước Submit, nhưng runner bị crash/lỗi ở bước ghi workbook (ví dụ thiếu writer lock `TIKTOK_ADD_WRITER_ID`), cột PASS trong Excel vẫn là `None` trong khi TikTok đã đổi sang pass mới.
+- Khi người vận hành hoặc phiên chạy sau nhập lại chính chuỗi đó, TikTok sẽ bắn lỗi *"Mật khẩu mới không thể giống mật khẩu cũ"*. Lúc này cơ chế ở 5.2 sẽ tự động nhận diện pass đó là pass sống của nick và cứu hộ ghi đè ngay vào Excel.
+
 ## 6. Kỷ luật ứng xử với User: Hành động trước, chứng minh bằng dữ liệu
 - Khi phát hiện trục trặc hoặc kẹt máy: **TUYỆT ĐỐI CẤM** trả lời bằng những đoạn văn dài phân trần, giải thích hay than thở khiến User bức xúc ("sao cứ khóc lóc mệt thế").
 - **Kỷ luật chuẩn:**
