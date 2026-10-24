@@ -38,10 +38,18 @@ _ADVISOR_EXPLICIT_TRIGGERS = (
 
   {"isActive": true, "testStatus": "active"}
   ```
-- **ChatGPT Account Deactivation vs. Gmail Liveness**:
+- **ChatGPT Account Deactivation vs. Gmail Liveness & Automated Purge Invariant**:
   Khi tài khoản ChatGPT-Web báo lỗi `ChatGPT session expired — log into chatgpt.com and copy a fresh cookie`:
   * Tuyệt đối không phán đoán bừa rằng Gmail bị DIE. Phải kiểm tra độc lập qua `checkmail.live` và đăng nhập Google Account.
-  * Nếu Google đăng nhập thành công nhưng khi Google SSO vào ChatGPT bị báo `Lỗi xác thực: account_deactivated` ("Bạn không còn tài khoản vì tài khoản đã xóa hoặc vô hiệu hóa"), điều này khẳng định Gmail hoàn toàn LIVE nhưng tài khoản dịch vụ ChatGPT đã bị OpenAI trảm. Không tiếp tục giải Captcha hay ép login lại tốn tài nguyên; đánh dấu loại khỏi pool ChatGPT và thay thế bằng tài khoản khác.
+  * Nếu Google đăng nhập thành công nhưng khi Google SSO vào ChatGPT bị báo `Lỗi xác thực: account_deactivated` ("Bạn không còn tài khoản vì tài khoản đã xóa hoặc vô hiệu hóa"), điều này khẳng định Gmail hoàn toàn LIVE nhưng tài khoản dịch vụ ChatGPT đã bị OpenAI trảm. Không tiếp tục giải Captcha hay ép login lại tốn tài nguyên.
+  * **Kỷ luật Loại Trừ Bắt Buộc (Automated Purge Invariant)**: Tài khoản đã bị OpenAI ban thật sự BẮT BUỘC phải được loại trừ triệt để ngay lập tức:
+    1. Gọi REST API xóa khỏi OmniRoute: `DELETE http://127.0.0.1:20129/api/providers/{cid}` và xóa khỏi database SQLite.
+    2. **Bảo toàn Provider Khác (Selective Provider Guard)**: Chỉ xóa connection có `provider == 'chatgpt-web'`. TUYỆT ĐỐI KHÔNG xóa nhầm connection `antigravity` của cùng email đó vì phiên Google/Antigravity vẫn đang LIVE 100%.
+    3. **Loại khỏi Telemetry Alert**: Sau khi purge, gỡ bỏ tài khoản khỏi danh sách `failed_chatgpt` / `all_failed` để triệt tiêu hoàn toàn việc watchdog spam danh sách "Cần chú ý" lên Telegram ở các chu kỳ sau.
+- **reCAPTCHA Enterprise Audio Solver & Detached Frame Pitfall**:
+  Khi tự động hóa đăng nhập Google trong GPM gặp thử thách reCAPTCHA Enterprise:
+  * Sử dụng phương pháp giải âm thanh `solve_recaptcha_audio` qua `speech_recognition` và `pydub`.
+  * **Pitfall**: Sau khi click nút `#recaptcha-audio-button`, frame challenge của Google có thể reload/navigate khiến biến `bframe` cũ bị detached (`Locator.count: Frame was detached`). BẮT BUỘC phải re-acquire lại `bframe` từ `page.frames` ngay sau khi click trước khi truy vấn selector `#audio-source`.
 - **OmniRoute HTTP SSE Streaming Invariant (`stream=True`)**:
   Khi gửi prompt cho `gpt-web-sol` hoặc `chatgpt-web/gpt-5.6-sol-high` qua OmniRoute (`http://127.0.0.1:20129/v1/chat/completions`):
   * **CẤM DÙNG `stream: false`**: Chế độ non-streaming chờ toàn bộ payload từ CDP ngầm, gây nghẽn buffer và dẫn tới timeout (> 60s/120s) làm sập lệnh thẩm định của Coordinator / Closeout Gate.
