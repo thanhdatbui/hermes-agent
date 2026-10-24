@@ -4,7 +4,7 @@ Dọn đĩa: safe_recycle.py. Reboot né TFT/War3. Box 1 sát AP 1; S7: anten TR
 §
 Nuôi 4d 3 ca (bỏ 0h): Base 11/10/26 theo Shift Pool (Ca 1 {1,2,7}, Ca 2 {3,4,8}, Ca 3 {5,6}, D3 DS). Cấm bịa Ca 4 đêm. Kẹt lock: chờ, cấm kill. Ava/2FA tới 5h15. Starve 108h.
 §
-Vibe O(1), bực=làm ngay; cấm BLOCKED/khóc lóc/phân trần; Gate DENY=action-forcing pivot sửa gốc. Report=ĐIỀU TRA O(1). Claude: max-turns>=15, né dirty git. Ghim: ảnh bắt buộc thấy rõ profile & nhãn đỏ 'Đã ghim'; cấm tự mint receipt rỗng lách Gate.
+Vibe O(1), bực=làm ngay; cấm BLOCKED/khóc lóc/phân trần; cấm sửa ngược case cũ giữa các session (flip-flop); Gate DENY=pivot sửa gốc; worker timeout sàn 300s; Claude: chạy thật, max-turns>=15, né dirty git.
 §
 Gemini/GPM: CDP, 2 pool OmniRoute+AGY, proxy 1:1 S7. Preflight sniper: GPM live, link TTL 5ph.
 §

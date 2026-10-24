@@ -52,3 +52,25 @@ _ADVISOR_EXPLICIT_TRIGGERS = (
   * **Fallback:** Sử dụng `python D:/Taadaa/tools/dispatch_worker.py` (hoặc `claude_worker.py` / `haiku_worker.py`).
   * Coordinator giữ vai trò nghiệm thu O(1) qua focused test và canary thực tế; cấm spawn subagent mò mẫm file.
 
+## Phân Tầng Reviewer & Kỷ Luật Quota Guard (Reviewer Hierarchy)
+Trong hệ thống Taadaa Farm, vai trò Reviewer được phân định rạch ròi theo 2 kịch bản:
+
+### 1. Kịch bản A: Thẩm Định Chốt Phiên (Closeout Gate Pipeline)
+- **Tier 1 (Độc quyền xử lý đầu tiên — First-Responder Monopoly):** Sol High (`:20129` qua `sol_repair.py`). Khi Reviewer chấm điểm trượt (Strike 1 & Strike 2), Sol High độc quyền tạo bản vá O(1) <= 30 dòng. Cấm tự ý dispatch Worker mò mẫm khi Sol chưa hỏng.
+- **Tier 2 (Fallback tự động):** Worker Gateway (`dispatch_worker.py` điều phối Agy CLI / Claude Haiku). Chỉ kích hoạt khi Sol Repair exit != 0, crash, timeout hoặc diff > 30 dòng.
+- **Tier 3 (Strike 3 Hand-off):** Claude CLI (`claude_worker.py --role reviewer` / Claude Sonnet). Nếu trượt 3 lần liên tiếp trên cùng scope_hash, toàn bộ hệ thống dừng lại và chuyển giao quyền can thiệp cho Claude Sonnet.
+
+### 2. Kịch bản B: Tư Vấn & Review Kỹ Thuật Khi Đang Chạy (On-Demand Reviewer)
+- **Tier 1 (Ưu tiên số 1): Sol Advisor (`:20129` qua `consult_advisor.py`):**
+  * 100% On-Demand, miễn phí token, phản hồi siêu tốc (< 35s), nắm vững bối cảnh và quy chuẩn an toàn Farm.
+  * Khi User yêu cầu review nhanh hoặc khi Claude gặp sự cố quota: Gọi Sol Advisor là phương án mặc định.
+- **Tier 2 (Thẩm định chuyên sâu): Claude CLI Reviewer (`claude_worker.py --role reviewer`):**
+  * Sử dụng Claude Sonnet chạy read-only (`--disallowedTools Edit,Write,NotebookEdit`), turns cap 10-20.
+  * Phục vụ các ca audit bảo mật, forensic lỗi sâu và thiết kế kiến trúc phức tạp.
+
+### 3. Kỷ Luật Xử Lý Khi Claude Quota Guard Chặn (Exit 20 / 22)
+- Khi Quota 5 giờ >= 85% hoặc Quota tuần >= 90%, `claude_quota_guard.py` sẽ lập tức chặn lệnh gọi Claude CLI.
+- **CẤM TỰ VƯỢT RÀO:** Guard đã cài đặt cơ chế chống Agent tự bypass (chặn automated caller dùng `--force-claude`, `--user-approved`, env `CLAUDE_USER_APPROVED=1` hay lệnh `allow`). Chỉ User là con người mới có quyền mở khóa.
+- **Quy tắc chuyển hướng O(1) (Clean Pivot):** Khi gặp `CLAUDE_QUOTA_GUARD_BLOCKED`, Coordinator CẤM vòng vo thử lại hoặc cố vượt rào; BẮT BUỘC chuyển hướng ngay lập tức sang **Sol Advisor (:20129)** để hoàn thành việc review/tư vấn mà không làm gián đoạn tiến độ phiên làm việc!
+
+

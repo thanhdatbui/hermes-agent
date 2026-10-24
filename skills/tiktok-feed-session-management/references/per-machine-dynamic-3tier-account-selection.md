@@ -133,3 +133,11 @@ When implementing end-to-end dynamic account selection across monolithic farm re
      - 18:00 / 20:00 -> `shift_ca = 3`
    - *Invocation:* Spawn with `-Row 0` and `-ShiftCa <shift_ca>`.
    - *Preflight Guard:* Bỏ qua `_preflight_ensure_accounts` khi `row == 0` vì tài khoản được phân giải độc lập per-machine tại thời điểm chạy.
+
+8. **Session 2 Sticky Rule in Dynamic Fallback Sessions (`record_shift_session_account`):**
+   - *Symptom:* Trong các ca dưỡng sinh (Ca 3 Ngày 3 và cả Ngày 4), Session 2 (08h, 14h, 20h) bị crash `ValueError: no session 1 row recorded` hoặc re-run 3 phễu chọn lệch sang nick khác thay vì tiếp tục nuôi nick vừa chạy ở Session 1.
+   - *Root cause:* Khi rơi vào ca dưỡng sinh, `resolve_shift_pool_account` raise `ValueError` để nhường quyền cho `resolve_dynamic_account_for_machine` ở Phiên 1. Tuy nhiên, kết quả chọn nick động của Phiên 1 không được lưu vào `today_shift_sessions`. Đến Phiên 2 (`session_index = 2`), bộ chọn không tìm thấy vết của Phiên 1 nên phá vỡ nguyên tắc `S2 bám S1`.
+   - *Fix:*
+     1. Bổ sung hàm `record_shift_session_account(machine: int | str, row: int, ca: int, today_date=None, state_file=None)` trong `shift_pool_selector.py` để cập nhật nguyên tử `today_shift_sessions[ca][machine] = row`.
+     2. Trong `feed_session_workbook.py`, khi Session 1 (`session_index == 1`) fallback sang `resolve_dynamic_account_for_machine` và chọn được `account`, lập tức gọi `record_shift_session_account(machine, account.account_row_index, ca=shift_ca)`.
+     3. Trong `resolve_shift_pool_account`, đưa kiểm tra `if session_index == 2:` lên trước kiểm tra ngày dưỡng sinh (`cycle_day == 3 or (cycle_day == 2 and ca == 3)`). Khi tìm thấy row của Phiên 1 trong `today_sessions`, trả về ngay lập tức để đảm bảo Phiên 2 bám sát Phiên 1 100% trong mọi tình huống.
