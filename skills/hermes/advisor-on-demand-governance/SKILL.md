@@ -47,6 +47,10 @@ _ADVISOR_EXPLICIT_TRIGGERS = (
     1. Gọi REST API xóa khỏi OmniRoute: `DELETE http://127.0.0.1:20129/api/providers/{cid}` và xóa khỏi database SQLite.
     2. **Bảo toàn Provider Khác (Selective Provider Guard)**: Chỉ xóa connection có `provider == 'chatgpt-web'`. TUYỆT ĐỐI KHÔNG xóa nhầm connection `antigravity` của cùng email đó vì phiên Google/Antigravity vẫn đang LIVE 100%.
     3. **Loại khỏi Telemetry Alert**: Sau khi purge, gỡ bỏ tài khoản khỏi danh sách `failed_chatgpt` / `all_failed` để triệt tiêu hoàn toàn việc watchdog spam danh sách "Cần chú ý" lên Telegram ở các chu kỳ sau.
+  * **Watchdog Submit Button Selector (Chống Click Nhầm SSO/Phone)**:
+    Khi điền form login ChatGPT Web, tránh dùng selector chung chung như `button[type="submit"]` vì có thể click nhầm vào các nút "Continue with Google/Apple/Microsoft/Phone". Bắt buộc lọc text DOM để loại trừ các nút SSO trước khi click.
+  * **Closeout Gate Fast-Path Khi Reviewer Timeout (> 60s)**:
+    Khi chạy `closeout_gate.py` cho các repo lớn, nếu model mặc định `review` bị nghẽn (do tải round-robin ChatGPT Web), hãy chuyển sang `--model ag-gemini-pool-3` (độ trễ ~3-5s) và sử dụng `--input <diff_file>` sau khi đã chạy verified focused test để hoàn tất thẩm định chốt phiên trong ngân sách 60s của Coordinator.
 - **reCAPTCHA Enterprise Audio Solver & Detached Frame Pitfall**:
   Khi tự động hóa đăng nhập Google trong GPM gặp thử thách reCAPTCHA Enterprise:
   * Sử dụng phương pháp giải âm thanh `solve_recaptcha_audio` qua `speech_recognition` và `pydub`.

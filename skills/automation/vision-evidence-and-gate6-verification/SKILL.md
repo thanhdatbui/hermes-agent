@@ -35,6 +35,10 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
 6. **Tiêu chuẩn nghiệm thu Ghim bài (Pin Top) & Micro-swipe Giữ Định Danh:**
    - **CẤM suy diễn Pin từ View cao:** Video nằm ở ô 1 có view cao (ví dụ 33K) KHÔNG CÓ NGHĨA là đã ghim (có thể chỉ là video mới nhất). Chỉ công nhận đã ghim khi TẬN MẮT THẤY huy hiệu chữ đỏ `Đã ghim` (Pinned badge) ở góc trên bên trái thumbnail. CẤM BỊA ĐẶT nhãn đỏ khi ảnh không có.
    - **Micro-swipe giữ trọn khung định danh:** Khi cuộn kéo lưới video lên, CẤM vuốt quá đà làm bay mất avatar, username `@...` và bio. Sử dụng micro-swipe nhẹ (`input swipe 540 1100 540 850 300`), đảm bảo 1 bức ảnh chụp trọn vẹn cả định danh tài khoản lẫn hàng 1 của lưới video có nhãn "Đã ghim".
+7. **Kỷ luật Canary Cron-Parity & Cấm Báo Cáo Không Có Ảnh (Gate 6 Invariant):**
+   - **Cron Parity:** Khi User yêu cầu Canary sau khi sửa code, BẮT BUỘC chạy theo đúng cách thức và lệnh mà Cron chính thức sẽ thực thi. CẤM dùng cờ lẻ/lệch bản chất (như `--password-only`) để chạy tắt rồi phán đã hoàn tất toàn bộ chu trình.
+   - **Bắt Buộc Kèm Ảnh Nghiệm Thu Thiết Bị:** Báo cáo Canary BẮT BUỘC phải đính kèm ảnh chụp màn hình thiết bị (`MEDIA:`) thể hiện kết quả sau khi thao tác. CẤM TUYỆT ĐỐI ném log chay hoặc báo kết quả mà không có ảnh màn hình thật.
+   - **Readback Verification Kép:** BẮT BUỘC đọc lại dữ liệu trong workbook/database và đối soát ảnh màn hình trước khi tuyên bố thành công. Nếu workbook chưa đổi hoặc ảnh chụp rơi vào Launcher/màn hình đen, BẮT BUỘC báo cáo trung thực trạng thái thực tế.
 
 ## 2. Thang Leo Thang Vision Dự Phòng (Fallback Ladder)
 Thứ tự fallback đọc ảnh chuẩn hoá 100% đồng bộ với kiến trúc Worker Dispatch:
