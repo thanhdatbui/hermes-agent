@@ -30,6 +30,11 @@ In automated farm management (e.g. TikTok profile standardization: Name, Bio, Av
   - Exit 1: `REJECTED` (Returns JSON with `missing_fields` and concrete `next_action`).
   - Exit 2: `BLOCKED` (Recognized objective reason: `NAME_CHANGE_COOLDOWN_7D`, `DEVICE_OFFLINE`, `SESSION_LOGGED_OUT`).
   - Exit 3: `ERROR` (ADB / OCR execution failure).
+- **OCR Diacritic & Trailing Truncation Tolerance:**
+  - Vietnamese text on mobile screens (especially red badges like "Đã ghim") is frequently truncated by OCR engines (e.g. WinRT OCR outputs `Đã ghi`, `Dä ghi`, or `däg 1m`).
+  - Regex patterns for verifiers and gates MUST tolerate trailing character drop and diacritic noise: `re.compile(r"\b(?:d[aä]g?\s*(?:1m|im|ghim?|ghi)|ghim?|pinned?)\b", re.IGNORECASE)`.
+- **UI Cache Desync & Forced Refresh:**
+  - After saving profile changes (Name, Bio, Pin), the Android client UI may continue showing cached data. Verifiers must perform an explicit pull-to-refresh (`input swipe 500 400 500 1200 500`) or dismiss promotion banners before taking the verification screencap.
 
 ---
 
