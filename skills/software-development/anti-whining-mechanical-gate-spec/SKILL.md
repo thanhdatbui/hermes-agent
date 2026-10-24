@@ -28,24 +28,22 @@ Khi một hệ thống kiểm soát (Gate/Guard) được dựng lên, nó thư�
 
 Mọi Gate cơ học (pre-commit, pre-push, closeout gate, preflight runner) bắt buộc phải đáp ứng 4 tiêu chuẩn sau:
 
-### Tiêu chuẩn 1: CẤM Veto Gate Câm (`exit 1` không lệnh hành động)
-- **Sai:** `if error: print("Lỗi vi phạm invariant X") ; sys.exit(1)` (khiến Agent ở phiên sau bối rối và bắt đầu thanh minh).
-- **Đúng:** Mọi thông báo `DENY` bắt buộc phải kèm theo block mệnh lệnh đóng `REQUIRED_NEXT_ACTION`:
-  + Điền sẵn file path và lệnh cụ thể để copy-paste thực thi ngay (ví dụ: `git checkout -- "<file>"`).
-  + Không để khoảng trống nhận thức để Agent viết văn giải thích hay xin lỗi.
+### Tiêu chuẩn 1: CẤM Veto Gate Câm — Bắt Buộc Kèm Guidance Hướng Dẫn Sửa
+- Sai: Chỉ ném `exit 1` và in dòng lỗi chung chung khiến Agent không biết đi đường nào, dẫn đến đâm đầu mò mẫm.
+- Đúng: Mọi Rule trong Gate bắt buộc phải có trường `guidance` (hướng dẫn kiến trúc đúng):
+  + Khi DENY: In ra dòng vi phạm kèm block `HƯỚNG DẪN KIẾN TRÚC` chỉ đường cụ thể (ví dụ: *"Khi feed bị treo, kiểm tra device liveness nội bộ, TUYỆT ĐỐI KHÔNG hạ timeout micro-drop USB"*).
+  + Kèm `REQUIRED_NEXT_ACTION` và lệnh `REVERT_EXACT` có sẵn file path để Agent hoàn tác ngay và bẻ lái theo hướng dẫn.
 
-### Tiêu chuẩn 2: Auto-Quarantine $O(1)$ Tự Động Dọn Hiện Trường
-- Khi phát hiện vi phạm, Gate phải có cơ chế tự động cách ly hunk vi phạm (ưu tiên dùng `git stash push --keep-index -m "quarantine-<rule>-<ts>" -- <file>`).
-- File mã nguồn lập tức được khôi phục về trạng thái sạch, không để working tree bẩn khiến các bước sau bị tắc nghẽn.
+### Tiêu chuẩn 2: Auto-Quarantine O(1) Tự Động Dọn Hiện Trường
+- Khi phát hiện vi phạm, Gate phải tự động cách ly hunk vi phạm qua `git stash push --keep-index -m "quarantine-<rule>-<ts>" -- <file>`.
+- File mã nguồn lập tức được khôi phục về trạng thái sạch, không để working tree bẩn.
 
-### Tiêu chuẩn 3: Strike 3 Chạm Trần Thẩm Quyền — Báo Cáo User Nhận Chỉ Thị
-- Tuyệt đối không mở ticket vu vơ rồi ngồi chờ. CẤM đâm đầu vào tường đốt token.
-- Vì Agent bị cấm tự sửa Guard, lúc này việc báo User là HỢP LỆ VÀ BẮT BUỘC:
-  1. Tóm tắt 3 phương án đã thử và diff cụ thể bị Guard chặn.
-  2. Nêu rõ điểm nghẽn để User phân xử:
-     - (A) Nếu Guard chặn sai/quá đà: User can thiệp sửa Guard.
-     - (B) Nếu Guard đúng: User ra lệnh định hướng nghiệp vụ mới ("User ra lệnh agent tìm cách").
-  3. Giữ repo sạch sẽ ($O(1)$ Auto-quarantine) và sẵn sàng nhận lệnh thi công tiếp, cấm buông xuôi đóng phiên.
+### Tiêu chuẩn 3: Strike 3 Guidance Gap — Báo Cáo Để User Chỉ Đạo Bổ Sung Guard
+- Nếu Agent đã thử 3 lần mà vẫn bị chặn: Điều này chứng minh **HƯỚNG DẪN CỦA GUARD CHƯA ĐỦ ĐẦY ĐỦ/RÕ RÀNG**, khiến Agent đâm đầu vào đường cụt.
+- Mục đích báo cáo User:
+  1. Báo cáo cụ thể: Vấn đề cần giải quyết là gì, 3 cách Agent đã thử bị Guard chặn, và Guard đang thiếu chỉ dẫn cho kịch bản nào.
+  2. Để User phân xử và ra lệnh: User chỉ đạo hướng đi mới hoặc ra lệnh cho Agent cách sửa/bổ sung lại rule và hướng dẫn trong Guard.
+  3. Tư thế: Giữ repo sạch, sẵn sàng nhận lệnh mới của User để tiếp tục thi công, cấm buông xuôi đóng phiên.
 
 ### Tiêu chuẩn 4: Bộ Kiểm Thử Đối Kháng Tĩnh (Adversarial Unit Tests)
 - Mọi Gate cơ giới mới bắt buộc phải có test suite đối kháng:
