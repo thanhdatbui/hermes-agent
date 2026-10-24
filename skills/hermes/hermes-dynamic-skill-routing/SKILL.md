@@ -210,9 +210,14 @@ Reviewing 13+ files simultaneously (5 engine files + 8 tests) causes Sol Auditor
 - **Vấn đề cốt lõi:** Coordinator hay lạm dụng tool `memory` để ghi nhớ chỉ thị mới/quy trình mới của User, làm cạn kiệt ngân sách 2.200 ký tự của `MEMORY.md`. Hơn nữa, Worker chạy trong subagent cô lập không thể đọc được memory của Coordinator.
 - **Quy chuẩn 3 cửa:**
   * *Cửa 1 (Đã cơ giới hoá):* Đã có code/gate/hook/marker -> CẤM lưu memory, CẤM viết rườm rà.
-  * *Cửa 2 (Chưa cơ giới hoá):* BẮT BUỘC lưu vào Thư viện Skill (`D:/Taadaa/Hermes/skills/`), tự động nạp O(1) qua Dynamic Skill Routing. Xem chi tiết: [`references/unmechanized-knowledge-to-dynamic-skills-sop.md`](references/unmechanized-knowledge-to-dynamic-skills-sop.md).
-  * *Cửa 3 (Memory):* CHỈ lưu User Profile cá nhân và đặc thù môi trường Windows không thuộc quy trình farm.
-- **Bắt buộc Tái Lập Chỉ Mục (Rebuild Index):** Sau khi ghi/sửa bất kỳ skill nào, BẮT BUỘC chạy `python D:/Taadaa/tools/build_skill_index.py` để làm mới `skills_index.json` (~15ms), chống lỗi `[INDEX_STALE]` / `FAIL_CLOSED_STALE_INDEX`.
+  * *Cửa 2 (Chưa cơ giới hoá):* BẮT BUỘC lưu vào Thư viện Skill (`D:/Taadaa/Hermes/skills/`), tự động nạp O(1) qua Dynamic Skill Routing bằng lệnh 1 chạm:
+    ```bash
+    python D:/Taadaa/tools/record_skill_knowledge.py --skill "<skill_name>" --content "<procedure / quirk>" [--kind body|reference] [--ref-name "<name>.md"]
+    ```
+    Script hỗ trợ multi-file transaction rollback (tự phục hồi nếu ghi file phụ bị lỗi), symlink/path traversal containment, và tự động gọi `build_index()` cập nhật `skills_index.json` tức thì (~15ms).
+  * *Cửa 3 (Memory):* CHỈ lưu User Profile cá nhân, sở thích giao tiếp và đặc thù môi trường Windows không thuộc quy trình farm.
+- **Auto-Heal Stale Index:** `skill_injector.py` tự động kích hoạt `build_index` in-process (`auto_heal=True`) khi phát hiện index stale trước khi lookup, triệt tiêu lỗi `FAIL_CLOSED_STALE_INDEX` giả tạo trong khi vẫn bảo toàn fail-closed an toàn nếu rebuild lỗi.
+- **Xem chi tiết:** [`references/unmechanized-knowledge-to-dynamic-skills-sop.md`](references/unmechanized-knowledge-to-dynamic-skills-sop.md).
 
 ### 17. In-Memory AST Syntax Verification vs py_compile Disk Side Effect (.pyc)
 - **The Pitfall:** In `dispatch_worker.py`, using `py_compile.compile(str(target), doraise=True)` to verify Python syntax generates `.pyc` bytecode files in `__pycache__` on disk. This contaminates the working tree with untracked artifacts, causing the Closeout Reviewer to dock points on Farm Safety / Dirty Working Tree.
