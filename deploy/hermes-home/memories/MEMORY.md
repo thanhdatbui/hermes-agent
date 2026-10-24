@@ -10,9 +10,7 @@ CGPT-Web: test qua /api/providers/{cid}/test, cấm validate masked key.
 §
 Stale Up: xóa draft. Revert: TikWM. Cào: max 60. Cron TB: device_lock+rolling<=5; bỏ 0h.
 §
-Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; Reaper SSH.
-§
-M7: SSID 'Dat_2.4G'; Aruba VC vlan 1+permit; wrap ADB qua with_device_lock.py.
+Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; Reaper SSH. M7: SSID Dat_2.4G.
 §
 Ava: Trích clip gốc; OCR lines==0; top-row audit né sót view cao; F_src!=F_vid khóa 2 folder; chuẩn hoá: Hashtag (.manual_hashtag_locked), Pin>=1k, Ava (.manual_avatar_locked), Tên+Bio.
 §
@@ -25,3 +23,5 @@ Cron/Alert: Gửi đúng Telegram group của repo (-5435853713 Video/Up, -53776
 403 VALIDATION: CẤM nhầm OAuth. Bóc validation_url tươi, mở GPM quét QR camera thật (cấm Zalo). Quota full 100% ảo do 403 chặn từ cổng. Test qua isolated_chat_test.
 §
 Guard Strike-3: Chặn 3 lần cấm mở ticket ngồi chờ/báo BLOCKED (vẫn là khóc). Báo User do Guard thiếu chỉ dẫn (Guidance Gap) để User ra lệnh bẻ lái hoặc chỉ thị Agent sửa/bổ sung Guard. Auto-quarantine sạch repo chờ lệnh.
+§
+CẤM TUYỆT ĐỐI dùng `delegate_task`. Khi cần worker thi công hoặc điều tra sâu ngoài ngân sách, BẮT BUỘC dispatch qua `python D:/Taadaa/tools/sol_worker.py` (hoặc `claude_worker.py` / `haiku_worker.py` / `dispatch_worker.py`).
