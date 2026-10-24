@@ -6,7 +6,7 @@ description: "Use when running batch 2FA on TikTok farm. Chạy batch 2FA repo t
 # TikTok Add 2FA Batch Ops (repo tiktok-add-bao-mat-f2a)
 
 References:
-- `references/graph-api-otp-token-and-canary-parity-discipline-20261024.md` — **[24/10/2026]** Graph OTP Token (<0.5s), Outlook app fallback, Canary Parity (no stubs), Gate 6 Visuals.
+- `references/graph-api-otp-token-and-canary-parity-discipline-20261024.md` — **[24/10/2026]** Graph OTP Token (<0.5s), Outlook app fallback, Canary Parity (no stubs), Gate 6 Visuals, Writer ID (`TIKTOK_ADD_WRITER_ID`) fix, SSH log redirection.
 - `references/night-chain-reg-gmail-2fa-and-per-phase-telegram-routing-20261020.md` — **[20/10/2026]** Night Chain, tách báo cáo Telegram.
 - `references/night-2fa-watchdog-skip-reasons-and-column-drift-audit-20261018.md` — **[18/10/2026]** Watchdog skip & lệch cột Admin.
 - `references/immediate-write-through-retry-and-closeout-discipline-20261015.md` — Write-through 2FA Excel.

@@ -49,3 +49,32 @@
 ### 4.3. Kỷ luật đồng bộ code 2 node (Kibe ➔ Admin-PC)
 - Code sửa ở `D:/Taadaa/Hotmail` trên Kibe không tự chạy trên Admin-PC.
 - Sửa xong BẮT BUỘC copy file sang `D:/OneDrive/TaadaaData/admin/` và kích hoạt script `copy_to_admin.py` trên Admin-PC trước khi chạy batch hoặc canary, tránh trường hợp runner Admin chạy code cũ nuốt lỗi âm thầm.
+
+### 4.4. Bắt buộc khai báo Writer ID tránh lỗi WorkbookError ẩn
+- Trong `automation_core.workbook.assert_writer_identity`, hệ thống kiểm soát khóa đơn ghi (single writer lock) bằng cách so khớp 2 biến môi trường:
+  - `TIKTOK_ADD_EXPECTED_WRITER_ID`
+  - `TIKTOK_ADD_WRITER_ID`
+- **Cạm bẫy:** Khi chạy script canary độc lập hoặc gọi `run_capture_phase_b.py` bên ngoài pool `run_batch_live_2fa.py`, nếu thiếu 2 biến này, hàm `single_writer_workbook_update` sẽ quăng ngoại lệ `WorkbookError("BLOCKED_EXPECTED_WRITER_ID_MISSING:tiktok_tracking")`. Runner bắt `RuntimeError` và in ra `{"status": "failed", "reason": "WorkbookError"}` ngay sau khi đã điền mật khẩu TikTok thành công, khiến việc cập nhật Excel bị hủy bỏ âm thầm.
+- **Quy chuẩn:** Mọi lệnh thực thi ghi workbook BẮT BUỘC phải nạp trong `env`:
+  ```python
+  env["TIKTOK_ADD_EXPECTED_WRITER_ID"] = "tiktok_tracking_writer"
+  env["TIKTOK_ADD_WRITER_ID"] = "tiktok_tracking_writer"
+  ```
+
+### 4.5. Điều phối lệnh SSH dài (> 60s) & Bẫy Windows File Descriptor
+- Terminal của Coordinator có timeout trần foreground là 60s, trong khi chu trình Add 2FA + Đổi mật khẩu trên điện thoại S7 kéo dài 60–90s.
+- Nếu gọi `admin_ssh.py --timeout 180` trực tiếp không chuyển hướng, lệnh foreground sẽ bị ngắt ở 58–60s (exit code 124).
+- **Quy tắc điều phối bền vững:** Chuyển hướng stdout/stderr của lệnh từ xa vào file log cố định trên disk:
+  ```bash
+  python D:/Taadaa/tools/admin_ssh.py --timeout 180 "python D:\OneDrive\TaadaaData\admin\run_canary.py ... > D:\OneDrive\TaadaaData\admin\result.txt 2>&1"
+  ```
+  Ngay cả khi terminal foreground timeout, tiến trình trên Admin-PC vẫn tiếp tục chạy độc lập đến khi hoàn tất và ghi toàn bộ `STDOUT`, `STDERR`, `EXIT_CODE` vào `result.txt`.
+- **Cảnh báo Windows FD:** Trên Windows, `subprocess.Popen` nếu đặt `close_fds=True` sẽ chặn kế thừa file descriptor mở qua Python, làm mất output hoặc kết thúc tiến trình con sớm. Phải mở file unbuffered/append và không đóng handle khi Popen chưa xong.
+
+## 5. Kỷ luật ứng xử với User: Hành động trước, chứng minh bằng dữ liệu
+- Khi phát hiện trục trặc hoặc kẹt máy: **TUYỆT ĐỐI CẤM** trả lời bằng những đoạn văn dài phân trần, giải thích hay than thở khiến User bức xúc ("sao cứ khóc lóc mệt thế").
+- **Kỷ luật chuẩn:**
+  1. Kiểm tra trạng thái máy qua ADB (`inspect_machine.py`) ngay lập tức.
+  2. Khắc phục điểm nghẽn kỹ thuật trong im lặng.
+  3. Kích hoạt chạy và đối soát trực tiếp trên file Excel (Cột PASS & 2FA).
+  4. Trả lời ngắn gọn, rành mạch kèm bằng chứng thị giác đã soi mắt qua Vision và số liệu thực tế đã cập nhật trong workbook.
