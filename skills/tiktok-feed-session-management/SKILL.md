@@ -8,16 +8,17 @@ author: Hermes Agent
 ---
 
 ## Non-negotiable Operating Rules
-- Watchdog Follow Report Taxonomy: Trong `format_released_follows`, phân loại Nhả follow BẮT BUỘC hiển thị `{len(rel_...)} máy` kèm % và danh sách máy (ví dụ: `- Nhả liền (23 máy | 0 lượt | 92.0%): (M3, ...)`).
+- Watchdog Follow Report: BẮT BUỘC hiển thị `{len(rel_...)} máy` kèm % và list máy (vd: `- Nhả liền (23 máy | 0 lượt | 92.0%): (M3, ...)`).
 
 ## References & Invariants
-- Dynamic Shift-Pool 4d & S2 Bám S1: [references/dynamic-shift-pool-4d-and-session-sync.md](references/dynamic-shift-pool-4d-and-session-sync.md)
-- Dynamic Selection 3-Tier: [references/per-machine-dynamic-3tier-account-selection.md](references/per-machine-dynamic-3tier-account-selection.md)
+- Dynamic Shift-Pool 4d: [references/dynamic-shift-pool-4d-and-session-sync.md](references/dynamic-shift-pool-4d-and-session-sync.md)
+- Dynamic 3-Tier: [references/per-machine-dynamic-3tier-account-selection.md](references/per-machine-dynamic-3tier-account-selection.md)
 - Starvation: [references/row-nurture-starvation-and-cycle-monitoring.md](references/row-nurture-starvation-and-cycle-monitoring.md)
 - Dashboard: [references/dashboard-nurture-health-implementation.md](references/dashboard-nurture-health-implementation.md)
+- Follow Anchor & Streak Trap: [references/follow-anchor-trap-and-streak-inflation-invariants.md](references/follow-anchor-trap-and-streak-inflation-invariants.md)
 
 ## Watchdog Upload Status Taxonomy & Triage
-See detailed taxonomy and field breakdown in [references/feed-watchdog-catchall-taxonomy-and-triage.md](references/feed-watchdog-catchall-taxonomy-and-triage.md). If one cluster (for example Admin) has a materially higher proxy-failure share than another cluster (for example Kibe), prioritize proxy/egress triage there before editing feed logic. Record representative probe outputs and distinguish confirmed causes from hypotheses; if no code change was performed, say so explicitly and avoid claiming remediation.
+Chi tiết taxonomy xem tại [references/feed-watchdog-catchall-taxonomy-and-triage.md](references/feed-watchdog-catchall-taxonomy-and-triage.md). If one cluster (for example Admin) has a materially higher proxy-failure share than another cluster (for example Kibe), prioritize proxy/egress triage there before editing feed logic. Record representative probe outputs and distinguish confirmed causes from hypotheses; if no code change was performed, say so explicitly and avoid claiming remediation.
 
 When interpreting upload metrics in `feed_session_watchdog` reports (e.g. `Đang dưỡng sinh`, `Khác`, `Hết video/Cần cào`):
 - `Đang dưỡng sinh`: Normal organic rest policy (~33% farm), no upload/follow attempted.

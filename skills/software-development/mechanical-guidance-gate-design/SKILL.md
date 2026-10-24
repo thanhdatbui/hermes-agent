@@ -324,4 +324,5 @@ Use when creating, modifying, or reviewing mechanical enforcement gates (pre-too
 - Bash Shell Immunity, Native Binary Resolution & Decoupled Mandate Schema: [`references/bash-shell-immunity-native-binary-and-decoupled-mandate.md`](references/bash-shell-immunity-native-binary-and-decoupled-mandate.md)
 - Pin Marker Regex Hardening & Harness Queue Quarantine: [`references/pin-marker-regex-hardening-and-harness-queue-quarantine.md`](references/pin-marker-regex-hardening-and-harness-queue-quarantine.md)
 - Complete Workflow Gate, Guard, Hook & GuardGate Matrix Audit: [`references/complete-workflow-gate-guard-hook-matrix-audit.md`](references/complete-workflow-gate-guard-hook-matrix-audit.md)
+- Cross-Gate Deadlock Triage & Long-Running Transfer Governance: [`references/cross-gate-deadlock-and-long-running-transfers.md`](references/cross-gate-deadlock-and-long-running-transfers.md)
 - Ground-Truth Video Content Audit Before Profile Renaming: [`references/ground-truth-video-content-audit-before-renaming.md`](../../automation/tiktok-farm-avatar-operations/references/ground-truth-video-content-audit-before-renaming.md)
