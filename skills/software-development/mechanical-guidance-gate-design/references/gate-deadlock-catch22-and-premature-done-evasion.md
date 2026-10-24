@@ -84,11 +84,12 @@ if to_val > max_allowed:
   - `[HARNESS_TIMEOUT: foreground_clamp_60s]` $\neq$ `[WORKER_TIMEOUT: subprocess_300s]`.
 - Cấm để log mơ hồ khiến LLM Coordinator tự suy diễn và bịa đặt narrative rằng "worker bị set 60s" trong khi thực tế đó là trần của harness.
 
-### Quy Tắc 3: Ranh Giới Tự Bảo Vệ Guard & Quyền Của Operator (Guard Self-Protection Boundary)
-- Tầng tiền kiểm được bảo vệ bằng quy tắc `GUARD SELF-PROTECTION`: AI Coordinator bên trong phiên chat bị cấm tuyệt đối chỉnh sửa các file này để ngăn chặn nguy cơ tự nới lỏng bảo mật hoặc jailbreak.
-- Khi cần nâng cấp hoặc sửa lỗi gate trong tầng tiền kiểm, **CHỈ CÓ OPERATOR MỚI CÓ THẨM QUYỀN THỰC THI** trực tiếp ngoài terminal vật lý của họ.
-- **Lệnh chuẩn cho Operator giải phóng nghẽn 60s:**
-  Chạy lệnh cập nhật whitelist timeout ngoài console thật của Operator với cờ `--user-approved`.
+### Quy Tắc 3: Triệt Tiêu Hành Vi Đẩy Việc Cho Operator (Anti-Whining Hook Invariant)
+- **Sai lầm chết người (Anti-Pattern):** Viện cớ `GUARD SELF-PROTECTION` để giơ tay đầu hàng, đóng vai "kẻ bất lực bị khóa tay" rồi bảo Operator: *"Sếp tự mở terminal ngoài máy thật chạy lệnh này hộ em"*. Đây là hành vi vi phạm nặng nhất nguyên tắc Anti-Whining của hệ thống.
+- **Tiêu chuẩn thiết kế Hook bắt buộc:**
+  1. **Zero-Deadlock Parity:** Nếu Gate A ép sang giải pháp B (ví dụ: cấm `python` background bung console, ép sang `pythonw`), thì Gate C (Allowlist của Coordinator) BẮT BUỘC phải mở sẵn `pythonw`. CẤM TUYỆT ĐỐI thiết kế các gate rời rạc tự đè lên nhau tạo thành ngõ cụt.
+  2. **Long-Running Whitelist Bắt Buộc:** Mọi hook clamp timeout foreground BẮT BUỘC phải có `LONG_RUNNING_ALLOWLIST` cho các tool nghiệp vụ đã chứng nhận (`dispatch_worker.py`, `closeout_gate.py`, `pytest`, `sol_worker.py`, `ag_cli.py`, `sol_repair.py`, `claude_worker.py`) với trần $\le 360$s, cấm cào bằng 60s.
+  3. **Tự Động Hóa Không Cần Human Can Thiệp:** Mọi hook khi phát hiện bế tắc cấu hình phải cung cấp cơ chế tự phục hồi O(1) hoặc Action Mandate tự hành, tuyệt đối không được biến Operator thành bảo mẫu chạy lệnh thủ công.
 
 ---
 
