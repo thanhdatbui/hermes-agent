@@ -6,15 +6,9 @@ Nuôi 4d 3 ca (bỏ 0h): Base 11/10/26 (D0:R1,3,5 | D1:R2,4,6 | D2:R7,8,DS | D3:
 §
 Vibe O(1), bực=làm ngay; cấm BLOCKED; Gate DENY=pivot sửa gốc; cấm phá case. Gate cơ học. Report=ĐIỀU TRA O(1). Claude: max-turns>=15, né dirty git, cấm bịa output.
 §
-Ava/Media: Up thẳng máy; cờ .manual_avatar_locked & Avatar=OK; N máy gửi đủ N MEDIA: riêng; đúng creator.
-§
-Canary: máy thật qua done_gate.py; WinRT OCR->ATX; Singbox. Dính guard chạy unscoped worker CLI.
-§
-Follow audit: >=3-4 chu kỳ 4d + Cohort Veteran/Mid/Rookie; tách fl=0 và used>0; Account Limit cô lập nick, cấm ngắt IP.
-§
 Gemini/GPM: CDP, 2 pool OmniRoute+AGY, proxy 1:1 S7. Preflight sniper: GPM live, link TTL 5ph.
 §
-Reviewer: Sol (:20129). Sol Advisor 100% On-Demand, CẤM auto-append/đoán ý (?/tư vấn); chỉ gọi khi đích danh. Lệnh Claude=chạy thật+trích output.
+Sol Advisor 100% On-Demand, cấm auto-append/đoán ý; chỉ gọi khi đích danh. Lệnh Claude=chạy thật+trích output.
 §
 Đơn farm: Bào voucher fake info né quét; cấm bảo tải app/đọc OTP; ship về 47 TCV; alert đơn tách nhóm riêng.
 §

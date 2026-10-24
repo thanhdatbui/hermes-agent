@@ -7,6 +7,9 @@ version: 1.0.0
 author: Hermes Agent
 ---
 
+## Non-negotiable Operating Rules
+- Watchdog Follow Report Taxonomy: Trong định dạng báo cáo Follow chéo (`format_released_follows`), mọi phân loại con của Nhả follow (Nhả liền 0 lượt, Hồi phục 1, Hồi phục 2, Cấp Khỏe) BẮT BUỘC hiển thị rõ biến đếm số lượng máy `{len(rel_...)} máy` cùng tỷ lệ % và danh sách máy (ví dụ: `- Nhả liền (23 máy | 0 lượt | 92.0%): (M3, M4, ...)`), tránh chỉ in % và số lượt khiến người vận hành phải đếm máy thủ công.
+
 ## References & Invariants
 - Starvation: [references/row-nurture-starvation-and-cycle-monitoring.md](references/row-nurture-starvation-and-cycle-monitoring.md)
 - Dynamic Selection: [references/per-machine-dynamic-3tier-account-selection.md](references/per-machine-dynamic-3tier-account-selection.md)
