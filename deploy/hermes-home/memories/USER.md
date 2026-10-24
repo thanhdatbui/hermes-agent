@@ -12,7 +12,7 @@ Sol Advisor 100% On-Demand, cấm auto-append/đoán ý; chỉ gọi khi đích 
 §
 Đơn: bào voucher fake info; cấm bảo tải app/đọc OTP; ship về 47 TCV; alert đơn tách nhóm.
 §
-Hand-off: đủ Mail, Pass, Recovery, 2FA/TOTP. Pass TikTok: báo 'không thể giống mật khẩu cũ' = pass nhập vào đã đúng pass nick -> lưu luôn pass đó vào Excel, không đổi tiếp.
+Hand-off: đủ Mail, Pass, Recovery, 2FA & TOTP live.
 §
 Auto-heal: watchdog emit IncidentEnvelope -> incident_auto_harness 6 gate; fix xong bắn Telegram ngay kèm MEDIA; cuối ngày digest tách từng nhóm script. Planner: Claude Sonnet Tier 1, Sol Tier 2.
 §
