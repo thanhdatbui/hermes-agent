@@ -61,6 +61,7 @@ ALLOWED_FORWARD_ENV = frozenset(
         "TAADAA_HOST_CONFIG",
         "HERMES_CRON_STATE_ROOT",
         "HERMES_CRON_SOURCE_CONFIG",
+        "HERMES_CRON_FEED_WORKBOOK",
         "HERMES_CRON_FEED_STATE_JSON",
         "HERMES_CRON_POST_STATE_JSON",
         "HERMES_CRON_OFFLINE_ROOT",
@@ -73,9 +74,6 @@ ALLOWED_FORWARD_ENV = frozenset(
 REQUIRED_FORWARD_ENV = frozenset(
     {
         "HERMES_CRON_STATE_ROOT",
-        "HERMES_CRON_SOURCE_CONFIG",
-        "HERMES_CRON_FEED_STATE_JSON",
-        "HERMES_CRON_POST_STATE_JSON",
         "HERMES_CRON_OFFLINE_ROOT",
         "HERMES_CRON_OWNER_ID",
         "HERMES_CRON_WORKER_ID",
@@ -86,6 +84,7 @@ REQUIRED_FORWARD_ENV = frozenset(
 _ARG_MAP = {
     "HERMES_CRON_STATE_ROOT": "--state-root",
     "HERMES_CRON_SOURCE_CONFIG": "--source-config",
+    "HERMES_CRON_FEED_WORKBOOK": "--feed-workbook",
     "HERMES_CRON_FEED_STATE_JSON": "--feed-state-json",
     "HERMES_CRON_POST_STATE_JSON": "--post-state-json",
     "HERMES_CRON_OFFLINE_ROOT": "--offline-root",
@@ -170,6 +169,9 @@ def compute_logical_day(now: datetime) -> str | None:
 
 
 def _config_digest(env: Mapping[str, str]) -> str:
+    path = env.get("HERMES_CRON_FEED_WORKBOOK")
+    if path and Path(path).is_file():
+        return hashlib.sha256(Path(path).read_bytes()).hexdigest()
     path = env.get("HERMES_CRON_SOURCE_CONFIG")
     if path and Path(path).is_file():
         return hashlib.sha256(Path(path).read_bytes()).hexdigest()

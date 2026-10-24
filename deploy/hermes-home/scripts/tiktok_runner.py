@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import logging
 import os
 import subprocess
 import sys
@@ -104,8 +105,13 @@ _SCHEDULE: dict[tuple[int, int], dict[int, int | None]] = {
 def _load_determine_healing_row() -> tuple[Any, Path]:
     """Load determine_healing_row from tools/healing_selector.py without touching sys.path."""
     env_tools = os.environ.get("HERMES_CRON_TOOLS_DIR")
+    if not env_tools:
+        env_tools = repo_env_overrides().get("HERMES_CRON_TOOLS_DIR")
     candidates = [Path(env_tools)] if env_tools else []
     candidates += [p / "tools" for p in Path(__file__).resolve().parents]
+    if not env_tools:
+        for root in ("D:/Taadaa/tiktok-luot nuoi acc", "D:/Taadaa", "D:/Taadaa/tiktok-follow", "D:/Taadaa/automation-core"):
+            candidates.append(Path(root) / "tools")
     tools_dir = next((p for p in candidates if (p / "healing_selector.py").is_file()), None)
     if tools_dir is None:
         raise ImportError("healing_selector.py not found (set HERMES_CRON_TOOLS_DIR)")
@@ -170,24 +176,38 @@ def _determine_row(now: datetime) -> tuple[int, int, str, bool] | None:
 
     target_row = slots[effective_day]
     is_rest_day = False
-    dynamic_shift_pools = os.environ.get("TAADAA_DYNAMIC_SHIFT_POOLS", "").strip().lower() in ("1", "true", "yes")
-
     if target_row is None:
-        # Dynamic Per-Machine Mode: Mỗi máy tự soi 8 slot của chính nó theo 3 lớp phễu:
-        # 1. Đề xuất -> 2. Đi tù nhả follow -> 3. Nick non
-        row = 0
         window_label = f"{slot_key[0]:02d}:{slot_key[1]:02d}"
-        sys.stdout.write(json.dumps({
-            "event": "dynamic_per_machine_selection",
-            "row": 0,
-            "window": window_label,
-            "cycle_day": cycle_day,
-            "cycle_idx": cycle_idx,
-        }, sort_keys=True) + "\n")
+        try:
+            determine_healing_row, tools_dir = _load_determine_healing_row()
+            row = determine_healing_row(now, slot_key, cycle_day, cycle_idx)
+            sys.stdout.write(json.dumps({
+                "event": "healing_row_selected",
+                "row": row,
+                "window": window_label,
+                "cycle_day": cycle_day,
+                "cycle_idx": cycle_idx,
+                "tools_dir": str(tools_dir),
+            }, sort_keys=True) + "\n")
+        except Exception as exc:
+            if cycle_day == 2:
+                row = 3 if (cycle_idx % 2 == 0) else 4
+            elif slot_key in ((6, 0), (8, 0)):
+                row = 3
+            elif slot_key in ((12, 0), (14, 0)):
+                row = 4
+            else:
+                row = 5 if (cycle_idx % 2 == 0) else 6
+            sys.stderr.write(json.dumps({
+                "event": "healing_row_fallback",
+                "row": row,
+                "window": window_label,
+                "cycle_day": cycle_day,
+                "cycle_idx": cycle_idx,
+                "error_type": type(exc).__name__,
+                "error": str(exc),
+            }, sort_keys=True) + "\n")
         is_rest_day = True
-    elif dynamic_shift_pools:
-        row = 0
-        is_rest_day = False
     else:
         row = target_row
 
@@ -286,10 +306,11 @@ def merged_env(env: Mapping[str, str]) -> dict[str, str]:
 # State de-dup
 # ---------------------------------------------------------------------------
 
-def _load_state(state_file: Path = STATE_FILE) -> dict:
+def _load_state(state_file: Path | str = STATE_FILE) -> dict:
     try:
-        if state_file.is_file() and not state_file.is_symlink():
-            data = json.loads(state_file.read_text(encoding="utf-8"))
+        p = Path(state_file)
+        if p.is_file() and not p.is_symlink():
+            data = json.loads(p.read_text(encoding="utf-8"))
             if isinstance(data, dict):
                 return data
     except (OSError, ValueError, json.JSONDecodeError):
@@ -297,16 +318,17 @@ def _load_state(state_file: Path = STATE_FILE) -> dict:
     return {}
 
 
-def _save_state(row: int, window_key: str, now: datetime, state_file: Path = STATE_FILE) -> None:
-    state_file.parent.mkdir(parents=True, exist_ok=True)
+def _save_state(row: int, window_key: str, now: datetime, state_file: Path | str = STATE_FILE) -> None:
+    p = Path(state_file)
+    p.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "last_row": row,
         "last_window": window_key,
         "last_run_at": now.isoformat(),
     }
-    tmp = state_file.parent / f".runner_simple_state.{os.getpid()}.tmp"
+    tmp = p.parent / f".runner_simple_state.{os.getpid()}.tmp"
     tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    os.replace(str(tmp), str(state_file))
+    os.replace(str(tmp), str(p))
 
 
 def _already_ran(window_key: str, state_file: Path = STATE_FILE) -> bool:
@@ -322,8 +344,6 @@ def _preflight_ensure_accounts(row: int, window_key: str, cluster: dict[str, Any
     """Check và tự động reg bù tài khoản nếu Row bị trống (hỗ trợ cả Kibe và Admin).
     Dùng marker file .preflight_<cluster>_<window_key> để chỉ chạy đúng 1 lần duy nhất mỗi window, chống spam loop 15 phút.
     """
-    if row <= 0:
-        return
     cluster = cluster or CLUSTERS[0]
     cluster_name = cluster.get("name", "kibe")
     state_file = cluster.get("state_file")
@@ -375,14 +395,12 @@ def _preflight_ensure_accounts(row: int, window_key: str, cluster: dict[str, Any
         marker.unlink(missing_ok=True)
 
 
-def _count_valid_accounts_for_row(row: int, workbook_path: str = ACCOUNT_WORKBOOK) -> int:
-    """Đếm số account hợp lệ cho row trong workbook chỉ định."""
-    if row <= 0:
-        return 160  # Dynamic per-machine mode distributes across existing machine slots
+def _get_machines_for_row(row: int, workbook_path: str = ACCOUNT_WORKBOOK) -> list[int]:
+    """Đọc workbook và trả về danh sách machine_id có account hợp lệ ở slot tương ứng."""
     safe_path = Path(workbook_path)
     if not safe_path.is_file():
         sys.stderr.write(f"tiktok_runner: Safe workbook khong ton tai: {safe_path}\n")
-        return 0
+        return []
     for attempt in range(3):
         try:
             import openpyxl
@@ -398,21 +416,71 @@ def _count_valid_accounts_for_row(row: int, workbook_path: str = ACCOUNT_WORKBOO
                     continue
                 machine_slots.setdefault(m_num, []).append(r[2] if len(r) > 2 else None)
             wb.close()
+            if row == 0:
+                valid_machines: list[int] = []
+                for m, slots in machine_slots.items():
+                    if any(val and str(val).strip() and str(val).strip().lower() != "none" for val in slots):
+                        valid_machines.append(m)
+                return valid_machines
+
             slot_idx = row - 1
-            valid = 0
+            valid_machines: list[int] = []
             for m, slots in machine_slots.items():
                 if slot_idx < len(slots):
                     val = slots[slot_idx]
                     if val and str(val).strip() and str(val).strip().lower() != "none":
-                        valid += 1
-            return valid
+                        valid_machines.append(m)
+            return valid_machines
         except Exception as exc:
             if attempt < 2:
                 import time
                 time.sleep(1.0)
                 continue
             sys.stderr.write(f"tiktok_runner: error reading safe workbook after 3 attempts: {exc}\n")
-            return 0
+            return []
+    return []
+
+
+def _count_valid_accounts_for_row(row: int, workbook_path: str = ACCOUNT_WORKBOOK) -> int:
+    """Đếm số account hợp lệ cho row trong workbook chỉ định."""
+    return len(_get_machines_for_row(row, workbook_path=workbook_path))
+
+
+def _load_filter_healthy_machines():
+    """Load filter_healthy_machines from tools/pre_session_device_gate.py without touching sys.path."""
+    try:
+        from pre_session_device_gate import filter_healthy_machines as _fn
+        return _fn
+    except ImportError:
+        pass
+
+    env_tools = os.environ.get("HERMES_CRON_TOOLS_DIR")
+    if not env_tools:
+        env_tools = repo_env_overrides().get("HERMES_CRON_TOOLS_DIR")
+    candidates = [Path(env_tools)] if env_tools else []
+    candidates += [p / "tools" for p in Path(__file__).resolve().parents]
+    if not env_tools:
+        for root in ("D:/Taadaa/tiktok-luot nuoi acc", "D:/Taadaa", "D:/Taadaa/tiktok-follow", "D:/Taadaa/automation-core"):
+            candidates.append(Path(root) / "tools")
+    gate_path = next((p / "pre_session_device_gate.py" for p in candidates if (p / "pre_session_device_gate.py").is_file()), None)
+    if gate_path is None:
+        fixed_path = Path(r"D:\Taadaa\tools\pre_session_device_gate.py")
+        if fixed_path.is_file():
+            gate_path = fixed_path
+    if gate_path is None:
+        raise ImportError("pre_session_device_gate.py not found")
+    spec = importlib.util.spec_from_file_location("pre_session_device_gate", gate_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"cannot load pre_session_device_gate from {gate_path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return getattr(module, "filter_healthy_machines")
+
+
+def filter_healthy_machines(machine_ids: list[int]) -> list[int]:
+    """Pre-session device readiness gate helper calling pre_session_device_gate.py."""
+    fn = _load_filter_healthy_machines()
+    return fn(machine_ids)
 
 
 # ---------------------------------------------------------------------------
@@ -428,6 +496,8 @@ def _spawn_feed_session(
     artifact_base: Path = ARTIFACT_BASE,
     host_config: str | None = None,
     adb_server_socket: str | None = None,
+    machines: list[int] | None = None,
+    shift_ca: int | None = None,
 ) -> int:
     """Spawn run-feed-session.ps1 for the given Row and SessionIndex."""
     # Pre-session scrape T0: lấy baseline followingCount cho Row hiện tại
@@ -457,13 +527,6 @@ def _spawn_feed_session(
         "-Python", target_python(),
         "-Row", str(row),
         "-SessionIndex", str(session_index),
-    ]
-
-    ca = 1 if now.hour in (6, 8) else (2 if now.hour in (12, 14) else 3)
-    if row == 0 and not is_rest_day:
-        argv += ["-ShiftCa", str(ca)]
-
-    argv += [
         # Cơ chế cơ hội (Opportunistic Upload): Cho phép upload ở cả Phiên 1 & Phiên 2.
         # Hệ thống có sổ cái shift_upload_history.json tự động chặn nếu phiên trước đã đăng thành công.
         "-AllowUploadHook",
@@ -472,10 +535,14 @@ def _spawn_feed_session(
         "-ArtifactRoot", artifact_root,
         "-SkipAccountWorkbookSync",
         "-LocalRun",
-        "-MachineStartStaggerMs", "2000,8000",
+        "-MachineStartStaggerMs", "3000,10000",
         "-RandomizeMachineOrder",
         "-Run",
     ]
+    if shift_ca is not None:
+        argv += ["-ShiftCa", str(shift_ca)]
+    if machines is not None and len(machines) > 0:
+        argv += ["-Machines", ",".join(str(m) for m in sorted(set(machines)))]
 
     child_env = dict(os.environ)
     if is_rest_day:
@@ -513,6 +580,47 @@ def _spawn_feed_session(
 # Main
 # ---------------------------------------------------------------------------
 
+logger = logging.getLogger(__name__)
+
+
+def _is_valid_account_workbook(path: Path) -> bool:
+    try:
+        if not path.is_file() or path.stat().st_size <= 0:
+            return False
+        import openpyxl
+
+        wb = openpyxl.load_workbook(path, read_only=True)
+        try:
+            for ws in wb.worksheets:
+                for row in ws.iter_rows(values_only=True):
+                    if any(isinstance(v, str) and v.strip() for v in row):
+                        return True
+            return False
+        finally:
+            wb.close()
+    except Exception:
+        return False
+
+
+def _resolve_account_workbook(cluster: dict[str, Any]) -> str:
+    wb_path = str(cluster.get("account_workbook", "") or "")
+    if wb_path and _is_valid_account_workbook(Path(wb_path)):
+        logger.info("account_workbook_selected source=primary path=%s", wb_path)
+        return wb_path
+    runtime_root = cluster.get("runtime_root")
+    if runtime_root:
+        fallback = Path(runtime_root) / "taikhoan_run_safe.xlsx"
+        if _is_valid_account_workbook(fallback):
+            logger.warning(
+                "account_workbook_selected source=fallback path=%s primary=%s",
+                fallback,
+                wb_path,
+            )
+            return str(fallback)
+    logger.error("account_workbook_unavailable primary=%s runtime_root=%s", wb_path, runtime_root)
+    return ""
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     args = list(argv if argv is not None else sys.argv[1:])
     if args:
@@ -531,36 +639,81 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     row, session_index, window_key, is_rest_day = result
 
+    # Xác định ca nuôi (Shift Ca) dựa theo khung giờ
+    hour = now.hour
+    shift_ca = 1 if hour in (6, 8) else (2 if hour in (12, 14) else (3 if hour in (18, 20) else None))
+    # Toàn bộ ca nuôi chạy cơ chế dynamic (row = 0) kết hợp shift-pool + 3 phễu dưỡng sinh
+    use_dynamic = os.environ.get("USE_DYNAMIC_FEED", "1") == "1"
+    effective_feed_row = 0 if (use_dynamic and shift_ca is not None) else row
+
     # Chạy tuần tự qua các cụm Farm (Kibe Local + Admin Remote)
     overall_rc = 0
     rest_tag = " [REST DAY - PURE FEED]" if is_rest_day else ""
 
     for cluster in CLUSTERS:
         cluster_name = cluster["name"]
-        cluster_wb = cluster["account_workbook"]
+        cluster_wb = _resolve_account_workbook(cluster)
+        if not cluster_wb:
+            logger.error("cluster_skipped_account_workbook_unavailable cluster=%s", cluster_name)
+            continue
         cluster_state = cluster["state_file"]
         cluster_artifact = cluster["artifact_base"]
 
         if _already_ran(window_key, state_file=cluster_state):
             continue
 
-        _preflight_ensure_accounts(row, window_key, cluster=cluster)
+        if effective_feed_row > 0:
+            _preflight_ensure_accounts(effective_feed_row, window_key, cluster=cluster)
 
-        valid_count = _count_valid_accounts_for_row(row, workbook_path=cluster_wb)
+        row_machines = _get_machines_for_row(effective_feed_row, workbook_path=cluster_wb)
+        valid_count = len(row_machines)
         if valid_count == 0:
             sys.stdout.write(
-                f"tiktok_runner [{cluster_name}]: Row {row} co 0 account hop le trong {cluster_wb}, skipping current tick (will retry next tick).\n"
+                f"tiktok_runner [{cluster_name}]: Row {effective_feed_row} co 0 account hop le trong {cluster_wb}, skipping current tick (will retry next tick).\n"
             )
             continue
 
+        row_desc = f"Dynamic Pool Ca {shift_ca} (Row 0)" if effective_feed_row == 0 else f"Row {effective_feed_row}"
         sys.stdout.write(
-            f"tiktok_runner [{cluster_name}]: Row {row} co {valid_count} accounts hop le{rest_tag}.\n"
+            f"tiktok_runner [{cluster_name}]: {row_desc} co {valid_count} accounts hop le{rest_tag}.\n"
         )
+
+        # Pre-Session Device Readiness Gate (Claude Sonnet 5.5 design)
+        healthy_machines: list[int] | None = None
+        try:
+            healthy_machines = filter_healthy_machines(row_machines)
+            logger.info(
+                "tiktok_runner [%s]: pre-session device readiness gate passed: %d/%d healthy machines (%s)",
+                cluster_name,
+                len(healthy_machines),
+                len(row_machines),
+                healthy_machines,
+            )
+            sys.stdout.write(
+                f"tiktok_runner [{cluster_name}]: Pre-session device readiness gate: {len(healthy_machines)}/{len(row_machines)} healthy machines.\n"
+            )
+            if row_machines and len(healthy_machines) == 0:
+                logger.warning(
+                    "tiktok_runner [%s]: no healthy machines for row %s (%d candidates); skipping this tick",
+                    cluster_name,
+                    row,
+                    len(row_machines),
+                )
+                sys.stdout.write(
+                    f"tiktok_runner [{cluster_name}]: Row {row} khong co machine healthy nao trong {len(row_machines)} candidate, skipping current tick.\n"
+                )
+                continue
+        except Exception as exc:
+            logger.warning(
+                "tiktok_runner [%s]: pre-session device readiness gate check failed: %s; continuing to spawn session (fail-safe)",
+                cluster_name,
+                exc,
+            )
 
         cluster_host_cfg = cluster.get("host_config")
         cluster_adb_socket = cluster.get("adb_server_socket")
         rc = _spawn_feed_session(
-            row,
+            effective_feed_row,
             session_index,
             now,
             is_rest_day=is_rest_day,
@@ -568,6 +721,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             artifact_base=cluster_artifact,
             host_config=cluster_host_cfg,
             adb_server_socket=cluster_adb_socket,
+            machines=healthy_machines,
+            shift_ca=shift_ca if effective_feed_row == 0 else None,
         )
         if rc == 0:
             _save_state(row, window_key, now, state_file=cluster_state)

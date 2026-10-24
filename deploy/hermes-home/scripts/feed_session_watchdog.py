@@ -6,6 +6,7 @@ os.environ.setdefault("MKL_NUM_THREADS", "1")
 os.environ.setdefault("OMP_NUM_THREADS", "1")
 os.environ.setdefault("NUMEXPR_NUM_THREADS", "1")
 
+import math
 import subprocess
 """Watchdog báo cáo kết quả nuôi TikTok theo từng CA (1 spawn per Ca)."""
 import glob
@@ -37,6 +38,9 @@ try:
         format_ip_circuit_breaker_report,
         classify_feed_failure,
         classify_error_reason,
+        dispatch_split_reports,
+        format_follow_report_from_blocks,
+        _row_or_pool_label,
     )
     from watchdog.parser import parse_run_all, parse_run_machines, parse_follow_results, parse_upload_results
 except ImportError:
@@ -50,6 +54,9 @@ except ImportError:
         format_ip_circuit_breaker_report,
         classify_feed_failure,
         classify_error_reason,
+        dispatch_split_reports,
+        format_follow_report_from_blocks,
+        _row_or_pool_label,
     )
     from scripts.watchdog.parser import parse_run_all, parse_run_machines, parse_follow_results, parse_upload_results
 
@@ -482,17 +489,16 @@ def reconcile_cluster_following(
         logger.warning("reconcile_cluster_following: không đọc được workbook: %s", exc)
         return [f"  + Đối soát TikTok Web: Lỗi đọc dữ liệu workbook ({wb_path})"]
     finally:
-        try:
-            wb.close()
-        except Exception:
-            pass
+        try: wb.close()
+        except Exception: pass
 
     slot_idx = int(active_row) - 1
     m_to_user: dict[str, str] = {}
+    m_to_tik: dict[str, str] = {}
     m_to_reported: dict[str, int] = {}
     m_to_cross: dict[str, int] = {}
     m_to_natural: dict[str, int] = {}
-    failed_reset_machines: list[str] = []
+    failed_reset_machines: list[str] = []; reconcile_targets: list[str] = []
     all_machines = all_machines or {}
     natural_targets = {
         str(m): sum((v or 0) for v in (data.get("natural_follows") or {}).values())
@@ -502,43 +508,63 @@ def reconcile_cluster_following(
     target_machines = (
         {str(m) for m in fl_success}
         | {str(m) for m, fd in all_follows.items() if isinstance(fd, dict) and len(fd.get("followed") or []) > 0}
+        | {str(m) for m in all_follows.keys()}
         | set(natural_targets)
     )
 
     for m in target_machines:
-        follow_data = all_follows.get(m, {})
-        if not follow_data and str(m).isdigit():
-            follow_data = all_follows.get(int(m), {})
-        followed_val = follow_data.get("followed") if isinstance(follow_data, dict) else []
+        follow_data = all_follows.get(m)
+        if not isinstance(follow_data, dict) and str(m).isdigit():
+            follow_data = all_follows.get(int(m))
+        if not isinstance(follow_data, dict):
+            follow_data = {}
+        followed_val = follow_data.get('followed', [])
         cnt = len(followed_val) if isinstance(followed_val, (list, tuple)) else 0
         natural_cnt = natural_targets.get(m, 0)
-        if cnt <= 0 and natural_cnt <= 0:
+        failed = bool(follow_data.get('follow_failed'))
+        raw_failed = follow_data.get('failed')
+        has_fail_num = (type(raw_failed) is int and raw_failed > 0) or bool(raw_failed is True) or (isinstance(raw_failed, str) and raw_failed.isdigit() and int(raw_failed) > 0)
+        status_str = str(follow_data.get('status') or '').lower()
+        is_timeout_or_err = status_str in {'timeout', 'failed', 'launch_error', 'config_error', 'manual_review'} or has_fail_num
+        if cnt <= 0 and natural_cnt <= 0 and not (failed or is_timeout_or_err):
             continue
+        reconcile_targets.append(str(m))
         slots = machine_slots.get(str(m), [])
-        if slot_idx < len(slots):
-            val = slots[slot_idx]
-            if val and str(val).strip() and str(val).strip().lower() != "none":
-                u = str(val).strip().lstrip('@')
-                m_to_user[str(m)] = u
-                failed = bool((all_follows.get(m) or {}).get("follow_failed"))
-                if not failed and str(m).isdigit() and all_follows:
-                    failed = bool((all_follows.get(int(m)) or {}).get("follow_failed"))
-                # Nếu dính follow_failed ngay từ lượt đầu tiên (cnt == 0):
-                # TikTok chưa nhận follow chéo nào -> coi như nick bị nhả/drop,
-                # bỏ hết follow tự nhiên và chéo (reported = 0) để không tạo delta âm.
-                # Ngược lại, nếu lượt đầu đã follow thành công (cnt > 0):
-                # tính toàn bộ follow tự nhiên + các lượt chéo đã bấm thành công cho tới khi bị nhả.
-                if failed and cnt == 0:
-                    m_to_reported[str(m)] = 0
-                    failed_reset_machines.append(str(m))
-                else:
-                    m_to_reported[str(m)] = cnt + natural_cnt
-                m_to_cross[str(m)] = cnt
-                m_to_natural[str(m)] = natural_cnt
-                logger.info(
-                    "[FOLLOW_RECONCILE_TELEMETRY] Machine %s: user=%s failed=%s cross_cnt=%d natural_cnt=%d reported=%d",
-                    m, u, failed, cnt, natural_cnt, m_to_reported[str(m)]
-                )
+        tik_idx = None
+        if slot_idx < 0:
+            m_info = all_machines.get(str(m)) or {}
+            val = m_info.get("account") or m_info.get("expected_username")
+            clean_val = str(val).strip().lstrip("@").lower() if val else None
+            for i_s, s_val in enumerate(slots):
+                if not s_val or not str(s_val).strip() or str(s_val).strip().lower() == "none":
+                    continue
+                s_clean = str(s_val).strip().lstrip("@").lower()
+                if clean_val is None:
+                    val = s_val
+                    tik_idx = i_s + 1
+                    break
+                elif s_clean == clean_val:
+                    tik_idx = i_s + 1
+                    break
+        elif slot_idx < len(slots):
+            val, tik_idx = slots[slot_idx], slot_idx + 1
+        else:
+            val = None
+
+        if val and str(val).strip() and str(val).strip().lower() != "none":
+            u = str(val).strip().lstrip("@")
+            m_to_user[str(m)] = u
+            if tik_idx and slot_idx < 0:
+                m_to_tik[str(m)] = f" [Tik {tik_idx}]"
+            # follow_failed ngay lượt đầu (cnt == 0): nick bị nhả -> reported = 0, không tạo delta âm
+            # Ngược lại: tính follow tự nhiên + các lượt chéo đã thành công
+            reset = failed and cnt == 0
+            m_to_reported[str(m)] = 0 if reset else cnt + natural_cnt
+            if reset: failed_reset_machines.append(str(m))
+            m_to_cross[str(m)] = cnt
+            m_to_natural[str(m)] = natural_cnt
+            logger.info("[FOLLOW_RECONCILE_TELEMETRY] Machine %s: user=%s failed=%s cross_cnt=%d natural_cnt=%d reported=%d",
+                        m, u, failed, cnt, natural_cnt, m_to_reported[str(m)])
 
     if failed_reset_machines:
         logger.info(
@@ -548,8 +574,8 @@ def reconcile_cluster_following(
         )
 
     if not m_to_user:
-        if target_machines:
-            return [f"  + Đối soát TikTok Web: Không tìm thấy username trong workbook cho {len(target_machines)} máy follow"]
+        if reconcile_targets:
+            return [f"  + Đối soát TikTok Web: Không tìm thấy username trong workbook cho {len(reconcile_targets)} máy follow"]
         return []
 
     target_users = list(m_to_user.values())
@@ -586,7 +612,7 @@ def reconcile_cluster_following(
             return int(nums[0]) if nums else 0
 
         is_p1_or_unknown = is_session_key_p1_or_unknown(session_key)
-        query_start_iso = session_start_iso if is_p1_or_unknown else buffer_reconcile_iso(session_start_iso, 10)
+        query_start_iso = session_start_iso if is_p1_or_unknown else buffer_reconcile_iso(session_start_iso, 30)
 
         # Guard an toàn: Parse datetime chuẩn xác, tuyệt đối không để query_start_iso vượt qua session_end_iso gốc
         start_dt = parse_reconcile_iso_dt(query_start_iso)
@@ -596,7 +622,7 @@ def reconcile_cluster_following(
             with _METRICS_LOCK:
                 RECONCILE_METRICS["guard_triggered"] += 1
 
-        query_end_iso = buffer_reconcile_iso(session_end_iso, 10)
+        query_end_iso = buffer_reconcile_iso(session_end_iso, 30)
         logger.info(
             "[FOLLOW_RECONCILE_WINDOW] key=%s raw_window=[%s, %s] query_window=[%s, %s]",
             session_key, session_start_iso, session_end_iso, query_start_iso, query_end_iso
@@ -657,13 +683,18 @@ def reconcile_cluster_following(
                     match_str = "khớp" if diff == 0 else f"lệch ({diff:+d})"
                     u_str = f" (@{u})" if u else ""
                     sub_info = f" (chéo {cross_cnt}, tự nhiên {natural_cnt})" if (cross_cnt > 0 and natural_cnt > 0) else ""
-                    details.append(f"    - M{m}{u_str} : script {expected_delta} lượt{sub_info} - web {web_delta} lượt - {match_str}")
+                    t_str = m_to_tik.get(str(m), "")
+                    if expected_delta > 0 or web_delta > 0 or diff != 0:
+                        details.append(f"    - M{m}{t_str}{u_str} : script {expected_delta} lượt{sub_info} - web {web_delta} lượt - {match_str}")
                 else:
-                    details.append(
-                        f"    - M{m} (@{u}): {report_label} | thiếu baseline/latest snapshot | UNPROVEN"
-                    )
+                    t_str = m_to_tik.get(str(m), "")
+                    if expected_delta > 0:
+                        details.append(
+                            f"    - M{m}{t_str} (@{u}): {report_label} | thiếu baseline/latest snapshot | UNPROVEN"
+                        )
             except Exception as err:
-                details.append(f"    - M{m} (@{u}): {report_label} | lỗi đọc snapshot: {err}")
+                t_str = m_to_tik.get(str(m), "")
+                details.append(f"    - M{m}{t_str} (@{u}): {report_label} | lỗi đọc snapshot: {err}")
 
         now_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         act_date = session_start_iso[:10] if session_start_iso else now_ts[:10]
@@ -754,7 +785,7 @@ def reconcile_cluster_following(
         return [f"  + Đối soát TikTok Web: Lỗi truy vấn snapshot: {exc}"]
 
 
-def _is_session_manifest_completed(date_live: str, run_name: str, win_end_hm: str) -> bool:
+def _is_session_manifest_completed(date_live: str, run_name: str, win_end_hm: str, has_later_run: bool = False) -> bool:
     """Kiểm tra run_manifest của lượt chạy đã hoàn thành và đạt mốc kết thúc phiên chưa."""
     latest_outer = os.path.join(date_live, run_name)
     manifest_paths = [os.path.join(latest_outer, "run_manifest.json")]
@@ -773,8 +804,6 @@ def _is_session_manifest_completed(date_live: str, run_name: str, win_end_hm: st
             end_time = payload.get("end_time") if isinstance(payload, dict) else None
             if not end_time or not isinstance(end_time, str):
                 continue
-            if win_end_hm in {"24:00", "00:00"}:
-                return True
             try:
                 dt = datetime.fromisoformat(end_time.replace("Z", "+00:00"))
                 if dt.tzinfo is not None:
@@ -782,6 +811,10 @@ def _is_session_manifest_completed(date_live: str, run_name: str, win_end_hm: st
                 end_hm = dt.strftime("%H:%M")
             except Exception:
                 end_hm = end_time.replace("T", " ").split(" ", 1)[-1][:5]
+            if not end_hm or not re.match(r'^\d{2}:\d{2}$', end_hm):
+                continue
+            if has_later_run or win_end_hm in {"24:00", "00:00"}:
+                return True
             if end_hm >= win_end_hm:
                 return True
         except (OSError, ValueError, TypeError):
@@ -823,11 +856,13 @@ def is_cluster_session_busy(
         return global_runner_busy
 
     latest_hhmmss, latest_run_name = max(session_runs, key=lambda item: item[0])
-    completed_after_window = _is_session_manifest_completed(date_live, latest_run_name, win_end_hm)
+    has_later_run = _has_later_session_run_started(date_live, latest_run_name, latest_hhmmss)
+    completed_after_window = _is_session_manifest_completed(
+        date_live, latest_run_name, win_end_hm, has_later_run=has_later_run
+    )
     if not completed_after_window:
         return global_runner_busy
 
-    has_later_run = _has_later_session_run_started(date_live, latest_run_name, latest_hhmmss)
     decision = False if has_later_run else global_runner_busy
     logger.info(
         "[WATCHDOG_BUSY_TELEMETRY] session_latest_run=%s completed_after_window=%s has_later_run=%s decision_busy=%s",
@@ -847,7 +882,7 @@ def can_report_session(
     window_end_hm: str,
     runner_busy: bool,
     has_unattempted_locked: bool = False,
-    latest_run_minutes_ago: float = None,
+    latest_run_minutes_ago: Optional[float] = None,
 ) -> bool:
     """Xác định điều kiện chốt báo cáo cho một phiên."""
     # Nếu đang trong ngày hôm nay và runner/uploader vẫn đang bận: TUYỆT ĐỐI KHÔNG chốt sớm
@@ -862,8 +897,18 @@ def can_report_session(
     if is_today and now_hm < window_end_hm:
         if runner_busy:
             return False
-        # Nếu toàn bộ fail / chưa có máy pass (completed_expected_count == 0) và run mới nhất >= 15 phút
-        if completed_expected_count == 0 and latest_run_minutes_ago is not None and latest_run_minutes_ago >= 15:
+        # Bỏ chờ chạy bù: nếu runner rảnh và run mới nhất >= 15 phút, chốt báo cáo ngay
+        if (
+            isinstance(latest_run_minutes_ago, (int, float))
+            and not isinstance(latest_run_minutes_ago, bool)
+            and math.isfinite(latest_run_minutes_ago)
+            and latest_run_minutes_ago >= 15
+            and (completed_expected_count > 0 or not has_unattempted_locked)
+        ):
+            logger.info(
+                "[WATCHDOG_DECISION] decision=report reason=latest_run_stale_15m is_today=%s completed=%d/%d latest_run_m=%.1f",
+                is_today, completed_expected_count, expected_count, latest_run_minutes_ago
+            )
             return True
         if has_unattempted_locked:
             return False
@@ -874,80 +919,22 @@ def can_report_session(
         if runner_busy:
             return False
 
-    # Nếu là hôm qua (is_today=False): chỉ cho phép báo cáo sau 02:00 sáng hôm nay để tránh chốt vội phiên đêm đang chạy dở
+    # Nếu là hôm qua (is_today=False): không chờ chạy bù sang 02:00, chốt ngay nếu runner không bận
     if not is_today:
-        if now_hm < "02:00" and completed_expected_count < expected_count:
-            return False
-        return True
+        decision = not runner_busy
+        logger.info(
+            "[WATCHDOG_DECISION] decision=%s reason=yesterday_session is_today=False runner_busy=%s completed=%d/%d",
+            "report" if decision else "defer", runner_busy, completed_expected_count, expected_count
+        )
+        return decision
 
     # Khi runner không bận (đã xong hoàn toàn batch): BẮT BUỘC chốt báo cáo
+    logger.info(
+        "[WATCHDOG_DECISION] decision=report reason=batch_completed completed=%d/%d",
+        completed_expected_count, expected_count
+    )
     return True
 
-
-def dispatch_split_reports(header: str, cluster_blocks: list[str], cluster_stats: list[dict] | None = None, win_name: str = "", active_row: Any = "") -> str:
-    feed_p, fl_p, up_p = [], [], []
-    for b in cluster_blocks:
-        lines = b.splitlines()
-        hdr = [l for l in lines if l.startswith("🏢") or l.startswith("• Tổng máy")]
-        sec = lambda kw: next((lines[i:next((j for j in range(i+1, len(lines)) if lines[j].startswith("• ")), len(lines))] for i, l in enumerate(lines) if l.startswith(f"• {kw}")), [])
-        fl_s, up_s = sec("Follow chéo"), sec("Đăng Video")
-        f_s = [l for l in lines if l not in fl_s and l not in up_s and not l.startswith("• Follow chéo") and not l.startswith("• Đăng Video")]
-        if f_s: feed_p.append("\n".join(f_s))
-        if fl_s: fl_p.append("\n".join(hdr + fl_s))
-        if up_s: up_p.append("\n".join(hdr + up_s))
-    st = cluster_stats or []
-    tot_fl = sum(len(b.get("fl_error", [])) for b in st)
-    tot_up = sum(len(b.get("up_error", [])) + len(b.get("up_timeout", [])) for b in st)
-    fl_hdr = f"🚨 [FARM ALERT] PHÁT HIỆN LỖI SCRIPT FOLLOW HÀNG LOẠT ({tot_fl} máy lỗi script Follow) - {win_name} (Row {active_row})" if tot_fl >= DEFAULT_FARM_ALERT_THRESHOLD else f"📊 [TIKTOK FOLLOW] {win_name} hoàn tất (Row {active_row})"
-    up_hdr = f"🚨 [FARM ALERT] PHÁT HIỆN LỖI SCRIPT UPLOAD HÀNG LOẠT ({tot_up} máy lỗi script Upload) - {win_name} (Row {active_row})" if tot_up >= DEFAULT_FARM_ALERT_THRESHOLD else f"📊 [TIKTOK VIDEO] {win_name} hoàn tất (Row {active_row})"
-    feed_hdr = f"📊 [TIKTOK NUÔI ACC] {win_name} hoàn tất (Row {active_row})" if win_name else header
-    try:
-        from automation_core.alerts import _load_bot_token
-        import urllib.request, urllib.parse
-        t = _load_bot_token()
-        for cid, hdr, parts in [("-5435853713", up_hdr, up_p)]:
-            if t and parts:
-                full_msg = hdr + "\n\n" + "\n\n".join(parts)
-                # Tự động chia nhỏ tin nhắn nếu vượt giới hạn 4000 ký tự của Telegram
-                chunks = []
-                if len(full_msg) <= 4000:
-                    chunks = [full_msg]
-                else:
-                    curr_lines = []
-                    curr_len = 0
-                    for line in full_msg.splitlines(keepends=True):
-                        if curr_len + len(line) > 3900:
-                            chunks.append("".join(curr_lines))
-                            curr_lines = [line]
-                            curr_len = len(line)
-                        else:
-                            curr_lines.append(line)
-                            curr_len += len(line)
-                    if curr_lines:
-                        chunks.append("".join(curr_lines))
-
-                for chunk in chunks:
-                    body = urllib.parse.urlencode({"chat_id": cid, "text": chunk}).encode("utf-8")
-                    urllib.request.urlopen(urllib.request.Request(f"https://api.telegram.org/bot{t}/sendMessage", data=body), timeout=10)
-                logger.info("[WATCHDOG_TELEGRAM_DISPATCH_SUCCESS] chat_id=%s hdr=%s chunks=%d", cid, hdr, len(chunks))
-    except Exception as exc:
-        logger.warning("[WATCHDOG_TELEGRAM_DISPATCH_FAIL] err=%s", exc)
-    return feed_hdr + "\n\n" + "\n\n".join(feed_p)
-
-
-def format_follow_report_from_blocks(cluster_blocks: list[str], cluster_stats: list[dict] | None = None, win_name: str = "", active_row: Any = "") -> str:
-    fl_p = []
-    for b in cluster_blocks:
-        lines = b.splitlines()
-        hdr = [l for l in lines if l.startswith("🏢") or l.startswith("• Tổng máy")]
-        sec = lambda kw: next((lines[i:next((j for j in range(i+1, len(lines)) if lines[j].startswith("• ")), len(lines))] for i, l in enumerate(lines) if l.startswith(f"• {kw}")), [])
-        fl_s = sec("Follow chéo")
-        if fl_s:
-            fl_p.append("\n".join(hdr + fl_s))
-    st = cluster_stats or []
-    tot_fl = sum(len(b.get("fl_error", [])) for b in st)
-    fl_hdr = f"🚨 [FARM ALERT] PHÁT HIỆN LỖI SCRIPT FOLLOW HÀNG LOẠT ({tot_fl} máy lỗi script Follow) - {win_name} (Row {active_row})" if tot_fl >= DEFAULT_FARM_ALERT_THRESHOLD else f"📊 [TIKTOK FOLLOW] {win_name} hoàn tất (Row {active_row})"
-    return fl_hdr + "\n\n" + "\n\n".join(fl_p)
 
 
 def main(mode: str = "feed"):
@@ -996,6 +983,10 @@ def main(mode: str = "feed"):
                 can_report_all = True
 
                 for cluster in CLUSTERS:
+                    fail: list[str] = []
+                    fl_error: list[str] = []
+                    up_error: list[str] = []
+                    up_timeout: list[str] = []
                     c_live = cluster.get("live_root")
                     if not c_live or not os.path.exists(c_live):
                         continue
@@ -1143,6 +1134,24 @@ def main(mode: str = "feed"):
                             fail_groups.setdefault(cat, []).append(m_label)
                         for cat, m_list in fail_groups.items():
                             feed_fail_detail_lines.append(f"    - {cat} ({len(m_list)}): {', '.join(m_list)}")
+                            if cat == "Lỗi App TikTok/Script":
+                                try:
+                                    if "D:/Taadaa/tools" not in sys.path:
+                                        sys.path.insert(0, "D:/Taadaa/tools")
+                                    from incident_emitter import emit_if_needed
+                                    for m_lbl in m_list:
+                                        m_num = m_lbl[1:] if m_lbl.startswith("M") else m_lbl
+                                        r_m = all_machines.get(m_num, {}).get("reason", "")
+                                        emit_if_needed(
+                                            exc=RuntimeError(f"Feed script failure on M{m_num}: {r_m}"),
+                                            repo="D:/Taadaa/tiktok-luot nuoi acc",
+                                            source_watchdog="feed_session_watchdog",
+                                            machine_id=m_num,
+                                            serial=m_num,
+                                            target_file="python_runner/flows/multi_machine_feed_session.py"
+                                        )
+                                except Exception as exc:
+                                    logger.warning("[INCIDENT_EMITTER_WARNING] %s", exc)
 
                     tot_swipes = sum(d.get("swipes", 0) for m, d in all_machines.items() if d.get("status") == "success")
                     tot_fy_likes = sum(d.get("likes", {}).get("for-you", 0) for m, d in all_machines.items() if d.get("status") == "success")
@@ -1184,6 +1193,8 @@ def main(mode: str = "feed"):
                             category, _ = classify_machine_follow_result(fd)
                             if category == "released":
                                 fl_released.append(m)
+                                if len(flist) > 0:
+                                    fl_success.append(m)
                             elif category == "breaker_skipped":
                                 fl_breaker.append(m)
                             elif category == "success":
@@ -1253,8 +1264,9 @@ def main(mode: str = "feed"):
                     else:
                         nat_follow_line = f"  + Follow tự nhiên: {valid_tot_nat} lượt / {tot_swipes} video ({valid_nat_rate:.1f}%) [Đề xuất: {valid_fy_nat} | Bạn bè: {valid_fr_nat}]"
 
+                    latest_run_label = sorted_run_names[-1] if sorted_run_names else ""
                     block_lines = [
-                        f"🏢 【{cluster['label']}】",
+                        f"🏢 【{cluster['label']}】 (Run: {latest_run_label})",
                         f"• Tổng máy xử lý: {total_machines} máy",
                         f"• Lướt Feed:",
                         f"  + Success ({len(succ)}): {succ_str}",
@@ -1276,7 +1288,7 @@ def main(mode: str = "feed"):
                             f"  🌿 Nghỉ dưỡng sinh ({len(fl_rest)} máy): {rest_m_str} (Chỉ lướt feed, 0 follow, 0 up)"
                         ])
 
-                    total_fl_candidates = len(fl_success) + len(fl_released)
+                    total_fl_candidates = len(set(fl_success) | set(fl_released))
                     block_lines.append(f"• Follow chéo ({total_followed_count} lượt follow) [Module 2 (Anchor): {total_m2_count} | Module 1 (Bù): {total_m1_count}]:")
                     block_lines.extend(format_success_follows(fl_success, all_follows, total_attempt=total_fl_candidates))
                     save_session_action_stats(
@@ -1382,9 +1394,10 @@ def main(mode: str = "feed"):
 
                     cluster_blocks.append("\n".join(block_lines))
                     cluster_stats.append({
-                        "fl_error": fl_error if 'fl_error' in locals() else [],
-                        "up_error": up_error if 'up_error' in locals() else [],
-                        "up_timeout": up_timeout if 'up_timeout' in locals() else [],
+                        "fail": fail,
+                        "fl_error": fl_error,
+                        "up_error": up_error,
+                        "up_timeout": up_timeout,
                     })
 
                 has_any_cluster_runs = any("• Tổng máy xử lý:" in b for b in cluster_blocks)
@@ -1393,21 +1406,25 @@ def main(mode: str = "feed"):
                     has_script_alert = False
                     alert_reasons = []
                     # Tính tổng lỗi follow & upload của các cụm
+                    tot_feed_err = sum(len(b.get("fail", [])) for b in cluster_stats)
                     tot_fl_err = sum(len(b.get("fl_error", [])) for b in cluster_stats)
                     tot_up_err = sum(len(b.get("up_error", [])) + len(b.get("up_timeout", [])) for b in cluster_stats)
-                    has_script_alert, alert_reasons = should_trigger_farm_alert(tot_fl_err, tot_up_err, DEFAULT_FARM_ALERT_THRESHOLD)
+                    has_script_alert, alert_reasons = should_trigger_farm_alert(
+                        tot_fl_err, tot_up_err, feed_errors=tot_feed_err, threshold=DEFAULT_FARM_ALERT_THRESHOLD
+                    )
                     logger.info(
-                        "[FARM_ALERT_THRESHOLD_TELEMETRY] Evaluating alert trigger: fl_err=%d up_err=%d threshold=%d alert_triggered=%s reasons=%s",
-                        tot_fl_err, tot_up_err, DEFAULT_FARM_ALERT_THRESHOLD, has_script_alert, alert_reasons
+                        "[FARM_ALERT_THRESHOLD_TELEMETRY] Evaluating alert trigger: feed_err=%d fl_err=%d up_err=%d threshold=%d alert_triggered=%s reasons=%s",
+                        tot_feed_err, tot_fl_err, tot_up_err, DEFAULT_FARM_ALERT_THRESHOLD, has_script_alert, alert_reasons
                     )
 
+                    row_lbl = _row_or_pool_label(win['name'], active_row)
                     if mode == "follow":
                         msg = format_follow_report_from_blocks(cluster_blocks, cluster_stats, win['name'], active_row)
                     else:
                         if has_script_alert:
-                            header = f"🚨 [FARM ALERT] PHÁT HIỆN LỖI SCRIPT HÀNG LOẠT ({', '.join(alert_reasons)}) - {win['name']} (Row {active_row})"
+                            header = f"🚨 [FARM ALERT] PHÁT HIỆN LỖI HÀNG LOẠT ({', '.join(alert_reasons)}) - {win['name']} ({row_lbl})"
                         else:
-                            header = f"📊 [TIKTOK NUÔI ACC] {win['name']} hoàn tất (Row {active_row})"
+                            header = f"📊 [TIKTOK NUÔI ACC] {win['name']} hoàn tất ({row_lbl})"
                         msg = dispatch_split_reports(header, cluster_blocks, cluster_stats, win['name'], active_row)
                     messages.append(msg)
                     new_reported.add(session_key)
