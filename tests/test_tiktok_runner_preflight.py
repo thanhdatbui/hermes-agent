@@ -131,7 +131,7 @@ def test_determine_row_4day_cycle() -> None:
 
     dt_d2 = datetime(2026, 10, 13, 18, 0, tzinfo=tiktok_runner.HCMC)
     res_d2 = tiktok_runner._determine_row(dt_d2)
-    assert res_d2 is not None and res_d2[3] is True and 1 <= res_d2[0] <= 8
+    assert res_d2 is not None and res_d2[3] is True and res_d2[0] == 0
 
     dt_d3 = datetime(2026, 10, 14, 8, 0, tzinfo=tiktok_runner.HCMC)
     res_d3 = tiktok_runner._determine_row(dt_d3)
@@ -185,7 +185,7 @@ def test_determine_row_full_schedule_first_cycle(cycle_day: int, hour: int) -> N
     row, session_index, window_key, is_rest = res
     expected_row, expected_rest = _EXPECTED_CYCLE_0[(cycle_day, hour)]
     if expected_rest:
-        assert is_rest is True and 1 <= row <= 8
+        assert is_rest is True and row == 0
     else:
         assert (row, is_rest) == (expected_row, expected_rest)
     assert session_index == (2 if hour in (8, 14, 20) else 1)
@@ -194,9 +194,9 @@ def test_determine_row_full_schedule_first_cycle(cycle_day: int, hour: int) -> N
 
 def test_determine_row_second_cycle_alternates_healing_rows() -> None:
     day2 = tiktok_runner._determine_row((_BASE_DAY + timedelta(days=6)).replace(hour=18))
-    assert day2[3] is True and 1 <= day2[0] <= 8
+    assert day2[3] is True and day2[0] == 0
     day3 = tiktok_runner._determine_row((_BASE_DAY + timedelta(days=7)).replace(hour=20))
-    assert day3[3] is True and 1 <= day3[0] <= 8
+    assert day3[3] is True and day3[0] == 0
     # parity cố định: mọi chu kỳ Day 0 = Row 1 lúc 6h, Day 1 = Row 2 lúc 6h
     day0 = tiktok_runner._determine_row((_BASE_DAY + timedelta(days=4)).replace(hour=6))
     assert (day0[0], day0[3]) == (1, False)

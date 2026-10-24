@@ -171,36 +171,17 @@ def _determine_row(now: datetime) -> tuple[int, int, str, bool] | None:
     target_row = slots[effective_day]
     is_rest_day = False
     if target_row is None:
+        # Dynamic Per-Machine Mode: Mỗi máy tự soi 8 slot của chính nó theo 3 lớp phễu:
+        # 1. Đề xuất -> 2. Đi tù nhả follow -> 3. Nick non
+        row = 0
         window_label = f"{slot_key[0]:02d}:{slot_key[1]:02d}"
-        try:
-            determine_healing_row, tools_dir = _load_determine_healing_row()
-            row = determine_healing_row(now, slot_key, cycle_day, cycle_idx)
-            sys.stdout.write(json.dumps({
-                "event": "healing_row_selected",
-                "row": row,
-                "window": window_label,
-                "cycle_day": cycle_day,
-                "cycle_idx": cycle_idx,
-                "tools_dir": str(tools_dir),
-            }, sort_keys=True) + "\n")
-        except Exception as exc:
-            if cycle_day == 2:
-                row = 3 if (cycle_idx % 2 == 0) else 4
-            elif slot_key in ((6, 0), (8, 0)):
-                row = 3
-            elif slot_key in ((12, 0), (14, 0)):
-                row = 4
-            else:
-                row = 5 if (cycle_idx % 2 == 0) else 6
-            sys.stderr.write(json.dumps({
-                "event": "healing_row_fallback",
-                "row": row,
-                "window": window_label,
-                "cycle_day": cycle_day,
-                "cycle_idx": cycle_idx,
-                "error_type": type(exc).__name__,
-                "error": str(exc),
-            }, sort_keys=True) + "\n")
+        sys.stdout.write(json.dumps({
+            "event": "dynamic_per_machine_selection",
+            "row": 0,
+            "window": window_label,
+            "cycle_day": cycle_day,
+            "cycle_idx": cycle_idx,
+        }, sort_keys=True) + "\n")
         is_rest_day = True
     else:
         row = target_row
@@ -336,6 +317,8 @@ def _preflight_ensure_accounts(row: int, window_key: str, cluster: dict[str, Any
     """Check và tự động reg bù tài khoản nếu Row bị trống (hỗ trợ cả Kibe và Admin).
     Dùng marker file .preflight_<cluster>_<window_key> để chỉ chạy đúng 1 lần duy nhất mỗi window, chống spam loop 15 phút.
     """
+    if row <= 0:
+        return
     cluster = cluster or CLUSTERS[0]
     cluster_name = cluster.get("name", "kibe")
     state_file = cluster.get("state_file")
@@ -389,6 +372,8 @@ def _preflight_ensure_accounts(row: int, window_key: str, cluster: dict[str, Any
 
 def _count_valid_accounts_for_row(row: int, workbook_path: str = ACCOUNT_WORKBOOK) -> int:
     """Đếm số account hợp lệ cho row trong workbook chỉ định."""
+    if row <= 0:
+        return 160  # Dynamic per-machine mode distributes across existing machine slots
     safe_path = Path(workbook_path)
     if not safe_path.is_file():
         sys.stderr.write(f"tiktok_runner: Safe workbook khong ton tai: {safe_path}\n")
