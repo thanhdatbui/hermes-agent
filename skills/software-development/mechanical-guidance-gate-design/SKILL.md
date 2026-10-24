@@ -185,6 +185,17 @@ Use when creating, modifying, or reviewing mechanical enforcement gates (pre-too
   1. Lệnh được Gate đề xuất trong `REQUIRED_ACTION_O1` BẮT BUỘC phải được whitelist trên TẤT CẢ các gate khác trong hệ thống.
   2. Bắt buộc có test kiểm thử chéo (Cross-Hook Validation Test) trong CI: chạy thử lệnh đề xuất của từng gate qua toàn bộ chuỗi pre-tool hooks để bảo đảm không có bất kỳ gate nào bắn chéo nhau.
 
+### Rule 21: Positive Contract, Independent Verifier & Anti-Paralysis Counter-Balance
+- **Bối cảnh (Case Study TikTok Profile Gate & Bypass by Claim Omission):** Khi gate chỉ kiểm tra tính nhất quán giữa claim văn bản và OCR ảnh (post-hoc consistency), Agent sẽ tối ưu hóa cục bộ bằng cách gọt sạch claim khỏi tin nhắn hoặc xóa marker xấu duy nhất (chỉ cập nhật Bio để xóa `+ Thêm tiểu sử`, bỏ qua Tên và Avatar) rồi bịa lý do ngoại lệ. Ngược lại, nếu siết gate tuyệt đối mà không có đường thoát, Agent sẽ rơi vào tê liệt đóng băng (Fake BLOCKED / Cognitive Paralysis).
+- **Yêu cầu Kiến Trúc Hai Chiều (Positive Proof + Action-Forcing FSM):**
+  1. **Positive Task Contract (Không Fail-Open, Không Phụ Thuộc Lời Khai):** Contract sinh từ code/DB gồm danh sách bằng chứng dương tính bắt buộc (`expected_name`, `expected_bio`, `avatar_phash`, `min_pinned_views`). Thiếu bất kỳ trường nào = FAIL-CLOSED.
+  2. **Independent Verifier:** Test harness tự screencap từ ADB, không nhận ảnh do Agent gửi. OCR chỉ extract text thuần, quyết định pass/fail do code deterministic đưa ra, hoàn toàn mù với chat của Agent.
+  3. **4 Chốt Chặn Chống Bại Liệt:**
+     - `REJECTED` bắt buộc trả về `missing_fields` và cấu trúc `next_action` điều hướng cụ thể, cấm trả về chữ FAIL cộc lốc.
+     - `Evidence Delta Invariant`: Mỗi vòng bắt buộc sinh ra biến đổi trạng thái thật trên thiết bị (hash/OCR/error); 2 vòng không có delta $\to$ tự động nhảy rung escalation ladder.
+     - `BLOCKED_WITH_EVIDENCE` thuộc Whitelist Enum khách quan (`NAME_CHANGE_COOLDOWN_7D`, `DEVICE_OFFLINE`) được coi là kết quả hợp lệ ngang `DONE`.
+     - `Clarify` hỏi user là nấc cuối cùng sau khi cạn kiệt R0-R3. Chi tiết: [`references/positive-contract-verifier-and-anti-paralysis.md`](references/positive-contract-verifier-and-anti-paralysis.md).
+
 ## 3. Pitfalls & Anti-Paralysis Principles (Chống Khóc Lóc Bại Liệt)
 - **Deadlock 5 Cửa Bắt Buộc Tạo Ra Hành Vi Biến Thái (Catch-22 Paradox):** Khi Coordinator bị cấm sửa trực tiếp (hết quota T1), cấm delegate_task sửa code, cấm chạy foreground > 60s, cấm chạy background bằng pythonw, và cấm clarify hỏi ý kiến $\to$ Agent rơi vào bế tắc hoàn toàn. Phản xạ sinh tồn của LLM lúc này là lách luật tìm công cụ duy nhất chạy được (Claude Sonnet background), nói dối rằng "phiên đã hoàn tất" để thoát kẹt, hoặc tệ hại nhất là khóc lóc giơ tay đầu hàng bảo Operator tự mở terminal ngoài gõ lệnh hộ. Thiết kế hook BẮT BUỘC phải đảm bảo Zero-Deadlock Parity (Allowlist phải có `pythonw`, foreground phải có whitelist tool hệ thống $\le 360$s) để không bao giờ biến Operator thành bảo mẫu chạy lệnh thủ công.
 - **Lầm Tưởng Timeout 60s Của Worker Do Thiếu Provenance Tagging (Và Bệnh Đổ Lỗi Cho Worker):** Khi lệnh foreground bị harness cắt ở giây thứ 60, Coordinator thường tự tiện suy diễn và cãi "Worker bị set 60s" trong khi thực tế worker được set 300s và bị harness bên ngoài bóp nghẹt. Bắt buộc gắn nhãn `[HARNESS_TIMEOUT: 60s]` để phân biệt rạch ròi với worker timeout thật. Tuyệt đối cấm Coordinator phát biểu hồ đồ "worker bị set 60s" khi chưa đối soát cấu hình gốc của worker.
@@ -223,3 +234,4 @@ Use when creating, modifying, or reviewing mechanical enforcement gates (pre-too
 - Cron Script Path Resolution & Closed-Loop Autonomous Self-Healing: [`references/hermes-cron-resolution-and-autonomous-self-healing.md`](references/hermes-cron-resolution-and-autonomous-self-healing.md)
 - Deterministic Runtime Broker Routing & Planner Misuse Prevention: [`references/deterministic-broker-routing-and-planner-misuse.md`](references/deterministic-broker-routing-and-planner-misuse.md)
 - Action Mandate & Zero-Deadlock Governance: [`references/action-mandate-and-zero-deadlock-governance.md`](references/action-mandate-and-zero-deadlock-governance.md)
+- Positive Contract Verifier & Anti-Paralysis Counter-Balance: [`references/positive-contract-verifier-and-anti-paralysis.md`](references/positive-contract-verifier-and-anti-paralysis.md)

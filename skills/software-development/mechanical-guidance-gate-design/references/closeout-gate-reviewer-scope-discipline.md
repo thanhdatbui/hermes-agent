@@ -90,3 +90,10 @@ python D:/Taadaa/tools/closeout_gate.py --repo D:/Taadaa/tools --base HEAD --fil
   1. Kiểm tra xem diff có bị phình do file test hay không (tách production diff khỏi test diff qua `_compute_diff_is_o1`).
   2. Bổ sung telemetry JSON có cấu trúc vào luồng bị chê thiếu quan sát.
   3. Kiểm tra xem Reviewer prompt đã được nạp Scope Discipline chưa; nếu chưa, sửa ngay tầng gate cơ học thay vì ngồi than thở.
+
+## 6. Commit Binding & Safe Push Execution
+- **Hiện tượng lỗi:** Khi đã có commit ở local, nếu chạy `closeout_gate.py --base HEAD --files ...`, audit log chỉ ghi nhận hash của worktree diff mà không bind commit hash của `HEAD`. Khi chạy `safe_push.py`, wrapper ném lỗi `UnsafePushError('BLOCKED_GATE_NOT_APPROVED: Repository has no valid APPROVED closeout audit for HEAD')`.
+- **Cách chốt phiên chuẩn:**
+  1. Chạy thẩm định commit: `python D:/Taadaa/tools/closeout_gate.py --repo <repo> --base HEAD~1 --json-output` (hoặc `--base origin/main`).
+  2. Gate chạy test, gọi Reviewer, trả về `APPROVED` và ghi nhận `"commit": "<HEAD_SHA>"` vào `gate_audit.jsonl`.
+  3. Đẩy code an toàn: `python D:/Taadaa/tools/safe_push.py <repo> origin <branch>`. Pre-push hook xác nhận commit đã được duyệt và giải phóng lệnh push.
