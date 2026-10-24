@@ -71,6 +71,9 @@ python D:/Taadaa/tools/skill_lookup.py --query "wifi proxy reconnect"
 # Look up skills as JSON (for programmatic use)
 python D:/Taadaa/tools/skill_lookup.py --query "add 2fa" --json
 
+# Ingest unmechanized knowledge directly into target skill (auto-rebuilds index)
+python D:/Taadaa/tools/record_skill_knowledge.py --skill "<skill-name>" --content "<procedure / quirk>"
+
 # Preview what would be injected into a task prompt
 python D:/Taadaa/tools/preview_skill_injection.py "fix wifi issue on machine 7"
 
@@ -90,9 +93,11 @@ python D:/Taadaa/tools/dispatch_worker.py --no-skill-injection --workdir D:/Taad
 - **Fail-Closed:** If index missing/stale or any error → `context_block=""`, dispatch continues with raw prompt. NEVER blocks dispatch.
 - **Disable flag:** `--no-skill-injection` bypasses injection entirely
 
-## Freshness Check
+## Freshness Check & Auto-Heal
 
-`check_index_freshness(index_path, skills_dir)` scans actual `SKILL.md` file mtimes at the 2-level path (`category/skill_name/SKILL.md`). Returns `False` if ANY skill file is newer than the index. When stale:
+`check_index_freshness(index_path, skills_dir)` scans actual `SKILL.md` file mtimes at the 2-level path (`category/skill_name/SKILL.md`). Returns `False` if ANY skill file is newer than the index.
+- **Auto-Heal in Injection:** `inject_skill_context(prompt, auto_heal=True)` automatically triggers `build_index(skills_dir, index_path)` in-process (~15ms) when the index is missing or stale before performing the lookup, eliminating false-positive `FAIL_CLOSED_STALE_INDEX` errors while keeping fail-closed safety if rebuild fails.
+- **Manual Rebuild:**
 ```bash
 python D:/Taadaa/tools/build_skill_index.py --skills-dir D:/Taadaa/Hermes/skills --output D:/Taadaa/tools/skills_index.json
 ```

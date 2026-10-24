@@ -6,7 +6,7 @@ Pin>=1k: LIFO TikTok->ghim tăng dần để top view ở ô 1 (re-pin enforce);
 §
 Rename/Bio: 100% TV có dấu; cấm adb input text thô; chỉ gõ AdbKeyboard Base64 UTF-8; pre-submit check 0 ký tự; tâm Sửa hồ sơ (315,865) né khe 540; cấm tap (72,148); thoát FIND_FRIENDS; 7d cd; switcher.
 §
-CGPT-Web: test qua /api/providers/{cid}/test, cấm validate masked key.
+CGPT: test qua /api/providers/{cid}/test.
 §
 Stale Up: xóa draft. Revert: TikWM. Cào: max 60. Cron TB: device_lock+rolling<=5; bỏ 0h.
 §
@@ -22,7 +22,7 @@ Cron/Alert: Gửi đúng Telegram group của repo (-5435853713 Video/Up, -53776
 §
 403 VALIDATION: CẤM nhầm OAuth. Bóc validation_url tươi, mở GPM quét QR camera thật (cấm Zalo). Quota full 100% ảo do 403 chặn từ cổng. Test qua isolated_chat_test.
 §
-Guard Strike-3: Cấm BLOCKED/chờ duyệt (bại liệt); auto-quarantine + tự nạp guidance qua update_guidance.py + pivot sửa tiếp.
+Guard Strike-3: Cấm BLOCKED/chờ duyệt; auto-quarantine + nạp guidance qua update_guidance.py + pivot sửa tiếp; 8 Gate + Watchdog 6h; Incident-to-Guard tự nạp case.
 §
 CẤM delegate_task sửa code. Worker dispatch qua D:/Taadaa/tools/sol_worker.py (hoặc claude_worker.py / dispatch_worker.py).
 §

@@ -99,3 +99,4 @@ Use when creating, modifying, or reviewing mechanical enforcement gates (pre-too
 - Case Study Chốt Chặn Validator Tiếng Việt & Cấm AdbKeyboard Fallback: [`references/vietnamese-accent-validator-and-adb-keyboard-gate.md`](references/vietnamese-accent-validator-and-adb-keyboard-gate.md)
 - Phân Biệt Khóa Vật Lý vs Gate Chỉ Dẫn & Cơ Chế Phá Kẹt 9–10 Vòng: [`references/physical-lock-vs-guidance-gate-and-9-turn-paralysis.md`](references/physical-lock-vs-guidance-gate-and-9-turn-paralysis.md)
 - Giám Sát Tuân Thủ Gate & Rollup Telemetry (Chống Chặn Thầm Lặng): [`references/gate-observability-telemetry-and-compliance-watchdog.md`](references/gate-observability-telemetry-and-compliance-watchdog.md)
+- Tự Động Hóa Nạp Case Incident-to-Guard & Giám Sát 8 Gate Cơ Giới Hóa 6H: [`references/incident-to-guard-automation-and-8gate-compliance.md`](references/incident-to-guard-automation-and-8gate-compliance.md)
