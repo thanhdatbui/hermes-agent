@@ -26,4 +26,4 @@ Guard Strike-3: Cấm BLOCKED/chờ duyệt (bại liệt); auto-quarantine + t�
 §
 CẤM delegate_task sửa code. Worker dispatch qua D:/Taadaa/tools/sol_worker.py (hoặc claude_worker.py / dispatch_worker.py).
 §
-Hotmail/GPM: has_tiktok chỉ xét bool(username) né kẹt OTP rỗng pass; gpm_change exit 1 nếu 0 target chỉ định.
+Hotmail/GPM: has_tiktok BẮT BUỘC đủ cả ID & PASS; gpm_change exit 1 nếu 0 target; 2FA+PASS xong mới đổi Hotmail.

@@ -27,12 +27,18 @@ Trong các ca nuôi acc hàng loạt (Ca 1 Phiên 1/2), 20 máy báo lỗi (8 Ki
     ```
   - Thoát vòng lặp ngay khi TikTok chiếm foreground.
 
-### C. Lỗ Hổng Cơ Chế Farm Alert (`watchdog/alerts.py` & `scripts/feed_session_watchdog.py`)
-- **Nguyên nhân:** Hàm `should_trigger_farm_alert` nguyên bản chỉ kiểm tra lỗi Follow (`fl_errors`) và Upload (`up_errors`), hoàn toàn bỏ quên khâu Nuôi Feed (`feed_errors`). Khi 20 máy lỗi Feed/ADB/Focus, watchdog vẫn chỉ gửi header chúc mừng `📊 [TIKTOK NUÔI ACC] Ca 1 hoàn tất` và không bắn alert sang nhóm khẩn cấp.
-- **Giải pháp:**
-  - Bổ sung tham số `feed_errors` vào `should_trigger_farm_alert`: nếu `feed_errors >= threshold` (mặc định 8 máy ~ 10% farm), kích hoạt alert: `"{feed_errors} máy lỗi nuôi Feed/ADB/Focus"`.
-  - Trong `feed_session_watchdog.py`, tổng hợp `tot_feed_err = sum(len(b.get("fail", [])) for b in cluster_stats)`.
-  - Trong `dispatch_split_reports`, nếu phát hiện lỗi Feed hàng loạt (`tot_feed >= 8` hoặc có cờ `[FARM ALERT]`), tự động bắn thêm một bản tin cảnh báo khẩn cấp sang đúng nhóm **Telegram Farm Alert** (`-5373649734`).
+### C. Chuẩn Hóa Phân Loại Báo Cáo Nuôi Feed vs Farm Alert (`watchdog/alerts.py` & `formatters.py`)
+- **Sai lầm kiến trúc (Đã sửa & cấm lặp lại):** Tự ý gộp lỗi nuôi feed (`tot_feed`) vào ngưỡng kích hoạt `🚨 [FARM ALERT]` và bắn sang nhóm Alert (`-5373649734`). Điều này làm sai lệch luồng báo cáo và gây hoảng loạn không đáng có cho người trực farm.
+- **Quy tắc phân loại bất biến (Taxonomy Invariant):**
+  - **Báo cáo nuôi feed định kỳ:** Tiêu đề BẮT BUỘC giữ nguyên định dạng chuẩn `📊 [TIKTOK NUÔI ACC] {win_name} hoàn tất ({row_or_pool})` và gửi đúng nhóm Nuôi (`-5377611430`). CẤM tự ý đổi sang `[FARM ALERT]`.
+  - **Farm Alert:** Chỉ kích hoạt độc quyền cho lỗi script Follow hàng loạt (`fl_errors >= 8`) hoặc Upload hàng loạt (`up_errors >= 8`) hoặc sự cố hạ tầng sập nguồn/proxy.
+  - **Cô lập tiêu đề trong `dispatch_split_reports`:** `feed_hdr` BẮT BUỘC độc lập với cờ alert của Follow/Upload. Kể cả khi Follow dính Farm Alert, tiêu đề Feed vẫn phải giữ nguyên trạng thái hoàn tất (đã khóa bằng test `test_dispatch_split_reports_feed_header_independent_of_fl_alert`).
+- **Quy tắc "Forward Report = Lệnh Fix Script" (User Invariant):**
+  - Khi User forward báo cáo phiên nuôi vào chat: Coordinator BẮT BUỘC hiểu đây là **Lệnh fix script trực tiếp**, không phải câu hỏi tham khảo.
+  - Tự động bóc tách O(1): Tiêu đề repo, Cụm + Thư mục Run/Trace, Nhóm lỗi (mở app/swipe/proxy) và Danh sách máy.
+  - Lấy 1 máy tiêu biểu đọc log, tìm đúng hàm lỗi, dispatch worker sửa, chạy test hồi quy và canary nghiệm thu ngay lập tức, CẤM hỏi lại lải nhải.
+- **Kỷ luật tư vấn nhất quán (Anti-Flip-Flop):**
+  - CẤM tuyệt đối thái độ tiền hậu bất nhất (lượt trước khuyên revert, lượt sau lại khuyên giữ nguyên). Coordinator phải có lập trường kiến trúc vững chắc, dứt khoát và nhất quán từ đầu đến cuối.
 
 ---
 

@@ -14,6 +14,6 @@ Sol Advisor 100% On-Demand, cấm auto-append/đoán ý; chỉ gọi khi đích 
 §
 Hand-off acc: đưa đủ Email, Pass, Recovery, Secret 2FA & mã TOTP live; hỏi quota acc nào trả lời đúng acc đó, cấm lải nhải sang model khác.
 §
-Forward report=lệnh fix script: map lỗi sang code & canary ngay. Lỗi pool: cấm võ đoán user tắt tay; tra session_search tìm timeout/SIGKILL trước.
+Forward report=lệnh fix: đọc cụm/row/run_id O(1), map lỗi sang code, lấy 1 máy sửa & canary ngay. Tư vấn nhất quán, cấm tiền hậu bất nhất; cấm đổi report nuôi thường thành Farm Alert.
 §
 Memory: chỉ lưu cái chưa cơ giới hóa (persona, sở thích, feedback); tri thức/quy trình farm đưa vào dynamic skill.

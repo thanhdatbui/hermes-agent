@@ -21,10 +21,27 @@
    - `D:\x`: Chứa game / installer cũ (như League of Legends / Riot Games ~90 GB).
    - `D:\CodexRuntime\tiktok-video-machine2`: Chứa log (`download_admin_p10.log` có thể phình >100 MB).
 
-## 3. Các Phương Án Giải Phóng Dung Lượng An Toàn
-1. **Xóa các installer / game rác không dùng (`D:\x`):** Giải phóng ngay ~90 GB mà không ảnh hưởng tới dữ liệu farm.
+## 3. Cạm Bẫy Deadlock Google Drive Virtual Mirror (Vì Sao Cron Giải Phóng Đĩa Bị Bất Lực?)
+- **Thắc mắc thường gặp:** "Đã có cron `sync_and_clean_gdrive.py` giải phóng video lên Google Drive 5TB, tại sao đĩa vẫn tràn về 0 MB?"
+- **Bản chất kỹ thuật (Google Drive Desktop DriveFS Streaming Cache Deadlock):**
+  1. Google Drive Desktop mount ổ đĩa ảo `G:` với `ContentCachePath` cấu hình tại `D:\GoogleDriveCache`.
+  2. Driver của Google Drive tính toán dung lượng trống khả dụng của ổ ảo `G:` **dựa trên chính dung lượng trống của ổ đĩa chứa thư mục Cache (ổ `D:`)**.
+  3. Khi ổ `D:` chạm ngưỡng `Free: 0 MB`, ổ `G:` cũng báo `Free: 0 MB` (dù tài khoản cloud còn hàng TB).
+  4. Script `sync_and_clean_gdrive.py` có cơ chế an toàn nghiêm ngặt: **Chỉ xóa video gốc trên `D:` khi file đã được copy nguyên vẹn lên `G:\My Drive\video_goc_backup`**.
+  5. Khi ổ `D:` đã đầy 0 MB, lệnh copy/robocopy sang `G:` bị Windows báo lỗi ngay lập tức:
+     `OSError: [Errno 28] No space left on device: 'G:\My Drive\video_goc_backup\...'`
+  6. **Vòng lặp bế tắc ("Con gà - Quả trứng"):**
+     `D:` đầy $\rightarrow$ `G:` báo hết dung lượng $\rightarrow$ Không copy được lên `G:` $\rightarrow$ Script không xóa file nào trên `D:` $\rightarrow$ `D:` vĩnh viễn kẹt ở 0 MB $\rightarrow$ Downloader và mọi tiến trình ghi đều chết đứng.
+
+## 4. Các Phương Án Giải Phóng Dung Lượng & Phá Vỡ Deadlock
+1. **Mồi dung lượng trống khẩn cấp (Bootstrap Free Space):**
+   - Google Drive và cron dọn dẹp cần tối thiểu 20–30 GB đệm trên ổ `D:` để ghi cache tạm khi upload.
+   - Xóa installer / game không dùng (`D:\x` ~90 GB) hoặc cắt tỉa clip render dư thừa (`> 45` clip/folder trong `D:\TIKTOK-videonuoinick-admin`).
+   - Ngay khi `D:` có dung lượng trống, ổ `G:` sẽ tự động mở lại dung lượng ghi, `sync_and_clean_gdrive.py` sẽ hoạt động trơn tru trở lại.
 2. **Cắt tỉa clip render dư thừa:** Giữ tối đa 45 clip/folder trong `D:\TIKTOK-videonuoinick-admin`, xóa các clip từ `46.mp4` trở lên.
-3. **Truncate log:** Truncate các file log quá nặng trong `CodexRuntime`.
+3. **Truncate log:** Truncate các file log quá nặng trong `CodexRuntime` (`download_admin_p10.log`).
+4. **Kỷ luật Giám sát & Ngưỡng An Toàn (Safety Headroom Invariant):**
+   - Downloader trên Admin cần cơ chế dừng mềm / cảnh báo khi `FreeSpace(D:) < 30 GB` thay vì để tải kiệt quệ về 0 MB làm sập chuỗi tự động dọn dẹp.
 
 ## 4. Tái Khởi Động Downloader Sau Khi Có Dung Lượng Trống
 - Chạy script launch detached downloader qua SSH:
