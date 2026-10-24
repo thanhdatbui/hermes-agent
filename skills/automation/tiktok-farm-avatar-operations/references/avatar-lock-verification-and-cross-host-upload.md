@@ -18,7 +18,21 @@ Khi upload thành công lên TikTok app:
    - Runner tự động cập nhật atomic vào `Tik*.xlsx` cột `Avatar = OK`.
    - Khi đã là `OK`, các ca nuôi nick / đăng video định kỳ sẽ tự động nhận diện và skip qua bước đổi avatar, không tác động hay quấy rầy tài khoản nữa.
 
-## 3. Quy Trình Upload Cross-Host (Máy Admin dải >= 200)
+3. **Kỷ Luật Sao Chép Thư Mục & Tránh Lỗi SameFileError (Python)**
+   - Khi sao chép `avatar.jpg` sang cả 2 kho `F_src` (video gốc) và `F_vid` (render đích), nếu file nguồn được chọn nằm sẵn trong một trong hai thư mục, lệnh `shutil.copy2` sẽ văng lỗi `shutil.SameFileError`.
+   - BẮT BUỘC kiểm tra đường dẫn chuẩn hóa trước khi sao chép:
+     ```python
+     dst_f = os.path.join(d, "avatar.jpg")
+     if os.path.abspath(src).lower() != os.path.abspath(dst_f).lower():
+         shutil.copy2(src, dst_f)
+     ```
+   - Đồng thời cắm cờ kép `.manual_avatar_locked` và `.manual_hashtag_locked`, ghi nhận folder ID vào cả hai registry `manual_avatar_protected_folders.json` và `manual_hashtag_protected_folders.json`.
+
+4. **Kiểm Tra Trạng Thái Idempotent Trên Thiết Bị Trước Khi Đổi Tên / Bio**
+   - Trước khi kích hoạt script đổi tên / bio tự động trên máy, BẮT BUỘC dùng Vision / WinRT OCR chụp và soi màn hình Profile trước.
+   - Nếu tài khoản đã có tên người thật tiếng Việt chuẩn và Bio đúng ngách (do đã được cập nhật trước đó), xác nhận ngay trạng thái đạt chuẩn, tránh việc bấm mù hay kích hoạt lại luồng UI có thể bị kẹt do các banner chiến dịch (ví dụ banner quyên góp/WWF làm xê dịch tọa độ nút "Sửa hồ sơ").
+
+5. Quy Trình Upload Cross-Host (Máy Admin dải >= 200)
 - Thiết bị dải >= 200 cắm USB trực tiếp vào Admin-PC (`192.168.110.119`), không nhìn thấy qua ADB local của Kibe.
 - `run_upload_avatar.py` tự động phát hiện `machine >= 200` để trỏ `-HostConfigPath` sang `D:\Taadaa\machine-config\admin.yaml`.
 - Đồng bộ file ảnh chuẩn sang Admin-PC trước khi chạy: `D:/TIKTOK-videonuoinick-admin/{folder}/avatar.jpg` và cắm cờ `.manual_avatar_locked`.

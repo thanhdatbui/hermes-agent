@@ -11,6 +11,7 @@ tags: [tiktok, farm, batch, render, upload, resume, kibe]
 ## 1. Nguyên Tắc Cốt Lõi
 - **Tái sử dụng công cụ chuẩn:** Tuyệt đối không tự viết lệnh ad-hoc khi đã có script pipeline chính thống.
 - **Tiến trình ngầm không mở Console:** Mọi lệnh batch kích hoạt qua cronjob hoặc background bắt buộc phải bọc ẩn cửa sổ theo `guard_cronjob_safety.py`.
+- **Thẩm định chạy bù (Catch-Up / Compensatory Run):** Bắt buộc đối soát chu kỳ 4 ngày (Parity 96h) từ base 11/10/2026. CẤM chạy bù đè vào Dead Zone (03:00 - 05:59) hoặc Ca 1 sáng (06:00). Khi máy văng do hạ tầng (USB/Proxy), cấm rerun toàn bộ 80 máy; chỉ chạy selective máy failed khi hạ tầng đã phục hồi. Chi tiết xem [`references/compensatory-feed-run-safety-and-cadence-parity.md`](references/compensatory-feed-run-safety-and-cadence-parity.md).
 
 ## 2. Các Lệnh Canonical Batch
 - **Render Video (TikN):**
