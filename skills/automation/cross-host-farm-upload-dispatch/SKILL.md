@@ -64,4 +64,5 @@ For a completed fix, record: target file and exact Gate 5/dispatch delta; compil
 
 - See `references/cross-host-admin-upload.md` for the Taadaa-specific command contract, observed false-alert chain, verification matrix, and standalone avatar upload launcher dispatch rules.
 - See `references/admin-remote-avatar-and-media-management.md` for Admin Remote ($M \ge 200$) storage formulas ($F_{src}, F_{vid}$), CodexRuntime Python execution via SSH base64, Haar cascade false-positive visual verification, and 2-tier lock enforcement.
+- See `references/admin-downloader-disk-full-diagnosis.md` for diagnosing and remediating Admin downloader halts due to 0 MB disk space (`OSError: [Errno 28] No space left on device`).
 - See `references/cloud-media-decoupling-architecture.md` for decoupling stateless media scrapers and ffmpeg renderers off physical farm hosts onto cloud workers.

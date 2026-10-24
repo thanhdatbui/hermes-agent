@@ -17,6 +17,9 @@
 
 ## 3. Worker Cào Video (--parallel 20) & Cơ Chế Global Ledger
 - **Cấu hình download:** Cào video theo niche chạy với `--parallel 20` để vét kho nhanh chóng.
+- **Quy tắc Channel Density (--max-folders-per-channel 2 vs 1):**
+  - *Giai đoạn đầu (phủ kho rộng 640 folder):* Dùng `--max-folders-per-channel 2` để tận dụng các kênh lớn (>100 clip) chia cho 2 folder khác nhau, tránh nghẽn các ngách hẹp tiếng Việt (`INSUFFICIENT_POOL`). Lưu ý: các clip giữa 2 folder vẫn độc quyền tuyệt đối nhờ bảng `videos` trong SQLite khóa theo `video_id`.
+  - *Giai đoạn vét cuối (còn ít folder trống):* Chuyển cứng về `--max-folders-per-channel 1` theo chỉ đạo của người dùng ("1 đi. H down nốt thì còn ít folder trống r") để siết chặt kỷ luật 1 folder = 1 kênh duy nhất tuyệt đối.
 - **Cơ chế chống trùng nguồn giữa Kibe và Admin:**
   - Định vị tại: `D:\OneDrive\SharedData\tiktok-video\global-ledger` (thư mục đồng bộ real-time).
   - Trước khi cào bất kỳ kênh nào, script bắt buộc gọi `claim_source(directory, machine_id, source_url, folder)`:
@@ -26,7 +29,15 @@
 
 ---
 
-## 4. Bẫy Kỹ Thuật (Pitfalls & Recovery)
+## 4. Kibe Hoàn Tất 100% & Bàn Giao Toàn Diện Tài Nguyên Cho Admin
+- **Khi Kibe hoàn tất (640/640 folder ≥45 clip từ Tik1..Tik8):**
+  - Tạm dừng (PAUSE) ngay các cron job giám sát download và render của Kibe: `kibe-render-worker-watchdog` (`a36b2af01548`) và `kibe-downloader-watchdog` (`4332e939a740`).
+  - Cập nhật watchdog báo cáo (`farm_render_download_watchdog.py`) ngừng quét và ngừng spam cụm Kibe, chỉ in báo cáo tập trung cho Farm Admin (Máy 201–280).
+  - Dồn toàn bộ công suất 20 workers và 69 cổng proxy pool sang phục vụ máy Admin (`D:\video goc may 2`).
+
+---
+
+## 5. Bẫy Kỹ Thuật (Pitfalls & Recovery)
 1. **SQLite WAL Disk I/O Error khi đa luồng (20 worker):**
    - Triệu chứng: `sqlite3.OperationalError: disk I/O error` tại `PRAGMA journal_mode = WAL`.
    - Khắc phục: Hàm `connect_state` trong `pipeline_common.py` phải bọc vòng lặp retry 5 lần (backoff 1s) và bắt `OperationalError` an toàn khi set WAL.
