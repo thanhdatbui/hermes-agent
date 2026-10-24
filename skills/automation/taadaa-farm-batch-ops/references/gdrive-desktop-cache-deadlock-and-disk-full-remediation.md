@@ -29,8 +29,9 @@ Khi phát hiện Downloader Admin dừng cào video kèm triệu chứng ổ D: 
    ```
 2. **Tuyệt đối không ép chạy script sync khi Free = 0 MB:**
    Mọi nỗ lực gọi `sync_and_clean_gdrive.py` lúc này đều vô hiệu và tốn thời gian timeout.
-3. **Tìm và dọn các mục rác / installer ngoài pipeline:**
-   - Kiểm tra các thư mục không thuộc pipeline chính: `D:\x` (bộ cài game, Riot, LoL), file `.log` phình to trong `D:\CodexRuntime\tiktok-video-machine2\*.log` (ví dụ `download_admin_p10.log` > 100MB).
+3. **Tìm và dọn các mục rác ngoài pipeline (CẤM XÓA GAME):**
+   - **VÙNG BẢO VỆ GAME**: CẤM TUYỆT ĐỐI xóa bất kỳ thư mục game nào (Riot Games, League of Legends, TFT, PBE hay `D:\x`). User chơi game thật cả Live và PBE trên cả 2 máy Kibe và Admin.
+   - Các mục rác an toàn để dọn đĩa: File `.log` phình to trong `D:\CodexRuntime\tiktok-video-machine2\*.log` (như `download_admin_p10.log` > 100MB), thư mục tạm `C:\Users\Admin\AppData\Local\Temp`, các bản cache/staging cũ ngoài luồng.
    - Kiểm tra an toàn tiến trình trước khi xóa: Dùng `psutil` xác nhận không có tiến trình nào đang chạy bên trong thư mục mục tiêu.
 4. **Giải phóng mồi (Prime Space):**
    - Xóa thư mục rác để tạo ra tối thiểu **20 – 50 GB trống** trên `D:`.
