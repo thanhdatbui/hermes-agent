@@ -38,11 +38,14 @@ Mọi Gate cơ học (pre-commit, pre-push, closeout gate, preflight runner) b�
 - Khi phát hiện vi phạm, Gate phải có cơ chế tự động cách ly hunk vi phạm (ưu tiên dùng `git stash push --keep-index -m "quarantine-<rule>-<ts>" -- <file>`).
 - File mã nguồn lập tức được khôi phục về trạng thái sạch, không để working tree bẩn khiến các bước sau bị tắc nghẽn.
 
-### Tiêu chuẩn 3: Cấm "Strike 3 Mở Ticket Ngồi Chờ" — Ép Buộc Hypothesis Pivot
-- Tuyệt đối không thiết kế nhánh: *"Sau 3 lần vi phạm thì tạo ticket chờ User phân xử"*.
-- Strike 3 cơ học là **LỆNH BÁC BỎ GIẢ ĐỊNH (Hypothesis Rejection Mandate)**:
-  + Cảnh báo: Hướng sửa chữa hiện tại đã hoàn toàn phá vỡ bất biến của hệ thống.
-  + Ép buộc Agent phải lùi lại 1 bước, bỏ giả định cũ, điều tra nguyên nhân gốc sâu hơn (Root Cause Pivot) và thi công phương án khác tuân thủ bất biến cho đến khi pass 100%.
+### Tiêu chuẩn 3: Strike 3 Chạm Trần Thẩm Quyền — Báo Cáo User Nhận Chỉ Thị
+- Tuyệt đối không mở ticket vu vơ rồi ngồi chờ. CẤM đâm đầu vào tường đốt token.
+- Vì Agent bị cấm tự sửa Guard, lúc này việc báo User là HỢP LỆ VÀ BẮT BUỘC:
+  1. Tóm tắt 3 phương án đã thử và diff cụ thể bị Guard chặn.
+  2. Nêu rõ điểm nghẽn để User phân xử:
+     - (A) Nếu Guard chặn sai/quá đà: User can thiệp sửa Guard.
+     - (B) Nếu Guard đúng: User ra lệnh định hướng nghiệp vụ mới ("User ra lệnh agent tìm cách").
+  3. Giữ repo sạch sẽ ($O(1)$ Auto-quarantine) và sẵn sàng nhận lệnh thi công tiếp, cấm buông xuôi đóng phiên.
 
 ### Tiêu chuẩn 4: Bộ Kiểm Thử Đối Kháng Tĩnh (Adversarial Unit Tests)
 - Mọi Gate cơ giới mới bắt buộc phải có test suite đối kháng:

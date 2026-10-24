@@ -1,6 +1,15 @@
-# Ca Nuôi (4 Ca x 2 Phiên), Chuỗi Đêm Tuần Tự & On-Demand Reg Farm Rules
+# [DEPRECATED / SUPERSEDED] Ca Nuôi (4 Ca x 2 Phiên Cũ) & Night Chain Đêm
 
-## 1. Cấu Trúc Ca Nuôi (4 Ca x 2 Phiên) & Khoảng Nghỉ
+> ⚠️ **CẢNH BÁO LỊCH CŨ ĐÃ HẾT HIỆU LỰC:** Lịch 4 Ca (có Ca 4 lúc 00:00 - 01:30 đêm) và Night Chain đêm đã bị bãi bỏ hoàn toàn từ ngày 11/10/2026.
+> **Lịch chuẩn hiện tại là Chu kỳ 4 ngày x 3 Ca / ngày (BỎ HOÀN TOÀN CA 0H ĐÊM):**
+> - Ca 1 (Sáng): 06:00 (P1) & 08:00 (P2)
+> - Ca 2 (Trưa): 12:00 (P1) & 14:00 (P2)
+> - Ca 3 (Tối):  18:00 (P1) & 20:00 (P2)
+> - Dead Zone: 21:30 - 05:59 sáng (nghỉ hoàn toàn, hạ nhiệt S7, dọn cache 03:00 - 04:30).
+
+---
+
+## 1. Cấu Trúc Ca Nuôi (4 Ca x 2 Phiên - LƯU TRỮ LỊCH SỬ)
 - **1 Ca = 2 Phiên:**
   - Phiên 1: Feed + tương tác + follow lượt 1 (~15-18 follow, ~45-50p).
   - Khoảng nghỉ giữa 2 Phiên (Gap A): ~45 - 75 phút (tự nhiên đối với cùng 1 user trên máy).

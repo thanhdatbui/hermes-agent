@@ -1,6 +1,15 @@
-# Kiến trúc Nuôi TikTok 8 Acc/Máy (4 Ca x 2 Phiên) & Chiến lược Giảm nhiệt Farm
+# [DEPRECATED / SUPERSEDED] Kiến trúc Nuôi TikTok 8 Acc/Máy (4 Ca x 2 Phiên Cũ 09/09/2026)
 
-## 1. Bối cảnh & Động lực Chuyển đổi (09/09/2026)
+> ⚠️ **CẢNH BÁO LỊCH CŨ ĐÃ HẾT HIỆU LỰC:** Lịch 4 Ca (có Ca 4 lúc 00:00 - 01:30 đêm) đã bị bãi bỏ hoàn toàn từ ngày 11/10/2026.
+> **Lịch chuẩn hiện tại là Chu kỳ 4 ngày x 3 Ca / ngày (BỎ HOÀN TOÀN CA 0H ĐÊM):**
+> - Ca 1 (Sáng): 06:00 (P1) & 08:00 (P2)
+> - Ca 2 (Trưa): 12:00 (P1) & 14:00 (P2)
+> - Ca 3 (Tối):  18:00 (P1) & 20:00 (P2)
+> - Dead Zone: 21:30 - 05:59 sáng (nghỉ hoàn toàn, hạ nhiệt S7, dọn cache 03:00 - 04:30).
+
+---
+
+## 1. Bối cảnh Lịch sử (09/09/2026)
 - **Cấu hình cũ (3 ca x 3 phiên = 9 phiên/máy):** Nuôi 6 acc/máy (Row 1-6). Mỗi ca 3 phiên kéo dài ~5 tiếng. Máy chạy liên tục ban ngày, thiếu khung giờ tản nhiệt và chạm trần tải phần cứng nếu mở rộng lên 8 acc.
 - **Giới hạn thuật toán TikTok:**
   - TikTok tính quota hành vi (follow, like, action) theo Rolling 24h / Daily session, KHÔNG có cơ chế cộng dồn khi nghỉ cách ngày.

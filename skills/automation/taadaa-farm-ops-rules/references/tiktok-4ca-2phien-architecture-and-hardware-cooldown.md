@@ -1,10 +1,15 @@
-# Kiến Trúc Nuôi TikTok 4 Ca x 2 Phiên (8 Acc/Máy) & Cơ Chế Tản Nhiệt Phần Cứng
+# [DEPRECATED / SUPERSEDED] Kiến Trúc Nuôi TikTok 4 Ca x 2 Phiên Cũ (09/09/2026)
 
-Đúc kết từ quyết định kiến trúc của user (09/09/2026): Nâng tải dàn Farm 80 máy từ 6 acc/máy (3 ca x 3 phiên) lên tối đa 8 acc/máy (4 ca x 2 phiên), tối ưu thời lượng chạy và nhiệt độ phần cứng.
+> ⚠️ **CẢNH BÁO LỊCH CŨ ĐÃ HẾT HIỆU LỰC:** Lịch 4 Ca (có Ca 4 lúc 00:00 - 01:30 đêm) đã bị bãi bỏ hoàn toàn từ ngày 11/10/2026.
+> **Lịch chuẩn hiện tại là Chu kỳ 4 ngày x 3 Ca / ngày (BỎ HOÀN TOÀN CA 0H ĐÊM):**
+> - Ca 1 (Sáng): 06:00 (P1) & 08:00 (P2)
+> - Ca 2 (Trưa): 12:00 (P1) & 14:00 (P2)
+> - Ca 3 (Tối):  18:00 (P1) & 20:00 (P2)
+> - Dead Zone: 21:30 - 05:59 sáng (nghỉ hoàn toàn, hạ nhiệt S7, dọn cache 03:00 - 04:30).
 
 ---
 
-## 1. Kiến Trúc 4 Ca x 2 Phiên (8 Acc/Máy: Row 1–8)
+## 1. Kiến Trúc 4 Ca x 2 Phiên Cũ (LƯU TRỮ LỊCH SỬ)
 
 ### A. Phân Bổ Mốc Giờ (BLOCK_ANCHORS)
 - **4 Ca rải đều 6 tiếng/ca (từ 06:00 sáng đến 02:00 đêm):**

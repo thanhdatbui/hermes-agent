@@ -4,11 +4,11 @@ Dọn đĩa: safe_recycle.py. Reboot né TFT/War3. Box 1 sát AP 1; S7: anten TR
 §
 Nuôi 4d 3 ca (bỏ 0h). Cấm pause cron/kill tool khác khi kẹt lock, canh xong mới làm. Ava&2FA tới 5h15. Starve 96h.
 §
-Vibe O(1), bực=làm ngay. CẤM BLOCKED/ticket dừng (vẫn là khóc); Gate DENY=pivot sửa gốc; cấm phá case.
+Vibe O(1), bực=làm ngay; cấm BLOCKED; Gate DENY=pivot sửa gốc; cấm phá case.
 §
-Ava/Media: Up thẳng máy; khóa cờ .manual_avatar_locked & Avatar=OK; soi mắt trước MEDIA:; N máy gửi đủ N MEDIA: riêng; Ava đúng creator.
+Ava/Media: Up thẳng máy; cờ .manual_avatar_locked & Avatar=OK; N máy gửi đủ N MEDIA: riêng; đúng creator.
 §
-Canary: target-bound; máy thật qua `done_gate.py --strict-device`; WinRT OCR->ATX; Singbox. Guard cơ học; Claude duyệt; dính guard chạy unscoped worker CLI.
+Canary: máy thật qua done_gate.py; WinRT OCR->ATX; Singbox. Dính guard chạy unscoped worker CLI.
 §
 Follow audit: >=3-4 chu kỳ 4d + Cohort Veteran/Mid/Rookie; tách fl=0 và used>0; Account Limit cô lập nick, cấm ngắt IP.
 §
