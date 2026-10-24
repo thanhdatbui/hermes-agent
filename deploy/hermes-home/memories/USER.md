@@ -1,6 +1,6 @@
 Bio: CẤM TRÙNG; 100% TV có dấu. Tên TikTok: họ tên thật, cấm hậu tố rác; khóa tay.
 §
-Dọn đĩa: safe_recycle.py; CẤM xóa folder game (LoL/TFT/War3). Reboot né TFT/War3.
+Dọn đĩa: safe_recycle.py; chơi LoL/TFT cả Kibe (C:\Riot Games) & Admin (D:\x hoặc C:), CẤM xóa nhầm. Reboot né TFT/War3.
 §
 Nuôi 4d 3 ca (bỏ 0h): Base 11/10/26 theo Shift Pool (Ca 1 {1,2,7}, Ca 2 {3,4,8}, Ca 3 {5,6}, D3 DS). Cấm bịa Ca 4 đêm. Kẹt lock: chờ, cấm kill. Ava/2FA tới 5h15. Starve 108h.
 §
@@ -14,6 +14,6 @@ Sol Advisor 100% On-Demand, cấm auto-append/đoán ý; chỉ gọi khi đích 
 §
 Hand-off: đủ Mail, Pass, Recovery, 2FA & TOTP live; hỏi quota acc nào đáp đúng acc đó.
 §
-Report/alert=lệnh tự fix: trigger pipeline cơ học (Planner->Worker O(1)->Canary->Closeout), fix xong báo ngay; report thiếu data thì update telemetry chứ cấm sửa mò.
+Report=lệnh tự fix qua pipeline cơ học (Planner->Worker O(1)->Canary->Closeout), fix xong báo ngay; thiếu data thì update telemetry cấm sửa mò; report chia nhóm script (Nuôi, Hotmail, 2FA, Profile).
 §
 Memory: chỉ lưu persona/sở thích/feedback; tri thức/quy trình đưa vào dynamic skill.

@@ -18,7 +18,7 @@
 2. **Rà soát các thư mục phình to trên ổ D: Admin:**
    - `D:\TIKTOK-videonuoinick-admin`: Thư mục render thành phẩm (thường chiếm >500 GB do clip render chất lượng cao hoặc clip dư >45/folder).
    - `D:\video goc may 2`: Thư mục video gốc tải về (~160 GB).
-   - `D:\x`: Chứa game / installer cũ (như League of Legends / Riot Games ~90 GB).
+   - `D:\x`: Game đang chơi của User (League of Legends / Riot Games ~90 GB) — CẤM TỰ Ý XÓA.
    - `D:\CodexRuntime\tiktok-video-machine2`: Chứa log (`download_admin_p10.log` có thể phình >100 MB).
 
 ## 3. Cạm Bẫy Deadlock Google Drive Virtual Mirror (Vì Sao Cron Giải Phóng Đĩa Bị Bất Lực?)
@@ -36,7 +36,7 @@
 ## 4. Các Phương Án Giải Phóng Dung Lượng & Phá Vỡ Deadlock
 1. **Mồi dung lượng trống khẩn cấp (Bootstrap Free Space):**
    - Google Drive và cron dọn dẹp cần tối thiểu 20–30 GB đệm trên ổ `D:` để ghi cache tạm khi upload.
-   - Xóa installer / game không dùng (`D:\x` ~90 GB) hoặc cắt tỉa clip render dư thừa (`> 45` clip/folder trong `D:\TIKTOK-videonuoinick-admin`).
+   - Cắt tỉa clip render dư thừa (`> 45` clip/folder trong `D:\TIKTOK-videonuoinick-admin`), dọn dẹp video gốc đã được đồng bộ an toàn lên Cloud, hoặc truncate log nặng. TUYỆT ĐỐI CẤM tự tiện xóa thư mục game `D:\x` của User.
    - Ngay khi `D:` có dung lượng trống, ổ `G:` sẽ tự động mở lại dung lượng ghi, `sync_and_clean_gdrive.py` sẽ hoạt động trơn tru trở lại.
 2. **Cắt tỉa clip render dư thừa:** Giữ tối đa 45 clip/folder trong `D:\TIKTOK-videonuoinick-admin`, xóa các clip từ `46.mp4` trở lên.
 3. **Truncate log:** Truncate các file log quá nặng trong `CodexRuntime` (`download_admin_p10.log`).
