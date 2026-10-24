@@ -25,3 +25,5 @@ OMP/AGY: 29 acc Pro; lease 1800s. agy.exe: wincred > oauth_creds; user_tier=g1-p
 Đơn TT Shop: Mail báo 1 lần; API SPX/J&T/Ninja; Hub Thanh Khê. Dashboard :1905 /api/orders.
 §
 Cron/Alert: Gửi đúng Telegram group của repo (-5435853713 Video/Up, -5377611430 Nuôi, -5373649734 Alert), cấm spam DM.
+§
+403 VALIDATION_REQUIRED: CẤM nhầm với OAuth. Re-OAuth chỉ cấp token client, KHÔNG xóa cờ chặn upstream Google. Bắt buộc kích hoạt 403 tươi, bóc validation_url (plt TTL ngắn), mở profile GPM (viewport 1280x900) giữ live handshake để quét QR camera thật (cấm Zalo). Quota full 100% ảo do 403 chặn từ cổng 0 token tiêu thụ. Nghiệm thu bắt buộc qua isolated_chat_test.
