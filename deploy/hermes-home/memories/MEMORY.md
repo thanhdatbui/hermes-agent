@@ -1,6 +1,6 @@
 Dưỡng N3 tối+N4 dynamic mỗi máy 3 lớp phễu (1.Đề xuất up, 2.Đi tù xả phạt, 3.Nick non).
 §
-Follow: dò +2 (max 40); lùi 4 sàn 15. Streak chỉ tăng khi fl=0; fl>=1 giữ streak+cd 1d. Probation 4d: 2 ca sạch; T1: 2-4 fl, T2: 6-8 fl. Anchor nhả=block. IP Audit: ip_risk_audit.py.
+Follow: dò +2 (max 40); lùi 4 sàn 15. Streak chỉ tăng khi fl=0; fl>=1 giữ streak+cd 1d. Probation 4d: 2 ca sạch; T1: 2-4 fl, T2: 6-8 fl. Anchor nhả=block. Watchdog report: nhả follow breakdown bắt buộc có số máy ở mọi nấc con (Nhả liền X máy).
 §
 Pin>=1k: LIFO TikTok->ghim tăng dần để top view ở ô 1 (re-pin enforce). S7 wake: 224+82+SplashActivity; CẤM viện cớ 'màn hình tắt'. Soi OCR 'Đã ghim' đúng ô view cao. Treo lock: with_device_lock.py --force-preempt.
 §
@@ -18,7 +18,7 @@ M7: SSID 'Dat_2.4G'; Aruba VC vlan 1+permit; wrap ADB qua with_device_lock.py.
 §
 Ava: Trích clip gốc; OCR lines==0. Top-row audit né sót view cao. F_src!=F_vid khóa 2 folder. Chuẩn hoá: Hashtag (.manual_hashtag_locked), Pin>=1k, Ava (.manual_avatar_locked), Tên+Bio.
 §
-Reboot 3 ca: retry :20-:50, cutoff :51 (<10p ca); lb 60m; 2FA né đệm; né TFT/War3. Task ngầm Hidden. Game=tắt nháy. Tiểu Vi 5038: cấm báo rớt 40 máy khi chưa kill 5038; preflight bắt buộc dọn 5038 trước ca feed.
+Reboot 3 ca: retry :20-:50, cutoff :51 (<10p ca); lb 60m; 2FA né đệm; né TFT/War3. Task ngầm Hidden. Game=tắt nháy. Tiểu Vi 5038: dọn trước ca feed.
 §
 OMP/AGY: 29 acc Pro; lease 1800s. agy.exe: wincred > oauth_creds; user_tier=g1-pro-tier; --project=local ws.
 §
