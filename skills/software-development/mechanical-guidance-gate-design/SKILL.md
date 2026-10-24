@@ -68,6 +68,13 @@ Use when creating, modifying, or reviewing mechanical enforcement gates (pre-too
   4. `REQUIRED_NEXT_ACTION`: Cung cấp sẵn câu lệnh mẫu $O(1)$ copy-paste chạy được ngay ở turn tiếp theo.
 - **Tiêu chuẩn kiểm tra tiếng Việt:** Sử dụng regex đối chiếu nguyên âm có dấu `[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđĐ]`. Nếu text không chứa ký tự nào thuộc tập này $\rightarrow$ DENY ngay lập tức trước khi chạm vào thiết bị.
 
+### Rule 7: Gate Observability & Telemetry Rollup (Chống Chặn Thầm Lặng / Quên Giám Sát)
+- **Bối cảnh:** Khi hệ thống có nhiều gate cơ học phân tán (GuardGate Invariants, Closeout Gate, Pre-push Hook, Dispatch Floor, Media Vision Gate), các lần chặn hoặc vi phạm thường nằm im trong các file log JSONL (`ledger.jsonl`, `gate_audit.jsonl`, `safe_push_audit.jsonl`, `dispatch.jsonl`). Operator không thể biết nếu không tự tay lục lọi ("lâu lâu mới nhớ phát hiện ra").
+- **Kiến trúc giám sát 3 tầng bắt buộc:**
+  1. **Real-time Alert Ping:** Hễ gate kích hoạt `DENY`, `REJECTED`, hoặc `STRIKE-3` $\rightarrow$ phát ngay telemetry ping ngắn gọn O(1) về Telegram Farm Alert (`-5373649734`). CẤM để gate chặn trong bóng tối.
+  2. **Periodic Rollup Watchdog (6h/24h):** Cronjob đối soát tự động quét các file JSONL, tổng hợp Scorecard tuân thủ (tổng số lần vi phạm, top gate bị trigger, tỷ lệ phục hồi O(1)) gửi về nhóm điều hành.
+  3. **On-Demand O(1) Inspection:** Cung cấp script tra cứu siêu tốc `python D:/Taadaa/tools/gate_audit_summary.py` (< 1s) hoặc slash command `/gate_status` để Operator kiểm tra tức thì bất kỳ lúc nào.
+
 ## 3. Pitfalls & Anti-Paralysis Principles (Chống Khóc Lóc Bại Liệt)
 - **Cấm Nhãn BLOCKED Để Hợp Pháp Hóa Bỏ Dở:** Một failure mode phổ biến của Agent là "khóc lóc quan liêu" — tự dán nhãn `BLOCKED`, ghi ticket vào file JSON rồi tắt máy dừng việc. Gate chặn là lan can bảo vệ chỉ ra hướng đi sai, BẮT BUỘC Agent phải bẻ lái (Pivot) tìm nguyên nhân gốc hoặc tự động cập nhật guidance để thi công tiếp, tuyệt đối không được viện cớ an toàn để đóng băng phiên.
 - **Socket Keepalive Tê Liệt Worker (OmniRoute 180s Idle Loop):** Khi backend upstream (như ChatGPT Web) bị 429 rate limit hoặc dính Cloudflare challenge, proxy có thể liên tục gửi các chunk SSE keepalive rỗng (`chatcmpl-keepalive`) để giữ socket sống. Worker ReAct nếu không có cơ chế `max_idle_keepalive_timeout` (ngưỡng 45s) sẽ bị ngậm đủ 180s timeout, làm tê liệt toàn bộ chuỗi fallback dispatch.
@@ -87,3 +94,4 @@ Use when creating, modifying, or reviewing mechanical enforcement gates (pre-too
 - Case Study GuardGate Step 2.5 Hook & Worker Keepalive Triage: [`references/guardgate-closeout-step25-and-worker-keepalive-triage.md`](references/guardgate-closeout-step25-and-worker-keepalive-triage.md)
 - Case Study Chốt Chặn Validator Tiếng Việt & Cấm AdbKeyboard Fallback: [`references/vietnamese-accent-validator-and-adb-keyboard-gate.md`](references/vietnamese-accent-validator-and-adb-keyboard-gate.md)
 - Phân Biệt Khóa Vật Lý vs Gate Chỉ Dẫn & Cơ Chế Phá Kẹt 9–10 Vòng: [`references/physical-lock-vs-guidance-gate-and-9-turn-paralysis.md`](references/physical-lock-vs-guidance-gate-and-9-turn-paralysis.md)
+- Giám Sát Tuân Thủ Gate & Rollup Telemetry (Chống Chặn Thầm Lặng): [`references/gate-observability-telemetry-and-compliance-watchdog.md`](references/gate-observability-telemetry-and-compliance-watchdog.md)

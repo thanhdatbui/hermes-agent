@@ -42,6 +42,10 @@ _ADVISOR_EXPLICIT_TRIGGERS = (
   Khi tài khoản ChatGPT-Web báo lỗi `ChatGPT session expired — log into chatgpt.com and copy a fresh cookie`:
   * Tuyệt đối không phán đoán bừa rằng Gmail bị DIE. Phải kiểm tra độc lập qua `checkmail.live` và đăng nhập Google Account.
   * Nếu Google đăng nhập thành công nhưng khi Google SSO vào ChatGPT bị báo `Lỗi xác thực: account_deactivated` ("Bạn không còn tài khoản vì tài khoản đã xóa hoặc vô hiệu hóa"), điều này khẳng định Gmail hoàn toàn LIVE nhưng tài khoản dịch vụ ChatGPT đã bị OpenAI trảm. Không tiếp tục giải Captcha hay ép login lại tốn tài nguyên; đánh dấu loại khỏi pool ChatGPT và thay thế bằng tài khoản khác.
+- **OmniRoute HTTP SSE Streaming Invariant (`stream=True`)**:
+  Khi gửi prompt cho `gpt-web-sol` hoặc `chatgpt-web/gpt-5.6-sol-high` qua OmniRoute (`http://127.0.0.1:20129/v1/chat/completions`):
+  * **CẤM DÙNG `stream: false`**: Chế độ non-streaming chờ toàn bộ payload từ CDP ngầm, gây nghẽn buffer và dẫn tới timeout (> 60s/120s) làm sập lệnh thẩm định của Coordinator / Closeout Gate.
+  * **BẮT BUỘC BẬT `stream: true`**: Luồng HTTP Server-Sent Events (SSE) đẩy chunk `choices[0].delta.content` ngay từ giây thứ 3–5, triệt tiêu hoàn toàn nghẽn I/O và hoàn tất đánh giá trong < 30s.
 
 ## Worker & Subagent Dispatch Protocol (Coordinator vs Worker)
 - **CẤM TUYỆT ĐỐI Hermes Native Delegation (`delegate_task`)**:
