@@ -79,6 +79,14 @@ Use when creating, modifying, or reviewing mechanical enforcement gates (pre-too
   2. **Periodic Rollup Watchdog (6h/24h):** Cronjob đối soát tự động quét các file JSONL, tổng hợp Scorecard tuân thủ (tổng số lần vi phạm, top gate bị trigger, tỷ lệ phục hồi O(1)) gửi về nhóm điều hành.
   3. **On-Demand O(1) Inspection:** Cung cấp script tra cứu siêu tốc `python D:/Taadaa/tools/gate_audit_summary.py` (< 1s) hoặc slash command `/gate_status` để Operator kiểm tra tức thì bất kỳ lúc nào.
 
+### Rule 8: 4 Deterministic Checkpoints For Coordinator Dispatch (Chống Điều Phối Ẩu Bằng Gate Cơ Học)
+- **Bối cảnh:** Các quy định bằng văn bản (Policy-as-Text) trong AGENTS.md bị suy giảm chú ý (attention decay) khi ngữ cảnh phình to, khiến Coordinator liên tục vi phạm: ngồi gõ văn giải thích thay vì chạy lệnh inspect, táy máy hạ timeout sửa ngược session trước, dispatch worker với max-turns quá hẹp và tự bịa lời tường thuật khi worker lỗi.
+- **Yêu cầu 4 Checkpoint Bắt Buộc:**
+  1. **Pre-Execution Incident Tool Gate:** Khi tin nhắn chứa pattern sự cố/alert Farm $\rightarrow$ CẤM turn phản hồi kết thúc bằng 0 tool call (pure free-text); ép buộc phải có ít nhất 1 tool kỹ thuật điều tra hiện trường (`inspect_machine.py`, `adb`, log).
+  2. **Protected-Constant Regression Gate:** Tra cứu tĩnh danh sách hằng số bảo vệ (Case 162 timeout $\ge 20\text{s}$, worker timeout $\ge 300\text{s}$, follow_limit $\le 0$). Bất kỳ diff nào hạ giá trị dưới sàn đều bị DENY tại Step 2.5 của closeout gate kèm Auto-Quarantine $O(1)$.
+  3. **Pre-Dispatch Parameter Validator:** Hook kiểm tra tham số trước khi gọi worker; ép `max_turns \ge 15` cho planner và kiểm tra git status sạch trước khi pipe vào interactive CLI tools.
+  4. **Post-Dispatch Evidence Presence Check:** Subprocess output bắt buộc parse thành schema cứng; nếu lỗi/timeout thì inject nhãn `[TOOL_OUTPUT_MISSING: exit=<rc>]`, cấm Coordinator tự ý bịa lời giải trình.
+
 ## 3. Pitfalls & Anti-Paralysis Principles (Chống Khóc Lóc Bại Liệt)
 - **Cấm Nhãn BLOCKED Để Hợp Pháp Hóa Bỏ Dở:** Một failure mode phổ biến của Agent là "khóc lóc quan liêu" — tự dán nhãn `BLOCKED`, ghi ticket vào file JSON rồi tắt máy dừng việc. Gate chặn là lan can bảo vệ chỉ ra hướng đi sai, BẮT BUỘC Agent phải bẻ lái (Pivot) tìm nguyên nhân gốc hoặc tự động cập nhật guidance để thi công tiếp, tuyệt đối không được viện cớ an toàn để đóng băng phiên.
 - **Socket Keepalive Tê Liệt Worker (OmniRoute 180s Idle Loop):** Khi backend upstream (như ChatGPT Web) bị 429 rate limit hoặc dính Cloudflare challenge, proxy có thể liên tục gửi các chunk SSE keepalive rỗng (`chatcmpl-keepalive`) để giữ socket sống. Worker ReAct nếu không có cơ chế `max_idle_keepalive_timeout` (ngưỡng 45s) sẽ bị ngậm đủ 180s timeout, làm tê liệt toàn bộ chuỗi fallback dispatch.
@@ -96,6 +104,7 @@ Use when creating, modifying, or reviewing mechanical enforcement gates (pre-too
 - **Bi Kịch Kẹt 9–10 Vòng Của Silent Veto (Cognitive Void Escalation):** Khi bị khóa vật lý không có hướng dẫn, Agent trải qua 4 giai đoạn suy thoái: (1) Đoán mò sửa vụn vặt vòng 1-3, (2) Tìm cách lách luật vòng 4-6, (3) Phân trần than vãn vòng 7-8, (4) Bại liệt dán nhãn BLOCKED vòng 9-10. BẮT BUỘC thay thế bằng Gate Chỉ Dẫn có Action Mandate O(1) và Auto-Quarantine để Agent bật lại thi công ngay ở turn kế tiếp.
 
 ## 4. References
+- 4 Checkpoint Cơ Học Điều Phối & Chống Chém Gió Bịa Output: [`references/coordinator-4checkpoint-guard-and-anti-confabulation.md`](references/coordinator-4checkpoint-guard-and-anti-confabulation.md)
 - Bản Đồ 8 Gate Cơ Giới Hóa Toàn Diện & Chuẩn Giám Sát 6 Giờ: [`references/farm-full-spectrum-mechanized-gates-and-6h-observability.md`](references/farm-full-spectrum-mechanized-gates-and-6h-observability.md)
 - Bi Kịch 37 Tool Calls & Tiêu Chuẩn Action Mandate O(1): [`references/anti-whining-guidance-gate-and-o1-lookup.md`](references/anti-whining-guidance-gate-and-o1-lookup.md)
 - Case Study GuardGate Step 2.5 Hook & Worker Keepalive Triage: [`references/guardgate-closeout-step25-and-worker-keepalive-triage.md`](references/guardgate-closeout-step25-and-worker-keepalive-triage.md)
