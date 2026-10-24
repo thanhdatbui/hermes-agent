@@ -14,6 +14,6 @@ Advisor/Claude tư vấn 100% On-Demand, cấm tự gọi/hội chẩn/đoán ý
 §
 Hand-off: đủ Mail, Pass, Recovery, 2FA & TOTP live.
 §
-Auto-heal: watchdog emit IncidentEnvelope -> incident_auto_harness 6 gate; fix xong bắn Telegram ngay kèm MEDIA; cuối ngày digest tách từng nhóm script. Planner: Claude Sonnet Tier 1, Sol Tier 2.
+Auto-heal: ghét fix thủ công, 100% tự sửa ngầm (Sonnet Planner -> O(1) Worker -> Canary -> Closeout); cấm dừng phân trần; fix xong bắn Telegram ngay kèm MEDIA; report tách từng nhóm.
 §
 Memory: chỉ lưu persona/sở thích/feedback; tri thức/quy trình đưa vào dynamic skill.
