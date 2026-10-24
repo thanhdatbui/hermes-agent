@@ -70,9 +70,10 @@ Tránh mọi sự phụ thuộc vào lời nhắc nhở mềm (soft prompts/syst
 3. **Tier 3 (Fallback 2):** `Claude Haiku CLI` (`claude_worker.py --role worker`) — Anthropic fallback cuối cùng.
 4. **Tier 4 (Cứu sinh):** Coordinator Emergency Surgery O(1).
 
-### B. Kiểm Tra Cú Pháp Python Trước Khi Nghiệm Thu (`_verify_python_syntax`)
-- Sau khi worker sửa file `.py`, dispatcher tự động chạy `py_compile.compile(target, doraise=True)`.
-- Nếu cú pháp vỡ $\rightarrow$ Không chấp nhận diff, tự động chuyển tier tiếp theo để tự sửa lại.
+### B. Kiểm Tra Cú Pháp Python In-Memory (`_verify_python_syntax`)
+- Sau khi worker sửa file `.py`, dispatcher tự động phân tích cú pháp bằng `ast.parse(target.read_bytes(), filename=str(target))`.
+- **Lợi ích an toàn vượt trội:** Khác với `py_compile.compile` (tạo rác bytecode `.pyc` trong `__pycache__` làm bẩn working tree và khiến Closeout Reviewer trừ điểm), `ast.parse` kiểm tra 100% cú pháp in-memory, hoàn toàn không có tác dụng phụ ghi đĩa.
+- Nếu cú pháp vỡ (`SyntaxError`) $\rightarrow$ Không chấp nhận diff, tự động chuyển tier tiếp theo để sửa lại.
 
 ### C. Cách Ly Token Cứu Sinh `[WORKER_FALLBACK_COORDINATOR]`
 - Chỉ in token `[WORKER_FALLBACK_COORDINATOR]` khi lần thử cuối thất bại do lỗi hạ tầng (`TIMEOUT`, `QUOTA`).

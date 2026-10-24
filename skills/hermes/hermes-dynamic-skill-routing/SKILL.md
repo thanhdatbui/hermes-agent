@@ -209,6 +209,17 @@ Reviewing 13+ files simultaneously (5 engine files + 8 tests) causes Sol Auditor
   * *Cửa 3 (Memory):* CHỈ lưu User Profile cá nhân và đặc thù môi trường Windows không thuộc quy trình farm.
 - **Bắt buộc Tái Lập Chỉ Mục (Rebuild Index):** Sau khi ghi/sửa bất kỳ skill nào, BẮT BUỘC chạy `python D:/Taadaa/tools/build_skill_index.py` để làm mới `skills_index.json` (~15ms), chống lỗi `[INDEX_STALE]` / `FAIL_CLOSED_STALE_INDEX`.
 
+### 17. In-Memory AST Syntax Verification vs py_compile Disk Side Effect (.pyc)
+- **The Pitfall:** In `dispatch_worker.py`, using `py_compile.compile(str(target), doraise=True)` to verify Python syntax generates `.pyc` bytecode files in `__pycache__` on disk. This contaminates the working tree with untracked artifacts, causing the Closeout Reviewer to dock points on Farm Safety / Dirty Working Tree.
+- **The Fix:** Use `ast.parse(target.read_bytes(), filename=str(target))` for in-memory syntax verification. `ast.parse` validates complete Python AST grammar and raises `SyntaxError` on syntax breaks with ZERO disk writes and zero `.pyc` side effects.
+
+### 18. Fail-Closed Claude Quota Boundaries & Scale Normalization in Gateways
+- **The Pitfall:** In `dispatch_planner.py`, reading Claude Quota status from `probe_claude_quota` returns percentages on a `0.0 - 100.0` scale (e.g. `80.0`, `85.0`). Heuristics like `fh > 1.0` treat values in `(0, 1.0]` as a 0-1 scale, falsely blocking low quotas (e.g. `1.0%`). Returning `can_run=True` on exceptions or stale data is a dangerous fail-open bug.
+- **The Pattern:**
+  * Enforce strict thresholds from `AGENTS.md`: 5-hour quota $\ge 85.0\%$, weekly quota $\ge 90.0\%$.
+  * Strictly Fail-Closed: If quota is `None`, `is_stale=True`, or an exception occurs during reading, immediately return `can_run=False` to trigger Tier 2 fallback (Sol Planner).
+  * Distinguish infrastructure errors (timeout, quota 429) which trigger tier fallback vs semantic errors (invalid input, syntax error, refusal) which exit early.
+
 ## Closeout Gate Notes
 
 - The 3 new files (`skill_injector.py`, tests) + modified `dispatch_worker.py` together exceed 22KB diff
