@@ -59,6 +59,15 @@ Use when creating, modifying, or reviewing mechanical enforcement gates (pre-too
   2. Auto-quarantine the violating hunk via `git stash` ($O(1)$ workspace recovery).
   3. Terminate immediately with `sys.exit(1)`, preserving tokens, time, and preventing false-positive review cycles.
 
+### Rule 6: Input Validator Action Mandate (Quy Chuẩn Chốt Chặn Đầu Vào Có Hướng Dẫn)
+- **Bối cảnh:** Khi viết chốt chặn cơ học (validator / runner guard) chặn các tham số vi phạm (ví dụ: chuỗi Bio/Name tiếng Việt không dấu, thiếu cờ bắt buộc, sai định dạng), CẤM TUYỆT ĐỐI chỉ raise exception cụt lủn hoặc thoát `exit(1)` câm không lời giải thích.
+- **Bắt buộc 4 thành phần trong thông báo lỗi (Fail-Fast với Actionable Guidance):**
+  1. `[VALIDATION_DENY: <RULE_NAME>]`: Mã định danh vi phạm rõ ràng.
+  2. `VIOLATION`: Nêu đích danh trường dữ liệu và giá trị sai phạm cụ thể.
+  3. `HƯỚNG DẪN KIẾN TRÚC / GUIDANCE`: Giải thích tại sao cấm, nguyên tắc hệ thống và tác hại của hành vi đó.
+  4. `REQUIRED_NEXT_ACTION`: Cung cấp sẵn câu lệnh mẫu $O(1)$ copy-paste chạy được ngay ở turn tiếp theo.
+- **Tiêu chuẩn kiểm tra tiếng Việt:** Sử dụng regex đối chiếu nguyên âm có dấu `[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđĐ]`. Nếu text không chứa ký tự nào thuộc tập này $\rightarrow$ DENY ngay lập tức trước khi chạm vào thiết bị.
+
 ## 3. Pitfalls & Anti-Paralysis Principles (Chống Khóc Lóc Bại Liệt)
 - **Cấm Nhãn BLOCKED Để Hợp Pháp Hóa Bỏ Dở:** Một failure mode phổ biến của Agent là "khóc lóc quan liêu" — tự dán nhãn `BLOCKED`, ghi ticket vào file JSON rồi tắt máy dừng việc. Gate chặn là lan can bảo vệ chỉ ra hướng đi sai, BẮT BUỘC Agent phải bẻ lái (Pivot) tìm nguyên nhân gốc hoặc tự động cập nhật guidance để thi công tiếp, tuyệt đối không được viện cớ an toàn để đóng băng phiên.
 - **Socket Keepalive Tê Liệt Worker (OmniRoute 180s Idle Loop):** Khi backend upstream (như ChatGPT Web) bị 429 rate limit hoặc dính Cloudflare challenge, proxy có thể liên tục gửi các chunk SSE keepalive rỗng (`chatcmpl-keepalive`) để giữ socket sống. Worker ReAct nếu không có cơ chế `max_idle_keepalive_timeout` (ngưỡng 45s) sẽ bị ngậm đủ 180s timeout, làm tê liệt toàn bộ chuỗi fallback dispatch.
@@ -66,6 +75,8 @@ Use when creating, modifying, or reviewing mechanical enforcement gates (pre-too
 - **Tự Động Hóa Không Cần Human Duyệt Proposal:** Tránh bẫy "bình mới rượu cũ" khi Strike 3 bắt Agent tạo file proposal rồi đứng chờ User duyệt. Phải dùng tool tự động `update_guidance.py` với cryptographic hash-isolation để nạp guidance tự động, auto-quarantine hunk lỗi và làm tiếp ngay.
 - **Xử Lý Khi User Trực Tiếp Ra Lệnh:** Khi User xuất hiện chỉ đạo "tìm cách sửa guard / nới lỏng rule", Agent phải hiểu đó là lệnh thẩm quyền tối cao từ Operator để cập nhật lại cấu hình/guidance của Gate, không được máy móc viện cớ "em bị cấm sửa guard" rồi ngồi im bất động.
 - **Hardcoding Dead Metadata:** Writing `"on_deny": {"redirect": "sol_repair"}` in JSON without runtime execution logic renders the redirect useless. The gate must output the exact CLI invocation.
+- **Dispatcher Outer Timeout Override Chokehold (Bóp Nghẹt Timeout Từ Wrapper Ngoài):** Dispatcher wrapper (`dispatch_worker.py`) không được đặt default timeout thấp hơn các worker bên dưới (ví dụ worker con như Sol hay Agy cần 300s để hoàn thành ReAct 3-4 turns mà dispatcher bên ngoài ép `--timeout 180` đè lên). Timeout của dispatcher bọc ngoài bắt buộc phải là chặn trên (upper-bound $\ge 300\text{s}$) và phải được khóa sàn cơ học qua Invariant Gate.
+- **Tránh Rule Shadowing Trong GuardEngine (Gộp Predicate Đa Invariant):** Khi engine so khớp quy tắc theo cặp `(tool_class, op)` (như `code_edit: commit`), engine dừng ở rule đầu tiên khớp. Để kiểm tra đồng thời nhiều bất biến (như timeout USB Case 162 và timeout dispatch worker), BẮT BUỘC phải gộp tất cả các invariant predicates vào cùng danh sách `require_all` của master rule, không được khai báo rule rời rạc cùng `match` kẻo bị che khuất.
 - **Broad Scanning Fallback:** Blocking disk scans without providing a canonical lookup tool (such as `lookup_channel.py`) forces agents to invent 30+ tool call workarounds.
 
 ## 4. References

@@ -43,3 +43,10 @@ except ImportError:
 ## 4. Bài Học Về Dispatch Max-Turns Truncation
 - Tham số `default_turns=6` trong `claude_worker.py` cho role planner quá thấp, khiến Claude Sonnet bị dừng giữa chừng với lỗi `Reached max turns (6)` khi đang khảo sát codebase.
 - Role planner/reviewer bắt buộc phải có tối thiểu 15–20 turns để đảm bảo hoàn tất các bản kế hoạch phức tạp.
+
+## 5. Bài Học Về Thắt Cổ Chai Timeout Của Worker Dispatch (`dispatch_worker.py`)
+- **Triệu chứng:** Cả Sol Worker (Tier 1) và Agy CLI (Tier 2) đều bị timeout sau 180s dù nội bộ script của chúng được thiết kế cho 300s (`ag_cli.py fix` default 300s, `sol_worker.py` turn timeout 300s).
+- **Nguyên nhân gốc:** Thằng Dispatcher bọc ngoài (`dispatch_worker.py`) có default argument `--timeout 180`. Khi dispatch, nó truyền `--timeout 180` đè lên tham số của thợ con, bóp nghẹt các multi-turn web model (cần đọc file -> patch -> test mất 240s-280s) ở phút thứ 3.
+- **Khắc phục đồng bộ:** Nâng default `--timeout` của `dispatch_worker.py` và `sol_repair.py` lên 300s.
+- **Khóa cơ học chống hạ ngược:** Thêm rule `dispatch_worker_timeout_floor` và predicate `check_dispatch_timeout_floor` vào `guardgate` để cấm bất kỳ session nào táy máy hạ timeout dưới 300s.
+- **Quy tắc thiết kế Predicate đa Invariant trong GuardEngine:** Khi nhiều luật cùng áp dụng cho một `tool_class="code_edit", op="commit"`, bắt buộc phải gộp tất cả các invariant predicates vào danh sách `require_all` của master commit rule (ví dụ `["check_case_162_timeout_floor", "check_dispatch_timeout_floor"]`) để tránh việc rule đầu tiên che khuất (shadowing) các rule sau.
