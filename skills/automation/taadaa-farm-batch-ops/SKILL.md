@@ -23,8 +23,10 @@ tags: [tiktok, farm, batch, render, upload, resume, kibe]
   `python C:/Users/Admin/run_admin_downloader_service.py` (launcher headless: `python C:/Users/Admin/launch_detached_admin_downloader.py`). Log: `D:/CodexRuntime/tiktok-video-machine2/download_admin_p10.log`.
 - **Render Worker Chuẩn Mapping 8 Tik trên Admin (1 Worker tuần tự chống nghẽn GPU):**
   `python C:/Users/Admin/run_admin_render_worker.py` (launcher headless: `python C:/Users/Admin/launch_detached_admin_render.py`). Log: `C:/Users/Admin/admin_render_worker.log`.
-- **Tra cứu máy N O(1) & Fastpath Batch Triage:**
+- Tra cứu máy N O(1) & Fastpath Batch Triage:
   `python D:/Taadaa/tools/inspect_machine.py <N>` (tra cứu máy đơn lẻ). Khi nhận alert batch nhiều máy lỗi: BẮT BUỘC chạy `python D:/Taadaa/tools/inspect_machine.py` (không tham số) để dump snapshot attached toàn dàn <2s, đối soát nhanh thiết bị rớt USB / offline trước khi gọi inspect từng máy, chống timeout ADB daemon. Chi tiết xem [`references/dual-cluster-batch-triage-fastpath.md`](references/dual-cluster-batch-triage-fastpath.md).
+- **Quy trình truy vết O(1) khi kênh dừng đăng video lâu ngày:**
+  Tra cứu `account_mapping` -> `TikN.xlsx` -> `shift_upload_history.json` -> đối soát lịch xoay ca Row trong `D:/Taadaa/runtime/kibe/live/<date>/` -> đọc `run_manifest.json` và `summary.txt` từng ca. Chi tiết xem [`references/triage-stale-channel-upload-timeline.md`](references/triage-stale-channel-upload-timeline.md).
 - **Chẩn đoán Nhanh Admin Dừng Down / Dừng Render O(1):**
   Đọc `D:\OneDrive\TaadaaData\admin\last_render_stats.json` thay vì gọi SSH. Phân biệt: (1) Render dừng do đã vét hết nguồn $\ge 30$ clip (Tik6..Tik8 thiếu raw); (2) Downloader dừng do chạy hết pass và/hoặc bị ngắt bởi ca reboot 05:20/11:20/17:20 dừng ở Windows Lock Screen (do Task Scheduler kẹt `LogonType: Interactive` hoặc Startup VBS không kích hoạt khi chưa login console).
 - **Quy Tắc Cô Lập Tác Vụ Thiết Bị vs Tác Vụ PC Media (INVARIANT: CẤM ĐỔ LỖI 2FA CHO DOWNLOAD):**
