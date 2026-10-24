@@ -20,6 +20,7 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
 - Điều Tra Sự Cố Bị Vượt Mặt Media Gate & Cơ Chế Chặn Ký Receipt Rỗng: [`references/media-gate-bypass-investigation-and-grounding-fix.md`](references/media-gate-bypass-investigation-and-grounding-fix.md)
 - SOP Thẩm Định Thị Giác Đa Tầng Cơ Học (Sol -> Agy -> Claude): [`references/tiered-vision-fallback-mechanical-sop.md`](references/tiered-vision-fallback-mechanical-sop.md)
 - Phân Tầng Reviewer & Chốt Chặn Cơ Học Chống Vượt Mặt Gate 6 (Verdict APPROVED): [`references/media-gate-bypass-investigation-and-grounding-fix.md`](references/media-gate-bypass-investigation-and-grounding-fix.md)
+- Bài Học Thực Chiến Hardening Media Gate & Bắt Buộc Ảnh Chốt Phiên: [`references/closeout-visual-evidence-and-gate-hardening-lessons.md`](references/closeout-visual-evidence-and-gate-hardening-lessons.md)
 
 ## 1. Nguyên Tắc Cốt Lõi (Invariants)
 1. **CẤM gửi ảnh mù / đối phó:** Trước khi đính kèm bất kỳ thẻ `MEDIA:<path>` nào, bắt buộc phải mở ảnh ra soi mắt kiểm tra trước.
@@ -39,6 +40,10 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
    - **Cron Parity:** Khi User yêu cầu Canary sau khi sửa code, BẮT BUỘC chạy theo đúng cách thức và lệnh mà Cron chính thức sẽ thực thi. CẤM dùng cờ lẻ/lệch bản chất (như `--password-only`) để chạy tắt rồi phán đã hoàn tất toàn bộ chu trình.
    - **Bắt Buộc Kèm Ảnh Nghiệm Thu Thiết Bị:** Báo cáo Canary BẮT BUỘC phải đính kèm ảnh chụp màn hình thiết bị (`MEDIA:`) thể hiện kết quả sau khi thao tác. CẤM TUYỆT ĐỐI ném log chay hoặc báo kết quả mà không có ảnh màn hình thật.
    - **Readback Verification Kép:** BẮT BUỘC đọc lại dữ liệu trong workbook/database và đối soát ảnh màn hình trước khi tuyên bố thành công. Nếu workbook chưa đổi hoặc ảnh chụp rơi vào Launcher/màn hình đen, BẮT BUỘC báo cáo trung thực trạng thái thực tế.
+8. **Bắt Buộc Kèm Ảnh Khi Chốt Phiên & Kỷ Luật Nhãn Ghim (Closeout Visual Proof):**
+   - **Cấm Báo Cáo Chay Khi Done:** Khi kết thúc phiên (User gõ "Done" / "Chốt phiên"), báo cáo nghiệm thu BẮT BUỘC phải đính kèm đầy đủ các thẻ `MEDIA:<path>` cho mọi thiết bị vừa thao tác. Tuyệt đối không được gửi tóm tắt chay mà thiếu ảnh thực tế.
+   - **Kỷ Luật Trung Thực Nhãn Ghim:** Nếu thumbnail trên máy Farm không có chữ đỏ "Đã ghim" (hoặc OCR không đọc ra `Däg 1m`/`Đã ghim`), CẤM TUYỆT ĐỐI dùng từ "đã ghim" trong câu báo cáo. Chỉ báo cáo trung thực vị trí video và số lượt xem thực tế để tránh bị Gate chặn `UNGROUNDED_TEXT_CLAIM`.
+   - **Chốt Chặn Receipt Hợp Lệ:** Mọi ảnh `MEDIA:` gửi đi phải được quét qua `run_winrt_ocr.py` để lấy receipt hợp lệ (Producer-signed), không dùng lệnh tay `--register-receipt`.
 
 ## 2. Thang Leo Thang Vision Dự Phòng (Fallback Ladder)
 Thứ tự fallback đọc ảnh chuẩn hoá 100% đồng bộ với kiến trúc Worker Dispatch:

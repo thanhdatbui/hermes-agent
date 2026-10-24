@@ -6,14 +6,15 @@ description: "Use when running batch 2FA on TikTok farm. Chạy batch 2FA repo t
 # TikTok Add 2FA Batch Ops (repo tiktok-add-bao-mat-f2a)
 
 References:
-- `references/night-chain-reg-gmail-2fa-and-per-phase-telegram-routing-20261020.md` — **[20/10/2026]** Night Chain (Reg Gmail -> Add 2FA TikTok), tách báo cáo Telegram per-phase và fix bẫy 6H câm báo cáo.
-- `references/night-2fa-watchdog-skip-reasons-and-column-drift-audit-20261018.md` — **[18/10/2026]** Chẩn đoán watchdog skip (dedup 1 máy & lock) & bẫy lệch cột Admin.
-- `references/immediate-write-through-retry-and-closeout-discipline-20261015.md` — Write-through 2FA Excel, cấm ngâm journal.
-- `references/night-rolling-avatar-2fa-and-cache-clean-arbitration-20261015.md` — Cuốn chiếu đêm tới 05:15, né dọn cache.
-- `references/workbook-lock-contention-and-journal-recovery-20261014.md` — Nghẽn lock workbook; cứu hộ journal DPAPI.
-- `references/cross-machine-account-rebalance-preflight-and-2fa.md` — Nick dư trần 8 acc, adapter `swipe()`.
-- `references/dual-cluster-email-unlink-and-ssh-encoding-pitfalls-20261010.md` — TikTok v46+ chặn gỡ Email, Mojibake SSH PowerShell.
-- `references/auth-blocked-fake-password-reset-and-2fa-proof-discipline-20261010.md` — Cứu nick pass sai (`AUTH_BLOCKED`), nút song ngữ `UI_TARGET_AMBIGUOUS:Next:0`, nghiệm thu 2FA.nh Bảo mật đích (cấm gửi Switcher).
+- `references/graph-api-otp-token-and-canary-parity-discipline-20261024.md` — **[24/10/2026]** Graph OTP Token (<0.5s), Outlook app fallback, Canary Parity (no stubs), Gate 6 Visuals.
+- `references/night-chain-reg-gmail-2fa-and-per-phase-telegram-routing-20261020.md` — **[20/10/2026]** Night Chain, tách báo cáo Telegram.
+- `references/night-2fa-watchdog-skip-reasons-and-column-drift-audit-20261018.md` — **[18/10/2026]** Watchdog skip & lệch cột Admin.
+- `references/immediate-write-through-retry-and-closeout-discipline-20261015.md` — Write-through 2FA Excel.
+- `references/night-rolling-avatar-2fa-and-cache-clean-arbitration-20261015.md` — Cuốn chiếu đêm tới 05:15.
+- `references/workbook-lock-contention-and-journal-recovery-20261014.md` — Nghẽn lock; cứu hộ journal DPAPI.
+- `references/cross-machine-account-rebalance-preflight-and-2fa.md` — Nick dư trần 8 acc.
+- `references/dual-cluster-email-unlink-and-ssh-encoding-pitfalls-20261010.md` — TikTok v46+ chặn gỡ Email.
+- `references/auth-blocked-fake-password-reset-and-2fa-proof-discipline-20261010.md` — Cứu nick pass sai (`AUTH_BLOCKED`)., nghiệm thu 2FA.nh Bảo mật đích (cấm gửi Switcher).
 - `references/night-2fa-ca4-session-interlock-and-schedule-gate.md` — **[MỚI 10/10/2026]** Khắc phục xung đột Device Lock giữa 2FA đêm và Ca 4 Phiên 2 (`is_ca4_finished` qua `feed_session_reported.json` + khung giờ `02:45 - 04:50`).
 - `references/night-tiktok-2fa-watchdog-hardening-and-dual-cluster-pitfalls-20261010.md` — **[MỚI 10/10/2026]** Khắc phục lỗi UnboundLocalError trong watchdog ban đêm `cron_night_tiktok_2fa_watchdog.py`, chuẩn hóa exit code semantics (`EXIT_SAFE_SKIP=4`), cấu hình biến môi trường chống hardcode, telemetry `correlation_id` và quy chuẩn Triage Sol Repair / Strike 3 Reviewer Hand-off.
 - `references/watchdog-telemetry-return-codes-and-test-contract.md` — **[MỚI 10/10/2026]** Chuẩn hóa hằng số mã thoát `EXIT_SUCCESS=0` / `EXIT_SAFE_SKIP=4`, telemetry logging & structured state (`failure_reason`, `clusters`), cùng bộ unit test contract cho Dual-Cluster Watchdog.
