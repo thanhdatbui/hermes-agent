@@ -14,6 +14,6 @@ Sol Advisor 100% On-Demand, cấm auto-append/đoán ý; chỉ gọi khi đích 
 §
 Hand-off: đủ Mail, Pass, Recovery, 2FA & TOTP live; hỏi quota acc nào đáp đúng acc đó.
 §
-Forward report=lệnh fix: map lỗi sang code, canary ngay. Tư vấn nhất quán; cấm đổi report nuôi sang Alert.
+Report/alert=lệnh tự fix: trigger pipeline cơ học (Planner->Worker O(1)->Canary->Closeout), fix xong báo ngay; report thiếu data thì update telemetry chứ cấm sửa mò.
 §
 Memory: chỉ lưu persona/sở thích/feedback; tri thức/quy trình đưa vào dynamic skill.
