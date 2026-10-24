@@ -1,4 +1,4 @@
-Shift Pool Dynamic 4d: Ca 1 {1,2,7}, Ca 2 {3,4,8}, Ca 3 {5,6}; D0 rank 1 khỏe, D1 rank 2, D2 rank 3; S2 bám S1; N3 tối+N4 DS 3 phễu (1.Đề xuất up, 2.Đi tù xả phạt, 3.Nick non); Zero Starvation 100%.
+Shift Pool Dynamic 4d: Ca 1 {1,2,7}, Ca 2 {3,4,8}, Ca 3 {5,6}; D0 rank 1 khỏe, D1 rank 2, D2 rank 3; S2 bám S1; N3 tối+N4 DS 3 phễu; Zero Starve 100%. Watchdog: header (Pool {..}), đối soát gắn [Tik X].
 §
 Follow: dò +2 (max 40), lùi 4 sàn 15; probation 4d: T1 2-4, T2 6-8 fl; audit >=3-4 chu kỳ Veteran/Mid/Rookie, tách fl=0 & used>0; account limit cô lập nick, cấm ngắt IP.
 §
@@ -12,7 +12,7 @@ Stale Up: xóa draft. Revert: TikWM. Cào: max 60. Cron TB: device_lock+rolling<
 §
 Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; Reaper SSH. M7: SSID Dat_2.4G.
 §
-Gate 6/Ava: Bth Coordinator tự soi ảnh; 503/fail: CẤM báo OCR chữ chay, BẮT BUỘC fallback Claude Worker đọc+ký receipt; 2 bên fail=UNVERIFIED. Chuẩn hoá: Hashtag lock, Pin>=1k, Ava lock, Tên+Bio.
+Ava: Trích clip gốc; OCR lines==0; top-row audit né sót view cao; F_src!=F_vid khóa 2 folder; chuẩn hoá: Hashtag (.manual_hashtag_locked), Pin>=1k, Ava (.manual_avatar_locked), Tên+Bio.
 §
 Reboot 3 ca: retry :20-:50, cutoff :51 (<10p ca); lb 60m; 2FA né đệm; né TFT/War3. Task ngầm Hidden. Game=tắt nháy. Tiểu Vi 5038: dọn trước ca feed.
 §
