@@ -48,6 +48,9 @@ _ADVISOR_EXPLICIT_TRIGGERS = (
 
   {"isActive": true, "testStatus": "active"}
   ```
+- **403 QR Validation Boundary (Google Account vs ChatGPT)**:
+  * 403 QR Validation xảy ra với **Google Account** (phải mở GPM quét QR bằng camera điện thoại thật), **hoàn toàn KHÔNG liên quan tới ChatGPT hay OpenAI Web accounts**.
+  * Không nhầm lẫn hoặc gắn mác lỗi 403 QR cho ChatGPT Web pool.
 - **ChatGPT Account Deactivation vs. Gmail Liveness & Automated Purge Invariant**:
   Khi tài khoản ChatGPT-Web báo lỗi `ChatGPT session expired — log into chatgpt.com and copy a fresh cookie`:
   * Tuyệt đối không phán đoán bừa rằng Gmail bị DIE. Phải kiểm tra độc lập qua `checkmail.live` và đăng nhập Google Account.
