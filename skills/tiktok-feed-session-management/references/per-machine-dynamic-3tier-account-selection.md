@@ -112,3 +112,24 @@ When implementing end-to-end dynamic account selection across monolithic farm re
    - *Fix:* Trong `feed_session_watchdog.py`:
      - Header: ánh xạ tên ca sang nhãn Pool (`Pool {1, 2, 7}`, `Pool {3, 4, 8}`, `Pool {5, 6}`) qua `_row_or_pool_label()`.
      - Reconciliation: khi `active_row <= 0`, tra cứu `account` thực tế trong `all_machines` để map ngược lại index `[Tik X]` cho từng máy.
+
+6. **Python Negative Index Wrap-Around in Machine Candidate Filtering (`_get_machines_for_row(0)`):**
+   - *Symptom:* When triggering dynamic nurture with `Row = 0`, machines with only 5-7 accounts are reported as `Row 0 co 0 account hop le` and skipped.
+   - *Root cause:* Legacy workbook parsing uses `slot_idx = row - 1`. When `row == 0`, `slot_idx` becomes `-1`. In Python lists, `slots[-1]` indexes the last element (Row 8). Machines without an account in Row 8 fail the candidate check even though they have healthy accounts in Slots 1-7.
+   - *Fix:* Bắt buộc tách nhánh riêng cho `row == 0` trong `_get_machines_for_row`:
+     ```python
+     if row == 0:
+         valid_machines = []
+         for m, slots in machine_slots.items():
+             if any(val and str(val).strip() and str(val).strip().lower() != "none" for val in slots):
+                 valid_machines.append(m)
+         return valid_machines
+     ```
+
+7. **Full Dynamic Rollout Bridge via Cron Runner (`tiktok_runner.py`):**
+   - *Requirement:* To run dynamic across all nurture shifts (both regular shift pools and rest sessions), the runner must calculate `shift_ca` by hour window:
+     - 06:00 / 08:00 -> `shift_ca = 1`
+     - 12:00 / 14:00 -> `shift_ca = 2`
+     - 18:00 / 20:00 -> `shift_ca = 3`
+   - *Invocation:* Spawn with `-Row 0` and `-ShiftCa <shift_ca>`.
+   - *Preflight Guard:* Bỏ qua `_preflight_ensure_accounts` khi `row == 0` vì tài khoản được phân giải độc lập per-machine tại thời điểm chạy.
