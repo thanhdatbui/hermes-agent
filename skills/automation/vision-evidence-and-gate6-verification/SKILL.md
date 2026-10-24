@@ -23,6 +23,7 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
 - Bài Học Thực Chiến Hardening Media Gate & Bắt Buộc Ảnh Chốt Phiên: [`references/closeout-visual-evidence-and-gate-hardening-lessons.md`](references/closeout-visual-evidence-and-gate-hardening-lessons.md)
 - Xác Minh Fresh Screencap & Đối Soát Account Switcher: [`references/fresh-screencap-and-account-switcher-verification.md`](references/fresh-screencap-and-account-switcher-verification.md)
 - Báo Cáo Điều Tra Bypass by Claim Omission & Chốt Chặn Task Contract Binding: [`references/bypass-by-claim-omission-and-task-contract-binding.md`](references/bypass-by-claim-omission-and-task-contract-binding.md)
+- Chặn 2FA/TOTP Khi Switcher & Kỷ Luật Nghiệm Thu Profile: [`references/account-switcher-2fa-totp-interception-and-profile-standardization.md`](references/account-switcher-2fa-totp-interception-and-profile-standardization.md)
 
 ## 1. Nguyên Tắc Cốt Lõi (Invariants)
 1. **CẤM gửi ảnh mù / đối phó:** Trước khi đính kèm bất kỳ thẻ `MEDIA:<path>` nào, bắt buộc phải mở ảnh ra soi mắt kiểm tra trước.
