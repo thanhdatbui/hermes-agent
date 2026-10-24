@@ -14,6 +14,6 @@ Sol Advisor 100% On-Demand, cấm auto-append/đoán ý; chỉ gọi khi đích 
 §
 Hand-off: đủ Mail, Pass, Recovery, 2FA & TOTP live; hỏi quota acc nào đáp đúng acc đó.
 §
-Report=lệnh tự fix qua pipeline (Planner->Worker O(1)->Canary->Closeout), fix xong báo ngay; cấm treo máy; thiếu data update watchdog dump cấm sửa mò; report chia nhóm script.
+Auto-heal: watchdog emit IncidentEnvelope -> incident_auto_harness 6 gate; fix xong bắn Telegram ngay kèm MEDIA; cuối ngày digest tách từng nhóm script. Planner: Claude Sonnet Tier 1, Sol Tier 2.
 §
 Memory: chỉ lưu persona/sở thích/feedback; tri thức/quy trình đưa vào dynamic skill.
