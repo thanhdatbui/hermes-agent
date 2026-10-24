@@ -1,6 +1,7 @@
 # Anti-Performative Farm Alert Handling: Immediate Code-Fix Contract
 
 > User steering invariant: "Mày phải thiết kế lại alert để t gửi là mày biết nhiệm vụ vào điều tra tìm cách fix, không phải ngồi làm đối phó".
+> Detailed Case 82 Reference: `references/feed-watchdog-alert-threshold-and-keyguard-recovery.md`.
 
 ## 1. Bản chất sự cố "Token Compliance / Báo Cáo Đối Phó"
 Khi User gửi một tin nhắn `🚨 [FARM ALERT]` hoặc `🚨 [BATCH ALERT]` vào chat:
@@ -32,17 +33,23 @@ Mỗi khi nhận Alert, Coordinator BẮT BUỘC thực thi liên tục 4 pha kh
 - Cổng điều phối tự động fallback: `Sol Worker (:20129) -> Agy CLI (29 Pro) -> Haiku CLI -> Coordinator L2`.
 - Timeout mặc định >= 180s, cấm đặt timeout ngắn.
 
-### Pha 4: Chạy Lệnh Canary Nghiệm Thu Trên Máy Thật
-- Chạy lệnh Canary test đại diện được nêu trong alert:
+### Pha 4: Chạy Lệnh Canary Nghiệm Thu Trên Máy Thật & Qua Protection Regression Gate
+- Chạy toàn diện bộ Protection Regression Gate trước khi nghiệm thu:
+  1. `pytest D:/Taadaa/tools/guardgate` (đảm bảo 100% mechanical rules & regression vectors pass).
+  2. Focused unit test của module đã vá (`pytest <repo>/tests/test_<module>.py`).
+- Chạy lệnh Canary chính thức qua `canary_runner.py`:
   ```bash
-  python -m <workflow_script> --single-device <serial> ...
+  python D:/Taadaa/tools/canary_runner.py --repo <repo_name> --machine <id>
   ```
-- Xác nhận:
-  - Tiến trình hoàn thành exit code 0.
-  - Màn hình thiết bị live chụp qua WinRT OCR / ATX xác nhận đúng màn hình đích (không lỗi, không kẹt).
+- Kiểm tra Gate chốt chặn `done_gate.py`:
+  ```bash
+  python D:/Taadaa/tools/done_gate.py --task-type automation --repo "<repo_path>"
+  ```
+- Nghiệm thu Gate 6 (Soi mắt đọc ảnh): Dùng `browser_vision` hoặc WinRT OCR mở ảnh screencap xác nhận đúng màn hình đích thật, không lỗi/đen/popup trước khi gửi `MEDIA:<path>`.
 
 ### Pha 5: Báo Cáo Có Bằng Chứng Thực Tế
-Báo cáo cho User gồm đủ 3 phần:
-1. **Root cause:** Hàm / module cụ thể gây ra crash trong log.
-2. **Code diff:** Chi tiết đoạn code mà worker đã patch.
-3. **Canary evidence:** Kết quả lệnh test và bằng chứng màn hình máy thật đã vượt qua.
+Báo cáo cho User gồm đủ 4 phần:
+1. **Root cause:** Hàm / module cụ thể gây ra crash trong log (ví dụ bẫy Keyguard SystemUI hay auto-healing timeout).
+2. **Code diff:** Chi tiết đoạn code đã vá và giải pháp chuẩn hóa vào `farm-automation-cases.md`.
+3. **Regression & Alert fix evidence:** Kết quả pass của GuardGate / Unit tests và bằng chứng đã cập nhật cơ chế bắn Farm Alert đúng ngưỡng.
+4. **Canary evidence:** Kết quả lệnh test máy thật pass và xác nhận nội dung soi mắt qua Vision.
