@@ -34,6 +34,9 @@ Toàn bộ các Gate trên Farm đều đã được cơ giới hóa bằng code
 ### Watchdog Giám Sát Tuân Thủ (`gate_compliance_watchdog.py`):
 - Chạy định kỳ 6h (`0 */6 * * *`) với `no_agent: true` (zero token).
 - Quét 8 file log trong 6h gần nhất, tính tỷ lệ tuân thủ và bắn báo cáo trực tiếp về Telegram Farm Alert (`-5373649734`).
+- **Telegram Delivery Robustness (Chống Lỗi HTTP 400 Bad Request):** Báo cáo giám sát chứa nhiều hằng số kỹ thuật mang dấu gạch dưới (`NO_EVIDENCE`, `STATUS_OK`). Hàm phát tán Telegram bắt buộc phải bọc xử lý lỗi: nếu gửi bằng `parse_mode="Markdown"` bị từ chối (HTTP 400), phải tự động fallback gửi ngay bằng Plaintext (`parse_mode=None`) để không làm mất tin nhắn cảnh báo.
+- **Hermes Cron Execution Path & Dual-Sync Requirement:** Khi đăng ký cronjob `no_agent: true`, runner của Hermes tìm script trong `%LOCALAPPDATA%\hermes\scripts\<script>`, trong khi hook bảo mật (`guard_cronjob_safety.py`) lại kiểm tra đối chiếu tại `cwd / script`. Cần bảo đảm script được đồng bộ đồng thời qua `cron_sync_watchdog.py` sang cả `scripts/` và thư mục gốc của runtime.
+- **Universal UTC Timezone Normalization:** Audit log toàn Farm (`gate_audit.jsonl`, `vision_receipts.jsonl`) lưu chuẩn UTC (`timestamp_utc`). Watchdog bắt buộc tính `now = datetime.now(timezone.utc)` và chuẩn hóa mọi timestamp trong log sang offset-aware UTC. So sánh datetime naive hoặc tính theo giờ địa phương (UTC+7) sẽ lệch 7 tiếng, gây ra hiện tượng `NO_EVIDENCE` giả mạo.
 
 ---
 
