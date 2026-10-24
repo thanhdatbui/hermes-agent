@@ -101,6 +101,7 @@ Do not rely solely on mailbox polling as tracking code discovery. TikTok Shop an
        4. Script tuân thủ watchdog pattern: stdout rỗng khi không có mốc mới (Hermes im lặng 0 token), chỉ in ra khi có mốc bưu cục/shipper giao hàng.
    - **Canonical Native Switcher vs WinRT OCR Boundary:** Keep strict separation between UI zones: use Canonical `automation_core.tiktok.account_switcher` (native XML) for Account Switcher / Native Shell to prevent character mistranslations (`0` vs `O`, missing dots in handles), and reserve WinRT OCR Primary exclusively for WebView / TikTok Shop / Order Details screens.
    - **Telegram Channel Targeting via channel_directory.json:** Never prompt the user for group Chat IDs. Order tracking alerts must route directly to the designated order channel (e.g. `telegram:-5316882628`), resolved via `$LOCALAPPDATA/hermes/channel_directory.json`.
+   - **Anti-Kneejerk Removal on HTTP 503 Overload:** When an order tracking cron encounters temporary proxy failures (`HTTP 503: Service temporarily unavailable: all targets were skipped by pre-dispatch filters`), NEVER remove the cron job when active orders remain in transit. Remediate it immediately to pure script `no_agent: true` with a canonical wrapper in `hermes/scripts/`.
 
 ## Dashboard image integrity
 

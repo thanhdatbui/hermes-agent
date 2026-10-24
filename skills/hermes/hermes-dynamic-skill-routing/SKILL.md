@@ -173,19 +173,19 @@ Reviewing 13+ files simultaneously (5 engine files + 8 tests) causes Sol Auditor
 ### 13. Coordinator Session Prompt vs Worker Prompt Desync (Skill Bloat at Gateway)
 - **Problem:** Dynamic skill routing (`skill_injector.py`) only optimizes Worker subagents spawned by `dispatch_worker.py`. The Coordinator's main session on Telegram uses Hermes Core's `build_skills_system_prompt()` (`agent/prompt_builder.py`), which scans `~/.hermes/skills/` directly from disk on startup and dumps every un-archived category into `<available_skills>` (>180 skills, ~30KB prompt bloat).
 - **Solution & Archiving Pattern:**
-  * Move irrelevant/bloat categories (`apple`, `creative`, `data-science`, `email`, `media`, `smart-home`, `social-media`, `note-taking`, `research`, `productivity`) into `~/.hermes/skills/.archive/`.
+  * Move irrelevant/bloat categories (`apple`, `creative`, `data-science`, `email`, `media`, `smart-home`, `social-media`, `note-taking`, `research`, `productivity`, `software-development`, `devops`, `github`, `autonomous-ai-agents`, `network`, `mlops`) into `~/.hermes/skills/.archive/`.
   * `.archive` is recognized by `EXCLUDED_SKILL_DIRS` in `agent/skill_utils.py` and is completely skipped by Hermes Core during system prompt assembly.
   * Always preserve critical tools like `windows-native-ocr` (move to `desktop/` before archiving `productivity/`).
   * Delete `.skills_prompt_snapshot.json` to force snapshot regeneration.
   * Clear `agent.system_prompt` in `config.yaml` to prevent duplicating invariants already present in `SOUL.md`.
+  * Result: Cuts static skill catalog from 182 skills down to exactly 30 farm-essential skills (~4.6KB / ~1,100 tokens), preventing context bloat and hallucination.
 
 ### 14. Telegram Platform Inclusion & Focus-Mode Demotion (`agent/coding_context.py`)
 - **Upstream Trap:** In `agent/coding_context.py`, `INTERACTIVE_CODING_PLATFORMS = {"cli", "tui", "acp", "desktop", ""}` excludes Telegram by design. This causes `_detect_profile_name` to return `general`, disabling `coding_compact_skill_categories` so Telegram sessions always receive full multi-line descriptions for every skill!
 - **Fix:**
   * Add `"telegram"` to `INTERACTIVE_CODING_PLATFORMS`.
-  * Add heavy coding categories (`software-development`, `devops`, `github`, `desktop`, `network`, `autonomous-ai-agents`) to `_NON_CODING_SKILL_CATEGORIES` in `agent/coding_context.py` so they are demoted to `[names only]`.
   * In `config.yaml`, set `agent.coding_context: focus`.
-  * Result: Cuts prompt overhead from >30KB down to ~8.2KB (~2,000 tokens) while preserving 100% skill discoverability (all names stay visible and loadable via `skill_view`).
+  * Result: Keeps any remaining active categories compact while preserving 100% skill discoverability (all names stay visible and loadable via `skill_view`).
 
 ### 15. Mechanical Gating Invariant vs Soft Prompt Drift (Hard Gate Monopolies)
 - **Problem:** Attempting to enforce agent discipline (worker tiers, planner delegation, quota limits, file access) via soft system prompts leads to drift, hallucination, and prompt-bloat during context compaction.
