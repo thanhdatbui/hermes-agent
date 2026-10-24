@@ -23,6 +23,7 @@ _ADVISOR_EXPLICIT_TRIGGERS = (
 ```
 
 ## Anti-Pattern / Pitfalls
+- **Post-Turn Dual-Answer Leak (`consult_advisor.py`)**: Even when conversation loop has advisor disabled, post-turn checks invoke `consult_advisor.py:ensure_dual_answer()`. If `classify_advice_intent()` contains legacy regexes matching generic phrases (like `có nên`, `thế nào`, `sao v`, `nghĩ sao`, `tại sao`), it will silently call Sol in the background and append `--- Advisor (Sol / review) ---` to normal operator chat! Ensure `consult_advisor.py` strictly restricts `explicit_patterns` to explicit keywords (`gọi sol`, `hỏi sol`, `kêu sol`, `advisor`, `sol review`, etc.) and sets `generic_patterns = []`.
 - **Heuristic Pattern Trap**: Do NOT match generic question markers like `has_phrase("nên") and "?" in text`. That causes normal coordinator inquiries (e.g. "canary xem cron có fix đc k ?") to trigger Advisor Sol unexpectedly, causing latency and frustrating the operator.
 - **Masked Key Testing in OmniRoute Pools**: When validating connections under OmniRoute (:20129), do NOT send masked keys (`__Secure****` or `eyJhbG****`) to external endpoints or `/api/providers/validate`. Always use the internal testing endpoint:
   ```http
