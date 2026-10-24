@@ -35,10 +35,15 @@ Khi nạp Bio / Đổi Tên tiếng Việt có dấu:
      - Intent `ADB_INPUT_B64 --es msg <base64>` hay `ADB_INPUT_TEXT --es msg <text>` trả về `result=0` nhưng **hoàn toàn KHÔNG gõ ký tự vào ô nhập**.
      - Intent CHUẨN XÁC của AdbKeyboard trên Android Farm là:
        ```bash
-       # 1. Xóa sạch ô nhập:
-       adb shell am broadcast -a ADB_KEYBOARD_CLEAR_TEXT
+       # 1. Xóa sạch ô nhập (CẢNH BÁO BẪY DÍNH CHỮ):
+       # Lệnh broadcast ADB_KEYBOARD_CLEAR_TEXT đôi khi KHÔNG xóa được nếu con trỏ chuột nằm ở giữa text cũ,
+       # dẫn đến việc text mới bị chèn vào giữa gây dính chữ rác (ví dụ: 129/160 ký tự)!
+       # GIẢI PHÁP TRIỆT ĐỂ: Tap trực tiếp nút [Clear Text] trên giao diện AdbKeyboard bar ở đáy màn hình:
+       adb shell input tap 400 1865   # Tọa độ nút 'Clear Text' trên thanh AdbKeyboard (màn hình 1080x1920)
        
-       # 2. Gõ chuỗi Base64 UTF-8 (chuẩn xác 100% tiếng Việt có dấu):
+       # 2. Đối soát OCR xác nhận ô nhập liệu đã về đúng '0/160' ký tự rỗng hoàn toàn.
+       
+       # 3. Gõ chuỗi Base64 UTF-8 (chuẩn xác 100% tiếng Việt có dấu):
        adb shell am broadcast -a ADB_KEYBOARD_INPUT_TEXT --es text '<chuoi_base64_utf8>'
        ```
      * Lệnh trên trả về `result=-1` (Activity.RESULT_OK), ký tự tiếng Việt có dấu xuất hiện đầy đủ trong ô `EditText`.

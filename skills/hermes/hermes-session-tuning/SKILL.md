@@ -183,6 +183,33 @@ Khi `delegation.provider: omni` (worker subagent chạy qua OmniRoute combo), `r
 ### Provider plugin (alternative vĩnh viễn)
 Tạo `~/.hermes/plugins/model-providers/omni/__init__.py` với `OmniProfile(ProviderProfile)` override `build_api_kwargs_extras()` để forward `reasoning_config.effort` thành `top_level["reasoning_effort"]`. File `plugin.yaml` cần `kind: model-provider`.
 
+## 2c. Kiểm tra & Đối soát Phân tầng Reasoning Coordinator (High) vs Worker (Medium) qua OmniRoute (:20129)
+
+Khi cần kiểm chứng thực tế Coordinator hay Worker đang chạy Gemini High hay Medium (hoặc kiểm tra có bị lệch reasoning giữa các tầng):
+
+### 3 Tầng kiểm tra O(1) không vi phạm Guard
+1. **Kiểm tra cấu hình Hermes qua `manage_hermes_config.py`** (né blacklist `config.yaml`):
+   ```bash
+   python D:/Taadaa/tools/manage_hermes_config.py get agent.reasoning_effort
+   python D:/Taadaa/tools/manage_hermes_config.py get agent.reasoning_overrides
+   python D:/Taadaa/tools/manage_hermes_config.py get delegation
+   ```
+   - Chuẩn kiến trúc: Coordinator session chính chạy `agent.reasoning_effort: high`, `reasoning_overrides.omni-worker: high`.
+   - Worker subagent chạy `delegation.reasoning_effort: medium`.
+
+2. **Kiểm tra định tuyến Combo tại OmniRoute (`storage.sqlite`)**:
+   - Query combo `omni-worker` trong `C:/Users/Kibe/.omniroute/storage.sqlite`:
+     Tier 1 ưu tiên là `ag-gemini-pool-3` (`antigravity/gemini-3.8-flash-tiered`).
+
+3. **Bóc tách Payload & Thinking Budget thực tế từ Call Logs**:
+   - Query call gần nhất từ bảng `call_logs` trong `storage.sqlite` để lấy `artifact_relpath`.
+   - Đọc trực tiếp file JSON tại `C:\Users\Kibe\.omniroute\call_logs\<artifact_relpath>`:
+     - `requestBody.reasoning_effort`: hiển thị rõ `"high"` (Coordinator) hoặc `"medium"` (Worker).
+     - Trong `open-sse/translator/request/openai-to-gemini.ts`:
+       + `"high"` $\rightarrow$ `thinkingBudget: 32768`.
+       + `"medium"` $\rightarrow$ `thinkingBudget: 8192`.
+     - `tokens.reasoning` ghi nhận số thinking tokens thực tế trả về từ upstream Antigravity.
+
 ## Pitfalls
 - **False 429 Alert & Timestamp Milliseconds**: Khi grep thô chuỗi `"429"` trong log (`agent.log`, `errors.log`), chuỗi `,429` xuất hiện từ timestamp millisecond (`09:48:26,429`) hoặc token count (`cache=255429`, `total=144429`). Cần kiểm tra HTTP status qua endpoint `/api/logs/console` trên OmniRoute (:20129) thay vì kết luận nhầm là HTTP 429 rate-limit.
 - PowerShell qua bash: `powershell.exe -NoProfile -Command '...'` — single-quote toàn bộ, `$_`/`$()` bị MSYS nuốt → ParserError.

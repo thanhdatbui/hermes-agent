@@ -66,6 +66,16 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
     - **CẤM TUYỆT ĐỐI Bịa Đặt Lý Do Kỹ Thuật Ảo:** Khi thấy Tên hoặc Avatar chưa đổi trên ảnh thực tế, cấm tự nghĩ ra lý do (như "giao diện mới gộp tên vào handle", "hệ thống tự ẩn tên") để tuyên bố xong.
     - **Bộ Ba Nghiệm Thu Profile:** Chuẩn hoá kênh bắt buộc đối soát đủ 3 yếu tố: (1) Tên hiển thị (Nickname) phải là tên mới tiếng Việt có dấu, (2) Bio phải chứa nội dung mới và sạch nút marker rỗng, (3) Avatar trên app phải là ảnh mới theo spec.
     - **Kỷ Luật Báo Cáo Thực Trạng:** Nếu chỉ làm được một phần (ví dụ mới xong Bio nhưng kẹt Tên/Avatar), BẮT BUỘC báo cáo rõ là CHƯA HOÀN TẤT và nêu chính xác điểm đang kẹt, TUYỆT ĐỐI CẤM báo hoàn tất 100%. Chi tiết xem [`references/anti-fabrication-and-full-profile-triad-verification.md`](references/anti-fabrication-and-full-profile-triad-verification.md).
+13. **Đối Soát Nội Dung Video Thật Trước Khi Đổi Tên (Ground-Truth Video Content Audit):**
+    - CẤM TUYỆT ĐỐI chỉ nhìn cột Keyword trong Excel rồi tự suy diễn sub-niche (ví dụ thấy `Âm nhạc` tự bịa `Thanh Khoa Piano` trong khi video thực tế là Vlog hài hước/đời sống).
+    - **Cảnh báo rủi ro khóa cứng:** TikTok phạt **7 ngày Cooldown (`NAME_CHANGE_COOLDOWN_7D`)** sau mỗi lần đổi tên. Đổi sai niche sẽ khóa chết tài khoản trong 1 tuần, phá hỏng thuật toán phân phối feed.
+    - BẮT BUỘC mở xem ít nhất 1 video và đọc hashtag thực tế trên video trước khi chốt tên mới.
+14. **Bẫy Ghép Nối Dính Chữ Cũ Khi Sửa Bio (AdbKeyboard Clear Text Desync Trap):**
+    - Khi sửa Bio đã có sẵn nội dung, lệnh `am broadcast -a ADB_KEYBOARD_CLEAR_TEXT` thường không xóa sạch ô nhập nếu con trỏ nằm ở giữa chuỗi, làm text mới bị chèn vào giữa chuỗi cũ (gây dính chữ rác `129/160` ký tự).
+    - **Quy trình chuẩn:** BẮT BUỘC tap nút trên màn hình `[Clear Text]` của thanh AdbKeyboard (`input tap 400 1865` trên 1080x1920) và đối soát OCR hiển thị đúng `0/160` ký tự trước khi broadcast `ADB_KEYBOARD_INPUT_TEXT`.
+15. **Dung Sai Rơi Dấu & Cắt Đuôi Cho Nhãn Ghim (Pin Diacritic & Truncation Tolerance):**
+    - Huy hiệu "Đã ghim" trên thumbnail video thường bị OCR cắt cụt đuôi hoặc rơi rụng dấu thành `Dä ghi`, `Đã ghi`, `däg 1m`.
+    - Regex trong verifier và gate bắt buộc dùng mẫu dung sai: `re.compile(r"\b(?:d[aä]g?\s*(?:1m|im|ghim?|ghi)|ghim?|pinned?)\b", re.IGNORECASE)` để tránh reject nhầm video đã ghim thành công.
 
 ## 2. Thang Leo Thang Vision Dự Phòng (Fallback Ladder)
 Thứ tự fallback đọc ảnh chuẩn hoá 100% đồng bộ với kiến trúc Worker Dispatch:
