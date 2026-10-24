@@ -12,7 +12,7 @@ Stale Up: xóa draft. Revert: TikWM. Cào: max 60. Cron TB: device_lock+rolling<
 §
 Admin (M>=200): F_src=(Slot-1)*80+(M-200), F_vid=((M-200)-1)*8+Slot; Reaper SSH. M7: SSID Dat_2.4G.
 §
-Ava: Trích clip gốc; OCR lines==0; top-row audit né sót view cao; F_src!=F_vid khóa 2 folder; chuẩn hoá: Hashtag (.manual_hashtag_locked), Pin>=1k, Ava (.manual_avatar_locked), Tên+Bio.
+Gate 6/Ava: Bth Coordinator tự soi ảnh; 503/fail: CẤM báo OCR chữ chay, BẮT BUỘC fallback Claude Worker đọc+ký receipt; 2 bên fail=UNVERIFIED. Chuẩn hoá: Hashtag lock, Pin>=1k, Ava lock, Tên+Bio.
 §
 Reboot 3 ca: retry :20-:50, cutoff :51 (<10p ca); lb 60m; 2FA né đệm; né TFT/War3. Task ngầm Hidden. Game=tắt nháy. Tiểu Vi 5038: dọn trước ca feed.
 §
