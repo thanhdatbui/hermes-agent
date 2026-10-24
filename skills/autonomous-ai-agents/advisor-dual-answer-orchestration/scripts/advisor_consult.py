@@ -19,10 +19,20 @@ import urllib.request
 from typing import Any, Tuple
 
 
-# Chỉ kích hoạt khi user gọi tên trực tiếp Advisor/Sol (on-demand)
+# Chỉ kích hoạt khi user gọi tên trực tiếp Advisor/Sol (100% strictly on-demand)
 SUMMON_PATTERNS = [
-    r"\b(?:gọi|hỏi|nhờ)\s+(?:sol|advisor)\b",
-    r"\bsol\s+(?:thấy sao|nghĩ sao|lên plan)\b",
+    r"\b(?:gọi|hỏi|nhờ|kêu)\s+(?:sol|advisor)\b",
+    r"\b(?:sol|advisor)\s+(?:thấy\s+sao|nghĩ\s+sao|review|lên\s+plan|cho\s+ý\s+kiến)\b",
+    r"\bnhờ\s+(?:sol|advisor)\s+review\b",
+    r"\bxin\s+ý\s+kiến\s+(?:sol|advisor)\b",
+]
+
+EXCLUDE_PATTERNS = [
+    r"\b(?:tắt|dừng|stop|disable|hủy|bỏ|ngắt)\s+(?:advisor|sol)\b",
+    r"\b(?:đừng|không|k|chớ)\s+(?:gọi|dùng|bật|kêu|hỏi|cần)\s+(?:advisor|sol)\b",
+    r"\b(?:advisor\s+sol|advisor|sol)\b.*?\b(?:t|tao|tôi|mình)\s+sửa\b",
+    r"\b(?:tại\s+sao|vì\s+sao|sao|sao\s+k|sao\s+không)\b.*?\b(?:gọi|kêu|hỏi|dùng)\s+(?:sol|advisor)\b",
+    r"\b(?:đéo|không|chẳng|chưa|k)\b.*?\b(?:thấy|muốn)\b.*?\b(?:gọi|kêu|hỏi)\s+(?:advisor|sol)\b",
 ]
 
 
@@ -59,7 +69,11 @@ def redact_secrets(text: str) -> str:
 
 def classify_advice_intent(message: str) -> bool:
     """Chỉ trả True khi tin nhắn gọi tên trực tiếp Advisor/Sol; câu hỏi chung và từ khóa heuristic trả False."""
-    msg_lower = (message or "").lower()
+    if not message or not isinstance(message, str) or not message.strip():
+        return False
+    msg_lower = " ".join(message.split()).lower()
+    if any(re.search(p, msg_lower) for p in EXCLUDE_PATTERNS):
+        return False
     return any(re.search(p, msg_lower) for p in SUMMON_PATTERNS)
 
 

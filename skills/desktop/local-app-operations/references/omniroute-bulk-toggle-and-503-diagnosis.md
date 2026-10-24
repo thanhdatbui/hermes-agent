@@ -19,7 +19,12 @@ When multiple LLM accounts in a provider pool (e.g. Antigravity Pro accounts in 
   );
   ```
   This fires parallel `PUT /api/providers/<id>` updates across **all** connections for that provider, flipping 20–30 accounts in under 1 second.
-- **Accidental Trigger**: Operators clicking the provider card or testing toggles can inadvertently turn off the entire fleet instead of a single connection.
+- **Accidental Trigger / Touch Target Hazard**:
+  * In `ProviderCard.tsx`, the entire card is wrapped in `<Link href="/dashboard/providers/${providerId}">`. Inside the card, the master toggle is nested directly in `<div onClick={handleToggle}><Toggle size="xs" checked={!allDisabled} /></div>`.
+  * **Zero Confirmation Modal**: Unlike destructive actions, bulk toggling has no confirmation prompt ("Are you sure you want to deactivate all 28 accounts?").
+  * **Touch/Click Target Collision**: On mobile devices (iOS Safari, Android Chrome) or desktop viewports, when an operator taps or scrolls over the card to view details, touches can easily hit the `size="xs"` toggle hit-box or trigger touch event bubbling.
+  * **Operator Perceptions**: Operators will firmly state *"I never touched or disabled those accounts!"* because they only tapped the card to open it or scrolled past.
+  * **Footprint of Rapid Re-toggling**: Audit log showing accounts toggled `True -> False` at 08:24:40, then `False -> True` at 08:25:01, then `True -> False` at 08:25:30 is the hallmark of touch target confusion / accidental double-taps on mobile. (A similar event was recorded on 2026-10-23 at 14:22:01 where 112 accounts were simultaneously deactivated).
 
 ---
 

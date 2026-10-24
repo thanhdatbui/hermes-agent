@@ -40,6 +40,7 @@ class TestAdvisorIntentClassification(unittest.TestCase):
             "nhờ sol",
             "hỏi advisor",
             "sol nghĩ sao",
+            "nhờ sol review",
             "sol lên plan",
             "Hỏi sol: tại sao lại bị lệch avatar?",
             "nhờ advisor review kiến trúc này giúp",
@@ -97,6 +98,9 @@ class TestAdvisorIntentClassification(unittest.TestCase):
             "git log xem có gì lạ không",
             "kiểm tra log và phân tích xem nguyên nhân là do đâu",
             # Phàn nàn / than phiền về advisor (không phải lệnh triệu hồi)
+            "advisor sol t sửa...",
+            "tắt advisor",
+            "sao bữa nay t đéo hề thấy mày gọi advisor nữa?",
             "sao advisor trả lời ngáo thế",
             "tắt advisor đi",
             "advisor lại bị timeout à",

@@ -37,3 +37,13 @@ _ADVISOR_EXPLICIT_TRIGGERS = (
 
   {"isActive": true, "testStatus": "active"}
   ```
+
+## Worker & Subagent Dispatch Protocol (Coordinator vs Worker)
+- **CẤM TUYỆT ĐỐI Hermes Native Delegation (`delegate_task`)**:
+  Coordinator tuyệt đối không được gọi `delegate_task` để spawn subagent bừa bãi. Việc spawn subagent tự do gây bloat context, ngâm timeout 600s làm nghẽn event loop của gateway, vi phạm sandbox và phá vỡ kiểm soát phân vai của farm.
+- **Quy chuẩn ủy quyền Worker (Farm Worker CLI)**:
+  Khi cần thực hiện các task sửa code / điều tra sâu vượt quá ngân sách Coordinator O(1):
+  * **First Responder:** BẮT BUỘC dispatch qua `python D:/Taadaa/tools/sol_worker.py "<contract O(1)>" --workdir <repo>` (hoặc chỉ định `--model`, `--timeout`).
+  * **Fallback:** Sử dụng `python D:/Taadaa/tools/dispatch_worker.py` (hoặc `claude_worker.py` / `haiku_worker.py`).
+  * Coordinator giữ vai trò nghiệm thu O(1) qua focused test và canary thực tế; cấm spawn subagent mò mẫm file.
+
