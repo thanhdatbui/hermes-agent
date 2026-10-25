@@ -46,3 +46,23 @@
 - **Cạm bẫy:** Nếu script launcher (`tiktok_runner.py`) truyền dải vượt quá 8000ms (ví dụ `3000,10000`), PowerShell sẽ throw exception và chết ngay trong 0.1 giây.
 - **Nguy cơ tàng hình:** Vì `tiktok_runner.py` redirect `stderr: DEVNULL`, lỗi crash này bị nuốt trọn trong bóng tối. Script tưởng PowerShell đã chạy nên lưu trạng thái `last_window` vào `runner_simple_state.json`, khiến phiên nuôi bị bỏ qua hoàn toàn mà không hề có máy nào chạy.
 - **Quy tắc:** Luôn giữ `-MachineStartStaggerMs` trong giới hạn chuẩn `2000,8000`.
+
+---
+
+## 4. Bẫy Mất Report Ca Chạy Bù Do Cửa Sổ Giờ Watchdog & State Reported Ảo
+- **Hiện tượng:** Ca chạy bù hoàn tất thành công trên dàn máy nhưng trên Telegram nhóm không thấy báo cáo tổng kết, chỉ thấy các cảnh báo lỗi đơn lẻ.
+- **2 Nguyên nhân cốt lõi:**
+  1. *Lệch cửa sổ giờ cố định:* `feed_session_watchdog.py` quét theo 3 ca cố định (Ca 1: 07:30–09:30, Ca 2: 11:45–13:30, Ca 3: 17:45–19:30). Một phiên chạy bù lúc 10:54 sáng nằm ngoài khung giờ này nên cronjob định kỳ 5 phút sẽ im lặng (`silent: empty output`).
+  2. *Transient Delivery Timeout làm kẹt State:* Khi bước vào cửa sổ quét (vd 12:28), watchdog quét ra kết quả ca bù nhưng nếu lệnh gửi Telegram vướng timeout mạng/proxy tạm thời (`httpx.ProxyError`), state `feed_session_reported.json` có thể đã lỡ ghi nhận session key (vd `2026-10-25_ca1_phien2`). Hậu quả là các lần chạy sau coi như phiên đã báo cáo xong và bỏ qua vĩnh viễn.
+- **Xử lý nhanh O(1):**
+  * Kiểm tra `D:/Taadaa/runtime/kibe/cron-state/feed_session_reported.json`.
+  * Nếu session key bị ghi nhận sớm khi tin nhắn chưa tới nhóm, xóa key đó khỏi mảng `reported_sessions` rồi kích hoạt lại watchdog: `cronjob action='run', job_id='1d62cb3562e0'`.
+
+---
+
+## 5. Bẫy Sai Công Thức Video Gốc TikN.xlsx Khóa Cứng Pipeline Sync
+- **Vấn đề:** Khi nhập tay hoặc copy sheet Excel, ô cột Video Gốc (cột E) bị sai công thức (ví dụ ô E77 máy 76 Tik2 bị gõ `602` thay vì `(2-1)*80 + 76 = 156`).
+- **Hậu quả:** `excel_preflight_validator.py` phát hiện vi phạm Invariant sẽ abort toàn bộ pipeline sync (`taikhoan-run-safe-sync`), khiến `taikhoan_run_safe.xlsx` không cập nhật và `phase9-staging-picker` văng lỗi hàng loạt.
+- **Quy tắc:** Công thức Video Gốc cho máy `M` trên `TikN`:
+  $$\text{Video Gốc} = (N - 1) \times 80 + M$$
+  Khi có cảnh báo preflight, kiểm tra và sửa đúng giá trị số nguyên vào ô bị sai trong `TikN.xlsx`, sau đó chạy lại validator để kiểm chứng pass 100%.

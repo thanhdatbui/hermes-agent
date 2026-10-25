@@ -88,12 +88,18 @@ Trước đây hệ thống bị lỗi nghiêm trọng do nhập nhằng giữa 
 
 ---
 
-### 8. Bản Chất Kỹ Thuật Của Các Nhóm Streak 1, 2, 3
-1. **Streak 1 (24h Cooldown):**
+### 8. Bản Chất Kỹ Thuật Của Các Nhóm Streak 1, 2, 3 & Kỷ Luật Giữ Nguyên Án Thật
+1. **Nguyên Tắc "Bị Thật Thì Giữ Nguyên, Oan/Hết Hạn Mới Xả":**
+   - Khi điều tra hoặc xử lý streak farm, TUYỆT ĐỐI CẤM xả trắng toàn bộ farm vô tội vạ.
+   - BẮT BUỘC phân loại thành 3 nhóm rõ rệt:
+     * **Nhóm A (Đã hết hạn phạt):** Đã chấp hành đủ 24h (S1), 3 ngày (S2), hoặc 5 ngày (S3) -> Bắt buộc xả án ngay, không để kẹt thêm ngày nào.
+     * **Nhóm B (Chạm trần phiên `used > 0`):** Nick đã follow thành công $\ge 1$ lượt trong ca rồi mới dừng phiên -> Oan streak, xả án ngay vì đây là ceiling drop.
+     * **Nhóm C (BỊ NHẢ THẬT & ĐANG TRONG THỜI HẠN COOLDOWN HỢP LỆ):** BẮT BUỘC GIỮ NGUYÊN 100% ÁN PHẠT để tài khoản hoàn tất chu kỳ xả cache và dưỡng tự nhiên. Cấm xóa cooldown của nhóm này!
+2. **Streak 1 (24h Cooldown):**
    - Đa số (>90%) là lỗi ngoại cảnh/rớt cữ (`empty reason`): mạng chập chờn, proxy timeout, app TikTok crash trước khi kịp bấm follow.
    - Cơ chế xả án: Tính theo giờ rolling 24h (`now_hcm >= cooldown_until_at`). Phải chạy xả án cuốn chiếu trong ngày để nick hết 24h được trả về cữ chạy ngay, không để dồn ứ trên dashboard.
-2. **Streak 2 (3 ngày Cooldown) & Streak 3 (5 ngày Cooldown):**
+3. **Streak 2 (3 ngày Cooldown) & Streak 3 (5 ngày Cooldown):**
    - Hơn 60% nạn nhân là do **Bẫy Anchor**: Nick non (`0 follow`) vừa ra tù, vào cữ chạy bị ép bấm Anchor phát đầu tiên (`used == 0`) -> Anchor bị TikTok siết nhả -> Script đôn bậc từ Streak 1 lên Streak 2 (giam 3 ngày), rồi lên Streak 3 (giam 5 ngày).
    - **Bẫy so sánh ngày trong script xả án cũ:** Script `reconcile_all_streak_cooldowns.py` dùng điều kiện `today > expiry_day` khiến các nick đúng ngày mãn hạn (ví dụ Streak 3 giam 5 ngày từ 20/10 đến 25/10) bị giam thêm 1 ngày oan đến 26/10 mới được thả. Chuẩn hóa: phải so sánh timestamp chính xác hoặc `today >= expiry_day` khi hết giờ địa phương.
-   - Với nhóm vấp bẫy Anchor ở Streak 2 & 3: Cần chủ động reset hạ về `fail_streak = 1` và gỡ bỏ án cách ly để tránh nguy cơ bùng phát nhảy vọt lên Streak 4 kịch khung.
+   - Với nhóm dính nhả thật và chưa đủ ngày cách ly: Giữ nguyên hạn phạt cho đến khi đủ ngày. Với nhóm án oan do bẫy Anchor tích tụ lâu ngày hoặc dính kịch khung do bug: chỉ xử lý hạ bậc khi đã chứng minh được điều kiện không phải spammer thật sự.
 

@@ -7,7 +7,7 @@ description: >-
 
 # Farm Alert Autonomous Recovery
 
-> Core Refs: `references/closed-loop-auto-repair-architecture-and-emitter-coalescing.md`, `references/omniroute-connection-pin-and-anti-finally-bypass.md`, `references/watchdog-manifest-and-detector-replay.md`, `references/focus-device-issue-cold-start-and-systemui-relaunch-20261020.md`, `references/canary-receipt-expiry-and-safe-push-pre-commit.md`, `references/recovery-proof-and-operator-closeout.md`, `references/anti-performative-alert-handling-and-immediate-code-fix.md`, `references/batch-alert-upload-hook-post-verification-false-positive-triage.md`, `references/strike-3-reviewer-handoff-and-claude-quota-collision.md`.
+> Core Refs: `references/closed-loop-auto-repair-architecture-and-emitter-coalescing.md`, `references/omniroute-connection-pin-and-anti-finally-bypass.md`, `references/watchdog-manifest-and-detector-replay.md`, `references/focus-device-issue-cold-start-and-systemui-relaunch-20261020.md`, `references/canary-receipt-expiry-and-safe-push-pre-commit.md`, `references/recovery-proof-and-operator-closeout.md`, `references/anti-performative-alert-handling-and-immediate-code-fix.md`, `references/batch-alert-upload-hook-post-verification-false-positive-triage.md`, `references/admin-remote-fast-artifact-sync-via-onedrive.md`, `references/strike-3-reviewer-handoff-and-claude-quota-collision.md`.
 
 ## UI evidence: target screen only
 
