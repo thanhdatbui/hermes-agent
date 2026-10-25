@@ -36,6 +36,7 @@ _ADVISOR_EXPLICIT_TRIGGERS = (
   * **Bẫy Daemon RAM**: Tiến trình Hermes Gateway nền (`python -m hermes_cli.main gateway run`) nạp toàn bộ module vào `sys.modules` trong RAM khi khởi động. Việc sửa file trên đĩa (disk) **HOÀN TOÀN KHÔNG CÓ HIỆU LỰC** đối với Gateway đang chạy nếu tiến trình chưa được restart! Ví dụ: Gateway start lúc 11:28, commit fix lúc 23:43 -> Gateway vẫn chạy logic cũ rích trong RAM, tiếp tục tự động append Advisor gây ức chế cho User.
   * **Kỷ Luật Bắt Buộc Sau Khi Vá Gate**: Sau khi commit sửa bất kỳ logic nào trong `consult_advisor.py`, `advisor_consult.py` hay plugin hook, BẮT BUỘC phải đối soát PID và thời gian khởi động của Gateway (`psutil` / `pgrep`), lập tức restart tiến trình Gateway để giải phóng RAM cũ, nạp code mới. Chi tiết thực nghiệm xem `references/sol-web-tool-calling-and-gateway-restart-audit-20261025.md`.
   * Ngoài ra, các session cũ / in-flight session được mở trước thời điểm commit vẫn mang context cũ, cần kiểm tra timestamp trước khi giải thích.
+  * Chi tiết kiến trúc tách biệt fail_streak vs probation xem `references/follow-streak-cooldown-and-probation-ladder-architecture.md`.
 - **Masked Key Testing in OmniRoute Pools**: When validating connections under OmniRoute (:20129), do NOT send masked keys (`__Secure****` or `eyJhbG****`) to external endpoints or `/api/providers/validate`. Always use the internal testing endpoint:
   ```http
   POST http://127.0.0.1:20129/api/providers/{connection_id}/test
@@ -73,6 +74,8 @@ _ADVISOR_EXPLICIT_TRIGGERS = (
   * **BẮT BUỘC BẬT `stream: true`**: Luồng HTTP Server-Sent Events (SSE) đẩy chunk `choices[0].delta.content` ngay từ giây thứ 3–5, triệt tiêu hoàn toàn nghẽn I/O và hoàn tất đánh giá trong < 30s.
 
 ## Worker & Subagent Dispatch Protocol (Coordinator vs Worker)
+- **Kỷ Luật Worker Floor 300s Bắt Buộc**:
+  * Khi gọi bất kỳ worker nào (`dispatch_worker.py`, `sol_worker.py`), Coordinator BẮT BUỘC tuân thủ sàn `timeout >= 300s`. CẤM TUYỆT ĐỐI tự ý gõ cờ `--timeout` ngắn (ví dụ 30s) trong terminal làm ngắt ngang khi model worker đang suy nghĩ / stream.
 - **CẤM TUYỆT ĐỐI Hermes Native Delegation (`delegate_task`)**:
   Coordinator tuyệt đối không được gọi `delegate_task` để spawn subagent bừa bãi. Việc spawn subagent tự do gây bloat context, ngâm timeout 600s làm nghẽn event loop của gateway, vi phạm sandbox và phá vỡ kiểm soát phân vai của farm.
 - **Quy chuẩn ủy quyền Worker (Farm Worker CLI)**:

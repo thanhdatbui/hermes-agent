@@ -231,6 +231,17 @@ Reviewing 13+ files simultaneously (5 engine files + 8 tests) causes Sol Auditor
   * Strictly Fail-Closed: If quota is `None`, `is_stale=True`, or an exception occurs during reading, immediately return `can_run=False` to trigger Tier 2 fallback (Sol Planner).
   * Distinguish infrastructure errors (timeout, quota 429) which trigger tier fallback vs semantic errors (invalid input, syntax error, refusal) which exit early.
 
+### 19. Triệt Tiêu Quy Tắc Cơ Giới Khỏi Memory / Profile (Mô Hình 3 Tầng Lưu Trữ)
+- **The Pitfall:** Nhồi nhét các quy tắc ca kíp, lệnh cấm, hoặc logic vận hành đã được code hóa (như `delegate_task` exit 126, `shift_pool`, `rename_bio`, `safe_recycle`, `guard_terminal` chặn `find/os.walk`) vào `MEMORY.md` hoặc `USER PROFILE`. Điều này làm cạn kiệt ngân sách ký tự, gây trùng lặp chéo giữa Memory và Profile, và làm mô hình bị ngộ độc ngữ cảnh ("lost in the middle").
+- **Mô Hình 3 Tầng Chuẩn (Storage Hierarchy):**
+  1. *Tầng 1 - Cơ giới hóa (Script / Hook / Guard):* Logic nào code đã tự kiểm tra hoặc chặn (exit codes, guard allowlist, `closeout_gate.py` diff/dirty checks) $\rightarrow$ **CẤM** xuất hiện trong `MEMORY` hoặc `USER PROFILE`.
+  2. *Tầng 2 - Tri thức vận hành (Dynamic Skills):* Các quy trình xử lý, tra cứu bug, hướng dẫn chuyên sâu $\rightarrow$ Lưu trữ dạng file ngoại vi `SKILL.md` trong thư mục skill. Catalog chỉ giữ 1 dòng tóm tắt; Agent chỉ gọi `skill_view` On-Demand khi có việc phát sinh ($O(1)$ token overhead).
+  3. *Tầng 3 - Bản sắc & Gu cá nhân (Memory / Profile):* Chỉ lưu persona, phong cách tương tác, sở thích làm việc (Vibe $O(1)$, Auto-heal ngầm kèm ảnh MEDIA, Claude on-demand).
+- **Phương Pháp Kiểm Tra & Đối Soát Thực Tế:**
+  * Kiểm tra trực tiếp call logs thực của Gateway (ví dụ `~/.omniroute/call_logs/<YYYY-MM-DD>/...json`) để đo lường chính xác Base Overhead (System Prompt chars, Tools Schema JSON chars, tokens in).
+  * Kiểm toán trùng lặp giữa các khối: Xóa bỏ 100% các đoạn text lặp lại giữa `MEMORY` và `USER PROFILE`.
+  * Quản trị Tools Schema: Các công cụ bị chặn cứng bởi Guard nếu không cần thiết nên được cấu hình loại trừ bằng profile toolset lockdown để tránh tốn 10.000–15.000 tokens schema mỗi turn.
+
 ## Closeout Gate Notes
 
 - The 3 new files (`skill_injector.py`, tests) + modified `dispatch_worker.py` together exceed 22KB diff
