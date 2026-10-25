@@ -1,21 +1,38 @@
 # Kiến Trúc Dynamic Shift-Pool 4 Ngày & Đồng Bộ Phiên Nuôi Acc (S2 bám S1)
 
-## 1. Thiết Kế Shift-Pool Luân Phiên Sinh Học (96h)
-Farm vận hành chu kỳ 4 ngày (96h) cố định neo theo ngày tuyệt đối:
+## 1. Thiết Kế Shift-Pool Dynamic Tuần Tự Theo Độ Khỏe & Đi Đủ 8 Nick (Anti-Starvation)
+Hệ thống quản lý tới tầng tài khoản (Account-Level Telemetry), xóa bỏ hoàn toàn việc gán cứng D0/D1/D2/D3 toàn farm cùng chạy 1 row:
 - `_ANCHOR_ORDINAL = date(2026, 10, 11).toordinal()`
 - `cycle_day = (today.toordinal() - _ANCHOR_ORDINAL) % 4` (0 -> 3)
 - `cycle_idx = (today.toordinal() - _ANCHOR_ORDINAL) // 4`
 
-### Phân Bổ Ca Nuôi & Hàng Tài Khoản:
+### Phân Bổ Ca Nuôi & Ranh Giới Pool:
 - **Ca 1 (Sáng: 06:00 & 08:00):** Pool `{1, 2, 7}`
 - **Ca 2 (Trưa: 12:00 & 14:00):** Pool `{3, 4, 8}`
-- **Ca 3 (Tối: 18:00 & 20:00):** Pool `{5, 6}`
+- **Ca 3 (Tối: 18:00 & 20:00):** Pool `{5, 6}`. Riêng Ngày 3 (D2) hoặc ngày dưỡng sinh (D3) bốc thêm **Row Động** theo phễu Đề xuất $\to$ Nhả $\to$ Yếu.
 
-### Lịch Trình Chu Kỳ 4 Ngày:
-- **Ngày 1 (D0):** Rank 1 khỏe $\to$ Ca 1: Row 1, Ca 2: Row 3, Ca 3: Row 5.
-- **Ngày 2 (D1):** Rank 2 $\to$ Ca 1: Row 2, Ca 2: Row 4, Ca 3: Row 6.
-- **Ngày 3 (D2):** Rank 3 $\to$ Ca 1: Row 7, Ca 2: Row 8. Riêng **Ca 3 tối hết nick trong pool `{5, 6}` $\to$ Fallback 3 Phễu Dưỡng Sinh**.
-- **Ngày 4 (D3):** **Cả 3 Ca đều là Dưỡng Sinh $\to$ Fallback 3 Phễu Dưỡng Sinh**.
+### Quy Luật Bốc Tuần Tự Đi Đủ 8 Nick (Không Bỏ Đói):
+- **Phễu Sức Khỏe 6 Tầng (`_follow_rank`):**
+  1. 🟢 **Rank 1 - Khỏe (`healthy`):** `graduated=True` hoặc `healthy`.
+  2. 🥈 **Rank 2 - Đề xuất (`boosted`):** `is_account_boosted(machine, row) == True`.
+  3. 🥉 **Rank 3 - Hồi phục 2 (`probation_tier2`):** `probation_clean_days >= 1`.
+  4. 🎖️ **Rank 4 - Hồi phục 1 (`probation_tier1`):** `probation_clean_days == 0` và `fail_streak > 0`.
+  5. ⚠️ **Rank 5 - Nhả (`cooldown`):** Dính phạt nhả follow (`is_in_cooldown=True` hoặc `cooldown_until_date`).
+  6. 🌱 **Rank 6 - Mặc định / Yếu:** Nick mới hoặc video count thấp nhất.
+- **Nguyên lý xoay vòng:**
+  * Máy lọc các nick trong Pool chưa chạy trong chu kỳ (`candidates = [r for r in pool if r not in used]`).
+  * Sắp xếp theo thứ hạng sức khỏe: `min(candidates, key=lambda r: _follow_rank(machine, r, today))`.
+  * Nick đã chạy hôm trước sẽ được lưu vào `used` $\implies$ Ngày tiếp theo máy bốc nick có thứ hạng kế tiếp.
+  * Khi tất cả nick trong pool của ca đó đều đã chạy (`not candidates`) $\implies$ Tự động reset `used` của ca đó để bắt đầu vòng tuần tự mới.
+  * **Bảo đảm 100%:** Luân phiên đi đủ cả 8 nick trên từng máy, không bao giờ có nick nào bị bỏ đói!
+
+### Hai Tầng Cooldown Tách Biệt Độc Lập:
+1. **Tầng Farm (48h Cooldown Lượt Nuôi):**
+   * Sau khi một nick chạy xong, máy nghỉ tự nhiên ~48h để chạy các nick còn lại trong pool trước khi quay vòng lại.
+2. **Tầng Account (Follow Cooldown Theo Streak Riêng):**
+   * Quyền nuôi (Feed + Video) và Quyền Follow là 2 quyền độc lập.
+   * Nick bị phạt nhả follow BẮT BUỘC tuân thủ streak riêng của nick đó (Streak 1: 1 ngày, Streak 2-3: 3 ngày...).
+   * Khi dính phạt: Hệ thống tự động tắt cờ follow (`rest_day_no_follow: true`), chỉ cho lướt feed xả phạt và up video giữ kênh.
 
 ---
 
