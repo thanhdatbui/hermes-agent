@@ -1,12 +1,14 @@
 # Chẩn Đoán & Khắc Phục Downloader Dừng Do Tràn Ổ Đĩa Farm Admin
 
-## 1. Dấu hiệu Nhận Biết
+1. **Dấu hiệu Nhận Biết**
 - Báo cáo định kỳ `farm-render-download-watchdog` ghi nhận:
   - Farm Admin Video gốc (`D:\video goc may 2`): `⚪ Đang dừng`.
   - Số lượng video hoặc folder đạt chuẩn không tăng qua các mốc thời gian (ví dụ kẹt tại 98/640 folder, 9,290 clip).
 - Log downloader trên Admin (`D:\CodexRuntime\tiktok-video-machine2\download_admin_p10.log`):
   - Xuất hiện chuỗi liên tục lặp lại mỗi 30s: `download_by_niche exited with code 1. Resting 30s before next scan...`
   - Traceback kết thúc bằng `OSError: [Errno 28] No space left on device` hoặc Python crash khi mở file / ghi video tạm.
+- **Triệu chứng Render tưởng chừng không resume sau khi tắt Game:**
+  - Watchdog `watchdog_admin_render.py` vẫn spawn worker, nhưng ffmpeg crash ngay trong 1-2 giây với `ERROR: [Errno 28] No space left on device` do đĩa D chạm 0 byte, khiến người dùng lầm tưởng cơ chế Game Guard bị đơ không tự chạy lại.
 
 ## 2. Quy trình Kiểm tra O(1) Hiện Trường
 1. **Kiểm tra dung lượng đĩa qua `admin_ssh.py`:**
@@ -36,7 +38,10 @@
 ## 4. Các Phương Án Giải Phóng Dung Lượng & Phá Vỡ Deadlock
 1. **Lỗi `p.name in rendered` bỏ sót video thô `> 45`:**
    - Trong script dọn dẹp `sync_and_clean_gdrive.py`, điều kiện `if p.name in rendered and g_p.is_file()` vô tình bỏ sót các video gốc số lớn (từ `46.mp4` đến `65.mp4`) do render chỉ chạy đến clip 45. Các clip này dù đã được `robocopy` đẩy lên GDrive đầy đủ nhưng không bao giờ bị xóa ở local, tích tụ 50–70 GB rác ngầm.
-   - **Xử lý nhanh:** Với các folder đã render đủ $\ge 45$ clip, đối soát trực tiếp file `*.mp4` trên GDrive (`$gi.Length -eq $_.Length`), nếu khớp kích thước thì xóa thẳng local không cần qua robocopy hay lọc `p.name in rendered`.
+   - **Xử lý nhanh:** Với các folder đã render đủ $\ge 45$ clip, đối soát trực tiếp file `*.mp4` trên GDrive (`$gi.Length -eq $_.Length`), nếu khớp kích thước thì xóa thẳng local không cần qua robocopy hay lọc `p.name in rendered`:
+     ```powershell
+     Get-ChildItem "D:\video goc may 2" -Directory | ForEach-Object { $f = [int]$_.Name; $slot = [math]::Floor(($f - 1)/80) + 1; $m = (($f - 1) % 80) + 1; $f_vid = ($m - 1)*8 + $slot; $r = "D:\TIKTOK-videonuoinick-admin\$f_vid"; if (Test-Path $r) { $rendCount = (Get-ChildItem $r -Filter "*.mp4").Count; if ($rendCount -ge 45) { $g = "G:\My Drive\video_goc_backup\$($_.Name)"; if (Test-Path $g) { Get-ChildItem $_.FullName -Filter "*.mp4" | ForEach-Object { $gp = "$g\$($_.Name)"; if (Test-Path $gp) { $gi = Get-Item $gp; if ($gi.Length -eq $_.Length) { Remove-Item $_.FullName -Force } } } } } } }
+     ```
 2. **Chiến lược Phân tầng Kho Render (Tiered Render Storage - Giữ 1..20, Đẩy 21..45 lên Cloud):**
    - Kho `D:\TIKTOK-videonuoinick-admin` chiếm hơn 620 GB. Do farm chỉ upload 1 clip/ngày và các máy hiện mới ở clip 1..6 (tối đa 10), các clip từ 21..45 phải 1-2 tháng nữa mới dùng đến.
    - Đẩy các clip từ `21.mp4..45.mp4` lên `G:\My Drive\video_render_backup\{f_vid}` và giữ lại `1.mp4..20.mp4` tại local giải phóng ngay 300–350 GB đĩa D mà không làm gián đoạn upload của farm.

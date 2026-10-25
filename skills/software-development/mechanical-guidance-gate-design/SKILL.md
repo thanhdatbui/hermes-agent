@@ -10,13 +10,12 @@ Use when creating, modifying, or reviewing mechanical enforcement gates (pre-too
 - Reference: `references/pre-tool-auto-rewrite-and-24h-heartbeat-architecture.md` (Engine-level pre-tool auto-rewrite, zero turn overhead, fail-closed telemetry, and 24h heartbeat).
 - Reference: `references/auto-rewire-and-auto-clamp-architecture.md` (Auto-Rewire on worker entrypoints, investigate budget auto-clamp, and Closeout Gate `--skip-test` auto-rewire).
 - Reference: `references/user-sudo-override-and-investigate-read-only-deadlock-triage.md` (User Master Override Sudo architecture, avoiding Investigate Read-Only trap).
-- Reference: `references/dispatch-worker-timeout-and-deadlock-prevention-20261025.md` (Timeout Floor 180s-300s, Allowlist 360s, Investigate Read-Only & Multi-File regex avoidance, Claude on-demand enforcement).
+- Reference: `references/dispatch-worker-timeout-and-deadlock-prevention-20261025.md` (Timeout Floor 360s, Allowlist 360s, Investigate Read-Only & Multi-File regex avoidance, Auto-Fallback to Claude Haiku).
 - Reference: `references/active-pivot-auto-rewire-architecture.md` (Tri-party consensus on Auto-Rewire vs Hard-Block, anti-paralysis invariants).
-- Reference: `references/tri-party-auto-rewire-vs-guard-invariant-consensus.md` (Tri-party consensus on Auto-Rewire vs Guard Invariants).
+- Reference: `references/auto-wiring-and-guidance-boundary-matrix-20261026.md` (Auto-Wiring vs Fail-Fast decision matrix for investigate budget, CONSOLE_WINDOW, code edit dispatch, and GuardGate vs Dynamic Skills guidance storage hierarchy).
 - Reference: `references/idle-window-evaluation-bias-and-closeout-boundary-discipline.md` (Idle-window evaluation bias and zero-block action mandate hierarchy).
 - Reference: `references/cowboy-coordinator-boundary-and-idle-evaluation-invariants.md` (Cowboy Coordinator Gate 3/6 boundary violations and zero hard-block hierarchy).
 - Reference: `references/user-sudo-override-and-gate-abc-discipline.md` (User Sudo Override break-glass protocol, Pipeline A-B-C mechanical stages, and anti-idle-window evaluation invariants).
-- Reference: `references/user-sudo-override-and-gate-c-pipeline.md` (User Sudo Master Override mechanism, anti-paralysis emergency surgery, and Pipeline A-B-C orchestration).
 
 ## 2. Core Standards (Tri-Party Consensus)
 

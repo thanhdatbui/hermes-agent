@@ -8,7 +8,7 @@
 - **Cạm bẫy tâm lý & Tự hủy (Self-Sabotage):**
   - **CẤM TUYỆT ĐỐI** Coordinator tự tay truyền `--timeout 60` hoặc gán timeout: 60 cho các tool trong allowlist vì sợ lỗi 60s của lệnh phụ.
   - Sol Web Worker (gpt-web-sol qua cổng 20129) có latency ~35s/turn, một task 3 turns cần 105–120s. Nếu ép 60s, tiến trình bị chém chết ngang lưng (TimeoutExpired), gây lỗi giả TIMEOUT và ép hệ thống fallback sai lệch sang Claude.
-  - dispatch_worker.py có giá trị mặc định là `--timeout 300` (sàn 180s–300s), phải để nguyên mặc định.
+  - **Sàn Timeout Cứng 360s (Enforced Floor):** Trong `dispatch_worker.py`, mặc định `--timeout` đã được đổi thành 360s và khai báo `SOL_AGY_TIMEOUT_FLOOR = 360`. Cả Sol Worker (Tier 1) và Agy CLI (Tier 2) đều tự động kẹp `max(args.timeout, 360)`. Dù caller có truyền thấp hơn, hệ thống vẫn tự động nâng lên 360s để bảo toàn tiến trình.
 
 ## 2. Kỷ Luật Dispatch Worker — Tránh Bẫy Investigate & Multi-File
 - **Bẫy INVESTIGATE (Read-Only Worker Trap):**
@@ -17,9 +17,10 @@
 - **Bẫy MULTI_FILE_VIOLATION (Regex False-Positive):**
   - Tránh đặt tên tham số hoặc chuỗi trong prompt có dạng target_file kèm dấu hai chấm hoặc f-string, vì regex của gate sẽ nhận diện nhầm thành file thứ 2, thứ 3 dẫn đến block MULTI_FILE_VIOLATION.
 
-## 3. Kỷ Luật Claude Worker 100% On-Demand
-- Cấm Coordinator tự ý thêm cờ on-demand hoặc tự động nhảy cóc sang claude_worker.py khi chưa có lệnh tường minh từ User chứa từ khóa claude.
-- Bậc thang điều phối chuẩn: Sol Web Worker (Tier 1) -> Agy CLI Pool (Tier 2, 29 profiles qua ag_cli.py) -> Báo cáo trung thực hiện trường.
+## 3. Thang Luân Chuyển Tự Động (Auto-Fallback Chain: Sol -> Agy -> Claude)
+- **Chu trình fallback tự động 100%:** Sol Web Worker (Tier 1) -> Agy CLI (Tier 2) -> Claude Haiku (Tier 3).
+- **Hành vi chuẩn:** Khi Tier 1 (Sol) và Tier 2 (Agy) thất bại thật sự (sau khi đã chạy hết timeout floor 360s), `dispatch_worker.py` **tự động chuyển tiếp sang Claude Haiku** để giải quyết dứt điểm công việc.
+- **Không thêm rào cản:** TUYỆT ĐỐI KHÔNG dựng thêm tầng xác nhận hỏi User khi chuyển sang Claude Haiku trong chuỗi fallback tự động của dispatch_worker; việc tự động fallback là hoàn toàn đúng để tránh làm phiền User và tránh gây tắc nghẽn hệ thống.
 
 ## 4. Cơ Chế User Sudo Override (user_sudo.py)
 - Khi User trực tiếp ra lệnh cấp quyền can thiệp nóng (BYPASS_ALL_GUARDS_CONFIRMED, tao cho phép, bypass, sửa gấp, làm luôn, force, tao duyệt):

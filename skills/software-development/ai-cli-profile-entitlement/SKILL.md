@@ -45,6 +45,13 @@ Ensure the account has been onboarded to the target GCP project:
   - The local proxy intercepts `v1internal:streamGenerateContent`, injects `enabledCreditTypes: ["GOOGLE_ONE_AI"]` and `project: "aicode-consumers"`, and forwards upstream via `urllib.request` using the profile's upstream proxy (`upstream_proxy`).
   - Upstream backend deducts from the 1,500 req/day Google One Pro credit balance instead of hitting the 50 req/day Free Tier cap.
 
+### Step 4: Multi-Account Sandbox & Lease Locking
+When rotating across a pool of distinct Pro accounts:
+- Keep every account in its own isolated directory (`USERPROFILE`, `HOME`, `APPDATA`, `LOCALAPPDATA`, `TEMP`, `ANTIGRAVITY_GEMINI_DIR`) with distinct `oauth_creds.json` and `google_accounts.json`.
+- Enforce explicit process lease locking (`acquire_profile_lock`) with PID verification and TTL to avoid concurrent worker collision.
+- Use `NO_PROXY=127.0.0.1,localhost` to guarantee Go's `net/http` does not route loopback calls to upstream proxies.
+- Apply O(1) surgical integration (`credit_proxy_mgr.__enter__()` / `__exit__()`) to preserve file diff budgets and avoid indenting execution monoliths.
+
 ## 4. Key Pitfalls
 1. **Never substitute an external mock for native CLI:** Replacing a native agent with a simple chat wrapper loses multi-file reasoning, file patching, and command execution.
 2. **Beware of Sandbox Isolation Over-clearing:** When isolating `USERPROFILE`, `APPDATA`, and `LOCALAPPDATA` for sandbox profiles, ensure that `.gemini/projects.json` maps the workspace directories to `aicode-consumers` rather than leaving it empty.

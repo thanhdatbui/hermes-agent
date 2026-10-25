@@ -8,6 +8,6 @@ Watchdog đối soát TikTok Web (SQLite snapshots) BẮT BUỘC đối chiếu 
 §
 Tool 2FA và cron xen ca chạy cả ngày BẮT BUỘC dùng Just-In-Time (JIT) lock từng máy (cấm bulk pre-reserve giữ lock hàng loạt trong queue) và bọc predicate né khung giờ reboot/đệm trước ca cron.
 §
-Thang luân chuyển worker: Sol (Tier 1) -> Agy (Tier 2) -> Claude (Tier 3 on-demand). haiku_worker và claude_worker đều auto-rewire về dispatch_worker khi thiếu cờ on-demand. Sửa Telegram adapter ở D:/Taadaa/Hermes bắt buộc sync sang venv site-packages và restart gateway mới có hiệu lực. Cấm dùng LaTeX \textbf, \longrightarrow trong chat Telegram.
+Thang luân chuyển worker tự động: Sol (Tier 1) -> Agy (Tier 2) -> Claude (Tier 3 fallback tự động khi T1/T2 fail thật sự, cấm dựng thêm lớp hỏi rườm rà). Sàn timeout cứng cho Sol & Agy trong dispatch_worker là SOL_AGY_TIMEOUT_FLOOR = 360s, cấm Coordinator tự ý truyền timeout < 360s làm chết tiến trình. Sửa Telegram adapter ở D:/Taadaa/Hermes bắt buộc sync sang venv site-packages và restart gateway mới có hiệu lực. Cấm dùng LaTeX \textbf, \longrightarrow trong chat Telegram.
 §
 Tài khoản Gmail chuẩn clean_v2 đã tắt Google Prompt hoàn toàn chỉ dùng 2FA TOTP: login GPM 100% trên PC qua pyotp, không cần ADB hay máy S7; cấm chặn nhầm acc farm có recovery khoaleemagic khi đã có totp_secret.

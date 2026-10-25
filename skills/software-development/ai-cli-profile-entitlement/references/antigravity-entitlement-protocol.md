@@ -55,3 +55,27 @@ To enable native `agy.exe` without using a centralized chat completion proxy:
 5. The local proxy forwards the request upstream to `https://daily-cloudcode-pa.googleapis.com` via the profile's upstream proxy (`upstream_proxy`, e.g., `test.taadaa.click:<port>`).
 6. The local proxy streams response status code, headers, and SSE chunks back to `agy.exe` verbatim.
 7. Verified with unit test suite in `D:/Taadaa/tools/tests/test_ag_credit_proxy.py` (100% pass).
+
+## 5. Multi-Profile Sandbox Isolation Architecture
+When orchestrating a pool of distinct Pro accounts (e.g. 29 accounts `acc_01` to `acc_28`):
+1. **Directory Structure per Profile:**
+   - Base directory: `D:/Taadaa/agy_profiles/<profile_name>/`
+   - `.gemini/google_accounts.json`: Binds single `active` email.
+   - `.gemini/oauth_creds.json`: Account-specific refresh & access tokens.
+   - `.gemini/projects.json`: Workspace mapping to GCP project `aicode-consumers`.
+   - Sandbox AppData: `AppData/Roaming`, `AppData/Local`, `AppData/Local/Temp`.
+2. **Environment Isolation Flags:**
+   - `USERPROFILE`, `HOME`: Points to `profile_dir`.
+   - `APPDATA`, `LOCALAPPDATA`, `TEMP`, `TMP`: Dedicated sandbox paths via `ensure_sandbox_dirs()`.
+   - `ANTIGRAVITY_GEMINI_DIR`: Points to `profile_dir/.gemini`.
+   - `AGY_ACCOUNT`: Set to `active` email.
+   - `ANTIGRAVITY_VSCODE_HOST=1`: Signals IDE integration host.
+3. **Loopback Routing & Proxy Sanitization:**
+   - Child process has `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY` stripped.
+   - Explicit `NO_PROXY=127.0.0.1,localhost` to prevent Go `net/http` from routing loopback traffic externally.
+   - Upstream mobile/static proxy (e.g., ports 5101-5136) is handled exclusively by the `ag_credit_proxy` instance.
+4. **O(1) Surgical Integration Pattern:**
+   - To avoid re-indenting large execution blocks, invoke context manager via `credit_proxy_mgr.__enter__()` before `subprocess.Popen` and `credit_proxy_mgr.__exit__()` in the outer `finally:` block. Keeps diff numstat <= 15 lines.
+5. **Process Lease Locking:**
+   - `acquire_profile_lock(profile_dir)` writes a lease token file with PID and timestamp.
+   - TTL = 1800s (30 mins); checks PID liveness before declaring a profile in use to prevent deadlocks from killed workers.
