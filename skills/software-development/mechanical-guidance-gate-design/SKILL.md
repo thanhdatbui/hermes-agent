@@ -389,6 +389,7 @@ Use when creating, modifying, or reviewing mechanical enforcement gates (pre-too
 - Operational Guard Friction Telemetry & Planner Gate Observability: [`references/hook-guard-friction-telemetry-and-planner-gate.md`](references/hook-guard-friction-telemetry-and-planner-gate.md)
 - Universal Hook Guidance Audit & Silent Veto Elimination: [`references/hook-guidance-audit-and-silent-veto-elimination.md`](references/hook-guidance-audit-and-silent-veto-elimination.md)
 - Universal Silent Veto Elimination & Provenance Flag Enforcement: [`references/universal-silent-veto-elimination-and-provenance-flags.md`](references/universal-silent-veto-elimination-and-provenance-flags.md)
+- Universal Guidance Gate Transformation & Tier Enforcement: [`references/universal-guidance-gate-transformation-and-tier-enforcement.md`](references/universal-guidance-gate-transformation-and-tier-enforcement.md)
 - Veto Gate to Guidance Gate Upgrade & Action Mandate: [`references/veto-gate-to-guidance-gate-upgrade.md`](references/veto-gate-to-guidance-gate-upgrade.md)
 - Full-Spectrum Gate Telemetry Isolation & Guidance Mandate: [`references/full-spectrum-gate-telemetry-isolation-and-guidance-mandate.md`](references/full-spectrum-gate-telemetry-isolation-and-guidance-mandate.md)
 - Intent-Class Enforcement, Auto-Rewrite vs Action Mandate, and 8-Gate Full-Spectrum Observability: [`references/intent-class-enforcement-auto-rewrite-and-8gate-observability.md`](references/intent-class-enforcement-auto-rewrite-and-8gate-observability.md)
