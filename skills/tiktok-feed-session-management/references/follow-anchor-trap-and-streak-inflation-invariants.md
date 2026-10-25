@@ -140,6 +140,26 @@ Trước đây hệ thống bị lỗi nghiêm trọng do nhập nhằng giữa 
    - `feed_session_watchdog.py`: Ưu tiên tuyệt đối dùng `f_acc` (ID account) để query SQLite `tiktok_tracker.db`, chỉ fallback về `f_row` nếu thiếu dữ liệu account. Vẫn map ra nhãn `[Tik N]` dựa trên slot thực tế của nick trong máy.
 4. **Bảo Toàn Follow Khi Timeout (Salvage Follows on Timeout):**
    - Khi tiến trình chạm trần `follow-timeout`, CẤM gán cứng `followed_count = 0`. BẮT BUỘC đọc file state `follow_state_<m>_row_<t>.json` trong ngày để vớt lại toàn bộ danh sách nick đã follow thành công, chống lệch số liệu đối soát với Web.
+5. **Nhả Follow Không Nhồi Đúp Vào Nhóm Thành Công (`fl_success`):**
+   - Khi máy được phân loại `category == "released"`, chỉ ghi nhận vào `fl_released`. CẤM TUYỆT ĐỐI append máy đó vào `fl_success` (dù `len(flist) > 0`), tránh việc một máy vừa xuất hiện ở mục "Thành công" vừa ở mục "Nhả liền".
+6. **Bảo Toàn Account ID Xuyên Suốt Mọi Kênh Upload và Summary:**
+   - Trong `_write_upload_result`: Đính kèm trường `"account"` tương tự follow.
+   - Trong `parser.py`: Cào regex username thực tế từ `summary.txt` (`"username": "@..."`) và lưu `"account": m_acc`.
+   - Trong `merger.py`: Cả `merge_machine_result`, `merge_follow_result`, `merge_upload_result` đều kế thừa và bảo toàn trường `account`.
+
+---
+
+### 12. Cơ Chế 2-Phase Delivery Confirmation Cho Watchdog Telegram (Chống Mất & Trùng Báo Cáo)
+1. **Rủi Ro Của Cơ Chế Fire-and-Forget Cũ:**
+   - Watchdog ghi `session_key` vào `reported_sessions` ngay khi vừa `print()` message ra stdout.
+   - Nếu Hermes Scheduler gặp lỗi mạng Telegram (HTTP 5xx, timeout, Telegram API network dropped), message không đến được chat của User nhưng state file đã đánh dấu "đã báo cáo" $\rightarrow$ Mất vĩnh viễn báo cáo của cả phiên!
+2. **Kiến Trúc 2 Pha với `pending_delivery`:**
+   - **Pha 1 (Emit & Lưu Pending):** Khi phát hiện session mới cần báo cáo, watchdog ghi bản ghi `pending_delivery: {"session_key": key, "message": msg, "emitted_at": iso_str}` vào state JSON. Chưa commit vào `reported_sessions`.
+   - **Pha 2 (Confirm & Commit):** Ở tick chạy tiếp theo của watchdog:
+     * Kiểm tra `jobs.json` của Hermes (`LOCALAPPDATA/hermes/cron/jobs.json`).
+     * Nếu có `last_delivery_error`: Re-emit ngay nội dung `pending_delivery["message"]` để Hermes gửi lại.
+     * Nếu không có lỗi giao tin: Xác nhận tin đã gửi đến Telegram an toàn $\rightarrow$ Chính thức chuyển `session_key` vào `reported_sessions` và xóa trường `pending_delivery`.
+   - Đảm bảo tính idempotency và không bao giờ nuốt chửng báo cáo khi có sự cố hạ tầng messaging.
 
 
 
