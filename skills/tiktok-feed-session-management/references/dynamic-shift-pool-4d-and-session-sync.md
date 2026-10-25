@@ -118,3 +118,22 @@ Khi rơi vào ca/ngày dưỡng sinh, `resolve_shift_pool_account` raise `ValueE
   * Watchdog lọc các thư mục run trong `date_live` khớp với khung giờ ca (`SESSION_WINDOWS`), lấy run mới nhất `sorted_run_names[-1]` gán vào header cụm:
     `🏢 【FARM KIBE - MÁY 1-80】 (Run: row-0-140735)`
   * Mục đích: Phục vụ truy vết nhanh (Traceability), phân biệt rõ giữa Phiên 1 (sớm) và Phiên 2 (muộn) trong cùng 1 ca nuôi.
+
+---
+
+## 6. Phân Định Ranh Giới Nghiệp Vụ: Report Nuôi Feed vs. Report Follow Chéo
+Tuyệt đối không nhầm lẫn giữa 2 nhóm chỉ số trong 2 loại báo cáo watchdog định kỳ:
+
+### A. Report TikTok Lướt Nuôi Acc (`feed_session_watchdog` / `tiktok-feed-session-watchdog`):
+- **Mục tiêu tối thượng:** Cho User quan sát và kiểm chứng **Flow thiết kế** của ca nuôi (thuật toán Dynamic Feed có bốc đúng và đều các Row trong Pool hay không).
+- **Yêu cầu hiển thị bắt buộc:** Thống kê **Tỉ lệ phân bổ Row trong Pool / Phiên** (ví dụ: `• Phân bổ Row trong Pool {3, 4, 8} (49 máy chạy): Row 8 (47 máy | 95.9%) | Row 4 (1 máy | 2.0%) | Row 7 (1 máy | 2.0%)`).
+- **Ý nghĩa vận hành:** Giúp phát hiện ngay việc lệch tải hoặc kẹt thuật toán (ví dụ: 96% máy dồn vào Row 8 thay vì chia đều cho Row 3, 4, 8 trong Pool).
+- **CẤM TUYỆT ĐỐI:** Không đưa các khái niệm "nhả follow", "thành công follow", hay "cooldown nhả" vào report nuôi acc, vì phiên lướt feed thuần túy không có hành động nhả follow.
+
+### B. Report TikTok Follow Chéo (`follow_session_watchdog` / `tiktok-follow-session-watchdog`):
+- **Mục tiêu tối thượng:** Đo lường **Sức khỏe & Tỷ lệ nhả (Health Tiers & Retention)** của dàn nick khi đi follow trên từng dải IP/Proxy.
+- **Yêu cầu hiển thị bắt buộc:** Áp dụng chuẩn cơ chế Sức khỏe:
+  * **Thành công:** Phân nhóm theo độ khỏe: Nhóm Khỏe (10+ lượt), Hồi phục 2 (5-9 lượt), Hồi phục 1 (1-4 lượt).
+  * **Nhả follow:** Nhả liền (0 lượt), Nhả ở các cấp (Hồi phục 1/2, Khỏe).
+  * **Bỏ qua:** Phân loại rõ Cooldown nhả follow (48h), Chưa đủ điều kiện (under video gate / age gate), Sensitive feed...
+  * **Cầu dao IP:** `format_ip_circuit_breaker_report` ghi nhận số proxy đã ngắt và danh sách máy anh em được khóa cứu.
