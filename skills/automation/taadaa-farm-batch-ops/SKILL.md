@@ -69,6 +69,7 @@ tags: [tiktok, farm, batch, render, upload, resume, kibe]
   (3) Auto-healer Wi-Fi dập nhả (`svc wifi disable/enable`) 5 phút/lần sẽ gây Threshing Loop làm driver S7 ngủ sâu (`DORMANT / NO-CARRIER`) và Aruba từ chối; bắt buộc có Circuit Breaker tối đa 2 lần heal trong 30 phút. Chi tiết xem [`references/xiaowei-orphan-adb-port5037-and-proxy-preflight-false-alarm.md`](references/xiaowei-orphan-adb-port5037-and-proxy-preflight-false-alarm.md).
 
 ## 4. Danh Mục Tham Khảo Chi Tiết
+- Cào nguồn Niche Nhạy Cảm Thời Gian (Tử Vi / Phong Thủy / Trend Năm Cũ) & Chiến Lược Phôi Douyin Sạch: [`references/time-sensitive-niche-sourcing-and-tuvi-pipeline.md`](references/time-sensitive-niche-sourcing-and-tuvi-pipeline.md)
 - Google Drive Cleanup Legacy 30-Clip Hazard & 45-Clip Recovery Playbook: [`references/gdrive-cleanup-30clip-legacy-hazard-and-45clip-recovery-playbook.md`](references/gdrive-cleanup-30clip-legacy-hazard-and-45clip-recovery-playbook.md)
 - Xử lý kẹt ADB Tiểu Vi cổng 5037, báo động ảo proxy preflight & Circuit Breaker Wi-Fi: [`references/xiaowei-adb-5037-deadlock-and-wifi-circuit-breaker-discipline.md`](references/xiaowei-adb-5037-deadlock-and-wifi-circuit-breaker-discipline.md)
 - Xử lý file video 0-byte corrupt làm kẹt upload preflight: [`references/zero-byte-corrupt-video-upload-skip-triage.md`](references/zero-byte-corrupt-video-upload-skip-triage.md)
