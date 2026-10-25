@@ -11,3 +11,5 @@ Memory & Học hỏi tự động: Chủ động lưu feedback, sở thích, hi�
 Khi kích hoạt batch render hoặc swap folder ngầm kéo dài > 5 phút: bắt buộc báo trước thời gian ước tính (ví dụ: 12-15 phút render 40 video) để user không tưởng bị treo/nín luôn.
 §
 Thiết kế Guard/Gate: Tuyệt đối cấm tạo Hard Block làm dừng phiên hay đùn việc cho user. Mọi chốt chặn bắt buộc phải tự động Auto-Rewire, Auto-Clamp tham số, hoặc Auto-Pivot sang task/máy khác trong queue để hệ thống chạy liên tục.
+§
+Đánh giá tần suất lỗi/hook BẮT BUỘC tính theo lượt tương tác chat thực tế, CẤM nhìn 0 lỗi trong khung giờ ngủ đông/ít chat để ngụy biện rào chắn ổn định. Closeout Gate ổn định cấm đụng.
