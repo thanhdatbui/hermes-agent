@@ -5,15 +5,19 @@
   Watchdog tự đóng Tiểu Vi (`xiaowei_idle_auto_close_watchdog.py`) trước đây chỉ truy vấn cổng `5038` qua `Get-NetTCPConnection -LocalPort 5038`.
   Tuy nhiên, khi Tiểu Vi khởi động hoặc gặp crash/tắt đột ngột, tiến trình con `C:\Program Files (x86)\xiaowei\tools\adb.exe` có thể bind nhầm hoặc chiếm giữ cổng **5037** (cổng ADB chính của Farm) với commandline:
   `adb -L tcp:localhost:5037 fork-server server`.
-- **Hậu quả:**
-  Watchdog thấy cổng 5038 trống nên bỏ qua, trong khi tiến trình `adb.exe` của Tiểu Vi kẹt mồ côi trên cổng 5037 ở trạng thái zombie/hang (không phản hồi TCP ACK). Toàn bộ công cụ điều phối (`inspect_machine.py`, runner nuôi acc, upload hook) trên Kibe Local bị tê liệt vì không kết nối được tới ADB server.
+- **Hậu quả & Xung đột phiên bản ADB (Protocol Fault):**
+  - Watchdog thấy cổng 5038 trống nên bỏ qua, trong khi tiến trình `adb.exe` của Tiểu Vi (ADB v34.0.1) kẹt mồ côi trên cổng 5037 ở trạng thái zombie/hang (không phản hồi TCP ACK).
+  - Khi client ADB của GemPhoneFarm (`C:\Users\Kibe\.GemPhoneFarm\app\adb-tool\adb.exe` - ADB v35.0.1) cố gắng kết nối, sự lệch pha protocol giữa client v35 và daemon v34 khiến toàn bộ lệnh ADB văng lỗi:
+    `adb.exe: protocol fault (couldn't read status): connection reset`.
+  - Mọi script kiểm tra (`inspect_machine.py`), runner nuôi acc và upload hook trên Kibe Local bị tê liệt hoàn toàn.
 - **Quy tắc bất biến (Invariant):**
-  Khi `xiaowei.exe` KHÔNG chạy, **BẤT KỲ tiến trình `adb.exe` nào có `ExecutablePath` nằm trong `*\xiaowei\*` đều là tiến trình mồ côi 100%** (vì Farm chuẩn luôn dùng `C:\Users\Kibe\.GemPhoneFarm\app\adb-tool\adb.exe`).
+  1. Trong mọi công cụ kiểm tra và điều phối farm (`inspect_machine.py`, runners), **BẮT BUỘC ƯU TIÊN** binary ADB của GemPhoneFarm (`C:\Users\Kibe\.GemPhoneFarm\app\adb-tool\adb.exe`), tuyệt đối không ưu tiên binary của Tiểu Vi.
+  2. Khi `xiaowei.exe` KHÔNG chạy, **BẤT KỲ tiến trình `adb.exe` nào có `ExecutablePath` nằm trong `*\xiaowei\*` đều là tiến trình mồ côi 100%**.
   Bắt buộc lọc theo cả Path và CommandLine:
   ```powershell
   Get-CimInstance Win32_Process -Filter "Name = 'adb.exe'" | Where-Object { ($ports -and $_.ProcessId -in $ports) -or $_.CommandLine -like "*-P 5038*" -or $_.ExecutablePath -like "*\xiaowei\*" }
   ```
-  Nếu phát hiện `xiaowei.exe` đã tắt mà còn `adb.exe` của Tiểu Vi: lập tức phát lệnh `kill-server` và dập tắt bằng CIM/WMI.
+  Nếu phát hiện `xiaowei.exe` đã tắt mà còn `adb.exe` của Tiểu Vi: lập tức phát lệnh `kill-server` và dập tắt bằng CIM/WMI. Sau đó khởi động lại daemon bằng binary chuẩn của GemPhoneFarm.
 
 ---
 

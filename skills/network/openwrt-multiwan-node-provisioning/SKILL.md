@@ -68,7 +68,11 @@ For routers deployed headlessly to remote locations without technical staff on-s
 3. **NTP Server Redundancy for TLS Clock Sync:**
    - Tailscale requires accurate system time for TLS/WireGuard handshake. Routers without battery-backed RTC boot with epoch time (1970).
    - Ensure NTP configuration in `/etc/config/system` includes global reliable NTP pools (`time.cloudflare.com`, `time.google.com`, `pool.ntp.org`), not solely domestic or ISP servers.
-4. **Firewall Inbound Access:**
+4. **Daemon & Routing Cleanup (Claude Audit Hardening):**
+   - **mwan3 vs Kernel Metric Conflict:** If relying on kernel routing metrics (10 -> 20 -> 200), `mwan3` MUST be stopped and disabled (`/etc/init.d/mwan3 disable; /etc/init.d/mwan3 stop`). Leaving `mwan3` active conflicts with metric failover and drops connections.
+   - **Prune Unused Daemons:** Disable `alist`, `openvpn`, and `watchcat` to prevent rogue WAN port exposure (5244, 1194) and uncoordinated watchcat reboot loops during internet loss.
+   - **Pre-Shipout Backup:** Always run `sysupgrade -b /tmp/pre-ship-backup.tar.gz` and pull the archive back to coordinator machine before boxing hardware.
+5. **Firewall Inbound Access:**
    - Ensure `/etc/firewall.user` or LuCI firewall includes an explicit rule allowing inbound traffic on `tailscale0`:
      ```sh
      iptables -I INPUT -i tailscale0 -j ACCEPT
@@ -91,7 +95,8 @@ For routers deployed headlessly to remote locations without technical staff on-s
      2. **Isolate Rescue Port:** Instruct staff to **unplug both white cables (PPPoE)** temporarily. This prevents failing PPPoE discovery loops from hanging routing, forcing the kernel default route onto the rescue DHCP lease (metric 200).
      3. **Power-Cycle (Cold Reboot):** Unplug the router's DC power barrel jack, wait 5s, plug back in.
      4. **Visual LED Milestone:** Instruct staff to monitor the front LED: it boots Yellow/Orange and must turn solid **BLUE** (~60–90s) before reporting status.
-     5. **Post-Rescue Investigation:** Once Tailscale comes online, SSH in (`ssh root@<tailscale-ip>`) to inspect:
+     5. **Premature Lifeline Unplug Trap (Instant Disconnect Pitfall):** When the node briefly appears `Connected` in Tailscale console, helpers frequently assume "it's working" and immediately unplug the blue rescue cable to switch to the white ports. **Mandatory instruction:** Explicitly warn helper to **KEEP THE BLUE CABLE PLUGGED IN UNTIL COORDINATOR COMPLETES REMOTE CONFIGURATION**.
+     6. **Post-Rescue Investigation:** Once Tailscale comes online, SSH in (`ssh root@<tailscale-ip>`) to inspect:
         ```sh
         logread | grep -E "pppd|wan"
         ip -br link
@@ -102,3 +107,7 @@ For routers deployed headlessly to remote locations without technical staff on-s
    - **Terminology:** Speak in plain physical terms. Say **"Đường 1" / "Đường 2"**, NEVER say "modem 1", "ONT", "BRAS", or "bridge".
    - **Port Identification:** Describe physical position and color: *"cổng trắng ở giữa (Đường 1)"*, *"cổng trắng ngoài cùng (Đường 2)"*, *"cổng xanh dương cạnh lỗ nguồn (mạng nhà cứu hộ)"*.
    - **Failsafe Reassurance:** Explicitly reassure helper: *"Nếu cắm nhầm ngược nhau thì không cháy hay mất mạng, chỉ cần đổi chéo 2 dây trắng cho nhau là xong"*.
+
+## References
+
+- `references/claude-audit-and-field-triage-r3g.md` — Detailed case study of Xiaomi R3G deploy, Claude CLI production audit remediation, and the premature lifeline unplug incident.
