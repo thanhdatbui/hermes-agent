@@ -14,6 +14,7 @@ description: Use when TikTok login has wrong pass. Reset via token.
   3. Lấy mã xác minh OTP trực tiếp từ Microsoft Graph API trên PC (cột 9-10 `gmail_clean_v2.xlsx`, CẤM mở app Outlook trên điện thoại).
   4. Hoàn tất đăng nhập vào Home feed.
   5. Kích hoạt module `login_runner.password_change`, sinh mật khẩu mới ngẫu nhiên 16 ký tự, submit vào TikTok và đồng bộ ngay lập tức vào cột PASS của `taikhoan_dat_v2_updated .xlsx` sheet `Tài Khoản`.
+  6. Sau khi sync Excel thành công, BẮT BUỘC gọi `journal.purge(target)` để xóa sạch file encrypted recovery `.dpapi` trong runtime, tránh tồn dư state cũ.
 
 ## Các Pitfalls Kỹ Thuật Khi Chạy `password_change.py`
 1. **Biến môi trường Single-Writer Lock bắt buộc**:
