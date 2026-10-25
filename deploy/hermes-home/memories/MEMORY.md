@@ -1,1 +1,1 @@
-Follow TikTok: used >= 1 dính nhả = reset streak 0, phạt 24h, giữ probation/graduated; used == 0 mới tính streak, trong đó Streak 1 (nhả lần đầu) CHỈ phạt 24h (cấm phạt 3d). Worker mặc định dùng Sol (:20129), cấm tự ý gợi ý/ép dùng Claude worker khi user đang để Sol.
+Follow TikTok: used >= 1 dính nhả = reset streak 0, phạt 24h, giữ probation/graduated; used == 0 mới tính streak (Streak 1 phạt 24h). Worker 100% dùng Sol (:20129 Free qua dispatch_worker.py), cấm gọi claude_worker trực tiếp từ terminal (exit 126).

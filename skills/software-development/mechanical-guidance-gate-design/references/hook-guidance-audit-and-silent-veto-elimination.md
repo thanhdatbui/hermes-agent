@@ -9,9 +9,9 @@ Qua đối soát toàn diện hệ thống hooks (`guard_dispatch_contract.py`, 
 | Hook Kiểm Soát | Vị Trí Chặn | Trạng Thái Guidance | Cấu Trúc Trả Về | Đánh Giá Chuẩn Rule 1 |
 | :--- | :--- | :--- | :--- | :--- |
 | **`guard_dispatch_contract.py`** | `delegate_task` (Create, Investigate, Edit) | ✅ ĐẦY ĐỦ | `rule_id`, `message`, `guidance`, `required_action` (`command`, `instruction`, `description`), `next_action` | **CHUẨN ACTION MANDATE** (Agent có ngay lệnh $O(1)$ để chạy tiếp) |
-| **`guard_cronjob_safety.py`** | `cronjob` (create, update), `terminal` (background) | ❌ THIẾU | `{"action": "block", "message": "[CONSOLE_WINDOW_BLOCKED] ..."}` | **VETO CÂM (SILENT VETO)** (Chỉ quăng lỗi cộc lốc, không có guidance, không có next action) |
-| **`guard_broad_grep.py`** | `terminal` (grep -r, rg, find, timeout 60s) | ❌ THIẾU | `{"action": "block", "rule_id": ..., "message": ..., "severity": "HIGH"}` | **VETO CÂM (SILENT VETO)** (Thiếu guidance kiến trúc và required_action để thoát kẹt) |
-| **`claude_worker.py`** | `terminal` (gọi trực tiếp `--role worker`) | ⚠️ SƠ KHAI | `⛔ [MECHANICAL TIER GATE VIOLATION]...` ra stderr, exit 126 | **CHẶN ĐÚNG CƠ HỌC NHƯNG THIẾU LỆNH MẪU** (Chưa in lệnh thoát $O(1)$ vào `dispatch_worker.py`) |
+| **`guard_cronjob_safety.py`** | `cronjob` (create, update), `terminal` (background) | ✅ ĐÃ FIX (commit `ba16ae4`) | `rule_id`, `message`, `guidance`, `required_action` (`command`, `instruction`, `description`), `tool`, `timestamp` | **CHUẨN ACTION MANDATE** (Đã nâng cấp xong, 98/98 unit tests pass) |
+| **`claude_worker.py`** | `terminal` (gọi trực tiếp `--role worker`) | ✅ ĐÃ FIX (commit `44ec6fc`) | Chặn exit 126, bắt buộc `--from-dispatch` hoặc `DISPATCH_TIER_CALLER` | **TIER GATE ENFORCED** (Chặn cửa sau gọi trực tiếp, ép qua Sol Worker) |
+| **`guard_broad_grep.py`** | `terminal` (grep -r, rg, find, timeout 60s) | ⚠️ SẮP NÂNG CẤP | `{"action": "block", "rule_id": ..., "message": ..., "severity": "HIGH"}` | **VETO CÂM (SILENT VETO)** (Cần nâng cấp guidance và required_action để thoát kẹt) |
 
 ---
 
@@ -24,60 +24,81 @@ Qua đối soát toàn diện hệ thống hooks (`guard_dispatch_contract.py`, 
 
 ---
 
-## 3. Quy Chuẩn Khắc Phục Chuẩn Hóa (Universal Action Mandate Rollout)
+## 3. Triển Khai Thực Tế Đã Kiểm Chứng (Production Verification)
 
-### Tiêu Chuẩn 1: Triệt Tiêu 100% Veto Câm Qua `action_mandate.emit_block`
-Mọi hàm chặn trong mọi hook BẮT BUỘC phải sử dụng module `action_mandate.py` hoặc sinh payload JSON chứa tối thiểu 4 trường:
-1. `rule_id`: Mã định danh vi phạm duy nhất.
-2. `message`: Thông báo lỗi rõ ràng kèm lý do.
-3. `guidance`: Hướng dẫn kiến trúc giải thích TẠI SAO hành vi đó bị cấm và nguyên tắc của hệ thống.
-4. `required_action`: Cung cấp cụ thể:
-   - `command`: Câu lệnh $O(1)$ copy-paste chạy được ngay nếu có (đã interpolate sẵn đường dẫn thực tế).
-   - `instruction`: Chỉ dẫn từng bước cụ thể nếu là thao tác sửa code / cấu hình.
-   - `description`: Mô tả mục đích của hành động khắc phục.
-
-### Tiêu Chuẩn 2: Mẫu Nâng Cấp Chuẩn Cho `guard_cronjob_safety.py`
+### A. Triển Khai Trên `guard_cronjob_safety.py` (Commit `ba16ae4`)
+Đã cấu trúc lại 2 hàm chặn `deny()` và `deny_cron_policy()`:
 ```python
-# Thay vì chỉ print message cụt lủn:
-def deny_console_window(reason: str, command: str = "") -> None:
-    emit_block(
-        rule_id="CONSOLE_WINDOW_BLOCKED",
-        reason=reason,
-        guidance="Các tiến trình chạy ngầm (background/cron) trên Windows bắt buộc phải ẩn cửa sổ console CMD để tránh cướp focus/chuột của User.",
-        instruction="Nếu là script Python: Thêm creationflags=subprocess.CREATE_NO_WINDOW vào toàn bộ lệnh subprocess.run/Popen. Nếu là Cronjob: Đăng ký với no_agent=True và chỉ truyền tên script trần.",
-        tool_name="terminal",
-        target=command,
-    )
-```
+CONSOLE_GUIDANCE = (
+    "Lệnh/script chạy nền hoặc cron trên Windows phải ẩn hoàn toàn cửa sổ console, "
+    "nếu không sẽ cướp focus của máy vận hành."
+)
+CONSOLE_COMMAND = "pythonw <script.py>"
+CONSOLE_INSTRUCTION = (
+    "Chạy bằng pythonw hoặc powershell -WindowStyle Hidden; trong Python dùng "
+    "subprocess với creationflags=subprocess.CREATE_NO_WINDOW (0x08000000), "
+    "không dùng os.system/os.popen; sau đó gửi lại lệnh."
+)
+CRON_GUIDANCE = {
+    "FARM_CONTRACT_INVALID": "farm_contract phải là dict hợp lệ với đúng kiểu dữ liệu từng key.",
+    "FARM_CONTRACT_UNKNOWN_KEYS": "farm_contract chỉ được chứa các key nằm trong schema cho phép.",
+    "FARM_CONTRACT_MISMATCH": "Script có lệnh can thiệp thiết bị Android nên không được khai touches_device=false.",
+    "FARM_CONTRACT_MISSING_KEYS": "Script can thiệp thiết bị phải khai đủ các key bắt buộc của farm_contract.",
+    "DEVICE_LOCK_REQUIRED": "Script can thiệp thiết bị phải giữ device lock cho từng máy.",
+    "ROLLING_MODE_REQUIRED": "Script farm phải chạy mode rolling với số worker nguyên trong 1..50.",
+    "WORKER_CAP_EXCEEDED": "max_workers phải là số nguyên trong 1..50.",
+    "NO_AGENT_REQUIRED": "Cronjob phải giữ no_agent=true để không tốn LLM mỗi lần chạy.",
+    "SCRIPT_REQUIRED": "Cronjob phải trỏ tới một script cụ thể, không được để trống.",
+    "PATH_TRAVERSAL": "Đường dẫn script không được chứa '..'.",
+    "SCRIPT_EXISTS": "Script của cronjob phải tồn tại trên đĩa trước khi tạo/cập nhật.",
+}
+CRON_INSTRUCTION = {
+    "DEVICE_LOCK_REQUIRED": "Khai farm_contract.device_lock='required' và bọc phần chạm máy trong 'with acquire_device_lock(...)' (automation_core.device_lock), rồi gửi lại.",
+    "ROLLING_MODE_REQUIRED": "Khai mode='rolling' và max_workers là số nguyên 1..50, rồi gửi lại.",
+}
 
-### Tiêu Chuẩn 3: Mẫu Nâng Cấp Chuẩn Cho `guard_broad_grep.py`
-```python
-# Khi clamp timeout 60s:
-def block_foreground_timeout(cmd: str, timeout: float) -> None:
-    emit_block(
-        rule_id="GUARD_FOREGROUND_TIMEOUT_EXCEEDED",
-        reason=f"Lệnh terminal foreground có timeout={timeout}s > 60s!",
-        guidance="Lệnh foreground bị giới hạn cứng <= 60s để chống treo session. Các công cụ chạy lâu được phê duyệt (dispatch_worker.py, closeout_gate.py, pytest, transfer_game_lan.py) được phép chạy tới 360s.",
-        command=f"python D:/Taadaa/tools/dispatch_worker.py --workdir . '{cmd[:100]}'",
-        instruction="Hạ timeout xuống <= 60s, hoặc nếu là tác vụ batch/sync kéo dài thì chuyển sang chạy qua Hermes Cron Scheduler (no_agent=True) hoặc dispatch_worker.py.",
-        tool_name="terminal",
-        target=cmd,
-    )
-```
+def _action_mandate(msg: str, rule_id: str, guidance: str, command: str, instruction: str) -> dict:
+    return {
+        "action": "block",
+        "rule_id": rule_id,
+        "message": f"{msg}\nHƯỚNG DẪN: {guidance}\nCHỈ DẪN: {instruction}",
+        "guidance": guidance,
+        "required_action": {
+            "command": command,
+            "instruction": instruction,
+            "description": f"Khắc phục vi phạm {rule_id} theo hướng dẫn rồi gửi lại.",
+        },
+        "tool": "guard_cronjob_safety",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
 
-### Tiêu Chuẩn 4: Chốt Chặn Tier Trong `claude_worker.py`
-Khi chặn gọi trực tiếp `claude_worker.py --role worker`:
+def _print_payload(payload: dict) -> None:
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+    print(json.dumps(payload, ensure_ascii=False))
+```
+- **UTF-8 Immunity:** Tích hợp `sys.stdout.reconfigure(encoding="utf-8")` chống văng lỗi cp1252 trên Windows.
+- **Unit Test Coverage:** Thêm 2 unit test kiểm tra bắt buộc phải có `guidance` và `required_action` (`instruction`, `description`). Đạt **98/98 passed (100% PASS)** trong `tests/test_guard_cronjob_safety.py`.
+
+### B. Triển Khai Chốt Chặn Tier Trên `claude_worker.py` (Commit `44ec6fc`)
+Khóa chặt cửa sau gọi trực tiếp CLI:
 ```python
 if role == "worker" and not (args.from_dispatch or os.environ.get("DISPATCH_TIER_CALLER") == "dispatch_worker"):
     audit("mechanical_tier_gate_violation", role=role)
-    target_arg = f"--file '{args.file}'" if args.file else ""
-    prompt_arg = shlex.quote(args.prompt or "")
-    suggested_cmd = f"python D:/Taadaa/tools/dispatch_worker.py {target_arg} {prompt_arg}".strip()
-    print(
-        f"⛔ [MECHANICAL TIER GATE VIOLATION]: Direct invocation of claude_worker for role worker is forbidden!\n"
-        f"HƯỚNG DẪN: Tier 1 là Sol Worker (:20129, Miễn phí 100%). Bắt buộc đi qua dispatch_worker.py để ưu tiên Sol trước khi fallback sang Claude.\n"
-        f"LỆNH THOÁT O(1): {suggested_cmd}",
-        file=sys.stderr,
-    )
+    print("⛔ [MECHANICAL TIER GATE VIOLATION]: Direct invocation of claude_worker for role worker is forbidden! "
+          "Route through dispatch_worker.py (Tier 1 Sol first).", file=sys.stderr)
     return 126
 ```
+- Phối hợp với `dispatch_worker.py`: Hàm `haiku_cmd` tự động đính kèm `--from-dispatch` khi gọi Claude Haiku ở Tier 3.
+- Unit Test Coverage: 4 unit test mới trong `tests/test_claude_worker.py` và assertion trong `tests/test_dispatch_worker.py`, toàn bộ **115/115 passed (100% PASS)**.
+
+---
+
+## 4. Bảng Tra Cứu Quy Chuẩn Action Mandate 4 Thành Phần
+Khi thiết kế bất kỳ hook chặn nào trong tương lai, BẮT BUỘC trả về đúng 4 thành phần sau:
+1. `rule_id`: Định danh duy nhất (ví dụ: `DEVICE_LOCK_REQUIRED`, `CONSOLE_WINDOW_BLOCKED`).
+2. `message`: Bắt đầu bằng tiền tố `[RULE_ID] <lý_do_ngắn_gọn>`, kèm `HƯỚNG DẪN:` và `CHỈ DẪN:`.
+3. `guidance`: Giải thích tại sao cấm và nguyên tắc kiến trúc của hệ thống.
+4. `required_action`: Cung cấp `command` (nếu có lệnh thoát $O(1)$) hoặc `instruction` (chỉ dẫn sửa code/contract cụ thể) kèm `description`.
