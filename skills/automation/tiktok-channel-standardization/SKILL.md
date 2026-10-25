@@ -53,3 +53,9 @@ Quy trình chuẩn hoá bao gồm trọn gói **5 hạng mục bắt buộc (5-i
   - Bio tiếng Việt có dấu đầy đủ, sạch đuôi WWF-UK.
   - Video Top có nhãn đỏ "Đã ghim".
 - Đăng ký receipt qua `guard_media_vision_gate.py` trước khi đính kèm `MEDIA:<path>` gửi User.
+
+---
+
+## 4. Tài Liệu Bổ Trợ
+- Chi tiết các bẫy thường gặp (lệch ngách, lệch avatar, badge WWF-UK, lỗi viết hoa): [`references/standardization-drift-and-pitfalls.md`](references/standardization-drift-and-pitfalls.md)
+
