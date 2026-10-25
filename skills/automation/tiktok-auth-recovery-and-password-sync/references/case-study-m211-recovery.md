@@ -18,3 +18,8 @@
      - `TIKTOK_PASSWORD_EXPECTED_WRITER_ID="password_change_runner"`
      - `TIKTOK_PASSWORD_WRITER_ID="password_change_runner"`
    - Ghi mật khẩu mới vào cột PASS của `taikhoan_dat_v2_updated .xlsx` qua `write_password_preserving_archive`.
+
+## 3. Operational Discipline Lesson (User Correction)
+- **Anti-Pattern:** Sau khi đổi pass thành công, Agent chỉ lưu quy tắc xử lý vào persistent memory (`MEMORY.md`) dưới dạng văn bản nhắc nhở và báo cáo, để mặc script `tiktok_login_v1.py` vẫn giữ logic cũ (`[AUTH_BLOCKED]` / `return`).
+- **Bài học điều phối:** Kỷ luật của User là phải sửa trực tiếp logic vào script thực thi (`drive_login_screens` trong `tiktok_login_v1.py`), tự động kết nối luồng OTP recovery -> đổi pass -> sync workbook, tuyệt đối không được ném lý thuyết kỷ luật vào memory để trốn việc sửa code.
+

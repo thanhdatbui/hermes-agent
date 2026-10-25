@@ -71,6 +71,10 @@ if sys.platform == "win32":
         pass
 ```
 
+**CRITICAL VIRTUALENV PITFALL:**
+A `sitecustomize.py` placed inside system Python (`AppData\Local\Programs\Python\Python3xx\Lib\site-packages`) will **NOT** be executed by virtual environments (e.g. `python-envs\automation\Lib\site-packages`). Virtual environments have isolated site directories.
+When batch runners (like `run-feed-session.ps1` launching 25-40 workers) use a venv Python binary, you **MUST copy `sitecustomize.py` directly into each active virtualenv's `Lib\site-packages`**. Otherwise, fleet workers will continue executing unsuppressed console binaries (`adb.exe`), maintaining the console window storm even when base Python appears patched.
+
 ## Hidden Scheduled Task & WindowStyle Hidden Pitfall
 Even when background scheduled tasks (e.g. `Hermes_Gateway_Watchdog`, `WakeUpForCron`) use `wscript.exe` or `powershell.exe -WindowStyle Hidden` or `cmd.exe /c exit`, running on short intervals (e.g. every 2 minutes `PT2M`) causes Windows Desktop Window Manager (DWM) to allocate a transient console session. In fullscreen/borderless games (Warcraft 3, League of Legends), this creates an intermittent 1-frame screen blink/flicker ("lâu lâu nháy màn hình 1 cái").
 - **Diagnosis:** Query PowerShell Event Log ID 400 (`HostApplication`) to trace recurring hidden PowerShell invocations.

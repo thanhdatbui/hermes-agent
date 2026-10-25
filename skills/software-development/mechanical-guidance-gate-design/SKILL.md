@@ -433,6 +433,13 @@ Use when creating, modifying, or reviewing mechanical enforcement gates (pre-too
   3. **Anti-Dithering Action-First Mandate:** Cấm phân trần lảm nhảm dài dòng khi User yêu cầu "R làm đi". Bắt buộc thực thi dứt điểm bằng lệnh/code/test O(1) tại chỗ trước, có tool output thật chứng minh mới báo cáo kết quả ngắn gọn.
   4. **Unit Test Parity:** Bắt buộc duy trì test suite kiểm chứng Auto-Rewire (`tests/test_claude_worker.py`) với 100% case `test_tier_gate_auto_rewires_direct_worker` pass. Chi tiết: [`references/auto-rewire-entrypoint-parity-and-closeout-stability.md`](references/auto-rewire-entrypoint-parity-and-closeout-stability.md).
 
+### Rule 51: Top 8 Farm Guard Hooks Rewire & Action Mandate (Triệt Tiêu Điểm Nghẽn Ma Sát Token)
+- **Bối cảnh:** Đối soát 6h từ `gate_compliance_watchdog.py` ghi nhận 1.750 dòng log với 8 quy tắc bị chặn nhiều nhất (subagent edit blocked, investigate, dangerous root scan, device lock required, foreground timeout, closeout discipline, console window). Các vi phạm này ngốn hàng trăm turn vô nghĩa vì Agent thiếu đường đi Action Mandate $O(1)$.
+- **Yêu cầu 3 Chuẩn Bắt Buộc:**
+  1. **Exact-Bound Worker Dispatch & Zero Open-Investigation:** Cấm mở goal điều tra mở ("investigate") và cấm Worker tự tiện sửa file ngoài mảng `target_files` được Coordinator chỉ định.
+  2. **Bulkhead Execution & Strict Timeout:** Lệnh shell foreground bắt buộc gán `timeout <= 60` để tránh block luồng điều phối; lệnh thiết bị farm bắt buộc bọc JIT lock `with_device_lock.py`; lệnh nặng/canary bắt buộc chuyển nền `background=True`.
+  3. **Canonical Index Traversal:** Cấm quét đĩa diện rộng (`os.walk`, `find`), chỉ dùng file chỉ mục định danh và đường dẫn canonical. Chi tiết: [`references/top-8-farm-guard-hooks-rewire-and-action-mandate.md`](references/top-8-farm-guard-hooks-rewire-and-action-mandate.md).
+
 ## 3. Pitfalls & Anti-Paralysis Principles (Chống Khóc Lóc Bại Liệt)
 - **Bẫy Lệch Wire Protocol Key Trong Hook Shell (`tool_input` vs `args`):** Subprocess hook `shell_hooks` của Hermes gửi payload qua stdin với khóa chuẩn là `tool_input`, KHÔNG PHẢI `args`! Hook nếu chỉ đọc `payload.get("args")` sẽ nhận rỗng và thoát `exit(0)` fail-open trên mọi lệnh gọi thật của engine. Bắt buộc: `args = payload.get("tool_input") or payload.get("args") or {}`.
 - **Bẫy Daemon Gateway RAM Desync Khi Sửa Engine Core:** Các script hook (`guard_*.py`) được nạp tươi từ đĩa mỗi lần gọi subprocess, nhưng code engine (`shell_hooks.py`, `plugins.py`) chạy trong tiến trình daemon dài hạn (`pythonw.exe`). Python chỉ load module vào RAM lúc khởi động tiến trình. Mọi thay đổi code engine trên đĩa hoàn toàn vô hiệu trong RAM của Gateway đang chạy! BẮT BUỘC restart Gateway ngoài band (`python D:/Taadaa/tools/restart_gw_detached.py`) sau khi sửa engine bridge.
@@ -507,3 +514,4 @@ Use when creating, modifying, or reviewing mechanical enforcement gates (pre-too
 - Active Pivot Architecture, Anti-Paralysis Protocol & Closeout Stability: [`references/active-pivot-architecture-and-closeout-gate-stability.md`](references/active-pivot-architecture-and-closeout-gate-stability.md)
 - Exception-Driven Cron Alerting & 24H Heartbeat Governance: [`references/exception-driven-cron-alerting-and-24h-heartbeat.md`](references/exception-driven-cron-alerting-and-24h-heartbeat.md)
 - Auto-Rewire Entrypoint Parity & Closeout Gate Zero-Touch Stability: [`references/auto-rewire-entrypoint-parity-and-closeout-stability.md`](references/auto-rewire-entrypoint-parity-and-closeout-stability.md)
+- Top 8 Farm Guard Hooks Rewire & Action Mandate: [`references/top-8-farm-guard-hooks-rewire-and-action-mandate.md`](references/top-8-farm-guard-hooks-rewire-and-action-mandate.md)
