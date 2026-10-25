@@ -1,3 +1,1 @@
-Guard Strike-3: Cấm BLOCKED/chờ duyệt; auto-quarantine + nạp guidance qua update_guidance.py + pivot sửa tiếp; 8 Gate + Watchdog 6h; Incident-to-Guard tự nạp case.
-§
-CẤM delegate_task sửa code. Worker dispatch qua D:/Taadaa/tools/sol_worker.py (hoặc claude_worker.py / dispatch_worker.py).
+Worker BẮT BUỘC qua dispatch_worker.py (Tier 1 Sol :20129 trước); CẤM gõ trực tiếp claude_worker.py (Exit 126 cơ học); cấm delegate_task sửa code.

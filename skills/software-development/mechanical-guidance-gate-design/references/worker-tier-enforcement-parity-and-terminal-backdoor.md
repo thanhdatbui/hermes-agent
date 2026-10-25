@@ -18,14 +18,24 @@
 1. **Gate Không Đồng Bộ Giữa Các Tool:** Chặn ở `delegate_task` nhưng thả nổi ở `terminal` sẽ khiến LLM Agent luôn có xu hướng chọn con đường tắt (shortcuts) chạy CLI trực tiếp thay vì đi qua Gateway điều phối chuẩn.
 2. **Lãng Phí Tài Nguyên & Vi Phạm Tôn Ti:** Tier 1 (Sol) là miễn phí và có nhiệm vụ chịu tải 90% các tác vụ sửa code cơ bản. Việc Coordinator gọi thẳng Claude Worker vừa làm cạn kiệt quota 5h/tuần của User, vừa làm mất đi giá trị của hệ thống Gate phân tầng đã xây dựng.
 
-## 3. Quy Chuẩn 3 Chốt Chặn Bắt Buộc (Mechanical Tier Enforcement)
+## 3. Quy Chuẩn 3 Chốt Chặn Bắt Buộc (Đã Triển Khai Cơ Học & Pass 115 Tests)
 1. **Single Entry-Point Invariant:**
    Mọi thao tác dispatch worker sửa code từ Coordinator BẮT BUỘC chỉ được gọi duy nhất 1 entry point:
    ```bash
    python D:/Taadaa/tools/dispatch_worker.py --workdir <repo> [--file <file>] "<prompt>"
    ```
    Tuyệt đối CẤM Coordinator gõ lệnh gọi trực tiếp `claude_worker.py` hoặc `ag_cli.py` trong session chính.
-2. **Provenance Token / Flag Verification trên Tier 3:**
-   `claude_worker.py` cần có cơ chế fail-closed: nếu chạy ở vai trò `--role worker`, nó bắt buộc phải kiểm tra cờ xác thực nguồn gốc (ví dụ: `--fallback-from-tier1` hoặc biến môi trường `HERMES_DISPATCH_ORCHESTRATOR=1`). Nếu bị gọi trần trụi trực tiếp từ shell mà không có bằng chứng Sol Worker đã fail, script lập tức từ chối chạy với mã lỗi `EXIT_TIER_VIOLATION`.
-3. **Audit & Alert Khi Nhảy Tầng:**
-   Hệ thống telemetry của `dispatch.jsonl` bắt buộc ghi nhận rõ `attempt_tier_1_rc` trước khi chuyển sang `attempt_tier_2` hoặc `attempt_tier_3`. Nếu xuất hiện log gọi Claude Worker mà không có trace của Sol Worker trước đó, Watchdog compliance 6h phải cắm cờ cảnh báo vi phạm kiến trúc.
+2. **Provenance Token / Flag Verification trên Tier 3 (`--from-dispatch` Exit 126):**
+   Trong `claude_worker.py`, vai trò `--role worker` được bảo vệ bằng chốt chặn cơ học fail-closed:
+   ```python
+   if role == "worker" and not (args.from_dispatch or os.environ.get("DISPATCH_TIER_CALLER") == "dispatch_worker"):
+       audit("mechanical_tier_gate_violation", role=role)
+       print("⛔ [MECHANICAL TIER GATE VIOLATION]: Direct invocation of claude_worker for role worker is forbidden! "
+             "Route through dispatch_worker.py (Tier 1 Sol first).", file=sys.stderr)
+       return 126
+   ```
+   - Khi Coordinator hoặc script lạ gõ thẳng: `python D:/Taadaa/tools/claude_worker.py --role worker ...` $\rightarrow$ Trả về mã lỗi 126 và chặn đứng, triệt tiêu hoàn toàn khả năng bypass.
+   - Khi đi đúng quy chuẩn qua `dispatch_worker.py`: Hàm `haiku_cmd` tự động truyền `--from-dispatch` sau khi Tier 1 Sol và Tier 2 Agy đã chạy thử nghiệm thất bại.
+3. **Anti-Paralysis Execution Discipline (Cấm Khóc Lóc Bại Liệt):**
+   - Khi gate kích hoạt hoặc phát hiện lỗi điều phối, CẤM Coordinator ngồi phân trần, than thở hay đổ lỗi cho môi trường/tools.
+   - BẮT BUỘC thực thi dứt điểm bằng gate cơ học: Sử dụng công cụ chuẩn xác (Claude CLI khi User yêu cầu trực tiếp, hoặc sửa O(1) đúng hợp đồng) và chạy test kiểm chứng ngay tại hiện trường.
