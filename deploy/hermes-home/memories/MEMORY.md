@@ -13,3 +13,5 @@ Watchdog đối soát TikTok Web (SQLite snapshots) BẮT BUỘC đối chiếu 
 Tool 2FA và cron xen ca chạy cả ngày BẮT BUỘC dùng Just-In-Time (JIT) lock từng máy (cấm bulk pre-reserve giữ lock hàng loạt trong queue) và bọc predicate né khung giờ reboot/đệm trước ca cron.
 §
 Thang luân chuyển worker code-fix: Sol Worker (Tier 1 mặc định) -> Agy CLI (Tier 2 khi Sol fail) -> Claude Worker (Tier 3 khi cả 2 fail hoặc lệnh User On-Demand). haiku_worker.py tự động rewire sang dispatch_worker.py nếu thiếu cờ on-demand.
+§
+Triết lý Canary farm: Sửa/lỗi chỗ nào thì Canary nhắm trúng chỗ đó (Target-bound differential canary), cấm chạy generic full-flow bừa bãi. Các job/watchdog chạy cả ngày bắt buộc né khung giờ đệm trước/sau reboot máy để bảo toàn máy cho ca cron.
