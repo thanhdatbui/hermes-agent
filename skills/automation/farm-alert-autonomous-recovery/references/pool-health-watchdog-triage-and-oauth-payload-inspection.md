@@ -94,3 +94,27 @@ Trước khi gửi bất kỳ thẻ ảnh `MEDIA:<path>` nào cho User theo Inva
     ```
   - Nếu `has_sid = False`: Profile GPM hiện đang chưa đăng nhập Google. Bất kỳ cố gắng chạy OAuth nào cũng sẽ dừng tại form đăng nhập Google.
   - **Lộ trình hồi sinh:** Chờ hoặc kích hoạt watchdog `post_evening_gpm_login_watchdog.py` trong ca rảnh để thực hiện đăng nhập lại Google tự động bằng TOTP/2FA trước khi chạy lại Codex OAuth.
+
+---
+
+## 8. Bẫy Mù Chéo Giữa 3 Cron (Pool Healer vs Login Watchdog vs Nurture Cron)
+- **Triệu chứng:** Tài khoản bị văng session Google trong GPM nhưng **vĩnh viễn không được login lại**:
+  * `chatgpt-web-pool-healer-watchdog` thấy Timeout OAuth tại Google signin -> ghi vào `chatgpt_web_pool_telemetry.json` rồi dừng.
+  * `post_evening_gpm_login_watchdog.py` thấy nhánh Antigravity vẫn active trên OmniRoute (`omniroute_success`) -> **bỏ qua không login**, vì cờ `is_lost_session` chỉ lấy từ `nurture_needs_login`.
+  * `cron_gpm_gmail_nurture.py` chỉ nuôi `DEFAULT_NURTURE_GROUP_ID = 10` (`Google_Live_Ready`), các profile ở Group 1 bị skip 100% nên không bao giờ mở lên để gắn cờ `NEEDS_LOGIN`.
+- **Kiến trúc sửa đổi khép kín (Closed-Loop Bridge):**
+  1. **Bridge Telemetry Failures:** Login watchdog đọc `chatgpt_web_pool_telemetry.json` (`failures`) và mảng zero-cookie GPM (`em_l not in session_emails`). Nếu acc có trong danh sách này, cưỡng chế bật `is_lost_session = True` bất kể OmniRoute có nhánh Antigravity active hay không.
+  2. **Auto-Promotion Group 10:** Khi quét profile GPM thấy cookie Google sống (`cnt >= 2`), tự động chạy `UPDATE profiles SET GroupId = 10 WHERE ProfilePath = ? AND GroupId != 10` để bàn giao sang cron nuôi.
+
+---
+
+## 9. Dispatch Gate & Worker Routing Discipline (Anti-Timeout & Agy Fast-Track)
+- **Chốt chặn Dispatch Gate:** `delegate_task` bị cấm cứng đối với các task sửa code (`⛔ [DISPATCH GATE - BLOCKED_BY_DISPATCH_GATE]`). BẮT BUỘC dùng Worker CLI (`dispatch_worker.py`, `ag_cli.py fix`).
+- **Bẫy Sol Hang trong `dispatch_worker.py`:**
+  * Tier 1 (`sol_worker.py`) gọi `gpt-web-sol` (:20129) với timeout mặc định 300s/turn. Nếu endpoint này bị treo, lệnh shell ngoài (timeout 360s) sẽ bị kill trước khi `dispatch_worker.py` kịp fallback sang Tier 2 (Agy) hay Tier 3 (Haiku).
+- **Agy CLI Fast-Track:**
+  * Kiểm tra nhanh trạng thái pool Antigravity qua `python D:/Taadaa/tools/ag_cli.py pool-status`. Nếu pool có sẵn profile READY (100% quota), có thể điều phối trực tiếp qua Agy CLI để tránh chờ Sol timeout:
+    ```bash
+    python "D:/Taadaa/tools/ag_cli.py" fix --workdir "<repo_path>" --file "<target_file>" "<prompt>"
+    ```
+
