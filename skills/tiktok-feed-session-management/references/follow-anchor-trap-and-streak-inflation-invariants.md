@@ -115,4 +115,31 @@ Trước đây hệ thống bị lỗi nghiêm trọng do nhập nhằng giữa 
    - Nick `used > 0` chạm trần bắt buộc phải nghỉ đủ 24 giờ để xả cache TikTok an toàn. Đây là cơ chế bảo vệ hợp lệ, **tuyệt đối không được gọi là "án oan"**.
    - Chỉ được xả án cho nick `used > 0` khi và chỉ khi **đã quá 24 giờ rolling** (`now_utc >= cooldown_until_at`).
 
+---
+
+### 10. Bẫy Profile Identity Mismatch & Cơ Chế Xác Minh Path B (Chống Rớt Follow Ảo)
+1. **Bẫy Bio @Mention & Suggested Accounts Drawer:**
+   - Trong `mode2_follow_followers.py` (`_path_b_verify`): Hàm `profile_identity_from_xml` lấy `@` đầu tiên trên toàn màn hình. Khi nick có bio chứa handle khác (ví dụ: `IG: @xyz`) hoặc banner TikTok có `@`, hàm lấy nhầm `@` trong bio làm username, làm lệch `profile_handle != target_uid`.
+   - **Quy tắc vàng:** Luôn dùng `_find_header_handle_node` ở dải header (`y < 650`) làm nguồn chân lý duy nhất của profile header handle. Chỉ cần `handle_is_valid` (header node khớp target_uid và package chuẩn), xác nhận dump profile thành công.
+   - Trong `verify_follow.py` (Mode 1): Ngay sau khi tap Follow, TikTok thường bật khay "Tài khoản tương tự" (Suggested Accounts). Quét lại màn hình ngay lập tức sẽ thấy xuất hiện các `@` lạ dẫn đến `identity_mismatch`.
+   - **Quy tắc xử lý:** CẤM ném `MANUAL_REVIEW` ngay khi gặp `identity_mismatch` sau tap. BẮT BUỘC gọi `_reload()` (pull-to-refresh / re-entry) để xả khay gợi ý và làm mới trang trước khi kết luận.
+2. **Bảo Toàn Follow Đã Gửi Lên Server:**
+   - Khi nút follow trên row hoặc profile đã được tap thành công và đổi màu sang `followed`, lệnh follow đã gửi lên TikTok server. CẤM để các ngoại lệ render/popup tạm thời làm hủy cả phiên chạy (`break` out of session) hay xóa trắng mảng `followed`.
+
+---
+
+### 11. Chuẩn Hóa Đối Soát Watchdog Theo Account ID (Username) Thay Vì Row Máy
+1. **Bản chất Schema TikTok Tracker DB (`tiktok_tracker.db`):**
+   - Bảng `snapshots` của crawler TikTok Web chỉ lưu `(username, following, timestamp)`. Hoàn toàn KHÔNG có cột `row` hay `machine`.
+2. **Nhược điểm chết người khi đối soát theo Row máy:**
+   - Ở các ca hỗn hợp (`active_row = -1`) hoặc ca lẻ/phục hồi, máy có thể chạy Tik 2 hoặc Tik 3. Watchdog tra theo `row` dễ bị nhầm (như Máy 40 chạy Tik 2 `@nguyenkhoi1403` nhưng watchdog lại lấy Tik 1 `@charakrh768` ra đối soát dẫn đến báo lệch -3 lượt oan).
+   - Dễ sai lệch nếu file excel bị đổi thứ tự dòng hoặc nhầm lẫn giữa 0-index và 1-index.
+3. **Chuẩn hóa kiến trúc đối soát:**
+   - `follow_result.json`: BẮT BUỘC ghi rõ trường `"account": account.expected_username`.
+   - `parser.py`: Trích xuất `"account"` song song với `"row"`.
+   - `feed_session_watchdog.py`: Ưu tiên tuyệt đối dùng `f_acc` (ID account) để query SQLite `tiktok_tracker.db`, chỉ fallback về `f_row` nếu thiếu dữ liệu account. Vẫn map ra nhãn `[Tik N]` dựa trên slot thực tế của nick trong máy.
+4. **Bảo Toàn Follow Khi Timeout (Salvage Follows on Timeout):**
+   - Khi tiến trình chạm trần `follow-timeout`, CẤM gán cứng `followed_count = 0`. BẮT BUỘC đọc file state `follow_state_<m>_row_<t>.json` trong ngày để vớt lại toàn bộ danh sách nick đã follow thành công, chống lệch số liệu đối soát với Web.
+
+
 
