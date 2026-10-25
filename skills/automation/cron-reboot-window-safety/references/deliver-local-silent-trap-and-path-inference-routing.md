@@ -35,3 +35,24 @@
   - Nếu có đợt chạy ad-hoc, debug hoặc test lúc rạng sáng (ví dụ: `02:42 AM`) và ghi nhận `last_success_date = <today>`, thì khi đến khung giờ ca trưa thực tế (14:30 – 17:30), watchdog kiểm tra thấy `already_ran_today == True` và lập tức thoát sớm (`return 0`), bỏ qua toàn bộ ca chạy và không sinh báo cáo.
 - **Khắc phục:**
   - Idempotency theo ca phải gắn liền với phiên/mốc thời gian cụ thể (ví dụ: `<date>_ca_trua` hoặc kết hợp kiểm tra giờ bắt đầu), tránh dùng chung cờ ngày thuần túy làm tê liệt các ca sau trong ngày.
+
+---
+
+## 4. Bẫy Môi Trường Scheduler Gây Lỗi `No module named 'automation_core.alerts'`
+- **Vấn đề:**
+  - Khi script watchdog chạy qua Hermes cron runner (`no_agent: true`), tiến trình được thực thi độc lập bằng Python của hệ điều hành hoặc venv scheduler, không tự động kế thừa `PYTHONPATH` của repo.
+  - Khi watchdog gọi `from automation_core.alerts import _load_bot_token`, nếu `sys.path` chưa chèn đường dẫn tuyệt đối chuẩn hoặc module con phát sinh lỗi import thư viện bên thứ 3 (như `PIL`), Python sẽ ném `ModuleNotFoundError: No module named 'automation_core.alerts'`.
+  - Khi không đọc được token, hàm gửi tin thường log warning và âm thầm bỏ qua (`Không có Telegram bot token, bỏ qua báo cáo`), khiến watchdog đêm hoặc ca trưa tưởng như chạy xong nhưng hoàn toàn mất hút báo cáo trên Telegram.
+- **Khắc phục:**
+  - BẮT BUỘC chèn đường dẫn tuyệt đối `sys.path.insert(0, r"D:/Taadaa/automation-core/src")` ở ngay đầu file hoặc trong bootstrap block trước mọi import nghiệp vụ.
+  - Bổ sung cơ chế fallback đọc bot token trực tiếp từ file cấu hình / secrets nếu `automation_core.alerts` không thể tải.
+
+---
+
+## 5. Quy Trình Rà Soát Hệ Thống Báo Cáo Cron Bị Nuốt Chửng (Systemic Audit Protocol)
+- **Phương pháp rà soát nhanh O(1) trên toàn bộ farm:**
+  - Quét danh sách cronjob trong `jobs.json` lọc các job thỏa mãn 2 điều kiện:
+    1. Cấu hình `deliver: "local"`.
+    2. Tên job hoặc prompt mang ý nghĩa báo cáo/theo dõi (`report`, `watchdog`, `báo cáo`, `tracker`).
+  - Kiểm tra mã nguồn script tương ứng: Nếu script chỉ `print(summary)` mà không có các hàm gọi Telegram (`_send_telegram_text`, `dispatch_report`, HTTP sendMessage), thì job đó CHẮC CHẮN đang bị nuốt chửng báo cáo cục bộ (như `daily-tiktok-farm-tracker`, `post-morning-gmail-2fa-watchdog`).
+  - Đối với các job này, phải chủ động: hoặc bổ sung in-process `dispatch_report()`, hoặc cấu hình `deliver: telegram:<chat_id>` kèm silent skip khi không có nội dung.

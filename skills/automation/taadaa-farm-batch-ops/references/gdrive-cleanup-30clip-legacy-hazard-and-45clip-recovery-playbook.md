@@ -27,24 +27,48 @@ Chỉ khi nào thư mục thành phẩm `D:\TIKTOK-videonuoinick-admin\<f_vid>` 
 ## 3. Quy Trình Cứu Hộ Cuốn Chiếu (Recovery Playbook)
 Khi phát hiện các kênh bị đóng băng dở dang ở 30–44 clip:
 
-### Bước 1: Tạm dừng Downloader trên Admin (Supervisor Service Pitfall)
+### Bước 1: Tạm dừng Downloader trên Admin & Xử lý Bẫy Trùng Tiến Trình (Process Duplication)
 - Tránh việc downloader cào thêm video mới làm tràn ổ `D:` SSD (thường chỉ còn 15–20 GB trống).
-- **Bẫy Supervisor `run_admin_downloader_service.py`**: Tiến trình supervisor chạy dưới dạng `pythonw.exe` và liên tục kiểm tra để spawn lại `download_by_niche.py` trong vòng lặp `while True`. Nếu chỉ kill `download_by_niche.py`, supervisor sẽ lập tức khởi chạy lại instance mới sau vài giây! BẮT BUỘC phải dừng cả supervisor service và child downloader:
+- **Bẫy Supervisor `run_admin_downloader_service.py` & Đa Instance**:
+  Tiến trình supervisor chạy dưới dạng `pythonw.exe` và liên tục kiểm tra để spawn lại `download_by_niche.py` trong vòng lặp `while True`. Nếu chỉ kill `download_by_niche.py`, supervisor sẽ lập tức khởi chạy lại instance mới sau vài giây!
+  Đặc biệt, có thể tồn tại **hai instance supervisor chạy đè nhau** (một bản dưới `C:\Users\Admin\AppData\Local\Programs\Python\Python311\pythonw.exe` và một bản dưới `D:\CodexRuntime\tiktok-video\venv-core024\Scripts\pythonw.exe`).
+  BẮT BUỘC phải kiểm tra toàn diện và diệt sạch cả supervisor service lẫn child downloader:
   ```powershell
-  Get-CimInstance Win32_Process | Where-Object { 
+  Get-CimInstance Win32_Process -Filter "Name like 'python%'" | Where-Object { 
       $_.CommandLine -like "*run_admin_downloader_service*" -or 
       $_.CommandLine -like "*download_by_niche*" 
   } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
   ```
+- **Bẫy Trùng Lặp Render Worker**: Tương tự, kiểm tra xem có 2 bản `run_admin_render_worker.py` chạy song song không. Nếu có, kill bản chạy bằng Python hệ thống, chỉ giữ lại bản chạy bằng venv chuẩn `venv-core024\Scripts\pythonw.exe`.
 - **Mẹo Cứu Hộ Dung Lượng Đĩa Tức Thì (10–20 GB)**: Khi ổ D: Admin cạn đĩa, có thể lập tức xóa các file video gốc (`*.mp4`) trong `D:\video goc may 2\<f_src>` của các folder mà thư mục thành phẩm `D:\TIKTOK-videonuoinick-admin\<f_vid>` đã đạt đủ $\ge 45$ clip. Thao tác này giải phóng đĩa ngay tức khắc mà không ảnh hưởng tới tiến trình render các folder đang thiếu.
 
 ### Bước 2: Kéo trả nguồn cuốn chiếu từ Google Drive
 - Toàn bộ video gốc ban đầu vẫn còn nguyên vẹn 100% trong `G:\My Drive\video_goc_backup\<f_src>`.
-- Kéo trả các file bị thiếu về lại `D:\video goc may 2\<f_src>` theo từng đợt nhỏ (3–5 folder/đợt để không tốn quá 2 GB đĩa):
+- **Kéo lẻ từng folder**:
   ```powershell
   Get-ChildItem "G:\My Drive\video_goc_backup\<f_src>\*.mp4" | ForEach-Object {
       if (-not (Test-Path "D:\video goc may 2\<f_src>\$($_.Name)")) {
           Copy-Item $_.FullName -Destination "D:\video goc may 2\<f_src>\"
+      }
+  }
+  ```
+- **Kéo tự động hàng loạt cho 51 folder dở dang ($30 \le \text{rendered} < 45$)**:
+  ```powershell
+  $incomplete = Get-ChildItem "D:\TIKTOK-videonuoinick-admin" -Directory | ForEach-Object {
+      $c = (Get-ChildItem $_.FullName -Filter "*.mp4").Count
+      if ($c -ge 30 -and $c -lt 45) { [int]$_.Name }
+  }
+  # Ánh xạ f_vid ngược về f_src: f_src = ((f_vid - 1) % 8) * 80 + [math]::Floor(($f_vid - 1) / 8) + 1
+  foreach ($vid in $incomplete) {
+      $slot = (($vid - 1) % 8) + 1
+      $m_idx = [math]::Floor(($vid - 1) / 8) + 1
+      $src = ($slot - 1) * 80 + $m_idx
+      $g_path = "G:\My Drive\video_goc_backup\$src"
+      $dst_path = "D:\video goc may 2\$src"
+      if (Test-Path $g_path) {
+          if (-not (Test-Path $dst_path)) { New-Item -ItemType Directory -Path $dst_path -Force | Out-Null }
+          robocopy $g_path $dst_path *.mp4 /E /XC /XN /XO /NP | Out-Null
+          Write-Output "Restored raw files for f_src=$src (f_vid=$vid)"
       }
   }
   ```

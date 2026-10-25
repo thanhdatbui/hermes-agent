@@ -8,6 +8,7 @@ description: "Use when designing mechanical gates to prevent agent loops."
 ## 1. When to Use
 Use when creating, modifying, or reviewing mechanical enforcement gates (pre-tool hooks, git hooks, closeout gates, or runtime fences). Enforces that every gate provides deterministic, actionable unblocking paths (Auto-Rewire / Active Pivot) rather than passive denials.
 - Reference: `references/auto-rewire-and-auto-clamp-architecture.md` (Auto-Rewire on worker entrypoints, investigate budget auto-clamp <= 8, console window matcher narrowing, Closeout Gate `--skip-test` auto-rewire, and zero-whine execution discipline).
+- Reference: `references/user-sudo-override-and-investigate-read-only-deadlock-triage.md` (User Master Override Sudo architecture, avoiding the Investigate Read-Only trap, regex multi-file false positive prevention, and anti-idle-window evaluation discipline).
 - Reference: `references/active-pivot-auto-rewire-architecture.md` (Tri-party consensus on Auto-Rewire vs Hard-Block, anti-paralysis invariants, and Sol Repair Monopoly findings).
 - Reference: `references/tri-party-auto-rewire-vs-guard-invariant-consensus.md` (Tri-party consensus on Auto-Rewire vs Guard Invariants, safe auto-repair vs policy bypass, and multi-session disjoint verification).
 - Reference: `references/idle-window-evaluation-bias-and-closeout-boundary-discipline.md` (Idle-window evaluation bias, Closeout Gate monopoly protection, and zero-block action mandate hierarchy).

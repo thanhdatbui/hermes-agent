@@ -78,14 +78,20 @@ _ADVISOR_EXPLICIT_TRIGGERS = (
   * Khi gọi bất kỳ worker nào (`dispatch_worker.py`, `sol_worker.py`), Coordinator BẮT BUỘC tuân thủ sàn `timeout >= 300s`. CẤM TUYỆT ĐỐI tự ý gõ cờ `--timeout` ngắn (ví dụ 30s) trong terminal làm ngắt ngang khi model worker đang suy nghĩ / stream.
 - **CẤM TUYỆT ĐỐI Hermes Native Delegation (`delegate_task`)**:
   Coordinator tuyệt đối không được gọi `delegate_task` để spawn subagent bừa bãi. Việc spawn subagent tự do gây bloat context, ngâm timeout 600s làm nghẽn event loop của gateway, vi phạm sandbox và phá vỡ kiểm soát phân vai của farm.
-- **Quy chuẩn ủy quyền Worker (Farm Worker CLI)**:
+- **Quy chuẩn ủy quyền Worker (Farm Worker CLI & Fallback Ladder)**:
   Khi cần thực hiện các task sửa code / điều tra sâu vượt quá ngân sách Coordinator O(1):
-  * **First Responder:** BẮT BUỘC dispatch qua `python D:/Taadaa/tools/sol_worker.py "<contract O(1)>" --workdir <repo>` (hoặc chỉ định `--model`, `--timeout`).
-  * **Fallback:** Sử dụng `python D:/Taadaa/tools/dispatch_worker.py`.
+  * **Tier 1 (First Responder - Mặc định):** BẮT BUỘC dispatch qua `python D:/Taadaa/tools/sol_worker.py "<contract O(1)>" --workdir <repo>` (hoặc qua `dispatch_worker.py`).
+  * **Tier 2 (Fallback 1):** `ag_cli.py fix` (Antigravity pool) - CHỈ KÍCH HOẠT khi Sol Worker thất bại có receipt audit ghi vào `dispatch.jsonl`.
+  * **Tier 3 (Fallback 2):** Haiku / Claude CLI (`haiku_worker.py` / `claude_worker.py`) - CHỈ KÍCH HOẠT khi CẢ Sol VÀ Agy đều thất bại có receipt audit trong cùng correlation session, hoặc khi có cờ `--on-demand` từ User.
   * Coordinator giữ vai trò nghiệm thu O(1) qua focused test và canary thực tế; cấm spawn subagent mò mẫm file.
-- **Chống Phản Xạ Gọi Claude Worker (Anti-Reflex Claude Dispatch)**:
-  * Claude CLI / Claude Worker là **100% On-Demand**. Tuyệt đối **CẤM** Coordinator tự ý đề xuất hoặc gọi `claude_worker.py` theo quán tính/phản xạ khi User chưa yêu cầu đích danh.
+- **Cơ chế Auto-Rewire Cứng Chống Nhảy Cóc Sang Claude (`haiku_worker.py`)**:
+  * Claude CLI / Claude Worker là **100% On-Demand**. Tuyệt đối **CẤM** Coordinator tự ý đề xuất hoặc gọi `haiku_worker.py` / `claude_worker.py` theo quán tính/phản xạ khi User chưa yêu cầu đích danh.
+  * **Hard Auto-Rewire Gate:** `haiku_worker.py` kiểm tra cờ `--on-demand`, `--from-dispatch` và `USER_ON_DEMAND_CLAUDE=1`. Nếu không có, script lập tức chặn đứng việc gọi Claude và **tự động bẻ lái (rewire) 100%** toàn bộ tham số sang `dispatch_worker.py` để ép chạy Sol (Tier 1) $\to$ Agy (Tier 2) trước.
   * Khi Sol Worker (:20129) bị timeout hoặc nghẽn mạng: Nếu Coordinator đã có exact patch O(1) (<= 30 dòng, <= 2 files), Coordinator **được quyền thực hiện Emergency Surgery (L2) trực tiếp** bằng `patch` tool kèm focused test. Tuyệt đối KHÔNG tự động chuyển sang Claude Worker rồi báo User như một phản xạ mặc định.
+- **Kỷ Luật Định Dạng Tin Nhắn Telegram (Chống Rò Rỉ Mã LaTeX Thô)**:
+  * Parser của Telegram và Gateway không hỗ trợ render MathJax / LaTeX math blocks (`$$ ... $$`).
+  * Tuyệt đối **CẤM** Coordinator gửi các thẻ công thức toán LaTeX như `\textbf{...}`, `\longrightarrow`, `\longleftarrow`, `\implies`, `\iff`, `\rightarrow`. Các mã này sẽ bị in nguyên văn ra màn hình điện thoại của User gây phản cảm.
+  * Luôn sử dụng cú pháp Markdown chuẩn (`**chữ đậm**`) và mũi tên Unicode tự nhiên (`→` hoặc `->`) trong mọi tin nhắn trả lời User.
 
 ## Phân Tầng Reviewer & Kỷ Luật Quota Guard (Reviewer Hierarchy)
 Trong hệ thống Taadaa Farm, vai trò Reviewer được phân định rạch ròi theo 2 kịch bản:
