@@ -104,3 +104,17 @@ Khi rơi vào ca/ngày dưỡng sinh, `resolve_shift_pool_account` raise `ValueE
    - **Giải pháp Two-Phase Commit:**
      * *Pha 1 (Pending Claim):* Khi có report mới, lưu vào `pending_delivery: {"session_key": ..., "message": ...}`, chưa commit vào `reported_sessions`, rồi in stdout.
      * *Pha 2 (Hermes Telemetry Verification):* Ở tick kế tiếp, đọc `jobs.json` của Hermes (`_get_hermes_delivery_error(mode)`). Nếu có `last_delivery_error`, tự động re-emit `pending["message"]` để Hermes retry ngay. Chỉ khi `last_delivery_error is None`, mới chuyển `session_key` vào `reported_sessions` và dọn `pending_delivery`.
+
+---
+
+## 5. Quy Ước Định Danh Run Artifacts & Báo Cáo Watchdog (`Run: row-{row}-{hhmmss}`)
+- **Cấu trúc nhãn Run:** `row-{row}-{hhmmss}` (ví dụ: `row-0-140735`):
+  * **`row` (Row Index):** Bằng `0` khi kích hoạt cơ chế Dynamic Feed (`USE_DYNAMIC_FEED=1` mặc định) — máy bốc nick linh hoạt theo Pool của Ca ({1, 2, 7}, {3, 4, 8}, {5, 6}) và luân chuyển theo 6 tầng phễu sức khỏe (`_follow_rank`). Bằng `1..8` nếu chạy chế độ fixed row tĩnh cũ.
+  * **`hhmmss` (Timestamp):** Giờ - phút - giây lúc runner kích hoạt phiên chạy (giờ HCMC, vd `140735` = 14:07:35).
+- **Vị trí lưu trữ Artifacts & Logs:**
+  * Đường dẫn runtime: `D:\Taadaa\runtime\<cluster>\live\<YYYY-MM-DD>\row-{row}-{hhmmss}\<run_id>\`
+  * Chứa đầy đủ: `run_manifest.json`, `summary.txt`, `log.jsonl`, và thư mục con `machines/machine_<id>/`.
+- **Hiển thị trên Watchdog Telegram:**
+  * Watchdog lọc các thư mục run trong `date_live` khớp với khung giờ ca (`SESSION_WINDOWS`), lấy run mới nhất `sorted_run_names[-1]` gán vào header cụm:
+    `🏢 【FARM KIBE - MÁY 1-80】 (Run: row-0-140735)`
+  * Mục đích: Phục vụ truy vết nhanh (Traceability), phân biệt rõ giữa Phiên 1 (sớm) và Phiên 2 (muộn) trong cùng 1 ca nuôi.
