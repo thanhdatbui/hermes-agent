@@ -38,3 +38,10 @@ Khi phát hiện Downloader Admin dừng cào video kèm triệu chứng ổ D: 
 5. **Xác nhận giải tỏa Deadlock:**
    - Kiểm tra lại `shutil.disk_usage("G:")` — ổ `G:` sẽ lập tức nhận diện dung lượng đệm mới.
    - Downloader service (`run_admin_downloader_service.py`) sẽ tự động hồi sinh `download_by_niche.py` trong tick tiếp theo mà không cần can thiệp thủ công.
+
+---
+
+## 4. Ngưỡng Dọn Video Gốc Bắt Buộc Đạt Chuẩn >= 45 Clip (User Invariant)
+- **Bẫy xóa raw quá sớm:** Trong `sync_and_clean_gdrive.py`, điều kiện kiểm tra thư mục thành phẩm `RENDER_ROOT` bắt buộc phải là `len(rendered) >= 45`.
+- **Hậu quả nếu để ngưỡng cũ 30 clip:** Khi kênh mới render được 30 clip, script tưởng đã xong nên tự động robocopy rồi xóa mất video gốc trên Admin. Kênh sẽ bị cụt nguồn và không thể render bù lên 45 clip.
+- **Quy tắc bất biến:** Tuyệt đối cấm xóa raw khi `len(rendered) < 45`. Chỉ dọn và giải phóng đĩa khi kênh đã đạt trọn vẹn $\ge 45$ clip thành phẩm.
