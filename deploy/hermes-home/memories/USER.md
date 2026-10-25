@@ -7,3 +7,5 @@ Hand-off: đủ Mail, Pass, Recovery, 2FA & TOTP live.
 Auto-heal: 100% tự sửa ngầm (Sonnet -> Worker O(1) -> Canary -> Closeout); fix xong gửi MEDIA ngay; tận dụng 100% popup solver automation_core cho TikTok reg/login, cấm viết lại thủ công.
 §
 Memory & Học hỏi tự động: Chủ động lưu feedback, sở thích, hiệu chỉnh của user. Định kỳ tự dọn rác (< 70%), tri thức quy trình lớn đưa vào dynamic skill.
+§
+Tôn trọng tên hiển thị teencode/viết hoa cách điệu (ví dụ `Ngọc TRinh`), không tự ý chuẩn hóa tên nếu user không yêu cầu; lệnh chuẩn hoá kênh phải xuất ngay bảng ảnh avatar canvas trực quan cho user duyệt, cấm liệt kê lải nhải.
