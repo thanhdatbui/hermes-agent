@@ -70,7 +70,7 @@ Báo cáo tuân thủ định kỳ 6h BẮT BUỘC phải tích hợp 2 phân h�
 Để triệt tiêu lỗi regex đâm chéo giữa các nguồn log (ví dụ: `admin_ssh.jsonl` có `returncode: 1` bị tính nhầm vào Pre-Push Safe Guard G6), mỗi Gate bắt buộc gắn thuộc tính `source_file` cứng:
 - **G1 (Visual Evidence Gate):** `source_file="vision_receipts"` (quét `runtime/audit_logs/vision_receipts.jsonl` bắt HMAC-SHA256 OCR receipt).
 - **G2 (Planning Gate):** `source_file="dispatch_planner"` (quét `logs/dispatch_planner.jsonl` & kiểm tra thư mục `runtime/sol_plans/`).
-- **G3 (Worker Dispatch Gate):** `source_file="dispatch"` (quét `logs/dispatch.jsonl` bắt lỗi `TIMEOUT`, `QUOTA`, `NO_DIFF`).
+- **G3 (Worker Dispatch Gate):** `source_file="dispatch"` (quét cả `logs/dispatch.jsonl` lẫn `runtime/audit_logs/dispatch_audit.jsonl`). Regex bắt buộc bao quát cả `"category": "(?:TIMEOUT|...)"` lẫn `"action": "block"`. Khi trích xuất mã vi phạm (`r_id`), BẮT BUỘC kiểm tra trường `d.get("route")` (để bóc tách chính xác các lỗi `subagent_edit_blocked`, `investigate`, `create`).
 - **G4 (Invariant GuardGate):** `source_file="ledger"` (quét `tools/guardgate/ledger.jsonl` bắt các invariant Case 161/162).
 - **G5 (Closeout Reviewer Gate):** `source_file="gate_audit"` (quét `logs/gate_audit.jsonl` kèm bộ lọc Remediation Loop).
 - **G6 (Pre-Push Safe Guard):** `source_file="safe_push_audit"` (quét `logs/safe_push_audit.jsonl` bắt các lần chặn push lậu).

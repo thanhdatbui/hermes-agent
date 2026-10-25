@@ -78,8 +78,11 @@ _ADVISOR_EXPLICIT_TRIGGERS = (
 - **Quy chuẩn ủy quyền Worker (Farm Worker CLI)**:
   Khi cần thực hiện các task sửa code / điều tra sâu vượt quá ngân sách Coordinator O(1):
   * **First Responder:** BẮT BUỘC dispatch qua `python D:/Taadaa/tools/sol_worker.py "<contract O(1)>" --workdir <repo>` (hoặc chỉ định `--model`, `--timeout`).
-  * **Fallback:** Sử dụng `python D:/Taadaa/tools/dispatch_worker.py` (hoặc `claude_worker.py` / `haiku_worker.py`).
+  * **Fallback:** Sử dụng `python D:/Taadaa/tools/dispatch_worker.py`.
   * Coordinator giữ vai trò nghiệm thu O(1) qua focused test và canary thực tế; cấm spawn subagent mò mẫm file.
+- **Chống Phản Xạ Gọi Claude Worker (Anti-Reflex Claude Dispatch)**:
+  * Claude CLI / Claude Worker là **100% On-Demand**. Tuyệt đối **CẤM** Coordinator tự ý đề xuất hoặc gọi `claude_worker.py` theo quán tính/phản xạ khi User chưa yêu cầu đích danh.
+  * Khi Sol Worker (:20129) bị timeout hoặc nghẽn mạng: Nếu Coordinator đã có exact patch O(1) (<= 30 dòng, <= 2 files), Coordinator **được quyền thực hiện Emergency Surgery (L2) trực tiếp** bằng `patch` tool kèm focused test. Tuyệt đối KHÔNG tự động chuyển sang Claude Worker rồi báo User như một phản xạ mặc định.
 
 ## Phân Tầng Reviewer & Kỷ Luật Quota Guard (Reviewer Hierarchy)
 Trong hệ thống Taadaa Farm, vai trò Reviewer được phân định rạch ròi theo 2 kịch bản:
