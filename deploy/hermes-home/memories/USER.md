@@ -6,4 +6,4 @@ Hand-off: đủ Mail, Pass, Recovery, 2FA & TOTP live.
 §
 Auto-heal: ghét fix thủ công, 100% tự sửa ngầm (Sonnet Planner -> O(1) Worker -> Canary -> Closeout); cấm dừng phân trần; fix xong bắn Telegram ngay kèm MEDIA; report tách từng nhóm.
 §
-CẤM TỰ ĐỘNG LƯU MEMORY/SKILL: Tuyệt đối cấm AI tự ý 'save proactively'. CHỈ gọi tool memory khi user đích danh ra lệnh ('lưu vào memory', 'nhớ cái này'). CẤM 100% nhồi quy tắc script, farm ops, kỹ thuật, bug fix vào memory/user profile. Tri thức vận hành mới chỉ nạp ngoại vi qua record_skill_knowledge.py.
+Memory & Học hỏi tự động: Cho phép AI chủ động lưu (proactive save) feedback, sở thích, hiệu chỉnh của user và các quirk/kinh nghiệm thực tế. Cơ chế dọn rác định kỳ (Garbage Collection): Định kỳ tự đối soát và gọt bỏ các entry cũ đã được code hóa vào script/hook, duy trì Memory gọn gàng < 70%. Tri thức quy trình đồ sộ thì đưa vào dynamic skill.
