@@ -23,3 +23,8 @@
 ## 6. Kỷ Luật Ghim Bài (Pin Top Video)
 - Kênh có video đạt view cao ($\ge 1.000$ views) bắt buộc phải ghim lên ô số 1.
 - Nếu không có video nào đạt trần view thì giữ nguyên, không ghim video view lẹt đẹt (< 100 views).
+
+## 7. Bẫy Phân Trần Văn Xuôi Thay Vì Đưa Ra Visual Proposal (The "Lải Nhải" Trap)
+- **Sai lầm:** Khi user bảo "chuẩn hoá 2 kênh này", agent chỉ dùng text liệt kê 4 lỗi rồi kết thúc bằng "Anh duyệt kế hoạch trên em sẽ làm". User cần chọn avatar thực tế ngay, việc nói suông không có avatar làm user khó chịu ("ava chuẩn bị lại đâu? Cứ lải nhải đéo làm...").
+- **Cách làm đúng:** Lập tức viết script chạy trích frame và dựng file ảnh canvas tổng hợp `avatar_proposals_*.jpg` (ghép ảnh tròn 512x512 của các phương án) trong lượt chat đầu tiên. Phản hồi luôn phải có `MEDIA:<canvas>` đi kèm để user chỉ cần bấm chọn 1A hay 1B.
+

@@ -5,6 +5,15 @@ description: "Use when standardizing TikTok profiles (bio, pin, avatar)."
 
 # TikTok Channel Standardization (5-in-1 Protocol)
 
+## 🛑 NGUYÊN TẮC CỐT LÕI: PROPOSAL-FIRST (CẤM "LẢI NHẢI" KẾ HOẠCH BẰNG VĂN XUÔI)
+- **Hành vi cấm kỵ (Anti-Pattern):** Khi nhận ảnh/yêu cầu chuẩn hoá kênh, Coordinator dừng lại gõ chữ phân trần dài dòng, phân tích hiện trạng rồi hỏi "anh có duyệt kế hoạch không" mà KHÔNG có sản phẩm hình ảnh cụ thể. User cực kỳ ghét việc này (*"Là sao nữa ava chuẩn bị lại đâu? Cứ lải nhải đéo làm mệt..."*).
+- **Quy chuẩn bắt buộc (Proposal Canvas First):**
+  1. Ngay khi nhận lệnh: Lập tức trích xuất frame từ video gốc `F_src` (khuôn mặt creator, góc setup, món ăn đặc trưng) hoặc lấy avatar gốc.
+  2. Crop chuẩn $512 \times 512$, tạo preview viền tròn TikTok (`make_circle_preview`).
+  3. Ghép thành bảng **Proposal Canvas** duy nhất (`D:/Taadaa/reports/standardization_previews/avatar_proposals_*.jpg`) chứa đủ 2 phương án/kênh (PA 1A, PA 1B, PA 2A, PA 2B) kèm tóm tắt toạ độ, niche, bio đề xuất, pin top.
+  4. Đăng ký vision receipt và gửi ngay kèm thẻ `MEDIA:` trong phản hồi để User nhìn thấy tận mắt và chọn nhanh (`K1: 1A, K2: 2B`).
+  5. Khi User phản hồi điều chỉnh hoặc giục ("còn lại xử lý đi"): TUYỆT ĐỐI KHÔNG giải thích lại kế hoạch, phải trình ảnh phương án ngay hoặc chạy thẳng các runner canonical trên thiết bị.
+
 ## Trigger & Scope
 Áp dụng khi người dùng yêu cầu *"Chuẩn hoá kênh này"* hoặc *"Chuẩn hoá N kênh"* kèm ảnh chụp màn hình Profile TikTok.
 Quy trình chuẩn hoá bao gồm trọn gói **5 hạng mục bắt buộc (5-in-1)**:

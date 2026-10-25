@@ -10,6 +10,7 @@ Use when creating, modifying, or reviewing mechanical enforcement gates (pre-too
 - Reference: `references/pre-tool-auto-rewrite-and-24h-heartbeat-architecture.md` (Engine-level pre-tool auto-rewrite, zero turn overhead, fail-closed telemetry, and 24h heartbeat).
 - Reference: `references/auto-rewire-and-auto-clamp-architecture.md` (Auto-Rewire on worker entrypoints, investigate budget auto-clamp, and Closeout Gate `--skip-test` auto-rewire).
 - Reference: `references/user-sudo-override-and-investigate-read-only-deadlock-triage.md` (User Master Override Sudo architecture, avoiding Investigate Read-Only trap).
+- Reference: `references/dispatch-worker-timeout-and-deadlock-prevention-20261025.md` (Timeout Floor 180s-300s, Allowlist 360s, Investigate Read-Only & Multi-File regex avoidance, Claude on-demand enforcement).
 - Reference: `references/active-pivot-auto-rewire-architecture.md` (Tri-party consensus on Auto-Rewire vs Hard-Block, anti-paralysis invariants).
 - Reference: `references/tri-party-auto-rewire-vs-guard-invariant-consensus.md` (Tri-party consensus on Auto-Rewire vs Guard Invariants).
 - Reference: `references/idle-window-evaluation-bias-and-closeout-boundary-discipline.md` (Idle-window evaluation bias and zero-block action mandate hierarchy).
