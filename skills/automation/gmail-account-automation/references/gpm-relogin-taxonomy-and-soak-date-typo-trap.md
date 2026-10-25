@@ -27,6 +27,7 @@ Khi nuôi GPM Gmail báo `NEEDS_LOGIN` (do Preflight Cookie Guard phát hiện t
 | **3. AUDIO_RECAPTCHA_TIMEOUT** | WinRT OCR đọc thấy *"Nhấn vào nút PHÁT để nghe - Nhập nội dung bạn nghe thấy - Tôi không phải là người máy"*. | Thử thách bot check âm thanh bị nghẽn proxy/timeout. Giữ máy rảnh, đưa vào hàng đợi retry ở ca kế tiếp để hạ nhiệt IP. |
 | **4. ADB_DISCONNECTED** | `inspect_machine.py <mid>` báo `device 'serial' not found`. | Rớt cáp USB phần cứng. Script không thể đọc Security Code hoặc duyệt Google Prompt trên S7. Báo cáo kiểm tra cắm lại cáp USB. |
 | **5. DEVICE_BUSY** | Tồn tại `machine_<mid>.lock.json` (ví dụ `gmail_reg_v10.py`). | Máy bận tác vụ ưu tiên khác. Hệ thống sẽ tự động đăng nhập khi máy hoàn tất ca và giải phóng device lock. |
+| **6. POLICY_EXCLUDED_KHOALEE** | Mail hoặc recovery chứa `khoale`/`khoalee`. Script báo `SKIPPED_KHOALEE`. | **TUÂN THỦ TUYỆT ĐỐI.** Farm Safety Policy loại trừ 100% để chống đụng checkpoint nguy hiểm trên tài khoản có liên kết khoalee. Không tự ý bypass. |
 
 ---
 
@@ -34,3 +35,11 @@ Khi nuôi GPM Gmail báo `NEEDS_LOGIN` (do Preflight Cookie Guard phát hiện t
 Khi kiểm tra ảnh chụp màn hình lỗi đăng nhập (`debug_screenshots/oauth_*`):
 - Đường dẫn truyền vào `-imgPath` của `ocr_boxes.ps1` **bắt buộc chuẩn hóa dấu gạch chéo ngược (`\`)**: `path.replace('/', '\\')`. Nếu truyền `/`, WinRT `GetFileFromPathAsync` sẽ ném ngoại lệ `AggregateException`.
 - Tạo receipt kiểm chứng qua `run_winrt_ocr.py` để đính kèm bằng chứng OCR hợp lệ trước khi gửi `MEDIA:<path>`.
+
+---
+
+## 4. Nurture Verification Timing & State Recovery Caveat
+- **Bẫy Timeout Foreground 60s:** Script nuôi `cron_gpm_gmail_nurture.py` chạy tác vụ xem YouTube thực tế từ 90s - 120s (Smart Ad Skip & human scroll). Nếu Coordinator chạy lệnh foreground với `timeout <= 60s`, tiến trình sẽ bị ngắt giữa chừng (Exit 124) trước khi kịp ghi nhận `status: success` vào state file, mặc dù session Google thực tế đã được cứu sống hoàn toàn.
+- **Quy trình nghiệm thu chuẩn 2 bước:**
+  1. Chạy `run_oauth_s7_pipeline.py <email> --login-only` (chạy nhanh 15-25s): Xác nhận URL hạ cánh `myaccount.google.com` hoặc `gds.google.com` và event `login_only_success`.
+  2. Kiểm tra ảnh nghiệm thu `debug_screenshots/nurture_<email>.png` qua WinRT OCR: Xác nhận giao diện YouTube/News có thanh điều hướng hoặc nút `+ Create` (chứng minh session cookie đã sống trên profile GPM), thay vì chạy lệnh nuôi cưỡng bức quá dài gây timeout.

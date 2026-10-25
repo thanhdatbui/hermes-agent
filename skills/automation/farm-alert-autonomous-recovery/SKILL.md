@@ -7,13 +7,13 @@ description: >-
 
 # Farm Alert Autonomous Recovery
 
-> Core Refs: `references/closed-loop-auto-repair-architecture-and-emitter-coalescing.md`, `references/omniroute-connection-pin-and-anti-finally-bypass.md`, `references/watchdog-manifest-and-detector-replay.md`, `references/focus-device-issue-cold-start-and-systemui-relaunch-20261020.md`, `references/canary-receipt-expiry-and-safe-push-pre-commit.md`, `references/recovery-proof-and-operator-closeout.md`, `references/anti-performative-alert-handling-and-immediate-code-fix.md`, `references/batch-alert-upload-hook-post-verification-false-positive-triage.md`, `references/admin-remote-fast-artifact-sync-via-onedrive.md`, `references/strike-3-reviewer-handoff-and-claude-quota-collision.md`, `references/cross-session-reconcile-audit-and-dashboard-cache.md`.
+> Core Refs: `references/closed-loop-auto-repair-architecture-and-emitter-coalescing.md`, `references/omniroute-connection-pin-and-anti-finally-bypass.md`, `references/watchdog-manifest-and-detector-replay.md`, `references/focus-device-issue-cold-start-and-systemui-relaunch-20261020.md`, `references/canary-receipt-expiry-and-safe-push-pre-commit.md`, `references/recovery-proof-and-operator-closeout.md`, `references/anti-performative-alert-handling-and-immediate-code-fix.md`, `references/batch-alert-upload-hook-post-verification-false-positive-triage.md`, `references/admin-remote-fast-artifact-sync-via-onedrive.md`, `references/strike-3-reviewer-handoff-and-claude-quota-collision.md`, `references/cross-session-reconcile-audit-and-dashboard-cache.md`, `references/pool-health-watchdog-triage-and-oauth-payload-inspection.md`.
 
 ## UI evidence: target screen only
 
 > Ref: `references/report-routing-and-workbook-shape-20261011.md`.
-- User duyệt hiện trường qua `MEDIA:<path>`. CẤM gửi ảnh màn hình Home/Launcher Android làm bằng chứng sau teardown/khi lỗi.
-- Bắt buộc chụp ảnh in-app thực tế (Profile, Settings, Popup, Dialog, Switcher) TRƯỚC KHI teardown.
+- User duyệt hiện trường qua `MEDIA:<path>`. CẤM gửi ảnh Home/Launcher làm bằng chứng sau teardown/khi lỗi.
+- Bắt buộc chụp ảnh in-app thực tế (Profile/Settings/Popup/Switcher) TRƯỚC KHI teardown.
 
 ## 🛑 TRIAGE LỖI CÁP VẬT LÝ ADB (CM_PROB_PHANTOM)
 - Khi nhận alert máy offline / `[01_open]` mà ADB báo `device not found` hoặc `offline`:
