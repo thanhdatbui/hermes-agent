@@ -7,7 +7,7 @@ description: >-
 
 # Farm Alert Autonomous Recovery
 
-> Core Refs: `references/closed-loop-auto-repair-architecture-and-emitter-coalescing.md`, `references/omniroute-connection-pin-and-anti-finally-bypass.md`, `references/watchdog-manifest-and-detector-replay.md`, `references/focus-device-issue-cold-start-and-systemui-relaunch-20261020.md`, `references/canary-receipt-expiry-and-safe-push-pre-commit.md`, `references/recovery-proof-and-operator-closeout.md`, `references/anti-performative-alert-handling-and-immediate-code-fix.md`, `references/batch-alert-upload-hook-post-verification-false-positive-triage.md`, `references/strike-3-reviewer-handoff-and-claude-quota-collision.md`, `references/pool-health-watchdog-triage-and-oauth-payload-inspection.md`, `references/missing-account-switcher-vs-auto-login-fail-closed.md`.
+> Core Refs: `references/closed-loop-auto-repair-architecture-and-emitter-coalescing.md`, `references/omniroute-connection-pin-and-anti-finally-bypass.md`, `references/watchdog-manifest-and-detector-replay.md`, `references/focus-device-issue-cold-start-and-systemui-relaunch-20261020.md`, `references/canary-receipt-expiry-and-safe-push-pre-commit.md`, `references/recovery-proof-and-operator-closeout.md`, `references/anti-performative-alert-handling-and-immediate-code-fix.md`, `references/batch-alert-upload-hook-post-verification-false-positive-triage.md`, `references/strike-3-reviewer-handoff-and-claude-quota-collision.md`, `references/pool-health-watchdog-triage-and-oauth-payload-inspection.md`, `references/missing-account-switcher-vs-auto-login-fail-closed.md`, `references/follow-watchdog-reconcile-multi-row-and-timeout-salvage.md`.
 
 ## UI evidence: target screen only
 

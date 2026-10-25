@@ -69,16 +69,20 @@
 
 ---
 
-## 6. Lỗi Kiến Trúc Watchdog: Commit State Sớm (At-Most-Once Hazard) & Thiếu Retry Tầng Hermes Scheduler
+## 6. Giải Pháp Kiến Trúc: Two-Phase Commit & Auto-Retry Giữa Watchdog và Hermes Scheduler
 - **Cơ chế phân phối stdout của Hermes Cron:**
   * Script chạy chế độ `no_agent: True`: Script hoàn tất -> in stdout -> Scheduler dùng `httpx` POST payload sang API Telegram.
   * Nếu gặp lỗi mạng tạm thời (`httpx.ProxyError: Host unreachable`), Hermes chỉ ghi nhận `last_delivery_error` trên object của job trong `jobs.json`, **hoàn toàn không có hàng đợi retry (delivery queue)**.
-- **Điểm yếu Commit State trước trong script watchdog:**
-  * Script watchdog (`feed_session_watchdog.py`) thường ghi đè `feed_session_reported.json` (tick session đã báo cáo) **trước khi in stdout hoặc trước khi tầng mạng xác nhận giao hàng**.
+- **Điểm yếu Commit State trước trong script watchdog cũ:**
+  * Script watchdog (`feed_session_watchdog.py`) từng ghi đè `feed_session_reported.json` (tick session đã báo cáo) **trước khi in stdout hoặc trước khi tầng mạng xác nhận giao hàng**.
   * Hậu quả: Giao hàng thất bại 1 lần duy nhất $\rightarrow$ lần tick 5 phút sau script đọc file state thấy key đã tồn tại $\rightarrow$ script trả về stdout rỗng (silent) $\rightarrow$ Hermes không phát tin nữa $\rightarrow$ **Báo cáo biến mất vĩnh viễn vào hố đen**.
-- **Kỷ luật khắc phục & Thiết kế chuẩn:**
-  1. *Khi sự cố xảy ra:* Coordinator/Operator đối soát `jobs.json` tìm `last_delivery_error`, sau đó xóa session key tương ứng trong `feed_session_reported.json` để kích hoạt bắn bù.
-  2. *Thiết kế Watchdog chuẩn (At-Least-Once Delivery):* Tích hợp cơ chế phát tin trực tiếp với retry 3 lần kèm backoff bên trong script Python, CHỈ persist state vào file json khi HTTP status code trả về 200 OK.
+- **Cơ chế Giao Tin 2 Pha (Two-Phase Commit & Auto-Retry) chuẩn hóa:**
+  1. *Pha 1 (Pending Claim):* Khi có báo cáo mới, watchdog lưu vào khối `"pending_delivery"` gồm `session_key` và `message`, **TUYỆT ĐỐI CHƯA tick vào `reported_sessions`**, sau đó mới in `message` ra stdout.
+  2. *Pha 2 (Hermes Telemetry Verification):* Ở lượt quét kế tiếp:
+     * Watchdog kiểm tra `jobs.json` (`_get_hermes_delivery_error(mode)`).
+     * **Nếu phát hiện `last_delivery_error`:** Watchdog giữ nguyên pending state, tự động in lại nội dung cũ (`print(pending['message'])`) để Hermes kích hoạt retry gửi lại Telegram ngay lập tức!
+     * **Chỉ khi `last_delivery_error is None`:** Watchdog mới chính thức chuyển `session_key` vào `reported_sessions` và dọn sạch `pending_delivery`.
+  3. *Khôi phục khẩn cấp thủ công:* Nếu cần ép gửi lại một session đã lỡ bị tick trước đó: xóa session key khỏi `reported_sessions` trong `feed_session_reported.json` rồi kích hoạt lại watchdog.
 
 ---
 

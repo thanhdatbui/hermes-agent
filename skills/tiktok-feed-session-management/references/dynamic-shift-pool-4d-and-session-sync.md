@@ -79,3 +79,8 @@ Khi rơi vào ca/ngày dưỡng sinh, `resolve_shift_pool_account` raise `ValueE
 7. **Cạm bẫy Line Budget Gate của `feed_session_watchdog.py` (`<= 1450` dòng):**
    - Bộ test kiến trúc `tests/test_watchdog_architecture_gate.py::test_feed_session_watchdog_line_budget` kiểm soát chặt chẽ độ dài `feed_session_watchdog.py <= 1450` dòng.
    - Khi chèn thêm logic/hook (ví dụ `incident_emitter`), BẮT BUỘC phải nén gọn các cấu trúc tĩnh (như list-dict `CLUSTERS` trên 1 dòng) hoặc loại bỏ dòng trống dư thừa để không vi phạm kiến trúc gate.
+8. **Kiến Trúc Two-Phase Commit & Auto-Retry Giao Tin Telegram (`feed_session_watchdog.py`):**
+   - **Vấn đề:** Hermes scheduler chạy `no_agent: True` không có hàng đợi retry khi gặp lỗi mạng tạm thời (`httpx.ProxyError: Host unreachable`). Nếu script watchdog commit state trước khi Hermes gửi tin thành công, báo cáo phiên nuôi sẽ biến mất vĩnh viễn (do các tick sau script im lặng).
+   - **Giải pháp Two-Phase Commit:**
+     * *Pha 1 (Pending Claim):* Khi có report mới, lưu vào `pending_delivery: {"session_key": ..., "message": ...}`, chưa commit vào `reported_sessions`, rồi in stdout.
+     * *Pha 2 (Hermes Telemetry Verification):* Ở tick kế tiếp, đọc `jobs.json` của Hermes (`_get_hermes_delivery_error(mode)`). Nếu có `last_delivery_error`, tự động re-emit `pending["message"]` để Hermes retry ngay. Chỉ khi `last_delivery_error is None`, mới chuyển `session_key` vào `reported_sessions` và dọn `pending_delivery`.
