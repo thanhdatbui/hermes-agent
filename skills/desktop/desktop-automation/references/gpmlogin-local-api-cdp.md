@@ -137,3 +137,24 @@ def drive_profile_cdp(remote_debugging_address: str, task_fn):
   - When inspecting web accounts (e.g. ChatGPT) through residential/mobile proxies, Cloudflare WAF may block requests with HTTP 403, empty DOM (`document.body.innerText == ''`), or WebSocket timeouts.
   - *Rule:* Only classify accounts as `DEAD_DEACTIVATED` upon finding unequivocal deactivation strings (e.g. `account_deactivated`, `đã bị xóa hoặc vô hiệu hóa`). Any network/WAF/proxy timeout MUST be classified as `UNKNOWN` to prevent destructive purges of live user accounts.
 
+## ChatGPT Account Health Audit & Purge Pipeline (`login_audit_and_purge_deactivated.py`)
+- **Script Location & Canonical Invocations:**
+  - Tool script: `D:/Taadaa/tools/login_audit_and_purge_deactivated.py`.
+  - Batch limit execution: `pythonw D:/Taadaa/tools/login_audit_and_purge_deactivated.py --limit 5` (safe 5-account chunk).
+  - Canary mode: `--canary` (2 accounts); Single target: `--email <target_email>`.
+- **Headless Execution & Console Window Guard (`CONSOLE_WINDOW_BLOCKED`):**
+  - Running bare `python ...` in cron or guarded worker sessions triggers `[CONSOLE_WINDOW_BLOCKED]` to protect full-screen games/graphics apps from popping console windows (`conhost.exe`).
+  - *Fix:* Always invoke via `pythonw` or use detached execution with `creationflags=subprocess.CREATE_NO_WINDOW` (`0x08000000`).
+- **Worker Delegation Contract Requirements:**
+  - When delegating audit tasks to a Worker subagent, Coordinator dispatch rules enforce:
+    1. Integer budget <= 8 calls: `BUDGET: <= 8 calls` (investigate tasks > 8 calls fail closed with `INVESTIGATE_BUDGET_EXCEEDED`).
+    2. Mandatory Fail-Fast: Must include `FAIL_FAST: NẾU trong <= 3 iterations đầu nhận thấy GPM API (19995) không truy cập được hoặc lỗi môi trường thì PHẢI DỪNG NGAY (ABORT)...`.
+- **Artifacts & Lifecycle State Paths:**
+  - State file: `D:/Taadaa/runtime/chatgpt_account_lifecycle.json` (maps email to `LIVE`, `DEAD_DEACTIVATED`, or `UNKNOWN`).
+  - Audit trail (NDJSON): `D:/Taadaa/logs/chatgpt_audit_trail.jsonl`.
+  - Batch report: `D:/Taadaa/reports/chatgpt_lifecycle_report.json`.
+  - Visual proof: `D:/Taadaa/runtime/artifacts/deactivated_<safe_email>.png`.
+- **OmniRoute / 9Router Re-OAuth Token Sync:**
+  - Live session detection (`New chat`, `Cuộc trò chuyện mới`) extracts `__Secure-next-auth.session-token` cookie via CDP `Network.getCookies` and synchronizes to OmniRoute (`127.0.0.1:20129`) and Router (`127.0.0.1:20128`).
+  - Dead accounts trigger automatic removal from OmniRoute SQLite DB (`storage.sqlite`).
+
