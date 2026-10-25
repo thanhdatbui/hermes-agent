@@ -37,10 +37,12 @@ Ensure the account has been onboarded to the target GCP project:
 
 ### Step 3: Preserving Native Agent Tools vs External Proxy
 - **Strict Invariant:** Do not bypass native CLI agent capabilities by blindly replacing the CLI with an external Chat Completions proxy (e.g., routing everything through a central OpenAI-compatible endpoint). The CLI agent needs its workspace awareness, AST parsing, and native tool execution.
-- **Local Loopback Adapter Pattern:**
-  - Spin up a lightweight local loopback proxy scoped strictly to the CLI process.
-  - Intercept outgoing HTTP/Protobuf requests to the generate endpoint (`v1internal:streamGenerateContent`).
-  - Transparently inject `enabled_credit_types: [1]` (`GOOGLE_ONE_AI`) into the request body before forwarding to the profile's upstream proxy.
+- **Local Loopback Adapter Pattern (`CLOUD_CODE_URL` Discovery):**
+  - `agy.exe` checks the environment variable `CLOUD_CODE_URL` (logged as: `Overriding CloudCodeServerURL via CLOUD_CODE_URL environment variable: %q`).
+  - Spin up a lightweight local loopback proxy (`D:/Taadaa/tools/ag_credit_proxy.py`) via `start_credit_proxy(upstream_proxy=...)` bound to `127.0.0.1:<port>`.
+  - Set `env["CLOUD_CODE_URL"] = f"http://127.0.0.1:{port}"` for the `agy.exe` subprocess.
+  - **CRITICAL:** Unset `HTTP_PROXY`, `HTTPS_PROXY`, `http_proxy`, `https_proxy` in `agy.exe`'s environment so it connects directly to `127.0.0.1` without sending local loopback traffic through the upstream proxy.
+  - The local proxy intercepts `v1internal:streamGenerateContent`, injects `enabledCreditTypes: ["GOOGLE_ONE_AI"]` and `project: "aicode-consumers"`, and forwards upstream via `urllib.request` using the profile's upstream proxy (`upstream_proxy`).
   - Upstream backend deducts from the 1,500 req/day Google One Pro credit balance instead of hitting the 50 req/day Free Tier cap.
 
 ## 4. Key Pitfalls

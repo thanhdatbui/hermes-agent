@@ -63,3 +63,28 @@ Tài khoản kể cả đã có trong `omniroute_success` bắt buộc phải re
    ```bash
    pytest "D:/Taadaa/GPM auto/tests/test_post_evening_gpm_login_watchdog.py" -v
    ```
+
+---
+
+## 5. Bẫy Chặn Mù "khoale" vs Bản Chất Tài Khoản Clean_v2 (Chỉ Dùng TOTP 2FA)
+
+### A. Sự nhầm lẫn giữa "Phối hợp S7" và "Login GPM thuần túy":
+- Khi tài khoản văng session, Agent hay ngộ nhận: *"Phải cắm máy Samsung S7 (Máy 07) để bấm xác minh 'Có' hoặc lấy mã bảo mật 10 số"*.
+- **Thực tế:** Các tài khoản thuộc phân loại **`clean_v2`** đã được cấu hình:
+  * **Đã tắt hoàn toàn Google Prompt (Lời nhắc của Google).**
+  * Google **KHÔNG BAO GIỜ** gửi popup "Có/Không" hay đòi mở thiết bị S7 khi đăng nhập từ GPM.
+  * Phương thức 2FA duy nhất được Google yêu cầu là **Mã 6 chữ số từ ứng dụng Authenticator (TOTP)**.
+  * Vì `totp_secret` đã có sẵn trong Master Excel / database, script trên PC tự động tính toán mã 6 số qua `pyotp.TOTP(totp_secret).now()` trong 0.01 giây và điền thẳng vào form.
+  * **Hệ quả kỹ thuật:** Quá trình đăng nhập GPM cho tài khoản `clean_v2` diễn ra **100% độc lập trên PC**, không cần thiết bị S7 online, không chiếm ADB, không cần màn hình S7 sáng.
+
+### B. Bẫy loại trừ cứng `khoale` (False-Positive Blacklist):
+- Trong `run_oauth_s7_pipeline.py` và `post_evening_gpm_login_watchdog.py` tồn tại logic:
+  ```python
+  if "khoale" in recovery.lower() or "khoale" in email.lower():
+      return SKIPPED_KHOALEE
+  ```
+- **Hậu quả:** 51 tài khoản Farm S7 có recovery email là `khoaleemagic@gmail.com` (ví dụ `lamngocdiep030420000304@gmail.com`) bị bỏ qua vĩnh viễn dù có đầy đủ `password` và `totp_secret` sạch.
+- **Quy tắc điều phối chuẩn:**
+  * Chỉ loại trừ khi `email` chính chủ là tài khoản cá nhân.
+  * Với các tài khoản farm vệ tinh có recovery `khoaleemagic` nhưng đã có `totp_secret` hợp lệ và thuộc diện `clean_v2`: Ưu tiên sử dụng nhánh login thuần TOTP trên GPM thay vì chặn cứng dẫn tới acc bị bỏ rơi (orphaned).
+

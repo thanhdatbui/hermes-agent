@@ -34,16 +34,22 @@
      `D:` đầy $\rightarrow$ `G:` báo hết dung lượng $\rightarrow$ Không copy được lên `G:` $\rightarrow$ Script không xóa file nào trên `D:` $\rightarrow$ `D:` vĩnh viễn kẹt ở 0 MB $\rightarrow$ Downloader và mọi tiến trình ghi đều chết đứng.
 
 ## 4. Các Phương Án Giải Phóng Dung Lượng & Phá Vỡ Deadlock
-1. **Mồi dung lượng trống khẩn cấp (Bootstrap Free Space):**
+1. **Lỗi `p.name in rendered` bỏ sót video thô `> 45`:**
+   - Trong script dọn dẹp `sync_and_clean_gdrive.py`, điều kiện `if p.name in rendered and g_p.is_file()` vô tình bỏ sót các video gốc số lớn (từ `46.mp4` đến `65.mp4`) do render chỉ chạy đến clip 45. Các clip này dù đã được `robocopy` đẩy lên GDrive đầy đủ nhưng không bao giờ bị xóa ở local, tích tụ 50–70 GB rác ngầm.
+   - **Xử lý nhanh:** Với các folder đã render đủ $\ge 45$ clip, đối soát trực tiếp file `*.mp4` trên GDrive (`$gi.Length -eq $_.Length`), nếu khớp kích thước thì xóa thẳng local không cần qua robocopy hay lọc `p.name in rendered`.
+2. **Chiến lược Phân tầng Kho Render (Tiered Render Storage - Giữ 1..20, Đẩy 21..45 lên Cloud):**
+   - Kho `D:\TIKTOK-videonuoinick-admin` chiếm hơn 620 GB. Do farm chỉ upload 1 clip/ngày và các máy hiện mới ở clip 1..6 (tối đa 10), các clip từ 21..45 phải 1-2 tháng nữa mới dùng đến.
+   - Đẩy các clip từ `21.mp4..45.mp4` lên `G:\My Drive\video_render_backup\{f_vid}` và giữ lại `1.mp4..20.mp4` tại local giải phóng ngay 300–350 GB đĩa D mà không làm gián đoạn upload của farm.
+3. **Mồi dung lượng trống khẩn cấp (Bootstrap Free Space):**
    - Google Drive và cron dọn dẹp cần tối thiểu 20–30 GB đệm trên ổ `D:` để ghi cache tạm khi upload.
    - Cắt tỉa clip render dư thừa (`> 45` clip/folder trong `D:\TIKTOK-videonuoinick-admin`), dọn dẹp video gốc đã được đồng bộ an toàn lên Cloud, hoặc truncate log nặng. TUYỆT ĐỐI CẤM tự tiện xóa thư mục game `D:\x` của User.
    - Ngay khi `D:` có dung lượng trống, ổ `G:` sẽ tự động mở lại dung lượng ghi, `sync_and_clean_gdrive.py` sẽ hoạt động trơn tru trở lại.
-2. **Cắt tỉa clip render dư thừa:** Giữ tối đa 45 clip/folder trong `D:\TIKTOK-videonuoinick-admin`, xóa các clip từ `46.mp4` trở lên.
-3. **Truncate log:** Truncate các file log quá nặng trong `CodexRuntime` (`download_admin_p10.log`).
-4. **Kỷ luật Giám sát & Ngưỡng An Toàn (Safety Headroom Invariant):**
+4. **Cắt tỉa clip render dư thừa:** Giữ tối đa 45 clip/folder trong `D:\TIKTOK-videonuoinick-admin`, xóa các clip từ `46.mp4` trở lên.
+5. **Truncate log:** Truncate các file log quá nặng trong `CodexRuntime` (`download_admin_p10.log`).
+6. **Kỷ luật Giám sát & Ngưỡng An Toàn (Safety Headroom Invariant):**
    - Downloader trên Admin cần cơ chế dừng mềm / cảnh báo khi `FreeSpace(D:) < 30 GB` thay vì để tải kiệt quệ về 0 MB làm sập chuỗi tự động dọn dẹp.
 
-## 4. Tái Khởi Động Downloader Sau Khi Có Dung Lượng Trống
+## 5. Tái Khởi Động Downloader Sau Khi Có Dung Lượng Trống
 - Chạy script launch detached downloader qua SSH:
   ```bash
   python D:/Taadaa/tools/launch_admin_downloader.py
