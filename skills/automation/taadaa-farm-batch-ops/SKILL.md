@@ -56,6 +56,10 @@ tags: [tiktok, farm, batch, render, upload, resume, kibe]
 - **Kích hoạt Lại Toàn Diện Cào 40 Workers & Render Admin:**
   Khi cần kích hoạt cào 40 workers: `python D:/Taadaa/tools/admin_ssh.py "python C:/Users/Admin/run_admin_downloader_service.py"`.
   Khi cần kích hoạt render: `python D:/Taadaa/tools/admin_ssh.py "python C:/Users/Admin/launch_detached_admin_render.py"`.
+- **Thoát Kẹt Lệnh Terminal Nặng Qua One-Shot Cronjob:**
+  Khi tác vụ mạng LAN hoặc bảo trì chạy lâu vượt quá 60 giây và không thể chạy foreground hay background thông thường, sử dụng cronjob một lần với cờ no_agent để hệ thống chạy ngầm tự động và gửi kết quả về chat.
+- **Quy Chuẩn Cờ Ẩn Cửa Sổ Tránh Lỗi Phân Tích AST:**
+  Khi chạy tiến trình con qua subprocess, cờ creationflags bắt buộc truyền trực tiếp hằng số subprocess.CREATE_NO_WINDOW. Tuyệt đối không dùng getattr động vì bộ phân tích AST sẽ không nhận diện được cờ, dẫn tới việc chặn runner an toàn.
 
 ## 4. Danh Mục Tham Khảo Chi Tiết
 - Google Drive Virtual Cache Deadlock & Cứu Hộ Ổ D: Admin Đầy 0 MB: [`references/gdrive-desktop-cache-deadlock-and-disk-full-remediation.md`](references/gdrive-desktop-cache-deadlock-and-disk-full-remediation.md)
