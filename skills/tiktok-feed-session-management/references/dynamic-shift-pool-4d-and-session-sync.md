@@ -127,6 +127,10 @@ Tuyệt đối không nhầm lẫn giữa 2 nhóm chỉ số trong 2 loại báo
 
 ### A. Report TikTok Lướt Nuôi Acc (`feed_session_watchdog` / `tiktok-feed-session-watchdog`):
 - **Mục tiêu tối thượng:** Cho User quan sát và kiểm chứng **Flow thiết kế** của ca nuôi (thuật toán Dynamic Feed có bốc đúng và đều các Row trong Pool hay không).
+- **Quy ước nhãn Watchdog `_row_or_pool_label` (Tránh hiểu lầm Fixed Row vs Dynamic):**
+  * Khi chạy Fixed Row (`row > 0`): Watchdog ghi thẳng `(Row <N>)` (ví dụ: `(Row 5)`).
+  * Khi chạy Dynamic Feed (`row == 0` / `effective_feed_row == 0`): Watchdog ghi nhãn Pool theo ca, gồm: Ca 1 `(Pool {1, 2, 7})`, Ca 2 `(Pool {3, 4, 8})`, Ca 3 `(Pool {5, 6})`.
+  * **Lưu ý vận hành (FAQ):** Khi thấy báo cáo `(Pool {5, 6})` và artifact `row-0-hhmmss`, hệ thống ĐANG CHẠY 100% DYNAMIC (Row 0), không phải fixed row. Nhãn `{5, 6}` phản ánh tập ứng viên mà thuật toán đang phân bổ xoay vòng trên từng máy trong ca tối.
 - **Yêu cầu hiển thị bắt buộc:** Thống kê **Tỉ lệ phân bổ Row trong Pool / Phiên** (ví dụ: `• Phân bổ Row trong Pool {3, 4, 8} (49 máy chạy): Row 8 (47 máy | 95.9%) | Row 4 (1 máy | 2.0%) | Row 7 (1 máy | 2.0%)`).
 - **Ý nghĩa vận hành:** Giúp phát hiện ngay việc lệch tải hoặc kẹt thuật toán (ví dụ: 96% máy dồn vào Row 8 thay vì chia đều cho Row 3, 4, 8 trong Pool).
 - **CẤM TUYỆT ĐỐI:** Không đưa các khái niệm "nhả follow", "thành công follow", hay "cooldown nhả" vào report nuôi acc, vì phiên lướt feed thuần túy không có hành động nhả follow.
