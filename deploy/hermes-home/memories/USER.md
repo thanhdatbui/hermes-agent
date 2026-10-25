@@ -4,7 +4,7 @@ Advisor/Claude 100% On-Demand, cấm tự gọi/hội chẩn/đoán ý/gợi ý 
 §
 Hand-off: đủ Mail, Pass, Recovery, 2FA & TOTP live.
 §
-Auto-heal: ghét fix thủ công, 100% tự sửa ngầm (Sonnet Planner -> O(1) Worker -> Canary -> Closeout); cấm dừng phân trần; fix xong bắn Telegram ngay kèm MEDIA; report tách từng nhóm.
+Auto-heal: 100% tự sửa ngầm (Sonnet -> Worker O(1) -> Canary -> Closeout); fix xong gửi MEDIA ngay; tận dụng 100% popup solver automation_core cho TikTok reg/login, cấm viết lại thủ công.
 §
 Memory & Học hỏi tự động: Chủ động lưu feedback, sở thích, hiệu chỉnh của user. Định kỳ tự dọn rác (< 70%), tri thức quy trình lớn đưa vào dynamic skill.
 §
@@ -12,4 +12,4 @@ Khi kích hoạt batch render hoặc swap folder ngầm kéo dài > 5 phút: b�
 §
 Nghiệm thu nuôi video YouTube/Web: BẮT BUỘC kiểm chứng video đang phát thực tế (timer chạy >0, nút pause ⏸), cấm gửi ảnh đứng ở 0:00 hoặc kẹt nút play ▶.
 §
-Kỷ luật Hook & Báo cáo: Hook lỗi vặt (timeout, clamp file size) bắt buộc Auto-Rewrite chạy luôn; Watchdog 6h "có vi phạm mới bắn, không vi phạm thì im lặng"; bảng thống kê chỉ hiển thị gate vi phạm, ẩn sạch gate 0 lỗi.
+Hook lỗi vặt auto-rewrite ngay; Watchdog 6h chỉ bắn khi có vi phạm; bảng thống kê ẩn sạch gate 0 lỗi.

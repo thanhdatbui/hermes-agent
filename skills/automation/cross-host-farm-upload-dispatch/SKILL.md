@@ -67,3 +67,4 @@ For a completed fix, record: target file and exact Gate 5/dispatch delta; compil
 - See `references/admin-downloader-disk-full-diagnosis.md` for diagnosing and remediating Admin downloader halts due to 0 MB disk space (`OSError: [Errno 28] No space left on device`).
 - See `references/cross-host-lan-transfer-and-guard-deadlock.md` for large-payload LAN transfer architecture (on-the-fly streaming, SSH reverse port forward), disk space volatility pre-transfer checks, and execution gate coordination.
 - See `references/cloud-media-decoupling-architecture.md` for decoupling stateless media scrapers and ffmpeg renderers off physical farm hosts onto cloud workers.
+- See `references/windows-openssh-breakaway-job-dispatch.md` for preventing remote child process termination on OpenSSH disconnect via CREATE_BREAKAWAY_FROM_JOB (0x01000008).
