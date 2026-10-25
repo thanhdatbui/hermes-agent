@@ -61,3 +61,33 @@ Báo cáo tuân thủ định kỳ 6h BẮT BUỘC phải tích hợp 2 phân h�
   dt = datetime.fromisoformat(clean_ts).replace(tzinfo=timezone.utc)
   ```
 - Quét linh hoạt qua các key timestamp: `timestamp_utc`, `timestamp`, `ts`, `time`, `created_at`.
+
+---
+
+## 4. Chi Tiết Triển Khai Thực Tế Trong `gate_compliance_watchdog.py`
+
+### 1. Bảng Ánh Xạ 8 Gate Cơ Giới Hóa Farm & Designated Log Source Isolation
+Để triệt tiêu lỗi regex đâm chéo giữa các nguồn log (ví dụ: `admin_ssh.jsonl` có `returncode: 1` bị tính nhầm vào Pre-Push Safe Guard G6), mỗi Gate bắt buộc gắn thuộc tính `source_file` cứng:
+- **G1 (Visual Evidence Gate):** `source_file="vision_receipts"` (quét `runtime/audit_logs/vision_receipts.jsonl` bắt HMAC-SHA256 OCR receipt).
+- **G2 (Planning Gate):** `source_file="dispatch_planner"` (quét `logs/dispatch_planner.jsonl` & kiểm tra thư mục `runtime/sol_plans/`).
+- **G3 (Worker Dispatch Gate):** `source_file="dispatch"` (quét `logs/dispatch.jsonl` bắt lỗi `TIMEOUT`, `QUOTA`, `NO_DIFF`).
+- **G4 (Invariant GuardGate):** `source_file="ledger"` (quét `tools/guardgate/ledger.jsonl` bắt các invariant Case 161/162).
+- **G5 (Closeout Reviewer Gate):** `source_file="gate_audit"` (quét `logs/gate_audit.jsonl` kèm bộ lọc Remediation Loop).
+- **G6 (Pre-Push Safe Guard):** `source_file="safe_push_audit"` (quét `logs/safe_push_audit.jsonl` bắt các lần chặn push lậu).
+- **G7 (Anti-Scan & Terminal Guard):** `source_file="guard_scan_audit"` (quét `runtime/audit_logs/guard_scan_audit.jsonl` bắt `GUARD_SEARCH_FILES_ROOT`, `GUARD_DANGEROUS_ROOT`...).
+- **G8 (Cronjob Window Guard):** `source_file="console_block_audit"` (quét `runtime/audit_logs/console_block_audit.jsonl` bắt `CONSOLE_WINDOW`, `FARM_CONTRACT_INVALID`...).
+
+### 2. Bộ Lọc Remediation Loop Trên G5 (Closeout Reviewer)
+Gom nhóm theo `repo`: nếu một repo trong khung giờ quét có `verdict: APPROVED` sau các lần `REJECTED`, watchdog ghi nhận các lần reject đó là `remediation_hits`, gán `fail_hits = 0` và đánh giá trạng thái `PASS`. Chỉ tính `fail_hits > 0` khi repo bị reject nhưng bỏ dở không hề có `APPROVED` nào đi sau để giải quyết.
+
+### 3. Tự Động Xuất Khối Top Blocked Rules Cho Operator
+Hàm `evaluate()` tự động trích xuất các trường `rule_id`, `category` hoặc `reason` từ các event bị chặn, tổng hợp thành bảng xếp hạng Top 8 đưa vào `render_markdown()`:
+```text
+🔥 Top Quy Tắc Bị Chặn Nhiều Nhất (Cần Bổ Sung Guidance):
+1. `[Cronjob Window] CONSOLE_WINDOW`: 101 lần
+2. `[Cronjob Window] CRON_AGENT_POLICY`: 78 lần
+3. `[Cronjob Window] FARM_CONTRACT_INVALID`: 66 lần
+...
+💡 Actionable: Operator/Agent cập nhật guidance chi tiết cho các hook/rule trên để Agent biết đường làm nhanh hơn, giảm tiêu hao token.
+```
+

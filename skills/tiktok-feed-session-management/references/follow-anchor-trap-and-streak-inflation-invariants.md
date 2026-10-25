@@ -37,16 +37,20 @@ Trong hệ thống `tiktok-follow` (Mode 2 follow followers), có 97 nick bị k
 * **Éo follow được cái nào (`used == 0`): MỚI TÍNH LÀ STREAK LEO THANG:**
   - Vừa vào bấm phát đầu tiên đã bị từ chối ngay -> Nick đang bị TikTok gắn cờ chặn cứng ở mức 0.
   - Lúc này mới được tính là tái phạm fail streak:
-    - Streak 1: nghỉ 3 ngày.
-    - Streak 2: nghỉ 5 ngày.
-    - Streak 3: nghỉ 7 ngày.
-    - Streak >= 4: nghỉ 15 ngày (giam cách ly).
+    - **Streak 1 (Nhả lần đầu): CHỈ PHẠT 24H (1 NGÀY)** để xả cache! Tuyệt đối CẤM phạt 3 ngày.
+    - **Streak 2 (Tái phạm lần 2):** Nghỉ 5 ngày.
+    - **Streak 3 (Tái phạm lần 3):** Nghỉ 7 ngày.
+    - **Streak >= 4 (Tái phạm dai dẳng):** Nghỉ 15 ngày (giam cách ly kiểm điểm).
 * **Đã follow được ít nhất 1 cái (`used >= 1`): KHÔNG ĐƯỢC TÍNH ĐI TÙ:**
   - Nick đã chứng minh được năng lực bấm ăn và server TikTok đã nhận follow thật (1, 2, hay 5 cái). Việc đứt ở lượt sau thuần túy là **chạm trần phiên trong ngày (Ceiling Reached)**, KHÔNG PHẢI nick bị spam hay bị phế.
   - **Quy tắc bắt buộc:**
     1. `fail_streak = 0`: Xóa sạch chuỗi phạt, cấm leo thang streak.
     2. Bảo toàn hoàn toàn `is_graduated` và `probation_clean_days` (không tước cờ, không xóa công trạng tích lũy).
     3. Cooldown chỉ đúng **24 giờ** (`now_utc + 24 hours`), không giam phạt nhiều ngày.
+
+### 5. Kỷ Luật Dispatch Worker & Phục Hồi Cooldown
+* **Worker Governance:** Khi user cấu hình hoặc chỉ định Sol Worker (qua :20129), Coordinator BẮT BUỘC tôn trọng Sol Worker. CẤM TUYỆT ĐỐI tự ý đề xuất, hối thúc hay chuyển sang Claude Worker khi user không yêu cầu đích danh (Claude 100% On-Demand).
+* **Xả án Streak 1:** Bất kỳ đợt nhả lần đầu nào dính Streak 1 chỉ nhận cooldown 24h từ thời điểm fail, hết 24h tự động unblock mở cữ chạy tiếp theo.
 
 ---
 

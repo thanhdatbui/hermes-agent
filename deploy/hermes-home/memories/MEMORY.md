@@ -1,1 +1,1 @@
-Worker BẮT BUỘC qua dispatch_worker.py (Tier 1 Sol :20129 trước); CẤM gõ trực tiếp claude_worker.py (Exit 126 cơ học); cấm delegate_task sửa code.
+Follow TikTok: used >= 1 dính nhả = reset streak 0, phạt 24h, giữ probation/graduated; used == 0 mới tính streak, trong đó Streak 1 (nhả lần đầu) CHỈ phạt 24h (cấm phạt 3d). Worker mặc định dùng Sol (:20129), cấm tự ý gợi ý/ép dùng Claude worker khi user đang để Sol.
