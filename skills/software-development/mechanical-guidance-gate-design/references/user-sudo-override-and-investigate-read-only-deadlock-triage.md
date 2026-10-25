@@ -71,3 +71,33 @@ When Coordinator has exhausted the T1 session write budget (10 files / 500 lines
 - **Canonical Execution**: Use `python D:/Taadaa/tools/ag_cli.py fix --workdir <repo> --file <target> "<prompt>" --timeout 180`.
 - **Foreground Timeout Whitelist Advantage**: `ag_cli.py`, `dispatch_worker.py`, `sol_worker.py`, `claude_worker.py`, `sol_repair.py`, `closeout_gate.py`, and `pytest` are registered in `LONG_RUNNING_ALLOWLIST` inside `guard_broad_grep.py`. This permits up to 360s in foreground terminal calls (vs standard 60s hard ceiling), preventing false `GUARD_FOREGROUND_TIMEOUT_EXCEEDED` aborts.
 - **Worker Autonomy**: Running `ag_cli.py fix` utilizes the local multi-profile Antigravity pool (e.g. `acc_02` on `gemini-3.8-flash-medium`) to write/modify target code cleanly on disk, returning verified exit codes without Coordinator cowboy surgery or Read-Only Worker scope lock deadlock.
+
+---
+
+## 6. Reviewer Security Invariants for Sudo Authorization Modules
+When designing or auditing authorization/sudo bypass modules (e.g. `user_sudo.py`), the Closeout Gate Sol Auditor strictly enforces 5 security invariants (score failure if any is violated):
+1. **Dynamic Secret Key Generation (No Hardcoded Fallback)**:
+   - CẤM TUYỆT ĐỐI hardcode secret mặc định trong source code (`SECRET_KEY = os.environ.get(..., 'default_string')` là lỗ hổng nghiêm trọng vì kẻ tấn công có thể giả mạo chữ ký HMAC khi env var chưa set).
+   - **Chuẩn hóa**: Nếu `TAADAA_SUDO_SECRET` không có trong env, tự động đọc từ file cục bộ `D:/Taadaa/runtime/.sudo_secret`. Nếu file chưa tồn tại, tự sinh `secrets.token_hex(32)` và ghi xuống file với quyền hạn chế.
+2. **Strict Caller Session Binding**:
+   - `verify_and_consume_grant(session_id, ...)` BẮT BUỘC đối chiếu `grant.get('session_id') == session_id`.
+   - Chặn đứng trường hợp grant cấp cho session A bị session B lén tiêu thụ.
+3. **Exact Canonical Path Matching**:
+   - CẤM so khớp hậu tố bằng `.endswith()` hoặc `in` chuỗi (cho phép `/tmp/evil/worker.py` giả mạo `worker.py`).
+   - BẮT BUỘC so sánh chính xác canonical path: `Path(target_path).resolve() == Path(tf).resolve()`.
+4. **Strict Diff Ceiling Type & Range Validation**:
+   - Bắt buộc kiểm tra `isinstance(diff_lines, int) and 0 <= diff_lines <= 30`.
+   - Chặn đứng giá trị âm (`diff_lines = -1`) hoặc kiểu dữ liệu lạ bypass kiểm tra trần diff.
+5. **Fail-Visible Audit Logging**:
+   - CẤM nuốt lỗi audit bằng `except: pass`. Nếu ghi audit JSONL thất bại, bắt buộc xuất cảnh báo ra `sys.stderr` để bảo toàn khả năng truy vết (observability).
+
+---
+
+## 7. Closeout Remediation Escalation Chain (Sol -> Agy -> Claude Worker)
+Trong pha Closeout Remediation khi Gate REJECTED:
+- **First-Responder Monopoly**: `sol_repair.py` chạy trước tiên để sinh patch O(1).
+- **Fallback Worker Trigger**: Khi `sol_repair.py` timeout hoặc trả về `valid=False`:
+  - Thử Antigravity CLI Worker: `python D:/Taadaa/tools/ag_cli.py fix --workdir <repo> --file <target> "<prompt>" --timeout 180`.
+  - Nếu `ag_cli.py` timeout (do quét thư mục lớn hoặc profile pool cooldown):
+  - Kích hoạt ngay Claude Worker Tier 3 (On-Demand): `python D:/Taadaa/tools/claude_worker.py --role worker --workdir <repo> --file <target> --on-demand "<prompt>" --timeout 120`.
+  - Trong thực tế, Claude Worker (`claude-haiku-5-5`) hoàn thành việc áp patch chuẩn xác trong 37.5s, giải quyết triệt để các phát hiện bảo mật của Reviewer.
