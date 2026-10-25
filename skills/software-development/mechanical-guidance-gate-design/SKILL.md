@@ -10,6 +10,7 @@ Use when creating, modifying, or reviewing mechanical enforcement gates (pre-too
 - Reference: `references/active-pivot-auto-rewire-architecture.md` (Tri-party consensus on Auto-Rewire vs Hard-Block, anti-paralysis invariants, and Sol Repair Monopoly findings).
 - Reference: `references/tri-party-auto-rewire-vs-guard-invariant-consensus.md` (Tri-party consensus on Auto-Rewire vs Guard Invariants, safe auto-repair vs policy bypass, and multi-session disjoint verification).
 - Reference: `references/idle-window-evaluation-bias-and-closeout-boundary-discipline.md` (Idle-window evaluation bias, Closeout Gate monopoly protection, and zero-block action mandate hierarchy).
+- Reference: `references/cowboy-coordinator-boundary-and-idle-evaluation-invariants.md` (Cowboy Coordinator Gate 3/6 boundary violations, idle-window evaluation bias, and zero hard-block hierarchy).
 
 ## 2. Core Standards (Tri-Party Consensus)
 

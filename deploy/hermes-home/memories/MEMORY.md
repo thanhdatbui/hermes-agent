@@ -13,3 +13,5 @@ Thang luân chuyển worker: Sol (Tier 1) -> Agy (Tier 2) -> Claude (Tier 3 on-d
 Triết lý Canary farm: Sửa/lỗi chỗ nào thì Canary nhắm trúng chỗ đó (Target-bound differential canary), cấm chạy generic full-flow bừa bãi. Các job/watchdog chạy cả ngày bắt buộc né khung giờ đệm trước/sau reboot máy để bảo toàn máy cho ca cron.
 §
 Triết lý Auto-Rewire & Zero-Block: Gate DENY là kích hoạt tự sửa ngầm (Auto-Rewire/Clamp/Pivot), cấm tuyệt đối Hard Block hay khóc lóc bại liệt đùn việc. Cấm đánh giá rào chắn ổn định bằng khung giờ ngủ đông/ít chat; phải đối soát theo tổng vi phạm all-time hoặc tỉ lệ/turn. Closeout Gate ổn định tự remediate 3-7p, cấm sửa tùy tiện.
+§
+Đánh giá tần suất lỗi / hook BẮT BUỘC đo theo tổng lịch sử hoặc chuẩn hóa theo turn chat thực tế; CẤM ngụy biện '0 lỗi' dựa vào khung giờ người dùng ít tương tác. Coordinator CẤM tự ý sửa code (Cowboy patch) bỏ qua Worker.
