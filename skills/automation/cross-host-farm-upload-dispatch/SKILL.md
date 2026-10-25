@@ -62,6 +62,7 @@ For a completed fix, record: target file and exact Gate 5/dispatch delta; compil
 
 ## Supporting detail
 
+- See `references/admin-rendered-video-tiering-and-gdrive-staging.md` for the Hybrid Local/Cloud Media Tiering architecture (hot buffer 1..20, cold staging 21..45 on GDrive 5TB), freeing 350-400GB on Admin, JIT hydration, and pause flag controls.
 - See `references/cross-host-admin-upload.md` for the Taadaa-specific command contract, observed false-alert chain, verification matrix, and standalone avatar upload launcher dispatch rules.
 - See `references/admin-remote-avatar-and-media-management.md` for Admin Remote ($M \ge 200$) storage formulas ($F_{src}, F_{vid}$), CodexRuntime Python execution via SSH base64, Haar cascade false-positive visual verification, and 2-tier lock enforcement.
 - See `references/admin-downloader-disk-full-diagnosis.md` for diagnosing and remediating Admin downloader halts due to 0 MB disk space (`OSError: [Errno 28] No space left on device`).

@@ -14,4 +14,4 @@ Tài khoản Gmail chuẩn clean_v2 đã tắt Google Prompt hoàn toàn chỉ d
 §
 Cron watchdog chạy batch (2FA, Gmail reg) BẮT BUỘC ghi nhận run_date độc lập với status success/fail; hàm already_ran cấm bọc điều kiện is_success để chống vòng lặp re-run spam Telegram khi có máy lỗi.
 §
-Tài khoản Google AI Pro lamngocdiep030420000304@gmail.com được phép đặc cách bỏ qua bộ lọc an toàn khoale/khoaleemagic trong các pipeline GPM/OAuth.
+Admin farm: Downloader kiểm soát bằng cờ downloader_pause.flag tránh tràn đĩa. Kho render Admin phân tầng: local giữ clip 1..20, clip >=21 đẩy GDrive giải phóng ~350GB.

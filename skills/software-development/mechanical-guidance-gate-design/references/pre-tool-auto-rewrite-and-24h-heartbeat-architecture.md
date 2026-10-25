@@ -63,3 +63,18 @@ with CronRun("script_name", force_report="--force" in sys.argv) as run:
 ```
 - Khi `NOMINAL` và không có `--force`: Ghi state file `NOMINAL`, trả stdout rỗng -> Hermes Scheduler tự động im lặng, không spam Telegram.
 - Khi `ANOMALY`: Ghi state file `ANOMALY`, in báo cáo ra stdout -> Hermes Scheduler tự động bắn alert về kênh chỉ định.
+
+### Pitfalls & Bài Học Thực Chiến
+1. **Xử lý `sys.exit(0)` trong `CronRun.__exit__` (`is_clean_exit`):**
+   - Các script cron cũ thường kết thúc bằng `sys.exit(0)`. Trong Python, `sys.exit()` tung ngoại lệ `SystemExit`.
+   - Nếu `__exit__` chỉ bắt `if exc_type is not None:`, nó sẽ coi `SystemExit(0)` là lỗi crash `UNHANDLED_EXCEPTION (P0)`.
+   - **Bắt buộc phân biệt:**
+     ```python
+     is_clean_exit = exc_type is not None and issubclass(exc_type, SystemExit) and (exc_val is None or getattr(exc_val, "code", 0) == 0)
+     if exc_type is not None and not is_clean_exit:
+         # Ghi nhận UNHANDLED_EXCEPTION
+     ```
+2. **Lịch Heartbeat 09:00 Sáng VN (02:00 UTC):**
+   - Scheduler chạy theo múi giờ máy chủ cục bộ (Windows local time). Lịch chuẩn cho Heartbeat là `0 9 * * *` (09:00 sáng VN / 02:00 UTC), đến đúng đầu giờ làm việc sau khi các ca rạng sáng đã hoàn tất.
+3. **Mô hình `set_report(msg)` kết hợp `force_report`:**
+   - Thay vì in trực tiếp ra stdout, script gọi `run.set_report(msg)`. Nếu bình thường thì `msg` được giấu kín (chống spam); khi có anomaly hoặc khi người dùng chạy tay với `--force`, `msg` mới được bung ra.
