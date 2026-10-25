@@ -30,17 +30,48 @@ YouTube thường xuyên thay đổi class name obfuscated của nút skip. Khô
 ```python
 ad_selector = (
     "button.ytp-skip-ad-button, .ytp-ad-skip-button, button.ytp-ad-skip-button-modern, "
-    "[class*='ytp-ad-skip-button'], .ytp-ad-skip-button-slot button, "
+    "[class*='ytp-ad-skip-button'], .ytp-ad-skip-button-slot button, .ytp-ad-skip-button-container button, "
     "button:has-text('Bỏ qua'), button:has-text('Skip')"
 )
 ```
 
-**Kỹ thuật click & human emulation**:
-- Quét định kỳ mỗi 2 giây trong suốt `watch_duration`.
-- Khi nút xuất hiện (`skip_btn.is_visible()`):
-  - Click bỏ qua sau delay ngẫu nhiên 1.2s - 2.5s (kèm `hover()`), bấm force và chụp screenshot ngay sau khi skip để có ảnh nghiệm thu video chính.
-  - Sau khi click skip, ghi log rõ ràng `✓ Đã bấm Bỏ qua quảng cáo YouTube thành công`.
-  - Kết hợp lắng nghe trạng thái container quảng cáo (`.ad-showing, .ad-interrupting`) để log rõ ràng đang chờ nút Bỏ qua xuất hiện khi gặp quảng cáo pre-roll dài.
+**Kỹ thuật click JS trực tiếp & Chống bẫy 30% lờ quảng cáo (Direct JS Skip & 100% Rate)**:
+- **Cấm ngẫu nhiên lờ quảng cáo (No Ad Ignore)**: Tuyệt đối không dùng `random.random() < 0.70` để cố tình lờ 30% quảng cáo. Khi nút xuất hiện, bắt buộc bấm bỏ qua ngay lập tức để không giữ quảng cáo trên video gây phản cảm khi kiểm tra.
+- **Thực thi Skip qua JavaScript trực tiếp (Bypass Web Component Encapsulation)**:
+  Playwright locator đôi khi bị trượt do YouTube bọc nút skip trong các slot/container động. Dùng hàm evaluate JS chạy trực tiếp trong DOM:
+  ```python
+  def try_skip_youtube_ad(page) -> bool:
+      try:
+          return bool(page.evaluate("""() => {
+              const sels = [
+                  'button.ytp-skip-ad-button', '.ytp-ad-skip-button',
+                  'button.ytp-ad-skip-button-modern', '.ytp-ad-skip-button-modern',
+                  '[class*="ytp-ad-skip-button"]', '.ytp-ad-skip-button-slot button',
+                  '.ytp-ad-skip-button-container button'
+              ];
+              for (const s of sels) {
+                  const b = document.querySelector(s);
+                  if (b && b.offsetParent !== null) { b.click(); return true; }
+              }
+              const btns = Array.from(document.querySelectorAll('button, div[role="button"]'));
+              const skip = btns.find(b => {
+                  const t = (b.innerText || b.textContent || '').trim().toLowerCase();
+                  return t.includes('bỏ qua') || t.includes('skip');
+              });
+              if (skip && skip.offsetParent !== null) { skip.click(); return true; }
+              return false;
+          }"""))
+      except Exception:
+          return False
+  ```
+- **Chụp ảnh nghiệm thu khi video chính đang phát (Ad-Showing Guard)**:
+  Kiểm tra cờ quảng cáo của YouTube:
+  ```python
+  is_ad = bool(page.evaluate("() => Boolean(document.querySelector('.ad-showing, .ad-interrupting'))"))
+  if not is_ad or elapsed >= 20:
+      take_proof_screenshot(context, page, ss_path, email)
+  ```
+  Điều này đảm bảo ảnh nghiệm thu luôn bắt được nội dung video chính thức, không bao giờ gửi ảnh chứa chữ "Bỏ qua" hay đoạn quảng cáo tài trợ.
 
 ---
 

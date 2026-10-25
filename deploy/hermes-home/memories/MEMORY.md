@@ -7,3 +7,5 @@ Khi nhận cảnh báo pool degraded/error, cấm chỉ báo cáo cô lập is_a
 Khi pool OmniRoute (ChatGPT-Web/Codex) lỗi: BẮT BUỘC đối soát proxy_registry (credentials port) và test trực tiếp /api/providers/{cid}/test trước khi kết luận; token còn sống phải bật is_active=1 ngay thay vì chỉ thụ động cô lập.
 §
 Cơ chế nuôi TikTok Dynamic theo Ca: Ca 1 {1,2,7}, Ca 2 {3,4,8}, Ca 3 {5,6}+Row Động. Bốc tuần tự theo độ khỏe: Khỏe -> Đề xuất -> Hồi phục 2 -> Hồi phục 1 -> Nhả -> Yếu, chạy hết pool mới quay vòng để đi đủ 8 nick/máy. Cooldown follow 48h chỉ tính khi nick đã từng follow; fail-closed khi lỗi file state và bắt buộc báo cáo lỗi lên watchdog.
+§
+Watchdog đối soát TikTok Web (SQLite snapshots) BẮT BUỘC đối chiếu theo Account ID / Username thay vì Row máy; runner khi gặp timeout BẮT BUỘC salvage follow từ state file thay vì gán 0.
