@@ -51,3 +51,15 @@ Tài khoản kể cả đã có trong `omniroute_success` bắt buộc phải re
 
 ### C. Fallback cho Cron Nuôi (`cron_gpm_gmail_nurture.py`):
 - Cho phép nuôi bổ sung các profile có email nằm trong danh sách Active của OmniRoute hoặc có session cookie Google sống, không phụ thuộc cứng 100% vào trường `GroupId` tĩnh trong DB.
+
+---
+
+## 4. Hiện thực hoá & Kiểm chứng Unit Test (Verified Artifacts 2026-10-25)
+Đã thi công hoàn chỉnh trên `D:/Taadaa/GPM auto/scripts/post_evening_gpm_login_watchdog.py` và kiểm chứng qua `tests/test_post_evening_gpm_login_watchdog.py`:
+1. `_get_pool_telemetry_failures()`: Trích xuất tự động danh sách failure từ `D:/Taadaa/chatgpt_web_pool_telemetry.json`.
+2. `_get_gpm_profiles_with_google_session()`: Tự động chạy `UPDATE profiles SET GroupId = 10` cho các profile có `cnt >= 2` cookies `SID/SSID/HSID` nhưng `GroupId != 10`.
+3. `get_candidates()`: Nhận diện `is_lost_session = True` và ưu tiên `priority = 1` cho cả 3 trường hợp: nurture báo mất session, telemetry báo lỗi OAuth timeout, hoặc OmniRoute active nhưng GPM profile rỗng cookie Google.
+4. **Pytest Verification (3/3 Passed Offline < 1s)**:
+   ```bash
+   pytest "D:/Taadaa/GPM auto/tests/test_post_evening_gpm_login_watchdog.py" -v
+   ```

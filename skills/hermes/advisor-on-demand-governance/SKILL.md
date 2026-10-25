@@ -49,6 +49,22 @@ _ADVISOR_EXPLICIT_TRIGGERS = (
 
   {"isActive": true, "testStatus": "active"}
   ```
+- **OmniRoute ChatGPT-Web & Sol Worker Pool Rescue Protocol (Cứu Pool Sol / ChatGPT-Web)**:
+  * **Hiện tượng nghẽn**: Khi combo `gpt-web-sol` bị timeout, ngắt kết nối (`[499] Request aborted`), hoặc các tài khoản bị cô lập với trạng thái `banned` do Sentinel/Turnstile tạm thời.
+  * **Bẫy kiểm tra đồng thời (High Concurrency Rate-Limit Trap)**: Khi gửi test tới toàn bộ connections trong pool, TUYỆT ĐỐI CẤM chạy concurrency cao (`max_workers >= 8` gây nghẽn proxy MobiProxy/MikroTik và làm OmniRoute trả về HTTP 500 hàng loạt). BẮT BUỘC dùng concurrency thấp (`max_workers=2`) hoặc chạy tuần tự có sleep 0.2s–0.3s.
+  * **Quy trình cứu hộ khép kín (Autonomous Pool Healer)**:
+    1. Lấy danh sách connections từ `GET http://127.0.0.1:20129/api/providers`.
+    2. Gửi test liveness qua `POST http://127.0.0.1:20129/api/providers/{cid}/test` (kèm payload rỗng `b"{}"`).
+    3. Nếu `valid is True` nhưng `isActive is False`: Lập tức gọi `PUT http://127.0.0.1:20129/api/providers/{cid}` với payload `{"isActive": true}`.
+    4. Ngay lập tức toàn bộ tài khoản bị cô lập oan sẽ được hồi sinh về trạng thái ACTIVE (100% sống), khôi phục độ trễ phản hồi của `gpt-web-sol` về < 15 giây.
+- **Kỷ Luật Thang Leo Thang Worker Khi Sol Gặp Lỗi Mạng (Sol Timeout -> Tier 2 Agy CLI)**:
+  * Khi User giao việc sửa code ("thi công đi"): Coordinator CẤM tuyệt đối việc tự ý cowboy patch trong session chính.
+  * Soạn sẵn Patch Contract O(1) vào file prompt.
+  * Nếu Tier 1 (Sol Worker / `dispatch_worker.py`) gặp lỗi TRANSIENT (stream timeout hoặc ngắt kết nối): CẤM đóng băng và CẤM tự sửa code. BẮT BUỘC kích hoạt ngay **Tier 2 (Antigravity CLI - `ag_cli.py fix`)**:
+    ```bash
+    python "D:/Taadaa/tools/ag_cli.py" fix --workdir <repo> --file <target_file> "$(cat <prompt_file>)"
+    ```
+  * Agy CLI sẽ sử dụng pool Antigravity (29 profiles 100% quota) thực thi dứt điểm code delta và tạo test suite focused kiểm chứng offline < 10s.
 - **403 QR Validation Boundary (Google Account vs ChatGPT)**:
   * 403 QR Validation xảy ra với **Google Account** (phải mở GPM quét QR bằng camera điện thoại thật), **hoàn toàn KHÔNG liên quan tới ChatGPT hay OpenAI Web accounts**.
   * Không nhầm lẫn hoặc gắn mác lỗi 403 QR cho ChatGPT Web pool.

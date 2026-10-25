@@ -32,6 +32,23 @@ Khi người dùng chơi game thi đấu (**Warcraft III / TFT**), máy bị gi�
 
 ---
 
+## 4. Cạm Bẫy Chẩn Đoán Khi User Báo "Đã Thoát Game Sao Không Tự Resume Render?"
+- **Triệu chứng:** Người dùng đã đóng trận TFT/War3, nhưng báo rằng render worker không chịu chạy lại (không thấy ffmpeg trong task manager, số clip không tăng).
+- **Nguyên nhân gốc rễ (False Standby / Disk Full Crash):**
+  1. Worker THỰC CHẤT ĐÃ RESUME và đang gọi `ffmpeg`.
+  2. Tuy nhiên, ổ `D:` Admin bị cạn kiệt dung lượng (`Free = 0 Byte` do downloader 40 workers cào video gốc dồn đống).
+  3. Mỗi lần spawn `ffmpeg` hoặc mở file ghi, hệ điều hành trả về `ERROR: [Errno 28] No space left on device` sau đúng 1–2 giây.
+  4. Worker chỉ bắt mã lỗi returncode 2, ghi log `[WARN]` rồi nhảy sang folder kế tiếp. Trong vòng vài chục giây, worker quét qua hàng chục folder mà không có tiến trình `ffmpeg` nào tồn tại lâu dài, khiến người dùng tưởng worker bị đơ hoặc Game Guard không nhả.
+- **Quy trình kiểm tra & xử lý:**
+  1. BẮT BUỘC kiểm tra dung lượng ổ đĩa trước tiên: `Get-PSDrive D`.
+  2. Đọc 40 dòng cuối log worker: `Get-Content C:\Users\Admin\admin_render_worker.log -Tail 40` để kiểm tra có xuất hiện `Errno 28` hay không.
+  3. Nếu đĩa D chạm đáy 0 Byte:
+     - Tạm dừng supervisor downloader (`run_admin_downloader_service.py`) và tiến trình cào con `download_by_niche.py`. Lưu ý Task Scheduler có task `Taadaa_Admin_Downloader_15m` tự bật lại mỗi 15m.
+     - Giải phóng đĩa tức thì: Xóa video gốc của các folder đã có đủ $\ge 45$ clip thành phẩm.
+     - Sau khi có buffer đĩa (>= 15–20 GB), worker render sẽ tự động chạy mượt mà trở lại.
+
+---
+
 ## 3. Deployment & Command Line Limits
 - Khi deploy cập nhật code từ xa qua `admin_ssh.py`, chú ý giới hạn độ dài dòng lệnh của Windows (8191 ký tự).
 - Không nhồi toàn bộ code python thô dạng base64 nếu vượt quá giới hạn.
