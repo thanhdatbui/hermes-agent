@@ -43,3 +43,19 @@ Khi kiểm tra ảnh chụp màn hình lỗi đăng nhập (`debug_screenshots/o
 - **Quy trình nghiệm thu chuẩn 2 bước:**
   1. Chạy `run_oauth_s7_pipeline.py <email> --login-only` (chạy nhanh 15-25s): Xác nhận URL hạ cánh `myaccount.google.com` hoặc `gds.google.com` và event `login_only_success`.
   2. Kiểm tra ảnh nghiệm thu `debug_screenshots/nurture_<email>.png` qua WinRT OCR: Xác nhận giao diện YouTube/News có thanh điều hướng hoặc nút `+ Create` (chứng minh session cookie đã sống trên profile GPM), thay vì chạy lệnh nuôi cưỡng bức quá dài gây timeout.
+
+---
+
+## 5. Phân biệt Google AI Pro vs Free Tier trên OmniRoute (:20129) & Bẫy Nhầm Lẫn Tên Tương Tự
+### Cơ chế xác thực gói Pro vs Free trên OmniRoute
+Khi User thắc mắc hoặc yêu cầu kiểm tra xem một tài khoản lỗi có phải là tài khoản có gói **Google AI Pro** hay không:
+1. **Truy vấn thực tế endpoint OmniRoute (`:20129`):**
+   * Gọi `GET http://127.0.0.1:20129/api/providers` và đọc trường `providerSpecificData` của connection:
+     - **Google AI Pro (Paid Tier):** `tier: "g1-pro-tier"`, `plan: "Pro"` hoặc `subscriptionTier: "Google AI Pro"`. Được nạp độc quyền vào combo **`ag-gemini-pool-3`** (Pool 29-30 accounts Gemini 3.8 Flash Pro cache-optimized).
+     - **Free Tier (Antigravity Starter Quota):** `tier: "free-tier"`, `plan: "Antigravity starter quota"` hoặc `subscriptionTier: "Antigravity Starter Quota"`. Được nạp vào combo **`ag-gemini-free-pool`** (Pool 97+ accounts Free).
+2. **Bẫy nhầm lẫn tên tài khoản tương tự (Phonetic / Spelling Trap):**
+   * Các tài khoản có tiền tố giống nhau rất dễ gây hiểu nhầm lẫn nhau trong vận hành farm:
+     - `luunhu290719@gmail.com` (Lưu Như - Máy 19): Thuộc **Free-Tier** (`Antigravity Starter Quota`), trước đây chỉ dùng chạy tải nhẹ/ChatGPT Web. Khi nick này bị Hard Phone Checkpoint, **hoàn toàn không ảnh hưởng tới hạn ngạch Gemini Pro**.
+     - `luuhuong28022000@gmail.com` (Lưu Hường - Máy 18): Tài khoản **Google AI Pro xịn** (`g1-pro-tier`, ID: `ag-gemini-pro-24-e1e88b66`), đang Active 100% trong combo `ag-gemini-pool-3`.
+   * **Kỷ luật điều phối:** TUYỆT ĐỐI KHÔNG đoán mò hay kết luận vội vã. Bắt buộc tra cứu trực tiếp qua OmniRoute API hoặc combo `ag-gemini-pool-3` để đưa ra câu trả lời dựa trên bằng chứng dữ liệu thời gian thực.
+
