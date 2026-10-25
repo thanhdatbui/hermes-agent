@@ -13,3 +13,5 @@ Thang luân chuyển worker tự động: Sol (Tier 1) -> Agy (Tier 2) -> Claude
 Tài khoản Gmail chuẩn clean_v2 đã tắt Google Prompt hoàn toàn chỉ dùng 2FA TOTP: login GPM 100% trên PC qua pyotp, không cần ADB hay máy S7; cấm chặn nhầm acc farm có recovery khoaleemagic khi đã có totp_secret.
 §
 Cron watchdog chạy batch (2FA, Gmail reg) BẮT BUỘC ghi nhận run_date độc lập với status success/fail; hàm already_ran cấm bọc điều kiện is_success để chống vòng lặp re-run spam Telegram khi có máy lỗi.
+§
+Tài khoản Google AI Pro lamngocdiep030420000304@gmail.com được phép đặc cách bỏ qua bộ lọc an toàn khoale/khoaleemagic trong các pipeline GPM/OAuth.
