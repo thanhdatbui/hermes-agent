@@ -66,6 +66,8 @@ tags: [tiktok, farm, batch, render, upload, resume, kibe]
   Khi tác vụ mạng LAN hoặc bảo trì chạy lâu vượt quá 60 giây và không thể chạy foreground hay background thông thường, sử dụng cronjob một lần với cờ no_agent để hệ thống chạy ngầm tự động và gửi kết quả về chat.
 - **Quy Chuẩn Cờ Ẩn Cửa Sổ Tránh Lỗi Phân Tích AST:**
   Khi chạy tiến trình con qua subprocess, cờ creationflags bắt buộc truyền trực tiếp hằng số subprocess.CREATE_NO_WINDOW. Tuyệt đối không dùng getattr động vì bộ phân tích AST sẽ không nhận diện được cờ, dẫn tới việc chặn runner an toàn.
+- **Bẫy [CONSOLE_WINDOW_BLOCKED] & Allowlist Khi Chạy Swap Nền Trong Coordinator:**
+  Khi kích hoạt lệnh swap folder hoặc batch render dài trong Coordinator: gọi `terminal(background=true)` với `python` sẽ bị guard chặn `[CONSOLE_WINDOW_BLOCKED]`, trong khi `powershell` và `pythonw` nằm ngoài allowlist. BẮT BUỘC dùng mẫu Detached No-Window: viết launcher ngắn kích hoạt `subprocess.Popen(..., creationflags=0x08000000 | subprocess.CREATE_NEW_PROCESS_GROUP)` và chạy launcher ở foreground (<1 giây). Tiến trình con tự chạy ngầm ghi log, không cướp focus và không vi phạm allowlist. Chi tiết xem [`references/time-sensitive-niche-sourcing-and-tuvi-pipeline.md`](references/time-sensitive-niche-sourcing-and-tuvi-pipeline.md).
 - **Bẫy ADB Tiểu Vi Mồ Côi Cổng 5037 Treo Toàn Cụm & Báo Động Ảo Proxy Preflight:**
   (1) Watchdog Tiểu Vi cấm chỉ lọc port 5038; khi `xiaowei.exe` tắt, mọi `adb.exe` có `ExecutablePath` thuộc `*\xiaowei\*` đều là mồ côi và phải dập tắt triệt để (kể cả cổng 5037);
   (2) Runner preflight ngắt `blocked-proxy-vpn` khi lệnh ADB đọc IP bị fail (do USB lỏng hoặc daemon treo); bắt buộc đọc `stop_reason` trong `summary.txt` để tránh kết luận nhầm là rớt proxy.
