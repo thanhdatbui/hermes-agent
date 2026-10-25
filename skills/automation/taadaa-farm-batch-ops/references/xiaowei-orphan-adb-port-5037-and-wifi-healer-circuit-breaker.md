@@ -27,6 +27,8 @@
    }
    ```
 2. **Dọn sạch khi Tiểu Vi tắt**: Khi `is_xiaowei_running()` trả về `False`, bất kỳ `adb.exe` nào thuộc thư mục `*\xiaowei\*` đều phải bị tiêu diệt dứt điểm (qua `kill-server` và CIM fallback) để trả lại cổng 5037 cho Farm.
+3. **Giới hạn phạm vi `_try_kill_server()` (Sol Auditor Invariant)**: `_try_kill_server()` chỉ được gọi `[XIAOWEI_ADB_BIN, "-P", "5038", "kill-server"]`, tuyệt đối KHÔNG gọi `kill-server` mặc định (không có `-P 5038`) vì sẽ làm sập ADB daemon cổng 5037 chính của Farm. Việc dọn tiến trình mồ côi Tiểu Vi ở các cổng khác hoặc không có port bắt buộc để `_try_cim_terminate()` xử lý an toàn theo `ExecutablePath`.
+4. **Tránh xung đột phiên bản ADB (Protocol Fault - Connection Reset)**: Tiểu Vi dùng ADB v34 (`C:\Program Files (x86)\xiaowei\tools\adb.exe`), trong khi GemPhoneFarm dùng ADB v35 (`C:\Users\Kibe\.GemPhoneFarm\app\adb-tool\adb.exe`). Mọi script kiểm tra (`inspect_machine.py`, runner) bắt buộc ưu tiên binary v35 của GemPhoneFarm trước; nếu trỏ nhầm client v34 vào daemon v35 sẽ văng lỗi `protocol fault (couldn't read status): connection reset`.
 
 ---
 
