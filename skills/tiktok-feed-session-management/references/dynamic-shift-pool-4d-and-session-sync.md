@@ -72,3 +72,10 @@ Khi rơi vào ca/ngày dưỡng sinh, `resolve_shift_pool_account` raise `ValueE
      3. Kích hoạt đồng bộ runtime ngay lập tức:
         `python "D:/Taadaa/Hermes/deploy/hermes-home/scripts/cron_sync_watchdog.py" --force`
      4. Chạy kiểm chứng dry-run/simulation `_determine_row()` và `_get_machines_for_row(0)` để đảm bảo `effective_feed_row == 0` được kích hoạt.
+6. **Cạm bẫy `run-feed-session.ps1` cấm kết hợp `-LocalRun` với `-Machines`:**
+   - Khi `tiktok_runner.py` gọi pre-session device gate để lọc `healthy_machines`, nó truyền cả `-LocalRun` và `-Machines`.
+   - Nếu `run-feed-session.ps1` giữ guard cũ `if ($LocalRun -and $Machines) { throw ... }`, toàn bộ phiên spawn từ runner sẽ văng lỗi.
+   - Sửa chuẩn: Cho phép `-LocalRun` kết hợp `-Machines`, lọc mảng máy tìm thấy từ workbook row theo tập `[int]$m` được truyền vào.
+7. **Cạm bẫy Line Budget Gate của `feed_session_watchdog.py` (`<= 1450` dòng):**
+   - Bộ test kiến trúc `tests/test_watchdog_architecture_gate.py::test_feed_session_watchdog_line_budget` kiểm soát chặt chẽ độ dài `feed_session_watchdog.py <= 1450` dòng.
+   - Khi chèn thêm logic/hook (ví dụ `incident_emitter`), BẮT BUỘC phải nén gọn các cấu trúc tĩnh (như list-dict `CLUSTERS` trên 1 dòng) hoặc loại bỏ dòng trống dư thừa để không vi phạm kiến trúc gate.
