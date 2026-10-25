@@ -60,5 +60,19 @@ Trước đây hệ thống bị lỗi nghiêm trọng do nhập nhằng giữa 
    - Trong `_is_account_follow_cooldown()`: Tôn trọng tuyệt đối `cooldown_until_at` / `cooldown_until_date` từ state. Khi `streak <= 1`, `streak_days = 1`, cho phép nick đi follow ngay khi hết mốc 24h thay vì tự ý ép phạt 3/5/7 ngày.
 3. **Tại Dashboard (`D:/Taadaa/tools/follow_health_helper.py`):**
    - Đối chiếu trực tiếp `cooldown_until_at` với `now` để phân loại trạng thái Cooldown; cấm dùng cờ `follow_failed` đơn thuần làm tiêu chí ném nick vào `🔴 Cooldown`.
-4. **Xả án tồn dư (`D:/Taadaa/tools/reconcile_all_streak_cooldowns.py`):**
+4. **Xả án tồn dư & Điểm mù lọc (`reconcile_all_streak_cooldowns.py` & `reconcile_unfair_streaks.py`):**
    - Đồng bộ toàn bộ các file state trên farm để xả án ngay lập tức cho các nick đã hết hạn cooldown 24h (Streak 1), 3 ngày (Streak 2), 5 ngày (Streak 3).
+   - **Điểm mù cần tránh:** 
+     + `reconcile_all_streak_cooldowns.py` bỏ qua `Streak >= 4` (15 ngày cooldown).
+     + `reconcile_unfair_streaks.py` có điều kiện lọc `total_followed >= 10`, khiến các nick mới hoặc nick chưa từng được bot ghi nhận follow thành công (`len(followed) < 10`) bị loại khỏi diện giải cứu và tiếp tục kẹt oan tới tháng 11/2026.
+
+---
+
+### 6. Đối Soát Ground Truth Khi Nghi Ngờ Án Oan Cooldown (S4)
+1. **Kiểm tra chỉ số thực tế trên TikTok (Ground Truth):**
+   - Đối chiếu số lượng **"Đã follow" (Following)** thật của tài khoản với `fail_streak` và `len(followed)` trong state.
+   - Nếu tài khoản có video view organic tốt, tim cao, được tag `🔥 ĐỀ XUẤT`, và đặc biệt **mới follow rất ít người (1–2 lượt follow)** nhưng bị gán `fail_streak >= 4`: **Xác định 100% là án oan do bug lạm phát streak cũ**.
+2. **Quy trình xả án O(1) cho file state (`follow_state_<m>_row_<t>.json`):**
+   - Xóa bỏ: `cooldown_until_date`, `cooldown_until_at`, `follow_failed_date`, `last_cooldown_decision`.
+   - Đặt lại: `fail_streak: 0`, `follow_failed: false`, `probation_clean_days: 1`.
+   - Dashboard lập tức chuyển từ `🔴 Cooldown (S4)` sang `🟡 Hồi phục 2`, đưa nick về trạng thái an toàn để tiếp tục chu trình nuôi dưỡng.
