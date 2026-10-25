@@ -308,10 +308,25 @@ Khi user hỏi "Kiểm tra payload mỗi request của t hiện nay. Có bị nh
 ### 2. Bản chất lỗi "Cloudflare HTTP 413: Payload Too Large":
 - **Web Proxy (ChatGPT Web / GPM Web):** Đi qua Cloudflare WAF bảo vệ web app. Cloudflare và upstream web server có trần cứng HTTP body (~1MB). Khi lịch sử chat tích tụ hoặc prompt chứa tool context nặng, gói tin vượt trần → Cloudflare chặn họng trả về **HTTP 413 (Payload Too Large)**.
 - **Native API Endpoints (Google Antigravity, OpenAI direct, Anthropic direct):** KHÔNG bị trần Cloudflare web giới hạn. Gemini hỗ trợ 1.000.000 tokens và Claude 200.000 tokens. Request 82k hay 259k tokens vẫn trả về 200 OK bình thường trong 7s–10s.
-- **Khuyến nghị vận hành khi user lo lắng bị nhồi:**
+- Khuyến nghị vận hành khi user lo lắng bị nhồi:
   - Không lo lắng về System Prompt hay Tool Schemas (khung chuẩn 24k tokens).
   - Giải phóng lịch sử bằng `/new` ngay sau khi hoàn thành một chủ đề lớn để đưa request về lại ~24k tokens ban đầu.
   - Hạn chế để tool foreground dump log thô dài hàng nghìn dòng vào context.
+
+### 3. Đối soát Định lượng Payload Thực tế & Triệt tiêu Trùng lặp Hệ Thống (Audit 25/10/2026)
+
+Khi user yêu cầu kiểm tra trực tiếp log request lên OmniRoute (`C:\Users\Kibe\.omniroute\call_logs\`):
+- **Phân bổ tải thực tế (Turn mở đầu):**
+  - **System Prompt:** ~16.4k chars (~4.1k tokens).
+  - **Tools Definitions (28 tools):** 61.1k chars JSON (~14.5k tokens).
+  - **Base Overhead cố định:** ~18k - 19k tokens/turn.
+- **3 Điểm nghẽn Trùng lặp & Rác schema phát hiện tại hiện trường:**
+  1. *Tools Schema "Chết"*: `execute_code` (1.7k chars schema) bị Coordinator Guard chặn cứng (`COORDINATOR GUARD - EXECUTE_CODE DISABLED`) nhưng vẫn serialize schema gửi sang LLM mỗi turn. Cần disable hẳn toolset hoặc gỡ schema khỏi coordinator profile.
+  2. *Bẫy trùng lặp Memory ↔ User Profile*: Memory (98% trần) và User Profile (96% trần) bị duplicate 100% các khối thông tin: Shift Pool 4d 3 ca, reboot né TFT/War3, quy chuẩn Bio/Tên TikTok, tracking vận đơn Shopee, và rule auto-heal. Cần dọn User Profile về đúng persona, chuyển quy trình farm sang Dynamic Skills O(1).
+  3. *Trùng lặp Invariants trong System Prompt*: Chi tiết ngân sách O(1) L2 Emergency Surgery (<=2 files, <=30 dòng, 1 test focused, cấm đụng config/tools) và Circuit Breaker bị lặp lại từng câu chữ ở cả "Thang leo thang khi kẹt" và "6 Gates điều phối".
+- **Bài học từ Case Study `everything-everywhere-for-antigravity` (Kitchen-sink Anti-pattern):**
+  - Gom tĩnh 346 skills root + 325 skills plugins (11.440 files) nhồi vào session gây ngộ độc token (14k-18k tokens mô tả/turn), loãng chú ý (Attention Dilution), khiến model "fix lỗi này lòi lỗi khác" (local reasoning bị phá vỡ).
+  - Khẳng định tính ưu việt của Dynamic Skill Routing O(1): chỉ bốc đúng 3-5 skills theo intent query, giữ system prompt tinh gọn.
 
 ## Cross-session interference & Multi-session lag diagnosis
 
@@ -535,3 +550,4 @@ Khi user chat hàng loạt session song song và thấy phản hồi chậm (h�
 - `references/telegram-send-failover-and-omniroute-sqlite-tuning.md` — Chi tiết kiến trúc Multi-ISP Send Failover (WARP/Viettel Proxy ↔ FPT Direct), quy trình dọn dẹp SQLite/WAL định kỳ chống treo luồng Node.js và bảng phân giải context_length/ngưỡng nén thực tế (01/10/2026).
 - `references/scheduled-reboot-and-session-preservation-triage.md` — Quy trình triage Auto-Reboot 3 ca (05:20, 11:20, 17:20), cơ chế bảo toàn session in-flight và phân biệt hiện tượng khựng shutdown sạch vs crash sập nguồn (19/10/2026).
 - `references/dynamic-skill-routing-o1-against-context-bloat-20261022.md` — Giải pháp Dynamic Skill & Error Routing O(1) chống Context Bloat và [SKILL_PRUNED] cho 190+ skills, cơ chế fail-closed pinned invariants, và bài học Operator chấn chỉnh bệnh nịnh bợ flip-flop (22/10/2026).
+- `references/payload-and-schema-audit-20261025.md` — Báo cáo đối soát định lượng payload thực tế từ call log OmniRoute, bóc tách 18.6k tokens base overhead, dead schema `execute_code`, trùng lặp Memory ↔ User Profile và case study kitchen-sink anti-pattern (25/10/2026).
