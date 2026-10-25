@@ -21,14 +21,14 @@ Hướng dẫn đối soát và xử lý khi nhận cảnh báo tiến độ upl
 1. **Chạy trực tiếp canonical audit script (CẤM dùng `python -c` subprocess):**
    * Guard Coordinator chặn `python -c` có subprocess/file cache hoặc scan đệ quy `Path()`. Chạy thẳng lệnh CLI có sẵn:
    ```bash
-   python D:/Taadaa/tools/audit_stale_upload_accounts.py --days 7 --critical-days 14
+   python D:/Taadaa/tools/audit_stale_upload_accounts.py --days 9 --critical-days 14
    ```
-   *(Lưu ý: Script trả exit code 1 khi phát hiện có tài khoản stale >14d — đây là exit contract cảnh báo hợp lệ, stdout chứa toàn bộ báo cáo tóm tắt sạch sẽ).*
-   * Nếu cần trích xuất và phân tích JSON mà không bị Guard chặn subprocess/scan:
+   *(Lưu ý: Ngưỡng mặc định đã được chuẩn hóa lên 9 ngày để bỏ qua độ trễ 1 ca nuôi 4 ngày. Script trả exit code 1 khi phát hiện có tài khoản stale >14d — đây là exit contract cảnh báo hợp lệ, stdout chứa toàn bộ báo cáo tóm tắt sạch sẽ).*
+   * Nếu cần phân tích danh sách Kibe vs Admin nhanh bằng Python O(1) mà không bị Guard Coordinator chặn subprocess/scan hoặc lỗi parse quote MSYS:
    ```bash
-   python D:/Taadaa/tools/audit_stale_upload_accounts.py --days 7 --critical-days 14 --json > %TEMP%/stale_audit.json
+   python -c 'import sys; sys.path.insert(0, "D:/Taadaa/tools"); from audit_stale_upload_accounts import audit_upload_freshness; res = audit_upload_freshness("D:/Taadaa/data/tiktok_tracker.db", 9, 14); crit = res["critical_stale"]; kibe = [x for x in crit if x.get("host")=="kibe"]; admin = [x for x in crit if x.get("host")=="admin"]; print("Total:", len(crit), "Kibe:", len(kibe), "Admin:", len(admin)); [print("M%s T%s: @%s (%svids, %sd)" % (x["machine"], x["slot"], x["username"], x["videos"], x["days_stale"])) for x in kibe]'
    ```
-   Sau đó đọc file bằng `python -c "import json; ..."` thuần túy (không gọi subprocess hay quét đĩa).
+   *(Tránh dùng f-string lồng ngoặc kép/backslash trong MSYS một dòng để không dính SyntaxError; tránh gọi subprocess bên trong `python -c` kẻo bị Coordinator Guard chặn).*
 2. **Đối soát DB SQLite thời gian thực (`D:/Taadaa/data/tiktok_tracker.db`):**
    * Schema: Bảng `farm_account_info` (`username`, `may`, `tik`, `host_id`) map với bảng `snapshots` (`username`, `video`, `timestamp`).
    * Truy vấn O(1) nhanh kiểm tra 8 slot của máy:
@@ -117,9 +117,9 @@ Khi một máy Kibe vật lý đang **ONLINE** nhưng chỉ có 1–2 nick/slot 
 Khi User nhận báo cáo `daily-stale-upload-accounts-watchdog` trên Telegram và phản hồi chưa hiểu ý nghĩa:
 1. **Giải mã 5 chỉ số cốt lõi bằng ngôn ngữ nghiệp vụ, không dùng thuật ngữ code thuần túy:**
    - **Tổng nick quản lý:** Toàn bộ slot nick được phân bổ trên 2 cụm máy Kibe (M1–M80) và Admin (M201–M280), mỗi máy 8 slot Tik.
-   - **Đang đăng đều (≤ 7 ngày):** Dàn nick khỏe mạnh, bot vẫn đẩy clip và view tăng đều đặn theo chu kỳ ca.
+   - **Đang đăng đều (≤ 9 ngày):** Dàn nick khỏe mạnh, bot vẫn đẩy clip và view tăng đều đặn theo chu kỳ ca (đã nâng ngưỡng lên 9 ngày để dung nạp trọn vẹn 1 ca nuôi 4 ngày).
    - **Nick mới warm-up (0 video):** Nick mới reg/mới tạo gần đây, đang trong giai đoạn ngâm dưỡng sinh (lướt feed thuần nuôi trust) chưa đăng clip đầu tiên.
-   - **Cảnh báo trễ (7 – 14 ngày):** Nick đã có video nhưng tạm thời không tăng thêm trong 1–2 tuần gần nhất (trúng nhịp hoán vị chu kỳ nuôi 4 ngày N1–N4, hoặc kho video nguồn của slot đó vừa hết đang chờ batch render).
+   - **Cảnh báo trễ (9 – 14 ngày):** Nick đã có video nhưng tạm thời không tăng thêm trong 9–14 ngày gần nhất (trúng nhịp hoán vị chu kỳ nuôi 4 ngày N1–N4, hoặc kho video nguồn của slot đó vừa hết đang chờ batch render).
    - **Nguy cơ đóng băng (> 14 ngày):** Nhóm bị đọng lâu nhất (> 20 ngày). BẮT BUỘC phân định rõ tỷ trọng:
      - *Nhóm Admin (~75–80%):* Đăng thử 1–2 clip rồi tạm dừng upload để tập trung render kho video gốc, nick đang ngâm dưỡng chờ nguồn, không phải lỗi.
      - *Nhóm Kibe (~20–25%):* Do phần cứng rớt USB (M10, M30), kẹt draft trap trong app TikTok, hoặc vướng lỗi script upload đã/đang được khắc phục.
