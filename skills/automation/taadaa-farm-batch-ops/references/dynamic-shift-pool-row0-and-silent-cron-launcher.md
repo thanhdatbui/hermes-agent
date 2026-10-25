@@ -86,15 +86,25 @@
 
 ---
 
-## 7. Cơ Chế Phân Bổ Dynamic Shift-Pool 4 Ngày (Biological Cycle) & Luồng Fallback Session 2
-- **Thuật toán Chu kỳ 4 ngày (`shift_pool_selector.py`):**
-  * Mốc gốc chuẩn: `_ANCHOR_ORDINAL = date(2026, 10, 11).toordinal()`.
-  * `total_days = today.toordinal() - _ANCHOR_ORDINAL`.
-  * `cycle_day = total_days % 4` (D0, D1, D2, D3), `cycle_idx = total_days // 4`.
-  * Phân bổ Pool theo ca:
-    * **Ca 1 (06:00 & 08:00):** Pool `{1, 2, 7}` (D0: Row 1, D1: Row 2, D2: Row 7, D3: 3-tier fallback).
-    * **Ca 2 (12:00 & 14:00):** Pool `{3, 4, 8}` (D0: Row 3, D1: Row 4, D2: Row 8, D3: 3-tier fallback).
-    * **Ca 3 (18:00 & 20:00):** Pool `{5, 6}` (D0: Row 5, D1: Row 6, D2 & D3: 3-tier fallback).
-- **Luật Đồng Bộ Session 2 Bám Session 1 & Fallback Cứu Hộ:**
-  * **Invariant:** Phiên 2 (Session 2) trong cùng ca BẮT BUỘC phải chạy đúng tài khoản/row mà Phiên 1 đã chọn (`today_sessions[ca_key][machine_key]`).
-  * **Luồng Cứu Hộ (Healing Fallback):** Nếu Phiên 1 bị huỷ/crash hoặc chạy bù trực tiếp ở Session 2 dẫn tới thiếu bản ghi Phiên 1, `resolve_shift_pool_account` sẽ raise `ValueError` $\rightarrow$ Hệ thống tự động chuyển sang `resolve_dynamic_account_for_machine` (Dynamic 3-Tier Healing Fallback), gắp tài khoản khả dụng theo điểm ưu tiên trên từng máy, đảm bảo phiên nuôi không bao giờ bị dừng đứng.
+## 7. Cơ Chế Phân Bổ Dynamic Shift-Pool 4 Ngày Chuẩn (4-Tier Funnel, Cooldown 48h Success-Only & Zero Follow Dưỡng Sinh)
+- **Ranh Giới Pool Cố Định Theo Từng Ca (Bất Biến):**
+  * 🌅 **Ca 1 (Sáng: 06:00 & 08:00):** Từng máy CHỈ ĐƯỢC CHỌN trong Pool **`{Row 1, Row 2, Row 7}`**.
+  * ☀️ **Ca 2 (Trưa: 12:00 & 14:00):** Từng máy CHỈ ĐƯỢC CHỌN trong Pool **`{Row 3, Row 4, Row 8}`**.
+  * 🌙 **Ca 3 (Tối: 18:00 & 20:00):** Từng máy CHỈ ĐƯỢC CHỌN trong **`{Row 5, Row 6} + 1 Row động`**.
+  * 🔒 **S2 bám S1 (100%):** Phiên 2 trong cùng ca luôn bám chặt và chạy đúng nick mà Phiên 1 của máy đó đã chọn.
+
+- **Thứ Tự Phễu Sức Khỏe 4 Tầng Khi Bốc Nick Trong Pool:**
+  1. 🚀 **Tầng 1 (Đề xuất):** Nick cắn đề xuất (`is_account_boosted`) $\to$ Ưu tiên số 1 để đăng video giữ đà.
+  2. 💪 **Tầng 2 (Nick khỏe):** Nick có chỉ số tương tác tốt, nhiều follow/tim, view đều đặn.
+  3. 🩹 **Tầng 3 (Dưỡng thương):** Nick bị TikTok nhả follow / dính cooldown follow $\to$ lướt feed xả phạt, làm ấm session để hồi phục.
+  4. 🌱 **Tầng 4 (Nick non):** Nick có số lượng video ít nhất $\to$ đăng video tích lũy nội dung.
+
+- **Luật Cooldown 48h Trong Nội Bộ Chu Kỳ (Chỉ Kích Hoạt Khi SUCCESS Thật):**
+  * **Chạy Thất bại / Lỗi / Timeout / Skip:** **TUYỆT ĐỐI KHÔNG DÍNH COOLDOWN**. Nick đề xuất hoặc nick khỏe nếu gặp sự cố hạ tầng (rớt USB, timeout, app kẹt) sẽ tiếp tục được ưu tiên bốc lại ở các ca/ngày kế tiếp cho đến khi đạt được **ít nhất 1 lần SUCCESS trọn vẹn trong chu kỳ**.
+  * **Chỉ khi SUCCESS thành công:** Lúc đó nick mới chính thức ăn Cooldown 48h trong nội bộ chu kỳ hiện tại, ép máy phải luân phiên sang các nick còn lại trong Pool, triệt tiêu việc cày dồn 1 nick.
+  * **Reset Cứng Khi Sang Chu Kỳ Mới (D0):** Cooldown 48h chỉ khoanh vùng trong nội bộ chu kỳ 4 ngày (`cycle_idx`). Khi bước sang Ngày 1 (D0) của chu kỳ mới, toàn bộ cờ cooldown được **xóa sạch 100% về 0** (kể cả nick vừa chạy ở Ca 3 Ngày 3 hoặc Ngày 4 dưỡng sinh thì sáng D0 vẫn sạch cờ và được ưu tiên chạy bình thường).
+
+- **Kỷ Luật Dưỡng Sinh (Ca 3 Ngày 3 & Toàn Bộ Ngày 4):**
+  * **Thời điểm:** Ca 3 tối Ngày 3 (D2) và toàn bộ các ca của Ngày 4 (D3).
+  * **Kỷ luật:** CHỈ lướt feed nuôi tài khoản + Đăng video giữ nhịp kênh.
+  * **NGẮT 100% MỌI THAO TÁC FOLLOW:** Tự động kích hoạt `rest_day_no_follow: true` (`TAADAA_REST_DAY_NO_FOLLOW=1`), tắt hoàn toàn follow chéo và follow tự nhiên để tài khoản được nghỉ ngơi dưỡng sinh, triệt tiêu rủi ro checkpoint/spam.

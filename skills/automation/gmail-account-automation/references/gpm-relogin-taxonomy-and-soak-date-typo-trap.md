@@ -22,8 +22,8 @@ Khi nuôi GPM Gmail báo `NEEDS_LOGIN` (do Preflight Cookie Guard phát hiện t
 
 | Nhóm lỗi | Biểu hiện qua bằng chứng (OCR / Telemetry / Locks) | Hành vi điều phối chuẩn |
 | :--- | :--- | :--- |
-| **1. WRONG_PASSWORD** | Nằm trong `oauth_pipeline_status.json` (`wrong_password_or_checkpoint`). | **CẤM thử lại tự động.** Script phải cách ly để tránh Google vô hiệu hóa tài khoản vĩnh viễn. Chờ User cập nhật pass đúng. |
-| **2. HARD_PHONE_CHECKPOINT** | WinRT OCR đọc thấy màn hình *"Xác minh thông tin để tiếp tục... Quét mã QR bằng điện thoại / SMS"*. | **FAIL-CLOSED.** Không thể auto-bypass bằng script nếu thiếu SIM/điện thoại quét QR. Giữ nguyên trạng thái báo cáo User. |
+| **1. WRONG_PASSWORD (Cần Đối Soát)** | Nằm trong `oauth_pipeline_status.json` (`wrong_password_or_checkpoint`). | **CẤM thử lại mù.** Tuy nhiên, KHÔNG ĐƯỢC coi là sự thật vĩnh viễn: cần đối soát lại Excel (`master_gmail_manager.xlsx`, `gmail_clean_v2.xlsx`) và 2FA Secret. Nếu Excel đã cập nhật mật khẩu chuẩn mới (e.g. `@Ks`) và có 2FA, chạy 1 probe `--login-only`. Nếu thành công, gỡ ngay khỏi blacklist. |
+| **2. HARD_PHONE_CHECKPOINT (SMS)** | WinRT OCR đọc thấy màn hình *"Xác minh thông tin để tiếp tục... Quét mã QR bằng điện thoại / SMS"*. | **Yêu cầu SMS xác minh.** Khi quét QR, Google đòi nhập số điện thoại bất kỳ để nhận mã SMS (`G-XXXXXX`). Google chấp nhận mọi SIM phụ/SIM rác chưa chạm limit 3-5 lần/tháng. Nếu không có SIM xác minh -> đưa vào `SMS_CHECKPOINT` trong `oauth_pipeline_status.json` để watchdog bỏ qua vĩnh viễn, tránh lặp vô ích. |
 | **3. AUDIO_RECAPTCHA_TIMEOUT** | WinRT OCR đọc thấy *"Nhấn vào nút PHÁT để nghe - Nhập nội dung bạn nghe thấy - Tôi không phải là người máy"*. | Thử thách bot check âm thanh bị nghẽn proxy/timeout. Giữ máy rảnh, đưa vào hàng đợi retry ở ca kế tiếp để hạ nhiệt IP. |
 | **4. ADB_DISCONNECTED** | `inspect_machine.py <mid>` báo `device 'serial' not found`. | Rớt cáp USB phần cứng. Script không thể đọc Security Code hoặc duyệt Google Prompt trên S7. Báo cáo kiểm tra cắm lại cáp USB. |
 | **5. DEVICE_BUSY** | Tồn tại `machine_<mid>.lock.json` (ví dụ `gmail_reg_v10.py`). | Máy bận tác vụ ưu tiên khác. Hệ thống sẽ tự động đăng nhập khi máy hoàn tất ca và giải phóng device lock. |
@@ -58,4 +58,24 @@ Khi User thắc mắc hoặc yêu cầu kiểm tra xem một tài khoản lỗi 
      - `luunhu290719@gmail.com` (Lưu Như - Máy 19): Thuộc **Free-Tier** (`Antigravity Starter Quota`), trước đây chỉ dùng chạy tải nhẹ/ChatGPT Web. Khi nick này bị Hard Phone Checkpoint, **hoàn toàn không ảnh hưởng tới hạn ngạch Gemini Pro**.
      - `luuhuong28022000@gmail.com` (Lưu Hường - Máy 18): Tài khoản **Google AI Pro xịn** (`g1-pro-tier`, ID: `ag-gemini-pro-24-e1e88b66`), đang Active 100% trong combo `ag-gemini-pool-3`.
    * **Kỷ luật điều phối:** TUYỆT ĐỐI KHÔNG đoán mò hay kết luận vội vã. Bắt buộc tra cứu trực tiếp qua OmniRoute API hoặc combo `ag-gemini-pool-3` để đưa ra câu trả lời dựa trên bằng chứng dữ liệu thời gian thực.
+
+---
+
+## 6. Dò Pass Thực Tế & Xử Lý Di Chứng Blacklist WRONG_PASSWORD Cũ
+### Hiện tượng di chứng (Stale Blacklist Flag)
+- Khi một tài khoản bị lỗi đăng nhập trong quá khứ (ví dụ kẹt submit form, thiếu flow sinh mã 2FA TOTP), script cũ tự động ghi cờ `"email": "WRONG_PASSWORD (M<mid>)"` vào `oauth_pipeline_status.json` (`wrong_password_or_checkpoint`).
+- Sau đó, tài khoản có thể đã được reset mật khẩu mới đồng bộ (ví dụ dạng `Password@Ks`) và lưu vào `master_gmail_manager.xlsx` + `gmail_clean_v2.xlsx`, nhưng entry trong `wrong_password_or_checkpoint` bị bỏ quên không xóa.
+- Hậu quả: Mọi ca login watchdog sau đó tự động bỏ qua tài khoản, và agent báo cáo nhầm "sai pass" cho User dựa trên file JSON cũ dù trong Excel pass đã đúng.
+
+### Quy trình dò pass và giải phóng blacklist chuẩn:
+1. **Đối soát dữ liệu nguồn Excel:**
+   - Đọc cột Password, 2FA Secret, Recovery Email trong cả `master_gmail_manager.xlsx` (sheet `Kibe_Farm_S7`, `Master_All`) và `gmail_clean_v2.xlsx`.
+   - Nếu thấy mật khẩu đã được chuẩn hóa (e.g. `Password@Ks`) và có 2FA TOTP Secret hợp lệ: đây là dấu hiệu tài khoản đã được cấp pass đúng.
+2. **Chạy Live Canary Probe độc lập:**
+   - Chạy lệnh test focused: `python "D:/Taadaa/GPM auto/scripts/run_oauth_s7_pipeline.py" <email> --login-only`.
+   - Xác nhận event `login_only_success` và URL đích `myaccount.google.com` hoặc `gds.google.com`.
+3. **Giải phóng Blacklist & Cập nhật State:**
+   - Xóa ngay key email khỏi `wrong_password_or_checkpoint` trong `oauth_pipeline_status.json`.
+   - Cập nhật `status: "success"` kèm `recovered_at` và `recovered_date` trong `gpm_gmail_nurture_state.json`.
+   - Kích hoạt phiên nuôi tự nhiên và soi mắt WinRT OCR nghiệm thu trước khi báo cáo.
 

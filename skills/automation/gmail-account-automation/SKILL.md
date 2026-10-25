@@ -12,7 +12,7 @@ description: "Automation workflows for Gmail accounts on the Taadaa farm: Playwr
 - `references/dual-cluster-post-noon-gmail-and-watchdog-architecture.md` — Dual-cluster Reg Gmail & range(1, 75) fix.
 - `references/gpm-api-pagination-and-soak-gate-deadlock.md` — GPM API pagination & Soaking Gate.
 - `references/youtube-nurture-ad-handling-and-evidence-timing.md` — YouTube ad skip & timing trap.
-- `references/gpm-relogin-taxonomy-and-soak-date-typo-trap.md` — Phân loại 6 lỗi re-login GPM, bẫy soak date Excel & nghiệm thu nurture session.
+- `references/gpm-relogin-taxonomy-and-soak-date-typo-trap.md` — Phân loại 6 lỗi re-login GPM, bẫy soak date Excel, dò pass di chứng wrong_password & xử lý SMS checkpoint.
 
 ## Critical Operational Rules & Concurrency Safety
 - **Excel Concurrent Write Pitfall (Race Condition & File Corruption)**:

@@ -51,11 +51,21 @@ During pre-shipout review, Claude CLI identified critical production hazards on 
 - Node appears `Connected` (green dot) in Tailscale Admin Console at `14:10:00`.
 - At `14:11:00` (after ~1 minute), node state drops to `Offline (last seen 2:11 PM GMT+7)` with `RxBytes: 0`.
 
-### Root Cause Analysis
-1. **Initial Boot Success:** Helper plugged in the blue rescue cable; router obtained a DHCP lease from the home network; Tailscale contacted the coordination server (`Connected` at 14:10).
-2. **Metric Race & Unbridged Line Conflict:** PPPoE interfaces on the white ports (`wan` with metric 10, `wan2` with metric 20) began active PADO discovery over physical cables plugged into unbridged ISP modems. As carrier was detected on physical ports, kernel routing and netifd attempted to prioritize lower-metric default routes, disrupting the rescue interface (metric 200) before PPPoE sessions were established.
-3. **Premature Unplug:** Alternatively, the on-site helper saw the router LEDs stabilize or assumed the connection was finished, unplugging the blue rescue cable to re-plug the white cables.
+### Root Cause Analysis & Forensic Breakdown
+1. **Initial Boot & Primary Line Success:** 
+   - At 14:04, instructions were given to plug the 2 white cables (Line 1 and Line 2) and leave the blue port empty.
+   - At 14:08, helper plugged the 2 white cables.
+   - At 14:10, PPPoE dialed successfully on the primary line, and Tailscale came online (`Connected` at 14:10).
+2. **False Diagnostic & Premature Line Severing:**
+   - Because of polling lag and impatience, coordinator assumed the primary lines failed and prematurely instructed the helper: *"Unplug the 2 white cables immediately, plug only the blue cable"*.
+   - At 14:11:00, helper unplugged the white cables, immediately killing the working PPPoE session.
+   - The blue cable, plugged in hurriedly, either had a bad link or was plugged into an IPTV/MyTV port without DHCP. The node remained offline.
+3. **Coordinator Denial Bias:**
+   - When user presented screenshots showing the node was connected at 2:10 and disconnected at 2:11, coordinator initially dismissed the evidence, assuming the node had never connected.
 
 ### Agent Behavioral Correction (Critical Discipline)
-- **Do NOT Argue Against Timestamp Evidence:** When the user provides a screenshot showing a recent `Last Seen` timestamp (e.g. `2:11 PM`), never claim "the device never came online". A brief online blip followed by disconnection is a classic signature of route flapping or cable disconnection, not a cold offline state.
-- **Immediate Mitigation:** Tell on-site staff to **unplug both white cables immediately**, leave **only the blue cable connected to the home WiFi router**, and power-cycle once. Do not attempt PPPoE negotiation until the node is reachable and stabilized over Tailscale.
+- **Do NOT Argue Against Timestamp Evidence:** When the user provides a screenshot showing a recent `Last Seen` timestamp (e.g. `2:11 PM`), never claim "the device never came online".
+- **Cross-Check Intervention Timeline Before Ordering Unplugs:** 
+  If `LastSeen` matches 1–2 minutes after helper plugged the primary cables, the PRIMARY lines were working. Ordering an unplug destroys the established connection.
+- **Default to "Plug All 3 Lines" Rather Than Cable Musical Chairs:** 
+  Leave Line 1, Line 2, and Rescue all connected. OpenWrt's metric hierarchy (10 -> 20 -> 200) will automatically select the best active route without human error.
