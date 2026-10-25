@@ -46,15 +46,19 @@ When `enabled_credit_types: [1]` (`["GOOGLE_ONE_AI"]`) is omitted, the backend f
 To enable native `agy.exe` without using a centralized chat completion proxy:
 1. `ag_cli.py` starts a local ephemeral proxy server (`start_credit_proxy` in `D:/Taadaa/tools/ag_credit_proxy.py`) on an available localhost port (`127.0.0.1:0`).
 2. Set `env["CLOUD_CODE_URL"] = f"http://127.0.0.1:{port}"` for the `agy.exe` subprocess.
-3. Unset `HTTP_PROXY`, `HTTPS_PROXY`, `http_proxy`, `https_proxy` in `agy.exe`'s environment so that requests to `127.0.0.1` go directly to the local proxy rather than failing via the upstream proxy.
+3. Keep `HTTPS_PROXY` and `HTTP_PROXY` in `env` (to satisfy environment contracts/tests) but set `NO_PROXY=127.0.0.1,localhost` and `no_proxy=127.0.0.1,localhost`. Go's `net/http` standard library honors `NO_PROXY`, directly routing loopback requests to `CLOUD_CODE_URL` without external proxy traversal.
 4. When `agy.exe` sends requests to the local proxy:
+   - Handles `Transfer-Encoding: chunked` by reading hex chunk lengths to reconstruct full request body (avoiding empty body 400 INVALID_ARGUMENT).
    - If path matches `streamGenerateContent`:
      - Inspects JSON body: adds `"enabledCreditTypes": ["GOOGLE_ONE_AI"]`.
      - Ensures `"project": "aicode-consumers"`.
      - Re-encodes body, adjusts `Content-Length`.
 5. The local proxy forwards the request upstream to `https://daily-cloudcode-pa.googleapis.com` via the profile's upstream proxy (`upstream_proxy`, e.g., `test.taadaa.click:<port>`).
-6. The local proxy streams response status code, headers, and SSE chunks back to `agy.exe` verbatim.
+6. The local proxy streams response status code, headers, and SSE chunks back to `agy.exe` verbatim, catching `ConnectionAbortedError` (WinError 10053) alongside `BrokenPipeError` and `ConnectionResetError`.
 7. Verified with unit test suite in `D:/Taadaa/tools/tests/test_ag_credit_proxy.py` (100% pass).
+8. **Upstream Quota Diagnosis:**
+   - Pro Quota exhausted: Returns `429 RESOURCE_EXHAUSTED` with `reason: "INSUFFICIENT_G1_CREDITS_BALANCE"`. Confirms credit injection succeeded.
+   - Free Tier fallback: Returns `429 RESOURCE_EXHAUSTED` with `message: "Individual quota reached. Please upgrade your subscription to increase your limits."`. Signals missing credit injection.
 
 ## 5. Multi-Profile Sandbox Isolation Architecture
 When orchestrating a pool of distinct Pro accounts (e.g. 29 accounts `acc_01` to `acc_28`):

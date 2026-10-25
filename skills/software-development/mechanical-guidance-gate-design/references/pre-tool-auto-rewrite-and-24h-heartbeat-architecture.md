@@ -37,10 +37,16 @@ Khi áp dụng nguyên tắc *"Bình thường thì im lặng, chỉ có lỗi m
 1. **Chỉ im lặng khi có bằng chứng dương tính về sức khỏe:** "Không thấy lỗi" không đủ để im lặng. Hệ thống phải chứng minh được: nguồn dữ liệu đọc được, có dữ liệu mới, và các metric nằm trong ngưỡng cho phép.
 2. **Hệ thống 3 trạng thái:** `NOMINAL | ANOMALY | UNKNOWN`. Mọi exception chưa bắt, timeout, DB rỗng không rõ lý do đều quy về `UNKNOWN -> ANOMALY` (Fail-Closed).
 3. **Dead-Man's Switch (Bảng Heartbeat 24H độc lập):**
-   - Một watchdog độc lập (`cron_heartbeat.py`) chạy vào **00:00 UTC (07:00 VN)** hàng ngày.
+   - Một watchdog độc lập (`cron_heartbeat.py`) chạy vào **02:00 UTC (09:00 sáng VN)** hàng ngày (theo yêu cầu vận hành của Operator).
    - Nó không chạy việc, mà kiểm tra file state JSON (`runtime/cron_health/<script>.json`) của toàn bộ các watchdog.
    - Nếu một watchdog quá `2 * interval + 30 phút` chưa cập nhật state -> Đánh dấu `❌ STALE` và báo động ngay.
-   - Nếu toàn bộ đều khỏe -> Gửi đúng 1 bản tin điểm danh 3 dòng lúc 07:00 sáng để xác nhận toàn bộ hệ thống giám sát vẫn đang thở đều.
+   - Nếu toàn bộ đều khỏe -> Gửi đúng 1 bản tin điểm danh 3 dòng lúc 09:00 sáng để xác nhận toàn bộ hệ thống giám sát vẫn đang thở đều.
+
+### Khóa Chống Rớt Vi Phạm Ngầm Trên 10 Gate Cơ Giới Hóa
+- **10 Gate Giám Sát:** Bổ sung G9 Android Proxy Guard và G10 Claude Quota Gate vào `gate_compliance_watchdog.py`.
+- **Fail-Closed theo File mtime:** Dòng log có chứa từ khóa chặn (`action: block`, `DENY`, `REJECTED`) nhưng timestamp bị dị dạng/không parse được thì đối chiếu mtime của file log (nếu <= 6h) để bắt buộc đếm vào vi phạm, không vứt bỏ dòng log.
+- **Cổng Catch-All `[Unclassified]`:** Bắt sạch các lỗi chặn từ hook mới chưa kịp phân loại vào gate cụ thể.
+- **Lọc hiển thị vi phạm:** Ẩn hoàn toàn các Gate 0 lỗi, chỉ in danh sách các Gate có vi phạm/remediation để Operator tập trung xử lý.
 
 ### Kiến trúc thư viện `CronRun` (`cron_alert_core.py`)
 Mọi watchdog script được chuẩn hóa bọc qua context manager:
