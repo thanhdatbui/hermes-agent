@@ -27,12 +27,16 @@ Chỉ khi nào thư mục thành phẩm `D:\TIKTOK-videonuoinick-admin\<f_vid>` 
 ## 3. Quy Trình Cứu Hộ Cuốn Chiếu (Recovery Playbook)
 Khi phát hiện các kênh bị đóng băng dở dang ở 30–44 clip:
 
-### Bước 1: Tạm dừng Downloader trên Admin
+### Bước 1: Tạm dừng Downloader trên Admin (Supervisor Service Pitfall)
 - Tránh việc downloader cào thêm video mới làm tràn ổ `D:` SSD (thường chỉ còn 15–20 GB trống).
-- Lệnh:
+- **Bẫy Supervisor `run_admin_downloader_service.py`**: Tiến trình supervisor chạy dưới dạng `pythonw.exe` và liên tục kiểm tra để spawn lại `download_by_niche.py` trong vòng lặp `while True`. Nếu chỉ kill `download_by_niche.py`, supervisor sẽ lập tức khởi chạy lại instance mới sau vài giây! BẮT BUỘC phải dừng cả supervisor service và child downloader:
   ```powershell
-  Get-CimInstance Win32_Process -Filter "Name = 'python.exe'" | Where-Object { $_.CommandLine -like "*download_by_niche*" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
+  Get-CimInstance Win32_Process | Where-Object { 
+      $_.CommandLine -like "*run_admin_downloader_service*" -or 
+      $_.CommandLine -like "*download_by_niche*" 
+  } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
   ```
+- **Mẹo Cứu Hộ Dung Lượng Đĩa Tức Thì (10–20 GB)**: Khi ổ D: Admin cạn đĩa, có thể lập tức xóa các file video gốc (`*.mp4`) trong `D:\video goc may 2\<f_src>` của các folder mà thư mục thành phẩm `D:\TIKTOK-videonuoinick-admin\<f_vid>` đã đạt đủ $\ge 45$ clip. Thao tác này giải phóng đĩa ngay tức khắc mà không ảnh hưởng tới tiến trình render các folder đang thiếu.
 
 ### Bước 2: Kéo trả nguồn cuốn chiếu từ Google Drive
 - Toàn bộ video gốc ban đầu vẫn còn nguyên vẹn 100% trong `G:\My Drive\video_goc_backup\<f_src>`.

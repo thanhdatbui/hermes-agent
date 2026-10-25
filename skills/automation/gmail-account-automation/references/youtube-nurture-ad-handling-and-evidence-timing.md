@@ -50,3 +50,29 @@ Theo chỉ thị vận hành thực tế:
 - **Số luồng song song**: Chạy **5 workers song song** (`--concurrency 5`, `--limit 5`).
 - **Chu kỳ quay vòng (5 ngày - INVARIANT BẮT BUỘC)**: BẮT BUỘC giữ nguyên chu kỳ **5 ngày mới lặp lại nuôi một profile** (`NURTURE_INTERVAL_SECONDS = 5 * 86400`). TUYỆT ĐỐI CẤM tự ý giảm chu kỳ xuống 1 ngày làm spam tài khoản gây checkpoint Google. Watchdog chạy quét mỗi giờ (`0 * * * *`) để bốc cuốn chiếu những nick ĐÃ ĐỦ 5 NGÀY chưa nuôi; nick nào chưa đủ 5 ngày thì bỏ qua an toàn.
 - **Canary task override**: Luôn hỗ trợ cờ `--task <youtube|news|search>` trong CLI để khi cần kiểm chứng nhanh tác vụ cụ thể có thể ép 100% kịch bản mong muốn mà không bị tỷ lệ ngẫu nhiên làm lệch.
+
+---
+
+## 5. Cạm bẫy phím tắt Toggle 'k' & Cơ chế Ensure-Play tự động
+- **Bẫy phím tắt 'k'**: Phím `k` trên YouTube là phím toggle Play/Pause. Nếu video đã tự động phát (Autoplay), việc gọi mù quáng `page.keyboard.press("k")` sẽ vô tình biến video thành **PAUSED ở giây `0:00`** (hiển thị nút tam giác `▶` thay vì `⏸`). Nếu focus đang nằm ở ô tìm kiếm, phím `k` bị nuốt không tác dụng.
+- **Giải pháp chuẩn hóa**:
+  1. Tuyệt đối không dùng `keyboard.press("k")` để kích hoạt phát video.
+  2. Dùng hàm kiểm tra DOM trực tiếp:
+     ```python
+     def ensure_youtube_playing(page) -> bool:
+         try:
+             return bool(page.evaluate('''() => {
+                 const v = document.querySelector('video');
+                 if (!v) return false;
+                 if (v.paused) {
+                     const playBtn = document.querySelector('button.ytp-play-button');
+                     if (playBtn) playBtn.click();
+                     else v.play();
+                 }
+                 return !v.paused;
+             }'''))
+         except Exception:
+             return False
+     ```
+  3. Gọi `ensure_youtube_playing(page)` trước khi vào vòng lặp xem, định kỳ mỗi 10s trong vòng lặp `while`, và ngay sau khi click "Bỏ qua quảng cáo".
+  4. Trì hoãn chụp screenshot nghiệm thu tới khi `elapsed >= 10s` để đảm bảo bắt trọn khoảnh khắc video đang phát thật sự (nút `⏸` và timer > 0).

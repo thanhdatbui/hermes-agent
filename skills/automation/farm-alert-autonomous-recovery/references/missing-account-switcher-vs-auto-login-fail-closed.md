@@ -70,3 +70,13 @@ UploadHook: [ERROR] scripts.tiktok_workflow.state_machine: [ACCOUNT_SWITCHER_FAI
    - Script tự động đối soát nick trong workbook với UI Switcher thực tế trên máy.
    - Bấm "Thêm tài khoản", thực hiện flow login có proxy xoay và giải mã IMAP OTP độc lập.
    - Sau khi login thành công, verify lại Switcher có đủ 8 slot trước khi nhả device lock.
+
+## 4. Edge Cases Trong Flow Login Cần Xử Lý Tự Động (Pitfalls)
+
+### A. Popup "Thêm số điện thoại" che khuất màn hình nhập Email (`fail_login_*_email_screen.xml`)
+- **Hiện tượng:** Khi vừa chọn phương thức đăng nhập bằng Email/Username, TikTok có thể tự động bật bottom-sheet modal:
+  - Header: `"Thêm số điện thoại"` / `"Thêm số điện thoại của bạn để tăng cường bảo mật..."`
+  - Nút Đóng: `android.widget.Button` có `content-desc="Đóng"` hoặc `content-desc="Close"`, bounds điển hình `[936,861][1056,993]`.
+- **Hậu quả nếu thiếu handler:** Hàm `fill_existing_email_and_continue()` trong `tiktok_login_v1.py` chờ text `"Email"` / `"TikTok ID"` nhưng bị popup che -> văng lỗi `RuntimeError: Khong thay man nhap email de login`.
+- **Xử lý chuẩn:** Trong `fill_existing_email_and_continue()` trước khi tìm ô nhập email, bắt buộc kiểm tra sự hiện diện của text `"Thêm số điện thoại"` / `"Add phone number"` và tap vào nút Đóng (`content-desc="Đóng"` hoặc tọa độ tâm bounds) để đóng modal, sau đó tiếp tục điền email + password bình thường.
+

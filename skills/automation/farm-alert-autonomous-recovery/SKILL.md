@@ -1,25 +1,23 @@
 ---
 name: farm-alert-autonomous-recovery
-description: >-
-  Autonomous Taadaa Farm Alert handling from evidence through scoped fix,
-  focused verification, bounded canary, and exact-scope closeout.
+description: Autonomous Taadaa Farm Alert handling from evidence to closeout.
 ---
 
 # Farm Alert Autonomous Recovery
 
-> Core Refs: `references/closed-loop-auto-repair-architecture-and-emitter-coalescing.md`, `references/omniroute-connection-pin-and-anti-finally-bypass.md`, `references/watchdog-manifest-and-detector-replay.md`, `references/focus-device-issue-cold-start-and-systemui-relaunch-20261020.md`, `references/canary-receipt-expiry-and-safe-push-pre-commit.md`, `references/recovery-proof-and-operator-closeout.md`, `references/anti-performative-alert-handling-and-immediate-code-fix.md`, `references/batch-alert-upload-hook-post-verification-false-positive-triage.md`, `references/strike-3-reviewer-handoff-and-claude-quota-collision.md`, `references/pool-health-watchdog-triage-and-oauth-payload-inspection.md`, `references/missing-account-switcher-vs-auto-login-fail-closed.md`, `references/account-id-reconciliation-and-manual-review-recovery.md`.
+> Core Refs: `references/closed-loop-auto-repair-architecture-and-emitter-coalescing.md`, `references/omniroute-connection-pin-and-anti-finally-bypass.md`, `references/watchdog-manifest-and-detector-replay.md`, `references/focus-device-issue-cold-start-and-systemui-relaunch-20261020.md`, `references/canary-receipt-expiry-and-safe-push-pre-commit.md`, `references/recovery-proof-and-operator-closeout.md`, `references/anti-performative-alert-handling-and-immediate-code-fix.md`, `references/batch-alert-upload-hook-post-verification-false-positive-triage.md`, `references/strike-3-reviewer-handoff-and-claude-quota-collision.md`, `references/pool-health-watchdog-triage-and-oauth-payload-inspection.md`, `references/missing-account-switcher-vs-auto-login-fail-closed.md`, `references/account-id-reconciliation-and-manual-review-recovery.md`, `references/omniroute-pool-healer-proactive-recovery-and-closeout-evidence.md`.
 
 ## UI evidence: target screen only
 
 > Ref: `references/report-routing-and-workbook-shape-20261011.md`.
-- User duyệt hiện trường qua `MEDIA:<path>`. CẤM gửi ảnh Home/Launcher làm bằng chứng sau teardown/khi lỗi.
-- Bắt buộc chụp ảnh in-app thực tế (Profile/Settings/Popup/Switcher) TRƯỚC KHI teardown.
+- Duyệt hiện trường qua `MEDIA:<path>`. CẤM gửi ảnh Home/Launcher sau teardown/lỗi.
+- Bắt buộc chụp in-app (Profile/Settings/Popup/Switcher) TRƯỚC KHI teardown.
 
 ## 🛑 TRIAGE LỖI CÁP VẬT LÝ ADB (CM_PROB_PHANTOM)
 - Khi nhận alert máy offline / `[01_open]` mà ADB báo `device not found` hoặc `offline`:
-  Chạy ngay lệnh PowerShell trên host:
+  Chạy lệnh PowerShell:
   `Get-PnpDevice | Where-Object { $_.InstanceId -like "*<serial>*" } | Select-Object FriendlyName, Status, Present, Problem`
-- Nếu `Present: False` hoặc `Problem: CM_PROB_PHANTOM`: Đây là lỗi cáp USB/sập nguồn vật lý. DỪNG NGAY mọi loop retry hoặc sửa code, chuyển L3 BLOCKED và báo chủ farm kiểm tra cáp tại rack.
+- Nếu `Present: False` hoặc `Problem: CM_PROB_PHANTOM`: Lỗi cáp USB/nguồn. DỪNG NGAY, chuyển L3 BLOCKED.
 
 ## QUY CHUẨN THIẾT KẾ WATCHDOG & BÁO CÁO ĐỊNH KỲ (CHỐNG SPAM ALERT)
 Mọi cronjob / watchdog / script tự động (cũ lẫn mới tạo) bắt buộc tuân thủ nghiêm ngặt:
