@@ -87,6 +87,7 @@ tags: [tiktok, farm, batch, render, upload, resume, kibe]
   (5) Ưu tiên ADB binary GemPhoneFarm v35 thay vì Xiaowei v34 trong các công cụ inspect/runner để tránh lỗi `protocol fault (couldn't read status): connection reset`. Chi tiết xem [`references/xiaowei-orphan-adb-port-5037-and-wifi-healer-circuit-breaker.md`](references/xiaowei-orphan-adb-port-5037-and-wifi-healer-circuit-breaker.md).
 
 ## 4. Danh Mục Tham Khảo Chi Tiết
+- Target-Bound Differential Canary & Safe Probe Matrix Operations: [`references/target-bound-canary-matrix-and-safe-probe-ops.md`](references/target-bound-canary-matrix-and-safe-probe-ops.md)
 - Cào nguồn Niche Nhạy Cảm Thời Gian (Tử Vi / Phong Thủy / Trend Năm Cũ) & Chiến Lược Phôi Douyin Sạch: [`references/time-sensitive-niche-sourcing-and-tuvi-pipeline.md`](references/time-sensitive-niche-sourcing-and-tuvi-pipeline.md)
 - Google Drive Cleanup Legacy 30-Clip Hazard & 45-Clip Recovery Playbook: [`references/gdrive-cleanup-30clip-legacy-hazard-and-45clip-recovery-playbook.md`](references/gdrive-cleanup-30clip-legacy-hazard-and-45clip-recovery-playbook.md)
 - Xử lý kẹt ADB Tiểu Vi cổng 5037, báo động ảo proxy preflight & Circuit Breaker Wi-Fi: [`references/xiaowei-adb-5037-deadlock-and-wifi-circuit-breaker-discipline.md`](references/xiaowei-adb-5037-deadlock-and-wifi-circuit-breaker-discipline.md)
