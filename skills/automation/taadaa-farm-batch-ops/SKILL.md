@@ -20,6 +20,9 @@ tags: [tiktok, farm, batch, render, upload, resume, kibe]
   `python D:/Taadaa/tools/run_avatar_batch_3accs.py --tik <Tik> --machine <May>`
 - **Đổi Biệt Danh Rolling:**
   `python D:/Taadaa/tools/tiktok_rename_rolling_watchdog.py`
+- **Thay Thế Nguồn Video Cho Nick Lẻ (Swap Folder Khi Nguồn Cũ Hỏng/Dính Năm Cũ):**
+  `python D:/Taadaa/Tiktok-video/scripts/swap_single_folder_pipeline.py --folder-raw <raw> --folder-render <render> --machine <m> --tik <tik> --channel "<url>" --uploader "<name>" --niche-slug "<slug>" --niche-label "<label>" --hashtag-pool "<tags>" --min-videos 40 --start-seq <da_dang+1> --clean-old`
+  (Dọn rác cũ, cào kênh mới, render nối tiếp từ `start-seq` và đồng bộ `TikN.xlsx`. Chi tiết xem `references/time-sensitive-niche-sourcing-and-tuvi-pipeline.md`).
 - **Cào Tải Video Gốc Admin (40 Workers song song qua 69 Proxy MikroTik LAN):**
   `python C:/Users/Admin/run_admin_downloader_service.py` (launcher headless: `python C:/Users/Admin/launch_detached_admin_downloader.py`). Log: `D:/CodexRuntime/tiktok-video-machine2/download_admin_p10.log`.
 - Render Worker Chuẩn Mapping 8 Tik trên Admin (1 Worker tuần tự chống nghẽn GPU):

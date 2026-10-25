@@ -36,3 +36,43 @@ Giải pháp độc lập, không phụ thuộc vào việc đi "nhặt mót" vi
 2. **Xử lý kịch bản:** LLM tóm tắt thành kịch bản 45–55s theo khung: Hook giật tít -> Vận trình tài lộc -> Điểm chú ý -> Lời khuyên hóa giải.
 3. **Lồng tiếng tự động:** Dùng engine VieNeu-TTS sẵn có (`D:/Taadaa/douyin-auto-dub`, giọng `Thiện Minh` trầm ấm phong cách kể chuyện tâm linh hoặc `Trúc Ly` cảm xúc).
 4. **Render:** Ghép audio TTS vào kho phôi sạch Douyin + burn phụ đề động tiếng Việt mới 100%.
+
+## 4. Quy Trình Vận Hành Cào Đè & Thay Thế Nguồn Cũ (Single Account Source Swap)
+
+### Phản xạ điều phối & Tâm lý User
+- Khi User phát hiện nick farm đăng nhầm video dính năm cũ: User **chưa rảnh sản xuất video mới từ đầu** (kịch bản + TTS), mà mục tiêu duy nhất là **"Cào nguồn mới về render lại thay thế nguồn cũ ngay"**.
+- Tránh tư vấn vòng vo quy trình sản xuất phức tạp; kích hoạt ngay pipeline cào đè và render nối tiếp tự động.
+
+### Lựa chọn chiến lược Niche "Evergreen" cho Farm
+- Thay vì cào tử vi theo tháng âm lịch (nhanh hết hạn, dễ dính năm cũ), giải pháp tối ưu nhất cho dàn nick farm là cào **Tử vi / Phong thủy Evergreen**:
+  * *Nhân tướng học:* Nốt ruồi phú quý, chỉ tay chữ M, dáng đi tài lộc, tướng tai, xem hoa tay.
+  * *Bản mệnh 12 con giáp căn bản:* Tính cách, tuổi hợp làm ăn/kết hôn, con giáp khắc tinh.
+  * Video dạng này cắn đề xuất cao, giữ chân tốt và có thể sử dụng quanh năm suốt tháng không bao giờ bị lỗi thời.
+
+### Quy trình chạy `swap_single_folder_pipeline.py`
+1. **Tra cứu định danh tài khoản O(1):**
+   - Mở `D:/OneDrive/TaadaaData/kibe/Tik{N}.xlsx` tìm dòng tài khoản (ví dụ Máy 20, slot Tik 2, nick `francesuhunt5`).
+   - Lấy 4 thông số: `Folder Goc (Nguon Cao)`, `Folder Video (Render Dich)`, `Video Đã Đăng` (ví dụ: 21 video), và Niche/Hashtag hiện tại.
+2. **Kích hoạt lệnh hoán đổi toàn diện:**
+   ```bash
+   python D:/Taadaa/Tiktok-video/scripts/swap_single_folder_pipeline.py \
+     --folder-raw <folder_goc> \
+     --folder-render <folder_render> \
+     --machine <may> \
+     --tik <slot_tik> \
+     --channel "<url_kenh_moi>" \
+     --uploader "<ten_kenh>" \
+     --niche-slug "<slug>" \
+     --niche-label "<label>" \
+     --hashtag-pool "<hashtags>" \
+     --min-videos 40 \
+     --start-seq <video_da_dang + 1> \
+     --clean-old
+   ```
+3. **Cơ chế tự động của pipeline:**
+   - `--clean-old`: Dọn dẹp sạch toàn bộ video cũ dính năm cũ trong folder gốc.
+   - Tải 40 video mới chuẩn lọc từ kênh nguồn chỉ định.
+   - Tự động sinh `avatar.jpg` chuẩn của folder.
+   - Chạy `random_batch_render.py` render nối tiếp từ `--start-seq` (ví dụ: từ video 22 trở đi) để Máy trên farm tiếp tục upload tuần tự, không bị lệch nhịp.
+   - Tự động cập nhật `Tik{N}.xlsx` (sheet TaiKhoan & Hashtag theo Folder) và dữ liệu theo dõi pipeline.
+
