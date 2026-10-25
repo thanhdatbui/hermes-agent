@@ -30,3 +30,32 @@ Trong hệ thống `tiktok-follow` (Mode 2 follow followers), có 97 nick bị k
 1. **Không chặn Gateway:** Thất bại khi tương tác với Anchor (nick gốc) không được coi là lỗi vi phạm spam của tài khoản. Chỉ bỏ qua Anchor đó hoặc chuyển sang Anchor khác / Mode 1.
 2. **Cấm tăng streak khi `used == 0` do lỗi Anchor:** `fail_streak` chỉ được phép tăng khi nick đã vào danh sách mục tiêu thực tế và bị server TikTok từ chối nhiều lần trong chuỗi hành động hợp lệ.
 3. **Decouple Anchor Following:** Luôn ưu tiên mở thẳng tab Following của Anchor mà không ép nick phải thực hiện hành động follow Anchor trước.
+
+---
+
+### 4. Quy Luật Bất Biến Về Tính Streak & Cooldown (Chốt Phiên 2026-10-25)
+* **Éo follow được cái nào (`used == 0`): MỚI TÍNH LÀ STREAK LEO THANG:**
+  - Vừa vào bấm phát đầu tiên đã bị từ chối ngay -> Nick đang bị TikTok gắn cờ chặn cứng ở mức 0.
+  - Lúc này mới được tính là tái phạm fail streak:
+    - Streak 1: nghỉ 3 ngày.
+    - Streak 2: nghỉ 5 ngày.
+    - Streak 3: nghỉ 7 ngày.
+    - Streak >= 4: nghỉ 15 ngày (giam cách ly).
+* **Đã follow được ít nhất 1 cái (`used >= 1`): KHÔNG ĐƯỢC TÍNH ĐI TÙ:**
+  - Nick đã chứng minh được năng lực bấm ăn và server TikTok đã nhận follow thật (1, 2, hay 5 cái). Việc đứt ở lượt sau thuần túy là **chạm trần phiên trong ngày (Ceiling Reached)**, KHÔNG PHẢI nick bị spam hay bị phế.
+  - **Quy tắc bắt buộc:**
+    1. `fail_streak = 0`: Xóa sạch chuỗi phạt, cấm leo thang streak.
+    2. Bảo toàn hoàn toàn `is_graduated` và `probation_clean_days` (không tước cờ, không xóa công trạng tích lũy).
+    3. Cooldown chỉ đúng **24 giờ** (`now_utc + 24 hours`), không giam phạt nhiều ngày.
+
+---
+
+### 5. Khóa Đồng Bộ Đa Repo (Cross-Repo Sync Contract)
+1. **Tại `tiktok-follow` (`follow_runner/core/follow_state.py`):**
+   - Trong `set_follow_failed()`: Khi `used > 0`, ép `streak = 0`, không pop `graduated`/`probation_clean_days`, đặt `cooldown_until_local = (now_utc + 24h).astimezone(tz)`.
+2. **Tại `tiktok-luot nuoi acc` (`python_runner/flows/multi_machine_feed_session.py`):**
+   - Trong `_is_account_follow_cooldown()`: Tôn trọng tuyệt đối `cooldown_until_at` / `cooldown_until_date` từ state. Khi `fail_streak == 0`, `streak_days = 0`, cho phép nick đi follow ngay khi hết mốc 24h thay vì tự ý ép phạt 3/5/7 ngày.
+3. **Tại Dashboard (`D:/Taadaa/tools/follow_health_helper.py`):**
+   - Đối chiếu trực tiếp `cooldown_until_at` với `now` để phân loại trạng thái Cooldown; cấm dùng cờ `follow_failed` đơn thuần làm tiêu chí ném nick vào `🔴 Cooldown`.
+4. **Xả án tồn dư (`D:/Taadaa/tools/reconcile_unfair_streaks.py`):**
+   - Quét các file state thuộc diện `A_CEILING_DROP` (có `used >= 1` trong ngày fail) để đưa về `fail_streak = 0`, gỡ `cooldown_until_date`, phục hồi quyền tham gia cữ chạy tiếp theo.
