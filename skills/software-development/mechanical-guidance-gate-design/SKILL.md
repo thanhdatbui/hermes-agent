@@ -490,3 +490,4 @@ Use when creating, modifying, or reviewing mechanical enforcement gates (pre-too
 - Fail-Closed Watchdog Anti-Silent-Masking & Universal Cron Governance: [`references/fail-closed-watchdog-anti-masking-and-cron-governance.md`](references/fail-closed-watchdog-anti-masking-and-cron-governance.md)
 - Unreachable Host Reachability State & GitHub Push Protection Discipline: [`references/unreachable-host-reachability-and-github-push-protection.md`](references/unreachable-host-reachability-and-github-push-protection.md)
 - Active Pivot Architecture, Anti-Paralysis Protocol & Closeout Stability: [`references/active-pivot-architecture-and-closeout-gate-stability.md`](references/active-pivot-architecture-and-closeout-gate-stability.md)
+- Exception-Driven Cron Alerting & 24H Heartbeat Governance: [`references/exception-driven-cron-alerting-and-24h-heartbeat.md`](references/exception-driven-cron-alerting-and-24h-heartbeat.md)
