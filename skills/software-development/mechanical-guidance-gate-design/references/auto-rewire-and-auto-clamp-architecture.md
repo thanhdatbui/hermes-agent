@@ -59,3 +59,9 @@
 - **Empirical Performance:** 80% of recent runs pass in 1-2 rounds (3-7 minutes). Sol Repair Monopoly (`sol_repair.py`) successfully handles Strikes 1 & 2 autonomously.
 - **Do Not Touch Rule:** Stable gates with zero persistent failures must remain untouched to prevent regressions.
 
+## 4. Anti-Whining & Zero-Paralysis Action Invariants
+- **Do Not Explain When Commanded to Execute:** When the user explicitly orders execution ("R làm đi", "fix nốt đi"), immediately perform the edits and verification. Do not produce verbose explanations, reiterate block reasons, or ask for redundant permission.
+- **Auto-Rewire Over Fail-Stop:** Every guard or gate failure pattern must be converted into an automatic rewrite, clamp, or route forward. The agent must never report BLOCKED without an active, deterministic pivot path.
+- **Test Alignment Verification:** When modifying gate warning/error messages (such as `--skip-test is forbidden in repo mode`), verify that regression tests asserting those exact strings remain intact.
+
+

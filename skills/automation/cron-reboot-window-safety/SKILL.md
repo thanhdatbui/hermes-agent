@@ -49,6 +49,7 @@ For a small targeted fix, constrain the edit to the existing safe-window functio
 
 ## References
 
+- `references/deliver-local-silent-trap-and-path-inference-routing.md` — Deliver: local silent trap, direct Telegram dispatching, path inference keyword ordering in batch aggregator, and early-morning idempotency blockage.
 - `references/jit-lock-vs-bulk-reservation-and-cron-safety-20261025.md` — Just-In-Time (JIT) lock architecture, multi-target deduplication, and reboot safe-window coordination.
 - `references/watchdog-anti-spam-and-no-evidence-discipline.md` — Anti-spam discipline: ban `cronjob run` on live channels, and collapse `NO_EVIDENCE` periodic reports to 1 line or silence.
 - `references/reboot-preflight-retry-and-10m-cutoff-protocol.md` — 5-minute preflight retry cadence, sentinel idempotency, and 10-minute session deadline cutoff.
