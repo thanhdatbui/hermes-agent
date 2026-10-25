@@ -399,6 +399,25 @@ Use when creating, modifying, or reviewing mechanical enforcement gates (pre-too
   2. **Truthful Warning Over Fake Completion:** Khi `reachable == False`, BẮT BUỘC in cảnh báo rõ ràng `⚠️ Cluster không kết nối được ADB; không thể xác nhận trạng thái máy.`; tuyệt đối cấm in `0 máy hoàn tất (None)` và `Lỗi (0)`.
   3. **Deferred State Completion for Auto-Retry:** Chỉ cập nhật ngày báo cáo (`reported_date`) khi toàn bộ các cluster đều kết nối được hoặc khi có cờ cưỡng chế `--force`, bảo đảm các nhịp cron sau tự động dọn bù khi host hồi sinh. Chi tiết: [`references/unreachable-host-reachability-and-github-push-protection.md`](references/unreachable-host-reachability-and-github-push-protection.md).
 
+### Rule 47: Active Pivot Architecture & Anti-Paralysis Protocol ("Gate DENY = Pivot Gốc; Cấm Trả BLOCKED Khóc Lóc")
+- **Bối cảnh (Chỉ Thị Tối Cao Operator & Hội Chẩn 3 Bên):** CẤM TUYỆT ĐỐI phản xạ "khóc lóc bại liệt" (Luna behavior) khi gặp một chốt chặn Gate/Guard từ chối (DENY) lại dừng lại dán nhãn `BLOCKED` rồi đùn việc bắt Operator can thiệp thủ công.
+- **Yêu cầu 3 Chuẩn Kiến Trúc Bắt Buộc:**
+  1. **Fail-Forward Over Fail-Stop:** DENY không phải điểm kết thúc; DENY là tín hiệu kích hoạt phục hồi tự động (Self-Healing Trigger). Toàn bộ Gate DENY bắt buộc gắn liền với Actionable Pivot Route:
+     - Worker routing DENY $\to$ Auto-Rewire chuyển hướng sang `dispatch_worker.py` (Sol $\to$ Agy $\to$ Haiku).
+     - Console window DENY $\to$ Auto-Inject cờ `CREATE_NO_WINDOW (0x08000000)` vào subprocess.
+     - Timeout DENY $\to$ Auto-Rewrite gán timeout hợp lệ.
+     - Device lock DENY $\to$ Tự reap dead owner lock hoặc chuyển task độc lập trong queue.
+     - Code fix fail $\to$ Cascading Auto-Heal qua Sol Repair $\to$ Agy $\to$ Claude CLI cho tới khi pass focused test.
+  2. **Closeout Gate Stability In-Place Invariant:** Khâu Closeout Gate (G5) với vòng lặp Sol Repair Strike 1/2 tự chữa ngầm đã đạt 100% PASS (0 fail trong 6h qua) $\to$ BẮT BUỘC GIỮ NGUYÊN 100%, TUYỆT ĐỐI CẤM SỬA/ĐỤNG VÀO CLOSEOUT GATE để tránh rủi ro regression.
+  3. **Ranh Giới Redline:** Auto-Rewire áp dụng cho tầng điều phối vận hành (Routing, Parameters, Stale Locks); TUYỆT ĐỐI CẤM rewire phá vỡ các chốt chặn an toàn bất biến (Core Invariants Shield, Device Mutex Lock, Closeout Reviewer Verification).
+
+### Rule 48: Gateway Telegram Runtime Adapter Synchronization & Hot-Reload Protocol
+- **Bối cảnh:** Sửa đổi mã nguồn Telegram Adapter trong repo phát triển (`D:/Taadaa/Hermes/plugins/platforms/telegram/adapter.py`) hoàn toàn vô hiệu trên Gateway đang chạy vì tiến trình daemon nạp mã nguồn từ virtualenv runtime (`site-packages`), và Python không tự reload module trong RAM.
+- **Yêu cầu 3 Chuẩn Nạp Bắt Buộc:**
+  1. **Runtime Dual-Sync:** Bắt buộc đồng bộ file adapter sang cả 2 vị trí runtime: thư mục site-packages của venv và thư mục runtime plugins.
+  2. **Pre-Flight Compilation Sanity:** Chạy `python -m py_compile` và import test trước khi kích hoạt restart.
+  3. **Detached Delayed Gateway Restart:** Kích hoạt restart qua script trễ ngoài band (`python D:/Taadaa/tools/restart_gw_detached.py` delay 6s) để turn phản hồi hiện tại hoàn tất gửi tin nhắn Telegram trước khi tiến trình Gateway cũ dừng và PID mới nạp code vào RAM. Chi tiết: [`references/active-pivot-architecture-and-closeout-gate-stability.md`](references/active-pivot-architecture-and-closeout-gate-stability.md).
+
 ## 3. Pitfalls & Anti-Paralysis Principles (Chống Khóc Lóc Bại Liệt)
 - **Bẫy Lệch Wire Protocol Key Trong Hook Shell (`tool_input` vs `args`):** Subprocess hook `shell_hooks` của Hermes gửi payload qua stdin với khóa chuẩn là `tool_input`, KHÔNG PHẢI `args`! Hook nếu chỉ đọc `payload.get("args")` sẽ nhận rỗng và thoát `exit(0)` fail-open trên mọi lệnh gọi thật của engine. Bắt buộc: `args = payload.get("tool_input") or payload.get("args") or {}`.
 - **Bẫy Daemon Gateway RAM Desync Khi Sửa Engine Core:** Các script hook (`guard_*.py`) được nạp tươi từ đĩa mỗi lần gọi subprocess, nhưng code engine (`shell_hooks.py`, `plugins.py`) chạy trong tiến trình daemon dài hạn (`pythonw.exe`). Python chỉ load module vào RAM lúc khởi động tiến trình. Mọi thay đổi code engine trên đĩa hoàn toàn vô hiệu trong RAM của Gateway đang chạy! BẮT BUỘC restart Gateway ngoài band (`python D:/Taadaa/tools/restart_gw_detached.py`) sau khi sửa engine bridge.
@@ -470,3 +489,4 @@ Use when creating, modifying, or reviewing mechanical enforcement gates (pre-too
 - Universal 10-Gate Observability & Silent-When-Clean Watchdog Pattern: [`references/silent-when-clean-watchdog-and-10gate-observability.md`](references/silent-when-clean-watchdog-and-10gate-observability.md)
 - Fail-Closed Watchdog Anti-Silent-Masking & Universal Cron Governance: [`references/fail-closed-watchdog-anti-masking-and-cron-governance.md`](references/fail-closed-watchdog-anti-masking-and-cron-governance.md)
 - Unreachable Host Reachability State & GitHub Push Protection Discipline: [`references/unreachable-host-reachability-and-github-push-protection.md`](references/unreachable-host-reachability-and-github-push-protection.md)
+- Active Pivot Architecture, Anti-Paralysis Protocol & Closeout Stability: [`references/active-pivot-architecture-and-closeout-gate-stability.md`](references/active-pivot-architecture-and-closeout-gate-stability.md)
