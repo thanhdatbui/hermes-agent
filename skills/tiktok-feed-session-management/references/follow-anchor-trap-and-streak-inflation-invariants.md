@@ -103,3 +103,16 @@ Trước đây hệ thống bị lỗi nghiêm trọng do nhập nhằng giữa 
    - **Bẫy so sánh ngày trong script xả án cũ:** Script `reconcile_all_streak_cooldowns.py` dùng điều kiện `today > expiry_day` khiến các nick đúng ngày mãn hạn (ví dụ Streak 3 giam 5 ngày từ 20/10 đến 25/10) bị giam thêm 1 ngày oan đến 26/10 mới được thả. Chuẩn hóa: phải so sánh timestamp chính xác hoặc `today >= expiry_day` khi hết giờ địa phương.
    - Với nhóm dính nhả thật và chưa đủ ngày cách ly: Giữ nguyên hạn phạt cho đến khi đủ ngày. Với nhóm án oan do bẫy Anchor tích tụ lâu ngày hoặc dính kịch khung do bug: chỉ xử lý hạ bậc khi đã chứng minh được điều kiện không phải spammer thật sự.
 
+---
+
+### 9. Pitfall Phân Loại Thuật Ngữ: Nghỉ Xả Cache 24h (Used > 0) Không Phải Là "Án Oan"
+1. **Hiện tượng & Cơ chế đúng:**
+   - Khi nick cày được $\ge 1$ lượt (ví dụ follow thành công 3 người, `used = 3`) rồi dừng lại ở lượt thứ 4 khi chạm trần, bản vá đã hoạt động chính xác: bảo toàn `probation_clean_days = 1`, giữ `fail_streak = 1`, và cấp cooldown đúng 24h rolling (`now + 24h`).
+2. **Sai lầm chết người của Coordinator (Anti-Pattern):**
+   - Thấy nick hiển thị nhãn `🔴 Cooldown (Streak 1)` trên dashboard liền vội vã kết luận là "nick cày thành công mà vẫn bị bắt đi tù oan", rồi tự tiện chạy script xóa sạch cờ cooldown khi chưa đủ 24h.
+   - Hậu quả: Báo cáo gây hoang mang cho User rằng bản vá buổi sáng bị lỗi, đồng thời thả nick ra sân quá sớm trước 24h khiến TikTok server chưa kịp xả cache rate-limit.
+3. **Quy tắc kỷ luật:**
+   - Nick `used > 0` chạm trần bắt buộc phải nghỉ đủ 24 giờ để xả cache TikTok an toàn. Đây là cơ chế bảo vệ hợp lệ, **tuyệt đối không được gọi là "án oan"**.
+   - Chỉ được xả án cho nick `used > 0` khi và chỉ khi **đã quá 24 giờ rolling** (`now_utc >= cooldown_until_at`).
+
+

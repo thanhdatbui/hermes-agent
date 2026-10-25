@@ -10,7 +10,7 @@
 - **Quy chuẩn khắc phục:**
   - Bộ lọc tiến trình `XIAOWEI_ADB_TARGET_PS` bắt buộc nhận diện theo đường dẫn thực thi:
     `$_.CommandLine -like "*-P 5038*" -or $_.ExecutablePath -like "*\xiaowei\*"`
-  - Khi `xiaowei.exe` đã tắt, bất kỳ tiến trình ADB nào có nguồn gốc từ thư mục Tiểu Vi (`*\xiaowei\*`) đều phải bị dập tắt triệt để bằng `kill-server` và CIM/WMI terminate để trả lại cổng 5037 cho ADB chuẩn của Farm (`C:\Users\Kibe\.GemPhoneFarm\app\adb-tool\adb.exe`).
+  - Khi `xiaowei.exe` đã tắt, bất kỳ tiến trình ADB nào có nguồn gốc từ thư mục Tiểu Vi (`*\xiaowei\*`) đều phải bị dập tắt triệt để. Tuy nhiên, lệnh `_try_kill_server()` BẮT BUỘC chỉ gọi `-P 5038 kill-server` (CẤM gọi `kill-server` mặc định không có cổng vì sẽ làm sập ADB server cổng 5037 của Farm). Việc dập các tiến trình Tiểu Vi mồ côi chiếm cổng 5037 hoặc không cổng được giao độc quyền và an toàn cho `_try_cim_terminate()` xử lý theo PID và `ExecutablePath`.
 
 ## 2. Bẫy Đặt Tên Báo Cáo "Mất Wi-Fi / Proxy" Của Runner (`blocked-proxy-vpn` Misnomer)
 - **Hiện tượng:** Báo cáo đối soát hoặc feed session watchdog cảnh báo hàng loạt máy bị `blocked-proxy-vpn` hoặc `Mất Wi-Fi/Proxy`, khiến người vận hành lầm tưởng cụm proxy MobiProxy hoặc MikroTik bị sập.
@@ -38,4 +38,4 @@
   - Ổ D: Kibe dung lượng lớn (3.7 TB, thường dư > 800 GB), lưu trữ trực tiếp các folder video đã render để nạp cho dàn máy 1-80 qua USB.
   - TUYỆT ĐỐI KHÔNG xóa hay dọn video đã render lên Google Drive khi máy chưa đăng xong.
 - **Admin Remote (`ADMIN-PC` - `D:\TIKTOK-videonuoinick-admin`):**
-  - Ổ SSD nhỏ (1 TB, thường chỉ còn 15-30 GB free), dùng Task Scheduler `Taadaa_Sync_GDrive_Backup` chạy ngầm script `sync_and_clean_gdrive.py` mỗi 2 giờ: khi folder render đủ $\ge 30$ clip, robocopy video gốc từ `D:\video goc may 2` lên ổ `G:\My Drive\video_goc_backup` rồi mới xóa video gốc local để giải phóng đĩa.
+  - Ổ SSD nhỏ (1 TB, thường chỉ còn 15-30 GB free), dùng Task Scheduler `Taadaa_Sync_GDrive_Backup` chạy ngầm script `sync_and_clean_gdrive.py` mỗi 2 giờ: khi folder render đủ $\ge 45$ clip (chuẩn farm, tuyệt đối cấm ngưỡng cũ 30 clip), robocopy video gốc từ `D:\video goc may 2` lên ổ `G:\My Drive\video_goc_backup` rồi mới xóa video gốc local để giải phóng đĩa. Chi tiết xem [`references/gdrive-cleanup-30clip-legacy-hazard-and-45clip-recovery-playbook.md`](references/gdrive-cleanup-30clip-legacy-hazard-and-45clip-recovery-playbook.md).
