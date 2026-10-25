@@ -102,6 +102,8 @@ _ADVISOR_EXPLICIT_TRIGGERS = (
   * Coordinator giữ vai trò nghiệm thu O(1) qua focused test và canary thực tế; cấm spawn subagent mò mẫm file.
 - **Cơ chế Auto-Rewire Cứng Chống Nhảy Cóc Sang Claude (`haiku_worker.py`)**:
   * Claude CLI / Claude Worker là **100% On-Demand**. Tuyệt đối **CẤM** Coordinator tự ý đề xuất hoặc gọi `haiku_worker.py` / `claude_worker.py` theo quán tính/phản xạ khi User chưa yêu cầu đích danh.
+  * **CẤM TỰ TRUYỀN CỜ `--on-demand` (Anti-Rogue Invariant)**: Tuyệt đối CẤM Coordinator tự động tiêm cờ `--on-demand` vào lệnh gọi Claude Worker khi User chỉ phát các lệnh chung như "làm đi", "sửa đi", "tiếp tục". Cờ `--on-demand` CHỈ ĐƯỢC PHÉP dùng khi tin nhắn gốc của User có chứa đích danh từ khóa `"claude"`.
+  * Khi Sol (Tier 1) và Agy (Tier 2) đều fail hoặc timeout: Coordinator BẮT BUỘC dừng lại báo cáo trung thực biên bản kèm log audit, TUYỆT ĐỐI CẤM tự ý nhảy cóc sang Claude Worker để lấp liếm lỗi của Sol/Agy.
   * **Hard Auto-Rewire Gate:** `haiku_worker.py` kiểm tra cờ `--on-demand`, `--from-dispatch` và `USER_ON_DEMAND_CLAUDE=1`. Nếu không có, script lập tức chặn đứng việc gọi Claude và **tự động bẻ lái (rewire) 100%** toàn bộ tham số sang `dispatch_worker.py` để ép chạy Sol (Tier 1) $\to$ Agy (Tier 2) trước.
   * Khi Sol Worker (:20129) bị timeout hoặc nghẽn mạng: Nếu Coordinator đã có exact patch O(1) (<= 30 dòng, <= 2 files), Coordinator **được quyền thực hiện Emergency Surgery (L2) trực tiếp** bằng `patch` tool kèm focused test. Tuyệt đối KHÔNG tự động chuyển sang Claude Worker rồi báo User như một phản xạ mặc định.
 - **Kỷ Luật Định Dạng Tin Nhắn Telegram (Chống Rò Rỉ Mã LaTeX Thô)**:
