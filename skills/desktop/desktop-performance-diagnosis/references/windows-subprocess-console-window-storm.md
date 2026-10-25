@@ -67,8 +67,29 @@ if sys.platform == "win32":
                 kwargs["creationflags"] = (flags & ~0x00000008) | 0x08000000
                 _orig_popen_init(self, *args, **kwargs)
             subprocess.Popen.__init__ = _silent_popen_init
+
+            _orig_run = subprocess.run
+            def _silent_run(*args, **kwargs):
+                flags = kwargs.get("creationflags", 0)
+                kwargs["creationflags"] = (flags & ~0x00000008) | 0x08000000
+                return _orig_run(*args, **kwargs)
+            subprocess.run = _silent_run
     except Exception:
         pass
+```
+
+**Verification Pattern over Windows OpenSSH (PowerShell EncodedCommand):**
+To verify remote venv patch status without cmd.exe argument/quote stripping:
+```python
+import base64, subprocess
+ps_code = """
+$p = & 'D:\\Taadaa\\python-envs\\automation\\Scripts\\python.exe' -c "import subprocess; print('PATCHED:', getattr(subprocess, '_hermes_no_window_patched', False))"
+Write-Output $p
+"""
+b64 = base64.b64encode(ps_code.encode("utf-16le")).decode("ascii")
+cmd = ["ssh", "-o", "BatchMode=yes", "admin-farm", f"powershell -NoProfile -NonInteractive -EncodedCommand {b64}"]
+res = subprocess.run(cmd, capture_output=True, text=True)
+# Expected: PATCHED: True
 ```
 
 **CRITICAL VIRTUALENV PITFALL:**

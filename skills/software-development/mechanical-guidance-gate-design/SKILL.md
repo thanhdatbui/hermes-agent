@@ -6,13 +6,13 @@ description: "Use when designing mechanical gates to prevent agent loops."
 # Mechanical Guidance Gate Design (Anti-Whining & Action Mandate)
 
 ## 1. When to Use
-Use when creating, modifying, or reviewing mechanical enforcement gates (pre-tool hooks, git hooks, closeout gates, or runtime fences). Enforces that every gate provides deterministic, actionable unblocking paths rather than passive denials.
+Use when creating, modifying, or reviewing mechanical enforcement gates (pre-tool hooks, git hooks, closeout gates, or runtime fences). Enforces that every gate provides deterministic, actionable unblocking paths (Auto-Rewire / Active Pivot) rather than passive denials.
 
 ## 2. Core Standards (Tri-Party Consensus)
 
-### Rule 1: No Silent Veto Gates (Cấm Veto Gate Câm)
-- **Violation:** A gate checks a condition, fails, prints a static error (e.g. `[DENY] Policy violated`), and executes `sys.exit(1)` without providing executable next steps. This leaves an LLM agent in a cognitive void, triggering apologetic loops or bureaucratic helplessness.
-- **Requirement:** Every non-zero exit from a gate MUST provide a machine-readable `REQUIRED_ACTION_O1` block with copy-pasteable commands and a domain-specific `guidance` string explaining the architectural invariant.
+### Rule 1: No Silent Veto Gates (Cấm Veto Gate Câm & Gate Bại Liệt)
+- **Violation:** A gate checks a condition, fails, prints a static error (e.g. `[DENY] Policy violated`), and executes `sys.exit(1)` without providing executable next steps or an automatic self-healing route. This leaves an LLM agent in a cognitive void, triggering apologetic loops or bureaucratic helplessness ("bại liệt / khóc lóc").
+- **Requirement:** Every gate DENY must be paired with either (a) an **Auto-Rewire / Active Pivot** mechanism that immediately mutates and forwards the action safely (e.g. `haiku_worker` & `claude_worker` auto-rewiring direct invocations to `dispatch_worker.py`), or (b) a machine-readable `REQUIRED_ACTION_O1` block with copy-pasteable commands and architectural guidance.
 
 ```json
 {

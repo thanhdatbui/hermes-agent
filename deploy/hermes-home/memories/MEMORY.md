@@ -11,3 +11,5 @@ Tool 2FA và cron xen ca chạy cả ngày BẮT BUỘC dùng Just-In-Time (JIT)
 Thang luân chuyển worker: Sol (Tier 1) -> Agy (Tier 2) -> Claude (Tier 3 on-demand). Cả haiku_worker và claude_worker đều auto-rewire về dispatch_worker khi thiếu cờ. Closeout Gate ổn định tự remediate 3-7p, cấm sửa tùy tiện. Sửa Telegram adapter ở D:/Taadaa/Hermes bắt buộc sync sang venv site-packages và restart gateway mới có hiệu lực.
 §
 Triết lý Canary farm: Sửa/lỗi chỗ nào thì Canary nhắm trúng chỗ đó (Target-bound differential canary), cấm chạy generic full-flow bừa bãi. Các job/watchdog chạy cả ngày bắt buộc né khung giờ đệm trước/sau reboot máy để bảo toàn máy cho ca cron.
+§
+Triết lý Auto-Rewire & Active Pivot: Gate DENY không phải là điểm dừng mà là kích hoạt tự sửa ngầm (Self-Healing Loop: Detect -> Deny -> Diagnose -> Pivot -> Verify -> Commit -> Audit). Tuyệt đối cấm trả BLOCKED khóc lóc/bại liệt hay đùn việc cho User. Đã tích hợp Auto-Rewire cứng cho cả haiku_worker và claude_worker (tự forward sang dispatch_worker: Sol -> Agy -> Haiku). Closeout Gate (Sol Repair) đã ổn định (80% tự vá xong trong 1-2 vòng / 3-7 phút), giữ nguyên không đụng vào.
