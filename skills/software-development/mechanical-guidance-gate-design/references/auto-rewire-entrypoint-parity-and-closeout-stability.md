@@ -42,11 +42,24 @@ if not is_authorized:
     return 126
 ```
 
-### B. Closeout Gate Zero-Touch Stability Invariant
+### B. Closeout Gate Zero-Touch Stability & Remediation Round Metrics
 Trước khi quyết định can thiệp hoặc sửa bất kỳ Gate nào, BẮT BUỘC kiểm tra nhật ký đối soát (`gate_audit.jsonl` và `gate_compliance_watchdog.py`):
-1. **Metric đo lường tốc độ:** Nếu thời gian từ `REJECTED` vòng 1 đến `APPROVED` chỉ mất từ **3 đến 7 phút** (ví dụ: `GPM auto` 3m12s, `tiktok-add-bao-mat-f2a` 4m22s, `Hermes` 7m14s) $\to$ Đây là tốc độ phản ứng tối ưu của Sol Repair, hoàn toàn không có hiện tượng "loay hoay" hay kẹt vòng lặp.
-2. **Metric tuân thủ Rubric:** Khi điểm số tăng dần qua từng strike ($76 \to 82$, $78 \to 82$, $85 \to 88$) và reset `reviewer_handoff_streak` về 0 sau khi push $\to$ Quy trình nghiệm thu hoàn toàn khỏe mạnh.
-3. **Quy tắc Bất Biến:** Khi G5 có 0 failures trong audit log rolling 6h, **TUYỆT ĐỐI CẤM SỬA ĐỔI CLOSEOUT GATE**. Mọi hành vi sửa đổi trên một cổng đang chạy trơn tru đều bị coi là over-engineering gây nguy cơ regression.
+1. **Dữ liệu thực nghiệm số vòng sửa (Remediation Rounds):**
+   - **80% trường hợp thành công chỉ tốn 1 đến 2 vòng:**
+     * `tools`: 1 vòng (`TEST_FAILED (0)` $\to$ `APPROVED (91)`).
+     * `Hermes`: 1 vòng (`DIFF_TOO_LARGE` $\to$ `APPROVED (85)`).
+     * `tiktok-add-bao-mat-f2a`: 1 vòng (`REJECTED (76)` $\to$ `APPROVED (82)`).
+     * `GPM auto`: 2 vòng (`REJECTED (78)` $\to$ `REJECTED (78)` $\to$ `APPROVED (82)`).
+   - **Trường hợp cá biệt tốn 5–6 vòng (loay hoay):** Chỉ xảy ra khi Agent cũ phạm vào 2 lỗi cấm sơ đẳng:
+     * Dùng cờ cấm `--skip-test` $\to$ Closeout Gate chém `TEST_SKIPPED` gán điểm 0.
+     * Tạo candidate diff > 30.000 ký tự $\to$ dính `DIFF_TOO_LARGE` sập pipeline.
+   - **Kết luận vận hành:** Khi không phạm 2 lỗi trên, Sol Repair giải quyết cực nhanh trong 1–2 vòng (3–7 phút).
+
+2. **Quy tắc Bất Biến (Zero-Touch Invariant):** Khi G5 có 0 failures trong audit log rolling 6h, **TUYỆT ĐỐI CẤM SỬA ĐỔI CLOSEOUT GATE**. Mọi hành vi táy máy trên một cổng đang chạy trơn tru đều là over-engineering gây nguy cơ regression.
+
+### C. Kỷ Luật Hành Động Trước - Báo Cáo Sau (Anti-Dithering & Action-First Mandate)
+- **Cấm lảm nhảm / phân trần dài dòng:** Khi User đã phát lệnh "R làm đi", Coordinator BẮT BUỘC thực thi dứt điểm bằng lệnh/code/test O(1) tại chỗ trước; tuyệt đối CẤM dừng lại viết sớ lý thuyết, giải thích hay phân trần dài dòng khi chưa có thay đổi thực tế trên đĩa.
+- **Tiêu chuẩn hoàn tất:** Phải có tool output thật chứng minh patch đã land, test suite pass hoặc service đã reload thì mới báo cáo kết quả ngắn gọn.
 
 ---
 
