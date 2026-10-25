@@ -11,5 +11,3 @@ Tool 2FA và cron xen ca chạy cả ngày BẮT BUỘC dùng Just-In-Time (JIT)
 Thang luân chuyển worker: Sol (Tier 1) -> Agy (Tier 2) -> Claude (Tier 3 on-demand). Cả haiku_worker và claude_worker đều auto-rewire về dispatch_worker khi thiếu cờ. Closeout Gate ổn định tự remediate 3-7p, cấm sửa tùy tiện. Sửa Telegram adapter ở D:/Taadaa/Hermes bắt buộc sync sang venv site-packages và restart gateway mới có hiệu lực.
 §
 Triết lý Canary farm: Sửa/lỗi chỗ nào thì Canary nhắm trúng chỗ đó (Target-bound differential canary), cấm chạy generic full-flow bừa bãi. Các job/watchdog chạy cả ngày bắt buộc né khung giờ đệm trước/sau reboot máy để bảo toàn máy cho ca cron.
-§
-Khi TikTok login báo sai mật khẩu hoặc tài khoản reg email-only: BẮT BUỘC tự động chuyển cứu tài khoản lấy mã qua Microsoft Graph API token trên PC (cột 9-10 gmail_clean_v2.xlsx), đặt/đổi lại mật khẩu mới và đồng bộ ngay vào workbook, CẤM dừng lại báo lỗi thủ công.
