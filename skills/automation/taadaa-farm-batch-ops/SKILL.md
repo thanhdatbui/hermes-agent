@@ -60,6 +60,10 @@ tags: [tiktok, farm, batch, render, upload, resume, kibe]
   Khi tác vụ mạng LAN hoặc bảo trì chạy lâu vượt quá 60 giây và không thể chạy foreground hay background thông thường, sử dụng cronjob một lần với cờ no_agent để hệ thống chạy ngầm tự động và gửi kết quả về chat.
 - **Quy Chuẩn Cờ Ẩn Cửa Sổ Tránh Lỗi Phân Tích AST:**
   Khi chạy tiến trình con qua subprocess, cờ creationflags bắt buộc truyền trực tiếp hằng số subprocess.CREATE_NO_WINDOW. Tuyệt đối không dùng getattr động vì bộ phân tích AST sẽ không nhận diện được cờ, dẫn tới việc chặn runner an toàn.
+- **Bẫy ADB Tiểu Vi Mồ Côi Cổng 5037 Treo Toàn Cụm & Báo Động Ảo Proxy Preflight:**
+  (1) Watchdog Tiểu Vi cấm chỉ lọc port 5038; khi `xiaowei.exe` tắt, mọi `adb.exe` có `ExecutablePath` thuộc `*\xiaowei\*` đều là mồ côi và phải dập tắt triệt để (kể cả cổng 5037);
+  (2) Runner preflight ngắt `blocked-proxy-vpn` khi lệnh ADB đọc IP bị fail (do USB lỏng hoặc daemon treo); bắt buộc đọc `stop_reason` trong `summary.txt` để tránh kết luận nhầm là rớt proxy.
+  (3) Auto-healer Wi-Fi dập nhả (`svc wifi disable/enable`) 5 phút/lần sẽ gây Threshing Loop làm driver S7 ngủ sâu (`DORMANT / NO-CARRIER`) và Aruba từ chối; bắt buộc có Circuit Breaker tối đa 2 lần heal trong 30 phút. Chi tiết xem [`references/xiaowei-orphan-adb-port5037-and-proxy-preflight-false-alarm.md`](references/xiaowei-orphan-adb-port5037-and-proxy-preflight-false-alarm.md).
 
 ## 4. Danh Mục Tham Khảo Chi Tiết
 - Xử lý file video 0-byte corrupt làm kẹt upload preflight: [`references/zero-byte-corrupt-video-upload-skip-triage.md`](references/zero-byte-corrupt-video-upload-skip-triage.md)
@@ -75,3 +79,4 @@ tags: [tiktok, farm, batch, render, upload, resume, kibe]
 - Downloader & Concurrency: [`references/dual-cluster-downloader-concurrency-and-proxy-hygiene.md`](references/dual-cluster-downloader-concurrency-and-proxy-hygiene.md)
 - Video Standard 45 Clips: [`references/video-farm-standard-45-clips-and-supplementary-pipeline.md`](references/video-farm-standard-45-clips-and-supplementary-pipeline.md)
 - Gái Xinh Pipeline: [`references/video-sourcing-gaixinh-two-tier-allocation.md`](references/video-sourcing-gaixinh-two-tier-allocation.md)
+- Tiểu Vi ADB Mồ Côi Cổng 5037, Báo Động Ảo Proxy Preflight & Threshing Loop Wi-Fi: [`references/xiaowei-orphan-adb-port5037-and-proxy-preflight-false-alarm.md`](references/xiaowei-orphan-adb-port5037-and-proxy-preflight-false-alarm.md)

@@ -33,24 +33,30 @@ Trong hệ thống `tiktok-follow` (Mode 2 follow followers), có 97 nick bị k
 
 ---
 
-### 4. Quy Luật Bất Biến Về Tính Streak & Cooldown (Chốt Phiên 2026-10-25)
-* **Éo follow được cái nào (`used == 0`): MỚI TÍNH LÀ STREAK LEO THANG:**
-  - Vừa vào bấm phát đầu tiên đã bị từ chối ngay -> Nick đang bị TikTok gắn cờ chặn cứng ở mức 0.
-  - Lúc này mới được tính là tái phạm fail streak:
-    - **Streak 1 (Nhả lần đầu): CHỈ PHẠT 24H (1 NGÀY)** để xả cache! Tuyệt đối CẤM phạt 3 ngày.
-    - **Streak 2 (Tái phạm lần 2):** Nghỉ 5 ngày.
-    - **Streak 3 (Tái phạm lần 3):** Nghỉ 7 ngày.
-    - **Streak >= 4 (Tái phạm dai dẳng):** Nghỉ 15 ngày (giam cách ly kiểm điểm).
-* **Đã follow được ít nhất 1 cái (`used >= 1`): KHÔNG ĐƯỢC TÍNH ĐI TÙ:**
-  - Nick đã chứng minh được năng lực bấm ăn và server TikTok đã nhận follow thật (1, 2, hay 5 cái). Việc đứt ở lượt sau thuần túy là **chạm trần phiên trong ngày (Ceiling Reached)**, KHÔNG PHẢI nick bị spam hay bị phế.
-  - **Quy tắc bắt buộc:**
-    1. `fail_streak = 0`: Xóa sạch chuỗi phạt, cấm leo thang streak.
-    2. Bảo toàn hoàn toàn `is_graduated` và `probation_clean_days` (không tước cờ, không xóa công trạng tích lũy).
-    3. Cooldown chỉ đúng **24 giờ** (`now_utc + 24 hours`), không giam phạt nhiều ngày.
+### 4. Quy Luật Bất Biến Về Tính Streak & Cooldown (Chốt Chuẩn Hóa 2026-10-25)
 
-### 5. Kỷ Luật Dispatch Worker & Phục Hồi Cooldown
-* **Worker Governance:** Khi user cấu hình hoặc chỉ định Sol Worker (qua :20129), Coordinator BẮT BUỘC tôn trọng Sol Worker. CẤM TUYỆT ĐỐI tự ý đề xuất, hối thúc hay chuyển sang Claude Worker khi user không yêu cầu đích danh (Claude 100% On-Demand).
-* **Xả án Streak 1:** Bất kỳ đợt nhả lần đầu nào dính Streak 1 chỉ nhận cooldown 24h từ thời điểm fail, hết 24h tự động unblock mở cữ chạy tiếp theo.
+#### A. Thang Cooldown Chuẩn Toàn Farm:
+- **`Streak 0`:** Nick hoàn toàn sạch, đang chạy khỏe bình thường, không dính án, không cooldown.
+- **`Streak 1` (Nhả lần đầu hoặc chạm trần phiên `used > 0`):** **CHỈ COOLDOWN 24 GIỜ (1 NGÀY)** để xả cache! Tuyệt đối CẤM phạt 3 ngày.
+- **`Streak 2` (Tái phạm lần 2 liên tiếp `used == 0`):** **CHỈ COOLDOWN 3 NGÀY** (Tuyệt đối CẤM phạt 5 ngày).
+- **`Streak 3` (Tái phạm lần 3 liên tiếp `used == 0`):** **CHỈ COOLDOWN 5 NGÀY** (Tuyệt đối CẤM phạt 7 ngày).
+- **`Streak >= 4` (Tái phạm dai dẳng):** Cooldown 15 ngày (giam cách ly kiểm điểm).
+
+#### B. Bóc Tách Hoàn Toàn 2 Hệ Thống: `fail_streak` vs Cấp Độ Quota Tốt Nghiệp:
+1. **Hệ thống `fail_streak` (Chuỗi thất bại liên tiếp):**
+   - Thuần túy là bộ đếm số lần fail liên tiếp (0 follow).
+   - Trong hàm `mark(uid, STATUS_FOLLOWED)`: **Cứ follow thành công dù chỉ 1 cái -> `fail_streak = 0` ngay lập tức!** Chuỗi thất bại bị bẻ gãy hoàn toàn vì server TikTok đã nhận follow thật. CẤM ghim giữ `fail_streak > 0` trong các ngày dưỡng nick.
+   - Khi chạm trần ở cuối cữ (`used > 0`): Ghi nhận là **Streak 1 (nhả lần đầu, phạt 24h)**.
+2. **Hệ thống Cấp độ Quota Dưỡng Nick (Hồi phục 1 -> Hồi phục 2 -> Khỏe/Tốt nghiệp):**
+   - Chạy **hoàn toàn độc lập** qua `probation_clean_days` và `graduated` (không phụ thuộc vào `fail_streak`):
+     - **Hồi phục 1:** Cấp quota 2–4 lượt.
+     - **Hồi phục 2:** Cấp quota 4–6 lượt.
+     - **Khỏe (Tốt nghiệp):** Cấp quota full 10–15 lượt.
+   - Cờ `is_post_cooldown_warmup` được kích hoạt khi `(not self.is_graduated) and (not self.follow_failed)` hoặc khi `recovered_date == today`. Nhờ vậy, nick dù có `fail_streak = 0` vẫn giữ đúng quota dưỡng an toàn (2–4 lượt) suốt các phiên cùng ngày và ngày hôm sau, không bị nhảy vọt lên full quota.
+
+### 5. Kỷ Luật Dispatch Worker & Timeout
+* **Worker Floor 300s:** BẮT BUỘC tuân thủ sàn timeout >= 300s cho mọi lệnh dispatch worker. CẤM TUYỆT ĐỐI Coordinator tự ý gõ cờ `--timeout 30` hay bóp ngắn timeout làm ngắt luồng stream của worker.
+* **Claude 100% On-Demand:** Khi user cấu hình Sol Worker, Coordinator BẮT BUỘC tôn trọng Sol Worker. CẤM TUYỆT ĐỐI tự ý đề xuất, hối thúc hay chuyển sang Claude Worker khi user không yêu cầu đích danh. Cấm phá tầng cơ học dispatch worker đã được chuẩn hóa.
 
 ---
 
