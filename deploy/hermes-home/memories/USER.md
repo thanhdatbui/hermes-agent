@@ -9,3 +9,5 @@ Auto-heal: 100% tự sửa ngầm (Sonnet -> Worker O(1) -> Canary -> Closeout);
 Memory & Học hỏi tự động: Chủ động lưu feedback, sở thích, hiệu chỉnh của user. Định kỳ tự dọn rác (< 70%), tri thức quy trình lớn đưa vào dynamic skill.
 §
 Khi kích hoạt batch render hoặc swap folder ngầm kéo dài > 5 phút: bắt buộc báo trước thời gian ước tính (ví dụ: 12-15 phút render 40 video) để user không tưởng bị treo/nín luôn.
+§
+Thiết kế Guard/Gate: Tuyệt đối cấm tạo Hard Block làm dừng phiên hay đùn việc cho user. Mọi chốt chặn bắt buộc phải tự động Auto-Rewire, Auto-Clamp tham số, hoặc Auto-Pivot sang task/máy khác trong queue để hệ thống chạy liên tục.
