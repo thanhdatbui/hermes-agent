@@ -118,6 +118,7 @@ Khi rơi vào ca/ngày dưỡng sinh, `resolve_shift_pool_account` raise `ValueE
   * Watchdog lọc các thư mục run trong `date_live` khớp với khung giờ ca (`SESSION_WINDOWS`), lấy run mới nhất `sorted_run_names[-1]` gán vào header cụm:
     `🏢 【FARM KIBE - MÁY 1-80】 (Run: row-0-140735)`
   * Mục đích: Phục vụ truy vết nhanh (Traceability), phân biệt rõ giữa Phiên 1 (sớm) và Phiên 2 (muộn) trong cùng 1 ca nuôi.
+  * Chi tiết đối soát đa cụm và nhận diện rớt hub USB vật lý: xem [references/multi-cluster-watchdog-triage-and-usb-hub-patterns.md](multi-cluster-watchdog-triage-and-usb-hub-patterns.md).
 
 ---
 
