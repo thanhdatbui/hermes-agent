@@ -35,12 +35,19 @@ UploadHook: [ERROR] scripts.tiktok_workflow.state_machine: [ACCOUNT_SWITCHER_FAI
 - `login_recovery_command` được cấu hình để gọi trực tiếp script login tự động:
   ```yaml
   login_recovery_command:
-    - "python"
+    - "D:\\Taadaa\\python-envs\\automation\\Scripts\\python.exe"
+    - "-X"
+    - "utf8"
     - "D:\\Taadaa\\Tiktok_Reg\\tiktok_login_v1.py"
     - "{machine}"
+    - "--all"
     - "--allow-parent-lock"
   ```
-  Script `tiktok_login_v1.py` tự động mở Switcher dropdown trên app, tap `Thêm tài khoản` (`tap_add_account`), điền email/pass hoặc OTP để hoàn tất đăng nhập.
+  **Lưu ý bắt buộc:**
+  1. **Cờ `--all`:** BẮT BUỘC phải có `--all`. Nếu không có `--email` hay `--all`, `tiktok_login_v1.py` sẽ abort với lỗi: `STOPPED: Co nhieu account du info. Dung --email <mail|id> de chi ro account can login, hoac --all de chay tat ca account usable.` Với `--all`, script sẽ quét toàn bộ danh sách usable: nick nào đã có trong Switcher sẽ nhận diện `already_logged_in` và bỏ qua; chỉ nick thiếu mới bị đưa vào flow `tap_add_account` để login.
+  2. **Python environment:** Trỏ đúng python của venv automation (`D:\Taadaa\python-envs\automation\Scripts\python.exe`) và cờ `-X utf8` để tránh lỗi encoding `cp1252` trên console Windows.
+  3. **Host config (`taadaa_host.py`):** Trên cụm Admin (máy 201+), biến môi trường `TAADAA_HOST_CONFIG` phải là `D:/Taadaa/machine-config/admin.yaml` để script nạp đúng tracking workbook của Admin (`taikhoan_dat_v2_updated .xlsx`), không bị rơi về path của Kibe khiến 0 accounts được load.
+  4. **Pitfall OneDrive dehydrated file (`RecallOnDataAccess` / `0x400000`):** Nếu `openpyxl` báo `TARGET_INVENTORY_READ_FAILED: OSError` (`[Errno 22] Invalid argument`), kiểm tra thuộc tính file workbook `taikhoan_run_safe.xlsx`. Nếu dính cờ `4199968` (RecallOnDataAccess/Offline), cần re-hydrate file bằng cách đọc stream byte và ghi đè lại nội bộ để file nằm thật sự trên ổ cứng.
 
 ## 3. Quy Trình Nạp Bù Tài Khoản Đúng Chuẩn (Actionable Reconcile Flow)
 Để nạp nick còn thiếu vào slot trống của thiết bị mà không ảnh hưởng đến batch đang chạy:
