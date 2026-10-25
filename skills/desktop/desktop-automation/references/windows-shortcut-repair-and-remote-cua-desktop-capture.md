@@ -67,7 +67,60 @@ if h:
 
 ---
 
-## 2. Remote Desktop Capture via `cua-driver` CLI (Session 0 & AMSI Bypass)
+## 2. Windows Protocol URL Schemes & In-App Deep Link Breakage (ShellExecute Error 31)
+
+### Symptom
+After moving or reinstalling a game/launcher suite (e.g. Riot Games, Steam, Epic Games, Battle.net) to a new drive/path, shortcuts work, but clicking in-client launch buttons (e.g. clicking **"LAUNCH TFT"** inside League of Legends Client, or browser deep-link login) does nothing: the button appears active but no secondary client or game process opens.
+
+### Root Cause
+1. **Silent ShellExecute Failure (SE_ERR_NOASSOC / Error 31):**
+   In-app cross-product buttons do not invoke `.exe` binaries directly; they trigger Windows Custom URL Protocols (e.g. `riotclient://product/launch/v1/teamfighttactics/pbe?directLaunch=true`).
+   The client invokes Windows API `ShellExecute()` or `ShellExecuteEx()`.
+   When the registry protocol handler points to a stale, deleted path:
+   `ShellExecute()` fails silently in the GUI, logging an error like:
+   `ERROR| LoadURLInBrowser: ShellExecute() returned 31 for URL: riotclient://...`
+   (Error 31 = `SE_ERR_NOASSOC`: file not found or no associated executable).
+2. **Registry Keys to Fix:**
+   Custom URL schemes are registered in:
+   - `HKEY_CLASSES_ROOT\<protocol>\shell\open\command`
+   - `HKEY_LOCAL_MACHINE\SOFTWARE\Classes\<protocol>\shell\open\command`
+   - `HKEY_CURRENT_USER\Software\Classes\<protocol>\shell\open\command`
+   If any of these still contain the old drive/folder (e.g. `"D:\x\...\RiotClientServices.exe" --app-command="%1"`), deep links fail.
+
+### Remediation Recipe (Python / Winreg)
+```python
+import winreg
+
+def update_protocol_handler(protocol_name, exe_path, args='--app-command="%1"'):
+    cmd_str = f'"{exe_path}" {args}'
+    roots = [
+        (winreg.HKEY_CLASSES_ROOT, f"{protocol_name}\\shell\\open\\command"),
+        (winreg.HKEY_LOCAL_MACHINE, f"SOFTWARE\\Classes\\{protocol_name}\\shell\\open\\command"),
+        (winreg.HKEY_CURRENT_USER, f"Software\\Classes\\{protocol_name}\\shell\\open\\command"),
+    ]
+    for root, subkey in roots:
+        try:
+            with winreg.CreateKey(root, subkey) as k:
+                winreg.SetValueEx(k, "", 0, winreg.REG_SZ, cmd_str)
+                print(f"Updated {subkey} -> {cmd_str}")
+        except Exception as e:
+            print(f"Error updating {subkey}: {e}")
+
+# Example for Riot Client:
+update_protocol_handler("riotclient", r"C:\Riot Games\Riot Client\RiotClientServices.exe")
+```
+
+### Verification
+Test launching the deep link without spawning GUI prompts:
+```python
+import os
+os.startfile("riotclient://product/launch/v1/teamfighttactics/pbe?directLaunch=true")
+```
+Confirm exit 0 / no exception, and verify in the target client log (e.g. `Riot Client Logs`) that `--launch-product` was received.
+
+---
+
+## 3. Remote Desktop Capture via `cua-driver` CLI (Session 0 & AMSI Bypass)
 
 ### Failure Modes of Standard Capture over SSH
 When administrating a remote Windows machine via SSH:
