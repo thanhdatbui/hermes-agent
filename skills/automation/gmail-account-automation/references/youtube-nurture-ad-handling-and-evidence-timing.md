@@ -98,12 +98,14 @@ Theo chỉ thị vận hành thực tế:
                  if (v.paused) {
                      const playBtn = document.querySelector('button.ytp-play-button');
                      if (playBtn) playBtn.click();
-                     else v.play();
+                     else { try { v.play().catch(() => {}); } catch(e){} }
                  }
                  return !v.paused;
              }'''))
          except Exception:
              return False
      ```
-  3. Gọi `ensure_youtube_playing(page)` trước khi vào vòng lặp xem, định kỳ mỗi 10s trong vòng lặp `while`, và ngay sau khi click "Bỏ qua quảng cáo".
-  4. Trì hoãn chụp screenshot nghiệm thu tới khi `elapsed >= 10s` để đảm bảo bắt trọn khoảnh khắc video đang phát thật sự (nút `⏸` và timer > 0).
+  3. **Bộ đếm thời gian kiểm tra Monotonic Timer**: Dùng biến `last_play_check = start_watch` và kiểm tra `now_t - last_play_check >= 10.0` thay vì `int(elapsed) % 10 == 0` (vì điều kiện `int` modulo có thể kích hoạt liên tục nhiều lần trong cùng một giây, gây spam JS evaluate).
+  4. **CLI Validation & Explicit Task Override**: Cờ `--task` trong parser bắt buộc dùng `choices=["youtube", "news", "search", ""]` để fail-fast khi có giá trị sai. Hàm `choose_behavior_tasks(rnd=None, task_override=None)` nhận tham số trực tiếp để test cô lập, tránh rò rỉ biến môi trường `TASK_OVERRIDE` giữa các lời gọi trong cùng tiến trình.
+  5. Gọi `ensure_youtube_playing(page)` trước khi vào vòng lặp xem, định kỳ mỗi 10s trong vòng lặp `while`, và ngay sau khi click "Bỏ qua quảng cáo".
+  6. Trì hoãn chụp screenshot nghiệm thu tới khi `elapsed >= 12s` và `is_ad == False` để đảm bảo bắt trọn khoảnh khắc video chính thức đang phát thật sự (nút `⏸` và timer > 0).
