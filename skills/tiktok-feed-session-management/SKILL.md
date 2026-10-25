@@ -11,11 +11,12 @@ author: Hermes Agent
 - Watchdog Follow Report: BẮT BUỘC hiển thị `{len(rel_...)} máy` kèm % và list máy (vd: `- Nhả liền (23 máy | 0 lượt | 92.0%): (M3, ...)`).
 
 ## References & Invariants
-- Shift-Pool 4d: [references/dynamic-shift-pool-4d-and-session-sync.md](references/dynamic-shift-pool-4d-and-session-sync.md)
-- 3-Tier: [references/per-machine-dynamic-3tier-account-selection.md](references/per-machine-dynamic-3tier-account-selection.md)
-- Starvation: [references/row-nurture-starvation-and-cycle-monitoring.md](references/row-nurture-starvation-and-cycle-monitoring.md)
-- Dashboard: [references/dashboard-nurture-health-implementation.md](references/dashboard-nurture-health-implementation.md)
-- Anchor/Streak: [references/follow-anchor-trap-and-streak-inflation-invariants.md](references/follow-anchor-trap-and-streak-inflation-invariants.md)
+- Shift-Pool 4d: references/dynamic-shift-pool-4d-and-session-sync.md
+- 3-Tier: references/per-machine-dynamic-3tier-account-selection.md
+- Starvation: references/row-nurture-starvation-and-cycle-monitoring.md
+- Dashboard: references/dashboard-nurture-health-implementation.md
+- Anchor/Streak: references/follow-anchor-trap-and-streak-inflation-invariants.md
+- Delta Triage: references/run-delta-triage-hardware-illusion-vs-software-contention.md
 
 ## Watchdog Upload Status Taxonomy & Triage
 Chi tiết taxonomy xem tại [references/feed-watchdog-catchall-taxonomy-and-triage.md](references/feed-watchdog-catchall-taxonomy-and-triage.md). If one cluster (for example Admin) has a materially higher proxy-failure share than another cluster (for example Kibe), prioritize proxy/egress triage there before editing feed logic. Record representative probe outputs and distinguish confirmed causes from hypotheses; if no code change was performed, say so explicitly and avoid claiming remediation.
