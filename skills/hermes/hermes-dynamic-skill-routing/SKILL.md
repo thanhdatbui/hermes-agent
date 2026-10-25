@@ -49,6 +49,7 @@ dispatch_worker.py → Agy CLI (Tier 1) / Haiku fallback (Tier 2)
 | `dispatch_planner.py` | `D:/Taadaa/tools/` | Single Dispatch Gateway for planning: Sonnet -> Sol -> Coordinator |
 | `dispatch_worker.py` | `D:/Taadaa/tools/` | Single Dispatch Gateway for code fixes: Sol -> Agy -> Haiku -> Coordinator |
 | `record_skill_knowledge.py` | `D:/Taadaa/tools/` | Canonical 1-touch tool: resolve skill, atomic write, auto rebuild index |
+| `auto_prune_memory.py` | `D:/Taadaa/tools/` | Automated 2-Stage GC for MEMORY.md and USER.md (dedup + mechanized purge) |
 | `preview_skill_injection.py` | `D:/Taadaa/tools/` | CLI preview without side effects |
 
 ## Pinned Core Skills (Always Injected)
@@ -248,7 +249,7 @@ Reviewing 13+ files simultaneously (5 engine files + 8 tests) causes Sol Auditor
   * **Proactive Save Preserved:** Agent is free to learn user corrections, preferences, and operational quirks in real time.
   * **Automated Periodic Garbage Collection:** `D:/Taadaa/tools/auto_prune_memory.py` runs every 6 hours via silent watchdog cron (`hermes-memory-garbage-collector`, job `ee258b5bb5e5`, `0 */6 * * *`, `no_agent=True`).
   * **Pruning Logic:** Parses `MEMORY.md` & `USER.md` via `§` delimiter. Deduplicates entries and auto-prunes rules already hardcoded in Python (follow streaks, Tier 1 Sol/exit 126, worker floor 300s, shift pools, game guards), while strictly protecting User Persona entries (Vibe O(1), Advisor On-Demand, Auto-heal, Hand-off). Clamps memory to < 70% capacity.
-  * **Reference:** [`references/memory-garbage-collection-and-anti-bloat.md`](references/memory-garbage-collection-and-anti-bloat.md).
+  * **Reference:** [`references/automated-memory-garbage-collection-architecture.md`](references/automated-memory-garbage-collection-architecture.md).
 
 ## Closeout Gate Notes
 

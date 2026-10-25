@@ -7,11 +7,12 @@ description: "Automation workflows for Gmail accounts on the Taadaa farm: Playwr
 
 - `references/playwright-gmail-navigation-timeout-and-relogin-challenge.md` — Timeout goto.
 - `references/s7-gmail-result-classification-and-chatgpt-decommission.md` — Dừng reg ChatGPT S7 & phân loại runner.
-- `references/s7-gmail-slot-eviction-and-gpm-cleanup-rules.md` — Giải phóng slot S7, TikTok Binding Gate, dọn DIE.
+- `references/s7-gmail-slot-eviction-and-gpm-cleanup-rules.md` — Giải phóng slot S7 & dọn DIE.
 - `references/slot-capacity-and-eviction-policy.md` — Trần số acc vs rolling eviction.
-- `references/dual-cluster-post-noon-gmail-and-watchdog-architecture.md` — Dual-cluster Kibe & Admin Reg Gmail, Exit Code 2 & Structured Events, _build_admin_powershell_command helper, và bẫy hardcode range(1, 75) khiến Farm Admin (201-280) ra 0 máy.
-- `references/gpm-api-pagination-and-soak-gate-deadlock.md` — GPM API pagination, Soaking Gate deadlock.
-- `references/youtube-nurture-ad-handling-and-evidence-timing.md` — YouTube ad skip, timing trap & nuôi 5p/5w.
+- `references/dual-cluster-post-noon-gmail-and-watchdog-architecture.md` — Dual-cluster Reg Gmail & range(1, 75) fix.
+- `references/gpm-api-pagination-and-soak-gate-deadlock.md` — GPM API pagination & Soaking Gate.
+- `references/youtube-nurture-ad-handling-and-evidence-timing.md` — YouTube ad skip & timing trap.
+- `references/gpm-relogin-taxonomy-and-soak-date-typo-trap.md` — Phân loại 5 lỗi re-login GPM & bẫy soak date Excel.
 
 ## Critical Operational Rules & Concurrency Safety
 - **Excel Concurrent Write Pitfall (Race Condition & File Corruption)**:
