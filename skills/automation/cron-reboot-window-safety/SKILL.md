@@ -45,9 +45,11 @@ For a small targeted fix, constrain the edit to the existing safe-window functio
 - Bẫy Kích Hoạt Test Run Bắn Rác Vào Live Chat (`cronjob run` Trap):
   + CẤM: Sau khi tạo hoặc cập nhật cronjob có đích đến là channel/group Telegram thật (`deliver: telegram:...`), CẤM TUYỆT ĐỐI gọi `cronjob action='run'` để "test thông mạch". Với `no_agent: true`, việc này lập tức đẩy stdout ra nhóm của user gây spam ngoài lịch định kỳ. Kiểm thử script watchdog BẮT BUỘC chạy offline qua CLI local (`python <script>`).
   + CHUẨN Anti-Spam cho Watchdog định kỳ khi `NO_EVIDENCE`: Đối với báo cáo đối soát định kỳ (6h, 12h, 24h), khi kết quả không phát hiện vi phạm (`NO_EVIDENCE`): hoặc im lặng tuyệt đối (stdout rỗng, exit 0), hoặc nếu user muốn báo cáo liveness thì chỉ in đúng 1 dòng tóm tắt trạng thái ngắn gọn (`🛡️ [WATCHDOG] ℹ️ Không phát sinh vi phạm (N files đối soát)`). CẤM in nguyên bảng biểu / emoji wall 8 Gate rỗng làm loãng kênh alert.
+- Bẫy Bulk Pre-Reservation Chặn Đứng Các Batch Khác (Bulk Lock vs JIT Lock): Khi cron phụ/xen ca (như Tool 2FA) chạy cả ngày, CẤM TUYỆT ĐỐI acquire lock hàng loạt (`status="queued"`) trước cho toàn bộ máy; việc này sẽ khóa cứng hàng chục máy trong hàng đợi làm batch chính (Upload Video) khởi chạy song song bị fail-closed `[NEEDS_USER_DECISION] ACQUIRE_LOCKS`. BẮT BUỘC dùng cơ chế Just-In-Time (JIT) Lock: tiến trình cha lập kế hoạch giãn cách không tạo lock file, từng worker con tự acquire lock khi bắt đầu và release ngay khi hoàn tất. Đồng thời khử trùng lặp machine cho launch plan nhưng gom target theo list để không làm rơi rớt account trên máy có nhiều nick.
 
 ## References
 
+- `references/jit-lock-vs-bulk-reservation-and-cron-safety-20261025.md` — Just-In-Time (JIT) lock architecture, multi-target deduplication, and reboot safe-window coordination.
 - `references/watchdog-anti-spam-and-no-evidence-discipline.md` — Anti-spam discipline: ban `cronjob run` on live channels, and collapse `NO_EVIDENCE` periodic reports to 1 line or silence.
 - `references/reboot-preflight-retry-and-10m-cutoff-protocol.md` — 5-minute preflight retry cadence, sentinel idempotency, and 10-minute session deadline cutoff.
 - `references/reboot-blackout-guard-and-all-day-cron.md` — validated window math, evidence checklist, and common collision pitfalls.
