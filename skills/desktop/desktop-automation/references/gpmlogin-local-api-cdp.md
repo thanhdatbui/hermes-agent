@@ -115,3 +115,25 @@ def drive_profile_cdp(remote_debugging_address: str, task_fn):
 * **Proxy Allocation:** Maximum 5 accounts per static residential/datacenter proxy IP.
 * **Timing & Rate Limits:** Add 5–15s delay between account logins/auth calls to avoid triggering Google OAuth rate limits.
 * **Checkpoint Handling:** Detect `challenge` / Recovery Email prompts during sign-in; fill recovery email if requested; log failing profiles separately to avoid halting the batch run.
+
+## Raw WebSocket CDP Connection Pitfall (Chromium 142+ & `websocket-client`)
+- **Origin Handshake 403 Forbidden:**
+  - *Symptom:* Direct connection `websocket.create_connection(ws_url)` fails with `WebSocketBadStatusException: Handshake status 403 Forbidden ... Rejected an incoming WebSocket connection from the http://127.0.0.1:<port> origin. Use the command line flag --remote-allow-origins=...`
+  - *Root Cause:* Modern Chromium (v111+ / v142) enforces target origin checks on CDP DevTools WebSocket connections. By default, `websocket-client` sends an `Origin: http://127.0.0.1:<port>` header which Chromium rejects unless explicitly allowed.
+  - *Fix:* Always pass `suppress_origin=True` when connecting:
+    ```python
+    import websocket
+    ws = websocket.create_connection(ws_url, timeout=10, suppress_origin=True)
+    ```
+
+## GPM Zombie Chrome Process Cleanup & Port Scoping
+- **API `stop` vs Residual Chromium Instances:**
+  - Calling `GET /api/v3/profiles/stop/{id}` signals GPM to close the browser, but background extensions or stalled navigations (e.g. Cloudflare WAF challenges) can leave orphan `chrome.exe` processes holding the debugging port.
+  - *Safe Cleanup Pattern:* Iterate running processes via `psutil`, filter for `--remote-debugging-port={port}`, and terminate child processes before killing the parent.
+  - *Critical Exclusion:* Explicitly check command lines to NEVER kill the user's primary desktop Chrome (`"google\\chrome\\user data"`).
+
+## Anti-Purge Safety Invariant on Cloudflare WAF / Proxy 403
+- **Transient vs Fatal Account State:**
+  - When inspecting web accounts (e.g. ChatGPT) through residential/mobile proxies, Cloudflare WAF may block requests with HTTP 403, empty DOM (`document.body.innerText == ''`), or WebSocket timeouts.
+  - *Rule:* Only classify accounts as `DEAD_DEACTIVATED` upon finding unequivocal deactivation strings (e.g. `account_deactivated`, `đã bị xóa hoặc vô hiệu hóa`). Any network/WAF/proxy timeout MUST be classified as `UNKNOWN` to prevent destructive purges of live user accounts.
+
