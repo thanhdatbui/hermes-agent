@@ -437,3 +437,4 @@ Use when creating, modifying, or reviewing mechanical enforcement gates (pre-too
 - Hook Fix Temporal Slicing & Gateway RAM Reload Parity: [`references/hook-fix-temporal-slicing-and-gateway-restart-parity.md`](references/hook-fix-temporal-slicing-and-gateway-restart-parity.md)
 - Auto-Rewrite Clamping, Strict Boundary Validation & Closeout Remediation Loop: [`references/auto-rewrite-clamping-and-boundary-validation.md`](references/auto-rewrite-clamping-and-boundary-validation.md)
 - Universal Hook Audit Persistence & Observability Blindspot Eradication: [`references/universal-hook-audit-logging-and-observability-blindspot-eradication.md`](references/universal-hook-audit-logging-and-observability-blindspot-eradication.md)
+- Tri-Party Gate & Guard Cascading Thrashing, Conflict Triage & Redundancy Eradication: [`references/gate-guard-cascading-thrashing-and-conflict-triage.md`](references/gate-guard-cascading-thrashing-and-conflict-triage.md)
