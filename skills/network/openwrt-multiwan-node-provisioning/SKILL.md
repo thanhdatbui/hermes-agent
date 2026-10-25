@@ -89,13 +89,14 @@ For routers deployed headlessly to remote locations without technical staff on-s
    - Instruction to on-site personnel must clearly identify Line 1 vs Line 2. If unmarked, swap the two white cables if Tailscale remains offline.
 2. **ONT / Modem Bridge Mode Prerequisite:**
    - Newly installed ISP modems default to Router mode (NAT). A downstream router cannot establish PPPoE pass-through until the ISP technician or admin enables Bridge Mode on the ONT (commonly restricted to **LAN 1** port on ZTE/iGate modems).
-3. **Rescue Protocol for "Tailscale Not Showing Up" (Field Triage Checklist):**
-   - When on-site staff reports plugging in but Tailscale remains offline (`last seen ... ago`):
-     1. **Audit Rescue Source (Common Mistake):** Verify the cable in the BLUE port comes from the **existing active home WiFi router** (currently browsing web/YouTube), **NOT** from the newly installed ISP lines. The new lines have no internet until PPPoE is authenticated.
-     2. **Isolate Rescue Port:** Instruct staff to **unplug both white cables (PPPoE)** temporarily. This prevents failing PPPoE discovery loops from hanging routing, forcing the kernel default route onto the rescue DHCP lease (metric 200).
-     3. **Power-Cycle (Cold Reboot):** Unplug the router's DC power barrel jack, wait 5s, plug back in.
-     4. **Visual LED Milestone:** Instruct staff to monitor the front LED: it boots Yellow/Orange and must turn solid **BLUE** (~60–90s) before reporting status.
-     5. **Premature Lifeline Unplug Trap (Instant Disconnect Pitfall):** When the node briefly appears `Connected` in Tailscale console, helpers frequently assume "it's working" and immediately unplug the blue rescue cable to switch to the white ports. **Mandatory instruction:** Explicitly warn helper to **KEEP THE BLUE CABLE PLUGGED IN UNTIL COORDINATOR COMPLETES REMOTE CONFIGURATION**.
+3. **Rescue Protocol for "Tailscale Not Showing Up / 1-Minute Flap" (Field Triage Checklist):**
+   - When on-site staff reports plugging in or screenshots show the node connected briefly (e.g. 1 minute) then dropped (`last seen ... ago`):
+     1. **Never Dismiss Brief Online Reports:** If user or dashboard reports node was seen online (e.g., `Last seen: 2:11 PM`), do NOT argue it never connected. A 1-minute connection followed by drop proves router hardware and Tailscale work, but suffered either a physical unplug or a kernel default route override.
+     2. **Route Flapping / Metric Contention:** When PPPoE interfaces have lower metrics (`10`, `20`) than the rescue port (`200`), failing PPPoE daemons or link-state changes can flush or override the default route. **Mandatory action:** Instruct staff to **physically unplug both white cables (PPPoE)** so only the blue rescue cable remains connected.
+     3. **Audit Rescue Source:** Verify the cable in the BLUE port comes from a working LAN port (LAN 1/2, not IPTV/MyTV ports on LAN 3/4) of the **existing active home WiFi router**, **NOT** from the newly installed unbridged ISP lines.
+     4. **Cold Reboot:** Unplug the router's DC power barrel jack, wait 5s, plug back in.
+     5. **Visual LED Milestone:** Front LED must boot Yellow/Orange and turn solid **BLUE** (~60–90s).
+     6. **Premature Lifeline Unplug Warning:** Reiterate firmly: **KEEP THE BLUE CABLE PLUGGED IN UNTIL COORDINATOR COMPLETES REMOTE CONFIGURATION**. Do not touch or swap cables when the light turns blue.
      6. **Post-Rescue Investigation:** Once Tailscale comes online, SSH in (`ssh root@<tailscale-ip>`) to inspect:
         ```sh
         logread | grep -E "pppd|wan"

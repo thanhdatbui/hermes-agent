@@ -49,13 +49,13 @@ During pre-shipout review, Claude CLI identified critical production hazards on 
 
 ### Incident Symptom
 - Node appears `Connected` (green dot) in Tailscale Admin Console at `14:10:00`.
-- Immediately at `14:10:00`, node state drops to `Offline (last seen 1m ago)` with `RxBytes: 0`.
+- At `14:11:00` (after ~1 minute), node state drops to `Offline (last seen 2:11 PM GMT+7)` with `RxBytes: 0`.
 
 ### Root Cause Analysis
-1. Helper plugged in the blue rescue cable; router obtained a DHCP lease from the home network; Tailscale contacted the coordination server (green dot).
-2. Helper saw LED light up or heard from the user that it was "working", and immediately unplugged the blue cable to plug in the white cables (or to relocate the router).
-3. The newly pulled fiber lines were not yet in Bridge mode on the ISP ONT, so PPPoE failed, leaving the router with zero default routes once the rescue cable was pulled.
+1. **Initial Boot Success:** Helper plugged in the blue rescue cable; router obtained a DHCP lease from the home network; Tailscale contacted the coordination server (`Connected` at 14:10).
+2. **Metric Race & Unbridged Line Conflict:** PPPoE interfaces on the white ports (`wan` with metric 10, `wan2` with metric 20) began active PADO discovery over physical cables plugged into unbridged ISP modems. As carrier was detected on physical ports, kernel routing and netifd attempted to prioritize lower-metric default routes, disrupting the rescue interface (metric 200) before PPPoE sessions were established.
+3. **Premature Unplug:** Alternatively, the on-site helper saw the router LEDs stabilize or assumed the connection was finished, unplugging the blue rescue cable to re-plug the white cables.
 
-### Prevention Protocol
-- Always instruct remote helpers:
-  > *"Cứ cắm GIỮ NGUYÊN sợi dây ở CỔNG XANH DƯƠNG, TUYỆT ĐỐI ĐỪNG RÚT RA cho đến khi kỹ thuật viên báo đã cấu hình xong từ xa!"*
+### Agent Behavioral Correction (Critical Discipline)
+- **Do NOT Argue Against Timestamp Evidence:** When the user provides a screenshot showing a recent `Last Seen` timestamp (e.g. `2:11 PM`), never claim "the device never came online". A brief online blip followed by disconnection is a classic signature of route flapping or cable disconnection, not a cold offline state.
+- **Immediate Mitigation:** Tell on-site staff to **unplug both white cables immediately**, leave **only the blue cable connected to the home WiFi router**, and power-cycle once. Do not attempt PPPoE negotiation until the node is reachable and stabilized over Tailscale.

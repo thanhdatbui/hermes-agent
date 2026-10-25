@@ -27,6 +27,7 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
 - Khôi Phục Session 2FA Ảo & Nạp Bio Bằng AdbKeyboard Broadcast: [`references/transient-2fa-recovery-and-adb-keyboard-utf8-bio-injection.md`](references/transient-2fa-recovery-and-adb-keyboard-utf8-bio-injection.md)
 - Chống Bịa Đặt Lý Do Lấp Liếm & Bộ Ba Đối Soát Profile (Tên, Bio, Avatar): [`references/anti-fabrication-and-full-profile-triad-verification.md`](references/anti-fabrication-and-full-profile-triad-verification.md)
 - Chống Báo Xong Mù, Chống Văn Mẫu Bio & Positive Contract Verifier: [`references/anti-blind-completion-and-positive-contract-verifier.md`](references/anti-blind-completion-and-positive-contract-verifier.md)
+- Kỷ Luật Nhả Lock Khung Giờ Ca Nuôi & Chống Ôm Máy Trễ Giờ Feed: [`references/shift-window-cutoff-and-active-feed-preemption.md`](references/shift-window-cutoff-and-active-feed-preemption.md)
 
 ## 1. Nguyên Tắc Cốt Lõi (Invariants)
 1. **CẤM gửi ảnh mù / đối phó:** Trước khi đính kèm bất kỳ thẻ `MEDIA:<path>` nào, bắt buộc phải mở ảnh ra soi mắt kiểm tra trước.
@@ -88,6 +89,10 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
     - Thẩm định độc lập 5 trường dương tính `{HANDLE, NAME, BIO, AVATAR, PIN}` qua WinRT OCR, không phụ thuộc vào lời khai tự do của Agent.
     - So khớp Tên bằng word-level match (`\b...\b`) để tránh dính từ trong handle.
     - Tích hợp Action-Forcing FSM: Khi REJECTED, bắt buộc trả về `missing_fields`, `next_action` và `recommended_tool` để Agent lập tức hành động, triệt tiêu nguy cơ bại liệt hay than khóc.
+19. **Tôn Trọng Khung Giờ Ca Nuôi & Kỷ Luật Nhả Lock (Active Shift Window Cutoff):**
+    - **Lịch Shift Pool Farm 3 ca:** Ca 1 (08:30 – 11:30, Slot {1, 2, 7}), Ca 2 (14:00 – 17:30, Slot {3, 4, 8}), Ca 3 (19:30 – 22:30, Slot {5, 6}).
+    - **Cutoff Invariant:** Khi đồng hồ chạm khung giờ ca nuôi của Slot máy tương ứng (ví dụ 14h00+ đối với máy Slot Tik 3, 4, 8), BẮT BUỘC DỪNG ngay mọi can thiệp thủ công, cấm ôm device lock để loay hoay lặp lệnh sửa adb/mạng.
+    - **Preemption & Tránh nhầm lẫn Account Drift:** Trong ca nuôi, hệ thống feed tự động lướt và chuyển đổi tài khoản theo lịch. Cố tình can thiệp giữa ca sẽ gây xung đột tài nguyên, kẹt ADB và đọc nhầm account của ca nuôi. Bắt buộc nhả lock ngay, tắt màn hình (`keyevent 223`) và trả máy cho tiến độ tự động. Chi tiết xem [`references/shift-window-cutoff-and-active-feed-preemption.md`](references/shift-window-cutoff-and-active-feed-preemption.md).
 
 ## 2. Thang Leo Thang Vision Dự Phòng (Fallback Ladder)
 Thứ tự fallback đọc ảnh chuẩn hoá 100% đồng bộ với kiến trúc Worker Dispatch:
