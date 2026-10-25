@@ -405,3 +405,4 @@ Use when creating, modifying, or reviewing mechanical enforcement gates (pre-too
 - Full-Spectrum Gate Telemetry Isolation & Guidance Mandate: [`references/full-spectrum-gate-telemetry-isolation-and-guidance-mandate.md`](references/full-spectrum-gate-telemetry-isolation-and-guidance-mandate.md)
 - Intent-Class Enforcement, Auto-Rewrite vs Action Mandate, and 8-Gate Full-Spectrum Observability: [`references/intent-class-enforcement-auto-rewrite-and-8gate-observability.md`](references/intent-class-enforcement-auto-rewrite-and-8gate-observability.md)
 - Ground-Truth Video Content Audit Before Profile Renaming: [`references/ground-truth-video-content-audit-before-renaming.md`](../../automation/tiktok-farm-avatar-operations/references/ground-truth-video-content-audit-before-renaming.md)
+- Gate Compliance Watchdog & Hook Guard Friction Rollup: [`references/gate-compliance-and-hook-friction-rollup.md`](references/gate-compliance-and-hook-friction-rollup.md)
