@@ -85,13 +85,20 @@ For routers deployed headlessly to remote locations without technical staff on-s
    - Instruction to on-site personnel must clearly identify Line 1 vs Line 2. If unmarked, swap the two white cables if Tailscale remains offline.
 2. **ONT / Modem Bridge Mode Prerequisite:**
    - Newly installed ISP modems default to Router mode (NAT). A downstream router cannot establish PPPoE pass-through until the ISP technician or admin enables Bridge Mode on the ONT (commonly restricted to **LAN 1** port on ZTE/iGate modems).
-3. **Rescue Protocol for "Tailscale Not Showing Up":**
-   - When on-site staff reports plugging in but Tailscale shows offline:
-     1. Instruct staff to plug an Ethernet cable from their existing working home WiFi router into the **BLUE port** (rescue).
-     2. Wait 60–90 seconds for OpenWrt boot + DHCP lease.
-     3. Once Tailscale comes online, SSH into the node and inspect live logs:
+3. **Rescue Protocol for "Tailscale Not Showing Up" (Field Triage Checklist):**
+   - When on-site staff reports plugging in but Tailscale remains offline (`last seen ... ago`):
+     1. **Audit Rescue Source (Common Mistake):** Verify the cable in the BLUE port comes from the **existing active home WiFi router** (currently browsing web/YouTube), **NOT** from the newly installed ISP lines. The new lines have no internet until PPPoE is authenticated.
+     2. **Isolate Rescue Port:** Instruct staff to **unplug both white cables (PPPoE)** temporarily. This prevents failing PPPoE discovery loops from hanging routing, forcing the kernel default route onto the rescue DHCP lease (metric 200).
+     3. **Power-Cycle (Cold Reboot):** Unplug the router's DC power barrel jack, wait 5s, plug back in.
+     4. **Visual LED Milestone:** Instruct staff to monitor the front LED: it boots Yellow/Orange and must turn solid **BLUE** (~60–90s) before reporting status.
+     5. **Post-Rescue Investigation:** Once Tailscale comes online, SSH in (`ssh root@<tailscale-ip>`) to inspect:
         ```sh
         logread | grep -E "pppd|wan"
         ip -br link
         ```
-     4. Check whether `lan1` / `lan2` link state is `UP` (cable detected) or `NO-CARRIER` (loose cable or ONT powered off), and verify authentication rejection reasons.
+        Check whether `lan1`/`lan2` link state is `UP` (carrier detected) or `NO-CARRIER`, and whether PPPoE failed due to `Timeout waiting for PADO packets` (ONT not in bridge mode or wrong ONT LAN port) or `PAP/CHAP authentication failed` (swapped line credentials or wrong circuit ID).
+
+4. **Non-Technical Communication Discipline for Remote On-Site Helpers:**
+   - **Terminology:** Speak in plain physical terms. Say **"Đường 1" / "Đường 2"**, NEVER say "modem 1", "ONT", "BRAS", or "bridge".
+   - **Port Identification:** Describe physical position and color: *"cổng trắng ở giữa (Đường 1)"*, *"cổng trắng ngoài cùng (Đường 2)"*, *"cổng xanh dương cạnh lỗ nguồn (mạng nhà cứu hộ)"*.
+   - **Failsafe Reassurance:** Explicitly reassure helper: *"Nếu cắm nhầm ngược nhau thì không cháy hay mất mạng, chỉ cần đổi chéo 2 dây trắng cho nhau là xong"*.
