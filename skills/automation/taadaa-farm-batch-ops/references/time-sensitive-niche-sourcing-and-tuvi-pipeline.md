@@ -90,3 +90,14 @@ Giải pháp độc lập, không phụ thuộc vào việc đi "nhặt mót" vi
      * `https://www.youtube.com/@kenhtuvido/shorts` (Tử Vi Đỏ — cập nhật ngày/tuần mới nhất).
      * `https://www.youtube.com/@lichngaytotdotcom/shorts` (Lịch Ngày Tốt — ngày tốt, hoàng đạo).
 
+6. **Chống Bẫy "Nín Luôn" Khi Chạy Detached Process (Anti-Silent Execution Discipline):**
+   - **Hiện tượng:** Khi kích hoạt pipeline swap ngầm qua `subprocess.Popen` detached (không qua session background của Hermes), Hermes không nhận được callback sự kiện hoàn thành. Khâu render 40 video FFmpeg kéo dài 12–15 phút. Nếu Agent chỉ nhắn *"Đang chạy, xong tao báo"* rồi im lặng tuyệt đối, User sẽ tưởng Agent bị đơ/văng session và bực mình hỏi *"sao r? sao mày nín luôn r"*.
+   - **Kỷ luật vận hành:**
+     * BẮT BUỘC thông báo ước tính thời gian trước cho User (ví dụ: *"Đang tải 40 clip và render FFmpeg mất khoảng 12-15 phút"*).
+     * Báo cáo tiến độ ở các mốc chuyển giao trọng yếu (Tải xong 40 clip -> Tạo avatar -> Bắt đầu render) thay vì nín lặng chờ đến khi render xong 100%.
+
+7. **Hậu Kiểm Đồng Bộ Cột `Render MP4` Trong `TikN.xlsx`:**
+   - Trong script `swap_single_folder_pipeline.py`, hàm `update_excel_workbook` mặc định chỉ update `Keyword Video`, `Hashtag Pool` và `Kiểm Tra Dữ Liệu`, nhưng có thể bỏ sót cập nhật số lượng clip mới vào cột `Render MP4` (cột K / index 10).
+   - Sau khi pipeline kết thúc, BẮT BUỘC kiểm tra lại dòng máy trong `TikN.xlsx`, cập nhật `row[10].value = len(downloaded)` (ví dụ: 40) để khớp chính xác giữa số file render thực tế trong `D:\TIKTOK-videonuoinick\<folder>` và sổ cái.
+
+
