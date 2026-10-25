@@ -12,9 +12,9 @@
 - **Hiện tượng:** Tài khoản TikTok sau khi reg thường dính các liên kết từ thiện hoặc badge mặc định như `Đang hỗ trợ: WWF-UK`.
 - **Hành động bắt buộc:** Khi nạp bio tiếng Việt mới, phải làm sạch hoàn toàn các liên kết/badge này để trang cá nhân sạch sẽ và tự nhiên.
 
-## 4. Bẫy Viết Hoa Sai Chính Tả Trên Tên Hiển Thị
-- **Hiện tượng:** Tên hiển thị bị viết hoa lệch lạc (ví dụ: `Ngọc TRinh`, `thanh KHoa`).
-- **Hành động bắt buộc:** Format lại chuẩn danh từ riêng tiếng Việt (`Ngọc Trinh`, `Thanh Khoa`).
+## 4. Phong Cách Tên Hiển Thị (Teencode & Tên Người Dùng Tự Nhiên)
+- **Kinh nghiệm thực tế (User Feedback):** Các dạng tên viết hoa teencode tự nhiên của người dùng (ví dụ: `Ngọc TRinh` với chữ `R` viết hoa kiểu teen) là **hoàn toàn bình thường và phổ biến** trên TikTok.
+- **Hành động bắt buộc:** GIỮ NGUYÊN các tên teencode/style tự nhiên nếu người dùng không yêu cầu sửa; CẤM tự ý "chuẩn hoá" bẻ tên sang danh từ riêng hành chính cứng nhắc. Chỉ can thiệp sửa tên khi tên là dãy số ngẫu nhiên rác lúc reg nick (`user12345678`) hoặc lỗi font/encoding.
 
 ## 5. Kỷ Luật Cấm Lock Tên Hiển Thị (`.manual_name_locked`)
 - **Nguyên tắc:** TikTok giới hạn đổi tên 7 ngày 1 lần. Khi chuẩn hoá tên, chỉ cắm cờ `.manual_avatar_locked` và `.manual_hashtag_locked` cho thư mục media.

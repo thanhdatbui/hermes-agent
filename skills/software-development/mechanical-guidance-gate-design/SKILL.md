@@ -7,12 +7,13 @@ description: "Use when designing mechanical gates to prevent agent loops."
 
 ## 1. When to Use
 Use when creating, modifying, or reviewing mechanical enforcement gates (pre-tool hooks, git hooks, closeout gates, or runtime fences). Enforces that every gate provides deterministic, actionable unblocking paths (Auto-Rewire / Active Pivot) rather than passive denials.
-- Reference: `references/auto-rewire-and-auto-clamp-architecture.md` (Auto-Rewire on worker entrypoints, investigate budget auto-clamp <= 8, console window matcher narrowing, Closeout Gate `--skip-test` auto-rewire, and zero-whine execution discipline).
-- Reference: `references/user-sudo-override-and-investigate-read-only-deadlock-triage.md` (User Master Override Sudo architecture, avoiding the Investigate Read-Only trap, regex multi-file false positive prevention, and anti-idle-window evaluation discipline).
-- Reference: `references/active-pivot-auto-rewire-architecture.md` (Tri-party consensus on Auto-Rewire vs Hard-Block, anti-paralysis invariants, and Sol Repair Monopoly findings).
-- Reference: `references/tri-party-auto-rewire-vs-guard-invariant-consensus.md` (Tri-party consensus on Auto-Rewire vs Guard Invariants, safe auto-repair vs policy bypass, and multi-session disjoint verification).
-- Reference: `references/idle-window-evaluation-bias-and-closeout-boundary-discipline.md` (Idle-window evaluation bias, Closeout Gate monopoly protection, and zero-block action mandate hierarchy).
-- Reference: `references/cowboy-coordinator-boundary-and-idle-evaluation-invariants.md` (Cowboy Coordinator Gate 3/6 boundary violations, idle-window evaluation bias, and zero hard-block hierarchy).
+- Reference: `references/pre-tool-auto-rewrite-and-24h-heartbeat-architecture.md` (Engine-level pre-tool auto-rewrite, zero turn overhead, fail-closed telemetry, and 24h heartbeat).
+- Reference: `references/auto-rewire-and-auto-clamp-architecture.md` (Auto-Rewire on worker entrypoints, investigate budget auto-clamp, and Closeout Gate `--skip-test` auto-rewire).
+- Reference: `references/user-sudo-override-and-investigate-read-only-deadlock-triage.md` (User Master Override Sudo architecture, avoiding Investigate Read-Only trap).
+- Reference: `references/active-pivot-auto-rewire-architecture.md` (Tri-party consensus on Auto-Rewire vs Hard-Block, anti-paralysis invariants).
+- Reference: `references/tri-party-auto-rewire-vs-guard-invariant-consensus.md` (Tri-party consensus on Auto-Rewire vs Guard Invariants).
+- Reference: `references/idle-window-evaluation-bias-and-closeout-boundary-discipline.md` (Idle-window evaluation bias and zero-block action mandate hierarchy).
+- Reference: `references/cowboy-coordinator-boundary-and-idle-evaluation-invariants.md` (Cowboy Coordinator Gate 3/6 boundary violations and zero hard-block hierarchy).
 - Reference: `references/user-sudo-override-and-gate-abc-discipline.md` (User Sudo Override break-glass protocol, Pipeline A-B-C mechanical stages, and anti-idle-window evaluation invariants).
 - Reference: `references/user-sudo-override-and-gate-c-pipeline.md` (User Sudo Master Override mechanism, anti-paralysis emergency surgery, and Pipeline A-B-C orchestration).
 
