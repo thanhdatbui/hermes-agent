@@ -82,11 +82,15 @@ def is_feed_runner_active() -> bool:
 
 
 def get_connected_devices(cluster: dict) -> dict[str, str]:
-    """Map serial -> device state for one ADB cluster."""
+    """Map serial -> device state for one ADB cluster and track reachability."""
     adb_cmd = [ADB, *cluster["adb_args"], "devices"]
+    cluster["reachable"] = False
     for attempt in range(2):
         try:
             proc = subprocess.run(adb_cmd, capture_output=True, text=True, timeout=15, **WIN_KWARGS)
+            if proc.returncode != 0:
+                raise RuntimeError(proc.stderr.strip() or f"adb exited with code {proc.returncode}")
+            cluster["reachable"] = True
             lines = proc.stdout.strip().splitlines()[1:]
             devices = {}
             for line in lines:
@@ -302,7 +306,7 @@ def main() -> int:
             if m not in cleared_today and machine_retries.get(str(m), 0) < 2
         ])
 
-    if not target_machines:
+    if not target_machines and all(cluster.get("reachable", True) for cluster in CLUSTERS):
         return 0
 
     if args.dry_run:
@@ -417,10 +421,9 @@ def main() -> int:
         sys.stderr.write(f"[CRON] Đang trong nhịp retry hoặc đã báo cáo hôm nay (cleared={len(cleared_today)}/{len(connected_fleet_machines)}). Im lặng.\n")
         return 0
 
-    report = [
-        f"[BÁO CÁO DỌN DẸP CACHE TIKTOK]",
-        f"• Đã hoàn tất: {len(cleared_today)} máy",
-    ]
+    report = [f"[BÁO CÁO DỌN DẸP CACHE TIKTOK]"]
+    if len(cleared_today) > 0 or all(cluster.get("reachable", True) for cluster in CLUSTERS):
+        report.append(f"• Đã hoàn tất: {len(cleared_today)} máy")
     fail_map = dict(failed_machines)
     for cluster in CLUSTERS:
         c_label = cluster["label"]
@@ -430,6 +433,9 @@ def main() -> int:
         c_lock = [m for m in sorted(locked_machines) if min_m <= m <= max_m]
         s_list = ", ".join(f"{m:02d}" for m in c_succ) if c_succ else "None"
         report.append(f"\n🏢 【{c_label}】")
+        if not cluster.get("reachable", True):
+            report.append("⚠️ Cluster không kết nối được ADB; không thể xác nhận trạng thái máy.")
+            continue
         report.append(f"• Đã hoàn tất: {len(c_succ)} máy ({s_list})")
         if c_lock:
             l_list = ", ".join(f"{m:02d}" for m in c_lock)
@@ -444,7 +450,8 @@ def main() -> int:
             report.append(f"• Lỗi (0)")
 
     print("\n".join(report))
-    state_data["reported_date"] = today_str
+    if all(cluster.get("reachable", True) for cluster in CLUSTERS) or args.force:
+        state_data["reported_date"] = today_str
     save_state(state_data)
     return 0
 

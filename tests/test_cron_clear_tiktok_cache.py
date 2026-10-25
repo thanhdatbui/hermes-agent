@@ -307,6 +307,41 @@ class TestCronClearTiktokCacheDualCluster(unittest.TestCase):
         self.assertIn("• Đã hoàn tất: 1 máy", out)
         self.assertIn("• Lỗi (0)", out)
 
+    @patch("cron_clear_tiktok_cache.print")
+    @patch("cron_clear_tiktok_cache.save_state")
+    @patch("cron_clear_tiktok_cache.get_connected_devices")
+    @patch("cron_clear_tiktok_cache.load_machine_serials", return_value=[])
+    @patch("cron_clear_tiktok_cache.load_state")
+    @patch("sys.argv", ["cron_clear_tiktok_cache.py", "--force"])
+    def test_unreachable_cluster_warning(
+        self, mock_load_state, mock_load_serials, mock_conn, mock_save, mock_print
+    ):
+        import cron_clear_tiktok_cache as ctc
+
+        mock_load_state.return_value = {
+            "last_date": "2026-10-25",
+            "cleared_machines": [1],
+            "machine_retries": {},
+            "reported_date": None,
+        }
+        mock_load_serials.side_effect = lambda cl: [(1, "ce01")] if cl["name"] == "kibe" else []
+
+        def fake_conn(cluster):
+            cluster["reachable"] = cluster["name"] != "admin"
+            return {"ce01": "device"} if cluster["name"] == "kibe" else {}
+
+        mock_conn.side_effect = fake_conn
+
+        rc = ctc.main()
+
+        self.assertEqual(rc, 0)
+        out = "\\n".join(call[0][0] for call in mock_print.call_args_list)
+        self.assertIn(
+            "⚠️ Cluster không kết nối được ADB; không thể xác nhận trạng thái máy.",
+            out,
+        )
+        self.assertNotIn("• Đã hoàn tất: 0 máy (None)", out)
+
     def test_sync_to_runtime_and_shared(self):
         import shutil, os
         src = Path("D:/Taadaa/Hermes/deploy/hermes-home/scripts/cron_clear_tiktok_cache.py")
