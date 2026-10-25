@@ -14,11 +14,12 @@ metadata:
 # Agent Verification Loop
 
 References:
-- `references/terminal-wrapper-timeout.md` — Keep foreground commands within limit.
-- `references/bounded-turn-execution.md` — Caps & exact verifier contracts.
+- `references/terminal-wrapper-timeout.md` — Command timeout limits.
+- `references/bounded-turn-execution.md` — Verifier contracts.
 - `references/device-canary-and-remote-runner-evidence.md` — Canary evidence.
-- `references/subsecond_boundary_and_sqlite_datetime_testing.md` — Subsecond boundary regression testing.
-- `references/terminal-foreground-chunking-discipline.md` — Chunking batch jobs under foreground 60s timeout & background console guards.
+- `references/subsecond_boundary_and_sqlite_datetime_testing.md` — Subsecond testing.
+- `references/terminal-foreground-chunking-discipline.md` — Chunking batch jobs.
+- `references/windows-crlf-and-closeout-gate-pitfalls.md` — Windows CRLF diff & closeout gate base ref.
 
 How to *run* verification so it counts as evidence inside a Hermes agent session,
 distinct from TDD philosophy (which is covered by `test-driven-development`). This
