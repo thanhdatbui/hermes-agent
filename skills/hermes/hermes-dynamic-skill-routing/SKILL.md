@@ -242,6 +242,14 @@ Reviewing 13+ files simultaneously (5 engine files + 8 tests) causes Sol Auditor
   * Kiểm toán trùng lặp giữa các khối: Xóa bỏ 100% các đoạn text lặp lại giữa `MEMORY` và `USER PROFILE`.
   * Quản trị Tools Schema: Các công cụ bị chặn cứng bởi Guard nếu không cần thiết nên được cấu hình loại trừ bằng profile toolset lockdown để tránh tốn 10.000–15.000 tokens schema mỗi turn.
 
+### 20. The Proactive Memory Paradox & Automated Memory Garbage Collection (auto_prune_memory.py)
+- **The Trap:** Banning proactive memory saves to prevent context bloat cripples the agent's ability to learn user feedback and adapting styles autonomously, forcing tedious manual `memory(...)` directives. Conversely, allowing unconstrained saves without pruning causes `MEMORY.md` to rapidly hit 98% cap (2,200 chars) with stale rules that have already been hardcoded into Python scripts/guards.
+- **The Architecture:**
+  * **Proactive Save Preserved:** Agent is free to learn user corrections, preferences, and operational quirks in real time.
+  * **Automated Periodic Garbage Collection:** `D:/Taadaa/tools/auto_prune_memory.py` runs every 6 hours via silent watchdog cron (`hermes-memory-garbage-collector`, job `ee258b5bb5e5`, `0 */6 * * *`, `no_agent=True`).
+  * **Pruning Logic:** Parses `MEMORY.md` & `USER.md` via `§` delimiter. Deduplicates entries and auto-prunes rules already hardcoded in Python (follow streaks, Tier 1 Sol/exit 126, worker floor 300s, shift pools, game guards), while strictly protecting User Persona entries (Vibe O(1), Advisor On-Demand, Auto-heal, Hand-off). Clamps memory to < 70% capacity.
+  * **Reference:** [`references/memory-garbage-collection-and-anti-bloat.md`](references/memory-garbage-collection-and-anti-bloat.md).
+
 ## Closeout Gate Notes
 
 - The 3 new files (`skill_injector.py`, tests) + modified `dispatch_worker.py` together exceed 22KB diff

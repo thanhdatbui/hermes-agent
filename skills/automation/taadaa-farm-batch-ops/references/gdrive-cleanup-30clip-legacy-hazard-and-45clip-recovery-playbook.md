@@ -66,3 +66,11 @@ Khi phát hiện các kênh bị đóng băng dở dang ở 30–44 clip:
   ```bash
   python D:/Taadaa/tools/admin_ssh.py "python C:/Users/Admin/run_admin_downloader_service.py"
   ```
+
+## 4. Chiến Lược Giới Hạn 45 Clip Cán Đích vs Render Hết Nguồn (Disk Safety Tradeoff - User Directive 2026-10-25)
+- **Câu hỏi nghiệp vụ**: Khi folder gốc có 60–70 clip (ví dụ folder 499 có 65 clip), có nên render hết sạch sang output không?
+- **Quyết định vận hành của User**: **GIỮ VỮNG NGƯỠNG ĐÍCH 45 CLIP TRƯỚC ĐỂ TRÁNH TRÀN Ổ ĐĨA**:
+  1. **Dung lượng dự trữ**: Với 45 clip thành phẩm và nhịp xoay ca 4 ngày/lần, tài khoản đã có sẵn đủ video đăng liên tục trong 180 ngày (6 tháng).
+  2. **Bảo vệ an toàn đĩa Admin SSD 1TB**: Ổ đĩa D: Admin chỉ còn ~13–15 GB trống. Nếu render vượt trần lên 60–70 clip cho hàng trăm folder, dung lượng video thành phẩm sẽ ngốn thêm 35–45 GB, chắc chắn gây tràn đĩa (`0 MB free`), kích hoạt lại Google Drive virtual cache deadlock và làm sập pipeline.
+  3. **Bảo tồn nguồn gốc**: Toàn bộ 60–70 clip gốc đã được sao lưu toàn vẹn 100% trên Google Drive 5TB (`G:\My Drive\video_goc_backup\<f_src>`).
+  4. **Kế hoạch đợt 2**: Chỉ render đủ $\ge 45$ clip để đạt chuẩn farm và dọn dẹp local. Khi nào tài khoản đăng gần hết (chạm clip 40–45 sau 5–6 tháng nữa), hệ thống mới kéo các clip từ 46 trở đi về render nối tiếp.
