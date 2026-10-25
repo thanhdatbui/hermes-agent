@@ -9,9 +9,12 @@ Hệ thống quản lý tới tầng tài khoản (Account-Level Telemetry), xó
 ### Phân Bổ Ca Nuôi & Ranh Giới Pool:
 - **Ca 1 (Sáng: 06:00 & 08:00):** Pool `{1, 2, 7}`
 - **Ca 2 (Trưa: 12:00 & 14:00):** Pool `{3, 4, 8}`
-- **Ca 3 (Tối: 18:00 & 20:00):** Pool `{5, 6}`. Riêng Ngày 3 (D2) hoặc ngày dưỡng sinh (D3) bốc thêm **Row Động** theo phễu Đề xuất $\to$ Nhả $\to$ Yếu.
+- **Ca 3 (Tối: 18:00 & 20:00):** 
+  * Lượt 1 & 2: Chạy 2 nick trong Pool `{5, 6}` theo thứ tự sức khỏe.
+  * Lượt 3 (Đòn bẩy chiến lược - Row Động): Tự động fallback sang 3 phễu nuôi dưỡng sinh (**Đề xuất $\to$ Nhả $\to$ Yếu**).
+  * 🛑 **Quy tắc Bất biến:** Row Động Ca 3 **BẮT BUỘC BỊ TẮT FOLLOW HOÀN TOÀN** (`rest_day_no_follow: true`, `reason: dynamic-nurture-row-follow-disabled`), chỉ thuần túy lướt feed và up video để kích mạnh trust kênh mà không gây rủi ro spam follow.
 
-### Quy Luật Bốc Tuần Tự Đi Đủ 8 Nick (Không Bỏ Đói):
+### Quy Luật Bốc Tuần Tự Đi Đủ 8 Nick (Chống Bỏ Đói & Chống Trôi Lượt):
 - **Phễu Sức Khỏe 6 Tầng (`_follow_rank`):**
   1. 🟢 **Rank 1 - Khỏe (`healthy`):** `graduated=True` hoặc `healthy`.
   2. 🥈 **Rank 2 - Đề xuất (`boosted`):** `is_account_boosted(machine, row) == True`.
@@ -19,20 +22,20 @@ Hệ thống quản lý tới tầng tài khoản (Account-Level Telemetry), xó
   4. 🎖️ **Rank 4 - Hồi phục 1 (`probation_tier1`):** `probation_clean_days == 0` và `fail_streak > 0`.
   5. ⚠️ **Rank 5 - Nhả (`cooldown`):** Dính phạt nhả follow (`is_in_cooldown=True` hoặc `cooldown_until_date`).
   6. 🌱 **Rank 6 - Mặc định / Yếu:** Nick mới hoặc video count thấp nhất.
-- **Nguyên lý xoay vòng:**
+- **Nguyên lý xoay vòng & Chống trôi lượt khi lỗi:**
   * Máy lọc các nick trong Pool chưa chạy trong chu kỳ (`candidates = [r for r in pool if r not in used]`).
   * Sắp xếp theo thứ hạng sức khỏe: `min(candidates, key=lambda r: _follow_rank(machine, r, today))`.
-  * Nick đã chạy hôm trước sẽ được lưu vào `used` $\implies$ Ngày tiếp theo máy bốc nick có thứ hạng kế tiếp.
-  * Khi tất cả nick trong pool của ca đó đều đã chạy (`not candidates`) $\implies$ Tự động reset `used` của ca đó để bắt đầu vòng tuần tự mới.
+  * **Quy tắc sống còn:** Nếu hôm nay chạy nick đó bị lỗi/fail/crash $\implies$ Hôm sau máy VẪN TIẾP TỤC CHẠY LẠI NICK ĐÓ cho đến khi thành công ít nhất 1 lần mới được tính là xong lượt và nhường cho nick tiếp theo.
+  * Khi tất cả nick trong pool của ca đó đều đã chạy thành công (`not candidates`) $\implies$ Tự động reset `used` của ca đó để bắt đầu vòng tuần tự mới.
   * **Bảo đảm 100%:** Luân phiên đi đủ cả 8 nick trên từng máy, không bao giờ có nick nào bị bỏ đói!
 
-### Hai Tầng Cooldown Tách Biệt Độc Lập:
-1. **Tầng Farm (48h Cooldown Lượt Nuôi):**
-   * Sau khi một nick chạy xong, máy nghỉ tự nhiên ~48h để chạy các nick còn lại trong pool trước khi quay vòng lại.
-2. **Tầng Account (Follow Cooldown Theo Streak Riêng):**
-   * Quyền nuôi (Feed + Video) và Quyền Follow là 2 quyền độc lập.
-   * Nick bị phạt nhả follow BẮT BUỘC tuân thủ streak riêng của nick đó (Streak 1: 1 ngày, Streak 2-3: 3 ngày...).
-   * Khi dính phạt: Hệ thống tự động tắt cờ follow (`rest_day_no_follow: true`), chỉ cho lướt feed xả phạt và up video giữ kênh.
+### Tách Bạch Tuyệt Đối Giữa Nuôi Feed & Cooldown Follow 48h:
+1. **Nuôi Feed & Đăng Video:** KHÔNG CÓ BẤT KỲ COOLDOWN 48H NÀO. Được chạy tự do theo ca quy định.
+2. **Cooldown 48h:** DUY NHẤT VÀ ĐỘC QUYỀN ÁP DỤNG CHO HÀNH ĐỘNG ĐI FOLLOW.
+   * Lần follow gần nhất $< 48\text{h}$ $\implies$ Tắt follow, chỉ cho nuôi feed và up video.
+   * Lần follow gần nhất $\ge 48\text{h}$ $\implies$ Cấp quyền follow bình thường.
+   * Nick dính án phạt nhả follow BẮT BUỘC tuân thủ streak riêng của nick đó (Streak 1: 1 ngày, Streak 2-3: 3 ngày...). Dù hết 48h toàn farm nhưng nếu án phạt streak chưa hết thì vẫn tự động khóa quyền follow.
+   * **Cạm bẫy MagicMock trong Unit Test:** Khi kiểm tra cờ tắt follow `account.rest_day_no_follow`, BẮT BUỘC dùng `getattr(account, "rest_day_no_follow", None) is True` thay vì `getattr(account, "rest_day_no_follow", False)` vì nếu `account` là `MagicMock`, thuộc tính chưa set sẽ trả về mock object con (truthy trong Python), làm sai logic skip follow.
 
 ---
 

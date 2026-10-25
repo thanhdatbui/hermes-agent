@@ -11,3 +11,5 @@ Cơ chế nuôi TikTok Dynamic theo Ca: Ca 1 {1,2,7}, Ca 2 {3,4,8}, Ca 3 {5,6}+R
 Watchdog đối soát TikTok Web (SQLite snapshots) BẮT BUỘC đối chiếu theo Account ID / Username thay vì Row máy; runner khi gặp timeout BẮT BUỘC salvage follow từ state file thay vì gán 0.
 §
 TikTok Farm chu kỳ nuôi: Ca 1 {1,2,7}, Ca 2 {3,4,8}, Ca 3 ngày 1-2 {5,6}, riêng Ca 3 ngày 3 là ca dynamic chuyên nuôi/tăng trust (ưu tiên đề xuất -> nhả -> yếu). Phễu chọn: Khỏe -> Đề xuất -> Hồi phục 2 -> Hồi phục 1 -> Nhả -> Yếu; nick chạy lỗi phải được ưu tiên chạy lại phiên sau cho đến khi SUCCESS mới chuyển nick tiếp theo trong pool. Cooldown 48h CHỈ áp dụng riêng cho quyền ĐI FOLLOW (và tuân thủ streak phạt của từng nick); nuôi feed và up video chạy theo ca bình thường không dính cooldown 48h.
+§
+Follow cooldown 48h chỉ áp dụng độc quyền cho hành động đi follow; nuôi feed và đăng video chạy tự do theo ca quy định; Ca 3 lượt 3 (Row dynamic) bắt buộc tắt follow hoàn toàn.
