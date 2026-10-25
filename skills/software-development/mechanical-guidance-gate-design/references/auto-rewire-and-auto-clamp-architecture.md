@@ -45,6 +45,17 @@
 - When recursive scanning on `D:/` or `D:/Taadaa` is detected with farm terms (`machine`, `phone`, `m\d+`, `log`), inject deterministic O(1) fallback:
   `DÙNG LỆNH O(1): python D:/Taadaa/tools/inspect_machine.py <N>`.
 
+### E. Closeout Gate `--skip-test` Auto-Rewire (`closeout_gate.py`)
+- **Problem:** When an agent lazily passes `--skip-test` in repo mode, Closeout Gate previously threw a fatal exit 1, logged audit `TEST_SKIPPED` with score 0, and blocked session completion.
+- **Solution:** Closeout Gate automatically suppresses the `--skip-test` flag, logs a warning, and forces automated test execution instead of failing-stop:
+  ```python
+  if args.skip_test:
+      warn("[Gate] AUTO-REWIRE: --skip-test bị cấm trong repo mode! Đã tự động bỏ qua cờ này và cưỡng chế chạy test tự động để thẩm định.")
+      args.skip_test = False
+  ```
+  This eliminates artificial 0-score rejections and guarantees that closeout proceeds directly to verified test evaluation.
+
 ## 3. Closeout Gate Stability & Remediation Invariant
 - **Empirical Performance:** 80% of recent runs pass in 1-2 rounds (3-7 minutes). Sol Repair Monopoly (`sol_repair.py`) successfully handles Strikes 1 & 2 autonomously.
 - **Do Not Touch Rule:** Stable gates with zero persistent failures must remain untouched to prevent regressions.
+
