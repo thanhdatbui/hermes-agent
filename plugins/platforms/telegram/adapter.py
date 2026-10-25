@@ -6923,13 +6923,20 @@ class TelegramAdapter(BasePlatformAdapter):
         #    before the normal MarkdownV2 conversions run.
         text = _wrap_markdown_tables(text)
 
-        # 0.1) Auto-convert LaTeX arrow math notations to clean Unicode characters
-        for latex_sym in ("rightarrow", "to"):
-            text = text.replace(f"$\\{latex_sym}$", "→").replace(f"\\{latex_sym}", "→")
-        for latex_sym in ("leftarrow", "gets"):
-            text = text.replace(f"$\\{latex_sym}$", "←").replace(f"\\{latex_sym}", "←")
-        text = text.replace("$\\Rightarrow$", "⇒").replace("\\Rightarrow", "⇒")
-        text = text.replace("$\\Leftarrow$", "⇐").replace("\\Leftarrow", "⇐")
+        # 0.1) Auto-convert LaTeX math environments, formulas & arrows to clean text/Unicode
+        text = text.replace(r"\&", "\x01AMP\x02")
+        text = re.sub(r"\\(?:begin|end)\{[a-zA-Z*]+\}", "", text)
+        for _ in range(3):
+            text = re.sub(r"\\(?:text|mathrm|mathbf|mathit)\{([^{}]*)\}", r"\1", text)
+        text = re.sub(r"\\xrightarrow(?:\[([^\]]*)\])?\{([^{}]*)\}", lambda m: f" ──[{m.group(2).strip() or m.group(1).strip()}]──> " if (m.group(2) or m.group(1)) else " → ", text)
+        text = re.sub(r"\\xleftarrow(?:\[([^\]]*)\])?\{([^{}]*)\}", lambda m: f" <──[{m.group(2).strip() or m.group(1).strip()}]── " if (m.group(2) or m.group(1)) else " ← ", text)
+        for sym, u in ((r"\ge", "≥"), (r"\geq", "≥"), (r"\le", "≤"), (r"\leq", "≤"), (r"\ne", "≠"), (r"\approx", "≈"), (r"\pm", "±"), (r"\times", "×"), (r"\cdot", "·"), ("\\" + "rightarrow", "→"), ("\\to", "→"), ("\\leftarrow", "←"), ("\\gets", "←"), ("\\Rightarrow", "⇒"), ("\\Leftarrow", "⇐")):
+            text = text.replace(f"${sym}$", u).replace(sym, u)
+        text = re.sub(r"(?m)^[ \t]*&[ \t]*", "", text)
+        text = re.sub(r"[ \t]*&[ \t]*", " ", text).replace("\x01AMP\x02", "&")
+        text = re.sub(r"\\\\(?=\s*$)", "", text, flags=re.MULTILINE).replace("\\\\", "\n")
+        text = re.sub(r"\$\$(.*?)\$\$", r"\1", text, flags=re.DOTALL).replace("$$", "")
+        text = re.sub(r"\n{3,}", "\n\n", text)
 
         # 1) Protect fenced code blocks (``` ... ```)
         #    Per MarkdownV2 spec, \ and ` inside pre/code must be escaped.
