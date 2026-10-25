@@ -7,6 +7,7 @@ description: "Use when designing mechanical gates to prevent agent loops."
 
 ## 1. When to Use
 Use when creating, modifying, or reviewing mechanical enforcement gates (pre-tool hooks, git hooks, closeout gates, or runtime fences). Enforces that every gate provides deterministic, actionable unblocking paths (Auto-Rewire / Active Pivot) rather than passive denials.
+- Reference: `references/active-pivot-auto-rewire-architecture.md` (Tri-party consensus on Auto-Rewire vs Hard-Block, anti-paralysis invariants, and Sol Repair Monopoly findings).
 
 ## 2. Core Standards (Tri-Party Consensus)
 
