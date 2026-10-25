@@ -74,5 +74,26 @@ Trước đây hệ thống bị lỗi nghiêm trọng do nhập nhằng giữa 
    - Nếu tài khoản có video view organic tốt, tim cao, được tag `🔥 ĐỀ XUẤT`, và đặc biệt **mới follow rất ít người (1–2 lượt follow)** nhưng bị gán `fail_streak >= 4`: **Xác định 100% là án oan do bug lạm phát streak cũ**.
 2. **Quy trình xả án O(1) cho file state (`follow_state_<m>_row_<t>.json`):**
    - Xóa bỏ: `cooldown_until_date`, `cooldown_until_at`, `follow_failed_date`, `last_cooldown_decision`.
-   - Đặt lại: `fail_streak: 0`, `follow_failed: false`, `probation_clean_days: 1`.
-   - Dashboard lập tức chuyển từ `🔴 Cooldown (S4)` sang `🟡 Hồi phục 2`, đưa nick về trạng thái an toàn để tiếp tục chu trình nuôi dưỡng.
+   - Đặt lại: `fail_streak: 1` (hoặc 0 nếu nick chưa từng có án tích), `follow_failed: false`, `probation_clean_days: 1`.
+   - Dashboard lập tức chuyển từ `🔴 Cooldown` sang `🟡 Hồi phục 2`, đưa nick về trạng thái an toàn để tiếp tục chu trình nuôi dưỡng.
+
+---
+
+### 7. Kỷ Luật Điều Tra Dứt Điểm Toàn Farm Khi Phát Hiện Ổ Dịch Cooldown (Anti-Quan Liêu)
+1. **Cấm tuyệt đối quy chụp suy diễn:** Khi telemetry dashboard in ra số lượng lớn nick bị giam ở các mức phạt cao (như `🔴 Cooldown (Streak 4): 59 nick`), CẤM TUYỆT ĐỐI tự ý suy diễn rằng "đây là nick lì đòn, tái phạm nhiều lần" để lấp liếm hay xin chốt phiên.
+2. **Quy tắc bóc tách 100% state files:**
+   - Bắt buộc quét toàn bộ các file state bị dính cooldown.
+   - Lập bảng phân bổ: theo ngày lỗi gần nhất (`last_failed_date`), theo tổng số follow (`total_followed`), và theo lý do thất bại (`last_fail_reason`).
+   - Nếu đa số nick có `total_followed == 0` hoặc dính từ đợt chạy trước khi fix bug (ví dụ đợt 12–20/10 trước commit `f515805`), xác định 100% đây là án oan do lỗi lạm phát streak cũ hoặc lỗi bẫy Anchor. Bắt buộc lập tool xả án dứt điểm (`reconcile_streak4_unfair.py`) trước khi báo cáo hoàn tất.
+
+---
+
+### 8. Bản Chất Kỹ Thuật Của Các Nhóm Streak 1, 2, 3
+1. **Streak 1 (24h Cooldown):**
+   - Đa số (>90%) là lỗi ngoại cảnh/rớt cữ (`empty reason`): mạng chập chờn, proxy timeout, app TikTok crash trước khi kịp bấm follow.
+   - Cơ chế xả án: Tính theo giờ rolling 24h (`now_hcm >= cooldown_until_at`). Phải chạy xả án cuốn chiếu trong ngày để nick hết 24h được trả về cữ chạy ngay, không để dồn ứ trên dashboard.
+2. **Streak 2 (3 ngày Cooldown) & Streak 3 (5 ngày Cooldown):**
+   - Hơn 60% nạn nhân là do **Bẫy Anchor**: Nick non (`0 follow`) vừa ra tù, vào cữ chạy bị ép bấm Anchor phát đầu tiên (`used == 0`) -> Anchor bị TikTok siết nhả -> Script đôn bậc từ Streak 1 lên Streak 2 (giam 3 ngày), rồi lên Streak 3 (giam 5 ngày).
+   - **Bẫy so sánh ngày trong script xả án cũ:** Script `reconcile_all_streak_cooldowns.py` dùng điều kiện `today > expiry_day` khiến các nick đúng ngày mãn hạn (ví dụ Streak 3 giam 5 ngày từ 20/10 đến 25/10) bị giam thêm 1 ngày oan đến 26/10 mới được thả. Chuẩn hóa: phải so sánh timestamp chính xác hoặc `today >= expiry_day` khi hết giờ địa phương.
+   - Với nhóm vấp bẫy Anchor ở Streak 2 & 3: Cần chủ động reset hạ về `fail_streak = 1` và gỡ bỏ án cách ly để tránh nguy cơ bùng phát nhảy vọt lên Streak 4 kịch khung.
+
