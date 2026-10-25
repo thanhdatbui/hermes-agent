@@ -82,3 +82,4 @@ tags: [tiktok, farm, batch, render, upload, resume, kibe]
 - Video Standard 45 Clips: [`references/video-farm-standard-45-clips-and-supplementary-pipeline.md`](references/video-farm-standard-45-clips-and-supplementary-pipeline.md)
 - Gái Xinh Pipeline: [`references/video-sourcing-gaixinh-two-tier-allocation.md`](references/video-sourcing-gaixinh-two-tier-allocation.md)
 - Tiểu Vi ADB Mồ Côi Cổng 5037, Báo Động Ảo Proxy Preflight & Threshing Loop Wi-Fi: [`references/xiaowei-orphan-adb-port5037-and-proxy-preflight-false-alarm.md`](references/xiaowei-orphan-adb-port5037-and-proxy-preflight-false-alarm.md)
+- Bẫy ADB Tiểu Vi Cổng 5037, Báo Động Ảo Proxy Preflight & Wi-Fi Healer Circuit Breaker: [`references/xiaowei-orphan-port5037-and-proxy-vpn-preflight-misnomer.md`](references/xiaowei-orphan-port5037-and-proxy-vpn-preflight-misnomer.md)

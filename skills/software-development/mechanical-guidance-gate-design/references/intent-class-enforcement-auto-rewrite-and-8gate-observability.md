@@ -103,3 +103,49 @@ Watchdog đối soát 6 giờ (`gate_compliance_watchdog.py`) phải phản ánh
 Báo cáo 6h bắt buộc tổng hợp Top 8 quy tắc bị chặn nhiều nhất từ các file log và in rõ trong mục:
 `🔥 Top Quy Tắc Bị Chặn Nhiều Nhất (Cần Bổ Sung Guidance):`
 Giúp Operator và Agent biết chính xác guard nào đang gây ma sát nhiều nhất để bổ sung Actionable Guidance O(1), triệt tiêu tiêu hao token.
+
+---
+
+## 5. Implementation Architecture & Senior Reviewer Pitfalls (Hermes Engine Bridge & Gateway RAM Reload)
+
+### A. Triển Khai Engine Bridge Chuẩn Cho `action: rewrite`
+1. **`agent/shell_hooks.py:_parse_response`:**
+   Bổ sung nhánh nhận diện `rewrite` trong `pre_tool_call`:
+   ```python
+   if data.get("action") == "rewrite":
+       return {
+           "action": "rewrite",
+           "updated_args": data.get("updated_args") or data.get("updated_input") or {},
+           "notice": data.get("notice"),
+       }
+   ```
+2. **`hermes_cli/plugins.py:_get_pre_tool_call_directive_details`:**
+   Cập nhật in-place vào dictionary `args` trước khi chuyển tiếp cho execution/approval:
+   ```python
+   if action == "rewrite":
+       updated = result.get("updated_args") or result.get("updated_input")
+       if isinstance(updated, dict) and isinstance(args, dict):
+           args.update(updated)
+       continue
+   ```
+
+### B. 4 Tử Huyệt Khi Viết Hook Auto-Rewrite (Senior Reviewer Catches)
+1. **Bẫy Lệch Wire Protocol Key (`tool_input` vs `args`):**
+   - `shell_hooks` của Hermes gửi payload qua stdin với khóa chuẩn là `tool_input`, KHÔNG PHẢI `args`!
+   - Hook nếu chỉ đọc `payload.get("args")` sẽ nhận `{}` rỗng và thoát `exit(0)` fail-open trên mọi lệnh gọi thật của engine.
+   - BẮT BUỘC: `args = payload.get("tool_input") or payload.get("args") or {}`.
+2. **Bẫy Không Giới Hạn `tool_name` (Mutate Oan Tool Khác):**
+   - Hook kiểm soát dung lượng file nếu không lọc `tool_name` sẽ bắt bớ bất kỳ tool nào có tham số `path` (ví dụ `write_file(path=...)`), chèn thêm `offset/limit` rác vào lệnh ghi file.
+   - BẮT BUỘC: Kiểm tra `tool_name = payload.get("tool_name") or payload.get("tool") or ""` và `if tool_name and tool_name not in ("read_file", "read_file_tool"): sys.exit(0)`.
+3. **Bẫy Đổi Ý Nghĩa Yêu Cầu Của Model (Phá Hỏng Slice Hợp Lệ):**
+   - Khi model chủ động gọi `read_file(path, offset=1, limit=50)` để đọc phần đầu file, nếu hook cào bằng ép về 200 dòng cuối sẽ làm sai lệch hoàn toàn ngữ cảnh phân tích log của model.
+   - BẮT BUỘC: Nếu model đã truyền phạm vi an toàn (`raw_offset` hợp lệ và `1 <= raw_limit <= 2000`) $\to$ Cho qua nguyên vẹn (`sys.exit(0)`). Chỉ auto-clamp khi đọc file >10MB mà KHÔNG có offset/limit hoặc limit vượt trần an toàn.
+4. **Bẫy Ép Kiểu & Phân Tích Số An Toàn:**
+   - Model hoặc tool caller có thể truyền `offset="5"` (string) hoặc `limit=None`. So sánh trực tiếp `raw_offset > 1` sẽ ném `TypeError` làm hook sập.
+   - BẮT BUỘC: Bọc ép kiểu `int(raw_val)` trong khối `try...except (ValueError, TypeError)`.
+
+### C. Quy Tắc Khởi Động Lại Gateway (Daemon RAM vs Disk Script Sync)
+- **Subprocess Hooks (`hooks/guard_*.py`):** Được nạp tươi từ đĩa mỗi lần gọi tool, có hiệu lực ngay lập tức.
+- **Engine Core Hooks (`shell_hooks.py`, `plugins.py`):** Chạy trong tiến trình dài hạn (Daemon `pythonw.exe`). Python chỉ load module vào RAM lúc khởi động tiến trình. Mọi thay đổi trên đĩa của Engine Bridge hoàn toàn vô hiệu hóa trong RAM của Gateway đang chạy!
+- **Invariant:** Bất kỳ chỉnh sửa nào trên tầng Engine Core bắt buộc phải kích hoạt restart Gateway ngoài band (`python D:/Taadaa/tools/restart_gw_detached.py`) để nạp lại bytecode vào RAM mà không làm đứt gãy kết nối chat Telegram của phiên hiện tại.
+
