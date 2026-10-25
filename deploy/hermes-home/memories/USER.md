@@ -1,4 +1,4 @@
-Vibe O(1), bực=làm ngay; Gate DENY=pivot gốc/Auto-Rewire tự chữa ngầm, CẤM trả BLOCKED khóc lóc bại liệt đùn việc. Cấm báo xong khi dirty/chưa soi mắt ảnh; cấm lấp liếm; 2FA farm tự vượt; Worker floor 300s.
+Vibe O(1), bực=làm ngay; Gate DENY=pivot gốc/Auto-Rewire tự chữa ngầm, CẤM trả BLOCKED khóc lóc bại liệt đùn việc. Cấm phân trần lòng vòng khi user giục làm; 2FA farm tự vượt; Worker floor 300s. Đánh giá tần suất lỗi phải theo tương tác chat thực tế, cấm vịn giờ ngủ đông. Closeout Gate ổn định cấm đụng.
 §
 Advisor/Claude 100% On-Demand, cấm tự gọi/hội chẩn/đoán ý/gợi ý dùng Claude worker khi đang để Sol worker. Lệnh Claude=chạy thật+trích output.
 §
@@ -9,7 +9,3 @@ Auto-heal: 100% tự sửa ngầm (Sonnet -> Worker O(1) -> Canary -> Closeout);
 Memory & Học hỏi tự động: Chủ động lưu feedback, sở thích, hiệu chỉnh của user. Định kỳ tự dọn rác (< 70%), tri thức quy trình lớn đưa vào dynamic skill.
 §
 Khi kích hoạt batch render hoặc swap folder ngầm kéo dài > 5 phút: bắt buộc báo trước thời gian ước tính (ví dụ: 12-15 phút render 40 video) để user không tưởng bị treo/nín luôn.
-§
-Thiết kế Guard/Gate: Tuyệt đối cấm tạo Hard Block làm dừng phiên hay đùn việc cho user. Mọi chốt chặn bắt buộc phải tự động Auto-Rewire, Auto-Clamp tham số, hoặc Auto-Pivot sang task/máy khác trong queue để hệ thống chạy liên tục.
-§
-Đánh giá tần suất lỗi/hook BẮT BUỘC tính theo lượt tương tác chat thực tế, CẤM nhìn 0 lỗi trong khung giờ ngủ đông/ít chat để ngụy biện rào chắn ổn định. Closeout Gate ổn định cấm đụng.

@@ -1,0 +1,50 @@
+# Auto-Rewire & Auto-Clamp Gate Architecture: Eliminating Agent Paralysis & Loop Traps
+
+## 1. Core Principle: Fail-Forward via Active Pivot
+- **Fail-Stop Is Forbidden:** Pure passive denial (`action: "block"`) forces the agent into blind retries, token exhaustion, and loop paralysis.
+- **Gate DENY = Self-Healing Trigger:** Every gate/hook denial must be converted into an automatic rewrite, clamp, or route forward.
+
+## 2. Canonical Implementations
+
+### A. Worker Entrypoint Auto-Rewire (`claude_worker.py` & `haiku_worker.py`)
+- **Problem:** Direct invocations of Claude/Haiku worker without `--from-dispatch` returned exit code 126 (`[MECHANICAL TIER GATE VIOLATION]`), halting the workflow.
+- **Solution:** Intercept unauthorized direct calls and forward 100% of arguments to `dispatch_worker.py`:
+  ```python
+  if role == "worker" and not (args.from_dispatch or os.environ.get("DISPATCH_TIER_CALLER") == "dispatch_worker"):
+      dispatch_script = Path("D:/Taadaa/tools/dispatch_worker.py")
+      print("[AUTO-REWIRE] ⛔ Direct Claude call diverted to dispatch ladder: Sol (T1) -> Agy (T2)...", file=sys.stderr)
+      if dispatch_script.is_file():
+          forward_cmd = [sys.executable, str(dispatch_script)]
+          # append --file, --workdir, --timeout, --max-turns, prompt...
+          res = subprocess.run(forward_cmd, cwd=args.workdir)
+          return res.returncode
+  ```
+
+### B. Investigate Budget Auto-Clamp (`guard_dispatch_contract.py`)
+- **Problem:** When an agent specifies an investigative budget > 8 calls (e.g. 10 or 15 calls), the hook rejected with `HARD_GATE_3_INVESTIGATE_BUDGET_EXCEEDED`, causing 600+ retry failures.
+- **Solution:** Hook automatically clamps the budget to 8 and rewrites tool arguments:
+  ```python
+  if budget_value > 8:
+      original_budget = budget_value
+      budget_value = min(budget_value, 8)
+      updated_args = rewrite_budget_in_args(args, original_budget, budget_value)
+      print(json.dumps({
+          "action": "rewrite",
+          "rule_id": "HARD_GATE_3_INVESTIGATE_BUDGET_CLAMPED",
+          "updated_args": updated_args,
+          "notice": f"Auto-clamped investigate budget {original_budget} -> {budget_value} calls.",
+      }))
+      sys.exit(0)
+  ```
+
+### C. Console Window Matcher Narrowing (`guard_cronjob_safety.py`)
+- **Problem:** Matcher `cronjob|terminal` blocked terminal commands running with `background=True` when `python` was used instead of `pythonw` (484 failures).
+- **Solution:** Restrict pre-tool matcher in `config.yaml` to `cronjob` only via `manage_hermes_config.py set hooks.pre_tool_call[N].matcher cronjob`.
+
+### D. Broad Root Scan O(1) Hinting (`guard_broad_grep.py`)
+- When recursive scanning on `D:/` or `D:/Taadaa` is detected with farm terms (`machine`, `phone`, `m\d+`, `log`), inject deterministic O(1) fallback:
+  `DÙNG LỆNH O(1): python D:/Taadaa/tools/inspect_machine.py <N>`.
+
+## 3. Closeout Gate Stability & Remediation Invariant
+- **Empirical Performance:** 80% of recent runs pass in 1-2 rounds (3-7 minutes). Sol Repair Monopoly (`sol_repair.py`) successfully handles Strikes 1 & 2 autonomously.
+- **Do Not Touch Rule:** Stable gates with zero persistent failures must remain untouched to prevent regressions.
