@@ -12,4 +12,4 @@ Thang luân chuyển worker: Sol (Tier 1) -> Agy (Tier 2) -> Claude (Tier 3 on-d
 §
 Triết lý Canary farm: Sửa/lỗi chỗ nào thì Canary nhắm trúng chỗ đó (Target-bound differential canary), cấm chạy generic full-flow bừa bãi. Các job/watchdog chạy cả ngày bắt buộc né khung giờ đệm trước/sau reboot máy để bảo toàn máy cho ca cron.
 §
-Khi TikTok login bị báo sai mật khẩu hoặc tài khoản reg email-only: BẮT BUỘC dùng cờ --otp-only lấy mã qua Microsoft Graph API token trên PC (cột 9-10 gmail_clean_v2.xlsx) và tap 'Bạn cần trợ giúp đăng nhập?' thay vì đoán pass.
+Khi TikTok login báo sai mật khẩu hoặc tài khoản reg email-only: BẮT BUỘC tự động chuyển cứu tài khoản lấy mã qua Microsoft Graph API token trên PC (cột 9-10 gmail_clean_v2.xlsx), đặt/đổi lại mật khẩu mới và đồng bộ ngay vào workbook, CẤM dừng lại báo lỗi thủ công.
