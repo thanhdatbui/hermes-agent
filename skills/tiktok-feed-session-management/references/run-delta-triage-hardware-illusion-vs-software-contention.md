@@ -36,3 +36,20 @@ Khi phát hiện tình trạng **chênh lệch lớn giữa 2 phiên/ca liên ti
    - **Tối ưu JIT Lock TTL:** Không để lock tồn tại quá thời gian chạy thực tế của job.
    - **Bọc `sitecustomize.py`:** Ép cờ ẩn console cho mọi tiến trình gọi ADB.
    - **Restart ADB Server khi có dấu hiệu bão:** `adb kill-server && adb start-server` để reset socket queue sau các đợt tải nặng.
+
+---
+
+## 4. Bẫy Ngộ Nhận & Checklist Xác Nhận Ca Tiếp Theo (Next-Shift Readiness)
+
+### CẢNH BÁO: Bẫy "Đổ lỗi cho nguồn Hub USB" khi gặp dải máy liên tiếp
+Khi thấy một dải máy liên tiếp báo mất kết nối ADB (ví dụ: M1-M14, M53-M66):
+- **Phản xạ sai:** Vội vàng bảo User đi cắm lại nguồn Hub USB hoặc thay cáp.
+- **Bản chất thực tế:** ADB handshake theo luồng tuần tự/bão song song trên cùng USB controller. Khi ADB daemon bị nghẽn queue socket hoặc các máy trong dãy bị giữ lock chùm từ ca trước, toàn bộ dải cổng trên hub đó sẽ handshake thất bại cùng lúc, tạo ra **ảo giác sụp nguồn hub vật lý**.
+- **Quy tắc:** Nếu đợt chạy liền kề sau đó tự động xanh lại (>90% success) mà không reboot hay cắm lại dây, khẳng định 100% là nghẽn ADB server / lock queue, cấm báo lỗi phần cứng.
+
+### Checklist 4 Điểm Đánh Giá Ca Tiếp Theo Đã Sạch Lỗi Chưa
+Khi User hỏi "Ca tiếp theo đã hết lỗi chưa?", Coordinator BẮT BUỘC kiểm tra đủ 4 điểm thực tế trước khi kết luận:
+1. **Device Lock (`device_locks/`):** Thư mục lock sạch 100%, không còn file lock mồ côi (hoặc lock cũ đã vượt quá TTL).
+2. **Số máy Online thực tế:** Chạy `adb devices` xác nhận đủ số lượng máy fleet đang `device` (không dính `offline` hay `unauthorized`).
+3. **Trạng thái kết thúc của ca trước:** Ca trước đã tạo đủ `run_manifest.json`, không còn worker bị treo dở dang.
+4. **Tiêu diệt bão tiến trình (Console / SSH):** Đảm bảo `sitecustomize.py` đã tiêm `CREATE_NO_WINDOW = 0x08000000` trên cả Kibe và Admin để không tái diễn bão `conhost.exe` làm nghẽn ADB socket.
