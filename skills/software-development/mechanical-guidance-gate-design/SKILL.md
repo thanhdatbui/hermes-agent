@@ -11,6 +11,7 @@ Use when creating, modifying, or reviewing mechanical enforcement gates (pre-too
 - Reference: `references/tri-party-auto-rewire-vs-guard-invariant-consensus.md` (Tri-party consensus on Auto-Rewire vs Guard Invariants, safe auto-repair vs policy bypass, and multi-session disjoint verification).
 - Reference: `references/idle-window-evaluation-bias-and-closeout-boundary-discipline.md` (Idle-window evaluation bias, Closeout Gate monopoly protection, and zero-block action mandate hierarchy).
 - Reference: `references/cowboy-coordinator-boundary-and-idle-evaluation-invariants.md` (Cowboy Coordinator Gate 3/6 boundary violations, idle-window evaluation bias, and zero hard-block hierarchy).
+- Reference: `references/user-sudo-override-and-gate-c-pipeline.md` (User Sudo Master Override mechanism, anti-paralysis emergency surgery, and Pipeline A-B-C orchestration).
 
 ## 2. Core Standards (Tri-Party Consensus)
 
