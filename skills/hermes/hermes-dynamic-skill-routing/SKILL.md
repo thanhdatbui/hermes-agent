@@ -37,6 +37,7 @@ dispatch_worker.py → Agy CLI (Tier 1) / Haiku fallback (Tier 2)
 ## Core Files
 
 > Architecture Reference: [`references/mechanical-planner-and-worker-gateways-architecture.md`](references/mechanical-planner-and-worker-gateways-architecture.md) (Claude CLI Approved)
+> Case Study & Anti-Patterns: [`references/static-skill-dump-anti-patterns.md`](references/static-skill-dump-anti-patterns.md) (Static 350+ Dump vs Dynamic O(1) Routing)
 
 | File | Path | Purpose |
 |------|------|---------|

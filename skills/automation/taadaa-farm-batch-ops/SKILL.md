@@ -62,6 +62,7 @@ tags: [tiktok, farm, batch, render, upload, resume, kibe]
   Khi chạy tiến trình con qua subprocess, cờ creationflags bắt buộc truyền trực tiếp hằng số subprocess.CREATE_NO_WINDOW. Tuyệt đối không dùng getattr động vì bộ phân tích AST sẽ không nhận diện được cờ, dẫn tới việc chặn runner an toàn.
 
 ## 4. Danh Mục Tham Khảo Chi Tiết
+- Truyền Dữ Liệu Lớn Qua LAN & Gỡ Deadlock Guard: [`references/lan-large-data-transfer-and-cron-no-agent-deadlock-remediation.md`](references/lan-large-data-transfer-and-cron-no-agent-deadlock-remediation.md)
 - Google Drive Virtual Cache Deadlock & Cứu Hộ Ổ D: Admin Đầy 0 MB: [`references/gdrive-desktop-cache-deadlock-and-disk-full-remediation.md`](references/gdrive-desktop-cache-deadlock-and-disk-full-remediation.md)
 - Fastpath triage batch alert 2 cụm Kibe & Admin: [`references/dual-cluster-batch-triage-fastpath.md`](references/dual-cluster-batch-triage-fastpath.md)
 - In-Flight Game Guard & Auto-Pause khi chơi War3/TFT trên Admin: [`references/admin-render-in-flight-game-guard-and-auto-pause.md`](references/admin-render-in-flight-game-guard-and-auto-pause.md)
