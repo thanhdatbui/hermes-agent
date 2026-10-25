@@ -6,8 +6,4 @@ Hand-off: đủ Mail, Pass, Recovery, 2FA & TOTP live.
 §
 Auto-heal: ghét fix thủ công, 100% tự sửa ngầm (Sonnet Planner -> O(1) Worker -> Canary -> Closeout); cấm dừng phân trần; fix xong bắn Telegram ngay kèm MEDIA; report tách từng nhóm.
 §
-Memory: chỉ lưu persona/sở thích/feedback; tri thức/quy trình đưa vào dynamic skill.
-§
-Kỷ luật vận hành: Cực ghét bypass gate cơ học worker (Tier 1 Sol :20129 trước, cấm gọi tắt claude_worker). Cực ghét Veto Gate câm gây bại liệt; đòi hỏi 100% hook phải có Guidance + Action Mandate O(1).
-§
-Chuẩn video toàn farm: Bắt buộc >= 45 clip (min 40, đích đến 45), cực ghét nhắc lại mốc cũ 30 clip. Cron lỗi phải fix dứt điểm (circuit breaker), cấm pause bỏ xó.
+CẤM TỰ ĐỘNG LƯU MEMORY/SKILL: Tuyệt đối cấm AI tự ý 'save proactively'. CHỈ gọi tool memory khi user đích danh ra lệnh ('lưu vào memory', 'nhớ cái này'). CẤM 100% nhồi quy tắc script, farm ops, kỹ thuật, bug fix vào memory/user profile. Tri thức vận hành mới chỉ nạp ngoại vi qua record_skill_knowledge.py.
