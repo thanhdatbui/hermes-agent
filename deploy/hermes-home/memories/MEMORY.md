@@ -5,3 +5,5 @@ Khi TikTok Switcher thiếu account (ACCOUNT_MISSING), BẮT BUỘC kích hoạt
 Khi nhận cảnh báo pool degraded/error, cấm chỉ báo cáo cô lập is_active=0; bắt buộc test trực tiếp endpoint, fix proxy/config để cứu và reactivate acc nếu token còn sống.
 §
 Khi pool OmniRoute (ChatGPT-Web/Codex) lỗi: BẮT BUỘC đối soát proxy_registry (credentials port) và test trực tiếp /api/providers/{cid}/test trước khi kết luận; token còn sống phải bật is_active=1 ngay thay vì chỉ thụ động cô lập.
+§
+Cơ chế nuôi TikTok Dynamic theo Ca: Ca 1 {1,2,7}, Ca 2 {3,4,8}, Ca 3 {5,6}+Row Động. Bốc tuần tự theo độ khỏe: Khỏe -> Đề xuất -> Hồi phục 2 -> Hồi phục 1 -> Nhả -> Yếu, chạy hết pool mới quay vòng để đi đủ 8 nick/máy. Cooldown follow 48h chỉ tính khi nick đã từng follow; fail-closed khi lỗi file state và bắt buộc báo cáo lỗi lên watchdog.
