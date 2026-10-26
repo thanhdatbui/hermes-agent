@@ -1,6 +1,6 @@
 Cronjob batch ngầm đặt deliver='local' chống spam stdout; Watchdog có deliver='local' BẮT BUỘC tự dispatch Telegram (cấm chỉ print). Hàm nạp token BẮT BUỘC tự đọc trực tiếp từ hermes/.env chống rớt dependency/import automation_core.
 §
-Khi TikTok Switcher thiếu account (ACCOUNT_MISSING), BẮT BUỘC kích hoạt auto-login / Thêm tài khoản (recovery_handler=tiktok_login); CẤM phân biệt máy trắng acc hay viện cớ an toàn / lệch nhịp farm để dừng máy fail-closed.
+Khi TikTok thiếu acc (ACCOUNT_MISSING/mismatch), BẮT BUỘC auto-login/reconcile bù; máy Admin (>=200) nạp TAADAA_HOST_CONFIG=admin.yaml, ADB socket 192.168.110.119:5037 & workbook Admin (cấm fail-closed).
 §
 Khi pool OmniRoute lỗi: đối soát proxy_registry & test /api/providers/{cid}/test; token sống bật is_active=1 ngay. Acc ChatGPT reg xong dùng ngay; gán >= 2 acc/proxy kèm proxy_assignments.
 §
@@ -16,4 +16,4 @@ Watchdog & Cron report toàn farm tuân thủ chuẩn: vi phạm mới bắn ra,
 §
 Watchdog audit compliance farm gates BẮT BUỘC lọc sạch test/mock artifacts (pytest, target.py) và chuẩn hóa timestamp local naive sang UTC; gate chặn có auto-rewire/tự sửa <= 1 turn tính là REWIRED, cấm đánh FAIL.
 §
-Tác vụ sửa code bị Dispatch Gate chặn delegate_task: BẮT BUỘC dispatch qua python D:/Taadaa/tools/dispatch_worker.py --workdir <repo> --file <file>; khi user lệnh 'Làm đi', thực thi ngay không hỏi lại. Báo cáo nuôi Gmail GPM chạy 12h (0 */12 * * *), trần ngày đếm từ last_nurtured.
+Dispatch Gate chặn delegate_task khi sửa code -> BẮT BUỘC dùng dispatch_worker.py --workdir <repo> --file <file>; user 'Làm đi' làm ngay không hỏi lại. Watchdog/cron BẮT BUỘC in đích danh máy offline (đối soát fleet vs adb) & top acc login fail (failed_details). GPM nurture chạy 12h, trần ngày đếm từ last_nurtured.

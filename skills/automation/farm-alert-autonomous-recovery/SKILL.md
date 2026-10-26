@@ -1,11 +1,11 @@
 ---
 name: farm-alert-autonomous-recovery
-description: Autonomous Taadaa Farm Alert handling from evidence to closeout.
+description: Taadaa Farm Alert recovery to closeout.
 ---
 
 # Farm Alert Autonomous Recovery
 
-> Core Refs (under `references/`): `closed-loop-auto-repair-architecture-and-emitter-coalescing.md`, `cross-cluster-alert-timeline-audit-and-transient-triage.md`, `omniroute-connection-pin-and-anti-finally-bypass.md`, `watchdog-manifest-and-detector-replay.md`, `focus-device-issue-cold-start-and-systemui-relaunch-20261020.md`, `canary-receipt-expiry-and-safe-push-pre-commit.md`, `recovery-proof-and-operator-closeout.md`, `anti-performative-alert-handling-and-immediate-code-fix.md`, `batch-alert-upload-hook-post-verification-false-positive-triage.md`, `strike-3-reviewer-handoff-and-claude-quota-collision.md`, `pool-health-watchdog-triage-and-oauth-payload-inspection.md`, `missing-account-switcher-vs-auto-login-fail-closed.md`, `account-id-reconciliation-and-manual-review-recovery.md`, `omniroute-pool-healer-proactive-recovery-and-closeout-evidence.md`, `cron-heartbeat-and-watchdog-health-aggregation.md`, `run-delta-triage-hardware-illusion-vs-software-contention.md`, `target-bound-differential-canary-and-all-repo-matrix-rules-20261025.md`.
+> Core Refs: `closed-loop-auto-repair-architecture-and-emitter-coalescing.md`, `cross-cluster-alert-timeline-audit-and-transient-triage.md`, `omniroute-connection-pin-and-anti-finally-bypass.md`, `watchdog-manifest-and-detector-replay.md`, `focus-device-issue-cold-start-and-systemui-relaunch-20261020.md`, `canary-receipt-expiry-and-safe-push-pre-commit.md`, `recovery-proof-and-operator-closeout.md`, `anti-performative-alert-handling-and-immediate-code-fix.md`, `batch-alert-upload-hook-post-verification-false-positive-triage.md`, `strike-3-reviewer-handoff-and-claude-quota-collision.md`, `pool-health-watchdog-triage-and-oauth-payload-inspection.md`, `missing-account-switcher-vs-auto-login-fail-closed.md`, `account-id-reconciliation-and-manual-review-recovery.md`, `omniroute-pool-healer-proactive-recovery-and-closeout-evidence.md`, `cron-heartbeat-and-watchdog-health-aggregation.md`, `run-delta-triage-hardware-illusion-vs-software-contention.md`, `target-bound-differential-canary-and-all-repo-matrix-rules-20261025.md`, `closeout-gate-audit-package-for-runtime-state-fixes.md`.
 
 ## UI evidence: target screen only
 

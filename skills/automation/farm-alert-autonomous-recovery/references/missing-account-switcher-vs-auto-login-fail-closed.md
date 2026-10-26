@@ -65,6 +65,19 @@ FeedRunner: [FAIL] Lệch Profile/Nick TikTok (profile account mismatch / naviga
   - Tuyệt đối tránh các anchor generic ngắn như `workbook = Path(` vì nó khớp cả dòng `login_workbook = Path(`, gây vi phạm Gate 2 `ANCHOR_NOT_UNIQUE (c == 2)`.
   - Luôn mở rộng anchor với token duy nhất tuyệt đối (như `reconcile_script = Path(`) để đảm bảo `c == 1` trước khi dispatch Worker.
 
+### F. Pitfall Môi Trường Canary Runner Khi Nghiệm Thu Máy Admin (`canary_runner.py`)
+- **Hiện tượng:** Khi chạy `python D:/Taadaa/tools/canary_runner.py --repo "tiktok-luot nuoi acc" --machine 261 --row 1`, canary runner fail ngay lập tức ở giây đầu tiên:
+  ```text
+  Host guard error: MACHINE_OUT_OF_RANGE: machine=261 không thuộc host kibe (range 1-80). Dừng fail-closed.
+  ```
+- **Nguyên nhân:** Dù tool đã truyền `--account-workbook` trỏ về Admin, nhưng child `env` khi gọi runner subprocess lại kế thừa môi trường mặc định của Kibe (`TAADAA_HOST_CONFIG = kibe.yaml`), khiến `taadaa_host.py` kích hoạt chốt an toàn chặn máy ngoài range [1, 80].
+- **Quy chuẩn sửa đổi:** Trong `canary_runner.py` (khối chuẩn bị child environment), khi `m >= 200` hoặc `"Admin" in cluster`, BẮT BUỘC phải gán:
+  ```python
+  env["TAADAA_HOST_CONFIG"] = r"D:\Taadaa\machine-config\admin.yaml"
+  env["ADB_SERVER_SOCKET"] = "tcp:192.168.110.119:5037"
+  ```
+  Nếu `m < 200`, trỏ về `kibe.yaml` và gỡ bỏ `ADB_SERVER_SOCKET`.
+
 ## 3. Quy Trình Nạp Bù Tài Khoản Đúng Chuẩn (Actionable Reconcile Flow)
 Để nạp nick còn thiếu vào slot trống của thiết bị mà không ảnh hưởng đến batch đang chạy:
 
