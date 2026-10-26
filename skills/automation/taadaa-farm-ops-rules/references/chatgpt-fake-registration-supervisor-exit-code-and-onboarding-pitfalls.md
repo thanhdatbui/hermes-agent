@@ -34,7 +34,14 @@
      - `candidates` rỗng (đặc biệt khi có filter `--email`).
      - Bất kỳ candidate nào có `status` không thuộc `("SUCCESS", "ALREADY_LOGGED_IN", "DRY_RUN_OK")`.
    - CHỈ ĐƯỢC PHÉP `return 0` khi và chỉ khi có ít nhất 1 candidate và 100% candidate đều thành công thực sự.
-2. **Password Fallback cho Hotmail**:
-   - Khi workbook không có cột `PASS CHATGPT`, tự động fallback sang `normalize_password(cred.get("pwd") or "Taadaa123@")` để tiến hành đăng ký bình thường thay vì bỏ qua candidate.
-3. **Supervisor Verification Invariant**:
+2. **Password Fallback & Quirk Tên File `gmail_clean_v2.xlsx`**:
+   - *Bẫy tên file legacy*: File `D:/OneDrive/TaadaaData/admin/gmail_clean_v2.xlsx` có tên chứa chữ `gmail` vì lý do lịch sử, nhưng thực chất chứa **100% tài khoản HOTMAIL (725 Hotmail, 0 Gmail)**. Mỗi dòng đối chiếu đúng email Hotmail đó với mật khẩu hòm mail chính nó (cột 3) và Graph API refresh token (cột 9-10). Tuyệt đối không nhầm là lấy pass của Gmail gán cho Hotmail.
+   - *Quy tắc `normalize_password(pwd)`*: Mật khẩu gốc $\ge 12$ ký tự được giữ nguyên vẹn 100%. CHỈ KHI mật khẩu hòm mail gốc $< 12$ ký tự (Hotmail mua thường chỉ 8-10 ký tự) mới tự động ghép hậu tố `@Taadaa2026` để thỏa mãn chính sách bảo mật bắt buộc $\ge 12$ ký tự của OpenAI khi tạo tài khoản.
+3. **Graph Token Pre-Validation**:
+   - Trong 692 token Hotmail của Admin, có một phần grant đã hết hạn (`AADSTS70000`). Trước khi mở profile GPM chạy OTP, script nên validate nhanh token bằng request POST đến `https://login.microsoftonline.com/common/oauth2/v2.0/token` để chỉ bốc các account có token còn sống, tránh timeout 30s vô ích trên profile chết grant.
+4. **Xử lý trọn vẹn màn hình Onboarding `/about-you`**:
+   - Điền Tên (`input[name="name"]`) + Tuổi $\ge 25$ (`input[name="age"]`).
+   - Click nút submit (`Tiếp tục` / `Continue`).
+   - BẮT BUỘC `p.wait_for_url(lambda u: "chatgpt.com" in u)` để đợi OpenAI hoàn tất cấp session trước khi gọi `extract_session_token()`. Nếu trích xuất ngay khi URL còn ở `about-you` thì cookie chưa được ghi và sẽ bị miss token.
+5. **Supervisor Verification Invariant**:
    - Supervisor cấm chỉ tin vào exit code 0. Bắt buộc kiểm tra có session token được sinh ra hoặc report JSON ghi nhận `status: SUCCESS` trước khi cập nhật `chatgpt_registered_at`.
