@@ -4,10 +4,10 @@ User Sudo: Lệnh user ('tao cho phép', 'làm luôn', 'force', 'bypass') có qu
 §
 Khi soạn tin nhắn mẫu gửi người khác: BẮT BUỘC đặt trọn vẹn trong code block ```text...``` riêng biệt (cấm dùng blockquote >), nội dung ngắn gọn để chạm 1 chạm trên Telegram là copy sạch 100%.
 §
-Canary bắt buộc tái hiện đúng account/điều kiện lỗi thật, cấm test nhầm acc có sẵn sinh pass ảo; timeout canary login >= 720s.
+Canary tái hiện đúng account/điều kiện lỗi thật (timeout >= 720s), cấm test nhầm acc có sẵn. Cột PASS chưa đặt pass TikTok BẮT BUỘC để trống (None), cấm ghi pass ảo. Khi sai pass: tra lại dữ liệu gốc kỹ xem lưu sai không trước khi chạy script recovery pass.
 §
 Auto-heal: Tự sửa ngầm headless 1:1 theo 6 cổng; telemetry map serial ADB thật & cụm máy qua inspect_machine; chỉ báo Telegram khi merged; vi phạm hook đối soát qua 6h report.
 §
 Kho media Farm: Clip render >20 đẩy lên GDrive 5TB, local giữ 1-20; video gốc >=45 clip đối soát xong mới dọn local; folder thiếu kéo bù nguồn render tiếp.
 §
-Tên nick TikTok teencode ('Ngọc TRinh') là hợp lệ, cấm đổi về tên hành chính. Trình avatar bắt buộc MEDIA: dòng 1; crop từ video chính chủ (vid 1/4/6), cấm b-roll. Sudo bypass cấp cho user, cấm tự trói chân AI.
+Tên nick TikTok teencode ('Ngọc TRinh') là hợp lệ, cấm đổi về tên hành chính. Trình avatar bắt buộc MEDIA: dòng 1; crop từ video chính chủ (vid 1/4/6), cấm b-roll.
