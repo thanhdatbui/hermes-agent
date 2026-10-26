@@ -77,4 +77,5 @@ For a completed fix, record: target file and exact Gate 5/dispatch delta; compil
 - See `references/cross-host-lan-transfer-and-guard-deadlock.md` for large-payload LAN transfer architecture (on-the-fly streaming, SSH reverse port forward), disk space volatility pre-transfer checks, and execution gate coordination.
 - See `references/cloud-media-decoupling-architecture.md` for decoupling stateless media scrapers and ffmpeg renderers off physical farm hosts onto cloud workers.
 - See `references/windows-openssh-breakaway-job-dispatch.md` for preventing remote child process termination on OpenSSH disconnect via CREATE_BREAKAWAY_FROM_JOB (0x01000008).
+- See `references/admin-tiered-storage-and-source-recovery.md` for hybrid storage offloading rendered clips >= 21 to Google Drive, downloader pause flags, and accurate dual-layer (local + cloud) folder deficit auditing.
 - See `references/hybrid-cloud-media-offload-and-source-hydration.md` for tiering high-numbered rendered clips (>=21) to Google Drive, JIT source restoration formula (total rendered = local + GDrive), and OpenSSH breakaway service lifecycle.
