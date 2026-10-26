@@ -56,15 +56,18 @@ Quy trình chuẩn hoá bao gồm trọn gói **5 hạng mục bắt buộc (5-i
 ---
 
 ## 3. Nghiệm Thu Thực Tế (Visual Evidence Gate 6 & WinRT Backslash Mandate)
+- **Account Verification Trước Khi Capture:** Sau khi chạy runner pin top hoặc update bio, tiến trình nuôi nick chạy song song hoặc runner có thể tự động switch sang account khác trên máy. BẮT BUỘC kiểm tra profile hiện tại có đúng `@username` mục tiêu hay không. Nếu màn hình đang ở nick khác, phải switch lại đúng tài khoản mục tiêu trước khi chụp, kéo vuốt đỉnh profile (`swipe 540 400 540 1200 300`) để thấy rõ hàng video trên cùng có video ghim nhãn đỏ / số view cao nhất. Tránh chụp nhầm nick khác khiến User tưởng chưa pin video hot (*"R kênh ngọc trinh sao đéo pin video hot?"*).
 - Bắt buộc kéo ảnh Profile sau khi cập nhật về máy (chỉ chụp khi màn hình ON và runner đã vào Profile, tránh ảnh đen 12KB):
   ```bash
   python D:/Taadaa/tools/with_device_lock.py --machine <N> -- adb -s <SERIAL> shell screencap -p /sdcard/profile_final.png
   python D:/Taadaa/tools/with_device_lock.py --machine <N> -- adb -s <SERIAL> pull /sdcard/profile_final.png D:/Taadaa/reports/<FILE>.png
   ```
-- **WinRT OCR Backslash Mandate:** BẮT BUỘC dùng đường dẫn native Windows `D:\Taadaa\reports\<FILE>.png` (dùng slash `/` sẽ bị lỗi pointer null trong BitmapDecoder PowerShell):
-  ```bash
-  python D:\Taadaa\tools\run_winrt_ocr.py "D:\Taadaa\reports\<FILE>.png"
-  ```
+- **WinRT OCR Backslash Mandate & TTL Expiry:**
+  - BẮT BUỘC dùng đường dẫn native Windows `D:\Taadaa\reports\<FILE>.png` (dùng slash `/` sẽ bị lỗi pointer null trong BitmapDecoder PowerShell):
+    ```bash
+    python D:\Taadaa\tools\run_winrt_ocr.py "D:\Taadaa\reports\<FILE>.png"
+    ```
+  - **Fresh Receipt Invariant (TTL 180s):** Vision receipt chỉ có hiệu lực trong 180 giây (3 phút). Phải chạy `run_winrt_ocr.py` ngay trong lượt turn chuẩn bị gửi thẻ `MEDIA:`. CẤM chạy OCR từ nhiều turns trước rồi để receipt hết hạn làm kích hoạt `[CONTRADICTION_GATE_TRIGGERED] verdict: NO_RECEIPT`.
 - Soi mắt kiểm tra trước khi gửi:
   - Đúng Username, Tên hiển thị chuẩn.
   - Bio tiếng Việt có dấu đầy đủ, sạch đuôi WWF-UK.
@@ -73,6 +76,14 @@ Quy trình chuẩn hoá bao gồm trọn gói **5 hạng mục bắt buộc (5-i
 
 ---
 
-## 4. Tài Liệu Bổ Trợ
-- Chi tiết các bẫy thường gặp (lệch ngách, lệch avatar, badge WWF-UK, lỗi viết hoa): [`references/standardization-drift-and-pitfalls.md`](references/standardization-drift-and-pitfalls.md)
+## 4. Kỷ Luật "Canh Ca Nuôi Nick Xong Xử Lý" (Feed Session Queue Monitoring)
+- Khi User chỉ thị *"Canh ca nuôi xong xử lý 2 acc trong phiên đi"*:
+  1. Giám sát PID tiến trình nuôi nick toàn farm (`run_tiktok.py --mode multi-machine-feed-session`), kiểm tra `C:/Users/Kibe/.codex/device-locks/machine_<N>.lock.json` và `serial_<S>.lock.json`.
+  2. Với máy đã nhả lock (trạng thái FREE): lập tức giành JIT lock hoặc chạy canonical runner để thi công dứt điểm (update bio, pin top, switch đúng profile để capture evidence).
+  3. Với máy còn trong ca nuôi: chuẩn bị sẵn dữ liệu trên đĩa (avatar $512\times512$, marker `.manual_avatar_locked`, `.manual_hashtag_locked`, sửa file Excel), khi ca nuôi kết thúc sẽ đẩy thẳng runner lên máy mà không cần xin phép lại.
+
+---
+
+## 5. Tài Liệu Bổ Trợ
+- Chi tiết các bẫy thường gặp (lệch ngách, lệch avatar, badge WWF-UK, lỗi viết hoa, post-pin account drift, TTL receipt expiry): [`references/standardization-drift-and-pitfalls.md`](references/standardization-drift-and-pitfalls.md)
 

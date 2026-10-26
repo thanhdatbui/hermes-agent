@@ -26,21 +26,35 @@
   ```
 - Bản v47.0.3 có đủ 60 split APKs (bao gồm các module mới `df_live_cmaf`, `df_live_p2p`, `df_live_quic`, `df_m2_player_combo`).
 
-### C. Bẫy Lệnh ADB Qua Socket Từ Xa (Remote ADB Socket Buffer Limit)
+### C. Bẫy Lệnh ADB Qua Socket Từ Xa & Lỗi Android Shell `unknown command 'install-multiple'`
 - Khi chạy `adb -H <host> -P <port> -s <serial> install-multiple -r -d base.apk split_*.apk` với 60 file APK (>4,500 ký tự dòng lệnh):
-  - Dòng lệnh Windows hoặc socket pipe có thể bị truncate hoặc nuốt mất stdout/stderr, dẫn tới `returncode=0` giả hoặc không commit được session.
-  - Ngoài ra, Android Package Verifier có thể âm thầm chặn cài đặt.
-- **Quy chuẩn xử lý:**
-  1. Tắt verifier trước khi cài:
+  - Dòng lệnh Windows hoặc socket pipe có thể bị truncate hoặc nuốt mất stdout/stderr, dẫn tới `returncode=0` nhưng không cài đặt thành công.
+- **Bẫy `pm install-multiple` trên Android Shell:** Lệnh `install-multiple` chỉ là subcommand của `adb` trên máy host (PC). Nếu thực thi trực tiếp trên Android qua `adb shell pm install-multiple`, Package Manager của Android sẽ báo lỗi:
+  `Error: unknown command 'install-multiple'`
+  do Android chỉ hỗ trợ `pm install-create`, `pm install-write`, `pm install-commit`.
+- **Quy chuẩn Session Install an toàn trên Android Shell (khi push APK vào `/data/local/tmp`):**
+  1. Tạo session:
      ```bash
-     settings put global package_verifier_enable 0
-     settings put global verifier_verify_adb_installs 0
+     pm install-create -r -d
+     # Lấy Session ID từ output: Success: created install session [12345678]
      ```
-  2. Với cài từ xa qua mạng, ưu tiên phương thức nạp staging:
-     - `adb push <split_apks_dir>/. /data/local/tmp/tt_staging/`
-     - `adb shell pm install-multiple -r -d /data/local/tmp/tt_staging/*.apk`
-     - `adb shell rm -rf /data/local/tmp/tt_staging`
-  3. BẮT BUỘC cờ `-r -d` để giữ nguyên 100% login data và phiên của các tài khoản đã đăng nhập. CẤM TUYỆT ĐỐI `pm clear`.
+  2. Ghi từng split APK vào session với tham số kích thước byte `-S <size>`:
+     ```bash
+     pm install-write -S <bytes> <session_id> <split_name> /data/local/tmp/<split_name>.apk
+     ```
+  3. Commit session và khởi động lại app:
+     ```bash
+     pm install-commit <session_id>
+     # Trả về Success khi toàn bộ split hợp lệ
+     ```
+  4. Lưu ý file integrity: Toàn bộ split APK phải là file zip hợp lệ (chạy `testzip()` trước khi nạp). Nếu có 1 split bị hỏng/dở dang (ví dụ do ngắt mạng khi pull `split_df_a_dex.apk`), commit sẽ văng lỗi `INSTALL_PARSE_FAILED_UNEXPECTED_EXCEPTION: AndroidManifest.xml`.
+  5. BẮT BUỘC cờ `-r -d` để giữ nguyên 100% login data và phiên của các tài khoản đã đăng nhập. CẤM TUYỆT ĐỐI `pm clear`.
+
+### D. Bẫy Khóa Máy Đang Chạy Batch (Bulkhead & Concurrency Collision)
+- Trước khi rollout cập nhật hàng loạt, BẮT BUỘC kiểm tra active locks trong `~/.codex/device-locks/`.
+- Nếu có batch nuôi feed/upload đang chạy ngầm (`multi-machine-feed-session`), các máy bị giữ lock với status `running`:
+  - **CẤM TUYỆT ĐỐI** force preempt lock hoặc ngắt ngang tiến trình đang nuôi để cài đè app vì sẽ gây đứt phiên và mất kết quả cày view/follow.
+  - Phải để batch chạy xong hoặc chỉ nhắm mục tiêu vào các máy đang rảnh (free locks).
 
 ### D. Bẫy Guard Regex `-r` (Dangerous Root False Positive)
 - Khi thực thi lệnh bash chứa `install-multiple -r -d` hoặc `install-create -r -d`, guard an toàn của hệ thống có thể nhận diện cờ `-r` như lệnh quét thư mục đệ quy nguy hiểm (`[GUARD_DANGEROUS_ROOT]`).
