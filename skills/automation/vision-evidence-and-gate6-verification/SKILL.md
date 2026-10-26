@@ -32,6 +32,7 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
 - Kiến Trúc Hook Cơ Học Gate 6 & Invariant Chống Khóc Lóc: [`references/gate6-mechanical-hook-and-anti-whining-architecture.md`](references/gate6-mechanical-hook-and-anti-whining-architecture.md)
 - Kiến Trúc Auto-Rewire & Guidance Chống Bại Liệt L3 Cho Gate 6: [`references/gate6-auto-rewire-and-guidance-architecture.md`](references/gate6-auto-rewire-and-guidance-architecture.md)
 - Kỷ Luật Cấm Lạm Dụng Claude CLI & Đối Soát Avatar Bitmap (Chống OCR Mù): [`references/anti-claude-cli-runaway-and-bitmap-avatar-verification.md`](references/anti-claude-cli-runaway-and-bitmap-avatar-verification.md)
+- Chống Chụp Ảnh Mù Đối Phó & Ép Buộc Soi Mắt Trước Khi Gửi: [`references/anti-fake-screenshot-and-mandatory-inspection-receipt.md`](references/anti-fake-screenshot-and-mandatory-inspection-receipt.md)
 
 ## 1. Nguyên Tắc Cốt Lõi (Invariants)
 1. **CẤM gửi ảnh mù / đối phó:** Trước khi đính kèm bất kỳ thẻ `MEDIA:<path>` nào, bắt buộc phải mở ảnh ra soi mắt kiểm tra trước.
@@ -127,6 +128,9 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
     - **Bắt Buộc Đối Soát Avatar Bitmap Bằng OpenCV Local:** Cắt vùng vòng tròn avatar `(800..980, 250..420)` trên ảnh Profile và tính độ tương quan Correlation / Template Match với file `avatar.jpg` nguồn (ngưỡng similarity $\ge 0.35$). Nếu chưa đạt, cấm báo cáo hoàn tất.
     - **Lệnh CẤM Tuyệt Đối Lạm Dụng Claude CLI Làm "Nạng Chống Lưng":** Claude CLI là tài nguyên đắt đỏ (quota 5h/tuần) dành cho kiến trúc lớn hoặc Strike-3 Reviewer Hand-off. CẤM TUYỆT ĐỐI tự ý gọi `claude -p` để làm "cặp mắt đi mượn" cho các việc vặt: soi ảnh, crop ảnh, đo pixel, chọn ô ảnh picker thay vì tự viết script local hoặc sửa triệt để mã nguồn automation (*"r fix script chưa? chứ tự nhiên gọi claude cli? t có yêu cầu mày gọi hả?"*).
     - **Bắt Buộc Fix Triệt Để Trong Mã Nguồn Runner (`state_machine.py`):** Khi runner tự động gặp lỗi (như tap nhầm tile cũ, kẹt popup), Coordinator bắt buộc sửa thuật toán trong mã nguồn runner (như commit `d9cc3db` tích hợp `_avatar_picker_visual_match` so khớp trực quan tự động với `expected_path`), chạy test pass và push remote thay vì làm tay chắp vá rồi gọi Claude CLI soi hộ. Chi tiết xem [`references/anti-claude-cli-runaway-and-bitmap-avatar-verification.md`](references/anti-claude-cli-runaway-and-bitmap-avatar-verification.md).
+27. **Chống Chụp Ảnh Mù Đối Phó (Anti-Fake Screenshot) & Ép Buộc Soi Mắt Trước Khi Gửi:**
+    - **CẤM Chụp Đối Phó Qua Cổng:** Chặn đứng thói quen của LLM/Gemini chụp bừa màn hình Launcher, màn hình đen sleep, hoặc popup che chỉ để có thẻ `MEDIA:`. Bắt buộc kiểm tra **Target Screen Anchor** qua WinRT OCR (Profile phải có `Sửa hồ sơ` / `@username`, không chứa icon launcher). Phát hiện chụp sai -> inject ngay Guidance lệnh $O(1)$ đưa máy về đúng màn hình đích thay vì mắng mỏ gây bại liệt.
+    - **Cơ Chế Ép Buộc Soi Mắt (Mandatory Inspection Receipt):** Cổng `transform_llm_output` đối soát `verified_media_paths`. Nếu thẻ `MEDIA:<path>` chưa từng được Agent mở ra đọc qua `browser_vision` hoặc `run_winrt_ocr.py` trong phiên -> CHẶN ĐỨNG và trả về lệnh cưỡng chế $O(1)$ `[MANDATORY_INSPECTION_REQUIRED]` bắt buộc gọi tool soi mắt ảnh trước khi gửi. Chi tiết xem [`references/anti-fake-screenshot-and-mandatory-inspection-receipt.md`](references/anti-fake-screenshot-and-mandatory-inspection-receipt.md).
 
 ## 2. Thang Leo Thang Vision Dự Phòng (Fallback Ladder)
 Thứ tự fallback đọc ảnh chuẩn hoá 100% đồng bộ với kiến trúc Worker Dispatch:
