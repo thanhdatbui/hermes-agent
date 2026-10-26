@@ -56,9 +56,13 @@ To enable native `agy.exe` without using a centralized chat completion proxy:
 5. The local proxy forwards the request upstream to `https://daily-cloudcode-pa.googleapis.com` via the profile's upstream proxy (`upstream_proxy`, e.g., `test.taadaa.click:<port>`).
 6. The local proxy streams response status code, headers, and SSE chunks back to `agy.exe` verbatim, catching `ConnectionAbortedError` (WinError 10053) alongside `BrokenPipeError` and `ConnectionResetError`.
 7. Verified with unit test suite in `D:/Taadaa/tools/tests/test_ag_credit_proxy.py` (100% pass).
-8. **Upstream Quota Diagnosis:**
+8. **Upstream Quota Diagnosis & Fallthrough Strategy:**
    - Pro Quota exhausted: Returns `429 RESOURCE_EXHAUSTED` with `reason: "INSUFFICIENT_G1_CREDITS_BALANCE"`. Confirms credit injection succeeded.
    - Free Tier fallback: Returns `429 RESOURCE_EXHAUSTED` with `message: "Individual quota reached. Please upgrade your subscription to increase your limits."`. Signals missing credit injection.
+   - Two-Tier Quota Fallthrough: When `INSUFFICIENT_G1_CREDITS_BALANCE` is detected, the proxy can strip `enabledCreditTypes` and re-issue the request to consume the account's separate Free Tier allowance (50 requests) before applying cooldown, boosting Pro accounts to 1,550 req/day. Pure Free accounts must bypass credit injection entirely to avoid instant rejection.
+9. **Reviewer & Audit Standards for Loopback Interceptors:**
+   - Telemetry: Avoid swallowing proxy setup errors silently; emit dedicated telemetry events (`credit_proxy_started`, `credit_proxy_failed`) with correlation IDs.
+   - Framing: Handle both request chunking (hex size parsing) and response chunking (preserving chunk boundaries or cleaning `Transfer-Encoding` alongside `Content-Length`).
 
 ## 5. Multi-Profile Sandbox Isolation Architecture
 When orchestrating a pool of distinct Pro accounts (e.g. 29 accounts `acc_01` to `acc_28`):

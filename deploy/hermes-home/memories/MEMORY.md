@@ -13,3 +13,5 @@ Tài khoản Gmail chuẩn clean_v2 đã tắt Google Prompt hoàn toàn chỉ d
 Cron watchdog chạy batch (2FA, Gmail reg) BẮT BUỘC ghi nhận run_date độc lập với status success/fail; hàm already_ran cấm bọc điều kiện is_success để chống vòng lặp re-run spam Telegram khi có máy lỗi.
 §
 Watchdog & Cron report toàn farm tuân thủ chuẩn: vi phạm mới bắn ra, không vi phạm thì im lặng; riêng 09:00 sáng VN (02:00 UTC) phát 1 nhịp Heartbeat 24h xác nhận hệ thống sống khỏe.
+§
+Acc ChatGPT reg qua Hotmail sẵn sàng nạp pool dùng ngay (ngâm 7 ngày chỉ áp dụng cho Hotmail). Nạp pool ChatGPT-Web phân bổ tối thiểu 2 acc/IP và gán proxy_assignments đúng port proxy.

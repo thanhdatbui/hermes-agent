@@ -96,8 +96,36 @@ Giải pháp độc lập, không phụ thuộc vào việc đi "nhặt mót" vi
      * BẮT BUỘC thông báo ước tính thời gian trước cho User (ví dụ: *"Đang tải 40 clip và render FFmpeg mất khoảng 12-15 phút"*).
      * Báo cáo tiến độ ở các mốc chuyển giao trọng yếu (Tải xong 40 clip -> Tạo avatar -> Bắt đầu render) thay vì nín lặng chờ đến khi render xong 100%.
 
-7. **Hậu Kiểm Đồng Bộ Cột `Render MP4` Trong `TikN.xlsx`:**
+7. Hậu Kiểm Đồng Bộ Cột `Render MP4` Trong `TikN.xlsx`:
    - Trong script `swap_single_folder_pipeline.py`, hàm `update_excel_workbook` mặc định chỉ update `Keyword Video`, `Hashtag Pool` và `Kiểm Tra Dữ Liệu`, nhưng có thể bỏ sót cập nhật số lượng clip mới vào cột `Render MP4` (cột K / index 10).
    - Sau khi pipeline kết thúc, BẮT BUỘC kiểm tra lại dòng máy trong `TikN.xlsx`, cập nhật `row[10].value = len(downloaded)` (ví dụ: 40) để khớp chính xác giữa số file render thực tế trong `D:\TIKTOK-videonuoinick\<folder>` và sổ cái.
+
+## 8. Bẫy Sắp Xếp Chữ Cái (Lexicographical Sorting Trap) & Giải Pháp Render Bổ Sung `--file-list`
+- **Bẫy Ngầm Khi Tải Thêm Nối Tiếp Vào Folder Gốc (`D:\video goc\<raw>`):**
+  - Giả sử folder gốc ban đầu có `1.mp4` đến `40.mp4`, đã render thành `22.mp4` đến `61.mp4` trong folder đích.
+  - Khi cần tải bổ sung 10 clip để đạt chuẩn farm $\ge 45$ clip (thành `41.mp4`..`50.mp4` trong folder gốc):
+  - Hàm `scan_input(input_dir)` trong `random_batch_render.py` sắp xếp file theo thứ tự chuỗi chữ cái (alphabetical / lexicographical):
+    `sorted((p for p in input_dir.rglob("*")), key=lambda p: str(p).lower())`
+  - Theo thứ tự chuỗi chữ cái: `40.mp4` sẽ đi liền sau là `41.mp4`..`49.mp4`, rồi mới đến `5.mp4`, `6.mp4`, `7.mp4`, `8.mp4`, `9.mp4`!
+  - Vì `enumerate(videos, start_seq)` gán số thứ tự đầu ra theo chỉ mục danh sách:
+    Việc chèn `41.mp4`..`49.mp4` vào giữa danh sách sẽ làm **LỆCH TOÀN BỘ ÁNH XẠ ĐẦU RA** của các video từ `5.mp4` trở đi (`5.mp4` vốn là `57.mp4` bị đẩy thành `67.mp4`). Điều này làm hỏng cơ chế `--resume-verify-existing` và phá vỡ con trỏ lịch sử upload của máy!
+- **Giải Pháp Chuẩn Hoá O(1) Bằng `--file-list`:**
+  - BẮT BUỘC KHÔNG trỏ chung chung vào `--input-dir` khi render bổ sung cho folder đã có video dở dang.
+  - Tạo file danh sách tạm thời chứa **CHỈ CÁC FILE MỚI** (ví dụ `supplement_file_list.txt` gồm đường dẫn tuyệt đối tới `41.mp4`..`50.mp4`).
+  - Gọi `random_batch_render.py` với cờ `--file-list <path>` kết hợp `--start-seq <sequence_tiếp_theo>` (ví dụ `--start-seq 62`):
+    ```bash
+    python D:/Taadaa/Tiktok-video/scripts/random_batch_render.py \
+      --input-dir "D:/video goc/<folder_raw>" \
+      --output-dir "D:/TIKTOK-videonuoinick/<folder_render>" \
+      --preset "D:/Taadaa/Tiktok-video/presets/preset_owner.json" \
+      --randomize \
+      --slot <slot_idx_0> \
+      --machine-id <machine_idx_0> \
+      --file-list "D:/Taadaa/Tiktok-video/supplement_file_list.txt" \
+      --start-seq 62 \
+      --run-id "kibe-m20-slot2-f100-supp"
+    ```
+  - Khi có `--file-list`, script nhận danh sách tuần tự cố định chính xác 100%, bỏ qua quét thư mục, render mượt mà từ `62.mp4` đến `71.mp4` mà giữ nguyên vẹn 40 clip trước đó.
+
 
 
