@@ -6,8 +6,9 @@ description: "Use when running batch 2FA on TikTok farm. Chạy batch 2FA repo t
 # TikTok Add 2FA Batch Ops (repo tiktok-add-bao-mat-f2a)
 
 References:
-- `references/admin-cluster-remote-socket-routing-20261026.md` — 0/69 máy Admin lệch ADB: máy ≥200 dùng socket 192.168.110.119:5037 hoặc admin_ssh.py.
-- `references/night-watchdog-idempotency-partial-failure-loop-20261026.md` — `already_ran_today` theo ngày, rerun qua `--force`.
+- `references/runner-exit-code-5-and-bootstrap-failure-triage-20261026.md` — Mã thoát 5: workbook lock, cooldown chống spam.
+- `references/admin-cluster-remote-socket-routing-20261026.md` — Máy ≥200: socket 192.168.110.119:5037.
+- `references/night-watchdog-idempotency-partial-failure-loop-20261026.md` — Idempotency theo ngày, rerun `--force`.
 - `references/graph-api-otp-token-and-canary-parity-discipline-20261024.md` — Graph OTP, Outlook, Canary.
 - `references/night-chain-reg-gmail-2fa-and-per-phase-telegram-routing-20261020.md`
 - `references/night-2fa-watchdog-skip-reasons-and-column-drift-audit-20261018.md`
@@ -15,7 +16,7 @@ References:
 - `references/night-rolling-avatar-2fa-and-cache-clean-arbitration-20261015.md`
 - `references/workbook-lock-contention-and-journal-recovery-20261014.md`
 - `references/cross-machine-account-rebalance-preflight-and-2fa.md`
-- `references/dual-cluster-email-unlink-and-ssh-encoding-pitfalls-20261010.md` — TikTok v46+ chặn gỡ Email.
+- `references/dual-cluster-email-unlink-and-ssh-encoding-pitfalls-20261010.md`
 - `references/auth-blocked-fake-password-reset-and-2fa-proof-discipline-20261010.md` — Cứu nick pass sai (`AUTH_BLOCKED`)., nghiệm thu 2FA.nh Bảo mật đích (cấm gửi Switcher).
 - `references/night-2fa-ca4-session-interlock-and-schedule-gate.md` — **[MỚI 10/10/2026]** Khắc phục xung đột Device Lock giữa 2FA đêm và Ca 4 Phiên 2 (`is_ca4_finished` qua `feed_session_reported.json` + khung giờ `02:45 - 04:50`).
 - `references/night-tiktok-2fa-watchdog-hardening-and-dual-cluster-pitfalls-20261010.md` — **[MỚI 10/10/2026]** Khắc phục lỗi UnboundLocalError trong watchdog ban đêm `cron_night_tiktok_2fa_watchdog.py`, chuẩn hóa exit code semantics (`EXIT_SAFE_SKIP=4`), cấu hình biến môi trường chống hardcode, telemetry `correlation_id` và quy chuẩn Triage Sol Repair / Strike 3 Reviewer Hand-off.
