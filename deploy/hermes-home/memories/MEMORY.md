@@ -1,6 +1,6 @@
 Cronjob batch ngầm đặt deliver='local' chống spam stdout; Watchdog có deliver='local' BẮT BUỘC tự dispatch Telegram (cấm chỉ print). Hàm nạp token BẮT BUỘC tự đọc trực tiếp từ hermes/.env chống rớt dependency/import automation_core.
 §
-Khi TikTok thiếu acc (ACCOUNT_MISSING/mismatch), BẮT BUỘC auto-login/reconcile bù; máy Admin (>=200) nạp TAADAA_HOST_CONFIG=admin.yaml, ADB socket 192.168.110.119:5037 & workbook Admin (cấm fail-closed).
+Khi TikTok thiếu acc/mismatch: BẮT BUỘC auto-login/reconcile bù; máy Admin (>=200) nạp TAADAA_HOST_CONFIG=admin.yaml, socket 192.168.110.119:5037 & workbook Admin; Canary remote/auto-login BẮT BUỘC timeout >= 720s (cấm set 300s).
 §
 Khi pool OmniRoute lỗi: đối soát proxy_registry & test /api/providers/{cid}/test; token sống bật is_active=1 ngay. Acc ChatGPT reg xong dùng ngay; gán >= 2 acc/proxy kèm proxy_assignments.
 §
