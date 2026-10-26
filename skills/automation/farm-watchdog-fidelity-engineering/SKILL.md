@@ -110,6 +110,7 @@ Applies whenever reports fail to reflect actual fleet health, mask dropped machi
 - **Rule:**
   1. **Stat-First Pre-Filtering:** Use `os.scandir()` and filter by `entry.stat().st_mtime` BEFORE opening or reading file content. If searching for stale records older than $N$ hours, immediately skip files where `now - st_mtime < min_age_seconds` without touching file contents.
   2. **Iterative Batch Processing:** When parsing content is required across large sets, avoid full-directory synchronous loads in short-timeout (<60s) cron scripts or ensure the timeout budget accommodates NTFS cold-cache traversal. See `references/watchdog-timeout-and-file-scan-bottleneck.md`.
+  3. **Progressive Warm-Up Remediation:** When a production canonical script lacks stat pre-filtering during a live run and cannot be modified on the fly, run chunked slice warm-ups (`files[i:i+1000]`) to progressively prime the Windows file system cache into RAM without triggering tool failure loops, then execute the canonical script.
 
 ### Invariant 13: ADB Host Unreachability vs Zero-Device Fleet Discrimination & Deferred Daily Closeout
 - **Anti-Pattern:** Treating an unreachable ADB host (e.g. remote daemon restarting, socket timeout, port 5037 dead) identically to an reachable host with 0 online devices (`connected = {}`). The script reports "0 completed, 0 error" instead of a connection failure alert. Furthermore, prematurely committing `reported_date = today_str` locks out future retry intervals in the same shift window after the host daemon recovers.
