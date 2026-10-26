@@ -10,7 +10,7 @@ Tool 2FA và cron xen ca chạy cả ngày BẮT BUỘC dùng Just-In-Time (JIT)
 §
 Tài khoản Gmail chuẩn clean_v2 đã tắt Google Prompt hoàn toàn chỉ dùng 2FA TOTP: login GPM 100% trên PC qua pyotp, không cần ADB hay máy S7; cấm chặn nhầm acc farm có recovery khoaleemagic khi đã có totp_secret.
 §
-Auto-Heal: đào log/ảnh từ thư mục ca, cấm chụp sống máy tắt màn; serial thật; WinRT OCR primary, cấm uiauto dump; Canary auto-device; storm >= 3 báo Alert. Avatar picker: chống chọn nhầm Tile 1 qua visual match; lifecycle_guard:260 bọc except null char.
+Auto-Heal: đào log/ảnh ca, cấm chụp máy tắt màn; WinRT OCR primary; Canary auto-device; storm>=3 alert. Claude CLI bị hook guard_claude_cli_lock.py khóa cứng (chỉ mở khi có User Sudo/Strike 3). Avatar picker: visual match chống nhầm Tile 1; lifecycle_guard:260 bọc except null char.
 §
 Kiểm tra nick TikTok farm (supervisor/change info/6h report): chỉ check bool(username); CẤM check compound password vì nick reg OTP để trống pass nhưng đang chạy feed thật trong taikhoan_run_safe.xlsx.
 §
