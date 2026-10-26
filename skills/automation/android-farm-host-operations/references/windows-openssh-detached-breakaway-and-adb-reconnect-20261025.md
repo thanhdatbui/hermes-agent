@@ -60,3 +60,19 @@
   * CẤM TUYỆT ĐỐI thử lại mật khẩu lần 2 nếu màn hình vẫn đứng ở ô password và báo lỗi sai pass.
   * Phải dừng ngay lập tức để bảo vệ tài khoản khỏi bị checkpoint khóa vĩnh viễn.
   * Chuyển hướng sang cờ `--otp-only`: Chọn "Quên mật khẩu?" hoặc "Đăng nhập bằng mã xác minh" gửi về hòm thư Hotmail/Outlook, trích xuất OTP 6 số để đăng nhập và thiết lập lại mật khẩu đồng bộ vào workbook.
+
+---
+
+## 5. Khôi Phục Remote ADB Server Admin Port 5037 (-a Binding) Qua Task `Taadaa_ADB_User_Remote`
+- **Sự cố:** Khi ADB server trên host Admin (`192.168.110.119`) bị dừng, bị kill hoặc treo, kết nối từ xa từ máy Kibe tới port 5037 bị từ chối (`10061 / connection refused / timed out`).
+- **Bẫy kỹ thuật:**
+  * Nếu chạy `adb devices` hoặc `adb start-server` thông thường trên host Admin, daemon ADB mặc định chỉ bind vào `127.0.0.1:5037` (localhost), từ chối mọi kết nối từ máy khác trong LAN.
+  * Nếu chạy `adb -a nodaemon server` trực tiếp qua SSH subshell (`admin_ssh.py`), khi phiên SSH kết thúc, OpenSSH Server sẽ dọn dẹp Windows Job Object và kill ngay tiến trình con ADB ngầm!
+- **Quy trình chuẩn hóa phục hồi:**
+  * Trên host Admin đã cấu hình sẵn Scheduled Task chạy dưới User profile của Admin với quyền cao nhất: `Taadaa_ADB_User_Remote` (trỏ vào `C:\Taadaa_Service\start_admin_adb.bat` -> `start_adb_hidden.vbs` -> `adb.exe -a nodaemon server`).
+  * Từ máy Kibe, kích hoạt khởi động lại ADB daemon bằng lệnh:
+    ```bash
+    python D:/Taadaa/tools/admin_ssh.py "schtasks /run /tn Taadaa_ADB_User_Remote"
+    ```
+  * Task Scheduler chạy tách biệt khỏi OpenSSH Job Object, giữ ADB server sống bền vững, bind `0.0.0.0:5037` (`-a`), khôi phục kết nối socket 5037 tức thì mà không cần thao tác tay trên màn hình máy Admin.
+  * Lưu ý: `D:/Taadaa/tools/admin_ssh.py` trên Kibe bắt buộc cấu hình tiền tố `schtasks` trong `ALLOWED_COMMAND_PREFIXES`.

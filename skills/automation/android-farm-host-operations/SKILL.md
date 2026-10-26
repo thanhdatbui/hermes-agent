@@ -6,7 +6,7 @@ description: "Use when farm devices drop, USB hangs, or entering BIOS."
 # Android Farm Host Operations
 
 References:
-- `references/windows-openssh-detached-breakaway-and-adb-reconnect-20261025.md` — Bẫy OpenSSH Job Object terminate tiến trình con (fix bằng CREATE_BREAKAWAY_FROM_JOB 0x01000008), adb reconnect khôi phục remote ADB treo I/O, và cơ chế OTP-Only khi sai mật khẩu TikTok (25/10/2026).
+- `references/windows-openssh-detached-breakaway-and-adb-reconnect-20261025.md` — Bẫy OpenSSH Job Object terminate tiến trình con (fix bằng CREATE_BREAKAWAY_FROM_JOB 0x01000008), adb reconnect khôi phục remote ADB treo I/O, khôi phục remote ADB 5037 qua task Taadaa_ADB_User_Remote, và cơ chế OTP-Only khi sai mật khẩu TikTok (25/10/2026).
 - `references/xiaowei-port-5038-preflight-gate-and-false-usb-disconnect-20261023.md` — Cấm báo cáo mù "Mất kết nối ADB/USB" khi chưa đối soát socket 5038; chuẩn hóa Preflight Port 5038 Gate fail-closed bằng `adb kill-server` sạch (23/10/2026).
 - `references/pre-session-framework-check-and-kill-switch-governance-20261022.md` — Probe 2 tầng kernel + Android framework (settings service) trên M213, structured telemetry và kill-switch (22/10/2026).
 - `references/xiaowei-focus-based-idle-and-closeout-gate-audit-20261022.md` — Phân tích bẫy nhàn rỗi OS-wide GetLastInputInfo vs focus-based tracking riêng cho Tiểu Vi (ngưỡng 10 phút), cơ chế tự dọn port 5038 khi bấm X, throttling ghi đĩa và quy chuẩn vượt Closeout Gate (22/10/2026).
