@@ -43,3 +43,57 @@ reason: message claims UI/device completion but contains no MEDIA: evidence tag
 3. **Thai do xu ly khi gap su co Gate ro ri:**
    - Tra loi thang vao ban chat ky thuat: Day la prompt noi bo cua Gate kiem duyet anh bi ro ri do bat nham cau nhan viec.
    - Ngan gon, khong vong vo phan tran, khong khoc loc.
+
+---
+
+## 4. Giai Phap Co Hoc O(1) Da Trien Khai (`guard_media_vision_gate.py`)
+
+1. **Bo Loc Cua Nhan Vien `RECEPTION_OR_IN_PROGRESS_MARKERS`:**
+   Dua danh sach chan truoc vao ham `_requires_media_evidence`:
+   ```python
+   RECEPTION_OR_IN_PROGRESS_MARKERS = (
+       "nhan lenh",
+       "bat dau",
+       "dang",
+       "dang thuc hien",
+       "dang kiem tra",
+       "chuan bi",
+       "ke hoach",
+       "quy trinh",
+       "se",
+       "huong dan",
+       "chuan hoa kenh nay",
+       "chuan hoa kenh do",
+       "chuan hoa 2 kenh",
+       "chuan hoa hai kenh",
+       "chuan hoa cac kenh",
+       "yeu cau chuan hoa",
+       "lenh chuan hoa",
+       "tien hanh chuan hoa",
+   )
+
+   def _requires_media_evidence(message: str) -> bool:
+       norm_msg = _normalize_text(message)
+       if any(_phrase_in(norm_msg, kw) for kw in RECEPTION_OR_IN_PROGRESS_MARKERS):
+           return False
+       return bool(ACTION_COMPLETION_PATTERNS.search(norm_msg) and SUBJECT_PATTERNS.search(norm_msg))
+   ```
+
+2. **Kiem Chung Regression Unit Test:**
+   Bo test `test_guard_media_vision_gate.py` duoc bo sung test case:
+   ```python
+   def test_reception_and_in_progress_messages_bypass_gate6(store):
+       reception_phrases = [
+           "chuẩn hoá kênh này",
+           "Dạ em nhận lệnh chuẩn hoá kênh này",
+           "Em bắt đầu chuẩn hoá kênh",
+           "Đang chuẩn hoá kênh 243",
+           "Kế hoạch chuẩn hoá kênh gồm 4 bước",
+           "Quy trình chuẩn hoá kênh",
+       ]
+       for phrase in reception_phrases:
+           passed, out = guard.transform_llm_output_check(phrase, store)
+           assert passed is True
+           assert out == phrase
+   ```
+   Ket qua toan bo suite 98/98 tests PASSED 100%.

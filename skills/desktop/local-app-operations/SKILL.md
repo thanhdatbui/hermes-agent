@@ -545,6 +545,7 @@ When using a screenshot, verify the address bar port against the live listener; 
 
 ## Supporting detail
 
+See `references/chatgpt-web-gpm-audit-and-purge-execution.md` — ChatGPT Web GPM audit & purge execution runbook: 5-account safe batching, foreground timeout mitigation via terminal background + process wait, and non-destructive purge boundaries.
 See `references/omniroute-gpm-chatgpt-web-pool-feeder.md` — OmniRoute ChatGPT-Web pool feeding from GPM profiles, fast CDP token probe (<5s), per-IP ceiling gating (cap 2 acc/IP), Hotmail direct auth vs Google SSO trap, and proxy_assignments relational fail-closed binding.
 See `references/chatgpt-web-multi-proxy-feeder-governance.md` — ChatGPT-Web multi-proxy feeding standards, 5-worker parallel execution, fast session probe (<5s), temporary 2-account per IP ceiling, Hotmail direct login vs Google SSO trap, and command guard invariants (no Base64 obfuscation).
 See `references/chatgpt-web-pool-proxy-distribution.md` — ChatGPT-Web pool feeding protocol, multi-account proxy pairing (>= 2 accs/IP), and distinguishing email soaking from ChatGPT pool readiness.
