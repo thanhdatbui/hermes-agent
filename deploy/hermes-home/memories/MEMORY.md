@@ -13,3 +13,5 @@ Tài khoản Gmail chuẩn clean_v2 đã tắt Google Prompt hoàn toàn chỉ d
 Auto-Heal khép kín: emit_if_needed lấy serial ADB thật; cấm tiệt shell uiautomator dump (GuardGate DENY tự động), ưu tiên WinRT OCR primary, case khó fallback ATX-Agent :7912; Canary auto-device; storm >= 3 báo Alert.
 §
 Bẫy gallery picker TikTok: Android gallery đẩy screenshot mới lên đầu lưới (0,0) làm runner up nhầm screenshot cũ sinh false positive AVATAR_SMOKE_SUCCESS; lifecycle_guard.py dòng 260 bắt buộc bọc except (OSError, ValueError) chống văng null char trên Windows.
+§
+CẤM tự tiện gọi Claude CLI khi User không yêu cầu; cấm dùng Claude CLI soi toạ độ UI thủ công thay cho việc sửa script. Script avatar picker BẮT BUỘC dùng _avatar_picker_visual_match chống chọn nhầm screenshot cũ ở Tile 1.

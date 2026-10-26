@@ -68,9 +68,10 @@ Quy trình chuẩn hoá bao gồm trọn gói **5 hạng mục bắt buộc (5-i
     python D:\Taadaa\tools\run_winrt_ocr.py "D:\Taadaa\reports\<FILE>.png"
     ```
   - **Fresh Receipt Invariant (TTL 180s):** Vision receipt chỉ có hiệu lực trong 180 giây (3 phút). Phải chạy `run_winrt_ocr.py` ngay trong lượt turn chuẩn bị gửi thẻ `MEDIA:`. CẤM chạy OCR từ nhiều turns trước rồi để receipt hết hạn làm kích hoạt `[CONTRADICTION_GATE_TRIGGERED] verdict: NO_RECEIPT`.
-- **Quy Tắc Chống Báo Cáo Láo Avatar (Gallery Picker Tile-1 Bias & Visual Audit Invariant):**
+- **Quy Tắc Chống Báo Cáo Láo Avatar (Gallery Picker Tile-1 Bias & Kỷ Luật Cấm Lạm Dụng Claude CLI):**
   - **CẤM TUYỆT ĐỐI** tin vào log `verified=True` / `AVATAR_SMOKE_SUCCESS` của runner nếu chưa đối soát thị giác trực tiếp trên avatar circle sau khi upload. Runner cũ hay tap mù vào Tile 1 (thường là ảnh screenshot cũ chứa avatar cũ), gây hiện tượng "báo cáo láo".
-  - **Luồng upload chuẩn:** Trên Profile tap bút chì `(75, 150)` ➔ "Thay đổi ảnh" `(539, 579)` ➔ "Tải ảnh lên" `(224, 1637)` (né triệt để popup "Hoạt động không có sẵn") ➔ Định vị đúng ô ảnh mục tiêu trong Gallery ➔ Tap `Tiếp (1)` `(921, 1843)` ➔ Tap `Lưu` `(792, 1794)` ➔ Đợi 10s CDN ➔ Tap Back `(80, 140)` về Profile.
+  - **Kỷ luật Cấm lạm dụng Claude CLI làm nạng chống lưng:** Thay vì sửa dứt điểm bug thuật toán trong mã nguồn runner (`state_machine.py`), CẤM Coordinator tự tiện gọi Claude CLI liên tục để "nhờ" đọc toạ độ từng ô ảnh rồi tap thủ công (*"r fix script chưa? chứ tự nhiên gọi claude cli? t có yêu cầu mày gọi hả?"*). BẮT BUỘC sửa triệt để thuật toán trong mã nguồn runner (`d9cc3db` trong `Tiktok-video`: tích hợp `_avatar_picker_visual_match` so khớp trực quan tự động với `expected_path`).
+  - **Luồng upload chuẩn:** Trên Profile tap bút chì `(75, 150)` ➔ "Thay đổi ảnh" `(539, 579)` ➔ "Tải ảnh lên" `(224, 1637)` (né triệt để popup "Hoạt động không có sẵn") ➔ Định vị đúng ô ảnh mục tiêu trong Gallery bằng visual match ➔ Tap `Tiếp (1)` `(921, 1843)` ➔ Tap `Lưu` `(792, 1794)` ➔ Đợi 10s CDN ➔ Tap Back `(80, 140)` về Profile.
   - Sau khi lưu, BẮT BUỘC crop vòng tròn avatar `(800..980, 250..420)` trên ảnh màn hình Profile mới nhất, dùng Claude CLI / model vision soi mắt xác nhận đúng chủ thể mới trước khi báo cáo User.
 - Soi mắt kiểm tra trước khi gửi:
   - Đúng Username, Tên hiển thị chuẩn.

@@ -135,18 +135,19 @@
   4. **Cú pháp gọi WinRT OCR chuẩn xác trong MSYS bash:** Dùng forward slash cho đường dẫn script python và escape backslash chuẩn cho đường dẫn ảnh Windows:
      `python D:/Taadaa/tools/run_winrt_ocr.py "D:\\Taadaa\\reports\\<ten_anh>.jpg"`.
 
-## 23. Bẫy Báo Cáo Láo Avatar Do Chọn Nhầm Tile 1 Trong Gallery Picker (Gallery Picker Tile-1 Bias Trap)
+## 23. Bẫy Báo Cáo Láo Avatar Do Chọn Nhầm Tile 1 Trong Gallery Picker & Kỷ Luật Cấm Lạm Dụng Claude CLI
 - **Hiện tượng:** Runner upload avatar (`run_upload_avatar.ps1`, `state_machine.py`) báo cáo `THÀNH CÔNG (exit=0, verified=True, avatar_status=FORCED_REPLACED_VERIFIED)`. Nhưng khi User mở profile xem thực tế, avatar hoàn toàn KHÔNG ĐỔI và vẫn là ảnh cũ, khiến User cực kỳ phẫn nộ (*"Xong cái địt mẹ mày đã thay ava accc 1 đâu... Con mẹ mày lại báo cáo láo"*).
 - **Căn nguyên kỹ thuật:**
   1. Trong runner cũ, thao tác chọn ảnh trong thư viện Android (Gallery Picker) được hard-code tọa độ cố định vào ô đầu tiên: `Tap tile ảnh đầu tiên: (6, 222, 269, 488)`.
   2. Trước khi upload, nếu thiết bị vừa thực hiện lệnh `screencap` để kiểm tra màn hình profile, thì ảnh chụp màn hình vừa chụp (chứa chính avatar cũ) lại được MediaStore xếp vào vị trí số 1 (Tile 1) trong thư viện ảnh.
   3. Runner tải ảnh mới lên nhưng lại bấm chọn nhầm Tile 1 (chính là ảnh chụp màn hình cũ), đưa vào màn hình crop, bấm Lưu, thấy màn crop đóng thì tự động đánh dấu `verified=True` mà không hề biết mình vừa nạp lại ảnh cũ!
-- **Hành động bắt buộc để triệt tiêu vĩnh viễn bẫy này:**
-  1. **Dọn sạch ảnh rác trước khi push:** Chạy lệnh xoá các ảnh tạm trên thiết bị: `rm -f /sdcard/DCIM/Camera/avatar_*.jpg /sdcard/Pictures/av_*.jpg /sdcard/Pictures/avatar_*.jpg`.
-  2. **Push ảnh với timestamp mới và scan MediaStore:** Push file ảnh mới vào `/sdcard/DCIM/Camera/IMG_<timestamp>.jpg` và gọi `am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/DCIM/Camera/IMG_<timestamp>.jpg` để ảnh mới nhất nằm ở hàng đầu.
-  3. **Định vị chính xác ô ảnh mục tiêu trong Gallery Picker:** Không tap mù vào Tile (1,1). Chụp ảnh thư viện `screencap`, dùng Claude CLI / model vision soi nhanh lưới ảnh (thường là 4 cột × 6 hàng) để chỉ định chính xác tọa độ ô ảnh mục tiêu (ví dụ: Hàng 1 Cột 3 hoặc Hàng 3 Cột 4).
-  4. **Quy trình bấm nút chọn ảnh chuẩn:** Tap chọn ô ảnh -> tap `Tiếp (1)` tại `(921, 1843)` -> vào màn hình Cắt (Crop) -> tap `Lưu` tại `(792, 1794)` -> chờ 10s cho upload CDN hoàn tất -> tap Back `(80, 140)` về Profile.
-  5. **BẮT BUỘC HẬU KIỂM BẰNG THỊ GIÁC (VISUAL AUDIT INVARIANT):** CẤM TUYỆT ĐỐI tin vào log `verified=True` của runner. Sau khi lưu avatar, BẮT BUỘC chụp màn hình Profile, crop riêng vòng tròn avatar tại `x≈755–1045, y≈375–610` (hoặc `x≈800–980, y≈250–420`), dùng Claude CLI hoặc mô hình vision soi tận mắt xác nhận đúng chủ thể mới (nam đeo kính / nữ nấu ăn) trước khi báo cáo User.
+- **Bẫy lạm dụng Claude CLI làm nạng chống lưng (Anti-pattern bị User chấn chỉnh nghiêm khắc):**
+  - **Hành vi sai trái:** Thay vì sửa dứt điểm bug thuật toán trong mã nguồn runner (`state_machine.py`), Coordinator lại tự tiện gọi Claude CLI liên tục để "nhờ" đọc toạ độ từng ô ảnh rồi tap thủ công, làm tốn quota tài khoản và vi phạm phân cấp. User cực kỳ bức xúc: *"r fix script chưa? chứ tự nhiên gọi claude cli? t có yêu cầu mày gọi hả?"*.
+  - **Quy tắc bất biến:** Claude CLI **CHỈ ĐƯỢC PHÉP GỌI** khi có yêu cầu đích danh của User hoặc khi các mô hình local/OmniRoute (Sol/Agy) thực sự fail theo đúng hợp đồng Escalation Ladder. CẤM TUYỆT ĐỐI lạm dụng Claude CLI làm việc vặt thay cho việc fix script code.
+- **Giải pháp cơ học trong mã nguồn (`d9cc3db` trên `Tiktok-video`):**
+  - Trong `scripts/tiktok_workflow/state_machine.py` (hàm `_select_avatar_from_download`): Đã tích hợp thuật toán so khớp thị giác `_avatar_picker_visual_match` đối chiếu trực tiếp từng ô ảnh trong Gallery với file nguồn `expected_path` (`D:\TIKTOK-videonuoinick\485\avatar.jpg`).
+  - Khi phát hiện ô ảnh có độ tương đồng `similarity >= 0.35`, script tự động chọn đúng ô ảnh mục tiêu thay vì tap mù ô đầu tiên.
+  - Thuật toán tự chạy 100% trong Python runtime nội bộ, triệt tiêu vĩnh viễn việc re-upload ảnh cũ mà không cần gọi bất kỳ model ngoài nào.
 
 ## 25. Bẫy Tự Bịa Avatar Mới Khi Chưa Soi Kỹ Profile Gốc & Bẫy Cố Chấp Sinh Ảnh Ảo (Hallucinated Avatar Generation Trap)
 - **Hiện tượng:** Khi nhận ảnh profile TikTok từ User, Agent không trích xuất và đối soát kỹ ảnh avatar hiện hữu trên màn hình profile gốc (hoặc avatar hiện tại vốn dĩ đã là ảnh nhân vật/creator chuẩn được chụp sẵn). Thay vào đó, Agent vội vàng quét các file video trong kho để cắt xén phong cảnh hoặc cắt mặt người trong các clip b-roll một cách gượng ép, tạo ra các phương án avatar xấu, lạc đề và gây bức xúc nghiêm trọng (*"ava mày đưa như lồn ấy"*, *"đéo cái nào đúng cả"*).
