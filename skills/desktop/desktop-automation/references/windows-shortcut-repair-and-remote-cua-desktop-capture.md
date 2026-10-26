@@ -47,7 +47,48 @@ $sc.IconLocation = 'D:\Riot Games\Teamfight Tactics\Live\TFTClient.exe,0'
 $sc.Save()
 ```
 
-#### A. PowerShell WScript.Shell Unicode Mismatch
+#### B. Catastrophic Desktop Wiping Trap via PowerShell `-like "*?*"`
+- **The Trap:** Attempting to clean up corrupted Unicode / mojibake filenames (e.g. `Li?n Minh Huy?n Tho?i.lnk`) by running:
+  ```powershell
+  # CATASTROPHIC BUG: DO NOT RUN THIS
+  Get-ChildItem $desktop -Filter "*.lnk" | Where-Object { $_.Name -like "*?*" } | Remove-Item -Force
+  ```
+  In PowerShell `-like`, the `?` character is a **single-character wildcard** (equivalent to `.` in Regex), NOT a literal question mark! Thus `*?*` matches **ANY filename with 1 or more characters**. This command deletes **every single `.lnk` file on the desktop** (Chrome, GPM, IDEs, games, tools, user files), devastating the user's desktop!
+- **The Safe Pattern for Literal `?` / Corrupted Mojibake:**
+  - Use `.Contains('?')` or `-match '\?'` (with escaped `\?` in regex) to match literal question marks:
+    ```powershell
+    Get-ChildItem $publicDesktop, $userDesktop -Filter "*.lnk" | Where-Object { $_.Name.Contains('?') } | ForEach-Object {
+        Remove-Item -LiteralPath $_.FullName -Force
+    }
+    ```
+  - Always verify target count before deleting:
+    ```powershell
+    $targets = Get-ChildItem $desktop -Filter "*.lnk" | Where-Object { $_.Name.Contains('?') }
+    Write-Output "Found $($targets.Count) corrupt shortcuts to remove"
+    if ($targets.Count -lt 10) { $targets | Remove-Item -Force }
+    ```
+
+#### C. Restoring Wiped Desktop Shortcuts from Start Menu
+If an agent or broken script accidentally deletes shortcuts from the user's Desktop, do NOT panic or attempt app reinstallation. Windows maintains master `.lnk` files for all installed applications in the Start Menu:
+- **All Users Start Menu:** `C:\ProgramData\Microsoft\Windows\Start Menu\Programs\`
+- **Current User Start Menu:** `C:\Users\<user>\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\`
+
+**Recovery Recipe:**
+```powershell
+$dest = "C:\Users\$env:USERNAME\Desktop"
+$sources = @(
+    'C:\ProgramData\Microsoft\Windows\Start Menu\Programs',
+    "$env:APPDATA\Microsoft\Windows\Start Menu\Programs"
+)
+# Search both top-level and 1-level subfolders (e.g. Programs\Git\, Programs\Overwolf\)
+Get-ChildItem -Path $sources -Filter "*.lnk" -Recurse | Where-Object {
+    $_.Name -match 'Chrome|GPMLogin|MetaTFT|TFTAcademy|Notepad\+\+|OBS Studio|Hidemium|Visual Studio Code|Tailscale|RustDesk|UltraViewer|Git Bash|Firefox'
+} | ForEach-Object {
+    Copy-Item -LiteralPath $_.FullName -Destination $dest -Force -PassThru | Select-Object FullName
+}
+```
+
+#### D. PowerShell WScript.Shell Unicode Mismatch
 - **Trap:** Saving shortcuts with non-ASCII or accented filenames (e.g. `Đấu Trường Chân Lý PBE.lnk`) via PowerShell without strict UTF-16LE encoding causes PowerShell to replace non-ASCII characters with `?` (e.g. `D?u Tru?ng...`). Because `?` is illegal in NTFS filenames, `$shortcut.Save()` throws:
   `System.IO.FileNotFoundException: Unable to save shortcut ...`
 - **Fix:** 
@@ -58,7 +99,7 @@ $sc.Save()
      shutil.copy(r'C:\Users\Public\Desktop\Teamfight Tactics.lnk', r'C:\Users\Public\Desktop\Đấu Trường Chân Lý PBE.lnk')
      ```
 
-#### B. Cleaning Dead Empty Shortcuts
+#### E. Cleaning Dead Empty Shortcuts
 Search for any `.lnk` files in the target directories where `TargetPath` is empty or points to the old path, and remove them:
 ```powershell
 $w = New-Object -ComObject WScript.Shell

@@ -548,7 +548,20 @@ Khi user chat hàng loạt session song song và thấy phản hồi chậm (h�
   - Bọc `asyncio.wait_for(..., timeout=5.0)` cho lệnh probe và thêm debounce 2-3 nhịp trước khi kích hoạt failover.
   - Xem chi tiết tại `references/telegram-multi-isp-flapping-and-dual-proxy-failover.md`.
 
+### 0m. 🚨 OmniRoute Proxy Cascade ECONNRESET, Event Loop Deadlock Ceiling & Watchdog Restart Window (26/10/2026 Incident):
+- **Triệu chứng**: Dashboard OmniRoute (`:20129`) trống trơn 0 request suốt 10-20 phút; đúng lúc 17:07 User gửi tin vào Telegram thì 5+ topics đồng loạt văng: `⚠️ The model provider failed after retries. I kept raw provider details out of chat; check gateway logs for diagnostics.`
+- **Bẫy nghi ngờ nhầm**: Tưởng do "session nào đó tự ý giảm timeout". Thực tế cấu hình timeout hoàn toàn nguyên vẹn (`gateway_timeout: 3600`, `api_max_retries: 3`, `child_timeout_seconds: 900`).
+- **Nguyên nhân cốt lõi (Chuỗi sự cố)**:
+  1. *Bão rớt cụm Proxy Mobile (`test.taadaa.click:51xx`)*: Cụm proxy 5103..5115 đồng loạt văng `ECONNRESET / PROXY_UNREACHABLE` đúng lúc stream payload nặng >405k tokens khiến Main Event Loop của Node.js bị **khóa cứng (Deadlock)** suốt gần 6 phút (16:59:52 đến 17:05:32).
+  2. *Watchdog Deadlock Ceiling Force-Restart*: Sau 12 lần fail `/api/health` liên tiếp (30s x 12 = 6m), watchdog `omniroute_watchdog.ps1` kích hoạt `deadlock ceiling reached` force-kill toàn bộ Node.js.
+  3. *Cửa sổ chết 17:05 – 17:07:52*: Quá trình restart lần 1 vấp lỗi exit code 1, lần 2 mất 24s. Trong 2 phút này port 20129 đóng hoàn toàn $\rightarrow$ Các tin nhắn gửi đúng lúc 17:07 bị Connection Refused và văng lỗi đồng loạt trên Telegram.
+- **Chẩn đoán nhanh O(1)**:
+  - Đọc 30 dòng cuối `C:\Users\Kibe\AppData\Roaming\omniroute\logs\watchdog.log` tìm `deadlock ceiling reached (12/12)`.
+  - Quét `omniroute-stdout.log` xác nhận bão proxy `ECONNRESET` và kiểm tra lại `/api/health` bằng urllib Python.
+  - Xem chi tiết tại `references/omniroute-deadlock-ceiling-and-proxy-cascade-restart.md`.
+
 ## References
+- `references/omniroute-deadlock-ceiling-and-proxy-cascade-restart.md` — Sự cố OmniRoute Event Loop Deadlock do bão rớt proxy mobile ECONNRESET, Watchdog Deadlock Ceiling 12/12 force-restart và cửa sổ chết 17:05-17:07 văng lỗi Telegram đồng loạt (26/10/2026).
 - `references/telegram-multi-isp-failover-probe-hang.md` — Sự cố Telegram Multi-ISP Failover flapping, probe thiếu timeout làm treo 10 phút và xả dồn tin nhắn (26/10/2026).
 - `references/gemini-turn-sequence-corruption-and-session-recovery.md` — Sự cố lệch cấu trúc turn Gemini HTTP 400, vòng lặp treo stream chunks và quy trình cứu hộ session dở dang qua session_search (07/10/2026).
 - `references/windows-terminal-drain-gil-starvation.md` — Sự cố Windows Terminal _drain GIL Starvation giữ cứng GIL 37 phút làm treo Gateway & 15+ Cron Jobs (07/10/2026).

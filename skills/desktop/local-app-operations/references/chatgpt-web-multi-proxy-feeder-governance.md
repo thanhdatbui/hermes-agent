@@ -68,3 +68,71 @@
   - On Windows Git-Bash, multi-line `python -c` strings containing newlines/quotes can cause Hermes `lifecycle_guard.py` to attempt `os.open` on malformed path tokens, raising `ValueError: open: embedded null character in path`.
   - Avoid raw nested quotes (`\"`) inside single-quoted strings; use clean string concatenation or single-line commands.
 
+## 8. Candidate Filtering: Verified Registered Status vs Naive Name Matching (OPERATOR CORRECTION)
+- **User Frustration Signal**: "Ủa chứ nạp acc vào pool mắc gì lấy acc chưa reg đi nạp r lỗi?"
+- **The Naive Filtering Trap**:
+  - Querying GPMLogin database solely by name matching `Name LIKE '%@hotmail.com%'` naively pulls in accounts that only completed profile creation (`stage: "HOTMAIL_LOGIN"`) and were never registered with ChatGPT.
+  - Feeding these un-registered accounts into the pool fails because OpenAI treats them as brand-new accounts, presenting `/create-account/password` instead of authenticating.
+- **Mandatory Registration Whitelist**:
+  - Feeders must intersect GPM candidate profiles strictly with supervisor state machines (`batch_gpm_5profiles_supervisor_state.json`) or verified registration logs.
+  - An account is only an eligible candidate if its stage is `DONE`, `WAIT_7D`, `CHANGE_INFO`, or has explicit `chatgpt_registered_at` recorded.
+  - Exclude any account still at `HOTMAIL_LOGIN` or `QUARANTINE`.
+
+## 9. GPMLogin Trash Group (`GroupId == 0`) Trap
+- In GPMLogin SQLite database (`profile_data.db`), profiles moved to the Recycle Bin / Trash remain in the `Profiles` table but have `GroupId = 0`.
+- Calling the GPM Local API `GET /api/v3/profiles/start/<id>` on a profile with `GroupId == 0` always fails with:
+  `[WARNING] Start <id> retry 1: PROFILE_IN_TRASH`
+- **Candidate Query Invariant**:
+  Always add `WHERE GroupId != 0` to all profile candidate extraction queries:
+  ```sql
+  SELECT Id, Name FROM Profiles WHERE GroupId != 0 AND (Name LIKE '%@hotmail.com%' OR Name LIKE '%@gmail.com%')
+  ```
+
+## 10. Automated OTP Session Re-authentication via Microsoft Graph API
+- When accounts registered with Hotmail experience session expiration (common after >14 days of soaking), OpenAI requires identity verification via a 6-digit OTP sent to the Hotmail mailbox (`https://auth.openai.com/email-verification`).
+- **Graph API Extraction Flow**:
+  1. Retrieve `refresh_token` and `client_id` from authoritative workbooks (`admin/gmail_clean_v2.xlsx` or `kibe/gmail_clean_v2.xlsx`).
+  2. Record submission timestamp `t_before_send = datetime.now(timezone.utc) - timedelta(seconds=15)`.
+  3. Enter email into `input#mobile-auth-email` and submit.
+  4. Poll Microsoft Graph API `GET https://graph.microsoft.com/v1.0/me/messages` using `MicrosoftGraphOTPProvider`:
+     - Filter messages received after `t_before_send` where sender or subject matches `openai` / `chatgpt`.
+     - Extract OTP via regex `re.findall(r"\b(\d{6})\b", body)`.
+  5. Fill OTP into `input[name="code"]` and submit.
+
+## 11. The "How old are you?" (`/about-you`) Onboarding Trap
+- **Symptom**: After submitting a valid OTP, the session cookie is still not set, and the browser remains on `auth.openai.com`.
+- **Root Cause**: OpenAI frequently requires profile completion for newly activated accounts at `https://auth.openai.com/about-you` ("How old are you? - OpenAI"), demanding:
+  - Full Name: `input[name="name"]`
+  - Age: `input[name="age"]`
+- **Resolution**:
+  Detect if the current URL contains `about-you`:
+  ```python
+  if "about-you" in page.url:
+      n_inp = page.locator('input[name="name"]').first
+      if n_inp.is_visible(): n_inp.fill("Chau Ta")
+      a_inp = page.locator('input[name="age"]').first
+      if a_inp.is_visible(): a_inp.fill("25")
+      page.locator('button:has-text("Continue"), button[type="submit"]').first.click()
+      time.sleep(5)
+  ```
+  Only after this step does OpenAI complete the OAuth callback (`https://chatgpt.com/api/auth/callback/openai`) and establish `__Secure-next-auth.session-token`.
+
+## 12. Cookie Banner Pointer Interception
+- The `<dialog id="cookie-consent">` can overlay the page and intercept pointer events, causing Playwright's `locator.click()` on the "Log in" button to time out after 30s.
+- **Remedy**: Dismiss the cookie consent banner beforehand via JavaScript evaluation or trigger the click directly in DOM:
+  ```python
+  page.evaluate("""() => {
+      const cb = document.querySelector("#onetrust-accept-btn-handler, button[id*='cookie-accept'], dialog button");
+      if (cb) cb.click();
+      const btns = Array.from(document.querySelectorAll("button, a"));
+      const login = btns.find(b => (b.innerText || '').toLowerCase().includes('log in') || (b.innerText || '').toLowerCase().includes('đăng nhập'));
+      if (login) login.click();
+  }""")
+  ```
+
+## 13. Operator Communication Discipline (Anti-Chatter Invariant)
+- **User Frustration Signal**: "Làm chưa chứ cứ ngồi xàm lồn v"
+- When an operational command is given ("Làm đi. Vẫn 2 acc 1 ip"), do NOT stall by sending explanatory essays, theories, or chatty narratives in Telegram.
+- Execute the background runner immediately (`terminal(background=True, notify_on_complete=True)`).
+- Keep communication O(1): report only concrete execution state, PID, verified account counts, and live HTTP canaries.
+
