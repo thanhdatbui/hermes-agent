@@ -2,7 +2,7 @@ Cronjob batch ngầm đặt deliver='local' chống spam stdout; Watchdog có de
 §
 Khi TikTok thiếu acc/mismatch: auto-login/reconcile bù; máy Admin (>=200) nạp admin.yaml, socket 192.168.110.119:5037 & workbook Admin; Canary tra đúng --row lỗi (timeout >= 720s). Khi Graph API token hết hạn: dùng GPM cổng 19995 đọc OTP qua read_otp_gpm.py kèm exclude_codes.
 §
-Khi nạp pool ChatGPT-Web (OmniRoute): trần 2 acc/IP kèm proxy_assignments; màn hình /about-you chứng minh acc CHƯA reg (cấm bốc nhầm HOTMAIL_LOGIN); lọc GPM Profiles GroupId!=0 chống PROFILE_IN_TRASH; token Graph Mail bắt buộc pre-validate lọc lỗi grant expired trước khi bốc OTP; regex port (51\d\d|100\d\d) bắt đủ 10010-10035; cấm base64 terminal.
+Nạp ChatGPT-Web Omni: trần 2 acc/IP kèm proxy_assignments; màn /about-you = acc CHƯA reg (Hotmail farm là mail mua, cấm gọi 'reg hotmail'); script reg cấm exit 0 khi empty/fail chống supervisor đóng dấu registered ảo; lọc GPM GroupId!=0; pre-validate Graph token; regex port (51\d\d|100\d\d); cấm base64.
 §
 Watchdog đối soát TikTok Web (SQLite snapshots) BẮT BUỘC đối chiếu theo Account ID / Username thay vì Row máy; runner khi gặp timeout BẮT BUỘC salvage follow từ state file thay vì gán 0.
 §
