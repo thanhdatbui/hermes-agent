@@ -134,3 +134,25 @@
   3. **Truyền timeout tường minh cho terminal:** Luôn đặt `timeout: 30` hoặc `timeout: 45` trong mọi lệnh gọi terminal foreground quick-probe để không bị chặn bởi Hard Gate #5.
   4. **Cú pháp gọi WinRT OCR chuẩn xác trong MSYS bash:** Dùng forward slash cho đường dẫn script python và escape backslash chuẩn cho đường dẫn ảnh Windows:
      `python D:/Taadaa/tools/run_winrt_ocr.py "D:\\Taadaa\\reports\\<ten_anh>.jpg"`.
+
+## 23. Bẫy Báo Cáo Láo Avatar Do Chọn Nhầm Tile 1 Trong Gallery Picker (Gallery Picker Tile-1 Bias Trap)
+- **Hiện tượng:** Runner upload avatar (`run_upload_avatar.ps1`, `state_machine.py`) báo cáo `THÀNH CÔNG (exit=0, verified=True, avatar_status=FORCED_REPLACED_VERIFIED)`. Nhưng khi User mở profile xem thực tế, avatar hoàn toàn KHÔNG ĐỔI và vẫn là ảnh cũ, khiến User cực kỳ phẫn nộ (*"Xong cái địt mẹ mày đã thay ava accc 1 đâu... Con mẹ mày lại báo cáo láo"*).
+- **Căn nguyên kỹ thuật:**
+  1. Trong runner cũ, thao tác chọn ảnh trong thư viện Android (Gallery Picker) được hard-code tọa độ cố định vào ô đầu tiên: `Tap tile ảnh đầu tiên: (6, 222, 269, 488)`.
+  2. Trước khi upload, nếu thiết bị vừa thực hiện lệnh `screencap` để kiểm tra màn hình profile, thì ảnh chụp màn hình vừa chụp (chứa chính avatar cũ) lại được MediaStore xếp vào vị trí số 1 (Tile 1) trong thư viện ảnh.
+  3. Runner tải ảnh mới lên nhưng lại bấm chọn nhầm Tile 1 (chính là ảnh chụp màn hình cũ), đưa vào màn hình crop, bấm Lưu, thấy màn crop đóng thì tự động đánh dấu `verified=True` mà không hề biết mình vừa nạp lại ảnh cũ!
+- **Hành động bắt buộc để triệt tiêu vĩnh viễn bẫy này:**
+  1. **Dọn sạch ảnh rác trước khi push:** Chạy lệnh xoá các ảnh tạm trên thiết bị: `rm -f /sdcard/DCIM/Camera/avatar_*.jpg /sdcard/Pictures/av_*.jpg /sdcard/Pictures/avatar_*.jpg`.
+  2. **Push ảnh với timestamp mới và scan MediaStore:** Push file ảnh mới vào `/sdcard/DCIM/Camera/IMG_<timestamp>.jpg` và gọi `am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/DCIM/Camera/IMG_<timestamp>.jpg` để ảnh mới nhất nằm ở hàng đầu.
+  3. **Định vị chính xác ô ảnh mục tiêu trong Gallery Picker:** Không tap mù vào Tile (1,1). Chụp ảnh thư viện `screencap`, dùng Claude CLI / model vision soi nhanh lưới ảnh (thường là 4 cột × 6 hàng) để chỉ định chính xác tọa độ ô ảnh mục tiêu (ví dụ: Hàng 1 Cột 3 hoặc Hàng 3 Cột 4).
+  4. **Quy trình bấm nút chọn ảnh chuẩn:** Tap chọn ô ảnh -> tap `Tiếp (1)` tại `(921, 1843)` -> vào màn hình Cắt (Crop) -> tap `Lưu` tại `(792, 1794)` -> chờ 10s cho upload CDN hoàn tất -> tap Back `(80, 140)` về Profile.
+  5. **BẮT BUỘC HẬU KIỂM BẰNG THỊ GIÁC (VISUAL AUDIT INVARIANT):** CẤM TUYỆT ĐỐI tin vào log `verified=True` của runner. Sau khi lưu avatar, BẮT BUỘC chụp màn hình Profile, crop riêng vòng tròn avatar tại `x≈755–1045, y≈375–610` (hoặc `x≈800–980, y≈250–420`), dùng Claude CLI hoặc mô hình vision soi tận mắt xác nhận đúng chủ thể mới (nam đeo kính / nữ nấu ăn) trước khi báo cáo User.
+
+## 24. Bẫy Popup "Hoạt Động Không Có Sẵn" Trên Tài Khoản Phụ & Luồng Sửa Hồ Sơ Chuẩn
+- **Hiện tượng:** Khi chạm trực tiếp vào vòng tròn avatar trên Profile hoặc gọi intent deeplink `snssdk1233://profile/edit` trên các tài khoản phụ/switch account, TikTok bung popup chặn: *"Hoạt động này không có sẵn. Để tiếp tục tham gia vào các hoạt động, hãy chuyển sang tài khoản ban đầu..."*.
+- **Hành động bắt buộc (Luồng đi sạch 100% không dính popup):**
+  1. Trên trang Profile, tap vào icon cây bút chì ở góc trên bên trái `(75, 150)` (hoặc nút "Sửa hồ sơ") để mở màn hình **Sửa hồ sơ** chính thức.
+  2. Trong màn hình Sửa hồ sơ, tap dòng chữ **"Thay đổi ảnh"** tại `(539, 579)`.
+  3. Bottom sheet hiện lên với 3 tùy chọn: Chụp ảnh, Tải ảnh lên, Xem ảnh. Bấm vào **"Tải ảnh lên"** tại tọa độ `(224, 1637)`.
+  4. Màn hình Gallery Picker mở ra an toàn 100% không bao giờ bị popup "Hoạt động không có sẵn" chặn lại.
+
