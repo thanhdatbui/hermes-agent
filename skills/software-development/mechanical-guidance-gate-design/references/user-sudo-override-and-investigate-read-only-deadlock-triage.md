@@ -159,3 +159,14 @@ Hệ thống AI Coordinator thường rơi vào hai thái cực cực đoan:
   1. **Tách bạch Ephemeral Paths**: Mọi đường dẫn thuộc thư mục tạm (`/tmp/`, `\tmp\`, `tmp_*.py`, `temp_*.py`, `reports/`) BẮT BUỘC được miễn trừ khỏi danh sách `t1_files` và `t1_lines`. Chỉ các file mã nguồn chính thức (core codebase/repo) mới tính vào hạn ngạch T1.
   2. **Tích hợp Bridge User Sudo**: `coordinator_write_gate` phải chủ động đọc và xác thực `D:/Taadaa/runtime/sudo_grant.json` để mở quyền ghi khẩn cấp ngay khi có grant hợp lệ từ User, không để cơ chế tự khóa trói chân hệ thống.
 
+---
+
+## 13. Pre-Tool Auto-Rewire: Targeted Field Injection & Foreground Timeout Clamping
+- **Targeted Field Injection vs Recursive Tree Pollution**:
+  - *Bẫy kiến trúc*: Khi tự động chèn ngân sách mặc định (`BUDGET: <= 8 tool calls, timeout < 3 phút`) vào payload điều tra, việc dùng hàm đệ quy duyệt và thay thế mọi chuỗi trong dictionary/list `args` là phản mẫu nghiêm trọng. Nó làm biến dạng các trường lồng nhau ngoài ý muốn (metadata, task role, ID), làm giảm điểm thẩm định của Sol Reviewer (bị trừ điểm logic correctness xuống 78/100).
+  * *Chuẩn hóa*: Chỉ inject có mục tiêu theo thứ tự ưu tiên các trường văn bản người dùng đọc: `context` -> `goal` -> `prompt`. Giữ nguyên cấu trúc `dict(args)` và chỉ cập nhật trực tiếp `updated_args["budget"] = 8`. Sau khi sửa, điểm thẩm định Closeout Gate tăng vọt lên **87/100 (APPROVED)**.
+- **Auto-Clamp Foreground Timeout (`GUARD_FOREGROUND_TIMEOUT_AUTO_CLAMPED`)**:
+  - *Bẫy passive denial*: Khi lệnh foreground có `timeout > 60s` (hoặc `> 360s` với allowlist), việc quăng lỗi `block` bắt agent đọc guidance rồi gõ lại gây ma sát 1-2 turn vô ích.
+  - *Chuẩn hóa*: Hook tự động kẹp `updated_args["timeout"] = max_allowed` và trả về `action: rewrite` kết thúc bằng `sys.exit(0)`. Giữ sạch desktop làm việc của Host mà không bắt agent loay hoay thử lại.
+
+
