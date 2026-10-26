@@ -187,5 +187,10 @@
   2. **CẤM In Chữ Mô Tả Để Tự Bảo Lãnh (Anti-Inception Mandate):** Canvas đề xuất chỉ được đánh số `#1`, `#2`, `#3`, `#4`. Tuyệt đối CẤM in các nhãn mô tả sai sự thật lên ảnh để lách OCR gate.
   3. **Báo Cáo Trung Thực Tuyệt Đối:** Nếu kho video thực tế là vi sinh vật dưới kính hiển vi (`F_src: 424`), phải báo cáo rõ ràng: kho hiện tại là vi sinh vật/khoa học. Nếu User muốn avatar thiên nhiên thật ngoài đời, phải xin ý kiến lấy từ kho thiên nhiên chuẩn của farm (kho 4, 105, 425) thay vì nhắm mắt bịa đặt.
 
+## 28. Chốt Phiên Vận Hành Với Closeout v2 O(1) (Khai Tử Bẫy Quét Commit Cũ)
+- **Hiện tượng:** Khi xong việc chuẩn hoá nick TikTok, Coordinator chạy lệnh chốt phiên `closeout_gate.py` cũ và bị chặn vì commit cũ của repo tools bị chấm REJECTED, kích hoạt Sol Repair điên cuồng đi sửa code ma.
+- **Hành động bắt buộc:** Sử dụng công cụ chuẩn mới `python D:/Taadaa/tools/closeout_v2.py --repo D:/Taadaa/tools --operational --json-output`. Script tự động phát hiện phiên vận hành (không có code delta) và trả về `APPROVED (score=100)` trong 0.05s, đảm bảo chốt phiên ngay lập tức và mở cổng cho `safe_push.py`.
+
+
 
 

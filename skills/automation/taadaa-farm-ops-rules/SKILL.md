@@ -33,7 +33,9 @@ description: "Taadaa farm safety, close-session, and multi-machine operations."
 - **T0 (Hiện trường):** Đọc log, inspect ADB O(1), restart process, kiểm tra proxy. Tự do thực thi.
 - **T1 (Vá hiện trường <= 15 dòng):** Sửa trực tiếp O(1) 1 file, verify < 30s, chạy Canary trên 1 máy thật đại diện (chụp ảnh `MEDIA:` + OCR sạch).
 - **T2 (Thi công lớn > 15 dòng):** Dispatch qua Single Dispatch Gateway `python D:/Taadaa/tools/dispatch_worker.py "<contract O(1)>" --workdir <repo>`.
-- **Chốt phiên:** `python D:/Taadaa/tools/closeout_gate.py --repo <repo> --base origin/main --json-output` (Hook `pre-push` tự động chặn nếu điểm < 80).
+- **Chốt phiên (Closeout v2 O(1)):**
+  - **Phiên Vận Hành (farm, nick, device, excel - không có code delta):** `python D:/Taadaa/tools/closeout_v2.py --repo <repo> --operational --json-output` (PASS ngay trong < 0.1s; TUYỆT ĐỐI CẤM gọi LLM Reviewer chấm điểm hay Sol Repair sửa code ma).
+  - **Phiên Sửa Code:** `python D:/Taadaa/tools/closeout_v2.py --repo <repo> --json-output` (Kiểm tra cơ học deterministic: `py_compile` cú pháp + chạy `pytest` focused; test PASS -> APPROVED; không dùng LLM chấm điểm cảm tính 85/100).
 
 ## 3. Quy Chuẩn Báo Cáo Telegram Farm Alert
 - Báo cáo sự cố kèm ảnh nghiệm thu nằm trong **cùng 1 tin nhắn duy nhất**:
@@ -55,3 +57,4 @@ description: "Taadaa farm safety, close-session, and multi-machine operations."
 - Dynamic Pool Row 0 vs Cron Rest-Day Parity: [`references/dynamic-pool-row0-vs-cron-runner-rest-day-flag-parity.md`](references/dynamic-pool-row0-vs-cron-runner-rest-day-flag-parity.md)
 - Windows Large Directory Cold Cache I/O Pitfalls: [`references/windows-large-dir-cold-cache-io-pitfalls.md`](references/windows-large-dir-cold-cache-io-pitfalls.md)
 - Gallery Picker Stale Tile & Avatar Bottomsheet: [`references/gallery-picker-stale-tile-and-bottomsheet-coords.md`](references/gallery-picker-stale-tile-and-bottomsheet-coords.md)
+- Kỷ Luật Chốt Phiên Closeout v2 O(1) & Khai Tử LLM Reviewer: [`references/closeout-v2-o1-fast-gate-protocol.md`](references/closeout-v2-o1-fast-gate-protocol.md)
