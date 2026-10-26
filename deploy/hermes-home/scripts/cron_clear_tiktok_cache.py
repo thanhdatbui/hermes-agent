@@ -30,6 +30,7 @@ ADB = r"C:\Program Files (x86)\xiaowei\tools\adb.exe"
 DEFAULT_WIDGET_POS = (810, 260)
 SCRIPT_PATH = r"D:\Taadaa\automation-core\scripts\clear-tiktok-cache.py"
 MAX_WORKERS = 20
+CHILD_PYTHON = sys.executable
 WIN_KWARGS = {"creationflags": subprocess.CREATE_NO_WINDOW} if os.name == "nt" else {}
 
 CLUSTERS = [
@@ -287,12 +288,15 @@ def main() -> int:
     target_machines: list[tuple[int, str, dict]] = []
     connected_fleet_machines: set[int] = set()
     cluster_online_stats: dict[str, dict] = {}
+    cluster_offline_machines: dict[str, list[int]] = {}
 
     for cluster in CLUSTERS:
         c_name = cluster["name"]
         connected = get_connected_devices(cluster)
         machines = load_machine_serials(cluster)
         online_fleet = [(m, s) for m, s in machines if s in connected]
+        offline_fleet = [m for m, s in machines if s not in connected]
+        cluster_offline_machines[c_name] = sorted(offline_fleet)
         for m, _ in online_fleet:
             connected_fleet_machines.add(m)
 
@@ -313,6 +317,7 @@ def main() -> int:
         sys.stderr.write(f"[CRON][DRY-RUN] Would clear {len(target_machines)} machines; state unchanged.\n")
         return 0
 
+    sys.stderr.write(f"[CRON][TELEMETRY] launcher={CHILD_PYTHON} is_pythonw={sys.executable.lower().endswith('pythonw.exe')}\n")
     sys.stderr.write(f"[CRON] Starting concurrent TikTok cache clear on {len(target_machines)} machines...\n")
 
     success_machines: list[int] = []
@@ -416,6 +421,8 @@ def main() -> int:
             should_report = True
         elif not has_retries_left:
             should_report = True
+        elif (now_hour == 4 and datetime.now().minute >= 45) or now_hour >= 5:
+            should_report = True
 
     if not should_report:
         sys.stderr.write(f"[CRON] Đang trong nhịp retry hoặc đã báo cáo hôm nay (cleared={len(cleared_today)}/{len(connected_fleet_machines)}). Im lặng.\n")
@@ -431,6 +438,7 @@ def main() -> int:
         c_succ = [m for m in sorted(cleared_today) if min_m <= m <= max_m]
         c_fail_ids = [m for m in sorted(connected_fleet_machines) if min_m <= m <= max_m and m not in cleared_today]
         c_lock = [m for m in sorted(locked_machines) if min_m <= m <= max_m]
+        c_off = cluster_offline_machines.get(cluster["name"], [])
         s_list = ", ".join(f"{m:02d}" for m in c_succ) if c_succ else "None"
         report.append(f"\n🏢 【{c_label}】")
         if not cluster.get("reachable", True):
@@ -440,6 +448,9 @@ def main() -> int:
         if c_lock:
             l_list = ", ".join(f"{m:02d}" for m in c_lock)
             report.append(f"• Bỏ qua an toàn: {len(c_lock)} máy ({l_list}) (nhường lock tiến trình khác)")
+        if c_off:
+            off_list = ", ".join(f"{m:02d}" for m in c_off)
+            report.append(f"• Mất kết nối ADB (OFFLINE): {len(c_off)} máy ({off_list})")
         if c_fail_ids:
             f_list = ", ".join(f"{m:02d}" for m in c_fail_ids)
             report.append(f"• Lỗi ({len(c_fail_ids)}): {f_list}")

@@ -163,6 +163,19 @@ def classify_profiles(
     return stats
 
 
+def get_needs_login_profiles(names: List[str], nurture_cache: Dict[str, Any]) -> List[str]:
+    """Trích xuất danh sách profile trong group đang bị văng cookie (NEEDS_LOGIN)."""
+    dropped = []
+    for name in names:
+        email = extract_email(name)
+        if not email or "khoale" in email:
+            continue
+        info = nurture_cache.get(email)
+        if isinstance(info, dict) and info.get("status") == "NEEDS_LOGIN":
+            dropped.append(email)
+    return dropped
+
+
 def parse_event_time(raw: str) -> datetime:
     """Parse ISO timestamp thành datetime naive theo giờ local (hậu tố 'Z' coi như giờ local, như cũ)."""
     parsed = datetime.fromisoformat(raw.replace("Z", ""))
@@ -208,7 +221,7 @@ def format_event(ev: Dict[str, Any]) -> str:
     return f"  + {m_str} | {email}: {status} - {str(ev.get('details') or '')[:60]}"
 
 
-def render_report(stats: Dict[str, int], events: List[Dict[str, Any]], failed: List[str]) -> str:
+def render_report(stats: Dict[str, int], events: List[Dict[str, Any]], failed: List[str], needs_login: Optional[List[str]] = None) -> str:
     total = stats["total"]
     pct = round(stats["already_2fa"] / total * 100, 1) if total > 0 else 0
     lines = [
@@ -218,6 +231,12 @@ def render_report(stats: Dict[str, int], events: List[Dict[str, Any]], failed: L
         f"• Đang ngâm (chờ phiên nuôi): {stats['soaking']}",
         f"• Sẵn sàng bật 2FA: {stats['ready']}",
     ]
+    if needs_login:
+        lines.append(f"⚠️ Acc văng cookie (NEEDS_LOGIN): {len(needs_login)} profile")
+        for em in needs_login[:5]:
+            lines.append(f"  - {em}")
+        if len(needs_login) > 5:
+            lines.append(f"  ... và {len(needs_login) - 5} acc khác")
     if failed:
         lines.append(f"⚠️ Nguồn dữ liệu lỗi (số liệu có thể thiếu): {', '.join(failed)}")
     lines.append("")
@@ -237,6 +256,7 @@ def main() -> int:
 
     names = load_group_profile_names(failed)
     stats = classify_profiles(names or [], master_2fa, clean_2fa, nurture_cache)
+    needs_login = get_needs_login_profiles(names or [], nurture_cache)
 
     state = load_json_file(STATE_FILE, "STATE_FILE", failed)
     recent_events = filter_recent_events(
@@ -251,6 +271,7 @@ def main() -> int:
         already_2fa=stats["already_2fa"],
         soaking=stats["soaking"],
         ready=stats["ready"],
+        needs_login=len(needs_login),
         skipped=stats["skipped"],
         recent_events=len(recent_events),
         silent=silent,
@@ -262,7 +283,7 @@ def main() -> int:
     if silent:
         return 0
 
-    print(render_report(stats, recent_events, failed))
+    print(render_report(stats, recent_events, failed, needs_login))
     return 0
 
 

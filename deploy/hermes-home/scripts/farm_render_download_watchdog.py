@@ -190,17 +190,28 @@ def format_cluster_section(label, render_root, video_goc, is_running, sf, s30, s
         tik_lines.append(f"{icon} Tik{slot}: <b>{ge45}/80</b> folder (≥45 clip) [{pct:.1f}%] | <b>{clips:,}</b> clip{_fmt_delta(clips, prev_clips)}")
     tik_output = "\n".join(tik_lines)
 
+    starving_slots = []
+    for slot in range(1, 9):
+        st = tik_stats.get(str(slot), tik_stats.get(slot, {}))
+        ge45 = st.get("ge45", st.get("ge30", 0))
+        if ge45 < 80:
+            starving_slots.append(f"Tik{slot} (thiếu {80 - ge45})")
+    starving_part = ""
+    if starving_slots:
+        starving_part = f"\n⚠️ <b>Chưa đủ trần (80/80):</b> {', '.join(starving_slots)}"
+
     show_download = is_running or s45 < 640
     dl_part = ""
     if show_download:
+        lack_str = f" <i>(thiếu {640 - s45} folder để phủ 8 Tik)</i>" if s45 < 640 else ""
         dl_part = f"""📥 <b>Video gốc (<code>{video_goc}</code>):</b>
 • Trạng thái download: {dl_icon} <b>{dl_text}</b>
-• Đạt ≥ 45 video: <b>{s45:,}/{sf:,}</b> folder | <b>{smp4:,}</b> clip
+• Đạt ≥ 45 video: <b>{s45:,}/{sf:,}</b> folder | <b>{smp4:,}</b> clip{lack_str}
 """
 
     return f"""🏢 <b>{label} (<code>{render_root}</code>):</b>
 {dl_part}• Trạng thái render: {rd_icon} <b>{rd_text}</b>
-{tik_output}
+{tik_output}{starving_part}
 👉 Đã render cụm: <b>{total_rendered:,}</b> clip{_fmt_delta(total_rendered, prev_total)}"""
 
 
