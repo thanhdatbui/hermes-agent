@@ -53,6 +53,7 @@ The controller is an orchestrator, not the owner of remote filesystem state. A p
   2. Emergency bootstrap: directly prune raw video files (`> 45`) that are already byte-verified on GDrive via PowerShell to recover 30-50GB.
   3. Hybrid Render Tiering: keep clips `1..20` on local D: (enough for 3 weeks of phone posting at 1 clip/day) and offload clips `21..45` to `G:\My Drive\video_render_backup` to reclaim 350-400GB permanently.
   4. Pre-notify ETA: any batch migration across virtual drives taking > 5 minutes requires estimating and communicating the timeframe before execution.
+  5. Python Runtime & OpenSSH Breakaway Traps: Remote maintenance scripts deployed to Admin must use `0x01000008` (`CREATE_BREAKAWAY_FROM_JOB | DETACHED_PROCESS`) with binary append log redirect (`open(log_p, 'ab')`), and must NOT hard-import `psutil` (fallback to `tasklist` via subprocess) because the global Windows Python environment `Python311` lacks external packages that only exist in `venv-core024`.
 - **Subagent self-report discrepancy:** Child agents running via `delegate_task` may report successful patching even if their workspace was discarded upon hitting the iteration limit. Coordinator must verify host `git diff` independently before canary or triage.
 
 ## Cross-host downloader and proxy-pool integrity

@@ -41,8 +41,9 @@ with CronRun(script_name="<script_name>") as run:
   8. Run focused check: `python D:/Taadaa/tools/gate_compliance_watchdog.py --hours 6` for live status.
 
 ## 4. Telemetry Bootstrap & File State Recovery
-When watchdogs run successfully via cron (visible via `cronjob action='list'`) but show `NO_STATE` in `cron_heartbeat.py`:
-- Rapidly bootstrap state files into `D:/Taadaa/runtime/cron_health/<script_name>.json` with format:
+When watchdogs run successfully via cron (visible via `cronjob action='list'`) but show `NO_STATE` or `STALE` in `cron_heartbeat.py`:
+- **Triage False-Positive STALE**: Compare `last_run_at` in `cronjob action='list'` against the heartbeat timestamp. If the job ran recently (e.g. at 06:00 VN) with `last_status: ok`, the STALE flag is purely a telemetry gap (the script lacks `CronRun` and its state file was not updated since bootstrap).
+- Rapidly bootstrap / refresh state files into `D:/Taadaa/runtime/cron_health/<script_name>.json` with format:
   ```json
   {
     "script_name": "<script_name>",

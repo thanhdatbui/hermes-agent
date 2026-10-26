@@ -46,3 +46,25 @@
     feeder.rescue_single_account = patched_rescue
     ```
   - This executes fully in-memory without creating or patching disk files.
+
+## 6. Parallel Extraction (Worker 5 Standard) & Fast Session Probe (<5s)
+- **Parallel Extraction Scale**:
+  - Do NOT run account-by-account sequentially when dozens of accounts need processing. Run in parallel using `ThreadPoolExecutor(max_workers=5)`.
+  - Batching 5 targets across distinct ports takes ~12–15s per batch.
+  - In `finally`: Always stop the GPM profile via API and terminate lingering `chrome.exe` processes matching `pid` using `psutil` to prevent RAM bloat.
+- **Fast Probe vs Login Timeout Avoidance**:
+  - When harvesting tokens across large pools, check `extract_session_token(context)` within 2s of loading `https://chatgpt.com/`.
+  - If valid: capture Gate 6 screenshot, sync to OmniRoute immediately.
+  - If expired: do NOT hang 40–60s trying interactive login or OAuth. Return `session_expired` in < 4s, record in `attempted` set, and immediately roll to the next candidate profile for that port.
+
+## 7. Command Execution & Security Guard Invariants
+- **CẤM Obfuscation / Base64 Execution**:
+  - Never wrap commands as `python -c "import base64; exec(base64.b64decode(...))"`. Hermes security policy flags Base64 script execution as suspicious, triggering interactive approval blocks or user alarms (`Clgt?`).
+  - Always execute plain, transparent, readable Python scripts.
+- **Python < 3.12 f-string Backslash Syntax Error**:
+  - Avoid backslashes inside f-string braces: `print(f"Target: {t[\"email\"]}")` crashes with `SyntaxError: f-string expression part cannot include a backslash`.
+  - Pre-extract variables (`e = t.get("email"); print(f"Target: {e}")`) or use `%` formatting.
+- **Lifecycle Guard Multiline String Pitfall**:
+  - On Windows Git-Bash, multi-line `python -c` strings containing newlines/quotes can cause Hermes `lifecycle_guard.py` to attempt `os.open` on malformed path tokens, raising `ValueError: open: embedded null character in path`.
+  - Avoid raw nested quotes (`\"`) inside single-quoted strings; use clean string concatenation or single-line commands.
+

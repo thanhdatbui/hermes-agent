@@ -96,6 +96,7 @@ tags: [tiktok, farm, batch, render, upload, resume, kibe]
 
 ## 4. Danh Mục Tham Khảo Chi Tiết
 - Cào bổ sung & Render nối tiếp (File-List Invariant chống bẫy Lexicographical): [`references/supplementary-crawl-and-sequential-render-file-list-pitfall.md`](references/supplementary-crawl-and-sequential-render-file-list-pitfall.md)
+- Bẫy Lệch Chuỗi Lexicographical & Cách Ly `--file-list` Khi Render Bổ Sung Nối Tiếp: [`references/supplementary-render-lexicographical-trap-and-file-list-isolation.md`](references/supplementary-render-lexicographical-trap-and-file-list-isolation.md)
 - Target-Bound Differential Canary & Safe Probe Matrix Operations: [`references/target-bound-canary-matrix-and-safe-probe-ops.md`](references/target-bound-canary-matrix-and-safe-probe-ops.md)
 - Chẩn đoán biến động 0 (+0) trên Batch Lifecycle / Supervisor & Bộ lọc Candidate: [`references/lifecycle-supervisor-zero-progress-and-candidate-filtering-triage.md`](references/lifecycle-supervisor-zero-progress-and-candidate-filtering-triage.md)
 - Cào nguồn Niche Nhạy Cảm Thời Gian (Tử Vi / Phong Thủy / Trend Năm Cũ) & Chiến Lược Phôi Douyin Sạch: [`references/time-sensitive-niche-sourcing-and-tuvi-pipeline.md`](references/time-sensitive-niche-sourcing-and-tuvi-pipeline.md)

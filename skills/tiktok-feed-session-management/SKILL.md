@@ -11,7 +11,7 @@ author: Hermes Agent
 - Watchdog Follow Report: BẮT BUỘC hiển thị `{len(rel_...)} máy` kèm % và list máy (vd: `- Nhả liền (23 máy | 0 lượt | 92.0%): (M3, ...)`).
 
 ## References & Invariants
-- Shift-Pool 4d: references/dynamic-shift-pool-4d-and-session-sync.md
+- Shift-Pool State-Driven: references/dynamic-shift-pool-4d-and-session-sync.md (Xoay tua thuần theo pool, đã bỏ chu kỳ ngày & bỏ ngày 4 dưỡng sinh)
 - 3-Tier: references/per-machine-dynamic-3tier-account-selection.md
 - Starvation: references/row-nurture-starvation-and-cycle-monitoring.md
 - Dashboard: references/dashboard-nurture-health-implementation.md

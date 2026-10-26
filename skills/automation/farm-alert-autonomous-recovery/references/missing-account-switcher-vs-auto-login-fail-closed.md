@@ -53,7 +53,17 @@ FeedRunner: [FAIL] Lệch Profile/Nick TikTok (profile account mismatch / naviga
 ### D. Auto Login Recovery trong Feed Runner (`tiktok-luot nuoi acc`)
 - Khi Feed Runner kiểm tra Profile và gặp `profile account mismatch` hoặc target username không có trong Switcher:
   1. Thử mở Account Switcher để auto-switch nếu nick mục tiêu đã đăng nhập ở slot khác.
-  2. Nếu Switcher hoàn toàn thiếu nick: CẤM fail-closed nhả máy; kích hoạt handler gọi `reconcile_tiktok_accounts.py` hoặc `tiktok_login_v1.py <machine> --all --allow-parent-lock` để đăng nhập bù slot rồi mới tiếp tục ca nuôi feed.
+  2. Nếu Switcher hoàn toàn thiếu nick: CẤM fail-closed nhả máy; kích hoạt handler gọi `_run_fast_targeted_login()` (`tiktok_login_v1.py <machine> --email <nick> --ss --allow-parent-lock`) hoặc fallback Reconcile (`reconcile_tiktok_accounts.py`).
+  3. **Pitfall biến môi trường & Workbook cụm kép (Dual-Cluster Trap):**
+     - Trong `flows/feed_swipe_smoke.py`, các hằng số mặc định `DEFAULT_RECONCILE_WORKBOOK`, `DEFAULT_RECONCILE_LOGIN_WORKBOOK`, `DEFAULT_RECONCILE_PROXY_MAPPING` trỏ về cụm Kibe.
+     - Khi `int(machine_id) >= 200`: BẮT BUỘC logic khởi tạo `workbook`, `login_workbook`, `proxy_mapping` phải trỏ về thư mục Admin (`D:\OneDrive\TaadaaData\admin\...`), đồng thời nạp `clean_env["TAADAA_HOST_CONFIG"] = r"D:\Taadaa\machine-config\admin.yaml"`. Nếu thiếu bước này, script gọi Reconcile với file Kibe sẽ văng lỗi: `CONFIG_ERROR: machine <N> has no serial in workbook` và fail-closed ngay lập tức!
+  4. **Pitfall False-Positive `verified = True` sau khi tap Switcher:**
+     - Trong `profile_preflight`, nếu UI chưa render kịp `@handle` khiến `not recaptured_username = True`, không được mặc định cho qua (`verified = True`) vì máy sẽ lướt feed nhầm trên nick cũ và bị phát hiện ở `_verify_profile_after_session` cuối ca gây lãng phí tài nguyên và lệch nhịp.
+
+### E. Gate 2 Monolith Patch Anchor Pitfall
+- Khi chuẩn bị Patch Contract O(1) cho monolith lớn (`feed_swipe_smoke.py` > 20.000 dòng):
+  - Tuyệt đối tránh các anchor generic ngắn như `workbook = Path(` vì nó khớp cả dòng `login_workbook = Path(`, gây vi phạm Gate 2 `ANCHOR_NOT_UNIQUE (c == 2)`.
+  - Luôn mở rộng anchor với token duy nhất tuyệt đối (như `reconcile_script = Path(`) để đảm bảo `c == 1` trước khi dispatch Worker.
 
 ## 3. Quy Trình Nạp Bù Tài Khoản Đúng Chuẩn (Actionable Reconcile Flow)
 Để nạp nick còn thiếu vào slot trống của thiết bị mà không ảnh hưởng đến batch đang chạy:

@@ -1,21 +1,28 @@
-# Kiến Trúc Dynamic Shift-Pool 4 Ngày & Đồng Bộ Phiên Nuôi Acc (S2 bám S1)
+# Kiến Trúc Dynamic Shift-Pool Xoay Tua Thuần Theo Pool State (Đã Bỏ Chu Kỳ Ngày & Bỏ Ngày 4 Dưỡng Sinh)
 
-## 1. Thiết Kế Shift-Pool Dynamic Tuần Tự Theo Độ Khỏe & Đi Đủ 8 Nick (Anti-Starvation)
-Hệ thống quản lý tới tầng tài khoản (Account-Level Telemetry), xóa bỏ hoàn toàn việc gán cứng D0/D1/D2/D3 toàn farm cùng chạy 1 row:
-- `_ANCHOR_ORDINAL = date(2026, 10, 11).toordinal()`
-- `cycle_day = (today.toordinal() - _ANCHOR_ORDINAL) % 4` (0 -> 3)
-- `cycle_idx = (today.toordinal() - _ANCHOR_ORDINAL) // 4`
+## 1. Thiết Kế Shift-Pool Dynamic State-Driven (Đã Bỏ Hoàn Toàn Lịch Chu Kỳ Ngày)
+Hệ thống quản lý tới tầng tài khoản (Account-Level Telemetry), **đã loại bỏ hoàn toàn lịch ngày cứng (D0/D1/D2/D3, `_ANCHOR_ORDINAL`, `cycle_day = total_days % 4`, `cycle_idx`) và BỎ NGÀY THỨ 4 DƯỠNG SINH TOÀN FARM**.
+Hệ thống vận hành theo **Vòng xoay thành công thuần túy State-Driven (`cycle_history` per machine per ca)**:
 
 ### Phân Bổ Ca Nuôi & Ranh Giới Pool:
-- **Ca 1 (Sáng: 06:00 & 08:00):** Pool `{1, 2, 7}` (3 ngày đầu `cycle_day` 0, 1, 2).
-- **Ca 2 (Trưa: 12:00 & 14:00):** Pool `{3, 4, 8}` (3 ngày đầu `cycle_day` 0, 1, 2).
-- **Ca 3 (Tối: 18:00 & 20:00):** Pool `{5, 6}` (2 ngày đầu `cycle_day` 0, 1). Đến ngày 3 (`cycle_day == 2`), Ca 3 kích hoạt fallback sớm sang 3 phễu.
-- **Ngày Thứ 4 Của Chu Kỳ (`cycle_day == 3`):** Toàn farm mọi Ca (Ca 1, Ca 2, Ca 3) đều kích hoạt fallback sang 3 phễu nuôi dưỡng sinh (**Đề xuất $\to$ Nhả $\to$ Yếu**).
+- **Ca 1 (Sáng: 06:00 & 08:00):** Pool `{1, 2, 7}`. Đi lần lượt theo thứ hạng sức khỏe. Khi cả 3 nick đều đã chạy $\to$ Tự động reset vòng mới. Follow chạy 100% bình thường, tuyệt đối KHÔNG fallback ra ngoài pool, KHÔNG có ngày dưỡng sinh.
+- **Ca 2 (Trưa: 12:00 & 14:00):** Pool `{3, 4, 8}`. Đi lần lượt theo thứ hạng sức khỏe. Khi cả 3 nick đều đã chạy $\to$ Tự động reset vòng mới. Follow chạy 100% bình thường, tuyệt đối KHÔNG fallback ra ngoài pool, KHÔNG có ngày dưỡng sinh.
+- **Ca 3 (Tối: 18:00 & 20:00):** Pool `{5, 6}` + 1 Dynamic Slot:
+  * Lượt 1: Bốc nick thứ nhất trong `{5, 6}`.
+  * Lượt 2: Bốc nick thứ hai trong `{5, 6}`.
+  * Lượt 3 (sau khi cả 5 và 6 đều đã chạy xong): Kích hoạt đúng **1 lượt Dynamic Slot** nuôi dưỡng sinh 3 phễu (Đề xuất $\to$ Nhả $\to$ Yếu) và **TẮT FOLLOW** (`reason: dynamic-nurture-row-follow-disabled`).
+  * Xong lượt Dynamic Slot $\to$ Tự động reset `history` về rỗng để bắt đầu vòng mới quay lại `{5, 6}`.
+
+- 🛑 **Cạm bẫy Sót Code Lịch Ngày Cũ (`cycle_day == 3`) — Gây Tắt Follow Toàn Farm:**
+  * **Hiện tượng:** Sáng ngày 26/10/2026, toàn bộ 160 máy Ca Sáng đều bị Watchdog báo `Bỏ qua (76/78): dynamic-nurture-row-follow-disabled`.
+  * **Nguyên nhân:** Dù đã bỏ ngày 4 dưỡng sinh, nhưng trong `shift_pool_selector.py` vẫn sót lại dòng `if cycle_day == 3 or (cycle_day == 2 and ca == 3): raise ValueError(...)`. Vì ngày 26/10 là ngày thứ 15 tính từ mốc cũ ($15 \pmod 4 = 3$), điều kiện này vô tình kích hoạt fallback sang 3 phễu cho toàn bộ Ca 1, gán `rest_day_no_follow = True`.
+  * **Khắc phục triệt để:** Xóa bỏ hoàn toàn `_ANCHOR_ORDINAL`, `cycle_day`, `cycle_idx`. Xoay tua `candidates = [r for r in pool if r not in used]` chỉ phụ thuộc vào `state['cycle_history'][ca][machine]`. Chỉ riêng Ca 3 khi hết pool mới kích hoạt 1 lượt Dynamic Slot.
+
 - 🛑 **Quy tắc Bất biến Bỏ Qua Follow (`dynamic-nurture-row-follow-disabled`):**
-  * Bất kỳ khi nào phiên nuôi rơi vào fallback 3 phễu (`resolve_shift_pool_account` raise `ValueError` do `cycle_day == 3` hoặc `cycle_day == 2 && ca == 3` hoặc cạn pool), `feed_session_workbook.py` tự động gán cờ `rest_day_no_follow: true` vào `MachineAccount`.
+  * DUY NHẤT VÀ ĐỘC QUYỀN áp dụng khi phiên nuôi rơi vào lượt Dynamic Slot của Ca 3 (hoặc fallback 3 phễu khi cạn pool). `feed_session_workbook.py` gán cờ `rest_day_no_follow: true` vào `MachineAccount`.
   * Tại `multi_machine_feed_session.py`, `_run_follow_hook` kiểm tra `getattr(account, 'rest_day_no_follow', False)` và tự động bỏ qua bước follow, xuất reason:
     `status: "skipped", reason: "dynamic-nurture-row-follow-disabled"`.
-  * Toàn bộ nick trong phiên này chỉ thuần túy lướt feed và up video (Phiên 2) để kích trust kênh mà không chịu rủi ro phạt follow. Báo cáo watchdog xuất hiện `Bỏ qua (N): dynamic-nurture-row-follow-disabled` là chỉ dấu chính xác của ngày/phiên dưỡng sinh 3 phễu, không phải lỗi hệ thống.
+  * Ca 1 và Ca 2 tuyệt đối KHÔNG BAO GIỜ bị dính reason này.
 
 ### Quy Luật Bốc Tuần Tự Đi Đủ 8 Nick (Chống Bỏ Đói & Chống Trôi Lượt):
 - **Phễu Sức Khỏe 6 Tầng (`_follow_rank`):**

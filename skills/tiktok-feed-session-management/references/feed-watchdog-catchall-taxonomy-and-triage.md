@@ -55,8 +55,12 @@ The failures in this catch-all category consistently decompose into 4 distinct f
   - `manual-needed:account-switcher-not-open: profile screen remained after switch-anchor tap`
   - `profile username still mismatched after switch`
   - `navigation target profile not found in XML`
-* **Root Cause:** Drawer animation failed to open the bottom sheet switcher within timeout, or Profile tab failed to load network metadata.
-* **Remediation:** Check switcher bounds and verify network/proxy latency on the device.
+  - `profile verification mismatch: profile account mismatch` (tại `verify_profile` cuối phiên)
+* **Root Causes & Incidents:**
+  1. Drawer animation không mở kịp bottom-sheet switcher hoặc Profile tab chưa load kịp network metadata.
+  2. **Bẫy Dual-Cluster Reconcile (Sự cố 2026-10-26 M261):** Khi `profile_preflight` phát hiện thiếu nick, `_maybe_recover_missing_account_via_login` gọi Reconcile. Nếu đường dẫn workbook bị hardcode mặc định cụm Kibe (`DEFAULT_RECONCILE_WORKBOOK`), Reconcile cho máy Admin (>= 200) sẽ văng lỗi ngay: `CONFIG_ERROR: machine <N> has no serial in workbook` và fail-closed. Khắc phục: Bắt buộc phân nhánh `cluster_root = admin` khi `machine_id >= 200` và set `TAADAA_HOST_CONFIG=admin.yaml`.
+  3. **Bẫy False-Positive Switched (Sự cố 2026-10-26 M274):** Sau khi tap Switcher, nếu UI chưa kịp render `@handle` dẫn đến `not recaptured_username = True`, runner ngộ nhận `verified = True` và tiếp tục lướt feed trên nick cũ, đến cuối phiên mới bị `_verify_profile_after_session` chặn lại với lỗi `profile account mismatch`. Khắc phục: Phải chờ render xong handle trước khi xác nhận switch thành công.
+* **Remediation:** Kiểm tra switcher bounds, cấu hình đúng dual-cluster workbook resolution cho auto-login recovery, và verify handle sau khi switch trước khi bắt đầu vuốt feed.
 
 ---
 
