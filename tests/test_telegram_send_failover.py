@@ -149,3 +149,13 @@ async def test_telegram_send_path_failover_execution():
         fallback.handle_async_request.assert_awaited_once_with(response.request)
     finally:
         await transport.aclose()
+
+
+@pytest.mark.asyncio
+async def test_telegram_fallback_proxy_configuration(monkeypatch):
+    monkeypatch.setenv("TELEGRAM_FALLBACK_PROXY", "http://192.168.110.2:10001")
+    transport = TelegramMultiISPTransport(fallback_ips=["149.154.167.220"])
+    try:
+        assert isinstance(transport._get_fallback(), httpx.AsyncHTTPTransport)
+    finally:
+        await transport.aclose()

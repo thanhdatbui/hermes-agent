@@ -13,6 +13,7 @@ import asyncio
 import contextlib
 import ipaddress
 import logging
+import os
 import socket
 import time
 from typing import Iterable, Optional
@@ -174,13 +175,12 @@ class TelegramMultiISPTransport(httpx.AsyncBaseTransport):
             return httpx.AsyncHTTPTransport(**kwargs)
         return httpx.AsyncHTTPTransport(**self._transport_kwargs)
 
-    def _build_fallback_transport(self) -> "_TelegramDirectFallbackTransport":
-        """Fallback: FPT Direct + DoH IPs (no proxy — uses TelegramFallbackTransport without proxy)."""
-        # Build without proxy by temporarily clearing TELEGRAM_PROXY via a wrapper
-        # that passes no proxy kwarg, relying on TelegramFallbackTransport's
-        # direct connection to _fallback_ips
+    def _build_fallback_transport(self) -> httpx.AsyncBaseTransport:
+        """Fallback: secondary proxy (TELEGRAM_FALLBACK_PROXY) or FPT Direct."""
         kwargs = dict(self._transport_kwargs)
-        # Don't pass proxy — we want direct FPT connection
+        fb_proxy = os.environ.get("TELEGRAM_FALLBACK_PROXY")
+        if fb_proxy:
+            return httpx.AsyncHTTPTransport(proxy=fb_proxy, **kwargs)
         return _TelegramDirectFallbackTransport(self._fallback_ips, **kwargs)
 
     def _get_primary(self) -> httpx.AsyncHTTPTransport:
@@ -199,7 +199,8 @@ class TelegramMultiISPTransport(httpx.AsyncBaseTransport):
                 return
             self._current_mode = "fallback"
         logger.warning(
-            "[Telegram] Multi-ISP Failover: PRIMARY (Viettel) bị lỗi → chuyển sang FALLBACK (FPT Direct)"
+            "[Telegram] Multi-ISP Failover: PRIMARY bị lỗi → chuyển sang FALLBACK (%s)",
+            os.environ.get("TELEGRAM_FALLBACK_PROXY") or "FPT Direct",
         )
 
     async def _switch_to_primary(self) -> None:
@@ -221,7 +222,7 @@ class TelegramMultiISPTransport(httpx.AsyncBaseTransport):
 
             try:
                 req = httpx.Request("GET", f"https://{_TELEGRAM_API_HOST}/")
-                resp = await self._get_primary().handle_async_request(req)
+                resp = await asyncio.wait_for(self._get_primary().handle_async_request(req), timeout=5.0)
                 if 200 <= resp.status_code < 500:
                     now = time.monotonic()
                     if first_success_at is None:
