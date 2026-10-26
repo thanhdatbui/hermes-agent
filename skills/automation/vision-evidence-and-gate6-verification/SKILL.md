@@ -38,6 +38,7 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
 - Kỷ Luật Triệt Tiêu Over-Engineering & Thiết Kế Gate Soi Mắt Tối Giản Bằng Native Vision: [`references/anti-overengineering-and-minimal-native-vision-gate.md`](references/anti-overengineering-and-minimal-native-vision-gate.md)
 - Báo Cáo Điều Tra Over-Engineering Toàn Farm & Kế Hoạch Cắt Tỉa Hệ Thống Gate: [`references/o1-native-vision-gate-and-anti-overengineering-audit.md`](references/o1-native-vision-gate-and-anti-overengineering-audit.md)
 - Quy Trình Staging Ảnh Telegram Cache & Soi Mắt Bằng Browser Vision: [`references/telegram-image-cache-staging-and-browser-vision-sop.md`](references/telegram-image-cache-staging-and-browser-vision-sop.md)
+- Khắc Phục Lỗi Rò Rỉ Egress Prompt & False-Positive Regex Nhận Việc Của Media Gate: [`references/egress-leak-and-reception-false-positive-remediation.md`](references/egress-leak-and-reception-false-positive-remediation.md)
 
 ## 1. Nguyên Tắc Cốt Lõi (Invariants)
 1. **CẤM gửi ảnh mù / đối phó:** Trước khi đính kèm bất kỳ thẻ `MEDIA:<path>` nào, bắt buộc phải mở ảnh ra soi mắt kiểm tra trước.

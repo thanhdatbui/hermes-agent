@@ -61,3 +61,27 @@
     * Lần 1: Tap bên Trái (nếu điểm sáng cao hơn).
     * Lần 2 (khi UI vẫn là Camera): **BẮT BUỘC luân phiên sang bên Phải** (`945, 1593`), mở thành công Gallery ngay cả khi thumbnail tối đen!
     * Bảo toàn 100% khả năng tương thích cho cả máy có nút bên Trái lẫn máy có nút bên Phải, Zero Regression.
+
+---
+
+## 3. Bẫy Timeout 120s Khi Sửa Test File Monolith Trong Closeout Gate & Kỹ Thuật Tách Dedicated Test File
+- **Hiện tượng:** Khi nộp commit lên `closeout_gate.py`, bước Step 3 (Focused Test Execution) bị timeout sau 120s hoặc dính test fail không liên quan:
+  `✘ Tests timeout sau 120s` / `Focused tests FAILED (0 failed, 1 errors) in 120.0s`.
+- **Nguyên nhân:**
+  - File test gốc (như `tests/test_tiktok_workflow.py`) là monolith chứa hàng trăm test cases (gần 400 tests), một số test cũ có thể bị flake, timeout hoặc phụ thuộc môi trường lock.
+  - `closeout_gate.py` tự động quét danh sách file test thay đổi trong commit diff (`git diff --name-only`) và chạy toàn bộ file đó bằng `pytest <file_test>`.
+- **Giải pháp chuẩn:**
+  - Không nhồi test mới vào file monolith lớn. Luôn tạo một file test cô lập mới dành riêng cho bản vá: `tests/test_<feature_name>.py` (ví dụ: `tests/test_camera_upload_alternation.py`).
+  - File test cô lập chỉ chứa đúng các test cases kiểm chứng trực tiếp logic mới được thêm/sửa, chạy độc lập không phụ thuộc external resources.
+  - Kết quả: `closeout_gate.py` chỉ chạy file test cô lập này, hoàn thành trong < 2 giây, 100% PASS, không bao giờ lo dính timeout 120s hay lỗi ngoại lai.
+
+---
+
+## 4. Xử Lý Lỗi Chuỗi Audit Hash `gate_audit.jsonl` Bị Hỏng (`Corrupted audit chain`)
+- **Hiện tượng:** Closeout Gate dừng với exception:
+  `RuntimeError: Corrupted or unreadable audit chain at D:\Taadaa\logs\gate_audit.jsonl: Last line malformed or missing self_hash`
+- **Nguyên nhân:** Một script bên ngoài hoặc tác vụ chạy trước đã ghi thêm dòng JSON vào cuối file `gate_audit.jsonl` mà không có trường `self_hash` theo chuẩn SHA-256 chain của Closeout Gate.
+- **Giải pháp khôi phục:**
+  - Xác định dòng hợp lệ cuối cùng (dòng có chứa `"self_hash": "..."`).
+  - Dùng lệnh `head -n <N> D:/Taadaa/logs/gate_audit.jsonl > D:/Taadaa/logs/gate_audit.tmp && cp D:/Taadaa/logs/gate_audit.tmp D:/Taadaa/logs/gate_audit.jsonl` để cắt bỏ các dòng rác cuối, đưa dòng có `self_hash` lên làm dòng cuối.
+  - Sau khi khôi phục, `_read_last_chain_hash()` đọc được hash hợp lệ và Closeout Gate tiếp tục ghi log audit bình thường.

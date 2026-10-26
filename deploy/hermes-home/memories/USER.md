@@ -1,4 +1,4 @@
-Vibe O(1), bực=làm ngay; lệnh 'làm đi': làm dứt điểm; ghét gate over-engineer (HMAC, OCR proxy, watchdog canh watchdog); chuộng gate cơ học O(1) kiểm đúng sự kiện thật; nghiệm thu UI bắt buộc MEDIA: thật; cực ghét bịa thị giác/khóc lóc bại liệt; Claude CLI dùng khi user gọi hoặc Strike 3.
+Vibe O(1), bực=làm ngay; lệnh 'làm đi': làm dứt điểm; cấm hardcode toạ độ mù 1 bên gây regression giao diện máy khác; chuộng gate cơ học O(1) kiểm sự kiện thật; nghiệm thu UI bắt buộc MEDIA: thật; ghét bịa thị giác/bại liệt; Claude CLI dùng khi gọi hoặc Strike 3.
 §
 User Sudo: Lệnh user ('tao cho phép', 'làm luôn', 'force', 'bypass') có quyền tối cao bypass mọi rào cản (kể cả hooks/); cấm đảo ngược phân cấp chặn user hay đùn việc.
 §
