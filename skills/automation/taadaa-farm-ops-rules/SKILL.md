@@ -15,7 +15,13 @@ description: "Taadaa farm safety, close-session, and multi-machine operations."
 - **Task ngầm / Cronjob:** Hook `guard_cronjob_safety.py` tự động ép cứng `CREATE_NO_WINDOW (0x08000000)` và `Hidden`, cấm pop console cướp focus. Mọi lệnh subprocess trên Windows bắt buộc OR-merge `creationflags |= 0x08000000`.
 - **Cấm quét đĩa diện rộng (Anti-Scan Guard):** CẤM chạy `search_files` trên root `D:/Taadaa` hoặc `D:/Taadaa/tools`, cấm script có `os.walk` / `glob recursive`. Bắt buộc chỉ định đích danh file hoặc thư mục con hẹp.
 - **Khóa thiết bị JIT (Device Lock Mandatory):** Mọi can thiệp ADB vào máy thật bắt buộc giữ JIT device lock (`inspect_machine.py <N>` hoặc `with_device_lock.py --machine <N> -- ...`), cấm can thiệp trần.
-- **Phân định Auto-Wiring vs Active Pivot (Anti-Paralysis):** Task điều tra read-only tự động gắn `BUDGET: <= 8 calls`. Task sửa code CẤM dùng `delegate_task` (bị `subagent_edit_blocked`), bắt buộc dùng Active Pivot: copy lệnh mẫu `python D:/Taadaa/tools/dispatch_worker.py ...` chạy ngay ở turn kế.
+- **Phân định Auto-Wiring vs Active Pivot (Anti-Paralysis):** Task điều tra read-only tự động gắn `BUDGET: <= 8 calls`. Task sửa code CẤM dùng `delegate_task` (bị `subagent_edit_blocked`), bắt buộc dùng Active Pivot: copy lệnh mẫu `python D:/Taadaa/tools/dispatch_worker.py ...` chạy ngay ở turn kế. Worker cấm dừng hỏi input (`NEEDS_INPUT`).
+- **Guidance Chống Chặn Terminal & ADB (Anti-Scan & Bulkhead Invariants):**
+  1. `GUARD_SEARCH_FILES_ROOT`: CẤM gọi `search_files` trên root thư mục (`D:/Taadaa`, thư mục gốc repo); BẮT BUỘC chỉ định `path` đến thư mục con hẹp và `file_glob` cụ thể.
+  2. `GUARD_DANGEROUS_ROOT` & `GUARD_FIND_SCAN`: CẤM `os.walk`, `rglob`, `glob(recursive=True)` hoặc lệnh shell `find`. Tra cứu máy dùng `python D:/Taadaa/tools/inspect_machine.py <N>`.
+  3. `GUARD_DEVICE_FOREGROUND_TIMEOUT`: Mọi lệnh terminal thiết bị/ADB foreground bắt buộc đặt `timeout <= 60s` (trần an toàn). Tác vụ chạy dài bắt buộc dùng background (`background=True, notify_on_complete=True`).
+  4. `GUARD_MANUAL_ADB_TAP`: CẤM TUYỆT ĐỐI chạy `adb shell input tap/swipe/keyevent` bấm tay qua popup/màn hình lỗi. Sửa trực tiếp logic tự động trong script runner.
+  5. `GUARD_AMBIGUOUS_ADB_COMMAND`: Tránh dùng từ khóa `adb` trần trong commit message (`git commit -m`) hoặc lệnh `grep` không bọc kỹ; phân tách rõ lệnh git/grep với lệnh adb thật.
 - **Cấm Báo Cáo Hoàn Thành Mù Avatar (Avatar Visual Diff Invariant):** CẤM TUYỆT ĐỐI dựa vào exit code 0 của runner hoặc cờ `AVATAR_SMOKE_SUCCESS` / `FORCED_REPLACED_VERIFIED` để báo xong. BẮT BUỘC chụp ảnh Profile thật, cắt vòng tròn avatar và đối soát hình ảnh (perceptual diff / vision OCR) để đảm bảo không bị dính bẫy tap nhầm screenshot cũ trong Gallery Picker. Tọa độ chuẩn bottom sheet Sửa hồ sơ: 'Tải ảnh lên' `(224, 1637)`, 'Lưu' `(792, 1794)`.
 
 ## 2. Chu Trình Điều Phối Farm (Coordinator vs Worker)
