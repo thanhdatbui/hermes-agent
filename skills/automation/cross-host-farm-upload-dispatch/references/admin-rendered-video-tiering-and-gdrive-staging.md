@@ -32,6 +32,8 @@ Hệ thống chia kho video thành phẩm làm 2 tầng:
    - Khi một tài khoản trên điện thoại đăng chạm ngưỡng clip số **15**, cron helper tự động kéo trước batch tiếp theo (21–30) từ Google Drive về local trong vài giây qua mạng Internet.
 
 ## 4. Quy Trình Vận Hành 2 Pha Độc Lập
+*Lưu ý invariant:* Bắt buộc thông báo trước thời gian ước tính (khoảng 15–20 phút cho ~450 folders) trước khi kích hoạt dịch vụ offload diện rộng ngầm để tránh người dùng hiểu lầm tiến trình bị treo.
+
 Script điều phối chuẩn `C:\Users\Admin\manage_admin_media_gdrive.py` (hoặc launcher nền `run_media_migration_service.py`):
 
 1. **Pha 1 (Offload):**

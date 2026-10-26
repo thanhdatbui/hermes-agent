@@ -100,3 +100,26 @@ Tài khoản kể cả đã có trong `omniroute_success` bắt buộc phải re
     - Điền email khôi phục -> **Đăng nhập thành công 100% trong 47 giây** mà không cần bất kỳ tương tác phần cứng nào với máy S7.
     - Unit test suite: `pytest "D:/Taadaa/GPM auto/tests/test_post_evening_gpm_login_watchdog.py" -v` đạt **4/4 PASSED**.
 
+---
+
+## 6. Cạm Bẫy Thoát Sớm Thiếu Screenshot Trong `--login-only` (`run_oauth_s7_pipeline.py`)
+
+### A. Hiện tượng:
+- Khi chạy lệnh:
+  ```bash
+  python "D:/Taadaa/GPM auto/scripts/run_oauth_s7_pipeline.py" <email> --login-only
+  ```
+- Script in ra stdout:
+  ```text
+  03:55:46 [INFO] [M07] Dang nhap Google thanh cong: https://gds.google.com/web/recoveryoptions?...
+  03:55:49 [INFO] Máy 07 | <email> -> SUCCESS | Conn: N/A | Port: N/A
+  ```
+- **Vấn đề cốt lõi:** Script thoát sớm tại dòng 1353 (`if login_only and captured_code == "LOGIN_ONLY_SUCCESS": return {"status": "SUCCESS"}`) trước khi tới khối chụp ảnh `page.screenshot(path=shot_path)` ở dòng 1404.
+- **Hậu quả:** Thư mục `D:/Taadaa/GPM auto/debug_screenshots/` hoàn toàn KHÔNG có file ảnh thành công nào được lưu. Nếu Coordinator vội vàng tin vào dòng log `SUCCESS` trên terminal để báo hoàn tất mà không kiểm tra file ảnh thực tế trên đĩa $\rightarrow$ **Vi phạm trực tiếp Gate 6 (Max blind steps = 1, báo xong không có ảnh).**
+
+### B. Giải pháp khắc phục & Quy trình nghiệm thu:
+1. **Chụp ảnh độc lập qua CDP:** Nếu phát hiện script thoát mà không sinh file ảnh, Coordinator BẮT BUỘC kết nối CDP tới cổng DevTools của profile GPM, mở `https://myaccount.google.com/` và chụp ảnh xác nhận.
+2. **Soi mắt OCR trước khi gửi:** Chạy `python D:/Taadaa/tools/run_winrt_ocr.py <screenshot_path>` để xác nhận đúng họ tên, đúng email và gói dịch vụ (ví dụ `Gói Google AI Pro`) trên giao diện trước khi đính kèm thẻ `MEDIA:<path>`.
+3. **Quy tắc bất biến:** Tuyệt đối không bao giờ dùng text output của terminal để thay thế cho ảnh chụp thực tế màn hình.
+
+

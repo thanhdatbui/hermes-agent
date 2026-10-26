@@ -46,6 +46,13 @@ The controller is an orchestrator, not the owner of remote filesystem state. A p
 - **Credential/env leakage:** Never include secrets in logs or send Kibe's ADB socket environment to the remote workflow.
 - **Overclaiming canary:** `post_verified=true` and a remote report are stronger evidence than process exit code; a teardown screenshot at Launcher is not post-publication proof.
 - **Dirty worktree damage:** Do not reset, stash-drop, normalize, or overwrite unrelated existing hunks while applying the focused remote branch.
+- **Admin Media Storage Exhaustion & GDrive Streaming Deadlock (0 Byte Disk Freeze):**
+  When disk D: on Admin reaches 0 MB, Google Drive virtual drive G: also freezes at 0 MB (because its cache `D:\GoogleDriveCache` is on D:), causing robocopy and sync crons to fail with `Errno 28 No space left on device`. Simultaneously, `ffmpeg` crashes within 1-2 seconds of spawn, misleading operators into thinking Game Guard failed to resume after gaming.
+  Remediation requires:
+  1. Kill downloader and place `C:\Users\Admin\downloader_pause.flag` so Task Scheduler's 15m trigger exits in 0.5s instead of spawning 40 threads.
+  2. Emergency bootstrap: directly prune raw video files (`> 45`) that are already byte-verified on GDrive via PowerShell to recover 30-50GB.
+  3. Hybrid Render Tiering: keep clips `1..20` on local D: (enough for 3 weeks of phone posting at 1 clip/day) and offload clips `21..45` to `G:\My Drive\video_render_backup` to reclaim 350-400GB permanently.
+  4. Pre-notify ETA: any batch migration across virtual drives taking > 5 minutes requires estimating and communicating the timeframe before execution.
 - **Subagent self-report discrepancy:** Child agents running via `delegate_task` may report successful patching even if their workspace was discarded upon hitting the iteration limit. Coordinator must verify host `git diff` independently before canary or triage.
 
 ## Cross-host downloader and proxy-pool integrity

@@ -98,6 +98,10 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
     - Khi kiểm tra tài khoản, form đăng nhập hoặc cài đặt trên trình duyệt qua Chrome CDP (port 9222): BẮT BUỘC chụp ảnh bằng `Page.captureScreenshot` lưu ra file PNG và gọi `browser_vision` soi mắt trước khi kết luận.
     - Soi mắt xác nhận rõ: các trường Username/Password có autofill hay để trống, có nút Passkey/Google SSO không, có bị redirect về trang `/login` do thiếu cookie hay không.
     - Phản hồi User bắt buộc đính kèm thẻ `MEDIA:<path_anh>` và mô tả ngắn gọn nội dung thấy tận mắt qua vision. CẤM TUYỆT ĐỐI đưa ra kết luận cảm tính hoặc báo lỗi mù khi chưa soi mắt ảnh. Chi tiết xem [`references/browser-cdp-session-and-form-vision-verification.md`](references/browser-cdp-session-and-form-vision-verification.md).
+21. **Bẫy Báo Xong Theo Log Chay Của Script CLI (CLI Text Output vs Visual Evidence Gate):**
+    - Khi chạy script automation giao diện trình duyệt hoặc thiết bị (như `run_oauth_s7_pipeline.py --login-only` hoặc tool tương tự), script có thể in ra `SUCCESS` hoặc `Dang nhap thanh cong` trên stdout/terminal nhưng KHÔNG tự động lưu ảnh chụp màn hình (do cờ nhánh rẽ thoát sớm bỏ qua lệnh chụp ảnh).
+    - CẤM TUYỆT ĐỐI lấy dòng log stdout `SUCCESS` để vội vàng tuyên bố hoàn thành với User khi chưa có thẻ `MEDIA:<path>`.
+    - BẮT BUỘC phải kiểm tra file screenshot thực tế trên đĩa: nếu script không lưu ảnh, Coordinator BẮT BUỘC phải kết nối CDP/ADB chụp lại ảnh màn hình đích ngay lập tức, chạy WinRT OCR soi mắt kiểm chứng, và đính kèm thẻ `MEDIA:<path>` trong tin nhắn trả lời. Tuyên bố xong không có ảnh = Vi phạm trực tiếp Gate 6.
 
 ## 2. Thang Leo Thang Vision Dự Phòng (Fallback Ladder)
 Thứ tự fallback đọc ảnh chuẩn hoá 100% đồng bộ với kiến trúc Worker Dispatch:
