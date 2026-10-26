@@ -585,7 +585,21 @@ Khi user chat hàng loạt session song song và thấy phản hồi chậm (h�
   6. `omniroute_watchdog`: `$MaxDeadlockFailures` bắt buộc trong `[4, 6]` (tránh false-kill <4 và tránh treo lâu >6).
 - **Unit test**: `pytest D:/Taadaa/tools/tests/test_infra_regression_gate.py` (8/8 passed). Xem chi tiết tại `references/infra-protection-regression-gate-20261026.md`.
 
+### 0p. 🚨 Sự Cố Fast-Fail Probe 2s Kill Oan Stream & SQLite 1.15GB Lock Event Loop (Incident 27/10/2026):
+- **Triệu chứng**: Cả ngày OmniRoute báo sập liên tục, trả về `[503] Service temporarily unavailable: all targets were skipped by pre-dispatch filters` (>130 lần). Người dùng kiểm tra proxy bên ngoài vẫn sống 100% (ping 50ms, curl IP xoay sạch). Thỉnh thoảng OmniRoute bị treo cứng 6 phút khiến Watchdog force-kill tiến trình.
+- **Nguyên nhân gốc rễ (3 tầng)**:
+  1. *Mạng Viettel flapping >120 lần/ngày*: Packet drop ngắn 1–2s làm trễ TCP SYN.
+  2. *Bẫy so găng Fast-Fail Probe 2s (`proxyFetch.ts:681 Promise.race`)*: Probe TCP 2s (`FAST_FAIL_TIMEOUT_MS=2000`) chạy song song với request LLM (15s–45s). Khi mạng lag 2.1s, probe kết luận proxy chết và **FORCE-KILL REQUEST LLM ĐANG GENERATE DỞ**. Cả 28 account Antigravity cùng cụm `test.taadaa.click:51xx` bị gạt bỏ sạch trong 5s $\rightarrow$ 503 `ALL_TARGETS_SKIPPED`.
+  3. *SQLite 1.15GB (>1.06 triệu dòng) làm nghẽn Event Loop*: Bảng `conversation_turn_nodes` (1.06M rows) và `quota_snapshots` (418k rows) tích tụ không được dọn dẹp do cron cũ chỉ giữ 7 ngày và bỏ sót 4 bảng nặng. I/O lock đồng bộ trên Main Event Loop Node.js làm `/api/health` fail 12 lần liên tiếp $\rightarrow$ Watchdog force-kill.
+- **Biện pháp xử lý & Chốt chặn Invariant**:
+  1. *Nâng trần Probe TCP*: Đặt `PROXY_FAST_FAIL_TIMEOUT_MS=5000` (5s) trong `omniroute_watchdog.ps1` và `server.env`.
+  2. *Khóa an toàn Farm IP*: Giữ nguyên `PROXY_FAIL_OPEN=false` để cấm tuyệt đối việc rò rỉ Direct IP dân cư nhà Kibe làm ban nick farm.
+  3. *Prune 1.14M dòng rác & Cron 6h*: Cập nhật `cleanup_omniroute_db.py` với retention 3 ngày, bao trọn 6 bảng nặng và nâng lịch cron `daily-omniroute-db-cleanup` lên chạy mỗi 6 giờ (`every 6h`).
+  4. *Delay socket TIME_WAIT*: Bổ sung `Start-Sleep -Seconds 3` vào đầu hàm `Start-OmniRoute` của Watchdog để tránh lỗi restart văng `exit code 1` sau 3 giây.
+  5. *Protection Regression Gate*: Đã tích hợp đầy đủ vào `infra_regression_gate.py` với 12/12 unit test xanh 100%. Xem chi tiết tại `references/omniroute-proxy-fast-fail-probe-hang-and-sqlite-bloat-20261027.md`.
+
 ## References
+- `references/omniroute-proxy-fast-fail-probe-hang-and-sqlite-bloat-20261027.md` — Sự cố Fast-Fail probe 2s kill oan stream LLM khi Viettel chập chờn, phình SQLite 1.15GB (1.14M dòng rác), và toàn bộ giải pháp hạ tầng kèm Protection Regression Gate (27/10/2026).
 - `references/omniroute-fast-fail-probe-and-protection-regression-gate.md` — Chi tiết bẫy Fast-Fail probe 2s làm kill oan request LLM, sự cố SQLite 1.15GB phình 1.14M dòng, và bản thiết kế Protection Regression Gate cho hạ tầng (27/10/2026).
 - `references/omniroute-proxy-fast-fail-false-kill-and-infra-regression-gate.md` — Bẫy so găng Fast-Fail 2s tự kill request stream, phình SQLite 1.14M dòng, và chốt chặn Protection Regression Gate cho hạ tầng (27/10/2026).
 - `references/omniroute-proxy-fast-fail-race-and-sqlite-bloat-20261026.md` — Sự cố Proxy Fast-Fail 2s so găng abort oan request LLM (15s-45s) trên proxy sống, bão 130x all targets skipped và SQLite 1.06M rows gây deadlock Event Loop (26/10/2026).
