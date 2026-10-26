@@ -545,6 +545,7 @@ When using a screenshot, verify the address bar port against the live listener; 
 
 ## Supporting detail
 
+See `references/omniroute-gpm-chatgpt-web-pool-feeder.md` — OmniRoute ChatGPT-Web pool feeding from GPM profiles, fast CDP token probe (<5s), per-IP ceiling gating (cap 2 acc/IP), Hotmail direct auth vs Google SSO trap, and proxy_assignments relational fail-closed binding.
 See `references/chatgpt-web-multi-proxy-feeder-governance.md` — ChatGPT-Web multi-proxy feeding standards, temporary 2-account per IP ceiling, Hotmail direct login vs Google SSO trap, and feeder port pass-through.
 See `references/chatgpt-web-pool-proxy-distribution.md` — ChatGPT-Web pool feeding protocol, multi-account proxy pairing (>= 2 accs/IP), and distinguishing email soaking from ChatGPT pool readiness.
 - `references/chatgpt-web-pool-feeder-and-proxy-assignment.md` — ChatGPT Web pool feeding standards, multi-account proxy density invariants (>= 2 accs/IP), and Hotmail direct login vs Google SSO trap in auto-feeders.

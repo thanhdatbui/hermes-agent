@@ -17,6 +17,7 @@ author: Hermes Agent
 - Dashboard: references/dashboard-nurture-health-implementation.md
 - Anchor/Streak: references/follow-anchor-trap-and-streak-inflation-invariants.md
 - Delta Triage: references/run-delta-triage-hardware-illusion-vs-software-contention.md
+- Cross-Cluster Recovery & Verification: references/feed-runner-cross-cluster-workbook-resolution-and-false-switcher-verification.md
 
 ## Watchdog Upload Status Taxonomy & Triage
 Chi tiết taxonomy xem tại [references/feed-watchdog-catchall-taxonomy-and-triage.md](references/feed-watchdog-catchall-taxonomy-and-triage.md). If one cluster (for example Admin) has a materially higher proxy-failure share than another cluster (for example Kibe), prioritize proxy/egress triage there before editing feed logic. Record representative probe outputs and distinguish confirmed causes from hypotheses; if no code change was performed, say so explicitly and avoid claiming remediation.

@@ -90,14 +90,15 @@ When orchestrating a pool of distinct Pro accounts (e.g. 29 accounts `acc_01` to
 
 ## 6. Shared Upstream Quota Accounting & Cross-Tool Balancing
 
-### 1. Unified Google Account Quota Identity
-- The 1,500 req/day quota is enforced by Google Cloud Code per **Google Account (email identity)**, NOT per device, IP, or client tool.
+### 1. Unified Google Account Quota Identity & Rolling 5h Window
+- The Google One Pro credit quota is enforced by Google Cloud Code per **Google Account (email identity)**, NOT per device, IP, or client tool.
 - Requests originating from:
   1. Desktop Antigravity IDE (GUI)
   2. Centralized Gateway / OmniRoute (`:20129`)
   3. Native Agy CLI (`agy.exe` via `ag_credit_proxy.py`)
-  ...all consume from the **exact same 1,500 daily G1 credit bucket** for that account.
-- If OmniRoute consumes 500 requests from `quyphuoc090565@gmail.com`, `agy.exe` will only have 1,000 requests remaining for that account on that day.
+  ...all consume from the **exact same credit bucket** for that account.
+- **Enforcement Window Mechanics:** While marketing copy describes the tier as ~1,500 requests/day, the physical backend enforcement operates on a **rolling 5-hour window** and a **weekly ceiling**, surfacing live quota as `remainingPercentage` and `resetAt` timestamps. Quota recovers dynamically over sliding 5-hour windows rather than resetting in a lump sum at midnight.
+- If OmniRoute consumes 500 requests from `quyphuoc090565@gmail.com`, `agy.exe` will only have the remaining headroom for that account on that rolling window.
 
 ### 2. Cross-Tool Live Quota Balancing
 - In multi-agent or co-working setups (e.g. Hermes Coordinator using OmniRoute while Worker uses Agy CLI):
