@@ -3,12 +3,16 @@
 > Context: Closed-loop autonomous incident recovery (`incident-auto-heal-dispatcher`, `cron_incident_auto_heal.py`, `incident_auto_harness.py`, `incident_emitter.py`, `telegram_report.py`).
 
 ## 1. Nguyên nhân gốc rễ Gate 0 Telemetry Blocked (Blind Telemetry Failure)
-- **Triệu chứng:** Hàng loạt vé sự cố bị kẹt tại Cổng 0 với trạng thái `BLOCKED_PENDING_TELEMETRY` (`xml_dump: null`, `screenshot: null`).
-- **Nguyên nhân gốc:** Watchdog báo lỗi theo số thứ tự máy (vd: `machine_id="48"`). Lệnh ADB chạy `adb -s 48 exec-out screencap` bị fail vì `48` không phải là Hardware Serial ADB.
-- **Quy tắc giải quyết:**
+- **Triệu chứng:** Hàng loạt vé sự cố bị kẹt tại Cổng 0 với trạng thái `BLOCKED_PENDING_TELEMETRY` (`xml_dump: null`, `screenshot: null`, hoặc score < 2).
+- **2 Nguyên nhân gốc rễ phổ biến:**
+  1. *Lỗi Serial ADB:* Watchdog báo lỗi theo số thứ tự máy (vd: `machine_id="48"`). Lệnh ADB chạy `adb -s 48 exec-out screencap` bị fail vì `48` không phải là Hardware Serial ADB.
+  2. *Lỗi XML Dump & Màn hình ngủ sau ca (Post-Shift Screen Sleep):*
+     - `incident_emitter.py` dùng `adb shell uiautomator dump /sdcard/inc.xml` với timeout ngắn (2.5s). Trên farm Samsung S7 (Android 7/8), shell dump hay bị OOM-kill (`EXIT 137`) hoặc treo > 2.5s làm `xml_dump: null`.
+     - Watchdog emit vé muộn ở cuối ca nuôi/upload, máy đã nhả session và rơi vào trạng thái ngủ (`Màn hình: OFF (Sleep/Dozing)`), dẫn đến ảnh chụp `screen.png` bị đen kịt 100% (all 0 pixels), WinRT OCR rỗng.
+- **Quy tắc giải quyết & Vận hành an toàn:**
   1. Trong `incident_emitter.py`, hàm `resolve_serial_and_args(serial, machine_id)` bắt buộc gọi `inspect_machine.get_serial_for_machine(int(machine_id))` để tra cứu Serial thật từ workbook gán máy.
   2. Với cụm Admin Remote (`machine_id >= 200`), lệnh ADB bắt buộc thêm cờ kết nối socket: `[tool, '-H', '192.168.110.119', '-P', '5037', '-s', target]`.
-  3. Chỉ khi lấy đủ ảnh screenshot (>0 byte) và XML dump UI thật qua ADB thì vé mới đủ điều kiện vào Cổng 1 (Planner).
+  3. Chống mù hiện trường (Fail-Closed): Chỉ khi lấy đủ ảnh screenshot (>0 byte, không đen) và XML dump UI thật qua ADB/atx-agent thì vé mới đủ điều kiện vào Cổng 1 (Planner). Khi thiếu bằng chứng (score < 2), Gate 0 CHỦ ĐỘNG CHẶN CHUYỂN L3 BLOCKED, cách ly file sang `runtime/incidents/blocked/` để hàng đợi `pending/` sạch sẽ, ngăn ngừa tuyệt đối việc sửa mò làm biến dạng code farm.
 
 ## 2. Liên thông 3 Trụ Cột Farm vào Auto-Heal Queue
 `feed_session_watchdog.py` (file trung tâm tổng hợp mọi ca chạy) tự động phân loại và dispatch sự cố vào hàng đợi `pending/`:
