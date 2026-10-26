@@ -119,3 +119,23 @@ FeedRunner: [FAIL] Lệch Profile/Nick TikTok (profile account mismatch / naviga
 - **Hậu quả nếu thiếu handler:** Hàm `fill_existing_email_and_continue()` trong `tiktok_login_v1.py` chờ text `"Email"` / `"TikTok ID"` nhưng bị popup che -> văng lỗi `RuntimeError: Khong thay man nhap email de login`.
 - **Xử lý chuẩn:** Trong `fill_existing_email_and_continue()` trước khi tìm ô nhập email, bắt buộc kiểm tra sự hiện diện của text `"Thêm số điện thoại"` / `"Add phone number"` và tap vào nút Đóng (`content-desc="Đóng"` hoặc tọa độ tâm bounds) để đóng modal, sau đó tiếp tục điền email + password bình thường.
 
+### B. Bug Nhận Diện Nhầm Nick Switcher Khi Trùng Tiền Tố Khác Số Đuôi (`matches_switcher_identity`)
+- **Hiện tượng:** Máy chỉ có nick `khanhthu2275` nhưng ca chạy yêu cầu `khanhthu1609`. Switcher tap nhầm vào `khanhthu2275`, tưởng rằng đã switch thành công, lướt xong toàn bộ 16 video rồi đến cuối phiên mới báo lỗi `profile account mismatch`.
+- **Nguyên nhân gốc:** Hàm `matches_switcher_identity` trong `automation_core.tiktok.account_switcher` sử dụng logic cắt bỏ số đuôi: `v1.rstrip("0123456789+ ") == v2.rstrip("0123456789+ ")`. Điều này làm `khanhthu2275` và `khanhthu1609` đều bị rút gọn thành `khanhthu`, khiến hệ thống phán đoán sai rằng đây là cùng một tài khoản.
+- **Xử lý chuẩn:** Bổ sung điều kiện kiểm tra regex số đuôi (`re.search(r"\d+$", v)`). Nếu cả hai username đều có số đuôi mà số đuôi khác nhau (`2275 != 1609`), BẮT BUỘC trả về `False` ngay lập tức để runner nhận diện đúng tài khoản bị thiếu và kích hoạt auto-login recovery.
+
+### C. Popup "Follow bạn bè của bạn" Che Màn Hình Profile Sau Khi Switch Nick
+- **Hiện tượng:** Sau khi tap Switcher đổi nick thành công, TikTok bật modal/overlay toàn màn hình gợi ý *"Follow bạn bè của bạn"* / *"Follow lại"*. Màn hình này không có bottom navigation bar, khiến hàm phân loại `classify_screen` trả về `unknown TikTok state` và profile preflight bị đánh dấu `manual-needed` fail-closed.
+- **Xử lý chuẩn:** Trong `_maybe_handle_profile_add_phone_guard`, tích hợp `find_matching_handler` bắt trúng `follow_friends_suggestion_popup` và gọi dismisser đóng lớp phủ bằng phím Back hoặc tap nút đóng trước khi đọc profile identity.
+
+### D. Ép WinRT OCR Primary Cho Module Đăng Nhập (`social_reg_v1.py` / `tiktok_login_v1.py`)
+- **Hiện tượng:** Khi chạy auto-login recovery trên dàn máy S7 cũ, thiết bị liên tục báo lỗi `atx-agent dump attempt failed`, timeout và sau đó rơi vào trạng thái `offline` hoặc ngắt kết nối USB vật lý.
+- **Nguyên nhân:** Các script legacy gọi `get_ui_xml()` hàng chục lần để tìm nút và kiểm tra chữ. Thao tác dump XML bằng Java Accessibility Service trên Android vắt kiệt CPU Exynos 8890 (chạm 100%), khiến tiến trình bị kernel kill (`Killed 137`) và làm treo daemon `adbd` trên điện thoại.
+- **Xử lý chuẩn:** Thay thế hoàn toàn các lệnh dump XML trong `find_text_tap` và `text_exists` sang **WinRT OCR Primary**:
+  1. Chụp màn hình bằng native `screencap` về PC (0.1s).
+  2. Dùng WinRT OCR trên CPU máy tính Windows bóc tách text và tọa độ hộp chữ `(x1, y1, x2, y2)`.
+  3. Tap trực tiếp vào tọa độ tâm nút `(cx, cy)`.
+  4. Chỉ fallback sang dump XML khi OCR thật sự không tìm thấy chữ trên ảnh.
+  5. Đảm bảo tuân thủ `INVARIANT UI-OCR-1` và vượt qua kiểm tra của `python D:/Taadaa/tools/ui_policy_check.py`.
+
+
