@@ -111,6 +111,13 @@ Applies whenever reports fail to reflect actual fleet health, mask dropped machi
   1. **Stat-First Pre-Filtering:** Use `os.scandir()` and filter by `entry.stat().st_mtime` BEFORE opening or reading file content. If searching for stale records older than $N$ hours, immediately skip files where `now - st_mtime < min_age_seconds` without touching file contents.
   2. **Iterative Batch Processing:** When parsing content is required across large sets, avoid full-directory synchronous loads in short-timeout (<60s) cron scripts or ensure the timeout budget accommodates NTFS cold-cache traversal. See `references/watchdog-timeout-and-file-scan-bottleneck.md`.
 
+### Invariant 13: ADB Host Unreachability vs Zero-Device Fleet Discrimination & Deferred Daily Closeout
+- **Anti-Pattern:** Treating an unreachable ADB host (e.g. remote daemon restarting, socket timeout, port 5037 dead) identically to an reachable host with 0 online devices (`connected = {}`). The script reports "0 completed, 0 error" instead of a connection failure alert. Furthermore, prematurely committing `reported_date = today_str` locks out future retry intervals in the same shift window after the host daemon recovers.
+- **Rule:**
+  1. **Cluster Reachability Tracking (`reachable = False` before call):** Verify subprocess exit code and timeout explicitly. If `adb devices` fails/times out, flag `cluster["reachable"] = False`.
+  2. **Unreachable Cluster Warning Contract:** Report `⚠️ Cluster không kết nối được ADB; không thể xác nhận trạng thái máy.` instead of aggregate 0s.
+  3. **Deferred Daily Reporting Closeout:** Only commit `reported_date = today_str` when all configured clusters are reachable (or explicit `--force` override), allowing subsequent ticks to clear cache or reconcile once ADB daemon recovers. See `references/adb-host-unreachability-and-deferred-closeout.md`.
+
 ---
 
 ## 3. Verification Protocol for Watchdogs & Reports
