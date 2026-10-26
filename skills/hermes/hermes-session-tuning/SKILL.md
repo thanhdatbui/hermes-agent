@@ -536,7 +536,19 @@ Khi user chat hàng loạt session song song và thấy phản hồi chậm (h�
   3. Tại session mới, dùng `session_search(around_message_id=..., session_id="...")` hoặc query từ khóa để salvage: (a) Yêu cầu gốc của user, (b) Tiến độ công việc đã xong, (c) Nút thắt kỹ thuật đang kẹt. Tiếp quản và giải quyết dứt điểm tại session mới mà không bắt user nhắc lại.
   - Xem chi tiết tại `references/gemini-turn-sequence-corruption-and-session-recovery.md`.
 
+### 0l. 🚨 Telegram Multi-ISP Failover Flapping, Unbounded Probe Hang (No Timeout) & Cột Mốc 10 Phút Omni Trống Rỗng (Incident 26/10/2026):
+- **Triệu chứng**: Dashboard OmniRoute (`:20129`) hoàn toàn trống trơn 0 request suốt 10 phút 15 giây (`13:10:49` đến `13:21:04`), user gửi tin nhắn nhưng bot không nhận, không typing. Đến `13:20:26` bất ngờ xả dồn 7 tin nhắn cùng 1 giây, bùng nổ token 250k–470k tokens sang OmniRoute.
+- **Nguyên nhân cốt lõi**:
+  1. *Probe Recovery thiếu Timeout*: Trong `TelegramMultiISPTransport` (`plugins/platforms/telegram/telegram_network.py`), lệnh `resp = await self._get_primary().handle_async_request(req)` gọi trực tiếp trên transport mà không có `asyncio.wait_for(..., timeout=5.0)`. Khi WARP proxy (`127.0.0.1:40000`) vấp gói, probe bị treo ở mức socket hệ điều hành suốt 10 phút.
+  2. *Mắc kẹt ở FPT Direct*: Luồng probe bị đơ khiến gateway bị giam ở chế độ `FALLBACK (FPT Direct)`. Tại Việt Nam, FPT Direct chặn/bóp long-poll `getUpdates` của `api.telegram.org` $\rightarrow$ không tin nhắn nào lọt về gateway $\rightarrow$ OmniRoute 0 request trong 10 phút.
+  3. *Watchdog Heartbeat quá chậm*: `.env` đặt `HERMES_TELEGRAM_HEARTBEAT_INTERVAL=180` (3 phút), cần 2 lần phát hiện kẹt (`stuck probe 2/2`) = 6–10 phút mới tự khởi động lại polling.
+- **Biện pháp xử lý & Tinh chỉnh**:
+  - Bọc `asyncio.wait_for(..., timeout=5.0)` cho lệnh probe trong `telegram_network.py`.
+  - Đặt `HERMES_TELEGRAM_HEARTBEAT_INTERVAL=30` trong `.env` để phát hiện kẹt hàng đợi sau 60 giây.
+  - Xem chi tiết tại `references/telegram-multi-isp-failover-probe-hang.md`.
+
 ## References
+- `references/telegram-multi-isp-failover-probe-hang.md` — Sự cố Telegram Multi-ISP Failover flapping, probe thiếu timeout làm treo 10 phút và xả dồn tin nhắn (26/10/2026).
 - `references/gemini-turn-sequence-corruption-and-session-recovery.md` — Sự cố lệch cấu trúc turn Gemini HTTP 400, vòng lặp treo stream chunks và quy trình cứu hộ session dở dang qua session_search (07/10/2026).
 - `references/windows-terminal-drain-gil-starvation.md` — Sự cố Windows Terminal _drain GIL Starvation giữ cứng GIL 37 phút làm treo Gateway & 15+ Cron Jobs (07/10/2026).
 - `references/state-db-bloat-and-session-storage-lock.md` — Chi tiết sự cố state.db 14GB gây timeout ghi session storage (07/10/2026).
