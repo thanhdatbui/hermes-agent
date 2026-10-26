@@ -31,6 +31,7 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
 - Soi Mắt Màn Hình Trình Duyệt / Browser CDP & Xác Thực Đăng Nhập: [`references/browser-cdp-session-and-form-vision-verification.md`](references/browser-cdp-session-and-form-vision-verification.md)
 - Kiến Trúc Hook Cơ Học Gate 6 & Invariant Chống Khóc Lóc: [`references/gate6-mechanical-hook-and-anti-whining-architecture.md`](references/gate6-mechanical-hook-and-anti-whining-architecture.md)
 - Kiến Trúc Auto-Rewire & Guidance Chống Bại Liệt L3 Cho Gate 6: [`references/gate6-auto-rewire-and-guidance-architecture.md`](references/gate6-auto-rewire-and-guidance-architecture.md)
+- Kỷ Luật Cấm Lạm Dụng Claude CLI & Đối Soát Avatar Bitmap (Chống OCR Mù): [`references/anti-claude-cli-runaway-and-bitmap-avatar-verification.md`](references/anti-claude-cli-runaway-and-bitmap-avatar-verification.md)
 
 ## 1. Nguyên Tắc Cốt Lõi (Invariants)
 1. **CẤM gửi ảnh mù / đối phó:** Trước khi đính kèm bất kỳ thẻ `MEDIA:<path>` nào, bắt buộc phải mở ảnh ra soi mắt kiểm tra trước.
@@ -121,6 +122,11 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
     - CẤM TUYỆT ĐỐI viện cớ thiếu ảnh để tự ý hạ cấp xuống `L3 BLOCKED` đùn việc cho User.
     - **Auto-Capture & Auto-Rewire:** Hook tại `post_tool_call` tự động chụp screencap hiện trường; tầng `transform_llm_output` tự động găm thẻ `MEDIA:<path>` tươi nhất vào cuối tin nhắn nếu Agent quên dán thẻ khi claim hoàn tất.
     - **Guidance Injection Thay Vì Báo Block Mù:** Khi mất kết nối không thể screencap, Hook inject lệnh cứu hộ $O(1)$ (`python D:/Taadaa/tools/inspect_machine.py <N>`) ép Agent xử lý ngay thay vì đứng im khóc lóc. Chi tiết xem [`references/gate6-auto-rewire-and-guidance-architecture.md`](references/gate6-auto-rewire-and-guidance-architecture.md).
+26. **Kỷ Luật Cấm Tuyệt Đối Lạm Dụng Claude CLI & Đối Soát Avatar Bitmap Độc Lập Với OCR Text:**
+    - **Lỗ hổng "Mù Avatar Bitmap" của Media Gate:** Hook `guard_media_vision_gate.py` ở tầng `transform_llm_output` chỉ kiểm tra token chữ OCR. Khi trang cá nhân có đủ chữ (Tên, Handle, Bio), Hook cấp vé `PASS` cho phép xuất tin nhắn khẳng định đã đổi avatar dù hình trong vòng tròn avatar trên màn hình vẫn là hình cũ! WinRT OCR hoàn toàn mù với dữ liệu bitmap hình ảnh. Việc dựa vào text OCR để kết luận avatar đã đổi là hành vi suy diễn nguy hiểm và sinh ra báo cáo hoàn thành giả tạo làm User cực kỳ phẫn nộ (*"Xong cái địt mẹ mày đã thay ava acc 1 đâu... Con mẹ mày lại báo cáo láo"*).
+    - **Bắt Buộc Đối Soát Avatar Bitmap Bằng OpenCV Local:** Cắt vùng vòng tròn avatar `(800..980, 250..420)` trên ảnh Profile và tính độ tương quan Correlation / Template Match với file `avatar.jpg` nguồn (ngưỡng similarity $\ge 0.35$). Nếu chưa đạt, cấm báo cáo hoàn tất.
+    - **Lệnh CẤM Tuyệt Đối Lạm Dụng Claude CLI Làm "Nạng Chống Lưng":** Claude CLI là tài nguyên đắt đỏ (quota 5h/tuần) dành cho kiến trúc lớn hoặc Strike-3 Reviewer Hand-off. CẤM TUYỆT ĐỐI tự ý gọi `claude -p` để làm "cặp mắt đi mượn" cho các việc vặt: soi ảnh, crop ảnh, đo pixel, chọn ô ảnh picker thay vì tự viết script local hoặc sửa triệt để mã nguồn automation (*"r fix script chưa? chứ tự nhiên gọi claude cli? t có yêu cầu mày gọi hả?"*).
+    - **Bắt Buộc Fix Triệt Để Trong Mã Nguồn Runner (`state_machine.py`):** Khi runner tự động gặp lỗi (như tap nhầm tile cũ, kẹt popup), Coordinator bắt buộc sửa thuật toán trong mã nguồn runner (như commit `d9cc3db` tích hợp `_avatar_picker_visual_match` so khớp trực quan tự động với `expected_path`), chạy test pass và push remote thay vì làm tay chắp vá rồi gọi Claude CLI soi hộ. Chi tiết xem [`references/anti-claude-cli-runaway-and-bitmap-avatar-verification.md`](references/anti-claude-cli-runaway-and-bitmap-avatar-verification.md).
 
 ## 2. Thang Leo Thang Vision Dự Phòng (Fallback Ladder)
 Thứ tự fallback đọc ảnh chuẩn hoá 100% đồng bộ với kiến trúc Worker Dispatch:

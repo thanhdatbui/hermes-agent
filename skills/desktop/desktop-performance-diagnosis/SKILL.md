@@ -204,6 +204,7 @@ Do not say "root cause found" when only an idle snapshot or a list of heavy proc
 
 ## References
 
+- `references/remote-ssh-powershell-flicker-prevention.md` — diagnose and prevent screen flickering on remote Windows hosts (admin-farm) caused by unsuppressed SSH PowerShell conhosts, stale cua-driver transparent overlays, and mechanical AST hook enforcement.
 - `references/desktop-performance-onset.md` — reusable onset timeline, evidence matrix, and interpretation notes from a Windows game-stutter investigation.
 - `references/console-window-storm-and-headless-subprocess-disruption.md` — diagnose rapid screen flashing / window storms caused by background automation (e.g. ADB, FFmpeg) missing Windows `CREATE_NO_WINDOW` flags.
 - `references/windows-nic-disconnect-repair.md` — diagnostic patterns and repair procedures for NDIS 10400 hardware resets, outdated NIC drivers, and power-saving disconnects under game/VPN load.

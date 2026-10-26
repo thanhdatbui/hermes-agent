@@ -68,11 +68,18 @@ Quy trình chuẩn hoá bao gồm trọn gói **5 hạng mục bắt buộc (5-i
     python D:\Taadaa\tools\run_winrt_ocr.py "D:\Taadaa\reports\<FILE>.png"
     ```
   - **Fresh Receipt Invariant (TTL 180s):** Vision receipt chỉ có hiệu lực trong 180 giây (3 phút). Phải chạy `run_winrt_ocr.py` ngay trong lượt turn chuẩn bị gửi thẻ `MEDIA:`. CẤM chạy OCR từ nhiều turns trước rồi để receipt hết hạn làm kích hoạt `[CONTRADICTION_GATE_TRIGGERED] verdict: NO_RECEIPT`.
-- **Quy Tắc Chống Báo Cáo Láo Avatar (Gallery Picker Tile-1 Bias & Kỷ Luật Cấm Lạm Dụng Claude CLI):**
-  - **CẤM TUYỆT ĐỐI** tin vào log `verified=True` / `AVATAR_SMOKE_SUCCESS` của runner nếu chưa đối soát thị giác trực tiếp trên avatar circle sau khi upload. Runner cũ hay tap mù vào Tile 1 (thường là ảnh screenshot cũ chứa avatar cũ), gây hiện tượng "báo cáo láo".
-  - **Kỷ luật Cấm lạm dụng Claude CLI làm nạng chống lưng:** Thay vì sửa dứt điểm bug thuật toán trong mã nguồn runner (`state_machine.py`), CẤM Coordinator tự tiện gọi Claude CLI liên tục để "nhờ" đọc toạ độ từng ô ảnh rồi tap thủ công (*"r fix script chưa? chứ tự nhiên gọi claude cli? t có yêu cầu mày gọi hả?"*). BẮT BUỘC sửa triệt để thuật toán trong mã nguồn runner (`d9cc3db` trong `Tiktok-video`: tích hợp `_avatar_picker_visual_match` so khớp trực quan tự động với `expected_path`).
+- **Quy Tắc Chống Báo Cáo Láo Avatar & Kỷ Luật CẤM LẠM DỤNG CLAUDE CLI:**
+  - **CẤM TUYỆT ĐỐI** tin vào log `verified=True` / `AVATAR_SMOKE_SUCCESS` của runner nếu chưa đối soát thị giác trực tiếp trên avatar circle sau khi upload. Runner cũ hay tap mù vào Tile 1 (thường là ảnh screenshot cũ chứa avatar cũ), gây hiện tượng "báo cáo láo" làm User nổi giận (*"Xong cái địt mẹ mày đã thay ava acc 1 đâu... Con mẹ mày lại báo cáo láo"*).
+  - **Lệnh CẤM TUYỆT ĐỐI lạm dụng Claude CLI làm nạng chống lưng:**
+    * Claude CLI là tài nguyên đắt đỏ, tiêu tốn hạn mức (quota 5h/tuần) quý giá của tài khoản User.
+    * **CẤM Coordinator tự tiện gọi `claude -p`** để làm "cặp mắt đi mượn" cho các việc vặt: soi ảnh, crop ảnh, đo tọa độ pixel, chọn ô ảnh trong thư viện, thẩm định chất lượng thay vì dùng script local (*"r fix script chưa? chứ tự nhiên gọi claude cli? t có yêu cầu mày gọi hả?"*).
+    * CHỈ ĐƯỢC PHÉP gọi Claude CLI khi: (1) Được User ra lệnh trực tiếp bằng từ khóa rõ ràng ("gọi claude cli", "dùng claude"), hoặc (2) Strike-3 Reviewer Hand-off chính thức theo `HERMES_SUBAGENT_RULES.md` khi Sol Repair không thể giải quyết.
+  - **Bắt buộc FIX TRIỆT ĐỂ trong mã nguồn Runner (`state_machine.py`):**
+    * Thay vì nhảy vào làm tay chắp vá rồi gọi Claude CLI soi hộ, BẮT BUỘC sửa triệt để thuật toán trong mã nguồn runner (`commit d9cc3db` trong `Tiktok-video`): tại `_select_avatar_from_download`, tích hợp `_avatar_picker_visual_match` so khớp trực quan tự động từng tile ảnh với `expected_path` (ngưỡng similarity $\ge 0.35$). Runner sẽ tự động định vị đúng tile ảnh nguồn thay vì tap mù ô đầu tiên.
+  - **Lỗ hổng Hook OCR Mù Bitmap Avatar & Đối soát Hình Học OpenCV Local:**
+    * Hook `guard_media_vision_gate.py` chỉ kiểm tra text OCR. Khi trang cá nhân có đủ chữ (Tên, Handle, Bio), Hook cấp vé `PASS` dù hình trong vòng tròn avatar vẫn là hình cũ!
+    * Do đó, để đối soát avatar thật: BẮT BUỘC dùng **OpenCV local** (`cv2`) cắt vùng vòng tròn avatar `(800..980, 250..420)` trên ảnh Profile và tính độ tương đồng Correlation/SSIM với file `avatar.jpg` nguồn. TUYỆT ĐỐI CẤM gọi Claude CLI soi hộ và CẤM chỉ nhìn text OCR để kết luận avatar đã đổi.
   - **Luồng upload chuẩn:** Trên Profile tap bút chì `(75, 150)` ➔ "Thay đổi ảnh" `(539, 579)` ➔ "Tải ảnh lên" `(224, 1637)` (né triệt để popup "Hoạt động không có sẵn") ➔ Định vị đúng ô ảnh mục tiêu trong Gallery bằng visual match ➔ Tap `Tiếp (1)` `(921, 1843)` ➔ Tap `Lưu` `(792, 1794)` ➔ Đợi 10s CDN ➔ Tap Back `(80, 140)` về Profile.
-  - Sau khi lưu, BẮT BUỘC crop vòng tròn avatar `(800..980, 250..420)` trên ảnh màn hình Profile mới nhất, dùng Claude CLI / model vision soi mắt xác nhận đúng chủ thể mới trước khi báo cáo User.
 - Soi mắt kiểm tra trước khi gửi:
   - Đúng Username, Tên hiển thị chuẩn.
   - Avatar chính trên Profile đã đổi đúng chủ thể mới (nam đeo kính / nữ nấu ăn).
