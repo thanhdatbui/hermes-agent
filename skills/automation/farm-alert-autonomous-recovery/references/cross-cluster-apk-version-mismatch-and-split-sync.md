@@ -84,3 +84,8 @@
 - **Hiện tượng:** Khi kiểm tra thư mục lock thấy máy mục tiêu đang không có file lock (`NO_LOCK`), nhưng khi vừa gọi script can thiệp thì lập tức văng `DeviceLockTimeoutError: timed out waiting for device lock`.
 - **Nguyên nhân:** Tiến trình batch nuôi feed (`multi-machine-feed-session`) sử dụng cơ chế cấp phát và giải phóng lock theo nhịp cuốn chiếu (JIT lock per-machine). Giữa các nhịp xử lý, máy có thể tạm thời nhả lock trong vài giây trước khi worker kế tiếp của cùng tiến trình cha giành lại lock cho lượt tiếp theo.
 - **Quy tắc bất biến:** Không chỉ kiểm tra trạng thái lock tức thời của 1 máy; BẮT BUỘC kiểm tra trạng thái sống của tiến trình cha điều phối batch (`psutil.pid_exists(PARENT_PID)`). Chỉ khi tiến trình cha đã kết thúc hoàn toàn (toàn bộ 78 máy đã hoàn tất chu trình và emit log xong) mới được phép thực thi rollout nâng cấp đồng loạt.
+
+### I. Bẫy Lệch Toạ Độ Camera Mode Upload Thumbnail (Nhầm Tưởng Là Lỗi APK)
+- **Hiện tượng:** Máy đã nâng cấp lên v47.0.3 nhưng vẫn văng lỗi `[VIDEO_PICK_CREATE_ENTRY_UNCONFIRMED]`.
+- **Bản chất:** Khi bấm `+`, TikTok mở Camera mode thay vì Thư viện. Script tap vào toạ độ cứng `(156, 1574)` để mở gallery nhưng bị trượt hoặc vướng dialog quyền. Script lùi lại tìm nút `+` trong Camera mode (vốn không có nút `+` đáy) dẫn đến fail-closed.
+- **Chi tiết xem:** `references/opportunistic-upload-batch-alert-misclassification-and-camera-picker-triage.md`.
