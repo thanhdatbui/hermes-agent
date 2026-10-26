@@ -105,3 +105,19 @@ Khi người dùng phản ánh auto-heal không chạy sau báo cáo watchdog ca
   - Khi user báo lỗi ("Clgt", "Fix đi", "Fix đi gemini"), CẤM TUYỆT ĐỐI trả lời bằng văn bản hứa hẹn, giải thích triết lý hay trình bày kế hoạch ("Tôi sẽ xử lý...", "Bước tiếp theo cần...").
   - Phải lập tức gọi tool để truy vết hiện trường, phân tích queue/log, sửa code, chạy test focused và chỉ trả lời kèm bằng chứng thực tế khi đã hoàn tất.
 
+## 9. Mở Rộng Auto-Heal 3 Trụ Cột & Cơ Chế Dual-Cluster Telemetry (26/10/2026)
+- **Bao phủ toàn diện 3 quy trình trong `feed_session_watchdog.py`:**
+  - **Nuôi Feed (`tiktok-luot nuoi acc`):** Kích hoạt khi `cat == "Lỗi App TikTok/Script"` -> target `multi_machine_feed_session.py`.
+  - **Follow chéo (`mode="follow"`):** Kích hoạt khi `fl_error` có phân loại lỗi `Lỗi App/Script`, `Lỗi Selector`, `Kẹt UI`, `Crash` -> target `multi_machine_feed_session.py`, route Telegram `-5127276494`.
+  - **Đăng Video (`Tiktok-video`):** Kích hoạt khi `up_error` có máy lỗi script/xác minh trong Phiên 2 -> target `scripts/tiktok_workflow/run_post.py`, route Telegram `-5435853713`.
+- **Hàm Tự Phục Hồi Serial & Dual-Cluster Socket (`resolve_serial_and_args`):**
+  - Để triệt tiêu hoàn toàn bẫy truyền số máy thô (`serial="48"`) làm ADB báo `device not found`, `incident_emitter.py` tích hợp `resolve_serial_and_args(serial, machine_id)`:
+    - Tự động map `mid` qua `get_serial_for_machine(mid)` từ `inspect_machine.py`.
+    - Tự động định tuyến ADB socket: nếu `mid >= 200` (Admin Remote), bổ sung cờ `['-H', ADMIN_IP, '-P', str(ADMIN_PORT)]` để capture đúng màn hình cụm máy remote.
+    - Dùng trực tiếp binary `ADB_BIN` (GemPhoneFarm/xiaowei) thay vì gọi `adb` trần.
+- **Khử Spam Notification Khi Xử Lý Hàng Đợi (Queue Notify Suppression):**
+  - Trong `incident_auto_harness.py`, hàm `notify()` bắt buộc kiểm tra `if status != 'SUCCESS_MERGED': return`.
+  - Tuyệt đối không gửi tin nhắn Telegram lẻ cho từng vé bị `BLOCKED` trong vòng lặp `process_queue()`.
+  - Mọi lỗi/blocked được cách ly sang `runtime/incidents/blocked/` trong im lặng, chỉ để `cron_incident_auto_heal.py` in 1 dòng digest tổng kết cho Hermes scheduler.
+
+

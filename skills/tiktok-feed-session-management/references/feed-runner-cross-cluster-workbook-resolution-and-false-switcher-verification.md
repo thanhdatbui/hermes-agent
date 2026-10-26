@@ -75,3 +75,12 @@ Nếu mạng hoặc máy lag 1-2s, `@handle` chưa xuất hiện trong XML dump 
 3. **Verify Profile Cuối Phiên Phải Có Actionable Hand-off:**
    Nếu `_verify_profile_after_session` phát hiện `profile account mismatch`:
    - Ghi nhận `profile_mismatch_detected` và trigger switch về đúng nick hoặc gọi recovery login thay vì chỉ đơn thuần đánh dấu manual-needed rồi thoát.
+
+4. **Canary Validation Pitfall: False-Positive Pass Trên Default `--row 1` & Timeout Scaling:**
+   - Khi chạy Canary kiểm chứng sau khi fix auto-login / recovery: CẤM TUYỆT ĐỐI dùng `--row 1` mặc định nếu nick ở `--row 1` đã có sẵn trên máy (vì `profile_preflight` sẽ match ngay và skip luồng login recovery, sinh false-positive pass). Bắt buộc tra cứu đúng `--row <N>` của tài khoản đang vắng mặt hoặc bị lỗi trên máy.
+   - Timeout cho Canary login trên cụm remote Admin ($m \ge 200$) qua socket `192.168.110.119:5037` bắt buộc $\ge 720s$ (đặc biệt khi có luồng giải OTP Graph API và reconnect remote adb), cấm để 300s gây timeout oan uổng.
+
+5. **Kỷ Luật Dữ Liệu Excel Cột PASS (User Rule 2026-08-16 - CẤM Ghi Bậy Pass Vào Excel):**
+   - Tài khoản reg email-only (qua app Outlook) chưa hoàn tất bước tạo mật khẩu tĩnh trên TikTok: cột `PASS` trong Excel BẮT BUỘC để `None` (trống).
+   - Tuyệt đối CẤM sinh pass ngẫu nhiên rồi điền bậy vào file Excel khi server TikTok chưa có mật khẩu đó. Việc điền bậy sẽ khiến mọi runner lầm tưởng tài khoản đã có pass, thử login bằng pass dẫn tới lỗi `Mật khẩu sai` và nguy cơ bị TikTok khóa nick / rate limit.
+   - Khi gặp tài khoản cũ bị dính pass rác/ảo trong Excel dẫn tới `Mật khẩu sai`, bước đầu tiên là kiểm tra dữ liệu; nếu nick thuộc diện email-only, xóa sạch ô PASS về `None` để các kịch bản login nhận diện đúng và kích hoạt luồng OTP (Graph API) thay vì gõ pass sai.
