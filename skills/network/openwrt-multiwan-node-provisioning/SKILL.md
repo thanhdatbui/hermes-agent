@@ -148,6 +148,15 @@ When headless network access fails and an on-site computer is borrowed via Ultra
    - If Tailscale daemon booted before WAN was established, it may stay idle in backoff.
    - Go to **System -> Startup**, locate `tailscale`, and click **Restart**.
    - If node still fails to handshake, check **Status -> System Log** for clock desync (NTP failing to sync TLS time) or DNS failure resolving `controlplane.tailscale.com`.
+4. **Clock Desync TLS Trap (`x509: certificate is not valid`):**
+   - No-RTC routers boot with stale clock time. TLS handshakes to Tailscale DERP relays fail with `x509: certificate is not valid for any names`.
+   - **Fix:** In LuCI go to **System -> System -> General Settings**, click **`SYNC WITH BROWSER`**, click **Save & Apply**, then restart `tailscale` in **System -> Startup**.
+5. **DNS Forwarding Trap:**
+   - If log shows `no such host` resolving Tailscale domains on `127.0.0.1:53`, add public resolvers (`8.8.8.8`, `1.1.1.1`) under **Network -> DHCP and DNS -> DNS forwardings** and save.
+6. **ISP Walled Garden vs CGNAT (`172.17.x.x`):**
+   - If PPPoE obtains `172.17.x.x` but `Network -> Diagnostics -> Ping 8.8.8.8` has 100% loss, the newly provisioned fiber line is in an ISP administrative hold / captive portal redirecting traffic. The local ISP branch must activate the circuit.
+7. **PPPoE `Timeout waiting for PADO packets`:**
+   - Indicates no discovery offer from BRAS. Verify: cable is in **LAN 1** of ONT (many ONTs only bridge LAN 1), ONT is set to Bridge Mode, and VLAN ID (e.g. 35) is configured if required by provincial ISP.
 
 ## References
 

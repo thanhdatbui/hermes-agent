@@ -85,3 +85,51 @@ When headless remote access fails and an on-site Windows machine is borrowed via
 - **WAN2 (Line 2):** Discovered actively connected via PPPoE with IP `172.17.49.92/32` (VNPT CGNAT) and IPv6 `2402:800:.../64`. This proved the physical line, fiber circuit ID, and ONT bridge were 100% operational.
 - **WAN (Line 1):** Displayed `Error: Unknown error (USER_REQUEST)` due to an uninitiated daemon state; resolved by clicking `Restart`.
 - **Tailscale Daemon Kickstart:** Because Tailscale initially booted prior to PPPoE establishment, the daemon paused in retry backoff. Triggering `Restart` under `System -> Startup -> tailscale` forced an immediate re-handshake over the active PPPoE interface.
+
+---
+
+## 4. Clock Desynchronization, DNS Bootstrap, and Captive Portal (x509 Certificate Block)
+
+### 1. Clock Desync & TLS Failure (`x509: certificate is not valid for any names`)
+- **Symptom in System Log (`Status -> System Log`):**
+  ```text
+  tailscaled: trying bootstrapDNS("derp9.tailscale.com", "...") for "controlplane.tailscale.com": x509: certificate is not valid for any names
+  ```
+- **Root Cause:** Routers without battery-backed RTC (like MT7621 Xiaomi R3G) retain the shutdown timestamp across reboots until NTP syncs. If deployed 15 days later without working NTP, system time is stuck in the past, causing Go `crypto/x509` certificate validation to fail on DERP relay connections.
+- **Remedy via LuCI GUI:**
+  1. Navigate to **System -> System -> General Settings**.
+  2. Under **Local Time**, click **SYNC WITH BROWSER** to instantly set the router clock to the technician's browser time.
+  3. Click **Save & Apply**.
+  4. Go to **System -> Startup**, find `tailscale`, and click **Restart**.
+
+### 2. DNS Forwarding Trap for Tailscale Bootstrap
+- **Symptom in System Log:**
+  ```text
+  logtail: dial "log.tailscale.io:443" failed: dial tcp: lookup log.tailscale.io on 127.0.0.1:53: no such host
+  ```
+- **Root Cause:** Upstream ISP DNS servers either fail to resolve Tailscale domains or drop port 53 UDP queries during initial line provisioning.
+- **Remedy via LuCI GUI:**
+  1. Navigate to **Network -> DHCP and DNS -> General Settings**.
+  2. Locate **DNS forwardings**, enter `8.8.8.8` and `1.1.1.1`.
+  3. Click **Save & Apply**.
+  4. Restart `tailscale` under **System -> Startup**.
+
+### 3. ISP Walled Garden / Captive Portal vs Real Internet
+- **Symptom:** PPPoE establishes successfully and receives an IP in `172.17.x.x` (common on VNPT), but Tailscale bootstrap connections time out (`context deadline exceeded`) or return certificate mismatch errors.
+- **Root Cause:** Newly provisioned fiber lines that have not completed administrative activation at the ISP billing system/OLT are placed into a "Walled Garden" / captive portal. All outbound HTTP/HTTPS requests are intercepted and redirected to the ISP's billing notice page, breaking TLS handshakes.
+- **Verification via LuCI:**
+  1. Go to **Network -> Diagnostics**.
+  2. Under **Ping**, test `8.8.8.8`.
+  3. If result is `100% packet loss` despite PPPoE interface showing connected, the line is in an ISP administrative hold and cannot reach the public internet until activated by the ISP local branch.
+
+### 4. PPPoE `Timeout waiting for PADO packets` (Discovery Failure)
+- **Symptom in System Log:**
+  ```text
+  pppd: Timeout waiting for PADO packets
+  pppd: Unable to complete PPPoE Discovery
+  ```
+- **Diagnostics & Root Causes:**
+  - Carrier is detected (`Link is Up - 1Gbps`), but no PPPoE Active Discovery Offer (PADO) is received from the BRAS.
+  - **Check 1 (Wrong Port on ONT):** Many ISP ONTs (ZTE, Huawei, iGate) only bridge on **LAN 1**. Plugs in LAN 2–4 receive no PADO responses.
+  - **Check 2 (Unbridged ONT):** ONT is still operating in Router mode (NAT) and rejecting PPPoE pass-through.
+  - **Check 3 (VLAN Tagging Requirement):** ISP requires 802.1Q VLAN tagging on the WAN interface (e.g., VLAN 35 for VNPT in specific provinces). Untagged PADI packets are silently dropped by the OLT.
