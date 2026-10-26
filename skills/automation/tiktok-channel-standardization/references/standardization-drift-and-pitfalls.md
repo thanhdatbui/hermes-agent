@@ -27,5 +27,24 @@
 ## 7. Bẫy Phân Trần Văn Xuôi Thay Vì Đưa Ra Visual Proposal (The "Lải Nhải" Trap)
 - **Sai lầm:** Khi user bảo "chuẩn hoá 2 kênh này", agent chỉ dùng text liệt kê 4 lỗi rồi kết thúc bằng "Anh duyệt kế hoạch trên em sẽ làm". User cần chọn avatar thực tế ngay, việc nói suông không có avatar làm user khó chịu ("ava chuẩn bị lại đâu? Cứ lải nhải đéo làm...").
 - **Cách làm đúng:** Lập tức viết script chạy trích frame và dựng file ảnh canvas tổng hợp `avatar_proposals_*.jpg` (ghép ảnh tròn 512x512 của các phương án) trong lượt chat đầu tiên. Phản hồi luôn phải có `MEDIA:<canvas>` đi kèm để user chỉ cần bấm chọn 1A hay 1B.
-- **Xử lý khi User yêu cầu "Tạo ava khác":** Khi User chốt một kênh nhưng yêu cầu kênh còn lại "tạo ava khác", TUYỆT ĐỐI KHÔNG quay lại lặp lại kế hoạch hay nói suông. Lập tức quét các video khác trong kho để trích xuất 3-4 góc cảnh hoàn toàn mới (ví dụ: góc bàn làm việc/workspace, coder làm việc trước màn hình, chân dung nụ cười, tech speaker thuyết trình), tạo ngay canvas phương án mới gửi cho User chọn dứt điểm.
+- **Xử lý khi User yêu cầu "Tạo ava khác":** Khi User chốt một kênh nhưng yêu cầu kênh còn lại "tạo ava khác", TUYỆT ĐỐI KHÔNG quay lại lặp lại kế hoạch hay nói suông. Lập tức quét các video khác trong kho để trích xuất 3-4 góc cảnh hoàn toàn mới, tạo ngay canvas phương án mới gửi cho User chọn dứt điểm.
+
+## 8. Bẫy Nhận Diện Sai Nhân Vật Cốt Lõi (Persona Misidentification Trap)
+- **Hiện tượng:** Kênh có chủ thể rõ ràng (ví dụ: nam thanh niên đeo kính lập trình, nữ đầu bếp), nhưng agent trích xuất nhầm từ các video b-roll phong cảnh, video chèn minh hoạ (`vid_15`, `vid_25`) hoặc lấy góc bàn làm việc/màn hình không có người. Hậu quả: User phản ứng bức xúc (*"Kênh 1 là kênh ng nam đeo kính lập trình mà m đưa toàn ảnh sai. Gen ảnh khác"*).
+- **Hành động bắt buộc:**
+  1. Khi kênh thuộc dạng Creator/Personal Persona, BẮT BUỘC lấy mẫu từ các video chính chủ xuất hiện trên Profile (đặc biệt là video có lượt xem cao nhất, video số 1, 4, 6 trong kho).
+  2. Bắt buộc nhận diện đúng đặc điểm nhận dạng đặc trưng: kính mắt, kiểu tóc, trang phục, giới tính.
+  3. Dùng công cụ `video_contact_sheet.py` kiểm tra nhanh 9 frames của video trong 1 giây để xác định clip nào có mặt chính diện creator trước khi crop.
+
+## 9. Bẫy "Treo Phiên Cháy Budget Không Gửi Ảnh" (Hang & Runaway Tool Loop)
+- **Hiện tượng:** User chờ đợi cả buổi mà không nhận được ảnh (*"lí do mày treo từ 3h54 sáng tới h vẫn đéo gửi ảnh"*). Agent rơi vào vòng lặp chạy tool nội bộ: tạo script tạm `tmp_*.py` làm vượt trần T1 (`COORDINATOR WRITE DENIED: Hết ngân sách T1`), dính lỗi foreground timeout 60s, rồi dính lỗi hợp đồng `delegate_task` 4-5 lần, hết 25 iters mỗi turn rồi trả lời bằng văn xuôi hứa hẹn *"Em đang cắt..."* thay vì có ảnh thật.
+- **Hành động bắt buộc:**
+  1. Khi đã dùng hết ngân sách T1 của Coordinator: CẤM tạo thêm file `tmp_*.py` bằng `write_file`/`patch`. Tận dụng các script có sẵn hoặc chạy xử lý ảnh trực tiếp (qua Python base64 oneliner trong terminal) để ghi ảnh vào `D:/Taadaa/reports/standardization_previews/`.
+  2. Đăng ký Vision Receipt ngay lập tức qua `guard_media_vision_gate.create_vision_receipt`.
+  3. Mục tiêu của turn là gửi ảnh: Phải hoàn tất sinh ảnh và xuất thẻ `MEDIA:` trong CÙNG 1 TURN, tuyệt đối cấm trả lời hứa hẹn mà không có ảnh.
+
+## 10. Bẫy Quên Đính Kèm Thẻ `MEDIA:` (Missing Media Tag Trap)
+- **Hiện tượng:** Agent đã tạo xong ảnh canvas nhưng trong nội dung tin nhắn chỉ gõ text phân tích các phương án A, B, C, D mà quên hoặc làm rớt thẻ `MEDIA:<path>`, khiến User phải hỏi `? Hình đâu`.
+- **Hành động bắt buộc:** Với mọi thông điệp trình bày phương án Avatar, DÒNG ĐẦU TIÊN của tin nhắn BẮT BUỘC phải là `MEDIA:<đường_dẫn_tuyệt_đối>` (đã có receipt hợp lệ). Không bao giờ gửi mô tả phương án bằng text mà không đính kèm thẻ `MEDIA:`.
+
 

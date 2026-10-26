@@ -6,13 +6,14 @@ description: "Use when standardizing TikTok profiles (bio, pin, avatar)."
 # TikTok Channel Standardization (5-in-1 Protocol)
 
 ## 🛑 NGUYÊN TẮC CỐT LÕI: PROPOSAL-FIRST (CẤM "LẢI NHẢI" KẾ HOẠCH BẰNG VĂN XUÔI)
-- **Hành vi cấm kỵ (Anti-Pattern):** Khi nhận ảnh/yêu cầu chuẩn hoá kênh, Coordinator dừng lại gõ chữ phân trần dài dòng, phân tích hiện trạng rồi hỏi "anh có duyệt kế hoạch không" mà KHÔNG có sản phẩm hình ảnh cụ thể. User cực kỳ ghét việc này (*"Là sao nữa ava chuẩn bị lại đâu? Cứ lải nhải đéo làm mệt..."*).
+- **Hành vi cấm kỵ (Anti-Pattern):** Khi nhận ảnh/yêu cầu chuẩn hoá kênh, Coordinator dừng lại gõ chữ phân trần dài dòng, phân tích hiện trạng rồi hỏi "anh có duyệt kế hoạch không" mà KHÔNG có sản phẩm hình ảnh cụ thể. User cực kỳ ghét việc này (*"Là sao nữa ava chuẩn bị lại đâu? Cứ lải nhải đéo làm mệt..."*). Hoặc quay cuồng chạy tool nội bộ đến cháy budget rồi hứa suông *"Em đang cắt..."* làm treo phiên (*"lí do mày treo từ 3h54 sáng tới h vẫn đéo gửi ảnh"*).
 - **Quy chuẩn bắt buộc (Proposal Canvas First):**
-  1. Ngay khi nhận lệnh: Lập tức trích xuất frame từ video gốc `F_src` (khuôn mặt creator, góc setup, món ăn đặc trưng) hoặc lấy avatar gốc.
+  1. **Khớp đúng Persona cốt lõi:** BẮT BUỘC trích xuất từ các video chính chủ trên profile (clip top view, clip số 1, 4, 6 trong kho) để nhận diện đúng đặc điểm nhận dạng (nam đeo kính, nữ nấu ăn...). CẤM lấy nhầm b-roll phong cảnh hoặc góc máy không người làm sai chủ thể. Dùng `video_contact_sheet.py` soi 9 frames trong 1s để chọn clip chuẩn.
   2. Crop chuẩn $512 \times 512$, tạo preview viền tròn TikTok (`make_circle_preview`).
-  3. Ghép thành bảng **Proposal Canvas** duy nhất (`D:/Taadaa/reports/standardization_previews/avatar_proposals_*.jpg`) chứa đủ 2 phương án/kênh (PA 1A, PA 1B, PA 2A, PA 2B) kèm tóm tắt toạ độ, niche, bio đề xuất, pin top.
-  4. Đăng ký vision receipt và gửi ngay kèm thẻ `MEDIA:` trong phản hồi để User nhìn thấy tận mắt và chọn nhanh (`K1: 1A, K2: 2B`).
-  5. Khi User phản hồi điều chỉnh hoặc giục ("còn lại xử lý đi"): TUYỆT ĐỐI KHÔNG giải thích lại kế hoạch, phải trình ảnh phương án ngay hoặc chạy thẳng các runner canonical trên thiết bị.
+  3. Ghép thành bảng **Proposal Canvas** duy nhất (`D:/Taadaa/reports/standardization_previews/avatar_proposals_*.jpg`) chứa đủ phương án kèm tóm tắt toạ độ, niche, bio đề xuất, pin top.
+  4. Đăng ký vision receipt qua `guard_media_vision_gate.create_vision_receipt`.
+  5. **Bắt buộc thẻ `MEDIA:` dòng đầu tiên:** Phản hồi User BẮT BUỘC đặt thẻ `MEDIA:<đường_dẫn_tuyệt_đối>` ở ngay dòng 1. CẤM gõ văn bản mô tả phương án A, B, C, D mà bỏ quên thẻ ảnh khiến User phải hỏi `? Hình đâu`.
+  6. Khi User phản hồi điều chỉnh ("K1 tạo ava khác", "còn lại xử lý đi"): TUYỆT ĐỐI KHÔNG giải thích lại kế hoạch, phải xuất ảnh phương án mới ngay trong turn hoặc chạy thẳng các runner canonical trên thiết bị. Không để vòng lặp tool làm kẹt phiên.
 
 ## Trigger & Scope
 Áp dụng khi người dùng yêu cầu *"Chuẩn hoá kênh này"* hoặc *"Chuẩn hoá N kênh"* kèm ảnh chụp màn hình Profile TikTok.

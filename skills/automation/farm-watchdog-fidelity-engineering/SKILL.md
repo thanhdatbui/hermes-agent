@@ -64,6 +64,14 @@ Applies whenever reports fail to reflect actual fleet health, mask dropped machi
       should_report = True
   ```
 
+### Invariant 6: Exception-Driven Alerting (Silent on Nominal, Loud on Anomaly)
+- **Anti-Pattern:** Emitting verbose periodic status messages on Telegram every 6h even when 100% of accounts and machines are healthy, leading to notification fatigue and ignoring alerts.
+- **Rule:** Silence is only valid with positive proof of health. Any empty source, crash, or threshold failure must fail-closed into an alert immediately. Use the `CronRun` pattern from `references/exception-driven-alerting-and-24h-heartbeat.md`.
+
+### Invariant 7: Independent 24H Heartbeat (Dead-Man's Switch at 09:00 VN)
+- **Anti-Pattern:** Assuming that silence across a 24h window means nominal health, while a crashed scheduler, corrupted python environment, or severed Telegram webhook went undetected.
+- **Rule:** Deploy a separate, lightweight aggregator (`cron_heartbeat.py`) that reads watchdog state files independently and emits exactly 1 digest message daily at 09:00 VN (02:00 UTC) summarizing fleet monitoring vitality.
+
 ---
 
 ## 3. Verification Protocol for Watchdogs & Reports
@@ -75,5 +83,6 @@ Applies whenever reports fail to reflect actual fleet health, mask dropped machi
 ---
 
 ## 4. References & Case Studies
+- [`references/exception-driven-alerting-and-24h-heartbeat.md`](references/exception-driven-alerting-and-24h-heartbeat.md) — Exception-driven alerting, fail-closed tri-state model, and the 24h heartbeat aggregator (Dead-Man's Switch).
 - [`references/zero-reporting-blindspots-and-watchdog-fidelity.md`](references/zero-reporting-blindspots-and-watchdog-fidelity.md) — Case study: Eliminating blindspots in Taadaa Farm cron reports (ADB offline isolation, state desync fallback, NEEDS_LOGIN separation, starving slot alerts).
 - [`references/watchdog-timeout-and-file-scan-bottleneck.md`](references/watchdog-timeout-and-file-scan-bottleneck.md) — Case study: Watchdog timeout & file-scan bottleneck in large idempotency directories (>9k files).
