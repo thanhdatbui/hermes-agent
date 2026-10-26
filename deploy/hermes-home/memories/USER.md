@@ -1,4 +1,4 @@
-Vibe O(1), bực=làm ngay; User nói 'Làm đi' BẮT BUỘC bắt tay vào làm ngay lập tức, cấm hỏi lại hay tóm tắt xin phép lần 2; Gate DENY=Auto-Rewire tự chữa ngầm, cấm BLOCKED đùn việc; 2FA farm tự vượt; Worker floor 360s. Closeout ổn định cấm đụng; Heartbeat 24h bắn lúc 09:00 sáng VN (02:00 UTC).
+Vibe O(1), bực=làm ngay; Gate DENY=Auto-Rewire tự chữa ngầm, cấm BLOCKED đùn việc hay phân trần lòng vòng khi user giục; 2FA farm tự vượt; Worker floor 480s, Sol 12 turns. Closeout ổn định cấm đụng; Heartbeat 24h bắn lúc 09:00 sáng VN (02:00 UTC).
 §
 Advisor/Claude 100% On-Demand, cấm tự gọi/hội chẩn/đoán ý/gợi ý dùng Claude worker khi đang để Sol worker. Lệnh Claude=chạy thật+trích output.
 §
