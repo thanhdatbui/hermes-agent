@@ -91,3 +91,18 @@ When automating OpenAI/ChatGPT authentication, operators must distinguish betwee
 - [ ] `chatgpt_gpm_direct_reg.py` returns `1` when registration fails (`res["status"]` is not `SUCCESS`, `ALREADY_LOGGED_IN`, or `DRY_RUN_OK`).
 - [ ] Cross-cluster Excel lookup reads both `kibe/gmail_clean_v2.xlsx` and `admin/gmail_clean_v2.xlsx`.
 - [ ] Supervisor state (`chatgpt_registered_at`) is only set when actual token/cookie is confirmed or CLI exit code is verified non-zero on failure.
+
+---
+
+## 6. Password Footprint Elimination & Random Salt Discipline
+- **CẤM HẬU TỐ TĨNH TOÀN FARM:** Tuyệt đối không dùng chuỗi cố định (như `@Taadaa2026`) hay tên thương hiệu farm để nối dài mật khẩu < 12 ký tự cho hàng loạt tài khoản. Đây là pattern footprint chết người khiến hệ thống chống bot/fraud detection của OpenAI dễ dàng quét trảm liên đới cả dàn.
+- **Salt Ngẫu Nhiên Độc Nhất (Zero Shared Footprint):**
+  - Mật khẩu < 12 ký tự phải được bổ sung salt ngẫu nhiên riêng biệt cho từng tài khoản (kết hợp các ký tự đặc biệt `@, #, $, %, !, &, *`, chữ hoa, chữ thường và chữ số độc nhất).
+  - Tự động lưu mật khẩu thực tế vừa tạo vào cột `PASS CHATGPT` (cột L) của cả hai file Excel (`kibe/taikhoan_dat_v2_updated .xlsx` và `admin/taikhoan_dat_v2_updated .xlsx`) qua `save_chatgpt_password_to_excel(email, password)`.
+
+---
+
+## 7. Farm Terminology & Telemetry Truth (Hotmail Mua Sẵn vs Reg)
+- **Thuật ngữ chuẩn xác:** Toàn bộ tài khoản Hotmail trên farm là **MAIL MUA SẴN** (từ các file `latest_bought_*.txt`). Farm **hoàn toàn KHÔNG CÓ script reg Hotmail**.
+- **Cấm Báo Cáo Bố Láo:** Bước `HOTMAIL_LOGIN` là đăng nhập tài khoản mail mua sẵn vào GPM profile bằng `mail_password`, sau đó mới đến bước `CHATGPT_REG`. Tuyệt đối không được nói tắt hoặc báo cáo sai lệch thành "reg Hotmail".
+- **OmniRoute Proxy Cap Discipline:** Giới hạn tạm thời tối đa **2 accounts / 1 proxy IP** (`scope = 'account'` trong `proxy_assignments`). Giới hạn worker đồng thời $\le 5$ để tránh tràn RAM và nghẽn băng thông proxy 4G.
