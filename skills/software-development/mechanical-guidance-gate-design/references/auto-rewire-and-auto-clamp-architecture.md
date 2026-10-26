@@ -64,4 +64,18 @@
 - **Auto-Rewire Over Fail-Stop:** Every guard or gate failure pattern must be converted into an automatic rewrite, clamp, or route forward. The agent must never report BLOCKED without an active, deterministic pivot path.
 - **Test Alignment Verification:** When modifying gate warning/error messages (such as `--skip-test is forbidden in repo mode`), verify that regression tests asserting those exact strings remain intact.
 
+## 5. Claude CLI Architecture Consensus: Safe Auto-Rewire vs Mandatory Fail-Fast
+- **The Core Rule**: Only auto-fix/auto-rewire when the transformation preserves original intent and does NOT alter permissions, execution tiers, or target scopes. Otherwise, fail-fast immediately with copy-pasteable `REQUIRED_ACTION_O1`.
+- **Safe to Auto-Rewire / Auto-Inject**:
+  * *Investigate Route Default Budget*: When `delegate_task` is called for read-only investigation without a `BUDGET:` tag, auto-inject `BUDGET: <= 8 calls` with `action: "rewrite"` and notice flag `AUTO_INJECTED_DEFAULT`. (Never inject for code-edit routes).
+  * *Console Window Suppression (`CONSOLE_WINDOW`)*: On Windows, auto-merge `creationflags |= 0x08000000` (`CREATE_NO_WINDOW`) in background subprocesses to prevent console popups from stealing OS focus.
+- **Strictly Forbidden to Auto-Rewire (Must Fail-Fast with REQUIRED_ACTION_O1)**:
+  * *Code Edit via `delegate_task` (`subagent_edit_blocked`)*: `dispatch_worker.py` enforces a completely different execution contract (Context Pack, single anchor, worker tier ladder). Rewiring implicitly changes the executor without review. Must DENY with pre-filled `dispatch_worker.py` command containing the target file.
+  * *Root Disk Scanning (`GUARD_SEARCH_FILES_ROOT` / `GUARD_DANGEROUS_ROOT`)*: NEVER auto-narrow broad search paths (e.g. `D:/Taadaa` -> `D:/Taadaa/tools`). Guessing scope risks returning incomplete/false results silently and violates Scope Lock. Must DENY with copy-pasteable command narrowed to cwd or machine log.
+  * *Device Locks (`GUARD_DEVICE_LOCK_REQUIRED`)*: NEVER auto-acquire locks. Locks belong strictly to `host+pid+lock_id`. Must DENY with sample `with_device_lock.py --machine <N> -- ...` command.
+- **Guidance Placement Hierarchy**:
+  * *`rules.json` (GuardGate)*: Use when violations are detectable via regex/AST, binary pass/fail, and have heavy operational consequences (I/O freeze, device collision, console stealing). Intercepts at tool invocation time.
+  * *Dynamic Skill Routing (`record_skill_knowledge.py`)*: Use for operational context (tier selection, context packs, budget rationale). Injected into prompt before tool call to minimize initial blocks.
+  * *Promotion from Skill to Rule*: If repeated blocks persist despite skill injection (e.g. >20 blocks in 6h), promote from skill guidance to mechanical gate rule with pre-filled `REQUIRED_ACTION_O1` template.
+
 

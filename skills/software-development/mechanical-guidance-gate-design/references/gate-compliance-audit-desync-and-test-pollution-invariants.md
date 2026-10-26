@@ -12,7 +12,8 @@ Two systemic flaws can corrupt audit conclusions:
 Every watchdog or telemetry parser scanning audit logs MUST filter out test and mock execution lines before gate evaluation:
 - Ignore lines where `workdir` or `cwd` contains `pytest` or `tmp_path`.
 - Ignore lines where target file is `target.py` or contains `pytest`.
-- Maintain a dedicated helper `is_test_log_line(line: str) -> bool` that fails closed to exclude synthetic test runs.
+- **Trap — Broad Mock Payloads without 'pytest'**: Unit tests verifying guard gates pass mock payloads directly (e.g., `Review then apply constant change`, `Review "quoted"`, `grep -rn foo`, `os.walk('D:/Taadaa')`, `find . -name '*.py'`). These lines do NOT contain `pytest` or `target.py`! Relying only on `pytest` regex caused >110 mock test lines to pollute the 6h report.
+- **Rule**: Maintain a comprehensive `TEST_MOCK_SIGNATURES` tuple containing known unit test payloads, mock scripts (`script.py`, `bad.py`, `fake_lock.py`, `does_not_exist`), and synthetic targets.
 
 ### B. Timezone Normalization for Naive Log Files
 Audit files emitted by Python hooks often lack timezone offsets:
@@ -25,6 +26,11 @@ Audit files emitted by Python hooks often lack timezone offsets:
       else:
           dt = dt.replace(tzinfo=timezone.utc)
   ```
+- **Fallback mtime Pitfall**: NEVER fall back to `file_mtime >= cutoff and BLOCK_SUSPECT_RE.search(line)` for unparseable timestamps. When a shared log file is touched, its `mtime` becomes fresh, causing ancient unparseable block lines from months ago to falsely re-enter the 6h window. Unparseable timestamps without explicit date must evaluate to `False` (or be quarantined).
+
+### C. Tri-Location Script Sync Parity Invariant
+- **The Pitfall**: Fixing a bug only in `D:/Taadaa/tools/<script>.py` creates an illusion of resolution. Hermes cron jobs (`no_agent: true`) run from `%LOCALAPPDATA%/hermes/scripts/<script>.py`, mirrored from `D:/Taadaa/Hermes/deploy/hermes-home/scripts/`.
+- **The Rule**: Any fix to a watchdog or cron runner must be deployed across all 3 locations (`tools/`, `deploy/hermes-home/scripts/`, and `%LOCALAPPDATA%/hermes/scripts/`) using `python D:/Taadaa/Hermes/deploy/hermes-home/scripts/cron_sync_watchdog.py --force` and verified by comparing sha256 hashes before declaring DONE.
 
 ### C. Tri-State Gate Classification (Eliminating False Alarm Fatigue)
 A gate interception is a safety fence, not necessarily a failure:
