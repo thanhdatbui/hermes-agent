@@ -11,9 +11,3 @@ Tool 2FA và cron xen ca chạy cả ngày BẮT BUỘC dùng Just-In-Time (JIT)
 Tài khoản Gmail chuẩn clean_v2 đã tắt Google Prompt hoàn toàn chỉ dùng 2FA TOTP: login GPM 100% trên PC qua pyotp, không cần ADB hay máy S7; cấm chặn nhầm acc farm có recovery khoaleemagic khi đã có totp_secret.
 §
 Cron watchdog chạy batch (2FA, Gmail reg) BẮT BUỘC ghi nhận run_date độc lập với status success/fail; hàm already_ran cấm bọc điều kiện is_success để chống vòng lặp re-run spam Telegram khi có máy lỗi.
-§
-Watchdog & Cron report toàn farm tuân thủ chuẩn: vi phạm mới bắn ra, không vi phạm thì im lặng; riêng 09:00 sáng VN (02:00 UTC) phát 1 nhịp Heartbeat 24h xác nhận hệ thống sống khỏe.
-§
-Watchdog audit compliance farm gates BẮT BUỘC lọc sạch test/mock artifacts (pytest, target.py) và chuẩn hóa timestamp local naive sang UTC; gate chặn có auto-rewire/tự sửa <= 1 turn tính là REWIRED, cấm đánh FAIL.
-§
-Dispatch cấm delegate_task sửa code -> dùng dispatch_worker.py. Khi user lệnh 'Làm đi/xử lý': bypass khẩn cấp; lệnh python -c phức tạp bọc base64 chống lỗi null-char. Trình avatar bắt buộc đính kèm MEDIA: ngay turn đầu, cấm hứa hẹn suông.
