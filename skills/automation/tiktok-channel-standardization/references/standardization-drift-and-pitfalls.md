@@ -149,6 +149,16 @@
   - Khi phát hiện ô ảnh có độ tương đồng `similarity >= 0.35`, script tự động chọn đúng ô ảnh mục tiêu thay vì tap mù ô đầu tiên.
   - Thuật toán tự chạy 100% trong Python runtime nội bộ, triệt tiêu vĩnh viễn việc re-upload ảnh cũ mà không cần gọi bất kỳ model ngoài nào.
 
+## 24. Bẫy Runner `pin_top_videos.py` Báo `PIN_BUTTON_NOT_FOUND` Trên Màn Hình Share Sheet & Fallback Tọa Độ Ghim O(1)
+- **Hiện tượng:** Khi chạy `pin_top_videos.py`, script mở video player, bấm nút Chia sẻ (Share button) nhưng sau đó thoát với lỗi `{'success': False, 'error': 'PIN_BUTTON_NOT_FOUND'}`.
+- **Căn nguyên kỹ thuật:**
+  1. Trên một số phiên bản TikTok Android (ví dụ trên Samsung S7 / Android 8), cấu trúc cây XML của Share sheet gán chữ "Ghim" vào thuộc tính `content-desc` thay vì `text` (`text='', desc='Ghim', id='com.ss.android.ugc.trill:id/w7x'`).
+  2. Hàm `parse_action_sheet` trong script chỉ tìm các node có thuộc tính thỏa mãn `PIN_BUTTON_LABELS` dạng kết hợp chuẩn, hoặc khi Share sheet là một cửa sổ lớp trên (overlay dialog) thì `dumpUI` của ATX-agent đôi khi không kịp chốt view con trước khi timeout.
+- **Giải pháp Fallback O(1) cứu hộ tức thì:**
+  1. Khi đã mở Share sheet trên màn hình chuẩn 1080x1920: Nút "Ghim" nằm ở hàng thứ 2 của menu chia sẻ (ngay cạnh "Chiếu", "Tăng lượt xem", "Tải về"), tọa độ tâm cố định là `(831, 1833)`.
+  2. Thực hiện tap trực tiếp vào `(831, 1833)`, đợi 3s để TikTok gắn ghim và điều hướng về trang cá nhân.
+  3. **Kiểm chứng hoán đổi vị trí (Position Swap Verification):** Vuốt kéo trang cá nhân để làm mới (`swipe 540 400 540 1200 300`). Kiểm tra lưới video: Video có lượt xem cao nhất (ví dụ `1.213` views) trước đó nằm ở vị trí số 2 sẽ lập tức hoán đổi lên vị trí số 1 (trên cùng bên trái) của lưới video. Đó là bằng chứng xác thực 100% việc ghim thành công!
+
 ## 25. Bẫy Tự Bịa Avatar Mới Khi Chưa Soi Kỹ Profile Gốc & Bẫy Cố Chấp Sinh Ảnh Ảo (Hallucinated Avatar Generation Trap)
 - **Hiện tượng:** Khi nhận ảnh profile TikTok từ User, Agent không trích xuất và đối soát kỹ ảnh avatar hiện hữu trên màn hình profile gốc (hoặc avatar hiện tại vốn dĩ đã là ảnh nhân vật/creator chuẩn được chụp sẵn). Thay vào đó, Agent vội vàng quét các file video trong kho để cắt xén phong cảnh hoặc cắt mặt người trong các clip b-roll một cách gượng ép, tạo ra các phương án avatar xấu, lạc đề và gây bức xúc nghiêm trọng (*"ava mày đưa như lồn ấy"*, *"đéo cái nào đúng cả"*).
 - **Nguyên nhân gốc rễ:** 
@@ -158,5 +168,16 @@
 - **Quy chuẩn bắt buộc:**
   1. **Trích xuất & Kiểm chứng Avatar gốc trước tiên:** Trước khi sinh bất kỳ avatar mới nào từ video, BẮT BUỘC kiểm tra avatar hiện tại trên profile TikTok của nick. Nếu avatar hiện tại đã có ảnh nhân vật/chân dung rõ nét, phải trích xuất ra để so sánh và hỏi User có muốn giữ lại hay không.
   2. **Khi User chê phương án ("đéo cái nào đúng", "ava xấu"):** TUYỆT ĐỐI CẤM tiếp tục vòng lặp tự mò video cắt ảnh bừa bãi. Phải đưa ảnh avatar thực tế của profile ra đối soát ngay, thừa nhận nhận diện sai và xin ý kiến định hướng cụ thể (giữ avatar cũ hay muốn nhân vật/phong cách cụ thể nào).
+
+## 26. Kỷ Luật Khai Báo Claim Video Ghim Đối Với `guard_media_vision_gate.py` (Anti-Ungrounded Pinned Claim)
+- **Hiện tượng:** Sau khi ghim video top lên vị trí số 1 thành công, Agent gửi tin nhắn kèm `MEDIA:` nhưng bị Hook `guard_media_vision_gate.py` chặn đứng: `[CONTRADICTION_GATE_TRIGGERED] verdict: UNGROUNDED_TEXT_CLAIM`.
+- **Căn nguyên:**
+  1. Trên giao diện TikTok của nhiều dòng máy Farm, thumbnail video ở vị trí số 1 sau khi ghim chỉ hiển thị số lượt xem (ví dụ `> 1.213`) mà không hiện huy hiệu chữ đỏ `Đã ghim` (hoặc OCR không bắt được chữ `Đã ghim`).
+  2. Agent theo thói quen máy móc gõ vào tin nhắn: *"Video top view đã có nhãn đỏ Đã ghim"*. Hook đối soát thấy từ khóa "Đã ghim" không có trong kết quả OCR nên lập tức kích hoạt fail-closed.
+- **Quy tắc khai báo chuẩn xác:**
+  - BẮT BUỘC đối soát OCR của ảnh chụp trước khi soạn nội dung tin nhắn.
+  - Nếu thumbnail không có chữ "Đã ghim" rõ ràng trong OCR: BẮT BUỘC mô tả trung thực theo vị trí và số lượt xem thực tế:
+    `Clip có lượt xem cao nhất (X views) đã được đưa lên vị trí số 1 đầu trang cá nhân (clip Y views nằm ở vị trí số 2 kế bên)`.
+  - TUYỆT ĐỐI CẤM tự ý thêm từ "nhãn đỏ Đã ghim" khi OCR không có token tương ứng để tránh bị Gate chặn `UNGROUNDED_TEXT_CLAIM`.
 
 

@@ -68,3 +68,18 @@
   2. File cấu hình ứng dụng gateway (bọc kiểm tra dictionary an toàn).
   3. File cấu hình môi trường cục bộ.
 - Bọc `try/except` từng tầng có log cảnh báo cụ thể ra stderr khi file lỗi, loại bỏ hoàn toàn việc crash hoặc nuốt lỗi im lặng.
+
+## 7. Quy trình Đối Soát & Triage Sự Cố L3 Blocked (False Positive vs Real Blocker)
+Khi `incident-auto-heal-dispatcher` thông báo: `Thất bại / Chuyển L3: N sự cố`, Coordinator thực hiện quy trình đối soát O(1) sau:
+1. **Kiểm tra File Sự Cố Blocked:**
+   - Đọc các file JSON mới nhất trong `D:/Taadaa/runtime/incidents/blocked/<incident_id>.json`.
+   - Đọc `D:/Taadaa/runtime/incidents/<incident_id>/checkpoint.jsonl` để xác định cổng bị chặn:
+     - `GATE_0_TELEMETRY` (score < 2): Thường do màn hình tắt sau ca (`Màn hình: OFF`) khiến ATX timeout và ảnh đen/OCR rỗng. Chạy `python D:/Taadaa/tools/inspect_machine.py <N>` để xác nhận `LauncherActivity` và trạng thái máy nghỉ an toàn.
+     - `GATE_1_PLANNER` (returncode 124 / exit 1): Tra cứu `D:/Taadaa/logs/dispatch_planner.jsonl` để xem chi tiết timeout (300s) hoặc Sonnet quota / Sol crash.
+2. **Đối soát False Positive qua Shift Artifacts:**
+   - Tra cứu danh sách máy liên đới qua `D:/Taadaa/runtime/incidents/pending/<incident_id>.affected.jsonl`.
+   - Mở trực tiếp file kết quả ca chạy thực tế:
+     `D:/Taadaa/runtime/<cluster>/live/<target_date>/<session_run>/<timestamp>/machines/machine_<N>/<timestamp>/upload_result.json` hoặc `run_manifest.json`.
+   - **Dấu hiệu False Positive:** `upload_result.json` ghi nhận `status: success, exit_code: 0` nhưng watchdog tổng kết ca gom nhầm vào `up_error` do timing lag (file flush chậm hơn nhịp đọc của watchdog).
+3. **Kỷ luật Fail-Closed:** Khi đã chuyển vào `blocked/`, hàng đợi `pending/` được giải phóng, ngăn chặn tuyệt đối việc LLM sửa mò làm hỏng code farm. Không revert hoặc sửa code khi không có bằng chứng lỗi thật.
+
