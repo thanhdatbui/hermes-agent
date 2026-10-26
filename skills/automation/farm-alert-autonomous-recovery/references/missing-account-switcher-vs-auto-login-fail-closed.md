@@ -1,12 +1,13 @@
 # Missing Account on Multi-Account Switcher: Triage & Auto-Login Recovery Flow
 
 ## 1. Hiện Tượng & Nguyên Tắc Vận Hành Cốt Lõi
-Khi chạy batch Feed / Upload Hook, hệ thống phát cảnh báo P0:
+Khi chạy batch Feed / Upload Hook, hệ thống phát cảnh báo:
 ```text
 UploadHook: [ERROR] scripts.tiktok_workflow.state_machine: [ACCOUNT_SWITCHER_FAILED] select account failed: ACCOUNT_MISSING: expected account was not found.
+FeedRunner: [FAIL] Lệch Profile/Nick TikTok (profile account mismatch / navigation target profile not found)
 ```
-- **Quy tắc bất biến của User:** Cứ thiếu acc (`ACCOUNT_MISSING` / `expected account was not found`) thì BẮT BUỘC hệ thống phải tự động kích hoạt flow `Thêm tài khoản` rồi TikTok Login bù vào slot còn thiếu (`recovery_handler = "tiktok_login"`).
-- **CẤM TUYỆT ĐỐI:** Cấm viện cớ an toàn, cấm viện cớ "sợ lệch nhịp batch" hay "sợ văng phiên liên đới" để fail-closed dừng máy bắt người vận hành thao tác thủ công. Script login đã được thiết kế sẵn nhánh mở Switcher và tap `Thêm tài khoản`.
+- **Quy tắc bất biến của User:** Cứ thiếu acc hoặc lệch profile (`ACCOUNT_MISSING`, `profile account mismatch`), BẮT BUỘC hệ thống phải tự động auto-switch sang nick đúng nếu đã có trong Switcher, hoặc kích hoạt flow `Thêm tài khoản` / reconcile nạp bù vào slot còn thiếu (`recovery_handler = "tiktok_login"` / `reconcile_tiktok_accounts.py`).
+- **CẤM TUYỆT ĐỐI:** Cấm viện cớ an toàn, cấm viện cớ "sợ lệch nhịp batch" hay "sợ văng phiên liên đới" để fail-closed dừng máy bắt người vận hành thao tác thủ công. Cả ca Đăng video lẫn ca Nuôi feed đều phải tự động recovery nick. Script login đã được thiết kế sẵn nhánh mở Switcher và tap `Thêm tài khoản`.
 
 ## 2. Kiến Trúc Kích Hoạt Tự Động (Đã Fix & Chuẩn Hóa)
 
@@ -48,6 +49,11 @@ UploadHook: [ERROR] scripts.tiktok_workflow.state_machine: [ACCOUNT_SWITCHER_FAI
   2. **Python environment:** Trỏ đúng python của venv automation (`D:\Taadaa\python-envs\automation\Scripts\python.exe`) và cờ `-X utf8` để tránh lỗi encoding `cp1252` trên console Windows.
   3. **Host config (`taadaa_host.py`):** Trên cụm Admin (máy 201+), biến môi trường `TAADAA_HOST_CONFIG` phải là `D:/Taadaa/machine-config/admin.yaml` để script nạp đúng tracking workbook của Admin (`taikhoan_dat_v2_updated .xlsx`), không bị rơi về path của Kibe khiến 0 accounts được load.
   4. **Pitfall OneDrive dehydrated file (`RecallOnDataAccess` / `0x400000`):** Nếu `openpyxl` báo `TARGET_INVENTORY_READ_FAILED: OSError` (`[Errno 22] Invalid argument`), kiểm tra thuộc tính file workbook `taikhoan_run_safe.xlsx`. Nếu dính cờ `4199968` (RecallOnDataAccess/Offline), cần re-hydrate file bằng cách đọc stream byte và ghi đè lại nội bộ để file nằm thật sự trên ổ cứng.
+
+### D. Auto Login Recovery trong Feed Runner (`tiktok-luot nuoi acc`)
+- Khi Feed Runner kiểm tra Profile và gặp `profile account mismatch` hoặc target username không có trong Switcher:
+  1. Thử mở Account Switcher để auto-switch nếu nick mục tiêu đã đăng nhập ở slot khác.
+  2. Nếu Switcher hoàn toàn thiếu nick: CẤM fail-closed nhả máy; kích hoạt handler gọi `reconcile_tiktok_accounts.py` hoặc `tiktok_login_v1.py <machine> --all --allow-parent-lock` để đăng nhập bù slot rồi mới tiếp tục ca nuôi feed.
 
 ## 3. Quy Trình Nạp Bù Tài Khoản Đúng Chuẩn (Actionable Reconcile Flow)
 Để nạp nick còn thiếu vào slot trống của thiết bị mà không ảnh hưởng đến batch đang chạy:

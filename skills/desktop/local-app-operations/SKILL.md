@@ -545,6 +545,7 @@ When using a screenshot, verify the address bar port against the live listener; 
 
 ## Supporting detail
 
+See `references/chatgpt-web-multi-proxy-feeder-governance.md` — ChatGPT-Web multi-proxy feeding standards, temporary 2-account per IP ceiling, Hotmail direct login vs Google SSO trap, and feeder port pass-through.
 See `references/chatgpt-web-pool-proxy-distribution.md` — ChatGPT-Web pool feeding protocol, multi-account proxy pairing (>= 2 accs/IP), and distinguishing email soaking from ChatGPT pool readiness.
 - `references/chatgpt-web-pool-feeder-and-proxy-assignment.md` — ChatGPT Web pool feeding standards, multi-account proxy density invariants (>= 2 accs/IP), and Hotmail direct login vs Google SSO trap in auto-feeders.
 - `references/mobile-dashboard-detail-modal-and-runtime-reload.md` — Responsive mobile detail modal layout (near-viewport bounds, mobile stacking, pill filter tabs for large cohorts, auto-focus target, and runtime reload checks).
