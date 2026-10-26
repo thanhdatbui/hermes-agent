@@ -57,6 +57,14 @@ The controller is an orchestrator, not the owner of remote filesystem state. A p
   6. Dual-layer Deficit Auditing & Fail-soft Restore: When checking if a folder needs source video restored, ALWAYS compute `total_rendered = local_count + cloud_count`. Checking local-only falsely marks offloaded folders as deficient, causing redundant downloads of dozens of GB of source files. Wrap file copy in per-file `try...except` to prevent transient G: stream errors (`[Errno 22] Invalid argument`) from aborting the entire restore batch.
 - **Riot Games Multi-Partition Coexistence (Live on D: vs PBE on C:):**
   When moving or co-hosting Riot Games on different partitions of Admin-PC, updating `RiotClientInstalls.json` alone will leave Riot Client showing "Install" instead of "Play". Riot Client validates `product_install_full_path` and `product_install_root` inside `C:\ProgramData\Riot Games\Metadata\<product>.<patchline>\<product>.<patchline>.product_settings.yaml`. Both must point to the active directory (`D:/Riot Games/...`). Direct desktop shortcuts must pass `--launch-product=<product> --launch-patchline=<live|pbe>` to `RiotClientServices.exe` and must be created via a UTF-8 `.ps1` script to avoid terminal mojibake. See `references/cross-host-lan-transfer-and-guard-deadlock.md` section 7.
+- **Strict 3-Way Parallel Execution & Dual-Vault Storage Isolation:**
+  When concurrently running scraper (downloader), renderer (ffmpeg), and cloud synchronizer on Admin:
+  1. Downloader, Renderer, and Sync Service run as 3 decoupled, concurrent background loops.
+  2. Storage Isolation: GDrive MUST maintain two completely distinct, isolated directory hierarchies:
+     - `G:\My Drive\video_goc_backup\{f_src}\`: Exclusively for raw scraper source videos. A folder's raw videos on D: are only deleted when the rendered output folder has reached `>= 45` clips.
+     - `G:\My Drive\video_render_backup\{f_vid}\`: Exclusively for finished rendered clips with index `>= 21` (preserving clips `1..20` on local D: for active phone farm consumption).
+     NEVER mix source videos and rendered clips in the same cloud directory or use flat names without vault qualification.
+  3. Continuous Self-Sustaining Daemon: Task Scheduler `Taadaa_Sync_GDrive_Backup` executes both `sync_and_clean_gdrive.py 640` and `manage_admin_media_gdrive.py offload 640` sequentially, keeping D: permanently buffered with >200GB free space while render and download progress in parallel.
 - **Subagent self-report discrepancy:** Child agents running via `delegate_task` may report successful patching even if their workspace was discarded upon hitting the iteration limit. Coordinator must verify host `git diff` independently before canary or triage.
 
 ## Cross-host downloader and proxy-pool integrity
@@ -84,3 +92,4 @@ For a completed fix, record: target file and exact Gate 5/dispatch delta; compil
 - See `references/windows-openssh-breakaway-job-dispatch.md` for preventing remote child process termination on OpenSSH disconnect via CREATE_BREAKAWAY_FROM_JOB (0x01000008).
 - See `references/admin-tiered-storage-and-source-recovery.md` for hybrid storage offloading rendered clips >= 21 to Google Drive, downloader pause flags, and accurate dual-layer (local + cloud) folder deficit auditing.
 - See `references/hybrid-cloud-media-offload-and-source-hydration.md` for tiering high-numbered rendered clips (>=21) to Google Drive, JIT source restoration formula (total rendered = local + GDrive), and OpenSSH breakaway service lifecycle.
+- See `references/admin-3way-parallel-and-dual-vault-media-isolation.md` for the strict 3-way parallel pipeline contract (cào 40 luồng, render 2 luồng ffmpeg, sync ngầm GDrive), and dual-vault cloud storage isolation (`video_goc_backup` vs `video_render_backup`).

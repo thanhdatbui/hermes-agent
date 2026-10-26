@@ -6,9 +6,9 @@
 - **Triệu chứng:** Hàng loạt vé sự cố bị kẹt tại Cổng 0 với trạng thái `BLOCKED_PENDING_TELEMETRY` (`xml_dump: null`, `screenshot: null`, hoặc score < 2).
 - **2 Nguyên nhân gốc rễ phổ biến:**
   1. *Lỗi Serial ADB:* Watchdog báo lỗi theo số thứ tự máy (vd: `machine_id="48"`). Lệnh ADB chạy `adb -s 48 exec-out screencap` bị fail vì `48` không phải là Hardware Serial ADB.
-  2. *Lỗi XML Dump & Màn hình ngủ sau ca (Post-Shift Screen Sleep):*
-     - `incident_emitter.py` dùng `adb shell uiautomator dump /sdcard/inc.xml` với timeout ngắn (2.5s). Trên farm Samsung S7 (Android 7/8), shell dump hay bị OOM-kill (`EXIT 137`) hoặc treo > 2.5s làm `xml_dump: null`.
-     - Watchdog emit vé muộn ở cuối ca nuôi/upload, máy đã nhả session và rơi vào trạng thái ngủ (`Màn hình: OFF (Sleep/Dozing)`), dẫn đến ảnh chụp `screen.png` bị đen kịt 100% (all 0 pixels), WinRT OCR rỗng.
+  2. *Lỗi XML Dump & Màn hình ngủ sau ca (Post-Shift Screen Sleep - ĐIỀU TRA NGƯỢC NGẠO):*
+     - `incident_emitter.py` tự ý gọi ADB screencap / atx dumpUI vào máy đã chạy xong và tắt màn hình đi ngủ (`Screen: OFF Sleep/Dozing`). Kết quả chụp ra ảnh đen xì (all-black) hoặc màn hình Launcher vô nghĩa, OCR rỗng, stack_trace gán "NoneType: None".
+     - **QUY TẮC ĐIỀU TRA ĐÚNG BẢN CHẤT (Y HỆT CON NGƯỜI):** Tuyệt đối không chụp sống (live ADB capture) khi máy đã xong ca. BẮT BUỘC đào chứng cứ trực tiếp từ thư mục ca chạy (`machines/machine_<M>/<run_timestamp>/`): lấy stack trace thật từ `execution.log`/`log.jsonl`/`summary.txt`, lấy ảnh chụp thời điểm lỗi trong `artifacts/` (`*-before.png`, `failed_*.png`) và file XML dump có sẵn. Xem chi tiết: `references/post-shift-artifact-triage-vs-live-adb-capture.md`.
 - **Quy tắc giải quyết & Vận hành an toàn:**
   1. **THỨ BẬC ƯU TIÊN PHÂN TÍCH UI (INVARIANT PHÂN CẤP THỊ GIÁC):**
      - **TẦNG 1 (PRIMARY — Ưu tiên cao nhất):** `winrt_ocr` trích xuất text trực tiếp từ ảnh chụp `screen.png` (nhanh < 0.2s, tốn O(1) CPU điện thoại, chống OOM, đọc text thực tế người dùng nhìn thấy).
