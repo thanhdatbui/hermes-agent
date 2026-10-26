@@ -49,4 +49,32 @@
 - **Hiện tượng:** Agent đã tạo xong ảnh canvas nhưng trong nội dung tin nhắn chỉ gõ text phân tích các phương án A, B, C, D mà quên hoặc làm rớt thẻ `MEDIA:<path>`, khiến User phải hỏi `? Hình đâu`.
 - **Hành động bắt buộc:** Với mọi thông điệp trình bày phương án Avatar, DÒNG ĐẦU TIÊN của tin nhắn BẮT BUỘC phải là `MEDIA:<đường_dẫn_tuyệt_đối>` (đã có receipt hợp lệ). Không bao giờ gửi mô tả phương án bằng text mà không đính kèm thẻ `MEDIA:`.
 
+## 11. Bẫy Chạy Thiết Bị Foreground Quá 60s & Background Process Discipline
+- **Hiện tượng:** Khi chạy runner điều khiển thiết bị thật (`do_rename_canonical_runner.py`, `pin_top_videos.py`) ở foreground với `timeout > 60s`, lệnh bị chặn đứng bởi `[HARD GATE #5 - DEVICE BULKHEAD] LỆNH ĐIỀU KHIỂN THIẾT BỊ BỊ CHẶN (timeout=90.0s)! Coordinator KHÔNG ĐƯỢC PHÉP block luồng điều phối chính quá 60s`.
+- **Hành động bắt buộc:** BẮT BUỘC chạy các lệnh điều khiển thiết bị qua background:
+  ```python
+  terminal(command="python D:/Taadaa/tools/do_rename_canonical_runner.py ...", background=True, notify_on_complete=True)
+  ```
+  Sau đó dùng `process(action='wait', session_id=..., timeout=60)` để đón kết quả tuần tự theo từng cửa sổ 60s.
+
+## 12. Bẫy Xung Đột Device Lock Từ Ca Nuôi Nick (Feed Session Reservation)
+- **Hiện tượng:** Khi nạp avatar/bio bằng runner có cờ `--wait-lock` (`run_upload_avatar.py`, `apply_m61_standardization.py`), nếu máy đang nằm trong lịch nuôi acc toàn farm (`run_tiktok.py --mode multi-machine-feed-session reservation`), file `machine_<N>.lock.json` có trạng thái `running` hoặc `queued_v2`. Runner sẽ treo chờ lock đến hết timeout 300s/900s và crash (`TimeoutExpired`).
+- **Hành động bắt buộc:** Trước khi chạy runner có `--wait-lock`, BẮT BUỘC kiểm tra nhanh `cat C:/Users/Kibe/.codex/device-locks/machine_<N>.lock.json`. Nếu máy đang bị giữ bởi feed session reservation:
+  1. Chuẩn bị sẵn file `avatar.jpg` và các file marker (`.manual_avatar_locked`, `.manual_hashtag_locked`) trên đĩa vào đúng thư mục `F_src` và `F_vid`.
+  2. Báo cáo rõ ràng: File đã nạp sẵn trên đĩa, máy đang nhường lịch nuôi nick (feed reservation), runner sẽ tự động đẩy khi feed session kết thúc mà KHÔNG cố ép mở lock hay chờ mù làm timeout phiên.
+
+## 13. Bẫy Đường Dẫn Forward Slash Khi Chạy WinRT OCR Trên Windows
+- **Hiện tượng:** Khi gọi `run_winrt_ocr.py` với đường dẫn forward slash kiểu Linux (`"D:/Taadaa/reports/m37_bio_updated.png"`), PowerShell / WinRT `BitmapDecoder::CreateAsync` có thể văng lỗi:
+  `Exception calling "CreateAsync" with "1" argument(s): "Invalid pointer Windows.Graphics.Imaging: One or more pointer arguments are null."`
+  dẫn tới receipt trả về `OK_EMPTY` và chặn gửi `MEDIA:`.
+- **Hành động bắt buộc:** Khi gọi `run_winrt_ocr.py` trên Windows, BẮT BUỘC dùng đường dẫn backslash chuẩn Windows:
+  `python D:\Taadaa\tools\run_winrt_ocr.py "D:\Taadaa\reports\<file>.png"`.
+
+## 14. Bẫy Chụp Màn Hình Khi Thiết Bị Đang Ngủ (Black Screen 12KB)
+- **Hiện tượng:** Khi màn hình thiết bị đang ở trạng thái `OFF (Sleep/Dozing)`, lệnh `screencap -p` vẫn thành công nhưng chỉ tạo ra một ảnh đen sì toàn số 0 (dung lượng đúng 12.491 bytes, mean=0.0). WinRT OCR quét vào ảnh này sẽ trả về `OK_EMPTY`.
+- **Hành động bắt buộc:**
+  1. Chỉ chụp và kéo ảnh nghiệm thu sau khi runner chính thức (`do_rename_canonical_runner.py`) đã kích hoạt và đánh thức màn hình.
+  2. Kiểm tra `im.mean() > 0` và dung lượng $> 50$ KB trước khi đưa vào WinRT OCR để tránh receipt rỗng.
+
+
 

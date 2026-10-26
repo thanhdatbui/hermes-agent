@@ -51,7 +51,12 @@
 4. **Phục hồi Video Gốc Bị Đẩy Sớm Từ GDrive (Cho Folders Render < 45):**
    - Ánh xạ ngược từ thư mục render sang thư mục nguồn:
      `slot = (f_vid - 1) % 8 + 1`, `m_idx = (f_vid - 1) // 8 + 1`, `f_src = (slot - 1) * 80 + m_idx`.
-   - Nếu `D:\TIKTOK-videonuoinick-admin\{f_vid}` có `< 45` clip và nguồn local bị thiếu, copy ngược từ `G:\My Drive\video_goc_backup\{f_src}` về `D:\video goc may 2\{f_src}` để worker render đủ chuẩn $\ge 45$.
+   - **Cạm bẫy đối soát khi đã phân tầng lưu trữ (Tiered Storage Pitfall):** BẮT BUỘC tính tổng clip thành phẩm gồm cả local và cloud:
+     `Total Rendered = (Clips in D:\TIKTOK-videonuoinick-admin\{f_vid}) + (Clips in G:\My Drive\video_render_backup\{f_vid})`.
+     Nếu chỉ đếm local, các folder đã render đủ 45–60 clip nhưng đã offload clip >= 21 lên Cloud (local còn 20 clip) sẽ bị nhận diện sai là "thiếu", gây kéo bù nhầm hàng chục GB video gốc thô làm nghẽn đĩa.
+   - **Xử lý lỗi stream Google Drive ([Errno 22] Invalid argument / Fail-Soft Copy):**
+     Khi copy hàng nghìn clip từ ổ ảo `G:` về local, một số file có thể bị gián đoạn mạng hoặc chưa hydrate kịp gây `[Errno 22] Invalid argument`. Vòng lặp copy BẮT BUỘC bọc `try...except Exception as copy_err` cho từng file đơn lẻ để không làm sập toàn bộ chuỗi restore 640 folder.
+   - Nếu `Total Rendered < 45` và nguồn local bị thiếu, copy ngược từ `G:\My Drive\video_goc_backup\{f_src}` về `D:\video goc may 2\{f_src}` để worker render đủ chuẩn $\ge 45$.
 5. **Kích Hoạt Nền Dài Hạn Qua OpenSSH Bắt Buộc Dùng Breakaway (`0x01000008`):**
    - Khi kích hoạt migration hoặc sync script kéo dài > 5 phút qua SSH, Windows OpenSSH mặc định gom process con vào Windows Job Object của phiên SSH và kill sạch khi SSH disconnect.
    - BẮT BUỘC dùng cờ `creationflags=0x01000008` (`CREATE_BREAKAWAY_FROM_JOB | DETACHED_PROCESS`) và mở log ở chế độ binary `open(log_p, "ab")`.

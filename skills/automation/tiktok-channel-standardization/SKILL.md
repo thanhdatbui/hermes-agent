@@ -35,14 +35,15 @@ Quy trình chuẩn hoá bao gồm trọn gói **5 hạng mục bắt buộc (5-i
 
 ---
 
-## 2. Các Lệnh Thi Công Canonical
+## 2. Các Lệnh Thi Công Canonical (Background Bulkhead Discipline)
+- **Lưu ý Device Bulkhead Gate 5:** CẤM chạy runner điều khiển thiết bị ở foreground với `timeout > 60s`. BẮT BUỘC dùng `terminal(command=..., background=True, notify_on_complete=True)` rồi `process(action='wait', timeout=60)`.
 - **Cập nhật Bio có dấu:**
   ```bash
   python D:/Taadaa/tools/do_rename_canonical_runner.py --machine <N> --serial <SERIAL> --username <USER> --bio "<BIO_TIẾNG_VIỆT>" --bio-only
   ```
 - **Ghim bài Top:**
   ```bash
-  python D:/Taadaa/tools/pin_top_videos.py --machine <N> --account <USER> --min-views 1000
+  python D:/Taadaa/tools/pin_top_videos.py --machine <N> --serial <SERIAL> --account <USER> --min-views 1000
   ```
 - **Khóa Avatar & Hashtag:**
   ```python
@@ -50,16 +51,21 @@ Quy trình chuẩn hoá bao gồm trọn gói **5 hạng mục bắt buộc (5-i
   # Touch .manual_avatar_locked và .manual_hashtag_locked tại cả F_src và F_vid
   # Ghi nhận folder vào D:/Taadaa/data/manual_avatar_protected_folders.json & manual_hashtag_protected_folders.json
   ```
+- **Kiểm tra Device Lock Ca Nuôi Nick:** Trước khi chạy `--wait-lock`, kiểm tra `cat C:/Users/Kibe/.codex/device-locks/machine_<N>.lock.json`. Nếu máy đang được giữ bởi feed session reservation, nạp sẵn file/marker trên đĩa và báo nhường lịch nuôi nick an toàn, không treo chờ quá 300s.
 
 ---
 
-## 3. Nghiệm Thu Thực Tế (Visual Evidence Gate 6)
-- Bắt buộc kéo ảnh Profile sau khi cập nhật về máy:
+## 3. Nghiệm Thu Thực Tế (Visual Evidence Gate 6 & WinRT Backslash Mandate)
+- Bắt buộc kéo ảnh Profile sau khi cập nhật về máy (chỉ chụp khi màn hình ON và runner đã vào Profile, tránh ảnh đen 12KB):
   ```bash
-  adb -s <SERIAL> shell screencap -p /sdcard/profile_final.png
-  adb -s <SERIAL> pull /sdcard/profile_final.png D:/Taadaa/reports/<FILE>.png
+  python D:/Taadaa/tools/with_device_lock.py --machine <N> -- adb -s <SERIAL> shell screencap -p /sdcard/profile_final.png
+  python D:/Taadaa/tools/with_device_lock.py --machine <N> -- adb -s <SERIAL> pull /sdcard/profile_final.png D:/Taadaa/reports/<FILE>.png
   ```
-- Dùng `run_winrt_ocr.py` hoặc Vision soi mắt kiểm tra trước khi gửi:
+- **WinRT OCR Backslash Mandate:** BẮT BUỘC dùng đường dẫn native Windows `D:\Taadaa\reports\<FILE>.png` (dùng slash `/` sẽ bị lỗi pointer null trong BitmapDecoder PowerShell):
+  ```bash
+  python D:\Taadaa\tools\run_winrt_ocr.py "D:\Taadaa\reports\<FILE>.png"
+  ```
+- Soi mắt kiểm tra trước khi gửi:
   - Đúng Username, Tên hiển thị chuẩn.
   - Bio tiếng Việt có dấu đầy đủ, sạch đuôi WWF-UK.
   - Video Top có nhãn đỏ "Đã ghim".
