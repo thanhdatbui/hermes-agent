@@ -52,10 +52,11 @@ User triggers: `"tao cho phép"`, `"tao cho phep"`, `"bypass"`, `"sửa gấp"`,
 2. **Consumption & Verification**:
    - Runtime checks verify HMAC signature, check expiration, confirm target file matches, and mark used = True (single-use nonce burned immediately).
    - Logs audit record to `D:/Taadaa/runtime/audit_logs/sudo_audit.jsonl`.
-3. **O(1) Hard Ceilings**:
+3. **O(1) Hard Ceilings & User Supreme Sovereignty (Direction B)**:
    - Maximum 1-2 files, diff <= 30 lines total.
-   - Mandatory focused test execution < 30s immediately following modification.
-   - Forbidden zones that CANNOT be bypassed even via Sudo: system rule directories, .env, credentials, account databases.
+   - Mandatory focused test execution < 30s immediately following modification; immediate auto-rollback if test fails.
+   - **User Sovereignty over Rules**: Under valid User Sudo grant (HMAC-SHA256, user trigger keywords, single-use nonce), `hooks/` and `guard_*.py` ARE AUTHORIZED for emergency surgery and auto-rewire fixes. The system must NEVER lock out the Root Owner (Hierarchy Inversion Anti-pattern).
+   - Truly forbidden zones that CANNOT be bypassed even via Sudo: `.env`, `credentials`, `secret`, `accounts.db`.
 4. **Kill-Switch**: Setting `TAADAA_SUDO=0` immediately disables all sudo bypasses system-wide.
 
 ---
@@ -126,3 +127,11 @@ Hệ thống AI Coordinator thường rơi vào hai thái cực cực đoan:
 2. **Thả Lỏng Quá Mức $\to$ Cao Bồi / Rogue / Láo Lếu**:
    - Khi User nói "làm đi", Agent tự tiện sửa code trong session chính (Cowboy Coordinator), vượt trần 30 dòng, hoặc tự ý lách guard truyền cờ `--on-demand` sang Claude.
    - **Khắc phục**: Rào chắn cơ học không dựa vào "suy đoán ý định" của LLM. Mọi quyền override hoặc on-demand bắt buộc phải có chữ ký/token xác thực cơ học gắn với tin nhắn của User.
+
+---
+
+## 10. Watchdog Compliance Fidelity & Pytest Pollution Elimination
+- **Test Artifact Exclusion**: Pre-tool and gate compliance watchdogs MUST filter out test traces (`is_test_log_line`: ignore lines containing `pytest`, `target.py`, `tmp_path`). Mock runs in unit tests previously accounted for 75%+ of reported gate failures (e.g. 27 fake QUOTA, 18 fake TIMEOUT, 9 fake NEEDS_INPUT).
+- **Timezone Normalization (Local Naive vs UTC)**: Audit logs written using `datetime.now().isoformat()` without timezone (`LOCAL_NAIVE_LOGS`: `dispatch_audit.jsonl`, `console_block_audit.jsonl`) must be converted from host local timezone (UTC+7) to UTC before filtering by the 6h cutoff window. Treating local naive as UTC shifts the window by 7h, falsely pulling in past afternoon errors.
+- **Credit Self-Healing (`rewired_hits`)**: Auto-clamped and auto-rewired actions are recorded as `REWIRED` (0-turn overhead) rather than failures (`FAIL`), preserving high-fidelity telemetry for real blocks.
+- **Sol Worker Execution Floor**: Set `SOL_AGY_TIMEOUT_FLOOR = 480s` and `--max-turns = 12` (up from 8) to ensure Sol multi-patch workflows finish reliably without false timeouts.
