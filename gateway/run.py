@@ -19075,10 +19075,13 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
                 )
                 _persist_user_message_override = message
                 # The empty-message case is the auto-resume startup turn
-                # synthesized by _schedule_resume_pending_sessions — there is
-                # no NEW user message to address, so tell the model to report
-                # recovery instead of the (nonexistent) "new message".
-                _auto_continue_task = (not message) and _reason == "restart_interrupted"
+                # synthesized by _schedule_resume_pending_sessions.
+                # All three resume reasons mean the agent was mid-turn when
+                # interrupted — instruct the model to resume actively rather than
+                # pausing to ask what to do next.
+                _auto_continue_task = (not message) and _reason in (
+                    "restart_interrupted", "restart_timeout", "shutdown_timeout"
+                )
                 if message:
                     _resume_guidance = (
                         "Address the user's NEW message below FIRST and focus "
@@ -19087,7 +19090,7 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
                 elif _auto_continue_task:
                     _resume_guidance = (
                         "Kiểm tra lại hiện trường môi trường/thiết bị sau khi "
-                        "reboot và chủ động tiếp tục thực thi để hoàn thành "
+                        "reboot/restart và chủ động tiếp tục thực thi để hoàn thành "
                         "dứt điểm task đang dở về DONE hoặc BLOCKED kèm bằng "
                         "chứng thực tế."
                     )
@@ -19175,11 +19178,12 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
                     f"[System note: The previous turn was interrupted by "
                     f"{_sn_reason_phrase}; the gateway is now back online. "
                     f"Any restart/shutdown command in the history has already "
-                    f"run — do NOT re-execute or verify it. Report to the user "
-                    f"that the session was restored successfully and ask what "
-                    f"they would like to do next. Do NOT re-execute old tool "
-                    f"calls — skip any unfinished work from the conversation "
-                    f"history.]"
+                    f"run — do NOT re-execute or verify it. Kiểm tra lại hiện "
+                    f"trường môi trường/thiết bị sau khi restart và chủ động tiếp tục "
+                    f"thực thi để hoàn thành dứt điểm task đang dở về DONE hoặc BLOCKED "
+                    f"kèm bằng chứng thực tế. Do NOT replay old tool calls from the history — "
+                    f"re-check the real current state first and issue fresh calls only for what "
+                    f"is still unfinished.]"
                 )
 
             _approval_session_key = session_key or ""
