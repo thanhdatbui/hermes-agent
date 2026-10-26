@@ -462,6 +462,22 @@ def collect_omni_pool(db_path: Path, telemetry: Telemetry) -> dict[str, Any]:
     return pool
 
 
+def check_ip_cooldown(path: Path, profiles: dict[str, Any], now: datetime) -> dict[str, Any]:
+    try:
+        ip_h = json.loads(path.read_text(encoding="utf-8")).get("ip_action_history", {})
+    except Exception:
+        return {"count": 0, "ports": 0, "min_h": 0.0}
+    cd_accs, cd_ports, min_rem = 0, set(), None
+    for p in profiles.values():
+        if isinstance(p, dict) and p.get("stage") == "HOTMAIL_LOGIN" and p.get("status") == "PENDING":
+            port = str(p.get("proxy_port") or "")
+            ts = _parse_time((ip_h.get(port) or {}).get("HOTMAIL_LOGIN"))
+            if ts and (now - ts).total_seconds() < 86400:
+                cd_accs, min_rem = cd_accs + 1, min(min_rem or 86400, 86400 - (now - ts).total_seconds())
+                cd_ports.add(port)
+    return {"count": cd_accs, "ports": len(cd_ports), "min_h": round(min_rem / 3600, 1) if min_rem else 0.0}
+
+
 # ── Snapshot & rendering ─────────────────────────────────────────────────────
 
 def collect_snapshot(telemetry: Telemetry, now: datetime | None = None, window_hours: float = 6.0) -> dict[str, Any]:
@@ -472,11 +488,13 @@ def collect_snapshot(telemetry: Telemetry, now: datetime | None = None, window_h
     farm_metrics: dict[str, dict[str, Any]] = {}
     farm_recent: dict[str, dict[str, Any]] = {}
     farm_keys: dict[str, set[str]] = {}
+    farm_cooldown: dict[str, dict[str, Any]] = {}
     for farm, path in (("kibe", KIBE_STATE_PATH), ("admin", ADMIN_STATE_PATH)):
         raw = load_farm_state(path, telemetry, farm)
         farm_keys[farm] = set(raw)
         farm_metrics[farm] = aggregate_records(normalize_profiles(raw, telemetry, farm, now), telemetry, farm)
         farm_recent[farm] = aggregate_recent_activity(raw, cutoff, now)
+        farm_cooldown[farm] = check_ip_cooldown(path, raw, now)
 
     overlap = farm_keys["kibe"] & farm_keys["admin"]
     if overlap:
@@ -496,6 +514,7 @@ def collect_snapshot(telemetry: Telemetry, now: datetime | None = None, window_h
         "recent": recent,
         "totals": totals,
         "pool": pool,
+        "ip_cooldown": farm_cooldown,
         "warning_count": len(warnings),
         "error_classes": telemetry.error_classes(),
         "duration_ms": round((time.perf_counter() - started) * 1000, 2),
@@ -607,6 +626,14 @@ def render_report(snapshot: dict[str, Any], prev_snapshot: dict[str, Any] | None
         f"    - Đã đủ 7 ngày ngâm: {t['matured_7d']} (Kibe: {kibe['matured_7d']} | Admin: {admin['matured_7d']})",
         f"    - Thiếu thông tin TikTok: {t['missing_tiktok']} (Kibe: {kibe['missing_tiktok']} | Admin: {admin['missing_tiktok']})",
     ]
+    cd = snapshot.get("ip_cooldown") or {}
+    k_cd, a_cd = cd.get("kibe", {}), cd.get("admin", {})
+    tot_cd = k_cd.get("count", 0) + a_cd.get("count", 0)
+    if tot_cd > 0:
+        cd_parts = [f"{lbl}: {d['count']}/{d['ports']} cổng (mở sau ~{d['min_h']}h)" for lbl, d in (("Kibe", k_cd), ("Admin", a_cd)) if d.get("count")]
+        idx_b = next((i for i, l in enumerate(lines) if "Đang Cooldown 48h" in l), len(lines))
+        lines.insert(idx_b, f"    - Chờ giãn cách IP 24h     : {tot_cd} ({' | '.join(cd_parts)})")
+
     if prev_snapshot:
         lines.insert(2, f"• So sánh với lần trước: {prev_snapshot.get('timestamp', 'không rõ')}")
     if t["blocked"] > 0:
@@ -632,6 +659,8 @@ def render_report(snapshot: dict[str, Any], prev_snapshot: dict[str, Any] | None
             f"  • Sẵn sàng đổi info (WAIT_7D -> CHANGE_INFO): {recent['ready_change']}",
             f"  • Hoàn tất DONE mới       : {recent['new_done']}",
         ]
+        if kibe_recent["total_processed"] == 0 and k_cd.get("count", 0) > 0:
+            lines.append(f"    * Ghi chú Kibe: 0 biến động do {k_cd['ports']} cổng MobiProxy đang giữ giãn cách 24h (mở dần sau ~{k_cd['min_h']}h).")
 
     lines += ["", "🌐 CHATGPT WEB POOL (OMNIRoute :20129):"]
     if pool["connections_ok"]:
