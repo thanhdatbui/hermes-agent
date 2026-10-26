@@ -209,7 +209,7 @@ def normalize_profiles(raw_profiles: dict[str, Any], telemetry: Telemetry, farm:
         has_login = _has_valid_timestamp(raw, "hotmail_login_at", key, _flag)
         reg_ok = _has_valid_timestamp(raw, "chatgpt_registered_at", key, _flag)
         has_chatgpt = raw.get("has_chatgpt") is True or reg_ok
-        has_tiktok = bool(raw.get("has_tiktok") or (raw.get("username") and raw.get("password")))
+        has_tiktok = bool(raw.get("has_tiktok") or raw.get("username"))
         anchor = _parse_time(raw.get("hotmail_login_at") or raw.get("codex_oauth_at") or raw.get("chatgpt_registered_at"))
         matured_7d = anchor is not None and now - anchor >= timedelta(days=7)
         retry_count = raw.get("login_retry_count")
@@ -633,7 +633,6 @@ def render_report(snapshot: dict[str, Any], prev_snapshot: dict[str, Any] | None
         cd_parts = [f"{lbl}: {d['count']}/{d['ports']} cổng (mở sau ~{d['min_h']}h)" for lbl, d in (("Kibe", k_cd), ("Admin", a_cd)) if d.get("count")]
         idx_b = next((i for i, l in enumerate(lines) if "Đang Cooldown 48h" in l), len(lines))
         lines.insert(idx_b, f"    - Chờ giãn cách IP 24h     : {tot_cd} ({' | '.join(cd_parts)})")
-
     if prev_snapshot:
         lines.insert(2, f"• So sánh với lần trước: {prev_snapshot.get('timestamp', 'không rõ')}")
     if t["blocked"] > 0:
