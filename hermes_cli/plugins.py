@@ -2158,6 +2158,14 @@ def _get_pre_tool_call_directive_details(
         if not isinstance(result, dict):
             continue
         action = result.get("action")
+        if action == "rewrite":
+            updated = result.get("updated_args") or result.get("updated_input")
+            if isinstance(updated, dict) and isinstance(args, dict):
+                args.update(updated)
+                notice = result.get("notice")
+                if isinstance(notice, str) and notice.strip():
+                    logger.info("Hook rewritten arguments: %s", notice.strip())
+            continue
         if action not in ("block", "approve"):
             continue
         message = result.get("message")

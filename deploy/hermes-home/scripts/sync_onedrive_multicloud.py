@@ -127,39 +127,56 @@ def get_gdrive_dest() -> str:
 
 
 def main():
-    t0 = time.time()
-    results = {}
+    try:
+        from cron_alert_core import CronRun
+    except ImportError:
+        CronRun = None
 
-    # 1. Sync to Google Drive
-    dst_gdrive = get_gdrive_dest()
-    if dst_gdrive:
-        results["Google Drive 5TB"] = sync_directory(SRC, dst_gdrive, max_workers=16)
-    else:
-        results["Google Drive 5TB"] = {"success": False, "error": r"Ổ G:\ (Google Drive) chưa được mount hoặc không tìm thấy My Drive."}
+    import contextlib
 
-    # 2. Sync to iCloud Drive
-    if os.path.exists(r"C:\Users\Kibe\iCloudDrive"):
-        results["iCloudDrive"] = sync_directory(SRC, DST_ICLOUD, max_workers=16)
-    else:
-        results["iCloudDrive"] = {"success": False, "error": "iCloudDrive không tồn tại."}
+    force = "--force" in sys.argv
+    run_ctx = CronRun("sync_onedrive_multicloud", force_report=force) if CronRun else contextlib.nullcontext()
+    with run_ctx as run:
+        t0 = time.time()
+        results = {}
 
-    elapsed = time.time() - t0
+        # 1. Sync to Google Drive
+        dst_gdrive = get_gdrive_dest()
+        if dst_gdrive:
+            results["Google Drive 5TB"] = sync_directory(SRC, dst_gdrive, max_workers=16)
+        else:
+            results["Google Drive 5TB"] = {"success": False, "error": r"Ổ G:\ (Google Drive) chưa được mount hoặc không tìm thấy My Drive."}
 
-    # Check if there were any changes or errors
-    has_changes = any(r.get("synced_files", 0) > 0 for r in results.values())
-    has_errors = any(not r.get("success", False) for r in results.values())
+        # 2. Sync to iCloud Drive
+        if os.path.exists(r"C:\Users\Kibe\iCloudDrive"):
+            results["iCloudDrive"] = sync_directory(SRC, DST_ICLOUD, max_workers=16)
+        else:
+            results["iCloudDrive"] = {"success": False, "error": "iCloudDrive không tồn tại."}
 
-    if has_changes or has_errors:
-        print(f"[Multi-Cloud Sync Report - {time.strftime('%Y-%m-%d %H:%M:%S')}] (Elapsed: {elapsed:.1f}s)")
-        for target, res in results.items():
-            if res.get("success"):
-                mb = res.get("synced_bytes", 0) / (1024 * 1024)
-                print(f"  ✓ {target}: Synced {res.get('synced_files', 0)} files ({mb:.2f} MB)")
+        elapsed = time.time() - t0
+
+        # Check if there were any changes or errors
+        has_changes = any(r.get("synced_files", 0) > 0 for r in results.values())
+        has_errors = any(not r.get("success", False) for r in results.values())
+
+        if run:
+            for target, res in results.items():
+                if not res.get("success"):
+                    run.anomaly(f"SYNC_FAIL_{target.replace(' ', '_')}", str(res.get("error", "Failed")))
+
+        if has_changes or has_errors:
+            lines = [f"[Multi-Cloud Sync Report - {time.strftime('%Y-%m-%d %H:%M:%S')}] (Elapsed: {elapsed:.1f}s)"]
+            for target, res in results.items():
+                if res.get("success"):
+                    mb = res.get("synced_bytes", 0) / (1024 * 1024)
+                    lines.append(f"  ✓ {target}: Synced {res.get('synced_files', 0)} files ({mb:.2f} MB)")
+                else:
+                    lines.append(f"  ✗ {target}: Failed - {res.get('error', res.get('errors', 'Unknown error'))}")
+            msg = "\n".join(lines)
+            if run:
+                run.set_report(msg)
             else:
-                print(f"  ✗ {target}: Failed - {res.get('error', res.get('errors', 'Unknown error'))}")
-    else:
-        # Silent watchdog mode when up to date
-        pass
+                print(msg)
 
 
 if __name__ == "__main__":

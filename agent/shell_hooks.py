@@ -600,6 +600,16 @@ def _parse_response(event: str, stdout: str) -> Optional[Dict[str, Any]]:
             return {"action": "block", "message": _block_message(data.get("message"), data.get("reason"))}
         if data.get("decision") == "block":
             return {"action": "block", "message": _block_message(data.get("reason"), data.get("message"))}
+        if data.get("action") == "rewrite":
+            if "updated_args" in data:
+                updated = data.get("updated_args")
+            else:
+                updated = data.get("updated_input")
+            return {
+                "action": "rewrite",
+                "updated_args": updated if isinstance(updated, dict) else {},
+                "notice": data.get("notice") if isinstance(data.get("notice"), str) else None,
+            }
         return None
 
     if event == "pre_verify":

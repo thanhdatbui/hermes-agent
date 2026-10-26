@@ -177,15 +177,32 @@ def _ollama_context_limit_error(agent: Any, request_tokens: int) -> Optional[str
     )
 
 
+_ADVISOR_EXPLICIT_TRIGGERS = (
+    "gọi advisor",
+    "hỏi sol",
+    "gọi sol",
+    "sol thấy sao",
+    "nhờ sol review",
+    "sol lên plan",
+)
+
+
 def _is_advice_request(message: Any) -> bool:
-    if not isinstance(message, str): return False
+    if not isinstance(message, str):
+        return False
     text = " ".join(message.split()).strip()
-    if not text: return False
+    if not text:
+        return False
     lowered = text.casefold()
+
     def has_phrase(phrase: str) -> bool:
         return re.search(rf"(?<!\w){re.escape(phrase)}(?!\w)", lowered) is not None
+
+    if any(has_phrase(phrase) for phrase in _ADVISOR_EXPLICIT_TRIGGERS):
+        return True
     explicit = ("tư vấn", "lời khuyên", "có nên", "theo mày", "đánh giá", "phân tích giúp", "what should", "should i", "advise me")
-    if any(has_phrase(m) for m in explicit): return True
+    if any(has_phrase(m) for m in explicit):
+        return True
     if has_phrase("nên"):
         return "?" in text or "？" in text or re.search(r"(?<!\w)(?:làm gì|làm sao|thế nào|ra sao|chọn|dùng|đi|không|hay|nào)(?!\w)", lowered) is not None
     return False
@@ -5009,6 +5026,9 @@ def run_conversation(
                 # cheap RPC-style calls that shouldn't eat the budget.
                 _tc_names = {tc.function.name for tc in assistant_message.tool_calls}
                 if _tc_names == {"execute_code"}:
+                    if api_call_count > 0:
+                        api_call_count -= 1
+                        agent._api_call_count = api_call_count
                     agent.iteration_budget.refund()
                 
                 # Use real token counts from the API response to decide
