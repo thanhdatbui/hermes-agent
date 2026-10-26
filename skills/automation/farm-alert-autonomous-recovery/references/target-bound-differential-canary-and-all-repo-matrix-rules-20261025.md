@@ -27,3 +27,13 @@ Mọi repository có tác vụ tự động hóa trên Farm bắt buộc phải 
 ## 4. Xử Lý Đường Dẫn & Tránh Fallback Sai Repo
 - Trong `check_canary_status()`, bắt buộc kiểm tra tuần tự: (1) `Path(repo).is_dir()`, (2) `(Path("D:/Taadaa") / repo).is_dir()`.
 - Tuyệt đối CẤM fallback về `Path.cwd()` khi không tìm thấy repo, vì sẽ dẫn tới việc kiểm tra nhầm commit SHA và working tree của repo hiện hành thay vì repo mục tiêu.
+
+## 5. Kỷ Luật Canary Nghiệm Thu Lỗi Thực Tế (Canary Fidelity & False Verification Guard - 2026-10-26)
+- **Quy tắc tái hiện đúng lỗi thật (Exact Failure Reproduction):**
+  - Khi chạy Canary kiểm chứng bản vá cho một lỗi cụ thể (ví dụ: thiếu nick, lệch profile, gãy auto-login), **BẮT BUỘC** phải chỉ định đúng `--row <N>` của tài khoản đang vắng mặt / lỗi trong ca chạy alert.
+  - **CẤM TUYỆT ĐỐI** chạy nhầm `--row 1` hoặc tài khoản đã có sẵn/khớp sẵn trên thiết bị rồi tự kết luận Canary pass (False Verification Trap). Canary chỉ có giá trị khi nó thực sự đi qua đúng nhánh code vừa vá (nhánh phát hiện mismatch -> kích hoạt recovery flow).
+- **Quy chuẩn thời gian timeout Canary (>= 720s):**
+  - Khi Canary có chu trình login bù, đổi pass hoặc thao tác trên máy từ xa (remote ADB socket qua host khác như `192.168.110.119:5037` cụm Admin), **BẮT BUỘC** thiết lập `--timeout 720` (hoặc tối thiểu 600s).
+  - CẤM đặt timeout ngắn (như 300s) dẫn tới `CANARY_TIMEOUT` khi thiết bị đang thực hiện các bước recovery hợp lệ.
+- **Tự động nhận diện cấu hình cụm Admin ($m \ge 200$):**
+  - Trong `canary_runner.py`, với các máy $m \ge 200$, môi trường thực thi bắt buộc tự động nạp `TAADAA_HOST_CONFIG = D:/Taadaa/machine-config/admin.yaml` và `ADB_SERVER_SOCKET = tcp:192.168.110.119:5037` để vượt qua Host Guard và kết nối đúng ADB daemon của máy chủ Admin.

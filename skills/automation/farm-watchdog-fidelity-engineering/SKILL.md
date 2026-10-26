@@ -72,6 +72,12 @@ Applies whenever reports fail to reflect actual fleet health, mask dropped machi
 - **Anti-Pattern:** Assuming that silence across a 24h window means nominal health, while a crashed scheduler, corrupted python environment, or severed Telegram webhook went undetected.
 - **Rule:** Deploy a separate, lightweight aggregator (`cron_heartbeat.py`) that reads watchdog state files independently and emits exactly 1 digest message daily at 09:00 VN (02:00 UTC) summarizing fleet monitoring vitality.
 
+### Invariant 8: Shift Overrun & Cross-Window Execution Attribution
+- **Anti-Pattern:** Batch jobs (e.g., overnight `run_parallel.ps1`) encountering cumulative timeouts, cooldowns, or platform verification blocks (e.g. Google `phone_verify`) across devices, drifting hours beyond their schedule and firing a "BAN ĐÊM" alert during daytime (e.g., 10:00 AM) without execution context.
+- **Rule:**
+  1. **Shift Hard Time-Fence:** Overnight batch runners should check shift boundary cutoffs (e.g., aborting queued retries once daytime operations begin at 06:00/07:00).
+  2. **Execution Window Attribution:** Batch aggregators firing after shift end MUST include execution start time and elapsed duration (e.g. `[Ca Đêm: 02:30 -> 09:55 | Thời gian chạy: 7h25m]`), making the delay immediately obvious to operators.
+
 ---
 
 ## 3. Verification Protocol for Watchdogs & Reports

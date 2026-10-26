@@ -41,3 +41,7 @@ description: Use when TikTok login has wrong pass. Reset via token.
    - Đây là bằng chứng xác thực TikTok ĐÃ CẬP NHẬT mật khẩu mới. Phải trích xuất mật khẩu từ journal (`<account_id>.dpapi` giải mã bằng entropy `codex-tiktok-password-change-v1`) và gọi `write_password_preserving_archive` để đồng bộ vào file Excel.
 3. **Popup Solver từ `automation-core`**:
    - Khi form login / switcher bị chắn bởi bottom-sheet *"Thêm số điện thoại của bạn để tăng cường bảo mật"*, tích hợp `automation_core.tiktok_popup` (rule `add_phone_number_vi`, click nút "Đóng" `bounds=[936,861][1056,993]`) để giải phóng giao diện tự động. CẤM viết parser regex riêng.
+4. **Excel Row Index vs Slot/Folder Video & Admin Remote ADB**:
+   - Tham số `--rows <N>` của `change_tiktok_passwords.py` nhận **chỉ số hàng vật lý trong Excel (1-indexed physical row)** (ví dụ: dòng 171 trong Excel sheet `Tài Khoản`), **CẤM NHẦM** với số cột Folder Video (ví dụ: 482) hay account index theo máy. Bắt buộc tra cứu đúng số dòng vật lý trong workbook trước khi truyền `--rows`.
+   - Với máy cụm Admin ($m \ge 200$), `AdbClient` kết nối qua host remote `192.168.110.119:5037`. Provider roots bắt buộc trỏ đúng `D:/Taadaa/tiktok-add-bao-mat-f2a/python_runner` và `D:/Taadaa/Tiktok_Reg`.
+   - Timeout cho luồng đổi pass và recovery qua Graph API trên remote host tối thiểu $\ge 600s$.
