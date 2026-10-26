@@ -33,6 +33,7 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
 - Kiến Trúc Auto-Rewire & Guidance Chống Bại Liệt L3 Cho Gate 6: [`references/gate6-auto-rewire-and-guidance-architecture.md`](references/gate6-auto-rewire-and-guidance-architecture.md)
 - Kỷ Luật Cấm Lạm Dụng Claude CLI & Đối Soát Avatar Bitmap (Chống OCR Mù): [`references/anti-claude-cli-runaway-and-bitmap-avatar-verification.md`](references/anti-claude-cli-runaway-and-bitmap-avatar-verification.md)
 - Chống Chụp Ảnh Mù Đối Phó & Ép Buộc Soi Mắt Trước Khi Gửi: [`references/anti-fake-screenshot-and-mandatory-inspection-receipt.md`](references/anti-fake-screenshot-and-mandatory-inspection-receipt.md)
+- Khắc Phục Lỗ Hổng Sys.Path Plugin, Bẫy ImportError Âm Thầm & Hoàn Thiện Wiring Gate 6: [`references/plugin-syspath-hardening-and-full-gate6-wiring.md`](references/plugin-syspath-hardening-and-full-gate6-wiring.md)
 
 ## 1. Nguyên Tắc Cốt Lõi (Invariants)
 1. **CẤM gửi ảnh mù / đối phó:** Trước khi đính kèm bất kỳ thẻ `MEDIA:<path>` nào, bắt buộc phải mở ảnh ra soi mắt kiểm tra trước.
@@ -131,6 +132,11 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
 27. **Chống Chụp Ảnh Mù Đối Phó (Anti-Fake Screenshot) & Ép Buộc Soi Mắt Trước Khi Gửi:**
     - **CẤM Chụp Đối Phó Qua Cổng:** Chặn đứng thói quen của LLM/Gemini chụp bừa màn hình Launcher, màn hình đen sleep, hoặc popup che chỉ để có thẻ `MEDIA:`. Bắt buộc kiểm tra **Target Screen Anchor** qua WinRT OCR (Profile phải có `Sửa hồ sơ` / `@username`, không chứa icon launcher). Phát hiện chụp sai -> inject ngay Guidance lệnh $O(1)$ đưa máy về đúng màn hình đích thay vì mắng mỏ gây bại liệt.
     - **Cơ Chế Ép Buộc Soi Mắt (Mandatory Inspection Receipt):** Cổng `transform_llm_output` đối soát `verified_media_paths`. Nếu thẻ `MEDIA:<path>` chưa từng được Agent mở ra đọc qua `browser_vision` hoặc `run_winrt_ocr.py` trong phiên -> CHẶN ĐỨNG và trả về lệnh cưỡng chế $O(1)$ `[MANDATORY_INSPECTION_REQUIRED]` bắt buộc gọi tool soi mắt ảnh trước khi gửi. Chi tiết xem [`references/anti-fake-screenshot-and-mandatory-inspection-receipt.md`](references/anti-fake-screenshot-and-mandatory-inspection-receipt.md).
+28. **Khắc Phục Lỗ Hổng Sys.Path Plugin & Hoàn Thiện Wiring Gate 6 (Triệt Tiêu Bẫy ImportError Âm Thầm):**
+    - **Bẫy `ImportError: pass` do thiếu `sys.path`:** Hook `transform_output_hook` trong plugin coordinator guard bọc lệnh import `guard_media_vision_gate` trong `try-except ImportError: pass`. Vì `D:/Taadaa/tools` không có trong `sys.path`, lệnh import thất bại âm thầm làm gate biến thành pass-through 100%. BẮT BUỘC nạp `D:/Taadaa/tools` vào `sys.path` ngay tại đầu plugin.
+    - **Tự động cấp Vision Receipt cho Local Image Vision:** `browser_vision` trên ảnh cục bộ (`file:///...`) không trả về `"Screenshot path:"`. BẮT BUỘC dùng fallback `last_f` để ghi nhận `verified_media_paths` và tự động gọi `create_vision_receipt()` cấp vé kiểm định HMAC-SHA256 hợp lệ vào `vision_receipts.jsonl`.
+    - **Mở rộng nhận diện Claim Hoàn tất:** Bổ sung nhóm tác vụ `pin` (`đã ghim`, `ghim lên đầu`, `pin to top`) và `profile` (`đổi avatar`, `chuẩn hóa`, `bio`) vào `_detect_completion_claims`.
+    - **Chống Chụp Láo Bằng `TEXT_CLAIM_RULES`:** Mở rộng quy tắc `avatar` trong `guard_media_vision_gate.py` (bắt buộc OCR phải thấy `sửa hồ sơ`/`edit profile`/`avatar`), chặn đứng 100% hành vi chụp Launcher/màn hình đen rồi chém gió là đã đổi avatar/ghim video thành công. Chi tiết xem [`references/plugin-syspath-hardening-and-full-gate6-wiring.md`](references/plugin-syspath-hardening-and-full-gate6-wiring.md).
 
 ## 2. Thang Leo Thang Vision Dự Phòng (Fallback Ladder)
 Thứ tự fallback đọc ảnh chuẩn hoá 100% đồng bộ với kiến trúc Worker Dispatch:
