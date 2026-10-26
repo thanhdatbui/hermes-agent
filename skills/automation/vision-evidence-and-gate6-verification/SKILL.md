@@ -36,6 +36,7 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
 - Khắc Phục Lỗ Hổng Sys.Path Plugin, Bẫy ImportError Âm Thầm & Hoàn Thiện Wiring Gate 6: [`references/plugin-syspath-hardening-and-full-gate6-wiring.md`](references/plugin-syspath-hardening-and-full-gate6-wiring.md)
 - Bẫy Self-Fulfilling Inception Trên Canvas & Kiến Trúc Anti-Paralysis VLM Gate: [`references/self-fulfilling-canvas-inception-and-anti-paralysis-vlm-sop.md`](references/self-fulfilling-canvas-inception-and-anti-paralysis-vlm-sop.md)
 - Kỷ Luật Triệt Tiêu Over-Engineering & Thiết Kế Gate Soi Mắt Tối Giản Bằng Native Vision: [`references/anti-overengineering-and-minimal-native-vision-gate.md`](references/anti-overengineering-and-minimal-native-vision-gate.md)
+- Báo Cáo Điều Tra Over-Engineering Toàn Farm & Kế Hoạch Cắt Tỉa Hệ Thống Gate: [`references/o1-native-vision-gate-and-anti-overengineering-audit.md`](references/o1-native-vision-gate-and-anti-overengineering-audit.md)
 
 ## 1. Nguyên Tắc Cốt Lõi (Invariants)
 1. **CẤM gửi ảnh mù / đối phó:** Trước khi đính kèm bất kỳ thẻ `MEDIA:<path>` nào, bắt buộc phải mở ảnh ra soi mắt kiểm tra trước.

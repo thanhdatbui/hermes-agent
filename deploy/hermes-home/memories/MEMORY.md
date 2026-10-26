@@ -10,6 +10,6 @@ Tool 2FA và cron xen ca chạy cả ngày BẮT BUỘC dùng Just-In-Time (JIT)
 §
 Tài khoản Gmail chuẩn clean_v2 đã tắt Google Prompt hoàn toàn chỉ dùng 2FA TOTP: login GPM 100% trên PC qua pyotp, không cần ADB hay máy S7; cấm chặn nhầm acc farm có recovery khoaleemagic khi đã có totp_secret.
 §
-Auto-Heal: đào log/ảnh ca, cấm chụp máy tắt màn; WinRT OCR primary; Canary auto-device; storm>=3 alert. Claude CLI bị hook guard_claude_cli_lock.py khóa cứng (chỉ mở khi có User Sudo/Strike 3). Avatar picker: visual match chống nhầm Tile 1; lifecycle_guard:260 bọc except null char.
+Auto-Heal: đào log/ảnh ca, cấm chụp máy tắt màn; WinRT OCR primary; Canary auto-device; storm>=3 alert. Claude CLI dùng khi user gọi/Strike 3. Gate chuẩn O(1): check đúng sự kiện tool thật (browser_vision), cấm OCR proxy đối soát ảnh/in chữ canvas; dẹp Security Theater (DACL/HMAC tự ký); Closeout delta rỗng = Vận Hành PASS < 2s.
 §
 Mọi fix hạ tầng Hermes/Omni bắt buộc qua Protection Regression Gate (infra_regression_gate.py): threshold 0.30, retries 4, delay 6s (headroom ~90s), cấm self-fallback 20129, watchdog deadlock failures [4, 6]; cấm sửa triệu chứng gây bão tải.

@@ -32,10 +32,15 @@ Khi điều tra sự cố sau ca chạy (post-shift watchdog), **tuyệt đối 
    - CHỈ ĐƯỢC PHÉP gọi `adb exec-out screencap` và `atx dumpUI` khi máy đang trong ca chạy chủ động (`status == "running"` / active live debug).
    - Nếu ca chạy đã kết thúc (`completed`, `manual-needed`, `failed`, `timeout`), 100% telemetry và bằng chứng phải được đào từ run artifacts. Tuyệt đối không gọi ADB chụp sống vào máy đang ngủ.
 
-## 3. Kiến Trúc Triển Khai trong Mã Nguồn
+## 3. Kiến Trúc Triển Khai O(1) trong Mã Nguồn
+- **Tận dụng Parser $O(1)$ (`scripts/watchdog/parser.py` & `merger.py`):**
+  - Trong quá trình parser duyệt ca chạy một lần duy nhất, gắn trực tiếp `machine_dir: root` vào kết quả của máy (`res_m`, `res_f`, `res_u`) và `stdout_tail` cho upload.
+  - Tránh hoàn toàn việc phải quét lại đĩa (tránh trigger `GUARD_DANGEROUS_ROOT` hoặc vi phạm cấm quét đĩa diện rộng).
 - **`incident_emitter.py`:**
-  - Hàm `extract_machine_run_artifacts(run_dir, machine_id, upload_info=None)`: Duyệt có giới hạn gom đủ 4 thành phần: `screenshot`, `xml_dump`, `log_tail`, `stack_trace`.
-  - Hàm `collect_telemetry(..., run_dir=None, artifacts=None)`: Nếu `artifacts` hợp lệ, nạp trực tiếp screenshot/xml vào envelope, chạy `winrt_ocr` trên ảnh artifact, gán `atx_status="run_artifact"`, bỏ qua hoàn toàn lệnh ADB.
-  - Hàm `emit_if_needed(..., run_dir=None)`: Nhận `run_dir` từ watchdog, tự động nạp stack_trace và telemetry thật.
+  - Hàm `extract_run_artifacts(machine_dir, stdout_tail, reason)`: Khai thác trực tiếp từ `machine_dir/summary.txt` và `stdout_tail` (tìm report Codex) trong thời gian $O(1)$ để lấy đủ 4 thành phần: `screenshot`, `xml_dump`, `log_tail`, `stack_trace`.
+  - Hàm `collect_telemetry(..., artifacts=artifacts)`: Nếu `artifacts` hợp lệ, sao chép thẳng ảnh/xml vào thư mục telemetry của sự cố, chạy `winrt_ocr` trên ảnh artifact, gán `atx_status="run_artifact"`, bỏ qua 100% các lệnh ADB screencap / atx-agent.
+  - Hàm `emit_if_needed(..., machine_dir=None, stdout_tail=None)`: Tự động nạp stack_trace và telemetry thật từ artifacts.
 - **`feed_session_watchdog.py`:**
-  - Tại 3 vị trí emit (Feed, Follow, Upload), truyền `run_dir = os.path.join(date_live, sorted_run_names[-1])`.
+  - Tại 3 vị trí emit (Feed, Follow, Upload), truyền trực tiếp `machine_dir=all_machines.get(m_num, {}).get("machine_dir")` và `stdout_tail=ud_info.get("stdout_tail")`.
+- **Cơ chế chống Báo động giả Upload (False-Positive Guard):**
+  - Khi `upload_result.json` ghi nhận `status: success` và `exit_code: 0`, watchdog tự động xếp vào `up_success`, tuyệt đối không emit nhầm sự cố.
