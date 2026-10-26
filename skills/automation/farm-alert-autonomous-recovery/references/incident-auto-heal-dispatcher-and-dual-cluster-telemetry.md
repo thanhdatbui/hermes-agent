@@ -10,9 +10,14 @@
      - `incident_emitter.py` dùng `adb shell uiautomator dump /sdcard/inc.xml` với timeout ngắn (2.5s). Trên farm Samsung S7 (Android 7/8), shell dump hay bị OOM-kill (`EXIT 137`) hoặc treo > 2.5s làm `xml_dump: null`.
      - Watchdog emit vé muộn ở cuối ca nuôi/upload, máy đã nhả session và rơi vào trạng thái ngủ (`Màn hình: OFF (Sleep/Dozing)`), dẫn đến ảnh chụp `screen.png` bị đen kịt 100% (all 0 pixels), WinRT OCR rỗng.
 - **Quy tắc giải quyết & Vận hành an toàn:**
-  1. Trong `incident_emitter.py`, hàm `resolve_serial_and_args(serial, machine_id)` bắt buộc gọi `inspect_machine.get_serial_for_machine(int(machine_id))` để tra cứu Serial thật từ workbook gán máy.
-  2. Với cụm Admin Remote (`machine_id >= 200`), lệnh ADB bắt buộc thêm cờ kết nối socket: `[tool, '-H', '192.168.110.119', '-P', '5037', '-s', target]`.
-  3. Chống mù hiện trường (Fail-Closed): Chỉ khi lấy đủ ảnh screenshot (>0 byte, không đen) và XML dump UI thật qua ADB/atx-agent thì vé mới đủ điều kiện vào Cổng 1 (Planner). Khi thiếu bằng chứng (score < 2), Gate 0 CHỦ ĐỘNG CHẶN CHUYỂN L3 BLOCKED, cách ly file sang `runtime/incidents/blocked/` để hàng đợi `pending/` sạch sẽ, ngăn ngừa tuyệt đối việc sửa mò làm biến dạng code farm.
+  1. **CẤM TUYỆT ĐỐI SHELL UIAUTOMATOR DUMP:** Toàn bộ code cứu hộ, watchdog và `incident_emitter.py` CẤM TUYỆT ĐỐI gọi `adb shell uiautomator dump` (gây OOM Exit 137 trên S7 và timeout kẹt stub).
+  2. **BẮT BUỘC ATX-AGENT (PORT 7912) & WINRT OCR:**
+     - Đọc UI XML: Bắt buộc qua `atx-agent` (port 7912) bằng `automation_core.persistent_ui` hoặc device-local `/data/local/tmp/atx-agent curl -s --max-time 8 http://127.0.0.1:7912/dumpUI`.
+     - Đọc Text thị giác: Bắt buộc dùng `winrt_ocr` trên ảnh `screen.png`.
+     - Xử lý màn hình ngủ (Screen Sleep): Trước khi `screencap -p`, phải kiểm tra nếu màn hình đang tắt (`mHoldingDisplaySuspendBlocker=false`) thì wake màn hình lên trước (`input keyevent 224`), tránh chụp ảnh đen xì (RGB toàn 0) khiến OCR rỗng.
+  3. Trong `incident_emitter.py`, hàm `resolve_serial_and_args(serial, machine_id)` bắt buộc gọi `inspect_machine.get_serial_for_machine(int(machine_id))` để tra cứu Serial thật từ workbook gán máy.
+  4. Với cụm Admin Remote (`machine_id >= 200`), lệnh ADB bắt buộc thêm cờ kết nối socket: `[tool, '-H', '192.168.110.119', '-P', '5037', '-s', target]`.
+  5. Chống mù hiện trường (Fail-Closed): Chỉ khi lấy đủ ảnh screenshot (>0 byte, không đen) và XML dump UI thật qua atx-agent thì vé mới đủ điều kiện vào Cổng 1 (Planner). Khi thiếu bằng chứng (score < 2), Gate 0 CHỦ ĐỘNG CHẶN CHUYỂN L3 BLOCKED, cách ly file sang `runtime/incidents/blocked/` để hàng đợi `pending/` sạch sẽ, ngăn ngừa tuyệt đối việc sửa mò làm biến dạng code farm.
 
 ## 2. Liên thông 3 Trụ Cột Farm vào Auto-Heal Queue
 `feed_session_watchdog.py` (file trung tâm tổng hợp mọi ca chạy) tự động phân loại và dispatch sự cố vào hàng đợi `pending/`:
