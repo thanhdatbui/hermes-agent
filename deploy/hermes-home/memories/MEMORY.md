@@ -1,8 +1,8 @@
 Cronjob batch ngầm đặt deliver='local' chống spam stdout; Watchdog có deliver='local' BẮT BUỘC tự dispatch Telegram (cấm chỉ print). Hàm nạp token BẮT BUỘC tự đọc trực tiếp từ hermes/.env chống rớt dependency/import automation_core.
 §
-Khi TikTok thiếu acc/mismatch: auto-login/reconcile bù; máy Admin (>=200) nạp admin.yaml, socket 192.168.110.119:5037 & workbook Admin; Canary tra đúng --row lỗi (timeout >= 720s). Khi Graph API token hết hạn: dùng GPM cổng 19995 đọc OTP qua read_otp_gpm.py kèm exclude_codes.
+TikTok lệch/thiếu acc: auto-login/reconcile bù; Admin (>=200) nạp admin.yaml, socket 192.168.110.119:5037 & workbook Admin; Canary tra đúng --row lỗi (timeout >= 720s). Graph token hết hạn (AADSTS70000): đọc OTP qua GPM cổng 19995 (read_otp_gpm.py) kèm exclude_codes; cấm spam dump XML làm S7 quá tải văng offline (ép WinRT OCR). Switcher cấm strip số đuôi làm lẫn nick (khanhthu2275 vs khanhthu1609).
 §
-Nạp ChatGPT-Web Omni: trần 2 acc/IP kèm proxy_assignments; màn /about-you = acc CHƯA reg (Hotmail farm là mail mua, cấm bịa 'reg hotmail'); file admin/gmail_clean_v2.xlsx chứa 100% Hotmail Admin; pass ChatGPT cấm nối tĩnh @Taadaa2026 chống pattern ban, bắt buộc random độc nhất & lưu Excel; script reg cấm exit 0 khi empty/fail chống supervisor đóng dấu ảo; lọc GPM GroupId!=0; pre-validate Graph token; cấm base64.
+Nạp ChatGPT-Web: trần 2 acc/IP + proxy_assignments; màn /about-you = acc chưa reg; pass ChatGPT random độc nhất & lưu Excel; script reg cấm exit 0 khi empty/fail; lọc GPM GroupId!=0; pre-validate Graph token; cấm base64.
 §
 Watchdog đối soát TikTok Web (SQLite snapshots) BẮT BUỘC đối chiếu theo Account ID / Username thay vì Row máy; runner khi gặp timeout BẮT BUỘC salvage follow từ state file thay vì gán 0.
 §

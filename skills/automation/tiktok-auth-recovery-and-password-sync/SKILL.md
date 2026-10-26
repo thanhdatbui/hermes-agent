@@ -5,7 +5,7 @@ description: Use when TikTok login has wrong pass. Reset via token.
 
 # TikTok Auth Recovery & Password Sync
 
-> Reference Case Studies: `references/case-study-m211-recovery.md` (M211 wrong password recovery via Graph API OTP & single-writer lock), `references/case-study-m261-fake-password-and-canary-row-trap.md` (M261 data governance on fake password vs empty/None, remote Admin socket & anti-performative canary row selection).
+> Reference Case Studies: `references/case-study-m211-recovery.md` (M211 wrong password recovery via Graph API OTP & single-writer lock), `references/case-study-m261-fake-password-and-canary-row-trap.md` (M261 data governance on fake password vs empty/None, remote Admin socket & anti-performative canary row selection), `references/case-study-m274-switcher-digit-collision-and-winrt-ocr-enforcement.md` (M274 switcher digit suffix collision bug fix, WinRT OCR primary enforcement to protect S7 CPU, and GPM profile OTP fallback).
 
 ## Invariant Vận Hành (User Rule 2026-10-25)
 - **Cấm ném "kỷ luật suông" vào memory thay vì sửa script**: Khi phát hiện lỗi pass sai, TUYỆT ĐỐI CẤM Agent chỉ lưu các điều khoản "kỷ luật" vào persistent memory rồi dừng lại báo cáo suông. BẮT BUỘC phải vá logic trực tiếp vào script canonical (`tiktok_login_v1.py` / `login_runner.password_change`) để toàn bộ dàn máy tự động hành động.
@@ -66,3 +66,12 @@ description: Use when TikTok login has wrong pass. Reset via token.
 8. **Kỷ Luật Tác Phong Điều Phối Khi User Đã Lệnh Thực Thi ("Làm đi" / "Fix đi")**:
    - Khi user đã chỉ đạo rõ ràng ("Làm đi", "Fix đi", "Làm luôn"): CẤM TUYỆT ĐỐI dừng lại ở cuối turn để đặt câu hỏi xin phép lại ("Em tích hợp... nhé anh?", "Anh muốn làm phương án nào?").
    - BẮT BUỘC tự động chọn phương án tối ưu nhất và thực thi dứt điểm bằng code/script, đưa ra bằng chứng thực tế thay vì dừng lại xin phép lặp lại.
+9. **Ép WinRT OCR Primary Chống Spam XML Dump Làm Treo/Offline Samsung S7**:
+   - Các kịch bản legacy (`social_reg_v1.py` / `tiktok_login_v1.py`) chứa hơn 100 chỗ gọi `get_ui_xml()`. Việc spam Accessibility/UiAutomator Java liên tục trên thiết bị S7 cũ làm CPU Exynos 8890 quá tải 100%, văng lỗi `Killed 137` và làm crash daemon `adbd` trên điện thoại dẫn đến trạng thái thiết bị `offline` hoặc ngắt kết nối USB vật lý.
+   - BẮT BUỘC cập nhật `find_text_tap` và `text_exists` trong runner đăng nhập sang WinRT OCR Primary: chụp màn hình (`screencap`) $\rightarrow$ bóc tách tọa độ chữ qua `automation_core.ocr.ocr_screen_boxes` trên PC $\rightarrow$ tap tâm nút `(cx, cy)`. Chỉ fallback sang XML khi OCR không thấy chữ.
+   - Đảm bảo tuân thủ `INVARIANT UI-OCR-1` và vượt qua `python D:/Taadaa/tools/ui_policy_check.py`.
+10. **Bẫy Fuzzy Match Account Switcher Lẫn Nick Khác Số Đuôi (`matches_switcher_identity`)**:
+   - Trong `automation_core.tiktok.account_switcher.matches_switcher_identity`, logic `v1.rstrip("0123456789+ ") == v2.rstrip("0123456789+ ")` vô tình cắt bỏ toàn bộ số đuôi, khiến các tài khoản có cùng tiền tố chữ nhưng khác số (ví dụ: `khanhthu2275` vs `khanhthu1609`) bị coi là trùng khớp!
+   - Hậu quả nghiêm trọng: Switcher tap nhầm vào nick có sẵn trên máy thay vì nhận diện thiếu nick để nạp bù, dẫn đến việc cày feed nhầm nick và cuối phiên báo lỗi `profile account mismatch`.
+   - Khắc phục bắt buộc: Dùng regex kiểm tra số đuôi (`re.search(r"\d+$", v)`). Nếu cả hai giá trị đều kết thúc bằng số mà số đuôi khác nhau, BẮT BUỘC trả về `False` ngay lập tức.
+
