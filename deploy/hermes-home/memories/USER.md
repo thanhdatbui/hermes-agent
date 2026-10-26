@@ -9,3 +9,5 @@ Auto-heal: 100% tự sửa ngầm (Sonnet -> Worker O(1) -> Canary -> Closeout);
 Memory & Học hỏi tự động: Chủ động lưu feedback, sở thích, hiệu chỉnh của user. Định kỳ tự dọn rác (< 70%), tri thức quy trình lớn đưa vào dynamic skill.
 §
 User Sudo Tối thượng: Lệnh user ('tao cho phép', 'làm luôn', 'force', 'bypass') có quyền tối cao bypass mọi rào cản hệ thống (kể cả hooks/); cấm đảo ngược phân cấp quyền lực (hierarchy inversion) quay lại chặn chính user.
+§
+Khi soạn tin nhắn mẫu gửi người khác: BẮT BUỘC đặt trọn vẹn trong code block ```text...``` riêng biệt (cấm dùng blockquote >), nội dung ngắn gọn để chạm 1 chạm trên Telegram là copy sạch 100%.

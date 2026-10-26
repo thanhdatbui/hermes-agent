@@ -78,6 +78,16 @@ FeedRunner: [FAIL] Lệch Profile/Nick TikTok (profile account mismatch / naviga
   ```
   Nếu `m < 200`, trỏ về `kibe.yaml` và gỡ bỏ `ADB_SERVER_SOCKET`.
 
+### G. Pitfall Timeout & Row Indexing Khi Canary Kiểm Chứng Luồng Login Recovery
+- **Bẫy Timeout 300s cắt ngang recovery:**
+  - Trong `feed_swipe_smoke.py`, timeout của `_run_fast_targeted_login()` là 420s, và `reconcile_timeout_seconds` là 600s.
+  - Nếu Coordinator/Worker chạy lệnh `canary_runner.py` với `--timeout 300` (hoặc để mặc định 360s), lệnh sẽ bị timeout giả lập `[CANARY_TIMEOUT]` khi script đang giữa chừng login/reconcile trên thiết bị thật.
+  - **Quy chuẩn:** Canary cho tác vụ nuôi feed có recovery tài khoản BẮT BUỘC đặt `--timeout >= 720` (khuyên dùng 900s) và chạy nền `terminal(background=True, notify_on_complete=True)`.
+- **Bẫy Row Indexing đối soát tài khoản thật:**
+  - Trong workbook, hàng tài khoản đầu tiên (slot 0) tương ứng với `--row 1` (`account_row_index=1`).
+  - Nếu thiết bị đã có sẵn nick ở slot 0, chạy `--row 1` sẽ cho kết quả `already matched` và lướt feed ngay, KHÔNG hề kích hoạt nhánh `auto_login_recovery`.
+  - Để tái hiện và kiểm chứng đúng nhánh tự login, BẮT BUỘC phải đối soát danh sách usable/workbook và truyền đúng `--row <N>` của tài khoản đang thực sự vắng mặt trên máy (ví dụ `--row 2` cho `thuthanh2911`).
+
 ## 3. Quy Trình Nạp Bù Tài Khoản Đúng Chuẩn (Actionable Reconcile Flow)
 Để nạp nick còn thiếu vào slot trống của thiết bị mà không ảnh hưởng đến batch đang chạy:
 

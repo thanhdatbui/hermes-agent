@@ -71,3 +71,8 @@ Applies whenever reports fail to reflect actual fleet health, mask dropped machi
 2. **Deterministic Telemetry Test:** Run focused pytest verifying AST structure, telemetry output to stderr, and empty-input edge cases.
 3. **Dry-Run / Live Probe:** Execute with `--dry-run` or direct execution ensuring stdout contains only formatted report text while metrics route to stderr.
 4. **OneDrive & Deployment Parity:** Always sync updates between repo deployment path (`deploy/hermes-home/scripts/`) and shared operational directory (`OneDrive/Taadaa_Sync_Shared/hermes-cron/scripts/`).
+
+---
+
+## 4. References & Case Studies
+- [`references/zero-reporting-blindspots-and-watchdog-fidelity.md`](references/zero-reporting-blindspots-and-watchdog-fidelity.md) — Case study: Eliminating blindspots in Taadaa Farm cron reports (ADB offline isolation, state desync fallback, NEEDS_LOGIN separation, starving slot alerts).
