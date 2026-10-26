@@ -1,6 +1,6 @@
 Cronjob batch ngầm đặt deliver='local' chống spam stdout; Watchdog có deliver='local' BẮT BUỘC tự dispatch Telegram (cấm chỉ print). Hàm nạp token BẮT BUỘC tự đọc trực tiếp từ hermes/.env chống rớt dependency/import automation_core.
 §
-Khi TikTok thiếu acc/mismatch: BẮT BUỘC auto-login/reconcile bù; máy Admin (>=200) nạp TAADAA_HOST_CONFIG=admin.yaml, socket 192.168.110.119:5037 & workbook Admin; Canary remote/auto-login BẮT BUỘC timeout >= 720s (cấm set 300s).
+Khi TikTok thiếu acc/mismatch: BẮT BUỘC auto-login/reconcile bù; máy Admin (>=200) nạp host config admin.yaml, socket 192.168.110.119:5037 & workbook Admin; Canary tái hiện lỗi BẮT BUỘC tra đúng --row <N> của nick vắng mặt (cấm test nhầm --row 1 có sẵn sinh pass ảo); timeout >= 720s.
 §
 Khi pool OmniRoute lỗi: đối soát proxy_registry & test /api/providers/{cid}/test; token sống bật is_active=1 ngay. Acc ChatGPT reg xong dùng ngay; gán >= 2 acc/proxy kèm proxy_assignments.
 §
@@ -16,4 +16,4 @@ Watchdog & Cron report toàn farm tuân thủ chuẩn: vi phạm mới bắn ra,
 §
 Watchdog audit compliance farm gates BẮT BUỘC lọc sạch test/mock artifacts (pytest, target.py) và chuẩn hóa timestamp local naive sang UTC; gate chặn có auto-rewire/tự sửa <= 1 turn tính là REWIRED, cấm đánh FAIL.
 §
-Dispatch Gate chặn delegate_task khi sửa code -> BẮT BUỘC dùng dispatch_worker.py --workdir <repo> --file <file>; user 'Làm đi' làm ngay không hỏi lại. Watchdog/cron BẮT BUỘC in đích danh máy offline (đối soát fleet vs adb) & top acc login fail (failed_details). GPM nurture chạy 12h, trần ngày đếm từ last_nurtured.
+Dispatch chặn delegate_task khi sửa code -> dùng dispatch_worker.py; user 'Làm đi' làm ngay. Watchdog in đích danh máy offline & top acc login fail. GPM nurture trần ngày đếm từ last_nurtured.
