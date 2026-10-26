@@ -7,7 +7,19 @@ description: Use when TikTok login has wrong pass. Reset via token.
 
 ## Invariant Vận Hành (User Rule 2026-10-25)
 - **Cấm ném "kỷ luật suông" vào memory thay vì sửa script**: Khi phát hiện lỗi pass sai, TUYỆT ĐỐI CẤM Agent chỉ lưu các điều khoản "kỷ luật" vào persistent memory rồi dừng lại báo cáo suông. BẮT BUỘC phải vá logic trực tiếp vào script canonical (`tiktok_login_v1.py` / `login_runner.password_change`) để toàn bộ dàn máy tự động hành động.
-- **Tự động cứu tài khoản khi sai pass**: Khi TikTok login báo sai mật khẩu (`Mật khẩu sai`, `Bạn cần trợ giúp đăng nhập?`, `WRONG_PASS_HINTS`) hoặc tài khoản reg email-only thiếu pass: **TUYỆT ĐỐI CẤM** dừng lại báo `[AUTH_BLOCKED]` / `PASSWORD_RETRY_BLOCKED` hay đoán mò pass.
+- **Tự động cứu tài khoản khi sai pass**: Khi TikTok login báo sai mật khẩu (`Mật khẩu sai`, `Bạn cần trợ giúp đăng nhập?`, `WRONG_PASS_HINTS`) hoặc tài khoản reg email-only thiếu pass: **TUYỆT ĐỐI CẤM** dừng lại báo `[AUTH_BLOCKED]` / `PASSWORD_RETRY_BLOCKED`, đoán mò pass hay hỏi xin phép lý thuyết suông ("Ủa sao lại là skill. T ép chạy thành script hết r mà?").
+- **Quy trình 2 bước thực thi tự động khi gặp sai pass**:
+  1. **Đối soát dữ liệu O(1) (Data Audit)**: Tra soát kỹ lại dữ liệu trong `taikhoan_dat_v2_updated .xlsx` (cột PASS) và `gmail_clean_v2.xlsx` (xem có đầy đủ refresh_token / client_id hay không) xem có lưu sai mật khẩu không.
+  2. **Kích hoạt ngay script canonical phục hồi mật khẩu**: Nếu dữ liệu không lưu nhầm (pass mặc định từ lúc reg email-only qua Outlook không khớp server TikTok), lập tức chạy script `change_tiktok_passwords.py` để reset qua Microsoft Graph API trên PC và đồng bộ pass mới:
+     ```bash
+     python D:/Taadaa/tiktok-log-in/scripts/change_tiktok_passwords.py \
+         --workbook-path "D:/OneDrive/TaadaaData/<cluster>/taikhoan_dat_v2_updated .xlsx" \
+         --machines <N> \
+         --rows <excel_row_index> \
+         --allow-live-password-change \
+         --full-scope-takeover \
+         --runtime-root "D:/Taadaa/runtime/<cluster>"
+     ```
 - **BẮT BUỘC 100% tự động chuyển flow cứu tài khoản trong `drive_login_screens`**:
   1. Xóa bỏ lệnh `return` ngắt luồng; set cờ `account["needs_password_reset"] = True` và `force_otp = True`.
   2. Tap *"Bạn cần trợ giúp đăng nhập?"* / *"Quên mật khẩu?"* / *"Đăng nhập bằng mã xác minh"* trên form đăng nhập TikTok.
