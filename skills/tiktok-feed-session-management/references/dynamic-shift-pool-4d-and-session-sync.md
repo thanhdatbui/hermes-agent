@@ -7,12 +7,15 @@ Hệ thống quản lý tới tầng tài khoản (Account-Level Telemetry), xó
 - `cycle_idx = (today.toordinal() - _ANCHOR_ORDINAL) // 4`
 
 ### Phân Bổ Ca Nuôi & Ranh Giới Pool:
-- **Ca 1 (Sáng: 06:00 & 08:00):** Pool `{1, 2, 7}`
-- **Ca 2 (Trưa: 12:00 & 14:00):** Pool `{3, 4, 8}`
-- **Ca 3 (Tối: 18:00 & 20:00):** 
-  * Lượt 1 & 2: Chạy 2 nick trong Pool `{5, 6}` theo thứ tự sức khỏe.
-  * Lượt 3 (Đòn bẩy chiến lược - Row Động): Tự động fallback sang 3 phễu nuôi dưỡng sinh (**Đề xuất $\to$ Nhả $\to$ Yếu**).
-  * 🛑 **Quy tắc Bất biến:** Row Động Ca 3 **BẮT BUỘC BỊ TẮT FOLLOW HOÀN TOÀN** (`rest_day_no_follow: true`, `reason: dynamic-nurture-row-follow-disabled`), chỉ thuần túy lướt feed và up video để kích mạnh trust kênh mà không gây rủi ro spam follow.
+- **Ca 1 (Sáng: 06:00 & 08:00):** Pool `{1, 2, 7}` (3 ngày đầu `cycle_day` 0, 1, 2).
+- **Ca 2 (Trưa: 12:00 & 14:00):** Pool `{3, 4, 8}` (3 ngày đầu `cycle_day` 0, 1, 2).
+- **Ca 3 (Tối: 18:00 & 20:00):** Pool `{5, 6}` (2 ngày đầu `cycle_day` 0, 1). Đến ngày 3 (`cycle_day == 2`), Ca 3 kích hoạt fallback sớm sang 3 phễu.
+- **Ngày Thứ 4 Của Chu Kỳ (`cycle_day == 3`):** Toàn farm mọi Ca (Ca 1, Ca 2, Ca 3) đều kích hoạt fallback sang 3 phễu nuôi dưỡng sinh (**Đề xuất $\to$ Nhả $\to$ Yếu**).
+- 🛑 **Quy tắc Bất biến Bỏ Qua Follow (`dynamic-nurture-row-follow-disabled`):**
+  * Bất kỳ khi nào phiên nuôi rơi vào fallback 3 phễu (`resolve_shift_pool_account` raise `ValueError` do `cycle_day == 3` hoặc `cycle_day == 2 && ca == 3` hoặc cạn pool), `feed_session_workbook.py` tự động gán cờ `rest_day_no_follow: true` vào `MachineAccount`.
+  * Tại `multi_machine_feed_session.py`, `_run_follow_hook` kiểm tra `getattr(account, 'rest_day_no_follow', False)` và tự động bỏ qua bước follow, xuất reason:
+    `status: "skipped", reason: "dynamic-nurture-row-follow-disabled"`.
+  * Toàn bộ nick trong phiên này chỉ thuần túy lướt feed và up video (Phiên 2) để kích trust kênh mà không chịu rủi ro phạt follow. Báo cáo watchdog xuất hiện `Bỏ qua (N): dynamic-nurture-row-follow-disabled` là chỉ dấu chính xác của ngày/phiên dưỡng sinh 3 phễu, không phải lỗi hệ thống.
 
 ### Quy Luật Bốc Tuần Tự Đi Đủ 8 Nick (Chống Bỏ Đói & Chống Trôi Lượt):
 - **Phễu Sức Khỏe 6 Tầng (`_follow_rank`):**

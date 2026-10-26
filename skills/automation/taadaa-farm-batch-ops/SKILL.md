@@ -25,6 +25,8 @@ tags: [tiktok, farm, batch, render, upload, resume, kibe]
   (Dọn rác cũ, cào kênh mới, render nối tiếp từ `start-seq` với chuẩn $\ge 45$ clip để khớp ngưỡng watchdog 6h toàn farm và đồng bộ `TikN.xlsx`. Chi tiết xem `references/time-sensitive-niche-sourcing-and-tuvi-pipeline.md`).
 - **Cào Tải Video Gốc Admin (40 Workers song song qua 69 Proxy MikroTik LAN):**
   `python C:/Users/Admin/run_admin_downloader_service.py` (launcher headless: `python C:/Users/Admin/launch_detached_admin_downloader.py`). Log: `D:/CodexRuntime/tiktok-video-machine2/download_admin_p10.log`.
+- **Cào Bổ Sung & Render Nối Tiếp (File-List Invariant Chống Bẫy Lexicographical):**
+  Khi cần cào thêm clip bù mốc $\ge 45$ (ví dụ nick vừa swap 40 clip), CẤM thả trực tiếp `41.mp4..50.mp4` vào `--input-dir` vì hàm `sorted()` sẽ chèn số 4x vào giữa `40.mp4` và `5.mp4` làm xáo trộn toàn bộ sequence cũ. BẮT BUỘC dùng `--file-list <list_txt>` và truyền `--start-seq <da_render+1>` để chỉ render cách ly các clip mới. Chi tiết xem [`references/supplementary-crawl-and-sequential-render-file-list-pitfall.md`](references/supplementary-crawl-and-sequential-render-file-list-pitfall.md).
 - Render Worker Chuẩn Mapping 8 Tik trên Admin (1 Worker tuần tự chống nghẽn GPU):
   `python C:/Users/Admin/run_admin_render_worker.py` (launcher headless: `python C:/Users/Admin/launch_detached_admin_render.py`). Log: `C:/Users/Admin/admin_render_worker.log`.
 - **ChatGPT GPM Audit & Lifecycle Execution Safety:**
@@ -93,6 +95,7 @@ tags: [tiktok, farm, batch, render, upload, resume, kibe]
   (5) Ưu tiên ADB binary GemPhoneFarm v35 thay vì Xiaowei v34 trong các công cụ inspect/runner để tránh lỗi `protocol fault (couldn't read status): connection reset`. Chi tiết xem [`references/xiaowei-orphan-adb-port-5037-and-wifi-healer-circuit-breaker.md`](references/xiaowei-orphan-adb-port-5037-and-wifi-healer-circuit-breaker.md).
 
 ## 4. Danh Mục Tham Khảo Chi Tiết
+- Cào bổ sung & Render nối tiếp (File-List Invariant chống bẫy Lexicographical): [`references/supplementary-crawl-and-sequential-render-file-list-pitfall.md`](references/supplementary-crawl-and-sequential-render-file-list-pitfall.md)
 - Target-Bound Differential Canary & Safe Probe Matrix Operations: [`references/target-bound-canary-matrix-and-safe-probe-ops.md`](references/target-bound-canary-matrix-and-safe-probe-ops.md)
 - Chẩn đoán biến động 0 (+0) trên Batch Lifecycle / Supervisor & Bộ lọc Candidate: [`references/lifecycle-supervisor-zero-progress-and-candidate-filtering-triage.md`](references/lifecycle-supervisor-zero-progress-and-candidate-filtering-triage.md)
 - Cào nguồn Niche Nhạy Cảm Thời Gian (Tử Vi / Phong Thủy / Trend Năm Cũ) & Chiến Lược Phôi Douyin Sạch: [`references/time-sensitive-niche-sourcing-and-tuvi-pipeline.md`](references/time-sensitive-niche-sourcing-and-tuvi-pipeline.md)

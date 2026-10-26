@@ -7,10 +7,11 @@ description: "Use when designing mechanical gates to prevent agent loops."
 
 ## 1. When to Use
 Use when creating, modifying, or reviewing mechanical enforcement gates (pre-tool hooks, git hooks, closeout gates, or runtime fences). Enforces that every gate provides deterministic, actionable unblocking paths (Auto-Rewire / Active Pivot) rather than passive denials.
-- Reference: `references/pre-tool-auto-rewrite-and-24h-heartbeat-architecture.md` (Engine-level pre-tool auto-rewrite, zero turn overhead, fail-closed telemetry, and 24h heartbeat at 09:00 VN).
-- Reference: `references/auto-rewire-and-auto-clamp-architecture.md` (Auto-Rewire on worker entrypoints, investigate budget auto-clamp, and Closeout Gate `--skip-test` auto-rewire).
-- Reference: `references/user-sudo-override-and-investigate-read-only-deadlock-triage.md` (User Master Override Sudo architecture, avoiding Investigate Read-Only trap).
-- Reference: `references/dispatch-worker-timeout-and-deadlock-prevention-20261025.md` (Timeout Floor 360s, Allowlist 360s, Investigate Read-Only & Multi-File regex avoidance, Auto-Fallback to Claude Haiku).
+- Reference: `references/pre-tool-auto-rewrite-and-24h-heartbeat-architecture.md` (Pre-tool auto-rewrite, telemetry, 24h heartbeat).
+- Reference: `references/auto-rewire-and-auto-clamp-architecture.md` (Worker entrypoint auto-rewire & budget auto-clamp).
+- Reference: `references/user-sudo-override-and-investigate-read-only-deadlock-triage.md` (Sudo override & read-only deadlock triage).
+- Reference: `references/dispatch-worker-timeout-and-deadlock-prevention-20261025.md` (Timeout floor 360s, allowlist, Haiku fallback).
+- Reference: `references/gate-compliance-audit-desync-and-test-pollution-invariants.md` (Pytest mock artifact filtering in telemetry, local vs UTC timezone normalization, REWIRED vs FAIL classification, and churn metrics).
 - Reference: `references/active-pivot-auto-rewire-architecture.md` (Tri-party consensus on Auto-Rewire vs Hard-Block, anti-paralysis invariants).
 - Reference: `references/auto-wiring-and-guidance-boundary-matrix-20261026.md` (Auto-Wiring vs Fail-Fast decision matrix for investigate budget, CONSOLE_WINDOW, code edit dispatch, and GuardGate vs Dynamic Skills guidance storage hierarchy).
 - Reference: `references/idle-window-evaluation-bias-and-closeout-boundary-discipline.md` (Idle-window evaluation bias and zero-block action mandate hierarchy).

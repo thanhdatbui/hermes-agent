@@ -87,3 +87,20 @@ When orchestrating a pool of distinct Pro accounts (e.g. 29 accounts `acc_01` to
 5. **Process Lease Locking:**
    - `acquire_profile_lock(profile_dir)` writes a lease token file with PID and timestamp.
    - TTL = 1800s (30 mins); checks PID liveness before declaring a profile in use to prevent deadlocks from killed workers.
+
+## 6. Shared Upstream Quota Accounting & Cross-Tool Balancing
+
+### 1. Unified Google Account Quota Identity
+- The 1,500 req/day quota is enforced by Google Cloud Code per **Google Account (email identity)**, NOT per device, IP, or client tool.
+- Requests originating from:
+  1. Desktop Antigravity IDE (GUI)
+  2. Centralized Gateway / OmniRoute (`:20129`)
+  3. Native Agy CLI (`agy.exe` via `ag_credit_proxy.py`)
+  ...all consume from the **exact same 1,500 daily G1 credit bucket** for that account.
+- If OmniRoute consumes 500 requests from `quyphuoc090565@gmail.com`, `agy.exe` will only have 1,000 requests remaining for that account on that day.
+
+### 2. Cross-Tool Live Quota Balancing
+- In multi-agent or co-working setups (e.g. Hermes Coordinator using OmniRoute while Worker uses Agy CLI):
+  - `ag_cli.py` queries OmniRoute's live quota cache via `query_omniroute_quota_map()`.
+  - Profiles are sorted with `_sort_key = (-rem_pct, last_used, calls)`, ensuring Agy CLI automatically routes tasks to accounts that have the highest remaining quota across both OmniRoute and CLI usage.
+  - Accounts reported exhausted by OmniRoute are automatically filtered out of CLI dispatch, preventing wasted roundtrips and premature cooldowns.

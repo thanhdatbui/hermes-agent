@@ -545,7 +545,8 @@ When using a screenshot, verify the address bar port against the live listener; 
 
 ## Supporting detail
 
-- `references/chatgpt-web-pool-proxy-distribution.md` — ChatGPT-Web pool feeding protocol, multi-account proxy pairing (>= 2 accs/IP), and distinguishing email soaking from ChatGPT pool readiness.
+See `references/chatgpt-web-pool-proxy-distribution.md` — ChatGPT-Web pool feeding protocol, multi-account proxy pairing (>= 2 accs/IP), and distinguishing email soaking from ChatGPT pool readiness.
+- `references/chatgpt-web-pool-feeder-and-proxy-assignment.md` — ChatGPT Web pool feeding standards, multi-account proxy density invariants (>= 2 accs/IP), and Hotmail direct login vs Google SSO trap in auto-feeders.
 - `references/mobile-dashboard-detail-modal-and-runtime-reload.md` — Responsive mobile detail modal layout (near-viewport bounds, mobile stacking, pill filter tabs for large cohorts, auto-focus target, and runtime reload checks).
 - `references/mobile-fleet-dashboard-design-patterns.md` — Responsive mobile layout patterns for local fleet dashboards (safe-area insets, card view toggle, mini timeline pills, sticky multi-column headers).
 - `references/runtime-app-update-and-import.md` — Reusable OmniRoute-style workflow, UI paths, and credential-safe proxy import handling.
