@@ -38,3 +38,4 @@ description: "Taadaa farm safety, close-session, and multi-machine operations."
 - Claude CLI Bounded Review Loop: [`references/claude-cli-bounded-review-loop.md`](references/claude-cli-bounded-review-loop.md)
 - ChatGPT Web Pool & OmniRoute Cap: [`references/chatgpt-web-pool-feeding-candidate-filtering-and-omniroute-cap.md`](references/chatgpt-web-pool-feeding-candidate-filtering-and-omniroute-cap.md)
 - Auto-Wiring & Active Pivot: [`references/auto-wiring-active-pivot-and-gate-compliance-20261026.md`](references/auto-wiring-active-pivot-and-gate-compliance-20261026.md)
+- Dynamic Pool Row 0 vs Cron Rest-Day Parity: [`references/dynamic-pool-row0-vs-cron-runner-rest-day-flag-parity.md`](references/dynamic-pool-row0-vs-cron-runner-rest-day-flag-parity.md)

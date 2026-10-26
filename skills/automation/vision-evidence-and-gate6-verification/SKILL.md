@@ -30,6 +30,7 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
 - Kỷ luật Nhả Lock Khung Giờ Ca Nuôi & Chống Ôm Máy Trễ Giờ Feed: [`references/shift-window-cutoff-and-active-feed-preemption.md`](references/shift-window-cutoff-and-active-feed-preemption.md)
 - Soi Mắt Màn Hình Trình Duyệt / Browser CDP & Xác Thực Đăng Nhập: [`references/browser-cdp-session-and-form-vision-verification.md`](references/browser-cdp-session-and-form-vision-verification.md)
 - Kiến Trúc Hook Cơ Học Gate 6 & Invariant Chống Khóc Lóc: [`references/gate6-mechanical-hook-and-anti-whining-architecture.md`](references/gate6-mechanical-hook-and-anti-whining-architecture.md)
+- Kiến Trúc Auto-Rewire & Guidance Chống Bại Liệt L3 Cho Gate 6: [`references/gate6-auto-rewire-and-guidance-architecture.md`](references/gate6-auto-rewire-and-guidance-architecture.md)
 
 ## 1. Nguyên Tắc Cốt Lõi (Invariants)
 1. **CẤM gửi ảnh mù / đối phó:** Trước khi đính kèm bất kỳ thẻ `MEDIA:<path>` nào, bắt buộc phải mở ảnh ra soi mắt kiểm tra trước.
@@ -116,6 +117,10 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
       * **Điểm A (`post_tool_call` trên UI tools):** Tự động chụp screencap + WinRT OCR + ghi signed receipt, không phụ thuộc vào trí nhớ của LLM.
       * **Điểm B (`pre_tool_call` trên `terminal|clarify`):** Chặn các hành động chốt phiên hoặc lảng tránh nếu receipt chưa đạt `VERIFIED_SUCCESS`.
     - **Invariant Chống Khóc Lóc:** Khi gate DENY, bắt buộc trả về template cấu trúc 1 dòng (`render_degraded_template`), cấm văn mắng mỏ tự do. Cưỡng chế trần $O(1)$ (`attempt >= 3` hoặc `elapsed > 30s` $\rightarrow$ `ESCALATE_L3_BLOCKED`), cấm tuyệt đối vòng lặp xin lỗi, giải thích hay phân trần. Chi tiết xem [`references/gate6-mechanical-hook-and-anti-whining-architecture.md`](references/gate6-mechanical-hook-and-anti-whining-architecture.md).
+25. **Cơ Chế Auto-Rewire & Guidance Chống Bại Liệt L3 Cho Gate 6:**
+    - CẤM TUYỆT ĐỐI viện cớ thiếu ảnh để tự ý hạ cấp xuống `L3 BLOCKED` đùn việc cho User.
+    - **Auto-Capture & Auto-Rewire:** Hook tại `post_tool_call` tự động chụp screencap hiện trường; tầng `transform_llm_output` tự động găm thẻ `MEDIA:<path>` tươi nhất vào cuối tin nhắn nếu Agent quên dán thẻ khi claim hoàn tất.
+    - **Guidance Injection Thay Vì Báo Block Mù:** Khi mất kết nối không thể screencap, Hook inject lệnh cứu hộ $O(1)$ (`python D:/Taadaa/tools/inspect_machine.py <N>`) ép Agent xử lý ngay thay vì đứng im khóc lóc. Chi tiết xem [`references/gate6-auto-rewire-and-guidance-architecture.md`](references/gate6-auto-rewire-and-guidance-architecture.md).
 
 ## 2. Thang Leo Thang Vision Dự Phòng (Fallback Ladder)
 Thứ tự fallback đọc ảnh chuẩn hoá 100% đồng bộ với kiến trúc Worker Dispatch:

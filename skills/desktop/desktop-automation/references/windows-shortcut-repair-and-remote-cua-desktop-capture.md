@@ -17,8 +17,35 @@ After migrating or moving application folders between drives (e.g., from `D:\x\A
    - User Desktop: `C:\Users\<user>\Desktop\`
    Updating only Desktop shortcuts leaves the Start Menu index pointing to the dead path.
 2. **Corrupted / Empty Targets:** When Windows detects a dead target, `WScript.Shell.CreateShortcut()` frequently returns an empty string `TargetPath = ""` or refuses in-place update.
+3. **Dual Desktop Aggregation & Duplicate Icon Clutter Trap:** Windows Desktop view merges files from both `C:\Users\Public\Desktop` and `C:\Users\<user>\Desktop`. If scripts create `.lnk` files in both directories, or create both localized and English names (e.g. `Dau Truong Chan Ly.lnk` AND `Teamfight Tactics.lnk`), Windows displays duplicate identical icons on the user's screen.
+4. **Missing `IconLocation` on Launcher Sub-Products:** When creating shortcuts that launch games through a central launcher (e.g. `RiotClientServices.exe --launch-product=teamfight_tactics`), omitting `$shortcut.IconLocation` forces Windows to extract the icon from `TargetPath` (the launcher executable), turning every game shortcut into the generic launcher icon (e.g. all 8 shortcuts displaying identical red Riot fists).
 
 ### Pitfalls & Fixes
+
+#### A. Single Desktop Directory Enforcement & Deduplication
+Always enforce shortcuts strictly in `C:\Users\Public\Desktop` (or `C:\Users\<user>\Desktop`), never both. Purge duplicate or alternate language names from both locations before creating the canonical set:
+```powershell
+$w = New-Object -ComObject WScript.Shell
+$rc = 'C:\Riot Games\Riot Client\RiotClientServices.exe'
+
+# 1. Clean duplicates from user desktop and public desktop
+$dups = @(
+    'C:\Users\Admin\Desktop\Teamfight Tactics.lnk',
+    'C:\Users\Admin\Desktop\Dau Truong Chan Ly.lnk',
+    'C:\Users\Public\Desktop\Dau Truong Chan Ly.lnk'
+)
+foreach ($f in $dups) {
+    if (Test-Path $f) { Remove-Item $f -Force }
+}
+
+# 2. Enforce canonical shortcut with explicit IconLocation
+$sc = $w.CreateShortcut('C:\Users\Public\Desktop\Teamfight Tactics.lnk')
+$sc.TargetPath = $rc
+$sc.Arguments = '--launch-product=teamfight_tactics --launch-patchline=live'
+$sc.WorkingDirectory = 'D:\Riot Games\Teamfight Tactics\Live'
+$sc.IconLocation = 'D:\Riot Games\Teamfight Tactics\Live\TFTClient.exe,0'
+$sc.Save()
+```
 
 #### A. PowerShell WScript.Shell Unicode Mismatch
 - **Trap:** Saving shortcuts with non-ASCII or accented filenames (e.g. `Đấu Trường Chân Lý PBE.lnk`) via PowerShell without strict UTF-16LE encoding causes PowerShell to replace non-ASCII characters with `?` (e.g. `D?u Tru?ng...`). Because `?` is illegal in NTFS filenames, `$shortcut.Save()` throws:

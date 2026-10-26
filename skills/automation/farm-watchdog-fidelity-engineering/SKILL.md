@@ -118,6 +118,17 @@ Applies whenever reports fail to reflect actual fleet health, mask dropped machi
   2. **Unreachable Cluster Warning Contract:** Report `⚠️ Cluster không kết nối được ADB; không thể xác nhận trạng thái máy.` instead of aggregate 0s.
   3. **Deferred Daily Reporting Closeout:** Only commit `reported_date = today_str` when all configured clusters are reachable (or explicit `--force` override), allowing subsequent ticks to clear cache or reconcile once ADB daemon recovers. See `references/adb-host-unreachability-and-deferred-closeout.md`.
 
+### Invariant 13: Mock Test Signature Sanitization, Local-to-UTC Normalization, and Three-Way Sync Parity
+- **Anti-Pattern:**
+  1. A compliance watchdog audits logs using generic regex (`pytest`, `target.py`), failing to match real test assertion payloads (`Review then apply...`, `grep -rn foo...`, `audit_test...`). Over 70% of reported violations are synthetic test mock artifacts.
+  2. The watchdog parses naive timestamps from files using `datetime.now().isoformat()` with `.replace(tzinfo=timezone.utc)`, distorting the 6-hour rolling window by 7 hours and pulling in historical incidents from 13 hours prior.
+  3. The agent edits scripts in the repo worktree but forgets that Hermes cron runs standalone scripts from `%LOCALAPPDATA%\hermes\scripts\`, resulting in stale runtime execution.
+- **Rule:**
+  1. **Comprehensive Test Signature Sanitization:** Maintain an explicit `TEST_MOCK_SIGNATURES` tuple containing known test payloads and filter them out via `is_test_log_line(line)`.
+  2. **Designated Naive Normalization:** Map files with naive local timestamps (`LOCAL_NAIVE_LOGS = {"dispatch_audit.jsonl", "console_block_audit.jsonl"}`) and convert them from host local time to UTC before window cutoff evaluation.
+  3. **Three-Way Sync Parity:** Synchronize script changes across (1) `D:/Taadaa/tools/`, (2) `deploy/hermes-home/scripts/`, and (3) `%LOCALAPPDATA%\hermes\scripts\` via `cron_sync_watchdog.py --force`.
+  4. **Gateway Restart Discrimination:** `no_agent: true` cronjobs spawn fresh Python processes from disk per tick and NEVER require Gateway restart. Gateway restart is strictly reserved for in-memory core engine modules (`conversation_loop.py`, `coding_context.py`). See `references/compliance-watchdog-mock-sanitization-and-three-way-sync.md`.
+
 ---
 
 ## 3. Verification Protocol for Watchdogs & Reports
@@ -129,6 +140,7 @@ Applies whenever reports fail to reflect actual fleet health, mask dropped machi
 ---
 
 ## 4. References & Case Studies
+- [`references/adb-host-unreachability-and-deferred-closeout.md`](references/adb-host-unreachability-and-deferred-closeout.md) — Case study: ADB host unreachability vs zero-device fleet discrimination, misleading zero-error reports, and deferred daily closeout.
 - [`references/batch-watchdog-idempotency-and-anti-spam-storm.md`](references/batch-watchdog-idempotency-and-anti-spam-storm.md) — Case study: Decoupled idempotency contract preventing partial-failure rerun loops and Telegram spam storms.
 - [`references/cross-cluster-multi-host-watchdog-parity.md`](references/cross-cluster-multi-host-watchdog-parity.md) — Root causes and contracts for cross-host watchdog execution and telemetry collection (Kibe local vs Admin remote).
 - [`references/exception-driven-alerting-and-24h-heartbeat.md`](references/exception-driven-alerting-and-24h-heartbeat.md) — Exception-driven alerting, fail-closed tri-state model, and the 24h heartbeat aggregator (Dead-Man's Switch).
