@@ -87,7 +87,7 @@ Applies whenever reports fail to reflect actual fleet health, mask dropped machi
 
 ### Invariant 10: Cross-Host Multi-Cluster Telemetry Parity (Anti-Silent Cluster Dropping)
 - **Anti-Pattern:** A multi-cluster orchestrator or watchdog (e.g. `cron_night_tiktok_2fa_watchdog.py`) is intended to run across both local (Kibe M01-M80) and remote (Admin M201-M280) clusters, but repeatedly fails to execute or report the remote fleet:
-  1. **Path Assumption Desync:** Hardcoding local machine paths (repo directory, venv python path) inside remote SSH invocations where directories differ on the remote host.
+  1. **Path & Shell Assumption Desync:** Hardcoding local controller paths (e.g. leaking `C:\Users\Kibe\...` into remote `$env:GMAIL_REG_PYTHON_EXE` under user `Admin`), or passing POSIX forward slashes (`Set-Location 'D:/Taadaa/...'`) over SSH which causes Windows PowerShell `Test-Path` to return False (exit code 1).
   2. **Inventory Partition Blindspot:** Relying on a single local workbook (e.g. `taikhoan_run_safe.xlsx` with only M01-M80) while the remote fleet resides in a separate workbook (e.g. `admin/PROXYgandienthoai.xlsx`), causing the selection script to evaluate an empty set for the remote cluster.
   3. **Unilateral Local Log Scraping:** Aggregator functions (`read_summary_json`) only scanning local runtime directories (e.g. `D:/CodexRuntime/...`), silently defaulting remote cluster statistics to 0 without verifying or fetching the remote host's output summary.
 - **Rule:**

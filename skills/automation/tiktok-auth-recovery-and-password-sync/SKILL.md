@@ -5,6 +5,8 @@ description: Use when TikTok login has wrong pass. Reset via token.
 
 # TikTok Auth Recovery & Password Sync
 
+> Reference Case Studies: `references/case-study-m211-recovery.md` (M211 wrong password recovery via Graph API OTP & single-writer lock), `references/case-study-m261-fake-password-and-canary-row-trap.md` (M261 data governance on fake password vs empty/None, remote Admin socket & anti-performative canary row selection).
+
 ## Invariant Vận Hành (User Rule 2026-10-25)
 - **Cấm ném "kỷ luật suông" vào memory thay vì sửa script**: Khi phát hiện lỗi pass sai, TUYỆT ĐỐI CẤM Agent chỉ lưu các điều khoản "kỷ luật" vào persistent memory rồi dừng lại báo cáo suông. BẮT BUỘC phải vá logic trực tiếp vào script canonical (`tiktok_login_v1.py` / `login_runner.password_change`) để toàn bộ dàn máy tự động hành động.
 - **Tự động cứu tài khoản khi sai pass**: Khi TikTok login báo sai mật khẩu (`Mật khẩu sai`, `Bạn cần trợ giúp đăng nhập?`, `WRONG_PASS_HINTS`) hoặc tài khoản reg email-only thiếu pass: **TUYỆT ĐỐI CẤM** dừng lại báo `[AUTH_BLOCKED]` / `PASSWORD_RETRY_BLOCKED`, đoán mò pass hay hỏi xin phép lý thuyết suông ("Ủa sao lại là skill. T ép chạy thành script hết r mà?").
