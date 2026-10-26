@@ -17,6 +17,12 @@ Hệ thống vận hành theo **Vòng xoay thành công thuần túy State-Drive
   * **Hiện tượng:** Sáng ngày 26/10/2026, toàn bộ 160 máy Ca Sáng đều bị Watchdog báo `Bỏ qua (76/78): dynamic-nurture-row-follow-disabled`.
   * **Nguyên nhân:** Dù đã bỏ ngày 4 dưỡng sinh, nhưng trong `shift_pool_selector.py` vẫn sót lại dòng `if cycle_day == 3 or (cycle_day == 2 and ca == 3): raise ValueError(...)`. Vì ngày 26/10 là ngày thứ 15 tính từ mốc cũ ($15 \pmod 4 = 3$), điều kiện này vô tình kích hoạt fallback sang 3 phễu cho toàn bộ Ca 1, gán `rest_day_no_follow = True`.
   * **Khắc phục triệt để:** Xóa bỏ hoàn toàn `_ANCHOR_ORDINAL`, `cycle_day`, `cycle_idx`. Xoay tua `candidates = [r for r in pool if r not in used]` chỉ phụ thuộc vào `state['cycle_history'][ca][machine]`. Chỉ riêng Ca 3 khi hết pool mới kích hoạt 1 lượt Dynamic Slot.
+  * **Cập nhật Unit Test Suite:** Khi xóa bỏ lịch ngày, các unit test cũ có `with pytest.raises(ValueError): _pick(state, 3)` (ép văng lỗi ngày 4) phải được refactor sang kiểm tra vòng lặp xoay tua pool thuần túy (`used` set tích lũy đủ các nick trong pool thì tự reset vòng mới).
+
+- 🛑 **Triage Thắc Mắc 'Còn Ca 2 Đâu' Khi Ở Khung 09:00 - 10:00 Sáng:**
+  * Khi User hỏi *"Còn ca 2 đâu"* lúc 09:00 - 10:00 sáng, tuyệt đối không trả lời cụt lủn hay nhầm lẫn:
+    1. **Phiên 2/2 của Ca 1 (Sáng lúc 08:00):** Cụm Kibe thường xong lúc ~09:15-09:20, cụm Admin thường chốt summary sau vài phút. Watchdog farm là báo cáo gộp 2 cụm (`dual_cluster_farm_reporting`), chỉ gửi Telegram khi cả 2 cụm hoàn tất để chống spam tin lẻ.
+    2. **Ca 2 (Ca Trưa):** Lịch chạy chính thức là 12:00 (Phiên 1) và 14:00 (Phiên 2), quản lý độc lập Pool `{Row 3, Row 4, Row 8}`. Báo cáo rõ cả 2 mốc để User nắm trọn tình hình vận hành farm.
 
 - 🛑 **Quy tắc Bất biến Bỏ Qua Follow (`dynamic-nurture-row-follow-disabled`):**
   * DUY NHẤT VÀ ĐỘC QUYỀN áp dụng khi phiên nuôi rơi vào lượt Dynamic Slot của Ca 3 (hoặc fallback 3 phễu khi cạn pool). `feed_session_workbook.py` gán cờ `rest_day_no_follow: true` vào `MachineAccount`.

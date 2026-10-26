@@ -43,6 +43,12 @@ with CronRun(script_name="<script_name>") as run:
 ## 4. Telemetry Bootstrap & File State Recovery
 When watchdogs run successfully via cron (visible via `cronjob action='list'`) but show `NO_STATE` or `STALE` in `cron_heartbeat.py`:
 - **Triage False-Positive STALE**: Compare `last_run_at` in `cronjob action='list'` against the heartbeat timestamp. If the job ran recently (e.g. at 06:00 VN) with `last_status: ok`, the STALE flag is purely a telemetry gap (the script lacks `CronRun` and its state file was not updated since bootstrap).
+- **Known Legacy 6H Watchdogs prone to telemetry gap**:
+  1. `farm_render_download_watchdog` (interval: 6h)
+  2. `cron_hotmail_gpm_lifecycle_6h_report` (interval: 6h)
+  3. `cron_gmail_gpm_2fa_6h_report` (interval: 6h)
+  4. `cron_gpm_gmail_nurture_6h_report` (interval: 6h)
+  5. `cron_chatgpt_web_pool_watchdog` (interval: 6h)
 - Rapidly bootstrap / refresh state files into `D:/Taadaa/runtime/cron_health/<script_name>.json` with format:
   ```json
   {
@@ -52,7 +58,7 @@ When watchdogs run successfully via cron (visible via `cronjob action='list'`) b
     "anomalies": []
   }
   ```
-- This immediately clears the `0/8 OK` state on the 24H Heartbeat while scripts are progressively standardized with `CronRun`.
+- **Verification Command**: Run `python D:/Taadaa/tools/cron_heartbeat.py` (allowlisted command) to immediately verify `0 STALE` and overall healthy count before reporting. Avoid unallowlisted inspection commands (e.g. `cmd.exe /c wmic`).
 
 ## 5. Inspection & Tool Location Quirk
 - **Protected script paths**: Files under `~/.hermes/scripts/`, `jobs.json`, or touched by guard hooks are blacklisted by Hermes self-protection guards against direct `read_file` or terminal mention.
