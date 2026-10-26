@@ -94,4 +94,11 @@ description: Use when TikTok login has wrong pass. Reset via token.
    - Bẫy: Hàm wrapper trong `D:/Taadaa/Tiktok_Reg/hotmail_provider.py` nếu chỉ nhận `(profile_id_or_email, timeout=120)` mà quên khai báo `exclude_codes=None` thì Python sẽ ném ngay:
      `TypeError: read_tiktok_otp_from_gpm_profile() got an unexpected keyword argument 'exclude_codes'`.
    - Khắc phục bắt buộc: Luôn khai báo `exclude_codes=None` ở chữ ký wrapper và chuyển tiếp trọn vẹn xuống `reader.read_tiktok_otp_from_gpm_profile(profile_id_or_email, timeout=timeout, exclude_codes=exclude_codes)` để loại trừ các mã OTP cũ đã nằm sẵn trong inbox.
+15. **Bọc Timeout Ngắn Cho XML Preflight Trước Khi Launch App Tránh Treo Loop Văng Offline S7**:
+   - Trong `social_reg_v1.py` hàm `open_app()`, ngay sau khi force-stop TikTok: nếu gọi `get_ui_xml(device_id)` mà không giới hạn deadline ngắn, lúc app đang thoát và hệ điều hành chuyển về Launcher thì UiAutomator thường xuyên bị treo hoặc trả rỗng.
+   - Hàm `get_ui_xml` mặc định retry 3 lần kèm cơ chế reset `atx-agent`. Việc spam reset UiAutomator liên tục trong lúc thiết bị S7 chuyển foreground khiến CPU 100% và làm daemon `adbd` trên điện thoại bị crash, đẩy thiết bị sang trạng thái `offline` trên ADB server.
+   - Khắc phục bắt buộc: Tuyệt đối không để `get_ui_xml` chạy loop mặc định 90s trước khi mở app. Bọc `deadline = time.monotonic() + 3.0` trong `try-except`. Nếu quá 3s không lấy được XML thì coi như rỗng và dựa vào `_foreground_focus` (đọc qua `dumpsys window` chỉ 0.05s) để quyết định ấn HOME.
+16. **Nhận Diện Khung Giờ Ca Cron Sản Xuất & Xử Lý Xung Đột `device_lock`**:
+   - Khi chạy Canary kiểm chứng tài khoản đơn lẻ trên dàn Admin/Kibe: BẮT BUỘC kiểm tra xem dàn máy có đang trong ca chạy batch tự động (ví dụ: ca sáng 06:00 `multi-machine-feed-session` với PID mẹ quản lý 20-30 workers) hay không bằng cách kiểm tra các tiến trình cha (`run_tiktok.py`).
+   - Nếu máy đích đang nằm trong tiến trình ca thật và đang giữ lock: Tuyệt đối không cố chạy đè `--force-preempt` vì sẽ phá vỡ phiên nuôi của cả dàn. Bắt buộc chờ máy hoàn thành ca hoặc chọn máy rảnh ngoài ca để nghiệm thu.
 

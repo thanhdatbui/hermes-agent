@@ -73,3 +73,12 @@
    - Khi luồng OTP chuyển sang GPM profile, hàm gọi truyền tập hợp các mã OTP đã cũ trong hộp thư (`exclude_codes`).
    - Hàm wrapper trong `D:/Taadaa/Tiktok_Reg/hotmail_provider.py` thiếu tham số này dẫn đến `TypeError: unexpected keyword argument 'exclude_codes'`.
    - Đã xử lý: Bổ sung `exclude_codes=None` và truyền trực tiếp xuống `read_otp_gpm.py`, đảm bảo Playwright CDP chỉ bóc tách mã OTP mới tinh vừa được gửi về hòm thư Hotmail.
+
+7. **Bọc Deadline Ngắn Cho XML Preflight Tránh Treo Loop Làm Crash USB `adbd`:**
+   - Trong `social_reg_v1.py` hàm `open_app()`, lệnh `get_ui_xml(device_id)` gọi ngay sau khi force-stop TikTok gây treo 90 giây và lặp lại cơ chế reset `atx-agent` liên tục, đẩy S7 vào trạng thái `offline`.
+   - Đã xử lý: Bọc `deadline=time.monotonic() + 3.0` trong `try-except`, nếu quá 3 giây không lấy được XML thì dựa vào `_foreground_focus` (chạy qua `dumpsys window` chỉ 0.05 giây) để ấn HOME, hoàn toàn không làm gián đoạn luồng mở app.
+
+8. **Đối Soát Khung Giờ Ca Chạy Sản Xuất & Xung Đột `device_lock`:**
+   - Khi chạy Canary kiểm chứng, cần nhận diện kịp thời xem fleet có đang trong ca chạy batch tự động (như ca sáng 06:00 `multi-machine-feed-session`) hay không.
+   - Nếu thiết bị đang nằm trong ca nuôi chính thức, cấm tuyệt đối dùng `--force-preempt` đè lên máy đang chạy để tránh làm hỏng tiến trình của cả dàn.
+
