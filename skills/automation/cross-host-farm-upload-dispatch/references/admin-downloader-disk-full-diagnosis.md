@@ -52,7 +52,11 @@
    - Ánh xạ ngược từ thư mục render sang thư mục nguồn:
      `slot = (f_vid - 1) % 8 + 1`, `m_idx = (f_vid - 1) // 8 + 1`, `f_src = (slot - 1) * 80 + m_idx`.
    - Nếu `D:\TIKTOK-videonuoinick-admin\{f_vid}` có `< 45` clip và nguồn local bị thiếu, copy ngược từ `G:\My Drive\video_goc_backup\{f_src}` về `D:\video goc may 2\{f_src}` để worker render đủ chuẩn $\ge 45$.
-5. **Mồi dung lượng trống khẩn cấp (Bootstrap Free Space):**
+5. **Kích Hoạt Nền Dài Hạn Qua OpenSSH Bắt Buộc Dùng Breakaway (`0x01000008`):**
+   - Khi kích hoạt migration hoặc sync script kéo dài > 5 phút qua SSH, Windows OpenSSH mặc định gom process con vào Windows Job Object của phiên SSH và kill sạch khi SSH disconnect.
+   - BẮT BUỘC dùng cờ `creationflags=0x01000008` (`CREATE_BREAKAWAY_FROM_JOB | DETACHED_PROCESS`) và mở log ở chế độ binary `open(log_p, "ab")`.
+   - Bọc fallback `psutil` bằng lệnh chuẩn Windows `tasklist` vì Python hệ thống (`Python311`) có thể không có sẵn package `psutil` (chỉ có trong `venv-core024`).
+6. **Mồi dung lượng trống khẩn cấp (Bootstrap Free Space):**
    - Google Drive và cron dọn dẹp cần tối thiểu 20–30 GB đệm trên ổ `D:` để ghi cache tạm khi upload.
    - Cắt tỉa clip render dư thừa (`> 45` clip/folder trong `D:\TIKTOK-videonuoinick-admin`), dọn dẹp video gốc đã được đồng bộ an toàn lên Cloud, hoặc truncate log nặng. TUYỆT ĐỐI CẤM tự tiện xóa thư mục game `D:\x` của User.
    - Ngay khi `D:` có dung lượng trống, ổ `G:` sẽ tự động mở lại dung lượng ghi, `sync_and_clean_gdrive.py` sẽ hoạt động trơn tru trở lại.

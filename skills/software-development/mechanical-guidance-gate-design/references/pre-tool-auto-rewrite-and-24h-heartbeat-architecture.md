@@ -37,7 +37,7 @@ Khi áp dụng nguyên tắc *"Bình thường thì im lặng, chỉ có lỗi m
 1. **Chỉ im lặng khi có bằng chứng dương tính về sức khỏe:** "Không thấy lỗi" không đủ để im lặng. Hệ thống phải chứng minh được: nguồn dữ liệu đọc được, có dữ liệu mới, và các metric nằm trong ngưỡng cho phép.
 2. **Hệ thống 3 trạng thái:** `NOMINAL | ANOMALY | UNKNOWN`. Mọi exception chưa bắt, timeout, DB rỗng không rõ lý do đều quy về `UNKNOWN -> ANOMALY` (Fail-Closed).
 3. **Dead-Man's Switch (Bảng Heartbeat 24H độc lập):**
-   - Một watchdog độc lập (`cron_heartbeat.py`) chạy vào **02:00 UTC (09:00 sáng VN)** hàng ngày (theo yêu cầu vận hành của Operator).
+   - Một watchdog độc lập (`cron_heartbeat.py`) chạy vào **02:00 UTC (09:00 sáng VN)** hàng ngày (theo yêu cầu vận hành chính thức của Operator).
    - Nó không chạy việc, mà kiểm tra file state JSON (`runtime/cron_health/<script>.json`) của toàn bộ các watchdog.
    - Nếu một watchdog quá `2 * interval + 30 phút` chưa cập nhật state -> Đánh dấu `❌ STALE` và báo động ngay.
    - Nếu toàn bộ đều khỏe -> Gửi đúng 1 bản tin điểm danh 3 dòng lúc 09:00 sáng để xác nhận toàn bộ hệ thống giám sát vẫn đang thở đều.

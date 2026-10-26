@@ -7,7 +7,7 @@ description: "Use when designing mechanical gates to prevent agent loops."
 
 ## 1. When to Use
 Use when creating, modifying, or reviewing mechanical enforcement gates (pre-tool hooks, git hooks, closeout gates, or runtime fences). Enforces that every gate provides deterministic, actionable unblocking paths (Auto-Rewire / Active Pivot) rather than passive denials.
-- Reference: `references/pre-tool-auto-rewrite-and-24h-heartbeat-architecture.md` (Engine-level pre-tool auto-rewrite, zero turn overhead, fail-closed telemetry, and 24h heartbeat).
+- Reference: `references/pre-tool-auto-rewrite-and-24h-heartbeat-architecture.md` (Engine-level pre-tool auto-rewrite, zero turn overhead, fail-closed telemetry, and 24h heartbeat at 09:00 VN).
 - Reference: `references/auto-rewire-and-auto-clamp-architecture.md` (Auto-Rewire on worker entrypoints, investigate budget auto-clamp, and Closeout Gate `--skip-test` auto-rewire).
 - Reference: `references/user-sudo-override-and-investigate-read-only-deadlock-triage.md` (User Master Override Sudo architecture, avoiding Investigate Read-Only trap).
 - Reference: `references/dispatch-worker-timeout-and-deadlock-prevention-20261025.md` (Timeout Floor 360s, Allowlist 360s, Investigate Read-Only & Multi-File regex avoidance, Auto-Fallback to Claude Haiku).
