@@ -76,5 +76,27 @@
   1. Chỉ chụp và kéo ảnh nghiệm thu sau khi runner chính thức (`do_rename_canonical_runner.py`) đã kích hoạt và đánh thức màn hình.
   2. Kiểm tra `im.mean() > 0` và dung lượng $> 50$ KB trước khi đưa vào WinRT OCR để tránh receipt rỗng.
 
+## 15. Bẫy Màn Hình Nhảy Sang Nick Khác Sau Khi Ghim Bài (Post-Pin Account Drift)
+- **Hiện tượng:** Script ghim bài (`pin_top_videos.py`) đã ghim thành công video top (ví dụ clip thịt cuộn lưới 3.100 views trên `@ngc.trinh6472`), nhưng ngay sau khi ghim xong, tiến trình nuôi nick chạy song song hoặc logic fallback tự động chuyển tài khoản sang slot khác (ví dụ `@walterhfIore28`). Coordinator vội vã chụp màn hình và báo cáo mà không kiểm tra username hiện tại, khiến ảnh chụp dính nick khác và User bức xúc hỏi *"R kênh ngọc trinh sao đéo pin video hot?"*.
+- **Hành động bắt buộc:**
+  1. Sau khi runner pin top kết thúc, BẮT BUỘC kiểm tra profile hiện tại có đúng username mục tiêu hay không (qua OCR hoặc UI XML dump).
+  2. Nếu màn hình bị chuyển sang nick khác, BẮT BUỘC dùng canonical account switcher hoặc điều hướng mở lại đúng tài khoản mục tiêu.
+  3. Sau khi vào đúng trang cá nhân mục tiêu, thực hiện swipe vuốt kéo trang về đỉnh (`swipe 540 400 540 1200 300`) để hàng video đầu tiên lộ rõ nhãn đỏ *"Đã ghim"* hoặc số view top.
+  4. Chụp lại ảnh màn hình và đối soát WinRT OCR trước khi gửi ảnh nghiệm thu.
+
+## 16. Bẫy Hết Hạn 180s Của Vision Receipt (Vision Receipt TTL Expiry)
+- **Hiện tượng:** Ảnh chụp màn hình nghiệm thu (`D:/Taadaa/reports/<file>.png`) đã được chạy OCR tạo receipt hợp lệ lúc đầu. Nhưng do Coordinator mất nhiều tool calls phân tích hoặc thực hiện các lệnh khác, thời gian trôi qua quá 180 giây (3 phút). Khi Coordinator gửi tin nhắn kèm thẻ `MEDIA:<path>`, hàm kiểm tra `guard_media_vision_gate.py` từ chối với lỗi: `[CONTRADICTION_GATE_TRIGGERED] verdict: NO_RECEIPT reason: no valid vision receipt...`.
+- **Hành động bắt buộc:**
+  1. Nắm vững trần TTL của Vision Receipt: Mỗi receipt chỉ sống tối đa 180 giây (`DEFAULT_TTL_SECONDS = 180`).
+  2. BẮT BUỘC chạy `python D:\Taadaa\tools\run_winrt_ocr.py "D:\Taadaa\reports\<file>.png"` ngay trong cùng lượt turn hoặc sát thời điểm chuẩn bị xuất thẻ `MEDIA:`. CẤM dùng receipt cũ đã tạo từ nhiều lượt trước.
+
+## 17. Kỷ Luật "Canh Ca Nuôi Nick Xong Xử Lý" (Feed Session Queue Monitoring)
+- **Hiện tượng:** Khi User ra lệnh *"Canh ca nuôi xong xử lý 2 acc trong phiên đi"*, các máy mục tiêu có thể đang bị lock bởi cronjob nuôi nick hàng loạt (`run_tiktok.py --mode multi-machine-feed-session reservation`, PID 5136).
+- **Hành động bắt buộc:**
+  1. Kiểm tra trạng thái lock trong `C:/Users/Kibe/.codex/device-locks/machine_<N>.lock.json` và `serial_<S>.lock.json`.
+  2. Với máy đã nhả lock (trạng thái FREE, không còn file lock): Thi công ngay lập tức theo quy trình chuẩn hoá (update bio, pin top, switch đúng profile để capture evidence).
+  3. Với máy còn đang chạy nuôi nick: Chuẩn bị sẵn tài nguyên trên đĩa (copy file `avatar.jpg` vào `F_src` và `F_vid`, cắm cờ `.manual_avatar_locked` và `.manual_hashtag_locked`, sửa file Excel Tik*.xlsx). Khi ca nuôi hoàn tất và nhả lock, tự động kích hoạt runner đẩy avatar và bio lên máy mà không cần xin phép lại User.
+
+
 
 

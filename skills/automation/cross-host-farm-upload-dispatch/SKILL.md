@@ -71,6 +71,7 @@ For a completed fix, record: target file and exact Gate 5/dispatch delta; compil
 
 ## Supporting detail
 
+- See `references/admin-render-offload-and-gdrive-hybrid-storage.md` for the 2-tier hybrid storage offload contract (keeping 1..20 local, offloading 21..45+ to GDrive 5TB), resolving virtual cache 0-byte deadlock, dual-layer deficit auditing (local + cloud), and slot cross-mapping formulas.
 - See `references/admin-rendered-video-tiering-and-gdrive-staging.md` for the Hybrid Local/Cloud Media Tiering architecture (hot buffer 1..20, cold staging 21..45 on GDrive 5TB), freeing 350-400GB on Admin, JIT hydration, and pause flag controls.
 - See `references/cross-host-admin-upload.md` for the Taadaa-specific command contract, observed false-alert chain, verification matrix, and standalone avatar upload launcher dispatch rules.
 - See `references/admin-remote-avatar-and-media-management.md` for Admin Remote ($M \ge 200$) storage formulas ($F_{src}, F_{vid}$), CodexRuntime Python execution via SSH base64, Haar cascade false-positive visual verification, and 2-tier lock enforcement.
