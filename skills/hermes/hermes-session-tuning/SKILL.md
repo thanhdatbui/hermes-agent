@@ -327,8 +327,18 @@ Khi user yêu cầu kiểm tra trực tiếp log request lên OmniRoute (`C:\Use
   3. *Trùng lặp Invariants trong System Prompt*: Chi tiết ngân sách O(1) L2 Emergency Surgery (<=2 files, <=30 dòng, 1 test focused, cấm đụng config/tools) và Circuit Breaker bị lặp lại từng câu chữ ở cả "Thang leo thang khi kẹt" và "6 Gates điều phối".
   4. *Quy cách Soạn tin Nhắn Mẫu (Telegram Mobile Copy UX)*: CẤM dùng blockquote `>` khi soạn tin mẫu cho User copy gửi người khác (Telegram mobile chỉ copy 1 dòng khi tap). BẮT BUỘC đóng gói trong code block ````text ... ```` độc lập, ngắn gọn, không nhồi reasoning để user tap 1 chạm là copy sạch 100% (chi tiết tại `hermes-gateway-ops/references/telegram-mobile-copy-ux-and-codeblock-formatting.md`).
 - **Bài học từ Case Study `everything-everywhere-for-antigravity` (Kitchen-sink Anti-pattern):**
-  - Gom tĩnh 346 skills root + 325 skills plugins (11.440 files) nhồi vào session gây ngộ độc token (14k-18k tokens mô tả/turn), loãng chú ý (Attention Dilution), khiến model "fix lỗi này lòi lỗi khác" (local reasoning bị phá vỡ).
-  - Khẳng định tính ưu việt của Dynamic Skill Routing O(1): chỉ bốc đúng 3-5 skills theo intent query, giữ system prompt tinh gọn.
+- Gom tĩnh 346 skills root + 325 skills plugins (11.440 files) nhồi vào session gây ngộ độc token (14k-18k tokens mô tả/turn), loãng chú ý (Attention Dilution), khiến model "fix lỗi này lòi lỗi khác" (local reasoning bị phá vỡ).
+- Khẳng định tính ưu việt của Dynamic Skill Routing O(1): chỉ bốc đúng 3-5 skills theo intent query, giữ system prompt tinh gọn.
+
+### 4. So sánh Kiến trúc ChatGPT Web: OmniRoute Cluster (GPM CDP) vs Chrome Extension + Local MCP
+- **Bản chất kiến trúc toy script (Extension + Local MCP):** Cắm extension vào 1 tab Chrome cá nhân, bóc tách DOM text để giả lập function calling và paste text thủ công.
+- *Chí mạng Rate Limit:* 1 account Plus dính trần `40 msgs / 3 hours`, agent code loop 20-30 turns là kẹt cứng 3 tiếng.
+- *Rủi ro Ban/WAF:* Tab web bị nhồi tool calling liên tục dễ kích hoạt Cloudflare Turnstile hoặc bot detection khóa nick.
+- *Context Leaks:* Giao diện web cắt tỉa context sớm, nhanh hallucinate và quên chỉ dẫn.
+- **Bản chất hạ tầng công nghiệp (OmniRoute + GPM CDP Pool):**
+- *Chuẩn hóa API:* Đóng gói headless session thành chuẩn `/v1/chat/completions`, cắm trực tiếp vào Hermes, Cursor, Cline, Claude Code hỗ trợ native tool calling chuẩn JSON.
+- *Failover & Concurrency:* Tự động xoay vòng (round-robin / least-used) giữa nhiều profile GPM; khi 1 account chạm trần tự chuyển account khác mà không làm đứt mạch agent loop.
+- *Stealth & Isolation:* Gán cố định proxy residential/mobile 1:1, fingerprint sạch, giải quyết OTP qua Microsoft Graph API tự động.
 
 ## Cross-session interference & Multi-session lag diagnosis
 

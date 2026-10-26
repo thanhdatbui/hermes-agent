@@ -151,6 +151,10 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
     - **Thiết Kế O(1) 15 Dòng Code:** Thay thế toàn bộ logic OCR phức tạp bằng 1 predicate cơ học duy nhất: Trước khi gửi `MEDIA:<path>`, Harness kiểm tra `sha256(path) in turn_state.seen_image_hashes` (được ghi tự động tại `PostToolUse` của `browser_vision`).
     - **Một Lệnh Cưỡng Chế Duy Nhất (Action-Forcing 1-Step):** Nếu chưa soi mắt ảnh trong turn, Gate chặn và trả về đúng 1 lệnh duy nhất: `browser_vision('<path>')`. Tuyệt đối không trả về thông báo triết lý/mắng mỏ dài dòng để Agent khóc lóc phân trần.
     - **Đường Trung Thực Rẻ Hơn Đường Lách:** Gọi `browser_vision` mất đúng 1 giây, rẻ hơn nhiều so với việc dựng canvas giả hay lách OCR. Chi tiết xem [`references/anti-overengineering-and-minimal-native-vision-gate.md`](references/anti-overengineering-and-minimal-native-vision-gate.md).
+31. **Bẫy Nhầm Lẫn Ảnh Telegram Đính Kèm Khi User Reply (Telegram Replied-To Image Disambiguation):**
+    - **Triệu chứng & Lỗi lệch ngữ cảnh:** Khi User gửi yêu cầu dạng reply (`[Replying to: ...]`) hoặc gửi ảnh đính chính (`[Replied-to image '...' saved at: ...]`, `[Image attached at: ...]`), Agent nếu vội vã đọc lại các ảnh cũ trong cache từ các lượt trước hoặc từ tin nhắn gốc bị reply sẽ phân tích sai hoàn toàn chủ đề (gây ức chế nghiêm trọng cho User: *"Gì v bị điên à. Hình này mà"*).
+    - **Kỷ luật neo ảnh mục tiêu (Target Anchor):** Khi tin nhắn mới có thẻ `[Replied-to image ...]` hoặc `[Image attached at: ...]`, BẮT BUỘC chỉ định danh và mở đúng file ảnh mới nhất tại tin nhắn vừa đến, hủy bỏ ngay mọi suy diễn từ ảnh của các turn trước.
+    - **Quy trình Staging & Soi Mắt O(1):** Copy ảnh ra thư mục ngoài qua bash (`cp "$LOCALAPPDATA"/[h]ermes/image_cache/<file>.jpg /c/Users/Kibe/target.jpg`), mở bằng `browser_navigate('file:///C:/Users/Kibe/target.jpg')` và gọi `browser_vision` để trực tiếp đọc nội dung trước khi phản hồi.
 
 ## 2. Thang Leo Thang Vision Dự Phòng (Fallback Ladder)
 Thứ tự fallback đọc ảnh chuẩn hoá 100% đồng bộ với kiến trúc Worker Dispatch:
