@@ -127,6 +127,7 @@ def sync_scripts(force: bool = False) -> int:
         targets = [ONEDRIVE_SCRIPTS / f.name]
         if KIBE_SCRIPTS.exists():
             targets.insert(0, KIBE_SCRIPTS / f.name)
+            targets.append(KIBE_SCRIPTS.parent / f.name)
         for dst in targets:
             result = sync_file(f, dst, force=force)
             if result == "copied":

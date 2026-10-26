@@ -49,8 +49,9 @@ def test_is_safe_rolling_window():
     assert not is_safe_rolling_window(datetime(2026, 10, 15, 4, 15, tzinfo=HCMC))
     assert is_safe_rolling_window(datetime(2026, 10, 15, 4, 45, tzinfo=HCMC))
 
-    # Khung giờ 5h sáng (chạy đến 05:15)
-    assert is_safe_rolling_window(datetime(2026, 10, 15, 5, 5, tzinfo=HCMC))
+    # Khung giờ 5h sáng (ca nuôi sáng bắt đầu từ 05:05)
+    assert is_safe_rolling_window(datetime(2026, 10, 15, 5, 0, tzinfo=HCMC))
+    assert not is_safe_rolling_window(datetime(2026, 10, 15, 5, 5, tzinfo=HCMC))
     assert not is_safe_rolling_window(datetime(2026, 10, 15, 5, 20, tzinfo=HCMC))
 
 
@@ -168,7 +169,7 @@ def test_main_hydrate_failure_blocked(monkeypatch, tmp_path):
     monkeypatch.setattr(wd, 'is_feed_runner_active', lambda: False)
     monkeypatch.setattr(wd, 'is_clear_cache_active', lambda: False)
     monkeypatch.setattr(wd, 'save_state', lambda today_str, details: saved.append(details))
-    monkeypatch.setattr(sys, 'argv', ['cron_night_tiktok_2fa_watchdog.py', '--force'])
+    monkeypatch.setattr(sys, 'argv', ['cron_night_tiktok_2fa_watchdog.py', '--force', '--lane', 'tiktok'])
 
     ret = wd.main()
 

@@ -32,6 +32,8 @@ ACCEPTABLE_RETURN_CODES = (EXIT_SUCCESS, EXIT_SAFE_SKIP)
 
 TIKTOK_2FA_REPO_DIR = Path(os.getenv("TAADAA_TIKTOK_2FA_REPO", "D:/Taadaa/tiktok-add-bao-mat-f2a"))
 AUTOMATION_CORE_SRC = Path(os.getenv("TAADAA_AUTOMATION_CORE_SRC", "D:/Taadaa/automation-core/src"))
+if str(AUTOMATION_CORE_SRC) not in sys.path:
+    sys.path.insert(0, str(AUTOMATION_CORE_SRC))
 WORKBOOK_PATH = Path(os.getenv("TAADAA_KIBE_WORKBOOK", r"D:\OneDrive\TaadaaData\kibe\taikhoan_dat_v2_updated .xlsx"))
 ADB_PATH = Path(os.getenv("TAADAA_ADB_PATH", r"C:\Program Files (x86)\xiaowei\tools\adb.exe"))
 HOST_CONFIG = Path(os.getenv("TAADAA_HOST_CONFIG_PATH", r"D:\Taadaa\machine-config\kibe.yaml"))
@@ -193,14 +195,12 @@ def _state_lock(timeout: float = 30.0):
 
 def already_ran_gmail_tonight(today_str: str) -> bool:
     state = load_state()
-    return state.get("last_gmail_date") == today_str and state.get("last_gmail_success") is True
+    return state.get("last_gmail_date") == today_str
 
 
 def already_ran_today(today_str: str) -> bool:
     state = load_state()
-    is_success = state.get("last_2fa_success") is True or state.get("last_success_date") == today_str
-    return bool((state.get("last_2fa_date") == today_str or state.get("last_success_date") == today_str) and is_success)
-
+    return bool(state.get("last_2fa_date") == today_str or state.get("last_success_date") == today_str)
 
 already_ran_tiktok_today = already_ran_today
 
@@ -298,7 +298,9 @@ def parse_summary_counts(output: str) -> dict:
 
     m = re.search(r"TOTAL=(\d+)\s+SUCCESS=(\d+)\s+FAILED=(\d+)", output)
     if m:
-        return {"total": int(m.group(1)), "success": int(m.group(2)), "failed": int(m.group(3)), "skip_safe": 0}
+        skip_m = re.search(r"SKIP_SAFE=(\d+)", output)
+        skips = int(skip_m.group(1)) if skip_m else 0
+        return {"total": int(m.group(1)), "success": int(m.group(2)), "failed": int(m.group(3)), "skip_safe": skips}
 
     succs = len(re.findall(r"Machine\s+\d+.*(?:SUCCESS|OK)", output, re.I))
     fails = len(re.findall(r"Machine\s+\d+.*(?:FAIL|FAILED|ERROR)", output, re.I))
@@ -457,29 +459,32 @@ def run_gmail_batch(dry_run: bool = False) -> tuple[int, str]:
     env = {**os.environ, "PYTHONPATH": f"{GMAIL_REPO_DIR}{os.pathsep}{AUTOMATION_CORE_SRC}", "GMAIL_REG_PYTHON_EXE": PYTHON_EXE}
     cmd = [POWERSHELL_EXE, "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", str(ps_script)]
     kibe_code, kibe_out = _run_cmd("CLUSTER KIBE (MÁY 1-80)", cmd, cwd=str(GMAIL_REPO_DIR), env=env)
+    admin_gmail_repo = r"D:\Taadaa\register gmail"
+    admin_core_src = r"D:\Taadaa\automation-core\src"
+    admin_manifest = r"C:\Users\Admin\AppData\Local\automation-core\assignments\register-gmail.json"
     ps_admin_script = (
-        "$env:PYTHONIOENCODING='utf-8'; $env:PYTHONUTF8='1'; "
-        f"Set-Location '{_ps_quote(GMAIL_REPO_DIR)}'; "
-        f"$env:PROXY_DIENTHOAI_PATH='{_ps_quote(PROXY_DIENTHOAI_PATH)}'; "
-        f"$env:GMAIL_EXCEL_FILE='{_ps_quote(GMAIL_EXCEL_FILE)}'; "
-        f"$env:PYTHONPATH='{_ps_quote(GMAIL_REPO_DIR)};{_ps_quote(AUTOMATION_CORE_SRC)}'; "
-        f"$env:GMAIL_REG_PYTHON_EXE='{_ps_quote(PYTHON_EXE)}'; "
-        "& powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ./run_all.ps1; "
-        "exit $LASTEXITCODE"
+        "$env:PYTHONIOENCODING='utf-8'; $env:PYTHONUTF8='1'\n"
+        f"Set-Location '{admin_gmail_repo}'\n"
+        f"$env:PROXY_DIENTHOAI_PATH='{_ps_quote(PROXY_DIENTHOAI_PATH)}'\n"
+        f"$env:GMAIL_EXCEL_FILE='{_ps_quote(GMAIL_EXCEL_FILE)}'\n"
+        f"$env:PYTHONPATH='{admin_gmail_repo};{admin_core_src}'\n"
+        f"$env:GMAIL_REG_PYTHON_EXE='{_ps_quote(ADMIN_PYTHON)}'\n"
+        f"$env:GMAIL_ASSIGNMENT_MANIFEST='{admin_manifest}'\n"
+        "$env:GMAIL_WORKER_ID='taadaa-writer-admin-farm'\n"
+        f"& powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File '{admin_gmail_repo}\\run_all.ps1'\n"
+        "exit $LASTEXITCODE\n"
     )
     admin_code, admin_out = _run_cmd("CLUSTER ADMIN (MÁY 201-280)", _admin_ssh_command(ps_admin_script))
     return max(kibe_code, admin_code), f"{kibe_out}\n{admin_out}"
 
 
 def _load_telegram_token() -> str | None:
+    token = None
     try:
-        if str(AUTOMATION_CORE_SRC) not in sys.path:
-            sys.path.append(str(AUTOMATION_CORE_SRC))
         from automation_core.alerts import _load_bot_token
         token = _load_bot_token()
     except Exception as exc:
         logger.warning("Không đọc được Telegram bot token từ automation_core: %s", exc)
-        token = None
     return token or os.getenv("TELEGRAM_BOT_TOKEN")
 
 
@@ -530,16 +535,45 @@ def read_gmail_summary_json(min_mtime: float) -> dict | None:
         return None
 
 
+def parse_gmail_breakdown_from_text(text: str) -> dict:
+    pv = sum(int(x) for x in re.findall(r"PHONE_VERIFY=(\d+)", text))
+    ace = sum(int(x) for x in re.findall(r"ACCOUNT_CREATION_ERROR=(\d+)", text))
+    fc = sum(int(x) for x in re.findall(r"FAILED_CLEANUP=(\d+)", text))
+    fo = sum(int(x) for x in re.findall(r"FAILED_OTHER=(\d+)", text))
+    return {
+        "platform_errors": {"phone_verify": pv, "account_creation_error": ace},
+        "script_errors": {"failed_cleanup": fc, "failed_other": fo},
+    }
+
+
 def summarize_gmail(out: str, min_mtime: float) -> dict:
     kibe_text, admin_text = _split_cluster_output(out)
     data = read_gmail_summary_json(min_mtime) if GMAIL_LOG_DIR.is_dir() else None
     if data is not None:
         kibe = {k: int(data.get(k, 0) or 0) for k in ("total", "success", "failed", "skip_safe")}
+        kibe_breakdown = data.get("failure_breakdown") or {}
     else:
         kibe = parse_summary_counts(kibe_text)
+        kibe_breakdown = parse_gmail_breakdown_from_text(kibe_text)
     admin = parse_summary_counts(admin_text)
+    admin_breakdown = parse_gmail_breakdown_from_text(admin_text)
+
+    total_breakdown = {
+        "platform_errors": {
+            "phone_verify": (kibe_breakdown.get("platform_errors", {}).get("phone_verify", 0) +
+                             admin_breakdown.get("platform_errors", {}).get("phone_verify", 0)),
+            "account_creation_error": (kibe_breakdown.get("platform_errors", {}).get("account_creation_error", 0) +
+                                       admin_breakdown.get("platform_errors", {}).get("account_creation_error", 0)),
+        },
+        "script_errors": {
+            "failed_cleanup": (kibe_breakdown.get("script_errors", {}).get("failed_cleanup", 0) +
+                               admin_breakdown.get("script_errors", {}).get("failed_cleanup", 0)),
+            "failed_other": (kibe_breakdown.get("script_errors", {}).get("failed_other", 0) +
+                             admin_breakdown.get("script_errors", {}).get("failed_other", 0)),
+        },
+    }
     total = {k: kibe.get(k, 0) + admin.get(k, 0) for k in ("total", "success", "failed", "skip_safe")}
-    return {**total, "failure_breakdown": (data or {}).get("failure_breakdown") or {}}
+    return {**total, "failure_breakdown": total_breakdown}
 
 
 def _error_groups(breakdown: dict) -> tuple[dict, dict]:
@@ -552,10 +586,26 @@ def _format_error_group(group: dict) -> str:
     return f"{sum(group.values())} ({', '.join(f'{k}: {v}' for k, v in group.items())})" if group else "0"
 
 
+def _get_shift_label(now_dt: datetime | None = None) -> str:
+    if now_dt is None:
+        now_dt = datetime.now(HCMC)
+    h, m = now_dt.hour, now_dt.minute
+    if 5 <= h < 11 or (h == 11 and m < 30):
+        return "CA SÁNG"
+    elif (h == 11 and m >= 30) or (12 <= h < 14):
+        return "CA TRƯA"
+    elif 14 <= h < 18:
+        return "CA CHIỀU"
+    elif 18 <= h < 22:
+        return "CA TỐI"
+    return "BAN ĐÊM"
+
+
 def build_gmail_report(summary: dict, code: int) -> str:
     p, s = _error_groups(summary.get("failure_breakdown") or {})
+    shift = _get_shift_label()
     lines = [
-        "⏰ [FARM REPORT][TOÀN FARM] BÁO CÁO REG GMAIL BAN ĐÊM:",
+        f"⏰ [FARM REPORT][TOÀN FARM] BÁO CÁO REG GMAIL {shift}:",
         f"• Đã hoàn tất: {summary['success']} máy", f"• Bỏ qua an toàn: {summary['skip_safe']} máy",
         f"• Lỗi nền tảng: {_format_error_group(p)}", f"• Lỗi script: {_format_error_group(s)}",
     ]
@@ -564,8 +614,9 @@ def build_gmail_report(summary: dict, code: int) -> str:
 
 
 def build_2fa_report(kibe: dict, admin: dict, code: int) -> str:
+    shift = _get_shift_label()
     lines = [
-        "⏰ [FARM REPORT][TOÀN FARM] BÁO CÁO 2FA TIKTOK BAN ĐÊM:",
+        f"⏰ [FARM REPORT][TOÀN FARM] BÁO CÁO 2FA TIKTOK {shift}:",
         f"• Farm Kibe (Máy 1-80): Hoàn tất {kibe['success']} | Bỏ qua {kibe.get('skip_safe', 0)} | Lỗi {kibe['failed']}",
         f"• Farm Admin (Máy 201-280): Hoàn tất {admin['success']} | Bỏ qua {admin.get('skip_safe', 0)} | Lỗi {admin['failed']}",
     ]
@@ -636,10 +687,11 @@ def run_tiktok_phase(today_str: str, dry_run: bool, force: bool = False) -> int:
 
 def _handle_phase_crash(save, chat_id: str, title: str, today_str: str, dry_run: bool, exc: Exception) -> None:
     reason = f"Unhandled exception: {type(exc).__name__}: {exc}"
+    shift = _get_shift_label()
     try:
         if not dry_run:
             save(today_str, {"correlation_id": CORRELATION_ID, "code": 1, "status": "failed", "failure_reason": reason})
-        dispatch_report(chat_id, f"⏰ [FARM REPORT][TOÀN FARM] BÁO CÁO {title} BAN ĐÊM:\n• Lỗi runner: {reason}", dry_run)
+        dispatch_report(chat_id, f"⏰ [FARM REPORT][TOÀN FARM] BÁO CÁO {title} {shift}:\n• Lỗi runner: {reason}", dry_run)
     except Exception as inner:
         logger.error("Không xử lý được lỗi phase %s: %s", title, inner)
 
