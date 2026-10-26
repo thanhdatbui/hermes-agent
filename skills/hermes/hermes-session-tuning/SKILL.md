@@ -573,7 +573,20 @@ Khi user chat hàng loạt session song song và thấy phản hồi chậm (h�
   - Kiểm tra trạng thái cổng `:20129` bằng `urllib.request`.
   - Xem chi tiết tại `references/model-provider-failed-after-retries-triage.md`.
 
+### 0o. 🚨 Protection Regression Gate cho Hạ Tầng Hermes & OmniRoute (`infra_regression_gate.py` - 26/10/2026)
+- **Chỉ thị User Bắt Buộc**: Mọi chỉnh sửa cấu hình Hermes (`config.yaml`) hoặc OmniRoute Watchdog (`omniroute_watchdog.ps1`) BẮT BUỘC phải thỏa mãn bộ Invariant lịch sử, cấm sửa mò theo triệu chứng gây tái phát sự cố.
+- **Tích hợp cơ giới hóa**: `manage_hermes_config.py set` tự động gọi `infra_regression_gate.py`. Nếu vi phạm Invariant $\rightarrow$ Hard-block ngay (exit code 4).
+- **Bộ Invariant hạ tầng chuẩn**:
+  1. `compression.threshold`: Bắt buộc trong `[0.28, 0.35]` (chuẩn `0.30`). Cấm <0.28 (lặp nén liên tục 120k ctx 03/10) và cấm >0.35 (chạm trần 372k GPT worker 11/08).
+  2. `agent.api_max_retries`: Bắt buộc trong `[3, 4]`. Cấm >4 (tránh Thundering Herd 503 storm 02/10) và cấm <3 (tránh fail sớm khi restart).
+  3. `agent.api_retry_delay`: Bắt buộc trong `[5.0, 12.0]` (chuẩn `6.0s`).
+  4. `Retry Headroom`: Tổng chờ `sum(delay * 2^i)` bắt buộc trong `[70s, 130s]` (đủ đón restart 111s, không quá trần Telegram).
+  5. `fallback_providers`: CẤM trỏ vào chính nó (port 20129).
+  6. `omniroute_watchdog`: `$MaxDeadlockFailures` bắt buộc trong `[4, 6]` (tránh false-kill <4 và tránh treo lâu >6).
+- **Unit test**: `pytest D:/Taadaa/tools/tests/test_infra_regression_gate.py` (8/8 passed). Xem chi tiết tại `references/infra-protection-regression-gate-20261026.md`.
+
 ## References
+- `references/infra-protection-regression-gate-20261026.md` — Cơ chế Protection Regression Gate (infra_regression_gate.py) tự động chặn đứng các đột biến cấu hình vi phạm Invariant hạ tầng Hermes & OmniRoute (26/10/2026).
 - `references/model-provider-failed-after-retries-triage.md` — Phân định dứt khoát lỗi Telegram vs lỗi Model Provider OmniRoute, hiệu ứng cộng hưởng Multi-ISP và bộ lệnh probe Python Guard-Safe (26/10/2026).
 - `references/omniroute-restart-retry-headroom-and-deadlock-ceiling-20261026.md` — Đồng bộ Retry Headroom (api_max_retries: 6) cho Hermes, phân tích cửa sổ chết OmniRoute restart 30s và hạ trần watchdog deadlock ceiling (26/10/2026).
 - `references/omniroute-deadlock-ceiling-and-proxy-cascade-restart.md` — Sự cố OmniRoute Event Loop Deadlock do bão rớt proxy mobile ECONNRESET, Watchdog Deadlock Ceiling 12/12 force-restart và cửa sổ chết 17:05-17:07 văng lỗi Telegram đồng loạt (26/10/2026).

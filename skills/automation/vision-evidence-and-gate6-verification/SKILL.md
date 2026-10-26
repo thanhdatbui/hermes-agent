@@ -35,6 +35,7 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
 - Chống Chụp Ảnh Mù Đối Phó & Ép Buộc Soi Mắt Trước Khi Gửi: [`references/anti-fake-screenshot-and-mandatory-inspection-receipt.md`](references/anti-fake-screenshot-and-mandatory-inspection-receipt.md)
 - Khắc Phục Lỗ Hổng Sys.Path Plugin, Bẫy ImportError Âm Thầm & Hoàn Thiện Wiring Gate 6: [`references/plugin-syspath-hardening-and-full-gate6-wiring.md`](references/plugin-syspath-hardening-and-full-gate6-wiring.md)
 - Bẫy Self-Fulfilling Inception Trên Canvas & Kiến Trúc Anti-Paralysis VLM Gate: [`references/self-fulfilling-canvas-inception-and-anti-paralysis-vlm-sop.md`](references/self-fulfilling-canvas-inception-and-anti-paralysis-vlm-sop.md)
+- Kỷ Luật Triệt Tiêu Over-Engineering & Thiết Kế Gate Soi Mắt Tối Giản Bằng Native Vision: [`references/anti-overengineering-and-minimal-native-vision-gate.md`](references/anti-overengineering-and-minimal-native-vision-gate.md)
 
 ## 1. Nguyên Tắc Cốt Lõi (Invariants)
 1. **CẤM gửi ảnh mù / đối phó:** Trước khi đính kèm bất kỳ thẻ `MEDIA:<path>` nào, bắt buộc phải mở ảnh ra soi mắt kiểm tra trước.
@@ -143,6 +144,11 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
     - **Trừ Khử Chữ In (`overlay_tokens`):** Mọi tool tạo canvas bắt buộc khai báo `overlay_tokens[]`. Gate tính toán `evidence_tokens = OCR_tokens - overlay_tokens`. Chữ tự vẽ có giá trị bảo chứng bằng 0.
     - **Phân Tầng Thẩm Định (Claim Router):** Text claim trên Raw Screencap $\rightarrow$ T0 (WinRT OCR). Visual claim (mô tả cảnh vật, thiên nhiên, chân dung, vi sinh) $\rightarrow$ T1 (bắt buộc VLM độc lập Sol `:20129` hoặc Claude CLI với Blind Describe + Decoy Check).
     - **FSM Chống Khóc Lóc & Bại Liệt:** Khi chặn, Gate trả về đúng 1 dòng ground-truth duy nhất (ví dụ: `ẢNH THỰC CHỨA: 4 slide vi khuẩn kính hiển vi. Gửi lại theo mô tả này. CẤM xin lỗi/giải thích`). Trần cứng 2 lượt gửi lệch: Vòng 3 tự động chuyển sang `ALLOW_WITH_CLAIM_STRIP` (cho phép gửi ảnh kèm caption trung tính `[UNVERIFIED-VISUAL]`), triệt tiêu 100% nguy cơ treo phiên, khóc lóc hoặc đùn đẩy việc lại cho User. Chi tiết xem [`references/self-fulfilling-canvas-inception-and-anti-paralysis-vlm-sop.md`](references/self-fulfilling-canvas-inception-and-anti-paralysis-vlm-sop.md).
+30. **Kỷ Luật Triệt Tiêu Over-Engineering & Thiết Kế Gate Soi Mắt Tối Giản Bằng Native Vision (Anti-Bureaucratic Gate):**
+    - **Triệt Tiêu Bệnh "Bureaucratic Theater":** Phê phán và loại bỏ triệt để thói quen đắp thêm tầng phức tạp (HMAC, TTL, OCR token subtraction, sidecar `.prov.json`, multi-party consensus Sol/Claude) khi bản chất vấn đề cực kỳ đơn giản: Coordinator ĐÃ CÓ MẮT (`browser_vision`), bắt buộc Coordinator phải tự nhìn ảnh thay vì đùn đẩy cho server ngoài.
+    - **Thiết Kế O(1) 15 Dòng Code:** Thay thế toàn bộ logic OCR phức tạp bằng 1 predicate cơ học duy nhất: Trước khi gửi `MEDIA:<path>`, Harness kiểm tra `sha256(path) in turn_state.seen_image_hashes` (được ghi tự động tại `PostToolUse` của `browser_vision`).
+    - **Một Lệnh Cưỡng Chế Duy Nhất (Action-Forcing 1-Step):** Nếu chưa soi mắt ảnh trong turn, Gate chặn và trả về đúng 1 lệnh duy nhất: `browser_vision('<path>')`. Tuyệt đối không trả về thông báo triết lý/mắng mỏ dài dòng để Agent khóc lóc phân trần.
+    - **Đường Trung Thực Rẻ Hơn Đường Lách:** Gọi `browser_vision` mất đúng 1 giây, rẻ hơn nhiều so với việc dựng canvas giả hay lách OCR. Chi tiết xem [`references/anti-overengineering-and-minimal-native-vision-gate.md`](references/anti-overengineering-and-minimal-native-vision-gate.md).
 
 ## 2. Thang Leo Thang Vision Dự Phòng (Fallback Ladder)
 Thứ tự fallback đọc ảnh chuẩn hoá 100% đồng bộ với kiến trúc Worker Dispatch:
