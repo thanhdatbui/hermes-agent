@@ -53,8 +53,18 @@
 - Nếu ca nuôi không yêu cầu đăng video: Bỏ cờ `-AllowUploadHook` trong lệnh spawn của `tiktok_runner.py` để ca nuôi chạy thuần túy, tránh rác log và báo động giả.
 - Trong `batch_aggregator.py`: Phân tách rành mạch lỗi feed (`multi_machine_summary`) và lỗi upload (`upload_result.json`), không để lỗi upload hook đánh trượt toàn bộ batch của ca nuôi.
 
-### Bước 3: Sửa Lỗi Camera Mode Gallery Thumbnail Trong `Tiktok-video`
+### Bước 3: Sửa Lỗi Camera Mode Gallery Thumbnail Trong `Tiktok-video` (Chống Bẫy Khóa Cứng & Regression)
 - Kiểm tra `execution.log` trong thư mục run trên máy Admin (`D:\CodexRuntime\tiktok-video\runs\...`).
 - Nếu thấy lặp lại `Camera surface still visible after tap... retrying thumbnail tap at (156, 1574)`:
-  - Trong `state_machine.py` (`_tap_visual_camera_upload_entry`): Đổi thứ tự ưu tiên sang `ordered_candidates = right_targets + left_targets` để luôn ưu tiên tap nút **"Tải lên"** ở góc phải (`x≈930, y≈1650`).
-  - Đảm bảo trong vòng lặp retry, nếu candidate hiện tại không mở được gallery picker thì chuyển sang candidate tiếp theo (`ordered_candidates[target_idx]`) thay vì lặp lại cùng một tọa độ trượt.
+  - **Bẫy Khóa Cứng (Regression Hazard):** CẤM TUYỆT ĐỐI chỉ đảo thứ tự mù quáng hoặc khóa cứng ép tap bên Phải. Nếu `non_dark_r < 0.20`, mảng `right_targets` sẽ rỗng nên đảo thứ tự vô dụng; còn nếu ép cứng sẽ làm gãy các dòng máy Samsung S7 (như M38, M27) vốn có nút thư viện nằm bên Trái (`BL` tại `118, 1824`).
+  - **Giải Pháp Chuẩn Kiến Trúc:**
+    * Trong `state_machine.py` (`_tap_visual_camera_upload_entry`): Không loại bỏ ứng viên bên Phải khi thumbnail tối, giữ lại với score `0.0`:
+      ```python
+      right_targets = []
+      if non_dark_r >= 0.20:
+          right_targets.append(("R", (int(width * 0.875), int(height * 0.83)), non_dark_r))
+      else:
+          right_targets.append(("R", (int(width * 0.875), int(height * 0.83)), 0.0))
+      ```
+    * Giữ nguyên cơ chế luân phiên `target_idx = taps_done % len(valid_targets)`. Khi đó, nếu lần 1 tap bên Trái (icon Hiệu ứng) không mở được Gallery, lần 2 script BẮT BUỘC luân phiên sang bên Phải (`945, 1593`) và mở Gallery thành công.
+    * Đảm bảo Zero Regression cho toàn bộ các thiết bị layout Trái/Phải khác nhau trên toàn farm.

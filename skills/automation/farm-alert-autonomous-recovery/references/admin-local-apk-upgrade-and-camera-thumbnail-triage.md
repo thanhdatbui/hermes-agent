@@ -38,14 +38,26 @@
   - Luôn truyền cờ `-X utf8` hoặc `-u` khi gọi Python qua SSH: `python -X utf8 script.py`.
   - Phần text in ra console summary ở script công cụ nền nên dùng tiếng Anh / ASCII không dấu (`RESULT: OK=...`).
 
-### D. Bẫy Ngưỡng Sáng Thumbnail Camera Upload (`non_dark_r` vs Nút Hiệu Ứng Bên Trái)
+### D. Bẫy Ngưỡng Sáng Thumbnail Camera Upload (`non_dark_r` vs Nút Hiệu Ứng Bên Trái) & Bẫy Khóa Cứng Tọa Độ (Regression Hazard)
 - **Bố cục giao diện Camera TikTok:**
   - **Bên TRÁI nút quay (Shutter):** Là nút **"Hiệu ứng"** (Effects). Icon này luôn có màu sắc rực rỡ (`non_dark_l >= 0.20`).
   - **Bên PHẢI nút quay:** Mới chính là nút **"Tải lên"** (Upload / Gallery).
 - **Cái bẫy thuật toán trong `state_machine.py`:**
   - Code kiểm tra độ sáng vùng bên phải `non_dark_r`. Khi clip vừa render hoặc đẩy vào máy có thumbnail/frame đầu tối, `non_dark_r` tụt xuống 0.0000.
-  - Thuật toán `ordered_candidates = left_targets + right_targets` thấy bên trái có điểm sáng (`non_dark_l >= 0.20`) liền ưu tiên cụm bên trái, dẫn tới việc **tap 4 lần liên tiếp vào nút "Hiệu ứng"** (`x≈156, y≈1574`).
-  - Gallery không mở ra được, script lùi lại tìm nút `+` đáy thất bại và kích hoạt fail-closed `[VIDEO_PICK_CREATE_ENTRY_UNCONFIRMED]`.
-- **Giải pháp:**
-  - Đảo thứ tự ưu tiên nút bấm: `ordered_candidates = right_targets + left_targets`.
-  - Luôn ưu tiên tap vào nút "Tải lên" bên phải (`R` tại tọa độ `x≈945, y≈1593` trên màn 1080×1920) làm mục tiêu chính khi ở Camera surface, bất kể video thumbnail sáng hay tối.
+  - Khi `non_dark_r < 0.20`, code cũ **loại bỏ hoàn toàn ứng viên bên Phải** (`right_targets = []`).
+  - Danh sách chỉ còn duy nhất ứng viên bên Trái (`left_targets`), khiến script tap 4 lần liên tiếp vào nút "Hiệu ứng" (`x≈156, y≈1574`), không thể bung Gallery picker.
+- **Bẫy Khóa Cứng Tọa Độ Một Bên (Anti-Pattern / Regression Trap):**
+  - CẤM TUYỆT ĐỐI khóa cứng ép tap bên Phải hoặc đảo mù quáng `ordered_candidates = right_targets + left_targets`. Nếu `right_targets` rỗng thì đảo thứ tự vô tác dụng; còn nếu ép cứng bên Phải sẽ gây **Regression** trên các build Samsung S7 (như M38, M27) vốn có nút thumbnail nằm bên Trái (`BL` tại `118, 1824`) hoặc rơi vào bẫy card CapCut khi mở nhầm tab Tạo.
+- **Giải Pháp Chuẩn Kiến Trúc (Preserve Dark Right Candidate & Alternating Retry):**
+  - Không bao giờ loại bỏ ứng viên bên Phải khi thumbnail tối; gán `score = 0.0` để giữ lại trong `ordered_candidates`:
+    ```python
+    right_targets = []
+    if non_dark_r >= 0.20:
+        right_targets.append(("R", (int(width * 0.875), int(height * 0.83)), non_dark_r))
+    else:
+        right_targets.append(("R", (int(width * 0.875), int(height * 0.83)), 0.0))
+    ```
+  - Khi danh sách luôn có đủ cả 2 phía, cơ chế luân phiên `target_idx = taps_done % len(valid_targets)` sẽ tự động:
+    * Lần 1: Tap bên Trái (nếu điểm sáng cao hơn).
+    * Lần 2 (khi UI vẫn là Camera): **BẮT BUỘC luân phiên sang bên Phải** (`945, 1593`), mở thành công Gallery ngay cả khi thumbnail tối đen!
+    * Bảo toàn 100% khả năng tương thích cho cả máy có nút bên Trái lẫn máy có nút bên Phải, Zero Regression.
