@@ -586,6 +586,7 @@ Khi user chat hàng loạt session song song và thấy phản hồi chậm (h�
 - **Unit test**: `pytest D:/Taadaa/tools/tests/test_infra_regression_gate.py` (8/8 passed). Xem chi tiết tại `references/infra-protection-regression-gate-20261026.md`.
 
 ## References
+- `references/omniroute-proxy-fast-fail-race-and-sqlite-bloat-20261026.md` — Sự cố Proxy Fast-Fail 2s so găng abort oan request LLM (15s-45s) trên proxy sống, bão 130x all targets skipped và SQLite 1.06M rows gây deadlock Event Loop (26/10/2026).
 - `references/infra-protection-regression-gate-20261026.md` — Cơ chế Protection Regression Gate (infra_regression_gate.py) tự động chặn đứng các đột biến cấu hình vi phạm Invariant hạ tầng Hermes & OmniRoute (26/10/2026).
 - `references/model-provider-failed-after-retries-triage.md` — Phân định dứt khoát lỗi Telegram vs lỗi Model Provider OmniRoute, hiệu ứng cộng hưởng Multi-ISP và bộ lệnh probe Python Guard-Safe (26/10/2026).
 - `references/omniroute-restart-retry-headroom-and-deadlock-ceiling-20261026.md` — Đồng bộ Retry Headroom (api_max_retries: 6) cho Hermes, phân tích cửa sổ chết OmniRoute restart 30s và hạ trần watchdog deadlock ceiling (26/10/2026).

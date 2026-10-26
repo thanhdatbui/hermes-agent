@@ -23,6 +23,11 @@ description: "Taadaa farm safety, close-session, and multi-machine operations."
   4. `GUARD_MANUAL_ADB_TAP`: CẤM TUYỆT ĐỐI chạy `adb shell input tap/swipe/keyevent` bấm tay qua popup/màn hình lỗi. Sửa trực tiếp logic tự động trong script runner.
   5. `GUARD_AMBIGUOUS_ADB_COMMAND`: Tránh dùng từ khóa `adb` trần trong commit message (`git commit -m`) hoặc lệnh `grep` không bọc kỹ; phân tách rõ lệnh git/grep với lệnh adb thật.
 - **Cấm Báo Cáo Hoàn Thành Mù Avatar (Avatar Visual Diff Invariant):** CẤM TUYỆT ĐỐI dựa vào exit code 0 của runner hoặc cờ `AVATAR_SMOKE_SUCCESS` / `FORCED_REPLACED_VERIFIED` để báo xong. BẮT BUỘC chụp ảnh Profile thật, cắt vòng tròn avatar và đối soát hình ảnh (perceptual diff / vision OCR) để đảm bảo không bị dính bẫy tap nhầm screenshot cũ trong Gallery Picker. Tọa độ chuẩn bottom sheet Sửa hồ sơ: 'Tải ảnh lên' `(224, 1637)`, 'Lưu' `(792, 1794)`.
+- **Chống Ảo Giác Thuật Ngữ & Lệch Schema Đa Cụm (Terminology & Cross-Cluster Schema Invariant):**
+  1. *Thuật ngữ trung thực*: Hotmail trên farm là mail MUA (Bought Mail), hoàn toàn KHÔNG CÓ script reg Hotmail; quy trình bắt đầu bằng `HOTMAIL_LOGIN` (login mail mua vào GPM), cấm dùng tiếng lóng "reg Hotmail" gây hiểu lầm và báo cáo sai lệch.
+  2. *Nhận diện màn hình Onboarding*: Màn hình "Bạn bao nhiêu tuổi?" (`/about-you`) là luồng TẠO MỚI tài khoản của OpenAI, KHÔNG PHẢI phiên hết hạn. Thấy màn hình này là bằng chứng tài khoản chưa hề đăng ký xong trước đó; cấm tin vào timestamp supervisor state để phán đã reg.
+  3. *Lệch schema Kibe vs Admin*: Kibe có cột 11 `PASS CHATGPT` (12 cột), Admin là schema TikTok legacy (10 cột, dừng ở `device ID`). Mọi script đọc workbook liên cụm BẮT BUỘC fallback sang mật khẩu mail (`cred['pwd']`) chuẩn hóa `normalize_password`, CẤM hardcode đường dẫn Kibe hoặc bỏ qua candidate khi thiếu cột.
+  4. *Khế ước Exit Code*: Runner con BẮT BUỘC return 1 khi skip/fail, chỉ return 0 khi thành công thật; Supervisor cấm tin mù quáng vào exit code 0 để đóng dấu `chatgpt_registered_at` ảo.
 
 ## 2. Chu Trình Điều Phối Farm (Coordinator vs Worker)
 - **T0 (Hiện trường):** Đọc log, inspect ADB O(1), restart process, kiểm tra proxy. Tự do thực thi.
