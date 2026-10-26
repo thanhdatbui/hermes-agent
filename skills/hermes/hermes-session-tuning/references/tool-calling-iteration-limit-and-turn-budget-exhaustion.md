@@ -8,11 +8,19 @@ Khi xử lý các chuỗi tác vụ phức tạp trong một turn duy nhất (v�
 You've reached the maximum number of tool-calling iterations allowed. Please provide a final response summarizing what you've found and accomplished so far, without calling any more tools.
 ```
 
-### Nguyên nhân kỹ thuật trong nhân Hermes
-1. **Trần lặp per-turn (`agent/chat_completion_helpers.py` & `conversation_loop.py`)**:
-   - Runtime của Hermes hoặc client harness có một hằng số giới hạn số vòng lặp gọi công cụ trong một turn đơn lẻ (mặc định là 15 hoặc 25 tool calls liên tiếp).
-   - Mục đích thiết kế ban đầu: Ngăn chặn model rơi vào vòng lặp vô tận (infinite loop) khi gặp tool lỗi liên tục.
-   - Hệ quả tiêu cực: Với các chuỗi vận hành chuẩn công nghiệp đòi hỏi nhiều bước kiểm tra và sửa lỗi tuần tự, trần này vô tình trói tay Agent ngay trước khi kịp hoàn thành bước cuối cùng (như lệnh commit hoặc chạy lại Closeout Gate Strike 2).
+### Nguyên nhân kỹ thuật chính xác trong nhân Hermes
+1. **Cơ chế đếm & ngắt nhịp per-turn (`agent/conversation_loop.py` & `turn_finalizer.py`)**:
+   - Mỗi turn chat, `turn_context.py:258` tạo mới ngân sách: `agent.iteration_budget = IterationBudget(agent.max_iterations)`.
+   - Vòng lặp chính tại `conversation_loop.py:789`:
+     `while (api_call_count < agent.max_iterations and agent.iteration_budget.remaining > 0)...`
+   - Mỗi lần model gọi tool, `api_call_count` tăng 1 và `iteration_budget.consume()` trừ 1 slot.
+   - Khi hết budget (`remaining <= 0`), `turn_finalizer.py:82-97` phát hiện và gọi `agent._handle_max_iterations(messages, api_call_count)`.
+   - Hàm `chat_completion_helpers.py:1738` tước bỏ toàn bộ công cụ và bơm prompt cưỡng chế:
+     `"You've reached the maximum number of tool-calling iterations allowed. Please provide a final response summarizing what you've found and accomplished so far, without calling any more tools."`
+
+2. **Nguồn gốc con số 20 lượt (`api_calls=20/20 budget=20/20`)**:
+   - `gateway/run.py:1399` đọc `_current_max_iterations()` từ `HERMES_MAX_ITERATIONS` trong `.env` hoặc `agent.max_turns` trong `config.yaml`.
+   - Nếu trong `config.yaml`, session profile, hoặc channel override đặt `max_turns: 20`, Agent sẽ bị khóa cứng trần 20 tool calls cho mỗi user turn. Với các task DevOps/Coding phức tạp (vừa patch code, vừa chạy focused test, vừa gọi closeout review, vừa remediation), 20 lượt là quá hẹp.
 
 ---
 

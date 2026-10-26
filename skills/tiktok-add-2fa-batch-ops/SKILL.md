@@ -6,14 +6,15 @@ description: "Use when running batch 2FA on TikTok farm. Chạy batch 2FA repo t
 # TikTok Add 2FA Batch Ops (repo tiktok-add-bao-mat-f2a)
 
 References:
-- `references/night-watchdog-idempotency-partial-failure-loop-20261026.md` — **[26/10/2026]** Chống loop rerun spam: `already_ran_today` tính theo ngày; rerun chỉ qua `--force`.
-- `references/graph-api-otp-token-and-canary-parity-discipline-20261024.md` — Graph OTP, Outlook fallback, Canary Parity, Gate 6, SSH logs.
-- `references/night-chain-reg-gmail-2fa-and-per-phase-telegram-routing-20261020.md` — Night Chain, Telegram routing.
-- `references/night-2fa-watchdog-skip-reasons-and-column-drift-audit-20261018.md` — Watchdog skip & lệch cột.
-- `references/immediate-write-through-retry-and-closeout-discipline-20261015.md` — Write-through 2FA Excel.
-- `references/night-rolling-avatar-2fa-and-cache-clean-arbitration-20261015.md` — Cuốn chiếu đêm tới 05:15.
-- `references/workbook-lock-contention-and-journal-recovery-20261014.md` — Nghẽn lock; DPAPI journal.
-- `references/cross-machine-account-rebalance-preflight-and-2fa.md` — Nick dư trần 8 acc.
+- `references/admin-cluster-remote-socket-routing-20261026.md` — 0/69 máy Admin lệch ADB: máy ≥200 dùng socket 192.168.110.119:5037 hoặc admin_ssh.py.
+- `references/night-watchdog-idempotency-partial-failure-loop-20261026.md` — `already_ran_today` theo ngày, rerun qua `--force`.
+- `references/graph-api-otp-token-and-canary-parity-discipline-20261024.md` — Graph OTP, Outlook, Canary.
+- `references/night-chain-reg-gmail-2fa-and-per-phase-telegram-routing-20261020.md`
+- `references/night-2fa-watchdog-skip-reasons-and-column-drift-audit-20261018.md`
+- `references/immediate-write-through-retry-and-closeout-discipline-20261015.md`
+- `references/night-rolling-avatar-2fa-and-cache-clean-arbitration-20261015.md`
+- `references/workbook-lock-contention-and-journal-recovery-20261014.md`
+- `references/cross-machine-account-rebalance-preflight-and-2fa.md`
 - `references/dual-cluster-email-unlink-and-ssh-encoding-pitfalls-20261010.md` — TikTok v46+ chặn gỡ Email.
 - `references/auth-blocked-fake-password-reset-and-2fa-proof-discipline-20261010.md` — Cứu nick pass sai (`AUTH_BLOCKED`)., nghiệm thu 2FA.nh Bảo mật đích (cấm gửi Switcher).
 - `references/night-2fa-ca4-session-interlock-and-schedule-gate.md` — **[MỚI 10/10/2026]** Khắc phục xung đột Device Lock giữa 2FA đêm và Ca 4 Phiên 2 (`is_ca4_finished` qua `feed_session_reported.json` + khung giờ `02:45 - 04:50`).
