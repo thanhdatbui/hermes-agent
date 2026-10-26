@@ -26,9 +26,15 @@
   ```
 - Bản v47.0.3 có đủ 60 split APKs (bao gồm các module mới `df_live_cmaf`, `df_live_p2p`, `df_live_quic`, `df_m2_player_combo`).
 
-### C. Bẫy Lệnh ADB Qua Socket Từ Xa & Lỗi Android Shell `unknown command 'install-multiple'`
-- Khi chạy `adb -H <host> -P <port> -s <serial> install-multiple -r -d base.apk split_*.apk` với 60 file APK (>4,500 ký tự dòng lệnh):
-  - Dòng lệnh Windows hoặc socket pipe có thể bị truncate hoặc nuốt mất stdout/stderr, dẫn tới `returncode=0` nhưng không cài đặt thành công.
+### C. Bẫy Lệnh ADB Qua Socket Từ Xa & Giải Pháp Local Host OneDrive Execution
+- **Bẫy truyền tải qua ADB LAN:** Khi chạy `adb -H <host> -P <port> -s <serial> install-multiple -r -d base.apk split_*.apk` với 60 file APK (>4,500 ký tự dòng lệnh) từ máy controller (Kibe):
+  - Dữ liệu 280MB/máy × 78 máy = ~22GB bị stream dồn dập qua socket LAN 5037, làm nghẽn bus mạng, rớt socket và văng timeout hàng loạt thiết bị (chỉ vài máy đuôi hoàn thành).
+- **Quy chuẩn Thực thi Cục bộ trên Remote Host (Zero LAN Traffic):**
+  - Thư mục APK đã được đồng bộ sẵn qua OneDrive trên máy Admin tại `D:\OneDrive\apk-bank\com_ss_android_ugc_trill`.
+  - BẮT BUỘC thực thi script trực tiếp trên máy host Admin qua SSH (`admin_ssh.py`), sử dụng file thực thi ADB cục bộ (`C:\Program Files (x86)\xiaowei\tools\adb.exe`) để nạp trực tiếp qua các hub USB vật lý của máy Admin.
+  - **Lưu ý OneDrive Cloud-Only & cp1252:**
+    * Script mới tạo trong OneDrive Admin có thể ở trạng thái Files On-Demand (dung lượng trong ngoặc đơn), Python mở sẽ văng `[Errno 22] Invalid argument`. Khắc phục: Dùng PowerShell hydrate vào thư mục local không thuộc OneDrive: `Get-Content ... -Raw | Set-Content D:\Taadaa\tools\<script>.py`.
+    * Output console của OpenSSH trên Windows dùng `cp1252`, in ký tự Tiếng Việt sẽ văng `UnicodeEncodeError`. BẮT BUỘC chạy với cờ `python -X utf8` hoặc giữ output log thuần ASCII.
 - **Bẫy `pm install-multiple` trên Android Shell:** Lệnh `install-multiple` chỉ là subcommand của `adb` trên máy host (PC). Nếu thực thi trực tiếp trên Android qua `adb shell pm install-multiple`, Package Manager của Android sẽ báo lỗi:
   `Error: unknown command 'install-multiple'`
   do Android chỉ hỗ trợ `pm install-create`, `pm install-write`, `pm install-commit`.

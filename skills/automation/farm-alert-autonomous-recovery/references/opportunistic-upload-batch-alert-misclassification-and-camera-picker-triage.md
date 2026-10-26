@@ -24,14 +24,23 @@
 4. Khi 70+ máy fail upload hook, `batch_aggregator` kích hoạt cảnh báo hệ thống vượt ngưỡng kép (rate >= 10% & count >= 3), phát thông báo Telegram giật gân làm người vận hành hiểu nhầm ca nuôi bị sập 100%.
 
 ### B. Tại Sao Nâng Cấp APK Không Triệt Tiêu Được Lỗi `VIDEO_PICK_CREATE_ENTRY_UNCONFIRMED`
-1. **Bẫy nạp APK dở dang qua ADB LAN:** Khi chạy script nâng cấp hàng loạt (như `upgrade_8w.py`) qua socket từ xa (`192.168.110.119:5037`), việc đẩy 60 file split APK (~280MB/máy) đồng thời trên nhiều luồng dễ gây nghẽn bus hoặc timeout. Thực tế chỉ có 18 máy đuôi (M260-M280) nâng cấp thành công lên v47.0.3, trong khi các máy từ M201 đến M259 vẫn kẹt ở v46.6.3 hoặc thất bại khi cài.
-2. **Lỗi logic Camera Mode Thumbnail Tap (Nguyên nhân thực sự):**
-   - Kể cả trên các máy đã có v47.0.3 (ví dụ M202, M203), khi script bấm nút Tạo (`+`), TikTok không mở thẳng Thư viện ảnh/video mà mở giao diện **Camera** (`[CAMERA_MODE]`).
-   - Trên màn hình Camera, script cần bấm vào ô thumbnail **"Tải lên"** (Upload) ở góc dưới để mở gallery chọn video. Script sử dụng tọa độ cố định (ví dụ `(156, 1574)`):
-     `Camera surface still visible after tap (1/4); retrying thumbnail tap at (156, 1574)`
-   - Do lệch tọa độ UI trên bản TikTok mới, hoặc do Camera mode đang hiển thị popup quyền/dialog che khuất, cả 4 lần tap thumbnail đều không mở được gallery picker.
-   - Khi hết lượt thử, state machine lùi lại tìm nút điều hướng đáy `+` để phục hồi (`_find_bounded_create_button`). Nhưng vì màn hình vẫn đang ở Camera mode (vốn không có thanh điều hướng đáy hay nút `+`), hàm tìm kiếm trả về `None`, dẫn đến chốt lỗi fail-closed:
-     `[MANUAL_REVIEW] [VIDEO_PICK_CREATE_ENTRY_UNCONFIRMED] Recaptured surface did not prove a labelled bottom-centre create control`.
+1. **Bẫy nạp APK dở dang qua ADB LAN vs Giải pháp Local Admin OneDrive Push:**
+   - Khi chạy script nâng cấp hàng loạt (như `upgrade_8w.py`) qua socket ADB LAN từ xa (`192.168.110.119:5037`), việc stream 60 file split APK (~280MB/máy × 78 máy = ~22GB) qua socket mạng nội bộ làm nghẽn bus và timeout hàng loạt (khiến hơn 50 máy từ M201 đến M259 fail).
+   - **Quy chuẩn Local Push không qua LAN:** Thư mục APK đã được OneDrive đồng bộ sẵn trên máy chủ Admin tại `D:\OneDrive\apk-bank\com_ss_android_ugc_trill`. BẮT BUỘC thực thi script nâng cấp trực tiếp trên host Admin qua `admin_ssh.py`, sử dụng ADB cục bộ `C:\Program Files (x86)\xiaowei\tools\adb.exe` để nạp thẳng qua các cổng USB vật lý kết nối với điện thoại, loại bỏ 100% nghẽn mạng LAN.
+   - **Bẫy OneDrive Files On-Demand & Windows cp1252:**
+     * File script mới tạo trong thư mục OneDrive của Admin có thể ở trạng thái Cloud-Only (dung lượng có dấu ngoặc `(size)` trong `dir`), khiến Python ném `[Errno 22] Invalid argument`. Khắc phục: Dùng PowerShell hydrate sang thư mục local ngoài OneDrive: `Get-Content ... -Raw | Set-Content D:\Taadaa\tools\<script>.py`.
+     * Console Windows của OpenSSH mặc định dùng `cp1252`, in chữ Tiếng Việt có dấu (như "KẾT QUẢ") sẽ văng `UnicodeEncodeError`. BẮT BUỘC chạy với `python -X utf8` hoặc giữ output log thuần ASCII.
+2. **Lỗi logic Camera Mode Gallery Thumbnail Tap (Nguyên nhân thực sự được xác nhận qua `browser_vision`):**
+   - Kể cả trên các máy đã có v47.0.3 (ví dụ M202, M203), khi script bấm nút Tạo (`+`), TikTok mở giao diện **Camera** (`[CAMERA_MODE]`).
+   - **Bố cục thực tế của TikTok Camera (soi mắt kiểm chứng trên `video-pick-camera-surface.png`):**
+     * Góc dưới bên **TRÁI** (`x≈156, y≈1574`): Nút **"Hiệu ứng"** (Effects).
+     * Chính giữa đáy: Nút tròn đỏ Quay/Chụp (Shutter).
+     * Góc dưới bên **PHẢI** (`x≈930, y≈1650`): Mới là nút **"Tải lên"** (có icon album ảnh và chữ "Tải lên").
+   - **Lỗ hổng trong code (`state_machine.py` dòng 9658):**
+     * `ordered_candidates = left_targets + right_targets` (do tàn dư của Case 90).
+     * Vì icon "Hiệu ứng" bên trái có màu sắc nổi bật (`non_dark_l >= 0.20`), thuật toán luôn đưa `left_targets` lên đầu và tap cố định 4 lần liên tiếp vào tọa độ `(156, 1574)` (bấm trúng nút **Hiệu ứng** thay vì nút "Tải lên").
+     * Gallery picker không bao giờ mở ra được. Khi hết lượt retry, state machine lùi lại tìm nút điều hướng đáy `+` để phục hồi (`_find_bounded_create_button`). Nhưng vì màn hình vẫn ở Camera mode (không có nút `+`), code trả về `None`, dẫn đến chốt lỗi fail-closed:
+       `[MANUAL_REVIEW] [VIDEO_PICK_CREATE_ENTRY_UNCONFIRMED] Recaptured surface did not prove a labelled bottom-centre create control`.
 
 ## 3. Quy Trình Chẩn Đoán & Khắc Phục O(1)
 
@@ -46,6 +55,6 @@
 
 ### Bước 3: Sửa Lỗi Camera Mode Gallery Thumbnail Trong `Tiktok-video`
 - Kiểm tra `execution.log` trong thư mục run trên máy Admin (`D:\CodexRuntime\tiktok-video\runs\...`).
-- Nếu thấy lặp lại `Camera surface still visible after tap... retrying thumbnail tap`:
-  - Cập nhật selector động hoặc kiểm tra bounds của nút "Tải lên" trong dump XML của Camera mode thay vì dùng toạ độ hardcode mù `(156, 1574)`.
-  - Bổ sung cơ chế dismiss các popup/overlay trong Camera mode trước khi tap thumbnail.
+- Nếu thấy lặp lại `Camera surface still visible after tap... retrying thumbnail tap at (156, 1574)`:
+  - Trong `state_machine.py` (`_tap_visual_camera_upload_entry`): Đổi thứ tự ưu tiên sang `ordered_candidates = right_targets + left_targets` để luôn ưu tiên tap nút **"Tải lên"** ở góc phải (`x≈930, y≈1650`).
+  - Đảm bảo trong vòng lặp retry, nếu candidate hiện tại không mở được gallery picker thì chuyển sang candidate tiếp theo (`ordered_candidates[target_idx]`) thay vì lặp lại cùng một tọa độ trượt.
