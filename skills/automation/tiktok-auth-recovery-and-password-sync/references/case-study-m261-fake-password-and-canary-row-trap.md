@@ -33,4 +33,13 @@
   ```
 - **Nguyên nhân:** Tài khoản Hotmail này được reg từ 12/09/2026. `refresh_token` trong `gmail_clean_v2.xlsx` đã quá hạn (>40 ngày không xoay vòng).
 - **Bẫy kẹt điều phối:** Trong code `social_reg_v1.py` (dòng 7521), vì thấy mail CÓ token trong Excel nên hệ thống tuân thủ luật "cấm mở Outlook app trên điện thoại", từ chối fallback sang app di động. Kết quả: cả hai kênh đều không đọc được OTP, runner kẹt chờ hết 120s và chạm trần timeout ca chạy 720s.
-- **Kế hoạch phục hồi:** Hoặc cấp lại `refresh_token` tươi trên PC qua GPM/browser, hoặc chủ động clear `refresh_token` thành `None` trong file Excel để script giải phóng fallback mở app Outlook với mật khẩu gốc.
+- **Kế hoạch phục hồi & Giải pháp đột phá qua GPM Profile (`read_otp_gpm.py`)**:
+  * Kiểm tra hòm thư trên GPM Login (API port 19995): Mailbox `e6ahwg7.2911.tooct@hotmail.com` đã có profile `261 - e6ahwg7.2911.tooct@hotmail.com - 10028` (ID: `a95dedbf-4170-495c-9249-4539c419a112`).
+  * Đăng nhập session web một lần trên GPM bằng mật khẩu chuẩn `datKHWa1N1bs`.
+  * Tích hợp `read_tiktok_otp_from_gpm_profile` vào `social_reg_v1.py` làm tầng fallback ưu tiên khi Graph API token hết hạn.
+  * **Critical filter**: Phải truyền `exclude_codes` vào reader GPM để loại trừ toàn bộ mã OTP cũ có sẵn trong hòm thư, chỉ lấy mã mới nhất vừa được TikTok gửi.
+
+### Pitfall 5: Do Dự & Hỏi Lặp Lại Khi User Đã Ra Lệnh Thực Thi ("Làm đi")
+- **Sai lầm:** Khi đã chẩn đoán xong và user đã lệnh dứt khoát ("Làm đi", "Fix đi"), Agent lại dừng lại ở cuối turn để phân trần, tóm tắt lý thuyết hoặc hỏi xin phép lại ("Em làm nhé anh?").
+- **Kỷ luật:** Khi đã có lệnh của user, Coordinator BẮT BUỘC thực thi dứt điểm bằng tool calls, sửa code, chạy lệnh kiểm chứng và chỉ báo cáo kết quả thực tế cuối cùng. CẤM dừng turn giữa chừng để hỏi lại điều user vừa phê duyệt.
+
