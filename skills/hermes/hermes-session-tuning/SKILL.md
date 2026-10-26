@@ -330,6 +330,17 @@ Khi user yêu cầu kiểm tra trực tiếp log request lên OmniRoute (`C:\Use
 - Gom tĩnh 346 skills root + 325 skills plugins (11.440 files) nhồi vào session gây ngộ độc token (14k-18k tokens mô tả/turn), loãng chú ý (Attention Dilution), khiến model "fix lỗi này lòi lỗi khác" (local reasoning bị phá vỡ).
 - Khẳng định tính ưu việt của Dynamic Skill Routing O(1): chỉ bốc đúng 3-5 skills theo intent query, giữ system prompt tinh gọn.
 
+### 4. Triệt Tiêu Schema Tool Thừa & Tinh Gọn System Prompt (Audit & Thực Thi 27/10/2026)
+- **Vô hiệu hóa Toolset Schema Thừa qua `agent.disabled_toolsets`**:
+  * Các toolset không dùng hoặc bị Coordinator Guard chặn (`code_execution` cho `execute_code`, `tts` cho `text_to_speech`, `todo`) vẫn tự động serialize schema JSON gửi sang LLM mỗi turn (~3.500 ký tự JSON $\approx$ 900 tokens).
+  * Khắc phục: Khóa cứng trong `config.yaml` bằng:
+    `python D:/Taadaa/tools/manage_hermes_config.py set agent.disabled_toolsets '["code_execution", "tts", "todo"]' --type json --force`
+  * **CẢNH BÁO GIỮ `computer_use`**: Tuyệt đối KHÔNG đưa `computer_use` vào `disabled_toolsets` nếu cần điều khiển desktop/PC nền, vì tắt tool này sẽ làm mất hoàn toàn khả năng chụp màn hình và tương tác UI Windows.
+- **Bẫy Đối Soát Lỗi Thời (Stale Payload Audit Trap)**:
+  * Tránh trích dẫn số liệu báo cáo cũ (vd report ngày 25/10 về việc trùng lặp Memory ↔ User Profile) khi user đã dọn sạch trong các session sau đó. Luôn kiểm tra hiện trường live trong prompt trước khi phán đoán.
+- **User Sudo Tinh Gọn `SOUL.md`**:
+  * Các đoạn văn chắp vá từ các đợt triage sự cố cũ trong `SOUL.md` (như chi tiết dirty target salvage triage dài dòng, câu chữ lặp ở Gate 5) có thể được user cấp quyền User Sudo để gọt bớt, tiết kiệm ~800 ký tự mà vẫn bảo toàn 100% Invariants cốt lõi.
+
 ### 4. So sánh Kiến trúc ChatGPT Web: OmniRoute Cluster (GPM CDP) vs Chrome Extension + Local MCP
 - **Bản chất kiến trúc toy script (Extension + Local MCP):** Cắm extension vào 1 tab Chrome cá nhân, bóc tách DOM text để giả lập function calling và paste text thủ công.
 - *Chí mạng Rate Limit:* 1 account Plus dính trần `40 msgs / 3 hours`, agent code loop 20-30 turns là kẹt cứng 3 tiếng.
