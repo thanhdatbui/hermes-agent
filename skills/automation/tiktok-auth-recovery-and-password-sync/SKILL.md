@@ -55,3 +55,10 @@ description: Use when TikTok login has wrong pass. Reset via token.
    - Khi chạy Canary kiểm chứng sau bản vá login/recovery: BẮT BUỘC tra cứu đúng `--row <N>` của tài khoản bị lỗi/vắng mặt.
    - TUYỆT ĐỐI CẤM test nhầm `--row 1` có sẵn tài khoản đã login trên máy, vì `profile_preflight` sẽ báo `already matched` và pass thành công ảo mà hoàn toàn không kích hoạt luồng login cần test.
    - Timeout Canary cho toàn bộ luồng recovery/login trên dàn máy remote Admin bắt buộc $\ge 720s$ để bù đắp độ trễ ADB remote và thời gian OTP Graph API.
+7. **Bẫy OAuth Grant Expired (`AADSTS70000`) & Xử Lý Token Hết Hạn Sau >30-40 Ngày**:
+   - Khi Hotmail/Outlook được cấp `refresh_token` từ lâu (sau >30–40 ngày không sử dụng), Microsoft Graph API có thể trả về lỗi:
+     `AADSTS70000: The user could not be authenticated as the grant is expired. The user must sign in again.`
+   - **Bẫy kẹt logic**: Trong `social_reg_v1.py` / `hotmail_provider.py`, khi phát hiện mail có `refresh_token`, script tự động áp dụng luật cứng "Đã có token Graph -> CẤM mở app Outlook trên điện thoại". Nhưng do token đã chết, Graph API không lấy được OTP, dẫn tới script treo chờ đủ 120s rồi fail timeout.
+   - **Cách xử lý chuẩn xác**:
+     * *Phương án ưu tiên*: Mở GPM / trình duyệt trên PC đăng nhập lại hòm thư Hotmail để refresh lại OAuth grant, cập nhật `refresh_token` mới vào cột 9 của `gmail_clean_v2.xlsx`.
+     * *Phương án bypass tạm thời*: Xóa giá trị `refresh_token` đã chết trong `gmail_clean_v2.xlsx` về `None` (chỉ giữ `mail_pass`), runner sẽ nhận diện mail không có token và tự động kích hoạt fallback mở app Outlook trên thiết bị để đọc OTP.

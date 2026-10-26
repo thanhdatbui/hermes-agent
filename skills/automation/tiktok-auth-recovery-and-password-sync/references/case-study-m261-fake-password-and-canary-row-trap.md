@@ -25,3 +25,12 @@
   1. Chưa tạo pass trên TikTok thì cột PASS trong workbook **BẮT BUỘC ĐỂ `None` (RỖNG)**. CẤM tự ý sinh pass ảo ghi vào Excel.
   2. Khi gặp `Mật khẩu sai`: BẮT BUỘC tra cứu dữ liệu gốc trước. Nếu phát hiện là pass rác/chưa tạo pass, set cột PASS về `None`.
   3. Khi cột PASS là `None`, `tiktok_login_v1.py` nhận diện `has_pw = False`, không cố gõ mật khẩu mà chuyển thẳng sang lấy OTP qua Microsoft Graph API trên PC để đăng nhập an toàn.
+
+### Pitfall 4: Stale Graph API OAuth Token Trap (`AADSTS70000`)
+- **Hiện tượng:** Sau khi xóa pass về `None`, TikTok chuyển sang màn hình gửi mã OTP về hòm thư `e6ahwg7.2911.tooct@hotmail.com`. Script gọi Graph API trên PC để lấy mã, nhưng Microsoft trả về lỗi:
+  ```text
+  AADSTS70000: The user could not be authenticated as the grant is expired. The user must sign in again.
+  ```
+- **Nguyên nhân:** Tài khoản Hotmail này được reg từ 12/09/2026. `refresh_token` trong `gmail_clean_v2.xlsx` đã quá hạn (>40 ngày không xoay vòng).
+- **Bẫy kẹt điều phối:** Trong code `social_reg_v1.py` (dòng 7521), vì thấy mail CÓ token trong Excel nên hệ thống tuân thủ luật "cấm mở Outlook app trên điện thoại", từ chối fallback sang app di động. Kết quả: cả hai kênh đều không đọc được OTP, runner kẹt chờ hết 120s và chạm trần timeout ca chạy 720s.
+- **Kế hoạch phục hồi:** Hoặc cấp lại `refresh_token` tươi trên PC qua GPM/browser, hoặc chủ động clear `refresh_token` thành `None` trong file Excel để script giải phóng fallback mở app Outlook với mật khẩu gốc.
