@@ -90,7 +90,11 @@
   1. Nắm vững trần TTL của Vision Receipt: Mỗi receipt chỉ sống tối đa 180 giây (`DEFAULT_TTL_SECONDS = 180`).
   2. BẮT BUỘC chạy `python D:\Taadaa\tools\run_winrt_ocr.py "D:\Taadaa\reports\<file>.png"` ngay trong cùng lượt turn hoặc sát thời điểm chuẩn bị xuất thẻ `MEDIA:`. CẤM dùng receipt cũ đã tạo từ nhiều lượt trước.
 
-## 17. Kỷ Luật "Canh Ca Nuôi Nick Xong Xử Lý" (Feed Session Queue Monitoring)
+## 17. Bẫy Lifecycle Guard Crash Do Embedded Null Character Trong Terminal Scanner
+- **Hiện tượng:** Khi chạy các lệnh Python nội tuyến `python -c "..."` phức tạp hoặc chứa escape char/regex qua terminal, token parser của `cron/lifecycle_guard.py` có thể quét nhầm một token thành file path và gọi `os.open(path, flags)`. Trên Windows, hàm này văng `ValueError: open: embedded null character in path` làm sập terminal ngay lập tức vì code chỉ bắt `except OSError`.
+- **Bản vá & Phòng thủ:** Đã vá dòng 260 thành `except (OSError, ValueError):`. Đồng thời khi chạy code inline phức tạp, ưu tiên bọc Base64: `python -c "import base64; exec(base64.b64decode('...'))"` hoặc ghi file script con riêng biệt.
+
+## 18. Kỷ Luật "Canh Ca Nuôi Nick Xong Xử Lý" (Feed Session Queue Monitoring)
 - **Hiện tượng:** Khi User ra lệnh *"Canh ca nuôi xong xử lý 2 acc trong phiên đi"*, các máy mục tiêu có thể đang bị lock bởi cronjob nuôi nick hàng loạt (`run_tiktok.py --mode multi-machine-feed-session reservation`, PID 5136).
 - **Hành động bắt buộc:**
   1. Kiểm tra trạng thái lock trong `C:/Users/Kibe/.codex/device-locks/machine_<N>.lock.json` và `serial_<S>.lock.json`.

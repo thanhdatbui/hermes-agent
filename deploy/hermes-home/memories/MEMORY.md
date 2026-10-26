@@ -10,7 +10,7 @@ Tool 2FA và cron xen ca chạy cả ngày BẮT BUỘC dùng Just-In-Time (JIT)
 §
 Tài khoản Gmail chuẩn clean_v2 đã tắt Google Prompt hoàn toàn chỉ dùng 2FA TOTP: login GPM 100% trên PC qua pyotp, không cần ADB hay máy S7; cấm chặn nhầm acc farm có recovery khoaleemagic khi đã có totp_secret.
 §
-Cron watchdog chạy batch (2FA, Gmail reg) BẮT BUỘC ghi nhận run_date độc lập với status success/fail; hàm already_ran cấm bọc điều kiện is_success để chống vòng lặp re-run spam Telegram khi có máy lỗi.
+Cron watchdog batch (2FA, Reg Gmail) ghi nhận run_date độc lập kết quả (chống re-run spam); nhãn ca dynamic theo giờ; lệnh SSH Admin (M201-280) bắt buộc nạp AssignmentManifest riêng, lockRoot dynamic theo USERPROFILE và parse failure breakdown từ stdout gộp telemetry toàn farm.
 §
 Ổ D Admin (192.168.110.119) lưu trữ phân tầng: local giữ clip 1..20, clip >=21 offload lên Google Drive; video gốc chỉ kéo bù khi tổng (local + gdrive) < 45. Game TFT Live cài ở D:\Riot Games, PBE ở C:\Riot Games.
 §
