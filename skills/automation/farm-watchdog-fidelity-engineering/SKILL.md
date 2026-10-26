@@ -136,6 +136,14 @@ Applies whenever reports fail to reflect actual fleet health, mask dropped machi
   2. **Cross-Check with Execution Source of Truth:** Before reporting accounts as "missing registration" or "lacking platform data", cross-check against the execution source of truth (e.g., `taikhoan_run_safe.xlsx` currently dispatching feed/video runs) rather than relying solely on optional credential columns in static workbooks.
   3. **Non-Zero Exit Code on Target Missing:** If a security or lifecycle runner is invoked for a specific entity (`--email <target>`) but finds no matching rows in the master workbook, it MUST exit with a non-zero code (`return 1`). Exiting with 0 when target accounts are skipped causes callers (supervisors) to mistake a no-op for a successful completion, producing false "DONE" status transitions.
 
+### Invariant 15: Phantom State Advancement & Registration CLI Returncode Trap
+- **Anti-Pattern:** A child registration script (`chatgpt_gpm_direct_reg.py`) returns exit code `0` when no matching candidate is found in workbooks or when registration encounters fatal errors (`FAIL_PASSWORD_NOT_FOUND`, `FAIL_OTP_TIMEOUT`). The parent supervisor (`batch_gpm_5profiles_supervisor.py`) evaluates `proc.returncode == 0` as complete registration, immediately stamps `chatgpt_registered_at = now()`, and advances hundreds of accounts through a 7-day soak and password change cycle to `DONE` without ever opening a browser.
+- **Rule:**
+  1. **Strict Non-Zero Failure Contract:** The registration runner MUST return `1` on any failure or when target `--email` has no candidate. Return `0` strictly when `status in ("SUCCESS", "ALREADY_LOGGED_IN", "DRY_RUN_OK")`.
+  2. **Cross-Cluster Workbook Path Resolution:** Candidate lookups must parse all active cluster workbooks (`admin/` and `kibe/`), with safe fallback (`normalize_password(cred["pwd"])`) if optional password columns (`PASS CHATGPT`) are absent.
+  3. **UI State Discrimination:** Never confuse `/about-you` ("Bạn bao nhiêu tuổi?") with an expired session challenge. The "About You" screen proves the account was NEVER registered on OpenAI; an existing registered account exclusively prompts for OTP at `/email-verification`.
+  4. **OTP Subject Matching:** OpenAI OTP email subjects vary by locale ("Your temporary ChatGPT verification code" vs "Mã xác minh tạm thời của bạn cho ChatGPT"). Never filter solely on `"openai"` in subject line — check both `"openai"` and `"chatgpt"` across combined subject and sender address. See `references/phantom-chatgpt-registration-and-exit-code-fidelity.md`.
+
 ---
 
 ## 3. Verification Protocol for Watchdogs & Reports
@@ -151,6 +159,7 @@ Applies whenever reports fail to reflect actual fleet health, mask dropped machi
 - [`references/batch-watchdog-idempotency-and-anti-spam-storm.md`](references/batch-watchdog-idempotency-and-anti-spam-storm.md) — Case study: Decoupled idempotency contract preventing partial-failure rerun loops and Telegram spam storms.
 - [`references/cross-cluster-multi-host-watchdog-parity.md`](references/cross-cluster-multi-host-watchdog-parity.md) — Root causes and contracts for cross-host watchdog execution and telemetry collection (Kibe local vs Admin remote).
 - [`references/exception-driven-alerting-and-24h-heartbeat.md`](references/exception-driven-alerting-and-24h-heartbeat.md) — Exception-driven alerting, fail-closed tri-state model, and the 24h heartbeat aggregator (Dead-Man's Switch).
+- [`references/phantom-chatgpt-registration-and-exit-code-fidelity.md`](references/phantom-chatgpt-registration-and-exit-code-fidelity.md) — Case study: Phantom ChatGPT registration, CLI returncode traps, and OpenAI onboarding UI discrimination.
 - [`references/gateway-agent-max-turns-budget-and-refund-bug.md`](../../hermes/hermes-gateway-ops/references/gateway-agent-max-turns-budget-and-refund-bug.md) — Xử lý trần 20 tool iterations bóp nghẹt watchdog/coordinator và bug refund() conversation_loop.
 - [`references/zero-reporting-blindspots-and-watchdog-fidelity.md`](references/zero-reporting-blindspots-and-watchdog-fidelity.md) — Case study: Eliminating blindspots in Taadaa Farm cron reports (ADB offline isolation, state desync fallback, NEEDS_LOGIN separation, starving slot alerts).
 - [`references/watchdog-timeout-and-file-scan-bottleneck.md`](references/watchdog-timeout-and-file-scan-bottleneck.md) — Case study: Watchdog timeout & file-scan bottleneck in large idempotency directories (>9k files).

@@ -12,6 +12,4 @@ Tài khoản Gmail chuẩn clean_v2 đã tắt Google Prompt hoàn toàn chỉ d
 §
 Auto-Heal: đào log/ảnh ca, cấm chụp máy tắt màn; WinRT OCR primary; Canary auto-device; storm>=3 alert. Claude CLI bị hook guard_claude_cli_lock.py khóa cứng (chỉ mở khi có User Sudo/Strike 3). Avatar picker: visual match chống nhầm Tile 1; lifecycle_guard:260 bọc except null char.
 §
-Kiểm tra nick TikTok farm (supervisor/change info/6h report): chỉ check bool(username); CẤM check compound password vì nick reg OTP để trống pass nhưng đang chạy feed thật trong taikhoan_run_safe.xlsx.
-§
-Sửa dưỡng sinh/xoay ca TikTok: BẮT BUỘC kiểm tra 2 tầng (pool selector bên trong VÀ wrapper tiktok_runner.py) để tránh TAADAA_REST_DAY_NO_FOLLOW đè cờ dưỡng sinh lên toàn farm.
+Hotmail farm là mail mua sẵn (cấm nói reg Hotmail); màn hình 'Bạn bao nhiêu tuổi?' (/about-you) chứng minh nick CHƯA HỀ reg ChatGPT (không phải văng session); script reg ChatGPT bắt buộc exit non-zero khi fail/thiếu candidate để chống supervisor đóng dấu đăng ký ảo.

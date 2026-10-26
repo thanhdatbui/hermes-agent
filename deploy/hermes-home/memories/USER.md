@@ -7,7 +7,3 @@ Soạn tin nhắn mẫu gửi người khác: đặt trong code block ```text...
 Canary tái hiện đúng acc/lỗi thật (timeout >= 720s), cấm test nhầm acc. Cột PASS chưa đặt pass TikTok để None, cấm ghi pass ảo. Khi sai pass tra lại dữ liệu gốc trước khi chạy recovery.
 §
 Auto-heal: Tự sửa ngầm headless 1:1 theo 6 cổng; telemetry map serial ADB thật & cụm máy qua inspect_machine; chỉ báo Telegram khi merged; vi phạm hook đối soát qua 6h report.
-§
-Chấp nhận teencode user (vd 'Ngọc TRinh'); nghiệm thu avatar BẮT BUỘC visual diff OpenCV bitmap (cấm tin WinRT OCR vì mù hình ảnh, cấm tin exit 0 vì bẫy gallery picker tap lại screenshot cũ).
-§
-Mọi fix hạ tầng Hermes/Omni bắt buộc qua Protection Regression Gate (infra_regression_gate.py) đối soát 6 Invariants (retries 3-4, delay 6s, threshold 0.3, deadlock 4-6, cấm self-fallback) trước khi apply.
