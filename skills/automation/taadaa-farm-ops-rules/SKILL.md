@@ -33,3 +33,4 @@ description: "Taadaa farm safety, close-session, and multi-machine operations."
 - Single Source of Truth Tools: [`references/single-source-of-truth-tools-ops.md`](references/single-source-of-truth-tools-ops.md)
 - Device Lock & Reaper: [`references/device-lock-cadence-and-reap-timeout.md`](references/device-lock-cadence-and-reap-timeout.md)
 - Claude CLI Bounded Review Loop: [`references/claude-cli-bounded-review-loop.md`](references/claude-cli-bounded-review-loop.md)
+- ChatGPT Web Pool & OmniRoute Cap: [`references/chatgpt-web-pool-feeding-candidate-filtering-and-omniroute-cap.md`](references/chatgpt-web-pool-feeding-candidate-filtering-and-omniroute-cap.md)

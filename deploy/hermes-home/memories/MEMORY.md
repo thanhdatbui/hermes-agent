@@ -2,7 +2,7 @@ Cronjob batch ngầm đặt deliver='local' chống spam stdout; Watchdog có de
 §
 Khi TikTok thiếu acc/mismatch: BẮT BUỘC auto-login/reconcile bù; máy Admin (>=200) nạp host config admin.yaml, socket 192.168.110.119:5037 & workbook Admin; Canary tái hiện lỗi BẮT BUỘC tra đúng --row <N> của nick vắng mặt (cấm test nhầm --row 1 có sẵn sinh pass ảo); timeout >= 720s.
 §
-Khi pool OmniRoute lỗi: đối soát proxy_registry & test /api/providers/{cid}/test; token sống bật is_active=1 ngay. Acc ChatGPT reg xong dùng ngay; gán >= 2 acc/proxy kèm proxy_assignments.
+Khi pool OmniRoute nạp acc ChatGPT: BẮT BUỘC lọc candidate qua supervisor state (chỉ lấy stage DONE/WAIT_7D hoặc có chatgpt_registered_at, cấm bốc profile mới ở HOTMAIL_LOGIN); gán đúng port proxy_assignments (trần tạm thời 2 acc/IP); cấm dùng base64 qua terminal.
 §
 Watchdog đối soát TikTok Web (SQLite snapshots) BẮT BUỘC đối chiếu theo Account ID / Username thay vì Row máy; runner khi gặp timeout BẮT BUỘC salvage follow từ state file thay vì gán 0.
 §
