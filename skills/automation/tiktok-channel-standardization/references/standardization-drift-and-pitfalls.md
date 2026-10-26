@@ -118,9 +118,9 @@
 ## 21. Bẫy Crop Phong Cảnh / Góc Rộng Thay Vì Chân Dung Cận Mặt Cho Kênh Cá Nhân (Landscape / Distant Crop Trap)
 - **Hiện tượng:** Kênh mang định danh cá nhân rõ ràng (ví dụ tên hiển thị `Võ Đức Mai`, `Linh Ngô`...), nội dung video có nhân vật chính xuất hiện xuyên suốt, nhưng Agent lại trích xuất góc quay b-roll phong cảnh (mái nhà vườn, lối đi lát đá, ngọn cây) hoặc góc toàn cảnh có bóng người từ xa tí hon không thấy mặt. Kết quả: Ảnh đại diện nhìn như ảnh phong cảnh vô tri, không tạo được độ uy tín/nhận diện cho kênh TikTok cá nhân khiến User phản ứng gay gắt (*"ava mày đưa như lồn ấy"*).
 - **Hành động bắt buộc:**
-  1. **Bắt buộc crop chân dung cận cảnh (Close-up Portrait):** Với kênh cá nhân/creator, Avatar BẮT BUỘC phải là ảnh chân dung rõ mặt nhân vật chính diện hoặc góc nghiêng $3/4$, biểu cảm tự nhiên, ánh sáng tốt.
-  2. **Công thức crop chân dung chuẩn:** Dùng Haar Cascade hoặc Face Detector xác định khuôn mặt, lấy khung hình vuông $512 \times 512$ với hệ số phóng đại `scale = 2.3 - 2.4` so với kích thước khuôn mặt, tỷ lệ đỉnh đầu `headroom_ratio = 0.30 - 0.32` để khi lồng vào vòng tròn viền TikTok mắt và trán nhân vật nằm cân đối ở nửa trên.
-  3. **CẤM TUYỆT ĐỐI** đưa ảnh phong cảnh không người, góc nhà, mái tôn, hay người đứng từ xa tí xíu làm avatar đề xuất cho kênh cá nhân.
+  1. **Bắt buộc crop chân dung cận cảnh (Close-up Portrait):** Với kênh cá nhân/creator/vlog có nhân vật chính xuất hiện phát biểu, Avatar BẮT BUỘC phải là ảnh chân dung rõ mặt nhân vật chính diện hoặc góc nghiêng $3/4$, biểu cảm tự nhiên, ánh sáng tốt.
+  2. **Phân định rõ theo Niche (Tránh bẫy máy móc ép mặt người):** Đối với các kênh ngách **Thiên nhiên, Làm vườn, Cây cảnh, Bonsai, Nông nghiệp, Thú cưng, Ẩm thực, Phong cảnh**: Tuyệt đối CẤM ép crop mặt thợ/người làm vườn; đối tượng làm avatar BẮT BUỘC phải là hình ảnh cây giống, hoa lá, khuôn viên vườn xanh tươi, chậu bonsai hay phong cảnh thiên nhiên rực rỡ, sắc nét.
+  3. **Công thức crop chân dung chuẩn:** Dùng Haar Cascade hoặc Face Detector xác định khuôn mặt, lấy khung hình vuông $512 \times 512$ với hệ số phóng đại `scale = 2.3 - 2.4` so với kích thước khuôn mặt, tỷ lệ đỉnh đầu `headroom_ratio = 0.30 - 0.32` để khi lồng vào vòng tròn viền TikTok mắt và trán nhân vật nằm cân đối ở nửa trên.
 
 ## 22. Bẫy Terminal Guard Block Khi Kiểm Tra Video & Kỷ Luật Gọi WinRT OCR / Contact Sheet
 - **Hiện tượng:**
