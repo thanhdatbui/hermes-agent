@@ -555,12 +555,15 @@ Khi user chat hàng loạt session song song và thấy phản hồi chậm (h�
   1. *Bão rớt cụm Proxy Mobile (`test.taadaa.click:51xx`)*: Cụm proxy 5103..5115 đồng loạt văng `ECONNRESET / PROXY_UNREACHABLE` đúng lúc stream payload nặng >405k tokens khiến Main Event Loop của Node.js bị **khóa cứng (Deadlock)** suốt gần 6 phút (16:59:52 đến 17:05:32).
   2. *Watchdog Deadlock Ceiling Force-Restart*: Sau 12 lần fail `/api/health` liên tiếp (30s x 12 = 6m), watchdog `omniroute_watchdog.ps1` kích hoạt `deadlock ceiling reached` force-kill toàn bộ Node.js.
   3. *Cửa sổ chết 17:05 – 17:07:52*: Quá trình restart lần 1 vấp lỗi exit code 1, lần 2 mất 24s. Trong 2 phút này port 20129 đóng hoàn toàn $\rightarrow$ Các tin nhắn gửi đúng lúc 17:07 bị Connection Refused và văng lỗi đồng loạt trên Telegram.
-- **Chẩn đoán nhanh O(1)**:
-  - Đọc 30 dòng cuối `C:\Users\Kibe\AppData\Roaming\omniroute\logs\watchdog.log` tìm `deadlock ceiling reached (12/12)`.
-  - Quét `omniroute-stdout.log` xác nhận bão proxy `ECONNRESET` và kiểm tra lại `/api/health` bằng urllib Python.
-  - Xem chi tiết tại `references/omniroute-deadlock-ceiling-and-proxy-cascade-restart.md`.
+  4. *Tử huyệt Retry Headroom Hermes quá ngắn*: `agent.api_max_retries: 3` chỉ đợi ~15-18s (backoff ~2s, 4s, 8s). Khi OmniRoute restart mất ~25-30s, Hermes đốt sạch 3 lần thử trước khi port 20129 mở lại, làm fail turn hàng loạt và ép user phải gõ lại tin nhắn từng topic.
+- **Biện pháp xử lý & Chuẩn hóa**:
+  - Nâng retry headroom: `python D:/Taadaa/tools/manage_hermes_config.py set agent.api_max_retries 6 --type int` (trải dài chuỗi retry ~122s, đảm bảo bắt kịp thời điểm OmniRoute vừa restart xong mà không ngắt turn).
+  - Hạ trần `$MaxDeadlockFailures` trong `omniroute_watchdog.ps1` từ 12 xuống 4 (~2 phút) để đồng bộ với cửa sổ chờ của Hermes.
+  - Tách `fallback_providers` độc lập (trỏ sang 9Router `:20128` thay vì trỏ lại chính cổng 20129).
+  - Xem chi tiết tại `references/omniroute-restart-retry-headroom-and-deadlock-ceiling-20261026.md`.
 
 ## References
+- `references/omniroute-restart-retry-headroom-and-deadlock-ceiling-20261026.md` — Đồng bộ Retry Headroom (api_max_retries: 6) cho Hermes, phân tích cửa sổ chết OmniRoute restart 30s và hạ trần watchdog deadlock ceiling (26/10/2026).
 - `references/omniroute-deadlock-ceiling-and-proxy-cascade-restart.md` — Sự cố OmniRoute Event Loop Deadlock do bão rớt proxy mobile ECONNRESET, Watchdog Deadlock Ceiling 12/12 force-restart và cửa sổ chết 17:05-17:07 văng lỗi Telegram đồng loạt (26/10/2026).
 - `references/telegram-multi-isp-failover-probe-hang.md` — Sự cố Telegram Multi-ISP Failover flapping, probe thiếu timeout làm treo 10 phút và xả dồn tin nhắn (26/10/2026).
 - `references/gemini-turn-sequence-corruption-and-session-recovery.md` — Sự cố lệch cấu trúc turn Gemini HTTP 400, vòng lặp treo stream chunks và quy trình cứu hộ session dở dang qua session_search (07/10/2026).

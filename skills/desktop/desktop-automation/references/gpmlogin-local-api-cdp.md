@@ -145,6 +145,12 @@ def drive_profile_cdp(remote_debugging_address: str, task_fn):
 - **Headless Execution & Console Window Guard (`CONSOLE_WINDOW_BLOCKED`):**
   - Running bare `python ...` in cron or guarded worker sessions triggers `[CONSOLE_WINDOW_BLOCKED]` to protect full-screen games/graphics apps from popping console windows (`conhost.exe`).
   - *Fix:* Always invoke via `pythonw` or use detached execution with `creationflags=subprocess.CREATE_NO_WINDOW` (`0x08000000`).
+- **Execution Timing & Coordinator Foreground Timeout (`Command timed out after 60s`):**
+  - Running `--limit 5` sequentially takes ~150–200s (each GPM profile start, navigation, OTP wait, and process cleanup takes 25–40s).
+  - Calling in foreground terminal on Coordinator triggers `Command timed out after 60s`.
+  - *Fix:* Always launch batch audits in the background:
+    `terminal(command='python D:/Taadaa/tools/login_audit_and_purge_deactivated.py --limit 5', background=True, notify_on_complete=True)`
+    followed by `process(action='wait', timeout=180, session_id=...)` to await completion cleanly.
 - **Worker Delegation Contract Requirements:**
   - When delegating audit tasks to a Worker subagent, Coordinator dispatch rules enforce:
     1. Integer budget <= 8 calls: `BUDGET: <= 8 calls` (investigate tasks > 8 calls fail closed with `INVESTIGATE_BUDGET_EXCEEDED`).
