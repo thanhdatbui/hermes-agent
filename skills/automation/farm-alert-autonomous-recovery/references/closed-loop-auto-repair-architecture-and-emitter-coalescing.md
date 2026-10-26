@@ -120,4 +120,22 @@ Khi người dùng phản ánh auto-heal không chạy sau báo cáo watchdog ca
   - Tuyệt đối không gửi tin nhắn Telegram lẻ cho từng vé bị `BLOCKED` trong vòng lặp `process_queue()`.
   - Mọi lỗi/blocked được cách ly sang `runtime/incidents/blocked/` trong im lặng, chỉ để `cron_incident_auto_heal.py` in 1 dòng digest tổng kết cho Hermes scheduler.
 
+## 10. Cơ Chế Khóa Máy Đệm Giữa Ca, Ưu Tiên Auto-Heal & Chống Sập Hạ Tầng (Escalation Storm) (26/10/2026)
+- **Tận dụng khoảng nghỉ đệm giữa ca (Inter-Shift Buffer Window):**
+  - Giữa các ca nuôi (Ca 1 -> Ca 2 -> Ca 3 -> Ca 4) luôn có các khoảng nghỉ đệm (Buffer Window) từ 30-180 phút. Thời điểm watchdog ca nuôi tổng kết cũng là lúc máy vừa được nhả lock hoàn toàn.
+  - Canary của Auto-Heal chỉ chạy 2 lượt vuốt kiểm chứng (1-2 phút) nên vừa vặn nằm trọn trong khoảng nghỉ này, không ảnh hưởng ca tiếp theo.
+- **Thứ tự ưu tiên Lock giữa Auto-Heal và Cron cuốn chiếu:**
+  - Các cron cuốn chiếu phụ (2FA, Đổi tên, Up avatar) đều bọc cơ chế `SAFE_SKIP`: khi thấy máy đang bận hoặc có lock, chúng tự động lướt qua máy khác trong dàn.
+  - Auto-Heal chiếm máy trước để chạy Canary $\to$ các cron cuốn chiếu tự động dạt ra.
+  - Nếu máy lỗi chính gặp sự cố phần cứng hoặc kẹt lock bất thường, Harness tự động kích hoạt failover sang `--auto-device` (chọn máy rảnh hợp lệ khác) để hoàn tất kiểm chứng mà không làm tắc hàng đợi.
+- **Khắc phục điểm mù WebView/Canvas bằng WinRT OCR trong Planner (Cổng 1):**
+  - Màn hình Web popup, captcha hoặc video player thường không xuất text vào Accessibility XML dump.
+  - Cổng 1 (Planner) tự động bóc tách text `ocr_text` từ ảnh chụp màn hình live, bọc trong thẻ `[RAW_UI_OCR_DATA - UNTRUSTED EVIDENCE]` và chuẩn hóa thay newline bằng khoảng trắng để triệt tiêu nguy cơ multi-line prompt injection.
+- **Cảnh báo dồn dập khi sập hạ tầng (Escalation Storm Alert):**
+  - Để triệt tiêu điểm mù "im lặng khi hạ tầng chết" (socket ADB rớt, proxy die hàng loạt làm tất cả các vé đều tạch Cổng 0), `process_queue()` kiểm tra ngưỡng: nếu có $\ge 3$ vé bị `blocked/` trong một nhịp, tự động dispatch cảnh báo khẩn cấp `🚨 [AUTO-HEAL ESCALATION STORM]` về nhóm Farm Alert (`-5373649734`).
+- **Bảo hiểm đường truyền Telegram Token Fallback:**
+  - `telegram_report.py` tự động đọc token qua 3 lớp: `os.environ` $\to$ `%LOCALAPPDATA%/hermes/config.yaml` $\to$ `%LOCALAPPDATA%/hermes/.env`, bọc an toàn tránh crash và in log chẩn đoán nếu cấu hình thiếu sót.
+- **Kỷ luật ứng xử với phản hồi của Operator ("V fix theo claude gợi ý đi" / "?"):**
+  - Khi Operator đã chốt phương án ("V fix theo claude gợi ý đi") hoặc phản hồi giục "?", CẤM hỏi lại "có triển khai tiếp không" hay xin phép. Phải lập tức thi công dứt điểm, chạy focused test và thẩm định Closeout Gate, chỉ báo cáo nghiệm thu khi đã có token APPROVED.
+
 

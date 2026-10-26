@@ -101,13 +101,19 @@
   2. Với máy đã nhả lock (trạng thái FREE, không còn file lock): Thi công ngay lập tức theo quy trình chuẩn hoá (update bio, pin top, switch đúng profile để capture evidence).
   3. Với máy còn đang chạy nuôi nick: Chuẩn bị sẵn tài nguyên trên đĩa (copy file `avatar.jpg` vào `F_src` và `F_vid`, cắm cờ `.manual_avatar_locked` và `.manual_hashtag_locked`, sửa file Excel Tik*.xlsx). Khi ca nuôi hoàn tất và nhả lock, tự động kích hoạt runner đẩy avatar và bio lên máy mà không cần xin phép lại User.
 
-## 18. Bẫy Cố Tình Ép Đổi Avatar Khi Đã Đúng Persona & Bỏ Quên Ưu Tiên Ghim Bài (Pre-congruent Avatar & Pin Top First)
+## 19. Bẫy Cố Tình Ép Đổi Avatar Khi Đã Đúng Persona & Bỏ Quên Ưu Tiên Ghim Bài (Pre-congruent Avatar & Pin Top First)
 - **Hiện tượng:** Kênh đã có sẵn Avatar chuẩn ngách/chủ thể (ví dụ: kênh mèo đã có avatar mèo trắng đồng bộ với nội dung, kênh creator nam đã có ảnh nam), nhưng Agent máy móc dừng lại dựng proposal canvas ép User chọn đổi avatar mới, trong khi video triệu/chục nghìn view đang chưa được ghim khiến User bực mình (*"Để ava mèo đúng r t bảo đi pin bài mà"*).
 - **Hành động bắt buộc:**
   1. **Kiểm tra tính phù hợp của Avatar hiện có:** Nếu Avatar hiện tại trên Profile đã khớp đúng Persona và ngách video (congruent), GIỮ NGUYÊN avatar hiện tại làm mặc định, KHÔNG bắt User phải chọn lại avatar trừ khi User yêu cầu rõ.
   2. **Ưu tiên hành động tạo giá trị cao nhất ngay:** Nếu có clip $\ge 1.000$ views (đặc biệt các clip chục nghìn view như 10.6K) chưa ghim, BẮT BUỘC chạy `pin_top_videos.py` ngay lập tức!
   3. **Lệnh kéo ảnh nghiệm thu bắt buộc có Device Lock:** Lệnh `adb screencap` và `pull` bắt buộc bọc qua `with_device_lock.py` (`python D:/Taadaa/tools/with_device_lock.py --machine <N> -- adb ...`) để không bị chặn bởi Hard Gate #5.
   4. Chạy WinRT OCR xác nhận nhãn đỏ *"Đã ghim"* và gửi thẻ `MEDIA:` báo cáo User ngay.
+
+## 20. Kỷ Luật Closeout Gate Đối Với Phiên Vận Hành Farm (Operational Task vs Code Task)
+- **Hiện tượng:** Khi hoàn tất một phiên tác vụ vận hành farm (ví dụ: ghim bài top, nạp bio, chuẩn hoá profile, fix proxy), User phát lệnh kết thúc phiên ("Done", "Chốt", "xong phiên"). Coordinator máy móc gọi `closeout_gate.py --repo D:/Taadaa/tools` dù phiên KHÔNG hề có commit mới hay code delta cần push. Hậu quả: `closeout_gate.py` quét diff commit cũ từ phiên trước, chấm `REJECTED`, kích hoạt vòng lặp Sol Repair / Remediation không liên quan làm tắc nghẽn chốt phiên.
+- **Hành động bắt buộc:**
+  1. **Phân định phạm vi thẩm định:** Closeout Gate là cổng kiểm toán code độc lập bắt buộc trước khi `git push` các thay đổi mã nguồn.
+  2. **Xử lý phiên Vận Hành Farm:** Khi phiên chỉ thao tác trên thiết bị (chạy runner ADB, chuẩn hoá kênh, ghim clip, cập nhật Excel dữ liệu) mà không sinh ra git commit mới nào cần push lên repository, BẮT BUỘC báo cáo kết quả nghiệm thu (kèm receipt OCR / MEDIA: thực tế) và xác nhận thiết bị an toàn, nhả device lock; TUYỆT ĐỐI KHÔNG chạy `closeout_gate.py` trên commit cũ của repo tools.
 
 
 
