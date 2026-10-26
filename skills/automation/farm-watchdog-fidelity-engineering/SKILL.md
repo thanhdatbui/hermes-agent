@@ -95,6 +95,13 @@ Applies whenever reports fail to reflect actual fleet health, mask dropped machi
   2. **Strict Dual Telemetry Requirement:** Watchdogs dispatching to remote hosts via SSH must parse structured JSON emitted on stdout or fetch remote summary artifacts before reporting.
   3. **Zero-Count Remote Alert:** If a cluster configured for batch execution returns 0 machines selected, 0 success, and 0 failed, the watchdog must flag this anomaly (`⚠️ Cluster Admin: Không thu thập được telemetry / 0 máy được chọn`) rather than silently suppressing the missing cluster. See `references/cross-cluster-multi-host-watchdog-parity.md`.
 
+### Invariant 11: Batch Watchdog Idempotency vs Partial-Failure Storm (Anti-Spam & Execution Decoupling)
+- **Anti-Pattern:** Conflating run completion with 100% success (`already_ran_today = is_success is True` or `lane_status == 'success'`). On physical device farms (~160 phones), partial failures (SIM dropped, Google `phone_verify`, carrier rate-limits) are normal operating occurrences. When a 15-minute cron watchdog treats any `partial_failure` as "never executed today", it immediately relaunches the multi-hour batch after releasing device locks, flooding Telegram channels with repetitive reports (e.g. 00:38, 02:34, 03:23, 10:32, 11:17) and trapping farm devices in an infinite rerun loop that starves other scheduled shifts.
+- **Rule:**
+  1. **Decouple Execution State from Zero-Failure Outcome:** `already_ran_today(today_str)` must check if the shift batch has executed for the target day (`last_date == today_str` or `last_run_at.startswith(today_str)`), regardless of whether status is `success` or `partial_failure`.
+  2. **Strict Manual / Scoped Rerun Contract:** Never allow unattended crons to loop on partial failures. Re-running failed batches requires an explicit `--force` flag or a scoped, targeted remediation task.
+  3. **Universal Day/Night Chain Parity:** Apply this rule uniformly across all multi-phase batch watchdogs (`cron_night_tiktok_2fa_watchdog.py`, `post_noon_chain_watchdog.py`, `post_morning_gmail_2fa_watchdog.py`). See `references/batch-watchdog-idempotency-and-anti-spam-storm.md`.
+
 ---
 
 ## 3. Verification Protocol for Watchdogs & Reports
@@ -106,6 +113,7 @@ Applies whenever reports fail to reflect actual fleet health, mask dropped machi
 ---
 
 ## 4. References & Case Studies
+- [`references/batch-watchdog-idempotency-and-anti-spam-storm.md`](references/batch-watchdog-idempotency-and-anti-spam-storm.md) — Case study: Decoupled idempotency contract preventing partial-failure rerun loops and Telegram spam storms.
 - [`references/cross-cluster-multi-host-watchdog-parity.md`](references/cross-cluster-multi-host-watchdog-parity.md) — Root causes and contracts for cross-host watchdog execution and telemetry collection (Kibe local vs Admin remote).
 - [`references/exception-driven-alerting-and-24h-heartbeat.md`](references/exception-driven-alerting-and-24h-heartbeat.md) — Exception-driven alerting, fail-closed tri-state model, and the 24h heartbeat aggregator (Dead-Man's Switch).
 - [`references/gateway-agent-max-turns-budget-and-refund-bug.md`](../../hermes/hermes-gateway-ops/references/gateway-agent-max-turns-budget-and-refund-bug.md) — Xử lý trần 20 tool iterations bóp nghẹt watchdog/coordinator và bug refund() conversation_loop.

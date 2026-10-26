@@ -69,3 +69,26 @@ Khi một tác vụ con bị chặn do thiếu tài nguyên tạm thời (ví d�
   1. Viết mã nguồn runner canonical tại `D:/Taadaa/tools/<script>.py`.
   2. Tạo script triển khai trung gian `D:/Taadaa/tools/deploy_game_transfer_cron.py` giải quyết đường dẫn động bằng `Path.home()` trong code Python, không truyền token nhạy cảm qua CLI arguments.
   3. Chạy runner trung gian để sao chép nguyên tử vào các thư mục script runtime trước khi gọi `cronjob(action='create')`.
+
+---
+
+## 7. Cạm Bẫy Nhận Diện Riot Client & Cấu Hình Metadata Phân Vùng Đa Bản (Live vs PBE)
+Khi di chuyển hoặc đồng bộ song song bản Live (ổ `D:`) và PBE (ổ `C:`) trên Admin-PC:
+1. **Hiện tượng "Bị kẹt nút Install dù file đã tải đủ 100%":**
+   - Dù file game đã nằm đầy đủ trong `D:\Riot Games\Teamfight Tactics\Live` và file `RiotClientInstalls.json` đã trỏ đúng, Riot Client khi mở lên vẫn hiện nút **"Install" (Cài đặt)** thay vì nút **"CHƠI" (Play)**.
+   - **Nguyên nhân cốt lõi:** Riot Client kiểm tra file metadata tại:
+     `C:\ProgramData\Riot Games\Metadata\<product>.<patchline>\<product>.<patchline>.product_settings.yaml`
+     Ví dụ: `teamfighttactics.live.product_settings.yaml`, `league_of_legends.live.product_settings.yaml`.
+     Nếu thuộc tính `product_install_full_path` hoặc `product_install_root` bên trong file YAML vẫn lưu đường dẫn cũ (như `D:/x/Riot Games/...`), Riot Client kiểm tra không thấy thư mục đó và lập tức coi như game chưa được cài đặt!
+   - **Xử lý dứt điểm:** BẮT BUỘC cập nhật `product_install_full_path` và `product_install_root` trong toàn bộ các file `.product_settings.yaml` tương ứng:
+     ```yaml
+     product_install_full_path: "D:/Riot Games/Teamfight Tactics/Live"
+     product_install_root: "D:/Riot Games"
+     ```
+2. **Khởi chạy trực tiếp từng bản & Tạo Shortcut chuẩn hóa:**
+   - Để tránh nhầm lẫn giữa server Live và PBE trên giao diện client, shortcut khởi chạy trực tiếp qua `RiotClientServices.exe` bằng các tham số:
+     * **TFT Live:** `C:\Riot Games\Riot Client\RiotClientServices.exe --launch-product=teamfight_tactics --launch-patchline=live` (WorkingDirectory: `D:\Riot Games\Teamfight Tactics\Live`).
+     * **TFT PBE:** `C:\Riot Games\Riot Client\RiotClientServices.exe --launch-product=teamfight_tactics --launch-patchline=pbe` (WorkingDirectory: `C:\Riot Games\Teamfight Tactics\PBE`).
+     * **LoL Live:** `C:\Riot Games\Riot Client\RiotClientServices.exe --launch-product=league_of_legends --launch-patchline=live` (WorkingDirectory: `D:\Riot Games\League of Legends`).
+     * **LoL PBE:** `C:\Riot Games\Riot Client\RiotClientServices.exe --launch-product=league_of_legends --launch-patchline=pbe` (WorkingDirectory: `C:\Riot Games\League of Legends (PBE)`).
+   - **Bẫy tạo shortcut qua SSH:** Gửi chuỗi PowerShell inline qua bash dễ gây lỗi mojibake tiếng Việt (ký tự `?` trong tên shortcut) hoặc văng lỗi cú pháp. BẮT BUỘC ghi script file `.ps1` hoặc Python wrapper trung gian với encoding UTF-8 rồi thực thi để tạo các shortcut sạch trên `C:\Users\Admin\Desktop` và `C:\Users\Public\Desktop`.
