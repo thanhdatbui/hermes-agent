@@ -9,11 +9,3 @@ Watchdog đối soát TikTok Web (SQLite snapshots) BẮT BUỘC đối chiếu 
 Tool 2FA và cron xen ca chạy cả ngày BẮT BUỘC dùng Just-In-Time (JIT) lock từng máy (cấm bulk pre-reserve giữ lock hàng loạt trong queue) và bọc predicate né khung giờ reboot/đệm trước ca cron.
 §
 Tài khoản Gmail chuẩn clean_v2 đã tắt Google Prompt hoàn toàn chỉ dùng 2FA TOTP: login GPM 100% trên PC qua pyotp, không cần ADB hay máy S7; cấm chặn nhầm acc farm có recovery khoaleemagic khi đã có totp_secret.
-§
-Cron watchdog batch ghi nhận run_date độc lập kết quả (chống re-run spam); nhãn ca dynamic; lệnh SSH Admin (M201-280) nạp AssignmentManifest riêng, lockRoot dynamic theo USERPROFILE và parse failure breakdown gộp telemetry toàn farm.
-§
-Ổ D Admin: local giữ clip 1..20, clip >=21 offload GDrive; kéo bù khi tổng < 45. Game TFT Live ở D:\Riot Games, PBE ở C:\Riot Games.
-§
-Auto-Heal khép kín: gom lỗi feed/follow/upload qua emit_if_needed, resolve_serial_and_args lấy serial ADB thật; Canary failover --auto-device né kẹt ca nuôi; storm >= 3 lỗi blocked báo Farm Alert.
-§
-UI Farm: 100% cấm shell uiautomator dump (GuardGate DENY). Ưu tiên Primary WinRT OCR, case khó dùng ATX-Agent port 7912 (/dumpUI); kẹt stub thì reset_atx_agent(dev); TikTok kẹt splash đen thì force-stop.
