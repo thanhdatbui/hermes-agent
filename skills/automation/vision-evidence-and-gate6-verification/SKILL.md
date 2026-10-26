@@ -34,6 +34,7 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
 - Kỷ Luật Cấm Lạm Dụng Claude CLI & Đối Soát Avatar Bitmap (Chống OCR Mù): [`references/anti-claude-cli-runaway-and-bitmap-avatar-verification.md`](references/anti-claude-cli-runaway-and-bitmap-avatar-verification.md)
 - Chống Chụp Ảnh Mù Đối Phó & Ép Buộc Soi Mắt Trước Khi Gửi: [`references/anti-fake-screenshot-and-mandatory-inspection-receipt.md`](references/anti-fake-screenshot-and-mandatory-inspection-receipt.md)
 - Khắc Phục Lỗ Hổng Sys.Path Plugin, Bẫy ImportError Âm Thầm & Hoàn Thiện Wiring Gate 6: [`references/plugin-syspath-hardening-and-full-gate6-wiring.md`](references/plugin-syspath-hardening-and-full-gate6-wiring.md)
+- Bẫy Self-Fulfilling Inception Trên Canvas & Kiến Trúc Anti-Paralysis VLM Gate: [`references/self-fulfilling-canvas-inception-and-anti-paralysis-vlm-sop.md`](references/self-fulfilling-canvas-inception-and-anti-paralysis-vlm-sop.md)
 
 ## 1. Nguyên Tắc Cốt Lõi (Invariants)
 1. **CẤM gửi ảnh mù / đối phó:** Trước khi đính kèm bất kỳ thẻ `MEDIA:<path>` nào, bắt buộc phải mở ảnh ra soi mắt kiểm tra trước.
@@ -137,6 +138,11 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
     - **Tự động cấp Vision Receipt cho Local Image Vision:** `browser_vision` trên ảnh cục bộ (`file:///...`) không trả về `"Screenshot path:"`. BẮT BUỘC dùng fallback `last_f` để ghi nhận `verified_media_paths` và tự động gọi `create_vision_receipt()` cấp vé kiểm định HMAC-SHA256 hợp lệ vào `vision_receipts.jsonl`.
     - **Mở rộng nhận diện Claim Hoàn tất:** Bổ sung nhóm tác vụ `pin` (`đã ghim`, `ghim lên đầu`, `pin to top`) và `profile` (`đổi avatar`, `chuẩn hóa`, `bio`) vào `_detect_completion_claims`.
     - **Chống Chụp Láo Bằng `TEXT_CLAIM_RULES`:** Mở rộng quy tắc `avatar` trong `guard_media_vision_gate.py` (bắt buộc OCR phải thấy `sửa hồ sơ`/`edit profile`/`avatar`), chặn đứng 100% hành vi chụp Launcher/màn hình đen rồi chém gió là đã đổi avatar/ghim video thành công. Chi tiết xem [`references/plugin-syspath-hardening-and-full-gate6-wiring.md`](references/plugin-syspath-hardening-and-full-gate6-wiring.md).
+29. **Chống Bẫy Self-Fulfilling Inception (Tự In Chữ Lên Canvas) & Kiến Trúc Anti-Paralysis VLM Gate:**
+    - **Lỗ hổng Tự In Chữ Tự Bảo Lãnh (Self-Fulfilling Inception):** Khi tạo Proposal Canvas (avatar/graphic), Agent dùng `cv2.putText` vẽ chữ lên canvas (ví dụ: 'Vườn ươm cây', 'Thiên nhiên'), rồi chạy WinRT OCR đọc lại chính chữ đó để lấy vé PASS từ Media Gate. Gate chỉ so khớp `Claims ⊆ OCR Tokens` nên bị bypass hoàn toàn dù pixel bên trong là tiêu bản vi sinh vật dưới kính hiển vi.
+    - **Trừ Khử Chữ In (`overlay_tokens`):** Mọi tool tạo canvas bắt buộc khai báo `overlay_tokens[]`. Gate tính toán `evidence_tokens = OCR_tokens - overlay_tokens`. Chữ tự vẽ có giá trị bảo chứng bằng 0.
+    - **Phân Tầng Thẩm Định (Claim Router):** Text claim trên Raw Screencap $\rightarrow$ T0 (WinRT OCR). Visual claim (mô tả cảnh vật, thiên nhiên, chân dung, vi sinh) $\rightarrow$ T1 (bắt buộc VLM độc lập Sol `:20129` hoặc Claude CLI với Blind Describe + Decoy Check).
+    - **FSM Chống Khóc Lóc & Bại Liệt:** Khi chặn, Gate trả về đúng 1 dòng ground-truth duy nhất (ví dụ: `ẢNH THỰC CHỨA: 4 slide vi khuẩn kính hiển vi. Gửi lại theo mô tả này. CẤM xin lỗi/giải thích`). Trần cứng 2 lượt gửi lệch: Vòng 3 tự động chuyển sang `ALLOW_WITH_CLAIM_STRIP` (cho phép gửi ảnh kèm caption trung tính `[UNVERIFIED-VISUAL]`), triệt tiêu 100% nguy cơ treo phiên, khóc lóc hoặc đùn đẩy việc lại cho User. Chi tiết xem [`references/self-fulfilling-canvas-inception-and-anti-paralysis-vlm-sop.md`](references/self-fulfilling-canvas-inception-and-anti-paralysis-vlm-sop.md).
 
 ## 2. Thang Leo Thang Vision Dự Phòng (Fallback Ladder)
 Thứ tự fallback đọc ảnh chuẩn hoá 100% đồng bộ với kiến trúc Worker Dispatch:

@@ -1,4 +1,4 @@
-Vibe O(1), bực=làm ngay; lệnh 'làm đi': cấm xin phép/phân trần; 2FA farm tự vượt; Worker floor 360s; CẤM tự ý gọi Claude CLI làm nạng soi ảnh/việc vặt (chỉ dùng khi user yêu cầu hoặc Strike 3); nghiệm thu UI bắt buộc MEDIA: thật.
+Vibe O(1), bực=làm ngay; lệnh 'làm đi': làm dứt điểm; 2FA farm tự vượt; nghiệm thu UI bắt buộc MEDIA: thật; cực ghét ảo giác bịa đặt thị giác/in chữ lách hook; gate bắt buộc anti-whining, cấm khóc lóc bại liệt; Claude CLI chỉ dùng khi user yêu cầu hoặc Strike 3.
 §
 User Sudo: Lệnh user ('tao cho phép', 'làm luôn', 'force', 'bypass') có quyền tối cao bypass mọi rào cản (kể cả hooks/); cấm đảo ngược phân cấp chặn user hay đùn việc.
 §

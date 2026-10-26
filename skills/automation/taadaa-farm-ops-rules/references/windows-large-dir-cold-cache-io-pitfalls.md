@@ -24,3 +24,16 @@ Bài học rút ra từ session chạy watchdog cron `cron_reconcile_stale_recei
 2. **Tăng Timeout Hoặc Warm-up Cho Các Lệnh Audit Hàng Loạt:**
    - Với các script watchdog duyệt thư mục lớn chưa được tối ưu stat-prefilter, timeout 60s có thể gây timeout giả (transient timeout) ở lần chạy đầu tiên.
    - Khi gặp timeout 60s trên script duyệt file: Kiểm tra ngay I/O cold cache trước khi kết luận script bị deadlock hay lỗi logic.
+
+3. **Cơ Chế Binary Head/Slice Probe Để Kiểm Tra Trạng Thái Hàng Loạt:**
+   - Khi cần kiểm tra nhanh hàng ngàn file JSON (như lọc các file không phải `status: completed`), thay vì `json.load()` parsing toàn bộ cấu trúc:
+     ```python
+     with open(entry.path, 'rb') as f:
+         header = f.read(512)
+     if b'"status": "completed"' not in header and b'"status":"completed"' not in header:
+         # Chỉ parse chi tiết các file khả nghi
+     ```
+   - Đọc slice nhị phân `read(512)` nhanh hơn parse JSON đầy đủ gấp hàng chục lần và giúp loại trừ 99% file hợp lệ mà không bị vướng bottleneck CPU/parsing.
+
+4. **Lưu Ý Coordinator Guard Khi Debug CLI:**
+   - Lệnh inline `python -u -c ...` có cờ `-u` sẽ bị Coordinator Guard chặn (default-deny) do matcher kiểm tra tiền tố chính xác `python -c`. Khi chạy inline probe one-liner trên terminal, luôn dùng cú pháp chuẩn `python -c "..."` không chèn thêm cờ lạ.

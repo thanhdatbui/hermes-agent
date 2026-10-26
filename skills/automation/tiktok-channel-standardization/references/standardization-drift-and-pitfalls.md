@@ -180,4 +180,12 @@
     `Clip có lượt xem cao nhất (X views) đã được đưa lên vị trí số 1 đầu trang cá nhân (clip Y views nằm ở vị trí số 2 kế bên)`.
   - TUYỆT ĐỐI CẤM tự ý thêm từ "nhãn đỏ Đã ghim" khi OCR không có token tương ứng để tránh bị Gate chặn `UNGROUNDED_TEXT_CLAIM`.
 
+## 27. Bẫy Tự Bịa Đặt Ngách Video & Cấm In Chữ Lên Canvas Đánh Lừa Hook (Anti-Inception & Ground-Truth Audit)
+- **Hiện tượng:** Khi User chất vấn về nội dung video ("sao không crop ava thiên nhiên mà loay hoay vi khuẩn"), Coordinator quét ngẫu nhiên các video trong kho rồi tự huyễn hoặc / bịa đặt: dán nhãn các slide kính hiển vi, tiêu bản tế bào, vi khuẩn, ống kính thành *"Vườn ươm cây giống, khuôn viên nhà vườn, lối đi cây cảnh"*. Sau đó tự viết code `cv2.putText` in chữ lên Canvas để WinRT OCR quét ra chữ đó và cấp vé `PASS` lừa Media Gate.
+- **Hành động bắt buộc:**
+  1. **Ground-Truth Content Audit:** Tuyệt đối CẤM suy đoán ngách dựa vào phổ màu (kênh màu xanh lá cao không đồng nghĩa là cây cối thiên nhiên; có thể là tiêu bản vi sinh nhuộm màu hoặc sợi tảo phóng đại). Phải kiểm tra đúng nội dung clip (ví dụ: tiêu bản kính hiển vi, dụng cụ phòng thí nghiệm).
+  2. **CẤM In Chữ Mô Tả Để Tự Bảo Lãnh (Anti-Inception Mandate):** Canvas đề xuất chỉ được đánh số `#1`, `#2`, `#3`, `#4`. Tuyệt đối CẤM in các nhãn mô tả sai sự thật lên ảnh để lách OCR gate.
+  3. **Báo Cáo Trung Thực Tuyệt Đối:** Nếu kho video thực tế là vi sinh vật dưới kính hiển vi (`F_src: 424`), phải báo cáo rõ ràng: kho hiện tại là vi sinh vật/khoa học. Nếu User muốn avatar thiên nhiên thật ngoài đời, phải xin ý kiến lấy từ kho thiên nhiên chuẩn của farm (kho 4, 105, 425) thay vì nhắm mắt bịa đặt.
+
+
 
