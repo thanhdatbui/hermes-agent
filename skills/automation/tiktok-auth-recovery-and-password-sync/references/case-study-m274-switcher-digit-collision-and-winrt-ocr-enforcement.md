@@ -59,3 +59,12 @@
 3. **Fallback GPM Profile Khi Graph API Token Hết Hạn (`AADSTS70000`):**
    - Giảm timeout chờ Graph API xuống 15s.
    - Khi token hết hạn, tự động gọi `read_tiktok_otp_from_gpm_profile` khởi động profile GPM qua CDP và bóc OTP từ hộp thư `outlook.live.com` kèm danh sách `exclude_codes` mã cũ.
+
+4. **Bẫy OCR Méo Chữ Tiếng Việt & Header Title Tap (`Tiép tvc` vs `Tiếp tục`):**
+   - WinRT OCR đọc chữ "Tiếp tục" ở chân màn hình ($y=1808$) thành `'Tiép tvc'` (chữ `u` thành `v`). Trong khi đó, đỉnh màn hình ($y=154$) mang tiêu đề "Đăng nhập" (`'Däng nhäp'`).
+   - Do `'Tiép tvc'` miss norm_text, script tap nhầm vào tiêu đề $y=154$ vì `"Đăng nhập"` có trong danh sách tìm kiếm của `tap_next`.
+   - Đã xử lý: Chuẩn hóa `.replace("tvc", "tuc")`, loại trừ tuyệt đối vùng $y_2 < 220$ khi tìm nút bấm hành động, và ưu tiên các từ khóa submit cụ thể trước từ khóa tiêu đề chung.
+
+5. **Chống Lỗi Rỗng Góc Xoay Khi Đánh Thức Màn Hình Qua Remote ADB (`user_rotation` empty):**
+   - Khi remote ADB qua mạng LAN sang host Admin (`192.168.110.119`), lệnh `settings get system user_rotation` có thể bị trễ một nhịp và trả về rỗng.
+   - Đã xử lý: Thêm vòng lặp thử lại 2 lần với `time.sleep(0.4)` trong `device_prepare.py` để không fail-closed vô cớ.

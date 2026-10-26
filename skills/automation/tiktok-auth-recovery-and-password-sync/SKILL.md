@@ -74,4 +74,18 @@ description: Use when TikTok login has wrong pass. Reset via token.
    - Trong `automation_core.tiktok.account_switcher.matches_switcher_identity`, logic `v1.rstrip("0123456789+ ") == v2.rstrip("0123456789+ ")` vô tình cắt bỏ toàn bộ số đuôi, khiến các tài khoản có cùng tiền tố chữ nhưng khác số (ví dụ: `khanhthu2275` vs `khanhthu1609`) bị coi là trùng khớp!
    - Hậu quả nghiêm trọng: Switcher tap nhầm vào nick có sẵn trên máy thay vì nhận diện thiếu nick để nạp bù, dẫn đến việc cày feed nhầm nick và cuối phiên báo lỗi `profile account mismatch`.
    - Khắc phục bắt buộc: Dùng regex kiểm tra số đuôi (`re.search(r"\d+$", v)`). Nếu cả hai giá trị đều kết thúc bằng số mà số đuôi khác nhau, BẮT BUỘC trả về `False` ngay lập tức.
+11. **Bẫy OCR Méo Chữ Tiếng Việt và Bấm Nhầm Header Title Bar ($y < 220$)**:
+   - Khi dùng WinRT OCR tìm nút bấm form (như "Tiếp tục"), chữ tiếng Việt dễ bị méo ký tự (ví dụ: `Tiếp tục` thành `'Tiép tvc'` do chữ `u` bị méo thành `v`). Dùng `norm_text` thô sẽ miss nút.
+   - Đồng thời, màn hình `SignUpOrLoginActivity` có tiêu đề ở đỉnh màn hình ($y \approx 150$) mang chữ "Đăng nhập" (`'Däng nhäp'`). Nếu danh sách tìm kiếm có `"Đăng nhập"` (trong `tap_next`), hoặc OCR miss nút "Tiếp tục" và fallback sang box tiêu đề: script sẽ tap nhầm vào tiêu đề $y=154$ thay vì nút submit ở $y=1808$!
+   - Hậu quả: Form email không được submit, script rơi vào vòng lặp `detect_after_continue=unknown` và timeout.
+   - Khắc phục bắt buộc:
+     1) Chuẩn hóa méo chữ: `.replace("tvc", "tuc")` trong hàm tìm kiếm OCR.
+     2) Lọc bỏ tuyệt đối các box ở vùng đỉnh màn hình ($y_2 < 220$) khi tìm kiếm nút bấm hành động form.
+     3) Trong `tap_next`, ưu tiên các từ khóa hành động cụ thể (`"Tiếp tục"`, `"Tiếp theo"`, `"Next"`, `"Continue"`) trước các từ khóa tiêu đề chung (`"Đăng nhập"`, `"Log in"`).
+12. **Trễ Mạng ADB Remote Khi Lấy Thiết Lập Góc Xoay Màn Hình (`user_rotation` empty)**:
+   - Khi chạy trên dàn máy cụm Admin qua ADB server remote (`192.168.110.119:5037`), ngay sau khi đánh thức màn hình (`wake_screen`), lệnh `settings get system user_rotation` có thể bị trễ một nhịp và trả về rỗng, khiến `device_prepare.py` ném lỗi `user_rotation: expected 0, got empty` và fail-closed ở giây thứ 10.
+   - Khắc phục bắt buộc: Bọc retry loop với backoff `time.sleep(0.4)` trong `ensure_portrait_rotation` thay vì chỉ gọi 1 lần rồi ném lỗi ngay.
+13. **Giải Phóng Tự Động Interstitial Popup "Follow Bạn Bè Của Bạn" Khi Preflight Profile**:
+   - Khi chuyển sang tài khoản mới, TikTok có thể hiển thị trang toàn màn hình "Follow bạn bè của bạn" che khuất hoàn toàn thanh điều hướng dưới.
+   - Khắc phục bắt buộc: Tích hợp `find_matching_handler` và tự động gọi `dismiss_follow_friends_suggestion_popup` ngay trong bước preflight guard (`_maybe_handle_profile_add_phone_guard`) trước khi đánh giá là `unknown state` hoặc chặn phiên.
 
