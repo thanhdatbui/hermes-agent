@@ -102,6 +102,12 @@ Applies whenever reports fail to reflect actual fleet health, mask dropped machi
   2. **Strict Manual / Scoped Rerun Contract:** Never allow unattended crons to loop on partial failures. Re-running failed batches requires an explicit `--force` flag or a scoped, targeted remediation task.
   3. **Universal Day/Night Chain Parity:** Apply this rule uniformly across all multi-phase batch watchdogs (`cron_night_tiktok_2fa_watchdog.py`, `post_noon_chain_watchdog.py`, `post_morning_gmail_2fa_watchdog.py`). See `references/batch-watchdog-idempotency-and-anti-spam-storm.md`.
 
+### Invariant 12: Fast-Filter File-Scan Pre-Check (Anti-Timeout on Large Runtime/Idempotency Directories)
+- **Anti-Pattern:** Iterating with `pathlib.Path.glob("*.json")` and reading/parsing every file (`read_text()` + `json.loads()`) in directories containing thousands of files (e.g. `idempotency/post-attempts` with >9k receipts). On Windows NTFS under cold-cache conditions, reading 9,000+ files sequentially exceeds 60s, triggering cron timeouts (exit 124) and preventing watchdogs from ever completing.
+- **Rule:**
+  1. **Stat-First Pre-Filtering:** Use `os.scandir()` and filter by `entry.stat().st_mtime` BEFORE opening or reading file content. If searching for stale records older than $N$ hours, immediately skip files where `now - st_mtime < min_age_seconds` without touching file contents.
+  2. **Iterative Batch Processing:** When parsing content is required across large sets, avoid full-directory synchronous loads in short-timeout (<60s) cron scripts or ensure the timeout budget accommodates NTFS cold-cache traversal. See `references/watchdog-timeout-and-file-scan-bottleneck.md`.
+
 ---
 
 ## 3. Verification Protocol for Watchdogs & Reports
