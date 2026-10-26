@@ -8,4 +8,4 @@ Canary tái hiện đúng account/điều kiện lỗi thật (timeout >= 720s),
 §
 Auto-heal: Tự sửa ngầm headless 1:1 theo 6 cổng; telemetry map serial ADB thật & cụm máy qua inspect_machine; chỉ báo Telegram khi merged; vi phạm hook đối soát qua 6h report.
 §
-Báo cáo avatar BẮT BUỘC có bằng chứng visual diff ảnh thật trên profile (cấm dựa vào exit code 0 của runner để báo xong non/báo láo).
+Chấp nhận teencode user (vd 'Ngọc TRinh'), cấm chuẩn hóa khi không yêu cầu; nghiệm thu avatar bắt buộc visual diff ảnh profile live thật (cấm tin exit 0 vì bẫy gallery picker tap lại screenshot cũ).

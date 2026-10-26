@@ -69,3 +69,19 @@ During pre-shipout review, Claude CLI identified critical production hazards on 
   If `LastSeen` matches 1–2 minutes after helper plugged the primary cables, the PRIMARY lines were working. Ordering an unplug destroys the established connection.
 - **Default to "Plug All 3 Lines" Rather Than Cable Musical Chairs:** 
   Leave Line 1, Line 2, and Rescue all connected. OpenWrt's metric hierarchy (10 -> 20 -> 200) will automatically select the best active route without human error.
+
+---
+
+## 3. Remote PC On-Site Triage & LuCI Diagnosis (UltraViewer Case Study)
+
+When headless remote access fails and an on-site Windows machine is borrowed via UltraViewer:
+
+### 1. Subnet Traversal without Disconnecting Remote Desktop
+- Host PC was connected to home ONT (`192.168.1.x`), while OpenWrt LAN was `192.168.5.1`. Direct browser requests to `192.168.5.1` timed out (`ERR_CONNECTION_TIMED_OUT`).
+- **Remedy:** Added secondary IP alias `192.168.5.2 / 255.255.255.0` via `ncpa.cpl -> IPv4 -> Advanced -> Add IP`.
+- Maintained active internet connection for UltraViewer while establishing instant L2 access to LuCI at `http://192.168.5.1`.
+
+### 2. LuCI Real-World Telemetry Interpretation
+- **WAN2 (Line 2):** Discovered actively connected via PPPoE with IP `172.17.49.92/32` (VNPT CGNAT) and IPv6 `2402:800:.../64`. This proved the physical line, fiber circuit ID, and ONT bridge were 100% operational.
+- **WAN (Line 1):** Displayed `Error: Unknown error (USER_REQUEST)` due to an uninitiated daemon state; resolved by clicking `Restart`.
+- **Tailscale Daemon Kickstart:** Because Tailscale initially booted prior to PPPoE establishment, the daemon paused in retry backoff. Triggering `Restart` under `System -> Startup -> tailscale` forced an immediate re-handshake over the active PPPoE interface.

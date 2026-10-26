@@ -102,7 +102,7 @@ For routers deployed headlessly to remote locations without technical staff on-s
      4. **Audit Rescue Source:** Verify the cable in the BLUE port comes from a working LAN port (LAN 1/2, not IPTV/MyTV ports on LAN 3/4) of the **existing active home WiFi router**, **NOT** from the newly installed unbridged ISP lines.
      5. **Visual LED Milestone:** Front LED must boot Yellow/Orange and turn solid **BLUE** (~60–90s).
      6. **Premature Lifeline Unplug Warning:** Reiterate firmly: **DO NOT TOUCH OR SWAP CABLES WHEN THE LIGHT TURNS BLUE**. Let the coordinator verify via Tailscale first.
-     6. **Post-Rescue Investigation:** Once Tailscale comes online, SSH in (`ssh root@<tailscale-ip>`) to inspect:
+     7. **Post-Rescue Investigation:** Once Tailscale comes online, SSH in (`ssh root@<tailscale-ip>`) to inspect:
         ```sh
         logread | grep -E "pppd|wan"
         ip -br link
@@ -113,6 +113,41 @@ For routers deployed headlessly to remote locations without technical staff on-s
    - **Terminology:** Speak in plain physical terms. Say **"Đường 1" / "Đường 2"**, NEVER say "modem 1", "ONT", "BRAS", or "bridge".
    - **Port Identification:** Describe physical position and color: *"cổng trắng ở giữa (Đường 1)"*, *"cổng trắng ngoài cùng (Đường 2)"*, *"cổng xanh dương cạnh lỗ nguồn (mạng nhà cứu hộ)"*.
    - **Failsafe Reassurance:** Explicitly reassure helper: *"Nếu cắm nhầm ngược nhau thì không cháy hay mất mạng, chỉ cần đổi chéo 2 dây trắng cho nhau là xong"*.
+
+---
+
+## 5. Remote On-Site PC Triage via UltraViewer / AnyDesk
+
+When headless network access fails and an on-site computer is borrowed via UltraViewer/AnyDesk:
+
+### The "Zero-Disruption" Secondary IP Technique
+- **Problem:** The remote Windows PC is on home subnet `192.168.1.x` (from ISP modem), while OpenWrt LAN is on `192.168.5.1`. Accessing `http://192.168.5.1` results in `ERR_CONNECTION_TIMED_OUT`. Changing the primary adapter IP to static `192.168.5.x` instantly kills the internet connection, dropping UltraViewer permanently!
+- **Solution:** Add a secondary IP alias to the existing network adapter:
+  1. Press `Win + R`, type `ncpa.cpl` -> Press Enter.
+  2. Right-click active adapter (**Ethernet** or **Wi-Fi**) -> **Properties**.
+  3. Double-click **Internet Protocol Version 4 (TCP/IPv4)** -> Click **Advanced...**
+  4. Under **IP addresses**, click **Add...**:
+     - IP address: `192.168.5.2`
+     - Subnet mask: `255.255.255.0`
+  5. Click **Add** -> **OK** -> **OK** -> **Close**.
+- **Result:** The primary DHCP connection (`192.168.1.x`) remains active (UltraViewer stays connected), while Windows can now route traffic to `192.168.5.1` directly.
+
+### User-Trust & Non-Invasive Discipline ("Sợ Nghĩ Mình Hack Máy")
+- Borrowing a non-technical family member's PC requires strict privacy decorum:
+  1. **NO Black Screens (CMD / PowerShell / Bash):** Never open command prompts or run visible CLI commands on their desktop. It triggers immediate suspicion of malware or hacking.
+  2. **Browser-Only Interaction:** Open Chrome or Edge directly to `http://192.168.5.1` (LuCI GUI). It looks identical to normal household Wi-Fi router management.
+  3. **No File Downloads or Script Drops:** Perform all configuration purely inside LuCI web forms. Close browser and disconnect remote session immediately once Tailscale is online.
+
+### LuCI Real-World Field Diagnostics
+1. **PPPoE Status & CGNAT Realities:**
+   - If an interface displays an IP in `172.16.0.0/12` (e.g. `172.17.49.92`) or `100.64.0.0/10`, **PPPoE is UP and functional**. This is ISP CGNAT, not an error.
+   - **Debunking "Chưa Mở NAT":** Tailscale operates seamlessly over CGNAT/double-NAT via DERP relays. A public IP / open NAT is NEVER required for Tailscale to establish connectivity.
+2. **`Error: Unknown error (USER_REQUEST)` in LuCI:**
+   - Means the interface was explicitly brought down or is pending restart via netifd. Clicking **Restart** triggers a fresh PPPoE discovery (`PADI -> PADO -> PADR -> PADS`) taking ~15–30 seconds.
+3. **Tailscale Kickstart via LuCI:**
+   - If Tailscale daemon booted before WAN was established, it may stay idle in backoff.
+   - Go to **System -> Startup**, locate `tailscale`, and click **Restart**.
+   - If node still fails to handshake, check **Status -> System Log** for clock desync (NTP failing to sync TLS time) or DNS failure resolving `controlplane.tailscale.com`.
 
 ## References
 
