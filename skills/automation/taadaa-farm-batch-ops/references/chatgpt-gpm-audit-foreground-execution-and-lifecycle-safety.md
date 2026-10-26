@@ -2,15 +2,16 @@
 
 ## 1. Bối Cảnh & Rào Cản Môi Trường (Guard Concurrency Traps)
 Khi vận hành script `python D:/Taadaa/tools/login_audit_and_purge_deactivated.py` qua cron job hoặc phiên Coordinator:
-1. **Foreground Timeout Guard (60s ceiling)**:
-   - Các lệnh terminal foreground bắt buộc `timeout <= 60s`.
+1. **Foreground Timeout Guard (60s ceiling & Tham Số timeout Bị Kẹp)**:
+   - Các lệnh terminal foreground bị giới hạn cứng `timeout <= 60s`. Ngay cả khi truyền `timeout: 300`, runtime/guard vẫn ngắt lệnh chính xác ở giây 60 (Exit code 124: timeout).
    - Mỗi tài khoản ChatGPT audit qua GPM + CDP mất trung bình 20–25s (mở profile GPM, kết nối CDP, mở `chatgpt.com/auth/login`, điền email, chờ OTP qua Graph API hoặc Outlook webmail, kiểm tra DOM marker, và kill tiến trình Chrome).
-   - Lệnh batch `--limit 5` cần 100–125s nên sẽ **bị ngắt ở giây 60 (Exit code 124: timeout)** nếu chạy trong 1 lệnh foreground duy nhất.
+   - Lệnh batch `--limit 5` cần 100–140s nên **chắc chắn văng timeout 124** nếu chạy foreground. Nếu retry foreground sẽ kích hoạt `Tool loop warning: repeated_exact_failure_warning`.
+   - **Cấm probe bằng curl**: Lệnh `curl` bị Coordinator Guard chặn hoàn toàn (`DEFAULT-DENY`). Không dùng curl để test cổng GPM `19995` hay OmniRoute; hãy chạy trực tiếp script canonical.
 
-2. **Background Terminal Execution vs Cronjob Notification Quirks**:
-   - `python D:/Taadaa/tools/login_audit_and_purge_deactivated.py --limit 5` được phép chạy qua `terminal(background=true)` mà KHÔNG bị chặn console window.
-   - Tuy nhiên, trong môi trường cron job / one-shot runner, cờ `notify_on_complete=true` không được hỗ trợ (`notify_unsupported`).
-   - Do đó, Coordinator bắt buộc phối hợp `terminal(background=true)` và theo dõi tiến trình qua `process(action='wait', session_id=..., timeout=30)` theo vòng lặp cho đến khi `process_running: false` / `status: 'exited'`.
+2. **Background Terminal Execution & process(action='wait', timeout=180)**:
+   - `python D:/Taadaa/tools/login_audit_and_purge_deactivated.py --limit 5` được phép chạy qua `terminal(background=true)`.
+   - Trong môi trường cron job / one-shot runner, không cần phụ thuộc notification mà gọi ngay `process(action='wait', session_id=..., timeout=180)` trong turn tiếp theo.
+   - `process(action='wait')` hỗ trợ timeout lên tới 180s, cho phép tiến trình chạy hết 5 tài khoản trong 1 turn duy nhất, nhận trọn vẹn stdout và `exit_code: 0`.
    - Pattern này cho phép chạy toàn bộ batch 5 tài khoản trong 1 lệnh duy nhất (~140-150s), tự động xuất file báo cáo tổng hợp `chatgpt_lifecycle_report.json` chuẩn mà không bị trần 60s foreground timeout ngắt giữa chừng.
 
 ## 2. Chiến Lược Thực Thi Chuẩn: Phân Rã Theo Email Đơn Lẻ (O(1) Per-Account)
