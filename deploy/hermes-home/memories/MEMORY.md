@@ -16,4 +16,4 @@ Watchdog & Cron report toàn farm tuân thủ chuẩn: vi phạm mới bắn ra,
 §
 Watchdog audit compliance farm gates BẮT BUỘC lọc sạch test/mock artifacts (pytest, target.py) và chuẩn hóa timestamp local naive sang UTC; gate chặn có auto-rewire/tự sửa <= 1 turn tính là REWIRED, cấm đánh FAIL.
 §
-Tác vụ sửa code bị Dispatch Gate chặn delegate_task: BẮT BUỘC dispatch qua worker CLI (python D:/Taadaa/tools/dispatch_worker.py --workdir <repo> --file <file> <prompt>); khi user lệnh 'Làm đi', Coordinator thực thi ngay không hỏi lại.
+Tác vụ sửa code bị Dispatch Gate chặn delegate_task: BẮT BUỘC dispatch qua python D:/Taadaa/tools/dispatch_worker.py --workdir <repo> --file <file>; khi user lệnh 'Làm đi', thực thi ngay không hỏi lại. Báo cáo nuôi Gmail GPM chạy 12h (0 */12 * * *), trần ngày đếm từ last_nurtured.

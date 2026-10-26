@@ -47,10 +47,27 @@ Khi một folder trên Farm (ví dụ: Folder 154 - Máy 20, Tik 2) chỉ có 40
 
 ---
 
-## 4. Đồng Bộ Sổ Sách & Nghiệm Thu
-Sau khi render xong 10 clip bổ sung:
-1. **Kiểm tra kho thành phẩm:** Đảm bảo `len(list(RENDER_DIR.glob("*.mp4"))) >= 45` (ví dụ: 50 clips).
-2. **Cập nhật Workbook `Tik{N}.xlsx`:**
-   - Sheet `TaiKhoan` (Dòng máy tương ứng): Cập nhật cột `Render MP4` (cột 11 / index 10) lên số lượng thực tế mới (50).
-   - Sheet `Hashtag theo Folder` (Dòng folder tương ứng): Cập nhật cột `Count` (cột 5 / index 4) lên 50.
-3. **Hậu kiểm Watchdog:** Báo cáo kiểm toán render tiếp theo sẽ tự động ghi nhận cụm đạt chuẩn 100% (80/80 folder $\ge 45$ clip).
+## 4. Đồng Bộ Sổ Sách Hai Đầu & Bẫy Atomic Replace Excel
+Sau khi render xong 10 clip bổ sung, việc cập nhật sổ cái `Tik{N}.xlsx` có 2 bẫy trọng yếu:
+1. **Đồng bộ song song cả 2 sheet:**
+   - Sheet `TaiKhoan`: Dòng máy là `row = machine + 1` (do dòng 1 là tiêu đề). Cập nhật cột `Render MP4` (cột 11 / index 10) lên số lượng thực tế mới (ví dụ: 50).
+   - Sheet `Hashtag theo Folder`: Dòng có `Folder Nguồn == folder_raw`. Cập nhật cột `Số Video` (cột 5 / index 4) lên 50.
+   - *Bẫy lệch sổ cái:* Nếu chỉ cập nhật sheet `TaiKhoan` mà bỏ sót `Hashtag theo Folder` (hoặc ngược lại), auditor và các công cụ preflight sẽ đánh giá dữ liệu không nhất quán và từ chối nghiệm thu.
+2. **Kỹ thuật Atomic Replace chống xung đột OneDrive Sync Lock:**
+   Khi lưu workbook nằm trên OneDrive, gọi trực tiếp `wb.save(path)` có thể bị OneDrive chiếm lock hoặc nuốt thay đổi ngầm. BẮT BUỘC lưu qua file tạm và hoán đổi atomic:
+   ```python
+   tmp_path = workbook_path.with_suffix('.tmp.xlsx')
+   wb.save(tmp_path)
+   wb.close()
+   os.replace(tmp_path, workbook_path)
+   ```
+
+---
+
+## 5. Quy Chuẩn Hồ Sơ Nghiệm Thu Chốt Phiên (Closeout Gate Evidence Contract)
+Khi người dùng phát lệnh "Done" / "Chốt phiên" trên tác vụ vận hành media farm (không có git code diff), reviewer `closeout_gate.py` sẽ chấm REJECTED nếu chỉ cung cấp mô tả văn bản suông. Để đạt điểm APPROVED ($\ge 85/100$), hồ sơ bằng chứng (`--input evidence.txt`) BẮT BUỘC gồm đủ 5 trụ cột:
+1. **Kiểm chứng Filesystem Độc Lập:** Danh sách và tổng số file thực tế, kiểm tra tính liên tục không khuyết số (`assert seqs == list(range(start, end + 1))`).
+2. **Bằng Chứng Bảo Toàn MTime (Zero-Overwrite Proof):** Đối chiếu mtime xác minh các clip cũ giữ nguyên thời gian tạo trước đó và nhỏ hơn mtime của các clip mới cào (`max(old_mtimes) < min(new_mtimes)`).
+3. **Bảng Dữ Liệu Thô FFprobe (Raw Stream Table):** Xuất bảng probe kiểm tra codec (`h264`), độ phân giải dọc 1080x1920 (9:16) và thời lượng của toàn bộ các clip mới.
+4. **Kiểm Chứng Sổ Cái Hai Đầu:** Trích xuất giá trị thực tế sau khi lưu từ cả hai sheet `TaiKhoan` và `Hashtag theo Folder` chứng minh số lượng đã khớp với filesystem.
+5. **Nghiệm Thu Thị Giác (Vision Inspection):** Trích xuất frame video bằng ffmpeg (`-ss 00:00:03 -vframes 1`) và soi mắt bằng `browser_vision` xác nhận nội dung đúng chủ đề, không màn hình đen, không lỗi render trước khi đính kèm `MEDIA:`.
