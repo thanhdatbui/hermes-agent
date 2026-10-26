@@ -76,3 +76,21 @@
     ```
   * Task Scheduler chạy tách biệt khỏi OpenSSH Job Object, giữ ADB server sống bền vững, bind `0.0.0.0:5037` (`-a`), khôi phục kết nối socket 5037 tức thì mà không cần thao tác tay trên màn hình máy Admin.
   * Lưu ý: `D:/Taadaa/tools/admin_ssh.py` trên Kibe bắt buộc cấu hình tiền tố `schtasks` trong `ALLOWED_COMMAND_PREFIXES`.
+
+  ---
+
+  ## 6. Thiết Bị S7 Rơi Vào 'offline' Do Spam Dump UI XML (Legacy Scripts vs WinRT OCR)
+  - **Hiện tượng (2026-10-26 trên M261 `ce021602a92d1a0d04`):**
+  * Thiết bị đang ở trạng thái `device` bình thường, khi chạy luồng login TikTok thì sau 2–3 phút chuyển thành `offline` trong `adb devices`.
+  * Lệnh `adb reconnect` hoặc `adb reconnect offline` từ xa báo `reconnecting ... [offline]` nhưng không thể kéo máy trở lại `device`.
+  - **Bản chất nguyên nhân (Root Cause):**
+  * Các script legacy (như `social_reg_v1.py` và `tiktok_login_v1.py` trong `Tiktok_Reg`) chứa tới **145 chỗ gọi `get_ui_xml()`** (chạy `atx-agent` :7912 và `uiautomator dump`).
+  * `ui_policy_check.py` là gate diff-only (`find_diff_violations`), chỉ kiểm tra các dòng code mới sửa nên để lọt toàn bộ đống code legacy này.
+  * Phần cứng Samsung Galaxy S7 (Exynos 8890, Android 7) không chịu nổi tần suất dump XML dồn dập ở mỗi micro-step (mở profile, mở dropdown, click login email, verify text...).
+  * CPU điện thoại vọt lên 100%, IPC binder cạn kiệt, log báo:
+  `[ui-xml] atx-agent dump attempt 3/3 failed on ce021602a92d1a0d04 ... refusing unsafe shell uiautomator dump`.
+  * Hậu quả: Daemon `adbd` trên điện thoại bị Android kernel đóng băng hoặc đứt transport USB, khiến máy bị khóa cứng ở trạng thái `offline`.
+  - **Giải pháp Triệt để:**
+  * CẤM chạy luồng dump UI XML trên điện thoại; chuyển đổi 100% các bước nhận diện form đăng nhập sang **WinRT OCR screencap (`automation_core.ui_extract.extract_ui` / `ocr_screen_boxes`)** xử lý trên CPU máy tính Windows.
+  * Khi thiết bị đã bị kẹt `offline` do crash `adbd`, cách duy nhất để phục hồi là rút cắm lại cáp USB hoặc phím cứng khởi động lại điện thoại.
+

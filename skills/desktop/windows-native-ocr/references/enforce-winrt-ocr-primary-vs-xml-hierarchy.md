@@ -73,3 +73,16 @@ hit_native = extract_ui(
     xml_provider=lambda s: get_native_xml_boxes(s)
 )
 ```
+
+## 6. Lỗ Hổng Diff-Only Gate & Cạm Bẫy 145 Legacy `get_ui_xml` Gây Treo Offline S7
+
+### Hiện Tượng & Câu Hỏi Người Dùng (2026-10-26)
+- **User thắc mắc:** *"Do k xài winrt ocr mà xài adb à?"* và *"T ép đổi qua winrt ocr ở tất cả script r mà ta"*.
+- **Gốc rễ kỹ thuật phát hiện:**
+  1. **Lỗ hổng Diff-Only Gate (`ui_policy_check.py`)**: Linter và Done Gate sử dụng hàm `find_diff_violations()` chỉ kiểm tra những dòng code mới được thêm/sửa trong `git diff`. Mục đích ban đầu là tránh false reject / gãy build hàng loạt trên các repo cũ, nhưng vô tình tạo ra **điểm mù**: toàn bộ code legacy đồ sộ viết từ tháng 8–9 không bị gate sờ tới.
+  2. **145 Điểm Kẹt XML Dump trong `Tiktok_Reg`**: Cụ thể trong `social_reg_v1.py` và `tiktok_login_v1.py` vẫn tồn tại **145 chỗ gọi `get_ui_xml()`** (bên dưới gọi `atx-agent` port 7912 và `uiautomator dump`).
+  3. **Hậu Quả Phần Cứng (Exynos 8890 trên Samsung Galaxy S7)**: Khi kịch bản nuôi feed gọi auto-login recovery sang `tiktok_login_v1.py`, tiến trình spam dump XML liên tục ở mỗi bước (mở profile, mở dropdown, bấm thêm tài khoản, gõ email, xác minh...). Phần cứng S7 bị đẩy CPU lên 100%, binder IPC của Android bị cạn kiệt dẫn tới `atx-agent dump attempt 3/3 failed` $\rightarrow$ daemon `adbd` trên điện thoại crash hoặc treo transport $\rightarrow$ thiết bị rớt sang trạng thái `offline` (`ce021602a92d1a0d04 offline`).
+- **Kỷ Luật Khắc Phục:**
+  * Mọi module login / reg (kể cả code legacy) khi đụng tới phải dọn dẹp sạch `get_ui_xml()`, thay thế bằng **WinRT OCR screencap (`automation_core.ui_extract.extract_ui` hoặc `ocr_screen_boxes`)** chạy trên CPU máy tính.
+  * Samsung S7 chỉ nhận lệnh chụp ảnh `screencap` native trong 0.1s và lệnh `input tap` tọa độ, giải phóng 100% CPU cho điện thoại, triệt tiêu vĩnh viễn hiện tượng spam dump XML làm treo `offline` thiết bị.
+
