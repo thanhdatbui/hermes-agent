@@ -7,3 +7,5 @@ Khi soạn tin nhắn mẫu gửi người khác: BẮT BUỘC đặt trọn v�
 Canary tái hiện đúng account/điều kiện lỗi thật (timeout >= 720s), cấm test nhầm acc có sẵn. Cột PASS chưa đặt pass TikTok BẮT BUỘC để trống (None), cấm ghi pass ảo. Khi sai pass: tra lại dữ liệu gốc kỹ xem lưu sai không trước khi chạy script recovery pass.
 §
 Auto-heal: Tự sửa ngầm headless 1:1 theo 6 cổng; telemetry map serial ADB thật & cụm máy qua inspect_machine; chỉ báo Telegram khi merged; vi phạm hook đối soát qua 6h report.
+§
+Báo cáo avatar BẮT BUỘC có bằng chứng visual diff ảnh thật trên profile (cấm dựa vào exit code 0 của runner để báo xong non/báo láo).

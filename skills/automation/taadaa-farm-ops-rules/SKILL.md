@@ -16,6 +16,7 @@ description: "Taadaa farm safety, close-session, and multi-machine operations."
 - **Cấm quét đĩa diện rộng (Anti-Scan Guard):** CẤM chạy `search_files` trên root `D:/Taadaa` hoặc `D:/Taadaa/tools`, cấm script có `os.walk` / `glob recursive`. Bắt buộc chỉ định đích danh file hoặc thư mục con hẹp.
 - **Khóa thiết bị JIT (Device Lock Mandatory):** Mọi can thiệp ADB vào máy thật bắt buộc giữ JIT device lock (`inspect_machine.py <N>` hoặc `with_device_lock.py --machine <N> -- ...`), cấm can thiệp trần.
 - **Phân định Auto-Wiring vs Active Pivot (Anti-Paralysis):** Task điều tra read-only tự động gắn `BUDGET: <= 8 calls`. Task sửa code CẤM dùng `delegate_task` (bị `subagent_edit_blocked`), bắt buộc dùng Active Pivot: copy lệnh mẫu `python D:/Taadaa/tools/dispatch_worker.py ...` chạy ngay ở turn kế.
+- **Cấm Báo Cáo Hoàn Thành Mù Avatar (Avatar Visual Diff Invariant):** CẤM TUYỆT ĐỐI dựa vào exit code 0 của runner hoặc cờ `AVATAR_SMOKE_SUCCESS` / `FORCED_REPLACED_VERIFIED` để báo xong. BẮT BUỘC chụp ảnh Profile thật, cắt vòng tròn avatar và đối soát hình ảnh (perceptual diff / vision OCR) để đảm bảo không bị dính bẫy tap nhầm screenshot cũ trong Gallery Picker. Tọa độ chuẩn bottom sheet Sửa hồ sơ: 'Tải ảnh lên' `(224, 1637)`, 'Lưu' `(792, 1794)`.
 
 ## 2. Chu Trình Điều Phối Farm (Coordinator vs Worker)
 - **T0 (Hiện trường):** Đọc log, inspect ADB O(1), restart process, kiểm tra proxy. Tự do thực thi.
@@ -40,3 +41,4 @@ description: "Taadaa farm safety, close-session, and multi-machine operations."
 - Auto-Wiring & Active Pivot: [`references/auto-wiring-active-pivot-and-gate-compliance-20261026.md`](references/auto-wiring-active-pivot-and-gate-compliance-20261026.md)
 - Dynamic Pool Row 0 vs Cron Rest-Day Parity: [`references/dynamic-pool-row0-vs-cron-runner-rest-day-flag-parity.md`](references/dynamic-pool-row0-vs-cron-runner-rest-day-flag-parity.md)
 - Windows Large Directory Cold Cache I/O Pitfalls: [`references/windows-large-dir-cold-cache-io-pitfalls.md`](references/windows-large-dir-cold-cache-io-pitfalls.md)
+- Gallery Picker Stale Tile & Avatar Bottomsheet: [`references/gallery-picker-stale-tile-and-bottomsheet-coords.md`](references/gallery-picker-stale-tile-and-bottomsheet-coords.md)

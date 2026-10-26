@@ -115,7 +115,14 @@
   1. **Phân định phạm vi thẩm định:** Closeout Gate là cổng kiểm toán code độc lập bắt buộc trước khi `git push` các thay đổi mã nguồn.
   2. **Xử lý phiên Vận Hành Farm:** Khi phiên chỉ thao tác trên thiết bị (chạy runner ADB, chuẩn hoá kênh, ghim clip, cập nhật Excel dữ liệu) mà không sinh ra git commit mới nào cần push lên repository, BẮT BUỘC báo cáo kết quả nghiệm thu (kèm receipt OCR / MEDIA: thực tế) và xác nhận thiết bị an toàn, nhả device lock; TUYỆT ĐỐI KHÔNG chạy `closeout_gate.py` trên commit cũ của repo tools.
 
-## 21. Bẫy Terminal Guard Block Khi Kiểm Tra Video & Kỷ Luật Gọi WinRT OCR / Contact Sheet
+## 21. Bẫy Crop Phong Cảnh / Góc Rộng Thay Vì Chân Dung Cận Mặt Cho Kênh Cá Nhân (Landscape / Distant Crop Trap)
+- **Hiện tượng:** Kênh mang định danh cá nhân rõ ràng (ví dụ tên hiển thị `Võ Đức Mai`, `Linh Ngô`...), nội dung video có nhân vật chính xuất hiện xuyên suốt, nhưng Agent lại trích xuất góc quay b-roll phong cảnh (mái nhà vườn, lối đi lát đá, ngọn cây) hoặc góc toàn cảnh có bóng người từ xa tí hon không thấy mặt. Kết quả: Ảnh đại diện nhìn như ảnh phong cảnh vô tri, không tạo được độ uy tín/nhận diện cho kênh TikTok cá nhân khiến User phản ứng gay gắt (*"ava mày đưa như lồn ấy"*).
+- **Hành động bắt buộc:**
+  1. **Bắt buộc crop chân dung cận cảnh (Close-up Portrait):** Với kênh cá nhân/creator, Avatar BẮT BUỘC phải là ảnh chân dung rõ mặt nhân vật chính diện hoặc góc nghiêng $3/4$, biểu cảm tự nhiên, ánh sáng tốt.
+  2. **Công thức crop chân dung chuẩn:** Dùng Haar Cascade hoặc Face Detector xác định khuôn mặt, lấy khung hình vuông $512 \times 512$ với hệ số phóng đại `scale = 2.3 - 2.4` so với kích thước khuôn mặt, tỷ lệ đỉnh đầu `headroom_ratio = 0.30 - 0.32` để khi lồng vào vòng tròn viền TikTok mắt và trán nhân vật nằm cân đối ở nửa trên.
+  3. **CẤM TUYỆT ĐỐI** đưa ảnh phong cảnh không người, góc nhà, mái tôn, hay người đứng từ xa tí xíu làm avatar đề xuất cho kênh cá nhân.
+
+## 22. Bẫy Terminal Guard Block Khi Kiểm Tra Video & Kỷ Luật Gọi WinRT OCR / Contact Sheet
 - **Hiện tượng:**
   1. Khi kiểm tra thông số video (duration, resolution) bằng lệnh `python -c "import subprocess..."`, coordinator guard chặn đứng: `COORDINATOR TERMINAL BLOCKED: 'python -c' chỉ dùng để kiểm chứng read-only; phát hiện thao tác ghi/xóa/subprocess!`.
   2. Lệnh gọi trực tiếp binary `ffprobe` trên bash bị chặn bởi default-deny allowlist của Coordinator (`COORDINATOR TERMINAL BLOCKED (DEFAULT-DENY)`).
@@ -127,9 +134,3 @@
   3. **Truyền timeout tường minh cho terminal:** Luôn đặt `timeout: 30` hoặc `timeout: 45` trong mọi lệnh gọi terminal foreground quick-probe để không bị chặn bởi Hard Gate #5.
   4. **Cú pháp gọi WinRT OCR chuẩn xác trong MSYS bash:** Dùng forward slash cho đường dẫn script python và escape backslash chuẩn cho đường dẫn ảnh Windows:
      `python D:/Taadaa/tools/run_winrt_ocr.py "D:\\Taadaa\\reports\\<ten_anh>.jpg"`.
-
-
-
-
-
-
