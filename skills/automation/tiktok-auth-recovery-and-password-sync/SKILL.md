@@ -88,4 +88,10 @@ description: Use when TikTok login has wrong pass. Reset via token.
 13. **Giải Phóng Tự Động Interstitial Popup "Follow Bạn Bè Của Bạn" Khi Preflight Profile**:
    - Khi chuyển sang tài khoản mới, TikTok có thể hiển thị trang toàn màn hình "Follow bạn bè của bạn" che khuất hoàn toàn thanh điều hướng dưới.
    - Khắc phục bắt buộc: Tích hợp `find_matching_handler` và tự động gọi `dismiss_follow_friends_suggestion_popup` ngay trong bước preflight guard (`_maybe_handle_profile_add_phone_guard`) trước khi đánh giá là `unknown state` hoặc chặn phiên.
+14. **Forward Tham Số `exclude_codes` Trong Wrapper `read_tiktok_otp_from_gpm_profile`**:
+   - Khi `social_reg_v1.py` fallback đọc OTP qua GPM profile, nó gọi:
+     `read_tiktok_otp_from_gpm_profile(email, timeout=90, exclude_codes={"369520", ...})`
+   - Bẫy: Hàm wrapper trong `D:/Taadaa/Tiktok_Reg/hotmail_provider.py` nếu chỉ nhận `(profile_id_or_email, timeout=120)` mà quên khai báo `exclude_codes=None` thì Python sẽ ném ngay:
+     `TypeError: read_tiktok_otp_from_gpm_profile() got an unexpected keyword argument 'exclude_codes'`.
+   - Khắc phục bắt buộc: Luôn khai báo `exclude_codes=None` ở chữ ký wrapper và chuyển tiếp trọn vẹn xuống `reader.read_tiktok_otp_from_gpm_profile(profile_id_or_email, timeout=timeout, exclude_codes=exclude_codes)` để loại trừ các mã OTP cũ đã nằm sẵn trong inbox.
 

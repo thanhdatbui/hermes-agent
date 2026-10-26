@@ -68,3 +68,8 @@
 5. **Chống Lỗi Rỗng Góc Xoay Khi Đánh Thức Màn Hình Qua Remote ADB (`user_rotation` empty):**
    - Khi remote ADB qua mạng LAN sang host Admin (`192.168.110.119`), lệnh `settings get system user_rotation` có thể bị trễ một nhịp và trả về rỗng.
    - Đã xử lý: Thêm vòng lặp thử lại 2 lần với `time.sleep(0.4)` trong `device_prepare.py` để không fail-closed vô cớ.
+
+6. **Forward Đầy Đủ Tham Số `exclude_codes` Trong `hotmail_provider.py`:**
+   - Khi luồng OTP chuyển sang GPM profile, hàm gọi truyền tập hợp các mã OTP đã cũ trong hộp thư (`exclude_codes`).
+   - Hàm wrapper trong `D:/Taadaa/Tiktok_Reg/hotmail_provider.py` thiếu tham số này dẫn đến `TypeError: unexpected keyword argument 'exclude_codes'`.
+   - Đã xử lý: Bổ sung `exclude_codes=None` và truyền trực tiếp xuống `read_otp_gpm.py`, đảm bảo Playwright CDP chỉ bóc tách mã OTP mới tinh vừa được gửi về hòm thư Hotmail.
