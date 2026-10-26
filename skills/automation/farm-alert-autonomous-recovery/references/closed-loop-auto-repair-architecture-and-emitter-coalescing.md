@@ -76,8 +76,17 @@ Thay vì để LLM tự do sửa code hoặc sửa trong luồng chính của se
 - **Vị trí cắm hook mỏng:** Trong `feed_session_watchdog.py`, tại khối tổng hợp lỗi ca nuôi `fail_groups.items()`, chỉ kích hoạt khi `cat == "Lỗi App TikTok/Script"`.
 - **Nguyên tắc không phá vỡ Watchdog:**
   - Bọc trong `try/except` độc lập với `logger.warning("[INCIDENT_EMITTER_WARNING] %s", exc)`. Nếu emitter gặp lỗi runtime, watchdog vẫn tiếp tục in báo cáo và hoàn thành phiên bình thường.
-  - Chuẩn hóa label máy: `m_lbl[1:] if m_lbl.startswith("M") else m_lbl` trước khi truyền vào `machine_id` và `serial`.
+  - BẮT BUỘC tra cứu hardware serial thật qua device inventory / machine mapping (e.g. `get_device_serial(machine_num)` hoặc workbook inventory), TUYỆT ĐỐI CẤM truyền số máy thô (`"16"`) vào `serial`. Truyền số máy thô vào `serial` khiến `adb -s 16 screencap` fail 100%, sinh ra envelope có `screenshot: null, xml_dump: null` và gây kẹt toàn bộ Cổng 0.
   - Chỉ định rõ `target_file="python_runner/flows/multi_machine_feed_session.py"` để Harness tính đúng `scope_hash` cho `IncidentLock`.
+
+## 8. Chẩn Đoán Khi Auto-Heal Sau Ca Chạy Không Hoạt Động (Triage Checklist)
+Khi người dùng phản ánh auto-heal không chạy sau báo cáo watchdog ca:
+1. **Kiểm tra trạng thái Cronjob:** Gọi `cronjob(action='list')` kiểm tra job `incident-auto-heal-dispatcher`. Nếu `state == 'paused'` (thường do phiên trước pause chống spam sau sự cố), dispatcher sẽ không bao giờ thức dậy để xử lý hàng đợi.
+2. **Kiểm tra Telemetry trong `pending/`:** Đọc file JSON trong `D:/Taadaa/runtime/incidents/pending/`. Nếu `screenshot: null` hoặc `xml_dump: null`, Cổng 0 sẽ từ chối xử lý. Phải kiểm tra trường `serial` xem có bị truyền nhầm `machine_id` số thay vì hardware serial ADB hay không.
+3. **Quy trình phục hồi khép kín:**
+   - Dọn sạch các file envelope thiếu telemetry trong `pending/`.
+   - Sửa hàm gọi emitter ở watchdog để mapping đúng hardware serial.
+   - Gọi `cronjob(action='resume', job_id='...')` để tái kích hoạt auto-heal an toàn.
 
 ## 6. Dependency Injection `base_dir` Cho Phép Cô Lập Test
 - Trong `incident_emitter.py`, hàm `emit_if_needed` nhận thêm `base_dir: Optional[Path] = None`.
