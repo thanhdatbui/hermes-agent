@@ -12,7 +12,10 @@ description: "Taadaa farm safety, close-session, and multi-machine operations."
   2. WinRT OCR / Vision kiểm chứng chữ trên màn hình.
   3. Chỉ thực hiện `am force-stop` và `input keyevent KEYCODE_HOME` sau khi đã có ảnh. CẤM chụp ảnh màn hình HOME làm nghiệm thu.
 - **Cấm tap tay qua ADB:** Không chạy `input tap`, `input keyevent`, `input swipe` để bấm qua màn hình lỗi. Sửa code trong script để cả dàn máy tự động vượt qua.
-- **Task ngầm / Cronjob:** Hook `guard_cronjob_safety.py` tự động ép cứng `CREATE_NO_WINDOW (0x08000000)` và `Hidden`, cấm pop console cướp focus.
+- **Task ngầm / Cronjob:** Hook `guard_cronjob_safety.py` tự động ép cứng `CREATE_NO_WINDOW (0x08000000)` và `Hidden`, cấm pop console cướp focus. Mọi lệnh subprocess trên Windows bắt buộc OR-merge `creationflags |= 0x08000000`.
+- **Cấm quét đĩa diện rộng (Anti-Scan Guard):** CẤM chạy `search_files` trên root `D:/Taadaa` hoặc `D:/Taadaa/tools`, cấm script có `os.walk` / `glob recursive`. Bắt buộc chỉ định đích danh file hoặc thư mục con hẹp.
+- **Khóa thiết bị JIT (Device Lock Mandatory):** Mọi can thiệp ADB vào máy thật bắt buộc giữ JIT device lock (`inspect_machine.py <N>` hoặc `with_device_lock.py --machine <N> -- ...`), cấm can thiệp trần.
+- **Phân định Auto-Wiring vs Active Pivot (Anti-Paralysis):** Task điều tra read-only tự động gắn `BUDGET: <= 8 calls`. Task sửa code CẤM dùng `delegate_task` (bị `subagent_edit_blocked`), bắt buộc dùng Active Pivot: copy lệnh mẫu `python D:/Taadaa/tools/dispatch_worker.py ...` chạy ngay ở turn kế.
 
 ## 2. Chu Trình Điều Phối Farm (Coordinator vs Worker)
 - **T0 (Hiện trường):** Đọc log, inspect ADB O(1), restart process, kiểm tra proxy. Tự do thực thi.
@@ -34,3 +37,4 @@ description: "Taadaa farm safety, close-session, and multi-machine operations."
 - Device Lock & Reaper: [`references/device-lock-cadence-and-reap-timeout.md`](references/device-lock-cadence-and-reap-timeout.md)
 - Claude CLI Bounded Review Loop: [`references/claude-cli-bounded-review-loop.md`](references/claude-cli-bounded-review-loop.md)
 - ChatGPT Web Pool & OmniRoute Cap: [`references/chatgpt-web-pool-feeding-candidate-filtering-and-omniroute-cap.md`](references/chatgpt-web-pool-feeding-candidate-filtering-and-omniroute-cap.md)
+- Auto-Wiring & Active Pivot: [`references/auto-wiring-active-pivot-and-gate-compliance-20261026.md`](references/auto-wiring-active-pivot-and-gate-compliance-20261026.md)

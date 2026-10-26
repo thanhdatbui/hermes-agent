@@ -1,6 +1,6 @@
 Cronjob batch ngầm đặt deliver='local' chống spam stdout; Watchdog có deliver='local' BẮT BUỘC tự dispatch Telegram (cấm chỉ print). Hàm nạp token BẮT BUỘC tự đọc trực tiếp từ hermes/.env chống rớt dependency/import automation_core.
 §
-Khi TikTok thiếu acc/mismatch: BẮT BUỘC auto-login/reconcile bù; máy Admin (>=200) nạp host config admin.yaml, socket 192.168.110.119:5037 & workbook Admin; Canary tái hiện lỗi BẮT BUỘC tra đúng --row <N> của nick vắng mặt (cấm test nhầm --row 1 có sẵn sinh pass ảo); timeout >= 720s.
+Khi TikTok thiếu acc/mismatch: auto-login/reconcile bù; máy Admin (>=200) nạp admin.yaml, socket 192.168.110.119:5037 & workbook Admin; Canary tra đúng --row lỗi (timeout >= 720s). Khi Graph API token hết hạn (AADSTS70000): dùng GPM profile (cổng 19995) đọc OTP web qua CDP (read_otp_gpm.py) kèm exclude_codes lọc OTP cũ.
 §
 Khi pool OmniRoute nạp acc ChatGPT: BẮT BUỘC lọc candidate qua supervisor state (chỉ lấy stage DONE/WAIT_7D hoặc có chatgpt_registered_at, cấm bốc profile mới ở HOTMAIL_LOGIN); gán đúng port proxy_assignments (trần tạm thời 2 acc/IP); cấm dùng base64 qua terminal.
 §

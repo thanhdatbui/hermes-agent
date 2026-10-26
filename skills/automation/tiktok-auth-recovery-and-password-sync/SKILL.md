@@ -62,3 +62,7 @@ description: Use when TikTok login has wrong pass. Reset via token.
    - **Cách xử lý chuẩn xác**:
      * *Phương án ưu tiên*: Mở GPM / trình duyệt trên PC đăng nhập lại hòm thư Hotmail để refresh lại OAuth grant, cập nhật `refresh_token` mới vào cột 9 của `gmail_clean_v2.xlsx`.
      * *Phương án bypass tạm thời*: Xóa giá trị `refresh_token` đã chết trong `gmail_clean_v2.xlsx` về `None` (chỉ giữ `mail_pass`), runner sẽ nhận diện mail không có token và tự động kích hoạt fallback mở app Outlook trên thiết bị để đọc OTP.
+     * *Phương án tự động hóa qua GPM Profile CDP (`read_otp_gpm.py`)*: Nếu hòm thư đã có profile trên GPM Login (cổng 19995), tích hợp `read_tiktok_otp_from_gpm_profile(email, timeout=90, exclude_codes=...)` làm fallback khi Graph API token hết hạn. Script khởi động profile qua CDP, bóc OTP 6 số trực tiếp từ web Outlook và tắt profile trong `finally`. **BẮT BUỘC** truyền `exclude_codes` để loại trừ các mã OTP cũ đã nhận trước đó trong hộp thư, tránh đọc lại mã hết hạn.
+8. **Kỷ Luật Tác Phong Điều Phối Khi User Đã Lệnh Thực Thi ("Làm đi" / "Fix đi")**:
+   - Khi user đã chỉ đạo rõ ràng ("Làm đi", "Fix đi", "Làm luôn"): CẤM TUYỆT ĐỐI dừng lại ở cuối turn để đặt câu hỏi xin phép lại ("Em tích hợp... nhé anh?", "Anh muốn làm phương án nào?").
+   - BẮT BUỘC tự động chọn phương án tối ưu nhất và thực thi dứt điểm bằng code/script, đưa ra bằng chứng thực tế thay vì dừng lại xin phép lặp lại.
