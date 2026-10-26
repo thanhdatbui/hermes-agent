@@ -148,11 +148,14 @@
   4. **Quy trình bấm nút chọn ảnh chuẩn:** Tap chọn ô ảnh -> tap `Tiếp (1)` tại `(921, 1843)` -> vào màn hình Cắt (Crop) -> tap `Lưu` tại `(792, 1794)` -> chờ 10s cho upload CDN hoàn tất -> tap Back `(80, 140)` về Profile.
   5. **BẮT BUỘC HẬU KIỂM BẰNG THỊ GIÁC (VISUAL AUDIT INVARIANT):** CẤM TUYỆT ĐỐI tin vào log `verified=True` của runner. Sau khi lưu avatar, BẮT BUỘC chụp màn hình Profile, crop riêng vòng tròn avatar tại `x≈755–1045, y≈375–610` (hoặc `x≈800–980, y≈250–420`), dùng Claude CLI hoặc mô hình vision soi tận mắt xác nhận đúng chủ thể mới (nam đeo kính / nữ nấu ăn) trước khi báo cáo User.
 
-## 24. Bẫy Popup "Hoạt Động Không Có Sẵn" Trên Tài Khoản Phụ & Luồng Sửa Hồ Sơ Chuẩn
-- **Hiện tượng:** Khi chạm trực tiếp vào vòng tròn avatar trên Profile hoặc gọi intent deeplink `snssdk1233://profile/edit` trên các tài khoản phụ/switch account, TikTok bung popup chặn: *"Hoạt động này không có sẵn. Để tiếp tục tham gia vào các hoạt động, hãy chuyển sang tài khoản ban đầu..."*.
-- **Hành động bắt buộc (Luồng đi sạch 100% không dính popup):**
-  1. Trên trang Profile, tap vào icon cây bút chì ở góc trên bên trái `(75, 150)` (hoặc nút "Sửa hồ sơ") để mở màn hình **Sửa hồ sơ** chính thức.
-  2. Trong màn hình Sửa hồ sơ, tap dòng chữ **"Thay đổi ảnh"** tại `(539, 579)`.
-  3. Bottom sheet hiện lên với 3 tùy chọn: Chụp ảnh, Tải ảnh lên, Xem ảnh. Bấm vào **"Tải ảnh lên"** tại tọa độ `(224, 1637)`.
-  4. Màn hình Gallery Picker mở ra an toàn 100% không bao giờ bị popup "Hoạt động không có sẵn" chặn lại.
+## 25. Bẫy Tự Bịa Avatar Mới Khi Chưa Soi Kỹ Profile Gốc & Bẫy Cố Chấp Sinh Ảnh Ảo (Hallucinated Avatar Generation Trap)
+- **Hiện tượng:** Khi nhận ảnh profile TikTok từ User, Agent không trích xuất và đối soát kỹ ảnh avatar hiện hữu trên màn hình profile gốc (hoặc avatar hiện tại vốn dĩ đã là ảnh nhân vật/creator chuẩn được chụp sẵn). Thay vào đó, Agent vội vàng quét các file video trong kho để cắt xén phong cảnh hoặc cắt mặt người trong các clip b-roll một cách gượng ép, tạo ra các phương án avatar xấu, lạc đề và gây bức xúc nghiêm trọng (*"ava mày đưa như lồn ấy"*, *"đéo cái nào đúng cả"*).
+- **Nguyên nhân gốc rễ:** 
+  1. Thiếu bước trích xuất và đối soát trực tiếp avatar hiện hữu trên profile gốc (`user_avatar_512.jpg` hoặc crop từ ảnh profile user gửi).
+  2. Tự suy diễn sai chủ thể (nhầm giữa b-roll tư liệu làm vườn với nhân vật đại diện kênh).
+  3. Cố chấp lặp lại việc cắt frame video sinh ảnh canvas mới khi User đã chê, thay vì dừng lại đối soát hiện trường và hỏi rõ định hướng của User.
+- **Quy chuẩn bắt buộc:**
+  1. **Trích xuất & Kiểm chứng Avatar gốc trước tiên:** Trước khi sinh bất kỳ avatar mới nào từ video, BẮT BUỘC kiểm tra avatar hiện tại trên profile TikTok của nick. Nếu avatar hiện tại đã có ảnh nhân vật/chân dung rõ nét, phải trích xuất ra để so sánh và hỏi User có muốn giữ lại hay không.
+  2. **Khi User chê phương án ("đéo cái nào đúng", "ava xấu"):** TUYỆT ĐỐI CẤM tiếp tục vòng lặp tự mò video cắt ảnh bừa bãi. Phải đưa ảnh avatar thực tế của profile ra đối soát ngay, thừa nhận nhận diện sai và xin ý kiến định hướng cụ thể (giữ avatar cũ hay muốn nhân vật/phong cách cụ thể nào).
+
 
