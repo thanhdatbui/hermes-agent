@@ -102,6 +102,14 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
     - Khi chạy script automation giao diện trình duyệt hoặc thiết bị (như `run_oauth_s7_pipeline.py --login-only` hoặc tool tương tự), script có thể in ra `SUCCESS` hoặc `Dang nhap thanh cong` trên stdout/terminal nhưng KHÔNG tự động lưu ảnh chụp màn hình (do cờ nhánh rẽ thoát sớm bỏ qua lệnh chụp ảnh).
     - CẤM TUYỆT ĐỐI lấy dòng log stdout `SUCCESS` để vội vàng tuyên bố hoàn thành với User khi chưa có thẻ `MEDIA:<path>`.
     - BẮT BUỘC phải kiểm tra file screenshot thực tế trên đĩa: nếu script không lưu ảnh, Coordinator BẮT BUỘC phải kết nối CDP/ADB chụp lại ảnh màn hình đích ngay lập tức, chạy WinRT OCR soi mắt kiểm chứng, và đính kèm thẻ `MEDIA:<path>` trong tin nhắn trả lời. Tuyên bố xong không có ảnh = Vi phạm trực tiếp Gate 6.
+22. **Bẫy Soi Mắt Nội Bộ Nhưng Quên Đính Kèm `MEDIA:` (Internal Vision vs Final Delivery Invariant):**
+    - Khi thao tác UI/màn hình, việc mở ảnh ra soi mắt nội bộ bằng Vision chỉ là Điều Kiện Cần (chống hallucination), KHÔNG PHẢI Điều Kiện Đủ để nghiệm thu.
+    - Điều kiện đủ bắt buộc: Tin nhắn cuối gửi User BẮT BUỘC phải đính kèm thẻ `MEDIA:<path_anh>`.
+    - Soi mắt thấy đúng rồi nhưng quên đính kèm `MEDIA:` trong tin nhắn trả lời User thì vẫn cấu thành vi phạm trực tiếp Gate 6 (báo mồm / báo chay). User sẽ coi đó là báo cáo không có bằng chứng thực nghiệm.
+    - Kỷ luật cơ học: Trước khi gửi tin nhắn kết luận hoàn tất bất kỳ tác vụ giao diện nào, Coordinator BẮT BUỘC kiểm tra chuỗi `MEDIA:` có hiện diện trong văn bản phản hồi hay không.
+23. **Xử Lý Lỗi `UI_DUMP_INVALID` Do Rớt Tiến Trình Stub `com.github.uiautomator`:**
+    - Trên các thiết bị Farm Android, nếu tiến trình nền `com.github.uiautomator` bị kill hoặc chưa chạy, lệnh dump UI sẽ trả về rỗng, gây lỗi `UI_DUMP_INVALID: adapter returned non-XML UI state`.
+    - Phục hồi O(1): Gọi `reset_atx_agent(dev)` trong `automation_core.persistent_ui` hoặc chạy instrument stub để khôi phục tiến trình nền trước khi dump lại. Nếu TikTok kẹt màn hình đen ở SplashActivity: dùng `am force-stop` khởi động lại.
 
 ## 2. Thang Leo Thang Vision Dự Phòng (Fallback Ladder)
 Thứ tự fallback đọc ảnh chuẩn hoá 100% đồng bộ với kiến trúc Worker Dispatch:
