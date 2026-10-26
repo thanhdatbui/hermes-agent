@@ -129,6 +129,13 @@ Applies whenever reports fail to reflect actual fleet health, mask dropped machi
   3. **Three-Way Sync Parity:** Synchronize script changes across (1) `D:/Taadaa/tools/`, (2) `deploy/hermes-home/scripts/`, and (3) `%LOCALAPPDATA%\hermes\scripts\` via `cron_sync_watchdog.py --force`.
   4. **Gateway Restart Discrimination:** `no_agent: true` cronjobs spawn fresh Python processes from disk per tick and NEVER require Gateway restart. Gateway restart is strictly reserved for in-memory core engine modules (`conversation_loop.py`, `coding_context.py`). See `references/compliance-watchdog-mock-sanitization-and-three-way-sync.md`.
 
+### Invariant 14: Downstream Schema Semantics & False-Negative Flagging (Empty Field vs Missing Account)
+- **Anti-Pattern:** A reporting watchdog or lifecycle supervisor validates entity readiness using compound credential assertions (e.g. `bool(username and password)`) for external platforms (e.g. TikTok, ChatGPT) when upstream registration flows intentionally leave optional or unprompted credentials empty (e.g., TikTok email/OTP reg flow leaves TikTok password empty in tracking to prevent fake passwords). This misclassifies valid active accounts as "missing info" or "unregistered" (e.g., reporting 225 matured `WAIT_7D` accounts as "Thiếu thông tin TikTok"), stalling the lifecycle pipeline indefinitely.
+- **Rule:**
+  1. **Primary Identifier Validation:** Validate platform presence by the primary canonical identifier (e.g., `bool(username)` for TikTok ID), not compound credential bundles, unless the downstream action specifically consumes the secondary credential.
+  2. **Cross-Check with Execution Source of Truth:** Before reporting accounts as "missing registration" or "lacking platform data", cross-check against the execution source of truth (e.g., `taikhoan_run_safe.xlsx` currently dispatching feed/video runs) rather than relying solely on optional credential columns in static workbooks.
+  3. **Non-Zero Exit Code on Target Missing:** If a security or lifecycle runner is invoked for a specific entity (`--email <target>`) but finds no matching rows in the master workbook, it MUST exit with a non-zero code (`return 1`). Exiting with 0 when target accounts are skipped causes callers (supervisors) to mistake a no-op for a successful completion, producing false "DONE" status transitions.
+
 ---
 
 ## 3. Verification Protocol for Watchdogs & Reports

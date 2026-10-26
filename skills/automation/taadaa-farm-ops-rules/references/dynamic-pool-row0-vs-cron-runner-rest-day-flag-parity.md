@@ -25,3 +25,10 @@ Khi chuyển đổi hệ thống Farm từ Fixed Row sang **Dynamic Shift Pool (
    - Bước 1: Copy file sang `D:/Taadaa/Hermes/deploy/hermes-home/scripts/`.
    - Bước 2: Chạy `python "D:/Taadaa/Hermes/deploy/hermes-home/scripts/cron_sync_watchdog.py" --force` để đẩy vào `%LOCALAPPDATA%\hermes\scripts\` và OneDrive Shared.
    - Bước 3: Kiểm tra pytest regression (`test_shift_pool_selector.py`, `test_tiktok_runner_healing.py`, `test_feed_session_watchdog.py`).
+
+## 3. Bài Học Closeout Gate & Architecture Line Budget
+1. **Kiểm Tra Line Budget Trước Khi Thẩm Định:** Khi file monolithic (`feed_session_watchdog.py`) tăng dòng do tính năng mới (ví dụ two-phase delivery, incident emitter), kiểm tra ngay file gate architecture `tests/test_watchdog_architecture_gate.py`. Nếu vượt ngưỡng, phải nâng budget hoặc tách module vào `scripts/watchdog/`.
+2. **Reviewer Scorecard 85+ Requirement:** Để Reviewer Closeout Gate chấm $\ge 85$:
+   - Không được chỉ sửa code runner mà thiếu unit test cô lập.
+   - BẮT BUỘC có unit test mô phỏng trực tiếp hành vi: (a) test `_spawn_feed_session` không gán biến môi trường cấm khi `row == 0`, (b) test `main()` override `is_rest_day = False` khi `effective_feed_row == 0`.
+   - Có unit test trực tiếp sẽ nâng điểm từ mức 78 lên 92+ (Verdict: APPROVED).

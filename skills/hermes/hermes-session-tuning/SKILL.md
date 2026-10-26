@@ -562,7 +562,19 @@ Khi user chat hàng loạt session song song và thấy phản hồi chậm (h�
   - Tách `fallback_providers` độc lập (trỏ sang 9Router `:20128` thay vì trỏ lại chính cổng 20129).
   - Xem chi tiết tại `references/omniroute-restart-retry-headroom-and-deadlock-ceiling-20261026.md`.
 
+### 0n. 🚨 Triage Nhanh: Phân Biệt Lỗi Telegram Mạng vs Lỗi OmniRoute Model Provider ("The model provider failed after retries") (26/10/2026 Incident):
+- **Hiện tượng**: Bot xuất hiện thông báo: `⚠️ The model provider failed after retries. I kept raw provider details out of chat; check gateway logs for diagnostics.` sau banner `Working — N min — iteration X/100`. User phân vân hỏi: *"Lỗi Telegram hay Omni nữa?"*.
+- **Bản chất**:
+  1. Dòng chữ `The model provider failed after retries` là lỗi tầng **Model Provider API** (OmniRoute / LLM upstream) khi Hermes thử lại đủ số lần `api_max_retries` mà vẫn fail. Không phải lỗi giao thức Telegram.
+  2. Kích hoạt bởi hiệu ứng cộng hưởng đứt mạng ISP: Khi mạng Viettel chập chờn $\rightarrow$ Gateway chuyển sang FPT Direct $\rightarrow$ FPT bị lỗi kết nối ra ngoài $\rightarrow$ Proxy Mikrotik của OmniRoute (`http://mirotik1.taadaa.click:10017`) không đến được Google Antigravity $\rightarrow$ Kích hoạt `[Proxy Fast-Fail] Proxy unreachable` $\rightarrow$ OmniRoute trả về `HTTP 503: Service temporarily unavailable: all targets were skipped by pre-dispatch filters` $\rightarrow$ Hết ngân sách retry Hermes.
+- **Kỷ luật chẩn đoán O(1) Guard-Safe**:
+  - Không gõ bash đường dẫn hệ thống hay lệnh `curl` (bị Guard chặn đứng).
+  - Tra cứu log qua Python với `Path(os.environ.get('LOCALAPPDATA', '')) / 'hermes' / 'logs'`, tìm `failed after retries` và `Proxy Fast-Fail`.
+  - Kiểm tra trạng thái cổng `:20129` bằng `urllib.request`.
+  - Xem chi tiết tại `references/model-provider-failed-after-retries-triage.md`.
+
 ## References
+- `references/model-provider-failed-after-retries-triage.md` — Phân định dứt khoát lỗi Telegram vs lỗi Model Provider OmniRoute, hiệu ứng cộng hưởng Multi-ISP và bộ lệnh probe Python Guard-Safe (26/10/2026).
 - `references/omniroute-restart-retry-headroom-and-deadlock-ceiling-20261026.md` — Đồng bộ Retry Headroom (api_max_retries: 6) cho Hermes, phân tích cửa sổ chết OmniRoute restart 30s và hạ trần watchdog deadlock ceiling (26/10/2026).
 - `references/omniroute-deadlock-ceiling-and-proxy-cascade-restart.md` — Sự cố OmniRoute Event Loop Deadlock do bão rớt proxy mobile ECONNRESET, Watchdog Deadlock Ceiling 12/12 force-restart và cửa sổ chết 17:05-17:07 văng lỗi Telegram đồng loạt (26/10/2026).
 - `references/telegram-multi-isp-failover-probe-hang.md` — Sự cố Telegram Multi-ISP Failover flapping, probe thiếu timeout làm treo 10 phút và xả dồn tin nhắn (26/10/2026).

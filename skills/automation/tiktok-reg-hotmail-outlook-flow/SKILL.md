@@ -97,6 +97,13 @@ Flow reg email-only/OTP **KHÔNG có màn nhập password TikTok** — nhưng sc
 
 Account email/OTP vẫn login OK trên máy (verify qua switcher) nhưng cột PASS là giả → **báo user xử lý** (xóa PASS hay giữ), không âm thầm để pass giả trong workbook.
 
+### 🛑 QUY TẮC BẮT BUỘC CHO DOWNSTREAM PIPELINES (SUPERVISOR / CHANGE INFO / BÁO CÁO 6H):
+- **Trạng thái Cột 4 PASS để trống là CHUẨN và ĐÃ REG THẬT**: Các tài khoản reg bằng OTP không có mật khẩu ngay từ đầu nhưng đã có TikTok ID/username hợp lệ, đã đăng nhập trên máy và đang chạy lướt feed / đăng video bình thường trong `taikhoan_run_safe.xlsx`.
+- **ĐIỀU KIỆN `has_tiktok` TRÊN TOÀN HỆ THỐNG**:
+  * Mọi script downstream (`batch_gpm_5profiles_supervisor.py`, `gpm_change_hotmail_security.py`, `cron_hotmail_gpm_lifecycle_6h_report.py`) **BẮT BUỘC chỉ kiểm tra `bool(username)`** (Cột 3 ID có giá trị).
+  * **CẤM TUYỆT ĐỐI** kiểm tra `bool(username and password)`. Lỗi kiểm tra compound này từng làm 225 tài khoản Admin ngâm đủ 7 ngày (`WAIT_7D`) bị ngộ nhận là "chưa có TikTok" (`has_tiktok = False`), khiến toàn bộ hàng đợi bị kẹt cứng vĩnh viễn không thể chuyển sang `CHANGE_INFO`.
+  * Trước khi kết luận tài khoản "thiếu thông tin TikTok", BẮT BUỘC cross-check với `taikhoan_run_safe.xlsx` để xác nhận tài khoản có đang chạy thực tế hay không.
+
 
 
 ## Change pass TikTok — module có sẵn (2026-08-16, máy 57 derekbwpt78)

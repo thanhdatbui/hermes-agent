@@ -10,8 +10,8 @@ Tool 2FA và cron xen ca chạy cả ngày BẮT BUỘC dùng Just-In-Time (JIT)
 §
 Tài khoản Gmail chuẩn clean_v2 đã tắt Google Prompt hoàn toàn chỉ dùng 2FA TOTP: login GPM 100% trên PC qua pyotp, không cần ADB hay máy S7; cấm chặn nhầm acc farm có recovery khoaleemagic khi đã có totp_secret.
 §
-Auto-Heal khép kín: emitter đào log/ảnh từ thư mục ca chạy, CẤM chụp sống khi máy đã tắt màn ngủ; serial ADB thật; cấm tiệt uiautomator dump, WinRT OCR primary; Canary auto-device; storm >= 3 báo Alert.
+Auto-Heal: đào log/ảnh từ thư mục ca, cấm chụp sống máy tắt màn; serial thật; WinRT OCR primary, cấm uiauto dump; Canary auto-device; storm >= 3 báo Alert. Avatar picker: chống chọn nhầm Tile 1 qua visual match; lifecycle_guard:260 bọc except null char.
 §
-Bẫy gallery picker TikTok: Android gallery đẩy screenshot mới lên đầu lưới (0,0) làm runner up nhầm screenshot cũ sinh false positive AVATAR_SMOKE_SUCCESS; lifecycle_guard.py dòng 260 bắt buộc bọc except (OSError, ValueError) chống văng null char trên Windows.
+Kiểm tra nick TikTok farm (supervisor/change info/6h report): chỉ check bool(username); CẤM check compound password vì nick reg OTP để trống pass nhưng đang chạy feed thật trong taikhoan_run_safe.xlsx.
 §
-CẤM tự tiện gọi Claude CLI khi User không yêu cầu; cấm dùng Claude CLI soi toạ độ UI thủ công thay cho việc sửa script. Script avatar picker BẮT BUỘC dùng _avatar_picker_visual_match chống chọn nhầm screenshot cũ ở Tile 1.
+Sửa dưỡng sinh/xoay ca TikTok: BẮT BUỘC kiểm tra 2 tầng (pool selector bên trong VÀ wrapper tiktok_runner.py) để tránh TAADAA_REST_DAY_NO_FOLLOW đè cờ dưỡng sinh lên toàn farm.
