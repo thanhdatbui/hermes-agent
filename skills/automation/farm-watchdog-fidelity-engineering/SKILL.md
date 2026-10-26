@@ -78,6 +78,13 @@ Applies whenever reports fail to reflect actual fleet health, mask dropped machi
   1. **Shift Hard Time-Fence:** Overnight batch runners should check shift boundary cutoffs (e.g., aborting queued retries once daytime operations begin at 06:00/07:00).
   2. **Execution Window Attribution:** Batch aggregators firing after shift end MUST include execution start time and elapsed duration (e.g. `[Ca Đêm: 02:30 -> 09:55 | Thời gian chạy: 7h25m]`), making the delay immediately obvious to operators.
 
+### Invariant 9: Dynamic Shift Labeling vs Static Header Desync
+- **Anti-Pattern:** Assuming that a daytime alert (e.g. at 10:00 AM) titled "BAN ĐÊM" is necessarily a delayed overnight run, when in fact it was a fresh off-cycle batch launched at 10:18 AM with hardcoded report headers. Static/hardcoded shift titles in runner templates decouple alert headers from actual wall-clock execution time.
+- **Rule:**
+  1. **Dynamic Shift Name Resolution:** Aggregators and report dispatchers must dynamically compute the shift name from execution timestamp (`created_at` / `now_hour`) rather than static template strings.
+  2. **Timestamp Verification in Diagnosis:** When diagnosing unexpected alert timing, always check the exact batch directory timestamp (`logs_parallel_YYYYMMDD_HHMMSS`) and `summary.json["created_at"]` first to distinguish between actual execution duration vs off-cycle fresh triggers.
+  3. **Batch Cooldown Conformance:** Verify batch size limits (e.g. canonical `maxMachines = 15` after 4-5 day cooldown per device) in summary metadata to confirm selection contract adherence.
+
 ---
 
 ## 3. Verification Protocol for Watchdogs & Reports

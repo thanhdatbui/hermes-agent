@@ -45,3 +45,11 @@ description: Use when TikTok login has wrong pass. Reset via token.
    - Tham số `--rows <N>` của `change_tiktok_passwords.py` nhận **chỉ số hàng vật lý trong Excel (1-indexed physical row)** (ví dụ: dòng 171 trong Excel sheet `Tài Khoản`), **CẤM NHẦM** với số cột Folder Video (ví dụ: 482) hay account index theo máy. Bắt buộc tra cứu đúng số dòng vật lý trong workbook trước khi truyền `--rows`.
    - Với máy cụm Admin ($m \ge 200$), `AdbClient` kết nối qua host remote `192.168.110.119:5037`. Provider roots bắt buộc trỏ đúng `D:/Taadaa/tiktok-add-bao-mat-f2a/python_runner` và `D:/Taadaa/Tiktok_Reg`.
    - Timeout cho luồng đổi pass và recovery qua Graph API trên remote host tối thiểu $\ge 600s$.
+5. **Kỷ Luật Dữ Liệu Excel (Chưa đặt pass thì để None/Blank, CẤM ghi bậy pass ảo)**:
+   - Các tài khoản reg email-only (như qua Outlook app) chưa qua bước tạo pass thật sự trên TikTok thì cột `PASS` trong Excel BẮT BUỘC để trống (`None` / blank).
+   - TUYỆT ĐỐI CẤM tự ý sinh pass random rồi ghi bậy vào cột PASS khi chưa xác thực thành công trên TikTok. Việc này khiến các runner lầm tưởng tài khoản đã có pass, thử login bằng pass dẫn tới lỗi `Mật khẩu sai` và nguy cơ bị TikTok khóa nick / rate limit.
+   - Khi cột `PASS` để `None`, runner sẽ tự động nhận diện tài khoản reg email-only và đi thẳng vào luồng OTP hoặc phục hồi mật khẩu mà không gõ pass mù.
+6. **Canary Tái Hiện Lỗi Bắt Buộc Nhắm Trúng Account/Row Bị Lỗi (Chống Test Nhầm Acc Hoạt Động)**:
+   - Khi chạy Canary kiểm chứng sau bản vá login/recovery: BẮT BUỘC tra cứu đúng `--row <N>` của tài khoản bị lỗi/vắng mặt.
+   - TUYỆT ĐỐI CẤM test nhầm `--row 1` có sẵn tài khoản đã login trên máy, vì `profile_preflight` sẽ báo `already matched` và pass thành công ảo mà hoàn toàn không kích hoạt luồng login cần test.
+   - Timeout Canary cho toàn bộ luồng recovery/login trên dàn máy remote Admin bắt buộc $\ge 720s$ để bù đắp độ trễ ADB remote và thời gian OTP Graph API.

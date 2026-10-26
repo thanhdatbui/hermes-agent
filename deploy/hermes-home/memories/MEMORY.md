@@ -16,4 +16,4 @@ Watchdog & Cron report toàn farm tuân thủ chuẩn: vi phạm mới bắn ra,
 §
 Watchdog audit compliance farm gates BẮT BUỘC lọc sạch test/mock artifacts (pytest, target.py) và chuẩn hóa timestamp local naive sang UTC; gate chặn có auto-rewire/tự sửa <= 1 turn tính là REWIRED, cấm đánh FAIL.
 §
-Dispatch chặn delegate_task khi sửa code -> dùng dispatch_worker.py; user 'Làm đi' làm ngay. Watchdog in đích danh máy offline & top acc login fail. GPM nurture trần ngày đếm từ last_nurtured.
+Dispatch cấm delegate_task sửa code -> dùng dispatch_worker.py. Khi user lệnh 'Làm đi/xử lý': bypass khẩn cấp; lệnh python -c phức tạp bọc base64 chống lỗi null-char. Trình avatar bắt buộc đính kèm MEDIA: ngay turn đầu, cấm hứa hẹn suông.
