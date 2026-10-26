@@ -7,10 +7,11 @@ Khi vận hành script `python D:/Taadaa/tools/login_audit_and_purge_deactivated
    - Mỗi tài khoản ChatGPT audit qua GPM + CDP mất trung bình 20–25s (mở profile GPM, kết nối CDP, mở `chatgpt.com/auth/login`, điền email, chờ OTP qua Graph API hoặc Outlook webmail, kiểm tra DOM marker, và kill tiến trình Chrome).
    - Lệnh batch `--limit 5` cần 100–125s nên sẽ **bị ngắt ở giây 60 (Exit code 124: timeout)** nếu chạy trong 1 lệnh foreground duy nhất.
 
-2. **Background Terminal Guard Intersection Trap**:
-   - `guard_cronjob_safety.py` chặn các lệnh background gọi trực tiếp `python` (`[CONSOLE_WINDOW_BLOCKED]`) để tránh bật cửa sổ console trên Windows làm cướp focus/giật lag.
-   - Đồng thời, Coordinator Terminal Guard chặn `pythonw` và `powershell.exe` ngoài allowlist.
-   - Do đó, Coordinator không thể khởi chạy background script Python tùy ý nếu chưa được whitelist cụ thể.
+2. **Background Terminal Execution vs Cronjob Notification Quirks**:
+   - `python D:/Taadaa/tools/login_audit_and_purge_deactivated.py --limit 5` được phép chạy qua `terminal(background=true)` mà KHÔNG bị chặn console window.
+   - Tuy nhiên, trong môi trường cron job / one-shot runner, cờ `notify_on_complete=true` không được hỗ trợ (`notify_unsupported`).
+   - Do đó, Coordinator bắt buộc phối hợp `terminal(background=true)` và theo dõi tiến trình qua `process(action='wait', session_id=..., timeout=30)` theo vòng lặp cho đến khi `process_running: false` / `status: 'exited'`.
+   - Pattern này cho phép chạy toàn bộ batch 5 tài khoản trong 1 lệnh duy nhất (~140-150s), tự động xuất file báo cáo tổng hợp `chatgpt_lifecycle_report.json` chuẩn mà không bị trần 60s foreground timeout ngắt giữa chừng.
 
 ## 2. Chiến Lược Thực Thi Chuẩn: Phân Rã Theo Email Đơn Lẻ (O(1) Per-Account)
 Để hoàn tất kiểm tra an toàn giới hạn 5 tài khoản mà không vi phạm bất kỳ guard nào:
