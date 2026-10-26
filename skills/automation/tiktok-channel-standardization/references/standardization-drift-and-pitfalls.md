@@ -115,6 +115,20 @@
   1. **Phân định phạm vi thẩm định:** Closeout Gate là cổng kiểm toán code độc lập bắt buộc trước khi `git push` các thay đổi mã nguồn.
   2. **Xử lý phiên Vận Hành Farm:** Khi phiên chỉ thao tác trên thiết bị (chạy runner ADB, chuẩn hoá kênh, ghim clip, cập nhật Excel dữ liệu) mà không sinh ra git commit mới nào cần push lên repository, BẮT BUỘC báo cáo kết quả nghiệm thu (kèm receipt OCR / MEDIA: thực tế) và xác nhận thiết bị an toàn, nhả device lock; TUYỆT ĐỐI KHÔNG chạy `closeout_gate.py` trên commit cũ của repo tools.
 
+## 21. Bẫy Terminal Guard Block Khi Kiểm Tra Video & Kỷ Luật Gọi WinRT OCR / Contact Sheet
+- **Hiện tượng:**
+  1. Khi kiểm tra thông số video (duration, resolution) bằng lệnh `python -c "import subprocess..."`, coordinator guard chặn đứng: `COORDINATOR TERMINAL BLOCKED: 'python -c' chỉ dùng để kiểm chứng read-only; phát hiện thao tác ghi/xóa/subprocess!`.
+  2. Lệnh gọi trực tiếp binary `ffprobe` trên bash bị chặn bởi default-deny allowlist của Coordinator (`COORDINATOR TERMINAL BLOCKED (DEFAULT-DENY)`).
+  3. Lệnh gọi `run_winrt_ocr.py` hoặc các công cụ trong `D:/Taadaa/tools` nếu không truyền tham số `timeout` rõ ràng trong tool call `terminal` sẽ bị coi là `timeout=None`, kích hoạt `[HARD GATE #5 - DEVICE BULKHEAD] LỆNH ĐIỀU KHIỂN THIẾT BỊ BỊ CHẶN (timeout=Nones)!`.
+  4. Lệnh chạy `python D:\Taadaa\tools\run_winrt_ocr.py` trong git-bash / MSYS bị lỗi `No such file or directory: D:\Taadaa\tools\Taadaatoolsrun_winrt_ocr.py` do chuỗi path trong bash unescaped `\T`.
+- **Hành động bắt buộc:**
+  1. **Kiểm tra thông số video an toàn:** Dùng trực tiếp `cv2.VideoCapture` trong `python -c` (đây là thao tác đọc file thuần túy qua thư viện opencv-python, hoàn toàn pass guard read-only).
+  2. **Trích xuất nhanh 9 frames video:** Dùng công cụ chuẩn có sẵn trong allowlist: `python D:/Taadaa/tools/video_contact_sheet.py "<path_video>" -o "<path_output>"` (công cụ này tự động điều phối ffprobe/ffmpeg nội bộ mà không kích hoạt guard chặn).
+  3. **Truyền timeout tường minh cho terminal:** Luôn đặt `timeout: 30` hoặc `timeout: 45` trong mọi lệnh gọi terminal foreground quick-probe để không bị chặn bởi Hard Gate #5.
+  4. **Cú pháp gọi WinRT OCR chuẩn xác trong MSYS bash:** Dùng forward slash cho đường dẫn script python và escape backslash chuẩn cho đường dẫn ảnh Windows:
+     `python D:/Taadaa/tools/run_winrt_ocr.py "D:\\Taadaa\\reports\\<ten_anh>.jpg"`.
+
+
 
 
 

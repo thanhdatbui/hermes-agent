@@ -16,4 +16,4 @@ Cron watchdog batch ghi nhận run_date độc lập kết quả (chống re-run
 §
 Auto-Heal khép kín: gom lỗi feed/follow/upload qua emit_if_needed, resolve_serial_and_args lấy serial ADB thật; Canary failover --auto-device né kẹt ca nuôi; storm >= 3 lỗi blocked báo Farm Alert.
 §
-Khi atx-agent báo UI_DUMP_INVALID do rớt stub com.github.uiautomator: chạy reset_atx_agent(dev) hoặc am instrument stub để phục hồi tiến trình trước khi dump lại; TikTok kẹt Splash đen thì force-stop và mở lại.
+UI Farm: 100% cấm shell uiautomator dump (GuardGate DENY). Ưu tiên Primary WinRT OCR, case khó dùng ATX-Agent port 7912 (/dumpUI); kẹt stub thì reset_atx_agent(dev); TikTok kẹt splash đen thì force-stop.

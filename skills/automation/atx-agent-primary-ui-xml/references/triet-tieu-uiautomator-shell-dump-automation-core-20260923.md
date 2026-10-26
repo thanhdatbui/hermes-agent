@@ -52,3 +52,12 @@ Khi gọi endpoint `/session/<pid>:com.github.uiautomator/jsonrpc/2.0`, nếu AT
   ```
   Giúp hệ thống ghi nhận telemetry đầy đủ và tự động fallback sang `_request_via_device_curl` an toàn mà không bao giờ rơi xuống shell uiautomator.
 
+## 4. Thứ Bậc Ưu Tiên Toàn Farm & Hook Guard Cơ Giới Hóa (2026-10-26)
+- **Kỷ luật thứ bậc phân tích UI:**
+  1. **Primary (Thị giác chính):** WinRT OCR (`winrt_ocr_util`) đọc text trực tiếp từ screenshot. Nhanh < 0.2s, không tốn tài nguyên thiết bị, chống OOM, đọc text thực tế hiển thị.
+  2. **Fallback (Case khó):** ATX-Agent port 7912 qua device-local curl (`http://127.0.0.1:7912/dumpUI`) hoặc `automation_core.persistent_ui` khi bắt buộc cần cây DOM/bounds/clickable elements.
+  3. **Cấm tuyệt đối (Prohibited):** Shell uiautomator dump (`adb shell uiautomator dump`) và thư viện `uiautomator2`.
+- **Cơ chế Hook Guard cơ giới hóa (GuardGate):**
+  - Rule `case_invariant_prohibit_shell_uiautomator_dump` nạp trong `D:/Taadaa/tools/guardgate/rules.json`.
+  - Tự động quét và trả về `DENY` ngay lập tức đối với bất kỳ commit/diff nào chứa regex `(?i)(uiautomator[\s'",]+dump|import\s+uiautomator2|from\s+uiautomator2)`.
+

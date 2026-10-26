@@ -1,0 +1,26 @@
+# Windows Filesystem Cold-Cache & Large Directory I/O Gotchas
+
+Bài học rút ra từ session chạy watchdog cron `cron_reconcile_stale_receipts.py` trên thư mục idempotency/post-attempts (~10.000 file JSON).
+
+## 1. Hiện Tượng: Timeout 60s Do Windows Cold Disk Cache
+- **Bối cảnh:** Khi một thư mục lưu trữ số lượng file lớn (ví dụ `D:\CodexRuntime\tiktok-video\idempotency\post-attempts\` chứa >9.000 file JSON) nằm trên ổ đĩa quay (HDD) hoặc chưa được Windows File System Cache nạp (cold cache).
+- **Hành vi quan sát được:**
+  - `os.scandir` hoặc `glob` chỉ đọc metadata tên file: Cực kỳ nhanh (< 0.05s cho 9.300 files).
+  - Mở đọc nội dung từng file (`read_text()` / `open()`): Khi cache chưa có (cold read), mỗi batch 1.000 file có thể mất 15-25 giây do I/O disk seek. Nếu đọc tuần tự 9.000 file, tổng thời gian lên tới 80-120 giây -> Lệnh chạy vượt quá timeout mặc định 60s và bị kill (exit code 124).
+  - Sau khi các file đã được Windows nạp vào RAM cache (warm cache): Toàn bộ 9.000 file được đọc xong chỉ trong 1-2 giây! Lần chạy tiếp theo ngay sau đó hoàn tất trong nháy mắt.
+
+## 2. Kỹ Thuật Tối Ưu Hóa & Tránh Timeout Cho Tooling Farm
+1. **Lọc Metadata Trước Khi Đọc File (Stat Pre-filtering):**
+   - Đừng mở đọc nội dung JSON của toàn bộ 10.000 file!
+   - Sử dụng `entry.stat().st_mtime` từ `os.scandir` (được Windows NTFS trả về sẵn trong dirent struct, không tốn thêm I/O IOPS mở file):
+     ```python
+     now_ts = time.time()
+     # Chỉ đọc nội dung file nếu mtime phù hợp tiêu chí (ví dụ: cũ hơn min_age hoặc nằm trong khoảng nghi ngờ)
+     if (now_ts - entry.stat().st_mtime) < min_age_seconds:
+         continue
+     ```
+   - Điều này giảm số lượng file cần `open()` từ 9.000 file xuống chỉ còn vài chục file, biến thời gian chạy từ 90s xuống < 0.1s ngay cả khi cold cache!
+
+2. **Tăng Timeout Hoặc Warm-up Cho Các Lệnh Audit Hàng Loạt:**
+   - Với các script watchdog duyệt thư mục lớn chưa được tối ưu stat-prefilter, timeout 60s có thể gây timeout giả (transient timeout) ở lần chạy đầu tiên.
+   - Khi gặp timeout 60s trên script duyệt file: Kiểm tra ngay I/O cold cache trước khi kết luận script bị deadlock hay lỗi logic.
