@@ -8,4 +8,4 @@ Canary tái hiện đúng account/điều kiện lỗi thật (timeout >= 720s),
 §
 Auto-heal: Tự sửa ngầm headless 1:1 theo 6 cổng; telemetry map serial ADB thật & cụm máy qua inspect_machine; chỉ báo Telegram khi merged; vi phạm hook đối soát qua 6h report.
 §
-Khi session auto-resume sau turn limit: cấm gửi tin chào hỏi khách sáo hay hỏi user làm gì; BẮT BUỘC check git status/tiến trình dở và làm tiếp ngay lập tức.
+Khi session auto-resume sau reboot/restart/turn-limit: cấm gửi tin chào hỏi hay hỏi user làm gì; BẮT BUỘC check hiện trường/tiến trình dở và làm tiếp dứt điểm ngay lập tức.

@@ -29,6 +29,7 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
 - Chống Báo Xong Mù, Chống Văn Mẫu Bio & Positive Contract Verifier: [`references/anti-blind-completion-and-positive-contract-verifier.md`](references/anti-blind-completion-and-positive-contract-verifier.md)
 - Kỷ luật Nhả Lock Khung Giờ Ca Nuôi & Chống Ôm Máy Trễ Giờ Feed: [`references/shift-window-cutoff-and-active-feed-preemption.md`](references/shift-window-cutoff-and-active-feed-preemption.md)
 - Soi Mắt Màn Hình Trình Duyệt / Browser CDP & Xác Thực Đăng Nhập: [`references/browser-cdp-session-and-form-vision-verification.md`](references/browser-cdp-session-and-form-vision-verification.md)
+- Kiến Trúc Hook Cơ Học Gate 6 & Invariant Chống Khóc Lóc: [`references/gate6-mechanical-hook-and-anti-whining-architecture.md`](references/gate6-mechanical-hook-and-anti-whining-architecture.md)
 
 ## 1. Nguyên Tắc Cốt Lõi (Invariants)
 1. **CẤM gửi ảnh mù / đối phó:** Trước khi đính kèm bất kỳ thẻ `MEDIA:<path>` nào, bắt buộc phải mở ảnh ra soi mắt kiểm tra trước.
@@ -110,6 +111,11 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
 23. **Xử Lý Lỗi `UI_DUMP_INVALID` Do Rớt Tiến Trình Stub `com.github.uiautomator`:**
     - Trên các thiết bị Farm Android, nếu tiến trình nền `com.github.uiautomator` bị kill hoặc chưa chạy, lệnh dump UI sẽ trả về rỗng, gây lỗi `UI_DUMP_INVALID: adapter returned non-XML UI state`.
     - Phục hồi O(1): Gọi `reset_atx_agent(dev)` trong `automation_core.persistent_ui` hoặc chạy instrument stub để khôi phục tiến trình nền trước khi dump lại. Nếu TikTok kẹt màn hình đen ở SplashActivity: dùng `am force-stop` khởi động lại.
+24. **Kiến Trúc Hai Điểm Chốt Chặn Gate 6 & Invariant Chống Khóc Lóc (Anti-Whining Enforcer):**
+    - Hermes Agent chỉ có `pre_tool_call` và `post_tool_call`, không có hook chặn text freeform cuối cùng. Để chống báo mồm triệt để, kiến trúc bắt buộc dùng 2 điểm chặn:
+      * **Điểm A (`post_tool_call` trên UI tools):** Tự động chụp screencap + WinRT OCR + ghi signed receipt, không phụ thuộc vào trí nhớ của LLM.
+      * **Điểm B (`pre_tool_call` trên `terminal|clarify`):** Chặn các hành động chốt phiên hoặc lảng tránh nếu receipt chưa đạt `VERIFIED_SUCCESS`.
+    - **Invariant Chống Khóc Lóc:** Khi gate DENY, bắt buộc trả về template cấu trúc 1 dòng (`render_degraded_template`), cấm văn mắng mỏ tự do. Cưỡng chế trần $O(1)$ (`attempt >= 3` hoặc `elapsed > 30s` $\rightarrow$ `ESCALATE_L3_BLOCKED`), cấm tuyệt đối vòng lặp xin lỗi, giải thích hay phân trần. Chi tiết xem [`references/gate6-mechanical-hook-and-anti-whining-architecture.md`](references/gate6-mechanical-hook-and-anti-whining-architecture.md).
 
 ## 2. Thang Leo Thang Vision Dự Phòng (Fallback Ladder)
 Thứ tự fallback đọc ảnh chuẩn hoá 100% đồng bộ với kiến trúc Worker Dispatch:
