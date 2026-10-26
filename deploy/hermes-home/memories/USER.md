@@ -10,4 +10,4 @@ Auto-heal: Tự sửa ngầm headless 1:1 theo 6 cổng; telemetry map serial AD
 §
 Kho media Farm: Clip render >20 đẩy lên GDrive 5TB, local giữ 1-20; video gốc >=45 clip đối soát xong mới dọn local; folder thiếu kéo bù nguồn render tiếp.
 §
-Tên nick TikTok teencode tự nhiên ('Ngọc TRinh') là hợp lệ, cấm tự bẻ về tên hành chính; Chuẩn hoá avatar persona bắt buộc trích xuất đúng chủ thể từ video chính trên profile, cấm lấy b-roll; Trình phương án avatar bắt buộc có ảnh MEDIA: dòng đầu, cấm mô tả suông.
+Tên nick TikTok teencode ('Ngọc TRinh') là hợp lệ, cấm đổi về tên hành chính. Trình avatar bắt buộc MEDIA: dòng 1; crop từ video chính chủ (vid 1/4/6), cấm b-roll. Sudo bypass cấp cho user, cấm tự trói chân AI.

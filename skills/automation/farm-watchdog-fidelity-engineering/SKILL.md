@@ -85,6 +85,16 @@ Applies whenever reports fail to reflect actual fleet health, mask dropped machi
   2. **Timestamp Verification in Diagnosis:** When diagnosing unexpected alert timing, always check the exact batch directory timestamp (`logs_parallel_YYYYMMDD_HHMMSS`) and `summary.json["created_at"]` first to distinguish between actual execution duration vs off-cycle fresh triggers.
   3. **Batch Cooldown Conformance:** Verify batch size limits (e.g. canonical `maxMachines = 15` after 4-5 day cooldown per device) in summary metadata to confirm selection contract adherence.
 
+### Invariant 10: Cross-Host Multi-Cluster Telemetry Parity (Anti-Silent Cluster Dropping)
+- **Anti-Pattern:** A multi-cluster orchestrator or watchdog (e.g. `cron_night_tiktok_2fa_watchdog.py`) is intended to run across both local (Kibe M01-M80) and remote (Admin M201-M280) clusters, but repeatedly fails to execute or report the remote fleet:
+  1. **Path Assumption Desync:** Hardcoding local machine paths (repo directory, venv python path) inside remote SSH invocations where directories differ on the remote host.
+  2. **Inventory Partition Blindspot:** Relying on a single local workbook (e.g. `taikhoan_run_safe.xlsx` with only M01-M80) while the remote fleet resides in a separate workbook (e.g. `admin/PROXYgandienthoai.xlsx`), causing the selection script to evaluate an empty set for the remote cluster.
+  3. **Unilateral Local Log Scraping:** Aggregator functions (`read_summary_json`) only scanning local runtime directories (e.g. `D:/CodexRuntime/...`), silently defaulting remote cluster statistics to 0 without verifying or fetching the remote host's output summary.
+- **Rule:**
+  1. **Explicit Cluster Runtime Contracts:** Pass cluster-specific Python executables, repo roots, and workbooks configured per cluster (e.g. `admin.yaml` vs `kibe.yaml`).
+  2. **Strict Dual Telemetry Requirement:** Watchdogs dispatching to remote hosts via SSH must parse structured JSON emitted on stdout or fetch remote summary artifacts before reporting.
+  3. **Zero-Count Remote Alert:** If a cluster configured for batch execution returns 0 machines selected, 0 success, and 0 failed, the watchdog must flag this anomaly (`⚠️ Cluster Admin: Không thu thập được telemetry / 0 máy được chọn`) rather than silently suppressing the missing cluster. See `references/cross-cluster-multi-host-watchdog-parity.md`.
+
 ---
 
 ## 3. Verification Protocol for Watchdogs & Reports

@@ -135,3 +135,27 @@ Hệ thống AI Coordinator thường rơi vào hai thái cực cực đoan:
 - **Timezone Normalization (Local Naive vs UTC)**: Audit logs written using `datetime.now().isoformat()` without timezone (`LOCAL_NAIVE_LOGS`: `dispatch_audit.jsonl`, `console_block_audit.jsonl`) must be converted from host local timezone (UTC+7) to UTC before filtering by the 6h cutoff window. Treating local naive as UTC shifts the window by 7h, falsely pulling in past afternoon errors.
 - **Credit Self-Healing (`rewired_hits`)**: Auto-clamped and auto-rewired actions are recorded as `REWIRED` (0-turn overhead) rather than failures (`FAIL`), preserving high-fidelity telemetry for real blocks.
 - **Sol Worker Execution Floor**: Set `SOL_AGY_TIMEOUT_FLOOR = 480s` and `--max-turns = 12` (up from 8) to ensure Sol multi-patch workflows finish reliably without false timeouts.
+
+---
+
+## 11. Cron Safety Tokenizer Null-Byte Exception Trap (`ValueError: embedded null character in path`)
+- **Vấn đề kỹ thuật**: Trong module an toàn cron của Hermes (`site-packages/cron/` dòng 259–262), hàm `_read_referenced_script(path)` dùng `os.open(path, flags)` để kiểm tra nhanh shell script được gọi từ lệnh terminal:
+  ```python
+  try:
+      descriptor = os.open(path, flags)
+  except OSError:
+      return None, False
+  ```
+- **Bẫy sập (Unhandled ValueError)**: Khi lệnh terminal chứa chuỗi Python nhiều dòng, base64 hoặc quote phức tạp, bộ tokenizer có thể trích xuất các token chứa byte null `\0` hoặc ký tự đường dẫn không hợp lệ. Trên Windows, `os.open` ném lỗi `ValueError: open: embedded null character in path`. Vì `ValueError` không kế thừa từ `OSError`, lỗi này không bị bắt, làm văng exception ra ngoài và đánh sập tiến trình terminal của Coordinator!
+- **Chuẩn hóa (Fail-Open cho binary/invalid tokens)**:
+  BẮT BUỘC bọc `except (OSError, ValueError):` để khi gặp token dị dạng hoặc null byte, hàm trả về `(None, False)` an toàn và cho phép lệnh terminal tiếp tục thực thi bình thường.
+
+---
+
+## 12. Ephemeral Path Exclusion in Coordinator Write Ledger (Chống Ngộ Độc Ngân Sách T1)
+- **Vấn đề kỹ thuật**: Trong plugin kiểm soát Coordinator (`coordinator_write_gate`), trần `COORD_T1_MAX_FILES = 10` tính gộp mọi file ghi/sửa trong phiên làm việc.
+- **Bẫy tê liệt (T1 Poisoning)**: Khi Coordinator tạo các script phụ tạm thời (ví dụ: `tmp_make_avatar.py`, `tmp_detect.py`, hoặc ghi file trong `D:/Taadaa/tmp/`), những file tạm này nhanh chóng lấp đầy hạn ngạch 10 files. Khi đạt 10 files, hook kích hoạt `COORDINATOR WRITE DENIED` vĩnh viễn cho phần còn lại của session, khóa chặt cả `write_file` và `patch` ngay cả khi User đã ra lệnh trực tiếp ("làm đi", "Còn lại xử lý đi").
+- **Chuẩn hóa**:
+  1. **Tách bạch Ephemeral Paths**: Mọi đường dẫn thuộc thư mục tạm (`/tmp/`, `\tmp\`, `tmp_*.py`, `temp_*.py`, `reports/`) BẮT BUỘC được miễn trừ khỏi danh sách `t1_files` và `t1_lines`. Chỉ các file mã nguồn chính thức (core codebase/repo) mới tính vào hạn ngạch T1.
+  2. **Tích hợp Bridge User Sudo**: `coordinator_write_gate` phải chủ động đọc và xác thực `D:/Taadaa/runtime/sudo_grant.json` để mở quyền ghi khẩn cấp ngay khi có grant hợp lệ từ User, không để cơ chế tự khóa trói chân hệ thống.
+

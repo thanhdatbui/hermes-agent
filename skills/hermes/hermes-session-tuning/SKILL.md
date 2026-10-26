@@ -9,6 +9,7 @@ description: "Chẩn đoán Hermes session lag (context bloat → compression th
 - User kêu Hermes lag / session chậm dù RAM-CPU vẫn còn thừa
 - Cần kiểm tra model deepseek đang chạy reasoning nào (THINK:auto vs high vs max trong 9router console log)
 - Muốn ép reasoning effort chắc chắn qua 9router
+- **Bị ngắt turn giữa chừng do chạm trần tool-calling** — prompt cưỡng chế `You've reached the maximum number of tool-calling iterations allowed...` (xem `references/tool-calling-iteration-limit-and-turn-budget-exhaustion.md`)
 - **Session bị reset/đứt ngang 04:00** — banner `◆ Session automatically reset (daily schedule at 4:00). Conversation history cleared. Use /resume to browse and restore a previous session.` (live 2026-08-12 Tiktok Reg group)
 
 ## 0. Session reset 4:00 tự động — config `session_reset` (live 2026-08-12)
@@ -552,3 +553,4 @@ Khi user chat hàng loạt session song song và thấy phản hồi chậm (h�
 - `references/scheduled-reboot-and-session-preservation-triage.md` — Quy trình triage Auto-Reboot 3 ca (05:20, 11:20, 17:20), cơ chế bảo toàn session in-flight và phân biệt hiện tượng khựng shutdown sạch vs crash sập nguồn (19/10/2026).
 - `references/dynamic-skill-routing-o1-against-context-bloat-20261022.md` — Giải pháp Dynamic Skill & Error Routing O(1) chống Context Bloat và [SKILL_PRUNED] cho 190+ skills, cơ chế fail-closed pinned invariants, và bài học Operator chấn chỉnh bệnh nịnh bợ flip-flop (22/10/2026).
 - `references/payload-and-schema-audit-20261025.md` — Báo cáo đối soát định lượng payload thực tế từ call log OmniRoute, bóc tách 18.6k tokens base overhead, dead schema `execute_code`, trùng lặp Memory ↔ User Profile và case study kitchen-sink anti-pattern (25/10/2026).
+- `references/tool-calling-iteration-limit-and-turn-budget-exhaustion.md` — Chẩn đoán trần lặp công cụ per-turn (MAX_TOOL_CALL_ITERATIONS), kỷ luật chống bại liệt/khóc lóc khi bị ép dừng và giải pháp nâng trần runtime (26/10/2026).
