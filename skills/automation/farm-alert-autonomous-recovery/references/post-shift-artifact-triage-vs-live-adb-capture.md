@@ -34,13 +34,23 @@ Khi điều tra sự cố sau ca chạy (post-shift watchdog), **tuyệt đối 
 
 ## 3. Kiến Trúc Triển Khai O(1) trong Mã Nguồn
 - **Tận dụng Parser $O(1)$ (`scripts/watchdog/parser.py` & `merger.py`):**
-  - Trong quá trình parser duyệt ca chạy một lần duy nhất, gắn trực tiếp `machine_dir: root` vào kết quả của máy (`res_m`, `res_f`, `res_u`) và `stdout_tail` cho upload.
-  - Tránh hoàn toàn việc phải quét lại đĩa (tránh trigger `GUARD_DANGEROUS_ROOT` hoặc vi phạm cấm quét đĩa diện rộng).
+  - Trong quá trình parser duyệt ca chạy, khi đọc `run_manifest.json` ở root, BẮT BUỘC gán `"machine_dir": item.get("artifact_root")` vào `payload` của `res_m`. Nếu thiếu, `all_machines[m_num]` sẽ bị `machine_dir = None`.
+  - Khi đọc `upload_result.json` và `follow_result.json`, do JSON từ runner không có trường này, BẮT BUỘC ép gán `u_data["machine_dir"] = root` và `f_data["machine_dir"] = root`.
+  - Trong `merger.py`: đảm bảo `m_dir = new.get("machine_dir") or prev.get("machine_dir")` được giữ lại xuyên suốt chuỗi merge.
 - **`incident_emitter.py`:**
   - Hàm `extract_run_artifacts(machine_dir, stdout_tail, reason)`: Khai thác trực tiếp từ `machine_dir/summary.txt` và `stdout_tail` (tìm report Codex) trong thời gian $O(1)$ để lấy đủ 4 thành phần: `screenshot`, `xml_dump`, `log_tail`, `stack_trace`.
   - Hàm `collect_telemetry(..., artifacts=artifacts)`: Nếu `artifacts` hợp lệ, sao chép thẳng ảnh/xml vào thư mục telemetry của sự cố, chạy `winrt_ocr` trên ảnh artifact, gán `atx_status="run_artifact"`, bỏ qua 100% các lệnh ADB screencap / atx-agent.
-  - Hàm `emit_if_needed(..., machine_dir=None, stdout_tail=None)`: Tự động nạp stack_trace và telemetry thật từ artifacts.
+  - Xử lý Serial dạng số: `resolve_serial_and_args(serial, machine_id)` phải bọc điều kiện `if (not serial or str(serial).isdigit())` để tra cứu serial phần cứng thật, tránh truyền serial giả dạng số `"54"` vào ADB.
+  - Chặn đứng ADB Screencap vào máy tắt màn: Nếu `artifacts` rỗng mà thiết bị đang `Screen: OFF Sleep/Dozing`, CẤM TUYỆT ĐỐI gọi ADB screencap (tránh chụp ra ảnh đen xì làm méo mó Gate 0). Đánh dấu rõ `BLOCKED_NO_ARTIFACT_DEVICE_ASLEEP`.
 - **`feed_session_watchdog.py`:**
   - Tại 3 vị trí emit (Feed, Follow, Upload), truyền trực tiếp `machine_dir=all_machines.get(m_num, {}).get("machine_dir")` và `stdout_tail=ud_info.get("stdout_tail")`.
-- **Cơ chế chống Báo động giả Upload (False-Positive Guard):**
-  - Khi `upload_result.json` ghi nhận `status: success` và `exit_code: 0`, watchdog tự động xếp vào `up_success`, tuyệt đối không emit nhầm sự cố.
+  - Cơ chế Fallback an toàn: Nếu `all_machines[m_num].get("machine_dir")` bị rỗng, watchdog phải tra cứu nhanh `item.get("artifact_root")` từ `run_manifest.json` trong `r_path` trước khi emit.
+
+## 4. Kỷ Luật Phản Hồi Khi Nhận Báo Cáo "Thất Bại / Chuyển L3" (Anti-Performative Triage)
+- **CẤM TUYỆT ĐỐI:** Khi dispatcher báo có N sự cố bị chuyển L3 BLOCKED, Coordinator không được ngồi đọc triệu chứng hời hợt ("Màn hình OFF, Launcher, Score < 2 -> Máy ngủ an toàn") rồi báo cáo suông kết thúc việc.
+- **BẮT BUỘC TRUY NGUYÊN:** Đặt câu hỏi truy ngược: *"Tại sao ca chạy đã kết thúc và có thư mục kết quả mà telemetry lại phải gọi ADB chụp sống vào máy đang ngủ?"*.
+- Kiểm tra ngay:
+  1. `checkpoint.jsonl` và file JSON của sự cố xem trường `machine_dir` có bị `null` hay không.
+  2. File `run_manifest.json` của ca chạy có trường `artifact_root` hay không.
+  3. Parser `parser.py` có đang nuốt chửng trường `artifact_root` khiến watchdog truyền `machine_dir=None` sang emitter hay không.
+- Chỉ khi chứng minh được thư mục ca chạy thực sự không có artifact và máy đang ngủ thì mới được coi là BLOCKED hợp lệ. Có artifact mà hệ thống không nạp được là LỖI PIPELINE ĐIỀU PHỐI, bắt buộc phải khoanh vùng và đề xuất vá code ngay lập tức.
