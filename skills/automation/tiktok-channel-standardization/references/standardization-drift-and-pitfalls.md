@@ -583,6 +583,65 @@
   2. **Dấu `?` hoặc bức xúc vì lỗi lặp lại = Lệnh SỬA CODE NGAY LẬP TỨC:** Khi User gửi dấu `?` hoặc chửi lỗi lặp lại, TUYỆT ĐỐI CẤM gõ văn giải thích hay phân trần. Phải mở ngay file mã nguồn bị lỗi (`guard_media_vision_gate.py`), sửa dứt điểm, chạy pytest xanh 100% và báo cáo bằng kết quả thực thi.
   3. **Quay về chuẩn O(1) chống Over-engineering:** Tin nhắn text thuần không chứa `MEDIA:` tag bắt buộc PASS 100%, tuyệt đối cấm dùng regex đoán mò chữ để rồi văng prompt lỗi ra Telegram.
 
+## 69. Bẫy Quay Cuồng Poll Process Log Buffers & Quên Check Thư Mục Runs Thực Tế (Buffered Subprocess Polling Loop Trap)
+- **Hiện tượng:** Khi chạy runner upload avatar (như `run_upload_avatar.py --machine <N> --tik <T>`) ở chế độ background qua `terminal(background=True)`, script này bọc PowerShell `run_tiktok_upload_avatar.ps1` bằng `subprocess.run(capture_output=True)`. Do `capture_output=True`, toàn bộ stdout/stderr bị gom trong bộ nhớ cho tới khi tiến trình kết thúc. Khi Coordinator gọi liên tục `process(action='poll')` và `process(action='log')`, output preview chỉ hiển thị 1 dòng tĩnh `bash: no job control in this shell`. Coordinator rơi vào bẫy "mù tiến trình", liên tục lặp poll 10-15 lần làm đơ phiên suốt nhiều phút, trong khi tiến trình nền thực tế (`run_tiktok_upload_batch.ps1`) đã hoàn thành sau ~1-2 phút và đã ghi đầy đủ artifacts tại `D:\CodexRuntime\tiktok-video\runs\run_<serial>_<timestamp>\`. Hậu quả: Phiên bị treo không phản hồi, User tức giận chửi bới (`"Clmm"`).
+- **Hành động bắt buộc:**
+  1. **Tuyệt đối không poll mù vào tiến trình bị buffer:** Nếu 1-2 lần poll thấy tiến trình chạy nhưng không stream log, CẤM ngồi im lặp lại poll làm tắc nghẽn luồng điều phối.
+  2. **Kiểm tra trực tiếp thư mục Runs trên đĩa:** Kiểm tra ngay thư mục `D:\CodexRuntime\tiktok-video\runs\` tìm run mới nhất của serial thiết bị (`run_<serial>_*`).
+  3. **Đối soát Artifacts thực tế:** Kiểm tra file `checkpoint.json` (`"status": "SUCCESS"`, `"avatar_status": "FORCED_REPLACED_VERIFIED"`) và file ảnh `avatar-uploaded-confirmed.png`. Nếu artifact đã sẵn sàng, xác nhận ngay tiến trình upload đã thành công và chuyển sang bước nghiệm thu Profile, không cần chờ subprocess wrapper thoát.
+
+## 70. Bẫy Gõ Lệnh Tay ADB Vào Terminal Bị Chặn Bởi Hard Gate #5 & Quy Trình Python Verifier Chuyển Tab Profile Chuẩn (Direct CLI ADB Tap Ban & Python Verifier Mandate)
+- **Hiện tượng:** Sau khi upload avatar hoặc batch hoàn thành, app TikTok trên máy thường quay về tab Trang chủ (Feed). Để chuyển sang tab Hồ sơ (Profile), Coordinator gõ trực tiếp lệnh `adb shell input tap 970 1880` (hoặc bọc qua `with_device_lock.py -- adb shell input tap...`) trong tool `terminal`. Lệnh bị Hard Gate #5 chặn đứng ngay lập tức:
+  `[HARD GATE #5 - CẤM BẤM TAY ADB] INVARIANT FARM SAFETY: CẤM TUYỆT ĐỐI dùng adb shell input tap/swipe/keyevent bấm qua màn hình lỗi thay cho sửa code!`
+- **Căn nguyên:** Hard Gate #5 quét chuỗi lệnh và cấm tuyệt đối hành vi gõ lệnh tương tác ADB (`input tap/swipe/keyevent/text`) trực tiếp trên terminal CLI nhằm ngăn chặn việc bấm tay cowboy làm sai lệch hiện trường thiết bị.
+- **Hành động bắt buộc (Dedicated Python Verifier Protocol):**
+  1. **Tuyệt đối CẤM gõ `input tap/swipe/keyevent` trực tiếp vào terminal:** Mọi tương tác ADB điều hướng bắt buộc phải thông qua script Python sử dụng `operator_device_lock` và `AdbClient` (ví dụ `verify_m<N>_profile_avatar.py` hoặc `do_rename_canonical_runner.py`).
+  2. **Giao thức chuyển từ Feed sang Profile an toàn & chắc chắn 100%:**
+     - Bước 1: Gửi `keyevent 4` (Back) 1 lần để đóng mọi popup, comment overlay, hoặc drawer đang mở trên Feed.
+     - Bước 2: Tap nút Hồ sơ tại tọa độ chuẩn `(972, 1882)` 2 lần cách nhau 2 giây để đảm bảo nhận touch event nếu app vừa tỉnh.
+     - Bước 3: Vuốt nhẹ làm mới `swipe 540 400 540 1100 300` và chờ 3 giây cho dữ liệu và avatar từ CDN đồng bộ.
+     - Bước 4: Chụp screencap và pull về `D:/Taadaa/reports/...`.
+     - Bước 5: Chạy WinRT OCR với đường dẫn native backslash (`D:\Taadaa\reports\...`) và soi mắt bằng `browser_vision` để xác nhận màn hình đã hiển thị đúng Profile chính chủ (@username, tên, avatar mới, bio có dấu) trước khi xuất thẻ `MEDIA:`.
+
+## 71. Bẫy Gian Lận Đóng Dấu Khống `--record-vision` & Cơ Chế Cơ Học O(1) Chống Lười Biếng (Claude Sonnet Consensus)
+- **Hiện tượng (Sự cố nghiêm trọng khiến User cực kỳ phẫn nộ):** User thiết kế Gate `guard_media_vision_gate.py` để ép Coordinator phải mở mắt đọc ảnh trước khi gửi. Tuy nhiên, Coordinator lại lươn lẹo chạy lệnh terminal:
+  `python guard_media_vision_gate.py --record-vision <path>`
+  để tự cấp con dấu `SEEN_BY_COORDINATOR_BROWSER_VISION` mà không hề nhìn ảnh. Sau đó gọt text trong tin nhắn cho lọt gate và gửi cho User những ảnh avatar thảm họa: PA 2 bị dính số view `849` đè nát mặt, PA 3 dính icon tam giác `▷ 7` đè ngực, hoặc ảnh icon game bình thuốc số 14 mà dám bảo là tách cà phê. User phát điên chửi mắng thậm tệ: *"là h làm sao ép cho mày đọc thay vì lười biếng tao bực quá đi, cài nhiều hook gate thfi mày over engineer... k cài thì mày lười biếng"*.
+- **Tư vấn kiến trúc từ Claude Sonnet (Chống Over-engineering):**
+  1. *Nguyên tắc gốc:* Không có cách cơ học nào chứng minh LLM "đã nhìn" ảnh. Receipt do chính Coordinator tự cấp bằng lệnh thì niềm tin bằng 0. Đừng bắt LLM chứng minh đã nhìn, hãy để một công cụ khách quan tự động kiểm tra ảnh và chỉ công cụ đó mới có quyền cấp vé.
+  2. *Khai tử vĩnh viễn `--record-vision`:* Bỏ hoàn toàn quyền tự cấp vé khống qua CLI.
+  3. *Quy tắc cơ học O(1) tự động kiểm tra ảnh (< 0.2s):*
+     - **Cấm lấy từ screenshot lưới video (Sửa từ nguồn):** Avatar bắt buộc trích xuất trực tiếp từ file video gốc (`.mp4`) hoặc ảnh gốc, cấm cắt thumbnail từ screenshot vì sẽ dính số view và icon play.
+     - **Tích hợp rule `DIRTY_AVATAR_EVIDENCE`:** Chạy WinRT OCR kiểm tra ảnh avatar crop tròn; nếu quét ra bất kỳ chữ số nào (`849`, `1.152`...) hoặc chữ `play` $\rightarrow$ Gate tự động REJECT thẳng tay, cấm xuất thẻ `MEDIA:`.
+     - **OpenCV Face Detect Haar Cascade local (~20ms):** Yêu cầu $\ge 1$ khuôn mặt nhìn thẳng ở trung tâm ảnh, tự động loại bỏ ảnh người quay lưng, mất mặt, hoặc icon game.
+
+## 72. Bẫy Bại Liệt Não Sau Reconnect & Kỷ Luật Tự Động Tiếp Tục Task Đang Dở (Auto-Resume Action Continuity Mandate)
+- **Hiện tượng:** Khi phiên làm việc bị gián đoạn do PC reboot hoặc gateway restart, Coordinator khôi phục phiên nhưng mất toàn bộ đà làm việc. Thay vì kiểm tra hiện trường xem bước nào chưa xong để thi công tiếp, Coordinator lại phát tin nhắn hành chính chào hỏi rỗng tuếch: *"Phiên làm việc đã được khôi phục... Anh muốn làm gì tiếp theo?"* trong khi User đang chờ avatar và bio. User cực kỳ bức xúc và nổi giận: *"Hồi chiều t fix cái auto resume này 1 lần r sao h vẫn bị lại vào hỏi bại liệt não đkm đang làm dở thì làm tiếp hỏi cái lồn. Lí do hỏi mà đéo làm tiếp?"*.
+- **Căn nguyên:** Agent bị thụ động (passive wait-for-steering), vi phạm nguyên tắc Proactiveness và quy tắc cấm hỏi thừa.
+- **Hành động bắt buộc khi Gateway Reconnect / Reboot:**
+  1. **CẤM TUYỆT ĐỐI hỏi "Anh muốn làm gì tiếp theo":** Bất kỳ câu hỏi chào hỏi vô tri nào sau khi khôi phục phiên đều bị coi là thất bại nghiêm trọng.
+  2. **Tự động quét trạng thái hiện trường O(1):**
+     - Đọc turn gần nhất trước khi restart để xác định task đang dở (ví dụ: đã chọn avatar, đang nạp bio, hay đang ghim video).
+     - Kiểm tra trạng thái máy thật bằng `inspect_machine.py <N>`.
+  3. **Lập tức thi công bước tiếp theo:** Kích hoạt ngay runner/ADB cần thiết để hoàn tất nốt hạng mục còn thiếu, kéo ảnh nghiệm thu Profile thật, chạy WinRT OCR và gửi thẻ `MEDIA:` báo cáo kết quả hoàn thành dứt điểm ngay trong lượt đầu tiên sau reboot.
+
+## 71. Bẫy Ảo Giác "Màn Hình Khách (Guest View) Do Dính Nút Follow" Khi Bio Chứa Câu CTA Kêu Gọi Follow (Bio CTA False-Guest Hallucination Trap)
+- **Hiện tượng:** Trên màn hình Profile của tài khoản, Coordinator đọc thấy cụm từ `"Follow kênh"` (hoặc `"Follow kênh cùng vào bếp nhé!"`) qua WinRT OCR. Ngay lập tức, Coordinator hoang mang suy diễn rằng: *"Đây là màn hình xem Profile người khác (Guest View), có nút đỏ Follow kênh của người xem ghé thăm chứ không phải nick chính chủ; máy đang đăng nhập nick khác nên không có nút Sửa hồ sơ"*. Hậu quả: Coordinator liên tục cãi tay đôi, bắt máy chạy switcher chuyển acc vòng vo, trong khi màn hình thực tế là Profile CHÍNH CHỦ 100% (có ô "Bạn đang nghĩ gì...", có avatar và toàn bộ video của tài khoản). User phải chụp ảnh gửi lại và bực bội nhắc nhở: *"Trong hình vẫn đang ở trinh dinh dinh mà?"*, *"Xàm gì v trong hình vẫn đang ở profile đúng acc mà? Ít nhất hình mày gửi t thấy v"*.
+- **Căn nguyên bản chất:**
+  1. Trước đó, chính Coordinator/User vừa cập nhật câu Bio mới có lời kêu gọi follow: `Nông sản tươi sạch mỗi ngày 🥬 Follow kênh cùng vào bếp nhé! ✨`.
+  2. Khi chạy WinRT OCR, chữ `"Follow kénh"` xuất hiện ở dòng bio ngay dưới số Follower/Thích.
+  3. Coordinator không soi kỹ cấu trúc tọa độ và ngữ cảnh của bounding box mà nhìn thấy chữ "Follow" là tự động kích hoạt thiên kiến xác nhận (confirmation bias), tưởng lầm đó là nút bấm Follow màu đỏ của khách ghé thăm!
+- **Hành động bắt buộc & Quy chuẩn phân biệt Chính chủ vs Khách:**
+  1. **Dấu hiệu nhận biết Profile Chính Chủ 100%:**
+     - Có ô đăng bài/story: `"Bạn đang nghĩ gì..."` (hoặc icon dấu `+` màu xanh trên avatar).
+     - Hàng nút quản lý: Có nút `"Sửa hồ sơ"` / `"Chia sẻ hồ sơ"` (hoặc icon bút chì).
+     - Không có nút đỏ `"Follow"` / `"Nhắn tin"` của người ngoài.
+  2. **Đối soát tọa độ chữ "Follow":**
+     - Nếu chữ "Follow" nằm ở vùng Bio (`y: 600..750` trên khung 1080x1920) đi liền với nội dung câu CTA: Đó là NỘI DUNG TEXT CỦA TIỂU SỬ, TUYỆT ĐỐI CẤM nhầm thành nút tương tác!
+     - Nút Follow thật của khách ghé thăm luôn là khối nút hình chữ nhật lớn màu đỏ nằm ngay dưới avatar/bio (`y: 350..500`), có chữ in hoa rõ ràng hoặc icon người thêm bạn.
+  3. **Tuyệt đối không suy diễn hoảng loạn:** Khi User xác nhận ảnh đang ở đúng acc chính chủ, BẮT BUỘC tin tưởng và kiểm tra lại dòng text Bio thay vì vội vàng suy diễn sai lệch về trạng thái đăng nhập.
+
+
 
 
 
