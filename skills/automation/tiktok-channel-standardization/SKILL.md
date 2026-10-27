@@ -99,5 +99,5 @@ Quy trình chuẩn hoá bao gồm trọn gói **5 hạng mục bắt buộc (5-i
 ---
 
 ## 5. Tài Liệu Bổ Trợ
-- Chi tiết các bẫy thường gặp (lệch ngách, lệch avatar, badge WWF-UK, lỗi viết hoa, post-pin account drift, TTL receipt expiry, UNGROUNDED_OVERRIDE claim tokens, compaction amnesia, kẹt profile do tap mù bio, bại liệt đi hỏi lại, terminal guard block & tool timeouts): [`references/standardization-drift-and-pitfalls.md`](references/standardization-drift-and-pitfalls.md) (Xem chi tiết Mục 32, 33, 34 & 35).
+- Chi tiết các bẫy thường gặp (lệch ngách, lệch avatar, badge WWF-UK, lỗi viết hoa, post-pin account drift, TTL receipt expiry, UNGROUNDED_OVERRIDE claim tokens, compaction amnesia, kẹt profile do tap mù bio, bại liệt đi hỏi lại, báo tiến độ thuần text kích hoạt MISSING_MEDIA_EVIDENCE, terminal guard block & tool timeouts): [`references/standardization-drift-and-pitfalls.md`](references/standardization-drift-and-pitfalls.md) (Xem chi tiết Mục 32, 33, 34, 35 & 36).
 

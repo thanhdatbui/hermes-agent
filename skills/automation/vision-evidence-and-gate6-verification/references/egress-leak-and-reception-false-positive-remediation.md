@@ -116,3 +116,11 @@ reason: message claims UI/device completion but contains no MEDIA: evidence tag
   2. BẮT BUỘC dung script staging copy ra thu muc ngoai (`D:/Taadaa/reports/<name>.jpg`).
   3. Mo bang `browser_navigate('file:///D:/Taadaa/reports/<name>.jpg')`.
   4. Goi `browser_vision` doc ro tung dong text tren anh de xac nhan su that khach quan truoc khi tra loi.
+
+### D. Bay Bao Cao Tien Do / Khoi Phuc Phien Do Dang Bang Van Ban Thuan (In-Flight Progress Recap Without Media Tag)
+- **Hien tuong:** Khi phien bi ngat ket noi hoac sau khi moi hoan thanh 1 phan viec (nhu vua nap xong avatar nhung chua nap bio), Agent gui tin nhan van ban thuan nhac lai: *"Truoc khi gian doan: Avatar PA 4 da cap nhat thanh cong len Profile May 45..."* ma KHONG dinh kem the `MEDIA:<path>`.
+- **Hau qua:** Cụm từ `da cap nhat`, `thanh cong` + `avatar`, `profile`, `may` lap tuc kich hoat `ACTION_COMPLETION_PATTERNS` & `SUBJECT_PATTERNS`. Hook danh dong day la "bao cao mom UI thieu anh", kich hoat `MISSING_MEDIA_EVIDENCE` va ban nguyen khoi prompt tho `[CONTRADICTION_GATE_TRIGGERED]` vao Telegram cua User.
+- **Quy tac bat bien:**
+  * Neu nhac den bat ky thuc the UI nao da lam xong (avatar, ten, bio, ghim video), BAT BUOC phai dinh kem the `MEDIA:<path>` tuoi co receipt hop le ngay trong tin nhan do.
+  * Neu tin nhan chi mang tinh chat hoi dap / chua dinh kem anh: TUYET DOI CAM dung cac tu khang dinh ket qua (`da cap nhat thanh cong`, `da doi xong`), phai dung tu ngu tien trinh thuoc `EXEMPTION_MARKERS` (`dang thuc hien`, `ke hoach`, `chuan bi nap`).
+
