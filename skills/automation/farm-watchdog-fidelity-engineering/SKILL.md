@@ -170,6 +170,7 @@ Applies whenever reports fail to reflect actual fleet health, mask dropped machi
   2. **Binary Prefix Fast-Filter on Idempotency Bloat:** When directories contain >9,000 files (e.g. `post-attempts`), never parse JSON across all files. Use `os.scandir` + `open(..., 'rb').read(512)` with compiled regex `re.compile(rb'"status"\s*:\s*"completed"', re.IGNORECASE)` to skip completed receipts without parsing JSON. This drops runtime from >120s to ~1.1s (100x speedup). Fail-safe rule: only skip on positive completed match; any missing, unparsed, or ambiguous format falls through to full `json.loads` parsing.
   3. **Claude CLI On-Demand Review Verification:** When asked to review script performance/safety fixes via Claude CLI, invoke `claude -p "<prompt>"` directly with targeted diff/questions and assert pass across edge cases (whitespace variants, multi-byte encodings, fail-safe fallbacks).
   4. **Generous Subprocess Buffer:** Set watchdog runner subprocess timeouts to $\ge 180$s to buffer against periodic NTFS disk load spikes during multi-cloud sync or peak farm operations. See `references/hermes-cron-subprocess-timeout-misclassification.md`.
+  5. **Dẹp Bỏ Điểm Số Hình Thức Khi Chốt Phiên:** Khi chốt phiên vận hành/fix watchdog, TUYỆT ĐỐI CẤM nhắc tới điểm số ("Điểm: 100/100" hay "Điểm >= 85"). Báo cáo chỉ ghi nhận: `Verdict: APPROVED (Operational Fast-Pass O(1))` kèm test/lệnh chạy thật. Trường `"score": 100` trong `closeout_gate.py` chỉ phục vụ tương thích ngược cho `safe_push.py`, cấm đưa vào prose giao tiếp với User.
 
 ---
 
