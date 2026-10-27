@@ -57,3 +57,18 @@ Khi điều tra sự cố sau ca chạy (post-shift watchdog), **tuyệt đối 
   2. File `run_manifest.json` của ca chạy có trường `artifact_root` hay không.
   3. Parser `parser.py` có đang nuốt chửng trường `artifact_root` khiến watchdog truyền `machine_dir=None` sang emitter hay không.
 - Chỉ khi chứng minh được thư mục ca chạy thực sự không có artifact và máy đang ngủ thì mới được coi là BLOCKED hợp lệ. Có artifact mà hệ thống không nạp được là LỖI PIPELINE ĐIỀU PHỐI, bắt buộc phải khoanh vùng và đề xuất vá code ngay lập tức.
+
+## 5. Quy Trình Kiểm Thử Nhanh O(1) Ngoại Tuyến (Fast Replay Test Without Waiting For Next Shift)
+Không cần phải chờ đến ca chạy tiếp theo mới kiểm chứng được watchdog và auto-heal:
+1. **Replay Thử Nghiệm Từ Dữ Liệu Ca Chạy Cũ:**
+   - Dùng thư mục ca chạy vừa xong (vd: `D:/Taadaa/runtime/<cluster>/live/<date>/<shift_run>/`).
+   - Gọi trực tiếp `m_res, f_res, u_res = parse_run_all(r_path)` để kiểm tra `machine_dir` có nằm trong dict máy lỗi hay không.
+   - Gọi `extract_run_artifacts(machine_dir=m_res[m]['machine_dir'])` và khẳng định trích xuất được `screen.png` (>0 byte), `ui.xml` và `log_tail` trong < 0.1s.
+2. **Kiểm Chứng Cổng 0 Telemetry Đạt Score = 2:**
+   - Tạo thử envelope với `base_dir=tmp_dir`: kiểm tra `completeness_score() == 2`, `atx_status == 'run_artifact'`.
+   - Khẳng định không có bất kỳ lệnh ADB nào (`screencap` hay `dumpUI`) được kích hoạt.
+3. **Unit Test Tự Động Qua Pytest:**
+   - Chạy focused test: `pytest D:/Taadaa/tools/tests/test_incident_envelope_and_lock.py -k test_parser_artifact_root_to_incident_emitter` (< 1s).
+4. **Kích Hoạt Thử Cronjob Trực Tiếp Qua Runtime:**
+   - Gọi `cronjob(action='run', job_id='1d62cb3562e0')` (hoặc ID của watchdog tương ứng) để scheduler thực thi ngay 1 nhịp và báo cáo status `ok`.
+   - Kích hoạt `cronjob(action='run', job_id='2b5b608429c7')` (`cron-sync-watchdog`) để đảm bảo code Git được đồng bộ sang runtime ngay tức thì.

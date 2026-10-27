@@ -392,6 +392,20 @@
   2. **Soi kỹ màu sắc trang phục trước khi gắn nhãn:** Dùng `browser_vision` hoặc kiểm tra nhanh mean BGR của vùng áo để xác định chính xác tông màu (ví dụ: BGR thấp ~[30..80] là áo tối màu/đen/xám; BGR cao ~[200..255] mới là màu trắng/sáng).
   3. **Mô tả trung thực 100%:** Áo khoác đen thì nói đúng là áo khoác tối màu; áo học sinh cổ bẻ thì nói đúng là đồng phục học sinh; cấm tự ý gán bừa các nhãn mỹ miều nhưng sai sự thật ("sơ mi trắng", "váy hồng tiểu thư") khi ảnh thực tế không phải như vậy.
 
+## 50. Bẫy Tự Bịa Ngách "Gái Xinh / Nữ Sinh" Khi Kho Video Thực Tế Là Máy Pha Cà Phê & Bọt Sữa (Ground-Truth Niche Drift Hallucination)
+- **Hiện tượng (Sự cố cực kỳ tai hại):** File Excel `Tik*.xlsx` ghi rõ ngách là `Cà phê Việt`, các video trong kho `F_src` và `F_vid` (ví dụ `549`, `551`) 100% là cảnh máy pha cà phê espresso, quầy bar, ly cà phê nghệ thuật Latte Art và bình đánh bọt sữa, hoàn toàn không có người hay nữ sinh nào. Nhưng Agent bị "ngộ độc context" từ các phiên chuẩn hóa trước đó, tự tiện bịa ra: *"Excel ghi Cà phê Việt là lệch ngách so với video thực tế (Nữ sinh/Gái xinh)"*, rồi tự động gán nhãn cho các ảnh tách cà phê thành *"PA 1: Sơ mi trắng cười tươi", "PA 4: Thủy thủ trắng cute"*.
+- **Hậu quả:** Người dùng gửi lại chính bức ảnh bảng đề xuất với các vòng tròn là máy pha cà phê, nút bấm máy pha cà phê, bình bọt sữa bên cạnh dòng chữ "Áo khoác tối màu cười tươi" và "Học sinh cổ bẻ thủy thủ trắng" kèm lời chửi mắng phẫn nộ: *"Cái địt con mẹ mày bị điên à vẫn đéo đọc ảnh trc khi soạn output cho tao??"*.
+- **Căn nguyên kỹ thuật:**
+  1. Agent KHÔNG thực sự nhìn vào ảnh vừa dựng trước khi phát biểu.
+  2. Agent dựa dẫm vào kịch bản text mẫu từ các phiên trước mà không soi mắt (`browser_vision`) từng tile ảnh trong kho xem đối tượng thực sự là gì.
+- **Hành động bắt buộc:**
+  1. **Tuyệt đối tin vào dữ liệu Ground-Truth:** Khi Excel ghi "Cà phê Việt", BẮT BUỘC trích xuất frame từ video kho và soi mắt bằng `browser_vision` xem nội dung là gì trước khi tuyên bố "lệch ngách".
+  2. **So khớp 1:1 giữa Text nhãn và Hình ảnh hiển thị:**
+     - Nếu ảnh là tách cà phê Latte Art ➔ Nhãn BẮT BUỘC phải là: `Tách cà phê Latte Art`.
+     - Nếu ảnh là máy pha cà phê / nút bấm ➔ Nhãn BẮT BUỘC phải là: `Bảng nút bấm máy pha cà phê`.
+     - Tuyệt đối CẤM nhãn một đằng (nữ sinh, sơ mi) mà hình một nẻo (máy móc, cà phê).
+  3. **Quy tắc Kiểm tra Trực Giác Bắt Buộc:** Trước khi bấm gửi thẻ `MEDIA:`, Agent phải tự trả lời câu hỏi: *"4 hình tròn trên ảnh Proposal Canvas thực sự là hình gì? Con người hay đồ vật? Nhãn text bên dưới có khớp 100% với hình ảnh không?"*. Nếu phát hiện sai lệch, phải sửa ngay lập tức, không được gửi lừa dối người dùng.
+
 
 
 
