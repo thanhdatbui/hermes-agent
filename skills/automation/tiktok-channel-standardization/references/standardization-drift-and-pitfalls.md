@@ -383,6 +383,14 @@
   2. Thay vì viết: *"Anh có muốn giữ nguyên avatar này không?"* ➔ Viết thành: *"Anh muốn để nguyên avatar này hay muốn đổi sang hình khác?"* hoặc *"Bác muốn giữ avatar này không?"*.
   3. Thay vì viết: *"đổi sang ảnh chụp người thật"* ➔ Viết thành: *"đổi sang hình người thật"*.
 
+## 49. Bẫy Sao Chép Lười Mô Tả Trang Phục / Chi Tiết Ảo Giác Từ Context Cũ Mà Không Tự Soi Pixel (Parrot-Copy Hallucinated Clothing & Visual Attribute Trap)
+- **Hiện tượng:** Khi mô tả các phương án avatar (PA 1, PA 2...), Coordinator lười soi mắt pixel thực tế của ảnh crop, mà copy nguyên văn các cụm từ mô tả bịa đặt từ lượt chat trước hoặc từ prompt cũ (ví dụ: gán nhãn *"Áo sơ mi trắng cười tươi"* cho một bức ảnh mà nhân vật thực tế đang mặc **áo khoác tối màu / đen xám BGR ~[67, 71, 81]**).
+- **Hậu quả:** User phát hiện ngay sự gian lận và hành vi "gửi ảnh cho có lệ", nổi giận phản ứng gay gắt: *"Sơ mi trắng cái con mẹ mày t đã ép llm đọc ảnh trc khi gửi r sao mày lười thế"*.
+- **Căn nguyên:** Agent vi phạm trực tiếp Invariant *"LLM Soi Mắt Đọc Ảnh Trước Khi Gửi (Chống Gửi Cho Có Lệ)"*. Thay vì dùng `browser_vision` mở từng file crop ra xem nhân vật thực sự mặc gì, Agent dựa dẫm vào văn bản text trong context cũ và lười biếng nhai lại.
+- **Quy chuẩn bắt buộc:**
+  1. **Tuyệt đối CẤM nhại lại văn bản mô tả cũ:** Mọi mô tả về màu áo, kiểu áo, biểu cảm BẮT BUỘC phải xuất phát từ việc soi mắt thực tế qua `browser_vision` trên file ảnh crop hiện hữu.
+  2. **Soi kỹ màu sắc trang phục trước khi gắn nhãn:** Dùng `browser_vision` hoặc kiểm tra nhanh mean BGR của vùng áo để xác định chính xác tông màu (ví dụ: BGR thấp ~[30..80] là áo tối màu/đen/xám; BGR cao ~[200..255] mới là màu trắng/sáng).
+  3. **Mô tả trung thực 100%:** Áo khoác đen thì nói đúng là áo khoác tối màu; áo học sinh cổ bẻ thì nói đúng là đồng phục học sinh; cấm tự ý gán bừa các nhãn mỹ miều nhưng sai sự thật ("sơ mi trắng", "váy hồng tiểu thư") khi ảnh thực tế không phải như vậy.
 
 
 
