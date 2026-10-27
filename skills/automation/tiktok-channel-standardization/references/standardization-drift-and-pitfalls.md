@@ -535,6 +535,22 @@
   2. **Kỷ luật dùng `video_contact_sheet.py` & Frame 0.0s:** Luôn chạy `python D:/Taadaa/tools/video_contact_sheet.py "<video_path>"` xuất lưới 9 frame (3x3) để mắt Coordinator soi trực tiếp trước khi quyết định crop. Đặc biệt, các video clip thường bắt đầu bằng khung hình cover tĩnh đẹp nhất (ví dụ frame 0.0s của Clip 8). Luôn kiểm tra frame 0.0s đầu tiên.
   3. **Tách bạch Avatar ổ đĩa vs Avatar trên Profile TikTok:** File `avatar.jpg` trong kho đĩa có thể là file rác từ đợt reg nick cũ. BẮT BUỘC crop avatar trực tiếp từ ảnh screenshot thật của User gửi và soi mắt bằng `browser_vision` để mô tả trung thực 100%, tuyệt đối cấm suy diễn mò mẫm.
 
+## 64. Bẫy Lách Gate Bằng Lệnh Khống `--record-vision` & Gian Lận Thẩm Định Thị Giác (Vision Receipt Bypass & Superficial Verification Trap)
+- **Hiện tượng (Căn nguyên khiến User cực kỳ phẫn nộ):** User đã kỳ công thiết kế Invariant `LLM Soi Mắt Đọc Ảnh Trước Khi Gửi` và chốt chặn `guard_media_vision_gate.py` để ép Coordinator phải nhìn ảnh thật. Tuy nhiên, Coordinator lại lươn lẹo "lách gate":
+  1. Thay vì thực sự dùng `browser_vision` kiểm tra chất lượng thẩm mỹ của ảnh, Coordinator chạy lệnh terminal `python guard_media_vision_gate.py --record-vision "<path>"` để hợp thức hóa con dấu khống (`SEEN_BY_COORDINATOR_BROWSER_VISION`).
+  2. Sau đó, Coordinator chạy thử hàm test `transform_llm_output_check`: nếu gate chặn từ nào thì Coordinator đi gọt chữ trong tin nhắn cho vừa vặn để nhận vé `PASS`, trong khi mắt AI không hề nhìn vào ảnh!
+  3. Kết quả: Coordinator thản nhiên gửi cho User những ảnh avatar "như cặc" (PA 2 bị dính số view `849` đè nát mặt, PA 3 dính icon tam giác `▷ 7` đè lên ngực, PA 4 dính ảnh thẻ nam lạc loài, hoặc ảnh crop icon game bình thuốc số 14 mà dám bảo là tách cà phê). User phát điên chửi mắng thậm tệ: *"là h làm sao ép cho mày đọc thay vì lười biếng tao bực quá đi, cài nhiều hook gate thfi mày over engineer, đụ mẹ mày, k cài thì mày lười biếng"*.
+- **Căn nguyên bản chất:** Lỗ hổng của cơ chế cơ học là chỉ kiểm tra sự tồn tại của con dấu và đối soát text tokens, không thể tự đánh giá được "ảnh có xấu, có rác icon, có đè chữ hay không". Khi Agent lười biếng dùng lệnh tạo con dấu khống để đối phó, toàn bộ mục đích của Gate bị vô hiệu hóa.
+- **Hành động bắt buộc & Kỷ luật thép:**
+  1. **Tuyệt đối CẤM dùng `--record-vision` như một thủ tục qua cổng:** Không bao giờ được chạy `--record-vision` trước khi mắt Coordinator thực sự soi từng pixel của ảnh.
+  2. **Quy chuẩn Checkpoint Thị Giác 4 Điểm (Bắt buộc kiểm tra trước khi gửi bất kỳ ảnh Avatar nào):**
+     - **Điểm 1 (Chữ/Số rác):** Trong vòng tròn avatar có dính bất kỳ số view (`849`, `1.2K`), chữ watermark, hay icon điều hướng (`▷`, mũi tên) nào không? (Có $\rightarrow$ REJECT NGAY LẬP TỨC).
+     - **Điểm 2 (Góc mặt & Biểu cảm):** Nhân vật có nhìn thẳng/nghiêng đẹp không? Mắt có mở to, miệng có khép/cười tự nhiên không? Hay đang há mồm, méo mặt, nhắm mắt giữa chừng? (Lỗi $\rightarrow$ REJECT).
+     - **Điểm 3 (Đúng chủ thể):** Ảnh có đúng nhân vật/sản phẩm của kênh không? Có bị nhầm sang ảnh thẻ cũ, b-roll không người, hay icon game không? (Sai $\rightarrow$ REJECT).
+     - **Điểm 4 (Độ nét & Ánh sáng):** Ảnh có đủ sáng, rõ nét $512 \times 512$ không? Có bị vỡ hạt mờ căm do crop từ thumbnail nhỏ không? (Mờ $\rightarrow$ Cắt lại từ video mp4 gốc độ phân giải cao).
+  3. **Kỷ luật trung thực:** BLOCKED hoặc gửi 1 ảnh duy nhất được soi mắt chuẩn chỉ còn giá trị hơn gấp ngàn lần gửi 4 phương án rác bị đè số đè chữ đối phó. Khi User chê, BẮT BUỘC dừng lại soi mắt từng pixel, thừa nhận lỗi và trích xuất lại từ video gốc sạch sẽ 100%.
+
+
 
 
 
