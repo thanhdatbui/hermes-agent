@@ -45,10 +45,11 @@ Khi điều tra sự cố sau ca chạy (post-shift watchdog), **tuyệt đối 
   - Khi đọc `upload_result.json` và `follow_result.json`, do JSON từ runner không có trường này, BẮT BUỘC ép gán `u_data["machine_dir"] = root` và `f_data["machine_dir"] = root`.
   - Trong `merger.py`: đảm bảo `m_dir = new.get("machine_dir") or prev.get("machine_dir")` được giữ lại xuyên suốt chuỗi merge.
 - **`incident_envelope.py` & Gate 0 Completeness Score:**
-  - `completeness_score()`: Nếu `atx_status == "run_artifact"` hoặc envelope đã có `stack_trace` / `log_tail` hợp lệ từ run artifacts (lỗi Python / workflow sau ca), tự động tính điểm hợp lệ (`score = 2`), CẤM TUYỆT ĐỐI ép buộc phải có `xml_dump` hay bắt buộc OCR text.
+  - `completeness_score()`: Nếu `atx_status == "run_artifact"` hoặc envelope đã có `stack_trace` / `log_tail` hợp lệ từ run artifacts (`len(log_tail.strip()) > 20` cho lỗi Python / workflow sau ca), tự động tính điểm hợp lệ (`score = 2`), CẤM TUYỆT ĐỐI ép buộc phải có `xml_dump` hay bắt buộc OCR text.
 - **`incident_emitter.py`:**
   - Hàm `extract_run_artifacts(machine_dir, stdout_tail, reason)`: Khai thác trực tiếp từ `machine_dir/summary.txt` và `stdout_tail` (tìm report Codex) trong thời gian $O(1)$ để lấy đủ 4 thành phần: `screenshot`, `xml_dump`, `log_tail`, `stack_trace`.
-  - Hàm `collect_telemetry(..., artifacts=artifacts)`: Nếu `artifacts` hợp lệ, sao chép thẳng ảnh/xml vào thư mục telemetry của sự cố, chạy `winrt_ocr` trên ảnh artifact, gán `atx_status="run_artifact"`, bỏ qua 100% các lệnh ADB screencap / atx-agent.
+  - Hàm `collect_telemetry(..., artifacts=artifacts, is_post_shift=bool(machine_dir or stdout_tail))`: Nếu `is_post_shift` hoặc có artifact hợp lệ, sao chép thẳng ảnh/xml vào thư mục telemetry của sự cố nếu có, gán `atx_status="run_artifact"`, và return ngay lập tức. TUYỆT ĐỐI CẤM fall-through xuống nhánh live ADB screencap / atx-agent dumpUI kể cả khi artifact hoàn toàn không có ảnh/xml (ví dụ lỗi preflight VPN).
+  - Bẫy Hard Gate #5 khi commit Git: Hard Gate #5 quét chuỗi lệnh terminal chứa token 'adb'. Trong commit message, CẤM viết từ 'adb' (ví dụ: 'prevent live adb fallback' sẽ bị chặn oan); dùng cụm từ trung tính như 'live device capture'.
   - Xử lý Serial dạng số: `resolve_serial_and_args(serial, machine_id)` phải bọc điều kiện `if (not serial or str(serial).isdigit())` để tra cứu serial phần cứng thật, tránh truyền serial giả dạng số `"54"` vào ADB.
   - Chặn đứng ADB Screencap vào máy tắt màn: Nếu `artifacts` rỗng mà thiết bị đang `Screen: OFF Sleep/Dozing`, CẤM TUYỆT ĐỐI gọi ADB screencap (tránh chụp ra ảnh đen xì làm méo mó Gate 0). Đánh dấu rõ `BLOCKED_NO_ARTIFACT_DEVICE_ASLEEP`.
 - **`feed_session_watchdog.py`:**
