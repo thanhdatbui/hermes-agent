@@ -19075,10 +19075,9 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
                 )
                 _persist_user_message_override = message
                 # The empty-message case is the auto-resume startup turn
-                # synthesized by _schedule_resume_pending_sessions.
-                # All three resume reasons mean the agent was mid-turn when
-                # interrupted — instruct the model to resume actively rather than
-                # pausing to ask what to do next.
+                # synthesized by _schedule_resume_pending_sessions — there is
+                # no NEW user message to address, so tell the model to report
+                # recovery instead of the (nonexistent) "new message".
                 _auto_continue_task = (not message) and _reason in (
                     "restart_interrupted", "restart_timeout", "shutdown_timeout"
                 )
@@ -19181,9 +19180,9 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
                     f"run — do NOT re-execute or verify it. Kiểm tra lại hiện "
                     f"trường môi trường/thiết bị sau khi restart và chủ động tiếp tục "
                     f"thực thi để hoàn thành dứt điểm task đang dở về DONE hoặc BLOCKED "
-                    f"kèm bằng chứng thực tế. Do NOT replay old tool calls from the history — "
-                    f"re-check the real current state first and issue fresh calls only for what "
-                    f"is still unfinished.]"
+                    f"kèm bằng chứng thực tế. Do NOT replay old tool calls from the "
+                    f"history — re-check the real current state first and issue fresh "
+                    f"calls only for what is still unfinished.]"
                 )
 
             _approval_session_key = session_key or ""
