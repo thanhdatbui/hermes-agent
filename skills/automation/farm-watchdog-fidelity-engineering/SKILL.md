@@ -145,6 +145,13 @@ Applies whenever reports fail to reflect actual fleet health, mask dropped machi
   3. **UI State Discrimination:** Never confuse `/about-you` ("Bạn bao nhiêu tuổi?") with an expired session challenge. The "About You" screen proves the account was NEVER registered on OpenAI; an existing registered account exclusively prompts for OTP at `/email-verification`.
   4. **OTP Subject Matching:** OpenAI OTP email subjects vary by locale ("Your temporary ChatGPT verification code" vs "Mã xác minh tạm thời của bạn cho ChatGPT"). Never filter solely on `"openai"` in subject line — check both `"openai"` and `"chatgpt"` across combined subject and sender address. See `references/phantom-chatgpt-registration-and-exit-code-fidelity.md`.
 
+### Invariant 16: Two-Way Cron Sync Reverse Overwrite Trap & Force-Sync Authority
+- **Anti-Pattern:** A watchdog script is fixed and committed to git deploy, but runtime/OneDrive directories hold an older copy with a newer mtime (e.g. from cloud touch/sync). Two-way sync watchdog (`cron_sync_watchdog.py`) skips updating runtime because `dst_mtime > src_mtime` (even with `--force` due to an early return in `sync_file`), then the reverse sync loop sees runtime's newer timestamp and copies the old buggy script back over git deploy, dirty-reverting the commit in the working tree.
+- **Rule:**
+  1. **Force Flag Authority:** In `sync_file()`, `force=True` must bypass the `dst_mtime > src_mtime` skip guard so deploy always wins when explicitly forced.
+  2. **Post-Fix Git Cleanliness Verification:** After editing any cron watchdog, always run `cron_sync_watchdog.py --force` and verify `git status` remains clean.
+  3. **Diff Salvage Discipline:** If a watchdog bug recurs after a reported fix, immediately inspect `git diff deploy/hermes-home/scripts/<watchdog>.py` to check for reverse overwrite before re-diagnosing logic. See `references/cron-sync-two-way-dirty-revert-trap.md`.
+
 ---
 
 ## 3. Verification Protocol for Watchdogs & Reports
@@ -164,4 +171,5 @@ Applies whenever reports fail to reflect actual fleet health, mask dropped machi
 - [`references/gateway-agent-max-turns-budget-and-refund-bug.md`](../../hermes/hermes-gateway-ops/references/gateway-agent-max-turns-budget-and-refund-bug.md) — Xử lý trần 20 tool iterations bóp nghẹt watchdog/coordinator và bug refund() conversation_loop.
 - [`references/zero-reporting-blindspots-and-watchdog-fidelity.md`](references/zero-reporting-blindspots-and-watchdog-fidelity.md) — Case study: Eliminating blindspots in Taadaa Farm cron reports (ADB offline isolation, state desync fallback, NEEDS_LOGIN separation, starving slot alerts).
 - [`references/downstream-schema-semantics-and-false-negative-flagging.md`](references/downstream-schema-semantics-and-false-negative-flagging.md) — Case study: Compound credential validation traps (`bool(username and password)`), intentional OTP empty-password semantics, and ground-truth cross-checks.
+- [`references/cron-sync-two-way-dirty-revert-trap.md`](references/cron-sync-two-way-dirty-revert-trap.md) — Bẫy 2-way sync cron_sync_watchdog đè ngược file cũ từ runtime dirty revert commit Git.
 - [`references/watchdog-timeout-and-file-scan-bottleneck.md`](references/watchdog-timeout-and-file-scan-bottleneck.md) — Case study: Watchdog timeout & file-scan bottleneck in large idempotency directories (>9k files).

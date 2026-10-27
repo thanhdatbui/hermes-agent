@@ -84,3 +84,20 @@ Nếu mạng hoặc máy lag 1-2s, `@handle` chưa xuất hiện trong XML dump 
    - Tài khoản reg email-only (qua app Outlook) chưa hoàn tất bước tạo mật khẩu tĩnh trên TikTok: cột `PASS` trong Excel BẮT BUỘC để `None` (trống).
    - Tuyệt đối CẤM sinh pass ngẫu nhiên rồi điền bậy vào file Excel khi server TikTok chưa có mật khẩu đó. Việc điền bậy sẽ khiến mọi runner lầm tưởng tài khoản đã có pass, thử login bằng pass dẫn tới lỗi `Mật khẩu sai` và nguy cơ bị TikTok khóa nick / rate limit.
    - Khi gặp tài khoản cũ bị dính pass rác/ảo trong Excel dẫn tới `Mật khẩu sai`, bước đầu tiên là kiểm tra dữ liệu; nếu nick thuộc diện email-only, xóa sạch ô PASS về `None` để các kịch bản login nhận diện đúng và kích hoạt luồng OTP (Graph API) thay vì gõ pass sai.
+
+6. **Bẫy So Khớp Switcher Với Số Đuôi (Trailing Digits Stripping Collision):**
+   - Thuật toán `v1.rstrip("0123456789+ ") == v2.rstrip("0123456789+ ")` xóa sạch số đuôi khi so sánh.
+   - Khi hai tài khoản có chung tiền tố nhưng khác số đuôi (ví dụ `khanhthu1609` và `khanhthu2275`), thuật toán coi chúng là một! Script tưởng `khanhthu2275` là `khanhthu1609`, tap nhầm nick trên switcher, lướt 16 video, đến cuối ca mới văng lỗi mismatch.
+   - **Quy tắc**: BẮT BUỘC kiểm tra số đuôi trước khi match: nếu cả 2 chuỗi đều kết thúc bằng số (`m1 = re.search(r"\d+$", v1)`, `m2 = re.search(r"\d+$", v2)`) và số đuôi khác nhau (`m1.group() != m2.group()`), BẮT BUỘC trả về `False` ngay lập tức!
+
+7. **Bẫy Popup Che Phủ Profile ("Follow Bạn Bè Của Bạn"):**
+   - Khi switch sang đúng nick, TikTok bật ra màn hình gợi ý toàn trang ("Follow bạn bè của bạn" / "Follow lại") che mất Profile, khiến `classify_screen` coi là unknown state $\rightarrow$ manual-needed.
+   - **Quy tắc**: BẮT BUỘC tích hợp bộ giải phóng popup tự động (`find_matching_handler` $\rightarrow$ `dismiss_follow_friends_suggestion_popup`) ngay trong bước `_maybe_handle_profile_add_phone_guard` trước khi phán blocked.
+
+8. **Bẫy Khởi Động TikTok SplashActivity Khi Bị Chặn Ở Launcher Trên Samsung S7:**
+   - Lệnh `monkey` hoặc generic `am start -a android.intent.action.MAIN -c ... -p package` trên S7 thường không đưa được TikTok lên foreground khi launcher hoặc dialog hệ thống đang giữ focus.
+   - **Quy tắc**: Trong cơ chế retry launch (`attempt in (2, 4, 6)`), BẮT BUỘC chỉ định rõ Activity tường minh: `am start -n {package}/com.ss.android.ugc.aweme.splash.SplashActivity` để kéo ứng dụng lên foreground tức thì.
+
+9. **Minh Bạch Mục Tiêu Nghiệm Thu Canary (Canary Verification Target Honesty):**
+   - Khi xử lý farm alert thiếu tài khoản hoặc lỗi auto-login bù: Canary BẮT BUỘC phải tái hiện đúng tài khoản lỗi để chứng minh luồng login bù.
+   - Nếu chạy smoke test trên tài khoản khác đã có sẵn trên máy (như `chikute343`) để kiểm chứng độ ổn định của runner/gesture/rotation, BẮT BUỘC báo cáo rõ ràng cho User: "Đây là canary kiểm chứng luồng vận hành của máy trên nick có sẵn, CHƯA PHẢI tài khoản thiếu đã đăng nhập xong". Tuyệt đối không được gây hiểu nhầm rằng tài khoản thiếu đã được phục hồi khi mới chỉ chạy test trên tài khoản có sẵn.
