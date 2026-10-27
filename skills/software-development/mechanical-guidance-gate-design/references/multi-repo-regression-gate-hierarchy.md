@@ -26,12 +26,13 @@ Narrowing rule execution within a repo to only modified files that actually cont
 
 ## 3. Storage Architecture: Canonical Base vs Repo-Local Rules
 
-### Centralized Base
-- Acts as the Single Source of Truth for Global Invariants and shared cross-repo policies.
-- Prevents workers from modifying rule definitions inside PRs to bypass gates.
+### Centralized Base (`tools/guardgate/rules.json`)
+- Acts as the Single Source of Truth for Global Invariants (Tier 0) only (e.g., broad disk scan, uiautomator dump, domain in Android proxy, socks5h scheme, bulk device lock reservation, base64 in stdout, rogue wifi SSID).
+- CẤM nhồi nhét rule đặc thù của từng repo con vào file base này để tránh biến file thành "nồi lẩu thập cẩm" và gây ô nhiễm context.
 
 ### Repo-Local Extension (`<repo>/rules.json`)
-- Repositories define domain-specific rules locally in `<repo>/rules.json`.
+- Repositories define domain-specific rules locally in `<repo>/rules.json` (e.g., `GPM auto/rules.json`, `tiktok-luot nuoi acc/rules.json`, `tools/rules.json`).
+- Sửa code repo nào CHỈ chịu trách nhiệm trước rule của chính repo đó + các luật sống còn toàn farm.
 - The gate runner automatically discovers and merges repo-local rules when evaluating diffs against a specific target repo:
   ```python
   if repo:

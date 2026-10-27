@@ -13,7 +13,7 @@ Use when creating, modifying, or reviewing mechanical enforcement gates (hooks, 
 - Reference: `references/dispatch-worker-timeout-and-deadlock-prevention-20261025.md` (Timeout floor 360s).
 - Reference: `references/gate-compliance-audit-desync-and-test-pollution-invariants.md` (Telemetry filtering).
 - Reference: `references/active-pivot-auto-rewire-architecture.md` (Auto-Rewire vs Hard-Block).
-- Reference: `references/multi-repo-regression-gate-hierarchy.md` (3-tier repo-scoped vs global invariant gates).
+- Reference: `references/multi-repo-regression-gate-hierarchy.md` (2-tier physical partition: Global in base rules.json, Repo-local in <repo>/rules.json, auto-discovery & ID deduplication).
 - Reference: `references/o1-process-verification-and-closeout-operational-decoupling.md` (O(1) process verification vs OCR trap, operational closeout decoupling).
 - Reference: `references/observability-watchdog-vs-bureaucratic-blocking-gate-pruning.md` (Observability watchdogs retention vs bureaucratic blocking gate & local hash chain pruning).
 - Reference: `references/auto-wiring-and-guidance-boundary-matrix-20261026.md` (Auto-Wiring vs Fail-Fast decision matrix for investigate budget & GuardGate guidance).
