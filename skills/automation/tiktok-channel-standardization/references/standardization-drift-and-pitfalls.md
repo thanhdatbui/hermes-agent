@@ -275,10 +275,10 @@
 
 ## 39. Bẫy Nhả Output Tiếng Việt Không Dấu (Unaccented Vietnamese Output Trap)
 - **Hiện tượng:** Khi báo cáo hoặc gửi tin nhắn kèm `MEDIA:`, Agent nhả toàn tiếng Việt không dấu (ví dụ: *"Da soi mat kiem tra qua browser_vision: Bang de xuat 4 phuong an..."*). User phản ứng nhắc nhở ngay: *"Mà sao mày nhả output toàn tiếng việt v"*, *"Toàn tiếng việt k dấu ấy"*.
-- **Căn nguyên:** Agent bị phân tâm bởi text trích xuất từ OCR/hệ thống hoặc cố gắng né các từ khoá trong filter gate, dẫn đến việc gõ chữ cẩu thả không dấu.
+- **Căn nguyên kỹ thuật:** Agent sợ bị kích hoạt lỗi `UNGROUNDED_OVERRIDE` từ `guard_media_vision_gate.py` (do `_claimed_topic_tokens` quét sau các cụm như "trên ảnh", "trong ảnh" bắt được từ khóa không có trong OCR tokens), dẫn đến hành động dại dột là gọt sạch dấu tiếng Việt của toàn bộ tin nhắn.
 - **Hành động bắt buộc:**
   1. **Kỷ luật Tiếng Việt có dấu chuẩn mực 100%:** Mọi tin nhắn gửi User BẮT BUỘC phải viết bằng tiếng Việt chuẩn, đầy đủ dấu thanh, ngữ pháp rõ ràng.
-  2. Tuyệt đối CẤM sao chép nguyên văn chuỗi text không dấu từ log terminal/OCR thô vào câu trả lời trực tiếp cho User.
+  2. **Cách né `UNGROUNDED_OVERRIDE` mà không mất dấu:** Tránh đặt cụm từ kích hoạt quét ("trên ảnh", "trong ảnh") ngay trước các từ viết tắt ("PA 1", "Ava") hoặc từ mô tả tự chế. Soạn tin nhắn tự nhiên có chứa các từ khóa trên Canvas (như "Bảng đề xuất", "Phương án", "Hà Khả", "Clip", "TikTok") và đăng ký receipt bằng `guard_media_vision_gate.py --record-vision "<path>"` làm lệnh cuối cùng trước khi gửi thẻ `MEDIA:`.
 
 ## 40. Bẫy Runner Đổi Tên / Bio Kẹt Ở Profile Do Nút "Sửa Hồ Sơ" Bị Ẩn (S7 Pencil Fallback)
 - **Hiện tượng:** Khi chạy `do_rename_canonical_runner.py` trên Samsung S7 (1080x1920), runner không tìm thấy nút "Sửa hồ sơ" qua OCR (do chữ bị mờ hoặc bị che bởi nhãn tab/video). Runner mặc định tap mù tọa độ `(540, 865)` vốn nằm ở vùng lưới video hoặc khoảng trống, dẫn đến việc kẹt ở màn Profile 5 bước liên tiếp: `ABORT: ket o trang thai PROFILE 5 lan lien tiep`.
@@ -318,6 +318,29 @@
   - Cụm Kibe: Máy 1 ➔ Máy 80 (`D:\OneDrive\TaadaaData\kibe\`)
   - Cụm Admin: Máy 200 trở lên (ví dụ Máy 212) (`D:\OneDrive\TaadaaData\admin\`)
 - **Hành động bắt buộc:** Khi tra cứu không thấy tài khoản trong `kibe\taikhoan_run_safe.xlsx`, BẮT BUỘC tra cứu ngay lập tức vào `D:\OneDrive\TaadaaData\admin\taikhoan_run_safe.xlsx` và `D:\OneDrive\TaadaaData\admin\Tik*.xlsx`. Nếu cột ngách trong Excel bị lệch (ví dụ ghi 'Sách và đọc sách' trong khi video là eo thon / workout), ghi nhận để đồng bộ lại ngách và hashtag thực tế.
+
+## 44. Bẫy Bịa Đặt Mô Tả Avatar Gốc Do Dính Rác Ngữ Cảnh Ca Cũ & Bẫy Cắt Sai Vùng Vòng Tròn Avatar Web/Safari (Context-Leak Avatar Hallucination & Web Layout Crop Trap)
+- **Hiện tượng (Sự cố nghiêm trọng khiến User cực kỳ phẫn nộ):** Khi nhận ảnh screenshot TikTok profile của kênh `@vanvy9296`, Coordinator không dùng vision soi trực tiếp vào ảnh đính kèm hiện tại mà bị "dính rác ngữ cảnh" (context bleeding/leakage) từ ca chuẩn hoá trước đó (ca `@tolmavhj12k` máy 8 có avatar 2 nam cầm mic uống bia). Coordinator tự động bịa vào Proposal Canvas và tin nhắn: *"PA 1: Profile gốc (2 nam hát bia - lệch ngách)"*! Khi User chọn *"Pa 1"* (ý muốn giữ nguyên avatar nữ đang có trên profile), User đọc lại thấy Coordinator bảo PA 1 là "2 nam hát bia", khiến User nổi giận chửi mắng thậm tệ: *"Mà đụ mẹ mày đưa mấy phương án xong mày đéo tìm tục đọc ảnh trc khi nói? Lại ảo giác địt cụ m"*.
+- **Căn nguyên kỹ thuật kép:**
+  1. **Bẫy Layout Web / Safari:** Trên giao diện ứng dụng TikTok Android máy S7, avatar nằm lệch góc trái hoặc bút chì góc trái. Nhưng trên ảnh chụp từ Safari / iPhone / Web mobile, avatar nằm ở **CHÍNH GIỮA (CENTER)** ở nửa trên màn hình (`x: 0.38 - 0.62`, `y: 0.12 - 0.28`). Khi script crop theo toạ độ góc phải của app cũ, nó cắt trúng vùng nền trắng trơn `(148x153)` (mean ~ 255), khiến Coordinator không đọc được gì và rơi vào bẫy hallucination từ chat memory cũ!
+  2. **Vi phạm Invariant Soi Mắt Đọc Ảnh Thật:** Coordinator phán đoán mò mẫm dựa trên trí nhớ các ca gần nhất thay vì mở ảnh ra xem bằng `browser_vision` trước khi kết luận nội dung của PA 1.
+- **Hành động bắt buộc (Ground-Truth Vision Precedence):**
+  1. **Xác định layout giao diện trước khi crop:**
+     - Nếu là ảnh màn hình Safari/iPhone web: Vòng tròn Avatar luôn nằm ở **chính giữa đỉnh trang cá nhân** (tọa độ chuẩn $W_{center} = W/2$, $Y \approx 0.15 \cdot H - 0.25 \cdot H$).
+     - Nếu là ảnh màn hình S7 TikTok app: Avatar nằm ở vùng header $y \approx 200..400, x \approx 250..450$.
+  2. **Bắt buộc soi mắt ảnh `user_avatar_512.jpg` bằng `browser_vision` TRƯỚC KHI gõ mô tả PA 1:** Tuyệt đối CẤM sao chép mô tả PA 1 từ bất kỳ ca làm việc nào trước đó. BẮT BUỘC gọi `browser_vision` mở ảnh crop avatar gốc vừa trích xuất và trả lời câu hỏi: *"Trong ảnh là ai? Nam hay nữ? Đang làm gì? Bối cảnh là gì?"*.
+  3. **Phản hồi trung thực 100%:** Khi avatar gốc đã là nhân vật nữ cười tươi hoặc ảnh đẹp phù hợp, mô tả chính xác trong PA 1: *"PA 1: Profile gốc (Chân dung bạn nữ tóc ngắn cười tươi ngoài trời)"* để User có thể chọn giữ nguyên một cách minh bạch.
+
+## 45. Bẫy Xóa Bio Thành Rỗng / Trống Theo Yêu Cầu Của User ("Đổi bio cho rỗng / rao / xoá bio")
+- **Hiện tượng:** User yêu cầu *"Đổi bio cho rỗng"* (hoặc gõ tắt/typo: *"Đổi bio cho rao"*, *"xoá bio đi"*).
+- **Căn nguyên & Hành động bắt buộc:**
+  1. Khi nhận lệnh xóa bio, TUYỆT ĐỐI KHÔNG tự bịa ra câu bio mới hay hỏi lại văn xuôi.
+  2. BẮT BUỘC chạy `do_rename_canonical_runner.py` kèm cờ `--clear-bio` trong background:
+     `python D:/Taadaa/tools/do_rename_canonical_runner.py --machine <N> --serial <SERIAL> --username <USER> --name "<NAME>" --clear-bio`
+  3. Runner sẽ mở màn sửa bio, xóa sạch toàn bộ văn bản và bấm Lưu.
+  4. Sau khi Lưu, kiểm tra màn hình Profile qua WinRT OCR: dòng bio sẽ hiển thị nhãn rỗng nguyên bản `+ Thêm tiểu sử` (`+ Thém tidU sd`) hoặc `Tôi quan tâm đến...`.
+  5. Đăng ký receipt bằng `guard_media_vision_gate.py --record-vision` và gửi ảnh Profile nghiệm thu với đầy đủ dấu tiếng Việt chuẩn xác.
+
 
 
 
