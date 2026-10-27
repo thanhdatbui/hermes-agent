@@ -37,3 +37,11 @@ Bài học rút ra từ session chạy watchdog cron `cron_reconcile_stale_recei
 
 4. **Lưu Ý Coordinator Guard Khi Debug CLI:**
    - Lệnh inline `python -u -c ...` có cờ `-u` sẽ bị Coordinator Guard chặn (default-deny) do matcher kiểm tra tiền tố chính xác `python -c`. Khi chạy inline probe one-liner trên terminal, luôn dùng cú pháp chuẩn `python -c "..."` không chèn thêm cờ lạ.
+
+5. **Chiến Lược Cấp Tốc Xử Lý Hiện Trường Khi Gặp Timeout 124 (Fast Binary Warm-up):**
+   - Khi gặp timeout 60s trên lệnh cron duyệt thư mục lớn mà không được phép sửa code script:
+   - Dùng lệnh probe một dòng đọc lướt nhị phân header siêu nhỏ (`f.read(128)`) để kích hoạt Windows File System Cache nạp block dữ liệu vào RAM:
+     ```bash
+     python -c "import os; [open(e.path, 'rb').read(128) for e in os.scandir(r'D:\path\to\dir') if e.is_file()]"
+     ```
+   - Quá trình này chỉ mất ~8-10s cho ~10.000 files (thay vì >80s nếu parse JSON/đọc text đầy đủ), sau đó chạy lại lệnh cron gốc sẽ pass ngay trong < 2s mà không làm thay đổi trạng thái file hay vi phạm timeout.
