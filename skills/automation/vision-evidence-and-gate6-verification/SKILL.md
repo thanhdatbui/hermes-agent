@@ -41,6 +41,7 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
 - Khắc Phục Lỗi Rò Rỉ Egress Prompt & False-Positive Regex Nhận Việc Của Media Gate: [`references/egress-leak-and-reception-false-positive-remediation.md`](references/egress-leak-and-reception-false-positive-remediation.md)
 - Bẫy INVALID_MEDIA_FILE Do Lệch SHA-256 & Kỷ Luật Cô Lập Máy Mục Tiêu (Admin vs Kibe): [`references/invalid-media-file-tamper-trap-and-target-machine-isolation.md`](references/invalid-media-file-tamper-trap-and-target-machine-isolation.md)
 - Khắc Phục Bẫy INVALID_MEDIA_FILE Do Stale Receipt Cũ & Ép Buộc Soi Mắt Thật Sự: [`references/recycled-media-path-ttl-and-native-vision-auto-receipt.md`](references/recycled-media-path-ttl-and-native-vision-auto-receipt.md)
+- Phân Biệt Giữa Cơ Chế Kiểm Tra Cơ Học O(1) và Bệnh Over-Engineering (Ranh Giới SHA-256 vs Bureaucratic Theater): [`references/o1-mechanical-vs-overengineering-sha256-boundary.md`](references/o1-mechanical-vs-overengineering-sha256-boundary.md)
 
 ## 1. Nguyên Tắc Cốt Lõi (Invariants)
 1. **CẤM gửi ảnh mù / đối phó:** Trước khi đính kèm bất kỳ thẻ `MEDIA:<path>` nào, bắt buộc phải mở ảnh ra soi mắt kiểm tra trước.
