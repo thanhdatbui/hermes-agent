@@ -13,11 +13,12 @@ Use when creating, modifying, or reviewing mechanical enforcement gates (pre-too
 - Reference: `references/dispatch-worker-timeout-and-deadlock-prevention-20261025.md` (Timeout floor 360s, Haiku fallback).
 - Reference: `references/gate-compliance-audit-desync-and-test-pollution-invariants.md` (Telemetry filtering & normalization).
 - Reference: `references/active-pivot-auto-rewire-architecture.md` (Auto-Rewire vs Hard-Block).
-- Reference: `references/o1-process-verification-and-closeout-operational-decoupling.md` (O(1) process verification vs OCR trap, operational closeout decoupling, and agent watchdog retention).
-- Reference: `references/auto-wiring-and-guidance-boundary-matrix-20261026.md` (Auto-Wiring vs Fail-Fast decision matrix for investigate budget, CONSOLE_WINDOW, code edit dispatch, and GuardGate vs Dynamic Skills guidance storage hierarchy).
-- Reference: `references/idle-window-evaluation-bias-and-closeout-boundary-discipline.md` (Idle-window evaluation bias and zero-block action mandate hierarchy).
-- Reference: `references/cowboy-coordinator-boundary-and-idle-evaluation-invariants.md` (Cowboy Coordinator Gate 3/6 boundary violations and zero hard-block hierarchy).
-- Reference: `references/user-sudo-override-and-gate-abc-discipline.md` (User Sudo Override break-glass protocol, Pipeline A-B-C mechanical stages, and anti-idle-window evaluation invariants).
+- Reference: `references/o1-process-verification-and-closeout-operational-decoupling.md` (O(1) process verification vs OCR trap, operational closeout decoupling).
+- Reference: `references/observability-watchdog-vs-bureaucratic-blocking-gate-pruning.md` (Observability watchdogs retention vs bureaucratic blocking gate & local hash chain pruning).
+- Reference: `references/auto-wiring-and-guidance-boundary-matrix-20261026.md` (Auto-Wiring vs Fail-Fast decision matrix for investigate budget & GuardGate guidance).
+- Reference: `references/idle-window-evaluation-bias-and-closeout-boundary-discipline.md` (Idle-window evaluation bias & zero-block action mandate hierarchy).
+- Reference: `references/cowboy-coordinator-boundary-and-idle-evaluation-invariants.md` (Cowboy Coordinator Gate 3/6 boundary violations).
+- Reference: `references/user-sudo-override-and-gate-abc-discipline.md` (User Sudo Override protocol, Pipeline A-B-C stages, & anti-idle-window invariants).
 
 ## 2. Core Standards (Tri-Party Consensus)
 

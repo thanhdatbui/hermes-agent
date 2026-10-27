@@ -162,7 +162,8 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
       * *Nhận việc/Đang làm:* `chuẩn hoá kênh`, `nhận lệnh`, `bắt đầu`, `kế hoạch`, `quy trình`, `tiến hành`...
       * *Giải trình/Thảo luận kỹ thuật:* `giải thích`, `nguyên nhân`, `lý do`, `vấn đề`, `điều tra`, `phân tích`, `overengineer`, `gate`, `hook`, `watchdog`, `prompt`, `leak`, `lỗ hổng`, `kiến trúc`, `security theater`, `tại sao`, `vì sao`, `hỏi đáp`...
       * *Mã nguồn & Công cụ:* `script`, `code`, `hàm`, `commit`, `diff`, `branch`, `repo`, `test`, `pytest`...
-    - **Kỷ Luật Gate 6 Thực Nghiệm:** Gate 6 là chốt chặn cơ học kiểm tra ảnh khi có thao tác UI/thiết bị thật sự, CẤM biến thành regex bắt bẻ văn bản hội thoại/giải thích thông thường. Bắt buộc giữ nguyên kiểm tra cho các câu khẳng định hoàn thành UI thật (`đã đổi`, `đã ghim`, `đã nạp`). Chi tiết xem [`references/egress-leak-and-reception-false-positive-remediation.md`](references/egress-leak-and-reception-false-positive-remediation.md).
+    - **Kỷ Luật Gate 6 Thực Nghiệm:** Gate 6 là chốt chặn cơ học kiểm tra ảnh khi có thao tác UI/thiết bị thật sự, CẤM biến thành regex bắt bẻ văn bản hội thoại/giải thích thông thường. Bắt buộc giữ nguyên kiểm tra cho các câu khẳng định hoàn thành UI thật (`đã đổi`, `đã ghim`, `đã nạp`).
+    - **Bẫy Caching RAM (`sys.modules`):** Sửa code gate trên đĩa không làm mới module trong tiến trình Gateway đang chạy. Phải khởi động lại Gateway hoặc reload module trước khi claim hoàn tất để tránh bị gate cũ trong RAM chặn oan chính bài giải trình. Chi tiết xem [`references/egress-leak-and-reception-false-positive-remediation.md`](references/egress-leak-and-reception-false-positive-remediation.md).
 
 ## 2. Thang Leo Thang Vision Dự Phòng (Fallback Ladder)
 Thứ tự fallback đọc ảnh chuẩn hoá 100% đồng bộ với kiến trúc Worker Dispatch:

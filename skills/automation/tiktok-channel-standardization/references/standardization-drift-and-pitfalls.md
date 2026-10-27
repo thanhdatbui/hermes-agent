@@ -201,6 +201,22 @@
   2. **Kỷ luật gom One-Shot vào script file:** Gom toàn bộ logic đọc ảnh, trích xuất frame từ video kho gốc, crop avatar viền tròn 512x512, dựng Proposal Canvas tổng hợp, đăng ký receipt qua `create_vision_receipt` vào một file script duy nhất (ví dụ: `D:/Taadaa/tools/build_..._proposal_canvas.py`). Chạy script bằng `python D:/Taadaa/tools/...py` với tham số `timeout: 30` hoặc `45` để vừa pass allowlist vừa không vi phạm Hard Gate #5.
   3. Tuyệt đối không lạm dụng `python -c` cho các thao tác can thiệp hệ thống tệp ghi/xóa.
 
+## 30. Xử Lý Phản Hồi Hỗn Hợp "Chọn Ava N, Đổi Bio Khác" & Kỷ Luật Thi Công Dứt Điểm
+- **Hiện tượng:** User gửi phản hồi hỗn hợp: chốt một hạng mục nhưng yêu cầu đổi hạng mục khác (ví dụ: *"Chọn pa 4, còn bio đổi bio khác đi"*).
+- **Hành động bắt buộc:**
+  1. **Thi công ngay hạng mục đã chốt:** Không chờ đợi chốt toàn bộ mới làm. Lập tức copy avatar PA đã chọn vào `F_src` và `F_vid`, cắm cờ `.manual_*_locked`, cập nhật JSON registries và chạy runner upload avatar lên thiết bị trong background.
+  2. **Soạn ngay các phương án thay thế cho hạng mục được yêu cầu đổi:** Đưa ra 3-4 phương án Bio mới theo các phong cách rõ rệt (Chữa lành / Bài học / Gần gũi / Ngắn gọn tích cực), đặt trong các code block ```text...``` riêng biệt để User 1 chạm copy hoặc chọn số thứ tự.
+  3. **Kèm bằng chứng thực tế:** Gửi ảnh Profile màn hình thật đã cập nhật avatar mới để User thấy tiến độ thi công tức thì.
+
+## 31. Bẫy Client Cache Avatar Cũ Sau Khi Upload & Kỷ Luật Pull-to-Refresh
+- **Hiện tượng:** Runner upload avatar (`run_upload_avatar.py`) báo cáo `AVATAR_SMOKE_SUCCESS` và `FORCED_REPLACED_VERIFIED`. Tuy nhiên khi mở Profile chụp ảnh ngay, avatar hiển thị trên màn hình vẫn là ảnh cũ, độ tương đồng Correlation với avatar mới bị âm/thấp (< 0.1).
+- **Căn nguyên kỹ thuật:** Client TikTok Android lưu cache bitmap avatar trong bộ nhớ tạm (in-memory / disk cache của app). Dù máy chủ CDN đã nhận ảnh mới, UI của app chưa tự trigger reload nếu màn hình Profile đã được nạp trước đó.
+- **Hành động bắt buộc:**
+  1. Sau khi upload avatar thành công, điều hướng vào Profile và BẮT BUỘC thực hiện thao tác vuốt kéo làm mới: `adb shell input swipe 540 500 540 1500 400`.
+  2. Đợi 3 - 5 giây cho client TikTok kết nối CDN và render lại vòng tròn avatar.
+  3. Chụp lại màn hình và tính toán Correlation với OpenCV local: độ tương đồng sẽ nhảy lên $\ge 0.35$, xác nhận avatar mới đã hiển thị thực tế 100%.
+
+
 
 
 

@@ -10,6 +10,6 @@ Tool 2FA và cron xen ca chạy cả ngày BẮT BUỘC dùng Just-In-Time (JIT)
 §
 Tài khoản Gmail chuẩn clean_v2 đã tắt Google Prompt hoàn toàn chỉ dùng 2FA TOTP: login GPM 100% trên PC qua pyotp, không cần ADB hay máy S7; cấm chặn nhầm acc farm có recovery khoaleemagic khi đã có totp_secret.
 §
-Auto-Heal: đào log/ảnh ca, cấm chụp máy tắt màn; WinRT OCR primary; Canary auto-device; storm>=3 alert. Claude CLI dùng khi user gọi/Strike 3. Gate chuẩn O(1): check đúng sự kiện tool thật (browser_vision), cấm OCR proxy đối soát ảnh/in chữ canvas; dẹp Security Theater (DACL/HMAC tự ký, SHA256 blockchain log gate_audit); safe_push bỏ duyệt ngược JSONL; Closeout delta rỗng = Vận Hành PASS < 0.2s.
+Auto-Heal: đào log/ảnh ca, cấm chụp máy tắt màn; WinRT OCR primary; Canary auto-device; storm>=3 alert. Claude CLI dùng khi user gọi/Strike 3. Gate chuẩn O(1): check đúng sự kiện thật (browser_vision); dẹp Security Theater (DACL/HMAC, hash chain blockchain local, safe_push đọc log cũ); Watchdog theo dõi agent (gate_compliance, device_lock, proxy) BẮT BUỘC GIỮ; Closeout delta rỗng = Vận Hành PASS < 0.2s.
 §
-Fix hạ tầng Hermes/Omni qua infra_regression_gate.py: retries 4, delay 6s (~90s headroom), cấm self-fallback 20129, deadlock [4,6], probe 5s, cấm fail-open. Omni SQLite cleanup 6h/lần trần <=3 ngày đủ 6 bảng. GuardGate rules.json scope repo/path độc lập + global invariants, cấm để chéo rule làm false deny.
+GuardGate rules.json scope repo/path độc lập + global invariants, cấm để chéo rule làm false deny. Repo-local rules.json (GPM auto) tự động nạp & deduplicate ID. Pre-tool hooks chặn runtime, Gate chặn git diff.

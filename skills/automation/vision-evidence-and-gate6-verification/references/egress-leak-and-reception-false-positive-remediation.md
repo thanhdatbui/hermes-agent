@@ -90,3 +90,29 @@ reason: message claims UI/device completion but contains no MEDIA: evidence tag
            assert out == phrase
    ```
    Ket qua toan bo suite 98/98 tests PASSED 100%.
+
+---
+
+## 5. Bai Hoc Xuong Mau: Bay Module Caching Trong RAM & Sai Tang Kien Truc Cua Egress Hook
+
+### A. Bay Caching Trong RAM (`sys.modules`)
+- **Hien tuong:** Agent da sua file gate tren o dia $D:$ va chay test pass 100%, nhung ngay luot tiep theo khi gui tin nhan giai thich, tin nhan do van bi chan va bi chup mu `[CONTRADICTION_GATE_TRIGGERED]` ban thang ra Telegram (khien nguoi dung bat binh: *"Don cua may day ha"* kem screenshot).
+- **Nguyen nhan vat ly:** Tien trinh Python cua Hermes Gateway da import module vao RAM tu thoi diem khoi dong. Khi file tren dia thay doi, tien trinh dang chay tiep tuc thuc thi bytecode cu trong `sys.modules`.
+- **Hau qua:** Ban gate cu trong RAM quet thay cac tu khoa trong bai phan tich ky thuat (`bao cao, ket qua, tien do, chuan hoa, avatar, bio, kenh`), tuong agent dang "bao cao mom UI thieu anh", lap tuc chan va nhet prompt vao dau tin nhan.
+- **Quy tac bat bien:**
+  * Moi thay doi tren hook/gate nam tren dia chi thuc su co hieu luc trong runtime neu tien trinh gateway duoc khoi dong lai hoac module duoc reload ro rang (`importlib.reload()`).
+  * Khi giai thich ve loi hoac tu khoa, tuyet doi khong viet cac tu khoa hoan tat UI mot cach lien tuong de phong truong hop module trong RAM chua cap nhat.
+
+### B. Sai Tang Kien Truc (Wrong-Layer Enforcement Trap)
+- **Ao tuong cua thiet ke cu:** Tuong rang hook o tang xuat text se hoat dong nhu mot prompt injector de bat LLM suy luan lai (Forced Re-Reasoning).
+- **Thuc te Gateway:** Hook xuat text la **Egress Formatter** — bat ky chuoi nao ham nay tra ve se tro thanh van ban xuat ban truc tiep len man hinh chat Telegram.
+- **Quy tac bat bien:**
+  * CAM TUYET DOI dung Egress Hook de tra ve prompt huong dan LLM (`[CONTRADICTION_GATE_TRIGGERED]`, `REQUIRED_NEXT_ACTION...`).
+  * Neu tin nhan cuoi thieu bang chung, hook chi duoc phep log telemetry hoac tra ve 1 dong trang thai gon gang (`Trang thai: DEGRADED`). Chot chan co hoc bat buoc phai nam o tang Tool Call (`pre_tool_call` / `post_tool_call`).
+
+### C. Quy Trinh Soi Mat Doi Soat Screenshot Telegram Qua Staging
+- Khi User gui screenshot chat Telegram chat van ("Don cua may day ha", "What do you see in this image?"):
+  1. File anh nam trong thu muc cache he thong thuong bi guard chan truy cap truc tiep.
+  2. BẮT BUỘC dung script staging copy ra thu muc ngoai (`D:/Taadaa/reports/<name>.jpg`).
+  3. Mo bang `browser_navigate('file:///D:/Taadaa/reports/<name>.jpg')`.
+  4. Goi `browser_vision` doc ro tung dong text tren anh de xac nhan su that khach quan truoc khi tra loi.
