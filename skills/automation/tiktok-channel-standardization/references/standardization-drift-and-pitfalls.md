@@ -441,6 +441,18 @@
   2. Dùng công cụ `write_file` tạo file script chuẩn trong `D:/Taadaa/tools/<tên_rõ_nghĩa>.py`.
   3. Chạy file script bằng `python D:/Taadaa/tools/<tên_rõ_nghĩa>.py` kèm tham số `timeout: 30` hoặc `timeout: 45` trong terminal call. Lệnh này hoàn toàn pass Coordinator allowlist và Hard Gate #5 Bulkhead.
 
+## 55. Bẫy Ảo Giác "Tách Cà Phê" Do Đọc Nhầm File Avatar Cũ (Game UI Icon) Thay Vì Video Thật
+- **Hiện tượng (Sự cố nghiêm trọng khiến User phẫn nộ):** Trong kho video cà phê (`F_src 549`), file `avatar.jpg` có sẵn trên đĩa thực chất là ảnh chụp màn hình UI Game/App (gồm bình thuốc màu xanh, viên ngọc hồng và số `14` trên nền tím). Khi dựng Proposal Canvas cho ngách cà phê, Coordinator lấy bừa file `avatar.jpg` này gán vào PA 1 và gõ nhãn: *"PA 1 (Avatar Kho): Tách cà phê Latte Art"*. User mở ảnh ra và chụp màn hình gửi lại kèm câu chửi: *"như này mà mày bảo cái 1 là tách cafe? Cái địt con mẹ mày bị điên à vẫn đéo đọc ảnh trc khi soạn output cho tao??"*.
+- **Căn nguyên kỹ thuật:**
+  1. Coordinator lười soi ảnh, chỉ nhìn tên file `avatar.jpg` trong thư mục rồi tự suy diễn rằng "thư mục cà phê thì file avatar.jpg chắc chắn là tách cà phê".
+  2. Vi phạm nghiêm trọng Invariant `LLM Soi Mắt Đọc Ảnh Trước Khi Gửi`: Không dùng `browser_vision` kiểm tra thực tế xem file `avatar.jpg` đang vẽ cái gì.
+  3. Lỗi không trích xuất trực tiếp từ video: Thay vì trích xuất một frame cà phê thật từ các file `1.mp4`, `2.mp4` trong kho, Agent lại ỷ lại vào file `avatar.jpg` rác có sẵn từ các đợt reg trước.
+- **Hành động bắt buộc:**
+  1. **Tuyệt đối CẤM tin vào nội dung của file `avatar.jpg` có sẵn trong thư mục kho:** File `avatar.jpg` trên đĩa có thể là rác game, ảnh thẻ nam, ảnh linh tinh từ đợt reg nick trước. BẮT BUỘC mở ra soi bằng `browser_vision` hoặc trích xuất frame mới 100% từ các clip mp4 chính chủ (`1.mp4`, `2.mp4`...).
+  2. **Trích xuất frame cà phê thật từ video:** Dùng ffmpeg hoặc cv2 trích frame tại giây thứ 5..8 của clip quay cận cảnh ly cà phê (`1.mp4`), crop vùng ly cà phê có hoa văn bọt sữa (Latte Art) thật sự.
+  3. **Kiểm tra 1:1 trước khi gán nhãn:** Trước khi gõ nhãn "Tách cà phê Latte Art", BẮT BUỘC dùng `browser_vision` soi trực tiếp vào file ảnh crop để xác nhận: "Trong ảnh có đúng là tách cà phê/ly cà phê không? Có bị dính icon game, bình thuốc, số hay vật thể lạ không?". Nếu có bất kỳ điểm bất thường nào, PHẢI loại bỏ ngay lập tức!
+
+
 
 
 
