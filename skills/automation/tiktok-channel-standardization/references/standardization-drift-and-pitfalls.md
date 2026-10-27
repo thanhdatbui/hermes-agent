@@ -526,6 +526,15 @@
      BẮT BUỘC kiểm tra hàm `is_profile_root(xml_text)` và xác nhận sự hiện diện của các marker: `"Sửa hồ sơ"`, `"Edit profile"`, `"Thêm tiểu sử"`, đồng thời XML hoặc OCR bắt buộc phải chứa đúng `@username` mục tiêu. Nếu `is_profile_root == False`: TUYỆT ĐỐI CẤM chụp ảnh gửi User, phải thực hiện retry hoặc báo lỗi FAIL_CLOSED.
   4. **Kéo làm mới và nghiệm thu:** Thực hiện vuốt kéo làm mới (`swipe 540 400 540 1200 300`), đợi 2s CDN render avatar mới, sau đó mới chụp screencap và pull về. File ảnh thực tế phải có dung lượng $> 1$ MB (chuẩn là ~2.3 MB) hiển thị đầy đủ avatar tròn mới, tên, bio và lưới video trước khi chạy WinRT OCR và xuất thẻ `MEDIA:`.
 
+## 63. Bẫy Cắt Trúng Khung Hình Mid-Motion Xấu (Grimace / Open-Mouth / Squint Trap) & Bẫy Ảo Giác Mô Tả Avatar Profile Không Khớp Thực Tế
+- **Hiện tượng:**
+  1. Khi trích xuất avatar từ video cho kênh gái xinh/creator, Agent lấy mẫu tùy tiện theo giây ngẫu nhiên (ví dụ 1.5s, 3.0s, 7.0s) mà không soi kỹ biểu cảm. Kết quả: 4 phương án avatar đều dính khoảnh khắc nhân vật đang cử động phát biểu, miệng há hốc/méo mó, mắt nhắm/lờ đờ hoặc góc mặt gượng gạo, khiến User phẫn nộ (*"Mày xem 4 cái ava mày gửi tao chưa"*).
+  2. Nguy hiểm hơn: Agent nhìn ảnh profile do User gửi nhưng không chịu soi kỹ các chi tiết thị giác thực tế; hoặc đọc nhầm file avatar lưu dưới ổ đĩa (`D:/video goc/.../avatar.jpg`) rồi tự suy diễn thành avatar trên profile (ví dụ ảnh thực tế là nam thanh niên nhưng lại gõ vào text là "hình vẽ chibi hoạt hình cô bé" hoặc ngược lại), làm bùng nổ cơn giận của User (*"Cái lồn mẹ mày tao đã làm gate ép llm đọc ảnh mày vẫn đéo đọc hả"*).
+- **Hành động bắt buộc:**
+  1. **Quy tắc Posed / Still Frame First:** Avatar BẮT BUỘC phải là khung hình tạo dáng tĩnh (posed shot): nhân vật nhìn trực diện vào camera, hai mắt mở to sáng rõ, môi khép mỉm cười dịu dàng hoặc nụ cười rạng rỡ tự nhiên. TUYỆT ĐỐI CẤM lấy khung hình giữa câu nói (mid-speech), lúc đang nhai hoặc đang quay đầu đổi góc.
+  2. **Kỷ luật dùng `video_contact_sheet.py` & Frame 0.0s:** Luôn chạy `python D:/Taadaa/tools/video_contact_sheet.py "<video_path>"` xuất lưới 9 frame (3x3) để mắt Coordinator soi trực tiếp trước khi quyết định crop. Đặc biệt, các video clip thường bắt đầu bằng khung hình cover tĩnh đẹp nhất (ví dụ frame 0.0s của Clip 8). Luôn kiểm tra frame 0.0s đầu tiên.
+  3. **Tách bạch Avatar ổ đĩa vs Avatar trên Profile TikTok:** File `avatar.jpg` trong kho đĩa có thể là file rác từ đợt reg nick cũ. BẮT BUỘC crop avatar trực tiếp từ ảnh screenshot thật của User gửi và soi mắt bằng `browser_vision` để mô tả trung thực 100%, tuyệt đối cấm suy diễn mò mẫm.
+
 
 
 
