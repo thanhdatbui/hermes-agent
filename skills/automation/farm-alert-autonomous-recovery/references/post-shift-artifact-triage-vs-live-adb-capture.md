@@ -44,7 +44,10 @@ Khi điều tra sự cố sau ca chạy (post-shift watchdog), **tuyệt đối 
   - Chặn đứng ADB Screencap vào máy tắt màn: Nếu `artifacts` rỗng mà thiết bị đang `Screen: OFF Sleep/Dozing`, CẤM TUYỆT ĐỐI gọi ADB screencap (tránh chụp ra ảnh đen xì làm méo mó Gate 0). Đánh dấu rõ `BLOCKED_NO_ARTIFACT_DEVICE_ASLEEP`.
 - **`feed_session_watchdog.py`:**
   - Tại 3 vị trí emit (Feed, Follow, Upload), truyền trực tiếp `machine_dir=all_machines.get(m_num, {}).get("machine_dir")` và `stdout_tail=ud_info.get("stdout_tail")`.
+  - **Bẫy Lệch Key Prefix "M" Trong Upload Loop:** Trong vòng lặp `for m_val in up_error:`, `m_val` có tiền tố `"M"` (vd: `"M29"`), nhưng dictionary `all_uploads` lại lưu key là chuỗi số thuần (`"29"`). BẮT BUỘC dùng `ud_info = all_uploads.get(m_val) or all_uploads.get(m_num, {})`. Nếu chỉ gọi `all_uploads.get(m_val, {})` sẽ ra dict rỗng `{}`, làm mất sạch `machine_dir` và `stdout_tail` của upload!
+  - Gắn fallback đa tầng cho `machine_dir` upload: `machine_dir = ud_info.get("machine_dir") or all_machines.get(m_num, {}).get("machine_dir")`.
   - Cơ chế Fallback an toàn: Nếu `all_machines[m_num].get("machine_dir")` bị rỗng, watchdog phải tra cứu nhanh `item.get("artifact_root")` từ `run_manifest.json` trong `r_path` trước khi emit.
+  - **Bắt buộc Force-Sync sau khi sửa Watchdog/Parser:** Sau khi commit sửa watchdog hoặc parser trong git, BẮT BUỘC kích hoạt ngay job `cron-sync-watchdog` (`2b5b608429c7`) để ép đồng bộ code Git sang môi trường thực thi runtime của Hermes cron, chống mtime runtime đè ngược Git.
 
 ## 4. Kỷ Luật Phản Hồi Khi Nhận Báo Cáo "Thất Bại / Chuyển L3" (Anti-Performative Triage)
 - **CẤM TUYỆT ĐỐI:** Khi dispatcher báo có N sự cố bị chuyển L3 BLOCKED, Coordinator không được ngồi đọc triệu chứng hời hợt ("Màn hình OFF, Launcher, Score < 2 -> Máy ngủ an toàn") rồi báo cáo suông kết thúc việc.
