@@ -486,6 +486,33 @@
   2. **Cập nhật và sửa đồng bộ Excel:** Sửa lại cột `Keyword` / `Hashtag` trong `Tik*.xlsx` thành ngách thực tế, ghi chú lại sự lệch thư mục để các ca vận hành sau không bị lặp lại bẫy này.
   3. **Luôn mở mắt đối soát 3 điểm neo:** (a) Ảnh chụp màn hình User gửi, (b) Thư mục `F_vid`, (c) Thư mục `F_src`. Chỉ khi cả 3 khớp nhau hoặc đã làm rõ nguồn lệch mới được phép kết luận ngách và dựng avatar. Tuyệt đối không cãi bướng ép kênh theo ngách sai của `F_src`.
 
+## 59. Bẫy Đưa Thumbnail Dính Số View, Icon Tam Giác Vào Vòng Tròn Avatar Đề Xuất (Dirty Thumbnail Overlay Trap)
+- **Hiện tượng:** Khi cắt ảnh từ thumbnail trên lưới video web/app, Coordinator vội vã đưa trực tiếp ô ảnh thumbnail vào vòng tròn đề xuất của Canvas. Hậu quả: Vòng tròn avatar bị dính chữ số view lớn (`849`, `1.194`) đè ngang má, icon tam giác play (`▷ 7`) đè lên ngực/cổ, hoặc góc chụp quay lưng không thấy rõ mặt nhân vật. User phản ứng cực kỳ bức xúc: *"ô cái địt mẹ mày gen ra mấy cái ava như cặc v mà dám đưa cho tao đó hả, t đã thiết kế gate ép mày đọc hình trc khi gửi mà"*.
+- **Căn nguyên:** Ảo giác và lười kiểm tra hình ảnh qua `browser_vision` trước khi gắn vào Canvas. Không kiểm tra sự hiện diện của các lớp overlay text/icon có sẵn trên thumbnail của TikTok.
+- **Hành động bắt buộc:**
+  1. Khi cắt frame làm avatar, BẮT BUỘC mở file video gốc (`.mp4`) để trích xuất frame tại giây không có text overlay/icon UI, hoặc dùng thuật toán phát hiện khuôn mặt crop tâm vào vùng mặt sạch chữ.
+  2. Dùng `browser_vision` mở từng ô ảnh avatar crop ra soi mắt thật kỹ trước khi đưa vào Canvas: Xác nhận không dính số view, không dính icon play, mặt sáng rõ, mắt nhìn thẳng.
+  3. Nếu frame bị dính số hay icon rác: TUYỆT ĐỐI CẤM đưa vào Proposal Canvas.
+
+## 60. Kỷ Luật Soạn Bio Chuẩn Kèm Lời Kêu Gọi Follow Tự Nhiên (Call-To-Action CTA Mandate)
+- **Hiện tượng & Yêu cầu thực tế:** Khi chuẩn hoá tiểu sử (Bio), nếu chỉ soạn câu mô tả tĩnh về ngách (*"Nông sản tươi sạch mỗi ngày, chia sẻ niềm vui nấu nướng cùng bạn! 🥬🥕"*), bio thiếu tính tương tác và không tối ưu chuyển đổi người xem thành người theo dõi. User yêu cầu rõ ràng: *"thêm mấy câu kiểu kêu gọi follow vào bio"*.
+- **Quy chuẩn bắt buộc:**
+  1. **Tích hợp CTA tự nhiên:** Luôn chủ động lồng ghép lời mời follow gần gũi, khéo léo, ăn nhập với persona của kênh (nấu ăn, mẹo bếp, làm vườn, giải trí).
+  2. **Kiểm soát độ dài nghiêm ngặt $\le 80$ ký tự:** Giới hạn bio TikTok là 80 ký tự. Các câu bio đề xuất lý tưởng trong khoảng 60 - 70 ký tự để hiển thị trọn vẹn, không bị cắt dấu hoặc ba chấm `...`:
+     - *Ngách Nông sản / Ẩm thực:* `Nông sản tươi sạch mỗi ngày 🥬 Follow kênh cùng vào bếp nhé! ✨` *(61 ký tự)*
+     - *Ngách Mẹo vặt gia đình:* `Thực phẩm sạch cho cả nhà 🥕 Nhấn follow xem món ngon mỗi ngày!` *(62 ký tự)*
+     - *Ngách Vườn nhà / Đời sống:* `Hương vị tự nhiên từ vườn nhà 🌿 Follow Trinh xem mẹo bếp ngon nha!` *(66 ký tự)*
+  3. **Nhập UTF-8 Base64 an toàn:** Luôn đẩy bio qua `do_rename_canonical_runner.py` sử dụng AdbKeyboard Base64 để bảo toàn 100% dấu thanh tiếng Việt và emoji.
+
+## 61. Bẫy Màn Hình Chờ AOD Samsung S7 Sau Khi Upload Avatar & Cứu Hộ Bằng `inspect_machine.py` O(1)
+- **Hiện tượng:** Runner upload avatar (`run_upload_avatar.py`, `run_tiktok_upload_batch.ps1`) sau khi lưu avatar thành công sẽ force-stop app và đưa máy về Home (`State: RELEASE`). Sau một thời gian ngắn, màn hình Samsung S7 tự động tắt hoặc chuyển sang chế độ Always-On Display (AOD). Khi Coordinator chụp ảnh màn hình ngay, file kéo về chỉ nặng ~26KB chứa màn hình đen sì và đồng hồ số, WinRT OCR không đọc được Profile và vi phạm Invariant nghiệm thu ảnh thực tế.
+- **Căn nguyên:** Màn hình điện thoại ở trạng thái Dozing/Sleep; chụp screencap trực tiếp khi máy chưa thức giấc sẽ ra ảnh AOD.
+- **Hành động bắt buộc:**
+  1. Chạy lệnh trích xuất nhanh O(1): `python D:/Taadaa/tools/inspect_machine.py <N>`. Lệnh này vừa kiểm tra trạng thái pin/proxy/focus, vừa tự động gửi tín hiệu đánh thức màn hình chuyển sang `Màn hình: ON (Awake)`.
+  2. Mở lại TikTok bằng launcher monkey: `python D:/Taadaa/tools/with_device_lock.py --machine <N> -- adb -s <SERIAL> shell monkey -p com.ss.android.ugc.trill -c android.intent.category.LAUNCHER 1`.
+  3. Sau đó mới chụp `screencap -p` và pull ảnh về: file ảnh thực tế phải đạt dung lượng $> 1$ MB (chuẩn là ~2.3 MB) hiển thị đầy đủ avatar tròn mới, tên, bio và lưới video trước khi chạy WinRT OCR và xuất thẻ `MEDIA:`.
+
+
 
 
 
