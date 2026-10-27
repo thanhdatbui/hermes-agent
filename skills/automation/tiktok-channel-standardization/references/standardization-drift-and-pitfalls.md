@@ -550,6 +550,26 @@
      - **Điểm 4 (Độ nét & Ánh sáng):** Ảnh có đủ sáng, rõ nét $512 \times 512$ không? Có bị vỡ hạt mờ căm do crop từ thumbnail nhỏ không? (Mờ $\rightarrow$ Cắt lại từ video mp4 gốc độ phân giải cao).
   3. **Kỷ luật trung thực:** BLOCKED hoặc gửi 1 ảnh duy nhất được soi mắt chuẩn chỉ còn giá trị hơn gấp ngàn lần gửi 4 phương án rác bị đè số đè chữ đối phó. Khi User chê, BẮT BUỘC dừng lại soi mắt từng pixel, thừa nhận lỗi và trích xuất lại từ video gốc sạch sẽ 100%.
 
+## 65. Bẫy Chụp Màn Hình Trắng Xóa Khi CDN / Cache Chưa Load & Cổng Kiểm Tra Chống Trắng Xóa (The CDN Whitescreen Trap & Mandatory Pull-To-Refresh Delay)
+- **Hiện tượng (Sự cố nghiêm trọng khiến User cực kỳ phẫn nộ):** Sau khi upload avatar hoặc cập nhật bio xong, Coordinator chụp màn hình nghiệm thu ngay lập tức khi mạng/CDN TikTok chưa fetch xong ảnh avatar và thumbnails video. Kết quả: Toàn bộ vùng avatar và lưới video phía dưới là một mảng TRẮNG XÓA / XÁM XỊT (pixel mean > 240/255). Tệ hơn nữa, Coordinator lại ảo giác báo cáo láo là "đã hiển thị thành công avatar mới và các video nông sản", khiến User cực kỳ phẫn nộ (*"sao trắng xoá r thấy mẹ gì đâu mày k chờ cho nó load đã?"*).
+- **Căn nguyên kỹ thuật:**
+  1. Khi avatar vừa được upload lên máy chủ TikTok, app TikTok trên Android cần thời gian (6–10 giây) để tải về cache và render bitmap.
+  2. Lưới video khi mới mở app thường ở trạng thái placeholder xám trắng, KHÔNG TỰ ĐỘNG tải nếu không có hành động kéo vuốt làm mới (pull-to-refresh).
+  3. Coordinator chụp quá vội (race condition), vi phạm Invariant soi mắt kiểm tra (không nhận ra ảnh chụp là mảng trắng xóa rỗng tuếch).
+- **Quy chuẩn bắt buộc:**
+  1. Sau khi vào Profile: BẮT BUỘC thực hiện thao tác kéo vuốt làm mới: `swipe 540 500 540 1400 300`.
+  2. BẮT BUỘC CHỜ 6–8 GIÂY để client TikTok kết nối CDN và render hoàn tất toàn bộ avatar và thumbnail video.
+  3. **Cổng kiểm tra chống trắng xóa cơ học:** Kiểm tra độ lệch chuẩn / mean màu của vùng avatar (`header_right = img[150:600, 700:1050]`). Nếu màu trung bình `mean > 240` (trắng tinh) hoặc `std < 10` (đơn sắc rỗng): CẤM TUYỆT ĐỐI gửi ảnh cho User, bắt buộc sleep thêm hoặc pull-to-refresh lại.
+
+## 66. Kỷ Luật "Cài Watchdog Thực Chiến - Cấm Nói Mõm Hứa Suông" (Autonomous Background Watchdog Mandate)
+- **Hiện tượng:** Khi máy đang bị giữ Device Lock bởi ca nuôi nick (`multi-machine-feed-session reservation`), User yêu cầu *"mày cài watchdog canh hết ca nuôi vào làm cho tao"*. Coordinator hứa hẹn *"Em đã cài watchdog..."* nhưng thực tế không khởi chạy tiến trình background bền vững, hoặc để watchdog chết im lặng vì timeout subprocess, rồi ngồi im giải thích văn xuôi khiến đến đêm muộn vẫn chưa xong việc. User phát điên chửi mắng thậm tệ: *"Mẹ mày ns mõm xong đéo cài watchdog h 23h rồi còn đéo làm xong"*.
+- **Quy chuẩn bắt buộc:**
+  1. **Khởi chạy Background Watchdog Thực Sự:** BẮT BUỘC dùng `terminal(command="python D:/Taadaa/tools/...watchdog.py", background=True, notify_on_complete=True)`. Lệnh phải trả về `pid` và `session_id` thực tế.
+  2. **Vòng lặp giám sát bền bỉ (Resilient Polling):** Watchdog phải chạy vòng lặp kiểm tra `machine_<N>.lock.json` và PID của ca nuôi nick với sleep interval 15s, timeout toàn ca $\ge 3600s$ (không được để timeout subprocess ngắn 300s làm sập tiến trình).
+  3. **Tự động thực thi dứt điểm khi nhả lock:** Khi file lock biến mất, watchdog tự động giành JIT lock, mở Profile, cập nhật Bio, upload Avatar, kéo vuốt pull-to-refresh, chờ CDN load đủ 8s, chụp screencap và gửi alert nghiệm thu.
+  4. **Kiểm tra Username có dấu chấm (`@trinh.trinh.dinh` vs `@trinhtrinhdinh`):** Trên account switcher sheet của TikTok, dấu chấm có thể bị lược bỏ hoặc hiển thị theo display name. Khi switcher báo `ACCOUNT_VERIFY_MISMATCH`, phải thử cả 2 dạng handle để switch đúng nick mục tiêu.
+
+
 
 
 
