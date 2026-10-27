@@ -11,3 +11,5 @@ Tool 2FA và cron xen ca chạy cả ngày BẮT BUỘC dùng Just-In-Time (JIT)
 Tài khoản Gmail chuẩn clean_v2 đã tắt Google Prompt hoàn toàn chỉ dùng 2FA TOTP: login GPM 100% trên PC qua pyotp, không cần ADB hay máy S7; cấm chặn nhầm acc farm có recovery khoaleemagic khi đã có totp_secret.
 §
 Nghiệm thu Profile TikTok: Layout mới avatar nằm góc trên bên phải, bên trái là Tên/Handle, ô Bạn đang nghĩ gì là chính chủ (không phải guest); tránh nhầm text Bio CTA 'Follow kênh' thành nút đỏ của khách; ảnh gửi MEDIA: bắt buộc ký receipt browser_vision hợp lệ trước.
+§
+Sau khi vá code đăng ký ChatGPT bắt buộc chạy script reconcile state lịch sử (gỡ timestamp ảo về CHATGPT_REG); Báo cáo 6h bắt buộc đối soát 2 chiều với pass Excel/OmniRoute DB thay vì tin timestamp rỗng.
