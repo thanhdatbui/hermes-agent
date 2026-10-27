@@ -18,8 +18,11 @@
      - Đã nạp rule `case_invariant_prohibit_shell_uiautomator_dump` vào `D:/Taadaa/tools/guardgate/rules.json`.
      - Chặn đứng bằng regex `(?i)(uiautomator[\s'",]+dump|import\s+uiautomator2|from\s+uiautomator2)`. Bất kỳ code diff nào cố tình gọi shell dump hoặc uiautomator2 đều bị GuardGate trả về `DENY` ngay lập tức, bắt buộc Revert.
   3. **ĐIỀU KIỆN CHẤM ĐIỂM CỔNG 0 TELEMETRY (`completeness_score()`):**
-     - Đạt Score = 2 (Đủ điều kiện vào Cổng 1 Planner) KHI: Ảnh screenshot hợp lệ (>0 byte, không đen) VÀ (có WinRT OCR text hợp lệ HOẶC có XML dump từ ATX-Agent).
+     - Đạt Score = 2 (Đủ điều kiện vào Cổng 1 Planner) KHI:
+       * Đối với sự cố sau ca chạy (post-shift): có `atx_status == "run_artifact"` hoặc có `log_tail` trích xuất từ ca chạy (`len(log_tail.strip()) > 20`). Tuyệt đối CẤM ép đòi UI XML dump sau ca.
+       * Đối với live debug UI: Ảnh screenshot hợp lệ (>0 byte, không đen) VÀ (có WinRT OCR text hợp lệ HOẶC có XML dump từ ATX-Agent).
      - **Ưu tiên Run Artifacts (Artifact-First Invariant):** Nếu ca chạy đã kết thúc (`run_dir` tồn tại), 100% telemetry (ảnh lỗi, XML, log_tail, stack_trace) bắt buộc lấy từ thư mục run artifacts của máy (`artifacts/`, `summary.txt`, `upload_result.json`). TUYỆT ĐỐI CẤM gọi ADB screencap / atx dump vào máy đã về Home/ngủ sau ca.
+     - **Lọc lỗi Non-Code Defect:** Các lỗi hạ tầng mạng/VPN (`PREFLIGHT_VPN_BLOCKED`, `network/error/retry`), timeout quá giờ (`session deadline reached`), và gate chống trùng (`DUPLICATE_MEDIA_BLOCKED`) bắt buộc bị loại trừ ngay tại emitter (`DEVICE_ERRORS`), cấm ném vào Auto-Heal queue.
      - Xử lý màn hình ngủ (Screen Sleep) CHỈ ÁP DỤNG cho ca chạy trực tiếp (Live Debug): Trước khi `screencap -p` khi máy đang chạy active, nếu màn hình đang tắt (`mHoldingDisplaySuspendBlocker=false`) thì wake màn hình lên trước (`input keyevent 224`).
   4. Trong `incident_emitter.py`, hàm `resolve_serial_and_args(serial, machine_id)` bắt buộc gọi `inspect_machine.get_serial_for_machine(int(machine_id))` để tra cứu Serial thật từ workbook gán máy.
   5. Với cụm Admin Remote (`machine_id >= 200`), lệnh ADB bắt buộc thêm cờ kết nối socket: `[tool, '-H', '192.168.110.119', '-P', '5037', '-s', target]`.
