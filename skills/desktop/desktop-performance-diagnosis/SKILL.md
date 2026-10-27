@@ -220,6 +220,7 @@ Do not say "root cause found" when only an idle snapshot or a list of heavy proc
 
 ## Pitfalls
 
+- Remote UltraViewer Graphic Hook Crash & Deadlock: When games crash with `bad_module_info` (`0xc0000005` in `uvh64.dll`) and freeze the client window with an unresponsive "Kết nối lại" (Reconnect) button, `UltraViewService` or `UltraViewer_Desktop.exe` has hooked DirectX compositor threads. Remediate by setting `Set-Service UltraViewService -StartupType Disabled` to prevent auto-start on boot, killing `WerFault.exe` + UltraViewer processes, and relaunching the game cleanly. The user DOES NOT need to reboot after using UltraViewer—simply closing/exiting UltraViewer unloads `uvh64.dll` and allows entering the game immediately. Details: `references/remote-game-recovery-and-screen-hook-hang.md`.
 - Using full-table `tasklist /v /fo csv` without filters on dense multi-worker hosts: querying window titles across hundreds of processes times out (>30s) or hangs. Use filtered queries (`tasklist /fi "IMAGENAME eq Overwolf.exe" /v`) or targeted ctypes `EnumWindows` probes.
 
 - Blaming a familiar app because it consumes RAM/CPU now, despite the user reporting it worked normally before.

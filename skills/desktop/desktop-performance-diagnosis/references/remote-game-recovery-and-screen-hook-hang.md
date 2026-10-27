@@ -30,6 +30,23 @@ subprocess.run('schtasks /run /tn "LaunchRiotClient"', shell=True, capture_outpu
 subprocess.run('schtasks /delete /tn "LaunchRiotClient" /f', shell=True, capture_output=True)
 ```
 
+## Permanent Prevention: Disable UltraViewer Auto-Startup & Graphic Hook
+To prevent recurrences after Windows reboots, UltraViewer's background service must be permanently disabled so it never starts automatically:
+```powershell
+# 1. Stop and permanently disable UltraViewer Windows Service
+Stop-Service -Name 'UltraViewService' -Force -ErrorAction SilentlyContinue
+Set-Service -Name 'UltraViewService' -StartupType Disabled
+
+# 2. Check and remove any UltraViewer entries from Registry Run keys and Startup folders
+# Run keys: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run, HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run
+# Startup: C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Startup
+```
+### Post-Use Game Entry Protocol (No Reboot Required)
+When the user finishes using UltraViewer remotely and wants to enter the game:
+- **NO REBOOT IS REQUIRED**: Simply exit/close UltraViewer completely (`Right-click tray icon -> Exit` or `taskkill /F /IM UltraViewer* /T`).
+- Once UltraViewer's GUI/Desktop process exits, `uvh64.dll` graphic hook unloads cleanly from memory.
+- The user can launch Riot Client / TFT immediately without crashing. Because `UltraViewService` is set to `Disabled`, it will never resurrect in the background on subsequent boots.
+
 ## Visual Verification (Gate 6 Protocol)
 Never report the game fixed based on exit codes alone.
 1. Capture remote screenshot via `cua-driver call get_desktop_state`.
