@@ -39,6 +39,7 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
 - Báo Cáo Điều Tra Over-Engineering Toàn Farm & Kế Hoạch Cắt Tỉa Hệ Thống Gate: [`references/o1-native-vision-gate-and-anti-overengineering-audit.md`](references/o1-native-vision-gate-and-anti-overengineering-audit.md)
 - Quy Trình Staging Ảnh Telegram Cache & Soi Mắt Bằng Browser Vision: [`references/telegram-image-cache-staging-and-browser-vision-sop.md`](references/telegram-image-cache-staging-and-browser-vision-sop.md)
 - Khắc Phục Lỗi Rò Rỉ Egress Prompt & False-Positive Regex Nhận Việc Của Media Gate: [`references/egress-leak-and-reception-false-positive-remediation.md`](references/egress-leak-and-reception-false-positive-remediation.md)
+- Bẫy INVALID_MEDIA_FILE Do Lệch SHA-256 & Kỷ Luật Cô Lập Máy Mục Tiêu (Admin vs Kibe): [`references/invalid-media-file-tamper-trap-and-target-machine-isolation.md`](references/invalid-media-file-tamper-trap-and-target-machine-isolation.md)
 
 ## 1. Nguyên Tắc Cốt Lõi (Invariants)
 1. **CẤM gửi ảnh mù / đối phó:** Trước khi đính kèm bất kỳ thẻ `MEDIA:<path>` nào, bắt buộc phải mở ảnh ra soi mắt kiểm tra trước.
@@ -164,6 +165,10 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
       * *Mã nguồn & Công cụ:* `script`, `code`, `hàm`, `commit`, `diff`, `branch`, `repo`, `test`, `pytest`...
     - **Kỷ Luật Gate 6 Thực Nghiệm:** Gate 6 là chốt chặn cơ học kiểm tra ảnh khi có thao tác UI/thiết bị thật sự, CẤM biến thành regex bắt bẻ văn bản hội thoại/giải thích thông thường. Bắt buộc giữ nguyên kiểm tra cho các câu khẳng định hoàn thành UI thật (`đã đổi`, `đã ghim`, `đã nạp`).
     - **Bẫy Caching RAM (`sys.modules`):** Sửa code gate trên đĩa không làm mới module trong tiến trình Gateway đang chạy. Phải khởi động lại Gateway hoặc reload module trước khi claim hoàn tất để tránh bị gate cũ trong RAM chặn oan chính bài giải trình. Chi tiết xem [`references/egress-leak-and-reception-false-positive-remediation.md`](references/egress-leak-and-reception-false-positive-remediation.md).
+33. **Bẫy `INVALID_MEDIA_FILE` (Lệch SHA-256 Khi Ghi Đè File) & Kỷ Luật Cô Lập Máy Mục Tiêu:**
+    - **Lỗi Lệch SHA-256 Trên File Ảnh Tái Sử Dụng:** Khi Agent chụp ảnh mới ghi đè lên file ảnh dùng lại (ví dụ `D:/OneDrive/TaadaaData/admin_screen.png`), hash SHA-256 của file mới sẽ lệch với hash đã ký trong `vision_receipts.jsonl`. Hook `guard_media_vision_gate.py` sẽ lập tức chặn với mã lỗi `INVALID_MEDIA_FILE (tampered: sha-256 differs)`. BẮT BUỘC phải chạy lệnh tái cấp receipt chính thống (`python D:/Taadaa/tools/run_winrt_ocr.py "<path>"`) sau khi ghi đè file mới rồi mới được đính kèm thẻ `MEDIA:<path>`.
+    - **CẤM Rò Rỉ Prompt Kỹ Thuật Khi Bị INVALID_MEDIA_FILE:** Mọi phán quyết chặn của Media Gate phải được xử lý nội bộ trong vòng lặp agent hoặc thông báo ngắn gọn; tuyệt đối CẤM nhè nguyên khối văn bản prompt cưỡng chế `[CONTRADICTION_GATE_TRIGGERED]` ra màn hình chat Telegram của người dùng.
+    - **Kỷ Luật Cô Lập Máy Admin vs Kibe PC:** Mọi tác vụ liên quan đến Game ĐTCL / TFT / League of Legends / Riot Client / Render máy Admin BẮT BUỘC chỉ định danh đích đến là **máy Admin (`192.168.110.119`)** qua `admin_ssh.py`. CẤM TUYỆT ĐỐI gọi `computer_use` chụp màn hình hoặc chạy lệnh can thiệp cục bộ trên Kibe PC (tài khoản `BóngVàoTrăng`), tránh làm hỏng môi trường làm việc của User. Chi tiết xem [`references/invalid-media-file-tamper-trap-and-target-machine-isolation.md`](references/invalid-media-file-tamper-trap-and-target-machine-isolation.md).
 
 ## 2. Thang Leo Thang Vision Dự Phòng (Fallback Ladder)
 Thứ tự fallback đọc ảnh chuẩn hoá 100% đồng bộ với kiến trúc Worker Dispatch:
