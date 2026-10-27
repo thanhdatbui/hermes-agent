@@ -161,6 +161,15 @@ Applies whenever reports fail to reflect actual fleet health, mask dropped machi
   2. **Relative Script Filename Contract:** Hermes cron strictly enforces `script` paths relative to `~/.hermes/scripts/` (resolving to `%LOCALAPPDATA%\hermes\scripts\`). Absolute paths (e.g. `D:/Taadaa/tools/...`) are rejected at validation time (`Script path must be relative to ~/.hermes/scripts/... Place scripts in ~/.hermes/scripts/ and use just the filename`). Place the script in `%LOCALAPPDATA%\hermes\scripts\` and set `script: "<filename>.py"`. Pair with `workdir` if the script relies on project-relative paths.
   3. **Automated Audit with `reconcile_cronjobs.py`:** Audit violating jobs periodically using `python D:/Taadaa/tools/reconcile_cronjobs.py --dry-run` (or `--apply` to quarantine).
 
+### Invariant 18: Hermes Cron Subprocess Timeout Misclassification Trap
+- **Anti-Pattern:** In `Hermes/cron/scheduler.py`, the error classification logic catches any error string containing `"timeout"`, `"timed out"`, or `"readtimeout"` and formats the user-facing alert as:
+  `⚠️ Cron '<name>' failed: provider timeout. Fallback chain was exhausted or unavailable. Full details saved in cron output.`
+  When a `no_agent: True` script experiences a local Python subprocess timeout (`subprocess.TimeoutExpired: Command ... timed out after 120 seconds`), Hermes catches `"timed out after 120 seconds"` and fires this misleading "provider timeout" alert. Operators and agents waste time assuming the LLM inference provider failed or drifted, when the root cause is purely local script I/O congestion.
+- **Rule:**
+  1. **Subprocess Timeout Discrimination:** Whenever a `no_agent: True` cronjob alerts with `"provider timeout. Fallback chain was exhausted or unavailable"`, NEVER assume an LLM API error. Immediately inspect `%LOCALAPPDATA%\hermes\cron\output\<job_id>\*.md` to read the raw `subprocess.TimeoutExpired` traceback.
+  2. **Binary Prefix Fast-Filter on Idempotency Bloat:** When directories contain >9,000 files (e.g. `post-attempts`), never parse JSON across all files. Use `os.scandir` + `open(..., 'rb').read(512)` to check `b'"status": "completed"'`. Bypassing JSON parsing on completed items drops runtime from >120s to ~1.1s (100x speedup).
+  3. **Generous Subprocess Buffer:** Set watchdog runner subprocess timeouts to $\ge 180$s to buffer against periodic NTFS disk load spikes during multi-cloud sync or peak farm operations. See `references/hermes-cron-subprocess-timeout-misclassification.md`.
+
 ---
 
 ## 3. Verification Protocol for Watchdogs & Reports
@@ -183,3 +192,4 @@ Applies whenever reports fail to reflect actual fleet health, mask dropped machi
 - [`references/cron-sync-two-way-dirty-revert-trap.md`](references/cron-sync-two-way-dirty-revert-trap.md) — Bẫy 2-way sync cron_sync_watchdog đè ngược file cũ từ runtime dirty revert commit Git.
 - [`references/watchdog-timeout-and-file-scan-bottleneck.md`](references/watchdog-timeout-and-file-scan-bottleneck.md) — Case study: Watchdog timeout & file-scan bottleneck in large idempotency directories (>9k files).
 - [`references/hermes-cron-no-agent-contract-and-spend-guard-drift.md`](references/hermes-cron-no-agent-contract-and-spend-guard-drift.md) — Case study: Hermes cron engine no_agent=True contract, spend-guard model drift traps, and relative script path resolution.
+- [`references/hermes-cron-subprocess-timeout-misclassification.md`](references/hermes-cron-subprocess-timeout-misclassification.md) — Case study: Hermes cron subprocess timeout misclassification ("provider timeout"), raw output inspection, and binary prefix fast-filtering.
