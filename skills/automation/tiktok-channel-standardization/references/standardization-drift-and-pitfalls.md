@@ -626,8 +626,16 @@
   2. **Tự động quét trạng thái hiện trường O(1):**
      - Đọc turn gần nhất trước khi restart để xác định task đang dở (ví dụ: đã chọn avatar, đang nạp bio, hay đang ghim video).
      - Kiểm tra trạng thái máy thật bằng `inspect_machine.py <N>`.
-  3. **Lập tức thi công bước tiếp theo:** Kích hoạt ngay runner/ADB cần thiết để hoàn tất nốt hạng mục còn thiếu, kéo ảnh nghiệm thu Profile thật, chạy WinRT OCR và gửi thẻ `MEDIA:` báo cáo kết quả hoàn thành dứt điểm ngay trong lượt đầu tiên sau reboot.
+  3. Lập tức thi công bước tiếp theo: Kích hoạt ngay runner/ADB cần thiết để hoàn tất nốt hạng mục còn thiếu, kéo ảnh nghiệm thu Profile thật, chạy WinRT OCR và gửi thẻ `MEDIA:` báo cáo kết quả hoàn thành dứt điểm ngay trong lượt đầu tiên sau reboot.
   4. **Kỷ luật Git Commit Lõi:** Khi sửa file lõi Gateway (`gateway/run.py`), bắt buộc `git commit` ngay lập tức để tránh trôi code (đã commit `7f04bc84f`).
+
+  ## 73. Kỷ Luật Bắt Buộc Kèm Ảnh Profile Thật Sau Khi Báo Hoàn Tất
+  - **Hiện tượng:** Coordinator báo cáo *"Đã hoàn tất chuẩn hóa 100%"* nhưng trong tin nhắn chỉ toàn chữ, không gửi ảnh chụp màn hình Profile thực tế sau khi đổi Bio/Avatar/Ghim video. User lập tức chất vấn gay gắt: *"Hình sau khi làm xong trên nick đó đâu"*.
+  - **Hành động bắt buộc:**
+  1. Khi báo cáo hoàn tất một kênh TikTok, **BẮT BUỘC ĐÍNH KÈM THẺ `MEDIA:<path_anh_that>`** chụp trực tiếp từ màn hình Profile của thiết bị sau khi thi công.
+  2. Ảnh nghiệm thu phải rõ ràng: đúng Username/Handle, Bio mới tiếng Việt có dấu, hàng video có nhãn "Đã ghim", và avatar đã cập nhật.
+  3. Báo cáo "Xong" mà không có ảnh chụp màn hình thật bị coi là thất bại nghiêm trọng.
+
 
 ## 73. Bẫy Ảo Giác "Màn Hình Khách (Guest View) Do Dính Nút Follow" Khi Bio Chứa Câu CTA Kêu Gọi Follow (Bio CTA False-Guest Hallucination Trap)
 - **Hiện tượng:** Trên màn hình Profile của tài khoản, Coordinator đọc thấy cụm từ `"Follow kênh"` (hoặc `"Follow kênh cùng vào bếp nhé!"`) qua WinRT OCR. Ngay lập tức, Coordinator hoang mang suy diễn rằng: *"Đây là màn hình xem Profile người khác (Guest View), có nút đỏ Follow kênh của người xem ghé thăm chứ không phải nick chính chủ; máy đang đăng nhập nick khác nên không có nút Sửa hồ sơ"*. Hậu quả: Coordinator liên tục cãi tay đôi, bắt máy chạy switcher chuyển acc vòng vo, trong khi màn hình thực tế là Profile CHÍNH CHỦ 100% (có ô "Bạn đang nghĩ gì...", có avatar và toàn bộ video của tài khoản). User phải chụp ảnh gửi lại và bực bội nhắc nhở: *"Trong hình vẫn đang ở trinh dinh dinh mà?"*, *"Xàm gì v trong hình vẫn đang ở profile đúng acc mà? Ít nhất hình mày gửi t thấy v"*.
