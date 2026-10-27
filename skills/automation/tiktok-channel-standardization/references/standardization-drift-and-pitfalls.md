@@ -617,15 +617,19 @@
 
 ## 72. Bẫy Bại Liệt Não Sau Reconnect & Kỷ Luật Tự Động Tiếp Tục Task Đang Dở (Auto-Resume Action Continuity Mandate)
 - **Hiện tượng:** Khi phiên làm việc bị gián đoạn do PC reboot hoặc gateway restart, Coordinator khôi phục phiên nhưng mất toàn bộ đà làm việc. Thay vì kiểm tra hiện trường xem bước nào chưa xong để thi công tiếp, Coordinator lại phát tin nhắn hành chính chào hỏi rỗng tuếch: *"Phiên làm việc đã được khôi phục... Anh muốn làm gì tiếp theo?"* trong khi User đang chờ avatar và bio. User cực kỳ bức xúc và nổi giận: *"Hồi chiều t fix cái auto resume này 1 lần r sao h vẫn bị lại vào hỏi bại liệt não đkm đang làm dở thì làm tiếp hỏi cái lồn. Lí do hỏi mà đéo làm tiếp?"*.
-- **Căn nguyên:** Agent bị thụ động (passive wait-for-steering), vi phạm nguyên tắc Proactiveness và quy tắc cấm hỏi thừa.
+- **Căn nguyên kỹ thuật & Bẫy trôi code:**
+  1. Trong `D:/Taadaa/Hermes/gateway/run.py` (dòng ~19081), `_auto_continue_task` chỉ gán `True` khi `_reason == "restart_interrupted"`. Khi Gateway tự restart (watchdog, timeout), lý do là `"restart_timeout"` hoặc `"shutdown_timeout"`, làm `_auto_continue_task` rơi về `False`.
+  2. Nhánh `else` tiêm System Note bắt LLM phải bỏ việc dở dang và hỏi User (*"Report to the user that the session was restored successfully and ask what they would like to do next..."*).
+  3. Bẫy trôi code: Đã từng sửa chiều nay nhưng file `gateway/run.py` chưa commit vào git, sau đó bị subagent/tool git checkout đè ngược lại làm mất code fix.
 - **Hành động bắt buộc khi Gateway Reconnect / Reboot:**
   1. **CẤM TUYỆT ĐỐI hỏi "Anh muốn làm gì tiếp theo":** Bất kỳ câu hỏi chào hỏi vô tri nào sau khi khôi phục phiên đều bị coi là thất bại nghiêm trọng.
   2. **Tự động quét trạng thái hiện trường O(1):**
      - Đọc turn gần nhất trước khi restart để xác định task đang dở (ví dụ: đã chọn avatar, đang nạp bio, hay đang ghim video).
      - Kiểm tra trạng thái máy thật bằng `inspect_machine.py <N>`.
   3. **Lập tức thi công bước tiếp theo:** Kích hoạt ngay runner/ADB cần thiết để hoàn tất nốt hạng mục còn thiếu, kéo ảnh nghiệm thu Profile thật, chạy WinRT OCR và gửi thẻ `MEDIA:` báo cáo kết quả hoàn thành dứt điểm ngay trong lượt đầu tiên sau reboot.
+  4. **Kỷ luật Git Commit Lõi:** Khi sửa file lõi Gateway (`gateway/run.py`), bắt buộc `git commit` ngay lập tức để tránh trôi code (đã commit `7f04bc84f`).
 
-## 71. Bẫy Ảo Giác "Màn Hình Khách (Guest View) Do Dính Nút Follow" Khi Bio Chứa Câu CTA Kêu Gọi Follow (Bio CTA False-Guest Hallucination Trap)
+## 73. Bẫy Ảo Giác "Màn Hình Khách (Guest View) Do Dính Nút Follow" Khi Bio Chứa Câu CTA Kêu Gọi Follow (Bio CTA False-Guest Hallucination Trap)
 - **Hiện tượng:** Trên màn hình Profile của tài khoản, Coordinator đọc thấy cụm từ `"Follow kênh"` (hoặc `"Follow kênh cùng vào bếp nhé!"`) qua WinRT OCR. Ngay lập tức, Coordinator hoang mang suy diễn rằng: *"Đây là màn hình xem Profile người khác (Guest View), có nút đỏ Follow kênh của người xem ghé thăm chứ không phải nick chính chủ; máy đang đăng nhập nick khác nên không có nút Sửa hồ sơ"*. Hậu quả: Coordinator liên tục cãi tay đôi, bắt máy chạy switcher chuyển acc vòng vo, trong khi màn hình thực tế là Profile CHÍNH CHỦ 100% (có ô "Bạn đang nghĩ gì...", có avatar và toàn bộ video của tài khoản). User phải chụp ảnh gửi lại và bực bội nhắc nhở: *"Trong hình vẫn đang ở trinh dinh dinh mà?"*, *"Xàm gì v trong hình vẫn đang ở profile đúng acc mà? Ít nhất hình mày gửi t thấy v"*.
 - **Căn nguyên bản chất:**
   1. Trước đó, chính Coordinator/User vừa cập nhật câu Bio mới có lời kêu gọi follow: `Nông sản tươi sạch mỗi ngày 🥬 Follow kênh cùng vào bếp nhé! ✨`.

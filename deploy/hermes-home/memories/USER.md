@@ -6,4 +6,4 @@ Soạn tin nhắn mẫu gửi người khác: đặt trong code block ```text...
 §
 Canary tái hiện đúng acc/lỗi thật (timeout >= 720s), cấm test nhầm acc. Cột PASS chưa đặt pass TikTok để None, cấm ghi pass ảo. Khi sai pass tra lại dữ liệu gốc trước khi chạy recovery.
 §
-Auto-heal: Tự sửa ngầm headless 1:1 theo 6 cổng; telemetry map serial ADB thật & cụm máy qua inspect_machine; chỉ báo Telegram khi merged; vi phạm hook đối soát qua 6h report.
+Auto-resume Gateway: _auto_continue_task mở rộng 'restart_interrupted', 'restart_timeout', 'shutdown_timeout' và System Note cưỡng chế tiếp tục task dở dang, cấm hỏi lại. Commit lõi gateway/run.py 7f04bc84f.

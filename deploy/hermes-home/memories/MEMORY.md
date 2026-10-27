@@ -1,6 +1,6 @@
 Cronjob ngầm deliver='local' chống spam stdout; Watchdog deliver='local' tự dispatch Telegram (cấm print). Token đọc hermes/.env. Sau sửa watchdog BẮT BUỘC chạy cron_sync_watchdog.py --force chống mtime runtime đè ngược Git.
 §
-Chuẩn hóa kênh: F_vid & video thật trên kênh luôn thắng F_src; BẮT BUỘC dùng browser_vision soi từng pixel trước khi viết text/nhãn Canvas; CẤM đưa thumbnail dính số view/icon play vào avatar; cấm tin avatar.jpg cũ; khi b-roll xấu tự gen AI Pollinations.ai; Auto-resume sau reconnect BẮT BUỘC thi công tiếp task dở, cấm hỏi thừa bại liệt não.
+Chuẩn hóa kênh: F_vid & video thật trên kênh luôn thắng F_src; BẮT BUỘC dùng browser_vision soi từng pixel trước khi viết text/nhãn Canvas; CẤM đưa thumbnail dính số view/icon play vào avatar (DIRTY_AVATAR_EVIDENCE); khai tử cờ --record-vision tự cấp vé khống; cấm tin avatar.jpg cũ; khi b-roll xấu tự gen AI Pollinations.ai; Auto-resume sau reconnect BẮT BUỘC thi công tiếp task dở, cấm hỏi thừa bại liệt não.
 §
 Nạp ChatGPT-Web: trần 2 acc/IP + proxy_assignments; worker <= 5; Hotmail là mail mua sẵn; màn /about-you = acc chưa reg; pass ChatGPT random độc nhất lưu Excel; script reg cấm exit 0 khi fail; lọc GPM GroupId!=0; pre-validate Graph token; cấm base64.
 §
