@@ -7,7 +7,3 @@ Soạn tin nhắn mẫu gửi người khác: đặt trong code block ```text...
 Canary tái hiện đúng acc/lỗi thật (timeout >= 720s), cấm test nhầm acc. Cột PASS chưa đặt pass TikTok để None, cấm ghi pass ảo. Khi sai pass tra lại dữ liệu gốc trước khi chạy recovery.
 §
 Auto-heal: Tự sửa ngầm headless 1:1 theo 6 cổng; telemetry map serial ADB thật & cụm máy qua inspect_machine; chỉ báo Telegram khi merged; vi phạm hook đối soát qua 6h report.
-§
-User cấm gõ tiếng Việt không dấu cẩu thả (bắt buộc phản hồi bằng tiếng Việt chuẩn có dấu đầy đủ 100%).
-§
-Lệnh fix/login acc thiếu: Chạy thẳng hàm login target (tiktok_login_v1), cấm tự ý chạy Canary feed acc khác để chứng minh đối phó.

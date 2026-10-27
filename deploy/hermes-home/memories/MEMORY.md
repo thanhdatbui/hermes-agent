@@ -11,5 +11,3 @@ Tool 2FA và cron xen ca chạy cả ngày BẮT BUỘC dùng Just-In-Time (JIT)
 Tài khoản Gmail chuẩn clean_v2 đã tắt Google Prompt hoàn toàn chỉ dùng 2FA TOTP: login GPM 100% trên PC qua pyotp, không cần ADB hay máy S7; cấm chặn nhầm acc farm có recovery khoaleemagic khi đã có totp_secret.
 §
 Auto-Heal: đào log/ảnh ca, cấm chụp máy tắt màn; WinRT OCR primary; Canary auto-device; storm>=3 alert. Claude CLI dùng khi user gọi/Strike 3. Gate chuẩn O(1): check đúng sự kiện thật (browser_vision); dẹp Security Theater (DACL/HMAC, hash chain blockchain local, safe_push đọc log cũ); Watchdog theo dõi agent (gate_compliance, device_lock, proxy) BẮT BUỘC GIỮ; Closeout delta rỗng = Vận Hành PASS < 0.2s.
-§
-GuardGate 2 tầng: Global (7 invariants) tại tools/guardgate/rules.json; Repo-local tại <repo>/rules.json (GPM auto, tiktok-luot nuoi acc, tools). Runner tự động nạp & merge theo repo. Hooks chặn runtime, Gate chặn git diff.
