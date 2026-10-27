@@ -341,6 +341,26 @@
   4. Sau khi Lưu, kiểm tra màn hình Profile qua WinRT OCR: dòng bio sẽ hiển thị nhãn rỗng nguyên bản `+ Thêm tiểu sử` (`+ Thém tidU sd`) hoặc `Tôi quan tâm đến...`.
   5. Đăng ký receipt bằng `guard_media_vision_gate.py --record-vision` và gửi ảnh Profile nghiệm thu với đầy đủ dấu tiếng Việt chuẩn xác.
 
+## 46. Bẫy Dùng `cv2.putText` Vẽ Tiếng Việt Làm Vỡ Font / Biến Dạng Chữ Rác Trên Proposal Canvas
+- **Hiện tượng:** Khi dựng ảnh Proposal Canvas tổng hợp gửi User, script sử dụng hàm `cv2.putText` của OpenCV để in các thông tin toạ độ, bio, tên hiển thị có dấu. Kết quả: Toàn bộ chữ tiếng Việt có dấu bị lỗi font, biến dạng thành chuỗi ký tự rác/loằng ngoằng hoặc lộn xộn (ví dụ: `THOUG TIN KENH`, `GA' XINH`, `So mi trong cuei tuoi`, `Toa Non d' 'Ly 1m Loan'`, `DIEU 1,000 viæo`). User nhìn vào lập tức nổi giận vì ảnh cẩu thả, không đọc được và bị chửi là "ảo giác".
+- **Nguyên nhân cốt lõi:** `cv2.putText` chỉ hỗ trợ bộ font ASCII/Hershey cơ bản, hoàn toàn không hỗ trợ Unicode đa byte UTF-8 của tiếng Việt có dấu.
+- **Quy chuẩn bắt buộc (Pillow Unicode Font Mandate):**
+  1. **Tuyệt đối CẤM dùng `cv2.putText`** để in văn bản tiếng Việt có dấu lên ảnh Proposal Canvas hoặc ảnh báo cáo.
+  2. **BẮT BUỘC dùng Pillow (`PIL.ImageDraw` + `PIL.ImageFont`):**
+     ```python
+     from PIL import Image, ImageDraw, ImageFont
+     import numpy as np
+
+     # Chuyển OpenCV BGR sang PIL RGB
+     pil_img = Image.fromarray(cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB))
+     draw = ImageDraw.Draw(pil_img)
+     font = ImageFont.truetype("C:/Windows/Fonts/arial.ttf", size=24)
+     draw.text((x, y), "THÔNG TIN KÊNH: Lý Kim Loan - Nữ sinh", font=font, fill=(255, 255, 255))
+     # Chuyển ngược lại OpenCV BGR để ghi file
+     cv_img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+     ```
+  3. Mọi text in trên Canvas bắt buộc hiển thị tiếng Việt chuẩn 100%, rõ ràng từng dấu thanh (`ngã`, `hỏi`, `nặng`, `sắc`, `huyền`), tạo ấn tượng chuyên nghiệp và chỉn chu tuyệt đối trước khi gửi `MEDIA:` cho User.
+
 
 
 
