@@ -15,8 +15,15 @@ description: Kỷ luật thực thi chống over-engineering và cấm viết l�
 - **Xóa bỏ triệt để Security Theater (Mật mã giả cầy trên cùng OS user):**
   - Cắt bỏ lớp DACL process memory (`win32security`) và HMAC tự ký tự duyệt: Khi Coordinator, Gate và Worker chạy chung quyền user Windows, DACL và HMAC chỉ là ảo tưởng bảo mật làm nặng máy và sinh lỗi rác.
   - Cắt bỏ cơ chế Blockchain Hash Chain (`prev_chain_hash`, `self_hash` trong log JSONL): Biến file log thành sổ cái băm SHA-256 gây sập toàn bộ luồng closeout khi có 1 dòng log ngoại lai. Hàm đọc hash phải fallback an toàn về `GENESIS` thay vì văng `RuntimeError`.
-  - Bỏ chấm điểm cảm tính 85/100 của LLM Reviewer và vòng lặp Sol Repair: Thước đo duy nhất của code là kiểm thử cơ học (`py_compile` + `pytest` focused pass/fail).
-  - Cắt bỏ các wrapper cản trở `git push` dựa trên đọc ngược log cũ (`safe_push.py`).
+  - Bỏ chấm điểm cảm tính 85/100 của LLM Reviewer và vòng lặp Sol Repair: Thước đo duy nhất của code là kiểm thử cơ học (`py_compile` + `pytest` focused pass/fail). Dẹp sạch trường `"score": 100` trong JSON output `--operational` của `closeout_gate.py`, báo cáo chốt phiên cấm nhắc điểm số hình thức.
+  - Cắt bỏ các wrapper cản trở `git push` dựa trên đọc ngược log cũ (`safe_push.py`): xóa bỏ hoàn toàn dead code `_verify_closeout_gate_approval` và audit JSONL cũ.
+- **Quy Tắc Tối Cao: User Sudo Supremacy (Cấm Đảo Ngược Phân Cấp Chặn Lệnh User):**
+  - Lệnh của User (`tao cho phép`, `làm luôn`, `làm đi`, `làm hết đi`, `force`, `bypass`, `xử lý đi`, `sudo`, `override`) có thẩm quyền TỐI CAO TUYỆT ĐỐI, vượt lên trên mọi rào cản hook và guardrails.
+  - Mọi hook bảo vệ (`_on_pre_tool_call`) BẮT BUỘC cắm kiểm tra `_is_user_sudo_active(session_id)` tại **Ưu tiên Số 0** (dòng đầu tiên). Nếu User Sudo active -> lập tức trả về `None` (PASS), cấm tuyệt đối ném lỗi `GUARD SELF-PROTECTION` chặn ngược lệnh User.
+  - CẤM cơ chế cấp vé giả cầy phức tạp (`sudo_grant.json`, HMAC token, lock file) gây kẹt chết chùm; nhận diện User Sudo trực tiếp từ nội dung tin nhắn user gần nhất trong database session.
+- **Kỷ Luật Chống Bại Liệt & Chống Hỏi Thừa (Anti-Paralysis Execution):**
+  - Khi User gửi `?` hoặc thể hiện bức xúc vì tiến trình dừng lại: CẤM TUYỆT ĐỐI hỏi lại *"Anh có muốn tiếp tục không?"* hay *"Làm tiếp cái gì?"*.
+  - BẮT BUỘC hành động ngay lập tức: Kiểm tra session qua `preserve_in_flight_sessions`, xác định các tiến trình đang dở dang (ví dụ background upload, runner batch) và tự động resume xử lý dứt điểm.
 - **Phân biệt rõ Gate cản trở vs Watchdog quan sát (BẮT BUỘC GIỮ WATCHDOG):**
   - *Gate cản trở (Nên cắt/tinh gọn):* Chặn luồng thực thi vô lý, bắt bẻ thủ tục hành chính, đòi điểm số AI.
   - *Watchdog quan sát & Hardware Safety (BẮT BUỘC GIỮ 100%):* `gate_compliance_watchdog.py` (báo cáo 6h theo dõi kỷ luật Agent gọi worker, quét root), `with_device_lock.py` (JIT lock phần cứng 80 máy), `guard_android_proxy.py` (chống lộ IP farm), `ui_policy_check.py` (cấm spam dump XML trên S7), `claude_quota_guard.py` (bảo vệ hạn mức).
