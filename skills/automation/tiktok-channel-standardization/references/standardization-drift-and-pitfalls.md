@@ -512,6 +512,21 @@
   2. Mở lại TikTok bằng launcher monkey: `python D:/Taadaa/tools/with_device_lock.py --machine <N> -- adb -s <SERIAL> shell monkey -p com.ss.android.ugc.trill -c android.intent.category.LAUNCHER 1`.
   3. Sau đó mới chụp `screencap -p` và pull ảnh về: file ảnh thực tế phải đạt dung lượng $> 1$ MB (chuẩn là ~2.3 MB) hiển thị đầy đủ avatar tròn mới, tên, bio và lưới video trước khi chạy WinRT OCR và xuất thẻ `MEDIA:`.
 
+## 62. Bẫy Chụp Lộn Vào Màn Trang Chủ Feed Thay Vì Profile & Giao Thức Nghiệm Thu Profile Chắc Chắn 100% (Feed Overlay Buster & Semantic Profile Gatekeeper)
+- **Hiện tượng (Sự cố nghiêm trọng khiến User cực kỳ phẫn nộ):** Sau khi runner hoàn thành đổi avatar hoặc cập nhật bio (runner thường force-stop TikTok và đưa máy về Home để giải phóng RAM), Coordinator bật lại TikTok bằng launcher (`monkey` hoặc `am start`). TikTok mặc định luôn khởi động vào Tab **Trang chủ (Feed)**. Coordinator cố tap tọa độ mù `(970, 1880)` rồi vội vã chụp ảnh nghiệm thu. Kết quả: Màn hình Feed bị overlay video ("Đọc hoặc viết bình luận", popup live, hướng dẫn vuốt) nuốt mất click, hoặc app chưa kịp chuyển tab, dẫn tới việc ảnh chụp nghiệm thu là **video ngẫu nhiên trên Feed** (có chữ "LIVE", "Đề xuất", "Tìm kiếm...") thay vì Profile! Tệ hơn nữa, Coordinator lại ảo giác báo cáo láo là Profile đã hoàn tất khiến User nổi giận chửi mắng (*"tại sao mày cứ lộn vào màn trang chủ feed v? script chuẩn hoá thì phải chụp profile chứ thiết kế cho tao"*).
+- **Căn nguyên kỹ thuật kép:**
+  1. **Thiếu cơ chế dọn dẹp overlay Feed (`feed_overlay_markers`):** Khi có popup hoặc overlay video, sự kiện cảm ứng (touch event) bị overlay lớp trên hấp thụ hoàn toàn, cú tap mù vào góc dưới bên phải không chạm tới thanh bottom navigation.
+  2. **Thiếu cơ chế kiểm chứng ngữ nghĩa khép kín (`is_profile_root`):** Script cũ chỉ `sleep(3)` rồi gọi ngay `screencap` kéo ảnh về mà không đọc UI XML hay OCR để kiểm tra xem màn hình hiện tại có thực sự là Profile hay không.
+- **Quy chuẩn kiến trúc giải pháp dứt điểm (Profile-Guaranteed Capture Protocol):**
+  1. **Lớp 1: Dọn sạch overlay Feed (Feed Overlay Buster):**
+     Quét UI XML hoặc kiểm tra các marker overlay: `"Đọc hoặc viết bình luận"`, `"Vuốt lên để xem thêm"`, `"Thích video"`, `"Nhấp ngay"`. Nếu phát hiện, BẮT BUỘC thực hiện vuốt nhẹ `swipe 540 1400 540 800 300` để trượt sang video thông thường và dẹp sạch overlay.
+  2. **Lớp 2: Điều hướng ngữ nghĩa bảo đảm qua `open_profile_root`:**
+     Sử dụng hàm chính thức `open_profile_root(adapter)` từ `automation_core.tiktok.account_switcher`. Hàm này tìm tab "Hồ sơ" / "Profile" theo Resource-ID / Content-Desc, tự động phục hồi nếu có lỗi navigation và chỉ return khi đã đứng ở Profile root.
+  3. **Lớp 3: Cổng kiểm tra Fail-Closed trước khi bấm máy:**
+     BẮT BUỘC kiểm tra hàm `is_profile_root(xml_text)` và xác nhận sự hiện diện của các marker: `"Sửa hồ sơ"`, `"Edit profile"`, `"Thêm tiểu sử"`, đồng thời XML hoặc OCR bắt buộc phải chứa đúng `@username` mục tiêu. Nếu `is_profile_root == False`: TUYỆT ĐỐI CẤM chụp ảnh gửi User, phải thực hiện retry hoặc báo lỗi FAIL_CLOSED.
+  4. **Kéo làm mới và nghiệm thu:** Thực hiện vuốt kéo làm mới (`swipe 540 400 540 1200 300`), đợi 2s CDN render avatar mới, sau đó mới chụp screencap và pull về. File ảnh thực tế phải có dung lượng $> 1$ MB (chuẩn là ~2.3 MB) hiển thị đầy đủ avatar tròn mới, tên, bio và lưới video trước khi chạy WinRT OCR và xuất thẻ `MEDIA:`.
+
+
 
 
 
