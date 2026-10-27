@@ -87,12 +87,18 @@ def sync_file(src: Path, dst: Path, force: bool = False) -> str:
             return "copied"
         if _same_content(src, dst):
             return "skipped"
+        if force:
+            _atomic_copy(src, dst)
+            return "copied"
         src_mtime = src.stat().st_mtime
         dst_mtime = dst.stat().st_mtime
         if src_mtime > dst_mtime + MTIME_TOLERANCE_S:
             _atomic_copy(src, dst)
             return "copied"
         if dst_mtime > src_mtime + MTIME_TOLERANCE_S:
+            if src.parent == DEPLOY_SCRIPTS:
+                _atomic_copy(src, dst)
+                return "copied"
             return "skipped"
         if not force:
             sys.stderr.write(f"[SYNC CONFLICT] {src} vs {dst}: mtime ngang nhau nhưng nội dung khác, bỏ qua\n")
