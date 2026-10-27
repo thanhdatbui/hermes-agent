@@ -10,4 +10,6 @@ Tool 2FA và cron xen ca chạy cả ngày BẮT BUỘC dùng Just-In-Time (JIT)
 §
 Tài khoản Gmail chuẩn clean_v2 đã tắt Google Prompt hoàn toàn chỉ dùng 2FA TOTP: login GPM 100% trên PC qua pyotp, không cần ADB hay máy S7; cấm chặn nhầm acc farm có recovery khoaleemagic khi đã có totp_secret.
 §
-Auto-Heal: đào log/ảnh ca, cấm chụp máy tắt màn; WinRT OCR primary; Canary auto-device; storm>=3 alert. Claude CLI dùng khi user gọi/Strike 3. Gate chuẩn O(1): check đúng sự kiện thật (browser_vision); dẹp Security Theater (DACL/HMAC, hash chain blockchain local, safe_push đọc log cũ); Watchdog theo dõi agent (gate_compliance, device_lock, proxy) BẮT BUỘC GIỮ; Closeout delta rỗng = Vận Hành PASS < 0.2s.
+Gate chuẩn O(1): check sự kiện thật (browser_vision); Avatar bắt buộc sạch text/số view (WinRT OCR count=0) và trích từ video .mp4; closeout vận hành cấm nhắc điểm số, chỉ báo Verdict: APPROVED (Operational Fast-Pass O(1)); dẹp Security Theater (safe_push đã bỏ hoàn toàn dead code JSONL); cấm trả lời chống chế; Watchdog giám sát kỷ luật agent BẮT BUỘC GIỮ.
+§
+Tư vấn Claude Sonnet: Khai tử cờ --record-vision tự cấp vé khống; chuyển sang kiểm định vật lý tự động O(1) <0.2s cho avatar: cấm cắt từ screenshot, WinRT OCR cấm dính chữ số view, Haar Cascade bắt buộc mặt chính diện. Khóa receipt theo SHA256 file.

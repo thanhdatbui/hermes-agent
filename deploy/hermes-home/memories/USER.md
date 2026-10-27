@@ -1,4 +1,4 @@
-Vibe O(1), bực=làm ngay; lệnh 'làm đi': làm dứt điểm, cấm nói một đằng làm một nẻo; dẹp gate over-engineer (review 85, safe_push JSONL, DACL/HMAC, hash chain); chuộng gate O(1) kiểm sự kiện thật; giữ watchdog giám sát kỷ luật agent (worker, lock, proxy); nghiệm thu UI bắt buộc MEDIA: qua browser_vision; Claude CLI khi user gọi/Strike 3.
+Nghiệm thu UI/Avatar bắt buộc MEDIA: qua browser_vision mắt thật, cấm dùng --record-vision cấp vé khống; Avatar cấm crop thumbnail dính số view/icon play, bắt buộc trích frame video gốc .mp4 hoặc ảnh gốc sạch; Claude CLI khi user gọi/Strike 3.
 §
 User Sudo: Lệnh user ('tao cho phép', 'làm luôn', 'force', 'bypass') có quyền tối cao bypass mọi rào cản (kể cả hooks/); cấm đảo ngược phân cấp chặn user hay đùn việc.
 §

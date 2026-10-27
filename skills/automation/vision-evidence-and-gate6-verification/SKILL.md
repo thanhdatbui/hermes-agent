@@ -44,6 +44,7 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
 - Phân Biệt Giữa Cơ Chế Kiểm Tra Cơ Học O(1) và Bệnh Over-Engineering (Ranh Giới SHA-256 vs Bureaucratic Theater): [`references/o1-mechanical-vs-overengineering-sha256-boundary.md`](references/o1-mechanical-vs-overengineering-sha256-boundary.md)
 - Bẫy Documentation-Only Fix & Kỷ Luật Sửa Mã Nguồn Thật Khi Lỗi Tái Diễn: [`references/documentation-only-fix-trap-and-real-code-hardening.md`](references/documentation-only-fix-trap-and-real-code-hardening.md)
 - Báo Cáo Đối Soát Độc Lập Claude Sonnet 5.5 & Kỷ Luật Triệt Tiêu Fail-Open Media Gate: [`references/claude-sonnet-audit-and-zero-failopen-media-gate.md`](references/claude-sonnet-audit-and-zero-failopen-media-gate.md)
+- Báo Cáo Tư Vấn Claude Sonnet: Quay Về Thiết Kế Tối Giản O(1), Chấm Dứt Bệnh Over-Engineering Của Media Gate: [`references/claude-consult-simplify-o1-gate-and-multi-session-conflict-resolution.md`](references/claude-consult-simplify-o1-gate-and-multi-session-conflict-resolution.md)
 
 ## 1. Nguyên Tắc Cốt Lõi (Invariants)
 1. **CẤM gửi ảnh mù / đối phó:** Trước khi đính kèm bất kỳ thẻ `MEDIA:<path>` nào, bắt buộc phải mở ảnh ra soi mắt kiểm tra trước.
@@ -187,6 +188,10 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
     - **CẤM Dùng `EXEMPTION_MARKERS` Bằng Text Tự Do:** Mọi nỗ lực miễn trừ Gate 6 bằng danh sách từ khóa trong văn bản output (`EXEMPTION_MARKERS`) đều tạo ra lỗ hổng Text-Injection nghiêm trọng (Agent tự chèn từ khóa để tắt gate). BẮT BUỘC xóa bỏ 100% text markers, chỉ dựa vào danh sách công cụ thực thi thực tế trong transcript (`tool_calls` qua `is_ui_turn`).
     - **Fail-Closed Tuyệt Đối Cho `MEDIA:<path>`:** `_media_file_verdict` trả về `None` khi file hợp lệ chỉ là điều kiện cần; ngay sau đó BẮT BUỘC phải rơi vào `check_contradiction`. Nếu chưa có receipt trong 300s, Gate quật ngã ngay với `NO_RECEIPT` (`passed: False`), cấm tuyệt đối mọi nhánh pass-through âm thầm.
     - **Quy Trình Xử Lý Token Claude CLI:** `claude auth login` là lệnh tương tác trực tiếp TTY. Khi token hết hạn, cấm cố chạy ngầm gây nghẽn; phải hướng dẫn User mở terminal ngoài đăng nhập trình duyệt. Chi tiết xem [`references/claude-sonnet-audit-and-zero-failopen-media-gate.md`](references/claude-sonnet-audit-and-zero-failopen-media-gate.md).
+37. **Kiến Trúc Tối Giản O(1) & Bài Học Xung Đột Đa Session (Multi-Session Conflict & Zero Egress Leak):**
+    - **Bản Chất Over-Engineering:** Việc nhồi nhét HMAC-SHA256, TTL, file receipt `.jsonl` và hơn 40 regex đoán mò ý định câu chữ chỉ là "Security Theater" giả tạo, vì chính process của Agent nắm giữ key.
+    - **Triệt Tiêu Hoàn Toàn Egress Leak:** Tuyệt đối CẤM dùng hook ở tầng xuất tin nhắn Telegram để trả về prompt lỗi nội bộ `[CONTRADICTION_GATE_TRIGGERED]`. Tin nhắn thuần text (không có thẻ `MEDIA:`) bắt buộc PASS 100%, không dùng regex bắt bẻ câu chữ.
+    - **Nguyên Tắc O(1) Bất Biến:** Với tin nhắn có thẻ `MEDIA:<path>`, chỉ kiểm tra đúng 1 điều kiện cơ học: *Trong turn này, Agent đã gọi `browser_vision` mở file đó ra soi mắt chưa?* Chưa soi -> Chặn, yêu cầu mở ảnh ra xem. Đã soi -> Cho phép gửi. Chi tiết xem [`references/claude-consult-simplify-o1-gate-and-multi-session-conflict-resolution.md`](references/claude-consult-simplify-o1-gate-and-multi-session-conflict-resolution.md).
 
 ## 2. Thang Leo Thang Vision Dự Phòng (Fallback Ladder)
 Thứ tự fallback đọc ảnh chuẩn hoá 100% đồng bộ với kiến trúc Worker Dispatch:

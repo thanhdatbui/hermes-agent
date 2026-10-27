@@ -91,10 +91,12 @@ Khi `incident-auto-heal-dispatcher` thông báo: `Thất bại / Chuyển L3: N 
    - Đọc các file JSON mới nhất trong `D:/Taadaa/runtime/incidents/blocked/<incident_id>.json`.
    - Đọc `D:/Taadaa/runtime/incidents/<incident_id>/checkpoint.jsonl` để xác định cổng bị chặn:
      - `GATE_0_TELEMETRY` (score < 2): 
-       * Thường do màn hình tắt sau ca (`Màn hình: OFF`) khiến ATX timeout và ảnh đen/OCR rỗng (`atx_status: dump_empty_rc_1`). Chạy `python D:/Taadaa/tools/inspect_machine.py <N>` để xác nhận `LauncherActivity` và trạng thái máy nghỉ an toàn.
+       * Thường do màn hình tắt sau ca (`Màn hình: OFF`) khiến ATX timeout và ảnh đen/OCR rỗng (`atx_status: dump_empty_rc_1`). Khi `xml_dump: null` và `ocr_text: ""` thì dù có file ảnh `screen.png`, điểm `completeness_score()` vẫn chỉ đạt 1 (< 2) và bị chặn Gate 0 ngay lập tức.
+       * Chạy `python D:/Taadaa/tools/inspect_machine.py <N>` để xác nhận `LauncherActivity` và trạng thái máy nghỉ an toàn.
        * Kiểm tra trường `telemetry.extra.serial`: nếu là số nguyên/chuỗi máy (vd: `"74"`, `"204"`) thay vì hardware ADB serial (`ce...`), ADB bị fail do sai định danh thiết bị.
        * Thiết bị Remote (`machine_id >= 200`): nếu `inspect_machine.py <N>` trả về `device '<serial>' not found`, xác nhận cáp USB hoặc kết nối thiết bị tại máy Admin (`192.168.110.119:5037`) bị rớt vật lý.
      - `GATE_1_PLANNER` (returncode 124 / exit 1): Tra cứu `D:/Taadaa/logs/dispatch_planner.jsonl` để xem chi tiết timeout (300s, returncode 124) hoặc Sonnet quota / Sol crash. Blocked an toàn chống sửa mò.
+   - **Lưu ý Artifacts tại `pending/`:** `process_queue()` chỉ di chuyển file `*.json` sang `blocked/`; các file `.affected.jsonl` và `SIG_*.marker` tương ứng vẫn lưu tại `pending/`. Watchdog chỉ kích hoạt khi có `*.json` nên không gây vòng lặp rỗng, đồng thời cho phép truy vết danh sách máy bị ảnh hưởng ngay tại `pending/`.
 2. **Đối soát False Positive qua Shift Artifacts:**
    - Tra cứu danh sách máy liên đới qua `D:/Taadaa/runtime/incidents/pending/<incident_id>.affected.jsonl`.
    - Mở trực tiếp file kết quả ca chạy thực tế:
