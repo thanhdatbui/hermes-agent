@@ -70,7 +70,11 @@ Quy trình chuẩn hoá bao gồm trọn gói **5 hạng mục bắt buộc (5-i
 ## 3. Nghiệm Thu Thực Tế (Visual Evidence Gate 6 & WinRT Backslash Mandate)
 - **Account Verification & Profile-Guaranteed Capture Protocol:**
   - **CẤM TUYỆT ĐỐI chụp mù từ Feed:** Khi TikTok khởi động lại sau khi đổi avatar/bio, app luôn vào tab Trang chủ (Feed). Cú tap mù `(970, 1880)` thường bị các lớp phủ video overlay ("Đọc hoặc viết bình luận", popup, live) nuốt mất khiến màn hình kẹt lại ở Feed.
-  - **Giao thức điều hướng bắt buộc:** BẮT BUỘC dùng cơ chế dọn overlay (`swipe 540 1400 540 800 300`) kết hợp `open_profile_root` từ `automation_core.tiktok.account_switcher`. BẮT BUỘC kiểm chứng hàm `is_profile_root(xml_text)` và xác nhận sự hiện diện của các marker: `"Sửa hồ sơ"`, `"Edit profile"`, `"Thêm tiểu sử"`, đồng thời XML hoặc OCR bắt buộc phải chứa đúng `@username` mục tiêu trước khi chụp. Nếu chưa phải Profile: TUYỆT ĐỐI CẤM chụp ảnh gửi User.
+  - **Phương pháp mở Profile chuẩn xác nhất (Runner FSM First):** Sau khi upload avatar hoặc cập nhật bio, BẮT BUỘC chạy `do_rename_canonical_runner.py --machine <N> --serial <SERIAL> --username <USER> --name "<NAME>"`. Runner này tích hợp sẵn FSM nhận diện `state == FEED`, tự động tap lại nút Hồ sơ `(972, 1857)` cho đến khi đạt `state == PROFILE` và tự động lưu ảnh chụp màn hình chuẩn vào `D:\Taadaa\reports\m<N>_<USER>_rename_confirmed.png`.
+  - **Kiểm tra OCR đối soát Feed vs Profile trước khi gửi:** Trước khi đính kèm thẻ `MEDIA:`, BẮT BUỘC chạy `run_winrt_ocr.py` và kiểm tra text OCR:
+    * Màn hình Profile hợp lệ: BẮT BUỘC chứa các token `Hồ sơ` (hoặc `H6 sd`), `Follower`, `@username`, Tên hiển thị.
+    * Màn hình Feed (BỊ CHẶN): Chứa các từ `LIVE`, `Đề xuất`, `Tìm kiếm`. Nếu thấy các từ này, BẮT BUỘC DỪNG LẠI, CẤM gửi ảnh Feed đối phó cho User.
+  - **Đánh thức màn hình trước khi chụp:** Nếu màn hình Samsung S7 bị tắt/chuyển sang AOD (ảnh đen 26KB), chạy `python D:/Taadaa/tools/inspect_machine.py <N>` để đánh thức màn hình sáng (`Màn hình: ON (Awake)`) trước khi chụp.
 - Bắt buộc kéo ảnh Profile sau khi cập nhật về máy (chỉ chụp khi màn hình ON và runner đã vào Profile, tránh ảnh đen 12KB):
   ```bash
   python D:/Taadaa/tools/with_device_lock.py --machine <N> -- adb -s <SERIAL> shell screencap -p /sdcard/profile_final.png
