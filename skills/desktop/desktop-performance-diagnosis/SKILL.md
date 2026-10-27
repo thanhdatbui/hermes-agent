@@ -216,6 +216,7 @@ Do not say "root cause found" when only an idle snapshot or a list of heavy proc
 - `templates/hermes_cron_silent_ps_wrapper.py` — reusable Python wrapper template for spawning PowerShell scripts from Hermes cron jobs with complete window suppression (CREATE_NO_WINDOW + -WindowStyle Hidden). Copy, set PS_SCRIPT, deploy via the guard-safe cp-then-update pattern.
 - `references/windows-focus-stealing-and-overlay-diagnosis.md` — diagnose screen monopolization and focus-stealing ("cứ chiếm màn hình hoài") via live `GetForegroundWindow` sampling, `EnumWindows` full-screen overlay detection, and Overwolf/GPM background browser cluster triage.
 - `references/render-worker-in-flight-game-guard.md` — in-flight 2s game polling pattern for render workers (`subprocess.Popen` tree kill), overcoming 15-minute watchdog latency and immediate respawn traps; two-phase incident response (O(1) zero-code relief vs 3-step Gate for code fix); rejection of reviewer over-engineering.
+- `references/remote-game-recovery-and-screen-hook-hang.md` — diagnose and resolve remote game hangs (TFT/League of Legends on Admin PC) caused by UltraViewer graphic hook exceptions (`uvh64.dll` `0xc0000005`) and `WerFault.exe` deadlocks; interactive Session 1 relaunch via scheduled tasks; Gate 6 visual verification.
 
 ## Pitfalls
 
