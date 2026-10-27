@@ -61,7 +61,14 @@
 ## 5. Kỷ luật Anti-Spam Telegram & Escalation Storm Alert
 - **Chống Spam:** `IncidentAutoHarness.notify()` CHỈ gửi thông báo chi tiết khi `SUCCESS_MERGED` (pass đủ 6 cổng, canary máy thật pass và Closeout Reviewer chấm >= 85 điểm).
 - **Cách ly im lặng:** Các lỗi đơn lẻ (`BLOCKED_PENDING_TELEMETRY`, `PLANNER_FAILED`, `WORKER_FAILED`, `CANARY_BLOCKED`, `CLOSEOUT_REJECTED`) được di chuyển vào `D:/Taadaa/runtime/incidents/blocked/` trong im lặng, ghi chẩn đoán vào `checkpoint.jsonl`.
-- **Cảnh báo Escalation Storm:** Khi trong 1 lượt duyệt queue có `>= 3` sự cố bị `failed`/`blocked` (dấu hiệu hạ tầng sập hàng loạt như rớt socket ADB server Admin hay mất WAN), hệ thống tự động bắn một cảnh báo khẩn cấp `🚨 [AUTO-HEAL ESCALATION STORM]` về nhóm Farm Alert (`-5373649734`) để Operator can thiệp kịp thời.
+- **Cảnh báo Escalation Storm & Phân Biệt Hạ Tầng Thật vs Ảo Tưởng Điều Phối (Software Dispatch Illusion):**
+  - Khi trong 1 lượt duyệt queue có `>= 3` sự cố bị `failed`/`blocked`, watchdog tự động bắn cảnh báo khẩn cấp `🚨 [AUTO-HEAL ESCALATION STORM]` về nhóm Farm Alert (`-5373649734`).
+  - **TRÌNH TỰ PHÂN LẬP NGUYÊN NHÂN O(1):**
+    1. *Khảo sát thiết bị O(1):* Chạy `python D:/Taadaa/tools/inspect_machine.py <N>` trên máy đại diện (cả cụm Local và Admin Remote socket `192.168.110.119:5037`). Tuyệt đối cấm kết luận "hạ tầng chết / proxy die" khi chưa đọc trạng thái máy thật.
+    2. *Bẫy Ảo Tưởng Kế Hoạch (False Planner Test Banner Trap):* Kiểm tra `checkpoint.jsonl` trong `runtime/incidents/<incident_id>/`:
+       - Nếu `GATE_1_PLANNER` status `PASSED` nhưng output chứa `Testing sol_planner V5 (Lockfile, 2GB Lock...)` và ngay sau đó `GATE_2_WORKER` `FAILED` (returncode 1 / 124 / 125): Đây 100% là **Lỗi phần mềm điều phối**, KHÔNG phải hạ tầng.
+       - *Căn nguyên:* Cache Quota Sonnet cũ (>2h) kích hoạt Fallback Tier 2 sang `sol_planner.py`, nhưng Harness thiếu cờ `--file <target>` khiến CLI rơi vào nhánh test mặc định và exit 0. `dispatch_planner` hiểu nhầm là plan hợp lệ, chuyển text test cho Worker khiến Worker mò mẫm sai repo và fail toàn bộ.
+    3. *Xử lý dứt điểm:* Sửa CLI/Harness truyền đủ `--file`, kiểm tra schema plan tại Tier 2, và chuyển các vé sự cố từ `blocked/` về `pending/` để chạy lại.
 
 ## 6. Bảo Hiểm Đọc Credential 3 Lớp (Telegram Token Fallback)
 - Hàm `_get_telegram_token()` trong `telegram_report.py` tìm token theo thứ tự ưu tiên:

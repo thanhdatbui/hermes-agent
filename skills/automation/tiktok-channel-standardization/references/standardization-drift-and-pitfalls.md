@@ -228,6 +228,18 @@
   1. **Làm tươi Receipt trước khi gửi thẻ `MEDIA:`:** BẮT BUỘC chạy `python D:/Taadaa/tools/guard_media_vision_gate.py --record-vision "<path>"` ngay trong lượt turn chuẩn bị gửi tin nhắn để timestamp luôn mới tinh (age < 10s), triệt tiêu lỗi `NO_RECEIPT`.
   2. **Né dùng các Marker Kích Hoạt Bộ Quét `claimed`:** Tránh đặt các cụm `"tren anh"`, `"trong anh"`, `"hinh la"` trước các từ viết tắt (`PA 1`, `Ava`) hoặc từ mô tả không có trong chữ OCR của ảnh. Thay vào đó, dùng cấu trúc mô tả trực tiếp: `"Bang de xuat 4 phuong an (PA 1: ...; PA 2: ...)"` để không kích hoạt `claimed` tokens giả, đảm bảo message luôn nhận vé `PASS`.
 
+## 34. Bẫy Runner Sửa Bio Kẹt Ở Profile Do Tap Mù (220, 686) Thay Vì Icon Bút Chì (72, 148)
+- **Hiện tượng:** Khi chạy `do_rename_canonical_runner.py` với cờ `--bio-only` trên nick đã có tên đúng, runner tìm nút sửa qua OCR: `find_box(boxes, r'\+\s*th[eé]m|tid\w{0,2}\s*s|th[eé]m\s*ti|tieu\s*su')`. Nếu nick đã có sẵn bio (ví dụ: `Xin chao`), trên màn hình Profile hoàn toàn không có chữ "Tiểu sử" hay nút "+ Thêm tiểu sử". Runner cũ fallback tap mù vào `(220, 686)`, không mở được màn "Sửa hồ sơ" và kẹt vô tận: `ABORT: ket o trang thai PROFILE 5 lan lien tiep`.
+- **Căn nguyên & Khắc phục:** Trên giao diện Samsung S7 (1080x1920) Profile, icon cây bút chì ở góc trên bên trái `(72, 148)` (hoặc `(75, 150)`) là điểm neo cơ học cố định để vào thẳng `ProfileEditActivity`. Khi không tìm thấy nút bằng OCR, BẮT BUỘC tap vào `(72, 148)`. Khi đã vào màn "Sửa hồ sơ", dòng "Tiểu sử" tại `(162, 1332)` luôn hiển thị rõ ràng để tap vào cập nhật text Bio mới.
+
+## 35. Bẫy Bại Liệt Đi Hỏi Lại Khi User Đã Chốt Lựa Chọn ("Tại Sao Đéo Tiếp Tục Làm Mà Bại Liệt Đi Hỏi")
+- **Hiện tượng:** User đã phát lệnh chọn phương án rõ ràng (ví dụ: `"5 \n 4"` - tức chọn phương án Bio số 4). Sau một cú reconnect/gián đoạn gateway hoặc đổi turn, Coordinator mất đà thực thi, phát ra tin nhắn: *"Phiên làm việc đã được khôi phục thành công... Anh có muốn em tiếp tục nạp dứt điểm câu Bio số 4 này lên máy luôn không?"*. User cực kỳ phẫn nộ và chửi: *"Tại sao đéo tiếp tục làm mà bại liệt đi hỏi"*.
+- **Hành động bắt buộc:**
+  1. Khi User đã gửi số thứ tự hoặc tên phương án lựa chọn, đây là **LỆNH THI CÔNG TUYỆT ĐỐI**.
+  2. **CẤM TUYỆT ĐỐI** hỏi xin xác nhận lại ("có muốn làm tiếp không", "anh có duyệt không"), kể cả sau khi mạng gián đoạn hay session vừa khôi phục.
+  3. Lập tức kích hoạt runner/ADB thi công dứt điểm trong turn đó, kéo ảnh Profile nghiệm thu, chạy WinRT OCR và trả về thẻ `MEDIA:` cùng kết quả hoàn tất.
+
+
 
 
 
