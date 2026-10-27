@@ -274,6 +274,36 @@
   2. Mở file ảnh trên browser bằng `browser_navigate` và soi mắt bằng `browser_vision`.
   3. BẮT BUỘC chạy `python D:/Taadaa/tools/guard_media_vision_gate.py --record-vision "<path>"` là **LỆNH CUỐI CÙNG** ngay trước khi gửi tin nhắn, đảm bảo bản ghi mới nhất trong log luôn mang nhãn `tool_called="browser_vision"`, pass Gate 100% và không bị hết hạn TTL 300s.
 
+## 38. Bẫy Nhả Output Tiếng Việt Không Dấu (Unaccented Vietnamese Output Trap)
+- **Hiện tượng:** Khi báo cáo hoặc gửi tin nhắn kèm `MEDIA:`, Agent nhả toàn tiếng Việt không dấu (ví dụ: *"Da soi mat kiem tra qua browser_vision: Bang de xuat 4 phuong an..."*). User phản ứng nhắc nhở ngay: *"Mà sao mày nhả output toàn tiếng việt v"*, *"Toàn tiếng việt k dấu ấy"*.
+- **Căn nguyên:** Agent bị phân tâm bởi text trích xuất từ OCR/hệ thống hoặc cố gắng né các từ khoá trong filter gate, dẫn đến việc gõ chữ cẩu thả không dấu.
+- **Hành động bắt buộc:**
+  1. **Kỷ luật Tiếng Việt có dấu chuẩn mực 100%:** Mọi tin nhắn gửi User BẮT BUỘC phải viết bằng tiếng Việt chuẩn, đầy đủ dấu thanh, ngữ pháp rõ ràng.
+  2. Tuyệt đối CẤM sao chép nguyên văn chuỗi text không dấu từ log terminal/OCR thô vào câu trả lời trực tiếp cho User.
+
+## 39. Bẫy Runner Đổi Tên / Bio Kẹt Ở Profile Do Nút "Sửa Hồ Sơ" Bị Ẩn (S7 Pencil Fallback)
+- **Hiện tượng:** Khi chạy `do_rename_canonical_runner.py` trên Samsung S7 (1080x1920), runner không tìm thấy nút "Sửa hồ sơ" qua OCR (do chữ bị mờ hoặc bị che bởi nhãn tab/video). Runner mặc định tap mù tọa độ `(540, 865)` vốn nằm ở vùng lưới video hoặc khoảng trống, dẫn đến việc kẹt ở màn Profile 5 bước liên tiếp: `ABORT: ket o trang thai PROFILE 5 lan lien tiep`.
+- **Căn nguyên & Khắc phục:**
+  - Trên màn Profile TikTok của Samsung S7, icon cây bút chì ở góc trên bên trái toạ độ `(75, 150)` là điểm neo cơ học chuẩn xác để mở thẳng `ProfileEditActivity`.
+  - Trong `do_rename_canonical_runner.py`, bổ sung fallback cơ học: nếu `state == "PROFILE"` và `same >= 1`, tự động chuyển tọa độ tap sang `(75, 150)`. Runner sẽ lập tức mở màn "Sửa hồ sơ" thành công mà không bị kẹt lặp lại.
+
+## 40. Bẫy Xung Đột Numpy C-Extension Giữa Hermes-Agent Venv Và Python 3.12 & Phương Án FFMPEG + PIL O(1)
+- **Hiện tượng:** Script xử lý ảnh chạy qua `python` (Python 3.12) bị văng lỗi:
+  `ModuleNotFoundError: No module named 'numpy._core._multiarray_umath'`
+  hoặc `ImportError: cannot import name '_imaging' from 'PIL'`.
+  Lý do: `sys.path` của tiến trình bị chèn thư mục `site-packages` của `hermes-agent\venv` vốn chứa các compiled binaries không tương thích.
+- **Hành động bắt buộc (FFmpeg + PIL O(1)):**
+  1. Làm sạch `sys.path` trước khi import thư viện hình ảnh:
+     ```python
+     import sys
+     sys.path = [p for p in sys.path if "hermes-agent" not in p]
+     from PIL import Image
+     ```
+  2. Dùng `ffmpeg` trích xuất frame tại timestamp chính xác thành file ảnh tạm:
+     `ffmpeg -y -ss 00:00:09.000 -i <video.mp4> -vframes 1 -q:v 2 <frame.jpg>`
+  3. Dùng `PIL.Image` mở ảnh, crop hình vuông theo tỉ lệ khuôn mặt (face headroom ~ 0.35) và resize về $512 \times 512$. Phương pháp này chạy độc lập, cực nhanh, không phụ thuộc C-extensions của OpenCV và không bao giờ bị lỗi môi trường venv.
+
+
 
 
 

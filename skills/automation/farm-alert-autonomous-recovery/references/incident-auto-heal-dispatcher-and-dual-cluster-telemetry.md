@@ -68,7 +68,15 @@
     2. *Bẫy Ảo Tưởng Kế Hoạch (False Planner Test Banner Trap):* Kiểm tra `checkpoint.jsonl` trong `runtime/incidents/<incident_id>/`:
        - Nếu `GATE_1_PLANNER` status `PASSED` nhưng output chứa `Testing sol_planner V5 (Lockfile, 2GB Lock...)` và ngay sau đó `GATE_2_WORKER` `FAILED` (returncode 1 / 124 / 125): Đây 100% là **Lỗi phần mềm điều phối**, KHÔNG phải hạ tầng.
        - *Căn nguyên:* Cache Quota Sonnet cũ (>2h) kích hoạt Fallback Tier 2 sang `sol_planner.py`, nhưng Harness thiếu cờ `--file <target>` khiến CLI rơi vào nhánh test mặc định và exit 0. `dispatch_planner` hiểu nhầm là plan hợp lệ, chuyển text test cho Worker khiến Worker mò mẫm sai repo và fail toàn bộ.
-    3. *Xử lý dứt điểm:* Sửa CLI/Harness truyền đủ `--file`, kiểm tra schema plan tại Tier 2, và chuyển các vé sự cố từ `blocked/` về `pending/` để chạy lại.
+    3. *Xử lý dứt điểm (L2 Surgery & Invariant Contracts):*
+       - **Invariant `sol_planner.py` CLI Guard:** Bắt buộc bọc guard `if not (args.goal or args.test): parser.print_help(); sys.exit(1)`. Khi có `--goal`, xử lý planning và thoát theo status (`sys.exit(0 if status == 'success' else 1)`). Nhánh test mẫu CHỈ chạy khi có cờ tường minh `--test`. CẤM TUYỆT ĐỐI fall-through vào khối test khi thiếu `--file`.
+       - **Invariant `incident_auto_harness.py` Target Path Resolution:** Khi gọi `dispatch_planner.py`, bắt buộc truyền cờ `--file` kèm đường dẫn đã được giải quyết: `tf = Path(self.envelope.repo) / self.envelope.target_file` (`--file str(tf if tf.is_file() else self.envelope.target_file)`).
+       - **Quy trình Khôi phục Vé Sự Cố Sau Bão (Safe Unblock Recipe):**
+         1. Lọc các file `.json` trong `D:/Taadaa/runtime/incidents/blocked/` theo mtime phiên bị storm.
+         2. Xóa sạch file checkpoint cũ (`runtime/incidents/<id>/checkpoint.jsonl`) để xóa dấu vết banner test giả.
+         3. Di chuyển file JSON từ `blocked/` về `pending/`.
+         4. Hậu kiểm bằng focused test: `pytest D:/Taadaa/tools/tests/test_incident_envelope_and_lock.py`.
+         5. Script can thiệp tạm thời phải dùng `python D:/Taadaa/tools/safe_recycle.py <script>` để dọn dẹp, tuyệt đối không dùng lệnh `rm` trực tiếp.
 
 ## 6. Bảo Hiểm Đọc Credential 3 Lớp (Telegram Token Fallback)
 - Hàm `_get_telegram_token()` trong `telegram_report.py` tìm token theo thứ tự ưu tiên:

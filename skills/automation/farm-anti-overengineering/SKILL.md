@@ -20,6 +20,13 @@ description: Kỷ luật thực thi chống over-engineering và cấm viết l�
 - **Phân biệt rõ Gate cản trở vs Watchdog quan sát (BẮT BUỘC GIỮ WATCHDOG):**
   - *Gate cản trở (Nên cắt/tinh gọn):* Chặn luồng thực thi vô lý, bắt bẻ thủ tục hành chính, đòi điểm số AI.
   - *Watchdog quan sát & Hardware Safety (BẮT BUỘC GIỮ 100%):* `gate_compliance_watchdog.py` (báo cáo 6h theo dõi kỷ luật Agent gọi worker, quét root), `with_device_lock.py` (JIT lock phần cứng 80 máy), `guard_android_proxy.py` (chống lộ IP farm), `ui_policy_check.py` (cấm spam dump XML trên S7), `claude_quota_guard.py` (bảo vệ hạn mức).
+  - *Safe Flags cho Quota Lookup:* Mọi hook kiểm soát CLI (`guard_claude_cli_lock.py`) bắt buộc đưa cờ `--check-quota` vào `SAFE_FLAGS` để tra cứu hạn mức local không bao giờ bị chặn nhầm.
+- **Quy tắc Vòng Đời Subprocess Hook & Không Cần Restart Gateway:**
+  - Các hook khai báo trong `config.yaml` (`pre_tool_call`, `post_tool_call`) được Hermes kích hoạt theo dạng CLI subprocess độc lập (`python D:/Taadaa/tools/...`).
+  - Mọi thay đổi sửa chữa trên file script hook/tool có hiệu lực ngay lập tức ở lần gọi tiếp theo, **TUYỆT ĐỐI KHÔNG CẦN restart Gateway** (trừ khi can thiệp core `gateway/run.py` hoặc daemon in-memory).
+- **Targeted Scoping cho Closeout v2 (`--target-file`):**
+  - Khi repo có nhiều file dirty tồn đọng từ các ca làm việc trước, chạy full dirty detection sẽ gây timeout hoặc dính test fail của file khác.
+  - `closeout_v2.py` bắt buộc hỗ trợ cờ `--target-file <path>` để chỉ chạy syntax compile và focused pytest cho đúng file vừa sửa trong phiên hiện tại.
 - **Cấm rải Git hook (pre-push/pre-commit) phân tán vào 20 repo con (Bureaucratic Theater):** Farm vận hành hằng ngày qua Task Scheduler và Python Cron, hoàn toàn không chạy `git push`. `git push` chỉ xảy ra khi dev/agent kết thúc phiên code. Mọi chốt chặn Invariant bắt buộc tập trung tại 1 điểm duy nhất.
 - **Phân định dứt khoát Regression Gate vs Protection Regression Gate:**
   - *Regression Gate:* Chạy suite unit test (`pytest`) của repo để kiểm tra tính đúng đắn của logic chức năng.
