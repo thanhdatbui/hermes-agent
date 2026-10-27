@@ -40,6 +40,7 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
 - Quy Trình Staging Ảnh Telegram Cache & Soi Mắt Bằng Browser Vision: [`references/telegram-image-cache-staging-and-browser-vision-sop.md`](references/telegram-image-cache-staging-and-browser-vision-sop.md)
 - Khắc Phục Lỗi Rò Rỉ Egress Prompt & False-Positive Regex Nhận Việc Của Media Gate: [`references/egress-leak-and-reception-false-positive-remediation.md`](references/egress-leak-and-reception-false-positive-remediation.md)
 - Bẫy INVALID_MEDIA_FILE Do Lệch SHA-256 & Kỷ Luật Cô Lập Máy Mục Tiêu (Admin vs Kibe): [`references/invalid-media-file-tamper-trap-and-target-machine-isolation.md`](references/invalid-media-file-tamper-trap-and-target-machine-isolation.md)
+- Khắc Phục Bẫy INVALID_MEDIA_FILE Do Stale Receipt Cũ & Ép Buộc Soi Mắt Thật Sự: [`references/recycled-media-path-ttl-and-native-vision-auto-receipt.md`](references/recycled-media-path-ttl-and-native-vision-auto-receipt.md)
 
 ## 1. Nguyên Tắc Cốt Lõi (Invariants)
 1. **CẤM gửi ảnh mù / đối phó:** Trước khi đính kèm bất kỳ thẻ `MEDIA:<path>` nào, bắt buộc phải mở ảnh ra soi mắt kiểm tra trước.
@@ -169,6 +170,10 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
     - **Lỗi Lệch SHA-256 Trên File Ảnh Tái Sử Dụng:** Khi Agent chụp ảnh mới ghi đè lên file ảnh dùng lại (ví dụ `D:/OneDrive/TaadaaData/admin_screen.png`), hash SHA-256 của file mới sẽ lệch với hash đã ký trong `vision_receipts.jsonl`. Hook `guard_media_vision_gate.py` sẽ lập tức chặn với mã lỗi `INVALID_MEDIA_FILE (tampered: sha-256 differs)`. BẮT BUỘC phải chạy lệnh tái cấp receipt chính thống (`python D:/Taadaa/tools/run_winrt_ocr.py "<path>"`) sau khi ghi đè file mới rồi mới được đính kèm thẻ `MEDIA:<path>`.
     - **CẤM Rò Rỉ Prompt Kỹ Thuật Khi Bị INVALID_MEDIA_FILE:** Mọi phán quyết chặn của Media Gate phải được xử lý nội bộ trong vòng lặp agent hoặc thông báo ngắn gọn; tuyệt đối CẤM nhè nguyên khối văn bản prompt cưỡng chế `[CONTRADICTION_GATE_TRIGGERED]` ra màn hình chat Telegram của người dùng.
     - **Kỷ Luật Cô Lập Máy Admin vs Kibe PC:** Mọi tác vụ liên quan đến Game ĐTCL / TFT / League of Legends / Riot Client / Render máy Admin BẮT BUỘC chỉ định danh đích đến là **máy Admin (`192.168.110.119`)** qua `admin_ssh.py`. CẤM TUYỆT ĐỐI gọi `computer_use` chụp màn hình hoặc chạy lệnh can thiệp cục bộ trên Kibe PC (tài khoản `BóngVàoTrăng`), tránh làm hỏng môi trường làm việc của User. Chi tiết xem [`references/invalid-media-file-tamper-trap-and-target-machine-isolation.md`](references/invalid-media-file-tamper-trap-and-target-machine-isolation.md).
+34. **Kỷ Luật Ép Soi Mắt Thật & Khắc Phục Stale Receipt Tamper Trap (`_media_file_verdict`):**
+    - **Không buông lỏng Gate:** CẤM hạ cấp Gate thành kiểm tra tồn tại file tầm thường (`os.path.isfile`). BẮT BUỘC Agent phải mở ảnh ra soi mắt (`browser_vision` hoặc `run_winrt_ocr`) thì mới được suy luận và phát ngôn.
+    - **Sửa Stale Receipt Tamper:** `_media_file_verdict` chỉ kiểm tra tamper đối với receipt trong khung TTL (`DEFAULT_TTL_SECONDS`). Receipt hết hạn không gây lỗi `INVALID_MEDIA_FILE` giả khi chụp đè ảnh mới lên đường dẫn tái sử dụng (`admin_screen.png`).
+    - **Auto-Receipt Cho Native Vision:** `transform_llm_output_check` tự động nhận diện lượt gọi `browser_vision` trên file ảnh trong `tool_calls` để cấp vé kiểm chứng, triệt tiêu false-positive khi Agent đã soi mắt thật. Chi tiết xem [`references/recycled-media-path-ttl-and-native-vision-auto-receipt.md`](references/recycled-media-path-ttl-and-native-vision-auto-receipt.md).
 
 ## 2. Thang Leo Thang Vision Dự Phòng (Fallback Ladder)
 Thứ tự fallback đọc ảnh chuẩn hoá 100% đồng bộ với kiến trúc Worker Dispatch:
