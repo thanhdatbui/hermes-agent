@@ -5,7 +5,7 @@ description: Use when TikTok login has wrong pass. Reset via token.
 
 # TikTok Auth Recovery & Password Sync
 
-> Reference Case Studies: `references/case-study-m211-recovery.md` (M211 wrong password recovery via Graph API OTP & single-writer lock), `references/case-study-m261-fake-password-and-canary-row-trap.md` (M261 data governance on fake password vs empty/None, remote Admin socket & anti-performative canary row selection), `references/case-study-m274-switcher-digit-collision-and-winrt-ocr-enforcement.md` (M274 switcher digit suffix collision bug fix, WinRT OCR primary enforcement to protect S7 CPU, and GPM profile OTP fallback).
+> Reference Case Studies: `references/case-study-m211-recovery.md` (M211 wrong password recovery via Graph API OTP & single-writer lock), `references/case-study-m261-fake-password-and-canary-row-trap.md` (M261 data governance on fake password vs empty/None, remote Admin socket & anti-performative canary row selection), `references/case-study-m274-switcher-digit-collision-and-winrt-ocr-enforcement.md` (M274 switcher digit suffix collision bug fix, WinRT OCR primary enforcement to protect S7 CPU, and GPM profile OTP fallback), `references/case-study-login-v1-cluster-awareness-and-playwright-path-pollution.md` (tiktok_login_v1.py cluster awareness for Admin machines >= 200, sys.path sanitization for Playwright against broken hermes-agent venv greenlet, and account dropdown already open handling).
 
 ## Invariant Vận Hành (User Rule 2026-10-25)
 - **Cấm ném "kỷ luật suông" vào memory thay vì sửa script**: Khi phát hiện lỗi pass sai, TUYỆT ĐỐI CẤM Agent chỉ lưu các điều khoản "kỷ luật" vào persistent memory rồi dừng lại báo cáo suông. BẮT BUỘC phải vá logic trực tiếp vào script canonical (`tiktok_login_v1.py` / `login_runner.password_change`) để toàn bộ dàn máy tự động hành động.
@@ -101,4 +101,24 @@ description: Use when TikTok login has wrong pass. Reset via token.
 16. **Nhận Diện Khung Giờ Ca Cron Sản Xuất & Xử Lý Xung Đột `device_lock`**:
    - Khi chạy Canary kiểm chứng tài khoản đơn lẻ trên dàn Admin/Kibe: BẮT BUỘC kiểm tra xem dàn máy có đang trong ca chạy batch tự động (ví dụ: ca sáng 06:00 `multi-machine-feed-session` với PID mẹ quản lý 20-30 workers) hay không bằng cách kiểm tra các tiến trình cha (`run_tiktok.py`).
    - Nếu máy đích đang nằm trong tiến trình ca thật và đang giữ lock: Tuyệt đối không cố chạy đè `--force-preempt` vì sẽ phá vỡ phiên nuôi của cả dàn. Bắt buộc chờ máy hoàn thành ca hoặc chọn máy rảnh ngoài ca để nghiệm thu.
+17. **Kỷ Luật Tập Trung Đúng Mục Tiêu Trực Diện (Chống Canary Lạc Đề & Trôi Scope)**:
+   - Khi User yêu cầu fix luồng đăng nhập tài khoản thiếu: BẮT BUỘC tập trung chạy và debug trực tiếp lệnh canonical `python D:/Taadaa/Tiktok_Reg/tiktok_login_v1.py <STT> --email <target_email> --otp-only --ss`.
+   - TUYỆT ĐỐI CẤM chạy Canary Feed Session trên các tài khoản khác đã có sẵn trên máy để đối phó lấy Done Gate khi tài khoản cần đăng nhập chưa hoàn tất (User Frustration Signal: "T cần fix là chạy hàm tiktok login tự nhiên cứ đi chứng minh con cặc gì v").
+18. **Cluster-Aware Routing trong `tiktok_login_v1.py` cho Cụm Admin ($STT \ge 200$)**:
+   - `tiktok_login_v1.py` mã nguồn legacy mặc định đọc workbook và thiết bị từ cụm Kibe (`D:/OneDrive/TaadaaData/kibe/taikhoan_dat_v2_updated .xlsx` và `kibe/taikhoan_run_safe.xlsx`).
+   - Khi chạy cho máy $STT \ge 200$, BẮT BUỘC tự động chuyển routing:
+     * `TAADAA_HOST_CONFIG = D:/Taadaa/machine-config/admin.yaml`
+     * `ADB_SERVER_SOCKET = tcp:192.168.110.119:5037`
+     * `TRACKING_PATH = D:/OneDrive/TaadaaData/admin/taikhoan_dat_v2_updated .xlsx`
+     * `TARGET_INVENTORY_WORKBOOK = D:/OneDrive/TaadaaData/admin/taikhoan_run_safe.xlsx`
+   - Nếu không cập nhật, lệnh `--list` sẽ báo "Khong tim thay account nao trong tracking" và `resolve_device()` sẽ ném `RuntimeError: Khong co STT trong ACCOUNTS`.
+19. **Bẫy `PYTHONPATH` Venv Gây Sập Playwright (`greenlet._greenlet`) Khi Đọc GPM OTP**:
+   - Khi Hermes Agent chạy trên Windows, biến môi trường `PYTHONPATH` tự động export đường dẫn `hermes-agent/venv/Lib/site-packages`. Trong thư mục này có các module C-extension (như `greenlet._greenlet.pyd`) không tương thích với Python của hệ điều hành.
+   - Khi `read_otp_gpm.py` import `from playwright.sync_api import sync_playwright`, Python ưu tiên đọc từ `PYTHONPATH` và ném `ModuleNotFoundError: No module named 'greenlet._greenlet'`. Script bắt `ImportError` và gán `sync_playwright = None`, khiến hàm bốc OTP văng lỗi ngầm `Playwright is unavailable; install playwright` rồi fallback sai sang mở app Outlook trên điện thoại S7 làm treo máy.
+   - Khắc phục bắt buộc: Trong `D:/Taadaa/Hotmail/scripts/read_otp_gpm.py`, BẮT BUỘC dọn sạch `sys.path = [p for p in sys.path if "hermes-agent" not in p]` ngay trước khi import Playwright.
+20. **Xử Lý Account Switcher Dropdown Sheet Đã Mở Sẵn Tránh Văng Lỗi `[03_dropdown]`**:
+   - Trong `social_reg_v1.py`, hàm `open_account_dropdown()` tìm nút mở dropdown (chevron hoặc display name) trên trang Profile. Nếu bottom sheet "Chuyển đổi tài khoản" đã được mở sẵn từ một bước trước, việc tap vào các tọa độ cũ sẽ trúng nền sheet hoặc miss, dẫn đến `RuntimeError: [03_dropdown] Khong mo duoc account dropdown`.
+   - Khắc phục bắt buộc:
+     * Ngay đầu hàm `open_account_dropdown()` và `go_to_profile()`, BẮT BUỘC kiểm tra `if _account_dropdown_open_xml(xml): return True`.
+     * Nếu sheet đã mở sẵn thì lập tức bỏ qua bước tap mở dropdown và chuyển thẳng sang bước chọn "Thêm tài khoản".
 
