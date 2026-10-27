@@ -6,13 +6,14 @@ description: "Use when designing mechanical gates to prevent agent loops."
 # Mechanical Guidance Gate Design (Anti-Whining & Action Mandate)
 
 ## 1. When to Use
-Use when creating, modifying, or reviewing mechanical enforcement gates (pre-tool hooks, git hooks, closeout gates, or runtime fences). Enforces that every gate provides deterministic, actionable unblocking paths (Auto-Rewire / Active Pivot) rather than passive denials.
+Use when creating, modifying, or reviewing mechanical enforcement gates (hooks, gates, runtime fences). Enforces actionable unblocking paths (Auto-Rewire / Active Pivot) rather than passive denials.
 - Reference: `references/pre-tool-auto-rewrite-and-24h-heartbeat-architecture.md` (Pre-tool rewrite & heartbeat).
-- Reference: `references/auto-rewire-and-auto-clamp-architecture.md` (Worker entrypoint rewrite & clamp).
-- Reference: `references/user-sudo-override-and-investigate-read-only-deadlock-triage.md` (Sudo override & triage).
-- Reference: `references/dispatch-worker-timeout-and-deadlock-prevention-20261025.md` (Timeout floor 360s, Haiku fallback).
-- Reference: `references/gate-compliance-audit-desync-and-test-pollution-invariants.md` (Telemetry filtering & normalization).
+- Reference: `references/auto-rewire-and-auto-clamp-architecture.md` (Worker rewrite & clamp).
+- Reference: `references/user-sudo-override-and-investigate-read-only-deadlock-triage.md` (Sudo override).
+- Reference: `references/dispatch-worker-timeout-and-deadlock-prevention-20261025.md` (Timeout floor 360s).
+- Reference: `references/gate-compliance-audit-desync-and-test-pollution-invariants.md` (Telemetry filtering).
 - Reference: `references/active-pivot-auto-rewire-architecture.md` (Auto-Rewire vs Hard-Block).
+- Reference: `references/multi-repo-regression-gate-hierarchy.md` (3-tier repo-scoped vs global invariant gates).
 - Reference: `references/o1-process-verification-and-closeout-operational-decoupling.md` (O(1) process verification vs OCR trap, operational closeout decoupling).
 - Reference: `references/observability-watchdog-vs-bureaucratic-blocking-gate-pruning.md` (Observability watchdogs retention vs bureaucratic blocking gate & local hash chain pruning).
 - Reference: `references/auto-wiring-and-guidance-boundary-matrix-20261026.md` (Auto-Wiring vs Fail-Fast decision matrix for investigate budget & GuardGate guidance).
