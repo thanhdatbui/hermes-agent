@@ -172,6 +172,15 @@ Applies whenever reports fail to reflect actual fleet health, mask dropped machi
   4. **Generous Subprocess Buffer:** Set watchdog runner subprocess timeouts to $\ge 180$s to buffer against periodic NTFS disk load spikes during multi-cloud sync or peak farm operations. See `references/hermes-cron-subprocess-timeout-misclassification.md`.
   5. **Dẹp Bỏ Điểm Số Hình Thức Khi Chốt Phiên:** Khi chốt phiên vận hành/fix watchdog, TUYỆT ĐỐI CẤM nhắc tới điểm số ("Điểm: 100/100" hay "Điểm >= 85"). Báo cáo chỉ ghi nhận: `Verdict: APPROVED (Operational Fast-Pass O(1))` kèm test/lệnh chạy thật. Trường `"score": 100` trong `closeout_gate.py` chỉ phục vụ tương thích ngược cho `safe_push.py`, cấm đưa vào prose giao tiếp với User.
 
+### Invariant 19: Code-Fix vs Historical State Desync & Reconciliation Obligation
+- **Anti-Pattern:** When fixing a logic bug that caused phantom successes or false state transitions (e.g. child runner returning exit code 0 on skipped/failed accounts), the agent only patches the execution script (`chatgpt_gpm_direct_reg.py`) but forgets to audit, clean, or reconcile the historical state files (`batch_gpm_5profiles_supervisor_state.json`). Consequently:
+  1. **Reporting Inertia & Distrust:** Scheduled watchdogs/reports (`cron_hotmail_gpm_lifecycle_6h_report.py`) continue reading historical state files and reporting high "success" rates (e.g. 567/630 accounts registered) despite zero actual credentials or active sessions, causing user confusion and distrust.
+  2. **Pipeline Starvation & Stage Trapping:** Supervisors treat accounts with historical phantom timestamps (`chatgpt_registered_at`) as completed, skipping registration and advancing hundreds of accounts to mature stages (`WAIT_7D` -> `CHANGE_INFO` -> `DONE`) without ever performing the prerequisite operation.
+- **Rule:**
+  1. **Mandatory Post-Fix State Audit & Reconcile:** Whenever a phantom-success bug is resolved in a runner script, the agent MUST immediately audit the historical state files across all affected clusters (Kibe, Admin).
+  2. **Ground-Truth Credential/Session Cross-Check:** Reporting watchdogs MUST NOT rely solely on naive timestamps (`chatgpt_registered_at`) or downstream stage names. They must cross-check with tangible evidence: non-empty credential fields (`chatgpt_password`) or active connection records in the destination registry (e.g. OmniRoute `provider_connections`).
+  3. **State Rollback & Re-Queue Protocol:** Any entity identified with a phantom timestamp and missing ground-truth credentials must be rolled back: clear the phantom timestamp, reset the stage back to the prerequisite step (`CHATGPT_REG`), and allow the supervisor to legitimately execute the task.
+
 ---
 
 ## 3. Verification Protocol for Watchdogs & Reports
