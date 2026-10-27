@@ -479,12 +479,12 @@
   3. **Phản hồi Proposal Canvas kèm MEDIA: dòng đầu tiên:** Giúp User có ảnh trực quan chọn phương án ngay lập tức mà không phải chờ đợi ca nuôi nick kết thúc hay bị kẹt phiên vì Device Lock. Chuẩn bị sẵn dữ liệu đĩa (`avatar.jpg`, marker) để nạp dứt điểm khi máy nhả lock.
 
 ## 58. Bẫy Lệch Ngách Kép Giữa `F_src` Cũ Và `F_vid` Thực Tế Trên Kênh (The Dual-Niche Desync Trap)
-- **Hiện tượng:** Trên file Excel `Tik*.xlsx`, cột `F_src` ghi `549` (kho cà phê cũ), nhưng cột `F_vid` đã render và nạp lên kênh thực tế lại là `551` (kho video nữ sinh Douyin). Agent không đối soát chéo, chỉ nhìn vào `F_src: 549` và tự suy diễn cả kênh là cà phê, cãi tay đôi hoặc sinh avatar tách cà phê trong khi kênh thực tế đăng 12 video nữ sinh. Khi User gửi ảnh chụp màn hình web TikTok hỏi *"ủa là nick này hay nick nào v?"*, Agent mới vỡ lẽ.
-- **Căn nguyên:** Sự không đồng nhất giữa thư mục nguồn (`F_src`) và thư mục video thực tế đã xuất bản (`F_vid`) trong file Excel quản lý.
+- **Hiện tượng:** Trên file Excel `Tik*.xlsx`, cột `F_src` ghi `549` (kho cà phê cũ), nhưng cột `F_vid` đã render và nạp lên kênh thực tế lại là `551` (kho video nữ sinh Douyin). Agent không đối soát chéo, chỉ nhìn vào `F_src: 549` và tự suy diễn cả kênh là cà phê, cãi tay đôi hoặc sinh avatar tách cà phê trong khi kênh thực tế đăng 12 video nữ sinh. Khi User gửi ảnh chụp màn hình web TikTok hỏi *"ủa là nick này hay nick nào v?"*, *"chứ sao là nick gái mà mày cứ đòi làm caffe chi v"*, Agent mới vỡ lẽ.
+- **Căn nguyên:** Sự không đồng nhất giữa thư mục nguồn (`F_src`) và thư mục video thực tế đã xuất bản (`F_vid`) trong file Excel quản lý. Agent bị bẫy confirmation bias khi bám chặt vào cột `F_src` và keyword cũ mà lờ đi nội dung video thực tế hiển thị trên màn hình.
 - **Hành động bắt buộc:**
-  1. **Nguyên tắc `F_vid` & Profile Lưới Video Thắng Tuyệt Đối:** Nội dung video thực tế hiển thị trên Profile TikTok (và thư mục `F_vid`) là CHÂN LÝ. Nếu `F_src` ghi cà phê nhưng `F_vid` và trang cá nhân là nữ sinh, BẮT BUỘC coi ngách kênh là Nữ sinh / Gái xinh.
+  1. **Nguyên tắc `F_vid` & Profile Lưới Video Thắng Tuyệt Đối:** Nội dung video thực tế hiển thị trên Profile TikTok (và thư mục `F_vid`) là CHÂN LÝ TỐI CAO. Nếu `F_src` ghi cà phê nhưng `F_vid` và trang cá nhân là nữ sinh, BẮT BUỘC coi ngách kênh là Nữ sinh / Gái xinh.
   2. **Cập nhật và sửa đồng bộ Excel:** Sửa lại cột `Keyword` / `Hashtag` trong `Tik*.xlsx` thành ngách thực tế, ghi chú lại sự lệch thư mục để các ca vận hành sau không bị lặp lại bẫy này.
-  3. **Luôn mở mắt đối soát 3 điểm neo:** (a) Ảnh chụp màn hình User gửi, (b) Thư mục `F_vid`, (c) Thư mục `F_src`. Chỉ khi cả 3 khớp nhau hoặc đã làm rõ nguồn lệch mới được phép kết luận ngách và dựng avatar.
+  3. **Luôn mở mắt đối soát 3 điểm neo:** (a) Ảnh chụp màn hình User gửi, (b) Thư mục `F_vid`, (c) Thư mục `F_src`. Chỉ khi cả 3 khớp nhau hoặc đã làm rõ nguồn lệch mới được phép kết luận ngách và dựng avatar. Tuyệt đối không cãi bướng ép kênh theo ngách sai của `F_src`.
 
 
 
