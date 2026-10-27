@@ -1,4 +1,4 @@
-Cronjob ngầm deliver='local' chống spam stdout; Watchdog deliver='local' tự dispatch Telegram (cấm chỉ print). Hàm nạp token đọc trực tiếp hermes/.env chống rớt import.
+Cronjob ngầm deliver='local' chống spam stdout; Watchdog deliver='local' tự dispatch Telegram (cấm print). Token đọc hermes/.env. Sau sửa watchdog BẮT BUỘC chạy cron_sync_watchdog.py --force chống mtime runtime đè ngược Git.
 §
 TikTok lệch/thiếu acc: auto-login/reconcile bù; Admin (>=200) nạp admin.yaml, socket 192.168.110.119:5037 & workbook Admin; Canary tra đúng --row lỗi (timeout >= 720s). Graph token hết hạn (AADSTS70000): đọc OTP qua GPM cổng 19995 (read_otp_gpm.py) kèm exclude_codes; cấm spam dump XML làm S7 quá tải văng offline (ép WinRT OCR). Switcher cấm strip số đuôi làm lẫn nick (khanhthu2275 vs khanhthu1609).
 §
@@ -12,4 +12,4 @@ Tài khoản Gmail chuẩn clean_v2 đã tắt Google Prompt hoàn toàn chỉ d
 §
 Auto-Heal: đào log/ảnh ca, cấm chụp máy tắt màn; WinRT OCR primary; Canary auto-device; storm>=3 alert. Claude CLI dùng khi user gọi/Strike 3. Gate chuẩn O(1): check đúng sự kiện thật (browser_vision); dẹp Security Theater (DACL/HMAC, hash chain blockchain local, safe_push đọc log cũ); Watchdog theo dõi agent (gate_compliance, device_lock, proxy) BẮT BUỘC GIỮ; Closeout delta rỗng = Vận Hành PASS < 0.2s.
 §
-GuardGate rules.json scope repo/path độc lập + global invariants, cấm để chéo rule làm false deny. Repo-local rules.json (GPM auto) tự động nạp & deduplicate ID. Pre-tool hooks chặn runtime, Gate chặn git diff.
+GuardGate 2 tầng: Global (7 invariants) tại tools/guardgate/rules.json; Repo-local tại <repo>/rules.json (GPM auto, tiktok-luot nuoi acc, tools). Runner tự động nạp & merge theo repo. Hooks chặn runtime, Gate chặn git diff.

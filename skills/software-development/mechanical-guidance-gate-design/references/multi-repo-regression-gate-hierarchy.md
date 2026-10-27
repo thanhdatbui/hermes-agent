@@ -31,9 +31,29 @@ Narrowing rule execution within a repo to only modified files that actually cont
 - Prevents workers from modifying rule definitions inside PRs to bypass gates.
 
 ### Repo-Local Extension (`<repo>/rules.json`)
-- Repositories can define domain-specific rules locally.
-- The gate runner automatically discovers and merges repo-local rules when evaluating diffs against a specific target repo.
-- Merging must deduplicate rule IDs to prevent configuration errors.
+- Repositories define domain-specific rules locally in `<repo>/rules.json`.
+- The gate runner automatically discovers and merges repo-local rules when evaluating diffs against a specific target repo:
+  ```python
+  if repo:
+      repo_rules_file = Path(repo) / "rules.json"
+      if repo_rules_file.is_file() and repo_rules_file.resolve() != RULES_FILE.resolve():
+          try:
+              with open(repo_rules_file, "r", encoding="utf-8") as rf:
+                  repo_rules = json.load(rf)
+                  if isinstance(repo_rules, list):
+                      existing_ids = {r.get("id") for r in rules}
+                      for rr in repo_rules:
+                          if rr.get("id") not in existing_ids:
+                              rules.append(rr)
+                              existing_ids.add(rr.get("id"))
+          except Exception:
+              pass
+  ```
+- **ID Deduplication Invariant:** Merging MUST deduplicate rule IDs (`rr.get('id') not in existing_ids`) to prevent `GateConfigurationError("rule ids must be unique")` if a repo rule shares an identifier with canonical rules.
+- **Cross-Repo Verification Contract:** Verification suites must include cross-repo assertions proving:
+  1. Target repo diff triggers target repo-local rule (`DENY`).
+  2. Non-target repo diff with same pattern is ignored (`ALLOW`).
+  3. Global invariant diff triggers `DENY` regardless of `--repo`.
 
 ## 4. Separation of Concerns: Pre-Execution Interceptors vs Commit Gates
 
