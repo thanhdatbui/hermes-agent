@@ -57,3 +57,19 @@ Trong kiến trúc batch 2FA (`tiktok-add-bao-mat-f2a`):
 
 ### 3. Đối Soát Đầu Ra Khi Runner Crash
 - Khi `total == 0` và `code not in (0, 4)`: Watchdog bắt buộc bổ sung dòng chẩn đoán chi tiết (`WORKBOOK_BLOCKED` hoặc `HYDRATION_FAILED`) thay vì chỉ in mỗi `mã thoát 5` vô nghĩa để người vận hành nhận diện chính xác nguyên nhân từ xa.
+
+---
+
+## 4. Runbook Triage Nhanh O(1) Cho Coordinator Khi Gặp Mã Thoát 5
+
+1. **Kiểm tra tiến trình Excel & Lock file mồ côi:**
+   - Kibe: `tasklist /FI "IMAGENAME eq excel.exe"` & kiểm tra glob `~$*.xlsx` tại `D:\OneDrive\TaadaaData\kibe\`.
+   - Admin: `ssh admin-farm "tasklist /FI \"IMAGENAME eq excel.exe\""` & kiểm tra glob `~$*.xlsx` tại `D:\OneDrive\TaadaaData\admin\`.
+2. **Kiểm tra Hydration & Read byte:**
+   - Chạy `attrib -u +p <path>` và đọc 10 bytes nhị phân đầu tiên để xác nhận OneDrive không giữ offline.
+3. **Thử nghiệm Target Freeze Offline Mocked:**
+   - Import `freeze_targets` trực tiếp trong Python với limit=10 để kiểm chứng logic đọc sheet và header mà không kích hoạt ADB hay can thiệp thiết bị thật.
+4. **Kỷ Luật Farm Safety Window:**
+   - Tuyệt đối CẤM chạy rerun `--force` trong các khung giờ nuôi (Ca nuôi sáng 05:05–09:30, Ca nuôi trưa 11:45–15:30, Ca nuôi chiều 17:45–21:30) để tránh xung đột lock thiết bị làm đứt gãy phiên nuôi feed.
+5. **Kỷ Luật Điều Phối Sửa Code (Hard Gate #3):**
+   - Khi cần điều chỉnh code của runner/watchdog, CẤM dùng `delegate_task` (bị Hard Gate #3 chặn). Bắt buộc dispatch qua `dispatch_worker.py` (Sol/Agy/Haiku O(1)) hoặc L2 Emergency Surgery nếu thỏa mãn đủ điều kiện exact diff.
