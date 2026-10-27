@@ -1,6 +1,6 @@
 Cronjob ngầm deliver='local' chống spam stdout; Watchdog deliver='local' tự dispatch Telegram (cấm print). Token đọc hermes/.env. Sau sửa watchdog BẮT BUỘC chạy cron_sync_watchdog.py --force chống mtime runtime đè ngược Git.
 §
-TikTok lệch/thiếu acc: reconcile bù; Admin (>=200) nạp admin.yaml, socket 192.168.110.119:5037 & wb Admin; Canary tra --row lỗi (timeout >= 720s). Graph token hết: đọc OTP qua GPM cổng 19995. Cấm spam dump XML làm S7 quá tải. Chuẩn hóa kênh: nhãn Canvas bắt buộc khớp 100% ảnh thật (cà phê/máy móc/người), cấm ảo giác bịa ngách.
+Chuẩn hóa kênh: nhãn Canvas bắt buộc khớp 100% ảnh thật (cà phê/máy móc/người), cấm ảo giác bịa ngách; BẮT BUỘC dùng browser_vision soi tận mắt từng pixel/vật thể/màu áo trước khi soạn text mô tả, cấm chép văn xuôi cũ; User cực ghét agent lười đọc ảnh đối phó.
 §
 Nạp ChatGPT-Web: trần 2 acc/IP + proxy_assignments; worker <= 5; Hotmail là mail mua sẵn; màn /about-you = acc chưa reg; pass ChatGPT random độc nhất lưu Excel; script reg cấm exit 0 khi fail; lọc GPM GroupId!=0; pre-validate Graph token; cấm base64.
 §
