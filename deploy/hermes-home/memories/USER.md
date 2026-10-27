@@ -5,5 +5,3 @@ User Sudo: Lệnh user ('tao cho phép', 'làm luôn', 'force', 'bypass') có qu
 Soạn tin nhắn mẫu gửi người khác: đặt trong code block ```text...``` riêng biệt (cấm blockquote >), ngắn gọn để 1 chạm copy sạch 100%.
 §
 Canary tái hiện đúng acc/lỗi thật (timeout >= 720s), cấm test nhầm acc. Cột PASS chưa đặt pass TikTok để None, cấm ghi pass ảo. Khi sai pass tra lại dữ liệu gốc trước khi chạy recovery.
-§
-Auto-resume Gateway: _auto_continue_task mở rộng 'restart_interrupted', 'restart_timeout', 'shutdown_timeout' và System Note cưỡng chế tiếp tục task dở dang, cấm hỏi lại. Khi báo xong một kênh BẮT BUỘC gửi ngay ảnh Profile thật kèm MEDIA:, cấm báo suông bằng text.
