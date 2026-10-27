@@ -29,10 +29,16 @@ Quy trình chuẩn hoá bao gồm trọn gói **5 hạng mục bắt buộc (5-i
 ---
 
 ## 1. Tra Cứu Toạ Độ Farm O(1) Từ Ảnh
-- **Bắt buộc:** Từ `@username` trên ảnh, đọc trực tiếp:
-  - `D:\OneDrive\TaadaaData\kibe\taikhoan_run_safe.xlsx` (`Accounts` sheet) ➔ `May`, `Device ID` (Serial ADB).
-  - `D:\OneDrive\TaadaaData\kibe\Tik*.xlsx` (`TaiKhoan` sheet) ➔ `F_vid` (Cột D), `F_src` (Cột E), `Keyword/Niche` (Cột F), `Hashtag` (Cột G).
-- **CẤM:** Quét đĩa diện rộng (`os.walk`, recursive glob, `find`) để tìm file.
+- **Bắt buộc:** Từ `@username` trên ảnh, đọc trực tiếp qua tra cứu O(1) song song cả 2 cụm Kibe và Admin:
+  - `D:\OneDrive\TaadaaData\kibe\taikhoan_run_safe.xlsx` và `D:\OneDrive\TaadaaData\admin\taikhoan_run_safe.xlsx` (`Accounts` sheet) ➔ `May`, `Device ID` (Serial ADB). Lưu ý: Nick trên cụm Admin (Máy $\ge 200$) nằm hoàn toàn trong thư mục `admin/`!
+  - `D:\OneDrive\TaadaaData\kibe\Tik*.xlsx` và `D:\OneDrive\TaadaaData\admin\Tik*.xlsx` (`TaiKhoan` sheet) ➔ `F_vid` (Cột D), `F_src` (Cột E), `Keyword/Niche` (Cột F), `Hashtag` (Cột G).
+- **CẤM:** Quét đĩa diện rộng (`os.walk`, recursive glob, `find`) để tìm file. Nếu không thấy ở cụm `kibe`, lập tức kiểm tra cụm `admin` trước khi tìm kiếm khác.
+- **Python OpenCV / PIL Runtime Guard:** Môi trường Python 3.12 của hệ thống có thể bị xung đột numpy C-extension từ venv. Khi viết script trích xuất frame/render canvas, luôn chèn tiền tố nạp môi trường chuẩn:
+  ```python
+  import sys
+  sys.path = ["D:/Taadaa/python-envs/automation/Lib/site-packages"] + [p for p in sys.path if "hermes-agent" not in p]
+  import cv2
+  ```
 
 ---
 
