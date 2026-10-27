@@ -36,8 +36,11 @@ Khi upload thành công lên TikTok app:
 - Thiết bị dải >= 200 cắm USB trực tiếp vào Admin-PC (`192.168.110.119`), không nhìn thấy qua ADB local của Kibe.
 - `run_upload_avatar.py` tự động phát hiện `machine >= 200` để trỏ `-HostConfigPath` sang `D:\Taadaa\machine-config\admin.yaml`.
 - Đồng bộ file ảnh chuẩn sang Admin-PC trước khi chạy: `D:/TIKTOK-videonuoinick-admin/{folder}/avatar.jpg` và cắm cờ `.manual_avatar_locked`.
+  * **Cơ chế đẩy file nhị phân qua SSH:** Dùng `sync_avatar_to_admin.py` với kích thước chunk 1.200 - 2.500 ký tự Base64 (tuyệt đối không vượt quá 2.500 để tránh lỗi `The command line is too long` do PowerShell `-EncodedCommand` nhân đôi kích thước khi chuyển sang UTF-16LE, vượt ngưỡng 8.191 ký tự của Windows CLI).
+  * **Kỷ luật chạy nền chống Timeout 60s:** Do foreground terminal bị giới hạn cứng 60s, việc đẩy file chunk qua SSH hoặc kéo ảnh chụp màn hình xác nhận (`pull_screenshot_from_admin.py`) và gọi runner trên Admin-PC BẮT BUỘC khởi chạy qua `terminal(background=true, notify_on_complete=true)` kết hợp `process(action='wait')`.
 - Lệnh kích hoạt chuẩn qua SSH:
   ```powershell
   python D:/Taadaa/tools/admin_ssh.py --powershell --timeout 1200 "Set-Location D:\Taadaa\Tiktok-video; echo RUN | powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\run_tiktok_upload_avatar.ps1 -Tik <N> -MaxParallel 1 -ForceAvatarMachineList <M> -HostConfigPath D:\Taadaa\machine-config\admin.yaml"
   ```
+- **Kéo ảnh xác nhận về Kibe:** Dùng `python D:/Taadaa/tools/pull_screenshot_from_admin.py <remote_path> <local_path>` kéo `avatar-uploaded-confirmed.png` (chia chunk 15KB) về máy Kibe trước khi dùng `browser_vision` kiểm chứng.
 - **Xử lý trễ MediaStore (`AVATAR_PICKER_NO_MATCH`):** Sau khi push file vào `/sdcard/Pictures/`, nếu album báo trống do MediaStore chưa index kịp, runner retry lần 2 sẽ nhận diện được tile ảnh đầu tiên để crop và lưu.
