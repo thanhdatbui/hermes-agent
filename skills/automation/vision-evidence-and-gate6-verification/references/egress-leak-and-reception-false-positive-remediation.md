@@ -48,36 +48,29 @@ reason: message claims UI/device completion but contains no MEDIA: evidence tag
 
 ## 4. Giai Phap Co Hoc O(1) Da Trien Khai (`guard_media_vision_gate.py`)
 
-1. **Bo Loc Cua Nhan Vien `RECEPTION_OR_IN_PROGRESS_MARKERS`:**
-   Dua danh sach chan truoc vao ham `_requires_media_evidence`:
+1. **Bo Loc Mien Tru Toan Dien `EXEMPTION_MARKERS`:**
+   Mo rong bo loc mien tru tu reception markers len day du cac truong hop giai trinh ky thuat, thao luan kien truc va tra loi cau hoi:
    ```python
-   RECEPTION_OR_IN_PROGRESS_MARKERS = (
-       "nhan lenh",
-       "bat dau",
-       "dang",
-       "dang thuc hien",
-       "dang kiem tra",
-       "chuan bi",
-       "ke hoach",
-       "quy trinh",
-       "se",
-       "huong dan",
-       "chuan hoa kenh nay",
-       "chuan hoa kenh do",
-       "chuan hoa 2 kenh",
-       "chuan hoa hai kenh",
-       "chuan hoa cac kenh",
-       "yeu cau chuan hoa",
-       "lenh chuan hoa",
-       "tien hanh chuan hoa",
+   EXEMPTION_MARKERS = (
+       # Nhận việc & Đang tiến hành
+       "nhan lenh", "bat dau", "dang", "dang thuc hien", "dang kiem tra", "chuan bi",
+       "ke hoach", "quy trinh", "se", "huong dan", "chuan hoa kenh", "chuan hoa cac kenh",
+       "yeu cau", "tien hanh",
+       # Giải trình kỹ thuật, thảo luận & phân tích
+       "giai thich", "nguyen nhan", "ly do", "van de", "dieu tra", "phan tich", "overengineer",
+       "gate", "hook", "watchdog", "prompt", "leak", "lo hong", "kien truc", "security theater",
+       "tai sao", "vi sao", "thao luan", "tu van", "hoi dap",
+       # Code & Git & Công cụ
+       "script", "code", "ham", "function", "commit", "diff", "branch", "repo", "test", "pytest",
    )
 
    def _requires_media_evidence(message: str) -> bool:
        norm_msg = _normalize_text(message)
-       if any(_phrase_in(norm_msg, kw) for kw in RECEPTION_OR_IN_PROGRESS_MARKERS):
+       if any(_phrase_in(norm_msg, kw) for kw in EXEMPTION_MARKERS):
            return False
        return bool(ACTION_COMPLETION_PATTERNS.search(norm_msg) and SUBJECT_PATTERNS.search(norm_msg))
    ```
+   => Triet tieu hoan toan hien tuong: User chat hoi "sao the?", "gate co bi overengineer khong?", bot tra loi giai thich co chua tu "bao cao/ket qua/kenh" lien bi gate chan dung va nem prompt tho ra Telegram.
 
 2. **Kiem Chung Regression Unit Test:**
    Bo test `test_guard_media_vision_gate.py` duoc bo sung test case:
