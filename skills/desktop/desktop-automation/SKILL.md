@@ -117,6 +117,25 @@ This skill captures learnings and pitfalls for driving the user's desktop via to
   - Files inside `C:\Users\<user>\iCloudDrive` or OneDrive with Files On-Demand enabled are virtual NTFS reparse points / sparse placeholders.
   - Naive file traversal (`os.walk`, `shutil.copy2`, `robocopy`, `7za`) on placeholder files forces Windows to synchronously request the file stream from the remote cloud provider, causing scripts/terminal commands to hang indefinitely until hitting timeout.
   - *Fix:* Check file offline attributes (`FILE_ATTRIBUTE_OFFLINE` / `0x1000`) or exclude cloud-synced folders from batch local archiving unless files are explicitly hydrated/pinned locally.
+- **Remote Screen Automation / Hook Conflict with Fullscreen Game Engine (UltraViewer / League / TFT Crash `bad_module_info`):**
+  - *Symptom:* Bấm nút kết nối lại game (Reconnect) hoặc khởi động ĐTCL / LMHT (TFTClient-Win64-Shipping) bị crash ngầm, đứng hình hoặc văng lỗi `bad_module_info (c0000005)` kèm tiến trình `WerFault.exe` treo làm nghẽn toàn bộ render đồ họa.
+  - *Root Cause:* Các phần mềm remote desktop cũ như UltraViewer tiêm thư viện hook màn hình `uvh64.dll` vào toàn bộ tiến trình có đồ họa/DirectX. Khi game tải engine D3D12/DirectX, `uvh64.dll` bị lỗi truy cập bộ nhớ (`uvh64.dll_unloaded` exception 0xc0000005), làm văng game ngay lập tức.
+  - *Pitfall with Service Startup & Registry:* Tắt app bằng `taskkill` là chưa đủ vì service hệ thống `UltraViewService` vẫn chạy ngầm và tự khởi động lại qua Windows Service (`StartMode: Auto`).
+  - *Fix:*
+    1. Tắt service triệt để và disable startup:
+       ```powershell
+       Stop-Service -Name "UltraViewService" -Force -ErrorAction SilentlyContinue
+       Set-Service -Name "UltraViewService" -StartupType Disabled
+       ```
+    2. Dọn sạch tiến trình crash và game mồ côi:
+       ```cmd
+       taskkill /F /IM WerFault.exe /T
+       taskkill /F /IM UltraViewer_Desktop.exe /T
+       taskkill /F /IM uv_x64.exe /T
+       taskkill /F /IM TFTClient-Win64-Shipping.exe /T
+       ```
+    3. Phân biệt rõ màn hình: Nút *"Khởi động ĐTCL"* trên banner sảnh client thực chất là trang giới thiệu mùa giải mới; để vào trận thực sự phải kiểm tra tiến trình `TFTClient-Win64-Shipping.exe` hoặc click vào thanh menu chế độ "ĐẤU" (Play) / sảnh trận đấu.
+
 - **Fast Mass-File Deletion on Windows (NTFS):**
   - When removing large folders containing 50,000–200,000+ loose files (e.g. `node_modules`, `.venv`, old browser caches/profiles), Python's `shutil.rmtree` or sequential deletion can take 15–30+ minutes due to per-file userland stat overhead.
   - *Fix:* Invoke native NTFS removal via `cmd.exe /c rd /s /q "<path>"` (using list args `['cmd.exe', '/c', 'rd', '/s', '/q', path]` to avoid shell quoting traps). It runs directly in kernel space and finishes in seconds.
