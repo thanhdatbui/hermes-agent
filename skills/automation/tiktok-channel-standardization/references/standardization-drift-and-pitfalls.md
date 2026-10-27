@@ -361,6 +361,28 @@
      ```
   3. Mọi text in trên Canvas bắt buộc hiển thị tiếng Việt chuẩn 100%, rõ ràng từng dấu thanh (`ngã`, `hỏi`, `nặng`, `sắc`, `huyền`), tạo ấn tượng chuyên nghiệp và chỉn chu tuyệt đối trước khi gửi `MEDIA:` cho User.
 
+## 47. Bẫy Đọc Nhầm File Avatar Trên Đĩa Thay Vì Soi Avatar Thật Trên Screenshot Của User
+- **Hiện tượng:** Khi User gửi ảnh chụp màn hình Profile TikTok (giao diện App hoặc Safari Web), Coordinator không trích xuất avatar từ ảnh chụp màn hình. Thay vào đó, Coordinator chạy code đọc file `avatar.jpg` trong thư mục ổ đĩa (`D:/video goc/<id>/avatar.jpg` hoặc `D:/TIKTOK-videonuoinick/<id>/avatar.jpg`). File trên đĩa này thường là ảnh thẻ nam/nữ thô từ đợt reg nick hàng loạt ban đầu. Coordinator vội vã đưa ra phán đoán sai lệch nghiêm trọng: *"Cảnh báo: Avatar hiện tại là ảnh thẻ nam giới -> Lệch 100% so với video nữ sinh, bắt buộc đổi"*. Trong khi thực tế trên ảnh chụp màn hình Safari của User, avatar đã là hình vẽ chibi/hoạt hình cô gái dễ thương đồng bộ với kênh. Hậu quả: Khi User phản hồi *"Đéo có cái nào"*, Agent vẫn tiếp tục ảo giác ép cắt ảnh từ video và lặp lại kết luận sai, khiến User cực kỳ phẫn nộ: *"Lồn mẹ mày ảo giác ít thôi có đọc ảnh trc khi gửi tao k thế"*.
+- **Căn nguyên kỹ thuật:**
+  1. Trạng thái file trên đĩa (`F_src`, `F_vid`) và trạng thái hiển thị thực tế trên Profile TikTok của tài khoản là **hai trạng thái độc lập**, có thể đã bị lệch (desync) sau các đợt cập nhật hoặc do User đổi trước đó.
+  2. Coordinator lười soi ảnh gốc, ỷ lại vào việc đọc file ổ đĩa local.
+- **Hành động bắt buộc:**
+  1. **Ground-Truth Screenshot First:** Trạng thái trên ảnh chụp màn hình User gửi là CHÂN LÝ TỐI CAO. BẮT BUỘC dùng OpenCV crop vùng avatar trên ảnh User gửi (trên giao diện TikTok Web Safari: tâm avatar thường nằm ở góc trên bên phải `cx ~ 501, cy ~ 206, r ~ 65-70` trên khung 591x1280; trên Android App: nằm ở góc trên bên trái `(75, 150)` hoặc giữa màn hình).
+  2. Mở ảnh avatar trích xuất được qua `browser_vision` để soi mắt kiểm tra trước khi kết luận hiện trạng.
+  3. TUYỆT ĐỐI CẤM dùng file `avatar.jpg` trên ổ đĩa để suy diễn avatar trên Profile TikTok của User.
+  4. Nếu avatar thực tế trên Profile đã là hình vẽ chibi/anime nữ hoặc hình ảnh phù hợp Persona của kênh: BẮT BUỘC ưu tiên đề xuất GIỮ NGUYÊN avatar hiện tại, tập trung thi công ghim bài Top và chuẩn hóa Bio/Hashtag.
+
+## 48. Bẫy Dính Marker Cấm `VISUAL_CLAIM_MARKERS` Khi Hỏi User Bằng Tiếng Việt
+- **Hiện tượng:** Khi gửi tin nhắn kèm thẻ `MEDIA:`, Hook `guard_media_vision_gate.py` chặn đứng với mã `UNGROUNDED_OVERRIDE` dù ảnh và nội dung hoàn toàn khớp.
+- **Căn nguyên:**
+  1. Trong tiếng Việt, cách xưng hô tự nhiên *"Anh có muốn..."* chứa đúng cụm `"anh co"` nằm trong danh sách `VISUAL_CLAIM_MARKERS` của hook.
+  2. Cụm từ *"ảnh chụp người thật"* chứa đúng cụm `"anh chup"` nằm trong `VISUAL_CLAIM_MARKERS`.
+  3. Khi gặp các marker này, Hook hiểu lầm là câu văn đang mô tả nội dung thị giác của bức ảnh (`"ảnh có...", "ảnh chụp..."`) và tự động gom 4 từ tiếp theo (`muon`, `giu`, `nguyen`, `nguoi`, `that`) thành danh sách `claimed` tokens. Khi các từ này không nằm trong OCR tokens của ảnh, Hook lập tức kích hoạt fail-closed `UNGROUNDED_OVERRIDE`!
+- **Hành động bắt buộc:**
+  1. Tuyệt đối CẤM dùng các cấu trúc câu bắt đầu bằng `"Anh có..."`, `"Hình có..."`, `"Ảnh chụp..."` trong tin nhắn có đính kèm `MEDIA:`.
+  2. Thay vì viết: *"Anh có muốn giữ nguyên avatar này không?"* ➔ Viết thành: *"Anh muốn để nguyên avatar này hay muốn đổi sang hình khác?"* hoặc *"Bác muốn giữ avatar này không?"*.
+  3. Thay vì viết: *"đổi sang ảnh chụp người thật"* ➔ Viết thành: *"đổi sang hình người thật"*.
+
 
 
 
