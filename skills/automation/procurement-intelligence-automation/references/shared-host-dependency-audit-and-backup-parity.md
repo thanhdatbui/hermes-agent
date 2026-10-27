@@ -30,6 +30,13 @@ When an operator asks whether internal operations, farm devices, or local tools 
   2. Confirm that automated database alerts (`telegram_status = '0'`) and push cronjobs have been paused or decommissioned.
   3. Ensure no dangling webhooks or callback URLs point to the target VPS.
 
+### Vector 4: Notification Disabling vs Outbound Data Sync Decoupling ("Lệch Dữ Liệu" Forensics)
+* **The Operator Suspicion:** When an operator disables an alerting/notification bot (e.g. `UPDATE settings SET value='0' WHERE name='telegram_status';` or pauses a Telegram cron), and the site subsequently displays desynchronized stock / inventory data ("lệch dữ liệu"), operators frequently suspect that turning off the notification bot broke the underlying data synchronization pipeline.
+* **Diagnostic & Separation Protocol:**
+  1. *Code Path Inspection:* Verify whether `telegram_status` is an early-return guard for the entire sync cron or strictly a dispatch filter for the alert payload (`stockAlertCheck`). In well-architected ecommerce/CMS monoliths (Shopclone/CMSNT), supplier sync functions (`api31.php`, `xscr.php`, `shopclone7.php`) run independently on their own crontab schedules, while `cron.php` merely inspects delta state to send notifications.
+  2. *Outbound Network Connectivity Forensics (Port 443 Drop):* Check whether the VPS host is experiencing outbound TCP connectivity blockades (e.g. `Connection timed out` on port 443 to external APIs, while inbound HTTPS and ICMP ping to `8.8.8.8` still succeed). A cloud host where outbound 443 packets are dropped (via cloud provider firewalls, local iptables/UFW, or supplier IP blacklisting) cannot fetch catalog updates from upstream suppliers.
+  3. *Database Supplier Error State Evidence:* Inspect stored supplier response columns (`suppliers.price`, `update_gettime`). When upstream queries fail, the sync engine writes error payloads directly into the database (e.g. `{"status":"error","msg":"Mất kết nối đến kho hàng (HTTP 0)"}`). This proves to the operator with hard database artifacts that the sync failure is an infrastructure/network timeout, completely decoupled from the disabled Telegram alert bot.
+
 ---
 
 ## 2. The "Code in Git != Live Database" Backup Hazard

@@ -468,6 +468,16 @@
      - Sau khi tải ảnh về đĩa, BẮT BUỘC mở bằng `browser_vision` soi mắt trước để kiểm tra tính chân thực và thẩm mỹ.
      - Ghép vào Proposal Canvas với độ phân giải cao và ghi rõ nhãn mô tả trung thực (PA1: Latte Art nghệ thuật, PA2: Espresso hạt cà phê rang, PA3: Cà phê sữa đá mát lạnh).
 
+## 57. Bẫy Thiết Bị Kẹt Feed Lock Ca Nuôi & Trích Xuất Avatar Trực Tiếp Từ Lưới Video Desktop Screenshot Bằng Pillow O(1)
+- **Hiện tượng:** Khi nhận ảnh chụp màn hình Profile TikTok từ User (ví dụ: giao diện Chrome desktop hiển thị lưới 12 video), máy farm tương ứng đang bị giữ Device Lock bởi tiến trình nuôi nick toàn farm (`multi-machine-feed-session reservation`, trạng thái `queued_v2` hoặc `running`). Thao tác lệnh ADB can thiệp thiết bị hay kéo file từ máy sẽ bị chặn hoặc treo timeout. Đồng thời môi trường Python venv có thể bị lỗi xung đột numpy C-extension làm hỏng OpenCV `cv2` (`ModuleNotFoundError: No module named 'numpy._core._multiarray_umath'`).
+- **Căn nguyên & Hành động bắt buộc:**
+  1. **Trích xuất ứng viên Avatar trực tiếp từ các ô video trên screenshot:** Trên giao diện desktop, các ô video lưới hiển thị sắc nét phần thân trên và khuôn mặt của nhân vật chính. Dùng tọa độ bounding box trên screenshot để crop trực tiếp thay vì cố gắng dùng ADB kéo video từ máy đang bị lock.
+  2. **Quy trình Pillow thuần túy (Zero C-Extension Dependency):**
+     - Dùng `PIL.Image.open` mở ảnh screenshot.
+     - Dùng `PIL.ImageDraw.Draw` tạo mặt nạ hình elip/vòng tròn, bo viền xanh lá TikTok `(0, 230, 118)` dày 5px.
+     - Dựng Proposal Canvas tổng hợp và render toàn bộ text tiếng Việt có dấu bằng `PIL.ImageFont.truetype("C:/Windows/Fonts/arial.ttf", ...)` để không bao giờ bị vỡ font hay phụ thuộc C-extension của `cv2`/`numpy`.
+  3. **Phản hồi Proposal Canvas kèm MEDIA: dòng đầu tiên:** Giúp User có ảnh trực quan chọn phương án ngay lập tức mà không phải chờ đợi ca nuôi nick kết thúc hay bị kẹt phiên vì Device Lock. Chuẩn bị sẵn dữ liệu đĩa (`avatar.jpg`, marker) để nạp dứt điểm khi máy nhả lock.
+
 
 
 
