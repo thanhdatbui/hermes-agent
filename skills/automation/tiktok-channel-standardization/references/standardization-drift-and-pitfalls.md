@@ -569,6 +569,21 @@
   3. **Tự động thực thi dứt điểm khi nhả lock:** Khi file lock biến mất, watchdog tự động giành JIT lock, mở Profile, cập nhật Bio, upload Avatar, kéo vuốt pull-to-refresh, chờ CDN load đủ 8s, chụp screencap và gửi alert nghiệm thu.
   4. **Kiểm tra Username có dấu chấm (`@trinh.trinh.dinh` vs `@trinhtrinhdinh`):** Trên account switcher sheet của TikTok, dấu chấm có thể bị lược bỏ hoặc hiển thị theo display name. Khi switcher báo `ACCOUNT_VERIFY_MISMATCH`, phải thử cả 2 dạng handle để switch đúng nick mục tiêu.
 
+## 67. Bẫy Tọa Độ Cố Định (75, 150) Trên Layout Profile Mới Mở Màn Tìm Kiếm Thay Vì Sửa Hồ Sơ (New Profile Search Icon Trap)
+- **Hiện tượng:** Khi điều hướng vào màn "Sửa hồ sơ" để thay avatar hoặc sửa bio trên tài khoản có giao diện Profile mới, Coordinator dùng tọa độ cố định góc trên bên trái `(75, 150)` vốn là tọa độ icon bút chì của Samsung S7 cũ. Kết quả: Trên layout mới, vị trí `(75, 150)` là icon Kính lúp (Tìm kiếm) chứ không phải Sửa hồ sơ! Lệnh tap làm bật giao diện Tìm kiếm (`< Tìm kiếm` kèm bàn phím ảo), văng khỏi Profile và làm hỏng toàn bộ luồng đổi avatar/bio tiếp theo.
+- **Hành động bắt buộc:**
+  1. **Bắt buộc phân tích UI XML dump:** Không được dùng tọa độ mù `(75, 150)` khi chưa đối soát layout. Phải dùng UI dump XML tìm text "Sửa hồ sơ", "Edit profile" hoặc node bút chì có resource-id tương ứng.
+  2. **Kiểm tra màn hình hiện tại trước khi tap:** Nếu OCR hoặc XML phát hiện chữ "Tìm kiếm" / "Search", BẮT BUỘC bấm Back `keyevent 4` ngay lập tức để quay lại Profile trước khi tiếp tục.
+  3. **Tách biệt Guest Profile view vs My Profile view:** Nếu màn hình Profile có nút `<` ở góc trên bên trái và nút đỏ "Follow" ở dưới avatar, đó là đang xem trang của người khác (Guest Profile). Bắt buộc bấm Back thoát ra ngoài và tap lại tab Hồ sơ `(972, 1857)` ở thanh điều hướng dưới cùng.
+
+## 68. Bẫy Bại Liệt Hỏi Thừa Khi Đang Dở Việc & Kỷ Luật Sửa Code Ngay Khi Thấy Dấu '?' (Zero-Whining Immediate Code Action Mandate)
+- **Hiện tượng:** Sau khi đã nạp xong Avatar hoặc User đã chốt phương án Bio số 4, phiên làm việc gặp sự cố rớt mạng/gateway restart. Khi khôi phục phiên, Coordinator bị mất đà, dừng lại gõ văn hỏi: *"Anh có muốn em tiếp tục nạp dứt điểm câu Bio số 4 này lên máy luôn không?"*, khiến User bực bội: *"Tại sao đéo tiếp tục làm mà bại liệt đi hỏi"*. Tệ hơn nữa, khi bot gặp lỗi gate văng prompt `[CONTRADICTION_GATE_TRIGGERED]` ra màn hình chat và User gửi dấu hỏi chấm `?` biểu thị sự bức xúc tột cùng, Coordinator lại ngồi gõ văn giải thích nguyên nhân kỹ thuật thay vì lập tức sửa code, làm User tiếp tục cáu kỉnh: *"là sủa cơ học xong chưa... Có bị over engineer k v"*.
+- **Quy chuẩn bắt buộc:**
+  1. **Lệnh chốt là Lệnh thi công tuyệt đối:** Đã chốt số/phương án thì thi công dứt điểm đến bước cuối cùng (ảnh nghiệm thu thật `MEDIA:`), cấm dừng lại hỏi xin phép giữa chừng.
+  2. **Dấu `?` hoặc bức xúc vì lỗi lặp lại = Lệnh SỬA CODE NGAY LẬP TỨC:** Khi User gửi dấu `?` hoặc chửi lỗi lặp lại, TUYỆT ĐỐI CẤM gõ văn giải thích hay phân trần. Phải mở ngay file mã nguồn bị lỗi (`guard_media_vision_gate.py`), sửa dứt điểm, chạy pytest xanh 100% và báo cáo bằng kết quả thực thi.
+  3. **Quay về chuẩn O(1) chống Over-engineering:** Tin nhắn text thuần không chứa `MEDIA:` tag bắt buộc PASS 100%, tuyệt đối cấm dùng regex đoán mò chữ để rồi văng prompt lỗi ra Telegram.
+
+
 
 
 

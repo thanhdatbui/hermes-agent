@@ -13,6 +13,13 @@
 ## 2. Invariant điều tra hiện trường (Human-like Investigation Rule)
 Khi điều tra sự cố sau ca chạy (post-shift watchdog), **tuyệt đối không được chụp sống (live ADB capture)** vào máy đã kết thúc ca. Hành vi điều tra chuẩn xác bắt buộc phải mô phỏng y hệt thao tác của con người:
 
+- **CẤM TUYỆT ĐỐI ép Gate 0 đòi UI XML dump sau ca chạy:** 
+  1. Khi ca chạy kết thúc, máy đã thoát app về Home hoặc tắt màn hình, việc dump XML hiện tại là hoàn toàn vô giá trị ("Xong ca chạy rồi thì dump XML để làm gì?").
+  2. Gate 1 (Planner) và Gate 2 (Worker) xử lý lỗi logic/workflow chỉ tiêu thụ `target_file`, `error_type`, `stack_trace` và `log_tail` (kèm OCR text nếu có), hoàn toàn không dùng cây UI XML.
+  3. Nếu envelope đã có `stack_trace` hoặc `log_tail` hợp lệ từ `summary.txt` / `report.json` (`atx_status == "run_artifact"`), Telemetry Gate 0 BẮT BUỘC coi là đủ điều kiện (`score >= 2`), tuyệt đối không được đánh rớt / chuyển L3 chỉ vì thiếu XML dump.
+- **Cấm Fall-through sang Live ADB khi thiếu ảnh artifact:**
+  Nếu artifact không chứa file ảnh (ví dụ lỗi chết ngay tại preflight VPN trước khi mở app), `incident_emitter` BẮT BUỘC chốt telemetry dựa trên `log_tail` và `stack_trace`, TUYỆT ĐỐI CẤM rớt xuống nhánh chạy `adb exec-out screencap` và `atx-agent dumpUI` vào máy đang ngủ.
+
 1. **Định vị chính xác thư mục ca chạy của máy (Machine Run Directory):**
    - Từ `run_dir` của watchdog (vd: `D:/Taadaa/runtime/kibe/live/<date>/<shift_run>/`).
    - Duyệt có giới hạn (bounded `os.scandir`, depth <= 3, CẤM `os.walk`/`glob(recursive=True)` để chống vi phạm GuardGate) tìm thư mục máy: `machine_<M>` hoặc `machines/machine_<M>/<run_timestamp>/`.
@@ -37,6 +44,8 @@ Khi điều tra sự cố sau ca chạy (post-shift watchdog), **tuyệt đối 
   - Trong quá trình parser duyệt ca chạy, khi đọc `run_manifest.json` ở root, BẮT BUỘC gán `"machine_dir": item.get("artifact_root")` vào `payload` của `res_m`. Nếu thiếu, `all_machines[m_num]` sẽ bị `machine_dir = None`.
   - Khi đọc `upload_result.json` và `follow_result.json`, do JSON từ runner không có trường này, BẮT BUỘC ép gán `u_data["machine_dir"] = root` và `f_data["machine_dir"] = root`.
   - Trong `merger.py`: đảm bảo `m_dir = new.get("machine_dir") or prev.get("machine_dir")` được giữ lại xuyên suốt chuỗi merge.
+- **`incident_envelope.py` & Gate 0 Completeness Score:**
+  - `completeness_score()`: Nếu `atx_status == "run_artifact"` hoặc envelope đã có `stack_trace` / `log_tail` hợp lệ từ run artifacts (lỗi Python / workflow sau ca), tự động tính điểm hợp lệ (`score = 2`), CẤM TUYỆT ĐỐI ép buộc phải có `xml_dump` hay bắt buộc OCR text.
 - **`incident_emitter.py`:**
   - Hàm `extract_run_artifacts(machine_dir, stdout_tail, reason)`: Khai thác trực tiếp từ `machine_dir/summary.txt` và `stdout_tail` (tìm report Codex) trong thời gian $O(1)$ để lấy đủ 4 thành phần: `screenshot`, `xml_dump`, `log_tail`, `stack_trace`.
   - Hàm `collect_telemetry(..., artifacts=artifacts)`: Nếu `artifacts` hợp lệ, sao chép thẳng ảnh/xml vào thư mục telemetry của sự cố, chạy `winrt_ocr` trên ảnh artifact, gán `atx_status="run_artifact"`, bỏ qua 100% các lệnh ADB screencap / atx-agent.
