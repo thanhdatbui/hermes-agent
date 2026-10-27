@@ -452,6 +452,22 @@
   2. **Trích xuất frame cà phê thật từ video:** Dùng ffmpeg hoặc cv2 trích frame tại giây thứ 5..8 của clip quay cận cảnh ly cà phê (`1.mp4`), crop vùng ly cà phê có hoa văn bọt sữa (Latte Art) thật sự.
   3. **Kiểm tra 1:1 trước khi gán nhãn:** Trước khi gõ nhãn "Tách cà phê Latte Art", BẮT BUỘC dùng `browser_vision` soi trực tiếp vào file ảnh crop để xác nhận: "Trong ảnh có đúng là tách cà phê/ly cà phê không? Có bị dính icon game, bình thuốc, số hay vật thể lạ không?". Nếu có bất kỳ điểm bất thường nào, PHẢI loại bỏ ngay lập tức!
 
+## 56. Kỷ Luật Tự Sinh Ảnh AI Bằng Pollinations.ai (Flux/Turbo) Khi Kho Video B-Roll Quá Tối / Xấu
+- **Hiện tượng:** Kênh thuộc ngách sản phẩm / tĩnh vật / đồ uống (như Cà phê, Nước ngọt, Trà sữa...), nhưng các video trong kho thực tế chỉ là b-roll lướt nhanh, góc quay quầy bar tối, chụp cận nút bấm máy móc hoặc bọt sữa rung lắc, không có bất kỳ góc nào đạt chuẩn làm avatar TikTok. User chê thậm tệ (*"toàn hình như lồn kiếm hình khác đàng hoàng coi, mày coi hình như cặc ấy đi làm ava... còn k thì tự gen 1 cái ảnh liên quan tới kênh đi"*).
+- **Căn nguyên:** Các video nuôi nick TikTok thường là clip cắt vụn tải từ Douyin, nhiều clip chỉ quay thao tác máy móc cận cảnh hoặc góc máy dìm ánh sáng. Cố chấp cắt frame từ video xấu sẽ tạo ra avatar nhếch nhác, làm giảm uy tín kênh.
+- **Giải pháp Cơ Học Tự Sinh Avatar Bằng Pollinations.ai O(1):**
+  1. **Tạo script sinh ảnh tự động:** Dùng API `https://image.pollinations.ai/prompt/<PROMPT>?width=512&height=512&nologo=true&seed=<SEED>`.
+  2. **Lưu ý Rate-Limit & Mã Lỗi 402:**
+     - Nếu thêm `&model=flux`, pollinations có thể trả về lỗi `HTTP Error 402: Payment Required` khi hết quota miễn phí.
+     - **Giải pháp ổn định:** Không truyền tham số `model` (để mặc định dùng model Turbo miễn phí 100%) hoặc thêm delay `time.sleep(5)` giữa các request với User-Agent chuẩn desktop.
+  3. **Bộ prompt chuẩn theo ngách Cà phê:**
+     - *Latte Art:* `"Minimalist aesthetic ceramic white cup filled with latte art, cute coffee shop table, warm sunlight, photorealistic 8k, professional cafe photography, round profile picture avatar"`
+     - *Espresso Crema:* `"Top-down view of ceramic cup of fresh espresso with golden crema surrounded by dark roasted coffee beans on rustic dark wood, professional food photography, cozy cafe, aesthetic square avatar"`
+     - *Cà phê sữa đá:* `"Minimalist iced Vietnamese milk coffee in glass with ice and coffee beans, warm wooden cafe table, soft morning sunlight, aesthetic square avatar"`
+  4. **Quy trình nghiệm thu 2 lớp:**
+     - Sau khi tải ảnh về đĩa, BẮT BUỘC mở bằng `browser_vision` soi mắt trước để kiểm tra tính chân thực và thẩm mỹ.
+     - Ghép vào Proposal Canvas với độ phân giải cao và ghi rõ nhãn mô tả trung thực (PA1: Latte Art nghệ thuật, PA2: Espresso hạt cà phê rang, PA3: Cà phê sữa đá mát lạnh).
+
 
 
 

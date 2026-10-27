@@ -42,6 +42,8 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
 - Bẫy INVALID_MEDIA_FILE Do Lệch SHA-256 & Kỷ Luật Cô Lập Máy Mục Tiêu (Admin vs Kibe): [`references/invalid-media-file-tamper-trap-and-target-machine-isolation.md`](references/invalid-media-file-tamper-trap-and-target-machine-isolation.md)
 - Khắc Phục Bẫy INVALID_MEDIA_FILE Do Stale Receipt Cũ & Ép Buộc Soi Mắt Thật Sự: [`references/recycled-media-path-ttl-and-native-vision-auto-receipt.md`](references/recycled-media-path-ttl-and-native-vision-auto-receipt.md)
 - Phân Biệt Giữa Cơ Chế Kiểm Tra Cơ Học O(1) và Bệnh Over-Engineering (Ranh Giới SHA-256 vs Bureaucratic Theater): [`references/o1-mechanical-vs-overengineering-sha256-boundary.md`](references/o1-mechanical-vs-overengineering-sha256-boundary.md)
+- Bẫy Documentation-Only Fix & Kỷ Luật Sửa Mã Nguồn Thật Khi Lỗi Tái Diễn: [`references/documentation-only-fix-trap-and-real-code-hardening.md`](references/documentation-only-fix-trap-and-real-code-hardening.md)
+- Báo Cáo Đối Soát Độc Lập Claude Sonnet 5.5 & Kỷ Luật Triệt Tiêu Fail-Open Media Gate: [`references/claude-sonnet-audit-and-zero-failopen-media-gate.md`](references/claude-sonnet-audit-and-zero-failopen-media-gate.md)
 
 ## 1. Nguyên Tắc Cốt Lõi (Invariants)
 1. **CẤM gửi ảnh mù / đối phó:** Trước khi đính kèm bất kỳ thẻ `MEDIA:<path>` nào, bắt buộc phải mở ảnh ra soi mắt kiểm tra trước.
@@ -175,6 +177,16 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
     - **Không buông lỏng Gate:** CẤM hạ cấp Gate thành kiểm tra tồn tại file tầm thường (`os.path.isfile`). BẮT BUỘC Agent phải mở ảnh ra soi mắt (`browser_vision` hoặc `run_winrt_ocr`) thì mới được suy luận và phát ngôn.
     - **Sửa Stale Receipt Tamper:** `_media_file_verdict` chỉ kiểm tra tamper đối với receipt trong khung TTL (`DEFAULT_TTL_SECONDS`). Receipt hết hạn không gây lỗi `INVALID_MEDIA_FILE` giả khi chụp đè ảnh mới lên đường dẫn tái sử dụng (`admin_screen.png`).
     - **Auto-Receipt Cho Native Vision:** `transform_llm_output_check` tự động nhận diện lượt gọi `browser_vision` trên file ảnh trong `tool_calls` để cấp vé kiểm chứng, triệt tiêu false-positive khi Agent đã soi mắt thật. Chi tiết xem [`references/recycled-media-path-ttl-and-native-vision-auto-receipt.md`](references/recycled-media-path-ttl-and-native-vision-auto-receipt.md).
+35. **Bẫy Documentation-Only Fix & The Frustration '?' (Cấm Phân Tích Suông Thay Vì Sửa Code Thật):**
+    - **Hiện tượng:** Session trước đã phân tích nguyên nhân rò rỉ prompt gate và ghi chép tài liệu, nhưng file mã nguồn `guard_media_vision_gate.py` trên đĩa chưa được sửa hoàn chỉnh hoặc bị xóa mất `EXEMPTION_MARKERS` (`# (EXEMPTION_MARKERS removed to prevent fail-open)`). Khi tin nhắn tiếp theo kích hoạt lại lỗi cũ, User bức xúc (*"Cái đụ mẹ session kia t fix r sao vẫn cứ spam ra 1 đống v"*). Agent lại tiếp tục gõ văn bản phân tích thay vì sửa code, khiến User gửi dấu hỏi chấm `?`.
+    - **Quy tắc bắt buộc:**
+      * Khi User báo lỗi tái diễn: TUYỆT ĐỐI CẤM gõ văn giải thích dài dòng hay đổ lỗi.
+      * BẮT BUỘC kiểm tra `git diff` và file thực tế trên đĩa: khôi phục `EXEMPTION_MARKERS` với phạm vi chuẩn xác (miễn trừ cụm từ phân tích/giải trình/code, nhưng giữ vững kiểm tra hoàn tất UI thực tế), chạy lại toàn bộ test suite (`pytest`) đảm bảo 100/100 tests pass.
+      * CẤM để `chuan hoa` hoặc `cap nhat` đứng đơn lẻ trong `EXEMPTION_MARKERS` vì sẽ làm fail-open các test case `chuan hoa avatar` / `cap nhat avatar`. Chi tiết xem [`references/documentation-only-fix-trap-and-real-code-hardening.md`](references/documentation-only-fix-trap-and-real-code-hardening.md).
+36. **Kỷ Luật Triệt Tiêu Fail-Open Media Gate & Bài Học Phản Biện Từ Claude Sonnet 5.5:**
+    - **CẤM Dùng `EXEMPTION_MARKERS` Bằng Text Tự Do:** Mọi nỗ lực miễn trừ Gate 6 bằng danh sách từ khóa trong văn bản output (`EXEMPTION_MARKERS`) đều tạo ra lỗ hổng Text-Injection nghiêm trọng (Agent tự chèn từ khóa để tắt gate). BẮT BUỘC xóa bỏ 100% text markers, chỉ dựa vào danh sách công cụ thực thi thực tế trong transcript (`tool_calls` qua `is_ui_turn`).
+    - **Fail-Closed Tuyệt Đối Cho `MEDIA:<path>`:** `_media_file_verdict` trả về `None` khi file hợp lệ chỉ là điều kiện cần; ngay sau đó BẮT BUỘC phải rơi vào `check_contradiction`. Nếu chưa có receipt trong 300s, Gate quật ngã ngay với `NO_RECEIPT` (`passed: False`), cấm tuyệt đối mọi nhánh pass-through âm thầm.
+    - **Quy Trình Xử Lý Token Claude CLI:** `claude auth login` là lệnh tương tác trực tiếp TTY. Khi token hết hạn, cấm cố chạy ngầm gây nghẽn; phải hướng dẫn User mở terminal ngoài đăng nhập trình duyệt. Chi tiết xem [`references/claude-sonnet-audit-and-zero-failopen-media-gate.md`](references/claude-sonnet-audit-and-zero-failopen-media-gate.md).
 
 ## 2. Thang Leo Thang Vision Dự Phòng (Fallback Ladder)
 Thứ tự fallback đọc ảnh chuẩn hoá 100% đồng bộ với kiến trúc Worker Dispatch:
