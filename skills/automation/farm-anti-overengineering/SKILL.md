@@ -37,6 +37,7 @@ description: Kỷ luật thực thi chống over-engineering và cấm viết l�
 - **L4 (Clarify):** Chỉ dùng khi cần quyết định nghiệp vụ, thiếu credentials hoặc thao tác tốn phí tiền thật.
 
 ## 3. Tài Liệu Tham Khảo (References)
+- Báo Cáo & Quy Trình Đại Phẫu Cắt Tỉa Hệ Thống Gate / Guard Over-Engineered (2026-10-27): [`references/complete-farm-gate-pruning-and-hash-chain-eradication-20261027.md`](references/complete-farm-gate-pruning-and-hash-chain-eradication-20261027.md)
 - Bóc Tách Token Grounding Gap & Cắt Tỉa Security Theater: [`references/visual-gate-token-grounding-gap-and-security-theater-pruning.md`](references/visual-gate-token-grounding-gap-and-security-theater-pruning.md)
 - Kỷ Luật Thiết Kế Gate Chuẩn O(1) & Tách Rời Phiên Vận Hành Khỏi Closeout Review: [`references/o1-gate-discipline-and-closeout-operational-decoupling.md`](references/o1-gate-discipline-and-closeout-operational-decoupling.md)
 - Toàn bộ hồ sơ quy tắc và case study lịch sử: [`references/historical-anti-overengineering-archive.md`](references/historical-anti-overengineering-archive.md)

@@ -45,6 +45,7 @@ description: "Taadaa farm safety, close-session, and multi-machine operations."
 - Bắt buộc bọc `html.escape()` cho các biến động trong alert HTML.
 
 ## 4. Danh Mục Tài Liệu Tra Cứu Chi Tiết (References)
+- Báo Cáo & Quy Trình Đại Phẫu Cắt Tỉa Hệ Thống Gate / Guard Over-Engineered (2026-10-27): [`references/complete-farm-gate-pruning-and-hash-chain-eradication-20261027.md`](references/complete-farm-gate-pruning-and-hash-chain-eradication-20261027.md)
 - Toàn bộ hồ sơ sự cố lịch sử & quy tắc cũ: [`references/historical-farm-incidents-and-rules-archive.md`](references/historical-farm-incidents-and-rules-archive.md)
 - Downloader & Cleanup: [`references/dual-scope-downloader.md`](references/dual-scope-downloader.md) & [`references/account-cleanup-and-banned-handling.md`](references/account-cleanup-and-banned-handling.md)
 - Single Source of Truth Tools: [`references/single-source-of-truth-tools-ops.md`](references/single-source-of-truth-tools-ops.md)
