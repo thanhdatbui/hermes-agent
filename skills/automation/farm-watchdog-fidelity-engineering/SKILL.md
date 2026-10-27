@@ -152,6 +152,15 @@ Applies whenever reports fail to reflect actual fleet health, mask dropped machi
   2. **Post-Fix Git Cleanliness Verification:** After editing any cron watchdog, always run `cron_sync_watchdog.py --force` and verify `git status` remains clean.
   3. **Diff Salvage Discipline:** If a watchdog bug recurs after a reported fix, immediately inspect `git diff deploy/hermes-home/scripts/<watchdog>.py` to check for reverse overwrite before re-diagnosing logic. See `references/cron-sync-two-way-dirty-revert-trap.md`.
 
+### Invariant 17: Hermes Cron Engine no_agent=True Contract & Spend-Guard Model Drift Trap
+- **Anti-Pattern:** Creating a script-based watchdog or reconciler as an LLM Agent prompt job (omitting `no_agent=True` or leaving `no_agent: false`). Hermes cron scheduler implements an automated anti-spend guard (#44585 in `cron/scheduler.py`): for unpinned agent jobs (`model: null`), Hermes records the model active at creation (`model_snapshot`). When the global LLM model configuration drifts (e.g. `omni-worker` -> `ag-gemini-pool-3`), Hermes halts the job with a runtime error:
+  `⚠️ Cron '<name>' failed: Skipped to prevent unintended spend: global inference config drifted since this job was created (model 'X' -> 'Y'), and this job is unpinned. No inference...`
+  This breaks watchdog execution and fires confusing drift alerts to operators.
+- **Rule:**
+  1. **Mandatory `no_agent=True` for Watchdog Jobs:** All recurring watchdogs, reconcilers, and periodic health checks MUST be configured with `no_agent: true`. This runs the Python script directly, costing 0 LLM tokens and making execution immune to global model configuration drift.
+  2. **Relative Script Filename Contract:** Hermes cron strictly enforces `script` paths relative to `~/.hermes/scripts/` (resolving to `%LOCALAPPDATA%\hermes\scripts\`). Absolute paths (e.g. `D:/Taadaa/tools/...`) are rejected at validation time (`Script path must be relative to ~/.hermes/scripts/... Place scripts in ~/.hermes/scripts/ and use just the filename`). Place the script in `%LOCALAPPDATA%\hermes\scripts\` and set `script: "<filename>.py"`. Pair with `workdir` if the script relies on project-relative paths.
+  3. **Automated Audit with `reconcile_cronjobs.py`:** Audit violating jobs periodically using `python D:/Taadaa/tools/reconcile_cronjobs.py --dry-run` (or `--apply` to quarantine).
+
 ---
 
 ## 3. Verification Protocol for Watchdogs & Reports
