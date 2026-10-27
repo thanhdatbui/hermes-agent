@@ -216,6 +216,19 @@
   2. Đợi 3 - 5 giây cho client TikTok kết nối CDN và render lại vòng tròn avatar.
   3. Chụp lại màn hình và tính toán Correlation với OpenCV local: độ tương đồng sẽ nhảy lên $\ge 0.35$, xác nhận avatar mới đã hiển thị thực tế 100%.
 
+## 32. Bẫy Chào Hỏi Suông Sau Compaction Quên Gửi Ảnh (Compaction Amnesia & The Empty "?" Trigger)
+- **Hiện tượng:** Sau khi context bị nén (Context Compaction) hoặc phiên bị gián đoạn, Coordinator bị mất nhịp thực thi, phản hồi bằng câu văn xuôi hành chính vô cảm: *"Phiên làm việc đã được khôi phục thành công... Bạn muốn tiếp tục thực hiện công việc nào tiếp theo?"* trong khi User đang yêu cầu chuẩn hoá kênh và chờ ảnh đề xuất. User lập tức phản hồi bằng dấu hỏi chấm gay gắt: `"?"` (biểu hiện sự phẫn nộ vì Agent quên việc và lải nhải văn xuôi).
+- **Hành động bắt buộc:** Sau mỗi lượt Compaction hoặc khôi phục phiên, BẮT BUỘC kiểm tra Turn gần nhất của User. Nếu User đang yêu cầu chuẩn hoá kênh, MỤC TIÊU DUY NHẤT VÀ TỐI THƯỢNG là kiểm tra/sinh Proposal Canvas và xuất ngay thẻ `MEDIA:<path_canvas>` ở dòng 1. CẤM TUYỆT ĐỐI phát tin nhắn chào hỏi chung chung khiến User phải hỏi lại.
+
+## 33. Bẫy TTL Expiry & Bẫy `UNGROUNDED_OVERRIDE` Của Media Vision Gate
+- **Hiện tượng:**
+  1. **Lỗi `NO_RECEIPT` do quá hạn TTL:** Quá trình phân tích, cắt frame hoặc thao tác tốn nhiều tool calls khiến thời gian từ lúc tạo vision receipt vượt quá TTL (300 giây). Khi đính kèm `MEDIA:`, Gate chặn đứng với lỗi `NO_RECEIPT`.
+  2. **Lỗi `UNGROUNDED_OVERRIDE`:** Trong tin nhắn vô tình dùng các cụm từ thuộc `VISUAL_CLAIM_MARKERS` (như `"tren anh"`, `"trong anh"`, `"anh co"`, `"hinh la"`...). Bộ quét nội bộ tự động bóc tách 4 từ tiếp theo thành danh sách `claimed` tokens (ví dụ: `"tren anh (PA 1: Ava nu sinh..."` ➔ `claimed = {'pa', 'ava', 'nu'}`). Khi receipt chỉ lưu token gộp (như `seen_by_coordinator_browser_vision`), các từ này không trùng khớp với OCR tokens, khiến Gate kích hoạt `UNGROUNDED_OVERRIDE: message claims a visual topic and ignores all OCR text`.
+- **Hành động bắt buộc:**
+  1. **Làm tươi Receipt trước khi gửi thẻ `MEDIA:`:** BẮT BUỘC chạy `python D:/Taadaa/tools/guard_media_vision_gate.py --record-vision "<path>"` ngay trong lượt turn chuẩn bị gửi tin nhắn để timestamp luôn mới tinh (age < 10s), triệt tiêu lỗi `NO_RECEIPT`.
+  2. **Né dùng các Marker Kích Hoạt Bộ Quét `claimed`:** Tránh đặt các cụm `"tren anh"`, `"trong anh"`, `"hinh la"` trước các từ viết tắt (`PA 1`, `Ava`) hoặc từ mô tả không có trong chữ OCR của ảnh. Thay vào đó, dùng cấu trúc mô tả trực tiếp: `"Bang de xuat 4 phuong an (PA 1: ...; PA 2: ...)"` để không kích hoạt `claimed` tokens giả, đảm bảo message luôn nhận vé `PASS`.
+
+
 
 
 
