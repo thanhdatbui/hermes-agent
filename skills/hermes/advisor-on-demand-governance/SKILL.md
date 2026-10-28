@@ -111,6 +111,12 @@ _ADVISOR_EXPLICIT_TRIGGERS = (
     - **Kỷ Luật Thực Thi Dứt Điểm (Chống Hỏi Lại / Chống Chần Chừ Khi User Ra Lệnh)**:
       * Khi User đã phát lệnh trực tiếp ("làm đi", "chạy đi", "thi đấu cho tao", "bảo làm thì làm đi đừng hỏi lại"): Coordinator **CẤM TUYỆT ĐỐI** kết thúc bằng câu hỏi xác nhận ("Em bắt đầu nhé?", "Anh có muốn...").
       * Mọi quyền đã được cấp sẵn. Coordinator BẮT BUỘC thực thi hành động ngay lập tức trong cùng turn và trả về bằng chứng thực tế. Do dự hoặc hỏi lại bị coi là vi phạm nghiêm trọng kỷ luật điều phối.
+    - **Kỷ Luật Timeout Benchmark Chuẩn Worker (Floor 360s)**:
+      * Khi tổ chức thi đấu / benchmark so tài model hay worker sửa code, Coordinator **CẤM TUYỆT ĐỐI** tự ý bóp timeout xuống 60s/75s để test nhanh.
+      * Timeout benchmark BẮT BUỘC đặt sàn tối thiểu 360s như worker tiêu chuẩn để phản ánh chính xác năng lực suy luận thực tế và tránh làm fail giả (false timeout) khi model đang bootstrap CLI hoặc giải bài toán khó.
+    - **Đặc tính kỹ thuật Hardcore Farm Engineering (Argon 4 vs Agy CLI)**:
+      * **Argon 4 (Gemini Web Pool)**: Phản xạ siêu tốc (10s – 30s), cực mạnh về thuật toán phân phối tải, concurrency sliding window. Nhược điểm: Dễ dính lỗi ẩu thay đổi API/structure cũ (tự ý tạo Enum hoặc đổi tên thuộc tính) hoặc bỏ sót corner-case nhỏ (`normalize_text(None)`). Thích hợp làm Worker phản ứng nhanh, fix bug nóng.
+      * **Antigravity CLI (Agy 3.8 Flash)**: Tốc độ chậm hơn (1 – 4 phút do CLI runtime), nhưng lập trình phòng thủ cực cao (defensive programming), giữ vững 100% backward compatibility, xử lý corner cases mẫu mực (thắng 2-1 ở giải đấu Hardcore BO3 ngày 28/10/2026). Thích hợp làm Architect Worker cho refactor phức tạp. Chi tiết xem `references/gemini-argon-vs-agy-cli-hardcore-bo3-benchmark.md`.
   * Coordinator giữ vai trò nghiệm thu O(1) qua focused test và canary thực tế; cấm spawn subagent mò mẫm file.
 - **Cơ chế Auto-Rewire Cứng Chống Nhảy Cóc Sang Claude (`haiku_worker.py`)**:
   * Claude CLI / Claude Worker là **100% On-Demand**. Tuyệt đối **CẤM** Coordinator tự ý đề xuất hoặc gọi `haiku_worker.py` / `claude_worker.py` theo quán tính/phản xạ khi User chưa yêu cầu đích danh.

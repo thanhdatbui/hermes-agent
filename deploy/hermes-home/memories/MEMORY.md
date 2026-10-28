@@ -11,3 +11,5 @@ GuardGate (D:/Taadaa/tools/guardgate) là Protection Regression Gate cơ giới 
 Code sửa mới >= 15 dòng bắt buộc phân bước rõ ràng (# Bước X / # Step X); cấm cam kết miệng mà bắt buộc cơ giới hóa qua GuardGate rules.json từng repo.
 §
 Lệnh dispatch_worker qua terminal bắt buộc timeout >= 480s khớp sàn sol_worker, cấm set 180s làm rớt session.
+§
+Kỷ luật benchmark model/worker: Bắt buộc set timeout tối thiểu 360s như worker tiêu chuẩn, cấm bóp timeout 60s làm fail giả. Argon 4 nhanh hơn Agy CLI gấp 5-10 lần ở task O(1), nhưng Agy CLI phòng thủ backward compatibility và corner cases tốt hơn ở task cấp cao.
