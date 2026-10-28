@@ -24,6 +24,20 @@ Hệ thống vận hành theo **Vòng xoay thành công thuần túy State-Drive
     1. **Phiên 2/2 của Ca 1 (Sáng lúc 08:00):** Cụm Kibe thường xong lúc ~09:15-09:20, cụm Admin thường chốt summary sau vài phút. Watchdog farm là báo cáo gộp 2 cụm (`dual_cluster_farm_reporting`), chỉ gửi Telegram khi cả 2 cụm hoàn tất để chống spam tin lẻ.
     2. **Ca 2 (Ca Trưa):** Lịch chạy chính thức là 12:00 (Phiên 1) và 14:00 (Phiên 2), quản lý độc lập Pool `{Row 3, Row 4, Row 8}`. Báo cáo rõ cả 2 mốc để User nắm trọn tình hình vận hành farm.
 
+- 🛑 **Triage Thắc Mắc 'Tại Sao Ca Tối (Pool {5, 6}) Lại Chạy Tik 1 / Tik Khác 5, 6':**
+  * **Hiện tượng:** User thấy tiêu đề Watchdog báo `[TIKTOK FOLLOW] Ca 3 - Phiên 1/2 (Tối) hoàn tất (Pool {5, 6})` nhưng danh sách máy lại báo `M37 [Tik 1]` (hoặc Tik 2, 3, 4, 7, 8). User thắc mắc tại sao ca tối lại chạy Tik 1.
+  * **Nguyên nhân cốt lõi (Lượt Dynamic Slot Ngày 3 của Ca 3):**
+    - Khác với Ca 1 `{1, 2, 7}` và Ca 2 `{3, 4, 8}` có 3 nick cứng, **Ca 3 chỉ có 2 nick cứng `{5, 6}`**.
+    - Khi máy đã hoàn thành cả 2 nick `{5, 6}` trong chu kỳ (`cycle_history['3'][m]` chứa cả 5 và 6), `candidates` của pool `{5, 6}` bị rỗng $\implies$ máy tự động kích hoạt **Lượt 3: Dynamic Slot (marker `-1`)**.
+    - Tại Lượt Dynamic Slot, thuật toán `resolve_dynamic_account_for_machine` quét trên **toàn bộ 8 slot** của máy theo 3 tầng phễu (Lớp 1: Cắn đề xuất $\to$ Lớp 2: Đi tù xả phạt nhả follow $\to$ Lớp 3: Nick non ít video nhất). Nick được bốc có thể là bất kỳ Tik nào từ 1 đến 8 (ví dụ M37 bốc trúng Tik 1).
+    - Sau khi hoàn thành lượt Dynamic Slot này, `cycle_history['3'][m]` mới reset về rỗng để bắt đầu vòng tuần tự mới quay lại `{5, 6}`.
+  * **Về nhãn hiển thị Watchdog:**
+    - Nhãn `(Pool {5, 6})` trên tiêu đề Telegram là nhãn cố định theo khung giờ Ca 3 (do hàm `_row_or_pool_label` map từ Ca 3) để phân biệt ranh giới ca với Ca 1 và Ca 2. Nó KHÔNG mang nghĩa ép cứng máy chỉ được chạy Tik 5/6 khi đang ở Lượt Dynamic Slot.
+  * **Quy trình giải thích nhanh cho User:**
+    1. Xác nhận máy đang ở Lượt 3 (Dynamic Slot dưỡng sinh) của Ca 3 sau khi đã đi đủ Tik 5 và Tik 6 (`cycle_history['3'][m] == [6, 5, -1]`).
+    2. Nêu rõ slot hiện tại được bốc theo 3 phễu dưỡng sinh (cắn đề xuất / xả phạt / nick ít video).
+    3. Làm rõ nhãn `(Pool {5, 6})` ở tiêu đề là nhãn định danh khung giờ, không phải khóa cứng nick.
+
 - 🛑 **Triage Thắc Mắc 'Tại Sao Máy N Chạy Lệch Row/Tik So Với Số Đông Toàn Farm':**
   * **Hiện tượng:** User thấy đa số farm hôm nay chạy Tik 2 (hoặc Tik 1), nhưng một số máy cá biệt (ví dụ M2) lại chạy ngược lại (chạy Tik 1). User nghi ngờ farm bị chạy lặp nick hoặc thuật toán phân bổ bị sai.
   * **Nguyên nhân cốt lõi (Per-Machine Cycle History):** Thuật toán `resolve_shift_pool_account` quản lý chu kỳ xoay tua **độc lập theo từng máy** (`cycle_history[ca][machine]` trong `shift_pool_cycle_state.json`), KHÔNG ép cứng đồng bộ trạng thái toàn farm.
