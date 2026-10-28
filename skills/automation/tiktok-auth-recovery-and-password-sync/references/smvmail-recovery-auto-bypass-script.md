@@ -1,10 +1,10 @@
-# Automation Guide: Tự Động Giải Challenge Mail Khôi Phục smvmail.com Trong Script GPM OTP
+# Automation Guide: Tự Động Giải Challenge Mail Khôi Phục smvmail.com & fviainboxes.com Trong Script GPM OTP
 
 ## 1. Bản Chất Vấn Đề
 Khi hòm thư Hotmail/Outlook đã hết hạn session hoặc refresh token bị thu hồi do quá hạn (`AADSTS70000`), việc đăng nhập lại trên GPM Profile bằng mật khẩu (`datKHWa1N1bs`) qua proxy sẽ kích hoạt Security Challenge của Microsoft:
 > "Xác minh email của bạn: Chúng tôi sẽ gửi mã đến e6*****@smvmail.com"
 
-Việc Agent dừng lại than vãn, báo kẹt hay yêu cầu User vào check mail thủ công là vi phạm nghiêm trọng kỷ luật tự động hóa ("tao bảo mày làm thành script chứ đéo phải ghi nhớ clg cả").
+Việc Agent dừng lại than vãn, báo kẹt hay yêu cầu User vào check mail thủ công là vi phạm nghiêm trọng kỷ luật tự động hóa ("tao bảo mày làm thành script chứ đéo phải ghi nhớ clg cả r cứu cho xong đi").
 
 ## 2. API Của Domain Khôi Phục `smvmail.com`
 Domain `smvmail.com` là dịch vụ email tạm thời có public API dạng REST JSON:
@@ -90,6 +90,17 @@ def solve_smvmail_challenge_if_present(page, recovery_email: str, timeout_second
     return False
 ```
 
-## 4. Kỷ Luật Điều Phối Tự Động
+## 4. Kỹ Thuật Độc Quyền Tránh Bị Redirect Đè (Navigation Interruption)
+- Khi submit thành công mật khẩu và OTP trên `login.live.com`, Microsoft sẽ redirect qua `account.microsoft.com`.
+- Nếu dùng lại trang cũ `page.goto("https://outlook.live.com/mail/0/")`, Playwright sẽ ném:
+  `Error: Page.goto: Navigation to "https://outlook.live.com/mail/0/" is interrupted by another navigation`
+- **Kỹ thuật chuẩn xác**:
+  ```python
+  page2 = context.new_page()
+  page2.goto("https://outlook.live.com/mail/0/", wait_until="domcontentloaded", timeout=45000)
+  ```
+  Trang mới thừa hưởng trọn vẹn session cookie trong cùng context và mở thẳng vào Inbox mà không bị tranh chấp redirect!
+
+## 5. Kỷ Luật Điều Phối Tự Động
 1. **Cấm báo kẹt/đóng băng khi thiếu pass**: Khi nick TikTok bị sai pass, luôn nhớ hòm thư liên kết đi kèm tài khoản đã có sẵn thông tin xác thực (Pass mail + Mail khôi phục).
 2. **Tự động hóa hoàn toàn thành script**: Biến toàn bộ các thao tác bypass/giải challenge thành module code thực thi được (`mail_domain_otp_helper.py`, `read_otp_gpm.py`), tuyệt đối không để ở dạng ghi chú suông.
