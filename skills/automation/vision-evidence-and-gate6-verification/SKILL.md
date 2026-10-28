@@ -47,6 +47,7 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
 - Báo Cáo Tư Vấn Claude Sonnet: Quay Về Thiết Kế Tối Giản O(1), Chấm Dứt Bệnh Over-Engineering Của Media Gate: [`references/claude-consult-simplify-o1-gate-and-multi-session-conflict-resolution.md`](references/claude-consult-simplify-o1-gate-and-multi-session-conflict-resolution.md)
 - Bẫy UNVERIFIED_BY_VISION Do Dính Từ Khóa Visual Claim ('phương án', 'đề xuất') Khi Chỉ Dùng OCR Thô: [`references/unverified-by-vision-claim-trap-and-same-turn-browser-vision.md`](references/unverified-by-vision-claim-trap-and-same-turn-browser-vision.md)
 - Phê Bình Từ User & Kiến Trúc Bình Đẳng Mọi Ảnh (Universal Inspection & Anti-Avatar-Bias): [`references/universal-image-inspection-and-anti-avatar-bias-gate.md`](references/universal-image-inspection-and-anti-avatar-bias-gate.md)
+- 9Router Port 20128 Multimodal Fallback & Farm Tool UI Recognition: [`references/9router-port20128-multimodal-fallback-and-farm-tool-detection.md`](references/9router-port20128-multimodal-fallback-and-farm-tool-detection.md)
 
 ## 1. Nguyên Tắc Cốt Lõi (Invariants)
 1. **CẤM gửi ảnh mù / đối phó:** Trước khi đính kèm bất kỳ thẻ `MEDIA:<path>` nào, bắt buộc phải mở ảnh ra soi mắt kiểm tra trước.
@@ -212,7 +213,7 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
 ## 2. Thang Leo Thang Vision Dự Phòng (Fallback Ladder)
 Thứ tự fallback đọc ảnh chuẩn hoá 100% đồng bộ với kiến trúc Worker Dispatch:
 - **Tier 0 (Primary - Coordinator):** Mặc định Coordinator tự soi mắt bằng `browser_vision` / native vision trong phiên.
-- **Tier 1 (Fallback 1): Sol Web Vision** (`:20129` qua OmniRoute) — 100% Free, endpoint `auto/best-vision` (qua `_ask_sol_web_vision`).
+- **Tier 1 (Fallback 1): 9Router Port 20128 & Sol Web Vision (:20129)** — Gọi trực tiếp `http://127.0.0.1:20128/v1/chat/completions` với model `gpt-5.6-luna` (kèm `Authorization: Bearer $NINEROUTER_API_KEY`) để giải mã chi tiết hình ảnh UI/Farm khi native vision/OCR thất bại; hoặc endpoint `auto/best-vision` trên `:20129`.
 - **Tier 2 (Fallback 2): Agy CLI Vision** (`agy vision` / `ag_cli.py ask` qua pool 29 tài khoản Google One Pro).
 - **Tier 3 (Fallback 3): Claude Worker CLI** (`claude_worker.py --role reviewer`).
 - **Công cụ cơ học chuẩn:** Sử dụng trực tiếp `python D:/Taadaa/tools/vision_fallback_reader.py --image "<path>" --question "<nội dung>" --mode auto_fallback`. Script tự động điều phối qua Sol Web -> Agy CLI -> Claude Worker, tự động ký HMAC receipt vào `vision_receipts.jsonl`.
