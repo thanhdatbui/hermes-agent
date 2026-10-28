@@ -10,6 +10,6 @@ GuardGate (D:/Taadaa/tools/guardgate) là Protection Regression Gate cơ giới 
 §
 Code sửa mới >= 15 dòng bắt buộc phân bước rõ ràng (# Bước X / # Step X); cấm cam kết miệng mà bắt buộc cơ giới hóa qua GuardGate rules.json từng repo.
 §
-Lệnh dispatch_worker qua terminal bắt buộc timeout >= 480s khớp sàn sol_worker, cấm set 180s làm rớt session.
+Lệnh dispatch_worker qua terminal bắt buộc timeout >= 480s khớp sàn sol_worker; benchmark worker bắt buộc timeout chuẩn 360s, cấm tự ý hạ thấp làm đứt ngang task.
 §
-Khi deploy router OpenWrt headless (Xiaomi R3G): Nếu WAN mất internet/Walled Garden (!C), 'tailscale up' sẽ treo TLS timeout. Kiểm tra ISP device (H196A) có tự quay chiếm PPPoE (Type: Routing) hay bật nhầm IPTV gây nuốt luồng; cấm đoán mò khóa MAC khi thợ chỉ mang router test. Nhắn tin kỹ thuật ISP luôn lịch sự, chuyên môn, dẫn chứng ICMP !C và account ID.
+Deploy OpenWrt headless (Xiaomi R3G): WAN mất mạng/Walled Garden (!C) thì 'tailscale up' treo TLS. Check ISP device (H196A) quay chiếm PPPoE hay bật IPTV; cấm đoán mò khóa MAC. Nhắn tin kỹ thuật ISP lịch sự, kèm ICMP !C và account ID.
