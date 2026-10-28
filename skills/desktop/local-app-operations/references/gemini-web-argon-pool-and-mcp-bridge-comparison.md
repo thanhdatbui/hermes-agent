@@ -2,7 +2,19 @@
 
 ## Overview
 
-Gemini Web Argon (`gemini-web-argon-pool` on OmniRoute `:20129`) provides access to Google's advanced Gemini models (mapped internally as `gemini-3.1-pro` via `modelCategory: 3`) using Google AI Pro accounts over dedicated 4G mobile proxies.
+Gemini Web Argon (`gemini-web-argon-pool` on OmniRoute `:20129`) provides access to Google's advanced Gemini models using Google AI Pro accounts over dedicated 4G mobile proxies.
+
+## Model Identity: Gemini 4 (Argon) vs. Legacy UI Label "gemini-3.1-pro"
+
+Operators checking OmniRoute's `Available Models` dashboard often notice that `gemini-web` lists `gemini-3.1-pro`, `gemini-3.7-flash`, and `gemini-3.1-flash-lite`, without explicitly showing "Argon" or "Gemini 4":
+- **Legacy UI Catalog Label**: `gemini-3.1-pro` is a static UI metadata label seeded in OmniRoute's database (`key_value` table).
+- **Backend Model Resolution**: In `open-sse/executors/gemini-web.ts`, selecting `gemini-3.1-pro` sets `modelCategory = 3`:
+  ```typescript
+  const modelCategory = modelId === "gemini-3.1-pro" ? 3 : undefined;
+  if (modelCategory !== undefined) inner[79] = modelCategory;
+  ```
+  `inner[79] = 3` on Google's internal `StreamGenerate` endpoint instructs Google to invoke the flagship **Gemini 4 (Argon)** model (Sparse MoE architecture, 1M context window, native multimodal, deep reasoning capabilities).
+- When queried directly via the pool, the model self-identifies as the **Gemini 4 (Argon)** generation.
 
 ## MCP Browser Bridge vs. Native OmniRoute HTTP Reverse Proxy
 
