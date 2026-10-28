@@ -142,9 +142,14 @@ Quy trình chuẩn hoá bao gồm trọn gói **5 hạng mục bắt buộc (5-i
 
 ## 6. Kiến Trúc Chuẩn Hoá Bài Ghim Định Kỳ (Event-Driven Pin Standardization via Web Dashboard)
 - **Quy tắc thiết kế theo chỉ thị User (Tách biệt Read vs Write):**
-  - **Tầng Đọc (Read - Headless Web):** Sử dụng TikTok Web Dashboard / crawler (`tiktok_account_tracker.py`) quét nhẹ profile qua proxy pool trên PC để theo dõi số view và phát hiện video mới cắn đề xuất.
+  - **Tầng Đọc (Read - Headless Web):** Tận dụng tính năng cắn đề xuất có sẵn trên TikTok Farm Web Dashboard (`tiktok_account_tracker.py` / `tiktok_tracker.db`). Engine tracker tự động gắn cờ `trending = True` (khi $\Delta\text{Follower} \ge 20$ hoặc $\Delta\text{Heart} \ge 50$).
   - **CẤM TUYỆT ĐỐI kẹp logic chuẩn hoá bài ghim vào ca nuôi (Feed Session):** Thao tác mở video $\to$ bấm Chia sẻ $\to$ Ghim/Bỏ ghim trong lúc nuôi nick rất dễ làm vỡ state machine của Feed, vướng popup bản quyền/livestream nuốt touch, làm crash hoặc delay ca nuôi toàn farm.
-  - **CẤM TUYỆT ĐỐI quét mù trên thiết bị S7:** Không bật màn hình từng máy S7 chạy dump XML chỉ để kiểm tra xem có video nào view cao không. 95% máy không có video cắn đề xuất, quét mù làm chai pin, nóng máy và tranh chấp USB/lock.
-  - **Tầng Ghi (Write - JIT Execution trên S7):** Chỉ khi Web Dashboard phát hiện tài khoản có video vượt mốc view ($\ge 1.000$) cần đảo ghim $\to$ đẩy trigger vào hàng đợi $\to$ chờ máy rảnh sau ca nuôi, worker mới chạy `pin_top_videos.py --machine <N> --account <USER>` chớp nhoáng (<= 30s) rồi tắt màn hình về Sleep.
+  - **CẤM TUYỆT ĐỐI quét mù trên thiết bị S7:** Không bật màn hình từng máy S7 chạy dump XML định kỳ chỉ để kiểm tra xem có video nào view cao không. 95% máy không có video cắn đề xuất, quét mù làm chai pin, nóng máy và tranh chấp USB/lock.
+  - **Tầng Ghi (Write - JIT Execution trên S7 qua `trending_pin_watchdog.py`):**
+    * Watchdog đọc danh sách nick `trending` từ database snapshot mới nhất, đối soát toạ độ máy/serial qua `taikhoan_run_safe.xlsx`.
+    * Kiểm tra `device-locks`: Nếu máy đang bận ca nuôi $\to$ giữ hàng đợi, tự động nhường lịch an toàn.
+    * Khi máy rảnh $\to$ gọi `pin_top_videos.py --machine <N> --account <USER>` chớp nhoáng (<= 30s) để hoán đổi video cắn view lên Ô số 1, sau đó tắt màn hình về Sleep.
+    * Ghi nhận trạng thái vào `D:/Taadaa/data/trending_pin_state.json` với cooldown 12h để chống spam xử lý lặp lại trên cùng một nick.
+    * Chuẩn Silent Watchdog: Chỉ gửi thông báo về Telegram khi có video được ghim/đảo ghim thành công; khi không có thay đổi thì hoàn toàn im lặng.
 
 
