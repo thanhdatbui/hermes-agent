@@ -209,6 +209,30 @@ Applies whenever reports fail to reflect actual fleet health, mask dropped machi
   2. **Mandatory Pull-to-Refresh with 3.5s Delay & 2-Pass Polling:** Pull-to-refresh is mandatory to detect silent follow drops. To prevent false-negative un-follow flags caused by proxy/4G latency or loading spinners obscuring the button, use `sleep_after=3.5s` and a 2-pass polling loop with 1.5s intervals before classifying relationship state.
   3. **JIT In-flight Reconnect for Stale Sockets:** Before invoking `reset_atx_agent`, execute `adb.reconnect(timeout=5.0)` to clear the frozen USB transport socket at the device level, preventing cascading timeouts across large fleets. See `references/decoupled-pipeline-and-path-b-verify-invariants.md`.
 
+### Invariant 22: Hotmail/GPM Lifecycle Troubleshooting & Quarantine Disentanglement
+- **Anti-Pattern:**
+  1. Conflating temporary IP cooldown with broken accounts: In mobile 4G proxy clusters (e.g. MobiProxy 46 ports on Kibe, 5 ports on Admin), a single login failure trips a 24h-48h port-level safety cooldown (`status == 'BLOCKED'`) to protect proxy subnets. Treating these as fatal errors and force-retrying or editing state immediately burns through IP limits and risks subnet-wide checkpointing.
+  2. Ignoring Quarantine Deadlock: Accounts reaching 3 consecutive login failures (`login_retry_count >= 3`) transition to `QUARANTINE`. When quarantine grows (e.g. 33 accounts in Admin), the automated supervisor halts all progress on those accounts forever until manual/script intervention clears the dead-end state.
+  3. Misinterpreting `DONE_WITHOUT_CHATGPT_REG` telemetry: Treating accounts marked `DONE` without ChatGPT registration as data corruption. On Taadaa Farm, Hotmail accounts are acquired for dual purposes: some are dedicated recovery emails for TikTok/2FA and intentionally bypass ChatGPT Web pool allocation, triggering informational cross-audit warnings rather than pipeline failure.
+- **Rule:**
+  1. **Discriminate Port-Level Cooldown vs Broken Accounts:** Always verify `ip_action_history` timestamps before touching `BLOCKED` accounts. If `now - last_action < cooldown_window` (e.g. 24h), the state is nominal defense-in-depth, not an active fault.
+  2. **Canonical Quarantine Remediation Procedure:** To safely unblock quarantine accounts without corrupting supervisor states:
+     - Execute the dedicated reset tool: `python D:/Taadaa/tools/reset_admin_quarantine.py`.
+     - Verify atomic state writes: reads state from `D:\Taadaa\runtime\admin\cron-state\batch_gpm_5profiles_supervisor_state.json`, resets `login_retry_count = 0`, sets `status = 'PENDING'`, clears `error = None`, and writes via `.tmp` file before atomic replace.
+  3. **Telemetry Informational Filtering:** Distinguish between actionable failures (quarantine deadlock, authentication crashes) and telemetry balance notices (`DONE_WITHOUT_CHATGPT_REG`). Never modify code or invalidate valid `DONE` accounts solely to suppress balance audit tags.
+
+### Invariant 23: Anti-Overengineered Watchdog Metas & Synthetic Rule Elimination
+- **Anti-Pattern:**
+  1. **Synthetic Blocked Rules:** Watchdog tự sinh rule ảo (e.g. `[Closeout] Unremediated-Rejection`) khi thấy log cũ trong rolling window mà không có cặp approval sau đó, rồi đẩy vào danh sách vi phạm.
+  2. **Unsolicited Guidance & Actionable Noise:** Watchdog tự thòng thêm các câu mệnh lệnh thừa như `(Cần Bổ Sung Guidance)` và `💡 Actionable: Operator/Agent cập nhật guidance chi tiết...` gây khó chịu cho operator và phình token.
+  3. **Auto-Rewire / Translation Buzzwords:** Tự đếm regex các từ khóa rewrite rồi gắn thêm nhãn lòe loẹt như `🔄 Auto-rewire cứu nguy: N lần` khiến operator thắc mắc về "cái gì auto chuyển hướng ấy".
+  4. **Scorecard Drift / Stale Reviewer Invariant:** Hệ thống đã bãi bỏ chấm điểm Scorecard 85 và chuyển sang Closeout cơ học O(1) (Pytest 100% pass + GuardEngine ALLOW), nhưng watchdog vẫn giữ nguyên tên `Closeout Reviewer Gate` và soi theo rubric cũ.
+- **Rule:**
+  1. **Zero Synthetic Rules:** Chỉ thống kê các rule thực tế bị chặn từ các hook/gate có cấu trúc (`rule_id`, `category`, `reason`), tuyệt đối không tự bịa thêm các synthetic rule ảo như `Unremediated-Rejection`.
+  2. **Clean Telemetry Output:** Giữ output đối soát sạch sẽ: `📁 Đối soát: N log files (M dòng)`. Không nhồi nhét buzzword như "Auto-rewire", "Auto-clamped".
+  3. **No Unsolicited Actionable Guidance Text:** Tiêu đề thống kê vi phạm chỉ cần `🔥 *Top Quy Tắc Bị Chặn:*`, cấm chêm các câu kêu gọi bổ sung guidance hay đùn đẩy việc cập nhật rule cho operator/agent.
+  4. **Closeout O(1) Mechanical Alignment:** Đồng bộ tên và logic của G5 thành `Closeout Gate` (bỏ chữ Reviewer), khớp với các trạng thái cơ học mới (`[GuardEngine ALLOW]`, `CLOSEOUT_PASSED`). Xem [`references/compliance-watchdog-anti-overengineering-and-synthetic-rules.md`](references/compliance-watchdog-anti-overengineering-and-synthetic-rules.md).
+
 ---
 
 ## 3. Verification Protocol for Watchdogs & Reports
@@ -235,3 +259,4 @@ Applies whenever reports fail to reflect actual fleet health, mask dropped machi
 - [`references/historical-state-reconciliation-and-cron-report-audit.md`](references/historical-state-reconciliation-and-cron-report-audit.md) — Case study: The "Fixed Code, Forgotten State" trap, phantom ChatGPT registration reconciliation, and system-wide cron report audit checklist.
 - [`references/tiktok-web-follow-reconcile-baseline-drift-and-target-audit.md`](references/tiktok-web-follow-reconcile-baseline-drift-and-target-audit.md) — Case study: TikTok Web follow reconciliation, 24h baseline drift from missing pre-session scrapes, and target account follower cross-checks.
 - [`references/decoupled-pipeline-and-path-b-verify-invariants.md`](references/decoupled-pipeline-and-path-b-verify-invariants.md) — Invariants on decoupled pipelines (Feed — Follow — Upload) and accurate follow release discrimination in Mode 2 Path B verify.
+- [`references/compliance-watchdog-anti-overengineering-and-synthetic-rules.md`](references/compliance-watchdog-anti-overengineering-and-synthetic-rules.md) — Case study: Anti-overengineering in compliance watchdog, eliminating synthetic rules, guidance spam, and aligning mechanical closeout.
