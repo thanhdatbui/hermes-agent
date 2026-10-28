@@ -14,6 +14,11 @@ Trong phiên làm việc ngày 28/10/2026 khi xử lý lỗi máy thiếu nick k
    - Kết quả: Khi diff sửa `multi_machine_feed_session.py`, `canary_plan.py` rơi vào fallback `full_flow` (chỉ lướt feed 2 swipe cơ bản), bỏ qua hoàn toàn phần code upload vừa sửa.
    - `canary_runner.py` không tự động phân tích Git diff để gắn cờ `--allow-upload-hook`, buộc con người phải nhớ và gõ tay.
 
+3. **Bẫy Sổ Cái Skip (`already_uploaded_in_shift`):**
+   - Thiết bị thật đã đăng video trong ngày, khi gọi hook upload thì `_ShiftUploadLedger` thấy ground truth report hoặc ledger entry đã có nên trả về `status: skipped`.
+   - Subprocess upload và logic recovery hoàn toàn không được kích hoạt, nhưng runner vẫn exit 0 và Agent nhầm tưởng là Canary PASS ("Mày bị nhảm lồn à sửa upload thì canary đc upload chưa lải nhải clg bị ngu k").
+   - Đối sách: Khi Canary hook upload, bắt buộc kiểm tra xem row/nick đã đăng chưa. Nếu đã đăng, phải chuyển sang row/account khác chưa đăng để kích hoạt subprocess upload thật sự.
+
 ---
 
 ## 2. Quy Tắc Thiết Kế Cơ Giới Hóa (Mechanical Canary Gate Codification)
@@ -59,6 +64,7 @@ Khi người vận hành hoặc agent gọi `canary_runner.py` mà không truy�
 
 ---
 
-## 3. Ranh Giới: Memory vs Mechanical Gate
+## 3. Ranh Giới: Memory vs Mechanical Gate & Kiểm Chứng Thực Chất
 - **CẤM:** Lưu hướng dẫn chạy script, tên cờ lệnh, mapping file hay quy tắc canary vào `MEMORY.md`.
 - **BẮT BUỘC:** Đưa toàn bộ vào `canary_matrix.json`, `canary_plan.py` và `canary_runner.py`. Điểm kết thúc kiểm tra bằng `done_gate.py` bắt buộc verify `tree_diff_sha256` của receipt khớp với HEAD git diff.
+- **CHỐNG BÁO PASS MÙ:** Không bao giờ chấp nhận kết quả Canary là PASS nếu hook mục tiêu bị `skipped` do sổ cái (`already_uploaded_in_shift`). Phải kích hoạt subprocess thực sự hoặc chạy test case cơ học mô phỏng mã lỗi để chứng minh logic hoạt động.
