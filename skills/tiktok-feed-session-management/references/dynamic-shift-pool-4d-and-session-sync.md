@@ -24,6 +24,16 @@ Hệ thống vận hành theo **Vòng xoay thành công thuần túy State-Drive
     1. **Phiên 2/2 của Ca 1 (Sáng lúc 08:00):** Cụm Kibe thường xong lúc ~09:15-09:20, cụm Admin thường chốt summary sau vài phút. Watchdog farm là báo cáo gộp 2 cụm (`dual_cluster_farm_reporting`), chỉ gửi Telegram khi cả 2 cụm hoàn tất để chống spam tin lẻ.
     2. **Ca 2 (Ca Trưa):** Lịch chạy chính thức là 12:00 (Phiên 1) và 14:00 (Phiên 2), quản lý độc lập Pool `{Row 3, Row 4, Row 8}`. Báo cáo rõ cả 2 mốc để User nắm trọn tình hình vận hành farm.
 
+- 🛑 **Triage Thắc Mắc 'Tại Sao Máy N Chạy Lệch Row/Tik So Với Số Đông Toàn Farm':**
+  * **Hiện tượng:** User thấy đa số farm hôm nay chạy Tik 2 (hoặc Tik 1), nhưng một số máy cá biệt (ví dụ M2) lại chạy ngược lại (chạy Tik 1). User nghi ngờ farm bị chạy lặp nick hoặc thuật toán phân bổ bị sai.
+  * **Nguyên nhân cốt lõi (Per-Machine Cycle History):** Thuật toán `resolve_shift_pool_account` quản lý chu kỳ xoay tua **độc lập theo từng máy** (`cycle_history[ca][machine]` trong `shift_pool_cycle_state.json`), KHÔNG ép cứng đồng bộ trạng thái toàn farm.
+    - Nếu hôm qua máy X đã chạy Row 2 (`used = [2]`), thì hôm nay ứng viên còn lại trong Ca 1 `{1, 2, 7}` của máy X là `{1, 7}` $\implies$ máy X bắt buộc chạy Row 1 (hoặc 7) để trả chu kỳ `[2, 1]`.
+    - Trong khi các máy khác hôm qua chạy Row 1 (`used = [1]`), thì hôm nay còn lại `{2, 7}` $\implies$ chạy Row 2. Do đó máy X sẽ xuất hiện "lệch pha" với số đông.
+  * **Quy trình 3 bước đối soát nhanh O(1) khi User thắc mắc:**
+    1. Đọc state hiện tại: `D:/Taadaa/runtime/kibe/cron-state/shift_pool_cycle_state.json` $\to$ kiểm tra `today_shift_sessions[ca][str(m)]` và `cycle_history[ca][str(m)]`.
+    2. Đọc manifest hôm qua: `D:/Taadaa/runtime/kibe/live/<YYYY-MM-DD_hqua>/row-0-.../run_manifest.json` $\to$ xác nhận máy X hôm qua thực tế đã chạy row nào.
+    3. Đối soát overlap: Khẳng định nick hôm nay và hôm qua khác nhau 100% (luân phiên chuẩn, không trùng lặp), giải thích rõ máy đang đi theo đúng cycle history cá nhân.
+
 - 🛑 **Quy tắc Bất biến Bỏ Qua Follow (`dynamic-nurture-row-follow-disabled`):**
   * DUY NHẤT VÀ ĐỘC QUYỀN áp dụng khi phiên nuôi rơi vào lượt Dynamic Slot của Ca 3 (hoặc fallback 3 phễu khi cạn pool). `feed_session_workbook.py` gán cờ `rest_day_no_follow: true` vào `MachineAccount`.
   * Tại `multi_machine_feed_session.py`, `_run_follow_hook` kiểm tra `getattr(account, 'rest_day_no_follow', False)` và tự động bỏ qua bước follow, xuất reason:
