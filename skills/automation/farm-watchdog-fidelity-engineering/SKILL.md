@@ -220,6 +220,7 @@ Applies whenever reports fail to reflect actual fleet health, mask dropped machi
      - Execute the dedicated reset tool: `python D:/Taadaa/tools/reset_admin_quarantine.py`.
      - Verify atomic state writes: reads state from `D:\Taadaa\runtime\admin\cron-state\batch_gpm_5profiles_supervisor_state.json`, resets `login_retry_count = 0`, sets `status = 'PENDING'`, clears `error = None`, and writes via `.tmp` file before atomic replace.
   3. **Telemetry Informational Filtering:** Distinguish between actionable failures (quarantine deadlock, authentication crashes) and telemetry balance notices (`DONE_WITHOUT_CHATGPT_REG`). Never modify code or invalidate valid `DONE` accounts solely to suppress balance audit tags.
+  4. **Subprocess `sys.path` Strip & Millisecond False-Failure Loop:** Khi script đăng nhập/xử lý con tự ý lọc `sys.path` (ví dụ `sys.path = [p for p in sys.path if not ("hermes" in p.lower() and "site-packages" in p.lower())]`), toàn bộ venv packages (`requests`, `playwright`) bị gỡ bỏ, gây `ModuleNotFoundError` ngay tức thì (0.001s). Nhận diện: nếu toàn bộ batch n accounts đều fail với timestamp `at` giống hệt nhau từng mili-giây, đó là lỗi crash môi trường/ImportError, tuyệt đối không đoán mò sang lỗi sai mật khẩu hay mạng. Phải sửa triệt để bẫy strip `sys.path` và chạy `reset_admin_quarantine.py` để giải phóng hàng đợi.
 
 ### Invariant 23: Anti-Overengineered Watchdog Metas & Synthetic Rule Elimination
 - **Anti-Pattern:**

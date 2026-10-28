@@ -130,4 +130,23 @@
     * `script_errors`: tính tổng `g_fail_s` và chi tiết (failed_cleanup, failed_other).
     * `skip_safe`: đếm số máy an toàn (đầy slot / locked).
   - Nếu `g_fail_p == 0` thì in `• Lỗi nền tảng: 0`. Nếu `g_fail_s == 0` thì in `• Lỗi script: 0`. Tuyệt đối không để trống hoặc báo gộp mập mờ.
+
+## 6. Bẫy Chẩn Đoán: 'Lỗi Script (failed_other)' Tăng Vọt Nhưng Không Phải Do Code Hỏng (CRITICAL OPERATOR INSIGHT)
+- **Hiện tượng:** Watchdog báo cáo `• Lỗi script: 14 (failed_other: 14)` làm Operator nghi ngờ code bị sửa hỏng logic.
+- **Bản chất kỹ thuật:** Trong `run_parallel.ps1`, mọi failure không rơi vào `PHONE_VERIFY` hoặc `ACCOUNT_CREATION_ERROR` đều bị rơi vào nhóm mặc định `FAILED_OTHER` và tổng hợp vào metric `script_errors.failed_other`.
+- **3 nguyên nhân ngoại cảnh phổ biến nhất gây bùng nổ `failed_other`:**
+  1. **Lỗi Network Transport / Proxy rớt kết nối giữa chừng (Chiếm > 70% ca `failed_other`):**
+     - Khi submit tên, ngày sinh, hoặc pass, Google WebView gửi RPC `AccountLifecyclePlatformSignupUi/data/batchexecute`.
+     - Nếu proxy 4G hoặc Wi-Fi rớt socket, WebView nhảy màn hình: *"Đã xảy ra lỗi: Rất tiếc, đã xảy ra sự cố. Vui lòng thử lại"* kèm payload:
+       `Error code = 7, HTTP status = 0, Unknown HTTP error (HTTP Status: 0) (XHR Error Code: 6)`.
+     - Vì màn hình lỗi hiện ra, runner không thấy màn hình tiếp theo (`[10_pass] Chua vao dung man password` hoặc `[11_review] Không thấy Review`) và dừng an toàn -> bị gán nhãn `FAILED_OTHER`.
+  2. **Google Play Services Hijack Intent Thêm Tài Khoản:**
+     - Nếu một tài khoản cũ trên máy bị checkpoint phiên, khi runner bấm "Thêm tài khoản", Google Play Services tự động chặn và mở màn hình: *"Hoàn tất đăng nhập để tiếp tục. Đã xảy ra lỗi và bạn cần đăng nhập lại"*.
+     - Runner không vào được luồng đăng ký mới (`[04b] Google sign-in chưa load xong`) -> bị gán nhãn `FAILED_OTHER`.
+  3. **Lệch màn hình hồ sơ Gmail:**
+     - Khi bấm avatar trong Gmail, app mở thẳng trang *"Thêm ảnh hồ sơ"* (Avatar picker) của tài khoản đang dùng thay vì mở popup chuyển đổi/thêm tài khoản (`[04_google] Không chọn được provider Google`).
+- **Quy trình điều tra dứt điểm trong O(1):**
+  - CẤM vội vàng sửa code `gmail_reg_v10.py` hay rollback script khi chưa kiểm tra artifact thực tế.
+  - Đọc file UI XML dump mới nhất tại thư mục dumps `register-gmail/ui_dumps/fail_*.xml`.
+  - Tìm chuỗi `XHR Error Code: 6` hoặc `Error code = 7` (mạng/proxy) hoặc `Hoàn tất đăng nhập để tiếp tục` (checkpoint tài khoản cũ) để xác định đúng nguyên nhân thực tế.
   - Đồng bộ ngay lập tức sang Deploy và OneDrive sau khi chỉnh sửa: `python C:/Users/Kibe/AppData/Local/hermes/scripts/cron_sync_watchdog.py --force`.

@@ -6,7 +6,7 @@ description: "Automation workflows for Gmail accounts on the Taadaa farm: Playwr
 # Gmail Account Automation (Taadaa Farm)
 
 - `references/playwright-gmail-navigation-timeout-and-relogin-challenge.md` — Timeout goto.
-- `references/s7-gmail-result-classification-and-chatgpt-decommission.md` — Dừng reg ChatGPT S7 & phân loại runner.
+- `references/s7-gmail-result-classification-and-chatgpt-decommission.md` — Dừng reg ChatGPT S7, phân loại runner & bẫy hiểu lầm 'Lỗi script' do WebView HTTP 0/XHR 6.
 - `references/s7-gmail-slot-eviction-and-gpm-cleanup-rules.md` — Giải phóng slot S7 & dọn DIE.
 - `references/slot-capacity-and-eviction-policy.md` — Trần số acc vs rolling eviction.
 - `references/dual-cluster-post-noon-gmail-and-watchdog-architecture.md` — Dual-cluster Reg Gmail & range(1, 75) fix.
