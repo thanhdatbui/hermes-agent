@@ -81,3 +81,18 @@ Khi nhận báo cáo watchdog follow bị lệch:
    Chạy query lấy `timestamp` của 2 snapshot gần nhất. Nếu khoảng cách giữa baseline và latest > 3-4 giờ (hoặc từ ngày hôm trước), xác định ngay nguyên nhân là **Baseline Drift**.
 3. **Đối soát Follower nick đích (Target Account Follower Audit):**
    Nếu script báo $N > 0$ nhưng web báo 0, tra cứu danh sách nick đích trong `snapshots`: nếu follower của nick đích tăng tương ứng, khẳng định lượt follow đã thành công thực tế, web counter chỉ bị trễ CDN/cache.
+
+---
+
+## 5. Cơ Chế Khắc Phục Chuẩn Hóa (Standardized Remediation Architecture)
+Để triệt tiêu các ca báo lệch ảo hoặc bẫy nhả follow giả:
+1. **Max Baseline Age Guard trong Watchdog Reconcile (`feed_session_watchdog.py`):**
+   - Kiểm tra khoảng cách thời gian giữa `session_start_iso` và `baseline_row.timestamp`.
+   - Nếu baseline cũ hơn thời điểm bắt đầu phiên quá **4 giờ** (hoặc thuộc ngày hôm trước):
+     - Không dùng snapshot cũ để tính delta trừ lùi.
+     - Hiển thị rõ trạng thái: `M5 [Tik 2] (@stevemgjqec): script 5 lượt - web UNPROVEN (baseline stale > 4h từ 2026-10-27)`.
+2. **Pre-Session Baseline Snapshotting (Chốt baseline $T_0$):**
+   - Khi runner hoặc picker kích hoạt danh sách máy chạy follow trong ca, tự động chạy 1 pass cào nhanh qua `tiktok_account_tracker.py` để chốt snapshot tại thời điểm $T_0$. Phép trừ $T_1 - T_0$ ở cuối phiên sẽ phản ánh đúng 100% biến động của phiên đó.
+3. **2-Pass Debounce Re-entry trong Runner (`verify_follow.py`):**
+   - Trong `_confirm_not_released`, khi phát hiện trạng thái `not_followed` sau khi re-entry, không vội vàng phán `FOLLOW_FAILED` và dừng session ngay ở nhịp 1.
+   - Bổ sung 1 nhịp settling delay 1.5s và verify lần 2 (2-pass verification) nhằm loại trừ độ trễ render UI của app qua proxy 4G chậm, ngăn chặn việc runner tự reset kết quả về 0 trong khi server TikTok thực tế đã nhận follow.
