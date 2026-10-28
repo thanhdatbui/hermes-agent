@@ -78,3 +78,14 @@ Khi chua co ban va ma nguon Gateway, phuong an thuc dung nhat la:
      - Bổ sung helper `_last_message_at(session_id)` đối soát mốc message thực tế, tránh lệ thuộc vào `entry.updated_at`.
   4. **Kỷ luật trả lời User (Chống ngụy biện / giải thích bao biện):**
      - Khi hệ thống không tự resume vì lỗi logic thời gian, Agent BẮT BUỘC nhận lỗi thẳng thắn và chỉ ra đúng dòng code / điều kiện bị lọt, CẤM TUYỆT ĐỐI nói dối hay viện cớ "đã trả lời xong đang chờ lệnh" để lấp liếm sự cố.
+
+## 7. Cạm Bẫy Lệch Pha Auto-Resume: DM vs Forum Topic (Sender Prefix & Bẫy Prompt Thụ Động 28/10/2026)
+- **Triệu chứng:** Cùng một đợt restart gateway, session ở DM tự động làm tiếp bình thường, nhưng session ở Forum Topic / Group Thread (như topic `[BATCH ALERT]` Telegram) lại không chịu làm tiếp mà nhảy vào hỏi người dùng: *"Phiên làm việc đã được khôi phục thành công... Anh muốn em tiến hành theo hướng nào tiếp theo?"*.
+- **Root Cause trong `gateway/run.py`:**
+  1. **Bẫy Sender Prefix Non-DM:** Sự kiện synthetic resume mang `text=""`. Ở DM (`chat_type == "dm"`), `message_text` giữ nguyên rỗng `""`. Nhưng ở Forum Topic (`source.thread_id` tồn tại, `is_shared_multi_user_session == True`), `_prepare_inbound_message_text()` tự động prepend `f"[{source.user_name}] {message_text}"` $\rightarrow$ biến thành `"[User] "`!
+  2. **Vỡ điều kiện `_auto_continue_task`:** Kiểm tra `(not message)` bị `False` do dính tag `"[User] "`, gateway tưởng nhầm có tin nhắn mới thật từ user.
+  3. **Rơi vào bẫy Prompt thụ động (`else:`):** Nhánh `else:` vẫn còn câu hướng dẫn *"Report to the user that the session was restored successfully and ask what they would like to do next... skip any unfinished work"*. Model nhận lệnh này lập tức bỏ dở task cũ và hỏi user.
+- **Bản vá kiến trúc chuẩn:**
+  1. Chặn `_prepare_inbound_message_text()` không prepend `[{source.user_name}]` khi tin nhắn rỗng hoặc mang cờ `internal=True`.
+  2. Trong `_run_agent_inner()`: Dùng regex `^[\[^\]]+\]\s*$` bóc tách, nếu chỉ có sender tag hoặc khoảng trắng thì gán về `message = ""` và ép kích hoạt `_auto_continue_task = True`.
+  3. Tiêu diệt hoàn toàn câu chữ *"ask what they would like to do next"* và *"skip unfinished work"* trong toàn bộ nhánh resume của gateway.

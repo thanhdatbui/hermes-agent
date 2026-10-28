@@ -52,23 +52,21 @@ During pre-shipout review, Claude CLI identified critical production hazards on 
 - At `14:11:00` (after ~1 minute), node state drops to `Offline (last seen 2:11 PM GMT+7)` with `RxBytes: 0`.
 
 ### Root Cause Analysis & Forensic Breakdown
-1. **Initial Boot & Primary Line Success:** 
-   - At 14:04, instructions were given to plug the 2 white cables (Line 1 and Line 2) and leave the blue port empty.
-   - At 14:08, helper plugged the 2 white cables.
-   - At 14:10, PPPoE dialed successfully on the primary line, and Tailscale came online (`Connected` at 14:10).
-2. **False Diagnostic & Premature Line Severing:**
-   - Because of polling lag and impatience, coordinator assumed the primary lines failed and prematurely instructed the helper: *"Unplug the 2 white cables immediately, plug only the blue cable"*.
-   - At 14:11:00, helper unplugged the white cables, immediately killing the working PPPoE session.
-   - The blue cable, plugged in hurriedly, either had a bad link or was plugged into an IPTV/MyTV port without DHCP. The node remained offline.
-3. **Coordinator Denial Bias:**
-   - When user presented screenshots showing the node was connected at 2:10 and disconnected at 2:11, coordinator initially dismissed the evidence, assuming the node had never connected.
+1. **The Bridge Dual-Zone & Rogue DHCP Conflict (The Architectural Bug):**
+   - *Discovery:* Both the static management interface (`lan` on `192.168.5.1`) and the rescue interface (`rescue` on DHCP client) were bound to the same bridge device (`br-lan`).
+   - *Firewall Zone Clash:* `lan` was assigned to zone `lan` (ACCEPT), while `rescue` was assigned to zone `wan` (REJECT/masq).
+   - *Sequence of Failure:*
+     1. On boot, `udhcpc` on `rescue` successfully pulled an IP lease (`192.168.1.x`) from the home router and brought Tailscale online (`Connected` at 14:10).
+     2. Within 60 seconds, netifd committed the static IP `192.168.5.1` on `br-lan`, while firewall zone matching rules clashed on the same L2 bridge.
+     3. Rogue dnsmasq on `lan` began broadcasting DHCP offers to the home network, destabilizing local routing and dropping the default gateway.
+   - *Remediation:*
+     1. Move `rescue` to firewall zone `lan` (under **Network -> Interfaces -> RESCUE -> Firewall Settings**).
+     2. Enable `Ignore interface` on `lan` DHCP server (under **Network -> Interfaces -> LAN -> DHCP Server -> General Setup**).
 
-### Agent Behavioral Correction (Critical Discipline)
-- **Do NOT Argue Against Timestamp Evidence:** When the user provides a screenshot showing a recent `Last Seen` timestamp (e.g. `2:11 PM`), never claim "the device never came online".
-- **Cross-Check Intervention Timeline Before Ordering Unplugs:** 
-  If `LastSeen` matches 1–2 minutes after helper plugged the primary cables, the PRIMARY lines were working. Ordering an unplug destroys the established connection.
-- **Default to "Plug All 3 Lines" Rather Than Cable Musical Chairs:** 
-  Leave Line 1, Line 2, and Rescue all connected. OpenWrt's metric hierarchy (10 -> 20 -> 200) will automatically select the best active route without human error.
+2. **Premature Line Severing & Denial Bias:**
+   - Because of impatience, coordinator assumed the primary lines failed and prematurely ordered helpers to unplug cables.
+   - When user presented screenshots showing the node was connected at 2:10 and disconnected at 2:11, coordinator initially dismissed the evidence, assuming the node had never connected.
+   - *Discipline:* Never argue against timestamp evidence. Always cross-check intervention timeline before ordering unplugs. Default to leaving all 3 lines connected.
 
 ---
 
@@ -114,13 +112,19 @@ When headless remote access fails and an on-site Windows machine is borrowed via
   3. Click **Save & Apply**.
   4. Restart `tailscale` under **System -> Startup**.
 
-### 3. ISP Walled Garden / Captive Portal vs Real Internet
-- **Symptom:** PPPoE establishes successfully and receives an IP in `172.17.x.x` (common on VNPT), but Tailscale bootstrap connections time out (`context deadline exceeded`) or return certificate mismatch errors.
-- **Root Cause:** Newly provisioned fiber lines that have not completed administrative activation at the ISP billing system/OLT are placed into a "Walled Garden" / captive portal. All outbound HTTP/HTTPS requests are intercepted and redirected to the ISP's billing notice page, breaking TLS handshakes.
-- **Verification via LuCI:**
-  1. Go to **Network -> Diagnostics**.
-  2. Under **Ping**, test `8.8.8.8`.
-  3. If result is `100% packet loss` despite PPPoE interface showing connected, the line is in an ISP administrative hold and cannot reach the public internet until activated by the ISP local branch.
+### 3. ISP Traceroute Hop 8 `!C` (`Administratively Prohibited`) vs Walled Garden
+- **Symptom:** PPPoE establishes successfully and receives an IP in `172.17.x.x`, but ping `8.8.8.8` returns `100% packet loss`. Traceroute to `8.8.8.8` returns:
+  ```text
+  1  27.68.227.150 (1.7 ms)
+  2  172.28.144.150 (2.6 ms)
+  3-7 10.29.74.201 (~2.2 ms)
+  8  10.29.74.202 !C (2.1 ms)
+  ```
+- **Technical Breakdown:**
+  - `!C` is ICMP Type 3 Code 13 (`Communication Administratively Prohibited`).
+  - **Definitive Evidence:** The packet has successfully exited the router, traversed the BRAS gateway, and penetrated 7 hops into the ISP network before an internal aggregation/core firewall rejected the traffic.
+  - This proves 100% that the router configuration and PPPoE authentication are correct, and the block is caused by an unprovisioned / un-activated account held in an ISP Walled Garden pool.
+- **Communication Protocol:** Compose a polite, technically precise escalation message to the ISP technician citing the accounts, gateway IP, and the exact hop rejecting traffic with `!C`.
 
 ### 4. PPPoE `Timeout waiting for PADO packets` (Discovery Failure)
 - **Symptom in System Log:**
