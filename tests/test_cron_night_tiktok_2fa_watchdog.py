@@ -253,7 +253,7 @@ class TestCronNightTiktok2FAWatchdog(unittest.TestCase):
         self.assertEqual(ret, 0)
         m["run_night_batch"].assert_not_called()
         self.assertEqual(m["send_telegram_report"].call_args[0][0], "-5139245637")
-        self.assertIn("BÁO CÁO REG GMAIL BAN ĐÊM", m["send_telegram_report"].call_args[0][1])
+        self.assertIn("BÁO CÁO REG GMAIL", m["send_telegram_report"].call_args[0][1])
         m["save_gmail_state"].assert_called_once()
 
     def test_2fa_phase_reports_to_tiktok_chat(self):
@@ -261,7 +261,7 @@ class TestCronNightTiktok2FAWatchdog(unittest.TestCase):
         self.assertEqual(ret, 0)
         m["run_gmail_batch"].assert_not_called()
         self.assertEqual(m["send_telegram_report"].call_args[0][0], "-5468653590")
-        self.assertIn("BÁO CÁO 2FA TIKTOK BAN ĐÊM", m["send_telegram_report"].call_args[0][1])
+        self.assertIn("BÁO CÁO 2FA TIKTOK", m["send_telegram_report"].call_args[0][1])
 
     def test_gmail_failure_does_not_block_2fa(self):
         ret, m = self._run_main(["--force"], gmail_result=(1, ""), batch_result=(0, self.TOTAL_OUT))

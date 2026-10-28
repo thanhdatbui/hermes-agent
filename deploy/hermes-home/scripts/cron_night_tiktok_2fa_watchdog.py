@@ -41,6 +41,7 @@ ADMIN_SSH_HOST = os.getenv("TAADAA_ADMIN_SSH", "admin-farm")
 ADMIN_REPO_DIR = os.getenv("TAADAA_ADMIN_REPO", "D:/Taadaa/tiktok-add-bao-mat-f2a")
 ADMIN_WORKBOOK = os.getenv("TAADAA_ADMIN_WORKBOOK", r"D:\OneDrive\TaadaaData\admin\taikhoan_dat_v2_updated .xlsx")
 ADMIN_PYTHON = os.getenv("TAADAA_ADMIN_PYTHON", r"D:\Taadaa\python-envs\automation\Scripts\python.exe")
+ADMIN_ADB_PATH = os.getenv("TAADAA_ADMIN_ADB_PATH", r"C:\Program Files (x86)\xiaowei\tools\adb.exe")
 GMAIL_REPO_DIR = Path(os.getenv("TAADAA_GMAIL_REPO", "D:/Taadaa/register gmail"))
 GMAIL_LOG_DIR = Path("D:/CodexRuntime/codex_gmail_debug-register-gmail")
 GMAIL_EXCEL_FILE = r"D:\OneDrive\TaadaaData\admin\gmail_clean_v2.xlsx"
@@ -393,7 +394,7 @@ def run_night_batch(dry_run: bool = False) -> tuple[int, str]:
         "attrib -u +p $wb\n"
         "try { [System.IO.File]::ReadAllBytes($wb) | Out-Null } catch {}\n"
         f"& '{_ps_quote(ADMIN_PYTHON)}' python_runner/run_batch_live_2fa.py "
-        "--workbook-path $wb --workbook-sheet 'Tài Khoản' --max-workers 15 --live\n"
+        f"--workbook-path $wb --workbook-sheet 'Tài Khoản' --adb-path '{_ps_quote(ADMIN_ADB_PATH)}' --max-workers 15 --live\n"
         "exit $LASTEXITCODE\n"
     )
     b64_ps = base64.b64encode(ps_admin_script.encode("utf-16le")).decode("ascii")
@@ -440,6 +441,30 @@ def _split_cluster_output(out: str) -> tuple[str, str]:
     if len(parts) == 1:
         return out, ""
     return parts[0], "=== CLUSTER ADMIN" + parts[1]
+
+
+def read_admin_gmail_summary_remote(min_mtime: float) -> dict | None:
+    ps_cmd = (
+        f"$min = [DateTimeOffset]::FromUnixTimeSeconds({int(min_mtime)}).LocalDateTime; "
+        "$items = Get-ChildItem -Path 'D:\\CodexRuntime\\codex_gmail_debug-register-gmail\\logs_parallel_*\\summary.json' -ErrorAction SilentlyContinue | "
+        "Where-Object { $_.LastWriteTime -ge $min } | Sort-Object LastWriteTime -Descending; "
+        "if ($items) { Get-Content $items[0].FullName -Raw -Encoding UTF8 }"
+    )
+    try:
+        res = subprocess.run(
+            ["python", "D:/Taadaa/tools/admin_ssh.py", "--powershell", "--timeout", "30", ps_cmd],
+            capture_output=True, text=True, encoding="utf-8", errors="replace"
+        )
+        if res.returncode == 0 and res.stdout.strip():
+            # parse json from stdout (skip warning lines)
+            raw = res.stdout.strip()
+            idx = raw.find("{")
+            if idx >= 0:
+                return json.loads(raw[idx:])
+    except Exception as exc:
+        logger.warning("Không đọc được remote summary.json từ Admin: %s", exc)
+    return None
+
 
 
 def _run_cmd(label: str, cmd: list[str], **kw) -> tuple[int, str]:
@@ -555,8 +580,14 @@ def summarize_gmail(out: str, min_mtime: float) -> dict:
     else:
         kibe = parse_summary_counts(kibe_text)
         kibe_breakdown = parse_gmail_breakdown_from_text(kibe_text)
-    admin = parse_summary_counts(admin_text)
-    admin_breakdown = parse_gmail_breakdown_from_text(admin_text)
+
+    admin_data = read_admin_gmail_summary_remote(min_mtime)
+    if admin_data is not None:
+        admin = {k: int(admin_data.get(k, 0) or 0) for k in ("total", "success", "failed", "skip_safe")}
+        admin_breakdown = admin_data.get("failure_breakdown") or {}
+    else:
+        admin = parse_summary_counts(admin_text)
+        admin_breakdown = parse_gmail_breakdown_from_text(admin_text)
 
     total_breakdown = {
         "platform_errors": {
