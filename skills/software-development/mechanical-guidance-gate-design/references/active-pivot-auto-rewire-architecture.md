@@ -19,6 +19,8 @@ Hội chẩn độc lập giữa Advisor Sol, Claude CLI và Hermes Coordinator 
 | **Investigate Budget** | Task khảo sát/đọc log khai báo `budget > 8` calls | **AUTO-CLAMP** ✅ | Tự động kẹp trần `budget = min(budget, 8)` và cho chạy tiếp, cấm reject bắt agent soạn lại prompt. |
 | **Device Mutex Lock** | Máy farm đang bị chiếm giữ bởi tiến trình khác | **SELF-REAP / PIVOT** ✅ | Kiểm tra heartbeat; nếu chủ lock chết thì tự dọn (reap), nếu lock sống thì tự nhặt task/máy độc lập khác làm tiếp. |
 | **Farm Device Log Query** | Quét đĩa diện rộng (`os.walk`, `find`, `grep -r`) tìm log máy | **AUTO-ROUTE** ✅ | Tự bẻ lái sang lệnh trích xuất O(1): `python D:/Taadaa/tools/inspect_machine.py <N>`. |
+| **Search Root Scope** | Gọi `search_files` ở root hoặc file đơn lẻ trong `D:/Taadaa` | **AUTO-REWIRE** ✅ | File đơn lẻ & thư mục con sâu -> Allow ngay; Exact root -> Auto-rewire sang scoped CWD nếu CWD hợp lệ, hoặc trả về guidance danh sách thư mục con. |
+| **Device Lock Enforcement** | Chạy lệnh ADB hoặc script can thiệp máy mà quên bọc lock | **AUTO-WRAP** ✅ | Tự động bọc lệnh qua `with_device_lock.py --machine <N> -- <cmd>` thay vì block cứng bắt gõ lại. |
 | **Core Shield (GrailGuard)** | Can thiệp mã nguồn các guard lõi, file rules tối cao, file config chính | ⛔ **HARD-BLOCK** | Bất khả xâm phạm. Fail-closed để bảo vệ an toàn toàn diện của agent. |
 | **Closeout Threshold** | Điểm đánh giá Reviewer < 85/100 | ⛔ **HARD-BLOCK** | Cấm `git push`. Bắt buộc Sol Repair độc quyền sửa code/test vòng 2 trước khi push. |
 
