@@ -4,14 +4,8 @@ Nạp ChatGPT-Web: trần 2 acc/IP + proxy_assignments; worker <= 5; Hotmail là
 §
 Watchdog đối soát TikTok Web: đối chiếu Username; runner timeout salvage từ state; 3 quy trình Feed-Follow-Upload độc lập (feed lỗi vẫn chạy follow/upload); cấm phạt cooldown 24h chỉ sau 1 lần nhả follow (bắt buộc streak >= 2); Quota Khỏe dao động [cap-2, cap], tái tốt nghiệp bóp trần = last_failed_ceiling - 2.
 §
-Tool 2FA và cron xen ca: JIT lock từng máy (cấm bulk pre-reserve) và né khung reboot/đệm; Batch 2FA Admin (≥200) qua SSH bắt buộc truyền --adb-path r"C:\Program Files (x86)\xiaowei\tools\adb.exe" chống crash PATH.
+Tool 2FA và cron xen ca: JIT lock từng máy (cấm bulk pre-reserve); freeze_targets bọc retry 5 nhịp backoff + dọn lock mồ côi ~$*.xlsx né xung đột cron sync 5m; Batch 2FA Admin qua SSH bắt buộc --adb-path r"C:\Program Files (x86)\xiaowei\tools\adb.exe"; sau sửa 2FA bắt buộc chạy sync_2fa_to_admin.py.
 §
 GuardGate (D:/Taadaa/tools/guardgate) là Protection Regression Gate cơ giới hóa cho code diff repo (Closeout Step 2.5); infra_regression_gate.py chỉ kiểm tra riêng 4 file config hạ tầng Hermes/OmniRoute.
 §
-Avatar chuẩn hóa: copy vào F_src/F_vid chỉ là lưu đĩa; BẮT BUỘC chạy run_upload_avatar.py --tik <N> --machine <M> (tik là số nguyên), chờ verified=True rồi chụp profile thật gửi MEDIA: nghiệm thu, cấm báo cáo khi chưa up.
-§
-Qoder CLI v1.1.80 đã cài tại C:\Users\Kibe\.qoder\bin\qodercli\ (wrapper trong PATH tại C:\Users\Kibe\bin\qoder.cmd), đã login account Kal Jin (jinrakal@gmail.com); gọi được DeepSeek-Flash (DeepSeek-V4.1-Flash) và Qwen3.8-Flash.
-§
 Code sửa mới >= 15 dòng bắt buộc phân bước rõ ràng (# Bước X / # Step X); cấm cam kết miệng mà bắt buộc cơ giới hóa qua GuardGate rules.json từng repo.
-§
-Vision Gate: Ép AI gửi MEDIA: bắt buộc đọc ảnh đối soát thực thể thật chống bịa đặt; cấm chỉ soi mỗi avatar; cấm bẫy 'phương án/đề xuất'; cấm leak DEGRADED ra chat. VPN Preflight hỗ trợ dual-cluster fallback (kibe <-> admin).
