@@ -7,3 +7,5 @@ Soạn tin nhắn gửi người khác: code block ```text...``` riêng, ngắn 
 Canary tái hiện đúng acc/lỗi thật (timeout >= 720s), cấm test nhầm acc. Cột PASS chưa đặt pass TikTok để None, cấm ghi pass ảo. Khi sai pass tra lại dữ liệu gốc trước khi chạy recovery.
 §
 User cực kỳ ghét hỏi lại khi đã ra lệnh ('T bảo làm thì làm đi đừng có hỏi lại') và luôn yêu cầu benchmark/test phải set timeout chuẩn như worker thật (360s), cấm tự ý bóp ngắn timeout làm worker bị xử ép.
+§
+Chiến lược Farm Follow: Ưu tiên tối đa sản lượng (max cap 40 lượt/ngày chia 2 phiên, dính nhả tự ngắt ăn được bao nhiêu thì ăn); chu kỳ quay vòng 3 ngày mới chạy 1 ca nên 24h phạt xả sạch trước vòng sau; cấm tự suy diễn chế rào cản hay bịa đặt lý do sợ hãi.
