@@ -15,7 +15,7 @@ Use when creating, modifying, or reviewing mechanical enforcement gates (hooks, 
 - Reference: `references/active-pivot-auto-rewire-architecture.md` (Auto-Rewire).
 - Reference: `references/multi-repo-regression-gate-hierarchy.md` (2-tier rules.json partition).
 - Reference: `references/o1-process-verification-and-closeout-operational-decoupling.md` (Process verification).
-- Reference: `references/canary-gate-auto-wiring-vs-memory-enforcement-20261028.md` (Canary auto-wiring vs Memory fallacy).
+- Reference: `references/canary-gate-auto-wiring-vs-memory-enforcement-20261028.md` (Canary auto-wiring, multi-req scanning, and upload evidence grounding).
 - Reference: `references/observability-watchdog-vs-bureaucratic-blocking-gate-pruning.md` (Observability watchdogs retention vs bureaucratic blocking gate & local hash chain pruning).
 - Reference: `references/auto-wiring-and-guidance-boundary-matrix-20261026.md` (Auto-Wiring vs Fail-Fast decision matrix for investigate budget & GuardGate guidance).
 - Reference: `references/idle-window-evaluation-bias-and-closeout-boundary-discipline.md` (Idle-window evaluation bias & zero-block action mandate hierarchy).

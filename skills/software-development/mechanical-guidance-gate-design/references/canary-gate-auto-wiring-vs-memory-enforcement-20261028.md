@@ -68,3 +68,15 @@ Khi người vận hành hoặc agent gọi `canary_runner.py` mà không truy�
 - **CẤM:** Lưu hướng dẫn chạy script, tên cờ lệnh, mapping file hay quy tắc canary vào `MEMORY.md`.
 - **BẮT BUỘC:** Đưa toàn bộ vào `canary_matrix.json`, `canary_plan.py` và `canary_runner.py`. Điểm kết thúc kiểm tra bằng `done_gate.py` bắt buộc verify `tree_diff_sha256` của receipt khớp với HEAD git diff.
 - **CHỐNG BÁO PASS MÙ:** Không bao giờ chấp nhận kết quả Canary là PASS nếu hook mục tiêu bị `skipped` do sổ cái (`already_uploaded_in_shift`). Phải kích hoạt subprocess thực sự hoặc chạy test case cơ học mô phỏng mã lỗi để chứng minh logic hoạt động.
+
+---
+
+## 4. Bẫy Grounding Gap về Bằng Chứng Ảnh (Evidence Grounding Gap)
+- **Sự cố thực tế:** Sau khi chạy canary kết thúc, `canary_runner.py` chụp ảnh màn hình điện thoại (`screen.png`). Do ca chạy kết thúc đã đóng hết app hoặc về màn hình chính Feed For You, ảnh chụp được là một video ngẫu nhiên đang phát trên Feed (video hướng dẫn làm bánh Panna Cotta của kênh khác). Coordinator gửi ảnh này cho User kèm tuyên bố "Canary upload thành công", bị User mắng: *"Hình ảnh chứng minh đăng video của mày đây đó hả"*.
+- **Quy tắc bất biến:**
+  1. **Không dùng ảnh Feed làm bằng chứng Upload:** Ảnh nghiệm thu của task sửa Upload video KHÔNG ĐƯỢC là ảnh lướt Feed dạo đầu (`feed-session-smoke` screen.png).
+  2. **Trích xuất đúng ảnh từ artifact upload:** Bằng chứng thật của việc đăng video bắt buộc phải lấy từ thư mục chạy upload:
+     - `post-published-surface.png`: Bề mặt ngay sau khi bấm nút Đăng (Post), có hiển thị rõ username của chính tài khoản vừa đăng và hashtag bài viết.
+     - `profile-grid-verify_post-*.png`: Lưới video trên trang cá nhân của chính nick đó để chứng minh số lượng video đã tăng.
+     - `report.json`: File báo cáo với `"status": "SUCCESS"` và `"post_verified": true`.
+  3. **Soi mắt trước khi gửi:** Bắt buộc dùng WinRT OCR hoặc vision đọc text trên ảnh trước khi gửi thẻ `MEDIA:`. Nếu thấy text là tên kênh khác hoặc nội dung không liên quan đến nick mục tiêu, tuyệt đối không được ném ra làm bằng chứng hoàn thành task.

@@ -76,3 +76,31 @@ Model nhìn thấy chỉ thị: "Bỏ qua công việc cũ dở dang và hỏi n
 
 3. **Tiêu Diệt Hoàn Toàn Prompt Thụ Động:**
    Xóa bỏ triệt để mọi câu chữ *"Report to the user that the session was restored successfully and ask what they would like to do next"* và *"skip any unfinished work"* trong toàn bộ codebase Gateway. Mọi phiên resume khi không có tin nhắn mới từ user đều phải nhận chỉ thị hành động dứt điểm về `DONE` hoặc `BLOCKED`.
+
+---
+
+## 4. Bẫy Đồng Bộ 3 Vị Trí Khi Vá Lỗi Gateway (Triple-Location Sync Trap)
+
+### Tại sao sửa xong, commit Git rồi mà Gateway restart vẫn bị lỗi cũ?
+Trên Windows, tiến trình Gateway chạy ngầm (`pythonw.exe -m hermes_cli.main gateway run`) được cấp biến môi trường `PYTHONPATH` trỏ vào `venv/Lib/site-packages`.
+
+Tiến trình Gateway nạp `gateway.run` **trực tiếp từ `site-packages`**, KHÔNG nạp từ repository git!
+Nếu phiên làm việc chỉ sửa code và commit trên repo git `gateway/run.py` mà quên đồng bộ vào môi trường runtime, khi Gateway restart nó vẫn tiếp tục nạp file cũ từ ngày trước trong `site-packages`.
+
+### Quy trình chuẩn bắt buộc khi vá Gateway (`gateway/run.py`):
+1. **Sửa & Commit trong repo:** `D:/Taadaa/Hermes/gateway/run.py`
+2. **Đồng bộ ngay sang 2 vị trí runtime:**
+   - Source package runtime: `hermes-agent/gateway/run.py`
+   - Venv package runtime: `venv/Lib/site-packages/gateway/run.py`
+3. **Pre-flight Compile & Focused Test:**
+   ```bash
+   python -m py_compile "$LOCALAPPDATA/hermes/hermes-agent/venv/Lib/site-packages/gateway/run.py" "$LOCALAPPDATA/hermes/hermes-agent/gateway/run.py" "D:/Taadaa/Hermes/gateway/run.py"
+   pytest "D:/Taadaa/Hermes/tests/test_session.py" -v
+   ```
+4. **Hậu kiểm sau khi Restart Gateway:**
+   Dùng Python inspect module đã nạp trong RAM để kiểm chứng chuỗi lỗi đã biến mất hoàn toàn:
+   ```python
+   import gateway.run, inspect
+   src = inspect.getsource(gateway.run)
+   assert 'ask what they would like to do next' not in src
+   ```
