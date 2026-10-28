@@ -153,9 +153,27 @@ When headless network access fails and an on-site computer is borrowed via Ultra
    - **Fix:** In LuCI go to **System -> System -> General Settings**, click **`SYNC WITH BROWSER`**, click **Save & Apply**, then restart `tailscale` in **System -> Startup**.
 5. **DNS Forwarding Trap:**
    - If log shows `no such host` resolving Tailscale domains on `127.0.0.1:53`, add public resolvers (`8.8.8.8`, `1.1.1.1`) under **Network -> DHCP and DNS -> DNS forwardings** and save.
-6. **ISP Walled Garden vs CGNAT (`172.17.x.x`):**
-   - If PPPoE obtains `172.17.x.x` but `Network -> Diagnostics -> Ping 8.8.8.8` has 100% loss, the newly provisioned fiber line is in an ISP administrative hold / captive portal redirecting traffic. The local ISP branch must activate the circuit.
-7. **PPPoE `Timeout waiting for PADO packets`:**
+6. **ISP Walled Garden & Traceroute ICMP Code `!C` (`Administratively Prohibited`):**
+   - If PPPoE obtains an IP (e.g., `172.17.x.x` on Viettel) but `Network -> Diagnostics -> Ping 8.8.8.8` has 100% loss, run `IPv4 Traceroute` to `8.8.8.8`.
+   - **The `!C` Signature:** If traceroute hops enter ISP internal routers (e.g. `27.68.x.x -> 172.28.x.x -> 10.29.x.x`) and end with `!C` (e.g. `8 10.29.74.202 !C`):
+     - `!C` is ICMP Type 3 **"Communication Administratively Prohibited"**.
+     - **Definitive Proof:** The packet has successfully exited the router and reached deep inside the ISP network (often 2ms away), where the ISP policy/firewall deliberately rejects it because the newly pulled fiber line has **not been provisioned / activated / completed (chưa hoàn công / active luồng)** by the technician on the ISP billing/service platform.
+     - This proves **100% ISP-side configuration hold**, NOT router misconfiguration.
+   - **Actionable Escalation:** Take a screenshot of the `!C` traceroute and instruct the user to report directly to the ISP tech or hotline (e.g., Viettel 1800 8119): cite the contract accounts, the gateway IP, and the exact hop rejecting traffic with `!C`.
+
+7. **Direct PPPoE Dial-Up Testing on Windows via UltraViewer (Zero-Disconnect Safeguard):**
+   - To eliminate all doubt and prove an ISP line fault directly from a Windows PC connected to the ONT:
+   - **Critical UltraViewer Trap:** When Windows connects a PPPoE dial-up interface, it defaults to setting that connection as the system's Default Gateway. If that PPPoE line is in a walled garden / has no internet, all PC traffic immediately diverts to the dead line, **killing internet and dropping the UltraViewer session permanently**!
+   - **The Unchecked Gateway Protocol:**
+     1. In Windows Settings -> **Dial-up** -> **Set up a new connection** -> **Connect to the Internet** -> **Broadband (PPPoE)**.
+     2. Enter PPPoE Username and Password. Click **Connect**, then **IMMEDIATELY click Cancel/Skip** on the connecting dialog so the profile is saved without engaging traffic.
+     3. Press `Win + R` -> `ncpa.cpl`.
+     4. Right-click the newly created PPPoE connection -> **Properties** -> **Networking** tab.
+     5. Select **Internet Protocol Version 4 (TCP/IPv4)** -> **Properties** -> **Advanced...**.
+     6. **UNCHECK: `Use default gateway on remote network`**. Click OK -> OK -> OK.
+     7. Now safely connect the PPPoE profile: Windows dials and obtains the IP on the PPP adapter, while all existing PC internet and UltraViewer traffic remains 100% on the primary physical adapter.
+
+8. **PPPoE `Timeout waiting for PADO packets`:**
    - Indicates no discovery offer from BRAS. Verify: cable is in **LAN 1** of ONT (many ONTs only bridge LAN 1), ONT is set to Bridge Mode, and VLAN ID (e.g. 35) is configured if required by provincial ISP.
 
 ## References
