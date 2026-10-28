@@ -12,4 +12,4 @@ Code sửa mới >= 15 dòng bắt buộc phân bước rõ ràng (# Bước X /
 §
 Lệnh dispatch_worker qua terminal bắt buộc timeout >= 480s khớp sàn sol_worker, cấm set 180s làm rớt session.
 §
-Khi deploy router OpenWrt headless (Xiaomi R3G): Nếu WAN mất internet/Walled Garden (!C), 'tailscale up' sẽ treo TLS timeout. Kiểm tra ISP device (H196A) có tự quay chiếm PPPoE (Type: Routing) hay OLT khóa MAC; clone MAC qua Override MAC address trong LuCI nếu cần. Nhắn tin kỹ thuật ISP luôn lịch sự, chuyên môn, dẫn chứng ICMP !C và account ID.
+Khi deploy router OpenWrt headless (Xiaomi R3G): Nếu WAN mất internet/Walled Garden (!C), 'tailscale up' sẽ treo TLS timeout. Kiểm tra ISP device (H196A) có tự quay chiếm PPPoE (Type: Routing) hay bật nhầm IPTV gây nuốt luồng; cấm đoán mò khóa MAC khi thợ chỉ mang router test. Nhắn tin kỹ thuật ISP luôn lịch sự, chuyên môn, dẫn chứng ICMP !C và account ID.
