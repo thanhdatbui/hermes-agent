@@ -8,6 +8,7 @@ description: "Use when headless AI CLI fails to inherit IDE subscription."
 ## 1. When to Use
 Use when configuring, debugging, or running headless AI developer CLIs (such as Antigravity `agy.exe`, Gemini Code Assist CLI, Codex CLI) in multi-account or multi-profile sandbox environments where the CLI binary fails to inherit the paid subscription (Pro/Google One AI) that the full GUI IDE possesses, resulting in 429 quota exhaustion (`RESOURCE_EXHAUSTED`).
 - Reference: `references/antigravity-entitlement-protocol.md` (Protobuf structure, credit types, onboarding metadata, and local adapter injection).
+- Reference: `references/headless-cli-bootstrap-and-device-auth.md` (Autonomous Python bootstrap, Windows PATH shims, and background device OAuth polling for vendor AI CLIs like Qoder/Claude Code).
 
 ## 2. Core Problem: Headless CLI vs GUI IDE Divergence
 When developer tools package an IDE extension alongside a native CLI binary:
