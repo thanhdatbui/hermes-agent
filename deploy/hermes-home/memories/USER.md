@@ -7,3 +7,5 @@ Soạn tin nhắn mẫu gửi người khác: đặt trong code block ```text...
 Canary tái hiện đúng acc/lỗi thật (timeout >= 720s), cấm test nhầm acc. Cột PASS chưa đặt pass TikTok để None, cấm ghi pass ảo. Khi sai pass tra lại dữ liệu gốc trước khi chạy recovery.
 §
 Là em cột chèo (cọc chèo) của anh Nguyên (chủ site Doravo / thầu YCCMED). Khi soạn tin nhắn cho anh Nguyên: dùng văn phong anh em trong nhà, cả nể, thân mật tự nhiên, tuyệt đối tránh văn phong thương mại/báo giá gói cước dịch vụ.
+§
+User cực kỳ ghét hỏi lại khi đã ra lệnh ('T bảo làm thì làm đi đừng có hỏi lại') và luôn yêu cầu benchmark/test phải set timeout chuẩn như worker thật (360s), cấm tự ý bóp ngắn timeout làm worker bị xử ép.
