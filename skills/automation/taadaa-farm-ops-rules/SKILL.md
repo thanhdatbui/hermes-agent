@@ -29,6 +29,8 @@ description: "Taadaa farm safety, close-session, and multi-machine operations."
   2. *Nhận diện màn hình Onboarding*: Màn hình "Bạn bao nhiêu tuổi?" (`/about-you`) là luồng TẠO MỚI tài khoản của OpenAI, KHÔNG PHẢI phiên hết hạn. Thấy màn hình này là bằng chứng tài khoản chưa hề đăng ký xong trước đó; cấm tin vào timestamp supervisor state để phán đã reg.
   3. *Lệch schema Kibe vs Admin*: Kibe có cột 11 `PASS CHATGPT` (12 cột), Admin là schema TikTok legacy (10 cột, dừng ở `device ID`). Mọi script đọc workbook liên cụm BẮT BUỘC fallback sang mật khẩu mail (`cred['pwd']`) chuẩn hóa `normalize_password`, CẤM hardcode đường dẫn Kibe hoặc bỏ qua candidate khi thiếu cột.
   4. *Khế ước Exit Code*: Runner con BẮT BUỘC return 1 khi skip/fail, chỉ return 0 khi thành công thật; Supervisor cấm tin mù quáng vào exit code 0 để đóng dấu `chatgpt_registered_at` ảo.
+- **Độc Lập Tuyệt Đối 3 Quy Trình (Feed — Follow — Upload):** Ba quy trình chính của nick farm chạy tuần tự nhưng hoàn toàn độc lập. CẤM TUYỆT ĐỐI cơ chế ép buộc Feed thành công mới được Follow/Upload. Quy trình trước fail thì quy trình sau vẫn BẮT BUỘC khởi chạy bình thường.
+- **Chống Phạt Cooldown Oan (Single-Release Cooldown Ban):** Nút follow revert về 'Follow' sau tap chứng minh server TikTok đã từ chối lượt follow đó. Tuy nhiên, CẤM đóng băng tài khoản 24h (`cooldown_until_date`) chỉ sau 1 lần nhả đơn lẻ; chỉ dừng phiên hiện tại và chỉ phạt cooldown khi bị nhả liên tiếp trên các phiên khác nhau (Streak >= 2).
 
 ## 2. Chu Trình Điều Phối Farm (Coordinator vs Worker)
 - **T0 (Hiện trường):** Đọc log, inspect ADB O(1), restart process, kiểm tra proxy. Tự do thực thi.
@@ -63,3 +65,4 @@ description: "Taadaa farm safety, close-session, and multi-machine operations."
 - Khế Ước Dò Quota Trần Động Follow (Biên Độ 2 & Hạ Trần Gãy -2): [`references/follow-dynamic-quota-tight-boundary-and-post-failure-reduction-20261028.md`](references/follow-dynamic-quota-tight-boundary-and-post-failure-reduction-20261028.md)
 - Bẫy Cắt Số Đuôi Account Switcher & Khởi Chạy SplashActivity Đích Danh: [`references/account-switcher-trailing-digits-and-explicit-launch-focus.md`](references/account-switcher-trailing-digits-and-explicit-launch-focus.md)
 - Audit & Purge ChatGPT GPM Đăng Nhập & Đồng Bộ Token: [`references/chatgpt-gpm-login-audit-and-purge-discipline.md`](references/chatgpt-gpm-login-audit-and-purge-discipline.md)
+- Độc Lập 3 Quy Trình (Feed-Follow-Upload) & Chống Phạt Cooldown Oan: [`references/decoupled-pipeline-and-follow-cooldown-guard.md`](references/decoupled-pipeline-and-follow-cooldown-guard.md)
