@@ -14,4 +14,4 @@ Qoder CLI v1.1.80 đã cài tại C:\Users\Kibe\.qoder\bin\qodercli\ (wrapper tr
 §
 Code sửa mới >= 15 dòng bắt buộc phân bước rõ ràng (# Bước X / # Step X); cấm cam kết miệng mà bắt buộc cơ giới hóa qua GuardGate rules.json từng repo.
 §
-Egress Hook guard_media_vision_gate: Gửi ảnh Profile điện thoại cấm viết claim 'đã cập nhật avatar' hay marker 'ảnh chụp bạn nữ' vì OCR màn hình thiếu chữ này sẽ kích hoạt UNGROUNDED_OVERRIDE / UNGROUNDED_TEXT_CLAIM làm leak thông báo DEGRADED ra chat. Luôn bám sát token OCR thật (Tên, Handle, Bio, Views).
+Vision Gate: Ép AI khi gửi ảnh MEDIA: bắt buộc phải đọc lại ảnh (vision/OCR) đối soát thực thể thật (tên nick/lỗi) để chống bịa đặt; cấm thiên vị chỉ soi mỗi avatar; cấm bẫy từ khóa chung 'phương án/đề xuất'; cấm leak chuỗi DEGRADED ra chat.
