@@ -30,10 +30,10 @@ Khi kết thúc một ca chạy batch Nuôi Feed hoặc Upload Hook, watchdog ph
 
 2. **Soi mắt đọc Switcher bằng WinRT OCR:**
    - Tìm file screenshot Switcher tại artifact của ca chạy gần nhất:
-     `D:\Taadaa\runtime\<cluster>\live\<date>\<batch>\machines\machine_<N>\<run_id>\artifacts\...\feed-session-smoke\profile_preflight_switcher_3_guard\attempt_1\screen.png`
-   - Chạy WinRT OCR (Lưu ý: truyền đường dẫn Windows backslash `\` để tránh lỗi Stream OpenAsync trên PowerShell):
+     `D:\Taadaa\runtime\<cluster>\live\<date>\<batch>\<run_id>\machines\machine_<N>\<run_id>\artifacts\device_<id>\account_<id>\feed-session-smoke\profile_preflight_switcher_*_guard\attempt_1\screen.png`
+   - Chạy WinRT OCR (Lưu ý: truyền đường dẫn Windows backslash `\` để tránh lỗi Stream OpenAsync trên PowerShell, và BẮT BUỘC đặt `timeout <= 60s` để không bị chặn bởi Hard Gate #5 Device Bulkhead):
      ```bash
-     python D:/Taadaa/tools/run_winrt_ocr.py "D:\Taadaa\runtime\...\screen.png"
+     python D:/Taadaa/tools/run_winrt_ocr.py "D:\Taadaa\runtime\...\screen.png" # kèm timeout=30
      ```
    - **Tiêu chuẩn kết luận:**
      - Nếu OCR trả về danh sách các nick khác vẫn đang đăng nhập bình thường trong Switcher (ví dụ 7 nick hiển thị đầy đủ, không có dialog lỗi/bắt đăng nhập lại) -> **BÁO ĐỘNG GIẢ (FALSE POSITIVE)**. Toàn bộ tài khoản hiện hữu trên máy hoàn toàn an toàn, chỉ là nick mục tiêu chưa từng được nạp vào máy.

@@ -35,6 +35,11 @@ Trước đây hệ thống bị lỗi nghiêm trọng do nhập nhằng giữa 
   - **Hồi phục 1:** Cấp quota 2–4 lượt.
   - **Hồi phục 2:** Cấp quota 4–6 lượt.
   - **Khỏe (Tốt nghiệp / Graduated):** Cấp quota full 10–15 lượt.
+- **Chu trình vòng đời chuyển tầng thực tế (Dashboard Lifecycle):**
+  `🔴 COOLDOWN (S1)` (24h) $\xrightarrow{\text{hết 24h}}$ `🟠 Hồi phục 1` (2–4 fl, cần 1 ca sạch) $\xrightarrow{\text{1 ca sạch}}$ `🟡 Hồi phục 2` (4–6 fl, cần 1 ca sạch) $\xrightarrow{\text{1 ca sạch}}$ `🟢 Khỏe` (full 10–15+ fl).
+- **Phản ứng khi dính nhả trong ca dưỡng (Hồi phục 1 / 2):**
+  - **Nếu `used == 0` (bấm phát đầu ăn nhả ngay):** Tính là tái phạm liên tiếp, leo thang lên `Streak 2` (Cooldown 3 ngày) hoặc `Streak 3` (5 ngày).
+  - **Nếu `used > 0` (đã follow thành công vài lượt rồi mới bị nhả/chạm trần):** Chặn cứng không leo thang streak, giữ nguyên ở `Streak 1` (chỉ Cooldown 24h xả cache).
 - Cờ `is_post_cooldown_warmup` được kích hoạt khi `(not self.is_graduated) and (not self.follow_failed)` hoặc khi `recovered_date == today`. Nhờ vậy, nick dù có `fail_streak = 0` vẫn giữ đúng quota dưỡng an toàn (2–4 lượt) suốt các phiên cùng ngày và ngày hôm sau, không bị nhảy vọt lên full quota. Nếu cữ sau có lỡ bị nhả thì nick chỉ bị phạt lại ở mức Streak 1 (24h), không bao giờ bị đè lên Streak 2, 3, 4 giam oan.
 
 ---

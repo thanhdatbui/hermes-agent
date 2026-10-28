@@ -134,6 +134,15 @@ Use status values such as `NO_DAT_EVIDENCE`, `CLEAN_AND_ONLINE`, `ONLINE_BUT_ROG
 
 - **Khôi phục DHCP sau khi dọn sạch cờ phạt và xung đột ARP:**
   Sau khi dịch chuyển máy cải thiện RF và purge toàn bộ profile lỗi/cờ phạt `ASSOCIATION_REJECTION`/`DHCP_FAILURE` trên Android S7, nếu MikroTik vẫn lưu ARP stale dạng `status: failed` hoặc dải cũ, cần dọn ARP stale trên MikroTik (`DELETE /rest/ip/arp/<id>`) để Gateway và Client bắt tay lại hoàn tất việc cấp phát IP `192.168.110.x`.
+- **Bẫy Độ Trễ Báo Cáo Watchdog & Quy Trình Triage O(1) "Mất kết nối Wi-Fi":**
+  Khi User nhận Farm Alert từ watchdog báo "Mất kết nối Wi-Fi (AP)" trên một nhóm máy và hỏi lý do:
+  1. TUYỆT ĐỐI CẤM vội kết luận máy đang rớt mạng hoặc hỏng Wi-Fi phần cứng.
+  2. BẮT BUỘC chạy ngay lệnh trích xuất O(1) `python D:/Taadaa/tools/inspect_machine.py <N>` để đọc trạng thái thời gian thực (`wlan0 IP`, proxy, screen state).
+  3. Nếu máy hiện tại đang có IP `192.168.110.x` và Proxy thông:
+     - Khẳng định ngay máy không bị hỏng phần cứng và hiện tại đang bình thường.
+     - Giải thích rõ cơ chế 2 tầng:
+       (a) Báo cáo Watchdog là Delayed Aggregation, phản ánh thời điểm bắt đầu ca (ví dụ 06:00 sáng), trễ vài tiếng so với thời điểm gửi tin nhắn tổng hợp.
+       (b) Lúc bắt đầu ca khi đánh thức máy từ trạng thái Sleep/Dozing, chip Broadcom của Samsung S7 cần 5–7 giây để bắt tay WPA2 và nhận DHCP lease từ AP Aruba. Nếu `vpn_preflight` probe quá sớm (<4s), Fail-Closed Shield sẽ ngắt phiên của máy đó để bảo vệ tài khoản (chống rò rỉ IP direct ra ngoài).
 - **Broadcom PCIe wlan0 DORMANT / NO-CARRIER sau Association Rejection & Level 2 Reboot (2026-10-20):**
   Khi máy đã purge sạch profile rác (`service call wifi 14`), nạp lại SSID chuẩn và hoàn tất bắt tay 4 bước (`Key negotiation completed`, `CTRL-EVENT-CONNECTED`), nhưng `ip addr show wlan0` vẫn kẹt cứng ở `<NO-CARRIER, ... state DORMANT>` và không nhận DHCP IP: Radio toggle mềm (`svc wifi disable/enable`) không thể đánh thức PCIe bus. CẤM loop reconnect làm tăng counter association rejection phía AP. BẮT BUỘC kích hoạt Level 2 hardware-bypass reboot:
   ```bash
