@@ -89,3 +89,12 @@ Khi chua co ban va ma nguon Gateway, phuong an thuc dung nhat la:
   1. Chặn `_prepare_inbound_message_text()` không prepend `[{source.user_name}]` khi tin nhắn rỗng hoặc mang cờ `internal=True`.
   2. Trong `_run_agent_inner()`: Dùng regex `^[\[^\]]+\]\s*$` bóc tách, nếu chỉ có sender tag hoặc khoảng trắng thì gán về `message = ""` và ép kích hoạt `_auto_continue_task = True`.
   3. Tiêu diệt hoàn toàn câu chữ *"ask what they would like to do next"* và *"skip unfinished work"* trong toàn bộ nhánh resume của gateway.
+
+## 8. Bẫy Tử Huyệt Runtime Gateway Nạp Từ site-packages (Bộ 3 Vị Trí Bắt Buộc Đồng Bộ)
+- **Bản chất kỹ thuật:** Tiến trình Gateway Daemon có PYTHONPATH trỏ vào venv của user (`venv/Lib/site-packages`).
+- **Cạm bẫy:** Nếu chỉ patch và commit code trong Git repo `D:/Taadaa/Hermes/gateway/run.py`, Gateway khi restart vẫn import file cũ từ `site-packages`. Người dùng thấy code trong repo đã sửa nhưng runtime thực tế vẫn tiếp tục văng lỗi cũ!
+- **Kỷ luật đồng bộ 3 vị trí bắt buộc:** Khi thực hiện sửa đổi logic trong `gateway/run.py`, BẮT BUỘC sao chép đồng bộ vào cả 3 vị trí:
+  1. `D:/Taadaa/Hermes/gateway/run.py` (Repo Git chính)
+  2. Source package `gateway/run.py` trong hermes-agent
+  3. Runtime package `venv/Lib/site-packages/gateway/run.py` (nơi tiến trình daemon nạp thực tế)
+- **Kiểm chứng cú pháp:** Bắt buộc chạy `python -m py_compile` trên cả 3 file ngay sau khi đồng bộ.
