@@ -313,21 +313,47 @@ def _ps_quote(value: object) -> str:
 
 
 def hydrate_workbook(path: Path) -> bool:
-    """Hydrate và pin workbook nếu đang bị OneDrive Files On-Demand giữ offline."""
-    try:
-        if not path.is_file():
-            logger.warning('Workbook không phải file thường: %s', path)
-            return False
-        if sys.platform == 'win32':
-            result = subprocess.run(['attrib', '-u', '+p', str(path)], capture_output=True, timeout=10)
-            if result.returncode != 0:
-                logger.warning('Attrib hydrate thất bại (code=%d): %s', result.returncode, path)
-                return False
-        with open(path, 'rb') as f:
-            f.read(10)
-        return True
-    except Exception as exc:
-        logger.warning('Lỗi hydrate workbook %s: %s', path, exc)
+    """Hydrate và pin workbook nếu đang bị OneDrive Files On-Demand giữ offline.
+    Bao gồm dọn dẹp file lock mồ côi và retry loop 3 lần kèm backoff.
+    """
+    # ==============================================================================
+    # BƯỚC 1: DỌN DẸP FILE LOCK MỒ CÔI (REAP DEAD OWNER EXCEL)
+    # ==============================================================================
+    owner_file = path.with_name(f"~${path.name}")
+    if owner_file.exists():
+        try:
+            import psutil
+            excel_alive = any(
+                p.info.get("name", "").lower() == "excel.exe"
+                for p in psutil.process_iter(["name"])
+            )
+            if not excel_alive:
+                owner_file.unlink(missing_ok=True)
+                logger.info("Đã dọn dẹp file lock mồ côi: %s", owner_file)
+        except Exception as exc:
+            logger.warning("Không thể kiểm tra/dọn dẹp lock mồ côi %s: %s", owner_file, exc)
+
+    # ==============================================================================
+    # BƯỚC 2: RETRY HYDRATE VỚI BACKOFF 3 NHỊP (CHỐNG NGHẼN ONEDRIVE)
+    # ==============================================================================
+    for attempt in range(1, 4):
+        try:
+            if not path.is_file():
+                logger.warning('Workbook không phải file thường: %s (nhịp %d/3)', path, attempt)
+                time.sleep(2.0)
+                continue
+            if sys.platform == 'win32':
+                result = subprocess.run(['attrib', '-u', '+p', str(path)], capture_output=True, timeout=10)
+                if result.returncode != 0:
+                    logger.warning('Attrib hydrate thất bại (code=%d): %s (nhịp %d/3)', result.returncode, path, attempt)
+                    time.sleep(2.0)
+                    continue
+            with open(path, 'rb') as f:
+                f.read(10)
+            return True
+        except Exception as exc:
+            logger.warning('Lỗi hydrate workbook %s (nhịp %d/3): %s', path, attempt, exc)
+            time.sleep(2.0)
     return False
 
 
@@ -391,13 +417,18 @@ def run_night_batch(dry_run: bool = False) -> tuple[int, str]:
         "$env:PYTHONUTF8 = '1'\n"
         f"Set-Location '{_ps_quote(ADMIN_REPO_DIR)}'\n"
         f"$wb = '{_ps_quote(ADMIN_WORKBOOK)}'\n"
+        "$owner = Join-Path (Split-Path $wb) ('~$' + (Split-Path $wb -Leaf))\n"
+        "if (Test-Path $owner) {\n"
+        "    $xl = Get-Process excel -ErrorAction SilentlyContinue\n"
+        "    if (-not $xl) { Remove-Item -Force $owner -ErrorAction SilentlyContinue }\n"
+        "}\n"
         "attrib -u +p $wb\n"
         "try { [System.IO.File]::ReadAllBytes($wb) | Out-Null } catch {}\n"
         f"& '{_ps_quote(ADMIN_PYTHON)}' python_runner/run_batch_live_2fa.py "
         f"--workbook-path $wb --workbook-sheet 'Tài Khoản' --adb-path '{_ps_quote(ADMIN_ADB_PATH)}' --max-workers 15 --live\n"
         "exit $LASTEXITCODE\n"
     )
-    b64_ps = base64.b64encode(ps_admin_script.encode("utf-16le")).decode("ascii")
+    b64_ps =base64.b64encode(ps_admin_script.encode("utf-16le")).decode("ascii")
     cmd_admin = [
         "ssh", "-o", "ConnectTimeout=10", ADMIN_SSH_HOST,
         f"powershell -NoProfile -EncodedCommand {b64_ps}"
@@ -651,7 +682,11 @@ def build_2fa_report(kibe: dict, admin: dict, code: int) -> str:
         f"• Farm Kibe (Máy 1-80): Hoàn tất {kibe['success']} | Bỏ qua {kibe.get('skip_safe', 0)} | Lỗi {kibe['failed']}",
         f"• Farm Admin (Máy 201-280): Hoàn tất {admin['success']} | Bỏ qua {admin.get('skip_safe', 0)} | Lỗi {admin['failed']}",
     ]
-    if code not in ACCEPTABLE_RETURN_CODES: lines.append(f"• Lỗi runner: mã thoát {code}")
+    if code not in ACCEPTABLE_RETURN_CODES:
+        if kibe.get("total", 0) == 0 and admin.get("total", 0) == 0:
+            lines.append(f"• Lỗi runner: mã thoát {code} (kẹt Workbook lock hoặc OneDrive chưa hydrate)")
+        else:
+            lines.append(f"• Lỗi runner: mã thoát {code}")
     return "\n".join(lines)
 
 
