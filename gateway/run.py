@@ -10520,7 +10520,12 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
             group_sessions_per_user=_group_sessions_per_user,
             thread_sessions_per_user=_thread_sessions_per_user,
         )
-        if _is_shared_multi_user and source.user_name:
+        if (
+            _is_shared_multi_user
+            and source.user_name
+            and (event.text or "").strip()
+            and not getattr(event, "internal", False)
+        ):
             message_text = f"[{source.user_name}] {message_text}"
 
         # Prepend channel context from history backfill (if any).  This
@@ -19073,35 +19078,30 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
                     "Auto-continue triggered for session %s (reason: %s)",
                     session_id, _reason_phrase,
                 )
-                _persist_user_message_override = message
-                # The empty-message case is the auto-resume startup turn
-                # synthesized by _schedule_resume_pending_sessions — there is
-                # no NEW user message to address, so tell the model to report
-                # recovery instead of the (nonexistent) "new message".
-                _auto_continue_task = (not message) and _reason in (
-                    "restart_interrupted", "restart_timeout", "shutdown_timeout"
+                _has_real_user_message = bool(
+                    message
+                    and isinstance(message, str)
+                    and not re.match(r"^(\[[^\]]+\]\s*)*$", message.strip())
                 )
-                if message:
+                if not _has_real_user_message:
+                    message = ""
+                _persist_user_message_override = message
+                _auto_continue_task = not _has_real_user_message
+                if _has_real_user_message:
                     _resume_guidance = (
                         "Address the user's NEW message below FIRST and focus "
                         "on what the user is asking now."
                     )
-                elif _auto_continue_task:
+                    _replay_guard = (
+                        "Do NOT re-execute old tool calls from the history."
+                    )
+                else:
                     _resume_guidance = (
                         "Kiểm tra lại hiện trường môi trường/thiết bị sau khi "
                         "reboot/restart và chủ động tiếp tục thực thi để hoàn thành "
                         "dứt điểm task đang dở về DONE hoặc BLOCKED kèm bằng "
                         "chứng thực tế."
                     )
-                else:
-                    _resume_guidance = (
-                        "Report to the user that the session was restored "
-                        "successfully and ask what they would like to do next."
-                    )
-                if _auto_continue_task:
-                    # Re-verify live state with FRESH tool calls, never replay
-                    # history; reboot/restart commands stay forbidden so the
-                    # resume cannot re-trigger the interruption.
                     _replay_guard = (
                         "Do NOT replay old tool calls from the history — "
                         "re-check the real current state first and issue fresh "
@@ -19113,11 +19113,6 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
                         "until the device lock is verified; prefer inspecting "
                         "the live state, collecting evidence, and reporting "
                         "the current status."
-                    )
-                else:
-                    _replay_guard = (
-                        "Do NOT re-execute old tool calls — skip any "
-                        "unfinished work from the conversation history."
                     )
                 message = (
                     f"[System note: The previous turn was interrupted by "
