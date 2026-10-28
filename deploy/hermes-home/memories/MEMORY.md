@@ -7,9 +7,3 @@ Watchdog đối soát TikTok Web: đối chiếu Username; runner timeout salvag
 Tool 2FA và cron xen ca: JIT lock từng máy (cấm bulk pre-reserve); freeze_targets bọc retry 5 nhịp backoff + dọn lock mồ côi ~$*.xlsx né xung đột cron sync 5m; Batch 2FA Admin qua SSH bắt buộc --adb-path r"C:\Program Files (x86)\xiaowei\tools\adb.exe"; sau sửa 2FA bắt buộc chạy sync_2fa_to_admin.py.
 §
 GuardGate (D:/Taadaa/tools/guardgate) là Protection Regression Gate cơ giới hóa cho code diff repo (Closeout Step 2.5); infra_regression_gate.py chỉ kiểm tra riêng 4 file config hạ tầng Hermes/OmniRoute.
-§
-Code sửa mới >= 15 dòng bắt buộc phân bước rõ ràng (# Bước X / # Step X); cấm cam kết miệng mà bắt buộc cơ giới hóa qua GuardGate rules.json từng repo.
-§
-Lệnh dispatch_worker qua terminal bắt buộc timeout >= 480s khớp sàn sol_worker; benchmark worker bắt buộc timeout chuẩn 360s, cấm tự ý hạ thấp làm đứt ngang task.
-§
-Deploy OpenWrt headless (Xiaomi R3G): WAN mất mạng/Walled Garden (!C) thì 'tailscale up' treo TLS. Check ISP device (H196A) quay chiếm PPPoE hay bật IPTV; cấm đoán mò khóa MAC. Nhắn tin kỹ thuật ISP lịch sự, kèm ICMP !C và account ID.
