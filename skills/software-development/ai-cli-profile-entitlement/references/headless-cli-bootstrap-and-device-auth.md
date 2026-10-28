@@ -57,3 +57,21 @@ When the user says "làm luôn cho tao / sudo":
    - DeepSeek-Flash (V4.1) enforces strict anti-abuse alignment: requests describing "multi-account farm proxy rotation", "evading 403 Sentinel / 429", or "botting infrastructure" trigger immediate refusals.
    - For farm automation and bot-ops, route to internal models (e.g. Sol Worker / GPT-5.6 Sol High via OmniRoute `:20129`); use DeepSeek-Flash for pure algorithms, concurrency stress-tests, syntax checking, and diff surgery.
 
+## 7. Autonomous Coding Worker Integration & Dispatch Hierarchy
+When elevating a headless AI CLI (like Qoder CLI with DeepSeek-Flash) to an automated code-fix worker (`qoder_worker.py`):
+1. **Agentic Execution Flags:** Use `--dangerously-skip-permissions -w <workdir> -p <prompt>` so the CLI reads workspace files, executes edits, and self-verifies without interactive terminal prompts.
+2. **Timeout Discipline Invariant:** NEVER bóp timeout ngắn (e.g. 30s/50s/60s) during benchmarks or dispatch. Models with deep chain-of-thought (CoT) explore solutions before writing code. Enforce a hard floor `timeout >= 480s` (matching Sol Worker and production workers) to eliminate false-positive timeouts.
+3. **Fallback Chain Tiering:**
+   - **Tier 1 (Promo Free):** Qoder Worker (`qoder_worker.py`) consumes 0-cost credits until expiration (e.g. Nov 1).
+   - **Tier 2 (Fallback):** Sol Worker (`:20129` - GPT-5.6 Sol High).
+   - **Tier 3 / 4:** Agy CLI / Claude Haiku CLI.
+   - Check exit code, file hash changes (`take_snapshot`), and AST syntax verification before promoting changes.
+
+## 8. OmniRoute CLI Integration & Coordinator Payload Thresholds
+1. **Config-Dir Auth Isolation Sync:** OmniRoute isolates CLI runs under `~/.omniroute/<tool>-cli`. When authentication is performed via browser OAuth under `~/.<tool>`, sync `.auth`, `installation_id`, `umid-cache.json`, and `state.json` to `~/.omniroute/<tool>-cli` so the CLI recognizes the session.
+2. **Environment Token Precedence Trap:** Setting a dummy or placeholder `QODER_PERSONAL_ACCESS_TOKEN` env var overrides and invalidates saved `.auth` sessions. Ensure the token is a genuine `pt-*` PAT or omitted entirely to let the CLI use local session tokens.
+3. **Coordinator vs Worker Role Constraints:**
+   - **Coordinator:** Requires massive context capacity (100k+ tokens for SOUL, rules, 15+ tool definitions, history). Web-scraped providers (ChatGPT Web / Sol Web) choke with `413 Payload Too Large` when Hermes passes its full coordinator schema. Gemini (Antigravity/Codex) succeeds due to its 1M+ context window.
+   - **Synthetic Tool-Calling Overhead:** While OmniRoute's `webTools.ts` translates raw text `<tool>` blocks into OpenAI `tool_calls`, prompt-injection of 15 tools into the system prompt causes severe token bloat. Reserve web-scraped models for Worker roles where prompt contracts are compact and focused.
+
+
