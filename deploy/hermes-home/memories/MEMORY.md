@@ -1,6 +1,6 @@
 Guard_media_vision_gate chặn DIRTY_AVATAR_EVIDENCE, cấm leak DEGRADED ra chat; kiểm tra contradiction phổ quát cho mọi loại ảnh để chống AI bịa đặt thành công khi ảnh hiển thị lỗi.
 §
-Nạp ChatGPT-Web: trần 2 acc/IP + proxy_assignments; worker <= 5; Hotmail là mail mua sẵn; màn /about-you = acc chưa reg; pass ChatGPT random độc nhất lưu Excel; script reg cấm exit 0 khi fail; lọc GPM GroupId!=0; pre-validate Graph token; cấm base64.
+Nạp ChatGPT-Web: trần 2 acc/IP + proxy_assignments; worker <= 5; Hotmail là mail mua sẵn (mail kp smvmail.com/fviainboxes có public API đọc OTP, cấm than thở thiếu mail kp); pass ChatGPT random độc nhất lưu Excel; script reg cấm exit 0 khi fail; lọc GPM GroupId!=0; pre-validate Graph token; cấm base64.
 §
 Watchdog đối soát TikTok Web: đối chiếu Username; runner timeout salvage từ state; 3 quy trình Feed-Follow-Upload độc lập hoàn toàn (cái nào fail thì cái khác vẫn chạy); cấm phạt cooldown 24h chỉ sau 1 lần nhả follow (streak >= 2); Quota Khỏe [cap-2, cap], tái tốt nghiệp bóp trần = last_failed_ceiling - 2; Path B verify profile BẮT BUỘC giữ pull-to-refresh để bắt nhả thật (cấm gỡ), chống lag bằng sleep_after 3.5s + polling 2 nhịp.
 §

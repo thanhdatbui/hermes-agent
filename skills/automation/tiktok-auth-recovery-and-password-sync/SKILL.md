@@ -121,9 +121,18 @@ description: Use when TikTok login has wrong pass. Reset via token.
    - Khắc phục bắt buộc:
      * Ngay đầu hàm `open_account_dropdown()` và `go_to_profile()`, BẮT BUỘC kiểm tra `if _account_dropdown_open_xml(xml): return True`.
      * Nếu sheet đã mở sẵn thì lập tức bỏ qua bước tap mở dropdown và chuyển thẳng sang bước chọn "Thêm tài khoản".
-21. **Phân Biệt Microsoft AADSTS70000 Token Expiration vs Hotmail Bị Đổi Pass**:
+21. **Phân Biệt Microsoft AADSTS70000 Token Expiration vs Hotmail Bị Đổi Pass & Khôi Phục Tự Động Qua Domain Mail Khôi Phục (`smvmail.com`)**:
    - Khi Graph API trả về lỗi `AADSTS70000: The user could not be authenticated as the grant is expired`, đây KHÔNG PHẢI lỗi do đổi mật khẩu hòm thư Hotmail/Outlook. Mật khẩu lưu trong Excel vẫn hoàn toàn chính xác.
    - Nguyên nhân gốc rễ là Microsoft tự động thu hồi refresh token của tài khoản cá nhân sau >30-45 ngày không có tương tác nhằm bảo mật (Inactivity Token Expiration).
-   - Khi cố đăng nhập lại bằng mật khẩu trên trình duyệt (GPM/Playwright) từ môi trường proxy khác, Microsoft sẽ kích hoạt Security Challenge yêu cầu mã xác minh gửi về email khôi phục (recovery email, ví dụ: domain `@smvmail.com`). Nếu không có quyền truy cập recovery mail để xác nhận, session trình duyệt sẽ bị dừng ở bước challenge và không thể tự động vượt qua để đọc inbox. Giải pháp triệt để cho farm là xoay vòng nick TikTok hoặc đổi sang tài khoản dự phòng có pass/token active.
+   - Khi cố đăng nhập lại bằng mật khẩu trên trình duyệt (GPM/Playwright) từ môi trường proxy khác, Microsoft sẽ kích hoạt Security Challenge yêu cầu mã xác minh gửi về email khôi phục (cột 5 `mail khôi phục` trong `gmail_clean_v2.xlsx`, ví dụ: domain `@smvmail.com`, `@fviainboxes.com`).
+   - **Kỷ Luật Tự Cứu (CẤM ĐÓNG BĂNG/KHÓC LÓC/ĐẨY VIỆC CHO USER)**:
+     * Mail khôi phục dạng domain riêng (`@smvmail.com`) đã được mua kèm tài khoản và CÓ API đọc tự động công khai:
+       `GET https://api.smvmail.com/email?page=1&q=&email=<recovery_email>`
+     * Khi Microsoft yêu cầu xác minh mail khôi phục: BẮT BUỘC kịch bản phải bấm *"Gửi mã"*, tự động gọi API của domain mail khôi phục để bóc mã OTP 6-7 số, điền vào form để vượt qua challenge và mở khóa vĩnh viễn session Outlook Web trên GPM.
+     * CẤM TUYỆT ĐỐI dừng lại than phiền "vướng email khôi phục cần user hỗ trợ" khi trong file quản lý tài khoản đã có sẵn đầy đủ thông tin mail khôi phục.
+   - **Thao Tác Điều Hướng Tránh Bị Redirect Đè Khi Mở Outlook Web Sau Login Microsoft Account**:
+     * Khi login thành công qua `https://login.live.com/`, Microsoft sẽ redirect về `https://account.microsoft.com/`.
+     * Nếu gọi `page.goto("https://outlook.live.com/mail/0/")` ngay trên cùng page trong lúc trang Account đang redirect ngầm, Playwright sẽ ném lỗi: `Error: Page.goto is interrupted by another navigation`.
+     * **Khắc phục chuẩn xác**: Sau khi hoàn tất đăng nhập ở `login.live.com`, mở một tab mới độc lập trong cùng context bằng `page2 = context.new_page()` rồi điều hướng `page2.goto("https://outlook.live.com/mail/0/")`. Session cookie đã được lưu trong context nên `page2` sẽ vào thẳng hộp thư đến Outlook (`Thư - Outlook`) mà không bị tranh chấp navigation.
 
 

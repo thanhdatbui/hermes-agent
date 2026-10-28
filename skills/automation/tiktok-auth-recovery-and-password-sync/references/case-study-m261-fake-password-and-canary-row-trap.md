@@ -26,18 +26,24 @@
   2. Khi gặp `Mật khẩu sai`: BẮT BUỘC tra cứu dữ liệu gốc trước. Nếu phát hiện là pass rác/chưa tạo pass, set cột PASS về `None`.
   3. Khi cột PASS là `None`, `tiktok_login_v1.py` nhận diện `has_pw = False`, không cố gõ mật khẩu mà chuyển thẳng sang lấy OTP qua Microsoft Graph API trên PC để đăng nhập an toàn.
 
-### Pitfall 4: Stale Graph API OAuth Token Trap (`AADSTS70000`)
+### Pitfall 4: Stale Graph API OAuth Token Trap (`AADSTS70000`) & Recovery Email Domain API
 - **Hiện tượng:** Sau khi xóa pass về `None`, TikTok chuyển sang màn hình gửi mã OTP về hòm thư `e6ahwg7.2911.tooct@hotmail.com`. Script gọi Graph API trên PC để lấy mã, nhưng Microsoft trả về lỗi:
   ```text
   AADSTS70000: The user could not be authenticated as the grant is expired. The user must sign in again.
   ```
 - **Nguyên nhân:** Tài khoản Hotmail này được reg từ 12/09/2026. `refresh_token` trong `gmail_clean_v2.xlsx` đã quá hạn (>40 ngày không xoay vòng).
-- **Bẫy kẹt điều phối:** Trong code `social_reg_v1.py` (dòng 7521), vì thấy mail CÓ token trong Excel nên hệ thống tuân thủ luật "cấm mở Outlook app trên điện thoại", từ chối fallback sang app di động. Kết quả: cả hai kênh đều không đọc được OTP, runner kẹt chờ hết 120s và chạm trần timeout ca chạy 720s.
-- **Kế hoạch phục hồi & Giải pháp đột phá qua GPM Profile (`read_otp_gpm.py`)**:
-  * Kiểm tra hòm thư trên GPM Login (API port 19995): Mailbox `e6ahwg7.2911.tooct@hotmail.com` đã có profile `261 - e6ahwg7.2911.tooct@hotmail.com - 10028` (ID: `a95dedbf-4170-495c-9249-4539c419a112`).
-  * Đăng nhập session web một lần trên GPM bằng mật khẩu chuẩn `datKHWa1N1bs`.
-  * Tích hợp `read_tiktok_otp_from_gpm_profile` vào `social_reg_v1.py` làm tầng fallback ưu tiên khi Graph API token hết hạn.
-  * **Critical filter**: Phải truyền `exclude_codes` vào reader GPM để loại trừ toàn bộ mã OTP cũ có sẵn trong hòm thư, chỉ lấy mã mới nhất vừa được TikTok gửi.
+- **Bẫy kẹt điều phối & Thói quen "than thở/đùn việc" cần triệt tiêu**:
+  * Khi mở GPM Profile để login lại bằng pass `datKHWa1N1bs`, Microsoft kích hoạt Security Challenge yêu cầu mã xác minh từ mail khôi phục (`e6ahwg7.2911.tooctdat@smvmail.com`).
+  * Sai lầm nghiêm trọng của Agent: Dừng lại bảo "không có quyền truy cập smvmail.com nên không tự cứu được, cần user hỗ trợ".
+  * **Sự thật kỹ thuật**: Mail khôi phục `smvmail.com` đã được mua sẵn kèm acc và có REST API công khai hoàn toàn:
+    `GET https://api.smvmail.com/email?page=1&q=&email=e6ahwg7.2911.tooctdat%40smvmail.com`
+    trả về JSON chứa toàn bộ email nhận được mà không cần đăng nhập hay password.
+  * **Giải pháp phục hồi dứt điểm qua GPM Profile + smvmail API**:
+    1. Mở GPM Profile (`a95dedbf-4170-495c-9249-4539c419a112`).
+    2. Đăng nhập tại `https://login.live.com/` bằng pass `datKHWa1N1bs`.
+    3. Nếu gặp prompt xác minh `smvmail.com`: Bấm gửi mã -> Gọi `https://api.smvmail.com/email?email=...` bóc mã OTP -> Điền vào form.
+    4. Mở tab mới độc lập `page2 = context.new_page()` và điều hướng `https://outlook.live.com/mail/0/` để tránh lỗi đè điều hướng `Page.goto is interrupted by another navigation` từ trang `account.microsoft.com`.
+    5. Đọc trực tiếp OTP TikTok từ web Outlook với bộ lọc `exclude_codes`.
 
 ### Pitfall 5: Do Dự & Hỏi Lặp Lại Khi User Đã Ra Lệnh Thực Thi ("Làm đi")
 - **Sai lầm:** Khi đã chẩn đoán xong và user đã lệnh dứt khoát ("Làm đi", "Fix đi"), Agent lại dừng lại ở cuối turn để phân trần, tóm tắt lý thuyết hoặc hỏi xin phép lại ("Em làm nhé anh?").
