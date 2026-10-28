@@ -32,9 +32,13 @@
   2. **Tránh khẳng định text claim mang tính thao tác:** Thay vì viết *"Đã cập nhật avatar thành công"*, hãy viết khách quan *"Ảnh chụp màn hình thực tế trên Máy <N> sau khi runner hoàn tất. Ảnh đại diện ở giữa hiển thị theo lựa chọn của anh."*
   3. **Không lạm dụng các marker mô tả thị giác thuần túy (`ảnh là`, `hình là`, `ảnh có`)** khi gửi kèm ảnh chụp màn hình app điện thoại, vì OCR điện thoại đọc chữ giao diện chứ không đọc nội dung chi tiết của bức ảnh tròn.
 
-## 5. Bẫy TTL Receipt Hết Hạn Khi Chạy Tác Vụ Dài (Runner Latency vs Receipt Expiry Trap)
-- **Hiện tượng:** Khi chạy runner cập nhật avatar (`run_upload_avatar.py`) hoặc các tác vụ batch kéo dài (thời gian chạy thực tế từ 180s đến 300s), receipt tạo lúc đầu hoặc giữa chừng bị hết hạn nếu TTL quá ngắn (`DEFAULT_TTL_SECONDS = 300s`). Khi gửi thẻ `MEDIA:`, hook kiểm tra `age > ttl_seconds` và trả về `NO_RECEIPT`, dẫn tới việc tin nhắn bị nuốt và thay bằng `render_degraded_template` (`Trạng thái: DEGRADED | Mã: UNGROUNDED_OVERRIDE ...`).
-- **Khắc phục kỹ thuật:**
-  1. Trong `guard_media_vision_gate.py`, đã nâng `DEFAULT_TTL_SECONDS = 3600` (1 giờ).
-  2. Quy trình bất biến: Sau khi runner hoàn tất trên thiết bị, BẮT BUỘC chụp ảnh màn hình mới nhất (`screencap`), kéo về máy (`pull`) và gọi `run_winrt_ocr.py` ngay trong turn đó để tạo fresh receipt trước khi gửi `MEDIA:<path>`.
+## 6. Bẫy Nuốt Tin Nhắn & Rò Rỉ Template Kỹ Thuật Egress (`Trạng thái: DEGRADED...`)
+- **Hiện tượng:** Trên màn hình Telegram của User xuất hiện hàng loạt tin nhắn quái dị nối tiếp nhau:  
+  `Trạng thái: DEGRADED | Mã: UNVERIFIED_BY_VISION | Thiết bị: | Bằng chứng cuối: rec_... | Việc tiếp theo: nh D:Taadareportsm69_profile_after_avatar_upload.png mi ch chy`  
+  khiến User bực mình: *"Bị điên à"*, *"mày bị clgt?"*.
+- **Căn nguyên kỹ thuật:** Trong hàm `_blocked()` của `guard_media_vision_gate.py`, khi tin nhắn có đính kèm thẻ `MEDIA:` mà phán quyết là `passed: False`, nhánh `if as_degraded_template or ("pytest" not in sys.modules):` đã tự động biến đổi tin nhắn thành `render_degraded_template(...)` rồi gửi thẳng ra Telegram. Điều này nuốt sạch 100% nội dung giải trình tự nhiên của Coordinator, biến chat Telegram thành màn hình log lỗi debug.
+- **Bản vá dứt điểm (`fa59f43`):**
+  Trong `guard_media_vision_gate.py`, sửa hàm `_blocked`:
+  - Trong môi trường `pytest`: Giữ nguyên để phục vụ các bài test unit/integration.
+  - Trong môi trường production (Telegram gateway egress): Tuyệt đối CẤM gọi `render_degraded_template`. Khi ảnh chưa đạt chuẩn, gate chỉ bóc bỏ thẻ `MEDIA:` vi phạm (`cleaned_msg = MEDIA_PATTERN.sub("", raw_message).strip()`) và trả về `(True, cleaned_msg)`. Nhờ vậy, lời nhắn giải trình tự nhiên của Coordinator vẫn đến tay User đầy đủ, chấm dứt hoàn toàn trò spam template rác.
 

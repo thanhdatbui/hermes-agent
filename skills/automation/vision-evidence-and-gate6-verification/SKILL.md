@@ -45,7 +45,8 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
 - Bẫy Documentation-Only Fix & Kỷ Luật Sửa Mã Nguồn Thật Khi Lỗi Tái Diễn: [`references/documentation-only-fix-trap-and-real-code-hardening.md`](references/documentation-only-fix-trap-and-real-code-hardening.md)
 - Báo Cáo Đối Soát Độc Lập Claude Sonnet 5.5 & Kỷ Luật Triệt Tiêu Fail-Open Media Gate: [`references/claude-sonnet-audit-and-zero-failopen-media-gate.md`](references/claude-sonnet-audit-and-zero-failopen-media-gate.md)
 - Báo Cáo Tư Vấn Claude Sonnet: Quay Về Thiết Kế Tối Giản O(1), Chấm Dứt Bệnh Over-Engineering Của Media Gate: [`references/claude-consult-simplify-o1-gate-and-multi-session-conflict-resolution.md`](references/claude-consult-simplify-o1-gate-and-multi-session-conflict-resolution.md)
-- Bẫy UNVERIFIED_BY_VISION Do Dính Từ Khóa Visual Claim Khi Chỉ Dùng OCR Thô: [`references/unverified-by-vision-claim-trap-and-same-turn-browser-vision.md`](references/unverified-by-vision-claim-trap-and-same-turn-browser-vision.md)
+- Bẫy UNVERIFIED_BY_VISION Do Dính Từ Khóa Visual Claim ('phương án', 'đề xuất') Khi Chỉ Dùng OCR Thô: [`references/unverified-by-vision-claim-trap-and-same-turn-browser-vision.md`](references/unverified-by-vision-claim-trap-and-same-turn-browser-vision.md)
+- Phê Bình Từ User & Kiến Trúc Bình Đẳng Mọi Ảnh (Universal Inspection & Anti-Avatar-Bias): [`references/universal-image-inspection-and-anti-avatar-bias-gate.md`](references/universal-image-inspection-and-anti-avatar-bias-gate.md)
 
 ## 1. Nguyên Tắc Cốt Lõi (Invariants)
 1. **CẤM gửi ảnh mù / đối phó:** Trước khi đính kèm bất kỳ thẻ `MEDIA:<path>` nào, bắt buộc phải mở ảnh ra soi mắt kiểm tra trước.
@@ -199,6 +200,11 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
       * Khi gửi `MEDIA:`, BẮT BUỘC gọi `browser_navigate(url="file:///<path>")` và `browser_vision` trong CÙNG MỘT TURN với tin nhắn gửi `MEDIA:`. Hàm `_extract_seen_images_from_tool_calls` sẽ tự động cấp vé `SEEN_BY_COORDINATOR_BROWSER_VISION` với `tool_called = "browser_vision"`.
       * Tuyệt đối không để vé OCR thô bảo lãnh cho tin nhắn chứa từ khóa visual claim.
       * Chú ý TTL vé chỉ có 300s (5 phút); nếu sau 5 phút mới gửi tin nhắn thì vé cũ sẽ bị xem là hết hạn (`NO_RECEIPT`). Chi tiết xem [`references/unverified-by-vision-claim-trap-and-same-turn-browser-vision.md`](references/unverified-by-vision-claim-trap-and-same-turn-browser-vision.md).
+39. **Kiến Trúc Bình Đẳng Cho Mọi Ảnh Gửi Ra (Anti-Avatar-Bias & Universal Image Grounding):**
+    - **Phê bình cốt lõi từ User:** *"Cái vision guard gate mục đích của tao là ép AI khi gửi ảnh thì phải đọc lại ảnh kiểm tra suy luận của nó tránh việc nó gửi ảnh 1 kiểu còn nó bịa ra 1 kiểu. Thì thiết kế v t thấy k ổn, tự nhiên chỉ mỗi ava là chịu đọc lại ảnh"*.
+    - **Triệt tiêu bẫy thiên vị avatar:** Gate không được chỉ khắt khe với ảnh mang tên "avatar" rồi buông lỏng ảnh UI lỗi, đăng nhập, wifi hay switcher. MỌI ảnh đính kèm `MEDIA:` bắt buộc phải có vé đọc thật (`browser_vision` hoặc `WinRT OCR`) trong 300s.
+    - **Entity Grounding thay vì bắt bớ từ khóa:** Bỏ bẫy từ khóa chung chung (`phương án`, `đề xuất`). Kiểm tra tính nhất quán dựa trên thực thể: Tên tài khoản, tên SSID, trạng thái màn hình (nếu ảnh có `Mật khẩu sai` hoặc `Không có Internet` mà text nói thành công thì phải chặn ngay lập tức).
+    - **Triệt tiêu rò rỉ Degraded Template:** Cấm nuốt tin nhắn và ném chuỗi `Trạng thái: DEGRADED` ra Telegram. Gate phải trả về re-reasoning prompt để AI nhìn lại ảnh và đính chính phát ngôn trung thực. Chi tiết xem [`references/universal-image-inspection-and-anti-avatar-bias-gate.md`](references/universal-image-inspection-and-anti-avatar-bias-gate.md).
 
 ## 2. Thang Leo Thang Vision Dự Phòng (Fallback Ladder)
 Thứ tự fallback đọc ảnh chuẩn hoá 100% đồng bộ với kiến trúc Worker Dispatch:

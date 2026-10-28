@@ -1,4 +1,4 @@
-Cronjob ngầm deliver='local' chống spam; Watchdog tự dispatch Telegram. Sau sửa watchdog BẮT BUỘC cron_sync_watchdog.py --force. BÁO XONG GỬI ẢNH THẬT KÈM MEDIA:. Auto-resume thi công dứt điểm DONE/BLOCKED, sửa core git commit chống trôi. Guard_media_vision_gate chặn DIRTY_AVATAR_EVIDENCE.
+Cronjob ngầm deliver='local' chống spam; Watchdog tự dispatch Telegram. Sau sửa watchdog BẮT BUỘC cron_sync_watchdog.py --force. BÁO XONG GỬI ẢNH THẬT KÈM MEDIA:. Auto-resume thi công dứt điểm DONE/BLOCKED, sửa core git commit chống trôi. Guard_media_vision_gate chặn DIRTY_AVATAR_EVIDENCE và cấm leak template DEGRADED ra chat.
 §
 Nạp ChatGPT-Web: trần 2 acc/IP + proxy_assignments; worker <= 5; Hotmail là mail mua sẵn; màn /about-you = acc chưa reg; pass ChatGPT random độc nhất lưu Excel; script reg cấm exit 0 khi fail; lọc GPM GroupId!=0; pre-validate Graph token; cấm base64.
 §
