@@ -96,9 +96,18 @@ _ADVISOR_EXPLICIT_TRIGGERS = (
   Coordinator tuyệt đối không được gọi `delegate_task` để spawn subagent bừa bãi. Việc spawn subagent tự do gây bloat context, ngâm timeout 600s làm nghẽn event loop của gateway, vi phạm sandbox và phá vỡ kiểm soát phân vai của farm.
 - **Quy chuẩn ủy quyền Worker (Farm Worker CLI & Fallback Ladder)**:
   Khi cần thực hiện các task sửa code / điều tra sâu vượt quá ngân sách Coordinator O(1):
-  * **Tier 1 (First Responder - Mặc định):** BẮT BUỘC dispatch qua `python D:/Taadaa/tools/sol_worker.py "<contract O(1)>" --workdir <repo>` (hoặc qua `dispatch_worker.py`).
-  - **Tier 2 (Fallback 1):** `ag_cli.py fix` (Antigravity pool) - CHỈ KÍCH HOẠT khi Sol Worker thất bại có receipt audit ghi vào `dispatch.jsonl`.
-    * **Tier 3 (Fallback 2):** Haiku / Claude CLI (`haiku_worker.py` / `claude_worker.py`) - CHỈ KÍCH HOẠT khi CẢ Sol VÀ Agy đều thất bại có receipt audit trong cùng correlation session, hoặc khi có cờ `--on-demand` từ User.
+  * **Tier 0 (Primary Promo - Free 100% tới 31/10):** Qoder Worker (`D:/Taadaa/tools/qoder_worker.py` - model DeepSeek-Flash). Đứng đầu bậc thang để ăn trọn đợt promo miễn phí token. Tự sửa file trực tiếp (`--dangerously-skip-permissions`), kiểm tra AST syntax trước khi kết luận.
+  * **Tier 1 (Fallback 1):** BẮT BUỘC dispatch qua `python D:/Taadaa/tools/sol_worker.py "<contract O(1)>" --workdir <repo>` (hoặc qua `dispatch_worker.py`).
+  * **Tier 2 (Fallback 2):** `ag_cli.py fix` (Antigravity pool) - CHỈ KÍCH HOẠT khi Qoder và Sol Worker thất bại có receipt audit ghi vào `dispatch.jsonl`.
+  * **Tier 3 (Fallback 3):** Haiku / Claude CLI (`haiku_worker.py` / `claude_worker.py`) - CHỈ KÍCH HOẠT khi Qoder, Sol VÀ Agy đều thất bại có receipt audit trong cùng correlation session, hoặc khi có cờ `--on-demand` từ User.
+  * **Kỷ Luật Timeout Worker & Benchmark Bắt Buộc (Floor 480s)**:
+    - Khi chạy worker thi công hoặc tổ chức benchmark so tài giữa các model, Coordinator **CẤM TUYỆT ĐỐI** tự ý bóp timeout xuống ngắn (30s/50s/60s) gây lỗi văng timeout giả (false-positive timeout) khi model đang chạy CoT suy luận sâu.
+    - Sàn timeout BẮT BUỘC: `timeout >= 480s` (8 phút) cho cả worker lẫn benchmark thực chiến.
+  * **Cơ chế Synthetic Tool Calling vs Payload Overflow (Coordinator vs Web Worker)**:
+    - OmniRoute hỗ trợ Synthetic Tool-Calling (`open-sse/translator/webTools.ts`) cho các web model (chuyển đổi tools thành prompt và parse `<tool>` ngược lại).
+    - Sol Web (`chatgpt-web`) thất bại khi làm Coordinator vì request của Hermes chứa toàn bộ system prompt + 15 tool schemas (~100k-200k chars), vượt quá request body limit của Web UI gây lỗi `413 Payload Too Large`.
+    - Gemini/Codex làm Coordinator được vì context window đạt 1M-2M tokens, nuốt trọn payload mà không bị nghẽn.
+    - Qoder CLI có adapter trong OmniRoute (`open-sse/executors/qoder.ts`), chạy được chat qua `--config-dir C:\Users\Kibe\.omniroute\qoder-cli`. Làm Autonomous Worker trực tiếp qua `qoder_worker.py` là mô hình ổn định nhất.
     * **Lưu ý về Gemini Web / Argon Pool (`gemini-web-argon-pool` trên :20129) & Gemini Web Worker**:
       - **Bản chất kỹ thuật**: Model category = 3 trong backend `gemini-web.ts` nối với Google Web Session. Trên UI OmniRoute hiển thị nhãn legacy là `gemini-3.1-pro`, nhưng thực tế backend đang map tới flagship Google Gemini 4 (Argon).
       - **Khả năng làm Autonomous Worker qua `gemini_web_worker.py`**:

@@ -13,3 +13,5 @@ Code sửa mới >= 15 dòng bắt buộc phân bước rõ ràng (# Bước X /
 Lệnh dispatch_worker qua terminal bắt buộc timeout >= 480s khớp sàn sol_worker, cấm set 180s làm rớt session.
 §
 Kỷ luật benchmark model/worker: Bắt buộc set timeout tối thiểu 360s như worker tiêu chuẩn, cấm bóp timeout 60s làm fail giả. Argon 4 nhanh hơn Agy CLI gấp 5-10 lần ở task O(1), nhưng Agy CLI phòng thủ backward compatibility và corner cases tốt hơn ở task cấp cao.
+§
+Benchmark/test worker bắt buộc floor timeout >= 480s như production, cấm set timeout ngắn gây false-positive timeout; Qoder CLI là Tier 1 worker free tới 31/10 qua qoder_worker.py, auto-fallback sang Sol (:20129).
