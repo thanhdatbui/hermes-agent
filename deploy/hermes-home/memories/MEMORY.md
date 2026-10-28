@@ -2,7 +2,7 @@ Cronjob ngầm deliver='local' chống spam; Watchdog tự dispatch Telegram. Sa
 §
 Nạp ChatGPT-Web: trần 2 acc/IP + proxy_assignments; worker <= 5; Hotmail là mail mua sẵn; màn /about-you = acc chưa reg; pass ChatGPT random độc nhất lưu Excel; script reg cấm exit 0 khi fail; lọc GPM GroupId!=0; pre-validate Graph token; cấm base64.
 §
-Watchdog đối soát TikTok Web (SQLite snapshots) BẮT BUỘC đối chiếu theo Account ID / Username thay vì Row máy; runner khi gặp timeout BẮT BUỘC salvage follow từ state file thay vì gán 0.
+Watchdog đối soát TikTok Web (SQLite snapshots) BẮT BUỘC đối chiếu theo Account ID / Username thay vì Row máy; runner khi gặp timeout BẮT BUỘC salvage follow từ state file thay vì gán 0; Quota follow nhóm Khỏe dao động hẹp [cap-2, cap], nick fail mốc nào thì khi tốt nghiệp lại nhóm Khỏe tự bóp trần = last_failed_ceiling - 2.
 §
 Tool 2FA và cron xen ca: JIT lock từng máy (cấm bulk pre-reserve) và né khung reboot/đệm; Batch 2FA Admin (≥200) qua SSH bắt buộc truyền --adb-path r"C:\Program Files (x86)\xiaowei\tools\adb.exe" chống crash PATH.
 §
