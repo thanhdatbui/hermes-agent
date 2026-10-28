@@ -31,3 +31,8 @@ Trong `follow_runner/core/follow_state.py`:
    - Xóa cờ `last_failed_ceiling`.
    - Cập nhật `proven_safe_ceiling = max(curr_p, prev_used)`.
    - Cho phép tài khoản quay lại chu trình dò tăng tiến `+2` bình thường.
+
+4. **Định Danh Hóa Phân Bước (GuardGate Compliance):**
+   Theo yêu cầu của GuardGate (`check_step_by_step_structure`), các khối logic tính trần bắt buộc phải có comment định danh phân bước:
+   - `# BƯỚC 1: TÍNH TOÁN TRẦN AN TOÀN ĐỘNG & BÓP TRẦN KHI CÓ TIỀN ÁN (-2)`
+   - `# BƯỚC 2: CẤP QUOTA THEO DẢI BÁM TRẦN HẸP DAO ĐỘNG MỨC 2 [CAP - 2, CAP]`

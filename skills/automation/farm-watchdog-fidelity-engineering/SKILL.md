@@ -187,6 +187,15 @@ Applies whenever reports fail to reflect actual fleet health, mask dropped machi
   2. **Ground-Truth Credential/Session Cross-Check:** Reporting watchdogs MUST NOT rely solely on naive timestamps (`chatgpt_registered_at`) or downstream stage names. They must cross-check with tangible evidence: non-empty credential fields (`chatgpt_password`) or active connection records in the destination registry (e.g. OmniRoute `provider_connections`).
   3. **State Rollback & Re-Queue Protocol:** Any entity identified with a phantom timestamp and missing ground-truth credentials must be rolled back: clear the phantom timestamp, reset the stage back to the prerequisite step (`CHATGPT_REG`), and allow the supervisor to legitimately execute the task.
 
+### Invariant 20: Pre-Session Baseline Fidelity in Rolling Reconciliation (Anti-Baseline Drift Trap)
+- **Anti-Pattern:** In shift/session watchdogs reconciling external platform counters (e.g. TikTok Web Following vs script reported delta), the watchdog only scrapes Web snapshots at the **end of each session** (`09:35`), and computes delta against a baseline snapshot with `timestamp <= query_start_iso` (`session_start + 30m`).
+  If a machine was skipped or didn't run in the preceding session (Phiên 1 at 06:00), there is **no snapshot taken at the start of Phiên 2 (08:00)**. The query falls back to the most recent snapshot in SQLite — which may be from **24 hours prior** (e.g. yesterday's 10:00 AM daily tracker snapshot).
+  Any natural follows, un-follows, or off-cycle actions occurring during those 24 hours are lumped into Phiên 2's delta, causing false positive / negative discrepancy alerts (`lệch (+1)`, `lệch (-2)`).
+- **Rule:**
+  1. **Baseline Age Inspection:** When investigating reconciliation discrepancies, query the exact timestamps of both `latest_row` and `baseline_row` in `snapshots`. If baseline is older than 3-4 hours or from a previous calendar day, diagnose as **Baseline Drift**.
+  2. **Target Account Follower Audit:** When the script reports $N > 0$ follows but Web following shows 0 increase, cross-check the `follower` count of target accounts (`followed` in `follow_result.json`) in `snapshots`. If target accounts gained followers, the follow was successfully committed on the server, and the source counter is merely experiencing TikTok CDN/profile cache propagation delay.
+  3. **Watchdog Design Requirement:** Watchdogs should capture fresh pre-session snapshots at $t_0$ for scheduled accounts, or flag baselines older than a configured TTL (e.g. > 6h) as `STALE_BASELINE` rather than reporting an ungrounded delta. See `references/tiktok-web-follow-reconcile-baseline-drift-and-target-audit.md`.
+
 ---
 
 ## 3. Verification Protocol for Watchdogs & Reports
@@ -211,3 +220,4 @@ Applies whenever reports fail to reflect actual fleet health, mask dropped machi
 - [`references/hermes-cron-no-agent-contract-and-spend-guard-drift.md`](references/hermes-cron-no-agent-contract-and-spend-guard-drift.md) — Case study: Hermes cron engine no_agent=True contract, spend-guard model drift traps, and relative script path resolution.
 - [`references/hermes-cron-subprocess-timeout-misclassification.md`](references/hermes-cron-subprocess-timeout-misclassification.md) — Case study: Hermes cron subprocess timeout misclassification ("provider timeout"), raw output inspection, and binary prefix fast-filtering.
 - [`references/historical-state-reconciliation-and-cron-report-audit.md`](references/historical-state-reconciliation-and-cron-report-audit.md) — Case study: The "Fixed Code, Forgotten State" trap, phantom ChatGPT registration reconciliation, and system-wide cron report audit checklist.
+- [`references/tiktok-web-follow-reconcile-baseline-drift-and-target-audit.md`](references/tiktok-web-follow-reconcile-baseline-drift-and-target-audit.md) — Case study: TikTok Web follow reconciliation, 24h baseline drift from missing pre-session scrapes, and target account follower cross-checks.
