@@ -12,4 +12,4 @@ Code sửa mới >= 15 dòng bắt buộc phân bước rõ ràng (# Bước X /
 §
 Lệnh dispatch_worker qua terminal bắt buộc timeout >= 480s khớp sàn sol_worker, cấm set 180s làm rớt session.
 §
-Canary Farm: Khi user yêu cầu chạy canary sau khi sửa code luồng hook (upload-hook, follow-hook, login recovery) trong tiktok-luot nuoi acc, BẮT BUỘC phải truyền đúng cờ hook tương ứng (ví dụ --allow-upload-hook cho upload hook) thay vì chạy canary lướt feed mù 2 swipe khiến hook bị bỏ qua.
+Khi deploy router OpenWrt headless (Xiaomi R3G): Nếu WAN bị Walled Garden/mất internet (ping 8.8.8.8 rớt 100%), lệnh 'tailscale up' trong LuCI web terminal sẽ bị treo đợi TLS timeout và rớt dòng trống; TUYỆT ĐỐI KHÔNG bắt user gõ lại nhiều lần mà phải xử lý thông luồng ISP trước. Nhắn tin kỹ thuật viễn thông luôn dùng tone lịch sự, chuyên môn, dẫn chứng ICMP !C và account ID.

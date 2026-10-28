@@ -190,6 +190,11 @@ When headless network access fails and an on-site computer is borrowed via Ultra
     - **Never make it overly aggressive or hostile.** Avoid threats, insults, or demanding compensation.
     - Keep tone polite, professional, and technical: cite exact accounts (`hyn_gftth_...`), gateway IPs (`27.68.227.150`), and ICMP diagnostic codes (`10.29.74.202 !C`). Technical precision commands immediate respect from field engineers without escalating interpersonal friction.
 
+11. **LuCI Web Terminal Hangs & Go/Tailscale Stalled Handshake:**
+    - **Symptom:** Running commands like `tailscale up` in LuCI web terminal (`/cgi-bin/luci/admin/system/ttyd`) appears to hang, prints nothing, and cursor drops to a blank newline upon Enter.
+    - **Mechanism:** `tailscale up` performs a blocking synchronous HTTP/TLS request to `controlplane.tailscale.com`. When the WAN interface is captive / walled-garden (traffic dropped or blackholed after BRAS), the Go TLS dialer blocks indefinitely waiting for TCP handshake / TLS deadline. The web terminal does not render incremental output until process returns or flushes stdout.
+    - **Triage:** Do NOT force the user to repeatedly retype commands or hit Enter in LuCI terminal when WAN has 100% packet loss. As long as WAN cannot reach external IPs (ping 8.8.8.8 loss 100%), any CLI command attempting internet connection will hang. Triage ISP connectivity first before invoking network daemons.
+
 ## References
 
 - `references/claude-audit-and-field-triage-r3g.md` — Detailed case study of Xiaomi R3G deploy, Claude CLI production audit remediation, and the premature lifeline unplug incident.

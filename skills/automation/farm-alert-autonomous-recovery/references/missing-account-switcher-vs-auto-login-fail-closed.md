@@ -114,6 +114,18 @@ FeedRunner: [FAIL] Lệch Profile/Nick TikTok (profile account mismatch / naviga
   - Ngay khi ca nuôi kết thúc (tiến trình batch giải phóng file lock `machine_<N>.lock.json`), Coordinator BẮT BUỘC chủ động poll trạng thái lock thiết bị và kích hoạt chạy Canary máy thật ngay lập tức, tuyệt đối KHÔNG ĐƯỢC đứng im chờ User phải giục (`Ủa nãy ca nuôi kết thúc r mày vẫn k làm à`).
   - Sau khi Canary hoàn tất thành công (Exit Code 0), lập tức soi mắt nghiệm thu ảnh qua WinRT OCR và gửi ảnh kèm `MEDIA:` báo cáo User dứt điểm.
 
+### K. Pitfall Canary Chạy Lệch Hook Lifecycle ("mày chạy canary cái gì v?") & Cơ Chế Sổ Cái Shift Upload
+- **Hiện tượng:** Sau khi sửa code cho luồng `upload-hook` (hoặc `follow-hook`), Coordinator gọi lệnh `canary_runner.py` mặc định. Canary chạy 2 swipes feed video, kết thúc exit code 0 và báo PASSED. Người vận hành chất vấn: *"mày chạy canary cái gì v?"*.
+- **Nguyên nhân gốc:**
+  - Trong `multi_machine_feed_session.py`, `_run_upload_hook` bị chặn bởi điều kiện `_effective_session_index(child_ctx.config) == 2 or child_ctx.config.get("_allow_upload_hook")`.
+  - Canary mặc định chạy với `--recovery-test-swipes 2` và `session_index = null`, cờ `_allow_upload_hook = False`, nên runner lướt feed xong là kết thúc phiên luôn, **HOÀN TOÀN KHÔNG BƯỚC VÀO HÀM `_run_upload_hook`**.
+- **Quy tắc bắt buộc (Invariant Canary Đúng Luồng):**
+  - Khi can thiệp code vào bất kỳ luồng hook nào (upload-hook, follow-hook, login recovery), BẮT BUỘC Canary phải truyền cờ hook tương ứng (ví dụ: `canary_runner.py --hook upload` -> tự động truyền `--allow-upload-hook` xuống `run_tiktok.py`).
+  - CẤM TUYỆT ĐỐI chạy canary generic lướt feed 2 swipe rồi báo cáo xong cho task sửa hook.
+- **Cơ chế an toàn của Sổ cái Shift Upload (`shift_upload_history.json`):**
+  - File sổ cái: `C:\ProgramData\Taadaa\tiktok-upload-concurrency-v1\shift_upload_history.json`.
+  - Quy tắc an toàn: Mỗi thiết bị chỉ được đăng tối đa 1 video/ngày. Nếu máy đã hoàn tất đăng video trong ngày hôm đó (`2026-10-28_m<N>_...`), hàm `claim_shift_upload` sẽ trả về `already_uploaded_in_shift` và hook ghi nhận status `skipped`. Đây là trạng thái bypass an toàn chuẩn, không phải lỗi hệ thống.
+
 ## 3. Quy Trình Nạp Bù Tài Khoản Đúng Chuẩn (Actionable Reconcile Flow)
 Để nạp nick còn thiếu vào slot trống của thiết bị mà không ảnh hưởng đến batch đang chạy:
 
