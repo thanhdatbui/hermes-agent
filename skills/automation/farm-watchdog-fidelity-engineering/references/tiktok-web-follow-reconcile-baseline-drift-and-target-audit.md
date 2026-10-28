@@ -84,15 +84,25 @@ Khi nhận báo cáo watchdog follow bị lệch:
 
 ---
 
-## 5. Cơ Chế Khắc Phục Chuẩn Hóa (Standardized Remediation Architecture)
-Để triệt tiêu các ca báo lệch ảo hoặc bẫy nhả follow giả:
-1. **Max Baseline Age Guard trong Watchdog Reconcile (`feed_session_watchdog.py`):**
-   - Kiểm tra khoảng cách thời gian giữa `session_start_iso` và `baseline_row.timestamp`.
-   - Nếu baseline cũ hơn thời điểm bắt đầu phiên quá **4 giờ** (hoặc thuộc ngày hôm trước):
-     - Không dùng snapshot cũ để tính delta trừ lùi.
-     - Hiển thị rõ trạng thái: `M5 [Tik 2] (@stevemgjqec): script 5 lượt - web UNPROVEN (baseline stale > 4h từ 2026-10-27)`.
-2. **Pre-Session Baseline Snapshotting (Chốt baseline $T_0$):**
-   - Khi runner hoặc picker kích hoạt danh sách máy chạy follow trong ca, tự động chạy 1 pass cào nhanh qua `tiktok_account_tracker.py` để chốt snapshot tại thời điểm $T_0$. Phép trừ $T_1 - T_0$ ở cuối phiên sẽ phản ánh đúng 100% biến động của phiên đó.
-3. **2-Pass Debounce Re-entry trong Runner (`verify_follow.py`):**
-   - Trong `_confirm_not_released`, khi phát hiện trạng thái `not_followed` sau khi re-entry, không vội vàng phán `FOLLOW_FAILED` và dừng session ngay ở nhịp 1.
-   - Bổ sung 1 nhịp settling delay 1.5s và verify lần 2 (2-pass verification) nhằm loại trừ độ trễ render UI của app qua proxy 4G chậm, ngăn chặn việc runner tự reset kết quả về 0 trong khi server TikTok thực tế đã nhận follow.
+## 5. Cơ Chế Khắc Phục Chuẩn Hóa & Kỷ Luật Vận Hành (Remediation & Farm Invariants)
+
+### 1. Max Baseline Age Guard trong Watchdog Reconcile (`feed_session_watchdog.py` — ĐÃ TRIỂN KHAI)
+* **Cơ chế:** Kiểm tra khoảng cách thời gian giữa `session_start_iso` và `baseline_row.timestamp`.
+* **Quy tắc:** Nếu baseline cũ hơn thời điểm bắt đầu phiên quá **4 giờ** (hoặc khác ngày so với `target_date`):
+  * **LOẠI BỎ** baseline stale, không lấy snapshot cũ từ hôm qua để tính delta trừ lùi.
+  * Hiển thị rõ ràng trong báo cáo Telegram:
+    `M5 [Tik 2] (@stevemgjqec): script báo 5 (chéo 5, tự nhiên 0) | baseline cũ (2026-10-27 10:04) | UNPROVEN`
+  * Không tính sai số ảo vào tổng độ lệch (`total_diff`) của toàn phiên, triệt tiêu hoàn toàn các alert rác "lệch ảo".
+
+### 2. Kỷ Luật Về UI TikTok & Runner Follow (User Correction Invariant)
+* **Bản chất Optimistic UI trên TikTok:**
+  * Khi người dùng/tool bấm Follow, UI TikTok **luôn luôn** chuyển sang trạng thái "Following / Bạn bè" ngay lập tức (Optimistic UI).
+  * Nếu máy chủ TikTok từ chối hoặc shadow un-follow, TikTok mới âm thầm revert nút ngược lại thành "Follow".
+  * **Tuyệt đối không có chuyện UI hiển thị "chưa follow" mà thực tế lại là đã follow do lag UI.** Do đó:
+    * **CẤM** suy đoán vô căn cứ đòi nới lỏng logic runner hay thêm các nhịp vuốt/thử lại mù quáng (vuốt 2 lần để check nhả).
+    * Khi runner phát hiện nút bị nhả sau re-entry hoặc Path B mismatch, **dừng ngay session (`FOLLOW_FAILED`) là cơ chế fail-safe chuẩn xác bắt buộc** để bảo vệ nick khỏi bị TikTok quét phạt spam. Sự lệch số giữa counter Web và script báo cáo trong ca này là chấp nhận được để ưu tiên an toàn tài khoản.
+
+### 3. Nguyên Nhân Bỏ Qua Follow Khi Feed Lỗi (`sensitive-skip-fail`)
+* Khi một máy gặp sự cố kết nối (như `ATX_SESSION_UNAVAILABLE` trên M5 lúc Phiên 1) khiến bước lướt Feed khởi động thất bại:
+  * Runner tự động kích hoạt `sensitive-skip-fail`: **Bắt buộc bỏ qua bước follow**.
+  * Cấm chạy follow khi môi trường feed chưa sạch để tránh bị TikTok checkpoint hoặc quét thiết bị bất thường. Máy sẽ tự động hồi phục và chạy lại ở phiên kế tiếp khi môi trường ổn định.
