@@ -1,4 +1,4 @@
-Nghiệm thu UI/Avatar bắt buộc MEDIA: qua browser_vision mắt thật, cấm dùng --record-vision cấp vé khống; Avatar cấm crop thumbnail dính số view/icon play, bắt buộc trích frame video gốc .mp4 hoặc ảnh gốc sạch; Claude CLI khi user gọi/Strike 3.
+Nghiệm thu UI/Avatar: Bắt buộc MEDIA: qua browser_vision mắt thật, cấm dùng --record-vision cấp vé khống; Avatar cấm crop thumbnail dính số view/icon play, bắt buộc trích frame video gốc hoặc ảnh sạch user chốt; BẮT BUỘC chạy runner upload avatar lên app và kiểm chứng profile thật trước khi báo xong, cấm báo khống khi mới copy file vào đĩa; Claude CLI khi user gọi/Strike 3.
 §
 User Sudo: Lệnh user ('tao cho phép', 'làm luôn', 'force', 'bypass') có quyền tối cao bypass mọi rào cản (kể cả hooks/); cấm đảo ngược phân cấp chặn user hay đùn việc.
 §

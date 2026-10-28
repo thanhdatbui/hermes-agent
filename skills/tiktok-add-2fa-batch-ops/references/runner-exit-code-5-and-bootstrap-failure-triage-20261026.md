@@ -36,6 +36,10 @@ Trong kiến trúc batch 2FA (`tiktok-add-bao-mat-f2a`):
    ```
    Khi file Excel trên OneDrive bị tính năng *Files On-Demand* giữ offline hoặc lệnh `attrib -u +p` bị timeout/lỗi quyền truy cập, watchdog gán cứng `kibe_code = 5` và bỏ qua toàn bộ đợt chạy của cụm.
 
+3. **Lệch code giữa Kibe và Admin-PC (Cluster Desync):**
+   - Khi chỉnh sửa code trong `D:/Taadaa/tiktok-add-bao-mat-f2a/python_runner/run_batch_live_2fa.py` (hoặc `run_capture_phase_b.py`), nếu chưa đẩy code sang Admin-PC, khi Watchdog chạy lệnh SSH PowerShell sang `admin-farm`, tiến trình Python trên Admin sẽ sập ngay tại bootstrap/freeze_targets với **exit code 5**.
+   - BẮT BUỘC chạy `python D:/Taadaa/tools/sync_2fa_to_admin.py` ngay sau khi sửa code 2FA trên Kibe để đồng bộ sang Admin.
+
 ### B. Căn nguyên lặp lại tin nhắn (Spam Loop)
 1. **Mất Idempotency khi Status là Failed:**
    - Khi runner exit code 5, watchdog ghi nhận `status = "failed"`.
@@ -69,7 +73,11 @@ Trong kiến trúc batch 2FA (`tiktok-add-bao-mat-f2a`):
    - Chạy `attrib -u +p <path>` và đọc 10 bytes nhị phân đầu tiên để xác nhận OneDrive không giữ offline.
 3. **Thử nghiệm Target Freeze Offline Mocked:**
    - Import `freeze_targets` trực tiếp trong Python với limit=10 để kiểm chứng logic đọc sheet và header mà không kích hoạt ADB hay can thiệp thiết bị thật.
-4. **Kỷ Luật Farm Safety Window:**
+4. **Kiểm tra Đồng bộ Code Song Song Cụm Admin:**
+   - Kiểm tra `git status` trên `D:/Taadaa/tiktok-add-bao-mat-f2a/`. Nếu có file code python_runner bị modified hoặc vừa commit mới, BẮT BUỘC chạy `python D:/Taadaa/tools/sync_2fa_to_admin.py` và kiểm tra `ALL_FILES_PUSHED_OK`.
+5. **Chống Task Diversion & Premature Fix Assumption:**
+   - Khi nhận Farm Alert mã thoát 5 mà sau đó bị lái sang việc khác (ví dụ: refactor định danh, sửa GuardGate), CẤM ngộ nhận hoặc báo cáo là alert ban đầu đã xong nếu chưa thực hiện đủ 3 bằng chứng: dọn lock mồ côi, `sync_2fa_to_admin.py` exit 0, và dry-run freeze-targets exit 0.
+6. **Kỷ Luật Farm Safety Window:**
    - Tuyệt đối CẤM chạy rerun `--force` trong các khung giờ nuôi (Ca nuôi sáng 05:05–09:30, Ca nuôi trưa 11:45–15:30, Ca nuôi chiều 17:45–21:30) để tránh xung đột lock thiết bị làm đứt gãy phiên nuôi feed.
-5. **Kỷ Luật Điều Phối Sửa Code (Hard Gate #3):**
+7. **Kỷ Luật Điều Phối Sửa Code (Hard Gate #3):**
    - Khi cần điều chỉnh code của runner/watchdog, CẤM dùng `delegate_task` (bị Hard Gate #3 chặn). Bắt buộc dispatch qua `dispatch_worker.py` (Sol/Agy/Haiku O(1)) hoặc L2 Emergency Surgery nếu thỏa mãn đủ điều kiện exact diff.

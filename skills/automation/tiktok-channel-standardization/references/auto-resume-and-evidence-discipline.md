@@ -31,3 +31,10 @@
   1. **Bám chặt các token OCR thật của màn hình:** Luôn liệt kê trung thực các dòng chữ xuất hiện trên màn hình Profile: Tên hiển thị, Username, câu Bio, số lượt thích, số follower, các clip hiển thị đầu trang.
   2. **Tránh khẳng định text claim mang tính thao tác:** Thay vì viết *"Đã cập nhật avatar thành công"*, hãy viết khách quan *"Ảnh chụp màn hình thực tế trên Máy <N> sau khi runner hoàn tất. Ảnh đại diện ở giữa hiển thị theo lựa chọn của anh."*
   3. **Không lạm dụng các marker mô tả thị giác thuần túy (`ảnh là`, `hình là`, `ảnh có`)** khi gửi kèm ảnh chụp màn hình app điện thoại, vì OCR điện thoại đọc chữ giao diện chứ không đọc nội dung chi tiết của bức ảnh tròn.
+
+## 5. Bẫy TTL Receipt Hết Hạn Khi Chạy Tác Vụ Dài (Runner Latency vs Receipt Expiry Trap)
+- **Hiện tượng:** Khi chạy runner cập nhật avatar (`run_upload_avatar.py`) hoặc các tác vụ batch kéo dài (thời gian chạy thực tế từ 180s đến 300s), receipt tạo lúc đầu hoặc giữa chừng bị hết hạn nếu TTL quá ngắn (`DEFAULT_TTL_SECONDS = 300s`). Khi gửi thẻ `MEDIA:`, hook kiểm tra `age > ttl_seconds` và trả về `NO_RECEIPT`, dẫn tới việc tin nhắn bị nuốt và thay bằng `render_degraded_template` (`Trạng thái: DEGRADED | Mã: UNGROUNDED_OVERRIDE ...`).
+- **Khắc phục kỹ thuật:**
+  1. Trong `guard_media_vision_gate.py`, đã nâng `DEFAULT_TTL_SECONDS = 3600` (1 giờ).
+  2. Quy trình bất biến: Sau khi runner hoàn tất trên thiết bị, BẮT BUỘC chụp ảnh màn hình mới nhất (`screencap`), kéo về máy (`pull`) và gọi `run_winrt_ocr.py` ngay trong turn đó để tạo fresh receipt trước khi gửi `MEDIA:<path>`.
+
