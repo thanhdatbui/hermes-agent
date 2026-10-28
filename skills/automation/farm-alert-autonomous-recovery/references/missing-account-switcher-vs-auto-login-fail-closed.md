@@ -88,13 +88,21 @@ FeedRunner: [FAIL] Lệch Profile/Nick TikTok (profile account mismatch / naviga
   - Nếu thiết bị đã có sẵn nick ở slot 0, chạy `--row 1` sẽ cho kết quả `already matched` và lướt feed ngay, KHÔNG hề kích hoạt nhánh `auto_login_recovery`.
   - Để tái hiện và kiểm chứng đúng nhánh tự login, BẮT BUỘC phải đối soát danh sách usable/workbook và truyền đúng `--row <N>` của tài khoản đang thực sự vắng mặt trên máy (ví dụ `--row 2` cho `thuthanh2911`).
 
-### H. Đứt Gãy Luồng Recovery Tại Post-Session Upload-Hook (`multi_machine_feed_session.py`)
-- **Hiện tượng:** Khi máy kết thúc ca lướt feed và chuyển sang hook đăng video (`upload-hook`) gọi `scripts.tiktok_workflow`, Switcher không tìm thấy nick mục tiêu. State machine upload trả về `exit_code = 4` kèm `status = "LOGIN_RECOVERY_REQUIRED"` và `recovery_handler = "tiktok_login"`. Tuy nhiên, máy dừng hẳn mà không tự động mở flow đăng nhập TikTok.
+### H. Đứt Gãy Luồng Recovery Tại Post-Session Upload-Hook (`multi_machine_feed_session.py`) — ĐÃ KHẮC PHỤC
+- **Hiện tượng:** Khi máy kết thúc ca lướt feed và chuyển sang hook đăng video (`upload-hook`) gọi `scripts.tiktok_workflow`, Switcher không tìm thấy nick mục tiêu. State machine upload trả về `exit_code = 4` kèm `status = "LOGIN_RECOVERY_REQUIRED"` và `recovery_handler = "tiktok_login"`. Máy dừng hẳn mà không tự động mở flow đăng nhập TikTok.
 - **Nguyên nhân gốc:**
   - Batch đăng video độc lập (`run_tiktok_upload_batch.ps1`) có code bắt Exit Code 4 để tự khởi chạy `Start-LoginRecoveryRunner` nạp nick rồi retry.
   - Trong khi đó, `upload-hook` chạy bên trong `multi_machine_feed_session.py` (dòng 4680–4705) khi nhận `is_success = False` chỉ ghi `upload_failed` và gửi `send_farm_machine_alert` ra ngoài, hoàn toàn thiếu nhánh hứng Exit Code 4 để kích hoạt `tiktok_login_v1.py` / `reconcile_tiktok_accounts.py`.
-- **Hành động & Kiến trúc khắc phục:**
-  - Khi `multi_machine_feed_session.py` nhận `proc.returncode == 4` hoặc `payload["status"] == "LOGIN_RECOVERY_REQUIRED"`, cần bổ sung handler gọi `_run_fast_targeted_login` hoặc Reconcile runner tương tự như `run_tiktok_upload_batch.ps1` trước khi retry ca upload, chống việc fail-closed dừng máy bắt thao tác thủ công.
+- **Kiến trúc đã triển khai (commit 81b202c):**
+  - Trong `_run_upload_hook`: Bắt `proc.returncode == 4` và cờ `_upload_login_recovered`.
+  - Thiết lập machine config cho child context: `child_ctx.config["_machine"] = account.machine`.
+  - Kích hoạt `_maybe_recover_missing_account_via_login(child_ctx, account_id)` nạp bù nick vào Switcher.
+  - Sau khi login thành công, retry lại lệnh upload `proc = subprocess.run(command, **subp_kwargs)` một lần duy nhất trước khi ghi nhận kết quả cuối cùng.
+
+### I. Pitfall Floor Timeout của Worker Dispatch vs Terminal Foreground Timeout
+- **Hiện tượng:** Khi Coordinator gọi `dispatch_worker.py` trong foreground qua `terminal(command=..., timeout=180)`, lệnh bị timeout ngắt ngang và Hermes chuyển sang trạng thái `[Orphan recovery]`.
+- **Nguyên nhân gốc:** `dispatch_worker.py` có sàn timeout cứng cho Sol/Agy là `SOL_AGY_TIMEOUT_FLOOR = 480` (8 phút). Nếu terminal đặt `timeout=180`, process sẽ bị terminal hủy trước khi worker kịp hoàn thành hoặc fallback.
+- **Quy tắc bắt buộc:** Khi gọi `dispatch_worker.py` hoặc các runner có worker AI, Coordinator BẮT BUỘC ép `timeout >= 480` (khuyên dùng 500s–600s), hoặc chạy ngầm `terminal(background=True, notify_on_complete=True)`. CẤM TUYỆT ĐỐI set timeout foreground 180s cho các lệnh gọi dispatch worker.
 
 ## 3. Quy Trình Nạp Bù Tài Khoản Đúng Chuẩn (Actionable Reconcile Flow)
 Để nạp nick còn thiếu vào slot trống của thiết bị mà không ảnh hưởng đến batch đang chạy:
