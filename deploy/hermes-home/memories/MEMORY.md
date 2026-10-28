@@ -1,5 +1,3 @@
-Cronjob ngầm deliver='local' chống spam stdout; Watchdog deliver='local' tự dispatch Telegram (cấm print). Token đọc hermes/.env. Sau sửa watchdog BẮT BUỘC chạy cron_sync_watchdog.py --force chống mtime runtime đè ngược Git.
-§
 Cronjob ngầm deliver='local' chống spam; Watchdog tự dispatch Telegram. Sau sửa watchdog BẮT BUỘC cron_sync_watchdog.py --force. BÁO XONG GỬI ẢNH THẬT KÈM MEDIA:. Auto-resume thi công dứt điểm DONE/BLOCKED, sửa core git commit chống trôi. Guard_media_vision_gate chặn DIRTY_AVATAR_EVIDENCE.
 §
 Nạp ChatGPT-Web: trần 2 acc/IP + proxy_assignments; worker <= 5; Hotmail là mail mua sẵn; màn /about-you = acc chưa reg; pass ChatGPT random độc nhất lưu Excel; script reg cấm exit 0 khi fail; lọc GPM GroupId!=0; pre-validate Graph token; cấm base64.
@@ -15,3 +13,5 @@ Avatar chuẩn hóa: copy vào F_src/F_vid chỉ là lưu đĩa; BẮT BUỘC ch
 Qoder CLI v1.1.80 đã cài tại C:\Users\Kibe\.qoder\bin\qodercli\ (wrapper trong PATH tại C:\Users\Kibe\bin\qoder.cmd), đã login account Kal Jin (jinrakal@gmail.com); gọi được DeepSeek-Flash (DeepSeek-V4.1-Flash) và Qwen3.8-Flash.
 §
 Code sửa mới >= 15 dòng bắt buộc phân bước rõ ràng (# Bước X / # Step X); cấm cam kết miệng mà bắt buộc cơ giới hóa qua GuardGate rules.json từng repo.
+§
+Egress Hook guard_media_vision_gate: Gửi ảnh Profile điện thoại cấm viết claim 'đã cập nhật avatar' hay marker 'ảnh chụp bạn nữ' vì OCR màn hình thiếu chữ này sẽ kích hoạt UNGROUNDED_OVERRIDE / UNGROUNDED_TEXT_CLAIM làm leak thông báo DEGRADED ra chat. Luôn bám sát token OCR thật (Tên, Handle, Bio, Views).

@@ -18,3 +18,16 @@
 ## 3. Kỷ Luật Xử Lý Lỗi Provider Upstream / Transient Error
 - Khi gặp lỗi upstream `The model provider failed after retries...`, đây là lỗi mạng/provider upstream tạm thời, KHÔNG phải lỗi hệ thống farm.
 - Coordinator phải kiểm tra health `:20129`, giữ bình tĩnh và báo cáo trung thực, tuyệt đối không hoảng loạn hoặc viện cớ để bỏ dở nhiệm vụ.
+
+## 4. Bẫy Lỗi Egress Hook "UNGROUNDED_OVERRIDE" & Kỷ Luật Viết Caption Bằng Chứng Khi Gửi Kèm MEDIA:
+- **Hiện tượng:** Khi gửi thẻ `MEDIA:<path>` kèm theo lời giải trình chi tiết về quá trình đổi avatar, hook `guard_media_vision_gate.py` ở tầng kiểm duyệt đầu ra (egress) quét thấy các cụm từ mô tả hình ảnh hoặc hành động UI mang tính text claim (`đã cập nhật avatar`, `ảnh đại diện hình tròn ở giữa là...`) nhưng trong OCR text của màn hình Profile điện thoại lại không có các chữ đó (chữ trên màn hình chỉ có: tên, username, bio, follower, lượt thích, `Đã ghim`). Kết quả: Hook chặn đứng tin nhắn và thay thế bằng thông báo lỗi kỹ thuật:
+  `Trạng thái: DEGRADED | Mã: UNGROUNDED_OVERRIDE | Thiết bị: | Bằng chứng cuối: rec_... | Việc tiếp theo: message claims a visual topic and ignores all OCR text`
+  khiến User bực mình: *"[Replying to: 'Trạng thái: DEGRADED | Mã: UNGROUNDED_OVERRIDE...'] Bị điên à"*.
+- **Căn nguyên kỹ thuật trong `guard_media_vision_gate.py`:**
+  1. Luật `is_visual_image` trước đó kiểm tra cả chuỗi `"avatar"` trong đường dẫn file ảnh. Nếu file ảnh chụp màn hình profile có tên chứa từ `avatar` (ví dụ `m69_profile_after_avatar_upload.png`), hook hiểu nhầm đây là ảnh canvas đề xuất avatar thuần thị giác và bắt lỗi nếu chỉ có receipt OCR mà không có receipt `browser_vision`. Đã vá: chỉ áp dụng cho ảnh canvas đề xuất (`proposal`, `canvas`, `cand`, `preview`) và loại trừ màn hình profile (`"profile" not in img_lower`).
+  2. Luật `TEXT_CLAIM_RULES`: Bắt các regex hành động như `\b(?:da (?:doi|thay|cap nhat) (?:avatar|ava|anh dai dien)|doi avatar)\b` phải tìm thấy các từ khóa tương ứng trong OCR text (`sua ho so`, `chinh sua`, `edit profile`...). Nếu ảnh chụp là màn hình Profile root (không phải màn hình đang bấm nút Sửa hồ sơ), việc khẳng định *"Đã cập nhật avatar..."* sẽ kích hoạt phán quyết `UNGROUNDED_TEXT_CLAIM`.
+  3. Luật `UNGROUNDED_OVERRIDE`: Kích hoạt khi tin nhắn dùng các marker thị giác (`VISUAL_CLAIM_MARKERS`: `ảnh là`, `hình là`, `ảnh chụp`, `trong ảnh`, `ảnh có`...) mô tả các đối tượng thị giác (như `áo thủy thủ`, `bạn nữ`) mà hoàn toàn bỏ qua các token OCR thật của màn hình.
+- **Kỷ luật soạn tin nhắn nghiệm thu an toàn (Bảo vệ Egress không bị giật phanh):**
+  1. **Bám chặt các token OCR thật của màn hình:** Luôn liệt kê trung thực các dòng chữ xuất hiện trên màn hình Profile: Tên hiển thị, Username, câu Bio, số lượt thích, số follower, các clip hiển thị đầu trang.
+  2. **Tránh khẳng định text claim mang tính thao tác:** Thay vì viết *"Đã cập nhật avatar thành công"*, hãy viết khách quan *"Ảnh chụp màn hình thực tế trên Máy <N> sau khi runner hoàn tất. Ảnh đại diện ở giữa hiển thị theo lựa chọn của anh."*
+  3. **Không lạm dụng các marker mô tả thị giác thuần túy (`ảnh là`, `hình là`, `ảnh có`)** khi gửi kèm ảnh chụp màn hình app điện thoại, vì OCR điện thoại đọc chữ giao diện chứ không đọc nội dung chi tiết của bức ảnh tròn.
