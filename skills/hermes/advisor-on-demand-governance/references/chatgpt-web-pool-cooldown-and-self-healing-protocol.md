@@ -31,24 +31,25 @@ Trong hạ tầng OmniRoute nối với Web reverse proxy của OpenAI (`chatgpt
 
 Script canonical chuẩn: `D:/Taadaa/tools/cooldown_broken_chatgpt.py`
 
-### Bước 1: Cô lập (Cooldown) các Connection Lỗi
-Quét database `~/.omniroute/storage.sqlite` và đặt `is_active = 0` cho các account dính 401 hoặc `invalid`:
-```sql
-UPDATE provider_connections
-SET is_active = 0, last_error = '[COOLDOWN] Token expired or invalid auth'
-WHERE provider = 'chatgpt-web' AND is_active = 1
-  AND (last_error LIKE '%401%' OR json_extract(provider_specific_data, '$.apiKeyHealth.primary.status') = 'invalid');
-```
+### Bước 1: Nguyên Tắc Bất Di Bất Dịch: Cooldown Tạm Thời, CẤM Tắt Vĩnh Viễn / CẤM Xóa Khỏi Pool
+- **CẤM TUYỆT ĐỐI**: Đặt `is_active = 0` hoặc xóa connectionId ra khỏi combo `gpt-web-sol`. Tắt vĩnh viễn hoặc xóa khỏi combo là phá hủy tài sản pool, khiến các acc bị loại bỏ hoàn toàn và cron cứu hộ không thể tự động tái kích hoạt.
+- **CƠ CHẾ COOLDOWN CHUẨN OMNIROUTE (`rate_limited_until`)**:
+  OmniRoute có cơ chế `isAccountUnavailable` / `cooldownUntilMs` đọc trường `rate_limited_until` trong `provider_connections`:
+  ```sql
+  UPDATE provider_connections
+  SET rate_limited_until = datetime('now', '+30 minutes') -- hoặc ISO format 'YYYY-MM-DDTHH:MM:SS.sssZ'
+  WHERE provider = 'chatgpt-web' AND is_active = 1
+    AND (last_error LIKE '%401%' OR last_error LIKE '%Sentinel%' OR json_extract(provider_specific_data, '$.apiKeyHealth.primary.status') = 'invalid');
+  ```
+  * **Lưu ý định dạng**: `cooldownUntilMs()` trong OmniRoute coi chuỗi số nguyên là epoch mili-giây, KHÔNG dùng epoch giây (ví dụ `time.time() + 1800` dạng int sẽ bị parse thành năm 1970 và hết hạn ngay lập tức). Luôn dùng chuỗi ISO 8601 UTC.
+  * Khi có `rate_limited_until` trong tương lai, router tự động bỏ qua (skip) connection đó trong vòng 30 phút mà KHÔNG cần xóa khỏi combo hay đổi `is_active=0`. Hết 30 phút, router tự động thử lại mà không cần can thiệp thủ công.
 
-### Bước 2: Thanh Lọc Combo `gpt-web-sol`
-Chỉ giữ lại các entry trỏ tới `connectionId` có `is_active = 1` trong SQLite:
-```python
-clean_models = [m for m in combo_models if active_map.get(m['connectionId']) == 1]
-combo['models'] = clean_models
-```
+### Bước 2: Cron Cứu Hộ Tự Động Định Kỳ
+- Pool luôn có Cronjob tự động kiểm tra sức khỏe và hồi sinh tài khoản: `chatgpt-web-pool-healer-watchdog` (Job ID: `fff7f688990d`, script `cron_chatgpt_web_pool_watchdog.py`).
+- Cronjob này quét định kỳ qua `GET /api/providers`, gửi request test liveness và tự động giải phóng cooldown hoặc làm mới cookie phiên.
 
-### Bước 3: Nâng Cấp Cấu Hình Định Tuyến Kháng Lỗi
-Thay đổi tham số combo trong bảng `combos`:
-- `strategy`: Chuyển từ `round-robin` sang `cache-optimized` (ưu tiên kết nối đã warm cache và ổn định).
+### Bước 3: Nâng Cấp Cấu Hình Định Tuyến Kháng Lỗi Trong Combo
+Giữ nguyên toàn bộ 157 models trong combo (để cron và router tự quản lý), chỉ tối ưu tham số định tuyến trong bảng `combos`:
+- `strategy`: Chuyển từ `round-robin` sang `cache-optimized` (ưu tiên kết nối đã warm cache và bỏ qua connection đang cooldown).
 - `config.maxGlobalAttempts`: Tăng từ `8` lên `25`.
 - `config.disableSessionStickiness`: Đặt `True` để không bị kẹt dính vào connection vừa phát sinh lỗi.

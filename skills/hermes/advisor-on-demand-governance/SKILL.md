@@ -57,9 +57,12 @@ _ADVISOR_EXPLICIT_TRIGGERS = (
       * Khi combo dùng chiến lược `round-robin` với tham số `maxGlobalAttempts` nhỏ (ví dụ 8 attempts), nếu con trỏ round-robin xoay trúng một cụm các tài khoản bị `apiKeyHealth = invalid`, hết hạn cookie `401 auth failed`, hoặc bị OpenAI chặn Turnstile/Sentinel (`ChatGPT blocked the request`).
       * OmniRoute sẽ thử qua 8 tài khoản đầu tiên bị lỗi liên tiếp, vượt quá số lần thử tối đa (`maxGlobalAttempts = 8`) nên lập tức ném lỗi `503 Service Unavailable` ra ngoài, dù trong pool vẫn còn hàng trăm tài khoản khác khỏe mạnh!
     * **Phương án khắc phục kỹ thuật**:
-      1. Tăng `maxGlobalAttempts` trong config của combo lên cao hơn (hoặc đổi sang thuật toán tránh các connection lỗi).
-      2. Chạy script thanh lọc / rà soát định kỳ loại bỏ các connection có `last_error` dính `Sentinel` hoặc `401` ra khỏi danh sách active của combo `gpt-web-sol`.
-      3. Quy trình chi tiết tự động cô lập acc lỗi (`is_active=0`), prune combo về 100% active models và nâng `maxGlobalAttempts` lên 25 xem tại `references/chatgpt-web-pool-cooldown-and-self-healing-protocol.md`.
+      1. Tăng `maxGlobalAttempts` trong config của combo lên cao hơn (ví dụ 25) và đổi sang `cache-optimized` để tự động bỏ qua các connection đang bị lỗi.
+      2. **KỶ LUẬT COOLDOWN (CẤM TẮT VĨNH VIỄN `is_active=0` HOẶC XÓA KHỎI COMBO)**:
+         * Khi User yêu cầu "cho cooldown": BẮT BUỘC dùng cơ chế `rate_limited_until = ISO_TIMESTAMP (+30m)` trong `provider_connections`.
+         * TUYỆT ĐỐI CẤM set `is_active = 0` hay xóa model entry khỏi combo làm cụt pool tài khoản.
+         * Cron cứu hộ (`chatgpt-web-pool-healer-watchdog`, ID: `fff7f688990d`) sẽ định kỳ quét và hồi sinh/làm mới trạng thái account.
+      3. Quy trình chi tiết tự động cooldown đúng chuẩn xem tại `references/chatgpt-web-pool-cooldown-and-self-healing-protocol.md`.
   * **Bẫy kiểm tra đồng thời (High Concurrency Rate-Limit Trap)**: Khi gửi test tới toàn bộ connections trong pool, TUYỆT ĐỐI CẤM chạy concurrency cao (`max_workers >= 8` gây nghẽn proxy MobiProxy/MikroTik và làm OmniRoute trả về HTTP 500 hàng loạt). BẮT BUỘC dùng concurrency thấp (`max_workers=2`) hoặc chạy tuần tự có sleep 0.2s–0.3s.
   * **Quy trình cứu hộ khép kín (Autonomous Pool Healer)**:
     1. Lấy danh sách connections từ `GET http://127.0.0.1:20129/api/providers`.

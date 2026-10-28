@@ -8,6 +8,6 @@ Tool 2FA và cron xen ca: JIT lock từng máy (cấm bulk pre-reserve); freeze_
 §
 GuardGate (D:/Taadaa/tools/guardgate) là Protection Regression Gate cơ giới hóa cho code diff repo (Closeout Step 2.5); infra_regression_gate.py chỉ kiểm tra riêng 4 file config hạ tầng Hermes/OmniRoute.
 §
-Khi chẩn đoán mạng OpenWrt/PPPoE: Tuyệt đối không suy diễn lan man các giả thuyết vô lý (như thợ ISP rảnh đi bind MAC cục test H196A); phải soi kỹ cấu hình thực tế trên thiết bị (firewall zone conflict, bridge br-lan, mwan3 blackhole, package rác, Service Name bị điền 'auto'). Lời nói nhắn tin cho thợ/người khác phải nhẹ nhàng, chuẩn mực kỹ thuật, ngắn gọn 1 chạm copy.
+Khi deploy router OpenWrt (Xiaomi R3G): Cổng xanh br-lan giữ nối PC quản trị; CẤM điền chữ 'auto' vào Access Concentrator / Service Name (phải để TRỐNG hoàn toàn). Trên MT7621/DSA, cắm đường đang chạy tốt mà vẫn PADO timeout là do switch/VLAN nội bộ hoặc config sai, cấm đổ thừa MAC binding hay ISP. H196A của thợ Viettel chỉ là máy test; IPTV trên profile WAN H196A phải tắt (bỏ tick IPTV). Nhắn tin kỹ thuật luôn lịch sự, chuyên môn, dẫn chứng ICMP !C và account ID.
 §
 Cấm đổ lỗi hạ tầng mạng khi chưa kiểm chứng; tuyệt đối không tự chế giả thuyết vô căn cứ (như ISP khóa MAC, bắt chước router khác) khi thiết bị khác cùng line vẫn chạy bình thường. Phải kiểm tra cấu hình switch/VLAN/cổng router nội bộ trước.

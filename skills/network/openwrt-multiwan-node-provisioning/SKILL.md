@@ -209,6 +209,21 @@ When headless network access fails and an on-site computer is borrowed via Ultra
          - While some BRAS implementations bind to specific vendor MACs, avoid jumping to MAC cloning as a first assumption when a technician is merely using a test router. Check line activation status and service bundling (IPTV) first. If cloning is genuinely required, set **Network -> Interfaces -> Edit WAN -> Advanced Settings -> Override MAC address** to the ISP test device's WAN MAC.
       5. **Account vs Line Disconnect (The "20 Lines" Benchmark):** If other lines at the same site work on different routers, never assume the new line has the same active profile. Perform an A/B test: temporarily enter a verified active username from one of the working lines into the router to immediately distinguish between a local hardware/config issue and an ISP subscriber provisioning freeze.
 
+13. **OpenWrt Multi-WAN Switch/DSA Port-Binding Pitfall & The "auto" String Trap:**
+    - **The Switch / DSA VLAN Misconfiguration Trap:**
+      - On SoC routers like Xiaomi R3G (MediaTek MT7621 with DSA / switch architecture), `lan1` and `lan2` are physical switch ports designed for bridging into `br-lan`.
+      - If an agent reassigns `lan1` or `lan2` to PPPoE WAN interfaces without cleanly isolating them from internal switch/VLAN bridge logic, outgoing PPPoE discovery frames (`PADI`) can be misrouted or tagged internally, causing perpetual `Timeout waiting for PADO packets` even when the ISP line and ONT are 100% healthy.
+      - **Diagnostic Evidence:** If a known-working line dials fine on other hardware but gets `PADO timeout` on `lan1`/`lan2` of the OpenWrt router, do NOT blame the ISP cable or MAC binding. Verify link carrier (`ip link show lan1`) and inspect frame egress via `tcpdump -i any -n -e 'ether proto 0x8863'`.
+    - **The "auto" String in LuCI PPPoE Fields:**
+      - In LuCI -> **Network -> Interfaces -> Edit WAN -> Advanced Settings**, the fields **Access Concentrator** and **Service Name** show grey helper text: *"Leave empty to autodetect"*.
+      - **The Bug:** Users or agents often mistakenly type the literal string `"auto"` into these fields.
+      - In OpenWrt `pppd`, entering `"auto"` forces pppd to demand an Access Concentrator / Service Name literally named `"auto"`. The ISP BRAS (e.g. Viettel) rejects or ignores the request, causing immediate PPPoE discovery timeout (`PADO timeout`)!
+      - **Fix:** Both fields **MUST BE LEFT COMPLETELY BLANK/EMPTY**.
+    - **Physical Port Safety & Zero-Disruption Management:**
+      - When managing the router via UltraViewer on an on-site PC plugged into the router:
+      - **NEVER alter or reassign the physical port currently serving the PC (e.g. blue port / `br-lan`).** Doing so drops the management connection instantly, terminating the remote support session.
+      - Always confine interface debugging and testing strictly to the remaining ports (`lan1`, `lan2`) while keeping the management port untouched.
+
 ## References
 
 - `references/claude-audit-and-field-triage-r3g.md` — Detailed case study of Xiaomi R3G deploy, Claude CLI production audit remediation, and the premature lifeline unplug incident.
