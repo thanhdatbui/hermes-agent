@@ -195,6 +195,15 @@ When headless network access fails and an on-site computer is borrowed via Ultra
     - **Mechanism:** `tailscale up` performs a blocking synchronous HTTP/TLS request to `controlplane.tailscale.com`. When the WAN interface is captive / walled-garden (traffic dropped or blackholed after BRAS), the Go TLS dialer blocks indefinitely waiting for TCP handshake / TLS deadline. The web terminal does not render incremental output until process returns or flushes stdout.
     - **Triage:** Do NOT force the user to repeatedly retype commands or hit Enter in LuCI terminal when WAN has 100% packet loss. As long as WAN cannot reach external IPs (ping 8.8.8.8 loss 100%), any CLI command attempting internet connection will hang. Triage ISP connectivity first before invoking network daemons.
 
+12. **ISP Modem / Mesh Router Dialing Conflict & MAC Binding (The H196A / "20 Lines" Trap):**
+    - **Symptom:** ISP technician tests their own router/mesh device (e.g. ZTE H196A) on the newly pulled line and claims *"PPPoE connects fine and lướt web bình thường"*, but the customer router (R3G OpenWrt) gets `PADO timeout` or `!C` walled-garden errors.
+    - **Triage & Common Root Causes:**
+      1. **Device Account Hijacking (`Type: Routing` vs `Bridge`):** Check the ISP device configuration page. If the ISP router profile shows `Type: Routing` (with PPPoE username/password embedded in it), **the ISP device itself is dialing PPPoE and occupying the subscriber session!** A downstream router plugged into its LAN port cannot dial PPPoE again (results in PADO timeout or Session Limit Exceeded). The ISP device MUST have PPPoE deleted or switched to pure `Bridge Mode`.
+      2. **OLT/BRAS MAC Address Binding:** In many deployment areas, the BRAS or OLT binds the subscriber port to the exact MAC address of the ISP-provided gateway (ZTE H196A / iGate). When a third-party router is attached, PADI discovery is ignored.
+         - **Fix (Clone MAC):** Read the WAN MAC address from the label on the bottom of the ISP router (or its status page), then in LuCI navigate to **Network -> Interfaces -> Edit WAN -> Advanced Settings -> Override MAC address**, enter the ISP router's MAC, and Save & Apply.
+      3. **VLAN Tagging Disconnect:** If the ISP router profile shows `VLAN: Off` or a specific VLAN ID, replicate this exactly. `VLAN: Off` on the ISP router means the ONT handles 802.1Q tags internally, so OpenWrt MUST send untagged frames directly on the physical interface (`lan1`, `lan2`), not tagged sub-interfaces.
+      4. **Account vs Line Disconnect (The "20 Lines" Benchmark):** If other lines at the same site work on different routers, never assume the new line has the same active profile. Perform an A/B test: temporarily enter a verified active username from one of the working lines into the router to immediately distinguish between a local hardware/config issue and an ISP subscriber provisioning freeze.
+
 ## References
 
 - `references/claude-audit-and-field-triage-r3g.md` — Detailed case study of Xiaomi R3G deploy, Claude CLI production audit remediation, and the premature lifeline unplug incident.

@@ -137,3 +137,10 @@ When headless remote access fails and an on-site Windows machine is borrowed via
   - **Check 1 (Wrong Port on ONT):** Many ISP ONTs (ZTE, Huawei, iGate) only bridge on **LAN 1**. Plugs in LAN 2–4 receive no PADO responses.
   - **Check 2 (Unbridged ONT):** ONT is still operating in Router mode (NAT) and rejecting PPPoE pass-through.
   - **Check 3 (VLAN Tagging Requirement):** ISP requires 802.1Q VLAN tagging on the WAN interface (e.g., VLAN 35 for VNPT in specific provinces). Untagged PADI packets are silently dropped by the OLT.
+
+### 5. ISP Device Account Hijacking & MAC Clone Verification (The ZTE H196A Incident)
+- **Symptom:** ISP technician connects an ISP router/mesh (ZTE H196A) directly to the fiber line and claims it connects fine, but customer router (R3G OpenWrt) fails with `PADO timeout` or `!C`.
+- **Root Cause 1 (`Type: Routing` vs `Bridge`):** Inspecting the screenshot of the H196A interface revealed the profile was configured with `Type: Routing` (PPPoE connection handled by H196A itself with embedded credentials). By dialing PPPoE directly on H196A, the session was occupied, locking out any secondary router downstream.
+- **Root Cause 2 (OLT MAC Binding):** If OLT binds authentication to the MAC address of the supplied ZTE router:
+  - Extract the WAN MAC address from the H196A bottom label or status page.
+  - Apply MAC clone in LuCI: **Network -> Interfaces -> Edit WAN -> Advanced Settings -> Override MAC address** -> Enter H196A MAC.
