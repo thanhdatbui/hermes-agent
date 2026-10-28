@@ -53,3 +53,24 @@ Giữ nguyên toàn bộ 157 models trong combo (để cron và router tự qu�
 - `strategy`: Chuyển từ `round-robin` sang `cache-optimized` (ưu tiên kết nối đã warm cache và bỏ qua connection đang cooldown).
 - `config.maxGlobalAttempts`: Tăng từ `8` lên `25`.
 - `config.disableSessionStickiness`: Đặt `True` để không bị kẹt dính vào connection vừa phát sinh lỗi.
+
+---
+
+## 4. Tự Động / Thủ Công Dỡ Bỏ Cooldown Khi Đã Quá Thời Gian Phạt
+
+Khi thời gian `rate_limited_until` đã hết hạn (quá 30 phút), hoặc khi proxy egress đã ổn định trở lại:
+1. **Kiểm tra số lượng acc đã hết hạn cooldown**:
+   ```sql
+   SELECT count(*) FROM provider_connections
+   WHERE provider = 'chatgpt-web' AND rate_limited_until IS NOT NULL AND rate_limited_until < datetime('now');
+   ```
+2. **Dỡ bỏ cooldown và reset backoff**:
+   Chạy script canonical `D:/Taadaa/tools/unfreeze_expired_cooldown.py`:
+   ```sql
+   UPDATE provider_connections
+   SET rate_limited_until = NULL, backoff_level = 0, last_error = NULL, updated_at = CURRENT_TIMESTAMP
+   WHERE provider = 'chatgpt-web' AND (rate_limited_until < datetime('now') OR rate_limited_until IS NOT NULL);
+   ```
+3. **Ping Endpoint Làm Mới In-Memory Cache**:
+   Gửi request `GET http://127.0.0.1:20129/api/providers` (HTTP 200) để router đồng bộ lại trạng thái từ SQLite vào bộ nhớ RAM của tiến trình OmniRoute. Toàn bộ 100% pool accounts sẽ lập tức sẵn sàng nhận request mới.
+

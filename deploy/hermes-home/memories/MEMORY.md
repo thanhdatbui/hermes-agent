@@ -7,7 +7,3 @@ Watchdog đối soát TikTok Web: Chu kỳ farm 3-4 ngày/acc (1 ca/buổi gồm
 Tool 2FA và cron xen ca: JIT lock từng máy (cấm bulk pre-reserve); freeze_targets bọc retry 5 nhịp backoff + dọn lock mồ côi ~$*.xlsx né xung đột cron sync 5m; Batch 2FA Admin qua SSH bắt buộc --adb-path r"C:\Program Files (x86)\xiaowei\tools\adb.exe"; sau sửa 2FA bắt buộc chạy sync_2fa_to_admin.py.
 §
 GuardGate (D:/Taadaa/tools/guardgate) là Protection Regression Gate cơ giới hóa cho code diff repo (Closeout Step 2.5); infra_regression_gate.py chỉ kiểm tra riêng 4 file config hạ tầng Hermes/OmniRoute.
-§
-OpenWrt R3G (MT7621/DSA): Cổng xanh br-lan nối PC; Access Concentrator / Service Name để TRỐNG. Cắm line tốt mà PADO timeout là do switch/VLAN/cổng nội bộ, cấm đổ thừa MAC/ISP/hạ tầng. Tắt IPTV trên profile WAN H196A. Nhắn tin kỹ thuật dẫn ICMP !C và account ID.
-§
-Cooldown acc ChatGPT Web / Sol: Luôn dùng rate_limited_until (ISO +30m) trong provider_connections để router tự né và tự hết hạn, cấm set is_active=0 hoặc xóa model khỏi combo làm cụt pool tài khoản; Cron healer (fff7f688990d) chạy mỗi 6h qua GPM CDP để phục hồi cookie.

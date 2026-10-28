@@ -136,4 +136,5 @@ Quy trình chuẩn hoá bao gồm trọn gói **5 hạng mục bắt buộc (5-i
 - **Kiến trúc O(1) kiểm định tự động Avatar chống lười biếng & khai tử tự cấp vé khống (Tư vấn Claude Sonnet):** [`references/claude-avatar-governance-o1.md`](references/claude-avatar-governance-o1.md).
 - **Kỷ luật đẩy Avatar lên thiết bị thật & Chống báo cáo láo / thiếu ảnh nghiệm thu:** [`references/avatar-execution-and-proof-mandate.md`](references/avatar-execution-and-proof-mandate.md).
 - **Kỷ luật gửi ảnh nghiệm thu thực tế & xử lý dứt điểm auto-resume không bại liệt:** [`references/auto-resume-and-evidence-discipline.md`](references/auto-resume-and-evidence-discipline.md).
+- **Cơ chế ghim bài LIFO & Xử lý trôi video top khi unpin (Off-Screen Recovery):** [`references/lifo-pin-ordering-and-offscreen-recovery.md`](references/lifo-pin-ordering-and-offscreen-recovery.md).
 

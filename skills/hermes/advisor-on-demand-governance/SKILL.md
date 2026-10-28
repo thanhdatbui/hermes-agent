@@ -138,6 +138,9 @@ _ADVISOR_EXPLICIT_TRIGGERS = (
     - **Kỷ Luật Timeout Benchmark Chuẩn Worker (Floor 360s)**:
       * Khi tổ chức thi đấu / benchmark so tài model hay worker sửa code, Coordinator **CẤM TUYỆT ĐỐI** tự ý bóp timeout xuống 60s/75s để test nhanh.
       * Timeout benchmark BẮT BUỘC đặt sàn tối thiểu 360s như worker tiêu chuẩn để phản ánh chính xác năng lực suy luận thực tế và tránh làm fail giả (false timeout) khi model đang bootstrap CLI hoặc giải bài toán khó.
+    - **Tier 0 Qoder Worker Integration (`dispatch_worker.py`)**:
+      * Đã tích hợp Qoder Worker (`D:/Taadaa/tools/qoder_worker.py`) làm Tier 0 trong `dispatch_worker.py` với cờ opt-in an toàn `ENABLE_QODER_WORKER=1`.
+      * Khi Qoder gặp sự cố (timeout, không có diff, lỗi tiến trình), dispatcher tự động ghi audit và kích hoạt fallback sang Sol Worker (Tier 1) rồi đến Agy CLI (Tier 2).
     - **Đặc tính kỹ thuật Hardcore Farm Engineering (Argon 4 vs Agy CLI vs Sol Web)**:
       * **Argon 4 (Gemini Web Pool)**: Phản xạ siêu tốc (10s – 30s), cực mạnh về thuật toán phân phối tải, concurrency sliding window. Nhược điểm: Dễ dính lỗi ẩu thay đổi API/structure cũ (tự ý tạo Enum hoặc đổi tên thuộc tính) hoặc bỏ sót corner-case nhỏ (`normalize_text(None)`). Thích hợp làm Worker phản ứng nhanh, fix bug nóng.
       * **Antigravity CLI (Agy 3.8 Flash)**: Tốc độ chậm hơn (1 – 4 phút do CLI runtime), nhưng lập trình phòng thủ cực cao (defensive programming), giữ vững 100% backward compatibility, xử lý corner cases mẫu mực (thắng 2-1 ở giải đấu Hardcore BO3 ngày 28/10/2026). Thích hợp làm Architect Worker cho refactor phức tạp. Chi tiết xem `references/gemini-argon-vs-agy-cli-hardcore-bo3-benchmark.md`.
