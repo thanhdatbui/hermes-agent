@@ -61,9 +61,11 @@ When subagents are locked out of external sync folders (e.g. `D:\OneDrive\Taadaa
 ## 3. System-Wide Cron Report Audit Checklist
 When reviewing or hardening farm reporting watchdogs, verify the following 4 structural integrity checks:
 
-### 1. Dual-Cluster Inventory Parity
+### 1. Dual-Cluster Inventory Parity & Account Type Disambiguation
 - **Risk:** Scripts like `cron_gmail_gpm_2fa_6h_report.py` hardcoding Kibe paths (`master_gmail_manager.xlsx`, Group 10) and completely omitting the Admin cluster (M201-M280).
-- **Rule:** Every farm-wide report MUST either explicitly loop over both clusters (`kibe` + `admin`) or clearly scope itself in the title (e.g. `[KIBE ONLY]`).
+- **Rule:** Every farm-wide report MUST either explicitly loop over both clusters (`kibe` + `admin`), or clearly scope itself in the title/summary. Furthermore, when a cluster uses a different account provider (e.g. Admin M201-M280 is 100% Hotmail, while 2FA Gmail applies exclusively to Kibe), the report MUST explicitly state this architectural context:
+  `• Ghi chú Farm: Cụm Admin (M201-280) là 100% Hotmail, 2FA Gmail chỉ áp dụng cho Cụm Kibe.`
+  This prevents operators from assuming the remote cluster was dropped or broken.
 
 ### 2. Host Target Identity Protection
 - **Risk:** Relying on `os.environ.get("USERNAME")` for target cluster detection (e.g. `farm_render_download_watchdog.py`). When running on Kibe, it defaults to monitoring Kibe even if scheduled to monitor Admin.

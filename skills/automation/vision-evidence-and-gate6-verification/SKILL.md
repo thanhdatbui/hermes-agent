@@ -45,6 +45,7 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
 - Bẫy Documentation-Only Fix & Kỷ Luật Sửa Mã Nguồn Thật Khi Lỗi Tái Diễn: [`references/documentation-only-fix-trap-and-real-code-hardening.md`](references/documentation-only-fix-trap-and-real-code-hardening.md)
 - Báo Cáo Đối Soát Độc Lập Claude Sonnet 5.5 & Kỷ Luật Triệt Tiêu Fail-Open Media Gate: [`references/claude-sonnet-audit-and-zero-failopen-media-gate.md`](references/claude-sonnet-audit-and-zero-failopen-media-gate.md)
 - Báo Cáo Tư Vấn Claude Sonnet: Quay Về Thiết Kế Tối Giản O(1), Chấm Dứt Bệnh Over-Engineering Của Media Gate: [`references/claude-consult-simplify-o1-gate-and-multi-session-conflict-resolution.md`](references/claude-consult-simplify-o1-gate-and-multi-session-conflict-resolution.md)
+- Bẫy UNVERIFIED_BY_VISION Do Dính Từ Khóa Visual Claim Khi Chỉ Dùng OCR Thô: [`references/unverified-by-vision-claim-trap-and-same-turn-browser-vision.md`](references/unverified-by-vision-claim-trap-and-same-turn-browser-vision.md)
 
 ## 1. Nguyên Tắc Cốt Lõi (Invariants)
 1. **CẤM gửi ảnh mù / đối phó:** Trước khi đính kèm bất kỳ thẻ `MEDIA:<path>` nào, bắt buộc phải mở ảnh ra soi mắt kiểm tra trước.
@@ -192,6 +193,12 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
     - **Bản Chất Over-Engineering:** Việc nhồi nhét HMAC-SHA256, TTL, file receipt `.jsonl` và hơn 40 regex đoán mò ý định câu chữ chỉ là "Security Theater" giả tạo, vì chính process của Agent nắm giữ key.
     - **Triệt Tiêu Hoàn Toàn Egress Leak:** Tuyệt đối CẤM dùng hook ở tầng xuất tin nhắn Telegram để trả về prompt lỗi nội bộ `[CONTRADICTION_GATE_TRIGGERED]`. Tin nhắn thuần text (không có thẻ `MEDIA:`) bắt buộc PASS 100%, không dùng regex bắt bẻ câu chữ.
     - **Nguyên Tắc O(1) Bất Biến:** Với tin nhắn có thẻ `MEDIA:<path>`, chỉ kiểm tra đúng 1 điều kiện cơ học: *Trong turn này, Agent đã gọi `browser_vision` mở file đó ra soi mắt chưa?* Chưa soi -> Chặn, yêu cầu mở ảnh ra xem. Đã soi -> Cho phép gửi. Chi tiết xem [`references/claude-consult-simplify-o1-gate-and-multi-session-conflict-resolution.md`](references/claude-consult-simplify-o1-gate-and-multi-session-conflict-resolution.md).
+38. **Bẫy `UNVERIFIED_BY_VISION` Do Dính Từ Khóa Visual Claim ('phương án', 'đề xuất') Khi Chỉ Dùng OCR Thô:**
+    - **Hiện tượng:** Khi gửi thẻ `MEDIA:<path>`, nếu văn bản trả lời chứa các từ như `phương án`, `đề xuất`, `chân dung`, `thiên nhiên`... Cổng `guard_media_vision_gate.py` nhận diện đây là Visual Claim (`is_visual_claim = True`). Nếu ảnh chỉ mới chạy qua `run_winrt_ocr.py` (`tool_called = "run_winrt_ocr"`), Gate sẽ lập tức chặn với mã lỗi `UNVERIFIED_BY_VISION` và đè toàn bộ tin nhắn thành chuỗi degraded kỹ thuật (`Trạng thái: DEGRADED | Mã: UNVERIFIED_BY_VISION...`), làm User hoang mang bức xúc (*"Cái l gì thế"*).
+    - **Khắc phục bắt buộc:**
+      * Khi gửi `MEDIA:`, BẮT BUỘC gọi `browser_navigate(url="file:///<path>")` và `browser_vision` trong CÙNG MỘT TURN với tin nhắn gửi `MEDIA:`. Hàm `_extract_seen_images_from_tool_calls` sẽ tự động cấp vé `SEEN_BY_COORDINATOR_BROWSER_VISION` với `tool_called = "browser_vision"`.
+      * Tuyệt đối không để vé OCR thô bảo lãnh cho tin nhắn chứa từ khóa visual claim.
+      * Chú ý TTL vé chỉ có 300s (5 phút); nếu sau 5 phút mới gửi tin nhắn thì vé cũ sẽ bị xem là hết hạn (`NO_RECEIPT`). Chi tiết xem [`references/unverified-by-vision-claim-trap-and-same-turn-browser-vision.md`](references/unverified-by-vision-claim-trap-and-same-turn-browser-vision.md).
 
 ## 2. Thang Leo Thang Vision Dự Phòng (Fallback Ladder)
 Thứ tự fallback đọc ảnh chuẩn hoá 100% đồng bộ với kiến trúc Worker Dispatch:
