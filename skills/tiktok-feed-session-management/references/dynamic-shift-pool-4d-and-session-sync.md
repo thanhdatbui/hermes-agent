@@ -57,8 +57,11 @@ Hệ thống vận hành theo **Vòng xoay thành công thuần túy State-Drive
     - Chỉ sau khi xong Lượt Dynamic Ngày 3 này thì Ca 3 mới reset `history` về rỗng để bắt đầu vòng mới `{5, 6}` ở Ngày 4.
   * **Hành động Coordinator:** Khi dự báo Ca 3 cho máy đã chạy đủ 2 nick `{5, 6}` trong chu kỳ, BẮT BUỘC gọi `resolve_dynamic_account_for_machine` để báo đúng nick cắn đề xuất / xả phạt / nick non sẽ được bốc, cấm đoán mò Row 5 hay Row 6.
 
-- 🛑 **Quy tắc Bất biến Bỏ Qua Follow (`dynamic-nurture-row-follow-disabled`):**
+- 🛑 **Quy tắc Bất biến Bỏ Qua Follow (`dynamic-nurture-row-follow-disabled` & 48h Interval Gate):**
   * DUY NHẤT VÀ ĐỘC QUYỀN áp dụng khi phiên nuôi rơi vào lượt Dynamic Slot của Ca 3 (hoặc fallback 3 phễu khi cạn pool). `feed_session_workbook.py` gán cờ `rest_day_no_follow: true` vào `MachineAccount`.
+  * **Cạm bẫy rơi cờ qua cache:** Khi Session 1 ghi nhận vào `today_shift_sessions`, nếu không lưu cờ `is_dynamic` thì Session 2 hoặc khi đọc lại cache sẽ return số row thông thường mà không raise ValueError, làm rớt cờ `rest_day_no_follow = False`. Bắt buộc ghi nhận `dynamic_sessions[ca][machine] = True` và kiểm tra qua `is_shift_session_dynamic_slot` để duy trì cờ.
+  * **Hard gate 48h Interval (`_is_account_follow_cooldown`):** Kiểm tra các lượt trong `state['followed']`. Nếu có lượt follow ở ngày hôm trước mà cách hiện tại `< 48h` -> bắt buộc `is_in_cooldown = True` (skip follow, lý do cooldown). Lượt follow của chính ngày hôm nay không bị chặn để Session 2 cùng ngày chạy bình thường.
+  * **Chống trôi lượt khi lỗi (Post-Follow Completion Gate):** CẤM append `row` vào `cycle_history` khi mới select ở Session 1. Chỉ gọi `mark_shift_account_cycle_completed` sau khi phiên follow đã chạy trọn vẹn (dù thành công hay bị nhả `follow_failed`). Nếu phiên bị crash/timeout/lỗi trước khi chạy -> KHÔNG mark để ngày hôm sau máy tự retry lại đúng nick đó.
   * Tại `multi_machine_feed_session.py`, `_run_follow_hook` kiểm tra `getattr(account, 'rest_day_no_follow', False)` và tự động bỏ qua bước follow, xuất reason:
     `status: "skipped", reason: "dynamic-nurture-row-follow-disabled"`.
   * Ca 1 và Ca 2 tuyệt đối KHÔNG BAO GIỜ bị dính reason này.

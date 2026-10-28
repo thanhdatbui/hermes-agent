@@ -8,4 +8,6 @@ Tool 2FA và cron xen ca: JIT lock từng máy (cấm bulk pre-reserve); freeze_
 §
 GuardGate (D:/Taadaa/tools/guardgate) là Protection Regression Gate cơ giới hóa cho code diff repo (Closeout Step 2.5); infra_regression_gate.py chỉ kiểm tra riêng 4 file config hạ tầng Hermes/OmniRoute.
 §
-Benchmark/test worker bắt buộc floor timeout >= 480s như production, cấm set timeout ngắn gây false-positive timeout; Qoder CLI là Tier 1 worker free tới 31/10 qua qoder_worker.py, auto-fallback sang Sol (:20129).
+Benchmark/worker timeout bắt buộc floor >= 480s như production, cấm set timeout ngắn gây false-positive timeout. Qoder CLI (DeepSeek-Flash) là Tier 1 worker free tới 31/10 qua qoder_worker.py, auto-fallback sang Sol (:20129). Dispatch_worker có Mechanical Gate 2 exit(3) chặn prompt mở/thiếu anchor trên file monolith > 1.500 dòng (cấm fallback khi dính Gate 2).
+§
+Follow Farm: Cấm optimistic append vào cycle_history; chỉ mark hoàn tất khi phiên follow chạy trọn vẹn (lỗi thì hôm sau retry đúng row đó); hard gate chặn follow nếu lần follow gần nhất < 48h (trừ cùng ngày); dynamic slot Ca 3 khóa rest_day_no_follow qua cả cache và Session 2.
