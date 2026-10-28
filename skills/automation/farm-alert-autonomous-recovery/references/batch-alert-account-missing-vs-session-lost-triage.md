@@ -18,6 +18,10 @@ Khi kết thúc một ca chạy batch Nuôi Feed hoặc Upload Hook, watchdog ph
    - Tiếp theo, ca upload hook chạy cùng hàng cũng không tìm thấy tài khoản trong Switcher, ghi nhận:
      `[ACCOUNT_SWITCHER_FAILED] select account failed: ACCOUNT_MISSING: expected account was not found.`
    - Watchdog bắt trúng từ khóa `"account_missing"`, hiểu nhầm là tài khoản vừa bị TikTok logout / văng phiên, và bắn alert P0.
+3. **Ảo ảnh tỷ lệ thất bại hàng loạt (Premature Batch Aggregator Snapshot):**
+   - Khi batch chưa kết thúc (ví dụ mới có 11 máy chạy xong nhả log, 67 máy còn lại đang lướt feed hoặc trong queue), watchdog đối soát chạy định kỳ quét log sớm.
+   - Bộ tổng hợp log gom 67 máy chưa có log hoàn thành vào diện "thất bại", đẩy tỷ lệ lỗi lên tới >80% (ví dụ 67/78 = 85.9%) và kích hoạt còi báo động "LỖI HỆ THỐNG LAN RỘNG" giả.
+   - Luôn đối soát log kết thúc phiên thực tế (`log.jsonl`) trước khi kết luận lỗi diện rộng.
 
 ## 3. Quy Trình Đối Soát & Triage Hiện Trường O(1)
 Để xác minh đây là Báo động giả hay Mất phiên thật:
