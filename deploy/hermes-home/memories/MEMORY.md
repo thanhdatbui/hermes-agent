@@ -9,3 +9,5 @@ Watchdog đối soát TikTok Web (SQLite snapshots) BẮT BUỘC đối chiếu 
 Tool 2FA và cron xen ca: JIT lock từng máy (cấm bulk pre-reserve) và né khung reboot/đệm; Batch 2FA Admin (≥200) qua SSH bắt buộc truyền --adb-path r"C:\Program Files (x86)\xiaowei\tools\adb.exe" chống crash PATH.
 §
 GuardGate (D:/Taadaa/tools/guardgate) là Protection Regression Gate cơ giới hóa cho code diff repo (Closeout Step 2.5); infra_regression_gate.py chỉ kiểm tra riêng 4 file config hạ tầng Hermes/OmniRoute.
+§
+Avatar chuẩn hóa: copy vào F_src/F_vid chỉ là lưu đĩa; BẮT BUỘC chạy run_upload_avatar.py --tik <N> --machine <M> (tik là số nguyên), chờ verified=True rồi chụp profile thật gửi MEDIA: nghiệm thu, cấm báo cáo khi chưa up.
