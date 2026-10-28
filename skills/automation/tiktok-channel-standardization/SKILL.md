@@ -138,3 +138,13 @@ Quy trình chuẩn hoá bao gồm trọn gói **5 hạng mục bắt buộc (5-i
 - **Kỷ luật gửi ảnh nghiệm thu thực tế & xử lý dứt điểm auto-resume không bại liệt:** [`references/auto-resume-and-evidence-discipline.md`](references/auto-resume-and-evidence-discipline.md).
 - **Cơ chế ghim bài LIFO & Xử lý trôi video top khi unpin (Off-Screen Recovery):** [`references/lifo-pin-ordering-and-offscreen-recovery.md`](references/lifo-pin-ordering-and-offscreen-recovery.md).
 
+---
+
+## 6. Kiến Trúc Chuẩn Hoá Bài Ghim Định Kỳ (Event-Driven Pin Standardization via Web Dashboard)
+- **Quy tắc thiết kế theo chỉ thị User (Tách biệt Read vs Write):**
+  - **Tầng Đọc (Read - Headless Web):** Sử dụng TikTok Web Dashboard / crawler (`tiktok_account_tracker.py`) quét nhẹ profile qua proxy pool trên PC để theo dõi số view và phát hiện video mới cắn đề xuất.
+  - **CẤM TUYỆT ĐỐI kẹp logic chuẩn hoá bài ghim vào ca nuôi (Feed Session):** Thao tác mở video $\to$ bấm Chia sẻ $\to$ Ghim/Bỏ ghim trong lúc nuôi nick rất dễ làm vỡ state machine của Feed, vướng popup bản quyền/livestream nuốt touch, làm crash hoặc delay ca nuôi toàn farm.
+  - **CẤM TUYỆT ĐỐI quét mù trên thiết bị S7:** Không bật màn hình từng máy S7 chạy dump XML chỉ để kiểm tra xem có video nào view cao không. 95% máy không có video cắn đề xuất, quét mù làm chai pin, nóng máy và tranh chấp USB/lock.
+  - **Tầng Ghi (Write - JIT Execution trên S7):** Chỉ khi Web Dashboard phát hiện tài khoản có video vượt mốc view ($\ge 1.000$) cần đảo ghim $\to$ đẩy trigger vào hàng đợi $\to$ chờ máy rảnh sau ca nuôi, worker mới chạy `pin_top_videos.py --machine <N> --account <USER>` chớp nhoáng (<= 30s) rồi tắt màn hình về Sleep.
+
+
