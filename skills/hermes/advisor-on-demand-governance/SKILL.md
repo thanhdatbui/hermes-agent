@@ -50,7 +50,15 @@ _ADVISOR_EXPLICIT_TRIGGERS = (
   {"isActive": true, "testStatus": "active"}
   ```
 - **OmniRoute ChatGPT-Web & Sol Worker Pool Rescue Protocol (Cứu Pool Sol / ChatGPT-Web)**:
-  * **Hiện tượng nghẽn**: Khi combo `gpt-web-sol` bị timeout, ngắt kết nối (`[499] Request aborted`), hoặc các tài khoản bị cô lập với trạng thái `banned` do Sentinel/Turnstile tạm thời.
+  * **Hiện tượng nghẽn & lỗi 503 Service Unavailable**:
+    * Khi gọi `gpt-web-sol` bị lỗi `HTTP 503: Service Unavailable`, không phải do model Sol hay backend ChatGPT Web bị sập hoàn toàn.
+    * **Nguyên nhân cốt lõi (Bẫy Round-Robin dính cụm acc chết)**:
+      * Trong combo `gpt-web-sol` thường chứa lượng lớn connections (ví dụ 157 accounts).
+      * Khi combo dùng chiến lược `round-robin` với tham số `maxGlobalAttempts` nhỏ (ví dụ 8 attempts), nếu con trỏ round-robin xoay trúng một cụm các tài khoản bị `apiKeyHealth = invalid`, hết hạn cookie `401 auth failed`, hoặc bị OpenAI chặn Turnstile/Sentinel (`ChatGPT blocked the request`).
+      * OmniRoute sẽ thử qua 8 tài khoản đầu tiên bị lỗi liên tiếp, vượt quá số lần thử tối đa (`maxGlobalAttempts = 8`) nên lập tức ném lỗi `503 Service Unavailable` ra ngoài, dù trong pool vẫn còn hàng trăm tài khoản khác khỏe mạnh!
+    * **Phương án khắc phục kỹ thuật**:
+      1. Tăng `maxGlobalAttempts` trong config của combo lên cao hơn (hoặc đổi sang thuật toán tránh các connection lỗi).
+      2. Chạy script thanh lọc / rà soát định kỳ loại bỏ các connection có `last_error` dính `Sentinel` hoặc `401` ra khỏi danh sách active của combo `gpt-web-sol`.
   * **Bẫy kiểm tra đồng thời (High Concurrency Rate-Limit Trap)**: Khi gửi test tới toàn bộ connections trong pool, TUYỆT ĐỐI CẤM chạy concurrency cao (`max_workers >= 8` gây nghẽn proxy MobiProxy/MikroTik và làm OmniRoute trả về HTTP 500 hàng loạt). BẮT BUỘC dùng concurrency thấp (`max_workers=2`) hoặc chạy tuần tự có sleep 0.2s–0.3s.
   * **Quy trình cứu hộ khép kín (Autonomous Pool Healer)**:
     1. Lấy danh sách connections từ `GET http://127.0.0.1:20129/api/providers`.
@@ -123,9 +131,10 @@ _ADVISOR_EXPLICIT_TRIGGERS = (
     - **Kỷ Luật Timeout Benchmark Chuẩn Worker (Floor 360s)**:
       * Khi tổ chức thi đấu / benchmark so tài model hay worker sửa code, Coordinator **CẤM TUYỆT ĐỐI** tự ý bóp timeout xuống 60s/75s để test nhanh.
       * Timeout benchmark BẮT BUỘC đặt sàn tối thiểu 360s như worker tiêu chuẩn để phản ánh chính xác năng lực suy luận thực tế và tránh làm fail giả (false timeout) khi model đang bootstrap CLI hoặc giải bài toán khó.
-    - **Đặc tính kỹ thuật Hardcore Farm Engineering (Argon 4 vs Agy CLI)**:
+    - **Đặc tính kỹ thuật Hardcore Farm Engineering (Argon 4 vs Agy CLI vs Sol Web)**:
       * **Argon 4 (Gemini Web Pool)**: Phản xạ siêu tốc (10s – 30s), cực mạnh về thuật toán phân phối tải, concurrency sliding window. Nhược điểm: Dễ dính lỗi ẩu thay đổi API/structure cũ (tự ý tạo Enum hoặc đổi tên thuộc tính) hoặc bỏ sót corner-case nhỏ (`normalize_text(None)`). Thích hợp làm Worker phản ứng nhanh, fix bug nóng.
       * **Antigravity CLI (Agy 3.8 Flash)**: Tốc độ chậm hơn (1 – 4 phút do CLI runtime), nhưng lập trình phòng thủ cực cao (defensive programming), giữ vững 100% backward compatibility, xử lý corner cases mẫu mực (thắng 2-1 ở giải đấu Hardcore BO3 ngày 28/10/2026). Thích hợp làm Architect Worker cho refactor phức tạp. Chi tiết xem `references/gemini-argon-vs-agy-cli-hardcore-bo3-benchmark.md`.
+      * **ChatGPT Web Sol High vs Argon 4**: Ở giải derby micro-surgery (28/10/2026), Argon 4 thắng 5-0 nhờ tốc độ vượt trội (18.6s vs 30.8s) và độ ổn định proxy 100%, trong khi Sol Web bị dính 2 lần 503 do cụm acc chết trong combo round-robin. Chi tiết thực nghiệm xem `references/gemini-argon-vs-sol-web-derby-benchmark.md`.
   * Coordinator giữ vai trò nghiệm thu O(1) qua focused test và canary thực tế; cấm spawn subagent mò mẫm file.
 - **Cơ chế Auto-Rewire Cứng Chống Nhảy Cóc Sang Claude (`haiku_worker.py`)**:
   * Claude CLI / Claude Worker là **100% On-Demand**. Tuyệt đối **CẤM** Coordinator tự ý đề xuất hoặc gọi `haiku_worker.py` / `claude_worker.py` theo quán tính/phản xạ khi User chưa yêu cầu đích danh.
