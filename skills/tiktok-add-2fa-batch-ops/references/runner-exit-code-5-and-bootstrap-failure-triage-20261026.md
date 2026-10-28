@@ -52,8 +52,11 @@ Trong kiến trúc batch 2FA (`tiktok-add-bao-mat-f2a`):
 ## 3. Quy Tắc & Giải Pháp Bắt Buộc
 
 ### 1. Phục Hồi & Tự Động Retry Khi Hydrate Workbook
-- Hàm `hydrate_workbook()` phải có vòng lặp retry 3 lần kèm backoff ngắn (2-5 giây) để đợi OneDrive nhả file trước khi kết luận `kibe_code = 5`.
-- Kiểm tra và tự động dọn dẹp file lock mồ côi `~$*.xlsx` nếu tiến trình Excel sở hữu đã tắt (`reap-dead-owner`).
+- **Lõi `run_batch_live_2fa.py`**: Bọc `freeze_targets()` trong retry loop 5 lần với exponential backoff `[2.0, 3.0, 4.0, 5.0, 5.0]` giây. Mỗi nhịp tự động kiểm tra `~${path.name}` và unlink lock mồ côi nếu `excel.exe` không còn sống trên máy.
+- **Hạ tầng `cron_night_tiktok_2fa_watchdog.py`**:
+  + Tại Kibe: `hydrate_workbook()` có retry loop 3 lần x 2.0s + reap lock mồ côi.
+  + Tại Admin-PC: Trong script PowerShell gửi qua SSH (`ps_admin_script`), thêm đoạn tự động dọn lock mồ côi `~$taikhoan_dat_v2_updated .xlsx` trước khi gọi `attrib -u +p $wb`.
+  + Sau khi sửa code: BẮT BUỘC chạy `python D:/Taadaa/tools/sync_2fa_to_admin.py` (chia chunk base64 đẩy sang Admin) và `python D:/Taadaa/Hermes/deploy/hermes-home/scripts/cron_sync_watchdog.py --force`.
 
 ### 2. Kỷ Luật Watchdog State & Cooldown Chống Spam
 - **Ghi nhận ngày chạy bất kể kết quả:** Watchdog bắt buộc ghi nhận `last_2fa_date = today_str` ngay sau khi đã gửi báo cáo (kể cả khi runner trả về exit code 5 hoặc partial failure).

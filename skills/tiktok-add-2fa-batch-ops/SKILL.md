@@ -6,7 +6,7 @@ description: "Use when running batch 2FA on TikTok farm. Chạy batch 2FA repo t
 # TikTok Add 2FA Batch Ops (repo tiktok-add-bao-mat-f2a)
 
 References:
-- `references/runner-exit-code-5-and-bootstrap-failure-triage-20261026.md` — Mã thoát 5: workbook lock, cooldown chống spam.
+- `references/runner-exit-code-5-and-bootstrap-failure-triage-20261026.md` — Mã thoát 5: workbook lock contention, retry loop 5 nhịp, reap dead owner excel & sync Admin-PC.
 - `references/admin-cluster-remote-socket-routing-20261026.md` — Máy ≥200: socket 192.168.110.119:5037.
 - `references/night-watchdog-idempotency-partial-failure-loop-20261026.md` — Idempotency theo ngày, rerun `--force`.
 - `references/graph-api-otp-token-and-canary-parity-discipline-20261024.md` — Graph OTP, Outlook, Canary.
