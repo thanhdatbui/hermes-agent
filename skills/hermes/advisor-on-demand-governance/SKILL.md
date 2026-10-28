@@ -97,8 +97,13 @@ _ADVISOR_EXPLICIT_TRIGGERS = (
 - **Quy chuẩn ủy quyền Worker (Farm Worker CLI & Fallback Ladder)**:
   Khi cần thực hiện các task sửa code / điều tra sâu vượt quá ngân sách Coordinator O(1):
   * **Tier 1 (First Responder - Mặc định):** BẮT BUỘC dispatch qua `python D:/Taadaa/tools/sol_worker.py "<contract O(1)>" --workdir <repo>` (hoặc qua `dispatch_worker.py`).
-  * **Tier 2 (Fallback 1):** `ag_cli.py fix` (Antigravity pool) - CHỈ KÍCH HOẠT khi Sol Worker thất bại có receipt audit ghi vào `dispatch.jsonl`.
-  * **Tier 3 (Fallback 2):** Haiku / Claude CLI (`haiku_worker.py` / `claude_worker.py`) - CHỈ KÍCH HOẠT khi CẢ Sol VÀ Agy đều thất bại có receipt audit trong cùng correlation session, hoặc khi có cờ `--on-demand` từ User.
+  - **Tier 2 (Fallback 1):** `ag_cli.py fix` (Antigravity pool) - CHỈ KÍCH HOẠT khi Sol Worker thất bại có receipt audit ghi vào `dispatch.jsonl`.
+    * **Tier 3 (Fallback 2):** Haiku / Claude CLI (`haiku_worker.py` / `claude_worker.py`) - CHỈ KÍCH HOẠT khi CẢ Sol VÀ Agy đều thất bại có receipt audit trong cùng correlation session, hoặc khi có cờ `--on-demand` từ User.
+    * **Lưu ý về Gemini Web / Argon Pool (`gemini-web-argon-pool` trên :20129)**:
+      - **Bản chất kỹ thuật**: Model category = 3 trong backend `gemini-web.ts` nối với Google Web Session. Trên UI OmniRoute hiển thị nhãn legacy là `gemini-3.1-pro`, nhưng thực tế backend đang map tới flagship Google Gemini 4 (Argon).
+      - **Không dùng làm Autonomous Worker độc lập**: Gemini Web chỉ hỗ trợ prompt chat thông thường (`StreamGenerate`), không có native tool calling hay quyền truy cập workspace / shell để chạy test và sửa file. Dùng cho mục đích tham vấn, giải toán, tra cứu tri thức hoặc hỏi đáp.
+      - **Giới hạn rolling window**: Bị Google áp giới hạn ~50-100 requests Pro / chu kỳ 3-4 giờ trên từng account. Cần duy trì qua pool 5 accs kẹp proxy 4G Mobi 1-1 theo chiến lược `cache-optimized` để tránh nghẽn.
+      - **So sánh thực chiến**: Khi làm worker thi công code tự động, Agy CLI (với Gemini 3.8 Flash + native tool calling + xoay tua 22 profile local) hiệu quả và ổn định hơn hẳn Gemini Web / Argon do không bị trói buộc bởi giao thức chat web và latency proxy.
   * Coordinator giữ vai trò nghiệm thu O(1) qua focused test và canary thực tế; cấm spawn subagent mò mẫm file.
 - **Cơ chế Auto-Rewire Cứng Chống Nhảy Cóc Sang Claude (`haiku_worker.py`)**:
   * Claude CLI / Claude Worker là **100% On-Demand**. Tuyệt đối **CẤM** Coordinator tự ý đề xuất hoặc gọi `haiku_worker.py` / `claude_worker.py` theo quán tính/phản xạ khi User chưa yêu cầu đích danh.

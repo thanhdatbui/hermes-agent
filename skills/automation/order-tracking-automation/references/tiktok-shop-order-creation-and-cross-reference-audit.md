@@ -30,7 +30,8 @@ When the user submits a screenshot (often captured from a multi-phone control so
 Never leave the account or farm device as `Unknown` if device indicators exist:
 1. **Identify Machine Number**: Read the window title bar in Total Control (e.g. `22 SM-G930F` $\rightarrow$ Machine 22).
 2. **Read Masked Email**: Note the prefix and suffix from the order email notification toggle (e.g. `t***6@gmail.com`).
-3. **Lookup Farm Workbooks**:
+3. **Lookup Farm Workbooks & Focus Verification**:
+   - **Tiled Multi-Device Ambiguity Triage (SparkActivity)**: In tiled Total Control grids where window title bars are adjacent or non-standard, verify candidate machines in O(1) via `with_device_lock.py --machine <N> -- adb -s <serial> shell "dumpsys window windows | grep mCurrentFocus"`. If `mCurrentFocus` is `com.bytedance.hybrid.spark.page.SparkActivity`, that machine is the live TikTok Shop order host.
    - `taikhoan_run_safe.xlsx`: Filter rows where `May == 22`. Identify slot/row handles (e.g. Row 128 `ngomai.ly`, Row 129 `tooanh2604`, Row 131 `tangchi10`).
    - `Tik1.xlsx` - `tik4.xlsx`: Check niche and slot status (e.g. `Tik2.xlsx` Row 23 corresponds to Machine 22, Slot 2, `@tooanh2604`).
    - `gmail_clean_v2.xlsx`: Search for email starting with `t` and ending with `6` belonging to Machine 22 (e.g. `tooanh26041996@gmail.com`).
