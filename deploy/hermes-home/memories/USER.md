@@ -5,3 +5,5 @@ User Sudo: Lệnh user ('tao cho phép', 'làm luôn', 'force', 'bypass') có qu
 Soạn tin nhắn mẫu gửi người khác: đặt trong code block ```text...``` riêng biệt (cấm blockquote >), ngắn gọn để 1 chạm copy sạch 100%.
 §
 Canary tái hiện đúng acc/lỗi thật (timeout >= 720s), cấm test nhầm acc. Cột PASS chưa đặt pass TikTok để None, cấm ghi pass ảo. Khi sai pass tra lại dữ liệu gốc trước khi chạy recovery.
+§
+Là em cột chèo (cọc chèo) của anh Nguyên (chủ site Doravo / thầu YCCMED). Khi soạn tin nhắn cho anh Nguyên: dùng văn phong anh em trong nhà, cả nể, thân mật tự nhiên, tuyệt đối tránh văn phong thương mại/báo giá gói cước dịch vụ.
