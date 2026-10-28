@@ -60,5 +60,6 @@ description: "Taadaa farm safety, close-session, and multi-machine operations."
 - Windows Large Directory Cold Cache I/O Pitfalls: [`references/windows-large-dir-cold-cache-io-pitfalls.md`](references/windows-large-dir-cold-cache-io-pitfalls.md)
 - Gallery Picker Stale Tile & Avatar Bottomsheet: [`references/gallery-picker-stale-tile-and-bottomsheet-coords.md`](references/gallery-picker-stale-tile-and-bottomsheet-coords.md)
 - Kỷ Luật Chốt Phiên Closeout v2 O(1) & Khai Tử LLM Reviewer: [`references/closeout-v2-o1-fast-gate-protocol.md`](references/closeout-v2-o1-fast-gate-protocol.md)
+- Khế Ước Dò Quota Trần Động Follow (Biên Độ 2 & Hạ Trần Gãy -2): [`references/follow-dynamic-quota-tight-boundary-and-post-failure-reduction-20261028.md`](references/follow-dynamic-quota-tight-boundary-and-post-failure-reduction-20261028.md)
 - Bẫy Cắt Số Đuôi Account Switcher & Khởi Chạy SplashActivity Đích Danh: [`references/account-switcher-trailing-digits-and-explicit-launch-focus.md`](references/account-switcher-trailing-digits-and-explicit-launch-focus.md)
 - Audit & Purge ChatGPT GPM Đăng Nhập & Đồng Bộ Token: [`references/chatgpt-gpm-login-audit-and-purge-discipline.md`](references/chatgpt-gpm-login-audit-and-purge-discipline.md)
