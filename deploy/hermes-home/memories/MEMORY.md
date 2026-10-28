@@ -9,3 +9,5 @@ Tool 2FA và cron xen ca: JIT lock từng máy (cấm bulk pre-reserve); freeze_
 GuardGate (D:/Taadaa/tools/guardgate) là Protection Regression Gate cơ giới hóa cho code diff repo (Closeout Step 2.5); infra_regression_gate.py chỉ kiểm tra riêng 4 file config hạ tầng Hermes/OmniRoute.
 §
 Code sửa mới >= 15 dòng bắt buộc phân bước rõ ràng (# Bước X / # Step X); cấm cam kết miệng mà bắt buộc cơ giới hóa qua GuardGate rules.json từng repo.
+§
+Lệnh dispatch_worker qua terminal bắt buộc timeout >= 480s khớp sàn sol_worker, cấm set 180s làm rớt session.

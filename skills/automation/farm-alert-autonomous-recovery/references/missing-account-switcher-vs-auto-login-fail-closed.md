@@ -104,6 +104,13 @@ FeedRunner: [FAIL] Lệch Profile/Nick TikTok (profile account mismatch / naviga
 - **Nguyên nhân gốc:** `dispatch_worker.py` có sàn timeout cứng cho Sol/Agy là `SOL_AGY_TIMEOUT_FLOOR = 480` (8 phút). Nếu terminal đặt `timeout=180`, process sẽ bị terminal hủy trước khi worker kịp hoàn thành hoặc fallback.
 - **Quy tắc bắt buộc:** Khi gọi `dispatch_worker.py` hoặc các runner có worker AI, Coordinator BẮT BUỘC ép `timeout >= 480` (khuyên dùng 500s–600s), hoặc chạy ngầm `terminal(background=True, notify_on_complete=True)`. CẤM TUYỆT ĐỐI set timeout foreground 180s cho các lệnh gọi dispatch worker.
 
+### J. Pitfall Canary Runner vs Live Batch Reservation Locks
+- **Hiện tượng:** Khi chạy canary runner (`canary_runner.py --repo "tiktok-luot nuoi acc" --machine <N>`) để nghiệm thu sửa code trên máy thật, runner dừng ngay và báo lỗi: `multi-machine-feed-session: all machines were locked and skipped`.
+- **Nguyên nhân gốc:** Thiết bị đang nằm trong phiên reservation lock của ca batch thật đang chạy ngầm (`command=run_tiktok.py --mode multi-machine-feed-session reservation`, `owner_active: true`, PID đang chạy). Theo cơ chế bulkhead bảo vệ farm, runner con sẽ không cướp lock thiết bị.
+- **Quy chuẩn kiểm chứng (Offline/Mocked Invariant):**
+  - Tuyệt đối không kill tiến trình batch hay xóa file lock của máy đang chạy ca thật chỉ để lấy kết quả canary.
+  - Tuân thủ nghiêm ngặt Invariant L2: Nghiệm thu logic sửa đổi bằng bộ test suite focused mocked offline (`pytest python_runner/tests/test_upload_hook.py -q`), chạy trong < 10s để chứng minh tính đúng đắn trước khi commit.
+
 ## 3. Quy Trình Nạp Bù Tài Khoản Đúng Chuẩn (Actionable Reconcile Flow)
 Để nạp nick còn thiếu vào slot trống của thiết bị mà không ảnh hưởng đến batch đang chạy:
 
