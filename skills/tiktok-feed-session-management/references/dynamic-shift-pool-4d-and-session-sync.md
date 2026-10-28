@@ -34,6 +34,15 @@ Hệ thống vận hành theo **Vòng xoay thành công thuần túy State-Drive
     2. Đọc manifest hôm qua: `D:/Taadaa/runtime/kibe/live/<YYYY-MM-DD_hqua>/row-0-.../run_manifest.json` $\to$ xác nhận máy X hôm qua thực tế đã chạy row nào.
     3. Đối soát overlap: Khẳng định nick hôm nay và hôm qua khác nhau 100% (luân phiên chuẩn, không trùng lặp), giải thích rõ máy đang đi theo đúng cycle history cá nhân.
 
+- 🛑 **Triage Dự Báo Lịch Chạy Ca 3 Ngày 3 — CẤM Nhầm Ca 3 Tự Reset Về {5, 6}:**
+  * **Cạm bẫy Agent thường mắc:** Khi User hỏi lịch chạy ngày mai/ca tối của các máy, Coordinator thường nhìn vào pool `{5, 6}` của Ca 3 và đoán nhầm là "Ca 3 sau 2 ngày sẽ reset vòng mới quay lại Row 5/6".
+  * **Quy tắc chuẩn hóa 100%:** Ca 1 và Ca 2 chạy chu kỳ 3 ngày (3 nick). Riêng Ca 3 chỉ có 2 nick `{5, 6}`:
+    - Ngày 1: Chạy nick 1 của pool.
+    - Ngày 2: Chạy nick 2 của pool.
+    - **Ngày 3 (Lượt Dynamic Slot):** Khi cả Row 5 và Row 6 đều đã có trong `cycle_history['3'][m]`, `candidates` bị rỗng $\implies$ script bắt buộc ghi nhận marker `-1` và kích hoạt **`3-tier dynamic healing slot`** (`resolve_dynamic_account_for_machine` chọn nick Cắn đề xuất $\to$ Đi tù nhả follow $\to$ Nick non ít video nhất) với cờ **`rest_day_no_follow = True`**.
+    - Chỉ sau khi xong Lượt Dynamic Ngày 3 này thì Ca 3 mới reset `history` về rỗng để bắt đầu vòng mới `{5, 6}` ở Ngày 4.
+  * **Hành động Coordinator:** Khi dự báo Ca 3 cho máy đã chạy đủ 2 nick `{5, 6}` trong chu kỳ, BẮT BUỘC gọi `resolve_dynamic_account_for_machine` để báo đúng nick cắn đề xuất / xả phạt / nick non sẽ được bốc, cấm đoán mò Row 5 hay Row 6.
+
 - 🛑 **Quy tắc Bất biến Bỏ Qua Follow (`dynamic-nurture-row-follow-disabled`):**
   * DUY NHẤT VÀ ĐỘC QUYỀN áp dụng khi phiên nuôi rơi vào lượt Dynamic Slot của Ca 3 (hoặc fallback 3 phễu khi cạn pool). `feed_session_workbook.py` gán cờ `rest_day_no_follow: true` vào `MachineAccount`.
   * Tại `multi_machine_feed_session.py`, `_run_follow_hook` kiểm tra `getattr(account, 'rest_day_no_follow', False)` và tự động bỏ qua bước follow, xuất reason:
