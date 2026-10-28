@@ -14,4 +14,4 @@ Qoder CLI v1.1.80 đã cài tại C:\Users\Kibe\.qoder\bin\qodercli\ (wrapper tr
 §
 Code sửa mới >= 15 dòng bắt buộc phân bước rõ ràng (# Bước X / # Step X); cấm cam kết miệng mà bắt buộc cơ giới hóa qua GuardGate rules.json từng repo.
 §
-Vision Gate: Ép AI khi gửi ảnh MEDIA: bắt buộc phải đọc lại ảnh (vision/OCR) đối soát thực thể thật (tên nick/lỗi) để chống bịa đặt; cấm thiên vị chỉ soi mỗi avatar; cấm bẫy từ khóa chung 'phương án/đề xuất'; cấm leak chuỗi DEGRADED ra chat.
+Vision Gate: Ép AI gửi MEDIA: bắt buộc đọc ảnh đối soát thực thể thật chống bịa đặt; cấm chỉ soi mỗi avatar; cấm bẫy 'phương án/đề xuất'; cấm leak DEGRADED ra chat. VPN Preflight hỗ trợ dual-cluster fallback (kibe <-> admin).

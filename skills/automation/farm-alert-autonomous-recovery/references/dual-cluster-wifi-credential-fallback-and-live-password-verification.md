@@ -14,6 +14,7 @@ Trong đợt chạy Nuôi Acc / Lướt Feed trên cụm Admin (M201-280), 5 má
 Hàm `get_wifi_credentials_for_serial` bắt buộc phải có cơ chế fallback đa cụm (Dual-Cluster Fallback):
 - Khi tra cứu trong mapping hiện tại không thấy serial, tự động kiểm tra sang thư mục đối ứng (`kibe` <-> `admin`).
 - Nếu file đối ứng tồn tại, đọc bảng mapping và lấy đúng số máy để cấp đúng SSID và mật khẩu (`admin 1` / `admin 2` với pass `19051995`).
+- Unit test cơ học bắt buộc: `test_get_wifi_credentials_dual_cluster_fallback` trong `tests/test_vpn_preflight_proxy_guard.py`.
 
 ---
 
@@ -31,3 +32,4 @@ TikTok mở màn hình đăng nhập, điền pass `A6SpYQZm#W`, nhưng server T
 1. Cột `PASS` bị để trống (`None`) trong database chính thức thường là kết quả của việc tài khoản đã bị đổi mật khẩu hoặc chưa hoàn tất đặt pass trong quá trình reg/sync trước đó.
 2. Tuyệt đối không được khẳng định 100% mật khẩu từ file backup là đúng khi chưa qua kiểm chứng live trên thiết bị.
 3. Khi TikTok báo `Mật khẩu sai`: Script bắt buộc phải tự động fail-fast từ `fast_login` sang luồng cứu hộ chuyên sâu `reconcile_tiktok_accounts.py` để xử lý cấp lại mã hoặc khôi phục qua token/mail, cấm lặp lại việc thử pass sai làm khóa tài khoản.
+4. **Đối Soát Chéo Khẳng Định Thành Công Với OCR Báo Lỗi (`guard_media_vision_gate`):** Mọi ảnh chụp màn hình gửi ra nếu có chữ `Mật khẩu sai` / `Lỗi mạng` mà văn bản báo cáo khẳng định `thành công / đã login` sẽ bị Gate triệt hạ ngay với mã `CONTRADICTION_HARD`.
