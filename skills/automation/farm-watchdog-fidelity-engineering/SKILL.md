@@ -196,6 +196,15 @@ Applies whenever reports fail to reflect actual fleet health, mask dropped machi
   2. **Target Account Follower Audit:** When the script reports $N > 0$ follows but Web following shows 0 increase, cross-check the `follower` count of target accounts (`followed` in `follow_result.json`) in `snapshots`. If target accounts gained followers, the follow was successfully committed on the server, and the source counter is merely experiencing TikTok CDN/profile cache propagation delay.
   3. **TikTok Optimistic UI Invariant (User Correction):** TikTok UI is strictly optimistic (immediately turns to "Following" on tap). It only flips to "Follow" when the server un-follows/rejects. There is NO scenario where UI shows "Follow" while the request succeeded due to UI lag. When runner halts on an un-follow signal (`FOLLOW_FAILED`), stopping is the correct fail-safe behavior to protect accounts — never relax the runner logic. See `references/tiktok-web-follow-reconcile-baseline-drift-and-target-audit.md`.
 
+### Invariant 21: Decoupled Pipelines (Feed — Follow — Upload) & Mandatory Pull-to-Refresh Profile Reconcile
+- **Anti-Pattern:**
+  1. Forcing sequential dependency where feed technical hiccups (app crash, transient socket drop, 0 swipes) cause the runner to skip follow (`sensitive-skip-fail`) and upload for healthy accounts.
+  2. Proposing to remove `pull_to_refresh_profile` when inspecting an account profile, believing that viewing the profile directly is sufficient. On TikTok app, viewing a profile directly uses local cache (still showing 'Following') — without pull-to-refresh to force server sync, server un-follows cannot be detected.
+- **Rule:**
+  1. **Strict Pipeline Decoupling:** Feed, Follow, and Upload MUST execute independently. Feed failure does not block Follow; Follow failure does not block Upload. Only severe account-level security states (`_SENSITIVE_ACCOUNT_WORDS`: `banned`, `checkpoint`, `logged_out`, `captcha`) abort subsequent phases.
+  2. **Mandatory Pull-to-Refresh with 3.5s Delay & 2-Pass Polling:** Pull-to-refresh is mandatory to detect silent follow drops. To prevent false-negative un-follow flags caused by proxy/4G latency or loading spinners obscuring the button, use `sleep_after=3.5s` and a 2-pass polling loop with 1.5s intervals before classifying relationship state.
+  3. **JIT In-flight Reconnect for Stale Sockets:** Before invoking `reset_atx_agent`, execute `adb.reconnect(timeout=5.0)` to clear the frozen USB transport socket at the device level, preventing cascading timeouts across large fleets. See `references/decoupled-pipeline-and-path-b-verify-invariants.md`.
+
 ---
 
 ## 3. Verification Protocol for Watchdogs & Reports

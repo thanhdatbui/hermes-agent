@@ -176,6 +176,20 @@ When headless network access fails and an on-site computer is borrowed via Ultra
 8. **PPPoE `Timeout waiting for PADO packets`:**
    - Indicates no discovery offer from BRAS. Verify: cable is in **LAN 1** of ONT (many ONTs only bridge LAN 1), ONT is set to Bridge Mode, and VLAN ID (e.g. 35) is configured if required by provincial ISP.
 
+9. **The Bridge Dual-Zone & DHCP Collapsing Trap (Why Rescue Port Flaps After 1 Minute):**
+   - **The Architectural Bug:** If both the static management interface (`lan` on `192.168.5.1`) and the rescue interface (`rescue` on DHCP client) are bound to the same bridge device (`br-lan`), but assigned to different firewall zones (`lan` in zone `lan` with `ACCEPT`, and `rescue` in zone `wan` with `REJECT/masq`):
+     - Netifd attempts to manage two conflicting subnet scopes on one L2 bridge.
+     - When connected to a home router, `rescue` obtains an upstream DHCP lease and brings Tailscale up (~30s). Shortly after (~60–90s), OpenWrt initializes the static IP and firewall zone conflict, while router-side dnsmasq rogue DHCP leases clash with home network $\rightarrow$ default gateway flaps and Tailscale drops out permanently!
+   - **The Permanent Fix in LuCI / UCI:**
+     1. **Move RESCUE Zone to `lan`:** Under **Network -> Interfaces -> RESCUE -> Firewall Settings**, assign it to zone **`lan`** (green), NOT `wan`. Both interfaces on `br-lan` must share the same security domain.
+     2. **Disable Rogue DHCP on LAN:** Under **Network -> Interfaces -> LAN -> DHCP Server -> General Setup**, check **`Ignore interface`**. This completely silences OpenWrt DHCP broadcasts, ensuring peaceful coexistence when plugged into any home router.
+     3. **Preserve Metric Priority:** Keep `rescue` metric at `200` while PPPoE lines remain at `10` and `20`.
+
+10. **Tone & Decorum When Composing ISP Escalation Messages:**
+    - When user requests a message to send to ISP technicians:
+    - **Never make it overly aggressive or hostile.** Avoid threats, insults, or demanding compensation.
+    - Keep tone polite, professional, and technical: cite exact accounts (`hyn_gftth_...`), gateway IPs (`27.68.227.150`), and ICMP diagnostic codes (`10.29.74.202 !C`). Technical precision commands immediate respect from field engineers without escalating interpersonal friction.
+
 ## References
 
 - `references/claude-audit-and-field-triage-r3g.md` — Detailed case study of Xiaomi R3G deploy, Claude CLI production audit remediation, and the premature lifeline unplug incident.
