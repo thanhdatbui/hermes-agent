@@ -11,3 +11,5 @@ GuardGate (D:/Taadaa/tools/guardgate) là Protection Regression Gate cơ giới 
 OpenWrt R3G (MT7621/DSA): Cổng xanh br-lan nối PC; Access Concentrator / Service Name để TRỐNG. Cắm line tốt mà PADO timeout là do switch/VLAN/cổng nội bộ, cấm đổ thừa MAC/ISP/hạ tầng. Tắt IPTV trên profile WAN H196A. Nhắn tin kỹ thuật dẫn ICMP !C và account ID.
 §
 Cooldown pool OmniRoute: Dùng rate_limited_until dạng ISO UTC (+30m), giữ nguyên is_active=1 và 100% models trong combo; cấm set is_active=0 hoặc xóa entry làm cụt pool; cron chatgpt-web-pool-healer-watchdog sẽ tự động quét hồi sinh.
+§
+Cooldown acc ChatGPT Web / Sol: Luôn dùng rate_limited_until (ISO +30m) trong provider_connections để router tự né và tự hết hạn, cấm set is_active=0 hoặc xóa model khỏi combo làm cụt pool tài khoản; Cron healer (fff7f688990d) chạy mỗi 6h qua GPM CDP để phục hồi cookie.
