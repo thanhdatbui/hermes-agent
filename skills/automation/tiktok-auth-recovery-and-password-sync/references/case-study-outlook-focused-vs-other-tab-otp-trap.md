@@ -20,8 +20,10 @@
 
 ## Giải pháp cơ giới hóa tự động (Automated Fix)
 Trong `D:/Taadaa/Hotmail/scripts/read_otp_gpm.py`:
-1. Sau khi mở Outlook Web, script kiểm tra danh sách thư ở tab mặc định.
-2. Nếu chưa thấy mã OTP mới hợp lệ, script tự động tìm nút tab có chữ `"khác"` hoặc `"other"`:
+1. **Tự động phân giải email & mật khẩu từ Excel workbooks**:
+   Thay vì hardcode, script tự động đọc email từ profile name/ID và tra cứu mật khẩu hòm thư từ các file workbook quản lý (`taikhoan_dat_v2_updated .xlsx`, `gmail_clean_v2.xlsx` ở cả 2 cụm `admin` và `kibe`). Khi Microsoft yêu cầu đăng nhập mật khẩu tại `login.live.com`, script tự động submit pass và KMSI để vào thẳng Outlook.
+2. **Quét thông minh 2 tab (Ưu tiên vs Khác)**:
+   Sau khi mở Outlook Web, script kiểm tra danh sách thư ở tab mặc định. Nếu chưa thấy mã OTP mới hợp lệ, script tự động tìm nút tab có chữ `"khác"` hoặc `"other"`:
    ```python
    for tab_btn in page.locator("[role=tab], button").all():
        t_name = tab_btn.inner_text().strip().lower()

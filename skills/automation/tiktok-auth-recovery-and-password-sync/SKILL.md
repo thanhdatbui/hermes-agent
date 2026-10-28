@@ -143,7 +143,7 @@ description: Use when TikTok login has wrong pass. Reset via token.
    - Email xác thực tự động (OTP / verification code) từ TikTok hầu như luôn bị bộ lọc của Microsoft tự động xếp vào **tab "Khác" (Other)**.
    - Khi nhìn giao diện, trên đầu danh sách thư sẽ thấy dòng nhóm `Email khác (12)` hoặc tab `Khác`.
    - Bẫy: Nếu script Playwright / GPM (`read_otp_gpm.py`) chỉ quét các phần tử DOM trên tab mặc định (Ưu tiên), nó sẽ hoàn toàn không thấy email mới và kết luận nhầm là "TikTok bị nghẽn/không phát OTP".
-   - **Khắc phục chuẩn xác**: Trong script đọc OTP, sau khi kiểm tra tab hiện tại không có mã mới, BẮT BUỘC duyệt qua các nút tab `[role=tab], button`, tìm nút có tên `khác` hoặc `other` để `click()`, chờ 1.5s rồi quét lại danh sách thư. Cơ chế này đảm bảo bóc được mã OTP ngay trong lượt đầu mà không cần chờ timeout hay resend nhiều lần.
+   - **Khắc phục chuẩn xác**: Trong script đọc OTP (`read_otp_gpm.py`), sau khi kiểm tra tab hiện tại không có mã mới, BẮT BUỘC duyệt qua các nút tab `[role=tab], button`, tìm nút có tên `khác` hoặc `other` để `click()`, chờ 1.5s rồi quét lại danh sách thư. Đồng thời tích hợp hàm `_resolve_mail_credentials` tự động tra cứu mật khẩu từ Excel workbook (`taikhoan_dat_v2_updated .xlsx` / `gmail_clean_v2.xlsx`) để tự động vượt qua màn hình đăng nhập `login.live.com` nếu session profile bị hết hạn. Cơ chế này đảm bảo bóc được mã OTP ngay trong lượt đầu mà không cần chờ timeout hay resend nhiều lần.
 
 
 
