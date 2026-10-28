@@ -209,6 +209,10 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
     - **Triệt tiêu bẫy thiên vị avatar:** Gate không được chỉ khắt khe với ảnh mang tên "avatar" rồi buông lỏng ảnh UI lỗi, đăng nhập, wifi hay switcher. MỌI ảnh đính kèm `MEDIA:` bắt buộc phải có vé đọc thật (`browser_vision` hoặc `WinRT OCR`) trong 300s.
     - **Entity Grounding thay vì bắt bớ từ khóa:** Bỏ bẫy từ khóa chung chung (`phương án`, `đề xuất`). Kiểm tra tính nhất quán dựa trên thực thể: Tên tài khoản, tên SSID, trạng thái màn hình (nếu ảnh có `Mật khẩu sai` hoặc `Không có Internet` mà text nói thành công thì phải chặn ngay lập tức).
     - **Triệt tiêu rò rỉ Degraded Template:** Cấm nuốt tin nhắn và ném chuỗi `Trạng thái: DEGRADED` ra Telegram. Gate phải trả về re-reasoning prompt để AI nhìn lại ảnh và đính chính phát ngôn trung thực. Chi tiết xem [`references/universal-image-inspection-and-anti-avatar-bias-gate.md`](references/universal-image-inspection-and-anti-avatar-bias-gate.md).
+40. **Quy Tắc "Cấm Khóc Lóc, Cấm Overthinking" Khi Thiết Kế Gate & Xử Lý Sự Cố:**
+    - Khi nhận phản hồi từ User về lỗ hổng thiết kế của Gate: Tuyệt đối CẤM dừng lại thanh minh, xin lỗi dài dòng hay sinh ra các cơ chế over-engineering phức tạp (nhiều tầng state, bẫy regex mới).
+    - Triển khai ngay giải pháp tối giản nhất: Mở rộng `check_contradiction` trong `guard_media_vision_gate.py` để bắt trúng các mâu thuẫn hiển nhiên (Text: "thành công/đã login", Ảnh: "Mật khẩu sai/Lỗi mạng"), kiểm thử focused unit test pass và commit dứt điểm.
+
 
 ## 2. Thang Leo Thang Vision Dự Phòng (Fallback Ladder)
 Thứ tự fallback đọc ảnh chuẩn hoá 100% đồng bộ với kiến trúc Worker Dispatch:

@@ -121,4 +121,9 @@ description: Use when TikTok login has wrong pass. Reset via token.
    - Khắc phục bắt buộc:
      * Ngay đầu hàm `open_account_dropdown()` và `go_to_profile()`, BẮT BUỘC kiểm tra `if _account_dropdown_open_xml(xml): return True`.
      * Nếu sheet đã mở sẵn thì lập tức bỏ qua bước tap mở dropdown và chuyển thẳng sang bước chọn "Thêm tài khoản".
+21. **Phân Biệt Microsoft AADSTS70000 Token Expiration vs Hotmail Bị Đổi Pass**:
+   - Khi Graph API trả về lỗi `AADSTS70000: The user could not be authenticated as the grant is expired`, đây KHÔNG PHẢI lỗi do đổi mật khẩu hòm thư Hotmail/Outlook. Mật khẩu lưu trong Excel vẫn hoàn toàn chính xác.
+   - Nguyên nhân gốc rễ là Microsoft tự động thu hồi refresh token của tài khoản cá nhân sau >30-45 ngày không có tương tác nhằm bảo mật (Inactivity Token Expiration).
+   - Khi cố đăng nhập lại bằng mật khẩu trên trình duyệt (GPM/Playwright) từ môi trường proxy khác, Microsoft sẽ kích hoạt Security Challenge yêu cầu mã xác minh gửi về email khôi phục (recovery email, ví dụ: domain `@smvmail.com`). Nếu không có quyền truy cập recovery mail để xác nhận, session trình duyệt sẽ bị dừng ở bước challenge và không thể tự động vượt qua để đọc inbox. Giải pháp triệt để cho farm là xoay vòng nick TikTok hoặc đổi sang tài khoản dự phòng có pass/token active.
+
 
