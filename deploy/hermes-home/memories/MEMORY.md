@@ -7,3 +7,5 @@ Watchdog đối soát TikTok Web: Chu kỳ farm 3-4 ngày/acc (1 ca/buổi gồm
 Tool 2FA và cron xen ca: JIT lock từng máy (cấm bulk pre-reserve); freeze_targets bọc retry 5 nhịp backoff + dọn lock mồ côi ~$*.xlsx né xung đột cron sync 5m; Batch 2FA Admin qua SSH bắt buộc --adb-path r"C:\Program Files (x86)\xiaowei\tools\adb.exe"; sau sửa 2FA bắt buộc chạy sync_2fa_to_admin.py.
 §
 GuardGate (D:/Taadaa/tools/guardgate) là Protection Regression Gate cơ giới hóa cho code diff repo (Closeout Step 2.5); infra_regression_gate.py chỉ kiểm tra riêng 4 file config hạ tầng Hermes/OmniRoute.
+§
+Benchmark/test worker bắt buộc floor timeout >= 480s như production, cấm set timeout ngắn gây false-positive timeout; Qoder CLI là Tier 1 worker free tới 31/10 qua qoder_worker.py, auto-fallback sang Sol (:20129).

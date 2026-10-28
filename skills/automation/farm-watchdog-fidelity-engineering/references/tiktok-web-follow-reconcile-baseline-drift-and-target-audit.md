@@ -94,14 +94,21 @@ Khi nhận báo cáo watchdog follow bị lệch:
     `M5 [Tik 2] (@stevemgjqec): script báo 5 (chéo 5, tự nhiên 0) | baseline cũ (2026-10-27 10:04) | UNPROVEN`
   * Không tính sai số ảo vào tổng độ lệch (`total_diff`) của toàn phiên, triệt tiêu hoàn toàn các alert rác "lệch ảo".
 
-### 2. Kiến Trúc Khắc Phục Triệt Để: Pre-Session & Post-Session Scrape Hai Đầu (User Architectural Contract)
+### 2. Kiến Trúc Khắc Phục Triệt Để: Pre-Session & Post-Session Scrape Hai Đầu (ĐÃ TRIỂN KHAI VÀO RUNNER)
 * **Nguyên lý gốc:** Để đo delta đối soát chính xác 100% không phụ thuộc snapshot ngẫu nhiên trong ngày:
   * **Vòng đời chuẩn:** Xác định danh sách nick chạy Follow -> Cào Baseline ngay trước khi gửi lệnh thiết bị -> Thiết bị chạy Follow -> Cào Latest ngay khi hoàn tất.
-  * **Pre-Scrape Trigger:** Khi Runner / Picker chốt danh sách máy tham gia Follow trong phiên, chạy một lệnh cào nhanh trước khi máy tap follow:
-    ```bash
-    python D:/Taadaa/tools/tiktok_account_tracker.py --usernames <user1> <user2> ... --workers 10
-    ```
-  * **Thời gian thực thi:** 5 – 10s cho cụm 10-20 máy, hoàn toàn nằm trong dung sai buffer chuẩn bị phiên.
+  * **Vị trí tích hợp thực tế (`scripts/hermes_cron/tiktok_runner.py` — hàm `_scrape_pre_session_following`):**
+    Ngay trước khi spawn `run-feed-session.ps1`, runner tự động xác định các tài khoản tham gia ca:
+    - **Row cố định (`row > 0`):** Đọc trực tiếp workbook bằng `openpyxl` lấy nick tại `slot_idx = row - 1` của các máy `healthy_machines`.
+    - **Dynamic Pool (`row == 0` / Shift Ca):** Đọc `shift_pool_cycle_state.json` lấy row đã phân bổ từ Phiên 1 (`today_shift_sessions[ca][m]`) hoặc fallback theo pool của ca (`SHIFT_POOLS = {1: (1, 2, 7), 2: (3, 4, 8), 3: (5, 6)}`).
+    - Bắn lệnh cào song song:
+      ```bash
+      python D:/Taadaa/tools/tiktok_account_tracker.py --usernames <user1> <user2> ... --workers 15
+      ```
+  * **Bẫy kỹ thuật đã xử lý:**
+    - CẤM import `follow_runner` trong cron script vì không nằm trong `sys.path` (dẫn tới silent `ImportError` nuốt lỗi trong im lặng). Luôn dùng `openpyxl` đọc file `taikhoan_run_safe.xlsx`.
+    - CẤM so khớp cứng `account_row_index == row` khi `row == 0` (Dynamic Pool), vì workbook chỉ có row 1..8. Bắt buộc tra cứu qua mapping ca hoặc `SHIFT_POOLS`.
+  * **Thời gian thực thi:** 5 – 10s cho 10-80 máy, hoàn toàn nằm trong dung sai buffer chuẩn bị phiên.
   * **Hiệu quả:** Baseline snapshot luôn có tuổi $\le 15-30$ phút, triệt tiêu 100% tình trạng `stale baseline (> 4h)` và nhãn `UNPROVEN`, đảm bảo đối soát mọi ca (Sáng, Trưa, Tối) đều có căn cứ số liệu tươi mới.
 
 ### 3. Kỷ Luật Về UI TikTok & Runner Follow (User Correction Invariant)
