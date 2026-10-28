@@ -61,3 +61,8 @@ Narrowing rule execution within a repo to only modified files that actually cont
 - **Pre-execution interceptors (Runtime layer):** Intercept command executions on the live terminal/session before commands run to prevent immediate system disruption.
 - **Regression Gates (Commit layer):** Analyze git diffs at closeout/push time to prevent improper patterns from entering version control history.
 - The two layers operate at different lifecycle moments and complement each other.
+
+## 5. Terminology Pitfall: `guardgate` vs `infra_regression_gate.py`
+- **`guardgate` (`D:/Taadaa/tools/guardgate`)**: CHÍNH LÀ Protection Regression Gate cho code & script của toàn bộ repositories. Tích hợp trực tiếp tại **Step 2.5 của `closeout_gate.py`** (`from guardgate.runner import check_diff`). Soi từng dòng thêm mới (`git diff`) đối chiếu với `rules.json` (toàn farm) và `<repo>/rules.json` (từng repo) để chặn đứng mọi mâu thuẫn/hồi quy trước khi commit.
+- **`infra_regression_gate.py` (`D:/Taadaa/tools/infra_regression_gate.py`)**: CHỈ là bộ kiểm tra tĩnh 4 file cấu hình hạ tầng của riêng Hermes & OmniRoute (`config.yaml`, `server.env`, `omniroute_watchdog.ps1`, `cleanup_omniroute_db.py`). TUYỆT ĐỐI không nhầm lẫn file này thành Protection Regression Gate của các repo code farm.
+
