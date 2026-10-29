@@ -5,7 +5,3 @@ Nạp Web reverse (:20129): trần 2 acc/IP; pass random lưu Excel; pre-validat
 TikTok Farm: Chu kỳ 3 ngày cày liên tục (Ca 1: {1,2,7}, Ca 2: {3,4,8}, Ca 3: {5,6} + Dyn Ngày 3; bỏ Ngày 4). Lệch pha độc lập vì pool nick rời nhau 100%. Gate cooldown 48h (_is_account_follow_cooldown) chặn cấm bấm follow nếu acc vừa cày < 48h. Quota max cap 40 fl/ngày (2 phiên >=120m); used>0 streak=1; 3 quy trình Feed-Follow-Upload độc lập; Quota [cap-2, cap], bóp trần = last_failed - 2; Máy Lẻ (Nhóm A bám trần + hồi phục 1,2), Máy Chẵn (Nhóm B max 20 fl/phiên, used>0 dừng nhận fl đã ăn, used=0 mới cooldown).
 §
 Tool 2FA và cron xen ca: JIT lock từng máy; sync code Admin qua OneDrive D:\OneDrive\TaadaaData\admin\ (cấm stream Base64 qua SSH); single_writer workbook fallback ID + protected_parts=None khi add text né WORKBOOK_PROTECTED_PART_DRIFT. Master Excel Admin: 101/630 có 2FA.
-§
-GuardGate: gate repo. OpenWrt (R3G): Cấm Reset Factory từ xa (trùng 192.168.1.1 gây mất UltraViewer). Cổng slave DSA (lan1/lan2) phải rút khỏi br-lan kẻo bridge nuốt gói PADO PPPoE. Cấm gõ 'auto' vào Service Name/AC. Tên interface phân biệt hoa thường (WAN2 vs wan2). Cổng xanh giữ br-lan 192.168.5.1 để cứu hộ.
-§
-Canary visual: cấm dùng ảnh spinner ('Quá trình này có thể mất...', loading); mtime ảnh >= mtime UI dump. Bắt buộc bốc đúng exact hash từ prompt, cấm glob/mtime trên image_cache. SQLite daily_account_actions là nguồn sự thật lịch sử follow.
