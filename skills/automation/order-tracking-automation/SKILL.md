@@ -163,6 +163,7 @@ Do not say “real-time” when polling. State the interval and likely detection
 
 ## References
 
+- `references/in-app-sync-cadence-and-silent-milestone-trap.md` — In-app sync 6h cadence discipline to prevent phone overheating and feed lock collisions, silent milestone delivery trap fix, and active phone window detection on farm grids.
 - `references/zero-token-cron-wrapper-and-guard-wiring.md` — Zero-token cron watchdog wrapper pattern (`no_agent: true`), relative script path resolution via `deploy/hermes-home/scripts/`, anti-kneejerk deletion on HTTP 503, and mandatory 9 pre-tool hooks runtime/deploy parity.
 - `references/multi-carrier-ghn-spx-jt-api-and-lifecycle-routing.md` — Multi-carrier reverse-engineering (GHN public API with phone_verify, J&T Express cellphone validation, SPX/Ninja Van APIs), normalized status milestones, and zero-ADB handoff.
 - `references/in-app-tracking-extraction-and-switcher-disambiguation.md` — Profile handle ambiguity vs switcher sheet trap, J&T 12-digit numeric billcode pattern, double device-lock deadlock avoidance, and terminal retirement protocol.

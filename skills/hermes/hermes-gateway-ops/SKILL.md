@@ -14,10 +14,11 @@ Trigger: set up or operate the messaging gateway (Telegram first), bind a chat/g
 - `references/telegram-webhook-read-timeout-backoff.md` — Timeout Polling SOCKS5.
 - `references/telegram-media-download-resilience-and-timedout-retry.md` — Vá tải ảnh `TimedOut`.
 - `references/telegram-gateway-ram-desync-and-site-packages-sync.md` — Lệch pha RAM Gateway, sync site-packages.
-- `references/telegram-latex-sanitizer-and-runtime-sync.md` — Sanitize LaTeX math Telegram & sync runtime Gateway.
-- `references/telegram-latex-math-and-raw-syntax-pitfalls.md` — Cấm LaTeX math trên Telegram, sơ đồ Unicode.
-- `references/telegram-polling-heartbeat-debounce-anti-flapping.md` — Xử lý Telegram Heartbeat Flapping & Adaptive Fast-Retry.
-- `references/llm-cronjob-gateway-queue-saturation-and-prevention.md` — Chẩn đoán & ngăn nghẽn queue Gateway do Cronjob thiếu `no_agent: True`.
+- `references/telegram-latex-sanitizer-and-runtime-sync.md` — Sanitize LaTeX.
+- `references/telegram-latex-math-and-raw-syntax-pitfalls.md` — Cấm LaTeX math.
+- `references/telegram-polling-heartbeat-debounce-anti-flapping.md` — Heartbeat Anti-Flapping.
+- `references/llm-cronjob-gateway-queue-saturation-and-prevention.md` — Chống nghẽn queue Gateway.
+- `references/telegram-model-picker-cache-and-provider-discovery.md` — Cache Inline Keyboard `/model`, Auto-Discovery & dọn dẹp.
 
 ## CLI commands
 
