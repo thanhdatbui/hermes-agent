@@ -55,3 +55,5 @@ Directly converting the active management port (e.g., `lan1`) to a PPPoE interfa
 
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.
+- `references/pppoe-pado-bridge-trap-and-remote-triage-pitfalls.md`: Bẫy switch DSA bridge nuốt gói PADO và quy trình tách cổng.
+- `references/remote-triage-web-terminal-and-isp-walled-garden-pitfalls.md`: Bẫy web terminal ttyd nuốt `&&`, case-sensitive interface Linux, và chẩn đoán pool ISP 172.17.x.x Walled Garden.

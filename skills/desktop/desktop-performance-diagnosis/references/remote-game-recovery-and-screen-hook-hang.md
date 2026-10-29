@@ -3,11 +3,23 @@
 ## Overview & Incident Patterns
 When managing remote Windows gaming environments (e.g. `admin-farm` / `192.168.110.119`), client and game crashes (League of Legends, Teamfight Tactics / TFT) frequently manifest as "stuck in match" or unresponsive reconnect buttons rather than normal game termination.
 
-## Root Cause: UltraViewer Graphic Hook Exception (`uvh64.dll`) & WerFault Deadlock
-1. **Graphic Hook Crash:**
-   Remote desktop control software like `UltraViewer_Desktop.exe` injects a screen-capturing hook (`uvh64.dll`). When the DirectX client (`TFTClient-Win64-Shipping.exe` or `LeagueClient.exe`) initializes, swaps resolution, or reconnects, the unloaded hook `uvh64.dll_unloaded` throws an Access Violation exception `0xc0000005` under `bad_module_info`.
-2. **WerFault Deadlock:**
+## Root Cause: UltraViewer Graphic Hook Exception (`uvh64.dll`), Overwolf (`OWUtils.dll`) & Deadlock
+1. **Graphic Hook Crash & Deadlock on Unreal Engine 5 Client:**
+   Remote desktop control software like `UltraViewer_Desktop.exe` injects a screen-capturing hook (`uvh64.dll`). When the DirectX 12 / Unreal Engine 5 client (`TFTClient-Win64-Shipping.exe` or `LeagueClient.exe`) initializes, it calls `USER32.dll` and `UxTheme.dll` to construct the game window. The global message hook in `uvh64.dll` causes a total deadlock on `GameThread`, logging:
+   `LogCore: Error: Hang detected on GameThread (thread hasn't sent a heartbeat for 25.00 seconds)`
+   `0x00007ffc5f027d68 UnknownFunction []` -> Resolves via `VirtualQueryEx` + `GetMappedFileNameW` directly to `C:\Program Files (x86)\UltraViewer\uvh64.dll`.
+   The game process remains alive (`MainWindowHandle: 0`, consuming ~1.2GB RAM and 10-15% CPU), showing only an empty/transparent icon on the Windows Taskbar, but the actual window never renders or opens.
+2. **Third-Party Overlay Interference (Overwolf / OWUtils.dll):**
+   Similarly, companion apps running on Overwolf (or standalone TFT overlays) inject `OWUtils.dll` into D3D12 swapchains. If Overwolf hangs or desyncs, it halts `GameThread` in the identical manner.
+3. **WerFault Deadlock:**
    Windows automatically spawns `WerFault.exe` (Windows Error Reporting) to dump memory. `WerFault.exe` holds an exclusive handle on the crashed process and locks the desktop compositor thread, causing the Riot/League Client window to freeze in a "Reconnecting" or "Game is running" state. The "Reconnect" button appears unresponsive, and clicks from background scripts or user input are completely ignored.
+
+## Electron Helper Auto-Resurrection Immunity (e.g. TFTAcademy)
+When users complain that third-party helpers (like `TFTAcademy.exe` or Discord) keep re-enabling auto-startup on boot despite deleting their startup shortcuts:
+- **Root Mechanism:** Electron applications invoke `app.setLoginItemSettings({ openAtLogin: true })` inside their runtime. Every time the app is launched or auto-updates, it silently re-inserts its entry into `HKCU:\Software\Microsoft\Windows\CurrentVersion\Run`.
+- **Permanent Immunization (2-Layer Defense):**
+  1. Delete the registry value: `Remove-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -Name "electron.app.TFTAcademy"`.
+  2. Immunize via Explorer StartupApproved: Set the binary toggle in `HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run` for `"electron.app.TFTAcademy"` to `0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00`. Windows Explorer permanently enforces this disabled state even if the application rewrites its entry in the `Run` key.
 
 ## Safe Remediation Workflow via Remote SSH
 Do not try to click "Reconnect" on an overlay-locked window. Follow this sequence:
