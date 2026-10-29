@@ -6,7 +6,7 @@ description: "Use when running batch 2FA on TikTok farm. Chạy batch 2FA repo t
 # TikTok Add 2FA Batch Ops (repo tiktok-add-bao-mat-f2a)
 
 References:
-- `references/single-writer-missing-writer-id-and-ssh-chunk-hang-20261029.md` — **[MỚI 29/10/2026]** Khắc phục lỗi Single-Writer Workbook `BLOCKED_EXPECTED_WRITER_ID_MISSING` gây liệt 0/69 máy Admin, bẫy treo gateway SSH chunking và quy trình cứu hộ 65 nick từ audit log.
+- `references/admin-cluster-triple-trap-triage-and-onedrive-sync-20261029.md` — **[MỚI 29/10/2026]** Triage 3 tầng lỗi cụm Admin (0/69 máy): cấm stream chunk Base64 qua SSH gây nghẽn socket, chuyển sang sync qua OneDrive; fallback Single-Writer ID; fix WORKBOOK_PROTECTED_PART_DRIFT và quy trình cứu hộ 65 nick từ audit log vào Excel.
 - `references/runner-exit-code-5-and-bootstrap-failure-triage-20261026.md` — Mã thoát 5: workbook lock contention, retry loop 5 nhịp, reap dead owner excel & sync Admin-PC.
 - `references/admin-cluster-remote-socket-routing-20261026.md` — Máy ≥200: socket 192.168.110.119:5037.
 - `references/immediate-write-through-retry-and-closeout-discipline-20261015.md`
