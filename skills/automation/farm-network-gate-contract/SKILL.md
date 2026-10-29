@@ -34,5 +34,10 @@ validate SSOT
 
 The sequence is one-way: if a gate fails, do not run downstream checks or change another layer to hide the failure.
 
+## GPM Profile Proxy Safety Invariant & Operator Direct-IP Protocol (Approach A)
+- **Agent Enforcement:** Agent is 100% blocked from creating GPM profiles without a proxy (`guard_gpm_proxy.py` pre-tool hook on `terminal|execute_code`).
+- **Operator Direct Exemption:** When direct IP is needed for primary personal Gmails, Operator creates profiles directly on the GPM desktop GUI. Agent is permitted to start and use existing direct profiles.
+- **Deep Reference:** See `references/gpm-proxy-enforcement-mechanical-gate-and-operator-direct-rule.md`.
+
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.
