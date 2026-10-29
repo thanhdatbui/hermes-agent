@@ -76,3 +76,4 @@ description: "Taadaa farm safety, close-session, and multi-machine operations."
 - Chu Kỳ 3 Ngày Shift-Pool, Lệch Pha An Toàn & Socket Concurrency Dashboard: [`references/tiktok-farm-3day-shift-pool-phase-decoupling-and-dashboard-concurrency.md`](references/tiktok-farm-3day-shift-pool-phase-decoupling-and-dashboard-concurrency.md)
 - Quét Kênh Flop & Xoay Nguồn Cào (Cấm Bỏ Acc, Render Nối Tiếp): [`references/flop-channel-detection-and-source-rotation-invariants.md`](references/flop-channel-detection-and-source-rotation-invariants.md)
 - Quản Trị Quét Kênh Flop & Throttle Xoay Nguồn Cào Tự Động: [`references/flop-channel-detection-and-source-rotation-governance.md`](references/flop-channel-detection-and-source-rotation-governance.md)
+- Xoay Nguồn Kênh Flop & Kỷ Luật UI Lâm Sàng Sổ Bệnh Án: [`references/flop-channel-source-rotation-and-dashboard-clinical-ux.md`](references/flop-channel-source-rotation-and-dashboard-clinical-ux.md)
