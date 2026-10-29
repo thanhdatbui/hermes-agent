@@ -181,4 +181,5 @@ Do not say “real-time” when polling. State the interval and likely detection
 - `references/shopclone7-boxtaikhoan-order-audit.md` — ShopClone7/BoxTaiKhoan order retention reality vs 3-day UI warning, API 404 behavior, and host Chrome login session.
 - `references/tiktok-in-app-order-tracking.md` — In-app order inspection protocol, device locking, account verification, and carrier handoff.
 - `references/jt-express-tracking-and-farm-order-governance.md` — J&T Express web tracking (anti-scraping 4-digit phone bypass, event parsing), farm voucher pickup protocol (no-app rule, courier bundling, hub morning window 07:15–08:00, secret order-note convention), and host audible alarm pattern.
+- `references/tiktok-shop-farm-order-fast-ingestion-and-patch-pipeline-20261029.md` — Fast order ingestion under strict write quotas, targeted runner patch pattern, 9:16 screen crop coordinates, and cross-reference workbook lookup.
 - `references/tiktok-shop-order-creation-and-cross-reference-audit.md` — Creation of canonical order records from user farm desktop screenshots, device and account cross-referencing, image cropping, and multi-store atomic synchronization.

@@ -282,6 +282,12 @@ Applies whenever reports fail to reflect actual fleet health, mask dropped machi
   2. **Multi-Cluster Date Union:** Union candidate date folders across ALL configured cluster roots (`kibe`, `admin`) rather than scanning only local `LIVE_ROOT`.
   3. **Explicit Cluster Status Telemetry:** When a cluster directory is missing for `today`, the watchdog must NOT silently drop the cluster; it must report `• Trạng thái: Chưa có lượt chạy nào trong phiên (Chưa chạy / Bị skip / Nghẽn preflight)` while delivering the healthy cluster's telemetry in full. See [`references/multi-cluster-date-discovery-and-local-live-blindspot.md`](references/multi-cluster-date-discovery-and-local-live-blindspot.md).
 
+### Invariant 29: Single-Device Operator Interaction vs Fleet Bulkhead (Anti-Blanket Abort)
+- **Anti-Pattern:** An automation runner preflight gate (`run-feed-session.ps1`) throws a fatal exception (`PREFLIGHT_PORT_5038_BLOCKED`) and kills the entire multi-machine batch run (all 80 phones) because a secondary tool (XiaoWei on port 5038) is listening while an operator places orders or manages 1 specific device.
+- **Rule:**
+  1. **Bulkhead Device Isolation:** Never blanket-abort the entire fleet due to single-device tooling. Standard ADB (port 5037) and XiaoWei ADB (port 5038) communicate concurrently with separate physical USB endpoints without latency conflict.
+  2. **JIT Device Lock Over Script Termination:** Rely on device lock files (`machine_<M>.lock.json`) to skip only the device being used by the operator (`is_device_locked_skip=True`). Allow the remaining 79 machines to execute their scheduled tasks uninterrupted.
+
 ---
 
 ## 3. Verification Protocol for Watchdogs & Reports
@@ -313,4 +319,5 @@ Applies whenever reports fail to reflect actual fleet health, mask dropped machi
 - [`references/dashboard-watchdog-death-loop-and-multi-process-collision.md`](references/dashboard-watchdog-death-loop-and-multi-process-collision.md) — Case study: Multi-process socket collision, watchdog death-loop on large SQLite dashboards, and domain decoupling.
 - [`references/guard-regex-false-positive-and-realtime-audit-fidelity.md`](references/guard-regex-false-positive-and-realtime-audit-fidelity.md) — Case study: Distinguishing live agent violations from guard regex false positives (`FIND_SCAN` / `//` trap) in rolling-window audits.
 - [`references/multi-cluster-date-discovery-and-local-live-blindspot.md`](references/multi-cluster-date-discovery-and-local-live-blindspot.md) — Case study: Multi-cluster date discovery vs unilateral local LIVE_ROOT scans, missing today dates, and preflight obstruction diagnosis.
+- [`references/xiaowei-port-5038-bulkhead-and-single-device-lock.md`](references/xiaowei-port-5038-bulkhead-and-single-device-lock.md) — Case study: XiaoWei port 5038 bulkhead, single-device JIT lock isolation, and anti-fleet-abort preflight safety.
 - [`references/scheduler-ledger-fallback-and-heartbeat-stale-reconciliation.md`](references/scheduler-ledger-fallback-and-heartbeat-stale-reconciliation.md) — Case study: Scheduler ledger fallback in 24H heartbeat aggregator, schedule interval alignment, and multi-tier parity synchronization.
