@@ -7,3 +7,5 @@ TikTok Farm: Chu kỳ 3 ngày cày liên tục (Ca 1: {1,2,7}, Ca 2: {3,4,8}, Ca
 Tool 2FA và cron xen ca: JIT lock từng máy; sync code Admin qua OneDrive D:\OneDrive\TaadaaData\admin\ (cấm stream Base64 qua SSH); single_writer workbook fallback ID + protected_parts=None khi add text né WORKBOOK_PROTECTED_PART_DRIFT. Master Excel Admin: 101/630 có 2FA.
 §
 Cứu hộ OpenWrt từ xa qua UltraViewer cổng xanh: Cấm Reset Factory (trùng 192.168.1.1 modem gây rớt mạng). DSA lan1/lan2 phải rút khỏi br-lan mới nhận PADO (cấm bridge nuốt gói). Cấm dán chuỗi '&&'/'&' qua LuCI ttyd/UltraViewer (bị nuốt ký tự, dùng start-stop-daemon -b). Cấm điền 'auto' vào Service Name. Đổi chéo dây vật lý giữa 2 modem bắt buộc đảo tài khoản tương ứng trong uci network vì BRAS khóa Circuit ID. Khi WAN dính Walled Garden (!C), 'tailscale up' sẽ treo TLS. Nhắn kỹ thuật ISP lịch sự dẫn chứng ICMP !C và account ID. Cấm suy diễn MAC ảo.
+§
+Khi PPPoE Viettel nhận IP 172.17.x.x nhưng rớt 8.8.8.8, do thiếu VLAN 35 (bị đẩy vào pool quản lý). Cần tạo VLAN (802.1q) lan1.35 gán vào WAN để nhận IP Public thật. Không reset factory qua UltraViewer tránh trùng 192.168.1.1.

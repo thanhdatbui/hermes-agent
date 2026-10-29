@@ -258,6 +258,26 @@ When headless network access fails and an on-site computer is borrowed via Ultra
         - `uci set network.WAN2.username='<account_of_cable_now_in_lan2>'`
       - Otherwise, cross-dialing occurs (sending Line 1 credentials down Line 0 fiber), triggering immediate authentication rejection from the BRAS.
 
+    - **ISP 802.1Q VLAN Tagging vs Management Pool Trap (The "172.x.x.x" & VLAN 35 Solution):**
+      - **Symptom:** PPPoE connects successfully and receives an IP in the private carrier range (e.g. `172.17.x.x` on Viettel) and an IPv6 GUA (`2402:800:...`), ping to BRAS peer (`27.68.227.150`) succeeds with 0% loss (2ms), but `ping 8.8.8.8` drops 100% and HTTP traffic hangs. ISP technician explicitly states: *"172 là cấu hình sai rồi, phải chạy VLAN 35"*.
+      - **Root Cause:** When dialing PPPoE untagged directly on a physical interface (`lan1`), the ISP BRAS/OLT classifies the session as untagged management traffic and routes it to an isolated internal management pool (`172.17.x.x`), dropping all outbound internet traffic. To reach the actual Internet subscriber pool and obtain a routable Public IP / working CGNAT, the PPPoE session MUST be encapsulated in an 802.1Q VLAN tag (e.g. VLAN ID `35` for Viettel).
+      - **How to Configure 802.1Q VLAN on OpenWrt (LuCI / UCI):**
+        1. **Create the 802.1Q Device in LuCI:**
+           - Go to **Network -> Interfaces -> Devices** tab.
+           - Click **Add device configuration...**.
+           - **Device type:** Select **`VLAN (802.1q)`**.
+           - **Base device:** Select the physical port (e.g. `lan1` or `lan2`).
+           - **VLAN ID:** Enter the ISP VLAN ID (e.g. `35`).
+           - Resulting device name is automatically `lan1.35` (or `lan2.35`). Click **Save** and **Save & Apply**.
+        2. **Bind Interface to the VLAN Sub-Device:**
+           - Go to **Network -> Interfaces -> Edit WAN** (or `WAN2`).
+           - In **General Settings -> Device**, change selection from physical `lan1` to the new VLAN sub-device: **`lan1.35`**.
+           - Ensure protocol is `PPPoE`, enter credentials, and save.
+        3. **Clear "USER_REQUEST" Status:**
+           - If interface shows `Error: Unknown error (USER_REQUEST)`, click **RESTART** on the interface row, followed by **Save & Apply**.
+        4. **Verification:**
+           - Once netifd brings up `pppoe-wan` over `lan1.35`, the router receives a genuine Public/Internet IP (e.g. `27.x`, `116.x`, `171.x` or routable CGNAT `100.64.x`), eliminating the `172.17.x.x` trap, and `ping 8.8.8.8` immediately succeeds.
+
 ## References
 
 - `references/claude-audit-and-field-triage-r3g.md` — Detailed case study of Xiaomi R3G deploy, Claude CLI production audit remediation, and the premature lifeline unplug incident.
