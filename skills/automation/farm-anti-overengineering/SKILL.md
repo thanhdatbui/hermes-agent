@@ -31,9 +31,19 @@ description: Kỷ luật thực thi chống over-engineering và cấm viết l�
 - **Quy tắc Vòng Đời Subprocess Hook & Không Cần Restart Gateway:**
   - Các hook khai báo trong `config.yaml` (`pre_tool_call`, `post_tool_call`) được Hermes kích hoạt theo dạng CLI subprocess độc lập (`python D:/Taadaa/tools/...`).
   - Mọi thay đổi sửa chữa trên file script hook/tool có hiệu lực ngay lập tức ở lần gọi tiếp theo, **TUYỆT ĐỐI KHÔNG CẦN restart Gateway** (trừ khi can thiệp core `gateway/run.py` hoặc daemon in-memory).
+- **Quản trị Pool Reverse Web & Kỷ luật Cooldown tự động (CẤM TẮT / XÓA ACC BỪA BÃI):**
+  - Khi account trong pool web bị lỗi (401 auth failed, 403 Cloudflare Turnstile / Sentinel, hoặc proxy timeout), **CẤM TUYỆT ĐỐI** đặt `is_active = 0` hoặc xóa entry khỏi combo làm cụt pool.
+  - BẮT BUỘC đưa vào Cooldown bằng cách set `rate_limited_until` theo chuẩn ISO UTC tương lai (`cooldownUntilMs` đọc ms hoặc ISO; cấm truyền epoch giây vì sẽ bị đọc thành năm 1970 làm hết cooldown ngay).
+  - Cấu hình combo router với `disableSessionStickiness: true` và `failoverBeforeRetry: true` để tự động nhảy sang acc khỏe mạnh khác, triệt tiêu lỗi 503.
+  - Hết hạn cooldown, router tự động nhả acc về trạng thái phục vụ bình thường.
+  - Chi tiết kỹ thuật quy trình nạp tự động 15 acc Pro qua GPM CDP lưu tại: `references/gemini-web-argon-pool-cooldown-and-cdp-population-20261029.md`.
 - **Targeted Scoping cho Closeout v2 (`--target-file`):**
   - Khi repo có nhiều file dirty tồn đọng từ các ca làm việc trước, chạy full dirty detection sẽ gây timeout hoặc dính test fail của file khác.
   - `closeout_v2.py` bắt buộc hỗ trợ cờ `--target-file <path>` để chỉ chạy syntax compile và focused pytest cho đúng file vừa sửa trong phiên hiện tại.
+- **Kỷ Luật Tinh Gọn Dashboard 80/20 & Chống Bẫy Master-Detail Phình Trướng (Macro vs Micro):**
+  - Phân định rạch ròi hai cấp độ: Cấp Farm/Vĩ mô (Sức Khỏe Follow, Fleet Heatmap, Thống kê toàn farm) vs Cấp Nick/Vi mô (Sổ Bệnh Án, Lịch sử UID, Biểu đồ cá nhân).
+  - CẤM biến thao tác soi sâu của 1 nick thành chuyển trang Master-Detail toàn màn hình kẹp cột danh sách all nick (`fd-left`). Trên mobile (màn hình dọc < 900px), danh sách all nick sẽ choán nửa trên màn hình gây rối loạn trải nghiệm và cảm giác bug giao diện ("bấm vào 1 nick lại bung ra menu all nick").
+  - Mọi thao tác soi sâu vi mô của 1 nick (Biểu đồ `📈`, Bệnh án `📜`) BẮT BUỘC thiết kế dạng **Popup Modal tại chỗ**: mở đè lên xem xong bấm X đóng lại giữ nguyên vị trí duyệt, cấm đẻ thêm tab Toolbar riêng và cấm nhân bản cây danh mục nick toàn farm.
 - **Cấm rải Git hook (pre-push/pre-commit) phân tán vào 20 repo con (Bureaucratic Theater):** Farm vận hành hằng ngày qua Task Scheduler và Python Cron, hoàn toàn không chạy `git push`. `git push` chỉ xảy ra khi dev/agent kết thúc phiên code. Mọi chốt chặn Invariant bắt buộc tập trung tại 1 điểm duy nhất.
 - **Phân định dứt khoát Regression Gate vs Protection Regression Gate:**
   - *Regression Gate:* Chạy suite unit test (`pytest`) của repo để kiểm tra tính đúng đắn của logic chức năng.
@@ -52,6 +62,7 @@ description: Kỷ luật thực thi chống over-engineering và cấm viết l�
 
 ## 3. Tài Liệu Tham Khảo (References)
 - Báo Cáo & Quy Trình Đại Phẫu Cắt Tỉa Hệ Thống Gate / Guard Over-Engineered (2026-10-27): [`references/complete-farm-gate-pruning-and-hash-chain-eradication-20261027.md`](references/complete-farm-gate-pruning-and-hash-chain-eradication-20261027.md)
+- Bẫy Phình Trướng Master-Detail & Kỷ Luật Dashboard 80/20 (Macro vs Micro): [`references/dashboard-8020-macro-micro-and-master-detail-bloat-pitfall.md`](references/dashboard-8020-macro-micro-and-master-detail-bloat-pitfall.md)
 - Bóc Tách Token Grounding Gap & Cắt Tỉa Security Theater: [`references/visual-gate-token-grounding-gap-and-security-theater-pruning.md`](references/visual-gate-token-grounding-gap-and-security-theater-pruning.md)
 - Kỷ Luật Thiết Kế Gate Chuẩn O(1) & Tách Rời Phiên Vận Hành Khỏi Closeout Review: [`references/o1-gate-discipline-and-closeout-operational-decoupling.md`](references/o1-gate-discipline-and-closeout-operational-decoupling.md)
 - Toàn bộ hồ sơ quy tắc và case study lịch sử: [`references/historical-anti-overengineering-archive.md`](references/historical-anti-overengineering-archive.md)

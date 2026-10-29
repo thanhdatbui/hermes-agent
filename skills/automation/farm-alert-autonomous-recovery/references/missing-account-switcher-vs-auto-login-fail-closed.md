@@ -166,7 +166,24 @@ FeedRunner: [FAIL] Lệch Profile/Nick TikTok (profile account mismatch / naviga
 - **Hiện tượng:** Sau khi tap Switcher đổi nick thành công, TikTok bật modal/overlay toàn màn hình gợi ý *"Follow bạn bè của bạn"* / *"Follow lại"*. Màn hình này không có bottom navigation bar, khiến hàm phân loại `classify_screen` trả về `unknown TikTok state` và profile preflight bị đánh dấu `manual-needed` fail-closed.
 - **Xử lý chuẩn:** Trong `_maybe_handle_profile_add_phone_guard`, tích hợp `find_matching_handler` bắt trúng `follow_friends_suggestion_popup` và gọi dismisser đóng lớp phủ bằng phím Back hoặc tap nút đóng trước khi đọc profile identity.
 
-### D. Ép WinRT OCR Primary Cho Module Đăng Nhập (`social_reg_v1.py` / `tiktok_login_v1.py`)
+### D. Màn Hình "Chào mừng bạn trở lại" (Welcome Back Account Picker) vs False-Positive `manual-needed:login`
+- **Hiện tượng:** Khi mở TikTok hoặc chuyển Profile, app hiển thị màn hình *"Chào mừng bạn trở lại"* liệt kê các nick đã lưu session trên máy (kèm avatar và nút *"Thêm tài khoản khác"*). Module `classifier.py` bắt trúng text *"Bạn không có tài khoản? Đăng ký"* hoặc *"Đăng nhập"* và phân loại sai thành `manual-needed:login` ("login/account screen detected"), làm runner tưởng văng nick và kích hoạt recovery hoặc fail-closed.
+- **Xử lý chuẩn:**
+  1. Đây là màn hình Account Picker / Switcher lưu phiên của TikTok, KHÔNG phải mất phiên.
+  2. Bắt buộc đối soát danh sách username đang hiển thị trên UI (qua OCR hoặc XML text). Nếu target account có tên trên màn hình, chỉ cần tap trực tiếp vào username để vào thẳng feed session mà không cần gõ mật khẩu (đặc biệt hữu ích khi nick có cờ `missing_tiktok_pass` trong workbook).
+  3. Chỉ khi target account hoàn toàn vắng mặt trên danh sách này mới chuyển sang tap *"Thêm tài khoản khác"* để vào flow login/recovery.
+
+### E. Pitfall Thiếu `ADB_SERVER_SOCKET` Trong `_build_fast_login_env()` Khi Cứu Hộ Máy Admin (`machine_id >= 200`)
+- **Hiện tượng:** Khi máy Admin (M201–M280) kích hoạt `_maybe_recover_missing_account_via_login()`, cả `_run_fast_targeted_login()` (`tiktok_login_v1.py`) và `reconcile_tiktok_accounts.py` đều bị treo (hang) và chết timeout liên hoàn 420s + 600s (tổng 17 phút).
+- **Nguyên nhân gốc:** Hàm `_build_fast_login_env(adb_path)` trong `flows/feed_swipe_smoke.py` chỉ nhận mỗi `adb_path`, không nhận diện `machine_id`. Môi trường subprocess khởi tạo hoàn toàn thiếu:
+  ```python
+  fast_env["ADB_SERVER_SOCKET"] = "tcp:192.168.110.119:5037"
+  fast_env["TAADAA_HOST_CONFIG"] = r"D:\Taadaa\machine-config\admin.yaml"
+  ```
+  Khiến lệnh `tiktok_login_v1.py` và ADB client ngầm định kết nối tới ADB Server local của Kibe (vốn không có serial máy Admin), dẫn đến blocking I/O vô tận cho đến khi subprocess timeout.
+- **Xử lý chuẩn:** Trong `feed_swipe_smoke.py`, hàm `_build_fast_login_env` bắt buộc nhận `machine_id`. Nếu `int(machine_id) >= 200`, phải inject `ADB_SERVER_SOCKET` và `TAADAA_HOST_CONFIG` vào `fast_env` và `clean_env` của cả nhánh Fast Login lẫn Reconcile.
+
+### F. Ép WinRT OCR Primary Cho Module Đăng Nhập (`social_reg_v1.py` / `tiktok_login_v1.py`)
 - **Hiện tượng:** Khi chạy auto-login recovery trên dàn máy S7 cũ, thiết bị liên tục báo lỗi `atx-agent dump attempt failed`, timeout và sau đó rơi vào trạng thái `offline` hoặc ngắt kết nối USB vật lý.
 - **Nguyên nhân:** Các script legacy gọi `get_ui_xml()` hàng chục lần để tìm nút và kiểm tra chữ. Thao tác dump XML bằng Java Accessibility Service trên Android vắt kiệt CPU Exynos 8890 (chạm 100%), khiến tiến trình bị kernel kill (`Killed 137`) và làm treo daemon `adbd` trên điện thoại.
 - **Xử lý chuẩn:** Thay thế hoàn toàn các lệnh dump XML trong `find_text_tap` và `text_exists` sang **WinRT OCR Primary**:
