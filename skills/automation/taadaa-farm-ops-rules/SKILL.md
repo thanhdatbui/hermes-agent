@@ -69,6 +69,7 @@ description: "Taadaa farm safety, close-session, and multi-machine operations."
 - Audit & Purge ChatGPT GPM Đăng Nhập & Đồng Bộ Token: [`references/chatgpt-gpm-login-audit-and-purge-discipline.md`](references/chatgpt-gpm-login-audit-and-purge-discipline.md)
 - Độc Lập 3 Quy Trình (Feed-Follow-Upload) & Chống Phạt Cooldown Oan: [`references/decoupled-pipeline-and-follow-cooldown-guard.md`](references/decoupled-pipeline-and-follow-cooldown-guard.md)
 - Khế Ước Drop-Day Sổ Bệnh Án & Zero-Follow Failure: [`references/follow-detail-matrix-drop-day-zero-follow-invariant.md`](references/follow-detail-matrix-drop-day-zero-follow-invariant.md)
+- Khế Ước Ghi Nhận Drop History & Đối Soát Khoảng Cách Ca Chạy Follow: [`references/follow-detail-streak-drop-history-and-gap-reconciliation.md`](references/follow-detail-streak-drop-history-and-gap-reconciliation.md)
 - Chu Kỳ 3 Ngày Shift-Pool, Lệch Pha An Toàn & Socket Concurrency Dashboard: [`references/tiktok-farm-3day-shift-pool-phase-decoupling-and-dashboard-concurrency.md`](references/tiktok-farm-3day-shift-pool-phase-decoupling-and-dashboard-concurrency.md)
 - Quét Kênh Flop & Xoay Nguồn Cào (Cấm Bỏ Acc, Render Nối Tiếp): [`references/flop-channel-detection-and-source-rotation-invariants.md`](references/flop-channel-detection-and-source-rotation-invariants.md)
 - Quản Trị Quét Kênh Flop & Throttle Xoay Nguồn Cào Tự Động: [`references/flop-channel-detection-and-source-rotation-governance.md`](references/flop-channel-detection-and-source-rotation-governance.md)
