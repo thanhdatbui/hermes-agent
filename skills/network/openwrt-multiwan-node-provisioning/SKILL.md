@@ -53,16 +53,5 @@ Directly converting the active management port (e.g., `lan1`) to a PPPoE interfa
 
 ---
 
-## 3. Remote Triage & Diagnostic Invariants
-
-- **DSA Bridge PADO Swallowing Trap:** When converting switch ports (`lan1`, `lan2`) to PPPoE, `rx_handler` of `br-lan` intercepts PADO frames if ports remain in `network.@device[0].ports`, causing persistent `Timeout waiting for PADO packets`. Always execute `uci del_list network.@device[0].ports='lan1'` and verify via `ls /sys/class/net/br-lan/brif`.
-- **Remote Web Terminal (ttyd) Paste Stripping:** Pasting chained commands via UltraViewer/AnyDesk strips `&&`, `&`, and `2>&1`, breaking shell scripts or locking daemons in foreground. Send strictly **one discrete command per turn**. Use `start-stop-daemon -S -b` instead of trailing `&`.
-- **Remote Factory Reset Guard:** NEVER execute `firstboot` or LuCI reset remotely through host PC. IP reverts to `192.168.1.1` (conflicting with host ISP modem), blue port reverts to WAN with firewall REJECT, dropping UltraViewer and permanently locking out the node.
-- **Viettel PPPoE Dual-Stack & Walled Garden:** Viettel allocates IPv6 via DHCPv6-PD (`2402:800:...`) independently of IPv4. Receiving a public IPv6 does NOT mean IPv4 is open. If IPv4 receives `172.17.x.x` and drops `8.8.8.8`, the ISP subscriber profile is in a walled-garden/inactive state. ONT bridge mode is untagged by default; do NOT add 802.1Q VLAN 35 sub-interfaces unless explicitly verified.
-
-See `references/pppoe-pado-bridge-trap-and-remote-triage-pitfalls.md` for full operational details.
-
----
-
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

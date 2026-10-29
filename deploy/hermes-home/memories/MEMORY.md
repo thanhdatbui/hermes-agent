@@ -9,5 +9,3 @@ Tool 2FA & cron: JIT lock; sync code Admin qua OneDrive D:\OneDrive\TaadaaData\a
 Cứu hộ OpenWrt từ xa: CẤM Reset Factory né văng UltraViewer/trùng 192.168.1.1. DSA lan1/2 bắt buộc rút khỏi br-lan mới nhận PADO. ONT untagged bind Switch ('lan1', 'lan2'), cấm sub-device lan1.35; cấm Alias (@WAN2). Tắt IPTV modem né 172.17.x. Cấm dán '&&' hay '&' qua ttyd (bị nuốt ký tự, dùng start-stop-daemon -b). Đổi dây đảo user/pass khớp Circuit ID. Line UP/timeout cấm gán nhầm nick. Cờ -I case-sensitive: check l3_device ('pppoe-WAN2' vs 'pppoe-wan') né false loss.
 §
 GPM & proxy: CẤM tạo profile rác; dùng profile có sẵn kẹp proxy, CẤM IP DIRECT KIBE. Check ipify trước khi vào web. React setter form AWSUI. 19995 offline sau reboot spawn ngầm GPMLogin.exe. Lỗi 'cập trình duyệt 142' do lệch manifest core, cập nhật GUI là nhả.
-§
-Coordinator cấm tự ý gọi skill_view(file_path='references/...') đọc file con khi xử lý lệnh thường để chống phình context; tra cứu sâu chỉ khi user yêu cầu.
