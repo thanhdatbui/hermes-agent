@@ -139,10 +139,11 @@
      - Khi submit tên, ngày sinh, hoặc pass, Google WebView gửi RPC `AccountLifecyclePlatformSignupUi/data/batchexecute`.
      - Nếu proxy 4G hoặc Wi-Fi rớt socket, WebView nhảy màn hình: *"Đã xảy ra lỗi: Rất tiếc, đã xảy ra sự cố. Vui lòng thử lại"* kèm payload:
        `Error code = 7, HTTP status = 0, Unknown HTTP error (HTTP Status: 0) (XHR Error Code: 6)`.
-     - Vì màn hình lỗi hiện ra, runner không thấy màn hình tiếp theo (`[10_pass] Chua vao dung man password` hoặc `[11_review] Không thấy Review`) và dừng an toàn -> bị gán nhãn `FAILED_OTHER`.
-  2. **Google Play Services Hijack Intent Thêm Tài Khoản:**
-     - Nếu một tài khoản cũ trên máy bị checkpoint phiên, khi runner bấm "Thêm tài khoản", Google Play Services tự động chặn và mở màn hình: *"Hoàn tất đăng nhập để tiếp tục. Đã xảy ra lỗi và bạn cần đăng nhập lại"*.
-     - Runner không vào được luồng đăng ký mới (`[04b] Google sign-in chưa load xong`) -> bị gán nhãn `FAILED_OTHER`.
+     - *Bản vá code:* Trong `gmail_reg_v10.py`, tích hợp `is_google_transport_or_lifecycle_error_xml(xml)` vào cả Bước 10 (chờ màn Password) và Bước 11 (chờ màn Review). Khi gặp lỗi này, lập tức raise `[GOOGLE_TRANSPORT_ERROR]` để phân loại chính xác lỗi hạ tầng/mạng thay vì rơi vào `[10_pass] Chua vao dung man password` hay `[11_review] Không thấy Review`.
+  2. **Bẫy Fallback Bento Card trong Switcher Tap Trúng Avatar / Header Tài Khoản Đang Active:**
+     - Hàm `find_add_account_card_in_switcher()` có fallback bento card `if 300 <= y <= 1850 and x <= 700`. Trên Samsung S7, card header tài khoản đang active và avatar nằm tại $y = 336$ (bounds `[408,204][672,468]`).
+     - Khi menu chưa kịp cuộn xuống "Thêm tài khoản khác", fallback quét trúng node $y=336$, tap trúng avatar gây mở *"Thêm ảnh hồ sơ"* (`[04_google] Không chọn được provider Google`), hoặc tap trúng tài khoản cũ bị checkpoint phiên khiến Google Play Services bung popup *"Hoàn tất đăng nhập để tiếp tục"* (`[04b] Google sign-in chưa load xong`).
+     - *Bản vá code:* Đặt ngưỡng an toàn `700 <= y <= 1850` trong `find_add_account_card_in_switcher()` để loại trừ hoàn toàn khu vực header active profile ($y < 700$), ép runner phải cuộn danh sách lên trước khi tìm hoặc fallback card.
   3. **Lệch màn hình hồ sơ Gmail:**
      - Khi bấm avatar trong Gmail, app mở thẳng trang *"Thêm ảnh hồ sơ"* (Avatar picker) của tài khoản đang dùng thay vì mở popup chuyển đổi/thêm tài khoản (`[04_google] Không chọn được provider Google`).
 - **Quy trình điều tra dứt điểm trong O(1):**

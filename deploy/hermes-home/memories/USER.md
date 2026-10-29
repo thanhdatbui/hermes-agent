@@ -7,3 +7,5 @@ Soạn tin nhắn gửi người khác: code block ```text...``` riêng, ngắn 
 Canary & Cơ giới hóa: Tái hiện đúng acc/lỗi thật (timeout >= 720s); cột PASS chưa đặt pass để None. CẤM ghi nhớ suông, mọi quy trình/giải pháp bắt buộc code thành script/gate ("làm thành script chứ đéo phải ghi nhớ clg cả").
 §
 Tư vấn kiến trúc/kỹ thuật cần ngắn gọn, đi thẳng vào bản chất, không over-engineer; tham vấn Claude CLI độc lập khi cần giải pháp kiến trúc khách quan.
+§
+Kỷ luật phiên & báo cáo: Cấm hứa mồm rồi để session treo im lặng; làm không được thì phải báo lỗi/BLOCKED ngay kèm bằng chứng, tuyệt đối cấm câm nín biến mất.
