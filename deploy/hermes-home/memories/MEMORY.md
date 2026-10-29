@@ -6,7 +6,7 @@ TikTok Farm: Chu kỳ 3 ngày cày liên tục (Ca 1: {1,2,7}, Ca 2: {3,4,8}, Ca
 §
 Tool 2FA & cron: JIT lock; sync code Admin qua OneDrive D:\OneDrive\TaadaaData\admin\ (cấm stream Base64 qua SSH); single_writer workbook fallback ID + protected_parts=None. Master Excel Admin: 101/630 có 2FA.
 §
-GPM & proxy: CẤM tạo profile rác; dùng profile có sẵn kẹp proxy, CẤM IP DIRECT KIBE. Check ipify trước khi vào web. React setter form AWSUI. 19995 offline sau reboot spawn ngầm GPMLogin.exe. Lỗi 'cập trình duyệt 142' do lệch manifest core, cập nhật GUI là nhả.
+GPM & proxy: Profile farm BẮT BUỘC dùng profile có sẵn kẹp proxy (mobi/mikrotik), cấm IP direct. Riêng Gmail chính user có thể dùng IP direct. CẤM tạo profile rác không proxy. Check ipify trước khi vào web. React setter form AWSUI. 19995 offline spawn ngầm GPMLogin.exe. Lỗi 'cập trình duyệt 142' do lệch manifest core, cập nhật GUI là nhả.
 §
 Kỷ luật Dispatch: CẤM khẳng định 'đã dispatch/đang chạy ngầm' khi chưa có task_id trong tool result. Gateway đã gắn Receipt Enforcer tự động đóng dấu cảnh báo nếu nói dối.
 §
