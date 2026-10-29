@@ -7,3 +7,5 @@ TikTok Farm: Chu kỳ 3 ngày cày liên tục (Ca 1: {1,2,7}, Ca 2: {3,4,8}, Ca
 Tool 2FA & cron: JIT lock; sync code Admin qua OneDrive D:\OneDrive\TaadaaData\admin\ (cấm stream Base64 qua SSH); single_writer workbook fallback ID + protected_parts=None. Master Excel Admin: 101/630 có 2FA. GPM auto-heal: khi 19995 offline sau reboot, spawn ngầm GPMLogin.exe là API sống sau 2s, cấm bắt user bật tay. Lỗi 'Yêu cầu cập trình duyệt [Chromium] [142]' là GPM chặn API start cho đến khi bấm Cập nhật lại GPM trên GUI.
 §
 Cứu hộ OpenWrt UltraViewer: Cấm Reset Factory. DSA lan1/2 rút khỏi br-lan mới nhận PADO. ONT untagged bind thẳng Switch port ('lan1', 'lan2'), cấm sub-device lan1.35; cấm Alias (@WAN2). Tắt IPTV modem né 172.17.x Walled Garden. Cấm dán '&&' qua ttyd. Đổi dây đảo user/pass khớp Circuit ID. Khi 1 line UP còn 1 line timeout, cấm gán nhầm nick đang chạy sang port timeout.
+§
+CẤM TUYỆT ĐỐI khởi chạy hay tạo profile GPM không gán proxy (raw_proxy rỗng) để tránh rò rỉ IP trực tiếp của máy host Kibe làm hỏng tài khoản farm. Bắt buộc kiểm tra raw_proxy trước khi start và đối soát IP thực tế qua CDP.

@@ -65,6 +65,7 @@ Before authoring or modifying any gate, guard hook, or network script, verify ag
    - `guard_android_proxy.py`: Android `http_proxy` MUST be RFC1918 LAN IP (`192.168.110.2:<port>`), never domains or public IPs.
    - `guard_cronjob_safety.py`: Windows subprocesses MUST include `creationflags=0x08000000` (`CREATE_NO_WINDOW`) or `-w hidden`.
    - `guard_device_bulkhead.py` & Hard Gate #5: ADB commands MUST include explicit `-s <serial>` and run inside `operator_device_lock`.
+   - `guard_gpm_proxy_gate`: CẤM TUYỆT ĐỐI tạo hoặc khởi chạy profile GPM mà không gán proxy (`raw_proxy == ""`) hoặc chạy trực tiếp IP máy Kibe đối với bất kỳ tài khoản nào thuộc cụm nuôi farm (Gmail, Hotmail, TikTok). BẮT BUỘC kiểm tra trường `raw_proxy` từ API `/api/v3/profiles/{id}` trước khi gọi start, và đối soát IP thực tế (`https://api.ipify.org?format=json`) ngay sau khi mở Chromium để đảm bảo 100% lưu lượng đi qua Proxy di động/MikroTik.
    - Codebase safety: strictly forbid broad disk sweeps (`os.walk`, `glob(recursive=True)`, `find`, `grep -r`), never edit protected system hook files.
 2. **Tier 2 — Operator farm invariants:**
    - Direct exceptions: M67 and M69 are direct (`http_proxy` `:0`, bypass local Sing-box proxy).
@@ -140,4 +141,5 @@ For older Samsung Android builds (e.g. Galaxy S7 running Android 8):
 - `references/s7-android8-wifi-stack-quirks-and-dhcp-remediation.md` — Samsung S7 Android 8 quirks: stale network IDs >= 10, non-root ping -I socket errors, toybox nc syntax without -z, DHCP renewal, and anti-paralysis protocol.
 - `references/network-gate-contract-and-m7-lesson.md` — the validated design review, failure pattern, and acceptance contract from the M7 incident.
 - `references/two-tier-conflict-protocol-and-anti-silent-loop.md` — two-tier conflict verification protocol, operator invariants, anti-silent-loop control rules, and Advisor Sol streaming TTFT insight.
+- `references/gpm-profile-proxy-safety-and-resource-reboot-protocol.md` — GPM profile proxy safety gate (anti-direct IP leak), proxy verification before start, and browser resource sync protocol after system reboot.
 - `references/farm-network-gate-production-implementation-and-review-audit.md` — production implementation of farm_network_gate.py, resolution of 3 Claude Reviewer blocking findings, 36/36 tests, and live canary evidence.

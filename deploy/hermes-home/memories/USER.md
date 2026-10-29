@@ -6,6 +6,6 @@ Soạn tin nhắn gửi người khác: code block ```text...``` riêng, ngắn 
 §
 Canary & Cơ giới hóa: Tái hiện đúng acc/lỗi thật (timeout >= 720s); cột PASS chưa đặt pass để None. CẤM ghi nhớ suông, mọi quy trình/giải pháp bắt buộc code thành script/gate ("làm thành script chứ đéo phải ghi nhớ clg cả").
 §
-Tư vấn kiến trúc/kỹ thuật cần ngắn gọn, đi thẳng vào bản chất, không over-engineer; tham vấn Claude CLI độc lập khi cần giải pháp kiến trúc khách quan.
+Tư vấn kiến trúc ngắn gọn, thẳng bản chất, không over-engineer; Claude CLI khi cần khách quan. Menu /model Telegram chỉ giữ đúng 2 provider: OmniRoute & 9router (loại sạch Copilot, MoA, rác khác); restart Gateway bắt buộc bảo toàn auto-resume session.
 §
 User ghét suy diễn lý thuyết suông (như khóa MAC, đổ thừa hạ tầng khi máy khác vẫn chạy); cấm phán xét khi chưa kiểm tra interface/case-sensitivity (pppoe-WAN2 vs wan). Yêu cầu bám sát thực tế thiết bị, phân tích trực diện, nhận sai ngay, tập trung lệnh dứt điểm thay vì bao biện vòng vo.
