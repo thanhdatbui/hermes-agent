@@ -8,4 +8,4 @@ Canary & Cơ giới hóa: Tái hiện đúng acc/lỗi thật (timeout >= 720s);
 §
 Tư vấn kiến trúc/kỹ thuật cần ngắn gọn, đi thẳng vào bản chất, không over-engineer; tham vấn Claude CLI độc lập khi cần giải pháp kiến trúc khách quan.
 §
-Kỷ luật phiên & báo cáo: Cấm hứa mồm rồi để session treo im lặng; làm không được thì phải báo lỗi/BLOCKED ngay kèm bằng chứng, tuyệt đối cấm câm nín biến mất.
+Kỷ luật phiên & báo cáo: Cấm hứa mồm rồi để session treo im lặng; làm không được thì phải báo lỗi/BLOCKED ngay kèm bằng chứng, tuyệt đối cấm câm nín biến mất. Farm TikTok chạy chu kỳ 3 ngày liên tục (bỏ ngày 4); phân biệt rõ lỗi Dashboard (đọc DB) độc lập hoàn toàn với tiến trình Farm chạy trên máy thật, cấm suy diễn hồ đồ làm hoang mang.
