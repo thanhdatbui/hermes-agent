@@ -274,6 +274,14 @@ Applies whenever reports fail to reflect actual fleet health, mask dropped machi
   2. **Audit Deconstruction by Event Source:** When diagnosing a failing compliance report, always extract raw entries from `runtime/audit_logs/*.jsonl` for that exact time window. Verify the specific target commands: distinguish between genuine operational violations by live agents vs guard regex false positives.
   3. **Acknowledge Fixed Invariants:** Explicitly verify that previously fixed rules (e.g. `GUARD_SEARCH_FILES_ROOT`, `CONSOLE_WINDOW`) remain absent from the top violation list to avoid false rollback conclusions. See [`references/guard-regex-false-positive-and-realtime-audit-fidelity.md`](references/guard-regex-false-positive-and-realtime-audit-fidelity.md).
 
+### Invariant 28: Multi-Cluster Date Discovery & Mandatory `today` Inclusion (Anti-Unilateral Date Blindspot)
+- **Anti-Pattern:**
+  In multi-cluster batch watchdogs (`feed_session_watchdog.py`, `follow_session_watchdog.py`), discovering dates solely by `os.listdir(LIVE_ROOT)` where `LIVE_ROOT` points exclusively to the local controller cluster (`D:/Taadaa/runtime/kibe/live`). If the local cluster fails to launch due to preflight blocks (e.g. XiaoWei ADB port 5038 collision, dead lock), its `YYYY-MM-DD` directory is never created. The watchdog excludes `today` from `dates_to_check`, completely ignoring remote clusters (`admin` M201-M280) that ran successfully and uploaded videos. The watchdog exits silently with zero emitted reports.
+- **Rule:**
+  1. **Mandatory Inclusion of `today`:** `today_str` MUST always be present in `dates_to_check` regardless of whether local directories exist.
+  2. **Multi-Cluster Date Union:** Union candidate date folders across ALL configured cluster roots (`kibe`, `admin`) rather than scanning only local `LIVE_ROOT`.
+  3. **Explicit Cluster Status Telemetry:** When a cluster directory is missing for `today`, the watchdog must NOT silently drop the cluster; it must report `• Trạng thái: Chưa có lượt chạy nào trong phiên (Chưa chạy / Bị skip / Nghẽn preflight)` while delivering the healthy cluster's telemetry in full. See [`references/multi-cluster-date-discovery-and-local-live-blindspot.md`](references/multi-cluster-date-discovery-and-local-live-blindspot.md).
+
 ---
 
 ## 3. Verification Protocol for Watchdogs & Reports
