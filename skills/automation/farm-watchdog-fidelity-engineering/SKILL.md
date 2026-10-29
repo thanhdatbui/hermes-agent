@@ -288,6 +288,17 @@ Applies whenever reports fail to reflect actual fleet health, mask dropped machi
   1. **Bulkhead Device Isolation:** Never blanket-abort the entire fleet due to single-device tooling. Standard ADB (port 5037) and XiaoWei ADB (port 5038) communicate concurrently with separate physical USB endpoints without latency conflict.
   2. **JIT Device Lock Over Script Termination:** Rely on device lock files (`machine_<M>.lock.json`) to skip only the device being used by the operator (`is_device_locked_skip=True`). Allow the remaining 79 machines to execute their scheduled tasks uninterrupted.
 
+### Invariant 30: Operational Run Alert vs Periodic Analytical Audit Discrimination (Anti-Reporting Scope Confusion)
+- **Anti-Pattern:** Conflating **Operational Run Alerts** (emitted immediately at the conclusion of an individual batch execution, e.g. Upload, Feed, Reg session on phones) with **Periodic Analytical Audits** (scheduled daily or multi-hour watchdogs, e.g. 07:15 stale upload / flop channel scanner). When operators ask to integrate analytical monitoring (e.g. "theo dõi kênh flop") and the agent embeds it into a daily scheduled audit (`cron_stale_upload_watchdog.py`), operators inspecting immediate post-session alerts wonder why the newly integrated tool is missing from their real-time report.
+- **Rule:**
+  1. **Strict Reporting Scope & Cadence Discrimination:**
+     - **Operational Run Alert (Tức thời / Session-End Alert):** Primary scope is purely execution telemetry on physical devices (machines processed, success, timeout, script errors, physical inventory). Keep focused on immediate machine/script remediation. Do NOT overload with heavy analytical queries unless explicitly requested.
+     - **Periodic Analytical Audit (Định kỳ / Watchdog Aggregate):** Primary scope is cross-day health, performance vectors, data drift, and strategic remediation (e.g., `flop_channel_scanner.py` analyzing `tiktok_tracker.db` snapshots to recommend source swaps and next render sequences).
+  2. **Operator Feedback & Clear Routing Attribution:**
+     - When an operator queries why an analytical tool is absent from an operational alert, immediately explain the distinction between runtime session alerts vs daily scheduled digests.
+     - State the exact schedule, script path, and CLI invocation (e.g. `python D:/Taadaa/tools/flop_channel_scanner.py ...`) for immediate on-demand inspection.
+     - Proactively offer scoped integration (e.g. appending a lightweight summary section to the session-end template) if the operator prefers unified reporting.
+
 ---
 
 ## 3. Verification Protocol for Watchdogs & Reports
