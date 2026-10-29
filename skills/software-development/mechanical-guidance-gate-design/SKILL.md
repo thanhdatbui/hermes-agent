@@ -6,16 +6,17 @@ description: "Use when designing mechanical gates to prevent agent loops."
 # Mechanical Guidance Gate Design (Anti-Whining & Action Mandate)
 
 ## 1. When to Use
-Use when creating, modifying, or reviewing mechanical enforcement gates (hooks, gates, runtime fences). Enforces actionable unblocking paths (Auto-Rewire / Active Pivot) rather than passive denials.
-- Reference: `references/pre-tool-auto-rewrite-and-24h-heartbeat-architecture.md` (Pre-tool rewrite).
-- Reference: `references/auto-rewire-and-auto-clamp-architecture.md` (Worker rewrite & clamp).
-- Reference: `references/user-sudo-override-and-investigate-read-only-deadlock-triage.md` (Sudo override).
-- Reference: `references/dispatch-worker-timeout-and-deadlock-prevention-20261025.md` (Timeout floor 360s).
-- Reference: `references/gate-compliance-audit-desync-and-test-pollution-invariants.md` (Telemetry filtering).
-- Reference: `references/active-pivot-auto-rewire-architecture.md` (Auto-Rewire).
-- Reference: `references/multi-repo-regression-gate-hierarchy.md` (2-tier rules.json partition).
-- Reference: `references/o1-process-verification-and-closeout-operational-decoupling.md` (Process verification).
-- Reference: `references/canary-gate-auto-wiring-vs-memory-enforcement-20261028.md` (Canary auto-wiring, multi-req scanning, and upload evidence grounding).
+Use when creating, modifying, or reviewing mechanical enforcement gates (hooks, gates, runtime fences). Enforces actionable unblocking paths (Auto-Rewire / Active Pivot).
+- Reference: `references/pre-tool-auto-rewrite-and-24h-heartbeat-architecture.md`
+- Reference: `references/auto-rewire-and-auto-clamp-architecture.md`
+- Reference: `references/user-sudo-override-and-investigate-read-only-deadlock-triage.md`
+- Reference: `references/dispatch-worker-timeout-and-deadlock-prevention-20261025.md`
+- Reference: `references/gate-compliance-audit-desync-and-test-pollution-invariants.md`
+- Reference: `references/active-pivot-auto-rewire-architecture.md`
+- Reference: `references/multi-repo-regression-gate-hierarchy.md`
+- Reference: `references/o1-process-verification-and-closeout-operational-decoupling.md`
+- Reference: `references/canary-gate-auto-wiring-vs-memory-enforcement-20261028.md`
+- Reference: `references/prompt-contract-desync-and-scanner-false-positive-triage.md`
 - Reference: `references/observability-watchdog-vs-bureaucratic-blocking-gate-pruning.md` (Observability watchdogs retention vs bureaucratic blocking gate & local hash chain pruning).
 - Reference: `references/auto-wiring-and-guidance-boundary-matrix-20261026.md` (Auto-Wiring vs Fail-Fast decision matrix for investigate budget & GuardGate guidance).
 - Reference: `references/idle-window-evaluation-bias-and-closeout-boundary-discipline.md` (Idle-window evaluation bias & zero-block action mandate hierarchy).
