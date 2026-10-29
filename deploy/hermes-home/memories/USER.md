@@ -7,3 +7,5 @@ Soạn tin nhắn gửi người khác: code block ```text...``` riêng, ngắn 
 Canary & Cơ giới hóa: Tái hiện đúng acc/lỗi thật (timeout >= 720s); cột PASS chưa đặt pass để None. CẤM ghi nhớ suông, mọi quy trình/giải pháp bắt buộc code thành script/gate ("làm thành script chứ đéo phải ghi nhớ clg cả").
 §
 Tư vấn kiến trúc/kỹ thuật cần ngắn gọn, đi thẳng vào bản chất, không over-engineer; tham vấn Claude CLI độc lập khi cần giải pháp kiến trúc khách quan.
+§
+User ghét suy diễn lý thuyết suông (như vụ khóa MAC ISP, đổ thừa hạ tầng khi chưa có bằng chứng); yêu cầu Coordinator bám sát thực tế thiết bị, phân tích ngắn gọn, trực diện, không giải thích vòng vo.
