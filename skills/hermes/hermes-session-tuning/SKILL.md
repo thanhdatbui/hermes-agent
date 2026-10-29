@@ -619,8 +619,22 @@ Khi user chat hàng loạt session song song và thấy phản hồi chậm (h�
   4. *Delay socket TIME_WAIT*: Bổ sung `Start-Sleep -Seconds 3` vào đầu hàm `Start-OmniRoute` của Watchdog để tránh lỗi restart văng `exit code 1` sau 3 giây.
   5. *Protection Regression Gate*: Đã tích hợp đầy đủ vào `infra_regression_gate.py` với 12/12 unit test xanh 100%. Xem chi tiết tại `references/omniroute-proxy-fast-fail-probe-hang-and-sqlite-bloat-20261027.md`.
 
+### 0q. 🚨 Bẫy Chờ Chéo "Hứa Mồm Rồi Ngủ Đông" (Deadlock of Expectations) & Session Đóng Băng 7 Tiếng (Incident 28-29/10/2026):
+- **Hiện tượng**: Phiên Telegram im lặng suốt 7 tiếng (23h54 đến 07h36). Lúc 23h54 Bot gửi tin: *"Em đang cho Worker kiểm tra... Em sẽ báo cáo kết quả..."*, sau đó đứng im bất động qua đêm.
+- **Giải mã cơ chế trong `agent/conversation_loop.py:5530-5583`**:
+  * Khi Model (đặc biệt là Gemini) nhả đoạn văn trấn an tương lai nhưng **không đính kèm tool call** (`tool_calls` rỗng) và trả về `finish_reason = stop`.
+  * Hermes thấy `finish_reason = stop` và `tool_calls = 0` nên coi là lượt hoàn tất (`_turn_exit_reason = "text_response"`), gửi text ra Telegram rồi **kết thúc lượt, đi ngủ chờ User nhắn tiếp**.
+  * User đọc text thấy Bot nói *"Em đang cho chạy, sẽ báo cáo"* nên **ngồi chờ Bot**.
+  * **Hậu quả:** Deadlock chờ chéo (Bot chờ User, User chờ Bot) làm session đóng băng 7 tiếng dù không có lỗi crash hay timeout nào.
+- **Kỷ luật & Cơ chế khắc phục**:
+  1. *Cấm tuyệt đối narrate intent không kèm tool*: Mọi hứa hẹn hành động BẮT BUỘC phải emit tool call (`delegate_task`, `terminal`) ngay trong cùng response turn; cấm nhả văn bản hứa suông rồi ngắt lượt.
+  2. *Thiết kế Stop-Nudge Guard cho Coordinator*: Tương tự `agent/kanban_stop.py`, nếu phát hiện text hứa hẹn tương lai mà không có tool call, Hermes tự động nạp synthetic nudge ép model phải emit tool call thật sự thay vì cho phép thoát turn sạch.
+  3. *Nâng cấp Stale Watchdog*: Bổ sung rule giám sát tin nhắn cuối cùng là lời hứa hành động mà không có tiến trình nền active quá 5 phút.
+  - Xem chi tiết tại `references/deadlock-of-expectations-and-promise-without-tool-hang.md`.
+
 ## References
 - `references/omniroute-proxy-fast-fail-probe-hang-and-sqlite-bloat-20261027.md` — Sự cố Fast-Fail probe 2s kill oan stream LLM khi Viettel chập chờn, phình SQLite 1.15GB (1.14M dòng rác), và toàn bộ giải pháp hạ tầng kèm Protection Regression Gate (27/10/2026).
+- `references/deadlock-of-expectations-and-promise-without-tool-hang.md` — Bẫy Chờ Chéo "Hứa Mồm Rồi Ngủ Đông" (Deadlock of Expectations), giải mã cơ chế kỹ thuật trong conversation_loop.py khiến session bị đóng băng 7 tiếng và 3 chốt chặn cơ giới hoá (28-29/10/2026).
 - `references/omniroute-fast-fail-probe-and-protection-regression-gate.md` — Chi tiết bẫy Fast-Fail probe 2s làm kill oan request LLM, sự cố SQLite 1.15GB phình 1.14M dòng, và bản thiết kế Protection Regression Gate cho hạ tầng (27/10/2026).
 - `references/omniroute-proxy-fast-fail-false-kill-and-infra-regression-gate.md` — Bẫy so găng Fast-Fail 2s tự kill request stream, phình SQLite 1.14M dòng, và chốt chặn Protection Regression Gate cho hạ tầng (27/10/2026).
 - `references/omniroute-proxy-fast-fail-race-and-sqlite-bloat-20261026.md` — Sự cố Proxy Fast-Fail 2s so găng abort oan request LLM (15s-45s) trên proxy sống, bão 130x all targets skipped và SQLite 1.06M rows gây deadlock Event Loop (26/10/2026).

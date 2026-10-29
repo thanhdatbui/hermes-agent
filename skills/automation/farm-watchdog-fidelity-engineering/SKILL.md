@@ -234,6 +234,18 @@ Applies whenever reports fail to reflect actual fleet health, mask dropped machi
   3. **No Unsolicited Actionable Guidance Text:** Tiêu đề thống kê vi phạm chỉ cần `🔥 *Top Quy Tắc Bị Chặn:*`, cấm chêm các câu kêu gọi bổ sung guidance hay đùn đẩy việc cập nhật rule cho operator/agent.
   4. **Closeout O(1) Mechanical Alignment:** Đồng bộ tên và logic của G5 thành `Closeout Gate` (bỏ chữ Reviewer), khớp với các trạng thái cơ học mới (`[GuardEngine ALLOW]`, `CLOSEOUT_PASSED`). Xem [`references/compliance-watchdog-anti-overengineering-and-synthetic-rules.md`](references/compliance-watchdog-anti-overengineering-and-synthetic-rules.md).
 
+### Invariant 24: Multi-Process Socket Collision, Watchdog Death-Loop, and Domain Decoupling
+- **Anti-Pattern:**
+  1. Conflating Web Dashboard status with Physical Farm health: Assuming that when `tiktok_dashboard.py` (port 1905) times out or crashes, the farm runners (`tiktok_runner.py` / `run-feed-session.ps1`) must be paralyzed. They are completely decoupled; runners communicate via ADB to physical devices independently of SQLite dashboard readers.
+  2. Confusing staging/testing cronjobs (`phase9-staging-picker`) with production runners. Production runners run with zero picker/manifest dependencies.
+  3. Incomplete process termination on Windows (`pythonw.exe` vs `python.exe`): A watchdog killing only the socket-owning child process leaves orphaned parent shims. With `SO_REUSEADDR`, multiple `python.exe` instances bind to port 1905, causing Windows to round-robin incoming connections across live and zombie sockets.
+  4. Aggressive watchdog probes against large analytical tables (>130k snapshots): When queries take ~4s on cold cache, an 8s timeout combined with `.NET WebRequest` connection leaks triggers false health failures, causing the watchdog to restart the service every 60–70s in an infinite death-loop.
+- **Rule:**
+  1. **Strict Domain Decoupling:** Never report farm execution outages based on web dashboard errors, and vice versa. Always check `runner_simple_state.json` and active process lists for ground truth.
+  2. **Process Tree Kill Protocol:** Always kill the full process tree matching the service command-line using `psutil`.
+  3. **Startup Deduplication:** Verify `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup` contains no duplicate launchers.
+  4. **Watchdog Buffer & Cache Scaling:** Set `_CACHE_TTL >= 180s` for large analytical tables and watchdog probe timeouts $\ge 15$s. See `references/dashboard-watchdog-death-loop-and-multi-process-collision.md`.
+
 ---
 
 ## 3. Verification Protocol for Watchdogs & Reports
@@ -262,3 +274,4 @@ Applies whenever reports fail to reflect actual fleet health, mask dropped machi
 - [`references/decoupled-pipeline-and-path-b-verify-invariants.md`](references/decoupled-pipeline-and-path-b-verify-invariants.md) — Invariants on decoupled pipelines (Feed — Follow — Upload) and accurate follow release discrimination in Mode 2 Path B verify.
 - [`references/subprocess-syspath-strip-trap-and-dispatch-worker-routing.md`](references/subprocess-syspath-strip-trap-and-dispatch-worker-routing.md) — Subprocess sys.path strip trap (0.001s crash loop) and Hard Gate #3 dispatch_worker routing contract.
 - [`references/compliance-watchdog-anti-overengineering-and-synthetic-rules.md`](references/compliance-watchdog-anti-overengineering-and-synthetic-rules.md) — Case study: Anti-overengineering in compliance watchdog, eliminating synthetic rules, guidance spam, and aligning mechanical closeout.
+- [`references/dashboard-watchdog-death-loop-and-multi-process-collision.md`](references/dashboard-watchdog-death-loop-and-multi-process-collision.md) — Case study: Multi-process socket collision, watchdog death-loop on large SQLite dashboards, and domain decoupling.
