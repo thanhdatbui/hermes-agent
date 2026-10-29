@@ -6,12 +6,9 @@ description: "Use when running batch 2FA on TikTok farm. Chạy batch 2FA repo t
 # TikTok Add 2FA Batch Ops (repo tiktok-add-bao-mat-f2a)
 
 References:
+- `references/admin-cluster-ssh-deadlock-and-single-writer-guard-20261029.md` — **[MỚI 29/10/2026]** Khắc phục lỗi farm Admin liệt 0/69 máy do thiếu file sync `run_capture_phase_a.py`, bẫy treo gateway do SSH chunking base64 (>20KB), cơ chế fallback `TIKTOK_ADD_WRITER_ID` trong `core/workbook.py` và quy trình đẩy code an toàn qua OneDrive Shared.
 - `references/runner-exit-code-5-and-bootstrap-failure-triage-20261026.md` — Mã thoát 5: workbook lock contention, retry loop 5 nhịp, reap dead owner excel & sync Admin-PC.
 - `references/admin-cluster-remote-socket-routing-20261026.md` — Máy ≥200: socket 192.168.110.119:5037.
-- `references/night-watchdog-idempotency-partial-failure-loop-20261026.md` — Idempotency theo ngày, rerun `--force`.
-- `references/graph-api-otp-token-and-canary-parity-discipline-20261024.md` — Graph OTP, Outlook, Canary.
-- `references/night-chain-reg-gmail-2fa-and-per-phase-telegram-routing-20261020.md`
-- `references/night-2fa-watchdog-skip-reasons-and-column-drift-audit-20261018.md`
 - `references/immediate-write-through-retry-and-closeout-discipline-20261015.md`
 - `references/night-rolling-avatar-2fa-and-cache-clean-arbitration-20261015.md`
 - `references/workbook-lock-contention-and-journal-recovery-20261014.md`

@@ -10,4 +10,4 @@ GuardGate (D:/Taadaa/tools/guardgate) là Protection Regression Gate cơ giới 
 §
 Dashboard TikTok (1905, tiktok_dashboard.py) độc lập 100% với Farm runner (tiktok_runner.py); cấm suy diễn lỗi Dashboard sang Farm. Watchdog restart service Windows phải kill cả cây pythonw.exe + python.exe để tránh đụng socket SO_REUSEADDR gây treo/sập.
 §
-Canary visual: cấm dùng ảnh transition spinner ('Quá trình này có thể mất...', loading); bắt buộc mtime ảnh >= mtime UI dump và soi mắt settled state.
+Canary visual: cấm dùng ảnh spinner ('Quá trình này có thể mất...', loading); mtime ảnh >= mtime UI dump. OCR ảnh Telegram bắt buộc bốc đúng exact hash từ prompt [Image attached at: ...\img_<hash>.jpg], cấm quét mtime trên image_cache tránh nhặt nhầm ảnh session khác.

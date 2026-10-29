@@ -256,6 +256,14 @@ Applies whenever reports fail to reflect actual fleet health, mask dropped machi
   2. **Telemetry Parity Contract:** If the job executes on schedule (`last_status == 'ok'`) but the heartbeat reports `STALE`, classify the incident as **Missing Telemetry Emission**, not **Service Stoppage**.
   3. **Immediate Reconciliation & Wrap:** Reconcile `last_end` in `D:/Taadaa/runtime/cron_health/<name>.json` to match the actual execution timestamp, and integrate `from cron_alert_core import CronRun` with `with CronRun('<script_name>')` into the runner scripts across all deployment locations (`D:/Taadaa/Hermes/deploy/hermes-home/scripts/` and `%LOCALAPPDATA%\hermes\scripts\`).
 
+### Invariant 26: Dual-Source Telemetry Reconciliation (File State vs Database Historical Actions)
+- **Anti-Pattern:**
+  A reporting dashboard component or account medical history modal (e.g. `follow_detail_component.py` / `get_account_follow_detail`) relies exclusively on local JSON runtime state (`follow_state_<m>_row_<r>.json`). When local state files only record the latest incident (`last_failed_date`) and overwrite previous events upon streak increments (e.g. Streak 1 -> 2 -> 3), all historical zero-follow sessions disappear from local state, causing the dashboard matrix to show only 1 recent run or display an artificial month-long gap between runs.
+- **Rule:**
+  1. **Dual-Source Reconciliation (State + Database):** Telemetry components inspecting entity run history MUST NOT read local single-slot state files in isolation. They must perform a secondary query against the central historical database (e.g. `daily_account_actions` / `session_account_actions` in `tiktok_tracker.db` by username) to backfill past executed sessions where output was 0.
+  2. **Cumulative Drop History in State:** State machines tracking consecutive failure streaks (`fail_streak`) MUST maintain an append-only ring buffer or array (`drop_history: [{"date": today, "streak": streak, "timestamp": now_iso}]`) instead of overwriting a single date scalar.
+  3. **Zero-Session Drop Flagging:** In shift matrices, ca runs that failed with 0 actions due to early safety stops (e.g. anchor revert trap) MUST retain their drop flag (`is_drop = True`) even when follow count is 0, ensuring visual parity with the account's active penalty tier.
+
 ---
 
 ## 3. Verification Protocol for Watchdogs & Reports
