@@ -31,6 +31,8 @@ description: "Taadaa farm safety, close-session, and multi-machine operations."
   4. *Khế ước Exit Code*: Runner con BẮT BUỘC return 1 khi skip/fail, chỉ return 0 khi thành công thật; Supervisor cấm tin mù quáng vào exit code 0 để đóng dấu `chatgpt_registered_at` ảo.
 - **Độc Lập Tuyệt Đối 3 Quy Trình (Feed — Follow — Upload):** Ba quy trình chính của nick farm chạy tuần tự nhưng hoàn toàn độc lập. CẤM TUYỆT ĐỐI cơ chế ép buộc Feed thành công mới được Follow/Upload. Quy trình trước fail thì quy trình sau vẫn BẮT BUỘC khởi chạy bình thường.
 - **Chống Phạt Cooldown Oan (Single-Release Cooldown Ban):** Nút follow revert về 'Follow' sau tap chứng minh server TikTok đã từ chối lượt follow đó. Tuy nhiên, CẤM đóng băng tài khoản 24h (`cooldown_until_date`) chỉ sau 1 lần nhả đơn lẻ; chỉ dừng phiên hiện tại và chỉ phạt cooldown khi bị nhả liên tiếp trên các phiên khác nhau (Streak >= 2).
+- **Độc Lập Lệch Pha 3 Ca (Shift-Pool Decoupled Phase Invariant):** Chu kỳ 3 ngày cày liên tục (bỏ hẳn ngày 4 dưỡng sinh). Ca 1 `{1,2,7}`, Ca 2 `{3,4,8}`, Ca 3 `{5,6}` (+ Dynamic slot `-1`). Việc 3 ca bị lệch pha (Ca 3 cạn pool trước hoặc Ca 1/2 bù lượt) là AN TOÀN VÀ HỢP LỆ vì pool tài khoản rời nhau 100% và gate cooldown 48h (`_is_account_follow_cooldown`) bảo vệ độc lập; cấm ép đồng pha cứng nhắc làm rối loạn nhịp xoay tua.
+- **Khắc Phục Socket Concurrency Dashboard (Port 1905):** CẤM để nhiều tiến trình `tiktok_dashboard.py` cùng bind port 1905; dọn sạch startup duplicate và kill triệt để cả cây `pythonw.exe` / `python.exe` / watchdog ps1 khi socket bị kẹt.
 
 ## 2. Chu Trình Điều Phối Farm (Coordinator vs Worker)
 - **T0 (Hiện trường):** Đọc log, inspect ADB O(1), restart process, kiểm tra proxy. Tự do thực thi.
@@ -67,3 +69,4 @@ description: "Taadaa farm safety, close-session, and multi-machine operations."
 - Audit & Purge ChatGPT GPM Đăng Nhập & Đồng Bộ Token: [`references/chatgpt-gpm-login-audit-and-purge-discipline.md`](references/chatgpt-gpm-login-audit-and-purge-discipline.md)
 - Độc Lập 3 Quy Trình (Feed-Follow-Upload) & Chống Phạt Cooldown Oan: [`references/decoupled-pipeline-and-follow-cooldown-guard.md`](references/decoupled-pipeline-and-follow-cooldown-guard.md)
 - Khế Ước Drop-Day Sổ Bệnh Án & Zero-Follow Failure: [`references/follow-detail-matrix-drop-day-zero-follow-invariant.md`](references/follow-detail-matrix-drop-day-zero-follow-invariant.md)
+- Chu Kỳ 3 Ngày Shift-Pool, Lệch Pha An Toàn & Socket Concurrency Dashboard: [`references/tiktok-farm-3day-shift-pool-phase-decoupling-and-dashboard-concurrency.md`](references/tiktok-farm-3day-shift-pool-phase-decoupling-and-dashboard-concurrency.md)
