@@ -5,7 +5,7 @@ description: Taadaa Farm Alert recovery to closeout.
 
 # Farm Alert Autonomous Recovery
 
-> Core Refs: `upload-hook-auto-login-recovery-and-canary-gate-wiring.md`, `canary-receipt-expiry-and-safe-push-pre-commit.md`, `recovery-proof-and-operator-closeout.md`, `anti-performative-alert-handling-and-immediate-code-fix.md`, `missing-account-switcher-vs-auto-login-fail-closed.md`, `admin-cluster-remote-adb-socket-injection-and-welcome-back-switcher.md`, `run-artifacts-extraction-and-session-dedup.md`.
+> Core Refs: `upload-hook-auto-login-recovery-and-canary-gate-wiring.md`, `canary-receipt-expiry-and-safe-push-pre-commit.md`, `recovery-proof-and-operator-closeout.md`, `anti-performative-alert-handling-and-immediate-code-fix.md`, `missing-account-switcher-vs-auto-login-fail-closed.md`, `admin-cluster-remote-adb-socket-injection-and-welcome-back-switcher.md`, `run-artifacts-extraction-and-session-dedup.md`, `upload-batch-alert-triage-and-flop-reporting-separation.md`.
 
 ## UI evidence: target screen only
 

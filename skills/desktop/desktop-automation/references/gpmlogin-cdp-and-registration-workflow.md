@@ -56,6 +56,14 @@ Không cần cài thư viện nặng (Playwright/Selenium) khi môi trường b�
 - **Anti-Bot / CAPTCHA Gate:**
   - Khi bấm Verify xuất hiện reCAPTCHA/Arkose Labs/puzzle hoặc yêu cầu xác minh thẻ thanh toán (Credit/Debit Card): Agent KHÔNG ĐƯỢC chạy loop mù giải đố hay nhập thông tin thẻ nhạy cảm.
   - Phải chụp ảnh màn hình bằng chứng (Gate 6), mở profile trên màn hình desktop máy người dùng và bàn giao đúng điểm nghẽn để người dùng thao tác 1 chạm bằng tay.
-- **Post-Reboot Recovery:**
-  - Nếu hệ thống bị reboot giữa chừng, GPMLogin và các tiến trình Chrome con sẽ bị tắt hoàn toàn.
-  - Kiểm tra cổng `19995` trước. Nếu GPMLogin chưa chạy, báo người dùng mở app GPMLogin trên Desktop trước khi gửi lệnh start profile.
+- **Post-Reboot / Headless Launch Pitfall (`Yêu cầu cập trình duyệt [Chromium] [142]`):**
+  - **Symptom:** Khởi chạy `GPMLogin.exe` ngầm (headless / `subprocess.Popen`) hoặc sau khi máy reboot, gọi API `/api/v3/profiles/start/{id}` trả về:
+    `{"success": false, "data": null, "message": "Yêu cầu cập trình duyệt [Chromium] [142]"}`
+  - **Root Cause:**
+    1. Trình duyệt lõi (`gpm_browser_chromium_core_142\chrome.exe` và `chrome.dll` ~264MB) vẫn nguyên vẹn 100% trên đĩa.
+    2. Tuy nhiên, nếu GPMLogin được bật mà **chưa hoàn tất phiên GUI khởi tạo** (chưa có cửa sổ chính đầy đủ `GPM-Login v4.3.6-stable` kích hoạt đồng bộ manifest/fingerprint với server GPM), hoặc bị chạy song song 2 tiến trình mồ côi (headless PID background vs GUI PID), backend C# của GPM sẽ tự động khóa Local API v3 và trả về lỗi giả yêu cầu cập nhật.
+    3. Ngoài ra, GPM chặn hoàn toàn việc downgrade: nếu profile đã ở version 142 thì không thể hạ xuống 137 hay 139 qua API (`Do not downgrade from version 137`).
+  - **Remediation:**
+    1. Kiểm tra tiến trình: `Get-Process GPMLogin | Select-Object Id, MainWindowTitle, MainWindowHandle`. Nếu có tiến trình không có MainWindowTitle (chạy cụt ngầm), phải kill tiến trình mồ côi đó trước.
+    2. Đảm bảo cửa sổ `GPM-Login v4.3.6-stable` được hiển thị trên desktop để app kết nối cloud session thành công.
+    3. Nếu app vẫn kẹt cờ tài nguyên: Người dùng cần click một lần vào nút "Cập nhật lại GPM" (hoặc bấm mở 1 profile bất kỳ trực tiếp trên giao diện GPM) để app kích hoạt đồng bộ manifest/core 142 từ server về máy, sau đó Local API v3 sẽ tự động nhả khóa `success: true`.

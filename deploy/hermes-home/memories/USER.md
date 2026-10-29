@@ -8,4 +8,4 @@ Canary & Cơ giới hóa: Tái hiện đúng acc/lỗi thật (timeout >= 720s);
 §
 Tư vấn kiến trúc/kỹ thuật cần ngắn gọn, đi thẳng vào bản chất, không over-engineer; tham vấn Claude CLI độc lập khi cần giải pháp kiến trúc khách quan.
 §
-User ghét suy diễn lý thuyết suông (như khóa MAC ISP, đổ thừa hạ tầng khi chưa có bằng chứng); yêu cầu Coordinator bám sát thực tế thiết bị, phân tích ngắn gọn, trực diện, thừa nhận sai ngay và tập trung vào lệnh/hành động dứt điểm thay vì bao biện vòng vo.
+User ghét suy diễn lý thuyết suông (như khóa MAC, đổ thừa hạ tầng khi máy khác vẫn chạy); cấm phán xét khi chưa kiểm tra interface/case-sensitivity (pppoe-WAN2 vs wan). Yêu cầu bám sát thực tế thiết bị, phân tích trực diện, nhận sai ngay, tập trung lệnh dứt điểm thay vì bao biện vòng vo.
