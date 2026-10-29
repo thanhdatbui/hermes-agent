@@ -47,3 +47,20 @@ Use this reference when extending TikTok feed watchdog reporting or the Port 190
 - Never use an unbounded recursive scan of a live farm as a dashboard request path. Use bounded date directories, explicit `row-*` children, or a cached/indexed source.
 - If a live-data probe exceeds the focused timeout, report it as an unverified performance issue and switch unit tests to mocked/offline fixtures. Do not claim the dashboard is complete until the new API/view test passes.
 - Verified session evidence: the existing watchdog suite passed 42 tests, the runner preflight suite passed 62 tests, and the pre-existing dashboard suite passed 51 tests; these do not replace focused tests for the new nurture feature.
+
+## Dashboard Runtime Isolation & Windows Multi-Process Contention (Port 1905)
+- **Độc lập 100% giữa Dashboard và Farm Runner:**
+  * `tiktok_dashboard.py` (Port 1905) chỉ là web server đọc snapshot từ `D:/Taadaa/data/tiktok_tracker.db` để hiển thị UI.
+  * Dashboard sập, treo hay lỗi socket TUYỆT ĐỐI KHÔNG liên quan đến tiến trình Farm (`tiktok_runner.py`). Farm chạy độc lập theo lịch cron và tool ADB trên điện thoại. CẤM suy diễn lỗi Dashboard thành farm bị tê liệt.
+- **Vòng lặp tự hủy của Watchdog (Watchdog Self-Destruction Loop):**
+  * Khi `tiktok_tracker.db` phình to (>130k snapshots), các truy vấn `ROW_NUMBER()` tổng hợp mất ~4-5s.
+  * Nếu Watchdog (`tiktok_dashboard_watchdog.ps1`) đặt timeout quá ngắn (8s), việc tải trang sẽ khiến watchdog tưởng server chết và kích hoạt restart liên tục mỗi 60-70s.
+  * Trên Windows, việc kill không dứt khoát kết hợp cơ chế `SO_REUSEADDR` dẫn đến tình trạng **nhiều tiến trình `python.exe` / `pythonw.exe` cùng bind vào port 1905**. Request từ client phân phối ngẫu nhiên vào PID bị kẹt socket $\implies$ trình duyệt xoay đơ hoặc báo `ERR_CONNECTION_TIMED_OUT`.
+  * **Xử lý triệt để:** Kill toàn bộ cây tiến trình `tiktok_dashboard.py` và kill watchdog PowerShell bị kẹt; đảm bảo duy nhất 1 PID sống lắng nghe port 1905.
+- **Phòng ngừa đẻ trùng tiến trình từ Startup:**
+  * Kiểm tra thư mục Windows Startup (`%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup`). Tuyệt đối không để tồn tại 2 script cùng khởi chạy dashboard (ví dụ `start_tiktok_dashboard.vbs` và `tiktok_dashboard_1905.vbs`).
+- **Cache TTL & Sóng request đồng thời:**
+  * Cache `_CACHE_TTL` không nên để quá ngắn (như 15s) khi DB lớn; nên đặt $\ge 180\text{s}$ để các endpoint song song (`/`, `/api/data`, `/api/follow-health`, `/api/nurture-health`) trả về tức thì (0.02s) thay vì đồng loạt đọc SQLite gây lock.
+- **Chu kỳ xoay tua 3 ngày — Bỏ hoàn toàn ngày 4 dưỡng sinh:**
+  * Farm chạy chu kỳ 3 ngày liên tục: Day 1 (Row 1/3/5), Day 2 (Row 2/4/6), Day 3 (Row 7/8/Ca 3 Dynamic Slot), sau đó quay lại Day 1.
+  * CẤM trích dẫn các dòng chú thích cũ hoặc nhầm lẫn sang chu kỳ 4 ngày có "Ngày 4 dưỡng sinh toàn farm". Khi thấy chú thích lỗi trong mã nguồn runner, phải dọn sạch ngay để tránh phán đoán sai.
