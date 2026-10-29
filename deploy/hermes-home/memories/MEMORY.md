@@ -8,4 +8,4 @@ Tool 2FA & cron: JIT lock; sync code Admin qua OneDrive D:\OneDrive\TaadaaData\a
 §
 Cứu hộ OpenWrt UltraViewer: Cấm Reset Factory. DSA lan1/2 rút khỏi br-lan mới nhận PADO. ONT untagged bind thẳng Switch port ('lan1', 'lan2'), cấm sub-device lan1.35; cấm Alias (@WAN2). Tắt IPTV modem né 172.17.x Walled Garden. Cấm dán '&&' qua ttyd. Đổi dây đảo user/pass khớp Circuit ID. Khi 1 line UP còn 1 line timeout, cấm gán nhầm nick đang chạy sang port timeout.
 §
-GPM auto-heal & proxy invariant: CẤM tạo profile rác; BẮT BUỘC tái sử dụng profile có sẵn trong pool và BẮT BUỘC có proxy riêng (mobi/mirotik), CẤM chạy profile IP direct của host Kibe. Form React/AWSUI bắt buộc dùng prototype value setter. 19995 offline sau reboot thì spawn ngầm GPMLogin.exe. Lỗi 'Yêu cầu cập trình duyệt [Chromium] [142]' do lệch manifest core, cập nhật trên GUI là nhả API.
+GPM proxy & auto-heal: CẤM tạo profile rác; BẮT BUỘC dùng profile có sẵn kẹp proxy (mobi/mirotik), CẤM CHẠY IP DIRECT MÁY KIBE. Check ipify trước khi vào web. React value setter cho form AWSUI. 19995 offline sau reboot spawn ngầm GPMLogin.exe. Lỗi 'Yêu cầu cập trình duyệt 142' do lệch manifest core, cập nhật trên GUI là nhả.

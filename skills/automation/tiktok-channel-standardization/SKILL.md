@@ -120,6 +120,7 @@ Quy trình chuẩn hoá bao gồm trọn gói **5 hạng mục bắt buộc (5-i
     ```bash
     python D:\Taadaa\tools\run_winrt_ocr.py "D:\Taadaa\reports\<FILE>.png"
     ```
+  - **Quick Probe Timeout <= 60s cho run_winrt_ocr:** Hook `HARD GATE #5 - DEVICE BULKHEAD` coi mọi lệnh `run_winrt_ocr.py` là lệnh tương tác thiết bị/chụp màn hình. CẤM gọi foreground mà không đặt timeout (mặc định timeout=None sẽ bị giật phanh chặn đứng). BẮT BUỘC đặt rõ `timeout=30` hoặc `timeout=60` khi gọi `terminal(...)` để lấy receipt nhanh, hoặc dùng `background=True, notify_on_complete=True`.
   - **Fresh Receipt Invariant (TTL 180s):** Vision receipt chỉ có hiệu lực trong 180 giây (3 phút). Phải chạy `run_winrt_ocr.py` ngay trong lượt turn chuẩn bị gửi thẻ `MEDIA:`. CẤM chạy OCR từ nhiều turns trước rồi để receipt hết hạn làm kích hoạt `[CONTRADICTION_GATE_TRIGGERED] verdict: NO_RECEIPT`.
 - **Quy Tắc Chống Báo Cáo Láo Avatar & Kỷ Luật CẤM LẠM DỤNG CLAUDE CLI:**
   - **CẤM TUYỆT ĐỐI** tin vào log `verified=True` / `AVATAR_SMOKE_SUCCESS` của runner nếu chưa đối soát thị giác trực tiếp trên avatar circle sau khi upload. Runner cũ hay tap mù vào Tile 1 (thường là ảnh screenshot cũ chứa avatar cũ), gây hiện tượng "báo cáo láo" làm User nổi giận (*"Xong cái địt mẹ mày đã thay ava acc 1 đâu... Con mẹ mày lại báo cáo láo"*).
