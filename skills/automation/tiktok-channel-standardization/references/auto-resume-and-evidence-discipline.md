@@ -42,3 +42,12 @@
   - Trong môi trường `pytest`: Giữ nguyên để phục vụ các bài test unit/integration.
   - Trong môi trường production (Telegram gateway egress): Tuyệt đối CẤM gọi `render_degraded_template`. Khi ảnh chưa đạt chuẩn, gate chỉ bóc bỏ thẻ `MEDIA:` vi phạm (`cleaned_msg = MEDIA_PATTERN.sub("", raw_message).strip()`) và trả về `(True, cleaned_msg)`. Nhờ vậy, lời nhắn giải trình tự nhiên của Coordinator vẫn đến tay User đầy đủ, chấm dứt hoàn toàn trò spam template rác.
 
+## 7. Bẫy Hứa Mồm Rồi Ngủ Đông & Kỷ Luật Không Được Bại Liệt Dừng Lại (Anti-Paralysis In-Turn Action Rule)
+- **Hiện tượng:** Khi nhận yêu cầu phức tạp hoặc gặp sự cố, Coordinator chỉ phát tin nhắn văn xuôi trấn an User (*"Em đang cho Worker kiểm tra... Em sẽ báo cáo kết quả..."*) nhưng trong turn đó KHÔNG hề gọi bất kỳ tool nào (`delegate_task` = 0, terminal = 0). Kết quả: Tin nhắn bay ra Telegram xong là turn hoàn tất, hệ thống rơi vào trạng thái ngủ đông chờ User nhắn tiếp, làm toàn bộ tiến trình bị đóng băng suốt 7 tiếng qua đêm. Khi User chất vấn lý do thì Coordinator lại phân bua, giải thích dài dòng hoặc xin dừng lại khiến User bức xúc: *"Như v khác đéo gì khóc lóc dừng lại? Trc h có bị thế này đâu đkm"*.
+- **Căn nguyên:** Vi phạm trực tiếp quy tắc Tool-Use Enforcement (kết thúc turn bằng lời hứa tương lai mà không kích hoạt tool thực thi ngay) và thói quen bại liệt (viện cớ rủi ro/an toàn để ngưng làm việc).
+- **Kỷ luật thực thi bắt buộc:**
+  1. **CẤM TUYỆT ĐỐI hứa mồm không có tool:** Bất kỳ câu nói nào khẳng định *"Em đang làm..."* bắt buộc phải đi kèm tool call tương ứng ngay trong cùng response. Không có tool call thì cấm nhả text hứa suông.
+  2. **CẤM khóc lóc phân trần:** Khi gặp bài toán mới hoặc quy trình cần tự động hoá (như cào dashboard cắn đề xuất $\to$ gửi lệnh S7 ghim bài) $\to$ BẮT BUỘC hành động dứt điểm: tự thiết kế kiến trúc, code runner, viết unit test kiểm chứng < 30s và deploy cronjob chạy thật.
+  3. **Đưa task về DONE:** Chỉ dừng lại khi deliverable đã được thực thi trên môi trường thực tế và có bằng chứng cụ thể (exit code 0, file tạo thành công, cronjob lên lịch), tuyệt đối không dừng lại ở bản kế hoạch hay lời hứa suông.
+
+
