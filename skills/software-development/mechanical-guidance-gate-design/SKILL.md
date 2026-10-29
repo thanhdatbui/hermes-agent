@@ -23,6 +23,8 @@ Use when creating, modifying, or reviewing mechanical enforcement gates (hooks, 
 - Reference: `references/user-sudo-override-and-gate-abc-discipline.md` (User Sudo Override protocol, Pipeline A-B-C stages, & anti-idle-window invariants).
 - Reference: `references/dispatch-receipt-enforcer-and-claim-boundary.md` (Dispatch Receipt Enforcer: post-turn mechanical truth labeling against LLM completion bias & false dispatch claims).
 - Reference: `references/dispatch-receipt-enforcer-r3-architecture.md` (Receipt Enforcer R3: exact tool_call_id matching, allowlist status, NFKC normalization, & non-blocking truth labeling).
+- Reference: `references/gate-b-planner-and-dispatch-contract-o1.md` (Gate B Planner Architecture: Gemini Web primary with Claude CLI fallback & Contract O(1) for Workers).
+- Reference: `references/gate-b-planner-and-anti-overengineering-gate-c.md` (Gate B Planner & Anti-Overengineering Gate C: 90s timeout, no-sha256 CRLF-normalized anchor, Qoder T0 primary, & independent applied verification).
 - Reference: `references/zero-overengineering-bulkhead-clamp-and-adb-false-positive-20261029.md` (Zero-overengineering bulkhead auto-clamp, ambiguous adb false-positive fix, & step-by-step invariant).
 - Reference: `references/crystallize-fix-invariant-and-ratchet-amendment-architecture-20261029.md` (Crystallize fix invariant at closeout Step 2.6, reverse_diff regression proof, & ratchet amend_rule for false-positive recovery).
 

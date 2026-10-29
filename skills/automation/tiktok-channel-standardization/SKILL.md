@@ -8,4 +8,7 @@ description: "Use when standardizing TikTok profiles (bio, pin, avatar)."
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.
 > - `references/avatar-no-text-discipline-and-launcher-trap.md`: Kỷ luật trích xuất Avatar sạch chữ 100% & Bẫy chụp lộn màn hình Launcher khi Watchdog hoàn tất.
 > - `references/username-vs-display-name-and-cross-registry-sync.md`: Quy chuẩn chuẩn hóa Username (@handle) vs Display Name và kỷ luật đồng bộ nguyên tử đa tầng dữ liệu (Excel + SQLite).
+> - `references/false-positive-anchor-drop-and-profile-unlock-20261030.md`: Điều tra lỗi nhả follow ảo 35 máy do race condition nút Anchor & Quy trình mở khóa trang Sửa hồ sơ để đổi Username trên layout Profile mới.
+> - `references/tiktok-profile-missing-edit-button-and-username-trap-20261030.md`: Bẫy giao diện TikTok khuyết nút Sửa hồ sơ (chỉ có Thêm tiểu sử) và hạn chế đổi Username trực tiếp.
+> - `references/username-change-variant-and-fleet-partitioning-20261029.md`: Quy chuẩn đổi Username khi UI ẩn nút Sửa hồ sơ, đối soát trust threshold follow và hiệu quả phân nhóm Chẵn/Lẻ.
 

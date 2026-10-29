@@ -27,5 +27,12 @@ A standard 3-port gigabit router (e.g., Xiaomi Mi Router 3G v1) should be config
 
 ---
 
+## 2. Multi-MACVLAN Isolated Proxy Rotation (8 Ports)
+To deploy 8 rotating proxy ports (e.g. 5101..5108) on a single physical PPPoE line without risking Tailscale out-of-band disconnection:
+- See detailed architecture and scripts at: `references/multi-macvlan-pppoe-proxy-rotation-architecture.md`.
+- **Golden Rule:** Every virtual PPPoE sub-interface (`wan_sub1..8`) MUST be pinned with `defaultroute='0'`, `peerdns='0'`, and routed via isolated tables (`table 101..108`). The default gateway `0.0.0.0/0` in the main routing table belongs strictly to the primary WAN maintaining Tailscale.
+
+---
+
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

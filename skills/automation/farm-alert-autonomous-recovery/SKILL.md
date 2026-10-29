@@ -14,6 +14,7 @@ description: Taadaa Farm Alert recovery to closeout.
 
 ## 🛑 FEED TAB FALLBACK & IMMEDIATE RECOVERY
 - Khi tab Friends/Following gặp lỗi mạng (`manual-needed:network`) hoặc trống (`manual-needed:empty`): Cơ chế `_tab_fallback_reason` phải lập tức kích hoạt chuyển về For You feed (Graceful Fallback), không được chờ đợi consecutive manual guard >= 2 khiến phiên dừng sớm. BẮT BUỘC bảo vệ bằng GuardGate rule `case_invariant_prohibit_guarded_friends_feed_fallback` trong `rules.json` và test kiểm chứng ALLOW/DENY để chống agent sau phá. Chi tiết xem: `references/feed-tab-fallback-and-immediate-network-recovery-20261029.md`.
+- **KỶ LUẬT CƠ GIỚI HÓA BẮT BUỘC (CLOSEOUT STEP 2.6):** Mọi fix bug/script từ Farm Alert BẮT BUỘC phải kết tinh thành Invariant Rule trong repo `rules.json` (hoặc waiver hợp lệ) ngay trong turn để vượt qua Closeout Gate Step 2.6 (`crystallize.py`). CẤM sửa chay chỉ nộp code mà không đóng đinh rule, CẤM lưu memory suông, CẤM để chờ User nhắc. Nếu rule gây false-positive, sử dụng quy trình Ratchet `rule.py amend` kèm `--fp-diff` để nới lỏng an toàn.
 
 ## 🛑 TRIAGE LỖI CÁP VẬT LÝ ADB (CM_PROB_PHANTOM)
 - Khi nhận alert máy offline / `[01_open]` mà ADB báo `device not found` hoặc `offline`:

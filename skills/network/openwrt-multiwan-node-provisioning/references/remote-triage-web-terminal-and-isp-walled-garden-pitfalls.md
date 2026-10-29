@@ -21,3 +21,9 @@ Bài học xương máu từ phiên cứu hộ từ xa Xiaomi R3G V1 qua LuCI tt
 ## 4. Viettel ISP PPPoE Walled Garden / Pool 172.17.x.x Triage
 - **Dải 172.17.x.x:** Khi PPPoE nhận IP `172.17.x.x`, ping gateway Viettel (`27.68.227.150`) thông 2ms và nhận cả IPv6 (`2402:800:...`), nhưng ping `8.8.8.8` rớt 100%. Đây là pool cô lập / Walled Garden của ISP (thuê bao mới chưa hoàn công, khóa cước, hoặc chưa gán đúng profile).
 - **Phép thử chéo đối chứng (Hardware Cross-Validation):** Thay vì mò mẫm cấu hình router hàng giờ, cắm trực tiếp line mạng vào một thiết bị đang chạy chuẩn (như Box MobiProxy hoặc Router test của kỹ thuật). Nếu cắm vào thiết bị chuẩn mà vẫn nhận 172.17.x / không ra mạng -> chứng minh 100% lỗi từ phía trạm ISP, không tốn thời gian vô ích vào cấu hình router.
+
+## 5. Port-to-Account Binding Contract on ISP FTTH
+- **Bẫy gán nhầm tài khoản PPPoE qua lại giữa các cổng:**
+  - Viettel và các ISP FTTH thường khóa tài khoản theo Circuit ID / Port quang tại trạm OLT/BRAS.
+  - Khi tráo đổi dây cáp mạng vật lý hoặc gán cùng 1 tài khoản PPPoE (`hyn_gftth_tamnhb1`) lên cả 2 cổng (`lan1` và `lan2`), cổng cắm vào đường quang của Line 0 sẽ bị trạm từ chối phản hồi gói PADO (`Timeout waiting for PADO packets`), trong khi cổng đúng vẫn quay được bình thường.
+  - Luôn kiểm tra `carrier` vật lý (`cat /sys/class/net/<port>/carrier == 1`) trước. Nếu `carrier = 1` mà vẫn PADO timeout với mọi tài khoản, nguyên nhân 100% nằm ở modem ONT phía trước chưa mở Bridge Mode (hoặc dây cắm nhầm vào cổng LAN 2/3/4 của modem thay vì cổng LAN 1 đã bridge).

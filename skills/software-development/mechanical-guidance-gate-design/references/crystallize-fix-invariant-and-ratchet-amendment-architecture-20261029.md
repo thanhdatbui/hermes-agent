@@ -19,22 +19,29 @@ Chèn Step 2.6 ngay sau Step 2.5 (GuardGate check) và trước Step 3 (Focused 
 * **Điều kiện tiên quyết để PASS Gate:**
   * **Trường hợp A (Có Invariant Rule mới):** Tập rule ID hiện tại có thêm rule mới so với base ref (`git show <base>:rules.json`). Rule mới phải thỏa mãn **Regression Proof O(1)**:
     - Tạo `reverse_diff` (đảo ngược dòng `-` thành `+` của bản fix).
-    - GuardEngine phải **DENY** `reverse_diff` (chứng minh code lỗi cũ bị chặn) và **ALLOW** diff thật (bản fix được thông qua).
-  * **Trường hợp B (Invariant Waiver):** Khai báo `--waiver-id` trỏ vào bản ghi `guardgate/invariant_waivers.jsonl`:
-    - Enum: `NOT_EXPRESSIBLE_AS_PATTERN`, `COVERED_BY_TEST <test_id>`, `ONE_OFF_DATA_FIX`, `ENV_ONLY`, `OPERATOR_OVERRIDE`.
-    - Gắn với `diff_sha256`, có TTL, dùng 1 lần. Vượt quá 2 waiver/tuần yêu cầu Operator token.
+    - GuardEngine phải **DENY** `reverse_diff` (chứng minh code lỗi cũ bị chặn bởi chính rule_id mới) và **ALLOW** diff thật (bản fix được thông qua).
+    - Nếu là fix thuần thêm code (additive - không có dòng xóa trong diff): Bắt buộc rule phải khai báo danh sách `params.incident_diff` và GuardEngine phải DENY synthetic diff của incident_diff này.
+    - Scope của rule BẮT BUỘC phải bao phủ ít nhất 1 file mã nguồn đang được sửa trong diff (chống rule ảo phạm vi zzz.py che cho fix app.py).
+    - **Monotonic Integrity Sâu Sắc:** Toàn bộ rule từ base_ref không được phép bị xóa, không được làm rỗng pattern, không được đổi pattern thành wildcard vô hiệu hóa (`.*`, `(?!)`, `zzz_never`).
+  * **Trường hợp B (Invariant Waiver Hợp Lệ):** Khai báo `--waiver-id` trỏ vào bản ghi `guardgate/invariant_waivers.jsonl`:
+    - Ràng buộc cứng: Bắt buộc bind với `repo_name` và `diff_sha256` (cấm waiver không bind).
+    - Single-use: Lưu vào append-only ledger `consumed_waivers.jsonl`. Đã dùng là không thể dùng lại.
+    - `COVERED_BY_TEST`: Bắt buộc diff chạm file test thực tế (`test_*.py` / `*_test.py` / `tests/`) VÀ diff có câu lệnh test thực tế (`assert ` hoặc `def test_`).
+    - `NO_BEHAVIOR_RISK`: Chỉ áp dụng cho docs (`.md`, `.txt`) hoặc config; TUYỆT ĐỐI KHÔNG được chạm file mã nguồn (`.py`, v.v.).
+    - `OPERATOR_OVERRIDE`: Bắt buộc xác thực đúng `OPERATOR_TOKEN_SECRET` của User Sudo.
 
 ---
 
-## 3. Cơ Chế Điều Chỉnh Rule Linh Hoạt (Adaptive Rule Tuning / `amend_rule.py`)
+## 3. Cơ Chế Điều Chỉnh Rule Linh Hoạt (Adaptive Rule Tuning / `rule.py amend`)
 Khi một rule đã ban hành vô tình gây false-positive hoặc cản trở tính năng mới:
-1. **Ghi nhận sự cố chặn:** Lần bị chặn được ghi vào `guardgate/blocks.jsonl` với `block_id`.
-2. **Lệnh nới lỏng hợp lệ:**
-   `python D:/Taadaa/tools/guardgate/amend_rule.py <rule_id> --incident-ref <entry_id> --fp-diff <diff> --reason FALSE_POSITIVE`
-3. **Thẩm định Ratchet 2 chiều bắt buộc:**
-   - Vector ALLOW mới (đoạn diff tính năng mới bị chặn oan) phải được **ALLOW**.
-   - Toàn bộ vector DENY cũ (đoạn diff của incident gốc) **BẮT BUỘC VẪN PHẢI BỊ DENY 100%**.
-   - Nếu thỏa mãn cả 2: Rule tự động cập nhật nguyên tử, ghi audit trail, không gây bại liệt cho workflow tiếp theo.
+1. **Lệnh nới lỏng hợp lệ:**
+   `python D:/Taadaa/tools/guardgate/rule.py amend <rule_id> --rules-path <repo/rules.json> --fp-diff "<proof_diff>" --new-pattern "<regex>" --reason "<lý do >= 15 ký tự>"`
+2. **Thẩm định Ratchet 2 chiều bắt buộc:**
+   - Vector ALLOW mới (đoạn diff tính năng mới bị chặn oan `--fp-diff`) bắt buộc phải được **ALLOW**.
+   - Mẫu lỗi gốc `params.incident_diff` **BẮT BUỘC VẪN PHẢI BỊ DENY 100%** bởi pattern mới. Nếu pattern mới buông lỏng bug cũ -> Bị từ chối ngay lập tức: `RATCHET REJECTED`.
+   - Cấm `exclude_paths` chứa `"."`, `"/"`, `"*"` hoặc chuỗi < 3 ký tự.
+   - Cấm amend đụng vào `rules.json` toàn cục của Farm.
+   - Nếu thỏa mãn: Rule tự động cập nhật nguyên tử, tăng version, ghi audit trail, nới lỏng đúng chỗ mà không làm tái phát bug cũ.
 
 ---
 
