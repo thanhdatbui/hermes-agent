@@ -6,8 +6,6 @@ TikTok Farm: Chu kỳ 3 ngày cày liên tục (Ca 1: {1,2,7}, Ca 2: {3,4,8}, Ca
 §
 Tool 2FA và cron xen ca: JIT lock từng máy; sync code Admin qua OneDrive D:\OneDrive\TaadaaData\admin\ (cấm stream Base64 qua SSH); single_writer workbook fallback ID + protected_parts=None khi add text né WORKBOOK_PROTECTED_PART_DRIFT. Master Excel Admin: 101/630 có 2FA.
 §
-GuardGate: Protection Regression Gate cho repo; infra_regression_gate.py kiểm tra 4 file config Hermes/OmniRoute. Model Picker Telegram: tin nhắn /model cũ freeze state model trong RAM; thêm model bắt buộc restart gateway & gửi /model mới hoặc /model <id>.
-§
-Dashboard TikTok (1905): độc lập Farm runner. Restart kill cả cây pythonw+python. Sổ Bệnh Án là modal 1 nick (max 680px, cấm bung menu all nick), bắt buộc giữ ma trận ca chạy gần đây (chip đỏ/xanh/xám). Guard Closeout: diff Python >=15 dòng cần comment '# Bước N'; EOL phải khớp HEAD tránh DIFF_TOO_LARGE.
+GuardGate: gate repo. OpenWrt (R3G): Cấm Reset Factory từ xa (trùng 192.168.1.1 gây mất UltraViewer). Cổng slave DSA (lan1/lan2) phải rút khỏi br-lan kẻo bridge nuốt gói PADO PPPoE. Cấm gõ 'auto' vào Service Name/AC. Tên interface phân biệt hoa thường (WAN2 vs wan2). Cổng xanh giữ br-lan 192.168.5.1 để cứu hộ.
 §
 Canary visual: cấm dùng ảnh spinner ('Quá trình này có thể mất...', loading); mtime ảnh >= mtime UI dump. Bắt buộc bốc đúng exact hash từ prompt, cấm glob/mtime trên image_cache. SQLite daily_account_actions là nguồn sự thật lịch sử follow.

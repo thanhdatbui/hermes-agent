@@ -210,6 +210,17 @@ When headless network access fails and an on-site computer is borrowed via Ultra
       5. **Account vs Line Disconnect (The "20 Lines" Benchmark):** If other lines at the same site work on different routers, never assume the new line has the same active profile. Perform an A/B test: temporarily enter a verified active username from one of the working lines into the router to immediately distinguish between a local hardware/config issue and an ISP subscriber provisioning freeze.
 
 13. **OpenWrt Multi-WAN Switch/DSA Port-Binding Pitfall & The "auto" String Trap:**
+    - **The DSA Bridge Slave Trap (`master br-lan` swallows PADO):**
+      - **Root Cause:** In OpenWrt DSA architecture (kernel 5.4+ / MT7621), if `lan1` or `lan2` is still listed in `network.@device[0].ports` (belonging to `br-lan`), the Linux kernel bridge `rx_handler` intercepts incoming Ethernet frames with ethertype `0x8863` (PPPoE Discovery) and forwards them up the bridge instead of delivering them to the raw socket opened by `pppd` on `lan1`/`lan2`.
+      - **Consequence:** `pppd` sends `PADI` packets out successfully (upstream ISP receives and responds with `PADO`), but `pppd` never sees the returning `PADO` frame because the bridge swallowed it. The log shows repeated `Timeout waiting for PADO packets` even on a 100% healthy line that works on other routers!
+      - **Verification:** Run `bridge link` in terminal. If `lan1` or `lan2` has `master br-lan`, this bug is active.
+      - **The Fix:** Remove slave ports from `br-lan` explicitly via UCI:
+        ```sh
+        uci -q del_list network.@device[0].ports='lan1'
+        uci -q del_list network.@device[0].ports='lan2'
+        uci commit network && /etc/init.d/network restart
+        ```
+        Keep only the management port (e.g. `wan` / blue port) in `br-lan` so remote UltraViewer/PC access is not severed.
     - **The Switch / DSA VLAN Misconfiguration Trap:**
       - On SoC routers like Xiaomi R3G (MediaTek MT7621 with DSA / switch architecture), `lan1` and `lan2` are physical switch ports designed for bridging into `br-lan`.
       - If an agent reassigns `lan1` or `lan2` to PPPoE WAN interfaces without cleanly isolating them from internal switch/VLAN bridge logic, outgoing PPPoE discovery frames (`PADI`) can be misrouted or tagged internally, causing perpetual `Timeout waiting for PADO packets` even when the ISP line and ONT are 100% healthy.
@@ -219,9 +230,14 @@ When headless network access fails and an on-site computer is borrowed via Ultra
       - **The Bug:** Users or agents often mistakenly type the literal string `"auto"` into these fields.
       - In OpenWrt `pppd`, entering `"auto"` forces pppd to demand an Access Concentrator / Service Name literally named `"auto"`. The ISP BRAS (e.g. Viettel) rejects or ignores the request, causing immediate PPPoE discovery timeout (`PADO timeout`)!
       - **Fix:** Both fields **MUST BE LEFT COMPLETELY BLANK/EMPTY**.
-    - **Physical Port Safety & Zero-Disruption Management:**
+    - **The Case-Sensitivity Interface Trap (`wan2` vs `WAN2`):**
+      - OpenWrt UCI interface names are case-sensitive. If an interface was created in LuCI as `WAN2` (uppercase), running `ifup wan2` returns `Interface wan2 not found`. Always check exact case via `uci show network | grep proto=\'pppoe\'` or `ip -br addr` (which creates `pppoe-WAN2`).
+    - **Missing Default Gateway Routing After PPPoE Connects:**
+      - Even after obtaining an IP on `pppoe-WAN2` (e.g. `172.17.49.234`), `ping 8.8.8.8` may fail with 100% packet loss if `defaultroute` is disabled or overruled by lingering `mwan3` rules. Check `ip route` for a `default via <peer_ip> dev pppoe-WAN2` entry.
+    - **Physical Port Safety & Zero-Disruption Management (Never Reset Factory Remotely):**
       - When managing the router via UltraViewer on an on-site PC plugged into the router:
       - **NEVER alter or reassign the physical port currently serving the PC (e.g. blue port / `br-lan`).** Doing so drops the management connection instantly, terminating the remote support session.
+      - **NEVER perform a Factory Reset remotely:** Factory reset sets IP back to `192.168.1.1`, colliding with the ISP modem (`192.168.1.1`) and disabling management on the blue port, causing an instant, irrecoverable remote lockout.
       - Always confine interface debugging and testing strictly to the remaining ports (`lan1`, `lan2`) while keeping the management port untouched.
 
 ## References
