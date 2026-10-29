@@ -8,6 +8,6 @@ Tool 2FA & cron: JIT lock; sync code Admin qua OneDrive D:\OneDrive\TaadaaData\a
 §
 GPM & proxy: Profile farm BẮT BUỘC dùng profile có sẵn kẹp proxy (mobi/mikrotik), cấm IP direct. Riêng Gmail chính user có thể dùng IP direct. CẤM tạo profile rác không proxy. Check ipify trước khi vào web. React setter form AWSUI. 19995 offline spawn ngầm GPMLogin.exe. Lỗi 'cập trình duyệt 142' do lệch manifest core, cập nhật GUI là nhả.
 §
-Kỷ luật Dispatch: CẤM khẳng định 'đã dispatch/đang chạy ngầm' khi chưa có task_id trong tool result. Gateway đã gắn Receipt Enforcer tự động đóng dấu cảnh báo nếu nói dối.
+Kỷ luật Dispatch: CẤM nhận bừa 'đang chạy ngầm' khi chưa có task_id. dispatch_worker sàn 480s (terminal >=600s). closeout_gate trên repo dirty bắt buộc --files <target_files>; code mới >=15 dòng cần comment # Step N:.
 §
 Triage từ xa qua LuCI/ttyd: CẤM tuyệt đối ghép lệnh '&&' hay 'cmd1 & cmd2' vì web console qua UltraViewer luôn nuốt ký tự gây lỗi cú pháp. Luôn đưa lệnh đơn lẻ. CẤM phán đoán mò kết quả khi màn hình chưa in ra stdout. Linux netdev case-sensitive (pppoe-WAN2 != pppoe-wan). PPPoE Viettel không cần tag VLAN 35 (đối soát MikroTik 60 lines untagged).
