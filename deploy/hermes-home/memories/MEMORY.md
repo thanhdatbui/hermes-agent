@@ -7,3 +7,5 @@ TikTok Farm: Chu kỳ 3 ngày cày liên tục (Ca 1: {1,2,7}, Ca 2: {3,4,8}, Ca
 Tool 2FA và cron xen ca: JIT lock từng máy; sync code Admin qua OneDrive D:\OneDrive\TaadaaData\admin\ (cấm stream Base64 qua SSH); single_writer workbook fallback ID + protected_parts=None khi add text né WORKBOOK_PROTECTED_PART_DRIFT. Master Excel Admin: 101/630 có 2FA.
 §
 Khi cứu hộ OpenWrt từ xa qua PC UltraViewer cắm cổng xanh: Tuyệt đối không Factory Reset (trùng 192.168.1.1 với modem gây rớt UltraViewer). Cổng DSA lan1/lan2 phải rút khỏi br-lan mới nhận PADO. Nếu đổi chéo dây vật lý giữa 2 modem, bắt buộc đảo tài khoản tương ứng trong uci network vì BRAS khóa Circuit ID theo sợi cáp.
+§
+OpenWrt trên Xiaomi R3G (DSA/Mediatek): Khi gán cổng LAN (lan1/lan2) làm WAN PPPoE, bắt buộc phải xóa chúng khỏi bridge 'br-lan' (uci del_list network.@device[0].ports='lan1'/'lan2') để rx_handler của bridge không nuốt mất gói tin PADO (giao thức 0x8863), tránh lỗi Timeout waiting for PADO packets. Không tự suy diễn lỗi do khóa MAC hay đổ lỗi cho ISP khi chưa test A/B đối chứng.
