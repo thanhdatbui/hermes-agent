@@ -40,3 +40,10 @@ Investigation revealed two coupled architectural traps:
      ```
   2. **Python Subprocess Isolation:** When the command line invokes Python (`^\s*python(?:\d+)?(?:\.exe)?\s+`), bypass all shell tool scanners (`find`, `grep`, `rg`, `Get-ChildItem`). Rely exclusively on AST/regex checks for Python filesystem APIs (`PYTHON_SCAN`: `os.walk`, `Path.rglob`, `glob...recursive=True`).
   3. **Division vs Root Separation:** Root path checks must enforce `(?<!/)(?:^|[\s'\"`(=])/(?:[\s'\"`\)]|$)(?!/)` and explicitly exempt commands starting with `python` from standalone `/` matching.
+
+### C. Safe Closeout Scope Alignment & Invariant Enforcement
+- **Anti-Pattern:** Attempting to close out a session by passing `--files` that mismatch the committed diff scope between `base_ref` and `HEAD`, or introducing logic changes without step comments in files audited by `check_step_by_step_structure`.
+- **Rule:**
+  1. **Strict Scope Equality:** The `--files` passed to `closeout_gate.py` must match 100% of the modified files between `--base` and `HEAD`. If uncommitted files were committed together, include all committed targets in `--files`.
+  2. **Step Comment Mandate:** When editing files subject to `check_step_by_step_structure`, any added logic block $\ge 15$ lines must contain explicit `# === Step: ... ===` comments to satisfy the GuardGate invariant.
+  3. **Subprocess Hook Freshness vs Gateway Memory:** Pre-tool guard scripts (`hooks/guard_*.py`) are executed as fresh subprocesses on every tool call and reflect disk changes instantly without Gateway restarts. Gateway restart is strictly reserved for core engine modules in RAM.
