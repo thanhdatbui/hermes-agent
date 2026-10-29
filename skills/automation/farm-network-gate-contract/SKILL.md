@@ -120,6 +120,31 @@ For older Samsung Android builds (e.g. Galaxy S7 running Android 8):
   App `adb-join-wifi` khi được gọi qua intent sẽ giữ activity và timer nội bộ chạy ngầm. Nếu không dập tắt, timer của app cứ 4–5 giây lại bắn intent `CMD_ENABLE_NETWORK <id> true (disableOthers=true)` liên tục, làm đứt ngang kết nối của SSID chuẩn và ngắt quãng chu kỳ nhận DHCP / nạp route của Android. BẮT BUỘC gọi `_adb_shell(serial, "am force-stop com.steinwurf.adbjoinwifi")` ngay khi `_join_wifi` kết thúc (áp dụng cho mọi kết quả: `OK`, `TIMEOUT`, `AUTH_FAIL`).
 - **Dual-Band 5GHz Trapping on Degraded RF Hardware (5GHz Bonus vs Association Rejection Blacklist):**
   On dual-band SSIDs, Android's `SavedNetworkEvaluator` awards a +40 bonus score to 5GHz BSSIDs (`5GHz bonus: 40`). Devices with degraded 5GHz RF/drivers (e.g. M7 on BCM4359) repeatedly target 5GHz and get rejected (`ASSOCIATION_REJECTION status=1`). After 8 failures, Android framework marks the entire network disabled: `NETWORK_SELECTION_DISABLED_ASSOCIATION_REJECTION counter:8`. Once blacklisted, the device drops to `DisconnectedState` and will not associate even with healthy 2.4GHz BSSIDs of the same SSID. Diagnosis: check `dumpsys wifi` for the disabled counter and `5GHz bonus`. Note that `wpa_supplicant: auth_failures=1 reason=CONN_FAILED` is an association failure marker, NOT a bad password. Remediation: isolate to a dedicated 2.4GHz-only SSID or lock BSSID.
+- **GPM Profile Proxy Hardening & Anti-Direct-IP Mechanical Invariant:**
+  - CẤM TUYỆT ĐỐI tự ý gọi `/api/v3/profiles/create` tạo profile mới không có proxy (`raw_proxy == ""`) hoặc chạy IP direct máy Kibe khi làm task/test. Mọi tác vụ web/farm BẮT BUỘC tái sử dụng profile có sẵn của farm (đã có gắn mobi/mirotik proxy).
+  - Trước khi khởi động profile: BẮT BUỘC kiểm tra `raw_proxy` qua `GET /api/v3/profiles/{id}`. Nếu `raw_proxy` rỗng -> FAIL-CLOSED, cấm mở trình duyệt.
+  - Ngay sau khi mở Chromium qua CDP: BẮT BUỘC probe `https://api.ipify.org?format=json` để đối soát IP thực tế phải là dải Proxy farm (không phải IP WAN máy Kibe) trước khi điều hướng sang trang đích.
+- **AWSUI / React Native Value Setter Pitfall:**
+  - Trên các form web hiện đại (AWS Console Signup, React/AWSUI), gán trực tiếp `input.value = '...'` rồi dispatch event thông thường sẽ bị React Virtual DOM ghi đè / bỏ qua trong im lặng, dẫn đến nút submit bấm được nhưng form báo lỗi thiếu trường (vd: `An email address is required`).
+  - BẮT BUỘC dùng cơ chế native value setter:
+    ```javascript
+    function setNativeValue(element, value) {
+        const valueSetter = Object.getOwnPropertyDescriptor(element, 'value').set;
+        const prototype = Object.getPrototypeOf(element);
+        const prototypeValueSetter = Object.getOwnPropertyDescriptor(prototype, 'value').set;
+        if (prototypeValueSetter && valueSetter !== prototypeValueSetter) {
+            prototypeValueSetter.call(element, value);
+        } else {
+            valueSetter.call(element, value);
+        }
+        element.dispatchEvent(new Event('input', { bubbles: true }));
+        element.dispatchEvent(new Event('change', { bubbles: true }));
+        element.dispatchEvent(new Event('blur', { bubbles: true }));
+    }
+    ```
+- **Post-Reboot GPM Core 142 Manifest Verification:**
+  - Sau khi PC reboot, Local API v3 có thể báo lỗi giả `Yêu cầu cập trình duyệt [Chromium] [142]` do app chưa đồng bộ trạng thái runtime/manifest với server GPM. Tuyệt đối không tự tiện sửa đè file core hay hạ version profile (bị chặn downgrade từ 137). Mở trực tiếp GUI app GPMLogin để cập nhật tài nguyên, API sẽ tự động nhả quyền.
+
 - **Power Save Mode (PSM) Idle Timeout vs L4 Probe Tuning (Sửa Script, Cấm Báo Ảo):**
   - *Bẫy timeout 3s trúng chu kỳ PSM:* Khi điện thoại Galaxy S7 ở màn hình Launcher không có traffic video nặng, chip Wi-Fi Broadcom tự động bật IEEE 802.11 Power Save Mode (PSM) để giảm nhiệt. Lệnh probe `toybox nc -w 3 -W 3` quá ngắn sẽ bị timeout giả tạo (`nc: Timeout` / `No route to host`) dù proxy Sing-box vẫn sống tốt.
   - *Kỷ luật thực thi:* Khi phát hiện timeout do cơ chế sleep/PSM của máy, Coordinator BẮT BUỘC chủ động cập nhật script gate (tăng timeout probe lên 6s `-w 6 -W 6` và retry 3 lần ngắt quãng), TUYỆT ĐỐI KHÔNG giải thích lý do suông rồi để nguyên script cũ gây nghẽn gate liên tục.
