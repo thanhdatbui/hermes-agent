@@ -319,6 +319,12 @@ When headless network access fails and an on-site computer is borrowed via Ultra
            ```
         3. Never assign the working account (e.g. `tamnhb1`) to the non-communicating physical port (`lan1`) expecting it to fix the timeout; resolve upstream bridge/carrier status on the non-communicating port first.
 
+    - **The Case-Sensitive Interface `-I` Flag in Ping Diagnosis (The "pppoe-wan" vs "pppoe-WAN2" False Alarm):**
+      - **The Bug:** In Linux / OpenWrt, network interface names are strictly case-sensitive. When testing network connectivity via CLI with `ping -I <interface> <ip>`, if the interface was created with uppercase letters in LuCI (e.g. named `WAN2`), the resulting L3 kernel device is `pppoe-WAN2`.
+      - **The False-Negative Trap:** If an agent or user runs `ping -c 3 -I pppoe-wan 8.8.8.8` (forcing traffic through the lowercase, currently down/PADO-timeout `wan` interface) instead of `ping -c 3 -I pppoe-WAN2 8.8.8.8`, the command fails with `100% packet loss`! This falsely makes it look like the entire router has no internet, leading to hours of wild goose chases blaming ISP walled gardens, when the healthy interface was sitting right there online all along!
+      - **Strict Heuristic:** Before issuing interface-bound diagnostic commands (`ping -I`, `tcpdump -i`, `traceroute -i`), ALWAYS read back the exact active L3 device name from `ip -br addr` or `ifstatus <INTERFACE_NAME> | grep l3_device`. Match the case character-for-character.
+
+
 ## References
 
 - `references/claude-audit-and-field-triage-r3g.md` — Detailed case study of Xiaomi R3G deploy, Claude CLI production audit remediation, and the premature lifeline unplug incident.
