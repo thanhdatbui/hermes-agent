@@ -7,6 +7,7 @@ description: Configure, run, verify, and extend the Hermes messaging gateway (Te
 Trigger: set up or operate the messaging gateway (Telegram first), bind a chat/group to a repo via `channel_overrides`, explain multi-session on Telegram, verify a bot is online, or debug gateway config.
 
 - Chi tiết toàn bộ quy trình và phân tích chuyên sâu: xem các tài liệu trong thư mục `references/` của skill.
+- Đảm bảo bảo toàn Auto-Resume khi restart Gateway và kỷ luật chống khóc lóc/bại liệt: xem `references/delayed-restart-auto-resume-and-anti-whining.md`.
 
 ## CLI commands
 

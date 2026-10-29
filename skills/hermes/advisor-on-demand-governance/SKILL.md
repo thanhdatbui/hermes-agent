@@ -23,4 +23,5 @@ _ADVISOR_EXPLICIT_TRIGGERS = (
 ```
 
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
+> - `references/advisor-gate-planning-and-gemini-web-quirk.md`: Advisor Gate planning pipeline (Claude CLI/Sol consult before Worker dispatch) & Gemini Web CDP vs Antigravity API tool-calling boundary.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

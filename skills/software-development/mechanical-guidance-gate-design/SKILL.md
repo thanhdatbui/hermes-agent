@@ -22,6 +22,9 @@ Use when creating, modifying, or reviewing mechanical enforcement gates (hooks, 
 - Reference: `references/cowboy-coordinator-boundary-and-idle-evaluation-invariants.md` (Cowboy Coordinator Gate 3/6 boundary violations).
 - Reference: `references/user-sudo-override-and-gate-abc-discipline.md` (User Sudo Override protocol, Pipeline A-B-C stages, & anti-idle-window invariants).
 - Reference: `references/dispatch-receipt-enforcer-and-claim-boundary.md` (Dispatch Receipt Enforcer: post-turn mechanical truth labeling against LLM completion bias & false dispatch claims).
+- Reference: `references/dispatch-receipt-enforcer-r3-architecture.md` (Receipt Enforcer R3: exact tool_call_id matching, allowlist status, NFKC normalization, & non-blocking truth labeling).
+- Reference: `references/zero-overengineering-bulkhead-clamp-and-adb-false-positive-20261029.md` (Zero-overengineering bulkhead auto-clamp, ambiguous adb false-positive fix, & step-by-step invariant).
+- Reference: `references/crystallize-fix-invariant-and-ratchet-amendment-architecture-20261029.md` (Crystallize fix invariant at closeout Step 2.6, reverse_diff regression proof, & ratchet amend_rule for false-positive recovery).
 
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

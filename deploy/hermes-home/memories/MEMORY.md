@@ -8,6 +8,6 @@ Tool 2FA & cron: JIT lock; sync code Admin qua OneDrive D:\OneDrive\TaadaaData\a
 §
 GPM & proxy: Profile farm BẮT BUỘC dùng profile có sẵn kẹp proxy (mobi/mikrotik), cấm IP direct. Riêng Gmail chính user có thể dùng IP direct. CẤM tạo profile rác không proxy. Check ipify trước khi vào web. React setter form AWSUI. 19995 offline spawn ngầm GPMLogin.exe. Lỗi 'cập trình duyệt 142' do lệch manifest core, cập nhật GUI là nhả.
 §
-Kỷ luật Dispatch: CẤM nhận bừa 'đang chạy ngầm' khi chưa có task_id. dispatch_worker sàn 480s (terminal >=600s). closeout_gate trên repo dirty bắt buộc --files <target_files>; code mới >=15 dòng cần comment # Step N:.
+Kỷ luật Dispatch & Sudo: CẤM nhận bừa 'đang chạy ngầm' (có Receipt Enforcer cơ học). Sudo tối cao. CẤM Coordinator tự nghĩ plan: bắt buộc tham vấn Claude CLI/Sol lập plan trước khi dispatch Worker. Restart Gateway qua delayed-restart.ps1 đóng dấu resume_pending=True; Native Vision: agent.image_input_mode=native. Gemini Web CDP không hỗ trợ native tools (dùng AGY API cho task tool).
 §
-Triage từ xa qua LuCI/ttyd: CẤM tuyệt đối ghép lệnh '&&' hay 'cmd1 & cmd2' vì web console qua UltraViewer luôn nuốt ký tự gây lỗi cú pháp. Luôn đưa lệnh đơn lẻ. CẤM phán đoán mò kết quả khi màn hình chưa in ra stdout. Linux netdev case-sensitive (pppoe-WAN2 != pppoe-wan). PPPoE Viettel không cần tag VLAN 35 (đối soát MikroTik 60 lines untagged).
+Triage LuCI/ttyd: CẤM ghép '&&'/'&'. Lệnh đơn lẻ, cấm phán mò khi chưa có stdout. R3G (100.115.94.49, pass: password). LAN2=WAN2 (tamnhb1) giữ default route/Tailscale. LAN1=wan (tamnhb0) defaultroute='0' Table 100 chống rớt mạng. Cổng xanh=br-lan PC.

@@ -2,7 +2,6 @@
 name: taadaa-farm-ops-rules
 description: "Taadaa farm safety, close-session, and multi-machine operations."
 ---
-
 # Taadaa Farm Operations Rules & Invariants
 
 ## 1. Nguyên Tắc Cốt Lõi (Invariants)
@@ -26,12 +25,5 @@ description: "Taadaa farm safety, close-session, and multi-machine operations."
   - **Phiên Vận Hành (farm, nick, device, excel - không có code delta):** `python D:/Taadaa/tools/closeout_v2.py --repo <repo> --operational --json-output` (PASS ngay trong < 0.1s; cấm gọi LLM Reviewer).
   - **Phiên Sửa Code:** `python D:/Taadaa/tools/closeout_v2.py --repo <repo> --json-output` (py_compile cú pháp + pytest focused; cấm LLM chấm điểm cảm tính).
 
-## 3. Quy Chuẩn Báo Cáo Telegram Farm Alert
-- Báo cáo sự cố kèm ảnh nghiệm thu nằm trong **cùng 1 tin nhắn duy nhất**:
-  - Dòng 1: `MEDIA:<đường_dẫn_tuyệt_đối>` (không bọc markdown).
-  - Dòng 2: `### [MÁY XX] - <Tên màn hình / Nhóm lỗi>`
-  - Dòng 3+: Mô tả OCR readback và đề xuất xử lý. Caption tổng <= 1024 ký tự.
-- Bắt buộc bọc `html.escape()` cho các biến động trong alert HTML.
-
-## 4. Danh Mục Tài Liệu Tra Cứu Chi Tiết (References)
-- Chi tiết toàn bộ quy trình chuyên sâu, case study sự cố, và các khế ước mở rộng: xem các tài liệu chuyên biệt trong thư mục `references/` của skill.
+> **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
+> Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

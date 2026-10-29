@@ -27,35 +27,5 @@ A standard 3-port gigabit router (e.g., Xiaomi Mi Router 3G v1) should be config
 
 ---
 
-## 2. Anti-Lockout 2-Step Handshake Protocol
-
-When reconfiguring physical ports while connected to the router via SSH from a local host:
-
-### The Pitfall
-Directly converting the active management port (e.g., `lan1`) to a PPPoE interface instantly drops the SSH session, leaving the router unreachable and half-configured.
-
-### The 2-Step Safe Handshake
-1. **Step 1 (Expand Management Bridge):**
-   - Add the target rescue port (`wan` / blue) to `br-lan`:
-     ```sh
-     uci add_list network.@device[0].ports='wan'
-     uci commit network && /etc/init.d/network reload
-     ```
-   - Both ports now serve the management IP (e.g., `192.168.5.1`).
-2. **Step 2 (Physical Cable Swap):**
-   - Move the physical Ethernet cable to the blue port.
-   - Verify connectivity to `192.168.5.1`.
-- **Step 3 (Reconfigure LAN Ports):**
-   - Now that the session runs over the blue port, safely remove `lan1` and `lan2` from `br-lan`.
-   - Assign `lan1` to `interface 'wan'` and `lan2` to `interface 'wan2'`.
-   - Set protocol to `pppoe` with corresponding credentials.
-   - Save and commit persistently (`uci commit`).
-
----
-
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.
-- `references/pppoe-pado-bridge-trap-and-remote-triage-pitfalls.md`: Bẫy switch DSA bridge nuốt gói PADO và quy trình tách cổng.
-- `references/remote-triage-web-terminal-and-isp-walled-garden-pitfalls.md`: Bẫy web terminal ttyd nuốt `&&`, case-sensitive interface Linux, và chẩn đoán pool ISP 172.17.x.x Walled Garden.
-- `references/multiwan-routing-firewall-and-terminal-traps.md`: Multi-WAN policy routing, firewall masquerade, bẫy ttyd nuốt `&&`, case-sensitive netdev và đối soát MikroTik MACVLAN untagged.
-- `references/field-triage-anti-hallucination-and-evidence-rules.md`: Kỷ luật OCR chống bịa đặt output lệnh, cấm suy diễn Walled Garden khi chưa cô lập Dual-WAN collision, và quy tắc copy lệnh đơn dòng qua UltraViewer ttyd.

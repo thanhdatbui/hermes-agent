@@ -374,6 +374,16 @@ Khởi chạy detached background process từ PowerShell để hoàn toàn khô
 powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process powershell.exe -ArgumentList '-NoProfile -ExecutionPolicy Bypass -File C:\Users\Kibe\AppData\Local\hermes\scripts\delayed-restart.ps1' -WindowStyle Hidden"
 ```
 
+### G. Auto-Resume Preservation Bắt Buộc Trước Khi Delayed Restart (Anti-Amnesia Invariant)
+- **Tử huyệt:** Dùng `Stop-Process -Force` để kill Gateway cũ mà không gọi hàm bảo toàn session sẽ khiến Gateway mới khởi động lại trong trạng thái "mất trí nhớ", cờ `resume_pending` bằng `False` $\rightarrow$ không tự động chạy tiếp công việc dang dở.
+- **Quy chuẩn bắt buộc trong `delayed-restart.ps1`:** Trước khi dừng Gateway cũ (PID), BẮT BUỘC chèn đoạn mã bảo toàn in-flight sessions:
+  ```powershell
+  $pyExe = Join-Path $hermesHome "hermes-agent\venv\Scripts\python.exe"
+  if (!(Test-Path $pyExe)) { $pyExe = "python.exe" }
+  & $pyExe -c "import sys; sys.path.insert(0, 'D:/Taadaa/tools'); from services.Taadaa_Service.farm_preflight_daily_reset import preserve_in_flight_sessions; count = preserve_in_flight_sessions(30); print(count)"
+  ```
+- **0-Turn Auto-Rewire cho `hermes gateway restart`:** Trong `tools/terminal_tool.py` và `hermes_cli/gateway.py`, khi phát hiện lệnh restart từ bên trong session con, CẤM TUYỆT ĐỐI trả về lỗi cấm thụ động khiến LLM khóc lóc/đùn việc cho User. BẮT BUỘC bẻ hướng 0-turn sang gọi ngầm `delayed-restart.ps1` detached qua `Start-Process`.
+
 ---
 
 ## 7. Quy chuẩn Đồng bộ Model Provider & Cập nhật Telegram Model Picker (`/model`)

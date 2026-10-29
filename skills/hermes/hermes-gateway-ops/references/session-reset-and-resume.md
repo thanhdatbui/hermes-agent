@@ -19,6 +19,16 @@ session_reset:
 
 `both` enables both 24-hour idle expiry and the daily wall-clock reset. The `at_hour` value is interpreted in the gateway's local/server timezone unless the deployment explicitly configures another timezone.
 
+### Active Mid-Conversation Reset Pitfall & Coordinator Recovery Protocol
+- **Triệu chứng:** Người dùng đang nhắn tin liên tục trong phiên Telegram nhưng bỗng nhiên nhận được banner:
+  `◐ Session automatically reset (inactive for 24h). Conversation history cleared.`
+  Người dùng thường bức xúc: *"Cái gì vậy tao vẫn đang chat mà" / "Sao lại báo linh tinh"*.
+- **Cơ chế ngầm:** Khi session được tạo từ hôm trước và chạy liên tục quá 24h, scheduler của Gateway quét qua thấy `session.started_at` hoặc idle interval vượt ngưỡng `idle_minutes: 1440` (hoặc chạm mốc `at_hour: 4`), gateway tự động kích hoạt reset phiên và đẩy thông điệp này ra chat.
+- **Kỷ luật ứng xử của Coordinator:**
+  1. **Giải thích trực diện, trấn an:** Giải thích rõ cơ chế reset tự động 24h/giờ cố định của Gateway trong `config.yaml`, khẳng định dữ liệu không hề bị mất.
+  2. **Tự động khôi phục ngữ cảnh (Zero-Parroting / Zero-Repetition):** Dùng ngay `session_search(sort='newest', limit=3)` để nối lại toàn bộ mạch việc và các thực thể (nick, máy, tác vụ) đang dang dở, trả lời thẳng vào câu hỏi của người dùng, CẤM TUYỆT ĐỐI bắt người dùng phải gõ lại hay tóm tắt lại những gì vừa nói.
+
+
 ## Safe diagnostic sequence
 
 1. `hermes config show` — confirm the active config path and model/gateway context.
