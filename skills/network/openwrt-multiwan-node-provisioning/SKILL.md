@@ -278,6 +278,20 @@ When headless network access fails and an on-site computer is borrowed via Ultra
         4. **Verification:**
            - Once netifd brings up `pppoe-wan` over `lan1.35`, the router receives a genuine Public/Internet IP (e.g. `27.x`, `116.x`, `171.x` or routable CGNAT `100.64.x`), eliminating the `172.17.x.x` trap, and `ping 8.8.8.8` immediately succeeds.
 
+    - **Untagged vs Tagged Reality & LuCI Modal Dropdown Selection Trap:**
+      - **Untagged ONT Bridge Reality:** If tagging VLAN 35 on OpenWrt results in immediate `PADO timeout` while dialing untagged on raw `lan1`/`lan2` connects and negotiates LCP/IPCP (even if receiving carrier-internal IP `172.17.x.x`), the ONT bridge itself is **ALREADY stripping/handling VLAN 35 upstream** and presenting untagged frames to the router's LAN ports. In this topology, OpenWrt MUST dial directly on raw physical interfaces (`Switch port: "lan1"`, `Switch port: "lan2"`), NOT on VLAN sub-devices (`lan1.35`).
+      - **The LuCI Device Dropdown Alias Trap:**
+        - When configuring an interface in LuCI -> **Interfaces -> Edit WAN2 -> General Settings -> Device**, the expanded dropdown list contains confusing virtual items at the bottom:
+          - `Alias Interface: "@WAN2"`
+          - `Alias Interface: "@WAN2_6"`
+          - `Alias Interface: "@lan"`
+          - `Alias Interface: "@rescue"`
+        - **The Pitfall:** Agents or users often mistakenly select alias entries (like `@WAN2` or `@WAN2_6`). This breaks L2 binding.
+        - **Correct Selection:** ALWAYS scroll up and select the concrete physical Ethernet port: **`Switch port: "lan2"`** (or `Switch port: "lan1"`).
+      - **The Misleading "USER_REQUEST" Status in Edit Modals:**
+        - While an Edit modal dialog (`Interfaces » WAN2`) is actively open, LuCI frequently displays `Error: Unknown error (USER_REQUEST)` in the modal status header box.
+        - This does NOT mean the interface is broken. It simply indicates uncommitted in-memory state or pending netifd reload. Check the RX/TX packet counters inside the status box: if packets and uptime are incrementing and an IPv4 address is present, the PPPoE session is already alive and running. Complete changes by clicking **Save**, then clicking **Save & Apply** at the bottom-right of the main Interfaces page.
+
 ## References
 
 - `references/claude-audit-and-field-triage-r3g.md` — Detailed case study of Xiaomi R3G deploy, Claude CLI production audit remediation, and the premature lifeline unplug incident.
