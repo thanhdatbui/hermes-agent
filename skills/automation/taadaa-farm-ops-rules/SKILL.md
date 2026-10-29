@@ -71,3 +71,4 @@ description: "Taadaa farm safety, close-session, and multi-machine operations."
 - Khế Ước Drop-Day Sổ Bệnh Án & Zero-Follow Failure: [`references/follow-detail-matrix-drop-day-zero-follow-invariant.md`](references/follow-detail-matrix-drop-day-zero-follow-invariant.md)
 - Chu Kỳ 3 Ngày Shift-Pool, Lệch Pha An Toàn & Socket Concurrency Dashboard: [`references/tiktok-farm-3day-shift-pool-phase-decoupling-and-dashboard-concurrency.md`](references/tiktok-farm-3day-shift-pool-phase-decoupling-and-dashboard-concurrency.md)
 - Quét Kênh Flop & Xoay Nguồn Cào (Cấm Bỏ Acc, Render Nối Tiếp): [`references/flop-channel-detection-and-source-rotation-invariants.md`](references/flop-channel-detection-and-source-rotation-invariants.md)
+- Quản Trị Quét Kênh Flop & Throttle Xoay Nguồn Cào Tự Động: [`references/flop-channel-detection-and-source-rotation-governance.md`](references/flop-channel-detection-and-source-rotation-governance.md)
