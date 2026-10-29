@@ -9,3 +9,5 @@ Tool 2FA và cron xen ca: JIT lock từng máy (cấm bulk pre-reserve); freeze_
 GuardGate (D:/Taadaa/tools/guardgate) là Protection Regression Gate cơ giới hóa cho code diff repo (Closeout Step 2.5); infra_regression_gate.py chỉ kiểm tra riêng 4 file config hạ tầng Hermes/OmniRoute.
 §
 Dashboard TikTok (1905, tiktok_dashboard.py) độc lập 100% với Farm runner (tiktok_runner.py); cấm suy diễn lỗi Dashboard sang Farm. Watchdog restart service Windows phải kill cả cây pythonw.exe + python.exe để tránh đụng socket SO_REUSEADDR gây treo/sập.
+§
+Canary visual: cấm dùng ảnh transition spinner ('Quá trình này có thể mất...', loading); bắt buộc mtime ảnh >= mtime UI dump và soi mắt settled state.
