@@ -83,3 +83,4 @@ description: "Taadaa farm safety, close-session, and multi-machine operations."
 - Xoay Nguồn Kênh Flop & Kỷ Luật UI Lâm Sàng Sổ Bệnh Án: [`references/flop-channel-source-rotation-and-dashboard-clinical-ux.md`](references/flop-channel-source-rotation-and-dashboard-clinical-ux.md)
 - Quét Kênh Flop, Xoay Nguồn Cào & Kỷ Luật Closeout Gate: [`references/flop-channel-detection-and-source-rotation-discipline.md`](references/flop-channel-detection-and-source-rotation-discipline.md)
 - Tra Cứu Hiện Trường Liên Phiên & Đồng Bộ Danh Mục Model Gateway: [`references/cross-session-pending-work-triage-and-model-picker-parity.md`](references/cross-session-pending-work-triage-and-model-picker-parity.md)
+- Remote ADB Host Admin & XiaoWei Isolation vs Nhận Diện Nút Tạo Clip: [`references/admin-cluster-remote-adb-xiaowei-isolation-and-create-button-patch.md`](references/admin-cluster-remote-adb-xiaowei-isolation-and-create-button-patch.md)

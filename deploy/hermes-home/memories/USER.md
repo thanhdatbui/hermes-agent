@@ -8,4 +8,4 @@ Canary & Cơ giới hóa: Tái hiện đúng acc/lỗi thật (timeout >= 720s);
 §
 Tư vấn kiến trúc ngắn gọn, thẳng bản chất, không over-engineer; Claude CLI khi cần khách quan. Menu /model Telegram chỉ giữ đúng 2 provider: OmniRoute & 9router (loại sạch Copilot, MoA, rác khác); restart Gateway bắt buộc bảo toàn auto-resume session.
 §
-User ghét suy diễn lý thuyết suông (như khóa MAC, đổ thừa hạ tầng khi máy khác vẫn chạy); cấm phán xét khi chưa kiểm tra interface/case-sensitivity (pppoe-WAN2 vs wan). Yêu cầu bám sát thực tế thiết bị, phân tích trực diện, nhận sai ngay, tập trung lệnh dứt điểm thay vì bao biện vòng vo.
+User ghét suy diễn lý thuyết suông (đổ thừa hạ tầng/tuột cáp khi XiaoWei vẫn stream đủ máy); cấm đoán mò khi chưa bóc log hiện trường. Yêu cầu bám sát thiết bị, nhận sai ngay, tập trung fix script và chạy canary bù dứt điểm.
