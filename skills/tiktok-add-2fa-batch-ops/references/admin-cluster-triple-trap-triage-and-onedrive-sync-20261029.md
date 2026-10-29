@@ -40,6 +40,14 @@
 - Guard bắt nhầm thay đổi này là hư hỏng cấu trúc và ném `WorkbookError("WORKBOOK_PROTECTED_PART_DRIFT")`.
 - **Giải pháp**:
   - Đối với cell-only string updates trong batch runner 2FA, truyền `protected_parts=None` vào `single_writer_workbook_update` để openpyxl commit an toàn.
+  - Đồng thời trong `automation-core`, đã gỡ bỏ `xl/sharedstrings.xml` khỏi hàm `protected_zip_parts` (chỉ hash drawings, charts, tables, media và relationships).
+
+### Trap 4: Các Tử Huyệt Locking & File Replacement Trên Windows (Audit bởi Claude CLI)
+- **Cross-Drive Rollback**: File rollback tạo trong `%TEMP%` (ổ `C:`) trong khi file Excel ở ổ `D:`. Trên Windows, lệnh `os.replace` khác ổ đĩa văng `OSError: [WinError 17]`. Khắc phục: Bắt buộc tạo tempfile trong cùng thư mục `target.parent`.
+- **Windows SharingViolation khi Unlink Lock**: Khi process A xóa file lock mà process B đang mở đọc để check stale lock, Windows ném `PermissionError`. Nếu nuốt lỗi này, lock file bị mồ côi vĩnh viễn $\rightarrow$ gây timeout hàng loạt. Khắc phục: Bọc `_unlink_with_retry(path, retries=5, delay=0.05)` và coi lock rỗng/hỏng cũ >30s là stale để xóa.
+- **Vòng lặp 5x Retry Lồng Nhau (Treo Caller 10-12 phút)**: `_write_cell` bọc 5 lần retry bên ngoài timeout 120s bên trong, kèm random sleep, khiến khi kẹt lock thì tiến trình treo tới 10 phút làm sập gateway. Khắc phục: Dẹp bỏ hoàn toàn outer retry loop, chỉ dùng 1 lần atomic update với timeout rõ ràng.
+- **Tiền tố dấu `=` trong Secret**: openpyxl tự biến chuỗi bắt đầu bằng `=` thành Excel Formula `#NAME?`. Khắc phục: Ép kiểu `cell.data_type = "s"`.
+- **Kỷ Luật GuardGate**: Rule `case_2fa_prohibit_blind_workbook_access` cấm `openpyxl.load_workbook` không bọc lock (kể cả trong file test, bắt buộc có `acquire_workbook_lock`). Rule `case_invariant_require_step_by_step_structure` bắt buộc các khối code mới >= 15 dòng phải có comment `# Step X: ...`.
 
 ---
 
