@@ -1,13 +1,13 @@
 Guard_media_vision_gate chặn DIRTY_AVATAR_EVIDENCE, cấm leak DEGRADED ra chat; kiểm tra contradiction phổ quát cho mọi loại ảnh để chống AI bịa đặt thành công khi ảnh hiển thị lỗi.
 §
-Nạp Web reverse (:20129): trần 2 acc/IP; pass random lưu Excel; pre-validate Graph; cấm base64. Khi acc web lỗi (401/Sentinel), CẤM set is_active=0; BẮT BUỘC set rate_limited_until UTC (+30m/+24h) để tự phục hồi; combo disableSessionStickiness=true & failoverBeforeRetry=true. Nạp Gemini Web qua CDP lấy __Secure-1PSID kẹp proxy 1:1; Argon 4 pool map model 'gemini-web'. Worker timeout 360s.
+Nạp Web (:20129): trần 2 acc/IP; pre-validate Graph; cấm base64. Acc lỗi set rate_limited_until UTC; disableSessionStickiness=true & failoverBeforeRetry=true. Nạp Gemini Web CDP lấy __Secure-1PSID kẹp proxy 1:1; Argon 4 pool map 'gemini-web'. Worker timeout 360s.
 §
 TikTok Farm: Chu kỳ 3 ngày cày liên tục (Ca 1: {1,2,7}, Ca 2: {3,4,8}, Ca 3: {5,6} + Dyn Ngày 3; bỏ Ngày 4). Lệch pha độc lập vì pool nick rời nhau 100%. Gate cooldown 48h (_is_account_follow_cooldown) chặn cấm bấm follow nếu acc vừa cày < 48h. Quota max cap 40 fl/ngày (2 phiên >=120m); used>0 streak=1; 3 quy trình Feed-Follow-Upload độc lập; Quota [cap-2, cap], bóp trần = last_failed - 2; Máy Lẻ (Nhóm A bám trần + hồi phục 1,2), Máy Chẵn (Nhóm B max 20 fl/phiên, used>0 dừng nhận fl đã ăn, used=0 mới cooldown).
 §
 Tool 2FA & cron: JIT lock; sync code Admin qua OneDrive D:\OneDrive\TaadaaData\admin\ (cấm stream Base64 qua SSH); single_writer workbook fallback ID + protected_parts=None. Master Excel Admin: 101/630 có 2FA.
 §
-Cứu hộ OpenWrt: Cấm Reset Factory. DSA lan1/2 rút khỏi br-lan mới nhận PADO. ONT untagged bind Switch ('lan1', 'lan2'), cấm sub-device lan1.35; cấm Alias (@WAN2). Tắt IPTV modem né 172.17.x. Cấm dán '&&' qua ttyd. Đổi dây đảo user/pass khớp Circuit ID. Line UP/timeout cấm gán nhầm nick. Cờ -I case-sensitive: check l3_device ('pppoe-WAN2' vs 'pppoe-wan') né false loss.
+Cứu hộ OpenWrt từ xa: CẤM Reset Factory né văng UltraViewer/trùng 192.168.1.1. DSA lan1/2 bắt buộc rút khỏi br-lan mới nhận PADO. ONT untagged bind Switch ('lan1', 'lan2'), cấm sub-device lan1.35; cấm Alias (@WAN2). Tắt IPTV modem né 172.17.x. Cấm dán '&&' hay '&' qua ttyd (bị nuốt ký tự, dùng start-stop-daemon -b). Đổi dây đảo user/pass khớp Circuit ID. Line UP/timeout cấm gán nhầm nick. Cờ -I case-sensitive: check l3_device ('pppoe-WAN2' vs 'pppoe-wan') né false loss.
 §
-GPM proxy & auto-heal: CẤM tạo profile rác; BẮT BUỘC dùng profile có sẵn kẹp proxy (mobi/mirotik), CẤM CHẠY IP DIRECT MÁY KIBE. Check ipify trước khi vào web. React value setter cho form AWSUI. 19995 offline sau reboot spawn ngầm GPMLogin.exe. Lỗi 'Yêu cầu cập trình duyệt 142' do lệch manifest core, cập nhật trên GUI là nhả.
+GPM & proxy: CẤM tạo profile rác; dùng profile có sẵn kẹp proxy, CẤM IP DIRECT KIBE. Check ipify trước khi vào web. React setter form AWSUI. 19995 offline sau reboot spawn ngầm GPMLogin.exe. Lỗi 'cập trình duyệt 142' do lệch manifest core, cập nhật GUI là nhả.
 §
 Coordinator cấm tự ý gọi skill_view(file_path='references/...') đọc file con khi xử lý lệnh thường để chống phình context; tra cứu sâu chỉ khi user yêu cầu.

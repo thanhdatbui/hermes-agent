@@ -44,3 +44,15 @@
    - Nếu `last_window` đã trùng với khung giờ hiện tại -> Runner cha ĐÃ CỐ GẮNG CHẠY và đã spawn, không phải cronjob bị quên tick.
 2. Kiểm tra folder `$ArtifactRoot`:
    - Không tồn tại folder -> Khẳng định tiến trình launcher PowerShell con bị crash ở pha pre-flight (trước khi khởi tạo `run_tiktok.py`).
+
+---
+
+## 3. Các Điểm Sửa Lỗi Cốt Lõi (Hardened Fixes & Invariants)
+
+### A. Bulkhead Lọc Rogue Machine Thay Vì Crash Cả Batch (`run_tiktok.py`):
+- **Nguy cơ:** Khi workbook cấu hình nhầm hoặc lọt máy ngoại lai (vd: Máy 261 của Admin lọt vào danh sách chạy của Kibe), `taadaa_host.assert_machine_in_range()` ném `HostConfigError`. Trước đây lỗi này làm crash toàn bộ batch trước khi tạo folder `live/`, khiến cụm bị miss trắng cả phiên.
+- **Kỷ luật:** Luôn bọc `try / except taadaa_host.HostConfigError` trong vòng lặp parse `--machines`, xuất `[HOST_WARNING]` bỏ qua máy ngoại lai và tiếp tục chạy các máy hợp lệ (`valid_machines`). Chỉ trả về `CONFIG_ERROR` khi không còn máy nào hợp lệ thuộc host.
+
+### B. Fast-Fail Closed Khi Mất Focus TikTok Chống Kẹt Dây Chuyền (`multi_machine_feed_session.py`):
+- **Nguy cơ:** Khi TikTok bị mất focus (launcher/popup/crash) mà không được xếp vào `_FATAL_DEVICE_ERROR_PATTERNS`, worker sẽ cố thử lại nhiều lần (chờ timeout ADB 15-20 phút), giam giữ worker slot và làm chết 30-50 máy xếp hàng sau do chạm trần 2 tiếng của outer watchdog.
+- **Kỷ luật:** Bắt buộc bổ sung `"tiktok not focused after"` vào `_FATAL_DEVICE_ERROR_PATTERNS`. Khi phát hiện mất focus sau nhiều lần poll hoặc launcher recovery, worker phải fail-fast đóng luồng ngay lập tức để nhả worker slot cho các máy tiếp theo trong queue.
