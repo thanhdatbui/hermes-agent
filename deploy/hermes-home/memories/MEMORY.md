@@ -8,6 +8,6 @@ Tool 2FA và cron xen ca: JIT lock từng máy; sync code Admin qua OneDrive D:\
 §
 GuardGate: Protection Regression Gate cho repo; infra_regression_gate.py kiểm tra 4 file config Hermes/OmniRoute. Model Picker Telegram: tin nhắn /model cũ freeze state model trong RAM; thêm model bắt buộc restart gateway & gửi /model mới hoặc /model <id>.
 §
-Dashboard TikTok (1905, tiktok_dashboard.py) độc lập 100% với Farm runner (tiktok_runner.py); cấm suy diễn lỗi Dashboard sang Farm. Watchdog restart service Windows phải kill cả cây pythonw.exe + python.exe để tránh đụng socket SO_REUSEADDR gây treo/sập.
+Dashboard TikTok (1905): độc lập Farm runner. Restart kill cả cây pythonw+python. Sổ Bệnh Án là modal 1 nick (max 680px, cấm bung menu all nick), bắt buộc giữ ma trận ca chạy gần đây (chip đỏ/xanh/xám). Guard Closeout: diff Python >=15 dòng cần comment '# Bước N'; EOL phải khớp HEAD tránh DIFF_TOO_LARGE.
 §
 Canary visual: cấm dùng ảnh spinner ('Quá trình này có thể mất...', loading); mtime ảnh >= mtime UI dump. Bắt buộc bốc đúng exact hash từ prompt, cấm glob/mtime trên image_cache. SQLite daily_account_actions là nguồn sự thật lịch sử follow.
