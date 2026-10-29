@@ -239,6 +239,18 @@ When headless network access fails and an on-site computer is borrowed via Ultra
       - **NEVER alter or reassign the physical port currently serving the PC (e.g. blue port / `br-lan`).** Doing so drops the management connection instantly, terminating the remote support session.
       - **NEVER perform a Factory Reset remotely:** Factory reset sets IP back to `192.168.1.1`, colliding with the ISP modem (`192.168.1.1`) and disabling management on the blue port, causing an instant, irrecoverable remote lockout.
       - Always confine interface debugging and testing strictly to the remaining ports (`lan1`, `lan2`) while keeping the management port untouched.
+    - **LuCI Web Terminal (ttyd) Paste Corruption via Remote Desktop:**
+      - **The Bug:** When pasting multi-line or compound shell commands via UltraViewer/AnyDesk into LuCI Web Terminal (`ttyd`), browser clipboard drivers frequently drop ampersand (`&`) characters or eat newlines.
+      - **Consequences:**
+        - `cmd1 && cmd2` becomes `cmd1 cmd2` (arguments mashed together, executing invalid commands).
+        - Background syntax `cmd >/dev/null 2>&1 &` becomes `cmd >/dev/null 2> 1` (creating a file named `1` and blocking foreground execution instead of backgrounding).
+        - Pressing `Ctrl + C` to abort a blocked foreground daemon kills the daemon socket instantly (`read unix @->/var/run/tailscale/tailscaled.sock: use of closed network connection`).
+      - **Fixes:**
+        1. Always send commands as single, independent lines one by one. Never paste compound `&&` chains through web terminals.
+        2. To safely daemonize processes without relying on the `&` character, use OpenWrt's native daemon launcher:
+           ```sh
+           start-stop-daemon -S -b -x /usr/sbin/tailscaled -- --state=/tmp/tailscaled.state
+           ```
     - **Port-Swapping & Circuit-ID / Credential Realignment Heuristic:**
       - When physical cables are swapped between ports (e.g. cable from Line 0 moved to `lan2`, and cable from Line 1 moved to `lan1`):
       - ISPs enforce strict Circuit-ID / OLT port binding. If physical cables are swapped, the PPPoE accounts MUST be swapped accordingly in UCI configuration:
