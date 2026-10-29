@@ -57,3 +57,4 @@ description: Kỷ luật thực thi chống over-engineering và cấm viết l�
 - Toàn bộ hồ sơ quy tắc và case study lịch sử: [`references/historical-anti-overengineering-archive.md`](references/historical-anti-overengineering-archive.md)
 - Bounded Review Loop: [`references/claude-cli-bounded-review-loop.md`](references/claude-cli-bounded-review-loop.md)
 - Script Codification vs Memory: [`references/script-codification-vs-memory-hygiene-and-concise-reporting-20261002.md`](references/script-codification-vs-memory-hygiene-and-concise-reporting-20261002.md)
+- Quản Trị Pool Web Reverse & Kỷ Luật Cooldown Tự Động (Gemini Web Argon / ChatGPT Sol 2026-10-29): [`references/gemini-web-argon-pool-cooldown-and-cdp-population-20261029.md`](references/gemini-web-argon-pool-cooldown-and-cdp-population-20261029.md)

@@ -1,6 +1,6 @@
 Guard_media_vision_gate chặn DIRTY_AVATAR_EVIDENCE, cấm leak DEGRADED ra chat; kiểm tra contradiction phổ quát cho mọi loại ảnh để chống AI bịa đặt thành công khi ảnh hiển thị lỗi.
 §
-Nạp ChatGPT-Web: trần 2 acc/IP + proxy_assignments; worker <= 5; Hotmail là mail mua sẵn (mail kp smvmail.com/fviainboxes có public API đọc OTP, cấm than thở thiếu mail kp); pass ChatGPT random độc nhất lưu Excel; script reg cấm exit 0 khi fail; lọc GPM GroupId!=0; pre-validate Graph token; cấm base64.
+Nạp Web reverse (:20129): trần 2 acc/IP; pass ChatGPT random lưu Excel; lọc GPM GroupId!=0; pre-validate Graph; cấm base64. Acc web lỗi (401/Sentinel) bắt buộc set cooldown rate_limited_until (30m/24h), cấm set is_active=0 hay xóa khỏi combo; nạp Gemini Web qua CDP lấy __Secure-1PSID kẹp proxy 1:1.
 §
 TikTok Farm: Chu kỳ 3 ngày cày liên tục (Ca 1: {1,2,7}, Ca 2: {3,4,8}, Ca 3: {5,6} + Dynamic Ngày 3; ĐÃ BỎ HẲN ngày 4 dưỡng sinh). Lệch pha giữa các ca an toàn & độc lập vì pool nick rời nhau 100%. Gate cooldown 48h (_is_account_follow_cooldown) chặn cứng cấm bấm follow nếu acc vừa cày < 48.0h qua (nhịp xoay tua tự nhiên ~72h). Quota max cap 40 fl/ngày (2 phiên >=120m); used>0 streak=1; 3 quy trình Feed-Follow-Upload độc lập; Quota [cap-2, cap], bóp trần = last_failed - 2; Máy Lẻ (Nhóm A bám trần + hồi phục 1,2), Máy Chẵn (Nhóm B max 20 fl/phiên, used>0 dừng nhận fl đã ăn, used=0 mới cooldown).
 §
