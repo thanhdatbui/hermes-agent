@@ -21,6 +21,7 @@ Use when creating, modifying, or reviewing mechanical enforcement gates (hooks, 
 - Reference: `references/idle-window-evaluation-bias-and-closeout-boundary-discipline.md` (Idle-window evaluation bias & zero-block action mandate hierarchy).
 - Reference: `references/cowboy-coordinator-boundary-and-idle-evaluation-invariants.md` (Cowboy Coordinator Gate 3/6 boundary violations).
 - Reference: `references/user-sudo-override-and-gate-abc-discipline.md` (User Sudo Override protocol, Pipeline A-B-C stages, & anti-idle-window invariants).
+- Reference: `references/dispatch-receipt-enforcer-and-claim-boundary.md` (Dispatch Receipt Enforcer: post-turn mechanical truth labeling against LLM completion bias & false dispatch claims).
 
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.
