@@ -292,6 +292,15 @@ When headless network access fails and an on-site computer is borrowed via Ultra
         - While an Edit modal dialog (`Interfaces » WAN2`) is actively open, LuCI frequently displays `Error: Unknown error (USER_REQUEST)` in the modal status header box.
         - This does NOT mean the interface is broken. It simply indicates uncommitted in-memory state or pending netifd reload. Check the RX/TX packet counters inside the status box: if packets and uptime are incrementing and an IPv4 address is present, the PPPoE session is already alive and running. Complete changes by clicking **Save**, then clicking **Save & Apply** at the bottom-right of the main Interfaces page.
 
+    - **Dual-Stack IPCP vs IPv6CP Decoupling Trap (Why IP 172.17.x Occurs While IPv6 Global Works):**
+      - **Symptom:** On a single PPPoE session, IPv4 receives an internal private address (`172.17.x.x`) with 100% internet packet loss, yet IPv6 (`WAN2_6`) receives a valid Global Unicast Prefix (`2402:800:...`) and successfully delegates `/64` to `br-lan`.
+      - **Root Cause & Mechanism:**
+        - PPPoE runs two completely independent Network Control Protocols (NCPs):
+          1. **IPCP (IPv4):** Cấp IPv4 từ pool do BRAS/RADIUS chỉ định (`Framed-Pool`). Nếu profile thuê bao trên hệ thống trạm chưa kích hoạt hoặc bị gán nhầm vào Walled-Garden / pool tạm thời, BRAS sẽ trả về dải `172.17.x.x` và drop toàn bộ traffic IPv4 ra internet.
+          2. **DHCPv6-PD / IPv6CP (IPv6):** Chạy luồng độc lập qua RADIUS attribute riêng (`Delegated-IPv6-Prefix`). Luồng IPv6 có thể đã được trạm auto-provision và thông suốt toàn cầu, hoàn toàn không phụ thuộc vào trạng thái pool của IPv4.
+        - Router OpenWrt hoàn toàn KHÔNG có quyền tự chọn hay cấu hình sai dải IP `172.17.x.x`—đây là do BRAS áp đặt.
+      - **Triage:** Do NOT waste time resetting router settings or altering local IPv6 configurations when seeing `172.17.x.x`. Instruct the ISP technician directly: *"Hệ thống BRAS đang gán tài khoản vào pool tạm 172.17.x.x, hãy kiểm tra profile trên trạm và chuyển sang pool IP Public / Internet thông thường"*.
+
 ## References
 
 - `references/claude-audit-and-field-triage-r3g.md` — Detailed case study of Xiaomi R3G deploy, Claude CLI production audit remediation, and the premature lifeline unplug incident.
