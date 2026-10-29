@@ -8,7 +8,6 @@ metadata:
     tags: [phone-farm, cross-host, remote-upload, ssh, storage-ownership, canary]
     related_skills: [tiktok-feed-session, verification-evidence, concurrent-workspace-safety]
 ---
-
 # Cross-host Farm Upload Dispatch
 
 ## Trigger
@@ -19,81 +18,5 @@ Use when a controller machine runs the feed/upload runner for devices whose vide
 
 The controller is an orchestrator, not the owner of remote filesystem state. A path such as `D:\\TIKTOK-videonuoinick-admin` is meaningful on Admin-PC, not on Kibe. A controller-local `Path.is_file()` check against that path can create a false `video_not_rendered` result even when the remote render pool is healthy.
 
-## Procedure
-
-1. **Inspect one affected device first.** For an alert `[MÁY N]`, run the mandated bounded extraction `python D:/Taadaa/tools/inspect_machine.py N`. Do not use ADB input taps as a workaround and do not scan the disk broadly.
-2. **Prove ownership and availability on the owner host.** Use a bounded SSH/preflight check against `admin-farm` and the expected exact video path. Keep Kibe's local Farm Kibe path separate from Admin's remote path. Do not introduce SMB mounts, copied media, or guessed local mirrors.
-3. **Patch at the Gate 5 / dispatch boundary.** For Kibe machines 1–80, preserve the local existence check and local workflow. For Admin machines >=200, skip controller-local media inspection and dispatch the workflow through `ssh admin-farm`.
-4. **Use the owner-host runtime and paths.** The Admin command must execute with remote cwd `D:/Taadaa/Tiktok-video`, runtime `D:/Taadaa/python-envs/automation/Scripts/python.exe`, `scripts.tiktok_workflow`, `D:/Taadaa/Tiktok-video/config-admin.yaml`, the matching remote Admin Tik workbook, exact device serial, exact next video number, and source root `D:/TIKTOK-videonuoinick-admin`. Do not pass Kibe's `ADB_SERVER_SOCKET` into the remote subprocess.
-   - **Idempotency & Safe Dispatch Contract (Claude CLI Architecture):** Use a single SSH command with `-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=15` to avoid SSH session hangs. Ensure the remote runner checks `.posted` file markers adjacent to the video file on Admin-PC to prevent race conditions or double-posting across network hiccups. Enforce that the remote process outputs a single strict JSON line at stdout tail, which Kibe captures and appends into `upload_result.json`.
-5. **Preserve fail-closed verification.** Keep existing report/ledger validation. A zero exit code is not success by itself: require existing success markers and matching device/video/account evidence. Remote timeout, missing marker, report veto, or ledger failure remains a failed result.
-6. **Verify narrowly before live execution.** Run `py_compile` for the changed production file and the smallest focused mocked upload-hook test. Preserve dirty unrelated worktree changes and avoid line-ending normalization. Add a mocked assertion for Admin command construction if the test surface allows it.
-7. **Run one real canary only after offline proof.** Use a single Admin device such as M201.
-   - **Device wake invariant:** If device is sleeping/dozing (`mWakefulness=Dozing` or screen off), NEVER refuse canary. Wake via `adb shell svc power wakeup` or `input keyevent KEYCODE_WAKEUP`, verify `mWakefulness=Awake`, then capture the pre-action screenshot.
-   - **Full remote artifact readback:** Do not verify by exit code alone. From `admin-farm` (`D:/CodexRuntime/tiktok-video/runs/run_<serial>_<timestamp>/`), read `report.json` (`status: SUCCESS`, `post_verified: true`, `post_submission_state: ACCEPTED`), inspect `execution.log` (profile video tiles incremented), and scp the visual artifacts (`post-published-surface.png` or `profile-grid-verify_post-*.png`) to local cache to deliver as `MEDIA:<path>`.
-   - **Tracking reconciliation:** Readback and synchronize the incremented video count in `D:/OneDrive/TaadaaData/admin/Tik{slot}.xlsx` and `taikhoan_run_safe.xlsx`.
-
-## Common pitfalls
-
-- **False shortage vs True remote shortage:** Watchdog sees `status=skipped, reason=video_not_rendered`. First verify whether the controller inspected the wrong host (false shortage) OR if remote storage has an actual deficit (true shortage). For true shortage:
-  - Inspect remote `state.db` (`video_count` per folder) and check if the remote downloader crashed (e.g., SQLite WAL `disk I/O error` under high concurrency) or if remote cron watchdogs are paused.
-  - **Slot Cross-Mapping Invariant:** Tik slots 1..8 cross-map `Folder Video` from `video gốc` via `Tik{slot}.xlsx` (e.g., Tik6 maps `video gốc` 401..480 to `Folder Video` 6, 14, 22...). Never run ad-hoc render scripts assuming `output_dir = render_root / d.name` (1:1), which dumps clips into wrong slots/niches and leaves required upload folders empty. Always use canonical workbook-driven render scripts (`admin_render_chain.py` / `run_tik*_random_render.ps1`).
-- **Remote Code & Script Sync Traps (Windows CLI 8191 Limit & OneDrive Smart Sync)**:
-  - Khi triển khai script hoặc runner sang `admin-farm` qua `admin_ssh.py`: một chuỗi base64 lớn (>8KB) sẽ làm tràn giới hạn buffer dòng lệnh Windows (8191 ký tự) gây lỗi `The command line is too long`. BẮT BUỘC chia nhỏ thành các chunk 4000 ký tự và ghi nối (`mode='ab'`).
-  - Tránh đọc trực tiếp các file dùng chung trên `D:\OneDrive\TaadaaData\` nếu file bị OneDrive Files On-Demand đưa vào trạng thái dehydrated/reparse point gây `OSError: [Errno 22] Invalid argument`. Luôn trỏ vào file local hydrate của Admin (`D:\OneDrive\TaadaaData\admin\taikhoan_run_safe.xlsx`).
-  - **Dual-Cluster Summary Aggregation (Báo cáo gộp đa cụm)**: Khi điều phối batch đa cụm (Kibe + Admin), cấm dựa vào việc regex stdout qua stream SSH vì sub-shell PowerShell remote có thể nuốt dòng `TOTAL=...`. BẮT BUỘC dùng SSH query trực tiếp file `summary.json` mới nhất trên remote host (theo mtime/timestamp) và parse structured JSON để đảm bảo số liệu Admin không bao giờ bị báo 0.
-  - **Khế ước tương thích StartupStep / caller**: Các caller mong đợi `step.name` phải luôn có `@property def name(self) -> str: return self.action` trong dataclass `StartupStep` của `automation-core`, và caller bọc `(getattr(step, 'action', None) or getattr(step, 'name', ''))` để tránh crash chéo giữa 2 môi trường.
-- **Reboot Survival & Lifecycle Discipline:** Ensure both Kibe and Admin hosts maintain dual-tier reboot recovery (Windows Startup VBS + Hermes Cron Watchdog) with `msvcrt` single-instance locks. Workers must self-terminate upon 100% completion (0 tasks pending), while watchdogs run in Smart Idle mode (instant 0.05s check with 0% CPU consumption) to automatically resume whenever future shortages occur. See `references/cross-host-admin-upload.md` sections 6 & 7.
-- **Remote command drift:** Hardcoding a local config, workbook, runtime, or source root silently routes the job back to Kibe. Assert each remote argument in a mocked test.
-- **Credential/env leakage:** Never include secrets in logs or send Kibe's ADB socket environment to the remote workflow.
-- **Overclaiming canary:** `post_verified=true` and a remote report are stronger evidence than process exit code; a teardown screenshot at Launcher is not post-publication proof.
-- **Dirty worktree damage:** Do not reset, stash-drop, normalize, or overwrite unrelated existing hunks while applying the focused remote branch.
-- **Admin Media Storage Exhaustion & GDrive Streaming Deadlock (0 Byte Disk Freeze):**
-  When disk D: on Admin reaches 0 MB, Google Drive virtual drive G: also freezes at 0 MB (because its cache `D:\GoogleDriveCache` is on D:), causing robocopy and sync crons to fail with `Errno 28 No space left on device`. Simultaneously, `ffmpeg` crashes within 1-2 seconds of spawn, misleading operators into thinking Game Guard failed to resume after gaming.
-  Remediation requires:
-  1. Kill downloader and place `C:\Users\Admin\downloader_pause.flag` so Task Scheduler's 15m trigger exits in 0.5s instead of spawning 40 threads.
-  2. Emergency bootstrap: directly prune raw video files (`> 45`) that are already byte-verified on GDrive via PowerShell to recover 30-50GB.
-  3. Hybrid Render Tiering: keep clips `1..20` on local D: (enough for 3 weeks of phone posting at 1 clip/day) and offload clips `21..45` to `G:\My Drive\video_render_backup` to reclaim 350-400GB permanently.
-  4. Pre-notify ETA: any batch migration across virtual drives taking > 5 minutes requires estimating and communicating the timeframe before execution.
-  5. Python Runtime & OpenSSH Breakaway Traps: Remote maintenance scripts deployed to Admin must use `0x01000008` (`CREATE_BREAKAWAY_FROM_JOB | DETACHED_PROCESS`) with binary append log redirect (`open(log_p, 'ab')`), and must NOT hard-import `psutil` (fallback to `tasklist` via subprocess) because the global Windows Python environment `Python311` lacks external packages that only exist in `venv-core024`.
-  6. Dual-layer Deficit Auditing & Fail-soft Restore: When checking if a folder needs source video restored, ALWAYS compute `total_rendered = local_count + cloud_count`. Checking local-only falsely marks offloaded folders as deficient, causing redundant downloads of dozens of GB of source files. Wrap file copy in per-file `try...except` to prevent transient G: stream errors (`[Errno 22] Invalid argument`) from aborting the entire restore batch.
-- **Riot Games Multi-Partition Coexistence (Live on D: vs PBE on C:):**
-  When moving or co-hosting Riot Games on different partitions of Admin-PC, updating `RiotClientInstalls.json` alone will leave Riot Client showing "Install" instead of "Play". Riot Client validates `product_install_full_path` and `product_install_root` inside `C:\ProgramData\Riot Games\Metadata\<product>.<patchline>\<product>.<patchline>.product_settings.yaml`. Both must point to the active directory (`D:/Riot Games/...`). Direct desktop shortcuts must pass `--launch-product=<product> --launch-patchline=<live|pbe>` to `RiotClientServices.exe` and must be created via a UTF-8 `.ps1` script to avoid terminal mojibake. See `references/cross-host-lan-transfer-and-guard-deadlock.md` section 7.
-- **Strict 3-Way Parallel Execution & Dual-Vault Storage Isolation:**
-  When concurrently running scraper (downloader), renderer (ffmpeg), and cloud synchronizer on Admin:
-  1. Downloader, Renderer, and Sync Service run as 3 decoupled, concurrent background loops.
-  2. Storage Isolation: GDrive MUST maintain two completely distinct, isolated directory hierarchies:
-     - `G:\My Drive\video_goc_backup\{f_src}\`: Exclusively for raw scraper source videos. A folder's raw videos on D: are only deleted when the rendered output folder has reached `>= 45` clips.
-     - `G:\My Drive\video_render_backup\{f_vid}\`: Exclusively for finished rendered clips with index `>= 21` (preserving clips `1..20` on local D: for active phone farm consumption).
-     NEVER mix source videos and rendered clips in the same cloud directory or use flat names without vault qualification.
-  3. Continuous Self-Sustaining Daemon: Task Scheduler `Taadaa_Sync_GDrive_Backup` executes both `sync_and_clean_gdrive.py 640` and `manage_admin_media_gdrive.py offload 640` sequentially, keeping D: permanently buffered with >200GB free space while render and download progress in parallel.
-- **Subagent self-report discrepancy:** Child agents running via `delegate_task` may report successful patching even if their workspace was discarded upon hitting the iteration limit. Coordinator must verify host `git diff` independently before canary or triage.
-
-## Cross-host downloader and proxy-pool integrity
-
-When a controller starts or supervises a remote downloader, treat the launcher command as the source of truth—not the intended configuration. Read back the exact live parent and child command lines on the owner host before claiming proxy coverage. A launcher hardcoded to a direct-only pool can silently exclude MikroTik entries even when the canonical downloader supports proxy rotation.
-
-Use a deterministic pool resolver: prefer the combined pool (MikroTik + direct/Mobi) when present, otherwise fall back to the legacy direct pool. Verify the combined pool exists on both hosts, compare a redacted SHA-256/hash and entry counts, then verify the live child command uses the combined path. Do not kill a running downloader merely to change its pool; stage the launcher fix and restart only at a controlled lifecycle boundary, preserving locks and downloader state.
-
-Smart-idle completion must be based on actual owner-host filesystem counts for folders 1..640 (not DB alone): only `640/640` folders with `>=45` `.mp4` files counts as complete. The recurring watchdog stays scheduled and remains silent when complete; it may spawn one locked worker only when a shortage is observed. Keep Kibe and Admin source roots, state DBs, and process ownership separate.
-
-## Evidence template
-
-For a completed fix, record: target file and exact Gate 5/dispatch delta; compile output; focused test command/result; remote preflight result; canary machine/serial; remote report status and `post_verified`; screenshot paths and what each image actually proves; remaining limitations.
-
-## Supporting detail
-
-- See `references/remote-host-ultraviewer-service-recovery.md` for remote UltraViewer recovery via SSH when `UltraViewService` is Disabled/Stopped, causing `Cannot Start Service: Cannot start service on computer '.'` on Admin host.
-- See `references/admin-render-offload-and-gdrive-hybrid-storage.md` for the 2-tier hybrid storage offload contract (keeping 1..20 local, offloading 21..45+ to GDrive 5TB), resolving virtual cache 0-byte deadlock, dual-layer deficit auditing (local + cloud), and slot cross-mapping formulas.
-- See `references/admin-rendered-video-tiering-and-gdrive-staging.md` for the Hybrid Local/Cloud Media Tiering architecture (hot buffer 1..20, cold staging 21..45 on GDrive 5TB), freeing 350-400GB on Admin, JIT hydration, and pause flag controls.
-- See `references/cross-host-admin-upload.md` for the Taadaa-specific command contract, observed false-alert chain, verification matrix, and standalone avatar upload launcher dispatch rules.
-- See `references/admin-remote-avatar-and-media-management.md` for Admin Remote ($M \ge 200$) storage formulas ($F_{src}, F_{vid}$), CodexRuntime Python execution via SSH base64, Haar cascade false-positive visual verification, and 2-tier lock enforcement.
-- See `references/admin-downloader-disk-full-diagnosis.md` for diagnosing and remediating Admin downloader halts due to 0 MB disk space (`OSError: [Errno 28] No space left on device`).
-- See `references/cross-host-lan-transfer-and-guard-deadlock.md` for large-payload LAN transfer architecture (on-the-fly streaming, SSH reverse port forward), disk space volatility pre-transfer checks, and execution gate coordination.
-- See `references/cloud-media-decoupling-architecture.md` for decoupling stateless media scrapers and ffmpeg renderers off physical farm hosts onto cloud workers.
-- See `references/hybrid-gdrive-media-tiering-and-restore.md` for strict 2-tier Google Drive storage isolation (`video_goc_backup` vs `video_render_backup`), high-number offload ($\ge 21$), source restore formulas ($F_{src} \leftrightarrow F_{vid}$), and network fault-tolerant copy.
-- See `references/windows-openssh-breakaway-job-dispatch.md` for preventing remote child process termination on OpenSSH disconnect via CREATE_BREAKAWAY_FROM_JOB (0x01000008).
-- See `references/admin-tiered-storage-and-source-recovery.md` for hybrid storage offloading rendered clips >= 21 to Google Drive, downloader pause flags, and accurate dual-layer (local + cloud) folder deficit auditing.
-- See `references/hybrid-cloud-media-offload-and-source-hydration.md` for tiering high-numbered rendered clips (>=21) to Google Drive, JIT source restoration formula (total rendered = local + GDrive), and OpenSSH breakaway service lifecycle.
-- See `references/admin-3way-parallel-and-dual-vault-media-isolation.md` for the strict 3-way parallel pipeline contract (cào 40 luồng, render 2 luồng ffmpeg, sync ngầm GDrive), and dual-vault cloud storage isolation (`video_goc_backup` vs `video_render_backup`).
-- See `references/dual-cluster-summary-aggregation-and-startup-step-sync.md` for dual-cluster summary.json remote query patterns and cross-repo StartupStep name/action attribute contracts.
+> **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
+> Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

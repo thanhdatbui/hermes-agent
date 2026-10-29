@@ -2,7 +2,6 @@
 name: captcha-automation-pipeline
 description: "Use when automating captcha solving (offline or cloud API)."
 ---
-
 # Captcha Automation Pipeline (Offline & Cloud Fallback)
 
 Quy chuẩn xử lý Captcha trong toàn bộ hệ thống Taadaa Automation (Farm Android, Shopee, TikTok, GPM/Playwright, Meta OAuth): Phân loại chính xác giữa **Offline OCR / CV (0đ, <5ms)** và **Cloud Bypass API (bảo mật cao, tốn credit)**.
@@ -47,21 +46,5 @@ offset_x, offset_y = solve_slide_puzzle("background.png", "piece.png")
 
 ---
 
-## 3. Dịch vụ Cloud API (Khi gặp reCAPTCHA Enterprise / Turnstile)
-
-Khi gặp các captcha đo lường hành vi trình duyệt (Risk Score) hoặc chống bot tầng mạng của Big Tech:
-
-1. **OMOCaptcha (`omocaptcha.com`):**
-   - Nạp tối thiểu: **20.000 VNĐ** (Quét VietQR tự động).
-   - Hỗ trợ tốt: reCAPTCHA v2/Enterprise, hCaptcha, TikTok Web/App, Shopee.
-   - Phù hợp nhất để test nhanh hoặc tích hợp bot nội địa.
-2. **CapSolver (`capsolver.com`):**
-   - Nạp tối thiểu: **$5 USD** (Visa/Mastercard, Crypto).
-   - Tỷ lệ vượt reCAPTCHA Enterprise và Turnstile cao nhất trên các site quốc tế.
-
----
-
-## 4. Pitfalls & Lưu ý sống còn
-1. **Tuyệt đối không tự train model giải reCAPTCHA Enterprise từ đầu:** Vì reCAPTCHA Enterprise không chỉ kiểm tra ảnh mà kiểm tra cả token chữ ký số, telemetry chuột và IP proxy dân cư.
-2. **Tọa độ kéo trượt:** Tọa độ trả về từ `solve_slide_puzzle` là trên kích thước gốc của ảnh (px). Nếu ảnh hiển thị trên UI bị scale (ví dụ CSS width/height khác natural width/height), bắt buộc phải nhân với tỉ lệ scale `scale_ratio = display_width / original_width`.
-3. **Mô phỏng thao tác kéo:** Khi swipe ADB hoặc Playwright kéo slider, không swipe vận tốc đều mà nên chia nhỏ bước hoặc dùng đường cong giảm tốc (ease-out) để tránh bị hệ thống gắn cờ bot macro.
+> **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
+> Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.
