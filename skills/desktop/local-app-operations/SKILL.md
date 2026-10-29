@@ -543,6 +543,7 @@ When using a screenshot, verify the address bar port against the live listener; 
 
 ## Supporting detail
 
+See `references/windows-http-server-multi-process-socket-collision-and-cache-tuning.md` — Windows multi-process HTTP socket collision (SO_REUSEADDR), watchdog restart death loop triage, duplicate Windows Startup cleanup, and cold-query cache TTL tuning.
 See `references/gemini-web-argon-pool-and-mcp-bridge-comparison.md` — Gemini Web Argon Pool (`gemini-web-argon-pool` on OmniRoute :20129) architecture, StreamGenerate HTTP reverse proxy vs MCP browser DOM scraping comparison, 1-1 mobile proxy isolation, and prompt-emulation tool limitations.
 See `references/chatgpt-web-gpm-audit-and-purge-execution.md` — ChatGPT Web GPM audit & purge execution runbook: 5-account safe batching, foreground timeout mitigation via terminal background + process wait, and non-destructive purge boundaries.
 See `references/omniroute-gpm-chatgpt-web-pool-feeder.md` — OmniRoute ChatGPT-Web pool feeding from GPM profiles, fast CDP token probe (<5s), per-IP ceiling gating (cap 2 acc/IP), Hotmail direct auth vs Google SSO trap, and proxy_assignments relational fail-closed binding.

@@ -2,7 +2,8 @@ Guard_media_vision_gate chặn DIRTY_AVATAR_EVIDENCE, cấm leak DEGRADED ra cha
 §
 Nạp ChatGPT-Web: trần 2 acc/IP + proxy_assignments; worker <= 5; Hotmail là mail mua sẵn (mail kp smvmail.com/fviainboxes có public API đọc OTP, cấm than thở thiếu mail kp); pass ChatGPT random độc nhất lưu Excel; script reg cấm exit 0 khi fail; lọc GPM GroupId!=0; pre-validate Graph token; cấm base64.
 §
-Watchdog đối soát TikTok Web: Chu kỳ farm 3-4 ngày/acc (1 ca/buổi gồm 2 phiên cách nhau >= 120m); Quota max cap 40 fl/ngày (cấm bịa vạch đỏ 30); used>0 streak luôn=1 (cooldown 24h xả sạch trước vòng sau), chỉ used=0 mới tăng streak; cấm bịa nhả ngược; 3 quy trình Feed-Follow-Upload độc lập; Quota [cap-2, cap], bóp trần = last_failed - 2; A/B test Max Volume: Máy Lẻ (Nhóm A bám trần + hồi phục 1,2), Máy Chẵn (Nhóm B max 20 fl/phiên x 2=40, used>0 chạm trần dừng nhận số fl đã ăn và BỎ HỒI PHỤC 1,2; used=0 mới cooldown).
+TikTok Farm: Chu kỳ 3 ngày cày liên tục (Ca 1: {1,2,7}, Ca 2: {3,4,8}, Ca 3: {5,6} + Dynamic Ngày 3; ĐÃ BỎ HẲN ngày 4 dưỡng sinh). Lệch pha giữa các ca an toàn & độc lập vì pool nick rời nhau 100%. Gate cooldown 48h (_is_account_follow_cooldown) chặn cứng cấm bấm follow nếu acc vừa cày < 48.0h qua (nhịp xoay tua tự nhiên ~72h).
+Quota max 40 fl/ngày (2 phiên >=120m); used>0 streak=1; 3 quy trình Feed-Follow-Upload độc lập; Quota [cap-2, cap], bóp trần = last_failed - 2; Máy Lẻ (Nhóm A bám trần + hồi phục 1,2), Máy Chẵn (Nhóm B max 20 fl/phiên, used>0 dừng nhận fl đã ăn, used=0 mới cooldown).
 §
 Tool 2FA và cron xen ca: JIT lock từng máy (cấm bulk pre-reserve); freeze_targets bọc retry 5 nhịp backoff + dọn lock mồ côi ~$*.xlsx né xung đột cron sync 5m; Batch 2FA Admin qua SSH bắt buộc --adb-path r"C:\Program Files (x86)\xiaowei\tools\adb.exe"; sau sửa 2FA bắt buộc chạy sync_2fa_to_admin.py.
 §
