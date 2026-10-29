@@ -39,6 +39,7 @@ description: "Taadaa farm safety, close-session, and multi-machine operations."
   * Thống kê vĩ mô (so sánh chu kỳ 4 ngày, cohort vĩ mô) tập trung duy nhất tại tab `🩺 Sức Khỏe Follow`.
   * **Bảo toàn Ma Trận Ca Chạy Micro (`daily_matrix` / `fdDailyMatrixBox`):** Khi tinh gọn UI, CẤM nhầm lẫn giữa *thống kê vĩ mô* với *lịch sử lâm sàng vi mô của nick*. Khung ma trận ca chạy gần nhất (chip đỏ `🛑 N lượt` cho ca bị nhả / chip xanh `+N` cho ca an toàn) là dữ liệu chẩn đoán sống còn của từng nick, BẮT BUỘC giữ nguyên vị trí dưới thanh trạng thái trong popup modal.
 - **Kỷ Luật Chốt Phiên Closeout v2 O(1) Chống Bẫy Legacy Gate:** Chốt phiên BẮT BUỘC dùng `python D:/Taadaa/tools/closeout_v2.py --repo <repo> [--target-file <file>] --json-output` (kiểm tra deterministic: cú pháp + focused pytest). TUYỆT ĐỐI CẤM gọi tool cũ `closeout_gate.py` để tránh bẫy LLM Reviewer và lỗi rule GuardGate over-engineered (`case_invariant_require_step_by_step_structure`).
+- **Kỷ Luật Tra Cứu Hiện Trường Liên Phiên (Cross-Session Triage Invariant):** Khi nhận câu hỏi trạng thái mở hoặc thúc giục (`"xong chưa"`, `"làm xong chưa"`), CẤM TUYỆT ĐỐI trả lời xã giao; BẮT BUỘC tra soát đồng thời 3 nguồn sự thật O(1): `session_search(limit=5)` xem tác vụ dở, `git status --short` trên các repo trọng điểm (`tools`, `Hermes`), và kiểm tra trạng thái runtime service (`:1905`, `:20129`, cronjobs) để báo cáo trực diện bằng chứng thực tế.
 
 ## 2. Chu Trình Điều Phối Farm (Coordinator vs Worker)
 - **T0 (Hiện trường):** Đọc log, inspect ADB O(1), restart process, kiểm tra proxy. Tự do thực thi.
@@ -81,3 +82,4 @@ description: "Taadaa farm safety, close-session, and multi-machine operations."
 - Quản Trị Quét Kênh Flop & Throttle Xoay Nguồn Cào Tự Động: [`references/flop-channel-detection-and-source-rotation-governance.md`](references/flop-channel-detection-and-source-rotation-governance.md)
 - Xoay Nguồn Kênh Flop & Kỷ Luật UI Lâm Sàng Sổ Bệnh Án: [`references/flop-channel-source-rotation-and-dashboard-clinical-ux.md`](references/flop-channel-source-rotation-and-dashboard-clinical-ux.md)
 - Quét Kênh Flop, Xoay Nguồn Cào & Kỷ Luật Closeout Gate: [`references/flop-channel-detection-and-source-rotation-discipline.md`](references/flop-channel-detection-and-source-rotation-discipline.md)
+- Tra Cứu Hiện Trường Liên Phiên & Đồng Bộ Danh Mục Model Gateway: [`references/cross-session-pending-work-triage-and-model-picker-parity.md`](references/cross-session-pending-work-triage-and-model-picker-parity.md)
