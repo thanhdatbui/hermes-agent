@@ -626,10 +626,16 @@ Khi user chat hàng loạt session song song và thấy phản hồi chậm (h�
   * Hermes thấy `finish_reason = stop` và `tool_calls = 0` nên coi là lượt hoàn tất (`_turn_exit_reason = "text_response"`), gửi text ra Telegram rồi **kết thúc lượt, đi ngủ chờ User nhắn tiếp**.
   * User đọc text thấy Bot nói *"Em đang cho chạy, sẽ báo cáo"* nên **ngồi chờ Bot**.
   * **Hậu quả:** Deadlock chờ chéo (Bot chờ User, User chờ Bot) làm session đóng băng 7 tiếng dù không có lỗi crash hay timeout nào.
-- **Kỷ luật & Cơ chế khắc phục**:
+- **Kỷ luật & Cơ chế khắc phục (Đã triển khai vào core conversation_loop.py 29/10/2026)**:
   1. *Cấm tuyệt đối narrate intent không kèm tool*: Mọi hứa hẹn hành động BẮT BUỘC phải emit tool call (`delegate_task`, `terminal`) ngay trong cùng response turn; cấm nhả văn bản hứa suông rồi ngắt lượt.
-  2. *Thiết kế Stop-Nudge Guard cho Coordinator*: Tương tự `agent/kanban_stop.py`, nếu phát hiện text hứa hẹn tương lai mà không có tool call, Hermes tự động nạp synthetic nudge ép model phải emit tool call thật sự thay vì cho phép thoát turn sạch.
-  3. *Nâng cấp Stale Watchdog*: Bổ sung rule giám sát tin nhắn cuối cùng là lời hứa hành động mà không có tiến trình nền active quá 5 phút.
+  2. *Thiết kế Uncalled Action Narrative Stop Guard trong `agent/conversation_loop.py`*:
+     - Khởi tạo `_uncalled_action_nudges = 0` per-turn, tự động reset về 0 bất cứ khi nào model phát sinh `tool_calls` thực tế.
+     - Kiểm tra dòng cuối cùng `_last_line = _lines[-1]` bằng regex `_action_re` có word boundary (`đang (cho|kiểm tra|chạy|xử lý|quét|tiến hành)`, `sẽ báo cáo`, `để em`, `em sẽ`, `i'll`, `i will`, `let me`).
+     - Miễn trừ 100% câu hỏi kết thúc bằng `?` hoặc `？` (bảo toàn quyền hỏi User / Clarify bình thường mà không gây false-positive).
+     - Chỉ kích hoạt khi `_has_tools` là True (bỏ qua session tool-less).
+     - **Nhịp Nudge 1**: Chích synthetic user message `[System Notice: Your response promised action ('...') but emitted NO tool calls...]` và `continue` ép model nhả tool call thật ngay trong turn.
+     - **Fail-Safe Nhịp 2**: Nếu sau 1 lần nudge mà model vẫn lì lợm hứa mồm không gọi tool, tự động nối thêm nhãn đỏ: `\n\n⚠️ [Hệ thống dừng: Bot đã hứa hành động nhưng không kích hoạt tool]` để User thấy rõ ràng là tiến trình đã dừng, triệt tiêu hoàn toàn việc treo im lặng qua đêm.
+  3. *Kỷ luật Restart Gateway khi cập nhật Core*: Sau khi sửa code `agent/conversation_loop.py`, BẮT BUỘC restart Gateway (qua `python D:/Taadaa/tools/restart_gw_detached.py`) để nạp mã nguồn Python mới vào tiến trình chạy ngầm. Cơ chế `auto_resume_startup_hook.py` sẽ tự động bảo toàn và đánh thức lại các session đang dở dang.
   - Xem chi tiết tại `references/deadlock-of-expectations-and-promise-without-tool-hang.md`.
 
 ## References

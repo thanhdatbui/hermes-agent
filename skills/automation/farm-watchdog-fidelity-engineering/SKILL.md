@@ -246,6 +246,16 @@ Applies whenever reports fail to reflect actual fleet health, mask dropped machi
   3. **Startup Deduplication:** Verify `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup` contains no duplicate launchers.
   4. **Watchdog Buffer & Cache Scaling:** Set `_CACHE_TTL >= 180s` for large analytical tables and watchdog probe timeouts $\ge 15$s. See `references/dashboard-watchdog-death-loop-and-multi-process-collision.md`.
 
+### Invariant 25: Heartbeat Telemetry State Desync & "False STALE" Discrimination
+- **Anti-Pattern:**
+  An independent 24h heartbeat aggregator (`cron_heartbeat.py`) inspects state JSON files in `D:/Taadaa/runtime/cron_health/<name>.json`. When scheduled cron scripts (`farm_render_download_watchdog`, `cron_hotmail_gpm_lifecycle_6h_report`, etc.) execute regularly on schedule via Hermes scheduler (`no_agent: true`), but lack the `CronRun` context manager or fail to write/update their `cron_health/<name>.json` file, the heartbeat aggregator calculates `age_h = now - last_end` against historical dates (e.g. 15h–75h ago). The aggregator fires alarming alerts (`❌ STALE: Lần cuối 75.0h trước (vượt trần 12.5h)`), misleading operators into believing core farm watchdogs have crashed or frozen.
+- **Rule:**
+  1. **Execution Ground Truth vs Health Ledger Discrimination:** NEVER assume a `STALE` watchdog on heartbeat alert indicates a dead or stopped job. ALWAYS verify ground-truth scheduler execution first:
+     - Run `cronjob list` to check `last_run_at`, `next_run_at`, and `last_status`.
+     - Inspect recent run outputs in `%LOCALAPPDATA%\hermes\cron\output\<job_id>\*.md`.
+  2. **Telemetry Parity Contract:** If the job executes on schedule (`last_status == 'ok'`) but the heartbeat reports `STALE`, classify the incident as **Missing Telemetry Emission**, not **Service Stoppage**.
+  3. **Immediate Reconciliation & Wrap:** Reconcile `last_end` in `D:/Taadaa/runtime/cron_health/<name>.json` to match the actual execution timestamp, and integrate `from cron_alert_core import CronRun` with `with CronRun('<script_name>')` into the runner scripts across all deployment locations (`D:/Taadaa/Hermes/deploy/hermes-home/scripts/` and `%LOCALAPPDATA%\hermes\scripts\`).
+
 ---
 
 ## 3. Verification Protocol for Watchdogs & Reports

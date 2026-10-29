@@ -70,3 +70,4 @@ description: "Taadaa farm safety, close-session, and multi-machine operations."
 - Độc Lập 3 Quy Trình (Feed-Follow-Upload) & Chống Phạt Cooldown Oan: [`references/decoupled-pipeline-and-follow-cooldown-guard.md`](references/decoupled-pipeline-and-follow-cooldown-guard.md)
 - Khế Ước Drop-Day Sổ Bệnh Án & Zero-Follow Failure: [`references/follow-detail-matrix-drop-day-zero-follow-invariant.md`](references/follow-detail-matrix-drop-day-zero-follow-invariant.md)
 - Chu Kỳ 3 Ngày Shift-Pool, Lệch Pha An Toàn & Socket Concurrency Dashboard: [`references/tiktok-farm-3day-shift-pool-phase-decoupling-and-dashboard-concurrency.md`](references/tiktok-farm-3day-shift-pool-phase-decoupling-and-dashboard-concurrency.md)
+- Quét Kênh Flop & Xoay Nguồn Cào (Cấm Bỏ Acc, Render Nối Tiếp): [`references/flop-channel-detection-and-source-rotation-invariants.md`](references/flop-channel-detection-and-source-rotation-invariants.md)
