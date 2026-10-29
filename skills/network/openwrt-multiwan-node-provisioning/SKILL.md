@@ -58,3 +58,4 @@ Directly converting the active management port (e.g., `lan1`) to a PPPoE interfa
 - `references/pppoe-pado-bridge-trap-and-remote-triage-pitfalls.md`: Bẫy switch DSA bridge nuốt gói PADO và quy trình tách cổng.
 - `references/remote-triage-web-terminal-and-isp-walled-garden-pitfalls.md`: Bẫy web terminal ttyd nuốt `&&`, case-sensitive interface Linux, và chẩn đoán pool ISP 172.17.x.x Walled Garden.
 - `references/multiwan-routing-firewall-and-terminal-traps.md`: Multi-WAN policy routing, firewall masquerade, bẫy ttyd nuốt `&&`, case-sensitive netdev và đối soát MikroTik MACVLAN untagged.
+- `references/field-triage-anti-hallucination-and-evidence-rules.md`: Kỷ luật OCR chống bịa đặt output lệnh, cấm suy diễn Walled Garden khi chưa cô lập Dual-WAN collision, và quy tắc copy lệnh đơn dòng qua UltraViewer ttyd.
