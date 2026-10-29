@@ -14,6 +14,7 @@
 Khi User đã chọn phương án Avatar hoặc gửi ảnh chốt (ví dụ: ảnh bạn nữ mặc áo thủy thủ):
 
 ### Bước 1: Nạp ảnh vào kho lưu trữ
+- **Kỷ luật lọc ảnh sạch chữ (No Text Overlay Mandate):** Trước khi đưa ảnh vào Proposal Canvas hoặc chép vào kho, BẮT BUỘC dùng `browser_vision` soi kỹ từng ảnh candidate. Tuyệt đối CẤM chọn frame dính phụ đề, tiêu đề video, sub tự động hoặc watermark logo đè lên nhân vật khiến User phải gắt (*"tìm ảnh khác k dính chữ"*). Phải trích xuất ở các giây sạch chữ hoặc các clip vlog/b-roll không chèn text.
 - Copy ảnh đã chọn vào `D:\TIKTOK-videonuoinick\<F_vid>\avatar.jpg` và `D:\video goc\<F_src>\avatar.jpg`.
 - Tạo marker `.manual_avatar_locked` trên cả 2 thư mục.
 

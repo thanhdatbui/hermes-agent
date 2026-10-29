@@ -15,11 +15,14 @@
 ## 3 Bước Điều Phối Chuẩn Khi Nhận Phản Hồi Về Báo Cáo Watchdog
 
 ### Bước 1: Đối soát thời gian thực thi (Temporal Desync Check)
-- Xem tiêu đề ca: `Ca 1 - Phiên 1/2 (Sáng)` chạy lúc **06:03 AM**.
+- Xem tiêu đề ca và mã run: `Ca 2 - Phiên 2/2 (Chiều)` kèm `(Run: row-0-140039)` chạy lúc **14:03 PM**.
+- **Hiện tượng Báo muộn sau khi vá Watchdog (Late Backlog Trigger):**
+  + Khi watchdog vừa được sửa logic quét (ví dụ: vá lỗi quét đa cụm, thêm live dir), watchdog sẽ quét thấy các phiên cũ chưa từng được report trong `feed_session_reported.json` và bắn cảnh báo muộn.
+  + **Quy tắc đối soát mốc thời gian Git vs Run:** So sánh timestamp của Git commit bản fix (`git log -n 1 --format="%ci"`) với thư mục phiên chạy (`row-0-HHMMSS`). Nếu commit fix diễn ra SAU khi phiên chạy kết thúc, đây là cảnh báo "hàng tồn" của phiên quá khứ, KHÔNG PHẢI lỗi mới lặp lại sau khi fix!
 - Kiểm tra file `runtime/<cluster>/live/YYYY-MM-DD/row-X-.../run_manifest.json`:
   + Đọc `start_time` và `stop_reason` của máy trong manifest.
-  + Xác định rõ: Báo cáo watchdog tổng kết kết quả của ca chạy lúc **06:03 AM**, không phải trạng thái thời gian thực lúc nhận tin nhắn (ví dụ lúc 11:00 AM).
-  + Nếu operator đã can thiệp fix sau thời điểm bắt đầu ca (sau 06:03 AM), báo cáo của ca sáng vẫn hiển thị trạng thái fail tại thời điểm đó là hoàn toàn bình thường.
+  + Xác định rõ: Báo cáo watchdog tổng kết kết quả của ca chạy trong quá khứ, không phải trạng thái thời gian thực lúc nhận tin nhắn.
+  + Nếu operator/agent đã can thiệp fix sau thời điểm ca chạy, báo cáo cũ hiển thị lỗi là tất yếu.
 
 ### Bước 2: Kiểm tra hiện trường O(1) trước khi can thiệp (Read-Only Inspection First)
 - **CẤM TUYỆT ĐỐI** chạy ngay các lệnh can thiệp phá hủy (`--force-preempt`, `_forget_all_networks`, reboot) khi chưa đọc hiện trạng thực tế.

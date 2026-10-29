@@ -10,6 +10,7 @@ description: "Chẩn đoán Hermes session lag (context bloat → compression th
 - Muốn ép reasoning effort chắc chắn qua 9router
 - **Bị ngắt turn giữa chừng do chạm trần tool-calling** — prompt cưỡng chế `You've reached the maximum number of tool-calling iterations allowed...` (xem `references/tool-calling-iteration-limit-and-turn-budget-exhaustion.md`)
 - **Session bị reset/đứt ngang 04:00** — banner `◆ Session automatically reset (daily schedule at 4:00). Conversation history cleared. Use /resume to browse and restore a previous session.` (live 2026-08-12 Tiktok Reg group)
+- **Tái phình to Context do SKILL.md Re-bloat** — các file SKILL.md bị agent nhồi nhét tài liệu/references cũ phình to >100KB, hoặc agent gọi đọc file con `references/...` làm phình context lên 250.000 tokens (xem `references/skill-re-bloat-and-automated-pruning-governance.md`)
 
 ## 0. Session reset 4:00 tự động — config `session_reset` (live 2026-08-12)
 - `session_reset.mode: both` (mặc định setup wizard) = reset theo CẢ 2: `idle_minutes: 1440` (24h idle) VÀ `at_hour: 4` (reset toàn bộ 04:00 hằng ngày). Hệ quả: mọi group/thread bị gom về session mới lúc 4h sáng, mất context, log `sessions` có `end_reason='session_reset'`.
