@@ -16,6 +16,7 @@ description: "Taadaa farm safety, close-session, and multi-machine operations."
 - **Cấm quét đĩa diện rộng (Anti-Scan Guard):** CẤM chạy `search_files` trên root `D:/Taadaa` hoặc `D:/Taadaa/tools`, cấm script có `os.walk` / `glob recursive`. Bắt buộc chỉ định đích danh file hoặc thư mục con hẹp.
 - **Khóa thiết bị JIT (Device Lock Mandatory):** Mọi can thiệp ADB vào máy thật bắt buộc giữ JIT device lock (`inspect_machine.py <N>` hoặc `with_device_lock.py --machine <N> -- ...`), cấm can thiệp trần.
 - **Độc Lập Tuyệt Đối 3 Quy Trình:** Ba quy trình Feed — Follow — Upload chạy độc lập tuần tự; trước fail thì sau vẫn chạy bình thường. Chu kỳ 3 ngày lệch pha an toàn.
+- **Phân Cấp Nhịp Sync Hạ Tầng (Cold Backup Cadence):** Khi máy phụ (Admin) chỉ làm cold backup, các cron job sync hạ tầng Hermes (skills, brain memories, jobs.json) bắt buộc giãn nhịp lên 6h–24h/lần (cấm để 5m–15m gây xung đột `.git/index.lock`, nghẽn I/O 4.500+ skills và lock file OneDrive). Chi tiết: `references/cold-backup-host-sync-cadence-and-git-lock-prevention.md`.
 
 ## 2. Chu Trình Điều Phối Farm (Coordinator vs Worker)
 - **T0 (Hiện trường):** Đọc log, inspect ADB O(1), restart process, kiểm tra proxy. Tự do thực thi.
