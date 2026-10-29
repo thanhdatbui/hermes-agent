@@ -26,3 +26,11 @@ Tuy nhiên, tại commit `52cd179`, tính năng này bị over-engineer thành m
    - TUYỆT ĐỐI KHÔNG biến một thao tác xem chi tiết của 1 entity thành màn hình Master-Detail chuyển view.
    - Bấm vào chi tiết của nick nào $\rightarrow$ Chỉ mở duy nhất Popup Modal của nick đó đè lên màn hình hiện tại.
    - Bấm `X` đóng lại $\rightarrow$ Giữ nguyên vị trí cuộn và trạng thái lọc của người dùng, không bao giờ làm gián đoạn luồng làm việc.
+
+3. **Cạm bẫy Cắt Gọt Quá Tay (Collateral Component Loss / Knee-Jerk Pruning Trap):**
+   - Khi dọn dẹp và cắt bỏ cấu trúc thừa (như sidebar duyệt danh sách `fd-left`), Agent/Worker rất dễ mắc lỗi "cắt gọt quá tay" — vô tình xóa nhầm các widget dữ liệu quan trọng của chính entity đó.
+   - *Bài học xương máu:* Khi gỡ bỏ menu danh sách all nick, Worker đã tiện tay xóa luôn khối `fdDailyMatrixBox` (ma trận ca chạy gần nhất với các chip `🛑 Nhả`, `+ An toàn`, `- Nghỉ`), khiến người dùng mất đi công cụ đối soát nhanh lịch sử chạy của nick.
+   - **Quy chuẩn 3 Khối Bắt Buộc trong Modal Sổ Bệnh Án Vi Mô:**
+     1. *4 Thẻ Quota KPI:* Nhóm Cohort (`Rookie/Mid/Veteran`), Trần Đã Chứng Minh (`proven_safe_ceiling`), Trần Dò Ca Tới (`active_ceiling`), Gãy Gần Nhất (`last_failed_ceiling`).
+     2. *Ma Trận Ca Chạy Gần Đây (`fdDailyMatrixBox`):* Chip trực quan từng ngày gần nhất (🛑 Nhả, 🟢 An toàn, ⚪ Nghỉ) để đối soát tức thì tình trạng rủi ro.
+     3. *Danh Sách UID Đã Follow:* Ô tìm kiếm `filterFdUids` + bảng cuộn UID con kèm timestamp chính xác và link profile TikTok.
