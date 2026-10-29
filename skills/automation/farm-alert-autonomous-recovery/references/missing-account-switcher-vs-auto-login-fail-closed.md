@@ -193,4 +193,20 @@ FeedRunner: [FAIL] Lệch Profile/Nick TikTok (profile account mismatch / naviga
   4. Chỉ fallback sang dump XML khi OCR thật sự không tìm thấy chữ trên ảnh.
   5. Đảm bảo tuân thủ `INVARIANT UI-OCR-1` và vượt qua kiểm tra của `python D:/Taadaa/tools/ui_policy_check.py`.
 
+### G. Pitfall Ô Nhiễm PYTHONPATH Khi Chạy `canary_runner.py` Từ Subshell Agent
+- **Hiện tượng:** Khi Coordinator gọi `canary_runner.py`, runner crash ngay lập tức ở bước import module:
+  `ImportError: cannot import name '_imaging' from 'PIL'`
+- **Nguyên nhân:**
+  1. Khi chạy từ session Coordinator, `sys.executable` trỏ vào venv của Coordinator, vốn thiếu C-extension compiled cho Pillow.
+  2. Biến môi trường `PYTHONPATH` chứa các path site-packages của môi trường Coordinator, bị truyền xuống child subprocess của `run_tiktok.py` khiến Python ưu tiên nạp module lỗi thay vì venv automation chuẩn.
+- **Xử lý chuẩn trong `canary_runner.py`:**
+  1. Trỏ `runner_py` ưu tiên về `D:\Taadaa\python-envs\automation\Scripts\python.exe` nếu tồn tại, chỉ fallback về `sys.executable` khi không có.
+  2. Gỡ bỏ `PYTHONHOME` và `VIRTUAL_ENV` khỏi `env`.
+  3. Đưa `auto_py.parent` lên đầu biến `PATH`.
+  4. Lọc bỏ sạch mọi đường dẫn môi trường ngoài ra khỏi `PYTHONPATH`:
+     ```python
+     filtered_pp = [p for p in current_pp.split(os.pathsep) if p and "hermes" not in p.lower()]
+     env["PYTHONPATH"] = f"{extra_pp};{os.pathsep.join(filtered_pp)}" if filtered_pp else extra_pp
+     ```
+
 
