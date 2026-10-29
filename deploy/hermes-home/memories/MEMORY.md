@@ -4,9 +4,9 @@ Nạp Web reverse (:20129): trần 2 acc/IP; pass random lưu Excel; pre-validat
 §
 TikTok Farm: Chu kỳ 3 ngày cày liên tục (Ca 1: {1,2,7}, Ca 2: {3,4,8}, Ca 3: {5,6} + Dyn Ngày 3; bỏ Ngày 4). Lệch pha độc lập vì pool nick rời nhau 100%. Gate cooldown 48h (_is_account_follow_cooldown) chặn cấm bấm follow nếu acc vừa cày < 48h. Quota max cap 40 fl/ngày (2 phiên >=120m); used>0 streak=1; 3 quy trình Feed-Follow-Upload độc lập; Quota [cap-2, cap], bóp trần = last_failed - 2; Máy Lẻ (Nhóm A bám trần + hồi phục 1,2), Máy Chẵn (Nhóm B max 20 fl/phiên, used>0 dừng nhận fl đã ăn, used=0 mới cooldown).
 §
-Tool 2FA và cron xen ca: JIT lock từng máy; sync code Admin qua OneDrive D:\OneDrive\TaadaaData\admin\ (cấm stream chunk Base64 qua SSH gây nghẽn socket/treo gateway); single_writer workbook bắt buộc fallback ID + protected_parts=None khi add text mới né WORKBOOK_PROTECTED_PART_DRIFT. Master Excel Admin đã đạt 101/630 có 2FA.
+Tool 2FA và cron xen ca: JIT lock từng máy; sync code Admin qua OneDrive D:\OneDrive\TaadaaData\admin\ (cấm stream Base64 qua SSH); single_writer workbook fallback ID + protected_parts=None khi add text né WORKBOOK_PROTECTED_PART_DRIFT. Master Excel Admin: 101/630 có 2FA.
 §
-GuardGate (D:/Taadaa/tools/guardgate) là Protection Regression Gate cơ giới hóa cho code diff repo (Closeout Step 2.5); infra_regression_gate.py chỉ kiểm tra riêng 4 file config hạ tầng Hermes/OmniRoute.
+GuardGate: Protection Regression Gate cho repo; infra_regression_gate.py kiểm tra 4 file config Hermes/OmniRoute. Model Picker Telegram: tin nhắn /model cũ freeze state model trong RAM; thêm model bắt buộc restart gateway & gửi /model mới hoặc /model <id>.
 §
 Dashboard TikTok (1905, tiktok_dashboard.py) độc lập 100% với Farm runner (tiktok_runner.py); cấm suy diễn lỗi Dashboard sang Farm. Watchdog restart service Windows phải kill cả cây pythonw.exe + python.exe để tránh đụng socket SO_REUSEADDR gây treo/sập.
 §
