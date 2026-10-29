@@ -66,3 +66,4 @@ description: "Taadaa farm safety, close-session, and multi-machine operations."
 - Bẫy Cắt Số Đuôi Account Switcher & Khởi Chạy SplashActivity Đích Danh: [`references/account-switcher-trailing-digits-and-explicit-launch-focus.md`](references/account-switcher-trailing-digits-and-explicit-launch-focus.md)
 - Audit & Purge ChatGPT GPM Đăng Nhập & Đồng Bộ Token: [`references/chatgpt-gpm-login-audit-and-purge-discipline.md`](references/chatgpt-gpm-login-audit-and-purge-discipline.md)
 - Độc Lập 3 Quy Trình (Feed-Follow-Upload) & Chống Phạt Cooldown Oan: [`references/decoupled-pipeline-and-follow-cooldown-guard.md`](references/decoupled-pipeline-and-follow-cooldown-guard.md)
+- Khế Ước Drop-Day Sổ Bệnh Án & Zero-Follow Failure: [`references/follow-detail-matrix-drop-day-zero-follow-invariant.md`](references/follow-detail-matrix-drop-day-zero-follow-invariant.md)
