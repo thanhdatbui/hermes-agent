@@ -301,6 +301,24 @@ When headless network access fails and an on-site computer is borrowed via Ultra
         - Router OpenWrt hoàn toàn KHÔNG có quyền tự chọn hay cấu hình sai dải IP `172.17.x.x`—đây là do BRAS áp đặt.
       - **Triage:** Do NOT waste time resetting router settings or altering local IPv6 configurations when seeing `172.17.x.x`. Instruct the ISP technician directly: *"Hệ thống BRAS đang gán tài khoản vào pool tạm 172.17.x.x, hãy kiểm tra profile trên trạm và chuyển sang pool IP Public / Internet thông thường"*.
 
+    - **The Bridge Member Inspection via Sysfs (`/sys/class/net/br-lan/brif`):**
+      - When `bridge link` tool is missing from embedded OpenWrt builds (`-bash: bridge: command not found`), inspect bridge port membership directly via sysfs:
+        ```sh
+        ls /sys/class/net/br-lan/brif
+        ```
+      - If output shows only `wan`, physical ports `lan1` and `lan2` are cleanly decoupled from `br-lan`. If `lan1` or `lan2` appears in that list, it is still bridged and will intercept PPPoE frames.
+
+    - **Differentiating Asymmetric Line Health in Multi-WAN (The Inverted Port-Assignment Trap):**
+      - **Problem:** When one line works and another fails with `PADO timeout`, swapping account credentials in software without matching physical cable lines causes both to appear broken.
+      - **Heuristic:**
+        1. Always correlate the physical port with its active session: if `lan2` successfully negotiates PPPoE and receives IP/IPv6 while `lan1` reports `Timeout waiting for PADO packets`, the fiber line connected to `lan2` is the functional line!
+        2. Inspect exact interface assignment via CLI:
+           ```sh
+           uci show network.wan && uci show network.WAN2
+           ifstatus wan && ifstatus WAN2
+           ```
+        3. Never assign the working account (e.g. `tamnhb1`) to the non-communicating physical port (`lan1`) expecting it to fix the timeout; resolve upstream bridge/carrier status on the non-communicating port first.
+
 ## References
 
 - `references/claude-audit-and-field-triage-r3g.md` — Detailed case study of Xiaomi R3G deploy, Claude CLI production audit remediation, and the premature lifeline unplug incident.
