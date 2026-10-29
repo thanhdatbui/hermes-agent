@@ -10,4 +10,5 @@ author: Hermes Agent
 - Watchdog Follow Report: BẮT BUỘC hiển thị `{len(rel_...)} máy` kèm % và list máy (vd: `- Nhả liền (23 máy | 0 lượt | 92.0%): (M3, ...)`).
 
 ## References
+- Sụp Socket ADB giữa phiên & Silent Launcher Crash Triage: `references/mid-session-adb-socket-drop-and-silent-launcher-crash-triage.md`
 - Chi tiết toàn bộ quy trình, case study và phân tích chuyên sâu: xem các tài liệu trong thư mục `references/` của skill.

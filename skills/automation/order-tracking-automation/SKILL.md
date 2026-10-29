@@ -30,3 +30,4 @@ Do not rely solely on mailbox polling as tracking code discovery. TikTok Shop an
 
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.
+> - `references/order-lifecycle-execution-order-and-timeout-budget.md`: Quy chuẩn đảo thứ tự thực thi Phase 2 Web-First, chặn nghẽn ADB bóc mã đơn mới (`max_app_syncs = 1`), bọc `TimeoutExpired` chống crash cron runner, và cơ chế dọn lock mồ côi không có trường machine.

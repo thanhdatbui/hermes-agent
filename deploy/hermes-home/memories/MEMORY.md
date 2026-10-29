@@ -6,6 +6,8 @@ TikTok Farm: Chu kỳ 3 ngày cày liên tục (Ca 1: {1,2,7}, Ca 2: {3,4,8}, Ca
 §
 Tool 2FA & cron: JIT lock; sync code Admin qua OneDrive D:\OneDrive\TaadaaData\admin\ (cấm stream Base64 qua SSH); single_writer workbook fallback ID + protected_parts=None. Master Excel Admin: 101/630 có 2FA.
 §
-Cứu hộ OpenWrt UltraViewer: Cấm Reset Factory. DSA lan1/2 rút khỏi br-lan mới nhận PADO. ONT untagged bind thẳng Switch port ('lan1', 'lan2'), cấm sub-device lan1.35; cấm Alias (@WAN2). Tắt IPTV modem né 172.17.x Walled Garden. Cấm dán '&&' qua ttyd. Đổi dây đảo user/pass khớp Circuit ID. Khi 1 line UP còn 1 line timeout, cấm gán nhầm nick đang chạy sang port timeout. Cờ -I case-sensitive: bắt buộc check l3_device ('pppoe-WAN2' vs 'pppoe-wan') tránh false 100% loss.
+Cứu hộ OpenWrt: Cấm Reset Factory. DSA lan1/2 rút khỏi br-lan mới nhận PADO. ONT untagged bind Switch ('lan1', 'lan2'), cấm sub-device lan1.35; cấm Alias (@WAN2). Tắt IPTV modem né 172.17.x. Cấm dán '&&' qua ttyd. Đổi dây đảo user/pass khớp Circuit ID. Line UP/timeout cấm gán nhầm nick. Cờ -I case-sensitive: check l3_device ('pppoe-WAN2' vs 'pppoe-wan') né false loss.
 §
 GPM proxy & auto-heal: CẤM tạo profile rác; BẮT BUỘC dùng profile có sẵn kẹp proxy (mobi/mirotik), CẤM CHẠY IP DIRECT MÁY KIBE. Check ipify trước khi vào web. React value setter cho form AWSUI. 19995 offline sau reboot spawn ngầm GPMLogin.exe. Lỗi 'Yêu cầu cập trình duyệt 142' do lệch manifest core, cập nhật trên GUI là nhả.
+§
+Coordinator cấm tự ý gọi skill_view(file_path='references/...') đọc file con khi xử lý lệnh thường để chống phình context; tra cứu sâu chỉ khi user yêu cầu.
