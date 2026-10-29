@@ -639,6 +639,7 @@ Khi user chat hàng loạt session song song và thấy phản hồi chậm (h�
   - Xem chi tiết tại `references/deadlock-of-expectations-and-promise-without-tool-hang.md`.
 
 ## References
+- `references/omniroute-combo-and-hermes-model-picker-integration.md` — Quy trình tích hợp Model/Combo mới từ OmniRoute (:20129) vào Hermes Model Switcher (/model Telegram), xử lý bẫy 400 Unable to determine provider và đồng bộ 4 điểm cốt lõi (29/10/2026).
 - `references/omniroute-proxy-fast-fail-probe-hang-and-sqlite-bloat-20261027.md` — Sự cố Fast-Fail probe 2s kill oan stream LLM khi Viettel chập chờn, phình SQLite 1.15GB (1.14M dòng rác), và toàn bộ giải pháp hạ tầng kèm Protection Regression Gate (27/10/2026).
 - `references/deadlock-of-expectations-and-promise-without-tool-hang.md` — Bẫy Chờ Chéo "Hứa Mồm Rồi Ngủ Đông" (Deadlock of Expectations), giải mã cơ chế kỹ thuật trong conversation_loop.py khiến session bị đóng băng 7 tiếng và 3 chốt chặn cơ giới hoá (28-29/10/2026).
 - `references/omniroute-fast-fail-probe-and-protection-regression-gate.md` — Chi tiết bẫy Fast-Fail probe 2s làm kill oan request LLM, sự cố SQLite 1.15GB phình 1.14M dòng, và bản thiết kế Protection Regression Gate cho hạ tầng (27/10/2026).

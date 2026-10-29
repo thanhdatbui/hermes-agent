@@ -49,6 +49,7 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
 - Phê Bình Từ User & Kiến Trúc Bình Đẳng Mọi Ảnh (Universal Inspection & Anti-Avatar-Bias): [`references/universal-image-inspection-and-anti-avatar-bias-gate.md`](references/universal-image-inspection-and-anti-avatar-bias-gate.md)
 - 9Router Port 20128 Multimodal Fallback & Farm Tool UI Recognition: [`references/9router-port20128-multimodal-fallback-and-farm-tool-detection.md`](references/9router-port20128-multimodal-fallback-and-farm-tool-detection.md)
 - Bẫy Chụp Ảnh Loading Spinner & Đối Soát Settled State Trước Khi Nghiệm Thu: [`references/transition-spinner-trap-and-settled-state-evidence.md`](references/transition-spinner-trap-and-settled-state-evidence.md)
+- Chống Lệch Session Khi Đọc Ảnh Telegram Cache & SQLite Single Source of Truth Cho Sổ Bệnh Án: [`references/anti-cross-session-image-drift-and-follow-matrix-sqlite-truth.md`](references/anti-cross-session-image-drift-and-follow-matrix-sqlite-truth.md)
 
 ## 1. Nguyên Tắc Cốt Lõi (Invariants)
 1. **CẤM gửi ảnh mù / đối phó:** Trước khi đính kèm bất kỳ thẻ `MEDIA:<path>` nào, bắt buộc phải mở ảnh ra soi mắt kiểm tra trước.
