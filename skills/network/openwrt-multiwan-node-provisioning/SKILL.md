@@ -268,10 +268,10 @@ When headless network access fails and an on-site computer is borrowed via Ultra
            - **Device type:** Select **`VLAN (802.1q)`**.
            - **Base device:** Select the physical port (e.g. `lan1` or `lan2`).
            - **VLAN ID:** Enter the ISP VLAN ID (e.g. `35`).
-           - Resulting device name is automatically `lan1.35` (or `lan2.35`). Click **Save** and **Save & Apply**.
+           - **Device name:** Enter `lan1.35` (or `lan2.35`). Click **Save** and **Save & Apply**.
         2. **Bind Interface to the VLAN Sub-Device:**
            - Go to **Network -> Interfaces -> Edit WAN** (or `WAN2`).
-           - In **General Settings -> Device**, change selection from physical `lan1` to the new VLAN sub-device: **`lan1.35`**.
+           - In **General Settings -> Device**, change selection from physical `lan1`/`lan2` to the new VLAN sub-device: **`lan1.35`** or **`lan2.35`**.
            - Ensure protocol is `PPPoE`, enter credentials, and save.
         3. **Clear "USER_REQUEST" Status:**
            - If interface shows `Error: Unknown error (USER_REQUEST)`, click **RESTART** on the interface row, followed by **Save & Apply**.

@@ -265,6 +265,15 @@ Applies whenever reports fail to reflect actual fleet health, mask dropped machi
   2. **Cumulative Drop History in State:** State machines tracking consecutive failure streaks (`fail_streak`) MUST maintain an append-only ring buffer or array (`drop_history: [{"date": today, "streak": streak, "timestamp": now_iso}]`) instead of overwriting a single date scalar.
   3. **Zero-Session Drop Flagging:** In shift matrices, ca runs that failed with 0 actions due to early safety stops (e.g. anchor revert trap) MUST retain their drop flag (`is_drop = True`) even when follow count is 0, ensuring visual parity with the account's active penalty tier.
 
+### Invariant 27: Rolling-Window Audit vs Historical Fix Discrimination & Guard Regex Boundary Traps
+- **Anti-Pattern:**
+  1. Conflating historical script/rule fixes with rolling-window runtime telemetry: An operator or agent fixes a hook or watchdog rule in previous sessions and expects a rolling 6h audit (`gate_compliance_watchdog.py`) to immediately show zero violations. When the report still fails, the agent assumes the fix "didn't take" without realizing concurrent active sessions are legitimately hitting existing guardrails (`subagent_edit_blocked`, unparameterized `adb`, unbudgeted timeout).
+  2. Guard Regex False-Positive Traps (Overly Broad Token Matching): Guard hooks detecting dangerous commands (e.g. `GUARD_DANGEROUS_ROOT`) use loose regexes (e.g. `find\s+` or root path `//`) without verifying command-boundary context. When an agent runs a benign Python snippet with an English comment (`# Find center...`) or integer division (`// 2`), the hook misclassifies the script as a recursive Unix filesystem scan on root (`D:/Taadaa`), generating dozens of false-positive violations.
+- **Rule:**
+  1. **Strict Command Boundary Matching in Hooks:** Shell guards matching CLI utilities (`find`, `grep`, `ls`) MUST anchor to command boundaries (`(?:^|[|;&]\s*)find\b`), never matching arbitrary substrings inside Python scripts, comments, or heredocs. Root path checkers MUST NOT match arithmetic operators (`//`).
+  2. **Audit Deconstruction by Event Source:** When diagnosing a failing compliance report, always extract raw entries from `runtime/audit_logs/*.jsonl` for that exact time window. Verify the specific target commands: distinguish between genuine operational violations by live agents vs guard regex false positives.
+  3. **Acknowledge Fixed Invariants:** Explicitly verify that previously fixed rules (e.g. `GUARD_SEARCH_FILES_ROOT`, `CONSOLE_WINDOW`) remain absent from the top violation list to avoid false rollback conclusions. See [`references/guard-regex-false-positive-and-realtime-audit-fidelity.md`](references/guard-regex-false-positive-and-realtime-audit-fidelity.md).
+
 ---
 
 ## 3. Verification Protocol for Watchdogs & Reports
@@ -294,4 +303,5 @@ Applies whenever reports fail to reflect actual fleet health, mask dropped machi
 - [`references/subprocess-syspath-strip-trap-and-dispatch-worker-routing.md`](references/subprocess-syspath-strip-trap-and-dispatch-worker-routing.md) — Subprocess sys.path strip trap (0.001s crash loop) and Hard Gate #3 dispatch_worker routing contract.
 - [`references/compliance-watchdog-anti-overengineering-and-synthetic-rules.md`](references/compliance-watchdog-anti-overengineering-and-synthetic-rules.md) — Case study: Anti-overengineering in compliance watchdog, eliminating synthetic rules, guidance spam, and aligning mechanical closeout.
 - [`references/dashboard-watchdog-death-loop-and-multi-process-collision.md`](references/dashboard-watchdog-death-loop-and-multi-process-collision.md) — Case study: Multi-process socket collision, watchdog death-loop on large SQLite dashboards, and domain decoupling.
+- [`references/guard-regex-false-positive-and-realtime-audit-fidelity.md`](references/guard-regex-false-positive-and-realtime-audit-fidelity.md) — Case study: Distinguishing live agent violations from guard regex false positives (`FIND_SCAN` / `//` trap) in rolling-window audits.
 - [`references/scheduler-ledger-fallback-and-heartbeat-stale-reconciliation.md`](references/scheduler-ledger-fallback-and-heartbeat-stale-reconciliation.md) — Case study: Scheduler ledger fallback in 24H heartbeat aggregator, schedule interval alignment, and multi-tier parity synchronization.
