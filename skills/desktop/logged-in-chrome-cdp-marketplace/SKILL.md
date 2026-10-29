@@ -199,3 +199,4 @@ When the user asks to search Shopee or another marketplace:
 - `references/cdp-dynamic-proxy-and-recaptcha-handling.md` — Dynamic per-context SOCKS5 proxying via Target.createBrowserContext, reCAPTCHA v2 checkbox coordinate dispatch, and Playwright CDP attachment.
 - `references/cdp-browser-context-proxy-and-recaptcha-automation.md` — Isolated browser context with dynamic SOCKS5 proxy, native reCAPTCHA v2 click mechanics, and Gate 6 visual checkpoints.
 - `references/shopee-session-lessons-2026-08.md` — reusable lessons from the Kapton comparison: exact-source/tool-surface discipline, WAF/0×0 blockers, variant/cart/voucher proof, concise reporting, and historical evidence boundaries.
+- `references/gpm-local-api-and-cdp-onboarding.md` — GPMLogin Local REST API (:19995) profile lifecycle management, dynamic remote debugging address attachment, native CDP WebSocket automation, and sensitive co-working onboarding patterns.
