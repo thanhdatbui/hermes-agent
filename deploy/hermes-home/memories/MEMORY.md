@@ -9,3 +9,5 @@ Nối xích unified_patch_pipeline.py là ENTRYPOINT DUY NHẤT khi có lệnh F
 Đã chuyển đổi 100% dữ liệu Excel sang SQLite D:/Taadaa/data/farm_master.db (160 máy, 1.270 nick, 1.455 mail, 806 token). Flow chính dùng DAL farm_db.py; Web kibe:1905 có tab Sổ Cái riêng biệt ở đầu trang, phân định rõ 🔑 2FA TT (TikTok cột trái) và 🔑 2FA Mail (Mailbox cột phải, 160 acc), cấm nhãn 2FA chung chung.
 §
 Quy tắc đổi nick/proxy GPM: Đổi acc mới hoặc đổi proxy bắt buộc tạo profile mới toanh; cấm dùng lại profile cũ dính vết fingerprint/tokens tránh bị kích hoạt chối bỏ đăng ký tự động.
+§
+Farm có hơn 880 hòm thư Hotmail/Outlook trong bảng mailboxes (farm_master.db) có sẵn oauth_refresh_token; luôn tự động đổi access_token qua login.live.com và gọi Microsoft Graph API (inbox/junkemail) trích xuất OTP 6 số tự động trong 2 giây; cấm dừng lại hỏi xin mail cá nhân của user.

@@ -22,7 +22,7 @@
 2. **Tầng 2 (Post-Session Audit - Chọn lọc sau ca):**
    - Không cào All Farm 1.268 nick (gây lãng phí proxy và rủi ro WAF).
    - Chỉ cào **chọn lọc 60 - 120 nick đã upload success** của ca đó (`post_upload_scraper.py`).
-   - Thời điểm chạy tối ưu: Sau ca upload 45 phút (`45 10,16,20,0 * * *`).
+   - Thời điểm chạy tối ưu: Sau ca upload 45 phút (`45 10,16,20 * * *`).
 
 ---
 
@@ -34,4 +34,12 @@
     ```
   - Tự động cào qua pool 67 proxy và cập nhật snapshot mới vào `D:/Taadaa/data/tiktok_tracker.db` trong ~15 giây.
   - Dashboard web tự động bắt snapshot mới nhất qua API `/api/data` không cần khởi động lại.
-- **Cronjob định kỳ:** `post-upload-auto-audit-sync` (script `cron_post_upload_sync.py`, schedule `45 10,16,20,0 * * *`).
+- **Cronjob định kỳ:** `post-upload-auto-audit-sync` (script `cron_post_upload_sync.py`, schedule `45 10,16,20 * * *`).
+
+---
+
+## 4. Kỷ Luật Lịch Ca Farm & Silent Watchdog Contract
+- **Không có ca upload nửa đêm:** Farm chỉ chạy upload ban ngày/chiều/tối (mốc cào đối soát tương ứng là 10:45, 16:45, 20:45); CẤM TUYỆT ĐỐI cài đặt mốc 0h (`0`) vào cron schedule vì farm không chạy ca đêm.
+- **Empty Shift Schema Parity & Silent Watchdog:**
+  - Khi không có nick nào upload thành công trong ca (`accounts == []`), `post_upload_scraper.py` bắt buộc trả về payload chuẩn hóa đầy đủ keys (`date`, `row`, `total: 0`, `confirmed_match: 0`, `delayed_or_anomaly: 0`, `anomalies: []`) để tránh crash `KeyError: 'date'`.
+  - Khi `total == 0`: Script bắt buộc thoát êm với exit code `0` và giữ `stdout` hoàn toàn rỗng để cronjob `no_agent=True` giữ trạng thái SILENT, tuyệt đối không gửi báo cáo rác lên Telegram.

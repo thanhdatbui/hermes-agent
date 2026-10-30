@@ -14,7 +14,17 @@ description: "Use when managing farm SQLite database, DAL, or web ledger."
 - `mailboxes`: `email` (PK), `password`, `twofa_secret`, `oauth_refresh_token`, `oauth_client_id`, `oauth_status`, `provider`.
 - `slot_assignments`: `machine_id`, `slot_no` (1-8), `tiktok_username`.
 
-## 3. Quy Chuẩn Hiển Thị Web Dashboard (`http://kibe:1905`)
+## 3. Microsoft OAuth Graph API Trích Xuất OTP Tự Động (mailboxes)
+- **Hơn 880 hòm thư Hotmail/Outlook trong `mailboxes` có sẵn `oauth_refresh_token`:**
+  - CẤM dùng browser đăng nhập web Outlook bằng password khi cần lấy OTP (Microsoft sẽ kích hoạt checkpoint đòi mail khôi phục `fviainboxes.com`).
+  - **Luồng lấy OTP chuẩn O(1):**
+    1. Lấy `oauth_refresh_token` và `oauth_client_id` (nếu null dùng client mặc định `0000000040170455`).
+    2. POST đổi access token qua `https://login.live.com/oauth20_token.srf` (`grant_type=refresh_token`).
+    3. GET tin nhắn mới nhất qua Microsoft Graph: `https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?$top=1` (nếu không có, kiểm tra thêm thư mục `junkemail`).
+    4. Trích xuất regex 6 số `\b\d{6}\b` từ `bodyPreview` hoặc `subject`.
+  - CẤM dừng lại xin người dùng email cá nhân hoặc than phiền thiếu mail khi Farm đã có sẵn kho mailboxes OAuth tự động giải OTP trong 2 giây.
+
+## 4. Quy Chuẩn Hiển Thị Web Dashboard (`http://kibe:1905`)
 - **Tách riêng Danh Mục Lớn (Top-level Navigation):** Sổ Cái Farm là hệ thống quản trị dữ liệu local độc lập, bắt buộc đặt thành tab danh mục lớn ở đầu trang (`📊 Giám Sát TikTok` và `📓 Sổ Cái Farm (SQLite)`). CẤM đưa Sổ Cái vào hàng nút lọc phụ (`.filter-buttons`) của bảng TikTok. Khi chuyển sang tab Sổ Cái, ẩn hoàn toàn khu vực KPI và thanh lọc của TikTok.
 - **Phân định rõ ràng 2FA TikTok vs 2FA Mail:**
   - Bảng `tiktok_accounts` có `twofa_secret` -> hiển thị cột trái: `🔑 2FA TT: <SECRET_KEY>`.
@@ -24,3 +34,5 @@ description: "Use when managing farm SQLite database, DAL, or web ledger."
 
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.
+> - `references/migration_reconciliation.md`: Đối chiếu di chuyển Excel sang SQLite.
+> - `references/hotmail-oauth-graph-otp-extraction.md`: Hướng dẫn trích xuất mã OTP Hotmail tự động qua Microsoft OAuth Graph API.

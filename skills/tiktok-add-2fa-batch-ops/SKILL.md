@@ -5,6 +5,7 @@ description: "Use when running batch 2FA on TikTok farm. Chạy batch 2FA repo t
 # TikTok Add 2FA Batch Ops (repo tiktok-add-bao-mat-f2a)
 
 References:
+- `references/ui-target-ambiguous-next-and-unified-patch-pipeline-20261031.md` — **[MỚI 31/10/2026]** Khắc phục lỗi `UI_TARGET_AMBIGUOUS:Next:0` bằng fallback đa ngữ (Tiếp/Tiếp tục/Next/Continue), kỷ luật chạy pipeline lệnh đơn dòng chống dính Coordinator Guard.
 - `references/live-test-telegram-spam-prevention-and-dry-run-contract-20261030.md` — **[MỚI 30/10/2026]** Kỷ luật cấm test live watchdog thiếu `--dry-run`, chống bão spam Telegram báo cáo mã thoát 5 vào nhóm nghiệp vụ.
 - `references/night-2fa-watchdog-trace-observability-and-no-vichanger-invariants-20261030.md` — **[MỚI 30/10/2026]** Lưu Trace đĩa `D:/Taadaa/reports/night_2fa_trace_{date}.log` cho Watchdog 2FA, bóc tách `failure_breakdown`, cấm tuyệt đối nhắc ViChanger hoặc app Outlook S7 (100% Graph API & GPM PC).
 - `references/night-2fa-forwarded-report-triage-and-feed-interlock-20261030.md` — Quy trình giải mã báo cáo 2FA forward, đối soát luỹ kế O(1) và kỷ luật cấm xâm lấn Ca Nuôi.
