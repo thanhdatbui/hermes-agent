@@ -6,4 +6,6 @@ TikTok Upload & Dashboard Audit: Cấm cào web realtime verify trong luồng up
 §
 Tool 2FA & cron: JIT lock; sync code Admin qua OneDrive D:\OneDrive\TaadaaData\admin\ (cấm stream Base64 qua SSH); single_writer workbook fallback ID + protected_parts=None. Master Excel Admin: 101/630 có 2FA.
 §
+GPM & proxy: Profile farm BẮT BUỘC dùng profile có sẵn kẹp proxy (mobi/mikrotik/R3G), cấm IP direct. Riêng Gmail chính user có thể dùng IP direct. CẤM tạo profile rác không proxy. Check ipify trước khi vào web. React setter form AWSUI. 19995 offline spawn ngầm GPMLogin.exe. Lỗi 'cập trình duyệt 142' do lệch manifest core, cập nhật GUI là nhả. R3G V1 Thái Bình Tailscale 100.115.94.49 (root/password). WAN2 (lan2) online PPPoE Viettel 100.77.x, egress Thái Bình 117.5.152.x. 8 MACVLAN sub-proxies (5101-5108) cách ly routing table 101-108, defaultroute=0. lan1 (wan) tắt chờ modem 2 bridge.
+§
 R3G Thái Bình: lan2 (WAN2, tamnhb1) đang giữ mạng chính & Tailscale (100.115.94.49, ping 8.8.8.8 28ms). Đã dựng 8 MACVLAN proxy (5101-5108). Cổng lan1 (Line 0, tamnhb0) đang disabled tạm do modem 0 chưa bridge / PADO timeout. CẤM can thiệp lan2 gây văng Tailscale.

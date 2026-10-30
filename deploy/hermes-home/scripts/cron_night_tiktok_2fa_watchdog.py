@@ -53,6 +53,7 @@ TIKTOK_REPORT_CHAT_ID = "-5468653590"
 STATE_DIR = Path(os.getenv("TAADAA_CRON_STATE_DIR", "D:/Taadaa/runtime/kibe/cron-state"))
 STATE_FILE = STATE_DIR / "night_tiktok_2fa_state.json"
 REPORTED_FILE = Path(os.getenv("TAADAA_REPORTED_FILE", "D:/Taadaa/runtime/kibe/cron-state/feed_session_reported.json"))
+TRACE_DIR = Path(os.getenv("TAADAA_NIGHT_2FA_TRACE_DIR", "D:/Taadaa/reports"))
 LOCK_DIR = Path(r"C:\Users\Kibe\AppData\Local\automation-core\device-locks")
 CODEX_LOCK_DIR = Path(r"C:\Users\Kibe\.codex\device-locks")
 LANE_CLAIM_TTL_SECONDS = 5400
@@ -602,6 +603,55 @@ def parse_gmail_breakdown_from_text(text: str) -> dict:
     }
 
 
+TWOFA_FAILURE_STATUSES = frozenset({"failed", "fail", "error", "blocked", "manual-needed"})
+
+
+def trace_file_path(today_str: str) -> Path:
+    return TRACE_DIR / f"night_2fa_trace_{today_str}.log"
+
+
+def write_2fa_trace(today_str: str, title: str, text: str) -> None:
+    """Ghi trace chẩn đoán ca 2FA; lỗi I/O không được làm hỏng báo cáo."""
+    try:
+        TRACE_DIR.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now(HCMC).strftime("%Y-%m-%d %H:%M:%S")
+        with open(trace_file_path(today_str), "a", encoding="utf-8") as fh:
+            fh.write(f"\n===== [{stamp}] {title} =====\n{text.rstrip()}\n")
+    except OSError as exc:
+        logger.warning("Không ghi được trace 2FA %s: %s", trace_file_path(today_str), exc)
+
+
+def _normalize_2fa_reason(reason: str) -> str:
+    code = (reason or "").split("|")[0].split("(")[0].strip().upper()
+    return code or "UNKNOWN"
+
+
+def parse_2fa_breakdown_from_text(text: str) -> dict:
+    """Đếm lỗi 2FA theo reason code từ bảng runner: machine | row | user | status | reason."""
+    counts: dict[str, int] = {}
+    rows = re.findall(r"^\s*\d+\s*\|\s*\d+\s*\|\s*[^|]+\|\s*([\w-]+)\s*\|\s*(.*?)\s*$", text, re.M)
+    for status, reason in rows:
+        if status.lower() not in TWOFA_FAILURE_STATUSES:
+            continue
+        code = _normalize_2fa_reason(reason)
+        counts[code] = counts.get(code, 0) + 1
+    if not counts:
+        for reason in re.findall(r'"reason"\s*:\s*"([^"]*)"', text):
+            if reason.strip(" -") == "":
+                continue
+            code = _normalize_2fa_reason(reason)
+            counts[code] = counts.get(code, 0) + 1
+    return {"reasons": dict(sorted(counts.items())), "total": sum(counts.values())}
+
+
+def merge_2fa_breakdown(*items: dict) -> dict:
+    merged: dict[str, int] = {}
+    for item in items:
+        for code, count in (item.get("reasons") or {}).items():
+            merged[code] = merged.get(code, 0) + int(count or 0)
+    return {"reasons": dict(sorted(merged.items())), "total": sum(merged.values())}
+
+
 def summarize_gmail(out: str, min_mtime: float) -> dict:
     kibe_text, admin_text = _split_cluster_output(out)
     data = read_gmail_summary_json(min_mtime) if GMAIL_LOG_DIR.is_dir() else None
@@ -675,19 +725,37 @@ def build_gmail_report(summary: dict, code: int) -> str:
     return "\n".join(lines)
 
 
-def build_2fa_report(kibe: dict, admin: dict, code: int) -> str:
+def build_2fa_report(
+    kibe: dict,
+    admin: dict,
+    code: int,
+    breakdown: dict | None = None,
+    today_str: str | None = None,
+    trace: bool = True,
+    trace_path: str | None = None,
+) -> str:
     shift = _get_shift_label()
     lines = [
         f"⏰ [FARM REPORT][TOÀN FARM] BÁO CÁO 2FA TIKTOK {shift}:",
         f"• Farm Kibe (Máy 1-80): Hoàn tất {kibe['success']} | Bỏ qua {kibe.get('skip_safe', 0)} | Lỗi {kibe['failed']}",
         f"• Farm Admin (Máy 201-280): Hoàn tất {admin['success']} | Bỏ qua {admin.get('skip_safe', 0)} | Lỗi {admin['failed']}",
     ]
+    reasons = (breakdown or {}).get("reasons") or {}
+    if reasons:
+        top = sorted(reasons.items(), key=lambda kv: (-kv[1], kv[0]))[:5]
+        detail = ", ".join(f"{k}: {v}" for k, v in top)
+        lines.append(f"• Lỗi chi tiết: {(breakdown or {}).get('total', sum(reasons.values()))} ({detail})")
     if code not in ACCEPTABLE_RETURN_CODES:
         if kibe.get("total", 0) == 0 and admin.get("total", 0) == 0:
             lines.append(f"• Lỗi runner: mã thoát {code} (kẹt Workbook lock hoặc OneDrive chưa hydrate)")
         else:
             lines.append(f"• Lỗi runner: mã thoát {code}")
-    return "\n".join(lines)
+    if trace_path:
+        lines.append(f"• Trace: {trace_path}")
+    report = "\n".join(lines)
+    if trace:
+        write_2fa_trace(today_str or datetime.now(HCMC).strftime("%Y-%m-%d"), "REPORT 2FA", report)
+    return report
 
 
 def run_gmail_phase(today_str: str, dry_run: bool, force: bool) -> int:
@@ -724,6 +792,10 @@ def run_tiktok_phase(today_str: str, dry_run: bool, force: bool = False) -> int:
     code, out = run_night_batch(dry_run=dry_run)
     kibe_text, admin_text = _split_cluster_output(out)
     kibe, admin = parse_summary_counts(kibe_text), parse_summary_counts(admin_text)
+    breakdown = merge_2fa_breakdown(
+        parse_2fa_breakdown_from_text(kibe_text),
+        parse_2fa_breakdown_from_text(admin_text),
+    )
     failed = kibe["failed"] + admin["failed"]
     acceptable = code in ACCEPTABLE_RETURN_CODES
     status = "failed" if not acceptable else ("partial_failure" if failed > 0 else "success")
@@ -731,7 +803,18 @@ def run_tiktok_phase(today_str: str, dry_run: bool, force: bool = False) -> int:
         f"Runner exited with non-acceptable return code {code}" if not acceptable
         else f"{failed} target machines failed during 2FA execution"
     )
-    dispatch_report(TIKTOK_REPORT_CHAT_ID, build_2fa_report(kibe, admin, code), dry_run)
+    trace_path = trace_file_path(today_str)
+    if not dry_run:
+        write_2fa_trace(today_str, "RAW RUNNER OUTPUT", out)
+    dispatch_report(
+        TIKTOK_REPORT_CHAT_ID,
+        build_2fa_report(
+            kibe, admin, code, breakdown, today_str,
+            trace=not dry_run,
+            trace_path=None if dry_run else str(trace_path),
+        ),
+        dry_run,
+    )
     if not dry_run:
         save_state(today_str, {
             "correlation_id": CORRELATION_ID,
@@ -741,6 +824,8 @@ def run_tiktok_phase(today_str: str, dry_run: bool, force: bool = False) -> int:
             "failed_count": failed,
             "skip_count": kibe.get("skip_safe", 0) + admin.get("skip_safe", 0),
             "failure_reason": reason,
+            "failure_breakdown": breakdown,
+            "trace_path": str(trace_path),
             "clusters": {"kibe": kibe, "admin": admin},
         })
     if not acceptable:
