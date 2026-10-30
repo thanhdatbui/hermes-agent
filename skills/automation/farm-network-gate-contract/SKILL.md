@@ -17,6 +17,10 @@ Use this skill when a multi-device Android farm needs reliable Wi-Fi assignment,
 4. **Lock before mutation.** Acquire the machine/device lock before any write, reboot, profile removal, or join operation. Confirm serial provenance independently. A busy lock means untouched and blocked, not forceful takeover unless the operator explicitly authorizes preemption.
 5. **Idempotency.** Read current state first. If the expected Wi-Fi, L3 route, and proxy are already healthy, return `NO_OP` without disrupting a running session.
 
+6. **Profile and Proxy Session Isolation (User correction & Antifraud Invariant).** Đổi tài khoản mới hoặc đổi quốc gia/proxy bắt buộc tạo profile mới toanh (`Profile_name` qua API v3 GPM). CẤM TUYỆT ĐỐI tái sử dụng profile cũ vì sẽ bị dính vết fingerprint/tokens (`datr`, `device_id`, session tokens) dẫn tới kích hoạt chối bỏ tự động (`registration_rejected` / `Không thể tạo tài khoản mới`). Chi tiết tại `references/gpm-profile-and-proxy-session-isolation-invariant.md`.
+
+7. **SSOT Proxy Identity Presentation & Hot Standby Pool.** Trên mọi bề mặt dữ liệu (Excel SSOT, SQLite `farm_master.db`, Web Ledger `kibe:1905`), proxy gán máy BẮT BUỘC hiển thị danh tính proxy thật (`tb.taadaa.click:51xx`, `test.taadaa.click:51xx`, `192.168.110.2:100xx`), CẤM hiển thị cổng trung chuyển nội bộ `:202xx`. MikroTik duy trì cố định 4 port dự phòng nóng `192.168.110.2:10028..10031` (Hot Standby) để hot-swap khi line lỗi hoặc cấp phát nuôi GPM/test. Chi tiết tại `references/ssot-proxy-identity-vs-mechanical-hop-and-isp-ceilings.md`.
+
 ## Required gate sequence
 
 ```text

@@ -30,3 +30,16 @@
   - Màn hình: *"Tham gia danh sách chờ Muse - Muse hiện chưa có ở quốc gia hoặc khu vực của bạn."*
   - Nguyên nhân: Dải IP proxy đang dùng (kể cả US/Canada) bị nhận diện là Datacenter / ASN không nằm trong whitelist thử nghiệm của Meta.
   - Khắc phục: Bắt buộc dùng Proxy Residential (dân cư sạch) hoặc VPN có native residential egress trước khi truy cập `muse.ai`.
+
+## 4. Kỷ luật Cách ly Fingerprint & Chống dính vết cũ (User Correction 2026-10-31)
+- **Quy tắc cách ly Profile tuyệt đối**:
+  - Khi một tài khoản bị lỗi checkpoint, bị từ chối đăng ký (`login_registration_rejected_dialog_impression`), hoặc bị đẩy vào Waitlist: **CẤM TUYỆT ĐỐI tái sử dụng lại profile GPM đó hoặc giữ nguyên proxy cũ để test tài khoản/email mới**.
+  - Trình duyệt và Meta đã ghi nhận cookie/fingerprint/IP bị gắn cờ; việc đổi tài khoản trên cùng profile cũ sẽ làm tài khoản mới bị "vạ lây" và dính lỗi ngay lập tức.
+  - **Quy trình chuẩn**: Tạo profile GPM hoàn toàn mới (`POST /api/v3/profiles/create`), gán dải proxy/IP mới chưa bị blacklist, sau đó mới tiến hành đăng nhập/đăng ký.
+- **Ưu tiên Geolocation Canada so với US**:
+  - IP US chịu quy định bảo vệ trẻ em nghiêm ngặt (VCDPA/COPPA) nên Meta thường xuyên bắt buộc quét khuôn mặt/selfie hoặc xác minh độ tuổi phức tạp.
+  - IP Canada có chính sách thông thoáng hơn, thường bỏ qua màn selfie/captcha xe hơi và đi thẳng vào màn hình nhập Tên/Ngày sinh. Khi User đã chỉ đạo chuyển vùng Canada, Coordinator phải kiên định bám sát luồng Canada, tuyệt đối không được quay xe về US.
+- **Lỗi từ chối đăng ký do email tạm (`login_registration_rejected_dialog_impression`)**:
+  - Dialog Meta hiện thông báo: *"Bạn hiện không thể tạo tài khoản mới."* hoặc *"Chúng tôi không thể hoàn tất yêu cầu đó. Hãy thử lại."*
+  - Nguyên nhân: Meta quét domain email rác/tempmail (`@fextemp.com`, `@yzcalo.com`...).
+  - Giải pháp: Bắt buộc dùng email sạch có domain uy tín (Gmail, Hotmail/Outlook thật từ kho `farm_master.db`) kết hợp với proxy sạch.

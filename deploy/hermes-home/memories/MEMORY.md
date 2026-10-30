@@ -2,8 +2,10 @@ GPM Local API (19995): tạo profile payload bắt buộc dùng 'Profile_name' (
 §
 Nạp Web (:20129): trần 2 acc/IP; pre-validate Graph; cấm base64. Acc lỗi set rate_limited_until UTC; disableSessionStickiness=true & failoverBeforeRetry=true. Nạp Gemini Web CDP lấy __Secure-1PSID kẹp proxy 1:1; Argon 4 pool map 'gemini-web'. Worker timeout 360s.
 §
-TikTok: Cấm cào realtime. Dual Gate Follow: age >= 30d & video >= 10 mới cấp budget follow (<10 video budget = 0). Anchor luôn đủ, auto-fallback Mode 1. CẤM bịa giả thuyết hết anchor. Watchdog UNPROVEN do lệch baseline T0 (>4h); cào T0 cần creationflags 0x08000000 và sync 4 tầng. M17: @lyhoan.music. Check nhả follow vuốt reload 3.5s.
+Watchdog UNPROVEN & drift giải quyết dứt điểm bằng Zero-Drift Shim (-B, 0x08000000, buffer P1 15m). M17: @lyhoan.music. Check nhả follow vuốt reload 3.5s.
 §
-Nối xích unified_patch_pipeline.py là ENTRYPOINT DUY NHẤT khi có lệnh Fix Code / Fix lỗi: S0 Precheck RepoLock -> S1 Plan (Gate B) -> S2 Patch qua dispatch_worker -> S3 Test -> S4 Canary Gate 6 -> S5 Hold Awaiting User kèm MEDIA:. Lỗi tự full_rollback(). BỎ HẲN HMAC/SHA256 ký local; dùng TLIS v1 (Plain JSON, atomic os.replace, OS RepoLock). Chốt phiên User gõ 'Done' chạy closeout_v2.py (0.05s). Bị chặn/fail phải ném log thật. CẤM làm tay.
+Nối xích unified_patch_pipeline.py là ENTRYPOINT DUY NHẤT khi có lệnh Fix Code / Fix lỗi: S0 Precheck RepoLock -> S1 Plan (Gate B) -> S2 Patch qua dispatch_worker -> S3 Test -> S4 Canary Gate 6 -> S5 Hold Awaiting User kèm MEDIA:. Lỗi tự full_rollback(). BỎ HẲN HMAC/SHA256 ký local; dùng TLIS v1 (Plain JSON, atomic os.replace, OS RepoLock). Chốt phiên User gõ 'Done' chạy closeout_v2.py (0.05s). Bị chặn/fail phải ném log thật. CẤM làm tay. Đổi acc reg/test web (Muse AI, Meta) BẮT BUỘC đổi cả profile GPM và proxy mới để cách ly sạch, cấm tái sử dụng profile dính vết; kiên định bám sát geolocation User chỉ định (Canada).
 §
-Đã chuyển đổi 100% dữ liệu Excel sang SQLite D:/Taadaa/data/farm_master.db (160 máy, 1.270 nick, 1.455 mail, 806 token). Flow chính (login, feed, inspect, hotmail) dùng DAL farm_db.py; Web kibe:1905 tích hợp tab Sổ Cái.
+Đã chuyển đổi 100% dữ liệu Excel sang SQLite D:/Taadaa/data/farm_master.db (160 máy, 1.270 nick, 1.455 mail, 806 token). Flow chính dùng DAL farm_db.py; Web kibe:1905 có tab Sổ Cái riêng biệt ở đầu trang, phân định rõ 🔑 2FA TT (TikTok cột trái) và 🔑 2FA Mail (Mailbox cột phải, 160 acc), cấm nhãn 2FA chung chung.
+§
+Quy tắc đổi nick/proxy GPM: Đổi acc mới hoặc đổi proxy bắt buộc tạo profile mới toanh; cấm dùng lại profile cũ dính vết fingerprint/tokens tránh bị kích hoạt chối bỏ đăng ký tự động.

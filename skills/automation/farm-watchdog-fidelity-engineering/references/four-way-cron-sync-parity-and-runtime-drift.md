@@ -57,3 +57,55 @@ Mỗi khi sửa bất kỳ cron script hoặc wrapper runner nào (`tiktok_runne
   cronjob(action='run', job_id='<job_id>')
   ```
 - Chỉ được báo hoàn thành khi kết quả trả về `last_status: ok` và `execution_success: true`. Gate `guard_cronjob_safety.py` đã loại bỏ hoàn toàn `~/.hermes/scripts` khỏi search roots; script bắt buộc phải tồn tại trong `%LOCALAPPDATA%\hermes\scripts` mới được phép khởi tạo cronjob.
+
+---
+
+## 4. Kiến Trúc Cấp Tiến: Canonical Zero-Drift Forwarding Shim (Khuyến Nghị Hàng Đầu)
+
+### 4.1. Hạn Chế Của Cơ Chế Copy & Sync Thủ Công
+- Các file monolith lớn như `feed_session_watchdog.py` (~84KB, >1.600 dòng) nếu copy nguyên khối sang 3 nơi (`%LOCALAPPDATA%`, `Hermes/deploy`, `OneDrive Sync Shared`), nguy cơ lệch pha do mtime hoặc OneDrive sync ngược đè file cũ là rất cao.
+- Python runtime trên Windows khi nạp file từ `%LOCALAPPDATA%` thường tự sinh `.pyc` trong `__pycache__`. Nếu scheduler chạy liên tục, bytecode cũ có thể bị giữ trong cache gây lỗi ngầm.
+
+### 4.2. Mẫu Hình Forwarding Shim Chuẩn (~40 dòng)
+Thay vì duplicate cả file 84KB, ta triển khai một file Shim tĩnh tại `%LOCALAPPDATA%\hermes\scripts\<script>.py`, `Hermes/deploy/...` và `OneDrive/...`:
+```python
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""Canonical Zero-Drift Forwarding Shim for <script>.py."""
+from __future__ import annotations
+import os, subprocess, sys
+
+if sys.platform == "win32":
+    _orig_subp_run = subprocess.run
+    def _silent_subp_run(*args, **kwargs):
+        if "creationflags" not in kwargs:
+            kwargs["creationflags"] = 0x08000000  # CREATE_NO_WINDOW
+        return _orig_subp_run(*args, **kwargs)
+    subprocess.run = _silent_subp_run
+
+PY = r"D:\Taadaa\python-envs\automation\Scripts\python.exe"
+SCRIPT = r"D:\Taadaa\<repo>\scripts\<script>.py"
+WORKDIR = r"D:\Taadaa\<repo>\scripts"
+
+def main(*args, **kwargs):
+    if not os.path.isfile(SCRIPT):
+        sys.stderr.write(f"[SHIM ERROR] Canonical script not found: {SCRIPT}\n")
+        sys.exit(1)
+    cmd = [PY, "-B", SCRIPT]  # -B: sys.dont_write_bytecode cấm đọc/ghi .pyc cũ
+    if kwargs.get("mode"):
+        cmd.append(f"--mode={kwargs['mode']}")
+    cmd.extend(sys.argv[1:])
+    proc = subprocess.run(cmd, cwd=WORKDIR)
+    if __name__ == "__main__":
+        sys.exit(proc.returncode)
+    return proc.returncode
+
+if __name__ == "__main__":
+    main()
+```
+
+### 4.3. Lợi Ích Vượt Trội
+1. **Zero-Drift tuyệt đối:** Bản Shim chỉ viết 1 lần và cố định. Khi sửa code nghiệp vụ trong Git Repo `D:\Taadaa\...`, Scheduler chạy tick tiếp theo sẽ thực thi ngay lập tức 100% code mới mà không cần copy, không cần deploy script, không sợ lệch hash.
+2. **Loại bỏ Bytecode Cache Stale:** Cờ `-B` ép buộc Python thông dịch trực tiếp từ source code mới nhất trong Git, không đọc lại file `.pyc` cũ trong RAM/đĩa.
+3. **An toàn tiến trình Windows:** Kẹp sẵn `creationflags = 0x08000000` chống nháy cửa sổ console console popup làm gián đoạn người dùng.
+

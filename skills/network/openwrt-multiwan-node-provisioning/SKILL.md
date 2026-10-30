@@ -10,5 +10,9 @@ tags: [openwrt, multi-wan, pppoe, tailscale, rescue-port, proxy-node]
 
 Guidance for configuring, hardening, and deploying physical OpenWrt routers (e.g., Xiaomi R3G, x86 mini-PCs, NanoPi) to remote locations as multi-line PPPoE nodes for proxy rotation or farm connectivity, managed headlessly via Tailscale.
 
+Key references:
+- Single-NIC Managed Switch VLAN Trunking (Router-on-a-Stick) & hardware triage: `references/single-nic-vlan-trunk-and-hardware-triage.md`
+- Multi-MACVLAN PPPoE & Isolated Proxy Rotation with Tailscale: `references/multi-macvlan-pppoe-proxy-rotation-architecture.md`
+
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

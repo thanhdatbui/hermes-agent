@@ -14,5 +14,13 @@ description: "Use when managing farm SQLite database, DAL, or web ledger."
 - `mailboxes`: `email` (PK), `password`, `twofa_secret`, `oauth_refresh_token`, `oauth_client_id`, `oauth_status`, `provider`.
 - `slot_assignments`: `machine_id`, `slot_no` (1-8), `tiktok_username`.
 
+## 3. Quy Chuẩn Hiển Thị Web Dashboard (`http://kibe:1905`)
+- **Tách riêng Danh Mục Lớn (Top-level Navigation):** Sổ Cái Farm là hệ thống quản trị dữ liệu local độc lập, bắt buộc đặt thành tab danh mục lớn ở đầu trang (`📊 Giám Sát TikTok` và `📓 Sổ Cái Farm (SQLite)`). CẤM đưa Sổ Cái vào hàng nút lọc phụ (`.filter-buttons`) của bảng TikTok. Khi chuyển sang tab Sổ Cái, ẩn hoàn toàn khu vực KPI và thanh lọc của TikTok.
+- **Phân định rõ ràng 2FA TikTok vs 2FA Mail:**
+  - Bảng `tiktok_accounts` có `twofa_secret` -> hiển thị cột trái: `🔑 2FA TT: <SECRET_KEY>`.
+  - Bảng `mailboxes` có `twofa_secret` riêng -> hiển thị cột phải: `🔑 2FA Mail: <SECRET_KEY>` (nếu có 2FA mail; nếu dùng token thì hiện badge `🟢 OAuth Live`). Tuyệt đối CẤM chỉ ghi nhãn `2FA` chung chung khiến người dùng nhầm lẫn giữa 2FA của TikTok và Mail.
+- **Kiến trúc JS & f-string Pitfall:** File `tiktok_dashboard.py` dùng f-string `f"""..."""`. Toàn bộ logic JS và style của Sổ Cái bắt buộc đóng gói dạng raw string `r"""..."""` trong `dashboard/ledger_component.py` (`LEDGER_VIEW_CSS`, `LEDGER_VIEW_JS`), tránh viết inline JS trong template gây vỡ cú pháp `SyntaxError`.
+- **Responsive Mobile Layout (Chống Đè Chữ & Sub-card 2 Khối):** Tuyệt đối CẤM dùng `grid-template-areas` cứng 3 cột khi hiển thị các chuỗi hash 32 ký tự (như secret key 2FA). Bắt buộc phân khối component `.slot-header` (slot no, username, badge) + `.slot-cols` gồm 2 sub-card viền riêng: Khối TikTok (`Pass`, `2FA TT`) và Khối Mail (`Email` đặt đầu, `Pass Mail`, `2FA Mail`), tự stack 1 cột trên mobile `@media (max-width: 600px)` kèm `word-break: break-all;` / `overflow-wrap: anywhere;`. Trang bị nút `[Copy]` 1 chạm cạnh Password và 2FA để tiện thao tác.
+
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

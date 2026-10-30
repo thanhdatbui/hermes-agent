@@ -13,7 +13,21 @@
 - Khi bấm nút `Xác nhận` ở bước cuối của form tạo tài khoản Meta, nếu backend trả về lỗi:
   > *"Chúng tôi không thể hoàn tất yêu cầu đó. Hãy thử lại."*
   Nguyên nhân 100% là do IP đang dùng nằm trong danh sách Datacenter/Hosting IP bị Meta chặn ghi nhận tài khoản mới.
-- **Giải pháp:** Phải dùng Proxy dân cư sạch (Residential) hoặc kết nối qua ứng dụng VPN cá nhân trên máy (như VPN Super chọn vùng Canada/US dân cư) trước khi submit form.
+- **Lỗi từ chối đăng ký do Email rác (Tempmail Blacklist):**
+  - Sử dụng các domain email tạm thời (như `@fextemp.com`, `@yzcalo.com`) sẽ vượt qua được OTP đầu vào nhưng sẽ bị Meta chặn đứng ở bước hoàn tất tạo User: kích hoạt modal dialog `login_registration_rejected_dialog_impression` kèm thông báo:
+    > *"Bạn hiện không thể tạo tài khoản mới."*
+  - **Khắc phục:** Bắt buộc dùng email thật (Gmail, Hotmail, Outlook) chưa từng đăng ký Meta AI.
+- **Quy tắc cách ly sạch Profile & Proxy (Bắt buộc khi đổi acc / thử lại):**
+  - Khi một lượt đăng ký bị thất bại (dính checkpoint selfie, OIDC error hoặc bị chặn IP), CẤM TUYỆT ĐỐI tái sử dụng profile GPM cũ.
+  - Profile cũ đã lưu cookie rác, local storage, `code_challenge` OIDC hết hạn và fingerprint bị Meta đánh dấu nghi vấn.
+  - Bắt buộc tạo **Profile GPM mới toanh + gắn Proxy mới hoàn toàn** để cách ly sạch 100%.
+- **Kiên định Geolocation theo chỉ đạo User:**
+  - Khi User yêu cầu test/fake IP quốc gia cụ thể (ví dụ Canada), cấm tự ý quay về US hay vị trí khác chỉ vì proxy có sẵn. Phải bám sát vị trí chỉ định.
+- **VPN Super di động vs Extension trên GPM:**
+  - Ứng dụng "VPN Super" được chia sẻ trong các bài hướng dẫn là app độc quyền di động (iOS / Android APK), không có extension trên Chrome Web Store.
+  - Trên trình duyệt GPM (PC), phải dùng các extension VPN tương đương trên Chrome Web Store (như Touch VPN, Hotspot Shield) hoặc VPN cấp hệ điều hành, hoặc thao tác trực tiếp trên điện thoại.
+- **Lưu ý về Hotmail Farm trong GPM:**
+  - Các profile GPM nuôi nick của Farm thường trỏ qua proxy nội bộ (`192.168.110.2:200xx`), session Outlook web thường hết hạn (`NO_TOKEN`), không thể tự động hứng OTP qua web trừ khi có token Graph API hoặc đăng nhập trực tiếp.
 
 ### 3. Tương tác form Muse AI & Meta Checkpoint qua Playwright CDP
 - **Input Email / Tên / Ngày sinh:** Các input trên giao diện Next.js / Tailwind của Muse AI (`input[data-slot="input"]`) thường bị chặn sự kiện khi dùng `fill()` trực tiếp nếu chưa có focus chuột hoặc click trúng toạ độ thực.

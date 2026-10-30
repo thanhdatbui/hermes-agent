@@ -44,7 +44,9 @@ info = farm_db.get_machine_info(270)
 ```
 
 ## 5. Tích Hợp Web Dashboard (`kibe:1905`)
-- Tích hợp tab **"📑 Sổ Cái Farm (SQLite)"** vào `D:/Taadaa/tools/tiktok_dashboard.py` thông qua component `D:/Taadaa/tools/dashboard/ledger_component.py`.
+- Tích hợp tab **"📓 Sổ Cái Farm (SQLite)"** độc lập ở thanh điều hướng lớn đầu trang trong `D:/Taadaa/tools/tiktok_dashboard.py` (component `D:/Taadaa/tools/dashboard/ledger_component.py`), tự động ẩn KPI TikTok khi chuyển tab.
+- **Bố cục Thẻ Slot Chuẩn Mobile (Sub-card):** Mỗi slot chia 2 khối viền riêng: Khối TikTok (`Pass`, `2FA TT`) và Khối Mail (`Email` đặt trước, `Pass Mail`, `2FA Mail`), tự động stack dọc trên mobile kèm `word-break: break-all;` chống tràn/đè chữ.
+- **Nút Copy 1 Chạm:** Trang bị nút `[Copy]` ngay cạnh Username, Mật khẩu, Secret 2FA và Email để người dùng tiện chạm copy trên màn hình cảm ứng điện thoại.
 - **API Endpoint:** `GET /api/ledger/data` trả về tổng quan 160 máy, 1.268 nick, 806 token OAuth và chi tiết từng slot.
 - **Tính năng giao diện:**
   - Lọc theo cụm máy (Tất cả / Kibe 1-80 / Admin 201-280).
