@@ -11,26 +11,26 @@
       "provider_snapshot": null,
       "model_snapshot": null,
       "base_url": null,
-      "script": "sync-hermes-skills.py",
+      "script": "sync_hermes_skills_silent.py",
       "no_agent": true,
       "context_from": null,
       "schedule": {
         "kind": "cron",
-        "expr": "*/5 * * * *",
-        "display": "*/5 * * * *"
+        "expr": "0 */6 * * *",
+        "display": "0 */6 * * *"
       },
-      "schedule_display": "*/5 * * * *",
+      "schedule_display": "0 */6 * * *",
       "repeat": {
         "times": null,
-        "completed": 19428
+        "completed": 22084
       },
-      "enabled": false,
-      "state": "paused",
-      "paused_at": "2026-10-20T10:42:02.502079+07:00",
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-08-03T18:22:58.515796+07:00",
-      "next_run_at": "2026-10-20T10:45:00+07:00",
-      "last_run_at": "2026-10-20T10:40:59.500061+07:00",
+      "next_run_at": "2026-10-31T06:00:00+07:00",
+      "last_run_at": "2026-10-31T00:09:54.948501+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -63,15 +63,15 @@
       "schedule_display": "*/5 * * * *",
       "repeat": {
         "times": null,
-        "completed": 19954
+        "completed": 23022
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-08-10T12:26:27.092514+07:00",
-      "next_run_at": "2026-10-20T10:50:00+07:00",
-      "last_run_at": "2026-10-20T10:45:55.663581+07:00",
+      "next_run_at": "2026-10-31T04:45:00+07:00",
+      "last_run_at": "2026-10-31T04:40:56.836153+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -109,15 +109,15 @@
       "schedule_display": "*/5 * * * *",
       "repeat": {
         "times": null,
-        "completed": 11961
+        "completed": 14922
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-08-13T21:07:36.733313+07:00",
-      "next_run_at": "2026-10-20T10:50:00+07:00",
-      "last_run_at": "2026-10-20T10:45:59.924870+07:00",
+      "next_run_at": "2026-10-31T04:45:00+07:00",
+      "last_run_at": "2026-10-31T04:41:01.267634+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -158,15 +158,15 @@
       "schedule_display": "0 6 * * *",
       "repeat": {
         "times": null,
-        "completed": 66
+        "completed": 80
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-08-16T23:49:53.995460+07:00",
-      "next_run_at": "2026-10-21T06:00:00+07:00",
-      "last_run_at": "2026-10-20T06:00:45.867629+07:00",
+      "next_run_at": "2026-10-31T06:00:00+07:00",
+      "last_run_at": "2026-10-30T06:00:36.999046+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -204,15 +204,15 @@
       "schedule_display": "0 3 * * 0",
       "repeat": {
         "times": null,
-        "completed": 9
+        "completed": 10
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-08-17T20:37:23.880293+07:00",
-      "next_run_at": "2026-10-25T03:00:00+07:00",
-      "last_run_at": "2026-10-18T03:00:20.604865+07:00",
+      "next_run_at": "2026-11-01T03:00:00+07:00",
+      "last_run_at": "2026-10-25T03:00:41.457290+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -250,15 +250,15 @@
       "schedule_display": "*/15 * * * *",
       "repeat": {
         "times": null,
-        "completed": 5156
+        "completed": 6168
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-08-18T00:24:23.549708+07:00",
-      "next_run_at": "2026-10-20T11:00:00+07:00",
-      "last_run_at": "2026-10-20T10:46:00.215442+07:00",
+      "next_run_at": "2026-10-31T04:45:00+07:00",
+      "last_run_at": "2026-10-31T04:30:59.620228+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -345,15 +345,15 @@
       "schedule_display": "1,16,31,46 * * * *",
       "repeat": {
         "times": null,
-        "completed": 5606
+        "completed": 6638
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-08-21T00:21:34.553769+07:00",
-      "next_run_at": "2026-10-20T10:46:00+07:00",
-      "last_run_at": "2026-10-20T10:31:52.905358+07:00",
+      "next_run_at": "2026-10-31T04:46:00+07:00",
+      "last_run_at": "2026-10-31T04:32:00.597107+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -391,15 +391,15 @@
       "schedule_display": "*/15 3,4 * * *",
       "repeat": {
         "times": null,
-        "completed": 431
+        "completed": 504
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-08-22T23:51:32.610490+07:00",
-      "next_run_at": "2026-10-21T03:00:00+07:00",
-      "last_run_at": "2026-10-20T04:46:02.644915+07:00",
+      "next_run_at": "2026-10-31T04:45:00+07:00",
+      "last_run_at": "2026-10-31T04:31:03.078575+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -439,15 +439,15 @@
       "schedule_display": "*/5 * * * *",
       "repeat": {
         "times": null,
-        "completed": 15461
+        "completed": 18404
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-08-24T18:02:28.187417+07:00",
-      "next_run_at": "2026-10-20T10:50:00+07:00",
-      "last_run_at": "2026-10-20T10:46:05.319609+07:00",
+      "next_run_at": "2026-10-31T04:45:00+07:00",
+      "last_run_at": "2026-10-31T04:41:05.910685+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -485,15 +485,15 @@
       "schedule_display": "0 8 * * *",
       "repeat": {
         "times": null,
-        "completed": 49
+        "completed": 59
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-09-01T09:32:01.624938+07:00",
-      "next_run_at": "2026-10-21T08:00:00+07:00",
-      "last_run_at": "2026-10-20T08:00:07.743384+07:00",
+      "next_run_at": "2026-10-31T08:00:00+07:00",
+      "last_run_at": "2026-10-30T08:00:06.116183+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -531,15 +531,15 @@
       "schedule_display": "0 */6 * * *",
       "repeat": {
         "times": null,
-        "completed": 193
+        "completed": 236
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-09-01T18:40:35.143173+07:00",
-      "next_run_at": "2026-10-20T12:00:00+07:00",
-      "last_run_at": "2026-10-20T06:01:54.724715+07:00",
+      "next_run_at": "2026-10-31T06:00:00+07:00",
+      "last_run_at": "2026-10-31T00:02:18.055709+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -577,15 +577,15 @@
       "schedule_display": "*/2 * * * *",
       "repeat": {
         "times": null,
-        "completed": 30992
+        "completed": 38639
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-09-06T11:44:00.138445+07:00",
-      "next_run_at": "2026-10-20T10:46:00+07:00",
-      "last_run_at": "2026-10-20T10:44:57.496031+07:00",
+      "next_run_at": "2026-10-31T04:44:00+07:00",
+      "last_run_at": "2026-10-31T04:42:57.165721+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -623,15 +623,15 @@
       "schedule_display": "*/5 * * * *",
       "repeat": {
         "times": null,
-        "completed": 5502
+        "completed": 8582
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-09-07T19:50:37.769311+07:00",
-      "next_run_at": "2026-10-20T10:50:00+07:00",
-      "last_run_at": "2026-10-20T10:45:57.100449+07:00",
+      "next_run_at": "2026-10-31T04:45:00+07:00",
+      "last_run_at": "2026-10-31T04:40:57.877617+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -669,15 +669,15 @@
       "schedule_display": "*/5 * * * *",
       "repeat": {
         "times": null,
-        "completed": 11059
+        "completed": 14134
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-09-11T10:48:18.565994+07:00",
-      "next_run_at": "2026-10-20T10:50:00+07:00",
-      "last_run_at": "2026-10-20T10:45:56.222557+07:00",
+      "next_run_at": "2026-10-31T04:45:00+07:00",
+      "last_run_at": "2026-10-31T04:40:57.393289+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -715,19 +715,19 @@
       "schedule_display": "*/5 14,15,16 * * *",
       "repeat": {
         "times": null,
-        "completed": 1375
+        "completed": 1699
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-09-13T08:15:21.373682+07:00",
-      "next_run_at": "2026-10-20T14:00:00+07:00",
-      "last_run_at": "2026-10-19T16:55:09.412596+07:00",
+      "next_run_at": "2026-10-31T14:00:00+07:00",
+      "last_run_at": "2026-10-30T16:55:58.083410+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
-      "deliver": "telegram:-5373649734",
+      "deliver": "local",
       "origin": {
         "platform": "telegram",
         "chat_id": "-5139245637",
@@ -742,7 +742,7 @@
     {
       "id": "25d6f8ab0264",
       "name": "post-evening-avatar-watchdog",
-      "prompt": "Watchdog t\u1ef1 \u0111\u1ed9ng ch\u1ea1y upload Avatar ngay sau Ca t\u1ed1i (21:00-23:30) cho c\u00e1c acc ch\u01b0a bao gi\u1edd \u0111\u01b0\u1ee3c up avatar",
+      "prompt": "Watchdog t\u1ef1 \u0111\u1ed9ng ch\u1ea1y upload Avatar ngay sau Ca t\u1ed1i (21:00-23:30) cho c\u00e1c acc ch\u01b0a bao gi\u1edd \u0111\u01b0\u1ee3c up avatar; ki\u00eam nhi\u1ec7m t\u1ef1 \u0111\u1ed9ng k\u00edch ho\u1ea1t chuy\u1ec3n \u0111\u1ed5i 32 m\u00e1y non/y\u1ebfu Farm Admin sang proxy R3G Th\u00e1i B\u00ecnh khi h\u1ebft ca t\u1ed1i.",
       "skills": [],
       "skill": null,
       "model": null,
@@ -761,15 +761,15 @@
       "schedule_display": "*/5 * * * *",
       "repeat": {
         "times": null,
-        "completed": 5406
+        "completed": 8473
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-09-13T09:31:20.765839+07:00",
-      "next_run_at": "2026-10-20T10:50:00+07:00",
-      "last_run_at": "2026-10-20T10:46:12.779544+07:00",
+      "next_run_at": "2026-10-31T04:45:00+07:00",
+      "last_run_at": "2026-10-31T04:41:40.636789+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -807,15 +807,15 @@
       "schedule_display": "*/5 9,10,11,15,16,17,21,22,23 * * *",
       "repeat": {
         "times": null,
-        "completed": 3259
+        "completed": 4410
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-09-13T13:17:06.422464+07:00",
-      "next_run_at": "2026-10-20T10:50:00+07:00",
-      "last_run_at": "2026-10-20T10:45:55.848812+07:00",
+      "next_run_at": "2026-10-31T09:00:00+07:00",
+      "last_run_at": "2026-10-30T23:55:46.710666+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -853,15 +853,15 @@
       "schedule_display": "0 */6 * * *",
       "repeat": {
         "times": null,
-        "completed": 266
+        "completed": 309
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-09-13T14:58:56.438755+07:00",
-      "next_run_at": "2026-10-20T12:00:00+07:00",
-      "last_run_at": "2026-10-20T06:00:47.688277+07:00",
+      "next_run_at": "2026-10-31T06:00:00+07:00",
+      "last_run_at": "2026-10-31T00:00:59.525021+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -893,21 +893,21 @@
       "context_from": null,
       "schedule": {
         "kind": "cron",
-        "expr": "*/15 * * * *",
-        "display": "*/15 * * * *"
+        "expr": "0 */6 * * *",
+        "display": "0 */6 * * *"
       },
-      "schedule_display": "*/15 * * * *",
+      "schedule_display": "0 */6 * * *",
       "repeat": {
         "times": null,
-        "completed": 3442
+        "completed": 4374
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-09-14T13:23:41.282323+07:00",
-      "next_run_at": "2026-10-20T11:00:00+07:00",
-      "last_run_at": "2026-10-20T10:45:57.159351+07:00",
+      "next_run_at": "2026-10-31T06:00:00+07:00",
+      "last_run_at": "2026-10-31T00:55:17.382464+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -945,15 +945,15 @@
       "schedule_display": "*/5 * * * *",
       "repeat": {
         "times": null,
-        "completed": 9310
+        "completed": 10973
       },
-      "enabled": false,
-      "state": "paused",
-      "paused_at": "2026-10-17T10:08:22.192864+07:00",
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-09-14T13:53:59.217477+07:00",
-      "next_run_at": "2026-10-17T10:10:00+07:00",
-      "last_run_at": "2026-10-17T10:05:16.097624+07:00",
+      "next_run_at": "2026-10-31T04:45:00+07:00",
+      "last_run_at": "2026-10-31T04:41:03.239166+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -991,15 +991,15 @@
       "schedule_display": "*/5 8,9,10 * * *",
       "repeat": {
         "times": null,
-        "completed": 1492
+        "completed": 1824
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-09-15T12:21:10.674108+07:00",
-      "next_run_at": "2026-10-20T10:50:00+07:00",
-      "last_run_at": "2026-10-20T10:45:57.790860+07:00",
+      "next_run_at": "2026-10-31T08:00:00+07:00",
+      "last_run_at": "2026-10-30T10:59:43.712597+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -1077,25 +1077,25 @@
       "context_from": null,
       "schedule": {
         "kind": "cron",
-        "expr": "0 7 * * *",
-        "display": "0 7 * * *"
+        "expr": "0 10 * * *",
+        "display": "0 10 * * *"
       },
-      "schedule_display": "0 7 * * *",
+      "schedule_display": "0 10 * * *",
       "repeat": {
         "times": null,
-        "completed": 34
+        "completed": 44
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-09-17T09:06:30.155590+07:00",
-      "next_run_at": "2026-10-21T07:00:00+07:00",
-      "last_run_at": "2026-10-20T07:04:03.898878+07:00",
+      "next_run_at": "2026-10-31T10:00:00+07:00",
+      "last_run_at": "2026-10-30T10:04:17.455437+07:00",
       "last_status": "ok",
       "last_error": null,
-      "last_delivery_error": null,
-      "deliver": "local",
+      "last_delivery_error": "configured thread_id 245405 for telegram:1076231895 was not found; delivered without thread_id",
+      "deliver": "telegram:1076231895",
       "origin": {
         "platform": "telegram",
         "chat_id": "1076231895",
@@ -1129,15 +1129,15 @@
       "schedule_display": "0 */6 * * *",
       "repeat": {
         "times": null,
-        "completed": 130
+        "completed": 174
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-09-17T19:38:29.726582+07:00",
-      "next_run_at": "2026-10-20T12:00:00+07:00",
-      "last_run_at": "2026-10-20T06:10:15.854771+07:00",
+      "next_run_at": "2026-10-31T06:00:00+07:00",
+      "last_run_at": "2026-10-31T00:01:31.158936+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -1175,15 +1175,15 @@
       "schedule_display": "*/15 7,8 * * *",
       "repeat": {
         "times": null,
-        "completed": 269
+        "completed": 349
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-09-18T00:14:46.297173+07:00",
-      "next_run_at": "2026-10-21T07:00:00+07:00",
-      "last_run_at": "2026-10-20T08:45:21.359480+07:00",
+      "next_run_at": "2026-10-31T07:00:00+07:00",
+      "last_run_at": "2026-10-30T08:45:33.023356+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -1221,15 +1221,15 @@
       "schedule_display": "0 * * * *",
       "repeat": {
         "times": null,
-        "completed": 506
+        "completed": 662
       },
-      "enabled": true,
-      "state": "scheduled",
-      "paused_at": null,
+      "enabled": false,
+      "state": "paused",
+      "paused_at": "2026-10-26T22:59:15.699270+07:00",
       "paused_reason": null,
       "created_at": "2026-09-20T14:20:36.391150+07:00",
-      "next_run_at": "2026-10-20T11:00:00+07:00",
-      "last_run_at": "2026-10-20T10:00:40.469340+07:00",
+      "next_run_at": "2026-10-26T23:00:00+07:00",
+      "last_run_at": "2026-10-26T22:00:44.654765+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -1267,15 +1267,15 @@
       "schedule_display": "0 */12 * * *",
       "repeat": {
         "times": null,
-        "completed": 56
+        "completed": 78
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-09-23T11:38:28.590411+07:00",
-      "next_run_at": "2026-10-20T12:00:00+07:00",
-      "last_run_at": "2026-10-20T00:01:39.609327+07:00",
+      "next_run_at": "2026-10-31T12:00:00+07:00",
+      "last_run_at": "2026-10-31T00:01:20.427761+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -1313,15 +1313,15 @@
       "schedule_display": "*/30 * * * *",
       "repeat": {
         "times": null,
-        "completed": 2361
+        "completed": 2879
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-09-24T23:49:41.919171+07:00",
-      "next_run_at": "2026-10-20T11:00:00+07:00",
-      "last_run_at": "2026-10-20T10:31:06.752396+07:00",
+      "next_run_at": "2026-10-31T05:00:00+07:00",
+      "last_run_at": "2026-10-31T04:31:11.045456+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -1359,15 +1359,15 @@
       "schedule_display": "*/10 * * * *",
       "repeat": {
         "times": null,
-        "completed": 3609
+        "completed": 5153
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-09-25T04:45:13.549232+07:00",
-      "next_run_at": "2026-10-20T10:50:00+07:00",
-      "last_run_at": "2026-10-20T10:40:59.903782+07:00",
+      "next_run_at": "2026-10-31T04:50:00+07:00",
+      "last_run_at": "2026-10-31T04:41:03.379146+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -1405,15 +1405,15 @@
       "schedule_display": "0 4 * * *",
       "repeat": {
         "times": null,
-        "completed": 180
+        "completed": 191
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-09-25T05:00:34.719394+07:00",
-      "next_run_at": "2026-10-21T04:00:00+07:00",
-      "last_run_at": "2026-10-20T04:03:58.233901+07:00",
+      "next_run_at": "2026-11-01T04:00:00+07:00",
+      "last_run_at": "2026-10-31T04:03:59.421695+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -1497,15 +1497,15 @@
       "schedule_display": "*/5 * * * *",
       "repeat": {
         "times": null,
-        "completed": 5107
+        "completed": 8132
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-09-27T13:03:32.911207+07:00",
-      "next_run_at": "2026-10-20T10:50:00+07:00",
-      "last_run_at": "2026-10-20T10:46:05.431129+07:00",
+      "next_run_at": "2026-10-31T04:45:00+07:00",
+      "last_run_at": "2026-10-31T04:41:07.168657+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -1543,15 +1543,15 @@
       "schedule_display": "0 */6 * * *",
       "repeat": {
         "times": null,
-        "completed": 95
+        "completed": 138
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-09-27T15:36:04.187841+07:00",
-      "next_run_at": "2026-10-20T12:00:00+07:00",
-      "last_run_at": "2026-10-20T06:00:41.880980+07:00",
+      "next_run_at": "2026-10-31T06:00:00+07:00",
+      "last_run_at": "2026-10-31T00:00:51.262771+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -1591,15 +1591,15 @@
       "schedule_display": "0 * * * *",
       "repeat": {
         "times": null,
-        "completed": 532
+        "completed": 788
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-09-28T04:41:48.425337+07:00",
-      "next_run_at": "2026-10-20T11:00:00+07:00",
-      "last_run_at": "2026-10-20T10:00:39.446363+07:00",
+      "next_run_at": "2026-10-31T05:00:00+07:00",
+      "last_run_at": "2026-10-31T04:00:48.119458+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -1685,15 +1685,15 @@
       "schedule_display": "0 4 * * 0",
       "repeat": {
         "times": null,
-        "completed": 4
+        "completed": 5
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-09-29T10:17:55.640505+07:00",
-      "next_run_at": "2026-10-25T04:00:00+07:00",
-      "last_run_at": "2026-10-18T04:03:30.868573+07:00",
+      "next_run_at": "2026-11-01T04:00:00+07:00",
+      "last_run_at": "2026-10-25T04:03:22.894544+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -1731,15 +1731,15 @@
       "schedule_display": "0 */6 * * *",
       "repeat": {
         "times": null,
-        "completed": 83
+        "completed": 126
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-09-29T10:48:40.927552+07:00",
-      "next_run_at": "2026-10-20T12:00:00+07:00",
-      "last_run_at": "2026-10-20T06:00:40.561555+07:00",
+      "next_run_at": "2026-10-31T06:00:00+07:00",
+      "last_run_at": "2026-10-31T00:00:50.127017+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -1770,22 +1770,22 @@
       "no_agent": true,
       "context_from": null,
       "schedule": {
-        "kind": "cron",
-        "expr": "30 3 * * *",
-        "display": "30 3 * * *"
+        "kind": "interval",
+        "minutes": 360,
+        "display": "every 360m"
       },
-      "schedule_display": "30 3 * * *",
+      "schedule_display": "every 360m",
       "repeat": {
         "times": null,
-        "completed": 9
+        "completed": 32
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-09-29T16:47:46.303873+07:00",
-      "next_run_at": "2026-10-21T03:30:00+07:00",
-      "last_run_at": "2026-10-20T03:31:21.478434+07:00",
+      "next_run_at": "2026-10-31T06:41:12.910656+07:00",
+      "last_run_at": "2026-10-31T00:41:12.910656+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -1823,15 +1823,15 @@
       "schedule_display": "0 */6 * * *",
       "repeat": {
         "times": null,
-        "completed": 81
+        "completed": 124
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-09-29T22:43:13.865231+07:00",
-      "next_run_at": "2026-10-20T12:00:00+07:00",
-      "last_run_at": "2026-10-20T06:00:46.648995+07:00",
+      "next_run_at": "2026-10-31T06:00:00+07:00",
+      "last_run_at": "2026-10-31T00:00:56.308655+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -1927,7 +1927,7 @@
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": "configured thread_id 266290 for telegram:1076231895 was not found; delivered without thread_id",
-      "deliver": "origin,telegram:-5256944036",
+      "deliver": "telegram:-5256944036",
       "origin": {
         "platform": "telegram",
         "chat_id": "1076231895",
@@ -2007,15 +2007,15 @@
       "schedule_display": "*/15 * * * *",
       "repeat": {
         "times": null,
-        "completed": 465
+        "completed": 1244
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-10-06T13:56:38.725235+07:00",
-      "next_run_at": "2026-10-20T11:00:00+07:00",
-      "last_run_at": "2026-10-20T10:21:07.973479+07:00",
+      "next_run_at": "2026-10-31T04:45:00+07:00",
+      "last_run_at": "2026-10-31T04:31:04.124992+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -2053,15 +2053,15 @@
       "schedule_display": "*/2 * * * *",
       "repeat": {
         "times": null,
-        "completed": 5168
+        "completed": 12713
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-10-09T00:20:30.341136+07:00",
-      "next_run_at": "2026-10-20T10:46:00+07:00",
-      "last_run_at": "2026-10-20T10:44:58.316695+07:00",
+      "next_run_at": "2026-10-31T04:44:00+07:00",
+      "last_run_at": "2026-10-31T04:43:11.114307+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -2191,15 +2191,15 @@
       "schedule_display": "15 7 * * *",
       "repeat": {
         "times": null,
-        "completed": 11
+        "completed": 21
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-10-10T15:57:00.713934+07:00",
-      "next_run_at": "2026-10-21T07:15:00+07:00",
-      "last_run_at": "2026-10-20T07:16:03.678328+07:00",
+      "next_run_at": "2026-10-31T07:15:00+07:00",
+      "last_run_at": "2026-10-30T07:15:53.500952+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -2237,15 +2237,15 @@
       "schedule_display": "0 */6 * * *",
       "repeat": {
         "times": null,
-        "completed": 26
+        "completed": 43
       },
       "enabled": false,
       "state": "paused",
-      "paused_at": "2026-10-18T12:45:15.735179+07:00",
-      "paused_reason": null,
+      "paused_at": "2026-10-27T17:19:50.953791+07:00",
+      "paused_reason": "AUTO_QUARANTINE: Cronjob missing no_agent=True",
       "created_at": "2026-10-11T20:21:21.371719+07:00",
-      "next_run_at": "2026-10-18T18:00:00+07:00",
-      "last_run_at": "2026-10-18T12:06:02.148878+07:00",
+      "next_run_at": "2026-10-27T18:00:00+07:00",
+      "last_run_at": "2026-10-27T12:19:24.572167+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": "configured thread_id 287851 for telegram:1076231895 was not found; delivered without thread_id",
@@ -2283,15 +2283,15 @@
       "schedule_display": "*/5 * * * *",
       "repeat": {
         "times": null,
-        "completed": 1986
+        "completed": 4921
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-10-12T11:48:09.453146+07:00",
-      "next_run_at": "2026-10-20T10:50:00+07:00",
-      "last_run_at": "2026-10-20T10:46:09.415803+07:00",
+      "next_run_at": "2026-10-31T04:45:00+07:00",
+      "last_run_at": "2026-10-31T04:41:09.872363+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -2329,19 +2329,19 @@
       "schedule_display": "*/15 * * * *",
       "repeat": {
         "times": null,
-        "completed": 413
+        "completed": 980
       },
       "enabled": false,
       "state": "paused",
-      "paused_at": "2026-10-20T10:41:18.563853+07:00",
+      "paused_at": "2026-10-26T16:57:51.578579+07:00",
       "paused_reason": null,
       "created_at": "2026-10-15T15:10:56.115205+07:00",
-      "next_run_at": "2026-10-20T10:45:00+07:00",
-      "last_run_at": "2026-10-20T10:33:21.267702+07:00",
+      "next_run_at": "2026-10-26T17:00:00+07:00",
+      "last_run_at": "2026-10-26T16:52:42.115896+07:00",
       "last_status": "ok",
       "last_error": null,
-      "last_delivery_error": null,
-      "deliver": "origin",
+      "last_delivery_error": "live adapter send to telegram:1076231895 timed out before the coroutine was dispatched; delivery error: Telegram send failed: httpx.ProxyError: Proxy Server could not connect: Host unreachable.",
+      "deliver": "local",
       "origin": {
         "platform": "telegram",
         "chat_id": "1076231895",
@@ -2361,31 +2361,31 @@
       "skill": null,
       "model": null,
       "provider": null,
-      "provider_snapshot": "omni",
-      "model_snapshot": "omni-worker",
+      "provider_snapshot": null,
+      "model_snapshot": null,
       "base_url": null,
-      "script": null,
-      "no_agent": false,
+      "script": "cron_auto_feed_chatgpt_pool.py",
+      "no_agent": true,
       "context_from": null,
       "schedule": {
         "kind": "cron",
-        "expr": "*/15 * * * *",
-        "display": "*/15 * * * *"
+        "expr": "*/15 7,8,12,13,18,19,20,21 * * *",
+        "display": "*/15 7,8,12,13,18,19,20,21 * * *"
       },
-      "schedule_display": "*/15 * * * *",
+      "schedule_display": "*/15 7,8,12,13,18,19,20,21 * * *",
       "repeat": {
         "times": null,
-        "completed": 211
+        "completed": 304
       },
-      "enabled": false,
-      "state": "paused",
-      "paused_at": "2026-10-18T12:45:07.129969+07:00",
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-10-15T19:00:34.142860+07:00",
-      "next_run_at": "2026-10-18T12:45:00+07:00",
-      "last_run_at": "2026-10-18T12:39:42.156809+07:00",
-      "last_status": "ok",
-      "last_error": null,
+      "next_run_at": "2026-10-31T07:00:00+07:00",
+      "last_run_at": "2026-10-30T21:45:15.051282+07:00",
+      "last_status": "error",
+      "last_error": "RuntimeError: Skipped to prevent unintended spend: global inference config drifted since this job was created (model 'omni-worker' -> 'ag-gemini-pool-3'), and this job is unpinned. No inference call was made. To run on the new config, pin it explicitly: `cronjob action=update job_id=3269c6faeb03 provider=<provider> model=<model>` (or pin the original values to keep them). See #44585.",
       "last_delivery_error": null,
       "deliver": "local",
       "origin": {
@@ -2403,8 +2403,8 @@
     },
     {
       "id": "96ea8cc3093b",
-      "name": "gpm-gmail-nurture-6h-report",
-      "prompt": "B\u00e1o c\u00e1o \u0111\u1ecbnh k\u1ef3 m\u1ed7i 6h v\u1ec1 ti\u1ebfn \u0111\u1ed9 nu\u00f4i profile Gmail tr\u00ean GPMLogin",
+      "name": "gpm-gmail-nurture-12h-report",
+      "prompt": "B\u00e1o c\u00e1o \u0111\u1ecbnh k\u1ef3 m\u1ed7i 12h v\u1ec1 ti\u1ebfn \u0111\u1ed9 nu\u00f4i profile Gmail tr\u00ean GPMLogin",
       "skills": [],
       "skill": null,
       "model": null,
@@ -2417,21 +2417,21 @@
       "context_from": null,
       "schedule": {
         "kind": "cron",
-        "expr": "0 */6 * * *",
-        "display": "0 */6 * * *"
+        "expr": "0 */12 * * *",
+        "display": "0 */12 * * *"
       },
-      "schedule_display": "0 */6 * * *",
+      "schedule_display": "0 */12 * * *",
       "repeat": {
         "times": null,
-        "completed": 16
+        "completed": 50
       },
       "enabled": true,
       "state": "scheduled",
       "paused_at": null,
       "paused_reason": null,
       "created_at": "2026-10-16T18:38:16.964788+07:00",
-      "next_run_at": "2026-10-20T12:00:00+07:00",
-      "last_run_at": "2026-10-20T06:00:41.536882+07:00",
+      "next_run_at": "2026-10-31T12:00:00+07:00",
+      "last_run_at": "2026-10-31T00:00:51.808596+07:00",
       "last_status": "ok",
       "last_error": null,
       "last_delivery_error": null,
@@ -2492,7 +2492,513 @@
       "enabled_toolsets": null,
       "workdir": null,
       "fire_claim": null
+    },
+    {
+      "id": "8d6b3c18dd64",
+      "name": "hourly-stale-post-receipts-reconcile",
+      "prompt": "Ch\u1ea1y l\u1ec7nh python D:/Taadaa/tools/cron_reconcile_stale_receipts.py v\u1edbi timeout 60s. N\u1ebfu stdout r\u1ed7ng th\u00ec ho\u00e0n to\u00e0n im l\u1eb7ng, n\u1ebfu c\u00f3 xu\u1ea5t b\u00e1o c\u00e1o gi\u1ea3i ph\u00f3ng nick th\u00ec b\u00e1o c\u00e1o k\u1ebft qu\u1ea3.",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "provider_snapshot": null,
+      "model_snapshot": null,
+      "base_url": null,
+      "script": "cron_reconcile_stale_receipts.py",
+      "no_agent": true,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "20 * * * *",
+        "display": "20 * * * *"
+      },
+      "schedule_display": "20 * * * *",
+      "repeat": {
+        "times": null,
+        "completed": 164
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-10-24T09:20:40.117923+07:00",
+      "next_run_at": "2026-10-31T05:20:00+07:00",
+      "last_run_at": "2026-10-31T04:21:06.653943+07:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "telegram:-5435853713",
+      "origin": {
+        "platform": "telegram",
+        "chat_id": "-5435853713",
+        "chat_name": "Tiktok video",
+        "thread_id": null,
+        "user_id": "1076231895"
+      },
+      "enabled_toolsets": null,
+      "workdir": "D:\\Taadaa\\tools",
+      "fire_claim": null
+    },
+    {
+      "id": "6f3257d17875",
+      "name": "farm-gate-compliance-6h-report",
+      "prompt": "B\u00e1o c\u00e1o \u0111\u1ecbnh k\u1ef3 m\u1ed7i 6h v\u1ec1 t\u00ecnh tr\u1ea1ng tu\u00e2n th\u1ee7 8 Gate c\u01a1 gi\u1edbi ho\u00e1 tr\u00ean Farm",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "provider_snapshot": null,
+      "model_snapshot": null,
+      "base_url": null,
+      "script": "gate_compliance_watchdog.py",
+      "no_agent": true,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 */6 * * *",
+        "display": "0 */6 * * *"
+      },
+      "schedule_display": "0 */6 * * *",
+      "repeat": {
+        "times": null,
+        "completed": 30
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-10-24T22:39:04.671138+07:00",
+      "next_run_at": "2026-10-31T06:00:00+07:00",
+      "last_run_at": "2026-10-31T00:01:08.486455+07:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "telegram:-5373649734",
+      "origin": {
+        "platform": "telegram",
+        "chat_id": "1076231895",
+        "chat_name": "Tad Shavershian",
+        "thread_id": "315442",
+        "user_id": "1076231895"
+      },
+      "enabled_toolsets": null,
+      "workdir": null,
+      "fire_claim": null
+    },
+    {
+      "id": "60575fef3351",
+      "name": "incident-auto-heal-dispatcher",
+      "prompt": "T\u1ef1 \u0111\u1ed9ng qu\u00e9t h\u00e0ng \u0111\u1ee3i s\u1ef1 c\u1ed1 v\u00e0 k\u00edch ho\u1ea1t LLM Auto-Heal kh\u00e9p k\u00edn",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "provider_snapshot": null,
+      "model_snapshot": null,
+      "base_url": null,
+      "script": "cron_incident_auto_heal.py",
+      "no_agent": true,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "*/15 * * * *",
+        "display": "*/15 * * * *"
+      },
+      "schedule_display": "*/15 * * * *",
+      "repeat": {
+        "times": null,
+        "completed": 426
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-10-24T22:57:17.611668+07:00",
+      "next_run_at": "2026-10-31T04:45:00+07:00",
+      "last_run_at": "2026-10-31T04:30:55.413467+07:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "telegram:-5373649734",
+      "origin": {
+        "platform": "telegram",
+        "chat_id": "1076231895",
+        "chat_name": "Tad Shavershian",
+        "thread_id": "315442",
+        "user_id": "1076231895"
+      },
+      "enabled_toolsets": null,
+      "workdir": null,
+      "fire_claim": null
+    },
+    {
+      "id": "e24362c4f633",
+      "name": "watchdog-riot-live-d",
+      "prompt": "Watchdog t\u1ef1 \u0111\u1ed9ng canh \u1ed5 D Admin: khi dung l\u01b0\u1ee3ng \u0111\u1ea1t >= 52 GB s\u1ebd t\u1ef1 \u0111\u1ed9ng t\u1ea3i Riot Live sang D: v\u00e0 c\u1eadp nh\u1eadt RiotClientInstalls.json",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "provider_snapshot": null,
+      "model_snapshot": null,
+      "base_url": null,
+      "script": "watch_d_live.py",
+      "no_agent": true,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "*/15 * * * *",
+        "display": "*/15 * * * *"
+      },
+      "schedule_display": "*/15 * * * *",
+      "repeat": {
+        "times": null,
+        "completed": 105
+      },
+      "enabled": false,
+      "state": "paused",
+      "paused_at": "2026-10-26T18:00:25.030860+07:00",
+      "paused_reason": null,
+      "created_at": "2026-10-25T10:10:44.951331+07:00",
+      "next_run_at": "2026-10-26T18:00:00+07:00",
+      "last_run_at": "2026-10-26T17:47:23.482348+07:00",
+      "last_status": "error",
+      "last_error": "Script exited with code 1",
+      "last_delivery_error": "configured thread_id 314904 for telegram:1076231895 was not found; delivered without thread_id",
+      "deliver": "telegram:1076231895",
+      "origin": {
+        "platform": "telegram",
+        "chat_id": "1076231895",
+        "chat_name": "Tad Shavershian",
+        "thread_id": "314904",
+        "user_id": "1076231895"
+      },
+      "enabled_toolsets": null,
+      "workdir": null,
+      "fire_claim": null
+    },
+    {
+      "id": "ee258b5bb5e5",
+      "name": "hermes-memory-garbage-collector",
+      "prompt": "T\u1ef1 \u0111\u1ed9ng d\u1ecdn r\u00e1c \u0111\u1ecbnh k\u1ef3 cho MEMORY.md v\u00e0 USER.md: kh\u1eed tr\u00f9ng l\u1eb7p v\u00e0 g\u1ecdt c\u00e1c quy t\u1eafc \u0111\u00e3 c\u01a1 gi\u1edbi h\u00f3a, gi\u1eef dung l\u01b0\u1ee3ng < 70%",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "provider_snapshot": null,
+      "model_snapshot": null,
+      "base_url": null,
+      "script": "auto_prune_memory.py",
+      "no_agent": true,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 */6 * * *",
+        "display": "0 */6 * * *"
+      },
+      "schedule_display": "0 */6 * * *",
+      "repeat": {
+        "times": null,
+        "completed": 24
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-10-25T10:17:19.490811+07:00",
+      "next_run_at": "2026-10-31T06:00:00+07:00",
+      "last_run_at": "2026-10-31T00:01:16.273822+07:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": "configured thread_id 316631 for telegram:1076231895 was not found; delivered without thread_id",
+      "deliver": "telegram:1076231895",
+      "origin": {
+        "platform": "telegram",
+        "chat_id": "1076231895",
+        "chat_name": "Tad Shavershian",
+        "thread_id": "316631",
+        "user_id": "1076231895"
+      },
+      "enabled_toolsets": null,
+      "workdir": "D:\\Taadaa\\tools",
+      "fire_claim": null
+    },
+    {
+      "id": "d0c72ffc842b",
+      "name": "farm-cron-heartbeat-24h",
+      "prompt": "B\u00e1o c\u00e1o t\u1ed5ng h\u1ee3p nh\u1ecbp th\u1edf 24h (09:00 s\u00e1ng VN) c\u1ee7a to\u00e0n b\u1ed9 h\u1ec7 th\u1ed1ng Cron Watchdogs tr\u00ean Farm",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "provider_snapshot": null,
+      "model_snapshot": null,
+      "base_url": null,
+      "script": "cron_heartbeat.py",
+      "no_agent": true,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 9 * * *",
+        "display": "0 9 * * *"
+      },
+      "schedule_display": "0 9 * * *",
+      "repeat": {
+        "times": null,
+        "completed": 7
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-10-25T18:08:39.692691+07:00",
+      "next_run_at": "2026-10-31T09:00:00+07:00",
+      "last_run_at": "2026-10-30T09:00:36.135261+07:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "telegram:-5373649734",
+      "origin": {
+        "platform": "telegram",
+        "chat_id": "1076231895",
+        "chat_name": "Tad Shavershian",
+        "thread_id": "316599",
+        "user_id": "1076231895"
+      },
+      "enabled_toolsets": null,
+      "workdir": null,
+      "fire_claim": null
+    },
+    {
+      "id": "d73f95a8e186",
+      "name": "tiktok-order-lifecycle-watchdog",
+      "prompt": "Theo d\u00f5i v\u00f2ng \u0111\u1eddi \u0111\u01a1n h\u00e0ng TikTok Shop (Phase 1 b\u00f3c m\u00e3 tr\u00ean app m\u00e1y 40 -> Phase 2 web tracking J&T/SPX, im l\u1eb7ng khi kh\u00f4ng c\u00f3 c\u1eadp nh\u1eadt)",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "provider_snapshot": null,
+      "model_snapshot": null,
+      "base_url": null,
+      "script": "cron_order_lifecycle.py",
+      "no_agent": true,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "30 4,10,16,22 * * *",
+        "display": "30 4,10,16,22 * * *"
+      },
+      "schedule_display": "30 4,10,16,22 * * *",
+      "repeat": {
+        "times": null,
+        "completed": 20
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-10-28T11:17:26.788387+07:00",
+      "next_run_at": "2026-10-31T10:30:00+07:00",
+      "last_run_at": "2026-10-31T04:32:27.011661+07:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "telegram:-5316882628",
+      "origin": {
+        "platform": "telegram",
+        "chat_id": "1076231895",
+        "chat_name": "Tad Shavershian",
+        "thread_id": "322551",
+        "user_id": "1076231895"
+      },
+      "enabled_toolsets": null,
+      "workdir": "D:\\Taadaa\\orders",
+      "fire_claim": null
+    },
+    {
+      "id": "16ce31b5cce5",
+      "name": "trending-tiktok-pin-watchdog",
+      "prompt": "T\u1ef1 \u0111\u1ed9ng chu\u1ea9n ho\u00e1 b\u00e0i ghim cho c\u00e1c nick c\u1eafn \u0111\u1ec1 xu\u1ea5t tr\u00ean TikTok Dashboard",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "provider_snapshot": null,
+      "model_snapshot": null,
+      "base_url": null,
+      "script": "trending_pin_watchdog.py",
+      "no_agent": true,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 */6 * * *",
+        "display": "0 */6 * * *"
+      },
+      "schedule_display": "0 */6 * * *",
+      "repeat": {
+        "times": null,
+        "completed": 9
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-10-29T08:05:48.853109+07:00",
+      "next_run_at": "2026-10-31T06:00:00+07:00",
+      "last_run_at": "2026-10-31T00:09:08.690881+07:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "telegram:-5435853713",
+      "origin": {
+        "platform": "telegram",
+        "chat_id": "1076231895",
+        "chat_name": "Tad Shavershian",
+        "thread_id": "323605",
+        "user_id": "1076231895"
+      },
+      "enabled_toolsets": null,
+      "workdir": null,
+      "fire_claim": null
+    },
+    {
+      "id": "14ef6e6824ef",
+      "name": "hermes-skills-garbage-collector",
+      "prompt": "T\u1ef1 \u0111\u1ed9ng qu\u00e9t v\u00e0 c\u1eaft t\u1ec9a c\u00e1c file SKILL.md ph\u00ecnh to (>3.5KB) trong Hermes skills \u0111\u1ecbnh k\u1ef3 m\u1ed7i 6h, ch\u1ed1ng ngh\u1ebdn context token.",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "provider_snapshot": null,
+      "model_snapshot": null,
+      "base_url": null,
+      "script": "auto_prune_skills.py",
+      "no_agent": true,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 */6 * * *",
+        "display": "0 */6 * * *"
+      },
+      "schedule_display": "0 */6 * * *",
+      "repeat": {
+        "times": null,
+        "completed": 7
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-10-29T17:25:14.436846+07:00",
+      "next_run_at": "2026-10-31T06:00:00+07:00",
+      "last_run_at": "2026-10-31T00:00:55.779178+07:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": "configured thread_id 324941 for telegram:1076231895 was not found; delivered without thread_id",
+      "deliver": "telegram:1076231895",
+      "origin": {
+        "platform": "telegram",
+        "chat_id": "1076231895",
+        "chat_name": "Tad Shavershian",
+        "thread_id": "324941",
+        "user_id": "1076231895"
+      },
+      "enabled_toolsets": null,
+      "workdir": null,
+      "fire_claim": null
+    },
+    {
+      "id": "968d54d74b72",
+      "name": "post-upload-auto-audit-sync",
+      "prompt": "T\u1ef1 \u0111\u1ed9ng c\u00e0o \u0111\u1ed1i so\u00e1t c\u00e1c nick TikTok v\u1eeba upload xong theo ca v\u00e0 c\u1eadp nh\u1eadt Dashboard SQLite",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "provider_snapshot": null,
+      "model_snapshot": null,
+      "base_url": null,
+      "script": "cron_post_upload_sync.py",
+      "no_agent": true,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "45 10,16,20 * * *",
+        "display": "45 10,16,20 * * *"
+      },
+      "schedule_display": "45 10,16,20 * * *",
+      "repeat": {
+        "times": null,
+        "completed": 10
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-10-30T00:39:33.671963+07:00",
+      "next_run_at": "2026-10-31T10:45:00+07:00",
+      "last_run_at": "2026-10-31T01:14:02.390170+07:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "telegram:-5435853713",
+      "origin": {
+        "platform": "telegram",
+        "chat_id": "1076231895",
+        "chat_name": "Tad Shavershian",
+        "thread_id": "325575",
+        "user_id": "1076231895"
+      },
+      "enabled_toolsets": null,
+      "workdir": null,
+      "fire_claim": null
+    },
+    {
+      "id": "fc3a6fe60f41",
+      "name": "auto-morning-linh-duong",
+      "prompt": "B\u00e1o c\u00e1o nhi\u1ec7m v\u1ee5 Linh D\u01b0\u01a1ng \u0111\u00f2n b\u1ea9y s\u1ed1 1 m\u1ed7i 6:00 s\u00e1ng",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "provider_snapshot": null,
+      "model_snapshot": null,
+      "base_url": null,
+      "script": "cron_auto_linh_duong.py",
+      "no_agent": true,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 6 * * *",
+        "display": "0 6 * * *"
+      },
+      "schedule_display": "0 6 * * *",
+      "repeat": {
+        "times": null,
+        "completed": 5
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-10-30T08:00:39.586410+07:00",
+      "next_run_at": "2026-10-31T06:00:00+07:00",
+      "last_run_at": "2026-10-30T08:19:51.551973+07:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "telegram:-5373649734",
+      "origin": {
+        "platform": "telegram",
+        "chat_id": "1076231895",
+        "chat_name": "Tad Shavershian",
+        "thread_id": "325887",
+        "user_id": "1076231895"
+      },
+      "enabled_toolsets": null,
+      "workdir": "D:\\Taadaa\\tools",
+      "fire_claim": null
     }
   ],
-  "updated_at": "2026-10-20T10:46:12.781545+07:00"
+  "updated_at": "2026-10-31T04:44:10.197722+07:00"
 }
