@@ -22,6 +22,7 @@ Use this skill when the user asks to update, configure, log into, or import data
 4. Never involve an unrelated repository merely because it is present on the machine. State the exact target path and port before acting.
 5. Do not stop a process as a default prerequisite. Update through the app's own updater or package mechanism first. Restart only when required by the update and only after checking the process/port and scope.
 6. If a source-based update is truly required, preserve local work visibly (named backup/stash/branch), report the exact conflict risk, and verify the application only after the update/build succeeds. Never silently discard local work.
+7. **SQLite Data Hub & Dashboard Integration:** When migrating legacy Excel workbooks to a centralized SQLite database (`farm_master.db`) and surfacing it via an internal Web Dashboard (such as `kibe:1905`), preserve multi-process safety, use normalized header aliasing with NFD accent stripping, expose clean DAL interfaces (`farm_db.py`), and restart the dashboard cleanly via dedicated orchestrators (`restart_tiktok_dashboard.py`). Reference: `references/sqlite-farm-master-ledger-and-web-dashboard.md`.
 
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

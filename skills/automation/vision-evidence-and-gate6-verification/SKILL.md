@@ -24,10 +24,7 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
 - Báo Cáo Điều Tra Bypass by Claim Omission & Chốt Chặn Task Contract Binding: [`references/bypass-by-claim-omission-and-task-contract-binding.md`](references/bypass-by-claim-omission-and-task-contract-binding.md)
 - Chặn 2FA/TOTP Khi Switcher & Kỷ Luật Nghiệm Thu Profile: [`references/account-switcher-2fa-totp-interception-and-profile-standardization.md`](references/account-switcher-2fa-totp-interception-and-profile-standardization.md)
 - Khôi Phục Session 2FA Ảo & Nạp Bio Bằng AdbKeyboard Broadcast: [`references/transient-2fa-recovery-and-adb-keyboard-utf8-bio-injection.md`](references/transient-2fa-recovery-and-adb-keyboard-utf8-bio-injection.md)
-- Bẫy Chụp Lệch Pha Trạng Thái Form & Kỷ Luật Nghiệm Thu Submit Qua CDP: [`references/browser-cdp-session-and-form-vision-verification.md`](references/browser-cdp-session-and-form-vision-verification.md)
-- Bẫy Thuật Ngữ "Vision Check Bằng Lời" Nhưng Không Gửi Thẻ MEDIA: [`references/claim-vision-without-media-trap-and-desktop-screenshot-sop.md`](references/claim-vision-without-media-trap-and-desktop-screenshot-sop.md)
-- Bẫy Tường Trình Khống Không Đính Kèm Ảnh & Kỷ Luật Xuất Thẻ MEDIA Cùng Turn: [`references/evidence-claim-omission-and-immediate-media-delivery.md`](references/evidence-claim-omission-and-immediate-media-delivery.md)
-- Bẫy Thuyết Minh Kết Quả Tương Lai Khi Màn Hình Vẫn Ở Trạng Thái Cũ: [`references/state-desync-evidence-trap-and-atomic-evidence-pairs.md`](references/state-desync-evidence-trap-and-atomic-evidence-pairs.md)
+- Kỷ Luật Form Submit & Chống Bẫy Ảnh Chưa Nộp / Reset Rỗng: [`references/browser-form-submit-atomic-verification-and-anti-silent-reset.md`](references/browser-form-submit-atomic-verification-and-anti-silent-reset.md)
 
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

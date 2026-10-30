@@ -12,6 +12,7 @@ author: Hermes Agent
 
 ## References
 - Follow Anchor Invariants, Dual Gate Budget & UNPROVEN Triage: `references/follow-anchor-invariants-dual-gate-and-unproven-triage.md`
+- Phân Biệt Feed Swipe vs Follow Hook & Khóa Cữ Probation: `references/probation-single-session-lock-and-feed-vs-follow-distinction-20261030.md`
 - Probation Single Session Lock & Daily Budget Cap: `references/probation-single-session-lock-and-daily-budget-cap.md`
 - Khóa Đơn Phiên Hồi Phục & Bù Lượt Khi Dính Preflight: `references/probation-single-session-lock-and-preflight-reschedule.md`
 - Sụp Socket ADB giữa phiên & Silent Launcher Crash Triage: `references/mid-session-adb-socket-drop-and-silent-launcher-crash-triage.md`

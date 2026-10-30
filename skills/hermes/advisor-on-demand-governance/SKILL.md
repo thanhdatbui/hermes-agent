@@ -22,6 +22,13 @@ _ADVISOR_EXPLICIT_TRIGGERS = (
 )
 ```
 
+## Anti-Glazing & Independent Benchmark Protocol
+- **Chống thiên vị nội bộ (Anti-Glazing)**: Khi User đặt nghi vấn Agent đang "nịnh hót", bias về hệ thống hiện tại, hoặc yêu cầu so sánh/phản biện sản phẩm bên ngoài:
+  - BẮT BUỘC gọi Advisor độc lập (Claude CLI `claude -p` hoặc Sol) để phân xử.
+  - Phân tách rõ ràng các trục so sánh (UX/Consumer vs Industrial Headless, Single-user vs Farm quy mô lớn, Human-in-the-loop vs Mechanical Gates), không đánh đồng hoặc so lệch trục.
+  - Chỉ rõ các điểm đối thủ vượt trội hoàn toàn (UX, packaging, third-party integrations) và các điểm yếu/chi phí bảo trì thật của hệ thống hiện tại (overhead từ việc tự đẻ gate/enforcer).
+
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > - `references/advisor-gate-planning-and-gemini-web-quirk.md`: Advisor Gate planning pipeline (Claude CLI/Sol consult before Worker dispatch) & Gemini Web CDP vs Antigravity API tool-calling boundary.
+> - `references/openmausbot-vs-hermes-benchmark-and-anti-glazing.md`: Benchmark đối chiếu khách quan OpenMausBot vs Hermes, quy tắc chống thiên vị & bài học kiến trúc đóng gói Playbook.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

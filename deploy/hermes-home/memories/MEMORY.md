@@ -6,6 +6,4 @@ TikTok: Cấm cào realtime. Dual Gate Follow: age >= 30d & video >= 10 mới c�
 §
 Nối xích unified_patch_pipeline.py là ENTRYPOINT DUY NHẤT khi có lệnh Fix Code / Fix lỗi: S0 Precheck RepoLock -> S1 Plan (Gate B) -> S2 Patch qua dispatch_worker -> S3 Test -> S4 Canary Gate 6 -> S5 Hold Awaiting User kèm MEDIA:. Lỗi tự full_rollback(). BỎ HẲN HMAC/SHA256 ký local; dùng TLIS v1 (Plain JSON, atomic os.replace, OS RepoLock). Chốt phiên User gõ 'Done' chạy closeout_v2.py (0.05s). Bị chặn/fail phải ném log thật. CẤM làm tay.
 §
-R3G Thái Bình (100.115.94.49, tb.taadaa.click): Cổng giữa (lan2, tamnhb1) chạy 8 proxy 5141-5148. Cổng ngoài (lan1, tamnhb0) mac 02:11:22:33:44:10 chạy 8 proxy 5151-5158. TỔNG 16/16 PROXY LIVE (8 port/line là trần cứng BRAS Viettel TBH8001BRA01). MobiProxy (test.taadaa.click) đủ 32/32 proxy. Đã thêm DNS A record tb.taadaa.click trên Cloudflare.
-§
-Reg Gmail Admin (201-280): Lỗi [05_create] do máy fresh 0 acc bị Google ép Sign-in Only từ setup_addresses. Khắc phục bằng Intent trực tiếp. Khi gọi run_all.ps1 bắt buộc truyền manifest register-gmail.json & workerId 'taadaa-writer-admin-farm'. Đồng bộ code qua Base64 chunking SSH + SHA256; file Excel sổ cái phải kiểm tra nạp openpyxl không bị mismatched tag XML.
+Đã chuyển đổi 100% dữ liệu Excel sang SQLite D:/Taadaa/data/farm_master.db (160 máy, 1.270 nick, 1.455 mail, 806 token). Flow chính (login, feed, inspect, hotmail) dùng DAL farm_db.py; Web kibe:1905 tích hợp tab Sổ Cái.

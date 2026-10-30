@@ -3,7 +3,3 @@ UI/Avatar & Bằng chứng: MEDIA: qua WinRT OCR/browser_vision mắt thật; Av
 User Sudo: Lệnh user ('tao cho phép', 'làm luôn', 'force', 'bypass', 'fix đi') kích hoạt ngay quy trình fix A-Z (unified pipeline), bypass mọi rào cản; cấm vin cớ guard/gateway đùn việc; restart Gateway chạy delayed-restart.ps1.
 §
 Soạn tin nhắn gửi người khác: code block ```text...``` riêng, ngắn gọn 1 chạm copy. Gửi thợ/ISP: lịch sự đúng mực, chuẩn thuật ngữ kỹ thuật, cấm dọa nạt. Gửi anh Nguyên (cọc chèo): thân mật gia đình cấm thương mại.
-§
-User thẳng thắn, ghét hứa suông/treo tiến trình; cấm suy diễn khi thiếu bằng chứng hình ảnh thật tại chỗ (Gate 6); bắt buộc bám sát hiện trường vật lý, nộp form phải có ảnh chứng minh kết quả phản hồi thật, tái sử dụng tool có sẵn.
-§
-Cấm dùng row[i] đoán nhãn Excel; runtime chuyển sang SQLite farm_master.db, tra cứu web nội bộ qua kibe:1905 (tiktok_dashboard.py).

@@ -20,3 +20,7 @@ When introducing new multi-WAN / proxy rotation nodes into an active farm:
   - Viettel BRAS profiles (e.g., `TBH8001BRA01`) enforce a hard maximum of **8 concurrent PPPoE sessions** per contract/line.
   - Attempting to dial a 9th session (`mvl18`) triggers immediate `Timeout waiting for PADO packets` (PADI dropped by BRAS).
   - Always bound MACVLAN provisioning scripts to max 8 sub-interfaces per physical fiber line.
+
+## 3. Remote Egress Routing & Domain Integration
+- **DNS Only Record:** Cấu hình tên miền trên Cloudflare (ví dụ: `tb.taadaa.click`) trỏ A record về IP Tailscale cố định của router node (`100.115.94.49`) ở chế độ `DNS only - reserved IP`.
+- **Egress Simplicity:** Thiết bị farm ở xa kết nối qua `http://tb.taadaa.click:<port>` trực tiếp, không cần client Tailscale trên điện thoại hoặc cấu hình VPN tunnel phức tạp trên gateway cục bộ.

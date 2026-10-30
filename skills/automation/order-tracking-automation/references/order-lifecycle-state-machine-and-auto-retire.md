@@ -60,7 +60,12 @@ Taadaa Phone Farm manages real TikTok Shop merchandise orders placed across farm
 
 ## Critical Invariants
 
-1. **Terminal Auto-Retire:** Any order whose status matches `TERMINAL_STATUSES` must be ignored unconditionally in subsequent execution cycles. Never poll carriers for already-delivered parcels.
+1. **Terminal Auto-Retire & 2-Layer Guard against Zombie Alerts:**
+   Any order whose status matches `TERMINAL_STATUSES` or has `archived: true` must be ignored unconditionally in subsequent execution cycles. Never poll carriers for already-delivered parcels.
+   - **Bẫy gọi cưỡng bức (Hardcoded Watchdog Trap):** Không được đặt các hàm watchdog lẻ (`run_watchdog_22()`, `run_watchdog_40()`) chạy vô điều kiện trong `order_lifecycle.py`. Phải lọc qua tập `active_ids = {o['order_id'] for o in orders if classify_order_phase(o) == 'ACTIVE_WEB_TRACKING'}` trước khi gọi.
+   - **Chốt chặn kép nội bộ (In-Script Early Exit):** Đầu hàm `main()` của mọi script watchdog carrier bắt buộc kiểm tra `orders.json`: nếu đơn đã `archived` hoặc status chứa `("ký nhận", "thành công", "đã giao", "hoàn thành", "đã hủy")`, lập tức thoát im lặng `return 0` trước khi thực hiện bất kỳ web request nào.
+   - **Bẫy lệch nhánh tiêu đề ký nhận (Misclassified Signed Event Trap):** Chuỗi `if/elif/else` phân loại thông báo từ bưu cục bắt buộc phải có nhánh bắt từ khóa `ký nhận / thành công` lên đầu. Tuyệt đối không để sự kiện ký nhận rớt xuống nhánh `else` mặc định dẫn đến việc in nhầm tiêu đề *"HÀNG ĐÃ CẬP BẾN KHO ĐÀ NẴNG"* gây hoang mang cho User khi bưu tá đã phát xong.
+
 2. **Pure Script Watchdog (`no_agent: true`) & Anti-Premature Deletion Trap:**
    - **Never delete active watchdogs on error:** When a watchdog cron job fails with HTTP 503 or proxy timeout (usually because it was misconfigured as an LLM agent), NEVER delete the cron job if active orders remain in transit (`NEED_APP_SYNC` or `ACTIVE_WEB_TRACKING`). Convert it to a zero-token pure script instead.
    - **Zero LLM Token Bloat:** Never configure order tracking cron jobs as LLM agents (`no_agent: false`). An LLM agent consumes 8k–43k context tokens per run, introduces model latency, and fails loudly with HTTP 503 errors when local proxies (9Router/OmniRoute) face pre-dispatch filter spikes. Deploy watchdogs with `no_agent: true` running deterministic Python that stays completely silent when no state change occurs.
