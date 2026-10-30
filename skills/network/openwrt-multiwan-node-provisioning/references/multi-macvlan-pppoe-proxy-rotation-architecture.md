@@ -46,3 +46,11 @@ To verify without relying on LLM guesses or local pings:
    ```
 2. Verify distinct egress IPs: Each port (5102, 5104, 5106) must return different public IPs under the target ISP ASN (`AS7552 Viettel Group`, `City: Thái Bình`).
 3. Tailscale tunnel stability check: Ensure `ping -c 2 8.8.8.8` on router returns 0% packet loss and Tailscale remains connected continuously throughout rotation.
+
+## 4. Cross-Hardware Field Triage & Dual-Device Topology (OpenWrt + MobiProxy Box)
+When dealing with multiple ISP lines where one router experiences persistent `Timeout waiting for PADO packets` on a secondary port:
+- **A/B Line Swapping to External Box:** Instead of endlessly tweaking OpenWrt switch ports in the dark, plug the problematic secondary line directly into an existing hardware proxy box (e.g., MobiProxy box with 4 WAN ports `Lan1..Lan4`).
+- **Instant Diagnostic:**
+  - If the line immediately dials and rotates on MobiProxy (e.g., receiving carrier IPs like `172.17.48.x`), the ISP contract, optical signal, and BRAS authentication are confirmed 100% operational.
+  - This immediately isolates the issue to router-specific DSA port mapping or switch tagging rather than ISP infrastructure failure.
+- **Production Partitioning:** Keep the primary line on OpenWrt (providing 8 MACVLAN proxy ports + Tailscale lifeline), while leaving the second line on the dedicated proxy box (providing another 8 rotating ports). This achieves the full 16-proxy capacity immediately without further risky physical re-wiring.

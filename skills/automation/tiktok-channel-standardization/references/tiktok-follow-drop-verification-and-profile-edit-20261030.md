@@ -25,7 +25,13 @@ Quy trình phát hiện nhả follow trong `mode2_follow_followers.py` hoạt đ
 
 ## 3. Bản Chất Kỹ Thuật Khi Nick Bị Nhả
 - "Nhả" là kết quả **bị server TikTok từ chối (Drop) thật**, được xác minh qua cú vuốt reload (Pull-to-refresh) + sleep 3.5s.
-- CẤM suy đoán cảm tính về việc nick "chưa đủ video" hay "lỗi mạng". Phải đọc trực tiếp file `follow_result.json` và mã nguồn để đối soát chính xác hành vi của từng máy.
+- CẤM suy đoán cảm tính về việc nick "chưa đủ video", "lỗi mạng" hay "Anchor khó tính".
+- **Invariant Nền Tảng TikTok**: TikTok CHỈ kiểm soát/giới hạn ở chiều CHO ĐI (Following của chính nick đang chạy bot), TUYỆT ĐỐI KHÔNG CÓ NỀN TẢNG NÀO CẤM CHIỀU NHẬN (Follower). Không bao giờ được suy diễn Anchor cấm nhận follow!
+- Phải đọc trực tiếp file `follow_result.json` và mã nguồn để đối soát chính xác hành vi của từng máy.
+
+## 4. Phạm Vi Rà Soát Độ Tuổi Nick (Fleet Audit Contract)
+- Khi User yêu cầu rà soát theo "cùng độ tuổi" hoặc "cùng đợt reg": BẮT BUỘC lọc theo khoảng thời gian reg chuẩn xác `reg_date ± 15 ngày` (hoặc đúng ngày cụ thể).
+- TUYỆT ĐỐI CẤM gom các nick lệch tháng/khác đợt (như nick tháng 6/tháng 7) vào báo cáo so sánh độ tuổi của nick cuối tháng 8.
 
 ## 4. Cơ Chế Đổi Username Trên Biến Thể Profile Mới
 - Nút Sửa hồ sơ trên TikTok S7 là **ICON CÂY BÚT CHÌ**.

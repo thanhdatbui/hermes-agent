@@ -42,6 +42,15 @@ grep -ri "PasswordAuthentication" /etc/ssh/
 - If `PasswordAuthentication yes` is enabled, brute-force attacks on port 22 or password leaks grant root shell directly.
 - Vulnerable exposed proxy daemons (e.g., unauthenticated or vulnerable Tinyproxy versions like CVE-2023-49606) can allow remote exploitation.
 
+### 4. Database Integrity Verification (Business & Financial State)
+- DDoS / Reflector botnets are strictly hardware/bandwidth parasitics; they rarely tamper with PHP or MySQL application tables.
+- Verify financial ledger (`dongtien` / orders):
+  ```sql
+  SELECT * FROM dongtien ORDER BY id DESC LIMIT 10;
+  SELECT count(*) FROM product_order WHERE created_at >= CURDATE() - INTERVAL 3 DAY;
+  ```
+- Confirm database state is intact to validate that existing text backups (.sql) are clean and uncorrupted.
+
 ## Remediation Invariants (Fail-Closed)
 1. **Never attempt in-place surgical cleanup on root-compromised servers:**
    - Rootkits modify core libraries, inject kernel modules, and hide secondary cron backdoors. Manual file deletion or `kill -9` will leave persistence mechanisms intact.
@@ -51,3 +60,6 @@ grep -ri "PasswordAuthentication" /etc/ssh/
    - Spin up a fresh OS instance.
    - Enforce SSH key-only authentication immediately (`PasswordAuthentication no` in `/etc/ssh/sshd_config` and `/etc/ssh/sshd_config.d/`).
    - Restore application code and database from the verified backup.
+3. **Hardware Right-Sizing & Provider Optimization:**
+   - Lightweight PHP/MySQL shops and scrapers typically consume < 700MB RAM, < 1% CPU, and < 1GB disk under normal load.
+   - High-tier VPS ($12/mo for 2GB RAM / 50GB NVMe) are often 70-80% idle. Migrating to $4-$6/mo VPS instances (Hetzner, Vultr, Linode) reduces operational overhead without degrading performance.

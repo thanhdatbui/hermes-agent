@@ -29,5 +29,9 @@ Any time you finish (or incrementally edit) code and must show it passes:
 - Before reporting "done" on a task with a verification gate
 - When a system message says your work is `unverified`
 
+## Same-Turn Execution Invariant (Anti-Turn-Ending Freeze)
+- **CẤM hứa hẹn tương lai rồi dừng turn**: Kết thúc turn bằng các câu "Em đang chuẩn bị chạy...", "Chờ vài phút để em nghiệm thu..." mà không kèm tool call thực thi ngay sẽ làm phiên đóng băng hoàn toàn (vì runtime hoạt động dạng turn-based, không tự chạy ngầm nếu agent không gọi tool).
+- **Hành động tức thì**: Mọi tuyên bố thực thi bắt buộc phải đi kèm lệnh gọi tool (`terminal(background=True)` hoặc `process`) ngay trong cùng lượt phản hồi.
+
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

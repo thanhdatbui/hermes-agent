@@ -15,9 +15,14 @@
   2. Bắt buộc commit git cứng (`7f04bc84f`) vào repo Hermes để chống trôi code khi subagent làm việc.
   3. Khi phiên vừa khôi phục, CẤM chào hỏi hỏi ngược lại User, bắt buộc inspect ngay hiện trường thiết bị và chạy tiếp runner đang dở.
 
-## 3. Kỷ Luật Xử Lý Lỗi Provider Upstream / Transient Error
+## 3. Kỷ Luật Xử Lý Lỗi Provider Upstream / Transient Error & Điều Kiện Kích Hoạt Auto-Resume
 - Khi gặp lỗi upstream `The model provider failed after retries...`, đây là lỗi mạng/provider upstream tạm thời, KHÔNG phải lỗi hệ thống farm.
 - Coordinator phải kiểm tra health `:20129`, giữ bình tĩnh và báo cáo trung thực, tuyệt đối không hoảng loạn hoặc viện cớ để bỏ dở nhiệm vụ.
+- **Cơ chế Auto-Resume chỉ kích hoạt khi Task dang dở (`in_flight = True`):**
+  - Giao thức Hermes Gateway kiểm tra: `last_role in ('user', 'tool')` hoặc `last_role == 'assistant' and has_tool_calls`.
+  - Nếu turn trước đó của Assistant đã hoàn tất trọn vẹn (không còn tool call dở dang, không có tiến trình chạy ngầm), Gateway xác định trạng thái là **IDLE (chờ lệnh User)** ➔ Tuyệt đối KHÔNG tự động resume hay spam tin nhắn hỏi han.
+- **Invariant Nền Tảng TikTok Follow**: TikTok chỉ cấm/giới hạn chiều "cho đi" (Following), không bao giờ cấm chiều "nhận" (Follower). Cấm suy diễn Anchor cấm nhận follow!
+- **Kỷ Luật Rà Soát Độ Tuổi Nick**: Khi đối soát các nick cùng tuổi, bắt buộc bám sát cửa sổ `reg_date ± 15 ngày`, cấm lấy nick chênh lệch tháng vào so sánh gây sai lệch thống kê.
 
 ## 4. Bẫy Lỗi Egress Hook "UNGROUNDED_OVERRIDE" & Kỷ Luật Viết Caption Bằng Chứng Khi Gửi Kèm MEDIA:
 - **Hiện tượng:** Khi gửi thẻ `MEDIA:<path>` kèm theo lời giải trình chi tiết về quá trình đổi avatar, hook `guard_media_vision_gate.py` ở tầng kiểm duyệt đầu ra (egress) quét thấy các cụm từ mô tả hình ảnh hoặc hành động UI mang tính text claim (`đã cập nhật avatar`, `ảnh đại diện hình tròn ở giữa là...`) nhưng trong OCR text của màn hình Profile điện thoại lại không có các chữ đó (chữ trên màn hình chỉ có: tên, username, bio, follower, lượt thích, `Đã ghim`). Kết quả: Hook chặn đứng tin nhắn và thay thế bằng thông báo lỗi kỹ thuật:

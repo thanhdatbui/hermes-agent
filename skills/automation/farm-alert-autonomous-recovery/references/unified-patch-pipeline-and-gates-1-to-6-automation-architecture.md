@@ -33,6 +33,15 @@ Cỗ máy trạng thái (State Machine) thực thi theo chu trình bất khả x
     (Timeout tổng chặng: 420s).
   - Xuất plan.json O(1) có exact old_string -> new_string.
   - Kiểm tra điều kiện duy nhất: nl(text).count(old_string) == 1 (chuẩn hóa CRLF->LF, bỏ hoàn toàn SHA256).
+
+### 2.1. CÁC BẪY & KỶ LUẬT THI CÔNG GATE B PLANNER (30/10/2026)
+- **Bẫy Context 100 dòng (Anchor Starvation):** `TARGET_CONTEXT_LINES` nếu để 100 dòng sẽ cắt cụt các file >100 dòng (file 500-700 dòng thì phần logic nghiệp vụ bên dưới biến mất hoàn toàn). Planner không thấy code thật sẽ trả về `edits: []`. Bắt buộc đặt tối thiểu 800 dòng hoặc context window động quanh target functions.
+- **Bẫy Claude CLI trên Windows (Binary & Argument Resolution):**
+  - `shutil.which("claude")` trên Windows có thể trỏ vào wrapper bash không đuôi (`/hermes/bin/claude`), khiến `subprocess.run` văng `WinError 2: The system cannot find the file specified`. Phải ưu tiên `claude.exe` (`shutil.which("claude.exe") or shutil.which("claude")`), nếu là non-exe thì bọc qua `bash`.
+  - Claude CLI trên Windows chạy headless dễ treo/lỗi stdin; bắt buộc truyền prompt trực tiếp qua argument `[*base_cmd, "-p", full_prompt]`.
+- **Bẫy Gemini Web Schema Drift (Tolerant Parser & Prompt Enforcement):**
+  - Gemini Web chat model hay tự ý đổi tên trường (`old_str`/`new_str`, `start_line`/`end_line`, `search`/`replace`) hoặc bỏ quên key `file` khi chỉ sửa 1 file.
+  - Bộ validator `validate_plan` bắt buộc hỗ trợ alias mapping và tự gán `single_target` nếu `file` bị khuyết; đồng thời prompt phải có `CRITICAL OUTPUT FORMAT` cấm model tự bịa schema.
        ↓
 [S2: PATCH (Gate C)]
   - PRE-SNAPSHOT: Lưu nguyên bản raw bytes mọi file trong scope.

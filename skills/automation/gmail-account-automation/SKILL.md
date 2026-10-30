@@ -4,12 +4,20 @@ description: "Automation workflows for Gmail accounts on the Taadaa farm: Playwr
 ---
 # Gmail Account Automation (Taadaa Farm)
 
+- `references/admin-disk-full-0gb-and-turn-based-stall-pitfall-20261030.md` — Bẫy đĩa D: cạn 0.00 GB làm tê liệt Admin-PC, tử huyệt kết thúc turn bằng hứa hẹn suông gây đóng băng session & giải pháp WinRT OCR / calibrated fallback tránh bẫy ATX XML nuốt node Tạo tài khoản.
+- `references/google-create-account-bounce-back-and-personal-overlay-trap-20261030.md` — Tử huyệt ATX XML nuốt popup menu cá nhân [05_personal] dẫn tới phán đoán sai lầm GOOGLE_CREATE_ACCOUNT_BOUNCE_BACK & giải pháp WinRT OCR / fallback calibrated.
 - `references/playwright-gmail-navigation-timeout-and-relogin-challenge.md` — Timeout goto.
+- `references/gms-webview-missing-node-ocr-coord-fallback-20261030.md` — Bẫy GMS WebView nuốt node 'Tạo tài khoản' trong UI XML & fallback tọa độ (200, 1450).
+- `references/admin-cluster-fresh-device-signin-only-pitfall.md` — Bẫy máy 0 account Admin farm bị ép Sign-in Only WebView (mất nút Tạo tài khoản) & hướng xử lý Intent.
 - `references/s7-gmail-result-classification-and-chatgpt-decommission.md` — Dừng reg ChatGPT S7, phân loại runner & bẫy hiểu lầm 'Lỗi script' do WebView HTTP 0/XHR 6.
 - `references/s7-gmail-slot-eviction-and-gpm-cleanup-rules.md` — Giải phóng slot S7 & dọn DIE.
 - `references/slot-capacity-and-eviction-policy.md` — Trần số acc vs rolling eviction.
 - `references/dual-cluster-post-noon-gmail-and-watchdog-architecture.md` — Dual-cluster Reg Gmail & range(1, 75) fix.
+- `references/admin-fleet-fresh-device-onboarding-and-manifest-governance.md` — Bẫy máy 0 account bị ép Sign-in Only trên Admin & quy chuẩn manifest owner SSH.
+- `references/admin-cluster-gmail-reg-orchestration-and-safety-runbook.md` — Quy trình khởi chạy Reg Gmail cụm Admin (Máy 201-280), workerId 'taadaa-writer-admin-farm', đồng bộ Base64 và chống phantom reporting.
+- `references/dual-cluster-gmail-reg-admin-failures-and-recovery-20261030.md` — Tử huyệt đứt gãy code sync SHA256, hỏng XML Excel Admin, và giải pháp màn [05_create] mất nút Tạo tài khoản.
 - `references/admin-cluster-gmail-reg-corrupt-sync-and-excel-recovery-20261030.md` — Khôi phục Farm Admin khi file code bị đứt sync và Excel XML bị lỗi (mismatched tag).
+- `references/admin-gmail-reg-corruption-and-cooldown-excel-recovery-20261030.md` — Phục hồi Admin Reg Gmail: bẫy code truncate SHA256 lệch, hỏng XML Excel cooldown làm sập PowerShell parser & dispatch EncodedCommand.
 - `references/night-reg-gmail-admin-ssh-allowlist-and-pipeline-separation-20261030.md` — Triage nguyên nhân Reg Gmail đêm không chạy Farm Admin: Bẫy SSH allowlist `$env:` & phân tách 2 launcher.
 - `references/gpm-api-pagination-and-soak-gate-deadlock.md` — GPM API pagination & Soaking Gate.
 - `references/youtube-nurture-ad-handling-and-evidence-timing.md` — YouTube ad skip & timing trap.

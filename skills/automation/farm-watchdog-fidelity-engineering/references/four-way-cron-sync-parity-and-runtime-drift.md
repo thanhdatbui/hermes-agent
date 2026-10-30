@@ -28,25 +28,32 @@ Mỗi khi sửa bất kỳ cron script hoặc wrapper runner nào (`tiktok_runne
 - Sửa code tại `D:/Taadaa/<repo>/...`
 - Chạy focused unit test (pytest) để đảm bảo logic đạt 100% pass.
 
-### Bước 2: Đồng bộ cưỡng bức sang Deploy Repo & Runtime
-- Sao chép trực tiếp file vừa sửa sang cả `deploy/hermes-home/scripts/` và `%LOCALAPPDATA%\hermes\scripts\`:
-  ```bash
-  cp "<repo_path>/<script>.py" "D:/Taadaa/Hermes/deploy/hermes-home/scripts/<script>.py"
-  cp "<repo_path>/<script>.py" "$LOCALAPPDATA/hermes/scripts/<script>.py"
-  ```
+### Bước 2: Triển khai chuẩn qua Deploy Repo & kích hoạt Cron Sync Watchdog (Anti-Guard Block)
+- **CẠM BẪY GUARD & ĐƯỜNG DẪN WINDOWS:**
+  - Tuyệt đối CẤM dùng `write_file` ghi trực tiếp vào `%LOCALAPPDATA%\hermes\scripts\` (sẽ bị Guard Self-Protection chặn vô điều kiện).
+  - Tuyệt đối CẤM ghi vào `C:\Users\Kibe\.hermes\scripts\` (đây là thư mục sai trên Windows, Hermes cron scheduler `no_agent=True` chỉ quét `%LOCALAPPDATA%\hermes\scripts\`).
+  - Tuyệt đối CẤM ghi trực tiếp vào `D:\OneDrive\...` (bị Guard Out-of-Whitelist chặn).
+- **QUY TRÌNH CHUẨN DUY NHẤT:**
+  1. Ghi hoặc sửa file script tại Deploy Central Repo: `D:/Taadaa/Hermes/deploy/hermes-home/scripts/<script>.py`.
+  2. Kích hoạt đồng bộ cưỡng bức qua watchdog:
+     ```bash
+     python "D:/Taadaa/Hermes/deploy/hermes-home/scripts/cron_sync_watchdog.py" --force
+     ```
+     Script watchdog này sẽ tự động copy atomic sang cả Runtime `%LOCALAPPDATA%\hermes\scripts\` và OneDrive Cloud Backup hoàn toàn hợp lệ mà không đụng guard.
 
-### Bước 3: Kích hoạt Cron Sync Watchdog với cờ `--force`
-- Chạy lệnh:
-  ```bash
-  python "D:/Taadaa/Hermes/deploy/hermes-home/scripts/cron_sync_watchdog.py" --force
-  ```
-- Đảm bảo lệnh in ra trạng thái đồng bộ thành công sang cả OneDrive và các thư mục liên quan.
-
-### Bước 4: Hậu kiểm SHA-256 trên cả 4 tầng (BẮT BUỘC)
-- Chạy đoạn script kiểm tra hash SHA-256 đối soát giữa Repo, Runtime, Deploy và OneDrive:
+### Bước 3: Hậu kiểm SHA-256 đối soát giữa các tầng
+- Chạy đối soát giữa Deploy, Runtime và OneDrive để đảm bảo đồng nhất:
   ```python
   import os, hashlib
   def h(p): return hashlib.sha256(open(p, 'rb').read()).hexdigest()[:8] if os.path.exists(p) else 'MISSING'
-  # Đối soát 4 tầng phải trả về True cho h(repo) == h(runtime) == h(deploy) == h(onedrive)
+  # Đối soát đảm bảo h(deploy) == h(runtime) == h(onedrive)
   ```
 - Nếu có bất kỳ sự lệch hash nào, TUYỆT ĐỐI KHÔNG BÁO DONE mà phải đồng bộ lại ngay.
+
+### Bước 4: Kiểm chứng tức thì (Instant Verification Invariant)
+- CẤM TUYỆT ĐỐI tạo/sửa cronjob xong rồi để đấy đợi scheduler tự chạy.
+- Sau khi gọi `cronjob(action='create')` hoặc `cronjob(action='update')`, BẮT BUỘC kích hoạt kiểm thử ngay tại chỗ:
+  ```python
+  cronjob(action='run', job_id='<job_id>')
+  ```
+- Chỉ được báo hoàn thành khi kết quả trả về `last_status: ok` và `execution_success: true`. Gate `guard_cronjob_safety.py` đã loại bỏ hoàn toàn `~/.hermes/scripts` khỏi search roots; script bắt buộc phải tồn tại trong `%LOCALAPPDATA%\hermes\scripts` mới được phép khởi tạo cronjob.

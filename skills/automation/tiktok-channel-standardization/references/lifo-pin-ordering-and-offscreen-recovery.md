@@ -6,6 +6,10 @@
   - Video được bấm PIN sau cùng sẽ luôn nhảy vào **Ô số 1 (Góc trên cùng bên trái, `center_x < 360`)**.
   - Các video đã ghim trước đó sẽ bị đẩy dịch sang phải (Ô số 2: `center_x ~ 540`, Ô số 3: `center_x > 720`).
   - Do đó, để đạt thứ tự hoàn hảo: **Top 1 View (Ô 1) ➔ Top 2 View (Ô 2) ➔ Top 3 View (Ô 3)**, video có view cao nhất bắt buộc phải là video được bấm PIN sau cùng!
+- **Kỷ luật sắp xếp Candidate (Desc Sorting Invariant):**
+  - Danh sách video chưa ghim (`cands`) BẮT BUỘC phải sort giảm dần theo views (`reverse=True`) trước khi lấy slice `slots_free` hoặc chọn `target = cands[0]`.
+  - CẤM TUYỆT ĐỐI lấy `cands` thô theo thứ tự xuất hiện của XML/UI; nếu không sort, script sẽ bốc nhầm video view thấp (ở Hàng 2) và bỏ sót video Top view thật sự nằm ở Hàng 3.
+  - Khi ghim nhiều video vào slot trống: `to_pin = sorted(cands[:slots_free], key=lambda t: t['views'])` (tăng dần để video view cao nhất trong nhóm được PIN sau cùng, nhảy vào Ô 1).
 
 ## 2. Bẫy Unpin Làm Trôi Video Top Cũ Khỏi Màn Hình (Off-Screen Drift Trap)
 - **Hiện tượng:**

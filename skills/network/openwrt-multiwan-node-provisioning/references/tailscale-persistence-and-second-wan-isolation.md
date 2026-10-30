@@ -34,6 +34,22 @@ Khi cứu hộ headless hoặc chạy qua CLI, cờ `--state=/tmp/tailscaled.sta
 - **Dải 100.x trên PPPoE Viettel (`100.77.187.230`)**: Là dải CGNAT chuẩn RFC 6598 của nhà mạng Viettel cấp cho thuê bao cáp quang dân dụng.
 - **Xác nhận kết nối**: Khi router quay được IP CGNAT `100.77.x.x` và ping `8.8.8.8` RTT 27ms (0% loss), router đã thông Internet quốc tế hoàn toàn. Tailscale lập tức online và mở cổng SSH 22 + LuCI 80/443.
 
+## 2.1. Quản lý thiết bị trùng lặp trên Tailscale Admin Console (Dọn Node Rác)
+- **Hiện tượng**: Khi router được deploy lại, reset state hoặc đổi hostname nhiều lần, Tailscale Admin Console sẽ xuất hiện nhiều node trùng lặp (ví dụ `r3g-thaibinh` cũ có chấm xám `Offline` và `r3g-thaibinh-1` mới có chấm xanh lá `Connected`).
+- **Xác minh node thật**:
+  * Chạy `tailscale status --json` từ local machine kiểm tra IP (`100.115.94.49`), status `Online: True`, và `LastSeen`.
+  * Trên Tailscale Admin Console web UI, tìm đúng node cũ bị Offline (chấm xám), bấm vào menu `•••` ở góc phải, chọn `Remove...` để xóa bỏ vĩnh viễn, tránh gây nhầm lẫn khi tra cứu IP.
+
+## 2.2. Kiểm chứng vật lý khi người nhà cắm / rút dây (Physical Carrier vs Interface State)
+- **Tránh kết luận vội vã khi Tailscale chập chờn**: Khi người tại chỗ thao tác rút/cắm dây (ví dụ rút dây cổng giữa `lan1`), tay có thể va quẹt làm lỏng tạm thời cổng bên cạnh (`lan2`), khiến Tailscale ngắt kết nối trong 30-60 giây rồi tự reconnect.
+- **Quy trình kiểm chứng hiện trường 2 bước**:
+  1. Kiểm tra carrier phần cứng:
+     ```sh
+     cat /sys/class/net/lan1/carrier # 0: không có tín hiệu điện/chưa cắm chặt; 1: có tín hiệu 1Gbps
+     cat /sys/class/net/lan2/carrier # 1: đường sống bình thường
+     ```
+  2. Đo đạc đầu cuối (End-to-End Test): Dùng máy PC local gọi test HTTPS ra ngoài qua từng cổng proxy (`5102..5108`) để chứng minh lưu lượng thực tế ra IP Public Viettel Thái Bình (`117.5.x.x`), độc lập với việc cổng phụ có cắm dây hay không.
+
 ## 3. Quy tắc an toàn sống còn khi cấu hình đường WAN thứ hai (Chống rớt Tailscale)
 Khi router đã online qua WAN thứ nhất (đang giữ default route nuôi Tailscale):
 - **CẤM TUYỆT ĐỐI**: Để đường WAN thứ hai tự động gán default route (`add_default_route` / `defaultroute '1'`). Hai đường đè route trong bảng `main` sẽ làm gói tin Tailscale đi sai cổng hoặc bị drop, văng SSH ngay lập tức.

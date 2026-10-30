@@ -4,6 +4,6 @@ User Sudo: Lệnh user ('tao cho phép', 'làm luôn', 'force', 'bypass', 'fix �
 §
 Soạn tin nhắn gửi người khác: code block ```text...``` riêng, ngắn gọn 1 chạm copy. Gửi thợ/ISP: lịch sự đúng mực, chuẩn thuật ngữ kỹ thuật, cấm dọa nạt. Gửi anh Nguyên (cọc chèo): thân mật gia đình cấm thương mại.
 §
-Canary & Cơ giới: Tái hiện acc/lỗi thật (timeout >= 720s); PASS chưa pass để None. CẤM nhớ suông; fix bug cơ giới hóa rules.json; B Gate (120s Gem -> 150s Claude -> 120s Sol); C Gate (Qoder -> Sol); Gate 6 kèm MEDIA:. BẮT BUỘC Canary đúng nhánh lỗi session vừa sửa (chống chạy lướt feed 2 cái cho có lệ), gắn não LLM sinh tham số ép nhánh và hậu kiểm log.
+User thẳng thắn, ghét hứa suông/treo tiến trình; cấm suy diễn khi thiếu bằng chứng hình ảnh thật tại chỗ (Gate 6); bắt buộc bám sát hiện trường vật lý, nộp form phải có ảnh chứng minh kết quả phản hồi thật, tái sử dụng tool có sẵn.
 §
-Telegram & Đơn: xong việc xóa topic; cron đặt Topic cố định; chỉ theo dõi giao tận nhà.
+Cấm dùng row[i] đoán nhãn Excel; runtime chuyển sang SQLite farm_master.db, tra cứu web nội bộ qua kibe:1905 (tiktok_dashboard.py).
