@@ -1,4 +1,4 @@
-Guard_media_vision_gate chặn DIRTY_AVATAR_EVIDENCE, cấm leak DEGRADED ra chat; kiểm tra contradiction phổ quát cho mọi loại ảnh để chống AI bịa đặt thành công khi ảnh hiển thị lỗi.
+GPM Local API (19995): tạo profile payload bắt buộc dùng 'Profile_name' (tránh lỗi NOT NULL SQLite); raw_proxy cấm prefix 'http://'/'socks5://' kẻo Chromium lỗi net::ERR_NO_SUPPORTED_PROXIES; Playwright Next.js form click tọa độ gõ delay 50ms chống timeout. Meta/Muse OIDC timeout chuyển hướng oidc/error; IP datacenter chặn tạo tài khoản ở bước ngày sinh.
 §
 Nạp Web (:20129): trần 2 acc/IP; pre-validate Graph; cấm base64. Acc lỗi set rate_limited_until UTC; disableSessionStickiness=true & failoverBeforeRetry=true. Nạp Gemini Web CDP lấy __Secure-1PSID kẹp proxy 1:1; Argon 4 pool map 'gemini-web'. Worker timeout 360s.
 §
