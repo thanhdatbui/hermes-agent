@@ -38,3 +38,22 @@ def get_subprocess_window_kwargs() -> dict[str, Any]:
 # Usage:
 subprocess.run(cmd, capture_output=True, text=True, timeout=10, **get_subprocess_window_kwargs())
 ```
+
+### PowerShell Pitfall: `Start-Process -WindowStyle Hidden` Still Flashes Windows
+- **Flawed approach:** `Start-Process -FilePath "cmd.exe" -ArgumentList $cmd -PassThru -WindowStyle Hidden`
+- **Why it fails:** PowerShell creates the Win32 console window normally on desktop session 1, then asynchronously sends `ShowWindow(SW_HIDE)` ~50ms later. In DirectX exclusive fullscreen games (War3, TFT), this 50ms window steals visual focus, resets graphics adapter exclusive mode, and causes an instant black screen flash / flicker.
+- **Robust Win32 API Fix:**
+```powershell
+$psi = New-Object System.Diagnostics.ProcessStartInfo
+$psi.FileName = "cmd.exe" # or python.exe
+$psi.Arguments = $cmd
+$psi.CreateNoWindow = $true
+$psi.UseShellExecute = $false
+$p = [System.Diagnostics.Process]::Start($psi)
+```
+
+### Multi-Runtime `sitecustomize.py` Coverage Pitfall
+When using `sitecustomize.py` to transparently force `CREATE_NO_WINDOW` across all Python `subprocess.Popen` / `subprocess.run` calls:
+- Inspect **ALL** installed Python versions and virtualenvs on the host (e.g. `Python311`, `Python312`, project venvs).
+- If one runtime is missed (e.g. `Python312` while only `Python311` was patched), scripts targeting `Python312` will bypass the hook and flash unsuppressed console windows during execution.
+- Always audit `sitecustomize.py` presence across all directories under `C:\Users\<User>\AppData\Local\Programs\Python\Python*` and project runtime folders.

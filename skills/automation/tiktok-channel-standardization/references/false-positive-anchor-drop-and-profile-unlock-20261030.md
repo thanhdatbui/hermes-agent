@@ -1,20 +1,23 @@
 # False-Positive Follow Drop (Anchor Check Race) & New Profile Edit Unlock
 
-## 1. False-Positive Anchor Follow Drop (35 Machines Shadow-Drop Illusion)
+## 1. Cơ Chế Nhả Follow Thật (Optimistic UI Drop vs Path B Verify)
 ### Hiện tượng
-Trong các ca chạy nuôi TikTok (Mode 2: Follow Followers), watchdog hoặc runner báo cáo hàng loạt máy (ví dụ 35/38 máy) bị:
-`FOLLOW_FAILED: anchor @<uid> bị nhả sau vuốt — dừng session` -> `Nhả liền 35 máy | 0 lượt`.
+Trong các ca chạy nuôi TikTok (Mode 2: Follow Followers), watchdog hoặc runner báo cáo:
+`FOLLOW_FAILED: anchor @<uid> bị nhả sau vuốt — dừng session` hoặc `FOLLOW_FAILED: TikTok không nhận follow (profile vẫn chưa follow)`.
 
-### Nguyên nhân gốc (Root Cause)
-1. Trong `mode2_follow_followers.py` (`_ensure_anchor_followed`):
-   - Bot bấm nút Follow Anchor (`_tap_follow_button`).
-   - Script chỉ ngủ cứng `time.sleep(1.0)` rồi gọi ngay `ocr_screen()` để phân loại trạng thái nút (`classify_button_from_ocr`).
-2. Do độ trễ mạng Proxy MikroTik hoặc server TikTok cập nhật UI chậm (> 1.0s), nút trên màn hình chưa kịp đổi nhãn sang "Đang follow" (hoặc icon chuyển trạng thái).
-3. Script nhận diện `not_followed` ➔ lập tức gán `follow_failed = True` và dừng toàn bộ session của máy đó ngay tại Anchor đầu tiên, khiến toàn bộ danh sách 10-20 user đằng sau bị bỏ qua hoàn toàn.
+### Bản Chất Kỹ Thuật (Truth from Code & Backend)
+1. **Optimistic UI của TikTok:** Khi bot tap nút "Follow" trên danh sách / feed, app client TikTok ngay lập tức đổi màu nút thành "Đang follow" để tạo cảm giác mượt mà trước khi server phản hồi.
+2. **Cơ chế Path B Verify (`_path_b_verify` trong `mode2_follow_followers.py`):**
+   - Code farm **100% bắt buộc verify Path B** để chống Optimistic UI ảo: Sau khi tap nút Follow trên danh sách, bot tap tiếp vào avatar để mở trang Profile cá nhân của nick vừa follow.
+   - Nếu trên Profile cá nhân đó nút vẫn là `Follow` / `Follow lại` thay vì `Đang follow`, điều đó chứng minh **Server TikTok đã âm thầm từ chối (REJECT) lệnh follow từ backend**.
+   - Đây là **NHẢ THẬT bởi thuật toán TikTok**, KHÔNG PHẢI lỗi delay mạng! CẤM Coordinator suy đoán vô căn cứ là "do mạng lag", "do nick ít video" hay "chưa đủ ấm" khi chưa đọc file log.
+3. **Session Velocity & Anchor Dwell Time:**
+   - TikTok áp dụng bộ lọc rate-limit động theo phiên. Các máy xem video mồi (Anchor Dwell Time) dài (> 14s - 18s) như M17 thì server chấp nhận follow liên tục (ăn trọn 14 lượt). Các máy có dwell time ngắn hoặc bị gắn cờ bot tại thời điểm đó thì server drop ngay từ lượt đầu tiên.
 
-### Kỷ luật Triage & Khắc phục
-- **Không đoán mò:** CẤM suy diễn là "nick mới bị TikTok phạt", "chưa đủ video" hay "thiếu tương tác". BẮT BUỘC đọc file log thực tế `machines/machine_<N>/<run_id>/follow_result.json` để bóc tách đúng `status` và `reason`.
-- **Hạ tầng sửa đổi:** Thêm progressive polling (kiểm tra lặp lại 2-3 lần với khoảng cách 1.5s - 2.0s hoặc lướt nhẹ refresh profile) trước khi phán quyết Anchor bị nhả thật.
+### Kỷ luật Triage & Điều Tra
+- **CẤM ĐOÁN MÒ LẢI NHẢI:** CẤM suy diễn lý thuyết suông. BẮT BUỘC dùng lệnh trích xuất O(1) kiểm tra trực tiếp:
+  - `machines/machine_<N>/<run_id>/follow_result.json` (đọc exact `status`, `reason`, `followed_count`).
+  - Sổ cái master `taikhoan_run_safe.xlsx` để so sánh ngày reg và số video thật giữa các máy cùng đợt.
 
 ---
 

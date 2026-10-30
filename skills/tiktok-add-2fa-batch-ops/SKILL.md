@@ -5,6 +5,9 @@ description: "Use when running batch 2FA on TikTok farm. Chạy batch 2FA repo t
 # TikTok Add 2FA Batch Ops (repo tiktok-add-bao-mat-f2a)
 
 References:
+- `references/live-test-telegram-spam-prevention-and-dry-run-contract-20261030.md` — **[MỚI 30/10/2026]** Kỷ luật cấm test live watchdog thiếu `--dry-run`, chống bão spam Telegram báo cáo mã thoát 5 vào nhóm nghiệp vụ.
+- `references/night-2fa-watchdog-trace-observability-and-no-vichanger-invariants-20261030.md` — **[MỚI 30/10/2026]** Lưu Trace đĩa `D:/Taadaa/reports/night_2fa_trace_{date}.log` cho Watchdog 2FA, bóc tách `failure_breakdown`, cấm tuyệt đối nhắc ViChanger hoặc app Outlook S7 (100% Graph API & GPM PC).
+- `references/night-2fa-forwarded-report-triage-and-feed-interlock-20261030.md` — Quy trình giải mã báo cáo 2FA forward, đối soát luỹ kế O(1) và kỷ luật cấm xâm lấn Ca Nuôi.
 - Chi tiết toàn bộ quy trình và phân tích chuyên sâu: xem các tài liệu trong thư mục `references/` của skill.
 - `scripts/flush_dpapi_journal_to_workbook.py` — **[MỚI 21/09/2026]** Script tự động flush các Secret Key 2FA từ DPAPI journal vào Cột E file Excel `taikhoan_dat_v2_updated .xlsx`, đối chiếu readback và cập nhật state WRITTEN.
 - Chi tiết toàn bộ quy trình và phân tích chuyên sâu: xem các tài liệu trong thư mục `references/` của skill.

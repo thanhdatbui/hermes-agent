@@ -4,8 +4,10 @@ Nạp Web (:20129): trần 2 acc/IP; pre-validate Graph; cấm base64. Acc lỗi
 §
 TikTok Upload & Dashboard Audit: Cấm cào web realtime verify trong luồng upload. Nick thiếu nút Sửa hồ sơ: lưu tạm Bio mở khóa dòng Bio, tap vào Bio để vào trang 'Sửa hồ sơ' đổi Username @. Follow mode 2 nhả follow ảo 35 máy do OCR Anchor 1.0s quá ngắn. M17 đã đổi thành @lyhoan.music.
 §
-Tool 2FA & cron: JIT lock; sync code Admin qua OneDrive D:\OneDrive\TaadaaData\admin\ (cấm stream Base64 qua SSH); single_writer workbook fallback ID + protected_parts=None. Master Excel Admin: 101/630 có 2FA.
-§
-GPM & proxy: Profile farm BẮT BUỘC dùng profile có sẵn kẹp proxy (mobi/mikrotik/R3G), cấm IP direct. Riêng Gmail chính user có thể dùng IP direct. CẤM tạo profile rác không proxy. Check ipify trước khi vào web. React setter form AWSUI. 19995 offline spawn ngầm GPMLogin.exe. Lỗi 'cập trình duyệt 142' do lệch manifest core, cập nhật GUI là nhả. R3G V1 Thái Bình Tailscale 100.115.94.49 (root/password). WAN2 (lan2) online PPPoE Viettel 100.77.x, egress Thái Bình 117.5.152.x. 8 MACVLAN sub-proxies (5101-5108) cách ly routing table 101-108, defaultroute=0. lan1 (wan) tắt chờ modem 2 bridge.
+Advisor, Gate A-B-C & Unified Pipeline: Cấm Coordinator tự vẽ plan. Gate B (gate_b_planner.py: Gemini 120s -> Sol 120s -> Claude 150s). Gate C: Qoder T0 (DeepSeek-Flash) -> Sol -> Agy -> Haiku. Nối xích unified_patch_pipeline.py: S0 Precheck RepoLock -> S1 Plan -> S2 Patch + Hậu kiểm O(1) -> S3 Test -> S4 Canary Gate 6 -> S5 Hold Awaiting User kèm MEDIA:. Lỗi tự full_rollback() (quét scope + baseline drift + git index reset). BỎ HẲN HMAC/SHA256 ký local; dùng TLIS v1 (Plain JSON, atomic os.replace, OS RepoLock). Chốt phiên User gõ 'Done' chạy closeout_v2.py (0.05s). Bị chặn/fail phải ném log thật.
 §
 R3G Thái Bình: lan2 (WAN2, tamnhb1) đang giữ mạng chính & Tailscale (100.115.94.49, ping 8.8.8.8 28ms). Đã dựng 8 MACVLAN proxy (5101-5108). Cổng lan1 (Line 0, tamnhb0) đang disabled tạm do modem 0 chưa bridge / PADO timeout. CẤM can thiệp lan2 gây văng Tailscale.
+§
+TikTok nhả follow là REJECT thật từ backend phát hiện qua Path B Verify (profile nút vẫn Follow), cấm suy đoán delay mạng khi chưa tra log follow_result.json. Đổi username layout mới: lưu tạm bio -> tap dòng bio mở 'Sửa hồ sơ' đổi handle @. M17: @lyhoan.music.
+§
+Canary Semantic: canary_plan.py chuẩn hóa thang Gate B (Gemini :20129 -> Sol :20129 -> Claude CLI) đọc diff sinh cli_args_override và log_assertions. canary_runner.py hậu kiểm log.jsonl, chống canary hình thức.

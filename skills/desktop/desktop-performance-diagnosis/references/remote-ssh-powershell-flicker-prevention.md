@@ -21,9 +21,39 @@ While a user is actively playing a DirectX/OpenGL fullscreen or borderless game 
 4. **State-Blind Transfer Watchdogs**:
    - A cron watchdog configured to trigger payload transfers based purely on disk space (e.g. `D_FREE >= 52 GB`) without verifying whether the target payload (e.g. `D:\Riot Games\...`) already exists will fire on every interval, spinning up hung socket connections, SSH processes, and disk I/O.
 
+5. **PowerShell `Start-Process cmd.exe -WindowStyle Hidden` Transient Console Pop-Up**:
+   - In local and remote PowerShell orchestration scripts (e.g. `run_parallel.ps1` for batch phone-farm tasks), spawning workers via:
+     `Start-Process -FilePath "cmd.exe" -ArgumentList $cmd -PassThru -WindowStyle Hidden`
+     is a major trap.
+   - **Win32 Window Allocation Timing**: On Windows, `Start-Process ... -WindowStyle Hidden` does NOT prevent the console window from being created. Win32 kernel first allocates the console window surface on the active desktop, and only then does PowerShell send `ShowWindow(SW_HIDE)`.
+   - The ~50ms window exposure appears as an instantaneous black flash that steals focus. In exclusive fullscreen or borderless DirectX games (Warcraft III `w3l.exe`/`War3.exe`, TFT), this 1-frame focus drop causes the graphics driver to cycle exclusive mode, resulting in violent screen blinking / flickering ("chớp màn hình", "nháy nháy liên tục").
+   - **Distinction from Silent Downloaders**: Never falsely diagnose background compute or download workers (e.g. `download_by_niche.py`) as the cause of visual screen blinking if they execute under `pythonw.exe` with `CREATE_NO_WINDOW`. As the user noted ("downloader có ảnh hưởng game đâu?"), background I/O causes bandwidth/disk usage, but CANNOT generate console surface pop-ups. Always target console subsystem allocations and focus stealers.
+
 ---
 
 ## Mechanical Resolution & Guard Patterns
+
+### 1. Zero-Flicker Subprocess Spawning in PowerShell
+Never use `Start-Process cmd.exe -WindowStyle Hidden`. Use .NET `ProcessStartInfo` with `CreateNoWindow = $true` and `UseShellExecute = $false` to ensure the console surface is never allocated:
+
+```powershell
+# In run_parallel.ps1 or any PowerShell worker dispatcher:
+$psi = New-Object System.Diagnostics.ProcessStartInfo
+$psi.FileName = $pythonExe
+$psi.Arguments = "worker_script.py $M $extraArgs"
+$psi.CreateNoWindow = $true
+$psi.UseShellExecute = $false
+$p = [System.Diagnostics.Process]::Start($psi)
+```
+Or when shell redirection is strictly needed, point `FileName` to `cmd.exe` but still enforce `CreateNoWindow = $true`:
+```powershell
+$psi = New-Object System.Diagnostics.ProcessStartInfo
+$psi.FileName = "cmd.exe"
+$psi.Arguments = "/c chcp 65001 >nul 2>&1 && set PYTHONIOENCODING=utf-8 && `"$pythonExe`" worker.py $M > `"$logFile`" 2>&1"
+$psi.CreateNoWindow = $true
+$psi.UseShellExecute = $false
+$p = [System.Diagnostics.Process]::Start($psi)
+```
 
 ### 1. Enforce `-WindowStyle Hidden` on Remote SSH Dispatch
 In fleet runners and upload dispatchers, always supply `-WindowStyle Hidden` and `creationflags=subprocess.CREATE_NO_WINDOW`:

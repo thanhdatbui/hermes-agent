@@ -58,3 +58,22 @@ The operator queried: `"Clgt"` (What the f*** happened?).
    - Run `python D:/Taadaa/tools/reconcile_cronjobs.py --apply` to automatically audit and pause any legacy jobs violating the `no_agent: true` policy.
 4. **Trigger Two-Way Sync:**
    - Trigger `cron-sync-watchdog` (`cronjob action='run' job_id='2b5b608429c7'`) to guarantee that `jobs.json` changes persist cleanly across Git deploy and runtime.
+
+## 4. The Blind-Spot in `guard_cronjob_safety.py` & Hermes `cronjob update` Trap
+- **The Hermes update behavior:** When calling `cronjob(action="update", job_id="...")` to change parameters like `schedule` or `workdir`, if `no_agent` is omitted from the arguments, Hermes tool schema defaults `no_agent` to `False` (or None). This silently strips `no_agent: true` from the job definition, turning a pure script watchdog back into an LLM agent prompt job that times out when LLM proxy is overloaded.
+- **The Guard blind-spot:**
+  `guard_cronjob_safety.py` previously checked:
+  ```python
+  elif action == "update":
+      if "no_agent" in ti and ti["no_agent"] is not True:
+          deny_cron_policy(...)
+  ```
+  If `no_agent` was not in `ti`, it let the update pass through unhindered.
+- **The Invariant Fix:**
+  Change to:
+  ```python
+  elif action == "update":
+      if ti.get("no_agent") is not True:
+          deny_cron_policy("Cronjob update BẮT BUỘC phải khai báo no_agent=true.", rule_id="NO_AGENT_REQUIRED")
+  ```
+  All update calls MUST explicitly supply `no_agent=True`.

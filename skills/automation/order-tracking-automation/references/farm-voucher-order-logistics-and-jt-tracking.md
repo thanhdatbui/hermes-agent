@@ -60,4 +60,34 @@ In farm environments where Telegram alert groups receive dozens or hundreds of b
          except Exception:
              pass
      ```
-  3. Fire the audible alarm specifically when the parcel hits `is_at_hub` (local dispatch station) or `is_out_for_delivery` so the user is immediately alerted to pick up the parcel before couriers load it onto their bikes.
+  3. Fire the audible alarm specifically when the parcel hits `is_at_hub` (local dispatch station) or `is_out_for_delivery` so the user is immediately alerted that the courier is preparing to deliver the parcel to the destination address.
+
+---
+
+## 5. J&T Express Post Office Naming Syntax & Airport/City Code Prefix Trap (`(ĐNG)...`)
+
+### The Trap:
+In tracking timeline descriptions, J&T Express does not spell out the full province name for district delivery stations. Instead, it prefixes the branch name with a 3-letter IATA/telegraphic province code in parentheses, e.g.:
+```text
+Hàng đã được chuyển đến【(ĐNG)Đống Đa】
+```
+Where:
+- `(ĐNG)` = Đà Nẵng.
+- `Đống Đa` = Bưu cục phát Đống Đa (phụ trách các tuyến đường quận Hải Châu như Đinh Tiên Hoàng, Thuận Phước, Thạch Thang).
+
+If destination arrival filters only check for naive full substrings such as `["đà nẵng", "da nang", "hải châu"]`, events like `Hàng đã được chuyển đến【(ĐNG)Đống Đa】` return `False`. As a result, the critical arrival milestone is silenced, and the status fails to update to "Đã đến bưu cục phát".
+
+### The Invariant:
+Arrival heuristics for J&T must include:
+1. Short telegraphic city/province codes: `đng` (Đà Nẵng), `sgn` (TP.HCM), `han` (Hà Nội), etc.
+2. Local delivery branch names: `đống đa`, `dong da`, `hải châu`, `hai chau`, etc.
+3. Explicit check: `any(f in desc_clean for f in ["đà nẵng", "da nang", "hải châu", "hai chau", "ttkt đà nẵng", "đng", "đống đa", "dong da"])`.
+
+---
+
+## 6. The Anti-Counter-Pickup Invariant & Clickable Tracking Link Delivery
+
+### The Rule (User Discipline):
+- **CẤM TUYỆT ĐỐI giục/bảo user ra bưu cục lấy hàng:** Người dùng đặt hàng giao về tận nhà/địa chỉ; hệ thống chỉ có trách nhiệm theo dõi và cảnh báo mốc khi shipper nhận hàng đi phát về địa chỉ. Tuyệt đối không được bảo user ra quầy/bưu cục tự lấy hay dặn giữ hàng tại bưu cục.
+- **Tiêu đề thông báo chuẩn:** Chỉ dùng `📦 THÔNG BÁO: HÀNG ĐÃ VỀ BƯU CỤC PHÁT` (chuẩn bị giao về địa chỉ) hoặc `🚨 BÁO ĐỘNG GIAO HÀNG: SHIPPER ĐANG ĐI PHÁT`, cấm dùng từ 'Thời điểm vàng lấy tại quầy'.
+- **Clickable Tracking Links:** Khi gửi link tra cứu bưu cục cho user trên Telegram/chat, BẮT BUỘC gửi link dạng URL trần hoặc markdown link có thể click trực tiếp nhảy sang trình duyệt (`https://...` hoặc `[Tra cứu](https://...)`), TUYỆT ĐỐI CẤM bọc trong code block (```text) làm user không bấm nhảy trang được.

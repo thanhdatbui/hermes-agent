@@ -27,6 +27,15 @@ Use when creating, modifying, or reviewing mechanical enforcement gates (hooks, 
 - Reference: `references/gate-b-planner-and-anti-overengineering-gate-c.md` (Gate B Planner & Anti-Overengineering Gate C: 90s timeout, no-sha256 CRLF-normalized anchor, Qoder T0 primary, & independent applied verification).
 - Reference: `references/zero-overengineering-bulkhead-clamp-and-adb-false-positive-20261029.md` (Zero-overengineering bulkhead auto-clamp, ambiguous adb false-positive fix, & step-by-step invariant).
 - Reference: `references/crystallize-fix-invariant-and-ratchet-amendment-architecture-20261029.md` (Crystallize fix invariant at closeout Step 2.6, reverse_diff regression proof, & ratchet amend_rule for false-positive recovery).
+- Reference: `references/crystallize-fix-invariant-and-watchdog-compliance-20261030.md` (Invariant crystallization at Step 2.6, reverse_diff verification, ratchet amend_rule, monotonic integrity, & watchdog compliance monitoring).
+- Reference: `references/unified-pipeline-gate-abc-canary-closeout-lifecycle-20261030.md` (Unified pipeline lifecycle: Gate A-B-C decoupled from Gate 6 Canary Evidence & Closeout Gate authority).
+- Reference: `references/unified-pipeline-gate-1-to-6-and-confirm-enforcement-20261030.md` (Unified pipeline Gates 1-6 automation, anti-false-reject post-patch check, & strict confirm enforcement).
+- Reference: `references/unified-pipeline-s0-s5-architecture-and-reviewer-loop-20261030.md` (Unified pipeline S0..S5 full-spectrum gate integration, multi-stage rollback, baseline content drift audit, & one-shot reviewer prompt patterns).
+- Reference: `references/unified-pipeline-end-to-end-canary-and-context-injection-20261030.md` (Unified pipeline end-to-end canary proof, target-file context forwarding in Gate B S1, & strict non-empty anchor prepend invariants).
+- Reference: `references/multi-file-batch-rollback-and-baseline-drift-audit-20261030.md` (Multi-file batch rollback & baseline content drift audit architecture across S2/S3/S4).
+- Reference: `references/closeout-v2-o1-hard-replacement-and-legacy-scorecard-retirement-20261030.md` (Closeout v2 O(1) hard replacement, retirement of legacy 3,000-line LLM scoring closeout_gate to _retired/, and direct forwarder lock-in).
+- Reference: `references/gate-compliance-14-gates-watchdog-architecture-20261030.md` (Gate compliance watchdog expanded to 14 gates: Pipeline A-B-C, Canary Gate 6, Patch Surgery, Safety Valve, & GPM Proxy monitoring).
+- Reference: `references/local-automation-anti-overengineering-hmac-elimination.md` (Local automation anti-overengineering: HMAC debt elimination, TLIS v1 local integrity standard, & reviewer paranoid threat model calibration).
 
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

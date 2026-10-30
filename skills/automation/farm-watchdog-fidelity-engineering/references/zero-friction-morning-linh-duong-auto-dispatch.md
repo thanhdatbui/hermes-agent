@@ -4,7 +4,11 @@
 - **The Friction Trap:** Bắt user phải tự gõ lệnh hoặc nhớ set topic / session "Linh Dương" (việc đòn bẩy lớn nhất) vào cuối ngày là thiết kế tồi, chắc chắn thất bại sau 1-2 ngày vì ma sát nhận thức (cognitive friction).
 - **The Dopamine/Zeigarnik Trap:** Sáng sớm mở Telegram, user thấy hàng loạt bot và session báo cáo dở dang sẽ rơi vào phản xạ đọc hết ("mắc bệnh đọc hết"), làm kiệt quệ năng lượng tinh thần đầu ngày vào các việc lặt vặt (bắt chuột đồng).
 - **The Agent Guard Trap:** Cronjob tạo mới trên hệ thống bị chặn bởi `[CRON_AGENT_POLICY_BLOCKED]` nếu không có `no_agent: true`. Không được tạo cronjob chạy LLM trực tiếp trong runtime cron của Hermes.
-- **The Deleted Topic Trap (Phương án B Trap):** Khi User làm xong việc thường có thói quen xoá hẳn Topic Telegram cho sạch mắt ("săn xong thịt xong thì xoá để làm chi"). Nếu cronjob bắn trực tiếp vào topic ID cũ đã bị xoá, Telegram sẽ báo lỗi `message thread not found`.
+- **The Deleted Topic & Ephemeral Origin Delivery Trap:** 
+  - Khi User làm xong việc thường có thói quen xoá hẳn Topic Telegram cho sạch mắt ("săn xong thịt xong thì xoá để làm chi").
+  - **BẪY CHÍ MẠNG CỦA `deliver: 'origin'`:** Khi tạo/cập nhật cronjob trong một topic Telegram Forum, Hermes ghi nhớ `origin` là `platform:chat_id:thread_id` (cụ thể topic hiện tại).
+  - Khi topic đó bị xoá: Cron chạy lúc 06:00 sáng sẽ bị Telegram trả về `message thread not found`. Hermes Gateway kích hoạt fallback `delivered without thread_id`. Trên Telegram Forum, gửi không có `thread_id` sẽ **rơi thẳng vào topic "General" (Chung)**! User không nhận được notification ở topic làm việc mới và tưởng cronjob bị mất tích.
+  - **KHẮC PHỤC TRIỆT ĐỂ:** Bắt buộc User tạo 1 **Topic cố định vĩnh viễn** (vd: `🦁 Linh Dương` hoặc `Báo Cáo Sáng`) và cấu hình `deliver: telegram:<chat_id>:<permanent_thread_id>`, TUYỆT ĐỐI KHÔNG dùng `deliver: 'origin'` tạo từ topic nhiệm vụ tạm bợ sẽ bị xóa.
 - **The ID Searching Frustration:** Nếu gửi tin nhắn về DM điều phối mà chỉ ghi text ID topic (vd `Thread ID: 324110`) sẽ làm User bực mình vì phải đi soi/lùng từng ID trên app. BẮT BUỘC phải đính kèm Direct Link 1-click `https://t.me/c/<chat_id>/<thread_id>`.
 
 ## 2. Core Architecture
@@ -14,10 +18,10 @@
   - **Claude CLI:** Chỉ dùng độc quyền cho vai trò **Auditor / Reviewer** khi User yêu cầu review nghiệm thu mã nguồn.
   - **Gemini AG Pool (`ag-gemini-pool-3` qua OmniRoute local `:20129`):** Đóng vai trò **Daily Morning Runner**. Gọi trực tiếp endpoint local `/v1/chat/completions` với timeout 20s. Tốc độ cực nhanh (< 1.5s), không tốn tiền API bên ngoài và đồng bộ với model chính của Agent.
 - **Fail-safe Fallback:** Nếu endpoint LLM bị lỗi hoặc timeout, script tự động chuyển sang Heuristic Regex để đảm bảo 100% không bao giờ trượt tin nhắn sáng sớm.
-- **Giao diện 1-Click Direct Link (Giải pháp tối thượng cho Topic Lifecycle):**
-  - Đặt `deliver: 'origin'` để bắn về Chat DM điều phối cố định (vĩnh viễn không bao giờ sợ lỗi xoá topic).
+- **Giao diện 1-Click Direct Link & Topic Delivery Lifecycle:**
+  - **Đích đến:** Bắt buộc cấu hình đích đến là **Topic Cố Định** (`deliver: telegram:<chat_id>:<permanent_thread_id>`), cấm để `origin` từ topic task tạm bợ vì khi xoá topic tin sẽ bị trôi vào General.
   - Soạn tin nhắn có link markdown trực tiếp: `[👉 BẤM VÀO ĐÂY ĐỂ VÀO PHIÊN ĐANG DỞ](https://t.me/c/<chat_id>/<thread_id>)`.
-  - User thức dậy chỉ cần chạm 1 phát là Telegram tự nhảy vào đúng Topic làm dở. Làm xong việc, User bấm Xoá Topic mà không ảnh hưởng gì tới lịch trình ngày hôm sau.
+  - User thức dậy chỉ cần chạm 1 phát từ Topic Cố Định là Telegram tự nhảy vào đúng Topic làm dở. Làm xong việc, User bấm Xoá Topic nhiệm vụ thoải mái, tin nhắn sáng mai vẫn sẽ nổ chuông đều đặn tại Topic Cố Định.
 
 ## 3. Production Engineering Checklist (Senior Review Findings)
 1. **SQLite Read-Only URI & Timeout:**

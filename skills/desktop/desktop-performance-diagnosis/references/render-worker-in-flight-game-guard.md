@@ -6,6 +6,7 @@
   1. **Coarse Polling Interval:** The watchdog was scheduled in Windows Task Scheduler (`Taadaa_Admin_Render_15m`) to run once every 15 minutes. When a game starts between ticks, the render worker continues consuming 90%+ CPU for up to 15 minutes.
   2. **Blocking Subprocess Execution:** `run_admin_render_worker.py` executed render tasks via `subprocess.run(cmd, timeout=2400)`. This call blocks Python for up to 40 minutes per task, incapable of sensing new processes.
   3. **Immediate Task Advancement on External Kill:** When the external watchdog did kill `ffmpeg.exe` and `random_batch_render.py`, `subprocess.run` caught returncode 15, logged a warning, and immediately executed the next task in `for t in tasks:`, instantly spawning a new `ffmpeg.exe` while the user was still actively in-game!
+  4. **The Downloader & Secondary Worker Blindspot:** While Render workers are guarded, secondary batch workers (such as `download_by_niche.py --parallel 40` via `Taadaa_Admin_Downloader_15m` or ad-hoc `register-gmail` / `run_all.ps1` runs) are frequently omitted from the game guard. A 40-worker downloader continuing to run saturates network/disk I/O and spawns sub-processes, causing the exact same stutter and screen-blinking issues ("chớp màn hình / nháy nháy") in DirectX games like Warcraft 3 (`w3l.exe`) or TFT.
 
 ## 2. Solution: In-Process In-Flight Game Polling (<= 2s Latency)
 Instead of relying on an external periodic watchdog to police a blocking worker, the game detection logic MUST be embedded directly into the worker's execution loop:
@@ -36,6 +37,11 @@ Instead of relying on an external periodic watchdog to police a blocking worker,
    - Warcraft III: `war3.exe`, `frozen throne.exe`, `w3l.exe`, `warcraft iii.exe`
    - TFT in-match: `league of legends.exe`, `tftclient.exe`, `tftclient-win64-shipping.exe`
    - CẤM match background companion apps (`TFTAcademy.exe`, `Overwolf.exe`, `LeagueClientUx.exe`).
+
+## 3. Downloader & Remote Dispatch Game Guarding
+- **Downloader Watchdog Parity:** `watchdog_admin_downloader.py` MUST import and enforce `is_gaming_active()` identically to `watchdog_admin_render.py`. If active, immediately kill any running `download_by_niche.py` or `run_admin_downloader_service.py` and skip spawning.
+- **Remote Pre-Flight Check Before Ad-hoc Dispatches:** Before triggering heavy remote scripts (e.g. `run_all.ps1`, `gmail_reg_v10.py`, multi-machine ADB feeds) via SSH from the controller to the Admin machine, check whether gaming is active (`is_gaming_active()`). Never dispatch ad-hoc batch automation while a game is running in Console Session 1.
+- **Screen-Blinking Prevention in Legacy DirectX Games:** Games like Warcraft 3 running in exclusive/borderless fullscreen blink or minimize when background tasks launch non-hidden console windows (`conhost.exe`, `powershell.exe`, `cmd.exe`). Ensure all background and remote executions strictly use `CREATE_NO_WINDOW (0x08000000)` and `WindowStyle Hidden`.
 
 ## 3. Coordinator Discipline: Two-Phase Incident Response
 When a user angrily reports game lag or system disruption caused by automation:

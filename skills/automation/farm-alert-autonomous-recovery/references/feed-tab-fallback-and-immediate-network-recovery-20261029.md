@@ -15,9 +15,14 @@
      - `manual-needed:popup`
      - Hoặc có nội dung lệch feed (`friends_feed_content_mismatch`).
    - Hàm trả về trực tiếp `trigger_reason`.
-2. **Graceful Degradation:**
+2. **Graceful Degradation & State Synchronization:**
    - Tự động tap quay lại tab Đề xuất (`FEED_TYPE_FOR_YOU`).
    - Đặt `confirm["status"] = ExitStatus.DEGRADED.value` và `confirm["safety_status"] = "ok"`.
+   - **BẮT BUỘC đồng bộ bộ 3 biến trạng thái:**
+     * `confirm["detected"] = FEED_TYPE_FOR_YOU`
+     * `confirm["feed_type"] = FEED_TYPE_FOR_YOU`
+     * `expected_label = _expected_feed_label(FEED_TYPE_FOR_YOU)`
+   - *Hệ quả nếu thiếu:* `_is_navigation_mismatch_row` sẽ so sánh `detected` cũ (following/friends) với `next_feed_type` mới (for-you) -> false mismatch -> rơi vào `retry_navigation` với `expected_label` cũ -> `feed not confirmed` gây sập hàng loạt máy (34/78 máy).
    - Giữ tài khoản tiếp tục lướt feed Đề xuất cho đến khi hoàn thành đủ hạn ngạch video được giao.
 
 ## 3. Kỷ Luật Closeout Gate & Sol Auditor

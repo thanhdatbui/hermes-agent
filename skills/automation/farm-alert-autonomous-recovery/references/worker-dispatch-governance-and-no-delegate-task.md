@@ -20,7 +20,13 @@ Mọi tác vụ thi công code, điều tra sâu hoặc fix lỗi ngoài ngân s
 
 ---
 
-## 3. Coordinator Protocol Before Dispatch
+## 3. Coordinator Protocol Before Dispatch & Gate 2 Monolith Rules
 1. **Scope Lock O(1)**: Coordinator phải xác định rõ mục tiêu, file cần sửa, failing test/evidence trước khi gọi worker.
-2. **Không spawn subagent mò mẫm**: Cung cấp exact contract và anchor duy nhất tuyệt đối.
+2. **Quy tắc `--anchor` trên file Monolith (> 1.500 dòng)**:
+   - Cơ chế cơ giới `verify_gate2_monolith` trong `dispatch_worker.py` bắt buộc `--anchor` phải là **tên hàm hoặc class** (`def <symbol>` hoặc `class <symbol>`).
+   - CẤM truyền comment, chuỗi text inline hoặc selector vào `--anchor` -> sẽ bị Gate 2 chặn ngay với lỗi `ANCHOR_NOT_FOUND (matches=0)`.
+   - Hàm mục tiêu bắt buộc có độ dài `span <= 150 dòng`. Nếu target vào hàm bao quát khổng lồ (như `_feed_session_flow` dài hàng nghìn dòng) -> sẽ bị Gate 2 chặn với lỗi `SPAN_TOO_BIG`.
+   - **Cách xử lý khi sửa Monolith**:
+     * Hoặc target vào helper function chuyên trách có `span <= 150 dòng`.
+     * Hoặc nếu là micro-fix đồng bộ biến trạng thái bên trong hàm lớn và Coordinator đã có `exact_diff_ready == TRUE` ($\le 30$ dòng, $\le 2$ files, focused test pass < 30s) -> Kích hoạt ngay **Emergency Surgery (L2)** theo đúng thẩm quyền được cấp sẵn, tránh loop dispatch fail vô ích.
 3. **Giám sát kết quả**: Đọc stdout/exit code của worker script trực tiếp, không dựa vào self-report không kiểm chứng.

@@ -31,9 +31,14 @@
    - `workdir="<path_repo>"`
    - `deliver="telegram:<channel_id>"` (tra cứu Chat ID từ `$LOCALAPPDATA/hermes/channel_directory.json`).
 
-## 4. Anti-Kneejerk Deletion (Cấm Xóa Vội Vã Khi Gặp Lỗi)
-- Khi cron job gặp lỗi 503 hoặc timeout, CẤM xóa job nếu đơn hàng/tác vụ nền vẫn đang hoạt động (ví dụ: đơn hàng còn đang trung chuyển, chưa giao).
-- BẮT BUỘC sửa lại (remediate) cấu hình thành pure script `no_agent: true`.
+## 4. Anti-Kneejerk Deletion & Quy Trình 3 Bước Remediate Cron Lỗi Timeout
+- Khi cron job gặp lỗi 503 hoặc "provider timeout. Fallback chain was exhausted or unavailable":
+  * CẤM xóa job nếu nghiệp vụ/đơn hàng/tác vụ nền vẫn đang hoạt động.
+  * Nguyên nhân: Job có `script` nhưng thiếu `no_agent: true`, khiến scheduler kích hoạt subagent LLM và timeout khi proxy upstream quá tải.
+- **Quy trình 3 bước Remediate khép kín:**
+  1. **Update cấu hình:** Gọi `cronjob(action='update', job_id='<id>', no_agent=True)` để tắt hoàn toàn LLM subagent.
+  2. **Đồng bộ 3 điểm:** Chạy `python D:/Taadaa/Hermes/deploy/hermes-home/scripts/cron_sync_watchdog.py` để cập nhật `jobs.json` đồng thời tại Runtime, Deploy repo (`D:\Taadaa\Hermes\deploy\hermes-home\cron\jobs.json`) và OneDrive Shared.
+  3. **Kiểm chứng chạy ngay:** Kích hoạt `cronjob(action='run', job_id='<id>')`, xác nhận kết quả trả về `execution_success: true` và `last_status: 'ok'`.
 
 ## 5. Đồng Bộ 9 Pre-Tool Hooks Bắt Buộc (Runtime ↔ Deploy Parity)
 Cả `%LOCALAPPDATA%\hermes\config.yaml` và `D:\Taadaa\Hermes\deploy\hermes-home\config.yaml` bắt buộc phải nạp đủ 9 pre-tool hooks để bảo vệ cơ học, chống agent vi phạm rule:
@@ -46,3 +51,15 @@ Cả `%LOCALAPPDATA%\hermes\config.yaml` và `D:\Taadaa\Hermes\deploy\hermes-hom
 7. `guard_android_proxy.py` (`terminal`): **Bắt buộc IP tĩnh LAN RFC1918** khi gán proxy Android.
 8. `guard_pytest_scope.py` (`terminal`): Buộc chạy focused test, cấm quét cả repo.
 9. `guard_model_drift.py` (`terminal`): Chặn truyền model cấm (sol-pro, sol-instant) vào closeout_gate.
+
+## 6. Cạm Bẫy Mất Cờ `no_agent: true` Khi Update và Lỗ Hổng Gate Kiểm Tra
+- **Bẫy Hermes Cron Update (`no_agent` Default False):** Khi gọi `cronjob(action='update', ...)` để sửa bất kỳ trường nào (như `schedule`, `prompt`, `workdir`), nếu không truyền tường minh `no_agent=True`, runtime Hermes tự động gán mặc định `no_agent=False`. Điều này âm thầm tước bỏ chế độ pure script và kích hoạt lại LLM subagent, dẫn đến provider timeout khi proxy upstream quá tải.
+  👉 **Quy tắc bất biến:** Mọi lời gọi `cronjob(action='update')` BẮT BUỘC phải luôn truyền kèm `no_agent=True`.
+- **Lỗ hổng Blind-Spot của Gate tiền kiểm (`if "no_agent" in ti`):**
+  Trong `guard_cronjob_safety.py`, câu lệnh kiểm tra:
+  ```python
+  if "no_agent" in ti and ti["no_agent"] is not True:
+      deny_cron_policy(...)
+  ```
+  chỉ chặn khi tham số update có chứa key `"no_agent"`. Khi Agent gọi update chỉ truyền `job_id` và `schedule`, điều kiện `if "no_agent" in ti` trả về `False` khiến Gate bị lọt qua hoàn toàn.
+  👉 **Thiết kế Gate chuẩn:** Bắt buộc phải kiểm tra `if ti.get("no_agent") is not True:` để chặn đứng mọi lời gọi `update` thiếu cờ `no_agent=True`.

@@ -31,3 +31,5 @@ Do not rely solely on mailbox polling as tracking code discovery. TikTok Shop an
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.
 > - `references/order-lifecycle-execution-order-and-timeout-budget.md`: Quy chuẩn đảo thứ tự thực thi Phase 2 Web-First, chặn nghẽn ADB bóc mã đơn mới (`max_app_syncs = 1`), bọc `TimeoutExpired` chống crash cron runner, và cơ chế dọn lock mồ côi không có trường machine.
+> - `references/zero-token-cron-wrapper-and-guard-wiring.md`: Bẫy mất cờ `no_agent: true` khi update cronjob (Hermes runtime default False), quy trình 3 bước remediate, và lỗ hổng blind-spot `if "no_agent" in ti` trong `guard_cronjob_safety.py`.
+> - `references/farm-voucher-order-logistics-and-jt-tracking.md`: Cú pháp mã bưu cục J&T viết tắt theo mã tỉnh `(ĐNG)Đống Đa`, tham số tra cứu `cellphone`, và cơ chế cảnh báo khi hàng về bưu cục phát giao về địa chỉ.

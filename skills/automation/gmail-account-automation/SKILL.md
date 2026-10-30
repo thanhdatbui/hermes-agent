@@ -9,6 +9,8 @@ description: "Automation workflows for Gmail accounts on the Taadaa farm: Playwr
 - `references/s7-gmail-slot-eviction-and-gpm-cleanup-rules.md` — Giải phóng slot S7 & dọn DIE.
 - `references/slot-capacity-and-eviction-policy.md` — Trần số acc vs rolling eviction.
 - `references/dual-cluster-post-noon-gmail-and-watchdog-architecture.md` — Dual-cluster Reg Gmail & range(1, 75) fix.
+- `references/admin-cluster-gmail-reg-corrupt-sync-and-excel-recovery-20261030.md` — Khôi phục Farm Admin khi file code bị đứt sync và Excel XML bị lỗi (mismatched tag).
+- `references/night-reg-gmail-admin-ssh-allowlist-and-pipeline-separation-20261030.md` — Triage nguyên nhân Reg Gmail đêm không chạy Farm Admin: Bẫy SSH allowlist `$env:` & phân tách 2 launcher.
 - `references/gpm-api-pagination-and-soak-gate-deadlock.md` — GPM API pagination & Soaking Gate.
 - `references/youtube-nurture-ad-handling-and-evidence-timing.md` — YouTube ad skip & timing trap.
 - `references/gpm-relogin-taxonomy-and-soak-date-typo-trap.md` — Phân loại 6 lỗi re-login GPM, bẫy soak date Excel, dò pass di chứng wrong_password & xử lý SMS checkpoint.
