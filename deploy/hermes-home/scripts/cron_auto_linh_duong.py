@@ -225,10 +225,20 @@ def fallback_heuristic(candidates):
     }
 
 def main():
+    today_str = time.strftime("%Y-%m-%d")
+    marker_file = Path("D:/Taadaa/runtime/linh_duong_last_run.txt")
+
     if '--force' not in sys.argv and '--test' not in sys.argv:
-        current_hour = time.localtime().tm_hour
-        if current_hour < 5 or current_hour >= 9:
+        # Chỉ chạy đúng trong khung 06:00 - 06:59 sáng
+        if time.localtime().tm_hour != 6:
             return
+        # Mỗi ngày chỉ chạy đúng 1 lần duy nhất, chống lặp lại
+        if marker_file.exists():
+            try:
+                if marker_file.read_text(encoding="utf-8").strip() == today_str:
+                    return
+            except Exception:
+                pass
 
     try:
         candidates, err = get_candidates()
@@ -278,6 +288,12 @@ def main():
             f"⚡ **Hành động đề xuất:** {action}\n"
             f"*(Tập trung xử lý dứt điểm việc này trước khi mở các session lặt vặt!)*"
         )
+        try:
+            marker_file.parent.mkdir(parents=True, exist_ok=True)
+            marker_file.write_text(today_str, encoding="utf-8")
+        except Exception:
+            pass
+
         print(msg[:3900])
     except Exception as exc:
         print(f"🦁 **[LINH DƯƠNG SÁNG NAY - CẢNH BÁO]** Lỗi hệ thống: {exc}")
