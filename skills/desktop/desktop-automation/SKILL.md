@@ -12,4 +12,5 @@ This skill captures learnings and pitfalls for driving the user's desktop via to
 - [Meta Muse AI Registration & Geoblock Bypass](references/meta-muse-ai-registration-and-geoblock-bypass.md): Kinh nghiệm bypass Geoblock US/Canada, nạp ảnh selfie và điền form Next.js Meta OIDC.
 - [GPM Antidetect & Meta/Instagram Auth Automation Quirks](references/gpm-meta-auth-and-proxy-quirks-202610.md): GPM profile creation key ('Profile_name'), proxy formatting, Playwright Next.js input traps, and Instagram/Meta 2FA TOTP automation.
 - [Running Chrome Background Automation Without CDP](references/running-chrome-background-automation-without-cdp.md): Điều khiển Chrome đang chạy ngầm bằng `computer_use` (SOM + `set_value` UIA ValuePattern) khi không mở port CDP 9222.
+- [Shopee & Marketplace Research Automation Pitfalls](references/shopee-marketplace-research-automation-pitfalls.md): Quy trình tương tác tìm kiếm Shopee, xử lý bẫy giá clickbait Barebone/xác máy, và kỹ thuật duyệt biến thể qua browser automation.
 

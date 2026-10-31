@@ -5,6 +5,10 @@ description: "Use when running batch 2FA on TikTok farm. Chạy batch 2FA repo t
 # TikTok Add 2FA Batch Ops (repo tiktok-add-bao-mat-f2a)
 
 References:
+- `references/sqlite-master-ledger-and-write-through-sync-discipline-20261031.md` — **[MỚI 31/10/2026]** Chuyển đổi dứt điểm đọc Excel sang SQLite DAL `farm_db.py`, kiến trúc Write-Through ghi kép Excel + `farm_master.db`, và kỷ luật chống xin lỗi suông (cơ giới hóa ngay lập tức).
+- `references/sqlite-master-migration-and-no-excuse-discipline-20261031.md` — **[MỚI 31/10/2026]** Kỷ luật cấm nhận lỗi suông (chỉ hành động cơ giới hóa), chuyển đổi dứt điểm 100% reading/writing sang DAL SQLite `farm_db.py` (write-through), và sửa lỗi Gate B planner context window + Canary CLI mismatch.
+- `references/sqlite-master-dal-otp-and-planner-context-discipline-20261031.md` — **[MỚI 31/10/2026]** Kỷ luật cấm nhận lỗi suông (cơ giới hóa thay thế lời xin lỗi), cấm tuyệt đối đọc openpyxl Excel (100% qua SQLite `farm_db.py`), nạp full context $\le 1500$ dòng cho Gate B Planner Gemini Web và chuẩn cờ Canary CLI.
+- `references/night-2fa-ui-ambiguous-next-and-canary-gap-20261031.md` — **[MỚI 31/10/2026]** Fix lỗi `UI_TARGET_AMBIGUOUS:Next:0` đa ngữ, chống lạm dụng `--no-canary` trên adapter thiết bị, và giải trình thang não Gate B fallback từ `gemini-web` sang `sol-worker`.
 - `references/ui-target-ambiguous-next-and-unified-patch-pipeline-20261031.md` — **[MỚI 31/10/2026]** Khắc phục lỗi `UI_TARGET_AMBIGUOUS:Next:0` bằng fallback đa ngữ (Tiếp/Tiếp tục/Next/Continue), kỷ luật chạy pipeline lệnh đơn dòng chống dính Coordinator Guard.
 - `references/live-test-telegram-spam-prevention-and-dry-run-contract-20261030.md` — **[MỚI 30/10/2026]** Kỷ luật cấm test live watchdog thiếu `--dry-run`, chống bão spam Telegram báo cáo mã thoát 5 vào nhóm nghiệp vụ.
 - `references/night-2fa-watchdog-trace-observability-and-no-vichanger-invariants-20261030.md` — **[MỚI 30/10/2026]** Lưu Trace đĩa `D:/Taadaa/reports/night_2fa_trace_{date}.log` cho Watchdog 2FA, bóc tách `failure_breakdown`, cấm tuyệt đối nhắc ViChanger hoặc app Outlook S7 (100% Graph API & GPM PC).

@@ -34,8 +34,15 @@ Cỗ máy trạng thái (State Machine) thực thi theo chu trình bất khả x
   - Xuất plan.json O(1) có exact old_string -> new_string.
   - Kiểm tra điều kiện duy nhất: nl(text).count(old_string) == 1 (chuẩn hóa CRLF->LF, bỏ hoàn toàn SHA256).
 
-### 2.1. CÁC BẪY & KỶ LUẬT THI CÔNG GATE B PLANNER (30/10/2026)
-- **Bẫy Context 100 dòng (Anchor Starvation):** `TARGET_CONTEXT_LINES` nếu để 100 dòng sẽ cắt cụt các file >100 dòng (file 500-700 dòng thì phần logic nghiệp vụ bên dưới biến mất hoàn toàn). Planner không thấy code thật sẽ trả về `edits: []`. Bắt buộc đặt tối thiểu 800 dòng hoặc context window động quanh target functions.
+### 2.1. CÁC BẪY & KỶ LUẬT THI CÔNG GATE B PLANNER (Cập nhật 31/10/2026)
+- **Bẫy Context Cắt Cụt Anchor (Anchor Starvation >800 dòng):** Cắt cứng 100 hay 800 dòng đều gây lỗi cắt ngang các hàm nghiệp vụ ở cuối file (ví dụ `ensure_account_password_saved` ở dòng 807 của file 911 dòng). Planner không nhìn thấy code thật sẽ tự ảo giác sinh `old_string` sai, dẫn đến `validate_plan` loại bỏ Gemini Web để fallback sang Sol Worker. 
+  * *Giải pháp cơ giới hóa:* Trong `gate_b_planner.py`, hàm `build_target_context()` nạp trọn vẹn toàn bộ file nếu $\le 1.500$ dòng. Với monolith lớn hơn, nạp 200 dòng đầu kết hợp quét keyword trích xuất các cửa sổ $\pm 60$ dòng quanh code thật.
+- **Bẫy Tham Số CLI Giữa Pipeline và Canary Runner:** 
+  * `unified_patch_pipeline.py` không được truyền cờ `--device <serial>` (vì `canary_runner.py` chỉ nhận `--machine <N>` hoặc `--auto-device`). Bắt buộc map `--canary-device auto` sang `--auto-device`, và số máy sang `["--machine", str(canary_device)]`.
+  * Trong `canary_runner.py`: Tuyệt đối không hardcode file YAML cấu hình vào `--workbook-path` của các runner đòi hỏi Excel (như `tiktok-add-bao-mat-f2a`), và phải tự tìm `source_row` hợp lệ $\ge 2$ cho máy canary thay vì mặc định row 1 (header).
+- **Kỷ Luật Ứng Xử Điều Phối ("Không xin lỗi, tập trung sửa và cơ giới hóa"):**
+  * Khi phát hiện lỗi hoặc bị user chất vấn, cấm tuyệt đối văn phong thanh minh, xin lỗi suông hay tự kiểm điểm lê thê.
+  * Phản hồi tập trung 100% vào: (1) Bản chất nguyên nhân kỹ thuật từ log/code thật, (2) Đã sửa / cơ giới hóa cụ thể ở file nào, (3) Kết quả kiểm chứng thực tế sau khi sửa.
 - **Bẫy Claude CLI trên Windows (Binary & Argument Resolution):**
   - `shutil.which("claude")` trên Windows có thể trỏ vào wrapper bash không đuôi (`/hermes/bin/claude`), khiến `subprocess.run` văng `WinError 2: The system cannot find the file specified`. Phải ưu tiên `claude.exe` (`shutil.which("claude.exe") or shutil.which("claude")`), nếu là non-exe thì bọc qua `bash`.
   - Claude CLI trên Windows chạy headless dễ treo/lỗi stdin; bắt buộc truyền prompt trực tiếp qua argument `[*base_cmd, "-p", full_prompt]`.

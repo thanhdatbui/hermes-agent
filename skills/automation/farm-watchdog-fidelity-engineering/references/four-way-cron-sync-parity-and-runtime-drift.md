@@ -50,12 +50,19 @@ Mỗi khi sửa bất kỳ cron script hoặc wrapper runner nào (`tiktok_runne
   ```
 - Nếu có bất kỳ sự lệch hash nào, TUYỆT ĐỐI KHÔNG BÁO DONE mà phải đồng bộ lại ngay.
 
-### Bước 4: Kiểm chứng tức thì (Instant Verification Invariant)
+### Bước 4: Kiểm chứng tức thì & Chống Bẫy Canary Mù (Instant Verification & Anti-False-Canary)
+- **CẠM BẪY CHÍ MẠNG (False Canary Verification Trap):**
+  - Khi sửa script trong repo (ví dụ `D:/Taadaa/tools/<script>.py`), nếu gọi `cronjob(action='run')` TRƯỚC KHI copy sang deploy repo và chạy `cron_sync_watchdog.py --force`:
+  - Scheduler của Hermes sẽ nạp file CŨ trong `%LOCALAPPDATA%\hermes\scripts\` để chạy.
+  - Lệnh `cronjob run` vẫn trả về `execution_success: true` và `last_status: ok` (do file cũ chạy không crash), nhưng nội dung bắn lên Telegram là OUTPUT CŨ (vẫn chứa link/logic lỗi). Agent tưởng nhầm đã sửa xong và nhắn User kiểm tra, User bấm vào dính nguyên lỗi cũ.
+- **THỨ TỰ THI CÔNG BẮT BUỘC TRƯỚC KHI CANARY:**
+  1. Patch script trong repo nguồn (`D:/Taadaa/tools/<script>.py`).
+  2. Chạy test logic nội bộ: `python D:/Taadaa/tools/<script>.py`.
+  3. Đồng bộ vào Deploy Central: `cp D:/Taadaa/tools/<script>.py D:/Taadaa/Hermes/deploy/hermes-home/scripts/<script>.py`.
+  4. Ép nạp vào Runtime qua Watchdog: `python D:/Taadaa/Hermes/deploy/hermes-home/scripts/cron_sync_watchdog.py --force`.
+  5. CHỈ SAU KHI runtime đã nhận file mới (`[SYNC] <script>.py -> ...scripts`), mới được gọi `cronjob(action='run', job_id='<job_id>')`.
 - CẤM TUYỆT ĐỐI tạo/sửa cronjob xong rồi để đấy đợi scheduler tự chạy.
-- Sau khi gọi `cronjob(action='create')` hoặc `cronjob(action='update')`, BẮT BUỘC kích hoạt kiểm thử ngay tại chỗ:
-  ```python
-  cronjob(action='run', job_id='<job_id>')
-  ```
+- Sau khi gọi `cronjob(action='create')` hoặc `cronjob(action='update')`, BẮT BUỘC kích hoạt kiểm thử ngay tại chỗ qua `cronjob(action='run', job_id='<job_id>')`.
 - Chỉ được báo hoàn thành khi kết quả trả về `last_status: ok` và `execution_success: true`. Gate `guard_cronjob_safety.py` đã loại bỏ hoàn toàn `~/.hermes/scripts` khỏi search roots; script bắt buộc phải tồn tại trong `%LOCALAPPDATA%\hermes\scripts` mới được phép khởi tạo cronjob.
 
 ---

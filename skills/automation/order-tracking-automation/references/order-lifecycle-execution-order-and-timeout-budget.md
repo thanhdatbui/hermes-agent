@@ -65,3 +65,9 @@ except subprocess.TimeoutExpired:
 
 ### Rule 4: Orphan Device Lock Reaper with Unset Machine Fields
 When `operator_device_lock` is invoked with `serial` but without an integer `machine` parameter, the resulting lock file (`serial_<serial>.lock.json`) contains `"machine": ""`. Reapers (such as `reap-dead-owner-locks.py`) must not skip these locks if the owner process is definitively dead (`owner_process_alive(d) is False`). Dead-owner locks must be reaped into quarantine immediately to prevent stale device-lock deadlocks on subsequent runs.
+
+### Rule 5: Non-Blocking Phase 1 Traversal (Anti-Head-of-Line Blocking)
+A strict `max_app_syncs = 1` limit with sequential list traversal creates a severe head-of-line blocking trap: if order #1 on Machine A is deferred (`DEFERRED_DEVICE_BUSY`) or fails navigation (`APP_SYNC_ERROR`), incrementing `app_syncs` or breaking immediately causes subsequent orders #2, #3, #4 on Machines B, C, D to starve permanently.
+- **Pattern:** When a candidate order returns `DEFERRED_DEVICE_BUSY`, `SKIPPED_NO_MACHINE`, or `APP_SYNC_ERROR`, log the deferral and `continue` to inspect the next pending order. Only consume the `app_syncs += 1` quota when a phone is genuinely accessed and completed (either successfully synced or definitive inspection).
+- **Watchdog Generic Dispatch:** Never hardcode specific order IDs (e.g. `watch_jt_delivery_22`) in the lifecycle engine. Route all active carrier orders dynamically through a unified poller (`watch_jt_delivery.main()`) and emit non-empty stdout on any state change so Telegram alerts trigger reliably under `no_agent: true`.
+

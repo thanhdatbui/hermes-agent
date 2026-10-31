@@ -4,10 +4,12 @@ Nạp Web (:20129): trần 2 acc/IP; pre-validate Graph; cấm base64. Acc lỗi
 §
 Watchdog UNPROVEN & drift giải quyết dứt điểm bằng Zero-Drift Shim (-B, 0x08000000, buffer P1 15m). M17: @lyhoan.music. Check nhả follow vuốt reload 3.5s.
 §
-Nối xích unified_patch_pipeline.py là ENTRYPOINT DUY NHẤT khi có lệnh Fix Code / Fix lỗi: S0 Precheck RepoLock -> S1 Plan (Gate B) -> S2 Patch qua dispatch_worker -> S3 Test -> S4 Canary Gate 6 -> S5 Hold Awaiting User kèm MEDIA:. Lỗi tự full_rollback(). BỎ HẲN HMAC/SHA256 ký local; dùng TLIS v1 (Plain JSON, atomic os.replace, OS RepoLock). Chốt phiên User gõ 'Done' chạy closeout_v2.py (0.05s). Bị chặn/fail phải ném log thật. CẤM làm tay. Đổi acc reg/test web (Muse AI, Meta) BẮT BUỘC đổi cả profile GPM và proxy mới để cách ly sạch, cấm tái sử dụng profile dính vết; kiên định bám sát geolocation User chỉ định (Canada).
+Nối xích unified_patch_pipeline.py là ENTRYPOINT DUY NHẤT khi Fix Code: S0 RepoLock -> S1 Gate B Plan -> S2 Patch qua worker -> S3 Test -> S4 Canary Gate 6 -> S5 Hold MEDIA:. Rollback tự động; TLIS v1 plain JSON; closeout_v2.py (0.05s). Test web đổi cả GPM profile + proxy mới sạch; bám sát geo User chỉ định (Canada).
 §
-Đã chuyển đổi 100% dữ liệu Excel sang SQLite D:/Taadaa/data/farm_master.db (160 máy, 1.270 nick, 1.455 mail, 806 token). Flow chính dùng DAL farm_db.py; Web kibe:1905 có tab Sổ Cái riêng biệt ở đầu trang, phân định rõ 🔑 2FA TT (TikTok cột trái) và 🔑 2FA Mail (Mailbox cột phải, 160 acc), cấm nhãn 2FA chung chung.
+Khi user yêu cầu 'Fix đi' sau báo cáo cron/watchdog: Mặc định là SỬA SCRIPT qua unified_patch_pipeline (--no-canary bảo vệ ca nuôi); CẤM tự ý can thiệp soft-recovery/reboot máy thật.
 §
-Quy tắc đổi nick/proxy GPM: Đổi acc mới hoặc đổi proxy bắt buộc tạo profile mới toanh; cấm dùng lại profile cũ dính vết fingerprint/tokens tránh bị kích hoạt chối bỏ đăng ký tự động.
+Cấm tuyệt đối đọc openpyxl/Excel trong runner/scripts: 100% trích xuất mailbox/account/token qua DAL farm_db.py SQLite. Gate B Planner nạp full context <= 1500 dòng tránh Gemini Web ảo giác. Cấm nhận lỗi phân bua, tập trung cơ giới hóa.
 §
-Farm có hơn 880 hòm thư Hotmail/Outlook trong bảng mailboxes (farm_master.db) có sẵn oauth_refresh_token; luôn tự động đổi access_token qua login.live.com và gọi Microsoft Graph API (inbox/junkemail) trích xuất OTP 6 số tự động trong 2 giây; cấm dừng lại hỏi xin mail cá nhân của user.
+Đổi Hotmail thay Gmail DIE cho TikTok S7: vào Settings > Account > User info > Thay đổi email (cấm Hủy liên kết), điền Hotmail sạch lấy OTP 2s; cấm đẩy >5 workers đồng thời kẻo TikTok bật Captcha trượt; tránh bẫy nhận nhầm Camera/LIVE overlay thành Captcha (bấm nút X đóng tại 102, 174); cập nhật DAL farm_db và mirror Excel trước khi gỡ Gmail DIE khỏi máy.
+§
+Proxy S7 Farm: S7 KO có Tailscale -> CẤM gán domain/IP Tailscale (tb.taadaa.click / 100.x) vào Excel kẻo rụng Wi-Fi; S7 bắt buộc trỏ LAN 192.168.110.2:10008..10035 (hoặc 202xx nếu R3G live). R3G OpenWrt: CẤM chạy trùng tailscaled ở cả init.d và rc.local đụng port 41641; CẤM đổi Excel trước khi WAN mở thật.

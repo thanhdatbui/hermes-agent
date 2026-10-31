@@ -74,3 +74,33 @@ Khi router đã online qua WAN thứ nhất (đang giữ default route nuôi Tai
   2. **Tầng Quay số Multi-Session**: Mỗi card MACVLAN chạy một session PPPoE độc lập dùng chung tài khoản mạng của line đó. BRAS Viettel cấp $N$ địa chỉ IP Public khác nhau cho từng session.
   3. **Tầng Định tuyến Cô lập (Policy Routing)**: Mỗi session PPPoE được gán bảng định tuyến riêng (`table 101` .. `table 108`), mỗi bảng chỉ có 1 default route qua interface tương ứng. **Interface chính giữ Tailscale (`WAN2`) độc quyền bảng `main`, không bị ảnh hưởng khi xoay proxy.**
   4. **Tầng Dịch vụ Proxy (3proxy / Tinyproxy)**: Mở $N$ port (5101..5108), mỗi port bind ngõ ra vào IP của card MACVLAN tương ứng. Xoay IP từng port bằng lệnh reconnect session (`ifdown wan_subX && ifup wan_subX`) trong 3-5 giây mà không làm gián đoạn các port khác hay đường quản lý Tailscale.
+
+## 6. Xung Đột Kép Procd vs rc.local & Bẫy Cố Định Daemon Tailscale
+- **Nguyên nhân daemon crash / rụng kết nối rạng sáng:**
+  * Nếu vừa kích hoạt service quản lý qua procd (`/etc/init.d/tailscale enable`) vừa nhét thêm lệnh gọi nền trong `/etc/rc.local`:
+    Khi router khởi động lại (reboot 05:20 hoặc mất điện thoáng qua), cả 2 cơ chế sẽ tranh chấp khởi động `/usr/sbin/tailscaled` trên cùng port `--port=41641` và cùng file state `/etc/tailscale/tailscaled.state`.
+  * Xung đột socket binding và lock file state khiến một tiến trình bị crash, daemon rơi vào trạng thái zombie hoặc mất kết nối vĩnh viễn với Tailnet (`Online: False`).
+- **Kỷ luật chuẩn:**
+  * CHỈ DÙNG 1 cơ chế duy nhất. Ưu tiên procd chuẩn OpenWrt (`/etc/init.d/tailscale enable`). Nếu dùng `rc.local` thì phải disable service trong init.d (`/etc/init.d/tailscale disable`).
+
+## 7. Bẫy Gán Proxy Tailscale Trực Tiếp Vào Thiết Bị Farm S7 (Route Blackhole)
+- **Bản chất kiến trúc mạng Farm:**
+  * Dàn Samsung S7 ở phòng Farm nằm trong dải Wi-Fi LAN nội bộ `192.168.110.0/24`. Các máy này **KHÔNG CÀI TAILSCALE**.
+  * Cụm OpenWrt R3G ở xa quản lý qua Tailscale mang IP `100.115.94.49` (hoặc tên miền `tb.taadaa.click` phân giải ra IP Tailscale `100.115.94.49`).
+- **Tử huyệt khi gán Excel:**
+  * CẤM TUYỆT ĐỐI gán domain Tailscale (`tb.taadaa.click:51xx`) trực tiếp vào cột `proXy` trong `PROXYgandienthoai.xlsx` của dàn S7 khi R3G chưa chạy Direct Public WAN.
+  * Khi gán trực tiếp, điện thoại S7 gửi gói tin ra IP `100.115.94.49`. Do Android không có route tới dải `100.64.0.0/10`, Linux kernel trả về ngay `connect: network is unreachable` (POSIX ENETUNREACH), hoặc Android ngắt kết nối Wi-Fi vì không validate được Captive Portal qua proxy chết.
+- **Luồng trung chuyển bắt buộc (Relay Bridge) khi dùng Tailscale:**
+  $$\text{Phone S7} \xrightarrow{\text{LAN}} \text{MikroTik (Sing-box) 192.168.110.2:202xx} \xrightarrow{\text{LAN}} \text{PC Admin (PortProxy) 192.168.110.119} \xrightarrow{\text{Tailscale}} \text{R3G 100.115.94.49:51xx}$$
+  Cột proxy trong Excel của máy S7 BẮT BUỘC phải trỏ vào endpoint trong LAN (`192.168.110.2:202xx` hoặc `192.168.110.2:100xx`), tuyệt đối không để lộ endpoint Tailscale ra máy farm.
+
+## 8. Kỷ Luật Đổi Proxy SSOT: Cấm Đi Trước Hạ Tầng Thực Tế
+- **Nguyên nhân sự cố 31/10/2026:**
+  * Session trước thảo luận về phương án mở Direct WAN cho R3G để bỏ bớt trung gian PC Admin và giải phóng CPU phần cứng MT7621.
+  * Tuy nhiên, kỹ sư đã vội vã sửa file `PROXYgandienthoai.xlsx` sang `tb.taadaa.click:5141..5158` trong khi trên router R3G:
+    1. Cổng WAN vẫn DROP 100% (chưa cấu hình mở firewall WAN).
+    2. Chưa có DDNS Cloudflare động.
+    3. Chưa có iptables whitelist IP Đà Nẵng.
+  * Hậu quả: Ngay ca sáng hôm sau, toàn bộ 31 máy Admin bị fail đứng hình 100%.
+- **Quy tắc bất khả xâm phạm:**
+  * CHỈ ĐƯỢC cập nhật cột proxy trong file SSOT Excel KHI VÀ CHỈ KHI endpoint mới đã được probe liveness thành công từ chính môi trường mạng của client (HTTP 200 / valid Public IP).

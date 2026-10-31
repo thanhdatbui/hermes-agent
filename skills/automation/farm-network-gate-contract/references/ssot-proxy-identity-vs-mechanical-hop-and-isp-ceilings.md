@@ -16,6 +16,19 @@
    - Sing-box enforces fail-closed kill-switch and forwards via Windows PortProxy / Tailscale to the destination.
    - The runner script (`set_proxy_farm_admin_adb.py` or watchdog) translates the SSOT target (`tb.taadaa.click:51xx`) into the local forwarder port (`192.168.110.2:202xx`) when issuing `settings put global http_proxy`.
 
+3. **CẤM GÁN TAILSCALE ENDPOINT VÀO EXCEL GÁN ĐIỆN THOẠI (Hard Invariant):**
+   - CẤM TUYỆT ĐỐI gán domain/IP phân giải qua mạng Tailscale (như `tb.taadaa.click` -> `100.115.94.49`) trực tiếp vào file cấu hình `PROXYgandienthoai.xlsx` của dàn điện thoại khi router chưa mở Direct WAN thật.
+   - **Cơ chế gây lỗi dây chuyền:**
+     * File `set_proxy_farm_admin_adb.py` trích xuất port từ proxy string và gán thẳng `192.168.110.2:<port>` vào Android `settings put global http_proxy`.
+     * Nếu trong Excel để `tb.taadaa.click:5141`, script sẽ gán `192.168.110.2:5141` lên S7. Cổng 5141 không hề lắng nghe trên MikroTik LAN mà nằm trên PC Admin / R3G -> kết nối đứt.
+     * Hoặc nếu Android kết nối trực tiếp vào IP Tailscale, kernel Android không có route tới dải `100.64.0.0/10` -> `network is unreachable`.
+     * Khi proxy chết, cơ chế Captive Portal Check ngầm của Android (Generate 204) fail -> Android đánh dấu Wi-Fi không có Internet và tự ngắt kết nối (`Wi-Fi not connected`), kéo theo gãy hàng loạt ca nuôi.
+   - **Quy trình cứu hộ khẩn cấp O(1) khi R3G / Tailscale gặp sự cố:**
+     1. Khôi phục `D:\OneDrive\TaadaaData\admin\PROXYgandienthoai.xlsx` về dải cổng nội bộ MikroTik (`10008..10035`).
+     2. Đồng bộ file sang máy PC Admin (`192.168.110.119`).
+     3. Chạy `python D:\Taadaa\AI-Tools\scripts\set_proxy_farm_admin_adb.py` qua ADB Remote để re-apply toàn bộ 80 máy về cổng `192.168.110.2:100xx`.
+     4. Kiểm chứng preflight bằng `with_device_lock.py` và `/data/local/tmp/atx-agent curl` trên 2-3 máy đại diện. Không cần đụng vào router từ xa hay làm phiền bên ngoài.
+
 ## 3. ISP Carrier Concurrent Session Ceiling (Viettel FTTH)
 - **Hard ISP Limit on PPPoE Concurrent Sessions:**
   - Standard FTTH Viettel line caps public IP PPPoE sessions (e.g. exactly 35 concurrent sessions on Da Nang line, 8 sessions per line on Thai Binh R3G).

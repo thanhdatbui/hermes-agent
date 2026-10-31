@@ -9,7 +9,13 @@
   - **BẪY CHÍ MẠNG CỦA `deliver: 'origin'`:** Khi tạo/cập nhật cronjob trong một topic Telegram Forum, Hermes ghi nhớ `origin` là `platform:chat_id:thread_id` (cụ thể topic hiện tại).
   - Khi topic đó bị xoá: Cron chạy lúc 06:00 sáng sẽ bị Telegram trả về `message thread not found`. Hermes Gateway kích hoạt fallback `delivered without thread_id`. Trên Telegram Forum, gửi không có `thread_id` sẽ **rơi thẳng vào topic "General" (Chung)**! User không nhận được notification ở topic làm việc mới và tưởng cronjob bị mất tích.
   - **KHẮC PHỤC TRIỆT ĐỂ:** Bắt buộc User tạo 1 **Topic cố định vĩnh viễn** (vd: `🦁 Linh Dương` hoặc `Báo Cáo Sáng`) và cấu hình `deliver: telegram:<chat_id>:<permanent_thread_id>`, TUYỆT ĐỐI KHÔNG dùng `deliver: 'origin'` tạo từ topic nhiệm vụ tạm bợ sẽ bị xóa.
-- **The ID Searching Frustration:** Nếu gửi tin nhắn về DM điều phối mà chỉ ghi text ID topic (vd `Thread ID: 324110`) sẽ làm User bực mình vì phải đi soi/lùng từng ID trên app. BẮT BUỘC phải đính kèm Direct Link 1-click `https://t.me/c/<chat_id>/<thread_id>`.
+- **The ID Searching Frustration & Telegram Deep-Link Invariant:**
+  - Nếu gửi tin nhắn về DM điều phối mà chỉ ghi text ID topic (vd `Thread ID: 324110`) sẽ làm User bực mình vì phải đi soi/lùng từng ID trên app.
+  - **BẪY CHÍ MẠNG `t.me/c/` TRÊN DM BOT:** Cú pháp `https://t.me/c/<chat_id>/<thread_id>` của Telegram **CHỈ HOẠT ĐỘNG** với Supergroup/Channel (sau khi cắt bỏ tiền tố `-100`).
+  - Nếu cấu hình gửi tới DM cá nhân / User ID (như `1076231895`), app Telegram trên iOS/Android sẽ hiểu nhầm là link vào một supergroup bí mật mà user chưa tham gia và ném ngay lỗi: *"Rất tiếc, bạn không thể truy cập tin nhắn này. Bạn không phải thành viên của chat nơi nó đăng."*
+  - **ĐIỀU PHỐI ĐÚNG THEO LOẠI CHAT:**
+    * Với Supergroup Forum (`CHAT_ID` dạng `-100...`): Cắt bỏ `-100`, tạo link `https://t.me/c/{CHAT_ID[4:]}/{thread_id}`.
+    * Với DM bot (`CHAT_ID` là user ID dương hoặc không bắt đầu `-100`): BẮT BUỘC dùng link mở thẳng chat bot `https://t.me/<BOT_USERNAME>` (vd `https://t.me/Taadaa_hermes_sever_bot`), tuyệt đối CẤM ghép `t.me/c/` với user ID.
 
 ## 2. Core Architecture
 - **Tự động 100% (Zero User Input):** Chạy cronjob script Python độc lập với `no_agent: true` lúc 06:00 sáng.
@@ -20,7 +26,9 @@
 - **Fail-safe Fallback:** Nếu endpoint LLM bị lỗi hoặc timeout, script tự động chuyển sang Heuristic Regex để đảm bảo 100% không bao giờ trượt tin nhắn sáng sớm.
 - **Giao diện 1-Click Direct Link & Topic Delivery Lifecycle:**
   - **Đích đến:** Bắt buộc cấu hình đích đến là **Topic Cố Định** (`deliver: telegram:<chat_id>:<permanent_thread_id>`), cấm để `origin` từ topic task tạm bợ vì khi xoá topic tin sẽ bị trôi vào General.
-  - Soạn tin nhắn có link markdown trực tiếp: `[👉 BẤM VÀO ĐÂY ĐỂ VÀO PHIÊN ĐANG DỞ](https://t.me/c/<chat_id>/<thread_id>)`.
+  - Soạn tin nhắn có link markdown trực tiếp phân nhánh theo chat type:
+    * Supergroup forum: `[👉 BẤM VÀO ĐÂY ĐỂ VÀO PHIÊN ĐANG DỞ](https://t.me/c/<clean_id>/<thread_id>)`
+    * DM Bot: `[👉 BẤM VÀO ĐÂY ĐỂ VÀO PHIÊN ĐANG DỞ](https://t.me/<BOT_USERNAME>)` (Telegram không hỗ trợ `t.me/c/` cho DM cá nhân).
   - User thức dậy chỉ cần chạm 1 phát từ Topic Cố Định là Telegram tự nhảy vào đúng Topic làm dở. Làm xong việc, User bấm Xoá Topic nhiệm vụ thoải mái, tin nhắn sáng mai vẫn sẽ nổ chuông đều đặn tại Topic Cố Định.
 
 ## 3. Production Engineering Checklist (Senior Review Findings)

@@ -18,13 +18,5 @@ description: "Taadaa farm safety, close-session, and multi-machine operations."
 - **Phân Cấp Nhịp Sync Hạ Tầng (Cold Backup Cadence):** Khi máy phụ (Admin) chỉ làm cold backup, các cron job sync hạ tầng Hermes (skills, brain memories, jobs.json) bắt buộc giãn nhịp lên 6h–24h/lần (cấm để 5m–15m gây xung đột `.git/index.lock`, nghẽn I/O 4.500+ skills và lock file OneDrive). Chi tiết: `references/cold-backup-host-sync-cadence-and-git-lock-prevention.md`.
 - **Quy Hoạch Proxy & Dải Dự Phòng Nóng (Hot Standby):** Hệ thống chia 3 cụm (MobiProxy 32 port gánh 64 máy Kibe, R3G Thái Bình 16 port gánh 32 máy Admin non, MikroTik 24 port gánh 48 máy Admin chính — đều đạt tỷ lệ chuẩn 1:2). MikroTik giữ cố định 4 port dự phòng nóng `192.168.110.2:10028..10031` (Hot Standby) để swap máy khi cần hoặc nuôi GPM/test luồng mới. Chi tiết: `references/farm-proxy-allocation-and-hot-standby-pool.md`.
 
-## 2. Chu Trình Điều Phối Farm (Coordinator vs Worker)
-- **T0 (Hiện trường):** Đọc log, inspect ADB O(1), restart process, kiểm tra proxy. Tự do thực thi.
-- **T1 (Vá hiện trường <= 15 dòng):** Sửa trực tiếp O(1) 1 file, verify < 30s, chạy Canary trên 1 máy thật đại diện (chụp ảnh `MEDIA:` + OCR sạch).
-- **T2 (Thi công lớn > 15 dòng):** Dispatch qua Single Dispatch Gateway `python D:/Taadaa/tools/dispatch_worker.py "<contract O(1)>" --workdir <repo>`.
-- **Chốt phiên (Closeout v2 O(1)):**
-  - **Phiên Vận Hành (farm, nick, device, excel - không có code delta):** `python D:/Taadaa/tools/closeout_v2.py --repo <repo> --operational --json-output` (PASS ngay trong < 0.1s; cấm gọi LLM Reviewer).
-  - **Phiên Sửa Code:** `python D:/Taadaa/tools/closeout_v2.py --repo <repo> --json-output` (py_compile cú pháp + pytest focused; cấm LLM chấm điểm cảm tính).
-
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

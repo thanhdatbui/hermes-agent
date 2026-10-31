@@ -65,6 +65,7 @@ def fetch_otp_from_farm_mailbox(email, folder='inbox'):
     return None
 ```
 
-## 3. Quy tắc vận hành
-- **Tuyệt đối không dừng lại hỏi xin người dùng email cá nhân** khi đang có hơn 880 hòm thư sẵn sàng nhận OTP.
+## 3. Quy tắc vận hành & Bài học thực tế
+- **Tuyệt đối không dừng lại hỏi xin người dùng email cá nhân** khi đang có hơn 880 hòm thư sẵn sàng nhận OTP trong `farm_master.db`. Việc than phiền thiếu mail hoặc kêu User đưa email cá nhân là vi phạm nặng kỷ luật điều phối.
 - **Tự động hóa hoàn toàn:** Khi dịch vụ (Meta, TikTok, OpenAI) gửi OTP, lập tức query Graph API đọc mail và submit tiếp tục luồng ngay.
+- **Lưu ý folder:** Mã xác thực từ các dịch vụ mạng xã hội (như Meta/Facebook) thường có thể rơi vào cả `inbox` hoặc `junkemail`, vòng lặp kiểm tra bắt buộc quét cả 2 thư mục với backoff 2-3s.
