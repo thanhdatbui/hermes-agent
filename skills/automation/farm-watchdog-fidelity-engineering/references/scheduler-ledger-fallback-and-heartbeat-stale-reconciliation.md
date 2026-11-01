@@ -29,12 +29,15 @@ def load_scheduler_runs() -> Dict[str, Dict[str, Any]]:
     if not jobs_file.exists():
         fallback = Path("D:/Taadaa/Hermes/deploy/hermes-home/cron/jobs.json")
         jobs_file = fallback if fallback.exists() else None
-    if not jobs_file:
+    if not jobs_file or not jobs_file.exists():
         return {}
     try:
         data = json.loads(jobs_file.read_text(encoding="utf-8"))
         job_list = data.get("jobs", data) if isinstance(data, dict) else data
-        return {j["script"][:-3]: j for j in job_list if j.get("script", "").endswith(".py")}
+        # CẠM BẪY JSON NULL: 'script' có thể là None với LLM agent jobs.
+        # j.get("script", "") trả về None nếu key có mặt với giá trị null -> gây AttributeError: 'NoneType' object has no attribute 'endswith'.
+        # BẮT BUỘC dùng (j.get("script") or "").endswith(".py") để tránh bị try/except nuốt lỗi và trả về dict rỗng.
+        return {j["script"][:-3]: j for j in job_list if (j.get("script") or "").endswith(".py")}
     except Exception:
         return {}
 ```
@@ -47,6 +50,7 @@ In `evaluate_heartbeat(now)`:
 4. If `state_file` does not exist OR `dt_sched > last_end`:
    - Promote `last_end = dt_sched`.
    - Update `status = "NOMINAL" if sched_run.get("last_status") == "ok" else "ANOMALY"`.
+   - **Xóa bỏ Anomalies cũ:** Nếu `sched_run.get("last_status") == "ok"`, BẮT BUỘC gán `anomalies = []` để tránh anomaly từ file state của vài ngày trước tiếp tục ám báo cáo.
    - Compute `age_h = round((now - last_end).total_seconds() / 3600.0, 1)`.
 
 ---

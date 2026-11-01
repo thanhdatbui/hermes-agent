@@ -10,14 +10,18 @@ Unlike legacy APIs that return 404 (`/api/tracker`), J&T Express Vietnam (`jtexp
   If `cellphone` is omitted or empty, J&T opens an interactive modal requiring the recipient's last 4 phone digits (`#cellphone`, 4 digits). Without this parameter, the HTTP response HTML omits the shipment history section entirely.
 - **Passing the Recipient's Last 4 Digits:**
   Extract the last 4 digits from the canonical order recipient phone (e.g., `0905.382.174` -> `2174`) and supply it directly as a GET query parameter `&cellphone=2174`.
-- **Parsing the Event Timeline:**
+- **Parsing the Event Timeline & Courier Phone Masking:**
   The validated HTML contains `<input type="checkbox" id="chck-{billcode}">` wrapping the timeline. Each event block contains:
   * Event time: `HH:MM:SS` and `YYYY-MM-DD`
   * Action & Location description:
     - Sort Center arrival: `Hàng đã được chuyển đến【TTKT ĐÀ NẴNG】`
     - Transit between hubs: `Bưu cục【TTKT HÀ NỘI】đang chuyển hàng đến【TTKT ĐÀ NẴNG】`
     - Pickup scan: `Nhân viên【...】của bưu cục【...】đã nhận hàng. SĐT nhân viên...`
-    - Out for delivery: `Nhân viên【...】của bưu cục【...】đang giao hàng. SĐT shipper...`
+    - Out for delivery: `Nhân viên【...】của bưu cục【...】đang giao hàng.【+847****3464】`
+  * **Courier Phone Masking Invariant:** J&T Express masks the courier phone number server-side (e.g. `+847****3464`) for employee privacy. The full phone number is NEVER exposed in the web tracking response. When operators ask why the courier phone is masked or how to contact them:
+    1. Explain that J&T masks the 4 middle digits on web tracking.
+    2. Guide operator to incoming call triage: courier will call recipient phone with matching suffix digits (e.g. `...3464`).
+    3. Alternative contact: Call J&T hotline `1900 1088` with waybill code, or visit the specific local hub (e.g. Bưu cục Đống Đa).
 
 ---
 
@@ -46,6 +50,8 @@ Do not tell the operator to manually refresh a carrier tracking link or call hot
    When a change is detected:
    - Check for keywords: `bưu cục`, `đến bưu cục`, `đang giao`, `shipper`, `phát hàng`.
    - Output a high-priority alert (`🚨 BÁO ĐỘNG KHẨN CẤP`) with recipient name, phone, COD cash amount, latest hub name, and the direct tracking URL.
+   - **Mandatory Direct Tracking Link Invariant:** Mọi thông báo milestone (đặc biệt khi shipper đi phát) BẮT BUỘC phải đính kèm sẵn link tracking đã gắn kèm tham số giải mã `&cellphone={phone_last4}` (ví dụ: `https://jtexpress.vn/vi/tracking?type=track&billcode=862664848314&cellphone=4653`). CẤM gửi alert thiếu link khiến người dùng phải hỏi lại "Link J T đâu".
+   - **Proactive Courier Phone Masking Note:** Trong thông báo có số shipper bị che (ví dụ: `+847****3464`), BẮT BUỘC ghi chú rõ: J&T che 4 số giữa để bảo mật, shipper sẽ chủ động gọi vào số người nhận với số đuôi tương ứng (`...3464`), hoặc gọi tổng đài `1900 1088` đọc mã vận đơn.
    - Update canonical `orders.json` status to `Đã đến bưu cục phát` or `Đang giao hàng (Shipper đang đi phát)`.
 
 ---
@@ -90,3 +96,26 @@ To alert operators across physical rooms before couriers dispatch morning routes
      * Agree on a fixed keyword on the printed waybill (e.g., fixed surname prefix in Recipient Name or note substring in Address).
      * The courier inspects parcels at the local hub floor during morning sort (07:15 - 08:00 AM).
      * Any parcel bearing the secret keyword is automatically bundled and delivered directly to the physical farm headquarters (e.g., 47 Tran Cao Van) for bulk cash settlement, without calling the dummy numbers.
+
+---
+
+## 7. Raw URL Delivery, Direct Anchor & Mobile 422 Error Pitfall
+
+- **CẤM TUYỆT ĐỐI bọc markdown phức tạp (`**[Text](url)**`) quanh link tra cứu trên Telegram:**
+  Khung chat Telegram mobile và desktop parser thường phân tích sai cú pháp khi lồng in đậm `**` với hyperlink chứa nhiều query parameters (`?type=track&billcode=...&cellphone=...`). Điều này khiến liên kết bị tê liệt thành text chết hoặc bấm vào không kích hoạt mở trình duyệt web, gây ức chế nghiêm trọng cho người dùng.
+- **Bẫy Mobile Viewport & Lỗi "Tra cứu thất bại (422)":**
+  Khi mở link GET với đủ tham số `billcode` và `cellphone`, server J&T đã render sẵn toàn bộ timeline hành trình ở bên dưới (trong thẻ `<div class="tab-content">` tương ứng id `#chck-{billcode}`).
+  Tuy nhiên, trên trình duyệt điện thoại (Chrome/Safari), viewport mặc định neo ở đỉnh trang (chỗ ô nhập mã và nút đỏ "Tra cứu vận đơn"). Người dùng thấy ô mã có sẵn nên theo phản xạ sẽ bấm nút đỏ "Tra cứu vận đơn", khiến JS frontend kích hoạt request AJAX thừa và văng lỗi chữ đỏ **"Tra cứu thất bại (422)"**.
+- **Quy chuẩn gửi link tra cứu chuẩn xác:**
+  1. **Luôn gửi raw URL thô trên một dòng độc lập, kèm anchor `#chck-{billcode}` để mobile tự cuộn xuống bảng kết quả:**
+     `https://jtexpress.vn/vi/tracking?type=track&billcode={billcode}&cellphone={phone_last4}#chck-{billcode}`
+  2. **Kèm lưu ý chống bấm bẫy 422:**
+     Nhắc người dùng chỉ vuốt xuống xem bảng hành trình đã load sẵn, tuyệt đối **không bấm nút đỏ "Tra cứu vận đơn"**.
+  3. **Luôn trích xuất text hành trình trực tiếp vào chat:**
+     Đưa đầy đủ các mốc mới nhất vào tin nhắn Telegram để người dùng nắm tình trạng ngay tức thì mà không bắt buộc phải nhấp mở link web.
+  4. **Fallback thủ công 2 trường:**
+     - Mã vận đơn: `{billcode}`
+     - 4 số cuối SĐT: `{phone_last4}`
+     (Để người dùng copy/paste nếu mở trang chủ `jtexpress.vn/vi/tracking`).
+  5. **Mã hóa số điện thoại shipper (+847\*\*\*\*3464):**
+     Hệ thống J&T và TikTok Shop mặc định che 4 số giữa của nhân viên giao hàng trên mọi giao diện tra cứu công khai. Khi báo cáo, nêu rõ số bị sàn mã hóa bảo mật và hướng dẫn canh cuộc gọi đến (đuôi 4 số) hoặc gọi hotline 1900 1088 kèm mã vận đơn.

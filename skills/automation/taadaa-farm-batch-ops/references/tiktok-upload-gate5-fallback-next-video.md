@@ -60,5 +60,9 @@ if not video_file.is_file() or video_file.stat().st_size == 0:
 ---
 
 ## 4. Xử Lý Hiện Trường Khi Gặp Folder Khuyết Số (Emergency / Fix)
+- **Cơ chế đã được nạp trực tiếp vào codebase (`multi_machine_feed_session.py`):**
+  Khi `(posted_count + 1).mp4` bị khuyết nhưng trong thư mục `D:\TIKTOK-videonuoinick\<folder>` vẫn còn các file video có số lớn hơn, Gate 5 tự động lấy `min(rem >= next_video)` và gán vào `video_file`, chặn đứng hoàn toàn hiện tượng skip sai `video_not_rendered`.
+  Bản vá này bắt buộc đồng bộ đồng nhất SHA256 sang cả máy Admin Remote.
+
 1. **Phương án nhanh:** Copy clip kế tiếp (ví dụ `6.mp4`) thành file bị khuyết (`5.mp4`) để thỏa mãn preflight ngay lập tức mà không làm gián đoạn ca chạy hiện tại.
 2. **Chuẩn hóa dài hạn:** Đổi tên toàn bộ các file còn lại trong folder thành chuỗi số thứ tự liên tục `(posted_count + 1).mp4` đến `total.mp4`.

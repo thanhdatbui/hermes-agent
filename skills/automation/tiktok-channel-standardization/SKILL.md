@@ -17,4 +17,7 @@ description: "Use when standardizing TikTok profiles (bio, pin, avatar)."
 > - `references/pa4-execution-discipline-and-lockdown.md`: Kỷ luật thực thi chuẩn hoá khi User chọn PA 4, bẫy lệch ảnh Card 4 trên Canvas vs app thật, quy trình force upload avatar và đồng bộ khóa media đa tầng.
 > - `references/tiktok-unhide-private-videos-and-tab2-shift-flow-20261030.md`: Quy trình mở công khai video bị ẩn (Tab 2 - icon khóa 🔒), cơ chế tự dịch chuyển hàng đợi (queue shift) tại toạ độ cố định (540, 1200) và toạ độ chuẩn Privacy Settings.
 > - `references/tiktok-lifo-pin-ordering-and-enforce-slot1.md`: Quy tắc ghim video theo cơ chế LIFO TikTok, hàm tự động giữ top 1 view ở Ô 1 (_enforce_top_pin_at_slot1) và lọc candidate sort giảm dần tránh chọn nhầm bài rác.
+> - `references/safe-video-extraction-and-proposal-canvas-discipline.md`: Kỷ luật trích xuất frame video qua safe_extract_video_frame chống deadlock 60 phút và quy chuẩn trung thực bảng Proposal Canvas 4 ô tròn.
 
+> **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
+> Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

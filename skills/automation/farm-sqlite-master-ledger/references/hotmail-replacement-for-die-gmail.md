@@ -30,7 +30,7 @@ Khi tài khoản TikTok đang có session đăng nhập trên app native điện
 ## 3. Đồng Bộ Dữ Liệu 3 Tầng (Write-Through Architecture)
 Sau khi TikTok đã nhận Hotmail mới:
 1. **Tầng 1 - SQLite Cố định (`farm_master.db` - SSOT):**
-   - Gọi DAL: `farm_db.update_tiktok_credentials(username, email=new_email)`.
+   - Gọi DAL: `farm_db.update_tiktok_credentials(username, email=new_email)`. Hàm DAL đã hỗ trợ tham số `email` để cập nhật trực tiếp vào bảng `tiktok_accounts`.
    - CSDL ghi nhận email mới tức thì, các cronjob và dashboard `:1905` đồng bộ ngay lập tức.
 2. **Tầng 2 - Master Excel Mirror Backup (`taikhoan_dat_v2_updated .xlsx`):**
    - Cập nhật Cột F (`GMAIL`) = Hotmail mới, Cột G (`PASS MAIL`) = Pass Hotmail.
@@ -40,14 +40,18 @@ Sau khi TikTok đã nhận Hotmail mới:
    - Tiến hành gỡ bỏ tài khoản Google DIE khỏi máy S7 (`dumpsys account` / `preflight_s7_rolling_cleanup.py`) mà không sợ vi phạm rào chắn bảo vệ.
 
 ## 4. Cạm Bẫy & Kỹ Thuật Chạy Batch Song Song (Parallel Execution Pitfalls)
-Khi triển khai chạy song song hàng loạt (ví dụ: ThreadPoolExecutor với 10-15 workers):
-1. **Lỗi `Current profile: @None` / Splash Lag:**
-   - Khi khởi động TikTok bằng `monkey` đồng loạt trên nhiều máy, tải ADB và I/O thiết bị tăng đột biến. Lệnh click Profile tab nếu bắn quá sớm (sleep cứng 2-3s) sẽ rơi vào màn hình Splash hoặc Home chưa render xong.
-   - **Giải pháp:** Bắt buộc cài đặt vòng lặp thăm dò `wait_for_profile_ready(timeout=10)` kiểm tra sự hiện diện của node Profile/Username trước khi thao tác tiếp.
-2. **Lỗi `502 Bad Gateway` từ `atx-agent`:**
-   - Tiến trình uiautomator stub ngầm có thể bị crash hoặc timeout khi nhận nhiều RPC dồn dập.
-   - **Giải pháp:** Mỗi worker trước khi thực thi cần gửi health-check nhanh `GET /info`. Nếu không phản hồi hoặc 502, lập tức chạy lệnh khởi động lại:
-     `adb -s <serial> shell "killall atx-agent 2>/dev/null; /data/local/tmp/atx-agent server -d"` kèm delay 1s trước khi gọi RPC.
-3. **Màn hình Camera / LIVE Popup Che Khuất:**
-   - Một số nick khi mở app hoặc sau khi thoát modal xác minh có thể bị rơi vào màn hình LIVE/Tạo video (`CAMERA`, `TẠO`, `LIVE`).
-   - Nút đóng của màn hình LIVE nằm ở góc trên bên trái `[18,72][150,204]` (center: `(84, 138)`). Worker cần kiểm tra nếu thấy chữ `Trung tâm LIVE` hoặc `Kiểm tra quyền truy cập LIVE` thì bấm tọa độ này để thoát ra màn hình chính.
+Khi triển khai chạy song song hàng loạt:
+1. **Tránh Xung Đột Với Ca Nuôi Acc (Feed Session Lock Check):**
+   - Farm có cronjob định kỳ chạy `multi-machine-feed-session` (ví dụ ca 2 lúc 14:00+).
+   - Trước khi dispatch worker can thiệp thiết bị, BẮT BUỘC kiểm tra file lock `C:/Users/Kibe/.codex/device-locks/machine_{m_id}.lock.json`. Nếu `status == 'running'`, thiết bị đang trong ca nuôi độc quyền -> BỎ QUA hoặc chờ nhả lock, TUYỆT ĐỐI CẤM tranh chấp UI làm văng phiên feed.
+2. **Hạn Chế Ngân Sách Workers (Throttling 4-5 Workers Thay Vì 15):**
+   - Đẩy 15 workers đồng thời dễ làm nghẽn daemon USB ADB, gây timeout hoặc lỗi `getaddrinfo failed`.
+   - Mức concurrency tối ưu là **4-5 workers**, kết hợp vòng lặp poll `/info` (thử tối đa 8 lần, delay 1s) sau khi khởi động stub để triệt tiêu lỗi `502 Bad Gateway`.
+3. **Màn hình Tạo Video / Camera & LIVE Che Khuất (Tránh Báo Nhầm Captcha):**
+   - TikTok thường lưu state mở thẳng vào màn hình quay camera/LIVE (`10 phút`, `60s`, `15s`, `ẢNH`, `VĂN BẢN`, `CAMERA`, `TẠO`, `LIVE`, `resource-id` kết thúc bằng `e1n` / `twt`).
+   - CẤM nhận diện nhầm đây là popup Captcha/bảo mật. Nút đóng `X` nằm ở góc trên bên trái: bounds `[36,108][168,240]` (center `[102, 174]`). Bấm tọa độ này để thoát ra Home/Profile.
+4. **Cuộn Tìm Tài Khoản Trong Switcher (Account Switcher Scrolling):**
+   - Danh sách Switcher ban đầu chỉ hiển thị 3-4 nick. Các nick ở slot sâu hơn không có trong hierarchy ban đầu.
+   - Khi `target_pt` trả về `None`, thực hiện vuốt cuộn xuống `atx_rpc(base_url, 'swipe', [540, 1400, 540, 500, 30])` rồi dump lại hierarchy để click đúng nick.
+5. **Lỗi `Current profile: @None` / Splash Lag:**
+   - Khi khởi động TikTok bằng `monkey` đồng loạt, bắt buộc cài đặt vòng lặp thăm dò `wait_for_profile_ready(timeout=10)` kiểm tra sự hiện diện của node Profile/Username trước khi thao tác tiếp.

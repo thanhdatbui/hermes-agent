@@ -17,11 +17,11 @@ When a local web dashboard (`tiktok_dashboard.py` on port 1905) serving heavy SQ
 - On Windows, multiple processes can call `bind()` on the exact same port (1905).
 - Windows nondeterministically routes incoming TCP handshakes among the listening sockets. If one process is in a deadlock, zombie, or un-serviced state, all requests routed to its socket hang until client timeout.
 
-### 3. Aggressive Watchdog Health-Check vs Cold-Cache Query Latency
-- When database snapshots grow large (e.g. 130k rows), aggregating historical data with window functions (`ROW_NUMBER() OVER (...)`) takes 4+ seconds when cache is cold.
-- If the watchdog configures a tight timeout (`$TimeoutSeconds = 8`) and polls an uncached endpoint (`/api/data` with 15s TTL), any concurrent I/O load causes the health-check to exceed 8s.
+### 3. Aggressive Watchdog Health-Check vs Cold-Cache Query Latency & Boot Storm
+- When database snapshots grow large (e.g. 130k rows), aggregating historical data with window functions (`ROW_NUMBER() OVER (...)`) takes 4–6+ seconds when cache is cold (and 8–12+ seconds during post-boot I/O contention when 20+ automation runners start simultaneously).
+- If the watchdog configures a tight timeout (`$TimeoutSeconds = 8`) and polls an uncached heavy aggregation endpoint (`/api/data` with 15s TTL), any concurrent I/O load causes the health-check to exceed 8s.
 - In PowerShell, `.NET WebRequest` without stream draining exhausts the default connection limit (2 connections per host), causing all subsequent checks to fail.
-- The watchdog enters an infinite restart loop: killing and spawning a new dashboard every 60–70 seconds.
+- **Boot Storm Death Loop:** Right after host reset/reboot, the watchdog fires after 60s, hits cold cache + boot I/O spikes, assumes dead, kills the process 3 times in 3 minutes, then enters circuit-breaker sleep (300s). During the entire 10–15 min window post-reset, user access fails (`ERR_CONNECTION_REFUSED` / timed out).
 
 ### 4. Domain Isolation Deficit (Farm Automation vs Web Dashboard)
 - Farm runners (`run-feed-session.ps1` via `tiktok_runner.py`) and Web Dashboards are 100% decoupled systems.
@@ -45,7 +45,8 @@ When a local web dashboard (`tiktok_dashboard.py` on port 1905) serving heavy SQ
 3. **Cache Duration Alignment for Heavy Read Replicas:**
    Set `_CACHE_TTL` to at least 180s–300s (3–5 minutes) on dashboards aggregating large analytical tables, rather than short 15s expirations.
 
-4. **Watchdog Resilience:**
-   - Watchdog HTTP probes must allow $\ge 15$s timeout.
+4. **Watchdog Resilience & Post-Boot Grace Period:**
+   - **Lightweight Probe Target:** Watchdog HTTP probes should target a lightweight ping endpoint (e.g. `/` or `/healthz`) rather than expensive multi-second analytical endpoints (`/api/data`). If analytical routes must be probed, timeout must be set to $\ge 25$s.
+   - **Boot Grace Period:** When starting via Windows Startup, watchdog must implement an initial boot grace period (`Start-Sleep -Seconds 180` before first check) to allow disk I/O, background runners, and cold cache queries to settle.
    - Always log `$_.Exception.Message` rather than swallowing exceptions in `catch { $isHealthy = $false }`.
    - Implement exponential backoff after restart attempts to avoid rapid flapping.

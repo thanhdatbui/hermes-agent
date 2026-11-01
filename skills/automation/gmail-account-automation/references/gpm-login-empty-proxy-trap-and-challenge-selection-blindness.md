@@ -23,3 +23,16 @@
 - **Phân biệt rạch ròi**:
   * *Quarantine/Cooldown*: Chỉ là biện pháp cầm máu tạm thời để ngăn spam alert về máy User.
   * *Phẫu thuật gốc rễ*: BẮT BUỘC kiểm tra (1) Profile GPM có bị rỗng proxy không, (2) Script login có nạp đúng credentials không, (3) DOM challenge có bị nuốt option Email khôi phục / TOTP không.
+
+## 4. BẪY SOI NHẦM SQLITE GPM DB VS GPM REST API (CHỐNG PHÁN ẨU BÁO ĐỘNG GIẢ)
+- **Cạm bẫy thực tế**: Soi trực tiếp trường `JsonData` trong SQLite `profile_data.db` thấy `proxy: None, raw_proxy: None` -> vội vã phán ẩu "toàn bộ profile không có proxy" làm User nổi giận và hoang mang tột độ.
+- **Sự thật kiến trúc GPM**:
+  * GPMLogin v3 quản lý cấu hình proxy qua backend C#; trường `raw_proxy` được trả về chính xác 100% qua endpoint REST API: `http://127.0.0.1:19995/api/v3/profiles`.
+  * Trên thực tế, các profile farm (`M19 - 5123 - luunhu`, `M49 - 5113 - cathoa`) đã được cấu hình proxy 4G đầy đủ từ trước qua API (`test.taadaa.click:5123`, `5113`).
+- **Kỷ luật bất biến**: CẤM kết luận về proxy hoặc trạng thái profile GPM chỉ bằng cách select thô SQLite. BẮT BUỘC xác minh qua GPM Local API (:19995) hoặc chạy probe curl/urllib trước khi đưa ra nhận định.
+
+## 5. GIẢI PHÁP L2-SURGERY CHO CHALLENGE SELECTION TRONG RUN_OAUTH_S7_PIPELINE
+- Trong `scripts/run_oauth_s7_pipeline.py`:
+  * Mở rộng `classify_s7_challenge_selection`: thêm tham số `has_recovery: bool = False`, gán `("RECOVERY_EMAIL", has_recovery)` vào danh sách ưu tiên ngay sau `TOTP`.
+  * Mở rộng `detect_challenge_options`: thêm `has_recovery: bool = False`, bắt locator `div[data-challengetype="4"], div[data-challengetype="2"], li:has-text("khôi phục"), li:has-text("recovery")`.
+  * Tại điểm gọi login loop (`run_oauth_pipeline`): truyền `has_recovery=bool(recovery)` để script tự động click chọn email khôi phục khi Google đưa ra danh sách phương thức xác minh.

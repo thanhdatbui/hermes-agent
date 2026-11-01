@@ -19,6 +19,14 @@ Do cả Coordinator và Worker Gate đều áp dụng strict allowlist hạn ch�
   - `"is_dl": true / false` ➔ Trạng thái download video gốc.
   - `"tik_stats"`: Chi tiết số folder đạt chuẩn $\ge 45$ clip theo từng Tik1..Tik8.
 
+## 2.1. Lệnh Kiểm Tra Nhanh O(1) Qua `admin_ssh.py`
+Khi `is_rd == false`, kiểm tra ngay liệu Game Guard có đang kích hoạt do user chơi game thi đấu (Warcraft III / TFT):
+```bash
+python D:/Taadaa/tools/admin_ssh.py --powershell "Get-Process -Name ffmpeg, python, pythonw, *war3*, *league* -ErrorAction SilentlyContinue | Select-Object Id, ProcessName, WorkingSet64"
+```
+- Nếu thấy tiến trình `War3` / `w3l.exe` / `league of legends.exe`: Đọc 30 dòng cuối log `C:\Users\Admin\admin_render_worker.log` để xác nhận mốc thời gian `[ABORT-GAME]`.
+- **Cạm bẫy Bash Quoting**: Trên Windows host chạy qua bash terminal, tuyệt đối tránh dùng `$_` trong nháy kép `""` vì bash MSYS sẽ mở rộng `$_` thành đường dẫn thư mục hiện tại `/c/Users/Kibe`, gây lỗi cú pháp. Bắt buộc dùng nháy đơn `'...'` khi bọc biểu thức PowerShell có `$_`.
+
 ## 3. Quy Tắc Ứng Xử Khi User Yêu Cầu "Giảm Worker Render Xuống Còn 1"
 1. **Cập nhật launcher**:
    - Sửa `D:\Taadaa\Tiktok-video\run_admin_render_chain.bat`: Đảm bảo cờ `--parallel 1` (tránh để `--parallel 2`).

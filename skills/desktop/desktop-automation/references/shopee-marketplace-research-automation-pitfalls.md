@@ -9,9 +9,12 @@
 - **Kỷ luật bắt buộc khi tư vấn giá cho User:**
   - **CẤM TUYỆT ĐỐI** báo giá dựa trên số liệu hiển thị ngoài trang tìm kiếm hoặc API `price_min`.
   - BẮT BUỘC phải mở trang chi tiết sản phẩm, click chọn đủ các biến thể thực tế (CPU/Model + RAM/SSD) để đọc mức giá thật trước khi gửi link hoặc tư vấn chi phí.
+  - **Mandatory Direct Link Delivery Invariant (Chống quăng giá/tên suông không có link):** Khi User yêu cầu tìm mua sản phẩm trên sàn TMĐT, BẮT BUỘC câu trả lời nghiệm thu phải đính kèm URL sản phẩm chính xác (`https://shopee.vn/product/...` hoặc link shop chính thức). CẤM TUYỆT ĐỐI chỉ liệt kê cấu hình và giá ước tính mà không đưa link, khiến User phải hỏi lại ("Đéo có link à?").
   - Khi gửi link sản phẩm cho User: Bắt buộc nêu rõ link kèm cấu hình cụ thể tương ứng với mức giá đó (VD: "Bản Full RAM 8GB + SSD 128GB giá 2.7tr", tránh chỉ quăng link cụt ngủn khiến User bấm vào thấy giá khác).
 
 ## 2. Browser Automation & Anti-Bot Quirks
+- **Lấy URL trực tiếp khi CDP bị chặn consent (`browser_consent_required`):**
+  - Khi profile Chrome chính của User không cấp quyền CDP endpoint tự động, dùng `computer_use` focus vào Omnibox (hoặc click vào nút "Xem shop" / shop link) để lấy URL thực tế từ DOM hoặc breadcrumbs/shop username thay vì kẹt lại.
 - **Shopee Anti-Crawl (403 Forbidden / Login Required):**
   - Chạy Playwright headless mới toanh hoặc `curl` trực tiếp vào API `shopee.vn/api/v4/...` sẽ bị chặn `403 Forbidden` hoặc chuyển hướng sang trang `Login Required`.
   - **Giải pháp:** Tương tác trực tiếp trên cửa sổ Chrome chính đã đăng nhập sẵn của User (`Profile 4 / jinrakal`) qua `computer_use` (SOM click / set_value) hoặc CDP port 9222.

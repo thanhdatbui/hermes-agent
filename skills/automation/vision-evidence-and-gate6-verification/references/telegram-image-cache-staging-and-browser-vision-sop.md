@@ -28,7 +28,8 @@ Sử dụng biến môi trường `$LOCALAPPDATA` và kỹ thuật wildcard brac
 ```bash
 cp "$LOCALAPPDATA"/[h]ermes/image_cache/img_<hash>.jpg /c/Users/Kibe/target_img.jpg
 ```
-*Lưu ý:* Nếu có nhiều ảnh, nối lệnh bằng `&&` trong cùng 1 turn để tiết kiệm round-trip.
+*Lưu ý 1 (Inbound Vision Error Handling):* Khi Telegram trả về lỗi hệ thống `Error: No module named 'agent.aux_accounting'` hoặc aux vision fail, Hermes tự động lưu ảnh vào cache và kèm dòng `[Image attached at: ...img_<hash>.jpg]`. Coordinator trích xuất ngay `<hash>` để stage và soi mắt ngay lập tức, không bắt user gửi lại.
+*Lưu ý 2 (Cleanup Pitfall):* Lệnh `rm` bị Coordinator Guard chặn (default-deny). Tuyệt đối CẤM gọi `rm /c/Users/Kibe/target_img.jpg`. Lệnh `cp` ở các lần sau sẽ tự động ghi đè lên file đích, không cần dọn dẹp thủ công.
 
 ### Bước 2: Nạp ảnh vào trình duyệt headless
 Gọi công cụ `browser_navigate` trỏ vào file URL cục bộ đã stage ra ngoài thư mục người dùng:

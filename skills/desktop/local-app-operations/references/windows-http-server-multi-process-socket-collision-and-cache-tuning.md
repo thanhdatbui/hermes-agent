@@ -20,5 +20,10 @@
      - Kiểm tra `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\` và xóa bỏ các file `.vbs` trùng lặp khởi động cùng một dịch vụ.
   3. **Tăng Cache TTL & Nhẹ Hóa Query:**
      - Không đặt `_CACHE_TTL` quá ngắn (15s) trên các bảng dữ liệu lớn. Tăng `_CACHE_TTL >= 180s` (3 phút) để giảm thiểu số lần query nặng quét 130k snapshots trên SQLite.
-  4. **Kiểm chứng đa giao diện:**
+  4. **Tách Biệt Endpoint Healthcheck (`/health`) Khỏi Data Aggregation:**
+     - TUYỆT ĐỐI CẤM watchdog supervisor thăm dò vào endpoint dữ liệu nặng (`/api/data` hay `/`) nơi có truy vấn quét toàn bộ bảng DB. Khi khởi động lạnh hoặc tải I/O cao, cold query mất 5–8s sẽ kích hoạt watchdog restart nhầm.
+     - Luôn trang bị endpoint `/health` trả về `200 {"status":"ok"}` tĩnh trong <10ms mà không chạm DB/disk. Watchdog trỏ thẳng vào `http://127.0.0.1:<port>/health` với timeout >= 25s để tránh ngắt nhầm lúc máy khởi động.
+  5. **Đồng Bộ Restart Cả Watchdog Khi Khởi Động Lại Server:**
+     - Trong script restart (`restart_tiktok_dashboard.py`), bắt buộc kill cả tiến trình watchdog (`tiktok_dashboard_watchdog.ps1`) cùng dashboard bằng `psutil`, sau đó gọi lại launcher VBS của cả hai để watchdog nhận cấu hình timeout/endpoint mới.
+  6. **Kiểm chứng đa giao diện:**
      - Kiểm tra kết nối độc lập trên cả 3 giao diện: Localhost (`127.0.0.1:1905`), LAN (`192.168.110.x:1905`) và Tailscale (`100.88.x.x:1905`).

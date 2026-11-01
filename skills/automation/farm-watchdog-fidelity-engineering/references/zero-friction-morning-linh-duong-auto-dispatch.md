@@ -43,3 +43,8 @@
    - Nhận diện rõ sắc thái: `closeout\s+rejected` / `blocked` là việc nghẽn nặng -> CỘNG điểm ưu tiên cao (+15); `closeout\s+approved` là việc đã xong -> TRỪ điểm triệt để (-20).
 5. **Stdout UTF-8 on Windows:**
    - Bắt buộc `getattr(sys.stdout, "reconfigure", None)(encoding="utf-8")` ở đầu script để chống lỗi `UnicodeEncodeError` khi cron engine redirect pipe trên Windows.
+6. **Time-Window Guard & Zero-Spam Silent Watchdog Pattern:**
+   - **Bẫy Xóa Job Đối Phó:** Khi User phản ánh cronjob spam hoặc báo cáo không đúng lúc ("spam hoài thế", "linh dương nào giờ này"), CẤM TUYỆT ĐỐI phản xạ gọi `cronjob action='remove'` để xóa job. Xóa job là làm đối phó trốn tránh trách nhiệm. Phải sửa tận gốc cơ chế trong code.
+   - **Time-Window Guard:** Script sáng sớm BẮT BUỘC kiểm tra `time.localtime().tm_hour` ngay đầu `main()`: chỉ chạy trong khung 05:00–08:59 (bypass khi có cờ `--force` hoặc `--test`). Ngoài giờ lập tức `return` im lặng (exit 0, stdout rỗng).
+   - **Lọc triệt để phiên đã đóng:** Trong `get_candidates()`, loại ngay các session có `CLOSEOUT APPROVED`, `Verdict: APPROVED` hoặc tin nhắn cuối kết thúc bằng `done`, `xong`, `chốt phiên`, `hoàn tất` (trừ khi có dấu hiệu rejected/blocked). Không đưa phiên đã xong vào danh sách để ép LLM chọn bừa.
+   - **Silent Watchdog khi không có Linh Dương:** Khi danh sách candidates rỗng hoặc model trả về `mission: null/none`, script im lặng thoát 0 không in ra stdout, tuân thủ nguyên tắc watchdog: output rỗng = silent, không spam vào chat.
