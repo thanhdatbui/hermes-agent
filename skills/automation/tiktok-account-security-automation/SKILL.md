@@ -30,4 +30,5 @@ Quy chuẩn và cơ chế an toàn khi tự động hóa thay đổi email, mậ
   - Khi phát hiện Captcha Puzzle: Giữ nguyên hiện trường, giải captcha (nếu có solver kéo trượt) hoặc báo `CAPTCHA_CHALLENGE` và chụp ảnh bằng chứng gửi User. Tuyệt đối không bấm nút `X` đóng popup rồi chờ OTP mù.
 
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
+> - Kèo nuôi ngâm TikTok Lite Google SSO, cơ chế thêm Hotmail không cần OTP mail cũ, cấm tái chế Gmail và kỷ luật chống khóc lóc: `skill_view(name='tiktok-account-security-automation', file_path='references/tiktok-lite-incubation-google-sso-and-anti-whining-20261101.md')`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

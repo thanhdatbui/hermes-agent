@@ -16,8 +16,12 @@ description: "Use when standardizing TikTok profiles (bio, pin, avatar)."
 > - `references/o1-proposal-canvas-and-fast-lookup-protocol.md`: Quy trình tra cứu toạ độ kênh O(1), trích xuất avatar sạch chữ và kết xuất Proposal Canvas 5-in-1 chuẩn mực.
 > - `references/pa4-execution-discipline-and-lockdown.md`: Kỷ luật thực thi chuẩn hoá khi User chọn PA 4, bẫy lệch ảnh Card 4 trên Canvas vs app thật, quy trình force upload avatar và đồng bộ khóa media đa tầng.
 > - `references/tiktok-unhide-private-videos-and-tab2-shift-flow-20261030.md`: Quy trình mở công khai video bị ẩn (Tab 2 - icon khóa 🔒), cơ chế tự dịch chuyển hàng đợi (queue shift) tại toạ độ cố định (540, 1200) và toạ độ chuẩn Privacy Settings.
-> - `references/tiktok-lifo-pin-ordering-and-enforce-slot1.md`: Quy tắc ghim video theo cơ chế LIFO TikTok, hàm tự động giữ top 1 view ở Ô 1 (_enforce_top_pin_at_slot1) và lọc candidate sort giảm dần tránh chọn nhầm bài rác.
-> - `references/safe-video-extraction-and-proposal-canvas-discipline.md`: Kỷ luật trích xuất frame video qua safe_extract_video_frame chống deadlock 60 phút và quy chuẩn trung thực bảng Proposal Canvas 4 ô tròn.
+- `references/tiktok-lifo-pin-ordering-and-enforce-slot1.md`: Quy tắc ghim video theo cơ chế LIFO TikTok, hàm tự động giữ top 1 view ở Ô 1 (_enforce_top_pin_at_slot1) và lọc candidate sort giảm dần tránh chọn nhầm bài rác.
+- `references/safe-video-extraction-and-proposal-canvas-discipline.md`: Kỷ luật trích xuất frame video qua safe_extract_video_frame chống deadlock 60 phút và quy chuẩn trung thực bảng Proposal Canvas 4 ô tròn.
+- `references/animal-face-quadrant-crop-and-inbound-vision-gate.md`: Kỷ luật trích xuất Avatar khuôn mặt động vật (chia 4 góc phần tư tránh cắt lưng/sườn) và cơ chế Inbound Hard-Gate tại Gateway.
+- `references/ground-truth-niche-and-pre-profile-network-gate-20261101.md`: Kỷ luật mỏ neo chân lý Niche kênh thực tế (chống bẫy cột Keyword trong Excel) & Network Preflight Check trước khi thao tác sửa hồ sơ.
+- `references/pet-avatar-full-portrait-vs-zoom-blur-pitfall.md`: Kỷ luật bố cục Avatar thú cưng (Full portrait sắc nét vs Bẫy zoom cận mặt vỡ hạt nhòe nét).
+- `references/ground-truth-video-niche-vs-excel-bias-and-preflight-network-gate-20261101.md`: Kỷ luật đối soát Niche nguồn thực tế vs bẫy Anchor Bias Excel & Preflight Network Fail-Closed.
 
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

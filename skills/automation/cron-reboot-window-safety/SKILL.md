@@ -20,6 +20,7 @@ Use this skill when a watchdog or batch is intentionally scheduled throughout th
      * Shift reboot log: Read the tail of `C:\Taadaa_Service\daily_reset.log` for the target shift (`05:20`, `11:20`, or `17:20`).
      * Sentinel flag check: Check existence of `C:\Taadaa_Service\reboot_sentinel_<date>_<shift>_<machine>.flag`.
      * Safe live preflight check: `python D:/Taadaa/tools/services/Taadaa_Service/farm_preflight_daily_reset.py --check-only` to test TFT game detection and Admin PC SSH health without issuing reboot.
+     * Game idle auto-close watchdog: Xem [`references/game-idle-auto-close-and-reboot-window-safety.md`](references/game-idle-auto-close-and-reboot-window-safety.md) để biết cơ chế tự động dọn game idle > 1h giải phóng lịch reboot.
 
 ## Patch contract
 

@@ -12,13 +12,7 @@ description: "Chẩn đoán Hermes session lag (context bloat → compression th
 - **Session bị reset/đứt ngang 04:00** — banner `◆ Session automatically reset (daily schedule at 4:00). Conversation history cleared. Use /resume to browse and restore a previous session.` (live 2026-08-12 Tiktok Reg group)
 - **Tái phình to Context do SKILL.md Re-bloat** — các file SKILL.md bị agent nhồi nhét tài liệu/references cũ phình to >100KB, hoặc agent gọi đọc file con `references/...` làm phình context lên 250.000 tokens (xem `references/skill-re-bloat-and-automated-pruning-governance.md`)
 - **Ảo giác báo cáo láo do nén context quá sớm & phá vỡ Prompt Cache** — nén ở 0.3/protect_last_n 20 làm Agent mất ngữ cảnh nhiệm vụ dở dang, dẫn đến completion bias và báo cáo sai sự thật; chuẩn hóa nâng lên threshold 0.60 / protect_last_n 50 (xem `references/context-compression-drift-and-prompt-caching-tuning-20261101.md` và `references/prompt-caching-and-compression-threshold-tuning.md`)
-
-## 0. Session reset 4:00 tự động — config `session_reset` (live 2026-08-12)
-- `session_reset.mode: both` (mặc định setup wizard) = reset theo CẢ 2: `idle_minutes: 1440` (24h idle) VÀ `at_hour: 4` (reset toàn bộ 04:00 hằng ngày). Hệ quả: mọi group/thread bị gom về session mới lúc 4h sáng, mất context, log `sessions` có `end_reason='session_reset'`.
-- **Tắt hẳn**: `hermes config set session_reset.mode none` → config.yaml `session_reset: {mode: none}`. (Chế độ khác: `idle` chỉ idle, `daily` chỉ theo giờ.)
-- **Phải restart gateway mới áp dụng** — và `hermes gateway restart` chạy TRONG gateway bị block ("cannot restart ... from inside the gateway process"). Restart từ shell ngoài (desktop terminal / login item) hoặc chờ lần khởi động sau.
-- Sau khi bị reset, session cũ vẫn còn trong DB (`hermes sessions list` / `/sessions`) — khôi phục bằng `/resume <session_id>` ngay trong group đó hoặc resume qua routing. Session bị reset có `expiry_finalized=true` trong `gateway_routing` state.db nhưng messages vẫn đọc được.
-- Không nhầm cơ chế này với compression fail loop (mục 1b) — đây là reset CHỦ ĐỘNG có banner, không phải nén treo.
+- **Nạp Cấu Hình Gateway Mới Bằng Runner Tách Rời (Detached Restart)** — Sửa file config chỉ ghi xuống đĩa; tiến trình Gateway đang chạy cần restart detached để RAM cập nhật compressor mới mà không bị đứt kết nối hay mất session.
 
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

@@ -25,6 +25,10 @@ Tài liệu quy trình chuẩn khi thực thi Invariant Soi Mắt & Gate 6 Visua
 - Xác Minh Fresh Screencap & Đối Soát Account Switcher: [`references/fresh-screencap-and-account-switcher-verification.md`](references/fresh-screencap-and-account-switcher-verification.md)
 - Báo Cáo Điều Tra Bypass by Claim Omission & Chốt Chặn Task Contract Binding: [`references/bypass-by-claim-omission-and-task-contract-binding.md`](references/bypass-by-claim-omission-and-task-contract-binding.md)
 - Chặn 2FA/TOTP Khi Switcher & Kỷ Luật Nghiệm Thu Profile: [`references/account-switcher-2fa-totp-interception-and-profile-standardization.md`](references/account-switcher-2fa-totp-interception-and-profile-standardization.md)
+- Inbound Vision Hard-Gate & Game Idle Auto-Close Architecture: [`references/inbound-vision-hard-gate-and-game-idle-watchdog.md`](references/inbound-vision-hard-gate-and-game-idle-watchdog.md)
+- Anti-AFK Preflight Reboot & Inbound Vision Hardening: [`references/anti-afk-reboot-guard-and-inbound-vision-hardening.md`](references/anti-afk-reboot-guard-and-inbound-vision-hardening.md)
+- Kỷ Luật Crop Khuôn Mặt Thật & Inbound Vision Hard-Gate: [`references/true-facial-crop-discipline-and-inbound-vision-gate.md`](references/true-facial-crop-discipline-and-inbound-vision-gate.md)
+- Kỷ Luật Phân Giải Ảnh & Chống Phóng Đại Micro-Crop Vỡ Hạt: [`references/anti-micro-crop-upscaling-and-resolution-discipline.md`](references/anti-micro-crop-upscaling-and-resolution-discipline.md)
 
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

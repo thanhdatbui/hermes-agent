@@ -13,6 +13,7 @@ metadata:
 
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.
+> - `references/jt-mobile-422-trap-and-orders-sqlite-ssot.md`: Bẫy link mobile J&T lỗi 422 khi bấm lại tra cứu trên form pre-rendered, gắn anchor `#chck-{billcode}`, và kiến trúc chuyển đổi toàn diện đơn hàng sang SQLite SSOT (`farm_master.db` table `orders`) qua `manage_orders.py` chấm dứt bẫy copy-paste nhầm tên khách hàng.
 > - `references/parallel-workers-milestone-alerts-and-bundle-product-traps.md`: Cấm cuốn chiếu mà bắt buộc chạy song song ThreadPoolExecutor (max 15 workers) kèm file lock, 3 mốc cảnh báo Telegram bắt buộc (mã mới, về Đà Nẵng, shipper đi phát), khử bẫy silent init, bẫy quà tặng kèm ("Thư cảm ơn"), modal popup dismiss và bộ lọc xóa khoảng trắng OCR kerning.
 > - `references/jt-express-link-traps-and-ingestion-integrity.md`: Bẫy link tra cứu web J&T (văng lỗi đỏ 422 khi bấm nút thừa trên mobile, giải pháp thêm neo #chck-{code}), định dạng raw URL Telegram chống gãy link và kỷ luật đối soát customer.name chống copy-paste nhầm tên từ template cũ.
 > - `references/jt-express-carrier-tracking-and-pickup-watchdog.md`: Tra cứu J&T Express web, anchor #chck-{code} chống bẫy 422 trên mobile, raw URL Telegram không bọc markdown dày, và quy chuẩn giải thích SĐT shipper bị che (+847****3464).

@@ -43,13 +43,35 @@ Khi $X \neq Y$, người dùng thường yêu cầu điều tra nguyên nhân l�
    - Các lượt này làm tăng following thực tế trên web TikTok. Khi scraper cào `snapshots` ca sáng, số Following đã tăng từ trước.
    - Nhưng `session_action_stats` chỉ tính các lượt được bàn giao trong các phiên chạy ban ngày của watchdog $\rightarrow$ **Web tăng nhiều hơn Bot**.
 
-2. **Lỗi Lọc / Bị TikTok Nhả Follow (Shadow Unfollow / Verification Lag):**
+2. **Lỗi Lọc / Bị TikTok Nhả Follow (Shadow Unfollow / Verification Lag / Anchor Rollback):**
    - Bot bấm nút Follow thành công trên app và ghi nhận +1 vào state.
-   - Tuy nhiên, TikTok nhận diện tài khoản vừa follow có dấu hiệu bất thường nên âm thầm hủy follow (shadow drop), hoặc web scraper cào trúng thời điểm hệ thống TikTok chưa đồng bộ Following count $\rightarrow$ **Bot tăng nhiều hơn Web**.
+   - Khi dính lỗi anchor rollback (`FOLLOW_FAILED: anchor @... bị nhả sau vuốt — dừng session`), lượt bấm follow trước đó bị TikTok shadow-revert hoặc không cộng vào profile. 
+   - **Cạm bẫy code cũ trong `feed_session_watchdog.py`:**
+     Code cũ viết `reset = failed and cnt == 0`, tức chỉ reset về 0 khi máy fail ngay lượt đầu. Nếu máy đã follow 1 nick (`cnt = 1`) rồi mới phát hiện anchor bị nhả, code vẫn đếm `m_to_reported = cnt` (+1) ➔ Bot ghi nhận +1 nhưng Web Following delta = 0 ➔ Lệch -1 lượt.
+   - **Quy chuẩn sửa đúng (Fix Invariant):**
+     Bắt buộc sửa thành:
+     ```python
+     reset = failed
+     m_to_reported[str(m)] = natural_cnt if reset else cnt + natural_cnt
+     ```
+     Khi `failed is True` (bị nhả follow), toàn bộ lượt follow chéo `cnt` trong phiên đều bị hủy bỏ khỏi `m_to_reported`, chỉ giữ `natural_cnt` (nếu có).
+
+3. **Đứt Gãy Tiến Trình Tổng Nuốt Chửng Kết Quả Follow (Parent Session Crash / Truncation Trap):**
+   - Phiên chạy tổng (`multi_machine_feed_session.py`) gặp sự cố dừng đột ngột (thiếu file `summary.txt` và `run_manifest.json` ở root folder `row-X-HHMMSS`).
+   - Mặc dù tiến trình con trên máy (`run_follow.py --machine M`) đã kịp bấm follow thật trên TikTok và ghi vào file state `follow_state_M_row_R.json`, nhưng do tiến trình mẹ bị đứt, stdout không được thu hoạch để ghi file `follow_result.json` vào thư mục máy.
+   - Watchdog quét thư mục không tìm thấy `follow_result.json` nên ghi nhận `0 lượt` cho toàn bộ phiên đó vào `session_action_stats`.
+   - Kết quả: Web scraper đọc trực tiếp trên TikTok profile thấy Following tăng vọt, trong khi Bot bị mất trắng số liệu của phiên bị đứt $\rightarrow$ **Web tăng nhiều hơn Bot (+N lượt)**.
 
 ---
 
-## 4. Quy Trình Triage O(1) Để Tìm Đúng Nick Lệch
+## 4. Kỷ Luật Phản Hồi: Không Dừng Lại Ở Số Liệu Khơi Khơi
+Khi User yêu cầu điều tra lệch số liệu ("Sao lệch", "Điều tra kĩ cho tao", "Thì điều tra lí do lỗi đi"):
+- **CẤM** chỉ dừng lại ở việc báo cáo: "Nick A web tăng X, bot tăng Y". Đó chỉ là bề nổi của hiện tượng!
+- **BẮT BUỘC** phải đào sâu xuống tận tầng tiến trình: Kiểm tra thư mục runtime `D:/Taadaa/runtime/<cluster>/live/<date>/row-*`, xác minh sự tồn tại của `summary.txt`, `log.jsonl`, `follow_result.json`, và đối soát log `follow_state_*.json` để chỉ ra chính xác phiên nào bị đứt gãy hoặc nick nào bị TikTok nhả anchor.
+
+---
+
+## 5. Quy Trình Triage O(1) Để Tìm Đúng Nick Lệch
 
 Khi nhận yêu cầu điều tra, Coordinator BẮT BUỘC thực hiện truy vấn bóc tách O(1) theo các bước:
 
