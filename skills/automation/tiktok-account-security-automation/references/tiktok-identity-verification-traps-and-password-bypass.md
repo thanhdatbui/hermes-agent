@@ -1,0 +1,30 @@
+# TikTok Identity Verification Pitfalls & 2FA Enforcement Rules
+
+## 1. Bản chất cơ chế bảo mật "Xác minh danh tính" (Verify Identity) của TikTok
+- **Sự cố thực tế:** Khi tài khoản đang đăng nhập trong app TikTok vào mục *Thông tin tài khoản* -> *Email* -> *Thay đổi email*, TikTok có thể bật popup chắn toàn màn hình:
+  - Header: `Xác minh danh tính` (`Verify identity`)
+  - Subtext: `Trước khi tiếp tục, hãy xác minh danh tính của bạn bằng một trong các phương pháp sau đây.`
+- **Bẫy hiểu nhầm 2FA TOTP:**
+  - **Tài khoản dù đã bật 2FA TOTP (Authenticator App) trong hệ thống/cơ sở dữ liệu, TikTok VẪN KHÔNG ĐƯA RA LỰA CHỌN NHẬP TOTP TRÊN FORM NÀY.**
+  - Lý do: 2FA TOTP chỉ dùng khi login thiết bị mới. Khi đổi thông tin nhạy cảm (Email/Password), TikTok ưu tiên bảo vệ tài khoản bằng cách bắt gửi OTP về **chính Email cũ đang liên kết**.
+
+## 2. Phân loại 2 dạng màn hình Xác minh danh tính
+1. **Dạng 1 (Chỉ có gửi mã về Email cũ):**
+   - Màn hình chỉ có 1 lựa chọn radio: `<email_cũ>@gmail.com`.
+   - Phía dưới chỉ có nút `Tiếp` và link `Yêu cầu hỗ trợ` (dẫn sang ticket TikTok Support).
+   - **Xử lý:** Đây là ngõ cụt nếu Email cũ đã DIE hoàn toàn không nhận được thư. Worker bắt buộc phát hiện cụm `xác minh danh tính` / `xác minh để là bạn` và **DỪNG NGAY / SKIP AN TOÀN**, không được cố chấp đi tiếp lấy OTP Hotmail mới rồi báo lỗi `khong lay duoc OTP` làm kẹt hàng trăm vòng lặp.
+2. **Dạng 2 (Có lựa chọn Mật khẩu):**
+   - Màn hình có lựa chọn radio `Mật khẩu` (`Måt khäU`).
+   - **Xử lý:**
+     + Tap radio button chọn `Mật khẩu` (khoảng `x=120, y=680` hoặc parse OCR node `Mật khẩu`).
+     + Tap nút `Tiếp` (`x=540, y=1700`).
+     + Điền mật khẩu TikTok của nick (lấy từ SSOT `farm_master.db` hoặc `taikhoan_dat_v2_updated .xlsx`).
+     + Bấm xác nhận để mở khóa form điền email mới.
+
+## 3. Khắc phục lỗi Pool Hotmail Token Grant Expired (`AADSTS70000`)
+- **Triệu chứng:** Graph API trả về `HTTP Error 400: Bad Request` kèm body:
+  `{"error":"invalid_grant","error_description":"AADSTS70000: The user could not be authenticated as the grant is expired."}`.
+- **Bẫy:** Nếu không xử lý exception này, worker bốc phải mail bị hết hạn grant sẽ crash hoặc kẹt vòng lặp lấy OTP.
+- **Giải pháp:**
+  - Bắt buộc kiểm tra `refresh_token` qua endpoint token Microsoft trước khi nạp vào form TikTok.
+  - Nếu gặp `AADSTS70000`: Đánh dấu `oauth_status = 'EXPIRED'` trong database và tự động fallback lấy mail sạch tiếp theo, không được dùng mail lỗi.

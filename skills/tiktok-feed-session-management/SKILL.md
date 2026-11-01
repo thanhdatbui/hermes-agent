@@ -14,6 +14,9 @@ author: Hermes Agent
 - Triage Skip Follow (Streak Cooldown vs Chưa Đủ 6 Video): Khi đối soát báo cáo follow 0 lượt (như "Bỏ qua: Cooldown nhả follow" vs "Chưa đủ điều kiện"), BẮT BUỘC phân biệt rõ 2 nguyên nhân cốt lõi giữa các cụm:
   * `Cooldown nhả follow` (`follow-released-daily-cooldown`): Thường gặp ở Farm Kibe (nick cũ), do `fail_streak >= 1` lưu tại `D:/Taadaa/tiktok-follow/runs/state/follow_state_{machine}_row_{row}.json` với thang phạt `cooldown_until_date` (Streak 1: 1 ngày, 2: 3 ngày, 3: 5 ngày, >=4: 15 ngày).
   * `Chưa đủ điều kiện` (`under-6-videos-follow-disabled`): Thường gặp ở Farm Admin (nick mới), do `video_count < 6` hoặc tuổi < 21 ngày, bị preflight gate chặn sớm bảo vệ tài khoản, hoàn toàn chưa có state và không phải do streak cooldown.
+- Cạm bẫy Logic Streak Cooldown & Lượt Chạy Liên Tiếp:
+  * Bẫy Tích Lũy Streak Mù: Khi nick gãy ca mới nhưng giữa 2 ca gãy đã có ca follow thành công (>0 lượt), cấm cộng dồn streak cũ theo `diff_days <= 7`; bắt buộc reset về Streak 1.
+  * Bẫy Reset Streak Oan Do Lịch Cách Ngày: Cấm dùng khoảng cách ngày tuyệt đối (`diff_days > 7`) để reset streak của nick bị gãy liên tiếp. Streak phải bám theo chuỗi ca chạy gãy thực tế liên tiếp (consecutive sessions), chi tiết xem `references/follow-fail-streak-logic-traps-and-consecutive-session-invariants.md`.
 
 ## References
 - Chi tiết toàn bộ quy trình, case study và phân tích chuyên sâu: xem các tài liệu trong thư mục `references/` của skill.

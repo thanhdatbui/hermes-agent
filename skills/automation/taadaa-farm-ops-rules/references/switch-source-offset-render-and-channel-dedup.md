@@ -28,6 +28,14 @@
   * Quản lý lưu vết 2 lớp: File trung tâm `D:/Taadaa/Tiktok-video/data/gaixinh_channel_claims.json` và file cục bộ `channel_info.json` trong thư mục video gốc.
   * Khi chạy phân phối: Tự động bỏ qua `[SKIP CLAIMED]` các kênh đã được nhận.
   * Khi chạy với `--clean-old`: Tự động nhả claim cũ của folder để tái phân bổ sạch.
+- **THAM SỐ DÒNG LỆNH CỦA `swap_single_folder_pipeline.py`**:
+  * Tham số `--tik`: Nhận kiểu số nguyên (Integer: `1..8`), CẤM truyền dạng chuỗi prefix `"Tik7"` (sẽ văng lỗi argparse `invalid int value: 'Tik7'`). Chuẩn: `--tik 7`.
+  * Preflight dung lượng kênh: Luôn kiểm tra kênh nguồn có $\ge 40$ clip khả dụng hay không bằng `yt-dlp --extract-flat --playlist-end 50` trước khi chạy swap; nếu kênh chỉ có dưới 40 clip, pipeline sẽ hủy swap (`Chỉ tải được X/40 video; hủy swap, giữ nguyên dữ liệu cũ`).
+  * Tránh nguồn TikTok bị chặn User ID: Một số kênh TikTok trả lỗi `Unable to extract secondary user ID / account is private or embedding disabled`, cần fallback sang kênh sạch đã preflight thành công.
+- **CẤM TUYỆT ĐỐI NGUỒN BẢN TIN / THỜI SỰ (VTV, BÁO ĐÀI)**:
+  * CẤM triệt để các nguồn dính kênh tin tức, bản tin thời sự (VTV1, thời sự, chính trị, pháp luật, báo chí...). Đăng nội dung này lên tài khoản nuôi farm vi phạm chính sách nội dung unoriginal và dễ bị bóp reach 0 view.
+  * Khi phát hiện kênh bị cào nhầm nguồn tin tức (như VTV1), BẮT BUỘC đổi ngay sang các ngách hot an toàn: **Câu chuyện cuộc sống / Story Engine** (kịch bản nhân văn, giữ chân xem hết clip, cắn đề xuất cao nhất farm), **Douyin visual**, **Gái xinh cá nhân nhẹ nhàng**, **Thú cưng / chó mèo cute**, hoặc **Oddly Satisfying / ASMR**.
+  * **Giải mã chỉ thị User ("Chọn niche hot dựa trên đề xuất của farm ở session kia t ms dùng đó"):** Mỏ neo chính là ngách **Câu chuyện cuộc sống / Story Engine** (`cauchuyen` / `cuocsong`), đã được kiểm chứng thực tế mang lại hàng chục ngàn tim và hàng trăm follower trên farm.
 - **CẮT LÁT & GOM VIDEO THỪA SANG BỂ GỘP (CURATED POOL RECYCLING)**:
   * Kênh Độc Quyền lấy tối đa 45 video đầu (`vids[:45]`) nạp vào folder chính.
   * Toàn bộ video thừa từ video thứ 46 trở đi (`vids[45:]`) tự động đẩy vào **Bể Gộp đa kênh (Curated Channels)** để chia đều cho các nick Đa Kênh, tối ưu 100% tài nguyên đã cào.

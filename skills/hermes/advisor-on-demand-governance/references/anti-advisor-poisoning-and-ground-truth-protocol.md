@@ -16,6 +16,8 @@ Trong kiến trúc Multi-Agent / Coordinator-Advisor:
 - Nếu chỉ chặn các từ cụ thể như *"có phải 100% do..."* thì:
   1. Sang vấn đề khác hoặc ngữ cảnh khác, Coordinator sẽ dùng cách diễn đạt khác để lách và mớm cung tiếp.
   2. Các bộ lọc regex từ khóa thô thiển rất dễ bắt nhầm câu hỏi kỹ thuật hợp lệ, gây ra tình trạng **Over-engineering và Bại liệt hệ thống** (Paralysis).
+- **Nguyên tắc vàng:** Không dựng thêm các Gate chặn regex phức tạp. Thay vào đó, áp dụng cơ chế tự động làm sạch (Sanitizer) nhẹ nhàng ở middleware và cấu trúc hóa câu hỏi theo mẫu RAW_FACTS + USER_OBSERVATIONS + NEUTRAL_QUESTION.
+
 
 ## 3. Cơ Chế Trị Tận Gốc (Structural Separation & User Ground Truth)
 

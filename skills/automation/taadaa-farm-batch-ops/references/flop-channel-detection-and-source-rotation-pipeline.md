@@ -9,8 +9,15 @@
   - Biện pháp duy nhất: **ĐỔI NGUỒN CÀO (Source Rotation)** và render nối tiếp từ `start_seq = (video_da_dang + 1)` để không làm gián đoạn lịch đăng và không xóa các clip cũ đã đăng trên TikTok.
   - **Trình tự dọn dẹp bắt buộc:** BẮT BUỘC dọn sạch video đã render cũ trước (`D:/TIKTOK-videonuoinick/<rend>`) rồi mới dọn video gốc (`D:/video goc/<raw>`), sau đó mới tải nguồn cào mới để tránh tình trạng bot nuôi lấy nhầm file render cũ đang dở dang.
 
-## 2. Công Cụ & Quy Trình Cơ Giới Hóa
-1. **Quét phát hiện flop:**
+## 2. Công Cụ, Watchdog & Cơ Chế Cảnh Báo Định Kỳ
+1. **Watchdog giám sát định kỳ (Đã tích hợp):**
+   - Tên Cronjob: **`daily-stale-upload-accounts-watchdog`** (ID: `5ad19a65f7ef`).
+   - Lịch chạy: **07:15 sáng hàng ngày** (`15 7 * * *`).
+   - Nơi nhận báo cáo: Group Telegram Farm Alert (`telegram:-5435853713`).
+   - Script thực thi: `cron_stale_upload_watchdog.py`.
+   - Cơ chế: Gọi `_get_flop_section(cluster="kibe", limit=8)` qua engine `flop_channel_scanner.py`. Khi phát hiện kênh flop ($f\_cnt > 0$), watchdog tự động gắn cờ `run.check("flop_accounts", f_cnt)` kích hoạt trạng thái `ANOMALY` để phát hành tin nhắn chi tiết kèm lệnh O(1) swap mẫu về Telegram.
+
+2. **Quét thủ công hoặc theo máy cụ thể:**
    ```bash
    python D:/Taadaa/tools/flop_channel_scanner.py --cluster kibe [--machine <N>] --generate-swap-commands
    ```
@@ -51,4 +58,5 @@
 1. **CronRun Context Premature Exit:** Trong script watchdog báo cáo (`cron_stale_upload_watchdog.py`), nếu `with run_ctx as run:` bị đóng sớm ở đầu script thì context manager sẽ exit trước khi khối audit chạy. `run.set_report(msg)` ở cuối script trở nên vô tác dụng, dẫn đến script kết thúc với stdout rỗng (silent) và không đẩy tin về Telegram. Bắt buộc bọc toàn bộ luồng trong `run.__enter__()` và `run.__exit__()`.
 2. **Nguồn cào YouTube Shorts vs TikTok Web:** Cào YouTube Shorts qua yt-dlp + MikroTik proxy (`192.168.110.2:10001-10035`) có độ tin cậy và tốc độ cao nhất (không bị lỗi secondary user ID / block session như TikTok profile web).
 3. **Thứ tự dọn thư mục khi swap nguồn:** BẮT BUỘC xóa dọn kho render (`D:/TIKTOK-videonuoinick/<rend>`) trước khi dọn kho raw (`D:/video goc/<raw>`), đảm bảo không còn clip tồn dư của nguồn cũ bị bot upload nhầm.
+4. **Fallback INSERT Database:** Hàm update database trong swap pipeline cần cấp đủ trường ordinal để thỏa mãn ràng buộc NOT NULL của bảng folders.
 4. **Kỷ Luật Thi Công Đồng Loạt (Batch Parallel Concurrency):** Khi User yêu cầu thay nguồn hàng loạt cho các kênh flop, CẤM TUYỆT ĐỐI tự ý thi công cuốn chiếu từng con một rồi chat dông dài (vừa mất thời gian vừa gây bực mình cho User). BẮT BUỘC khởi chạy song song nhiều tiến trình nền (`background=true, notify_on_complete=true`) cho từng cặp máy/folder mục tiêu. Dải proxy MikroTik (`10001 - 10035`) tự động phân bổ ngẫu nhiên theo cổng để chống thắt cổ chai mạng khi tải đồng thời nhiều luồng yt-dlp.

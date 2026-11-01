@@ -13,6 +13,9 @@ description: "Use when standardizing TikTok profiles (bio, pin, avatar)."
 > - `references/tiktok-follow-drop-verification-and-profile-edit-20261030.md`: Cơ chế kiểm tra nhả follow qua vuốt reload (pull-to-refresh + sleep 3.5s), tỷ lệ xem video mồi (30-35%) và quy trình mở khóa đổi Username @.
 > - `references/cohort-analysis-and-follow-drop-mechanics-20261030.md`: Kỷ luật phân tách cohort tuổi (±15 ngày) và loại mail (Gmail vs Hotmail), bản chất TikTok cấm chiều Cho Đi (Following) và thực trạng đàn nick 25/08.
 > - `references/username-change-variant-and-fleet-partitioning-20261029.md`: Quy chuẩn đổi Username khi UI ẩn nút Sửa hồ sơ, đối soát trust threshold follow và hiệu quả phân nhóm Chẵn/Lẻ.
+> - `references/pet-avatar-crop-fidelity-and-gateway-vision-discipline.md`: Kỷ luật trích xuất avatar thú cưng không overzoom vỡ hạt, tỷ lệ canvas mobile Telegram chống màn hình đen, và cấu hình Hermes native vision chống lỗi aux_accounting.
+- `references/autonomous-extraction-anti-substitution-and-viewport-discipline.md`: Cấm lấy ảnh cún/mèo từ kho khác thay thế, công cụ trích xuất tự động qua Laplacian sharpness/Haar Cascade, và tỷ lệ viewport Telegram chống màn hình đen.
+> - `references/remote-admin-cluster-pin-top-videos.md`: Cơ chế định tuyến Dual Cluster (Admin remote 192.168.110.119:5037) cho `pin_top_videos.py` & AdbClient.
 
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

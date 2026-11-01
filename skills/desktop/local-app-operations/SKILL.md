@@ -16,3 +16,4 @@ Use this skill when the user asks to update, configure, log into, or import data
 
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.
+- `references/chatgpt-web-feeder-sso-vs-direct-triage.md`: Xử lý lỗi EMPTY_SESSION_TOKEN do lệch luồng Google SSO vs Direct Hotmail trong auto-feed ChatGPT-Web.

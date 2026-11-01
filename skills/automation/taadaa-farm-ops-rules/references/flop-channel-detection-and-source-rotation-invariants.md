@@ -33,3 +33,5 @@
   * Đánh giá hiệu suất niche bắt buộc phải aggregate trên TOÀN BỘ 1.000+ tài khoản của cả 2 cụm (Kibe & Admin) bằng script đối soát `tiktok_tracker.db` + toàn bộ `Tik1..Tik8.xlsx`.
   * Mỏ neo chân lý (Ground Truth) là nội dung video thực tế trong kho raw/render, không được dựa mù quáng vào cột Keyword trong Excel hay claims cũ.
   * Ưu tiên các ngách có tỷ lệ tim/clip cao và tỷ lệ flop thấp toàn farm (ví dụ: *Câu chuyện cuộc sống*, *Giao thông*, *Gym / Fitness*). Tránh các ngách ẩm thực quay cận cảnh không voice/không mặt người hoặc cắt ghép hài xàm dễ dính lỗi unoriginal bị bóp reach 0 view.
+  * **LỆNH CẤM TUYỆT ĐỐI NGUỒN TIN TỨC / BÁO CHÍ (Anti-News Invariant):** CẤM TUYỆT ĐỐI lấy nguồn từ các kênh thời sự, tin tức, chính trị, báo đài (như VTV, VTC, VOV, QPVN, tin giật gân...). Các video này vi phạm chính sách cộng đồng TikTok về tin tức/chính trị và bị bóp reach 0 view hoặc ăn gậy kiểm duyệt.
+  * **Kỷ luật xử lý khi dính nguồn tin tức:** Ngay lập tức áp dụng quy trình WIPE & REBUILD (xóa 100% video thô và render dở dang ở cả 2 đầu kho), bảo lưu cursor `video_da_dang`, và chuyển đổi sang ngách Story Engine / Câu chuyện cuộc sống theo đề xuất chuẩn của farm.
