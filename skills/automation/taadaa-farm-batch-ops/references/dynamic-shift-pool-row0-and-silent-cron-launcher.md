@@ -96,12 +96,13 @@
 - **Thứ Tự Phễu Sức Khỏe 4 Tầng Khi Bốc Nick Trong Pool:**
   1. 🚀 **Tầng 1 (Đề xuất):** Nick cắn đề xuất (`is_account_boosted`) $\to$ Ưu tiên số 1 để đăng video giữ đà.
   2. 💪 **Tầng 2 (Nick khỏe):** Nick có chỉ số tương tác tốt, nhiều follow/tim, view đều đặn.
-  3. 🩹 **Tầng 3 (Dưỡng thương):** Nick bị TikTok nhả follow / dính cooldown follow $\to$ lướt feed xả phạt, làm ấm session để hồi phục.
-  4. 🌱 **Tầng 4 (Nick non):** Nick có số lượng video ít nhất $\to$ đăng video tích lũy nội dung.
+  3. 🌱 **Tầng 3 (Nick non):** Nick có số lượng video ít nhất hoặc probation $\to$ đăng video tích lũy nội dung.
+  4. ⛔ **Rank 99 (Nick đang bị phạt / cooldown / fail streak - TUYỆT ĐỐI KHÔNG BỐC):** Nick bị TikTok nhả follow hoặc dính fail streak/cooldown bắt buộc bị đẩy xuống bét bảng (Rank 99) theo `_follow_rank`. CẤM TUYỆT ĐỐI bốc nick đang đi tù ra chạy nếu trong Pool vẫn còn nick sạch! (Chi tiết xem `references/shift-pool-follow-rank-and-cooldown-discipline.md`).
 
 - **Luật Cooldown 48h Trong Nội Bộ Chu Kỳ (Chỉ Kích Hoạt Khi SUCCESS Thật):**
-  * **Chạy Thất bại / Lỗi / Timeout / Skip:** **TUYỆT ĐỐI KHÔNG DÍNH COOLDOWN**. Nick đề xuất hoặc nick khỏe nếu gặp sự cố hạ tầng (rớt USB, timeout, app kẹt) sẽ tiếp tục được ưu tiên bốc lại ở các ca/ngày kế tiếp cho đến khi đạt được **ít nhất 1 lần SUCCESS trọn vẹn trong chu kỳ**.
+  * **Chạy Thất bại / Lỗi / Timeout:** **TUYỆT ĐỐI KHÔNG DÍNH COOLDOWN**. Nick đề xuất hoặc nick khỏe nếu gặp sự cố hạ tầng (rớt USB, timeout, app kẹt) sẽ tiếp tục được ưu tiên bốc lại ở các ca/ngày kế tiếp cho đến khi đạt được **ít nhất 1 lần SUCCESS trọn vẹn trong chu kỳ**.
   * **Chỉ khi SUCCESS thành công:** Lúc đó nick mới chính thức ăn Cooldown 48h trong nội bộ chu kỳ hiện tại, ép máy phải luân phiên sang các nick còn lại trong Pool, triệt tiêu việc cày dồn 1 nick.
+  * **Bẫy Kẹt Vòng Lặp Xoay Tua Do Phân Hạng Ngược Nick Đi Tù (Deadlock Trap - xem `references/shift-pool-follow-rank-and-cooldown-discipline.md`):** Trước đây thuật toán `_follow_rank` xếp nick có `fail_streak > 0` lên Rank 4 (cao hơn cả nick bình thường ở Rank 6), dẫn đến việc ngày nào máy cũng bốc đúng nick đang ngồi tù ra chạy lặp đi lặp lại. Chuẩn hóa: Toàn bộ nick dính cooldown/fail_streak/follow_failed bắt buộc bị hạ xuống Rank 99 để nhường lượt cho nick sạch.
   * **Reset Cứng Khi Sang Chu Kỳ Mới (D0):** Cooldown 48h chỉ khoanh vùng trong nội bộ chu kỳ 4 ngày (`cycle_idx`). Khi bước sang Ngày 1 (D0) của chu kỳ mới, toàn bộ cờ cooldown được **xóa sạch 100% về 0** (kể cả nick vừa chạy ở Ca 3 Ngày 3 hoặc Ngày 4 dưỡng sinh thì sáng D0 vẫn sạch cờ và được ưu tiên chạy bình thường).
 
 - **Kỷ Luật Dưỡng Sinh (Ca 3 Ngày 3 & Toàn Bộ Ngày 4):**

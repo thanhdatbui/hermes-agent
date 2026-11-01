@@ -15,7 +15,7 @@ Common error signatures:
 
 ---
 
-## Root Cause: 2 GB Virtual Address Space (VAS) Ceiling
+## Root Cause: 2 GB Virtual Address Space (VAS) Ceiling & The 262k Handle Limit
 
 1. **32-bit Process Architecture:**
    On Windows 64-bit, a standard 32-bit process is limited to **2,048 MB (2 GB)** of virtual address space by default.
@@ -25,6 +25,11 @@ Common error signatures:
 3. **Trigger / Object Leak (Custom Maps):**
    Heavy custom maps (e.g. DotA IMBA, complex AoS/RPGs) leak handles (`Handle2AgentReg`), spell effects, floating text, and unit data.
    High in-game video settings (`particles: 2`, `spellfilter: 2`) accelerate buffer exhaustion during multi-player teamfights, exhausting the remaining address space and triggering an immediate crash.
+4. **CRITICAL PITFALL: LAA is Enabled (`Characteristics: 0x0123`) But Fatal Error Still Occurs:**
+   - Enabling LAA (`IMAGE_FILE_LARGE_ADDRESS_AWARE = True`) gives the process 4GB address space, but **DOES NOT expand Blizzard's internal Handle Table limit**.
+   - In Warcraft III 1.26a, the engine (`Game.dll`) manages JASS handles via `Handle2AgentReg` with an index mask `and eax, 0x0003FFFF` (capped at 262,143 handles).
+   - In heavy maps like `imba2018v4en.w3x` with spam heroes (Goblin Techies, Storm Spirit, Spectre), handles saturate the 262k limit. When the table indexing runs off the page boundary (`[esi+04]` at `0x19CEFFF4 + 4 = 0x19CEFFF8`), Windows triggers `0xC0000005 ACCESS_VIOLATION` at `Game.dll (GameMain+7****59)`.
+   - In this state, patching LAA further achieves nothing. The fix MUST be switching to a sanitized map revision (e.g. `2024imbaAH.w3x`) that includes handle garbage collection (`DestroyGroup`, `RemoveLocation`, `DestroyEffect`).
 
 ---
 

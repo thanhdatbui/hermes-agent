@@ -21,14 +21,5 @@ Quy chuẩn và cơ chế an toàn khi tự động hóa thay đổi email, mậ
      - Bấm ngay nút `Back` hoặc `Home` (`input keyevent 4` hoặc `3`) để đưa app về trạng thái an toàn.
      - Đánh dấu task `FAILED_SAFETY` và chụp ảnh báo cáo.
 
-## 2. Quy Tắc Captcha Puzzle Khi Đổi Email / Đăng Ký (Popup Dismiss Trap)
-- **Bẫy hủy request:**
-  - Khi điền email mới và bấm *"Tiếp tục"*, TikTok có thể bật popup WebView **"Xác minh để tiếp tục:" (Puzzle Slider)**.
-  - **CẤM BẤM NÚT ĐÓNG `X` (`verify-bar-close`):** Bấm nút `X` để tắt popup đồng nghĩa với việc User hủy thao tác trên backend TikTok -> TikTok sẽ **KHÔNG BAO GIỜ gửi mã OTP về hòm thư**!
-  - Nếu bot bấm đóng popup rồi tiếp tục vòng lặp chờ OTP (polling 30s-60s), bot sẽ luôn bị lỗi giả *"Failed to receive OTP within timeout"*.
-- **Xử lý chuẩn:**
-  - Khi phát hiện Captcha Puzzle: Giữ nguyên hiện trường, giải captcha (nếu có solver kéo trượt) hoặc báo `CAPTCHA_CHALLENGE` và chụp ảnh bằng chứng gửi User. Tuyệt đối không bấm nút `X` đóng popup rồi chờ OTP mù.
-
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
-> - Kèo nuôi ngâm TikTok Lite Google SSO, cơ chế thêm Hotmail không cần OTP mail cũ, cấm tái chế Gmail và kỷ luật chống khóc lóc: `skill_view(name='tiktok-account-security-automation', file_path='references/tiktok-lite-incubation-google-sso-and-anti-whining-20261101.md')`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

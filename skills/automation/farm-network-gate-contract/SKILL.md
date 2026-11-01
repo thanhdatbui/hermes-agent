@@ -18,10 +18,7 @@ Use this skill when a multi-device Android farm needs reliable Wi-Fi assignment,
 > - `references/anti-hallucination-and-network-collision-audit.md`: Căn bệnh đánh đồng HTTP 200 với Mục tiêu hoàn thành, lỗ hổng của Regex Completion Claims, Math Assert bắt buộc đối soát tập hợp Egress IP, và quy tắc khôi phục router nhúng R3G (rút cắm nguồn 10s, không cần cắm PC).
 > - `references/evidence-driven-execution-and-anti-gate-bloat-20261101.md`: Nguyên lý Evidence-Driven Execution chống Completion Bias, phân tích vì sao không đẻ thêm Gate rác ngọn gây bại liệt, và tiêu chuẩn đối soát bằng chứng cứng (Hard Proof) trên mọi lĩnh vực.
 > - `references/anti-hallucination-proxy-math-assert-and-quarantine-protocol.md`: Invariant Math Assert (len(set(IPs)) == N) chống báo cáo láo proxy LIVE khi bị chùm IP, kèm quy trình cách ly Quarantine ADB :0 an toàn.
-> - `references/r3g-direct-wan-and-anti-fake-telemetry-discipline-20261101.md`: Kiến trúc Direct WAN R3G (chuẩn MobiProxy), Cloudflare DDNS, iptables Scan Guard và kỷ luật Math Assert chống báo cáo láo.
-> - `references/r3g-isp-pppoe-profile-and-cgnat-truth-20261101.md`: Phân tích kỹ thuật thực tế 2 line PPPoE Thái Bình (tamnhb0 Public vs tamnhb1 CGNAT 100.77.x.x), phản bác luận điểm sai trái 'reconnect ngẫu nhiên ra Public' và hướng dẫn ghim profile Non-CGNAT tầng OLT trạm Viettel.
-> - `references/r3g-l2-mac-device-architecture-and-mobiproxy-parity.md`: Phân tích khác biệt kiến trúc L2 MAC giữa box MobiProxy (4 NIC độc lập) vs R3G OpenWrt (switch DSA chia sẻ), nguyên nhân thiếu MAC trên lan2 dẫn đến trạm Viettel cô lập vào CGNAT 100.77.x.x, chuẩn hóa khai báo dev_lan2 có macaddr riêng và quy tắc bảo toàn kết nối từ xa.
-> - `references/network-preflight-fail-closed-and-anti-excel-niche-bias-20261101.md`: Bẫy ngộ nhận niche từ cột Keyword Excel thay vì video thực tế; bài học Wi-Fi dấu chấm than (!) rớt proxy khiến TikTok báo 'Không thể lưu'; quy chuẩn tích hợp require_android_vpn fail-closed O(1) vào 100% script profile/UI.
+> - `references/r3g-direct-wan-and-anti-fake-telemetry-discipline-20
 
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

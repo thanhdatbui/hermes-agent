@@ -18,11 +18,15 @@
 
 ---
 
-## 2. Kỷ Luật Tạo Bảng Proposal Canvas (Chống Nhân Bản 1 Ảnh Thành 4)
+## 2. Kỷ Luật Trích Xuất Bố Cục Avatar & Chống Bẫy Micro-Crop Phóng To Vỡ Hạt
 
-- **Cấm Gian Dối Tái Sử Dụng:** Tuyệt đối không được lấy 1 file ảnh có sẵn (như `avatar.jpg`) rồi zoom nhẹ hoặc chỉnh sáng làm 4 lần để đối phó nộp cho xong chuyện.
-- **Quy Chuẩn 4 Phương Án Thật:** Bảng Proposal Canvas 4 ô tròn bắt buộc phải đại diện cho **4 khoảnh khắc/góc quay hoàn toàn khác nhau** từ kho video thực tế của kênh.
-- **Kiểm Chứng Vision Bắt Buộc:** Sau khi render bảng Proposal Canvas, Coordinator bắt buộc phải gọi `browser_navigate` và `browser_vision` để mắt thật của LLM kiểm tra từng ô tròn. Xác nhận 100% không dính ảnh người lạ, không dính chữ rác/watermark, và đúng nhân vật trước khi phát lệnh `MEDIA:`.
+- **Bẫy Tự Bịa "Cận Cảnh":** Người dùng không hề yêu cầu dí sát vào lỗ mũi hay mảng lông. Cắt một góc 180x180 px từ ảnh 512x512 rồi phóng to lên 512x512 sẽ biến avatar thành "cục lông bầy hầy", nhòe nát.
+- **Kỷ Luật Độ Phân Giải (Floor >= 350px):** Vùng crop phải $\ge 350\times 350$ px và $\ge 70\%$ diện tích khung hình gốc. Nếu không có góc cận cảnh gốc Full HD, **BẮT BUỘC giữ nguyên khung hình toàn thân / bán thân tự nhiên**, bố cục đẹp và sắc nét gấp 1000 lần ảnh zoom vỡ hạt.
+- **Trích Xuất Từ Video Thương Hiệu Của Kênh:** Khi kho video gốc hỗn tạp nhiều chủ đề, **BẮT BUỘC** trích frame từ video đang có view / video nhận diện trên profile kênh (ví dụ: video 1 cún múa bụng đeo khăn chuông tím).
+- **Quy Chuẩn Bảng So Sánh 2 Options (Gọn Gàng):**
+  - Option 1: Ảnh tĩnh nguyên bản bố cục đẹp, sắc nét trên thảm/nền.
+  - Option 2: Khoảnh khắc nhận diện đặc trưng trích từ video có view.
+  - Cả 2 được bo tròn viền xanh TikTok và soi mắt thật trước khi gửi.
 
 ---
 

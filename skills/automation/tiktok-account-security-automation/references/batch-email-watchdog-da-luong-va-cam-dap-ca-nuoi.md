@@ -58,3 +58,21 @@ Khi cần đổi email hàng loạt trên dàn máy có lịch nuôi dày đặc
   10. **Phục hồi tài khoản đã đổi thành công trước đó (Self-Healing / Reconcile on Discovery):**
       - Khi worker mở trang *Thông tin tài khoản*, nếu OCR thấy dòng email đã có đuôi `@hotmail.com` (do phiên trước đã verify xong OTP nhưng chưa kịp ghi vào Excel/SQLite), worker phải ghi nhận ngay là `ALREADY_HOTMAIL`.
       - Tự động map ngược tiền tố/hậu tố bị che (ví dụ `o***4@hotmail.com` -> `oraliehelgajason4484@hotmail.com` trong mailboxes), cập nhật ngay SQLite `ASSIGNED_TIKTOK` và sync vào Master Excel, đánh dấu DONE thay vì cố đổi lại lần nữa!
+  11. **Fuzzy Name Matching trong Switcher chống OCR lẹm ký tự (L / I / 1 Trap):**
+      - Trong Switcher TikTok, WinRT OCR thường nhận diện sai ký tự tương đồng: chữ `l` thường nhận diện thành `I` hoa hoặc số `1` (ví dụ `l.thanh.ngn311` thành `I.thanh.ngn311`, `phungloan0138` thành `phungIoan0138`).
+      - Nếu so sánh chuỗi chính xác (`username.lower() in text.lower()`), worker sẽ luôn báo lỗi giả `khong tim thay @username trong switcher`.
+      - **Giải pháp bắt buộc:** Sử dụng hàm chuẩn hóa fuzzy match:
+        ```python
+        def norm_name(s):
+            return s.lower().replace('l', 'i').replace('1', 'i').replace('.', '').replace('_', '').strip()
+        ```
+        Kiểm tra: `username.lower() in text_item.lower() or norm_name(username) in norm_name(text_item)`.
+  12. **Xử lý Token Refresh Expired (`invalid_grant / AADSTS70000`):**
+      - Khi tài khoản Hotmail trong kho bị hết hạn refresh token (lỗi HTTP 400 Bad Request từ Microsoft OAuth `AADSTS70000: The user could not be authenticated as the grant is expired`), Graph API fetch OTP sẽ crash.
+      - **Kỷ luật:** Bắt buộc có try-except bọc lệnh lấy access token. Khi gặp lỗi grant expired, đánh dấu ngay `oauth_status = 'EXPIRED'` (hoặc xóa khỏi mailboxes) để worker không bị kẹt lặp lại ở cùng một mail hỏng.
+  13. **Vượt Màn Hình "Xác Minh Danh Tính" bằng Mật Khẩu (Password Fallback Flow):**
+      - Khi TikTok hiện màn hình *"Xác minh danh tính - Xác minh để là bạn"*, nếu tài khoản có tùy chọn *"Mật khẩu"* (`Måt khäU`):
+        - Tap vào nút radio chọn Mật khẩu ở tọa độ `(120, 680)` hoặc tâm bounds của text Mật khẩu.
+        - Bấm nút *"Tiếp"* ở tọa độ `(540, 1700)`.
+        - Lấy mật khẩu TikTok chính xác từ database `tiktok_accounts.password` (hoặc Master Excel), nhập mật khẩu và bấm Tiếp tục để mở khóa vào form đổi email.
+      - Nếu tài khoản chỉ có duy nhất lựa chọn *"Gửi mã về email cũ (Gmail DIE)"* mà không có mật khẩu/SMS/TOTP: Đánh dấu `IDENTITY_VERIFICATION_REQUIRED_MANUAL` và skip sang nick khác.

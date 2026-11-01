@@ -11,13 +11,9 @@ author: Hermes Agent
 - Anchor & Fallback Invariant: CẤM TUYỆT ĐỐI bịa đặt giả thuyết "hết nick nội bộ làm anchor". Hệ thống luôn đủ nick và follow engine luôn có cơ chế auto-fallback sang Mode 1 khi cần. Máy báo 0 follow mà status OK là do Dual Gate (video < 10 cấp budget = 0) hoặc cơ chế PROBATION_SINGLE_SESSION_LOCK (nick probation chỉ được follow 1 phiên/ngày, đã dùng budget ở phiên trước thì phiên sau cấp budget = 0).
 - Channel Isolation Invariant: Báo cáo Feed chỉ về nhóm Tiktok Luot Nuoi Acc (-5377611430); Báo cáo Follow chỉ về nhóm Tiktok Follow (-5127276494); Báo cáo Video chỉ về nhóm Tiktok video (-5435853713). Phân rã tuyệt đối `is_feed_runner_active()`, cấm đưa pattern upload video/avatar vào lock check nuôi feed.
 - Group B Quota & Mode 2 Continuity: Trần Nhóm B khóa cứng `cap = min(cap, 20)` (dải random 18-20, max ngày 40). Khi Mode 2 gặp lỗi verify row trên 1 nick con đơn lẻ, BẮT BUỘC skip nick đó và cuộn tiếp, CẤM `break` đánh sập toàn bộ vòng lặp của Anchor khi Anchor còn tài nguyên.
+- Triage Skip Follow (Streak Cooldown vs Chưa Đủ 6 Video): Khi đối soát báo cáo follow 0 lượt (như "Bỏ qua: Cooldown nhả follow" vs "Chưa đủ điều kiện"), BẮT BUỘC phân biệt rõ 2 nguyên nhân cốt lõi giữa các cụm:
+  * `Cooldown nhả follow` (`follow-released-daily-cooldown`): Thường gặp ở Farm Kibe (nick cũ), do `fail_streak >= 1` lưu tại `D:/Taadaa/tiktok-follow/runs/state/follow_state_{machine}_row_{row}.json` với thang phạt `cooldown_until_date` (Streak 1: 1 ngày, 2: 3 ngày, 3: 5 ngày, >=4: 15 ngày).
+  * `Chưa đủ điều kiện` (`under-6-videos-follow-disabled`): Thường gặp ở Farm Admin (nick mới), do `video_count < 6` hoặc tuổi < 21 ngày, bị preflight gate chặn sớm bảo vệ tài khoản, hoàn toàn chưa có state và không phải do streak cooldown.
 
 ## References
-- Follow Anchor Invariants, Dual Gate Budget & UNPROVEN Triage: `references/follow-anchor-invariants-dual-gate-and-unproven-triage.md`
-- Khế ước Phân Kênh Báo Cáo, Trần Quota Nhóm B & Timeout Module 1/2: `references/follow-quota-timeout-and-channel-isolation-invariants-20261031.md`
-- Chống Ảo Giác Cạn Anchor, Cơ Chế Skip Lỗi Hàng Con & Khóa Cứng Trần Nhóm B: `references/anti-anchor-exhaustion-hallucination-and-group-b-cap-invariants-20261031.md`
-- Phân Biệt Feed Swipe vs Follow Hook & Khóa Cữ Probation: `references/probation-single-session-lock-and-feed-vs-follow-distinction-20261030.md`
-- Probation Single Session Lock & Daily Budget Cap: `references/probation-single-session-lock-and-daily-budget-cap.md`
-- Khóa Đơn Phiên Hồi Phục & Bù Lượt Khi Dính Preflight: `references/probation-single-session-lock-and-preflight-reschedule.md`
-- Sụp Socket ADB giữa phiên & Silent Launcher Crash Triage: `references/mid-session-adb-socket-drop-and-silent-launcher-crash-triage.md`
 - Chi tiết toàn bộ quy trình, case study và phân tích chuyên sâu: xem các tài liệu trong thư mục `references/` của skill.

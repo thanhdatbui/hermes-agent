@@ -30,6 +30,8 @@ cp "$LOCALAPPDATA"/[h]ermes/image_cache/img_<hash>.jpg /c/Users/Kibe/target_img.
 ```
 *Lưu ý 1 (Inbound Vision Error Handling):* Khi Telegram trả về lỗi hệ thống `Error: No module named 'agent.aux_accounting'` hoặc aux vision fail, Hermes tự động lưu ảnh vào cache và kèm dòng `[Image attached at: ...img_<hash>.jpg]`. Coordinator trích xuất ngay `<hash>` để stage và soi mắt ngay lập tức, không bắt user gửi lại.
 *Lưu ý 2 (Cleanup Pitfall):* Lệnh `rm` bị Coordinator Guard chặn (default-deny). Tuyệt đối CẤM gọi `rm /c/Users/Kibe/target_img.jpg`. Lệnh `cp` ở các lần sau sẽ tự động ghi đè lên file đích, không cần dọn dẹp thủ công.
+*Lưu ý 3 (Path Normalization khi dùng WinRT OCR song song):* Khi gọi script WinRT OCR hoặc PowerShell, nếu đường dẫn có dấu gạch chéo xuôi `/` lẫn lộn, WinRT API `[Windows.Storage.StorageFile]::GetFileFromPathAsync` sẽ ném ngoại lệ `AggregateException` / `NullReferenceException`. Bắt buộc phải chuẩn hóa hoàn toàn dấu gạch chéo ngược Windows (`C:\\...`) hoặc dùng `Path.resolve()`.
+*Lưu ý 4 (Bẫy Lạc Đề & Chống Ảo Giác Mù - Prompt vs Image Mismatch):* Khi User hỏi một đằng (ví dụ: "lỗi gì khi chơi war3 v") nhưng ảnh đính kèm là một nẻo (ví dụ: bảng Web Ledger Farm): Invariant Soi Mắt bắt buộc phải ưu tiên Ground Truth của Vision trước. Báo cáo rõ ràng nội dung thực tế nhìn thấy trong ảnh (chỉ ra user gửi nhầm ảnh) thay vì cố suy diễn bịa ra lỗi game theo text câu hỏi. Đồng thời đối soát nhanh log hệ thống liên quan để cung cấp bức tranh toàn cảnh chính xác.
 
 ### Bước 2: Nạp ảnh vào trình duyệt headless
 Gọi công cụ `browser_navigate` trỏ vào file URL cục bộ đã stage ra ngoài thư mục người dùng:
