@@ -36,6 +36,19 @@
      - Bắt buộc dọn sạch buffer khổng lồ bằng lệnh `/compact` hoặc mở phiên mới (`/new`) trên topic đó.
      - Kỷ luật Coordinator: CẤM gọi `session_search` dạng đọc toàn bộ session (`session_id=...` không có anchor), BẮT BUỘC dùng `query` hẹp hoặc scroll với `window` nhỏ (<= 3–5 messages) để chống tự sát context.
 
+4. **Nguyên nhân 3: Bẫy "Topic mới tinh chat 1 tin vẫn dính provider failed" (Ghost Session Zombie / Rate Limit):**
+   - **Hiện tượng thực địa:** User vừa tạo một Topic Telegram mới tinh, chỉ mới gửi đúng 1-2 tin nhắn (khi gõ `/compress` hệ thống báo `Not enough conversation to compress (need at least 4 messages)`), nhưng bot vẫn bị kẹt ngay tại `iteration 1/100, receiving stream response` rồi văng `The model provider failed after retries`.
+   - **Bản chất kỹ thuật:**
+     - KHÔNG PHẢI do context topic phình to (vì topic mới chưa có lịch sử).
+     - Nguyên nhân 1: **Zombie runner slot trong Gateway RAM (`_running_agents`):** Khi topic trước đó bị crash/timeout lửng lơ, slot worker trong RAM gateway không được release, làm nghẽn socket stream của thread mới hoặc va chạm worker allocation.
+     - Nguyên nhân 2: **Pool Provider Upstream (:20129) kiệt tài khoản / Rate Limit / Cookie Checkpoint:** Model mặc định (ví dụ `ag-gemini-pool-3`) định tuyến qua pool nhiều tài khoản Web (Google Pro Web). Khi toàn bộ các connection trong pool bị Google challenge checkpoint/re-auth hoặc chạm rate limit cùng thời điểm, request đầu tiên của topic mới gửi lên sẽ bị treo socket stream 2 phút rồi timeout văng lỗi.
+     - Nguyên nhân 3: **Mạng LAN socket timeout tới IP gateway:** Cấu hình trỏ IP LAN (ví dụ `192.168.110.123:20129`) thay vì loopback `127.0.0.1:20129` khi card mạng LAN bị nghẽn packet.
+   - **Quy tắc phân biệt tức thì:**
+     - Nếu `/compress` báo `Not enough conversation to compress (< 4 messages)` $\rightarrow$ Chắc chắn là **Nguyên nhân 3 (Upstream Pool/RAM Zombie)**, TUYỆT ĐỐI KHÔNG đổ lỗi cho Context Bloat của session đó!
+   - **Khắc phục:**
+     - Kiểm tra trạng thái pool upstream: `GET http://127.0.0.1:20129/api/providers` xem có tài khoản nào active không.
+     - Khởi động lại Gateway detached qua `python D:/Taadaa/tools/restart_gw_detached.py` để dọn sạch zombie runner.
+
 ---
 
 ## 3. Bo Lenh Chan Doan O(1) Guard-Safe (Chong Vi Pham Hook)

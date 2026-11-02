@@ -25,8 +25,21 @@ session_reset:
   Người dùng thường bức xúc: *"Cái gì vậy tao vẫn đang chat mà" / "Sao lại báo linh tinh"*.
 - **Cơ chế ngầm:** Khi session được tạo từ hôm trước và chạy liên tục quá 24h, scheduler của Gateway quét qua thấy `session.started_at` hoặc idle interval vượt ngưỡng `idle_minutes: 1440` (hoặc chạm mốc `at_hour: 4`), gateway tự động kích hoạt reset phiên và đẩy thông điệp này ra chat.
 - **Kỷ luật ứng xử của Coordinator:**
-  1. **Giải thích trực diện, trấn an:** Giải thích rõ cơ chế reset tự động 24h/giờ cố định của Gateway trong `config.yaml`, khẳng định dữ liệu không hề bị mất.
+  1. **Giải thích trực diện, trấn an:** Giải thích rõ cơ chế reset tự động 24h/giờ cố định của Gateway trong file cấu hình, khẳng định dữ liệu không hề bị mất.
   2. **Tự động khôi phục ngữ cảnh (Zero-Parroting / Zero-Repetition):** Dùng ngay `session_search(sort='newest', limit=3)` để nối lại toàn bộ mạch việc và các thực thể (nick, máy, tác vụ) đang dang dở, trả lời thẳng vào câu hỏi của người dùng, CẤM TUYỆT ĐỐI bắt người dùng phải gõ lại hay tóm tắt lại những gì vừa nói.
+
+### Accidental Telegram Topic/Thread Deletion Recovery Protocol
+- **Hiện tượng:** Người dùng lỡ tay xoá topic/chat trên Telegram, hoặc bị mất thread trong lúc làm dở và hoang mang tưởng mất hết dữ liệu (*"Tao lỡ xoá topic rồi, bị lạc mất session đang làm dở"*).
+- **Bản chất kỹ thuật ngầm:**
+  1. Giao diện Telegram chỉ là tầng truyền tải (transport layer). Việc xoá topic trên app Telegram **hoàn toàn KHÔNG xoá bản ghi** trong SQLite kho lưu trữ phiên của Hermes.
+  2. Toàn bộ mã phiên `session_id`, transcript tin nhắn, output công cụ, file và trạng thái dở dang vẫn còn nguyên vẹn 100% trong CSDL cục bộ.
+- **Quy trình cứu hộ & khôi phục mạch việc tức thì:**
+  1. **Trấn an dứt khoát:** Xác nhận ngay dữ liệu và phiên làm việc vẫn còn nguyên vẹn trong kho lưu trữ cục bộ, không hề bị mất.
+  2. **Truy vết tìm session bị lạc qua `session_search`:**
+     - Nếu có từ khóa/mô tả task: `session_search(query='<từ khóa>', sort='newest', limit=5)`.
+     - Nếu không nhớ từ khóa: Gọi `session_search(limit=10)` duyệt danh sách session gần nhất để định vị `session_id`.
+  3. **Trích xuất hiện trường dở dang:** Gọi `session_search(session_id=..., around_message_id=...)` để đọc các turn cuối, tóm tắt chính xác việc gì đã làm xong và việc gì còn đang dở.
+  4. **Nối việc liền mạch:** Chủ động báo cáo hiện trường và tiếp tục thi công ngay tại topic hiện tại (hoặc hướng dẫn người dùng gõ `/resume <session_id>` nếu muốn bind lại session cũ vào topic mới).
 
 
 ## Safe diagnostic sequence

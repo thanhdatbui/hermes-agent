@@ -32,5 +32,10 @@ Khi vận hành hoặc di dời kiến trúc mạng proxy đa chặng (`S7 Phone
 - **Hop-by-Hop Isolation:** Bắt buộc kiểm tra theo thứ tự: Hop 3 (Upstream WAN Endpoint `tb.taadaa.click:51xx`) -> Hop 2 (Intermediate Singbox Container Outbound) -> Hop 1 (SSOT Ledger & ADB Device State).
 - Chi tiết quy trình phân tích và checklist bàn giao nghiệm thu 4 bước: xem file đính kèm `references/multi-hop-network-architecture-drift-and-isolation-20261102.md`.
 
+## 5. Multi-Session Ownership & Single-Writer Discipline
+Khi nhiều session cùng hoạt động trong hệ sinh thái Farm:
+- **CẤM race condition:** Khi phát hiện hoặc User báo có session khác đang sửa cùng hạ tầng/file, lập tức nhường quyền, tuyệt đối không chen ngang gây xung đột working tree hoặc đè diff.
+- Chi tiết quy tắc độc quyền thi công và điều kiện tiếp nhận handoff: xem `references/multi-session-ownership-and-single-writer-discipline-20261102.md`.
+
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

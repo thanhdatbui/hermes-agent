@@ -21,4 +21,10 @@
   ```bash
   python -c "import sys; sys.path.insert(0, 'D:/Taadaa/Hermes'); import utils; import cron; from hermes_cli import config; print('PRE-RESTART CHECK: OK')"
   ```
-- **Hợp nhất Single Source of Truth:** Không để 2 phiên bản `C:` và `D:` tồn tại song song lệch nhau. Phải đối soát 328 file trùng tên trước khi xóa `C:` và gỡ `hermes_dev.pth`.
+- **Hợp nhất Single Source of Truth & Cạm bẫy xóa nhầm Virtualenv ổ C:**
+  * **Tại sao CẤM xóa thẳng tay thư mục C:** Thư mục bản C (`hermes-agent`) không chỉ chứa code cũ mà còn là nơi lưu trữ **môi trường ảo Python (`venv`)**, bao gồm trình thông dịch `python.exe` và toàn bộ các package/thư viện bên thứ ba đã compile (`httpx`, `telethon`, `playwright`, `pyyaml`...). Xóa thư mục C đồng nghĩa với việc xóa sạch runtime, Gateway sẽ chết hoàn toàn do mất môi trường thực thi.
+  * **Kiến trúc phân tầng chuẩn:**
+    1. `D:\Taadaa\Hermes` là **Single Source of Truth duy nhất** cho toàn bộ source code (mọi chỉnh sửa logic, gate, guard, hook đều thực hiện tại đây).
+    2. File `hermes_dev.pth` đặt tại `site-packages` của venv để cưỡng chế nạp code từ `D:\Taadaa\Hermes` lên đầu `sys.path`.
+    3. Watchdog (`hermes-gateway-watchdog.ps1`) gọi Python từ venv ổ C nhưng đặt thư mục làm việc cố định tại `D:\Taadaa\Hermes`.
+    4. Giữ thư mục C thuần túy làm **runtime container** chứa dependency, không duy trì code sửa tay tại C.
