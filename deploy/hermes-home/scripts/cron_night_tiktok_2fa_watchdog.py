@@ -477,10 +477,8 @@ def _split_cluster_output(out: str) -> tuple[str, str]:
 
 def read_admin_gmail_summary_remote(min_mtime: float) -> dict | None:
     ps_cmd = (
-        f"$min = [DateTimeOffset]::FromUnixTimeSeconds({int(min_mtime)}).LocalDateTime; "
-        "$items = Get-ChildItem -Path 'D:\\CodexRuntime\\codex_gmail_debug-register-gmail\\logs_parallel_*\\summary.json' -ErrorAction SilentlyContinue | "
-        "Where-Object { $_.LastWriteTime -ge $min } | Sort-Object LastWriteTime -Descending; "
-        "if ($items) { Get-Content $items[0].FullName -Raw -Encoding UTF8 }"
+        "Get-Content (Get-ChildItem -Path 'D:\\CodexRuntime\\codex_gmail_debug-register-gmail\\logs_parallel_*\\summary.json' -ErrorAction SilentlyContinue | "
+        "Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName -Raw -Encoding UTF8"
     )
     try:
         res = subprocess.run(

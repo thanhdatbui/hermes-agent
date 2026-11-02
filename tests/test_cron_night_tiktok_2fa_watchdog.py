@@ -31,6 +31,7 @@ class TestCronNightTiktok2FAWatchdog(unittest.TestCase):
             "is_safe_rolling_window": {"return_value": True}, "is_feed_runner_active": {"return_value": False},
             "is_clear_cache_active": {"return_value": False},
             "claim_lane": {"return_value": True}, "release_lane": {},
+            "read_admin_gmail_summary_remote": {"return_value": None},
         }
         mocks = {k: patch.object(wd, k, **v).start() for k, v in targets.items()}
         for k in targets:
