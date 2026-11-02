@@ -7,7 +7,6 @@ metadata:
   hermes:
     tags: [pipeline, unified-patch, council, advisor, reporting, taadaa]
 ---
-
 # Unified Patch Pipeline Reporting Discipline
 
 ## 1. Trigger Conditions
@@ -42,8 +41,5 @@ python D:/Taadaa/tools/unified_patch_pipeline.py run --repo <repo> --file <targe
 - Đọc từ output stdout: trường `COUNCIL VOTES:`.
 - Hoặc đọc từ state artifact: `D:/Taadaa/runs/<run_id>/plan.json` (các trường `planner`, `consensus_summary`, `council_details`, `edits`).
 
-## 5. Pitfall & Session Scope Grounding (Chống Mất Định Hướng / Lảm Nhảm)
-- **Code Bug đã xử lý (Run `4dfc73f6`)**: Trong `unified_patch_pipeline.py`, lời gọi `_print_report` ở stage S5 (`AWAITING_USER`) từng bị sót tham số `council_details=plan_data.get('council_details')`, khiến console nuốt mất bảng Council Votes. Lỗi này đã được vá và kiểm chứng.
-- **Kỷ luật bám sát Task Hiện Tại (Anti-Context Drift)**:
-  - Khi User hỏi về tiến độ, lỗi hoặc phản ánh thiếu báo cáo trong phiên ("Sao m trả kết quả k có?"), BẮT BUỘC rà soát đúng ngữ cảnh của task và pipeline run hiện tại (đọc `D:/Taadaa/runs/<run_id>/state.json` hoặc `plan.json`).
-  - TUYỆT ĐỐI CẤM nhảy bổ đi `session_search` lục lại các sự cố xa xưa trong quá khứ (như sự cố sập Gateway, desync venv, avatar hallucination, alert máy farm khác) rồi lôi ra giải trình lan man làm User ức chế ("Mày lảm nhảm cái đéo gì thế mày biết session này đang làm cái gì k?").
+> **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
+> Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

@@ -1,3 +1,7 @@
-User cấm phân bua/lải nhải sau sự cố; khi GW hồi phục phải tự động làm tiếp task trong context, cấm dừng lại bắt User ra lệnh lần 2. Chuẩn hoá kênh bắt buộc đồng thời cả Ghim Top VÀ Đổi Avatar thật trên máy (dùng run_upload_avatar.py); cấm chỉ ghim video rồi báo xong bỏ quên avatar. Cấm đoán mò mô tả ảnh; avatar nét Studio >=90; tìm tool ưu tiên GitHub/canonical. CẤM ảo giác/báo cáo láo; bắt buộc exit 0, read-back DB/terminal thật, ảnh Vision Gate 6. Cấm đoán mò tính năng mà bắt buộc vào UI settings kiểm chứng. Proxy IP != port = HỎNG. Nhắc việc cũ tra session_search. CẤM duplicate file. Niche: aggregate SQLite + Excel; video là Ground Truth. Farm: cấm cuốn chiếu, làm song song đồng loạt. Đổi nguồn flop: dọn render -> dọn gốc -> cào/render.
+Niche: video là Ground Truth. Dữ liệu toàn farm bắt buộc chuẩn hoá SQLite SSOT (farm_master.db); Excel chỉ là mirror một chiều cho người xem, cấm dùng trong runtime.
 §
 User yêu cầu gom Hermes codebase về một mối duy nhất tại D:\Taadaa\Hermes; tuyệt đối không để desync hay xóa nhầm thư viện/cấu hình riêng ở ổ C khi chưa đối soát an toàn.
+§
+User ép ảnh Telegram trực tiếp qua Multimodal Native của Gemini (image_input_mode: native); CẤM dùng browser_vision mở file local đối phó rồi đoán mò/hallucinate mô tả ảnh; kiểm chứng text/UI bắt buộc WinRT OCR thật. Khi phát ngôn cam kết hành động bắt buộc emit tool call ngay trong turn, cấm hứa hẹn suông.
+§
+User yêu cầu chuẩn hóa dữ liệu toàn farm trên SQLite SSOT (farm_master.db), tuyệt đối không để rò rỉ hay phụ thuộc runtime vào file Excel. Cấm Coordinator hứa hẹn suông ('em sẽ...') trong câu trả lời; phải lập tức gọi tool hoặc báo cáo bằng chứng thực tế.

@@ -63,18 +63,24 @@ Người vận hành yêu cầu giao diện điều khiển proxy (cả bên Mik
    - BẮT BUỘC dùng bảng table gọn gàng, căn lề thẳng hàng, bo góc với các cột chuẩn:
      * `Port / Tên cổng`: Số thứ tự hoặc tên interface (`5141`, `pppoe-out1`).
      * `Nguồn`: Định danh nguồn line (`R3G`, `Lan1`, `PPPoE`).
-     * `IP Public`: Địa chỉ IP WAN ra Internet (font monospace).
+     * `IP Public`: Địa chỉ IP WAN ra Internet (font monospace). BẮT BUỘC probe IP thật qua proxy client kết nối ra ngoài (e.g. `http://ifconfig.me/ip`), CẤM chỉ socket connect suông rồi để IP là `—`.
      * `Cổng Proxy`: Cổng socket client kết nối vào (`5141`, `10001`).
-     * `Latency / Uptime`: Độ trễ ping (ms) hoặc thời gian online liên tục.
-     * `Trạng Thái`: Huy hiệu màu sắc rõ nét (`🟢 LIVE` xanh lá, `🔴 OFF` hoặc `DISABLED` đỏ/vàng).
+     * `Time Live (Uptime)`: Thời gian IP sống liên tục định dạng `HH:MM:SS` (hoặc ngày/giờ). BẮT BUỘC backend duy trì tracker `_R3G_PORT_TRACKER[port] = {'ip': ip, 'since': time.time()}` và tính động `uptime = now - since` mỗi khi trả về API, đảm bảo time live tăng đều theo thời gian thực tế.
+     * `Trạng Thái`: Huy hiệu màu sắc rõ nét (`🟢 LIVE` xanh lá, `🔴 OFFLINE` đỏ).
      * `Thao Tác`: Nút bấm tức thời `🔄 Đổi IP` (disable nút và hiển thị spinner/text loading khi đang gửi lệnh).
-2. **Thanh Công Cụ Nhanh (Toolbar):**
-   - **Ô tìm kiếm tức thì (Search input):** Gõ lọc real-time không cần reload trang theo Port, IP, nguồn hoặc trạng thái.
-   - **Dropdown định dạng xuất proxy:** Hỗ trợ các format xuất khẩu phổ biến:
-     * `IP:Port` (thuần IP:Port để import tools).
-     * `http://IP:Port` (chuẩn URL HTTP proxy).
-     * `socks5://IP:Port` (chuẩn URL SOCKS5 proxy).
-     * `domain:Port` (dùng tên miền DDNS tĩnh như `mirotik1.taadaa.click:Port` hoặc `tb.taadaa.click:Port`).
+   - **Tối ưu Mobile Responsive:** Thêm `-webkit-overflow-scrolling: touch;` cho container table wrapper, đặt padding gọn nhẹ (10px 8px) và font 13px để các cột quan trọng không bị đẩy mất mép trên điện thoại.
+
+---
+
+## 5. Bẫy Kỹ Thuật Cần Tránh Khi Sửa UI Dashboard
+1. **Tránh bão hòa Tinyproxy / SSH R3G & Cạm bẫy Socket Probe Rỗng:**
+   - CẤM chỉ kiểm tra TCP socket `sock.connect()` rồi báo xong mà bỏ quên trường `ip` và `uptime`.
+   - Endpoint `/api/r3g-status` bắt buộc phải có bộ nhớ đệm cache đệm (15s) ở backend.
+   - Khi probe IP qua các line Viettel Thái Bình, dùng `http://ifconfig.me/ip` kèm header `User-Agent: curl/7.88.1` với timeout 4.5s qua `ThreadPoolExecutor(max_workers=16)`. Tránh dùng `api.ipify.org` với timeout quá ngắn (<3s) vì dễ bị nghẽn mạng gây nhận định sai `offline`.
+   - Luôn tính động `uptime` tại thời điểm request thay vì freeze cứng chuỗi `"00:00:00"` trong cache dict.
+2. **Kỷ luật sửa code pipeline:** Luôn chạy qua `unified_patch_pipeline.py` với test focused (`python -m py_compile ...`). Với các task thuần UI dashboard không chạm thiết bị thật, bắt buộc truyền cờ `--no-canary --no-canary-reason "<lý do>"` để tránh gate canary ADB chặn đứng phiên làm việc.
+3. **Cấu Trúc Cổng R3G Bất Biến (16 port):** R3G gồm 16 port PPPoE: `5141..5148` (Line 1) và `5151..5158` (Line 0). CẤM tạo loop tuần tự `range(5141, 5159)` sinh ra 2 port rác `5149` và `5150`. Khóa mảng cứng `R3G_PORTS = [5141..5148, 5151..5158]`.
+4. **Restart Service đúng cách trên Windows:** TikTok Dashboard được giám sát bởi tiến trình Watchdog (`tiktok_dashboard_watchdog.ps1`). Khi deploy code mới, sử dụng script `python D:/Taadaa/tools/restart_tiktok_dashboard.py` để khởi động lại sạch sẽ cả service chính lẫn watchdog ngầm qua VBScript.
    - **Nút "📋 Copy danh sách proxy":**
      * Tự động duyệt qua danh sách các hàng đang hiển thị (đã qua filter tìm kiếm).
      * Chỉ gom các proxy đang có trạng thái `LIVE` hoặc `RUNNING` và có IP hợp lệ (bỏ qua các port chết `—`).

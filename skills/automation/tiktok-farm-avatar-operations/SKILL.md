@@ -4,6 +4,7 @@ description: Use when running avatar-only jobs on TikTok farm.
 ---
 # TikTok Farm Avatar Operations
 
+- Native Vision Avatar Candidate Extraction & Anti-Browser Hallucination (2026-11-03): [references/native-vision-avatar-candidate-extraction-and-anti-browser-hallucination-20261103.md](references/native-vision-avatar-candidate-extraction-and-anti-browser-hallucination-20261103.md). Cấm mở browser_vision đối phó gây ảo giác; dùng Canny bottom noise (< 10.0) lọc sạch viền phụ đề/caption; cấm phát ngôn hứa hẹn suông kích hoạt Tool-Use Enforcement.
 - Evaluation Repo Cắt Ảnh Hiện Đại (`autocrop`/YuNet vs `YOLOv8`) & Bẫy Quy Chụp Script Cũ (2026-11-02): [references/modern-crop-repo-evaluation-vs-legacy-haar-cascade-trap-20261102.md](references/modern-crop-repo-evaluation-vs-legacy-haar-cascade-trap-20261102.md). Bắt buộc `session_search` khi User hỏi repo cũ; phân loại ngách: Người dùng `autocrop`/YuNet, Động vật dùng `YOLOv8`.
 - Auto Video Avatar Extraction (YOLOv8 + BBox Sharpness) & Anti-Hardcoded Crop Traps (2026-11-02): [references/auto-video-avatar-extraction-yolov8-and-anti-hardcoded-crop-trap-20261102.md](references/auto-video-avatar-extraction-yolov8-and-anti-hardcoded-crop-trap-20261102.md). Cấm crop tọa độ tĩnh; dùng YOLOv8 (person/dog/cat), đo độ nét trên bbox, dynamic padding chống chém cụt mặt.
 - Crop timeout & screen sleep: [references/avatar-crop-open-timeout-and-screen-sleep-trap-20261020.md](references/avatar-crop-open-timeout-and-screen-sleep-trap-20261020.md).
@@ -12,9 +13,6 @@ description: Use when running avatar-only jobs on TikTok farm.
 - Right-side avatar layout trap: [references/tiktok-profile-right-side-avatar-layout-trap.md](references/tiktok-profile-right-side-avatar-layout-trap.md). Inspect header (y: 200..600) before crop.
 - Approved-avatar upload & evidence: [references/approved-avatar-immediate-upload-and-evidence.md](references/approved-avatar-immediate-upload-and-evidence.md).
 - Double-lock & cross-host: [references/avatar-lock-verification-and-cross-host-upload.md](references/avatar-lock-verification-and-cross-host-upload.md). Khóa `.manual_avatar_locked` 3 kho, `Avatar = OK`, SSH máy >= 200.
-- New correction-loop checklist: [avatar-change-correction-loop-20261020.md](references/avatar-change-correction-loop-20261020.md).
-- Account-bound evidence and runner contradiction: [references/account-bound-avatar-evidence-and-runner-contradiction.md](references/account-bound-avatar-evidence-and-runner-contradiction.md). Require exact-account visual proof; runner success/workbook updates alone are intermediate evidence.
-- Avatar Text-Banner Crop: [references/avatar-text-banner-crop-triage-and-non-empty-coordinator-response-20261016.md](references/avatar-text-banner-crop-triage-and-non-empty-coordinator-response-20261016.md)
 
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.
