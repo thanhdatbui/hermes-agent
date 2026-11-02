@@ -8,6 +8,7 @@
 - Mặc dù CLI `consult_advisor.py` có cờ `--advisor / -a` mặc định là `all`, nhưng trong thói quen gọi lệnh của Agent thường tiện tay gõ `-a sol` để tránh timeout hoặc tiết kiệm thời gian chờ.
 - Việc này tạo ra hiện tượng **Single-Advisor Bias** (thiên kiến một chiều từ GPT-5.6), làm mất đi tính phản biện chéo khách quan của Claude Sonnet và Gemini Argon.
 - Khi chỉ có Sol, các góc nhìn kỹ thuật sâu về rủi ro giấy phép (AGPL của YOLOv8), bẫy tính Laplacian trên cả frame hay bẫy cắt cụt mặt không được cảnh báo kịp thời.
+- Điển hình trường hợp đánh giá thuật toán phân phối/cắn đề xuất: Sol phân tích định tính về sự khác nhau giữa tăng trưởng và đề xuất, Gemini Argon vạch trần định lượng False Positives của ngưỡng 50 tim/tuần, còn Claude CLI mổ xẻ rủi ro toán tử `OR` và điều kiện tĩnh `1000 fl & LIVE`. Sự phối hợp cả 3 mới tạo ra bức tranh toàn diện để ra quyết định chính xác.
 
 ## 3. Quy Tắc Điều Phối Bắt Buộc (Governance Invariant)
 1. **Triệu Hồi Toàn Thể Hội Đồng Mặc Định (-a all):**

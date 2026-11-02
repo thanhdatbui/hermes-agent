@@ -16,6 +16,7 @@ description: "Automation workflows for Gmail accounts on the Taadaa farm: Playwr
 - Quy trình cứu acc dính Phone Checkpoint (Cooldown 24h, QR Code challenge/iap SMS trap), đối soát ảnh thị giác Gate 6, giải mã chỉ số lũy kế ca & tra cứu kết quả batch reg Gmail Admin-PC (D:/CodexRuntime/.../summary.json): xem `references/gpm-login-shifts-and-admin-farm-onboarding-rules.md`.
 - Kỹ thuật truy vấn remote `summary.json` từ Admin qua PowerShell không bị kẹt `admin_ssh` Allowlist & cơ chế đọc ảnh Phone Verify bằng WinRT OCR: xem `references/admin-ssh-powershell-allowlist-and-remote-summary-retrieval.md`.
 - Kỷ luật kiểm thử Live Command qua Remote SSH (`admin_ssh.py`) & chống bẫy Mock Xanh ảo làm lọt lỗi Allowlist: xem `references/remote-ssh-live-command-validation-and-anti-mock-trap.md`.
+- Kỷ luật ngâm Gmail $\ge$ 7 ngày trên S7, phân biệt 2 tầng tạo vỏ profile vs login thật & quy tắc an toàn thiết bị: xem `references/gmail-soak-aging-session-recovery-and-s7-safety-rules.md`.
 
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

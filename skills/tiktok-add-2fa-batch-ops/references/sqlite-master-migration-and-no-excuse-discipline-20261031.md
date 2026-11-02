@@ -13,6 +13,7 @@
   - **Đọc OTP Hotmail:** Trong `flows/hotmail_login.py`, hàm `_try_read_tiktok_otp_graph()` bắt buộc gọi `farm_db.get_mailbox_credentials(email)` lấy `oauth_refresh_token` & `oauth_client_id` trong 0.01s, chỉ dùng Excel làm fallback cuối.
   - **Đọc Target & Preflight:** Trong `python_runner/core/workbook.py`, các hàm `inspect_target()`, `password_is_blank()`, `read_pass_value()`, `read_email_value()` ưu tiên đọc trực tiếp từ `farm_db.get_account(username)`.
   - **Ghi Kép Đồng Bộ (Write-Through):** Tại hàm `_write_cell()`, sau khi ghi Excel tracking bắt buộc gọi `farm_db.update_tiktok_credentials(username, password=..., twofa_secret=...)` để đồng bộ song song ngay lập tức vào SQLite.
+  - **Đóng Băng Mục Tiêu (Freeze Targets - run_batch_live_2fa.py):** Bẫy di căn lớn nhất khiến runner văng mã thoát 5 (`BLOCKED: WORKBOOK_HYDRATION_FAILED` / kẹt lock) dẫn đến 0/0 toàn farm: hàm `freeze_targets()` vẫn giữ code cũ kiểm tra lock `~$...xlsx` và gọi `openpyxl.load_workbook()`. Khi chuyển đổi sang SQLite, `freeze_targets()` BẮT BUỘC query trực tiếp bảng `tiktok_accounts` qua `farm_db` thay vì khóa độc quyền workbook Excel, triệt tiêu dứt điểm tình trạng kẹt lock hoặc OneDrive hydration failure.
   - **Canary Runner:** `canary_runner.py` nạp tài khoản kiểm chứng qua `farm_db.get_accounts_by_machine(m)` thay vì load workbook.
 
 ## 3. Khắc Phục Lỗi Gate B Planner & Canary CLI Mismatch

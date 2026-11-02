@@ -9,6 +9,7 @@ References:
 - Chi tiết toàn bộ quy trình và phân tích chuyên sâu: xem các tài liệu trong thư mục `references/` của skill.
 - `scripts/flush_dpapi_journal_to_workbook.py` — **[MỚI 21/09/2026]** Script tự động flush các Secret Key 2FA từ DPAPI journal vào Cột E file Excel `taikhoan_dat_v2_updated .xlsx`, đối chiếu readback và cập nhật state WRITTEN.
 - Chi tiết toàn bộ quy trình và phân tích chuyên sâu: xem các tài liệu trong thư mục `references/` của skill.
+- Chi tiết toàn bộ quy trình và phân tích chuyên sâu: xem các tài liệu trong thư mục `references/` của skill.
 
 ## Đổi Email liên kết TikTok sang Hotmail mới (Bỏ qua OTP mail cũ & chống dính recovery)
 - **Bản chất phát hiện TikTok UI (18/09/2026):** Tài khoản TikTok no-phone đã bật 2FA TOTP và đăng nhập lâu ngày trên thiết bị: khi vào `Hồ sơ -> Cài đặt và quyền riêng tư -> Tài khoản -> Thông tin tài khoản -> Email -> Thay đổi email`, TikTok **MỞ THẲNG MÀN HÌNH "NHẬP EMAIL MỚI"** mà **hoàn toàn KHÔNG bắt OTP từ mail cũ**.

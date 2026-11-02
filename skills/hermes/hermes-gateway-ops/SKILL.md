@@ -7,6 +7,8 @@ description: Configure, run, verify, and extend the Hermes messaging gateway (Te
 Trigger: set up or operate the messaging gateway (Telegram first), bind a chat/group to a repo via `channel_overrides`, explain multi-session on Telegram, verify a bot is online, or debug gateway config.
 
 - Chi tiết toàn bộ quy trình và phân tích chuyên sâu: xem các tài liệu trong thư mục `references/` của skill.
+- Gateway Crash Loop via hermes_dev.pth Sys.path Desync & Hotfix (2026-11-02): xem `references/gateway-crashloop-pth-desync-rca-20261102.md`. CẤM restart Gateway khi chưa dry-run import kiểm tra `atomic_write_text`, `config.py` và các module core ở `D:\Taadaa\Hermes`.
+- Gateway Runtime Dual-Tree Pitfalls (hermes_dev.pth & Watchdog Spawn): xem `references/gateway-dual-tree-pth-desync-pitfalls.md`. Cấm restart mù khi tồn tại 2 bản code D: và C:; kiểm tra import offline trước khi restart tránh crash loop.
 - Gateway Runtime Desync & Multimodal supports_vision Overrides (2026-11-02): xem `references/gateway-runtime-desync-and-multimodal-supports-vision-override-20261102.md`. Sửa core phải sync sang `%LOCALAPPDATA%\hermes\hermes-agent\`; model custom bắt buộc `supports_vision: true` để không bị strip ảnh sang auxiliary error.
 - Đảm bảo bảo toàn Auto-Resume khi restart Gateway và kỷ luật chống khóc lóc/bại liệt: xem `references/delayed-restart-auto-resume-and-anti-whining.md`.
 

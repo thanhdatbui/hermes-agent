@@ -27,6 +27,15 @@ if (d_today - d_updated).days < 7:
 ```
 *Nguyên tắc:* Tuyệt đối không nới lỏng hay bypass điều kiện 7 ngày này cho các tài khoản mới reg.
 
+### 1.3. Phân Biệt Hai Tầng Thao Tác (Tạo Vỏ Profile vs Chạy Login) & Phân Biệt Loại Mail
+- **Tầng 1 — Tạo vỏ Profile GPM (`sync_gpm_lifecycle.py`):**
+  * Cronjob chạy sáng (07:00 – 08:45), tự động gọi GPM API `create_profile` tạo trước vỏ profile Chromium rỗng (tên `{mid} - {email} - {port}`) và gắn đúng proxy 4G của máy.
+  * Thao tác này **hoàn toàn CHƯA mở trình duyệt, CHƯA gửi request đến Google, CHƯA chạy login**, nên an toàn 100% và không ảnh hưởng đến thời gian ngâm.
+- **Tầng 2 — Chạy Login thực tế (Chia theo Provider Mail):**
+  * **Nhánh Gmail Farm S7:** Do `post_evening_gpm_login_watchdog.py` (`gpm-gmail-login-shifts-watchdog`) chạy theo 3 ca rảnh (Sáng/Chiều/Tối) để mở Chromium và đăng nhập tài khoản. BẮT BUỘC KHÓA CỨNG van chặn ngâm đủ $\ge$ 7 ngày tuổi trên S7 (`days < 7 -> continue`). CẤM login GPM khi chưa đủ 7 ngày.
+  * **Nhánh Hotmail / Outlook Farm (TikTok accs):** Do `gpm-5profiles-lifecycle-supervisor` (`batch_gpm_5profiles_supervisor.py` qua wrapper `gpm_5profiles_supervisor_wrapper.py`) chạy ngầm mỗi 5 phút (`*/5 * * * *`, `deliver: local`). Tự động bốc các profile Hotmail mới tạo vỏ (`stage=HOTMAIL_LOGIN`, `status=PENDING`) để login qua Playwright. Không chịu van ngâm 7 ngày của Gmail S7, nhưng chịu **Chốt chặn an toàn IP: Cooldown 24h / Cổng Proxy / Stage** (`ip_action_history`), mỗi cổng proxy chỉ login 1 lần trong 24 giờ.
+- **Kỷ luật giải thích với User:** Khi người dùng hỏi về thông báo `[GPM S7 LIFECYCLE] Tạo mới N profile LIVE`, Agent BẮT BUỘC giải thích rõ ràng đây là *tạo trước cấu hình profile rỗng trên GPM*, chưa phải mang đi login, và khẳng định rõ Gmail mới vẫn được ngâm đủ $\ge 7$ ngày trên S7 mới cho login. CẤM trả lời ẩu "không cần ngâm 7 ngày" gây hoang mang. Khi user hỏi tiếp "tạo vỏ xong có cron login lên chưa", phải chỉ rõ cron tương ứng theo provider (Gmail: watchdog 3 ca rảnh; Hotmail: supervisor 5 phút với cooldown 24h/port).
+
 ---
 
 ## 2. Quy Trình Tự Động Cứu Phiên Bị Rớt (Auto Session Recovery)

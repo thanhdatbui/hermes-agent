@@ -12,7 +12,7 @@
 
 ## 2. Ban chat Cot loi: Phan dinh Tang Loi
 1. **Khẳng định 100%:** Dòng chữ `The model provider failed after retries` là lỗi tầng **Model Provider API** (Hermes gọi upstream LLM bị fail quá số lần retry `api_max_retries`). Đây **KHÔNG PHẢI** là lỗi Telegram Adapter hay server Telegram.
-2. **Mối quan hệ nhân quả kép (Cộng hưởng Mạng ISP & OmniRoute Proxy Pool):**
+2. **Nguyên nhân 1: Mối quan hệ nhân quả kép (Cộng hưởng Mạng ISP & OmniRoute Proxy Pool):**
    - Mặc dù là lỗi Provider, nguyên nhân gốc rễ thường xuất phát từ **Đứt mạng ISP (Multi-ISP Failover Viettel ↔ FPT)**:
      - Khi mạng Viettel chập chờn, Hermes Gateway tự động kích hoạt failover sang FPT Direct (`Multi-ISP Failover: PRIMARY (Viettel) bị lỗi → chuyển sang FALLBACK (FPT Direct)`).
      - FPT Direct tại Việt Nam thường bị bóp hoặc lỗi kết nối ra ngoài (`FPT Direct: direct failed`).
@@ -22,6 +22,19 @@
        `HTTP 503: Service temporarily unavailable: all targets were skipped by pre-dispatch filters`.
      - Upstream model báo timeout: `Model antigravity/... timed out (HTTP 504)`.
    - Kết quả: Hermes retry 3-4 lần liên tiếp đều nhận 503/504 $\rightarrow$ Cháy hết ngân sách retry $\rightarrow$ Xuất thông báo `The model provider failed after retries`.
+
+3. **Nguyên nhân 2: Bẫy Context Bloat Overload (Do tool xả payload Megabytes vào turn):**
+   - Khi Agent gọi các tool tra cứu lịch sử (`session_search(session_id=...)` không giới hạn window, dump file log lớn, dump HTML frames...), các kết quả trả về có thể nặng từ vài trăm KB đến nhiều MB (ví dụ: `hermes-results/call_*.txt` nặng 1.7MB + 670KB + 380KB...).
+   - **Hậu quả & Cơ chế kẹt:**
+     - Context của turn đó lập tức phình to lên hàng triệu ký tự (vượt quá ngưỡng streaming êm ái của upstream LLM).
+     - Upstream socket bị nghẽn (hanging) ở trạng thái `receiving stream response`, kéo dài 10–13 phút rồi timeout rớt kết nối.
+     - Sau khi fail retries, **context vẫn chưa được compact**; khi User nhắn tin mới tiếp theo, Gateway lại đóng gói nguyên payload khổng lồ đó gửi lên upstream $\rightarrow$ LẶP LẠI LỖI 9-10 phút tiếp theo (Vòng lặp Provider Failed liên hoàn).
+   - **Dấu hiệu nhận biết:**
+     - Banner hiển thị `Working — 10+ min — iteration X/100, receiving stream response`.
+     - Không có lỗi đứt mạng ISP hay 503 pre-dispatch trong gateway log, mà lỗi là stream timeout / client disconnect từ provider.
+   - **Xử lý & Phòng ngừa:**
+     - Bắt buộc dọn sạch buffer khổng lồ bằng lệnh `/compact` hoặc mở phiên mới (`/new`) trên topic đó.
+     - Kỷ luật Coordinator: CẤM gọi `session_search` dạng đọc toàn bộ session (`session_id=...` không có anchor), BẮT BUỘC dùng `query` hẹp hoặc scroll với `window` nhỏ (<= 3–5 messages) để chống tự sát context.
 
 ---
 

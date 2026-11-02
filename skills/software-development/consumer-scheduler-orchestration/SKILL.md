@@ -49,51 +49,5 @@ automation-core/src/automation_core/scheduler/
 <consumer-repo>/scheduler.py # thin wrapper: 1 config, calls existing script
 ```
 
-## Steps
-
-### 1. Central base module (automation_core/scheduler/base.py)
-
-Dung `SchedulerConfig` dataclass de moi consumer chi can khai bao:
-- `name` — slug (e.g. "tiktok_reg")
-- `project` — device-lock project label
-- `slot_hour` / `slot_minute` — thoi diem chay
-- `command_builder` — callable(root) -> list[str] goi script co san
-- `project_root` — duong dan consumer repo
-
-Shared helpers tu base.py:
-- `read_state()` / `write_state()` — atomic via tmp+rename
-- `append_log()` — JSONL voi timestamp/event/host
-- `choose_run_at()` / `next_plan()` — schedule next slot
-- `_device_lock_available()` — pre-flight check (non-fatal)
-- `run_consumer()` — subprocess voi timeout + lock policy
-- `serve()` — main loop (poll → wait → run → plan tomorrow)
-- `build_parser()` / `main()` — CLI wrapper
-
-### 2. Consumer scheduler.py (thin wrapper)
-
-```python
-from automation_core.scheduler.base import SchedulerConfig, main as base_main
-
-def build_command(project_root):
-    return [sys.executable, str(project_root / "path/to/existing_script.py")]
-
-def build_config():
-    return SchedulerConfig(
-        name="tiktok_reg", project="tiktok-reg",
-        slot_hour=9, slot_minute=30,
-        command_builder=build_command, project_root=PROJECT_ROOT,
-    )
-
-def main(argv=None): return base_main(build_config(), argv)
-if __name__ == "__main__": raise SystemExit(main())
-```
-
-### 3. Unified tray (automation_core/scheduler/tray.py)
-
-- `SchedulerManager` doc `processes: dict[str, Popen]`
-- Start/stop via `subprocess.Popen` voi `--live` flag
-- Read state.json per scheduler de hien status
-- pystray icon voi menu: Start All / Stop All / View Status / Quit
-
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.
