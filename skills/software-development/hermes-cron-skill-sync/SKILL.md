@@ -10,7 +10,6 @@ metadata:
     tags: [hermes, cron, skills, git, sync, fail-closed]
     category: software-development
 ---
-
 # Hermes Cron Skill Sync
 
 Use this skill to maintain a scheduled, auditable pipeline that exports profile-local Hermes skills into a repository and pushes only reviewed skill changes.
@@ -42,21 +41,5 @@ The scheduled task should distinguish these outcomes:
 - Treat GitHub push protection as a required safety boundary. A detected token must be revoked/rotated in the provider and removed from every unpushed commit that contains it.
 - Do not report a push as complete until a remote ref/SSH/HTTPS readback confirms the pushed commit SHA.
 
-## Verification checklist
-
-- [ ] Exact skill scope identified.
-- [ ] Runtime metadata and secrets excluded.
-- [ ] `git diff --check` passes.
-- [ ] Candidate diff reviewed and unrelated dirty state preserved.
-- [ ] Focused skill validation passes.
-- [ ] Commit created only for intended skill paths.
-- [ ] Pre-push hooks pass without bypass.
-- [ ] Push returns exit code 0.
-- [ ] Remote SHA matches local pushed SHA.
-- [ ] Cron wrapper propagates failures and remains silent only on true no-op.
-
-## Known incident lesson
-
-A previous implementation combined a silent early exit, a two-skill-only staging script that did not export runtime-local skills, and a wrapper that converted failures into apparent scheduler success. A later broad copy captured hundreds of unrelated runtime changes and was rejected by GitHub secret scanning. The durable fix is not “copy everything”: use explicit scope, fail-closed status propagation, secret preflight, and remote SHA verification.
-
-See `references/cron-skill-sync-fail-closed.md` for the bounded incident checklist and recovery sequence.
+> **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
+> Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

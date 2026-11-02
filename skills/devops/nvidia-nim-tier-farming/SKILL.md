@@ -5,7 +5,6 @@ version: 1.0.0
 author: Hermes Coordinator
 tags: [NVIDIA, NIM, Free-Tier, API-Key, GPM, Hotmail, 9Router, KiosAPI, OpenCode]
 ---
-
 # NVIDIA NIM & Free-Tier LLM Pool Operations
 
 Hướng dẫn tra cứu, khai thác và tự động hóa reg tài khoản bào API key miễn phí từ **NVIDIA NIM (`build.nvidia.com`)** và **KiosAPI (`kiosapi.com`)** làm nguồn dự phòng token cho AI Coding Agents (OpenCode, Claude Code, Cline, Hermes).
@@ -56,46 +55,5 @@ Dàn máy có sẵn profile GPM và Hotmail (tại `D:/Taadaa/Hotmail` hoặc kh
 
 ---
 
-## 3. Dịch vụ Giải hCaptcha Tự động (Khi chạy Batch)
-
-| Nhà cung cấp | Loại Task hCaptcha | Chi phí / 1.000 captcha | Thời gian giải |
-| :--- | :--- | :--- | :--- |
-| **YesCaptcha** (`yescaptcha.com`) | AI Classification / Token | 2.0 – 5.0 RMB (~7k – 18k VNĐ) | 1 – 3s |
-| **CapSolver** (`capsolver.com`) | `HCaptchaTurbo` / `ProxyLess` | $0.60 – $0.80 (~15k – 20k VNĐ) | 1 – 5s |
-| **2Captcha** (`2captcha.com`) | Token / Image click | $2.99 (~75k VNĐ) | 10 – 20s |
-
-> **Chi phí thực tế:** Giải 100 acc chỉ tốn ~1.500đ – 2.000đ VNĐ nhưng thu về 100.000 API credits của NVIDIA.
-
----
-
-## 4. Tích hợp vào Hạ tầng Proxy Farm & OpenCode
-
-### A. Nạp vào 9Router (`localhost:20128`) hoặc Omni (`localhost:20129`)
-- **Tạo Custom Channel:**
-  - Type: `OpenAI`
-  - Base URL: `https://integrate.api.nvidia.com/v1`
-  - API Keys: Dán danh sách các key `nvapi-...` (mỗi dòng 1 key để 9Router tự động xoay vòng và fallback khi hết 1.000 credits).
-- **Mô hình chịu tải:**
-  1. Primary: Gemini Flash/Pro (qua Google AI Studio / OAuth pool).
-  2. Fallback 1: NVIDIA NIM Pool (`qwen2.5-coder-32b`, `deepseek-r1`).
-  3. Fallback 2: KiosAPI Free Group (`sk-...`).
-
-### B. Cấu hình OpenCode CLI
-Trong file cấu hình OpenCode (`opencode.json`):
-```json
-{
-  "$schema": "https://opencode.ai/config.json",
-  "provider": "custom",
-  "baseURL": "http://localhost:20128/v1",
-  "apiKey": "9router-internal-key",
-  "model": "qwen/qwen2.5-coder-32b-instruct"
-}
-```
-
----
-
-## 5. Cạm bẫy & Lưu ý (Pitfalls)
-
-1. **Không reg ngâm hàng loạt trước:** NVIDIA trial credits không cố định ngày hết hạn, nhưng có thể bị quét stale account hoặc đổi policy (bắt verify thẻ). Chỉ nên reg theo nhu cầu (On-Demand) từng đợt 10–20 key khi Gemini cạn quota hoặc cần model chuyên sâu.
-2. **hCaptcha Puzzle:** Không dùng click chuột tọa độ mù; bắt buộc giải bằng mắt người dùng hoặc nạp API CapSolver/YesCaptcha với task `HCaptchaClassification`.
-3. **An toàn bảo mật mã nguồn:** NVIDIA NIM là enterprise endpoint của NVIDIA nên an toàn. Ngược lại, **KiosAPI là server proxy trung gian** — TUYỆT ĐỐI KHÔNG ném private repo, API key hay credential nhạy cảm qua KiosAPI.
+> **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
+> Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

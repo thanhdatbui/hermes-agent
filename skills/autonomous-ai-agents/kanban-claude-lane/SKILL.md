@@ -2,7 +2,6 @@
 name: kanban-claude-lane
 description: Run bounded Claude Code lanes through Kanban.
 ---
-
 # Kanban Claude Code Lane
 
 Use Claude Code only as an isolated implementation input lane. Hermes owns the
@@ -38,43 +37,5 @@ bounded turn count.
 - `kanban_complete.metadata.claude_lane`: persist accepted usage, cost, tests, and artifacts.
 - `kanban_block`: stop unsafe, unavailable, or rejected work.
 
-## Procedure
-
-1. Resolve an isolated Hermes worktree; never point Claude at a shared dirty checkout.
-2. Give Claude scope, forbidden actions, acceptance criteria, and tests. Claude must not mutate Kanban.
-3. Launch the bounded lane. Never pass `--dangerously-skip-permissions`, `--permission-mode bypassPermissions`, push, or deploy commands.
-4. Keep the Hermes source workspace at the starting `HEAD` and clean until the
-   lane returns. If it changes while the lane is running, reject reconciliation
-   and inspect the durable patch artifact instead of merging two timelines.
-5. Hermes parses the JSON result for usage and cost, then reviews committed,
-   tracked, untracked, deleted, and renamed paths against the starting `HEAD`.
-   For a rename, review both the old and new path before running lane code.
-6. Run every test independently as Hermes against the lane's natural git state.
-   The harness stages a snapshot only after tests finish, so reconciliation
-   cannot change test semantics.
-7. An accepted patch is applied to the Hermes source workspace as an
-   uncommitted diff. Review it and commit only when the task authorizes commits;
-   otherwise block or hand it off with artifact references.
-8. Never relaunch the lane while that workspace is dirty. Resolve the existing
-   diff instead of retrying, so repeated claims cannot consume quota in a loop.
-9. Complete only an accepted lane with Hermes-owned test evidence. Record
-   rejected or timed-out lanes instead of retrying blindly.
-
-## Pitfalls
-
-- Do not treat Claude's JSON success as task acceptance.
-- Do not widen `allowed_tools` with wildcard shell, push, or deployment capability.
-- Do not expose credentials or copy Claude auth files into artifacts.
-- Do not allow partial acceptance; create a new bounded repair task instead.
-- Do not edit or advance the source workspace while the lane is running.
-- Do not mistake `accepted` for a committed source workspace.
-- Do not use a permission-bypass setting, even when interactive Claude guides suggest it.
-
-## Verification
-
-- Confirm the lane was opt-in, isolated, and cleaned up.
-- Confirm `metadata.claude_lane` contains parsed usage/cost or an explicit parse failure.
-- Confirm Hermes reviewed the diff and ran at least one test itself.
-- Confirm the accepted source diff was committed or explicitly handed off
-  before another lane claim.
-- Confirm no forbidden path, permission bypass, push, or deploy occurred.
+> **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
+> Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

@@ -10,7 +10,6 @@ metadata:
     tags: [invitation, card, poster, mobile-design, playwright, html2image, creative, graphic-design]
     related_skills: [claude-design, popular-web-designs]
 ---
-
 # Online Digital Invitation & Event Card Design
 
 Workflow and typography standards for creating digital invitation cards, milestone posters, and event announcements optimized specifically for sharing over mobile messaging platforms (Zalo, Telegram, Messenger, Instagram/Facebook Stories).
@@ -18,7 +17,7 @@ Workflow and typography standards for creating digital invitation cards, milesto
 ## Support Files & Templates
 - `templates/mobile_hero_card.html` — Starter full-bleed mobile template (huge photo + giant bold text).
 - `templates/magazine_cover_card.html` — Editorial magazine cover template (Baby Vogue / Lookbook style).
-- `references/omniroute_image_generation.md` — OmniRoute (:20129) image provider behaviors (`antigravity` vs `codex` vs `chatgpt-web`).
+- Chi tiết toàn bộ quy trình và phân tích chuyên sâu: xem các tài liệu trong thư mục `references/` của skill.
 
 ## Core Requirements & Mobile-First Invariants
 
@@ -55,23 +54,5 @@ with sync_playwright() as p:
     browser.close()
 ```
 
-## AI Image Generation & OmniRoute Behaviors
-
-When generating backgrounds or AI illustrations for cards:
-- **Primary Generator**: Route via OmniRoute (`http://127.0.0.1:20129/v1/images/generations`) with model `antigravity/gemini-3.1-flash-image`. It runs in < 5 seconds and returns base64 images directly.
-- **Prompt Formulation**: Always request empty/clean center space (`no text, no words, empty background`) when generating backdrops to composite HTML text on top, avoiding AI text distortion.
-
-### Common Pitfalls & Traps
-1. **The Print vs Online Trap**: When the user mentions "gửi online / chia sẻ Zalo/Facebook", NEVER design with traditional subtle typography. Users will immediately reject it as unreadable on mobile screens. Jump directly to high-contrast large fonts (40px+) and 50%+ hero photo area.
-2. **Pure Generative AI Art vs Programmatic HTML Compositing (Critical Intent Distinction)**:
-   - When a user asks to "gen ảnh / làm vài kiểu để coi" referencing previous AI-generated art (e.g., 3D Pixar, watercolor paintings), they want **pure AI image generation (Gemini/Imagen/DALL-E)** without any programmatic HTML/CSS text compositing or photo cutting. Do NOT substitute programmatic cards when they explicitly ask for AI artwork ("T cần gemini làm, hermes đừng can thiệp").
-   - Conversely, use HTML/CSS + Playwright ONLY when the user needs exact Vietnamese text (time, venue, baby full name) composited with a real photograph.
-3. **The "Reskinning" Repetition Trap (Structural vs Cosmetic Diversity)**:
-   - Changing background gradients, borders, or font colors on the identical vertical layout (Title -> Photo Box -> Info Box) will be immediately called out as *"y 1 kiểu na ná đổi mỗi màu nền"*.
-   - When presenting multiple card concepts, differentiate the core **visual metaphor and structural layout**:
-     * **Magazine Cover (Baby Vogue / Lookbook)**: Photo full bleed (100% canvas), top masthead typography, floating headline callouts, article-style info grid with barcode.
-     * **Boarding Pass / VIP Ticket**: Airline ticket form factor with perforated tear-off stub, passenger name, route (0T -> 1T), gate (venue), departure time, barcode.
-     * **Milestone Chalkboard / Storybook**: Infographic grid with badges, illustrated doodles, circular photo vignettes.
-4. **Codex Luna Image Generation Trap**: Do NOT attempt image generation via `codex/gpt-5.6-luna` or `codex/gpt-5.6-sol`. The upstream Codex CLI endpoint (`/backend-api/codex/responses`) strips image generation tools (`tools: []`), returning empty text and causing OmniRoute HTTP 502 errors.
-5. **ChatGPT Web Image Generation Trap**: `chatgpt-web` requests for images frequently hang or time out (> 180s) due to Cloudflare Sentinel / Turnstile bot protection on proxy IPs.
-6. **Antigravity / Gemini Quota Limits**: `antigravity/gemini-3.1-flash-image` on Google Cloud Code shares daily per-project quota. When hitting `HTTP 429: You have exhausted your capacity on this model`, cooldown is typically ~2.5 to 3 hours. Do not repeatedly hammer the endpoint once a 429 quota exhaustion is returned.
+> **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
+> Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

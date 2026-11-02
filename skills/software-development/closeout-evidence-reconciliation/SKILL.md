@@ -10,7 +10,6 @@ metadata:
     tags: [closeout, evidence, pytest, timeout, canary, audit]
     related_skills: [closeout-review-discipline, agent-verification-loop, verification-evidence, session-close-protocol]
 ---
-
 # Closeout Evidence Reconciliation
 
 ## Trigger
@@ -37,15 +36,5 @@ The canonical closeout command is the acceptance oracle. Local tests, worker sum
 - A canary receipt must be fresh, hash-valid, bound to the current candidate, and targeted to the subsystem changed in the diff. A generic feed screenshot cannot prove a sync, 2FA, switcher, or watchdog-taxonomy change.
 - Never manufacture or rewrite a canary receipt, screenshot hash, reviewer token, or audit record to make a guard pass. If the official runner is unavailable, report the literal blocker and keep the release gate closed.
 
-## Reporting format
-
-Report, in order: current `HEAD`/scope; independent focused test results; exact closeout-gate result; audit-binding status; push/remote status. Say `INCOMPLETE` when any required gate or release step is missing. Do not report `DONE`, `closed`, or `pushed` from a local test pass or reviewer score alone.
-
-## Pitfalls
-
-- Do not call a gate timeout a stale wrapper without evidence from a later exact gate run.
-- Do not use a passing local `58 tests` result to override a gate timeout.
-- Do not rerun the same unchanged hanging command repeatedly; isolate the slow node first.
-- Do not claim a prior commit's canary or closeout approval covers a new commit.
-
-See `references/timeout-and-cross-evidence-reconciliation.md` for the tested pattern from mixed watchdog/sync focused suites.
+> **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
+> Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

@@ -22,6 +22,14 @@ Get-Content (Get-ChildItem -Path 'D:\CodexRuntime\codex_gmail_debug-register-gma
 - Lệnh mở đầu bằng `Get-Content`, thỏa mãn `ALLOWED_COMMAND_PREFIXES` trong `admin_ssh.py`.
 - Tự động lấy file `summary.json` mới nhất mà không cần truyền biến trung gian `$items` hay tính toán timestamp phức tạp dễ lệch format locale giữa các máy Windows.
 
+### Lọc theo thời gian an toàn không bị chặn allowlist:
+Nếu cần lọc theo ngưỡng thời gian (ví dụ trong 12 giờ qua hoặc theo Unix epoch):
+```powershell
+Get-ChildItem -Path 'D:\CodexRuntime\codex_gmail_debug-register-gmail\logs_parallel_*\summary.json' -ErrorAction SilentlyContinue | Where-Object { $_.LastWriteTime -ge [DateTimeOffset]::FromUnixTimeSeconds(<epoch>).LocalDateTime } | Sort-Object LastWriteTime -Descending | Select-Object -First 1 | ForEach-Object { Get-Content $_.FullName -Raw -Encoding UTF8 }
+```
+- Mở đầu trực tiếp bằng `Get-ChildItem` (prefix `Get-` nằm trong allowlist của `admin_ssh.py`), tuyệt đối KHÔNG gán `$min = ...` ở đầu câu lệnh.
+- Stream JSON trực tiếp qua `ForEach-Object { Get-Content ... }` để `admin_ssh.py` đọc về Python sạch sẽ.
+
 ## 3. Đối soát hình ảnh màn hình Phone Checkpoint (WinRT OCR)
 - Khi Google kích hoạt Phone Verification sau bước Password, ảnh chụp được lưu tại:
   `C:\Users\<user>\AppData\Local\register-gmail\screenshots\phone_verify_<stt>_after_pass_<time>.png`

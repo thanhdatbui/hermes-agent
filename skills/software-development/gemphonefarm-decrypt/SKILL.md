@@ -17,9 +17,6 @@ metadata:
     related_skills: [automation-core-consumer]
 
 ---
-
-
-
 # Giải mã GemPhoneFarm Protected workflow
 
 
@@ -100,101 +97,5 @@ Xem cẩm nang checklist chi tiết tại: `references/gemlogin-workflow-audit-c
 
   license decrypt).
 
-
-
-## Cách giải mã (tool có sẵn)
-
-
-
-Repo `D:\Taadaa\tiktok-follow`:
-
-
-
-```
-
-python tools/decrypt_gemphonefarm.py <file_Protected.gemphonefarm> [out_prefix]
-
-```
-
-
-
-- Output: `<prefix>_decrypted.json` + `<prefix>_unprotected.GemPhoneFarm`.
-
-- Tool tự dùng openssl trước (`openssl enc -d -aes-256-cbc -md md5 -k '!#gemlogin$#&^%*'`),
-
-  fallback pycryptodome EVP_BytesToKey thuần python.
-
-- Nếu openssl "bad decrypt" → có thể password đã đổi theo app version: mở lại
-
-  app.asar, tìm hàm export có `rv.encrypt(JSON.stringify(...), "<password>")`.
-
-
-
-## Phân tích nhanh flow
-
-
-
-Flow follow qua tìm kiếm (TÌM-KIẾM) đã phân tích + verify line ref đầy đủ:
-
-`references/tiktok-follow-flow-analysis-2026-08-11.md` (selectors, follow
-
-button states Follow/Follow lại/Đã follow, identity @-prepend, tab Follower
-
-= 0 matches trong flow gốc, cái gì là user-added).
-
-
-Flow nuôi đề xuất & tương tác bạn bè (ĐỀ-XUẤT-VÀ-TIM-BẠN-BÈ):
-
-`references/tiktok-de-xuat-va-tim-ban-be-flow-analysis.md` (selectors `Bạn bè của bạn`, `Được follow bởi  `, logic dập popup, loop quẹt feed và trigger Like/Comment theo tỷ lệ %).
-
-
-
-```python
-
-import json, collections
-
-d = json.load(open(out_decrypted, encoding="utf-8"))
-
-nodes = d["drawflow"]["nodes"]
-
-print(collections.Counter(n.get("label") for n in nodes))
-
-# toàn bộ xPath/selector:
-
-for n in nodes:
-
-    for k in ("xPath","selector"):
-
-        v = (n.get("data") or {}).get(k)
-
-        if isinstance(v, list):
-
-            for i in v: print(i.get("value"))
-
-        elif v: print(v)
-
-```
-
-
-
-## Pitfalls
-
-
-
-- ASCII dấu tiếng Việt trong tên file: git-bash có thể mangle — xử lý qua
-
-  python hoặc quote cẩn thận; git hiển thị tên 8-bit (`T\303\214M...`).
-
-- Chỉ 1 selector "Tìm kiếm" nghĩa là flow chủ yếu tap toạ độ/resource-id ngắn
-
-  — port sang automation-core nên ưu tiên selector semantic + core popup
-
-  handler, không copy toạ độ mù.
-
-- File decrypted có thể chứa JS check hết hạn (vd `2026-11-28`) — bản mua có
-
-  hạn, bản tự build không cần.
-
-- Scan credential trước khi commit: grep `pass|otp|token|secret|cookie|2fa`
-
-  trong file giải mã.
+> **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
+> Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

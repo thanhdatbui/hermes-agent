@@ -2,7 +2,6 @@
 name: kanban-multi-worker-research-swarm
 description: Coordinate parallel researchers into audited synthesis.
 ---
-
 # Kanban Multi-Worker Research Swarm Skill
 
 Use a bounded Kanban swarm to investigate a broad question through independent evidence lanes and produce one audited synthesis. Preserve each worker's scope, sources, uncertainty, contradictions, and handoffs so parallelism improves coverage instead of multiplying unsupported summaries.
@@ -31,32 +30,5 @@ Create a root task with `workflow_template_id="multi-worker-research-swarm-v1"` 
 - `kanban_block`: stop a lane when access, scope, budget, or evidence quality prevents a trustworthy conclusion.
 - `web_search`, `browser_navigate`, and `read_file`: gather permitted public or local evidence while retaining exact provenance.
 
-## Procedure
-
-1. Create the root task with the question, scope, audience, deliverable, budget ceiling, worker limit, and acceptance criteria.
-2. Run the classifier. Break the question into a claim matrix with stable claim IDs, required evidence, exclusions, and dependencies. Avoid assigning the same open-ended scope to every worker.
-3. Create bounded lanes such as `researcher:primary`, `researcher:counterevidence`, `researcher:data`, and domain-specific researchers. Give each lane explicit claim IDs and a source-diversity requirement.
-4. Require workers to record exact citations, source dates, observed facts, interpretations, confidence, uncertainty, failed searches, and artifact references. A negative finding must include what was searched and where.
-5. Keep workers independent until their evidence is durable. Do not let later workers merely repeat an earlier summary without checking the underlying source.
-6. Create a challenger after primary evidence lanes finish. The challenger searches for counterexamples, stale assumptions, source dependence, missing populations, and alternative explanations.
-7. Create a reviewer after the challenger. The reviewer maps evidence to claim IDs, detects duplicate sources, resolves or preserves contradictions, and requests only targeted follow-up tasks within the remaining worker/budget bound.
-8. Stop fan-out when acceptance criteria are met, marginal evidence is low, the budget is exhausted, or unresolved gaps require user input. Do not create workers indefinitely to chase certainty.
-9. Create a synthesizer/final auditor. Produce a claim-by-claim conclusion with supporting and opposing evidence, confidence, limitations, and decision implications. Separate consensus from majority repetition.
-10. Complete the root task with the normalized workflow report reference, concise recommendation, residual risks, and the evidence needed to revisit uncertain claims.
-
-## Pitfalls
-
-- Do not use worker count as a proxy for independent evidence; several workers citing one source are one evidence lineage.
-- Do not create overlapping prompts that produce duplicate summaries and inflate apparent confidence.
-- Do not average incompatible claims or hide contradictions in a smooth narrative.
-- Do not reopen completed scope without a concrete evidence gap and remaining budget.
-- Do not expose confidential inputs, credentials, or raw provider metadata in durable comments or reports.
-- Do not create a second swarm engine or research database; use Kanban tasks, links, comments, runs, events, and the workflow report.
-
-## Verification
-
-- Confirm every worker has explicit claim IDs, non-overlapping scope, and a terminal status.
-- Confirm material claims include source provenance, date, confidence, uncertainty, and counterevidence where available.
-- Confirm the reviewer detects duplicate evidence lineages and addresses contradictions before synthesis.
-- Confirm worker count, follow-up rounds, and spend remain within the declared bounds.
-- Confirm the final report distinguishes facts, interpretations, consensus, disagreement, limitations, and unresolved questions.
+> **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
+> Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

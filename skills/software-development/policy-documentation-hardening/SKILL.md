@@ -10,7 +10,6 @@ metadata:
     tags: [policy, documentation, allowlist, precedence, eol, verification]
     category: software-development
 ---
-
 # Policy Documentation Hardening
 
 Use this class skill when a user requests a narrowly scoped change to orchestration rules, workspace policy, or skill documentation across an explicit allowlist, especially when the user forbids candidate-code changes and commit/push.
@@ -43,30 +42,5 @@ A policy file is not permission to inspect or rewrite adjacent repositories, too
 
 Put substantive precedence in one canonical source. Pointer files should say where the source is and that it wins on conflict; they should not duplicate the decision table. Separate implementation Worker and Reviewer roles. A worker's self-report or exit code is evidence to inspect, not approval. If a policy names a closeout gate, keep reviewer approval bound to the actual gate route and exact current bytes.
 
-## Evidence and release boundary
-
-Run tests/review with the same interpreter/executable. Import, collection, or native-dependency failure invalidates earlier evidence and is fail-closed. A release action is allowed only when the active canonical contract explicitly permits it and its complete gate passes. For a documentation-only task with an explicit no-commit/no-push rule, verification must remain read-only.
-
-If the candidate directory is not a Git repository, do not fabricate `git diff` or `git numstat` output and do not guess a sibling repository. Report the exact Git binding limitation and still provide file-level evidence that is actually available.
-
-## Final checklist
-
-- [ ] Only exact allowlisted files changed.
-- [ ] Canonical marker/block appears exactly as required.
-- [ ] Each pointer file has one pointer and no duplicated policy.
-- [ ] Dead skill references are corrected only when in scope.
-- [ ] EOL/BOM and unrelated bytes are preserved.
-- [ ] Final marker counts and pointer checks ran after the last write.
-- [ ] `git diff --check` and `git diff --numstat` output is real, or the missing Git root is explicitly reported.
-- [ ] No commit, push, config, credential, device, or candidate-code mutation occurred when forbidden.
-
-## Pitfalls
-
-- Do not use a start/end marker pair when acceptance counts the marker token literally; it creates a false duplicate.
-- Do not let a broad skill or stale plan expand a five-file policy task.
-- Do not claim final verification from a pre-edit snapshot.
-- Do not repair a missing Git root by scanning the drive or selecting a similarly named repository.
-- Do not turn Claude CLI or another advisor into an implicit implementation worker; preserve the user's explicit role boundary.
-
-See `references/policy-allowlist-evidence.md` for the compact byte/EOL/marker evidence recipe.
-See `references/canonical-policy-closeout-hardening-20261005.md` for the canonical-precedence policy pattern, Claude CLI wrapper arguments (-Mode Plan requires -PlanFile), and anti-surrender closeout remediation rules.
+> **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
+> Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

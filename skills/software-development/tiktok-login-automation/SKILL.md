@@ -2,7 +2,6 @@
 name: tiktok-login-automation
 description: "TikTok login automation via ADB — inventory, login, 2FA, UI handling for both legacy (46.x) and new UI."
 ---
-
 # TikTok Login Automation
 
 ## 1. Nguyên Tắc Cốt Lõi
@@ -15,32 +14,5 @@ description: "TikTok login automation via ADB — inventory, login, 2FA, UI hand
   * Tọa độ fallback nút Sửa hồ sơ trên Galaxy S7 là `(870, 558)`, cấm tap vào vùng `y >= 680` (vùng nút Bio). Chi tiết xem [`references/switcher-pre-opened-state-and-edit-profile-bounds-20261020.md`](references/switcher-pre-opened-state-and-edit-profile-bounds-20261020.md).
 - **Tra cứu O(1):** Dùng `python D:/Taadaa/tools/inspect_machine.py <N>`.
 
-## 2. Quy Trình Vận Hành Đăng Nhập
-- **Cài đặt APK:** Sử dụng bộ cài chuẩn qua `install_farm_apks.py`.
-- **Đọc OTP Hotmail:** Đọc trực tiếp qua Microsoft Graph API token từ PC, không dùng tay hay app Outlook chậm chạp.
-- **2FA TOTP:** Tự động sinh mã xác thực bằng thư viện TOTP chuẩn theo Secret Key lưu trong workbook.
-- **Tự Động Phục Hồi Khi Thiếu Nick (Missing Account Auto-Recovery - 2026-10-17):**
-  * Khi các tác vụ Upload hoặc Feed Session báo `ACCOUNT_VERIFY_MISMATCH` hoặc `account-switcher-missing-expected`: CẤM dừng lại than khóc hay hỏi xin phép. BẮT BUỘC kích hoạt ngay canonical runner:
-    `python D:/Taadaa/Tiktok_Reg/tiktok_login_v1.py <STT> --email <TARGET_ACCOUNT> --ss`
-  * Script tự động mở app, vào Profile, mở Account Switcher; nếu nick đã có trong Switcher thì tự switch phiên, nếu chưa có thì tự động điền form đăng nhập theo credentials trong tracking workbook (hỗ trợ 2FA TOTP bypass OTP mail).
-  * **Tự Động Phục Hồi Trong Runner Đổi Tên & Bẫy Kẹt Loop Switcher:** Xem chi tiết tại [`references/tiktok-switcher-active-account-loop-and-login-recovery-20261020.md`](references/tiktok-switcher-active-account-loop-and-login-recovery-20261020.md) (xử lý văng nick, tránh loop tap vào acc đang active trên Profile, và nhận diện cây bút chì layout canh giữa).
-  * **Xử lý kẹt ADB Daemon trên máy S7 (ADB Socket Hang Trap):** Nếu lệnh ADB bị timeout ở các lệnh shell cơ bản (`settings put system accelerometer_rotation 0`, `getprop sys.boot_completed`), đó là do ADB daemon socket bị kẹt. BẮT BUỘC chạy `adb kill-server && adb start-server` để thông đường truyền trước khi retry login.
-  * **Bẫy Nút Thêm Tài Khoản Kẹt Mép Đáy & Va Chạm Profile vs Home Feed (2026-10-21):** Khi máy đã có 7 nick, nút `Thêm tài khoản` bị dồn xuống đáy `bounds=[0,1788][1080,1920]`. Tapping trực tiếp không scroll sẽ bị nuốt cảm ứng và return mù, dẫn tới `choose_email_login` nhầm màn Profile thành Home feed rồi crash `STOPPED: [06]`. Bắt buộc auto-swipe lên trước khi tap và loại trừ marker profile đã login. Xem chi tiết tại [`references/account-switcher-bottom-cutoff-and-login-profile-feed-collision-20261021.md`](references/account-switcher-bottom-cutoff-and-login-profile-feed-collision-20261021.md).
-  * **Bẫy Nhận Nhầm Đĩa Nhạc Feed Thành Tab Hồ Sơ, Trễ Mạng 4G Proxy & Timeout Chờ Login (2026-10-21):**
-    - Icon đĩa nhạc quay trên feed TikTok nằm ở `(999, 1712)` lọt vào bộ lọc đáy cũ (`cy >= 1700`), dẫn tới việc tap nhầm vào trang chi tiết âm thanh thay vì tab Hồ sơ (`bounds=[864,1794][1080,1920]`). Bắt buộc siết ngưỡng nhận diện tab đáy `cy >= 1780` và `y1 >= 1750`.
-    - Xác thực mật khẩu qua proxy 4G có độ trễ 3-8s: cấm phán quyết sai mật khẩu tức thì ở nhịp kế tiếp; bắt buộc cấp đệm chờ `password_submitted_rounds >= 3`.
-    - Timeout `wait_login_success` nâng lên 75s bù trừ độ trễ dump của ATX-agent; bọc try/except an toàn ở bước đọc profile sau khi đã có home feed UI proof.
-    - Xem chi tiết tại [`references/login-flow-feed-disc-misdetection-and-network-auth-buffer-20261021.md`](references/login-flow-feed-disc-misdetection-and-network-auth-buffer-20261021.md).
-  * **Va Chạm 2 Session Song Song Xử Lý 1 Máy & Kỷ Luật Viết Test Production (2026-10-21):**
-    - Khi 2 session cùng nhận alert (Batch Alert P0 vs Watchdog ca) và cùng vào sửa máy, xảy ra tranh chấp device lock và phân mảnh commit. Không được revert hoảng loạn; đối soát `git diff origin/main..HEAD -w` để hợp nhất các bản vá bổ trợ.
-    - Để vượt qua Closeout Gate (Sol Reviewer Strike 1-2): CẤM test mô phỏng công thức; bắt buộc test gọi trực tiếp hàm production (`tap_add_account`, `fill_password_and_login`, `upsert_tracking_account`, `wait_login_success`). Cung cấp file nhị phân thật `open(..., 'r+b')` có `fileno()` cho `os.fsync`, mock `shell` tránh ADB hang khi test `wait_login_success`, và dùng `strip_accents` cho hint tiếng Việt.
-    - Xem chi tiết tại [`references/dual-session-collision-and-production-test-contracts-20261021.md`](references/dual-session-collision-and-production-test-contracts-20261021.md).
-  * **Kỷ Luật Điều Tra Root Cause Script Chống Báo Cáo Suông (User Correction 21/10/2026):**
-    - Khi nhận cảnh báo farm fail từ Watchdog, CẤM Coordinator chỉ inspect hiện trường rồi phát thông báo suông cho User.
-    - BẮT BUỘC lần theo `log.jsonl`, đối chiếu `fail_*.xml` và mở mã nguồn script để định vị chính xác bug, sửa trực tiếp và xác minh bằng chứng chạy thật.
-  * **Bẫy OCR Chèn Khoảng Trắng Username & Thoát Subscreen Profile (2026-10-23):**
-    - WinRT OCR trên Samsung S7 dễ chèn khoảng trắng nội bộ vào username (`@ngotran g7771`). Bẫy `\" \" not in text` gây false-negative khiến runner báo `exit_2` sau khi đã đổi tên thành công. Xử lý an toàn: nới lỏng khoảng trắng KHI VÀ CHỈ KHI `is_target_user(compact(text))` khớp target_user; kèm telemetry `[OCR-SPACE]` và test negative chống caption/mention.
-    - Khi Profile bị kẹt ở subscreen "Video riêng tư" (mất nút Sửa hồ sơ), phải bấm icon Back `<` góc trên bên trái (`o` tại x~55, y~117) hoặc `SWIPE_PROFILE_TOP`, cấm tap mù fallback tọa độ. Chi tiết xem [`references/ocr-username-space-artifact-and-profile-subscreen-recovery-20261023.md`](references/ocr-username-space-artifact-and-profile-subscreen-recovery-20261023.md).
-
-## 3. Tài Liệu Tham Khảo (References)
-- Chi tiết các case study đăng nhập và xử lý UI: xem danh mục trong thư mục `references/` của skill.
+> **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
+> Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

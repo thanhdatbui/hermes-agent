@@ -2,7 +2,6 @@
 name: kanban-repository-research
 description: Research repositories through durable Kanban roles.
 ---
-
 # Kanban Repository Research Skill
 
 Use a durable Kanban workflow to investigate a repository and return an evidence-backed report. Keep research lanes read-only and preserve findings, uncertainty, and artifacts in task state so another agent can resume or audit the work.
@@ -35,29 +34,5 @@ Create one root task with `workflow_template_id="repository-research-v1"` and `c
 
 For concrete repository/provider questions, answer the exact operational question before giving background. Classify every candidate as **direct match**, **related architecture**, or **not a match**. Record whether it uses an official API, browser/UI automation, a reverse-engineered transport, or an unrelated wrapper. Never infer that a model label such as `gemini-veo` is specifically Veo 3/3.1 without documentation or source evidence; mark the mapping unverified when the repository does not establish it. If the user corrects an interpretation, discard the prior speculative path and restate only verified facts from the inspected sources. Keep the final answer concise and lead with the shortlist and recommendation.
 
-## Procedure
-
-1. Create the root task with the research question, acceptance criteria, repository path, and a read-only constraint.
-2. Run the classifier/scoper. Define the claims to verify, search boundaries, likely files, and evidence quality rules. Split independent claims into parallel workers.
-3. Create workers with abstract steps such as `researcher:structure`, `researcher:runtime`, `researcher:tests`, or `researcher:history`. Do not hard-code provider or model names in the workflow.
-4. Each worker should inspect source, tests, configuration, and history as appropriate. Record exact `file:line` citations, commands run, observed behavior, assumptions, uncertainty, and artifact paths with `kanban_comment`.
-5. Complete a worker only when its result distinguishes verified facts from hypotheses. Block it instead of guessing when evidence is unavailable.
-6. Create a reviewer after the evidence workers finish. The reviewer checks citation accuracy, contradictory findings, scope coverage, and read-only compliance; it requests targeted follow-up tasks when needed.
-7. Create a synthesizer/final auditor after review. Combine the accepted evidence into the workflow report, state residual uncertainty, and answer the original question without exposing raw run metadata or credentials.
-8. Complete the root task with the report summary and the report reference. Preserve all handoffs and artifacts in the Kanban subtree.
-
-## Pitfalls
-
-- Do not use `assignee` as a substitute for role identity; `current_step_key` is the per-attempt role/phase snapshot.
-- Do not create a second research database, workflow engine, or model-routing tool.
-- Do not claim a bug from a grep hit alone. Trace the runtime path and verify intent in tests or history.
-- Do not modify the repository during research, including formatting, generated files, or lockfiles.
-- Do not hide uncertainty behind a confident synthesis; mark unverified claims and explain what would resolve them.
-
-## Verification
-
-- Confirm every cited `file:line` exists and supports the claim.
-- Confirm each task has a durable role step, parent/dependency links, and a terminal status.
-- Confirm worker comments include commands, evidence, uncertainty, and artifact references where applicable.
-- Confirm reviewer/auditor coverage includes contradictions and unresolved gaps.
-- Confirm the final response matches the workflow report and contains no credentials or raw provider metadata.
+> **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
+> Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

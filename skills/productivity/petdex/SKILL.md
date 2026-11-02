@@ -11,7 +11,6 @@ metadata:
     category: productivity
     homepage: https://petdex.dev
 ---
-
 # Petdex Skill
 
 Browse, install, and select animated "pet" mascots from the public
@@ -76,14 +75,5 @@ Under `display.pet` in `config.yaml`:
   Appearance slider.
 - `unicode_cols` (int) — width in columns for the Unicode fallback.
 
-## Pitfalls
-
-- A pet only shows once one is installed AND selected (`enabled: true`).
-- Inside a pipe/redirect (no TTY) terminal rendering is disabled by design.
-- The petdex npm CLI installs to `~/.codex/pets`; Hermes uses its own
-  profile-scoped `<HERMES_HOME>/pets/` instead — install through `hermes pets`.
-
-## Verification
-
-- `hermes pets doctor` reports `✓ ready` when a pet is installed, selected,
-  enabled, and Pillow is importable.
+> **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
+> Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

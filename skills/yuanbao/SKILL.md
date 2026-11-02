@@ -8,7 +8,6 @@ metadata:
     tags: [yuanbao, mention, at, group, members, 元宝, 派, 艾特]
     related_skills: []
 ---
-
 # Yuanbao Group Interaction
 
 ## CRITICAL: How Messaging Works
@@ -55,54 +54,5 @@ Step 2 — your reply (this gets sent to the group with a working @mention):
 - Your reply text IS the message — it WILL be sent and the @mention WILL work
 - Be concise. Do NOT explain how @mention works to the user.
 
-## Send DM (Private Message) Workflow
-
-When someone asks to send a private message / 私信 / DM to a user:
-
-1. Call `yb_send_dm` with `group_code`, `name` (target user's name), and `message`
-2. The tool automatically finds the user and sends the DM
-3. Report the result to the user
-
-Example: user says "给 @用户aea3 私信发一个 hello"
-
-```json
-yb_send_dm({ "group_code": "535168412", "name": "用户aea3", "message": "hello" })
-```
-
-Example with media: user says "给 @用户aea3 私信发一张图片"
-
-```json
-yb_send_dm({
-  "group_code": "535168412",
-  "name": "用户aea3",
-  "message": "Here is the image",
-  "media_files": [{"path": "/tmp/photo.jpg"}]
-})
-```
-
-**Rules:**
-- Extract `group_code` from the current chat_id (e.g. `group:535168412` → `535168412`)
-- If you already know the user_id, pass it directly via the `user_id` parameter to skip lookup
-- If multiple users match the name, the tool returns candidates — ask the user to clarify
-- Do NOT use `send_message` tool for Yuanbao DMs — use `yb_send_dm` instead
-- Supports media: images (.jpg/.png/.gif/.webp/.bmp) sent as image messages, other files as documents
-
-## Query Group Info
-
-```json
-yb_query_group_info({ "group_code": "328306697" })
-```
-
-## Query Members
-
-| Action | Description |
-|--------|-------------|
-| `find` | Search by name (partial match, case-insensitive) |
-| `list_bots` | List bots and Yuanbao AI assistants |
-| `list_all` | List all members |
-
-## Notes
-
-- `group_code` comes from chat_id: `group:328306697` → `328306697`
-- Groups are called "派 (Pai)" in the Yuanbao app
-- Member roles: `user`, `yuanbao_ai`, `bot`
+> **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
+> Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

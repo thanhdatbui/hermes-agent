@@ -30,3 +30,4 @@ metadata:
 - Kỷ luật phục hồi ATX 502 & Cấm gõ tay UiAutomator instrument: `skill_view(name='windows-native-ocr', file_path='references/atx-agent-502-and-uiautomator-discipline.md')`.
 - Bẫy Banned Destination Email & Cấm lách Guard bằng Instrumentation: `skill_view(name='windows-native-ocr', file_path='references/banned-destination-email-and-instrumentation-trap-20261031.md')`.
 - Kỷ luật chống trốn tránh trách nhiệm bằng batch khóa máy (Task Preemption): `skill_view(name='windows-native-ocr', file_path='references/anti-stall-task-preemption-and-device-lock-discipline.md')`.
+- Chuẩn hóa backslash cho WinRT OCR & quy trình xử lý ảnh an toàn: `skill_view(name='windows-native-ocr', file_path='references/winrt-ocr-windows-path-slashes-and-guard-isolation.md')`.

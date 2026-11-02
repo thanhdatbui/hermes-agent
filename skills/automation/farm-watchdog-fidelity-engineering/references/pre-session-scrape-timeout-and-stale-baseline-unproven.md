@@ -40,7 +40,13 @@ Mặc dù thực tế trong DB `tiktok_tracker.db`, tài khoản đã tăng đú
    - Timeout tối thiểu 180s: `timeout=180` (tránh kill ngầm khi proxy hoặc mạng chập chờn).
    - Log rõ số lượng uid thành công / timeout thay vì nuốt ngoại lệ im lặng.
 
-2. **Watchdog Same-Day Reconcile Fallback (`feed_session_watchdog.py`):**
-   - Khi baseline cũ quá 4h nhưng cùng ngày (`b_dt.date() == s_dt.date()`):
-     * Nếu delta tính ra khớp chính xác với script báo (`web_delta == expected_delta`): Vẫn công nhận kết quả `KHỚP` kèm chú thích `(baseline sáng)`.
-     * Chỉ dán nhãn `UNPROVEN` khi khác ngày hoặc delta bị lệch không thể chứng minh.
+2. **Watchdog Cross-Day Reconcile Fallback (`feed_session_watchdog.py`):**
+   - **Bẫy Ca 1 (Sáng):** Với Ca 1 (06:00), nếu cào T0 bị hụt thì snapshot gần nhất bắt buộc nằm ở ngày hôm trước (`b_dt.date() < s_dt.date()`). Nếu chỉ cho phép fallback cùng ngày (`same-day`), toàn bộ Ca 1 sẽ luôn bị dán nhãn `UNPROVEN` oan dù số liệu khớp tuyệt đối.
+   - **Quy tắc nghiệm thu:** Dù baseline quá 4h hoặc khác ngày (nhưng trong vòng 24–48h):
+     * Nếu delta tính ra khớp chính xác tuyệt đối với script báo (`web_delta == expected_delta` và `web_delta > 0`): Vẫn công nhận kết quả `KHỚP` kèm chú thích `(baseline cũ [YYYY-MM-DD HH:MM])`.
+     * Chỉ dán nhãn `UNPROVEN` khi delta bị lệch hoặc không thể chứng minh.
+
+3. **Bắt Buộc Deploy 4-Way Parity Khi Sửa Runner Template:**
+   - Khi sửa `tiktok_runner.py` tại `scripts/hermes_cron/tiktok_runner.py`:
+   - BẮT BUỘC chạy `pwsh scripts/deploy_hermes_cron_wrappers.ps1` để đồng bộ sang `%LOCALAPPDATA%\hermes\scripts\tiktok_runner.py`.
+   - Nếu chỉ sửa trong repo git mà không deploy wrapper, Hermes Cron vẫn tiếp tục chạy file cũ với `workers=15` và `timeout=90`.

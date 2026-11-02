@@ -19,7 +19,7 @@
 3. **Kẽ hở Parallel Tool Calls (Cộng dồn song song):**
    - Dù mỗi tool call được clamp độc lập (ví dụ 50k ký tự), nếu Agent gọi song song 10–20 tool calls trong 1 turn, tổng dung lượng kết quả vẫn bơm thêm hàng trăm nghìn tokens làm nổ context.
 
-### B. Lỗ hổng Combo Cascade Poisoning trong OmniRoute (`combo.ts`):
+### B. Lỗ hổng Combo Cascade Poisoning trong OmniRoute (`combo.ts` & `comboPredicates.ts`):
 1. **Upstream Google Error Signature:**
    ```json
    {
@@ -30,39 +30,75 @@
      }
    }
    ```
-2. **Bug Logic Fast-Fail Trong Router (`open-sse/services/combo.ts`)**:
-   - Đoạn code kiểm tra dừng combo khi gặp HTTP 400 có điều kiện: `!isContextOverflow400(errorText)`.
+2. **Kẽ hở `isInputBoundRequestFailure`**:
+   - `isInputBoundRequestFailure(error)` chỉ kiểm tra `error.code` và `error.type` dạng chuỗi (tìm `context_length_exceeded`). Vì Google trả về `code: 400` dạng số và status `INVALID_ARGUMENT`, hàm trả về `false`.
+   - Kết quả: Biến `isInputBoundFailure` tại dòng 2148 của `combo.ts` bị `false`, router không kích hoạt nhánh ngắt sớm trên homogeneous remainder pool.
+3. **Bug Logic Fast-Fail Trong Router (`open-sse/services/combo.ts`)**:
+   - Đoạn code kiểm tra dừng combo khi gặp HTTP 400 (dòng 2234) có điều kiện: `!isContextOverflow400(errorText)`.
    - Khi lỗi là Context Overflow, `isContextOverflow400` trả về `true` $\implies$ phủ định `!isContextOverflow400` thành `false`!
    - Hậu quả: Router không coi đây là lỗi client cần dừng ngay, mà coi là lỗi có thể fallback tiếp được, dẫn đến việc mang nguyên vẹn prompt quá khổ ném lần lượt qua tất cả các account còn lại trong pool (`4c8a6e77...`, `ff22bcba...`) cho đến khi hết 20 lượt retry.
    - Kết quả: Toàn bộ dàn tài khoản trong pool đều bị đánh dấu `failed / 400 UPSTREAM`, gây hiểu lầm là dàn account bị Google khóa hoặc chết proxy hàng loạt.
-3. **Thiếu Regex Match Trong `CONTEXT_OVERFLOW_PATTERNS`**:
-   - Regex trong `accountFallback.ts` thiếu mẫu đặc thù của Google Cloud Code Antigravity: `The input token count exceeds the maximum number of tokens allowed 1048576`.
+4. **Thiếu Regex Match Trong `isContextOverflow400`**:
+   - Thiếu mẫu đặc thù của Google Cloud Code Antigravity: `The input token count exceeds the maximum number of tokens allowed 1048576`.
 
 ---
 
-## 3. Kiến Trúc Khắc Phục Triệt Để (Thống Nhất Cùng Hội Đồng Cố Vấn)
+## 3. Bản Vá Đã Áp Dụng Thực Tế Trên Mã Nguồn OmniRoute
 
-### Tầng 1: OmniRoute Gateway (Dập tắt thác đổ & Bảo vệ Node)
-1. **Nhận diện chính xác mẫu lỗi Google:**
-   - Bổ sung pattern vào `CONTEXT_OVERFLOW_PATTERNS`:
-     `/\binput token count exceeds\b/i` hoặc `/\bexceeds the maximum number of tokens allowed\b/i`.
-2. **Dập tắt Fallback trên cùng Model Pool:**
-   - Khi gặp HTTP 400 có `isContextOverflow400(errorText) === true`, nếu target kế tiếp trong Combo có context window tương đương hoặc nhỏ hơn ($\le 1\text{M}$), **lập tức dừng fallback (`return { ok: false, response: result }`)**.
-   - Chỉ cho phép fallback nếu target tiếp theo có context window lớn hơn hẳn (ví dụ Gemini Pro 2M).
-3. **Bảo vệ sức khỏe Node (Zero-Penalty):**
-   - Lỗi Context Overflow là lỗi **Request-Level (do client)**, tuyệt đối không trừ điểm sức khỏe, không kích hoạt circuit breaker làm phạt node.
+1. **`open-sse/services/combo/comboPredicates.ts`**:
+   * Thêm pattern `/\binput token count exceeds\b/i` vào `isContextOverflow400`:
+     ```typescript
+     export function isContextOverflow400(errorText: string | null | undefined): boolean {
+       const text = String(errorText || "");
+       if (!text) return false;
+       return (
+         /\bcontext.*(?:length_exceeded|too long|overflow|exceeded|window|limit)\b/i.test(text) ||
+         /exceeds.*context/i.test(text) ||
+         /your input exceeds/i.test(text) ||
+         /\binput token count exceeds\b/i.test(text) ||
+         CONTEXT_OVERFLOW_PATTERNS.some((p) => p.test(text))
+       );
+     }
+     ```
+   * Mở rộng `isInputBoundRequestFailure(error, errorText)`:
+     ```typescript
+     export function isInputBoundRequestFailure(
+       error?: { code?: string | null; type?: string | null },
+       errorText?: string | null
+     ): boolean {
+       const code = typeof error?.code === "string" ? error.code.toLowerCase() : "";
+       const type = typeof error?.type === "string" ? error.type.toLowerCase() : "";
+       return (
+         INPUT_BOUND_ERROR_CODES.has(code) ||
+         type === "context_length_exceeded" ||
+         isContextOverflow400(errorText)
+       );
+     }
+     ```
 
-### Tầng 2: Hermes Client & Agent Runtime (Chặn từ gốc)
-1. **Trần dung lượng tổng cho Tool Output theo Turn (Per-turn Aggregate Cap):**
-   - Không chỉ clamp từng tool độc lập ($\le 50\text{k}$ chars), bắt buộc phải clamp **tổng kích thước tất cả tool results trong 1 turn** ($\le 100\text{k}$ chars / ~25k tokens) để bịt kẽ hở parallel tool calls.
-2. **Pre-flight Token Estimate & Emergency Compaction:**
-   - Trước khi dispatch request sang router, nếu ước tính `prompt_tokens > 900.000`, client phải kích hoạt ngay **Emergency Sliding Window / Pruning** (tỉa bớt tool output cũ ở giữa history) thay vì ném request quá khổ lên upstream.
-3. **Chống nhiễm độc lịch sử (Anti-History Poisoning):**
-   - Khi nhận mã 400 Context Overflow trả về từ gateway, Agent Runtime phải nhận diện mã lỗi có cấu trúc để tự động prune history trước khi retry, tránh vòng lặp retry vô tận với context bị kẹt > 1M.
+2. **`open-sse/services/combo.ts`**:
+   * Tại dòng 2148, truyền `errorText` vào hàm kiểm tra:
+     ```typescript
+     const isInputBoundFailure =
+       isInputBoundRequestFailure(structuredError, errorText) && remainderIsHomogeneous;
+     ```
+   * **Hiệu lực cơ học:** Khi một request gửi vào combo `ag-gemini-pool-3` (pool toàn bộ là `gemini-3.8-flash-tiered`) bị Google reject với lỗi `The input token count exceeds...`, router nhận diện ngay đây là `isInputBoundFailure` trên homogeneous pool, **lập tức ngắt chuỗi fallback (`return { ok: false, response: result }`) ngay tại node đầu tiên**, không thử sang 19 node còn lại, và **không phạt điểm circuit breaker** của dàn tài khoản.
 
 ---
 
-## 4. Quy Trình Triage & Khắc Phục Chuẩn O(1)
+## 4. Phân Biệt Nén Ngu (LLM Summarization) vs Tỉa Khôn (Mechanical Trimming)
+
+- **Nén ngu (LLM Summarization của Hermes mặc định):**
+  * Gọi LLM tóm tắt lại các turn cũ thành đoạn văn xuôi `[CONTEXT COMPACTION — REFERENCE ONLY]`.
+  * **Hại:** Rơi rụng path, port, biến số, log lỗi thực tế; gây ra **Completion Bias** (AI tự ảo giác là việc đã xong để làm vừa lòng User); đồng thời làm **vỡ Prompt Cache prefix** của Gemini (buộc phải cache lại từ đầu tốn tiền và chậm).
+- **Tỉa khôn (Structural Mechanical Truncation):**
+  * Giữ nguyên 100% lời nói của User, chỉ đạo của Coordinator và lý luận của AI.
+  * Chỉ "rút ruột" các `tool_result` cũ trong quá khứ (lệnh `terminal`, `read_file` chạy từ 10–20 turn trước dài 50k ký tự): chỉ giữ 3 dòng đầu + `[... output trimmed ...]` + 3 dòng cuối + exit code.
+  * Giảm ngay 80% token mà giữ 100% mạch suy nghĩ, không bao giờ bị dính lỗi 400.
+
+---
+
+## 5. Quy Trình Triage Chuẩn O(1) Cho Người Vận Hành
 1. **Kiểm Tra Trực Tiếp Log Thật Của OmniRoute**:
    - File log: `C:\Users\Kibe\AppData\Roaming\omniroute\logs\omniroute-stdout.log`.
    - Tìm cụm `Status: 400` và bóc trường `Body:` trong log để xem thông điệp chính xác của upstream.
