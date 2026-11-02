@@ -39,7 +39,7 @@ def main():
     if is_running():
         return 0
 
-    python_exe = r"C:/Users/Kibe/AppData/Local/hermes/hermes-agent/venv/Scripts/python.exe"
+    python_exe = r"D:/Taadaa/Hermes/.venv/Scripts/python.exe"
     script_p = r"C:/Users/Kibe/run_kibe_downloader_service.py"
     log_p = r"D:/CodexRuntime/tiktok-video/download_kibe_p10.log"
 
