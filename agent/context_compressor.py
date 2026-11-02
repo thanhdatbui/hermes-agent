@@ -3062,6 +3062,12 @@ This compaction should PRIORITISE preserving all information related to the focu
         )
         if pruned_count and not self.quiet_mode:
             logger.info("Pre-compression: pruned %d old tool result(s)", pruned_count)
+            # If mechanical tool pruning brought transcript below threshold,
+            # skip LLM summarization entirely to preserve 100% prompt cache.
+            if estimate_messages_tokens_rough(messages) < self.threshold_tokens:
+                if not self.quiet_mode:
+                    logger.info("Mechanical pruning brought tokens below threshold; skipping LLM summarizer to keep prompt cache.")
+                return messages
 
         # Phase 2: Determine boundaries
         compress_start = self._protect_head_size(messages)
