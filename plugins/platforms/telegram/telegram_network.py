@@ -445,4 +445,15 @@ def _rewrite_request_for_ip(request: httpx.Request, ip: str) -> httpx.Request:
 
 
 def _is_retryable_connect_error(exc: Exception) -> bool:
-    return isinstance(exc, (httpx.ConnectTimeout, httpx.ConnectError, httpx.ProxyError))
+    return isinstance(
+        exc,
+        (
+            httpx.ConnectTimeout,
+            httpx.ConnectError,
+            httpx.ProxyError,
+            httpx.ReadTimeout,
+            httpx.WriteTimeout,
+            httpx.TimeoutException,
+            httpx.NetworkError,
+        ),
+    )
