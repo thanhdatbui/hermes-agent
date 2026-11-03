@@ -5,6 +5,8 @@ description: "Use when running batch 2FA on TikTok farm. Chạy batch 2FA repo t
 # TikTok Add 2FA Batch Ops (repo tiktok-add-bao-mat-f2a)
 
 References:
+- `references/multi-node-sqlite-ssot-and-disaster-recovery-discipline-20261103.md` — Kiến trúc Full-Farm Replica SQLite SSOT giữa Kibe và Admin, nguyên tắc Disaster Recovery (DR), Row-Level Upsert chống ghi đè file, và kỷ luật timeout sàn 300s (Gate G15).
+- `references/distributed-sqlite-ssot-reconcile-architecture-20261103.md` — Kiến trúc sổ cái phân tán SQLite SSOT giữa Kibe và Admin, nguyên lý failover độc lập, cơ chế Reconcile Pull O(1) qua SSH và kỷ luật giao tiếp trực diện.
 - Chi tiết toàn bộ quy trình và phân tích chuyên sâu: xem các tài liệu trong thư mục `references/` của skill.
 - Chi tiết toàn bộ quy trình và phân tích chuyên sâu: xem các tài liệu trong thư mục `references/` của skill.
 - `scripts/flush_dpapi_journal_to_workbook.py` — Script tự động flush Secret Key 2FA từ DPAPI journal vào Cột E file Excel `taikhoan_dat_v2_updated .xlsx`, đối chiếu readback và cập nhật state WRITTEN.
