@@ -24,3 +24,6 @@ Khi một phiên trò chuyện (session) kéo dài và thảo luận liên tục
 
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.
+> - `references/outbound-attestation-workflow.md`: Hướng dẫn chi tiết quy trình Outbound Attestation Workflow.
+> - `references/outbound-manifest-attestation-gate.md`: Cơ chế cơ giới hóa Outbound Manifest Attestation Gate (check_contradiction) chặn đứng lỗi cắt ảnh người mà mồm bốc phét là cún cưng (commit 7df1c2a).
+> - `references/ground-truth-video-vs-excel-bias-20261104.md`: Kỷ luật mỏ neo video thật thắng mọi nhãn Excel và quy trình sửa dứt điểm Niche sai lệch.
