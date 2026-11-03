@@ -21,3 +21,28 @@
     ```bash
     cross-env NODE_OPTIONS="--max-old-space-size=4096" npm run build
     ```
+
+## 3. Bản Nâng Cấp "Nén Khôn Cơ Học" (Zero-LLM Cache Preservation)
+Tại `D:/Taadaa/Hermes/agent/context_compressor.py` (Phase 1):
+- Ngay khi chạm mốc 600k tokens (`threshold: 0.6`), Hermes thực hiện pre-pass cơ học rút ruột các lệnh tool cũ (`_prune_old_tool_results`): thay hàng chục nghìn dòng log bằng 1 dòng `[terminal] ran <cmd> -> exit <code_output>`.
+- **Cơ chế ngắt thông minh:** Nếu sau khi tỉa thô mà `estimate_messages_tokens_rough(messages) < self.threshold_tokens`, compressor **DỪNG NGAY LẬP TỨC**, trả về messages mà KHÔNG gọi LLM tóm tắt:
+  ```python
+  if estimate_messages_tokens_rough(messages) < self.threshold_tokens:
+      if not self.quiet_mode:
+          logger.info("Mechanical pruning brought tokens below threshold; skipping LLM summarizer to keep prompt cache.")
+      return messages
+  ```
+- **Lợi ích:** 80% trường hợp phình context được giải tỏa ngay lập tức mà không tốn token, bảo tồn 100% Prompt Cache của Gemini và không làm mất trí nhớ kỹ thuật.
+
+## 4. Lựa Chọn Model Nén Phụ & Timeout Chuẩn Xác
+- **Bẫy Context Window của Sol Web (`gpt-web-sol`):** Sol Web chỉ có context window 32k-64k. Dù Hermes có bộ lọc `_CONTENT_MAX = 6000` chars/msg, nhưng nếu phiên chat kéo dài hàng trăm tin nhắn thì payload gửi sang Sol Web vẫn có thể vượt trần 32k gây lỗi `400/413 Context Overflow`.
+- **Giải pháp: Dùng `gemini-web` (Argon Gemini Web):**
+  - Trần context đầu vào 1.000.000 tokens (1M), nuốt trọn mọi payload lớn mà không bao giờ lo tràn context.
+  - Tốc độ xử lý ~6.9s cho payload 66k tokens (264k chars).
+  - Cấu hình chuẩn:
+    ```bash
+    hermes config set auxiliary.compression.model gemini-web
+    hermes config set auxiliary.compression.timeout 300
+    ```
+- **Timeout 300s:** Nâng `auxiliary.compression.timeout` lên 300 giây (5 phút), dẹp bỏ hoàn toàn các mốc timeout ngắn (45s/120s) tránh tình trạng rớt mạng nội bộ hoặc nghẽn socket làm gãy tiến trình nén.
+- **Không cần restart Gateway:** Hermes Gateway có cơ chế cache-busting tự động nhận diện thay đổi của các key `compression.*` và `auxiliary.compression.*` trong `config.yaml` để nạp compressor mới cho lượt tiếp theo mà không cần khởi động lại process.

@@ -7,7 +7,9 @@ description: "Vận hành đổi nguồn video kênh TikTok, tự động push a
 Sử dụng quy chuẩn này khi tài khoản TikTok trong farm cần chuyển đổi kênh nguồn (do dính tin tức/thời sự, flop view, hoặc vi phạm bản quyền).
 
 ## Phân Tầng Kiểm Chứng: UI vs Backend / Database (Anti-Canary Illusions)
-- **Tác vụ đổi nguồn & avatar máy thật:** Chạy script đổi nguồn, render video, push avatar vào máy thật và chạy `run_avatar_m1.py` để đổi avatar trên app TikTok. Bắt buộc nghiệm thu bằng ảnh UI thật qua WinRT OCR / Multimodal.
+- Tác vụ đổi nguồn & avatar máy thật: Chạy script đổi nguồn, render video, push avatar vào máy thật và chạy `run_avatar_m1.py` để đổi avatar trên app TikTok. Bắt buộc nghiệm thu bằng ảnh UI thật qua WinRT OCR / Multimodal.
+- Nhận diện bẫy nguồn tin tức / phóng sự & kỷ luật Native Vision: Xem chi tiết [`references/news-video-rejection-niche-swap-and-native-vision-discipline-20261103.md`](references/news-video-rejection-niche-swap-and-native-vision-discipline-20261103.md).
+- Kỷ luật chọn Niche đổi nguồn (Anti-Hallucination): BẮT BUỘC chạy `python D:/Taadaa/tools/audit_niches_farm.py` để lấy số liệu thực tế từ 1.272 nick farm làm căn cứ; CẤM chọn theo cảm tính hoặc chọn các niche bẫy flop như Ẩm thực quay chảo. Xem chi tiết [`references/niche-ground-truth-and-anti-hallucination-audit.md`](references/niche-ground-truth-and-anti-hallucination-audit.md).
 - **Tác vụ chuẩn hóa dữ liệu sang SQLite / DAL:** Thuần túy là tầng **Backend / Data Layer**. Tuyệt đối **CẤM** suy luận máy móc bật màn hình điện thoại chụp ảnh splash app TikTok đối phó. Nghiệm thu bằng **Focused Test < 30s** và **Read-back SQLite / DAL**. Cờ `--no-canary` phải được áp dụng với lý do cụ thể.
 
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
