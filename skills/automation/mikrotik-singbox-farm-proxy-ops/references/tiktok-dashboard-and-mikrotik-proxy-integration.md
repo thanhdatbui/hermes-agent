@@ -119,7 +119,15 @@ Người vận hành yêu cầu giao diện điều khiển proxy (cả bên Mik
    - Cần thường xuyên vào tab *Thiết bị kết nối (Devices)* xác nhận số client đang kết nối là 0, ngăn chặn nguy cơ điện thoại Samsung S7 tự động kết nối (auto-join) vào sóng này làm lộ IP gốc của SIM/modem thay vì đi qua proxy chỉ định.
 12. **Kỷ Luật Tham Vấn Advisor (Anti-Assumption Mandate):**
    - Khi tham vấn Hội đồng Cố vấn (Advisor) về sự cố mạng/hạ tầng, BẮT BUỘC phải trích xuất và cung cấp 100% dữ liệu cấu hình thô nguyên bản (Raw Config/Scripts/Rules), CẤM chỉ gửi tóm tắt suy đoán chủ quan làm lệch lạc phán quyết của Advisor.
-13. **Restart Service đúng cách trên Windows:** TikTok Dashboard được giám sát bởi tiến trình Watchdog (`tiktok_dashboard_watchdog.ps1`). Khi deploy code mới, sử dụng script `python D:/Taadaa/tools/restart_tiktok_dashboard.py` để khởi động lại sạch sẽ cả service chính lẫn watchdog ngầm qua VBScript.
+14. **Kỷ Luật Bảng NAT RouterOS (Chống Nghẽn CPU 95%):**
+   - Định kỳ kiểm tra `/ip firewall nat` để quét và loại bỏ các rule chết (`packets = 0`), tránh để hàng trăm rule masquerade/dst-nat rác từ các đợt cấu hình cũ làm chậm quá trình duyệt gói tin (phiên vừa qua đã dọn từ 712 rules xuống 188 rules, giải phóng 170MB RAM).
+   - Trong script `watchdog-pppoe`, chỉ so khớp Private IP chuẩn RFC 1918 (với `172.`, phải kiểm tra octet thứ hai từ `16` đến `31`), TUYỆT ĐỐI KHÔNG so khớp cụm `172.` chung chung làm ngắt nhầm các dải IP Public sạch của Viettel (`172.245.x.x`, `172.224.x.x`).
+15. **Chuẩn Thiết Kế Giao Diện Đồng Bộ MikroTik Web Manager (`:2310`):**
+   - Giao diện MikroTik Web (`:2310`) phải đồng bộ 100% phong cách với R3G: bỏ toàn bộ card stats to tướng và tab navigation thừa.
+   - Bảng 8 cột chuẩn MobiProxy: `PROXY`, `NGUỒN`, `IPV4 / IPV6`, `CỔNG`, `UPTIME`, `TRẠNG THÁI`, `HẸN GIỜ (PHÚT)`, `RESET`.
+   - Có thanh công cụ `⏱ Hẹn giờ đổi IP` (input số phút, nút Áp dụng tất cả, nút Lưu lịch reset, nút Reset tất cả 35 line).
+   - Nút Reset đổi IP trực tiếp không hiện confirm popup phiền toái.
+   - Uptime RouterOS format chuẩn tiếng Việt (`X ngày Y giờ`, `X giờ Y phút`).
    - **Nút "📋 Copy danh sách proxy":**
      * Tự động duyệt qua danh sách các hàng đang hiển thị (đã qua filter tìm kiếm).
      * Chỉ gom các proxy đang có trạng thái `LIVE` hoặc `RUNNING` và có IP hợp lệ (bỏ qua các port chết `—`).

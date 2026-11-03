@@ -6,6 +6,7 @@ description: "Use when running batch 2FA on TikTok farm. Chạy batch 2FA repo t
 
 References:
 - Chi tiết toàn bộ quy trình và phân tích chuyên sâu: xem các tài liệu trong thư mục `references/` của skill.
+- Chi tiết toàn bộ quy trình và phân tích chuyên sâu: xem các tài liệu trong thư mục `references/` của skill.
 - `scripts/flush_dpapi_journal_to_workbook.py` — Script tự động flush Secret Key 2FA từ DPAPI journal vào Cột E file Excel `taikhoan_dat_v2_updated .xlsx`, đối chiếu readback và cập nhật state WRITTEN.
 - Chi tiết toàn bộ quy trình và phân tích chuyên sâu: xem các tài liệu trong thư mục `references/` của skill.
 
