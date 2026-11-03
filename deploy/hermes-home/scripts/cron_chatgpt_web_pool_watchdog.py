@@ -293,7 +293,7 @@ def get_gpm_profiles_map():
         import re
         for p in profiles:
             pname = p.get('name', '')
-            m = re.search(r'([a-zA-Z0-9_.+-]+@gmail\.com)', pname)
+            m = re.search(r'([a-zA-Z0-9_.+-]+@(gmail|hotmail)\.com)', pname, re.IGNORECASE)
             if m:
                 email = m.group(1).lower()
                 email_map.setdefault(email, []).append(p)
@@ -442,9 +442,19 @@ def perform_auto_login_and_extract_cookies(cdp_addr: str, email: str, creds: dic
         if email_inp.count() > 0 and email_inp.is_visible():
             email_inp.fill(email)
             page.wait_for_timeout(500)
-            submit_btn = page.locator('button[type="submit"], button:has-text("Tiếp tục"), button:has-text("Continue")').first
-            if submit_btn.count() > 0:
-                submit_btn.click(force=True)
+            page.evaluate('''() => {
+                const buttons = Array.from(document.querySelectorAll('button'));
+                const btn = buttons.find(b => {
+                    const t = (b.innerText || '').trim();
+                    return (t === 'Tiếp tục' || t === 'Continue' || b.type === 'submit') &&
+                           !t.includes('Google') && !t.includes('Apple') && !t.includes('Microsoft') && !t.includes('phone') && !t.includes('thoại');
+                });
+                if (btn) btn.click();
+            }''')
+            page.wait_for_timeout(4000)
+            try:
+                page.wait_for_selector('input#password, input[name="password"], input[type="password"]', timeout=8000)
+            except:
                 page.wait_for_timeout(3000)
 
         # 4. ĐIỀN PASSWORD NẾU OPENAI HỎI
@@ -470,8 +480,20 @@ def perform_auto_login_and_extract_cookies(cdp_addr: str, email: str, creds: dic
             u = page.url.lower()
             
             # Kiểm tra tài khoản bị vô hiệu hóa
-            if "payload=" in u and ("account_deactivated" in u or "accountdeactivated" in u):
-                log(f"[{email}] CẢNH BÁO: Tài khoản OpenAI đã bị vô hiệu hóa (AccountDeactivated)!")
+            if ("payload=" in u and ("account_deactivated" in u or "accountdeactivated" in u)) or "account_deactivated" in page.content().lower():
+                log(f"[{email}] CẢNH BÁO: Tài khoản OpenAI đã bị vô hiệu hóa (AccountDeactivated)! Tự động thanh lọc...")
+                try:
+                    import sys
+                    from pathlib import Path
+                    t_dir = Path(__file__).resolve().parents[4] / "tools"
+                    if t_dir.exists() and str(t_dir) not in sys.path:
+                        sys.path.insert(0, str(t_dir))
+                    elif os.path.exists(r"D:\Taadaa\tools") and r"D:\Taadaa\tools" not in sys.path:
+                        sys.path.insert(0, r"D:\Taadaa\tools")
+                    from omniroute_purge_helper import purge_account
+                    purge_account(email, omni_url=OMNI_API)
+                except Exception as e_purge:
+                    log(f"[{email}] Lỗi khi tự động purge account: {e_purge}")
                 return None
                 
             if "chatgpt.com" in u and "/auth/" not in u:
@@ -576,6 +598,15 @@ def refresh_chatgpt_account_via_gpm(pid: str, cid: str, email: str, creds: dict)
         time.sleep(2)
 
 perform_revive_chatgpt_account = refresh_chatgpt_account_via_gpm
+
+
+def refresh_gemini_web_account_via_gpm(pid: str, cid: str, email: str):
+    """Gemini recovery must use an authorized OAuth/provider integration.
+    Never extract or transfer browser authentication cookies or session secrets.
+    """
+    log(f"[GEMINI-RECOVERY-BLOCKED] {email}: cookie-based session extraction is unsupported")
+    return False, "Use official Gemini OAuth/provider authentication"
+
 
 # ==================== ARCHITECTURE LAYER 3: ANTIGRAVITY OAUTH & BROWSER AUTOMATION ====================
 def is_profile_aged_7_days(profile: dict, min_days: int = 7) -> bool:
@@ -1385,20 +1416,20 @@ def main():
     for c in chatgpt_conns:
         if c.get('isActive') and c.get('testStatus') == 'active':
             continue
-        cur_key = c.get('apiKey')
-        if cur_key and isinstance(cur_key, str) and cur_key.startswith(('eyJhbG', '__Secure')):
-            is_live_ok, _ = test_connection_valid(cur_key)
-            if is_live_ok:
-                cid = c.get('id')
-                try:
+        cid = c.get('id')
+        try:
+            req_t = urllib.request.Request(f"{OMNI_API}/api/providers/{cid}/test", data=b'{}', headers={'Content-Type': 'application/json'})
+            with urllib.request.urlopen(req_t, timeout=10) as r_t:
+                res_t = json.loads(r_t.read())
+                if res_t.get('valid') is True:
                     conn_t = sqlite3.connect(DB_PATH)
-                    conn_t.cursor().execute("UPDATE provider_connections SET is_active=1, test_status='active', last_error=NULL, last_error_at=NULL, backoff_level=0 WHERE id=?", (cid,))
+                    conn_t.cursor().execute("UPDATE provider_connections SET is_active=1, test_status='active', last_error=NULL, last_error_at=NULL, backoff_level=0, rate_limited_until=NULL WHERE id=?", (cid,))
                     conn_t.commit()
                     conn_t.close()
                     log(f"  [✓ LIVE TEST VALID] Phục hồi tài khoản {c.get('name')}: Token vẫn còn sống, không cần login lại.")
                     continue
-                except Exception:
-                    pass
+        except Exception:
+            pass
         chatgpt_inactive.append(c)
     
     recovered_chatgpt = []
@@ -1412,7 +1443,7 @@ def main():
             cname = c_info.get('name', '')
             cid = c_info.get('id')
             import re
-            m = re.search(r'([a-zA-Z0-9_.+-]+@gmail\.com)', cname)
+            m = re.search(r'([a-zA-Z0-9_.+-]+@(gmail|hotmail)\.com)', cname, re.IGNORECASE)
             if not m:
                 return None, False, "No email match"
             email = m.group(1).lower()
@@ -1491,7 +1522,7 @@ def main():
         for c, reason in codex_broken:
             cname = c.get('name') or c.get('id', 'unknown')
             import re
-            m = re.search(r'([a-zA-Z0-9_.+-]+@gmail\.com)', cname.lower())
+            m = re.search(r'([a-zA-Z0-9_.+-]+@(gmail|hotmail)\.com)', cname.lower(), re.IGNORECASE)
             if not m:
                 failed_codex.append((cname, f"NO_GMAIL_EXTRACTED: {reason}"))
                 if disable_codex_connection(c, reason):
