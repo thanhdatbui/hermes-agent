@@ -47,7 +47,7 @@ When the current built-in/direct session was created with `agent_type=worker`, i
    - Các mục cũ mâu thuẫn trong `HERMES_SUBAGENT_RULES.md` (ngưỡng L2 30 dòng, budget 15 calls, timeout lane 120s/240s, playbook B2→B3 "Coordinator soạn, Worker áp") bị Rule 6 này ghi đè. Emergency Surgery L2 vẫn giữ nguyên theo `HERMES_SUBAGENT_RULES.md` và không bị T0/Absorption tiêu hao hạn mức.
    - **Hàng rào chốt chặn đầu ra (Outcome Verification Gates):**
      1. **Canary máy thật (Tử huyệt):** Chạy trên $\ge 1$ máy thật rảnh, bắt buộc có ảnh `MEDIA:<path>` kết quả + WinRT OCR gửi User duyệt.
-     2. **Closeout Gate $\ge 85$:** Sol Reviewer chấm $\ge 85/100$ qua `closeout_gate.py` mới được phép push git remote khi User ra lệnh.
+     2. **Closeout Gate v2:** Cơ giới hóa 100% qua `closeout_gate.py` (GuardGate invariants PASS & Pytest PASS, Exit 0) mới được phép push và chốt phiên.
      3. **Bảo vệ hệ thống:** Cấm đụng `tools/hooks/**`, `farm_policy.py`, `closeout_gate.py`, credentials, `.env`.
    - `clarify` chỉ dùng cho quyết định nghiệp vụ, thiếu quyền, hoặc thao tác không đảo ngược/tốn phí tiền thật. Cấm dùng để xin phép L0-L2 hoặc trốn timeout. Clarify phải có evidence, 2-3 phương án, đề xuất của agent và mặc định an toàn; xóa/tốn phí mặc định là KHÔNG làm.
    - Nếu Gate fail: thu hẹp contract, hoặc L2 nếu đủ điều kiện kích hoạt; không đủ điều kiện thì BLOCKED kèm evidence; không đóng băng task. DỪNG UI sau 3 lỗi chỉ nghĩa là dừng vòng UI của nick/máy đó, chuyển BLOCKED, không đóng băng toàn phiên.

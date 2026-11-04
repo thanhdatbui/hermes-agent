@@ -25,5 +25,20 @@ Khi một lỗi lặp lại hoặc lỗi bẫy selector/fallback được sửa 
   2. Bổ sung test assertion bảo vệ case cũ + case mới vào test contract.
   3. Đăng ký invariant rule vào GuardGate để khóa chặt vĩnh viễn, ngăn mọi agent tương lai sửa lùi.
 
+### 3.1. Bẫy Test Assertion Sửa Lùi (Weak Contract Regression Trap - Vụ Án Commit 82d50a4)
+- **Triệu chứng nhận diện:** Một invariant đã từng được chốt (như quy tắc trừ nhả follow ngày 03/10/2026: nhả liền `cnt == 0` thì trừ sạch follow tự nhiên `reported = 0`, nhưng đã có `cnt > 0` thì giữ nguyên các lượt thành công `reported = cnt + natural_cnt`) bị Agent ở session sau sửa lùi vì Agent đó chỉ tập trung vào một ca lẻ phát sinh (như M41 `cnt == 1`), tự tiện đổi thành `reset = failed` rồi **sửa đè cả assert trong file test** để test xanh.
+- **Kỷ luật phòng chống:**
+  * **Test Contract 2 Nhánh Bắt Buộc:** Mọi logic phân nhánh điều kiện biên (`cnt == 0` vs `cnt > 0`) BẮT BUỘC phải có đồng thời 2 test cases đối trọng trong test suite:
+    1. Nhánh Nhả Liền: `failed=True, cnt=0, natural_cnt=2` ➔ `assert reported == 0`.
+    2. Nhánh Thành Công Trước Nhả: `failed=True, cnt=3, natural_cnt=2` ➔ `assert reported == 5`.
+  * **Cấm Sửa Lùi Test Assertion:** Khi viết/sửa code, nếu thấy test contract cũ FAIL, Agent BẮT BUỘC phải tra cứu lại commit history (`git log -S`) để hiểu vì sao test đó tồn tại trước khi tự ý sửa assert của test. Sửa assert để test pass mù quáng là hành vi phá vỡ invariant nghiêm trọng.
+
+## 4. Bãi Bỏ Đánh Giá Cảm Tính & Quy Chuẩn Đóng Phiên Closeout v2
+- Xem chi tiết tại [Closeout v2 Mechanical Enforcement & Zero-Score-Chasing](references/closeout-v2-mechanical-enforcement.md).
+- **CẤM TUYỆT ĐỐI đòi điểm reviewer >= 85 hoặc in mẫu báo cáo điểm số**: Cơ chế thẩm định cảm tính điểm số đã bãi bỏ 100%, người gác cổng duy nhất là `closeout_v2.py` (GuardGate + Pytest Exit 0 = APPROVED 100/100).
+- **Khai tử thói quen rập khuôn**: Khi chốt phiên (`done`, `chốt phiên`), chỉ báo cáo kết quả kiểm định máy `closeout_v2.py` (Exit code 0, GuardGate PASS, Pytest PASS), cấm lôi các câu chữ di tích cũ về "Reviewer chấm >= 85" làm phiền User.
+- **Zero Artifacts & Memory Hygiene**: Dọn sạch file rác qua `safe_recycle.py`, cấm đẻ persistent memory bừa bãi khi được bảo dọn dẹp.
+- **Smart Action Mandate vs Regex Trap**: Quy chuẩn cơ giới hóa O(1) tách bạch Execution Signals vs Consultative Markers trong `conversation_loop.py`, triệt tiêu bẫy regex chặn họng khi đối thoại/tư vấn xem tại `references/smart-action-mandate-and-consultative-bypass-20261104.md`.
+
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

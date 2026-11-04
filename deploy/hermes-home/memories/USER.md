@@ -1,7 +1,5 @@
 SQLite SSOT (farm_master.db) duy nhất, Excel mirror 1 chiều; cấm runtime đọc Excel. Timeout >= 300s, emit tool ngay, đi thẳng trọng tâm. Cần kiến trúc gọi Hội đồng Advisor (Sol+Gemini). Cấm báo cáo lảm nhảm, hứa suông, vòng vo hoặc trốn tránh vì bị gate chặn họng; khi tư vấn phải trả lời trực diện, không chạy lệnh rác đối phó.
 §
-Ảnh Telegram qua Gemini Multimodal, CẤM browser_vision mở file local. Gate 6: gửi MEDIA ngay. CẤM đọc chéo session khác, bắt buộc đọc chữ/pixel thật. CẤM xúi /new. Advisors đủ 3 bên (Sol, Gemini, Claude). Context th 0.6, protect 50.
+Ảnh Telegram qua Gemini Multimodal, CẤM browser_vision mở file local. Gate 6: nói PA BẮT BUỘC gửi hình MEDIA ngay. CẤM đọc chéo session khác, bắt buộc đọc pixel thật. CẤM xúi /new. Advisors đủ 3 bên. Cấm gate over-engineering trói chân. Đề xuất kênh (PA 1-4) bắt buộc ảnh Canvas cùng turn.
 §
-Claude: thanhdatbui19951 là nick Pro dùng chung với em, cấm đốt quota. ag_cli.py fallback chỉ cho phép khi role == 'worker', cấm giả mạo Claude khi làm advisor/planner. User cấm đẻ thêm gate thừa thãi/over-engineering (Protection Regression Gate, chấm điểm 85/100 đã dẹp). Mục tiêu duy nhất: 'Không sửa A làm hỏng B đã fix'. Quy về 2 trụ cột trong Closeout Gate: (1) GuardGate (rules.json O(1) kiểm tra diff theo comment định danh), (2) Pytest test suite (hợp đồng test logic). Cấm tự động cào git log runtime làm phình token.
-§
-User không thích đẻ thêm badge/cờ mới lạ trên TikTok Dashboard (như badge ⚡ BOOST) làm rối mắt; ưu tiên hợp nhất cờ giữ nhịp 5 ngày trực tiếp vào badge 🔥 ĐỀ XUẤT và bộ lọc cắn đề xuất.
+User ghét khóc lóc/bại liệt vì gate (như vội báo L3 BLOCKED); phải chủ động gỡ upstream. Đơn hàng Dashboard: tab '🧾 Đơn Hàng TikTok' ở Menu chính ngang hàng Giám Sát TikTok, bên trong chia 2 sub-tab độc lập [📦 Đơn Đang Theo Dõi] & [✅ Đơn Đã Xong], cấm dồn chung trang bắt cuộn. Không đẻ badge mới lạ (⚡ BOOST), gộp vào 🔥 ĐỀ XUẤT.
