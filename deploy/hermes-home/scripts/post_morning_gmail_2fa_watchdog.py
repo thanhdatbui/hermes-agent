@@ -252,6 +252,30 @@ def get_gpm_candidates(limit: int = 5) -> list:
     if not GPM_DB_PATH.exists() or not MASTER_EXCEL.exists():
         return []
 
+    excluded_today = set()
+    if STATE_FILE.exists():
+        try:
+            state_data = json.loads(STATE_FILE.read_text(encoding="utf-8"))
+            today_str = datetime.now().strftime("%Y-%m-%d")
+            if state_data.get("last_run_date") == today_str:
+                for item in state_data.get("success", []):
+                    if isinstance(item, str):
+                        em_split = item.split()[0].strip().lower()
+                        if em_split:
+                            excluded_today.add(em_split)
+                for item in state_data.get("failed", []):
+                    if isinstance(item, str):
+                        em_split = item.split(":")[0].strip().lower()
+                        if em_split:
+                            excluded_today.add(em_split)
+                for item in state_data.get("pending", []):
+                    if isinstance(item, str):
+                        em_split = item.split(":")[0].strip().lower()
+                        if em_split:
+                            excluded_today.add(em_split)
+        except Exception as e:
+            log(f"Lỗi đọc STATE_FILE để loại trừ excluded_today: {e}")
+
     import openpyxl
 
     master_pwd = {}
@@ -297,13 +321,15 @@ def get_gpm_candidates(limit: int = 5) -> list:
         for pid, name, ppath, gid in rows:
             if not name or name.startswith("AMZ_") or "deleted" in name.lower():
                 continue
-            if gid != 10:
+            if gid not in (1, 10):
                 continue
             em_match = re.search(r"([a-zA-Z0-9_.+-]+@gmail\.com)", name, re.IGNORECASE)
             if not em_match:
                 continue
             email = em_match.group(1).lower()
             if "khoale" in email:
+                continue
+            if email in excluded_today:
                 continue
 
             sec = master_2fa.get(email) or clean_2fa.get(email) or ""
@@ -479,7 +505,13 @@ def main():
             report.append(f"- Đang chờ đăng nhập GPM ({len(pending_list)}):")
             for p_item in pending_list:
                 report.append(f"  + {p_item}")
-        print("\n".join(report))
+        report_text = "\n".join(report)
+        print(report_text)
+        try:
+            from python_runner.hermes_cron.telegram_report import send_telegram_message
+            send_telegram_message("-5256944036", report_text)
+        except Exception as e:
+            log(f"Lỗi gửi báo cáo Telegram tới -5256944036: {e}")
 
     return 0
 
