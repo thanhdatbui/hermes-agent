@@ -18,10 +18,11 @@
 
 ## 2. Tinh Gọn Hệ Thống Gate: Thống Nhất 2 Trụ Cột Thay Vì Over-Engineering
 - **Vấn đề over-engineering:** Các phiên trước sinh ra quá nhiều danh xưng mơ hồ (*Regression Gate, Protection Regression Gate, Invariant Rule, GuardGate...*), gây nhiễu loạn nhận thức.
+- **Bác bỏ bẫy cào Git Log Runtime:** Duyệt DAG Git (`git log -L`, `git blame`) thời gian thực có độ phức tạp $O(C \times L)$ theo số commit, vi phạm cam kết $O(1)$, làm chậm hệ thống và phình token context khiến AI dễ ảo giác.
 - **Thống nhất đúng 2 trụ cột:**
   1. **Trụ cột 1 — GuardGate (`rules.json`):** Vật cản tĩnh kiểm tra diff trong `< 0.05s`.
   2. **Trụ cột 2 — Pytest Suite:** Kiểm thử hành vi động của logic nghiệp vụ.
-  3. **Điểm kiểm duyệt duy nhất:** `closeout_gate.py` (`closeout_v2.py`) kiểm tra cả 2 trước khi commit/push.
+  3. **Điểm kiểm duyệt duy nhất:** `closeout_gate.py` (`closeout_v2.py`) kiểm tra cả 2 trước khi commit/push (đã tích hợp GuardGate trực tiếp qua commit `a1b5041`).
 
 ---
 

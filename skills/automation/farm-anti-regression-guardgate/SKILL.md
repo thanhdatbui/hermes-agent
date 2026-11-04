@@ -25,15 +25,5 @@ Khi một lỗi lặp lại hoặc lỗi bẫy selector/fallback được sửa 
   2. Bổ sung test assertion bảo vệ case cũ + case mới vào test contract.
   3. Đăng ký invariant rule vào GuardGate để khóa chặt vĩnh viễn, ngăn mọi agent tương lai sửa lùi.
 
-## 4. Tận Dụng Comment Định Danh (Banner Bước) Làm Anchor Bất Biến
-- **Không over-engineer đẻ thêm gate:** Loại bỏ các danh xưng chồng chéo (Protection Gate, Regression Gate...). Hệ thống thống nhất đúng **2 trụ cột**:
-  * **Trụ 1: GuardGate (`rules.json`):** Kiểm tra tĩnh diff < 0.05s trước commit.
-  * **Trụ 2: Pytest Suite:** Kiểm thử hành vi động logic nghiệp vụ.
-  * **Điểm kiểm duyệt duy nhất:** `closeout_gate.py`.
-- **Comment Định Danh làm Anchor Scoped:**
-  * Mỗi khối logic nghiệp vụ hoặc đoạn fix bug hiểm bắt buộc có banner định danh: `# [INVARIANT: <TEN_BUG>]` hoặc `# ── BƯỚC X: ...`.
-  * Rule trong `rules.json` gắn matcher theo anchor này, đảm bảo regex kiểm tra tập trung, không bị vỡ do format hay khoảng trắng ở các phần code khác.
-  * Test case tương ứng trong `tests/` mock và assert đúng hành vi của bước đó.
-
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.
