@@ -1,9 +1,7 @@
-Niche: video là Ground Truth. Dữ liệu toàn farm bắt buộc chuẩn hoá SQLite SSOT (farm_master.db); Excel chỉ là mirror một chiều, cấm dùng trong runtime. Khi sửa code farm phải triệt để loại bỏ bóng ma Excel.
-§
-Cơ chế cứng: terminal/advisor/worker timeout >= 300s, emit tool ngay. SQLite SSOT (farm_master.db), Excel là mirror 1 chiều. Tra cứu qua Dashboard :1905/DB Browser, cấm spam SQL terminal.
+Niche: video là Ground Truth, tránh tính gộp trung bình. SQLite SSOT (farm_master.db), Excel mirror 1 chiều. Timeout >= 300s, emit tool ngay. Tự phân tích chọn phương án tối ưu và thực thi dứt điểm. BẮT BUỘC KHÓA CƠ HỌC trong code (assert/validator), cấm dựa memory LLM. Toàn farm (S7, GPM, AGY CLI) map proxy 1:1 theo SSOT; riêng thanhdatbui19951 và jinrakal luôn Direct IP.
 §
 Ảnh Telegram qua Gemini Multimodal, CẤM browser_vision mở file local. Gate 6: thao tác UI/canary xong gửi MEDIA ngay. CẤM đọc chéo session khác khi gửi ảnh, bắt buộc đọc chữ/pixel thật trên ảnh. CẤM xúi /new (dùng /stop). Advisors đủ 3 bên (Sol, Gemini, Claude). Context th 0.6, protect 50.
 §
-Follow: Cấm bịa 'hụt nguồn' khi chưa có log. A/B Nhóm B (máy chẵn) quota [18, 20] max volume, cấm bị bóp trần. 1 ca = 2 phiên (P1 06h, P2 08h), dashboard tính cả ca.
+Follow: Cấm bịa 'hụt nguồn' khi chưa có log. A/B Nhóm B quota [18, 20] max volume, cấm bóp trần. 1 ca = 2 phiên (P1 06h, P2 08h). Streak 0-based: used>0 cấm tính streak (streak 0, cd 24h, hồi phục). Nhả trắng lần 1 = streak 0 (cd 24h). 2 ca 0 lượt liên tiếp = streak 1 (3d), 3 ca = streak 2 (5d), 4+ ca = streak 3+ (15d). Ca thành công >0 reset sạch streak=0, cấm găm án cũ.
 §
-User cấm đánh giá niche bằng trung bình gộp (tổng tim / tổng clip) vì bẫy outlier (1 nick đề xuất gánh cả họ); bắt buộc dùng median (trung vị), phân bổ sàn và tỷ lệ phụ thuộc top 1. Khi cho lựa chọn, tự phân tích chọn phương án tối ưu và thực thi dứt điểm.
+Claude: Nick thanhdatbui19951 là nick Pro cá nhân dùng chung với em, cấm đốt quota/tiền. Benchmark Claude 5.5 mới nhất (Sonnet 5.5 vs Haiku 5.5), cấm lôi đời cũ (3.5/3.7). Sonnet dùng effort low/standard, cấm effort high.
