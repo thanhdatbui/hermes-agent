@@ -48,8 +48,18 @@ set udp-timeout=10s
 - Khi hạ `tcp-established` từ 24h xuống 1h, các kết nối rác tự động bị tiêu hủy sau 60 phút không có gói tin.
 - Các luồng cày video TikTok đang chạy vẫn được bảo vệ tuyệt đối do mỗi gói tin đi qua đều tự động reset lại timer.
 
-## 5. Kết Quả Đo Kiểm Thực Tế Đạt Được
+## 5. Cơ Chế Khóa Cơ Học Chống Lộ IP Gốc (Fail-Closed Killswitch)
+- **Tường Lửa MikroTik (Filter Rules):**
+  - `*D` (`KILLSWITCH_BLOCK_FARM_DIRECT_WAN`): `chain=forward src-address=192.168.10.0/24 action=drop` cấm tiệt điện thoại S7 đi thẳng Internet Đà Nẵng.
+  - `*8` (`KILLSWITCH_FARM_DNS_UDP`): Drop toàn bộ DNS UDP 53 trực tiếp ra ngoài.
+  - `*9` (`KILLSWITCH_FARM_QUIC_UDP`): Drop toàn bộ UDP 443 (chặn cơ chế tự cứu mạng Cronet/QUIC của TikTok).
+- **Trạng Thái Khi Proxy Hỏng:**
+  - S7 gửi request tới `200XX` bị drop/timeout.
+  - Android hiện dấu chấm than trên icon Wi-Fi, app báo mất mạng an toàn, không bao giờ lộ IP Đà Nẵng.
+
+## 6. Kết Quả Đo Kiểm Thực Tế Đạt Được
 - **Tải CPU MikroTik x86:** Rơi thẳng từ **97.6% xuống còn 0.4% - 1.8%** (gần như 0%).
 - **Lưu lượng veth-singbox:** Giảm từ **127.114 pps xuống còn 284 pps**.
 - **Độ trễ Proxy:** Giảm từ 1.5s xuống còn **0.44s - 0.54s**.
 - **Trạng thái S7 qua ADB (`dumpsys connectivity`):** `Capabilities: INTERNET & VALIDATED & FOREGROUND`, sóng Wi-Fi căng đét, không có dấu chấm than, hoạt động ổn định 100%.
+- **Kiểm tra IP trực tiếp trên S7:** Truy cập `icanhazip.com`, `httpbin.org/ip`, và `whoer.net` đều trả về đúng 100% IP Public của SIM 4G Thái Bình (`117.5.190.84`), điểm ẩn danh 100% Anonymity.

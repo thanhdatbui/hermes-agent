@@ -42,23 +42,5 @@ Use this skill when managing MobiProxy Web Control (v3.x) authentication setting
 
 ---
 
-## 2. MikroTik RouterOS: Bão Kết Nối Ma & Conntrack Zombie Tuning
-
-### A. Hiện Tượng Quá Tải Ảo (Zombie Connection Accumulation)
-- Khi hàng trăm điện thoại hoàn thành ca nuôi acc (về Home Launcher), RouterOS vẫn kẹt 95-98% CPU và đo được 50k-100k pps qua card mạng ảo container.
-- **Nguyên nhân:** Mặc định `tcp-established-timeout: 1d` (24 giờ). Các kết nối TCP dở dang từ CDN/TikTok không gửi FIN/RST bị router giam giữ và liên tục polling trong RAM.
-
-### B. Bộ Thông Số Tối Ưu Chuẩn Cho Farm
-Nạp qua RouterOS REST API (`POST /ip/firewall/connection/tracking/set`) hoặc CLI:
-- `tcp-established-timeout: 1h` (hạ từ 24h xuống 1h, tự động dọn dẹp các kết nối chết).
-- `generic-timeout: 2m` (hạ từ 10m).
-- `udp-stream-timeout: 1m` (hạ từ 3m).
-- `udp-timeout: 10s` (hạ từ 30s).
-- **Tính an toàn:** Các ứng dụng cày thật đều có nhịp tim (heartbeat) định kỳ. Gói tin hợp lệ đi qua sẽ tự động reset timer về mốc ban đầu, không bao giờ làm gián đoạn luồng cày đang chạy.
-
----
-
-## 3. Kiến Trúc L3/L4 Kernel DNAT Wire-Speed Thay Thế L7 Proxy
-
-- Singbox L7 Container chỉ bắt buộc khi proxy đầu xa đòi hỏi User/Pass (để tự động chèn auth).
-- Khi proxy upstream (như MobiProxy) đã được bảo vệ bằng Whitelist IP (Scan Guard L3/L4) và đã gỡ mật khẩu (`auth none`), có thể chuyển sang dùng **Kernel DNAT (`/ip firewall nat add chain=dstnat action=dst-nat ...`)** chuyển tiếp gói tin ở tốc độ phần cứng, giải phóng hoàn toàn CPU cho Router/Mini PC.
+> **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
+> Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

@@ -20,7 +20,7 @@ metadata:
 > - `references/order-archived-state-blindness-and-sqlite-ssot-enforcement.md`: Khắc phục lỗi desync "cứ lòi ra Excel", bẫy mù trạng thái archived khiến đơn đã giao xong bị lặp lại trong Phase 1 (bắt buộc kiểm tra order.get('archived') trước khi xét status), cưỡng chế SQLite SSOT (`farm_master.db` table `orders` qua `farm_db.upsert_order`), khôi phục metadata ô `None` qua `manage_orders.py --sync-excel`, và kỷ luật Coordinator Terminal Guard (chặn tuyệt đối ghi đè qua `python -c`).
 > - `references/phase1-switcher-canonical-reuse-and-body-pattern-gate.md`: Khắc phục lỗi tự chế Account Switcher trong Phase 1 (bịt lỗ hổng gate body_patterns, cấm so khớp chuỗi thô sơ, bắt buộc import canonical matches_switcher_identity từ automation-core).
 > - `references/sqlite-master-ledger-db-browser-and-1905-dashboard-access.md`: Hướng dẫn truy cập và xem SQLite SSOT (`farm_master.db`) ưu tiên qua Web Dashboard `:1905` hoặc File Explorer + DB Browser for SQLite trực quan dạng lưới (Excel-like). Kỷ luật cấm spam lệnh SQL terminal bắt user nhớ, cấm tự ý spawn GUI desktop gây bẫy pipe leak treo terminal 60 phút, và bản đồ vị trí các file SQLite toàn hệ thống (`D:\Taadaa\data\farm_master.db`, `tiktok_tracker.db`, `C:\Users\Kibe\.omniroute\storage.sqlite`, `D:\Taadaa\GPM auto\`).
-> - `references/order-dashboard-ui
+> - `references/order-finance-cost
 
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.
