@@ -23,10 +23,5 @@ tags: [mikrotik, routeros, kernel-dnat, mobiproxy, openwrt, r3g, pipeline-lock, 
 - **Tự động hóa đồng bộ DDNS khi ISP đổi IP:** Khi nhà mạng Viettel tự động nhả lease và đổi IP WAN của MobiProxy/R3G, cronjob (`update_mikrotik_scan_guard.py` chạy 1 phút/lần) tự phân giải DNS và cập nhật `to-addresses` cho toàn bộ các rule DNAT tương ứng, chống rớt mạng toàn farm.
 - **Xóa Cronjob Tự Reset Proxy:** Tuyệt đối không để các watchdog cũ tự động gọi API reset cổng/reboot MobiProxy (như `cron_mobiproxy_healer.py`) làm rớt kết nối đột ngột của farm.
 
-## 3. Asymmetric Routing & Whitelist trên Farm Multi-WAN (R3G OpenWrt)
-- **Cạm bẫy:** Mangle của router chính (MikroTik) ép các IP máy con (ví dụ M203 ở `192.168.10.221`) đi ra các line WAN phụ (`pppoe-out8`), trong khi router proxy đích (R3G) lại chỉ mở Whitelist hoặc route phản hồi về WAN chính (`pppoe-out1`).
-- **Khắc phục:** Khi mở Whitelist trên R3G, bắt buộc mở theo dải CIDR (`171.231.0.0/16` và `116.110.0.0/16`) thay vì 1 IP tĩnh đơn lẻ, tránh tình trạng thiết bị Android bị drop gói tin và dính dấu chấm than Wi-Fi (`ERR_CONNECTION_REFUSED`).
-- **DNS Ma trên OpenWrt R3G:** Tailscale bị treo trên chip yếu có thể chèn `nameserver 100.100.100.100` vào `/etc/resolv.conf` làm Tinyproxy nghẽn phân giải tên miền. Bắt buộc đưa về `8.8.8.8` và `1.1.1.1`.
-
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

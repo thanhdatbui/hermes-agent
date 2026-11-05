@@ -38,9 +38,5 @@ Và bắt buộc đẩy tất cả các rule DNAT này lên đứng trước rul
 - **Mở rộng dải Firewall Whitelist:**
   Mở toàn bộ subnet Viettel của MikroTik trong `/etc/config/firewall`, cấm chỉ mở 1 IP đơn lẻ vì IP WAN quay PPPoE sẽ tự động thay đổi định kỳ.
 
-## 4. Chống bẫy ảnh đen khi chụp kiểm chứng Android (Screen-Off Trap)
-- Lệnh `screencap` trên Android khi màn hình tắt (`Display Power: state=OFF`) vẫn tạo ra file ảnh nhưng pixel hoàn toàn là số 0 (RGB=0, ảnh đen sì).
-- Trước khi chụp ảnh nghiệm thu Gate 6, BẮT BUỘC:
-  1. Đánh thức và mở khóa: `input keyevent 224 && input keyevent 82 && svc power stayon true`.
-  2. Kiểm tra `dumpsys power | grep "Display Power"` phải là `state=ON`.
-  3. Kiểm chứng nhanh bằng Python PIL/NumPy (`np.unique(r) > 1`) để loại trừ ảnh đen trước khi phát thẻ `MEDIA:`.
+> **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
+> Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

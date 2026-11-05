@@ -32,4 +32,4 @@ Khi hệ thống chạy mô hình Dual-Cluster (PC Kibe + PC Admin via SSH):
    - Pipeline trực tiếp sẽ trả về rỗng một cách an toàn và sạch sẽ khi Admin chưa có lượt chạy mới.
 
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
-> Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.
+> - Tra cứu kiến trúc chuyển đổi SSOT SQLite & xử lý timeout OmniRoute: `skill_view(name='dual-cluster-remote-summary-retrieval', file_path='references/gmail-excel-to-sqlite-ssot-migration-architecture.md')`.

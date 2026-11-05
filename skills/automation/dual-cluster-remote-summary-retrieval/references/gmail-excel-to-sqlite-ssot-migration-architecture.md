@@ -3,7 +3,7 @@
 ## 1. Bối Cảnh Phân Mảnh Dữ Liệu Farm (Excel vs SQLite)
 - **Thực trạng phát hiện (2026-11-05):** 
   - TikTok Nuôi Feed và TikTok Bật 2FA đã chuyển đổi sang dùng `farm_master.db` làm SSOT.
-  - Tuy nhiên, toàn bộ luồng **Đăng ký Gmail (`register gmail`)** và các script **Bật 2FA Gmail** (`post_morning_gmail_2fa_watchdog.py`, `enable_2fa_for_new_account.py`, `enable_gmail_2fa_device.py`) vẫn đang đọc/ghi trực tiếp trên file Excel OneDrive (`gmail_clean_v2.xlsx`, `taikhoan_run_safe.xlsx`, `PROXYgandienthoai.xlsx`).
+  - Tuy nhiên, toàn bộ luồng **Đăng ký Gmail (`register gmail`)** và các script **Bật 2FA Gmail** (`post_morning_gmail_2fa_watchdog.py`, `enable_2fa_for_new_account.py`, `enable_gmail_2fa_device.py`), **Đồng bộ danh sách Gmail Live** (`sync_gmail_clean_v2_to_tong.py`) vẫn đang đọc/ghi trực tiếp trên file Excel OneDrive (`gmail_clean_v2.xlsx`, `taikhoan_run_safe.xlsx`, `PROXYgandienthoai.xlsx`).
 - **Hậu quả:** Thường xuyên dính lỗi khóa file (`PermissionError`, `RecallOnDataAccess`), đụng độ tiến trình (race condition), phụ thuộc vào OneDrive hydration và làm lệch dữ liệu giữa 2 PC Kibe và Admin.
 
 ## 2. Thiết Kế Chuyển Đổi Chuẩn SSOT cho Gmail
@@ -51,19 +51,35 @@
    ```
 2. **Mirror 1 chiều:** Nếu cần file Excel để phục vụ các quy trình xem thủ công, chỉ export một chiều từ SQLite ra file Excel/CSV, tuyệt đối cấm dùng file Excel làm nguồn chân lý.
 
-### C. Thay Đổi Tại Các Watchdog Bật 2FA Gmail:
-1. Đổi truy vấn nguồn từ `openpyxl.load_workbook(CLEAN_V2_EXCEL)` sang SQL:
-   ```sql
-   SELECT email, password FROM mailboxes 
-   WHERE provider = 'gmail' AND (twofa_secret IS NULL OR twofa_secret = '') AND owner = ?
-   ```
-2. Khi bật 2FA thành công trên thiết bị:
-   ```sql
-   UPDATE mailboxes SET twofa_secret = ? WHERE email = ?
-   ```
+### C. Thay Đổi Tại Các Watchdog Bật 2FA Gmail & Export:
+1. **`post_morning_gmail_2fa_watchdog.py`**:
+   - Thay thế việc nạp `master_gmail_manager.xlsx` và `gmail_clean_v2.xlsx` trong `get_gpm_candidates()` bằng truy vấn:
+     ```python
+     FARM_MASTER_DB = Path(os.environ.get('FARM_MASTER_DB', r'D:\Taadaa\data\farm_master.db'))
+     # SELECT lower(email), password, twofa_secret FROM mailboxes
+     ```
+   - Chỉ giữ việc đọc Excel cũ làm fallback an toàn khi file DB chưa hydrate.
+2. **`sync_gmail_clean_v2_to_tong.py`**:
+   - Đọc trực tiếp danh sách hòm thư từ SQLite:
+     ```python
+     cursor.execute("SELECT email FROM mailboxes")
+     ```
+   - Xuất ra `gmail_live_tong.txt` mà không còn cần nạp `gmail_clean_v2.xlsx`.
 
 ### D. Đồng Bộ Giữa 2 Node LAN (`sync_2fa_to_admin.py`):
 - Tận dụng cơ chế replication 2 chiều qua LAN (`sync_2fa_to_admin.py` tích hợp trong cronjob `hourly-stale-post-receipts-reconcile` - ID: `8d6b3c18dd64`):
   1. **Reconcile Pull:** Kéo các tài khoản mailbox thuộc dải Admin (`owner = 'admin'`) từ SQLite Admin về cập nhật vào SQLite Kibe qua `INSERT INTO mailboxes ... ON CONFLICT(email) DO UPDATE`.
   2. **Reconcile Push:** Đẩy các tài khoản mailbox thuộc dải Kibe (`owner = 'kibe'`) từ SQLite Kibe sang SQLite Admin.
 - **Nguyên tắc Single-Writer:** Kibe chỉ ghi đè dải máy/tài khoản của Kibe, Admin chỉ ghi đè dải máy/tài khoản của Admin. Triệt tiêu 100% nguy cơ tranh chấp ghi hay split-brain.
+
+## 3. Chẩn Đoán Lỗi OmniRoute :20129 Timeout / Rate Limit 429
+- **Hiện tượng:** Khi chạy `unified_patch_pipeline.py`, Gate B triệu tập Hội đồng Cố vấn (`gemini`, `sol`) bị treo tới 300s dẫn đến `PLAN_FAILED`.
+- **Nguyên nhân cốt lõi:**
+  1. Connection pool của provider `antigravity` hoặc `gemini-web` trên OmniRoute bị dính mã lỗi `429 RESOURCE_EXHAUSTED` từ Google API.
+  2. Cơ chế Combo Router (`ag-gemini-pool-3`, `gpt-web-sol`) cố gắng fallback tuần tự qua hàng chục account/model, tạo ra chuỗi chờ kéo dài vượt quá timeout.
+- **Biện pháp khôi phục tức thời:**
+  - Gọi endpoint restart nội bộ của OmniRoute:
+    ```bash
+    curl -X POST http://localhost:20129/api/restart -H "Content-Type: application/json" -d "{}"
+    ```
+  - Kiểm tra console logs qua `http://localhost:20129/api/logs/console` để phát hiện chính xác account nào đang bị `429` hoặc `unauthorized` trước khi tái kích hoạt pipeline.
