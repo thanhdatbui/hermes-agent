@@ -40,7 +40,7 @@ if count != 1:
     raise ValueError(f"old_string not unique in {rel_file}: count={count}")
 ```
 
-### B. Giải phóng Socket Hangs trên OmniRoute (:20129)
+### B. Giải phóng Socket Hangs trên OmniRoute (:20129) & Upstream Pool Fallback
 Khi phát hiện Sol Worker bị hang quá 300s dù `/api/health` vẫn trả về 200:
 1. Kiểm tra các PID Node.js đang chạy:
    ```python
@@ -53,3 +53,4 @@ Khi phát hiện Sol Worker bị hang quá 300s dù `/api/health` vẫn trả v�
    ```
 3. Watchdog nền `omniroute_watchdog.ps1` sẽ tự động khởi tạo lại instance mới sạch sẽ trong 15-20s.
 4. Đảm bảo cấu hình gọi Sol Worker trong `gate_b_planner.py` trỏ đúng model `"gpt-web-sol"`.
+5. **Cơ chế Upstream Pool Fallback:** Nếu provider `chatgpt-web` bị Cloudflare Turnstile 403 / circuit breaker 30 phút hoặc combo bị timeout 503, lập tức trỏ model cố vấn sang pool nội bộ ổn định `ag-gemini-pool-3` trên `:20129` để đảm bảo response trả về trong 5-15s, giải phóng pipeline ngay lập tức.

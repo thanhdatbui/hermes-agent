@@ -15,8 +15,12 @@ Use this skill when designing, maintaining, or auditing proxy routing across far
 
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.
+> - `references/kernel-dnat-full-offload-and-mobiproxy-healer-prune-20261105.md`: Đột phá chuyển toàn bộ cụm Kibe sang Kernel DNAT phần cứng, xóa bỏ hoàn toàn Singbox container, kéo CPU MikroTik từ 97.6% về 0.4%, xóa vĩnh viễn cronjob tự đổi IP MobiProxy và thu hồi bảo mật Peer VPS hết hạn.
 > - `references/mobiproxy-ddns-fast-rotation-and-r3g-triage-20261105.md`: Vận hành tự động hóa đồng bộ DDNS 1 phút/lần cho 38 rule DNAT MobiProxy khi ISP Viettel xoay IP liên tục, khắc phục DNS ma Tailscale trên R3G và quy chuẩn thu hồi Peer VPS hết hạn.
 > - `references/r3g-dns-fix-and-dual-cluster-kernel-dnat-20261105.md`: Khắc phục DNS ma Tailscale trên R3G & hoàn tất phủ sóng Kernel DNAT cho cả MobiProxy + R3G, kéo CPU MikroTik từ 97.6% về 1.6%.
 > - `references/mobiproxy-dnat-automation-and-r3g-routing-analysis-20261105.md`: Kiến trúc Kernel DNAT toàn diện cho MobiProxy, tự động hóa đồng bộ DDNS 1 phút/lần, phân tích định tuyến Asymmetric Routing R3G và thu hồi bảo mật VPS hết hạn.
 > - `references/mobiproxy-r3g-complete-kernel-dnat-and-vps-cleanup-20261105.md`: Chi tiết toàn bộ quy trình tắt pass MobiProxy bằng Playwright #access-save, gỡ kẹt DNS R3G, đồng bộ DDNS tự động và thu hồi VPS Doravo hết hạn.
+> - `references/dead-lock-reap-and-pipeline-resilience-20261105.md`: Cơ chế tự dọn lock rác (Dead Lock Reap O(1)) trong unified_patch_pipeline.py khi PID đã chết và phân định rạch ròi giữa sửa code repo vs thao tác mạng router.
+> - `references/r3g-pbr-two-way-routing-and-mikrotik-mangle-conflict-20261105.md`: Khắc phục lỗi Asymmetric Routing 16 PPPoE trên R3G OpenWrt qua PBR hai chiều và bẫy xung đột cổng WAN trong bảng Mangle MikroTik khi DNAT thiết bị farm sang proxy ngoại tỉnh.
+> - `references/mobiproxy-dnat-vs-r3g-singbox-architecture-20261105.md`: Quy chuẩn phân định kiến trúc mạng Farm: Kernel DNAT phần cứng cho MobiProxy (1-WAN, CPU 1.6%) vs Singbox L7 Termination cho R3G Multi-PPPoE (tránh lỗi Asymmetric Routing và xung đột Mangle làm điện thoại bị chấm than Wi-Fi).
 

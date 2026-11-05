@@ -23,6 +23,7 @@ Khi một lỗi lặp lại hoặc lỗi bẫy selector/fallback được sửa 
    - Agent cấm sửa dòng assert có sẵn trong unit test cũ để đối phó; Closeout Gate cơ giới hóa chạy Dual-Run test suite từ `base` commit trước khi cho phép merge.
 
 - Kỷ luật cấu trúc Step-by-step & Khắc phục bẫy bại liệt báo pin %: `skill_view(name='farm-anti-regression-guardgate', file_path='references/guardgate-step-by-step-structure-and-closeout-discipline-20261105.md')`.
+- Kỷ luật điều tra log đa cụm & Chống bẫy Stale-Log Phantom Merging từ Remote SSH: `skill_view(name='farm-anti-regression-guardgate', file_path='references/dual-cluster-watchdog-stale-log-phantom-and-investigation-discipline.md')`.
 
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.
