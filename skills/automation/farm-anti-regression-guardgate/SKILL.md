@@ -24,6 +24,7 @@ Khi một lỗi lặp lại hoặc lỗi bẫy selector/fallback được sửa 
 
 - Kỷ luật cấu trúc Step-by-step & Khắc phục bẫy bại liệt báo pin %: `skill_view(name='farm-anti-regression-guardgate', file_path='references/guardgate-step-by-step-structure-and-closeout-discipline-20261105.md')`.
 - Kỷ luật điều tra log đa cụm & Chống bẫy Stale-Log Phantom Merging từ Remote SSH: `skill_view(name='farm-anti-regression-guardgate', file_path='references/dual-cluster-watchdog-stale-log-phantom-and-investigation-discipline.md')`.
+- Kỷ luật canh máy rảnh cuốn chiếu, phân tầng ưu tiên P0-P3 và chống retry đè: `skill_view(name='farm-anti-regression-guardgate', file_path='references/opportunistic-idle-machine-priority-and-anti-loop.md')`.
 
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

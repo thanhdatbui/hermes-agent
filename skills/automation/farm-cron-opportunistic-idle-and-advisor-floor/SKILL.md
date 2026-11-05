@@ -33,5 +33,5 @@ Khi nhiều cron cùng thấy một máy rảnh, áp dụng bảng phân tầng 
 - **Trước nâng cấp:** Chặn cứng 3 ca (`09:30-11:20`, `15:30-17:20`, `21:30-23:45`).
 - **Sau nâng cấp:** Chuyển sang cơ chế Rolling né 3 ca cao điểm nuôi feed (`05:15-09:30`, `11:45-15:30`, `17:45-21:30`) và dọn cache (`04:00-04:30`). Ngoài các khung này, cho phép chạy cả ngày mỗi 15 phút (`*/15 * * * *`). Hễ có máy S7 rảnh và có acc `NEEDS_LOGIN` là mở GPM phối hợp ADB cứu session ngay lập tức.
 
-## 3. Kỷ Luật Điều Phối Của Coordinator (Anti-Context Amnesia)
-- Khi User đưa ra định hướng kiến trúc lớn (như chuyển đổi toàn bộ cron sang canh máy rảnh) sau đó tiếp tục chỉ đạo các việc phụ (gọi Advisor, kiểm tra log): Coordinator BẮT BUỘC giữ vững mục tiêu kiến trúc cốt lõi trong đầu, không được để việc xử lý nhánh phụ làm "rơi" mất nhiệm vụ chính của User. Phải chủ động cập nhật tiến độ và hỏi xác nhận thi công dứt điểm.
+> **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
+> Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

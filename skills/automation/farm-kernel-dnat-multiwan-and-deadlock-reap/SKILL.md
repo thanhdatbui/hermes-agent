@@ -28,6 +28,5 @@ tags: [mikrotik, routeros, kernel-dnat, mobiproxy, openwrt, r3g, pipeline-lock, 
 - **Khắc phục:** Khi mở Whitelist trên R3G, bắt buộc mở theo dải CIDR (`171.231.0.0/16` và `116.110.0.0/16`) thay vì 1 IP tĩnh đơn lẻ, tránh tình trạng thiết bị Android bị drop gói tin và dính dấu chấm than Wi-Fi (`ERR_CONNECTION_REFUSED`).
 - **DNS Ma trên OpenWrt R3G:** Tailscale bị treo trên chip yếu có thể chèn `nameserver 100.100.100.100` vào `/etc/resolv.conf` làm Tinyproxy nghẽn phân giải tên miền. Bắt buộc đưa về `8.8.8.8` và `1.1.1.1`.
 
-## 4. Pipeline Stale Lock Auto-Reap & Kỷ Luật Điều Phối
-- **Cơ chế Dọn Lock Rác Pipeline (Dead Lock Reap):** Khi tiến trình cũ bị ngắt đột ngột hoặc reboot, file lock `pipeline_repo_*.lock` sót lại làm nghẽn pipeline với lỗi `PRECHECK ERROR`. Hàm `RepoLock.acquire()` bắt buộc kiểm tra `psutil.pid_exists(pid)`. Nếu PID đã chết, tự động unlink file lock trước khi báo lỗi.
-- **Kỷ luật Pipeline:** Cấu hình router hay thiết bị mạng không được viện cớ "lock nhảm" để tự ý bỏ qua pipeline sửa code bắt buộc (`unified_patch_pipeline.py`).
+> **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
+> Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.
