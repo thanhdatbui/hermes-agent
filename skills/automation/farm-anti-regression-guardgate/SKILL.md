@@ -22,5 +22,7 @@ Khi một lỗi lặp lại hoặc lỗi bẫy selector/fallback được sửa 
    - Xem chi tiết tại [Test Mutation & Dual-Run Baseline Check](references/test-mutation-tampering-and-dual-run-baseline-check.md).
    - Agent cấm sửa dòng assert có sẵn trong unit test cũ để đối phó; Closeout Gate cơ giới hóa chạy Dual-Run test suite từ `base` commit trước khi cho phép merge.
 
+- Kỷ luật cấu trúc Step-by-step & Khắc phục bẫy bại liệt báo pin %: `skill_view(name='farm-anti-regression-guardgate', file_path='references/guardgate-step-by-step-structure-and-closeout-discipline-20261105.md')`.
+
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

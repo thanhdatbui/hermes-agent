@@ -85,3 +85,20 @@ def add_accounting_record(order_code, item_name, import_date, import_price, sale
    - Ô Ghi chú (tùy chọn).
    - Nút `+ Thêm Đơn` (màu xanh lá): Khi bấm sẽ tự động tính lời, thêm vào bảng và cập nhật ngay 3 thẻ KPI tổng kết tháng mà không cần tải lại toàn bộ trang.
 3. **Cơ chế Xóa:** Cột cuối có nút `✕` để xóa dòng nhầm lẫn và cập nhật lại KPI tức thì.
+
+---
+
+## 4. Triage Đối Soát & Nhập Dữ Liệu Thực Tế Khi User Cung Cấp
+Khi User thông báo danh sách đơn thực tế (ví dụ: *"DH-005, DH-006 đã nhận và bán 55k, DH-007, 013 đã nhận, DH-009 nhận và thành tiền 23k"*):
+1. **Đồng bộ trạng thái bưu cục:**
+   - Cập nhật các đơn đó trong bảng `orders` của `farm_master.db` sang trạng thái `Đã giao hàng thành công (Đã ký nhận)`, set `archived = 1`.
+   - Ngay lập tức đơn sẽ tự động chuyển từ tab `[📦 Đơn Đang Theo Dõi]` sang tab `[✅ Đơn Đã Xong]` trên Dashboard.
+2. **Hạch toán vào sổ kế toán:**
+   - Nạp vào bảng `order_accounting`:
+     * Đơn đã bán: Giá nhập = COD/tiền mua ban đầu, Giá bán = giá User báo, Tiền lời = `Giá bán - Giá nhập`.
+     * Đơn mới nhận (chưa bán): Giá nhập = COD/tiền mua ban đầu, Giá bán = 0, Tiền lời = `-Giá nhập` (tạm thời âm vốn), ghi chú `Chờ bán`. Khi User bán được sẽ cập nhật Giá bán sau.
+3. **Báo cáo rõ ràng 3 chỉ số tổng kết tháng:**
+   - 📦 Tổng tiền vốn bỏ ra
+   - 💵 Tổng doanh thu thu về
+   - 📈 Tổng tiền lời thực nhận & tỷ suất % lợi nhuận.
+

@@ -31,6 +31,24 @@
    - `workdir="<path_repo>"`
    - `deliver="telegram:<channel_id>"` (tra cứu Chat ID từ `$LOCALAPPDATA/hermes/channel_directory.json`).
 
+## 3.1. Case Study: Thiết Lập Watchdog Đơn Hàng 6h (tiktok-order-lifecycle-6h-report)
+- **Mục tiêu:** Báo cáo định kỳ mỗi 6h (`0 */6 * * *`) về tiến trình phân pha đơn hàng (Phase 1 chờ bóc app S7, Phase 2 Web API, Phase 3 Terminal/Ký nhận) trực tiếp về origin chat.
+- **Tận dụng Zero-token Wrapper có sẵn:**
+  Trong `~/.hermes/scripts/cron_order_lifecycle.py`, script wrapper đã được cài sẵn để thực thi `D:\Taadaa\orders\order_lifecycle.py` và chỉ in ra stdout khi có dữ liệu/tiến trình hoạt động.
+- **Cấu hình chuẩn O(1):**
+  ```python
+  cronjob(
+      action="create",
+      name="tiktok-order-lifecycle-6h-report",
+      schedule="0 */6 * * *",
+      script="cron_order_lifecycle.py",
+      workdir="D:/Taadaa/orders",
+      no_agent=True,
+      deliver="origin"
+  )
+  ```
+- **Kiểm chứng tức thời:** Gọi `cronjob(action="run", job_id="<id>")` để xác nhận stdout được đẩy về origin và trạng thái `last_status: ok`.
+
 ## 4. Anti-Kneejerk Deletion & Quy Trình 3 Bước Remediate Cron Lỗi Timeout
 - Khi cron job gặp lỗi 503 hoặc "provider timeout. Fallback chain was exhausted or unavailable":
   * CẤM xóa job nếu nghiệp vụ/đơn hàng/tác vụ nền vẫn đang hoạt động.

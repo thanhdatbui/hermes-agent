@@ -15,6 +15,8 @@ version: 1.0.0
    - Script chỉ lọc duy nhất một nhóm nhỏ (ví dụ `GroupId == 10`), bỏ rơi các group lớn khác (như `GroupId == 1`) dù có tài khoản hợp lệ.
 3. **Nuốt log khi thất bại toàn bộ:**
    - Script dùng điều kiện `if success_list:` để gửi báo cáo. Khi fail toàn bộ (`success_list = []`), script im lặng hoàn toàn, không báo Telegram, khiến Operator không biết hệ thống bị kẹt.
+4. **Bẫy Kẹt Vĩnh Viễn Đa Giai Đoạn (Multi-Stage Pipeline Stagnation):**
+   - Khi supervisor quản lý nhiều stage nối tiếp (Login -> Reg -> Change Info), nếu nhánh unblock 48h chỉ mở cho stage đầu, các tài khoản fail ở stage sau sẽ bị kẹt vĩnh viễn trong `BLOCKED`. Tra cứu quy chuẩn mở khóa đa tầng tại `references/lifecycle-supervisor-multistage-cooldown-unblock.md`.
 
 ---
 
