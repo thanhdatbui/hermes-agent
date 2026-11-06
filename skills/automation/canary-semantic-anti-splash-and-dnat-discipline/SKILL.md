@@ -1,11 +1,11 @@
 ---
 name: canary-semantic-anti-splash-and-dnat-discipline
-description: "Kỷ luật gắn não LLM cho Canary Planner, chống fake canary splash screen và chuẩn hóa ánh xạ DNAT MobiProxy 32 cổng."
-version: 1.0.0
+description: "Kỷ luật gắn não LLM cho Canary Planner, chống fake canary splash screen, chuẩn hóa ánh xạ DNAT MobiProxy 32 cổng và phòng thủ rò rỉ IP TikTok QUIC/UDP."
+version: 1.1.0
 category: automation
-tags: [canary, semantic-planner, anti-splash, mobiproxy, dnat, mikrotik]
+tags: [canary, semantic-planner, anti-splash, mobiproxy, dnat, mikrotik, quic-leak]
 ---
-# Canary Semantic Anti-Splash & MobiProxy DNAT Discipline
+# Canary Semantic Anti-Splash, MobiProxy DNAT & Anti-Leak Discipline
 
 ## 1. Kỷ luật Semantic Canary Planner (`canary_plan.py`)
 - **Lỗ hổng phân loại UI:** Các file Python Android UI Automation (`*_adapter.py`, `selectors.py`, `touch`, `swipe`, `F2AScreen`) không chứa thẻ HTML/JSX nên dễ bị nhầm thành `backend`. Bắt buộc phân loại là `evidence_type = "hybrid"` hoặc `"ui"` và `requires_screencap = True`.
@@ -31,3 +31,14 @@ tags: [canary, semantic-planner, anti-splash, mobiproxy, dnat, mikrotik]
 - **Quy chuẩn xoay vòng IP sau khi sửa mapping:** Bắt buộc kích hoạt `/proxy_recreat?proxy=test.taadaa.click:{port}&token={token}` giãn cách 1-2s cho toàn bộ 32 modem 4G để đổi IP WAN sạch, triệt tiêu nguy cơ đụng IP chéo giữa các máy.
 - **Bóc tách phần cứng MobiProxy (38 Slots vs 32 Modems):** Xem `references/mobiproxy-hardware-slots-and-mikrotik-dnat-parity.md` để nắm rõ cấu trúc khe cắm vật lý cố định `10-10-10-8`, lý do không được ép về `8-8-8-8` làm chết port, và giải pháp phẳng hóa cổng `192.168.110.2:200xx` trên Excel/SQLite SSOT.
 - **Kỷ luật cấm ngắt WAN 1 & Cấm gỡ mạng từ xa:** Xem `references/mobiproxy-wan1-safety-and-anti-cut-discipline-20261105.md` quy định bất biến: WAN 1/PPPoE 1 là default gateway cấp Internet và DDNS duy nhất, CẤM TUYỆT ĐỐI gọi delete_lan hoặc gỡ kết nối cổng 1 từ xa gây cô lập box và làm phiền nhân sự tại trạm.
+
+## 4. Cơ chế rò rỉ IP trực tiếp của TikTok App (QUIC / UDP Leak IP)
+- **Triệu chứng:** Điện thoại cài proxy Android, khi vào web (Chrome) thì báo mất mạng, nhưng vào app TikTok vẫn lướt video bình thường.
+- **Nguyên nhân cốt lõi:**
+  1. Cài đặt `http_proxy` trên Android chỉ ép buộc luồng **TCP**.
+  2. App TikTok chạy engine `Cronet/TTNet`, ưu tiên streaming video qua **QUIC / HTTP/3 (UDP port 443)** và truy vấn DNS qua **UDP port 53**.
+  3. Khi proxy TCP chết hoặc timeout, TikTok kích hoạt cơ chế **Fail-Open**, bỏ qua proxy và đẩy thẳng các gói tin UDP 443/53 ra Default Gateway (Router Wi-Fi).
+  4. Nếu Default Gateway không có tường lửa chặn cứng UDP 443/53, toàn bộ dữ liệu video sẽ chạy thẳng bằng IP cáp quang gốc của Farm, làm lộ IP thật của dàn nick.
+- **Biện pháp khẩn cấp khi proxy chết:**
+  - Lập tức ngắt Wi-Fi hoặc `force-stop` toàn bộ app TikTok trên máy, cấm để TikTok chạy nền.
+  - Tường lửa Router trung tâm bắt buộc có quy tắc DROP UDP 443 và UDP 53 từ dải IP phone farm.

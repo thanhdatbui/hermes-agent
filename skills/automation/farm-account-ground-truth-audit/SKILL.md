@@ -27,12 +27,8 @@ Quy chuẩn vận hành áp dụng cho mọi thao tác tra cứu, cấp phát, n
   - CẤM TUYỆT ĐỐI dùng từ "Xong rồi", "Hoàn thành 100%" khi phụ thuộc vào bên thứ ba / tác vụ thực tế chưa về đích.
   - Chỉ được báo: `PHÍA NỘI BỘ: READY` (Đã chuẩn bị xong dữ liệu / bật xong 2FA / túc trực) và `TIẾN ĐỘ THỰC TẾ: WAITING_EXTERNAL` (Đang đợi bên bán / đang theo dõi kết quả).
 
-## 4. Cơ Chế Hủy Gia Hạn Gói Dùng Thử Google Pixel 6 Tháng
-- Khi kích hoạt thành công gói Google One AI Pro Pixel (6 tháng 0đ):
-  - Bên bán thường bảo "hủy gói tránh gia hạn oan".
-  - Hủy trên Google Play (`play.google.com/store/account/subscriptions`) là hủy tự động gia hạn (Cancel Auto-Renewal), quyền lợi 5 TB và Gemini 4 Argon vẫn được giữ nguyên vẹn cho đến hết chu kỳ 6 tháng (tháng 05/2027).
-  - Có thể hủy liên kết thanh toán tự động trong app MoMo để chặn đứt đường tiền sau khi gói đã được kích hoạt thành công trên Google Play.
+## 4. Tài Liệu Tham Khảo Mở Rộng
+- Chi tiết đối soát gói Pixel 6 tháng & phân biệt trust Gmail cổ 5-6 năm vs Gmail farm: `references/google-pixel-promo-and-aged-account-trust-audit.md`.
 
-## 5. Phân Tầng Trust Score: Mail Cổ 5-6 Năm vs Mail Farm Batch
-- Mail reg farm hàng loạt (tên + DOB, chung pass format `...Ks`, cùng pool proxy): Google Risk Engine gắn cờ cụm tự động, khi đăng nhập trên thiết bị mới (máy Pixel của bên bán) sẽ bị chặn ngay bởi Bot Check / Robot Image Captcha.
-- Mail ngoại cổ (aged 5-6 năm như dàn `nathan`, `alicia`, `marcus...` mua về): Tuổi đời sâu, Trust Score cao, dễ dàng vượt qua khâu đăng nhập ban đầu trên thiết bị đối tác mà không bị vướng Captcha.
+> **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
+> Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

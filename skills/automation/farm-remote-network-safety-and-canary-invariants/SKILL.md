@@ -32,21 +32,5 @@ version: 1.0.0
 
 ---
 
-## 4. Nguy Cơ Rò Rỉ IP Gốc (Fail-Open Leak) Khi Proxy Chết
-- **Cơ chế rò rỉ trên Android (Galaxy S7):**
-  - Cài đặt proxy Android qua `settings put global http_proxy` chỉ bắt các luồng TCP.
-  - App TikTok chạy engine `TTNet / Cronet` ưu tiên giao thức UDP QUIC (port 443) và DNS UDP (port 53).
-  - Khi proxy TCP bị timeout hoặc rớt mạng, app TikTok kích hoạt cơ chế **Fail-Open**: lén bỏ qua proxy và bắn thẳng các gói tin ra Default Gateway của Wi-Fi (`192.168.110.1` Ruijie).
-  - Nếu gateway Wi-Fi không có firewall drop traffic trực tiếp, toàn bộ dữ liệu video/API sẽ đi thẳng bằng IP mạng gốc của nhà mạng (`113.23.110.227`), làm lộ IP và bóp reach toàn dàn nick.
-- **Hành động phản ứng khẩn cấp:**
-  1. Khi phát hiện cụm proxy bị sập: **Lập tức `am force-stop com.ss.android.ugc.trill`** trên toàn bộ các máy thuộc cụm đó để đóng băng ứng dụng ngay.
-  2. Tuyệt đối cấm người vận hành mở TikTok thủ công khi proxy đang chết.
-  3. Duy trì rule Killswitch RouterOS drop toàn bộ traffic direct WAN từ dải IP farm (`192.168.110.0/24`).
-
----
-
-## 5. Khóa Cơ Học (Mechanical Enforcement) Chống Bại Liệt & Chống Over-Engineering
-- **Không dùng Prompt-based Theater:** Mọi lời hứa "em sẽ kỷ luật", "em xin lỗi" của LLM đều vô giá trị trước áp lực công việc.
-- **PreTool Interceptor tại biên:** Khóa cứng lệnh terminal/script có dấu hiệu ngắt kết nối mạng remote (`delete_lan`, `shutdown`, `interface.*disable`) trên các target remote single-homed.
-- **Tách biệt Read-Only vs Mutation:** Cho phép đọc log, đọc trạng thái, inspect thoải mái (chống bại liệt), nhưng chặn đứng các mutation phá hủy hạ tầng mạng khi không có kênh out-of-band dự phòng.
-
+> **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
+> Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

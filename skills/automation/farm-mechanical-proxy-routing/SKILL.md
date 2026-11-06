@@ -10,4 +10,5 @@ tags: [farm, proxy, mechanical-enforcement, direct-ip, ssot, sqlite, fail-closed
 Use this skill when designing, maintaining, or auditing proxy routing across farm accounts (Phone Farm S7, GPM profiles, AGY CLI pools, or automation scripts).
 
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
+> - Kỷ luật Fail-Closed toàn diện: Khóa tường lửa 192.168.0.0/16 và chống lọt Direct WAN khi proxy sập: `skill_view(name='farm-mechanical-proxy-routing', file_path='references/tiktok-fail-closed-firewall-subnet-lock-20261106.md')`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

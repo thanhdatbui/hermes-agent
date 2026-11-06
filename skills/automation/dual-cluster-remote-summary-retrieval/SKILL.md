@@ -31,5 +31,20 @@ Khi hệ thống chạy mô hình Dual-Cluster (PC Kibe + PC Admin via SSH):
    - CẤM bọc ngoài `Get-Content (...)` vì nếu không có file nào khớp `Where-Object`, biểu thức trong ngoặc trả về `$null` khiến `Get-Content` văng exception `ParameterArgumentValidationErrorNullNotAllowed`.
    - Pipeline trực tiếp sẽ trả về rỗng một cách an toàn và sạch sẽ khi Admin chưa có lượt chạy mới.
 
+## 3. Kiến Trúc Chuyển Đổi SSOT SQLite Cho Chuỗi Gmail & Khắc Phục OmniRoute Timeout (2026-11-05)
+- **Chuỗi Gmail Đã Thuần SQLite 100%:**
+  1. *Reg Gmail (`merge_success_results.py`)*: Nạp thẳng vào `mailboxes` của `farm_master.db`.
+  2. *Replication 2 chiều (`sync_2fa_to_admin.py`)*: Kéo mailboxes Admin về Kibe, đẩy mailboxes Kibe sang Admin qua mạng LAN (1.492 hòm thư khớp 100%).
+  3. *Bật 2FA (`post_morning_gmail_2fa_watchdog.py`)*: Nạp mật khẩu từ SQLite `mailboxes`, fallback về Excel khi DB vắng mặt.
+  4. *Đồng bộ Gmail Live (`sync_gmail_clean_v2_to_tong.py`)*: Xuất từ SQLite `mailboxes` ra `gmail_live_tong.txt`.
+- **Chẩn đoán OmniRoute :20129 Timeout / Rate limit 429:**
+  - Khi Gate B triệu tập Hội đồng Cố vấn (`gemini`, `sol`) bị treo tới 300s dẫn đến `PLAN_FAILED`, nguyên nhân do tài khoản trong pool bị dính `429 RESOURCE_EXHAUSTED` từ Google API khiến combo fallback quay vòng qua hàng chục model.
+  - Phục hồi: Gọi POST `http://localhost:20129/api/restart` để làm sạch connection pool và kiểm tra logs qua `http://localhost:20129/api/logs/console`.
+
+## 4. Triage Sự Cố SSH Banner Abort Sau Reboot & Fallback Remote ADB Socket (2026-11-06)
+- **Bẫy suy diễn "SSH treo tiến trình":** Khi host Admin được reboot định kỳ mà kết nối SSH vẫn bị reset ngay bước bắt tay (`Software caused connection abort` / WinError 10054 / exit 255), đây KHÔNG PHẢI lỗi tiến trình tạm thời mà là lỗi tĩnh (Host Key ACLs trên `C:\ProgramData\ssh\` cần chạy `FixHostFilePermissions.ps1`, hoặc lỗi cấu hình `sshd_config`).
+- **Cơ chế Fallback Remote ADB Socket (Port 5037):** Khi SSH port 22 đứt nhưng ADB daemon `192.168.110.119:5037` vẫn LIVE và nhận đủ 78 thiết bị, Coordinator kích hoạt auto-routing điều khiển thiết bị trực tiếp qua socket LAN mà không dừng toàn bộ farm.
+
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > - Tra cứu kiến trúc chuyển đổi SSOT SQLite & xử lý timeout OmniRoute: `skill_view(name='dual-cluster-remote-summary-retrieval', file_path='references/gmail-excel-to-sqlite-ssot-migration-architecture.md')`.
+> - Tra cứu xử lý lỗi SSH Banner Abort & fallback Remote ADB socket: `skill_view(name='dual-cluster-remote-summary-retrieval', file_path='references/admin-ssh-banner-abort-vs-remote-adb-socket-fallback-20261106.md')`.
