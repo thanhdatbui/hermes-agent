@@ -36,17 +36,5 @@ Trong `Hermes/cron/scheduler.py`:
 
 ---
 
-## 3. Quy Trình Rà Soát & Khắc Phục (Triage & Recovery)
-Khi phát hiện một job cron tự nhiên không chạy đúng mốc giờ hoặc biến mất khỏi output:
-1. **Kiểm tra ngay danh sách job còn dính `workdir`:**
-   ```python
-   import json
-   d = json.load(open(r"C:\Users\Kibe\AppData\Local\hermes\cron\jobs.json", "r", encoding="utf-8"))
-   bad = [j["name"] for j in d["jobs"] if (j.get("workdir") or "").strip()]
-   print("Jobs with workdir:", bad)
-   ```
-2. **Gỡ bỏ `workdir`:**
-   - Dùng tool: `cronjob(action='update', job_id=..., workdir='')`.
-3. **Đồng bộ 3 tầng SSOT:**
-   - Chạy: `python D:/Taadaa/Hermes/deploy/hermes-home/scripts/cron_sync_watchdog.py --force`.
-   - Xác nhận `jobs.json` ở cả 3 nơi (`%LOCALAPPDATA%`, `D:/Taadaa/Hermes/deploy/...`, `D:/OneDrive/...`) đều sạch `workdir`.
+> **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
+> Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

@@ -25,9 +25,5 @@ description: "Kỷ luật đối soát gói Google One / Gemini Pro thực tế 
   - Đặc điểm nhận diện: Tên tiếng Anh/ngoại quốc (`nathan.yabsley1990@gmail.com`, `marcusephillips...`, `allison...`), mật khẩu đặc trưng (như `n0spam@@`, `Btmyclrlw`), tuổi đời 5-6 năm từ trước khi nhập về farm.
   - Đặc tính: Độ Trust Score của Google đối với tuổi đời tài khoản rất cao, khả năng bị ăn Captcha bot check thấp hơn nhiều so với dàn mail batch.
 
-## 3. Đối Soát Extension Bơm Offer / Stacking Promo (Xi Injector Audit)
-- Tra cứu tài liệu phân tích chi tiết mã nguồn, cơ chế hook RPC `Ngbm` và các rủi ro khóa thanh toán/ban acc tại `references/google-ai-pro-extension-injection-and-promo-stacking-audit.md`.
-- **Nguyên tắc an toàn:** Tuyệt đối không cài extension dạng này vào Chrome máy thật hoặc profile GPM chứa tài khoản quan trọng; chỉ thử nghiệm trên profile GPM cô lập với proxy US và thẻ ảo/thẻ debit số dư 0đ.
-
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

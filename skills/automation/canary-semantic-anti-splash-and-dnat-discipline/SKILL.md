@@ -32,13 +32,5 @@ tags: [canary, semantic-planner, anti-splash, mobiproxy, dnat, mikrotik, quic-le
 - **Bóc tách phần cứng MobiProxy (38 Slots vs 32 Modems):** Xem `references/mobiproxy-hardware-slots-and-mikrotik-dnat-parity.md` để nắm rõ cấu trúc khe cắm vật lý cố định `10-10-10-8`, lý do không được ép về `8-8-8-8` làm chết port, và giải pháp phẳng hóa cổng `192.168.110.2:200xx` trên Excel/SQLite SSOT.
 - **Kỷ luật cấm ngắt WAN 1 & Cấm gỡ mạng từ xa:** Xem `references/mobiproxy-wan1-safety-and-anti-cut-discipline-20261105.md` quy định bất biến: WAN 1/PPPoE 1 là default gateway cấp Internet và DDNS duy nhất, CẤM TUYỆT ĐỐI gọi delete_lan hoặc gỡ kết nối cổng 1 từ xa gây cô lập box và làm phiền nhân sự tại trạm.
 
-## 4. Cơ chế rò rỉ IP trực tiếp của TikTok App (QUIC / UDP Leak IP)
-- **Triệu chứng:** Điện thoại cài proxy Android, khi vào web (Chrome) thì báo mất mạng, nhưng vào app TikTok vẫn lướt video bình thường.
-- **Nguyên nhân cốt lõi:**
-  1. Cài đặt `http_proxy` trên Android chỉ ép buộc luồng **TCP**.
-  2. App TikTok chạy engine `Cronet/TTNet`, ưu tiên streaming video qua **QUIC / HTTP/3 (UDP port 443)** và truy vấn DNS qua **UDP port 53**.
-  3. Khi proxy TCP chết hoặc timeout, TikTok kích hoạt cơ chế **Fail-Open**, bỏ qua proxy và đẩy thẳng các gói tin UDP 443/53 ra Default Gateway (Router Wi-Fi).
-  4. Nếu Default Gateway không có tường lửa chặn cứng UDP 443/53, toàn bộ dữ liệu video sẽ chạy thẳng bằng IP cáp quang gốc của Farm, làm lộ IP thật của dàn nick.
-- **Biện pháp khẩn cấp khi proxy chết:**
-  - Lập tức ngắt Wi-Fi hoặc `force-stop` toàn bộ app TikTok trên máy, cấm để TikTok chạy nền.
-  - Tường lửa Router trung tâm bắt buộc có quy tắc DROP UDP 443 và UDP 53 từ dải IP phone farm.
+> **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
+> Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

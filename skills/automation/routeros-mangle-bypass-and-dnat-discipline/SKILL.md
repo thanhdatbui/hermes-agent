@@ -38,17 +38,9 @@ Và bắt buộc đẩy tất cả các rule DNAT này lên đứng trước rul
 - **Mở rộng dải Firewall Whitelist:**
   Mở toàn bộ subnet Viettel của MikroTik trong `/etc/config/firewall`, cấm chỉ mở 1 IP đơn lẻ vì IP WAN quay PPPoE sẽ tự động thay đổi định kỳ.
 
-## 4. Kỷ Luật Kiểm Chứng Fail-Closed Thực Tế & Chống Gửi Ảnh Đen Kịt (Gate 6 Invariant)
-- **Kỷ luật kiểm chứng ngắt mạng (Fail-Closed Verification):**
-  - Khi User yêu cầu kiểm tra tính an toàn: "Proxy sập thì máy qua DNAT có mất mạng / mất Wi-Fi không?":
-    - Phải test thật bằng cách tắt/chặn đúng cổng proxy phụ đang trỏ (hoặc bẻ `to-addresses` trên MikroTik sang IP dead-end tạm thời).
-    - DUY TRÌ TRẠNG THÁI NGẮT MẠNG ĐÓ, mở trực tiếp App TikTok trên điện thoại S7 để chụp ảnh màn hình bằng chứng thực tế: xác nhận App báo "Không có kết nối mạng" / nút "Thử lại", Wi-Fi có dấu chấm than (!).
-    - CẤM TUYỆT ĐỐI tự ý bật lại proxy trước khi chụp ảnh khiến app load được video rồi báo cáo sai lệch hiện trường! Chỉ sau khi thu thập bằng chứng đầy đủ và gửi User mới được phép khôi phục lại cổng proxy.
-    - CẢNH BÁO BẪY PRELOAD CACHE TIKTOK: App TikTok luôn tải trước (preload) 3-5 video vào bộ nhớ tạm. Khi ngắt proxy ngang, người dùng quẹt tiếp vẫn thấy video phát từ cache. Bắt buộc test kết hợp trình duyệt web (`icanhazip.com` báo `ERR_CONNECTION_REFUSED`) và force-stop TikTok mở lại từ đầu (Cold Start) để triệt tiêu cache.
-- **Invariant chống gửi ảnh đen kịt (Anti-Black-Screencap):**
-  - Trước khi chụp ảnh màn hình Android: Bắt buộc bật sáng màn hình (`input keyevent 224 && svc power stayon true && settings put system screen_off_timeout 600000`) và xác nhận `Display Power: state=ON`.
-  - Trước khi gửi thẻ `MEDIA:<path>`: Bắt buộc chạy kiểm tra pixel `np.unique` qua Python. Nếu phát hiện `len(np.unique(r)) == 1 and np.unique(r)[0] == 0` (ảnh đen sì 100%), CẤM TUYỆT ĐỐI GỬI MEDIA và cấm bịa đặt mô tả.
-  - Sau khi xác nhận ảnh có nội dung thật, bắt buộc dùng Native Multimodal đọc chi tiết từng dòng chữ trên ảnh thật để đối soát trước khi gửi tin nhắn cho User.
+## 4. Nguy cơ TikTok Fail-Open (Rò rỉ IP gốc khi proxy sập) & Cạm bẫy Màn hình đen
+- [Chi tiết kỹ thuật: TikTok Mangle Leak & Anti-Black Screencap](references/fail-closed-tiktok-mangle-leak-and-anti-black-screencap.md)
+- [Quy trình kiểm chứng Fail-Closed](references/fail-closed-test-discipline-and-anti-black-screencap-20261106.md)
 
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

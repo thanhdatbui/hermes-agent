@@ -54,11 +54,29 @@ CẤM TUYỆT ĐỐI gửi bất kỳ thẻ `MEDIA:<path>` nào khi chưa kiểm
 
 ## 4. Kỷ Luật Định Tuyến Kernel DNAT & Mangle Bypass Cho Multi-WAN
 Khi MikroTik có nhiều line PPPoE (ví dụ 35 line WAN) và chạy Policy-Based Routing (PBR / Mangle):
-- Các gói tin từ điện thoại Farm gửi tới các port proxy DNAT (`20201..20280`) BẮT BUỘC phải được bypass khỏi bảng Mangle ép WAN:
+- Toàn bộ gói tin từ điện thoại Farm gửi tới các port proxy DNAT (`20001..20080` cho Kibe và `20201..20280` cho Admin) BẮT BUỘC phải được bypass khỏi bảng Mangle ép WAN:
   ```routeros
   /ip firewall mangle
+  add chain=prerouting dst-port=20001-20080 protocol=tcp action=accept comment="BYPASS_MANGLE_FOR_KIBE_MOBIPROXY_DNAT"
   add chain=prerouting dst-port=20201-20280 protocol=tcp action=accept comment="BYPASS_MANGLE_FOR_ADMIN_R3G_DNAT"
-  # Di chuyển rule này lên vị trí đầu tiên (Top #0) của bảng Mangle
-  move destination=*2 numbers=[find comment="BYPASS_MANGLE_FOR_ADMIN_R3G_DNAT"]
+  # Di chuyển các rule bypass này lên vị trí đầu tiên (Top #0, #1) của bảng Mangle
   ```
-- Nếu không có rule Accept ở đầu bảng, gói tin sẽ bị Mangle ép ra các cổng `WAN8..WAN35`, trong khi router đích ở xa chỉ mở Whitelist và route trả về khớp với `WAN1`, gây ra hiện tượng gãy kết nối hai chiều (Asymmetric Routing), điện thoại mất mạng và hiện dấu chấm than trên Wi-Fi.
+- Nếu không có rule Accept ở đầu bảng cho cả hai cụm, gói tin sẽ bị Mangle ép ra các cổng `WAN8..WAN35`, trong khi router đích ở xa chỉ mở Whitelist và route trả về khớp với `WAN1`, gây ra hiện tượng gãy kết nối hai chiều (Asymmetric Routing), điện thoại mất mạng và hiện dấu chấm than trên Wi-Fi.
+
+---
+
+## 5. Kỷ Luật Dập Tắt App & Tắt Màn Hình Khi Dừng Cron Farm (Anti-Lingering Background Sessions)
+- Khi user phát lệnh dừng cron liên quan đến farm / TikTok ("dừng cron", "pause cron"):
+  * **CẤM CHỈ PAUSE CRON ĐỐI PHÓ:** Việc chỉ pause `cronjob` trong `jobs.json` CHỈ ngăn task mới sinh ra, KHÔNG tắt được các app TikTok / browser đang mở dở trên điện thoại.
+  * **BẮT BUỘC KÍCH HOẠT QUÉT DỌN CƠ GIỚI HÓA:** Chạy ngay `python D:/Taadaa/tools/farm_idle_screen_and_app_healer.py` để:
+    1. Quét toàn bộ thiết bị đang rảnh (`idle` / không có device lock).
+    2. Gửi lệnh `am force-stop` dập tắt app TikTok, đưa focus về Launcher (`com.sec.android.app.launcher`).
+    3. Đặt lại `screen_off_timeout = 600000` (10 phút) và gửi keyevent 223 đưa màn hình về trạng thái Sleep/Dozing để bảo vệ màn hình AMOLED chống burn-in.
+
+---
+
+## 6. Kỷ Luật Đồng Bộ Tự Động Dynamic DDNS Cho Kernel DNAT Rules
+- Kernel DNAT rules (`/ip firewall nat`) trên RouterOS **chỉ nhận IP đích dạng số (`to-addresses`), không nhận domain DDNS**.
+- Khi trỏ sang các cụm upstream IP động như R3G (`tb.taadaa.click`) hoặc MobiProxy (`test.taadaa.click`):
+  * Bắt buộc phải có watchdog/script định kỳ resolve DNS sang IP số.
+  * Nếu phát hiện IP WAN đích thay đổi, tự động PATCH cập nhật đồng loạt các rule `DNAT_*_TO_R3G_*` và `DNAT_*_TO_MOBIPROXY_*` trên MikroTik qua REST API. Tránh để lệch IP khiến toàn bộ dải port DNAT bị timeout mù.

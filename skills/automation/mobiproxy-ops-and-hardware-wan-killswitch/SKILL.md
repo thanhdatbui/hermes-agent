@@ -26,11 +26,5 @@ version: 1.0.0
   - Khi proxy TCP chết hoặc timeout, TTNet tự động bỏ qua proxy và bắn thẳng các gói tin UDP 443 ra Default Gateway (`192.168.110.1` của AP Aruba/Ruijie).
   - Nếu router không chặn cứng ở Layer 3/4, toàn bộ video TikTok sẽ chạy thẳng bằng **IP cáp quang mạng gốc (`113.23.110.227`)**, gây cháy nick hàng loạt.
 
-## 4. Giải Pháp Bộ Tứ Phòng Thủ (L3/L4 Quad-Lock Killswitch Trên MikroTik)
-Để chống rò rỉ IP gốc ra ngoài khi proxy sập, bắt buộc phải có rule tường lửa chặn cứng tại Router MikroTik:
-```text
-/ip firewall filter
-add chain=forward src-address=192.168.110.0/24 out-interface-list=WAN action=drop comment="KILLSWITCH_BLOCK_FARM_DIRECT_WAN"
-```
-- **Nguyên tắc Fail-Closed:** Khi proxy chết, toàn bộ traffic từ dàn điện thoại Kibe (`192.168.110.0/24`) đi ra WAN đều bị router drop 100%, điện thoại mất mạng hoàn toàn thay vì lén lút ăn vào IP mạng gốc.
-- **Tạm dừng khẩn cấp:** Khi trạm proxy chết, lập tức kích hoạt `am force-stop com.ss.android.ugc.trill` trên toàn bộ dàn máy và pause toàn bộ cronjob nuôi/2FA để bảo vệ tài sản nick.
+> **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
+> Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

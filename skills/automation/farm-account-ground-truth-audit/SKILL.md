@@ -27,8 +27,5 @@ Quy chuẩn vận hành áp dụng cho mọi thao tác tra cứu, cấp phát, n
   - CẤM TUYỆT ĐỐI dùng từ "Xong rồi", "Hoàn thành 100%" khi phụ thuộc vào bên thứ ba / tác vụ thực tế chưa về đích.
   - Chỉ được báo: `PHÍA NỘI BỘ: READY` (Đã chuẩn bị xong dữ liệu / bật xong 2FA / túc trực) và `TIẾN ĐỘ THỰC TẾ: WAITING_EXTERNAL` (Đang đợi bên bán / đang theo dõi kết quả).
 
-## 4. Tài Liệu Tham Khảo Mở Rộng
-- Chi tiết đối soát gói Pixel 6 tháng & phân biệt trust Gmail cổ 5-6 năm vs Gmail farm: `references/google-pixel-promo-and-aged-account-trust-audit.md`.
-
-> **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
-> Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.
+## References
+- Chi tiết toàn bộ quy trình, case study và phân tích chuyên sâu: xem các tài liệu trong thư mục `references/` của skill.

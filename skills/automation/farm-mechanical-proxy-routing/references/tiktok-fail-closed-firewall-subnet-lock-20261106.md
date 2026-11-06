@@ -18,6 +18,16 @@
   /ip firewall address-list
   remove [find list=FPT_LAN address="192.168.10.0/24"]
   ```
-- **Quy tắc kiểm chứng Fail-Closed:**
-  - Sau khi ngắt proxy, mở TikTok và vuốt xem video mới.
-  - Kết quả chuẩn: TikTok dừng hình, hiện thông báo `Không có kết nối mạng` kèm nút đỏ `Thử lại`, cột Wi-Fi hiện dấu chấm than (!), tuyệt đối không load được bất kỳ video mới nào từ Internet.
+
+## 3. Kỷ Luật Đối Soát Thị Giác Thực Tế & Chống Gửi Ảnh Đen / Bịa Đặt Mô Tả (Anti-Hallucination)
+1. **Pre-flight Check màn hình trước khi chụp ảnh:**
+   - Khi điều khiển S7 qua ADB, màn hình thường tự tắt sau 30-60s (`Display Power: state=OFF`). Lệnh `screencap` khi màn hình tắt sẽ sinh ra ảnh đen kịt (RGB = 0).
+   - BẮT BUỘC bật sáng và giữ màn hình trước khi chụp:
+     ```bash
+     adb -s <serial> shell "input keyevent 224 && input keyevent 82 && svc power stayon true && settings put system screen_off_timeout 600000"
+     ```
+2. **Kiểm tra pixel màu thật (Black Screen Sentinel):**
+   - Dùng script Python kiểm tra mảng màu pixel qua `np.unique()`. Nếu `r_vals == [0]` và `g_vals == [0]` và `b_vals == [0]` -> TUYỆT ĐỐI CẤM GỬI thẻ `MEDIA:`, phải đánh thức màn hình và chụp lại.
+3. **Đối soát nội dung thực tế qua Native Vision / OCR:**
+   - CẤM đoán mò nội dung ảnh (như bịa ra thông báo mất mạng hay nút Thử lại trong khi app đang phát video bình thường).
+   - Phải đọc đúng từng dòng text, đúng trạng thái icon Wi-Fi (có dấu chấm than hay không) và mô tả trung thực hiện trường thực tế.
