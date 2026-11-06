@@ -53,6 +53,15 @@
 * **Thời gian mở lại:** Hệ thống tự động xét duyệt và nhả lại sau **24 – 72 giờ**.
 
 ## 4. Chốt Chặn Phòng Vệ Bắt Buộc (Anti-Recurrence Defense)
-1. **Lớp 1 (Hermes Core):** Vô hiệu hóa hoặc sanitize đoạn `HERMES_AGENT_HELP_GUIDANCE` và `DEFAULT_AGENT_IDENTITY` trong `agent/system_prompt.py`.
-2. **Lớp 2 (OmniRoute Sanitize Gateway):** Thêm bộ lọc regex trong executor `antigravity.ts` để thay thế/xóa sạch toàn bộ từ khóa `Hermes Agent`, `Nous Research`, `nousresearch.com` trước khi serialize request gửi lên Google Cloud Code.
-3. **Kỷ luật Coordinator:** Coordinator bắt buộc chạy qua pool Antigravity / Coding CLI có TLS sạch; không được ép Coordinator chạy qua `gemini-web` (vì Web pool dành cho worker/tóm tắt/nén context, không phù hợp cho ReAct tool-calling chuyên sâu).
+1. **Lớp 1 (Hermes Core):** Vô hiệu hóa hoặc sanitize đoạn `HERMES_AGENT_HELP_GUIDANCE` và `DEFAULT_AGENT_IDENTITY` trong `agent/system_prompt.py`. Sửa dứt điểm từ gốc mã nguồn Hermes, sau đó restart Gateway để nạp system prompt mới sạch 100%.
+2. **Kỷ luật Bảo Vệ OmniRoute Live (CẤM BUILD BACKEND GÂY TRẮNG TRANG):**
+   - **Tuyệt đối CẤM** chạy `npm run build:backend` trên môi trường OmniRoute live để tránh bẫy `backendOnlyPages.mjs` biến 126 trang Dashboard thành `return null;` (trắng trang / 404) và khiến watchdog `omniroute_watchdog.ps1` kẹt vòng lặp restart crash liên tục.
+   - Khi Hermes Core đã sạch chữ ký, gói tin chạm tới OmniRoute đã sạch 100%, không cần và không được can thiệp sửa đổi hay rebuild lại bundle standalone của OmniRoute.
+3. **Kỷ luật Triage Lỗi 403 vs Rớt Proxy 4G (Test Probe Phân Loại):**
+   - Khi các acc Pro bị timeout (`499 Request aborted` / `504 Gateway Timeout`), **CẤM phán acc bị die hay dính 403 ToS vội vàng**.
+   - **Quy trình phân định Ground Truth**: Tạm tráo proxy của acc bị timeout sang một cổng proxy 4G đang thông mạng (`200 OK`, ví dụ port 5122 của `nathan.yabsley`) để probe request trực tiếp lên Google.
+   - Nếu trả lời `200 OK` $\rightarrow$ Xác nhận 100% acc sống khỏe, lỗi chỉ do cụm proxy 4G bị rớt mạng tạm thời, không cần appeal ToS. Test xong bắt buộc revert assignment về đúng port proxy gốc.
+4. **Kỷ luật Quét GPM Phân Trang (Anti-False Missing Assumption):**
+   - GPM API `/api/v3/profiles` mặc định phân trang (`page_size=100` hoặc `300`). Khi tìm tài khoản trong kho lớn (>1.400 profiles), **BẮT BUỘC duyệt qua toàn bộ `total_page` (ví dụ pages 1..5)**.
+   - Tuyệt đối CẤM chỉ quét trang 1 rồi kết luận vội vàng "không có profile GPM" của tài khoản.
+5. **Kỷ luật Coordinator:** Coordinator bắt buộc chạy qua pool Antigravity / Coding CLI có TLS sạch; không được ép Coordinator chạy qua `gemini-web` (vì Web pool dành cho worker/tóm tắt/nén context, không phù hợp cho ReAct tool-calling chuyên sâu).

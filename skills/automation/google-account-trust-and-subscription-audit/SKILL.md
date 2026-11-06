@@ -17,13 +17,5 @@ description: "Kỷ luật đối soát gói Google One / Gemini Pro thực tế 
   - **Cách 2 (Offline qua CSDL History của GPM Profile):** Quét file SQLite `Default/History` của profile trong thư mục GPM:
     - Nếu có bản ghi `one.google.com/activate-plan` hoặc `one.google.com/celebration` -> **Đã từng kích hoạt gói Pro**.
 
-## 2. Phân Biệt Danh Tính: Gmail Farm Batch vs Gmail Ngoại Cổ (Aged 5-6 Năm)
-* **Nhóm 1: Gmail Farm Batch (Nội bộ farm reg tháng 6 - 8/2026):**
-  - Đặc điểm nhận diện: Email dạng `tên + ngày tháng năm sinh@gmail.com` (ví dụ: `dinhlan24072000`, `ninhy05102002`), mật khẩu có đuôi `...Ks`, mail khôi phục chung `thanhdatbui1995@gmail.com`.
-  - Đặc tính: Được reg theo lô qua proxy/mạng farm, chủ yếu chạy background sync. Khi đem sang thiết bị lạ (Pixel / IP mới) để Fresh Sign-in, Google Risk Engine sẽ kích hoạt cơ chế thử thách **Robot Captcha / Bot Challenge**.
-* **Nhóm 2: Gmail Ngoại Cổ (Aged Accounts 5 - 6 năm):**
-  - Đặc điểm nhận diện: Tên tiếng Anh/ngoại quốc (`nathan.yabsley1990@gmail.com`, `marcusephillips...`, `allison...`), mật khẩu đặc trưng (như `n0spam@@`, `Btmyclrlw`), tuổi đời 5-6 năm từ trước khi nhập về farm.
-  - Đặc tính: Độ Trust Score của Google đối với tuổi đời tài khoản rất cao, khả năng bị ăn Captcha bot check thấp hơn nhiều so với dàn mail batch.
-
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

@@ -3,3 +3,5 @@ SSOT SQLite farm_master.db toàn farm (mailboxes/tiktok/feed dynamic); cấm run
 Điều tra đa máy check trực tiếp ổ node remote. Coordinator CẤM chạy qua gemini-web (thiếu tool calling); bắt buộc dùng API native tool calling.
 §
 Gọi advisor bắt buộc dùng tool ngoài consult_advisor.py, cấm tiêm vào context. Luôn verify đúng topic/thread Telegram.
+§
+Webshare account: User có tài khoản Webshare.io (thanhdatbui1995@gmail.com, auth: opmighkf:htikm8njcmjb). Khi User nói "webshare" là lấy proxy từ account này, không cào proxy free công cộng.

@@ -4,8 +4,11 @@ description: "Vận hành Kernel DNAT trên MikroTik, cấu hình MobiProxy No-A
 ---
 # MikroTik Kernel DNAT & Multi-WAN Proxy Operations (MobiProxy & R3G)
 
+- `references/fail-closed-firewall-verification-and-routing-pitfalls.md`: Quy chuẩn kiểm chứng Fail-Closed trên TikTok (tránh bẫy video buffer), lỗ hổng QUIC UDP 443 / DNS Leak UDP 53, Mangle Bypass và sự cố chặn nhầm proxy ports nội bộ.
+- `references/fail-closed-multi-tier-verification-and-filter-whitelist-trap-20261106.md`: Bẫy Filter Whitelist chặn nhầm 48 port MikroTik khi gỡ FPT_LAN, bài học dấu chấm than Wi-Fi vs TikTok cache, và Mangle Bypass 2 cụm.
 - `references/fail-closed-vs-app-fallback-leak-and-screen-off-discipline-20261106.md`: Kỷ luật kiểm chứng màn hình sáng trước khi screencap, kiến trúc Trio Killswitch L3/L4 (Drop WAN direct, Drop QUIC UDP 443, Drop DNS UDP 53), bypass Mangle cho Kernel DNAT cả 2 cụm Kibe + Admin, quy trình dập tắt app TikTok khi pause cron và cơ chế sync dynamic DDNS cho RouterOS NAT rules.
 - `references/mobiproxy-dnat-timeout-and-fail-closed-preflight-20261106.md`: Hiện trường lỗi MobiProxy WAN timeout gây liệt dải DNAT 20001-20038 và cơ chế Fail-Closed của ConsumerPreflightError.
+- `references/tiktok-skeleton-cache-and-killswitch-verification.md`: Kỷ luật nghiệm thu Fail-Closed TikTok: phân biệt video prefetch cache vs skeleton loading placeholder, rule bypass Mangle đỉnh bảng (*174, *175), và cập nhật IP WAN đích NAT.
 
 ## 1. Bản chất hạ tầng: MobiProxy vs Xiaomi R3G
 - **MobiProxy:** Cắm 4 line mạng cáp quang vật lý (Lan1..Lan4), mỗi line quay đa phiên 8 PPPoE chia ra các port proxy 5101..5138.

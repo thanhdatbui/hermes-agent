@@ -13,17 +13,5 @@ description: "Kỷ luật an toàn tuyệt đối khi can thiệp thiết bị m
 - App TikTok chạy engine `TTNet / Cronet`. Khi proxy TCP bị timeout, nó kích hoạt **Fail-Open**: tự động bỏ qua proxy và bắn thẳng các gói tin **UDP 443 (QUIC)** và **UDP 53 (DNS)** ra Default Gateway của mạng LAN.
 - Nếu router không chặn cứng ở Layer 3/4, video và API của TikTok sẽ đi thẳng ra **IP cáp quang mạng gốc**, gây lộ IP toàn bộ dàn nick farm.
 
-## 3. Kiến Trúc Tường Lửa MikroTik (L3/L4 Killswitch Bắt Buộc)
-Để đảm bảo khi proxy chết thì TikTok cũng phải chết mạng theo (Fail-Closed):
-1. **Rule Drop Direct WAN phải đặt tại TOP (Vị trí 0 của Chain Forward):**
-   ```text
-   /ip firewall filter
-   add chain=forward action=drop src-address=192.168.110.0/24 out-interface-list=WAN comment="KILLSWITCH_BLOCK_FARM_DIRECT_WAN"
-   ```
-2. **Loại trừ dải farm khỏi danh sách forward tự do:**
-   - Cấm để dải IP farm (`192.168.110.0/24`) nằm trong `FPT_LAN` hay bất kỳ allowlist nào đứng trước rule Killswitch.
-3. **Chặn sạch UDP 443 (QUIC) & UDP 53 (DNS) ra WAN:**
-   - Drop toàn bộ UDP 443 và UDP 53 từ dải điện thoại để ép TikTok app không thể lách qua giao thức QUIC.
-
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.

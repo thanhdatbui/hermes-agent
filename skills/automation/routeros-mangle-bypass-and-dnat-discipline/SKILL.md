@@ -38,9 +38,5 @@ Và bắt buộc đẩy tất cả các rule DNAT này lên đứng trước rul
 - **Mở rộng dải Firewall Whitelist:**
   Mở toàn bộ subnet Viettel của MikroTik trong `/etc/config/firewall`, cấm chỉ mở 1 IP đơn lẻ vì IP WAN quay PPPoE sẽ tự động thay đổi định kỳ.
 
-## 4. Nguy cơ TikTok Fail-Open (Rò rỉ IP gốc khi proxy sập) & Cạm bẫy Màn hình đen
-- [Chi tiết kỹ thuật: TikTok Mangle Leak & Anti-Black Screencap](references/fail-closed-tiktok-mangle-leak-and-anti-black-screencap.md)
-- [Quy trình kiểm chứng Fail-Closed](references/fail-closed-test-discipline-and-anti-black-screencap-20261106.md)
-
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.
