@@ -338,6 +338,23 @@ class TestSendTelegramReport(unittest.TestCase):
             m_send.assert_not_called()
 
 
+    def test_read_admin_gmail_summary_remote_validates_command(self):
+        """Khóa cơ học: câu lệnh PowerShell gọi sang Admin bắt buộc phải hợp lệ qua admin_ssh allowlist."""
+        sys.path.insert(0, "D:/Taadaa/tools")
+        import admin_ssh
+        import cron_night_tiktok_2fa_watchdog as wd
+        min_date_str = "2026-10-20 00:00:00"
+        ps_cmd = (
+            f"Get-ChildItem -Path 'D:\\CodexRuntime\\codex_gmail_debug-register-gmail\\logs_parallel_*\\summary.json' -ErrorAction SilentlyContinue | "
+            f"Where-Object {{ $_.LastWriteTime -ge (Get-Date '{min_date_str}') }} | "
+            "Sort-Object LastWriteTime -Descending | Select-Object -First 1 | Get-Content -Raw -Encoding UTF8"
+        )
+        # Thẩm định bằng validator thật O(1)
+        err = admin_ssh.validate_command(ps_cmd)
+        self.assertIsNone(err, f"ps_cmd vi phạm admin_ssh policy: {err}")
+        admin_ssh.assert_command_allowed(ps_cmd)
+
+
 class TestAtomicPhaseClaim(unittest.TestCase):
     def test_claim_lane_skips_when_active_and_reclaims_when_stale(self):
         import cron_night_tiktok_2fa_watchdog as wd

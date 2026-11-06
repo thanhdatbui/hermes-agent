@@ -1,8 +1,10 @@
 import os
 import sys
 import hashlib
+import sqlite3
 import openpyxl
 
+FARM_MASTER_DB = r'D:\Taadaa\data\farm_master.db'
 GMAIL_CLEAN_V2 = r"D:\OneDrive\TaadaaData\kibe\gmail_clean_v2.xlsx"
 DEST_DIR = r"D:\OneDrive\TaadaaData\kibe"
 HASH_CACHE = r"C:\Users\Kibe\AppData\Local\hermes\scripts\checkmail_results\gmail_clean_v2_hash.txt"
@@ -17,10 +19,13 @@ def get_file_hash(path):
     return h.hexdigest()
 
 def sync(force=False):
-    if not os.path.exists(GMAIL_CLEAN_V2):
+    use_db = os.path.exists(FARM_MASTER_DB)
+    source_file = FARM_MASTER_DB if use_db else GMAIL_CLEAN_V2
+
+    if not os.path.exists(source_file):
         return 0
 
-    current_hash = get_file_hash(GMAIL_CLEAN_V2)
+    current_hash = get_file_hash(source_file)
     last_hash = ""
     if os.path.exists(HASH_CACHE):
         with open(HASH_CACHE, "r", encoding="utf-8") as f:
@@ -39,27 +44,43 @@ def sync(force=False):
                 if line and "@gmail.com" in line:
                     live_emails.add(line)
 
-    # Đọc CHỈ ĐỂ LẤY MAIL (READ-ONLY) từ gmail_clean_v2.xlsx, tuyệt đối KHÔNG sửa/ghi đè file này
-    wb = openpyxl.load_workbook(GMAIL_CLEAN_V2, data_only=True, read_only=True)
-    ws = wb.active
-
     added = 0
-    for i, row in enumerate(ws.iter_rows(values_only=True)):
-        if i == 0 or not row:
-            continue
-        mail = row[1]
-        if not mail:
-            continue
+    if use_db:
+        conn = sqlite3.connect(FARM_MASTER_DB)
+        cursor = conn.cursor()
+        cursor.execute("SELECT email FROM mailboxes")
+        for row in cursor.fetchall():
+            if not row or not row[0]:
+                continue
+            cstr = str(row[0]).strip().lower()
+            em = cstr if "@" in cstr else cstr + "@gmail.com"
+            if "@gmail.com" not in em:
+                continue
+            if em not in live_emails:
+                live_emails.add(em)
+                added += 1
+        conn.close()
+    else:
+        # Đọc CHỈ ĐỂ LẤY MAIL (READ-ONLY) từ gmail_clean_v2.xlsx, tuyệt đối KHÔNG sửa/ghi đè file này
+        wb = openpyxl.load_workbook(GMAIL_CLEAN_V2, data_only=True, read_only=True)
+        ws = wb.active
 
-        cstr = str(mail).strip().lower()
-        em = cstr if "@" in cstr else cstr + "@gmail.com"
-        if "@gmail.com" not in em:
-            continue
+        for i, row in enumerate(ws.iter_rows(values_only=True)):
+            if i == 0 or not row:
+                continue
+            mail = row[1]
+            if not mail:
+                continue
 
-        # Chỉ thêm nếu chưa có trong list tổng
-        if em not in live_emails:
-            live_emails.add(em)
-            added += 1
+            cstr = str(mail).strip().lower()
+            em = cstr if "@" in cstr else cstr + "@gmail.com"
+            if "@gmail.com" not in em:
+                continue
+
+            # Chỉ thêm nếu chưa có trong list tổng
+            if em not in live_emails:
+                live_emails.add(em)
+                added += 1
 
     # Lưu lại file gmail_live_tong.txt (duy nhất 1 file tổng)
     all_live = sorted(list(live_emails))
@@ -69,7 +90,7 @@ def sync(force=False):
     with open(HASH_CACHE, "w", encoding="utf-8") as f:
         f.write(current_hash)
 
-    print(f"[Sync Gmail Live Tong] Tong cong: {len(all_live)} Gmail Live (+{added} mail moi tu gmail_clean_v2)")
+    print(f"[Sync Gmail Live Tong] Tong cong: {len(all_live)} Gmail Live (+{added} mail moi)")
     return 0
 
 if __name__ == "__main__":

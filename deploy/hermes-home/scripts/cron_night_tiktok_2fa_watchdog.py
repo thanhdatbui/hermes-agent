@@ -476,9 +476,11 @@ def _split_cluster_output(out: str) -> tuple[str, str]:
 
 
 def read_admin_gmail_summary_remote(min_mtime: float) -> dict | None:
+    min_date_str = datetime.fromtimestamp(min_mtime, tz=HCMC).strftime("%Y-%m-%d %H:%M:%S")
     ps_cmd = (
-        "Get-Content (Get-ChildItem -Path 'D:\\CodexRuntime\\codex_gmail_debug-register-gmail\\logs_parallel_*\\summary.json' -ErrorAction SilentlyContinue | "
-        "Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName -Raw -Encoding UTF8"
+        f"Get-ChildItem -Path 'D:\\CodexRuntime\\codex_gmail_debug-register-gmail\\logs_parallel_*\\summary.json' -ErrorAction SilentlyContinue | "
+        f"Where-Object {{ $_.LastWriteTime -ge (Get-Date '{min_date_str}') }} | "
+        "Sort-Object LastWriteTime -Descending | Select-Object -First 1 | Get-Content -Raw -Encoding UTF8"
     )
     try:
         res = subprocess.run(

@@ -242,3 +242,106 @@ def test_profile_has_google_session_cookie_db(tmp_path):
     assert wd._profile_has_google_session({"profile_path": str(p_folder)}) is True
     assert wd._profile_has_google_session({"google_session_verified": True}) is True
     assert wd._profile_has_google_session({"google_session_verified": False}) is False
+
+
+def test_is_within_time_window():
+    from datetime import datetime
+
+    # Chặn 04:00 - 04:30 (dọn cache)
+    assert wd.is_within_time_window(datetime(2025, 1, 1, 4, 0)) is False
+    assert wd.is_within_time_window(datetime(2025, 1, 1, 4, 15)) is False
+    assert wd.is_within_time_window(datetime(2025, 1, 1, 4, 30)) is False
+
+    # Chặn 05:15 - 09:30 (ca 1 nuôi feed)
+    assert wd.is_within_time_window(datetime(2025, 1, 1, 5, 15)) is False
+    assert wd.is_within_time_window(datetime(2025, 1, 1, 7, 0)) is False
+    assert wd.is_within_time_window(datetime(2025, 1, 1, 9, 30)) is False
+
+    # Chặn 11:45 - 15:30 (ca 2 nuôi feed)
+    assert wd.is_within_time_window(datetime(2025, 1, 1, 11, 45)) is False
+    assert wd.is_within_time_window(datetime(2025, 1, 1, 13, 0)) is False
+    assert wd.is_within_time_window(datetime(2025, 1, 1, 15, 30)) is False
+
+    # Chặn 17:45 - 21:30 (ca 3 nuôi feed)
+    assert wd.is_within_time_window(datetime(2025, 1, 1, 17, 45)) is False
+    assert wd.is_within_time_window(datetime(2025, 1, 1, 19, 0)) is False
+    assert wd.is_within_time_window(datetime(2025, 1, 1, 21, 30)) is False
+
+    # Cho phép ngoài các giờ cao điểm trên
+    assert wd.is_within_time_window(datetime(2025, 1, 1, 3, 59)) is True
+    assert wd.is_within_time_window(datetime(2025, 1, 1, 4, 31)) is True
+    assert wd.is_within_time_window(datetime(2025, 1, 1, 5, 14)) is True
+    assert wd.is_within_time_window(datetime(2025, 1, 1, 9, 31)) is True
+    assert wd.is_within_time_window(datetime(2025, 1, 1, 10, 0)) is True
+    assert wd.is_within_time_window(datetime(2025, 1, 1, 11, 44)) is True
+    assert wd.is_within_time_window(datetime(2025, 1, 1, 15, 31)) is True
+    assert wd.is_within_time_window(datetime(2025, 1, 1, 16, 0)) is True
+    assert wd.is_within_time_window(datetime(2025, 1, 1, 17, 44)) is True
+    assert wd.is_within_time_window(datetime(2025, 1, 1, 21, 31)) is True
+    assert wd.is_within_time_window(datetime(2025, 1, 1, 23, 59)) is True
+    assert wd.is_within_time_window(datetime(2025, 1, 1, 0, 0)) is True
+
+
+def test_get_gpm_candidates_from_farm_master_db(tmp_path):
+    gpm_db = tmp_path / "profile_data.db"
+    conn_g = sqlite3.connect(str(gpm_db))
+    conn_g.execute("CREATE TABLE Profiles (Id INTEGER, Name TEXT, ProfilePath TEXT, GroupId INTEGER)")
+    conn_g.execute("INSERT INTO Profiles VALUES (1, 'M01 - user1@gmail.com', 'p1', 10)")
+    conn_g.commit()
+    conn_g.close()
+
+    farm_db = tmp_path / "farm_master.db"
+    conn_f = sqlite3.connect(str(farm_db))
+    conn_f.execute("CREATE TABLE mailboxes (email TEXT, password TEXT, twofa_secret TEXT)")
+    conn_f.execute("INSERT INTO mailboxes VALUES ('User1@Gmail.com', 'pass123', '')")
+    conn_f.commit()
+    conn_f.close()
+
+    with patch.object(wd, "GPM_DB_PATH", gpm_db), \
+         patch.object(wd, "FARM_MASTER_DB", farm_db), \
+         patch.object(wd, "NURTURE_STATE_FILE", tmp_path / "nonexistent.json"), \
+         patch.object(wd, "STATE_FILE", tmp_path / "nonexistent_state.json"), \
+         patch.object(wd, "CLEAN_V2_EXCEL", tmp_path / "nonexistent.xlsx"):
+        candidates = wd.get_gpm_candidates(limit=5)
+
+    assert len(candidates) == 1
+    assert candidates[0]["email"] == "user1@gmail.com"
+    assert candidates[0]["pwd"] == "pass123"
+
+
+def test_get_gpm_candidates_fallback_to_excel(tmp_path):
+    gpm_db = tmp_path / "profile_data.db"
+    conn_g = sqlite3.connect(str(gpm_db))
+    conn_g.execute("CREATE TABLE Profiles (Id INTEGER, Name TEXT, ProfilePath TEXT, GroupId INTEGER)")
+    conn_g.execute("INSERT INTO Profiles VALUES (1, 'M01 - user2@gmail.com', 'p2', 10)")
+    conn_g.commit()
+    conn_g.close()
+
+    mock_excel = tmp_path / "master_gmail_manager.xlsx"
+    mock_excel.touch()
+
+    mock_wb = MagicMock()
+    mock_wb.sheetnames = ["Master_All"]
+    mock_ws = MagicMock()
+    mock_ws.iter_rows.return_value = [
+        ("Header", "Email", "Password", "Col3", "2FA"),
+        (1, "user2@gmail.com", "excel_pass", None, "")
+    ]
+    mock_wb.__getitem__.return_value = mock_ws
+
+    with patch.object(wd, "GPM_DB_PATH", gpm_db), \
+         patch.object(wd, "FARM_MASTER_DB", tmp_path / "nonexistent_farm_master.db"), \
+         patch.object(wd, "MASTER_EXCEL", mock_excel), \
+         patch.object(wd, "NURTURE_STATE_FILE", tmp_path / "nonexistent.json"), \
+         patch.object(wd, "STATE_FILE", tmp_path / "nonexistent_state.json"), \
+         patch.object(wd, "CLEAN_V2_EXCEL", tmp_path / "nonexistent_clean.xlsx"), \
+         patch("openpyxl.load_workbook", return_value=mock_wb):
+        candidates = wd.get_gpm_candidates(limit=5)
+
+    assert len(candidates) == 1
+    assert candidates[0]["email"] == "user2@gmail.com"
+    assert candidates[0]["pwd"] == "excel_pass"
+
+
+def test_farm_master_db_default():
+    assert wd.FARM_MASTER_DB == Path(r"D:\Taadaa\data\farm_master.db")

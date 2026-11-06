@@ -24,6 +24,7 @@ STATE_DIR = Path("D:/Taadaa/runtime/kibe/cron-state")
 STATE_FILE = STATE_DIR / "post_morning_gmail_2fa_state.json"
 FEED_REPORTED_FILE = STATE_DIR / "feed_session_reported.json"
 GPM_DB_PATH = Path(r"C:\Users\Kibe\AppData\Local\Programs\GPMLogin\profile\profile_data.db")
+FARM_MASTER_DB = Path(os.environ.get('FARM_MASTER_DB', r'D:\Taadaa\data\farm_master.db'))
 MASTER_EXCEL = Path(r"D:\OneDrive\TaadaaData\kibe\master_gmail_manager.xlsx")
 CLEAN_V2_EXCEL = Path(r"D:\OneDrive\TaadaaData\kibe\gmail_clean_v2.xlsx")
 NURTURE_STATE_FILE = STATE_DIR / "gpm_gmail_nurture_state.json"
@@ -159,10 +160,23 @@ class ProcessLock:
             self.acquired = False
 
 
-def is_within_time_window(start_hm=(8, 30), end_hm=(11, 30)) -> bool:
-    now = datetime.now()
+BLOCKED_WINDOWS = [
+    ((4, 0), (4, 30)),     # Dọn cache
+    ((5, 15), (9, 30)),    # Ca 1 cao điểm nuôi feed
+    ((11, 45), (15, 30)),  # Ca 2 cao điểm nuôi feed
+    ((17, 45), (21, 30)),  # Ca 3 cao điểm nuôi feed
+]
+
+
+def is_within_time_window(now: datetime | None = None, *args, **kwargs) -> bool:
+    """Kiểm tra thời gian chạy hợp lệ: chặn 3 ca cao điểm nuôi feed và dọn cache."""
+    if not isinstance(now, datetime):
+        now = datetime.now()
     cur_hm = (now.hour, now.minute)
-    return start_hm <= cur_hm <= end_hm
+    for start_hm, end_hm in BLOCKED_WINDOWS:
+        if start_hm <= cur_hm <= end_hm:
+            return False
+    return True
 
 
 def is_feed_ca1_finished() -> bool:
@@ -249,7 +263,7 @@ def get_upcoming_feed_machines(buffer_minutes=60) -> set:
 
 def get_gpm_candidates(limit: int = 5) -> list:
     """Lấy danh sách profile GPM cần bật 2FA (có email @gmail.com, có password, chưa có 2FA)."""
-    if not GPM_DB_PATH.exists() or not MASTER_EXCEL.exists():
+    if not GPM_DB_PATH.exists() or (not FARM_MASTER_DB.exists() and not MASTER_EXCEL.exists()):
         return []
 
     excluded_today = set()
@@ -276,28 +290,43 @@ def get_gpm_candidates(limit: int = 5) -> list:
         except Exception as e:
             log(f"Lỗi đọc STATE_FILE để loại trừ excluded_today: {e}")
 
-    import openpyxl
-
     master_pwd = {}
     master_2fa = {}
-    try:
-        wb_m = openpyxl.load_workbook(MASTER_EXCEL, read_only=True, data_only=True)
-        if "Master_All" in wb_m.sheetnames:
-            ws = wb_m["Master_All"]
-            for r in list(ws.iter_rows(values_only=True))[1:]:
-                em = str(r[1] or "").strip().lower()
+    if FARM_MASTER_DB.exists():
+        try:
+            conn_m = sqlite3.connect(FARM_MASTER_DB)
+            cur_m = conn_m.cursor()
+            cur_m.execute("SELECT lower(email), password, twofa_secret FROM mailboxes")
+            for em, pwd, sec in cur_m.fetchall():
+                em = str(em or "").strip().lower()
                 if em:
-                    master_pwd[em] = str(r[2] or "").strip()
-                    if len(r) > 4 and r[4]:
-                        master_2fa[em] = str(r[4] or "").strip()
-        wb_m.close()
-    except Exception as e:
-        log(f"Lỗi đọc MASTER_EXCEL: {e}")
+                    master_pwd[em] = str(pwd or "").strip()
+                    if sec:
+                        master_2fa[em] = str(sec or "").strip()
+            conn_m.close()
+        except Exception as e:
+            log(f"Lỗi đọc FARM_MASTER_DB: {e}")
+    elif MASTER_EXCEL.exists():
+        try:
+            import openpyxl
+            wb_m = openpyxl.load_workbook(MASTER_EXCEL, read_only=True, data_only=True)
+            if "Master_All" in wb_m.sheetnames:
+                ws = wb_m["Master_All"]
+                for r in list(ws.iter_rows(values_only=True))[1:]:
+                    em = str(r[1] or "").strip().lower()
+                    if em:
+                        master_pwd[em] = str(r[2] or "").strip()
+                        if len(r) > 4 and r[4]:
+                            master_2fa[em] = str(r[4] or "").strip()
+            wb_m.close()
+        except Exception as e:
+            log(f"Lỗi đọc MASTER_EXCEL: {e}")
 
     clean_pwd = {}
     clean_2fa = {}
     if CLEAN_V2_EXCEL.exists():
         try:
+            import openpyxl
             wb_c = openpyxl.load_workbook(CLEAN_V2_EXCEL, read_only=True, data_only=True)
             ws_c = wb_c.active
             for r in list(ws_c.iter_rows(values_only=True))[1:]:
@@ -398,7 +427,7 @@ def main():
     parser.add_argument("--batch-size", type=int, default=5, help="Số profile xử lý tối đa mỗi tick")
     args = parser.parse_args()
 
-    if not args.force and not is_within_time_window((8, 30), (11, 30)):
+    if not args.force and not is_within_time_window():
         return 0
 
     if not args.force and not is_feed_ca1_finished():
