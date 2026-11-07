@@ -24,15 +24,5 @@ Kỷ luật vận hành và chốt chặn kiến trúc cho hạ tầng proxy LLM
 - Khi mang cờ `Unprotected`, tài khoản bị mất lớp đệm bảo vệ rate-limit & cooldown khi proxy trễ.
 - **Khắc phục:** Bắt buộc bật `shield Protected` cho tất cả các connection chạy qua dải proxy quay/remote để khi proxy lag chạm timeout, tài khoản được tự động cách ly (`warning ~5m - 15m`), combo sẽ tự động nhảy qua tài khoản khác mà không bị kẹt lặp lại.
 
-## 3. Invariant Timeout 3 Tầng (3-Layer Timeout Invariant)
-Đã được kiểm chứng và đồng thuận bởi Claude CLI & Sol Auditor qua các sự cố 24/09 & 21/10:
-$$\mathbf{HERMES\_CLIENT\ (120s)\ >\ COMBO\_TARGET\ (60s)\ >\ STREAM\_READINESS\ (40s)}$$
-
-1. **Tầng 1 (Client Hermes):** `HERMES_API_CALL_STALE_TIMEOUT = 120s`. Đảm bảo client có đủ kiên nhẫn chờ failover hạ cánh an toàn.
-2. **Tầng 2 (Combo Failover):** `targetTimeoutMs = 60000` (60s) cho các combo chủ lực (`ag-gemini-pool-3`, `omni-worker`).
-   - *Cấm hạ xuống 20s - 30s:* Hạ xuống 20s–30s sẽ xung đột với các request ngữ cảnh lớn (250k–480k tokens) hoặc multimodal vision (ảnh base64 >70k chars), khiến request hợp lệ bị chém nhầm thành 499.
-   - *Cấm tăng > 90s:* Tăng quá cao sẽ bão hòa hàng đợi in-flight và gây đơ socket như sự cố ngày 24/09.
-3. **Tầng 3 (Stream Readiness / Socket):** `STREAM_READINESS_TIMEOUT_MS = 40000` (40s) trong `.env`. Chém kết nối đơ trước 5s–20s để nhường quyền failover sạch cho tầng Combo.
-
 > **[AUTO-TRIM NOTICE]**: Các mục quy tắc chi tiết mở rộng đã được lưu trữ trong thư mục `references/`.
 > Tra cứu sâu từng chuyên đề bằng `skill_view(name='<skill>', file_path='references/<file>.md')`.
