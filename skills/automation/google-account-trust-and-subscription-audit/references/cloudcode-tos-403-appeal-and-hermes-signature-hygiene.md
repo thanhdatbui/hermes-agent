@@ -50,3 +50,16 @@
 * **Cấm chạy `npm run build:backend` trên OmniRoute live:**
   - Script `backendOnlyPages.mjs` sử dụng kỹ thuật stub 126 trang Dashboard frontend thành `return null;` dẫn đến trắng trang hoặc 404 cho User.
   - Tuyệt đối không can thiệp build backend OmniRoute khi đang vận hành; ưu tiên làm sạch prompt từ client phát ra.
+
+## 5. Ranh Giới Giữa Prompt Cache vs Anomaly Abuse & Cân Bằng Sticky Combo
+- **Ngộ nhận sai lầm:** "Sticky càng dài thì càng trust".
+  - *Sự thật:* Prompt Cache là cơ chế tối ưu phần cứng tầng TPU (KV-cache) của Google, đạt 97.5%–99.5% cache hit. Cache KHÔNG CẤP ĐẶC QUYỀN MIỄN DỊCH trước hệ thống Abuse Detection.
+  - Nếu `stickyRoundRobinLimit: 15` kết hợp dồn tải, 1 acc gánh 500–1.000 requests/ngày với context 400k tokens sẽ bị AI Risk Engine của Google đưa vào diện botting dồn dập.
+- **Cân bằng hoàng kim:**
+  - Giữ `stickyRoundRobinLimit: 15` hoặc `10` trong phạm vi 1 session/turn để không bị cache miss các tool-calls liên tiếp (giữ tốc độ 5s–8s).
+  - Sử dụng strategy `least-used` và duy trì tối thiểu 5–10 acc sống khỏe trong pool để tự động dãn đều tải khi chuyển sang câu hỏi/turn mới, mỗi acc chỉ gánh ~100–200 calls/ngày.
+- **Tối ưu Tail Context (`protect_last_n: 6`):**
+  - Giữ `protect_last_n: 20` là thừa mứa (cõng 7-8 lượt tool cũ ~50k-80k tokens rác).
+  - Đặt `protect_last_n: 0` là tự sát: bot không đọc được raw output của bước trước -> mù thông tin, rơi vào vòng lặp gọi lại tool hoặc hallucinate.
+  - Chuẩn tối ưu: `protect_last_n: 6` (giữ nguyên vẹn 3 lượt tool gần nhất cho logic suy luận, các lượt cũ hơn tự động rút ruột thành 1-line summary).
+
