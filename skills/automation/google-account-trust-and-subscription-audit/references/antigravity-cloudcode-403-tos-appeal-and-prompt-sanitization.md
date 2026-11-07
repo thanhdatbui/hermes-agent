@@ -65,3 +65,17 @@
    - GPM API `/api/v3/profiles` mặc định phân trang (`page_size=100` hoặc `300`). Khi tìm tài khoản trong kho lớn (>1.400 profiles), **BẮT BUỘC duyệt qua toàn bộ `total_page` (ví dụ pages 1..5)**.
    - Tuyệt đối CẤM chỉ quét trang 1 rồi kết luận vội vàng "không có profile GPM" của tài khoản.
 5. **Kỷ luật Coordinator:** Coordinator bắt buộc chạy qua pool Antigravity / Coding CLI có TLS sạch; không được ép Coordinator chạy qua `gemini-web` (vì Web pool dành cho worker/tóm tắt/nén context, không phù hợp cho ReAct tool-calling chuyên sâu).
+
+## 5. Giải Phẫu Token Khổng Lồ Của Coordinator vs GUI & Kỷ Luật Nén Context
+- **Sự Chênh Lệch Thực Tế (Hermes vs Antigravity GUI):**
+  - Antigravity GUI: Mỗi turn chat độc lập chỉ tốn ~250–1.000 tokens (dạng trajectory tree, chỉ lưu trạng thái hiện tại của workspace).
+  - Hermes Coordinator: Mỗi turn chat ngốn tới **250.000 – 430.000 tokens** (hơn 1,1 tỷ tokens/ngày).
+- **3 Căn Nguyên Kỹ Thuật Khiến Hermes Ngốn Token:**
+  1. *Tool Schema Overhead:* 25 tools tích hợp (session_search, terminal, browser, skill_manage...) chiếm cứng ~12.500 tokens mô tả JSON trong MỌI request.
+  2. *System Prompt & Invariants:* Bộ quy tắc an toàn, farm safety, closeout gate, memory, user profile và kho 80 skills chiếm ~11.800 tokens (47k ký tự).
+  3. *Lịch Sử Hội Thoại Lũy Tiến (ReAct Multi-turn Accumulation - Thủ phạm chính):* Hermes tích tụ hàng trăm/nghìn messages cũ (kết quả đọc file, output lệnh terminal, trace OCR...).
+- **Cơ Chế Nén Context Cơ Học Thông Minh (`_prune_old_tool_results`):**
+  - **Không làm Hermes ngu đi:** Bộ nén không xóa mù context mà rút ruột các kết quả terminal/read_file cũ dài dòng, thay bằng 1 dòng tóm tắt thông tin nghiệp vụ: `[terminal] ran <cmd> -> exit 0, N lines output`.
+  - **Bảo Vệ Đuôi Hội Thoại (`protect_last_n: 6`):** Đặt `protect_last_n: 6` (tương đương 3 lượt chạy tool gần nhất) là điểm cân bằng vàng: giữ nguyên 100% raw output cho các bước suy luận tức thời, đồng thời cho phép rút ruột cơ học các lệnh cũ từ lượt thứ 4 trở đi để giảm tải băng thông upload qua proxy 4G, triệt tiêu lỗi HTTP 499 timeout.
+  - **Bảo Vệ Mục Tiêu Gốc (`protect_first_n: 3`):** 3 tin nhắn đầu phiên được khóa chặt, chống trôi mục tiêu (goal drift).
+  - **Cứu Tinh Prompt Caching:** Tỷ lệ Cache Hit trên Google Gemini đạt 97.5%, giúp tốc độ vẫn duy trì 5s–8s/turn dù context đạt >400k tokens. Tuy nhiên, sau các phiên tác vụ lớn (>500 messages), nên chủ động gõ `/new` hoặc đổi topic để xả sạch rác context cũ, tránh kích hoạt bộ lọc lưu lượng bất thường của Google.

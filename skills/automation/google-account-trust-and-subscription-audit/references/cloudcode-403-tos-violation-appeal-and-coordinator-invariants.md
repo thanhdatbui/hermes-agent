@@ -34,4 +34,22 @@
 ## 4. Biện Pháp Phòng Ngừa & Khử Trùng Prompt
 * Triệt tiêu toàn bộ từ khóa `Hermes Agent`, `Nous Research`, `nousresearch.com` trong System Prompt trước khi payload đi ra ngoài mạng:
   - Tắt/xóa `stable_parts.append(HERMES_AGENT_HELP_GUIDANCE)` trong `D:/Taadaa/Hermes/agent/system_prompt.py`.
-  - Thiết lập middleware sanitizer trên OmniRoute để regex strip các chuỗi nhận diện third-party agent trước khi bắn sang Google Cloud Code.
+  - Thay đổi dòng đầu tiên của `SOUL.md` từ `You are Hermes Agent...` thành `You are an AI Coordinator...`.
+  - Bổ sung unit test `test_hermes_agent_help_guidance_not_in_stable` trong `tests/agent/test_system_prompt.py` để khóa bất biến chống hồi quy.
+  - Sau khi sửa code core, **BẮT BUỘC restart Gateway** để process nạp lại bytecode vào RAM và làm mới prompt cache.
+
+## 5. Quy Chuẩn Đối Soát & Phân Biệt Lỗi Proxy vs Lỗi ToS 403
+* **Cạm bẫy kết luận vội vàng:** Khi request tới acc Pro bị timeout (30s) hoặc báo 499/504, **CẤM phán acc dính 403 ToS** nếu chưa test qua đường truyền proxy khác.
+* **Quy trình kiểm chứng Ground Truth:**
+  - Nếu proxy 4G gán của nick (dải `test.taadaa.click:51xx`) bị rớt mạng, acc sẽ bị timeout 30s.
+  - Tạm thời gán proxy sống (ví dụ proxy direct hoặc proxy đang 200 OK như cổng 5122) và probe lại 1 request:
+    - Nếu trả về `200 OK` -> Acc hoàn toàn sống, chỉ nghẽn mạng cục bộ (không cần appeal).
+    - Nếu trả về đúng `403 {"reason": "TOS_VIOLATION"}` -> Acc mới thực sự bị khóa Cloud Code ToS.
+  - Ngay sau khi probe xong, bắt buộc hoàn trả proxy assignment về cấu hình gốc trong `storage.sqlite`.
+* **Phân định lưu lượng Quota (Coordinator vs Worker):**
+  - Worker chỉ nhận task code nhỏ qua Web Pool (`gemini-web-argon-pool`), tiêu thụ <1M tokens/ngày.
+  - Coordinator (`ag-gemini-pool-3`) gánh toàn bộ ReAct history/tool calls, đốt >1 tỷ tokens/ngày với context trung bình 300k–360k tokens/turn. Tải khổng lồ này kết hợp TLS Node.js là tín hiệu khiến bot Google nghi vấn, và chữ ký prompt chính là ngòi nổ kích hoạt ToS ban.
+
+## 6. Invariant Vận Hành OmniRoute: Cấm Chạy `build:backend` Trên Bản Đang Live
+* **Bẫy sập Dashboard 126 trang:** Lệnh `npm run build:backend` sử dụng cơ chế stub trang (`scripts/build/backendOnlyPages.mjs`) thay toàn bộ 126 trang UI App-Router thành stub rỗng `return null;`. Nếu chạy trên Windows production, toàn bộ giao diện Web Dashboard (`:20129`) sẽ biến thành trang trắng xóa.
+* **Kỷ luật xử lý:** Mọi thao tác khử trùng prompt vi phạm ToS bắt buộc phải thực hiện tại Client (Hermes core), giữ nguyên 100% OmniRoute standalone đang chạy ổn định.
