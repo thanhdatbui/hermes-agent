@@ -3599,6 +3599,8 @@ class TelegramAdapter(BasePlatformAdapter):
 
             # Decide between webhook and polling mode
             webhook_url = os.getenv("TELEGRAM_WEBHOOK_URL", "").strip()
+            if os.getenv("TELEGRAM_DISABLE_WEBHOOK", "").strip().lower() in {"1", "true", "yes", "on"}:
+                webhook_url = ""
 
             if webhook_url:
                 # ── Webhook mode ─────────────────────────────────────
