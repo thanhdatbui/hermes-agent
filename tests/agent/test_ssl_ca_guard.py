@@ -42,16 +42,13 @@ def test_empty_certifi_bundle_raises_ssl_error(monkeypatch, tmp_path):
 
 
 @pytest.mark.parametrize("env_var", ["HERMES_CA_BUNDLE", "SSL_CERT_FILE", "REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE"])
-def test_missing_explicit_ca_bundle_env_raises_before_httpx(monkeypatch, tmp_path, env_var):
-    """Bad CA-bundle env vars should be reported before OpenAI/httpx init."""
+def test_missing_explicit_ca_bundle_env_recovers_to_certifi(monkeypatch, tmp_path, env_var):
+    """Stale CA-bundle env vars should be cleaned up and fall back to certifi."""
+    import os
     fake = tmp_path / "missing.pem"
     monkeypatch.setenv(env_var, str(fake))
-    with pytest.raises(SSLConfigurationError) as exc:
-        verify_ca_bundle()
-    message = str(exc.value)
-    assert env_var in message
-    assert str(fake) in message
-    assert "force-reinstall" in message
+    verify_ca_bundle()
+    assert env_var not in os.environ
 
 
 def test_invalid_explicit_ca_bundle_env_raises(monkeypatch, tmp_path):
@@ -66,7 +63,8 @@ def test_invalid_explicit_ca_bundle_env_raises(monkeypatch, tmp_path):
 
 def test_verify_ca_bundle_with_fallback_keeps_same_contract(monkeypatch, tmp_path):
     """The compatibility wrapper still rejects broken explicit CA paths."""
-    fake = tmp_path / "missing.pem"
+    fake = tmp_path / "broken.pem"
+    fake.write_text("not a cert bundle", encoding="utf-8")
     monkeypatch.setenv("SSL_CERT_FILE", str(fake))
     with pytest.raises(SSLConfigurationError):
         verify_ca_bundle_with_fallback()

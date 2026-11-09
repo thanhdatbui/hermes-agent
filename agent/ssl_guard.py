@@ -73,6 +73,15 @@ def verify_ca_bundle() -> None:
     for env_var in _CA_BUNDLE_ENV_VARS:
         value = os.getenv(env_var)
         if value:
+            path = Path(value).expanduser()
+            if not path.exists():
+                logger.warning(
+                    "%s points to missing CA bundle (%s); removing from environment to fall back to certifi",
+                    env_var,
+                    value,
+                )
+                os.environ.pop(env_var, None)
+                continue
             _validate_bundle_path(env_var, value)
 
     try:
