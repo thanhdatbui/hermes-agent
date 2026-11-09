@@ -185,7 +185,10 @@ SKILLS_GUIDANCE = (
     "skill with skill_manage so you can reuse it next time.\n"
     "When using a skill and finding it outdated, incomplete, or wrong, "
     "patch it immediately with skill_manage(action='patch') — don't wait to be asked. "
-    "Skills that aren't maintained become liabilities."
+    "Skills that aren't maintained become liabilities.\n"
+    "When handling Chrome CDP commands or interacting with logged-in Chrome browser sessions, "
+    "you MUST load the `logged-in-chrome-cdp-marketplace` skill first via "
+    "skill_view(name='logged-in-chrome-cdp-marketplace')."
 )
 
 KANBAN_GUIDANCE = (
@@ -1694,6 +1697,9 @@ def build_skills_system_prompt(
             "skills, voice, gateway, plugins, or any feature — load the `hermes-agent` skill "
             "first. It has the actual commands (e.g. `hermes config set …`, `hermes tools`, "
             "`hermes setup`) so you don't have to guess or invent workarounds.\n"
+            "Whenever a task or command involves Chrome CDP, debugging ports, or interacting with "
+            "logged-in Chrome browser sessions, you MUST load the `logged-in-chrome-cdp-marketplace` "
+            "skill first via skill_view(name='logged-in-chrome-cdp-marketplace') before executing actions.\n"
             "If a skill has issues, fix it with skill_manage(action='patch').\n"
             "After difficult/iterative tasks, offer to save as a skill. "
             "If a skill you loaded was missing steps, had wrong commands, or needed "
