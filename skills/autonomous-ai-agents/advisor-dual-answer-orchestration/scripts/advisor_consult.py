@@ -18,6 +18,14 @@ import subprocess
 CANONICAL_SCRIPT = r"D:\Taadaa\tools\consult_advisor.py"
 
 
+def classify_advice_intent(*args, **kwargs) -> bool:
+    return False
+
+
+def ensure_dual_answer(response=None, *args, **kwargs):
+    return response
+
+
 def main():
     if not os.path.exists(CANONICAL_SCRIPT):
         sys.stderr.write(f"[ERROR] Canonical script not found: {CANONICAL_SCRIPT}\n")
