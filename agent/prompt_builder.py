@@ -158,6 +158,8 @@ MEMORY_GUIDANCE = (
     "User preferences and recurring corrections matter more than procedural task details.\n"
     "Do NOT save task progress, session outcomes, completed-work logs, or temporary TODO "
     "state to memory; use session_search to recall those from past transcripts. "
+    "Strictly do NOT save URLs, hardware models, pricing tables, reference documentation, "
+    "or anything already mechanized into memory. "
     "Specifically: do not record PR numbers, issue numbers, commit SHAs, 'fixed bug X', "
     "'submitted PR Y', 'Phase N done', file counts, or any artifact that will be stale "
     "in 7 days. If a fact will be stale in a week, it does not belong in memory. "

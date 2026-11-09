@@ -47,6 +47,11 @@ class TestGuidanceConstants:
         assert "durable facts" in MEMORY_GUIDANCE
         assert "Do NOT save task progress" in MEMORY_GUIDANCE
         assert "session_search" in MEMORY_GUIDANCE
+        assert "URLs" in MEMORY_GUIDANCE
+        assert "hardware models" in MEMORY_GUIDANCE
+        assert "pricing tables" in MEMORY_GUIDANCE
+        assert "reference documentation" in MEMORY_GUIDANCE
+        assert "mechanized" in MEMORY_GUIDANCE
         assert "like a diary" not in MEMORY_GUIDANCE
         assert ">80%" not in MEMORY_GUIDANCE
 
