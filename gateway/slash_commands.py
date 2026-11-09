@@ -102,6 +102,19 @@ class GatewaySlashCommandsMixin:
         adapter = self.adapters.get(platform) if getattr(self, "adapters", None) else None
         return getattr(adapter, "typed_command_prefix", "/") if adapter is not None else "/"
 
+    def _clear_conversation_scope(self, session_key: str, reason: str = '') -> None:
+        if not session_key:
+            return
+        logger.debug("Clearing conversation scope for %s (reason=%s)", session_key, reason)
+        self._clear_session_boundary_security_state(session_key)
+        model_overrides = getattr(self, "_session_model_overrides", None)
+        if isinstance(model_overrides, dict):
+            model_overrides.pop(session_key, None)
+        self._set_session_reasoning_override(session_key, None)
+        pending_model_notes = getattr(self, "_pending_model_notes", None)
+        if isinstance(pending_model_notes, dict):
+            pending_model_notes.pop(session_key, None)
+
     async def _handle_reset_command(self, event: MessageEvent) -> Union[str, EphemeralReply]:
         """Handle /new or /reset command."""
         source = event.source

@@ -47,7 +47,7 @@ def _request_payload(cls, q, state, evid, acts, constr, rid, briefing=None, fiel
         env["session_briefing"] = _redact(briefing)
     if field:
         env["field_context"] = _redact(field)
-    payload = {"model": ADVISOR_MODEL, "messages": [{"role": "system", "content": "You are a read-only planner/advisor. Do not use tools, cause side effects, or approve actions. Return JSON when possible."}, {"role": "user", "content": json.dumps(env, ensure_ascii=False)}], "tools": [], "tool_choice": "none", "stream": False, "max_tokens": 1200}
+    payload = {"model": ADVISOR_MODEL, "messages": [{"role": "system", "content": "You are a read-only planner/advisor. Do not use tools, cause side effects, or approve actions. You must return ONLY a JSON object with keys: recommendation, reasoning, plan."}, {"role": "user", "content": json.dumps(env, ensure_ascii=False)}], "tools": [], "tool_choice": "none", "stream": False, "max_tokens": 1200}
 
     def shrink(v):
         if isinstance(v, str): return v[: len(v) // 2] if len(v) > 1 else ""
@@ -89,6 +89,32 @@ def _first_json_object(c):
     return None
 
 
+def _read_content(resp, t0, total_timeout):
+    if hasattr(resp, "read"):
+        raw = resp.read()
+        if time.monotonic() - t0 >= total_timeout: raise TimeoutError("Advisor stream timeout exceeded")
+        if isinstance(raw, (bytes, bytearray)):
+            raw = raw.decode("utf-8", errors="replace")
+        try:
+            dec = json.loads(raw)
+            if isinstance(dec, dict) and "choices" in dec:
+                return dec["choices"][0].get("message", {}).get("content", "") or ""
+        except (ValueError, TypeError, KeyError):
+            pass
+        return str(raw)
+    chunks = []
+    for line in resp:
+        if time.monotonic() - t0 >= total_timeout: raise TimeoutError("Advisor stream timeout exceeded")
+        s = line.decode("utf-8", errors="replace").strip() if isinstance(line, (bytes, bytearray)) else str(line).strip()
+        if s == "data: [DONE]": break
+        if not s.startswith("data: "): continue
+        try:
+            delta = json.loads(s[6:])["choices"][0].get("delta", {}).get("content")
+            if delta: chunks.append(delta)
+        except Exception: continue
+    return "".join(chunks)
+
+
 def _loopback_endpoint(ep):
     try:
         p = urlparse(ep)
@@ -128,14 +154,23 @@ def advisor_consult(decision_class, question, current_state=None, evidence=None,
     except (TypeError, ValueError) as exc: return _unavail(exc)
     try:
         with _ADVISOR_OPENER.open(req, timeout=b_to) as resp:
-            body = resp.read()
-        dec = json.loads(body.decode("utf-8") if isinstance(body, (bytes, bytearray)) else body)
-        choices = dec.get("choices") if isinstance(dec, dict) else None
-        msg = choices[0].get("message", {}) if choices and isinstance(choices[0], dict) else {}
-        cnt = msg.get("content") if isinstance(msg, dict) else None
-        if not isinstance(cnt, str) or not cnt.strip(): raise ValueError("empty response content")
+            cnt = _read_content(resp, t0, b_to)
+        if not cnt.strip(): raise ValueError("empty response content")
         advice = _first_json_object(cnt)
         if not isinstance(advice, dict): raise ValueError("response content did not contain a JSON object")
+        rec = advice.get("recommendation")
+        if not isinstance(rec, str) or not rec.strip():
+            for alt in ("advice", "plan", "review"):
+                if isinstance(advice.get(alt), str) and advice[alt].strip():
+                    rec = advice[alt]
+                    break
+        if not isinstance(rec, str) or not rec.strip():
+            raise ValueError("advisor response is missing non-empty recommendation")
+        advice["recommendation"] = rec.strip()
+        if "reasoning" in advice and not isinstance(advice["reasoning"], str):
+            advice["reasoning"] = str(advice["reasoning"])
+        if "plan" in advice and not isinstance(advice["plan"], list):
+            advice["plan"] = [str(advice["plan"])]
         lat = int((time.monotonic() - t0) * 1000)
         res = {"status": "ok", "advice": advice, "raw_advice": cnt[:MAX_RAW_ADVICE], "telemetry": _telemetry(rid, lat, ep)}
         return res

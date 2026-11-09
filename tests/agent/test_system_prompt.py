@@ -101,6 +101,13 @@ class TestCodingContextBlock:
         assert "coding agent" not in _stable_prompt(agent)
 
 
+class TestNoHermesHelpGuidance:
+    def test_hermes_agent_help_guidance_not_in_stable(self, monkeypatch):
+        agent = _make_agent(platform="cli")
+        stable = _stable_prompt(agent)
+        assert "HERMES_AGENT_HELP_GUIDANCE" not in stable
+
+
 class TestTelegramRichMessagesHint:
     """Verify that TELEGRAM_RICH_MESSAGES_HINT is conditionally included."""
 

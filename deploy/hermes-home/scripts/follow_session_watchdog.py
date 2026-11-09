@@ -32,7 +32,13 @@ def main(*args, **kwargs):
         sys.exit(1)
     cmd = [PY, "-B", SCRIPT]
     cmd.extend(sys.argv[1:])
-    proc = subprocess.run(cmd, cwd=WORKDIR)
+    proc = subprocess.run(cmd, cwd=WORKDIR, capture_output=True, text=True)
+    if proc.stdout:
+        sys.stdout.write(proc.stdout)
+        sys.stdout.flush()
+    if proc.stderr:
+        sys.stderr.write(proc.stderr)
+        sys.stderr.flush()
     if __name__ == "__main__":
         sys.exit(proc.returncode)
     return proc.returncode

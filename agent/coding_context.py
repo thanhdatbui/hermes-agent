@@ -70,7 +70,7 @@ CODING_TOOLSET = "coding"
 # Surfaces where a coding posture makes sense under ``auto``. Messaging
 # platforms (telegram, discord, slack, …) are intentionally absent — a chat bot
 # in a group is not pair-programming.
-INTERACTIVE_CODING_PLATFORMS = {"cli", "tui", "acp", "desktop", ""}
+INTERACTIVE_CODING_PLATFORMS = {"cli", "tui", "acp", "desktop", "telegram", ""}
 
 # Project-root signals that mark a directory as a code workspace even when it
 # isn't (yet) a git repo. Cheap filename checks — no parsing.
@@ -297,16 +297,14 @@ class ContextProfile:
     compact_skill_categories: tuple[str, ...] = ()
 
 
-# Skill categories that are clearly not part of a coding workflow. Demoted to
-# names-only in the prompt's skill index under the opt-in ``focus`` mode only
-# (deny-list — anything not listed here, incl. custom user categories, keeps
-# full entries). Coding-adjacent categories (devops, github, mcp,
-# data-science, diagramming, research, security, …) are intentionally absent.
+# Skill categories demoted to names-only in the prompt's skill index under the
+# opt-in ``focus`` mode (deny-list — anything not listed here, including custom
+# user categories, keeps full entries).
 _NON_CODING_SKILL_CATEGORIES = (
     "apple", "communication", "cooking", "creative", "email", "finance",
     "gaming", "gifs", "health", "media", "music", "note-taking",
     "productivity", "shopping", "smart-home", "social-media", "travel",
-    "yuanbao",
+    "yuanbao", "software-development", "devops", "github", "desktop", "network", "autonomous-ai-agents",
 )
 
 

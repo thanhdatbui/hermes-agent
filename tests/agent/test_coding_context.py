@@ -507,8 +507,9 @@ class TestProfiles:
         assert focus.is_coding is True
         compact = focus.compact_skill_categories()
         assert "social-media" in compact and "smart-home" in compact
-        for kept in ("github", "devops", "software-development", "data-science"):
-            assert kept not in compact
+        for demoted in ("github", "devops", "software-development"):
+            assert demoted in compact
+        assert "data-science" not in compact
         # General posture demotes nothing.
         general = cc.resolve_runtime_mode(platform="telegram", cwd=tmp_path, config={})
         assert general.compact_skill_categories() == frozenset()

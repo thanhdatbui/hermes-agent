@@ -161,6 +161,23 @@ def is_test_file(path_str: str) -> bool:
     return False
 
 
+def is_code_file(path_str: str) -> bool:
+    """Xác định file mã nguồn nghiệp vụ cần bảo vệ (chặn Coordinator sửa trực tiếp ngoài pipeline).
+    Test files được kiểm soát riêng qua ngân sách L2/test alignment.
+    Loại trừ thư mục runtime/báo cáo/tạm (reports, tmp, temp)."""
+    if not path_str or not isinstance(path_str, str):
+        return False
+    try:
+        norm = os.path.normpath(path_str.strip().strip("'\"`")).replace(os.sep, '/').lower()
+    except Exception:
+        return False
+    if is_test_file(norm):
+        return False
+    for skip in ("/reports/", "/tmp/", "/temp/"):
+        if skip in norm:
+            return False
+    return norm.endswith((".py", ".sh", ".bash"))
+
 def is_related_test_file(test_file: str, eligible_targets: List[str]) -> bool:
     """
     Kiểm tra xem file test có liên kết hợp lệ với ít nhất một target bị fail của Worker không (L2 Reason Binding).
@@ -698,6 +715,22 @@ def coordinator_write_gate(
             return False, f"L2 REJECTED: L2 vượt ngân sách khởi tạo ({len(new_files)} files, {new_lines} dòng > 30).", state
 
     # 3. Kiểm tra T1 (routine edits của Coordinator, không cần Sol plan / worker)
+    # CHẶN CƠ HỌC: Coordinator không được dùng T1 để tự sửa file mã nguồn (.py/.sh) ngoài pipeline
+    is_pipeline_active = bool(
+        os.environ.get("UNIFIED_PIPELINE_ACTIVE") == "1"
+        or os.environ.get("PIPELINE_RUN_ID")
+        or state.get("pipeline_active")
+    )
+    if not is_pipeline_active:
+        code_targets = [p for p in new_files if is_code_file(p)]
+        if code_targets:
+            return False, (
+                f"⛔ [COORDINATOR GUARD - DIRECT CODE EDIT BLOCKED]: "
+                f"CẤM Coordinator tự ý dùng '{fn_name}' sửa file mã nguồn {code_targets}! "
+                f"Mọi thao tác sửa code BẮT BUỘC phải lên plan và kích hoạt qua: "
+                f"python D:/Taadaa/tools/unified_patch_pipeline.py run --repo <repo> --file <file> --task '...'"
+            ), state
+
     t1_files = set(led.get("t1_files", [])) | new_files
     total_t1_lines = led.get("t1_lines", 0) + new_lines
 
@@ -896,4 +929,52 @@ def coordinator_terminal_gate(cmd: str, state: dict) -> Tuple[bool, str]:
         ok, reason = _coord_segment_gate(seg, state)
         if not ok:
             return False, reason
+    return True, ""
+
+
+# ==========================================
+# 6. CRONJOB PAUSE GUARD (MECHANICAL BLOCK ON ERROR STATUS)
+# ==========================================
+def _resolve_jobs_json_path() -> Path:
+    env_override = os.environ.get("FARM_GUARD_JOBS_JSON_PATH")
+    if env_override:
+        return Path(env_override)
+    cron_path = HERMES_ROOT / "cron" / "jobs.json"
+    if cron_path.is_file():
+        return cron_path
+    return HERMES_ROOT / "jobs.json"
+
+
+JOBS_JSON_PATH = _resolve_jobs_json_path()
+
+
+def coordinator_tool_gate(fn_name: str, fn_args: dict, sess_id: Optional[str] = None) -> Tuple[bool, str]:
+    """Chặn cơ học: cronjob action='pause' bị BLOCK nếu job mục tiêu đang last_status='error' trong jobs.json."""
+    if not isinstance(fn_args, dict):
+        return True, ""
+    action = str(fn_args.get("action") or "").strip().lower()
+    if fn_name != "cronjob" or action != "pause":
+        return True, ""
+
+    job_id = fn_args.get("job_id") or fn_args.get("id") or fn_args.get("job") or fn_args.get("name")
+    if not job_id:
+        return True, ""
+
+    try:
+        jobs_data = json.loads(JOBS_JSON_PATH.read_text(encoding="utf-8", errors="replace"))
+    except Exception:
+        return True, ""
+
+    jobs_list = jobs_data if isinstance(jobs_data, list) else jobs_data.get("jobs", [])
+    for job in jobs_list:
+        if not isinstance(job, dict):
+            continue
+        if job.get("id") == job_id or job.get("job_id") == job_id or job.get("name") == job_id:
+            if str(job.get("last_status") or "").strip().lower() == "error":
+                return False, (
+                    f"CRONJOB_PAUSE_BLOCKED: Job '{job_id}' đang last_status='error' trong jobs.json. "
+                    f"CẤM pause job đang lỗi; phải xử lý nguyên nhân lỗi trước."
+                )
+            break
+
     return True, ""

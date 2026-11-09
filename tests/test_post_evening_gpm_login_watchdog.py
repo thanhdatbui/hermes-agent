@@ -18,6 +18,45 @@ import post_evening_gpm_login_watchdog as watchdog
 HCMC = ZoneInfo("Asia/Ho_Chi_Minh")
 
 
+class TestIsWithinTimeWindow:
+    @pytest.mark.parametrize(
+        "dt,expected",
+        [
+            # Cache clear: 04:00 - 04:30 (BLOCKED)
+            (datetime(2026, 9, 20, 3, 59, tzinfo=HCMC), True),
+            (datetime(2026, 9, 20, 4, 0, tzinfo=HCMC), False),
+            (datetime(2026, 9, 20, 4, 15, tzinfo=HCMC), False),
+            (datetime(2026, 9, 20, 4, 30, tzinfo=HCMC), False),
+            (datetime(2026, 9, 20, 4, 31, tzinfo=HCMC), True),
+            # Shift 1: 05:15 - 09:30 (BLOCKED)
+            (datetime(2026, 9, 20, 5, 14, tzinfo=HCMC), True),
+            (datetime(2026, 9, 20, 5, 15, tzinfo=HCMC), False),
+            (datetime(2026, 9, 20, 7, 0, tzinfo=HCMC), False),
+            (datetime(2026, 9, 20, 9, 30, tzinfo=HCMC), False),
+            (datetime(2026, 9, 20, 9, 31, tzinfo=HCMC), True),
+            # Shift 2: 11:45 - 15:30 (BLOCKED)
+            (datetime(2026, 9, 20, 11, 44, tzinfo=HCMC), True),
+            (datetime(2026, 9, 20, 11, 45, tzinfo=HCMC), False),
+            (datetime(2026, 9, 20, 13, 0, tzinfo=HCMC), False),
+            (datetime(2026, 9, 20, 15, 30, tzinfo=HCMC), False),
+            (datetime(2026, 9, 20, 15, 31, tzinfo=HCMC), True),
+            # Shift 3: 17:45 - 21:30 (BLOCKED)
+            (datetime(2026, 9, 20, 17, 44, tzinfo=HCMC), True),
+            (datetime(2026, 9, 20, 17, 45, tzinfo=HCMC), False),
+            (datetime(2026, 9, 20, 19, 0, tzinfo=HCMC), False),
+            (datetime(2026, 9, 20, 21, 30, tzinfo=HCMC), False),
+            (datetime(2026, 9, 20, 21, 31, tzinfo=HCMC), True),
+            # Other free times (ALLOWED)
+            (datetime(2026, 9, 20, 23, 0, tzinfo=HCMC), True),
+            (datetime(2026, 9, 20, 1, 0, tzinfo=HCMC), True),
+        ],
+    )
+    def test_is_within_time_window(self, dt, expected):
+        with patch.object(watchdog, "datetime") as mock_dt:
+            mock_dt.now.return_value = dt
+            assert watchdog.is_within_time_window() is expected
+
+
 class TestGetCurrentShiftInfo:
     @pytest.mark.parametrize(
         "dt,expected",

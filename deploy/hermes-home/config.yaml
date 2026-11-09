@@ -3,6 +3,7 @@ model:
   default: omni-worker
   persist_switch_by_default: false
   provider: omni
+  supports_vision: true
 providers:
   9router:
     api: http://192.168.110.123:20128/v1
@@ -24,20 +25,22 @@ providers:
     key_env: OMNIROUTE_API_KEY
     models:
       ag-claude: {}
-      ag-gemini-pool-3: {}
+      ag-gemini-pool-3:
+        supports_vision: true
       ag-opus: {}
+      gemini-web-argon-pool: {}
       omni-free: {}
       omni-worker: {}
     transport: chat_completions
 fallback_providers:
-  - model: 9r-free
-    provider: custom:9router
-  - model: opencode-free
-    provider: custom:9router
-  - model: ag-gemini-pool-3
-    provider: omni
+- model: 9r-free
+  provider: custom:9router
+- model: opencode-free
+  provider: custom:9router
+- model: ag-gemini-pool-3
+  provider: omni
 agent:
-  max_turns: 200
+  max_turns: 100
   gateway_timeout: 3600
   api_max_retries: 2
   service_tier: normal
@@ -106,20 +109,28 @@ agent:
       system_prompt: Bạn là Hermes vận hành các repo Taadaa. cd đúng repo trước mọi
         lệnh. Đọc AGENTS.md + HANDOFF.md + PROJECT_RULES.md. Báo cáo tóm tắt cuối
         cùng khi hoàn tất hoặc có lỗi thực tế. Các lượt trung gian dùng [SILENT].
-  reasoning_effort: high
   system_prompt: 'Bạn là Hermes Coordinator điều phối các repo dự án Taadaa Phone
     Farm.
 
 
     PHÂN VAI BẮT BUỘC (COORDINATOR vs WORKER):
 
-    - Session chính LÀ COORDINATOR: đọc log/inspect O(1), phân tích, lập plan, dispatch worker và review. Mọi sửa code/test thông thường do worker qua `delegate_task`.
+    - Session chính LÀ COORDINATOR: đọc log/inspect O(1), phân tích, lập plan, dispatch
+    worker và review. Mọi sửa code/test thông thường do worker qua `delegate_task`.
 
-    - Coordinator KHÔNG tự sửa code/test bừa bãi. NGOẠI LỆ DUY NHẤT là Emergency Surgery L2 trong SOUL.md: sau 2 lần transient timeout hoặc structural failure lần 2, exact diff, <=2 files tính cả test, <=30 dòng tổng thêm+xóa, không credentials/account/device/config/guard, 1 test offline <30s, fail thì revert và BLOCKED.
+    - Coordinator KHÔNG tự sửa code/test bừa bãi. NGOẠI LỆ DUY NHẤT là Emergency Surgery
+    L2 trong SOUL.md: sau 2 lần transient timeout hoặc structural failure lần 2, exact
+    diff, <=2 files tính cả test, <=30 dòng tổng thêm+xóa, không credentials/account/device/config/guard,
+    1 test offline <30s, fail thì revert và BLOCKED.
 
-    - TRANSIENT timeout/429/5xx KHÔNG tính circuit breaker, retry cùng prompt tối đa 2 lần. STRUCTURAL mới tính tối đa 2 lần; không retry prompt cũ. `clarify` chỉ cho quyết định nghiệp vụ, quyền truy cập hoặc hành động không đảo ngược/tốn phí tiền thật; không dùng để xin phép L0-L2 hoặc trốn timeout.
+    - TRANSIENT timeout/429/5xx KHÔNG tính circuit breaker, retry cùng prompt tối
+    đa 2 lần. STRUCTURAL mới tính tối đa 2 lần; không retry prompt cũ. `clarify` chỉ
+    cho quyết định nghiệp vụ, quyền truy cập hoặc hành động không đảo ngược/tốn phí
+    tiền thật; không dùng để xin phép L0-L2 hoặc trốn timeout.
 
-    - QUY TẮC WORKER BUDGET: Worker hoàn thành dưới 15 phút, <=15 iterations/calls theo contract. Task Read/Inspect/OCR không sửa code/commit/test suite. Task Fix Code chỉ sửa đúng Scope Lock và chạy focused test <30s.
+    - QUY TẮC WORKER BUDGET: Worker hoàn thành dưới 15 phút, <=15 iterations/calls
+    theo contract. Task Read/Inspect/OCR không sửa code/commit/test suite. Task Fix
+    Code chỉ sửa đúng Scope Lock và chạy focused test <30s.
 
 
     QUY TẮC AN TOÀN FARM & CHỐNG CHỮA CHÁY:
@@ -167,7 +178,7 @@ compression:
   enabled: true
   threshold: 0.3
   target_ratio: 0.2
-  protect_last_n: 20
+  protect_last_n: 6
   protect_first_n: 3
   codex_gpt55_autoraise: true
   codex_app_server_auto: native
@@ -182,8 +193,8 @@ auxiliary:
     provider: omni
     model: ag-gemini-pool-3
     fallback_chain:
-      - model: omni-free
-        provider: omni
+    - model: omni-free
+      provider: omni
 display:
   compact: false
   busy_input_mode: interrupt
@@ -223,7 +234,7 @@ memory:
 delegation:
   model: ag-gemini-pool-3
   provider: omni
-  max_iterations: 15
+  max_iterations: 60
   child_timeout_seconds: 900
   reasoning_effort: medium
   max_concurrent_children: 8
@@ -237,39 +248,51 @@ approvals:
   mode: smart
   destructive_slash_confirm: false
 command_allowlist:
-  - copy/move file into system config path
-  - execute_code
-  - script execution via -e/-c flag
-  - force kill processes
-  - script execution via heredoc
+- copy/move file into system config path
+- execute_code
+- script execution via -e/-c flag
+- force kill processes
+- script execution via heredoc
 quick_commands:
   rl:
     target: /skill role-based-agent-review-loop
     type: alias
 hooks:
   post_tool_call:
-    - command: python D:/Taadaa/tools/hooks/record_device_failure.py
-      matcher: terminal
-      timeout: 5
+  - command: python D:/Taadaa/tools/hooks/record_device_failure.py
+    matcher: terminal
+    timeout: 5
   pre_tool_call:
-    - command: python D:/Taadaa/tools/hooks/guard_read_file_size.py
-      matcher: read_file
-      timeout: 5
-    - command: python D:/Taadaa/tools/hooks/guard_pytest_scope.py
-      matcher: terminal
-      timeout: 5
-    - command: python D:/Taadaa/tools/hooks/guard_dispatch_contract.py
-      matcher: delegate_task
-      timeout: 5
-    - command: python D:/Taadaa/tools/hooks/guard_broad_grep.py
-      matcher: terminal|search_files
-      timeout: 5
-    - command: python D:/Taadaa/tools/hooks/guard_device_bulkhead.py
-      matcher: terminal
-      timeout: 5
-    - command: python D:/Taadaa/tools/hooks/guard_model_drift.py
-      matcher: terminal
-      timeout: 5
+  - command: python D:/Taadaa/tools/hooks/guard_read_file_size.py
+    matcher: read_file
+    timeout: 5
+  - command: python D:/Taadaa/tools/hooks/guard_pytest_scope.py
+    matcher: terminal
+    timeout: 5
+  - command: python D:/Taadaa/tools/hooks/guard_dispatch_contract.py
+    matcher: delegate_task
+    timeout: 5
+  - command: python D:/Taadaa/tools/hooks/guard_broad_grep.py
+    matcher: terminal|search_files
+    timeout: 5
+  - command: python D:/Taadaa/tools/hooks/guard_device_bulkhead.py
+    matcher: terminal
+    timeout: 5
+  - command: python D:/Taadaa/tools/hooks/guard_model_drift.py
+    matcher: terminal
+    timeout: 5
+  - command: python D:/Taadaa/tools/guard_cronjob_safety.py
+    matcher: cronjob|terminal
+    timeout: 5
+  - command: python D:/Taadaa/tools/guard_android_proxy.py
+    matcher: terminal
+    timeout: 5
+  - command: python D:/Taadaa/tools/guard_gpm_proxy.py
+    matcher: terminal|execute_code
+    timeout: 5
+  - command: python D:/Taadaa/tools/hooks/guard_closeout_discipline.py
+    matcher: terminal|clarify
+    timeout: 5
 security:
   allow_private_urls: true
 cron:
@@ -279,15 +302,15 @@ code_execution:
   timeout: 300
 model_catalog:
   excluded_providers:
-    - anthropic
+  - anthropic
 gateway:
   max_workers: 50
   media_delivery:
     auto_deliver_local_files: false
     denied_paths:
-      - D:/TIKTOK-videonuoinick
-      - D:/video goc
-      - D:/OneDrive
+    - D:/TIKTOK-videonuoinick
+    - D:/video goc
+    - D:/OneDrive
   platforms:
     telegram:
       channel_overrides:
@@ -300,7 +323,8 @@ gateway:
 
             Mọi tác vụ sửa code / viết test BẮT BUỘC dispatch qua `delegate_task`
             kèm Scope Lock, Test Lock và Budget <= 15 phút, <= 15 tool calls. CẤM
-            bấm ADB tay thay cho sửa code. Ngoại lệ duy nhất: Emergency Surgery L2 đúng SOUL.md. Báo cáo tóm tắt cuối cùng.'
+            bấm ADB tay thay cho sửa code. Ngoại lệ duy nhất: Emergency Surgery L2
+            đúng SOUL.md. Báo cáo tóm tắt cuối cùng.'
         '-5171154309':
           system_prompt: 'Bạn là Coordinator điều phối repo D:\Taadaa\Hermes.
 
@@ -308,7 +332,8 @@ gateway:
 
             Mọi tác vụ sửa code / viết test BẮT BUỘC dispatch qua `delegate_task`
             kèm Scope Lock, Test Lock và Budget <= 15 phút, <= 15 tool calls. CẤM
-            bấm ADB tay thay cho sửa code. Ngoại lệ duy nhất: Emergency Surgery L2 đúng SOUL.md. Báo cáo tóm tắt cuối cùng.'
+            bấm ADB tay thay cho sửa code. Ngoại lệ duy nhất: Emergency Surgery L2
+            đúng SOUL.md. Báo cáo tóm tắt cuối cùng.'
         '-5373649734':
           system_prompt: 'Bạn là AI Coordinator Chuyên Trách Phục Hồi & Gỡ Rối Farm
             Android (Farm Alerts).
@@ -322,9 +347,10 @@ gateway:
             Test Lock (chỉ chạy focused test <30s, CẤM pytest toàn repo), Budget <=
             15 phút và <= 15 tool calls. - Task chỉ Read/Inspect/OCR: CẤM worker sửa
             code / CẤM commit, hoàn thành <= 10 tool calls (< 10 phút). - CẤM Coordinator
-            tự sửa code (ngoại lệ duy nhất là Emergency Surgery L2 đúng SOUL.md) hoặc bấm ADB tay chữa cháy (`input tap/keyevent`). 4. Canary
-            Test: Sau khi worker hoàn thành, chạy lệnh Canary test lại máy N. 5. Báo
-            cáo: Gửi kết quả cuối (Success / Fail) vào nhóm.'
+            tự sửa code (ngoại lệ duy nhất là Emergency Surgery L2 đúng SOUL.md) hoặc
+            bấm ADB tay chữa cháy (`input tap/keyevent`). 4. Canary Test: Sau khi
+            worker hoàn thành, chạy lệnh Canary test lại máy N. 5. Báo cáo: Gửi kết
+            quả cuối (Success / Fail) vào nhóm.'
         '-5377611430':
           system_prompt: 'Bạn là Coordinator phụ trách repo D:\Taadaa\tiktok-luot
             nuoi acc (nuôi acc TikTok).
@@ -334,7 +360,8 @@ gateway:
 
             Mọi tác vụ sửa code / viết test BẮT BUỘC dispatch qua `delegate_task`
             kèm Scope Lock, Test Lock và Budget <= 15 phút, <= 15 tool calls. CẤM
-            bấm ADB tay thay cho sửa code. Ngoại lệ duy nhất: Emergency Surgery L2 đúng SOUL.md. Báo cáo tóm tắt cuối cùng.'
+            bấm ADB tay thay cho sửa code. Ngoại lệ duy nhất: Emergency Surgery L2
+            đúng SOUL.md. Báo cáo tóm tắt cuối cùng.'
         '-5435853713':
           system_prompt: 'Bạn là Coordinator phụ trách repo D:\Taadaa\Tiktok-video
             (render & upload video TikTok).
@@ -344,7 +371,8 @@ gateway:
 
             Mọi tác vụ sửa code / viết test BẮT BUỘC dispatch qua `delegate_task`
             kèm Scope Lock, Test Lock và Budget <= 15 phút, <= 15 tool calls. CẤM
-            bấm ADB tay thay cho sửa code. Ngoại lệ duy nhất: Emergency Surgery L2 đúng SOUL.md. Báo cáo tóm tắt cuối cùng.'
+            bấm ADB tay thay cho sửa code. Ngoại lệ duy nhất: Emergency Surgery L2
+            đúng SOUL.md. Báo cáo tóm tắt cuối cùng.'
         '-5494641602':
           system_prompt: 'Bạn là Coordinator phụ trách repo D:\Taadaa\Tiktok_Reg (đăng
             ký TikTok).
@@ -354,10 +382,11 @@ gateway:
 
             Mọi tác vụ sửa code / viết test BẮT BUỘC dispatch qua `delegate_task`
             kèm Scope Lock, Test Lock và Budget <= 15 phút, <= 15 tool calls. CẤM
-            bấm ADB tay thay cho sửa code. Ngoại lệ duy nhất: Emergency Surgery L2 đúng SOUL.md. Báo cáo tóm tắt cuối cùng.'
+            bấm ADB tay thay cho sửa code. Ngoại lệ duy nhất: Emergency Surgery L2
+            đúng SOUL.md. Báo cáo tóm tắt cuối cùng.'
       group_allowed_chats:
-        - -5373649734
-        - '-5373649734'
+      - -5373649734
+      - '-5373649734'
       observe_unmentioned_group_messages: true
       require_mention: false
 streaming:
@@ -373,111 +402,118 @@ updates:
   non_interactive_local_changes: stash
 _config_version: 33
 custom_providers:
-  - api_key: sk-2472cb532bed2c65-lq9f37-3f2c6f2a
-    api_mode: chat_completions
-    base_url: http://192.168.110.123:20128/v1
-    discover_models: false
-    key_env: NINEROUTER_API_KEY
-    model: 9r-free
-    models:
-      9r-free:
-        context_length: 1048576
-      ag/claude-opus-4-6-thinking:
-        context_length: 1000000
-      ag/claude-sonnet-4-6:
-        context_length: 1000000
-      ag/gemini-3.7-flash-high:
-        context_length: 1048576
-      claude-sonnet-4-6:
-        context_length: 1000000
-      gemini-3.7-flash-high:
-        context_length: 1048576
-      gpt-5.6-luna:
-        context_length: 256000
-      gpt-5.6-sol:
-        context_length: 256000
-      gpt-5.6-terra:
-        context_length: 256000
-      plan-review:
-        context_length: 256000
-      plan-review-hard:
-        context_length: 256000
-    name: 9router
-  - api_mode: chat_completions
-    base_url: http://192.168.110.123:20129/v1
-    discover_models: false
-    key_env: OMNIROUTE_API_KEY
-    model: omni-worker
-    models:
-      omni-free:
-        context_length: 200000
-      omni-worker:
-        context_length: 200000
-    name: omni
-    provider_key: omni
-group_sessions_per_user: true
+- api_key: sk-2472cb532bed2c65-lq9f37-3f2c6f2a
+  api_mode: chat_completions
+  base_url: http://192.168.110.123:20128/v1
+  discover_models: false
+  key_env: NINEROUTER_API_KEY
+  model: 9r-free
+  models:
+    9r-free:
+      context_length: 1048576
+    ag/claude-opus-4-6-thinking:
+      context_length: 1000000
+    ag/claude-sonnet-4-6:
+      context_length: 1000000
+    ag/gemini-3.7-flash-high:
+      context_length: 1048576
+    claude-sonnet-4-6:
+      context_length: 1000000
+    gemini-3.7-flash-high:
+      context_length: 1048576
+    gpt-5.6-luna:
+      context_length: 256000
+    gpt-5.6-sol:
+      context_length: 256000
+    gpt-5.6-terra:
+      context_length: 256000
+    plan-review:
+      context_length: 256000
+    plan-review-hard:
+      context_length: 256000
+  name: 9router
+- api_mode: chat_completions
+  base_url: http://192.168.110.123:20129/v1
+  discover_models: false
+  key_env: OMNIROUTE_API_KEY
+  model: omni-worker
+  models:
+    omni-free:
+      context_length: 200000
+    omni-worker:
+      context_length: 200000
+  name: omni
+  provider_key: omni
+  models:
+    ag-gemini-pool-3:
+      context_length: 1048576
+      supports_vision: true
+    omni-free:
+      context_length: 200000
+    omni-worker:
+      context_length: 200000
 known_plugin_toolsets:
   cli:
-    - spotify
+  - spotify
   telegram:
-    - spotify
+  - spotify
 platform_toolsets:
   cli:
-    - browser
-    - clarify
-    - code_execution
-    - computer_use
-    - cronjob
-    - delegation
-    - file
-    - image_gen
-    - kanban
-    - memory
-    - session_search
-    - skills
-    - terminal
-    - todo
-    - tts
-    - web
+  - browser
+  - clarify
+  - code_execution
+  - computer_use
+  - cronjob
+  - delegation
+  - file
+  - image_gen
+  - kanban
+  - memory
+  - session_search
+  - skills
+  - terminal
+  - todo
+  - tts
+  - web
   discord:
-    - hermes-discord
+  - hermes-discord
   google_chat:
-    - hermes-google_chat
+  - hermes-google_chat
   homeassistant:
-    - hermes-homeassistant
+  - hermes-homeassistant
   qqbot:
-    - hermes-qqbot
+  - hermes-qqbot
   signal:
-    - hermes-signal
+  - hermes-signal
   slack:
-    - hermes-slack
+  - hermes-slack
   teams:
-    - hermes-teams
+  - hermes-teams
   telegram:
-    - browser
-    - clarify
-    - code_execution
-    - computer_use
-    - cronjob
-    - delegation
-    - file
-    - image_gen
-    - kanban
-    - memory
-    - session_search
-    - skills
-    - terminal
-    - todo
-    - tts
-    - web
+  - browser
+  - clarify
+  - code_execution
+  - computer_use
+  - cronjob
+  - delegation
+  - file
+  - image_gen
+  - kanban
+  - memory
+  - session_search
+  - skills
+  - terminal
+  - todo
+  - tts
+  - web
   whatsapp:
-    - hermes-whatsapp
+  - hermes-whatsapp
   yuanbao:
-    - hermes-yuanbao
+  - hermes-yuanbao
 plugins:
   disabled: []
   enabled:
-    - farm-coordinator-guard
+  - farm-coordinator-guard
   entries:
     farm-coordinator-guard:
       allow_tool_override: false

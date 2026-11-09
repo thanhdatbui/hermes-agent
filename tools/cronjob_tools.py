@@ -826,6 +826,18 @@ def cronjob(
             )
 
         if normalized == "pause":
+            if job.get("last_status") == "error":
+                return json.dumps(
+                    {
+                        "success": False,
+                        "error": (
+                            "Job last run with an error; pausing would hide the "
+                            "symptom instead of fixing the underlying cause. "
+                            "Investigate and resolve the error before pausing."
+                        ),
+                    },
+                    indent=2,
+                )
             updated = pause_job(job_id, reason=reason)
             _notify_provider_jobs_changed_safe()
             return json.dumps({"success": True, "job": _format_job(updated)}, indent=2)

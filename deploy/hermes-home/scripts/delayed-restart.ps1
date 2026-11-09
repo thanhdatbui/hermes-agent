@@ -11,8 +11,9 @@ function Log-Msg($msg) {
     "[$timestamp] $msg" | Out-File -FilePath $logFile -Append -Encoding utf8
 }
 
-# Tim interpreter pythonw phu hop (uu tien venv hermes, sau do den PATH va uv)
+# Tim interpreter pythonw phu hop (uu tien venv hermes tai D:, sau do den venv cu va uv)
 $pythonwCandidates = @(
+    "D:\Taadaa\Hermes\.venv\Scripts\pythonw.exe",
     (Join-Path $hermesHome "hermes-agent\venv\Scripts\pythonw.exe"),
     (Join-Path $env:APPDATA "uv\python\cpython-3.11-windows-x86_64-none\pythonw.exe")
 )
@@ -57,10 +58,26 @@ if (!$targetPid) {
 }
 
 if ($targetPid) {
+    Log-Msg "Goi rieng preserve_in_flight_sessions() (khong trigger reboot toan farm)..."
+    try {
+        $preserveCode = 'import sys; sys.path.insert(0, "D:/Taadaa/tools"); from services.Taadaa_Service.farm_preflight_daily_reset import preserve_in_flight_sessions; preserve_in_flight_sessions()'
+        $preserveArgs = @("-c", $preserveCode)
+        Start-Process $resolvedPythonw -ArgumentList $preserveArgs -NoNewWindow -Wait -ErrorAction SilentlyContinue
+    } catch {
+        Log-Msg "Loi khi goi preserve_in_flight_sessions(): $_"
+    }
+
     Log-Msg "Dang kiem tra va dung Gateway cu (PID: $targetPid)..."
     try {
         $procInfo = Get-CimInstance Win32_Process -Filter "ProcessId = $targetPid" -ErrorAction SilentlyContinue
-        if ($procInfo -and ($procInfo.CommandLine -like "*gateway*run*" -or $procInfo.Name -like "pythonw*")) {
+        if ($procInfo) {
+            if ($procInfo.ParentProcessId) {
+                $parentProc = Get-CimInstance Win32_Process -Filter "ProcessId = $($procInfo.ParentProcessId)" -ErrorAction SilentlyContinue
+                if ($parentProc -and ($parentProc.CommandLine -like "*gateway*run*" -or $parentProc.Name -like "python*")) {
+                    Stop-Process -Id $procInfo.ParentProcessId -Force -ErrorAction SilentlyContinue
+                    Log-Msg "Da dung Gateway parent PID: $($procInfo.ParentProcessId)."
+                }
+            }
             Stop-Process -Id $targetPid -Force -ErrorAction SilentlyContinue
             Wait-Process -Id $targetPid -Timeout 10 -ErrorAction SilentlyContinue
             Log-Msg "Da gui lenh dung Gateway PID: $targetPid va doi tien trinh thoat hoan toan."
@@ -79,7 +96,7 @@ Start-Sleep -Seconds 2
 Log-Msg "Dang khoi dong lai Gateway bang $resolvedPythonw..."
 try {
     $argsList = @("-m", "hermes_cli.main", "gateway", "run")
-    $newProc = Start-Process $resolvedPythonw -ArgumentList $argsList -WindowStyle Hidden -PassThru
+    $newProc = Start-Process $resolvedPythonw -ArgumentList $argsList -WorkingDirectory "D:\Taadaa\Hermes" -WindowStyle Hidden -PassThru
     Start-Sleep -Seconds 2
     if ($newProc -and !$newProc.HasExited) {
         Log-Msg "Gateway da duoc khoi dong lai thanh cong tu delayed-restart.ps1 (PID moi: $($newProc.Id))."

@@ -114,7 +114,12 @@ def atomic_replace(tmp_path: Union[str, Path], target: Union[str, Path]) -> str:
     try:
         os.replace(tmp_str, real_path)
     except OSError as exc:
-        if exc.errno not in (errno.EXDEV, errno.EBUSY):
+        is_windows_access_denied = (
+            os.name == "nt"
+            and isinstance(exc, PermissionError)
+            and getattr(exc, "winerror", None) == 5
+        )
+        if exc.errno not in (errno.EXDEV, errno.EBUSY) and not is_windows_access_denied:
             raise
         logger.debug(
             "atomic_replace: %s -> %s failed with %s; falling back to copy",
@@ -201,6 +206,56 @@ def atomic_json_write(
     except BaseException:
         # Intentionally catch BaseException so temp-file cleanup still runs for
         # KeyboardInterrupt/SystemExit before re-raising the original signal.
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
+
+
+def atomic_write_text(
+    path: Union[str, Path],
+    text: str,
+    *,
+    tmp_prefix: str | None = None,
+    mode: int | None = None,
+) -> None:
+    """Write *text* to *path* atomically (temp file + fsync + atomic_replace).
+
+    Same guarantees as :func:`atomic_json_write`: a concurrent reader in
+    another process never sees a torn or truncated file, and the previous
+    version survives a crash mid-write.  Used by ``cron.jobs`` for heartbeat
+    and counter files.
+    """
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    original_mode = None if mode is not None else _preserve_file_mode(path)
+    original_owner = _preserve_file_owner(path)
+
+    fd, tmp_path = tempfile.mkstemp(
+        dir=str(path.parent),
+        prefix=tmp_prefix or f".{path.stem}_",
+        suffix=".tmp",
+    )
+    try:
+        if mode is not None and hasattr(os, "fchmod"):
+            os.fchmod(fd, mode)
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(text)
+            f.flush()
+            os.fsync(f.fileno())
+        real_path = atomic_replace(tmp_path, path)
+        real_path_obj = Path(real_path)
+        _restore_file_owner(real_path_obj, original_owner)
+        if mode is not None:
+            try:
+                os.chmod(real_path_obj, mode)
+            except OSError:
+                pass
+        else:
+            _restore_file_mode(real_path_obj, original_mode)
+    except BaseException:
         try:
             os.unlink(tmp_path)
         except OSError:

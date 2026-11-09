@@ -45,50 +45,6 @@ POWERSHELL_EXE = r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
 
 RUN_ID = ""
 CLUSTER_LABELS = {"KIBE": "MÁY 1-80", "ADMIN": "MÁY 201-280"}
-GMAIL_REPORT_CHAT_ID = "-5139245637"
-TIKTOK_REPORT_CHAT_ID = "-5468653590"
-
-
-def _load_telegram_token() -> str | None:
-    try:
-        if str(AUTOMATION_CORE_SRC) not in sys.path:
-            sys.path.append(str(AUTOMATION_CORE_SRC))
-        from automation_core.alerts import _load_bot_token
-        token = _load_bot_token()
-    except Exception:
-        token = None
-    return token or os.getenv("TELEGRAM_BOT_TOKEN")
-
-
-def send_telegram_report(chat_id: str, text: str) -> bool:
-    token = _load_telegram_token()
-    if not token:
-        return False
-    try:
-        from automation_core.alerts import _send_telegram_text
-        if _send_telegram_text(token, chat_id, text):
-            return True
-    except Exception:
-        pass
-    import urllib.parse
-    import urllib.request
-    try:
-        payload = urllib.parse.urlencode({"chat_id": chat_id, "text": text}).encode("utf-8")
-        request = urllib.request.Request(f"https://api.telegram.org/bot{token}/sendMessage", data=payload)
-        with urllib.request.urlopen(request, timeout=15) as resp:
-            return resp.status == 200
-    except Exception:
-        return False
-
-
-def dispatch_report(chat_id: str, text: str, dry_run: bool) -> bool:
-    if dry_run:
-        print(text)
-        return True
-    if send_telegram_report(chat_id, text):
-        return True
-    print(text)
-    return False
 
 
 def emit_event(event: str, **fields) -> None:
@@ -176,8 +132,8 @@ def already_ran_today(today_str: str) -> bool:
         return False
     try:
         data = json.loads(STATE_FILE.read_text(encoding="utf-8"))
-        # Đã chạy hôm nay (kể cả partial/fail) để chống spam liên tục; dùng --force nếu muốn chạy bù
-        return data.get("last_run_at", "").startswith(today_str) or data.get("last_success_date") == today_str
+        # Chỉ coi là đã hoàn tất trọn vẹn hôm nay nếu toàn bộ lane được yêu cầu thành công
+        return data.get("last_success_date") == today_str and data.get("details", {}).get("lane_status") == "success"
     except Exception:
         return False
 
@@ -382,8 +338,14 @@ def main() -> int:
     now = datetime.now(HCMC)
     today_str = now.strftime("%Y-%m-%d")
 
-    # 1. Kiểm tra khung giờ: 14:30 - 18:30 (khoảng nghỉ trước Ca 3)
-    in_window = (now.hour == 14 and now.minute >= 30) or (15 <= now.hour <= 18 and (now.hour < 18 or now.minute <= 30))
+    # 1. Kiểm tra khung giờ né 3 ca cao điểm farm
+    h, m = now.hour, now.minute
+    in_window = not (
+        (5, 15) <= (h, m) <= (9, 30)
+        or (11, 45) <= (h, m) <= (15, 30)
+        or (17, 45) <= (h, m) <= (21, 30)
+        or (4, 0) <= (h, m) <= (4, 30)
+    )
     if not in_window and not args.force and not args.dry_run:
         return 0
 
@@ -442,12 +404,14 @@ def main() -> int:
     else:
         lane_label = "TIKTOK 2FA"
 
+    report_lines = [
+        f"[BÁO CÁO CHUỖI SAU CA TRƯA] [LANE {lane_label}]",
+        f"- Thời gian: {start_dt.strftime('%H:%M')} -> {end_dt.strftime('%H:%M')} ({duration_min} phút)",
+        f"- Mã chạy (run_id): {RUN_ID}",
+        "",
+    ]
+
     if args.lane in ("gmail", "all"):
-        gmail_lines = [
-            "⏰ [FARM REPORT][TOÀN FARM] BÁO CÁO REG GMAIL CA TRƯA:",
-            f"- Thời gian: {start_dt.strftime('%H:%M')} -> {end_dt.strftime('%H:%M')} ({duration_min} phút)",
-            f"- Mã chạy (run_id): {RUN_ID}",
-        ]
         g_res = parse_summary_counts(
             g_out,
             log_dir_hint=Path("D:/CodexRuntime/codex_gmail_debug-register-gmail"),
@@ -472,24 +436,19 @@ def main() -> int:
             kr = parse_summary_counts(gp[0], log_dir_hint=Path("D:/CodexRuntime/codex_gmail_debug-register-gmail"), min_mtime=start_epoch)
             ar = parse_summary_counts("=== CLUSTER ADMIN" + gp[1])
             g_tot = kr["total"] + ar["total"]
-            gmail_lines.extend([f"• Phase 1 (Reg Gmail - Code {g_code}):",
+            report_lines.extend([f"- Phase 1 (Reg Gmail - Code {g_code}):",
                 f"  • Farm Kibe (Máy 1-80): Hoàn tất {kr['success']} máy | Bỏ qua {kr.get('skip_safe', 0)} | Lỗi {kr['failed']}{runner_error_suffix(gp[0])}",
                 f"  • Farm Admin (Máy 201-280): Hoàn tất {ar['success']} máy | Bỏ qua {ar.get('skip_safe', 0)} | Lỗi {ar['failed']}{runner_error_suffix(gp[1])}"])
         else:
-            h = f"• Phase 1 (Reg Gmail - Code {g_code}): LỖI KHỞI ĐỘNG RUNNER" if (g_tot == 0 and g_code != 0) else f"• Phase 1 (Reg Gmail - Code {g_code}):"
-            gmail_lines.extend([h, f"  • Đã hoàn tất: {g_suc} máy"])
+            h = f"- Phase 1 (Reg Gmail - Code {g_code}): LỖI KHỞI ĐỘNG RUNNER" if (g_tot == 0 and g_code != 0) else f"- Phase 1 (Reg Gmail - Code {g_code}):"
+            report_lines.extend([h, f"  • Đã hoàn tất: {g_suc} máy"])
             if g_skip > 0:
-                gmail_lines.append(f"  • Bỏ qua an toàn: {g_skip} máy (đầy slot / nhường cron khác)")
-            gmail_lines.extend([f"  • Lỗi nền tảng{p_str}", f"  • Lỗi script{s_str}"])
-
-        dispatch_report(GMAIL_REPORT_CHAT_ID, "\n".join(gmail_lines), args.dry_run)
+                report_lines.append(f"  • Bỏ qua an toàn: {g_skip} máy (đầy slot / nhường cron khác)")
+            report_lines.extend([f"  • Lỗi nền tảng{p_str}", f"  • Lỗi script{s_str}"])
 
     if args.lane in ("tiktok", "all"):
-        tiktok_lines = [
-            "⏰ [FARM REPORT][TOÀN FARM] BÁO CÁO 2FA TIKTOK CA TRƯA:",
-            f"- Thời gian: {start_dt.strftime('%H:%M')} -> {end_dt.strftime('%H:%M')} ({duration_min} phút)",
-            f"- Mã chạy (run_id): {RUN_ID}",
-        ]
+        if args.lane == "all":
+            report_lines.append("")
         
         # Phân tách báo cáo chi tiết theo từng cụm Farm (Kibe vs Admin)
         if re.search(r"===\s*CLUSTER\s+ADMIN\b", t2fa_out, re.I):
@@ -499,8 +458,8 @@ def main() -> int:
             k_res = parse_summary_counts(kibe_text)
             a_res = parse_summary_counts(admin_text)
 
-            phase2_header = f"• Phase 2 (Add 2FA TikTok - Code {t2fa_code}):"
-            tiktok_lines.extend([
+            phase2_header = f"- Phase 2 (Add 2FA TikTok - Code {t2fa_code}):"
+            report_lines.extend([
                 phase2_header,
                 f"  • Farm Kibe (Máy 1-80): Hoàn tất {k_res['success']} máy | Bỏ qua {k_res.get('skip_safe', 0)} | Lỗi {k_res['failed']}{runner_error_suffix(kibe_text)}",
                 f"  • Farm Admin (Máy 201-280): Hoàn tất {a_res['success']} máy | Bỏ qua {a_res.get('skip_safe', 0)} | Lỗi {a_res['failed']}{runner_error_suffix(admin_text)}",
@@ -510,18 +469,18 @@ def main() -> int:
             t_tot, t_suc, t_fail = t_res["total"], t_res["success"], t_res["failed"]
             t_skip = t_res.get("skip_safe", 0)
             if t_tot == 0 and t2fa_code not in (0, 4):
-                phase2_header = f"• Phase 2 (Add 2FA TikTok - Code {t2fa_code}): LỖI KHỞI ĐỘNG RUNNER"
+                phase2_header = f"- Phase 2 (Add 2FA TikTok - Code {t2fa_code}): LỖI KHỞI ĐỘNG RUNNER"
             else:
-                phase2_header = f"• Phase 2 (Add 2FA TikTok - Code {t2fa_code}):"
-            tiktok_lines.extend([
+                phase2_header = f"- Phase 2 (Add 2FA TikTok - Code {t2fa_code}):"
+            report_lines.extend([
                 phase2_header,
                 f"  • Đã hoàn tất: {t_suc} máy",
             ])
             if t_skip > 0:
-                tiktok_lines.append(f"  • Bỏ qua an toàn: {t_skip} máy (nhường cron khác / đã có 2FA)")
-            tiktok_lines.append(f"  • Lỗi ({t_fail})" if t_fail > 0 else "  • Lỗi: 0")
+                report_lines.append(f"  • Bỏ qua an toàn: {t_skip} máy (nhường cron khác / đã có 2FA)")
+            report_lines.append(f"  • Lỗi ({t_fail})" if t_fail > 0 else "  • Lỗi: 0")
 
-        dispatch_report(TIKTOK_REPORT_CHAT_ID, "\n".join(tiktok_lines), args.dry_run)
+    print("\n".join(report_lines))
 
     if not args.dry_run:
         gmail_ok = (g_code == 0) or (g_code == 1 and g_tot > 0)

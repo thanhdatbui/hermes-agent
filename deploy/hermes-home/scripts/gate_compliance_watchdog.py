@@ -13,7 +13,7 @@ from pathlib import Path
 
 # Single Source of Truth for Farm Gate & Agent Compliance
 DEFAULT_ROOT = Path(r"D:\Taadaa")
-LOG_DIRS = ("logs", "runtime/audit_logs")
+LOG_DIRS = ("logs", "runtime/audit_logs", "tools/guardgate")
 LOG_SUFFIXES = {".log", ".jsonl", ".txt", ".json"}
 MAX_FILE_BYTES = 20 * 1024 * 1024
 TS_RE = re.compile(r"(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})")
@@ -49,11 +49,11 @@ GATES = (
          "dispatch"),
     Gate("G4", "Invariant GuardGate",
          _rx(r"\"status\":\s*\"ALLOW\""),
-         _rx(r"\"status\":\s*\"(?:DENY|BLOCK|QUARANTINE)\""),
+         _rx(r"\"status\":\s*\"(?:DENY|BLOCK|QUARANTINE)\"|\"event\":\s*\"rule_block\"|\"error\":\s*\"(?:INVARIANT_VERIFICATION_FAILED|MISSING_INVARIANT_OR_WAIVER|RULES_INTEGRITY_VIOLATION)\""),
          "ledger"),
-    Gate("G5", "Closeout Reviewer Gate",
-         _rx(r"verdict\W+APPROVED\b"),
-         _rx(r"verdict\W+(?:REJECTED|CHANGES_REQUESTED|NEEDS_FIX)\b"),
+    Gate("G5", "Closeout Gate",
+         _rx(r"verdict\W+APPROVED\b|\[GuardEngine\s+ALLOW\]|CLOSEOUT_PASSED|Invariant Crystallized:"),
+         _rx(r"verdict\W+(?:REJECTED|CHANGES_REQUESTED|NEEDS_FIX|INVARIANT_OR_WAIVER_MISSING|GUARDGATE_INVARIANT_VIOLATION|RULES_INTEGRITY_VIOLATION)\b|\[Crystallize\s+DENY\]|\[GuardGate\s+DENY\]"),
          "gate_audit"),
     Gate("G6", "Pre-Push Safe Guard",
          _rx(r"\"returncode\":\s*0|\"success\":\s*true\b"),
@@ -67,14 +67,30 @@ GATES = (
          _rx(r"\"decision\":\s*\"allow\""),
          _rx(r"\"decision\":\s*\"block\""),
          "console_block_audit"),
-    Gate("G9", "Android Proxy Guard",
-         _rx(r"android_proxy_allow"),
-         _rx(r"android_proxy_domain_block|ANDROID_PROXY_BLOCKED"),
+    Gate("G9", "Farm & GPM Proxy Guard",
+         _rx(r"android_proxy_allow|gpm_proxy_allow"),
+         _rx(r"android_proxy_domain_block|ANDROID_PROXY_BLOCKED|gpm_profile_no_proxy_block|GPM_PROXY_BLOCKED"),
          "proxy_guard_audit"),
     Gate("G10", "Claude Quota Gate",
          _rx(r"EXEC_ALLOW|EXEC_EXEMPT|EXEC_USER_OVERRIDE"),
          _rx(r"EXEC_BLOCKED_QUOTA|AGENT_OVERRIDE_BLOCKED"),
          "claude_quota_audit"),
+    Gate("G11", "Patch Surgery Gate",
+         _rx(r"\"status\":\s*\"(?:SUCCESS|OK)\""),
+         _rx(r"\"status\":\s*\"(?:ANCHOR_FAIL|PATCH_FAIL|SYNTAX_FAIL|BUDGET_EXCEEDED)\""),
+         "patch_audit"),
+    Gate("G12", "Safety Valve Gate",
+         _rx(r"\"status\":\s*\"(?:RESOLVED|CLEAR|RESUMED)\""),
+         _rx(r"\"trigger_flag\":\s*\"(?:SOL_FALLBACK|SAFETY_VALVE_INTERCEPT|LOOP_INTERCEPT|EMERGENCY_ABORT)\"|\"status\":\s*\"TRIGGERED\""),
+         "safety_valve_trigger"),
+    Gate("G13", "Canary Verification Gate (Gate 6)",
+         _rx(r"CANARY_PASSED|CANARY_VERIFIED|\"canary_status\":\s*\"PASS\"|canary_receipt_valid|Canary OK"),
+         _rx(r"BLOCKED_CANARY_REQUIRED|BLOCKED_CANARY_VERIFY_FAILED|CANARY_FAIL|CANARY_TIMEOUT|CANARY_STALE"),
+         "safe_push_audit"),
+    Gate("G14", "Investigation Gate (Gate A)",
+         _rx(r"\"route\":\s*\"investigate_allowed\"|\"action\":\s*\"allow\"|\"stage\":\s*\"investigate_done\""),
+         _rx(r"subagent_edit_blocked|INVESTIGATION_BUDGET_EXCEEDED|INVESTIGATION_UNAUTHORIZED"),
+         "dispatch_audit"),
 )
 
 
@@ -114,12 +130,14 @@ TEST_MOCK_SIGNATURES = (
     "Batch constant changes", "Create a helper", "Investigate D:/Taadaa/tools/x.py",
     "count_active_locks", "grep -R lock", "--recursive token", "rg count_active",
     "rg.exe pattern", "rg pattern", "grep -rn foo", "audit_test",
-    "os.walk('D:/Taadaa')", 'os.walk("D:/Taadaa")', "list(Path('D:/').rglob",
-    'list(Path("D:/").rglob', "glob.glob('D:/**/*'", 'glob.glob("D:/**/*',
+    "os_walk_mock_signature", "os_walk_double_mock", "list_path_d_rglob_mock",
+    "list_path_d_rglob_double_mock", "glob_glob_d_star_mock", "glob_glob_d_star_double_mock",
     "find . -name", "Get-ChildItem -Recurse",
     "script.py", "script.ps1", "bad.py", "bad_sub.py", "lookalike_flags", "other_alias_flags",
     "does_not_exist", "farm_action.py", "farm_burst.py", "fake_lock.py", "fake_fn.py",
     "fake_module.py", "empty_body.py", "nonexistent_runner",
+    # Additional mock signatures for cron, farm contracts, injected keys, and SSH tests.
+    "cron_agent_policy", "farm_contract", "fake_module", "attacker_injected_key", "farm_burst", "test_ssh_powershell", "unsafe_ssh.py", "bad_runner.py", "powershell -command get-process",
 )
 
 
@@ -136,9 +154,12 @@ def parse_line_timestamp(line: str, path_name: str = "") -> datetime | None:
             for k in ("timestamp_utc", "timestamp", "ts", "time", "created_at"):
                 v = d.get(k)
                 if isinstance(v, (int, float)):
-                    if v > 1e11:
-                        v /= 1000.0
-                    return datetime.fromtimestamp(v, tz=timezone.utc)
+                    try:
+                        if v > 1e11:
+                            v /= 1000.0
+                        return datetime.fromtimestamp(v, tz=timezone.utc)
+                    except (ValueError, OSError, OverflowError):
+                        return None
                 if isinstance(v, str):
                     try:
                         dt = datetime.fromisoformat(v.replace("Z", "+00:00"))
@@ -189,9 +210,9 @@ def evaluate(root: Path, hours: float, now: datetime | None = None) -> dict:
         now = now.astimezone()
     cutoff = now - timedelta(hours=hours)
     hits = {g.gate_id: [0, 0] for g in GATES}
-    g5_by_repo = {}
+    g5_events_by_repo = {}
     blocked_rules = {}
-    files = lines = rewired_hits = 0
+    files = lines = 0
     for path, size, file_mtime in iter_sources(root, cutoff):
         files += 1
         for line in read_tail(path, size):
@@ -200,8 +221,6 @@ def evaluate(root: Path, hours: float, now: datetime | None = None) -> dict:
             if not in_window(line, cutoff, file_mtime=file_mtime, path_name=path.name):
                 continue
             lines += 1
-            if re.search(r"Auto-clamped|rewrite", line, re.IGNORECASE):
-                rewired_hits += 1
             any_gate_matched = False
             for g in GATES:
                 if g.source_file and path.name not in ("gates.log", "audit.jsonl", "review.jsonl") and g.source_file not in path.name:
@@ -215,11 +234,9 @@ def evaluate(root: Path, hours: float, now: datetime | None = None) -> dict:
                         repo = json.loads(line).get("repo") or "default"
                     except (json.JSONDecodeError, AttributeError):
                         repo = "default"
-                    bucket = g5_by_repo.setdefault(repo, [0, 0])
-                    if passed:
-                        bucket[0] += 1
-                    if failed:
-                        bucket[1] += 1
+                    line_ts = parse_line_timestamp(line, path_name=path.name) or file_mtime or cutoff
+                    verdict = "REJECTED" if failed else "APPROVED"
+                    g5_events_by_repo.setdefault(repo, []).append((line_ts, verdict))
                 else:
                     if passed:
                         hits[g.gate_id][0] += 1
@@ -242,27 +259,48 @@ def evaluate(root: Path, hours: float, now: datetime | None = None) -> dict:
                     d = json.loads(line.strip())
                     r_id = d.get("rule_id") or d.get("reason") or d.get("message") or "Unclassified-Block"
                 except Exception:
-                    r_id = line[:50].strip()
-                key = f"[Unclassified] {r_id}"
+                    clean = line.strip().lstrip('": \'"').strip()
+                    r_id = clean[:50].strip() if clean else "Unclassified-Block"
+                if str(r_id).startswith("["):
+                    key = str(r_id)[:60]
+                else:
+                    key = f"[Unclassified] {r_id}"
                 blocked_rules[key] = blocked_rules.get(key, 0) + 1
 
-    # Scan sol_plans directory for G2 Planning Gate
-    sol_plans_dir = root / "runtime" / "sol_plans"
-    if sol_plans_dir.is_dir():
-        try:
-            for p_file in sol_plans_dir.iterdir():
-                if p_file.is_file():
-                    st_dt = datetime.fromtimestamp(p_file.stat().st_mtime, tz=timezone.utc)
-                    if st_dt >= cutoff:
-                        hits["G2"][0] += 1
-        except Exception:
-            pass
+    # Scan sol_plans directory for G2 Planning Gate only if no hits in logs (anti-double-counting)
+    if hits["G2"][0] == 0:
+        sol_plans_dir = root / "runtime" / "sol_plans"
+        if sol_plans_dir.is_dir():
+            try:
+                for p_file in sol_plans_dir.iterdir():
+                    if p_file.is_file() and p_file.suffix.lower() == ".json":
+                        try:
+                            p_data = json.loads(p_file.read_text(encoding="utf-8"))
+                            if isinstance(p_data, dict) and ("plan" in p_data or "plan_id" in p_data or "tasks" in p_data or "tier" in p_data):
+                                st_dt = datetime.fromtimestamp(p_file.stat().st_mtime, tz=timezone.utc)
+                                if st_dt >= cutoff:
+                                    hits["G2"][0] += 1
+                        except Exception:
+                            pass
+            except Exception:
+                pass
 
-    remediation_hits = sum(failed for passed, failed in g5_by_repo.values() if passed)
-    hits["G5"][1] = sum(failed for passed, failed in g5_by_repo.values() if not passed)
-    hits["G5"][0] = sum(passed for passed, failed in g5_by_repo.values())
-    if hits["G5"][1] > 0:
-        blocked_rules["[Closeout] Unremediated-Rejection"] = hits["G5"][1]
+    remediation_hits = 0
+    g5_passed = 0
+    g5_failed = 0
+    for repo, events in g5_events_by_repo.items():
+        sorted_events = sorted(events, key=lambda x: x[0])
+        last_verdict = sorted_events[-1][1]
+        rejections = sum(1 for _, v in sorted_events if v == "REJECTED")
+        approvals = sum(1 for _, v in sorted_events if v == "APPROVED")
+        g5_passed += approvals
+        if last_verdict == "APPROVED":
+            remediation_hits += rejections
+        else:
+            g5_failed += rejections
+
+    hits["G5"][0] = g5_passed
+    hits["G5"][1] = g5_failed
 
     gates = []
     for g in GATES:
@@ -292,7 +330,6 @@ def evaluate(root: Path, hours: float, now: datetime | None = None) -> dict:
         "cutoff": cutoff.strftime("%Y-%m-%d %H:%M:%S UTC"),
         "files_scanned": files,
         "lines_scanned": lines,
-        "rewired_hits": rewired_hits,
         "overall": overall,
         "gates": gates,
         "top_blocked_rules": top_blocked,
@@ -330,12 +367,10 @@ def render_markdown(report: dict) -> str:
     win_h = report.get("window_hours", 6.0)
     lines_scanned = report.get("lines_scanned", 0)
     overall = report.get("overall", "NO_EVIDENCE")
-    rewired = report.get("rewired_hits", 0)
-    rewired_str = f" | 🔄 Auto-rewire cứu nguy: {rewired} lần" if rewired else ""
     lines = [
         f"🛡️ *[FARM GATE COMPLIANCE WATCHDOG — 6H REPORT]* {status_icon}",
         f"⏰ Khung giờ: {cutoff} -> {gen_at} ({win_h:g}h qua)",
-        f"📁 Đối soát: {files_scanned} log files ({lines_scanned} dòng{rewired_str})",
+        f"📁 Đối soát: {files_scanned} log files ({lines_scanned} dòng)",
         f"🎯 Kết luận: *{overall}*",
         "",
         "📋 *Chi tiết Gate Có Vi Phạm:*",
@@ -348,11 +383,9 @@ def render_markdown(report: dict) -> str:
     top_blocked = report.get("top_blocked_rules", [])
     if top_blocked:
         lines.append("")
-        lines.append("🔥 *Top Quy Tắc Bị Chặn Nhiều Nhất (Cần Bổ Sung Guidance):*")
+        lines.append("🔥 *Top Quy Tắc Bị Chặn:*")
         for i, (rule_name, count) in enumerate(top_blocked, 1):
             lines.append(f"{i}. `{rule_name}`: *{count}* lần")
-        lines.append("")
-        lines.append("💡 *Actionable:* Operator/Agent cập nhật guidance chi tiết cho các hook/rule trên để Agent biết đường làm nhanh hơn, giảm tiêu hao token.")
 
     return "\n".join(lines)
 
@@ -388,9 +421,10 @@ def send_telegram_alert(message: str, chat_id: str = FARM_ALERT_CHAT_ID) -> bool
         import urllib.request
         import urllib.parse
         url = f"https://api.telegram.org/bot{token}/sendMessage"
+        safe_text = message[:4000] if len(message) > 4000 else message
         payload = urllib.parse.urlencode({
             "chat_id": chat_id,
-            "text": message,
+            "text": safe_text,
         }).encode("utf-8")
         req = urllib.request.Request(url, data=payload, headers={"User-Agent": "Taadaa-Gate-Watchdog/1.0"})
         with urllib.request.urlopen(req, timeout=10) as resp:
@@ -417,9 +451,10 @@ def main(argv: list[str] | None = None) -> int:
 
     report = evaluate(args.root, args.hours)
     try:
-        health_dir = Path('D:/Taadaa/runtime/cron_health')
+        health_dir = Path(str(args.root / 'runtime' / 'cron_health'))
         health_dir.mkdir(parents=True, exist_ok=True)
-        h_status = 'NOMINAL' if report.get('overall') in ('PASS', 'NO_EVIDENCE') else 'ANOMALY'
+        ov = report.get('overall')
+        h_status = 'NOMINAL' if ov == 'PASS' else ('NO_EVIDENCE' if ov == 'NO_EVIDENCE' else 'ANOMALY')
         (health_dir / 'gate_compliance_watchdog.json').write_text(
             json.dumps({
                 'script_name': 'gate_compliance_watchdog',

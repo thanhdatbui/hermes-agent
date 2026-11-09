@@ -37,6 +37,7 @@ try:
         is_protected_target as fp_is_protected_target,
         coordinator_write_gate,
         coordinator_terminal_gate,
+        coordinator_tool_gate,
         compute_edit_footprint,
         validate_dispatch,
         ContractError,
@@ -49,6 +50,7 @@ except ImportError:
         is_protected_target as fp_is_protected_target,
         coordinator_write_gate,
         coordinator_terminal_gate,
+        coordinator_tool_gate,
         compute_edit_footprint,
         validate_dispatch,
         ContractError,
@@ -940,6 +942,11 @@ def _on_pre_tool_call(
     fn_name = tool_name or kwargs.get("function_name", "")
     fn_args = args if args is not None else kwargs.get("function_args", {})
     sess_id = session_id or kwargs.get("session_id", "")
+
+    if not _is_worker_session(sess_id):
+        ok, reason = coordinator_tool_gate(fn_name, fn_args, sess_id)
+        if not ok:
+            return {"action": "block", "reason": reason}
 
     # 1. UNCONDITIONAL PROTECTED TARGET SHIELD: MỌI actor, MỌI tool (default-deny) trừ tool thuần văn bản.
     if fn_name not in _SHIELD_TEXT_ONLY_TOOLS:
@@ -1978,6 +1985,8 @@ def register(ctx: Any) -> None:
     Đăng ký pre_tool_call, post_tool_call và transform_llm_output với PluginContext.
     """
     def pre_tool_hook(tool_name: str = "", args: Optional[Dict[str, Any]] = None, session_id: str = "", **kwargs: Any):
+        tool_name = tool_name or kwargs.get("function_name", "")
+        args = args if args else kwargs.get("function_args", {})
         try:
             res = _on_pre_tool_call(tool_name, args, session_id=session_id, **kwargs)
             if isinstance(res, dict) and res.get("action") == "block":

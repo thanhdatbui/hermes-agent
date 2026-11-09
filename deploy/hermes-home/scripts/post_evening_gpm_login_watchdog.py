@@ -68,17 +68,19 @@ def log_telemetry_metric(event_type: str, data: dict):
     sys.stderr.flush()
 
 def is_within_time_window() -> bool:
-    """Cho phép chạy trong các khoảng thời gian rảnh giữa các ca nuôi:
-    - Sáng: 09:30 đến 11:20 (sau Ca 1 kết thúc lúc 09:25)
-    - Chiều: 15:30 đến 17:20 (sau Ca 2 kết thúc lúc 15:25)
-    - Tối: 21:30 đến 23:45 (sau Ca 3 kết thúc lúc 21:25)
+    """Cho phép chạy cả ngày khi máy rảnh, chỉ chặn 3 ca cao điểm farm và dọn cache:
+    - Dọn cache: 04:00 - 04:30
+    - Ca 1: 05:15 - 09:30
+    - Ca 2: 11:45 - 15:30
+    - Ca 3: 17:45 - 21:30
     """
     now = datetime.now(HCMC)
     current = now.hour * 60 + now.minute
-    morning = 9 * 60 + 30 <= current <= 11 * 60 + 20
-    afternoon = 15 * 60 + 30 <= current <= 17 * 60 + 20
-    evening = 21 * 60 + 30 <= current <= 23 * 60 + 45
-    return morning or afternoon or evening
+    is_cache_clear = 4 * 60 <= current <= 4 * 60 + 30
+    is_shift_1 = 5 * 60 + 15 <= current <= 9 * 60 + 30
+    is_shift_2 = 11 * 60 + 45 <= current <= 15 * 60 + 30
+    is_shift_3 = 17 * 60 + 45 <= current <= 21 * 60 + 30
+    return not (is_cache_clear or is_shift_1 or is_shift_2 or is_shift_3)
 
 def get_current_shift_info() -> tuple[str, str, str]:
     """Trả về thông tin ca hiện tại: (shift_code, shift_label, shift_desc)

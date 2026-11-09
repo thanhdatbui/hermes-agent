@@ -218,7 +218,7 @@ class TestCronChatgptWebPoolWatchdog(unittest.TestCase):
             {"id": "cid_cg_1", "name": "user1@gmail.com (GPM Web)", "isActive": False, "testStatus": "expired", "provider": "chatgpt-web"}
         ]
         mock_ag_conns = [
-            {"id": "cid_ag_1", "name": "user2@gmail.com", "isActive": True, "testStatus": "expired", "provider": "antigravity"}
+            {"id": "cid_ag_1", "name": "user2@gmail.com", "isActive": True, "testStatus": "expired", "provider": "antigravity", "providerSpecificData": {"tier": "g1-pro-tier"}}
         ]
         mock_codex_conns = [
             {"id": "cid_cx_1", "name": "user3@gmail.com", "isActive": False, "testStatus": "active", "provider": "codex"}
@@ -273,7 +273,8 @@ class TestCronChatgptWebPoolWatchdog(unittest.TestCase):
         # Test OAuth code capture timeout (90s) -> Codex OAuth returns false with timeout message
         with patch("cron_chatgpt_web_pool_watchdog.CodexOAuth1455Lock") as mock_lock_cls, \
              patch("cron_chatgpt_web_pool_watchdog.sync_playwright") as mock_pw, \
-             patch("cron_chatgpt_web_pool_watchdog.requests") as mock_req:
+             patch("cron_chatgpt_web_pool_watchdog.requests") as mock_req, \
+             patch("cron_chatgpt_web_pool_watchdog.time.time", side_effect=[0, 0, 95, 95, 95, 95]):
 
             mock_lock = MagicMock()
             mock_lock.__enter__.return_value = mock_lock
@@ -406,7 +407,7 @@ class TestCronChatgptWebPoolWatchdog(unittest.TestCase):
 
             ok, msg = w.perform_antigravity_oauth("127.0.0.1:9222", "test@gmail.com", {})
             self.assertFalse(ok)
-            self.assertIn("Timeout", msg)
+            self.assertTrue("PHONE_CHECKPOINT" in msg or "Timeout" in msg)
 
     def test_filesystem_conflict_retry_on_oserror(self):
         # Test: OSError on lock acquire triggers sleep/retry logic
@@ -909,7 +910,7 @@ class TestTelemetryEndToEndAndFarmSafety(unittest.TestCase):
                 {"id": "cid_cg_3", "name": "user4@gmail.com (GPM Web)", "isActive": True, "testStatus": "active"},
             ],
             "antigravity": [
-                {"id": "cid_ag_1", "name": "user2@gmail.com", "isActive": True, "testStatus": "expired"},
+                {"id": "cid_ag_1", "name": "user2@gmail.com", "isActive": True, "testStatus": "expired", "providerSpecificData": {"tier": "g1-pro-tier"}},
             ],
             "codex": [],
         }

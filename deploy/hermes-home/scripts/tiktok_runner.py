@@ -76,7 +76,6 @@ ARTIFACT_BASE = KIBE_RUNTIME_ROOT / "live"
 #     - Ngày 1: Ca 1 (Row 1) - Ca 2 (Row 3) - Ca 3 (Row 5)
 #     - Ngày 2: Ca 1 (Row 2) - Ca 2 (Row 4) - Ca 3 (Row 6)
 #     - Ngày 3: Ca 1 (Row 7) - Ca 2 (Row 8) - Ca 3 (Dưỡng sinh Row 3/4 pure feed)
-#     - Ngày 4: Dưỡng sinh xả tải toàn farm (pure feed)
 # ---------------------------------------------------------------------------
 
 BASE_ORDINAL = 739900  # date(2026, 10, 11).toordinal() -> Ngày 1 bắt đầu từ 11/10/2026
@@ -401,6 +400,34 @@ def _get_machines_for_row(row: int, workbook_path: str = ACCOUNT_WORKBOOK) -> li
     if not safe_path.is_file():
         sys.stderr.write(f"tiktok_runner: Safe workbook khong ton tai: {safe_path}\n")
         return []
+    # Step 1: Đọc danh sách machine_id từ SQLite SSOT (farm_master.db)
+    ssot_db = r"D:/Taadaa/data/farm_master.db"
+    is_farm_wb = workbook_path == ACCOUNT_WORKBOOK or any(k in str(workbook_path).replace("\\", "/").casefold() for k in ("taadaadata/kibe", "taadaadata/admin"))
+    if is_farm_wb and os.path.exists(ssot_db):
+        try:
+            import sqlite3
+            conn = sqlite3.connect(f"file:{ssot_db}?mode=ro", uri=True)
+            cur = conn.cursor()
+            if row == 0:
+                cur.execute(
+                    "SELECT DISTINCT machine_id FROM tiktok_accounts "
+                    "WHERE username IS NOT NULL AND TRIM(username) != '' AND LOWER(TRIM(username)) != 'none' "
+                    "ORDER BY machine_id"
+                )
+            else:
+                cur.execute(
+                    "SELECT DISTINCT machine_id FROM tiktok_accounts "
+                    "WHERE ((video_slot - 1) % 8) + 1 = ? "
+                    "AND username IS NOT NULL AND TRIM(username) != '' AND LOWER(TRIM(username)) != 'none' "
+                    "ORDER BY machine_id",
+                    (row,),
+                )
+            res = [r[0] for r in cur.fetchall()]
+            conn.close()
+            return res
+        except Exception:
+            pass
+    # Step 2: Fallback đọc từ workbook Excel
     for attempt in range(3):
         try:
             import openpyxl
@@ -483,6 +510,88 @@ def filter_healthy_machines(machine_ids: list[int]) -> list[int]:
     return fn(machine_ids)
 
 
+def _scrape_pre_session_following(
+    row: int,
+    session_index: int,
+    account_workbook: str,
+    machines: list[int] | None = None,
+    shift_ca: int | None = None,
+) -> list[str]:
+    # Bước 1: Đọc workbook lấy danh sách tài khoản theo từng máy
+    uids: set[str] = set()
+    try:
+        import openpyxl
+        wb = openpyxl.load_workbook(account_workbook, read_only=True)
+        ws = wb.active
+        machine_slots: dict[int, list[str]] = {}
+        for r in ws.iter_rows(min_row=2, values_only=True):
+            if not r or r[0] is None:
+                continue
+            try:
+                m_num = int(str(r[0]).strip())
+            except ValueError:
+                continue
+            val = r[2] if len(r) > 2 else None
+            u = str(val).strip().lstrip("@") if val and str(val).strip().lower() != "none" else ""
+            machine_slots.setdefault(m_num, []).append(u)
+        wb.close()
+
+        # Bước 2: Xác định row cho từng máy theo dynamic pool hoặc cấu hình
+        active_machines = machines if machines else list(machine_slots.keys())
+        row_by_machine: dict[int, int] = {}
+        if row == 0 and shift_ca is not None:
+            st_path = Path("D:/Taadaa/runtime/kibe/cron-state/shift_pool_cycle_state.json")
+            if st_path.exists():
+                try:
+                    with open(st_path, "r", encoding="utf-8") as f:
+                        st_data = json.load(f)
+                    ca_sessions = st_data.get("today_shift_sessions", {}).get(str(shift_ca), {})
+                    for m_str, r_idx in ca_sessions.items():
+                        if str(m_str).isdigit() and isinstance(r_idx, int) and r_idx > 0:
+                            row_by_machine[int(m_str)] = r_idx
+                except Exception:
+                    pass
+
+        # Bước 3: Lọc danh sách username cần cào
+        shift_pools = {1: (1, 2, 7), 2: (3, 4, 8), 3: (5, 6)}
+        fallback_rows = shift_pools.get(shift_ca, (1, 2, 3, 4, 5, 6, 7, 8)) if row == 0 else (row,)
+
+        for m in active_machines:
+            slots = machine_slots.get(m, [])
+            if not slots:
+                continue
+            target_r = row_by_machine.get(m)
+            if target_r is not None and 1 <= target_r <= len(slots):
+                u = slots[target_r - 1]
+                if u:
+                    uids.add(u)
+            else:
+                for r_cand in fallback_rows:
+                    if 1 <= r_cand <= len(slots):
+                        u = slots[r_cand - 1]
+                        if u:
+                            uids.add(u)
+
+        # Bước 4: Gọi tracker cào baseline snapshot
+        if uids:
+            tracker_script = r"D:\Taadaa\tools\tiktok_account_tracker.py"
+            cmd = [
+                target_python(),
+                tracker_script,
+                "--usernames",
+                *sorted(uids),
+                "--workers",
+                str(min(25, len(uids))),
+            ]
+            kwargs: dict[str, Any] = {"capture_output": True, "timeout": 180, "check": False}
+            if sys.platform == "win32":
+                kwargs["creationflags"] = 0x08000000
+            subprocess.run(cmd, **kwargs)
+    except Exception as exc:
+        logger.warning("tiktok_runner: pre-session scrape failed: %s", exc)
+    return sorted(uids)
+
+
 # ---------------------------------------------------------------------------
 # Spawn
 # ---------------------------------------------------------------------------
@@ -501,14 +610,7 @@ def _spawn_feed_session(
 ) -> int:
     """Spawn run-feed-session.ps1 for the given Row and SessionIndex."""
     # Pre-session scrape T0: lấy baseline followingCount cho Row hiện tại
-    try:
-        from follow_runner.core.workbook import load_mapping
-        _m = load_mapping(account_workbook)
-        _uids = [r.tik_id for r in getattr(_m, "rows", []) if getattr(r, "account_row_index", None) == row and getattr(r, "tik_id", None)]
-        if _uids:
-            subprocess.run([target_python(), r"D:\Taadaa\tools\tiktok_account_tracker.py", "--usernames", *_uids, "--workers", str(min(10, len(_uids)))], capture_output=True, timeout=60, check=False)
-    except Exception:
-        pass
+    _scrape_pre_session_following(row, session_index, account_workbook, machines=machines, shift_ca=shift_ca)
     repo = repo_root()
     ps1_path = repo / "scripts" / "run-feed-session.ps1"
     if not ps1_path.is_file():
@@ -535,7 +637,7 @@ def _spawn_feed_session(
         "-ArtifactRoot", artifact_root,
         "-SkipAccountWorkbookSync",
         "-LocalRun",
-        "-MachineStartStaggerMs", "3000,10000",
+        "-MachineStartStaggerMs", "2000,8000",
         "-RandomizeMachineOrder",
         "-Run",
     ]
@@ -545,7 +647,7 @@ def _spawn_feed_session(
         argv += ["-Machines", ",".join(str(m) for m in sorted(set(machines)))]
 
     child_env = dict(os.environ)
-    if is_rest_day:
+    if is_rest_day and row != 0:
         child_env["TAADAA_REST_DAY_NO_FOLLOW"] = "1"
     else:
         child_env.pop("TAADAA_REST_DAY_NO_FOLLOW", None)
@@ -645,6 +747,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     # Toàn bộ ca nuôi chạy cơ chế dynamic (row = 0) kết hợp shift-pool + 3 phễu dưỡng sinh
     use_dynamic = os.environ.get("USE_DYNAMIC_FEED", "1") == "1"
     effective_feed_row = 0 if (use_dynamic and shift_ca is not None) else row
+    if effective_feed_row == 0:
+        is_rest_day = False
 
     # Chạy tuần tự qua các cụm Farm (Kibe Local + Admin Remote)
     overall_rc = 0

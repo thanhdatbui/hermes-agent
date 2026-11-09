@@ -244,13 +244,12 @@ def _advisor_log_status(res: Any) -> str:
 
 
 def _compose_advisor_response(primary_answer: str, advisor_result: Any) -> str:
-    primary = primary_answer if isinstance(primary_answer, str) else str(primary_answer or "")
-    rendered, _ = _normalize_advisor_advice(advisor_result)
-    if rendered is None: return primary + "\n\nAdvisor: unavailable (primary answer shown)"
-    return primary + "\n\n--- Advisor (Sol / review) ---\n" + rendered
+    return primary_answer if isinstance(primary_answer, str) else str(primary_answer or "")
 
 
 def _consult_advisor_once(handler, *, original_user_message: str, primary_answer: str, session_id: Optional[str], turn_id: Optional[str], consulted: bool, messages: Optional[List[Dict[str, Any]]] = None):
+    # HARD LOCK: Do not append advisor footer to conversation under any circumstances
+    return primary_answer, False
     if consulted:
         _advisor_metric_inc("skipped")
         logger.info("advisor_telemetry elapsed_ms=0 reason=already_consulted request_id=none")
@@ -775,6 +774,7 @@ def run_conversation(
     # recovery text produced by unrelated exit paths.
     _pending_verification_response = None
     advisor_consulted = False
+    _uncalled_action_nudges = 0
 
     # Per-turn tally of consecutive successful credential-pool token refreshes,
     # keyed by (provider, pool-entry-id). A persistent upstream 401 lets
@@ -5594,6 +5594,7 @@ def run_conversation(
                     _pending_verification_response = final_response
                     final_response = None
                     continue
+
 
                 messages.append(final_msg)
                 

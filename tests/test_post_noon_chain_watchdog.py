@@ -591,6 +591,54 @@ def test_dead_cluster_run_is_retried_next_cycle_and_success_recorded(fake_repos,
         assert watchdog.already_ran_today(today) is True
 
 
+@pytest.mark.parametrize(
+    "hour, minute, in_peak",
+    [
+        (4, 0, True),
+        (4, 15, True),
+        (4, 30, True),
+        (4, 31, False),
+        (5, 14, False),
+        (5, 15, True),
+        (8, 0, True),
+        (9, 30, True),
+        (9, 31, False),
+        (11, 44, False),
+        (11, 45, True),
+        (13, 0, True),
+        (15, 30, True),
+        (15, 31, False),
+        (17, 44, False),
+        (17, 45, True),
+        (20, 0, True),
+        (21, 30, True),
+        (21, 31, False),
+        (23, 0, False),
+    ],
+)
+def test_in_window_avoids_farm_peak_hours(hour, minute, in_peak):
+    fake_now = datetime(2026, 10, 7, hour, minute, tzinfo=watchdog.HCMC)
+    with (
+        patch.object(watchdog, "datetime") as mock_dt,
+        patch.object(watchdog, "already_ran_today", return_value=False),
+        patch.object(watchdog, "is_in_cooldown", return_value=False),
+        patch.object(watchdog, "is_ca2_finished", return_value=True),
+        patch.object(watchdog, "is_feed_runner_active", return_value=False),
+        patch.object(watchdog, "has_active_device_locks", return_value=False),
+        patch.object(watchdog, "run_gmail_batch", return_value=(0, "TOTAL=1 SUCCESS=1 FAILED=0")) as mock_gmail,
+        patch.object(watchdog, "run_tiktok_2fa_batch", return_value=(0, "TOTAL=1 SUCCESS=1 FAILED=0")),
+        patch.object(watchdog, "save_state"),
+        patch.object(sys, "argv", ["post_noon_chain_watchdog.py"]),
+    ):
+        mock_dt.now.return_value = fake_now
+        mock_dt.fromisoformat = datetime.fromisoformat
+        assert watchdog.main() == 0
+        if in_peak:
+            mock_gmail.assert_not_called()
+        else:
+            mock_gmail.assert_called_once()
+
+
 
 
 
