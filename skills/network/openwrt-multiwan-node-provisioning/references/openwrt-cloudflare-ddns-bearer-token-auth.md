@@ -55,7 +55,7 @@ fi
 ZONE_ID="7ec2923fdd73bba508b64cb69e013d71"
 RECORD_ID="d0e637c645a10208df5b909a6404b86e"
 RECORD_NAME="tb.taadaa.click"
-CF_TOKEN="cfut_qzseBfDe5DWSIrsK8hun36DptGTKdxM0IzCj3Dnf941845b3"
+CF_TOKEN="cfut_EXAMPLE_DUMMY_TOKEN_REPLACED"
 
 URL="https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records/${RECORD_ID}"
 PAYLOAD="{\"type\":\"A\",\"name\":\"${RECORD_NAME}\",\"content\":\"${WAN_IP}\",\"ttl\":60,\"proxied\":false}"
