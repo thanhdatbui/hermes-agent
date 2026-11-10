@@ -380,6 +380,7 @@ def _preflight_ensure_accounts(row: int, window_key: str, cluster: dict[str, Any
             check=False,
             timeout=5400,
             env=child_env,
+            creationflags=0x08000000 if sys.platform == 'win32' else 0,
         )
         if res and res.returncode == 0:
             marker_payload["status"] = "success"
@@ -624,7 +625,7 @@ def _spawn_feed_session(
     artifact_root = str(artifact_base / date_str / f"row-{row}-{time_str}").replace("/", "\\")
 
     argv = [
-        "powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+        "powershell", "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-ExecutionPolicy", "Bypass",
         "-File", ps1_win,
         "-Python", target_python(),
         "-Row", str(row),
