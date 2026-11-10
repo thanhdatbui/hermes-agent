@@ -25,6 +25,8 @@ import subprocess
 import threading
 from datetime import datetime
 
+CREATE_NO_WINDOW = 0x08000000 if sys.platform == 'win32' else 0
+
 # Đảm bảo stdout luôn dùng utf-8 tránh lỗi charmap cp1252 trên Windows console
 if hasattr(sys.stdout, "reconfigure"):
     try:
@@ -202,6 +204,7 @@ def _query_xiaowei_running() -> bool | None:
             capture_output=True,
             text=True,
             timeout=5,
+            creationflags=CREATE_NO_WINDOW,
         )
         if r.returncode != 0:
             log_event("XIAOWEI_CHECK_ERROR", level="ERROR", target="xiaowei.exe", returncode=r.returncode, error=(r.stderr or "").strip())
@@ -241,7 +244,7 @@ def is_xiaowei_adb_running() -> bool | None:
     """Check whether an adb.exe on port 5038 belongs to xiaowei (path-verified, isolated from farm ADB)."""
     try:
         ps_cmd = f"{XIAOWEI_ADB_TARGET_PS} | Measure-Object | Select-Object -ExpandProperty Count"
-        r = subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd], capture_output=True, text=True, timeout=CIM_TIMEOUT_SECONDS)
+        r = subprocess.run(["powershell", "-NoProfile", "-WindowStyle", "Hidden", "-Command", ps_cmd], capture_output=True, text=True, timeout=CIM_TIMEOUT_SECONDS, creationflags=CREATE_NO_WINDOW)
         if r.returncode != 0:
             log_event("ADB_CHECK_ERROR", level="ERROR", method="powershell", returncode=r.returncode, error=(r.stderr or "").strip())
             return None
@@ -268,7 +271,7 @@ def _try_kill_server() -> bool:
         if _xiaowei_started_before("kill-server"):
             _bump_metric("adb_cleanup_aborted_race")
             return False
-        r = subprocess.run([XIAOWEI_ADB_BIN, "-P", str(XIAOWEI_ADB_PORT), "kill-server"], capture_output=True, text=True, timeout=5)
+        r = subprocess.run([XIAOWEI_ADB_BIN, "-P", str(XIAOWEI_ADB_PORT), "kill-server"], capture_output=True, text=True, timeout=5, creationflags=CREATE_NO_WINDOW)
         if r.returncode == 0 and is_xiaowei_adb_running() is False:
             log_event("ADB_CLEANUP_OK", method="kill-server", port=XIAOWEI_ADB_PORT)
             _bump_metric("adb_cleanup_successes")
@@ -285,7 +288,7 @@ def _try_cim_terminate() -> bool:
             _bump_metric("adb_cleanup_aborted_race")
             return False
         ps_cmd = f"if (-not (Get-Process -Name xiaowei -ErrorAction SilentlyContinue)) {{ {XIAOWEI_ADB_TARGET_PS} | Invoke-CimMethod -MethodName Terminate }}"
-        r = subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd], capture_output=True, text=True, timeout=CIM_TIMEOUT_SECONDS)
+        r = subprocess.run(["powershell", "-NoProfile", "-WindowStyle", "Hidden", "-Command", ps_cmd], capture_output=True, text=True, timeout=CIM_TIMEOUT_SECONDS, creationflags=CREATE_NO_WINDOW)
         if r.returncode != 0:
             log_event("ADB_CLEANUP_ERROR", level="ERROR", method="cim-terminate", returncode=r.returncode, error=(r.stderr or "").strip())
         elif is_xiaowei_adb_running() is False:
@@ -321,6 +324,7 @@ def close_xiaowei() -> bool:
             capture_output=True,
             text=True,
             timeout=5,
+            creationflags=CREATE_NO_WINDOW,
         )
         dur_ms = round((time.time() - t0) * 1000, 1)
         is_running = is_xiaowei_running()
@@ -335,7 +339,7 @@ def close_xiaowei() -> bool:
             log_event("XIAOWEI_ZOMBIE_DETECTED", level="WARNING")
         # Fallback qua WMI/CIM nếu taskkill bị Access Denied do xiaowei chạy quyền Admin
         ps_cmd = 'Get-CimInstance Win32_Process -Filter "Name = \'xiaowei.exe\'" | Invoke-CimMethod -MethodName Terminate'
-        r_cim = subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd], capture_output=True, text=True, timeout=CIM_TIMEOUT_SECONDS)
+        r_cim = subprocess.run(["powershell", "-NoProfile", "-WindowStyle", "Hidden", "-Command", ps_cmd], capture_output=True, text=True, timeout=CIM_TIMEOUT_SECONDS, creationflags=CREATE_NO_WINDOW)
         adb_cleaned = False
         if r_cim.returncode == 0 and not is_xiaowei_running():
             _invalidate_cache()
