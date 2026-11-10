@@ -13,6 +13,7 @@ import json
 import time
 import logging
 import re
+import shutil
 import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -24,7 +25,8 @@ logger = logging.getLogger("watchdog_link_chatgpt_idle")
 HCMC = ZoneInfo("Asia/Ho_Chi_Minh")
 ADB_EXE = r"C:\Program Files (x86)\xiaowei\tools\adb.exe"
 if not os.path.exists(ADB_EXE):
-    ADB_EXE = r"C:\Users\Kibe\.GemPhoneFarm\app\adb-tool\adb.exe"
+    ADB_EXE = shutil.which("adb") or ADB_EXE
+CREATE_NO_WINDOW = 0x08000000 if sys.platform == "win32" else 0
 
 STATE_DIR = Path(r"D:\Taadaa\runtime\kibe\cron-state")
 STATE_FILE = STATE_DIR / "chatgpt_link_backlog_state.json"
@@ -182,7 +184,8 @@ def is_machine_in_feed(serial: str) -> bool:
     try:
         res = subprocess.run(
             [ADB_EXE, "-s", serial, "shell", "dumpsys", "window", "windows"],
-            capture_output=True, text=True, timeout=6
+            capture_output=True, text=True, timeout=6,
+            creationflags=CREATE_NO_WINDOW
         )
         if "com.ss.android.ugc.trill" in res.stdout:
             return True
