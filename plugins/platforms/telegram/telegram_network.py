@@ -247,6 +247,7 @@ class TelegramMultiISPTransport(httpx.AsyncBaseTransport):
             return await self._get_fallback().handle_async_request(request)
 
         # Primary mode
+        # Step 1: Execute primary request within stall threshold
         try:
             response = await asyncio.wait_for(
                 self._get_primary().handle_async_request(request),
@@ -255,10 +256,12 @@ class TelegramMultiISPTransport(httpx.AsyncBaseTransport):
             self._last_primary_success = time.monotonic()
             return response
         except asyncio.TimeoutError:
+            # Step 2: Handle timeout stall, switch to fallback and initiate recovery probe
             await self._switch_to_fallback()
             self._ensure_recovery_probe()
             return await self._get_fallback().handle_async_request(request)
         except Exception as exc:
+            # Step 3: Handle connect error failover or re-raise non-retryable exception
             if not _is_retryable_connect_error(exc):
                 raise
             # Stall / ConnectError → failover

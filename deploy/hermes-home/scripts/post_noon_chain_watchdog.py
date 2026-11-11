@@ -42,6 +42,7 @@ if not Path(PYTHON_EXE).exists():
     PYTHON_EXE = sys.executable
 
 POWERSHELL_EXE = r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+CREATE_NO_WINDOW = 0x08000000 if sys.platform == "win32" else 0
 
 RUN_ID = ""
 CLUSTER_LABELS = {"KIBE": "MÁY 1-80", "ADMIN": "MÁY 201-280"}
@@ -175,6 +176,7 @@ def run_gmail_batch(dry_run: bool = False) -> tuple[int, str]:
         POWERSHELL_EXE,
         "-NoProfile",
         "-NonInteractive",
+        "-WindowStyle", "Hidden",
         "-ExecutionPolicy", "Bypass",
         "-File", str(ps_script),
     ]
@@ -182,7 +184,7 @@ def run_gmail_batch(dry_run: bool = False) -> tuple[int, str]:
     env["PYTHONPATH"] = f"{GMAIL_REPO_DIR}{os.pathsep}{AUTOMATION_CORE_SRC}"
     env["GMAIL_REG_PYTHON_EXE"] = PYTHON_EXE
     try:
-        pk = subprocess.run(cmd, cwd=str(GMAIL_REPO_DIR), env=env, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5400)
+        pk = subprocess.run(cmd, cwd=str(GMAIL_REPO_DIR), env=env, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5400, creationflags=CREATE_NO_WINDOW)
         outs = [f"=== CLUSTER KIBE (MÁY 1-80) ===\n{pk.stdout}\n{pk.stderr}"]
         kc = pk.returncode
     except Exception as exc:
@@ -238,6 +240,7 @@ def run_tiktok_2fa_batch(dry_run: bool = False) -> tuple[int, str]:
             encoding="utf-8",
             errors="replace",
             timeout=5400,
+            creationflags=CREATE_NO_WINDOW,
         )
         outputs.append(f"=== CLUSTER KIBE (MÁY 1-80) ===\n{proc_kibe.stdout}\n{proc_kibe.stderr}")
         kibe_code = proc_kibe.returncode

@@ -165,6 +165,7 @@ async def test_telegram_fallback_proxy_configuration(monkeypatch):
 async def test_telegram_primary_stall_timeout_failover():
     import asyncio
 
+    # Step 1: Configure transport with stall threshold and stalled primary
     transport = TelegramMultiISPTransport(
         fallback_ips=["149.154.167.220"],
         stall_threshold_s=0.02,
@@ -185,7 +186,9 @@ async def test_telegram_primary_stall_timeout_failover():
     transport._fallback_transport = fallback
 
     try:
+        # Step 2: Trigger timeout stall failover via handle_async_request
         result = await transport.handle_async_request(response.request)
+        # Step 3: Verify failover to fallback transport succeeded
         assert result is response
         assert transport._current_mode == "fallback"
         primary.handle_async_request.assert_awaited_once()

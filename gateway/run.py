@@ -10581,7 +10581,6 @@ class GatewayRunner(GatewayAuthorizationMixin, GatewayKanbanWatchersMixin, Gatew
                         "Image routing: native (model supports vision). %d image(s) will be attached inline.",
                         len(image_paths),
                     )
-                    message_text = await self._enrich_message_with_vision(message_text, image_paths)
                 else:
                     logger.info(
                         "Image routing: text (mode=%s). Pre-analyzing %d image(s) via vision_analyze.",
