@@ -501,7 +501,8 @@ def read_admin_gmail_summary_remote(min_mtime: float) -> dict | None:
 
 def _run_cmd(label: str, cmd: list[str], **kw) -> tuple[int, str]:
     try:
-        p = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5400, **kw)
+        creationflags = 0x08000000 if sys.platform == "win32" else 0
+        p = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5400, creationflags=creationflags, **kw)
         return p.returncode, f"=== {label} ===\n{p.stdout}\n{p.stderr}"
     except Exception as exc:
         return 2, f"=== {label} ===\nRUNNER_ERROR: {exc}"
@@ -514,7 +515,7 @@ def run_gmail_batch(dry_run: bool = False) -> tuple[int, str]:
     if not ps_script.exists():
         return 1, f"Không tìm thấy {ps_script}"
     env = {**os.environ, "PYTHONPATH": f"{GMAIL_REPO_DIR}{os.pathsep}{AUTOMATION_CORE_SRC}", "GMAIL_REG_PYTHON_EXE": PYTHON_EXE}
-    cmd = [POWERSHELL_EXE, "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", str(ps_script)]
+    cmd = [POWERSHELL_EXE, "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-ExecutionPolicy", "Bypass", "-File", str(ps_script)]
     kibe_code, kibe_out = _run_cmd("CLUSTER KIBE (MÁY 1-80)", cmd, cwd=str(GMAIL_REPO_DIR), env=env)
     admin_gmail_repo = r"D:\Taadaa\register gmail"
     admin_core_src = r"D:\Taadaa\automation-core\src"

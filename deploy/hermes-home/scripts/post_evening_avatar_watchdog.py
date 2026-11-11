@@ -232,26 +232,24 @@ def is_feed_session_finished_for_window(now_dt: datetime) -> bool:
 
 def is_feed_active() -> bool:
     """Kiểm tra có feed runner nào đang chạy không."""
+    # Bước 1: Duyệt danh sách tiến trình bằng psutil chống bung console
+    if psutil is None:
+        return False
     try:
-        ps_cmd = (
-            'Get-CimInstance Win32_Process '
-            '-Filter "Name like \'python%\' or Name like \'powershell%\'" '
-            '| Select-Object -ExpandProperty CommandLine'
-        )
-        p = subprocess.run(
-            ["powershell.exe", "-NoProfile", "-Command", ps_cmd],
-            capture_output=True, text=True, timeout=15,
-        )
-        cmdlines = p.stdout.lower()
         signatures = [
             "run-feed-session.ps1",
             "multi_machine_feed_session",
             "run_tiktok.py",
             "night_chain_reg_pipeline"
         ]
-        for sig in signatures:
-            if sig in cmdlines:
-                return True
+        for proc in psutil.process_iter(['name', 'cmdline']):
+            name = (proc.info.get('name') or '').lower()
+            if not (name.startswith('python') or name.startswith('powershell')):
+                continue
+            cmdline = ' '.join(proc.info.get('cmdline') or []).lower()
+            for sig in signatures:
+                if sig in cmdline:
+                    return True
     except Exception:
         pass
     return False
@@ -259,18 +257,18 @@ def is_feed_active() -> bool:
 
 def is_clear_cache_active() -> bool:
     """Kiểm tra có tiến trình dọn dẹp cache TikTok đang chạy không."""
+    # Bước 2: Duyệt tiến trình clear cache bằng psutil
+    if psutil is None:
+        return False
     try:
-        ps_cmd = (
-            'Get-CimInstance Win32_Process '
-            '-Filter "Name like \'python%\'" '
-            '| Select-Object -ExpandProperty CommandLine'
-        )
-        p = subprocess.run(
-            ["powershell.exe", "-NoProfile", "-Command", ps_cmd],
-            capture_output=True, text=True, timeout=15,
-        )
-        cmdlines = p.stdout.lower()
-        return "clear-tiktok-cache" in cmdlines or "cron_clear_tiktok_cache" in cmdlines
+        for proc in psutil.process_iter(['name', 'cmdline']):
+            name = (proc.info.get('name') or '').lower()
+            if not name.startswith('python'):
+                continue
+            cmdline = ' '.join(proc.info.get('cmdline') or []).lower()
+            if "clear-tiktok-cache" in cmdline or "cron_clear_tiktok_cache" in cmdline:
+                return True
+        return False
     except Exception:
         return False
 
@@ -519,19 +517,16 @@ def is_cluster_batch_alive(cluster_id: str, pid: int | None = None) -> bool:
                 return True
         except (TypeError, ValueError, OSError):
             pass
+    # Bước 3: Duyệt tiến trình avatar batch bằng psutil
+    if psutil is None:
+        return False
     try:
-        ps_cmd = (
-            'Get-CimInstance Win32_Process '
-            '-Filter "Name like \'powershell%\'" '
-            '| Select-Object -ExpandProperty CommandLine'
-        )
-        p = subprocess.run(
-            ["powershell.exe", "-NoProfile", "-Command", ps_cmd],
-            capture_output=True, text=True, timeout=15,
-        )
         cluster_id = str(cluster_id).lower()
-        for line in (p.stdout or "").splitlines():
-            cmdline = line.lower()
+        for proc in psutil.process_iter(['name', 'cmdline']):
+            name = (proc.info.get('name') or '').lower()
+            if not name.startswith('powershell'):
+                continue
+            cmdline = ' '.join(proc.info.get('cmdline') or []).lower()
             if "run_tiktok_upload_avatar.ps1" not in cmdline and "run_tiktok_upload_batch.ps1" not in cmdline:
                 continue
             if cluster_id == "admin" and "admin.yaml" in cmdline:
@@ -1030,6 +1025,7 @@ def trigger_avatar_batch(tik: int, machines: list[int], state: dict, host_contex
 
     cmd = [
         "powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass",
+        "-WindowStyle", "Hidden",
         "-File", str(LAUNCHER),
         "-Tik", str(tik),
         "-ForceAvatarMachineList", machine_list_str,

@@ -201,12 +201,18 @@ def is_feed_ca1_finished() -> bool:
 def is_feed_runner_active() -> bool:
     try:
         if os.name == "nt":
-            ps_cmd = 'powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \\"Name LIKE \'python%\'\\" | Select-Object -ExpandProperty CommandLine"'
-            ps_out = subprocess.check_output(ps_cmd, shell=True, text=True, errors="ignore", timeout=15)
+            import psutil
             keywords = ["feed_session_runner", "run_feed_session", "feed_consumer", "multi_machine_feed_session"]
-            for line in ps_out.splitlines():
-                if any(kw in line.lower() for kw in keywords):
-                    return True
+            for proc in psutil.process_iter(["name", "cmdline"]):
+                try:
+                    name = (proc.info.get("name") or "").lower()
+                    if "python" not in name:
+                        continue
+                    cmdline = " ".join(proc.info.get("cmdline") or []).lower()
+                    if any(kw in cmdline for kw in keywords):
+                        return True
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    continue
         else:
             res = subprocess.run(["pgrep", "-f", "feed_session_runner|run_feed_session|feed_consumer"],
                                  capture_output=True, text=True, timeout=5)
