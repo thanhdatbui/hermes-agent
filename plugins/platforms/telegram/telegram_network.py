@@ -248,9 +248,16 @@ class TelegramMultiISPTransport(httpx.AsyncBaseTransport):
 
         # Primary mode
         try:
-            response = await self._get_primary().handle_async_request(request)
+            response = await asyncio.wait_for(
+                self._get_primary().handle_async_request(request),
+                timeout=self._stall_threshold_s,
+            )
             self._last_primary_success = time.monotonic()
             return response
+        except asyncio.TimeoutError:
+            await self._switch_to_fallback()
+            self._ensure_recovery_probe()
+            return await self._get_fallback().handle_async_request(request)
         except Exception as exc:
             if not _is_retryable_connect_error(exc):
                 raise

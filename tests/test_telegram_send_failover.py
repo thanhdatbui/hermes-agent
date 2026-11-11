@@ -159,3 +159,36 @@ async def test_telegram_fallback_proxy_configuration(monkeypatch):
         assert isinstance(transport._get_fallback(), httpx.AsyncHTTPTransport)
     finally:
         await transport.aclose()
+
+
+@pytest.mark.asyncio
+async def test_telegram_primary_stall_timeout_failover():
+    import asyncio
+
+    transport = TelegramMultiISPTransport(
+        fallback_ips=["149.154.167.220"],
+        stall_threshold_s=0.02,
+    )
+
+    async def _stalled_request(request):
+        await asyncio.sleep(0.5)
+        return httpx.Response(200, request=request)
+
+    primary = MagicMock()
+    primary.handle_async_request = AsyncMock(side_effect=_stalled_request)
+    primary.aclose = AsyncMock()
+    fallback = MagicMock()
+    fallback.aclose = AsyncMock()
+    response = httpx.Response(200, request=httpx.Request("GET", "https://api.telegram.org/"))
+    fallback.handle_async_request = AsyncMock(return_value=response)
+    transport._primary_transport = primary
+    transport._fallback_transport = fallback
+
+    try:
+        result = await transport.handle_async_request(response.request)
+        assert result is response
+        assert transport._current_mode == "fallback"
+        primary.handle_async_request.assert_awaited_once()
+        fallback.handle_async_request.assert_awaited_once_with(response.request)
+    finally:
+        await transport.aclose()
