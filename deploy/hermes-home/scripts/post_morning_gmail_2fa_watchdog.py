@@ -269,7 +269,7 @@ def get_upcoming_feed_machines(buffer_minutes=60) -> set:
 
 def get_gpm_candidates(limit: int = 5) -> list:
     """Lấy danh sách profile GPM cần bật 2FA (có email @gmail.com, có password, chưa có 2FA)."""
-    if not GPM_DB_PATH.exists() or (not FARM_MASTER_DB.exists() and not MASTER_EXCEL.exists()):
+    if not GPM_DB_PATH.exists():
         return []
 
     excluded_today = set()
@@ -296,6 +296,7 @@ def get_gpm_candidates(limit: int = 5) -> list:
         except Exception as e:
             log(f"Lỗi đọc STATE_FILE để loại trừ excluded_today: {e}")
 
+    # Buoc 1: Doc email, password, twofa_secret tu SQLite farm_master.db (bang mailboxes) - uu tien 100% khi ton tai
     master_pwd = {}
     master_2fa = {}
     if FARM_MASTER_DB.exists():
@@ -312,39 +313,31 @@ def get_gpm_candidates(limit: int = 5) -> list:
             conn_m.close()
         except Exception as e:
             log(f"Lỗi đọc FARM_MASTER_DB: {e}")
-    elif MASTER_EXCEL.exists():
+
+    # Buoc 2: Fallback doc MASTER_EXCEL khi FARM_MASTER_DB khong ton tai (backward compatibility)
+    clean_pwd = {}
+    clean_2fa = {}
+    if not FARM_MASTER_DB.exists() and MASTER_EXCEL.exists():
         try:
             import openpyxl
-            wb_m = openpyxl.load_workbook(MASTER_EXCEL, read_only=True, data_only=True)
-            if "Master_All" in wb_m.sheetnames:
-                ws = wb_m["Master_All"]
-                for r in list(ws.iter_rows(values_only=True))[1:]:
-                    em = str(r[1] or "").strip().lower()
+            wb = openpyxl.load_workbook(MASTER_EXCEL, data_only=True)
+            if "Master_All" in wb.sheetnames:
+                ws = wb["Master_All"]
+                for row in ws.iter_rows(min_row=2, values_only=True):
+                    if not row or len(row) < 5:
+                        continue
+                    em = str(row[1] or "").strip().lower()
+                    pwd = str(row[2] or "").strip()
+                    sec = str(row[4] or "").strip()
                     if em:
-                        master_pwd[em] = str(r[2] or "").strip()
-                        if len(r) > 4 and r[4]:
-                            master_2fa[em] = str(r[4] or "").strip()
-            wb_m.close()
+                        if pwd:
+                            clean_pwd[em] = pwd
+                        if sec and sec not in ("", "None", "null"):
+                            clean_2fa[em] = sec
         except Exception as e:
             log(f"Lỗi đọc MASTER_EXCEL: {e}")
 
-    clean_pwd = {}
-    clean_2fa = {}
-    if CLEAN_V2_EXCEL.exists():
-        try:
-            import openpyxl
-            wb_c = openpyxl.load_workbook(CLEAN_V2_EXCEL, read_only=True, data_only=True)
-            ws_c = wb_c.active
-            for r in list(ws_c.iter_rows(values_only=True))[1:]:
-                em = str(r[1] or "").strip().lower()
-                if em:
-                    clean_pwd[em] = str(r[2] or "").strip()
-                    if len(r) > 3 and r[3]:
-                        clean_2fa[em] = str(r[3] or "").strip()
-            wb_c.close()
-        except Exception as e:
-            log(f"Lỗi đọc CLEAN_V2_EXCEL: {e}")
-
+    # Buoc 2: Doc danh sach profile GPM va ghep voi du lieu mailboxes vua doc o Buoc 1
     candidates = []
     try:
         conn = sqlite3.connect(GPM_DB_PATH)
