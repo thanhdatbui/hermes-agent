@@ -54,7 +54,7 @@ except Exception:
 
 GPM_API_BASE = "http://127.0.0.1:19995/api/v3"
 PROXY_FILE   = r"D:\OneDrive\TaadaaData\kibe\PROXYgandienthoai.xlsx"
-MASTER_FILE  = r"D:\OneDrive\TaadaaData\kibe\master_gmail_manager.xlsx"
+MASTER_FILE  = r"D:\OneDrive\TaadaaData\kibe\farm_master.db"
 TAIKHOAN_DAT_FILE = r"D:\OneDrive\TaadaaData\kibe\taikhoan_dat_v2_updated .xlsx"
 if not os.path.exists(TAIKHOAN_DAT_FILE):
     TAIKHOAN_DAT_FILE = r"D:\OneDrive\TaadaaData\kibe\taikhoan_dat_v2_updated.xlsx"
