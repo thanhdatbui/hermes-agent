@@ -50,8 +50,34 @@ def detect_host():
 
 
 def is_download_running():
+    # Bước 1: Fast path with psutil
+    if psutil is not None:
+        try:
+            for proc in psutil.process_iter(["name", "cmdline"]):
+                try:
+                    info = proc.info
+                    if (info.get("name") or "").lower() != "python.exe":
+                        continue
+                    cmdline = " ".join(info.get("cmdline") or []).lower()
+                    if any(name in cmdline for name in (
+                        "download_by_niche.py", "download_all_sources.py",
+                        "auto_rescan_loop.py", "smart_gaixinh",
+                        "distribute_exclusive", "clean_vn",
+                        "run_admin_clean_vn", "run_admin_downloader",
+                    )):
+                        return True
+                except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                    continue
+        except Exception:
+            pass
+
+    # Bước 2: Fallback to WMIC
     try:
-        out = subprocess.check_output('wmic process where "name=\'python.exe\'" get commandline', shell=True, text=True, errors="replace", timeout=5)
+        out = subprocess.check_output(
+            'wmic process where "name=\'python.exe\'" get commandline',
+            shell=True, text=True, errors="replace", timeout=5,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
         out_lower = out.lower()
         if "download_by_niche.py" in out_lower or "download_all_sources.py" in out_lower or "auto_rescan_loop.py" in out_lower or "smart_gaixinh" in out_lower or "distribute_exclusive" in out_lower or "clean_vn" in out_lower or "run_admin_clean_vn" in out_lower or "run_admin_downloader" in out_lower:
             return True
@@ -61,8 +87,29 @@ def is_download_running():
 
 
 def is_render_running():
+    # Fast path: inspect Python and FFmpeg processes directly with psutil.
+    if psutil is not None:
+        try:
+            for proc in psutil.process_iter(["name", "cmdline"]):
+                try:
+                    info = proc.info
+                    if (info.get("name") or "").lower() not in ("python.exe", "ffmpeg.exe"):
+                        continue
+                    cmdline = " ".join(info.get("cmdline") or []).lower()
+                    if "random_batch_render.py" in cmdline or "run_render" in cmdline or "ffmpeg" in cmdline or "admin_render_chain" in cmdline:
+                        return True
+                except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                    continue
+        except Exception:
+            pass
+
+    # Fallback: WMIC, without opening a console window on Windows.
     try:
-        out = subprocess.check_output('wmic process where "name=\'python.exe\' or name=\'ffmpeg.exe\'" get commandline', shell=True, text=True, errors="replace", timeout=5)
+        out = subprocess.check_output(
+            'wmic process where "name=\'python.exe\' or name=\'ffmpeg.exe\'" get commandline',
+            shell=True, text=True, errors="replace", timeout=5,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
         out_lower = out.lower()
         if "random_batch_render.py" in out_lower or "run_render" in out_lower or "ffmpeg" in out_lower or "admin_render_chain" in out_lower:
             return True
