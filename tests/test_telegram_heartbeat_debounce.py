@@ -20,7 +20,8 @@ def test_proxy_error_is_retryable_connect_error():
     assert telegram_network._is_retryable_connect_error(httpx.ConnectTimeout("timeout")) is True
     assert telegram_network._is_retryable_connect_error(httpx.ConnectError("connect error")) is True
     assert telegram_network._is_retryable_connect_error(httpx.ProxyError("proxy unreachable")) is True
-    assert telegram_network._is_retryable_connect_error(httpx.ReadTimeout("read timeout")) is False
+    assert telegram_network._is_retryable_connect_error(httpx.ReadTimeout("read timeout")) is True
+    assert telegram_network._is_retryable_connect_error(httpx.WriteTimeout("write timeout")) is True
     assert telegram_network._is_retryable_connect_error(ValueError("value error")) is False
 
 
