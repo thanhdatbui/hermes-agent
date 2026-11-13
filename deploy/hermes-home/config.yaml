@@ -23,10 +23,14 @@ providers:
     default_model: ag-gemini-pool-3
     discover_models: false
     key_env: OMNIROUTE_API_KEY
+    request_timeout_seconds: 600
+    stale_timeout_seconds: 900
     models:
       ag-claude: {}
       ag-gemini-pool-3:
         supports_vision: true
+        stale_timeout_seconds: 900
+        request_timeout_seconds: 600
       ag-opus: {}
       gemini-web-argon-pool: {}
       omni-free: {}
@@ -42,7 +46,7 @@ fallback_providers:
 agent:
   max_turns: 100
   gateway_timeout: 3600
-  api_max_retries: 2
+  api_max_retries: 5
   service_tier: normal
   gateway_timeout_warning: 3600
   image_input_mode: native
