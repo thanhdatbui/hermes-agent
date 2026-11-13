@@ -195,3 +195,40 @@ async def test_telegram_primary_stall_timeout_failover():
         fallback.handle_async_request.assert_awaited_once_with(response.request)
     finally:
         await transport.aclose()
+
+
+@pytest.mark.asyncio
+async def test_telegram_get_updates_not_aborted_by_stall_threshold():
+    import asyncio
+
+    # Transport has a tiny stall threshold of 20ms
+    transport = TelegramMultiISPTransport(
+        fallback_ips=["149.154.167.220"],
+        stall_threshold_s=0.02,
+    )
+
+    async def _long_poll_request(request):
+        # Long poll naturally takes longer than 20ms (e.g. 50ms in test)
+        await asyncio.sleep(0.05)
+        return httpx.Response(200, request=request)
+
+    primary = MagicMock()
+    primary.handle_async_request = AsyncMock(side_effect=_long_poll_request)
+    primary.aclose = AsyncMock()
+    fallback = MagicMock()
+    fallback.aclose = AsyncMock()
+
+    get_updates_req = httpx.Request("POST", "https://api.telegram.org/bot123:ABC/getUpdates")
+    transport._primary_transport = primary
+    transport._fallback_transport = fallback
+
+    try:
+        # getUpdates should NOT be aborted by the 0.02s stall threshold
+        result = await transport.handle_async_request(get_updates_req)
+        assert result.status_code == 200
+        # Transport must STAY in primary mode, NOT fail over to fallback
+        assert transport._current_mode == "primary"
+        primary.handle_async_request.assert_awaited_once()
+        fallback.handle_async_request.assert_not_called()
+    finally:
+        await transport.aclose()

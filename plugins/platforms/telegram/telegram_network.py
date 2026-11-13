@@ -247,11 +247,12 @@ class TelegramMultiISPTransport(httpx.AsyncBaseTransport):
             return await self._get_fallback().handle_async_request(request)
 
         # Primary mode
-        # Step 1: Execute primary request within stall threshold
+        # Step 1: Execute primary request within stall threshold (bypass for /getUpdates long polling)
+        timeout_s = None if request.url.path.endswith('/getUpdates') else self._stall_threshold_s
         try:
             response = await asyncio.wait_for(
                 self._get_primary().handle_async_request(request),
-                timeout=self._stall_threshold_s,
+                timeout=timeout_s,
             )
             self._last_primary_success = time.monotonic()
             return response
