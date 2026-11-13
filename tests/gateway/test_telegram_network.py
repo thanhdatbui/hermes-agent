@@ -182,14 +182,14 @@ class TestFallbackTransport:
 
     @pytest.mark.asyncio
     async def test_does_not_fallback_on_non_connect_error(self, monkeypatch):
-        """Errors like ReadTimeout are not connection issues — don't retry."""
+        """Errors like ValueError are non-network errors — don't retry."""
         calls = []
-        behavior = {"api.telegram.org": httpx.ReadTimeout("read timeout"), "149.154.167.220": "ok"}
+        behavior = {"api.telegram.org": ValueError("non-network error"), "149.154.167.220": "ok"}
         monkeypatch.setattr(tnet.httpx, "AsyncHTTPTransport", _fake_transport_factory(calls, behavior))
 
         transport = tnet.TelegramFallbackTransport(["149.154.167.220"])
 
-        with pytest.raises(httpx.ReadTimeout):
+        with pytest.raises(ValueError, match="non-network error"):
             await transport.handle_async_request(_telegram_request())
 
         assert [c["url_host"] for c in calls] == ["api.telegram.org"]
