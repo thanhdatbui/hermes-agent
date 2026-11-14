@@ -87,9 +87,7 @@ def sync_file(src: Path, dst: Path, force: bool = False) -> str:
             return "copied"
         if _same_content(src, dst):
             return "skipped"
-        if force:
-            _atomic_copy(src, dst)
-            return "copied"
+        # Force handling occurs after mtime comparison to preserve conflict backups.
         src_mtime = src.stat().st_mtime
         dst_mtime = dst.stat().st_mtime
         if src_mtime > dst_mtime + MTIME_TOLERANCE_S:
