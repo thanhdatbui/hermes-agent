@@ -567,12 +567,61 @@ def perform_auto_login_and_extract_cookies(cdp_addr: str, email: str, creds: dic
             pass
         return _get_clean_session_token()
 
-def refresh_chatgpt_account_via_gpm(pid: str, cid: str, email: str, creds: dict):
+def refresh_chatgpt_account_via_gpm(pid: str, cid: str, email: str, creds: dict, profile_data: dict = None):
     # log(f"Đang mở GPM profile PID {pid} để kiểm tra/hồi sinh ChatGPT cho {email}...")
+    original_proxy = (profile_data or {}).get("raw_proxy")
+    proxy_restore_needed = False
+
+    def _start_profile():
+        try:
+            response = requests.get(f"{GPM_API}/profiles/start/{pid}?win_scale=0.8", timeout=20)
+            try:
+                payload = response.json()
+            except ValueError:
+                payload = {"success": False, "message": response.text}
+            return payload if isinstance(payload, dict) else {"success": False, "message": str(payload)}
+        except Exception as exc:
+            return {"success": False, "message": str(exc)}
+
+    def _update_profile_proxy(proxy):
+        response = requests.post(
+            f"{GPM_API}/profiles/update/{pid}",
+            json={"raw_proxy": proxy},
+            timeout=10
+        )
+        response.raise_for_status()
+        try:
+            payload = response.json()
+        except ValueError:
+            payload = {}
+        if isinstance(payload, dict) and payload.get("success") is False:
+            raise RuntimeError(payload.get("message") or "GPM proxy update rejected")
+
     try:
-        res_start = requests.get(f"{GPM_API}/profiles/start/{pid}?win_scale=0.8", timeout=20).json()
+        res_start = _start_profile()
         if not res_start.get('success'):
-            return False, f"Start profile fail: {res_start.get('message')}"
+            start_error = str(res_start.get('message') or res_start.get('error') or res_start)
+            if "proxy" in start_error.lower() and original_proxy:
+                import re
+                raw_proxy_text = str(original_proxy).strip()
+                port_match = re.search(r"(?<!\d)(51\d{2})(?!\d)", raw_proxy_text)
+                is_target_proxy = (
+                    "test.taadaa.click" in raw_proxy_text.lower()
+                    or port_match is not None
+                )
+                if is_target_proxy and port_match:
+                    original_port = int(port_match.group(1))
+                    if 5101 <= original_port <= 5138:
+                        fallback_proxy = f"192.168.110.2:{10000 + original_port - 5100}"
+                        _update_profile_proxy(fallback_proxy)
+                        proxy_restore_needed = True
+                        log(f"[GPM-PROXY-FALLBACK] PID {pid}: {raw_proxy_text} -> {fallback_proxy}")
+
+                        res_start = _start_profile()
+                        if not res_start.get('success'):
+                            return False, f"Start profile fail after proxy fallback: {res_start.get('message')}"
+            if not res_start.get('success'):
+                return False, f"Start profile fail: {res_start.get('message')}"
         cdp_addr = res_start['data']['remote_debugging_address']
         time.sleep(2)
         
@@ -629,6 +678,12 @@ def refresh_chatgpt_account_via_gpm(pid: str, cid: str, email: str, creds: dict)
     except Exception as e:
         return False, f"Exception: {e}"
     finally:
+        if proxy_restore_needed and original_proxy:
+            try:
+                _update_profile_proxy(original_proxy)
+                log(f"[GPM-PROXY-RESTORE] PID {pid}: restored original proxy")
+            except Exception as restore_exc:
+                log(f"[GPM-PROXY-RESTORE-WARN] PID {pid}: {restore_exc}")
         requests.get(f"{GPM_API}/profiles/close/{pid}", timeout=10)
         time.sleep(2)
 
@@ -1486,7 +1541,7 @@ def main():
             if not prof:
                 return email, False, "AMBIGUOUS_GPM_PROFILE" if len(gpm_map.get(email, [])) > 1 else "Không thấy profile GPM"
             pid = prof['id']
-            ok, msg = refresh_chatgpt_account_via_gpm(pid, cid, email, creds)
+            ok, msg = refresh_chatgpt_account_via_gpm(pid, cid, email, creds, profile_data=prof)
             return email, ok, msg
 
         with ThreadPoolExecutor(max_workers=5, thread_name_prefix="ChatGPTHealer") as executor:
