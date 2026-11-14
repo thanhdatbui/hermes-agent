@@ -243,6 +243,9 @@ class TestProxyLimit:
         }
         monkeypatch.setattr(watchdog, "_load_gmail_clean_creation_dates", lambda: clean_map)
         mock_gpm_emails.return_value = set(clean_map.keys())
+        # Các acc này đã có session Google sẵn -> không bị tính là is_lost_session theo công thức mới,
+        # giữ đúng ngữ nghĩa test gốc: chỉ kiểm tra proxy limit, không phải relogin.
+        mock_session.return_value = set(clean_map.keys())
 
         fake_rows = [
             ("MID", "Email", "Pass", "Rec", "2FA", "DOB", "Status", "MID_Col", "Col8", "Col9", "Proxy", "Col11", "Col12", "Note", "Updated"),
@@ -540,7 +543,7 @@ _TODAY = "2026-10-17"
 _ROW_HEADER = ("MID", "Email", "Pass", "Rec", "2FA", "DOB", "Status", "MID_Col", "Col8", "Col9", "Proxy", "Col11", "Col12", "Note", "Updated")
 
 
-def _run_get_candidates(monkeypatch, tmp_path, *, rows, gpm_emails, omni=(), nurture=None, state=None, processed=()):
+def _run_get_candidates(monkeypatch, tmp_path, *, rows, gpm_emails, omni=(), nurture=None, state=None, processed=(), session=None):
     state_file = tmp_path / "state.json"
     if state is not None:
         state_file.write_text(json.dumps(state), encoding="utf-8")
@@ -565,7 +568,10 @@ def _run_get_candidates(monkeypatch, tmp_path, *, rows, gpm_emails, omni=(), nur
     monkeypatch.setattr(watchdog, "_load_gmail_clean_creation_dates", lambda: {})
     monkeypatch.setattr(watchdog, "get_all_gpm_emails", lambda: set(gpm_emails))
     monkeypatch.setattr(watchdog, "_get_live_omniroute_antigravity_emails", lambda: set(omni))
-    monkeypatch.setattr(watchdog, "_get_gpm_profiles_with_google_session", lambda: set())
+    # Mặc định coi acc đã có trong omniroute_success là có session hợp lệ (giữ đúng ngữ nghĩa test gốc
+    # trước khi áp công thức is_lost_session mới); truyền session=... để override khi cần giả lập mất session thật.
+    _session_default = set(omni) if session is None else set(session)
+    monkeypatch.setattr(watchdog, "_get_gpm_profiles_with_google_session", lambda: _session_default)
 
     with patch("openpyxl.load_workbook", return_value=mock_wb):
         candidates, _ = watchdog.get_candidates(_TODAY, list(processed))
@@ -762,4 +768,40 @@ class TestNurtureAndRecoveryFlow:
         saved = json.loads(written_data[0])
         assert "SANG" in saved["reported_shifts"]
         assert "SANG" in saved["finished_shifts"]
+
+
+class TestProKhoaleExceptions:
+    @patch("post_evening_gpm_login_watchdog.STATUS_JSON")
+    @patch("post_evening_gpm_login_watchdog.STATE_FILE")
+    @patch("post_evening_gpm_login_watchdog.MASTER_XLSX")
+    @patch("post_evening_gpm_login_watchdog.get_all_gpm_emails")
+    @patch("post_evening_gpm_login_watchdog._get_live_omniroute_antigravity_emails", return_value=set())
+    @patch("post_evening_gpm_login_watchdog._get_gpm_profiles_with_google_session", return_value=set())
+    @patch("post_evening_gpm_login_watchdog._load_gmail_clean_creation_dates", return_value={})
+    def test_pro_khoale_exception_bypasses_khoale_filter(
+        self, mock_clean, mock_session, mock_live, mock_gpm_emails, mock_master_xlsx, mock_state_file, mock_status_json
+    ):
+        mock_status_json.exists.return_value = False
+        mock_state_file.exists.return_value = False
+        mock_master_xlsx.exists.return_value = True
+
+        exception_email = "hoangthibaoanh300920023009@gmail.com"
+        normal_khoale_email = "normal_khoale_user@gmail.com"
+        mock_gpm_emails.return_value = {exception_email, normal_khoale_email}
+
+        fake_rows = [
+            ("MID", "Email", "Pass", "Rec", "2FA", "DOB", "Status", "MID_Col", "Col8", "Col9", "Proxy", "Col11", "Col12", "Note", "Updated"),
+            (1, exception_email, "p", "khoale_recovery@gmail.com", "", "", "LIVE", "1", "", "", "127.0.0.1:20001", "", "", "", "2026-09-01"),
+            (2, normal_khoale_email, "p", "khoale_recovery@gmail.com", "", "", "LIVE", "2", "", "", "127.0.0.1:20002", "", "", "", "2026-09-01"),
+        ]
+        mock_wb = MagicMock()
+        mock_ws = MagicMock()
+        mock_ws.iter_rows.return_value = fake_rows
+        mock_wb.__getitem__.return_value = mock_ws
+        with patch("openpyxl.load_workbook", return_value=mock_wb):
+            candidates, _ = watchdog.get_candidates("2026-09-20", [])
+
+        emails = [c["email"] for c in candidates]
+        assert exception_email in emails
+        assert normal_khoale_email not in emails
 

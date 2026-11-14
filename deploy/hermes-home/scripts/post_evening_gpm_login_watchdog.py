@@ -53,6 +53,8 @@ MAX_WORKERS        = 5     # 5 workers song song khác proxy khác máy theo ch�
 MAX_LOGINS_PER_PROXY = 2   # tối đa 2 acc / proxy / ngày
 MIN_IDLE_BUFFER_MIN  = 10  # cách ca tiếp theo ít nhất 10 phút
 
+PRO_KHOALE_EXCEPTIONS = {'hoangthibaoanh300920023009@gmail.com', 'lamngocdiep030420000304@gmail.com'}
+
 def log(msg: str):
     now_str = datetime.now(HCMC).strftime("%H:%M:%S")
     sys.stderr.write(f"[{now_str}] [GPM-LOGIN] {msg}\n")
@@ -492,17 +494,18 @@ def get_candidates(today_str: str, processed: list[str]) -> list[dict]:
                         except Exception:
                             pass
 
-                is_lost_session = (em_l in nurture_needs_login)
+                is_lost_session = (em_l in nurture_needs_login) or (em_l in gpm_emails and em_l not in session_emails and em_l not in omniroute_success)
                 # Chốt chặn chống lặp vô tận: Đã xử lý hôm nay hoặc nằm trong excluded thì bỏ qua tuyệt đối
                 if em_l in seen_emails or em_l in excluded_emails:
                     continue
-                if em_l in omniroute_success and not is_lost_session:
+                has_session = (em_l in session_emails)
+                if em_l in omniroute_success and has_session and not (em_l in nurture_needs_login):
                     continue
                 if em_l not in gpm_emails:
                     continue
 
                 rec = str(r[3] or "").lower()
-                if "khoale" in rec or "khoale" in em_l:
+                if ("khoale" in rec or "khoale" in em_l) and em_l not in PRO_KHOALE_EXCEPTIONS:
                     continue
                 proxy_raw = str(r[10] or "")
                 m = re.search(r":(\d{4,5})", proxy_raw)
