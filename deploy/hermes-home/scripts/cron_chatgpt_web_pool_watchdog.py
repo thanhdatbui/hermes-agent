@@ -20,6 +20,7 @@ import time
 import socket
 import sqlite3
 import msvcrt
+import random
 import urllib.request
 import urllib.parse
 from pathlib import Path
@@ -612,7 +613,8 @@ def refresh_chatgpt_account_via_gpm(pid: str, cid: str, email: str, creds: dict,
                 if is_target_proxy and port_match:
                     original_port = int(port_match.group(1))
                     if 5101 <= original_port <= 5138:
-                        fallback_proxy = f"192.168.110.2:{10000 + original_port - 5100}"
+                        fallback_port = random.choice(range(10001, 10036))
+                        fallback_proxy = f"192.168.110.2:{fallback_port}:admin@1:admin@1"
                         _update_profile_proxy(fallback_proxy)
                         proxy_restore_needed = True
                         log(f"[GPM-PROXY-FALLBACK] PID {pid}: {raw_proxy_text} -> {fallback_proxy}")
