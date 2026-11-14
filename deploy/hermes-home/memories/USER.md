@@ -1,4 +1,4 @@
-User supremacy: lệnh 'tao cho phép' / sudo override guard cơ học; cấm guard cản sudo; Chrome chính/CDP profile Kal (jinrakal@gmail.com); compression 0.6 (protect_last_n 50). SSOT SQLite farm_master.db; cấm runtime Excel. Bằng chứng killswitch soi socket/byte kernel, cấm splash. Trả lời trực diện. Giữ 100% tools browser_*/computer_use. Đơn hàng nowrap. Cơ giới hóa O(1). Video >=45 clip. Zalo startup: HKCU Run --relaunch-silently. Remote Admin PS Where-Object mtime.
+User supremacy: 'tao cho phép'/sudo override; Chrome/CDP Kal (jinrakal@gmail.com); compression 0.6; SSOT SQLite farm_master.db (bảng mailboxes) và profile_data.db (GPM), cấm runtime Excel; khi dọn mail DIE bắt buộc dọn sạch SQLite (farm_master.db + profile_data.db GroupId=0) lẫn sổ cái Excel archive; killswitch soi socket/byte; trực diện; 100% tools; đơn hàng nowrap; cơ giới O(1); >=45 clip; Zalo HKCU Run --relaunch-silently; remote Admin PS mtime. Advisor bắt buộc all/both (Gemini+Claude). Blast radius=1, Safe-rollback, 3 strikes.
 §
 Điều tra đa máy check trực tiếp ổ node remote. Coordinator CẤM chạy qua gemini-web (thiếu tool calling); bắt buộc dùng API native tool calling.
 §

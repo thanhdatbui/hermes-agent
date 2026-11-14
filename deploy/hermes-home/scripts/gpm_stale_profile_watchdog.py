@@ -40,6 +40,9 @@ except ImportError:
 DEFAULT_THRESHOLD_SECONDS = 3600
 DEFAULT_GPM_API_BASE = "http://127.0.0.1:19995/api/v3"
 DEFAULT_GPM_DB_PATH = Path.home() / "AppData" / "Local" / "Programs" / "GPMLogin" / "profile" / "profile_data.db"
+MANUAL_HOLD_PATH = Path(r"D:\Taadaa\data\gpm_manual_hold.json")
+PROTECTED_PROFILE_KEYWORDS = ("muse", "manual", "test", "kal", "hold")
+ALLOWED_GROUP_IDS = {1, 10}
 TELEMETRY_LOG = Path.home() / "AppData" / "Local" / "hermes" / "logs" / "gpm_watchdog.jsonl"
 
 logging.basicConfig(level=logging.INFO, format="[%(asctime)s] [%(levelname)s] %(message)s")
@@ -171,6 +174,12 @@ def reap_stale_profiles(
             p_path = extract_profile_path(cmdline)
             port = extract_debugging_port(cmdline)
             prof_id, prof_name = lookup_profile_info(target_db, p_path) if p_path else (None, None)
+
+            if (prof_name and 'muse' in prof_name.lower()) or prof_id in (
+                '6d49fb09-2547-402f-a313-9c19c32be280',
+                '560a8195-e9cc-443b-ae60-be8a480080bd'
+            ):
+                continue
 
             # Khử trùng lặp theo profile
             prof_key = prof_id or p_path or str(pid)
