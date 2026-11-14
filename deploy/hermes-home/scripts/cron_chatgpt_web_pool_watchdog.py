@@ -136,7 +136,7 @@ def load_accounts_credentials():
                 if not row or len(row) < 3:
                     continue
                 em = str(row[1] or "").strip().lower()
-                if "@gmail.com" in em:
+                if "@gmail.com" in em or "@hotmail.com" in em:
                     pwd = str(row[2] or "").strip()
                     totp = str(row[3] or "").strip() if len(row) > 3 else ""
                     recovery_email = str(row[4] or "").strip().lower() if len(row) > 4 else ""
@@ -149,6 +149,41 @@ def load_accounts_credentials():
                     }
     except (IOError, openpyxl.utils.exceptions.InvalidFileException, KeyError) as e:
         log(f"Lỗi đọc credentials từ Excel: {type(e).__name__}")
+
+    account_files = [
+        Path("D:/Taadaa/data/hotmail_input.txt"),
+        Path("D:/Taadaa/data/latest_bought_70.txt"),
+        Path("D:/Taadaa/data/hotmail_all_60_bought.txt"),
+        Path("D:/Taadaa/Hotmail/hotmail_input.txt")
+    ]
+    for file_path in account_files:
+        if file_path.exists():
+            try:
+                for line in file_path.read_text(encoding="utf-8", errors="ignore").splitlines():
+                    line = line.strip()
+                    if not line or line.startswith("#"):
+                        continue
+                    parts = line.split("|")
+                    if len(parts) >= 2:
+                        em = parts[0].strip().lower()
+                        pwd = parts[1].strip()
+                        totp = parts[2].strip() if len(parts) > 2 else ""
+                        if "@" in em:
+                            if em not in creds:
+                                creds[em] = {
+                                    "password": pwd,
+                                    "totp": totp,
+                                    "recovery_email": "",
+                                    "dob": ""
+                                }
+                            else:
+                                if pwd:
+                                    creds[em]["password"] = pwd
+                                if totp:
+                                    creds[em]["totp"] = totp
+            except Exception as e:
+                log(f"Lỗi đọc file {file_path}: {e}")
+
     return creds
 
 def is_pro_antigravity(c: dict) -> bool:
