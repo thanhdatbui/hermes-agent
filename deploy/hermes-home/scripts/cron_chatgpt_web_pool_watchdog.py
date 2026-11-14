@@ -96,6 +96,7 @@ if os.path.exists(FFMPEG_DIR):
 OMNI_API = "http://127.0.0.1:20129"
 GPM_API = "http://127.0.0.1:19995/api/v3"
 DB_PATH = os.environ.get("OMNI_DB_PATH", os.path.expanduser(r"~/.omniroute/storage.sqlite"))
+FARM_DB_PATH = r"D:/Taadaa/data/farm_master.db"
 EXCEL_PATH = r"D:\OneDrive\TaadaaData\kibe\gmail_clean_v2.xlsx"
 UPDATED_XLSX_PATH = r"D:\OneDrive\TaadaaData\kibe\taikhoan_dat_v2_updated .xlsx"
 if not os.path.exists(UPDATED_XLSX_PATH):
@@ -103,14 +104,59 @@ if not os.path.exists(UPDATED_XLSX_PATH):
 DIRECT_OAUTH_URL = "https://chatgpt.com/auth/login_with?callback_path=%2F&connection=google-oauth2&screen_hint=login_or_signup&ext-web-mobile-direct-social-login=true"
 RECOVERY_EMAIL_FALLBACK = "thanhdatbui1995@gmail.com"
 
+def _load_credentials_from_farm_db():
+    """Load credentials from farm_master.db mailboxes table (SSOT). Returns empty dict if DB missing or unavailable."""
+    creds = {}
+    if not os.path.exists(FARM_DB_PATH):
+        return creds
+    try:
+        conn = sqlite3.connect(FARM_DB_PATH)
+        cur = conn.cursor()
+        cur.execute("SELECT email, password, twofa_secret FROM mailboxes")
+        rows = cur.fetchall()
+        for email, password, twofa_secret in rows:
+            em = str(email or "").strip().lower()
+            if em and ("@gmail.com" in em or "@hotmail.com" in em):
+                creds[em] = {
+                    "password": str(password or "").strip(),
+                    "totp": str(twofa_secret or "").strip(),
+                    "recovery_email": "",
+                    "dob": ""
+                }
+        conn.close()
+        if creds:
+            log(f"[FARM-DB-LOAD] Đã tải {len(creds)} credentials từ farm_master.db")
+    except (sqlite3.DatabaseError, sqlite3.OperationalError) as e:
+        log(f"[FARM-DB-LOAD] Lỗi DB farm_master.db: {type(e).__name__}")
+    except Exception as e:
+        log(f"[FARM-DB-LOAD] Lỗi tải farm_master.db: {type(e).__name__}: {e}")
+    return creds
+
 def get_chatgpt_password_from_workbook(email: str) -> str:
-    """Đọc mật khẩu ChatGPT chính chủ từ cột L (PASS CHATGPT) trong workbook taikhoan_dat_v2_updated."""
+    """Đọc mật khẩu ChatGPT chính chủ: kiểm tra farm_master.db trước, sau đó cột L (PASS CHATGPT) trong workbook taikhoan_dat_v2_updated."""
+    em_lower = email.strip().lower()
+
+    if os.path.exists(FARM_DB_PATH):
+        try:
+            conn = sqlite3.connect(FARM_DB_PATH)
+            cur = conn.cursor()
+            cur.execute("SELECT password FROM mailboxes WHERE email = ?", (em_lower,))
+            row = cur.fetchone()
+            conn.close()
+            if row and row[0]:
+                pwd = str(row[0]).strip()
+                if pwd:
+                    return pwd
+        except (sqlite3.DatabaseError, sqlite3.OperationalError) as e:
+            log(f"Lỗi kiểm tra farm_master.db cho {email}: {type(e).__name__}")
+        except Exception as e:
+            log(f"Lỗi farm_master.db lookupcho {email}: {type(e).__name__}")
+
     if not os.path.exists(UPDATED_XLSX_PATH):
         return ""
     try:
         wb = openpyxl.load_workbook(UPDATED_XLSX_PATH, read_only=True, data_only=True)
         ws = wb["Tài Khoản"] if "Tài Khoản" in wb.sheetnames else wb.active
-        em_lower = email.strip().lower()
         for row in ws.iter_rows(values_only=True):
             if not row or len(row) < 6:
                 continue
@@ -127,6 +173,10 @@ def get_chatgpt_password_from_workbook(email: str) -> str:
 
 def load_accounts_credentials():
     creds = {}
+
+    creds_from_db = _load_credentials_from_farm_db()
+    creds.update(creds_from_db)
+
     if not os.path.exists(EXCEL_PATH):
         return creds
     try:
@@ -142,12 +192,22 @@ def load_accounts_credentials():
                     totp = str(row[3] or "").strip() if len(row) > 3 else ""
                     recovery_email = str(row[4] or "").strip().lower() if len(row) > 4 else ""
                     dob = str(row[5] or "").strip() if len(row) > 5 else ""
-                    creds[em] = {
-                        "password": pwd,
-                        "totp": totp,
-                        "recovery_email": recovery_email,
-                        "dob": dob
-                    }
+                    if em not in creds:
+                        creds[em] = {
+                            "password": pwd,
+                            "totp": totp,
+                            "recovery_email": recovery_email,
+                            "dob": dob
+                        }
+                    else:
+                        if pwd and not creds[em]["password"]:
+                            creds[em]["password"] = pwd
+                        if totp and not creds[em]["totp"]:
+                            creds[em]["totp"] = totp
+                        if recovery_email and not creds[em]["recovery_email"]:
+                            creds[em]["recovery_email"] = recovery_email
+                        if dob and not creds[em]["dob"]:
+                            creds[em]["dob"] = dob
     except (IOError, openpyxl.utils.exceptions.InvalidFileException, KeyError) as e:
         log(f"Lỗi đọc credentials từ Excel: {type(e).__name__}")
 
@@ -178,9 +238,9 @@ def load_accounts_credentials():
                                     "dob": ""
                                 }
                             else:
-                                if pwd:
+                                if pwd and not creds[em]["password"]:
                                     creds[em]["password"] = pwd
-                                if totp:
+                                if totp and not creds[em]["totp"]:
                                     creds[em]["totp"] = totp
             except Exception as e:
                 log(f"Lỗi đọc file {file_path}: {e}")
