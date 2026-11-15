@@ -15,12 +15,12 @@ except ImportError:
     print("Error: 'psutil' library is required. Install it via 'pip install psutil'.", file=sys.stderr)
     sys.exit(1)
 
-# Configure logging
+# Configure logging: all diagnostics go to stderr, never stdout.
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[
-        logging.StreamHandler(sys.stdout)
+        logging.StreamHandler(sys.stderr)
     ]
 )
 logger = logging.getLogger("watchdog_scans")
@@ -61,12 +61,14 @@ def kill_orphaned_scans(dry_run: bool = False):
                 else:
                     try:
                         proc.terminate()
-                        # Give it a short moment to terminate gracefully, then kill if alive
+                        # Confirm graceful termination; force kill and confirm if necessary.
                         try:
                             proc.wait(timeout=3)
                         except psutil.TimeoutExpired:
                             proc.kill()
+                            proc.wait(timeout=3)
                         logger.info(f"Successfully terminated process PID={pid} ({name})")
+                        print(f"ALERT: Successfully terminated process PID={pid} ({name})", flush=True)
                         killed_count += 1
                     except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess) as e:
                         logger.error(f"Failed to terminate PID {pid} ({name}): {e}")
@@ -79,11 +81,14 @@ def kill_orphaned_scans(dry_run: bool = False):
     logger.info(f"Scan check completed. Total processes terminated: {killed_count}")
 
 def main():
+    # Buoc 1
     parser = argparse.ArgumentParser(description="Watchdog to kill orphaned or long-running scan processes (>180s).")
     parser.add_argument("--dry-run", action="store_true", help="Log processes that exceed the threshold without terminating them.")
     args = parser.parse_args()
 
-    logger.info("Starting watchdog scan process check (Threshold: >%ds)...", MAX_AGE_SECONDS)
+    # Buoc 2
+
+    # Buoc 3
     kill_orphaned_scans(dry_run=args.dry_run)
 
 if __name__ == "__main__":
